@@ -1,5 +1,14 @@
 #!/bin/bash
 
+### ffmirror-ready
+### The sentinel above is what BOA.sh.txt and system.sh.inc grep for before
+### they trust this tool with the mirror pick: a fetch that returned the
+### mirror's placeholder page instead of the script would not carry it, and
+### the callers then fall back to their hardcoded default. Until it was added
+### the callers grepped for the word "stuff", which lives in an ordinary
+### comment further down -- rewording that comment would have silently pinned
+### every box to one mirror. Keep this line, and keep it out of prose.
+
 # borrowed from http://grulos.blogspot.com
 
 trap 'printf "\ncaught signal\nGot only ${#slist[@]}\n" &&

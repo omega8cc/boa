@@ -1801,6 +1801,13 @@ _verify_boa_keys() {
       || [[ "${_hName}" =~ ".boa.io"($) ]]; then
       _allw=YES
     fi
+    # *.sslip.io hostnames (wildcard DNS to the embedded IP, zero setup)
+    # pass on the dev tree only: test boxes run the dev tree end to end
+    # without a per-box key; pro stays licensed outside the fleet domains.
+    if [ "${_tRee}" = "dev" ] \
+      && [[ "${_hName}" =~ ".sslip.io"($) ]]; then
+      _allw=YES
+    fi
     mkdir -p /var/opt
     rm -f /var/opt/_encN*
     curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
@@ -1828,6 +1835,17 @@ _verify_boa_keys() {
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
       fi
+    elif [ "${_allw}" = "YES" ]; then
+      # A fleet-domain or sslip.io host is allowed on its name alone; the key
+      # fetch that failed here decides nothing for it. This include runs at
+      # the start of every barracuda and octopus pass, and a codename driver
+      # relaunches the pass 30 seconds after a reboot, when the resolver may
+      # not answer yet -- refusing then ended the pass with nothing but this
+      # message in its log and parked the upgrade chain in silence.
+      echo
+      echo "NOTE: the key server could not be reached; ${_hName} is allowed on the ${_tRee} tree by its hostname"
+      echo
+      rm -f /var/opt/_encN*
     else
       echo
       echo "Your system requires valid license to use this BOA version (${_tRee})"
@@ -1919,7 +1937,13 @@ _get_dev_ext() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && echo "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl ${_crlGet} "${_urlDev}/${_tRee}/$1" -o "$1"; then
+      # _DL_NOCACHE=YES: a per-call query string, so an edge cache that
+      # served a stale tarball behind a fresh launcher is bypassed on the
+      # re-fetch (the mirror ignores the query; the cache keys on it).
+      # Kept in step with the octopus copy; only OCTOPUS.sh.txt sets it today.
+      _dlQry=""
+      [ "${_DL_NOCACHE}" = "YES" ] && _dlQry="?r=$(date +%s)"
+      if curl ${_crlGet} "${_urlDev}/${_tRee}/$1${_dlQry}" -o "$1"; then
         _success=1
         break
       else

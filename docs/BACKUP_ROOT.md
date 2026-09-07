@@ -229,7 +229,7 @@ A tenant who wants server-independent access to their own off-site backups — v
 
 ```bash
 cp /data/disk/<user>/remote_backups/.secret.txt /data/disk/<user>/static/control/remote_backups/credentials/.secret.txt
-chown <user>.ftp:users /data/disk/<user>/static/control/remote_backups/credentials/.secret.txt
+chown <user>.ftp:$(id -gn <user>) /data/disk/<user>/static/control/remote_backups/credentials/.secret.txt
 chmod 600 /data/disk/<user>/static/control/remote_backups/credentials/.secret.txt
 ```
 

@@ -1081,10 +1081,14 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       echo "NO $(date) diff1 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
     fi
     if [[ "${_diffCnfTest}" =~ "No such file or directory" ]]; then
+      # One side of the diff is missing, which means the snapshot: nothing to
+      # roll back to, so the live file stays (siblings in sql.sh.inc and
+      # mycnfup take the same way out).
+      _useCnfUpdate=YES
       echo "NO $(date) diff3 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
     fi
   fi
-  if [ "${_useCnfUpdate}" = "NO" ]; then
+  if [ "${_useCnfUpdate}" = "NO" ] && [ -s "${_preCnf}" ]; then
     cp -af ${_useCnf} ${_brkCnf}
     cp -af ${_preCnf} ${_useCnf}
   fi

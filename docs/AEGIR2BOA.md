@@ -42,16 +42,17 @@ source box needs no BOA installation, no account and no credentials to do it:
 ```bash
 cd /usr/local/bin
 for t in aegir2boa-preflight aegir2boa-stage1 aegir2boa-stage2; do
-  wget https://files.boa.io/versions/lts/boa/aegir/tools/bin/$t
+  wget https://files.boa.io/versions/dev/boa/aegir/tools/bin/$t
   chmod 755 $t
 done
 ```
 
-Substitute `dev` or `pro` for `lts` to take the tools from another tree; the
-three trees carry the same tools. **Use the short tree token** — a path such
-as `versions/5.x-lts/...` returns an HTTP 200 "Under Construction" placeholder
-rather than a 404, so a typo yields a file that looks downloaded and is not a
-script. Check what you got: `head -1` must read `#!/bin/bash`.
+The path names the tree this copy of the documentation belongs to; the three
+trees carry the same tools, so take them from the tree your target server
+runs. **Use the short tree token** — a path such as `versions/5.x-lts/...`
+returns an HTTP 200 "Under Construction" placeholder rather than a 404, so a
+typo yields a file that looks downloaded and is not a script. Check what you
+got: `head -1` must read `#!/bin/bash`.
 
 Run them as root. `aegir2boa-stage2` is dual-resident: put the SAME script on
 the source and the target; source verbs refuse to run on a BOA box and target
@@ -282,8 +283,9 @@ look on any failure.
 - **A fresh preflight report on the source.** The report lands under
   `/tmp`, which is tmpfs on many boxes — a reboot eats it, and `check`
   refuses a report from a different host. Re-run the preflight after any
-  reboot, and copy the `.txt`/`.env` pair somewhere durable for the
-  record.
+  reboot AND after the stage-1 flip: `check` reads the http service type
+  from the newest report, and a report taken before the flip still says
+  apache. Copy the `.txt`/`.env` pair somewhere durable for the record.
 - **Stage 1 signed off**: the source serves the whole estate on Nginx.
 - **Target PHP pools** for the estate's needs (a D6 site needs a php56
   pool on the target; `check` grades this per site).
@@ -295,16 +297,23 @@ look on any failure.
   "Site off-line" 503 on the web. The import pins each D6 site's DB
   user to `mysql_native_password` (and refuses, loudly, when the plugin
   is disabled), but the server-side default must also be native:
-  `authentication_policy = mysql_native_password,,` in my.cnf (8.4; on
-  8.0 use `default_authentication_plugin`). Current BOA sets this
-  automatically on Percona 8.4 (sql config sync, aegir2boa D-015) — on a
-  target whose BOA predates that change, add the line yourself and
+  `authentication_policy = mysql_native_password,,` in my.cnf, and on 8.0
+  also `default_authentication_plugin = mysql_native_password`, which is
+  what 8.0's handshake greeting follows. Current BOA writes them
+  automatically on Percona 8.0 and 8.4 (sql config sync, aegir2boa D-015)
+  — on a target whose BOA predates that, add the lines yourself and
   restart mysql. Modern-PHP sites and `caching_sha2` users are
-  unaffected — clients negotiate the switch. Without it the import FAILS
-  the site honestly at its serve probe instead of adopting a site that
-  cannot serve — though a probe that lands before the FPM agent maps the
-  site onto its php56 pool can pass on the account-default modern-PHP
-  pool and the site then degrades on the agent's next pass, so fix the
+  unaffected — clients negotiate the switch. `check` grades this per
+  D6 site as well, from what the target's server actually advertises —
+  its handshake greeting, or the `authentication_policy` /
+  `default_authentication_plugin` variables when the greeting cannot be
+  read — so a non-native target is named before `pre-mig` pauses
+  anything; a target that answers neither is reported UNKNOWN and
+  accuses nobody. Past that gate the import still FAILS the site
+  honestly at its serve probe instead of adopting a site that cannot
+  serve — though a probe that lands before the FPM agent maps the site
+  onto its php56 pool can pass on the account-default modern-PHP pool
+  and the site then degrades on the agent's next pass, so fix the
   policy, don't race the probe.
 - **Disk headroom**: per site roughly 2× its DB size free under
   `/var/aegir` on the source for dumps; the whole estate + 500 MB free
@@ -496,7 +505,7 @@ discovery output — the route is never operator-asserted**:
 ### Order of operations
 
 ```
-[stage 0/1 done: preflight WARN-or-better for stage 2, box on nginx]
+[stage 0/1 done: box on nginx, THEN a fresh preflight WARN-or-better for stage 2]
 check → pre-mig → create → export → transfer →
 import (ON TARGET) → proxy → cert-sync --install-cron
 ```
@@ -542,7 +551,11 @@ so a `check` that only warned here has not actually verified the
 pairing. It computes db-import
 eligibility, enumerates every enabled non-core module on the hostmaster
 (the scrub review list), grades per-site PHP parity (a D6 site with no
-php56 pool on the target is flagged and later SKIPPED, not blocking), and
+php56 pool on the target is flagged and later SKIPPED, not blocking),
+raises the same per-site flag for a D6 site when the target's DB server
+advertises a non-native first factor (the Prerequisites bullet on native
+auth says what to set — the point of grading it here is that it is named
+before `pre-mig` pauses anything), and
 records route+target for the following verbs. Re-run `check` freely; it
 is always read-only.
 
@@ -942,6 +955,7 @@ deliberately:
 |---|---|
 | `check` dies: no preflight report / wrong host | run `aegir2boa-preflight` on THIS box now (reports are per-host and die with `/tmp`) |
 | `check` dies: stage-2 verdict FAIL | resolve the named reasons; re-run preflight |
+| `check` dies: `http_service_type=apache… - source is not nginx-mode` on a box that is on nginx | the newest preflight report predates the stage-1 flip — re-run `aegir2boa-preflight`, then `check` |
 | `check` dies: current nginx config fails `nginx -t` | fix the box first — the tool refuses to build on a broken config |
 | `check` dies: source DB newer generation than target | the source runs MySQL/Percona ≥ 8.0 (Ubuntu 20.04+ default) or MariaDB ≥ 10.6 and the target is pre-8.0 — use a Percona 8.4 target for this source |
 | `--live` refused: no prior CLEAN dry run | run the dry form of the same verb+scope first (every failed live consumes the token) |

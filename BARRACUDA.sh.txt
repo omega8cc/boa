@@ -62,13 +62,13 @@ _JSMIN_PHP_MODERN_VRN=3.1.0
 _LIB_TIDY_VRN=5.2.0
 _LIB_YAML_VRN=0.2.5
 _LOGJ4_VRN=1.2.17
-_LSHELL_VRN=0.11.3
+_LSHELL_VRN=0.11.8
 _MAILPARSE_VRN=2.1.6
 _MONGO_VRN=1.6.14
 _MONGODB_VRN=1.2.5
 _MSS_VRN=master-29-06-2024
 _MYQUICK_VRN_ONE=0.19.3-3
-_MYQUICK_VRN_TWO=0.21.3-2
+_MYQUICK_VRN_TWO=1.0.5-1
 _NEW_RELIC_VRN=12.10.0.39
 _NGINX_VRN=1.31.5
 _NODE_VRN=v22.21.0
@@ -297,7 +297,17 @@ _if_running_as_root_barracuda
 ### Welcome msg
 ###
 echo " "
-_msg "Skynet Agent v.${_X_VERSION} on $(dmidecode -s system-manufacturer 2>&1) welcomes you aboard!"
+# A guest with no SMBIOS/DMI table reads back nothing here, so fall back to the
+# architecture rather than greeting an empty string. Same filters as the
+# manufacturer check, since an older dmidecode prefixes its own status lines.
+_WELCOME_HOST="$(dmidecode -s system-manufacturer 2> /dev/null \
+  | grep -v '^# ' \
+  | grep -v '^SMBIOS .* present\.$' \
+  | grep -v '^Getting SMBIOS data ' \
+  | grep -v '^[[:space:]]*$' \
+  | tail -n1)"
+[ -z "${_WELCOME_HOST}" ] && _WELCOME_HOST="$(uname -m)"
+_msg "Skynet Agent v.${_X_VERSION} on ${_WELCOME_HOST} welcomes you aboard!"
 echo " "
 sleep 3
 
@@ -690,6 +700,7 @@ _sysctl_update
 _initd_update
 _apticron_update
 _barracuda_log_update
+_instgrp_arm_stamp
 _find_server_city
 
 

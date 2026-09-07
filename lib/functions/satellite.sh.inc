@@ -148,17 +148,6 @@ _stage_bee() {
 }
 
 #
-# Check key things in every proc.
-_debug_proc() {
-  if [ -e "/root/.dev.server.cnf" ]; then
-    _msg "DBLS: `ls -la /usr/bin/sh`"
-    _msg "DBLS: `ls -la /bin/sh`"
-    _msg "DBLS: `ls -la /run/octopus_install_run.pid`"
-    [ -e "/data/disk/${_USER}/.tmp/cache" ] && _msg "DBLS: `ls -la /data/disk/${_USER}/.tmp/cache`"
-  fi
-}
-
-#
 # Count system CPUs.
 _count_cpu() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -444,7 +433,9 @@ _satellite_remove_web_user() {
       chattr -i /home/${_WEB}/.drush/
     fi
     mkdir -p ${_vBs}/zombie/deleted
-    pkill -9 -f gpg-agent
+    # only this user's agent (none for a user that never existed): -f
+    # matched every gpg-agent on the box
+    id -u "${_WEB}" &> /dev/null && pkill -9 -u "${_WEB}" gpg-agent &> /dev/null
     deluser --remove-home --backup-to ${_vBs}/zombie/deleted ${_WEB} &> /dev/null
     if [ -d "/home/${_WEB}/" ]; then
       rm -rf /home/${_WEB}/ &> /dev/null
@@ -895,6 +886,18 @@ _satellite_cnf() {
     grep -q "^_GHOST_SITE_FILES_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_SITE_FILES_CLEANUP=YES
     grep -q "^_GHOST_ALIASES_CLEANUP=" ${_octCnf} 2>/dev/null || _GHOST_ALIASES_CLEANUP=YES
   fi
+  # A hand-seeded cnf -- the documented opt-out creates /root/.oN.octopus.cnf
+  # before boa in-octopus with _INSTANCE_GROUP=NO -- carries a line or two,
+  # not the forty-odd the creation branch writes, and the append pass below
+  # persists only a subset: the account's first upgrade then refused on the
+  # email that was never written. A cnf without _MY_OCTO_EMAIL is such a
+  # seed: keep its lines, write the full set, lay the seeded lines back.
+  _octSeed=""
+  if [ -e "${_octCnf}" ] && ! grep -q "^_MY_OCTO_EMAIL=" ${_octCnf} 2> /dev/null; then
+    _octSeed=$(grep -E '^_[A-Z0-9_]+=' ${_octCnf} 2> /dev/null)
+    rm -f ${_octCnf}
+    _msg "NOTE: ${_octCnf} was hand-seeded; completing it with the install defaults, seeded lines kept"
+  fi
   if [ ! -e "${_octCnf}" ]; then
     if [[ "${_MY_OCTO_EMAIL}" =~ "omega8.cc" ]] \
       || [[ "${_CLIENT_EMAIL}" =~ "omega8.cc" ]]; then
@@ -948,6 +951,7 @@ _satellite_cnf() {
     echo "_GHOST_SITES_CLEANUP=${_GHOST_SITES_CLEANUP}"         >> ${_octCnf}
     echo "_GHOST_SITE_FILES_CLEANUP=${_GHOST_SITE_FILES_CLEANUP}" >> ${_octCnf}
     echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}"     >> ${_octCnf}
+    echo "_INSTANCE_GROUP=${_INSTANCE_GROUP:-YES}"              >> ${_octCnf}
     echo "_DEL_OLD_BACKUPS=${_DEL_OLD_BACKUPS}"                 >> ${_octCnf}
     echo "_DEL_OLD_TMP=${_DEL_OLD_TMP}"                         >> ${_octCnf}
     echo "_LOCAL_NETWORK_IP=${_LOCAL_NETWORK_IP}"               >> ${_octCnf}
@@ -970,6 +974,22 @@ _satellite_cnf() {
     echo "_CLIENT_SUBSCR=\"${_CLIENT_SUBSCR}\""                 >> ${_octCnf}
     echo "_CLIENT_CORES=\"${_CLIENT_CORES}\""                   >> ${_octCnf}
     echo "###"                                                  >> ${_octCnf}
+    if [ -n "${_octSeed}" ]; then
+      while IFS= read -r _seedLine; do
+        [ -n "${_seedLine}" ] || continue
+        _seedKey="${_seedLine%%=*}"
+        _seedRep=$(printf '%s' "${_seedLine}" | sed 's/[&|\\]/\\&/g')
+        if grep -q "^${_seedKey}=" ${_octCnf} 2> /dev/null; then
+          sed -i "s|^${_seedKey}=.*|${_seedRep}|" ${_octCnf}
+        else
+          echo "${_seedLine}" >> ${_octCnf}
+        fi
+        # this run reads the switch from the variable, not from the file
+        if [ "${_seedKey}" = "_INSTANCE_GROUP" ]; then
+          _INSTANCE_GROUP=$(printf '%s' "${_seedLine#*=}" | tr -d '"'"'"' ')
+        fi
+      done <<< "${_octSeed}"
+    fi
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Reading your ${_octCnf} config file"
@@ -1372,6 +1392,13 @@ _satellite_cnf() {
       echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}" >> ${_octCnf}
     fi
 
+    _INSTANCE_GROUP_TEST=$(grep _INSTANCE_GROUP ${_octCnf} 2>&1)
+    if [[ "${_INSTANCE_GROUP_TEST}" =~ "_INSTANCE_GROUP" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_INSTANCE_GROUP=${_INSTANCE_GROUP:-YES}" >> ${_octCnf}
+    fi
+
     _DEL_OLD_BACKUPS_TEST=$(grep _DEL_OLD_BACKUPS ${_octCnf} 2>&1)
     if [[ "${_DEL_OLD_BACKUPS_TEST}" =~ "_DEL_OLD_BACKUPS" ]]; then
       _DO_NOTHING=YES
@@ -1421,8 +1448,20 @@ _satellite_cnf() {
       echo " "
     fi
 
+    _domDerived="${_DOMAIN}"
     if [ -e "${_octCnf}" ]; then
       source ${_octCnf}
+    fi
+    # A cnf copied from a sibling account (the nearest thing to a template
+    # once the fetched one is gone) carries the sibling's _DOMAIN: at INIT
+    # that hands the new account another account's hostmaster name. A domain
+    # another account's cnf owns is never this one's; the derived name is.
+    if [ "${_STATUS}" = "INIT" ] && [ -n "${_domDerived}" ] \
+      && [ "${_DOMAIN}" != "${_domDerived}" ] \
+      && grep -l "^_DOMAIN=\"${_DOMAIN}\"" /root/.o*.octopus.cnf 2> /dev/null | grep -qv "^${_octCnf}$"; then
+      _msg "NOTE: _DOMAIN ${_DOMAIN} in ${_octCnf} belongs to another account; using ${_domDerived}"
+      _DOMAIN="${_domDerived}"
+      sed -i "s|^_DOMAIN=.*|_DOMAIN=\"${_DOMAIN}\"|" ${_octCnf}
     fi
     _PRE_PLATFORMS_LIST="${_PLATFORMS_LIST}"
     if [ -e "${_ROOT}/static/control/platforms.info" ]; then
@@ -2952,6 +2991,21 @@ _satellite_hot_sauce_check() {
   fi
 }
 
+# A same-named group is HELD when another identity owns it: a listed member
+# or a user whose primary group it is, the account's own identities excepted
+# (their primary group IS the account's group once adopted or converted).
+# Shared by the useradd site (AegirSetupA, a child process) and the launcher's
+# post hook, which cannot pass a variable between them.
+_instance_group_held() {
+  local _g="$1" _gid _m
+  getent group "${_g}" > /dev/null 2>&1 || return 1
+  _m=$(getent group "${_g}" | cut -d: -f4 | tr ',' '\n' | grep -v -E "^${_g}(\.|$)")
+  [ -n "${_m}" ] && return 0
+  _gid=$(getent group "${_g}" | cut -d: -f3)
+  getent passwd | awk -F: -v g="${_gid}" -v u="${_g}" \
+    '$4 == g && $1 != u && index($1, u ".") != 1 { f=1 } END { exit !f }'
+}
+
 _satellite_add_user_dirs() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_add_user_dirs"
@@ -2970,14 +3024,50 @@ _satellite_add_user_dirs() {
       _msg "${_STATUS} A: Adding user..."
     fi
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
-    adduser --system --home ${_ROOT} --ingroup ${_USRG} ${_USER} &> /dev/null
+    # Born into a private primary group named after the account (the
+    # per-instance group model, see instgrp): everything the account's
+    # identities create from here on is group-owned by the account alone,
+    # never by the box-wide 'users'. 'users' stays SUPPLEMENTARY on the
+    # identity -- it is the binary execute ACL (root:users 0750), not a data
+    # group. A same-named group left behind by an earlier purge is adopted
+    # only while nobody holds it. _INSTANCE_GROUP=NO in the cnf keeps the
+    # box-wide primary group. Born converted only when the box is ready for
+    # it -- the tool present and every fetched root-run writer group-aware,
+    # the gate the upgrade arm's convert enforces: a pre-compat websh would
+    # lock the newborn out of its shell, an old nightly worker would
+    # re-flatten its tree. Otherwise it is born on the box-wide group and
+    # the next upgrade converts it.
+    _ACCG="${_USRG}"
+    if [ "${_INSTANCE_GROUP}" != "NO" ]; then
+      if [ -x "/opt/local/bin/instgrp" ] \
+        && bash /opt/local/bin/instgrp check > /dev/null 2>&1; then
+        if ! getent group "${_USER}" > /dev/null 2>&1; then
+          addgroup --system "${_USER}" &> /dev/null
+        fi
+        if getent group "${_USER}" > /dev/null 2>&1 \
+          && ! _instance_group_held "${_USER}"; then
+          _ACCG="${_USER}"
+        else
+          _msg "NOTE: group ${_USER} exists and is held by someone else; ${_USER} is born on the box-wide group"
+        fi
+      else
+        _msg "NOTE: instgrp absent or the box not ready for the per-instance group (instgrp check); ${_USER} is born on the box-wide group, the next upgrade converts it"
+      fi
+    fi
+    adduser --system --home ${_ROOT} --ingroup ${_ACCG} ${_USER} &> /dev/null
+    adduser ${_USER} ${_USRG} &> /dev/null
     adduser ${_USER} ${_WEBG} &> /dev/null
+    _ACCG=$(_acct_group "${_USER}")
   fi
   # No blanket chown of the scratch root here. It used to hand the whole tree
   # to this user -- including the build tree root sources on its next pass, and
   # every scratch file the next root writer reopens -- while only the top inode
   # was ever handed back, so root was left opening files it did not own inside
   # a sticky directory. The children need nothing outside their own paths.
+  # /data/conf is box-wide: transiently owned by whichever account is running
+  # and handed back to root by _satellite_post_cleanup. It keeps the box-wide
+  # group on purpose -- never the account's own (_ACCG), which would make a
+  # shared path mean "one account" for the length of the run.
   chown -R ${_USER}:${_USRG} /data/conf &> /dev/null
   # On a fresh install the per-child includes are materialised before
   # this user exists, so ownership must be re-asserted here or the su'd
@@ -3923,6 +4013,70 @@ _satellite_if_add_snail_access() {
   fi
 }
 
+#
+# Per-instance group: hand the account's identities and files to a private
+# group named after the account (tool: instgrp, delivered by BOA.sh.txt). On
+# an upgrade this runs before _satellite_make so the rest of the run already
+# writes with the new group; on a fresh install the identities exist only
+# after AegirSetupA, so it runs after _satellite_make. instgrp refuses while
+# any fetched root-run writer on the box still carries the box-wide form and
+# skips (never half-converts) a busy account. Per-account opt-out:
+# _INSTANCE_GROUP=NO in the octopus cnf.
+_satellite_if_instance_group() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_if_instance_group $1"
+    _debug_proc
+  fi
+  case "$1" in
+    pre)  [ "${_STATUS}" = "UPGRADE" ] || return 0 ;;
+    post) [ "${_STATUS}" = "INIT" ] || return 0 ;;
+    *) return 0 ;;
+  esac
+  if [ "${_INSTANCE_GROUP}" = "NO" ] \
+    || grep -q "^_INSTANCE_GROUP=NO" ${_octCnf} 2> /dev/null; then
+    _msg "NOTE: per-instance group disabled for ${_USER} (_INSTANCE_GROUP=NO)"
+    return 0
+  fi
+  if [ ! -e "/opt/local/bin/instgrp" ]; then
+    _msg "NOTE: instgrp not installed yet, ${_USER} keeps the box-wide group this pass"
+    return 0
+  fi
+  # INIT already found the group name held by another identity and said so
+  # when it created the account (in AegirSetupA, a child process, so the
+  # verdict is read again here from the group database); a convert now can
+  # only fail on the same name and would end the same run with an alarm on
+  # top of that note. The verdict of an INIT on a held name is the note; the
+  # upgrade arm alarms on every later pass until the name is freed.
+  if [ "$1" = "post" ] && _instance_group_held "${_USER}"; then
+    _msg "NOTE: ${_USER} stays on the box-wide group while the group name is held; free it, then the next upgrade converts (or run instgrp convert ${_USER})"
+    return 0
+  fi
+  bash /opt/local/bin/instgrp convert ${_USER} --from-octopus
+  _iGrc=$?
+  # ALRT: is the token the octopus report classifier greps for; anything
+  # else leaves the run reported as a successful upgrade. A skipped account
+  # (busy, frozen) is unconverted after a fleet pass and nothing retries it
+  # before the next one, so it is reported too. Drift (paths written during
+  # the walk) is converted, finished by the next pass: a note.
+  case "${_iGrc}" in
+    0) ;;
+    2) _msg "NOTE: instgrp convert ${_USER} left paths to re-group (written during the walk); the next pass finishes them, see /var/log/boa/instgrp.log" ;;
+    5) _msg "NOTE: instgrp convert ${_USER} deferred: a fetched root-run writer on this box still carries the box-wide form, or the release that carries this arm has not stamped the box yet (instgrp check); the next pass converts once the tools refresh or the BOA upgrade lands" ;;
+    *)
+      # name the exit class; the old text listed the code legend in a
+      # shape that read as a tally of accounts
+      case "${_iGrc}" in
+        1) _iGwhy="failed" ;;
+        3) _iGwhy="inconsistent: marker or files say converted while an identity is on the box-wide group" ;;
+        4) _iGwhy="skipped: busy or frozen" ;;
+        *) _iGwhy="unexpected exit code" ;;
+      esac
+      _msg "ALRT: instgrp convert ${_USER} returned ${_iGrc} (${_iGwhy}), see /var/log/boa/instgrp.log" ;;
+  esac
+  # The rest of this run writes with whatever group the account carries now.
+  _ACCG=$(_acct_group "${_USER}")
+}
+
 _satellite_if_add_ftps_lshell_access() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_if_add_ftps_lshell_access"
@@ -3947,7 +4101,10 @@ _satellite_if_add_ftps_lshell_access() {
     fi
     # add user
     find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
-    useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r ${_USERFTP} &> /dev/null
+    # -N leaves the primary group to /etc/default/useradd (users); name it
+    # explicitly so an account carrying its per-instance group gets that one.
+    useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r \
+      -g ${_ACCG:-users} ${_USERFTP} &> /dev/null
     # Make sure new file which contains password is private
     cd ${_ROOT}/log
     touch ${_ROOT}/log/pass.txt
@@ -3997,6 +4154,11 @@ _satellite_if_add_ftps_lshell_access() {
     printf '%s:%s\n' "${_USERFTP}" "${ph}" | chpasswd -e &> /dev/null
     passwd -w 7 -x 90 ${_USERFTP} &> /dev/null
   fi
+  # 'users' explicitly supplementary: the binary execute ACL (root:users
+  # 0750, lshell included) must survive the move of the primary group to the
+  # per-instance group. Lists the identity in the group database whatever its
+  # primary group is; a primary 'users' alone is not a listed membership.
+  usermod -aG ${_USRG} ${_USERFTP} &> /dev/null
   adduser ${_USERFTP} ${_WEBG} &> /dev/null
   usermod -aG lshellg ${_USERFTP}
   chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
@@ -4011,16 +4173,24 @@ _satellite_if_add_ftps_lshell_access() {
     fi
   done; [ "${_n}" -eq 1 ] && printf '%s' "${_hit}"; :) &&
   _MNT_STATIC_FILES="${_mntPoint}/files/${_USER}/static/files"
+  # This runs on every pass, not only when the identity was just made, so the
+  # section is replaced, never stacked: lshell's parser is strict and refuses
+  # the whole file for a user with two [name] sections until the 3-minute
+  # worker rewrites it. Written back in place so the file keeps its inode.
+  if grep -q "^\[${_USERFTP}\]" /etc/lshell.conf 2> /dev/null; then
+    awk -v s="[${_USERFTP}]" '/^\[/ { skip = ($0 == s) } !skip { print }' \
+      /etc/lshell.conf > /etc/lshell.conf.tmp \
+      && cat /etc/lshell.conf.tmp > /etc/lshell.conf
+    rm -f /etc/lshell.conf.tmp
+  fi
   echo >> /etc/lshell.conf
   echo "[${_USERFTP}]" >> /etc/lshell.conf
-  echo "path : ['/opt/user/gems/${_USERFTP}', \
-                '/opt/user/npm/${_USERFTP}', \
-                '${_MNT_STATIC_FILES}', \
-                '${_ROOT}/distro', \
-                '${_ROOT}/static', \
-                '${_ROOT}/backups', \
-                '${_ROOT}/clients']" \
-                | fmt -su -w 2500 >> /etc/lshell.conf
+  # The attached-files store is listed only when one is mounted; with none,
+  # _mntPoint is empty and the entry would name a path that does not exist.
+  _lshPaths="'/opt/user/gems/${_USERFTP}', '/opt/user/npm/${_USERFTP}'"
+  [ -n "${_mntPoint}" ] && _lshPaths="${_lshPaths}, '${_MNT_STATIC_FILES}'"
+  echo "path : [${_lshPaths}, '${_ROOT}/distro', '${_ROOT}/static', '${_ROOT}/backups', '${_ROOT}/clients']" \
+    | fmt -su -w 2500 >> /etc/lshell.conf
 }
 
 _satellite_if_add_update_user_symlinks() {
@@ -5053,6 +5223,7 @@ _satellite_make() {
   echo "export _USER=\"${_USER}\""                           >> ${_writeTo}
   echo "export _USRG=\"${_USRG}\""                           >> ${_writeTo}
   echo "export _ACCG=\"${_ACCG}\""                           >> ${_writeTo}
+  echo "export _INSTANCE_GROUP=\"${_INSTANCE_GROUP:-YES}\""    >> ${_writeTo}
   echo "export _WEBG=\"${_WEBG}\""                           >> ${_writeTo}
   echo "export _xSrl=\"${_xSrl}\""                           >> ${_writeTo}
   echo "export _X_VERSION=\"${_X_VERSION}\""                 >> ${_writeTo}
@@ -5175,6 +5346,10 @@ _satellite_make() {
     touch /opt/tmp/status-Octopus-FAIL
     _clean_pid_exit _satellite_make_a
   fi
+  # On a fresh install the identities were created inside AegirSetupA, so the
+  # group derived before they existed is stale here; the parent's remaining
+  # writes must use the account's real group.
+  _ACCG=$(_acct_group "${_USER}")
 
   if [ ! -e "${_ROOT}/log/email.txt" ]; then
     echo ${_CLIENT_EMAIL} > ${_ROOT}/log/email.txt
@@ -5413,7 +5588,7 @@ _satellite_detect_vm_family() {
     _VMFAMILY="XEN"
   fi
   # Check for Amazon EC2 in the system manufacturer field
-  if dmidecode -s system-manufacturer | grep -i 'Amazon EC2' &> /dev/null; then
+  if dmidecode -s system-manufacturer 2> /dev/null | grep -qi 'Amazon EC2'; then
     _VMFAMILY="AWS"
   fi
   if [ "${_VMFAMILY}" = "AWS" ]; then

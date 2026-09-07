@@ -27,7 +27,8 @@ platform, tracked by marker files under `~/log/ctrl/`):
   `0775`, files `0664`, and the hardened read-only paths (`vendor/drush`,
   selected `vendor/symfony/console` internals) locked to `0400`.
 - **Platform level** (every registered platform, in addition to the pass
-  above): `sites/all/{modules,themes,libraries}/*` chowned to `oN:users`;
+  above): `sites/all/{modules,themes,libraries}/*` chowned to `oN` and the
+  account's group;
   the `sites/` skeleton re-asserted (`sites` `0751`, `sites/*` `0755`,
   `sites/*.php` `0644`; on a tenant Composer codebase under `~/static` the
   two directories Drupal's scaffold plugin writes into take group write
@@ -46,7 +47,7 @@ platform, tracked by marker files under `~/log/ctrl/`):
   there, so the platform script and the nightly keep them at `0755`/`0644`
   with no group write (root dir included), unlike every other platform.
 - **Site level**: each site's `{modules,themes,libraries}/*` chowned to
-  `oN:users` with directories `02775` and files `0664`; settings-class
+  `oN` and the account's group with directories `02775` and files `0664`; settings-class
   files (`settings.php`, `local.settings.php`, `civicrm.settings.php`)
   kept at `oN:www-data`, mode `0440`/`0640`; the site's `files/` tree
   chowned to `oN:www-data` (symlink-safe, `chown -h`).
