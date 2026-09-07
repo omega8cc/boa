@@ -831,6 +831,15 @@ _kill_zombies() {
         # root. The old guard asked only that the name reduce to a non-empty
         # [a-z0-9] string, which lost+found also satisfies. The client half
         # allows a hyphen so a reserved-token account name stays sweepable.
+        # The mtime brake is the last of it, against a transient this arm cannot
+        # otherwise tell apart: a home staged by a migration before its account
+        # exists looks exactly like an orphan. xmass does not create one -- it
+        # stages sub-account .ssh under /var/backups/migrate-subuser-ssh
+        # precisely because the home is not there yet (xmass, the branch taken
+        # when the target has no such account) -- but this arm is newly
+        # destructive and must not race a path a later tool adds. An hour is
+        # nothing against an arm that has never run, and it is the same brake
+        # the ghost-revision reaper uses for the same reason.
         if [ -d "/home/${_Existing}" ] \
           && [ ! -L "/home/${_Existing}" ] \
           && [[ "${_Existing}" =~ ^[a-z0-9]+\.[a-z0-9-]+$ ]] \
@@ -838,7 +847,8 @@ _kill_zombies() {
           && [[ ! "${_Existing}" =~ \.web$ ]] \
           && [ ! -z "${_usrParent}" ] \
           && getent passwd "${_usrParent}" > /dev/null 2>&1 \
-          && [ -d "/data/disk/${_usrParent}" ]; then
+          && [ -d "/data/disk/${_usrParent}" ] \
+          && [ -z "$(find "/home/${_Existing}" -maxdepth 0 -mmin -60 2> /dev/null)" ]; then
           _disable_chattr "${_Existing}"
           [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
           mv "/home/${_Existing}" "/var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}"
