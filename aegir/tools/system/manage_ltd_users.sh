@@ -3045,10 +3045,14 @@ else
   _count_cpu
   _find_fast_mirror_early
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
-  if [ ! -e "${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    _fix_node_in_lshell_access
-    touch ${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
-  fi
+  # Unconditional, not once per release serial: this pass rebuilds
+  # /etc/lshell.conf from the template, and the template is replaced with the
+  # shipped one whenever the upgrade arm runs or the re-fetch trigger fires.
+  # A serial-gated check left the shipped list in place after such a replace,
+  # and the next pass then granted node, npm, npx and scp to every tenant.
+  # The check is two substitutions and a plan read, and it is idempotent.
+  _fix_node_in_lshell_access
+  touch ${_pthLog}/node.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
 #   if [ ! -e "${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid" ]; then
 #     _fix_php_in_lshell_access
 #     touch ${_pthLog}/php.manage.lshell.ctrl.${_tRee}.${_xSrl}.pid
