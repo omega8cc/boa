@@ -784,6 +784,413 @@ _disable_chattr() {
   fi
 }
 #
+# Platform-level developer account (Adam, 2026-09-07). One extra account per
+# client named in _LTD_PLATFORM_CLIENTS (root-owned /root/.<oN>.octopus.cnf,
+# never a tenant file), granted only the platforms where EVERY site is that
+# client's. It is an ordinary sub-account in every other respect (creation,
+# password store, groups, reaper tokens) whose lshell path also carries the
+# qualifying app roots, with the drush and composer commands re-added in its
+# own section (lshell applies [<user>] last, after the group's minus-lists),
+# and a root-placed ~/platforms farm so SFTP sees the same tree. Drush inside
+# a locked vendor/drush runs in a timed, chmod-only window: the same bits
+# provision's own cache-rebuild window flips, the de-typing patches never
+# touched, opened when the account touches ~/.tmp/drush-window.request and
+# closed by this worker once root's own clock says the minutes are up.
+_LTD_PLATFORM_SUFFIX="-dev"
+_LTD_PLATFORM_WINDOW_MIN=60
+_LTD_PLATFORM_TOOLS="'composer', 'drush', 'drush10', 'drush11', 'drush8', 'vdrush', 'vendor/drush/drush/drush.php'"
+#
+# The docroot of a platform dir: index.php at the root or one level down.
+_ltd_platform_docroot() {
+  local _plat="${1%/}"
+  local _sub=""
+  [ -n "${_plat}" ] && [ -d "${_plat}" ] || return 1
+  if [ -f "${_plat}/index.php" ]; then
+    printf '%s\n' "${_plat}"
+    return 0
+  fi
+  for _sub in docroot html web; do
+    if [ -f "${_plat}/${_sub}/index.php" ]; then
+      printf '%s\n' "${_plat}/${_sub}"
+      return 0
+    fi
+  done
+  return 1
+}
+#
+# The app root for a site dir (<docroot>/sites/<uri>): the docroot's parent
+# when the docroot is the web/docroot/html child of a composer root, where
+# vendor/ lives; the docroot itself otherwise.
+_ltd_platform_approot() {
+  local _site="${1%/}"
+  local _doc=""
+  local _up=""
+  _doc=$(dirname "$(dirname "${_site}")")
+  _up=$(dirname "${_doc}")
+  case "$(basename "${_doc}")" in
+    web|docroot|html)
+      if [ -f "${_up}/composer.json" ] || [ -d "${_up}/vendor" ]; then
+        _doc="${_up}"
+      fi ;;
+  esac
+  printf '%s\n' "${_doc}"
+}
+#
+# Fail-closed single-client test. Every site directory ON THE PLATFORM must
+# resolve into the granted client's own farm: admin-owned sites appear in no
+# farm at all, so "absent from the farm" means "someone I cannot see", never
+# "not there". Prints the refusing directory (or reason) and fails; prints
+# nothing and succeeds when the platform qualifies. Drupal and Backdrop only.
+_ltd_platform_refuser() {
+  local _root="${1}"
+  local _client="${2}"
+  local _doc=""
+  local _site=""
+  local _real=""
+  local _lnk=""
+  local _hit=""
+  _doc=$(_ltd_platform_docroot "${_root}") || { printf '%s\n' "no docroot"; return 1; }
+  if [ ! -d "${_doc}/sites" ]; then
+    printf '%s\n' "no sites directory"
+    return 1
+  fi
+  if [ ! -d "${_doc}/core" ] && [ ! -f "${_doc}/includes/bootstrap.inc" ]; then
+    printf '%s\n' "not a Drupal or Backdrop platform"
+    return 1
+  fi
+  for _site in "${_doc}"/sites/*/; do
+    _site="${_site%/}"
+    [ -f "${_site}/settings.php" ] || continue
+    case "$(basename "${_site}")" in
+      all|default) continue ;;
+    esac
+    _real=$(readlink -f "${_site}")
+    _hit=""
+    for _lnk in "${_client}"/*; do
+      [ -L "${_lnk}" ] || continue
+      if [ "$(readlink -f "${_lnk}")" = "${_real}" ]; then
+        _hit="yes"
+        break
+      fi
+    done
+    if [ -z "${_hit}" ]; then
+      printf '%s\n' "${_site}"
+      return 1
+    fi
+  done
+  return 0
+}
+#
+# The qualifying app roots of a client, one per line: every platform that
+# carries one of the client's sites, kept only when the whole platform is the
+# client's. A refused platform is reported once a day, with the directory
+# that refused it, and simply not granted.
+_ltd_platform_roots() {
+  local _client="${1}"
+  local _acct="${2}"
+  local _lnk=""
+  local _tgt=""
+  local _root=""
+  local _seen=""
+  local _why=""
+  for _lnk in "${_client}"/*; do
+    [ -L "${_lnk}" ] || continue
+    _tgt=$(readlink -f "${_lnk}")
+    [ -n "${_tgt}" ] && [ -d "${_tgt}" ] || continue
+    _root=$(_ltd_platform_approot "${_tgt}")
+    # lands inside single quotes in the root-written config: same class as
+    # _PATH_DOM, and a path the class mutates is not granted at all
+    if [ "${_root}" != "${_root//[^a-zA-Z0-9._\/-]/}" ]; then
+      continue
+    fi
+    [ -n "${_root}" ] && [ -d "${_root}" ] || continue
+    case " ${_seen} " in
+      *" ${_root} "*) continue ;;
+    esac
+    _seen="${_seen} ${_root}"
+    _why=$(_ltd_platform_refuser "${_root}" "${_client}")
+    if [ -n "${_why}" ]; then
+      # stdout of this function IS the grant list (command substitution in
+      # the caller); the notice echoes, so it goes to stderr or the refused
+      # root's own words would land in the path
+      _ltd_notice "platform-refused-${_acct}-$(basename "${_root}")" \
+        "platform ${_root} refused for ${_acct}" \
+        "not single-client: ${_why}" >&2
+      continue
+    fi
+    printf '%s\n' "${_root}"
+  done
+}
+#
+# The Drush window. A locked platform and a running site-local Drush exclude
+# each other by construction (the lock's psr/log v1 overlay and console
+# de-typing exist for Aegir's Drush 8; every modern Drush is typed against
+# psr/log v3 and fatals at class load under PHP 8), so the window is a real
+# unlock: provision's own provision-dunlock on each granted composer platform,
+# run as the instance user, and provision-dlock at expiry. The request is a
+# marker the account touches inside its own ~/.tmp (the home is immutable);
+# root consumes it and keeps the clock in its own state file, because a
+# tenant-owned mtime is not a clock. A platform an operator had already
+# unlocked is recorded as such and left unlocked at expiry. Caveats, all
+# documented: Aegir's Drush 8 cannot drive that platform's sites while it is
+# unlocked, a site Verify re-locks it (the next pass unlocks again while the
+# window is open), and provision's comments warn that a container compiled in
+# the unlocked state may carry Drush's logger into what the web serves locked.
+_ltd_platform_alias() {
+  local _root="${1}"
+  local _doc=""
+  local _f=""
+  _doc=$(_ltd_platform_docroot "${_root}") || return 1
+  _f=$(grep -lF "'root' => '${_doc}'" /data/disk/${_USER}/.drush/platform_*.alias.drushrc.php 2>/dev/null | head -1)
+  [ -n "${_f}" ] || return 1
+  _f=$(basename "${_f}")
+  _f=${_f#platform_}
+  _f=${_f%.alias.drushrc.php}
+  [ -n "${_f}" ] || return 1
+  printf '%s\n' "${_f}"
+}
+# locked = the console de-typing is in place (the same test provision's
+# provision_check_codebase_status() makes on Output.php)
+_ltd_platform_locked() {
+  local _out="${1}/vendor/symfony/console/Output/Output.php"
+  [ -f "${_out}" ] || return 1
+  if grep -qF "doWrite(string" "${_out}" || grep -qF ": void;" "${_out}"; then
+    return 1
+  fi
+  return 0
+}
+_ltd_platform_task() {
+  local _verb="${1}"
+  local _alias="${2}"
+  local _log="/var/backups/ltd/log/window-${_NOW}.log"
+  echo "$(date) ${_USER}: drush8 @platform_${_alias} ${_verb}" >> "${_log}"
+  su -s /bin/bash - ${_USER} -c "drush8 @platform_${_alias} ${_verb} -y" >> "${_log}" 2>&1
+}
+_ltd_platform_window_close() {
+  local _acct="${1}"
+  local _prev="/var/backups/ltd/window/${_acct}.prev"
+  local _was=""
+  local _root=""
+  local _alias=""
+  if [ -s "${_prev}" ]; then
+    while read -r _was _root; do
+      [ "${_was}" = "locked" ] && [ -n "${_root}" ] && [ -d "${_root}" ] || continue
+      _alias=$(_ltd_platform_alias "${_root}") || continue
+      _ltd_platform_task provision-dlock "${_alias}"
+    done < "${_prev}"
+  fi
+  rm -f "/var/backups/ltd/window/${_acct}" "${_prev}"
+}
+_ltd_platform_window() {
+  local _acct="${1}"
+  local _roots="${2}"
+  local _req="/home/${_acct}/.tmp/drush-window.request"
+  local _state="/var/backups/ltd/window/${_acct}"
+  local _prev="/var/backups/ltd/window/${_acct}.prev"
+  local _root=""
+  local _alias=""
+  local _was=""
+  [ -d /var/backups/ltd/window ] || mkdir -p /var/backups/ltd/window
+  if [ -f "${_req}" ] && [ ! -L "${_req}" ]; then
+    rm -f "${_req}"
+    if [ ! -s "${_state}" ]; then
+      echo "$(date) LTD platform account ${_acct}: drush window opened for ${_LTD_PLATFORM_WINDOW_MIN} min" \
+        >> /var/log/boa/manage_ltd.incident.log
+    fi
+    # a renewal restarts the clock; the recorded prior states stay
+    date +%s > "${_state}"
+  fi
+  if [ -s "${_state}" ] \
+    && [ -n "$(find "${_state}" -maxdepth 0 -mmin -${_LTD_PLATFORM_WINDOW_MIN} 2>/dev/null)" ]; then
+    for _root in ${_roots}; do
+      [ -d "${_root}/vendor/drush" ] || continue
+      _alias=$(_ltd_platform_alias "${_root}") || {
+        _ltd_notice "platform-noalias-${_acct}-$(basename "${_root}")" \
+          "platform ${_root}: no platform alias found for ${_USER}" \
+          "the drush window for ${_acct} cannot unlock it"
+        continue
+      }
+      if ! grep -qF " ${_root}" "${_prev}" 2>/dev/null; then
+        _was="unlocked"
+        _ltd_platform_locked "${_root}" && _was="locked"
+        echo "${_was} ${_root}" >> "${_prev}"
+      fi
+      # idempotent on an unlocked platform, and what re-opens a platform a
+      # site Verify re-locked mid-window
+      _ltd_platform_locked "${_root}" && _ltd_platform_task provision-dunlock "${_alias}"
+    done
+  elif [ -e "${_state}" ] || [ -e "${_prev}" ]; then
+    _ltd_platform_window_close "${_acct}"
+    echo "$(date) LTD platform account ${_acct}: drush window closed" \
+      >> /var/log/boa/manage_ltd.incident.log
+  fi
+}
+#
+# The SFTP side. MySecureShell sees the home plus root-placed links only, so
+# each qualifying app root is linked under ~/platforms/<rev>-<codebase>; a
+# link whose platform stopped qualifying goes the same pass. The home is
+# immutable between passes, so it is opened and closed around the edit.
+_ltd_platform_farm() {
+  local _acct="${1}"
+  local _roots="${2}"
+  local _home="/home/${_acct}"
+  local _farm="/home/${_acct}/platforms"
+  local _root=""
+  local _name=""
+  local _lnk=""
+  local _keep=""
+  [ -d "${_home}" ] && [ ! -L "${_home}" ] || return 0
+  chattr -i "${_home}" 2>/dev/null
+  if [ -L "${_farm}" ] || { [ -e "${_farm}" ] && [ ! -d "${_farm}" ]; }; then
+    rm -f "${_farm}"
+  fi
+  [ -d "${_farm}" ] || mkdir -p "${_farm}"
+  chown root:root "${_farm}"
+  chmod 0755 "${_farm}"
+  for _root in ${_roots}; do
+    _name="$(basename "$(dirname "${_root}")")-$(basename "${_root}")"
+    _keep="${_keep} ${_name}"
+    ln -sfn "${_root}" "${_farm}/${_name}"
+  done
+  for _lnk in "${_farm}"/*; do
+    [ -L "${_lnk}" ] || continue
+    case " ${_keep} " in
+      *" $(basename "${_lnk}") "*) ;;
+      *) rm -f "${_lnk}" ;;
+    esac
+  done
+  if [ -n "${_keep}" ]; then
+    cat > "${_farm}/README.txt" <<EOF
+Platforms granted to this account are linked here, one per codebase, and are
+also on your shell path. A Drupal 8+ platform is locked for Aegir's own Drush
+between uses, and its site-local Drush cannot run while it is locked; to
+unlock your platforms for ${_LTD_PLATFORM_WINDOW_MIN} minutes run:
+
+  touch ~/.tmp/drush-window.request
+
+then, within three minutes, cd into the platform and run vdrush. Touch it
+again to extend. While a platform is unlocked, control-panel tasks on its
+sites can fail and a site Verify re-locks it (reopened within three minutes);
+at expiry every platform is locked again.
+https://docs.boa.io/using/connecting/extra-accounts
+EOF
+    chmod 0644 "${_farm}/README.txt"
+  else
+    rm -f "${_farm}/README.txt"
+  fi
+  chattr +i "${_home}" 2>/dev/null
+}
+#
+# One removal for every account this worker takes away: the reaper's zombies
+# and a retired platform account alike. The home goes to the zombie backup,
+# never to /dev/null.
+_ltd_reap_account() {
+  local _acct="${1}"
+  local _parent="${2}"
+  local _why="${3}"
+  [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
+  # only this user's agent: -f matched every gpg-agent on the box
+  id -u "${_acct}" &> /dev/null && pkill -9 -u "${_acct}" gpg-agent &> /dev/null
+  _disable_chattr ${_acct}
+  rm -rf /home/${_acct}/.gnupg
+  deluser \
+    --remove-home \
+    --backup-to /var/backups/zombie/deleted/${_NOW} ${_acct} &> /dev/null
+  rm -f /home/${_parent}.ftp/users/${_acct}
+  rm -f "/var/backups/ltd/window/${_acct}" "/var/backups/ltd/window/${_acct}.prev"
+  echo Zombie from etc.passwd ${_acct} killed
+  if [ -n "${_why}" ]; then
+    [ -d /var/log/boa ] || mkdir -p /var/log/boa
+    echo "$(date) LTD account ${_acct} removed: ${_why}" >> /var/log/boa/manage_ltd.incident.log
+  fi
+  echo
+}
+#
+# A platform account that left _LTD_PLATFORM_CLIENTS (or whose client
+# directory is gone) is removed on the spot: its own section would vanish
+# from the published config while the login stayed, which drops it to the
+# group policy and the default path, i.e. wider than it ever was.
+_ltd_platform_retire() {
+  local _acct="${1}"
+  _ltd_platform_window_close "${_acct}"
+  _ltd_reap_account "${_acct}" "${_USER}" "platform account retired (not in _LTD_PLATFORM_CLIENTS of ${_USER})"
+}
+#
+# Platform accounts of this instance, after the ordinary sub-accounts.
+_manage_sec_platform() {
+  local _client=""
+  local _cdir=""
+  local _nam=""
+  local _acct=""
+  local _roots=""
+  local _r=""
+  local _granted=""
+  local _on=""
+  local _ex=""
+  for _client in ${_LTD_PLATFORM_CLIENTS}; do
+    _client=${_client//[^a-zA-Z0-9._-]/}
+    [ -n "${_client}" ] || continue
+    _cdir="${_pthParentUsr}/clients/${_client}"
+    if [ ! -d "${_cdir}" ] || [ -L "${_cdir}" ]; then
+      _ltd_notice "platform-noclient-${_USER}-${_client}" \
+        "platform account for ${_USER}: no client directory ${_cdir}" \
+        "listed in _LTD_PLATFORM_CLIENTS; nothing granted"
+      continue
+    fi
+    _nam=$(_ltd_name_from_client_dir "${_cdir}")
+    [ -n "${_nam}" ] || continue
+    # the reserved token: a hyphen no client directory can produce
+    # (_ltd_name_from_client_dir keeps [a-zA-Z0-9] only), inside the oN.
+    # namespace the standby hold and the reaper's shape both recognise. The
+    # duplicate-section collapse is a safety net, never a naming scheme.
+    _acct="${_USER}.${_nam}${_LTD_PLATFORM_SUFFIX}"
+    if [ "${#_acct}" -gt 32 ]; then
+      _ltd_notice "platform-toolong-${_acct}" \
+        "platform account name ${_acct} is longer than 32 characters" \
+        "shorten the client directory name; nothing granted"
+      continue
+    fi
+    _on="${_on} ${_acct}"
+    _roots=$(_ltd_platform_roots "${_cdir}" "${_acct}")
+    _usrLtd="${_acct}"
+    _Client="${_cdir}"
+    echo "_usrLtd is == ${_usrLtd} == at _manage_sec_platform"
+    _ALLD_NUM="0"
+    _ALLD_CTL="1"
+    _ALLD_DIR="'${_cdir}', '/opt/user/gems/${_acct}'"
+    cd ${_cdir}
+    _manage_sec_access_paths
+    _granted=""
+    for _r in ${_roots}; do
+      _ALLD_DIR="${_ALLD_DIR}, '${_r}'"
+      _granted="${_granted} ${_r}"
+    done
+    if [ -n "${_granted}" ]; then
+      _LTD_EXTRA_STANZA="allowed : + [${_LTD_PLATFORM_TOOLS}]
+allowed_shell_escape : + [${_LTD_PLATFORM_TOOLS}]"
+    else
+      _LTD_EXTRA_STANZA=""
+    fi
+    if [ "${_ALLD_NUM}" -ge "${_ALLD_CTL}" ]; then
+      _add_user_if_not_exists
+      if getent passwd "${_acct}" > /dev/null 2>&1; then
+        _ltd_platform_farm "${_acct}" "${_granted}"
+        _ltd_platform_window "${_acct}" "${_granted}"
+      fi
+      echo "Done platform account ${_acct} for ${_cdir}: ${_granted:-no qualifying platform}"
+    fi
+    _usrLtd=
+    _ALLD_DIR=
+    _LTD_EXTRA_STANZA=
+  done
+  for _ex in $(getent passwd | cut -d: -f1 | grep "^${_USER}\..*${_LTD_PLATFORM_SUFFIX}$"); do
+    case " ${_on} " in
+      *" ${_ex} "*) continue ;;
+    esac
+    _ltd_platform_retire "${_ex}"
+  done
+}
+#
 # Kill zombies.
 _kill_zombies() {
   for _Existing in `cat /etc/passwd | cut -d ':' -f1 | sort`; do
@@ -802,17 +1209,7 @@ _kill_zombies() {
         _SEC_DIR="$(readlink -n "${_SEC_SYM}")"
         if [ ! -L "${_SEC_SYM}" ] || [ ! -e "${_SEC_DIR}" ] \
           || [ ! -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
-          [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
-          # only this user's agent: -f matched every gpg-agent on the box
-          id -u "${_Existing}" &> /dev/null && pkill -9 -u "${_Existing}" gpg-agent &> /dev/null
-          _disable_chattr ${_Existing}
-          rm -rf /home/${_Existing}/.gnupg
-          deluser \
-            --remove-home \
-            --backup-to /var/backups/zombie/deleted/${_NOW} ${_Existing} &> /dev/null
-          rm -f /home/${_usrParent}.ftp/users/${_Existing}
-          echo Zombie from etc.passwd ${_Existing} killed
-          echo
+          _ltd_reap_account "${_Existing}" "${_usrParent}" ""
         fi
       fi
     fi
@@ -1143,6 +1540,7 @@ _ok_create_user() {
       echo >> ${_THIS_LTD_CONF}
       echo "[${_usrLtd}]" >> ${_THIS_LTD_CONF}
       echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
+      [ -n "${_LTD_EXTRA_STANZA}" ] && printf '%s\n' "${_LTD_EXTRA_STANZA}" >> ${_THIS_LTD_CONF}
       chmod 700 ${_usrLtdRoot}
       mkdir -p /home/${_ADMIN}/users
       if [ ! -e "/home/${_ADMIN}/users/${_usrLtd}" ]; then
@@ -1239,6 +1637,7 @@ _ok_update_user() {
       echo >> ${_THIS_LTD_CONF}
       echo "[${_usrLtd}]" >> ${_THIS_LTD_CONF}
       echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
+      [ -n "${_LTD_EXTRA_STANZA}" ] && printf '%s\n' "${_LTD_EXTRA_STANZA}" >> ${_THIS_LTD_CONF}
       _manage_sec_user_drush_aliases
       chmod 700 ${_usrLtdRoot}
       # 'users' is the binary execute ACL (root:users 0750, lshell included):
@@ -2997,6 +3396,7 @@ _manage_user() {
       _STRONG_PASSWORDS=""
       _PHP_FPM_USS_MB=""
       _CHILD_MAX_FPM=""
+      _LTD_PLATFORM_CLIENTS=""
       if [ ! -e "/root/.${_USER}.octopus.cnf" ]; then
         echo "ALRT: no /root/.${_USER}.octopus.cnf for /data/disk/${_USER}"
       fi
@@ -3084,6 +3484,7 @@ _manage_user() {
                         | fmt -su -w 2500 >> ${_THIS_LTD_CONF}
           _manage_site_drush_alias_mirror
           _manage_sec
+          _manage_sec_platform
           if [ -d "/home/${_USER}.ftp/users" ]; then
             chown -R ${_USER}.ftp:${_usrGroup} /home/${_USER}.ftp/users
             [ ! -L "/home/${_USER}.ftp/users" ] \

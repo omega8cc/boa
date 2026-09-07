@@ -964,6 +964,7 @@ _satellite_cnf() {
     echo "_PHP_FPM_RAM_PCT=${_PHP_FPM_RAM_PCT:-AUTO}"           >> ${_octCnf}
     echo "_PHP_FPM_CPU_FACTOR=${_PHP_FPM_CPU_FACTOR:-AUTO}"     >> ${_octCnf}
     echo "_PHP_FPM_DENY=\"${_PHP_FPM_DENY}\""                   >> ${_octCnf}
+    echo "_LTD_PLATFORM_CLIENTS=\"${_LTD_PLATFORM_CLIENTS}\""   >> ${_octCnf}
     echo "_STRONG_PASSWORDS=${_STRONG_PASSWORDS}"               >> ${_octCnf}
     echo "_SQL_CONVERT=${_SQL_CONVERT}"                         >> ${_octCnf}
     echo "_RESERVED_RAM=${_RESERVED_RAM}"                       >> ${_octCnf}
