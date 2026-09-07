@@ -107,10 +107,17 @@ _shared_codebases_cleanup() {
         # /data/all store (anchored on a root-level profiles/); D8+ codebases are
         # self-contained under distro/ and are not managed here.
         [ -n "$(_detect_real_docroot "${_CodebaseDir}")" ] && continue
+        # 2>&1 belongs to find, not to sort: bound to sort, find's own error
+        # never reached the variable and any failed enumeration read as "no
+        # references". A failed find (glob unexpanded, unreadable tree) is
+        # not evidence the codebase is unused, so it is skipped, not moved.
         _CodebaseTest=$(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 \
-          -type l -lname ${_Codebase} | sort 2>&1)
-        if [[ "${_CodebaseTest}" =~ "No such file or directory" ]] \
-          || [ -z "${_CodebaseTest}" ]; then
+          -type l -lname ${_Codebase} 2>&1 | sort)
+        if [[ "${_CodebaseTest}" =~ "No such file or directory" ]]; then
+          echo "Skipping ${_CodebaseDir}: could not enumerate platform symlinks (${_CodebaseTest})"
+          continue
+        fi
+        if [ -z "${_CodebaseTest}" ]; then
           if _cnf_flag_yes /root/.barracuda.cnf _SHARED_CODEBASES_CLEANUP; then
             mkdir -p ${_CLD}${i}
             echo "Moving no longer used ${_CodebaseDir} to ${_CLD}${i}"

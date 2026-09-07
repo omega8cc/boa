@@ -40,14 +40,20 @@ _grp_set_is() {
   return 0
 }
 
+# lshell applies its noexec layer in the command line itself: every segment
+# outside allowed_shell_escape arrives as  LD_PRELOAD=<sudo_noexec.so> cmd ...
+# (an assignment prefix dash applies to that one command), so the text below
+# is handed to dash exactly as received. A branch here used to strip
+# "LD_PRELOAD...so" out of the line for ltd-shell-more members and exec the
+# rest straight into dash. It was written for the pre-0.10 lshell that
+# prepended the preload to the command text through its alias table; 0.10
+# moved it into the environment and 0.11 into the line per segment, so on
+# the fleet it could only fire on a member typing sudo_noexec.so into a
+# line (skipping this function's option parsing and argv[0] normalisation,
+# and re-running the line through an unquoted echo, word-split and
+# glob-expanded), and with the prefix in the line it stripped the layer
+# itself for that group (measured: every exec shape escaped). It is gone.
 _forward_to_dash() {
-  if [[ "${_ARGS}" =~ "sudo_noexec.so" ]] && _in_grp ltd-shell-more; then
-    ### echo FWD 0 DIRECT
-    _R_M=`echo -n ${_ARGS} | sed 's|LD_PRELOAD.*.so||'`
-    ### echo _R_M is ${_R_M}
-    exec /bin/dash -c "${_R_M}"
-    exit 0
-  fi
   # Path to the underlying shell (dash in this case)
   _shell="/bin/dash"
   # Name under which the shell should think it was invoked
@@ -231,11 +237,15 @@ if [[ "${_ARGS}" =~ "'" ]] && [[ "${_ARGS}" =~ "drush" ]]; then
   ### echo _ARGS CLEAN is ${_ARGS}
 fi
 
+# The sudo test below is a WORD test: since lshell 0.11.8 a tenant line can
+# carry LD_PRELOAD=<sudo_noexec.so path> on its non-escape segments (drush8
+# status | LD_PRELOAD=/usr/libexec/sudo/sudo_noexec.so grep x), and a bare
+# substring match on "sudo" sent every such line around this block.
 if [[ ! "${_ARGS}" =~ "composer" ]] \
   && [[ ! "${_ARGS}" =~ "git" ]] \
   && [[ ! "${_ARGS}" =~ "cd " ]] \
   && [[ ! "${_ARGS}" =~ "mysql" ]] \
-  && [[ ! "${_ARGS}" =~ "sudo" ]]; then
+  && [[ ! "${_ARGS}" =~ (^|[[:space:]])sudo([[:space:]]|$) ]]; then
   _ARR=
   if [[ "${_ARGS}" =~ "/vendor/drush/drush/drush.php " ]]; then
     _R_M=`echo -n ${_ARGS}  | grep -o ".*/vendor/drush/drush/drush.php"`
