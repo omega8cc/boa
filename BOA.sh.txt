@@ -1921,6 +1921,7 @@ _update_agents() {
     # marker with the fetch ctrl keeps a mid-serial re-fetch from re-granting
     # those commands to every tenant until the next release.
     rm -f ${_pthLog}/node.lshell-fix-npx.ctrl.*
+    rm -f ${_pthLog}/node.manage.lshell.ctrl.*
   fi
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
