@@ -1140,7 +1140,7 @@ _virt_detection() {
   _fix_or_install_virt_what
   _VIRT_TOOL="$(which virt-what)"
   if [ -x "${_VIRT_TOOL}" ]; then
-    _VIRT_TEST=$(virt-what)
+    _VIRT_TEST=$(virt-what 2>&1)
     _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
     if [[ "${_VIRT_TEST}" =~ "program not found" ]]; then
       _msg "ERROR: virt-what says: ${_VIRT_TEST}"
