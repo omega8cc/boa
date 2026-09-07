@@ -48,13 +48,31 @@ _php74_intl_missing() {
 _run_weekly_system_upgrade() {
   shift  ### drop the weekly-system keyword; "$@" is now the barracuda upgrade args
   local _bootMark="/var/log/boa/.php74_intl_bootstrap.active"
+  local _phpMax=NO
+  local _intlMissing=NO
+  local _arg=""
   ### resume safety: a leftover marker means a prior run pinned but did not unpin
   ### (the pin is ours, not an operator's), so clear it before deciding this run
   if [ -e "${_bootMark}" ]; then
     sed -i '/^_ICU_FORCE_VRN=/d' "${_barCnf}"
     rm -f "${_bootMark}"
   fi
-  if _php74_intl_missing; then
+  ### php-max keeps every PHP version installed by policy: the builder mirrors,
+  ### and any box that must be able to check or rebuild any version on demand.
+  ### The bootstrap below opens by idling every version no hosted site uses --
+  ### on such a box that is all but the default -- and its two passes would
+  ### then rebuild the whole set from source twice. Neither is wanted there, so
+  ### php-max always takes the plain upgrade; 7.4 intl on such a box is the
+  ### manual procedure in docs/ICU-PIN.md.
+  for _arg in "$@"; do
+    [ "${_arg}" = "php-max" ] && _phpMax=YES
+  done
+  _php74_intl_missing && _intlMissing=YES
+  if [ "${_intlMissing}" = "YES" ] && [ "${_phpMax}" = "YES" ]; then
+    echo "INFO: PHP 7.4 present without intl, but php-max keeps every version -- no idle, no ICU pin cycle (see docs/ICU-PIN.md)"
+    _intlMissing=NO
+  fi
+  if [ "${_intlMissing}" = "YES" ]; then
     echo "INFO: PHP 7.4 present without intl -- bootstrapping via temporary ICU 73 pin"
     touch "${_bootMark}"
     /opt/local/bin/barracuda php-idle disable
@@ -495,10 +513,18 @@ _update_conf_variable() {
   _conf_file="$3"
 
   if grep -qE "^#?${_var_name}=" "${_conf_file}"; then
-    # Variable exists, uncomment and update value
-    sed -i "s|^#\?${_var_name}=.*|${_var_name}=\"${_default_value}\"|g" "${_conf_file}"
+    # Variable exists, uncomment and update value. The value goes into the
+    # replacement side, where the delimiter, & and a backslash are special:
+    # _DEFAULT_NGINX_DOS_STOP carries | in its pattern, and unescaped it
+    # ended the expression early ("unknown option to `s'") on every box whose
+    # cnf already listed the key, so that default was never written there.
+    _safe_value=$(printf '%s' "${_default_value}" | sed -e 's/[\\&|]/\\&/g')
+    sed -i "s|^#\?${_var_name}=.*|${_var_name}=\"${_safe_value}\"|g" "${_conf_file}"
   else
-    # Variable doesn't exist, append to the file
+    # Variable doesn't exist, append to the file. Newline-terminate first:
+    # the cnf is operator-authored, and an unterminated last line would
+    # swallow the previous key into this one (the guard its siblings carry).
+    [ -n "$(tail -c1 "${_conf_file}" 2>/dev/null)" ] && echo >> "${_conf_file}"
     echo "${_var_name}=\"${_default_value}\"" >> "${_conf_file}"
   fi
 }
@@ -938,7 +964,16 @@ _is_protected_run() {
   _boaBins="autoinit automini barracuda boa octopus"
   for _cbn in ${_boaBins}; do
     if [ -e "${_optBin}/${_cbn}" ]; then
-      _CNT=$(pgrep -fc /local/bin/${_cbn})
+      # Anchored, as _weekly_install_in_flight above: a bare path substring
+      # matches any command line that merely MENTIONS the wrapper, and a
+      # bare "boa" matches the boa-info probes other cron ticks fire every
+      # few minutes, which held this guard and deferred what it protects.
+      # For boa only the verbs that change the box count, and only LOCAL
+      # ones: the installs (which /run/boa_run.pid also covers) plus
+      # cleanup, suspend and unsuspend; info, version and help read only.
+      _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/${_cbn}( |$)"
+      [ "${_cbn}" = "boa" ] && _cPat="^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa (in-|cleanup|suspend|unsuspend)"
+      _CNT=$(pgrep -fc "${_cPat}")
       if (( _CNT > 0 )); then
         echo "The ${_cbn} is running!"
         _protectedRun=TRUE
@@ -955,9 +990,17 @@ _is_protected_run() {
   [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE
 }
 
+# At most one completion attempt per hour, whatever the manufacturer reads
+# back; _status_vm_postinstall reads it, _generic_vm_postinstall writes it.
+_VM_POST_STAMP="/var/log/boa/.vm_postinstall_attempt.pid"
+
 _generic_vm_postinstall() {
   _is_protected_run
   if [ "${_protectedRun}" = "FALSE" ]; then
+    # Stamped on a real launch only. Stamped by the caller, a tick that
+    # merely found another tool in flight burnt the whole hour and launched
+    # nothing, deferring the first attempt this promises at once.
+    touch "${_VM_POST_STAMP}"
     rm -f /var/log/boa/${_SYS_MANUFACTURER_LC}_vm.pid
     _TODAY=$(date +%y%m%d)
     _TODAY=${_TODAY//[^0-9]/}
@@ -1019,7 +1062,20 @@ _status_vm_postinstall() {
   if [ "$(boa info | grep -c Percona)" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
     _NEEDS_UPGRADE=YES
     echo "A _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
-    [ -n "${_SYS_MANUFACTURER_LC}" ] && _generic_vm_postinstall
+    # Launch it whatever the manufacturer reads back. A guest with no
+    # SMBIOS/DMI table answers with nothing, and gating on a non-empty answer
+    # skipped the accelerated completion pass on exactly those hosts, leaving
+    # them to wait for the weekly upgrade instead of finishing within minutes.
+    #
+    # Bounded, because the arm above can stay true indefinitely on a host where
+    # CSF is never installed -- a VServer guest carrying cloud_vhost.pid, for
+    # one -- and this runs every five minutes. The first attempt is immediate,
+    # so a normal install still converges at once; a failing one now retries
+    # hourly instead of relaunching a full system pass twelve times an hour.
+    if [ ! -e "${_VM_POST_STAMP}" ] \
+      || [ -n "$(find "${_VM_POST_STAMP}" -mmin +59 2> /dev/null)" ]; then
+      _generic_vm_postinstall
+    fi
   else
     _NEEDS_UPGRADE=NO
     echo "B _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"

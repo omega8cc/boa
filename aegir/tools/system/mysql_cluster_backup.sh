@@ -4,6 +4,35 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
+# One channel for everything this run has to say to the operator: a dated
+# line in the backup incident log, and the body from stdin mailed to
+# _MY_EMAIL unless _INCIDENT_REPORT is OFF. Usable before the cnf is
+# sourced below (the disk check runs first), so it sources what it needs.
+_backup_notice() {
+  local _sub="${1}" _detail="${2}"
+  mkdir -p /var/log/boa
+  echo "$(date) ${_sub}${_detail:+: ${_detail}}" >> /var/log/boa/mysql.backup.incident.log
+  if [ -z "${_MY_EMAIL}" ] && [ -e "/root/.barracuda.cnf" ]; then
+    source /root/.barracuda.cnf
+  fi
+  _INCIDENT_REPORT="${_INCIDENT_REPORT^^}"
+  _INCIDENT_REPORT="${_INCIDENT_REPORT//[^A-Z]/}"
+  [ "${_INCIDENT_REPORT}" = "NO" ] && _INCIDENT_REPORT="OFF"
+  if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ] \
+    && [[ "$(s-nail -V 2>&1)" =~ "built for Linux" ]]; then
+    {
+      cat
+      echo "Logged to /var/log/boa/mysql.backup.incident.log"
+      echo
+      echo "--"
+      echo "This email has been sent by your nightly database backup"
+    } | s-nail -s "${_sub}" ${_MY_EMAIL}
+    echo "INFO: Backup notice sent to ${_MY_EMAIL}: ${_sub}"
+  else
+    cat > /dev/null
+  fi
+}
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     ionice -c2 -n7 -p $$
@@ -11,15 +40,6 @@ _check_root() {
     chmod a+w /dev/null
   else
     echo "ERROR: This script should be run as a root user"
-    exit 1
-  fi
-  _DF_TEST="$(LC_ALL=C command df -P -l / 2>/dev/null | awk '
-    NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
-    NR==2 && u { gsub(/%/,"",$u); print $u }')"
-  [[ "${_DF_TEST}" =~ ^[0-9]+$ ]] || _DF_TEST=""
-  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
-    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
-    echo "ERROR: We can not proceed until it is below 90/100"
     exit 1
   fi
 }
@@ -129,6 +149,31 @@ if [[ "${_VM_TEST}" =~ "-beng" ]]; then
 else
   _VMFAMILY="XEN"
 fi
+# Run only after the by-design stand-down gates above (proxy, standby, not
+# the cluster's write node, no cluster credentials): a box that takes no
+# dumps by design must never be mailed about the disk it would not have used.
+_check_disk_space() {
+  _DF_TEST="$(LC_ALL=C command df -P -l / 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
+    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+  [[ "${_DF_TEST}" =~ ^[0-9]+$ ]] || _DF_TEST=""
+  if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
+    echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
+    echo "ERROR: We can not proceed until it is below 90/100"
+    ### No backup at all tonight is an incident, not a quiet exit.
+    {
+      echo "The cluster database backup run on ${_hName} did not start: the"
+      echo "root filesystem is ${_DF_TEST}% full and the run refuses to add to it"
+      echo "above 90%. No database was dumped. Free space, then run:"
+      echo
+      echo "  bash /var/xdrago/mysql_cluster_backup.sh"
+      echo
+    } | _backup_notice "Backup ABORTED on [${_hName}]: disk ${_DF_TEST}% full" "root filesystem ${_DF_TEST}% full"
+    exit 1
+  fi
+}
+_check_disk_space
+
 touch /run/boa_sql_cluster_backup.pid
 
 _create_locks() {
@@ -306,27 +351,49 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
   if [[ "${_NON_TRX_COUNT}" =~ ^[0-9]+$ ]] && [[ "${_NON_TRX_COUNT}" -gt "0" ]]; then
     _MYDUMPER_TRX_OPT="--trx-tables=0"
   fi
-  ### --rows=-1 turns integer chunking off. A fixed --rows=N walks the whole
-  ### primary-key span in steps of N key values, so a sparse bigint key
-  ### (timestamp-derived IDs) had mydumper spin writing empty chunk files
-  ### until the box ran out of inodes; and the adaptive chunker used when
-  ### the flag is absent intermittently drops a whole chunk of a sparse-keyed
-  ### table while still exiting clean with metadata written. Chunking off
-  ### came out complete in every run, on Percona 5.7 and 8.4 alike.
-  ### _MYDUMPER_TRX_OPT unquoted by design: empty must expand to no argument.
+  ### mydumper 1.x fixed the adaptive chunker: 0.21.x truncated a chunk's file
+  ### to 0 bytes when another thread's split landed past the last existing key,
+  ### exiting clean with metadata written. On 1.x the tables are chunked and
+  ### dumped in parallel again; older builds keep chunking off (--rows=-1). A
+  ### fixed --rows=N never comes back: it walks a sparse key span in N-key steps
+  ### until the box runs out of inodes. Probed here, per database, and anchored
+  ### on the banner line: a stray line ahead of it cannot pass as a version,
+  ### and a binary replaced during the run (the agent pass installs the pin)
+  ### meets the flags it takes from the next database on.
+  _MYDUMPER_ROWS_OPT="--rows=-1"
+  _MYDUMPER_MAJOR=$(mydumper -V 2>&1 | grep -m1 "^mydumper v" | cut -d" " -f2 | tr -d "v" | cut -d"." -f1)
+  case "${_MYDUMPER_MAJOR}" in
+    [1-9]*) _MYDUMPER_ROWS_OPT="" ;;
+  esac
+  ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
   mydumper \
     --defaults-file=/root/.my.cluster_root.cnf \
     --database=${_DB} \
     --host=localhost \
     --port=3306 \
     --outputdir=${_SAVELOCATION}/${_DB}/ \
-    --rows=-1 \
+    ${_MYDUMPER_ROWS_OPT} \
     --build-empty-files \
     --threads=4 \
     --long-query-guard=900 \
     --sync-thread-lock-mode=${_MYDUMPER_LOCK_MODE} \
     ${_MYDUMPER_TRX_OPT} \
-    --verbose=1
+    --verbose=1 &> "${_SAVELOCATION}/${_DB}.mydumper.log"
+  _MYDUMPER_RC=$?
+  ### mydumper renames metadata into place at the end of its run, so a
+  ### missing marker means the run never got there (a crash, a kill, a
+  ### failed lock) and a non-zero exit means it logged an error on the way.
+  ### Neither is a dump to archive: keep the debris and the tool's own
+  ### output out of the compressor's way and in the operator's sight. The
+  ### loop redirects this helper, so its output is the only trace kept.
+  if [ "${_MYDUMPER_RC}" -ne "0" ] || [ ! -e "${_SAVELOCATION}/${_DB}/metadata" ]; then
+    echo "ALRT: mydumper FAILED or left no metadata for ${_DB} -- keeping the debris and the tool's output in ${_DB}.FAILED/"
+    mv -f ${_SAVELOCATION}/${_DB} ${_SAVELOCATION}/${_DB}.FAILED 2>/dev/null
+    mkdir -p "${_SAVELOCATION}/${_DB}.FAILED"
+    mv -f "${_SAVELOCATION}/${_DB}.mydumper.log" "${_SAVELOCATION}/${_DB}.FAILED/mydumper.log" 2>/dev/null
+    return 1
+  fi
+  rm -f "${_SAVELOCATION}/${_DB}.mydumper.log"
 }
 
 _backup_this_database_with_mysqldump() {
@@ -339,17 +406,23 @@ _backup_this_database_with_mysqldump() {
     --skip-add-locks \
     --no-tablespaces \
     --hex-blob ${_DB} \
-    > ${_SAVELOCATION}/${_DB}.sql
+    > ${_SAVELOCATION}/${_DB}.sql 2> "${_SAVELOCATION}/${_DB}.mysqldump.log"
+  _MYSQLDUMP_RC=$?
   ### A failed or truncated dump used to be compressed and kept as THE
   ### backup for the night: the rc was never read, and gzip turns any
   ### partial file into a valid archive. Demand rc=0 and mysqldump's own
   ### trailer, and get the debris out of the way so the compressor cannot
-  ### promote it to a backup.
-  if [ "$?" -ne "0" ] || ! tail -5 ${_SAVELOCATION}/${_DB}.sql 2>/dev/null | grep -q "Dump completed"; then
-    echo "ALRT: mysqldump FAILED or produced a truncated dump for ${_DB} -- discarding it"
-    mv -f ${_SAVELOCATION}/${_DB}.sql ${_SAVELOCATION}/${_DB}.sql.FAILED 2>/dev/null
+  ### promote it to a backup. The debris goes into a directory: a bare
+  ### <db>.sql.FAILED file reads as <db>'s backup to the tenant copier,
+  ### which strips two extensions to find the database name.
+  if [ "${_MYSQLDUMP_RC}" -ne "0" ] || ! tail -5 ${_SAVELOCATION}/${_DB}.sql 2>/dev/null | grep -q "Dump completed"; then
+    echo "ALRT: mysqldump FAILED or produced a truncated dump for ${_DB} -- keeping the debris and the tool's output in ${_DB}.FAILED/"
+    mkdir -p "${_SAVELOCATION}/${_DB}.FAILED"
+    mv -f ${_SAVELOCATION}/${_DB}.sql "${_SAVELOCATION}/${_DB}.FAILED/${_DB}.sql" 2>/dev/null
+    mv -f "${_SAVELOCATION}/${_DB}.mysqldump.log" "${_SAVELOCATION}/${_DB}.FAILED/mysqldump.log" 2>/dev/null
     return 1
   fi
+  rm -f "${_SAVELOCATION}/${_DB}.mysqldump.log"
 }
 
 _compress_backup() {
@@ -369,6 +442,8 @@ _compress_backup() {
         else
           echo "ALRT: compressing ${DbName} FAILED -- keeping the uncompressed dump directory"
           rm -f ${DbName}-${_DATE}.tar.zst
+          _COMPRESS_FAILED_N=$(( ${_COMPRESS_FAILED_N:-0} + 1 ))
+          _COMPRESS_FAILED_DBS="${_COMPRESS_FAILED_DBS} ${DbName}"
         fi
       fi
     done
@@ -377,7 +452,16 @@ _compress_backup() {
     chmod 700 /data/disk/arch
     echo "INFO: Permissions fixed"
   else
-    gzip ${_SAVELOCATION}/*.sql
+    ### Per file, so one failure is counted and reported and the others
+    ### still get their archive; gzip leaves a failed input untouched.
+    for DbSql in ${_SAVELOCATION}/*.sql; do
+      [ -e "${DbSql}" ] || continue
+      if ! gzip "${DbSql}"; then
+        echo "ALRT: compressing $(basename "${DbSql}") FAILED -- keeping the uncompressed dump"
+        _COMPRESS_FAILED_N=$(( ${_COMPRESS_FAILED_N:-0} + 1 ))
+        _COMPRESS_FAILED_DBS="${_COMPRESS_FAILED_DBS} $(basename "${DbSql}" .sql)"
+      fi
+    done
     chmod 600 ${_BACKUPDIR}/*/*
     chmod 700 ${_BACKUPDIR}/*
     chmod 700 ${_BACKUPDIR}
@@ -435,6 +519,57 @@ if [ -x "/usr/local/bin/mydumper" ]; then
   fi
 fi
 
+
+# A dump that failed must never disappear quietly: cron discards this
+# script's output, so the ALRT lines above reach nobody. Every failure is
+# counted in the loop and the compress phase, then reported ONCE per run --
+# a dated line in /var/log/boa/mysql.backup.incident.log (harvested with the
+# other incident logs) and an e-mail to _MY_EMAIL unless _INCIDENT_REPORT is
+# OFF. The debris of a failed dump is kept beside the archives as
+# <name>.FAILED with the tool's own output as <name>.mydumper.log, so the
+# operator reads what the tool said instead of guessing.
+_notify_dump_failures() {
+  [ "${_DUMP_FAILED_N:-0}" = "0" ] && [ "${_COMPRESS_FAILED_N:-0}" = "0" ] && return 0
+  local _sub _d
+  if [ "${_DUMP_FAILED_N:-0}" != "0" ]; then
+    _sub="Backup FAILED for ${_DUMP_FAILED_N} database(s) on [${_hName}]"
+  else
+    _sub="Backup archive INCOMPLETE for ${_COMPRESS_FAILED_N} database(s) on [${_hName}]"
+  fi
+  {
+    if [ "${_DUMP_FAILED_N:-0}" != "0" ]; then
+      echo "The database backup run on ${_hName} could not dump ${_DUMP_FAILED_N} database(s):"
+      echo
+      for _d in ${_DUMP_FAILED_DBS}; do
+        echo "  ${_d}"
+      done
+      echo
+      echo "Their dumps are missing from ${_SAVELOCATION}. What the dump tool"
+      echo "left behind is kept there in <name>.FAILED/ together with the tool's"
+      echo "own output (mydumper.log or mysqldump.log); every other database"
+      echo "was archived as usual."
+      echo
+    fi
+    if [ "${_COMPRESS_FAILED_N:-0}" != "0" ]; then
+      echo "The archive step failed for ${_COMPRESS_FAILED_N} database(s), whose dump"
+      echo "directories are kept uncompressed in ${_SAVELOCATION}:"
+      echo
+      for _d in ${_COMPRESS_FAILED_DBS}; do
+        echo "  ${_d}"
+      done
+      echo
+      echo "A full disk or a missing zstd is the usual cause."
+      echo
+    fi
+    echo "To repeat the run once the cause is fixed:"
+    echo
+    echo "  bash /var/xdrago/mysql_cluster_backup.sh"
+    echo
+  } | _backup_notice "${_sub}" "in ${_SAVELOCATION}:${_DUMP_FAILED_DBS}${_COMPRESS_FAILED_DBS:+ uncompressed:${_COMPRESS_FAILED_DBS}}"
+}
+
+_DUMP_FAILED_N=0
+_DUMP_FAILED_DBS=""
 for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
   if [ "${_DB}" != "Database" ] \
     && [ "${_DB}" != "information_schema" ] \
@@ -487,13 +622,20 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
         echo "INFO: All cache tables in ${_DB} truncated"
       fi
     fi
+    _DUMP_RC=0
     if [ "${_MYQUICK_USE}" = "YES" ]; then
-      _backup_this_database_with_mydumper &> /dev/null
+      _backup_this_database_with_mydumper &> /dev/null || _DUMP_RC=1
     else
-      _backup_this_database_with_mysqldump &> /dev/null
+      _backup_this_database_with_mysqldump &> /dev/null || _DUMP_RC=1
     fi
     _remove_locks ${_DB}
-    echo "INFO: Backup completed for ${_DB}"
+    if [ "${_DUMP_RC}" = "0" ]; then
+      echo "INFO: Backup completed for ${_DB}"
+    else
+      _DUMP_FAILED_N=$(( ${_DUMP_FAILED_N:-0} + 1 ))
+      _DUMP_FAILED_DBS="${_DUMP_FAILED_DBS} ${_DB}"
+      echo "ALRT: Backup FAILED for ${_DB} -- this run's archive will not carry it"
+    fi
     echo
   fi
 done
@@ -505,6 +647,7 @@ touch /var/log/boa/last-run-cluster-backup
 echo "INFO: Starting dbs backup compress on $(date)"
 _compress_backup &> /dev/null
 echo "INFO: Completing dbs backup compress on $(date)"
+_notify_dump_failures
 
 echo "INFO: Starting dbs backup cleanup on $(date)"
 _DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}
@@ -515,5 +658,8 @@ find ${_BACKUPDIR} -mtime +${_DB_BACKUPS_TTL} -type d -exec rm -rf {} \;
 echo "INFO: Backups older than ${_DB_BACKUPS_TTL} days deleted"
 
 echo "INFO: ALL TASKS COMPLETED, BYE!"
+### exit 0 by design even after failed dumps: they are reported above, and
+### cron reads nothing from the exit status; a non-zero exit would only
+### matter to an operator's wrapper, which must then read the incident log.
 exit 0
 

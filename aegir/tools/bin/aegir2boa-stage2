@@ -80,8 +80,26 @@ _WELCOME_NODE=NO
 _REVERT_DB_IMPORT=NO
 _RESET_SITES=NO
 _FROM_STATE=NO
+# set while create holds the target's box-wide post-install upgrade guard,
+# so any exit path can take it back off (see _guard_target_off)
+_GUARD_TARGET=""
 
 ###-------------HELPERS----------------###
+
+_acct_group_on_target() {
+  # Group owning the account's tree ON THE TARGET: the account's own group
+  # once converted there (instgrp), the box-wide 'users' until then. Asked
+  # of the target itself, never assumed from this box: the two boxes are in
+  # different states for the whole length of a rollout.
+  local _a="$1" _g _rc
+  _g=$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" "id -gn '${_a}' 2>/dev/null; echo \"rc=\$?\"" 2>/dev/null | tr -d '[:space:]')
+  case "${_g}" in
+    *rc=0) _g="${_g%rc=0}" ;;
+    *) _die "cannot read the group of ${_a} on ${_TARGET} (ssh or id failed); refusing to guess it" ;;
+  esac
+  [ "${_g}" = "${_a}" ] || _g="users"
+  printf '%s' "${_g}"
+}
 
 _acct_group() {
   # Group that owns an account's tree. Derived, never a literal: an account
@@ -190,9 +208,19 @@ _http_code_body_at() {   # 1 uri 2 addr 3 body-file
 # traffic to be cut over to the target.
 _A2B_CATCHALL_BASE=""
 _probe_catchall_baseline() {   # 1 target addr
-  local _bogus="no-such-site.a2b-probe.invalid"
-  _A2B_CATCHALL_BASE="$(curl -s -m 20 -H "Host: ${_bogus}" "http://$1/" 2>/dev/null \
-    | md5sum | cut -d' ' -f1)"
+  local _bogus="no-such-site.a2b-probe.invalid" _body _code
+  _A2B_CATCHALL_BASE=""
+  _body="$(mktemp)"
+  _code="$(curl -s -m 20 -o "${_body}" -w '%{http_code}' -H "Host: ${_bogus}" "http://$1/" 2>/dev/null)"
+  # Hash only a body the probe actually got. Piped straight into md5sum, a
+  # failed probe left the empty-input hash here, so no caller could tell "no
+  # fingerprint" from "the catch-all is an empty page": the warnings that
+  # test for an empty baseline never fired, and a site legitimately answering
+  # 200 with nothing would have been called the catch-all.
+  if [[ "${_code}" = "200" ]] && [[ -s "${_body}" ]]; then
+    _A2B_CATCHALL_BASE="$(md5sum < "${_body}" | cut -d' ' -f1)"
+  fi
+  rm -f "${_body}"
 }
 
 # 1 body-file, 2 status, 3 baseline hash. Only meaningful for a 200: a 301/302
@@ -242,8 +270,9 @@ _marker_has() { [[ -e "$(_marker "$1")" ]]; }
 # via drush php-script. A fixed /tmp name on a multi-tenant BOA box is a
 # symlink-preplant vector (root cat> follows the link) AND a TOCTOU swap
 # window -- and so is anything under ${_ACCT_ROOT}/static: BOA makes that
-# dir oN:users 02775 and every Octopus account's primary group IS users, so
-# any co-hosted tenant can pre-plant a symlink there for root's mkdir/chown/
+# dir 02775 with the account's group -- box-wide 'users' on an instance not
+# yet converted to its per-instance group, shared by every co-hosted tenant --
+# so a tenant can pre-plant a symlink there for root's mkdir/chown/
 # chmod (all of which follow links; protected_symlinks only covers sticky
 # world-writable dirs). Stage under a ROOT-OWNED 0755 parent no tenant can
 # write, with a per-account 0700 dir handed to oN so drush can read the
@@ -325,8 +354,16 @@ _alias_val() {
 
 # parse a drushrc option (xoct:224-233 pattern), sanitized by the caller
 _drushrc_val() {
-  grep "options\['$2'\] = " "$1/drushrc.php" 2>/dev/null \
-    | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g" | head -1
+  # var_export() literal: a single-quoted string in which only the quote and
+  # the backslash are escaped, or a bare integer. Read exactly those forms,
+  # so the charset gates downstream judge the real value, not a mangled one.
+  local _v
+  _v=$(sed -n "s/^[[:space:]]*\$options\[\x27$2\x27\][[:space:]]*=[[:space:]]*\x27\(.*\)\x27;[[:space:]]*$/\1/p" "$1/drushrc.php" 2>/dev/null | head -1)
+  if [[ -n "${_v}" ]]; then
+    printf '%s' "${_v}" | sed -e 's/\\\x27/\x27/g' -e 's/\\\\/\\/g'
+    return 0
+  fi
+  sed -n "s/^[[:space:]]*\$options\[\x27$2\x27\][[:space:]]*=[[:space:]]*\(-\{0,1\}[0-9]\{1,\}\);[[:space:]]*$/\1/p" "$1/drushrc.php" 2>/dev/null | head -1
 }
 
 # Drupal major of a platform tree
@@ -707,7 +744,13 @@ verb_check() {
   # stage-2 verdict comes from the report scalars, never from its exit code
   local _v
   _v="$(_report_scalar A2B_STAGE2_VERDICT)"
-  _info "preflight stage-2 verdict: ${_v} (fail: $(_report_scalar A2B_STAGE2_FAIL_REASONS))"
+  # name the reasons that belong to the verdict: a WARN used to print an
+  # empty "(fail: )" while its reasons sat in the report
+  case "${_v}" in
+    FAIL) _info "preflight stage-2 verdict: FAIL (fail: $(_report_scalar A2B_STAGE2_FAIL_REASONS))" ;;
+    WARN) _info "preflight stage-2 verdict: WARN (warn: $(_report_scalar A2B_STAGE2_WARN_REASONS))" ;;
+    *)    _info "preflight stage-2 verdict: ${_v}" ;;
+  esac
   [[ "${_v}" = "FAIL" ]] && _die "preflight stage-2 verdict is FAIL - resolve its reasons first"
 
   # nginx-mode hard gate (B6) + box config health: every pause/proxy swap
@@ -723,7 +766,7 @@ verb_check() {
 
   # ssh to target (peer-established key)
   ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" true >>"${_LOG}" 2>&1 \
-    || _die "cannot ssh root@${_TARGET} with BatchMode - run the peer verb first (aegir2boa-stage2 peer --target ${_TARGET} --live); ssh detail in ${_LOG}"
+    || _die "cannot ssh root@${_TARGET} with BatchMode - run the peer verb first (aegir2boa-stage2 peer --target ${_TARGET}, then the same with --live); ssh detail in ${_LOG}"
   ssh -o BatchMode=yes "root@${_TARGET}" 'test -x /opt/local/bin/boa' >/dev/null 2>&1 \
     || _die "target ${_TARGET} does not look like a BOA box (/opt/local/bin/boa missing)"
   _info "target ${_TARGET}: ssh ok, BOA present"
@@ -783,6 +826,32 @@ verb_check() {
   _pools="$(ssh -o BatchMode=yes "root@${_TARGET}" 'ls -d /opt/php[0-9]* 2>/dev/null | sed "s|/opt/php||"' | tr '\n' ' ')"
   _info "target PHP pools: ${_pools:-none found}"
   _kv_set "${_STATE_DIR}/state/check.env" "TARGET_PHP_POOLS" "${_pools}"
+
+  # First factor the target's DB server ADVERTISES (D6 parity gate input).
+  # Not the same question as what a user is pinned to: PHP 5.6's mysqli dies
+  # at the handshake greeting, before the user's own plugin is consulted, so
+  # a D6 site adopted onto a caching_sha2 target bootstraps in CLI and serves
+  # its own 503 on the web. Read the greeting itself - it is the only
+  # version-agnostic answer (8.0 follows default_authentication_plugin, 8.4
+  # the first element of authentication_policy, 5.7 is native either way).
+  # The two variable reads are the fallback for a target without nc/strings;
+  # the greeting comes first, so it wins when both answer. Among the two,
+  # default_authentication_plugin is read before authentication_policy on
+  # purpose: on 8.0 the greeting follows the former even when the policy
+  # names native, so a policy-only 8.0 target IS non-native to a PHP 5.6
+  # client and is rightly named; 8.4 has no such variable and falls through
+  # to the policy. An empty result is 'not readable', never 'not native' -
+  # this gate accuses only on a plugin it positively read.
+  local _tauth
+  _tauth="$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" \
+    "if command -v nc >/dev/null 2>&1 && command -v strings >/dev/null 2>&1; then \
+       timeout 3 nc 127.0.0.1 3306 2>/dev/null | strings | grep -m1 -i password; \
+     fi; \
+     mysql -sN -e \"SHOW VARIABLES LIKE 'default_authentication_plugin'\" 2>/dev/null | awk '{print \$2}'; \
+     mysql -sN -e \"SHOW VARIABLES LIKE 'authentication_policy'\" 2>/dev/null | awk '{print \$2}'" \
+    2>>"${_LOG}" | grep -m1 . | tr -cd 'A-Za-z0-9_,*')"
+  _info "target DB advertised first factor: ${_tauth:-UNKNOWN}"
+  _kv_set "${_STATE_DIR}/state/check.env" "TARGET_DB_AUTH" "${_tauth}"
 
   # per-platform D-version reduce (route input + per-site parity)
   local _all_d7=YES _row _core
@@ -849,7 +918,11 @@ verb_check() {
     _dmaj="$(_d_major_of "${_plr}")"
     case "${_dmaj}" in
       6) echo "${_pools}" | grep -q '56' \
-           || { _alrt "site ${_uri}: D6 needs PHP 5.6 pool on target - MISSING (per-site FAIL)"; _fails=$(( _fails + 1 )); } ;;
+           || { _alrt "site ${_uri}: D6 needs PHP 5.6 pool on target - MISSING (per-site FAIL)"; _fails=$(( _fails + 1 )); }
+         case "${_tauth}" in
+           ""|mysql_native_password*) : ;;
+           *) _alrt "site ${_uri}: D6 needs the target to ADVERTISE mysql_native_password, it advertises ${_tauth} (per-site FAIL) - set authentication_policy = mysql_native_password,, in my.cnf (8.0 also default_authentication_plugin), restart mysql"; _fails=$(( _fails + 1 )) ;;
+         esac ;;
       7) : ;;
       0) _alrt "site ${_uri}: platform D-version undetected at ${_plr:-?}"; _fails=$(( _fails + 1 )) ;;
     esac
@@ -905,6 +978,10 @@ verb_premig() {
     _qstate=systemd
     systemctl stop hosting-queued >>"${_LOG}" 2>&1
     systemctl disable hosting-queued >>"${_LOG}" 2>&1
+    # the daemon exits non-zero on SIGTERM, which leaves the unit "failed"
+    # rather than inactive; clear that so a status read after pre-mig says
+    # what happened (stopped on purpose), not that something crashed
+    systemctl reset-failed hosting-queued >>"${_LOG}" 2>&1 || true
   elif service hosting-queued status >/dev/null 2>&1; then
     _qstate=initd
     service hosting-queued stop >>"${_LOG}" 2>&1
@@ -994,11 +1071,16 @@ verb_create() {
   # hold the enforced post-install upgrade off for the window - in-octopus
   # backgrounds an octopus up- that would churn the fresh account
   # (the guard file is box-wide, removed right after)
+  # recorded BEFORE the touch: ssh can run the command and still exit
+  # non-zero (a connection torn down on the way back), and a guard that is
+  # on the box but not on record is exactly the leak this closes; taking
+  # off a guard that never landed costs nothing
+  _GUARD_TARGET="${_TARGET}"
   ssh "root@${_TARGET}" "touch /root/.dont.upgrade.octopus.on.install.cnf"
   ssh "root@${_TARGET}" "/opt/local/bin/boa in-octopus ${_EMAIL} ${_ACCOUNT} ${_TREE} ${_OPTION} ${_SUBSCR} ${_CORES} noscreen" \
     | tee -a "${_LOG}"
   ssh "root@${_TARGET}" "test -d /data/disk/${_ACCOUNT}" \
-    || { ssh "root@${_TARGET}" "rm -f /root/.dont.upgrade.octopus.on.install.cnf"; \
+    || { _guard_target_off; \
          _die "in-octopus finished but /data/disk/${_ACCOUNT} does not exist on ${_TARGET}"; }
   ssh "root@${_TARGET}" "/bin/rm -f /data/disk/${_ACCOUNT}/tools/le/.ctrl/ssl-demo-mode.pid" 2>/dev/null
 
@@ -1006,18 +1088,21 @@ verb_create() {
   # file (persistent dispatcher trigger), so its existence never means busy
   _msg "waiting for target post-install quiescence (up to ${_QUIESCE_TIMEOUT}s)"
   local _waited=0
-  # NB in-[o]ctopus, not in-octopus: the bracket escape must ALSO break the
-  # second alternative's literal text, because "octopus" is a substring of
-  # "in-octopus" - with redirections present the remote bash -c wrapper
-  # does not exec-optimize, so its own cmdline (containing the pattern
-  # text) satisfied alternative 1 and the wait always read busy - create
-  # then returned only via the 1800s timeout
+  # Anchored on the wrapper's own path, the way clear.sh anchors its
+  # installer guards: a bare "octopus.*<account>" substring matches ANY
+  # command line that merely mentions the account - the remote bash -c
+  # wrapper carrying this very pattern (with redirections present it does
+  # not exec-optimize, so the wait always read busy and create returned only
+  # via the 1800s timeout), an operator tailing an up-octopus log, a
+  # monitoring one-liner. Both launch shapes are covered: cron's explicit
+  # "bash /opt/local/bin/octopus" and the direct exec the kernel rewrites to
+  # "/bin/bash /opt/local/bin/octopus".
   while ssh -o BatchMode=yes "root@${_TARGET}" \
-    "pgrep -f '[o]ctopus.*${_ACCOUNT}|[b]oa.*in-[o]ctopus.*${_ACCOUNT}' >/dev/null 2>&1" 2>/dev/null; do
+    "pgrep -f '^(/[^ ]*/)?(bash (-c )?)?/(opt|usr)/local/bin/(octopus|boa in-octopus) .*${_ACCOUNT}' >/dev/null 2>&1" 2>/dev/null; do
     [[ "${_waited}" -ge "${_QUIESCE_TIMEOUT}" ]] && { _alrt "target still busy after ${_QUIESCE_TIMEOUT}s - verify manually before import"; break; }
     sleep 30; _waited=$(( _waited + 30 ))
   done
-  ssh "root@${_TARGET}" "rm -f /root/.dont.upgrade.octopus.on.install.cnf"
+  _guard_target_off
   _info "target quiescent (waited ${_waited}s), upgrade guard removed"
   _kv_set "${_STATE_DIR}/state/check.env" "ACCOUNT" "${_ACCOUNT}"
   _marker_set "create.${_ACCOUNT}.pid"
@@ -1171,6 +1256,8 @@ _export_hostmaster() {   # db-import route only
   chmod 600 "${_AEGIR_ROOT}/src/a2b/hostmaster.sql"
   # the frontend must not take writes that post-date its dump
   _as_aegir "drush @hostmaster vset --always-set maintenance_mode 1" >>"${_LOG}" 2>&1
+  # A cached anonymous front page would outlive the variable change.
+  _as_aegir "drush @hostmaster cache-clear all" >>"${_LOG}" 2>&1
   _marker_set "hostmaster.exported.pid"
   _info "hostmaster: exported (db ${_hdb}), frontend in maintenance mode"
   return 0
@@ -1279,10 +1366,13 @@ verb_transfer() {
         # www-data mean nothing on the target) - the account user could not
         # even read its own drushrc.php and every import task died on it;
         # land it account-owned, BOA's verify +
-        # agents apply the fork's perm scheme from there
-        # literal 'users' stays: this chown runs on the TARGET box, where the
-        # group exists per box and the destination re-asserts it on its own passes
-        ssh "root@${_TARGET}" "chown -R ${_ACCOUNT}:users ${_dst}/static/a2b/${_plat}" \
+        # agents apply the fork's perm scheme from there. The group is the
+        # account's group ON THE TARGET (its own once converted there, the
+        # box-wide one until then): a staged tree is registered in
+        # hostmaster only at import, so nothing re-asserts it before then,
+        # and the literal would leave a converted target's adopted
+        # drushrc.php files readable by every other account meanwhile
+        ssh "root@${_TARGET}" "chown -R ${_ACCOUNT}:$(_acct_group_on_target "${_ACCOUNT}") ${_dst}/static/a2b/${_plat}" \
           || _die "platform ${_plat} chown failed on target"
         _done_plat="${_done_plat}${_plat} "
         ;;
@@ -1322,6 +1412,70 @@ verb_transfer() {
          "root@${_TARGET}:${_dst}/src/a2b/ssl-ref/" 2>>"${_LOG}"
   rsync -aq --no-devices --no-specials -e ssh "$(_vhostd)/" \
     "root@${_TARGET}:${_dst}/src/a2b/nginx-ref/" 2>>"${_LOG}"
+  # Everything staged above landed with this box's numeric gids; the
+  # target's own tool hands the whole account tree to the account's group
+  # there. A live run on the target (its octopus finisher, a tool refresh)
+  # makes reclaim defer with rc 4 for a short window: wait it out, bounded,
+  # then run the inline pass rather than leave the adopted tree in foreign
+  # gids -- a target carrying log/proxied.pid is outside the nightly.
+  # The remote body is the same pass xoct, xcopy and xmass run on their
+  # destinations (verbatim): the tool with --force, bounded while it defers,
+  # the inline form when it never stops deferring or is not installed.
+  ssh "root@${_TARGET}" "bash -s" <<REMOTE >>"${_LOG}" 2>&1
+_A='${_ACCOUNT}'
+_DEFERRED=0
+if [ -x /opt/local/bin/instgrp ]; then
+  # A live run on the destination (its own octopus finisher, a tool
+  # refresh) makes reclaim defer with rc 4 for a short window; wait it out,
+  # bounded. When it never clears, the inline form below runs instead: a
+  # destination carrying log/proxied.pid is never visited by the nightly
+  # (owl.sh skips it), so the pass must complete here or not at all.
+  _T=0
+  while :; do
+    # --force: the destination's own log/proxied.pid is its demotion artefact
+    # from an earlier cutover (a failback), not "served from elsewhere"; the
+    # tree this run just wrote is exactly what needs the file half, and the
+    # tool's freeze gate would otherwise refuse it for good
+    bash /opt/local/bin/instgrp reclaim "\${_A}" --force
+    _R=\$?
+    [ "\${_R}" = "4" ] || exit "\${_R}"
+    [ "\${_T}" -lt 12 ] || { _DEFERRED=1; break; }
+    _T=\$((_T + 1))
+    sleep 15
+  done
+fi
+_G=users
+if getent group "\${_A}" > /dev/null 2>&1; then
+  [ "\$(id -gn "\${_A}" 2>/dev/null)" = "\${_A}" ] && _G="\${_A}"
+  [ "\$(id -gn "\${_A}.ftp" 2>/dev/null)" = "\${_A}" ] && _G="\${_A}"
+fi
+_MP=""; _N=0
+for _M in /mnt/*; do
+  [ -d "\${_M}" ] && mountpoint -q "\${_M}" 2>/dev/null && { _MP="\${_M}"; _N=\$((_N + 1)); }
+done
+[ "\${_N}" = "1" ] || _MP=""
+for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gems/\${_A}" /opt/user/gems/"\${_A}".* "/opt/user/npm/\${_A}" /opt/user/npm/"\${_A}".* "\${_MP:+\${_MP}/files/\${_A}/static/files}"; do
+  [ -n "\${_R}" ] && [ -d "\${_R}" ] && [ ! -L "\${_R}" ] || continue
+  # the FPM pool users' homes (oN.web, oN.NN.web) are www-data's, never the
+  # account's: the same root set the tool walks
+  case "\${_R}" in /home/*.web) continue ;; esac
+  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root -execdir chgrp -h "\${_G}" {} + 2>/dev/null
+done
+_M="/data/disk/\${_A}/log/instance-group.txt"
+if [ -f "\${_M}" ]; then
+  _GID=\$(getent group "\${_A}" 2>/dev/null | cut -d: -f3)
+  { [ "\${_G}" = "\${_A}" ] && grep -q " gid=\${_GID}\$" "\${_M}" 2>/dev/null; } || rm -f "\${_M}"
+fi
+if [ "\${_DEFERRED}" = "1" ]; then
+  echo "INFO: target group pass for \${_A}: the tool deferred 13 times (a BOA run live there); the inline form ran instead, group \${_G}"
+  exit 4
+fi
+echo "INFO: target group pass for \${_A}: group \${_G} (inline form, instgrp not installed there)"
+exit 0
+REMOTE
+  _rrc=$?
+  [[ "${_rrc}" = "0" ]] \
+    || _alrt "target group pass for ${_ACCOUNT} returned ${_rrc} (2 drift left, 3 identities disagree, 4 deferred (the inline form ran)); run 'instgrp status ${_ACCOUNT}' on the target"
   _msg "transfer complete - next: run 'import --account ${_ACCOUNT} --route ${_route}' ON THE TARGET"
 }
 
@@ -1987,12 +2141,21 @@ PHPEOF
         _alrt "site ${_urie}: verify failed - left unproven, fix + re-run import"
         _sfails=$(( _sfails + 1 )); continue
       fi
-      _codee="$(_http_code_at "${_urie}" 127.0.0.1)"
+      _bodye="$(mktemp)"
+      _codee="$(_http_code_body_at "${_urie}" 127.0.0.1 "${_bodye}")"
       _basee="$(_manifest_val "${_mfe}" BASELINE)"
       if [[ -n "${_basee}" && "${_codee}" != "${_basee}" ]]; then
+        rm -f "${_bodye}"
         _alrt "site ${_urie}: target serves HTTP ${_codee} but the source baseline was ${_basee} - left unproven, fix + re-run import"
         _sfails=$(( _sfails + 1 )); continue
       fi
+      # same catch-all check as the per-site route: a 200 alone proves nothing
+      if _is_catchall_body "${_bodye}" "${_codee}" "${_A2B_CATCHALL_BASE}"; then
+        rm -f "${_bodye}"
+        _alrt "site ${_urie}: the target answers 200 with its catch-all page, not the site - left unproven, fix serving + re-run import"
+        _sfails=$(( _sfails + 1 )); continue
+      fi
+      rm -f "${_bodye}"
       _info "site ${_urie}: target serves HTTP ${_codee} (source baseline was ${_basee})"
       _marker_set "${_urie}.imported.pid"
     done
@@ -2167,19 +2330,30 @@ PHPEOF
     sleep 5
     _t_wait_task "$(_t_task_nid_for "${_uri}" verify)" "verify ${_uri}" \
       || { _alrt "site ${_uri}: post-import verify failed"; _fails=$(( _fails + 1 )); continue; }
-    local _code _base _bt=0
+    local _code _base _bt=0 _body
     _base="$(_manifest_val "${_mff}" BASELINE)"
-    _code="$(_http_code_at "${_uri}" 127.0.0.1)"
+    _body="$(mktemp)"
+    _code="$(_http_code_body_at "${_uri}" 127.0.0.1 "${_body}")"
     # the FPM agent restarts per-version pools on its own passes, so a
     # single-shot probe can land in a restart window - re-probe briefly
     while [[ -n "${_base}" && "${_code}" != "${_base}" && "${_bt}" -lt 3 ]]; do
       sleep 10; _bt=$(( _bt + 1 ))
-      _code="$(_http_code_at "${_uri}" 127.0.0.1)"
+      _code="$(_http_code_body_at "${_uri}" 127.0.0.1 "${_body}")"
     done
     if [[ -n "${_base}" && "${_code}" != "${_base}" ]]; then
+      rm -f "${_body}"
       _alrt "site ${_uri}: target serves HTTP ${_code} but the source baseline was ${_base} - NOT adopted; fix serving, then re-run import for this site"
       _fails=$(( _fails + 1 )); continue
     fi
+    # a matching 200 is not enough: an unknown Host gets the box's catch-all
+    # page with a 200 too, so a site whose own vhost was not in place yet
+    # was reported adopted here and went dark on the FPM agent's next pass
+    if _is_catchall_body "${_body}" "${_code}" "${_A2B_CATCHALL_BASE}"; then
+      rm -f "${_body}"
+      _alrt "site ${_uri}: the target answers 200 with its catch-all page, not the site - NOT adopted; fix serving, then re-run import for this site"
+      _fails=$(( _fails + 1 )); continue
+    fi
+    rm -f "${_body}"
     _info "site ${_uri}: target serves HTTP ${_code} (source baseline was ${_base})"
 
     # 7. cron on (ships dark by design; source dispatch is paused for good)
@@ -2254,6 +2428,18 @@ verb_import() {
     _dry_finish "${_scope}"
   fi
   _gate_consume "${_scope}"
+  # the serve probes below compare bodies against this box's catch-all
+  # answer: a BOA box replies 200 to any unknown Host with its own page, so
+  # a status alone cannot tell "the site serves" from "nothing serves it"
+  _probe_catchall_baseline 127.0.0.1
+  # an empty fingerprint turns every _is_catchall_body test negative, so the
+  # discrimination is silently off and a site answering with the catch-all
+  # page is reported adopted - say so, exactly as the proxy verb does
+  if [[ -n "${_A2B_CATCHALL_BASE}" ]]; then
+    _info "catch-all fingerprint: ${_A2B_CATCHALL_BASE}"
+  else
+    _alrt "could not fingerprint this box's catch-all answer - serve probes lose that discrimination"
+  fi
   case "${_ROUTE}" in
     db-import) _import_db_route ;;
     per-site)  _import_per_site || exit 1 ;;
@@ -2313,8 +2499,12 @@ _peer_source() {
   fi
   [[ -s "${_key}.pub" ]] || { _info "[DRY] no public key yet - re-run with --live"; return 0; }
   _pub="$(cat "${_key}.pub")"
-  _msg "run this ON THE TARGET (as root), then re-run this verb:"
+  # the target refuses a bare --live without a CLEAN dry run of the same
+  # scope on that box, so print the pair the docs show, in order
+  _msg "run these ON THE TARGET (as root), the dry run first, then re-run this verb:"
   echo
+  echo "  aegir2boa-stage2 peer --source $(_peer_my_ip) \\"
+  echo "    --pubkey-file <(echo '${_pub}')"
   echo "  aegir2boa-stage2 peer --source $(_peer_my_ip) --live \\"
   echo "    --pubkey-file <(echo '${_pub}')"
   echo
@@ -2353,6 +2543,13 @@ _peer_source() {
     return 0
   fi
   _alrt "not reachable yet - run the command above on the target first (ssh detail: ${_LOG})"
+  # nothing changed on this box, so the clean dry run still stands: hand
+  # the token back, or the documented third step ("--live again once the
+  # target has the key") is refused for want of a fresh dry run
+  if [[ "${_LIVE}" = "YES" ]] && [[ -n "${_scope:-}" ]]; then
+    _gate_mark_clean "${_scope}"
+    _msg "the dry run stays armed - re-run this same --live command once the target has the key"
+  fi
   return 1
 }
 
@@ -2843,6 +3040,8 @@ verb_target_status() {
 
 [[ $# -ge 1 ]] || _usage
 _OP="$1"
+# the documented invocation must answer for anyone, before the root gate
+case "${_OP}" in -h|--help|help) _usage ;; esac
 shift
 
 while [[ $# -gt 0 ]]; do
@@ -2895,10 +3094,27 @@ touch "${_LOG}" 2>/dev/null || _LOG=/tmp/aegir2boa-stage2.log
 [[ -n "${_SITE}" && "${_ALL}" = "YES" ]] && _die "--site and --all are mutually exclusive"
 case "${_ROUTE}" in ""|per-site|db-import) : ;; *) _die "--route must be per-site|db-import" ;; esac
 
+# Take the box-wide post-install upgrade guard back off the target. It is
+# read by 'boa in-octopus' on EVERY account created on that box afterwards,
+# by any actor - left behind, it silently skips the whole post-install chain
+# (dispatch, hosting-tasks, the LE completion and the enforced octopus
+# upgrade) for good. Best effort and safe to call twice: the point is that
+# no exit path can keep it.
+_guard_target_off() {
+  [[ -n "${_GUARD_TARGET}" ]] || return 0
+  ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_GUARD_TARGET}" \
+    "rm -f /root/.dont.upgrade.octopus.on.install.cnf" >/dev/null 2>&1
+  _GUARD_TARGET=""
+}
+
 # leaked-tempfile + lock cleanup on any exit (creds mktemp files live 600
 # under the 700 state dir; a _die between create and rm would otherwise
 # leave them). _STATE_DIR is set by the box-class requirement inside a verb.
+# Also the last chance to drop the target's upgrade guard: an operator Ctrl-C
+# or a _die anywhere inside the create window lands here (the INT/TERM trap
+# exits, which runs this), and every chained EXIT trap ends in _cleanup.
 _cleanup() {
+  _guard_target_off
   [[ -n "${_STATE_DIR:-}" ]] && rm -f "${_STATE_DIR}/.myd."* "${_STATE_DIR}/.certs."* 2>/dev/null
   # the lock dir holds a pid file - a bare rmdir leaves every lock stale
   [[ -n "${_LOCK:-}" && -d "${_LOCK}" ]] && { rm -f "${_LOCK}/pid" 2>/dev/null; rmdir "${_LOCK}" 2>/dev/null; }
@@ -2911,7 +3127,7 @@ trap 'exit 2' INT TERM
 # concurrent --live of the same scope (double nginx swap / double DB
 # surgery) are refused. Read-only verbs take no lock.
 case "${_OP}" in
-  check|status|target-status) : ;;
+  check|status|target-status|-h|--help|help) : ;;
   *)
     _LOCK="/var/run/aegir2boa-stage2.$(printf '%s' "${_OP}_${_ACCOUNT}_${_SITE}" | tr -c 'A-Za-z0-9_' '_').lock"
     if ! mkdir "${_LOCK}" 2>/dev/null; then

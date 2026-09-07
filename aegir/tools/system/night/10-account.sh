@@ -159,7 +159,8 @@ _relocate_backups_to_static_fs() {
   # for large accounts moved to attached storage -- which is exactly the case this
   # protects; on a default single-filesystem box this is a deliberate no-op.
   [ -e "${_static}" ] || return 0
-  # ${_acct}/static is 02775 group users, so the tenant can replace static/files
+  # ${_acct}/static is 02775 and group-writable by the account's shell
+  # identities, so the tenant can replace static/files
   # with a symlink of their choosing -- and every path below is derived from it,
   # with root doing the mkdir, the chown and the rsync at the far end. Both
   # gates here dereference, and a link to a tmpfs (/run, /dev/shm) even passes
@@ -343,6 +344,26 @@ _account_process() {
       fi
     done
   fi
+  # The ltd worker rebuilds ~/.drush inside its own unlock/relock span every
+  # three minutes; the relock below landing on such a rebuild leaves it half
+  # done (EPERM on every write). Hold this account FIRST -- with the marker
+  # in place the worker will not enter it (its per-account guard) -- so the
+  # wait only has to cover a worker already inside this account's own span.
+  # The marker carries this pid: a killed pass must not hold the account.
+  echo $$ > /run/night-account-${_HM_U}.pid
+  # The worker's pid file names its pid: a worker killed mid-pass leaves the
+  # file behind until clear.sh sweeps it, and the nightly must not stall on a
+  # dead one. Bounded on purpose; proceeding after the bound is the old race
+  # narrowed to "worker still inside this account", so it leaves a witness.
+  _nightWait=0
+  while [ -e "/run/manage_ltd_users.pid" ] \
+    && kill -0 "$(cat /run/manage_ltd_users.pid 2>/dev/null)" 2>/dev/null \
+    && [ ${_nightWait} -lt 180 ]; do
+    sleep 5
+    _nightWait=$((_nightWait + 5))
+  done
+  [ ${_nightWait} -ge 180 ] \
+    && echo "${_HM_U}: the ltd worker is still running after ${_nightWait} s; unlocking anyway"
   _disable_chattr ${_HM_U}.ftp
   rm -rf /home/${_HM_U}.ftp/drush-backups
   if [ -e "${_THIS_HM_SITE}" ]; then
@@ -410,6 +431,7 @@ _account_process() {
   _le_account_report
   _ghost_account_report
   _enable_chattr ${_HM_U}.ftp
+  rm -f /run/night-account-${_HM_U}.pid
 }
 
 ### Per-account helpers relocated from owl.sh (hostmaster LE cert +
@@ -847,8 +869,9 @@ _check_old_empty_platforms() {
 _purge_hits_under_account() {
   # Re-anchor each hit fed in on stdin before deleting it. The static/* globs
   # in _purge_cruft_machine are expanded by the shell, which resolves symlinks
-  # in every component, and ${_usEr}/static is 02775 group users -- so a
-  # tenant-planted link points the pattern at another account's tree. Gate on
+  # in every component, and ${_usEr}/static is 02775 and group-writable by the
+  # account's shell identities -- so a tenant-planted link points the pattern
+  # at another account's tree. Gate on
   # the RESOLVED path rather than refusing symlinks, because the site files/
   # and private/ links into this account's own store are legitimate. The store
   # may sit on attached storage under /mnt; nothing else is a supported
@@ -917,7 +940,8 @@ _purge_cruft_machine() {
     -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
 
   # These globs are expanded by the SHELL, which resolves symlinks in every
-  # component, and ${_usEr}/static is 02775 group users -- so a link planted at
+  # component, and ${_usEr}/static is 02775 and group-writable by the account's
+  # shell identities -- so a link planted at
   # any level aims the same pattern at another account's tree and root does the
   # deleting. find -P is not the fix: the site files/ and private/ components
   # are legitimately symlinks into this account's own store, and refusing them
@@ -988,8 +1012,35 @@ _purge_cruft_machine() {
 
   # Both writes below land inside this account's own tree, so the group is
   # derived from the account rather than hardcoded; 'users' on an unconverted box.
-  local _acctGrp
+  local _acctGrp _igHit
   _acctGrp=$(_acct_group "${_HM_U}")
+  # Drift probe: the credential-bearing paths (~/.drush aliases, backups,
+  # config, tools, the hostmaster sites, every drushrc.php under static) are
+  # re-grouped by the octopus arm only, so a stale writer or a hand chown
+  # between releases would sit unseen for a release cycle. One early-quit
+  # find; instgrp reclaim is the file half alone (no identities, no lock),
+  # idempotent, so the nightly may run it. An UNCONVERTED account is probed
+  # too: a copy or a root-run restore can land its tree in another
+  # account's named group there, and reclaim hands it back to the box-wide
+  # group -- the same exposure class, which the converted-only gate missed.
+  if [ -x "/opt/local/bin/instgrp" ]; then
+    # backups may be a link into the static store (relocated backups): probe
+    # where the files are. The static leg is bounded to the depth where a
+    # site's drushrc.php lives (<platform>[/web]/sites/<uri>/drushrc.php),
+    # so the clean case does not traverse every files/ tree.
+    _igBak=$(readlink -f -- "${_usEr}/backups" 2>/dev/null)
+    _igHit=$(find -P ${_usEr}/.drush ${_igBak:-${_usEr}/backups} ${_usEr}/config ${_usEr}/tools \
+      ${_usEr}/aegir/distro/*/sites -xdev \
+      ! -group "${_acctGrp}" ! -group www-data ! -group root -print -quit 2>/dev/null)
+    if [ -z "${_igHit}" ]; then
+      _igHit=$(find -P ${_usEr}/static -xdev -maxdepth 5 -name drushrc.php \
+        ! -group "${_acctGrp}" ! -group www-data ! -group root -print -quit 2>/dev/null)
+    fi
+    if [ -n "${_igHit}" ]; then
+      echo "DRIFT: ${_HM_U}: paths outside group ${_acctGrp} (first: ${_igHit}); running instgrp reclaim"
+      bash /opt/local/bin/instgrp reclaim ${_HM_U}
+    fi
+  fi
   chown -R ${_HM_U}:${_acctGrp} ${_usEr}/tools/le
   # static/ is tenant-writable (02775, no sticky) and trash/ is handed to the
   # tenant, so the tenant can swap the directory for a symlink. mkdir -p then

@@ -478,8 +478,9 @@ _find_fast_mirror_early() {
       echo "files.aoboshi.com" >> ${_ffList}
     fi
     if [ -e "${_ffList}" ]; then
-      _BROKEN_FFMIRR_TEST=$(grep "stuff" ${_ffMirr} 2>&1)
-      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
+      _BROKEN_FFMIRR_TEST=$(grep -E "ffmirror-ready|stuff" ${_ffMirr} 2>&1)
+      if [[ "${_BROKEN_FFMIRR_TEST}" =~ "ffmirror-ready" ]] \
+        || [[ "${_BROKEN_FFMIRR_TEST}" =~ "stuff" ]]; then
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _CHECK_MIRROR=$(bash ${_ffMirr} < ${_ffList} 2>&1)
         _USE_MIR="${_CHECK_MIRROR}"
@@ -619,6 +620,13 @@ _verify_boa_keys() {
       || [[ "${_hName}" =~ ".boa.io"($) ]]; then
       _allw=YES
     fi
+    # *.sslip.io hostnames (wildcard DNS to the embedded IP, zero setup)
+    # pass on the dev tree only: test boxes run the dev tree end to end
+    # without a per-box key; pro stays licensed outside the fleet domains.
+    if [ "${_tRee}" = "dev" ] \
+      && [[ "${_hName}" =~ ".sslip.io"($) ]]; then
+      _allw=YES
+    fi
     mkdir -p /var/opt
     rm -f /var/opt/_encN*
     curl ${_crlGet} "${_urlEnc}/${_encName}" -o /var/opt/_encN.${_encName}.tmp
@@ -646,6 +654,15 @@ _verify_boa_keys() {
           cat /var/opt/_encN_local.${_encName}.tmp > /var/aegir/key/barracuda_key.txt
         fi
       fi
+    elif [ "${_allw}" = "YES" ]; then
+      # A fleet-domain or sslip.io host is allowed on its name alone; the key
+      # fetch that failed here decides nothing for it. Right after a reboot
+      # (the codename drivers relaunch within 30 seconds) DNS may not answer
+      # yet, and refusing then stopped a running upgrade chain silently.
+      echo
+      echo "NOTE: the key server could not be reached; ${_hName} is allowed on the ${_tRee} tree by its hostname"
+      echo
+      rm -f /var/opt/_encN*
     else
       echo
       echo "Your system requires valid license to use this BOA version (${_tRee})"
@@ -1130,6 +1147,67 @@ _fix_sync_system_ssl_certs() {
 # of the deployed copy), so it must be a token the genuine file carries near
 # its end -- that placement is what makes it a truncation check as well.
 #
+# Per-fetch silence is deliberate (see _update_boa_tools): a failed fetch keeps
+# the working copy, arms no marker and is retried next pass, so a mirror hiccup
+# can never latch a tool as skipped. What was missing is the AGGREGATE: a pass
+# where all 148 fetches failed looked exactly like a pass where everything was
+# already current -- no line, rc 0 -- and a fresh box or a tree switch then kept
+# the previous tree's launchers with nothing to say so (seen 2026-09-06, cause
+# unpinned for a day for want of this line). Count the mute discards and say it
+# once per pass, in the log an operator actually reads: cron sends this script's
+# stdout to /dev/null.
+# A HEAD of the mirror ROOT cannot see the failure that actually costs a pass:
+# a mirror that serves / but not (yet) the versioned tree this box fetches from
+# -- an rsync mid-pull, or a tree that host never pulled. Every fetch under
+# ${_urlHmr} then fails and, one by one, silently. Probe the exact tree by
+# CONTENT, because a missing path here answers 200 with an HTML stub, and fall
+# back to the publisher rather than spending the pass on a mirror that has
+# nothing to give.
+_mirror_serves_tree() {
+  local _mir="$1" _probe
+  _probe=$(curl ${_crlGet} --max-time 30 \
+    "https://${_mir}/versions/${_tRee}/boa/aegir/conf/version/barracuda-version.txt" 2> /dev/null)
+  [[ "${_probe}" =~ ^BOA- ]]
+}
+
+_use_mirror_serving_tree() {
+  local _ctx="$1"
+  _mirror_serves_tree "${_USE_MIR}" && return 0
+  if [ "${_USE_MIR}" != "files.boa.io" ] && _mirror_serves_tree files.boa.io; then
+    echo "OOPS: ${_USE_MIR} serves no ${_tRee} tree (${_ctx}); using files.boa.io"
+    [ -d "${_pthLog}" ] \
+      && echo "$(date) OOPS: ${_USE_MIR} serves no ${_tRee} tree (${_ctx}); using files.boa.io" \
+        >> ${_pthLog}/mirror.incident.log
+    _USE_MIR=files.boa.io
+    _urlDev="https://${_USE_MIR}/dev"
+    return 0
+  fi
+  echo "OOPS: no mirror is serving the ${_tRee} tree right now (${_ctx})"
+  [ -d "${_pthLog}" ] \
+    && echo "$(date) OOPS: no mirror is serving the ${_tRee} tree right now (${_ctx})" \
+      >> ${_pthLog}/mirror.incident.log
+  return 1
+}
+
+_fetch_failed_note() {
+  _FETCH_FAIL_CNT=$(( ${_FETCH_FAIL_CNT:-0} + 1 ))
+  _FETCH_FAIL_LAST="$1"
+  _FETCH_FAIL_URL="$2"
+  _FETCH_FAIL_COD="$3"
+}
+
+_fetch_failed_report() {
+  local _ctx="$1" _msg
+  [ "${_FETCH_FAIL_CNT:-0}" -gt 0 ] 2> /dev/null || return 0
+  _msg="OOPS: ${_FETCH_FAIL_CNT} fetch(es) failed in ${_ctx} from ${_USE_MIR}"
+  _msg="${_msg} (last: ${_FETCH_FAIL_LAST} ${_FETCH_FAIL_COD}, ${_FETCH_FAIL_URL})"
+  echo "${_msg}"
+  if [ -d "${_pthLog}" ]; then
+    echo "$(date) ${_msg}" >> ${_pthLog}/mirror.incident.log
+  fi
+  _FETCH_FAIL_CNT=0
+}
+
 _fetch_versioned() {
   local _dst="$1" _url="$2" _srl="$3"
   shift 3
@@ -1278,8 +1356,11 @@ _fetch_versioned() {
   # is absent on this mirror right now: discard it and keep the working copy,
   # exactly as for an empty fetch. This also matters more now that the block
   # above revalidates on a cadence, not only on a serial change.
+  local _noted=NO
   if [[ -s "${_new}" ]] && head -c 64 "${_new}" | grep -qiE '^[[:space:]]*<(html|!doctype|head)'; then
     rm -f "${_new}"
+    _fetch_failed_note "${_cnm}" "${_url}" "soft-404 (HTML stub)"
+    _noted=YES
   fi
   # Optional content sentinel: a caller can require a token the genuine file
   # carries NEAR ITS END (the check reads only the payload's last 4 KiB, so
@@ -1295,13 +1376,31 @@ _fetch_versioned() {
   if [[ -s "${_new}" ]]; then
     if [[ -e "${_dst}" ]] && cmp -s "${_new}" "${_dst}"; then
       rm -f "${_new}"                       # already current -- no disruption
+      # A serial CHANGE promises new content, so identical bytes mean the
+      # mirror answering us has not caught up with the publish yet (a passive
+      # mirror pulls the tree once a minute; measured 2026-09-06: a box fetched
+      # 66 s after the origin moved, received the previous bytes, and armed the
+      # new serial over them -- pinned stale until the revalidation window).
+      # Do not arm the marker on such a fetch; the next pass asks again. Bounded:
+      # a serial bumped without a content change must not refetch forever, so
+      # after an hour of identical answers the marker is armed anyway. A first
+      # install (no marker of any serial yet) keeps arming: the tarball-deployed
+      # copy legitimately equals the published one.
+      if [[ ! -e "${_ctl}" ]] && ls "${_pthLog}/${_cnm}.ctrl."* >/dev/null 2>&1; then
+        local _stl="${_pthLog}/${_cnm}.stale.${_srl}.${_tRee}.${_xSrl}.pid"
+        if [[ -z "$(find "${_stl}" -mmin +60 2>/dev/null)" ]]; then
+          [[ -e "${_stl}" ]] || touch "${_stl}"
+          echo "The ${_cnm} ${_srl} fetch returned the bytes already deployed -- mirror not caught up, retrying next pass"
+          return 0
+        fi
+      fi
     else
       chmod "${_mode}" "${_new}"
       chown "${_own}" "${_new}"
       mv -f "${_new}" "${_dst}"             # first install or self-heal (atomic)
     fi
     [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
-    rm -f "${_pthLog}/${_cnm}.ctrl."*
+    rm -f "${_pthLog}/${_cnm}.ctrl."* "${_pthLog}/${_cnm}.stale."*
     touch "${_ctl}"                         # (re-)arm marker + revalidation window
   elif [[ "${_cod}" == "304" ]]; then
     # The server confirmed the deployed copy is current, so this is success with an
@@ -1314,6 +1413,9 @@ _fetch_versioned() {
     touch "${_ctl}"
   else
     rm -f "${_new}"                         # fetch failed -- keep the working copy
+    # One note per failed fetch: a soft 404 already counted itself above, and
+    # its empty temp then lands here too.
+    [ "${_noted}" = "YES" ] || _fetch_failed_note "${_cnm}" "${_url}" "${_cod:-transport}"
   fi
   return 0
 }
@@ -1689,17 +1791,17 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f76
     _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f00
     _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f95
-    _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f96
+    _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f95
     _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f95
     _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f02
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f79
     _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f76
     _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f82
-    _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f98
+    _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f97
     _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f90
     _fetch_versioned /var/xdrago/monitor/check/hackftp.sh "${_urlHmr}/tools/system/monitor/check/hackftp.sh" f94
-    _fetch_versioned /var/xdrago/monitor/check/segfault_alert.pl "${_urlHmr}/tools/system/monitor/check/segfault_alert.pl" f94
+    _fetch_versioned /var/xdrago/monitor/check/segfault_alert.pl "${_urlHmr}/tools/system/monitor/check/segfault_alert.pl" f93
     _fetch_versioned /var/xdrago/monitor/check/sqlcheck.sh "${_urlHmr}/tools/system/monitor/check/sqlcheck.sh" f98
     _fetch_versioned /var/xdrago/monitor/check/bind9.sh "${_urlHmr}/tools/system/monitor/check/bind9.sh" f00
     _fetch_versioned /var/xdrago/monitor/check/proxysql.sh "${_urlHmr}/tools/system/monitor/check/proxysql.sh" f00
@@ -1713,10 +1815,10 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/convert_guard.sh "${_urlHmr}/tools/system/monitor/check/convert_guard.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/hostname_sync.sh "${_urlHmr}/tools/system/monitor/check/hostname_sync.sh" f02
     _fetch_versioned /etc/init.d/clean-boa-env "${_urlHmr}/conf/var/clean-boa-env" f95
-    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f83 --guard mysql_backup.sh
+    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f80 --guard mysql_backup.sh
     _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
     _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f86
-    _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f86 --guard mysql_cluster_backup.sh
+    _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f83 --guard mysql_cluster_backup.sh
     _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f65
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f80
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f83
@@ -1751,11 +1853,11 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f92
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f89
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f97
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f76
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f75
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f73
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f70
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f70
-    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f79
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f68
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f67
+    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f78
     _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f79
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
@@ -1815,14 +1917,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f34.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f17.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f34.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f17.${_tRee}.${_xSrl}.pid
       rm -f /var/xdrago/manage_ltd_users.sh.old
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
       [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
@@ -1872,7 +1974,7 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/guest-fire.sh "${_urlHmr}/tools/system/guest-fire.sh" f88
 
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/xdrago" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
-    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f81
+    && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f80
 
   # Re-fetch trigger for the current lshell.conf. The sentinel MUST be a
   # literal that exists in the shipped file (here the Landlock comment,
@@ -1882,11 +1984,17 @@ _update_agents() {
   # (as-shipped E2E catch).
   if ! grep -q "child-process confinement" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
+    # The template that arrives carries node, npm, npx and scp; the plan check
+    # below strips them again, but only once per release serial. Dropping its
+    # marker with the fetch ctrl keeps a mid-serial re-fetch from re-granting
+    # those commands to every tenant until the next release.
+    rm -f ${_pthLog}/node.lshell-fix-npx.ctrl.*
+    rm -f ${_pthLog}/node.manage.lshell.ctrl.*
   fi
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/lshell.ctrl.f84.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/lshell.ctrl.f83.${_tRee}.${_xSrl}.pid" ]; then
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
@@ -1895,7 +2003,7 @@ _update_agents() {
       if [ -e "/var/xdrago/conf/lshell.conf" ]; then
         chmod 644 /var/xdrago/conf/lshell.conf
         chown root:root /var/xdrago/conf/lshell.conf
-        touch ${_pthLog}/lshell.ctrl.f84.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/lshell.ctrl.f83.${_tRee}.${_xSrl}.pid
       else
         mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
       fi
@@ -2287,6 +2395,11 @@ _update_agents() {
         _validIPr=
         _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
         _dscUsr="/data/disk/${_tUsr}"
+        ### Resolve the owning group per account: this loop used to inherit
+        ### whatever the FPM/CLI loop above left behind, so the chowns below
+        ### stamped every tree with the last account's group (or, with that
+        ### loop's gate already closed, fell back to the login group).
+        _usrGroup=$(_acct_group "${_tUsr}")
         _hmPf=$(cat ${_dscUsr}/.drush/hostmaster.alias.drushrc.php \
           | grep "root'" \
           | cut -d: -f2 \
@@ -2496,6 +2609,7 @@ _update_agents() {
       touch ${_pthLog}/redis_backdrop.ctrl.${_xSrl}.log
     fi
   fi
+  _fetch_failed_report "the agents pass"
 }
 
 _fix_core_dgd() {
@@ -3010,22 +3124,53 @@ _if_fix_lshell() {
     [ ! -d "/usr/local/etc" ] && mkdir -p /usr/local/etc
     ln -sfn /etc/lshell.conf /usr/local/etc/lshell.conf
   fi
-  _LSHELL_VRN=0.11.3
+  _LSHELL_VRN=0.11.8
+  # 0.11.x needs Python 3.10+; a box whose python3 is older (chimaera 3.9,
+  # beowulf 3.7) keeps 0.10, which stays installable there so a broken shell
+  # on a legacy box still heals instead of failing the 0.11 build every pass.
+  _LSHELL_LEGACY_VRN=0.10
+  _pyMinor=$(python3 -c 'import sys; print(sys.version_info[1])' 2> /dev/null)
+  if [ -n "${_pyMinor}" ] && [ "${_pyMinor}" -lt 10 ] 2> /dev/null; then
+    _LSHELL_VRN="${_LSHELL_LEGACY_VRN}"
+  fi
   _PATH_LSHELL="${_usrBin}/lshell"
-  _LSHELL_CHK_VRN=0.11.3
+  _LSHELL_CHK_VRN="${_LSHELL_VRN}"
+  # This fetched path keeps lshell current like every other key tool (a
+  # publish to a tree is its rollout), and it HEALS: a box whose lshell is
+  # missing or broken gets its version back on the next quiet pass without
+  # waiting for a barracuda upgrade (the incident case).
+  local _LSHELL_NOW _LSHELL_BROKEN _LSHELL_SRC_MISSING
   _LSHELL_FORCE_REINSTALL=NO
+  _LSHELL_BROKEN=NO
   _isLshell="$(which lshell)"
-  _LSHELL_ITD=$(${_isLshell} --version 2>&1 \
-    | tr -d "\n" \
+  # Broken shapes are read on the RAW output: the cut|awk token keeps one
+  # word after the first hyphen, which turns "bad interpreter: ..." into
+  # "bash:" and a Traceback into a path fragment -- neither matches anything.
+  _LSHELL_RAW=$(${_isLshell} --version 2>&1 | tr -d "\n")
+  _LSHELL_ITD=$(printf '%s' "${_LSHELL_RAW}" \
     | cut -d"-" -f2 \
     | awk '{ print $1}' 2>&1)
   if [ -z "${_isLshell}" ] \
     || [ -z "${_PATH_LSHELL}" ] \
-    || [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
-    || [[ "${_LSHELL_ITD}" =~ "Traceback" ]] \
-    || [[ "${_LSHELL_ITD}" =~ "bad interpreter" ]] \
-    || [[ "${_LSHELL_ITD}" =~ "ImportError" ]]; then
+    || [ -z "${_LSHELL_ITD}" ] \
+    || [[ "${_LSHELL_RAW}" =~ "Traceback" ]] \
+    || [[ "${_LSHELL_RAW}" =~ "bad interpreter" ]] \
+    || [[ "${_LSHELL_RAW}" =~ "ImportError" ]] \
+    || [[ "${_LSHELL_RAW}" =~ "ModuleNotFoundError" ]]; then
+    _LSHELL_BROKEN=YES
     _LSHELL_FORCE_REINSTALL=YES
+  elif [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ]; then
+    _LSHELL_FORCE_REINSTALL=YES
+  fi
+  # A version step whose tarball is not on the mirror yet is retried once an
+  # hour, not on every pass: the apt, pip and fetch preamble below is the
+  # price of a real reinstall, not of a missing file. A broken shell never
+  # waits.
+  _LSHELL_SRC_MISSING="${_pthLog}/lshell-src-missing-${_LSHELL_VRN}.log"
+  if [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ] \
+    && [ "${_LSHELL_BROKEN}" = "NO" ] \
+    && [ -n "$(find "${_LSHELL_SRC_MISSING}" -mmin -60 2>/dev/null)" ]; then
+    _LSHELL_FORCE_REINSTALL=NO
   fi
   if [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ]; then
     [ -f "/etc/lshell.conf" ] && cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}
@@ -3042,35 +3187,55 @@ _if_fix_lshell() {
     if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
       || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
-      ${_usePip} install --upgrade pip --root-user-action ignore
+      # PEP 668 (python 3.11+) refuses a system-wide pip upgrade without it, so
+      # without the flag this printed a full "error: externally-managed-environment"
+      # block into every lshell install log and changed nothing. The upgrade arm in
+      # lib/functions/system.sh.inc asks the same way, and the two must not disagree
+      # about the state of the interpreter they share.
+      ${_usePip} install --upgrade pip --break-system-packages --root-user-action ignore
     else
       ${_usePip} install --upgrade pip
     fi
     cd /var/opt
     rm -rf lshell*
     _get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
-    for _Files in `find /var/opt/lshell-${_LSHELL_VRN} -type f`; do
-      sed -i "s/kicked/logged/g" ${_Files} &> /dev/null
-      wait
-      sed -i "s/Kicked/Logged/g" ${_Files} &> /dev/null
-      wait
-    done
-    # No pre-emptive removal of the installed package: pip replaces the
-    # previous dist only after the new one has BUILT, so a failed fetch or
-    # build leaves the old lshell in place instead of locking every shell
-    # user out. Verify the result and say so when it did not land.
-    cd /var/opt/lshell-${_LSHELL_VRN}
-    _PIP_TEST=$(${_usePip} --version 2>&1)
-    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
-      ${_usePip} install . --break-system-packages --root-user-action ignore
+    # A pin that runs ahead of its tarball on the mirror must not turn every
+    # pass into a failed build that still kicks the logged-in shell users:
+    # without an extracted source tree there is nothing to install, so the
+    # installed lshell is kept, the kick below is skipped and the retry
+    # marker holds the next attempts to once an hour.
+    _LSHELL_NOW="${_LSHELL_ITD}"
+    if [ -e "/var/opt/lshell-${_LSHELL_VRN}/pyproject.toml" ] \
+      || [ -e "/var/opt/lshell-${_LSHELL_VRN}/setup.py" ]; then
+      rm -f "${_LSHELL_SRC_MISSING}"
+      for _Files in `find /var/opt/lshell-${_LSHELL_VRN} -type f`; do
+        sed -i "s/kicked/logged/g" ${_Files} &> /dev/null
+        wait
+        sed -i "s/Kicked/Logged/g" ${_Files} &> /dev/null
+        wait
+      done
+      # No pre-emptive removal of the installed package: pip replaces the
+      # previous dist only after the new one has BUILT, so a failed fetch or
+      # build leaves the old lshell in place instead of locking every shell
+      # user out. Verify the result and say so when it did not land.
+      cd /var/opt/lshell-${_LSHELL_VRN}
+      _PIP_TEST=$(${_usePip} --version 2>&1)
+      if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
+        || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
+        || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
+        ${_usePip} install . --break-system-packages --root-user-action ignore
+      else
+        ${_usePip} install .
+      fi
+      _LSHELL_NOW=$(${_PATH_LSHELL} --version 2>&1 | tr -d "\n" | cut -d"-" -f2 | awk '{ print $1}' 2>&1)
+      if [ "${_LSHELL_NOW}" != "${_LSHELL_CHK_VRN}" ]; then
+        echo "OOPS: lshell ${_LSHELL_VRN} did not install (have: ${_LSHELL_NOW}); previous version kept"
+      else
+        touch ${_pthLog}/lshell-fix-build-${_LSHELL_VRN}.log
+      fi
     else
-      ${_usePip} install .
-    fi
-    _LSHELL_NOW=$(${_PATH_LSHELL} --version 2>&1 | tr -d "\n" | cut -d"-" -f2 | awk '{ print $1}' 2>&1)
-    if [ "${_LSHELL_NOW}" != "${_LSHELL_CHK_VRN}" ]; then
-      echo "OOPS: lshell ${_LSHELL_VRN} did not install (have: ${_LSHELL_NOW}); previous version kept"
+      echo "OOPS: no lshell-${_LSHELL_VRN} source tree in /var/opt (fetch or extract failed); installed lshell ${_LSHELL_ITD:-none} kept"
+      touch "${_LSHELL_SRC_MISSING}"
     fi
     [ -f "/etc/lshell.conf-bak-${_LSHELL_VRN}" ] && cp -af /etc/lshell.conf-bak-${_LSHELL_VRN} /etc/lshell.conf
     rm -f /etc/logrotate.d/lshell
@@ -3078,10 +3243,14 @@ _if_fix_lshell() {
     addgroup --system ltd-shell-more &> /dev/null
     mkdir -p /var/log/lsh
     chown :lshellg /var/log/lsh
-    chmod 770 /var/log/lsh &> /dev/null
-    # Kill all non-root logged-in users
-    who | awk '$1 !~ /^root$/ { cmd = "pkill -KILL -u " $1; system(cmd) }'
-    touch ${_pthLog}/lshell-fix-build-${_LSHELL_VRN}.log
+    # 1770: tenants write their own log here; the sticky bit keeps one off another's
+    chmod 1770 /var/log/lsh &> /dev/null
+    # Kill all non-root logged-in users, so the new lshell takes effect;
+    # nothing to take effect when it did not land
+    if [ "${_LSHELL_NOW}" = "${_LSHELL_CHK_VRN}" ] \
+      && [ "${_LSHELL_NOW}" != "${_LSHELL_ITD}" ]; then
+      who | awk '$1 !~ /^root$/ { cmd = "pkill -KILL -u " $1; system(cmd) }'
+    fi
   fi
   if [ -e "${_usrBin}/lshell" ]; then
     chown root:users ${_usrBin}/lshell
@@ -3090,6 +3259,163 @@ _if_fix_lshell() {
       ln -sfn ${_usrBin}/lshell /usr/bin/lshell &> /dev/null
     fi
   fi
+}
+
+###
+### The dump callers chunk large tables in parallel again on mydumper 1.x
+### and reach every box within minutes of a publish, while the package pin
+### in BARRACUDA.sh.txt lands only on a barracuda pass. Left to that, a box
+### runs the adapted callers against the old build, with chunking off and a
+### large table dumped and restored on one thread, until its next full
+### upgrade. Bring the packaged build to the pin on this pass instead: the
+### same deb from the same mirror path barracuda fetches, one completed
+### attempt per pin recorded in a marker -- a pass that changed nothing
+### leaves no marker and retries -- the barracuda pass staying the
+### fallback. Only the packaged layout is handled here; a source build and
+### its myloader are reconciled by barracuda. The pin below moves together
+### with _MYQUICK_VRN_TWO in BARRACUDA.sh.txt; the commit guard checks
+### parity.
+###
+### Busy when an install, a dump or a restore may be running: the markers
+### are read the way their own readers read them -- a pid-bearing lock
+### counts only while its owner is alive, the maintenance marker only
+### while younger than four hours -- so a lock leaked by a killed run
+### cannot hold the pin off a box.
+_myquick_busy() {
+  local _mqPidFile _mqPid
+  _install_in_flight && return 0
+  for _mqPidFile in /run/boa_sql_backup.pid /run/xoct.verb.pid /run/xcopy.verb.pid; do
+    [ -s "${_mqPidFile}" ] || continue
+    _mqPid=$(tr -dc '0-9' < "${_mqPidFile}" 2>/dev/null | head -c 12)
+    [ -n "${_mqPid}" ] && kill -0 "${_mqPid}" 2>/dev/null && return 0
+  done
+  [ -n "$(find /run/boa_sql_cluster_backup.pid -mmin -720 2>/dev/null)" ] && return 0
+  [ -n "$(find /run/boa_sql_maintenance.pid -mmin -240 2>/dev/null)" ] && return 0
+  pgrep -x mydumper > /dev/null 2>&1 && return 0
+  pgrep -x myloader > /dev/null 2>&1 && return 0
+  return 1
+}
+
+_if_fix_myquick() {
+  _MYQUICK_VRN_TWO=1.0.5-1
+  local _mqCode="" _mqDeb _mqNow _mqWas _mqVer _mqRan _mqHelp _mqMark _mqLocal
+  _mqMark="${_pthLog}/myquick-deb-${_MYQUICK_VRN_TWO}.log"
+  _mqLocal="/usr/local/bin/myloader"
+  case "${_OS_CODE}" in
+    excalibur|trixie) _mqCode=trixie ;;
+    daedalus|bookworm) _mqCode=bookworm ;;
+    chimaera|bullseye) _mqCode=bullseye ;;
+    *) return 0 ;;
+  esac
+  [ -x "/usr/bin/mydumper" ] || return 0
+  ### A marker with an outcome line is a completed attempt. An empty one
+  ### is the signature of the first cut of this arm, which touched it on
+  ### failure too, so it must not stop the box from being looked at again.
+  [ -s "${_mqMark}" ] && return 0
+  ### Packaged layout only: /usr/local/bin/mydumper absent, dangling, or
+  ### the symlink barracuda points at the packaged binary. A real file
+  ### there is a source build, left to barracuda's reconcile.
+  if [ -e "/usr/local/bin/mydumper" ] \
+    && [ "$(readlink -f /usr/local/bin/mydumper 2>/dev/null)" != "/usr/bin/mydumper" ]; then
+    return 0
+  fi
+  _mqWas=$(/usr/bin/mydumper -V 2>&1 \
+    | grep -m1 "^mydumper v" \
+    | cut -d" " -f2 \
+    | tr -d "v,")
+  [ "${_mqWas}" = "${_MYQUICK_VRN_TWO}" ] && return 0
+  ### Never under an install or upgrade (barracuda installs this package
+  ### itself and stages its deb in /var/opt) and never during a dump or a
+  ### restore: the nightly and cluster scripts, xoct and xcopy hold their
+  ### markers for the whole run, and a swap between two databases would
+  ### hand the remaining ones to the new build. Asked again after the
+  ### fetch, which can take minutes.
+  _myquick_busy && return 0
+  _mqDeb="mydumper_${_MYQUICK_VRN_TWO}.${_mqCode}_amd64.deb"
+  _mqRan=NO
+  rm -rf /var/opt/mydumper_*
+  curl ${_crlGet} "${_urlDev}/${_mqDeb}.gz" -o "/var/opt/${_mqDeb}.gz"
+  [ -e "/var/opt/${_mqDeb}.gz" ] && gunzip -q "/var/opt/${_mqDeb}.gz"
+  ### The mirror answers a missing file with a page rather than a 404, and
+  ### the file name is built here, not confirmed by the mirror: the deb's
+  ### own Version field, pin and ~codename suffix together, is the proof
+  ### that this is the build asked for, checked before dpkg replaces
+  ### anything.
+  if [ -e "/var/opt/${_mqDeb}" ]; then
+    _mqVer=$(dpkg-deb -f "/var/opt/${_mqDeb}" Version 2>/dev/null)
+    if [ "${_mqVer}" = "${_MYQUICK_VRN_TWO}~${_mqCode}" ]; then
+      if _myquick_busy; then
+        rm -rf /var/opt/mydumper_*
+        return 0
+      fi
+      dpkg -i "/var/opt/${_mqDeb}" &> /dev/null
+      _mqRan=$?
+    fi
+  fi
+  rm -rf /var/opt/mydumper_*
+  _mqNow=$(/usr/bin/mydumper -V 2>&1 \
+    | grep -m1 "^mydumper v" \
+    | cut -d" " -f2 \
+    | tr -d "v,")
+  if [ "${_mqNow}" != "${_MYQUICK_VRN_TWO}" ]; then
+    ### dpkg swaps the binary before anything can be checked, so say which
+    ### state the box is in. Nothing changed (no usable package from the
+    ### mirror, the dpkg lock held): no marker, a later pass retries. The
+    ### package went in but its binary does not run: the same package
+    ### would fail the same way, so the marker records it and the
+    ### barracuda pass takes over.
+    if [ "${_mqRan}" = "NO" ]; then
+      echo "OOPS: MyQuick ${_MYQUICK_VRN_TWO}: no ${_mqCode} package of that version came from the mirror; nothing changed, retrying on a later pass"
+    elif [ "${_mqRan}" != "0" ] && [ "${_mqNow}" = "${_mqWas}" ]; then
+      echo "OOPS: MyQuick ${_MYQUICK_VRN_TWO}: dpkg failed (rc ${_mqRan}) on the ${_mqCode} package; ${_mqWas} kept, retrying on a later pass"
+    else
+      echo "$(date) ${_mqCode} package: dpkg rc ${_mqRan} over ${_mqWas}, mydumper now reports: ${_mqNow}" > "${_mqMark}"
+      echo "OOPS: MyQuick ${_MYQUICK_VRN_TWO}: after dpkg (rc ${_mqRan}) of the ${_mqCode} package over ${_mqWas} mydumper reports: ${_mqNow}; recorded in ${_mqMark}"
+    fi
+    return 0
+  fi
+  ln -sfn /usr/bin/mydumper /usr/local/bin/mydumper
+  ### The myloader path the callers resolve, derived as barracuda derives
+  ### it for the packaged pair: 1.x removed --overwrite-tables, so older
+  ### callers get a translating wrapper; a build taking both styles gets a
+  ### plain symlink. A real file there is the leftover of a source build;
+  ### barracuda's wrapper derivation removes it in this layout, and so
+  ### does this, or the callers would pair the new mydumper with a
+  ### myloader of another release.
+  _mqHelp=$(/usr/bin/myloader --help 2>&1)
+  if echo "${_mqHelp}" | grep -q "Usage"; then
+    rm -f "${_mqLocal}"
+    if ! echo "${_mqHelp}" \
+      | grep -qE "^[[:space:]]+(-o, )?--overwrite-tables[[:space:]]"; then
+      cat > "${_mqLocal}" <<MYLOADERHDR
+#!/bin/bash
+# BOA myloader wrapper
+# myloader >= 1.0 removed --overwrite-tables; translate for older callers.
+# The target is pinned to the build the installed mydumper came from.
+_MYL_REAL=/usr/bin/myloader
+MYLOADERHDR
+      cat >> "${_mqLocal}" <<'MYLOADEREOF'
+[[ -x "${_MYL_REAL}" ]] || _MYL_REAL=/usr/local/bin/myloader.bin
+[[ -x "${_MYL_REAL}" ]] || _MYL_REAL=/usr/bin/myloader
+_MYL_ARGS=()
+for _MYL_A in "$@"; do
+  if [[ "${_MYL_A}" == "--overwrite-tables" ]]; then
+    _MYL_ARGS+=("--drop-table=DROP")
+  else
+    _MYL_ARGS+=("${_MYL_A}")
+  fi
+done
+exec "${_MYL_REAL}" "${_MYL_ARGS[@]}"
+MYLOADEREOF
+      chmod 755 "${_mqLocal}"
+    else
+      ln -sfn /usr/bin/myloader "${_mqLocal}"
+    fi
+  fi
+  ### Cron discards every line this pass prints, so the outcome lives in
+  ### the marker.
+  echo "$(date) ${_mqCode} package installed over ${_mqWas}: mydumper ${_mqNow}" > "${_mqMark}"
+  echo "INFO: MyQuick ${_MYQUICK_VRN_TWO} installed from the ${_mqCode} package"
 }
 
 _fix_start_stop_ports_solr() {
@@ -4240,6 +4566,7 @@ _if_boa_key_tools_update_allowed() {
 
 _update_boa_tools() {
   mkdir -p ${_usrBin}
+  _FETCH_FAIL_CNT=0
   # The ONE home for the core tool set every box carries. Runs on EVERY pass
   # (installer, Skynet-active, and _SKYNET_MODE=OFF key-tools paths alike) --
   # the old once-per-release updateBOAtools latch is retired, so a tool update
@@ -4302,10 +4629,10 @@ CSFSTANDBY
   if [ -e "${_pthLog}" ]; then
     _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f91
     _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f88
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f93
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f92
     _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f93
     _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f97
-    _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f97
+    _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f96
   fi
   mkdir -p ${_optBin}
   # Per-file, serial-gated, retry-on-failure fetch of the core /opt/local/bin
@@ -4320,31 +4647,32 @@ CSFSTANDBY
   if [ -e "${_pthLog}" ]; then
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f97 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
-    _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f94 --guard /local/bin/autobeowulf
-    _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f94 --guard /local/bin/autoexcalibur
+    _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f88 --guard /local/bin/autobeowulf
+    _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f88 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f76 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f38 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f33 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
-    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f83 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f68 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f68 --guard /local/bin/boa
-    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f96 --guard duplicity
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f82 --guard duplicity
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f61 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f60 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f94 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
-    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f83 --guard duplicity
-    _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/${_tBn}/ffdevuan" f95 --guard /local/bin/ffdevuan
-    _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f98 --guard /local/bin/ffmirror
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f82 --guard duplicity
+    _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/${_tBn}/ffdevuan" f93 --guard /local/bin/ffdevuan
+    _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f97 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f97 --guard /local/bin/fixrepo
+    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f91 --guard /local/bin/instgrp
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f94 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f90 --guard /local/bin/lock.inc
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f21 --guard duplicity
-    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f26 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f80 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f18 --guard duplicity
+    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f25 --mode 755 --guard duplicity
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f78 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f94 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
-    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f83 --guard /local/bin/renameaegirhost
+    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f82 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f85 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f98 --guard /local/bin/symlinkinfo
@@ -4357,23 +4685,23 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f98 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f73 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f13 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f47 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f62 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f92 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f30 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f86 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f95 --guard /local/bin/solrtrim
-    _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f95 --guard /local/bin/autochimaera
-    _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f95 --guard /local/bin/autodaedalus
-    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f86 --guard /local/bin/autoinit
-    _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f94 --guard /local/bin/automini
-    _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f98 --mode 755 --guard /local/bin/backchain
+    _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f89 --guard /local/bin/autochimaera
+    _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f89 --guard /local/bin/autodaedalus
+    _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f78 --guard /local/bin/autoinit
+    _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f92 --guard /local/bin/automini
+    _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f97 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f95 --guard /local/bin/codebasecheck
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f94 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
     _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f93 --guard /local/bin/memorytuner
     _fetch_versioned ${_optBin}/mergecsf "${_urlHmr}/${_tBn}/mergecsf" f99 --guard /local/bin/mergecsf
-    _fetch_versioned ${_optBin}/mycnfup "${_urlHmr}/${_tBn}/mycnfup" f97 --guard /local/bin/mycnfup
+    _fetch_versioned ${_optBin}/mycnfup "${_urlHmr}/${_tBn}/mycnfup" f96 --guard /local/bin/mycnfup
     _fetch_versioned ${_optBin}/randpass "${_urlHmr}/${_tBn}/randpass" f99 --mode 755 --guard /local/bin/randpass
     _fetch_versioned ${_optBin}/setprio "${_urlHmr}/${_tBn}/setprio" f99 --guard /local/bin/setprio
     _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f99 --guard /local/bin/smtpgapps
@@ -4396,7 +4724,7 @@ CSFSTANDBY
     # tail-anchored sentinel refuses a wrong OR truncated payload before it
     # can reach client shells -- websh invokes its dash forwarder near EOF,
     # so the token must keep living in websh's last 4 KiB.
-    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f94 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
+    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f90 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
     _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f99 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
   fi
 
@@ -4457,7 +4785,7 @@ CSFSTANDBY
   chmod 700 ${_optBin}/synproxy* &> /dev/null
 
   # _SYS (700): system utilities
-  chmod 700 ${_optBin}/{aptfast,codebasecheck,dhcpfix,fancynow,fixmounts,fixrepo,mergecsf,screenfetch,vmnetfix} &> /dev/null
+  chmod 700 ${_optBin}/{aptfast,codebasecheck,dhcpfix,fancynow,fixmounts,fixrepo,instgrp,mergecsf,screenfetch,vmnetfix} &> /dev/null
 
   # _SYS (700): cleanup tools
   chmod 700 ${_optBin}/{aptcleanup,autosymlink,sqlclean,updatesymlinks,verifyvhostsdns,vhostcheck} &> /dev/null
@@ -4465,6 +4793,7 @@ CSFSTANDBY
   # _MISC (755): misc user-space utilities
   chmod 755 ${_optBin}/{backchain,mybackup,randpass,sqlmagic,thinkdifferent,websh} &> /dev/null
 
+  _fetch_failed_report "the tools pass"
 }
 
 # Ensure /usr/sbin/ipset and /sbin/ipset both resolve to the actual ipset binary.
@@ -4524,6 +4853,7 @@ _if_update_boa_key_tools_only() {
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
   else
+    _use_mirror_serving_tree "key tools only"
     _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
   fi
   _LSB_TEST="$(which lsb_release)"
@@ -4807,6 +5137,7 @@ _boa_setup() {
     echo "ERROR: ${_USE_MIR} is not available, please try later"
     exit 1
   else
+    _use_mirror_serving_tree "setup"
     _urlHmr="https://${_USE_MIR}/versions/${_tRee}/boa/aegir"
   fi
 
@@ -5550,6 +5881,7 @@ if [ "$(id -u)" -eq 0 ]; then
     _fix_ping_perms
     _fix_fpm_process_max
     _if_fix_lshell
+    _if_fix_myquick
     _fix_node_in_lshell_access
     # _fix_php_in_lshell_access
     _fix_authorized_keys

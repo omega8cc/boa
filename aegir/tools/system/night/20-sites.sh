@@ -478,7 +478,7 @@ _fix_llms_txt() {
     && [ ! -e "${_Plr}/profiles/hostmaster" ] \
     && [ -d "${_Dir}/files" ]; then
     # curl -o re-opens the temp BY NAME after the fetch, so a temp in the site
-    # dir can be swapped for a symlink during the ~10s retry window whenever
+    # dir can be swapped for a symlink during the bounded retry window whenever
     # _fix_static_permissions has that dir at 0775. Stage in the root-only 0700
     # dir under the account root instead. NB the mv below is an atomic rename
     # only while the store shares the account's filesystem: files/ may be a
@@ -489,7 +489,13 @@ _fix_llms_txt() {
     [ -n "${_LLMS_STG}" ] \
       && _LLMS_TMP=$(mktemp "${_LLMS_STG}/llms.XXXXXX" 2>/dev/null)
     if [ -n "${_LLMS_TMP}" ]; then
-      curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
+      # The site answering here may be one of our own 503 stubs (suspended,
+      # off-line, mid-migration), which send Retry-After: 3600, and curl sleeps
+      # that between retries; --max-time bounds a single transfer only, so
+      # --retry-max-time is what keeps one such site from parking this account's
+      # whole nightly -- and with it the drift probe that runs after this loop.
+      curl -L --max-redirs 10 -k -s --connect-timeout 10 --max-time 20 \
+        --retry 2 --retry-delay 5 --retry-max-time 30 \
         -A iCab "http://${_Dom}/llms.txt?nocache=1&noredis=1" \
         -o "${_LLMS_TMP}"
       echo >> "${_LLMS_TMP}"
@@ -532,9 +538,20 @@ _fix_robots_txt() {
   if [ ! -e "${_Dir}/files/robots.txt" ] \
     && [ ! -e "${_Plr}/profiles/hostmaster" ] \
     && [ -d "${_Dir}/files" ]; then
-    _ROBOTS_TMP=$(mktemp "${_Dir}/.robots.XXXXXX" 2>/dev/null)
+    # curl -o re-opens the temp BY NAME after the fetch, so stage it in the
+    # root-only 0700 dir under the account root instead of the site dir, and
+    # skip the fetch when that dir cannot be had. The mv below is an atomic
+    # rename only while files/ shares the account's filesystem.
+    _ROBOTS_STG=$(_ctrl_stage_dir) || _ROBOTS_STG=
+    _ROBOTS_TMP=
+    [ -n "${_ROBOTS_STG}" ] \
+      && _ROBOTS_TMP=$(mktemp "${_ROBOTS_STG}/robots.XXXXXX" 2>/dev/null)
     if [ -n "${_ROBOTS_TMP}" ]; then
-      curl -L --max-redirs 10 -k -s --retry 2 --retry-delay 5 \
+      # See _fix_llms_txt: our own 503 stubs send Retry-After: 3600 and curl
+      # sleeps that between retries, so the retry sleep needs --retry-max-time;
+      # --max-time bounds one transfer only.
+      curl -L --max-redirs 10 -k -s --connect-timeout 10 --max-time 20 \
+        --retry 2 --retry-delay 5 --retry-max-time 30 \
         -A iCab "http://${_Dom}/robots.txt?nocache=1&noredis=1" \
         -o "${_ROBOTS_TMP}"
       echo >> "${_ROBOTS_TMP}"
@@ -562,8 +579,10 @@ _fix_robots_txt() {
 }
 
 _fix_boost_cache() {
-  # ${_Plr} is the docroot, 02775 group users -- and users is box-wide, so cache
-  # is a name ANY tenant can plant as a symlink, and rm -rf, chown and chmod all
+  # ${_Plr} is the docroot, 02775 and group-writable (by the account's shell
+  # identities; by ANY tenant while the instance still carries the box-wide
+  # 'users' group), so cache is a name a tenant can plant as a symlink, and
+  # rm -rf, chown and chmod all
   # walk through it. The boost cache is created and maintained here, so it is
   # never legitimately a link: strip a planted one, then act on a real dir only.
   _desymlink_planted "${_Plr}/cache"
@@ -971,7 +990,7 @@ _fix_modules() {
   ### Add new INI variables if missing
   ###
   ### The strip at the head of this iteration is many drush runs old by now
-  ### and the INI sits in a 02775 group 'users' dir, so re-strip before this
+  ### and the INI sits in a 02775 group-writable dir, so re-strip before this
   ### read/append leg (no-op on a regular file).
   _desymlink_planted "${_PLR_CTRL_F}" "${_DIR_CTRL_F}"
   if [ -e "${_PLR_CTRL_F}" ]; then
@@ -1441,7 +1460,7 @@ _fix_seven_core_patch() {
   ### only for a tree under /data/disk/<account>.
   local _grp
   _grp=$(_acct_group "${_Plr}")
-  ### profiles/ is 0775 group 'users' on a static platform, so this marker path
+  ### profiles/ is 0775 and group-writable on a static platform, so this marker path
   ### is tenant-plantable, and -f is FALSE for a dangling link -- the two
   ### "echo fixed >" writes below would then create the link's TARGET as root.
   ### Strip a planted link first; no-op on the real marker file.
@@ -1454,7 +1473,7 @@ _fix_seven_core_patch() {
     else
       cd ${_Plr}
       patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch
-      ### Every dir in a static platform is 0775 group 'users', so these glob
+      ### Every dir in a static platform is 0775 and group-writable, so these glob
       ### hits are tenant-plantable names, and chown and chmod both follow a
       ### symlink named on the command line. -h for the chown; for the chmod,
       ### which has no -h, hand find the SHELL-expanded leaves: a legitimate
@@ -1467,7 +1486,7 @@ _fix_seven_core_patch() {
         -exec chmod 0664 {} \; &> /dev/null
       echo fixed > ${_Plr}/profiles/SA-CORE-2014-005-D7-fix.info
     fi
-    ### profiles/ is 0775 group 'users', so *-fix.info matches tenant-created
+    ### profiles/ is 0775 and group-writable, so *-fix.info matches tenant-created
     ### names; -h for the chown, and for the chmod hand find the shell-expanded
     ### leaves -- never a directory with a trailing slash, which find would
     ### resolve through a planted link.
@@ -1479,8 +1498,9 @@ _fix_seven_core_patch() {
 
 _fix_static_permissions() {
   _cleanup_ghost_platforms
-  ### ~/static is 02775 oN:users and every platform dir under it 0775 group
-  ### 'users' (the find below), so the platform name -- and the docroot name
+  ### ~/static is 02775 and every platform dir under it 0775 (the find below),
+  ### both group-writable by the account's shell identities, so the platform
+  ### name -- and the docroot name
   ### under it -- are tenant-plantable, and the chown -R below dereferences a
   ### symlink given as its starting point (pwd -P then resolves through it
   ### too). A platform root is never legitimately a symlink and a static
@@ -1535,7 +1555,7 @@ _fix_static_permissions() {
       find ${_use_Plr} -type d -exec chmod 0775 {} \; &> /dev/null
       find ${_use_Plr} -type f -exec chmod 0664 {} \; &> /dev/null
       ### chmod follows a symlink named on the command line and has no -h, and
-      ### the find above just made every dir in the tree 0775 group 'users', so
+      ### the find above just made every dir in the tree 0775 group-writable, so
       ### all three of these are tenant-plantable names. None is ever
       ### legitimately a symlink -- skip rather than lock whatever was planted.
       if [ -e "${_use_Plr}/vendor/drush" ] \
@@ -1601,7 +1621,7 @@ _fix_permissions() {
     if [ ! -e "${_usEr}/static/control/unlock.info" ] \
       && [ ! -e "${_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.lock-${_NOW}.info" ]; then
-        ### -h: those three dirs are 02775 group 'users' (see the find below),
+        ### -h: those three dirs are 02775 and group-writable (see the find below),
         ### so every glob hit is a tenant-plantable name and chown -R follows a
         ### symlink given as its starting point. -h also stops the recursion
         ### rewriting ownership through the legitimate o_contrib* links into
@@ -1698,8 +1718,10 @@ _fix_permissions() {
     fi
     touch ${_usEr}/log/ctrl/plr.${_PlrID}.perm-fix-${_NOW}.info
   fi
-  ### sites/ is 02771 group 'users' on tenant composer codebases, so sites/<uri>
-  ### is a name any tenant can unlink and re-create: a symlink there redirects
+  ### sites/ is 02771 and group-writable on tenant composer codebases (the
+  ### account's shell identities; any tenant while the instance still carries
+  ### the box-wide 'users' group), so sites/<uri> is a name a tenant can unlink
+  ### and re-create: a symlink there redirects
   ### every rm/mkdir/chown/find in this block through it, and none of them
   ### re-checks. A site_path is never legitimately a symlink (alias links point
   ### AT it), so refuse one and leave the site alone.
@@ -1731,7 +1753,7 @@ _fix_permissions() {
     find ${_Dir}/*.php -type f -exec chmod 0440 {} \; &> /dev/null
     ### The hostmaster site's drushrc.php carries the instance DB user (ALL
     ### PRIVILEGES) and only the backend user, its owner, ever reads it:
-    ### no group read, since group users is box-wide.
+    ### no group read at all, box-wide 'users' or the account's own group alike.
     if [[ "${_Dir}" =~ /aegir/(distro|host_master)/ ]] && [ -f "${_Dir}/drushrc.php" ] \
       && [ ! -L "${_Dir}/drushrc.php" ]; then
       chmod 0400 ${_Dir}/drushrc.php &> /dev/null

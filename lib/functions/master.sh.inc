@@ -1658,7 +1658,7 @@ _aegir_master_display_login_link() {
     _msg "PROC: _aegir_master_display_login_link"
   fi
   if [ "${_STATUS}" = "INIT" ]; then
-    if [ "${_EASY_SETUP}" != "LOCAL" ]; then
+    if [ "${_EASY_SETUP}" != "LOCAL" ] && [ -x "/usr/sbin/apticron" ]; then
       _mrun "bash /usr/sbin/apticron"
     fi
     if [ "${_DEBUG_MODE}" = "YES" ]; then

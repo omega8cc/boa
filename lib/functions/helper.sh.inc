@@ -111,6 +111,78 @@ _not_supported_os() {
 
 #
 # Show only clean _msg and write details and errors to separate logs.
+# Wait (up to five minutes) for the dpkg/apt locks to be free. A converted
+# box keeps its image's unattended-upgrades and apt daily cron, and any of
+# them holding the lock made an install below fail with "Could not get
+# lock", an error _mrun keeps off the console -- packages then went silently
+# missing on chimaera and the source builds died later without them.
+# 0 when some process holds one of the dpkg/apt lock files. fuser (psmisc)
+# is not on every fresh image, so fall back to a /proc scan of open files.
+_apt_lock_held() {
+  local _l _fd
+  if command -v fuser > /dev/null 2>&1; then
+    fuser /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock > /dev/null 2>&1
+    return $?
+  fi
+  for _fd in /proc/[0-9]*/fd/*; do
+    _l="$(readlink "${_fd}" 2> /dev/null)" || continue
+    case "${_l}" in
+      /var/lib/dpkg/lock-frontend|/var/lib/dpkg/lock|/var/lib/apt/lists/lock) return 0 ;;
+    esac
+  done
+  return 1
+}
+
+_apt_lock_wait() {
+  local _i=0
+  while _apt_lock_held; do
+    _i=$((_i + 1))
+    if [ "${_i}" -eq 1 ] && [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "WAIT: another package manager holds the dpkg/apt lock, waiting for it..."
+    fi
+    [ "${_i}" -ge 60 ] && break
+    sleep 5
+  done
+  return 0
+}
+
+# Devuan's merged <suite>-security hands the Debian-built packages to
+# deb.debian.org, which stops serving a pool once the matching Debian LTS ends
+# while the index still lists the files; apt then aborts the whole upgrade on
+# the 404s and a codename hop upgrades nothing. Run the apt-get verb once with
+# its output kept; when it died on such a pool, drop that stanza from
+# sources.list, refresh and say so. The callers' usual _mrun passes follow.
+_apt_run_heal_dead_security_pool() {
+  local _verb_args="$*" _outf="/var/opt/apt-hop-run.out" _dead
+  _apt_lock_wait
+  if bash -c -- "apt-get ${_verb_args}" > "${_outf}" 2>&1; then
+    rm -f "${_outf}"
+    return 0
+  fi
+  [ -n "${_LOG_INFO}" ] && cat "${_outf}" >> "${_LOG_INFO}"
+  _dead=""
+  if grep -q '404' "${_outf}"; then
+    _dead=$(grep -oE '^Err:[0-9]+ [^ ]+ [a-z]+-security' "${_outf}" | awk '{print $3}' | sort -u | head -1)
+  fi
+  rm -f "${_outf}"
+  [ -n "${_dead}" ] || return 0
+  _msg "NOTE: the ${_dead} pool is not served any more; the upgrade continues without it"
+  sed -i "/ ${_dead} /d" /etc/apt/sources.list
+  _mrun "apt-get update --allow-insecure-repositories"
+  return 0
+}
+
+# Dev-server tracing used by both the master and the satellite paths; it lived
+# in the satellite include only, which the master never sources.
+_debug_proc() {
+  if [ -e "/root/.dev.server.cnf" ]; then
+    _msg "DBLS: `ls -la /usr/bin/sh`"
+    _msg "DBLS: `ls -la /bin/sh`"
+    _msg "DBLS: `ls -la /run/octopus_install_run.pid`"
+    [ -e "/data/disk/${_USER}/.tmp/cache" ] && _msg "DBLS: `ls -la /data/disk/${_USER}/.tmp/cache`"
+  fi
+}
+
 _mrun() {
   # Accept everything as one shell command string:
   #      _mrun "${_INSTAPP} xfonts-75dpi xfonts-base"
@@ -119,6 +191,11 @@ _mrun() {
   if [ -z "${_cmd}" ]; then
     return 0
   fi
+  case "${_cmd}" in
+    *apt-get*|*aptitude*|*aptfast*|*"dpkg "*)
+      _apt_lock_wait
+      ;;
+  esac
   # stdout -> info log (silent on console)
   # stderr -> error log (silent on console)
   if [ -n "${_LOG_INFO}" ] && [ -n "${_LOG_ERRR}" ]; then
@@ -419,7 +496,13 @@ _get_dev_ext() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      if curl ${_crlGet} "${_urlDev}/${_tRee}/$1" -o "$1"; then
+      # _DL_NOCACHE=YES: a per-call query string, so an edge cache that
+      # served a stale archive is bypassed -- the same contract as the
+      # settings include's copy, which this one replaces once the libs are
+      # sourced (the mirror ignores the query; the cache keys on it).
+      _dlQry=""
+      [ "${_DL_NOCACHE}" = "YES" ] && _dlQry="?r=$(date +%s)"
+      if curl ${_crlGet} "${_urlDev}/${_tRee}/$1${_dlQry}" -o "$1"; then
         _success=1
         break
       else
@@ -693,7 +776,8 @@ _mode_detection() {
           sed -i "s/^aegir.*//g" "${_sd_tmp}" &> /dev/null
           _sudoers_commit /etc/sudoers "${_sd_tmp}"
         fi
-        pkill -9 -f gpg-agent
+        # only this user's agent: -f matched every gpg-agent on the box
+        id -u aegir &> /dev/null && pkill -9 -u aegir gpg-agent &> /dev/null
         deluser aegir &> /dev/null
         rm -f /usr/bin/drush
       else
@@ -1206,23 +1290,35 @@ _apt_sources_list_write_canonical() {
     _hdr="## DEVUAN MAIN REPOSITORIES (canonical fallback)"
     _m="http://deb.devuan.org/merged"
     _sec="${_c}-security"
-    if [ "${_c}" = "beowulf" ]; then
-      _m="http://archive.devuan.org/merged"
-      _updates=NO
-    fi
+    # From the list only, never a probe: this fallback exists for the moment
+    # the network or the stored file cannot be trusted.
+    case " ${_ARCHIVED_DEVUAN_SUITES:-beowulf} " in
+      *" ${_c} "*)
+        _m="${_ARCHIVE_DEVUAN_MIRROR:-http://archive.devuan.org/merged}"
+        _updates=NO
+        ;;
+    esac
     _sm="${_m}"
   elif [ "${_OS_DIST}" = "Debian" ]; then
     _hdr="## DEBIAN MAIN REPOSITORIES (canonical fallback)"
-    if [ "${_c}" = "buster" ] || [ "${_c}" = "stretch" ] || [ "${_c}" = "jessie" ]; then
-      _m="http://archive.debian.org/debian"
-      _sm="http://archive.debian.org/debian-security"
-      _sec="${_c}/updates"
-      _updates=NO
-    else
-      _m="http://deb.debian.org/debian"
-      _sm="http://security.debian.org/debian-security"
-      _sec="${_c}-security"
-    fi
+    _m="http://${_DEBIAN_LIVE_MIRROR:-deb.debian.org}/debian"
+    _sm="http://${_DEBIAN_SECURITY_MIRROR:-security.debian.org}/debian-security"
+    _sec="${_c}-security"
+    # From the list only, never a probe (same reason as the Devuan arm): an
+    # archived release lives on the archive, whose security pool keeps the
+    # old <suite>/updates naming for the releases archived under it.
+    case " ${_ARCHIVED_DEBIAN_SUITES:-jessie stretch buster} " in
+      *" ${_c} "*)
+        _m="http://${_ARCHIVE_DEBIAN_MIRROR:-archive.debian.org}/debian"
+        _sm="http://${_ARCHIVE_DEBIAN_MIRROR:-archive.debian.org}/debian-security"
+        _updates=NO
+        ;;
+    esac
+    case "${_c}" in
+      jessie|stretch|buster)
+        _sec="${_c}/updates"
+        ;;
+    esac
   else
     _msg "ERROR: cannot build a canonical ${_aptLiSys} for OS '${_OS_DIST}'"
     return 1
@@ -1249,7 +1345,7 @@ _apt_sources_list_verify_or_canonical() {
   if _apt_sources_list_is_valid "${_aptLiSys}"; then
     return 0
   fi
-  _msg "OOPS: Generated ${_aptLiSys} is missing or invalid; enforcing canonical mirror"
+  _msg "NOTE: Generated ${_aptLiSys} is missing or invalid; enforcing canonical mirror"
   _apt_sources_list_write_canonical
 }
 
@@ -1677,11 +1773,16 @@ _barracuda_log_update() {
   _LOG_DB_V=$(mysql -V 2>&1 \
     | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
     | head -1)
+  # The stamp names what runs, not what was wanted: a build that produced
+  # nothing leaves the previous binary in place.
+  _LOG_NGX_V=$(/usr/sbin/nginx -v 2>&1 \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1)
   _BARRACUDA_VERSION_INFO="$(date) / \
     ${_OS_DIST}.${_OS_CODE} / \
     ${_VIRT_IS} / \
     Barracuda ${_X_VERSION}-${_xSrl} / \
-    Nginx ${_NGINX_VRN} / \
+    Nginx ${_LOG_NGX_V:-${_NGINX_VRN}} / \
     PHP-MI ${_PHP_MULTI_INSTALL} / \
     FPM ${_PHP_FPM_VERSION} / \
     CLI ${_PHP_CLI_VERSION} / \

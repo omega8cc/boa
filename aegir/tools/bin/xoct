@@ -349,9 +349,7 @@ In your DNS records, replace the first address with the second."
 
   _MIG_COVERAGE_BLOCK="What the old address covers, and what it does not
 
-The old address forwards traffic only for the sites that were on it at the
-moment of the migration. Each of those was given its own forwarding entry,
-frozen exactly as it stood that day.
+The old address forwards traffic only for the sites that were on it at the moment of the migration. Each of those was given its own forwarding entry, frozen exactly as it stood that day.
 
 Anything you create from now on is not covered by it:
 
@@ -359,11 +357,7 @@ Anything you create from now on is not covered by it:
   - a site cloned or renamed on the new system,
   - a new domain, subdomain or alias added to a site you already have.
 
-For all of those, point DNS straight at the new address. There is nothing to
-wait for and nothing to switch over later. If one is pointed at the old address
-by mistake it will not load correctly, and on an https:// link the visitor's
-browser will also report a certificate problem, because the old address holds
-no certificate for a name it has never served."
+For all of those, point DNS straight at the new address. There is nothing to wait for and nothing to switch over later. If one is pointed at the old address by mistake it will not load correctly, and on an https:// link the visitor's browser will also report a certificate problem, because the old address holds no certificate for a name it has never served."
 
   ### The retirement notice carries only the address pair; its own body text
   ### is composed by the sender (with or without a withdrawal date).
@@ -380,11 +374,7 @@ no certificate for a name it has never served."
     _MIG_COVERAGE_BLOCK=""
     _MIG_DNS_BLOCK="Important: DNS for your sites
 
-Your sites keep their current addresses throughout the migration. Once it is
-finished you will receive a second message with your new address and with the
-DNS instructions that apply to your account, including what happens to your old
-address and at what pace to move DNS across. Please do not change any DNS
-records until you have that message."
+Your sites keep their current addresses throughout the migration. Once it is finished you will receive a second message with your new address and with the DNS instructions that apply to your account, including what happens to your old address and at what pace to move DNS across. Please do not change any DNS records until you have that message."
     return 0
   fi
 
@@ -393,25 +383,13 @@ records until you have that message."
       if [ -n "${_pd}" ]; then
         _MIG_DNS_BLOCK="Forwarding from your old address: temporary, until ${_pd}
 
-The old address has been kept in service and is forwarding traffic for your
-existing sites to the new address, so nothing goes dark while DNS propagates.
-This arrangement ends on ${_pd}. Please make sure DNS for every existing site
-points at the new address before then. From that date the old address stops
-answering, and any name still pointing at it will stop reaching your site.
+The old address has been kept in service and is forwarding traffic for your existing sites to the new address, so nothing goes dark while DNS propagates. This arrangement ends on ${_pd}. Please make sure DNS for every existing site points at the new address before then. From that date the old address stops answering, and any name still pointing at it will stop reaching your site.
 
-If you need more time, reply to this message and we will extend the date. There
-is no penalty for asking, and we would far rather move the date than have a
-site go dark."
+If you need more time, reply to this message and we will extend the date. There is no penalty for asking, and we would far rather move the date than have a site go dark."
       else
         _MIG_DNS_BLOCK="Forwarding from your old address: temporary
 
-The old address has been kept in service and is forwarding traffic for your
-existing sites to the new address, so nothing goes dark while DNS propagates.
-This arrangement is temporary and will be withdrawn once the migration has
-settled; we will tell you before that happens. Please move DNS for your
-existing sites across in your own time, but please do not leave it
-indefinitely: once the old address is retired, any name still pointing at it
-stops reaching your site."
+The old address has been kept in service and is forwarding traffic for your existing sites to the new address, so nothing goes dark while DNS propagates. This arrangement is temporary and will be withdrawn once the migration has settled; we will tell you before that happens. Please move DNS for your existing sites across in your own time, but please do not leave it indefinitely: once the old address is retired, any name still pointing at it stops reaching your site."
       fi
     ;;
     permanent)
@@ -420,39 +398,22 @@ stops reaching your site."
         _hdr="kept in place, with a date to work to"
         _dlp="
 
-We do have one date to work to. Please have DNS for all your existing sites
-moved to the new address by ${_pd}."
+We do have one date to work to. Please have DNS for all your existing sites moved to the new address by ${_pd}."
       fi
       _MIG_DNS_BLOCK="Forwarding from your old address: ${_hdr}
 
-The old address stays in service and keeps forwarding traffic for your existing
-sites to the new system. There is no cut-off date and no countdown, so there is
-no need to rush the DNS change. Move each site across at a normal pace,
-whenever it suits your own maintenance schedule.
+The old address stays in service and keeps forwarding traffic for your existing sites to the new system. There is no cut-off date and no countdown, so there is no need to rush the DNS change. Move each site across at a normal pace, whenever it suits your own maintenance schedule.
 
-Two things still make it worth finishing the move rather than leaving it
-indefinitely. A site served through the old address takes an extra network hop,
-so it is a little slower than one pointed straight at the new address. And, as
-set out below, only the sites that existed at migration time are covered, so
-you will be using the new address for anything new in any case. Bringing the
-rest across as you go keeps everything on one address.${_dlp}"
+Two things still make it worth finishing the move rather than leaving it indefinitely. A site served through the old address takes an extra network hop, so it is a little slower than one pointed straight at the new address. And, as set out below, only the sites that existed at migration time are covered, so you will be using the new address for anything new in any case. Bringing the rest across as you go keeps everything on one address.${_dlp}"
     ;;
     ha-switch)
       _MIG_DNS_BLOCK="Forwarding from your old address: your switch point
 
-Your service now runs as a live pair, a main system and a live mirror. The old
-address has been kept in service as the switch point between the two, so if the
-main system has to be taken out of service, traffic arriving at that address
-moves to the mirror without you doing anything.
+Your service now runs as a live pair, a main system and a live mirror. The old address has been kept in service as the switch point between the two, so if the main system has to be taken out of service, traffic arriving at that address moves to the mirror without you doing anything.
 
-The old address is therefore part of the design rather than a leftover from the
-migration, and there is no need to move DNS away from it for your existing
-sites. If you would prefer the shortest possible path and are content to handle
-a switch-over yourself, you can point DNS at the new address directly; please
-let us know if you do, so that we can keep your records straight.
+The old address is therefore part of the design rather than a leftover from the migration, and there is no need to move DNS away from it for your existing sites. If you would prefer the shortest possible path and are content to handle a switch-over yourself, you can point DNS at the new address directly; please let us know if you do, so that we can keep your records straight.
 
-Either way, sites and domains added from now on are not on the switch. They are
-served directly by the new system at the address above, as set out below."
+Either way, sites and domains added from now on are not on the switch. They are served directly by the new system at the address above, as set out below."
     ;;
     *)
       ### A retired (or unresolvable) policy has no honest forwarding story to
@@ -602,8 +563,7 @@ _send_notice_migration_change() {
   cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "IMPORTANT: Update to the forwarding arrangement for ${_DOMAIN}" ${_CLIENT_EMAIL} && _MAIL_SENT=YES
 Hello,
 
-This is a short follow-up to the migration message you received earlier. The
-forwarding arrangement for your old address has changed.
+This is a short follow-up to the migration message you received earlier. The forwarding arrangement for your old address has changed.
 
 ${_MIG_DNS_BLOCK}
 
@@ -611,8 +571,7 @@ ${_MIG_COVERAGE_BLOCK}
 
 ${_MIG_ADDR_BLOCK}
 
-Nothing else from the earlier message has changed, and no action is needed on
-the new system.
+Nothing else from the earlier message has changed, and no action is needed on the new system.
 
 Kind regards,
 The BOA Dev Team
@@ -634,17 +593,11 @@ _send_notice_migration_retire() {
   local _pd="" _para1 _para2
   [ -n "${_MIG_RETIRE_DATE}" ] && _pd="$(_mig_pretty_date "${_MIG_RETIRE_DATE}")"
   if [ -n "${_pd}" ]; then
-    _para1="The forwarding on your old address, which has been carrying traffic for the
-sites that were on it at the time of your migration, is being withdrawn on
-${_pd}."
-    _para2="Please make sure that every one of your domains points at the new address
-below before that date. After it, any domain still pointing at the old address
-will stop reaching your site."
+    _para1="The forwarding on your old address, which has been carrying traffic for the sites that were on it at the time of your migration, is being withdrawn on ${_pd}."
+    _para2="Please make sure that every one of your domains points at the new address below before that date. After it, any domain still pointing at the old address will stop reaching your site."
   else
-    _para1="The forwarding on your old address, which has been carrying traffic for the
-sites that were on it at the time of your migration, has now been withdrawn."
-    _para2="From now on every domain must resolve to the new address below. If any of
-your domains still point at the old address, please update them now."
+    _para1="The forwarding on your old address, which has been carrying traffic for the sites that were on it at the time of your migration, has now been withdrawn."
+    _para2="From now on every domain must resolve to the new address below. If any of your domains still point at the old address, please update them now."
   fi
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
@@ -811,12 +764,49 @@ _migrate_sites() {
   ### ${_oct} still names the source; 'users' on an unconverted box, so the
   ### chowns below are unchanged there.
   _OCT_GRP=$(_acct_group "${_USR}")
+  ### The account's own control panel is never a site of this loop. The old
+  ### tool skipped it by accident of design -- no <fqdn>.alias existed for a
+  ### panel, only hostmaster.alias -- until the ltd-users pass began planting
+  ### a <fqdn> symlink to that alias, which made the panel look like a site
+  ### here: on proxy it then got a proxy vhost, and the target never serves a
+  ### source-named panel, so the panel answered 404 from the new box's
+  ### catch-all and the source lost its own monitoring canary. Identify the
+  ### panel by what it is (the hostmaster alias site_path), not by which
+  ### alias files happen to exist.
+  _HM_PANEL_FQDN=$(grep "site_path'" ${_USR}/.drush/hostmaster.alias.drushrc.php 2>/dev/null \
+    | head -1 \
+    | sed "s/.*=>//; s/[' ,;]//g")
+  _HM_PANEL_FQDN=$(basename "${_HM_PANEL_FQDN}" 2>/dev/null)
+  _HM_PANEL_FQDN=${_HM_PANEL_FQDN//[^a-zA-Z0-9.\-]/}
+  _XOCT_PANEL_RESTORED=NO
   for _Site in `find ${_USR}/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
   do
     _Dom=`echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}'`
     _Vht="${_USR}/config/server_master/nginx/vhost.d/${_Dom}"
     _Vhd="${_USR}/config/server_master/nginx/vhost.d/.${_Dom}"
     _Vhs="${_USR}/config/server_master/nginx/vhost.d/https.${_Dom}"
+    if [ -n "${_HM_PANEL_FQDN}" ] && [ "${_Dom}" = "${_HM_PANEL_FQDN}" ]; then
+      if [ "${_cmd}" = "proxy" ]; then
+        ### A conversion by the earlier code proxied the panel and saved the
+        ### real vhost as the dot-file; put it back so the panel serves
+        ### locally again (the reload below applies it).
+        if grep -q "Plain HTTP proxy (START)" "${_Vht}" 2>/dev/null \
+          && [ -s "${_Vhd}" ] \
+          && ! grep -q "Plain HTTP proxy (START)" "${_Vhd}" 2>/dev/null; then
+          mv -f ${_Vhd} ${_Vht}
+          chown ${_oct}:${_OCT_GRP} ${_Vht}
+          chmod 600 ${_Vht}
+          _XOCT_PANEL_RESTORED=YES
+          echo "INFO: control panel ${_Dom} on ${_oct}: local vhost restored (an earlier conversion had proxied it)"
+        fi
+        echo "INFO: control panel ${_Dom} on ${_oct} stays local in Drupal maintenance mode -- never proxied"
+      fi
+      continue
+    fi
+    ### Every vhost past the panel skip is a site the conversion is expected
+    ### to touch; the verdict below tells "nothing to convert" apart from
+    ### "nothing converted" by this count.
+    _XOCT_PROXY_ELIGIBLE=$(( ${_XOCT_PROXY_ELIGIBLE:-0} + 1 ))
     if [ -e "${_Vht}" ] && [ ! -z "${_oct}" ]; then
       chown ${_oct}:${_OCT_GRP} ${_Vht}
       chmod 600 ${_Vht}
@@ -836,9 +826,20 @@ _migrate_sites() {
         echo "site ${_Dom} clean _DBN is ${_DBN}"
       fi
       if [ "${_cmd}" = "import" ]; then
-        _DBP=`cat ${_Dir}/drushrc.php | grep "options\['db_passwd'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
-        echo "site ${_Dom} raw _DBP is ${_DBP}"
-        _DBP=${_DBP//[^a-zA-Z0-9_]/}
+        # drushrc.php is written with var_export(): the value is a single-quoted
+        # literal in which only the quote and the backslash are escaped. Read
+        # that literal back, then keep only what the generated-password charset
+        # admits: a password carrying anything else cannot be re-created below
+        # without corrupting it, so it is refused loudly (the empty value takes
+        # the existing skip path) instead of being rewritten into a different
+        # password.
+        _DBP_LIT=$(sed -n 's/^[[:space:]]*\$options\[\x27db_passwd\x27\][[:space:]]*=[[:space:]]*\x27\(.*\)\x27;[[:space:]]*$/\1/p' ${_Dir}/drushrc.php 2>/dev/null \
+          | head -1 | sed -e 's/\\\x27/\x27/g' -e 's/\\\\/\\/g')
+        _DBP=${_DBP_LIT//[^a-zA-Z0-9_]/}
+        if [ "${_DBP}" != "${_DBP_LIT}" ]; then
+          echo "ALRT: site ${_Dom} db_passwd carries characters outside the generated-password charset; not re-created here, fix its credentials by hand"
+          _DBP=""
+        fi
         echo "site ${_Dom} clean _DBP is ${_DBP}"
         if [ -e "${_Vhd}" ]; then
           mv -f ${_Vhd} ${_Vht}
@@ -1064,20 +1065,26 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
         if [[ "${_NON_TRX_COUNT}" =~ ^[0-9]+$ ]] && [[ "${_NON_TRX_COUNT}" -gt "0" ]]; then
           _MYDUMPER_TRX_OPT="--trx-tables=0"
         fi
-        ### --rows=-1 turns integer chunking off: a fixed --rows=N walks the
-        ### whole primary-key span in steps of N key values (a sparse bigint
-        ### key spun out empty chunk files to inode exhaustion), and the
-        ### adaptive chunker used when the flag is absent intermittently
-        ### drops a whole chunk of a sparse-keyed table while exiting clean;
-        ### mirrors mysql_backup.sh.
-        ### _MYDUMPER_TRX_OPT unquoted by design: empty must expand to no argument.
+        ### mydumper 1.x fixed the adaptive chunker (0.21.x truncated a chunk's
+        ### file to 0 bytes when a split landed past the last existing key,
+        ### exiting clean), so on 1.x tables are chunked and dumped in parallel
+        ### again; older builds keep chunking off (--rows=-1). A fixed --rows=N
+        ### walks a sparse key span to inode exhaustion; mirrors mysql_backup.sh.
+        ### Probed per call and anchored on the banner line, as in the
+        ### nightly: a stray line ahead of it cannot pass as a version.
+        _MYDUMPER_ROWS_OPT="--rows=-1"
+        _MYDUMPER_MAJOR=$(mydumper -V 2>&1 | grep -m1 "^mydumper v" | cut -d" " -f2 | tr -d "v" | cut -d"." -f1)
+        case "${_MYDUMPER_MAJOR}" in
+          [1-9]*) _MYDUMPER_ROWS_OPT="" ;;
+        esac
+        ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
         if mydumper ${_MYDUMPER_TRX_OPT} \
           --database=${_DBN} \
           --host=localhost \
           --defaults-file=/root/.my.cnf \
           --port=3306 \
           --outputdir=${_USR}/src/${_DBN}/ \
-          --rows=-1 \
+          ${_MYDUMPER_ROWS_OPT} \
           --build-empty-files \
           --threads=4 \
           --long-query-guard=900 \
@@ -1261,6 +1268,97 @@ _xoct_runtime_oct() {
   else
     echo "${_oct}"
   fi
+}
+
+# Group ownership on the target after a transfer, same-name or rename. rsync
+# maps ids by NAME: the source account's private group (per-instance group
+# model) has no name on the target unless the target account is converted
+# too, so every path of the source tree lands in an unassigned numeric gid
+# there; and the literal ':users' writes this tool still makes on the target
+# (control files, the users store) are right only on an unconverted account.
+# Re-group, on the target, every path of the account's roots that is in no
+# group or in the box-wide group to the account's own group there ('users'
+# until the target account is converted), group-only and symlink-safe, and
+# drop a conversion marker carried from the source: it records the SOURCE
+# box's conversion, and instgrp status would read it as a lie.
+#
+# Re-group an account's tree ON A REMOTE BOX after a copy landed there
+# (transfer, sync, cutover): the copy carries this box's numeric gids, and
+# on the destination those are no group at all or -- every box allocates
+# account gids from the same system range -- ANOTHER account's group, whose
+# identities could then read the copied credential files. instgrp reclaim
+# does the whole pass where it is installed (every root incl. the sub-user
+# homes and a relocated store, the marker rule, the DRIFT verdict); a
+# destination without the tool gets the inline form over the same roots.
+# The destination is converted when its account group exists and the
+# backend or the shell identity carries it as primary (one identity that
+# fell back to 'users' must not turn this into a flatten). Returns the
+# pass's rc (0 clean, 2 drift left, 3 identities disagree, 4 deferred: a
+# BOA run stayed live there for the whole bounded wait, so the inline form
+# ran instead of the tool). Verbatim in xoct, xcopy and xmass.
+# $1 = account on the destination, $2 = destination host.
+_acct_regroup_remote() {
+  local _X_A="$1" _X_H="$2" _X_RC
+  [ -n "${_X_A}" ] && [ -n "${_X_H}" ] || return 0
+  ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_X_H}" "bash -s" <<REMOTE
+_A='${_X_A}'
+_DEFERRED=0
+if [ -x /opt/local/bin/instgrp ]; then
+  # A live run on the destination (its own octopus finisher, a tool
+  # refresh) makes reclaim defer with rc 4 for a short window; wait it out,
+  # bounded. When it never clears, the inline form below runs instead: a
+  # destination carrying log/proxied.pid is never visited by the nightly
+  # (owl.sh skips it), so the pass must complete here or not at all.
+  _T=0
+  while :; do
+    # --force: the destination's own log/proxied.pid is its demotion artefact
+    # from an earlier cutover (a failback), not "served from elsewhere"; the
+    # tree this run just wrote is exactly what needs the file half, and the
+    # tool's freeze gate would otherwise refuse it for good
+    bash /opt/local/bin/instgrp reclaim "\${_A}" --force
+    _R=\$?
+    [ "\${_R}" = "4" ] || exit "\${_R}"
+    [ "\${_T}" -lt 12 ] || { _DEFERRED=1; break; }
+    _T=\$((_T + 1))
+    sleep 15
+  done
+fi
+_G=users
+if getent group "\${_A}" > /dev/null 2>&1; then
+  [ "\$(id -gn "\${_A}" 2>/dev/null)" = "\${_A}" ] && _G="\${_A}"
+  [ "\$(id -gn "\${_A}.ftp" 2>/dev/null)" = "\${_A}" ] && _G="\${_A}"
+fi
+_MP=""; _N=0
+for _M in /mnt/*; do
+  [ -d "\${_M}" ] && mountpoint -q "\${_M}" 2>/dev/null && { _MP="\${_M}"; _N=\$((_N + 1)); }
+done
+[ "\${_N}" = "1" ] || _MP=""
+for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gems/\${_A}" /opt/user/gems/"\${_A}".* "/opt/user/npm/\${_A}" /opt/user/npm/"\${_A}".* "\${_MP:+\${_MP}/files/\${_A}/static/files}"; do
+  [ -n "\${_R}" ] && [ -d "\${_R}" ] && [ ! -L "\${_R}" ] || continue
+  # the FPM pool users' homes (oN.web, oN.NN.web) are www-data's, never the
+  # account's: the same root set the tool walks
+  case "\${_R}" in /home/*.web) continue ;; esac
+  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root -execdir chgrp -h "\${_G}" {} + 2>/dev/null
+done
+_M="/data/disk/\${_A}/log/instance-group.txt"
+if [ -f "\${_M}" ]; then
+  _GID=\$(getent group "\${_A}" 2>/dev/null | cut -d: -f3)
+  { [ "\${_G}" = "\${_A}" ] && grep -q " gid=\${_GID}\$" "\${_M}" 2>/dev/null; } || rm -f "\${_M}"
+fi
+if [ "\${_DEFERRED}" = "1" ]; then
+  echo "INFO: target group pass for \${_A}: the tool deferred 13 times (a BOA run live there); the inline form ran instead, group \${_G}"
+  exit 4
+fi
+echo "INFO: target group pass for \${_A}: group \${_G} (inline form, instgrp not installed there)"
+exit 0
+REMOTE
+  _X_RC=$?
+  [ "${_X_RC}" = "0" ] || echo "ALERT: target group pass for ${_X_A} on ${_X_H} returned ${_X_RC} (2 drift left, 3 identities disagree, 4 deferred (the inline form ran), 255 ssh); run 'instgrp status ${_X_A}' there"
+  return "${_X_RC}"
+}
+
+_xoct_regroup_target_account() {
+  _acct_regroup_remote "$1" "$2"
 }
 
 _xoct_rewrite_target_account_refs() {
@@ -1604,9 +1702,9 @@ _xoct_seed_target_control_pins() {
   ### succeeding there, so in exactly that case it never fires. It matters
   ### more now that renameaegirhost §2d rewrites this file during a rename:
   ### two writers, one of which was leaving it mis-owned.
-  ### Literal 'users' on purpose: this chown runs on the TARGET box, whose own
-  ### passes re-assert the group there; the group is per-box.
-  ssh root@"${_t}" "chown ${_dAcct}.ftp:users ${_dUsr}/static/control/fpm.info ${_dUsr}/static/control/cli.info ${_dUsr}/static/control/multi-fpm.info" &> /dev/null
+  ### The group is the account's group ON THE TARGET (its own once converted
+  ### there, the box-wide one until then), asked of the target itself.
+  ssh root@"${_t}" "_g=\$(id -gn ${_dAcct} 2>/dev/null); [ \"\$_g\" = ${_dAcct} ] || _g=users; chown ${_dAcct}.ftp:\$_g ${_dUsr}/static/control/fpm.info ${_dUsr}/static/control/cli.info ${_dUsr}/static/control/multi-fpm.info" &> /dev/null
   return 0
 }
 
@@ -1658,9 +1756,10 @@ _xoct_sync_shell_credentials() {
         "${_e}" \
         "root@${_t}:/home/${_dst}.ftp/users/${_dst}.${_n}"
     done
-    ### Literal 'users' on purpose: this chown runs on the TARGET box, whose own
-    ### passes re-assert the group there; the group is per-box.
-    ssh root@"${_t}" "chown -R ${_dst}.ftp:users /home/${_dst}.ftp/users; chmod 700 /home/${_dst}.ftp/users; chmod 600 /home/${_dst}.ftp/users/* 2>/dev/null; true" &> /dev/null
+    ### The group is the account's group ON THE TARGET (its own once converted
+    ### there, the box-wide one until then), asked of the target itself: the
+    ### two boxes are in different states for the length of a rollout.
+    ssh root@"${_t}" "_g=\$(id -gn ${_dst} 2>/dev/null); [ \"\$_g\" = ${_dst} ] || _g=users; chown -R ${_dst}.ftp:\$_g /home/${_dst}.ftp/users; chmod 700 /home/${_dst}.ftp/users; chmod 600 /home/${_dst}.ftp/users/* 2>/dev/null; true" &> /dev/null
   fi
   for _d in "${_sUsr}"/clients/*/; do
     [ -d "${_d}" ] || continue
@@ -1728,6 +1827,44 @@ _xoct_wait_target_install_settled() {
   done
   echo "ALRT: install on ${_t} not settled after ${_max}s; proceeding anyway (legacy fixed-wait behaviour)"
   return 0
+}
+
+### Bounded wait until the TARGET holds no BOA run lock AND no armed
+### run-upgrade.pid. Every account install leaves a background octopus run
+### behind (the in-flow post-install upgrade, and the re-seeded run-upgrade.pid
+### a create arms), so the next 'boa in-octopus' on the same target finds
+### /run/boa_run.pid and the launcher refuses with "Another BOA installer is
+### running" -- a refusal the create used to walk past and report complete.
+### An ARMED pid counts as busy: the runner consumes it on its next tick, so a
+### lock-free target with a pid armed is a pass that has not started yet (the
+### third account of a prep-target met exactly that: quiet by the lock probe,
+### refused seconds later by the pass the second account's seed had armed).
+### Chained passes also leave lock-free gaps of a few seconds between them,
+### so quiet must hold on two consecutive polls. Bounded; the caller fails
+### when the box never goes quiet.
+_xoct_wait_target_quiet() {
+  local _t="$1" _w=0 _busy _ok=0
+  local _max="${_XOCT_TARGET_QUIET_MAX_WAIT:-1800}"
+  case "${_max}" in ''|*[!0-9]*) _max=1800 ;; esac
+  while [ "${_w}" -lt "${_max}" ]; do
+    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; ls /data/disk/*/static/control/run-upgrade.pid 2>/dev/null | sed 's#/data/disk/##; s#/static/control/run-upgrade.pid#:armed#' | tr '\n' ' '" 2>/dev/null)
+    if [ -z "${_busy// /}" ]; then
+      _ok=$(( _ok + 1 ))
+      if [ "${_ok}" -ge 2 ]; then
+        [ "${_w}" -gt 0 ] && echo "INFO: target ${_t} quiet after ${_w}s (two consecutive polls)"
+        return 0
+      fi
+      sleep 15
+      _w=$(( _w + 15 ))
+      continue
+    fi
+    _ok=0
+    [ "${_w}" -eq 0 ] && echo "INFO: a BOA run holds or is armed on ${_t} (${_busy}); waiting up to ${_max}s before the install"
+    sleep 30
+    _w=$(( _w + 30 ))
+  done
+  echo "ALRT: target ${_t} still busy after ${_max}s (${_busy}); not launching the install into a refusal"
+  return 1
 }
 
 ### Bounded wait until BOA's own heavyweight jobs are quiet on THIS box;
@@ -2037,6 +2174,10 @@ _migrate_prepare() {
         _XOCT_HM_DUMP_OK=NO
       fi
     _run_drush8_hmr_cmd "variable-set --always-set maintenance_mode 1"
+    ### The panel serves anonymous pages from Drupal's page cache and a
+    ### variable change alone leaves the cached front page in place, so the
+    ### hold is invisible until the next cache clear: flush it here.
+    _run_drush8_hmr_cmd "cache-clear all" &> /dev/null
     ### The redirect pre-creates the file, so the old existence test read a
     ### failed mysqldump as success and stamped exported.pid over a zero-byte
     ### or truncated panel dump. Demand rc=0 AND a non-empty file.
@@ -2327,6 +2468,7 @@ _migrate_prepare() {
         ### with their existing one -- suppress it for this install only,
         ### preserving any operator-set marker. An unreadable probe means
         ### "unknown": never touch, never remove someone else's marker.
+        _xoct_wait_target_quiet "${_tgt}" || exit 1
         _SILENT_MARKER=NO
         _SILENT_PROBE=$(ssh root@${_tgt} "[ -e /root/.silent.update.cnf ] && echo YES || echo NO" 2>/dev/null)
         if [ "${_SILENT_PROBE}" = "NO" ]; then
@@ -2348,9 +2490,22 @@ _migrate_prepare() {
         trap '[ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
         trap 'exit 130' INT TERM HUP
         ssh root@${_tgt} "/opt/local/bin/boa ${_IN_VERB} ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_TGT_TREE} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
+        _INSTALL_RC=$?
         if [ "${_SILENT_MARKER}" = "YES" ]; then
           ssh root@${_tgt} "rm -f /root/.silent.update.cnf"
           _SILENT_MARKER=NO
+        fi
+        ### The launcher exits 1 without installing when a run lock is held
+        ### (and the install can die for its own reasons): prove the account
+        ### exists before seeding anything, never report a refusal complete.
+        _TGT_BORN=$(ssh root@${_tgt} "getent passwd ${_TGT_HM_USER} >/dev/null 2>&1 \
+          && [ -e /root/.${_TGT_HM_USER}.octopus.cnf ] \
+          && [ -s /data/disk/${_TGT_HM_USER}/log/octopus_log.txt ] \
+          && echo BORN" 2>/dev/null)
+        if [ "${_TGT_BORN}" != "BORN" ]; then
+          echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} did not happen (launcher rc=${_INSTALL_RC});"
+          echo "ALRT: read the launcher output above -- re-run this create once ${_tgt} is quiet"
+          exit 1
         fi
         ### Restore the single-flight lock's cleanup (see _take_verb_lock) --
         ### a bare `trap -` here would orphan ${_XOCT_LOCK_FILE} for the whole
@@ -2372,6 +2527,16 @@ _migrate_prepare() {
       ### Post-install seeding: merge the portable cnf values, force the
       ### authoritative control-file pins, carry the client credentials.
       _xoct_push_target_octopus_cnf "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      ### What the target holds BEFORE the seed rewrites it: the cnf and every
+      ### control witness the seed lands (md5 over the set), a run-upgrade.pid
+      ### an earlier create armed that the runner has not consumed yet, and
+      ### what the last pass actually configured (its octopus_log line). They
+      ### decide below whether the enforced upgrade still has work to do.
+      _TGT_SEED_WAS=$(ssh root@${_tgt} "cd /data/disk/${_TGT_HM_USER} 2>/dev/null && md5sum /root/.${_TGT_HM_USER}.octopus.cnf static/control/fpm.info static/control/cli.info static/control/multi-fpm.info log/fpm.txt log/cli.txt 2>/dev/null | awk '{print \$1}' | tr '\n' ' '" 2>/dev/null)
+      _TGT_ARMED_WAS=$(ssh root@${_tgt} "[ -e /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.pid ] && echo YES" 2>/dev/null)
+      _TGT_LAST_PASS=$(ssh root@${_tgt} "tail -1 /data/disk/${_TGT_HM_USER}/log/octopus_log.txt 2>/dev/null" 2>/dev/null)
+      _TGT_FPM_RUN=$(printf '%s' "${_TGT_LAST_PASS}" | grep -oE 'FPM [0-9.]+' | awk '{print $2}')
+      _TGT_CLI_RUN=$(printf '%s' "${_TGT_LAST_PASS}" | grep -oE 'CLI [0-9.]+' | awk '{print $2}')
       _xoct_seed_target_control_pins "${_USR}" "/data/disk/${_TGT_HM_USER}" "${_TGT_HM_USER}" "${_tgt}"
       _xoct_sync_shell_credentials "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
       ### Verify the pins actually took (catches the availability-fallback
@@ -2384,11 +2549,46 @@ _migrate_prepare() {
           echo "ALRT: ${_pinVar} differs after seeding: source=${_SRC_PIN} target=${_TGT_PIN}"
         fi
       done
+      ### The enforced upgrade exists to make the target's next octopus pass
+      ### apply what the seed just wrote. Arm it only when a pass still has
+      ### work to do: the seed changed the cnf or any control witness on the
+      ### target (the cnf merge carries ~35 values a pass consumes, not only
+      ### the PHP pins), an earlier create's pid is still armed and must not
+      ### be dropped by the cleanup below, the last pass recorded a different
+      ### FPM or CLI than the seeded pin (read from the .info witnesses that
+      ### travelled, the cnf only as fallback), or no pass has recorded
+      ### anything yet. The previous guard keyed on log/upgrademail.txt, which
+      ### the silent install never writes, so every repeated create re-armed a
+      ### full pass on a converged account and the target never went quiet
+      ### between prep-target runs.
+      _SRC_FPM_PIN=$(tr -dc '0-9.' < "${_USR}/static/control/fpm.info" 2>/dev/null)
+      [ -n "${_SRC_FPM_PIN}" ] || _SRC_FPM_PIN=$(grep "^_PHP_FPM_VERSION=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
+      _SRC_CLI_PIN=$(tr -dc '0-9.' < "${_USR}/static/control/cli.info" 2>/dev/null)
+      [ -n "${_SRC_CLI_PIN}" ] || _SRC_CLI_PIN=$(grep "^_PHP_CLI_VERSION=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
+      _TGT_SEED_NOW=$(ssh root@${_tgt} "cd /data/disk/${_TGT_HM_USER} 2>/dev/null && md5sum /root/.${_TGT_HM_USER}.octopus.cnf static/control/fpm.info static/control/cli.info static/control/multi-fpm.info log/fpm.txt log/cli.txt 2>/dev/null | awk '{print \$1}' | tr '\n' ' '" 2>/dev/null)
+      _ARM_UPGRADE=NO
+      _ARM_WHY=""
+      if [ "${_TGT_ARMED_WAS}" = "YES" ]; then
+        _ARM_UPGRADE=YES; _ARM_WHY="an earlier create's upgrade is still armed"
+      elif [ "${_TGT_SEED_WAS}" != "${_TGT_SEED_NOW}" ]; then
+        _ARM_UPGRADE=YES; _ARM_WHY="the seed changed the cnf or a control witness"
+      elif [ -z "${_TGT_FPM_RUN}" ] || [ -z "${_TGT_CLI_RUN}" ]; then
+        _ARM_UPGRADE=YES; _ARM_WHY="no pass has recorded FPM/CLI yet"
+      elif [ -n "${_SRC_FPM_PIN}" ] && [ "${_SRC_FPM_PIN}" != "${_TGT_FPM_RUN}" ]; then
+        _ARM_UPGRADE=YES; _ARM_WHY="last pass ran FPM ${_TGT_FPM_RUN}, pin is ${_SRC_FPM_PIN}"
+      elif [ -n "${_SRC_CLI_PIN}" ] && [ "${_SRC_CLI_PIN}" != "${_TGT_CLI_RUN}" ]; then
+        _ARM_UPGRADE=YES; _ARM_WHY="last pass ran CLI ${_TGT_CLI_RUN}, pin is ${_SRC_CLI_PIN}"
+      fi
       ### Stale-pid cleanup FIRST, then the enforced-upgrade trigger: the
       ### historical order deleted the run-upgrade.pid it had just created.
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/static/control/*.pid"
-      ssh root@${_tgt} "test ! -e /data/disk/${_TGT_HM_USER}/log/upgrademail.txt && /bin/echo UP >> /data/disk/${_TGT_HM_USER}/static/control/platforms.info"
-      ssh root@${_tgt} "test ! -e /data/disk/${_TGT_HM_USER}/log/upgrademail.txt && /bin/touch /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.pid"
+      if [ "${_ARM_UPGRADE}" = "YES" ]; then
+        ssh root@${_tgt} "/bin/echo UP >> /data/disk/${_TGT_HM_USER}/static/control/platforms.info"
+        ssh root@${_tgt} "/bin/touch /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.pid"
+        echo "INFO: enforced upgrade armed on ${_tgt} for ${_TGT_HM_USER}: ${_ARM_WHY}"
+      else
+        echo "INFO: ${_TGT_HM_USER} on ${_tgt} already runs FPM ${_TGT_FPM_RUN} / CLI ${_TGT_CLI_RUN} and the seed changed nothing; no upgrade armed"
+      fi
       echo "INFO: new octopus ${_TGT_HM_USER} setup on ${_tgt} complete"
     else
       echo "ALRT: new octopus ${_TGT_HM_USER} setup on ${_tgt} failed because of missing arguments"
@@ -2954,6 +3154,7 @@ _xoct_proxy_preflight() {
   _cnf="${_USR}/${_MIG_CNF_NAME}"
   _XOCT_PROXY_OK=0
   _XOCT_PROXY_FAIL=0
+  _XOCT_PROXY_ELIGIBLE=0
   _XOCT_WAS_PROXIED=NO
   [ -e "${_USR}/log/proxied.pid" ] && _XOCT_WAS_PROXIED=YES
   _XOCT_PEER_ACCT="${_dst:-${_oct}}"
@@ -3590,7 +3791,9 @@ _migrate_init() {
               root@${_tgt}:/home/${_DST_ACCT}.ftp/users/
           fi
           _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/clients/*        root@${_tgt}:${_DST}/clients/        &> /dev/null
-          _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/log/*            root@${_tgt}:${_DST}/log/
+          # instance-group.txt records the SOURCE box's conversion (its gid);
+          # it must never travel, the destination pass writes its own.
+          _xoct_rsync -aEAXqu ${_ieni} --exclude=instance-group.txt -e ssh ${_USR}/log/* root@${_tgt}:${_DST}/log/
           _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/static/control/* root@${_tgt}:${_DST}/static/control/ &> /dev/null
           #
           _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/backups/*        root@${_tgt}:${_DST}/backups/        &> /dev/null
@@ -3699,6 +3902,7 @@ _migrate_init() {
             if [ ! -z "${_dst}" ] && [ "${_dst}" != "${_oct}" ]; then
               _xoct_rewrite_target_account_refs "${_oct}" "${_dst}" "${_tgt}" "${_DST}"
             fi
+            _xoct_regroup_target_account "${_dst:-${_oct}}" "${_tgt}"
             echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} complete"
             # Only the real transfer marks the account migrated -- pretransfer
             # shares this completion path (warm-up rsync while the account is
@@ -3735,12 +3939,20 @@ _migrate_init() {
           ### _migrate_prepare >/var/log/boa/migrate/migrate-${_oct}-${_cmd}-${_NOW}.log 2>&1
         if [ "${_cmd}" = "proxy" ]; then
           ### A failed conversion must never mail "complete" nor stamp the
-          ### account migrated: zero converted sites or any per-site failure
-          ### leaves proxied.pid absent and exits non-zero so callers (xmass
-          ### step 16) can see it. Re-running after the cause is fixed
-          ### converges: converted sites are kept and the saved vhost backups
-          ### are never overwritten.
-          if [ "${_XOCT_PROXY_FAIL:-0}" != "0" ] || [ "${_XOCT_PROXY_OK:-0}" = "0" ]; then
+          ### account migrated: any per-site failure, or zero converted sites
+          ### where there were sites to convert, leaves proxied.pid absent and
+          ### exits non-zero so callers (xmass step 16) can see it. Re-running
+          ### after the cause is fixed converges: converted sites are kept and
+          ### the saved vhost backups are never overwritten. An account that
+          ### holds nothing but its control panel has nothing to convert: it
+          ### is converted by definition (the panel stays local in maintenance
+          ### mode), so it is stamped, its gate is released and the client is
+          ### told that the panel moved -- a live cutover once left such an
+          ### account 503-gated on the source for a "0 site(s) converted".
+          if [ "${_XOCT_PROXY_ELIGIBLE:-0}" = "0" ] && [ "${_XOCT_PROXY_FAIL:-0}" = "0" ]; then
+            echo "INFO: nothing to proxy for ${_oct}: the account holds only its control panel -- treated as converted"
+          fi
+          if [ "${_XOCT_PROXY_FAIL:-0}" != "0" ] || { [ "${_XOCT_PROXY_OK:-0}" = "0" ] && [ "${_XOCT_PROXY_ELIGIBLE:-0}" != "0" ]; }; then
             echo "ALRT: proxy conversion for ${_oct}: ${_XOCT_PROXY_OK:-0} site(s) converted, ${_XOCT_PROXY_FAIL:-0} failed"
             echo "ERROR: NOT stamping proxied.pid and NOT mailing the client; fix the cause and re-run"
             if [ -n "${_XOCT_OLD_PEER}" ]; then
@@ -3811,6 +4023,17 @@ _migrate_init() {
           if [ -d "/var/lib/nginx/speed" ]; then
             find /var/lib/nginx/speed -type f -delete &> /dev/null
           fi
+          ### The panel stays online here as the box's monitoring canary, in
+          ### Drupal's own maintenance mode: clients can no longer log in or
+          ### queue tasks against a database that now lives on the target,
+          ### while an admin still can. Set at this point, not at export as
+          ### the old tool did: in the xmass flow the export path is never
+          ### reached, and set before promotion it would replicate INTO the
+          ### new production panel. Here the source has stopped replicating.
+          _run_drush8_hmr_cmd "variable-set --always-set maintenance_mode 1" 2>&1 | tail -1
+          ### Flush the panel's page cache too, or anonymous visitors keep
+          ### getting the cached pre-hold front page instead of the 503.
+          _run_drush8_hmr_cmd "cache-clear all" &> /dev/null
           ### Notify: a first conversion always sends the completion notice; a
           ### repair keeps quiet unless the promise itself changed (or
           ### --renotify). --no-notify suppresses either, and the suppression

@@ -335,6 +335,19 @@ proxy templates that forward traffic to `target-ip`, removes `http-off.pid`
 migration-complete notification to the account owner. A failed conversion
 sends nothing, stamps nothing and exits non-zero.
 
+The account's **control panel is never proxied**. It is identified by what it
+is — the `site_path` of the hostmaster alias — not by which alias files exist,
+keeps its local vhost, and is put into Drupal's own maintenance mode once the
+conversion is in: it stays online on the old box as a monitoring canary, an
+admin can still log in, and nobody else can queue tasks against a database
+that now lives on the target. The target does not serve a source-named panel,
+so a proxied panel would only ever answer the new box's catch-all page. A
+panel an earlier conversion had proxied is restored from its saved dot-file
+copy on the next `proxy` run. The legacy `<panel-fqdn>.alias.drushrc.php`
+symlink to the hostmaster alias, which used to make the panel look like a site
+to this tool, is purged by BOA's regular ltd-users pass on every box; an
+account that still depends on it must be repaired **before** it migrates.
+
 In the same breath as stamping `proxied.pid`, `proxy` **parks the converted
 account's Ægir dispatcher** (moved into BOA's own off-run directory). Without
 it a single dispatcher tick runs the account's queue, whose pending Verify
