@@ -308,12 +308,76 @@ for f in ${_FL}; do
   source "${_libFnc}/${f}.sh.inc"
 done
 
+# This launcher is a loose file and the lib tree a tarball, and an edge
+# cache can serve a stale tarball behind a fresh launcher: the tree then
+# lacks a function this run calls ('command not found') and the step is
+# skipped with nothing in the report. Probe for the newest function the run
+# needs. On a miss, fetch a fresh tree ONCE per release stamp -- from the
+# origin this launcher itself came from, past any edge cache -- into a
+# scratch path, and swap it in only after it verified; the working tree is
+# never removed first, so a failed fetch cannot abort the upgrade. If the
+# tree still lacks the hook: continue when it at least carries the
+# derived-group form (the step is skipped, said with the token the report
+# classifier reads), abort when it predates that form too -- a pre-compat
+# satellite.sh.inc would write the box-wide group over converted accounts.
+if ! declare -F _satellite_if_instance_group > /dev/null 2>&1; then
+  _libRefetchMark="/opt/tmp/.libtree-refetch.${_X_VERSION:-unknown}"
+  if [ ! -e "${_libRefetchMark}" ]; then
+    echo "NOTE: the lib tree predates this launcher (_satellite_if_instance_group missing); fetching a fresh tree"
+    touch "${_libRefetchMark}"
+    rm -rf /opt/tmp/boa-refetch
+    mkdir -p /opt/tmp/boa-refetch
+    # Fetched inline, never through _get_dev_ext: that name is redefined by
+    # the helper library sourced just above -- by the very tree this guard
+    # distrusts -- and an older copy knows nothing of the no-cache query, so
+    # the re-fetch would hit the same edge cache and land the same stale tree.
+    ( cd /opt/tmp/boa-refetch \
+      && curl ${_crlGet} "https://files.boa.io/dev/${_tRee}/boa.tar.gz?r=$(date +%s)" -o boa.tar.gz \
+      && tar -xzf boa.tar.gz ) > /dev/null 2>&1
+    if [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.nrml" ] \
+      && [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.dist" ] \
+      && [ -e "/opt/tmp/boa-refetch/boa/lib/functions/helper.sh.inc" ] \
+      && grep -q "^_satellite_if_instance_group() {" /opt/tmp/boa-refetch/boa/lib/functions/satellite.sh.inc 2> /dev/null; then
+      rm -rf /opt/tmp/boa
+      mv -f /opt/tmp/boa-refetch/boa /opt/tmp/boa
+      chown -R root:root /opt/tmp/boa &> /dev/null
+      for f in ${_FL}; do
+        [ -r "${_libFnc}/${f}.sh.inc" ] || _panic_exit "${f}"
+        source "${_libFnc}/${f}.sh.inc"
+      done
+      echo "NOTE: fresh lib tree in place"
+    else
+      echo "NOTE: the fresh tree could not be fetched or verified; keeping the current one"
+    fi
+    rm -rf /opt/tmp/boa-refetch
+  fi
+  if ! declare -F _satellite_if_instance_group > /dev/null 2>&1; then
+    if declare -F _acct_group > /dev/null 2>&1; then
+      echo "ALRT: the lib tree still predates this launcher (a cached boa.tar.gz on the mirror edge?); the per-instance group step does not run this pass"
+      _satellite_if_instance_group() { return 0; }
+    else
+      echo "ALRT: the lib tree predates the derived-group form; this run would write the box-wide group over converted accounts, aborting"
+      _clean_pid_exit _stale_lib_tree
+    fi
+  fi
+fi
+
 
 ###
 ### Welcome msg
 ###
 echo " "
-_msg "Skynet Agent v.${_X_VERSION} on $(dmidecode -s system-manufacturer 2>&1) welcomes you aboard!"
+# A guest with no SMBIOS/DMI table reads back nothing here, so fall back to the
+# architecture rather than greeting an empty string. Same filters as the
+# manufacturer check, since an older dmidecode prefixes its own status lines.
+_WELCOME_HOST="$(dmidecode -s system-manufacturer 2> /dev/null \
+  | grep -v '^# ' \
+  | grep -v '^SMBIOS .* present\.$' \
+  | grep -v '^Getting SMBIOS data ' \
+  | grep -v '^[[:space:]]*$' \
+  | tail -n1)"
+[ -z "${_WELCOME_HOST}" ] && _WELCOME_HOST="$(uname -m)"
+_msg "Skynet Agent v.${_X_VERSION} on ${_WELCOME_HOST} welcomes you aboard!"
 echo " "
 sleep 3
 
@@ -378,7 +442,9 @@ _satellite_if_major_upgrade
 _satellite_if_check_dns
 _satellite_checkpoint
 _satellite_pre_cleanup
+_satellite_if_instance_group pre
 _satellite_make
+_satellite_if_instance_group post
 _satellite_post_cleanup
 exit 0
 

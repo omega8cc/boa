@@ -2993,7 +2993,7 @@ _php_not_used_disable() {
       _re=${_re//[^0-9]/}
       if [ -e "/etc/init.d/php${_re}-fpm" ]; then
         _mrun "service php${_re}-fpm force-quit"
-        _mrun "update-rc.d -f php${_re}-fpm _remove"
+        _mrun "update-rc.d -f php${_re}-fpm remove"
         rm -f ${_vBs}/initd-php${_re}-fpm
         mv -f /etc/init.d/php${_re}-fpm ${_vBs}/initd-php${_re}-fpm
         _msg "INFO: /etc/init.d/php${_re}-fpm moved to ${_vBs}/initd-php${_re}-fpm"
@@ -3392,7 +3392,10 @@ _php_check_if_rebuild() {
   fi
   _check_php_cli
   _isLber=
-  _isLber=$(php -i | grep liblber 2>&1)
+  # php cannot load after a codename hop until it is rebuilt (its old
+  # image libs are gone); keep the loader error out of the pass log, where the
+  # launcher reads it as a failed pass.
+  _isLber=$(php -i 2>/dev/null | grep liblber 2>&1)
   if [[ "${_isLber}" =~ "liblber" ]]; then
     _msg "INFO: PHP rebuild required to fix liblber..."
     _PHP_FORCE_REINSTALL=YES
@@ -3401,7 +3404,7 @@ _php_check_if_rebuild() {
     _PHP_FORCE_REINSTALL=NO
   fi
   _isSeg=
-  _isSeg=$(php -v | grep cli 2>&1)
+  _isSeg=$(php -v 2>/dev/null | grep cli 2>&1)
   if [[ ! "${_isSeg}" =~ "cli" ]] || [ -z "${_isSeg}" ]; then
     _msg "INFO: PHP rebuild required to fix broken libs..."
     _PHP_FORCE_REINSTALL=YES
@@ -3410,7 +3413,7 @@ _php_check_if_rebuild() {
     _PHP_FORCE_REINSTALL=NO
   fi
   _isOnig=
-  _isOnig=$(php -i | grep libonig 2>&1)
+  _isOnig=$(php -i 2>/dev/null | grep libonig 2>&1)
   if [[ "${_isOnig}" =~ "libonig.so" ]]; then
     _msg "INFO: PHP rebuild required to fix libonig..."
     _PHP_FORCE_REINSTALL=YES
@@ -3419,7 +3422,7 @@ _php_check_if_rebuild() {
     _PHP_FORCE_REINSTALL=NO
   fi
   _isIcu=
-  _isIcu=$(php -i | grep libicuio 2>&1)
+  _isIcu=$(php -i 2>/dev/null | grep libicuio 2>&1)
   if [[ "${_isIcu}" =~ "libicuio" ]] \
     || [ ! -e "/usr/local/lib/icu/current" ]; then
     _msg "INFO: PHP rebuild required to fix ICU support..."

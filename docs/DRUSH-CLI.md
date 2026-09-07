@@ -71,7 +71,7 @@ Each file corresponds to a specific PHP version. To switch the PHP-CLI version:
 
 If none of these instant switch files are present, the system will default to the PHP version listed in `~/static/control/cli.info`.
 
-**Note:** These files will switch the PHP-CLI version used *instantly*, unlike the classic `~/static/control/cli.info` which requires 3 minutes to take effect.
+**Note:** `cli.info` is read by the shell wrapper on every command as well, so a new value in it applies to your next Drush or Composer run; the background helper that runs every three minutes then re-pins the account's own Drush copy and the Ægir task runner to it, and rewrites `cli.info` to the nearest installed version when the one you named is not installed (until then your commands run on the server's default PHP). The marker files exist for a temporary override you can drop again without editing your default.
 
 ### Supported PHP-CLI Versions:
 
@@ -86,7 +86,9 @@ If none of these instant switch files are present, the system will default to th
 - The system will automatically select the **highest PHP version** based on the filenames of
   the switch files. No need to remove lower-version files.
 - The `cli.info` file serves as the **default** PHP-CLI version when no instant switch files
-  are present, and it **must contain a valid PHP version** in its content (e.g., `8.1`).
+  are present, and it **must contain a valid PHP version** in its content (e.g., `8.1`). A
+  value naming a version that is not installed runs your commands on the server's default
+  PHP until the background helper corrects the file on its next pass.
 - This smart feature, similarly to the classic `~/static/control/cli.info`, depends on the
   BOA special shell wrapper, which is only active under the `oN.ftp` limited shell account.
   The wrapper reads these control files to determine which PHP-CLI version to use — without

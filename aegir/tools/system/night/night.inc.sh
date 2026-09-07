@@ -108,7 +108,7 @@ _validate_ctrl_dir() {
 _ctrl_stage_dir() {
   # Root-only staging dir for control-INI writes, on the same filesystem as the
   # account's platform trees (they all live under the account root). The account
-  # root itself is 0711 oN:users, so the tenant may traverse it but cannot create
+  # root itself is 0711 (owner oN), so the tenant may traverse it but cannot create
   # or unlink here; the staging dir is forced root:root 0700 on every call, and a
   # symlink planted in its place is removed rather than followed. Prints the path
   # on success. Reads _usEr from the caller.
@@ -126,8 +126,10 @@ _ctrl_stage_dir() {
 _reseed_ctrl_ini() {
   # Seed/refresh a control INI from a regular template, symlink-proof and atomic.
   # The per-site/per-platform control INIs live in a tenant-writable setgid
-  # modules dir (oN:users 02775, no sticky, group 'users' shared across all
-  # tenants), so a limited-shell/SFTP tenant can delete the seeded INI and plant
+  # modules dir (02775, no sticky, group-writable by the account's shell
+  # identities -- and by every tenant while the instance still carries the
+  # box-wide 'users' group), so a limited-shell/SFTP tenant can delete the
+  # seeded INI and plant
   # a symlink at its path; a plain cp -af then writes THROUGH a live link and the
   # following chown/chmod retarget it.
   #
@@ -189,7 +191,7 @@ _desymlink_planted() {
   # Strip a tenant-planted symlink at a root-maintained control-INI path before
   # this iteration seeds/edits/appends it. rm -f on a symlink removes only the
   # link (its target survives), and it is a no-op on a regular file, so a legit
-  # oN(.ftp):users file and the tenant's own edits are left untouched. The next
+  # account-owned file and the tenant's own edits are left untouched. The next
   # seed leg re-creates a missing INI as a regular file. Args = paths.
   local _p
   for _p in "$@"; do

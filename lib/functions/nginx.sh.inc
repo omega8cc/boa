@@ -693,9 +693,19 @@ _nginx_install_upgrade() {
         --with-openssl-opt='no-tests no-ssl3 enable-ktls zlib-dynamic enable-ec_nistp_64_gcc_128' \
         --with-cc-opt='-g -O2 -fstack-protector-strong -Wformat -Werror=format-security -Wp,-D_FORTIFY_SOURCE=2 -fPIC' \
         --with-ld-opt='-Wl,-Bsymbolic-functions -Wl,-z,relro -Wl,-z,now -Wl,--as-needed -pie' \
-        --with-debug ${_NGINX_EXTRA}"
+        --with-debug ${_NGINX_EXTRA} 2>&1 | tee /var/opt/nginx-configure.out"
       _mrun "make -j $(nproc)"
       _mrun "make install"
+      # A configure that aborts before objs/Makefile leaves make with nothing
+      # to build and the previous binary in place while the stamp would claim
+      # the new version; say so instead of reporting a clean pass.
+      _NGX_BUILT=$(/usr/sbin/nginx -v 2>&1 | grep -oE "nginx/[0-9.]+")
+      if [ ! -x "/var/opt/nginx-${_NGINX_VRN}/objs/nginx" ] \
+        || [ "${_NGX_BUILT}" != "nginx/${_NGINX_VRN}" ]; then
+        _msg "OOPS: Nginx ${_NGINX_VRN} did not build (no objs/nginx in the build tree, nginx -v reports ${_NGX_BUILT:-nothing}); the previous binary stays in place"
+        _NGX_CFG_ERR=$(grep -m1 "configure: error" /var/opt/nginx-configure.out 2>/dev/null)
+        [ -n "${_NGX_CFG_ERR}" ] && _msg "OOPS: nginx configure said: ${_NGX_CFG_ERR}"
+      fi
     fi
     ldconfig 2> /dev/null
     _nginx_clean_legacy_config
@@ -758,10 +768,18 @@ _nginx_initd_check() {
     ### the daily logrotate cron fail and left nginx writing to the
     ### renamed log files until the next reload.
     _X_INIT_TEST_C=$(cat /etc/init.d/nginx | grep rotate 2>&1)
+    ### The passive-standby hold gates start() in this script (the escape
+    ### hatch /root/.standby.serve.cnf names it). A deployed copy that
+    ### predates the hold passes the three tests above and was never
+    ### refreshed, so an upgraded mirror still booted its web tier and
+    ### served its own panel until the watchdog caught up. Refresh on the
+    ### gate's absence too.
+    _X_INIT_TEST_D=$(cat /etc/init.d/nginx | grep standby.serve.cnf 2>&1)
   fi
   if [[ "${_X_INIT_TEST_A}" =~ ULIMIT ]] \
     && [[ "${_X_INIT_TEST_B}" =~ Giedymin ]] \
-    && [[ "${_X_INIT_TEST_C}" =~ rotate ]]; then
+    && [[ "${_X_INIT_TEST_C}" =~ rotate ]] \
+    && [[ "${_X_INIT_TEST_D}" =~ standby.serve.cnf ]]; then
     chmod 755 /etc/init.d/nginx &> /dev/null
     _mrun "update-rc.d nginx defaults"
   else
