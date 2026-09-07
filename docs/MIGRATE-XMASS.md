@@ -293,9 +293,18 @@ satellite along): the init datadir swap replaces the target's MySQL with the
 source's, where that account's panel database never existed, so it would come
 out of cutover as a broken leftover (panel 500, no sites, no DB user). A
 site-less one is a leftover by definition and is purged on the spot with BOA's
-own verb (`log/CANCELLED` + `boa cleanup purge`, everything parked under
-`/var/backups/zombie/purged/<oN>/`, nginx configtest proven); one that carries
-sites is refused (`_XMASS_ALLOW_TARGET_ONLY=YES` keeps it knowingly).
+own verb (`log/CANCELLED` + `boa cleanup purge`: where a `static/` tree exists
+the account's `backups/`, `distro/`, `src/`, `static/` and `undo/` trees are
+removed outright, whatever else the home holds is parked under
+`/var/backups/zombie/purged/<oN>/`, nginx configtest proven). "Site-less" is
+read from three independent sources on the target, all of which must be empty:
+the account's registered site aliases (its own control panel set aside), the
+`sites/` directory of every registered platform (the platform aliases' `root`,
+which also reaches a platform behind a symlink), and a sweep for site
+directories under `distro/`, `static/`, `platforms/` and `aegir/` to the depth
+BOA itself builds, with or without a `web/` or `docroot/` level. An account
+that carries sites is refused (`_XMASS_ALLOW_TARGET_ONLY=YES` keeps it
+knowingly), and an inventory that cannot be read is never treated as empty.
 
 Run on the **source**, after `pre-mig` has completed on both hosts and before
 `init`. This is everything the target must have in place before its Octopus
