@@ -1623,16 +1623,27 @@ _xmass_sync_shell_credentials() {
           "root@${_t}:/home/${_acct}.${_n}/" 2>/dev/null \
           || _alrt "  ${_acct}: could not carry .ssh for ${_acct}.${_n}"
       fi
-    elif [ -d "/home/${_acct}.${_n}/.ssh" ]; then
+    else
       # The sub-user does not exist there yet: manage_ltd_users creates it
       # from clients/ within minutes and honours the carried store entry, so
       # the password converges. Its .ssh cannot be placed before the home
-      # exists -- stage it where that creation pass adopts it.
-      ssh root@"${_t}" "mkdir -p /var/backups/migrate-subuser-ssh/${_acct}.${_n}" &> /dev/null
-      rsync -aEAXu ${_ieni} -e ssh --no-devices --no-specials \
-        "/home/${_acct}.${_n}/.ssh" \
-        "root@${_t}:/var/backups/migrate-subuser-ssh/${_acct}.${_n}/" 2>/dev/null \
-        || _alrt "  ${_acct}: could not stage .ssh for ${_acct}.${_n}"
+      # exists -- stage it where that creation pass adopts it. Say so: a
+      # silent branch here read as "o2.sub1 was never carried" on a rig,
+      # while prep-target's copy of this routine names the staged path.
+      if [ -d "/home/${_acct}.${_n}/.ssh" ]; then
+        ssh root@"${_t}" "mkdir -p /var/backups/migrate-subuser-ssh/${_acct}.${_n}" &> /dev/null
+        if rsync -aEAXu ${_ieni} -e ssh --no-devices --no-specials \
+          "/home/${_acct}.${_n}/.ssh" \
+          "root@${_t}:/var/backups/migrate-subuser-ssh/${_acct}.${_n}/" 2>/dev/null; then
+          _info "  ${_acct}: sub-account ${_acct}.${_n} not created on ${_t} yet; password converges via the"
+          _info "  ${_acct}: carried store, and its keys are staged at /var/backups/migrate-subuser-ssh/${_acct}.${_n}/.ssh"
+        else
+          _alrt "  ${_acct}: could not stage .ssh for ${_acct}.${_n}"
+        fi
+      else
+        _info "  ${_acct}: sub-account ${_acct}.${_n} not created on ${_t} yet; its carried password"
+        _info "  ${_acct}: store entry makes it converge when manage_ltd_users creates it there"
+      fi
     fi
   done
   return 0
@@ -2401,22 +2412,63 @@ SQLEOF
   _info "Replication user '${_REPL_USER}'@'${_tgt}' created: OK"
 }
 
-# Prove the running replica's session on the source is TLS, from the source's
-# own view (performance_schema.threads.connection_type) and the replica's
-# (Source/Master_SSL_Allowed). Fail closed in TLS mode.
-_xmass_verify_replication_tls() {
-  local _ct _allowed
-  [ "$(_xmass_tls_mode)" = "PLAIN" ] && { _alrt "Replication transport: PLAIN (deliberate)"; return 0; }
-  _allowed=$(ssh root@"${_tgt}" \
+# One reading of the replication transport, shared by init's proof and the
+# status line. Prints one word -- SESSION: the source's performance_schema
+# shows the replica's session as SSL/TLS; GRANT: performance_schema is OFF
+# (the shipped 5.7 my.cnf), so the session view reads 'none' for a stream
+# that IS encrypted -- then the grant testifies instead: the replication
+# user carries REQUIRE SSL (ssl_type=ANY) and its IO thread is connected,
+# and the server refuses that account in the clear; PLAIN: a readable
+# session that is not TLS, or a grant without REQUIRE SSL; NONE: nothing
+# readable. The raw readings stay in _XM_TLS_* for the messages. With
+# performance_schema ON the session view remains the proof and a plain
+# session still fails closed -- the grant reading is used only where the
+# session view cannot testify.
+_xmass_repl_tls_witness() {   # 1 = target ip
+  local _t="$1"
+  _XM_TLS_ALLOWED=""; _XM_TLS_CT=""; _XM_TLS_PS=""; _XM_TLS_GRANT=""; _XM_TLS_IO=""
+  _XM_TLS_ALLOWED=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
     "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
      | grep '${_XM_SSL_FIELD}:' | awk '{print \$2}'" 2>/dev/null)
-  _ct=$(mysql --defaults-file=/root/.my.cnf -sNe \
+  _XM_TLS_CT=$(mysql --defaults-file=/root/.my.cnf -sNe \
     "SELECT connection_type FROM performance_schema.threads WHERE processlist_user='${_REPL_USER}' AND connection_type IS NOT NULL ORDER BY thread_id DESC LIMIT 1" 2>/dev/null)
-  if [ "${_allowed}" = "Yes" ] && [ "${_ct}" = "SSL/TLS" ]; then
-    _info "Replication transport: TLS (${_XM_SSL_FIELD}=Yes on target, source session connection_type=SSL/TLS)"
+  if [ "${_XM_TLS_ALLOWED}" = "Yes" ] && [ "${_XM_TLS_CT}" = "SSL/TLS" ]; then
+    echo SESSION
     return 0
   fi
-  _die "Replication transport is NOT TLS (${_XM_SSL_FIELD}='${_allowed:-?}', source session connection_type='${_ct:-none}')" \
+  _XM_TLS_PS=$(mysql --defaults-file=/root/.my.cnf -sNe "SELECT @@performance_schema" 2>/dev/null)
+  if [ "${_XM_TLS_ALLOWED}" = "Yes" ] && [ "${_XM_TLS_PS}" = "0" ]; then
+    _XM_TLS_GRANT=$(mysql --defaults-file=/root/.my.cnf -sNe \
+      "SELECT ssl_type FROM mysql.user WHERE user='${_REPL_USER}' AND host='${_t}'" 2>/dev/null)
+    _XM_TLS_IO=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
+      "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
+       | grep '${_XM_IO_FIELD}:' | awk '{print \$2}'" 2>/dev/null)
+    if [ "${_XM_TLS_GRANT}" = "ANY" ] && [ "${_XM_TLS_IO}" = "Yes" ]; then
+      echo GRANT
+      return 0
+    fi
+  fi
+  if [ -z "${_XM_TLS_ALLOWED}" ] && [ -z "${_XM_TLS_CT}" ]; then echo NONE; else echo PLAIN; fi
+}
+
+# Prove the running replica's stream is TLS, from the source's own view and
+# the replica's (Source/Master_SSL_Allowed). Fail closed in TLS mode -- and
+# stop the IO thread first: a refusal that says "not carrying rows in the
+# clear" must not leave the replica pulling them while the operator reads it.
+_xmass_verify_replication_tls() {
+  [ "$(_xmass_tls_mode)" = "PLAIN" ] && { _alrt "Replication transport: PLAIN (deliberate)"; return 0; }
+  case "$(_xmass_repl_tls_witness "${_tgt}")" in
+    SESSION)
+      _info "Replication transport: TLS (${_XM_SSL_FIELD}=Yes on target, source session connection_type=SSL/TLS)"
+      return 0 ;;
+    GRANT)
+      _info "Replication transport: TLS (${_XM_SSL_FIELD}=Yes on target, source grant REQUIRE SSL enforced on the connected IO thread; performance_schema is OFF here, so the session view cannot testify)"
+      return 0 ;;
+  esac
+  ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
+    "mysql --defaults-file=/root/.my.cnf -e \"${_XM_STOP} IO_THREAD\"" &> /dev/null \
+    && _alrt "replica IO thread stopped on ${_tgt}: no rows travel until this is resolved"
+  _die "Replication transport is NOT TLS (${_XM_SSL_FIELD}='${_XM_TLS_ALLOWED:-?}', source session connection_type='${_XM_TLS_CT:-none}', performance_schema=${_XM_TLS_PS:-?}, grant ssl_type='${_XM_TLS_GRANT:-?}', IO thread='${_XM_TLS_IO:-?}')" \
        " -- refusing to carry production rows in the clear; set _XMASS_PLAIN_REPLICATION=YES only deliberately"
 }
 
@@ -2457,9 +2509,29 @@ _xmass_decide_transfer_method() {
   fi
 }
 
+# xtrabackup holds every tablespace of the datadir open at once while it
+# backs up and prepares, and reserves no descriptors of its own (2.4's
+# --open-files-limit defaults to 0 = inherit). A root shell over ssh
+# inherits soft 1024 / hard 4096, so a datadir past a few thousand tables
+# dies mid-init with "Too many open files" -- observed on a 5.7 source at
+# 3616 tablespaces, after the target datadir had already been moved aside.
+# Root may raise the hard limit up to fs.nr_open: do so in the shell that
+# runs each xtrabackup step, on both ends, and say what it got. The remote
+# form is one string so the target's shell, not this one, expands it.
+_XMASS_NOFILE_WANT=1048576
+_XMASS_NOFILE_REMOTE='ulimit -n 1048576 2>/dev/null || ulimit -n "$(ulimit -Hn)" 2>/dev/null; echo "INFO: xtrabackup: open-files limit here: $(ulimit -Sn)"'
+_xmass_raise_nofile() {
+  local _was
+  _was=$(ulimit -Sn)
+  ulimit -n "${_XMASS_NOFILE_WANT}" 2>/dev/null \
+    || ulimit -n "$(ulimit -Hn)" 2>/dev/null
+  _info "xtrabackup: open-files limit on source: $(ulimit -Sn) (was ${_was})"
+}
+
 _xmass_take_backup() {
   # Ensure stage dir on target exists regardless of method
   ssh root@"${_tgt}" "rm -rf ${_XTRA_STAGE_TGT}; mkdir -p ${_XTRA_STAGE_TGT}"
+  _xmass_raise_nofile
 
   if [ "${_XTRA_METHOD}" = "stage" ]; then
     _info "xtrabackup: backing up to ${_XTRA_STAGE_SRC} (stage method) ..."
@@ -2510,12 +2582,12 @@ _xmass_take_backup() {
       --ftwrl-wait-timeout=900 \
       --kill-long-queries-timeout=60 \
       --stream=xbstream \
-      | ssh root@"${_tgt}" "xbstream -x -C ${_XTRA_STAGE_TGT}" \
+      | ssh root@"${_tgt}" "${_XMASS_NOFILE_REMOTE}; xbstream -x -C ${_XTRA_STAGE_TGT}" \
       || _die "xtrabackup stream to target failed"
 
     _info "xtrabackup: preparing backup on target ${_tgt} ..."
     ssh root@"${_tgt}" \
-      "xtrabackup --prepare --target-dir=${_XTRA_STAGE_TGT}" \
+      "${_XMASS_NOFILE_REMOTE}; xtrabackup --prepare --target-dir=${_XTRA_STAGE_TGT}" \
       || _die "xtrabackup --prepare on target failed"
   fi
 
@@ -2536,7 +2608,7 @@ REMOTE
 
   _info "Running xtrabackup --copy-back on target ${_tgt} ..."
   ssh root@"${_tgt}" \
-    "xtrabackup --copy-back \
+    "${_XMASS_NOFILE_REMOTE}; xtrabackup --copy-back \
       --target-dir=${_XTRA_STAGE_TGT} \
       --datadir=/var/lib/mysql" \
     || _die "xtrabackup --copy-back on target failed"
@@ -3188,9 +3260,9 @@ _XMASS_MAX_DELETE="${_XMASS_MAX_DELETE:-5000}"
 # trees and so the likeliest to trip -- are exactly the ones an operator
 # must not meet as a bare "failed (rc=25)".
 _xmass_deny_maxdelete() {   # 1 = label
-  _alrt "DENY: ${1}: the delete guard stopped this leg — more than"
-  _alrt "DENY: ${_XMASS_MAX_DELETE} files would have been removed on the target, so rsync"
-  _alrt "DENY: stopped at the limit. Confirm the source really lost that many files"
+  _alrt "DENY: ${1}: the delete guard stopped this leg — the source has lost more than"
+  _alrt "DENY: ${_XMASS_MAX_DELETE} files the target still holds; rsync removed the first"
+  _alrt "DENY: ${_XMASS_MAX_DELETE} and skipped the rest. Confirm the source really lost that many"
   _alrt "DENY: (an unmounted volume and a genuine mass deletion look identical from"
   _alrt "DENY: here); if it is genuine, re-run once with a raised _XMASS_MAX_DELETE."
 }
@@ -6055,14 +6127,21 @@ _xmass_probe_target_panels() {
   # would have known without opening them. $2 = die|warn.
   local _t="$1" _how="$2" _roots _r _fq _code _bad="" _res=""
   _roots=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
-    "for _d in /var/aegir /data/disk/o*; do _a=\"\${_d}/.drush/hostmaster.alias.drushrc.php\"; [ -f \"\${_a}\" ] || continue; [ -e \"\${_d}/log/CANCELLED\" ] && continue; _s=\$(grep \"site_path'\" \"\${_a}\" | head -1 | sed \"s/.*=>//; s/[' ,;]//g\"); echo \"\${_d} \$(basename \"\${_s}\")\"; done" 2>/dev/null)
+    "for _d in /var/aegir /data/disk/o*; do _a=\"\${_d}/.drush/hostmaster.alias.drushrc.php\"; [ -f \"\${_a}\" ] || continue; [ -e \"\${_d}/log/CANCELLED\" ] && continue; _s=\$(grep \"site_path'\" \"\${_a}\" | head -1 | sed \"s/.*=>//; s/[' ,;]//g\"); _f=\"\"; [ -e \"/data/conf/suspended/\$(basename \"\${_d}\").pid\" ] && _f=SUSPENDED; echo \"\${_d} \$(basename \"\${_s}\") \${_f}\"; done" 2>/dev/null)
   [ -z "${_roots}" ] && { _alrt "could not list the target's Aegir roots for the panel probe (ssh?)"; return 0; }
   case "${_t}" in
     *[!0-9.]*) _res="" ;;
     *) _res="--resolve" ;;
   esac
-  while read -r _r _fq; do
+  while read -r _r _fq _flag; do
     [ -z "${_fq}" ] && continue
+    # A suspended account answers 503 for everything, its panel included --
+    # that is the suspension working, not a broken panel (the flag travelled
+    # with the sync, so a suspended source account is suspended here too).
+    if [ "${_flag}" = "SUSPENDED" ]; then
+      _info "  panel ${_fq} (${_r}): account suspended on the target -- 503 by design, not probed"
+      continue
+    fi
     if [ -n "${_res}" ]; then
       _code=$(curl -sk -o /dev/null -w '%{http_code}' -A iCab --max-time 30 --resolve "${_fq}:443:${_t}" "https://${_fq}/user" 2>/dev/null)
     else
@@ -6453,7 +6532,17 @@ _xmass_cmd_init() {
   # The datadir swap below must never land on a target mid-pass: a
   # prep-target minutes ago left every seeded account an octopus pass and
   # its queued verifies. Wait for real silence, bounded, fail-closed.
-  _xmass_wait_target_silent "${_tgt}" "init replaces the target datadir" die full
+  # An init that refused AFTER its swap left the target a standby: its
+  # runner exits on the marker and its hosting rows are the source's,
+  # replicated (unreadable through the target's own aliases), so the full
+  # scope reads "busy" there until the bound expires. Probe locks only,
+  # as cutover does -- the re-run is the documented remedy for that state.
+  local _silence_scope=full
+  if ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "test -e /root/.standby.cnf" 2>/dev/null; then
+    _silence_scope=locks
+    _info "target ${_tgt} is already a standby (an earlier init committed its swap): waiting on run locks and processes only"
+  fi
+  _xmass_wait_target_silent "${_tgt}" "init replaces the target datadir" die "${_silence_scope}"
 
   # Every octopus pass the target ran while it was being provisioned (the
   # install, its in-flow upgrade, the pin-seed pass) snapshotted its own empty
@@ -6854,20 +6943,13 @@ _xmass_cmd_reset_phase() {
 # sees on the live session. Read-only; degrades to "unknown" on an unreadable
 # side rather than guessing.
 _xmass_status_transport() {
-  local _allowed _ct
   [ -n "${_XMASS_TARGET_IP}" ] || { echo "n/a"; return 0; }
-  _allowed=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_XMASS_TARGET_IP}" \
-    "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
-     | grep '${_XM_SSL_FIELD}:' | awk '{print \$2}'" 2>/dev/null)
-  _ct=$(mysql --defaults-file=/root/.my.cnf -sNe \
-    "SELECT connection_type FROM performance_schema.threads WHERE processlist_user='${_REPL_USER}' AND connection_type IS NOT NULL ORDER BY thread_id DESC LIMIT 1" 2>/dev/null)
-  if [ "${_allowed}" = "Yes" ] && [ "${_ct}" = "SSL/TLS" ]; then
-    echo "TLS (${_XM_SSL_FIELD}=Yes, session SSL/TLS)"
-  elif [ -z "${_allowed}" ] && [ -z "${_ct}" ]; then
-    echo "unknown (no replica session readable)"
-  else
-    echo "PLAIN (${_XM_SSL_FIELD}=${_allowed:-?}, session ${_ct:-none})"
-  fi
+  case "$(_xmass_repl_tls_witness "${_XMASS_TARGET_IP}")" in
+    SESSION) echo "TLS (${_XM_SSL_FIELD}=Yes, session SSL/TLS)" ;;
+    GRANT)   echo "TLS (${_XM_SSL_FIELD}=Yes, grant REQUIRE SSL enforced; performance_schema is OFF on the source)" ;;
+    NONE)    echo "unknown (no replica session readable)" ;;
+    *)       echo "PLAIN (${_XM_SSL_FIELD}=${_XM_TLS_ALLOWED:-?}, session ${_XM_TLS_CT:-none})" ;;
+  esac
 }
 
 _xmass_cmd_status() {
