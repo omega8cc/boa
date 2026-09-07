@@ -801,9 +801,11 @@ _check_report() {
     _ALERT_MSG="ALERT: Failed (apt) Barracuda upgrade"
   fi
   _ONLY_REBOOT=NO
+  _REBOOT_ALSO=NO
   if [[ "${_RESULT_KERNEL}" =~ "Your OS kernel" ]] \
     && [[ "${_RESULT_REBOOT}" =~ "Please reboot" ]]; then
     [ "${_SEND_ALERT}" != "YES" ] && _ONLY_REBOOT=YES
+    _REBOOT_ALSO=YES
     _SEND_ALERT=YES
     _ALERT_MSG="REBOOT: Your new system kernel requires boa reboot"
   fi
@@ -833,6 +835,16 @@ _check_report() {
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (libs) Barracuda upgrade"
     _ONLY_REBOOT=NO
+  fi
+  # A failure verdict replaces the reboot wording above; the new kernel
+  # still needs its reboot, so the subject keeps saying so.
+  if [ "${_SEND_ALERT}" = "YES" ] \
+    && [ "${_ONLY_REBOOT}" = "NO" ] \
+    && [ "${_REBOOT_ALSO}" = "YES" ]; then
+    _ALERT_MSG="${_ALERT_MSG} (new kernel, reboot required)"
+  fi
+  if [ "${_NO_MAIL:-NO}" = "YES" ]; then
+    return 0
   fi
   if [ "${_SEND_ALERT}" = "YES" ]; then
     _send_alert
@@ -1385,6 +1397,10 @@ _up_action() {
         fi
         bash ${_vBs}/${_barName} 2>&1 | tee ${_UP_LOG}
         wait
+        # The console showed the pass; the completion line below still
+        # needs the verdict, and this arm mails nothing.
+        _NO_MAIL=YES
+        _check_report
       fi
     fi
   else
@@ -1627,6 +1643,8 @@ _up_finish() {
   # it needs instead of calling it errored.
   if [ "${_SEND_ALERT}" = "YES" ] && [ "${_ONLY_REBOOT}" = "YES" ]; then
     echo "BARRACUDA upgrade completed, REBOOT REQUIRED -- run 'boa reboot' (log: ${_UP_LOG})"
+  elif [ "${_SEND_ALERT}" = "YES" ] && [ "${_REBOOT_ALSO:-NO}" = "YES" ]; then
+    echo "BARRACUDA upgrade completed WITH ERRORS -- review ${_UP_LOG}; new kernel, run 'boa reboot' after the review"
   elif [ "${_SEND_ALERT}" = "YES" ]; then
     echo "BARRACUDA upgrade completed WITH ERRORS -- review ${_UP_LOG}"
   else
