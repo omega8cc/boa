@@ -3049,7 +3049,7 @@ _if_fix_lshell() {
     [ ! -d "/usr/local/etc" ] && mkdir -p /usr/local/etc
     ln -sfn /etc/lshell.conf /usr/local/etc/lshell.conf
   fi
-  _LSHELL_VRN=0.11.4
+  _LSHELL_VRN=0.11.5
   # 0.11.x needs Python 3.10+; a box whose python3 is older (chimaera 3.9,
   # beowulf 3.7) keeps 0.10, which stays installable there so a broken shell
   # on a legacy box still heals instead of failing the 0.11 build every pass.
@@ -3064,7 +3064,9 @@ _if_fix_lshell() {
   # publish to a tree is its rollout), and it HEALS: a box whose lshell is
   # missing or broken gets its version back on the next quiet pass without
   # waiting for a barracuda upgrade (the incident case).
+  local _LSHELL_NOW _LSHELL_BROKEN _LSHELL_SRC_MISSING
   _LSHELL_FORCE_REINSTALL=NO
+  _LSHELL_BROKEN=NO
   _isLshell="$(which lshell)"
   # Broken shapes are read on the RAW output: the cut|awk token keeps one
   # word after the first hyphen, which turns "bad interpreter: ..." into
@@ -3076,12 +3078,24 @@ _if_fix_lshell() {
   if [ -z "${_isLshell}" ] \
     || [ -z "${_PATH_LSHELL}" ] \
     || [ -z "${_LSHELL_ITD}" ] \
-    || [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ] \
     || [[ "${_LSHELL_RAW}" =~ "Traceback" ]] \
     || [[ "${_LSHELL_RAW}" =~ "bad interpreter" ]] \
     || [[ "${_LSHELL_RAW}" =~ "ImportError" ]] \
     || [[ "${_LSHELL_RAW}" =~ "ModuleNotFoundError" ]]; then
+    _LSHELL_BROKEN=YES
     _LSHELL_FORCE_REINSTALL=YES
+  elif [ "${_LSHELL_ITD}" != "${_LSHELL_CHK_VRN}" ]; then
+    _LSHELL_FORCE_REINSTALL=YES
+  fi
+  # A version step whose tarball is not on the mirror yet is retried once an
+  # hour, not on every pass: the apt, pip and fetch preamble below is the
+  # price of a real reinstall, not of a missing file. A broken shell never
+  # waits.
+  _LSHELL_SRC_MISSING="${_pthLog}/lshell-src-missing-${_LSHELL_VRN}.log"
+  if [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ] \
+    && [ "${_LSHELL_BROKEN}" = "NO" ] \
+    && [ -n "$(find "${_LSHELL_SRC_MISSING}" -mmin -60 2>/dev/null)" ]; then
+    _LSHELL_FORCE_REINSTALL=NO
   fi
   if [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ]; then
     [ -f "/etc/lshell.conf" ] && cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_LSHELL_VRN}
@@ -3105,28 +3119,43 @@ _if_fix_lshell() {
     cd /var/opt
     rm -rf lshell*
     _get_dev_src "lshell-${_LSHELL_VRN}.tar.gz"
-    for _Files in `find /var/opt/lshell-${_LSHELL_VRN} -type f`; do
-      sed -i "s/kicked/logged/g" ${_Files} &> /dev/null
-      wait
-      sed -i "s/Kicked/Logged/g" ${_Files} &> /dev/null
-      wait
-    done
-    # No pre-emptive removal of the installed package: pip replaces the
-    # previous dist only after the new one has BUILT, so a failed fetch or
-    # build leaves the old lshell in place instead of locking every shell
-    # user out. Verify the result and say so when it did not land.
-    cd /var/opt/lshell-${_LSHELL_VRN}
-    _PIP_TEST=$(${_usePip} --version 2>&1)
-    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
-      ${_usePip} install . --break-system-packages --root-user-action ignore
+    # A pin that runs ahead of its tarball on the mirror must not turn every
+    # pass into a failed build that still kicks the logged-in shell users:
+    # without an extracted source tree there is nothing to install, so the
+    # installed lshell is kept, the kick below is skipped and the retry
+    # marker holds the next attempts to once an hour.
+    _LSHELL_NOW="${_LSHELL_ITD}"
+    if [ -e "/var/opt/lshell-${_LSHELL_VRN}/pyproject.toml" ] \
+      || [ -e "/var/opt/lshell-${_LSHELL_VRN}/setup.py" ]; then
+      rm -f "${_LSHELL_SRC_MISSING}"
+      for _Files in `find /var/opt/lshell-${_LSHELL_VRN} -type f`; do
+        sed -i "s/kicked/logged/g" ${_Files} &> /dev/null
+        wait
+        sed -i "s/Kicked/Logged/g" ${_Files} &> /dev/null
+        wait
+      done
+      # No pre-emptive removal of the installed package: pip replaces the
+      # previous dist only after the new one has BUILT, so a failed fetch or
+      # build leaves the old lshell in place instead of locking every shell
+      # user out. Verify the result and say so when it did not land.
+      cd /var/opt/lshell-${_LSHELL_VRN}
+      _PIP_TEST=$(${_usePip} --version 2>&1)
+      if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
+        || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
+        || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
+        ${_usePip} install . --break-system-packages --root-user-action ignore
+      else
+        ${_usePip} install .
+      fi
+      _LSHELL_NOW=$(${_PATH_LSHELL} --version 2>&1 | tr -d "\n" | cut -d"-" -f2 | awk '{ print $1}' 2>&1)
+      if [ "${_LSHELL_NOW}" != "${_LSHELL_CHK_VRN}" ]; then
+        echo "OOPS: lshell ${_LSHELL_VRN} did not install (have: ${_LSHELL_NOW}); previous version kept"
+      else
+        touch ${_pthLog}/lshell-fix-build-${_LSHELL_VRN}.log
+      fi
     else
-      ${_usePip} install .
-    fi
-    _LSHELL_NOW=$(${_PATH_LSHELL} --version 2>&1 | tr -d "\n" | cut -d"-" -f2 | awk '{ print $1}' 2>&1)
-    if [ "${_LSHELL_NOW}" != "${_LSHELL_CHK_VRN}" ]; then
-      echo "OOPS: lshell ${_LSHELL_VRN} did not install (have: ${_LSHELL_NOW}); previous version kept"
+      echo "OOPS: no lshell-${_LSHELL_VRN} source tree in /var/opt (fetch or extract failed); installed lshell ${_LSHELL_ITD:-none} kept"
+      touch "${_LSHELL_SRC_MISSING}"
     fi
     [ -f "/etc/lshell.conf-bak-${_LSHELL_VRN}" ] && cp -af /etc/lshell.conf-bak-${_LSHELL_VRN} /etc/lshell.conf
     rm -f /etc/logrotate.d/lshell
@@ -3136,9 +3165,12 @@ _if_fix_lshell() {
     chown :lshellg /var/log/lsh
     # 1770: tenants write their own log here; the sticky bit keeps one off another's
     chmod 1770 /var/log/lsh &> /dev/null
-    # Kill all non-root logged-in users
-    who | awk '$1 !~ /^root$/ { cmd = "pkill -KILL -u " $1; system(cmd) }'
-    touch ${_pthLog}/lshell-fix-build-${_LSHELL_VRN}.log
+    # Kill all non-root logged-in users, so the new lshell takes effect;
+    # nothing to take effect when it did not land
+    if [ "${_LSHELL_NOW}" = "${_LSHELL_CHK_VRN}" ] \
+      && [ "${_LSHELL_NOW}" != "${_LSHELL_ITD}" ]; then
+      who | awk '$1 !~ /^root$/ { cmd = "pkill -KILL -u " $1; system(cmd) }'
+    fi
   fi
   if [ -e "${_usrBin}/lshell" ]; then
     chown root:users ${_usrBin}/lshell
@@ -4572,9 +4604,9 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f98 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f63 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f93 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f31 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f62 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f92 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f30 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f86 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f95 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f89 --guard /local/bin/autochimaera
