@@ -53,6 +53,71 @@ _grp_set_is() {
 # and re-running the line through an unquoted echo, word-split and
 # glob-expanded), and with the prefix in the line it stripped the layer
 # itself for that group (measured: every exec shape escaped). It is gone.
+# A tenant must not hand drush a PHP file to load. Drush 8 has three option
+# spellings that do exactly that: --config / -c (a drushrc, include_once),
+# --early (require_once of the file), --include / -i (a directory of command
+# files); each ran the tenant's own file as drush through the real login
+# chain (measured 2026-09-07), past every drush token the forbidden list
+# refuses, and a config file carries any refused option as well. The test
+# runs on the STRING ABOUT TO BE HANDED TO DASH at every tenant exec site,
+# never on the typed line: websh rewrites a drush line before exec (single
+# quotes dropped, the launcher token stripped everywhere it occurs), so a
+# typed spelling that is harmless can become the option after the rewrite,
+# and a spelling dash would assemble from quoted pieces (--con"fig") must
+# be read the way dash reads it. So: the first segment up to a pipe outside
+# quotes, quotes and backslashes removed, leading NAME=value words skipped;
+# only when that segment IS a drush invocation (drush/drushN/vdrush, a
+# drush.php launcher, or php followed by one) are the option words tested,
+# so a grep -c or tar -cf that merely names drush is never a hit. The Aegir
+# backend, root and the instance users are not tenants and keep the options.
+_drush_segment() {
+  local _s="$1" _i _ch _q="" _out=""
+  for (( _i=0; _i<${#_s}; _i++ )); do
+    _ch="${_s:_i:1}"
+    if [ -n "${_q}" ]; then
+      if [ "${_ch}" = "${_q}" ]; then _q=""; continue; fi
+    elif [ "${_ch}" = "'" ] || [ "${_ch}" = '"' ]; then
+      _q="${_ch}"; continue
+    elif [ "${_ch}" = "\\" ]; then
+      _i=$(( _i + 1 )); _ch="${_s:_i:1}"
+    elif [ "${_ch}" = "|" ]; then
+      break
+    fi
+    _out+="${_ch}"
+  done
+  printf '%s' "${_out}"
+}
+_drush_loader_refused() {
+  local _seg _w1 _w2
+  _seg=$(_drush_segment "$1")
+  # leading assignments (the noexec prefix is one) are not the command
+  while [[ "${_seg}" =~ ^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+ ]]; do
+    _seg="${_seg#"${BASH_REMATCH[0]}"}"
+  done
+  read -r _w1 _w2 _ <<< "${_seg}"
+  case "${_w1##*/}" in
+    drush|drush8|drush10|drush11|vdrush|drush.php) ;;
+    php|php[0-9][0-9]) case "${_w2##*/}" in drush|drush8|drush10|drush11|drush.php) ;; *) return 1 ;; esac ;;
+    *) return 1 ;;
+  esac
+  [[ "${_seg}" =~ (^|[[:space:]])--(config|early|include)(=|[[:space:]]|$) ]] && return 0
+  [[ "${_seg}" =~ (^|[[:space:]])-[ci]([[:space:]]|$) ]] && return 0
+  return 1
+}
+_is_tenant() {
+  [[ "${_LTD_UID}" == *.ftp ]] || _in_grp lshellg || _in_grp ltd-shell || _in_grp ltd-shell-more
+}
+# every tenant exec site hands its final line through here
+_exec_dash_c() {
+  if _is_tenant && _drush_loader_refused "$1"; then
+    echo
+    echo " This drush command is not available (D)"
+    echo
+    exit 0
+  fi
+  exec /bin/dash -c "$1"
+}
+
 _forward_to_dash() {
   # Path to the underlying shell (dash in this case)
   _shell="/bin/dash"
@@ -77,6 +142,12 @@ _forward_to_dash() {
       -c)
         # Command option
         if [[ -n "$2" ]]; then
+          if _is_tenant && _drush_loader_refused "$2"; then
+            echo
+            echo " This drush command is not available (D)"
+            echo
+            exit 0
+          fi
           _options+=("-c" "$2")
           shift 2
           _positional+=("$@")
@@ -514,35 +585,16 @@ fi
 # "-c " is stripped from the drush arguments (2023, drush over SSH). It used
 # to be stripped from the WHOLE line, which also ate the -c of a grep behind
 # a pipe (drush8 status | grep -c x printed the lines, not a count); only the
-# drush segment, up to the first pipe, is touched now.
-if [[ "${_ARR}" =~ "-c " ]]; then
+# drush segment, up to the first pipe, is touched now, and never for a
+# tenant: their -c is a refused option (see _drush_loader_refused), and the
+# strip would turn it into a not-found command before the refusal could
+# name it.
+if [[ "${_ARR}" =~ "-c " ]] && ! _is_tenant; then
   _ARR_HEAD="${_ARR%%|*}"
   _ARR_TAIL="${_ARR#"${_ARR_HEAD}"}"
   _ARR="${_ARR_HEAD//-c /}${_ARR_TAIL}"
 fi
 
-# A tenant must not hand drush a config file: --config (and its short form
-# -c) loads a drushrc.php with include_once, i.e. runs the tenant's own PHP
-# as drush and smuggles every option the forbidden list refuses on the
-# command line (measured 2026-09-07: drush8 --config=<tenant file> status
-# executed the file through the real login chain). Refused before any
-# dispatch for the lshell identities; the Aegir backend and root are not
-# tenants and keep the option. The test reads the drush segment as typed,
-# up to the first pipe, so a -c behind a pipe (grep -c) is not a hit.
-_drush_config_refused() {
-  local _seg="${1%%|*}"
-  [[ "${_seg}" =~ (^|[[:space:]])--config(=|[[:space:]]|$) ]] && return 0
-  [[ "${_seg}" =~ (^|[[:space:]])-c([[:space:]]|$) ]] && return 0
-  return 1
-}
-if [[ "${_ARGS}" =~ "drush" ]] \
-  && { [[ $(whoami) == *.ftp ]] || _in_grp lshellg || _in_grp ltd-shell || _in_grp ltd-shell-more; } \
-  && _drush_config_refused "${_ARGS}"; then
-  echo
-  echo " This drush command is not available (D)"
-  echo
-  exit 0
-fi
 
 if [[ "${HOME}" =~ (^)"/data/disk/" ]] \
   && [ -z "${PHP_FWD}" ] \
@@ -1297,7 +1349,7 @@ if _grp_set_is "users www-data" \
           ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 1 _ARR is ${_ARR}
           ### echo EXD 1 ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
-          exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}"
+          _exec_dash_c "${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}"
           exit 0
         elif [ ! -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
@@ -1306,7 +1358,7 @@ if _grp_set_is "users www-data" \
           ### echo EXD 3-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 3-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
-          exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
+          _exec_dash_c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
         elif [ -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
@@ -1315,14 +1367,14 @@ if _grp_set_is "users www-data" \
           ### echo EXD 3-NO-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 3-NO-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-NO-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
-          exec /bin/dash -c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
+          _exec_dash_c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
           ### echo EXC 1 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXC 1 _C_ARR is ${_C_ARR}
           ### echo EXC 1 _F_ARR is "$@"
           ### echo EXC 1 ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
-          exec /bin/dash -c "${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
+          _exec_dash_c "${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
           exit 0
         else
           ### echo EXH 1 _forward_to_dash "$@"
