@@ -5219,36 +5219,105 @@ if [ -z "${_DEAD_DB}" ]; then
   echo "PANEL-ERROR: cannot read db_name from ${_SP}/drushrc.php"
   exit 1
 fi
+_LIVE=""
 if [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B \
     -e "SHOW DATABASES LIKE '${_DEAD_DB}'" 2>/dev/null)" ]; then
   _repoint_panel_platform "${_DEAD_DB}" || exit 1
-  echo "PANEL-OK: ${_R} panel DB ${_DEAD_DB} is live — nothing to rewire"
-  exit 0
-fi
-_LIVE=""
-for _C in $(mysql --defaults-file=/root/.my.cnf -N -B \
-    -e "SHOW DATABASES" 2>/dev/null \
-  | grep -vE "^(information_schema|performance_schema|mysql|sys)$"); do
-  case "${_C}" in *[!A-Za-z0-9_]*) continue ;; esac
-  if [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B "${_C}" \
-      -e "SELECT name FROM hosting_context WHERE name='server_master' LIMIT 1" 2>/dev/null)" ] \
-    && [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B "${_C}" \
-      -e "SELECT publish_path FROM hosting_platform WHERE publish_path LIKE '${_R}/%' LIMIT 1" 2>/dev/null)" ]; then
-    if [ -n "${_LIVE}" ]; then
-      echo "PANEL-ERROR: multiple live hostmaster DBs match ${_R} (${_LIVE}, ${_C}) — refusing to guess"
-      exit 1
-    fi
-    _LIVE="${_C}"
+  # A live DB is not yet a usable panel: the credentials the panel's OWN
+  # files hold must authenticate. A failback target keeps its old panel site
+  # dir (the rename must not clobber a NEW-named dir), whose drushrc.php
+  # still carries the password from BEFORE the peer's promotion rotated it,
+  # while the swapped-in datadir knows only the rotated one. The web side
+  # heals -- the queue's verify renders the vhost from the DB -- but the
+  # synchronous hostmaster verify bootstraps through drushrc.php, dies on
+  # 1045 and never rewrites it: the panel serves while every drush call for
+  # that account fails (dispatcher, tasks, the next pre-mig's gate).
+  # Live-observed on the first failback that completed. Converge on the
+  # serving truth (a vhost password MySQL accepts); rotate only when
+  # nothing the panel holds authenticates.
+  _DRU=$(sed -n "s/^\$options\['db_user'\] = '\([^']*\)';.*/\1/p" "${_SP}/drushrc.php" | head -1)
+  _DRP=$(sed -n "s/^\$options\['db_passwd'\] = '\([^']*\)';.*/\1/p" "${_SP}/drushrc.php" | head -1)
+  _DRH=$(sed -n "s/^\$options\['db_host'\] = '\([^']*\)';.*/\1/p" "${_SP}/drushrc.php" | head -1)
+  [ -n "${_DRH}" ] || _DRH=localhost
+  case "${_DRU}${_DRH}" in *[!A-Za-z0-9_.:-]*) _DRU="" ;; esac
+  _cred_ok() { [ -n "$1" ] && [ -n "$2" ] && mysql -u"$1" -p"$2" -h "${_DRH}" -N -B -e "SELECT 1" >/dev/null 2>&1; }
+  if [ -z "${_DRU}" ] || _cred_ok "${_DRU}" "${_DRP}"; then
+    echo "PANEL-OK: ${_R} panel DB ${_DEAD_DB} is live — nothing to rewire"
+    exit 0
   fi
-done
-if [ -z "${_LIVE}" ]; then
-  echo "PANEL-ERROR: dead panel DB ${_DEAD_DB} and no live hostmaster DB found for ${_R}"
-  exit 1
+  _WPW=""
+  _VHD="${_SP%%/aegir/distro/*}"
+  if [ "${_VHD}" != "${_SP}" ]; then
+    for _VHF in \
+      "${_VHD}/config/server_master/nginx/vhost.d/$(basename "${_SP}")" \
+      "${_VHD}/config/server_master/nginx/vhost.d/https.$(basename "${_SP}")"; do
+      [ -f "${_VHF}" ] || continue
+      _CPW=$(sed -n "s/^ *fastcgi_param  *db_passwd  *\([^;]*\);.*/\1/p" "${_VHF}" | head -1)
+      case "${_CPW}" in *[!A-Za-z0-9_.@%+=:-]*) continue ;; esac
+      if _cred_ok "${_DRU}" "${_CPW}"; then
+        _WPW="${_CPW}"
+        break
+      fi
+    done
+  fi
+  if [ -n "${_WPW}" ]; then
+    for _F in "${_SP}/drushrc.php" "${_SP}/settings.php"; do
+      [ -f "${_F}" ] || continue
+      _O=$(stat -c '%U:%G' "${_F}")
+      _M=$(stat -c '%a' "${_F}")
+      sed -i \
+        -e "s#^\( *'password' => \)[\"'][^\"']*[\"'],#\1\"${_WPW}\",#" \
+        -e "s#^\(\$options\['db_passwd'\] = \)'[^']*';#\1'${_WPW}';#" \
+        "${_F}"
+      [ -n "${_O}" ] && chown "${_O}" "${_F}"
+      [ -n "${_M}" ] && chmod "${_M}" "${_F}"
+    done
+    for _VHF in \
+      "${_VHD}/config/server_master/nginx/vhost.d/$(basename "${_SP}")" \
+      "${_VHD}/config/server_master/nginx/vhost.d/https.$(basename "${_SP}")"; do
+      [ -f "${_VHF}" ] || continue
+      _VO=$(stat -c '%U:%G' "${_VHF}")
+      _VM=$(stat -c '%a' "${_VHF}")
+      sed -i -e "s#^\( *fastcgi_param  *db_passwd  *\)[^;]*;#\1${_WPW};#" "${_VHF}"
+      [ -n "${_VO}" ] && chown "${_VO}" "${_VHF}"
+      [ -n "${_VM}" ] && chmod "${_VM}" "${_VHF}"
+    done
+    if _cred_ok "${_DRU}" "$(sed -n "s/^\$options\['db_passwd'\] = '\([^']*\)';.*/\1/p" "${_SP}/drushrc.php" | head -1)"; then
+      echo "PANEL-NOTE: ${_R} panel drushrc.php held a DB password MySQL rejects; every credential file converged on the vhost's working one"
+      echo "PANEL-OK: ${_R} panel DB ${_DEAD_DB} is live — credentials converged"
+      exit 0
+    fi
+    echo "PANEL-ERROR: ${_R} panel credential convergence did not land in ${_SP}/drushrc.php — check the credential line format"
+    exit 1
+  fi
+  echo "PANEL-NOTE: ${_R} panel DB ${_DEAD_DB} is live but nothing the panel holds authenticates as ${_DRU}; rotating its password"
+  _LIVE="${_DEAD_DB}"
 fi
-# Persist the platform truth into the live DB. §8's hostmaster verify
-# regenerates the alias FROM the DB, so an alias-only correction is undone
-# on the next verify and the panel 404s from a hollow platform path.
-_repoint_panel_platform "${_LIVE}" || exit 1
+if [ -z "${_LIVE}" ]; then
+  for _C in $(mysql --defaults-file=/root/.my.cnf -N -B \
+      -e "SHOW DATABASES" 2>/dev/null \
+    | grep -vE "^(information_schema|performance_schema|mysql|sys)$"); do
+    case "${_C}" in *[!A-Za-z0-9_]*) continue ;; esac
+    if [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B "${_C}" \
+        -e "SELECT name FROM hosting_context WHERE name='server_master' LIMIT 1" 2>/dev/null)" ] \
+      && [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B "${_C}" \
+        -e "SELECT publish_path FROM hosting_platform WHERE publish_path LIKE '${_R}/%' LIMIT 1" 2>/dev/null)" ]; then
+      if [ -n "${_LIVE}" ]; then
+        echo "PANEL-ERROR: multiple live hostmaster DBs match ${_R} (${_LIVE}, ${_C}) — refusing to guess"
+        exit 1
+      fi
+      _LIVE="${_C}"
+    fi
+  done
+  if [ -z "${_LIVE}" ]; then
+    echo "PANEL-ERROR: dead panel DB ${_DEAD_DB} and no live hostmaster DB found for ${_R}"
+    exit 1
+  fi
+  # Persist the platform truth into the live DB. §8's hostmaster verify
+  # regenerates the alias FROM the DB, so an alias-only correction is undone
+  # on the next verify and the panel 404s from a hollow platform path.
+  _repoint_panel_platform "${_LIVE}" || exit 1
+fi
 # Aegir derives the site DB user from the DB name; enumerate its host
 # variants from mysql.user instead of assuming (@% vs @127.0.0.1 vs
 # @localhost all occur in the wild).
