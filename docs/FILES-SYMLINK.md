@@ -451,9 +451,12 @@ dev/staging to live) deploys from a backup and then, right after the target
 verify, runs the narrow `autosymlink --force-unshare` for the migrated/renamed
 site — re-homing its `files`/`private` into its **own** store and repointing the
 symlinks, and archiving any pre-existing store at the target name aside first.
-The old-name store is left as an orphan — reported, and archived into `.archived/`
-on the next nightly sweep. Without this a renamed site would keep plain dirs on the
-platform partition or a link into the old store.
+The old-name store is then set aside by the task itself, the way a delete does:
+the post hook asks the wrapper for `--archive-store` before the old alias goes
+(`RENAME/STORE/ARCHIVED`; `NONE`, `KEPT` and `LEFT` as for a delete, see below),
+and the nightly sweep stays the safety net for anything left behind. Without the
+re-home a renamed site would keep plain dirs on the platform partition or a link
+into the old store.
 
 ## Restore behaviour
 
