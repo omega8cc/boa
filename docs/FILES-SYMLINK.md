@@ -39,7 +39,7 @@ This is the server-admin reference. For the per-site user how-to see
 |-------|-----------|---------|
 | **New site** install | After the install creates the real `files`/`private` dirs, they are **moved into the static store and symlinked** (delegated to the root tool). | **on** (kill-switchable) |
 | **Clone** a site | The new site gets its **own separate copy** of the files in its own store — never a link into the source site's data — when disk space allows; otherwise a warning is logged and the clone still succeeds. | **on** (kill-switchable) |
-| **Migrate / rename** a site | Same as clone: after the target verify the migrated/renamed site is re-homed into its **own** store and re-symlinked; the old-name store becomes an orphan (archived on the next nightly sweep). | **on** (kill-switchable) |
+| **Migrate / rename** a site | Same as clone: after the target verify the migrated/renamed site is re-homed into its **own** store and re-symlinked; a rename then sets the old-name store aside into `static/files/.archived/…` (`RENAME/STORE/ARCHIVED` in the task log; never deletes, the same keep cases as a delete). | **on** (kill-switchable) |
 | **Backdrop upgrade** (Drupal 7 → Backdrop; Drupal 6 → Drupal 7, hop 1 of the D6 chain) | Both tasks deploy the copy from the source site's backup and run the same re-homing as a clone (`--force-unshare`). On `provision-backdrop-upgrade` it runs **before** the standalone updater converts the copy, so every conversion write lands in the copy's own store. On `provision-backdrop-d6-upgrade` the deploy's own `updatedb` performs the staged D6 → D7 core conversion **first** — with the copy's `files`/`private` still pointing into the **source's** store on a box that preserves symlinks in implicit backups (the default) — and the re-home runs straight after it, before the contrib-kit leg. Either way the copy ends with its own store and a deliberate share on the source is not inherited. | **on** (kill-switchable) |
 | **Reused site name** | When an install/clone reuses a name whose store was left behind by an earlier site of the same name, the stale store is **archived aside** (to `static/files/.archived/…`) and the new site converts cleanly — no skip, no manual step. | **on** |
 | **Nightly auto-fix** | Convert any not-yet-symlinked site and self-heal partly-symlinked ones, box-wide. | **on** on omega8.cc-hosted (`.aegir.cc`); **opt-in** otherwise |
@@ -777,8 +777,9 @@ shows the `[native-symlink] …` line for install, clone and migrate/rename.
    ```bash
    readlink /data/disk/<acct>/.../sites/<new>/files   # -> static/files/<new>/files
    ```
-2. The old-name store `static/files/<old>/` is left as an orphan — reported, and
-   archived into `.archived/` on the next nightly sweep.
+2. The old-name store `static/files/<old>/` is set aside by the task itself
+   (`RENAME/STORE/ARCHIVED`; `ls -d …/static/files/.archived/*/<old>`), the way a
+   delete does; the nightly sweep stays the safety net for an older backend's leftover.
 
 ### Backups on the static filesystem
 
