@@ -847,6 +847,23 @@ _PHP_FPM_MEMORY_LIMIT_FORCE=AUTO
 _PHP_FPM_DENY=""
 
 ###
+### Platform-level developer accounts (off by default). Space-separated
+### names of client directories under /data/disk/<oN>/clients/; each named
+### client gets one extra shell account, <oN>.<client>-dev, with read-write
+### access to every platform where EVERY site is that client's (a platform
+### carrying anyone else's site, admin sites included, is refused and
+### reported), the drush and composer commands, a ~/platforms SFTP farm and
+### a timed window on the site-local Drush. Drupal and Backdrop only. Remove
+### a name and the account is deleted on the next pass (home kept under
+### /var/backups/zombie). Managed by manage_ltd_users.sh, never by hostmaster.
+###
+### Example:
+###
+### _LTD_PLATFORM_CLIENTS="acme othercorp"
+###
+_LTD_PLATFORM_CLIENTS=""
+
+###
 ### Define the amount of RAM you want to keep
 ### reserved for other services installed which
 ### are not controlled by BOA, so it will
@@ -1064,24 +1081,6 @@ _extract_archive_pre() {
 }
 
 
-###
-### Download and extract archive from dev/src mirror
-###
-_get_dev_src_pre() {
-  if [ -e "/root/.dev.server.cnf" ]; then
-    echo "PROC: _get_dev_src_pre in octopus"
-  fi
-  if [ ! -z "${1}" ]; then
-    curl ${_crlGet} "${_urlDev}/src/$1" -o "$1"
-    if [ -e "$1" ]; then
-      _extract_archive_pre "$1"
-    else
-      echo "OOPS: $1 failed download from ${_urlDev}/src/$1"
-    fi
-  fi
-}
-
-
 #
 # Extract archive.
 _extract_archive() {
@@ -1115,11 +1114,12 @@ _get_dev_ext() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && echo "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      # _DL_NOCACHE=YES: a per-call query string, so an edge cache that
-      # served a stale tarball behind a fresh launcher is bypassed on the
-      # re-fetch (the mirror ignores the query; the cache keys on it).
-      _dlQry=""
-      [ "${_DL_NOCACHE}" = "YES" ] && _dlQry="?r=$(date +%s)"
+      # A per-call query string on every archive fetch, so an edge cache can
+      # never hand an upgrade a stale archive (the mirror ignores the query;
+      # the cache keys on it); _DL_NOCACHE=NO is the only opt-out, never set
+      # by BOA itself. Kept in step with the barracuda and helper.sh.inc copies.
+      _dlQry="?r=$(date +%s)"
+      [ "${_DL_NOCACHE}" = "NO" ] && _dlQry=""
       if curl ${_crlGet} "${_urlDev}/${_tRee}/$1${_dlQry}" -o "$1"; then
         _success=1
         break
