@@ -504,6 +504,17 @@ _system_check_clean() {
       echo "HINT: You can also enforce installation with empty control file:"
       echo " touch /root/.force.reinstall.cnf -- and then try again."
       echo
+    elif [ -s "/root/.boa.install.command.cnf" ] \
+      && [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+      # /etc/nginx alone hid the hint, but here it is this installer's own
+      # leftover: a recorded install that stopped before its Ægir master.
+      echo
+      echo "HINT: These look like the leftovers of an unfinished BOA install:"
+      echo " $(head -n 1 /root/.boa.install.command.cnf)"
+      echo "HINT: To run it again, enforce installation with empty control file:"
+      echo " touch /root/.force.reinstall.cnf -- and then run the same command."
+      echo "HINT: Or continue it with: barracuda up-<tree> system"
+      echo
     fi
     echo "Bye"
     _clean_pid_exit _system_check_clean_a
@@ -1327,7 +1338,7 @@ _barracuda_install() {
           _pA="8.3 8.4 8.5"
         fi
         _pI=8.4
-        sed -i "s/^_PHP_M.*/_PHP_MULTI_INSTALL=\"${_pA}\"/g" ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_pA}\"/g" ${_vBs}/${_filIncB}
         wait
         sed -i "s/^_PHP_FPM_VER.*/_PHP_FPM_VERSION=${_pI}/g" ${_vBs}/${_filIncB}
         wait
