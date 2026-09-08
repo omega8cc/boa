@@ -17,7 +17,11 @@ global batch/live modes (which operate on every account on the box).
              share control file exists. Used by the clone task so a freshly
              cloned site gets its own separate copy (it never opted into sharing).
 
-Usage: (sudo) ${0##*/} --site=URL [--account=oNNN] [--force-unshare]
+  --archive-store: Set the site's whole per-account store aside into
+             static/files/.archived/<stamp>/<site>/ (never deleted). Used by
+             the delete task, before the site's alias goes, so the live name
+             is clean at once instead of at the next nightly sweep.
+Usage: (sudo) ${0##*/} --site=URL [--account=oNNN] [--force-unshare|--archive-store]
 HELP
 exit 0
 }
@@ -35,6 +39,7 @@ _AUTOSYMLINK="/opt/local/bin/autosymlink"
 _site=""
 _account=""
 _force_unshare="NO"
+_archive_store="NO"
 
 # Parse named arguments only; reject anything else fail-closed.
 while [ "$#" -gt 0 ]; do
@@ -42,6 +47,7 @@ while [ "$#" -gt 0 ]; do
     --site=*)    _site="${1#*=}" ;;
     --account=*) _account="${1#*=}" ;;
     --force-unshare) _force_unshare="YES" ;;
+    --archive-store) _archive_store="YES" ;;
     --help)      print_help ;;
     *)
       printf "Error: Invalid argument, run --help for valid arguments.\n"
@@ -157,6 +163,9 @@ if [ -n "${_account}" ]; then
 fi
 if [ "${_force_unshare}" = "YES" ]; then
   set -- "$@" --force-unshare
+fi
+if [ "${_archive_store}" = "YES" ]; then
+  set -- "$@" --archive-store
 fi
 set -- "$@" --apply
 
