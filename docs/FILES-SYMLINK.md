@@ -584,11 +584,12 @@ timestamped archive (below) — `autosymlink --site <url> --account <acct>
 had no store to begin with. It **never deletes**. Three cases keep the store at its
 live name: a store named by a share control file
 (`static/control/share.*.<site>.info`, another site reads it) — the task warns
-`DELETE/STORE/LEFT` and the operator decides; a store some live site still reads
-through its own `files`/`private` link (a clone whose unshare was refused for disk, a
-renamed site whose re-home did not complete) — the same `DELETE/STORE/LEFT` warning,
-with an `[ALERT]` in `autosymlink.log` naming the link, and the fix is to re-run that
-site's unshare, never to move the store; and the orphan-archiving switch
+`DELETE/STORE/LEFT` and the operator decides; a store some registered site (one that
+still has its alias or vhost — a leftover directory's link is reported and does not
+count) reads through its own `files`/`private` link (a clone whose unshare was refused
+for disk, a renamed site whose re-home did not complete) — the same `DELETE/STORE/LEFT`
+warning, with an `[ALERT]` in `autosymlink.log` naming the link, and the fix is to
+re-run that site's unshare, never to move the store; and the orphan-archiving switch
 (`/data/conf/disable_orphan_store_archiving.cnf`, below) — the task says
 `DELETE/STORE/KEPT`. A failed move (no room on a cross-filesystem archive target, a
 failed `mv`) is reported as `LEFT` too, with the reason in `autosymlink.log`. A store
@@ -601,8 +602,9 @@ automatically, in two situations:
   deleted-site leftover store aside into the same archive and logs an incident. It
   **never deletes**. Only a store whose name has **neither a
   Drush alias nor a vhost** is archived — i.e. a genuinely deleted site — and even
-  then not while some live site still reads it through its own link (left in place
-  with an `[ALERT]` naming the link; the same guard as the task-time archive). A merely
+  then not while a share control file names it, nor while some registered site still
+  reads it through its own link (left in place with an `[ALERT]` naming the file or
+  the link; the same guard as the task-time archive). A merely
   **disabled** site keeps both its alias and its (placeholder) vhost, so it is
   treated as active and **left in place** — its files stay live for a later
   re-enable. A partial/broken state (only one of alias/vhost present) is reported
