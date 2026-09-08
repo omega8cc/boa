@@ -43,7 +43,8 @@ This is the server-admin reference. For the per-site user how-to see
 | **Backdrop upgrade** (Drupal 7 → Backdrop; Drupal 6 → Drupal 7, hop 1 of the D6 chain) | Both tasks deploy the copy from the source site's backup and run the same re-homing as a clone (`--force-unshare`). On `provision-backdrop-upgrade` it runs **before** the standalone updater converts the copy, so every conversion write lands in the copy's own store. On `provision-backdrop-d6-upgrade` the deploy's own `updatedb` performs the staged D6 → D7 core conversion **first** — with the copy's `files`/`private` still pointing into the **source's** store on a box that preserves symlinks in implicit backups (the default) — and the re-home runs straight after it, before the contrib-kit leg. Either way the copy ends with its own store and a deliberate share on the source is not inherited. | **on** (kill-switchable) |
 | **Reused site name** | When an install/clone reuses a name whose store was left behind by an earlier site of the same name, the stale store is **archived aside** (to `static/files/.archived/…`) and the new site converts cleanly — no skip, no manual step. | **on** |
 | **Nightly auto-fix** | Convert any not-yet-symlinked site and self-heal partly-symlinked ones, box-wide. | **on** on omega8.cc-hosted (`.aegir.cc`); **opt-in** otherwise |
-| **Orphaned store** (site deleted, name not reused) | The nightly auto-fix **archives** the leftover store aside into `static/files/.archived/…` (never deletes; a *disabled* site is left in place); the opt-in report additionally emails any found. | archive with auto-fix; report opt-in |
+| **Site delete** | The Delete task itself **archives** the site's store aside into `static/files/.archived/…` before the site's alias goes (`DELETE/STORE/ARCHIVED` in the task log; never deletes). A store named by a share control file is **left in place** with a `DELETE/STORE/LEFT` warning (another site reads it); with the orphan-archiving switch present the task keeps it too (`DELETE/STORE/KEPT`). | **on** |
+| **Orphaned store** (a leftover from an older backend, an interrupted delete, or a store the delete kept) | The nightly auto-fix **archives** the leftover store aside into `static/files/.archived/…` (never deletes; a *disabled* site is left in place); the opt-in report additionally emails any found. | archive with auto-fix; report opt-in |
 | **Backups relocation** (nightly) | On an account whose `static/files` is a **separate filesystem**, move `backups`/`backup-exports` onto it (via symlinks) so large backups can't fill the root partition. | **on** where applicable (kill-switchable) |
 | **Manual run** | Convert/report on demand with the tools below. | — |
 
@@ -173,7 +174,8 @@ first level that fails:
 Each ghost finding also reports three things that decide what to do next:
 
 - **Files store** — whether `static/files/<site>` still holds data, i.e. whether
-  there is anything to lose. A site delete never removes the store.
+  there is anything to lose. A site delete never deletes the store: the Delete
+  task sets it aside into `.archived/` (older backends left it at its live name).
 - **nginx vhost** — an *enabled* vhost roots at the platform, not at `site_path`,
   so nginx keeps answering for the name with no site behind it and visitors get
   errors rather than a disabled page. A *disabled* site instead has an inert
@@ -345,9 +347,11 @@ never moves or deletes anything.
 
 ### Disabling deleted-site auto-archiving
 
-The nightly auto-fix archives deleted-site orphan stores into `.archived/` (see
-*Orphan / ghost detection and stale-store archiving*). To turn that off and go back
-to **report-only** for orphans — archiving of a *reused* name on install/clone is
+The Delete task archives a deleted site's store into `.archived/` at once, and the
+nightly auto-fix archives any leftover orphan store the same way (see *Orphan /
+ghost detection and stale-store archiving*). To turn both off and go back to
+**report-only** for orphans — the Delete task then keeps the store at its live name
+and says `DELETE/STORE/KEPT`; archiving of a *reused* name on install/clone is
 unaffected — create:
 
 ```bash
@@ -564,14 +568,23 @@ leading-dot names are skipped by the site/orphan scan, like `.archived`.
 
 ## Orphan / ghost detection and stale-store archiving
 
-When a site is deleted, BOA removes the in-site symlink but leaves the data behind
-in `static/files/<url>/` — a **ghost**. Ghosts are archived aside automatically, in
-two situations:
+When a site is deleted, the Delete task removes the in-site symlinks and asks the
+privileged wrapper to set the data in `static/files/<url>/` aside into the hidden,
+timestamped archive (below) — `autosymlink --site <url> --account <acct>
+--archive-store`, logged as `DELETE/STORE/ARCHIVED` in the task log and as
+`[APPLY] Archive-store: …` in `autosymlink.log`. It **never deletes**. Two cases
+keep the store at its live name on purpose: a store named by a share control file
+(`static/control/share.*.<site>.info`, another site reads it) — the task warns
+`DELETE/STORE/LEFT` and the operator decides — and the orphan-archiving switch
+(`/data/conf/disable_orphan_store_archiving.cnf`, below) — the task says
+`DELETE/STORE/KEPT`. A store left behind by an older backend, by an interrupted
+delete, or by those two cases is a **ghost**. Ghosts are archived aside
+automatically, in two situations:
 
 - **Deleted site, name not reused — archived by the nightly sweep.** The nightly
   auto-fix (`updatesymlinks --auto-fix` with `_AUTOSYMLINK_NIGHTLY=YES`) moves each
-  deleted-site leftover store aside into the hidden, timestamped archive (below) and
-  logs an incident. It **never deletes**. Only a store whose name has **neither a
+  deleted-site leftover store aside into the same archive and logs an incident. It
+  **never deletes**. Only a store whose name has **neither a
   Drush alias nor a vhost** is archived — i.e. a genuinely deleted site. A merely
   **disabled** site keeps both its alias and its (placeholder) vhost, so it is
   treated as active and **left in place** — its files stay live for a later
@@ -721,10 +734,30 @@ shows the `[native-symlink] …` line for install, clone and migrate/rename.
    `sudo /usr/local/bin/fix-drupal-site-symlinks.sh --site=<clone> --force-unshare`
    once space is available.
 
+### Delete
+
+1. Install a site and delete it (a site deleted before its first Verify is the
+   harder case: its directory is still the installer's read-only `0555`). The task
+   ends SUCCESSFUL with no `Deleting … failed` line, the site directory is gone,
+   and the store has moved:
+   ```bash
+   ls -d /data/disk/<acct>/static/files/<site>                # gone
+   ls -d /data/disk/<acct>/static/files/.archived/*/<site>    # the store, set aside
+   grep 'Archive-store' /var/log/boa/autosymlink.log | tail -2
+   ```
+2. The task log shows `DELETE/STORE/ARCHIVE` then `DELETE/STORE/ARCHIVED`
+   (`DELETE/STORE/NONE` for a site that never had a store; a `DELETE/STORE/LEFT`
+   warning names a store the wrapper declined, with the reason in
+   `autosymlink.log`). The boa-testing round
+   `tier2/scripts/site-delete-leftovers-round.sh <acct> <platform context>` runs
+   exactly this and asserts every line.
+
 ### Reused site name (stale-store archiving)
 
-1. Install a site, delete it but leave its `static/files/<site>/` behind (a
-   ghost), then create a site with the **same name**.
+1. Install a site, delete it with the orphan-archiving switch present so the
+   Delete task keeps the store (`touch /data/conf/disable_orphan_store_archiving.cnf`,
+   the task says `DELETE/STORE/KEPT`; remove the switch afterwards) — a ghost —
+   then create a site with the **same name**.
 2. The new site's task log shows the archive incident and a clean conversion:
    ```bash
    ls -ld /data/disk/<acct>/static/files/.archived/*/<site>   # the old store, moved aside
@@ -769,8 +802,8 @@ symlinkinfo <site>                                         # confirm the site is
 
 ### Orphan store: report and auto-archive
 
-To force a positive case: delete a site but leave its `static/files/<site>/`
-behind, then:
+To force a positive case: delete a site with the orphan-archiving switch present
+(the Delete task keeps the store, `DELETE/STORE/KEPT`), remove the switch, then:
 
 ```bash
 # Read-only report (lists it, moves nothing):
