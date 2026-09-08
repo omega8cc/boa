@@ -1108,7 +1108,9 @@ _archive_site_store_now() {
   # is going away. Same archive layout as the sweep, never a deletion; a store
   # entry that is itself a symlink is unlinked (the data lives elsewhere); a
   # store named by a share control file is left in place and reported, because
-  # another site reads it and the operator decides. Uses _SITE/_ACCOUNT_DIR.
+  # another site reads it and the operator decides; so is a store some live
+  # site still reads through its own link (the shared archive path tests it).
+  # Uses _SITE/_ACCOUNT_DIR.
   _ASN_STORE="${_ACCOUNT_DIR}/static/files/${_SITE}"
   if [ ! -e "${_ASN_STORE}" ] && [ ! -L "${_ASN_STORE}" ]; then
     _log "[INFO] Archive-store: no store at ${_ASN_STORE}; nothing to do"
@@ -1140,6 +1142,30 @@ _archive_site_store_now() {
   return 0
 }
 
+_store_live_readers() {
+  # Prints every in-site files/private symlink on the box that still resolves
+  # into the store $1, except the links of site $2 itself (the site going away).
+  # Such a store is never moved from under its reader: a clone whose unshare was
+  # refused (disk), a renamed site whose re-home did not complete, or a hand-made
+  # link still serves its uploads through that link. Both the link text and its
+  # resolved path are tested, so a store reached through a static/files symlink
+  # onto attached storage is recognised either way.
+  # Args: 1 store dir (.../static/files/<site>), 2 site name
+  local _SLR_STORE="$1" _SLR_SITE="$2" _SLR_REAL_STORE _SLR_LINK _SLR_TGT _SLR_REAL
+  _SLR_REAL_STORE=$(readlink -f "${_SLR_STORE}" 2>/dev/null)
+  for _SLR_LINK in /data/disk/*/distro/*/*/sites/*/files /data/disk/*/distro/*/*/sites/*/private \
+    /data/disk/*/static/*/sites/*/files /data/disk/*/static/*/sites/*/private; do
+    [ -L "${_SLR_LINK}" ] || continue
+    case "${_SLR_LINK}" in */sites/"${_SLR_SITE}"/*) continue ;; esac
+    _SLR_TGT=$(readlink "${_SLR_LINK}" 2>/dev/null)
+    case "${_SLR_TGT}/" in "${_SLR_STORE}"/*) echo "${_SLR_LINK} -> ${_SLR_TGT}"; continue ;; esac
+    if [ -n "${_SLR_REAL_STORE}" ]; then
+      _SLR_REAL=$(readlink -f "${_SLR_LINK}" 2>/dev/null)
+      case "${_SLR_REAL}/" in "${_SLR_REAL_STORE}"/*) echo "${_SLR_LINK} -> ${_SLR_TGT}" ;; esac
+    fi
+  done
+}
+
 _archive_orphan_store() {
   # Archive a whole DELETED-site leftover store (static/files/<site>/) ASIDE into
   # static/files/.archived/<stamp>/<site>/ -- the same hidden, same-filesystem archive
@@ -1156,6 +1182,16 @@ _archive_orphan_store() {
   _ORPH_KB="$4"
 
   { [ -e "${_ORPH_SRC}" ] || [ -L "${_ORPH_SRC}" ]; } || return 0
+
+  # A store some live site still reads through its own files/private link is
+  # never moved from under it (a clone whose unshare was refused for disk, a
+  # renamed site whose re-home did not complete): left in place, reported for
+  # the operator. Re-running the unshare is the fix, never moving the store.
+  _ORPH_READERS=$(_store_live_readers "${_ORPH_SRC}" "${_ORPH_SITE}")
+  if [ -n "${_ORPH_READERS}" ]; then
+    _log "[ALERT] Orphan store ${_ORPH_SRC} is still read through a live site's link; left in place, NOT archived, manual review required: $(printf '%s' "${_ORPH_READERS}" | tr '\n' ' ')"
+    return 0
+  fi
 
   # Run/account-scoped stamp so all orphans of one sweep land under one archive dir.
   _ORPH_STAMP="${_ARCHIVE_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
