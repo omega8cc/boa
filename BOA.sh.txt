@@ -4706,7 +4706,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f62 --guard /local/bin/xcopy
     _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f91 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f29 --guard /local/bin/xoct
-    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f86 --guard /local/bin/xtrim
+    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f85 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f95 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f89 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f89 --guard /local/bin/autodaedalus
@@ -4742,7 +4742,7 @@ CSFSTANDBY
     # tail-anchored sentinel refuses a wrong OR truncated payload before it
     # can reach client shells -- websh invokes its dash forwarder near EOF,
     # so the token must keep living in websh's last 4 KiB.
-    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f87 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
+    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f85 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
     _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f99 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
   fi
 
