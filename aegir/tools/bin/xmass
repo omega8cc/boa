@@ -5085,6 +5085,65 @@ fi
 # or held only by a deleted platform's leftover row, so alias file names
 # keep matching paths. Fail-closed: a panel whose platform cannot be
 # resolved would fail the rename anyway.
+# The DB is not the only reader of the panel's platform. renameaegirhost's
+# §8 runs a backend 'drush @hostmaster provision-verify', which resolves the
+# site's platform through the alias FILES: the hostmaster alias's
+# 'platform' => '@platform_NNN' reference and that platform's own alias
+# file. A repoint that heals only the DB row and the context name leaves
+# both files naming the OLD number, and the source's stale platform_<old>
+# alias rides in again with every account rsync; the verify then rewrites
+# the hostmaster alias's root to the hollow path, creates a site dir there
+# and renders the vhost against it: 404 by the new name. Live-observed twice
+# on one rig (the first cutover, then the failover after a root-only repair
+# of the alias). So reconcile the files with the DB truth on every entry.
+_reconcile_panel_aliases() {
+  local _DB="$1" _PN="$2" _DISK="$3" _CTX _REF _PA _OLDPA _OR _OLDROOT _DRUSH
+  _CTX=$(mysql --defaults-file=/root/.my.cnf -N -B "${_DB}" \
+    -e "SELECT name FROM hosting_context WHERE nid=${_PN} LIMIT 1" 2>/dev/null)
+  case "${_CTX}" in
+    platform_*) ;;
+    *)
+      echo "PANEL-NOTE: platform ${_PN} carries no platform_* context name in ${_DB} (${_CTX}); alias files left alone"
+      return 0
+    ;;
+  esac
+  case "${_CTX}" in *[!A-Za-z0-9_.-]*) return 0 ;; esac
+  _DRUSH=$(dirname "${_ALS}")
+  _PA="${_DRUSH}/${_CTX}.alias.drushrc.php"
+  _REF=$(sed -n "s/.*'platform' => '@\([^']*\)'.*/\1/p" "${_ALS}" | head -1)
+  case "${_REF}" in *[!A-Za-z0-9_.-]*) _REF="" ;; esac
+  if [ -n "${_REF}" ] && [ "${_REF}" != "${_CTX}" ]; then
+    _OLDPA="${_DRUSH}/${_REF}.alias.drushrc.php"
+    if [ ! -f "${_PA}" ] && [ -f "${_OLDPA}" ]; then
+      cp -a "${_OLDPA}" "${_PA}" \
+        && echo "PANEL-NOTE: platform alias ${_CTX} created from ${_REF}"
+    fi
+    sed -i "s|'@${_REF}'|'@${_CTX}'|" "${_ALS}" \
+      && echo "PANEL-NOTE: hostmaster alias platform reference corrected @${_REF} -> @${_CTX}"
+    if [ -f "${_OLDPA}" ]; then
+      _OR=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_OLDPA}" | head -1)
+      if [ -n "${_OR}" ] && [ ! -e "${_OR}/index.php" ] \
+        && [ -z "$(mysql --defaults-file=/root/.my.cnf -N -B "${_DB}" \
+             -e "SELECT nid FROM hosting_context WHERE name='${_REF}' LIMIT 1" 2>/dev/null)" ]; then
+        rm -f "${_OLDPA}" \
+          && echo "PANEL-NOTE: stale platform alias ${_REF} removed (root ${_OR} carries no code, no such context in ${_DB})"
+      fi
+    fi
+  fi
+  if [ -f "${_PA}" ]; then
+    _OLDROOT=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_PA}" | head -1)
+    if [ -n "${_OLDROOT}" ] && [ "${_OLDROOT}" != "${_DISK}" ]; then
+      sed -i "s|${_OLDROOT}|${_DISK}|g" "${_PA}" \
+        && echo "PANEL-NOTE: platform alias ${_CTX} root corrected ${_OLDROOT} -> ${_DISK}"
+    fi
+  fi
+  _OLDROOT=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_ALS}" | head -1)
+  if [ -n "${_OLDROOT}" ] && [ "${_OLDROOT}" != "${_DISK}" ]; then
+    sed -i "s|${_OLDROOT}|${_DISK}|g" "${_ALS}" \
+      && echo "PANEL-NOTE: hostmaster alias root corrected ${_OLDROOT} -> ${_DISK}"
+  fi
+  return 0
+}
 _repoint_panel_platform() {
   local _DB="$1" _DISK _DBP _PN _NEWNAME _HOLDER _HST _NUP
   _DISK=$(dirname "$(dirname "${_SP}")")
@@ -5104,6 +5163,7 @@ _repoint_panel_platform() {
   fi
   if [ "${_DBP}" = "${_DISK}" ]; then
     echo "PANEL-OK: panel platform ${_PN} already names ${_DISK} in ${_DB}"
+    _reconcile_panel_aliases "${_DB}" "${_PN}" "${_DISK}"
     return 0
   fi
   if [ ! -e "${_DISK}/index.php" ]; then
@@ -5133,6 +5193,7 @@ _repoint_panel_platform() {
   else
     echo "PANEL-NOTE: context name ${_NEWNAME} is held by live platform ${_HOLDER}; platform ${_PN} keeps its name"
   fi
+  _reconcile_panel_aliases "${_DB}" "${_PN}" "${_DISK}"
   return 0
 }
 _DEAD_DB=$(grep "options\['db_name'\]" "${_SP}/drushrc.php" | head -1 | sed "s/.*=//; s/[' ,;]//g")
