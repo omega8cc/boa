@@ -784,6 +784,33 @@ export USER=${USER}
 # else in the file, or no file, means the box default until the worker
 # rewrites it. The master keeps its own read of /var/aegir/drush/drush.php:
 # it has no cli.info, and that shebang is where its pin lives.
+# The account's own php.ini: ~/.drush/php.ini, written by the ltd worker from
+# the pinned version's template (open_basedir for the account's own trees, the
+# temp, upload and session paths under ~/.tmp) and read by the drush launcher
+# through --php-ini. websh launches drush.php and composer itself, so it
+# points PHPRC at that file when it exists and was built for the PHP just
+# selected: its extension_dir names the version, and a marker can select
+# another version than the pin, where a foreign extension_dir would leave
+# that binary without its extensions (the global ini then, as before). The
+# ~/.drush/phpNN/php.ini this used to test was an older layout no writer has
+# kept, so every websh launch ran on the global ini, whose sys_temp_dir is
+# /tmp -- which is how a 0700 /tmp took composer away from every tenant
+# while their own ~/.tmp stood ready. Pure bash: this runs for every identity.
+_account_ini() {
+  local _ini="${HOME}/.drush/php.ini" _c _v=""
+  PHP_INI="/opt/php${1}/lib/php.ini"
+  PHPRC="/opt/php${1}/lib"
+  [ -f "${_ini}" ] || return 0
+  { _c=$(< "${_ini}"); } 2> /dev/null
+  if [[ "${_c}" =~ (^|$'\n')extension_dir[[:space:]]*=[[:space:]]*\"?/opt/php([0-9][0-9])/ ]]; then
+    _v="${BASH_REMATCH[2]}"
+  fi
+  if [ "${_v}" = "${1}" ]; then
+    PHP_INI="${_ini}"
+    PHPRC="${HOME}/.drush"
+  fi
+}
+
 check_php_cli_version() {
   ### echo CHK start check_php_cli_version
   _PHP_CLI=
@@ -806,12 +833,7 @@ check_php_cli_version() {
   for e in ${_PHP_V}; do
     if [[ "${_PHP_CLI}" =~ "php${e}" ]] && [ -x "/opt/php${e}/bin/php" ]; then
       DRUSH_PHP="/opt/php${e}/bin/php"
-      PHP_INI="/opt/php${e}/lib/php.ini"
-      PHPRC="/opt/php${e}/lib"
-      if [ -f "${HOME}/.drush/php${e}/php.ini" ]; then
-        PHP_INI="${HOME}/.drush/php${e}/php.ini"
-        PHPRC="${HOME}/.drush/php${e}"
-      fi
+      _account_ini "${e}"
     fi
   done
   ### echo CHK 2 DRUSH_PHP is ${DRUSH_PHP}
@@ -821,12 +843,7 @@ check_php_cli_version() {
   for e in ${_PHP_V}; do
     if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
       DRUSH_PHP="/opt/php${e}/bin/php"
-      PHP_INI="/opt/php${e}/lib/php.ini"
-      PHPRC="/opt/php${e}/lib"
-      if [ -f "${HOME}/.drush/php${e}/php.ini" ]; then
-        PHP_INI="${HOME}/.drush/php${e}/php.ini"
-        PHPRC="${HOME}/.drush/php${e}"
-      fi
+      _account_ini "${e}"
     fi
   done
   ### echo CHK 3 DRUSH_PHP is ${DRUSH_PHP}
@@ -966,12 +983,7 @@ if _grp_set_is "users www-data" \
           fi
           if [ -n "${_D_SEL}" ]; then
             DRUSH_PHP="/opt/php${_D_SEL}/bin/php"
-            PHP_INI="/opt/php${_D_SEL}/lib/php.ini"
-            PHPRC="/opt/php${_D_SEL}/lib"
-            if [ -f "${HOME}/.drush/php${_D_SEL}/php.ini" ]; then
-              PHP_INI="${HOME}/.drush/php${_D_SEL}/php.ini"
-              PHPRC="${HOME}/.drush/php${_D_SEL}"
-            fi
+            _account_ini "${_D_SEL}"
             export DRUSH_PHP;export PHP_INI;export PHPRC;
             ### echo INF 3 DRUSH_PHP is ${DRUSH_PHP}
             ### echo INF 3 PHP_INI is ${PHP_INI}
@@ -1016,12 +1028,7 @@ if _grp_set_is "users www-data" \
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
                 DRUSH_PHP="/opt/php${e}/bin/php"
-                PHP_INI="/opt/php${e}/lib/php.ini"
-                PHPRC="/opt/php${e}/lib"
-                if [ -f "${HOME}/.drush/php${e}/php.ini" ]; then
-                  PHP_INI="${HOME}/.drush/php${e}/php.ini"
-                  PHPRC="${HOME}/.drush/php${e}"
-                fi
+                _account_ini "${e}"
               fi
             done
           fi
