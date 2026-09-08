@@ -5935,6 +5935,10 @@ _xmass_target_silence_probe() {
       done
       for _r in ${_roots}; do
         [ "${_r}" = "aegir" ] && [ ! -e /var/aegir/.drush/hostmaster.alias.drushrc.php ] && continue
+        ### Same as the armed pid above: a queue nothing can dispatch is
+        ### not pending work. A demoted box'"'"'s parked dispatcher leaves its
+        ### accounts'"'"' queued tasks inert until the promotion restores it.
+        [ "${_r}" != "aegir" ] && [ ! -e "/var/xdrago/run-${_r}" ] && [ -e "/var/backups/off-run/run-${_r}" ] && continue
         _c=$(su -s /bin/bash - "${_r}" -c "drush8 @hostmaster sqlq \"SELECT COUNT(*) FROM hosting_task t INNER JOIN node n ON n.vid = t.vid WHERE t.task_status = -1 OR (t.task_status = 0 AND (t.executed IS NULL OR t.executed = 0))\"" 2>/dev/null | tail -1 | tr -d " ")
         case "${_c}" in
           "") _q="${_q}${_r}=? " ;;
