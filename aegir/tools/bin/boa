@@ -1338,7 +1338,7 @@ _barracuda_install() {
           _pA="8.3 8.4 8.5"
         fi
         _pI=8.4
-        sed -i "s/^_PHP_M.*/_PHP_MULTI_INSTALL=\"${_pA}\"/g" ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_pA}\"/g" ${_vBs}/${_filIncB}
         wait
         sed -i "s/^_PHP_FPM_VER.*/_PHP_FPM_VERSION=${_pI}/g" ${_vBs}/${_filIncB}
         wait

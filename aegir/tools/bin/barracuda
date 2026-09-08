@@ -1105,7 +1105,7 @@ _up_action() {
 
         sed -i "s/^_PHP_SINGLE.*/_PHP_SINGLE_INSTALL=/g"     ${_vBs}/${_filIncB}
         wait
-        sed -i "s/^_PHP_M.*/_PHP_MULTI_INSTALL=\"${_phpM}\"/g" ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_phpM}\"/g" ${_vBs}/${_filIncB}
         wait
         sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_phpS}/g" ${_vBs}/${_filIncB}
         wait
@@ -2248,7 +2248,7 @@ _reseed_unfinished_install() {
       _pA="8.3 8.4 8.5"
     fi
     sed -i "s/^_PHP_SINGLE_.*/_PHP_SINGLE_INSTALL=/g"        ${_vBs}/${_filIncB}
-    sed -i "s/^_PHP_M.*/_PHP_MULTI_INSTALL=\"${_pA}\"/g"     ${_vBs}/${_filIncB}
+    sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_pA}\"/g"     ${_vBs}/${_filIncB}
     sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=8.4/g"         ${_vBs}/${_filIncB}
     sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=8.4/g"         ${_vBs}/${_filIncB}
   fi
