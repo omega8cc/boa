@@ -90,7 +90,7 @@ case "$1" in
 	status)
 		if [ ! -r $php_fpm_PID ]; then
 			echo "php83-fpm is stopped"
-			exit 0
+			exit 3
 		fi
 
 		PID=`cat $php_fpm_PID`
@@ -98,6 +98,7 @@ case "$1" in
 			echo "php83-fpm (pid $PID) is running..."
 		else
 			echo "php83-fpm dead but pid file exists"
+			exit 1
 		fi
 	;;
 

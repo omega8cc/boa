@@ -111,7 +111,7 @@ _not_supported_os() {
 
 #
 # Show only clean _msg and write details and errors to separate logs.
-# Wait (up to five minutes) for the dpkg/apt locks to be free. A converted
+# Wait (up to twenty minutes) for the dpkg/apt locks to be free. A converted
 # box keeps its image's unattended-upgrades and apt daily cron, and any of
 # them holding the lock made an install below fail with "Could not get
 # lock", an error _mrun keeps off the console -- packages then went silently
@@ -140,7 +140,10 @@ _apt_lock_wait() {
     if [ "${_i}" -eq 1 ] && [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "WAIT: another package manager holds the dpkg/apt lock, waiting for it..."
     fi
-    [ "${_i}" -ge 60 ] && break
+    if [ "${_i}" -ge "${_APT_LOCK_WAIT_MAX:-240}" ]; then
+      _msg "WARN: the dpkg/apt lock is still held after $((_i * 5)) seconds; continuing without it"
+      break
+    fi
     sleep 5
   done
   return 0
@@ -496,12 +499,16 @@ _get_dev_ext() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      # _DL_NOCACHE=YES: a per-call query string, so an edge cache that
-      # served a stale archive is bypassed -- the same contract as the
-      # settings include's copy, which this one replaces once the libs are
-      # sourced (the mirror ignores the query; the cache keys on it).
-      _dlQry=""
-      [ "${_DL_NOCACHE}" = "YES" ] && _dlQry="?r=$(date +%s)"
+      # A per-call query string on every archive fetch, so an edge cache can
+      # never hand an upgrade a stale archive (the mirror ignores the query;
+      # the cache keys on it). Measured 2026-09-08: a CDN colo kept serving
+      # the previous backend.tar.gz for some forty minutes after the purge,
+      # and a forced instance upgrade installed it. Same contract as the
+      # settings includes' copies, which this one replaces once the libs
+      # are sourced; _DL_NOCACHE=NO is the only way to fetch the cached
+      # object (never set by BOA itself).
+      _dlQry="?r=$(date +%s)"
+      [ "${_DL_NOCACHE}" = "NO" ] && _dlQry=""
       if curl ${_crlGet} "${_urlDev}/${_tRee}/$1${_dlQry}" -o "$1"; then
         _success=1
         break
@@ -1137,7 +1144,7 @@ _virt_detection() {
   _fix_or_install_virt_what
   _VIRT_TOOL="$(which virt-what)"
   if [ -x "${_VIRT_TOOL}" ]; then
-    _VIRT_TEST=$(virt-what)
+    _VIRT_TEST=$(virt-what 2>&1)
     _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
     if [[ "${_VIRT_TEST}" =~ "program not found" ]]; then
       _msg "ERROR: virt-what says: ${_VIRT_TEST}"

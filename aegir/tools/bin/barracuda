@@ -761,17 +761,20 @@ _check_report() {
   sed -i "/^$/d"                 ${_UP_LOG}
   wait
   _SEND_ALERT=NO
-  _RESULT_TEST_OK=$(grep "INFO: Test OK" ${_UP_LOG} 2>&1)
-  _RESULT_TEST_CARD=$(grep "CARD: Now charging" ${_UP_LOG} 2>&1)
-  _RESULT_KERNEL=$(grep "NOTE: Your OS kernel has been upgraded" ${_UP_LOG} 2>&1)
-  _RESULT_REBOOT=$(grep "NOTE: Please reboot this server" ${_UP_LOG} 2>&1)
-  _RESULT_ENJOY=$(grep "Enjoy your Ægir Hosting System" ${_UP_LOG} 2>&1)
-  _RESULT_RLLY=$(grep "RLLY: No errors" ${_UP_LOG} 2>&1)
-  _RESULT_APT_FAIL=$(grep "Displaying the last 15 lines" ${_UP_LOG} 2>&1)
-  _RESULT_ALRT=$(grep "ALRT" ${_UP_LOG} 2>&1)
-  _RESULT_FATAL=$(grep "FATAL ERROR" ${_UP_LOG} 2>&1)
-  _RESULT_OOPS=$(grep "OOPS:" ${_UP_LOG} 2>&1)
-  _RESULT_LIB_ERR=$(grep "cannot open shared object file" ${_UP_LOG} 2>&1)
+  # Read the log as text: one NUL byte in it (the debug-mode drush timers
+  # print one) makes grep answer "binary file matches" for every pattern,
+  # and the checks below that look for the wording then never match.
+  _RESULT_TEST_OK=$(grep -a "INFO: Test OK" ${_UP_LOG} 2>&1)
+  _RESULT_TEST_CARD=$(grep -a "CARD: Now charging" ${_UP_LOG} 2>&1)
+  _RESULT_KERNEL=$(grep -a "NOTE: Your OS kernel has been upgraded" ${_UP_LOG} 2>&1)
+  _RESULT_REBOOT=$(grep -a "NOTE: Please reboot this server" ${_UP_LOG} 2>&1)
+  _RESULT_ENJOY=$(grep -a "Enjoy your Ægir Hosting System" ${_UP_LOG} 2>&1)
+  _RESULT_RLLY=$(grep -a "RLLY: No errors" ${_UP_LOG} 2>&1)
+  _RESULT_APT_FAIL=$(grep -a "Displaying the last 15 lines" ${_UP_LOG} 2>&1)
+  _RESULT_ALRT=$(grep -a "ALRT" ${_UP_LOG} 2>&1)
+  _RESULT_FATAL=$(grep -a "FATAL ERROR" ${_UP_LOG} 2>&1)
+  _RESULT_OOPS=$(grep -a "OOPS:" ${_UP_LOG} 2>&1)
+  _RESULT_LIB_ERR=$(grep -a "cannot open shared object file" ${_UP_LOG} 2>&1)
   if [[ "${_RESULT_TEST_OK}" =~ "INFO: Test OK" ]] \
     || [[ "${_RESULT_TEST_OK}" =~ "binary file matches" ]] \
     || [[ "${_RESULT_TEST_CARD}" =~ "CARD: Now charging" ]] \
@@ -801,9 +804,11 @@ _check_report() {
     _ALERT_MSG="ALERT: Failed (apt) Barracuda upgrade"
   fi
   _ONLY_REBOOT=NO
+  _REBOOT_ALSO=NO
   if [[ "${_RESULT_KERNEL}" =~ "Your OS kernel" ]] \
     && [[ "${_RESULT_REBOOT}" =~ "Please reboot" ]]; then
     [ "${_SEND_ALERT}" != "YES" ] && _ONLY_REBOOT=YES
+    _REBOOT_ALSO=YES
     _SEND_ALERT=YES
     _ALERT_MSG="REBOOT: Your new system kernel requires boa reboot"
   fi
@@ -833,6 +838,16 @@ _check_report() {
     _SEND_ALERT=YES
     _ALERT_MSG="ALERT: Failed (libs) Barracuda upgrade"
     _ONLY_REBOOT=NO
+  fi
+  # A failure verdict replaces the reboot wording above; the new kernel
+  # still needs its reboot, so the subject keeps saying so.
+  if [ "${_SEND_ALERT}" = "YES" ] \
+    && [ "${_ONLY_REBOOT}" = "NO" ] \
+    && [ "${_REBOOT_ALSO}" = "YES" ]; then
+    _ALERT_MSG="${_ALERT_MSG} (new kernel, reboot required)"
+  fi
+  if [ "${_NO_MAIL:-NO}" = "YES" ]; then
+    return 0
   fi
   if [ "${_SEND_ALERT}" = "YES" ]; then
     _send_alert
@@ -1349,6 +1364,9 @@ _up_action() {
           fi
           bash ${_vBs}/${_barName} 2>&1 | tee ${_UP_LOG}
           wait
+          # the same interactive verdict as the plain run below
+          _NO_MAIL=YES
+          _check_report
         fi
       else
         sed -i "s/^_SYSTEM_UP.*/_SYSTEM_UP_ONLY=NO/g"        ${_vBs}/${_filIncB}
@@ -1385,6 +1403,10 @@ _up_action() {
         fi
         bash ${_vBs}/${_barName} 2>&1 | tee ${_UP_LOG}
         wait
+        # The console showed the pass; the completion line below still
+        # needs the verdict, and this arm mails nothing.
+        _NO_MAIL=YES
+        _check_report
       fi
     fi
   else
@@ -1627,6 +1649,8 @@ _up_finish() {
   # it needs instead of calling it errored.
   if [ "${_SEND_ALERT}" = "YES" ] && [ "${_ONLY_REBOOT}" = "YES" ]; then
     echo "BARRACUDA upgrade completed, REBOOT REQUIRED -- run 'boa reboot' (log: ${_UP_LOG})"
+  elif [ "${_SEND_ALERT}" = "YES" ] && [ "${_REBOOT_ALSO:-NO}" = "YES" ]; then
+    echo "BARRACUDA upgrade completed WITH ERRORS -- review ${_UP_LOG}; new kernel, run 'boa reboot' after the review"
   elif [ "${_SEND_ALERT}" = "YES" ]; then
     echo "BARRACUDA upgrade completed WITH ERRORS -- review ${_UP_LOG}"
   else
