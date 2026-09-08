@@ -323,6 +323,14 @@ PHPEOF
 ###-------------PREFLIGHT--------------###
 
 preflight() {
+  # A BOA box is never a stage-1 source. This script sits on every BOA box
+  # (fetched with the BOA tools), and the gates below all pass on a BOA
+  # master, whose live hostmaster the dry runs would then read. Refuse
+  # before the first write, without the log: same detector as the preflight.
+  if [[ -d /data/disk ]] || [[ -e /root/.barracuda.cnf ]] || [[ -x /opt/local/bin/boa ]]; then
+    echo "A2B-S1 FATAL: this is a BOA box - stage 1 flips the VANILLA Aegir source only" >&2
+    exit 1
+  fi
   [[ "$(id -u 2>/dev/null)" = "0" ]] || _die "must run as root"
   mkdir -p "$(dirname "${_LOG}")" 2>/dev/null
   touch "${_LOG}" 2>/dev/null || _LOG=/tmp/aegir2boa-stage1.log
