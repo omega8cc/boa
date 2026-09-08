@@ -220,6 +220,27 @@
    boa reboot
    ```
 
+# If the install is interrupted
+
+An install that stops before its Ægir master exists (a connection dropped without `screen`, a reboot, a killed process) leaves the box with whatever it had reached and no working BOA. There are two ways forward on the same box, no wipe needed:
+
+1. Continue it with the launcher:
+
+   ```sh
+   barracuda up-lts system
+   ```
+
+   The launcher recognises the unfinished install (no Ægir master yet), passes its usual PHP-CLI, database and MySQL checks with `NOTE:` lines instead of refusing, seeds the install's own parameters (setup kind, hostname, e-mail, PHP set) again from `/root/.boa.install.command.cnf` -- the record `boa` wrote when the install started -- and the pass then installs what is still missing, up to the Ægir master. Add the Octopus instance afterwards as described in the next section.
+
+2. Run the same install command again, in full (the Ægir master and the Octopus instance in one go):
+
+   ```sh
+   touch /root/.force.reinstall.cnf
+   boa in-lts public server.mydomain.org my@email o1 php-min
+   ```
+
+   Without that control file `boa` refuses on the leftovers of the first attempt (`/etc/nginx` exists), and when the leftovers are its own -- a recorded install with no Ægir master -- the refusal names the recorded command and this control file.
+
 # Installing More Octopus Instances
 
 You can add more Octopus instances easily:
