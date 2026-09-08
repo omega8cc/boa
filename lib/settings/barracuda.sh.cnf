@@ -1984,6 +1984,22 @@ _boa_code_tree_is_root_owned() {
 
 
 _download_boa_code() {
+  # A staged tree of ANOTHER tree is never reused: every published tar bakes
+  # its tree name into the libs (export _tRee=), and a switch at the same
+  # release number (lts to pro when a licence arrives, dev to pro on a box
+  # that kept its tree) otherwise runs the old tree's code while logging the
+  # new one -- measured 2026-09. The marker probe below cannot tell trees
+  # apart, so decide here, before it. Same-tree reuse stays as designed.
+  local _stgTree=""
+  if [ -n "${_tRee}" ] && [ -e "/opt/tmp/boa/lib/functions/helper.sh.inc" ]; then
+    _stgTree=$(grep -m1 "^export _tRee=" /opt/tmp/boa/lib/functions/helper.sh.inc 2> /dev/null \
+      | cut -d= -f2 | tr -d '"' | tr -d "'" | tr -d ' ')
+    if [ -n "${_stgTree}" ] && [ "${_stgTree}" != "${_tRee}" ]; then
+      echo "NOTE: the staged build tree is ${_stgTree}, this run is ${_tRee}; fetching the ${_tRee} tree"
+      rm -rf /opt/tmp/boa
+      rm -f /opt/tmp/boa.tar.gz
+    fi
+  fi
   # See _cleanup_boa_code: the lib probe is the broken-tree self-heal now
   # that install aborts no longer purge /opt/tmp
   if [ ! -e "/opt/tmp/boa/aegir/helpers/apt.conf.noi.nrml" ] \
