@@ -1005,9 +1005,12 @@ _stage_b() {
       mysql --silent -u root -e "DROP USER IF EXISTS '${_db}'@'127.0.0.1'" 2>/dev/null
       mysql --silent -u root -e "DROP USER IF EXISTS '${_db}'@'%'" 2>/dev/null
     fi
-    _probe_all_doms "${_oN}" >/dev/null 2>&1 \
-      || _alrt "${_oN}: probe wobble after dropping ${_db} -- proxy does not depend on local SQL, continuing"
   done
+  ### One probe pass after the drops, not one per drop: the proxy does not
+  ### depend on local SQL, and a pass costs 12 s per domain -- per drop it
+  ### made a 33-domain, 33-database account take four and a half hours.
+  _probe_all_doms "${_oN}" >/dev/null 2>&1 \
+    || _alrt "${_oN}: probe wobble after the drops -- proxy does not depend on local SQL, continuing"
   mysqladmin -u root flush-privileges &> /dev/null
   ### Trees: backups, exports, distro, platforms, dated static trees.
   for _f in "${_USR}/backups" "${_USR}/src" "${_USR}/undo" "${_USR}/distro"; do
