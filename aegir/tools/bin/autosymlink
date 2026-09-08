@@ -32,6 +32,7 @@ _check_root
 
 _MODE="DRY"
 _NARROW="NO"
+_ARCHIVE_STORE="NO"
 _ONE_SITE=""
 _ONE_ACCOUNT=""
 _APPLY_FLAG="NO"
@@ -74,6 +75,13 @@ while [ "$#" -gt 0 ]; do
       # Clone path: break an inherited cross-account share even if a share
       # control file exists (the clone never opted into sharing).
       _FORCE_UNSHARE="YES"
+      ;;
+    --archive-store)
+      # Delete path (narrow mode only): set the site's whole store aside into
+      # static/files/.archived/<stamp>/<site>/ -- the same non-destructive move
+      # the nightly sweep makes for a deleted site's leftover -- at the moment
+      # the Delete task runs, so the live name is clean at once. Never deletes.
+      _ARCHIVE_STORE="YES"
       ;;
     *)
       : # ignore unknown args
@@ -1089,6 +1097,42 @@ _archive_existing_store_target() {
     _log "[WARN] Archive move failed for ${_ARCH_TYPE} of site ${_ARCH_SITE}; renaming ${_ARCH_SRC} aside in place instead"
     _make_unique_target "${_ARCH_SRC}"
   fi
+  return 0
+}
+
+_archive_site_store_now() {
+  # Narrow --archive-store: the Delete task's request to set THIS site's store
+  # aside now, before its alias and vhost go (the wrapper proved the caller owns
+  # the site through that alias). Trusts the request the way the nightly trusts
+  # "neither alias nor vhost": the deleting task is the authority that the site
+  # is going away. Same archive layout as the sweep, never a deletion; a store
+  # entry that is itself a symlink is unlinked (the data lives elsewhere); a
+  # store named by a share control file is left in place and reported, because
+  # another site reads it and the operator decides. Uses _SITE/_ACCOUNT_DIR.
+  _ASN_STORE="${_ACCOUNT_DIR}/static/files/${_SITE}"
+  if [ ! -e "${_ASN_STORE}" ] && [ ! -L "${_ASN_STORE}" ]; then
+    _log "[INFO] Archive-store: no store at ${_ASN_STORE}; nothing to do"
+    return 0
+  fi
+  if [ -L "${_ASN_STORE}" ]; then
+    _log "[APPLY] Archive-store: ${_ASN_STORE} is a symlink ($(readlink "${_ASN_STORE}" 2>/dev/null)); unlinking, the data stays where it points"
+    rm -f "${_ASN_STORE}"
+    return 0
+  fi
+  for _ASN_SHARE in "${_ACCOUNT_DIR}"/static/control/share.*."${_SITE}".info; do
+    if [ -e "${_ASN_SHARE}" ]; then
+      _log "[ALERT] Archive-store: ${_ASN_STORE} is named by share control file ${_ASN_SHARE}; another site reads it - left in place, manual review required"
+      return 3
+    fi
+  done
+  _ARCHIVE_STAMP="$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null)-$$"
+  _ASN_KB=$(du -sk "${_ASN_STORE}" 2>/dev/null | awk 'NR==1 {print $1}')
+  _archive_orphan_store "${_ASN_STORE}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ASN_KB:-?}"
+  if [ -e "${_ASN_STORE}" ] || [ -L "${_ASN_STORE}" ]; then
+    _log "[ALERT] Archive-store: ${_ASN_STORE} is still in place after the archive attempt - manual review required"
+    return 3
+  fi
+  _log "[APPLY] Archive-store: ${_SITE} store set aside under static/files/.archived/${_ARCHIVE_STAMP}/"
   return 0
 }
 
@@ -2126,6 +2170,10 @@ _run_one_site() {
   if [ -z "${_ACCOUNT_DIR}" ] || [ ! -d "${_ACCOUNT_DIR}" ]; then
     _log "[INFO] Narrow mode: no owning account found for site ${_SITE}; nothing to do"
     return 0
+  fi
+  if [ "${_ARCHIVE_STORE}" = "YES" ]; then
+    _archive_site_store_now
+    return $?
   fi
 
   _ALIAS_FILE="${_ACCOUNT_DIR}/.drush/${_SITE}.alias.drushrc.php"
