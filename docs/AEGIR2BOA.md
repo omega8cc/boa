@@ -34,10 +34,15 @@ stacks stay installed until sign-off).
 | `aegir2boa-stage1` | source (vanilla) | Apache→Nginx flip, revert, status |
 | `aegir2boa-stage2` | BOTH boxes | the migrator; dual-resident, verbs validate box class |
 
-All three ship in the BOA tools distribution at `aegir/tools/bin/` but are
-deliberately **not registered for fleet fetch** — no BOA box downloads or
-runs them by itself, and they never self-update. Download them directly; the
-source box needs no BOA installation, no account and no credentials to do it:
+All three are BOA tools like `xoct`, `xcopy` and `xmass`: every BOA box
+fetches them from its tree's mirror on the serial-gated tools pass and keeps
+them current at `/opt/local/bin/` (root-only; `aegir2boa-stage2` also answers
+at `/usr/local/bin/aegir2boa-stage2`, a symlink the fetch maintains). Nothing
+on a BOA box runs them by itself, and a BOA box refuses every source-side
+verb. So the target end of a migration is always ready, and the source end —
+the vanilla box, which fetches nothing — is where you place them. Download
+them directly; the source box needs no BOA installation, no account and no
+credentials to do it:
 
 ```bash
 cd /usr/local/bin
@@ -55,9 +60,17 @@ returns an HTTP 200 "Under Construction" placeholder rather than a 404, so a
 typo yields a file that looks downloaded and is not a script. Check what you
 got: `head -1` must read `#!/bin/bash`.
 
-Run them as root. `aegir2boa-stage2` is dual-resident: put the SAME script on
-the source and the target; source verbs refuse to run on a BOA box and target
-verbs refuse to run on a vanilla box.
+Or copy the target's own files, which guarantees the same bytes on both
+ends: `scp root@<target>:/opt/local/bin/aegir2boa-* /usr/local/bin/` on the
+source (through your workstation if the source has no key to the target yet
+— `peer` creates that key later), then `chmod 755` the three copies.
+
+Run them as root. `aegir2boa-stage2` is dual-resident: the target already
+carries it, and the source copy must be the SAME bytes. The target's copy
+refreshes itself with the fleet while the source copy stays as placed, so
+`check` and `pre-mig` warn whenever the two differ — re-copy from the target
+and go on. Source verbs refuse to run on a BOA box and target verbs refuse to
+run on a vanilla box.
 
 Old-stack tolerance: the source-side tools assume nothing modern — bash
 3.2/4.1-era and PHP 5.3-era safe; nothing executed on the source assumes
@@ -100,7 +113,11 @@ earlier https proxy template emitted an HTTP/2 directive a distro nginx
 rejects, so every HTTPS site failed `nginx -t` and refused to cut over
 while HTTP sites proxied fine), or site-profile carry-over (2026-08-12) —
 without which any site whose install profile is not `standard` fails its
-import, every Drupal 6 site included. What the 2026-08-11 re-run settled:
+import, every Drupal 6 site included. The target's copy keeps itself current
+with the fleet; the source copy is the one that goes stale, so re-copy it
+from the target when a migration resumes after a pause or the target has
+upgraded since (`check` and `pre-mig` warn when the two differ). What the
+2026-08-11 re-run settled:
 
 - **Stage 1 on an encrypted estate is drilled**, not theoretical: flip,
   revert and re-flip on an `apache_ssl` estate with both HTTPS sites
@@ -244,7 +261,9 @@ Which leaves, honestly:
 Every verb is idempotent behind marker files and safe to re-run. The
 preflight and the stage-2 tool take a coarse per-scope lock against
 concurrent runs; stage 1's guard is its consumed dry-run token (no
-separate lockfile). Logs:
+separate lockfile). The fleet fetch never replaces the target's
+`aegir2boa-stage2` while one of its verbs is running (the fetch's
+running-tool guard holds until the verb exits). Logs:
 `/var/log/aegir2boa-stage1.log` and `/var/log/aegir2boa-stage2.log` (both
 fall back to `/tmp` if `/var/log` is not writable) — the first place to
 look on any failure.
@@ -444,7 +463,8 @@ copied from this page instead of from the tool could be the wrong one.
 
 ## Stage 2 — remote adoption
 
-Place `aegir2boa-stage2` on both boxes. Verbs, verbatim from `--help`:
+The target carries `aegir2boa-stage2` already; place the same bytes on the
+source. Verbs, verbatim from `--help`:
 
 ```
 Source-resident verbs (vanilla box, root):
