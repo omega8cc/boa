@@ -40,6 +40,7 @@ This is the server-admin reference. For the per-site user how-to see
 | **New site** install | After the install creates the real `files`/`private` dirs, they are **moved into the static store and symlinked** (delegated to the root tool). | **on** (kill-switchable) |
 | **Clone** a site | The new site gets its **own separate copy** of the files in its own store — never a link into the source site's data — when disk space allows; otherwise a warning is logged and the clone still succeeds. | **on** (kill-switchable) |
 | **Migrate / rename** a site | Same as clone: after the target verify the migrated/renamed site is re-homed into its **own** store and re-symlinked; the old-name store becomes an orphan (archived on the next nightly sweep). | **on** (kill-switchable) |
+| **Backdrop upgrade** (Drupal 7 → Backdrop; Drupal 6 → Drupal 7, hop 1 of the D6 chain) | Both tasks deploy the copy from the source site's backup and run the same re-homing as a clone (`--force-unshare`). On `provision-backdrop-upgrade` it runs **before** the standalone updater converts the copy, so every conversion write lands in the copy's own store. On `provision-backdrop-d6-upgrade` the deploy's own `updatedb` performs the staged D6 → D7 core conversion **first** — with the copy's `files`/`private` still pointing into the **source's** store on a box that preserves symlinks in implicit backups (the default) — and the re-home runs straight after it, before the contrib-kit leg. Either way the copy ends with its own store and a deliberate share on the source is not inherited. | **on** (kill-switchable) |
 | **Reused site name** | When an install/clone reuses a name whose store was left behind by an earlier site of the same name, the stale store is **archived aside** (to `static/files/.archived/…`) and the new site converts cleanly — no skip, no manual step. | **on** |
 | **Nightly auto-fix** | Convert any not-yet-symlinked site and self-heal partly-symlinked ones, box-wide. | **on** on omega8.cc-hosted (`.aegir.cc`); **opt-in** otherwise |
 | **Orphaned store** (site deleted, name not reused) | The nightly auto-fix **archives** the leftover store aside into `static/files/.archived/…` (never deletes; a *disabled* site is left in place); the opt-in report additionally emails any found. | archive with auto-fix; report opt-in |
@@ -398,8 +399,15 @@ touch /data/disk/<account>/static/control/share.files.<site>.info
 
 While that file exists, the tools treat a cross-site symlink for `<site>` as
 **intentional** and leave it untouched instead of breaking it into a separate
-copy. Cloning is the one exception: a clone always gets its own copy
-(`--force-unshare`), because the new site name never opted into the share.
+copy. The copying tasks are the exception: a clone, a migrate/rename and both
+Backdrop upgrade tasks always give the resulting site its own copy
+(`--force-unshare`), because the new site name never opted into the share —
+re-create the share afterwards if it is still wanted. Restore never forces a
+share open (it runs without `--force-unshare`), but restoring a
+**files-carrying** archive ends one in practice: that archive dereferenced the
+link when it was taken, so the restored real directory is converted into the
+site's own store. Only a symlink-preserving or DB-only archive leaves a share
+intact — see *Restore behaviour*.
 
 ## Cloning behaviour in detail
 
@@ -448,8 +456,11 @@ platform partition or a link into the old store.
 A **Restore** task deploys the site from the selected archive and then, right
 after the post-restore verify, re-establishes native symlinking — like clone
 and migrate, but **without** `--force-unshare`: restore re-deploys the same
-site, and a deliberately shared store stays shared (sharing is honoured
-everywhere except cloning). Three archive shapes are handled:
+site, so the task never forces a deliberate share open. Note that a
+**files-carrying** archive dereferenced the link when it was taken, so restoring
+one hands the site its own copy of what it was reading and the share ends in
+practice; only the symlink-preserving and files-less shapes below leave a share
+as it was. Three archive shapes are handled:
 
 - **Files-carrying archive** (real, populated `files`/`private` dirs): the
   narrow conversion moves the restored content into the site's own store,
