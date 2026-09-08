@@ -41,8 +41,9 @@ source box needs no BOA installation, no account and no credentials to do it:
 
 ```bash
 cd /usr/local/bin
+_TREE=lts   # dev, lts or pro: the tree of the BOA server the sites move to
 for t in aegir2boa-preflight aegir2boa-stage1 aegir2boa-stage2; do
-  wget https://files.boa.io/versions/dev/boa/aegir/tools/bin/$t
+  wget "https://files.boa.io/versions/${_TREE}/boa/aegir/tools/bin/$t"
   chmod 755 $t
 done
 ```
