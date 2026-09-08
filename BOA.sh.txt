@@ -1046,7 +1046,7 @@ _check_virt() {
   _fix_or_install_virt_what
   _VIRT_TOOL="$(which virt-what)"
   if [ -x "${_VIRT_TOOL}" ]; then
-    _VIRT_TEST=$(virt-what)
+    _VIRT_TEST=$(virt-what 2>&1)
     _VIRT_TEST=$(echo -n ${_VIRT_TEST} | fmt -su -w 2500 2>&1)
     if [[ "${_VIRT_TEST}" =~ "program not found" ]]; then
       echo "ERROR: virt-what says: ${_VIRT_TEST}"
@@ -1917,14 +1917,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f17.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f16.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
       -o /var/xdrago/manage_ltd_users.sh
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       chmod 700 /var/xdrago/manage_ltd_users.sh
       chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f17.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f16.${_tRee}.${_xSrl}.pid
       rm -f /var/xdrago/manage_ltd_users.sh.old
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
       [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
@@ -3049,6 +3049,65 @@ _fix_core_dgd() {
     fi
     cd
     touch ${_pthLog}/batch-custom-${_saXCoreN}-finally-fixed-d6.log
+  fi
+}
+
+# /tmp must be 1777 root:root: a box was found with it 0700 root (writer
+# unknown), which leaves every tenant's composer and PHP CLI without a temp
+# directory and nothing in any log saying so. Heal it on every pass and date
+# the repair, so a recurrence is caught the moment it happens.
+_fix_tmp_perms() {
+  local _tmp_stat _tmp_note
+  [ -d "/tmp" ] && [ ! -L "/tmp" ] || return 0
+  _tmp_stat=$(stat -c '%a %U:%G' /tmp 2> /dev/null)
+  [ "${_tmp_stat}" = "1777 root:root" ] && return 0
+  chown root:root /tmp &> /dev/null
+  chmod 1777 /tmp &> /dev/null
+  _tmp_note="NOTE: /tmp was ${_tmp_stat:-unreadable}, set back to 1777 root:root"
+  _msg "${_tmp_note}"
+  if [ -d "${_pthLog}" ]; then
+    echo "$(date) ${_tmp_note}" >> ${_pthLog}/tmp-perms.incident.log
+  fi
+}
+
+# The master Drush arm, run from the barracuda process with no _ROOT exported,
+# copied the Drush 8 tree to /drush and rotated the previous copy under
+# /backups/system. The arm is guarded now and heals its own leftovers, but
+# only inside a barracuda pass, and boxes on the stable trees pass weekly.
+# Drush 10/11 search <root>/drush with an empty root, so the stray is read by
+# every tenant's modern Drush, and the lshell Landlock domain refuses that
+# read: the preflight dies. Heal it here, on every pass, and date the repair.
+# Only the tree BOA itself copies is removed: the fork's own marker files rule
+# out a /drush the operator made on purpose, and a link is never followed.
+_fix_stray_drush() {
+  local _sd_note _sd_dir
+  if [ -d "/drush" ] && [ ! -L "/drush" ] \
+    && [ -f "/drush/drush.php" ] \
+    && [ -f "/drush/drush.info" ] \
+    && [ -f "/drush/includes/boa_extension_filter.inc" ]; then
+    rm -rf /drush
+    _sd_note="NOTE: stray Drush tree at /drush removed (the master Drush arm's empty-root copy)"
+    _msg "${_sd_note}"
+    if [ -d "${_pthLog}" ]; then
+      echo "$(date) ${_sd_note}" >> ${_pthLog}/stray-drush.incident.log
+    fi
+  fi
+  for _sd_dir in /backups/system/drush-pre-*; do
+    if [ -d "${_sd_dir}" ] && [ ! -L "${_sd_dir}" ] && [ -f "${_sd_dir}/drush.php" ]; then
+      rm -rf "${_sd_dir}"
+      _sd_note="NOTE: stray Drush copy at ${_sd_dir} removed"
+      _msg "${_sd_note}"
+      if [ -d "${_pthLog}" ]; then
+        echo "$(date) ${_sd_note}" >> ${_pthLog}/stray-drush.incident.log
+      fi
+    fi
+  done
+  # The directories the same copy created; rmdir removes only an empty one,
+  # and /backups is left alone when anything mounts there.
+  rmdir /backups/system &> /dev/null
+  if [ -d "/backups" ] && ! mountpoint -q /backups 2> /dev/null \
+    && ! grep -qs "[[:space:]]/backups[[:space:]]" /etc/fstab; then
+    rmdir /backups &> /dev/null
   fi
 }
 
@@ -4632,7 +4691,7 @@ CSFSTANDBY
     _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f92
     _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f93
     _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f97
-    _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f96
+    _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f95
   fi
   mkdir -p ${_optBin}
   # Per-file, serial-gated, retry-on-failure fetch of the core /opt/local/bin
@@ -4649,12 +4708,12 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f88 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f88 --guard /local/bin/autoexcalibur
-    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f76 --guard /local/bin/autosymlink
+    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f74 --guard /local/bin/autosymlink
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f33 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f82 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f61 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f58 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f60 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f94 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
@@ -4686,9 +4745,9 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f98 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f62 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f92 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f30 --guard /local/bin/xoct
-    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f86 --guard /local/bin/xtrim
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f91 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f29 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f84 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f95 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f89 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f89 --guard /local/bin/autodaedalus
@@ -4724,7 +4783,7 @@ CSFSTANDBY
     # tail-anchored sentinel refuses a wrong OR truncated payload before it
     # can reach client shells -- websh invokes its dash forwarder near EOF,
     # so the token must keep living in websh's last 4 KiB.
-    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f90 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
+    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f84 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
     _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f99 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
   fi
 
@@ -5879,6 +5938,8 @@ if [ "$(id -u)" -eq 0 ]; then
     && [ -e "/var/log/barracuda_log.txt" ]; then
     _fix_sftp_server
     _fix_ping_perms
+    _fix_tmp_perms
+    _fix_stray_drush
     _fix_fpm_process_max
     _if_fix_lshell
     _if_fix_myquick

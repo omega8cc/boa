@@ -165,6 +165,19 @@ _list_accounts() {
   done
 }
 
+_panel_only() {
+  ### $1 acct: true when the account's only live vhost is its own (local,
+  ### non-proxy) control panel -- nothing of it was ever proxied.
+  local _oN="$1" _vhd="/data/disk/$1/config/server_master/nginx/vhost.d" _u _n
+  _u="$(_alias_field "/data/disk/${_oN}/.drush/hostmaster.alias.drushrc.php" "uri")"
+  [ -n "${_u}" ] || return 1
+  [ -e "${_vhd}/${_u}" ] || return 1
+  grep -q "proxy_pass" "${_vhd}/${_u}" 2>/dev/null && return 1
+  _n=$(find "${_vhd}" -maxdepth 1 -mindepth 1 -type f ! -name '.*' ! -name 'https.*' \
+    ! -name "${_u}" ! -name "www.${_u}" 2>/dev/null | wc -l | tr -d ' ')
+  [ "${_n}" = "0" ]
+}
+
 _resolve_mnt_store() {
   ### The single attached store, when one exists. More than one /mnt mount
   ### is a refusal for any deletion that resolves into /mnt.
@@ -203,10 +216,26 @@ _map_account() {
   _MAP_DOMS=""; _MAP_TGT=""; _MAP_TGT_BAD=""
   _MAP_SITES=""; _MAP_DBS=""; _MAP_HM_DB=""; _MAP_ALL_DBS=""
   _MAP_PLATS=""; _MAP_NOSAVED=""
+  ### The account's own control panel is never proxied: the cutover leaves
+  ### it LOCAL in maintenance mode on this box (its vhost is a plain PHP
+  ### vhost by design, not an integrity failure), so it is kept out of the
+  ### proxy map, its database and panel platform out of stage B, and the
+  ### default include + pool it answers through out of stage A. The panel
+  ### name is the hostmaster alias uri, never a hostname guess.
+  _MAP_PANEL_DOM=""; _MAP_PANEL_LOCAL=NO
+  if [ -r "${_USR}/.drush/hostmaster.alias.drushrc.php" ]; then
+    _MAP_PANEL_DOM="$(_alias_field "${_USR}/.drush/hostmaster.alias.drushrc.php" "uri")"
+  fi
   ### Live vhosts must all be proxies pointing at ONE target.
   for _v in $(find "${_VHD}" -maxdepth 1 -mindepth 1 -type f \
     ! -name '.*' ! -name 'https.*' 2>/dev/null | sort); do
     _d="$(basename "${_v}")"
+    if [ -n "${_MAP_PANEL_DOM}" ] \
+      && { [ "${_d}" = "${_MAP_PANEL_DOM}" ] || [ "${_d}" = "www.${_MAP_PANEL_DOM}" ]; } \
+      && ! grep -q "proxy_pass" "${_v}" 2>/dev/null; then
+      _MAP_PANEL_LOCAL=YES
+      continue
+    fi
     _MAP_DOMS="${_MAP_DOMS} ${_d}"
     if ! grep -q "proxy_pass" "${_v}" 2>/dev/null \
       || grep -q "fastcgi_param db_name" "${_v}" 2>/dev/null; then
@@ -283,6 +312,24 @@ _map_account() {
   ### the map (it is one of the account's own), so a plain concatenation
   ### dumped and dropped it twice.
   _MAP_ALL_DBS=$(echo ${_MAP_DBS} ${_MAP_HM_DB} | tr ' ' '\n' | sed '/^$/d' | sort -u | tr '\n' ' ')
+  if [ "${_MAP_PANEL_LOCAL}" = "YES" ]; then
+    ### A local panel keeps its database (and the account's own dedicated
+    ### site's), and the panel platform tree under aegir/ is not a tenant
+    ### platform: neither may be dumped-and-dropped or removed.
+    local _keep _x _out=""
+    _keep=" ${_MAP_HM_DB} ${_MAP_OWN_DBS} "
+    for _x in ${_MAP_ALL_DBS}; do
+      case "${_keep}" in *" ${_x} "*) continue ;; esac
+      _out="${_out} ${_x}"
+    done
+    _MAP_ALL_DBS=$(echo ${_out} | tr ' ' '\n' | sed '/^$/d' | sort -u | tr '\n' ' ')
+    _out=""
+    for _x in ${_MAP_PLATS}; do
+      case "${_x}" in "${_USR}"/aegir/*) continue ;; esac
+      _out="${_out} ${_x}"
+    done
+    _MAP_PLATS=$(echo ${_out} | tr ' ' '\n' | sed '/^$/d' | sort -u | tr '\n' ' ')
+  fi
 }
 
 _solr_cores_for() {
@@ -367,6 +414,12 @@ _probe_dom() {
   fi
   rm -f "${_b1}" "${_br}"
   echo "direct=${_c1} relay=${_cr}${_catch}"
+  ### A basic-auth protected site challenges (401/403) from the target and
+  ### through the relay alike -- that IS the site serving, the catch-all
+  ### never challenges (xmass verify judges the same case the same way).
+  if [ "${_c1}" = "${_cr}" ] && echo "${_c1}" | grep -qE '^(401|403)$'; then
+    return 0
+  fi
   echo "${_c1}" | grep -qE '^(200|301|302)$' \
     && echo "${_cr}" | grep -qE '^(200|301|302)$'
 }
@@ -408,7 +461,7 @@ _probe_dom_direct() {
   fi
   rm -f "${_b1}"
   echo "${_c1}"
-  echo "${_c1}" | grep -qE '^(200|301|302)$'
+  echo "${_c1}" | grep -qE '^(200|301|302|401|403)$'
 }
 
 _probe_all_doms() {
@@ -567,6 +620,15 @@ _preflight() {
   fi
   _map_account "${_oN}"
   ### Proxy integrity.
+  [ "${_MAP_PANEL_LOCAL}" = "YES" ] \
+    && _info "${_oN}: control panel ${_MAP_PANEL_DOM} is local by design (never proxied) -- kept out of the proxy map; its db${_MAP_HM_DB:+ ${_MAP_HM_DB}}, panel platform, default include and pool stay"
+  if [ -z "${_MAP_DOMS// /}" ] && [ "${_MAP_PANEL_LOCAL}" = "YES" ]; then
+    ### Nothing was ever proxied for this account: its only vhost is the
+    ### local panel. There is nothing to quiesce or shrink, and finalize
+    ### must not wait for it (see _panel_only).
+    _info "${_oN}: panel-only account (its control panel is local, no proxied domain) -- nothing to shrink"
+    exit 0
+  fi
   [ -z "${_MAP_DOMS// /}" ] && _die "${_oN}: no live vhosts at all"
   if [ -n "${_MAP_TGT_BAD// /}" ]; then
     _alrt "${_oN}: proxy integrity failures:${_MAP_TGT_BAD}"
@@ -695,9 +757,18 @@ _stage_a() {
   ### nginx post.d fpm includes FIRST (so nothing references the sockets),
   ### then the pool files -- never the system www<NN> pool, which backs
   ### the panel front's /sqladmin box-wide.
+  ### A local panel answers through the default include and the account's
+  ### default-version pool: both stay, only the per-site pins are parked.
+  local _panel_pool=""
+  if [ "${_MAP_PANEL_LOCAL}" = "YES" ]; then
+    _panel_pool=$(grep -m1 '^_PHP_FPM_VERSION=' "/root/.${_oN}.octopus.cnf" 2>/dev/null | cut -d= -f2 | tr -d -c 0-9)
+    _info "${_oN}: local panel ${_MAP_PANEL_DOM}: keeping fpm_include_default.inc and pool ${_oN}.${_panel_pool:-?}.conf"
+  fi
   for _p in "${_USR}/config/server_master/nginx/post.d/fpm_include_default.inc" \
     "${_USR}"/config/server_master/nginx/post.d/fpm_include_site_*; do
-    [ -e "${_p}" ] && mv -f "${_p}" "${_q}/postd/" 2>/dev/null
+    [ -e "${_p}" ] || continue
+    [ "${_MAP_PANEL_LOCAL}" = "YES" ] && [ "$(basename "${_p}")" = "fpm_include_default.inc" ] && continue
+    mv -f "${_p}" "${_q}/postd/" 2>/dev/null
   done
   _nginx_reload_locked || { _alrt "${_oN}: nginx reload after include removal FAILED"; _fail=1; }
   _AFFECTED_MASTERS=""
@@ -706,6 +777,7 @@ _stage_a() {
     case "$(basename "${_p}")" in
       www*) continue ;;
     esac
+    [ -n "${_panel_pool}" ] && [ "$(basename "${_p}")" = "${_oN}.${_panel_pool}.conf" ] && continue
     _m=$(echo "${_p}" | sed "s|/opt/php\([0-9]*\)/.*|\1|")
     mv -f "${_p}" "${_q}/pools/" && _AFFECTED_MASTERS="${_AFFECTED_MASTERS} ${_m}"
   done
@@ -933,9 +1005,12 @@ _stage_b() {
       mysql --silent -u root -e "DROP USER IF EXISTS '${_db}'@'127.0.0.1'" 2>/dev/null
       mysql --silent -u root -e "DROP USER IF EXISTS '${_db}'@'%'" 2>/dev/null
     fi
-    _probe_all_doms "${_oN}" >/dev/null 2>&1 \
-      || _alrt "${_oN}: probe wobble after dropping ${_db} -- proxy does not depend on local SQL, continuing"
   done
+  ### One probe pass after the drops, not one per drop: the proxy does not
+  ### depend on local SQL, and a pass costs 12 s per domain -- per drop it
+  ### made a 33-domain, 33-database account take four and a half hours.
+  _probe_all_doms "${_oN}" >/dev/null 2>&1 \
+    || _alrt "${_oN}: probe wobble after the drops -- proxy does not depend on local SQL, continuing"
   mysqladmin -u root flush-privileges &> /dev/null
   ### Trees: backups, exports, distro, platforms, dated static trees.
   for _f in "${_USR}/backups" "${_USR}/src" "${_USR}/undo" "${_USR}/distro"; do
@@ -985,19 +1060,47 @@ _stage_b() {
 
 _finalize() {
   local _mode="$1" _drop_datadir="$2" _n _nn _panel _p
-  ### Only when every real account is shrunk.
+  ### Only when every real account is shrunk. A panel-only account (its
+  ### control panel local, no proxied domain) has nothing to shrink and is
+  ### not waited for -- its panel keeps serving through the kept MySQL.
   for _n in $(_list_accounts); do
+    if _panel_only "${_n}"; then
+      _info "finalize: ${_n} is a panel-only account (no proxied domain) -- nothing to shrink, not waited for"
+      continue
+    fi
     if [ "$(_phase_get "${_n}")" != "stage-b" ]; then
       _die "finalize: account ${_n} is not shrunk (phase '$(_phase_get "${_n}")') -- finalize is all-accounts-or-nothing"
     fi
   done
   _panel=$(grep -m1 '^_PHP_FPM_VERSION' /root/.barracuda.cnf 2>/dev/null | tr -d -c 0-9)
   [ -z "${_panel}" ] && _panel=84
+  ### Every account whose control panel stayed LOCAL (never proxied) keeps
+  ### its panel database and the FPM master its panel answers through:
+  ### MySQL stays up on a finalized proxy that still serves a panel, and
+  ### --drop-datadir is refused there (ruling 2026-09-08).
+  local _u _v _keep_sql="" _keep_masters=""
+  for _n in $(_list_accounts); do
+    _u="$(_alias_field "/data/disk/${_n}/.drush/hostmaster.alias.drushrc.php" "uri")"
+    [ -n "${_u}" ] || continue
+    [ -e "/data/disk/${_n}/config/server_master/nginx/vhost.d/${_u}" ] || continue
+    grep -q "proxy_pass" "/data/disk/${_n}/config/server_master/nginx/vhost.d/${_u}" 2>/dev/null && continue
+    _keep_sql="${_keep_sql} ${_n}:${_u}"
+    _v=$(grep -m1 '^_PHP_FPM_VERSION=' "/root/.${_n}.octopus.cnf" 2>/dev/null | cut -d= -f2 | tr -d -c 0-9)
+    [ -n "${_v}" ] && _keep_masters="${_keep_masters} ${_v}"
+  done
+  _keep_masters=$(echo ${_keep_masters} | tr ' ' '\n' | sort -u | tr '\n' ' ')
+  if [ -n "${_keep_sql}" ] && [ "${_drop_datadir}" = "YES" ]; then
+    _die "finalize: --drop-datadir refused -- local control panel(s) keep their databases here:${_keep_sql}"
+  fi
   if [ "${_mode}" != "LIVE" ]; then
     _info "[DRY-PLAN] would remove shared codebases /data/all"
-    _info "[DRY-PLAN] would stop + disable mysql (datadir kept$( [ "${_drop_datadir}" = "YES" ] && echo ", then DROPPED"))"
+    if [ -n "${_keep_sql}" ]; then
+      _info "[DRY-PLAN] would KEEP mysql running for the local control panel database(s):${_keep_sql}"
+    else
+      _info "[DRY-PLAN] would stop + disable mysql (datadir kept$( [ "${_drop_datadir}" = "YES" ] && echo ", then DROPPED"))"
+    fi
     _info "[DRY-PLAN] would stop + disable solr9/solr7/jetty9"
-    _info "[DRY-PLAN] would keep ONLY the www${_panel} pool + master; quarantine the other www pools, stop+disable their masters"
+    _info "[DRY-PLAN] would keep ONLY the www${_panel} pool + master$( [ -n "${_keep_masters}" ] && echo " (and the php${_keep_masters// /,php}-fpm master(s) the local panels answer through)"); quarantine the other www pools, stop+disable their masters"
     _info "[DRY-PLAN] would touch /root/.proxy.cnf LAST"
     return 0
   fi
@@ -1017,20 +1120,33 @@ _finalize() {
       _info "finalize: ${_n} stopped + disabled + watchdog disarmed (init script -x)"
     fi
   done
-  ### MySQL off (datadir kept unless explicitly dropped).
-  service mysql stop &> /dev/null
-  update-rc.d mysql disable &> /dev/null
-  _info "finalize: mysql stopped + disabled"
-  if [ "${_drop_datadir}" = "YES" ]; then
-    rm -rf /var/lib/mysql && _info "finalize: /var/lib/mysql DROPPED (--drop-datadir)"
+  ### MySQL off (datadir kept unless explicitly dropped) -- unless a local
+  ### control panel still needs its database here.
+  if [ -n "${_keep_sql}" ]; then
+    _info "finalize: mysql KEPT running for the local control panel database(s):${_keep_sql}"
+  else
+    service mysql stop &> /dev/null
+    update-rc.d mysql disable &> /dev/null
+    _info "finalize: mysql stopped + disabled"
+    if [ "${_drop_datadir}" = "YES" ]; then
+      rm -rf /var/lib/mysql && _info "finalize: /var/lib/mysql DROPPED (--drop-datadir)"
+    fi
   fi
   ### FPM: keep only the panel-front master + its www pool; a master with
-  ### zero pools refuses to start, so disabling the others is stable.
+  ### zero pools refuses to start, so disabling the others is stable. A
+  ### master a local panel answers through keeps running on the account
+  ### pool stage A left in place -- its www pool is still quarantined.
   for _p in /opt/php*/etc/pool.d/www*.conf; do
     [ -e "${_p}" ] || continue
     _nn=$(echo "${_p}" | sed "s|/opt/php\([0-9]*\)/.*|\1|")
     [ "${_nn}" = "${_panel}" ] && continue
     mv -f "${_p}" "${_XTRIM_BASE}/finalize/pools/"
+    case " ${_keep_masters} " in
+      *" ${_nn} "*)
+        [ -x "/etc/init.d/php${_nn}-fpm" ] && service "php${_nn}-fpm" reload &> /dev/null
+        _info "finalize: php${_nn}-fpm KEPT for a local control panel (www${_nn} pool quarantined)"
+        continue ;;
+    esac
     if [ -x "/etc/init.d/php${_nn}-fpm" ]; then
       service "php${_nn}-fpm" stop &> /dev/null
       update-rc.d "php${_nn}-fpm" disable &> /dev/null
