@@ -1119,6 +1119,10 @@ _archive_site_store_now() {
     rm -f "${_ASN_STORE}"
     return 0
   fi
+  if [ -f /data/conf/disable_orphan_store_archiving.cnf ]; then
+    _log "[INFO] Archive-store: ${_ASN_STORE} left in place (operator switch /data/conf/disable_orphan_store_archiving.cnf: orphan stores are report-only on this box)"
+    return 3
+  fi
   for _ASN_SHARE in "${_ACCOUNT_DIR}"/static/control/share.*."${_SITE}".info; do
     if [ -e "${_ASN_SHARE}" ]; then
       _log "[ALERT] Archive-store: ${_ASN_STORE} is named by share control file ${_ASN_SHARE}; another site reads it - left in place, manual review required"
