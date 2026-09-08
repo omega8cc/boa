@@ -5142,6 +5142,23 @@ _reconcile_panel_aliases() {
     sed -i "s|${_OLDROOT}|${_DISK}|g" "${_ALS}" \
       && echo "PANEL-NOTE: hostmaster alias root corrected ${_OLDROOT} -> ${_DISK}"
   fi
+  # The stale file need not be the referenced one to matter: the source's
+  # platform_<old> alias re-arrives with every account rsync, and once a
+  # verify follows any reference to it the panel is hollow again. A
+  # platform alias whose root carries no code and whose name has no
+  # context in the panel DB is a leftover of a repoint, never a platform.
+  for _OLDPA in "${_DRUSH}"/platform_*.alias.drushrc.php; do
+    [ -f "${_OLDPA}" ] || continue
+    _REF=$(basename "${_OLDPA}" .alias.drushrc.php)
+    [ "${_REF}" = "${_CTX}" ] && continue
+    case "${_REF}" in *[!A-Za-z0-9_.-]*) continue ;; esac
+    _OR=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_OLDPA}" | head -1)
+    [ -n "${_OR}" ] && [ ! -e "${_OR}/index.php" ] || continue
+    [ -z "$(mysql --defaults-file=/root/.my.cnf -N -B "${_DB}" \
+         -e "SELECT nid FROM hosting_context WHERE name='${_REF}' LIMIT 1" 2>/dev/null)" ] || continue
+    rm -f "${_OLDPA}" \
+      && echo "PANEL-NOTE: stale platform alias ${_REF} removed (root ${_OR} carries no code, no such context in ${_DB})"
+  done
   return 0
 }
 _repoint_panel_platform() {
