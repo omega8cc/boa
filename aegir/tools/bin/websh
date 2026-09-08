@@ -258,7 +258,7 @@ _drush_cmd_word() {
   return 1
 }
 _drush_refused() {
-  local _seg _w1 _w2 _rest _cw _f _n _env _again
+  local _seg _w1 _w2 _rest _cw _f _n _env _again _pini
   _DR_WHY=""
   while IFS= read -r _seg; do
     # leading NAME=value words and leading shell words, until neither
@@ -295,15 +295,24 @@ _drush_refused() {
         _rest="${_w2} ${_rest}"
         ;;
       php|php[0-9][0-9])
-        # php's own options before the launcher (-c FILE, -d k=v, -n, ...)
+        # php's own options before the launcher (-c FILE, -d k=v, -n, ...);
+        # an ini of the tenant's choosing (-c other than the account's own
+        # file, any -d) on a drush launcher is the PHPRC class: refused
         _rest="${_w2} ${_rest}"
-        while [[ "${_rest}" =~ ^[[:space:]]*(-c|-d|-f|-r|-z)[[:space:]]+[^[:space:]]+[[:space:]]* ]] \
+        _pini=NO
+        while [[ "${_rest}" =~ ^[[:space:]]*(-c|-d|-f|-r|-z)[[:space:]]+([^[:space:]]+)[[:space:]]* ]] \
           || [[ "${_rest}" =~ ^[[:space:]]*-[^[:space:]]*[[:space:]]* ]]; do
+          case "${BASH_REMATCH[1]}" in
+            -c) [ "${BASH_REMATCH[2]}" = "${HOME}/.drush/php.ini" ] || _pini=YES ;;
+            -d) _pini=YES ;;
+          esac
           _rest="${_rest#"${BASH_REMATCH[0]}"}"
         done
         read -r _w2 _rest <<< "${_rest}"
         case "${_w2##*/}" in
-          drush|drush8|drush10|drush11|drush.php) ;;
+          drush|drush8|drush10|drush11|drush.php)
+            if [ "${_pini}" = "YES" ]; then _DR_WHY=F; return 0; fi
+            ;;
           *)
             if [ "${_env}" = "YES" ]; then _DR_WHY=F; return 0; fi
             continue
@@ -317,8 +326,10 @@ _drush_refused() {
       *) continue ;;
     esac
     if [ "${_env}" = "YES" ]; then _DR_WHY=F; return 0; fi
-    if [[ "${_seg}" =~ (^|[[:space:]])--(config|early|include)(=|[[:space:]]|$) ]] \
-      || [[ "${_seg}" =~ (^|[[:space:]])-[ci]([[:space:]]|$) ]]; then
+    # the option words are drush's: tested on the arguments after the
+    # launcher, so websh's own -c on the interpreter line is not one
+    if [[ "${_rest}" =~ (^|[[:space:]])--(config|early|include)(=|[[:space:]]|$) ]] \
+      || [[ "${_rest}" =~ (^|[[:space:]])-[ci]([[:space:]]|$) ]]; then
       _DR_WHY=D
       return 0
     fi
@@ -786,28 +797,50 @@ export USER=${USER}
 # it has no cli.info, and that shebang is where its pin lives.
 # The account's own php.ini: ~/.drush/php.ini, written by the ltd worker from
 # the pinned version's template (open_basedir for the account's own trees, the
-# temp, upload and session paths under ~/.tmp) and read by the drush launcher
-# through --php-ini. websh launches drush.php and composer itself, so it
-# points PHPRC at that file when it exists and was built for the PHP just
+# temp, upload and session paths under ~/.tmp) and applied by the drush
+# launcher as a php OPTION (--php-ini). websh launches Drush 8 and composer
+# itself, so it hands the file to those two the same way, as -c on the
+# interpreter line (_ACCT_INI), when it exists and was built for the PHP just
 # selected: its extension_dir names the version, and a marker can select
 # another version than the pin, where a foreign extension_dir would leave
-# that binary without its extensions (the global ini then, as before). The
-# ~/.drush/phpNN/php.ini this used to test was an older layout no writer has
-# kept, so every websh launch ran on the global ini, whose sys_temp_dir is
-# /tmp -- which is how a 0700 /tmp took composer away from every tenant
-# while their own ~/.tmp stood ready. Pure bash: this runs for every identity.
+# that binary without its extensions. Never through the environment: an
+# exported PHPRC is inherited by every descendant, and a modern Drush
+# (vendor/drush/drush/drush.php, drush10/11) refuses to run with open_basedir
+# set -- a site-local Drush 13 child of the hosting queue did, measured. So
+# PHP_INI and PHPRC stay on the global ini, and the option goes only where
+# _DEST_DRUSH is the Drush 8 launcher, or composer (PHP_INI, which Drush 8's
+# startup passes to the php it re-launches, names the file too; php itself
+# never reads that variable). The ~/.drush/phpNN/php.ini
+# this used to test was an older layout no writer has kept, so every websh
+# launch ran on the global ini, whose sys_temp_dir is /tmp -- which is how a
+# 0700 /tmp took composer away from every tenant while their own ~/.tmp
+# stood ready. Pure bash: this runs for every identity.
+_ACCT_INI=""
 _account_ini() {
   local _ini="${HOME}/.drush/php.ini" _c _v=""
   PHP_INI="/opt/php${1}/lib/php.ini"
   PHPRC="/opt/php${1}/lib"
+  _ACCT_INI=""
   [ -f "${_ini}" ] || return 0
   { _c=$(< "${_ini}"); } 2> /dev/null
   if [[ "${_c}" =~ (^|$'\n')extension_dir[[:space:]]*=[[:space:]]*\"?/opt/php([0-9][0-9])/ ]]; then
     _v="${BASH_REMATCH[2]}"
   fi
   if [ "${_v}" = "${1}" ]; then
+    _ACCT_INI="${_ini}"
+    # Drush 8's startup re-launches php with -c $PHP_INI, so the option on
+    # the outer interpreter alone is replaced by whatever this names; only
+    # Drush 8's own startup and launcher read it -- php itself reads PHPRC
+    # (left on the global ini), a modern drush reads neither
     PHP_INI="${_ini}"
-    PHPRC="${HOME}/.drush"
+  fi
+}
+# the -c option for the Drush 8 launcher and composer, empty otherwise
+_ini_opt() {
+  _INI_OPT=""
+  [ -n "${_ACCT_INI}" ] || return 0
+  if [ "${1}" = "composer" ] || [ "${_DEST_DRUSH}" = "/opt/tools/drush/8/drush/drush.php" ]; then
+    _INI_OPT="-c ${_ACCT_INI} "
   fi
 }
 
@@ -1471,7 +1504,8 @@ if _grp_set_is "users www-data" \
           ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 1 _ARR is ${_ARR}
           ### echo EXD 1 ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
-          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}"
+          _ini_opt drush
+          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_INI_OPT}${_DEST_DRUSH} ${_ARR}"
           exit 0
         elif [ ! -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
@@ -1480,7 +1514,8 @@ if _grp_set_is "users www-data" \
           ### echo EXD 3-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 3-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
-          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
+          _ini_opt drush
+          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_INI_OPT}${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
         elif [ -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
@@ -1489,14 +1524,16 @@ if _grp_set_is "users www-data" \
           ### echo EXD 3-NO-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 3-NO-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-NO-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
-          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
+          _ini_opt drush
+          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_INI_OPT}${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
           ### echo EXC 1 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXC 1 _C_ARR is ${_C_ARR}
           ### echo EXC 1 _F_ARR is "$@"
           ### echo EXC 1 ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
-          _exec_dash_c "${_CO_CD}${_CO_PRE}${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
+          _ini_opt composer
+          _exec_dash_c "${_CO_CD}${_CO_PRE}${DRUSH_PHP} ${_INI_OPT}/usr/local/bin/composer ${_C_ARR}"
           exit 0
         else
           ### echo EXH 1 _forward_to_dash "$@"
