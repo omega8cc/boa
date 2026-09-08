@@ -5421,6 +5421,23 @@ REMOTE
 
 ###-------------RENAMEAEGIRHOST ON TARGET---###
 
+_xmass_rearm_deferred_upgrades_target() {
+  # Counterpart of the deferral in the promotion cleanup: give the parked
+  # trigger back to the runner. The runner also wants platforms.info, which
+  # the seed left in place; nothing else is needed.
+  local _oct
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    ssh root@"${_tgt}" "bash -s" <<REARM
+_d="/data/disk/${_oct}/static/control/run-upgrade.pid.deferred"
+if [ -e "\${_d}" ]; then
+  mv -f "\${_d}" "/data/disk/${_oct}/static/control/run-upgrade.pid"
+  echo "  ${_oct}: seeded upgrade re-armed; the dispatcher runs it on its next quiet tick"
+fi
+REARM
+  done
+  return 0
+}
+
 _xmass_promotion_cleanup_target() {
   # A cutover TARGET that was itself demoted earlier (failback: the pair
   # switched, now switches back) still carries the artefacts of its OWN
@@ -5482,7 +5499,19 @@ fi
 # the upgrade can re-touch the trigger on the live box. A platforms.info
 # still carrying the heal's inert FOOBAR seed goes with it -- removing it
 # restores the default-platforms fallback.
-if [ -e "/data/disk/${_oct}/static/control/run-upgrade.pid" ]; then
+# One armed pid is the migration's own: prep-target seeds this box's PHP set
+# and arms the pass that applies it, but a demoted target can neither
+# dispatch it (dispatcher parked) nor run it (octopus refuses a proxied
+# account), so xoct marks it with run-upgrade.xmass. Park that one instead
+# of defusing it; the cutover re-arms it at its end, when the box serves
+# again and a pass is exactly what the seed asked for.
+if [ -e "/data/disk/${_oct}/static/control/run-upgrade.pid" ] \
+  && [ -e "/data/disk/${_oct}/static/control/run-upgrade.xmass" ]; then
+  mv -f "/data/disk/${_oct}/static/control/run-upgrade.pid" \
+    "/data/disk/${_oct}/static/control/run-upgrade.pid.deferred"
+  rm -f "/data/disk/${_oct}/static/control/run-upgrade.xmass"
+  echo "  ${_oct}: deferred the seeded upgrade until the cutover completes (armed by prep-target while this box was demoted)"
+elif [ -e "/data/disk/${_oct}/static/control/run-upgrade.pid" ]; then
   rm -f "/data/disk/${_oct}/static/control/run-upgrade.pid"
   echo "  ${_oct}: cleared stale run-upgrade.pid (unattended post-promotion upgrade defused)"
 fi
@@ -7870,6 +7899,12 @@ REMOTE
   _info "Control panels on the target, by their new names ..."
   _xmass_probe_target_panels "${_tgt}" warn \
     || _alrt "cutover completes with BROKEN control panel(s) -- see above; 'xmass verify' re-checks"
+
+  # Step 18.95: re-arm the seeded upgrades step 12.7 deferred. The dispatcher
+  # is back since step 15 and the renames are done, so the pass prep-target
+  # asked for runs on the promoted box's first quiet tick -- the only moment
+  # it could ever have run for a target that was demoted when it was seeded.
+  _xmass_rearm_deferred_upgrades_target
 
   _XMASS_PHASE="complete"
   # The save's phase=complete chokepoint also disarms a still-armed autosync
