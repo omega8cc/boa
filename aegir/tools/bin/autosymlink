@@ -33,6 +33,7 @@ _check_root
 _MODE="DRY"
 _NARROW="NO"
 _ARCHIVE_STORE="NO"
+_SLR_INDEX=""
 _ONE_SITE=""
 _ONE_ACCOUNT=""
 _APPLY_FLAG="NO"
@@ -1142,28 +1143,71 @@ _archive_site_store_now() {
   return 0
 }
 
+_store_link_index() {
+  # Every in-site files/private symlink on the box as "link<TAB>target" lines,
+  # from ONE find anchored at the site directories (it never descends into a
+  # store), memoised in _SLR_INDEX for the rest of the account's sweep; the
+  # caller resets it before each account's orphan pass so links rewritten
+  # earlier in the same account are seen. An empty result is remembered too.
+  if [ -z "${_SLR_INDEX}" ]; then
+    _SLR_INDEX=$(find /data/disk/*/distro/*/*/sites/*/ /data/disk/*/static/*/sites/*/ \
+      -mindepth 1 -maxdepth 1 -type l \( -name files -o -name private \) \
+      -printf '%p\t%l\n' 2>/dev/null)
+    [ -n "${_SLR_INDEX}" ] || _SLR_INDEX=" "
+  fi
+}
+
 _store_live_readers() {
-  # Prints every in-site files/private symlink on the box that still resolves
-  # into the store $1, except the links of site $2 itself (the site going away).
-  # Such a store is never moved from under its reader: a clone whose unshare was
-  # refused (disk), a renamed site whose re-home did not complete, or a hand-made
-  # link still serves its uploads through that link. Both the link text and its
-  # resolved path are tested, so a store reached through a static/files symlink
-  # onto attached storage is recognised either way.
-  # Args: 1 store dir (.../static/files/<site>), 2 site name
-  local _SLR_STORE="$1" _SLR_SITE="$2" _SLR_REAL_STORE _SLR_LINK _SLR_TGT _SLR_REAL
-  _SLR_REAL_STORE=$(readlink -f "${_SLR_STORE}" 2>/dev/null)
-  for _SLR_LINK in /data/disk/*/distro/*/*/sites/*/files /data/disk/*/distro/*/*/sites/*/private \
-    /data/disk/*/static/*/sites/*/files /data/disk/*/static/*/sites/*/private; do
-    [ -L "${_SLR_LINK}" ] || continue
-    case "${_SLR_LINK}" in */sites/"${_SLR_SITE}"/*) continue ;; esac
-    _SLR_TGT=$(readlink "${_SLR_LINK}" 2>/dev/null)
-    case "${_SLR_TGT}/" in "${_SLR_STORE}"/*) echo "${_SLR_LINK} -> ${_SLR_TGT}"; continue ;; esac
-    if [ -n "${_SLR_REAL_STORE}" ]; then
-      _SLR_REAL=$(readlink -f "${_SLR_LINK}" 2>/dev/null)
-      case "${_SLR_REAL}/" in "${_SLR_REAL_STORE}"/*) echo "${_SLR_LINK} -> ${_SLR_TGT}" ;; esac
+  # Sets _SLR_LIVE to every in-site files/private symlink of a REGISTERED site
+  # (its account still has the site's Drush alias or vhost, so a merely
+  # disabled site counts, a stale leftover directory does not) that resolves
+  # into the store $1, except the links of site $2 in account $3 itself (the
+  # site going away); links of unregistered leftovers go to _SLR_STALE. Such a
+  # store is never moved from under its reader: a clone whose unshare was
+  # refused (disk), a renamed site whose re-home did not complete, or a
+  # hand-made link still serves its uploads through that link. The link text
+  # is tested first; a target outside /data/disk (a hand-made link onto the
+  # attached storage behind a static/files symlink) is resolved. Limits: only
+  # the two in-site link names are scanned, never a link nested below them.
+  # Args: 1 store dir (.../static/files/<site>), 2 site name, 3 account dir
+  _SLR_STORE="$1"
+  _SLR_SITE="$2"
+  _SLR_ACCT="$3"
+  _SLR_LIVE=""
+  _SLR_STALE=""
+  { [ -e "${_SLR_STORE}/files" ] || [ -e "${_SLR_STORE}/private" ]; } || return 0
+  _SLR_REAL_STORE=""
+  [ -L "${_SLR_STORE}" ] || _SLR_REAL_STORE=$(readlink -f "${_SLR_STORE}" 2>/dev/null)
+  _store_link_index
+  while IFS="$(printf '\t')" read -r _SLR_LINK _SLR_TGT; do
+    [ -n "${_SLR_LINK}" ] || continue
+    case "${_SLR_LINK}" in "${_SLR_ACCT}"/*/sites/"${_SLR_SITE}"/*) continue ;; esac
+    _SLR_HIT="NO"
+    case "${_SLR_TGT}/" in "${_SLR_STORE}"/*) _SLR_HIT="YES" ;; esac
+    if [ "${_SLR_HIT}" = "NO" ] && [ -n "${_SLR_REAL_STORE}" ]; then
+      case "${_SLR_TGT}" in
+        /data/disk/*) ;;
+        *)
+          _SLR_REAL=$(readlink -f "${_SLR_LINK}" 2>/dev/null)
+          case "${_SLR_REAL}/" in "${_SLR_REAL_STORE}"/*) _SLR_HIT="YES" ;; esac
+          ;;
+      esac
     fi
-  done
+    [ "${_SLR_HIT}" = "YES" ] || continue
+    _SLR_RACCT="${_SLR_LINK#/data/disk/}"
+    _SLR_RACCT="${_SLR_RACCT%%/*}"
+    _SLR_RDIR="${_SLR_LINK%/*}"
+    _SLR_RURI="${_SLR_RDIR##*/}"
+    if [ -e "/data/disk/${_SLR_RACCT}/.drush/${_SLR_RURI}.alias.drushrc.php" ] \
+      || [ -e "/data/disk/${_SLR_RACCT}/config/server_master/nginx/vhost.d/${_SLR_RURI}" ]; then
+      _SLR_LIVE="${_SLR_LIVE}${_SLR_LIVE:+ }${_SLR_LINK} -> ${_SLR_TGT}"
+    else
+      _SLR_STALE="${_SLR_STALE}${_SLR_STALE:+ }${_SLR_LINK} -> ${_SLR_TGT}"
+    fi
+  done <<EOT
+${_SLR_INDEX}
+EOT
+  return 0
 }
 
 _archive_orphan_store() {
@@ -1183,14 +1227,28 @@ _archive_orphan_store() {
 
   { [ -e "${_ORPH_SRC}" ] || [ -L "${_ORPH_SRC}" ]; } || return 0
 
-  # A store some live site still reads through its own files/private link is
-  # never moved from under it (a clone whose unshare was refused for disk, a
-  # renamed site whose re-home did not complete): left in place, reported for
-  # the operator. Re-running the unshare is the fix, never moving the store.
-  _ORPH_READERS=$(_store_live_readers "${_ORPH_SRC}" "${_ORPH_SITE}")
-  if [ -n "${_ORPH_READERS}" ]; then
-    _log "[ALERT] Orphan store ${_ORPH_SRC} is still read through a live site's link; left in place, NOT archived, manual review required: $(printf '%s' "${_ORPH_READERS}" | tr '\n' ' ')"
+  # A store named by a share control file stays: another site reads it by the
+  # operator's declared intent, and the operator decides (the narrow task path
+  # tests this first with its own line; the nightly sweep honours it here).
+  for _ORPH_SHARE in "${_ORPH_ACCT}"/static/control/share.*."${_ORPH_SITE}".info; do
+    if [ -e "${_ORPH_SHARE}" ]; then
+      _log "[ALERT] Orphan store ${_ORPH_SRC} is named by share control file ${_ORPH_SHARE}; left in place, NOT archived, manual review required"
+      return 0
+    fi
+  done
+  # A store some registered site still reads through its own files/private
+  # link is never moved from under it (a clone whose unshare was refused for
+  # disk, a renamed site whose re-home did not complete): left in place,
+  # reported for the operator. Re-running the unshare is the fix, never moving
+  # the store. A link left by an unregistered leftover directory is reported
+  # and does not hold the archive.
+  _store_live_readers "${_ORPH_SRC}" "${_ORPH_SITE}" "${_ORPH_ACCT}"
+  if [ -n "${_SLR_LIVE}" ]; then
+    _log "[ALERT] Orphan store ${_ORPH_SRC} is still read through a live site's link; left in place, NOT archived, manual review required: ${_SLR_LIVE}"
     return 0
+  fi
+  if [ -n "${_SLR_STALE}" ]; then
+    _log "[REPORT] Orphan store ${_ORPH_SRC}: link(s) into it belong to no registered site and do not hold the archive: ${_SLR_STALE}"
   fi
 
   # Run/account-scoped stamp so all orphans of one sweep land under one archive dir.
@@ -2083,6 +2141,7 @@ _process_account() {
       # One archive stamp for all of this account's orphans in this sweep.
       _ARCHIVE_STAMP="$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null)-$$"
       _FOUND_ORPHANS="NO"
+      _SLR_INDEX=""
       for _CAND in "${_STATIC_FILES_DIR}"/*; do
         if [ ! -e "${_CAND}" ]; then
           continue
