@@ -418,6 +418,15 @@ _check_sql_running() {
   # reinstall the server and reconcile my.cnf.
   _SQL_UPGRADE_PENDING=NO
   [ -e "/root/.proxy.cnf" ] && return 0
+  if [ ! -x "/usr/sbin/mysqld" ] \
+    && [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+    # No server binary and no Ægir master: an install that stopped before its
+    # database stage. There is nothing to start or wait for -- the minute
+    # spent here ended in an ALERT on every re-run -- and the pass being
+    # re-run is what installs the server.
+    echo "NOTE: no MySQL server yet and no Ægir master: an unfinished install, continuing"
+    return 0
+  fi
   local _dead=0
   local _tot=0
   local _started=NO
@@ -2166,6 +2175,86 @@ _fetch_boa_file() {
   mv -f "${_fTmp}" "${_fDst}"
 }
 
+_reseed_unfinished_install() {
+  # The settings file above was just refetched with its placeholders. On a box
+  # whose install stopped before the Ægir master the pass runs in INIT mode,
+  # where _mode_detection needs the install's own parameters -- the setup
+  # kind, the hostname, the e-mail, the PHP set -- which `boa in-<tree>`
+  # seeded into this same file before the first run and whose record still
+  # sits in /root/.boa.install.command.cnf. Without them every re-run died
+  # at "You must define also _EASY_HOSTNAME", so the re-run the pre-flight
+  # NOTEs allow had no way forward. Seed them again the way `boa` does.
+  local _rec _kind _fqdn _mail _extra _pI _pA _i _n _t
+  local -a _tok
+  [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && return 0
+  [ -s "/root/.boa.install.command.cnf" ] || return 0
+  [ -e "${_vBs}/${_filIncB}" ] || return 0
+  _rec=$(head -n 1 /root/.boa.install.command.cnf 2>/dev/null)
+  read -r -a _tok <<< "${_rec}"
+  _n=${#_tok[@]}
+  _i=0
+  while [ "${_i}" -lt "${_n}" ] \
+    && [[ ! "${_tok[${_i}]}" =~ ^in-(dev|pro|lts)$ ]]; do
+    _i=$(( _i + 1 ))
+  done
+  [ "${_i}" -lt "${_n}" ] || return 0
+  _kind="${_tok[$(( _i + 1 ))]}"
+  _fqdn=""
+  _mail=""
+  _extra=""
+  # boa's positional rule: public <hostname> <email> ..., local <email> ...
+  if [ "${_kind}" = "public" ]; then
+    _fqdn="${_tok[$(( _i + 2 ))]}"
+    _mail="${_tok[$(( _i + 3 ))]}"
+  elif [ "${_kind}" = "local" ]; then
+    _mail="${_tok[$(( _i + 2 ))]}"
+  else
+    return 0
+  fi
+  for _t in "${_tok[@]}"; do
+    [[ "${_t}" =~ ^php- ]] && _extra="${_t}"
+  done
+  if [[ "${_mail}" =~ ^[^[:space:]]+@[^[:space:]]+$ ]]; then
+    sed -i "s~^_MY_EMAIL=.*~_MY_EMAIL=\"${_mail}\"~" ${_vBs}/${_filIncB}
+  fi
+  sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g" ${_vBs}/${_filIncB}
+  if [ "${_kind}" = "local" ]; then
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=LOCAL/g" ${_vBs}/${_filIncB}
+  else
+    _fqdn="${_fqdn//[^a-zA-Z0-9-.]/}"
+    _fqdn="$(echo -n ${_fqdn} | tr A-Z a-z 2>&1)"
+    [ -n "${_fqdn}" ] || return 0
+    sed -i "s/^_EASY_SETUP=.*/_EASY_SETUP=PUBLIC/g" ${_vBs}/${_filIncB}
+    sed -i "s/^_EASY_HOSTNAME.*/_EASY_HOSTNAME=${_fqdn}/g" ${_vBs}/${_filIncB}
+    export _EASY_HOSTNAME=${_fqdn}
+  fi
+  _pI=""
+  case "${_extra}" in
+    php-85|php-8.5) _pI=8.5 ;;
+    php-84|php-8.4) _pI=8.4 ;;
+    php-83|php-8.3) _pI=8.3 ;;
+  esac
+  if [ -n "${_pI}" ]; then
+    sed -i "s/^_PHP_SI.*/_PHP_SINGLE_INSTALL=${_pI}/g"  ${_vBs}/${_filIncB}
+    sed -i "s/^_PHP_MU.*/_PHP_MULTI_INSTALL=${_pI}/g"   ${_vBs}/${_filIncB}
+    sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=${_pI}/g"  ${_vBs}/${_filIncB}
+    sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=${_pI}/g"  ${_vBs}/${_filIncB}
+  elif [ "${_extra}" = "php-all" ] \
+    || [ "${_extra}" = "php-min" ] \
+    || [ "${_extra}" = "php-max" ]; then
+    if [ "${_extra}" = "php-max" ]; then
+      _pA="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5"
+    else
+      _pA="8.3 8.4 8.5"
+    fi
+    sed -i "s/^_PHP_SINGLE_.*/_PHP_SINGLE_INSTALL=/g"        ${_vBs}/${_filIncB}
+    sed -i "s/^_PHP_M.*/_PHP_MULTI_INSTALL=\"${_pA}\"/g"     ${_vBs}/${_filIncB}
+    sed -i "s/^_PHP_FPM_V.*/_PHP_FPM_VERSION=8.4/g"         ${_vBs}/${_filIncB}
+    sed -i "s/^_PHP_CLI_V.*/_PHP_CLI_VERSION=8.4/g"         ${_vBs}/${_filIncB}
+  fi
+  echo "NOTE: unfinished install: the install parameters were seeded again from /root/.boa.install.command.cnf (${_kind}${_fqdn:+ ${_fqdn}}${_extra:+ ${_extra}})"
+}
+
 _proceed() {
   _check_root_keys_pwd
   _check_root
@@ -2202,6 +2291,7 @@ _proceed() {
 
   _fetch_boa_file "${_rgUrl}/${_barName}" "${_vBs}/${_barName}" '_vBs="/var/backups"'
   _fetch_boa_file "${_rgUrl}/${_pthIncB}" "${_vBs}/${_filIncB}" "^_X_VERSION="
+  _reseed_unfinished_install
 
   _up_action
   _up_finish
