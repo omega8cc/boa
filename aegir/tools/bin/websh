@@ -144,6 +144,95 @@ _drush_segments() {
   done
   printf '%s\n' "${_out}"
 }
+# A launcher line: an optionally quoted php (php, phpNN, /opt/phpNN/bin/php,
+# /usr/bin/php) followed by a drush.php under /opt/tools, /data/disk,
+# /mnt/.../data/disk or /var/aegir, or a vendor/drush/drush/drush.php
+# (absolute or relative, the php prefix optional), read at the start of the
+# line after an optional "set -m;", a leading "cd DIR &&" (kept in _LA_CD and
+# put back in front of the exec line, so provision's cd-and-exec shape keeps
+# the account's PHP) and leading NAME=value words. The launcher goes; the
+# arguments travel as typed. The branches this replaces found the launcher
+# ANYWHERE in the line with grep -o, removed every occurrence with sed and
+# put the line through an unquoted echo, after stripping every single quote
+# from any line naming drush: a quoted multi-word option value reached drush
+# as separate words -- a server verify's --http_restart_cmd='sudo
+# /etc/init.d/nginx reload' saved the alias with 'sudo' alone and provision
+# never reloaded nginx again from that alias (measured 2026-09-08) -- and a
+# quoted * was expanded against the cwd. The backend child that arrives with
+# a quoted --php prefix took the verbatim fast lane above and was never hit;
+# the bare-php launcher was.
+_LA_PATH=""; _LA_REST=""; _LA_RM=""; _LA_PRE=""; _LA_CD=""
+_RE_CD='^[[:space:]]*cd[[:space:]]+[^[:space:];&|]+[[:space:]]*(&&|;)[[:space:]]*'
+# a token may be single-quoted as escapeshellarg spells it; the quotes must
+# balance (a lone quote is the caller's, not a launcher)
+_RE_LAPHP="('?(php|php[0-9][0-9]|/opt/php[0-9][0-9]/bin/php|/usr/bin/php|/usr/local/bin/php)'?)[[:space:]]+"
+_RE_LADRUSH="('?(/opt/tools/drush/[^[:space:]']+/drush/drush\\.php|/data/disk/[^[:space:]']+/tools/drush/drush\\.php|/mnt/[^[:space:]']+/data/disk/[^[:space:]']+/tools/drush/drush\\.php|/var/aegir/drush/drush\\.php|[^[:space:]']*vendor/drush/drush/drush\\.php)'?)[[:space:]]+(.*)\$"
+_quotes_balance() {
+  case "$1" in
+    \'*\') return 0 ;;
+    *\'*) return 1 ;;
+  esac
+  return 0
+}
+_drush_launcher() {
+  local _s="$1" _tok
+  _LA_PATH=""; _LA_REST=""; _LA_RM=""; _LA_PRE=""; _LA_CD=""
+  if [[ "${_s}" =~ ${_RE_SETM} ]]; then
+    _s="${_s#"${BASH_REMATCH[0]}"}"
+  fi
+  if [[ "${_s}" =~ ${_RE_CD} ]]; then
+    _LA_CD="${BASH_REMATCH[0]}"
+    _s="${_s#"${_LA_CD}"}"
+  fi
+  while [[ "${_s}" =~ ${_RE_ASSIGN} ]]; do
+    _LA_PRE+="${BASH_REMATCH[0]}"
+    _s="${_s#"${BASH_REMATCH[0]}"}"
+  done
+  _s="${_s#"${_s%%[![:space:]]*}"}"
+  if [[ "${_s}" =~ ^${_RE_LAPHP}${_RE_LADRUSH} ]] \
+    && _quotes_balance "${BASH_REMATCH[1]}" && _quotes_balance "${BASH_REMATCH[3]}"; then
+    _LA_PATH="${BASH_REMATCH[4]}"
+    _LA_REST="${BASH_REMATCH[5]}"
+  elif [[ "${_s}" =~ ^${_RE_LADRUSH} ]] && [[ "${BASH_REMATCH[2]}" == *vendor/drush/drush/drush.php ]] \
+    && _quotes_balance "${BASH_REMATCH[1]}"; then
+    _LA_PATH="${BASH_REMATCH[2]}"
+    _LA_REST="${BASH_REMATCH[3]}"
+  else
+    _LA_PRE=""; _LA_CD=""
+    return 1
+  fi
+  _LA_RM="${_LA_PATH//\//\\/}"
+  return 0
+}
+# The composer line, the same way: the leading word after an optional
+# "set -m;", a leading "cd DIR &&" and NAME=value words, the arguments as
+# typed. The branch this replaces stripped "composer " everywhere with sed
+# and word-split the rest, so provision's cd-and-exec form -- cd PLATFORM &&
+# composer require drush/drush -- ran composer with the command "cd"
+# (measured: Command "cd" is not defined) and never installed anything.
+_CO_REST=""; _CO_PRE=""; _CO_CD=""
+_RE_COLEAD='^[[:space:]]*composer[[:space:]]+(.*)$'
+_composer_lead() {
+  local _s="$1"
+  _CO_REST=""; _CO_PRE=""; _CO_CD=""
+  if [[ "${_s}" =~ ${_RE_SETM} ]]; then
+    _s="${_s#"${BASH_REMATCH[0]}"}"
+  fi
+  if [[ "${_s}" =~ ${_RE_CD} ]]; then
+    _CO_CD="${BASH_REMATCH[0]}"
+    _s="${_s#"${_CO_CD}"}"
+  fi
+  while [[ "${_s}" =~ ${_RE_ASSIGN} ]]; do
+    _CO_PRE+="${BASH_REMATCH[0]}"
+    _s="${_s#"${BASH_REMATCH[0]}"}"
+  done
+  if [[ "${_s}" =~ ${_RE_COLEAD} ]]; then
+    _CO_REST="${BASH_REMATCH[1]}"
+    return 0
+  fi
+  _CO_PRE=""; _CO_CD=""
+  return 1
+}
 _drush_cmd_word() {
   # the drush command word of an argument string: the first word that is
   # not an @alias, an option, the value of an option that takes one (drush
@@ -482,175 +571,42 @@ if [[ "${_ARGS}" =~ "true COLUMNS=" ]]; then
   fi
 fi
 
-# Single quotes are dropped from a launcher line only: the backend child
-# arrives as '/opt/phpNN/bin/php' /path/drush.php ... and the launcher
-# patterns below read the unquoted spelling. A line led by the bare verb
-# keeps them, so its arguments reach dash as typed (drush8 @site vset
-# site_name 'My Site' sets both words; the strip left it setting the first,
-# and the unquoted echo it went through word-split and glob-expanded the
-# whole line).
-if [[ "${_ARGS}" =~ "'" ]] && [[ "${_ARGS}" =~ "drush" ]] && ! _drush_lead "${_ARGS}"; then
-  _ARGS=$(printf '%s' "${_ARGS}" | tr -d "'")
-fi
+# No quote is ever removed from the line: the launcher parser reads a quoted
+# php token where the backend child spells one, and every argument reaches
+# dash as typed.
 
 # The sudo test below is a WORD test: since lshell 0.11.8 a tenant line can
 # carry LD_PRELOAD=<sudo_noexec.so path> on its non-escape segments (drush8
 # status | LD_PRELOAD=/usr/libexec/sudo/sudo_noexec.so grep x), and a bare
 # substring match on "sudo" sent every such line around this block.
-if [[ ! "${_ARGS}" =~ "composer" ]] \
+# The drush dispatch: a launcher line or a bare-verb line, read at the head
+# of the line (see _drush_launcher and _drush_lead). Lines naming composer,
+# git, mysql or the sudo word take their own routes; a "cd DIR &&" prefix in
+# front of a launcher is carried into the exec line by the parser, any other
+# cd line is dash's.
+_ARR=
+if _drush_launcher "${_ARGS}"; then
+  # a launcher is unambiguous at the head of the line, whatever its
+  # arguments name (a db-server verify carries --master_db=mysql://..., an
+  # alias may contain "git"): it is dispatched regardless of the words below
+  _R_M="${_LA_RM}"
+  _DL_PRE="${_LA_CD}${_LA_PRE}"
+  _ARR=("${_LA_REST}")
+elif [[ ! "${_ARGS}" =~ "composer" ]] \
   && [[ ! "${_ARGS}" =~ "git" ]] \
   && [[ ! "${_ARGS}" =~ "cd " ]] \
   && [[ ! "${_ARGS}" =~ "mysql" ]] \
-  && [[ ! "${_ARGS}" =~ (^|[[:space:]])sudo([[:space:]]|$) ]]; then
-  _ARR=
-  if [[ "${_ARGS}" =~ "/vendor/drush/drush/drush.php " ]]; then
-    _R_M=`echo -n ${_ARGS}  | grep -o ".*/vendor/drush/drush/drush.php"`
-    ### echo _R_M is ${_R_M}
-    _R_M=${_R_M//\//\\\/}
-    ### echo _R_M is ${_R_M}
-    if [ -n "${_R_M}" ]; then
-      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
-    else
-      _CLR=
-    fi
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
-    _R_M=`echo -n ${_ARGS}  | grep -o "vendor/drush/drush/drush.php"`
-    ### echo _R_M is ${_R_M}
-    _R_M=${_R_M//\//\\\/}
-    ### echo _R_M is ${_R_M}
-    if [ -n "${_R_M}" ]; then
-      _CLR=`echo ${_ARGS}  | sed "s/\${_R_M}//g"`
-    else
-      _CLR=
-    fi
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _ARR is ${_ARR}
-  ### Absolute launchers come BEFORE the bare-verb branches below. Those
-  ### match "drush " anywhere in the line and then strip EVERY "drush" with
-  ### sed, so a launcher path was mangled whenever an argument also carried
-  ### the bare word: provision's own `cache-clear drush` (run from every
-  ### hostmaster site verify) became "php /var/aegir//.php ... cache-clear"
-  ### and was re-dispatched as "php <drush.php> php ...", which drush parses
-  ### as the `php` alias of core-cli -- fatal on PHP 8 (DRUPAL_ROOT undefined).
-  ### Account launchers survived only through the _OCTO_SYS_ARR path further
-  ### down; the master's /var/aegir/drush/drush.php and the global
-  ### /opt/tools/drush/N launcher had no such path and failed every master
-  ### site verify once /bin/sh became this wrapper.
-  elif [[ "${_ARGS}" =~ "php /opt/tools/" ]]; then
-    _R_M=`echo -n ${_ARGS} | grep -o "php /opt/tools/drush/.*/drush/drush.php"`
-    ### echo _R_M is ${_R_M}
-    _R_M=${_R_M//\//\\\/}
-    ### echo _R_M is ${_R_M}
-    if [ -n "${_R_M}" ]; then
-      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
-    else
-      _CLR=
-    fi
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "php /data/disk/" ]]; then
-    _R_M=`echo -n ${_ARGS} | grep -o "php /data/disk/.*/tools/drush/drush.php"`
-    ### echo _R_M is ${_R_M}
-    _R_M=${_R_M//\//\\\/}
-    ### echo _R_M is ${_R_M}
-    if [ -n "${_R_M}" ]; then
-      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
-    else
-      _CLR=
-    fi
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ php\ /mnt/.*/data/disk/ ]]; then
-    _R_M=`echo -n ${_ARGS} | grep -o "php /mnt/.*/data/disk/.*/tools/drush/drush.php"`
-    ### echo _R_M is ${_R_M}
-    _R_M=${_R_M//\//\\\/}
-    ### echo _R_M is ${_R_M}
-    if [ -n "${_R_M}" ]; then
-      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
-    else
-      _CLR=
-    fi
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif [[ "${_ARGS}" =~ "php /var/aegir/drush/drush.php " ]]; then
-    _R_M=`echo -n ${_ARGS} | grep -o "php /var/aegir/drush/drush.php"`
-    ### echo _R_M is ${_R_M}
-    _R_M=${_R_M//\//\\\/}
-    ### echo _R_M is ${_R_M}
-    if [ -n "${_R_M}" ]; then
-      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
-    else
-      _CLR=
-    fi
-    _ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _ARR is ${_ARR}
-  elif _drush_lead "${_ARGS}"; then
-    # the bare verb leads the line: that one token goes, the rest is the
-    # argument string as typed (_drush_lead above)
-    _R_M="${_DL_TOK}"
-    _ARR=("${_DL_REST}")
-  fi
+  && [[ ! "${_ARGS}" =~ (^|[[:space:]])sudo([[:space:]]|$) ]] \
+  && _drush_lead "${_ARGS}"; then
+  # the bare verb leads the line: that one token goes, the rest is the
+  # argument string as typed (_drush_lead above)
+  _R_M="${_DL_TOK}"
+  _ARR=("${_DL_REST}")
 fi
 
 _C_ARR=
-if [[ "${_ARGS}" =~ "composer " ]] && [[ ! "${_ARGS}" =~ "git remote add composer" ]]; then
-  if [[ "${_ARGS}" =~ "set -m" ]]; then
-    _C_RM=`echo -n ${_ARGS}  | grep -o "set -m\; composer "`
-  else
-    _C_RM=`echo -n ${_ARGS}  | grep -o "composer "`
-  fi
-  ### echo _C_RM is ${_C_RM}
-  if [ -n "${_C_RM}" ]; then
-    _CLR=`echo ${_ARGS}  | sed "s/\${_C_RM}//g"`
-  else
-    _CLR=
-  fi
-  _C_ARR=() # the buffer array for filtered parameters
-  for arg in "${_CLR}"; do
-    case ${_C_RM} in
-      $arg\ * | *\ $arg | *\ $arg\ *) ;;
-      *) _C_ARR+=("$arg") ;;
-    esac
-  done
-  ### echo _C_ARR is ${_C_ARR}
+if _composer_lead "${_ARGS}"; then
+  _C_ARR=("${_CO_REST}")
 fi
 
 _INTERNAL=NO
@@ -745,24 +701,9 @@ if [[ "${HOME}" =~ (^)"/data/disk/" ]] \
   && [[ "${_ARGS}" =~ (^)"php ${HOME}" ]]; then
   _OCTO_SYS="${USER}"
   _OCTO_SYS_ARR=
-  if [[ "${_ARGS}" =~ "tools/drush/drush.php" ]]; then
-    _R_M=`echo -n ${_ARGS} | grep -o "php /data/disk/.*/tools/drush/drush.php"`
-    ### echo _R_M is ${_R_M}
-    _R_M=${_R_M//\//\\\/}
-    ### echo _R_M is ${_R_M}
-    if [ -n "${_R_M}" ]; then
-      _CLR=`echo ${_ARGS} | sed "s/\${_R_M}//g"`
-    else
-      _CLR=
-    fi
-    _OCTO_SYS_ARR=() # the buffer array for filtered parameters
-    for arg in "${_CLR}"; do
-      case ${_R_M} in
-        $arg\ * | *\ $arg | *\ $arg\ *) ;;
-        *) _OCTO_SYS_ARR+=("$arg") ;;
-      esac
-    done
-    ### echo _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
+  # the account's own launcher: the parser above already holds its arguments
+  if [ -n "${_LA_PATH}" ] && [[ "${_LA_PATH}" == /data/disk/*/tools/drush/drush.php ]]; then
+    _OCTO_SYS_ARR=("${_LA_REST}")
   fi
 else
   _OCTO_SYS=
@@ -965,9 +906,10 @@ if _grp_set_is "users www-data" \
         if [[ "${_ARGS}" =~ "/vendor/bin/drush " ]]; then
           _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
         fi
-        if [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
-          # Detect if PWD ends with /web, /html, or /docroot
-          if [[ "$PWD" =~ /(web|html|docroot)$ ]]; then
+        if [[ "${_LA_PATH}" == *vendor/drush/drush/drush.php ]] || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
+          if [ -n "${_LA_PATH}" ] && ! _is_tenant && { [[ "${_LA_PATH}" == /* ]] || [ -n "${_LA_CD}" ]; }; then
+            _DEST_DRUSH="${_LA_PATH}"
+          elif [[ "$PWD" =~ /(web|html|docroot)$ ]]; then
             _DEST_DRUSH="../vendor/drush/drush/drush.php"
           else
             _DEST_DRUSH="vendor/drush/drush/drush.php"
@@ -1054,9 +996,15 @@ if _grp_set_is "users www-data" \
           if [[ "${_ARGS}" =~ "/vendor/bin/drush " ]]; then
             _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
           fi
-          if [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
-            # Detect if PWD ends with /web, /html, or /docroot
-            if [[ "$PWD" =~ /(web|html|docroot)$ ]]; then
+          if [[ "${_LA_PATH}" == *vendor/drush/drush/drush.php ]] || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
+            if [ -n "${_LA_PATH}" ] && ! _is_tenant && { [[ "${_LA_PATH}" == /* ]] || [ -n "${_LA_CD}" ]; }; then
+              # an absolute launcher, or one relative to a cd DIR && in front
+              # of it: run the launcher as typed (the cwd-derived form below
+              # only fits a launcher relative to where websh runs). Not for a
+              # tenant: an absolute path of theirs under /tmp or /home is what
+              # the fast lane above keeps out on purpose
+              _DEST_DRUSH="${_LA_PATH}"
+            elif [[ "$PWD" =~ /(web|html|docroot)$ ]]; then
               _DEST_DRUSH="../vendor/drush/drush/drush.php"
             else
               _DEST_DRUSH="vendor/drush/drush/drush.php"
@@ -1525,7 +1473,7 @@ if _grp_set_is "users www-data" \
           ### echo EXD 3-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 3-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
-          _exec_dash_c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
+          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
         elif [ -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
@@ -1534,14 +1482,14 @@ if _grp_set_is "users www-data" \
           ### echo EXD 3-NO-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 3-NO-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-NO-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
-          _exec_dash_c "${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
+          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
           ### echo EXC 1 DRUSH_PHP is ${DRUSH_PHP}
           ### echo EXC 1 _C_ARR is ${_C_ARR}
           ### echo EXC 1 _F_ARR is "$@"
           ### echo EXC 1 ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
-          _exec_dash_c "${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
+          _exec_dash_c "${_CO_CD}${_CO_PRE}${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
           exit 0
         else
           ### echo EXH 1 _forward_to_dash "$@"
