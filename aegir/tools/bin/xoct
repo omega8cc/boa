@@ -2607,22 +2607,16 @@ _migrate_prepare() {
         echo "INFO: enforced upgrade armed on ${_tgt} for ${_TGT_HM_USER}: ${_ARM_WHY}"
         ### A demoted box (the failback target, or any ex-active whose
         ### dispatcher was parked under /var/backups/off-run) has nothing to
-        ### consume the trigger: the runner comes back only with the
-        ### promotion's cleanup, which also defuses every armed pid as
-        ### stale, so the seeded PHP set would never be applied -- and until
-        ### then every verb's silence wait reads armed=[oN] as busy for its
-        ### whole bound (a failback prep-target waited 2400 s per account on
-        ### a quiet target). Run the runner's own command now instead, the
-        ### way its next tick would have; the wait then sees a real pass.
+        ### consume the trigger, and octopus itself refuses a proxied account
+        ### ("skipping: proxied (served elsewhere)"), so the seeded PHP set
+        ### cannot be applied there before the promotion -- whose cleanup
+        ### also defuses every armed pid as stale. Mark this one as the
+        ### migration's own: the promotion keeps it and the cutover re-arms
+        ### it at its end, so the restored dispatcher applies the seed on its
+        ### first quiet tick on the box that serves again.
         if ssh root@${_tgt} "[ ! -e /var/xdrago/run-${_TGT_HM_USER} ] && [ -e /var/backups/off-run/run-${_TGT_HM_USER} ]" 2>/dev/null; then
-          _TGT_TREE=$(ssh root@${_tgt} "boa info 2>/dev/null | grep -oE 'Barracuda BOA-[0-9.]+-(dev|lts|pro)' | tail -1 | grep -oE '(dev|lts|pro)$'" 2>/dev/null)
-          case "${_TGT_TREE}" in dev|lts|pro) ;; *) _TGT_TREE="${_tRee}" ;; esac
-          _TGT_UP_LOG="/var/backups/reports/up/xoct/$(date +%y%m%d)/xoct-up-octopus-${_TGT_HM_USER}-$(date +%y%m%d-%H%M%S).log"
-          if ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.pid; mkdir -p $(dirname ${_TGT_UP_LOG}); nohup /opt/local/bin/octopus up-${_TGT_TREE} ${_TGT_HM_USER} force log noscreen > ${_TGT_UP_LOG} 2>&1 < /dev/null &" 2>/dev/null; then
-            echo "INFO: ${_TGT_HM_USER}'s dispatcher is parked on ${_tgt} (a demoted box); the enforced upgrade runs now: octopus up-${_TGT_TREE} ${_TGT_HM_USER} force log noscreen (log ${_TGT_UP_LOG})"
-          else
-            echo "ALRT: ${_TGT_HM_USER}'s dispatcher is parked on ${_tgt} and the enforced upgrade could not be started there; run 'octopus up-${_TGT_TREE} ${_TGT_HM_USER} force' on ${_tgt} by hand"
-          fi
+          ssh root@${_tgt} "/bin/touch /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.xmass"
+          echo "INFO: ${_TGT_HM_USER}'s dispatcher is parked on ${_tgt} (a demoted box refuses octopus passes); the seeded upgrade is deferred to the promotion -- the cutover re-arms it once the box serves again"
         fi
       else
         echo "INFO: ${_TGT_HM_USER} on ${_tgt} already runs FPM ${_TGT_FPM_RUN} / CLI ${_TGT_CLI_RUN} and the seed changed nothing; no upgrade armed"
