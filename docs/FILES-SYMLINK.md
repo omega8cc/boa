@@ -44,7 +44,7 @@ This is the server-admin reference. For the per-site user how-to see
 | **Reused site name** | When an install/clone reuses a name whose store was left behind by an earlier site of the same name, the stale store is **archived aside** (to `static/files/.archived/…`) and the new site converts cleanly — no skip, no manual step. | **on** |
 | **Nightly auto-fix** | Convert any not-yet-symlinked site and self-heal partly-symlinked ones, box-wide. | **on** on omega8.cc-hosted (`.aegir.cc`); **opt-in** otherwise |
 | **Site delete** | The Delete task itself **archives** the site's store aside into `static/files/.archived/…` before the site's alias goes (`DELETE/STORE/ARCHIVED` in the task log; never deletes). A store named by a share control file is **left in place** with a `DELETE/STORE/LEFT` warning (another site reads it); with the orphan-archiving switch present the task keeps it too (`DELETE/STORE/KEPT`). | **on** |
-| **Orphaned store** (a leftover from an older backend, an interrupted delete, or a store the delete kept) | The nightly auto-fix **archives** the leftover store aside into `static/files/.archived/…` (never deletes; a *disabled* site is left in place); the opt-in report additionally emails any found. | archive with auto-fix; report opt-in |
+| **Orphaned store** (a leftover from an older backend, an interrupted delete, or a store a delete or a rename kept) | The nightly auto-fix **archives** the leftover store aside into `static/files/.archived/…` (never deletes; a *disabled* site is left in place); the opt-in report additionally emails any found. | archive with auto-fix; report opt-in |
 | **Backups relocation** (nightly) | On an account whose `static/files` is a **separate filesystem**, move `backups`/`backup-exports` onto it (via symlinks) so large backups can't fill the root partition. | **on** where applicable (kill-switchable) |
 | **Manual run** | Convert/report on demand with the tools below. | — |
 
@@ -347,12 +347,13 @@ never moves or deletes anything.
 
 ### Disabling deleted-site auto-archiving
 
-The Delete task archives a deleted site's store into `.archived/` at once, and the
-nightly auto-fix archives any leftover orphan store the same way (see *Orphan /
-ghost detection and stale-store archiving*). To turn both off and go back to
-**report-only** for orphans — the Delete task then keeps the store at its live name
-and says `DELETE/STORE/KEPT`; archiving of a *reused* name on install/clone is
-unaffected — create:
+The Delete task archives a deleted site's store into `.archived/` at once, a migrate
+under a new name does the same for the old name's store, and the nightly auto-fix
+archives any leftover orphan store the same way (see *Orphan / ghost detection and
+stale-store archiving*). To turn all three off and go back to **report-only** for
+orphans — the task then keeps the store at its live name and says
+`DELETE/STORE/KEPT` or `RENAME/STORE/KEPT`; archiving of a *reused* name on
+install/clone is unaffected — create:
 
 ```bash
 touch /data/conf/disable_orphan_store_archiving.cnf
@@ -453,10 +454,14 @@ site — re-homing its `files`/`private` into its **own** store and repointing t
 symlinks, and archiving any pre-existing store at the target name aside first.
 The old-name store is then set aside by the task itself, the way a delete does:
 the post hook asks the wrapper for `--archive-store` before the old alias goes
-(`RENAME/STORE/ARCHIVED`; `NONE`, `KEPT` and `LEFT` as for a delete, see below),
-and the nightly sweep stays the safety net for anything left behind. Without the
-re-home a renamed site would keep plain dirs on the platform partition or a link
-into the old store.
+(`RENAME/STORE/ARCHIVED`; the same `NONE`, `KEPT` and `LEFT` cases as a delete, see
+*Orphan / ghost detection and stale-store archiving*). If the re-home was refused
+(the `[ALERT] Clone unshare … not completed` line, usually disk), the renamed site
+still reads the old store through its links and the wrapper leaves that store where
+it is (`RENAME/STORE/LEFT`) until the unshare is re-run by hand — it is never moved
+from under a live site. The nightly sweep stays the safety net for anything left
+behind. Without the re-home a renamed site would keep plain dirs on the platform
+partition or a link into the old store.
 
 ## Restore behaviour
 
@@ -575,20 +580,29 @@ When a site is deleted, the Delete task removes the in-site symlinks and asks th
 privileged wrapper to set the data in `static/files/<url>/` aside into the hidden,
 timestamped archive (below) — `autosymlink --site <url> --account <acct>
 --archive-store`, logged as `DELETE/STORE/ARCHIVED` in the task log and as
-`[APPLY] Archive-store: …` in `autosymlink.log`. It **never deletes**. Two cases
-keep the store at its live name on purpose: a store named by a share control file
+`[APPLY] Archive-store: …` in `autosymlink.log`; `DELETE/STORE/NONE` says the site
+had no store to begin with. It **never deletes**. Three cases keep the store at its
+live name: a store named by a share control file
 (`static/control/share.*.<site>.info`, another site reads it) — the task warns
-`DELETE/STORE/LEFT` and the operator decides — and the orphan-archiving switch
+`DELETE/STORE/LEFT` and the operator decides; a store some live site still reads
+through its own `files`/`private` link (a clone whose unshare was refused for disk, a
+renamed site whose re-home did not complete) — the same `DELETE/STORE/LEFT` warning,
+with an `[ALERT]` in `autosymlink.log` naming the link, and the fix is to re-run that
+site's unshare, never to move the store; and the orphan-archiving switch
 (`/data/conf/disable_orphan_store_archiving.cnf`, below) — the task says
-`DELETE/STORE/KEPT`. A store left behind by an older backend, by an interrupted
-delete, or by those two cases is a **ghost**. Ghosts are archived aside
+`DELETE/STORE/KEPT`. A failed move (no room on a cross-filesystem archive target, a
+failed `mv`) is reported as `LEFT` too, with the reason in `autosymlink.log`. A store
+left behind by an older backend, by an interrupted delete, or by those cases — for a
+delete or for the old name after a rename — is a **ghost**. Ghosts are archived aside
 automatically, in two situations:
 
 - **Deleted site, name not reused — archived by the nightly sweep.** The nightly
   auto-fix (`updatesymlinks --auto-fix` with `_AUTOSYMLINK_NIGHTLY=YES`) moves each
   deleted-site leftover store aside into the same archive and logs an incident. It
   **never deletes**. Only a store whose name has **neither a
-  Drush alias nor a vhost** is archived — i.e. a genuinely deleted site. A merely
+  Drush alias nor a vhost** is archived — i.e. a genuinely deleted site — and even
+  then not while some live site still reads it through its own link (left in place
+  with an `[ALERT]` naming the link; the same guard as the task-time archive). A merely
   **disabled** site keeps both its alias and its (placeholder) vhost, so it is
   treated as active and **left in place** — its files stay live for a later
   re-enable. A partial/broken state (only one of alias/vhost present) is reported
