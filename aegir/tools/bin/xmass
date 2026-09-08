@@ -5791,7 +5791,17 @@ _xmass_target_silence_probe() {
         esac
       done
     fi
-    _d=$(ps -eww -o args | grep -c -E "[h]osting-tasks|[p]rovision-verify|[h]osting-dispatch|[O]CTOPUS.sh.txt\.|[A]egirSetup[A-Z].sh.txt|[B]ARRACUDA.sh.txt")
+    ### Real work only: installers, upgrades and provision tasks. The
+    ### runner'"'"'s per-minute housekeeping (hosting-tasks --items=N,
+    ### hosting-dispatch) on an EMPTY queue is a no-op scan that takes
+    ### 15-20 s of drush bootstrap on a loaded box, so counting it made a
+    ### quiet target read busy at every poll and the bounded wait expire
+    ### per create. With work queued (queue=[oN=K]) those processes ARE
+    ### the work and count.
+    _d=$(ps -eww -o args | grep -c -E "[p]rovision-verify|[O]CTOPUS.sh.txt\.|[A]egirSetup[A-Z].sh.txt|[B]ARRACUDA.sh.txt")
+    if [ -n "${_q// /}" ]; then
+      _d=$(( _d + $(ps -eww -o args | grep -c -E "[h]osting-tasks|[h]osting-dispatch") ))
+    fi
     echo "XMSTATE locks=[${_p}] armed=[${_a}] queue=[${_q}] procs=${_d}"' 2>/dev/null)
   _XMASS_TGT_STATE=$(printf '%s\n' "${_raw}" | grep '^XMSTATE ' | tail -1 | sed 's/^XMSTATE //')
   [ -z "${_XMASS_TGT_STATE}" ] && return 2
