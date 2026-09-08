@@ -5832,7 +5832,13 @@ _xmass_target_silence_probe() {
     _a=""
     _q=""
     if [ "'"${_scope}"'" = "full" ]; then
-      _a=$(ls /data/disk/*/static/control/run-upgrade.pid 2>/dev/null | sed "s#/data/disk/##; s#/static.*##" | tr "\n" " ")
+      ### An armed run-upgrade.pid counts as pending work only while the
+      ### account'"'"'s dispatcher can consume it. On a demoted box (a failback
+      ### target) every dispatcher is parked under /var/backups/off-run until
+      ### the promotion restores it -- and that same cleanup defuses the pid
+      ### as stale -- so such a marker is inert: counting it made every
+      ### verb wait out its whole bound on a quiet target.
+      _a=$(for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e "${_f}" ] || continue; _n=${_f#/data/disk/}; _n=${_n%%/*}; [ ! -e "/var/xdrago/run-${_n}" ] && [ -e "/var/backups/off-run/run-${_n}" ] && continue; printf "%s " "${_n}"; done)
       _roots="aegir"
       for _d in $(find /data/disk -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
         _n=$(basename "${_d}")
