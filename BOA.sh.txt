@@ -3070,6 +3070,47 @@ _fix_tmp_perms() {
   fi
 }
 
+# The master Drush arm, run from the barracuda process with no _ROOT exported,
+# copied the Drush 8 tree to /drush and rotated the previous copy under
+# /backups/system. The arm is guarded now and heals its own leftovers, but
+# only inside a barracuda pass, and boxes on the stable trees pass weekly.
+# Drush 10/11 search <root>/drush with an empty root, so the stray is read by
+# every tenant's modern Drush, and the lshell Landlock domain refuses that
+# read: the preflight dies. Heal it here, on every pass, and date the repair.
+# Only the tree BOA itself copies is removed: the fork's own marker files rule
+# out a /drush the operator made on purpose, and a link is never followed.
+_fix_stray_drush() {
+  local _sd_note _sd_dir
+  if [ -d "/drush" ] && [ ! -L "/drush" ] \
+    && [ -f "/drush/drush.php" ] \
+    && [ -f "/drush/drush.info" ] \
+    && [ -f "/drush/includes/boa_extension_filter.inc" ]; then
+    rm -rf /drush
+    _sd_note="NOTE: stray Drush tree at /drush removed (the master Drush arm's empty-root copy)"
+    _msg "${_sd_note}"
+    if [ -d "${_pthLog}" ]; then
+      echo "$(date) ${_sd_note}" >> ${_pthLog}/stray-drush.incident.log
+    fi
+  fi
+  for _sd_dir in /backups/system/drush-pre-*; do
+    if [ -d "${_sd_dir}" ] && [ ! -L "${_sd_dir}" ] && [ -f "${_sd_dir}/drush.php" ]; then
+      rm -rf "${_sd_dir}"
+      _sd_note="NOTE: stray Drush copy at ${_sd_dir} removed"
+      _msg "${_sd_note}"
+      if [ -d "${_pthLog}" ]; then
+        echo "$(date) ${_sd_note}" >> ${_pthLog}/stray-drush.incident.log
+      fi
+    fi
+  done
+  # The directories the same copy created; rmdir removes only an empty one,
+  # and /backups is left alone when anything mounts there.
+  rmdir /backups/system &> /dev/null
+  if [ -d "/backups" ] && ! mountpoint -q /backups 2> /dev/null \
+    && ! grep -qs "[[:space:]]/backups[[:space:]]" /etc/fstab; then
+    rmdir /backups &> /dev/null
+  fi
+}
+
 _fix_ping_perms() {
   if [ -e "/bin/ping" ]; then
     _PING_TEST=$(ls -la /bin/ping | grep rwsr-xr-x 2>&1)
@@ -5898,6 +5939,7 @@ if [ "$(id -u)" -eq 0 ]; then
     _fix_sftp_server
     _fix_ping_perms
     _fix_tmp_perms
+    _fix_stray_drush
     _fix_fpm_process_max
     _if_fix_lshell
     _if_fix_myquick
