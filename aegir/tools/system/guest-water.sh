@@ -1183,6 +1183,36 @@ ${_odd}
 EOF
 }
 
+# True for a command line that IS csf or lfd, or was started from a
+# ConfigServer path (its first word) -- never for one that merely mentions
+# ConfigServer further along (a grep, an ssh -c, an operator's pipeline).
+_csf_owned_cmdline() {
+  [[ "${1}" =~ ^(/usr/bin/perl\ )?/usr/sbin/(csf|lfd)(\ |$) ]] \
+    || [[ "${1}" =~ ^lfd\ - ]] \
+    || [[ "${1}" =~ ^[^\ ]*ConfigServer ]]
+}
+
+# The hung-csf cleanup before a reload (77fe98cac), scoped to its target:
+# the sleeps csf/lfd own and the processes started from a ConfigServer path.
+# The former `killall sleep` and bare `pkill -9 -f ConfigServer` matched by
+# substring across the whole box, twice per pass: every sleep died --
+# second.sh's TERM-then-sleep-then-KILL window (the sleep gone, the -9
+# follows the TERM at once), minute.sh, the guards, a watcher or a pass
+# mid-wait -- and any command line merely mentioning ConfigServer was
+# -9'd. A current csf/lfd spawns no sleep process at all, so this usually
+# kills nothing, which is the point.
+_csf_kill_own() {
+  local _p _pp _cmd
+  for _p in $(pgrep -x sleep 2>/dev/null); do
+    _pp=$(awk '/^PPid:/ { print $2 }' "/proc/${_p}/status" 2>/dev/null)
+    [ -n "${_pp}" ] || continue
+    _cmd=$(tr '\0' ' ' < "/proc/${_pp}/cmdline" 2>/dev/null)
+    _csf_owned_cmdline "${_cmd}" && kill -9 "${_p}" 2>/dev/null
+  done
+  pkill -9 -f '^[^ ]*ConfigServer' 2>/dev/null
+  return 0
+}
+
 _whitelist_ip_dns() {
   csf -tr 1.1.1.1
   csf -tr 8.8.8.8
@@ -1295,8 +1325,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     wait
   fi
 
-  pkill -9 -f ConfigServer
-  killall sleep &> /dev/null
+  _csf_kill_own
   rm -f /etc/csf/csf.error
   if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
     csf -ra &> /dev/null
@@ -1347,8 +1376,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   rm -f /var/xdrago/monitor/log/web.log
   rm -f /var/xdrago/monitor/log/ftp.log
 
-  pkill -9 -f ConfigServer
-  killall sleep &> /dev/null
+  _csf_kill_own
   rm -f /etc/csf/csf.error
   service lfd restart
   _NOW=$(date +%y%m%d-%H%M%S)

@@ -7746,6 +7746,47 @@ _if_remove_apparmor() {
 
 #
 # Final cleanup.
+_web_tier_up_while_unarmed() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _web_tier_up_while_unarmed"
+  fi
+  # The auto-healing watchdogs stay dormant until autoupboa stamps
+  # /var/log/boa/reset_no_new_password.pid on its first quiet tick after a
+  # fresh install's chain, and the chain's last pass ends with the web tier
+  # down (move_sql only stops it, by design). Until the stamp nothing brings
+  # the tier back: one tick plus a minute, 3-15 min measured on fresh boxes.
+  # So a pass that ends on a box not armed yet does what the watchdogs would:
+  # webserver up, the sanctioned bring-up while healing is not active -- it
+  # restarts only what is down and honours the nginx replication-standby hold.
+  # Gated on the Aegir master AND its front vhost being in place, so nginx
+  # never answers before the hostmaster vhost exists (the Let's Encrypt
+  # challenge needs the vhost, not a 404).
+  local _hmUri=""
+  if [ -e "/var/log/boa/reset_no_new_password.pid" ] \
+    || [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+    || [ ! -x "/opt/local/bin/webserver" ]; then
+    return 0
+  fi
+  _hmUri=$(grep -m1 "'uri'" /var/aegir/.drush/hm.alias.drushrc.php 2> /dev/null \
+    | cut -d"'" -f4)
+  if [ -z "${_hmUri}" ] \
+    || [ ! -e "/var/aegir/config/server_master/nginx/vhost.d/${_hmUri}" ]; then
+    return 0
+  fi
+  _msg "INFO: Auto-healing is not armed on this box yet, bringing the web tier up now"
+  _mrun "/opt/local/bin/webserver up"
+  # _mrun keeps the tool's output in the info log and returns 0 regardless,
+  # so the pass log itself names the outcome.
+  if [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ]; then
+    _msg "NOTE: Replication standby, Nginx stays held down by design"
+  elif [ -e "/run/nginx.pid" ] \
+    && pgrep -f 'nginx: master process' > /dev/null 2>&1; then
+    _msg "INFO: Nginx is up again"
+  else
+    _msg "NOTE: Nginx is still down after webserver up, please check its error log"
+  fi
+}
+
 _finale() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _finale"
@@ -7964,6 +8005,7 @@ _finale() {
       fi
     fi
   fi
+  _web_tier_up_while_unarmed
   _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
   if (( _CNT > 1 )); then
     pkill -f 'tee -a /var/backups/barracuda-'
