@@ -51,38 +51,12 @@ _php_cli_local_ini_update() {
       fi
     done
     if [ -e "${_U_II}" ]; then
-      _INI="open_basedir = \".: \
-        /data/all:           \
-        /data/conf:          \
-        /data/disk/all:      \
-        /opt/php56:          \
-        /opt/php70:          \
-        /opt/php71:          \
-        /opt/php72:          \
-        /opt/php73:          \
-        /opt/php74:          \
-        /opt/php80:          \
-        /opt/php81:          \
-        /opt/php82:          \
-        /opt/php83:          \
-        /opt/php84:          \
-        /opt/php85:          \
-        /opt/tika:           \
-        /opt/tika7:          \
-        /opt/tika8:          \
-        /opt/tika9:          \
-        /dev/urandom:        \
-        /opt/tmp/make_local: \
-        /opt/tools/drush:    \
-        /tmp:                \
-        /usr/bin:            \
-        /usr/local/bin:      \
-        /var/aegir\""
-      _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
-      _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
-      _INI=${_INI//\//\\\/}
+      # open_basedir stays out of the CLI ini: it breaks Drush and turns the
+      # realpath cache off (every file operation checked against every listed
+      # tree, uncached); lshell users are confined by their own measures, and
+      # the FPM ini keeps its own list
       _QTP=${_U_TP//\//\\\/}
-      sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
+      sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      ${_U_II}
       wait
       sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
       wait
