@@ -682,10 +682,13 @@ first) and `rm`s it at the very end — and once escalation is done it clears th
 > tagged lines and keeps the existing entries when the list comes back empty (endpoint
 > down, format change), so a failed refresh never strips a live range for a day; the
 > static `csf.deny` healing of the Google, Bing and Imperva refreshes runs either way.
-> The two monitors are allowed on both web ports, 80 and 443 — their probes check https
-> far more often than http — and UptimeRobot's fallback is the same address set
-> published as the A/AAAA records of `ip.uptimerobot.com`, a different channel from its
-> CDN. Every fetched token is value-validated before it is written (octets `0-255`, an
+> Every provider is allowed on both web ports, 80 and 443 — crawlers, WAF edges and
+> monitors all reach the sites over https, and a port-80-only entry left 443 exposed to a
+> `csf.deny` hit because the per-port allow rule precedes the all-port deny — and
+> membership is an exact-line test, so a manual entry carrying the same address never
+> blocks a provider's own line. UptimeRobot's fallback is the same address set published
+> as the A/AAAA records of `ip.uptimerobot.com`, a different channel from its CDN. Every
+> fetched token is value-validated before it is written (octets `0-255`, an
 > IPv4 prefix of `/8` or narrower, so a mangled or hostile body can never open the web
 > ports to the internet), and the resolver lines the pass keeps for its own DNS egress
 > are matched literally, never by a wildcard that also fits a provider address. The
