@@ -158,13 +158,10 @@ _whitelist_ip_pingdom() {
   #   Plain IPv4 list: https://my.pingdom.com/probes/ipv4  (preferred - no parsing needed)
   #   RSS feed:        https://my.pingdom.com/probes/feed  (fallback - XML parsing required)
   # The plain list is simpler and less fragile; RSS is kept as fallback.
-  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
-    echo removing pingdom ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S)
-    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-pingdom-${_NOW}
-    sed -i "s/.*pingdom.*//g" /etc/csf/csf.allow
-    wait
-  fi
+  # Fetch BEFORE the tagged-line cleanup: an empty fetch (both endpoints down,
+  # format change) must keep the existing entries -- never strip a monitor's
+  # probes for a day. Allow both web ports: the probes check https far more
+  # often than http, and a d=80-only entry leaves 443 exposed to a csf.deny hit.
   _IPS=$(curl ${_crlGet} https://my.pingdom.com/probes/ipv4 \
     | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+' \
     | sort \
@@ -181,20 +178,26 @@ _whitelist_ip_pingdom() {
   _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS pingdom list..
   echo ${_IPS}
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty pingdom list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing pingdom ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-pingdom-${_NOW}
+    sed -i "/pingdom/d" /etc/csf/csf.allow
+    wait
+  fi
   for _IP in ${_IPS}; do
-    echo checking csf.allow pingdom ${_IP} now...
-    _IP_CHECK=$(cat /etc/csf/csf.allow \
-      | cut -d '#' -f1 \
-      | sort \
-      | uniq \
-      | tr -d "\s" \
-      | grep -F "${_IP}" 2>&1)
-    if [ -z "${_IP_CHECK}" ]; then
-      echo "${_IP} not yet listed in /etc/csf/csf.allow"
-      echo "tcp|in|d=80|s=${_IP} # pingdom ips" >> /etc/csf/csf.allow
-    else
-      echo "${_IP} already listed in /etc/csf/csf.allow"
-    fi
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # pingdom ips" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # pingdom ips" >> /etc/csf/csf.allow
+      else
+        echo "${_IP} already listed for d=${_PORT} in /etc/csf/csf.allow"
+      fi
+    done
   done
 }
 
