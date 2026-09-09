@@ -562,6 +562,16 @@ if [ -n "${_dailyPid}" ] \
 else
   rm -f /run/daily-fix.pid
   echo $$ > /run/daily-fix.pid
+  # An account marker whose pass was killed outright (no bound fired) is dead
+  # weight until the next reboot: its readers test the pid it carries, so
+  # sweep by that pid, never by age -- an unbounded pass may run for hours.
+  for _amk in /run/night-account-*.pid; do
+    [ -e "${_amk}" ] || continue
+    _amkPid=$(tr -dc '0-9' < "${_amk}" 2>/dev/null)
+    if [ -z "${_amkPid}" ] || ! kill -0 "${_amkPid}" 2>/dev/null; then
+      rm -f "${_amk}"
+    fi
+  done
   _MAILX_TEST=$(s-nail -V 2>&1)
   _if_hosted_sys
   if [ -z "${_PERMISSIONS_FIX}" ]; then

@@ -32,6 +32,8 @@
 #   aegir2boa-stage1 [--flip]    [--live]   flip apache -> nginx (default op)
 #   aegir2boa-stage1 --revert    [--live]   flip nginx -> apache
 #   aegir2boa-stage1 --status               show both planes + daemon state
+#   aegir2boa-stage1 --version              the running copy's md5 (the same
+#                                           bytes as the target's fleet copy)
 #   aegir2boa-stage1 --help
 #
 # Scope: concrete http_service_type 'apache' and 'apache_ssl'. The
@@ -71,7 +73,9 @@ _have() { command -v "$1" >/dev/null 2>&1; }
 _as_aegir() { su -s /bin/bash - "${_AEGIR_USER}" -c "$1"; }
 
 _usage() {
-  sed -n '2,45p' "$0" | sed 's/^# \{0,1\}//'
+  # the header block, up to and including its Exit: line (anchored, not a
+  # line range: a range silently drops the Exit line once the header grows)
+  sed -n '2,/^# Exit: /p' "$0" | sed 's/^# \{0,1\}//'
   exit 0
 }
 
@@ -1123,6 +1127,9 @@ while [[ $# -gt 0 ]]; do
     --revert) _OP=revert ;;
     --status) _OP=status ;;
     --live)   _LIVE=YES ;;
+    # identity of the running copy, before any gate: the fleet copy on the
+    # BOA target and the hand-placed copy on the source must be the same bytes
+    --version) echo "aegir2boa-stage1 md5=$(md5sum "$0" 2>/dev/null | cut -c1-32)"; exit 0 ;;
     -h|--help) _usage ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
