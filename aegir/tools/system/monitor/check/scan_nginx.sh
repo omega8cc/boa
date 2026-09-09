@@ -1006,9 +1006,9 @@ _is_whitelisted_ip6() {
 #
 # guest-water.sh maintains /etc/csf/csf.allow daily with every provider
 # range the firewall trusts: Cloudflare, Googlebot, Google's special-case
-# crawlers, Bingbot, Pingdom, Imperva, Sucuri, Auth0, Site24x7, and local
-# addresses. The monitor must honour that single source of truth rather
-# than maintain its own list.
+# crawlers, Bingbot, Pingdom, UptimeRobot, Imperva, Sucuri, Auth0, Site24x7,
+# and local addresses. The monitor must honour that single source of truth
+# rather than maintain its own list.
 #
 # The loader (below) parses csf.allow once at startup into:
 #   _CSF_ALLOW_IPS          -- exact host  -> 1  (O(1) lookup)
@@ -2146,8 +2146,8 @@ fi
 
 # Load the CSF allow list into memory — the single source of truth for all
 # provider ranges, maintained daily by guest-water.sh (Cloudflare, Googlebot,
-# Google's special-case crawlers, Bingbot, Pingdom, Imperva, Sucuri, Auth0,
-# Site24x7, local addresses, ...).
+# Google's special-case crawlers, Bingbot, Pingdom, UptimeRobot, Imperva,
+# Sucuri, Auth0, Site24x7, local addresses, ...).
 #
 # The previous loader only matched exact hosts (s=A.B.C.D), so every provider
 # whitelisted as a CIDR (Cloudflare, Googlebot, Bingbot, Imperva, Sucuri, ...)
