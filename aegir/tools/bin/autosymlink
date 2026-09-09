@@ -2179,7 +2179,24 @@ _process_account() {
               elif [ "${_ORPHAN_ARCHIVE}" = "YES" ]; then
                 _archive_orphan_store "${_CAND}" "${_ACCOUNT_DIR}" "${_CAND_NAME}" "${_ORPH_KB}"
               else
-                _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND} (size=${_ORPH_KB}K) – no matching active site (vhost+alias) found"
+                # The read-only report says what the archive path would decide
+                # with this store (same helper, same per-account index): a share
+                # control file naming it or a registered site still reading it
+                # through its own files/private link keeps it in place; links
+                # left by unregistered leftovers do not hold the archive.
+                _ORPH_RD=""
+                for _ORPH_SHARE in "${_ACCOUNT_DIR}"/static/control/share.*."${_CAND_NAME}".info; do
+                  [ -e "${_ORPH_SHARE}" ] && _ORPH_RD="; named by share control file ${_ORPH_SHARE} (the sweep would leave it)"
+                done
+                if [ -z "${_ORPH_RD}" ]; then
+                  _store_live_readers "${_CAND}" "${_CAND_NAME}" "${_ACCOUNT_DIR}"
+                  if [ -n "${_SLR_LIVE}" ]; then
+                    _ORPH_RD="; still read through a live site's link (the sweep would leave it): ${_SLR_LIVE}"
+                  elif [ -n "${_SLR_STALE}" ]; then
+                    _ORPH_RD="; link(s) into it belong to no registered site (they would not hold the archive): ${_SLR_STALE}"
+                  fi
+                fi
+                _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND} (size=${_ORPH_KB}K) – no matching active site (vhost+alias) found${_ORPH_RD}"
               fi
             fi
           fi
