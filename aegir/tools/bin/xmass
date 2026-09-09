@@ -5056,10 +5056,16 @@ if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ] \
     # correct it once here and every downstream reader gets the truth.
     _OLD_PLAT=$(dirname "$(dirname "${_SP}")")
     _NEW_PLAT=$(dirname "$(dirname "${_FOUND}")")
-    if [ "${_OLD_PLAT}" != "${_NEW_PLAT}" ] && [ -f "${_ALS}" ]; then
-      sed -i "s|${_OLD_PLAT}|${_NEW_PLAT}|g" "${_ALS}" \
-        && echo "PANEL-NOTE: hostmaster alias platform path corrected ${_OLD_PLAT} -> ${_NEW_PLAT}"
-    fi
+    # Both panel-own alias files: hm.alias.drushrc.php is the shortcut copy
+    # the box's own octopus pass loads (hostmaster-migrate resolves @hm and
+    # its platform), so a stale one there kills the first pass after the
+    # promotion just as surely -- live-observed on a failback target.
+    for _F in "${_ALS}" "$(dirname "${_ALS}")/hm.alias.drushrc.php"; do
+      if [ "${_OLD_PLAT}" != "${_NEW_PLAT}" ] && [ -f "${_F}" ] && grep -q "${_OLD_PLAT}" "${_F}"; then
+        sed -i "s|${_OLD_PLAT}|${_NEW_PLAT}|g" "${_F}" \
+          && echo "PANEL-NOTE: $(basename "${_F}" .alias.drushrc.php) alias platform path corrected ${_OLD_PLAT} -> ${_NEW_PLAT}"
+      fi
+    done
     _SP="${_FOUND}"
   elif [ "${_N}" -gt 1 ]; then
     echo "PANEL-ERROR: ${_N} candidate panel dirs under ${_TREE} match ${_NEW} — refusing to guess"
@@ -5097,7 +5103,7 @@ fi
 # on one rig (the first cutover, then the failover after a root-only repair
 # of the alias). So reconcile the files with the DB truth on every entry.
 _reconcile_panel_aliases() {
-  local _DB="$1" _PN="$2" _DISK="$3" _CTX _REF _PA _OLDPA _OR _OLDROOT _DRUSH
+  local _DB="$1" _PN="$2" _DISK="$3" _CTX _REF _PA _OLDPA _OR _OLDROOT _DRUSH _AF _AN
   _CTX=$(mysql --defaults-file=/root/.my.cnf -N -B "${_DB}" \
     -e "SELECT name FROM hosting_context WHERE nid=${_PN} LIMIT 1" 2>/dev/null)
   case "${_CTX}" in
@@ -5110,26 +5116,32 @@ _reconcile_panel_aliases() {
   case "${_CTX}" in *[!A-Za-z0-9_.-]*) return 0 ;; esac
   _DRUSH=$(dirname "${_ALS}")
   _PA="${_DRUSH}/${_CTX}.alias.drushrc.php"
-  _REF=$(sed -n "s/.*'platform' => '@\([^']*\)'.*/\1/p" "${_ALS}" | head -1)
-  case "${_REF}" in *[!A-Za-z0-9_.-]*) _REF="" ;; esac
-  if [ -n "${_REF}" ] && [ "${_REF}" != "${_CTX}" ]; then
-    _OLDPA="${_DRUSH}/${_REF}.alias.drushrc.php"
-    if [ ! -f "${_PA}" ] && [ -f "${_OLDPA}" ]; then
-      cp -a "${_OLDPA}" "${_PA}" \
-        && echo "PANEL-NOTE: platform alias ${_CTX} created from ${_REF}"
-    fi
-    sed -i "s|'@${_REF}'|'@${_CTX}'|" "${_ALS}" \
-      && echo "PANEL-NOTE: hostmaster alias platform reference corrected @${_REF} -> @${_CTX}"
-    if [ -f "${_OLDPA}" ]; then
-      _OR=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_OLDPA}" | head -1)
-      if [ -n "${_OR}" ] && [ ! -e "${_OR}/index.php" ] \
-        && [ -z "$(mysql --defaults-file=/root/.my.cnf -N -B "${_DB}" \
-             -e "SELECT nid FROM hosting_context WHERE name='${_REF}' LIMIT 1" 2>/dev/null)" ]; then
-        rm -f "${_OLDPA}" \
-          && echo "PANEL-NOTE: stale platform alias ${_REF} removed (root ${_OR} carries no code, no such context in ${_DB})"
+  # Both panel-own alias files (see the adoption branch): the reference the
+  # shortcut alias carries is what the box's own octopus pass follows.
+  for _AF in "${_ALS}" "${_DRUSH}/hm.alias.drushrc.php"; do
+    [ -f "${_AF}" ] || continue
+    _AN=$(basename "${_AF}" .alias.drushrc.php)
+    _REF=$(sed -n "s/.*'platform' => '@\([^']*\)'.*/\1/p" "${_AF}" | head -1)
+    case "${_REF}" in *[!A-Za-z0-9_.-]*) _REF="" ;; esac
+    if [ -n "${_REF}" ] && [ "${_REF}" != "${_CTX}" ]; then
+      _OLDPA="${_DRUSH}/${_REF}.alias.drushrc.php"
+      if [ ! -f "${_PA}" ] && [ -f "${_OLDPA}" ]; then
+        cp -a "${_OLDPA}" "${_PA}" \
+          && echo "PANEL-NOTE: platform alias ${_CTX} created from ${_REF}"
+      fi
+      sed -i "s|'@${_REF}'|'@${_CTX}'|" "${_AF}" \
+        && echo "PANEL-NOTE: ${_AN} alias platform reference corrected @${_REF} -> @${_CTX}"
+      if [ -f "${_OLDPA}" ]; then
+        _OR=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_OLDPA}" | head -1)
+        if [ -n "${_OR}" ] && [ ! -e "${_OR}/index.php" ] \
+          && [ -z "$(mysql --defaults-file=/root/.my.cnf -N -B "${_DB}" \
+               -e "SELECT nid FROM hosting_context WHERE name='${_REF}' LIMIT 1" 2>/dev/null)" ]; then
+          rm -f "${_OLDPA}" \
+            && echo "PANEL-NOTE: stale platform alias ${_REF} removed (root ${_OR} carries no code, no such context in ${_DB})"
+        fi
       fi
     fi
-  fi
+  done
   if [ -f "${_PA}" ]; then
     _OLDROOT=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_PA}" | head -1)
     if [ -n "${_OLDROOT}" ] && [ "${_OLDROOT}" != "${_DISK}" ]; then
@@ -5137,11 +5149,14 @@ _reconcile_panel_aliases() {
         && echo "PANEL-NOTE: platform alias ${_CTX} root corrected ${_OLDROOT} -> ${_DISK}"
     fi
   fi
-  _OLDROOT=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_ALS}" | head -1)
-  if [ -n "${_OLDROOT}" ] && [ "${_OLDROOT}" != "${_DISK}" ]; then
-    sed -i "s|${_OLDROOT}|${_DISK}|g" "${_ALS}" \
-      && echo "PANEL-NOTE: hostmaster alias root corrected ${_OLDROOT} -> ${_DISK}"
-  fi
+  for _AF in "${_ALS}" "${_DRUSH}/hm.alias.drushrc.php"; do
+    [ -f "${_AF}" ] || continue
+    _OLDROOT=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_AF}" | head -1)
+    if [ -n "${_OLDROOT}" ] && [ "${_OLDROOT}" != "${_DISK}" ]; then
+      sed -i "s|${_OLDROOT}|${_DISK}|g" "${_AF}" \
+        && echo "PANEL-NOTE: $(basename "${_AF}" .alias.drushrc.php) alias root corrected ${_OLDROOT} -> ${_DISK}"
+    fi
+  done
   # The stale file need not be the referenced one to matter: the source's
   # platform_<old> alias re-arrives with every account rsync, and once a
   # verify follows any reference to it the panel is hollow again. A

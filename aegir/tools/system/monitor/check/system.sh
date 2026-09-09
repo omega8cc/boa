@@ -24,6 +24,9 @@ _check_root
 : "${_CRON_COOLDOWN_SECS:=30}"
 : "${_POSTFIX_COOLDOWN_SECS:=30}"
 : "${_LFD_COOLDOWN_SECS:=30}"
+# A csf disabled by csf -x is re-enabled once its disable marker is older
+# than this and no BOA pass is in flight (see _lfd_health_check_fix).
+: "${_CSF_DISABLE_GRACE_SECS:=600}"
 
 ###
 ### Pacing for the OOM response. Sanitised where used; the flap knobs are only
@@ -555,15 +558,62 @@ _lfd_health_check_fix() {
           return 0
         fi
       fi
+      # A csf disabled with csf -x (its /etc/csf/csf.disable marker) refuses
+      # every lfd start, so the firewall must be re-enabled first or this
+      # healer starts nothing for as long as the marker lives. A box is never
+      # left without its firewall, whoever disabled it (Adam's ruling,
+      # 2026-09-09, reversing the 07-26 review that dropped the csf -e for
+      # the operator's sake): a marker older than the grace is re-enabled.
+      # Never while a BOA pass is in flight -- barracuda brackets its own
+      # csf -x / csf -e around the iptables work and would be fought by a
+      # healer -- and never inside the grace, which is what an operator gets
+      # for a hands-on maintenance window before the box protects itself.
+      _csfDisabledFor=""
+      if [ -e "/etc/csf/csf.disable" ]; then
+        if [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ]; then
+          return 0
+        fi
+        _dTs=$(stat -c %Y /etc/csf/csf.disable 2>/dev/null | tr -dc '0-9')
+        [ -n "${_dTs}" ] || _dTs="${_now}"
+        _csfDisabledFor=$((_now - _dTs))
+        if [ "${_csfDisabledFor}" -lt "${_CSF_DISABLE_GRACE_SECS}" ]; then
+          return 0
+        fi
+        csf -e &> /dev/null
+      fi
       service lfd start
-      # No csf -e here: it re-enabled the firewall even when an operator had
-      # deliberately disabled it with csf -x for maintenance. Starting lfd is
-      # this healer's job; the firewall's enablement state is the operator's.
       # Set cooldown timestamp after attempting recovery
       date +%s > "${_cd}"
-      _thisErrLog="$(date) LFD Monitor was down, started"
-      echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "LFD Monitor was down, started"
+      # Assert the outcome, not the init script's exit code: a disabled csf
+      # answers "csf and lfd have been disabled" and exits 0, and this log
+      # used to claim a start that never happened on every pass.
+      _lfdUp=NO
+      for _i in 1 2 3 4 5; do
+        if [ -s "/run/lfd.pid" ] && kill -0 "$(tr -dc '0-9' < /run/lfd.pid)" 2>/dev/null; then
+          _lfdUp=YES
+          break
+        fi
+        sleep 1
+      done
+      if [ -n "${_csfDisabledFor}" ]; then
+        if [ "${_lfdUp}" = "YES" ] && [ ! -e "/etc/csf/csf.disable" ]; then
+          _thisErrLog="$(date) CSF firewall was disabled for ${_csfDisabledFor}s, re-enabled; LFD started"
+          echo ${_thisErrLog} >> ${_pthOml}
+          _incident_email_report "CSF firewall was disabled for ${_csfDisabledFor}s, re-enabled; LFD started" ALERT csf-disabled
+        else
+          _thisErrLog="$(date) CSF firewall re-enable FAILED after ${_csfDisabledFor}s disabled (marker present: $([ -e /etc/csf/csf.disable ] && echo yes || echo no), lfd up: ${_lfdUp})"
+          echo ${_thisErrLog} >> ${_pthOml}
+          _incident_email_report "CSF firewall re-enable FAILED, box has no firewall" ALERT csf-disabled
+        fi
+      elif [ "${_lfdUp}" = "YES" ]; then
+        _thisErrLog="$(date) LFD Monitor was down, started"
+        echo ${_thisErrLog} >> ${_pthOml}
+        _incident_email_report "LFD Monitor was down, started"
+      else
+        _thisErrLog="$(date) LFD Monitor was down, start FAILED"
+        echo ${_thisErrLog} >> ${_pthOml}
+        _incident_email_report "LFD Monitor was down, start FAILED" ALERT
+      fi
       echo >> ${_pthOml}
     fi
   fi

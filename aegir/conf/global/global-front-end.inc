@@ -263,7 +263,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
       }
     }
     if ($is_bot) {
-      if (!preg_match("/Pingdom/i", $_SERVER['HTTP_USER_AGENT']) &&
+      if (!preg_match("/(?:Pingdom|UptimeRobot)/i", $_SERVER['HTTP_USER_AGENT']) &&
           !preg_match("/(?:rss|feed)/i", $_SERVER['REQUEST_URI'])) {
         $expire_in_seconds = '3600';
         if ($is_dev) {
