@@ -282,16 +282,10 @@ _whitelist_ip_cloudflare() {
   # realip bans the real client at nginx, and an lfd-immune CF range would mask
   # a misbehaving edge. IPv6 ranges are also deliberately not ingested while
   # TCP6_IN excludes 80/443 - they would match no inbound traffic.
-  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
-    echo removing cloudflare ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S)
-    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-cloudflare-${_NOW}
-    # Delete the tagged lines outright rather than blanking them: the old
-    # s///-to-empty form left one blank line per wipe, and with two lines
-    # (d=80 + d=443) per CIDR now they would accumulate twice as fast.
-    sed -i "/cloudflare/d" /etc/csf/csf.allow
-    wait
-  fi
+  # Fetch BEFORE the tagged-line cleanup: an empty fetch (both endpoints
+  # down) must keep the existing edge ranges -- stripped edges on a proxied
+  # box mean csf.deny hits on the edges and the box-wide 502 this list exists
+  # to prevent.
   _IPS=$(curl ${_crlGet} https://www.cloudflare.com/ips-v4 \
     | grep -o '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*' \
     | sort \
@@ -307,6 +301,20 @@ _whitelist_ip_cloudflare() {
   _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS cloudflare list..
   echo ${_IPS}
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty cloudflare list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing cloudflare ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-cloudflare-${_NOW}
+    # Delete the tagged lines outright rather than blanking them: the old
+    # s///-to-empty form left one blank line per wipe, and with two lines
+    # (d=80 + d=443) per CIDR now they would accumulate twice as fast.
+    sed -i "/cloudflare/d" /etc/csf/csf.allow
+    wait
+  fi
   for _IP in ${_IPS}; do
     for _PORT in 80 443; do
       if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # cloudflare ips" /etc/csf/csf.allow 2>/dev/null; then
@@ -373,13 +381,9 @@ _whitelist_ip_imperva() {
   # Current ranges (as of 2024): 199.83.128.0/21, 198.143.32.0/19, 149.126.72.0/21,
   #   103.28.248.0/22, 185.11.124.0/22, 192.230.64.0/18, 45.64.64.0/22, 107.154.0.0/16,
   #   45.60.0.0/16, 45.223.0.0/16, 131.125.128.0/17 (added May 2023)
-  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
-    echo removing imperva ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S)
-    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-imperva-${_NOW}
-    sed -i "s/.*imperva.*//g" /etc/csf/csf.allow
-    wait
-  fi
+  # Fetch BEFORE the tagged-line cleanup: an empty fetch (both formats down)
+  # must keep the existing WAF ranges; the static csf.deny healing below runs
+  # either way, deliberately before the empty-fetch guard.
   _IPS=$(curl ${_crlGet} --data "resp_format=text" https://my.imperva.com/api/integration/v1/ips \
     | grep -o '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*' \
     | sort \
@@ -395,6 +399,31 @@ _whitelist_ip_imperva() {
   _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS imperva list..
   echo ${_IPS}
+  # Clean up Imperva ranges from csf.deny
+  # All current Imperva ranges by significant octets:
+  sed -i "/^199\.83\./d" /etc/csf/csf.deny
+  sed -i "/^198\.143\./d" /etc/csf/csf.deny
+  sed -i "/^149\.126\./d" /etc/csf/csf.deny
+  sed -i "/^103\.28\./d" /etc/csf/csf.deny
+  sed -i "/^185\.11\./d" /etc/csf/csf.deny
+  sed -i "/^192\.230\./d" /etc/csf/csf.deny
+  sed -i "/^45\.64\./d" /etc/csf/csf.deny
+  sed -i "/^107\.154\./d" /etc/csf/csf.deny
+  sed -i "/^45\.60\./d" /etc/csf/csf.deny
+  sed -i "/^45\.223\./d" /etc/csf/csf.deny
+  sed -i "/^131\.125\./d" /etc/csf/csf.deny
+  wait
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty imperva list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing imperva ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-imperva-${_NOW}
+    sed -i "s/.*imperva.*//g" /etc/csf/csf.allow
+    wait
+  fi
   for _IP in ${_IPS}; do
     echo checking csf.allow imperva ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
@@ -410,20 +439,6 @@ _whitelist_ip_imperva() {
       echo "${_IP} already listed in /etc/csf/csf.allow"
     fi
   done
-  # Clean up Imperva ranges from csf.deny
-  # All current Imperva ranges by significant octets:
-  sed -i "/^199\.83\./d" /etc/csf/csf.deny
-  sed -i "/^198\.143\./d" /etc/csf/csf.deny
-  sed -i "/^149\.126\./d" /etc/csf/csf.deny
-  sed -i "/^103\.28\./d" /etc/csf/csf.deny
-  sed -i "/^185\.11\./d" /etc/csf/csf.deny
-  sed -i "/^192\.230\./d" /etc/csf/csf.deny
-  sed -i "/^45\.64\./d" /etc/csf/csf.deny
-  sed -i "/^107\.154\./d" /etc/csf/csf.deny
-  sed -i "/^45\.60\./d" /etc/csf/csf.deny
-  sed -i "/^45\.223\./d" /etc/csf/csf.deny
-  sed -i "/^131\.125\./d" /etc/csf/csf.deny
-  wait
 }
 
 _whitelist_ip_googlebot() {
@@ -555,16 +570,12 @@ _whitelist_ip_google_special() {
 }
 
 _whitelist_ip_microsoft() {
-  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
-    echo removing microsoft ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S)
-    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-microsoft-${_NOW}
-    sed -i "s/.*microsoft.*//g" /etc/csf/csf.allow
-    wait
-  fi
   # One fetch feeds both families. bingbot.json publishes no ipv6Prefix
   # entries as of 2026-07 (Bingbot crawls over IPv4 only), so the v6 leg is
   # forward-compatible plumbing: an empty list keeps the store untouched.
+  # Fetch BEFORE the tagged-line cleanup: an empty fetch must keep the
+  # existing crawler ranges on the csf.allow side too; the static csf.deny
+  # healing below runs either way, deliberately before the empty-fetch guard.
   _JSON=$(curl ${_crlGet} https://www.bing.com/toolbox/bingbot.json 2>&1)
   _IPS=$(echo "${_JSON}" \
     | grep -o '"ipv4Prefix": *"[^"]*"' \
@@ -585,21 +596,6 @@ _whitelist_ip_microsoft() {
   _update_web6_allow microsoft "${_IPS6}"
   echo _IPS microsoft list..
   echo ${_IPS}
-  for _IP in ${_IPS}; do
-    echo checking csf.allow microsoft ${_IP} now...
-    _IP_CHECK=$(cat /etc/csf/csf.allow \
-      | cut -d '#' -f1 \
-      | sort \
-      | uniq \
-      | tr -d "\s" \
-      | grep -F "${_IP}" 2>&1)
-    if [ -z "${_IP_CHECK}" ]; then
-      echo "${_IP} not yet listed in /etc/csf/csf.allow"
-      echo "tcp|in|d=80|s=${_IP} # microsoft ips" >> /etc/csf/csf.allow
-    else
-      echo "${_IP} already listed in /etc/csf/csf.allow"
-    fi
-  done
   # Remove all current Bingbot ranges from csf.deny
   # Legacy ranges (no longer in JSON but may be in older deny rules)
   sed -i "/^65\.5[2-5]\./d" /etc/csf/csf.deny
@@ -616,6 +612,32 @@ _whitelist_ip_microsoft() {
   sed -i "/^191\.233\./d" /etc/csf/csf.deny
   sed -i "/^207\.46\./d" /etc/csf/csf.deny
   wait
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty microsoft IPv4 list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing microsoft ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-microsoft-${_NOW}
+    sed -i "s/.*microsoft.*//g" /etc/csf/csf.allow
+    wait
+  fi
+  for _IP in ${_IPS}; do
+    echo checking csf.allow microsoft ${_IP} now...
+    _IP_CHECK=$(cat /etc/csf/csf.allow \
+      | cut -d '#' -f1 \
+      | sort \
+      | uniq \
+      | tr -d "\s" \
+      | grep -F "${_IP}" 2>&1)
+    if [ -z "${_IP_CHECK}" ]; then
+      echo "${_IP} not yet listed in /etc/csf/csf.allow"
+      echo "tcp|in|d=80|s=${_IP} # microsoft ips" >> /etc/csf/csf.allow
+    else
+      echo "${_IP} already listed in /etc/csf/csf.allow"
+    fi
+  done
 }
 
 _whitelist_ip_sucuri() {
@@ -660,13 +682,9 @@ _whitelist_ip_authzero() {
   # https://cdn.auth0.com/ip-ranges.json
   # The list is updated ahead of any functional changes; check last_updated_at to detect changes.
   # Only whitelist regions relevant to your Auth0 tenant(s). Currently fetching all regions.
-  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
-    echo removing authzero ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S)
-    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-authzero-${_NOW}
-    sed -i "s/.*authzero.*//g" /etc/csf/csf.allow
-    wait
-  fi
+  # Fetch BEFORE the tagged-line cleanup: an empty fetch must keep the
+  # existing entries (the csf.deny cleanup below derives from the fetched
+  # list, so it is a no-op on a failed fetch either way).
   _IPS=$(curl ${_crlGet} https://cdn.auth0.com/ip-ranges.json \
     | grep -o '"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*"' \
     | grep -v ':' \
@@ -676,6 +694,17 @@ _whitelist_ip_authzero() {
   _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS authzero list..
   echo ${_IPS}
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty authzero list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing authzero ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-authzero-${_NOW}
+    sed -i "s/.*authzero.*//g" /etc/csf/csf.allow
+    wait
+  fi
   for _IP in ${_IPS}; do
     echo checking csf.allow authzero ${_IP} now...
     _IP_CHECK=$(cat /etc/csf/csf.allow \
@@ -746,17 +775,9 @@ _whitelist_ip_site24x7_extra() {
 }
 
 _whitelist_ip_site24x7() {
-  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
-    echo removing site24x7 ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S)
-    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-site24x7-${_NOW}
-    sed -i "s/.*site24x7.*//g" /etc/csf/csf.allow
-    wait
-    echo removing site24x7 ips from csf.ignore
-    sed -i "s/.*site24x7.*//g" /etc/csf/csf.ignore
-    wait
-  fi
-
+  # Monitoring probes resolved from DNS (host, then dig). Fetch BEFORE the
+  # tagged-line cleanup: an empty answer must keep the existing probe entries
+  # in csf.allow and csf.ignore -- never strip a monitor for a day.
   _IPS=$(host site24x7.enduserexp.com 1.1.1.1  \
     | grep 'has address' \
     | cut -d ' ' -f4 \
@@ -778,6 +799,20 @@ _whitelist_ip_site24x7() {
   _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS site24x7 list..
   echo ${_IPS}
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty site24x7 list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing site24x7 ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-site24x7-${_NOW}
+    sed -i "s/.*site24x7.*//g" /etc/csf/csf.allow
+    wait
+    echo removing site24x7 ips from csf.ignore
+    sed -i "s/.*site24x7.*//g" /etc/csf/csf.ignore
+    wait
+  fi
 
   for _IP in ${_IPS}; do
     echo checking csf.allow site24x7 ${_IP} now...
