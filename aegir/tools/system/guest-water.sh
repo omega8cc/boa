@@ -1153,32 +1153,41 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_site24x7
 
   if [ -f "${_useCnf}" ]; then
-    _diffCnfTest=$(diff -w -B \
-      -I pingdom \
-      -I uptimerobot \
-      -I cloudflare \
-      -I googlebot \
-      -I googlespecial \
-      -I microsoft \
-      -I imperva \
-      -I sucuri \
-      -I authzero \
-      -I site24x7 \
-      -I migration \
-      -I DHCP ${_useCnf} ${_preCnf} 2>&1)
-    if [ -z "${_diffCnfTest}" ]; then
+    if [ ! -s "${_preCnf}" ]; then
+      # No snapshot: nothing to roll back to, so the live file stays
+      # (siblings in sql.sh.inc and mycnfup take the same way out).
       _useCnfUpdate=YES
-      echo "YES $(date) diff0 empty" >> ${_vBs}/dragon/t/csf.log
+      echo "NO $(date) diff3 no snapshot ${_preCnf}" >> ${_vBs}/dragon/t/csf.log
     else
-      _diffCnfTest=$(echo -n ${_diffCnfTest} | fmt -su -w 2500 2>&1)
-      echo "NO $(date) diff1 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
-    fi
-    if [[ "${_diffCnfTest}" =~ "No such file or directory" ]]; then
-      # One side of the diff is missing, which means the snapshot: nothing to
-      # roll back to, so the live file stays (siblings in sql.sh.inc and
-      # mycnfup take the same way out).
-      _useCnfUpdate=YES
-      echo "NO $(date) diff3 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
+      # Compare SORTED copies: the guard only tolerates hunks made entirely of
+      # -I-tagged lines, and _whitelist_ip_dns re-appends the three resolver
+      # lines at the end of the file every pass, so on the raw files diff's
+      # cheapest edit moves whatever operator lines sit after the resolvers
+      # (any line appended after a daily pass) into a hunk no pattern covers
+      # -- and the whole provider refresh was rolled back, silently, on every
+      # pass from then on. Sorted, a pure add/remove of tagged lines is all
+      # that can differ, wherever the lines sit; a changed operator line still
+      # shows, which is what the guard exists to catch.
+      _diffCnfTest=$(diff -w -B \
+        -I pingdom \
+        -I uptimerobot \
+        -I cloudflare \
+        -I googlebot \
+        -I googlespecial \
+        -I microsoft \
+        -I imperva \
+        -I sucuri \
+        -I authzero \
+        -I site24x7 \
+        -I migration \
+        -I DHCP <(sort "${_useCnf}") <(sort "${_preCnf}") 2>&1)
+      if [ -z "${_diffCnfTest}" ]; then
+        _useCnfUpdate=YES
+        echo "YES $(date) diff0 empty" >> ${_vBs}/dragon/t/csf.log
+      else
+        _diffCnfTest=$(echo -n ${_diffCnfTest} | fmt -su -w 2500 2>&1)
+        echo "NO $(date) diff1 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
+      fi
     fi
   fi
   if [ "${_useCnfUpdate}" = "NO" ] && [ -s "${_preCnf}" ]; then

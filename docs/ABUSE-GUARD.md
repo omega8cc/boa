@@ -677,7 +677,9 @@ first) and `rm`s it at the very end — and once escalation is done it clears th
 > SERP-favicon-fetcher family, published separately from googlebot.json — Bingbot, the
 > two uptime monitors Pingdom and UptimeRobot, and — behind
 > `/root/.extended.firewall.exceptions.cnf` — Imperva, Sucuri, Auth0, Site24x7), with a
-> diff-guard that reverts an unexpected `csf.allow` change and per-provider backups under
+> diff-guard that reverts an unexpected `csf.allow` change (it compares sorted copies of
+> the file, so only a changed or missing operator line counts — never the position the
+> pass's own resolver and DHCP lines land in) and per-provider backups under
 > `/var/backups/csf/water/`. Every fetched provider fetches *before* it clears its own
 > tagged lines and keeps the existing entries when the list comes back empty (endpoint
 > down, format change), so a failed refresh never strips a live range for a day; the
