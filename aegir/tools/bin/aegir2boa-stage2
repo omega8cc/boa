@@ -36,6 +36,9 @@
 #   peer       --source <ip> [--pubkey-file <f>]              [--live]
 #   target-status --account <oN>
 #
+# Either box: --version prints the running copy's md5 (check and pre-mig
+# compare the two copies the same way; see DUAL-RESIDENT above).
+#
 # Safety model: every acting verb is a DRY RUN unless
 # --live is given; --live requires a prior CLEAN dry run of the same verb
 # and scope on the same box, and CONSUMES that token on entry. The serving
@@ -3074,8 +3077,11 @@ verb_target_status() {
 
 [[ $# -ge 1 ]] || _usage
 _OP="$1"
-# the documented invocation must answer for anyone, before the root gate
-case "${_OP}" in -h|--help|help) _usage ;; esac
+# the documented invocations must answer for anyone, before the root gate
+case "${_OP}" in
+  -h|--help|help) _usage ;;
+  --version) echo "aegir2boa-stage2 md5=$(md5sum "$0" 2>/dev/null | cut -c1-32)"; exit 0 ;;
+esac
 shift
 
 while [[ $# -gt 0 ]]; do

@@ -7934,8 +7934,7 @@ _finale() {
     echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     chmod 700 /etc/csf/csfpost.sh
     _mrun "service lfd stop"
-    pkill -9 -f ConfigServer
-    killall sleep &> /dev/null
+    _csf_kill_own
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
     _mrun "service clean-boa-env start"
