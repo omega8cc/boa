@@ -489,6 +489,26 @@
 ;;  This option is available only in BOA-2.1.3 or newer.
 ```
 
+### INI (platform level) for Web SQL Query Time Cap
+
+```text
+;sql_web_max_exec_ms = 30000
+;;
+;;  This option sets the cap, in milliseconds, on how long a single read-only
+;;  SELECT may run during a web request for all sites hosted on this platform,
+;;  unless the site has its own custom setting for variable sql_web_max_exec_ms
+;;  in the site level boa_site_control.ini file, located in the
+;;  sites/foo.com/modules directory. It is applied as a per-connection
+;;  SET SESSION max_execution_time statement on every web request; CLI (Drush,
+;;  cron, migrations, backups) is never capped.
+;;
+;;  Set 0 to disable the cap. A site whose database lives on a MariaDB server
+;;  needs 0, because MariaDB does not know max_execution_time and rejects the
+;;  statement, which makes every web request fail with a 500.
+;;
+;;  This option is available only in BOA-5.88.822 or newer.
+```
+
 ### INI (platform level) for Domain Access (domain) Module
 
 ```text
