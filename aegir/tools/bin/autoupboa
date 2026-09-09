@@ -839,6 +839,33 @@ Unattended-Upgrade::Package-Blacklist {
 }
 _ensure_unattended_upgrades
 
+### A mirror that stops answering mid-transfer used to hold a barracuda pass
+### for as long as the kernel kept the socket (two such stalls in 2026-09,
+### both on a pool host whose TLS chain had expired). apt's inactivity bound
+### is 30 s on the fleet's apt (measured: two index URIs give up after 60 s)
+### and it retries nothing by default: pin the bound at that value, so a
+### future apt default cannot loosen it unnoticed, and retry three times,
+### box-wide, so every apt caller in BOA inherits it. A dead URI costs at
+### most 4 x 30 s per file, and a mirror that merely hiccups gets three more
+### tries. Opt-out stops managing, never removes.
+_ensure_apt_acquire_policy() {
+  if [[ "${_APT_ACQUIRE_POLICY}" = "NO" ]]; then
+    return 0
+  fi
+  [[ -d "/etc/apt/apt.conf.d" ]] || return 0
+  _write_managed_apt_conf "/etc/apt/apt.conf.d/52boa-acquire" \
+'// Managed by BOA (autoupboa). A silent mirror is bounded: each transfer
+// attempt gives up after 30 s without data and is retried three times.
+// Opt out with _APT_ACQUIRE_POLICY=NO in /root/.barracuda.cnf.
+Acquire::http::Timeout "30";
+Acquire::https::Timeout "30";
+Acquire::Retries "3";'
+  if [[ "$?" -eq 2 ]]; then
+    echo "INFO: apt transfer policy configured (30 s inactivity bound, 3 retries)"
+  fi
+}
+_ensure_apt_acquire_policy
+
 _system_hostname_check_fix() {
   if [ -e "${_barCnf}" ]; then
     if [ ! -z "${_MY_HOSTN}" ]; then

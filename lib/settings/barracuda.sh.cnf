@@ -991,6 +991,13 @@ _STRICT_BIN_PERMISSIONS=YES
 ###
 _SYSTEM_AUTO_SECURITY=YES
 
+### apt transfer policy, managed by autoupboa like the security updates:
+### each transfer attempt gives up after 30 s without data (apt's own bound,
+### pinned) and is retried three times, box-wide (a silent mirror used to
+### hold a pass for as long as the kernel kept the socket). NO stops managing
+### the drop-in file /etc/apt/apt.conf.d/52boa-acquire; it never removes it.
+_APT_ACQUIRE_POLICY=YES
+
 ###
 ### Define the amount of RAM you want to keep
 ### reserved for other services installed which
@@ -1336,6 +1343,15 @@ _NIGHT_PARALLEL=NO
 ### AUTO will default to the CPU core count.
 ###
 _NIGHT_MAX_PARALLEL=AUTO
+
+### Outer bound, in seconds, on every per-account nightly pass (owl.sh ->
+### night/10-account.sh): a pass that runs past it is stopped, logged in
+### /var/log/boa/nightly.incident.log and mailed once a day (unless
+### _INCIDENT_REPORT=OFF), and the next account proceeds. 0 = no bound; a
+### value that is not a whole number, or under 300, is ignored for the
+### default with the same notice. One nightly runs at a time regardless (a
+### still-running previous nightly makes the next start skip, with a notice).
+_NIGHT_ACCOUNT_MAX=21600
 
 ###
 ### Nightly global files-symlink auto-fix (updatesymlinks --auto-fix). The
