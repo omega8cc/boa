@@ -12,13 +12,16 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 
 # Strict IPv4 / IPv4-CIDR validation. These lists feed the csf ALLOW whitelist,
-# so only value-valid addresses (each octet 0-255, prefix 0-32) may be written:
+# so only value-valid addresses (each octet 0-255, prefix 8-32) may be written:
 # a merely digit-shaped token from a provider format change or a poisoned/garbage
-# response (e.g. 999.1.1.1/99) must never reach the firewall. _emit_valid_ips
-# filters a candidate list on stdin and logs what it drops (same intent as the
-# octet check already guarding the DHCP path below).
+# response (e.g. 999.1.1.1/99) must never reach the firewall. The prefix floor
+# is /8: no provider publishes a range wider than that, and a /0-/7 that slipped
+# through a mangled or hostile body would open the web ports to (most of) the
+# IPv4 internet ahead of every deny -- the same floor logic the IPv6 validator
+# applies to /0. _emit_valid_ips filters a candidate list on stdin and logs what
+# it drops (same intent as the octet check already guarding the DHCP path below).
 _ipv4_octet="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
-_is_ipv4_or_cidr() { [[ "$1" =~ ^(${_ipv4_octet}\.){3}${_ipv4_octet}(/(3[0-2]|[12]?[0-9]))?$ ]]; }
+_is_ipv4_or_cidr() { [[ "$1" =~ ^(${_ipv4_octet}\.){3}${_ipv4_octet}(/(3[0-2]|[12][0-9]|[89]))?$ ]]; }
 _emit_valid_ips() {
   local _x
   for _x in $(cat); do
@@ -71,7 +74,7 @@ _update_web6_allow() {
   fi
   if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
     echo removing ${_tag} ips from ${_WEB6_ALLOW}
-    sed -i "/${_tag}/d" ${_WEB6_ALLOW}
+    sed -i "/ # ${_tag} ips$/d" ${_WEB6_ALLOW}
     wait
   fi
   for _IP6 in ${_list}; do
@@ -153,6 +156,13 @@ _is_temp_allowed() {
     /var/lib/csf/csf.tempallow 2>/dev/null
 }
 
+# Every provider refresh below strips its OWN lines before re-adding the fresh
+# list, and the strip matches the exact tag shape it writes (" # <tag> ips" at
+# the end of the line, " # migration proxy" for the proxy) -- never the bare
+# provider word anywhere in the line. That keeps a manual operator line whose
+# comment merely mentions a provider untouched and stops one tag swallowing
+# another (the old .*site24x7.* pattern wiped the site24x7_extra ranges
+# written moments earlier in the same pass, every pass).
 _whitelist_ip_pingdom() {
   # Pingdom provides probe IPs in multiple formats:
   #   Plain IPv4 list: https://my.pingdom.com/probes/ipv4  (preferred - no parsing needed)
@@ -186,7 +196,7 @@ _whitelist_ip_pingdom() {
     echo removing pingdom ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-pingdom-${_NOW}
-    sed -i "/pingdom/d" /etc/csf/csf.allow
+    sed -i "/ # pingdom ips$/d" /etc/csf/csf.allow
     wait
   fi
   for _IP in ${_IPS}; do
@@ -256,7 +266,7 @@ _whitelist_ip_uptimerobot() {
     echo removing uptimerobot ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-uptimerobot-${_NOW}
-    sed -i "/uptimerobot/d" /etc/csf/csf.allow
+    sed -i "/ # uptimerobot ips$/d" /etc/csf/csf.allow
     wait
   fi
   for _IP in ${_IPS}; do
@@ -312,7 +322,7 @@ _whitelist_ip_cloudflare() {
     # Delete the tagged lines outright rather than blanking them: the old
     # s///-to-empty form left one blank line per wipe, and with two lines
     # (d=80 + d=443) per CIDR now they would accumulate twice as fast.
-    sed -i "/cloudflare/d" /etc/csf/csf.allow
+    sed -i "/ # cloudflare ips$/d" /etc/csf/csf.allow
     wait
   fi
   for _IP in ${_IPS}; do
@@ -343,8 +353,8 @@ _whitelist_ip_migration_proxy() {
     echo removing migration proxy ips from csf.allow and csf.ignore
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-migproxy-${_NOW}
-    sed -i "s/.*migration proxy.*//g" /etc/csf/csf.allow
-    sed -i "s/.*migration proxy.*//g" /etc/csf/csf.ignore
+    sed -i "/ # migration proxy$/d" /etc/csf/csf.allow
+    sed -i "/ # migration proxy$/d" /etc/csf/csf.ignore
     wait
   fi
   if [ ! -e "/root/.migration.proxy.ips.cnf" ]; then
@@ -421,7 +431,7 @@ _whitelist_ip_imperva() {
     echo removing imperva ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-imperva-${_NOW}
-    sed -i "s/.*imperva.*//g" /etc/csf/csf.allow
+    sed -i "/ # imperva ips$/d" /etc/csf/csf.allow
     wait
   fi
   for _IP in ${_IPS}; do
@@ -482,7 +492,7 @@ _whitelist_ip_googlebot() {
     echo removing googlebot ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-googlebot-${_NOW}
-    sed -i "s/.*googlebot.*//g" /etc/csf/csf.allow
+    sed -i "/ # googlebot ips$/d" /etc/csf/csf.allow
     wait
   fi
   for _IP in ${_IPS}; do
@@ -549,7 +559,7 @@ _whitelist_ip_google_special() {
     echo removing googlespecial ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-googlespecial-${_NOW}
-    sed -i "s/.*googlespecial.*//g" /etc/csf/csf.allow
+    sed -i "/ # googlespecial ips$/d" /etc/csf/csf.allow
     wait
   fi
   for _IP in ${_IPS}; do
@@ -620,7 +630,7 @@ _whitelist_ip_microsoft() {
     echo removing microsoft ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-microsoft-${_NOW}
-    sed -i "s/.*microsoft.*//g" /etc/csf/csf.allow
+    sed -i "/ # microsoft ips$/d" /etc/csf/csf.allow
     wait
   fi
   for _IP in ${_IPS}; do
@@ -649,7 +659,7 @@ _whitelist_ip_sucuri() {
     echo removing sucuri ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-sucuri-${_NOW}
-    sed -i "s/.*sucuri.*//g" /etc/csf/csf.allow
+    sed -i "/ # sucuri ips$/d" /etc/csf/csf.allow
     wait
   fi
   _IPS="192.88.134.0/23 185.93.228.0/22 66.248.200.0/22 208.109.0.0/22"
@@ -702,7 +712,7 @@ _whitelist_ip_authzero() {
     echo removing authzero ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-authzero-${_NOW}
-    sed -i "s/.*authzero.*//g" /etc/csf/csf.allow
+    sed -i "/ # authzero ips$/d" /etc/csf/csf.allow
     wait
   fi
   for _IP in ${_IPS}; do
@@ -807,10 +817,10 @@ _whitelist_ip_site24x7() {
     echo removing site24x7 ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-site24x7-${_NOW}
-    sed -i "s/.*site24x7.*//g" /etc/csf/csf.allow
+    sed -i "/ # site24x7 ips$/d" /etc/csf/csf.allow
     wait
     echo removing site24x7 ips from csf.ignore
-    sed -i "s/.*site24x7.*//g" /etc/csf/csf.ignore
+    sed -i "/ # site24x7 ips$/d" /etc/csf/csf.ignore
     wait
   fi
 
@@ -1111,12 +1121,19 @@ _whitelist_ip_dns() {
   csf -dr 8.8.8.8
   csf -dr 9.9.9.9
   [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
-  sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.allow
-  sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.ignore
-  sed -i "s/.*8.8.8.8.*//g"  /etc/csf/csf.allow
-  sed -i "s/.*8.8.8.8.*//g"  /etc/csf/csf.ignore
-  sed -i "s/.*9.9.9.9.*//g"  /etc/csf/csf.allow
-  sed -i "s/.*9.9.9.9.*//g"  /etc/csf/csf.ignore
+  # Match the resolver lines literally and by their shape only: a bare address
+  # at line start (the legacy form) or the d= field of the outbound entry
+  # written below. The former wildcard-dot patterns (.*1.1.1.1.*) blanked
+  # every line containing 1?1?1?1 -- a live Cloudflare /18, a Pingdom probe
+  # and a dozen Site24x7 hosts on every pass -- which the providers' former
+  # unconditional re-add masked and the empty-fetch fail-safe would not.
+  local _r
+  for _r in 1.1.1.1 8.8.8.8 9.9.9.9; do
+    _r="${_r//./\\.}"
+    sed -i -e "/^${_r}[[:space:]#]/d" -e "/^${_r}$/d" \
+      -e "/|d=${_r}[[:space:]#]/d" -e "/|d=${_r}$/d" /etc/csf/csf.allow
+    sed -i -e "/^${_r}[[:space:]#]/d" -e "/^${_r}$/d" /etc/csf/csf.ignore
+  done
   echo "tcp|out|d=53|d=1.1.1.1 # Cloudflare DNS" >> /etc/csf/csf.allow
   echo "tcp|out|d=53|d=8.8.8.8 # Google DNS" >> /etc/csf/csf.allow
   echo "tcp|out|d=53|d=9.9.9.9 # Cleaner DNS" >> /etc/csf/csf.allow
