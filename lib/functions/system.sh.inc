@@ -11444,9 +11444,11 @@ _lshell_install_upgrade() {
       _usePip=/usr/local/bin/pip3
     fi
     _PIP_TEST=$(${_usePip} --version 2>&1)
-    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
+    # The minor of the interpreter pip runs on, read from pip's own version
+    # line: every 3.11+ interpreter is PEP 668 managed, not only the three
+    # that were once listed here. The agent arm in BOA.sh.txt asks the same way.
+    _PIP_PY_MINOR=$(echo "${_PIP_TEST}" | sed -n 's/.*(python 3\.\([0-9][0-9]*\)).*/\1/p' | head -n 1)
+    if [ -n "${_PIP_PY_MINOR}" ] && [ "${_PIP_PY_MINOR}" -ge 11 ] 2> /dev/null; then
       # PEP 668 (python 3.11+) refuses a system-wide pip upgrade without it, the
       # same way the lshell install line below already asks.
       _mrun "${_usePip} install --upgrade pip --break-system-packages --root-user-action ignore"
@@ -11468,9 +11470,8 @@ _lshell_install_upgrade() {
     # user out. Verify the result and say so when it did not land.
     cd /var/opt/lshell-${_LSHELL_VRN}
     _PIP_TEST=$(${_usePip} --version 2>&1)
-    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
+    _PIP_PY_MINOR=$(echo "${_PIP_TEST}" | sed -n 's/.*(python 3\.\([0-9][0-9]*\)).*/\1/p' | head -n 1)
+    if [ -n "${_PIP_PY_MINOR}" ] && [ "${_PIP_PY_MINOR}" -ge 11 ] 2> /dev/null; then
       _mrun "${_usePip} install . --break-system-packages --root-user-action ignore"
     else
       _mrun "${_usePip} install . "

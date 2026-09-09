@@ -3243,9 +3243,12 @@ _if_fix_lshell() {
       _usePip=/usr/local/bin/pip3
     fi
     _PIP_TEST=$(${_usePip} --version 2>&1)
-    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
+    # The minor of the interpreter pip runs on, read from pip's own version
+    # line: every 3.11+ interpreter is PEP 668 managed, not only the three
+    # that were once listed here (a newer OS fell to the bare upgrade and
+    # reprinted the externally-managed block every pass).
+    _PIP_PY_MINOR=$(echo "${_PIP_TEST}" | sed -n 's/.*(python 3\.\([0-9][0-9]*\)).*/\1/p' | head -n 1)
+    if [ -n "${_PIP_PY_MINOR}" ] && [ "${_PIP_PY_MINOR}" -ge 11 ] 2> /dev/null; then
       # PEP 668 (python 3.11+) refuses a system-wide pip upgrade without it, so
       # without the flag this printed a full "error: externally-managed-environment"
       # block into every lshell install log and changed nothing. The upgrade arm in
@@ -3279,9 +3282,8 @@ _if_fix_lshell() {
       # user out. Verify the result and say so when it did not land.
       cd /var/opt/lshell-${_LSHELL_VRN}
       _PIP_TEST=$(${_usePip} --version 2>&1)
-      if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-        || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
-        || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
+      _PIP_PY_MINOR=$(echo "${_PIP_TEST}" | sed -n 's/.*(python 3\.\([0-9][0-9]*\)).*/\1/p' | head -n 1)
+      if [ -n "${_PIP_PY_MINOR}" ] && [ "${_PIP_PY_MINOR}" -ge 11 ] 2> /dev/null; then
         ${_usePip} install . --break-system-packages --root-user-action ignore
       else
         ${_usePip} install .
@@ -4717,12 +4719,12 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f88 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f88 --guard /local/bin/autoexcalibur
-    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f72 --guard /local/bin/autosymlink
+    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f71 --guard /local/bin/autosymlink
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f33 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f82 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f56 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f55 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f58 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f94 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
@@ -4738,7 +4740,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f90 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f18 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f25 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f78 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f77 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f94 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f82 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch

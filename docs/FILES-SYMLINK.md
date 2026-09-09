@@ -625,7 +625,7 @@ automatically, in two situations:
   block the new site's conversion. It is **moved aside automatically** and the new
   site converts cleanly. The same archiving covers the **break-sharing** path (a
   clone/migrate whose deployed link still points at another site's store): the
-  pre-existing target store is archived aside before the copy.
+  pre-existing target store is archived aside before the copy. A stale store some registered site still reads through its own `files`/`private` link is moved anyway (the reused name needs it), with an `[ALERT]` naming that reader, whose link dangles until its unshare is re-run.
 
 Every archive lands under the store, on the same filesystem:
 
