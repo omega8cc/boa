@@ -198,6 +198,76 @@ _whitelist_ip_pingdom() {
   done
 }
 
+_whitelist_ip_uptimerobot() {
+  # UptimeRobot publishes its monitoring addresses as plain text, one host per
+  # line, no CIDRs, both families in one file (its IPv4-only twin is the same
+  # list minus the v6 hosts), and the identical set as the A/AAAA records of
+  # ip.uptimerobot.com. The DNS name is the fallback because it is a different
+  # channel from the CDN, not a second URL on the same host.
+  # Reference: https://uptimerobot.com/help/locations/
+  # One fetch feeds both families: the IPv4 hosts go to csf.allow below, the
+  # IPv6 hosts to the nginx-native v6 allow store (csf cannot hold IPv6), so a
+  # monitor reaching a Cloudflare-fronted site over v6 is exempt from the IDS
+  # scoring and the v6 web ban like every other listed provider.
+  # Fetch BEFORE the tagged-line cleanup: an empty fetch (endpoint down,
+  # format change) must keep the existing entries -- never strip a monitor's
+  # addresses for a day, the same fail-safe the Google refreshes and the v6
+  # store carry. Allow both web ports: monitors check https far more often
+  # than http, and a d=80-only entry leaves 443 exposed to a csf.deny hit.
+  _LIST=$(curl ${_crlGet} https://cdn.uptimerobot.com/api/IPv4andIPv6.txt 2>&1 | tr -d '\r')
+  _IPS=$(echo "${_LIST}" \
+    | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' \
+    | sort \
+    | uniq 2>&1)
+  if [ -z "${_IPS}" ]; then
+    echo "uptimerobot list endpoint failed, falling back to DNS"
+    _IPS=$(dig +short +time=5 +tries=2 A ip.uptimerobot.com 2>/dev/null \
+      | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' \
+      | sort \
+      | uniq 2>&1)
+  fi
+  _IPS=$(echo "${_IPS}" | _emit_valid_ips)
+  _IPS6=$(echo "${_LIST}" \
+    | grep -E '^[0-9A-Fa-f:]+$' \
+    | grep ':' \
+    | sort \
+    | uniq 2>&1)
+  if [ -z "${_IPS6}" ]; then
+    _IPS6=$(dig +short +time=5 +tries=2 AAAA ip.uptimerobot.com 2>/dev/null \
+      | grep -E '^[0-9A-Fa-f:]+$' \
+      | grep ':' \
+      | sort \
+      | uniq 2>&1)
+  fi
+  _IPS6=$(echo "${_IPS6}" | _emit_valid_ips6)
+  echo _IPS6 uptimerobot list..
+  echo ${_IPS6}
+  _update_web6_allow uptimerobot "${_IPS6}"
+  echo _IPS uptimerobot list..
+  echo ${_IPS}
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty uptimerobot IPv4 list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing uptimerobot ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-uptimerobot-${_NOW}
+    sed -i "/uptimerobot/d" /etc/csf/csf.allow
+    wait
+  fi
+  for _IP in ${_IPS}; do
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # uptimerobot ips" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # uptimerobot ips" >> /etc/csf/csf.allow
+      else
+        echo "${_IP} already listed for d=${_PORT} in /etc/csf/csf.allow"
+      fi
+    done
+  done
+}
+
 _whitelist_ip_cloudflare() {
   # Cloudflare publishes IPv4 ranges at two endpoints (both return identical data):
   #   Plain text: https://www.cloudflare.com/ips-v4  (primary)
@@ -1049,6 +1119,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
 
   _whitelist_ip_dns
   _whitelist_ip_pingdom
+  _whitelist_ip_uptimerobot
   _whitelist_ip_cloudflare
   _whitelist_ip_migration_proxy
   _whitelist_ip_googlebot
@@ -1063,6 +1134,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   if [ -f "${_useCnf}" ]; then
     _diffCnfTest=$(diff -w -B \
       -I pingdom \
+      -I uptimerobot \
       -I cloudflare \
       -I googlebot \
       -I googlespecial \
