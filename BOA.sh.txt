@@ -1858,7 +1858,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f68
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f67
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f78
-    _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f79
+    _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f78
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
     ### state (.daily.sh.off) across to owl so a box that had the nightly run
@@ -3306,11 +3306,20 @@ _if_fix_lshell() {
     chown :lshellg /var/log/lsh
     # 1770: tenants write their own log here; the sticky bit keeps one off another's
     chmod 1770 /var/log/lsh &> /dev/null
-    # Kill all non-root logged-in users, so the new lshell takes effect;
-    # nothing to take effect when it did not land
+    # Kick the logged-in lshell users, so the new lshell takes effect;
+    # nothing to take effect when it did not land. Only members of the
+    # lshell group: their login shell is mysecureshell, which hands lshellg
+    # to lshell (/etc/ssh/sftp_config), so the shell field is not the
+    # discriminator; an instance user or operator logged in over ssh is in
+    # no such group, runs no lshell and has nothing to pick up.
     if [ "${_LSHELL_NOW}" = "${_LSHELL_CHK_VRN}" ] \
       && [ "${_LSHELL_NOW}" != "${_LSHELL_ITD}" ]; then
-      who | awk '$1 !~ /^root$/ { cmd = "pkill -KILL -u " $1; system(cmd) }'
+      for _kickUsr in $(who | awk '$1 !~ /^root$/ { print $1 }' | sort -u); do
+        if id -nG "${_kickUsr}" 2> /dev/null | grep -qw "lshellg" \
+          || [[ "$(getent passwd "${_kickUsr}" 2> /dev/null | cut -d: -f7)" =~ /lshell$ ]]; then
+          pkill -KILL -u "${_kickUsr}"
+        fi
+      done
     fi
   fi
   if [ -e "${_usrBin}/lshell" ]; then
@@ -4690,7 +4699,7 @@ CSFSTANDBY
   if [ -e "${_pthLog}" ]; then
     _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f91
     _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f88
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f92
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f91
     _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f93
     _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f97
     _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f95
@@ -4720,13 +4729,13 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f88 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f88 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f71 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f33 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f32 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f82 --guard duplicity
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f55 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f58 --guard /local/bin/boa
-    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f94 --guard duplicity
+    _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f93 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f82 --guard duplicity
     _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/${_tBn}/ffdevuan" f93 --guard /local/bin/ffdevuan

@@ -162,6 +162,22 @@ _install_dependencies() {
   _RET=$?
   # Cron must come back on every exit path, not only on success
   service cron start
+  # ...and so must websh: on a merged-/usr box /usr/bin/sh IS /bin/sh, so the
+  # flip above left every shell account on plain dash until the ltd
+  # worker's next tick. The symlink half of the worker's block, behind the
+  # same in-flight markers the worker waits on: a barracuda or octopus pass
+  # parks the box on dash on purpose and gets it back itself.
+  if [ -L "/bin/sh" ] && [ ! -e "/run/octopus_install_run.pid" ] \
+    && [ ! -e "/run/boa_run.pid" ] && [ ! -e "/run/boa_wait.pid" ] \
+    && [ -x "/opt/local/bin/websh" ] \
+    && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then
+    if [ "$(readlink -n /bin/sh)" != "/opt/local/bin/websh" ]; then
+      ln -sfn /opt/local/bin/websh /bin/sh
+    fi
+    if [ -e "/usr/bin/sh" ] && [ "$(readlink -n /usr/bin/sh)" != "/opt/local/bin/websh" ]; then
+      ln -sfn /opt/local/bin/websh /usr/bin/sh
+    fi
+  fi
   if [ ${_RET} -ne 0 ]; then
     echo "Error: Failed to install dependencies."
     exit 1
