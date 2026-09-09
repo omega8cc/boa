@@ -447,14 +447,28 @@ _if_python_install_src() {
     echo "Python ${_PTN_VRN} installation is required to support Duplicity ${_DCY_VRN}"
     _python_install_src
   else
-    if ! ${_DCY_PTN} -c "import boto3" &> /dev/null; then
+    # Converged means every venv this install creates runs on the pinned
+    # interpreter: Duplicity's (its version and its interpreter) and the four
+    # tool venvs. The former test imported boto3 and b2sdk on the pinned
+    # interpreter itself, where the pipx design never puts them, so it tripped
+    # on every box and the quick path below was never taken. The reinstall
+    # switch still forces the full run.
+    if [ -e "/root/.force.duplicity.reinstall.cnf" ]; then
+      _PYTHON_INSTALL=YES
+    elif ! _duplicity_venv_on_pin \
+      || [[ ! "$(${_DCY_CMD} --version 2>&1)" =~ "duplicity ${_DCY_VRN}" ]]; then
       _PYTHON_INSTALL=YES
     fi
-    if ! ${_DCY_PTN} -c "import b2sdk" &> /dev/null; then
-      _PYTHON_INSTALL=YES
-    fi
+    for _vnvChk in boto3 awscli azure-storage-blob b2sdk; do
+      _vnvChkPyt="$(readlink -f "${_PIPX_VNV}/${_vnvChk}/bin/python" 2>/dev/null)"
+      if [[ "${_vnvChkPyt}" != *"python${_PTN_MNR}" ]] || [ ! -x "${_vnvChkPyt}" ]; then
+        _PYTHON_INSTALL=YES
+      fi
+    done
     if [ "${_PYTHON_INSTALL}" = "YES" ]; then
       _python_install_src
+    else
+      echo "Python ${_PTN_VRN}, Duplicity ${_DCY_VRN} and the tool venvs are on the pin: nothing to install"
     fi
   fi
 }
@@ -478,8 +492,7 @@ _check_root
 _check_openssl
 _os_detection_minimal
 _if_python_install_src
-# Unconditional: the quick no-op paths above (python current, imports
-# fine, duplicity already on the pin) must still converge an unpatched
-# venv
+# Unconditional: the quick no-op path above (python, Duplicity and the tool
+# venvs on the pin) must still converge an unpatched venv
 _patch_duplicity_b2backend
 

@@ -6,7 +6,8 @@
 ### aegir2boa-preflight — phase-0 discovery for candidate vanilla Ægir boxes.
 ###
 ### READ-ONLY by contract: writes ONLY under /tmp (report, machine output,
-### scratch dir, lock). No package installs, no service changes. SQL is plain
+### scratch dir, lock), all of it root's alone (umask 077; the report
+### inventories the estate). No package installs, no service changes. SQL is plain
 ### SELECT/SHOW only. ONE sanctioned exception: the optional `drush @hostmaster
 ### status` health check performs a Drupal bootstrap that writes cache_* tables
 ### and ~aegir/.drush/cache (self-healing on the target estate) — set
@@ -29,7 +30,7 @@
 
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-_A2B_VERSION=0.1.2
+_A2B_VERSION=0.1.3
 _A2B_SCHEMA_VERSION=1
 
 _AEGIR_ROOT=/var/aegir
@@ -59,7 +60,7 @@ while [[ $# -gt 0 ]]; do
       fi
       _AEGIR_ROOT="$1"
       ;;
-    --version) echo "aegir2boa-preflight ${_A2B_VERSION}"; exit 0 ;;
+    --version) echo "aegir2boa-preflight ${_A2B_VERSION} md5=$(md5sum "$0" 2>/dev/null | cut -c1-32)"; exit 0 ;;
     --help|-h) _usage; exit 0 ;;
     *) echo "ERROR: unknown argument: $1" >&2; _usage; exit 2 ;;
   esac
@@ -217,6 +218,14 @@ _cleanup() {
 _acquire_lock() {
   # mkdir is atomic; a dead owner's lock is taken over.
   local _opid
+  # /tmp is world-writable: a lock path that exists and is not root's own
+  # directory (another owner, or a symlink) was planted there, and is never
+  # taken over or removed by root - refused by name, so the operator can see
+  # what sits there and who put it
+  if [[ -L "${_LOCK}" ]] \
+    || { [[ -e "${_LOCK}" ]] && [[ "$(stat -c %u "${_LOCK}" 2>/dev/null)" != "0" ]]; }; then
+    _die "lock path ${_LOCK} exists and is not root's own directory ($(if [[ -L "${_LOCK}" ]]; then echo "a symlink"; else echo "owner $(stat -c %U "${_LOCK}" 2>/dev/null || echo '?')"; fi)) - refusing; remove it by hand and re-run"
+  fi
   if ! mkdir "${_LOCK}" 2>/dev/null; then
     _opid="$(ls "${_LOCK}" 2>/dev/null | sed -n 's/^pid\.//p' | head -n1)"
     if [[ -n "${_opid}" ]] && kill -0 "${_opid}" 2>/dev/null; then
@@ -1255,17 +1264,17 @@ gate_stages() {
 _emit_tsv_section() {
   # 1=name 2=header (tab-separated)
   local _name="$1" _hdr="$2"
-  printf '#TSV:%s  %s\n' "${_name}" "${_hdr}" >> "${_OUT_ENV}"
-  [[ -s "${_TMPD}/${_name}.tsv" ]] && cat "${_TMPD}/${_name}.tsv" >> "${_OUT_ENV}"
-  printf '#ENDTSV:%s\n' "${_name}" >> "${_OUT_ENV}"
+  printf '#TSV:%s  %s\n' "${_name}" "${_hdr}" >> "${_WR_ENV}"
+  [[ -s "${_TMPD}/${_name}.tsv" ]] && cat "${_TMPD}/${_name}.tsv" >> "${_WR_ENV}"
+  printf '#ENDTSV:%s\n' "${_name}" >> "${_WR_ENV}"
 }
 
 emit_machine() {
-  : > "${_OUT_ENV}"
+  : > "${_WR_ENV}"
   {
     echo "# aegir2boa-preflight machine contract - scalars are safe to source"
     echo "# generated $(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null) on ${_HOST}"
-  } >> "${_OUT_ENV}"
+  } >> "${_WR_ENV}"
 
   _env_kv A2B_SCHEMA_VERSION "${_A2B_SCHEMA_VERSION}"
   _env_kv A2B_TOOL_VERSION "${_A2B_VERSION}"
@@ -1322,8 +1331,8 @@ emit_machine() {
   _env_kv A2B_STAGE1_WARN_REASONS "${_S1_WARN}"
   _env_kv A2B_STAGE2_FAIL_REASONS "${_S2_FAIL}"
   _env_kv A2B_STAGE2_WARN_REASONS "${_S2_WARN}"
-  cat "${_TMPD}/scalars.env" >> "${_OUT_ENV}"
-  echo "" >> "${_OUT_ENV}"
+  cat "${_TMPD}/scalars.env" >> "${_WR_ENV}"
+  echo "" >> "${_WR_ENV}"
 
   _emit_tsv_section servers "context	title	service	type	restart_cmd"
   _emit_tsv_section platforms "name	root	core	build	contrib	web_server	php_band"
@@ -1351,11 +1360,11 @@ _emit_table() {
     echo ""
     echo "-- ${_title} ($(wc -l < "${_TMPD}/${_name}.tsv" | tr -d ' ')) --"
     column -t -s '	' "${_TMPD}/${_name}.tsv" 2>/dev/null || cat "${_TMPD}/${_name}.tsv"
-  } >> "${_OUT_TXT}"
+  } >> "${_WR_TXT}"
 }
 
 emit_human() {
-  : > "${_OUT_TXT}"
+  : > "${_WR_TXT}"
   {
     echo "== aegir2boa preflight :: ${_HOST} :: ${_TS} =="
     echo "STAGE 1 (in-place Apache->Nginx):  ${_S1_VERDICT}"
@@ -1375,7 +1384,7 @@ emit_human() {
     echo "  drush: ${_DRUSH_BIN:-?} ${_DRUSH_VRN:-} (runtime php ${_DRUSH_PHP:-?}) | frontend boot: ${_FRONTEND_BOOT} | queue: ${_QUEUE_MODEL} fresh=${_QUEUE_FRESH}"
     echo "  php-fpm: present=${_FPM_PRESENT} installable=${_FPM_INSTALLABLE} mod_php=${_MODPHP} | sudo nginx line: ${_SUDO_NGINX}"
     echo "  disk: free ${_FREE_DUMP_MB:-?}MB on ${_AEGIR_ROOT} vs est. dump ${_EST_DUMP_MB}MB | max DNS TTL: ${_MAX_TTL}"
-  } >> "${_OUT_TXT}"
+  } >> "${_WR_TXT}"
 
   _emit_table "servers" servers
   _emit_table "platforms" platforms
@@ -1397,12 +1406,29 @@ emit_human() {
   {
     echo ""
     echo "machine contract: ${_OUT_ENV}"
-  } >> "${_OUT_TXT}"
+  } >> "${_WR_TXT}"
 }
 
 ###--- Main --------------------------------------------------------------------###
 
+# The two outputs are written inside the private scratch dir and moved into
+# place at the end: a predictable name in a world-writable /tmp is never
+# opened for writing by root, and a path that already exists there (a planted
+# symlink, file or directory) is refused, never followed or replaced.
+_publish_reports() {
+  local _o
+  for _o in "${_OUT_TXT}" "${_OUT_ENV}"; do
+    [[ -e "${_o}" || -L "${_o}" ]] \
+      && _die "refusing to write ${_o}: the path already exists - remove it and re-run"
+  done
+  mv -fT "${_WR_TXT}" "${_OUT_TXT}" 2>/dev/null && mv -fT "${_WR_ENV}" "${_OUT_ENV}" 2>/dev/null \
+    || _die "could not place the report and the machine contract under /tmp"
+}
+
 main() {
+  # everything this run writes under /tmp - lock, scratch, report, contract -
+  # is root's alone: the report inventories the estate
+  umask 077
   _check_root
   _acquire_lock
 
@@ -1411,6 +1437,8 @@ main() {
   _HOST="$(hostname -f 2>/dev/null || hostname 2>/dev/null || echo unknown)"
   _OUT_TXT="/tmp/aegir2boa-preflight.${_HOST}.${_TS}.txt"
   _OUT_ENV="/tmp/aegir2boa-preflight.${_HOST}.${_TS}.env"
+  _WR_TXT="${_TMPD}/report.txt"      # written here, published by _publish_reports
+  _WR_ENV="${_TMPD}/report.env"
 
   _msg "aegir2boa-preflight ${_A2B_VERSION} - read-only discovery on ${_HOST}"
   _info "root: ${_AEGIR_ROOT}"
@@ -1430,6 +1458,7 @@ main() {
       gate_stages
       emit_human
       emit_machine
+  _publish_reports
       _msg "report:  ${_OUT_TXT}"
       _msg "machine: ${_OUT_ENV}"
       exit 3
@@ -1454,6 +1483,7 @@ main() {
   gate_stages
   emit_human
   emit_machine
+  _publish_reports
 
   _msg "STAGE 1: ${_S1_VERDICT}   STAGE 2: ${_S2_VERDICT}"
   _msg "report:  ${_OUT_TXT}"
