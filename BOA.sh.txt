@@ -1755,6 +1755,16 @@ _update_agents() {
   if [ -e "/root/.stackbuild.cnf" ]; then
     _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f77 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
     _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f95 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
+  else
+    # A box that is not a build box carries no copy of either. Boxes that had
+    # fetched staticbuild before this gate existed kept an unmanaged copy the
+    # channel never touched again: permanently stale to every audit, a builder
+    # nobody maintains on a box that must not build. Markers go with the files
+    # so a later opt-in starts clean; a box that opts back in re-fetches both
+    # on its next pass.
+    rm -f ${_optBin}/staticbuild ${_usrBin}/staticbuild ${_optBin}/stackbuild ${_usrBin}/stackbuild \
+      ${_pthLog}/staticbuild.ctrl.* ${_pthLog}/stackbuild.ctrl.* \
+      ${_pthLog}/staticbuild.stale.* ${_pthLog}/stackbuild.stale.* &> /dev/null
   fi
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
