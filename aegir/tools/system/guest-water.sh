@@ -1087,42 +1087,55 @@ _guard_stats() {
 # announced through the channels the per-minute healers use: the incident
 # log the monitor mails from, and a direct ALERT mail to _MY_EMAIL unless
 # _INCIDENT_REPORT is OFF. _BOA_CNF is a seam for the harness only.
-# The words that mark a csf.allow line as the pass's own: every provider tag
-# the refreshes above write (" # <tag> ips"; site24x7 also covers the
-# site24x7_extra ranges), the migration proxy/tooling lines and the DHCP lease
-# lines. The diff-guard tolerates only hunks made entirely of such lines and
-# the rollback alert hides them from the lines it reports, so both read this
-# ONE list: a provider added above is added here, once -- left out, its own
+# The lines the pass owns inside the guarded window, by their EXACT shape:
+# " # <tag> ips" at the end of the line for every provider tag the refreshes
+# above write (site24x7_extra is a tag of its own) and the migration proxy
+# line; the DHCP lease line is rewritten after the guard and listed for
+# safety. Exact shapes, not bare words: an operator line whose comment merely
+# mentions a provider is foreign to the pass, so a change to it is caught by
+# the diff-guard and named by the rollback alert instead of being tolerated
+# and hidden. A provider added above is added here, once -- left out, its own
 # lines would roll every pass back and the alert would name them.
-_CSF_ALLOW_OWN_WORDS="pingdom uptimerobot cloudflare googlebot googlespecial microsoft imperva sucuri authzero site24x7 migration DHCP"
+_CSF_ALLOW_OWN_TAGS="pingdom uptimerobot cloudflare googlebot googlespecial microsoft imperva sucuri authzero site24x7 site24x7_extra"
+
+# One pattern per line, anchored at the end of the line. Basic regular
+# expressions (what diff -I reads) that are valid extended ones too, so the
+# alert can join them into one alternation.
+_csf_allow_own_patterns() {
+  local _t
+  for _t in ${_CSF_ALLOW_OWN_TAGS}; do
+    echo " # ${_t} ips\$"
+  done
+  echo " # migration proxy\$"
+  echo " # Local DHCP out\$"
+}
 
 # The difference between a csf.allow copy and its snapshot with every hunk
 # made only of the pass's own lines ignored: empty means the pass changed
 # nothing but its own lines. Compares SORTED copies: diff -I only tolerates
-# hunks made entirely of matching lines, and _whitelist_ip_dns re-appends the
-# three resolver lines at the end of the file every pass, so on the raw files
-# diff's cheapest edit moves whatever operator lines sit after the resolvers
-# (any line appended after a daily pass) into a hunk no pattern covers -- and
-# the whole provider refresh was rolled back, silently, on every pass from
-# then on. Sorted, a pure add/remove of own lines is all that can differ,
-# wherever the lines sit; a changed operator line still shows, which is what
-# the guard exists to catch.
+# hunks made entirely of matching lines, and the pass appends its own lines
+# at the end of the file, so on the raw files diff's cheapest edit moved
+# whatever operator lines sat after them into a hunk no pattern covers --
+# and the whole provider refresh was rolled back, silently, on every pass
+# from then on. Sorted, a pure add/remove of own lines is all that can
+# differ, wherever the lines sit; a changed operator line still shows, which
+# is what the guard exists to catch.
 _csf_allow_foreign_diff() {
-  local _w _ign=()
-  for _w in ${_CSF_ALLOW_OWN_WORDS}; do
-    _ign+=(-I "${_w}")
-  done
+  local _p _ign=()
+  while IFS= read -r _p; do
+    _ign+=(-I "${_p}")
+  done < <(_csf_allow_own_patterns)
   diff -w -B "${_ign[@]}" <(sort "${1}") <(sort "${2}") 2>&1
 }
 
-# The same words as one alternation for the alert's filter, joined word by
-# word so a stray double or trailing space in the list can never yield an
-# empty alternative that would match -- and hide -- every line.
+# The same patterns as one alternation for the alert's filter, joined
+# pattern by pattern so a stray line can never yield an empty alternative
+# that would match -- and hide -- every line.
 _csf_allow_own_rx() {
-  local _w _rx=""
-  for _w in ${_CSF_ALLOW_OWN_WORDS}; do
-    _rx="${_rx}${_rx:+|}${_w}"
-  done
+  local _p _rx=""
+  while IFS= read -r _p; do
+    _rx="${_rx}${_rx:+|}${_p}"
+  done < <(_csf_allow_own_patterns)
   echo "${_rx}"
 }
 
@@ -1269,7 +1282,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   _brkCnf="${_vBs}/dragon/t/csf.allow.broken-${_NOW}"
   # The resolver refresh runs BEFORE the snapshot, outside the guarded window:
   # it deletes the pass's own resolver lines by shape and re-appends them in
-  # the outbound form, and no word of _CSF_ALLOW_OWN_WORDS names a resolver
+  # the outbound form, and no own-line pattern of the guard names a resolver
   # line ("# Cloudflare DNS", a legacy bare address). Snapshotted first, a box
   # whose resolver lines an operator had removed -- or one still carrying the
   # legacy bare form -- saw its own resolver churn as a foreign hunk, rolled
