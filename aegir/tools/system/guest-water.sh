@@ -1079,6 +1079,71 @@ _guard_stats() {
   fi
 }
 
+# The diff-guard's rollback used to be silent: one "NO" line in a csf.log
+# nobody reads, while the box ran yesterday's provider ranges -- for years,
+# on any box with an operator line appended after the resolver lines. A
+# rollback is either the guard catching a real mid-pass edit or a defect
+# like that one, and both deserve the operator's attention at once, so it is
+# announced through the channels the per-minute healers use: the incident
+# log the monitor mails from, and a direct ALERT mail to _MY_EMAIL unless
+# _INCIDENT_REPORT is OFF. _BOA_CNF is a seam for the harness only.
+_BOA_CNF="${_BOA_CNF:-/root/.barracuda.cnf}"
+_cnf_value() {
+  grep -m1 -E "^[[:space:]]*(export[[:space:]]+)?${1}=" "${_BOA_CNF}" 2>/dev/null \
+    | sed -e 's/^[^=]*=//' -e 's/[]["'"'"' ]//g'
+}
+_csf_allow_rollback_alert() {
+  local _diff="${1}" _brk="${2}" _pre="${3}" _host _mail _lvl _odd
+  local _log="/var/log/boa/system.incident.log"
+  _host="$(tr -d '\n' < /etc/hostname 2>/dev/null)"
+  [ -n "${_host}" ] || _host="$(hostname -f 2>/dev/null)"
+  # The lines the pass does not own are what the operator needs to see; the
+  # hunk diff reports carries every provider line sorted next to them, so
+  # the offending line would sit buried under thousands of tagged ones.
+  # "<" = only in the rejected copy, ">" = only in the snapshot.
+  _odd=""
+  if [ -s "${_brk}" ] && [ -s "${_pre}" ]; then
+    _odd=$(diff <(sort "${_brk}") <(sort "${_pre}") 2>/dev/null \
+      | grep '^[<>]' \
+      | grep -vE 'pingdom|uptimerobot|cloudflare|googlebot|googlespecial|microsoft|imperva|sucuri|authzero|site24x7|migration|DHCP' \
+      | head -50)
+  fi
+  [ -n "${_odd}" ] || _odd="(none isolated; raw diff: ${_diff:0:600})"
+  [ -d "${_log%/*}" ] || mkdir -p "${_log%/*}"
+  echo "$(date) ALERT: csf.allow provider refresh rolled back on ${_host}; rejected copy ${_brk}, snapshot ${_pre}; lines not the pass's own: $(echo "${_odd}" | tr '\n' ' ' | cut -c1-600)" >> "${_log}"
+  _mail="$(_cnf_value _MY_EMAIL)"
+  _mail="${_mail//\\@/@}"
+  _lvl="$(_cnf_value _INCIDENT_REPORT)"
+  _lvl="${_lvl^^}"
+  _lvl="${_lvl//[^A-Z]/}"
+  [ -n "${_mail}" ] || return 0
+  case "${_lvl}" in
+    OFF|NO) return 0 ;;
+  esac
+  command -v s-nail >/dev/null 2>&1 || return 0
+  cat <<EOF | s-nail -s "[${_host}] csf.allow provider refresh rolled back" "${_mail}"
+
+ The daily provider whitelist refresh (guest-water.sh) found /etc/csf/csf.allow
+ changed in a way it does not own while it was running, and rolled the file back
+ to the snapshot it took at the start of the pass. The box keeps yesterday's
+ provider ranges until the next pass succeeds.
+
+ Host:          ${_host}
+ When:          $(date)
+ Rejected copy: ${_brk}
+ Snapshot kept: ${_pre}
+
+ Lines that are not the pass's own ("<" only in the rejected copy, ">" only in
+ the snapshot; at most 50):
+${_odd}
+
+ If the change was yours, re-apply it now that the pass is over -- edits made
+ while the pass runs are exactly what this guard reverts. If it was not yours,
+ compare the two files: diff <(sort ${_brk}) <(sort ${_pre})
+
+EOF
+}
+
 _whitelist_ip_dns() {
   csf -tr 1.1.1.1
   csf -tr 8.8.8.8
@@ -1193,6 +1258,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   if [ "${_useCnfUpdate}" = "NO" ] && [ -s "${_preCnf}" ]; then
     cp -af ${_useCnf} ${_brkCnf}
     cp -af ${_preCnf} ${_useCnf}
+    _csf_allow_rollback_alert "${_diffCnfTest}" "${_brkCnf}" "${_preCnf}"
   fi
 
   if [ -e "/etc/boa/.full.csf.cleanup.cnf" ]; then

@@ -679,8 +679,10 @@ first) and `rm`s it at the very end — and once escalation is done it clears th
 > `/root/.extended.firewall.exceptions.cnf` — Imperva, Sucuri, Auth0, Site24x7), with a
 > diff-guard that reverts an unexpected `csf.allow` change (it compares sorted copies of
 > the file, so only a changed or missing operator line counts — never the position the
-> pass's own resolver and DHCP lines land in) and per-provider backups under
-> `/var/backups/csf/water/`. Every fetched provider fetches *before* it clears its own
+> pass's own resolver and DHCP lines land in; a rollback is written to the incident log
+> and mailed to `_MY_EMAIL` as an ALERT with the rejected copy, the snapshot and the diff,
+> since the box keeps yesterday's ranges until the next pass succeeds) and per-provider
+> backups under `/var/backups/csf/water/`. Every fetched provider fetches *before* it clears its own
 > tagged lines and keeps the existing entries when the list comes back empty (endpoint
 > down, format change), so a failed refresh never strips a live range for a day; the
 > static `csf.deny` healing of the Google, Bing and Imperva refreshes runs either way.
