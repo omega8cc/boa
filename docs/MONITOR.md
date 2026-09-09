@@ -48,7 +48,7 @@ The repo source under `aegir/tools/system/` is deployed verbatim to `/var/xdrago
 | `aegir/tools/system/runner.sh` → `/var/xdrago/runner.sh` | Drains the `/var/xdrago/run-*` Ægir hosting tasks, gated by load and queue state |
 | `aegir/tools/bin/loadreport` → `/opt/local/bin/loadreport` | Read-only `/proc` profiler; JSONL log every 30 min |
 
-Every per-service watchdog launched by `minute.sh` re-sources `/root/.barracuda.cnf` on entry (so every `_VAR` override below is read fresh each pass) and exits immediately unless `/var/log/boa/reset_no_new_password.pid` exists — i.e. the auto-healing watchdogs stay dormant until the box is a fully installed BOA system. (The `second.sh` process guards and the launchers themselves do not gate on that marker.)
+Every per-service watchdog launched by `minute.sh` re-sources `/root/.barracuda.cnf` on entry (so every `_VAR` override below is read fresh each pass) and exits immediately unless `/var/log/boa/reset_no_new_password.pid` exists — i.e. the auto-healing watchdogs stay dormant until the box is a fully installed BOA system. (The `second.sh` process guards and the launchers themselves do not gate on that marker.) Because the marker is stamped by `autoupboa` on its first quiet tick after a fresh install's chain, and the chain's last pass ends with the web tier down (the MySQL restart only stops it), a `barracuda` pass that ends on a box not armed yet — an Ægir master with its front vhost exists, the marker does not — brings the tier up itself at its end with `webserver up` (only what is down, the nginx standby hold honoured), so the tier no longer waits for the marker's tick after a pass.
 
 ## The per-minute fan-out (and why idle load is high)
 
