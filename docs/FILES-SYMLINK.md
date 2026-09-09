@@ -87,7 +87,7 @@ store, detects and breaks *accidental* cross-site sharing, and reports orphans.
 
 ```bash
 autosymlink                 # DRY (default): show what would change, change nothing
-autosymlink report          # read-only report, including orphaned store entries
+autosymlink report          # read-only report, including orphaned store entries and what the sweep would do with each
 autosymlink live            # apply, with a per-site confirmation prompt
 autosymlink batch           # apply to all sites, no prompt (needs a prior clean DRY run)
 autosymlink --batch-if-clean # DRY, and if clean, BATCH — cron-safe, one shot
