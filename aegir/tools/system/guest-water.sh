@@ -1115,6 +1115,17 @@ _csf_allow_foreign_diff() {
   diff -w -B "${_ign[@]}" <(sort "${1}") <(sort "${2}") 2>&1
 }
 
+# The same words as one alternation for the alert's filter, joined word by
+# word so a stray double or trailing space in the list can never yield an
+# empty alternative that would match -- and hide -- every line.
+_csf_allow_own_rx() {
+  local _w _rx=""
+  for _w in ${_CSF_ALLOW_OWN_WORDS}; do
+    _rx="${_rx}${_rx:+|}${_w}"
+  done
+  echo "${_rx}"
+}
+
 _BOA_CNF="${_BOA_CNF:-/root/.barracuda.cnf}"
 _cnf_value() {
   grep -m1 -E "^[[:space:]]*(export[[:space:]]+)?${1}=" "${_BOA_CNF}" 2>/dev/null \
@@ -1133,7 +1144,7 @@ _csf_allow_rollback_alert() {
   if [ -s "${_brk}" ] && [ -s "${_pre}" ]; then
     _odd=$(diff <(sort "${_brk}") <(sort "${_pre}") 2>/dev/null \
       | grep '^[<>]' \
-      | grep -vE "${_CSF_ALLOW_OWN_WORDS// /|}" \
+      | grep -vE "$(_csf_allow_own_rx)" \
       | head -50)
   fi
   [ -n "${_odd}" ] || _odd="(none isolated; raw diff: ${_diff:0:600})"
