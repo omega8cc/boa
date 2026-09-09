@@ -355,6 +355,16 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
  *
  * D6 has no $databases array, so the guard below skips it.
  *
+ * The statement is one SET with the session variable inside a MySQL-versioned
+ * executable comment. MySQL and Percona execute the comment from 5.7.8, the
+ * release that introduced max_execution_time, so both assignments run there;
+ * MariaDB has no such variable and ignores every comment versioned in the
+ * MySQL-only range (5.7 up to 9.x), so it runs the harmless user-variable
+ * assignment alone instead of rejecting the connection's init command. A
+ * site whose database lives on an additional MariaDB server therefore works
+ * without any override; a bare SET SESSION max_execution_time made it answer
+ * 500 from the web tier while the CLI worked.
+ *
  * Caveat: a site whose own settings ASSIGN init_commands rather than adding a
  * key are included later and will drop this.
  */
@@ -397,7 +407,7 @@ if (PHP_SAPI !== 'cli' && isset($databases['default']['default'])) {
       $databases['default']['default']['init_commands'] = array();
     }
     $databases['default']['default']['init_commands']['boa_max_exec'] =
-      'SET SESSION max_execution_time = ' . $boa_max_exec_ms;
+      'SET @boa_max_exec = 1 /*!50708 , SESSION max_execution_time = ' . $boa_max_exec_ms . ' */';
   }
   unset($boa_max_exec_ms);
 }

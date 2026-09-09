@@ -351,10 +351,16 @@ look on any failure.
 ```sh
   aegir2boa-preflight              # writes report + machine contract under /tmp
   aegir2boa-preflight --help       # options; --aegir-root for non-standard layouts
+  aegir2boa-preflight --version    # tool version + the md5 of the copy that ran
 ```
 
 Read-only by contract: it writes only under `/tmp`, installs nothing,
-changes no service, and its SQL is SELECT/SHOW-only. The one sanctioned
+changes no service, and its SQL is SELECT/SHOW-only. Everything it writes
+there is root's alone (`umask 077`): the report inventories the estate.
+Its lock is `/tmp/aegir2boa-preflight.lock`; a path already sitting there
+that is not root's own directory (another owner, a symlink) is refused by
+name with exit 2 and never taken over, and a report path that already
+exists is refused the same way — remove the planted path and re-run. The one sanctioned
 exception is the optional `drush @hostmaster status` health check (a
 Drupal bootstrap writes cache tables); set `A2B_NO_DRUSH=1` to suppress it
 — at the cost of a permanent `frontend_bootstrap_failed` WARN in that run.
@@ -398,6 +404,7 @@ than re-discovering the box. Keep the pair with the migration record.
   aegir2boa-stage1 --status            # both config planes + daemons + per-site HTTP
   aegir2boa-stage1 --revert            # dry run for the way back
   aegir2boa-stage1 --revert --live     # nginx -> apache
+  aegir2boa-stage1 --version           # the md5 of the copy that ran
 ```
 
 Scope: concrete `http_service_type` of `apache` AND `apache_ssl`. The
@@ -464,7 +471,9 @@ copied from this page instead of from the tool could be the wrong one.
 ## Stage 2 — remote adoption
 
 The target carries `aegir2boa-stage2` already; place the same bytes on the
-source. Verbs, verbatim from `--help`:
+source (`aegir2boa-stage2 --version` prints the md5 of the copy that ran on
+either box, so the two can be compared by eye; `check` and `pre-mig` compare
+them for you). Verbs, verbatim from `--help`:
 
 ```
 Source-resident verbs (vanilla box, root):
