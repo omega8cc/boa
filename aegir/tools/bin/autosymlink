@@ -1067,6 +1067,18 @@ _archive_existing_store_target() {
   _ARCH_AVAIL_KB="${_ARCH_AVAIL_KB:-?}"
   _log "[REPORT] ORPHAN archive incident: ${_ARCH_SITE}/${_ARCH_TYPE} stale store size=${_ARCH_SRC_KB}K -> static/files/.archived/${_ARCH_STAMP}/ (target FS avail=${_ARCH_AVAIL_KB}K)"
 
+  # No reader guard here, by design: refusing would block the conversion that
+  # needs this name. So a stale store some registered site still reads through
+  # its own files/private link IS moved from under that reader, and its link
+  # dangles until that site's unshare is re-run -- said loudly, per the shared
+  # index (the store dir, so a reader of either type is named).
+  _store_live_readers "${_ARCH_SRC%/*}" "${_ARCH_SITE}" "${_ARCH_ACCOUNT_DIR}"
+  if [ -n "${_SLR_LIVE}" ]; then
+    _log "[ALERT] Stale store ${_ARCH_SRC} is still read through a live site's link and is being moved from under it (the reused name needs the store; that reader's link dangles until its unshare is re-run): ${_SLR_LIVE}"
+  elif [ -n "${_SLR_STALE}" ]; then
+    _log "[REPORT] Stale store ${_ARCH_SRC}: link(s) into it belong to no registered site: ${_SLR_STALE}"
+  fi
+
   if ! mkdir -p "${_ARCH_BASE}"; then
     _log "[WARN] Could not create archive dir ${_ARCH_BASE}; renaming ${_ARCH_SRC} aside in place instead"
     _make_unique_target "${_ARCH_SRC}"
