@@ -3398,6 +3398,7 @@ _barracuda_cnf() {
     echo "_ORPHAN_FILES_REPORT=${_ORPHAN_FILES_REPORT}"           >> ${_barCnf}
     echo "_NIGHT_PARALLEL=${_NIGHT_PARALLEL}"                     >> ${_barCnf}
     echo "_NIGHT_MAX_PARALLEL=${_NIGHT_MAX_PARALLEL}"             >> ${_barCnf}
+    echo "_NIGHT_ACCOUNT_MAX=${_NIGHT_ACCOUNT_MAX}"               >> ${_barCnf}
     echo "_CLEAR_BOOST=${_CLEAR_BOOST}"                           >> ${_barCnf}
     echo "_LE_CLIENT_NOTIFY=${_LE_CLIENT_NOTIFY}"                 >> ${_barCnf}
     echo "_GHOST_CLIENT_NOTIFY=${_GHOST_CLIENT_NOTIFY}"           >> ${_barCnf}
@@ -4102,6 +4103,11 @@ _barracuda_cnf() {
     _NIGHT_MAX_PARALLEL_TEST=$(grep _NIGHT_MAX_PARALLEL ${_barCnf} 2>&1)
     if [[ ! "${_NIGHT_MAX_PARALLEL_TEST}" =~ "_NIGHT_MAX_PARALLEL" ]]; then
       echo "_NIGHT_MAX_PARALLEL=${_NIGHT_MAX_PARALLEL}" >> ${_barCnf}
+    fi
+
+    _NIGHT_ACCOUNT_MAX_TEST=$(grep _NIGHT_ACCOUNT_MAX ${_barCnf} 2>&1)
+    if [[ ! "${_NIGHT_ACCOUNT_MAX_TEST}" =~ "_NIGHT_ACCOUNT_MAX" ]]; then
+      echo "_NIGHT_ACCOUNT_MAX=${_NIGHT_ACCOUNT_MAX}" >> ${_barCnf}
     fi
 
     _CLEAR_BOOST_TEST=$(grep _CLEAR_BOOST ${_barCnf} 2>&1)
@@ -7446,7 +7452,18 @@ _strict_bin_permissions() {
     fi
   fi
 
-  cp -af ${_bldPth}/aegir/tools/bin/websh /opt/local/bin/websh
+  # websh doubles as /bin/sh: never overwrite it in place (a pass killed
+  # mid-copy would leave a truncated file the sentinel test still accepts);
+  # stage the copy beside it and rename, the way _fetch_versioned does.
+  if cp -af ${_bldPth}/aegir/tools/bin/websh /opt/local/bin/.websh.new; then
+    chmod 755 /opt/local/bin/.websh.new
+    chown root:root /opt/local/bin/.websh.new
+    mv -f /opt/local/bin/.websh.new /opt/local/bin/websh
+  else
+    rm -f /opt/local/bin/.websh.new
+  fi
+  # the mode and owner of the live file are re-asserted on every pass,
+  # copy or no copy, as before
   chmod 755 /opt/local/bin/websh
   chown root:root /opt/local/bin/websh
   chown root:root /etc/passwd*
