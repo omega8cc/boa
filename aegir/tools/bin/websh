@@ -814,13 +814,23 @@ export USER=${USER}
 # this used to test was an older layout no writer has kept, so every websh
 # launch ran on the global ini, whose sys_temp_dir is /tmp -- which is how a
 # 0700 /tmp took composer away from every tenant while their own ~/.tmp
-# stood ready. Pure bash: this runs for every identity.
+# stood ready. Pure bash: this runs for every identity, and applies the file
+# for tenants and sub-accounts only (_is_tenant). The instance user and the
+# master are the backend: the instance user runs the hosting queue every
+# minute (hosting-tasks, hosting-cron, hosting-civicrm_cron) against its
+# hostmaster, and under the account ini's open_basedir php turns its
+# realpath cache off and checks every file operation against every basedir
+# entry uncached -- a hostmaster bootstrap that takes three seconds on the
+# global ini took a hundred, 3.5 million stats, and the per-minute runners
+# piled up on every box of the fleet (measured 2026-09-09). Those two keep
+# the global ini they always ran on.
 _ACCT_INI=""
 _account_ini() {
   local _ini="${HOME}/.drush/php.ini" _c _v=""
   PHP_INI="/opt/php${1}/lib/php.ini"
   PHPRC="/opt/php${1}/lib"
   _ACCT_INI=""
+  _is_tenant || return 0
   [ -f "${_ini}" ] || return 0
   { _c=$(< "${_ini}"); } 2> /dev/null
   if [[ "${_c}" =~ (^|$'\n')extension_dir[[:space:]]*=[[:space:]]*\"?/opt/php([0-9][0-9])/ ]]; then
