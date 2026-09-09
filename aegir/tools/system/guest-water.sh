@@ -1226,12 +1226,19 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   _useCnf="/etc/csf/csf.allow"
   _preCnf="${_vBs}/dragon/t/csf.allow.backup-${_NOW}"
   _brkCnf="${_vBs}/dragon/t/csf.allow.broken-${_NOW}"
+  # The resolver refresh runs BEFORE the snapshot, outside the guarded window:
+  # it deletes the pass's own resolver lines by shape and re-appends them in
+  # the outbound form, and no word of _CSF_ALLOW_OWN_WORDS names a resolver
+  # line ("# Cloudflare DNS", a legacy bare address). Snapshotted first, a box
+  # whose resolver lines an operator had removed -- or one still carrying the
+  # legacy bare form -- saw its own resolver churn as a foreign hunk, rolled
+  # the refresh back to the resolver-less snapshot and repeated that daily.
+  _whitelist_ip_dns
   if [ -f "${_useCnf}" ]; then
     mkdir -p ${_vBs}/dragon/t/
     cp -af ${_useCnf} ${_preCnf}
   fi
 
-  _whitelist_ip_dns
   _whitelist_ip_pingdom
   _whitelist_ip_uptimerobot
   _whitelist_ip_cloudflare
