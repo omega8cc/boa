@@ -3159,6 +3159,25 @@ _manage_site_drush_alias_mirror() {
 }
 #
 # Manage Primary Users.
+# provision parks the de-typed psr/log overlay of every Drupal 10+ unlock
+# (a clone, migrate or restore deploy, provision-dunlock) under the account's
+# ~/.tmp/psr-log-<date>-<rand> and touches the dir, since mv keeps the
+# overlay's old mtime. Nothing reads a stash back (the re-lock re-applies the
+# overlay from the account's Drush), so it goes after a week -- on EVERY run,
+# unlike the release-gated ~/.tmp sweep above it, which fires once per serial.
+# Older releases stashed the same dirs beside the site archives under
+# backups/; those are pruned by the same age so the pile ends everywhere.
+# Bare paths, -maxdepth 1 and -type d: a planted link is neither followed nor
+# matched (as at the sweep above).
+_prune_psr_log_stash() {
+  local _h="${1}"
+  [ -n "${_h}" ] && [ -d "${_h}" ] || return 0
+  find ${_h}/.tmp -mindepth 1 -maxdepth 1 -type d -name 'psr-log-*' \
+    -mtime +6 -exec rm -rf {} + &> /dev/null
+  find ${_h}/backups -mindepth 1 -maxdepth 1 -type d -name 'psr-log-*' \
+    -mtime +6 -exec rm -rf {} + &> /dev/null
+}
+
 _manage_user() {
   _repair_staged_homes
   for _pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
@@ -3295,6 +3314,7 @@ _manage_user() {
         [ ! -L "${_dscUsr}/.tmp" ] && chmod 02755 ${_dscUsr}/.tmp &> /dev/null
         echo OK > ${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid
       fi
+      _prune_psr_log_stash "${_dscUsr}"
       # ~/static is 02775 group `users` with no sticky bit, so any co-tenant on
       # the box can replace the `control` name. Strip a plant unconditionally:
       # gating this on a stamp INSIDE the link lets a target that already
@@ -3599,6 +3619,7 @@ else
   # the pid, not a bare touch: the nightly's per-account pass waits only on a
   # LIVE worker (every other reader tests existence and removes the file)
   echo $$ > /run/manage_ltd_users.pid
+  _prune_psr_log_stash "/var/aegir"
   _count_cpu
   _find_fast_mirror_early
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
