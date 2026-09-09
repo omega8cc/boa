@@ -607,7 +607,7 @@ _enable_chattr() {
         # tree, uncached); lshell users are confined by their own measures, and
         # the FPM ini keeps its own list
         _QTP=${_U_TP//\//\\\/}
-        sed -i "s/.*open_basedir =.*/;open_basedir =/g"                              ${_U_II}
+        sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      ${_U_II}
         wait
         sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
         wait
@@ -1928,7 +1928,7 @@ _php_cli_local_ini_update() {
       # tree, uncached); lshell users are confined by their own measures, and
       # the FPM ini keeps its own list
       _QTP=${_U_TP//\//\\\/}
-      sed -i "s/.*open_basedir =.*/;open_basedir =/g"                              ${_U_II}
+      sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      ${_U_II}
       wait
       sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
       wait
