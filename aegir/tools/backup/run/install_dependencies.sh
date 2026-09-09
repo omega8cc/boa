@@ -285,7 +285,6 @@ _install_other_dependencies() {
 }
 
 _install_duplicity() {
-  pip3 install --upgrade pip --root-user-action ignore
   echo "Installing pipx..."
 
   ${_DCY_PTN} -m pip install pipx --break-system-packages --root-user-action ignore
@@ -428,24 +427,13 @@ _python_install_src() {
     exit 1
   fi
 
-  echo "Locating pip3..."
-  if [ -x "/usr/local/bin/pip3" ]; then
-    _usePip=/usr/local/bin/pip3
-  elif [ -x "/usr/bin/pip3" ]; then
-    _usePip=/usr/bin/pip3
-  fi
-  echo "_usePip is ${_usePip}"
-
+  # Upgrade the pinned interpreter's own pip, never whatever pip3 is first
+  # on PATH: a box whose earlier system-pip upgrade left a pip3 script bound
+  # to the distro python has that script refused under PEP 668
+  # (externally-managed-environment), so the upgrade silently never ran;
+  # the pinned build under /usr/local carries no such marker.
   echo "Installing pip..."
-  _PIP_TEST=$(${_usePip} --version 2>&1)
-  if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-    || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
-    || [[ "${_PIP_TEST}" =~ "python 3.13" ]] \
-    || [[ "${_PIP_TEST}" =~ "python ${_PTN_MNR}" ]]; then
-    ${_usePip} install --upgrade pip --root-user-action ignore
-  else
-    ${_usePip} install --upgrade pip
-  fi
+  ${_DCY_PTN} -m pip install --upgrade pip --root-user-action ignore
 
   _install_duplicity
   _install_other_dependencies
