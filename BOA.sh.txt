@@ -4724,7 +4724,7 @@ CSFSTANDBY
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f82 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f56 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f55 --guard /local/bin/barracuda
     _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f58 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f94 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
@@ -4740,7 +4740,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f90 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f18 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f25 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f78 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f77 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f94 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f82 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch

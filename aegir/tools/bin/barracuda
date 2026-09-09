@@ -62,8 +62,35 @@ _clean_pid_exit() {
     if (( _CNT > 1 )); then
       pkill -f 'tee -a /var/backups/barracuda-'
     fi
+    _symlink_to_websh
   fi
   exit 1
+}
+
+#
+# Put websh back on /bin/sh when this run is over, completed or aborted. Every
+# pass runs on dash (the launcher flips /bin/sh at its start: websh refuses
+# user-area scripts) and only the ltd worker's next quiet tick used to put
+# websh back, so shell accounts ran on plain dash for minutes after every
+# pass: no PHP-CLI pin, no drush loader refusals. The block is the ltd
+# worker's own (manage_ltd_users.sh), its install-marker test included; the
+# chained install (boa in-<tree>) runs the launcher without this wrapper and
+# keeps dash for its whole chain as before.
+_symlink_to_websh() {
+  local _WEB_SH
+  if [ -L "/bin/sh" ] && [ ! -e "/run/octopus_install_run.pid" ]; then
+    _WEB_SH="$(readlink -n /bin/sh)"
+    if [ -x "/opt/local/bin/websh" ] \
+      && grep -i '_forward_to_dash' /opt/local/bin/websh &> /dev/null; then
+      [ -x "/bin/websh" ] && [ ! -L "/bin/websh" ] && ln -sfn /opt/local/bin/websh /bin/websh
+      if [ "${_WEB_SH}" != "/opt/local/bin/websh" ]; then
+        ln -sfn /opt/local/bin/websh /bin/sh
+        if [ -e "/usr/bin/sh" ]; then
+          ln -sfn /opt/local/bin/websh /usr/bin/sh
+        fi
+      fi
+    fi
+  fi
 }
 
 _os_detection_minimal() {
@@ -1649,6 +1676,7 @@ _up_finish() {
     nohup /var/xdrago/owl.sh > /dev/null 2>&1 &
     sleep 1
   fi
+  _symlink_to_websh
   echo
   # Never claim a clean finish for a run this launcher already decided to
   # alert on. The prefix is kept intact so anything waiting on the documented
