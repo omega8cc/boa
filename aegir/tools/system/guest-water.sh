@@ -1087,6 +1087,34 @@ _guard_stats() {
 # announced through the channels the per-minute healers use: the incident
 # log the monitor mails from, and a direct ALERT mail to _MY_EMAIL unless
 # _INCIDENT_REPORT is OFF. _BOA_CNF is a seam for the harness only.
+# The words that mark a csf.allow line as the pass's own: every provider tag
+# the refreshes above write (" # <tag> ips"; site24x7 also covers the
+# site24x7_extra ranges), the migration proxy/tooling lines and the DHCP lease
+# lines. The diff-guard tolerates only hunks made entirely of such lines and
+# the rollback alert hides them from the lines it reports, so both read this
+# ONE list: a provider added above is added here, once -- left out, its own
+# lines would roll every pass back and the alert would name them.
+_CSF_ALLOW_OWN_WORDS="pingdom uptimerobot cloudflare googlebot googlespecial microsoft imperva sucuri authzero site24x7 migration DHCP"
+
+# The difference between a csf.allow copy and its snapshot with every hunk
+# made only of the pass's own lines ignored: empty means the pass changed
+# nothing but its own lines. Compares SORTED copies: diff -I only tolerates
+# hunks made entirely of matching lines, and _whitelist_ip_dns re-appends the
+# three resolver lines at the end of the file every pass, so on the raw files
+# diff's cheapest edit moves whatever operator lines sit after the resolvers
+# (any line appended after a daily pass) into a hunk no pattern covers -- and
+# the whole provider refresh was rolled back, silently, on every pass from
+# then on. Sorted, a pure add/remove of own lines is all that can differ,
+# wherever the lines sit; a changed operator line still shows, which is what
+# the guard exists to catch.
+_csf_allow_foreign_diff() {
+  local _w _ign=()
+  for _w in ${_CSF_ALLOW_OWN_WORDS}; do
+    _ign+=(-I "${_w}")
+  done
+  diff -w -B "${_ign[@]}" <(sort "${1}") <(sort "${2}") 2>&1
+}
+
 _BOA_CNF="${_BOA_CNF:-/root/.barracuda.cnf}"
 _cnf_value() {
   grep -m1 -E "^[[:space:]]*(export[[:space:]]+)?${1}=" "${_BOA_CNF}" 2>/dev/null \
@@ -1105,7 +1133,7 @@ _csf_allow_rollback_alert() {
   if [ -s "${_brk}" ] && [ -s "${_pre}" ]; then
     _odd=$(diff <(sort "${_brk}") <(sort "${_pre}") 2>/dev/null \
       | grep '^[<>]' \
-      | grep -vE 'pingdom|uptimerobot|cloudflare|googlebot|googlespecial|microsoft|imperva|sucuri|authzero|site24x7|migration|DHCP' \
+      | grep -vE "${_CSF_ALLOW_OWN_WORDS// /|}" \
       | head -50)
   fi
   [ -n "${_odd}" ] || _odd="(none isolated; raw diff: ${_diff:0:600})"
@@ -1224,28 +1252,9 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
       _useCnfUpdate=YES
       echo "NO $(date) diff3 no snapshot ${_preCnf}" >> ${_vBs}/dragon/t/csf.log
     else
-      # Compare SORTED copies: the guard only tolerates hunks made entirely of
-      # -I-tagged lines, and _whitelist_ip_dns re-appends the three resolver
-      # lines at the end of the file every pass, so on the raw files diff's
-      # cheapest edit moves whatever operator lines sit after the resolvers
-      # (any line appended after a daily pass) into a hunk no pattern covers
-      # -- and the whole provider refresh was rolled back, silently, on every
-      # pass from then on. Sorted, a pure add/remove of tagged lines is all
-      # that can differ, wherever the lines sit; a changed operator line still
-      # shows, which is what the guard exists to catch.
-      _diffCnfTest=$(diff -w -B \
-        -I pingdom \
-        -I uptimerobot \
-        -I cloudflare \
-        -I googlebot \
-        -I googlespecial \
-        -I microsoft \
-        -I imperva \
-        -I sucuri \
-        -I authzero \
-        -I site24x7 \
-        -I migration \
-        -I DHCP <(sort "${_useCnf}") <(sort "${_preCnf}") 2>&1)
+      # Only the lines the pass does not own count (_csf_allow_foreign_diff:
+      # sorted copies, every hunk made of its own lines ignored).
+      _diffCnfTest=$(_csf_allow_foreign_diff "${_useCnf}" "${_preCnf}")
       if [ -z "${_diffCnfTest}" ]; then
         _useCnfUpdate=YES
         echo "YES $(date) diff0 empty" >> ${_vBs}/dragon/t/csf.log
