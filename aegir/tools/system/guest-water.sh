@@ -1093,12 +1093,24 @@ _cnf_value() {
     | sed -e 's/^[^=]*=//' -e 's/[]["'"'"' ]//g'
 }
 _csf_allow_rollback_alert() {
-  local _diff="${1}" _brk="${2}" _pre="${3}" _host _mail _lvl
+  local _diff="${1}" _brk="${2}" _pre="${3}" _host _mail _lvl _odd
   local _log="/var/log/boa/system.incident.log"
   _host="$(tr -d '\n' < /etc/hostname 2>/dev/null)"
   [ -n "${_host}" ] || _host="$(hostname -f 2>/dev/null)"
+  # The lines the pass does not own are what the operator needs to see; the
+  # hunk diff reports carries every provider line sorted next to them, so
+  # the offending line would sit buried under thousands of tagged ones.
+  # "<" = only in the rejected copy, ">" = only in the snapshot.
+  _odd=""
+  if [ -s "${_brk}" ] && [ -s "${_pre}" ]; then
+    _odd=$(diff <(sort "${_brk}") <(sort "${_pre}") 2>/dev/null \
+      | grep '^[<>]' \
+      | grep -vE 'pingdom|uptimerobot|cloudflare|googlebot|googlespecial|microsoft|imperva|sucuri|authzero|site24x7|migration|DHCP' \
+      | head -50)
+  fi
+  [ -n "${_odd}" ] || _odd="(none isolated; raw diff: ${_diff:0:600})"
   [ -d "${_log%/*}" ] || mkdir -p "${_log%/*}"
-  echo "$(date) ALERT: csf.allow provider refresh rolled back on ${_host}; rejected copy ${_brk}, snapshot ${_pre}; diff: ${_diff:0:600}" >> "${_log}"
+  echo "$(date) ALERT: csf.allow provider refresh rolled back on ${_host}; rejected copy ${_brk}, snapshot ${_pre}; lines not the pass's own: $(echo "${_odd}" | tr '\n' ' ' | cut -c1-600)" >> "${_log}"
   _mail="$(_cnf_value _MY_EMAIL)"
   _mail="${_mail//\\@/@}"
   _lvl="$(_cnf_value _INCIDENT_REPORT)"
@@ -1121,8 +1133,9 @@ _csf_allow_rollback_alert() {
  Rejected copy: ${_brk}
  Snapshot kept: ${_pre}
 
- What the guard saw (sorted compare, provider lines ignored):
- ${_diff:0:2500}
+ Lines that are not the pass's own ("<" only in the rejected copy, ">" only in
+ the snapshot; at most 50):
+${_odd}
 
  If the change was yours, re-apply it now that the pass is over -- edits made
  while the pass runs are exactly what this guard reverts. If it was not yours,
