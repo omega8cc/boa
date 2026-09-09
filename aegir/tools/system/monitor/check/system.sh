@@ -545,10 +545,24 @@ _vnstat_health_check_fix() {
   fi
 }
 
+# lfd is up when the pid its pidfile names is alive AND is lfd -- the daemon
+# titles itself "lfd - <state>". The former process-name test read any
+# process with "lfd" on its command line (a `tail -f lfd.log`, an editor on
+# lfd.conf, a test script named after it) as the live daemon and skipped the
+# start while a stale pidfile sat there after a kill; the pidfile is what
+# csf itself maintains and what the start verification below already trusted.
+_lfd_alive() {
+  local _p
+  [ -s "/run/lfd.pid" ] || return 1
+  _p=$(tr -dc '0-9' < /run/lfd.pid)
+  [ -n "${_p}" ] || return 1
+  kill -0 "${_p}" 2>/dev/null || return 1
+  grep -aq "lfd" "/proc/${_p}/cmdline" 2>/dev/null
+}
+
 _lfd_health_check_fix() {
   if [ -x "/etc/init.d/lfd" ]; then
-    if ! pgrep -f lfd >/dev/null 2>&1 \
-      || [ ! -e "/run/lfd.pid" ]; then
+    if ! _lfd_alive; then
       _cd="/run/lfd-monitor.cooldown"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
@@ -589,7 +603,7 @@ _lfd_health_check_fix() {
       # used to claim a start that never happened on every pass.
       _lfdUp=NO
       for _i in 1 2 3 4 5; do
-        if [ -s "/run/lfd.pid" ] && kill -0 "$(tr -dc '0-9' < /run/lfd.pid)" 2>/dev/null; then
+        if _lfd_alive; then
           _lfdUp=YES
           break
         fi
