@@ -16,6 +16,7 @@ handles the per-distro quirks (see Notes), packages, and publishes. Run it as ro
   staticbuild build [name ...]   # build all, or only named targets
   staticbuild package            # clean + tar (cores keep core/profiles, distros strip)
   staticbuild distribute         # copy tarballs to /var/www/static/{distro,core,dev/{dev,lts,pro}}
+  staticbuild catalogue [tree]   # audit each tree's PUBLISHED catalogue against the distro mirror
 ```
 
 Configuration (Composer specs + core floor/exclude) is the block at the top of the
@@ -63,7 +64,7 @@ family:
   staticbuild backdrop           # build + package + publish only the Backdrop family
 ```
 
-Four artefacts, always rebuilt at the latest upstream tag (pin any with the matching
+Five artefacts, always rebuilt at the latest upstream tag (pin any with the matching
 `_*_TAG` in the config block):
 
 - **backdrop** — Backdrop CMS core (`backdrop/backdrop`), from its latest GitHub
@@ -93,10 +94,20 @@ Four artefacts, always rebuilt at the latest upstream tag (pin any with the matc
   packaged versioned as `redis_backdrop-<tag>.tar.gz` wrapping a `redis_backdrop/`
   directory (the tarball's top-level name is the deployed directory name under the
   shared contrib store). Published to the per-tree contrib shelf
-  `/var/www/static/dev/{dev,lts,pro}/contrib`. Unlike the other family members it
+  `/var/www/static/dev/{dev,lts,pro}/contrib`. Unlike `bee` and the Drush extension it
   is consumed by a pinned version on the BOA side — after publishing a newer tag,
   bump the pin in `OCTOPUS.sh.txt` and `BOA.sh.txt` together (a newer publish is
   inert until then; `staticbuild check` surfaces the drift as the `bd-redis` row).
+- **webform_backdrop** — the Backdrop webform contrib module (`backdrop-contrib/webform`),
+  the first curated `o_contrib_backdrop` bundle member beyond the cache module (2026-09).
+  Packaged versioned as `webform-<tag>.tar.gz` (the publish name drops the `_backdrop`
+  suffix) wrapping a `webform/` directory, published to the per-tree contrib shelf
+  `/var/www/static/dev/{dev,lts,pro}/contrib`. A plain bundle member — extracted into
+  `o_contrib_backdrop` directly, no shared-store symlink, no cnf pin — fetched by the
+  satellite side as a version literal: after publishing a newer tag, bump that literal
+  in `lib/functions/satellite.sh.inc` (`_satellite_download_o_contrib_backdrop`), not in
+  `OCTOPUS.sh.txt`/`BOA.sh.txt`; `staticbuild check` surfaces the drift as the
+  `bd-webform` row.
 
 ## Grav family
 
@@ -328,9 +339,9 @@ thunder    # composer create-project thunder/thunder-project thunder-8.4.4-11.4.
 ```sh
 varbase    # RE-ENABLED 2026-08-11: upstream fixed the template in July 2026 (core pinned
            # explicitly + committed lock), after a year of drift that made every fresh
-           # build uninstallable. Builds the stable 10 line; the 11.0 line is beta and
-           # uses a different docroot (web/ instead of docroot/) - do not switch until
-           # 11.0.0 is stable AND the catalogue web_dir is updated with it.
+           # build uninstallable. Builds the stable 10 line; the 11.0 line went stable
+           # on 2026-09-08 but uses a different docroot (web/ instead of docroot/) - do
+           # not switch until the catalogue web_dir (AegirSetupC "VBX") moves with it.
            # composer create-project Vardot/varbase-project:~10 varbase-VERSION-CORE --no-dev --no-interaction --no-install --no-scripts
            # cd ~/static/MONTH-DAY/varbase-VERSION-CORE
            # composer config --no-plugins allow-plugins true
