@@ -1718,20 +1718,6 @@ _update_agents() {
     fi
   fi
 
-  # The remote-backups run scripts ride this same pass as dcysetup, which
-  # drives them from clear.sh every few minutes: on a _SKYNET_MODE=OFF box
-  # the agents pass never runs, and a refreshed dcysetup calling a stale
-  # installer (no --patch-only arm yet) ran the whole dependency install.
-  if [ -d "/root/.remote_backups/run" ]; then
-    _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f35
-    _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f47
-    _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f44
-    _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f46
-    _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f45
-    _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f46
-    _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f46
-  fi
-
   # The core tool set every box carries (barracuda, boa, octopus, x*, auto*,
   # reports, backup tools, synproxy family...) is fetched ONLY by
   # _update_boa_tools, which runs on every pass in every context this function
@@ -4760,6 +4746,19 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f92 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f81 --guard duplicity
+    # The remote-backups run scripts ride here with dcysetup, which drives
+    # them from clear.sh every few minutes: on a _SKYNET_MODE=OFF box the
+    # agents pass never runs, and a refreshed dcysetup calling a stale
+    # installer (no --patch-only arm yet) ran the whole dependency install.
+    if [ -d "/root/.remote_backups/run" ]; then
+      _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f35
+      _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f47
+      _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f44
+      _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f46
+      _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f45
+      _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f46
+      _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f46
+    fi
     _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/${_tBn}/ffdevuan" f93 --guard /local/bin/ffdevuan
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f97 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
