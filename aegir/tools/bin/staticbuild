@@ -40,10 +40,10 @@
 #   -C         skip "composer clearcache" at the start of a build
 # Build target names: farm cms culturas commerce localgov openfed opigno social thunder
 #   varbase backdrop (core, versioned like the Drupal cores) bee backdrop-drush-extension
-#   redis_backdrop cores
+#   redis_backdrop webform_backdrop cores
 #
 # The Backdrop family (backdrop core, bee, backdrop-drush-extension,
-# redis_backdrop) is always fetched at its newest upstream version, so BOA
+# redis_backdrop, webform_backdrop) is always fetched at its newest upstream version, so BOA
 # never falls behind: run "staticbuild all" (or just the named targets) on the
 # mirror source VM, e.g. from cron alongside get-boa-dev. Backdrop core is
 # published versioned (backdrop-<ver>.tar.gz, retained per version like the
@@ -220,8 +220,9 @@ _CORE_CP_FLAGS="--no-dev --no-interaction"
 # explicitly and ships a committed lock, and the current stable line builds AND installs.
 # Two standing caveats. The upstream patch set is fetched from mutable branch refs with no
 # hashes, so REBUILDS are not reproducible -- each published tarball is the frozen artefact,
-# same as every other distro here. And the 11.0 line (docroot web/, still beta) is NOT the
-# build target; this builds the stable 10 line (docroot/ layout, matching the catalogue).
+# same as every other distro here. And the 11.0 line (docroot web/, stable since
+# 2026-09-08) is NOT the build target while the catalogue web_dir is docroot/; this builds
+# the stable 10 line (docroot/ layout, matching the catalogue).
 _ALL_DISTROS="farm cms culturas commerce localgov openfed opigno social thunder varbase"
 
 _LOCK="/run/staticbuild.lock"
@@ -866,7 +867,7 @@ build_thunder() {
     _record_fail "thunder"
     return 1
   fi
-  # Name by the Thunder distribution package (8.4.0), not the template (versions separately).
+  # Name by the Thunder distribution package (e.g. 8.4.4), not the template (versions separately).
   local _dist
   _dist="$(_lock_version "${_wd}" "${_THUNDER_DISTPKG}")"
   [[ -n "${_dist}" ]] && _dver="${_dist}"
@@ -1518,13 +1519,14 @@ do_check() {
   command -v curl >/dev/null 2>&1 || _die "curl not found (needed for version check)"
   _info "Latest release per distro from the authoritative source - drupal.org release feed"
   _info "(GitHub for farmOS; commerce_kickstart has no drupal.org stable, so its profile pkg):"
-  _check_row "farm"     "$(_latest_github "${_FARM_REPO}")"
+  _check_row "farm"     "$(_resolve_farm_tag)"
   _check_row "backdrop" "$(_latest_github "${_BACKDROP_REPO}")"
   _check_row "bee"      "$(_latest_git_tag "${_BEE_REPO}")"
   _check_row "bd-drush" "$(_latest_git_tag "${_BDEXT_REPO}")"
   # The only pinned Backdrop artifact: a newer tag here means the
   # _REDIS_B_VERSION pins in OCTOPUS.sh.txt + BOA.sh.txt are due a bump.
   _check_row "bd-redis" "$(_latest_git_tag "${_REDIS_REPO}")"
+  _check_row "bd-webform" "$(_latest_git_tag "${_WEBFORM_B_REPO}")"
   _check_row "cms"      "$(_drupal_release cms)"
   _check_row "culturas" "$(_drupal_release "${_CULTURAS_PROJECT}")"
   _check_row "commerce" "$(_latest_packagist "${_COMMERCE_DISTPKG}")"
