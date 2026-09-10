@@ -1519,7 +1519,7 @@ do_check() {
   command -v curl >/dev/null 2>&1 || _die "curl not found (needed for version check)"
   _info "Latest release per distro from the authoritative source - drupal.org release feed"
   _info "(GitHub for farmOS; commerce_kickstart has no drupal.org stable, so its profile pkg):"
-  _check_row "farm"     "$(_latest_github "${_FARM_REPO}")"
+  _check_row "farm"     "$(_resolve_farm_tag)"
   _check_row "backdrop" "$(_latest_github "${_BACKDROP_REPO}")"
   _check_row "bee"      "$(_latest_git_tag "${_BEE_REPO}")"
   _check_row "bd-drush" "$(_latest_git_tag "${_BDEXT_REPO}")"
