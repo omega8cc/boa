@@ -2078,10 +2078,10 @@ _init_setup() {
           _UP_OCTOPUS_AGAIN=YES
         fi
         if [ "${_UP_OCTOPUS_AGAIN}" = "YES" ]; then
-          echo "Octopus LE setup status: NOT READY!"
+          echo "Octopus LE setup status: NOT READY!" | tee -a "${_UP_OCTOPUS_LOG}"
           echo "Now waiting 5 minutes before trying again, please wait..."
           sleep 300
-          echo "Launching another octopus upgrade to fix LE..."
+          echo "Launching another octopus upgrade to fix LE..." | tee -a "${_UP_OCTOPUS_LOG}"
           _UP_OCTOPUS_AGAIN_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-again-octopus-${_NOW}.log"
           /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_AGAIN_LOG}
           wait
@@ -2099,7 +2099,7 @@ _init_setup() {
           if [ -e "${_leCrtPath}/fullchain.pem" ] \
             || [ -e "${_leCrtPath}/cert.pem" ] \
             || [ -e "${_lePxyPath}" ]; then
-            echo "Octopus LE setup status: OK!"
+            echo "Octopus LE setup status: OK!" | tee -a "${_UP_OCTOPUS_AGAIN_LOG}"
             echo
             echo "You can generate one-time login link now:"
             echo
@@ -2107,13 +2107,13 @@ _init_setup() {
             echo
             echo "Enjoy!"
           else
-            echo "Octopus LE setup status: STILL NOT READY!"
+            echo "Octopus LE setup status: STILL NOT READY!" | tee -a "${_UP_OCTOPUS_AGAIN_LOG}"
             echo "Please run another upgrade with:"
             echo "  octopus up-${_tRee} ${_usEr} force"
             echo "Bye!"
           fi
         else
-          echo "Octopus LE setup status: READY!"
+          echo "Octopus LE setup status: READY!" | tee -a "${_UP_OCTOPUS_LOG}"
           echo
           echo "You can generate one-time login link now:"
           echo
