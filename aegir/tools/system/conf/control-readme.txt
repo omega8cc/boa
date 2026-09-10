@@ -81,7 +81,7 @@ Platform symbols:
     CMS — Drupal CMS
     LGV — LocalGov
     THR — Thunder
-    VBX — Varbase 10
+    VBX — Varbase 11
 
   Drupal 11.3
     DE3 — Drupal 11.3 prod/stage/dev
