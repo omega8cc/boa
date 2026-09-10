@@ -77,6 +77,8 @@ This file, if it exists and contains a list of symbols used to define supported 
 
 **IMPORTANT**: If used, it will replace/override the value defined on initial instance install and all previous upgrades. It takes effect on every future Octopus instance upgrade, which means that you will miss all newly added distributions if they are not listed in this control file.
 
+**NOTE**: The `_PLATFORMS_LIST` value in `/root/.${_USER}.octopus.cnf` is consumed by one pass: every Octopus install or upgrade resets it to `none` after reading it, so a list written there steers only the next pass. This control file is the persistent per-instance list, applied on every future upgrade until it is removed.
+
 ## Supported Values
 
 ### Drupal 11.4
