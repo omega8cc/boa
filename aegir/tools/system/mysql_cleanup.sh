@@ -93,7 +93,7 @@ _manage_single_lock() {
 }
 _manage_single_lock
 
-_IS_SQLBACKUP_RUNNING=$(pgrep -f mysql_backup.sh)
+_IS_SQLBACKUP_RUNNING=$(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)')
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   echo "Ooops, another mysql procedure/backup is running at the moment"
   exit 0

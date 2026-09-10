@@ -121,7 +121,7 @@ _replica_role_gate() {
 }
 _replica_role_gate
 
-_IS_SQLBACKUP_RUNNING=$(pgrep -f mysql_cluster_backup.sh)
+_IS_SQLBACKUP_RUNNING=$(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cluster_backup\.sh( |$)')
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi
