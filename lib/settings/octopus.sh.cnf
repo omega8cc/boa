@@ -146,7 +146,7 @@ _PHP_CLI_VERSION=8.4
 ###
 ### IMPORTANT: Supported Drupal core versions and distributions have different
 ### PHP versions requirements, while not all PHP versions out of currently
-### supported ten versions are installed by default.
+### supported twelve versions are installed by default.
 ###
 ### Ensure that you have corresponding PHP versions installed with barracuda
 ### before attempting to install older Drupal versions and distributions.
