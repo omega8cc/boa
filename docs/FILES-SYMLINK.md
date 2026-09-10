@@ -345,6 +345,26 @@ echo 5242880 > /data/conf/native_files_archive_alert_kb.cnf
 Remove the file to restore the 1 GiB default. This controls only the *alert*; it
 never moves or deletes anything.
 
+### Pruning the archived store by hand
+
+Nothing prunes `.archived/` on its own: an archived store is a deleted or renamed
+site's last copy, and how long to keep it is the operator's call. The `boa` tool
+shows the pile and removes what you name, per Octopus instance or box-wide:
+
+```bash
+boa archived list o1            # every entry of o1: its stamp, age in days, the site(s) inside, size
+boa archived list all           # the same for every instance, with a total per instance
+boa archived prune o1 30        # remove o1's entries older than 30 days, listing each
+boa archived prune all 90       # box-wide, older than 90 days
+```
+
+The age is read from the entry's own stamp (`.archived/<UTC stamp>-<pid>/`), not
+from file times, so a store moved around keeps its true age. `prune` needs the age
+in days (at least one), removes only entries under `static/files/.archived/` that
+carry the stamp shape, prints each one it removes with the site names inside, and
+refuses an unknown instance or a malformed age with nothing touched. `list` is the
+dry run. Run it from a root shell; it never runs from the nightly.
+
 ### Disabling deleted-site auto-archiving
 
 The Delete task archives a deleted site's store into `.archived/` at once, a migrate

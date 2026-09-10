@@ -8,8 +8,9 @@
 ;;  This is a platform level INI file template which can be used to modify
 ;;  default BOA system behaviour for all sites hosted on this platform.
 ;;
-;;  Copy this file as boa_platform_control.ini into sites/all/modules directory,
-;;  then uncomment lines for any settings you want to modify, to make it active.
+;;  BOA seeds this file as boa_platform_control.ini into the sites/all/modules directory
+;;  on its own (and re-creates it when missing); in that live copy uncomment the
+;;  lines for any settings you want to modify, to make them active.
 ;;  All settings are initially listed with system defaults, for reference.
 ;;
 ;;  Note that it takes ~60 seconds to see any modification results in action

@@ -2644,6 +2644,10 @@ verb_peer() {
   # the account-scoped state dir every other target verb uses.
   local _scope="peer-${_TARGET:-${_SOURCE_IP:-any}}"
   if [[ "$(_box_class)" = "boa" ]]; then
+    # the argument gate comes BEFORE the state dir: a refused invocation
+    # (a bare 'peer', a typo) must leave nothing behind, like every source
+    # verb's class gate does
+    [[ -n "${_SOURCE_IP}" ]] || _die "peer on a BOA box needs --source <ip>"
     _STATE_DIR=/root/.a2b-peer
     mkdir -p "${_STATE_DIR}/state"
     chmod 700 "${_STATE_DIR}" "${_STATE_DIR}/state"
