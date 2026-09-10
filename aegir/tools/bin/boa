@@ -3457,8 +3457,30 @@ _octopus_cleanup() {
 # it on its own: an entry is a deleted or renamed site's last copy, and how
 # long to keep it is the operator's call, made here. The age is read from the
 # entry's own stamp, never from file times (a moved store keeps them).
-_archived_dir() {
-  echo "/data/disk/${1}/static/files/.archived"
+# Root runs the removal, so nothing here follows a link: the tenant owns
+# static/ and can put a symlink of their choosing at static/files, so the
+# store is admitted only when it resolves under the account or under /mnt (a
+# relocated store), the gate the nightly's backup relocation applies; entries
+# are enumerated as real directories, used bare (a trailing slash makes rm
+# and chattr walk INTO a link's target), and a link is left alone -- nothing
+# of BOA's ever makes one there.
+_archived_store() {
+  # $1 = oN; prints the admissible store's .archived path; 2 = no store yet
+  local _u="$1" _acct _stat _d
+  _acct=$(realpath -e -- "/data/disk/${_u}" 2> /dev/null) || return 1
+  _stat=$(realpath -e -- "/data/disk/${_u}/static/files" 2> /dev/null) || return 2
+  case "${_stat}/" in
+    "${_acct}"/*|/mnt/*) ;;
+    *) echo "OOPS.. ${_u}'s static/files resolves to ${_stat}, outside the account and /mnt: left alone" >&2; return 1 ;;
+  esac
+  _d="${_stat}/.archived"
+  [ -L "${_d}" ] && { echo "OOPS.. ${_u}'s .archived is a symlink: left alone" >&2; return 1; }
+  [ -d "${_d}" ] || return 2
+  echo "${_d}"
+}
+_archived_entries() {
+  # $1 = the store; its real directories only, bare paths, NUL-separated
+  find "$1" -mindepth 1 -maxdepth 1 -type d -print0 2> /dev/null | sort -z
 }
 _archived_age_days() {
   # $1 = an entry name, YYYYMMDDTHHMMSSZ-<pid>; prints its age in whole days
@@ -3468,55 +3490,65 @@ _archived_age_days() {
   echo $(( ($(date -u +%s) - _t) / 86400 ))
 }
 _archived_users() {
-  # $1 = oN or all; prints the instances to act on; fails on an unknown one
-  local _u
-  if [ "${1}" = "all" ]; then
-    for _u in /data/disk/o*; do
-      [ -d "${_u}/static/files" ] && basename "${_u}"
+  # $1 = oN or all; prints the instances to act on, one per line
+  local _u _p _b
+  _u=$(echo -n "${1}" | tr A-Z a-z)
+  _u="${_u//[^a-z0-9]/}"
+  if [ "${_u}" = "all" ]; then
+    for _p in /data/disk/o*; do
+      _b=$(basename "${_p}")
+      [[ "${_b}" =~ ^o[0-9]+$ ]] && [ -d "${_p}" ] && [ ! -L "${_p}" ] && echo "${_b}"
     done
     return 0
   fi
-  _u="${1//[^a-z0-9]/}"
-  [[ "${_u}" =~ ^o[0-9]+$ ]] && [ -d "/data/disk/${_u}/static/files" ] || return 1
+  [[ "${_u}" =~ ^o[0-9]+$ ]] && [ -d "/data/disk/${_u}" ] && [ ! -L "/data/disk/${_u}" ] || return 1
   echo "${_u}"
 }
 _archived_list_user() {
-  local _u="$1" _d _e _n _age _sites _kb _tot=0 _cnt=0
-  _d=$(_archived_dir "${_u}")
-  echo "${_u}: $(ls "${_d}" 2> /dev/null | wc -l | tr -d ' ') entries under ${_d}"
-  for _e in "${_d}"/*/; do
-    [ -d "${_e}" ] || continue
+  local _u="$1" _d _e _n _age _sites _kb _tot=0 _cnt=0 _links _rc
+  _d=$(_archived_store "${_u}"); _rc=$?
+  if [ "${_rc}" -eq 2 ]; then echo "${_u}: no archived store yet"; return 0; fi
+  [ "${_rc}" -eq 0 ] || return 0
+  echo "${_u}: $(find "${_d}" -mindepth 1 -maxdepth 1 -type d 2> /dev/null | wc -l | tr -d ' ') entries under ${_d}"
+  while IFS= read -r -d '' _e; do
     _n=$(basename "${_e}")
     if ! _age=$(_archived_age_days "${_n}"); then
       echo "  ${_n}: not a stamp, left alone"
       continue
     fi
-    _sites=$(ls "${_e}" 2> /dev/null | tr '\n' ' ')
-    _kb=$(du -sk "${_e}" 2> /dev/null | cut -f1)
+    _sites=$(find "${_e}" -mindepth 1 -maxdepth 1 -printf '%f ' 2> /dev/null)
+    _kb=$(du -sk -- "${_e}" 2> /dev/null | cut -f1)
     _tot=$(( _tot + ${_kb:-0} )); _cnt=$(( _cnt + 1 ))
     printf "  %s  %4s days  %9s KB  %s\n" "${_n}" "${_age}" "${_kb:-0}" "${_sites}"
-  done
-  echo "  ${_cnt} stamped entries, $(( _tot / 1024 )) MB"
+  done < <(_archived_entries "${_d}")
+  _links=$(find "${_d}" -mindepth 1 -maxdepth 1 -type l 2> /dev/null | wc -l | tr -d ' ')
+  [ "${_links}" -gt 0 ] && echo "  ${_links} symlink(s) at the entry level, left alone: nothing of BOA's makes one there"
+  echo "  ${_cnt} stamped entries, $(( _tot / 1024 )) MB, each a deleted or renamed site's last copy"
 }
 _archived_prune_user() {
-  local _u="$1" _days="$2" _d _e _n _age _sites _kb _tot=0 _cnt=0
-  _d=$(_archived_dir "${_u}")
-  for _e in "${_d}"/*/; do
-    [ -d "${_e}" ] || continue
+  local _u="$1" _days="$2" _d _e _n _age _sites _kb _tot=0 _cnt=0 _rc
+  _d=$(_archived_store "${_u}"); _rc=$?
+  if [ "${_rc}" -eq 2 ]; then echo "${_u}: no archived store yet"; return 0; fi
+  [ "${_rc}" -eq 0 ] || return 0
+  while IFS= read -r -d '' _e; do
     _n=$(basename "${_e}")
     _age=$(_archived_age_days "${_n}") || continue
     [ "${_age}" -gt "${_days}" ] || continue
-    _sites=$(ls "${_e}" 2> /dev/null | tr '\n' ' ')
-    _kb=$(du -sk "${_e}" 2> /dev/null | cut -f1)
-    chattr -R -i "${_e}" &> /dev/null
-    if rm -rf "${_e}" && [ ! -e "${_e}" ]; then
+    [ -L "${_e}" ] && continue
+    _sites=$(find "${_e}" -mindepth 1 -maxdepth 1 -printf '%f ' 2> /dev/null)
+    _kb=$(du -sk -- "${_e}" 2> /dev/null | cut -f1)
+    chattr -R -i -- "${_e}" &> /dev/null
+    rm -rf -- "${_e}"; _rc=$?
+    if [ ! -e "${_e}" ] && [ ! -L "${_e}" ]; then
       echo "  removed ${_n} (${_age} days, ${_kb:-0} KB): ${_sites}"
       _cnt=$(( _cnt + 1 )); _tot=$(( _tot + ${_kb:-0} ))
+    elif [ "${_rc}" -ne 0 ]; then
+      echo "  partially removed ${_n}: rm failed inside it, the tree is incomplete, inspect ${_e}"
     else
       echo "  could not remove ${_n}, left as is"
     fi
-  done
-  echo "${_u}: ${_cnt} entries older than ${_days} days removed, $(( _tot / 1024 )) MB freed, $(ls "${_d}" 2> /dev/null | wc -l | tr -d ' ') left"
+  done < <(_archived_entries "${_d}")
+  echo "${_u}: ${_cnt} entries older than ${_days} days removed, $(( _tot / 1024 )) MB freed, $(find "${_d}" -mindepth 1 -maxdepth 1 -type d 2> /dev/null | wc -l | tr -d ' ') left"
 }
 _octopus_archived() {
   local _u _users
@@ -3531,7 +3563,7 @@ _octopus_archived() {
     exit 1
   fi
   if [ -z "${_users}" ]; then
-    echo "OOPS.. no Octopus instance with a static store here, nothing to do"
+    echo "OOPS.. no Octopus instance here, nothing to do"
     echo
     exit 1
   fi
@@ -3542,14 +3574,15 @@ _octopus_archived() {
       exit 1
     fi
   fi
-  for _u in ${_users}; do
+  while read -r _u; do
+    [ -n "${_u}" ] || continue
     if [ "${_aCtn}" = "list" ]; then
       _archived_list_user "${_u}"
     else
       _archived_prune_user "${_u}" "${_dAys}"
     fi
     echo
-  done
+  done <<< "${_users}"
   exit 0
 }
 
@@ -3698,6 +3731,7 @@ _if_display_help() {
       cleanup <------ (detect|purge) cancelled Octopus instances files (no dbs)
       suspend <------ turn off web serving on an Octopus instance (503)
       unsuspend <---- restore web serving on a suspended Octopus instance
+      archived <----- (list|prune) archived stores of deleted or renamed sites (prune REMOVES them)
       reboot <------- run accelerated system reboot
 
     See docs/INSTALL.md for more details.
