@@ -24,6 +24,9 @@ _check_root
 : "${_CRON_COOLDOWN_SECS:=30}"
 : "${_POSTFIX_COOLDOWN_SECS:=30}"
 : "${_LFD_COOLDOWN_SECS:=30}"
+# A csf disabled by csf -x is re-enabled once its disable marker is older
+# than this and no BOA pass is in flight (see _lfd_health_check_fix).
+: "${_CSF_DISABLE_GRACE_SECS:=600}"
 
 ###
 ### Pacing for the OOM response. Sanitised where used; the flap knobs are only
@@ -149,7 +152,7 @@ _incident_email_report() {
 
 _wkhtmltopdf_php_cli_oom_kill() {
   echo "$(date) OOM $1 wkhtmltopdf detected" >> ${_pthOml}
-  pkill -9 -f wkhtmltopdf
+  pkill -9 -x wkhtmltopdf
   echo "$(date) OOM wkhtmltopdf killed" >> ${_pthOml}
   # No killall sleep here: a sleeping process holds almost no memory, and the
   # sleeps on a BOA box belong to the monitors themselves -- killing them just
@@ -284,7 +287,7 @@ _system_oom_detection() {
     done
     _oom_kill_top_offender "RAM ${_pct_free}pct-free sustained"
   elif [ "${_pct_free}" -le 10 ]; then
-    _CNT=$(pgrep -fc wkhtmltopdf)
+    _CNT=$(pgrep -xc wkhtmltopdf)
     if (( _CNT > 2 )); then
       _wkhtmltopdf_php_cli_oom_kill "RAM ${_pct_free}pct-free"
     fi
@@ -390,11 +393,14 @@ _if_fix_dhcp() {
 }
 
 _cron_duplicate_instances_detection() {
-  _CNT=$(pgrep -fc /usr/sbin/cron)
+  # Daemons only: a command line that IS /usr/sbin/cron (with or without
+  # arguments), never one that mentions the path further along and never
+  # cron's own job children, which carry the mixed-case /usr/sbin/CRON.
+  _CNT=$(pgrep -fc '^/usr/sbin/cron( |$)')
   if (( _CNT > 1 )); then
     # Double-check after a short grace to avoid flapping
     sleep 3
-    _CNT2=$(pgrep -fc /usr/sbin/cron)
+    _CNT2=$(pgrep -fc '^/usr/sbin/cron( |$)')
     if (( _CNT2 > 1 )); then
       _cd="/run/cron-monitor.cooldown"
       _now=$(date +%s)
@@ -437,9 +443,9 @@ _syslog_giant_log_detection() {
 }
 
 _gpg_too_many_instances_detection() {
-  _CNT=$(pgrep -fc gpg-agent)
+  _CNT=$(pgrep -xc gpg-agent)
   if (( _CNT > 5 )); then
-    pkill -9 -f gpg-agent
+    pkill -9 -x gpg-agent
     _thisErrLog="$(date) Too many gpg-agent processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many gpg-agent processes killed (count=${_CNT})"
@@ -448,9 +454,9 @@ _gpg_too_many_instances_detection() {
 }
 
 _dirmngr_too_many_instances_detection() {
-  _CNT=$(pgrep -fc dirmngr)
+  _CNT=$(pgrep -xc dirmngr)
   if (( _CNT > 5 )); then
-    pkill -9 -f dirmngr
+    pkill -9 -x dirmngr
     _thisErrLog="$(date) Too many dirmngr processes killed (count=${_CNT})"
     echo ${_thisErrLog} >> ${_pthOml}
     _incident_email_report "Too many dirmngr processes killed (count=${_CNT})"
@@ -477,10 +483,9 @@ _ftpd_health_check_fix() {
   _ftpd_restarted=NO
   if [ -x "/usr/local/sbin/pure-ftpd" ] \
     || [ -x "/usr/local/sbin/pure-config.pl" ]; then
-    if ! pgrep -f pure-ftpd \
-      || [ ! -e "/run/pure-ftpd.pid" ]; then
+    if ! _daemon_alive "${_ftpd_pid}" pure-ftpd; then
       if [ -e "${_ftpd_conf}" ]; then
-        pkill -9 -f pure-ftpd || true
+        pkill -9 -x pure-ftpd || true
         if [ -x "${_ftpd_init}" ]; then
           ${_ftpd_init} ${_ftpd_conf}
           _ftpd_restarted=YES
@@ -501,12 +506,10 @@ _ftpd_health_check_fix() {
 
 _postfix_health_check_fix() {
   if [ -x "/etc/init.d/postfix" ]; then
-    if ! pgrep -f /usr/lib/postfix \
-      || [ ! -e "/var/spool/postfix/pid/master.pid" ]; then
+    if ! _daemon_alive /var/spool/postfix/pid/master.pid master; then
       # Double-check after a short grace
       sleep 2
-      if ! pgrep -f /usr/lib/postfix \
-        || [ ! -e "/var/spool/postfix/pid/master.pid" ]; then
+      if ! _daemon_alive /var/spool/postfix/pid/master.pid master; then
         _cd="/run/postfix-monitor.cooldown"
         _now=$(date +%s)
         if [ -s "${_cd}" ]; then
@@ -530,8 +533,7 @@ _postfix_health_check_fix() {
 
 _vnstat_health_check_fix() {
   if [ -x "/etc/init.d/vnstat" ] && [ ! -e "/run/vnstat.pid" ]; then
-    if ! pgrep -f /usr/sbin/vnstatd \
-      || [ ! -e "/run/vnstat/vnstat.pid" ]; then
+    if ! _daemon_alive /run/vnstat/vnstat.pid vnstatd; then
       service vnstat restart
       wait
       _thisErrLog="$(date) VNStat Monitor was down, restarted"
@@ -542,10 +544,40 @@ _vnstat_health_check_fix() {
   fi
 }
 
+# lfd is up when the pid its pidfile names is alive AND is lfd -- the daemon
+# titles itself "lfd - <state>". The former process-name test read any
+# process with "lfd" on its command line (a `tail -f lfd.log`, an editor on
+# lfd.conf, a test script named after it) as the live daemon and skipped the
+# start while a stale pidfile sat there after a kill; the pidfile is what
+# csf itself maintains and what the start verification below already trusted.
+_lfd_alive() {
+  local _p
+  [ -s "/run/lfd.pid" ] || return 1
+  _p=$(tr -dc '0-9' < /run/lfd.pid)
+  [ -n "${_p}" ] || return 1
+  kill -0 "${_p}" 2>/dev/null || return 1
+  grep -aq "lfd" "/proc/${_p}/cmdline" 2>/dev/null
+}
+
+# Every other daemon here the same way: alive when the pid its pidfile names
+# is running AND carries the daemon's process name (the kernel's comm). The
+# former process-name test read any command line mentioning the path -- an
+# editor, a grep, an ssh -c -- as the live daemon and skipped the start for
+# as long as the mention lived; a stale pidfile after a kill made that
+# permanent. The pidfile and the name are what each init script maintains.
+#   $1 = pidfile, $2 = process name
+_daemon_alive() {
+  local _p
+  [ -s "${1}" ] || return 1
+  _p=$(tr -dc '0-9' < "${1}")
+  [ -n "${_p}" ] || return 1
+  kill -0 "${_p}" 2>/dev/null || return 1
+  [ "$(cat "/proc/${_p}/comm" 2>/dev/null)" = "${2}" ]
+}
+
 _lfd_health_check_fix() {
   if [ -x "/etc/init.d/lfd" ]; then
-    if ! pgrep -f lfd >/dev/null 2>&1 \
-      || [ ! -e "/run/lfd.pid" ]; then
+    if ! _lfd_alive; then
       _cd="/run/lfd-monitor.cooldown"
       _now=$(date +%s)
       if [ -s "${_cd}" ]; then
@@ -555,15 +587,62 @@ _lfd_health_check_fix() {
           return 0
         fi
       fi
+      # A csf disabled with csf -x (its /etc/csf/csf.disable marker) refuses
+      # every lfd start, so the firewall must be re-enabled first or this
+      # healer starts nothing for as long as the marker lives. A box is never
+      # left without its firewall, whoever disabled it (Adam's ruling,
+      # 2026-09-09, reversing the 07-26 review that dropped the csf -e for
+      # the operator's sake): a marker older than the grace is re-enabled.
+      # Never while a BOA pass is in flight -- barracuda brackets its own
+      # csf -x / csf -e around the iptables work and would be fought by a
+      # healer -- and never inside the grace, which is what an operator gets
+      # for a hands-on maintenance window before the box protects itself.
+      _csfDisabledFor=""
+      if [ -e "/etc/csf/csf.disable" ]; then
+        if [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ]; then
+          return 0
+        fi
+        _dTs=$(stat -c %Y /etc/csf/csf.disable 2>/dev/null | tr -dc '0-9')
+        [ -n "${_dTs}" ] || _dTs="${_now}"
+        _csfDisabledFor=$((_now - _dTs))
+        if [ "${_csfDisabledFor}" -lt "${_CSF_DISABLE_GRACE_SECS}" ]; then
+          return 0
+        fi
+        csf -e &> /dev/null
+      fi
       service lfd start
-      # No csf -e here: it re-enabled the firewall even when an operator had
-      # deliberately disabled it with csf -x for maintenance. Starting lfd is
-      # this healer's job; the firewall's enablement state is the operator's.
       # Set cooldown timestamp after attempting recovery
       date +%s > "${_cd}"
-      _thisErrLog="$(date) LFD Monitor was down, started"
-      echo ${_thisErrLog} >> ${_pthOml}
-      _incident_email_report "LFD Monitor was down, started"
+      # Assert the outcome, not the init script's exit code: a disabled csf
+      # answers "csf and lfd have been disabled" and exits 0, and this log
+      # used to claim a start that never happened on every pass.
+      _lfdUp=NO
+      for _i in 1 2 3 4 5; do
+        if _lfd_alive; then
+          _lfdUp=YES
+          break
+        fi
+        sleep 1
+      done
+      if [ -n "${_csfDisabledFor}" ]; then
+        if [ "${_lfdUp}" = "YES" ] && [ ! -e "/etc/csf/csf.disable" ]; then
+          _thisErrLog="$(date) CSF firewall was disabled for ${_csfDisabledFor}s, re-enabled; LFD started"
+          echo ${_thisErrLog} >> ${_pthOml}
+          _incident_email_report "CSF firewall was disabled for ${_csfDisabledFor}s, re-enabled; LFD started" ALERT csf-disabled
+        else
+          _thisErrLog="$(date) CSF firewall re-enable FAILED after ${_csfDisabledFor}s disabled (marker present: $([ -e /etc/csf/csf.disable ] && echo yes || echo no), lfd up: ${_lfdUp})"
+          echo ${_thisErrLog} >> ${_pthOml}
+          _incident_email_report "CSF firewall re-enable FAILED, box has no firewall" ALERT csf-disabled
+        fi
+      elif [ "${_lfdUp}" = "YES" ]; then
+        _thisErrLog="$(date) LFD Monitor was down, started"
+        echo ${_thisErrLog} >> ${_pthOml}
+        _incident_email_report "LFD Monitor was down, started"
+      else
+        _thisErrLog="$(date) LFD Monitor was down, start FAILED"
+        echo ${_thisErrLog} >> ${_pthOml}
+        _incident_email_report "LFD Monitor was down, start FAILED" ALERT
+      fi
       echo >> ${_pthOml}
     fi
   fi
@@ -573,7 +652,9 @@ _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=10 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt 0 ]; then
-    pkill -9 -f /usr/sbin/sshd || true
+    # the listener only: its title starts "sshd: /usr/sbin/sshd" (a plain
+    # "/usr/sbin/sshd" on older releases); sessions are "sshd: user@pts"
+    pkill -9 -f '^(sshd: )?/usr/sbin/sshd' || true
     service ssh start
     wait
     _thisErrLog="$(date) SSHD BIND PORT error, service will be restarted"
@@ -585,8 +666,7 @@ _if_fix_locked_sshd() {
 
 _sshd_health_check_fix() {
   if [ -x "/etc/init.d/ssh" ]; then
-    if ! pgrep -f /usr/sbin/sshd \
-      || [ ! -e "/run/sshd.pid" ]; then
+    if ! _daemon_alive /run/sshd.pid sshd; then
       service ssh start
       wait
       _thisErrLog="$(date) SSHD Server was down, started"
@@ -617,9 +697,8 @@ _clamav_health_check_fix() {
     && [ -e "${_clamd_service}" ] \
     && [ -e "${_freshclam_service}" ]; then
     if [ -x "/etc/init.d/clamav-daemon" ]; then
-      if ! pgrep -f /usr/sbin/clamd \
-        || [ ! -e "/run/clamav/clamd.pid" ]; then
-        pkill -9 -f /usr/sbin/clamd || true
+      if ! _daemon_alive /run/clamav/clamd.pid clamd; then
+        pkill -9 -x clamd || true
         service clamav-daemon start
         wait
         sleep 5
@@ -630,9 +709,8 @@ _clamav_health_check_fix() {
       fi
     fi
     if [ -x "/etc/init.d/clamav-freshclam" ]; then
-      if ! pgrep -f /usr/bin/freshclam \
-        || [ ! -e "/run/clamav/freshclam.pid" ]; then
-        pkill -9 -f /usr/bin/freshclam || true
+      if ! _daemon_alive /run/clamav/freshclam.pid freshclam; then
+        pkill -9 -x freshclam || true
         service clamav-freshclam start
         wait
         sleep 15
@@ -652,9 +730,9 @@ _rsyslog_health_check_fix() {
   # remedy is the init script, not a kill; a lone stale pidfile gets the
   # same graceful restart, which rewrites it.
   if [ -x "/etc/init.d/rsyslog" ]; then
-    if ! pgrep -f /usr/sbin/rsyslogd >/dev/null 2>&1; then
+    if ! pgrep -x rsyslogd >/dev/null 2>&1; then
       sleep 2
-      if ! pgrep -f /usr/sbin/rsyslogd >/dev/null 2>&1; then
+      if ! pgrep -x rsyslogd >/dev/null 2>&1; then
         service rsyslog restart
         _thisErrLog="$(date) Rsyslog was down, restarted"
         echo "${_thisErrLog}" >> ${_pthOml}

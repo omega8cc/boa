@@ -149,7 +149,10 @@ Daedalus):
 3. Create `/root/.stackbuild.cnf` (an empty file is enough): its presence
    is what marks a build box -- the serial-gated fetch in `_update_agents`
    deploys `stackbuild` (and `staticbuild`) to `/opt/local/bin/` only on
-   boxes carrying it. Confirm the box serves (or will serve) the mirror
+   boxes carrying it, and a box without it carries neither: the same pass
+   removes both tools, their `/usr/local/bin` symlinks and their fetch
+   markers, so removing the file retires a builder on its next agent pass
+   and re-creating it re-deploys both. Confirm the box serves (or will serve) the mirror
    `/dev/` tree; set `_PUB_DIR` in the cnf if the auto-detection (keyed on
    the existing prebuilt packages under `/var/www`) does not apply yet on a
    fresh mirror.

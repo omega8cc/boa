@@ -3398,6 +3398,7 @@ _barracuda_cnf() {
     echo "_ORPHAN_FILES_REPORT=${_ORPHAN_FILES_REPORT}"           >> ${_barCnf}
     echo "_NIGHT_PARALLEL=${_NIGHT_PARALLEL}"                     >> ${_barCnf}
     echo "_NIGHT_MAX_PARALLEL=${_NIGHT_MAX_PARALLEL}"             >> ${_barCnf}
+    echo "_NIGHT_ACCOUNT_MAX=${_NIGHT_ACCOUNT_MAX}"               >> ${_barCnf}
     echo "_CLEAR_BOOST=${_CLEAR_BOOST}"                           >> ${_barCnf}
     echo "_LE_CLIENT_NOTIFY=${_LE_CLIENT_NOTIFY}"                 >> ${_barCnf}
     echo "_GHOST_CLIENT_NOTIFY=${_GHOST_CLIENT_NOTIFY}"           >> ${_barCnf}
@@ -4102,6 +4103,11 @@ _barracuda_cnf() {
     _NIGHT_MAX_PARALLEL_TEST=$(grep _NIGHT_MAX_PARALLEL ${_barCnf} 2>&1)
     if [[ ! "${_NIGHT_MAX_PARALLEL_TEST}" =~ "_NIGHT_MAX_PARALLEL" ]]; then
       echo "_NIGHT_MAX_PARALLEL=${_NIGHT_MAX_PARALLEL}" >> ${_barCnf}
+    fi
+
+    _NIGHT_ACCOUNT_MAX_TEST=$(grep _NIGHT_ACCOUNT_MAX ${_barCnf} 2>&1)
+    if [[ ! "${_NIGHT_ACCOUNT_MAX_TEST}" =~ "_NIGHT_ACCOUNT_MAX" ]]; then
+      echo "_NIGHT_ACCOUNT_MAX=${_NIGHT_ACCOUNT_MAX}" >> ${_barCnf}
     fi
 
     _CLEAR_BOOST_TEST=$(grep _CLEAR_BOOST ${_barCnf} 2>&1)
@@ -7446,7 +7452,18 @@ _strict_bin_permissions() {
     fi
   fi
 
-  cp -af ${_bldPth}/aegir/tools/bin/websh /opt/local/bin/websh
+  # websh doubles as /bin/sh: never overwrite it in place (a pass killed
+  # mid-copy would leave a truncated file the sentinel test still accepts);
+  # stage the copy beside it and rename, the way _fetch_versioned does.
+  if cp -af ${_bldPth}/aegir/tools/bin/websh /opt/local/bin/.websh.new; then
+    chmod 755 /opt/local/bin/.websh.new
+    chown root:root /opt/local/bin/.websh.new
+    mv -f /opt/local/bin/.websh.new /opt/local/bin/websh
+  else
+    rm -f /opt/local/bin/.websh.new
+  fi
+  # the mode and owner of the live file are re-asserted on every pass,
+  # copy or no copy, as before
   chmod 755 /opt/local/bin/websh
   chown root:root /opt/local/bin/websh
   chown root:root /etc/passwd*
@@ -7729,6 +7746,47 @@ _if_remove_apparmor() {
 
 #
 # Final cleanup.
+_web_tier_up_while_unarmed() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _web_tier_up_while_unarmed"
+  fi
+  # The auto-healing watchdogs stay dormant until autoupboa stamps
+  # /var/log/boa/reset_no_new_password.pid on its first quiet tick after a
+  # fresh install's chain, and the chain's last pass ends with the web tier
+  # down (move_sql only stops it, by design). Until the stamp nothing brings
+  # the tier back: one tick plus a minute, 3-15 min measured on fresh boxes.
+  # So a pass that ends on a box not armed yet does what the watchdogs would:
+  # webserver up, the sanctioned bring-up while healing is not active -- it
+  # restarts only what is down and honours the nginx replication-standby hold.
+  # Gated on the Aegir master AND its front vhost being in place, so nginx
+  # never answers before the hostmaster vhost exists (the Let's Encrypt
+  # challenge needs the vhost, not a 404).
+  local _hmUri=""
+  if [ -e "/var/log/boa/reset_no_new_password.pid" ] \
+    || [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
+    || [ ! -x "/opt/local/bin/webserver" ]; then
+    return 0
+  fi
+  _hmUri=$(grep -m1 "'uri'" /var/aegir/.drush/hm.alias.drushrc.php 2> /dev/null \
+    | cut -d"'" -f4)
+  if [ -z "${_hmUri}" ] \
+    || [ ! -e "/var/aegir/config/server_master/nginx/vhost.d/${_hmUri}" ]; then
+    return 0
+  fi
+  _msg "INFO: Auto-healing is not armed on this box yet, bringing the web tier up now"
+  _mrun "/opt/local/bin/webserver up"
+  # _mrun keeps the tool's output in the info log and returns 0 regardless,
+  # so the pass log itself names the outcome.
+  if [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ]; then
+    _msg "NOTE: Replication standby, Nginx stays held down by design"
+  elif [ -e "/run/nginx.pid" ] \
+    && pgrep -f 'nginx: master process' > /dev/null 2>&1; then
+    _msg "INFO: Nginx is up again"
+  else
+    _msg "NOTE: Nginx is still down after webserver up, please check its error log"
+  fi
+}
+
 _finale() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _finale"
@@ -7876,8 +7934,7 @@ _finale() {
     echo "iptables -t raw -A OUTPUT -p tcp --dport 21 -j CT --helper ftp" >> /etc/csf/csfpost.sh
     chmod 700 /etc/csf/csfpost.sh
     _mrun "service lfd stop"
-    pkill -9 -f ConfigServer
-    killall sleep &> /dev/null
+    _csf_kill_own
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
     _mrun "service clean-boa-env start"
@@ -7947,6 +8004,7 @@ _finale() {
       fi
     fi
   fi
+  _web_tier_up_while_unarmed
   _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
   if (( _CNT > 1 )); then
     pkill -f 'tee -a /var/backups/barracuda-'
@@ -11444,9 +11502,11 @@ _lshell_install_upgrade() {
       _usePip=/usr/local/bin/pip3
     fi
     _PIP_TEST=$(${_usePip} --version 2>&1)
-    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
+    # The minor of the interpreter pip runs on, read from pip's own version
+    # line: every 3.11+ interpreter is PEP 668 managed, not only the three
+    # that were once listed here. The agent arm in BOA.sh.txt asks the same way.
+    _PIP_PY_MINOR=$(echo "${_PIP_TEST}" | sed -n 's/.*(python 3\.\([0-9][0-9]*\)).*/\1/p' | head -n 1)
+    if [ -n "${_PIP_PY_MINOR}" ] && [ "${_PIP_PY_MINOR}" -ge 11 ] 2> /dev/null; then
       # PEP 668 (python 3.11+) refuses a system-wide pip upgrade without it, the
       # same way the lshell install line below already asks.
       _mrun "${_usePip} install --upgrade pip --break-system-packages --root-user-action ignore"
@@ -11468,9 +11528,8 @@ _lshell_install_upgrade() {
     # user out. Verify the result and say so when it did not land.
     cd /var/opt/lshell-${_LSHELL_VRN}
     _PIP_TEST=$(${_usePip} --version 2>&1)
-    if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
-      || [[ "${_PIP_TEST}" =~ "python 3.13" ]]; then
+    _PIP_PY_MINOR=$(echo "${_PIP_TEST}" | sed -n 's/.*(python 3\.\([0-9][0-9]*\)).*/\1/p' | head -n 1)
+    if [ -n "${_PIP_PY_MINOR}" ] && [ "${_PIP_PY_MINOR}" -ge 11 ] 2> /dev/null; then
       _mrun "${_usePip} install . --break-system-packages --root-user-action ignore"
     else
       _mrun "${_usePip} install . "

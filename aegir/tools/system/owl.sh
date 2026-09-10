@@ -202,6 +202,68 @@ _prepare_weblogx() {
   touch ${_ARCHLOGS}/unzip/.global.pid
 }
 
+### A fail-safe that only writes a log line is silence. Say it where the
+### operator looks: one dated line in /var/log/boa/nightly.incident.log and,
+### unless _INCIDENT_REPORT is OFF, one mail per subject per day to the
+### operator address the release notice below uses.
+_night_notice() {
+  local _key="$1" _subject="$2" _body="$3" _to _stamp
+  mkdir -p /var/log/boa
+  echo "$(date) NOTE: ${_body}" >> /var/log/boa/nightly.incident.log
+  case "${_INCIDENT_REPORT^^}" in
+    OFF|NO) return 0 ;;
+  esac
+  _stamp="/var/log/boa/nightly.notice.${_key}.$(date +%Y%m%d)"
+  [ -e "${_stamp}" ] && return 0
+  touch "${_stamp}"
+  find /var/log/boa -maxdepth 1 -name 'nightly.notice.*' -mtime +7 -delete 2>/dev/null
+  _to="${_MY_OCTO_EMAIL:-${_MY_EMAIL:-root}}"
+  _to="${_to//\\\@/@}"
+  if command -v s-nail > /dev/null 2>&1; then
+    printf ' %s\n\n ---\n This email has been sent by your BOA nightly maintenance (owl.sh)\n' "${_body}" \
+      | s-nail -s "${_subject}" "${_to}" > /dev/null 2>&1
+  fi
+}
+
+### An account pass that never ends would hold its fan-out slot (or the
+### serial loop) into the next night. Bound it, say so, move on: the whole
+### process group gets the signal, the account's night marker is released
+### (the ltd worker tests the marker's pid anyway), and the ltd worker
+### re-asserts the account's locks on its next tick. _NIGHT_ACCOUNT_MAX is
+### seconds in /root/.barracuda.cnf; 0 disables the bound; anything that is
+### not a whole number, or a non-zero value under five minutes, is ignored
+### for the default with a notice, never turned into a tiny bound. While the
+### pass runs, the nightly's own marker is kept fresh so clear.sh's age
+### sweep never removes it from under a live nightly.
+_night_account_run() {
+  local _usr="$1" _rc _max _job
+  _max="${_NIGHT_ACCOUNT_MAX:-21600}"
+  if [[ ! "${_max}" =~ ^[0-9]+$ ]] || { [ "${_max}" -gt 0 ] && [ "${_max}" -lt 300 ]; }; then
+    _night_notice "badknob" "BOA nightly on $(hostname -f): _NIGHT_ACCOUNT_MAX ignored" \
+      "_NIGHT_ACCOUNT_MAX='${_NIGHT_ACCOUNT_MAX}' is not a whole number of seconds (0 or at least 300); the default 21600 is used"
+    _max=21600
+  fi
+  timeout -k 120 "${_max}" bash /var/xdrago/night/10-account.sh "${_usr}" &
+  _job=$!
+  while kill -0 "${_job}" 2>/dev/null; do
+    touch /run/daily-fix.pid
+    sleep 30
+  done
+  wait "${_job}"
+  _rc=$?
+  if [ "${_rc}" = "124" ] || [ "${_rc}" = "137" ]; then
+    # timeout is its own process group leader: a helper the pass left hung
+    # (the reason it overran) survives the pass's own death, so end the
+    # group it started once timeout has returned.
+    kill -KILL -- "-${_job}" 2>/dev/null
+    _night_notice "bound-$(basename "${_usr}")" "BOA nightly on $(hostname -f): the pass for $(basename "${_usr}") was stopped" \
+      "the nightly pass for ${_usr} ran past ${_max} s and was stopped"
+    echo "NOTE: the nightly pass for ${_usr} ran past ${_max} s and was stopped"
+    rm -f "/run/night-account-$(basename "${_usr}").pid"
+  fi
+  return "${_rc}"
+}
+
 _daily_action() {
   if [ -n "${_ENABLE_GOACCESS}" ] && [ "${_ENABLE_GOACCESS}" = "YES" ]; then
     _prepare_weblogx
@@ -246,13 +308,13 @@ _daily_action() {
         done
         echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
         echo "Fan-out account ${_usEr} -- log: $(_acct_night_log "${_usEr}")"
-        bash /var/xdrago/night/10-account.sh "${_usEr}" \
+        _night_account_run "${_usEr}" \
           >> "$(_acct_night_log "${_usEr}")" 2>&1 &
       else
         if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
           echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
           echo "User ${_usEr} -- log: $(_acct_night_log "${_usEr}")"
-          bash /var/xdrago/night/10-account.sh "${_usEr}" \
+          _night_account_run "${_usEr}" \
             >> "$(_acct_night_log "${_usEr}")" 2>&1
         else
           echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
@@ -484,11 +546,32 @@ EOF
   fi
 fi
 #
-if [ -e "/run/daily-fix.pid" ]; then
+### One nightly at a time. The marker carries this run's pid: a marker whose
+### pid is gone, or no longer an owl.sh (pid reuse after a kill -9), is stale
+### and never blocks; a live previous nightly makes this start skip and say
+### so. clear.sh sweeps the marker by age; the account loop keeps it fresh
+### while the nightly is alive.
+_dailyPid=$(tr -dc '0-9' < /run/daily-fix.pid 2>/dev/null)
+if [ -n "${_dailyPid}" ] \
+  && kill -0 "${_dailyPid}" 2>/dev/null \
+  && grep -q "owl.sh" "/proc/${_dailyPid}/cmdline" 2>/dev/null; then
   touch /var/log/boa/wait-for-daily
+  _night_notice "overrun" "BOA nightly on $(hostname -f): the previous nightly is still running" \
+    "the previous nightly (pid ${_dailyPid}) is still running; this run is skipped"
   exit 1
 else
-  touch /run/daily-fix.pid
+  rm -f /run/daily-fix.pid
+  echo $$ > /run/daily-fix.pid
+  # An account marker whose pass was killed outright (no bound fired) is dead
+  # weight until the next reboot: its readers test the pid it carries, so
+  # sweep by that pid, never by age -- an unbounded pass may run for hours.
+  for _amk in /run/night-account-*.pid; do
+    [ -e "${_amk}" ] || continue
+    _amkPid=$(tr -dc '0-9' < "${_amk}" 2>/dev/null)
+    if [ -z "${_amkPid}" ] || ! kill -0 "${_amkPid}" 2>/dev/null; then
+      rm -f "${_amk}"
+    fi
+  done
   _MAILX_TEST=$(s-nail -V 2>&1)
   _if_hosted_sys
   if [ -z "${_PERMISSIONS_FIX}" ]; then

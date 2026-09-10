@@ -388,6 +388,47 @@ _add_ltd_group_if_not_exists() {
   fi
 }
 #
+# The account's Drush 8 ini carried an active open_basedir list for years and
+# nothing applied it, until websh started handing the file to the Drush 8 and
+# composer it launches (2026-09-08): with open_basedir set php runs without its
+# realpath cache and checks every file operation against every listed tree,
+# uncached -- a hostmaster bootstrap of three seconds took a hundred and the
+# per-minute queue runners loaded every box. open_basedir was never meant for
+# the CLI (lshell users are confined by their own measures; the FPM ini keeps
+# its list): the writers no longer set it, and this heals the files already on
+# disk, once each. The file and its .drush directory are +i and the worker
+# keeps them so: the edit is written into the existing inode (no rename, which
+# an immutable directory refuses), never through a link in either place, and
+# logged only when it took.
+_drush_ini_open_basedir_off() {
+  local _ini="${1}" _dir _imm=NO _tmp
+  [ -n "${_ini}" ] && [ -f "${_ini}" ] && [ ! -L "${_ini}" ] || return 0
+  _dir="${_ini%/*}"
+  [ -d "${_dir}" ] && [ ! -L "${_dir}" ] || return 0
+  grep -q "^open_basedir = " "${_ini}" 2> /dev/null || return 0
+  if lsattr -d "${_ini}" 2> /dev/null | cut -d' ' -f1 | grep -q "i"; then
+    _imm=YES
+    chattr -i "${_ini}" 2> /dev/null
+  fi
+  _tmp=$(mktemp /root/.drush-ini.XXXXXX 2> /dev/null) || return 0
+  if sed "s/^open_basedir = .*/;open_basedir =/" "${_ini}" > "${_tmp}" 2> /dev/null \
+    && cat "${_tmp}" > "${_ini}" 2> /dev/null; then
+    mkdir -p /var/log/boa 2> /dev/null
+    echo "$(date 2>&1) NOTE: open_basedir removed from ${_ini} (never for the CLI)" \
+      >> /var/log/boa/drush-ini.incident.log
+  fi
+  rm -f "${_tmp}"
+  [ "${_imm}" = "YES" ] && chattr +i "${_ini}" 2> /dev/null
+  return 0
+}
+# every account ini on the box, once per pass; a repaired file is silent after
+_drush_ini_open_basedir_sweep() {
+  local _i
+  for _i in /home/*/.drush/php.ini /data/disk/o*/.drush/php.ini /var/aegir/.drush/php.ini; do
+    _drush_ini_open_basedir_off "${_i}"
+  done
+}
+
 # Enable chattr.
 _enable_chattr() {
   _isTest="$1"
@@ -561,41 +602,12 @@ _enable_chattr() {
         _U_INI=56
       fi
       if [ -e "${_U_II}" ]; then
-        _INI="open_basedir = \".: \
-          /data/all:        \
-          /data/conf:       \
-          /data/disk/all:   \
-          /home/$1:         \
-          /opt/php56:       \
-          /opt/php70:       \
-          /opt/php71:       \
-          /opt/php72:       \
-          /opt/php73:       \
-          /opt/php74:       \
-          /opt/php80:       \
-          /opt/php81:       \
-          /opt/php82:       \
-          /opt/php83:       \
-          /opt/php84:       \
-          /opt/php85:       \
-          /opt/tika:        \
-          /opt/tika7:       \
-          /opt/tika8:       \
-          /opt/tika9:       \
-          /dev/urandom:     \
-          /opt/tools/drush: \
-          /opt/tools/bee:   \
-          /usr/bin:         \
-          /usr/local/bin:   \
-          ${_dscUsr}/.drush/usr: \
-          ${_dscUsr}/distro:     \
-          ${_dscUsr}/platforms:  \
-          ${_dscUsr}/static\""
-        _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
-        _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
-        _INI=${_INI//\//\\\/}
+        # open_basedir stays out of the CLI ini: it breaks Drush and turns the
+        # realpath cache off (every file operation checked against every listed
+        # tree, uncached); lshell users are confined by their own measures, and
+        # the FPM ini keeps its own list
         _QTP=${_U_TP//\//\\\/}
-        sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
+        sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      ${_U_II}
         wait
         sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
         wait
@@ -1910,40 +1922,13 @@ _php_cli_local_ini_update() {
       cp -af /opt/php56/lib/php.ini ${_U_II}
       _U_INI=56
     fi
-    _OPCD="/var/www/phpcache"
     if [ -e "${_U_II}" ]; then
-      _INI="open_basedir = \".: \
-        /data/all:           \
-        /data/conf:          \
-        /data/disk/all:      \
-        /opt/php56:          \
-        /opt/php70:          \
-        /opt/php71:          \
-        /opt/php72:          \
-        /opt/php73:          \
-        /opt/php74:          \
-        /opt/php80:          \
-        /opt/php81:          \
-        /opt/php82:          \
-        /opt/php83:          \
-        /opt/php84:          \
-        /opt/php85:          \
-        /opt/tika:           \
-        /opt/tika7:          \
-        /opt/tika8:          \
-        /opt/tika9:          \
-        /dev/urandom:        \
-        /opt/tmp/make_local: \
-        /opt/tools/drush:    \
-        ${_dscUsr}:          \
-        ${_OPCD}/${_USER}:   \
-        /usr/local/bin:      \
-        /usr/bin\""
-      _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
-      _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
-      _INI=${_INI//\//\\\/}
+      # open_basedir stays out of the CLI ini: it breaks Drush and turns the
+      # realpath cache off (every file operation checked against every listed
+      # tree, uncached); lshell users are confined by their own measures, and
+      # the FPM ini keeps its own list
       _QTP=${_U_TP//\//\\\/}
-      sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_U_II}
+      sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      ${_U_II}
       wait
       sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
       wait
@@ -2416,46 +2401,12 @@ _satellite_web_user_update() {
         fi
       fi
       if [ -e "${_T_II}" ]; then
-        _INI="open_basedir = \".: \
-          /data/all:      \
-          /data/conf:     \
-          /data/disk/all: \
-          /hdd:           \
-          /mnt:           \
-          /opt/php56:     \
-          /opt/php70:     \
-          /opt/php71:     \
-          /opt/php72:     \
-          /opt/php73:     \
-          /opt/php74:     \
-          /opt/php80:     \
-          /opt/php81:     \
-          /opt/php82:     \
-          /opt/php83:     \
-          /opt/php84:     \
-          /opt/php85:     \
-          /opt/tika:      \
-          /opt/tika7:     \
-          /opt/tika8:     \
-          /opt/tika9:     \
-          /dev/urandom:   \
-          /srv:           \
-          /usr/bin:       \
-          /usr/local/bin: \
-          /var/second/${_USER}:     \
-          ${_dscUsr}/aegir:          \
-          ${_dscUsr}/backup-exports: \
-          ${_dscUsr}/distro:         \
-          ${_dscUsr}/platforms:      \
-          ${_dscUsr}/static:         \
-          ${_T_HD}:                 \
-          ${_T_TP}:                 \
-          ${_T_TS}\""
-        _INI=$(echo "${_INI}" | sed "s/ //g" 2>&1)
-        _INI=$(echo "${_INI}" | sed "s/open_basedir=/open_basedir = /g" 2>&1)
-        _INI=${_INI//\//\\\/}
+        # open_basedir stays out of the CLI ini: it breaks Drush and turns the
+        # realpath cache off (every file operation checked against every listed
+        # tree, uncached); lshell users are confined by their own measures, and
+        # the FPM ini keeps its own list
         _QTP=${_T_TP//\//\\\/}
-        sed -i "s/.*open_basedir =.*/${_INI}/g"                              ${_T_II}
+        sed -i "s/.*open_basedir =.*/;open_basedir =/g"                              ${_T_II}
         wait
         sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_T_II}
         wait
@@ -3208,6 +3159,25 @@ _manage_site_drush_alias_mirror() {
 }
 #
 # Manage Primary Users.
+# provision parks the de-typed psr/log overlay of every Drupal 10+ unlock
+# (a clone, migrate or restore deploy, provision-dunlock) under the account's
+# ~/.tmp/psr-log-<date>-<rand> and touches the dir, since mv keeps the
+# overlay's old mtime. Nothing reads a stash back (the re-lock re-applies the
+# overlay from the account's Drush), so it goes after a week -- on EVERY run,
+# unlike the release-gated ~/.tmp sweep above it, which fires once per serial.
+# Older releases stashed the same dirs beside the site archives under
+# backups/; those are pruned by the same age so the pile ends everywhere.
+# Bare paths, -maxdepth 1 and -type d: a planted link is neither followed nor
+# matched (as at the sweep above).
+_prune_psr_log_stash() {
+  local _h="${1}"
+  [ -n "${_h}" ] && [ -d "${_h}" ] || return 0
+  find ${_h}/.tmp -mindepth 1 -maxdepth 1 -type d -name 'psr-log-*' \
+    -mtime +6 -exec rm -rf {} + &> /dev/null
+  find ${_h}/backups -mindepth 1 -maxdepth 1 -type d -name 'psr-log-*' \
+    -mtime +6 -exec rm -rf {} + &> /dev/null
+}
+
 _manage_user() {
   _repair_staged_homes
   for _pthParentUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
@@ -3344,6 +3314,7 @@ _manage_user() {
         [ ! -L "${_dscUsr}/.tmp" ] && chmod 02755 ${_dscUsr}/.tmp &> /dev/null
         echo OK > ${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid
       fi
+      _prune_psr_log_stash "${_dscUsr}"
       # ~/static is 02775 group `users` with no sticky bit, so any co-tenant on
       # the box can replace the `control` name. Strip a plant unconditionally:
       # gating this on a stamp INSIDE the link lets a target that already
@@ -3648,6 +3619,7 @@ else
   # the pid, not a bare touch: the nightly's per-account pass waits only on a
   # LIVE worker (every other reader tests existence and removes the file)
   echo $$ > /run/manage_ltd_users.pid
+  _prune_psr_log_stash "/var/aegir"
   _count_cpu
   _find_fast_mirror_early
   find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
@@ -3802,6 +3774,7 @@ else
   find /var/aegir/config/server_master \
     -type f -exec chmod 0600 {} \; &> /dev/null
   sleep 5
+  _drush_ini_open_basedir_sweep
   _standby_tenant_sweep
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   exit 0
