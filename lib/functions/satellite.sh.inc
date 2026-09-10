@@ -3141,11 +3141,22 @@ _provision_backend_dbpass_generate() {
   chown ${_USER}:${_ACCG:-users} ${_L_SYS}
   chmod 0600 ${_L_SYS}
 
+  ### The install path resolves the mode before it writes this file (FQDN
+  ### becomes the box's own name, PROXYSQL the local proxy address); this
+  ### path kept the raw literal, so after the first upgrade the file named a
+  ### host nothing can connect to. _THIS_DB_HOST itself stays as it is: the
+  ### blocks below still branch on the literal.
+  _OCT_DB_HOST_W="${_THIS_DB_HOST}"
+  if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+    _OCT_DB_HOST_W="${_hName}"
+  elif [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+    _OCT_DB_HOST_W=127.0.0.1
+  fi
   _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
   echo "<?php" > ${_L_SYS_PHP}
   echo "\$oct_db_user = \"${_USER}\";" >> ${_L_SYS_PHP}
   echo "\$oct_db_pass = \"${_ESC_PASS}\";" >> ${_L_SYS_PHP}
-  echo "\$oct_db_host = \"${_THIS_DB_HOST}\";" >> ${_L_SYS_PHP}
+  echo "\$oct_db_host = \"${_OCT_DB_HOST_W}\";" >> ${_L_SYS_PHP}
   echo "\$oct_db_port = \"${_THIS_DB_PORT}\";" >> ${_L_SYS_PHP}
   echo "\$oct_db_dirs = \"/data/disk/${_USER}/backups\";" >> ${_L_SYS_PHP}
   chown ${_USER}:${_ACCG:-users} ${_L_SYS_PHP}
