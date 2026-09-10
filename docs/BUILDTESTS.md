@@ -38,7 +38,7 @@ Distributions, published to `/var/www/static/distro`:
   opigno_lms-3.2.7-10.6.16
   social-13.1.0-10.6.16
   thunder-8.4.4-11.4.6
-  varbase-10.1.2-11.4.5
+  varbase-11.0.0-11.4.6
 ```
 
 Raw cores, published to `/var/www/static/core`, latest patch of each supported minor:
@@ -339,17 +339,19 @@ thunder    # composer create-project thunder/thunder-project thunder-8.4.4-11.4.
 ```sh
 varbase    # RE-ENABLED 2026-08-11: upstream fixed the template in July 2026 (core pinned
            # explicitly + committed lock), after a year of drift that made every fresh
-           # build uninstallable. Builds the stable 10 line; the 11.0 line went stable
-           # on 2026-09-08 but uses a different docroot (web/ instead of docroot/) - do
-           # not switch until the catalogue web_dir (AegirSetupC "VBX") moves with it.
-           # composer create-project Vardot/varbase-project:~10 varbase-VERSION-CORE --no-dev --no-interaction --no-install --no-scripts
+           # build uninstallable. Builds the 11 line since 2026-09-10 (stable upstream
+           # since 2026-09-08; web/ layout, the catalogue VBX web_dir moved with it);
+           # the 10 line's last build stays on the mirror for existing platforms.
+           # composer create-project Vardot/varbase-project:~11 varbase-VERSION-CORE --no-dev --no-interaction --no-install --no-scripts
            # cd ~/static/MONTH-DAY/varbase-VERSION-CORE
            # composer config --no-plugins allow-plugins true
            # composer update --no-install --no-scripts
-           # composer install --no-dev
+           # composer install --no-dev --ignore-platform-req=ext-pdo_pgsql
+           # (the lock pins drupal/ai_provider_amazeeio 1.4.2, which declares ext-pdo_pgsql;
+           # BOA's PHP has no PostgreSQL driver and the installer never enables the module)
            # name by vardot/varbase from the lock (the drupal.org release number)
-           # docroot is docroot/; each recipes/ dir needs a default/content subdir
-           # (the build creates them); builds under php84
+           # docroot is web/ from the 11 line (docroot/ on 10); each recipes/ dir needs a
+           # default/content subdir (the build creates them); builds under php84
 ```
 
 Vanilla cores, latest patch of each supported minor (full install, add drush, audit):
