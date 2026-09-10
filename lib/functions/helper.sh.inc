@@ -881,7 +881,7 @@ _mode_detection() {
   fi
   [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
   [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
-  pkill -9 -f systemd-udevd
+  pkill -9 -f '^[^ ]*systemd-udevd( |$)'
 
   if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _DPKG_CNF="confold"

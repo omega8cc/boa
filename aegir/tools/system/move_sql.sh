@@ -141,15 +141,15 @@ _stop_sql() {
       service "php${e}-fpm" force-quit &> /dev/null
     fi
   done
-  _IS_FPM_RUNNING=$(pgrep -f 'php-fpm: ')
+  _IS_FPM_RUNNING=$(pgrep -f '^php-fpm: ')
   _fpm_stop_wait=0
   until [ -z "${_IS_FPM_RUNNING}" ] || [ "${_fpm_stop_wait}" -ge 30 ]; do
     echo "Waiting for PHP-FPM graceful shutdown..."
     sleep 1
     _fpm_stop_wait=$(( _fpm_stop_wait + 1 ))
-    _IS_FPM_RUNNING=$(pgrep -f 'php-fpm: ')
+    _IS_FPM_RUNNING=$(pgrep -f '^php-fpm: ')
   done
-  pkill -9 -f php-fpm
+  pkill -9 -f '^php-fpm: '
   echo "PHP-FPM stopped"
 
   _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)

@@ -237,15 +237,15 @@ _if_sql_keyring_apt_update() {
         curl -fsSL ${_urlDev}/percona-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/percona.gpg
       fi
       chmod 644 /etc/apt/keyrings/percona.gpg
-      _CNT=$(pgrep -fc dirmngr)
+      _CNT=$(pgrep -fc '^[^ ]*dirmngr( |$)')
       if (( _CNT > 5 )); then
-        pkill -9 -f dirmngr
+        pkill -9 -f '^[^ ]*dirmngr( |$)'
         echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
           /var/log/boa/dirmngr-count.kill.log
       fi
-      _CNT=$(pgrep -fc gpg-agent)
+      _CNT=$(pgrep -fc '^[^ ]*gpg-agent( |$)')
       if (( _CNT > 5 )); then
-        pkill -9 -f gpg-agent
+        pkill -9 -f '^[^ ]*gpg-agent( |$)'
         echo "$(date) Too many gpg-agent processes killed (count=${_CNT})" >> \
           /var/log/boa/gpg-agent-count.kill.log
       fi
@@ -280,15 +280,15 @@ _if_sql_keyring_apt_update() {
         curl -fsSL ${_urlDev}/mysql-key.gpg | ${_GPG} --dearmor -o /etc/apt/keyrings/mysql.gpg
       fi
       chmod 644 /etc/apt/keyrings/mysql.gpg
-      _CNT=$(pgrep -fc dirmngr)
+      _CNT=$(pgrep -fc '^[^ ]*dirmngr( |$)')
       if (( _CNT > 5 )); then
-        pkill -9 -f dirmngr
+        pkill -9 -f '^[^ ]*dirmngr( |$)'
         echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
           /var/log/boa/dirmngr-count.kill.log
       fi
-      _CNT=$(pgrep -fc gpg-agent)
+      _CNT=$(pgrep -fc '^[^ ]*gpg-agent( |$)')
       if (( _CNT > 5 )); then
-        pkill -9 -f gpg-agent
+        pkill -9 -f '^[^ ]*gpg-agent( |$)'
         echo "$(date) Too many gpg-agent processes killed (count=${_CNT})" >> \
           /var/log/boa/gpg-agent-count.kill.log
       fi

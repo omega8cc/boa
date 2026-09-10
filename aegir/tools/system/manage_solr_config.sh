@@ -500,7 +500,7 @@ _add_solr() {
         wait
         sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
         wait
-        pkill -9 -f jetty9
+        pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
         service jetty9 start &> /dev/null
       fi
       echo "New Solr ${3} with ${1} for ${2} added"
@@ -643,7 +643,7 @@ _delete_solr() {
       wait
       rm -rf ${1}
       rm -f ${_Dir}/solr.php
-      pkill -9 -f jetty9
+      pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
       service jetty9 start &> /dev/null
     fi
     echo "Deleted Solr core in ${1}"

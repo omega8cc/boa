@@ -539,20 +539,23 @@ _if_mydumper_is_locked() {
       _MULTI_MX=$(( _OCT_NR + 10 ))
     fi
   fi
-  _AR_C="$(pgrep -fc aegir.sh)"
-  _DR_C="$(pgrep -fc drush.php)"
-  _MD_C="$(pgrep -fc mydumper)"
+  # Execution forms only: the su wrapper and its bash child both count (the
+  # thresholds were set on that pair), an editor or a grep naming the script
+  # never does -- the counts are the triggers of the kills below
+  _AR_C="$(pgrep -fc '(^|(^| )[^ ]*bash )/data/disk/[^/ ]+/aegir\.sh$')"
+  _DR_C="$(pgrep -fc '^"?[^ ]*php[0-9]*"? (.*[ /])?drush\.php( |$)')"
+  _MD_C="$(pgrep -fc '^[^ ]*mydumper( |$)')"
   if [ "${_MD_C}" -gt 0 ]; then
     if [ "${_AR_C}" -gt "${_MULTI_MX}" ]; then
-      pkill -f mydumper
-      pkill -f aegir.sh
+      pkill -f '^[^ ]*mydumper( |$)'
+      pkill -f '(^|(^| )[^ ]*bash )/data/disk/[^/ ]+/aegir\.sh$'
       echo "$(date) TOO MANY (${_AR_C}) aegir.sh required killing mydumper" >> ${_pthOml}
       echo >> ${_pthOml}
       _incident_email_report "TOO MANY (${_AR_C}) aegir.sh required killing mydumper" "mysql-mydumper"
     fi
     if [ "${_DR_C}" -gt "${_MULTI_MX}" ]; then
-      pkill -f mydumper
-      pkill -f drush.php
+      pkill -f '^[^ ]*mydumper( |$)'
+      pkill -f '^"?[^ ]*php[0-9]*"? (.*[ /])?drush\.php( |$)'
       echo "$(date) TOO MANY (${_DR_C}) drush.php required killing mydumper" >> ${_pthOml}
       echo >> ${_pthOml}
       _incident_email_report "TOO MANY (${_DR_C}) drush.php required killing mydumper" "mysql-mydumper"
