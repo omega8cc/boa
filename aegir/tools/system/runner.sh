@@ -124,7 +124,7 @@ fi
 # versions (it used to borrow the proxy marker for the same mute); a
 # marker whose owner PID is gone is stale and is cleared, never obeyed.
 if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
-  _qsPid=$(tr -dc '0-9' < /run/boa_php_idle_quiesce.pid 2>/dev/null)
+  _qsPid=$( { tr -dc '0-9' < /run/boa_php_idle_quiesce.pid; } 2>/dev/null )
   if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2>/dev/null; then
     exit 0
   fi
@@ -276,16 +276,18 @@ _if_allow_aegir_queue() {
 ###-------------SYSTEM-----------------###
 
 _SQLBACKUP_RUNNING=NO
-if (( $(pgrep -fc mysql_backup.sh) > 0 )); then
+# Execution forms only (cron's nice/ionice bash launch, a shebang launch):
+# an editor or a grep naming the script must not hold the runner back
+if (( $(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)') > 0 )); then
   _SQLBACKUP_RUNNING=YES
-elif (( $(pgrep -fc mysql_cluster_backup.sh) > 0 )); then
+elif (( $(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cluster_backup\.sh( |$)') > 0 )); then
   _SQLBACKUP_RUNNING=YES
-elif (( $(pgrep -fc mydumper) > 0 )); then
+elif (( $(pgrep -fc '^[^ ]*mydumper( |$)') > 0 )); then
   _SQLBACKUP_RUNNING=YES
 fi
 
 _DAILY_RUNNING=NO
-if (( $(pgrep -fc owl.sh) > 0 )); then
+if (( $(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/owl\.sh( |$)') > 0 )); then
   _DAILY_RUNNING=YES
 fi
 

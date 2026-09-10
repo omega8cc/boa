@@ -724,7 +724,7 @@ if [ -x "/etc/init.d/mysql" ] \
   _mysql_high_load
   _sql_busy_detection
   _mysql_flush_hosts
-  if (( $(pgrep -fc mydumper) > 0 )) && (( $(pgrep -fc mysql_backup.sh) > 0 )); then
+  if (( $(pgrep -fc '^[^ ]*mydumper( |$)') > 0 )) && (( $(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)') > 0 )); then
     sleep 5
     _if_mydumper_is_locked
   fi

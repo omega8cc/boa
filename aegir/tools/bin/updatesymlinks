@@ -185,7 +185,7 @@ _is_protected_run() {
     _protectedRun=TRUE
     _protectedReason="${_protectedReason} provision"
   fi
-  _IS_DUPLICITY_RUNNING=$(pgrep -fc duplicity)
+  _IS_DUPLICITY_RUNNING=$(pgrep -fc '(^| )[^ ]*/duplicity( |$)')
   if (( _IS_DUPLICITY_RUNNING > 0 )); then
     _protectedRun=TRUE
     _protectedReason="${_protectedReason} duplicity(${_IS_DUPLICITY_RUNNING})"

@@ -131,7 +131,7 @@ _stop_nginx_processes() {
   # the pattern is bracket-tricked so it can never match this script's own
   # command line.
   local _mpid _w=0
-  _mpid=$(tr -dc '0-9' < /run/nginx.pid 2>/dev/null)
+  _mpid=$( { tr -dc '0-9' < /run/nginx.pid; } 2>/dev/null )
   # The number must still BE nginx: a pidfile left by a -9'd master outlives
   # its owner on tmpfs, and a recycled pid would receive root's SIGQUIT.
   if [ -n "${_mpid}" ] \
