@@ -3489,19 +3489,29 @@ _archived_age_days() {
   _t=$(date -u -d "${_s:0:4}-${_s:4:2}-${_s:6:2} ${_s:9:2}:${_s:11:2}:${_s:13:2}" +%s 2> /dev/null) || return 1
   echo $(( ($(date -u +%s) - _t) / 86400 ))
 }
+_archived_is_instance() {
+  # an Octopus instance is a real /data/disk/<name> carrying the Aegir layout
+  # (the test `boa info` uses); the name is whatever Octopus installed --
+  # a letter first, then letters and digits -- never a pattern of our own
+  [[ "${1}" =~ ^[a-z][a-z0-9]*$ ]] || return 1
+  [ -d "/data/disk/${1}" ] && [ ! -L "/data/disk/${1}" ] || return 1
+  [ -d "/data/disk/${1}/config/server_master" ] || return 1
+  return 0
+}
+
 _archived_users() {
-  # $1 = oN or all; prints the instances to act on, one per line
+  # $1 = the instance name or all; prints the instances to act on, one per line
   local _u _p _b
   _u=$(echo -n "${1}" | tr A-Z a-z)
   _u="${_u//[^a-z0-9]/}"
   if [ "${_u}" = "all" ]; then
-    for _p in /data/disk/o*; do
+    for _p in /data/disk/*; do
       _b=$(basename "${_p}")
-      [[ "${_b}" =~ ^o[0-9]+$ ]] && [ -d "${_p}" ] && [ ! -L "${_p}" ] && echo "${_b}"
+      _archived_is_instance "${_b}" && echo "${_b}"
     done
     return 0
   fi
-  [[ "${_u}" =~ ^o[0-9]+$ ]] && [ -d "/data/disk/${_u}" ] && [ ! -L "/data/disk/${_u}" ] || return 1
+  _archived_is_instance "${_u}" || return 1
   echo "${_u}"
 }
 _archived_list_user() {
