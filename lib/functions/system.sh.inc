@@ -12643,17 +12643,32 @@ _rsyslog_config_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _rsyslog_config_update"
   fi
+  # Never move the live config away before its replacement is known to be
+  # here: a pass whose build tree lacked the template (a concurrent pass had
+  # purged /opt/tmp/boa under it) moved /etc/rsyslog.conf aside, failed the
+  # copy and left the box without a syslog -- and because this block only
+  # acted when the live file existed, every later pass skipped it, so the
+  # box stayed blind for days while the watchdog claimed a restart each
+  # minute (io001, 2026-09-07). Install only from a present template, and a
+  # MISSING live file is installed too, never skipped.
   if [ -x "/etc/init.d/rsyslog" ] \
-    && [ -e "/etc/rsyslog.conf" ]; then
-    mv -f /etc/rsyslog.conf \
-      /var/backups/.etc.rsyslog.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+    && [ -s "${_locCnf}/var/rsyslog.conf" ]; then
+    if [ -e "/etc/rsyslog.conf" ]; then
+      mv -f /etc/rsyslog.conf \
+        /var/backups/.etc.rsyslog.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+    fi
     cp -af ${_locCnf}/var/rsyslog.conf /etc/rsyslog.conf
-    cp -af ${_locCnf}/var/mysql-notices.conf /etc/rsyslog.d/mysql-notices.conf
-    cp -af ${_locCnf}/var/logrotate.d.rsyslog.conf /etc/logrotate.d/rsyslog
+    [ -s "${_locCnf}/var/mysql-notices.conf" ] \
+      && cp -af ${_locCnf}/var/mysql-notices.conf /etc/rsyslog.d/mysql-notices.conf
+    [ -s "${_locCnf}/var/logrotate.d.rsyslog.conf" ] \
+      && cp -af ${_locCnf}/var/logrotate.d.rsyslog.conf /etc/logrotate.d/rsyslog
     touch /var/log/mysql-notices.log
     chmod 640 /var/log/mysql-notices.log
     chown root:adm /var/log/mysql-notices.log
     _mrun "service rsyslog restart"
+  elif [ -x "/etc/init.d/rsyslog" ] && [ ! -e "/etc/rsyslog.conf" ]; then
+    # no template in this tree and no live config: say so, do not destroy
+    echo "rsyslog: no template at ${_locCnf}/var/rsyslog.conf and no /etc/rsyslog.conf; left for the next pass"
   fi
 }
 
