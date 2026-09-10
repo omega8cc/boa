@@ -3451,6 +3451,108 @@ _octopus_cleanup() {
   fi
 }
 
+# boa archived {list|prune} {oN|all} [days] -- the archived store
+# (static/files/.archived/<UTC stamp>-<pid>/<site>/) is where a Delete, a
+# rename and the nightly orphan sweep set a site's store aside. Nothing prunes
+# it on its own: an entry is a deleted or renamed site's last copy, and how
+# long to keep it is the operator's call, made here. The age is read from the
+# entry's own stamp, never from file times (a moved store keeps them).
+_archived_dir() {
+  echo "/data/disk/${1}/static/files/.archived"
+}
+_archived_age_days() {
+  # $1 = an entry name, YYYYMMDDTHHMMSSZ-<pid>; prints its age in whole days
+  local _s="${1%%-*}" _t
+  [[ "${_s}" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] || return 1
+  _t=$(date -u -d "${_s:0:4}-${_s:4:2}-${_s:6:2} ${_s:9:2}:${_s:11:2}:${_s:13:2}" +%s 2> /dev/null) || return 1
+  echo $(( ($(date -u +%s) - _t) / 86400 ))
+}
+_archived_users() {
+  # $1 = oN or all; prints the instances to act on; fails on an unknown one
+  local _u
+  if [ "${1}" = "all" ]; then
+    for _u in /data/disk/o*; do
+      [ -d "${_u}/static/files" ] && basename "${_u}"
+    done
+    return 0
+  fi
+  _u="${1//[^a-z0-9]/}"
+  [[ "${_u}" =~ ^o[0-9]+$ ]] && [ -d "/data/disk/${_u}/static/files" ] || return 1
+  echo "${_u}"
+}
+_archived_list_user() {
+  local _u="$1" _d _e _n _age _sites _kb _tot=0 _cnt=0
+  _d=$(_archived_dir "${_u}")
+  echo "${_u}: $(ls "${_d}" 2> /dev/null | wc -l | tr -d ' ') entries under ${_d}"
+  for _e in "${_d}"/*/; do
+    [ -d "${_e}" ] || continue
+    _n=$(basename "${_e}")
+    if ! _age=$(_archived_age_days "${_n}"); then
+      echo "  ${_n}: not a stamp, left alone"
+      continue
+    fi
+    _sites=$(ls "${_e}" 2> /dev/null | tr '\n' ' ')
+    _kb=$(du -sk "${_e}" 2> /dev/null | cut -f1)
+    _tot=$(( _tot + ${_kb:-0} )); _cnt=$(( _cnt + 1 ))
+    printf "  %s  %4s days  %9s KB  %s\n" "${_n}" "${_age}" "${_kb:-0}" "${_sites}"
+  done
+  echo "  ${_cnt} stamped entries, $(( _tot / 1024 )) MB"
+}
+_archived_prune_user() {
+  local _u="$1" _days="$2" _d _e _n _age _sites _kb _tot=0 _cnt=0
+  _d=$(_archived_dir "${_u}")
+  for _e in "${_d}"/*/; do
+    [ -d "${_e}" ] || continue
+    _n=$(basename "${_e}")
+    _age=$(_archived_age_days "${_n}") || continue
+    [ "${_age}" -gt "${_days}" ] || continue
+    _sites=$(ls "${_e}" 2> /dev/null | tr '\n' ' ')
+    _kb=$(du -sk "${_e}" 2> /dev/null | cut -f1)
+    chattr -R -i "${_e}" &> /dev/null
+    if rm -rf "${_e}" && [ ! -e "${_e}" ]; then
+      echo "  removed ${_n} (${_age} days, ${_kb:-0} KB): ${_sites}"
+      _cnt=$(( _cnt + 1 )); _tot=$(( _tot + ${_kb:-0} ))
+    else
+      echo "  could not remove ${_n}, left as is"
+    fi
+  done
+  echo "${_u}: ${_cnt} entries older than ${_days} days removed, $(( _tot / 1024 )) MB freed, $(ls "${_d}" 2> /dev/null | wc -l | tr -d ' ') left"
+}
+_octopus_archived() {
+  local _u _users
+  echo
+  case "${_aCtn}" in
+    list|prune) ;;
+    *) echo "Usage: $(basename "$0") archived {list|prune} {oN|all} [days]"; echo; exit 1 ;;
+  esac
+  if ! _users=$(_archived_users "${_usEr}"); then
+    echo "OOPS.. ${_usEr} is not an Octopus instance here, nothing to do"
+    echo
+    exit 1
+  fi
+  if [ -z "${_users}" ]; then
+    echo "OOPS.. no Octopus instance with a static store here, nothing to do"
+    echo
+    exit 1
+  fi
+  if [ "${_aCtn}" = "prune" ]; then
+    if [[ ! "${_dAys}" =~ ^[0-9]+$ ]] || [ "${_dAys}" -lt 1 ]; then
+      echo "OOPS.. prune needs the age in days, 1 or more: $(basename "$0") archived prune {oN|all} {days}"
+      echo
+      exit 1
+    fi
+  fi
+  for _u in ${_users}; do
+    if [ "${_aCtn}" = "list" ]; then
+      _archived_list_user "${_u}"
+    else
+      _archived_prune_user "${_u}" "${_dAys}"
+    fi
+    echo
+  done
+  exit 0
+}
+
 _octopus_suspend() {
   _usEr=${_usEr//[^a-zA-Z0-9-.]/}
   _usEr=$(echo -n ${_usEr} | tr A-Z a-z)
@@ -3544,6 +3646,7 @@ _if_display_help() {
     echo "Usage: $(basename "$0") cleanup {detect|purge} {user|batch}"
     echo "Usage: $(basename "$0") suspend {user}"
     echo "Usage: $(basename "$0") unsuspend {user}"
+    echo "Usage: $(basename "$0") archived {list|prune} {oN|all} [days]"
     echo "Usage: $(basename "$0") reboot"
     echo
     cat <<EOF
@@ -3662,6 +3765,12 @@ case "$1" in
   unsuspend)  _cmNd="$1"
               _usEr="$2"
               _octopus_unsuspend
+  ;;
+  archived)   _cmNd="$1"
+              _aCtn="$2"
+              _usEr="$3"
+              _dAys="$4"
+              _octopus_archived
   ;;
   in-lts)     export _tRee=lts
               _cmNd="$1"
