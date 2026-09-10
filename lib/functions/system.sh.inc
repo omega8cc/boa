@@ -5340,7 +5340,7 @@ _get_drush_eleven() {
     _msg "OOPS: /opt/tools/drush/11 is not enterable; Drush 11 not installed"
     return 1
   fi
-  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" -o -f "/drush/vendor/bin/drush" ] \
+  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" ] && [ -f "/drush/drush.info" ] && [ -f "/drush/includes/boa_extension_filter.inc" ] \
     && [ "$(readlink -f /opt/tools/drush/11/drush 2> /dev/null)" != "/drush" ]; then
     rm -rf /drush
   fi
@@ -5369,7 +5369,7 @@ _get_drush_ten() {
     _msg "OOPS: /opt/tools/drush/10 is not enterable; Drush 10 not installed"
     return 1
   fi
-  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" -o -f "/drush/vendor/bin/drush" ] \
+  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" ] && [ -f "/drush/drush.info" ] && [ -f "/drush/includes/boa_extension_filter.inc" ] \
     && [ "$(readlink -f /opt/tools/drush/10/drush 2> /dev/null)" != "/drush" ]; then
     rm -rf /drush
   fi
@@ -5398,7 +5398,7 @@ _get_drush_eight() {
     _msg "OOPS: /opt/tools/drush/8 is not enterable; Drush 8 not installed"
     return 1
   fi
-  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" -o -f "/drush/vendor/bin/drush" ] \
+  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" ] && [ -f "/drush/drush.info" ] && [ -f "/drush/includes/boa_extension_filter.inc" ] \
     && [ "$(readlink -f /opt/tools/drush/8/drush 2> /dev/null)" != "/drush" ]; then
     rm -rf /drush
   fi
