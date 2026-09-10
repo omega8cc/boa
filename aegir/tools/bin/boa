@@ -504,6 +504,17 @@ _system_check_clean() {
       echo "HINT: You can also enforce installation with empty control file:"
       echo " touch /root/.force.reinstall.cnf -- and then try again."
       echo
+    elif [ -s "/root/.boa.install.command.cnf" ] \
+      && [ ! -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+      # /etc/nginx alone hid the hint, but here it is this installer's own
+      # leftover: a recorded install that stopped before its Ægir master.
+      echo
+      echo "HINT: These look like the leftovers of an unfinished BOA install:"
+      echo " $(head -n 1 /root/.boa.install.command.cnf)"
+      echo "HINT: To run it again, enforce installation with empty control file:"
+      echo " touch /root/.force.reinstall.cnf -- and then run the same command."
+      echo "HINT: Or continue it with: barracuda up-<tree> system"
+      echo
     fi
     echo "Bye"
     _clean_pid_exit _system_check_clean_a
@@ -1327,7 +1338,7 @@ _barracuda_install() {
           _pA="8.3 8.4 8.5"
         fi
         _pI=8.4
-        sed -i "s/^_PHP_M.*/_PHP_MULTI_INSTALL=\"${_pA}\"/g" ${_vBs}/${_filIncB}
+        sed -i "s/^_PHP_MULTI_INSTALL=.*/_PHP_MULTI_INSTALL=\"${_pA}\"/g" ${_vBs}/${_filIncB}
         wait
         sed -i "s/^_PHP_FPM_VER.*/_PHP_FPM_VERSION=${_pI}/g" ${_vBs}/${_filIncB}
         wait
@@ -2272,6 +2283,36 @@ _if_fix_iptables_symlinks() {
   ###
 }
 
+# True for a command line that IS csf or lfd, or was started from a
+# ConfigServer path (its first word) -- never for one that merely mentions
+# ConfigServer further along (a grep, an ssh -c, an operator's pipeline).
+_csf_owned_cmdline() {
+  [[ "${1}" =~ ^(/usr/bin/perl\ )?/usr/sbin/(csf|lfd)(\ |$) ]] \
+    || [[ "${1}" =~ ^lfd\ - ]] \
+    || [[ "${1}" =~ ^[^\ ]*ConfigServer ]]
+}
+
+# The hung-csf cleanup before a reload (77fe98cac), scoped to its target:
+# the sleeps csf/lfd own and the processes started from a ConfigServer path.
+# The former `killall sleep` and bare `pkill -9 -f ConfigServer` matched by
+# substring across the whole box, twice per pass: every sleep died --
+# second.sh's TERM-then-sleep-then-KILL window (the sleep gone, the -9
+# follows the TERM at once), minute.sh, the guards, a watcher or a pass
+# mid-wait -- and any command line merely mentioning ConfigServer was
+# -9'd. A current csf/lfd spawns no sleep process at all, so this usually
+# kills nothing, which is the point.
+_csf_kill_own() {
+  local _p _pp _cmd
+  for _p in $(pgrep -x sleep 2>/dev/null); do
+    _pp=$(awk '/^PPid:/ { print $2 }' "/proc/${_p}/status" 2>/dev/null)
+    [ -n "${_pp}" ] || continue
+    _cmd=$(tr '\0' ' ' < "/proc/${_pp}/cmdline" 2>/dev/null)
+    _csf_owned_cmdline "${_cmd}" && kill -9 "${_p}" 2>/dev/null
+  done
+  pkill -9 -f '^[^ ]*ConfigServer' 2>/dev/null
+  return 0
+}
+
 _csf_check_fix() {
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
@@ -2287,8 +2328,7 @@ _csf_check_fix() {
     csf -a 88.216.74.103  files.aegir.biz &> /dev/null
     csf -a 88.216.74.97   files.aoboshi.com &> /dev/null
     service lfd stop &> /dev/null
-    pkill -9 -f ConfigServer
-    killall sleep &> /dev/null
+    _csf_kill_own
     rm -f /etc/csf/csf.error
     csf -x  &> /dev/null
     service clean-boa-env start &> /dev/null
@@ -3411,6 +3451,141 @@ _octopus_cleanup() {
   fi
 }
 
+# boa archived {list|prune} {oN|all} [days] -- the archived store
+# (static/files/.archived/<UTC stamp>-<pid>/<site>/) is where a Delete, a
+# rename and the nightly orphan sweep set a site's store aside. Nothing prunes
+# it on its own: an entry is a deleted or renamed site's last copy, and how
+# long to keep it is the operator's call, made here. The age is read from the
+# entry's own stamp, never from file times (a moved store keeps them).
+# Root runs the removal, so nothing here follows a link: the tenant owns
+# static/ and can put a symlink of their choosing at static/files, so the
+# store is admitted only when it resolves under the account or under /mnt (a
+# relocated store), the gate the nightly's backup relocation applies; entries
+# are enumerated as real directories, used bare (a trailing slash makes rm
+# and chattr walk INTO a link's target), and a link is left alone -- nothing
+# of BOA's ever makes one there.
+_archived_store() {
+  # $1 = oN; prints the admissible store's .archived path; 2 = no store yet
+  local _u="$1" _acct _stat _d
+  _acct=$(realpath -e -- "/data/disk/${_u}" 2> /dev/null) || return 1
+  _stat=$(realpath -e -- "/data/disk/${_u}/static/files" 2> /dev/null) || return 2
+  case "${_stat}/" in
+    "${_acct}"/*|/mnt/*) ;;
+    *) echo "OOPS.. ${_u}'s static/files resolves to ${_stat}, outside the account and /mnt: left alone" >&2; return 1 ;;
+  esac
+  _d="${_stat}/.archived"
+  [ -L "${_d}" ] && { echo "OOPS.. ${_u}'s .archived is a symlink: left alone" >&2; return 1; }
+  [ -d "${_d}" ] || return 2
+  echo "${_d}"
+}
+_archived_entries() {
+  # $1 = the store; its real directories only, bare paths, NUL-separated
+  find "$1" -mindepth 1 -maxdepth 1 -type d -print0 2> /dev/null | sort -z
+}
+_archived_age_days() {
+  # $1 = an entry name, YYYYMMDDTHHMMSSZ-<pid>; prints its age in whole days
+  local _s="${1%%-*}" _t
+  [[ "${_s}" =~ ^[0-9]{8}T[0-9]{6}Z$ ]] || return 1
+  _t=$(date -u -d "${_s:0:4}-${_s:4:2}-${_s:6:2} ${_s:9:2}:${_s:11:2}:${_s:13:2}" +%s 2> /dev/null) || return 1
+  echo $(( ($(date -u +%s) - _t) / 86400 ))
+}
+_archived_users() {
+  # $1 = oN or all; prints the instances to act on, one per line
+  local _u _p _b
+  _u=$(echo -n "${1}" | tr A-Z a-z)
+  _u="${_u//[^a-z0-9]/}"
+  if [ "${_u}" = "all" ]; then
+    for _p in /data/disk/o*; do
+      _b=$(basename "${_p}")
+      [[ "${_b}" =~ ^o[0-9]+$ ]] && [ -d "${_p}" ] && [ ! -L "${_p}" ] && echo "${_b}"
+    done
+    return 0
+  fi
+  [[ "${_u}" =~ ^o[0-9]+$ ]] && [ -d "/data/disk/${_u}" ] && [ ! -L "/data/disk/${_u}" ] || return 1
+  echo "${_u}"
+}
+_archived_list_user() {
+  local _u="$1" _d _e _n _age _sites _kb _tot=0 _cnt=0 _links _rc
+  _d=$(_archived_store "${_u}"); _rc=$?
+  if [ "${_rc}" -eq 2 ]; then echo "${_u}: no archived store yet"; return 0; fi
+  [ "${_rc}" -eq 0 ] || return 0
+  echo "${_u}: $(find "${_d}" -mindepth 1 -maxdepth 1 -type d 2> /dev/null | wc -l | tr -d ' ') entries under ${_d}"
+  while IFS= read -r -d '' _e; do
+    _n=$(basename "${_e}")
+    if ! _age=$(_archived_age_days "${_n}"); then
+      echo "  ${_n}: not a stamp, left alone"
+      continue
+    fi
+    _sites=$(find "${_e}" -mindepth 1 -maxdepth 1 -printf '%f ' 2> /dev/null)
+    _kb=$(du -sk -- "${_e}" 2> /dev/null | cut -f1)
+    _tot=$(( _tot + ${_kb:-0} )); _cnt=$(( _cnt + 1 ))
+    printf "  %s  %4s days  %9s KB  %s\n" "${_n}" "${_age}" "${_kb:-0}" "${_sites}"
+  done < <(_archived_entries "${_d}")
+  _links=$(find "${_d}" -mindepth 1 -maxdepth 1 -type l 2> /dev/null | wc -l | tr -d ' ')
+  [ "${_links}" -gt 0 ] && echo "  ${_links} symlink(s) at the entry level, left alone: nothing of BOA's makes one there"
+  echo "  ${_cnt} stamped entries, $(( _tot / 1024 )) MB, each a deleted or renamed site's last copy"
+}
+_archived_prune_user() {
+  local _u="$1" _days="$2" _d _e _n _age _sites _kb _tot=0 _cnt=0 _rc
+  _d=$(_archived_store "${_u}"); _rc=$?
+  if [ "${_rc}" -eq 2 ]; then echo "${_u}: no archived store yet"; return 0; fi
+  [ "${_rc}" -eq 0 ] || return 0
+  while IFS= read -r -d '' _e; do
+    _n=$(basename "${_e}")
+    _age=$(_archived_age_days "${_n}") || continue
+    [ "${_age}" -gt "${_days}" ] || continue
+    [ -L "${_e}" ] && continue
+    _sites=$(find "${_e}" -mindepth 1 -maxdepth 1 -printf '%f ' 2> /dev/null)
+    _kb=$(du -sk -- "${_e}" 2> /dev/null | cut -f1)
+    chattr -R -i -- "${_e}" &> /dev/null
+    rm -rf -- "${_e}"; _rc=$?
+    if [ ! -e "${_e}" ] && [ ! -L "${_e}" ]; then
+      echo "  removed ${_n} (${_age} days, ${_kb:-0} KB): ${_sites}"
+      _cnt=$(( _cnt + 1 )); _tot=$(( _tot + ${_kb:-0} ))
+    elif [ "${_rc}" -ne 0 ]; then
+      echo "  partially removed ${_n}: rm failed inside it, the tree is incomplete, inspect ${_e}"
+    else
+      echo "  could not remove ${_n}, left as is"
+    fi
+  done < <(_archived_entries "${_d}")
+  echo "${_u}: ${_cnt} entries older than ${_days} days removed, $(( _tot / 1024 )) MB freed, $(find "${_d}" -mindepth 1 -maxdepth 1 -type d 2> /dev/null | wc -l | tr -d ' ') left"
+}
+_octopus_archived() {
+  local _u _users
+  echo
+  case "${_aCtn}" in
+    list|prune) ;;
+    *) echo "Usage: $(basename "$0") archived {list|prune} {oN|all} [days]"; echo; exit 1 ;;
+  esac
+  if ! _users=$(_archived_users "${_usEr}"); then
+    echo "OOPS.. ${_usEr} is not an Octopus instance here, nothing to do"
+    echo
+    exit 1
+  fi
+  if [ -z "${_users}" ]; then
+    echo "OOPS.. no Octopus instance here, nothing to do"
+    echo
+    exit 1
+  fi
+  if [ "${_aCtn}" = "prune" ]; then
+    if [[ ! "${_dAys}" =~ ^[0-9]+$ ]] || [ "${_dAys}" -lt 1 ]; then
+      echo "OOPS.. prune needs the age in days, 1 or more: $(basename "$0") archived prune {oN|all} {days}"
+      echo
+      exit 1
+    fi
+  fi
+  while read -r _u; do
+    [ -n "${_u}" ] || continue
+    if [ "${_aCtn}" = "list" ]; then
+      _archived_list_user "${_u}"
+    else
+      _archived_prune_user "${_u}" "${_dAys}"
+    fi
+    echo
+  done <<< "${_users}"
+  exit 0
+}
+
 _octopus_suspend() {
   _usEr=${_usEr//[^a-zA-Z0-9-.]/}
   _usEr=$(echo -n ${_usEr} | tr A-Z a-z)
@@ -3504,6 +3679,7 @@ _if_display_help() {
     echo "Usage: $(basename "$0") cleanup {detect|purge} {user|batch}"
     echo "Usage: $(basename "$0") suspend {user}"
     echo "Usage: $(basename "$0") unsuspend {user}"
+    echo "Usage: $(basename "$0") archived {list|prune} {oN|all} [days]"
     echo "Usage: $(basename "$0") reboot"
     echo
     cat <<EOF
@@ -3555,6 +3731,7 @@ _if_display_help() {
       cleanup <------ (detect|purge) cancelled Octopus instances files (no dbs)
       suspend <------ turn off web serving on an Octopus instance (503)
       unsuspend <---- restore web serving on a suspended Octopus instance
+      archived <----- (list|prune) archived stores of deleted or renamed sites (prune REMOVES them)
       reboot <------- run accelerated system reboot
 
     See docs/INSTALL.md for more details.
@@ -3622,6 +3799,12 @@ case "$1" in
   unsuspend)  _cmNd="$1"
               _usEr="$2"
               _octopus_unsuspend
+  ;;
+  archived)   _cmNd="$1"
+              _aCtn="$2"
+              _usEr="$3"
+              _dAys="$4"
+              _octopus_archived
   ;;
   in-lts)     export _tRee=lts
               _cmNd="$1"

@@ -8,8 +8,9 @@
 ;;  This is a site level INI file template which can be used to modify
 ;;  default BOA system behaviour for this site only.
 ;;
-;;  Copy this file as boa_site_control.ini into sites/foo.com/modules directory,
-;;  then uncomment lines for any settings you want to modify, to make it active.
+;;  BOA seeds this file as boa_site_control.ini into the sites/foo.com/modules directory
+;;  on its own (and re-creates it when missing); in that live copy uncomment the
+;;  lines for any settings you want to modify, to make them active.
 ;;  All settings are initially listed with system defaults, for reference.
 ;;
 ;;  Note that it takes ~60 seconds to see any modification results in action
@@ -440,13 +441,33 @@
 ;;
 ;;  Supported values are: innodb and myisam (lowercase only!)
 ;;
-;;  Note that this conversion, if enabled, will run daily even if all tables
-;;  have been already converted, so it will run OPTIMIZE task on all tables,
-;;  effectively.
+;;  Note that this conversion, if enabled, will run weekly (on Tuesday) even if
+;;  all tables have been already converted, so it will run OPTIMIZE task on all
+;;  tables, effectively.
 ;;
-;;  This setting affects only the running daily maintenance system behaviour.
+;;  This setting affects only the running weekly maintenance system behaviour.
 ;;
 ;;  This option is available only in BOA-2.1.3 or newer.
+```
+
+### INI (site level) for Web SQL Query Time Cap
+
+```text
+;sql_web_max_exec_ms = 30000
+;;
+;;  This option sets the cap, in milliseconds, on how long a single read-only
+;;  SELECT may run during a web request for this site only, and the value
+;;  defined here will override the value of sql_web_max_exec_ms set in the
+;;  platform level boa_platform_control.ini file located in the sites/all/modules
+;;  directory. It is applied as a per-connection SET SESSION max_execution_time
+;;  statement on every web request; CLI (Drush, cron, migrations, backups) is
+;;  never capped.
+;;
+;;  Set 0 to disable the cap for this site. The statement is sent in a form
+;;  MariaDB ignores, so a site whose database lives on a MariaDB server needs
+;;  no override; there the cap simply does not apply.
+;;
+;;  This option is available only in BOA-5.88.822 or newer.
 ```
 
 ### INI (site level) for AdvAgg (advagg) Module

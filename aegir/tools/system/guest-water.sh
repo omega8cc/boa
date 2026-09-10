@@ -12,13 +12,16 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 
 # Strict IPv4 / IPv4-CIDR validation. These lists feed the csf ALLOW whitelist,
-# so only value-valid addresses (each octet 0-255, prefix 0-32) may be written:
+# so only value-valid addresses (each octet 0-255, prefix 8-32) may be written:
 # a merely digit-shaped token from a provider format change or a poisoned/garbage
-# response (e.g. 999.1.1.1/99) must never reach the firewall. _emit_valid_ips
-# filters a candidate list on stdin and logs what it drops (same intent as the
-# octet check already guarding the DHCP path below).
+# response (e.g. 999.1.1.1/99) must never reach the firewall. The prefix floor
+# is /8: no provider publishes a range wider than that, and a /0-/7 that slipped
+# through a mangled or hostile body would open the web ports to (most of) the
+# IPv4 internet ahead of every deny -- the same floor logic the IPv6 validator
+# applies to /0. _emit_valid_ips filters a candidate list on stdin and logs what
+# it drops (same intent as the octet check already guarding the DHCP path below).
 _ipv4_octet="(25[0-5]|2[0-4][0-9]|1[0-9][0-9]|[1-9]?[0-9])"
-_is_ipv4_or_cidr() { [[ "$1" =~ ^(${_ipv4_octet}\.){3}${_ipv4_octet}(/(3[0-2]|[12]?[0-9]))?$ ]]; }
+_is_ipv4_or_cidr() { [[ "$1" =~ ^(${_ipv4_octet}\.){3}${_ipv4_octet}(/(3[0-2]|[12][0-9]|[89]))?$ ]]; }
 _emit_valid_ips() {
   local _x
   for _x in $(cat); do
@@ -71,7 +74,7 @@ _update_web6_allow() {
   fi
   if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
     echo removing ${_tag} ips from ${_WEB6_ALLOW}
-    sed -i "/${_tag}/d" ${_WEB6_ALLOW}
+    sed -i "/ # ${_tag} ips$/d" ${_WEB6_ALLOW}
     wait
   fi
   for _IP6 in ${_list}; do
@@ -153,18 +156,28 @@ _is_temp_allowed() {
     /var/lib/csf/csf.tempallow 2>/dev/null
 }
 
+# Every provider refresh below strips its OWN lines before re-adding the fresh
+# list, and the strip matches the exact tag shape it writes (" # <tag> ips" at
+# the end of the line, " # migration proxy" for the proxy) -- never the bare
+# provider word anywhere in the line. That keeps a manual operator line whose
+# comment merely mentions a provider untouched and stops one tag swallowing
+# another (the old .*site24x7.* pattern wiped the site24x7_extra ranges
+# written moments earlier in the same pass, every pass). Every provider is
+# allowed on BOTH web ports (ruling 2026-09-09): crawlers, WAF edges and
+# monitors all reach the sites over https, and a d=80-only entry leaves 443
+# exposed to a csf.deny hit because the per-port ALLOWIN rule precedes the
+# all-port DENYIN one. Membership is an exact-line test, never a substring
+# of the address: the old grep -F took a manual line carrying the same
+# address as "already listed" and skipped the provider's own entry.
 _whitelist_ip_pingdom() {
   # Pingdom provides probe IPs in multiple formats:
   #   Plain IPv4 list: https://my.pingdom.com/probes/ipv4  (preferred - no parsing needed)
   #   RSS feed:        https://my.pingdom.com/probes/feed  (fallback - XML parsing required)
   # The plain list is simpler and less fragile; RSS is kept as fallback.
-  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
-    echo removing pingdom ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S)
-    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-pingdom-${_NOW}
-    sed -i "s/.*pingdom.*//g" /etc/csf/csf.allow
-    wait
-  fi
+  # Fetch BEFORE the tagged-line cleanup: an empty fetch (both endpoints down,
+  # format change) must keep the existing entries -- never strip a monitor's
+  # probes for a day. Allow both web ports: the probes check https far more
+  # often than http, and a d=80-only entry leaves 443 exposed to a csf.deny hit.
   _IPS=$(curl ${_crlGet} https://my.pingdom.com/probes/ipv4 \
     | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+' \
     | sort \
@@ -181,20 +194,96 @@ _whitelist_ip_pingdom() {
   _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS pingdom list..
   echo ${_IPS}
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty pingdom list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing pingdom ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-pingdom-${_NOW}
+    sed -i "/ # pingdom ips$/d" /etc/csf/csf.allow
+    wait
+  fi
   for _IP in ${_IPS}; do
-    echo checking csf.allow pingdom ${_IP} now...
-    _IP_CHECK=$(cat /etc/csf/csf.allow \
-      | cut -d '#' -f1 \
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # pingdom ips" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # pingdom ips" >> /etc/csf/csf.allow
+      else
+        echo "${_IP} already listed for d=${_PORT} in /etc/csf/csf.allow"
+      fi
+    done
+  done
+}
+
+_whitelist_ip_uptimerobot() {
+  # UptimeRobot publishes its monitoring addresses as plain text, one host per
+  # line, no CIDRs, both families in one file (its IPv4-only twin is the same
+  # list minus the v6 hosts), and the identical set as the A/AAAA records of
+  # ip.uptimerobot.com. The DNS name is the fallback because it is a different
+  # channel from the CDN, not a second URL on the same host.
+  # Reference: https://uptimerobot.com/help/locations/
+  # One fetch feeds both families: the IPv4 hosts go to csf.allow below, the
+  # IPv6 hosts to the nginx-native v6 allow store (csf cannot hold IPv6), so a
+  # monitor reaching a Cloudflare-fronted site over v6 is exempt from the IDS
+  # scoring and the v6 web ban like every other listed provider.
+  # Fetch BEFORE the tagged-line cleanup: an empty fetch (endpoint down,
+  # format change) must keep the existing entries -- never strip a monitor's
+  # addresses for a day, the same fail-safe the Google refreshes and the v6
+  # store carry. Allow both web ports: monitors check https far more often
+  # than http, and a d=80-only entry leaves 443 exposed to a csf.deny hit.
+  _LIST=$(curl ${_crlGet} https://cdn.uptimerobot.com/api/IPv4andIPv6.txt 2>&1 | tr -d '\r')
+  _IPS=$(echo "${_LIST}" \
+    | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' \
+    | sort \
+    | uniq 2>&1)
+  if [ -z "${_IPS}" ]; then
+    echo "uptimerobot list endpoint failed, falling back to DNS"
+    _IPS=$(dig +short +time=5 +tries=2 A ip.uptimerobot.com 2>/dev/null \
+      | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' \
       | sort \
-      | uniq \
-      | tr -d "\s" \
-      | grep -F "${_IP}" 2>&1)
-    if [ -z "${_IP_CHECK}" ]; then
-      echo "${_IP} not yet listed in /etc/csf/csf.allow"
-      echo "tcp|in|d=80|s=${_IP} # pingdom ips" >> /etc/csf/csf.allow
-    else
-      echo "${_IP} already listed in /etc/csf/csf.allow"
-    fi
+      | uniq 2>&1)
+  fi
+  _IPS=$(echo "${_IPS}" | _emit_valid_ips)
+  _IPS6=$(echo "${_LIST}" \
+    | grep -E '^[0-9A-Fa-f:]+$' \
+    | grep ':' \
+    | sort \
+    | uniq 2>&1)
+  if [ -z "${_IPS6}" ]; then
+    _IPS6=$(dig +short +time=5 +tries=2 AAAA ip.uptimerobot.com 2>/dev/null \
+      | grep -E '^[0-9A-Fa-f:]+$' \
+      | grep ':' \
+      | sort \
+      | uniq 2>&1)
+  fi
+  _IPS6=$(echo "${_IPS6}" | _emit_valid_ips6)
+  echo _IPS6 uptimerobot list..
+  echo ${_IPS6}
+  _update_web6_allow uptimerobot "${_IPS6}"
+  echo _IPS uptimerobot list..
+  echo ${_IPS}
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty uptimerobot IPv4 list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing uptimerobot ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-uptimerobot-${_NOW}
+    sed -i "/ # uptimerobot ips$/d" /etc/csf/csf.allow
+    wait
+  fi
+  for _IP in ${_IPS}; do
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # uptimerobot ips" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # uptimerobot ips" >> /etc/csf/csf.allow
+      else
+        echo "${_IP} already listed for d=${_PORT} in /etc/csf/csf.allow"
+      fi
+    done
   done
 }
 
@@ -209,16 +298,10 @@ _whitelist_ip_cloudflare() {
   # realip bans the real client at nginx, and an lfd-immune CF range would mask
   # a misbehaving edge. IPv6 ranges are also deliberately not ingested while
   # TCP6_IN excludes 80/443 - they would match no inbound traffic.
-  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
-    echo removing cloudflare ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S)
-    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-cloudflare-${_NOW}
-    # Delete the tagged lines outright rather than blanking them: the old
-    # s///-to-empty form left one blank line per wipe, and with two lines
-    # (d=80 + d=443) per CIDR now they would accumulate twice as fast.
-    sed -i "/cloudflare/d" /etc/csf/csf.allow
-    wait
-  fi
+  # Fetch BEFORE the tagged-line cleanup: an empty fetch (both endpoints
+  # down) must keep the existing edge ranges -- stripped edges on a proxied
+  # box mean csf.deny hits on the edges and the box-wide 502 this list exists
+  # to prevent.
   _IPS=$(curl ${_crlGet} https://www.cloudflare.com/ips-v4 \
     | grep -o '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*' \
     | sort \
@@ -234,6 +317,20 @@ _whitelist_ip_cloudflare() {
   _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS cloudflare list..
   echo ${_IPS}
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty cloudflare list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing cloudflare ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-cloudflare-${_NOW}
+    # Delete the tagged lines outright rather than blanking them: the old
+    # s///-to-empty form left one blank line per wipe, and with two lines
+    # (d=80 + d=443) per CIDR now they would accumulate twice as fast.
+    sed -i "/ # cloudflare ips$/d" /etc/csf/csf.allow
+    wait
+  fi
   for _IP in ${_IPS}; do
     for _PORT in 80 443; do
       if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # cloudflare ips" /etc/csf/csf.allow 2>/dev/null; then
@@ -262,8 +359,8 @@ _whitelist_ip_migration_proxy() {
     echo removing migration proxy ips from csf.allow and csf.ignore
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-migproxy-${_NOW}
-    sed -i "s/.*migration proxy.*//g" /etc/csf/csf.allow
-    sed -i "s/.*migration proxy.*//g" /etc/csf/csf.ignore
+    sed -i "/ # migration proxy$/d" /etc/csf/csf.allow
+    sed -i "/ # migration proxy$/d" /etc/csf/csf.ignore
     wait
   fi
   if [ ! -e "/root/.migration.proxy.ips.cnf" ]; then
@@ -300,13 +397,9 @@ _whitelist_ip_imperva() {
   # Current ranges (as of 2024): 199.83.128.0/21, 198.143.32.0/19, 149.126.72.0/21,
   #   103.28.248.0/22, 185.11.124.0/22, 192.230.64.0/18, 45.64.64.0/22, 107.154.0.0/16,
   #   45.60.0.0/16, 45.223.0.0/16, 131.125.128.0/17 (added May 2023)
-  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
-    echo removing imperva ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S)
-    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-imperva-${_NOW}
-    sed -i "s/.*imperva.*//g" /etc/csf/csf.allow
-    wait
-  fi
+  # Fetch BEFORE the tagged-line cleanup: an empty fetch (both formats down)
+  # must keep the existing WAF ranges; the static csf.deny healing below runs
+  # either way, deliberately before the empty-fetch guard.
   _IPS=$(curl ${_crlGet} --data "resp_format=text" https://my.imperva.com/api/integration/v1/ips \
     | grep -o '[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*' \
     | sort \
@@ -322,21 +415,6 @@ _whitelist_ip_imperva() {
   _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS imperva list..
   echo ${_IPS}
-  for _IP in ${_IPS}; do
-    echo checking csf.allow imperva ${_IP} now...
-    _IP_CHECK=$(cat /etc/csf/csf.allow \
-      | cut -d '#' -f1 \
-      | sort \
-      | uniq \
-      | tr -d "\s" \
-      | grep -F "${_IP}" 2>&1)
-    if [ -z "${_IP_CHECK}" ]; then
-      echo "${_IP} not yet listed in /etc/csf/csf.allow"
-      echo "tcp|in|d=80|s=${_IP} # imperva ips" >> /etc/csf/csf.allow
-    else
-      echo "${_IP} already listed in /etc/csf/csf.allow"
-    fi
-  done
   # Clean up Imperva ranges from csf.deny
   # All current Imperva ranges by significant octets:
   sed -i "/^199\.83\./d" /etc/csf/csf.deny
@@ -351,6 +429,27 @@ _whitelist_ip_imperva() {
   sed -i "/^45\.223\./d" /etc/csf/csf.deny
   sed -i "/^131\.125\./d" /etc/csf/csf.deny
   wait
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty imperva list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing imperva ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-imperva-${_NOW}
+    sed -i "/ # imperva ips$/d" /etc/csf/csf.allow
+    wait
+  fi
+  for _IP in ${_IPS}; do
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # imperva ips" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # imperva ips" >> /etc/csf/csf.allow
+      else
+        echo "${_IP} already listed for d=${_PORT} in /etc/csf/csf.allow"
+      fi
+    done
+  done
 }
 
 _whitelist_ip_googlebot() {
@@ -394,23 +493,18 @@ _whitelist_ip_googlebot() {
     echo removing googlebot ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-googlebot-${_NOW}
-    sed -i "s/.*googlebot.*//g" /etc/csf/csf.allow
+    sed -i "/ # googlebot ips$/d" /etc/csf/csf.allow
     wait
   fi
   for _IP in ${_IPS}; do
-    echo checking csf.allow googlebot ${_IP} now...
-    _IP_CHECK=$(cat /etc/csf/csf.allow \
-      | cut -d '#' -f1 \
-      | sort \
-      | uniq \
-      | tr -d "\s" \
-      | grep -F "${_IP}" 2>&1)
-    if [ -z "${_IP_CHECK}" ]; then
-      echo "${_IP} not yet listed in /etc/csf/csf.allow"
-      echo "tcp|in|d=80|s=${_IP} # googlebot ips" >> /etc/csf/csf.allow
-    else
-      echo "${_IP} already listed in /etc/csf/csf.allow"
-    fi
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # googlebot ips" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # googlebot ips" >> /etc/csf/csf.allow
+      else
+        echo "${_IP} already listed for d=${_PORT} in /etc/csf/csf.allow"
+      fi
+    done
   done
 }
 
@@ -461,37 +555,28 @@ _whitelist_ip_google_special() {
     echo removing googlespecial ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-googlespecial-${_NOW}
-    sed -i "s/.*googlespecial.*//g" /etc/csf/csf.allow
+    sed -i "/ # googlespecial ips$/d" /etc/csf/csf.allow
     wait
   fi
   for _IP in ${_IPS}; do
-    echo checking csf.allow googlespecial ${_IP} now...
-    _IP_CHECK=$(cat /etc/csf/csf.allow \
-      | cut -d '#' -f1 \
-      | sort \
-      | uniq \
-      | tr -d "\s" \
-      | grep -F "${_IP}" 2>&1)
-    if [ -z "${_IP_CHECK}" ]; then
-      echo "${_IP} not yet listed in /etc/csf/csf.allow"
-      echo "tcp|in|d=80|s=${_IP} # googlespecial ips" >> /etc/csf/csf.allow
-    else
-      echo "${_IP} already listed in /etc/csf/csf.allow"
-    fi
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # googlespecial ips" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # googlespecial ips" >> /etc/csf/csf.allow
+      else
+        echo "${_IP} already listed for d=${_PORT} in /etc/csf/csf.allow"
+      fi
+    done
   done
 }
 
 _whitelist_ip_microsoft() {
-  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
-    echo removing microsoft ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S)
-    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-microsoft-${_NOW}
-    sed -i "s/.*microsoft.*//g" /etc/csf/csf.allow
-    wait
-  fi
   # One fetch feeds both families. bingbot.json publishes no ipv6Prefix
   # entries as of 2026-07 (Bingbot crawls over IPv4 only), so the v6 leg is
   # forward-compatible plumbing: an empty list keeps the store untouched.
+  # Fetch BEFORE the tagged-line cleanup: an empty fetch must keep the
+  # existing crawler ranges on the csf.allow side too; the static csf.deny
+  # healing below runs either way, deliberately before the empty-fetch guard.
   _JSON=$(curl ${_crlGet} https://www.bing.com/toolbox/bingbot.json 2>&1)
   _IPS=$(echo "${_JSON}" \
     | grep -o '"ipv4Prefix": *"[^"]*"' \
@@ -512,21 +597,6 @@ _whitelist_ip_microsoft() {
   _update_web6_allow microsoft "${_IPS6}"
   echo _IPS microsoft list..
   echo ${_IPS}
-  for _IP in ${_IPS}; do
-    echo checking csf.allow microsoft ${_IP} now...
-    _IP_CHECK=$(cat /etc/csf/csf.allow \
-      | cut -d '#' -f1 \
-      | sort \
-      | uniq \
-      | tr -d "\s" \
-      | grep -F "${_IP}" 2>&1)
-    if [ -z "${_IP_CHECK}" ]; then
-      echo "${_IP} not yet listed in /etc/csf/csf.allow"
-      echo "tcp|in|d=80|s=${_IP} # microsoft ips" >> /etc/csf/csf.allow
-    else
-      echo "${_IP} already listed in /etc/csf/csf.allow"
-    fi
-  done
   # Remove all current Bingbot ranges from csf.deny
   # Legacy ranges (no longer in JSON but may be in older deny rules)
   sed -i "/^65\.5[2-5]\./d" /etc/csf/csf.deny
@@ -543,6 +613,27 @@ _whitelist_ip_microsoft() {
   sed -i "/^191\.233\./d" /etc/csf/csf.deny
   sed -i "/^207\.46\./d" /etc/csf/csf.deny
   wait
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty microsoft IPv4 list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing microsoft ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-microsoft-${_NOW}
+    sed -i "/ # microsoft ips$/d" /etc/csf/csf.allow
+    wait
+  fi
+  for _IP in ${_IPS}; do
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # microsoft ips" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # microsoft ips" >> /etc/csf/csf.allow
+      else
+        echo "${_IP} already listed for d=${_PORT} in /etc/csf/csf.allow"
+      fi
+    done
+  done
 }
 
 _whitelist_ip_sucuri() {
@@ -554,26 +645,21 @@ _whitelist_ip_sucuri() {
     echo removing sucuri ips from csf.allow
     _NOW=$(date +%y%m%d-%H%M%S)
     cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-sucuri-${_NOW}
-    sed -i "s/.*sucuri.*//g" /etc/csf/csf.allow
+    sed -i "/ # sucuri ips$/d" /etc/csf/csf.allow
     wait
   fi
   _IPS="192.88.134.0/23 185.93.228.0/22 66.248.200.0/22 208.109.0.0/22"
   echo _IPS sucuri list..
   echo ${_IPS}
   for _IP in ${_IPS}; do
-    echo checking csf.allow sucuri ${_IP} now...
-    _IP_CHECK=$(cat /etc/csf/csf.allow \
-      | cut -d '#' -f1 \
-      | sort \
-      | uniq \
-      | tr -d "\s" \
-      | grep -F "${_IP}" 2>&1)
-    if [ -z "${_IP_CHECK}" ]; then
-      echo "${_IP} not yet listed in /etc/csf/csf.allow"
-      echo "tcp|in|d=80|s=${_IP} # sucuri ips" >> /etc/csf/csf.allow
-    else
-      echo "${_IP} already listed in /etc/csf/csf.allow"
-    fi
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # sucuri ips" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # sucuri ips" >> /etc/csf/csf.allow
+      else
+        echo "${_IP} already listed for d=${_PORT} in /etc/csf/csf.allow"
+      fi
+    done
   done
   sed -i "/^192\.88\.13[4-5]\./d" /etc/csf/csf.deny
   sed -i "/^185\.93\.22[89]\.\|^185\.93\.23[01]\./d" /etc/csf/csf.deny
@@ -587,13 +673,9 @@ _whitelist_ip_authzero() {
   # https://cdn.auth0.com/ip-ranges.json
   # The list is updated ahead of any functional changes; check last_updated_at to detect changes.
   # Only whitelist regions relevant to your Auth0 tenant(s). Currently fetching all regions.
-  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
-    echo removing authzero ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S)
-    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-authzero-${_NOW}
-    sed -i "s/.*authzero.*//g" /etc/csf/csf.allow
-    wait
-  fi
+  # Fetch BEFORE the tagged-line cleanup: an empty fetch must keep the
+  # existing entries (the csf.deny cleanup below derives from the fetched
+  # list, so it is a no-op on a failed fetch either way).
   _IPS=$(curl ${_crlGet} https://cdn.auth0.com/ip-ranges.json \
     | grep -o '"[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*/[0-9]*"' \
     | grep -v ':' \
@@ -603,20 +685,26 @@ _whitelist_ip_authzero() {
   _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS authzero list..
   echo ${_IPS}
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty authzero list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing authzero ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-authzero-${_NOW}
+    sed -i "/ # authzero ips$/d" /etc/csf/csf.allow
+    wait
+  fi
   for _IP in ${_IPS}; do
-    echo checking csf.allow authzero ${_IP} now...
-    _IP_CHECK=$(cat /etc/csf/csf.allow \
-      | cut -d '#' -f1 \
-      | sort \
-      | uniq \
-      | tr -d "\s" \
-      | grep -F "${_IP}" 2>&1)
-    if [ -z "${_IP_CHECK}" ]; then
-      echo "${_IP} not yet listed in /etc/csf/csf.allow"
-      echo "tcp|in|d=80|s=${_IP} # authzero ips" >> /etc/csf/csf.allow
-    else
-      echo "${_IP} already listed in /etc/csf/csf.allow"
-    fi
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # authzero ips" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # authzero ips" >> /etc/csf/csf.allow
+      else
+        echo "${_IP} already listed for d=${_PORT} in /etc/csf/csf.allow"
+      fi
+    done
   done
   # Clean up any authzero IPs from csf.deny (current + previously known retired IPs)
   # Since all Auth0 IPs are /32 host routes, we match on the specific addresses from
@@ -639,19 +727,14 @@ _whitelist_ip_site24x7_extra() {
   echo _IPS site24x7_extra list..
   echo ${_IPS}
   for _IP in ${_IPS}; do
-    echo checking csf.allow site24x7_extra ${_IP} now...
-    _IP_CHECK=$(cat /etc/csf/csf.allow \
-      | cut -d '#' -f1 \
-      | sort \
-      | uniq \
-      | tr -d "\s" \
-      | grep -F "${_IP}" 2>&1)
-    if [ -z "${_IP_CHECK}" ]; then
-      echo "${_IP} not yet listed in /etc/csf/csf.allow"
-      echo "tcp|in|d=80|s=${_IP} # site24x7_extra ips" >> /etc/csf/csf.allow
-    else
-      echo "${_IP} already listed in /etc/csf/csf.allow"
-    fi
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # site24x7_extra ips" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # site24x7_extra ips" >> /etc/csf/csf.allow
+      else
+        echo "${_IP} already listed for d=${_PORT} in /etc/csf/csf.allow"
+      fi
+    done
   done
   if [ -e "/etc/boa/.ignore.site24x7.firewall.cnf" ]; then
     for _IP in ${_IPS}; do
@@ -673,17 +756,9 @@ _whitelist_ip_site24x7_extra() {
 }
 
 _whitelist_ip_site24x7() {
-  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
-    echo removing site24x7 ips from csf.allow
-    _NOW=$(date +%y%m%d-%H%M%S)
-    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-site24x7-${_NOW}
-    sed -i "s/.*site24x7.*//g" /etc/csf/csf.allow
-    wait
-    echo removing site24x7 ips from csf.ignore
-    sed -i "s/.*site24x7.*//g" /etc/csf/csf.ignore
-    wait
-  fi
-
+  # Monitoring probes resolved from DNS (host, then dig). Fetch BEFORE the
+  # tagged-line cleanup: an empty answer must keep the existing probe entries
+  # in csf.allow and csf.ignore -- never strip a monitor for a day.
   _IPS=$(host site24x7.enduserexp.com 1.1.1.1  \
     | grep 'has address' \
     | cut -d ' ' -f4 \
@@ -705,21 +780,30 @@ _whitelist_ip_site24x7() {
   _IPS=$(echo "${_IPS}" | _emit_valid_ips)
   echo _IPS site24x7 list..
   echo ${_IPS}
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty site24x7 list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing site24x7 ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-site24x7-${_NOW}
+    sed -i "/ # site24x7 ips$/d" /etc/csf/csf.allow
+    wait
+    echo removing site24x7 ips from csf.ignore
+    sed -i "/ # site24x7 ips$/d" /etc/csf/csf.ignore
+    wait
+  fi
 
   for _IP in ${_IPS}; do
-    echo checking csf.allow site24x7 ${_IP} now...
-    _IP_CHECK=$(cat /etc/csf/csf.allow \
-      | cut -d '#' -f1 \
-      | sort \
-      | uniq \
-      | tr -d "\s" \
-      | grep -F "${_IP}" 2>&1)
-    if [ -z "${_IP_CHECK}" ]; then
-      echo "${_IP} not yet listed in /etc/csf/csf.allow"
-      echo "tcp|in|d=80|s=${_IP} # site24x7 ips" >> /etc/csf/csf.allow
-    else
-      echo "${_IP} already listed in /etc/csf/csf.allow"
-    fi
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # site24x7 ips" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # site24x7 ips" >> /etc/csf/csf.allow
+      else
+        echo "${_IP} already listed for d=${_PORT} in /etc/csf/csf.allow"
+      fi
+    done
   done
 
   if [ -e "/etc/boa/.ignore.site24x7.firewall.cnf" ]; then
@@ -995,6 +1079,153 @@ _guard_stats() {
   fi
 }
 
+# The diff-guard's rollback used to be silent: one "NO" line in a csf.log
+# nobody reads, while the box ran yesterday's provider ranges -- for years,
+# on any box with an operator line appended after the resolver lines. A
+# rollback is either the guard catching a real mid-pass edit or a defect
+# like that one, and both deserve the operator's attention at once, so it is
+# announced through the channels the per-minute healers use: the incident
+# log the monitor mails from, and a direct ALERT mail to _MY_EMAIL unless
+# _INCIDENT_REPORT is OFF. _BOA_CNF is a seam for the harness only.
+# The lines the pass owns inside the guarded window, by their EXACT shape:
+# " # <tag> ips" at the end of the line for every provider tag the refreshes
+# above write (site24x7_extra is a tag of its own) and the migration proxy
+# line; the DHCP lease line is rewritten after the guard and listed for
+# safety. Exact shapes, not bare words: an operator line whose comment merely
+# mentions a provider is foreign to the pass, so a change to it is caught by
+# the diff-guard and named by the rollback alert instead of being tolerated
+# and hidden. A provider added above is added here, once -- left out, its own
+# lines would roll every pass back and the alert would name them.
+_CSF_ALLOW_OWN_TAGS="pingdom uptimerobot cloudflare googlebot googlespecial microsoft imperva sucuri authzero site24x7 site24x7_extra"
+
+# One pattern per line, anchored at the end of the line. Basic regular
+# expressions (what diff -I reads) that are valid extended ones too, so the
+# alert can join them into one alternation.
+_csf_allow_own_patterns() {
+  local _t
+  for _t in ${_CSF_ALLOW_OWN_TAGS}; do
+    echo " # ${_t} ips\$"
+  done
+  echo " # migration proxy\$"
+  echo " # Local DHCP out\$"
+}
+
+# The difference between a csf.allow copy and its snapshot with every hunk
+# made only of the pass's own lines ignored: empty means the pass changed
+# nothing but its own lines. Compares SORTED copies: diff -I only tolerates
+# hunks made entirely of matching lines, and the pass appends its own lines
+# at the end of the file, so on the raw files diff's cheapest edit moved
+# whatever operator lines sat after them into a hunk no pattern covers --
+# and the whole provider refresh was rolled back, silently, on every pass
+# from then on. Sorted, a pure add/remove of own lines is all that can
+# differ, wherever the lines sit; a changed operator line still shows, which
+# is what the guard exists to catch.
+_csf_allow_foreign_diff() {
+  local _p _ign=()
+  while IFS= read -r _p; do
+    _ign+=(-I "${_p}")
+  done < <(_csf_allow_own_patterns)
+  diff -w -B "${_ign[@]}" <(sort "${1}") <(sort "${2}") 2>&1
+}
+
+# The same patterns as one alternation for the alert's filter, joined
+# pattern by pattern so a stray line can never yield an empty alternative
+# that would match -- and hide -- every line.
+_csf_allow_own_rx() {
+  local _p _rx=""
+  while IFS= read -r _p; do
+    _rx="${_rx}${_rx:+|}${_p}"
+  done < <(_csf_allow_own_patterns)
+  echo "${_rx}"
+}
+
+_BOA_CNF="${_BOA_CNF:-/root/.barracuda.cnf}"
+_cnf_value() {
+  grep -m1 -E "^[[:space:]]*(export[[:space:]]+)?${1}=" "${_BOA_CNF}" 2>/dev/null \
+    | sed -e 's/^[^=]*=//' -e 's/[]["'"'"' ]//g'
+}
+_csf_allow_rollback_alert() {
+  local _diff="${1}" _brk="${2}" _pre="${3}" _host _mail _lvl _odd
+  local _log="/var/log/boa/system.incident.log"
+  _host="$(tr -d '\n' < /etc/hostname 2>/dev/null)"
+  [ -n "${_host}" ] || _host="$(hostname -f 2>/dev/null)"
+  # The lines the pass does not own are what the operator needs to see; the
+  # hunk diff reports carries every provider line sorted next to them, so
+  # the offending line would sit buried under thousands of tagged ones.
+  # "<" = only in the rejected copy, ">" = only in the snapshot.
+  _odd=""
+  if [ -s "${_brk}" ] && [ -s "${_pre}" ]; then
+    _odd=$(diff <(sort "${_brk}") <(sort "${_pre}") 2>/dev/null \
+      | grep '^[<>]' \
+      | grep -vE "$(_csf_allow_own_rx)" \
+      | head -50)
+  fi
+  [ -n "${_odd}" ] || _odd="(none isolated; raw diff: ${_diff:0:600})"
+  [ -d "${_log%/*}" ] || mkdir -p "${_log%/*}"
+  echo "$(date) ALERT: csf.allow provider refresh rolled back on ${_host}; rejected copy ${_brk}, snapshot ${_pre}; lines not the pass's own: $(echo "${_odd}" | tr '\n' ' ' | cut -c1-600)" >> "${_log}"
+  _mail="$(_cnf_value _MY_EMAIL)"
+  _mail="${_mail//\\@/@}"
+  _lvl="$(_cnf_value _INCIDENT_REPORT)"
+  _lvl="${_lvl^^}"
+  _lvl="${_lvl//[^A-Z]/}"
+  [ -n "${_mail}" ] || return 0
+  case "${_lvl}" in
+    OFF|NO) return 0 ;;
+  esac
+  command -v s-nail >/dev/null 2>&1 || return 0
+  cat <<EOF | s-nail -s "[${_host}] csf.allow provider refresh rolled back" "${_mail}"
+
+ The daily provider whitelist refresh (guest-water.sh) found /etc/csf/csf.allow
+ changed in a way it does not own while it was running, and rolled the file back
+ to the snapshot it took at the start of the pass. The box keeps yesterday's
+ provider ranges until the next pass succeeds.
+
+ Host:          ${_host}
+ When:          $(date)
+ Rejected copy: ${_brk}
+ Snapshot kept: ${_pre}
+
+ Lines that are not the pass's own ("<" only in the rejected copy, ">" only in
+ the snapshot; at most 50):
+${_odd}
+
+ If the change was yours, re-apply it now that the pass is over -- edits made
+ while the pass runs are exactly what this guard reverts. If it was not yours,
+ compare the two files: diff <(sort ${_brk}) <(sort ${_pre})
+
+EOF
+}
+
+# True for a command line that IS csf or lfd, or was started from a
+# ConfigServer path (its first word) -- never for one that merely mentions
+# ConfigServer further along (a grep, an ssh -c, an operator's pipeline).
+_csf_owned_cmdline() {
+  [[ "${1}" =~ ^(/usr/bin/perl\ )?/usr/sbin/(csf|lfd)(\ |$) ]] \
+    || [[ "${1}" =~ ^lfd\ - ]] \
+    || [[ "${1}" =~ ^[^\ ]*ConfigServer ]]
+}
+
+# The hung-csf cleanup before a reload (77fe98cac), scoped to its target:
+# the sleeps csf/lfd own and the processes started from a ConfigServer path.
+# The former `killall sleep` and bare `pkill -9 -f ConfigServer` matched by
+# substring across the whole box, twice per pass: every sleep died --
+# second.sh's TERM-then-sleep-then-KILL window (the sleep gone, the -9
+# follows the TERM at once), minute.sh, the guards, a watcher or a pass
+# mid-wait -- and any command line merely mentioning ConfigServer was
+# -9'd. A current csf/lfd spawns no sleep process at all, so this usually
+# kills nothing, which is the point.
+_csf_kill_own() {
+  local _p _pp _cmd
+  for _p in $(pgrep -x sleep 2>/dev/null); do
+    _pp=$(awk '/^PPid:/ { print $2 }' "/proc/${_p}/status" 2>/dev/null)
+    [ -n "${_pp}" ] || continue
+    _cmd=$(tr '\0' ' ' < "/proc/${_pp}/cmdline" 2>/dev/null)
+    _csf_owned_cmdline "${_cmd}" && kill -9 "${_p}" 2>/dev/null
+  done
+  pkill -9 -f '^[^ ]*ConfigServer' 2>/dev/null
+  return 0
+}
+
 _whitelist_ip_dns() {
   csf -tr 1.1.1.1
   csf -tr 8.8.8.8
@@ -1003,12 +1234,19 @@ _whitelist_ip_dns() {
   csf -dr 8.8.8.8
   csf -dr 9.9.9.9
   [ -e "/etc/csf/csfpost.d/synproxy.sh" ] && synproxy_reassert -p "443 80" --no-quic -q &> /dev/null
-  sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.allow
-  sed -i "s/.*1.1.1.1.*//g"  /etc/csf/csf.ignore
-  sed -i "s/.*8.8.8.8.*//g"  /etc/csf/csf.allow
-  sed -i "s/.*8.8.8.8.*//g"  /etc/csf/csf.ignore
-  sed -i "s/.*9.9.9.9.*//g"  /etc/csf/csf.allow
-  sed -i "s/.*9.9.9.9.*//g"  /etc/csf/csf.ignore
+  # Match the resolver lines literally and by their shape only: a bare address
+  # at line start (the legacy form) or the d= field of the outbound entry
+  # written below. The former wildcard-dot patterns (.*1.1.1.1.*) blanked
+  # every line containing 1?1?1?1 -- a live Cloudflare /18, a Pingdom probe
+  # and a dozen Site24x7 hosts on every pass -- which the providers' former
+  # unconditional re-add masked and the empty-fetch fail-safe would not.
+  local _r
+  for _r in 1.1.1.1 8.8.8.8 9.9.9.9; do
+    _r="${_r//./\\.}"
+    sed -i -e "/^${_r}[[:space:]#]/d" -e "/^${_r}$/d" \
+      -e "/|d=${_r}[[:space:]#]/d" -e "/|d=${_r}$/d" /etc/csf/csf.allow
+    sed -i -e "/^${_r}[[:space:]#]/d" -e "/^${_r}$/d" /etc/csf/csf.ignore
+  done
   echo "tcp|out|d=53|d=1.1.1.1 # Cloudflare DNS" >> /etc/csf/csf.allow
   echo "tcp|out|d=53|d=8.8.8.8 # Google DNS" >> /etc/csf/csf.allow
   echo "tcp|out|d=53|d=9.9.9.9 # Cleaner DNS" >> /etc/csf/csf.allow
@@ -1042,13 +1280,21 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   _useCnf="/etc/csf/csf.allow"
   _preCnf="${_vBs}/dragon/t/csf.allow.backup-${_NOW}"
   _brkCnf="${_vBs}/dragon/t/csf.allow.broken-${_NOW}"
+  # The resolver refresh runs BEFORE the snapshot, outside the guarded window:
+  # it deletes the pass's own resolver lines by shape and re-appends them in
+  # the outbound form, and no own-line pattern of the guard names a resolver
+  # line ("# Cloudflare DNS", a legacy bare address). Snapshotted first, a box
+  # whose resolver lines an operator had removed -- or one still carrying the
+  # legacy bare form -- saw its own resolver churn as a foreign hunk, rolled
+  # the refresh back to the resolver-less snapshot and repeated that daily.
+  _whitelist_ip_dns
   if [ -f "${_useCnf}" ]; then
     mkdir -p ${_vBs}/dragon/t/
     cp -af ${_useCnf} ${_preCnf}
   fi
 
-  _whitelist_ip_dns
   _whitelist_ip_pingdom
+  _whitelist_ip_uptimerobot
   _whitelist_ip_cloudflare
   _whitelist_ip_migration_proxy
   _whitelist_ip_googlebot
@@ -1061,36 +1307,28 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   [ -e "/root/.extended.firewall.exceptions.cnf" ] && _whitelist_ip_site24x7
 
   if [ -f "${_useCnf}" ]; then
-    _diffCnfTest=$(diff -w -B \
-      -I pingdom \
-      -I cloudflare \
-      -I googlebot \
-      -I googlespecial \
-      -I microsoft \
-      -I imperva \
-      -I sucuri \
-      -I authzero \
-      -I site24x7 \
-      -I migration \
-      -I DHCP ${_useCnf} ${_preCnf} 2>&1)
-    if [ -z "${_diffCnfTest}" ]; then
+    if [ ! -s "${_preCnf}" ]; then
+      # No snapshot: nothing to roll back to, so the live file stays
+      # (siblings in sql.sh.inc and mycnfup take the same way out).
       _useCnfUpdate=YES
-      echo "YES $(date) diff0 empty" >> ${_vBs}/dragon/t/csf.log
+      echo "NO $(date) diff3 no snapshot ${_preCnf}" >> ${_vBs}/dragon/t/csf.log
     else
-      _diffCnfTest=$(echo -n ${_diffCnfTest} | fmt -su -w 2500 2>&1)
-      echo "NO $(date) diff1 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
-    fi
-    if [[ "${_diffCnfTest}" =~ "No such file or directory" ]]; then
-      # One side of the diff is missing, which means the snapshot: nothing to
-      # roll back to, so the live file stays (siblings in sql.sh.inc and
-      # mycnfup take the same way out).
-      _useCnfUpdate=YES
-      echo "NO $(date) diff3 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
+      # Only the lines the pass does not own count (_csf_allow_foreign_diff:
+      # sorted copies, every hunk made of its own lines ignored).
+      _diffCnfTest=$(_csf_allow_foreign_diff "${_useCnf}" "${_preCnf}")
+      if [ -z "${_diffCnfTest}" ]; then
+        _useCnfUpdate=YES
+        echo "YES $(date) diff0 empty" >> ${_vBs}/dragon/t/csf.log
+      else
+        _diffCnfTest=$(echo -n ${_diffCnfTest} | fmt -su -w 2500 2>&1)
+        echo "NO $(date) diff1 ${_diffCnfTest}" >> ${_vBs}/dragon/t/csf.log
+      fi
     fi
   fi
   if [ "${_useCnfUpdate}" = "NO" ] && [ -s "${_preCnf}" ]; then
     cp -af ${_useCnf} ${_brkCnf}
     cp -af ${_preCnf} ${_useCnf}
+    _csf_allow_rollback_alert "${_diffCnfTest}" "${_brkCnf}" "${_preCnf}"
   fi
 
   if [ -e "/etc/boa/.full.csf.cleanup.cnf" ]; then
@@ -1100,8 +1338,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
     wait
   fi
 
-  pkill -9 -f ConfigServer
-  killall sleep &> /dev/null
+  _csf_kill_own
   rm -f /etc/csf/csf.error
   if [ -e "/etc/csf/csfpost.d/synproxy.sh" ]; then
     csf -ra &> /dev/null
@@ -1152,8 +1389,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   rm -f /var/xdrago/monitor/log/web.log
   rm -f /var/xdrago/monitor/log/ftp.log
 
-  pkill -9 -f ConfigServer
-  killall sleep &> /dev/null
+  _csf_kill_own
   rm -f /etc/csf/csf.error
   service lfd restart
   _NOW=$(date +%y%m%d-%H%M%S)

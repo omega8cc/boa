@@ -285,7 +285,6 @@ _install_other_dependencies() {
 }
 
 _install_duplicity() {
-  pip3 install --upgrade pip --root-user-action ignore
   echo "Installing pipx..."
 
   ${_DCY_PTN} -m pip install pipx --break-system-packages --root-user-action ignore
@@ -428,24 +427,13 @@ _python_install_src() {
     exit 1
   fi
 
-  echo "Locating pip3..."
-  if [ -x "/usr/local/bin/pip3" ]; then
-    _usePip=/usr/local/bin/pip3
-  elif [ -x "/usr/bin/pip3" ]; then
-    _usePip=/usr/bin/pip3
-  fi
-  echo "_usePip is ${_usePip}"
-
+  # Upgrade the pinned interpreter's own pip, never whatever pip3 is first
+  # on PATH: a box whose earlier system-pip upgrade left a pip3 script bound
+  # to the distro python has that script refused under PEP 668
+  # (externally-managed-environment), so the upgrade silently never ran;
+  # the pinned build under /usr/local carries no such marker.
   echo "Installing pip..."
-  _PIP_TEST=$(${_usePip} --version 2>&1)
-  if [[ "${_PIP_TEST}" =~ "python 3.11" ]] \
-    || [[ "${_PIP_TEST}" =~ "python 3.12" ]] \
-    || [[ "${_PIP_TEST}" =~ "python 3.13" ]] \
-    || [[ "${_PIP_TEST}" =~ "python ${_PTN_MNR}" ]]; then
-    ${_usePip} install --upgrade pip --root-user-action ignore
-  else
-    ${_usePip} install --upgrade pip
-  fi
+  ${_DCY_PTN} -m pip install --upgrade pip --root-user-action ignore
 
   _install_duplicity
   _install_other_dependencies
@@ -459,14 +447,28 @@ _if_python_install_src() {
     echo "Python ${_PTN_VRN} installation is required to support Duplicity ${_DCY_VRN}"
     _python_install_src
   else
-    if ! ${_DCY_PTN} -c "import boto3" &> /dev/null; then
+    # Converged means every venv this install creates runs on the pinned
+    # interpreter: Duplicity's (its version and its interpreter) and the four
+    # tool venvs. The former test imported boto3 and b2sdk on the pinned
+    # interpreter itself, where the pipx design never puts them, so it tripped
+    # on every box and the quick path below was never taken. The reinstall
+    # switch still forces the full run.
+    if [ -e "/root/.force.duplicity.reinstall.cnf" ]; then
+      _PYTHON_INSTALL=YES
+    elif ! _duplicity_venv_on_pin \
+      || [[ ! "$(${_DCY_CMD} --version 2>&1)" =~ "duplicity ${_DCY_VRN}" ]]; then
       _PYTHON_INSTALL=YES
     fi
-    if ! ${_DCY_PTN} -c "import b2sdk" &> /dev/null; then
-      _PYTHON_INSTALL=YES
-    fi
+    for _vnvChk in boto3 awscli azure-storage-blob b2sdk; do
+      _vnvChkPyt="$(readlink -f "${_PIPX_VNV}/${_vnvChk}/bin/python" 2>/dev/null)"
+      if [[ "${_vnvChkPyt}" != *"python${_PTN_MNR}" ]] || [ ! -x "${_vnvChkPyt}" ]; then
+        _PYTHON_INSTALL=YES
+      fi
+    done
     if [ "${_PYTHON_INSTALL}" = "YES" ]; then
       _python_install_src
+    else
+      echo "Python ${_PTN_VRN}, Duplicity ${_DCY_VRN} and the tool venvs are on the pin: nothing to install"
     fi
   fi
 }
@@ -490,8 +492,7 @@ _check_root
 _check_openssl
 _os_detection_minimal
 _if_python_install_src
-# Unconditional: the quick no-op paths above (python current, imports
-# fine, duplicity already on the pin) must still converge an unpatched
-# venv
+# Unconditional: the quick no-op path above (python, Duplicity and the tool
+# venvs on the pin) must still converge an unpatched venv
 _patch_duplicity_b2backend
 

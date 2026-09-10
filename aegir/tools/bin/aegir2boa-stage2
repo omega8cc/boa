@@ -7,8 +7,10 @@
 # for eligible homogeneous current-3.x estates). Operator runbook:
 # docs/AEGIR2BOA.md in the BOA tree.
 #
-# DUAL-RESIDENT: place this same script on the SOURCE (vanilla) box and the
-# TARGET (BOA) box. Source verbs refuse to run on a BOA box and vice versa.
+# DUAL-RESIDENT: the BOA TARGET box carries this script at /opt/local/bin
+# (fetched and kept current with the other BOA tools); place the SAME bytes
+# on the SOURCE (vanilla) box. Source verbs refuse to run on a BOA box and
+# vice versa; check and pre-mig warn when the two copies differ.
 #
 # Source-resident verbs (vanilla box, root):
 #   peer       --target <ip>                                  [--live]
@@ -34,6 +36,9 @@
 #   peer       --source <ip> [--pubkey-file <f>]              [--live]
 #   target-status --account <oN>
 #
+# Either box: --version prints the running copy's md5 (check and pre-mig
+# compare the two copies the same way; see DUAL-RESIDENT above).
+#
 # Safety model: every acting verb is a DRY RUN unless
 # --live is given; --live requires a prior CLEAN dry run of the same verb
 # and scope on the same box, and CONSUMES that token on entry. The serving
@@ -46,6 +51,8 @@
 #
 # Exit: 0 ok (dry clean / live completed), non-zero on gate failure.
 
+export HOME=/root
+export SHELL=/bin/bash
 export PATH=/usr/local/sbin:/usr/local/bin:/opt/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 export DEBIAN_FRONTEND=noninteractive
 
@@ -131,7 +138,8 @@ _die()  { echo "A2B-S2 [$(date +%T 2>/dev/null)] FATAL: $*" | tee -a "${_LOG}" >
 _have() { command -v "$1" >/dev/null 2>&1; }
 
 _usage() {
-  sed -n '2,46p' "$0" | sed 's/^# \{0,1\}//'
+  # the header block, up to and including its Exit: line
+  sed -n '2,/^# Exit: /p' "$0" | sed 's/^# \{0,1\}//'
   exit 0
 }
 
@@ -260,6 +268,19 @@ _require_target_box() {
   _STATE_DIR="${_ACCT_ROOT}/log/a2b"
   mkdir -p "${_STATE_DIR}/state" "${_STATE_DIR}/markers"
   chmod 700 "${_STATE_DIR}" "${_STATE_DIR}/state" "${_STATE_DIR}/markers"
+}
+
+# Same bytes on both ends: the target's copy is fetched with the BOA tools
+# and refreshes itself, this copy was placed by hand. A warning, never a
+# gate (a revert must not wait on a re-copy), repeated by every verb that
+# reaches the target until the copies match.
+_copy_parity_check() {
+  local _here _there
+  _here="$(md5sum "$(readlink -f "${BASH_SOURCE[0]}")" 2>/dev/null | cut -d' ' -f1)"
+  _there="$(ssh -o BatchMode=yes "root@${_TARGET}" 'md5sum /opt/local/bin/aegir2boa-stage2 2>/dev/null' 2>/dev/null | cut -d' ' -f1)"
+  [[ -n "${_here}" && -n "${_there}" ]] || return 0
+  [[ "${_here}" = "${_there}" ]] && return 0
+  _alrt "this aegir2boa-stage2 (${_here:0:12}) differs from the target's /opt/local/bin/aegir2boa-stage2 (${_there:0:12}) - a migration runs the SAME bytes on both ends: copy the target's file over this one before going on"
 }
 
 _marker()     { echo "${_STATE_DIR}/markers/$1"; }
@@ -770,6 +791,7 @@ verb_check() {
   ssh -o BatchMode=yes "root@${_TARGET}" 'test -x /opt/local/bin/boa' >/dev/null 2>&1 \
     || _die "target ${_TARGET} does not look like a BOA box (/opt/local/bin/boa missing)"
   _info "target ${_TARGET}: ssh ok, BOA present"
+  _copy_parity_check
 
   # DB generation parity (source dump -> target import). A dump from a
   # newer-generation server names collations the older target rejects at
@@ -958,8 +980,11 @@ verb_premig() {
     else
       _info "[DRY] hosting-queued daemon not active"
     fi
-    ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" true >/dev/null 2>&1 \
-      || { _alrt "cannot ssh root@${_TARGET}"; _DRY_FAIL=1; }
+    if ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" true >/dev/null 2>&1; then
+      _copy_parity_check
+    else
+      _alrt "cannot ssh root@${_TARGET}"; _DRY_FAIL=1
+    fi
     _dry_finish "${_scope}"
   fi
   _gate_consume "${_scope}"
@@ -1057,6 +1082,18 @@ verb_create() {
 
   if [[ "${_LIVE}" != "YES" ]]; then
     _DRY_FAIL=0
+    # the tree is the TARGET's: its licence gate answers to it, and a wrong
+    # --tree sends the account through the wrong gate (an lts box through
+    # dev's, which refuses unlicensed hostnames). Read it from the box.
+    local _tt
+    _tt="$(ssh -o BatchMode=yes "root@${_TARGET}" 'boa info 2>/dev/null' 2>/dev/null \
+      | grep -oE 'Barracuda BOA-[0-9.]+-(dev|lts|pro)' | tail -1 | grep -oE '(dev|lts|pro)$')"
+    if [[ -z "${_tt}" ]]; then
+      _alrt "could not read the BOA tree on ${_TARGET} (boa info) - trusting --tree ${_TREE}"
+    elif [[ "${_tt}" != "${_TREE}" ]]; then
+      _alrt "--tree ${_TREE}, but ${_TARGET} runs the ${_tt} tree - the account is built on the target's own tree"
+      _DRY_FAIL=1
+    fi
     if ssh -o BatchMode=yes "root@${_TARGET}" "test -d /data/disk/${_ACCOUNT}" 2>/dev/null; then
       _alrt "account ${_ACCOUNT} already exists on ${_TARGET}"; _DRY_FAIL=1
     else
@@ -2607,6 +2644,10 @@ verb_peer() {
   # the account-scoped state dir every other target verb uses.
   local _scope="peer-${_TARGET:-${_SOURCE_IP:-any}}"
   if [[ "$(_box_class)" = "boa" ]]; then
+    # the argument gate comes BEFORE the state dir: a refused invocation
+    # (a bare 'peer', a typo) must leave nothing behind, like every source
+    # verb's class gate does
+    [[ -n "${_SOURCE_IP}" ]] || _die "peer on a BOA box needs --source <ip>"
     _STATE_DIR=/root/.a2b-peer
     mkdir -p "${_STATE_DIR}/state"
     chmod 700 "${_STATE_DIR}" "${_STATE_DIR}/state"
@@ -3040,8 +3081,11 @@ verb_target_status() {
 
 [[ $# -ge 1 ]] || _usage
 _OP="$1"
-# the documented invocation must answer for anyone, before the root gate
-case "${_OP}" in -h|--help|help) _usage ;; esac
+# the documented invocations must answer for anyone, before the root gate
+case "${_OP}" in
+  -h|--help|help) _usage ;;
+  --version) echo "aegir2boa-stage2 md5=$(md5sum "$0" 2>/dev/null | cut -c1-32)"; exit 0 ;;
+esac
 shift
 
 while [[ $# -gt 0 ]]; do
