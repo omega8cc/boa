@@ -1002,8 +1002,10 @@ _purge_cruft_machine() {
   # manage_ltd_users.sh keeps in .tmp is left alone.
   for _tmpDir in "/home/${_HM_U}.ftp/.tmp" "/home/${_HM_U}.ftp/tmp"; do
     [ -d "${_tmpDir}" ] && [ ! -L "${_tmpDir}" ] || continue
-    find "${_tmpDir}" -mindepth 1 -maxdepth 1 ! -name ".*" \
-      -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
+    # The dotfile skip applies at the top level only, as the glob's did;
+    # aged entries below a recently touched directory are still reaped.
+    find "${_tmpDir}" -mindepth 1 \( -maxdepth 1 -name ".*" -prune \) \
+      -o -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
   done
   find ${_usEr}/.tmp/* \
     -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null

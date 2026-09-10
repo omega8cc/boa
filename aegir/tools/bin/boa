@@ -3365,6 +3365,10 @@ _octopus_cleanup() {
         sort -u -o ${_zombie_dir}.purge.list ${_zombie_dir}.purge.list
         IFS=$'\12'
           _purgedUid=$(id -u "${_usEr}" 2>/dev/null)
+          # Read before the deluser loop: the last deluser takes the
+          # memberless group with it, and the gid sweep below had nothing
+          # to sweep with on exactly the converted boxes it is for.
+          _grpGid=$(getent group "${_usEr}" 2>/dev/null | cut -d: -f3)
           for p in $(cat ${_zombie_dir}.purge.list | grep "${_usEr}" 2>&1);do
             _usr_name=`echo $p | cut -d':' -f1 | awk '{ print $1}'`
             _usr_home=`echo $p | cut -d':' -f2 | awk '{ print $1}'`
@@ -3402,8 +3406,7 @@ _octopus_cleanup() {
         # disk (a static store relocated under /mnt, the gems/npm trees)
         # would keep the number and addgroup hands it to the next account:
         # those paths go to root first, and the group stays while any path
-        # still carries it.
-        _grpGid=$(getent group "${_usEr}" 2>/dev/null | cut -d: -f3)
+        # still carries it. _grpGid was read above, before the deluser loop.
         if [ -n "${_grpGid}" ]; then
           # The uid is recycled from the same system range as the gid, so
           # the leftovers lose both numbers: root:root.
