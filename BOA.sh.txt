@@ -1718,13 +1718,6 @@ _update_agents() {
     fi
   fi
 
-  # The core tool set every box carries (barracuda, boa, octopus, x*, auto*,
-  # reports, backup tools, synproxy family...) is fetched ONLY by
-  # _update_boa_tools, which runs on every pass in every context this function
-  # runs in (and more: pre-install, _SKYNET_MODE=OFF). This function fetches
-  # only what an installed Skynet-active box additionally needs: agents,
-  # monitors, system scripts, and the few tools scoped to such boxes below.
-
   # The remote-backups run scripts ride this same pass as dcysetup, which
   # drives them from clear.sh every few minutes: on a _SKYNET_MODE=OFF box
   # the agents pass never runs, and a refreshed dcysetup calling a stale
@@ -1738,6 +1731,13 @@ _update_agents() {
     _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f46
     _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f46
   fi
+
+  # The core tool set every box carries (barracuda, boa, octopus, x*, auto*,
+  # reports, backup tools, synproxy family...) is fetched ONLY by
+  # _update_boa_tools, which runs on every pass in every context this function
+  # runs in (and more: pre-install, _SKYNET_MODE=OFF). This function fetches
+  # only what an installed Skynet-active box additionally needs: agents,
+  # monitors, system scripts, and the few tools scoped to such boxes below.
 
   # Boot-path file: only ever installed when absent (a distro-provided or
   # vmnetfix-written init script is never clobbered), and only through the
@@ -3205,7 +3205,7 @@ _if_fix_lshell() {
     [ ! -d "/usr/local/etc" ] && mkdir -p /usr/local/etc
     ln -sfn /etc/lshell.conf /usr/local/etc/lshell.conf
   fi
-  _LSHELL_VRN=0.11.8
+  _LSHELL_VRN=0.11.9
   # 0.11.x needs Python 3.10+; a box whose python3 is older (chimaera 3.9,
   # beowulf 3.7) keeps 0.10, which stays installable there so a broken shell
   # on a legacy box still heals instead of failing the 0.11 build every pass.
