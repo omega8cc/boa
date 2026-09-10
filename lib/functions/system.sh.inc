@@ -2911,7 +2911,7 @@ _if_php_idle_on_off() {
     [ -e "/root/.allow-php-multi-install-cleanup.cnf" ] && rm -f /root/.allow-php-multi-install-cleanup.cnf
     rm -f /var/log/boa/._php_libs_fix_*.pid
     echo $$ > /run/boa_php_idle_quiesce.pid
-    pkill -9 -f second.sh
+    pkill -9 -f '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)'
     sleep 5
     _php_not_used_enable_again
     sed -i "s/^_PHP_IDLE.*//g" ${_barCnf}
@@ -2932,7 +2932,7 @@ _if_php_idle_on_off() {
     exit 0
   elif [ "${_PHP_IDLE}" = "OFF" ]; then
     echo $$ > /run/boa_php_idle_quiesce.pid
-    pkill -9 -f second.sh
+    pkill -9 -f '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)'
     sleep 5
     touch /root/.allow-php-multi-install-cleanup.cnf
     _php_if_versions_cleanup_cnf
@@ -12182,21 +12182,21 @@ _initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 9"
       fi
-      pkill -9 -f solr9
+      pkill -9 -f '^[^ ]*java[0-9]* .*solr9'
       _mrun "service solr9 start"
     fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 7"
       fi
-      pkill -9 -f solr7
+      pkill -9 -f '^[^ ]*java[0-9]* .*solr7'
       _mrun "service solr7 start"
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Jetty 9"
       fi
-      pkill -9 -f jetty9
+      pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
       _mrun "service jetty9 start"
     fi
     # cron and nginx are boot-registered and started UNCONDITIONALLY: a
@@ -12310,21 +12310,21 @@ _initd_update() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 9"
       fi
-      pkill -9 -f solr9
+      pkill -9 -f '^[^ ]*java[0-9]* .*solr9'
       _mrun "service solr9 start"
     fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Solr 7"
       fi
-      pkill -9 -f solr7
+      pkill -9 -f '^[^ ]*java[0-9]* .*solr7'
       _mrun "service solr7 start"
     fi
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Restarting Jetty 9"
       fi
-      pkill -9 -f jetty9
+      pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
       _mrun "service jetty9 start"
     fi
     # nginx restarts UNCONDITIONALLY on upgrade: a finalized proxy is

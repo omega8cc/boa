@@ -1352,14 +1352,14 @@ _post_mig() {
   else
     echo Running _post_mig inside vms ${_hName}
     if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
-      pkill -9 -f solr9
+      pkill -9 -f '^[^ ]*java[0-9]* .*solr9'
       service solr9 start
     fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-      pkill -9 -f solr7
+      pkill -9 -f '^[^ ]*java[0-9]* .*solr7'
       service solr7 start
     fi
-    pkill -9 -f jetty9
+    pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
     rm -rf /tmp/{drush*,pear,jetty*}
     rm -f /var/log/jetty9/*
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
@@ -1395,23 +1395,23 @@ _pre_mig() {
     echo Running _pre_mig inside vms ${_hName}
     if [ -e "/var/xdrago/runner.sh" ]; then
       mv -f /var/xdrago/runner.sh /var/xdrago/.runner.sh.off
-      pkill -9 -f runner.sh
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/runner\.sh( |$)'
     fi
     if [ -e "/var/xdrago/owl.sh" ]; then
       mv -f /var/xdrago/owl.sh /var/xdrago/.owl.sh.off
-      pkill -9 -f owl.sh
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/owl\.sh( |$)'
     fi
     if [ -e "/var/xdrago/usage.sh" ]; then
       mv -f /var/xdrago/usage.sh /var/xdrago/.usage.sh.off
-      pkill -9 -f usage.sh
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/usage\.sh( |$)'
     fi
     if [ -e "/var/xdrago/graceful.sh" ]; then
       mv -f /var/xdrago/graceful.sh /var/xdrago/.graceful.sh.off
-      pkill -9 -f graceful.sh
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/graceful\.sh( |$)'
     fi
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/.manage_ltd_users.sh.off
-      pkill -9 -f manage_ltd_users.sh
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/manage_ltd_users\.sh( |$)'
     fi
     if [ "${_hName}" = "${_hst}" ]; then
       echo Preparing source ${_hName} for outgoing migration...
