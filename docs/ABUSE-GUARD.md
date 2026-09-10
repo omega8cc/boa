@@ -1634,7 +1634,7 @@ echo "2a01:db8:beef::/48 # partner service" >> /var/xdrago/monitor/log/web6.allo
 ```
 
 `guest-water.sh`'s daily refresh only rewrites its own provider-tagged lines (`googlebot`,
-`googlespecial`, `microsoft`), so a manual entry persists. Note this exempts the address from the **web IDS
+`googlespecial`, `microsoft`, `uptimerobot`), so a manual entry persists. Note this exempts the address from the **web IDS
 only** — there is no v6 firewall layer to allow it through, and none is needed (BOA
 disables IPv6 server-side; a v6 client only ever appears via the trusted realip proxy).
 

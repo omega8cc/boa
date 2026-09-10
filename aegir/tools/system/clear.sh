@@ -349,7 +349,7 @@ _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=30 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt 0 ]; then
-    pkill -9 -f /usr/sbin/sshd || true
+    pkill -9 -f '^(sshd: )?/usr/sbin/sshd( |$)' || true
     service ssh start
   fi
 }
