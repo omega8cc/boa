@@ -208,7 +208,7 @@ Since Drush relies on the active PHP-CLI version, any changes made to the PHP-CL
 
 - When using standalone `drush8`, `drush10`, or `drush11`, please use Drush Aliases — we don’t test anything running standalone Drush commands in the site directory anymore — it’s probably an old habit which should be avoided for standalone Drush — also because it may and will clash with local Drush if also present.
 - Note that the Drush Alias name for the site with `drush10` is different than for `drush8` — all dots in the site name should be replaced with hyphens and only the last dot before the domain's last extension should be a dot. Example: `drush8 @sub.domain.top.org` becomes `drush10 @sub-domain-top.org`.
-- On every Ægir / Octopus upgrade, all platforms are automatically verified and thus local Drush is by default locked again in all existing platforms.
+- On every Ægir / Octopus upgrade, every platform carrying an enabled site is automatically verified and thus local Drush is by default locked again on those platforms. A platform with no enabled site is verified on its next use instead (a platform task, a site installed on it, the next platform build), and only then is its local Drush locked again.
 
 ### Stop Using Standalone System Drush 10 and 11
 
