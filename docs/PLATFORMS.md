@@ -12,16 +12,16 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 
 ## Drupal 11
 
-- [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.5)
+- [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.6)
 - [Drupal 11.1.10](https://drupal.org/project/drupal/releases/11.1.10)
 - [Drupal 11.2.14](https://drupal.org/project/drupal/releases/11.2.14)
 - [Drupal 11.3.16](https://drupal.org/project/drupal/releases/11.3.16)
-- [Drupal 11.4.5](https://drupal.org/project/drupal/releases/11.4.5)
-- [Drupal CMS 2.1.3](https://drupal.org/project/cms) (11.4.5)
+- [Drupal 11.4.6](https://drupal.org/project/drupal/releases/11.4.6)
+- [Drupal CMS 2.1.4](https://drupal.org/project/cms) (11.4.6)
 - [farmOS 4.0.5](https://drupal.org/project/farm) (11.3.14)
-- [LocalGov 4.0.2](https://drupal.org/project/localgov) (11.4.5)
-- [OpenCulturas 3.0.6](https://drupal.org/project/openculturas) (11.3.16)
-- [Thunder 8.4.3](https://drupal.org/project/thunder) (11.4.5)
+- [LocalGov 4.0.4](https://drupal.org/project/localgov) (11.4.6)
+- [OpenCulturas 3.0.7](https://drupal.org/project/openculturas) (11.3.16)
+- [Thunder 8.4.4](https://drupal.org/project/thunder) (11.4.6)
 - [Varbase 10.1.2](https://drupal.org/project/varbase) (11.4.5)
 
 ## Drupal 10
@@ -33,11 +33,11 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Drupal 10.3.14](https://drupal.org/project/drupal/releases/10.3.14)
 - [Drupal 10.4.10](https://drupal.org/project/drupal/releases/10.4.10)
 - [Drupal 10.5.12](https://drupal.org/project/drupal/releases/10.5.12)
-- [Drupal 10.6.15](https://drupal.org/project/drupal/releases/10.6.15)
+- [Drupal 10.6.16](https://drupal.org/project/drupal/releases/10.6.16)
 - [EzContent 2.2.15](https://drupal.org/project/ezcontent) (10.3.6)
-- [OpenFed 13.6.6](https://drupal.org/project/openfed) (10.6.15)
-- [Opigno LMS 3.2.7](https://drupal.org/project/opigno_lms) (10.6.15)
-- [Social 13.0.2](https://drupal.org/project/social) (10.6.15)
+- [OpenFed 13.6.6](https://drupal.org/project/openfed) (10.6.16)
+- [Opigno LMS 3.2.7](https://drupal.org/project/opigno_lms) (10.6.16)
+- [Social 13.1.0](https://drupal.org/project/social) (10.6.16)
 
 ## Drupal 9
 
