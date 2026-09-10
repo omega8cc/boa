@@ -412,10 +412,13 @@ _cron_duplicate_instances_detection() {
         fi
       fi
       # TERM first so the masters exit cleanly; -9 only what survives. The
-      # pattern kills the duplicate masters, not the jobs they exec'd.
-      pkill -TERM -f /usr/sbin/cron &> /dev/null
+      # kill uses the pattern the count used, so a command line that merely
+      # names the path is never collateral, and what was counted is logged
+      # first so a trip is diagnosable.
+      echo "$(date) INFO: Cron masters counted: $(pgrep -a -f '^/usr/sbin/cron( |$)' 2> /dev/null | tr '\n' ';')" >> ${_pthOml}
+      pkill -TERM -f '^/usr/sbin/cron( |$)' &> /dev/null
       sleep 1
-      pkill -KILL -f /usr/sbin/cron &> /dev/null
+      pkill -KILL -f '^/usr/sbin/cron( |$)' &> /dev/null
       service cron start &> /dev/null
       # Cooldown stamp
       date +%s > "${_cd}"
