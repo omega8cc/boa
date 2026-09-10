@@ -11178,7 +11178,9 @@ _xdrago_install_upgrade() {
     ### is not a fetch marker, and wiping it re-runs its flag normalisation
     ### on every pass, silently reverting an operator's own toggles.
     find ${_pthLog} -maxdepth 1 -name "*.ctrl.*.pid" \
-      ! -name "ghost-family-yes.ctrl.*" -delete 2>/dev/null
+      ! -name "ghost-family-yes.ctrl.*" \
+      ! -name "hostmaster-drushrc-0400.ctrl.*" \
+      ! -name "hosting.cron.ctrl.*" -delete 2>/dev/null
     if [ "${_CUSTOM_CONFIG_LSHELL}" = "YES" ] \
       && [ -e "${_vBs}/custom_lshell.conf" ]; then
       cp -af ${_vBs}/custom_lshell.conf /var/xdrago/conf/lshell.conf
