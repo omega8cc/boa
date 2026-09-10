@@ -4777,7 +4777,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f61 --guard /local/bin/xcopy
     _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f83 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f26 --guard /local/bin/xoct
-    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f84 --guard /local/bin/xtrim
+    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f83 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f95 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f88 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f88 --guard /local/bin/autodaedalus
