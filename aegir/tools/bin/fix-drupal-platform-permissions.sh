@@ -177,10 +177,13 @@ if [ -n "${drupal_root}" ] \
   exit 0
 fi
 
+# Every generation has sites/ and one of the two system.module paths; the
+# ungrouped form let a Drupal 7 tree without sites/ through (see the
+# ownership twin).
 if [ -z "${drupal_root}" ] \
   || [ ! -d "${drupal_root}/sites" ] \
-  || [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
-  && [ ! -f "${drupal_root}/modules/system/system.module" ]; then
+  || { [ ! -f "${drupal_root}/core/modules/system/system.module" ] \
+    && [ ! -f "${drupal_root}/modules/system/system.module" ]; }; then
     printf "Error: Please provide a valid Drupal root directory.\n"
     exit 1
 fi

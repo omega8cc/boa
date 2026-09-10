@@ -237,8 +237,15 @@ _setup_configuration() {
   # must never abort the config regeneration above; the next update
   # retries. The install path applies the same patch via the full
   # dependencies run.
-  bash "${_INSTALL_DEPENDENCIES_SCRIPT}" --patch-only \
-    || echo "NOTE: duplicity backend patch step did not complete; the next update retries."
+  # A copy that predates the arm ignores the flag and runs the whole
+  # dependency install from a minute-cadence cron, so the arm is asked for
+  # first; the agent pass refreshes the copy alongside this tool.
+  if grep -q -- '--patch-only' "${_INSTALL_DEPENDENCIES_SCRIPT}" 2>/dev/null; then
+    bash "${_INSTALL_DEPENDENCIES_SCRIPT}" --patch-only \
+      || echo "NOTE: duplicity backend patch step did not complete; the next update retries."
+  else
+    echo "NOTE: the dependency installer copy has no patch-only mode yet; skipped until it is refreshed."
+  fi
 
   echo "Configuration setup completed successfully."
 }

@@ -701,7 +701,16 @@ _if_disable_not_used_services() {
       mv -f /etc/init.d/jetty9 /var/backups/jetty9.initd
     fi
     pkill -9 -f '^[^ ]*avahi-daemon( |:|$)'
-    pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
+    # Every service this arm disables, by its user where one exists, else by
+    # its title: the jetty9-only kill left a Solr 7/9 JVM running after its
+    # init script was gone.
+    for _jvmSvc in solr9 solr7 jetty9; do
+      if id "${_jvmSvc}" &> /dev/null; then
+        pkill -9 -u "${_jvmSvc}" &> /dev/null
+      else
+        pkill -9 -f "^[^ ]*jav[a][0-9]* .*${_jvmSvc}" &> /dev/null
+      fi
+    done
   fi
 
   if [ "${_DENY_JETTY9}" = "YES" ] \
