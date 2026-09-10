@@ -8,8 +8,9 @@
 ;;  This is a platform level INI file template which can be used to modify
 ;;  default BOA system behaviour for all sites hosted on this platform.
 ;;
-;;  Copy this file as boa_platform_control.ini into sites/all/modules directory,
-;;  then uncomment lines for any settings you want to modify, to make it active.
+;;  BOA seeds this file as boa_platform_control.ini into the sites/all/modules directory
+;;  on its own (and re-creates it when missing); in that live copy uncomment the
+;;  lines for any settings you want to modify, to make them active.
 ;;  All settings are initially listed with system defaults, for reference.
 ;;
 ;;  Note that it takes ~60 seconds to see any modification results in action
@@ -487,6 +488,26 @@
 ;;  This setting affects only the running weekly maintenance system behaviour.
 ;;
 ;;  This option is available only in BOA-2.1.3 or newer.
+```
+
+### INI (platform level) for Web SQL Query Time Cap
+
+```text
+;sql_web_max_exec_ms = 30000
+;;
+;;  This option sets the cap, in milliseconds, on how long a single read-only
+;;  SELECT may run during a web request for all sites hosted on this platform,
+;;  unless the site has its own custom setting for variable sql_web_max_exec_ms
+;;  in the site level boa_site_control.ini file, located in the
+;;  sites/foo.com/modules directory. It is applied as a per-connection
+;;  SET SESSION max_execution_time statement on every web request; CLI (Drush,
+;;  cron, migrations, backups) is never capped.
+;;
+;;  Set 0 to disable the cap. The statement is sent in a form MariaDB ignores,
+;;  so a site whose database lives on a MariaDB server needs no override; there
+;;  the cap simply does not apply.
+;;
+;;  This option is available only in BOA-5.88.822 or newer.
 ```
 
 ### INI (platform level) for Domain Access (domain) Module

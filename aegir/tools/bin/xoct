@@ -2605,6 +2605,19 @@ _migrate_prepare() {
         ssh root@${_tgt} "/bin/echo UP >> /data/disk/${_TGT_HM_USER}/static/control/platforms.info"
         ssh root@${_tgt} "/bin/touch /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.pid"
         echo "INFO: enforced upgrade armed on ${_tgt} for ${_TGT_HM_USER}: ${_ARM_WHY}"
+        ### A demoted box (the failback target, or any ex-active whose
+        ### dispatcher was parked under /var/backups/off-run) has nothing to
+        ### consume the trigger, and octopus itself refuses a proxied account
+        ### ("skipping: proxied (served elsewhere)"), so the seeded PHP set
+        ### cannot be applied there before the promotion -- whose cleanup
+        ### also defuses every armed pid as stale. Mark this one as the
+        ### migration's own: the promotion keeps it and the cutover re-arms
+        ### it at its end, so the restored dispatcher applies the seed on its
+        ### first quiet tick on the box that serves again.
+        if ssh root@${_tgt} "[ ! -e /var/xdrago/run-${_TGT_HM_USER} ] && [ -e /var/backups/off-run/run-${_TGT_HM_USER} ]" 2>/dev/null; then
+          ssh root@${_tgt} "/bin/touch /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.xmass"
+          echo "INFO: ${_TGT_HM_USER}'s dispatcher is parked on ${_tgt} (a demoted box refuses octopus passes); the seeded upgrade is deferred to the promotion -- the cutover re-arms it once the box serves again"
+        fi
       else
         echo "INFO: ${_TGT_HM_USER} on ${_tgt} already runs FPM ${_TGT_FPM_RUN} / CLI ${_TGT_CLI_RUN} and the seed changed nothing; no upgrade armed"
       fi
