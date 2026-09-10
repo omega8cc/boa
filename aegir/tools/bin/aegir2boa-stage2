@@ -102,7 +102,7 @@ _acct_group_on_target() {
   _g=$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" "id -gn '${_a}' 2>/dev/null; echo \"rc=\$?\"" 2>/dev/null | tr -d '[:space:]')
   case "${_g}" in
     *rc=0) _g="${_g%rc=0}" ;;
-    *) _die "cannot read the group of ${_a} on ${_TARGET} (ssh or id failed); refusing to guess it" ;;
+    *) return 1 ;;   # never _die here: callers substitute this function
   esac
   [ "${_g}" = "${_a}" ] || _g="users"
   printf '%s' "${_g}"
@@ -1379,7 +1379,7 @@ verb_transfer() {
 
   _msg "LIVE transfer -> root@${_TARGET}:${_dst}"
   ssh "root@${_TARGET}" "mkdir -p ${_dst}/static/a2b ${_dst}/src/a2b/manifest ${_dst}/src/a2b/ssl-ref ${_dst}/src/a2b/nginx-ref"
-  local _done_plat=" "
+  local _done_plat=" " _tgtGrp=""
   for _mf in ${_mfl}; do
     _uri="$(_manifest_val "${_mf}" URI)"
     _plat="$(_manifest_val "${_mf}" PLATFORM)"
@@ -1409,7 +1409,9 @@ verb_transfer() {
         # hostmaster only at import, so nothing re-asserts it before then,
         # and the literal would leave a converted target's adopted
         # drushrc.php files readable by every other account meanwhile
-        ssh "root@${_TARGET}" "chown -R ${_ACCOUNT}:$(_acct_group_on_target "${_ACCOUNT}") ${_dst}/static/a2b/${_plat}" \
+        _tgtGrp=$(_acct_group_on_target "${_ACCOUNT}") \
+          || _die "cannot read the group of ${_ACCOUNT} on ${_TARGET} (ssh or id failed); refusing to guess it"
+        ssh "root@${_TARGET}" "chown -R ${_ACCOUNT}:${_tgtGrp} ${_dst}/static/a2b/${_plat}" \
           || _die "platform ${_plat} chown failed on target"
         _done_plat="${_done_plat}${_plat} "
         ;;
