@@ -43,7 +43,7 @@ _check_root
 # versions; a marker whose owner PID is gone is stale (crashed run) and
 # is cleared, never obeyed -- and /run clears itself on reboot.
 if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
-  _qsPid=$(tr -dc '0-9' < /run/boa_php_idle_quiesce.pid 2>/dev/null)
+  _qsPid=$( { tr -dc '0-9' < /run/boa_php_idle_quiesce.pid; } 2>/dev/null )
   if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2>/dev/null; then
     exit 0
   fi
@@ -551,7 +551,10 @@ fi
 ### and never blocks; a live previous nightly makes this start skip and say
 ### so. clear.sh sweeps the marker by age; the account loop keeps it fresh
 ### while the nightly is alive.
-_dailyPid=$(tr -dc '0-9' < /run/daily-fix.pid 2>/dev/null)
+# The redirection is set up before the 2>/dev/null, so a missing marker made
+# bash print its own error to the log; group the command so the silence
+# covers the open as well.
+_dailyPid=$( { tr -dc '0-9' < /run/daily-fix.pid; } 2>/dev/null )
 if [ -n "${_dailyPid}" ] \
   && kill -0 "${_dailyPid}" 2>/dev/null \
   && grep -q "owl.sh" "/proc/${_dailyPid}/cmdline" 2>/dev/null; then
