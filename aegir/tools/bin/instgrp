@@ -449,7 +449,7 @@ _tools_ready() {
 
 _do_check() {
   local _p _rc=0
-  _tools_ready || _rc=3
+  _tools_ready || _rc=5
   for _p in ${_TOOLS_OK}; do _msg "ok:      ${_p}"; done
   for _p in ${_TOOLS_ABSENT}; do _msg "absent:  ${_p}"; done
   for _p in ${_TOOLS_STALE}; do _msg "STALE:   ${_p}"; done

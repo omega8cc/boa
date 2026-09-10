@@ -754,7 +754,8 @@ _hostmaster_dr_up() {
   # Heal what the empty-_ROOT form left behind on earlier passes: a Drush
   # tree at /drush and its rotated copies under /backups/system, both
   # BOA-named and never legitimate at the filesystem root.
-  [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" ] && rm -rf /drush
+  [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" ] \
+    && [ -f "/drush/drush.info" ] && [ -f "/drush/includes/boa_extension_filter.inc" ] && rm -rf /drush
   [ -d "/backups/system" ] && rm -rf /backups/system/drush-pre-* &> /dev/null
   if [ -f "/opt/tools/drush/8/drush/drush.php" ]; then
     mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null

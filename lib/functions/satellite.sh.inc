@@ -859,12 +859,11 @@ _satellite_cnf() {
   # email that was never written. A cnf without _MY_OCTO_EMAIL is such a
   # seed: keep its lines, write the full set, lay the seeded lines back.
   _octSeed=""
+  _octSeeded=NO
   if [ -e "${_octCnf}" ] && ! grep -q "^_MY_OCTO_EMAIL=" ${_octCnf} 2> /dev/null; then
-    _octSeed=$(grep -E '^_[A-Z0-9_]+=' ${_octCnf} 2> /dev/null)
-    rm -f ${_octCnf}
-    _msg "NOTE: ${_octCnf} was hand-seeded; completing it with the install defaults, seeded lines kept"
+    _octSeeded=YES
   fi
-  if [ ! -e "${_octCnf}" ]; then
+  if [ "${_octSeeded}" = "YES" ] || [ ! -e "${_octCnf}" ]; then
     if [[ "${_MY_OCTO_EMAIL}" =~ "omega8.cc" ]] \
       || [[ "${_CLIENT_EMAIL}" =~ "omega8.cc" ]]; then
       _if_hosted_sys
@@ -885,6 +884,14 @@ _satellite_cnf() {
       _msg "EXIT: _CLIENT_EMAIL must not be the same address as _MY_OCTO_EMAIL"
       _msg "EXIT: the control panel needs a separate client email for its account"
       _clean_pid_exit
+    fi
+    # The seed is read and removed only past the two gates above: an exit
+    # there took the operator's file with it, and the re-run then installed
+    # with the box defaults.
+    if [ "${_octSeeded}" = "YES" ]; then
+      _octSeed=$(grep -E '^_[A-Z0-9_]+=' ${_octCnf} 2> /dev/null)
+      rm -f ${_octCnf}
+      _msg "NOTE: ${_octCnf} was hand-seeded; completing it with the install defaults, seeded lines kept"
     fi
     _msg "INFO: Creating your ${_octCnf} config file"
     sleep 1
