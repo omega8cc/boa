@@ -44,7 +44,7 @@ if [ -e "/var/log/boa/.xmass_solr_hold.pid" ]; then
         if id "${_svc}" &> /dev/null; then
           pkill -9 -u "${_svc}" &> /dev/null
         else
-          pkill -9 -f "jav[a][0-9]* .*${_svc}" &> /dev/null
+          pkill -9 -f "^[^ ]*jav[a][0-9]* .*${_svc}" &> /dev/null
         fi
         update-rc.d "${_svc}" disable &> /dev/null
         chmod -x "/etc/init.d/${_svc}" 2>/dev/null
@@ -190,7 +190,7 @@ _incident_email_report() {
 _jetty_restart() {
   touch /run/boa_java_auto_healing.pid
   sleep 3
-  pkill -9 -f jetty9
+  pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
   rm -f /var/log/jetty9/*
   find /tmp -mindepth 1 -user jetty9 -exec rm -rf {} + 2>/dev/null
   renice ${_B_NICE} -p $$ &> /dev/null
@@ -220,7 +220,7 @@ _jetty_listen_conflict_detection() {
 _jenkins_health_check_fix() {
   if ! pgrep -f java/jenkins \
     || [ ! -e "/run/jenkins/jenkins.pid" ]; then
-    pkill -9 -f java
+    pkill -9 -f '^[^ ]*java[0-9]* .*jenkins'
     sleep 3
     service jenkins restart
     wait

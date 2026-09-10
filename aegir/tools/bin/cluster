@@ -2230,9 +2230,9 @@ _install_host() {
       wget ${_wgetGet} http://repo.psand.net/pubkey.txt
       _KEYS_SERVER_TEST=$(grep GnuPG pubkey.txt 2>&1)
       sleep 2
-      _CNT=$(pgrep -fc dirmngr)
+      _CNT=$(pgrep -fc '^[^ ]*dirmngr( |$)')
       if (( _CNT > 5 )); then
-        pkill -9 -f dirmngr
+        pkill -9 -f '^[^ ]*dirmngr( |$)'
         echo "$(date) Too many dirmngr processes killed (count=${_CNT})" >> \
           /var/log/boa/dirmngr-count.kill.log
       fi

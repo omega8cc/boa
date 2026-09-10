@@ -358,7 +358,7 @@ _if_solr_four() {
 
   if [ "${_UP_JDK}" = "YES" ] && [ -e "/etc/init.d/jetty9" ]; then
     _msg "INFO: Jetty 9 restart in progress - required after java upgrade"
-    pkill -9 -f jetty9
+    pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
     _mrun "service jetty9 start"
     _msg "INFO: Jetty 9 restart completed"
   fi
@@ -401,7 +401,7 @@ _if_solr_four() {
       _msg "INFO: Upgrading MultiCore Apache Solr ${_R_SOLR} with Jetty ${_R_JETTY}..."
       cd /var/opt
       rm -rf jetty-distribution-*
-      pkill -9 -f jetty9
+      pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
       mv -f /opt/jetty9 ${_vBs}/jetty9-${_xSrl}-${_X_VERSION}-${_NOW}
       _get_dev_arch "jetty-distribution-${_JETTY_9_VRN}.tar.gz"
       mv /var/opt/jetty-distribution-${_JETTY_9_VRN} /opt/jetty9
