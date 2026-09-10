@@ -345,7 +345,8 @@ varbase    # RE-ENABLED 2026-08-11: upstream fixed the template in July 2026 (co
            # composer create-project Vardot/varbase-project:~11 varbase-VERSION-CORE --no-dev --no-interaction --no-install --no-scripts
            # cd ~/static/MONTH-DAY/varbase-VERSION-CORE
            # composer config --no-plugins allow-plugins true
-           # composer update --no-install --no-scripts
+           # (NO composer update: varbase installs from upstream's shipped lock; a
+           # re-resolve pulls a newer patches stack that aborts on their own core patch)
            # composer install --no-dev --ignore-platform-req=ext-pdo_pgsql
            # (the lock pins drupal/ai_provider_amazeeio 1.4.2, which declares ext-pdo_pgsql;
            # BOA's PHP has no PostgreSQL driver and the installer never enables the module)

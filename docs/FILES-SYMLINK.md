@@ -776,7 +776,8 @@ shows the `[native-symlink] …` line for install, clone and migrate/rename.
 ### Delete
 
 1. Install a site and delete it (a site deleted before its first Verify is the
-   harder case: its directory is still the installer's read-only `0555`). The task
+   harder case: a Drupal 11 site installed before the write-bit restore landed left
+   its directory read-only, `0555`). The task
    ends SUCCESSFUL with no `Deleting … failed` line, the site directory is gone,
    and the store has moved:
    ```bash
