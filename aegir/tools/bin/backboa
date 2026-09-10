@@ -534,7 +534,7 @@ _install() {
     fi
     # The startup busy gate has aged by a mirror probe and a fetch by
     # now; re-assert it on the brink of the irreversible steps
-    if (( $(pgrep -fc duplicity) > 0 )); then
+    if (( $(pgrep -fc '(^| )[^ ]*/duplicity( |$)') > 0 )); then
       echo "Active duplicity process detected, aborting before any change to the installed backup tooling"
       exit 1
     fi
@@ -616,7 +616,7 @@ _check_aws() {
   fi
 }
 
-_CNT=$(pgrep -fc duplicity)
+_CNT=$(pgrep -fc '(^| )[^ ]*/duplicity( |$)')
 if (( _CNT > 0 )); then
   echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
   exit 1

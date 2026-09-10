@@ -276,16 +276,18 @@ _if_allow_aegir_queue() {
 ###-------------SYSTEM-----------------###
 
 _SQLBACKUP_RUNNING=NO
-if (( $(pgrep -fc mysql_backup.sh) > 0 )); then
+# Execution forms only (cron's nice/ionice bash launch, a shebang launch):
+# an editor or a grep naming the script must not hold the runner back
+if (( $(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)') > 0 )); then
   _SQLBACKUP_RUNNING=YES
-elif (( $(pgrep -fc mysql_cluster_backup.sh) > 0 )); then
+elif (( $(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cluster_backup\.sh( |$)') > 0 )); then
   _SQLBACKUP_RUNNING=YES
-elif (( $(pgrep -fc mydumper) > 0 )); then
+elif (( $(pgrep -fc '^[^ ]*mydumper( |$)') > 0 )); then
   _SQLBACKUP_RUNNING=YES
 fi
 
 _DAILY_RUNNING=NO
-if (( $(pgrep -fc owl.sh) > 0 )); then
+if (( $(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/owl\.sh( |$)') > 0 )); then
   _DAILY_RUNNING=YES
 fi
 
