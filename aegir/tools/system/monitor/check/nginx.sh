@@ -409,9 +409,9 @@ _sql_mutation_in_flight() {
 # cutover step needs FTPS -- step 15's removal of the standby marker is
 # what releases this hold, within one monitor pass.
 if [ -e "/root/.standby.cnf" ]; then
-  if pgrep -f '[p]ure-ftpd' > /dev/null 2>&1; then
+  if pgrep -f '^pure-ftpd( |$)' > /dev/null 2>&1; then
     echo "$(date) FTPD replication standby: holding FTPS DOWN" >> ${_pthOml}
-    pkill -9 -f pure-ftpd > /dev/null 2>&1
+    pkill -9 -f '^pure-ftpd( |$)' > /dev/null 2>&1
   fi
 fi
 
