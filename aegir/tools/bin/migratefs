@@ -505,6 +505,18 @@ fi
 # Normalise a trailing slash so path building is predictable.
 _TARGET="${_TARGET%/}"
 
+# /mnt is the only supported store placement: the nightly's root-run
+# relocations accept a store inside the account or under /mnt and refuse
+# anything else, so a target elsewhere would relocate the store and silently
+# lose the backups relocation.
+case "${_TARGET}" in
+  /mnt/?*) : ;;
+  *)
+    echo "ERROR: --target must be a mountpoint under /mnt (got: ${_TARGET}); /mnt is the only supported store placement"
+    exit 1
+    ;;
+esac
+
 if [ ! -d "${_TARGET}" ]; then
   echo "ERROR: target ${_TARGET} does not exist or is not a directory"
   exit 1
