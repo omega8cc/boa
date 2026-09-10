@@ -1386,10 +1386,17 @@ _fetch_versioned() {
       # after an hour of identical answers the marker is armed anyway. A first
       # install (no marker of any serial yet) keeps arming: the tarball-deployed
       # copy legitimately equals the published one.
-      if [[ ! -e "${_ctl}" ]] && ls "${_pthLog}/${_cnm}.ctrl."* >/dev/null 2>&1; then
+      # Only a marker of a DIFFERENT fNN promises new content. One that
+      # differs in the tree or release serial alone (a release bump with the
+      # tool unchanged) is the same bytes by definition and arms at once;
+      # holding it re-downloaded every unchanged tool on every pass for an
+      # hour after each release, unarmed and with its symlink unrepaired.
+      if [[ ! -e "${_ctl}" ]] \
+        && ls "${_pthLog}/${_cnm}.ctrl."* 2>/dev/null | grep -qv "\.ctrl\.${_srl}\."; then
         local _stl="${_pthLog}/${_cnm}.stale.${_srl}.${_tRee}.${_xSrl}.pid"
         if [[ -z "$(find "${_stl}" -mmin +60 2>/dev/null)" ]]; then
           [[ -e "${_stl}" ]] || touch "${_stl}"
+          [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
           echo "The ${_cnm} ${_srl} fetch returned the bytes already deployed -- mirror not caught up, retrying next pass"
           return 0
         fi
