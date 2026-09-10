@@ -627,7 +627,10 @@ _preflight() {
     ### local panel. There is nothing to quiesce or shrink, and finalize
     ### must not wait for it (see _panel_only).
     _info "${_oN}: panel-only account (its control panel is local, no proxied domain) -- nothing to shrink"
-    exit 0
+    ### A skip, not an exit: under 'all' the fan-out runs every account in
+    ### this one process, and an exit here ended the sweep at the first
+    ### panel-only account with a clean-looking status.
+    return 9
   fi
   [ -z "${_MAP_DOMS// /}" ] && _die "${_oN}: no live vhosts at all"
   if [ -n "${_MAP_TGT_BAD// /}" ]; then
@@ -1197,6 +1200,11 @@ _run_one() {
   local _phase
   _load_cnf_defaults
   _preflight "${_oN}"
+  case $? in
+    0) : ;;
+    9) return 0 ;;
+    *) exit 1 ;;
+  esac
   _write_manifest "${_oN}" "${_mode}"
   _phase="$(_phase_get "${_oN}")"
   if [ "${_verb}" = "quiesce" ]; then
@@ -1311,6 +1319,9 @@ case "$1" in
           ### Accounts the fan-out will skip have no token and need none;
           ### demanding one made 'all --live' permanently unusable as soon
           ### as a single account moved past the verb.
+          ### A panel-only account has no DRY token: its preflight skips it
+          ### (see _preflight) and _finalize already exempts it.
+          _panel_only "${_n}" && continue
           case "$(_phase_get "${_n}")" in
             stage-b|stage-b-started) continue ;;
             stage-a) [ "${_verb}" = "quiesce" ] && continue ;;

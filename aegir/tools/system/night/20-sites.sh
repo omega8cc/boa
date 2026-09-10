@@ -457,6 +457,42 @@ _fix_llms_txt() {
   _LLMS_SUM=
   if [ -f "${_Dir}/files/llms.txt" ] && [ ! -L "${_Dir}/files/llms.txt" ]; then
     _LLMS_SUM=$(md5sum "${_Dir}/files/llms.txt" 2>/dev/null | cut -d' ' -f1)
+    # One-time transition for the copies this refresher fetched before the
+    # marker existed: they carry none, so they read as tenant content and
+    # were never refreshed again anywhere. A marker-less copy is seeded once
+    # when the site serves the same bytes now, or when it predates the
+    # marker (the pre-marker refresher expired every copy after six days,
+    # so a tenant upload that old cannot exist). One check per site,
+    # whatever its outcome; a tenant upload since then stays durable.
+    _LLMS_SEEDCHK="${_Dir}/.llms-seed.checked"
+    if [ ! -f "${_LLMS_MARK}" ] && [ ! -e "${_LLMS_SEEDCHK}" ] \
+      && [ ! -e "${_Plr}/profiles/hostmaster" ] && [ -n "${_LLMS_SUM}" ]; then
+      _LLMS_SEED=NO
+      if [ -n "$(find "${_Dir}/files/llms.txt" -maxdepth 0 ! -newermt '2026-09-01' 2>/dev/null)" ]; then
+        _LLMS_SEED=YES
+      else
+        _LLMS_STG=$(_ctrl_stage_dir) || _LLMS_STG=
+        _LLMS_TMP=
+        [ -n "${_LLMS_STG}" ] \
+          && _LLMS_TMP=$(mktemp "${_LLMS_STG}/llms.XXXXXX" 2>/dev/null)
+        if [ -n "${_LLMS_TMP}" ]; then
+          curl -L --max-redirs 10 -k -s --connect-timeout 10 --max-time 20 \
+            --retry 2 --retry-delay 5 --retry-max-time 30 \
+            -A iCab "http://${_Dom}/llms.txt?nocache=1&noredis=1" \
+            -o "${_LLMS_TMP}"
+          echo >> "${_LLMS_TMP}"
+          [ "$(md5sum "${_LLMS_TMP}" 2>/dev/null | cut -d' ' -f1)" = "${_LLMS_SUM}" ] \
+            && _LLMS_SEED=YES
+          rm -f "${_LLMS_TMP}"
+        fi
+      fi
+      if [ "${_LLMS_SEED}" = "YES" ]; then
+        _desymlink_planted "${_LLMS_MARK}"
+        printf '%s\n' "${_LLMS_SUM}" > "${_LLMS_MARK}"
+      fi
+      _desymlink_planted "${_LLMS_SEEDCHK}"
+      touch "${_LLMS_SEEDCHK}"
+    fi
     if [ ! -f "${_LLMS_MARK}" ] \
       || [ -z "${_LLMS_SUM}" ] \
       || ! grep -q "^${_LLMS_SUM}$" "${_LLMS_MARK}" 2>/dev/null; then

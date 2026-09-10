@@ -63,16 +63,25 @@ _ARCHIVE_DEVUAN_MIRROR="http://archive.devuan.org/merged"
 _DEVUAN_LIVE_MIRRORS="https://mirrors.dotsrc.org/devuan/merged http://deb.devuan.org/merged https://mirror.akardam.net/devuan/merged https://mirror.hootsoftware.com/devuan/merged"
 
 # _apt_suite_served <base-url> <suite>: 0 the mirror serves the suite, 1 it
-# does not, 2 nothing here can probe yet. One probe for both distributions.
+# verifiably does not (404/410), 2 it could not be probed: no tool, a
+# transport failure (DNS, TLS, a timeout, a broken local curl) or an answer
+# that is neither. One probe for both distributions. Only 1 may drop a
+# stanza: a probe that failed for a reason of this box used to read as "not
+# served", and the writer then left the security suite out of sources.list
+# until a later pass happened to probe successfully.
 _apt_suite_served() {
-  local _rel="${1}/dists/${2}/Release"
+  local _rel="${1}/dists/${2}/Release" _code=""
   if command -v curl > /dev/null 2>&1; then
-    curl -sIL --fail --max-redirs 3 --max-time 20 -A iCab -o /dev/null "${_rel}" 2> /dev/null && return 0
-    return 1
+    _code=$(curl -sIL --max-redirs 3 --max-time 20 -A iCab -o /dev/null -w '%{http_code}' "${_rel}" 2> /dev/null)
   elif command -v wget > /dev/null 2>&1; then
-    wget -q --spider --max-redirect=3 --timeout=20 --tries=2 --user-agent='iCab' "${_rel}" 2> /dev/null && return 0
-    return 1
+    _code=$(wget -q --spider --server-response --max-redirect=3 --timeout=20 --tries=2 --user-agent='iCab' "${_rel}" 2>&1       | grep -oE 'HTTP/[0-9.]+ [0-9]{3}' | tail -1 | awk '{print $2}')
+  else
+    return 2
   fi
+  case "${_code}" in
+    2[0-9][0-9]) return 0 ;;
+    404|410) return 1 ;;
+  esac
   return 2
 }
 
@@ -214,12 +223,18 @@ _debian_apt_sources_resolve() {
   _apt_suite_served "http://${_DEBIAN_SECURITY_MIRROR}/debian-security" "${_DEB_SEC_REPSRC}"
   case $? in
     1)
-      if _apt_suite_served "http://${_ARCHIVE_DEBIAN_MIRROR}/debian-security" "${_DEB_SEC_REPSRC}"; then
-        _msg "NOTE: ${_DEB_SEC_REPSRC} is no longer on ${_DEBIAN_SECURITY_MIRROR}; using ${_ARCHIVE_DEBIAN_MIRROR}" >&2
-        _DEB_SEC_MIRROR="${_ARCHIVE_DEBIAN_MIRROR}/debian-security"
-      else
-        _msg "NOTE: ${_DEB_SEC_REPSRC} is served by no known host; the security stanza is left out" >&2
-      fi
+      _apt_suite_served "http://${_ARCHIVE_DEBIAN_MIRROR}/debian-security" "${_DEB_SEC_REPSRC}"
+      case $? in
+        1)
+          _msg "NOTE: ${_DEB_SEC_REPSRC} is served by no known host; the security stanza is left out" >&2
+          ;;
+        *)
+          # served, or not probeable right now: the archive is the only
+          # candidate left once the live host verifiably dropped the suite
+          _msg "NOTE: ${_DEB_SEC_REPSRC} is no longer on ${_DEBIAN_SECURITY_MIRROR}; using ${_ARCHIVE_DEBIAN_MIRROR}" >&2
+          _DEB_SEC_MIRROR="${_ARCHIVE_DEBIAN_MIRROR}/debian-security"
+          ;;
+      esac
       ;;
     *)
       _DEB_SEC_MIRROR="${_DEBIAN_SECURITY_MIRROR}/debian-security"
@@ -5325,7 +5340,7 @@ _get_drush_eleven() {
     _msg "OOPS: /opt/tools/drush/11 is not enterable; Drush 11 not installed"
     return 1
   fi
-  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" -o -f "/drush/vendor/bin/drush" ] \
+  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" ] && [ -f "/drush/drush.info" ] && [ -f "/drush/includes/boa_extension_filter.inc" ] \
     && [ "$(readlink -f /opt/tools/drush/11/drush 2> /dev/null)" != "/drush" ]; then
     rm -rf /drush
   fi
@@ -5354,7 +5369,7 @@ _get_drush_ten() {
     _msg "OOPS: /opt/tools/drush/10 is not enterable; Drush 10 not installed"
     return 1
   fi
-  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" -o -f "/drush/vendor/bin/drush" ] \
+  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" ] && [ -f "/drush/drush.info" ] && [ -f "/drush/includes/boa_extension_filter.inc" ] \
     && [ "$(readlink -f /opt/tools/drush/10/drush 2> /dev/null)" != "/drush" ]; then
     rm -rf /drush
   fi
@@ -5383,7 +5398,7 @@ _get_drush_eight() {
     _msg "OOPS: /opt/tools/drush/8 is not enterable; Drush 8 not installed"
     return 1
   fi
-  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" -o -f "/drush/vendor/bin/drush" ] \
+  if [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" ] && [ -f "/drush/drush.info" ] && [ -f "/drush/includes/boa_extension_filter.inc" ] \
     && [ "$(readlink -f /opt/tools/drush/8/drush 2> /dev/null)" != "/drush" ]; then
     rm -rf /drush
   fi
@@ -11163,7 +11178,9 @@ _xdrago_install_upgrade() {
     ### is not a fetch marker, and wiping it re-runs its flag normalisation
     ### on every pass, silently reverting an operator's own toggles.
     find ${_pthLog} -maxdepth 1 -name "*.ctrl.*.pid" \
-      ! -name "ghost-family-yes.ctrl.*" -delete 2>/dev/null
+      ! -name "ghost-family-yes.ctrl.*" \
+      ! -name "hostmaster-drushrc-0400.ctrl.*" \
+      ! -name "hosting.cron.ctrl.*" -delete 2>/dev/null
     if [ "${_CUSTOM_CONFIG_LSHELL}" = "YES" ] \
       && [ -e "${_vBs}/custom_lshell.conf" ]; then
       cp -af ${_vBs}/custom_lshell.conf /var/xdrago/conf/lshell.conf

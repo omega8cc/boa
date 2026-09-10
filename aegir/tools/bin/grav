@@ -186,9 +186,14 @@ fi
 _n="$(printf '%s' "${_GRAV_PHP}" | tr -cd '0-9')"
 PHP_INI="/opt/php${_n}/lib/php.ini"
 PHPRC="/opt/php${_n}/lib"
-if [[ -n "${HOME}" ]] && [[ -f "${HOME}/.drush/php${_n}/php.ini" ]]; then
-  PHP_INI="${HOME}/.drush/php${_n}/php.ini"
-  PHPRC="${HOME}/.drush/php${_n}"
+# The account ini lives at ~/.drush/php.ini (the ltd worker writes it from
+# the account's own PHP); it applies when its extension_dir names the PHP
+# chosen here, the websh contract. The ~/.drush/phpNN/ layout tested before
+# has no writer, so every run kept the global ini.
+if [[ -n "${HOME}" ]] && [[ -f "${HOME}/.drush/php.ini" ]] \
+  && grep -qE "^extension_dir[[:space:]]*=[[:space:]]*\"?/opt/php${_n}/" "${HOME}/.drush/php.ini" 2>/dev/null; then
+  PHP_INI="${HOME}/.drush/php.ini"
+  PHPRC="${HOME}/.drush"
 fi
 export PHP_INI PHPRC
 
