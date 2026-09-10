@@ -11,7 +11,7 @@ _monPath="/var/xdrago/monitor/check"
 # versions; a marker whose owner PID is gone is stale (crashed run) and
 # is cleared, never obeyed -- and /run clears itself on reboot.
 if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
-  _qsPid=$(tr -dc '0-9' < /run/boa_php_idle_quiesce.pid 2>/dev/null)
+  _qsPid=$( { tr -dc '0-9' < /run/boa_php_idle_quiesce.pid; } 2>/dev/null )
   if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2>/dev/null; then
     exit 0
   fi

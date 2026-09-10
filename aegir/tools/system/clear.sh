@@ -98,7 +98,7 @@ _THR_HOURS=$(date --date '3 hours ago' +"%Y-%m-%d %H:%M:%S")
 # it only when its owner PID is gone (a crashed/leaked hold) so a legitimately long
 # move is never unpaused mid-flight. /run is also cleared on reboot.
 if [ -e "/run/boa_queue_stop.pid" ]; then
-  _qs_pid=$(tr -dc '0-9' < /run/boa_queue_stop.pid 2>/dev/null)
+  _qs_pid=$( { tr -dc '0-9' < /run/boa_queue_stop.pid; } 2>/dev/null )
   { [ -z "${_qs_pid}" ] || ! kill -0 "${_qs_pid}" 2>/dev/null; } && rm -f /run/boa_queue_stop.pid
 fi
 if ! _installer_alive; then
@@ -118,7 +118,7 @@ find /run/daily-fix.pid              -type f -not -newermt "${_THR_HOURS}" -exec
 # versions; a marker whose owner PID is gone is stale (crashed run) and
 # is cleared, never obeyed -- and /run clears itself on reboot.
 if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
-  _qsPid=$(tr -dc '0-9' < /run/boa_php_idle_quiesce.pid 2>/dev/null)
+  _qsPid=$( { tr -dc '0-9' < /run/boa_php_idle_quiesce.pid; } 2>/dev/null )
   if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2>/dev/null; then
     exit 0
   fi

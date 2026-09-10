@@ -43,7 +43,7 @@ _check_root
 # versions; a marker whose owner PID is gone is stale (crashed run) and
 # is cleared, never obeyed -- and /run clears itself on reboot.
 if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
-  _qsPid=$(tr -dc '0-9' < /run/boa_php_idle_quiesce.pid 2>/dev/null)
+  _qsPid=$( { tr -dc '0-9' < /run/boa_php_idle_quiesce.pid; } 2>/dev/null )
   if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2>/dev/null; then
     exit 0
   fi
@@ -169,7 +169,7 @@ _graceful_action() {
   fi
 
   # Swap, RAM and disk cache management
-  _IF_BCP="$(pgrep -f duplicity)"
+  _IF_BCP="$(pgrep -f '(^| )[^ ]*/duplicity( |$)')"
   if [ -d "/dev/disk" ]; then
     if [ ! -e "/root/.no.swap.clear.cnf" ]; then
       if [ -n "${_IF_BCP}" ]; then
@@ -197,7 +197,7 @@ _graceful_action() {
   rm -f /opt/tmp/sess*
 
   # Speed cleanup
-  _IF_BCP="$(pgrep -f duplicity)"
+  _IF_BCP="$(pgrep -f '(^| )[^ ]*/duplicity( |$)')"
   if [ -z "${_IF_BCP}" ] && [ ! -e "/run/speed_cleanup.pid" ] && [ ! -e "/root/.giant_traffic.cnf" ]; then
     echo "Performing speed cleanup..."
     touch /run/speed_cleanup.pid
