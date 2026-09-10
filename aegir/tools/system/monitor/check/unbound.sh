@@ -245,7 +245,10 @@ _unbound_check_nomail() {
 
 _unbound_health_check_fix() {
   _unbound_check_cooldown_status
-  if ! pgrep -f /usr/sbin/unbound \
+  # The daemon itself: exact process name under its own user. An unanchored
+  # pgrep -f on the path matched any command line naming it (unbound-anchor,
+  # unbound-control, a checksum sweep over /usr/sbin) and masked a dead resolver.
+  if ! pgrep -u unbound -x unbound > /dev/null 2>&1 \
     || [ ! -e "/run/unbound/unbound.pid" ]; then
     _now=$(date +%s)
     if [ -s "${_cd}" ]; then
@@ -268,13 +271,21 @@ _unbound_health_check_fix() {
 
 _unbound_duplicate_fix() {
   _unbound_check_cooldown_status
-  # Detect duplicate/multiple unbound masters and restart if needed
-  _CNT=$(pgrep -fc "/usr/sbin/unbound")
+  # Duplicate masters: only the daemon counts (exact name, its own user); a
+  # helper or a tool that merely names /usr/sbin/unbound is not a second
+  # master. Rechecked after a grace so one sample never restarts the
+  # resolver, and the processes counted are logged before the restart.
+  _CNT=$(pgrep -c -u unbound -x unbound 2> /dev/null)
+  if (( _CNT > 1 )); then
+    sleep 3
+    _CNT=$(pgrep -c -u unbound -x unbound 2> /dev/null)
+  fi
   if (( _CNT > 1 )); then
     # === cooldown-wrapped restart ===
     if [ "${_in_unbound_cooldown}" = "true" ]; then
       echo "$(date) INFO: Unbound duplicate-masters restart skipped (cooldown active)" >> ${_pthOml}
     else
+      echo "$(date) INFO: Unbound masters counted: $(pgrep -a -u unbound -x unbound 2> /dev/null | tr '\n' ';')" >> ${_pthOml}
       _unbound_restart_with_cooldown
       echo "$(date) INFO: Too many Unbound processes killed and service restarted (count=${_CNT})" >> ${_pthOml}
       echo >> ${_pthOml}
