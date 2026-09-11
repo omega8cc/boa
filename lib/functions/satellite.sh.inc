@@ -6110,10 +6110,15 @@ _satellite_pre_cleanup() {
 ### include. Self-limiting: a re-rendered vhost carries the lines and is
 ### never queued again; Grav and TXP vhosts carry no credentials and are
 ### skipped; the queue runs them one at a time under the runner lock.
+### The test for "carries credentials" is the server-level fastcgi_param
+### db_* set every Drupal vhost declares (placeholders when the site has no
+### database) -- NOT the urlencoded marker, which only a recent render
+### carries: a vhost from an older provision holds the credentials without
+### it, and that is every site not re-verified since the marker arrived.
 _satellite_queue_dbvars_site_verifies() {
   local _inc="${_ROOT}/config/includes/nginx_vhost_common.conf"
   local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
-  local _v _d _n=0 _q
+  local _v _d _list="" _n
   ### _DRUSHCMD exists only in the AegirSetup child scripts; this runs in
   ### the launcher's own process, where the instance user's drush8 is on
   ### the login PATH.
@@ -6126,14 +6131,28 @@ _satellite_queue_dbvars_site_verifies() {
     case "${_d}" in .*|https.*) continue ;; esac
     [ "${_d}" = "${_DOMAIN}" ] && continue
     grep -q 'set \$boa_db_type' "${_v}" && continue
-    grep -q 'fastcgi_param db_creds_urlencoded' "${_v}" || continue
-    ### hosting_add_task QUEUES the task (folded per node); the hosting-task
-    ### command would run the verify here and now, one after another,
-    ### inside this pass. Counted only when the frontend confirmed it.
-    _q=$(su -s /bin/bash - ${_USER} -c "${_hmDrush} @hostmaster php-eval '\$s = hosting_get_site_by_url(\"${_d}\"); if (\$s && !empty(\$s->nid)) { hosting_add_task(\$s->nid, \"verify\"); print \"queued\"; }'" 2>/dev/null)
-    case "${_q}" in *queued*) _n=$(( _n + 1 )) ;; esac
+    grep -q 'fastcgi_param db_type' "${_v}" || continue
+    ### The name becomes a PHP string literal below: a vhost file is named
+    ### by the site's URI, so anything outside the hostname alphabet is not
+    ### a site of ours.
+    case "${_d}" in *[!A-Za-z0-9.-]*) continue ;; esac
+    _list="${_list}\"${_d}\","
   done
-  if [ "${_n}" -gt 0 ]; then
+  [ -n "${_list}" ] || return 0
+  ### One hostmaster bootstrap for the whole list: a per-site drush call
+  ### costs seconds each and a box with hundreds of sites would spend that
+  ### inside the upgrade pass. hosting_add_task QUEUES the task (folded per
+  ### node); the hosting-task command would run the verify here and now.
+  ### Counted only when the frontend returned the task.
+  _n=$(su -s /bin/bash - ${_USER} -c "${_hmDrush} @hostmaster php-eval '\$n = 0; foreach (array(${_list}) as \$u) { \$s = hosting_get_site_by_url(\$u); if (\$s && !empty(\$s->nid)) { \$t = hosting_add_task(\$s->nid, \"verify\"); if (is_object(\$t) && !empty(\$t->nid)) { \$n++; } } } print \"queued=\" . \$n;'" 2>/dev/null)
+  case "${_n}" in
+    *queued=*) ;;
+    *) _msg "INFO: the frontend did not answer the db-variables Verify queueing; the next pass retries"
+       return 0 ;;
+  esac
+  _n="${_n##*queued=}"
+  _n="${_n%%[^0-9]*}"
+  if [ -n "${_n}" ] && [ "${_n}" -gt 0 ]; then
     _msg "INFO: queued a Verify for ${_n} site(s) whose vhost predates the nginx db variables"
   fi
 }
@@ -7670,10 +7689,16 @@ _satellite_child_b_vhosts_hotfix() {
   wait
   sed -i "s/listen .*\*:80;/listen  \*:80;/g"          ${rPth}_*/nginx.conf
   wait
+  ### The port lives twice in a vhost: the server-level fastcgi_param the main
+  ### PHP location inherits, and the set line the shared include reads for
+  ### the locations that declare their own params. Move both, or the two
+  ### copies disagree until the site's next Verify.
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     sed -i "s/param db_port.*/param db_port   6033;/g" ${rPth}_*/nginx/vhost.d/*
+    sed -i "s/set \$boa_db_port .*/set \$boa_db_port \"6033\";/g" ${rPth}_*/nginx/vhost.d/*
   else
     sed -i "s/param db_port.*/param db_port   3306;/g" ${rPth}_*/nginx/vhost.d/*
+    sed -i "s/set \$boa_db_port .*/set \$boa_db_port \"3306\";/g" ${rPth}_*/nginx/vhost.d/*
   fi
   wait
   sed -i "s/listen .*\*:80;/listen  \*:80;/g"          ${rPth}_*/nginx/vhost.d/*
