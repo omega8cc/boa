@@ -3407,10 +3407,10 @@ EOFMYSQL
   wait
   rm -rf ${_ROOT}/.tmp/cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
-    su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
+    su -s /bin/bash - ${_USER} -c "${_DRUSHCMD:-drush8} @hostmaster \
       hosting-task @server_localhost verify --force" &> /dev/null
   else
-    su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
+    su -s /bin/bash - ${_USER} -c "${_DRUSHCMD:-drush8} @hostmaster \
       hosting-task @server_master verify --force" &> /dev/null
   fi
   wait
@@ -6113,7 +6113,11 @@ _satellite_pre_cleanup() {
 _satellite_queue_dbvars_site_verifies() {
   local _inc="${_ROOT}/config/includes/nginx_vhost_common.conf"
   local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
-  local _v _d _n=0
+  local _v _d _n=0 _q
+  ### _DRUSHCMD exists only in the AegirSetup child scripts; this runs in
+  ### the launcher's own process, where the instance user's drush8 is on
+  ### the login PATH.
+  local _hmDrush="${_DRUSHCMD:-drush8}"
   [ -f "${_inc}" ] && grep -q '^set \$boa_db_type' "${_inc}" || return 0
   [ -d "${_vhd}" ] || return 0
   for _v in "${_vhd}"/*; do
@@ -6123,9 +6127,11 @@ _satellite_queue_dbvars_site_verifies() {
     [ "${_d}" = "${_DOMAIN}" ] && continue
     grep -q 'set \$boa_db_type' "${_v}" && continue
     grep -q 'fastcgi_param db_creds_urlencoded' "${_v}" || continue
-    su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
-      hosting-task @${_d} verify --force" &> /dev/null
-    _n=$(( _n + 1 ))
+    ### hosting_add_task QUEUES the task (folded per node); the hosting-task
+    ### command would run the verify here and now, one after another,
+    ### inside this pass. Counted only when the frontend confirmed it.
+    _q=$(su -s /bin/bash - ${_USER} -c "${_hmDrush} @hostmaster php-eval '\$s = hosting_get_site_by_url(\"${_d}\"); if (\$s && !empty(\$s->nid)) { hosting_add_task(\$s->nid, \"verify\"); print \"queued\"; }'" 2>/dev/null)
+    case "${_q}" in *queued*) _n=$(( _n + 1 )) ;; esac
   done
   if [ "${_n}" -gt 0 ]; then
     _msg "INFO: queued a Verify for ${_n} site(s) whose vhost predates the nginx db variables"
