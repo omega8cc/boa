@@ -303,8 +303,27 @@ if [ ! -e "/run/boa_run.pid" ] \
   fi
   rm -f "${_boaShTmp}"
   wait
+  if [ -e "/run/clear.hold.last" ]; then
+    [ -d "/var/log/boa" ] && echo "$(date) hold released (was$(cat /run/clear.hold.last 2>/dev/null))" >> /var/log/boa/clear.hold.incident.log
+    rm -f /run/clear.hold.last
+  fi
   bash /opt/local/bin/autoupboa
   wait
+else
+  # Name what held this tick: with the self-update and autoupboa skipped in
+  # silence, a fresh install's reset marker arrived anywhere between 1 and
+  # 15 minutes after its last pass and nothing recorded which gate held.
+  # One line per change of holder, not per tick (a stale marker would write
+  # 288 lines a day for ever), under the rotated *.incident.log name.
+  _held=""
+  for _m in boa_run.pid boa_wait.pid octopus_install_run.pid; do
+    [ -e "/run/${_m}" ] && _held="${_held} ${_m}"
+  done
+  [ -z "${_held}" ] && _held=" installer-alive"
+  if [ -d "/var/log/boa" ] && [ "${_held}" != "$(cat /run/clear.hold.last 2>/dev/null)" ]; then
+    echo "${_held}" > /run/clear.hold.last
+    echo "$(date) self-update and autoupboa held by${_held}" >> /var/log/boa/clear.hold.incident.log
+  fi
 fi
 
 _OCT_NR=$(ls /data/disk | wc -l)

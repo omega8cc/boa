@@ -259,7 +259,7 @@ _csf_install() {
         _msg "OOPS: verify csf.conf TCP_IN matches the port sshd actually listens on (${_SSH_PORT} was not applied)"
       fi
     fi
-    pkill -9 -f /usr/sbin/sshd || true
+    pkill -9 -f '^(sshd: )?/usr/sbin/sshd( |$)' || true
     _mrun "service ssh start"
     if [ "${_CSF_MODE}" = "install" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then

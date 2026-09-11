@@ -297,7 +297,7 @@ _faster_reboot() {
   csf -tf &> /dev/null
   _msg "Firewall has been purged" >> "${_logAch}"
   if [ -e "/root/.my.cnf" ]; then
-    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
       _msg "Preparing MySQLD for quick shutdown..." >> "${_logAch}"
       mysql -u root -e "SET GLOBAL innodb_max_dirty_pages_pct = 0;" &> /dev/null

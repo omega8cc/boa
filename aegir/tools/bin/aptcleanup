@@ -347,7 +347,7 @@ _do_stop() {
     rm -f "${_PIDFILE}" 2>/dev/null || true
     return 0
   fi
-  pkill -f "${_NAME}" 2>/dev/null || true
+  pkill -x "${_NAME}" 2>/dev/null || true
   return 0
 }
 
@@ -356,7 +356,7 @@ _do_status() {
     echo "${_DESC} is running (pid $(cat "${_PIDFILE}"))"
     return 0
   fi
-  pgrep -f "${_NAME}" >/dev/null 2>&1 && { echo "${_DESC} seems running (no pidfile)"; return 0; }
+  pgrep -x "${_NAME}" >/dev/null 2>&1 && { echo "${_DESC} seems running (no pidfile)"; return 0; }
   echo "${_DESC} is not running"
   return 3
 }
