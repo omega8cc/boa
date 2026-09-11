@@ -5941,7 +5941,7 @@ _sshd_install_src() {
       rm -f ${_OLD_SYSCONFDIR}/ssh*
       rm -f ${_OLD_SYSCONFDIR}/moduli*
     fi
-    pkill -9 -f /usr/sbin/sshd || true
+    pkill -9 -f '^(sshd: )?/usr/sbin/sshd( |$)' || true
     _mrun "service ssh start"
   fi
   _SSH_FORCE_REINSTALL=NO
@@ -7795,7 +7795,7 @@ _web_tier_up_while_unarmed() {
   if [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ]; then
     _msg "NOTE: Replication standby, Nginx stays held down by design"
   elif [ -e "/run/nginx.pid" ] \
-    && pgrep -f 'nginx: master process' > /dev/null 2>&1; then
+    && pgrep -f '^nginx: master process' > /dev/null 2>&1; then
     _msg "INFO: Nginx is up again"
   else
     _msg "NOTE: Nginx is still down after webserver up, please check its error log"
@@ -8020,9 +8020,9 @@ _finale() {
     fi
   fi
   _web_tier_up_while_unarmed
-  _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
+  _CNT=$(pgrep -fc '^([^ ]*/)?tee -a /var/backups/barracuda-')
   if (( _CNT > 1 )); then
-    pkill -f 'tee -a /var/backups/barracuda-'
+    pkill -f '^([^ ]*/)?tee -a /var/backups/barracuda-'
   fi
   cd /
   chmod 711 bin boot data dev emul etc home lib lib64 lib32 media mnt opt \

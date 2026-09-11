@@ -502,8 +502,10 @@ _lock_gate() {
 # set; wait for the account's own provision executions to drain, bounded.
 _acct_busy() {
   local _a="$1"
-  pgrep -u "${_a}" -f "provision-[a-z]" > /dev/null 2>&1 && return 0
+  pgrep -u "${_a}" -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
   pgrep -u "${_a}" -f "hosting-task( |$)" > /dev/null 2>&1 && return 0
+  # the backend by its executor too, so a live task never rests on the token form alone
+  pgrep -u "${_a}" -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
   return 1
 }
 

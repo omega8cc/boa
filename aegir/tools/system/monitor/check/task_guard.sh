@@ -169,7 +169,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc ${_SCRIPT})
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -337,7 +337,10 @@ _hm_db_for_alias() {
 _instance_tasks_alive() {
   local _u="$1"
   pgrep -u "${_u}" -f "hosting-task( |$)" > /dev/null 2>&1 && return 0
-  pgrep -u "${_u}" -f "provision-[a-z]" > /dev/null 2>&1 && return 0
+  pgrep -u "${_u}" -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
+  # the backend by its executor too: a false "dead" here marks a LIVE task failed,
+  # so the answer never rests on the token form alone
+  pgrep -u "${_u}" -f "^([^ ]*/)?(php[0-9.]*|su|env|drush[0-9]*)( |$).*provision" > /dev/null 2>&1 && return 0
   return 1
 }
 

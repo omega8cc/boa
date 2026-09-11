@@ -116,7 +116,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc ${_SCRIPT})
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -222,7 +222,7 @@ _valkey_is_answering() {
     # No cli to ask: process presence is the only evidence left. Thin, but it
     # can only under-heal (a wedged-but-present server is left alone), never
     # restart a healthy one.
-    pgrep -f "/usr/bin/valkey-server" >/dev/null 2>&1 && return 0
+    pgrep -x valkey-server >/dev/null 2>&1 && return 0
     return 1
   fi
   _pass=

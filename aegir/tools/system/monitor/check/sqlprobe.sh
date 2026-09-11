@@ -125,7 +125,7 @@ _manage_single_lock() {
     _single_instance_lock
   else
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc ${_SCRIPT})
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -146,9 +146,10 @@ touch "${_STAMP}"
 # Backup / cache-drop exclusion: skip while any backup walker is alive and for
 # 20 min after the last sighting (mysql_backup.sh drops caches unconditionally,
 # which poisons both the miss rates and MemAvailable).
-if pgrep -f "[m]ysql_backup" >/dev/null 2>&1 \
-  || pgrep -f "[d]uplicity" >/dev/null 2>&1 \
-  || pgrep -f "[m]ydumper" >/dev/null 2>&1; then
+if pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)' >/dev/null 2>&1 \
+  || pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' >/dev/null 2>&1 \
+  || pgrep -f '^[^ ]*duplicity( |$)' >/dev/null 2>&1 \
+  || pgrep -f '^[^ ]*mydumper( |$)' >/dev/null 2>&1; then
   touch "${_BKP_STAMP}"
   exit 0
 fi
@@ -504,7 +505,7 @@ done
 _FPM_I=""
 _FPM_RSS_MB=0
 _FPM_PROCS=0
-for _MPID in $(pgrep -f "php-fpm: master process" 2>/dev/null); do
+for _MPID in $(pgrep -f '^php-fpm: master process' 2>/dev/null); do
   _MCMD=$(tr '\0' ' ' 2>/dev/null < "/proc/${_MPID}/cmdline")
   _MVER=$(printf '%s\n' "${_MCMD}" | grep -o '/opt/php[0-9]\+/' | head -n1)
   _MVER="${_MVER//[^0-9]/}"

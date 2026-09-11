@@ -76,7 +76,7 @@ This is **by design**: a dead `php-fpm` or a load spike is caught within ~5 seco
 
 ## Re-entrancy: one instance at a time
 
-Every launcher and every single-shot monitor guards against overlapping runs with the same `_manage_single_lock` pattern. It sources `lock.inc` (from `/opt/local/bin/` or `/opt/local/lib/`) and takes a shared single-instance lock; if that library is absent it falls back to a **legacy `pgrep -fc` count** and exits (logging to `/var/log/boa/too.many.log`) when more than two copies of the script are already running. This is why a slow tick never stacks into a fork storm — a new cron tick that finds the previous one still working simply exits. The auth scanners use their own PID-checked `noclobber` lock instead, to the same end.
+Every launcher and every single-shot monitor guards against overlapping runs with the same `_manage_single_lock` pattern. It sources `lock.inc` (from `/opt/local/bin/` or `/opt/local/lib/`) and takes a shared single-instance lock; if that library is absent it falls back to a **legacy `pgrep -fc` count** of the script's own executions (its path after the launching `bash`, so a sibling whose name merely contains the script's, a `tail`, an editor or csf's hourly integrity sweep over the tool directories never count) and exits (logging to `/var/log/boa/too.many.log`) when more than two copies of the script are already running. This is why a slow tick never stacks into a fork storm — a new cron tick that finds the previous one still working simply exits. The auth scanners use their own PID-checked `noclobber` lock instead, to the same end.
 
 `minute.sh` adds harder safety nets before it spawns anything — see the flood guards below.
 
