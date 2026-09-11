@@ -6100,6 +6100,38 @@ _satellite_pre_cleanup() {
   fi
 }
 
+### The shared nginx include now takes the site's database credentials
+### through variables the site vhost sets after the include line; a vhost
+### rendered before that keeps passing EMPTY credentials to the locations
+### that declare their own fastcgi_param set (/cron/<key>, update.php,
+### authorize.php), and on a cloaked site those requests reach PHP with no
+### database at all. A site vhost is re-rendered only by the site's own
+### Verify, so queue one for every such site once this pass has rendered the
+### include. Self-limiting: a re-rendered vhost carries the lines and is
+### never queued again; Grav and TXP vhosts carry no credentials and are
+### skipped; the queue runs them one at a time under the runner lock.
+_satellite_queue_dbvars_site_verifies() {
+  local _inc="${_ROOT}/config/includes/nginx_vhost_common.conf"
+  local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
+  local _v _d _n=0
+  [ -f "${_inc}" ] && grep -q '^set \$boa_db_type' "${_inc}" || return 0
+  [ -d "${_vhd}" ] || return 0
+  for _v in "${_vhd}"/*; do
+    [ -f "${_v}" ] || continue
+    _d="${_v##*/}"
+    case "${_d}" in .*|https.*) continue ;; esac
+    [ "${_d}" = "${_DOMAIN}" ] && continue
+    grep -q 'set \$boa_db_type' "${_v}" && continue
+    grep -q 'fastcgi_param db_creds_urlencoded' "${_v}" || continue
+    su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
+      hosting-task @${_d} verify --force" &> /dev/null
+    _n=$(( _n + 1 ))
+  done
+  if [ "${_n}" -gt 0 ]; then
+    _msg "INFO: queued a Verify for ${_n} site(s) whose vhost predates the nginx db variables"
+  fi
+}
+
 _satellite_post_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_post_cleanup"
