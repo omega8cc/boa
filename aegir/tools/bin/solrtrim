@@ -424,15 +424,16 @@ _remove_one() {
   if [ -x "/etc/init.d/${_V_SVC}" ]; then
     service "${_V_SVC}" stop &> /dev/null
   fi
-  ### Kill by TREE PATH, never by the version token: this run's own cmdline
-  ### carries the bare token ('solrtrim remove solr7') and a token pattern
-  ### -- bracketed or not -- matches and kills this very process. The tree
-  ### path can only appear in a Solr JVM's cmdline (BOA's own java monitor
-  ### kills the same way).
-  case "${_sv}" in
-    solr4) pkill -9 -f "/opt/jetty9" &> /dev/null ;;
-    *)     pkill -9 -f "/var/${_V_SVC}" &> /dev/null ;;
-  esac
+  ### By service account when it exists, else the JVM at argv[0] -- the java
+  ### monitor's and xmass's form. A bare token would match this run's own
+  ### command line ('solrtrim remove solr7'), and the tree path used before
+  ### also matched an in-flight index transfer ('rsync ... /var/solr9/data
+  ### root@target:/var/solr9/') and killed it.
+  if id "${_V_SVC}" &> /dev/null; then
+    pkill -9 -u "${_V_SVC}" &> /dev/null
+  else
+    pkill -9 -f "^[^ ]*java[0-9]* .*${_V_SVC}" &> /dev/null
+  fi
   update-rc.d -f "${_V_SVC}" remove &> /dev/null
   ### The init script goes NOW, not after the archive: autoupboa fires every
   ### 5 minutes, its per-version deny block is gated on this very file, and
@@ -538,7 +539,7 @@ _cmd_remove() {
   ### The chained install's legs run as "bash /var/backups/*.sh.txt", not
   ### as the wrapper binaries -- match those too.
   for _p in \
-    "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" \
+    "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus|xoct|xmass|xcopy)( |$)" \
     "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" \
     "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-"; do
     pgrep -f "${_p}" > /dev/null 2>&1 \
