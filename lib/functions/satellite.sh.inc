@@ -6145,6 +6145,11 @@ _satellite_queue_dbvars_site_verifies() {
   ### node); the hosting-task command would run the verify here and now.
   ### Counted only when the frontend returned the task.
   _n=$(su -s /bin/bash - ${_USER} -c "${_hmDrush} @hostmaster php-eval '\$n = 0; foreach (array(${_list}) as \$u) { \$s = hosting_get_site_by_url(\$u); if (\$s && !empty(\$s->nid)) { \$t = hosting_add_task(\$s->nid, \"verify\"); if (is_object(\$t) && !empty(\$t->nid)) { \$n++; } } } print \"queued=\" . \$n;'" 2>/dev/null)
+  case "${_n}" in
+    *queued=*) ;;
+    *) _msg "INFO: the frontend did not answer the db-variables Verify queueing; the next pass retries"
+       return 0 ;;
+  esac
   _n="${_n##*queued=}"
   _n="${_n%%[^0-9]*}"
   if [ -n "${_n}" ] && [ "${_n}" -gt 0 ]; then
@@ -7684,10 +7689,16 @@ _satellite_child_b_vhosts_hotfix() {
   wait
   sed -i "s/listen .*\*:80;/listen  \*:80;/g"          ${rPth}_*/nginx.conf
   wait
+  ### The port lives twice in a vhost: the server-level fastcgi_param the main
+  ### PHP location inherits, and the set line the shared include reads for
+  ### the locations that declare their own params. Move both, or the two
+  ### copies disagree until the site's next Verify.
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     sed -i "s/param db_port.*/param db_port   6033;/g" ${rPth}_*/nginx/vhost.d/*
+    sed -i "s/set \$boa_db_port .*/set \$boa_db_port \"6033\";/g" ${rPth}_*/nginx/vhost.d/*
   else
     sed -i "s/param db_port.*/param db_port   3306;/g" ${rPth}_*/nginx/vhost.d/*
+    sed -i "s/set \$boa_db_port .*/set \$boa_db_port \"3306\";/g" ${rPth}_*/nginx/vhost.d/*
   fi
   wait
   sed -i "s/listen .*\*:80;/listen  \*:80;/g"          ${rPth}_*/nginx/vhost.d/*
