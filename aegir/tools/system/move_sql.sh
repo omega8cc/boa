@@ -65,7 +65,7 @@ _start_sql() {
   [ "$1" != "chain" ] && _check_running
   _create_locks
 
-  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+  _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "MySQLD already running?"
     echo "Nothing to do. Bye!"
@@ -91,7 +91,7 @@ _start_sql() {
   _mysqld_wait=0
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     echo "Waiting for MySQLD graceful start..."
     sleep 3
     _mysqld_wait=$(( _mysqld_wait + 1 ))
@@ -121,13 +121,13 @@ _stop_sql() {
   service nginx stop &> /dev/null
   # Seeded and bounded: the variable used to start empty, so this "wait"
   # never waited at all and the kill below landed on a tier mid-shutdown.
-  _IS_NGINX_RUNNING=$(pgrep -f 'nginx: ')
+  _IS_NGINX_RUNNING=$(pgrep -x nginx)
   _ngx_stop_wait=0
   until [ -z "${_IS_NGINX_RUNNING}" ] || [ "${_ngx_stop_wait}" -ge 30 ]; do
     echo "Waiting for Nginx graceful shutdown..."
     sleep 1
     _ngx_stop_wait=$(( _ngx_stop_wait + 1 ))
-    _IS_NGINX_RUNNING=$(pgrep -f 'nginx: ')
+    _IS_NGINX_RUNNING=$(pgrep -x nginx)
   done
   killall nginx &> /dev/null
   echo "Nginx stopped"
@@ -152,7 +152,7 @@ _stop_sql() {
   pkill -9 -f '^php-fpm: '
   echo "PHP-FPM stopped"
 
-  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+  _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     _DB_V=$(mysql -V 2>&1 \
       | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
@@ -190,7 +190,7 @@ _stop_sql() {
   # the latter.
   _mysqld_stop_wait=0
   until [ -z "${_IS_MYSQLD_RUNNING}" ]; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     echo "Waiting for MySQLD graceful shutdown..."
     sleep 3
     _mysqld_stop_wait=$(( _mysqld_stop_wait + 1 ))
@@ -238,7 +238,7 @@ _stop_mysqld_only() {
   # answering server alone; only clear the socket/pid when mysqld is genuinely gone.
   _check_running
   _create_locks
-  if [ -z "$(pgrep -f /usr/sbin/mysqld)" ]; then
+  if [ -z "$(pgrep -x mysqld)" ]; then
     echo "MySQLD already stopped"
     [ "$1" != "chain" ] && _remove_locks
     return 0
@@ -260,19 +260,19 @@ _stop_mysqld_only() {
     [ "$1" != "chain" ] && _remove_locks
     return 0
   fi
-  if pgrep -f /usr/sbin/mysqld > /dev/null 2>&1; then
-    pkill -TERM -f /usr/sbin/mysqld
+  if pgrep -x mysqld > /dev/null 2>&1; then
+    pkill -TERM -x mysqld
     sleep 5
     if _mysqld_answering; then
       echo "MySQLD answering after TERM (healthy respawn) -- leaving it"
       [ "$1" != "chain" ] && _remove_locks
       return 0
     fi
-    pkill -KILL -f /usr/sbin/mysqld
+    pkill -KILL -x mysqld
     sleep 2
   fi
   # Never de-socket a live server: only clear stale files once mysqld is truly gone.
-  if [ -z "$(pgrep -f /usr/sbin/mysqld)" ]; then
+  if [ -z "$(pgrep -x mysqld)" ]; then
     rm -f /run/mysqld/mysql*
   fi
   [ "$1" != "chain" ] && _remove_locks

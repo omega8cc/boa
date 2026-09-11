@@ -165,7 +165,7 @@ _provision_running() {
   # editor, an operator's ssh probe, a monitoring loop -- which in a bounded
   # drain loop means this tool defers its work on every run, indefinitely.
   # Mirrored from night/night.inc.sh on purpose: this tool has no library.
-  pgrep -f "provision-[a-z]" > /dev/null 2>&1 && return 0
+  pgrep -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
   # The front-end dispatch phase of a task carries no provision-* token: the
   # backend child is spawned only after bootstrap, and the post-hooks run after
   # it exits, so those windows were invisible. ( |$) is LOAD-BEARING -- without
@@ -179,7 +179,12 @@ _provision_running() {
 # A backup writer touching the archive (duplicity/mydumper/cluster/sequential): the
 # archive relocation defers while one runs, so a backup file is never moved mid-write.
 _backup_running() {
-  pgrep -f 'duplicity|mydumper|sequential_backups|dbackup|mysql_cluster_backup' >/dev/null 2>&1
+  # Genuine executions only (an interpreter carrying the script, or the tool as
+  # argv[0]); a command line that merely names one -- csf's hourly md5sum sweep
+  # over /usr/local/bin, an editor, a probe -- must not defer the move.
+  pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*(duplicity|sequential_backups|dbackup|mysql_cluster_backup)[^ ]*( |$)' >/dev/null 2>&1 && return 0
+  pgrep -f '^[^ ]*(duplicity|mydumper|sequential_backups|dbackup|mysql_cluster_backup)[^ ]*( |$)' >/dev/null 2>&1 && return 0
+  return 1
 }
 
 # Single-instance lock (shared lock.inc if present; sets _LOCK_FD/_LOCK_PATH and
@@ -193,7 +198,7 @@ _manage_single_lock() {
   if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
     _single_instance_lock
   else
-    _CNT=$(pgrep -fc "$(basename "$0")")
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/$(basename "$0")( |$)")
     if [ "${_CNT:-0}" -gt 2 ]; then
       echo "Too many $(basename "$0") running $(date) (count=${_CNT})"
       exit 0

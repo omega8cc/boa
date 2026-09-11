@@ -7219,6 +7219,35 @@ _satellite_child_b_aegir_health_check() {
   fi
 }
 
+_le_order() {
+  # The dehydrated order for the hostmaster (extra arguments passed through),
+  # retried up to three times 15 s apart while the CA answers
+  # accountDoesNotExist for the account registered a moment ago (seen on a
+  # fresh install 2026-09-10: "Account .../acct/N not found" seconds after
+  # --register created N; the pass-level retry then re-ran a whole octopus
+  # pass for it). Any other outcome is final on the first attempt.
+  local _out="${_ROOT}/log/letsencrypt-${_NOW}.attempt"
+  local _try=0
+  mkdir -p ${_ROOT}/log
+  while : ; do
+    _try=$(( _try + 1 ))
+    bash ${_exeLe} ${_leParams} --domain ${_DOMAIN} "$@" > ${_out} 2>&1
+    wait
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      cat ${_out}
+    else
+      cat ${_out} >> ${_ROOT}/log/letsencrypt-${_NOW}.log
+    fi
+    if [ "${_try}" -lt 3 ] && grep -q "accountDoesNotExist" ${_out}; then
+      _msg "${_STATUS} B: LE -- the CA does not know the account registered a moment ago, retrying the order in 15s (attempt ${_try} of 3)"
+      sleep 15
+      continue
+    fi
+    break
+  done
+  rm -f ${_out}
+}
+
 _satellite_child_b_letsencrypt() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_child_b_letsencrypt"
@@ -7313,14 +7342,12 @@ _satellite_child_b_letsencrypt() {
         wait
         bash ${_exeLe} --register --accept-terms
         wait
-        bash ${_exeLe} ${_leParams} --domain ${_DOMAIN} --force
-        wait
+        _le_order --force
         touch ${_leRoot}/.ctrl/forced-${_DOMAIN}-mode.pid
       else
         bash ${_exeLe} --register --accept-terms
         wait
-        bash ${_exeLe} ${_leParams} --domain ${_DOMAIN}
-        wait
+        _le_order
       fi
     else
       mkdir -p ${_ROOT}/log
@@ -7330,14 +7357,12 @@ _satellite_child_b_letsencrypt() {
         wait
         bash ${_exeLe} --register --accept-terms >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
         wait
-        bash ${_exeLe} ${_leParams} --domain ${_DOMAIN} --force >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
-        wait
+        _le_order --force
         touch ${_leRoot}/.ctrl/forced-${_DOMAIN}-mode.pid
       else
         bash ${_exeLe} --register --accept-terms >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
         wait
-        bash ${_exeLe} ${_leParams} --domain ${_DOMAIN} >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
-        wait
+        _le_order
       fi
     fi
   else

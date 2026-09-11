@@ -84,7 +84,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc ${_SCRIPT})
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -172,7 +172,7 @@ _check_running() {
   local _dead=0
   local _tot=0
   while : ; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -e "/run/mysqld/mysqld.sock" ]; then
       return 0
     fi

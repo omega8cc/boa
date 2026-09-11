@@ -423,6 +423,12 @@ _update_solr() {
         touch ${2}/conf/${_xSrl}.conf
         _reload_core_cnf 9099 ${_SolrCoreID}
       fi
+      # The marker is a one-shot request for the write and the reload
+      # above. The template branches clear it on their next no-diff pass,
+      # but the tenant-upload branch empties the upload dir and is never
+      # entered again, so its marker used to stay and every later pass
+      # rewrote solr.php and reloaded the core, forever.
+      rm -f ${2}/conf/.just-updated.pid
     fi
   fi
 }
@@ -703,13 +709,13 @@ PYSTATE
 _core_retry_due() {
   # ${1} = core path  ${2} = failed-attempt stamp
   # A failed attempt is retried once the conf has changed since (the
-  # daemon's own template refresh touches .just-updated.pid; a hand edit
-  # gives a newer file) or after an hour, whichever comes first -- never
-  # on every pass, and never left for a Solr restart alone.
+  # daemon's own refresh touches the release stamp in conf as it reloads;
+  # a hand edit gives a newer file) or after an hour, whichever comes
+  # first -- never on every pass, and never left for a Solr restart alone.
   local _p="${1}" _s="${2}" _f
   [ -e "${_s}" ] || return 0
   [ -n "$(find "${_s}" -maxdepth 0 -mmin +60 2>/dev/null)" ] && return 0
-  for _f in "${_p}/conf/.just-updated.pid" "${_p}/conf/solrconfig.xml" "${_p}/conf/schema.xml"; do
+  for _f in "${_p}/conf/${_xSrl}.conf" "${_p}/conf/solrconfig.xml" "${_p}/conf/schema.xml"; do
     [ "${_f}" -nt "${_s}" ] && return 0
   done
   return 1

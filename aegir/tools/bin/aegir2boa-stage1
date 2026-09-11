@@ -479,10 +479,11 @@ dryrun_flip() {
   # frontend queue must be able to run tasks. The daemon may be systemd- or
   # LSB-managed - but upstream's LSB script exits 0 when its hardcoded
   # DAEMON path is missing, so the non-systemd arm demands positive PROCESS
-  # evidence instead of trusting the init script's exit code (the [d]rush
-  # bracket keeps the probe from ever matching its own invocation)
+  # evidence instead of trusting the init script's exit code (anchored to the
+  # interpreter that carries hosting-queued at argv[0], so neither this probe's
+  # own command line nor csf's hourly md5sum sweep over /etc/init.d matches)
   if systemctl is-active hosting-queued >/dev/null 2>&1 \
-    || pgrep -f "[d]rush.*hosting-queued" >/dev/null 2>&1; then
+    || pgrep -f '^([^ ]*/)?(php[^ ]*|drush[^ ]*) .*hosting-queued' >/dev/null 2>&1; then
     _info "hosting-queued daemon active (tasks run in seconds)"
   elif crontab -l -u "${_AEGIR_USER}" 2>/dev/null | grep -q hosting-dispatch; then
     _info "cron dispatch present (tasks run within a minute)"
