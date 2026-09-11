@@ -11,7 +11,7 @@ _monPath="/var/xdrago/monitor/check"
 # versions; a marker whose owner PID is gone is stale (crashed run) and
 # is cleared, never obeyed -- and /run clears itself on reboot.
 if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
-  _qsPid=$(tr -dc '0-9' < /run/boa_php_idle_quiesce.pid 2>/dev/null)
+  _qsPid=$( { tr -dc '0-9' < /run/boa_php_idle_quiesce.pid; } 2>/dev/null )
   if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2>/dev/null; then
     exit 0
   fi
@@ -185,7 +185,7 @@ _manage_single_lock() {
     # launch on exactly the lock.inc-less boxes this fallback exists for.
     # True single-instance comes from the shared flock above.
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "${_SCRIPT}")
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -293,12 +293,20 @@ _terminate_processes() {
   local _current_load="$1"
   local _threshold="$2"
   local _load_period="$3"
+  # Never during a BOA pass: its own php builders and mirror fetches are the
+  # busiest processes on the box, and killing them is what loadguard's
+  # _install_pass_active exists to prevent (minute.sh's flood guards hold on
+  # the same markers).
+  for _m in boa_run.pid boa_wait.pid octopus_install_run.pid; do
+    [ -e "/run/${_m}" ] && return 0
+  done
   # TERM first so shutdown handlers run -- a drush job SIGKILLed mid-write
   # leaves half-applied state on disk that no rollback repairs. The -9
-  # follows only for what ignored the polite request.
-  killall php drush.php wget curl &> /dev/null
+  # follows only for what ignored the polite request. (killall matches the
+  # process name: a drush job IS php here, never drush.php.)
+  killall php wget curl &> /dev/null
   sleep 2
-  killall -9 php drush.php wget curl &> /dev/null
+  killall -9 php wget curl &> /dev/null
   local _log_message
   _log_message="$(date) System Load ${_current_load}% (${_load_period}) - PHP/Wget/cURL terminated"
   echo "${_log_message}" >> ${_pthOml}
@@ -383,16 +391,22 @@ _get_load() {
 # never mistaken for a backup.
 _backup_in_progress() {
   [ -e "/run/boa_sql_cluster_backup.pid" ] && return 0
-  pgrep -f '/backboa|/duobackboa|/multiback|/mysql_backup\.sh|/mysql_cluster_backup\.sh' >/dev/null 2>&1 && return 0
+  pgrep -f '(^|(^| )[^ ]*bash )/(opt|usr)/local/bin/(backboa|duobackboa|multiback)( |$)' >/dev/null 2>&1 && return 0
+  pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/(mysql_backup|mysql_cluster_backup)\.sh( |$)' >/dev/null 2>&1 && return 0
   pgrep -x mydumper >/dev/null 2>&1 && return 0
   # xtrabackup/myloader: an xmass seed or a restore is disk-bound work on
   # a box whose cron now stays armed -- its load must not trip the
   # drastic tiers any more than a duplicity run's. The packaged myloader
   # is a wrapper exec'ing myloader.bin, so match both comm names.
   pgrep -x xtrabackup >/dev/null 2>&1 && return 0
+  pgrep -x xbstream >/dev/null 2>&1 && return 0      # the xmass seed's receiving end
   pgrep -x myloader >/dev/null 2>&1 && return 0
   pgrep -x myloader.bin >/dev/null 2>&1 && return 0
-  pgrep -x duplicity >/dev/null 2>&1
+  # duplicity runs as its pipx venv python with the console script as the
+  # argument, never as a process named duplicity: the anchored pair the other
+  # gates use, not a comm test that can never match.
+  pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' >/dev/null 2>&1 && return 0
+  pgrep -f '^[^ ]*duplicity( |$)' >/dev/null 2>&1
 }
 
 # Measured system iowait% over a short sample. Used to CONFIRM a backup's high

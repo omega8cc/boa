@@ -224,7 +224,7 @@ _provision_running() {
   # any command line that merely MENTIONED a provision path -- a checksum, an
   # editor, an operator's ssh probe, a monitoring loop. Mirrored from
   # night/night.inc.sh on purpose: this tool has no library to source.
-  pgrep -f "provision-[a-z]" > /dev/null 2>&1 && return 0
+  pgrep -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
   # The front-end dispatch phase of a task carries no provision-* token: the
   # backend child is spawned only after bootstrap, and the post-hooks run after
   # it exits, so those windows were invisible. ( |$) is LOAD-BEARING -- without
@@ -803,11 +803,12 @@ _disable_chattr() {
 # password store, groups, reaper tokens) whose lshell path also carries the
 # qualifying app roots, with the drush and composer commands re-added in its
 # own section (lshell applies [<user>] last, after the group's minus-lists),
-# and a root-placed ~/platforms farm so SFTP sees the same tree. Drush inside
-# a locked vendor/drush runs in a timed, chmod-only window: the same bits
-# provision's own cache-rebuild window flips, the de-typing patches never
-# touched, opened when the account touches ~/.tmp/drush-window.request and
-# closed by this worker once root's own clock says the minutes are up.
+# and a root-placed ~/platforms farm so SFTP sees the same tree. The site-local
+# Drush of a locked Drupal 8+ platform runs in a timed window that is a real
+# unlock (provision-dunlock on every granted composer platform, provision-dlock
+# at expiry on those that were locked; see _ltd_platform_window below), opened
+# when the account touches ~/.tmp/drush-window.request and closed by this
+# worker once root's own clock says the minutes are up.
 _LTD_PLATFORM_SUFFIX="-dev"
 _LTD_PLATFORM_WINDOW_MIN=60
 _LTD_PLATFORM_TOOLS="'composer', 'drush', 'drush10', 'drush11', 'drush8', 'vdrush', 'vendor/drush/drush/drush.php'"

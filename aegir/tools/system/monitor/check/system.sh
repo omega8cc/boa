@@ -61,7 +61,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc ${_SCRIPT})
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -412,10 +412,13 @@ _cron_duplicate_instances_detection() {
         fi
       fi
       # TERM first so the masters exit cleanly; -9 only what survives. The
-      # pattern kills the duplicate masters, not the jobs they exec'd.
-      pkill -TERM -f /usr/sbin/cron &> /dev/null
+      # kill uses the pattern the count used, so a command line that merely
+      # names the path is never collateral, and what was counted is logged
+      # first so a trip is diagnosable.
+      echo "$(date) INFO: Cron masters counted: $(pgrep -a -f '^/usr/sbin/cron( |$)' 2> /dev/null | tr '\n' ';')" >> ${_pthOml}
+      pkill -TERM -f '^/usr/sbin/cron( |$)' &> /dev/null
       sleep 1
-      pkill -KILL -f /usr/sbin/cron &> /dev/null
+      pkill -KILL -f '^/usr/sbin/cron( |$)' &> /dev/null
       service cron start &> /dev/null
       # Cooldown stamp
       date +%s > "${_cd}"
@@ -723,6 +726,29 @@ _clamav_health_check_fix() {
   fi
 }
 
+# Restart rsyslog and say what actually happened: the restart used to be
+# logged as done whatever the init script returned, so a box whose
+# /etc/rsyslog.conf had gone read "Rsyslog was down, restarted" once a
+# minute for three days while it had no syslog at all. The verdict is the
+# daemon's pidfile pid running under its name; a failure names rsyslogd's
+# own first complaint (a missing config, a bad rule) so the log is diagnosable.
+_rsyslog_restart_verified() {
+  local _why="${1}" _out _reason
+  _out="$(service rsyslog restart 2>&1)"
+  sleep 2
+  if _daemon_alive /run/rsyslogd.pid rsyslogd; then
+    _thisErrLog="$(date) ${_why}, service restarted"
+    echo "${_thisErrLog}" >> ${_pthOml}
+    _incident_email_report "${_why}, service restarted"
+  else
+    _reason="$(echo "${_out}" | grep -m1 -oE 'rsyslogd: .*' | cut -c1-160)"
+    _thisErrLog="$(date) ${_why}, restart FAILED: ${_reason:-no rsyslogd after the init script}"
+    echo "${_thisErrLog}" >> ${_pthOml}
+    _incident_email_report "${_why}, restart FAILED: ${_reason:-no rsyslogd after the init script}" ALERT rsyslog-failed
+  fi
+  echo >> ${_pthOml}
+}
+
 _rsyslog_health_check_fix() {
   # A missing pidfile alone is not a dead daemon, and killing a healthy
   # rsyslogd -9 for it lost whatever was in its queues. Only a process that
@@ -733,18 +759,10 @@ _rsyslog_health_check_fix() {
     if ! pgrep -x rsyslogd >/dev/null 2>&1; then
       sleep 2
       if ! pgrep -x rsyslogd >/dev/null 2>&1; then
-        service rsyslog restart
-        _thisErrLog="$(date) Rsyslog was down, restarted"
-        echo "${_thisErrLog}" >> ${_pthOml}
-        _incident_email_report "Rsyslog was down, restarted"
-        echo >> ${_pthOml}
+        _rsyslog_restart_verified "Rsyslog was down"
       fi
     elif [ ! -e "/run/rsyslogd.pid" ]; then
-      service rsyslog restart
-      _thisErrLog="$(date) Rsyslog pidfile was missing, service restarted"
-      echo "${_thisErrLog}" >> ${_pthOml}
-      _incident_email_report "Rsyslog pidfile was missing, service restarted"
-      echo >> ${_pthOml}
+      _rsyslog_restart_verified "Rsyslog pidfile was missing"
     fi
   else
     # rsyslog is the only supported syslogd; a box without even its init

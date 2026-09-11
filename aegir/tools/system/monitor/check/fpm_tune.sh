@@ -102,7 +102,7 @@ _manage_single_lock() {
     _single_instance_lock
   else
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc ${_SCRIPT})
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -314,7 +314,7 @@ for _sock in "${_socks[@]}"; do
   case " ${_VERS_SEEN} " in
     *" ${_ver} "*) continue ;;
   esac
-  _mpid=$(pgrep -f "/opt/php${_ver}/etc/php${_ver}-fpm.conf" 2>/dev/null | head -n1)
+  _mpid=$(pgrep -f "^php-fpm: master process .*/opt/php${_ver}/etc/php${_ver}-fpm.conf" 2>/dev/null | head -n1)
   # Cold version (master down): no signal, skip its pools and its probe.
   [ -n "${_mpid}" ] || continue
   _VERS_SEEN="${_VERS_SEEN} ${_ver}"

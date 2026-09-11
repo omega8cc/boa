@@ -44,7 +44,7 @@ if [ -e "/var/log/boa/.xmass_solr_hold.pid" ]; then
         if id "${_svc}" &> /dev/null; then
           pkill -9 -u "${_svc}" &> /dev/null
         else
-          pkill -9 -f "jav[a][0-9]* .*${_svc}" &> /dev/null
+          pkill -9 -f "^[^ ]*jav[a][0-9]* .*${_svc}" &> /dev/null
         fi
         update-rc.d "${_svc}" disable &> /dev/null
         chmod -x "/etc/init.d/${_svc}" 2>/dev/null
@@ -124,9 +124,9 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc ${_SCRIPT})
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
-      echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
+      echo "Too many java.sh running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
     fi
   fi
@@ -190,7 +190,7 @@ _incident_email_report() {
 _jetty_restart() {
   touch /run/boa_java_auto_healing.pid
   sleep 3
-  pkill -9 -f jetty9
+  pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
   rm -f /var/log/jetty9/*
   find /tmp -mindepth 1 -user jetty9 -exec rm -rf {} + 2>/dev/null
   renice ${_B_NICE} -p $$ &> /dev/null
@@ -218,9 +218,9 @@ _jetty_listen_conflict_detection() {
 }
 
 _jenkins_health_check_fix() {
-  if ! pgrep -f java/jenkins \
+  if ! pgrep -f '^[^ ]*java[0-9]* .*jenkins' \
     || [ ! -e "/run/jenkins/jenkins.pid" ]; then
-    pkill -9 -f java
+    pkill -9 -f '^[^ ]*java[0-9]* .*jenkins'
     sleep 3
     service jenkins restart
     wait
@@ -231,8 +231,23 @@ _jenkins_health_check_fix() {
   fi
 }
 
+_solr_restart_in_flight() {
+  # ${1} = service, ${2} = its Solr install dir (empty for jetty9)
+  # A restart keeps the JVM down for a dozen seconds between the stop and
+  # the start, and this watchdog fires every minute: a tick inside that
+  # window used to restart a service that was already restarting -- two
+  # JVMs racing for one port, a stale pid file, and an incident mail for
+  # a box that was fine. The init script and bin/solr stay visible for
+  # the whole window, in the executor forms matched here.
+  pgrep -f "^(/[^ ]*/)?(ba|da)?sh (-c )?/etc/init.d/${1} (start|restart|stop)( |$)" > /dev/null 2>&1 && return 0
+  if [ -n "${2}" ]; then
+    pgrep -f "^(/[^ ]*/)?bash (-c )?${2}/bin/solr (start|restart|stop)( |$)" > /dev/null 2>&1 && return 0
+  fi
+  return 1
+}
+
 _solr_health_check_fix() {
-  if [ -x "/etc/init.d/solr9" ]; then
+  if [ -x "/etc/init.d/solr9" ] && ! _solr_restart_in_flight solr9 /opt/solr9; then
     _pidfile="/var/solr9/solr-9099.pid"
     if ! pgrep -f /var/solr9 || [ ! -e "${_pidfile}" ]; then
       find /tmp -mindepth 1 -user solr9 -exec rm -rf {} + 2>/dev/null
@@ -255,7 +270,7 @@ _solr_health_check_fix() {
       fi
     fi
   fi
-  if [ -x "/etc/init.d/solr7" ]; then
+  if [ -x "/etc/init.d/solr7" ] && ! _solr_restart_in_flight solr7 /opt/solr7; then
     _pidfile="/var/solr7/solr-9077.pid"
     if ! pgrep -f /var/solr7 || [ ! -e "${_pidfile}" ]; then
       find /tmp -mindepth 1 -user solr7 -exec rm -rf {} + 2>/dev/null
@@ -278,7 +293,7 @@ _solr_health_check_fix() {
       fi
     fi
   fi
-  if [ -x "/etc/init.d/jetty9" ]; then
+  if [ -x "/etc/init.d/jetty9" ] && ! _solr_restart_in_flight jetty9 ""; then
     _pidfile="/run/jetty9.pid"
     if ! pgrep -f /opt/jetty9 || [ ! -e "${_pidfile}" ]; then
       find /tmp -mindepth 1 -user jetty9 -exec rm -rf {} + 2>/dev/null

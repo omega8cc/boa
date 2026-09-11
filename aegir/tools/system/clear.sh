@@ -98,7 +98,7 @@ _THR_HOURS=$(date --date '3 hours ago' +"%Y-%m-%d %H:%M:%S")
 # it only when its owner PID is gone (a crashed/leaked hold) so a legitimately long
 # move is never unpaused mid-flight. /run is also cleared on reboot.
 if [ -e "/run/boa_queue_stop.pid" ]; then
-  _qs_pid=$(tr -dc '0-9' < /run/boa_queue_stop.pid 2>/dev/null)
+  _qs_pid=$( { tr -dc '0-9' < /run/boa_queue_stop.pid; } 2>/dev/null )
   { [ -z "${_qs_pid}" ] || ! kill -0 "${_qs_pid}" 2>/dev/null; } && rm -f /run/boa_queue_stop.pid
 fi
 if ! _installer_alive; then
@@ -118,7 +118,7 @@ find /run/daily-fix.pid              -type f -not -newermt "${_THR_HOURS}" -exec
 # versions; a marker whose owner PID is gone is stale (crashed run) and
 # is cleared, never obeyed -- and /run clears itself on reboot.
 if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
-  _qsPid=$(tr -dc '0-9' < /run/boa_php_idle_quiesce.pid 2>/dev/null)
+  _qsPid=$( { tr -dc '0-9' < /run/boa_php_idle_quiesce.pid; } 2>/dev/null )
   if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2>/dev/null; then
     exit 0
   fi
@@ -303,8 +303,27 @@ if [ ! -e "/run/boa_run.pid" ] \
   fi
   rm -f "${_boaShTmp}"
   wait
+  if [ -e "/run/clear.hold.last" ]; then
+    [ -d "/var/log/boa" ] && echo "$(date) hold released (was$(cat /run/clear.hold.last 2>/dev/null))" >> /var/log/boa/clear.hold.incident.log
+    rm -f /run/clear.hold.last
+  fi
   bash /opt/local/bin/autoupboa
   wait
+else
+  # Name what held this tick: with the self-update and autoupboa skipped in
+  # silence, a fresh install's reset marker arrived anywhere between 1 and
+  # 15 minutes after its last pass and nothing recorded which gate held.
+  # One line per change of holder, not per tick (a stale marker would write
+  # 288 lines a day for ever), under the rotated *.incident.log name.
+  _held=""
+  for _m in boa_run.pid boa_wait.pid octopus_install_run.pid; do
+    [ -e "/run/${_m}" ] && _held="${_held} ${_m}"
+  done
+  [ -z "${_held}" ] && _held=" installer-alive"
+  if [ -d "/var/log/boa" ] && [ "${_held}" != "$(cat /run/clear.hold.last 2>/dev/null)" ]; then
+    echo "${_held}" > /run/clear.hold.last
+    echo "$(date) self-update and autoupboa held by${_held}" >> /var/log/boa/clear.hold.incident.log
+  fi
 fi
 
 _OCT_NR=$(ls /data/disk | wc -l)
@@ -349,7 +368,7 @@ _if_fix_locked_sshd() {
   _SSH_LOG="/var/log/auth.log"
   if [ `tail --lines=30 ${_SSH_LOG} \
     | grep --count "error: Bind to port 22"` -gt 0 ]; then
-    pkill -9 -f /usr/sbin/sshd || true
+    pkill -9 -f '^(sshd: )?/usr/sbin/sshd( |$)' || true
     service ssh start
   fi
 }

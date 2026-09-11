@@ -24,7 +24,7 @@ _provision_running() {
   # any command line that merely MENTIONED a provision path -- a checksum, an
   # editor, an operator's ssh probe, a monitoring loop. Mirrored from
   # night/night.inc.sh on purpose: this tool has no library to source.
-  pgrep -f "provision-[a-z]" > /dev/null 2>&1 && return 0
+  pgrep -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
   # The front-end dispatch phase of a task carries no provision-* token: the
   # backend child is spawned only after bootstrap, and the post-hooks run after
   # it exits, so those windows were invisible. ( |$) is LOAD-BEARING -- without
@@ -154,7 +154,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc ${_SCRIPT})
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -338,7 +338,7 @@ _sql_restart() {
     mkdir -p /run/mysqld
     chown -R mysql:root /run/mysqld
   fi
-  if pgrep -f /usr/sbin/mysqld > /dev/null 2>&1; then
+  if pgrep -x mysqld > /dev/null 2>&1; then
     # Present but not answering = wedged/deadlocked. A plain start would no-op on
     # the live PID, so force a db-only restart (stop the hung mysqld, start fresh).
     echo "$(date) $1 incident: mysqld present but not answering -- db-only restart" >> ${_pthOml}
@@ -380,7 +380,7 @@ _sql_busy_detection() {
     # File-existence check instead of cat'ing the cleartext root password
     # into a shell variable just to test its non-emptiness. The mysql call
     # below uses /root/.my.cnf credentials implicitly via `mysql -u root`.
-    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -s /root/.my.pass.txt ]; then
       _MYSQL_CONN_TEST=$(mysql -u root -e "status" 2>&1)
       if [[ "${_MYSQL_CONN_TEST}" =~ "Too many connections" ]]; then
@@ -539,20 +539,23 @@ _if_mydumper_is_locked() {
       _MULTI_MX=$(( _OCT_NR + 10 ))
     fi
   fi
-  _AR_C="$(pgrep -fc aegir.sh)"
-  _DR_C="$(pgrep -fc drush.php)"
-  _MD_C="$(pgrep -fc mydumper)"
+  # Execution forms only: the su wrapper and its bash child both count (the
+  # thresholds were set on that pair), an editor or a grep naming the script
+  # never does -- the counts are the triggers of the kills below
+  _AR_C="$(pgrep -fc '(^|(^| )[^ ]*bash )/data/disk/[^/ ]+/aegir\.sh$')"
+  _DR_C="$(pgrep -fc '^"?[^ ]*php[0-9]*"? (.*[ /])?drush\.php( |$)')"
+  _MD_C="$(pgrep -fc '^[^ ]*mydumper( |$)')"
   if [ "${_MD_C}" -gt 0 ]; then
     if [ "${_AR_C}" -gt "${_MULTI_MX}" ]; then
-      pkill -f mydumper
-      pkill -f aegir.sh
+      pkill -f '^[^ ]*mydumper( |$)'
+      pkill -f '(^|(^| )[^ ]*bash )/data/disk/[^/ ]+/aegir\.sh$'
       echo "$(date) TOO MANY (${_AR_C}) aegir.sh required killing mydumper" >> ${_pthOml}
       echo >> ${_pthOml}
       _incident_email_report "TOO MANY (${_AR_C}) aegir.sh required killing mydumper" "mysql-mydumper"
     fi
     if [ "${_DR_C}" -gt "${_MULTI_MX}" ]; then
-      pkill -f mydumper
-      pkill -f drush.php
+      pkill -f '^[^ ]*mydumper( |$)'
+      pkill -f '^"?[^ ]*php[0-9]*"? (.*[ /])?drush\.php( |$)'
       echo "$(date) TOO MANY (${_DR_C}) drush.php required killing mydumper" >> ${_pthOml}
       echo >> ${_pthOml}
       _incident_email_report "TOO MANY (${_DR_C}) drush.php required killing mydumper" "mysql-mydumper"
@@ -561,7 +564,7 @@ _if_mydumper_is_locked() {
 }
 
 _mysql_flush_hosts() {
-  if pgrep -f /usr/sbin/mysqld >/dev/null 2>&1 \
+  if pgrep -x mysqld >/dev/null 2>&1 \
     && [ -e "/run/mysqld/mysqld.sock" ] \
     && [ -e "/run/mysqld/mysqld.pid" ]; then
     # NO_WRITE_TO_BINLOG: the host-cache flush is a LOCAL remedy. The bare form
@@ -714,14 +717,14 @@ if [ -x "/etc/init.d/mysql" ] \
 fi
 
 if [ -x "/etc/init.d/mysql" ] \
-  && pgrep -f /usr/sbin/mysqld >/dev/null 2>&1 \
+  && pgrep -x mysqld >/dev/null 2>&1 \
   && [ ! -e "/run/boa_mysql_auto_healing.pid" ] \
   && [ ! -e "/run/mysql_restart_running.pid" ]; then
   _standby_sql_hold
   _mysql_high_load
   _sql_busy_detection
   _mysql_flush_hosts
-  if (( $(pgrep -fc mydumper) > 0 )) && (( $(pgrep -fc mysql_backup.sh) > 0 )); then
+  if (( $(pgrep -fc '^[^ ]*mydumper( |$)') > 0 )) && (( $(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)') > 0 )); then
     sleep 5
     _if_mydumper_is_locked
   fi

@@ -457,6 +457,42 @@ _fix_llms_txt() {
   _LLMS_SUM=
   if [ -f "${_Dir}/files/llms.txt" ] && [ ! -L "${_Dir}/files/llms.txt" ]; then
     _LLMS_SUM=$(md5sum "${_Dir}/files/llms.txt" 2>/dev/null | cut -d' ' -f1)
+    # One-time transition for the copies this refresher fetched before the
+    # marker existed: they carry none, so they read as tenant content and
+    # were never refreshed again anywhere. A marker-less copy is seeded once
+    # when the site serves the same bytes now, or when it predates the
+    # marker (the pre-marker refresher expired every copy after six days,
+    # so a tenant upload that old cannot exist). One check per site,
+    # whatever its outcome; a tenant upload since then stays durable.
+    _LLMS_SEEDCHK="${_Dir}/.llms-seed.checked"
+    if [ ! -f "${_LLMS_MARK}" ] && [ ! -e "${_LLMS_SEEDCHK}" ] \
+      && [ ! -e "${_Plr}/profiles/hostmaster" ] && [ -n "${_LLMS_SUM}" ]; then
+      _LLMS_SEED=NO
+      if [ -n "$(find "${_Dir}/files/llms.txt" -maxdepth 0 ! -newermt '2026-09-01' 2>/dev/null)" ]; then
+        _LLMS_SEED=YES
+      else
+        _LLMS_STG=$(_ctrl_stage_dir) || _LLMS_STG=
+        _LLMS_TMP=
+        [ -n "${_LLMS_STG}" ] \
+          && _LLMS_TMP=$(mktemp "${_LLMS_STG}/llms.XXXXXX" 2>/dev/null)
+        if [ -n "${_LLMS_TMP}" ]; then
+          curl -L --max-redirs 10 -k -s --connect-timeout 10 --max-time 20 \
+            --retry 2 --retry-delay 5 --retry-max-time 30 \
+            -A iCab "http://${_Dom}/llms.txt?nocache=1&noredis=1" \
+            -o "${_LLMS_TMP}"
+          echo >> "${_LLMS_TMP}"
+          [ "$(md5sum "${_LLMS_TMP}" 2>/dev/null | cut -d' ' -f1)" = "${_LLMS_SUM}" ] \
+            && _LLMS_SEED=YES
+          rm -f "${_LLMS_TMP}"
+        fi
+      fi
+      if [ "${_LLMS_SEED}" = "YES" ]; then
+        _desymlink_planted "${_LLMS_MARK}"
+        printf '%s\n' "${_LLMS_SUM}" > "${_LLMS_MARK}"
+      fi
+      _desymlink_planted "${_LLMS_SEEDCHK}"
+      touch "${_LLMS_SEEDCHK}"
+    fi
     if [ ! -f "${_LLMS_MARK}" ] \
       || [ -z "${_LLMS_SUM}" ] \
       || ! grep -q "^${_LLMS_SUM}$" "${_LLMS_MARK}" 2>/dev/null; then
@@ -1870,6 +1906,39 @@ _fix_permissions() {
       echo "\$_SERVER['db_host'] = \$options['db_host'];" >> ${_Dir}/drushrc.php
       _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force"
     fi
+  ### Neither a Grav capsule nor a Textpattern site has a site-level files/
+  ### store (a TXP site does have private/, its credential store), so the
+  ### Drupal-shaped test above skips them and they get no nightly hygiene
+  ### at all -- while FPM keeps writing into them as the per-version web user.
+  ### Detect both positively (same predicates the two helpers use) and hand the
+  ### site to the helpers: they own the per-CMS model, this leg only re-homes
+  ### the tree to the account and its groups. Same symlink refusal as above.
+  elif [ -e "${_Dir}" ] \
+    && [ ! -L "${_Dir}" ] \
+    && [ -e "${_Dir}/drushrc.php" ] \
+    && [ ! -f "${_Dir}/settings.php" ] \
+    && { { [ -f "${_Dir}/bin/grav" ] \
+        && [ -f "${_Dir}/system/defines.php" ]; } \
+      || { [ -f "${_Dir}/public/index.php" ] \
+        && [ -f "${_Dir}/public/css.php" ] \
+        && [ -d "${_Dir}/admin" ]; }; }; then
+    ### The per-site control-INI dir is part of the BOA contract for every CMS
+    ### (both foreign-CMS provision layers create it themselves); seed it here
+    ### too so the helper pass below takes it with the rest of the tree.
+    if [ ! -e "${_Dir}/modules" ]; then
+      mkdir ${_Dir}/modules
+    fi
+    if [ -x "/usr/local/bin/fix-drupal-site-ownership.sh" ]; then
+      /usr/local/bin/fix-drupal-site-ownership.sh \
+        --site-path="${_Dir}" \
+        --script-user="${_HM_U}" \
+        --web-group=www-data &> /dev/null
+    fi
+    if [ -x "/usr/local/bin/fix-drupal-site-permissions.sh" ]; then
+      /usr/local/bin/fix-drupal-site-permissions.sh \
+        --site-path="${_Dir}" &> /dev/null
+    fi
+    echo "Foreign-CMS site hygiene applied for ${_Dom}"
   fi
 }
 

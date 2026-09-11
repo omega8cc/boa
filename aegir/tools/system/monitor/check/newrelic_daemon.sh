@@ -40,7 +40,7 @@ _manage_single_lock() {
     _single_instance_lock
   else
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "${_SCRIPT}")
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -65,7 +65,7 @@ _run_to_active() {
 _run_to_active && exit 0
 
 if [ -f "/etc/init.d/newrelic-daemon" ] \
-  && ! pgrep -f bin/newrelic-daemon >/dev/null 2>&1; then
+  && ! pgrep -x newrelic-daemon >/dev/null 2>&1; then
   service newrelic-daemon restart
 fi
 

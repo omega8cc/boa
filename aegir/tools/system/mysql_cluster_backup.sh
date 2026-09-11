@@ -56,7 +56,7 @@ _check_root
 [ ! -e "/root/.my.cluster_write_node.txt" ] && exit 0
 [ ! -e "/root/.my.cluster_root_pwd.txt" ] && exit 0
 
-_IS_SQLBACKUP_RUNNING=$(pgrep -f mysql_backup.sh)
+_IS_SQLBACKUP_RUNNING=$(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)')
 if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
   exit 0
 fi
@@ -187,6 +187,8 @@ _remove_locks() {
 }
 
 _check_running() {
+  # kept as a bare word on purpose: ProxySQL's command line is not observable
+  # on the test fleet and a pattern that missed it would hold this loop forever
   _IS_PROXYSQL_RUNNING=$(pgrep -f proxysql)
   while [ -z "${_IS_PROXYSQL_RUNNING}" ] \
     || [ ! -e "/var/lib/proxysql/proxysql.pid" ]; do

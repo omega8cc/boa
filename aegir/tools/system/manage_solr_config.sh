@@ -423,6 +423,12 @@ _update_solr() {
         touch ${2}/conf/${_xSrl}.conf
         _reload_core_cnf 9099 ${_SolrCoreID}
       fi
+      # The marker is a one-shot request for the write and the reload
+      # above. The template branches clear it on their next no-diff pass,
+      # but the tenant-upload branch empties the upload dir and is never
+      # entered again, so its marker used to stay and every later pass
+      # rewrote solr.php and reloaded the core, forever.
+      rm -f ${2}/conf/.just-updated.pid
     fi
   fi
 }
@@ -500,7 +506,7 @@ _add_solr() {
         wait
         sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
         wait
-        pkill -9 -f jetty9
+        pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
         service jetty9 start &> /dev/null
       fi
       echo "New Solr ${3} with ${1} for ${2} added"
@@ -643,10 +649,182 @@ _delete_solr() {
       wait
       rm -rf ${1}
       rm -f ${_Dir}/solr.php
-      pkill -9 -f jetty9
+      pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
       service jetty9 start &> /dev/null
     fi
     echo "Deleted Solr core in ${1}"
+  fi
+}
+
+_core_registry_state() {
+  # ${1} = port  ${2} = core name
+  # Prints registered, failed, absent, nopython or unknown (Solr unreachable,
+  # or its answer not usable). A STATUS for a single name answers with an
+  # empty status block for a name Solr does not know, and lists a core that
+  # failed to load under initFailures instead -- two shapes the caller must
+  # tell apart, so the answer is parsed, not grepped. An error answer (a
+  # damaged index makes STATUS itself throw) carries no status block at
+  # all and must not read as absent.
+  local _port="${1}" _core="${2}" _json _tmp _state
+  if ! command -v python3 &> /dev/null; then
+    echo "nopython"
+    return 0
+  fi
+  _json=$(curl -s --max-time 15 \
+    "http://127.0.0.1:${_port}/solr/admin/cores?action=STATUS&core=${_core}&wt=json" 2>/dev/null)
+  if [ -z "${_json}" ]; then
+    echo "unknown"
+    return 0
+  fi
+  _tmp=$(mktemp /tmp/solr_status_XXXXXX.json)
+  if [ -z "${_tmp}" ]; then
+    echo "unknown"
+    return 0
+  fi
+  echo "${_json}" > "${_tmp}"
+  _state=$(python3 - "${_tmp}" "${_core}" <<'PYSTATE'
+import json, sys
+try:
+    with open(sys.argv[1]) as f:
+        data = json.load(f)
+except Exception:
+    print("unknown")
+    sys.exit(0)
+core = sys.argv[2]
+if not isinstance(data, dict) or "error" in data or "status" not in data \
+        or (data.get("responseHeader") or {}).get("status", 0) != 0:
+    print("unknown")
+elif core in (data.get("initFailures") or {}):
+    print("failed")
+elif (data.get("status") or {}).get(core):
+    print("registered")
+else:
+    print("absent")
+PYSTATE
+)
+  rm -f "${_tmp}"
+  echo "${_state:-unknown}"
+}
+
+_core_retry_due() {
+  # ${1} = core path  ${2} = failed-attempt stamp
+  # A failed attempt is retried once the conf has changed since (the
+  # daemon's own refresh touches the release stamp in conf as it reloads;
+  # a hand edit gives a newer file) or after an hour, whichever comes
+  # first -- never on every pass, and never left for a Solr restart alone.
+  local _p="${1}" _s="${2}" _f
+  [ -e "${_s}" ] || return 0
+  [ -n "$(find "${_s}" -maxdepth 0 -mmin +60 2>/dev/null)" ] && return 0
+  for _f in "${_p}/conf/${_xSrl}.conf" "${_p}/conf/solrconfig.xml" "${_p}/conf/schema.xml"; do
+    [ "${_f}" -nt "${_s}" ] && return 0
+  done
+  return 1
+}
+
+_reregister_solr_core() {
+  # ${1} = core path  ${2} = solr server version
+  # A core directory with no core.properties is invisible to Solr, whose
+  # core discovery keys on that file, and it was invisible here too: the
+  # update path only ever RELOADs, and Solr answers "No such core" for a
+  # directory it never loaded -- silently, every pass, for as long as the
+  # site stays bound. Seen after a core's conf was replaced from an archive
+  # that did not carry the file. A CoreAdmin CREATE on the existing
+  # instanceDir registers the directory as it is, index included, and
+  # writes only core.properties. The gate on that file's absence is not a
+  # shortcut: Solr refuses a CREATE into an instanceDir that already holds
+  # one and deletes the file on its way out, which would unregister a core
+  # that merely failed to load. Solr 4 keeps its registry in solr.xml and
+  # has no such file, so it is not handled here. Runs after _update_solr,
+  # so the one attempt loads the conf the daemon has just repaired.
+  local _path="${1}" _serv="${2}" _port _core _state _resp _rc _stamp _own
+  case "${_path}" in
+    /var/solr9/data/*) _port=9099; [ "${_serv}" = "solr9" ] || return 0 ;;
+    /var/solr7/data/*) _port=9077; [ "${_serv}" = "solr7" ] || return 0 ;;
+    *) return 0 ;;
+  esac
+  [ -d "${_path}" ] && [ ! -L "${_path}" ] || return 0
+  [ -e "${_path}/core.properties" ] && return 0
+  [ -x "/etc/init.d/${_serv}" ] || return 0
+  _core=$(basename "${_path}")
+  # -e is false on a dangling symlink, and both writers below would follow it
+  if [ -L "${_path}/core.properties" ]; then
+    echo "CORE-REREGISTER-SKIP: ${_core} carries a symlink named core.properties under ${_path} -- not touched"
+    return 0
+  fi
+  if [ ! -e "${_path}/conf/solrconfig.xml" ]; then
+    echo "CORE-REREGISTER-SKIP: ${_core} has no conf/solrconfig.xml under ${_path} -- not re-registered"
+    return 0
+  fi
+  _state=$(_core_registry_state "${_port}" "${_core}")
+  _stamp="${_path}/conf/.reregister-failed.pid"
+  case "${_state}" in
+    absent) ;;
+    registered)
+      # The latent phase of the same outage: Solr still serves the core
+      # from memory and will not find it at its next start. The name is
+      # the file's only load-bearing line and is all Solr itself writes
+      # for a core created here, so put it back and say so.
+      if printf 'name=%s\n' "${_core}" > "${_path}/core.properties" \
+        && chown "${_serv}:${_serv}" "${_path}/core.properties" \
+        && chmod 644 "${_path}/core.properties"; then
+        echo "CORE-REREGISTER-PERSISTED: ${_core} on port ${_port} was served from memory only -- core.properties written back for the next Solr start"
+      else
+        echo "CORE-REREGISTER-ERROR: ${_core} on port ${_port} -- could not write ${_path}/core.properties"
+      fi
+      return 0
+      ;;
+    failed)
+      if ! _core_retry_due "${_path}" "${_stamp}"; then
+        echo "CORE-REREGISTER-SKIP: ${_core} on port ${_port} failed to load -- retried when its conf changes or after an hour"
+        return 0
+      fi
+      # Clear Solr's record of the failure so the CREATE is not refused.
+      # Every delete flag off: a failed core has no descriptor, so this
+      # touches no file.
+      curl -s --max-time 15 \
+        "http://127.0.0.1:${_port}/solr/admin/cores?action=UNLOAD&core=${_core}&deleteIndex=false&deleteDataDir=false&deleteInstanceDir=false" \
+        &> /dev/null
+      ;;
+    nopython)
+      echo "CORE-REREGISTER-SKIP: python3 not available, ${_core} on port ${_port} not checked"
+      return 0
+      ;;
+    *) return 0 ;;
+  esac
+  if [ -e "${_stamp}" ] && ! _core_retry_due "${_path}" "${_stamp}"; then
+    echo "CORE-REREGISTER-SKIP: ${_core} on port ${_port} refused last time -- retried when its conf changes or after an hour"
+    return 0
+  fi
+  # A fleet-wide loss would otherwise spend one pass on every core at once;
+  # each CREATE opens an index, so keep a pass to a few and take the rest
+  # on the next tick.
+  if [ "${_REREGISTER_DONE:-0}" -ge "${_REREGISTER_MAX:-3}" ]; then
+    echo "CORE-REREGISTER-DEFERRED: ${_core} on port ${_port} -- pass limit reached, next pass"
+    return 0
+  fi
+  # A tree restored as root cannot take Solr's core.properties, and that
+  # refusal leaves no failure record to bound the retries.
+  _own=$(stat -c %U "${_path}" 2>/dev/null)
+  if [ -n "${_own}" ] && [ "${_own}" != "${_serv}" ]; then
+    chown -R "${_serv}:${_serv}" "${_path}" &> /dev/null
+    echo "CORE-REREGISTER-CHOWN: ${_core} tree was owned by ${_own}, now ${_serv}"
+  fi
+  _resp=$(curl -s --max-time 120 \
+    "http://127.0.0.1:${_port}/solr/admin/cores?action=CREATE&name=${_core}&instanceDir=${_path}&wt=json" 2>/dev/null)
+  _rc=$?
+  _REREGISTER_DONE=$(( ${_REREGISTER_DONE:-0} + 1 ))
+  if [ -e "${_path}/core.properties" ] \
+    && [ "$(_core_registry_state "${_port}" "${_core}")" = "registered" ]; then
+    rm -f "${_stamp}"
+    echo "CORE-REREGISTERED: ${_core} on port ${_port} from ${_path}"
+  elif [ "${_rc}" = "28" ] && [ -e "${_path}/core.properties" ]; then
+    # Solr writes the file before it opens the index, so a slow load past
+    # the timeout is still succeeding.
+    echo "CORE-REREGISTER-PENDING: ${_core} on port ${_port} -- Solr is still loading it"
+  else
+    [ -n "${_resp}" ] && _resp=$(printf '%s' "${_resp}" | tr -s '[:space:]' ' ' | cut -c1-300)
+    touch "${_stamp}"
+    echo "CORE-REREGISTER-ERROR: ${_core} on port ${_port} -- ${_resp:-no response}"
   fi
 }
 
@@ -660,6 +838,7 @@ _check_solr() {
       _add_solr "${1}" "${2}" "${3}"
     else
       _update_solr "${1}" "${2}" "${3}"
+      _reregister_solr_core "${2}" "${3}"
     fi
   fi
 }
@@ -1423,8 +1602,8 @@ _check_solr_core_health() {
 
   echo "=== Core health check ${_label} port=${_port} ==="
 
-  python3 - "${_tmpjson}" <<'PYEOF'
-import json, sys
+  python3 - "${_tmpjson}" "/var/${_label}/data" "${_label}" <<'PYEOF'
+import json, os, sys
 
 try:
     with open(sys.argv[1]) as f:
@@ -1439,6 +1618,23 @@ if init_failures:
         print(f"HEALTH-INIT-FAIL: {core} -- {err}")
 
 cores = data.get("status", {})
+
+# The mirror shape of a core Solr stopped listing: the directory carries
+# core.properties (an archive taken while Solr was down, a tree copied in
+# from elsewhere, a recovery that stopped before the CREATE) and Solr does
+# not know it. The reconciliation pass cannot CREATE into it (Solr refuses
+# and deletes the file), so say it here, once per pass, with the way out.
+datadir, label = sys.argv[2], sys.argv[3]
+known = set(cores) | set(init_failures)
+if os.path.isdir(datadir):
+    for name in sorted(os.listdir(datadir)):
+        if name in known:
+            continue
+        if os.path.isfile(os.path.join(datadir, name, "core.properties")):
+            print(f"HEALTH-WARN: {name} has core.properties under {datadir} but {label} "
+                  f"does not list it -- move that file aside and a bound site's core is "
+                  f"re-registered on the next pass, or restart {label}")
+
 if not cores:
     print("HEALTH-INFO: no cores registered")
     sys.exit(0)
@@ -1666,6 +1862,7 @@ _OPTIMIZE_FULL_THRESHOLD=30
 _OPTIMIZE_INTERVAL_HOURS=12
 
 _start_up() {
+  _REREGISTER_DONE=0
   _fix_solr9_cnf
   _fix_solr7_cnf
 
@@ -1754,9 +1951,33 @@ _is_protected_run() {
   [ -e "/run/boa_run.pid" ] && _protectedRun=TRUE
   [ -e "/run/boa_wait.pid" ] && _protectedRun=TRUE
 }
+_manage_single_lock() {
+  # The pass now carries a write that is not idempotent (a CoreAdmin
+  # CREATE: a second one for the same core is refused and takes the first
+  # one's core.properties with it), and the likeliest overlap is an
+  # operator running this script by hand while the cron tick fires.
+  _SELF_NAME="${_SELF_NAME:-$(basename "$0")}"
+  for _L in "/opt/local/bin/lock.inc" "/opt/local/lib/lock.inc"; do
+    [ -r "${_L}" ] && . "${_L}" && break
+  done
+  if [ -n "${_SINGLE_INSTANCE_LIB_VER:-}" ] && command -v _single_instance_lock >/dev/null 2>&1; then
+    _single_instance_lock
+  else
+    # -------- legacy pgrep guard (no lock.inc on the box yet) ---------
+    # Anchored to the execution form the crontab uses; the $( ) fork of
+    # this very process matches as well, hence a count of two is ours.
+    _CNT=$(pgrep -fc "^(/[^ ]*/)?bash (-c )?/var/xdrago/manage_solr_config\.sh( |$)")
+    if (( _CNT > 2 )); then
+      echo "Too many manage_solr_config.sh running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
+      exit 0
+    fi
+  fi
+}
+
 _is_protected_run
 
 if [ "${_protectedRun}" = "FALSE" ]; then
+  _manage_single_lock
   _NOW=$(date +%y%m%d-%H%M%S)
   _NOW=${_NOW//[^0-9-]/}
   [ -d "/var/backups/solr/log" ] || mkdir -p /var/backups/solr/log
