@@ -281,7 +281,7 @@ _provision_running() {
   # The second pattern is the old one plus an execution-shape constraint, so the
   # only processes this stops matching are the non-executions; the first keeps
   # the inner `bash -c "... provision-<task>"` link of the su chain covered.
-  pgrep -f "provision-[a-z]" > /dev/null 2>&1 && return 0
+  pgrep -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
   # The front-end dispatch phase of a task carries no provision-* token: the
   # backend child is spawned only after bootstrap, and the post-hooks run after
   # it exits, so those windows were invisible. ( |$) is LOAD-BEARING -- without

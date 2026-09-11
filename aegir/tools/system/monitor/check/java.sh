@@ -124,7 +124,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc ${_SCRIPT})
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -218,7 +218,7 @@ _jetty_listen_conflict_detection() {
 }
 
 _jenkins_health_check_fix() {
-  if ! pgrep -f java/jenkins \
+  if ! pgrep -f '^[^ ]*java[0-9]* .*jenkins' \
     || [ ! -e "/run/jenkins/jenkins.pid" ]; then
     pkill -9 -f '^[^ ]*java[0-9]* .*jenkins'
     sleep 3

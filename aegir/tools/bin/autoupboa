@@ -196,7 +196,7 @@ _kill_stuck_fire_external() {
       kill -9 "${_PID}" 2>/dev/null || true
       rm -f "/run/fire.pid"
     fi
-  done < <(pgrep -f "${_FIRE_SCRIPT}" 2>/dev/null)
+  done < <(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/guest-fire\.sh( |$)' 2>/dev/null)
 }
 _kill_stuck_fire_external
 
@@ -255,9 +255,10 @@ fi
 
 # Free the dpkg lock right before real apt work (avahi purge, apparmor removal,
 # the unattended-upgrades self-heal install). The daily worker's cmdline is
-# "/usr/bin/python3 /usr/bin/unattended-upgrade" -- match the script path
-# (never the plural package name, which no worker cmdline carries), bracketed
-# so concurrent guards never match each other's pkill. Kill the
+# "/usr/bin/python3 /usr/bin/unattended-upgrade" -- match that execution form
+# (^ and the interpreter), never the bare path, which csf's hourly md5sum
+# sweep over /usr/bin carries in its argv, nor the plural package name, which
+# no worker cmdline carries. Kill the
 # apt.systemd.daily parent first or it respawns the worker moments later; heal
 # any interrupted dpkg state the kill may leave, matching the autoinit
 # backstop. Called only from branches about to install/remove packages:
@@ -268,8 +269,8 @@ _free_dpkg_lock() {
   if pgrep -f '/usr/lib/apt/apt.systemd.dail[y]' >/dev/null 2>&1; then
     pkill -9 -f '/usr/lib/apt/apt.systemd.dail[y]'
   fi
-  if pgrep -f '/usr/bin/unattended-upgrad[e]' >/dev/null 2>&1; then
-    pkill -9 -f '/usr/bin/unattended-upgrad[e]'
+  if pgrep -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)' >/dev/null 2>&1; then
+    pkill -9 -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)'
     /usr/bin/dpkg --configure -a &> /dev/null
   fi
 }
@@ -1095,9 +1096,19 @@ _status_vm_postinstall() {
     touch ${_VM_N_SYS}
     chattr +i ${_VM_N_SYS}
   fi
-  if [ "$(boa info | grep -c Percona)" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
+  _pcnLines=$(boa info | grep -c Percona)
+  if [ "${_pcnLines}" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
     _NEEDS_UPGRADE=YES
     echo "A _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
+    # The reset marker is not stamped on this tick; say why, next to clear.sh's
+    # own held-tick lines, so a late arming is diagnosable after the fact --
+    # once per change of reason, since this arm can stay true for ever on a
+    # host where csf is never installed.
+    _whyNot="Percona lines=${_pcnLines} csf=$([ -e /usr/sbin/csf ] && echo present || echo absent)"
+    if [ -d "/var/log/boa" ] && [ "${_whyNot}" != "$(cat /run/clear.hold.marker.last 2>/dev/null)" ]; then
+      echo "${_whyNot}" > /run/clear.hold.marker.last
+      echo "$(date) reset marker not stamped: boa info ${_whyNot}" >> /var/log/boa/clear.hold.incident.log
+    fi
     # Launch it whatever the manufacturer reads back. A guest with no
     # SMBIOS/DMI table answers with nothing, and gating on a non-empty answer
     # skipped the accelerated completion pass on exactly those hosts, leaving

@@ -185,7 +185,7 @@ _manage_single_lock() {
     # launch on exactly the lock.inc-less boxes this fallback exists for.
     # True single-instance comes from the shared flock above.
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc "${_SCRIPT}")
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -383,7 +383,8 @@ _get_load() {
 # never mistaken for a backup.
 _backup_in_progress() {
   [ -e "/run/boa_sql_cluster_backup.pid" ] && return 0
-  pgrep -f '/backboa|/duobackboa|/multiback|/mysql_backup\.sh|/mysql_cluster_backup\.sh' >/dev/null 2>&1 && return 0
+  pgrep -f '(^|(^| )[^ ]*bash )/(opt|usr)/local/bin/(backboa|duobackboa|multiback)( |$)' >/dev/null 2>&1 && return 0
+  pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/(mysql_backup|mysql_cluster_backup)\.sh( |$)' >/dev/null 2>&1 && return 0
   pgrep -x mydumper >/dev/null 2>&1 && return 0
   # xtrabackup/myloader: an xmass seed or a restore is disk-bound work on
   # a box whose cron now stays armed -- its load must not trip the
@@ -392,7 +393,11 @@ _backup_in_progress() {
   pgrep -x xtrabackup >/dev/null 2>&1 && return 0
   pgrep -x myloader >/dev/null 2>&1 && return 0
   pgrep -x myloader.bin >/dev/null 2>&1 && return 0
-  pgrep -x duplicity >/dev/null 2>&1
+  # duplicity runs as its pipx venv python with the console script as the
+  # argument, never as a process named duplicity: the anchored pair the other
+  # gates use, not a comm test that can never match.
+  pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)' >/dev/null 2>&1 && return 0
+  pgrep -f '^[^ ]*duplicity( |$)' >/dev/null 2>&1
 }
 
 # Measured system iowait% over a short sample. Used to CONFIRM a backup's high

@@ -224,7 +224,7 @@ _provision_running() {
   # any command line that merely MENTIONED a provision path -- a checksum, an
   # editor, an operator's ssh probe, a monitoring loop. Mirrored from
   # night/night.inc.sh on purpose: this tool has no library to source.
-  pgrep -f "provision-[a-z]" > /dev/null 2>&1 && return 0
+  pgrep -f '(^| )provision-[a-z0-9-]+( |$)' > /dev/null 2>&1 && return 0
   # The front-end dispatch phase of a task carries no provision-* token: the
   # backend child is spawned only after bootstrap, and the post-hooks run after
   # it exits, so those windows were invisible. ( |$) is LOAD-BEARING -- without

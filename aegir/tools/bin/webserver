@@ -48,7 +48,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc ${_SCRIPT})
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -58,7 +58,7 @@ _manage_single_lock() {
 _manage_single_lock
 
 _valkey_health_check_fix() {
-  if ! pgrep -f /usr/bin/valkey-server \
+  if ! pgrep -x valkey-server \
     || [ ! -e "/run/valkey/valkey.sock" ] \
     || [ ! -e "/run/valkey/valkey.pid" ]; then
     mkdir -p /run/valkey
@@ -101,9 +101,9 @@ _nginx_health_check_fix() {
     return 0
   fi
   if [ -x "/etc/init.d/nginx" ]; then
-    if ! pgrep -f 'nginx: master process' \
+    if ! pgrep -f '^nginx: master process' \
       || [ ! -e "/run/nginx.pid" ]; then
-      pkill -9 -f nginx: || true
+      pkill -9 -f '^nginx: ' || true
       service nginx restart
       wait
     fi

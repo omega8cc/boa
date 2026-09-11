@@ -69,9 +69,9 @@ _clean_pid_exit() {
     rm -f ${_vBs}/OCTOPUS.sh*
     rm -f ${_vBs}/BARRACUDA.sh*
     service cron start &> /dev/null
-    _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
+    _CNT=$(pgrep -fc '^([^ ]*/)?tee -a /var/backups/barracuda-')
     if (( _CNT > 1 )); then
-      pkill -f 'tee -a /var/backups/barracuda-'
+      pkill -f '^([^ ]*/)?tee -a /var/backups/barracuda-'
     fi
   fi
   exit 1
@@ -1955,9 +1955,9 @@ _init_setup() {
       _send_errors
       _clean_pid_exit _barracuda_install
     else
-      _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
+      _CNT=$(pgrep -fc '^([^ ]*/)?tee -a /var/backups/barracuda-')
       if (( _CNT > 1 )); then
-        pkill -f 'tee -a /var/backups/barracuda-'
+        pkill -f '^([^ ]*/)?tee -a /var/backups/barracuda-'
       fi
     fi
     _NOW=$(date +%y%m%d-%H%M%S)

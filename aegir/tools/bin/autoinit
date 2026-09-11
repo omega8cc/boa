@@ -1529,15 +1529,16 @@ _init_prepare() {
       if [ -e "/root/.autoinit-early-upgrade.cnf" ]; then
         _msg "[init] prep ==> Let's update existing system first..." >> "${_logInt}"
         # Free the dpkg lock: the daily unattended-upgrade worker cmdline is
-        # "python3 /usr/bin/unattended-upgrade" -- match the script path,
-        # bracketed so concurrent guards never match each other's pkill. Kill
-        # the apt.systemd.daily parent first or it respawns the worker; the
+        # "python3 /usr/bin/unattended-upgrade" -- match that execution form
+        # (^ and the interpreter), never the bare path: csf's hourly md5sum
+        # sweep over /usr/bin carries the path in its argv. Kill the
+        # apt.systemd.daily parent first or it respawns the worker; the
         # dpkg heal below covers any interrupted state the kill may leave.
         if pgrep -f '/usr/lib/apt/apt.systemd.dail[y]' >/dev/null 2>&1; then
           pkill -9 -f '/usr/lib/apt/apt.systemd.dail[y]'
         fi
-        if pgrep -f '/usr/bin/unattended-upgrad[e]' >/dev/null 2>&1; then
-          pkill -9 -f '/usr/bin/unattended-upgrad[e]'
+        if pgrep -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)' >/dev/null 2>&1; then
+          pkill -9 -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)'
         fi
         /usr/bin/apt-get update --allow-insecure-repositories >> "${_logSlt}"
         /usr/bin/dpkg --configure -a >> "${_logSlt}"
@@ -2246,15 +2247,16 @@ _init_launch() {
   touch /run/autoinit.pid
   _autoinit_heal_grub_pc
   # Free the dpkg lock for the whole init cycle: the daily unattended-upgrade
-  # worker cmdline is "python3 /usr/bin/unattended-upgrade" -- match the
-  # script path, bracketed so concurrent guards never match each other's
-  # pkill. Kill the apt.systemd.daily parent first or it respawns the worker;
-  # heal any interrupted dpkg state the kill may leave.
+  # worker cmdline is "python3 /usr/bin/unattended-upgrade" -- match that
+  # execution form (^ and the interpreter), never the bare path: csf's hourly
+  # md5sum sweep over /usr/bin carries the path in its argv. Kill the
+  # apt.systemd.daily parent first or it respawns the worker; heal any
+  # interrupted dpkg state the kill may leave.
   if pgrep -f '/usr/lib/apt/apt.systemd.dail[y]' >/dev/null 2>&1; then
     pkill -9 -f '/usr/lib/apt/apt.systemd.dail[y]'
   fi
-  if pgrep -f '/usr/bin/unattended-upgrad[e]' >/dev/null 2>&1; then
-    pkill -9 -f '/usr/bin/unattended-upgrad[e]'
+  if pgrep -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)' >/dev/null 2>&1; then
+    pkill -9 -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)'
     /usr/bin/dpkg --configure -a &> /dev/null
   fi
   if [ ! -e "/root/.autoinit.log" ]; then

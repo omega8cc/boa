@@ -61,7 +61,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc ${_SCRIPT})
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -127,9 +127,11 @@ _incident_email_report() {
 _stop_nginx_processes() {
   # Ask the recorded master to quit first: QUIT lets in-flight requests
   # finish, where the old unconditional -9 severed every connection on the
-  # box. The -9 still follows, but only for what survives the grace, and
-  # the pattern is bracket-tricked so it can never match this script's own
-  # command line.
+  # box. The -9 still follows, but only for what survives the grace, matched
+  # by the title nginx sets at argv position 0 (master, workers, cache manager
+  # and loader): a title SUBSTRING also hit any grep, tail or pgrep whose argv
+  # carried "nginx: " -- during the very outage being cleared -- and a bare
+  # process name would take a plain `nginx -t` or `-s reload` in flight with it.
   local _mpid _w=0
   _mpid=$( { tr -dc '0-9' < /run/nginx.pid; } 2>/dev/null )
   # The number must still BE nginx: a pidfile left by a -9'd master outlives
@@ -143,7 +145,7 @@ _stop_nginx_processes() {
       _w=$(( _w + 1 ))
     done
   fi
-  pkill -9 -f '[n]ginx: ' || true
+  pkill -9 -f '^nginx: ' || true
 }
 
 _restart_nginx() {
@@ -209,11 +211,11 @@ _nginx_health_check_fix() {
   _NGINX_PROCESSES=$(ps aux | grep 'nginx: ' | grep -v 'grep')
   # Check for multiple master processes (shouldn't happen)
   if [ "${_NGINX_RESTARTED}" = false ]; then
-    _MASTER_COUNT=$(pgrep -fc 'nginx: [m]aster process')
+    _MASTER_COUNT=$(pgrep -fc '^nginx: master process')
     if [ "${_MASTER_COUNT}" -gt 1 ]; then
       # Double-check after a short grace to avoid flapping
       sleep 5
-      _MASTER_COUNT=$(pgrep -fc 'nginx: [m]aster process')
+      _MASTER_COUNT=$(pgrep -fc '^nginx: master process')
       if [ "${_MASTER_COUNT}" -gt 1 ]; then
         echo "Multiple (${_MASTER_COUNT}) Nginx master processes detected. Possible stuck processes."
         echo "$(date) NGX multiple (${_MASTER_COUNT}) master processes detected" >> ${_pthOml}
@@ -256,11 +258,11 @@ _nginx_health_check_fix() {
 _nginx_if_up_check_fix() {
   # Standard check first
   if [ -x "/etc/init.d/nginx" ]; then
-    if ! pgrep -f 'nginx: [m]aster process' \
+    if ! pgrep -f '^nginx: master process' \
       || [ ! -e "/run/nginx.pid" ]; then
       # Double-check after a short grace to avoid flapping
       sleep 3
-      if ! pgrep -f 'nginx: [m]aster process' \
+      if ! pgrep -f '^nginx: master process' \
         || [ ! -e "/run/nginx.pid" ]; then
         _now=$(date +%s)
         if [ -s "${_cd}" ]; then
@@ -277,7 +279,7 @@ _nginx_if_up_check_fix() {
         # listen sockets and keep serving headless, so a listening port is
         # exactly what the one state this restart exists to clear looks
         # like, and standing down on it would leave the box unhealable.
-        if pgrep -f 'nginx: [m]aster process' >/dev/null 2>&1 \
+        if pgrep -f '^nginx: master process' >/dev/null 2>&1 \
           && command -v ss >/dev/null 2>&1 \
           && ss -Hltn 2>/dev/null | grep -qE ':(80|443) '; then
           echo "$(date) INFO: Nginx master alive and serving; missing pidfile treated as an artefact, standing down" >> ${_pthOml}
@@ -429,13 +431,13 @@ fi
 if [ -e "/root/.standby.cnf" ] \
   && [ ! -e "/root/.standby.serve.cnf" ] \
   && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
-  if pgrep -f 'nginx: [m]aster process' > /dev/null 2>&1; then
+  if pgrep -f '^nginx: master process' > /dev/null 2>&1; then
     # Log on TRANSITION only: an orphan pidfile alone would otherwise write
     # ~9 lines a minute into the incident log forever.
     echo "$(date) NGX replication standby: holding the web tier DOWN" >> ${_pthOml}
     service nginx stop &> /dev/null
     sleep 2
-    if pgrep -f 'nginx: [m]aster process' > /dev/null 2>&1; then
+    if pgrep -f '^nginx: master process' > /dev/null 2>&1; then
       _stop_nginx_processes
     fi
   fi
@@ -443,7 +445,7 @@ if [ -e "/root/.standby.cnf" ] \
   # _stop_nginx_processes never does; a stale one left here would make the
   # health checks re-enter every pass.
   if [ -e "/run/nginx.pid" ] \
-    && ! pgrep -f 'nginx: [m]aster process' > /dev/null 2>&1; then
+    && ! pgrep -f '^nginx: master process' > /dev/null 2>&1; then
     rm -f /run/nginx.pid
   fi
   # Firewall half of the web hold (2026-08-25 ruling): insurance against a
