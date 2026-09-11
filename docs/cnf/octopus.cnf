@@ -207,7 +207,7 @@ so both can be used as default versions in the Ægir PHP configuration files:
 # CMS — Drupal CMS
 # LGV — LocalGov
 # THR — Thunder
-# VBX — Varbase 10
+# VBX — Varbase 11
 
 ### Drupal 11.3
 #
@@ -292,7 +292,7 @@ so both can be used as default versions in the Ægir PHP configuration files:
 ###
 ### IMPORTANT: Supported Drupal core versions and distributions have different
 ### PHP versions requirements, while not all PHP versions out of currently
-### supported ten versions are installed by default.
+### supported twelve versions are installed by default.
 ###
 ### Ensure that you have corresponding PHP versions installed with barracuda
 ### before attempting to install older Drupal versions and distributions.

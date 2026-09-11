@@ -196,7 +196,7 @@ _kill_stuck_fire_external() {
       kill -9 "${_PID}" 2>/dev/null || true
       rm -f "/run/fire.pid"
     fi
-  done < <(pgrep -f "${_FIRE_SCRIPT}" 2>/dev/null)
+  done < <(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/guest-fire\.sh( |$)' 2>/dev/null)
 }
 _kill_stuck_fire_external
 
@@ -255,9 +255,10 @@ fi
 
 # Free the dpkg lock right before real apt work (avahi purge, apparmor removal,
 # the unattended-upgrades self-heal install). The daily worker's cmdline is
-# "/usr/bin/python3 /usr/bin/unattended-upgrade" -- match the script path
-# (never the plural package name, which no worker cmdline carries), bracketed
-# so concurrent guards never match each other's pkill. Kill the
+# "/usr/bin/python3 /usr/bin/unattended-upgrade" -- match that execution form
+# (^ and the interpreter), never the bare path, which csf's hourly md5sum
+# sweep over /usr/bin carries in its argv, nor the plural package name, which
+# no worker cmdline carries. Kill the
 # apt.systemd.daily parent first or it respawns the worker moments later; heal
 # any interrupted dpkg state the kill may leave, matching the autoinit
 # backstop. Called only from branches about to install/remove packages:
@@ -265,11 +266,11 @@ fi
 # would starve every daily security-updates run. A killed security-only run
 # simply retries on its next daily timer.
 _free_dpkg_lock() {
-  if pgrep -f '/usr/lib/apt/apt.systemd.dail[y]' >/dev/null 2>&1; then
-    pkill -9 -f '/usr/lib/apt/apt.systemd.dail[y]'
+  if pgrep -f '^([^ ]*/)?(ba|da)?sh /usr/lib/apt/apt\.systemd\.daily( |$)' >/dev/null 2>&1; then
+    pkill -9 -f '^([^ ]*/)?(ba|da)?sh /usr/lib/apt/apt\.systemd\.daily( |$)'
   fi
-  if pgrep -f '/usr/bin/unattended-upgrad[e]' >/dev/null 2>&1; then
-    pkill -9 -f '/usr/bin/unattended-upgrad[e]'
+  if pgrep -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)' >/dev/null 2>&1; then
+    pkill -9 -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)'
     /usr/bin/dpkg --configure -a &> /dev/null
   fi
 }
@@ -678,8 +679,8 @@ _if_disable_not_used_services() {
       update-rc.d -f clamav-freshclam remove &> /dev/null
       mv -f /etc/init.d/clamav-freshclam /var/backups/clamav-freshclam.initd
     fi
-    pkill -9 -f clamd
-    pkill -9 -f freshclam
+    pkill -9 -f '^[^ ]*clamd( |$)'
+    pkill -9 -f '^[^ ]*freshclam( |$)'
     rm -f /run/clamav/*
   fi
 
@@ -700,8 +701,17 @@ _if_disable_not_used_services() {
       update-rc.d -f jetty9 remove &> /dev/null
       mv -f /etc/init.d/jetty9 /var/backups/jetty9.initd
     fi
-    pkill -9 -f avahi-daemon
-    pkill -9 -f java
+    pkill -9 -f '^[^ ]*avahi-daemon( |:|$)'
+    # Every service this arm disables, by its user where one exists, else by
+    # its title: the jetty9-only kill left a Solr 7/9 JVM running after its
+    # init script was gone.
+    for _jvmSvc in solr9 solr7 jetty9; do
+      if id "${_jvmSvc}" &> /dev/null; then
+        pkill -9 -u "${_jvmSvc}" &> /dev/null
+      else
+        pkill -9 -f "^[^ ]*jav[a][0-9]* .*${_jvmSvc}" &> /dev/null
+      fi
+    done
   fi
 
   if [ "${_DENY_JETTY9}" = "YES" ] \
@@ -710,8 +720,8 @@ _if_disable_not_used_services() {
       _clearSwap=YES
       update-rc.d -f jetty9 remove &> /dev/null
       mv -f /etc/init.d/jetty9 /var/backups/jetty9.initd
-      pkill -9 -f avahi-daemon
-      pkill -9 -f jetty9
+      pkill -9 -f '^[^ ]*avahi-daemon( |:|$)'
+      pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
     fi
   fi
 
@@ -721,8 +731,8 @@ _if_disable_not_used_services() {
       _clearSwap=YES
       update-rc.d -f solr7 remove &> /dev/null
       mv -f /etc/init.d/solr7 /var/backups/solr7.initd
-      pkill -9 -f avahi-daemon
-      pkill -9 -f solr7
+      pkill -9 -f '^[^ ]*avahi-daemon( |:|$)'
+      pkill -9 -f '^[^ ]*java[0-9]* .*solr7'
     fi
   fi
 
@@ -732,8 +742,8 @@ _if_disable_not_used_services() {
       _clearSwap=YES
       update-rc.d -f solr9 remove &> /dev/null
       mv -f /etc/init.d/solr9 /var/backups/solr9.initd
-      pkill -9 -f avahi-daemon
-      pkill -9 -f solr9
+      pkill -9 -f '^[^ ]*avahi-daemon( |:|$)'
+      pkill -9 -f '^[^ ]*java[0-9]* .*solr9'
     fi
   fi
 
@@ -1086,9 +1096,19 @@ _status_vm_postinstall() {
     touch ${_VM_N_SYS}
     chattr +i ${_VM_N_SYS}
   fi
-  if [ "$(boa info | grep -c Percona)" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
+  _pcnLines=$(boa info | grep -c Percona)
+  if [ "${_pcnLines}" -lt 3 ] || [ ! -e "/usr/sbin/csf" ]; then
     _NEEDS_UPGRADE=YES
     echo "A _NEEDS_UPGRADE is ${_NEEDS_UPGRADE}"
+    # The reset marker is not stamped on this tick; say why, next to clear.sh's
+    # own held-tick lines, so a late arming is diagnosable after the fact --
+    # once per change of reason, since this arm can stay true for ever on a
+    # host where csf is never installed.
+    _whyNot="Percona lines=${_pcnLines} csf=$([ -e /usr/sbin/csf ] && echo present || echo absent)"
+    if [ -d "/var/log/boa" ] && [ "${_whyNot}" != "$(cat /run/clear.hold.marker.last 2>/dev/null)" ]; then
+      echo "${_whyNot}" > /run/clear.hold.marker.last
+      echo "$(date) reset marker not stamped: boa info ${_whyNot}" >> /var/log/boa/clear.hold.incident.log
+    fi
     # Launch it whatever the manufacturer reads back. A guest with no
     # SMBIOS/DMI table answers with nothing, and gating on a non-empty answer
     # skipped the accelerated completion pass on exactly those hosts, leaving
@@ -1771,11 +1791,11 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     touch /var/log/boa/.curl_ctrl.${_tRee}.${_xSrl}.pid
   fi
 
-  _IS_MOVESQL_RUNNING=$(pgrep -f move_sql.sh)
+  _IS_MOVESQL_RUNNING=$(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/move_sql\.sh( |$)')
   if [ ! -z "${_IS_MOVESQL_RUNNING}" ]; then
-    _CNT=$(pgrep -fc move_sql.sh)
+    _CNT=$(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/move_sql\.sh( |$)')
     if (( _CNT > 2 )); then
-      pkill -9 -f move_sql.sh
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/move_sql\.sh( |$)'
       rm -f /run/mysql_restart_running.pid
       rm -f /run/boa_wait.pid
       rm -f /var/log/boa/.move_sql_ctrl*
@@ -1783,11 +1803,11 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     fi
   fi
 
-  _IS_SQLCLEANUP_RUNNING=$(pgrep -f mysql_cleanup.sh)
+  _IS_SQLCLEANUP_RUNNING=$(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cleanup\.sh( |$)')
   if [ ! -z "${_IS_SQLCLEANUP_RUNNING}" ]; then
-    _CNT=$(pgrep -fc mysql_cleanup.sh)
+    _CNT=$(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cleanup\.sh( |$)')
     if (( _CNT > 2 )); then
-      pkill -9 -f mysql_cleanup.sh
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_cleanup\.sh( |$)'
       rm -f /run/mysql_backup_running.pid
       rm -f /var/log/boa/.sqlcleanup_ctrl*
       touch /var/log/boa/.sqlcleanup_ctrl.${_tRee}.${_xSrl}.pid
@@ -1803,25 +1823,25 @@ if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     fi
   fi
 
-  _IS_PROCTRL_RUNNING=$(pgrep -f proc_num_ctrl.pl)
+  _IS_PROCTRL_RUNNING=$(pgrep -f '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)')
   if [ ! -z "${_IS_PROCTRL_RUNNING}" ]; then
-    _CNT=$(pgrep -fc proc_num_ctrl.pl)
+    _CNT=$(pgrep -fc '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)')
     if (( _CNT > 1 )); then
-      pkill -9 -f proc_num_ctrl.pl
+      pkill -9 -f '^([^ ]*perl )?/var/xdrago/proc_num_ctrl\.pl( |$)'
       touch /var/log/boa/.proc_num_ctrl.${_tRee}.${_xSrl}.pid
     fi
   fi
 
   rm -f /run/fmp_wait.pid
 
-  _IS_SQLBACKUP_RUNNING=$(pgrep -f mysql_backup.sh)
+  _IS_SQLBACKUP_RUNNING=$(pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)')
   if [ ! -z "${_IS_SQLBACKUP_RUNNING}" ]; then
-    _CNT=$(pgrep -fc mysql_backup.sh)
+    _CNT=$(pgrep -fc '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)')
     if (( _CNT > 2 )); then
-      pkill -9 -f mysql_backup.sh
-      pkill -9 -f mydumper
-      pkill -9 -f usage.sh
-      pkill -9 -f runner.sh
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_backup\.sh( |$)'
+      pkill -9 -f '^[^ ]*mydumper( |$)'
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/usage\.sh( |$)'
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/runner\.sh( |$)'
       rm -f /run/boa_sql_backup.pid
       rm -f /run/mysql_backup_running.pid
       rm -f /run/boa_wait.pid

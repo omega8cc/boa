@@ -67,7 +67,7 @@ _manage_single_lock() {
     # -------- legacy pgrep guard ---------
     # Exit if more than 2 instances of this script are running
     _SCRIPT=$(basename "$0")
-    _CNT=$(pgrep -fc ${_SCRIPT})
+    _CNT=$(pgrep -fc "(^|(^| )[^ ]*bash )[^ ]*/${_SCRIPT//./\\.}( |$)")
     if (( _CNT > 2 )); then
       echo "Too many ${_SCRIPT} running $(date) (count=${_CNT})" >> /var/log/boa/too.many.log
       exit 0
@@ -306,7 +306,7 @@ _redis_health_check_fix() {
   _ok_proc=false
   _ok_ping=false
 
-  pgrep -f "/usr/bin/redis-server" >/dev/null 2>&1 && _ok_proc=true
+  pgrep -x redis-server >/dev/null 2>&1 && _ok_proc=true
   if [ -x "/usr/bin/redis-cli" ]; then
     if _redis_ping_ok; then
       _ok_ping=true
@@ -316,7 +316,7 @@ _redis_health_check_fix() {
   if ! ${_ok_proc} || ! ${_ok_ping}; then
     sleep 2
     _ok_proc=false; _ok_ping=false
-    pgrep -f "/usr/bin/redis-server" >/dev/null 2>&1 && _ok_proc=true
+    pgrep -x redis-server >/dev/null 2>&1 && _ok_proc=true
     if [ -x "/usr/bin/redis-cli" ]; then
       if _redis_ping_ok; then
         _ok_ping=true
@@ -341,7 +341,7 @@ _redis_health_check_fix() {
 
     # Post-restart verification
     _ok_proc=false; _ok_ping=false
-    pgrep -f "/usr/bin/redis-server" >/dev/null 2>&1 && _ok_proc=true
+    pgrep -x redis-server >/dev/null 2>&1 && _ok_proc=true
     if [ -x "/usr/bin/redis-cli" ]; then
       if _redis_ping_ok; then
         _ok_ping=true

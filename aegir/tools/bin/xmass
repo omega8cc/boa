@@ -1812,7 +1812,7 @@ _xmass_park_runners_and_cron() {
   for _p in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ -e "/var/xdrago/${_p}" ]; then
       mv -f "/var/xdrago/${_p}" "/var/xdrago/.${_p}.off"
-      pkill -9 -f "${_p}" &> /dev/null
+      pkill -9 -f "(^|(^| )[^ ]*bash )/var/xdrago/${_p%.sh}\.sh( |$)" &> /dev/null
     fi
   done
   if pgrep -x cron &> /dev/null; then
@@ -2779,7 +2779,7 @@ for _svc in solr9 solr7 jetty9; do
     if id "${_svc}" &>/dev/null; then
       pkill -9 -u "${_svc}" &>/dev/null || true
     else
-      pkill -9 -f "jav[a][0-9]* .*${_svc}" &>/dev/null || true
+      pkill -9 -f "^[^ ]*java[0-9]* .*${_svc}" &>/dev/null || true
     fi
     update-rc.d ${_svc} disable &>/dev/null || true
     chmod -x "/etc/init.d/${_svc}" 2>/dev/null || true
@@ -3045,14 +3045,14 @@ for _svc in solr9 solr7; do
     if id "${_svc}" &>/dev/null; then
       pkill -9 -u "${_svc}" &>/dev/null || true
     else
-      pkill -9 -f "jav[a][0-9]* .*${_svc}" &>/dev/null || true
+      pkill -9 -f "^[^ ]*java[0-9]* .*${_svc}" &>/dev/null || true
     fi
     service ${_svc} start &>/dev/null || true
     echo "INFO: Started ${_svc} on target"
   fi
 done
 if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
-  pkill -9 -f "jav[a][0-9]* .*jetty9" &>/dev/null || true
+  pkill -9 -f "^[^ ]*java[0-9]* .*jetty9" &>/dev/null || true
   service jetty9 start &>/dev/null || true
   echo "INFO: Started jetty9 on target"
 fi
@@ -4389,7 +4389,7 @@ for _svc in solr9 solr7 solr4 jetty9; do
   if id "${_svc}" > /dev/null 2>&1; then
     pgrep -u "${_svc}" -f 'jav[a]' > /dev/null 2>&1 && _live=YES
   fi
-  pgrep -f "jav[a][0-9]* .*${_svc}" > /dev/null 2>&1 && _live=YES
+  pgrep -f "^[^ ]*java[0-9]* .*${_svc}" > /dev/null 2>&1 && _live=YES
 done
 # A listening port is proof of a live index whatever owns it.
 for _prt in 9099 9077 8099; do
@@ -6608,7 +6608,7 @@ _xmass_pre_mig() {
   for _script in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ -e "/var/xdrago/${_script}" ]; then
       mv -f "/var/xdrago/${_script}" "/var/xdrago/.${_script}.off"
-      pkill -9 -f "${_script}" &>/dev/null || true
+      pkill -9 -f "(^|(^| )[^ ]*bash )/var/xdrago/${_script%.sh}\.sh( |$)" &>/dev/null || true
       _info "  Stopped and disabled ${_script}"
     fi
   done
@@ -8384,13 +8384,13 @@ _xmass_post_mig() {
       if id "${_svc}" &> /dev/null; then
         pkill -9 -u "${_svc}" &> /dev/null || true
       else
-        pkill -9 -f "jav[a][0-9]* .*${_svc}" &> /dev/null || true
+        pkill -9 -f "^[^ ]*java[0-9]* .*${_svc}" &> /dev/null || true
       fi
       service "${_svc}" start &>/dev/null
       _info "  ${_svc} restarted"
     fi
   done
-  pkill -9 -f "jav[a][0-9]* .*jetty9" &>/dev/null || true
+  pkill -9 -f "^[^ ]*java[0-9]* .*jetty9" &>/dev/null || true
   rm -rf /tmp/drush* /tmp/pear /tmp/jetty*
   rm -f /var/log/jetty9/* &>/dev/null || true
   if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then

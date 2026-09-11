@@ -1847,7 +1847,11 @@ _xoct_wait_target_quiet() {
   local _max="${_XOCT_TARGET_QUIET_MAX_WAIT:-1800}"
   case "${_max}" in ''|*[!0-9]*) _max=1800 ;; esac
   while [ "${_w}" -lt "${_max}" ]; do
-    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; ls /data/disk/*/static/control/run-upgrade.pid 2>/dev/null | sed 's#/data/disk/##; s#/static/control/run-upgrade.pid#:armed#' | tr '\n' ' '" 2>/dev/null)
+    ### An armed run-upgrade.pid whose dispatcher is parked (a demoted
+    ### target keeps every /var/xdrago/run-<acct> under /var/backups/off-run)
+    ### is inert and not busy, as xmass's silence probe already reads it;
+    ### counting it burnt the whole bound and refused the create.
+    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e \"\${_f}\" ] || continue; _n=\${_f#/data/disk/}; _n=\${_n%%/*}; [ ! -e \"/var/xdrago/run-\${_n}\" ] && [ -e \"/var/backups/off-run/run-\${_n}\" ] && continue; printf '%s:armed ' \"\${_n}\"; done" 2>/dev/null)
     if [ -z "${_busy// /}" ]; then
       _ok=$(( _ok + 1 ))
       if [ "${_ok}" -ge 2 ]; then
@@ -1889,6 +1893,14 @@ _xoct_wait_boa_quiet() {
 ### reduced to the names whose sum moved (a file that vanished or appeared
 ### counts as moved). Keys are the exact paths md5sum printed, so fpm.info
 ### and multi-fpm.info never alias each other.
+### The seed witness set on the target: one "md5  path" line per file. The
+### cnf line is the md5 of its SORTED lines, since the cnf merge rewrites a
+### key by removing its line and appending it (a reorder is not a change).
+_xoct_seed_witness() {   # 1 = account, 2 = target host
+  local _u="$1" _t="$2"
+  ssh root@"${_t}" "cd /data/disk/${_u} 2>/dev/null && { sort /root/.${_u}.octopus.cnf 2>/dev/null | md5sum | sed \"s#  -\\\$#  /root/.${_u}.octopus.cnf#\"; md5sum static/control/fpm.info static/control/cli.info static/control/multi-fpm.info log/fpm.txt log/cli.txt 2>/dev/null; }" 2>/dev/null
+}
+
 _xoct_seed_witness_delta() {   # 1 = was, 2 = now (md5sum output, one line per file)
   local _key _w _n _out=""
   for _key in $(printf '%s\n%s\n' "$1" "$2" | awk 'NF == 2 && !seen[$2]++ {print $2}'); do
@@ -2541,17 +2553,23 @@ _migrate_prepare() {
       _xoct_wait_target_install_settled "${_TGT_HM_USER}" "${_tgt}"
       ### Post-install seeding: merge the portable cnf values, force the
       ### authoritative control-file pins, carry the client credentials.
-      _xoct_push_target_octopus_cnf "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
-      ### What the target holds BEFORE the seed rewrites it: the cnf and every
+      ### What the target holds BEFORE the seed rewrites it: the cnf (its
+      ### lines sorted -- the merge below removes a key's line and appends
+      ### it, so a byte identity would read a reorder as a change) and every
       ### control witness the seed lands (md5 over the set), a run-upgrade.pid
       ### an earlier create armed that the runner has not consumed yet, and
       ### what the last pass actually configured (its octopus_log line). They
       ### decide below whether the enforced upgrade still has work to do.
-      _TGT_SEED_WAS=$(ssh root@${_tgt} "cd /data/disk/${_TGT_HM_USER} 2>/dev/null && md5sum /root/.${_TGT_HM_USER}.octopus.cnf static/control/fpm.info static/control/cli.info static/control/multi-fpm.info log/fpm.txt log/cli.txt 2>/dev/null" 2>/dev/null)
+      ### Taken before the cnf merge: taken after it, a changed cnf value
+      ### could never arm the pass that applies it.
+      _TGT_SEED_WAS=$(_xoct_seed_witness "${_TGT_HM_USER}" "${_tgt}")
       _TGT_ARMED_WAS=$(ssh root@${_tgt} "[ -e /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.pid ] && echo YES" 2>/dev/null)
       _TGT_LAST_PASS=$(ssh root@${_tgt} "tail -1 /data/disk/${_TGT_HM_USER}/log/octopus_log.txt 2>/dev/null" 2>/dev/null)
       _TGT_FPM_RUN=$(printf '%s' "${_TGT_LAST_PASS}" | grep -oE 'FPM [0-9.]+' | awk '{print $2}')
       _TGT_CLI_RUN=$(printf '%s' "${_TGT_LAST_PASS}" | grep -oE 'CLI [0-9.]+' | awk '{print $2}')
+      ### Post-install seeding: merge the portable cnf values, force the
+      ### authoritative control-file pins, carry the client credentials.
+      _xoct_push_target_octopus_cnf "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
       _xoct_seed_target_control_pins "${_USR}" "/data/disk/${_TGT_HM_USER}" "${_TGT_HM_USER}" "${_tgt}"
       _xoct_sync_shell_credentials "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
       ### Verify the pins actually took (catches the availability-fallback
@@ -2580,7 +2598,7 @@ _migrate_prepare() {
       [ -n "${_SRC_FPM_PIN}" ] || _SRC_FPM_PIN=$(grep "^_PHP_FPM_VERSION=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
       _SRC_CLI_PIN=$(tr -dc '0-9.' < "${_USR}/static/control/cli.info" 2>/dev/null)
       [ -n "${_SRC_CLI_PIN}" ] || _SRC_CLI_PIN=$(grep "^_PHP_CLI_VERSION=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
-      _TGT_SEED_NOW=$(ssh root@${_tgt} "cd /data/disk/${_TGT_HM_USER} 2>/dev/null && md5sum /root/.${_TGT_HM_USER}.octopus.cnf static/control/fpm.info static/control/cli.info static/control/multi-fpm.info log/fpm.txt log/cli.txt 2>/dev/null" 2>/dev/null)
+      _TGT_SEED_NOW=$(_xoct_seed_witness "${_TGT_HM_USER}" "${_tgt}")
       _ARM_UPGRADE=NO
       _ARM_WHY=""
       if [ "${_TGT_ARMED_WAS}" = "YES" ]; then
@@ -4158,14 +4176,14 @@ _post_mig() {
   else
     echo Running _post_mig inside vms ${_hName}
     if [ -x "/etc/init.d/solr9" ] && [ -e "/etc/default/solr9.in.sh" ]; then
-      pkill -9 -f solr9
+      pkill -9 -f '^[^ ]*java[0-9]* .*solr9'
       service solr9 start
     fi
     if [ -x "/etc/init.d/solr7" ] && [ -e "/etc/default/solr7.in.sh" ]; then
-      pkill -9 -f solr7
+      pkill -9 -f '^[^ ]*java[0-9]* .*solr7'
       service solr7 start
     fi
-    pkill -9 -f jetty9
+    pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
     rm -rf /tmp/{drush*,pear,jetty*}
     rm -f /var/log/jetty9/*
     if [ -e "/etc/default/jetty9" ] && [ -e "/etc/init.d/jetty9" ]; then
@@ -4230,23 +4248,23 @@ _pre_mig() {
     echo Running _pre_mig inside vms ${_hName}
     if [ -e "/var/xdrago/runner.sh" ]; then
       mv -f /var/xdrago/runner.sh /var/xdrago/.runner.sh.off
-      pkill -9 -f runner.sh
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/runner\.sh( |$)'
     fi
     if [ -e "/var/xdrago/owl.sh" ]; then
       mv -f /var/xdrago/owl.sh /var/xdrago/.owl.sh.off
-      pkill -9 -f owl.sh
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/owl\.sh( |$)'
     fi
     if [ -e "/var/xdrago/usage.sh" ]; then
       mv -f /var/xdrago/usage.sh /var/xdrago/.usage.sh.off
-      pkill -9 -f usage.sh
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/usage\.sh( |$)'
     fi
     if [ -e "/var/xdrago/graceful.sh" ]; then
       mv -f /var/xdrago/graceful.sh /var/xdrago/.graceful.sh.off
-      pkill -9 -f graceful.sh
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/graceful\.sh( |$)'
     fi
     if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
       mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/.manage_ltd_users.sh.off
-      pkill -9 -f manage_ltd_users.sh
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/manage_ltd_users\.sh( |$)'
     fi
     if [ "${_hName}" = "${_hst}" ]; then
       echo Preparing source ${_hName} for outgoing migration...

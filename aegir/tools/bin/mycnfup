@@ -625,7 +625,7 @@ _start_sql() {
   _check_restart_if_running
   _create_locks
 
-  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+  _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "MySQLD already running?"
     echo "Nothing to do. Bye!"
@@ -646,7 +646,7 @@ _start_sql() {
   fi
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     echo "Waiting for MySQLD graceful start..."
     sleep 3
   done
@@ -663,7 +663,7 @@ _stop_sql() {
   _check_restart_if_running
   _create_locks
 
-  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+  _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
   if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
     echo "Preparing MySQLD for quick shutdown..."
     _DB_V=$(mysql -V 2>&1 \
@@ -690,10 +690,21 @@ _stop_sql() {
     [ "$1" != "chain" ] && exit 1
   fi
 
+  # Bounded like move_sql.sh's stop: a shutdown flushing a large buffer pool
+  # takes minutes, one that never finishes must not hold the locks forever.
+  _mysqld_stop_wait=0
   until [ -z "${_IS_MYSQLD_RUNNING}" ]; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     echo "Waiting for MySQLD graceful shutdown..."
     sleep 3
+    _mysqld_stop_wait=$(( _mysqld_stop_wait + 1 ))
+    if [ "${_mysqld_stop_wait}" -ge 200 ]; then
+      echo "$(date) MySQLD did not stop within ~10 minutes -- giving up this attempt" >> /var/log/boa/mysql.incident.log
+      _MYSQLD_STOP_GAVE_UP=YES
+      _remove_locks
+      [ "$1" != "chain" ] && exit 1
+      return 1
+    fi
   done
   echo "MySQLD stopped"
 
@@ -705,6 +716,13 @@ _stop_sql() {
 _re_start_sql() {
   echo "running ${_tVr} ${_hName} _re_start_sql procedure..."
   _stop_sql "chain"
+  # A stop that gave up leaves the old server running; the chained start would
+  # read it as "already running" and this tool would report a restart that
+  # never happened.
+  if [ "${_MYSQLD_STOP_GAVE_UP}" = "YES" ]; then
+    echo "MySQLD restart abandoned: the shutdown did not finish"
+    exit 1
+  fi
   _start_sql "chain"
   exit 0
 }
@@ -761,7 +779,7 @@ _check_mysql_up() {
   echo "running ${_tVr} ${_hName} _check_mysql_up procedure..."
   while [ -z "${_IS_MYSQLD_RUNNING}" ] \
     || [ ! -e "/run/mysqld/mysqld.sock" ]; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     echo "Waiting for MySQLD availability..."
     sleep 15
     _start_sql "chain"
@@ -852,7 +870,7 @@ _innodb_log_file_size_update() {
   echo "INFO: InnoDB log file will be set to ${_INNODB_LOG_FILE_SIZE_MB}..."
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   _stop_sql "chain"
-  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+  _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
     mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
     sleep 1
@@ -877,7 +895,7 @@ _innodb_log_file_size_update() {
     echo "INFO: Waiting 180s for ${_DB_SERVER} clean shutdown..."
     _stop_sql "chain"
     sleep 180
-    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
       sleep 1

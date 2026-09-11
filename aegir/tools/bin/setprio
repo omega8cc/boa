@@ -164,7 +164,7 @@ for _service in "${!_services_priorities[@]}"; do
   case "${_service}" in
     "php-fpm")
       # Handle multiple php-fpm versions
-      _pids=$(pgrep -f 'php-fpm: pool')
+      _pids=$(pgrep -f '^php-fpm: pool')
       ;;
     "sshd")
       # Exact match for sshd to exclude child processes
@@ -172,7 +172,7 @@ for _service in "${!_services_priorities[@]}"; do
       ;;
     "nginx")
       # Handle multiple nginx worker processes
-      _pids=$(pgrep -f 'nginx: worker process')
+      _pids=$(pgrep -f '^nginx: worker process')
       ;;
     "redis-server")
       # Exact match for redis-server processes

@@ -71,11 +71,11 @@ export _SMALLCORE10_2_V=10.2.12
 export _SMALLCORE10_3_V=10.3.14
 export _SMALLCORE10_4_V=10.4.10
 export _SMALLCORE10_5_V=10.5.12
-export _SMALLCORE10_6_V=10.6.15
+export _SMALLCORE10_6_V=10.6.16
 export _SMALLCORE11_1_V=11.1.10
 export _SMALLCORE11_2_V=11.2.14
 export _SMALLCORE11_3_V=11.3.16
-export _SMALLCORE11_4_V=11.4.5
+export _SMALLCORE11_4_V=11.4.6
 export _SMALLCORE6_V=6.60.1
 export _SMALLCORE7_V=7.105.2
 export _SMALLCORE9_V=9.5.11
@@ -165,7 +165,7 @@ export _DRUPAL11_4_S="${_DRUPAL11_4}-stage"
 ### make time.
 ###
 export _BACKDROP_V_FALLBACK=1.34.3
-export _GRAV_V_FALLBACK=2.0.22
+export _GRAV_V_FALLBACK=2.0.26
 export _TXP_V_FALLBACK=4.9.1
 export _BACKDROP_V="${_BACKDROP_V_FALLBACK}"
 export _BACKDROP="backdrop-${_BACKDROP_V}"
@@ -445,6 +445,7 @@ _satellite_pre_cleanup
 _satellite_if_instance_group pre
 _satellite_make
 _satellite_if_instance_group post
+_satellite_queue_dbvars_site_verifies
 _satellite_post_cleanup
 exit 0
 

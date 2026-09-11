@@ -8,9 +8,11 @@
 ;;  This is a site level INI file template which can be used to modify
 ;;  default BOA system behaviour for this site only.
 ;;
-;;  BOA seeds this file as boa_site_control.ini into the sites/foo.com/modules directory
-;;  on its own (and re-creates it when missing); in that live copy uncomment the
-;;  lines for any settings you want to modify, to make them active.
+;;  BOA builds the live boa_site_control.ini in the sites/foo.com/modules directory
+;;  on its own, one line per setting from this template plus its own detections,
+;;  re-creates it when missing, and keeps this documented copy beside it as
+;;  default.boa_site_control.ini; in the live file uncomment the lines for any
+;;  settings you want to modify, to make them active.
 ;;  All settings are initially listed with system defaults, for reference.
 ;;
 ;;  Note that it takes ~60 seconds to see any modification results in action

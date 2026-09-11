@@ -40,10 +40,10 @@
 #   -C         skip "composer clearcache" at the start of a build
 # Build target names: farm cms culturas commerce localgov openfed opigno social thunder
 #   varbase backdrop (core, versioned like the Drupal cores) bee backdrop-drush-extension
-#   redis_backdrop cores
+#   redis_backdrop webform_backdrop cores
 #
 # The Backdrop family (backdrop core, bee, backdrop-drush-extension,
-# redis_backdrop) is always fetched at its newest upstream version, so BOA
+# redis_backdrop, webform_backdrop) is always fetched at its newest upstream version, so BOA
 # never falls behind: run "staticbuild all" (or just the named targets) on the
 # mirror source VM, e.g. from cron alongside get-boa-dev. Backdrop core is
 # published versioned (backdrop-<ver>.tar.gz, retained per version like the
@@ -177,7 +177,13 @@ _LOCALGOV_SPEC="drupal/localgov_project:^4"
 _LOCALGOV_DISTPKG="drupal/localgov"
 _THUNDER_SPEC="thunder/thunder-project"
 _THUNDER_DISTPKG="thunder/thunder-distribution"
-_VARBASE_SPEC="Vardot/varbase-project:~10"
+_VARBASE_SPEC="Vardot/varbase-project:~11"
+# The 11 line's committed lock pins drupal/ai_provider_amazeeio 1.4.2 (via
+# drupal/drupal_cms_ai), which declares ext-pdo_pgsql; BOA's PHP builds carry no
+# PostgreSQL driver, so a lock-faithful install must ignore that one platform
+# requirement. The installer does not enable the module; the extension matters
+# only to its own PostgreSQL-backed features. Empty this to enforce the lock.
+_VARBASE_IGNORE_EXT="--ignore-platform-req=ext-pdo_pgsql"
 _VARBASE_DISTPKG="vardot/varbase"
 # Open Social ships NO create-project template for its current major: goalgorilla/social_template
 # has not been touched since 2024-05-21 and its committed lock pins open_social 12.4.2 on core
@@ -218,10 +224,12 @@ _CORE_CP_FLAGS="--no-dev --no-interaction"
 # varbase was DISABLED 2026-07-08 (upstream template drift made every build uninstallable)
 # and RE-ENABLED 2026-08-11: upstream fixed the template in July 2026 -- it now pins core
 # explicitly and ships a committed lock, and the current stable line builds AND installs.
-# Two standing caveats. The upstream patch set is fetched from mutable branch refs with no
-# hashes, so REBUILDS are not reproducible -- each published tarball is the frozen artefact,
-# same as every other distro here. And the 11.0 line (docroot web/, still beta) is NOT the
-# build target; this builds the stable 10 line (docroot/ layout, matching the catalogue).
+# Since 2026-09-10 the build target is the 11 line (stable upstream since 2026-09-08,
+# web/ layout, the catalogue VBX web_dir moved with it); the 10 line's last build stays on
+# the mirror for the platforms that already run it. One standing caveat: the upstream
+# patch set is fetched from mutable branch refs with no hashes, so REBUILDS are not
+# reproducible -- each published tarball is the frozen artefact, same as every other
+# distro here.
 _ALL_DISTROS="farm cms culturas commerce localgov openfed opigno social thunder varbase"
 
 _LOCK="/run/staticbuild.lock"
@@ -866,7 +874,7 @@ build_thunder() {
     _record_fail "thunder"
     return 1
   fi
-  # Name by the Thunder distribution package (8.4.0), not the template (versions separately).
+  # Name by the Thunder distribution package (e.g. 8.4.4), not the template (versions separately).
   local _dist
   _dist="$(_lock_version "${_wd}" "${_THUNDER_DISTPKG}")"
   [[ -n "${_dist}" ]] && _dver="${_dist}"
@@ -905,7 +913,7 @@ build_varbase() {
         || { _record_fail "varbase"; return 1; }
     fi
     if _run_as_o8 "cd '${_wd}' && composer config --no-plugins allow-plugins true" \
-      && _run_as_o8 "cd '${_wd}' && composer install --no-dev"; then
+      && _run_as_o8 "cd '${_wd}' && composer install --no-dev ${_VARBASE_IGNORE_EXT}"; then
       _vok="YES"
       break
     fi
@@ -914,8 +922,11 @@ build_varbase() {
     _record_fail "varbase"
     return 1
   fi
-  # varbase uses a docroot/ layout and expects a content dir under each recipes/.
-  local _cmd="cd \"${_wd}/docroot\" && find . -type d -name recipes -exec mkdir -p {}/default/content \;"
+  # varbase expects a content dir under each recipes/ in its web root (web/ from the
+  # 11 line, docroot/ on the 10 line).
+  local _vroot="web"
+  [[ -d "${_wd}/docroot" && ! -d "${_wd}/web" ]] && _vroot="docroot"
+  local _cmd="cd \"${_wd}/${_vroot}\" && find . -type d -name recipes -exec mkdir -p {}/default/content \;"
   _run_as_o8 "${_cmd}" || _alrt "varbase: recipes content dir creation failed"
   # Name by the varbase distribution package (drupal.org's number), not the project template.
   local _dist
@@ -1518,13 +1529,14 @@ do_check() {
   command -v curl >/dev/null 2>&1 || _die "curl not found (needed for version check)"
   _info "Latest release per distro from the authoritative source - drupal.org release feed"
   _info "(GitHub for farmOS; commerce_kickstart has no drupal.org stable, so its profile pkg):"
-  _check_row "farm"     "$(_latest_github "${_FARM_REPO}")"
+  _check_row "farm"     "$(_resolve_farm_tag)"
   _check_row "backdrop" "$(_latest_github "${_BACKDROP_REPO}")"
   _check_row "bee"      "$(_latest_git_tag "${_BEE_REPO}")"
   _check_row "bd-drush" "$(_latest_git_tag "${_BDEXT_REPO}")"
   # The only pinned Backdrop artifact: a newer tag here means the
   # _REDIS_B_VERSION pins in OCTOPUS.sh.txt + BOA.sh.txt are due a bump.
   _check_row "bd-redis" "$(_latest_git_tag "${_REDIS_REPO}")"
+  _check_row "bd-webform" "$(_latest_git_tag "${_WEBFORM_B_REPO}")"
   _check_row "cms"      "$(_drupal_release cms)"
   _check_row "culturas" "$(_drupal_release "${_CULTURAS_PROJECT}")"
   _check_row "commerce" "$(_latest_packagist "${_COMMERCE_DISTPKG}")"

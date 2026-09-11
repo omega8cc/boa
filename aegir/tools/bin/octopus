@@ -202,7 +202,7 @@ _check_sql_running() {
   local _tot=0
   local _started=NO
   while : ; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -e "/run/mysqld/mysqld.sock" ]; then
       return 0
     fi
@@ -268,7 +268,7 @@ _check_sql_access() {
     echo " "
     _clean_pid_exit _check_sql_access_b
   else
-    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       echo "ALERT: SQL server on this system is not running at all."
       echo "ALERT: Please fix this before trying again, giving up."

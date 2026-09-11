@@ -1634,7 +1634,7 @@ echo "2a01:db8:beef::/48 # partner service" >> /var/xdrago/monitor/log/web6.allo
 ```
 
 `guest-water.sh`'s daily refresh only rewrites its own provider-tagged lines (`googlebot`,
-`googlespecial`, `microsoft`), so a manual entry persists. Note this exempts the address from the **web IDS
+`googlespecial`, `microsoft`, `uptimerobot`), so a manual entry persists. Note this exempts the address from the **web IDS
 only** — there is no v6 firewall layer to allow it through, and none is needed (BOA
 disables IPv6 server-side; a v6 client only ever appears via the trusted realip proxy).
 
@@ -1741,7 +1741,9 @@ wedging, and they live in different scripts — **not** in scan_nginx:
    `_FIRE_TIMEOUT` (**180 s**, 3× the normal ~50 s run), it `kill -9`s the stuck process,
    removes the pidfile, and logs to `/var/log/boa/fire_stuck.log`.
 2. **External fire watchdog (`autoupboa`).** Run during the weekly self-upgrade as a
-   pidfile-independent safety net. It enumerates `pgrep -f guest-fire.sh`, computes each
+   pidfile-independent safety net. It enumerates the script's executions (`bash
+   /var/xdrago/guest-fire.sh` under whatever launched it -- never a command line that merely
+   names the file: a mirror fetch of it, an editor, csf's hourly integrity sweep), computes each
    PID's elapsed time from `/proc/PID/stat` field 22 versus `/proc/uptime`, and `kill -9`s
    any older than `_FIRE_WATCHDOG_TIMEOUT` (**180 s**), logging to the same
    `/var/log/boa/fire_stuck.log`.

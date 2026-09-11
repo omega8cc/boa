@@ -859,12 +859,11 @@ _satellite_cnf() {
   # email that was never written. A cnf without _MY_OCTO_EMAIL is such a
   # seed: keep its lines, write the full set, lay the seeded lines back.
   _octSeed=""
+  _octSeeded=NO
   if [ -e "${_octCnf}" ] && ! grep -q "^_MY_OCTO_EMAIL=" ${_octCnf} 2> /dev/null; then
-    _octSeed=$(grep -E '^_[A-Z0-9_]+=' ${_octCnf} 2> /dev/null)
-    rm -f ${_octCnf}
-    _msg "NOTE: ${_octCnf} was hand-seeded; completing it with the install defaults, seeded lines kept"
+    _octSeeded=YES
   fi
-  if [ ! -e "${_octCnf}" ]; then
+  if [ "${_octSeeded}" = "YES" ] || [ ! -e "${_octCnf}" ]; then
     if [[ "${_MY_OCTO_EMAIL}" =~ "omega8.cc" ]] \
       || [[ "${_CLIENT_EMAIL}" =~ "omega8.cc" ]]; then
       _if_hosted_sys
@@ -885,6 +884,14 @@ _satellite_cnf() {
       _msg "EXIT: _CLIENT_EMAIL must not be the same address as _MY_OCTO_EMAIL"
       _msg "EXIT: the control panel needs a separate client email for its account"
       _clean_pid_exit
+    fi
+    # The seed is read and removed only past the two gates above: an exit
+    # there took the operator's file with it, and the re-run then installed
+    # with the box defaults.
+    if [ "${_octSeeded}" = "YES" ]; then
+      _octSeed=$(grep -E '^_[A-Z0-9_]+=' ${_octCnf} 2> /dev/null)
+      rm -f ${_octCnf}
+      _msg "NOTE: ${_octCnf} was hand-seeded; completing it with the install defaults, seeded lines kept"
     fi
     _msg "INFO: Creating your ${_octCnf} config file"
     sleep 1
@@ -3141,11 +3148,22 @@ _provision_backend_dbpass_generate() {
   chown ${_USER}:${_ACCG:-users} ${_L_SYS}
   chmod 0600 ${_L_SYS}
 
+  ### The install path resolves the mode before it writes this file (FQDN
+  ### becomes the box's own name, PROXYSQL the local proxy address); this
+  ### path kept the raw literal, so after the first upgrade the file named a
+  ### host nothing can connect to. _THIS_DB_HOST itself stays as it is: the
+  ### blocks below still branch on the literal.
+  _OCT_DB_HOST_W="${_THIS_DB_HOST}"
+  if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+    _OCT_DB_HOST_W="${_hName}"
+  elif [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+    _OCT_DB_HOST_W=127.0.0.1
+  fi
   _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
   echo "<?php" > ${_L_SYS_PHP}
   echo "\$oct_db_user = \"${_USER}\";" >> ${_L_SYS_PHP}
   echo "\$oct_db_pass = \"${_ESC_PASS}\";" >> ${_L_SYS_PHP}
-  echo "\$oct_db_host = \"${_THIS_DB_HOST}\";" >> ${_L_SYS_PHP}
+  echo "\$oct_db_host = \"${_OCT_DB_HOST_W}\";" >> ${_L_SYS_PHP}
   echo "\$oct_db_port = \"${_THIS_DB_PORT}\";" >> ${_L_SYS_PHP}
   echo "\$oct_db_dirs = \"/data/disk/${_USER}/backups\";" >> ${_L_SYS_PHP}
   chown ${_USER}:${_ACCG:-users} ${_L_SYS_PHP}
@@ -3389,10 +3407,10 @@ EOFMYSQL
   wait
   rm -rf ${_ROOT}/.tmp/cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
-    su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
+    su -s /bin/bash - ${_USER} -c "${_DRUSHCMD:-drush8} @hostmaster \
       hosting-task @server_localhost verify --force" &> /dev/null
   else
-    su -s /bin/bash ${_USER} -c "${_DRUSHCMD} @hostmaster \
+    su -s /bin/bash - ${_USER} -c "${_DRUSHCMD:-drush8} @hostmaster \
       hosting-task @server_master verify --force" &> /dev/null
   fi
   wait
@@ -6082,6 +6100,63 @@ _satellite_pre_cleanup() {
   fi
 }
 
+### The shared nginx include now takes the site's database credentials
+### through variables the site vhost sets after the include line; a vhost
+### rendered before that keeps passing EMPTY credentials to the locations
+### that declare their own fastcgi_param set (/cron/<key>, update.php,
+### authorize.php), and on a cloaked site those requests reach PHP with no
+### database at all. A site vhost is re-rendered only by the site's own
+### Verify, so queue one for every such site once this pass has rendered the
+### include. Self-limiting: a re-rendered vhost carries the lines and is
+### never queued again; Grav and TXP vhosts carry no credentials and are
+### skipped; the queue runs them one at a time under the runner lock.
+### The test for "carries credentials" is the server-level fastcgi_param
+### db_* set every Drupal vhost declares (placeholders when the site has no
+### database) -- NOT the urlencoded marker, which only a recent render
+### carries: a vhost from an older provision holds the credentials without
+### it, and that is every site not re-verified since the marker arrived.
+_satellite_queue_dbvars_site_verifies() {
+  local _inc="${_ROOT}/config/includes/nginx_vhost_common.conf"
+  local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
+  local _v _d _list="" _n
+  ### _DRUSHCMD exists only in the AegirSetup child scripts; this runs in
+  ### the launcher's own process, where the instance user's drush8 is on
+  ### the login PATH.
+  local _hmDrush="${_DRUSHCMD:-drush8}"
+  [ -f "${_inc}" ] && grep -q '^set \$boa_db_type' "${_inc}" || return 0
+  [ -d "${_vhd}" ] || return 0
+  for _v in "${_vhd}"/*; do
+    [ -f "${_v}" ] || continue
+    _d="${_v##*/}"
+    case "${_d}" in .*|https.*) continue ;; esac
+    [ "${_d}" = "${_DOMAIN}" ] && continue
+    grep -q 'set \$boa_db_type' "${_v}" && continue
+    grep -q 'fastcgi_param db_type' "${_v}" || continue
+    ### The name becomes a PHP string literal below: a vhost file is named
+    ### by the site's URI, so anything outside the hostname alphabet is not
+    ### a site of ours.
+    case "${_d}" in *[!A-Za-z0-9.-]*) continue ;; esac
+    _list="${_list}\"${_d}\","
+  done
+  [ -n "${_list}" ] || return 0
+  ### One hostmaster bootstrap for the whole list: a per-site drush call
+  ### costs seconds each and a box with hundreds of sites would spend that
+  ### inside the upgrade pass. hosting_add_task QUEUES the task (folded per
+  ### node); the hosting-task command would run the verify here and now.
+  ### Counted only when the frontend returned the task.
+  _n=$(su -s /bin/bash - ${_USER} -c "${_hmDrush} @hostmaster php-eval '\$n = 0; foreach (array(${_list}) as \$u) { \$s = hosting_get_site_by_url(\$u); if (\$s && !empty(\$s->nid)) { \$t = hosting_add_task(\$s->nid, \"verify\"); if (is_object(\$t) && !empty(\$t->nid)) { \$n++; } } } print \"queued=\" . \$n;'" 2>/dev/null)
+  case "${_n}" in
+    *queued=*) ;;
+    *) _msg "INFO: the frontend did not answer the db-variables Verify queueing; the next pass retries"
+       return 0 ;;
+  esac
+  _n="${_n##*queued=}"
+  _n="${_n%%[^0-9]*}"
+  if [ -n "${_n}" ] && [ "${_n}" -gt 0 ]; then
+    _msg "INFO: queued a Verify for ${_n} site(s) whose vhost predates the nginx db variables"
+  fi
+}
+
 _satellite_post_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_post_cleanup"
@@ -7144,6 +7219,35 @@ _satellite_child_b_aegir_health_check() {
   fi
 }
 
+_le_order() {
+  # The dehydrated order for the hostmaster (extra arguments passed through),
+  # retried up to three times 15 s apart while the CA answers
+  # accountDoesNotExist for the account registered a moment ago (seen on a
+  # fresh install 2026-09-10: "Account .../acct/N not found" seconds after
+  # --register created N; the pass-level retry then re-ran a whole octopus
+  # pass for it). Any other outcome is final on the first attempt.
+  local _out="${_ROOT}/log/letsencrypt-${_NOW}.attempt"
+  local _try=0
+  mkdir -p ${_ROOT}/log
+  while : ; do
+    _try=$(( _try + 1 ))
+    bash ${_exeLe} ${_leParams} --domain ${_DOMAIN} "$@" > ${_out} 2>&1
+    wait
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      cat ${_out}
+    else
+      cat ${_out} >> ${_ROOT}/log/letsencrypt-${_NOW}.log
+    fi
+    if [ "${_try}" -lt 3 ] && grep -q "accountDoesNotExist" ${_out}; then
+      _msg "${_STATUS} B: LE -- the CA does not know the account registered a moment ago, retrying the order in 15s (attempt ${_try} of 3)"
+      sleep 15
+      continue
+    fi
+    break
+  done
+  rm -f ${_out}
+}
+
 _satellite_child_b_letsencrypt() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_child_b_letsencrypt"
@@ -7238,14 +7342,12 @@ _satellite_child_b_letsencrypt() {
         wait
         bash ${_exeLe} --register --accept-terms
         wait
-        bash ${_exeLe} ${_leParams} --domain ${_DOMAIN} --force
-        wait
+        _le_order --force
         touch ${_leRoot}/.ctrl/forced-${_DOMAIN}-mode.pid
       else
         bash ${_exeLe} --register --accept-terms
         wait
-        bash ${_exeLe} ${_leParams} --domain ${_DOMAIN}
-        wait
+        _le_order
       fi
     else
       mkdir -p ${_ROOT}/log
@@ -7255,14 +7357,12 @@ _satellite_child_b_letsencrypt() {
         wait
         bash ${_exeLe} --register --accept-terms >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
         wait
-        bash ${_exeLe} ${_leParams} --domain ${_DOMAIN} --force >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
-        wait
+        _le_order --force
         touch ${_leRoot}/.ctrl/forced-${_DOMAIN}-mode.pid
       else
         bash ${_exeLe} --register --accept-terms >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
         wait
-        bash ${_exeLe} ${_leParams} --domain ${_DOMAIN} >>${_ROOT}/log/letsencrypt-${_NOW}.log 2>&1
-        wait
+        _le_order
       fi
     fi
   else
@@ -7614,10 +7714,16 @@ _satellite_child_b_vhosts_hotfix() {
   wait
   sed -i "s/listen .*\*:80;/listen  \*:80;/g"          ${rPth}_*/nginx.conf
   wait
+  ### The port lives twice in a vhost: the server-level fastcgi_param the main
+  ### PHP location inherits, and the set line the shared include reads for
+  ### the locations that declare their own params. Move both, or the two
+  ### copies disagree until the site's next Verify.
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     sed -i "s/param db_port.*/param db_port   6033;/g" ${rPth}_*/nginx/vhost.d/*
+    sed -i "s/set \$boa_db_port .*/set \$boa_db_port \"6033\";/g" ${rPth}_*/nginx/vhost.d/*
   else
     sed -i "s/param db_port.*/param db_port   3306;/g" ${rPth}_*/nginx/vhost.d/*
+    sed -i "s/set \$boa_db_port .*/set \$boa_db_port \"3306\";/g" ${rPth}_*/nginx/vhost.d/*
   fi
   wait
   sed -i "s/listen .*\*:80;/listen  \*:80;/g"          ${rPth}_*/nginx/vhost.d/*

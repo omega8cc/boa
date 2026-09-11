@@ -62,7 +62,7 @@ _JSMIN_PHP_MODERN_VRN=3.1.0
 _LIB_TIDY_VRN=5.2.0
 _LIB_YAML_VRN=0.2.5
 _LOGJ4_VRN=1.2.17
-_LSHELL_VRN=0.11.8
+_LSHELL_VRN=0.11.9
 _MAILPARSE_VRN=2.1.6
 _MONGO_VRN=1.6.14
 _MONGODB_VRN=1.2.5
@@ -226,9 +226,9 @@ _clean_pid_exit() {
     rm -f /bin/systemctl
   fi
   service cron start &> /dev/null
-  _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
+  _CNT=$(pgrep -fc '^([^ ]*/)?tee -a /var/backups/barracuda-')
   if (( _CNT > 1 )); then
-    pkill -f 'tee -a /var/backups/barracuda-'
+    pkill -f '^([^ ]*/)?tee -a /var/backups/barracuda-'
   fi
   exit 1
 }
@@ -345,19 +345,20 @@ _if_php_idle_on_off
 ###
 ### Free the dpkg lock before the apt phases: a concurrent daily
 ### unattended-upgrade run would otherwise block them. The worker's cmdline is
-### "/usr/bin/python3 /usr/bin/unattended-upgrade" -- match the script path
-### (never the plural package name, which no worker cmdline carries),
-### bracketed so concurrent guards never match each other's pkill. Kill the
+### "/usr/bin/python3 /usr/bin/unattended-upgrade" -- match that execution
+### form (^ and the interpreter), never the bare path, which csf's hourly
+### md5sum sweep over /usr/bin carries in its argv, nor the plural package
+### name, which no worker cmdline carries. Kill the
 ### apt.systemd.daily parent first or it respawns the worker moments later;
 ### heal any interrupted dpkg state the kill may leave, since the install
 ### phases below run before _run_aptitude_full_upgrade's own heal. A killed
 ### security-only run simply retries on its next daily timer.
 ###
-if pgrep -f '/usr/lib/apt/apt.systemd.dail[y]' >/dev/null 2>&1; then
-  pkill -9 -f '/usr/lib/apt/apt.systemd.dail[y]'
+if pgrep -f '^([^ ]*/)?(ba|da)?sh /usr/lib/apt/apt\.systemd\.daily( |$)' >/dev/null 2>&1; then
+  pkill -9 -f '^([^ ]*/)?(ba|da)?sh /usr/lib/apt/apt\.systemd\.daily( |$)'
 fi
-if pgrep -f '/usr/bin/unattended-upgrad[e]' >/dev/null 2>&1; then
-  pkill -9 -f '/usr/bin/unattended-upgrad[e]'
+if pgrep -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)' >/dev/null 2>&1; then
+  pkill -9 -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)'
   /usr/bin/dpkg --configure -a &> /dev/null
 fi
 _sources_list_update
