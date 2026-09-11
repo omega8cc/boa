@@ -4776,7 +4776,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f84 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f98 --guard /local/bin/symlinkinfo
-    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f92 --guard /local/bin/migratefs
+    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f91 --guard /local/bin/migratefs
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/${_tBn}/synproxy" f93 --guard /local/bin/synproxy
     _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/${_tBn}/synproxy_hook_fix" f99 --guard /local/bin/synproxy_hook_fix
     _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/${_tBn}/synproxy_monitor" f98 --guard /local/bin/synproxy_monitor
@@ -4824,7 +4824,7 @@ CSFSTANDBY
     # tail-anchored sentinel refuses a wrong OR truncated payload before it
     # can reach client shells -- websh invokes its dash forwarder near EOF,
     # so the token must keep living in websh's last 4 KiB.
-    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f83 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
+    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f82 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
     _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f99 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
   fi
 
