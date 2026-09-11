@@ -1906,6 +1906,39 @@ _fix_permissions() {
       echo "\$_SERVER['db_host'] = \$options['db_host'];" >> ${_Dir}/drushrc.php
       _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force"
     fi
+  ### Neither a Grav capsule nor a Textpattern site has a site-level files/
+  ### store (a TXP site does have private/, its credential store), so the
+  ### Drupal-shaped test above skips them and they get no nightly hygiene
+  ### at all -- while FPM keeps writing into them as the per-version web user.
+  ### Detect both positively (same predicates the two helpers use) and hand the
+  ### site to the helpers: they own the per-CMS model, this leg only re-homes
+  ### the tree to the account and its groups. Same symlink refusal as above.
+  elif [ -e "${_Dir}" ] \
+    && [ ! -L "${_Dir}" ] \
+    && [ -e "${_Dir}/drushrc.php" ] \
+    && [ ! -f "${_Dir}/settings.php" ] \
+    && { { [ -f "${_Dir}/bin/grav" ] \
+        && [ -f "${_Dir}/system/defines.php" ]; } \
+      || { [ -f "${_Dir}/public/index.php" ] \
+        && [ -f "${_Dir}/public/css.php" ] \
+        && [ -d "${_Dir}/admin" ]; }; }; then
+    ### The per-site control-INI dir is part of the BOA contract for every CMS
+    ### (both foreign-CMS provision layers create it themselves); seed it here
+    ### too so the helper pass below takes it with the rest of the tree.
+    if [ ! -e "${_Dir}/modules" ]; then
+      mkdir ${_Dir}/modules
+    fi
+    if [ -x "/usr/local/bin/fix-drupal-site-ownership.sh" ]; then
+      /usr/local/bin/fix-drupal-site-ownership.sh \
+        --site-path="${_Dir}" \
+        --script-user="${_HM_U}" \
+        --web-group=www-data &> /dev/null
+    fi
+    if [ -x "/usr/local/bin/fix-drupal-site-permissions.sh" ]; then
+      /usr/local/bin/fix-drupal-site-permissions.sh \
+        --site-path="${_Dir}" &> /dev/null
+    fi
+    echo "Foreign-CMS site hygiene applied for ${_Dom}"
   fi
 }
 
