@@ -146,7 +146,7 @@ _fpm_duplicate_instances_detection() {
   _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     # Count masters for this exact conf path
-    _pat="php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
+    _pat="^php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
     _cnt=$(pgrep -fc "${_pat}")
     if (( _cnt > 1 )); then
       _thisErrLog="$(date) Duplicate master for php${e}-fpm (count=${_cnt})"
@@ -279,7 +279,7 @@ _fpm_health_check_fix() {
   _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
-      _pat="php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
+      _pat="^php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
 
       _ok_master=false
       _ok_socket=false
