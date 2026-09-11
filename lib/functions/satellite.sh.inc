@@ -88,8 +88,10 @@ _stage_d6d7_kit() {
 # grav-admin-v*.zip under ${_ROOT}/static/grav-releases/ (boa-grav D-004 --
 # mirror-fed; this box never talks to getgrav.org). Version from the same
 # mirror stamp the platform build resolves; presence-gated for idempotency
-# and re-checked on every up-* run. Older staged zips are kept (rollback
-# food); the resolver always picks the newest by version sort.
+# and re-checked on every up-* run. The resolver always picks the newest by
+# version sort; the three newest staged zips are kept (a rollback restores
+# the registered safety copy, never an old zip), older ones are pruned so
+# the shelf does not grow by one release archive per Grav release forever.
 _stage_grav_releases() {
   local _gVrn _gZip _gDir
   if [ "${_GRAV_SUPPORT}" != "YES" ] || [ -z "${_ROOT}" ]; then
@@ -112,10 +114,28 @@ _stage_grav_releases() {
     mv -f "${_gDir}/.${_gZip}.tmp" "${_gDir}/${_gZip}"
     chown ${_USER}:${_ACCG:-users} "${_gDir}" "${_gDir}/${_gZip}" 2> /dev/null
     _msg "INFO: Grav admin bundle staged: ${_gDir}/${_gZip}"
+    _prune_grav_releases "${_gDir}"
   else
     rm -f "${_gDir}/.${_gZip}.tmp"
     _msg "OOPS: Grav admin bundle ${_gVrn} download failed; the upgrade task refuses until staged"
   fi
+}
+
+#
+# Keep the three newest staged official Grav admin-bundle zips; remove the
+# rest. Version order, never mtime (a re-fetched old zip must not displace
+# a newer one); only complete zips are considered (the .tmp of a fetch in
+# flight is left alone).
+_prune_grav_releases() {
+  local _pDir="$1" _pZip _pKeep=3 _pN
+  [ -d "${_pDir}" ] || return 0
+  _pN=$(ls "${_pDir}"/grav-admin-v*.zip 2> /dev/null | wc -l)
+  [ "${_pN}" -le "${_pKeep}" ] && return 0
+  for _pZip in $(ls "${_pDir}"/grav-admin-v*.zip 2> /dev/null \
+    | sed 's#.*/grav-admin-v##; s#\.zip$##' | sort -V | head -n -"${_pKeep}"); do
+    rm -f "${_pDir}/grav-admin-v${_pZip}.zip"
+    _msg "INFO: Pruned the staged Grav admin bundle ${_pZip} (three newest kept)"
+  done
 }
 
 #
