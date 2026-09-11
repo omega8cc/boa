@@ -32,6 +32,35 @@ _why() { [ "${_DEBUG:-NO}" = "YES" ] && echo "updatesymlinks[debug]: not acting 
 #                      gated by _ORPHAN_FILES_REPORT=YES. Never pauses tasks.
 #   --debug | -d     : explain on stdout WHY a run skips/exits without acting,
 #                      and what it does when it proceeds. No behaviour change.
+_print_help() {
+cat <<-HELP
+updatesymlinks: the scheduler around autosymlink. Root only. Actions go to
+/var/log/boa/autosymlink.update.log, every run's full output to
+autosymlink.verbose.archive.log; emails go to _MY_EMAIL from /root/.barracuda.cnf.
+
+  updatesymlinks --auto-fix       the nightly files-symlink maintenance (the
+                                  crontab fires it hourly through the night; the
+                                  first un-blocked hour does the work and stamps
+                                  the night). With _AUTOSYMLINK_NIGHTLY=YES: pause
+                                  the Ægir task queue, drain in-flight tasks, run
+                                  autosymlink --batch-if-clean, then the orphan
+                                  report; email on changes, on NOT CLEAN and on
+                                  orphans. With only _ORPHAN_FILES_REPORT=YES: the
+                                  read-only orphan report alone, no pause.
+  updatesymlinks --orphan-report  the read-only orphan report now (needs
+                                  _ORPHAN_FILES_REPORT=YES); email only when an
+                                  orphan is found. Never pauses tasks.
+  updatesymlinks                  legacy manual run: the full apply + report,
+                                  ungated; skipped while a heavy task runs
+  --debug, -d                     explain on stdout why a run skips or exits
+                                  without acting, and what it does when it acts
+  -h, --help, help                this text; any other argument is refused
+
+Nothing runs before the install has completed, on a replication standby, or
+while another instance holds the lock. Docs: docs/FILES-SYMLINK.md
+HELP
+}
+
 _subMode="legacy"
 _DEBUG=NO
 for _arg in "$@"; do
@@ -39,6 +68,13 @@ for _arg in "$@"; do
     --auto-fix|auto-fix)           _subMode="auto-fix" ;;
     --orphan-report|orphan-report) _subMode="orphan-report" ;;
     --debug|-d|debug)              _DEBUG=YES ;;
+    -h|--help|help)                _print_help; exit 0 ;;
+    *)
+      # Refused rather than ignored: an unrecognised argument used to fall
+      # through to the legacy bare invocation, i.e. the full apply + report.
+      echo "ERROR: unknown argument '${_arg}'; run 'updatesymlinks --help' for the sub-modes" >&2
+      exit 2
+      ;;
   esac
 done
 
