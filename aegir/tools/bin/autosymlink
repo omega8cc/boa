@@ -395,6 +395,37 @@ _alias_field() {
   esac
 }
 
+_panel_uri() {
+  # The account's own control panel (its Ægir front-end site) has no per-site
+  # Drush alias: provision registers it under the context name "hostmaster", so
+  # its alias file is hostmaster.alias.drushrc.php (hm.alias.drushrc.php is the
+  # shortcut copy of the same site). The <panel-fqdn> alias symlink to it that
+  # made the panel look like an ordinary site was a crutch the ltd-users pass
+  # now purges, so the panel is recognised by the uri that alias carries, the
+  # way fix-drupal-site-symlinks.sh recognises it. Echoes "" when the account
+  # has no hostmaster alias.
+  # Args: 1 account dir.
+  _alias_field "$1/.drush/hostmaster.alias.drushrc.php" "uri"
+}
+
+_site_alias_file() {
+  # The alias file that registers <site> in <account dir>: the per-site
+  # <site>.alias.drushrc.php, else hostmaster.alias.drushrc.php when <site> is
+  # the account's own control panel. Echoes "" when neither registers it.
+  # Args: 1 account dir, 2 site name.
+  _SAF_FILE="$1/.drush/$2.alias.drushrc.php"
+  if [ -f "${_SAF_FILE}" ]; then
+    echo "${_SAF_FILE}"
+    return
+  fi
+  _SAF_FILE="$1/.drush/hostmaster.alias.drushrc.php"
+  if [ -n "$2" ] && [ -f "${_SAF_FILE}" ] && [ "$(_panel_uri "$1")" = "$2" ]; then
+    echo "${_SAF_FILE}"
+    return
+  fi
+  echo ""
+}
+
 _exp_is_abs_path() {
   # Guard before probing a path taken out of an alias file: only an absolute
   # path is worth stat-ing, and refusing the rest keeps a malformed or hand-edited
@@ -804,8 +835,8 @@ _explain_break_sharing_source() {
     _EXP_BS_OWNACCT="${_EXP_BS_ACCT}"
   fi
 
-  _EXP_BS_OWNER_ALIAS="${_EXP_BS_OWNACCT}/.drush/${_EXP_BS_TSITE}.alias.drushrc.php"
-  if [ -f "${_EXP_BS_OWNER_ALIAS}" ]; then
+  _EXP_BS_OWNER_ALIAS=$(_site_alias_file "${_EXP_BS_OWNACCT}" "${_EXP_BS_TSITE}")
+  if [ -n "${_EXP_BS_OWNER_ALIAS}" ]; then
     _explain_log "  Owner site : ${_EXP_BS_TSITE} still has an alias in $(basename "${_EXP_BS_OWNACCT}")"
   else
     _explain_log "  Owner site : ${_EXP_BS_TSITE} has NO alias in $(basename "${_EXP_BS_OWNACCT}") -- it looks deleted"
@@ -1210,7 +1241,7 @@ _store_live_readers() {
     _SLR_RACCT="${_SLR_RACCT%%/*}"
     _SLR_RDIR="${_SLR_LINK%/*}"
     _SLR_RURI="${_SLR_RDIR##*/}"
-    if [ -e "/data/disk/${_SLR_RACCT}/.drush/${_SLR_RURI}.alias.drushrc.php" ] \
+    if [ -n "$(_site_alias_file "/data/disk/${_SLR_RACCT}" "${_SLR_RURI}")" ] \
       || [ -e "/data/disk/${_SLR_RACCT}/config/server_master/nginx/vhost.d/${_SLR_RURI}" ]; then
       _SLR_LIVE="${_SLR_LIVE}${_SLR_LIVE:+ }${_SLR_LINK} -> ${_SLR_TGT}"
     else
@@ -2119,6 +2150,18 @@ _process_account() {
     # Strip .alias.drushrc.php
     _SITE_NAME=${_ALIAS_BASENAME%.alias.drushrc.php}
 
+    # The control panel is registered as "hostmaster" (see _panel_uri); its
+    # vhost and its store carry the panel's uri. "hm" is the same site again.
+    case "${_SITE_NAME}" in
+      hostmaster) _SITE_NAME=$(_panel_uri "${_ACCOUNT_DIR}") ;;
+      hm) continue ;;
+    esac
+    # Nothing to key on, or already swept through another alias of the same
+    # name (a <panel-fqdn> crutch symlink the ltd-users pass has not purged yet).
+    if [ -z "${_SITE_NAME}" ] || [ -n "${_SITES_IN_ACCOUNT["${_SITE_NAME}"]+x}" ]; then
+      continue
+    fi
+
     _VHOST_FILE="${_VHOST_DIR}/${_SITE_NAME}"
 
     # Proceed only for valid vhost/drush-alias pairs
@@ -2184,9 +2227,9 @@ _process_account() {
               fi
               # Deleted (safe to archive) vs disabled/partial (keep): require BOTH the
               # drush alias AND the vhost to be absent before moving anything.
-              _CAND_ALIAS="${_DRUSH_DIR}/${_CAND_NAME}.alias.drushrc.php"
+              _CAND_ALIAS=$(_site_alias_file "${_ACCOUNT_DIR}" "${_CAND_NAME}")
               _CAND_VHOST="${_VHOST_DIR}/${_CAND_NAME}"
-              if [ -e "${_CAND_ALIAS}" ] || [ -e "${_CAND_VHOST}" ]; then
+              if [ -n "${_CAND_ALIAS}" ] || [ -e "${_CAND_VHOST}" ]; then
                 _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND} (size=${_ORPH_KB}K) – a surviving alias/vhost remains (disabled or partial state); left in place, NOT archived"
               elif [ "${_ORPHAN_ARCHIVE}" = "YES" ]; then
                 _archive_orphan_store "${_CAND}" "${_ACCOUNT_DIR}" "${_CAND_NAME}" "${_ORPH_KB}"
@@ -2287,7 +2330,7 @@ _run_one_site() {
     # Derive the account by locating the valid vhost+alias pair for this site.
     for _CAND in /data/disk/*; do
       [ -d "${_CAND}" ] || continue
-      [ -f "${_CAND}/.drush/${_SITE}.alias.drushrc.php" ] || continue
+      [ -n "$(_site_alias_file "${_CAND}" "${_SITE}")" ] || continue
       [ -f "${_CAND}/config/server_master/nginx/vhost.d/${_SITE}" ] || continue
       _ACCOUNT_DIR="${_CAND}"
       _ACCOUNT_NAME="$(basename "${_CAND}")"
@@ -2304,14 +2347,15 @@ _run_one_site() {
     return $?
   fi
 
-  _ALIAS_FILE="${_ACCOUNT_DIR}/.drush/${_SITE}.alias.drushrc.php"
+  _ALIAS_FILE=$(_site_alias_file "${_ACCOUNT_DIR}" "${_SITE}")
   _VHOST_FILE="${_ACCOUNT_DIR}/config/server_master/nginx/vhost.d/${_SITE}"
   # The Drush alias is the authoritative "site exists" marker (written by
-  # provision-save). The nginx vhost is written LATER by provision-verify, so a
-  # caller passing an explicit --account (a Provision install hook running before
-  # the site's first verify) is trusted on the alias alone; the auto-resolve path
-  # below already matched the vhost+alias pair when it picked the account.
-  if [ ! -f "${_ALIAS_FILE}" ]; then
+  # provision-save; the control panel's is hostmaster.alias.drushrc.php). The
+  # nginx vhost is written LATER by provision-verify, so a caller passing an
+  # explicit --account (a Provision install hook running before the site's first
+  # verify) is trusted on the alias alone; the auto-resolve path above already
+  # matched the vhost+alias pair when it picked the account.
+  if [ -z "${_ALIAS_FILE}" ]; then
     _log "[INFO] Narrow mode: site ${_SITE} has no Drush alias under ${_ACCOUNT_NAME}; nothing to do"
     return 0
   fi

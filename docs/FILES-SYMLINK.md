@@ -116,6 +116,16 @@ nightly maintenance pause is active, so it never races the batch sweep. It also
 sets each new symlink's owner:group to match its store target (so the link is not
 left `root`-owned).
 
+The account's own control panel (the Ægir front-end site) is a site to every mode,
+the sweep and the narrow one alike. It has no per-site alias — provision registers
+it as `hostmaster`, so its alias file is `hostmaster.alias.drushrc.php` (and
+`hm.alias.drushrc.php` is the shortcut copy of the same site) — and is recognised
+by the `uri` that alias carries. Its store, `static/files/<panel-fqdn>/`, is a
+registered site's store, never an orphan. (The `<panel-fqdn>` alias symlink that
+used to make the panel look like an ordinary site was a crutch the ltd-users pass
+now purges; every tool keyed on `<site>.alias.drushrc.php` files was taught the
+panel's real alias instead.)
+
 #### Why a dry run is NOT CLEAN — the `[EXPLAINED]` section
 
 A dry run ends either **CLEAN** (batch/live allowed) or **NOT CLEAN**, and a
@@ -279,7 +289,8 @@ For each site it reports:
 - **Symlinked** — each `files`/`private` conversion, with timestamp and store target.
 - **State NOW** — `active` (alias + real-docroot vhost), **`disabled`** (alias +
   placeholder vhost — files kept live, never archived), `deleted` (neither alias nor
-  vhost — an orphan), or `partial` (only one survives).
+  vhost — an orphan), or `partial` (only one survives). The account's control panel
+  is matched by the `uri` in `hostmaster.alias.drushrc.php`, like everywhere else.
 - **Store NOW** — the current store, and whether the in-site path is a live symlink.
 - **Archived** — each archive event (reuse vs deleted-site orphan), when, and to
   which `.archived/<stamp>/…` path — plus the archived copies present **on disk right
