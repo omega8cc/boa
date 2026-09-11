@@ -91,6 +91,7 @@ autosymlink report          # read-only report, including orphaned store entries
 autosymlink live            # apply, with a per-site confirmation prompt
 autosymlink batch           # apply to all sites, no prompt (needs a prior clean DRY run)
 autosymlink --batch-if-clean # DRY, and if clean, BATCH — cron-safe, one shot
+autosymlink --help          # the modes and options (no root needed); an unknown argument is refused, exit 2
 ```
 
 Narrow single-site mode (used by the Provision install/clone hooks; also handy for
@@ -221,6 +222,7 @@ Wraps `autosymlink` with Ægir-queue pausing (the self-healing
 `.barracuda.cnf` variables (see Configuration):
 
 ```bash
+updatesymlinks --help           # the sub-modes (no root needed); an unknown argument is refused, exit 2
 updatesymlinks --auto-fix       # nightly: batch-if-clean apply + email on changes
 updatesymlinks --orphan-report  # daily: read-only orphan report, email only if any found
 updatesymlinks                  # legacy: full apply + report, for manual use

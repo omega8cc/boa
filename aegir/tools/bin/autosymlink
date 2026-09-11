@@ -22,6 +22,62 @@ export HOME=/root
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
+_print_help() {
+cat <<-HELP
+autosymlink: converts every site's files/ and private/ directories into symlinks
+into the account's static store (/data/disk/oN/static/files/<site>/), breaks
+accidental cross-site sharing, and reports orphaned stores. Root only. Every
+plan, change, warning and report goes to /var/log/boa/autosymlink.log.
+
+Global modes (sweep every Octopus account on the box):
+  autosymlink                   DRY (default): plan only, change nothing; records
+                                whether the run is CLEAN in autosymlink.state
+  autosymlink report            read-only report of shared links and orphaned
+                                stores, with what the sweep would do with each
+  autosymlink live              apply, with a per-site confirmation prompt
+  autosymlink batch             apply to every site without prompting; allowed
+                                only after a CLEAN DRY run
+  autosymlink --batch-if-clean  DRY, then BATCH in the same run when the DRY pass
+                                is CLEAN (cron-safe one shot; exit 10 = not clean)
+
+Narrow single-site mode (the Provision install, clone, migrate and delete hooks
+reach it through sudo /usr/local/bin/fix-drupal-site-symlinks.sh; use it for a
+one-off fix):
+  autosymlink --site <url> [--account <oN>] [--apply] [--force-unshare]
+  autosymlink --site <url> --account <oN> --archive-store --apply
+    --site <url>      the one site to act on (its Drush alias must exist)
+    --account <oN>    the owning account: with it the alias alone is required
+                      (the vhost appears at the first Verify); without it the
+                      account is resolved from the vhost+alias pair
+    --apply           perform the conversion, gated by a per-site clean dry-run;
+                      without it the narrow run is a read-only DRY
+    --force-unshare   break an inherited cross-site link even when a share
+                      control file names it (a clone or rename never opted in)
+    --archive-store   set the site's whole store aside into
+                      static/files/.archived/<stamp>/<url>/ (never deleted)
+
+  -h, --help, help  this text; any other argument is refused (exit 2)
+
+The account's own control panel counts as a site: it has no per-site alias and
+is recognised by the uri carried in hostmaster.alias.drushrc.php. A NOT CLEAN
+dry run ends with an [EXPLAINED] section that re-checks every blocking finding
+against the filesystem and prints the diagnosis and the fix. The nightly
+scheduler around this tool is updatesymlinks. Docs: docs/FILES-SYMLINK.md
+HELP
+}
+
+# Help never needs root and must never start a sweep: answer it before anything
+# else. (An unrecognised argument used to be ignored, so 'autosymlink --help'
+# ran the full DRY sweep of every account.)
+for _ARG in "$@"; do
+  case "${_ARG}" in
+    -h|--help|help)
+      _print_help
+      exit 0
+      ;;
+  esac
+done
+
 _check_root() {
   if [ "$(id -u)" -ne 0 ]; then
     echo "ERROR: This script should be run as a root user"
@@ -85,7 +141,8 @@ while [ "$#" -gt 0 ]; do
       _ARCHIVE_STORE="YES"
       ;;
     *)
-      : # ignore unknown args
+      echo "ERROR: unknown argument '$1'; run 'autosymlink --help' for the modes and options" >&2
+      exit 2
       ;;
   esac
   [ "$#" -gt 0 ] && shift
