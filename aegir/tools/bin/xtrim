@@ -582,7 +582,7 @@ _preflight() {
   ### Anchored here too, for the reason the comment below already gives: the
   ### bracket trick defeats only SELF-match, so any other command line that
   ### merely mentions a provision path phantom-refuses a live shrink.
-  pgrep -f "provision-[a-z]" >/dev/null 2>&1 \
+  pgrep -f '(^| )provision-[a-z0-9-]+( |$)' >/dev/null 2>&1 \
     && _die "a provision task is running -- refusing"
   ### ( |$) is load-bearing: it must not match hosting-tasks / hosting-dispatch,
   ### the per-minute pollers, or every shrink would be refused.
@@ -627,7 +627,10 @@ _preflight() {
     ### local panel. There is nothing to quiesce or shrink, and finalize
     ### must not wait for it (see _panel_only).
     _info "${_oN}: panel-only account (its control panel is local, no proxied domain) -- nothing to shrink"
-    exit 0
+    ### A skip, not an exit: under 'all' the fan-out runs every account in
+    ### this one process, and an exit here ended the sweep at the first
+    ### panel-only account with a clean-looking status.
+    return 9
   fi
   [ -z "${_MAP_DOMS// /}" ] && _die "${_oN}: no live vhosts at all"
   if [ -n "${_MAP_TGT_BAD// /}" ]; then
@@ -894,8 +897,9 @@ _restore_stage_a() {
         _info "${_oN}: solr core ${_core} restored to ${_origin} and re-registered"
       else
         _alrt "${_oN}: solr core ${_core} moved back but re-register returned ${_rc:-no-answer}"
+        case "${_port}" in 9099) _svcR=solr9 ;; 9077) _svcR=solr7 ;; *) _svcR=jetty9 ;; esac
         _alrt "${_oN}:   the index is intact on disk; recover with a solr restart:"
-        _alrt "${_oN}:   pkill -9 -f solr${_port#90} ; service solr${_port#90} start"
+        _alrt "${_oN}:   pkill -9 -u ${_svcR} || pkill -9 -f '^[^ ]*java[0-9]* .*${_svcR}' ; service ${_svcR} start"
         _solr_left=1
       fi
     done < "${_q}/solr/MAP.txt"
@@ -1114,7 +1118,14 @@ _finalize() {
   ### script stays on disk, +x re-arms it.
   for _n in solr9 solr7 jetty9; do
     if [ -x "/etc/init.d/${_n}" ]; then
-      pkill -9 -f "${_n}" &> /dev/null
+      # By service account when it exists, else the JVM at argv[0]: a bare
+      # token matched csf's hourly md5sum sweep (its argv names /usr/bin/java
+      # and /etc/init.d/solr9) and any command line naming the service.
+      if id "${_n}" &> /dev/null; then
+        pkill -9 -u "${_n}" &> /dev/null
+      else
+        pkill -9 -f "^[^ ]*java[0-9]* .*${_n}" &> /dev/null
+      fi
       update-rc.d "${_n}" disable &> /dev/null
       chmod -x "/etc/init.d/${_n}" 2>/dev/null
       _info "finalize: ${_n} stopped + disabled + watchdog disarmed (init script -x)"
@@ -1197,6 +1208,11 @@ _run_one() {
   local _phase
   _load_cnf_defaults
   _preflight "${_oN}"
+  case $? in
+    0) : ;;
+    9) return 0 ;;
+    *) exit 1 ;;
+  esac
   _write_manifest "${_oN}" "${_mode}"
   _phase="$(_phase_get "${_oN}")"
   if [ "${_verb}" = "quiesce" ]; then
@@ -1311,6 +1327,9 @@ case "$1" in
           ### Accounts the fan-out will skip have no token and need none;
           ### demanding one made 'all --live' permanently unusable as soon
           ### as a single account moved past the verb.
+          ### A panel-only account has no DRY token: its preflight skips it
+          ### (see _preflight) and _finalize already exempts it.
+          _panel_only "${_n}" && continue
           case "$(_phase_get "${_n}")" in
             stage-b|stage-b-started) continue ;;
             stage-a) [ "${_verb}" = "quiesce" ] && continue ;;

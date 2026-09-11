@@ -89,3 +89,23 @@ To fix this, add the following line to the site's `local.settings.php` file:
 ```php
 $conf['apachesolr_attachments_java'] = '/usr/bin/java11 -Xms32m -Xmx64m';
 ```
+
+### A core directory Solr does not list
+
+Solr 7 and Solr 9 discover their cores by the `core.properties` file inside each core
+directory. When that file is missing (typically after the core's `conf/` was replaced
+from an archive that did not carry it), the core directory is still there and the index
+is intact, but Solr starts without the core and the site's search server answers with
+errors. The four-minute `manage_solr_config.sh` pass repairs the missing file for any
+site whose `solr_integration_module` directive names a supported module whose Solr
+instance is installed: it asks Solr whether the core is registered and, if it is not,
+re-registers the existing directory in place with a CoreAdmin `CREATE` (index files
+untouched), logging `CORE-REREGISTERED` in the pass log under `/var/backups/solr/log/`
+(pass logs are kept for a day). A core Solr still serves from memory gets the file
+written back (`CORE-REREGISTER-PERSISTED`), so the next Solr start finds it. A
+directory without `conf/solrconfig.xml` is left alone (`CORE-REREGISTER-SKIP`), and a
+core Solr refuses to load is retried once its `conf/` changes or after an hour, not on
+every pass. A directory that carries `core.properties` but is not listed by Solr (a
+tree copied in from elsewhere, an archive taken while Solr was down) is reported by the
+health check as `HEALTH-WARN`: move that file aside and the next pass re-registers the
+core, or restart Solr. Solr 4 cores are not covered (their registry is `solr.xml`).

@@ -187,6 +187,14 @@ _query_one() {
     _state="deleted"; _stateAcct=""; _aliasP="no"; _vhostP="no"; _vhostKind=""
     for _acct in "${_diskRoot}"/*; do
       _alias="${_acct}/.drush/${_site}.alias.drushrc.php"
+      # The account's own control panel has no per-site alias: it is registered
+      # as "hostmaster", so it is matched by the uri that alias carries (the
+      # <panel-fqdn> symlink to it was a crutch the ltd-users pass purges).
+      _hmAlias="${_acct}/.drush/hostmaster.alias.drushrc.php"
+      if [ ! -e "${_alias}" ] && [ -f "${_hmAlias}" ] \
+        && [ "$(sed -n "s/.*'uri' *=> *'\([^']*\)'.*/\1/p" "${_hmAlias}" 2>/dev/null | head -n1)" = "${_site}" ]; then
+        _alias="${_hmAlias}"
+      fi
       _vhost="${_acct}/config/server_master/nginx/vhost.d/${_site}"
       if [ -e "${_alias}" ] || [ -e "${_vhost}" ]; then
         _stateAcct=$(basename "${_acct}")

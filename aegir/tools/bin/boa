@@ -69,9 +69,9 @@ _clean_pid_exit() {
     rm -f ${_vBs}/OCTOPUS.sh*
     rm -f ${_vBs}/BARRACUDA.sh*
     service cron start &> /dev/null
-    _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
+    _CNT=$(pgrep -fc '^([^ ]*/)?tee -a /var/backups/barracuda-')
     if (( _CNT > 1 )); then
-      pkill -f 'tee -a /var/backups/barracuda-'
+      pkill -f '^([^ ]*/)?tee -a /var/backups/barracuda-'
     fi
   fi
   exit 1
@@ -1955,9 +1955,9 @@ _init_setup() {
       _send_errors
       _clean_pid_exit _barracuda_install
     else
-      _CNT=$(pgrep -fc 'tee -a /var/backups/barracuda-')
+      _CNT=$(pgrep -fc '^([^ ]*/)?tee -a /var/backups/barracuda-')
       if (( _CNT > 1 )); then
-        pkill -f 'tee -a /var/backups/barracuda-'
+        pkill -f '^([^ ]*/)?tee -a /var/backups/barracuda-'
       fi
     fi
     _NOW=$(date +%y%m%d-%H%M%S)
@@ -2078,10 +2078,10 @@ _init_setup() {
           _UP_OCTOPUS_AGAIN=YES
         fi
         if [ "${_UP_OCTOPUS_AGAIN}" = "YES" ]; then
-          echo "Octopus LE setup status: NOT READY!"
+          echo "Octopus LE setup status: NOT READY!" | tee -a "${_UP_OCTOPUS_LOG}"
           echo "Now waiting 5 minutes before trying again, please wait..."
           sleep 300
-          echo "Launching another octopus upgrade to fix LE..."
+          echo "Launching another octopus upgrade to fix LE..." | tee -a "${_UP_OCTOPUS_LOG}"
           _UP_OCTOPUS_AGAIN_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-again-octopus-${_NOW}.log"
           /opt/local/bin/octopus up-${_tRee} ${_usEr} force log noscreen 2>&1 | tee ${_UP_OCTOPUS_AGAIN_LOG}
           wait
@@ -2099,7 +2099,7 @@ _init_setup() {
           if [ -e "${_leCrtPath}/fullchain.pem" ] \
             || [ -e "${_leCrtPath}/cert.pem" ] \
             || [ -e "${_lePxyPath}" ]; then
-            echo "Octopus LE setup status: OK!"
+            echo "Octopus LE setup status: OK!" | tee -a "${_UP_OCTOPUS_AGAIN_LOG}"
             echo
             echo "You can generate one-time login link now:"
             echo
@@ -2107,13 +2107,13 @@ _init_setup() {
             echo
             echo "Enjoy!"
           else
-            echo "Octopus LE setup status: STILL NOT READY!"
+            echo "Octopus LE setup status: STILL NOT READY!" | tee -a "${_UP_OCTOPUS_AGAIN_LOG}"
             echo "Please run another upgrade with:"
             echo "  octopus up-${_tRee} ${_usEr} force"
             echo "Bye!"
           fi
         else
-          echo "Octopus LE setup status: READY!"
+          echo "Octopus LE setup status: READY!" | tee -a "${_UP_OCTOPUS_LOG}"
           echo
           echo "You can generate one-time login link now:"
           echo
@@ -3365,6 +3365,10 @@ _octopus_cleanup() {
         sort -u -o ${_zombie_dir}.purge.list ${_zombie_dir}.purge.list
         IFS=$'\12'
           _purgedUid=$(id -u "${_usEr}" 2>/dev/null)
+          # Read before the deluser loop: the last deluser takes the
+          # memberless group with it, and the gid sweep below had nothing
+          # to sweep with on exactly the converted boxes it is for.
+          _grpGid=$(getent group "${_usEr}" 2>/dev/null | cut -d: -f3)
           for p in $(cat ${_zombie_dir}.purge.list | grep "${_usEr}" 2>&1);do
             _usr_name=`echo $p | cut -d':' -f1 | awk '{ print $1}'`
             _usr_home=`echo $p | cut -d':' -f2 | awk '{ print $1}'`
@@ -3402,8 +3406,7 @@ _octopus_cleanup() {
         # disk (a static store relocated under /mnt, the gems/npm trees)
         # would keep the number and addgroup hands it to the next account:
         # those paths go to root first, and the group stays while any path
-        # still carries it.
-        _grpGid=$(getent group "${_usEr}" 2>/dev/null | cut -d: -f3)
+        # still carries it. _grpGid was read above, before the deluser loop.
         if [ -n "${_grpGid}" ]; then
           # The uid is recycled from the same system range as the gid, so
           # the leftovers lose both numbers: root:root.
@@ -3489,19 +3492,29 @@ _archived_age_days() {
   _t=$(date -u -d "${_s:0:4}-${_s:4:2}-${_s:6:2} ${_s:9:2}:${_s:11:2}:${_s:13:2}" +%s 2> /dev/null) || return 1
   echo $(( ($(date -u +%s) - _t) / 86400 ))
 }
+_archived_is_instance() {
+  # an Octopus instance is a real /data/disk/<name> carrying the Aegir layout
+  # (the test `boa info` uses); the name is whatever Octopus installed --
+  # a letter first, then letters and digits -- never a pattern of our own
+  [[ "${1}" =~ ^[a-z][a-z0-9]*$ ]] || return 1
+  [ -d "/data/disk/${1}" ] && [ ! -L "/data/disk/${1}" ] || return 1
+  [ -d "/data/disk/${1}/config/server_master" ] || return 1
+  return 0
+}
+
 _archived_users() {
-  # $1 = oN or all; prints the instances to act on, one per line
+  # $1 = the instance name or all; prints the instances to act on, one per line
   local _u _p _b
   _u=$(echo -n "${1}" | tr A-Z a-z)
   _u="${_u//[^a-z0-9]/}"
   if [ "${_u}" = "all" ]; then
-    for _p in /data/disk/o*; do
+    for _p in /data/disk/*; do
       _b=$(basename "${_p}")
-      [[ "${_b}" =~ ^o[0-9]+$ ]] && [ -d "${_p}" ] && [ ! -L "${_p}" ] && echo "${_b}"
+      _archived_is_instance "${_b}" && echo "${_b}"
     done
     return 0
   fi
-  [[ "${_u}" =~ ^o[0-9]+$ ]] && [ -d "/data/disk/${_u}" ] && [ ! -L "/data/disk/${_u}" ] || return 1
+  _archived_is_instance "${_u}" || return 1
   echo "${_u}"
 }
 _archived_list_user() {
