@@ -849,11 +849,12 @@ _PHP_FPM_DENY=""
 ###
 ### Platform-level developer accounts (off by default). Space-separated
 ### names of client directories under /data/disk/<oN>/clients/; each named
-### client gets one extra shell account, <oN>.<client>-dev, with read-write
-### access to every platform where EVERY site is that client's (a platform
-### carrying anyone else's site, admin sites included, is refused and
-### reported), the drush and composer commands, a ~/platforms SFTP farm and
-### a timed window on the site-local Drush. Drupal and Backdrop only. Remove
+### client gets one extra shell account, <oN>.<client>-dev, reaching every
+### platform where EVERY site is that client's (a platform carrying anyone
+### else's site, admin sites included, is refused and reported) and writing
+### there exactly where the main <oN>.ftp login writes, with the drush and
+### composer commands, a ~/platforms SFTP farm and a timed window on the
+### site-local Drush. Drupal and Backdrop only. Remove
 ### a name and the account is deleted on the next pass (home kept under
 ### /var/backups/zombie). Managed by manage_ltd_users.sh, never by hostmaster.
 ###
