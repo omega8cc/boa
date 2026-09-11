@@ -54,7 +54,7 @@ migratefs [--target <mount>] [--account <oN>] [--no-arch] [--apply] [--yes]
 |---|---|
 | *(no `--apply`)* | DRY plan only — print what would happen, change nothing |
 | `--apply` | perform the relocation (pauses the Ægir queue, drains tasks) |
-| `--target <mount>` | attached mount to relocate onto; auto-detected as the single real mountpoint under `/mnt` if omitted |
+| `--target <mount>` | attached mount to relocate onto, always a mountpoint under `/mnt` (the only supported store placement: the nightly's root-run relocations refuse a store elsewhere); auto-detected as the single real mountpoint under `/mnt` if omitted |
 | `--account <oN>` | limit to one account, and skip `arch` (default: all accounts **plus** `arch`) |
 | `--no-arch` | do not relocate `/data/disk/arch` |
 | `--yes` | in `--apply`, skip the interactive confirmation |

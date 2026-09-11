@@ -445,6 +445,7 @@ _satellite_pre_cleanup
 _satellite_if_instance_group pre
 _satellite_make
 _satellite_if_instance_group post
+_satellite_queue_dbvars_site_verifies
 _satellite_post_cleanup
 exit 0
 
