@@ -1534,8 +1534,8 @@ _init_prepare() {
         # sweep over /usr/bin carries the path in its argv. Kill the
         # apt.systemd.daily parent first or it respawns the worker; the
         # dpkg heal below covers any interrupted state the kill may leave.
-        if pgrep -f '/usr/lib/apt/apt.systemd.dail[y]' >/dev/null 2>&1; then
-          pkill -9 -f '/usr/lib/apt/apt.systemd.dail[y]'
+        if pgrep -f '^([^ ]*/)?(ba|da)?sh /usr/lib/apt/apt\.systemd\.daily( |$)' >/dev/null 2>&1; then
+          pkill -9 -f '^([^ ]*/)?(ba|da)?sh /usr/lib/apt/apt\.systemd\.daily( |$)'
         fi
         if pgrep -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)' >/dev/null 2>&1; then
           pkill -9 -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)'
@@ -2252,8 +2252,8 @@ _init_launch() {
   # md5sum sweep over /usr/bin carries the path in its argv. Kill the
   # apt.systemd.daily parent first or it respawns the worker; heal any
   # interrupted dpkg state the kill may leave.
-  if pgrep -f '/usr/lib/apt/apt.systemd.dail[y]' >/dev/null 2>&1; then
-    pkill -9 -f '/usr/lib/apt/apt.systemd.dail[y]'
+  if pgrep -f '^([^ ]*/)?(ba|da)?sh /usr/lib/apt/apt\.systemd\.daily( |$)' >/dev/null 2>&1; then
+    pkill -9 -f '^([^ ]*/)?(ba|da)?sh /usr/lib/apt/apt\.systemd\.daily( |$)'
   fi
   if pgrep -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)' >/dev/null 2>&1; then
     pkill -9 -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)'
