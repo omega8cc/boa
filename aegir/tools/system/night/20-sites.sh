@@ -1906,8 +1906,9 @@ _fix_permissions() {
       echo "\$_SERVER['db_host'] = \$options['db_host'];" >> ${_Dir}/drushrc.php
       _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force"
     fi
-  ### A Grav capsule and a Textpattern site have no files/ and no private/, so
-  ### the Drupal-shaped test above skips them and they get no nightly hygiene
+  ### Neither a Grav capsule nor a Textpattern site has a site-level files/
+  ### store (a TXP site does have private/, its credential store), so the
+  ### Drupal-shaped test above skips them and they get no nightly hygiene
   ### at all -- while FPM keeps writing into them as the per-version web user.
   ### Detect both positively (same predicates the two helpers use) and hand the
   ### site to the helpers: they own the per-CMS model, this leg only re-homes
