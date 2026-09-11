@@ -293,12 +293,20 @@ _terminate_processes() {
   local _current_load="$1"
   local _threshold="$2"
   local _load_period="$3"
+  # Never during a BOA pass: its own php builders and mirror fetches are the
+  # busiest processes on the box, and killing them is what loadguard's
+  # _install_pass_active exists to prevent (minute.sh's flood guards hold on
+  # the same markers).
+  for _m in boa_run.pid boa_wait.pid octopus_install_run.pid; do
+    [ -e "/run/${_m}" ] && return 0
+  done
   # TERM first so shutdown handlers run -- a drush job SIGKILLed mid-write
   # leaves half-applied state on disk that no rollback repairs. The -9
-  # follows only for what ignored the polite request.
-  killall php drush.php wget curl &> /dev/null
+  # follows only for what ignored the polite request. (killall matches the
+  # process name: a drush job IS php here, never drush.php.)
+  killall php wget curl &> /dev/null
   sleep 2
-  killall -9 php drush.php wget curl &> /dev/null
+  killall -9 php wget curl &> /dev/null
   local _log_message
   _log_message="$(date) System Load ${_current_load}% (${_load_period}) - PHP/Wget/cURL terminated"
   echo "${_log_message}" >> ${_pthOml}
@@ -391,6 +399,7 @@ _backup_in_progress() {
   # drastic tiers any more than a duplicity run's. The packaged myloader
   # is a wrapper exec'ing myloader.bin, so match both comm names.
   pgrep -x xtrabackup >/dev/null 2>&1 && return 0
+  pgrep -x xbstream >/dev/null 2>&1 && return 0      # the xmass seed's receiving end
   pgrep -x myloader >/dev/null 2>&1 && return 0
   pgrep -x myloader.bin >/dev/null 2>&1 && return 0
   # duplicity runs as its pipx venv python with the console script as the

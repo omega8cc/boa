@@ -314,7 +314,7 @@ for _sock in "${_socks[@]}"; do
   case " ${_VERS_SEEN} " in
     *" ${_ver} "*) continue ;;
   esac
-  _mpid=$(pgrep -f "/opt/php${_ver}/etc/php${_ver}-fpm.conf" 2>/dev/null | head -n1)
+  _mpid=$(pgrep -f "^php-fpm: master process .*/opt/php${_ver}/etc/php${_ver}-fpm.conf" 2>/dev/null | head -n1)
   # Cold version (master down): no signal, skip its pools and its probe.
   [ -n "${_mpid}" ] || continue
   _VERS_SEEN="${_VERS_SEEN} ${_ver}"
