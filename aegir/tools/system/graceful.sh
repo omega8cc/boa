@@ -169,7 +169,7 @@ _graceful_action() {
   fi
 
   # Swap, RAM and disk cache management
-  _IF_BCP="$(pgrep -f '(^| )[^ ]*/duplicity( |$)')"
+  _IF_BCP="$(pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)'; pgrep -f '^[^ ]*duplicity( |$)')"
   if [ -d "/dev/disk" ]; then
     if [ ! -e "/root/.no.swap.clear.cnf" ]; then
       if [ -n "${_IF_BCP}" ]; then
@@ -197,7 +197,7 @@ _graceful_action() {
   rm -f /opt/tmp/sess*
 
   # Speed cleanup
-  _IF_BCP="$(pgrep -f '(^| )[^ ]*/duplicity( |$)')"
+  _IF_BCP="$(pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)'; pgrep -f '^[^ ]*duplicity( |$)')"
   if [ -z "${_IF_BCP}" ] && [ ! -e "/run/speed_cleanup.pid" ] && [ ! -e "/root/.giant_traffic.cnf" ]; then
     echo "Performing speed cleanup..."
     touch /run/speed_cleanup.pid

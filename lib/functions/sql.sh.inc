@@ -88,7 +88,7 @@ _check_sql_running() {
   local _tot=0
   local _started=NO
   while : ; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -e "/run/mysqld/mysqld.sock" ]; then
       return 0
     fi
@@ -567,7 +567,7 @@ _innodb_log_file_size_update() {
   mysql -u root -e "SET GLOBAL innodb_fast_shutdown = 0;" &> /dev/null
   _move_sql stop
   wait
-  _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+  _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
   if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
     mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
     sleep 1
@@ -612,7 +612,7 @@ _innodb_log_file_size_update() {
     _move_sql stop
     wait
     sleep 180
-    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     if [ -z "${_IS_MYSQLD_RUNNING}" ]; then
       mkdir -p ${_vBs}/old-sql-ib-log-${_NOW}
       sleep 1
@@ -961,7 +961,7 @@ _check_mysqld_running() {
   local _tot=0
   local _started=NO
   while : ; do
-    _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+    _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
     if [ ! -z "${_IS_MYSQLD_RUNNING}" ] && [ -e "/run/mysqld/mysqld.sock" ]; then
       return 0
     fi

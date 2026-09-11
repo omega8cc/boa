@@ -568,7 +568,7 @@ export _run_as_user=$(whoami)
 
 # Main script
 _main_script() {
-  _CNT=$(pgrep -fc '(^| )[^ ]*/duplicity( |$)')
+  _CNT=$(( $(pgrep -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -fc '^[^ ]*duplicity( |$)') ))
   if (( _CNT > 0 )); then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
     exit 1

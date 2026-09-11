@@ -137,9 +137,9 @@ case "$1" in
       && [[ "${_REBOOT_TWO_TEST}" =~ "No such file" ]]; then
       service cron stop &> /dev/null
       killall cron &> /dev/null
-      pkill -9 -f second.sh
-      pkill -9 -f runner.sh
-      pkill -9 -f minute.sh
+      pkill -9 -f '^(/bin/)?bash (-c bash )?/var/xdrago/second\.sh( |$)'
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/runner\.sh( |$)'
+      pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/minute\.sh( |$)'
       echo "Cron has been stopped"
       if { [ ! -e "/root/.allow.clamav.cnf" ] \
         && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_ALLOW_CLAMAV=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; } \
@@ -152,22 +152,22 @@ case "$1" in
           update-rc.d -f clamav-freshclam remove &> /dev/null
         fi
       fi
-      pkill -9 -f avahi-daemon
-      pkill -9 -f clamd
-      pkill -9 -f freshclam
-      pkill -9 -f java
+      pkill -9 -f '^[^ ]*avahi-daemon( |:|$)'
+      pkill -9 -f '^[^ ]*clamd( |$)'
+      pkill -9 -f '^[^ ]*freshclam( |$)'
+      pkill -9 -f '^[^ ]*java[0-9]*( |$)'
       rm -f /run/clamav/*
       echo "Java/Solr/Clamav have been stopped"
       service nginx stop &> /dev/null
       killall nginx &> /dev/null
       killall php &> /dev/null
-      pkill -9 -f php-fpm
+      pkill -9 -f '^php-fpm: '
       echo "Nginx, PHP-CLI and PHP-FPM have been stopped"
       csf -df &> /dev/null
       csf -tf &> /dev/null
       echo "Firewall has been purged"
       if [ -e "/root/.my.cnf" ]; then
-        _IS_MYSQLD_RUNNING=$(pgrep -f /usr/sbin/mysqld)
+        _IS_MYSQLD_RUNNING=$(pgrep -x mysqld)
         if [ ! -z "${_IS_MYSQLD_RUNNING}" ]; then
           echo "Preparing MySQLD for quick shutdown..."
           _DB_V=$(mysql -V 2>&1 \
