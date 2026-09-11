@@ -3079,7 +3079,12 @@ _php_single_initd_cleanup() {
       done
     fi
     if [ "${_FPM_INITD_CLEANUP}" = "YES" ]; then
-      killall php-fpm &> /dev/null
+      # only the versions cleaned above, by the titles their masters and
+      # workers carry: a bare killall php-fpm also took the retained version
+      for e in ${_PHP_V}; do
+        pkill -9 -f "^php-fpm: master process .*/opt/php${e}/etc/php${e}-fpm.conf" &> /dev/null
+        pkill -9 -f "^php-fpm: pool www${e}( |$)" &> /dev/null
+      done
     fi
     rm -f /opt/local/bin/php
   fi

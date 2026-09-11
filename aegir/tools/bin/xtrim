@@ -897,8 +897,9 @@ _restore_stage_a() {
         _info "${_oN}: solr core ${_core} restored to ${_origin} and re-registered"
       else
         _alrt "${_oN}: solr core ${_core} moved back but re-register returned ${_rc:-no-answer}"
+        case "${_port}" in 9099) _svcR=solr9 ;; 9077) _svcR=solr7 ;; *) _svcR=jetty9 ;; esac
         _alrt "${_oN}:   the index is intact on disk; recover with a solr restart:"
-        _alrt "${_oN}:   pkill -9 -f solr${_port#90} ; service solr${_port#90} start"
+        _alrt "${_oN}:   pkill -9 -u ${_svcR} || pkill -9 -f '^[^ ]*java[0-9]* .*${_svcR}' ; service ${_svcR} start"
         _solr_left=1
       fi
     done < "${_q}/solr/MAP.txt"

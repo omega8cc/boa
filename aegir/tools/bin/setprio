@@ -164,7 +164,7 @@ for _service in "${!_services_priorities[@]}"; do
   case "${_service}" in
     "php-fpm")
       # Handle multiple php-fpm versions
-      _pids=$(pgrep -f 'php-fpm: pool')
+      _pids=$(pgrep -f '^php-fpm: pool')
       ;;
     "sshd")
       # Exact match for sshd to exclude child processes
