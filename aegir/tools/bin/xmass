@@ -4532,39 +4532,60 @@ _xmass_wait_for_sync() {
   esac
   [ "${_max}" -lt 60 ] && _die "_XMASS_SYNC_MAX_WAIT of ${_max}s is too short to be meaningful"
   local _elapsed=0
-  local _lag _pass _first="" _prev=""
+  local _lag _pass _first="" _prev="" _confirmed=NO
   _info "Waiting for replica lag to reach 0 (max ${_max}s) ..."
-  while true; do
-    _lag=$(_xmass_get_repl_lag)
-    if [ -z "${_lag}" ] || [ "${_lag}" = "NULL" ]; then
-      _xmass_restore_hint
-      _die "Cannot read replication lag — slave may have stopped on ${_tgt}"
-    fi
-    [ -z "${_first}" ] && _first="${_lag}"
-    _info "  Replica lag: ${_lag}s (waited: ${_elapsed}s / ${_max}s)"
-    [ "${_lag}" -eq 0 ] && break
-    if [ "${_elapsed}" -ge "${_max}" ]; then
-      _xmass_report_lag_trend "${_first}" "${_prev}" "${_lag}" "${_elapsed}"
-      _xmass_restore_hint
-      _die "Replica did not catch up within ${_max}s (last lag: ${_lag}s)." \
-           "Raise _XMASS_SYNC_MAX_WAIT, or set slave_parallel_type=LOGICAL_CLOCK" \
-           "and slave_parallel_workers=4 on the target. The phase is still" \
-           "'syncing', so recover with a fresh DRY then 'xmass cutover ${_tgt} --live'."
-    fi
-    _prev="${_lag}"
-    sleep 15
-    _elapsed=$(( _elapsed + 15 ))
-  done
+  # One budget for the wait AND its confirmation: a lag that comes back
+  # during the triple check is the same transient the wait loop tolerates,
+  # so it re-enters the wait instead of aborting with the source already
+  # dark (seen on a rig: 0, 0, then 1 s on check 3/3 killed the cutover).
+  # Only an unreadable lag (the replica stopped) or the exhausted budget
+  # ends the verb here.
+  while [ "${_confirmed}" != "YES" ]; do
+    while true; do
+      _lag=$(_xmass_get_repl_lag)
+      if [ -z "${_lag}" ] || [ "${_lag}" = "NULL" ]; then
+        _xmass_restore_hint
+        _die "Cannot read replication lag — slave may have stopped on ${_tgt}"
+      fi
+      [ -z "${_first}" ] && _first="${_lag}"
+      _info "  Replica lag: ${_lag}s (waited: ${_elapsed}s / ${_max}s)"
+      [ "${_lag}" -eq 0 ] && break
+      if [ "${_elapsed}" -ge "${_max}" ]; then
+        _xmass_report_lag_trend "${_first}" "${_prev}" "${_lag}" "${_elapsed}"
+        _xmass_restore_hint
+        _die "Replica did not catch up within ${_max}s (last lag: ${_lag}s)." \
+             "Raise _XMASS_SYNC_MAX_WAIT, or set slave_parallel_type=LOGICAL_CLOCK" \
+             "and slave_parallel_workers=4 on the target. The phase is still" \
+             "'syncing', so recover with a fresh DRY then 'xmass cutover ${_tgt} --live'."
+      fi
+      _prev="${_lag}"
+      sleep 15
+      _elapsed=$(( _elapsed + 15 ))
+    done
 
-  _info "Replica at lag=0; triple-checking (3 × 10s) ..."
-  for _pass in 1 2 3; do
-    sleep 10
-    _lag=$(_xmass_get_repl_lag)
-    if [ "${_lag}" != "0" ]; then
-      _xmass_restore_hint
-      _die "Replica lag not zero on confirmation check ${_pass}/3 (lag=${_lag}s)"
-    fi
-    _info "  Confirmation check ${_pass}/3: lag=${_lag}s OK"
+    _info "Replica at lag=0; triple-checking (3 × 10s) ..."
+    _confirmed=YES
+    for _pass in 1 2 3; do
+      sleep 10
+      _elapsed=$(( _elapsed + 10 ))
+      _lag=$(_xmass_get_repl_lag)
+      if [ -z "${_lag}" ] || [ "${_lag}" = "NULL" ]; then
+        _xmass_restore_hint
+        _die "Cannot read replication lag on confirmation check ${_pass}/3 — slave may have stopped on ${_tgt}"
+      fi
+      if [ "${_lag}" != "0" ]; then
+        if [ "${_elapsed}" -ge "${_max}" ]; then
+          _xmass_restore_hint
+          _die "Replica lag not zero on confirmation check ${_pass}/3 (lag=${_lag}s)" \
+               " and the ${_max}s wait budget is spent. The phase is still 'syncing'," \
+               " so recover with a fresh DRY then 'xmass cutover ${_tgt} --live'."
+        fi
+        _alrt "  lag returned (${_lag}s) on confirmation check ${_pass}/3 -- waiting again (${_elapsed}s / ${_max}s used)"
+        _confirmed=NO
+        break
+      fi
+      _info "  Confirmation check ${_pass}/3: lag=${_lag}s OK"
+    done
   done
   _info "Replica fully in sync: OK"
 }
