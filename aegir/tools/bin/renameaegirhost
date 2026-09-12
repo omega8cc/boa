@@ -446,6 +446,14 @@ _rename_tenant_site_dirs() {
       _alrt "  ${_NEWNAME} already exists beside ${_OLDNAME} — leaving both for review"
       continue
     fi
+    # A sites/<name> dir with no settings.php is not a site: renaming it
+    # queues a verify for nothing and §9 then alarms NOT SERVING on a name
+    # that never served (a stray dir planted on a migration target did
+    # exactly that on a rig). Leave it where it is and say so.
+    if [ ! -f "${_D}/settings.php" ]; then
+      _info "  skipped ${_OLDNAME}: no settings.php (not a site) -- left in ${_SITES}"
+      continue
+    fi
     _info "  site dir: ${_OLDNAME} -> ${_NEWNAME} (in ${_SITES})"
     _maybe_run mv -f \'"${_D}"\' \'"${_NEWD}"\'
     _rename_site_uri_surfaces "${_OLDNAME}" "${_NEWNAME}" "${_D}" "${_NEWD}"
@@ -1936,8 +1944,19 @@ _verify_renamed_sites_serve() {
     -H "Host: no-such-site.rename-probe.invalid" "http://127.0.0.1/" 2>/dev/null \
     | md5sum | cut -d' ' -f1)
 
+  # A suspended account answers 503 on every name by design (its billing
+  # gate), so probing it only burns the wait and ends in a false alarm --
+  # xmass's own panel probe skips such an account for the same reason.
+  local _susp=""
+  case "${_AEGIR_ROOT}" in
+    /data/disk/o*) [ -e "/data/conf/suspended/${_AEGIR_ROOT##*/}.pid" ] && _susp=YES ;;
+  esac
   _info "§9 Confirming each renamed site actually serves (up to ${_SERVE_WAIT}s each) ..."
   for _U in $(printf '%s\n' "${_RENAMED_SITE_URIS[@]}" | sort -u); do
+    if [ "${_susp}" = "YES" ]; then
+      _info "    ${_U}: account suspended -- 503 by design, not probed"
+      continue
+    fi
     _deadline=$(( $(date +%s) + _SERVE_WAIT ))
     _code=""
     while [ "$(date +%s)" -lt "${_deadline}" ]; do
@@ -1954,7 +1973,7 @@ _verify_renamed_sites_serve() {
         fi
       fi
       case "${_code}" in
-        200|301|302) break ;;
+        200|301|302|401|403) break ;;
       esac
       sleep 5
     done
@@ -1962,6 +1981,11 @@ _verify_renamed_sites_serve() {
     case "${_code}" in
       200|301|302)
         _info "    ${_U} serves (${_code})"
+      ;;
+      401|403)
+        # basic auth or an IP allow-list in front of the site: the answer
+        # proves the vhost is live and routed to the right site
+        _info "    ${_U} serves (${_code}, protected)"
       ;;
       *)
         _alrt "    ${_U} does NOT serve (${_code}) after ${_SERVE_WAIT}s"
