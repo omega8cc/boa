@@ -446,12 +446,15 @@ _rename_tenant_site_dirs() {
       _alrt "  ${_NEWNAME} already exists beside ${_OLDNAME} — leaving both for review"
       continue
     fi
-    # A sites/<name> dir with no settings.php is not a site: renaming it
-    # queues a verify for nothing and §9 then alarms NOT SERVING on a name
-    # that never served (a stray dir planted on a migration target did
-    # exactly that on a rig). Leave it where it is and say so.
+    # A sites/<name> dir with no settings.php is not a site, yet §7's platform
+    # verify would import it as one: renamed, it became a bogus site node that
+    # §9 then alarmed NOT SERVING; left in place under the old host, the
+    # pre-queue guard refuses the whole tail. Park it under the rename's own
+    # backup dir and say so -- nothing to rename, nothing for §7 to import.
     if [ ! -f "${_D}/settings.php" ]; then
-      _info "  skipped ${_OLDNAME}: no settings.php (not a site) -- left in ${_SITES}"
+      _maybe_run mkdir -p \'"${_BACKUP_DIR}/stray-sites"\'
+      _maybe_run mv -f \'"${_D}"\' \'"${_BACKUP_DIR}/stray-sites/${_OLDNAME}"\'
+      _info "  parked ${_OLDNAME}: no settings.php (not a site) -> ${_BACKUP_DIR}/stray-sites/"
       continue
     fi
     _info "  site dir: ${_OLDNAME} -> ${_NEWNAME} (in ${_SITES})"
