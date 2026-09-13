@@ -383,6 +383,16 @@ xoct proxy o1 target-ip --repair              # rebuild the proxy vhosts; mails 
 xoct proxy o1 new-target-ip o2 --repair --retarget   # repoint to a new target; releases trust on the old one
 ```
 
+A retarget the new target refuses (`peer <ip> did not accept the record`, with
+what its ssh said) enumerates the three things to check ON that box before
+re-running here: this proxy's root key in its `authorized_keys`, `csf -a` for
+each of this box's addresses, and free disk under `/data/disk` (the record
+write is fail-closed on a truncated file). After a failover the usual cause is
+the first two: an `xmass cutover` carries the demoted box's inbound proxies'
+reach forward at promotion (its step 15.95), an older cutover did not. Never
+pre-wire the SERVING trust by hand for this — `xoct` wires it itself once the
+push lands, and a hand-wired entry is one no record accounts for.
+
 Policy without re-running a migration:
 
 ```sh
