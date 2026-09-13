@@ -2424,16 +2424,18 @@ SQLEOF
 # performance_schema ON the session view remains the proof and a plain
 # session still fails closed -- the grant reading is used only where the
 # session view cannot testify.
-_xmass_repl_tls_witness() {   # 1 = target ip
+_xmass_repl_tls_witness() {   # 1 = target ip; verdict in _XM_TLS_VERDICT, readings in _XM_TLS_*
+  # Called as a plain command, never in $( ): the readings the die below
+  # quotes are globals, and a subshell would leave every one of them '?'.
   local _t="$1"
-  _XM_TLS_ALLOWED=""; _XM_TLS_CT=""; _XM_TLS_PS=""; _XM_TLS_GRANT=""; _XM_TLS_IO=""
+  _XM_TLS_VERDICT=""; _XM_TLS_ALLOWED=""; _XM_TLS_CT=""; _XM_TLS_PS=""; _XM_TLS_GRANT=""; _XM_TLS_IO=""
   _XM_TLS_ALLOWED=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
     "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
      | grep '${_XM_SSL_FIELD}:' | awk '{print \$2}'" 2>/dev/null)
   _XM_TLS_CT=$(mysql --defaults-file=/root/.my.cnf -sNe \
     "SELECT connection_type FROM performance_schema.threads WHERE processlist_user='${_REPL_USER}' AND connection_type IS NOT NULL ORDER BY thread_id DESC LIMIT 1" 2>/dev/null)
   if [ "${_XM_TLS_ALLOWED}" = "Yes" ] && [ "${_XM_TLS_CT}" = "SSL/TLS" ]; then
-    echo SESSION
+    _XM_TLS_VERDICT=SESSION
     return 0
   fi
   _XM_TLS_PS=$(mysql --defaults-file=/root/.my.cnf -sNe "SELECT @@performance_schema" 2>/dev/null)
@@ -2444,11 +2446,12 @@ _xmass_repl_tls_witness() {   # 1 = target ip
       "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
        | grep '${_XM_IO_FIELD}:' | awk '{print \$2}'" 2>/dev/null)
     if [ "${_XM_TLS_GRANT}" = "ANY" ] && [ "${_XM_TLS_IO}" = "Yes" ]; then
-      echo GRANT
+      _XM_TLS_VERDICT=GRANT
       return 0
     fi
   fi
-  if [ -z "${_XM_TLS_ALLOWED}" ] && [ -z "${_XM_TLS_CT}" ]; then echo NONE; else echo PLAIN; fi
+  if [ -z "${_XM_TLS_ALLOWED}" ] && [ -z "${_XM_TLS_CT}" ]; then _XM_TLS_VERDICT=NONE; else _XM_TLS_VERDICT=PLAIN; fi
+  return 0
 }
 
 # Prove the running replica's stream is TLS, from the source's own view and
@@ -2457,7 +2460,8 @@ _xmass_repl_tls_witness() {   # 1 = target ip
 # clear" must not leave the replica pulling them while the operator reads it.
 _xmass_verify_replication_tls() {
   [ "$(_xmass_tls_mode)" = "PLAIN" ] && { _alrt "Replication transport: PLAIN (deliberate)"; return 0; }
-  case "$(_xmass_repl_tls_witness "${_tgt}")" in
+  _xmass_repl_tls_witness "${_tgt}"
+  case "${_XM_TLS_VERDICT}" in
     SESSION)
       _info "Replication transport: TLS (${_XM_SSL_FIELD}=Yes on target, source session connection_type=SSL/TLS)"
       return 0 ;;
@@ -7243,7 +7247,8 @@ _xmass_cmd_reset_phase() {
 # side rather than guessing.
 _xmass_status_transport() {
   [ -n "${_XMASS_TARGET_IP}" ] || { echo "n/a"; return 0; }
-  case "$(_xmass_repl_tls_witness "${_XMASS_TARGET_IP}")" in
+  _xmass_repl_tls_witness "${_XMASS_TARGET_IP}"
+  case "${_XM_TLS_VERDICT}" in
     SESSION) echo "TLS (${_XM_SSL_FIELD}=Yes, session SSL/TLS)" ;;
     GRANT)   echo "TLS (${_XM_SSL_FIELD}=Yes, grant REQUIRE SSL enforced; performance_schema is OFF on the source)" ;;
     NONE)    echo "unknown (no replica session readable)" ;;
