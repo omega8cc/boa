@@ -6614,11 +6614,14 @@ _xmass_cmd_prep_target() {
     # install but a lost system IDENTITY of an account already installed
     # here, and a useradd writes no replicated database. Tools go first so
     # the probe reads current field names.
-    _info "  (standing mirror: reduced lane -- Solr reconcile${_XMASS_FIX_USERS:+ / identity repair} only)"
+    _info "  (standing mirror: reduced lane --${_XMASS_FIX_SOLR:+ Solr reconcile}${_XMASS_FIX_USERS:+ identity repair} only)"
     _xmass_force_tool_update "${_tgt}"
-    _xmass_solr_coverage_gate "${_tgt}" fix \
-      || _die "Solr coverage fix failed on ${_tgt}"
-    _info "Solr set reconciled under the hold; the next sync pass re-probes it"
+    # each repair only when asked for: --fix-users alone must not touch the held Solr set
+    if [ "${_XMASS_FIX_SOLR}" = "YES" ]; then
+      _xmass_solr_coverage_gate "${_tgt}" fix \
+        || _die "Solr coverage fix failed on ${_tgt}"
+      _info "Solr set reconciled under the hold; the next sync pass re-probes it"
+    fi
     if [ "${_XMASS_FIX_USERS}" = "YES" ]; then
       _xmass_enumerate_accounts
       _xmass_repair_target_identities "${_tgt}" \
