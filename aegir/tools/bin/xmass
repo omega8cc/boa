@@ -5286,8 +5286,13 @@ _xmass_carry_inbound_reach() {
 mkdir -p /root/.ssh; chmod 700 /root/.ssh; touch /root/.ssh/authorized_keys
 while read -r _l; do
   [ -n "${_l}" ] || continue
-  grep -qF -- "${_l%% # xmass migration source *}" /root/.ssh/authorized_keys \
-    || { echo >> /root/.ssh/authorized_keys; echo "${_l}" >> /root/.ssh/authorized_keys; }
+  _b="${_l%% # xmass migration source *}"
+  if grep -qF -- "${_b}" /root/.ssh/authorized_keys; then
+    grep -qF -- "${_l}" /root/.ssh/authorized_keys \
+      || sed -i "s|^$(printf '%s' "${_b}" | sed 's/[|&\\]/\\&/g')[[:space:]]*\$|${_l}|" /root/.ssh/authorized_keys
+  else
+    echo >> /root/.ssh/authorized_keys; echo "${_l}" >> /root/.ssh/authorized_keys
+  fi
 done
 chmod 600 /root/.ssh/authorized_keys
 if [ -x /usr/sbin/csf ]; then
@@ -7045,8 +7050,16 @@ _xmass_pre_mig() {
       | sed -e "s|[[:space:]]*\$| # xmass migration source ${_src_ip:-${_hst}}|" > "${_kf}.keys"
     while read -r _kl; do
       [ -n "${_kl}" ] || continue
-      grep -qF -- "${_kl%% # xmass migration source *}" /root/.ssh/authorized_keys 2>/dev/null \
-        || { echo >> /root/.ssh/authorized_keys; echo "${_kl}" >> /root/.ssh/authorized_keys; }
+      _kb="${_kl%% # xmass migration source *}"
+      if grep -qF -- "${_kb}" /root/.ssh/authorized_keys 2>/dev/null; then
+        # Installed by an older pre-mig without the tag: tag that line in
+        # place rather than appending a twin.
+        grep -qF -- "${_kl}" /root/.ssh/authorized_keys 2>/dev/null \
+          || sed -i "s|^$(printf '%s' "${_kb}" | sed 's/[|&\\]/\\&/g')[[:space:]]*\$|${_kl}|" /root/.ssh/authorized_keys
+      else
+        echo >> /root/.ssh/authorized_keys
+        echo "${_kl}" >> /root/.ssh/authorized_keys
+      fi
     done < "${_kf}.keys"
     rm -f "${_kf}.keys"
     chmod 600 /root/.ssh/authorized_keys
