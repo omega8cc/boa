@@ -64,11 +64,13 @@ if (php_sapi_name() !== 'cli' && isset($_SERVER['DOCUMENT_ROOT'])
     header('Status: 503 Service Unavailable');
     header('Retry-After: ' . $bd_http_off_ttl);
     header('X-Accel-Expires: ' . $bd_http_off_ttl);
-    header('Cache-Control: public, max-age=' . $bd_http_off_ttl);
+    // no-store downstream: the gate must not outlive the window in a
+    // browser or CDN (the microcache above is purged at every toggle)
+    header('Cache-Control: no-store, must-revalidate');
     header('Content-Type: text/html; charset=utf-8');
     header('Connection: close');
     $bd_http_off_tpl = '/var/www/nginx-default/maintenance.html';
-    if (is_readable($bd_http_off_tpl)) {
+    if (@is_readable($bd_http_off_tpl)) {
       readfile($bd_http_off_tpl);
     }
     else {
