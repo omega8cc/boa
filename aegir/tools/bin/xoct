@@ -3128,7 +3128,7 @@ _xoct_push_peer_record() {
   _myall="$(_mig_my_ips)"
   _xoct_learn_peer_host_key "${_pip}"
   _XOCT_PUSH_ERR=""
-  local _perr="/tmp/.xoct-push-err.$$"
+  local _perr="/var/backups/.xoct.pusherr.$$"
   ssh root@"${_pip}" "bash -s" 2>"${_perr}" <<PEERREC
 set -e
 _cnf="/data/disk/${_pacct}/log/migproxy.cnf"
@@ -3160,7 +3160,7 @@ PEERREC
   local _prc=$?
   ### The remote stderr is what names the cause a refusal must show (a host
   ### key, a refused connection, a full disk); keep its first line.
-  _XOCT_PUSH_ERR="$(head -n1 "${_perr}" 2>/dev/null | tr -d '\r')"
+  _XOCT_PUSH_ERR="$(grep -vE '^(@|Warning:|WARNING)' "${_perr}" 2>/dev/null | grep -m1 . | tr -d '\r')"
   [ -s "${_perr}" ] && [ "${_prc}" != "0" ] && [ "${_prc}" != "7" ] && cat "${_perr}" >&2
   rm -f "${_perr}"
   return "${_prc}"
@@ -3206,15 +3206,13 @@ _xoct_learn_peer_host_key() {
 ### itself once the push lands, and a hand-wired entry is one no record
 ### accounts for.
 _xoct_peer_trust_remedy() {
-  local _p="$1" _me _one
+  local _p="$1" _me
   _me="$(_mig_my_ips)"
   echo "ERROR: peer ${_p} did not accept the record${_XOCT_PUSH_ERR:+ (ssh said: ${_XOCT_PUSH_ERR})}."
   echo "ERROR: After a promotion the usual cause is that ${_p} does not let this proxy in yet"
   echo "ERROR: (a cutover older than the reach carry). Three checks ON ${_p}, then re-run here:"
   echo "ERROR:   1. this box's /root/.ssh/id_ed25519.pub is in its /root/.ssh/authorized_keys"
-  for _one in ${_me}; do
-    echo "ERROR:   2. csf -a ${_one}   # port 22, for this control-plane ssh"
-  done
+  echo "ERROR:   2. csf -a <each of: ${_me}>   # this box's addresses, for the control-plane ssh"
   echo "ERROR:   3. free disk under /data/disk there -- the record write is fail-closed on a truncated file"
 }
 
