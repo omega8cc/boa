@@ -4495,6 +4495,65 @@ _xmass_get_repl_lag() {
     | grep '${_XM_LAG_FIELD}' | awk '{print \$2}'" 2>/dev/null
 }
 
+# Status's own reading of the replica in ONE remote call. The lag figure alone
+# cannot tell a refused client from a stopped thread -- both come back
+# non-numeric -- so read the whole block and leave a verdict in globals; the
+# caller runs this in its own shell, never in $( ), or the readings are lost.
+# RUNNING (both threads Yes, numeric lag), STOPPED (readable, a thread not
+# Yes, with Last_*_Errno/Error -- the same names in both dialects), ABSENT
+# (client fine, no replica configured), DENIED (the target's own client
+# refused: the root-rotation shape), UNREACHABLE (no ssh), UNKNOWN (threads
+# Yes, no figure). Read-only; the cutover keeps _xmass_get_repl_lag and its
+# fail-closed aborts.
+_xmass_repl_probe() {   # 1 = target ip
+  local _t="$1" _out _rc
+  _XM_REPL_VERDICT=""; _XM_REPL_LAG=""; _XM_REPL_IO=""; _XM_REPL_SQL=""
+  _XM_REPL_ERRNO=""; _XM_REPL_ERR=""; _XM_REPL_CLIENT=""
+  _out=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
+    "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>&1")
+  _rc=$?
+  if [ "${_rc}" = "255" ]; then
+    _XM_REPL_CLIENT=$(printf '%s\n' "${_out}" | head -n1)
+    _XM_REPL_VERDICT=UNREACHABLE
+    return 0
+  fi
+  if [ "${_rc}" != "0" ]; then
+    # The client spoke and refused -- keep its own words: 'Access denied' is
+    # the rotation, "Can't connect" a stopped server there.
+    _XM_REPL_CLIENT=$(printf '%s\n' "${_out}" | grep -m1 'ERROR')
+    [ -n "${_XM_REPL_CLIENT}" ] || _XM_REPL_CLIENT=$(printf '%s\n' "${_out}" | head -n1)
+    _XM_REPL_VERDICT=DENIED
+    return 0
+  fi
+  # No IO field in a readable reply: not a replica here (a client warning
+  # line is not a stopped thread).
+  if ! printf '%s\n' "${_out}" | grep -q "${_XM_IO_FIELD}:"; then
+    _XM_REPL_VERDICT=ABSENT
+    return 0
+  fi
+  _XM_REPL_IO=$(printf '%s\n' "${_out}" | grep -m1 "${_XM_IO_FIELD}:" | awk '{print $2}')
+  _XM_REPL_SQL=$(printf '%s\n' "${_out}" | grep -m1 "${_XM_SQL_FIELD}:" | awk '{print $2}')
+  _XM_REPL_LAG=$(printf '%s\n' "${_out}" | grep -m1 "${_XM_LAG_FIELD}:" | awk '{print $2}')
+  if [ "${_XM_REPL_SQL}" != "Yes" ] || [ "${_XM_REPL_IO}" != "Yes" ]; then
+    # Name the thread that broke; a stopped SQL thread outranks an IO thread
+    # that merely followed it down.
+    if [ "${_XM_REPL_SQL}" != "Yes" ]; then
+      _XM_REPL_ERRNO=$(printf '%s\n' "${_out}" | grep -m1 'Last_SQL_Errno:' | awk '{print $2}')
+      _XM_REPL_ERR=$(printf '%s\n' "${_out}" | sed -n 's/^ *Last_SQL_Error: //p' | head -n1)
+    else
+      _XM_REPL_ERRNO=$(printf '%s\n' "${_out}" | grep -m1 'Last_IO_Errno:' | awk '{print $2}')
+      _XM_REPL_ERR=$(printf '%s\n' "${_out}" | sed -n 's/^ *Last_IO_Error: //p' | head -n1)
+    fi
+    _XM_REPL_VERDICT=STOPPED
+    return 0
+  fi
+  case "${_XM_REPL_LAG}" in
+    ''|*[!0-9]*) _XM_REPL_VERDICT=UNKNOWN ;;
+    *)           _XM_REPL_VERDICT=RUNNING ;;
+  esac
+  return 0
+}
+
 # Say whether waiting longer would actually have helped. A replica that is falling
 # further behind will never catch up by extending the timeout, and the operator is
 # mid-outage with the web already blocked when they read this.
@@ -7198,19 +7257,55 @@ _xmass_cmd_status() {
   local _lag="N/A"
   if [ "${_XMASS_PHASE}" = "syncing" ] && [ -n "${_XMASS_TARGET_IP}" ]; then
     _tgt="${_XMASS_TARGET_IP}"
-    _lag=$(_xmass_get_repl_lag 2>/dev/null || echo "unreachable")
-    # An empty read is not "0s": it is the replica status coming back blank,
-    # which on an 8.4 pair is the documented shape of the ACTIVE's root
-    # password rotation having replicated into the target while the
-    # target's /root/.my.cnf kept the old string. Name it instead of
-    # printing an empty number.
-    case "${_lag}" in
-      ''|*[!0-9]*)
-        [ "${_lag}" = "unreachable" ] || _lag="unreadable"
-        _alrt "replica status on ${_tgt} could not be read (${_lag}) -- if the target's"
-        _alrt "root client fails with 'Access denied', the source rotated its MySQL root"
-        _alrt "password since init: re-transfer /root/.my.cnf and /root/.my.pass.txt to"
-        _alrt "the target (the init/cutover step-10 form), then re-run status"
+    # A non-numeric lag is three faults wearing one face -- a refused root
+    # client (the rotation), a stopped thread (readable, with its own errno)
+    # and a target that is no longer a replica -- and naming the wrong one
+    # sends the operator after a password while the standby falls behind.
+    # Probe once, in this shell, and let each fault speak for itself; the
+    # credential hint stays on the branch that holds the client's refusal.
+    _xmass_repl_probe "${_tgt}"
+    case "${_XM_REPL_VERDICT}" in
+      RUNNING)
+        _lag="${_XM_REPL_LAG}s"
+      ;;
+      STOPPED)
+        _lag="STOPPED (${_XM_IO_FIELD}=${_XM_REPL_IO:-?}, ${_XM_SQL_FIELD}=${_XM_REPL_SQL:-?})"
+        _alrt "replication on ${_tgt} is STOPPED -- ${_XM_IO_FIELD}=${_XM_REPL_IO:-?}, ${_XM_SQL_FIELD}=${_XM_REPL_SQL:-?}"
+        if [ -n "${_XM_REPL_ERRNO}" ] && [ "${_XM_REPL_ERRNO}" != "0" ]; then
+          _alrt "  last error ${_XM_REPL_ERRNO}: ${_XM_REPL_ERR}"
+        else
+          _alrt "  no error recorded -- the thread was stopped deliberately (${_XM_STOP})"
+        fi
+        _alrt "  the standby is BEHIND and will not catch up by itself: fix the cause on"
+        _alrt "  ${_tgt}, then '${_XM_START}' there; a diverged standby is rebuilt with"
+        _alrt "  'xmass reset-phase init' then 'xmass init ${_tgt}'"
+      ;;
+      ABSENT)
+        _lag="none (no replica configured on the target)"
+        _alrt "no replica is configured on ${_tgt} while the phase is 'syncing' -- either the"
+        _alrt "standby was decoupled (${_XM_RESET_SLAVE}) or never built, or the target was"
+        _alrt "PROMOTED by a cutover that was later reset to 'syncing'. Confirm which before"
+        _alrt "acting: 'xmass init' replaces the target's datadir. A promoted target resumes"
+        _alrt "with 'xmass reset-phase rename-failed'; only an unbuilt/decoupled standby is"
+        _alrt "rebuilt with 'xmass reset-phase init' then 'xmass init ${_tgt}'"
+      ;;
+      DENIED)
+        _lag="unreadable"
+        _alrt "replica status on ${_tgt} could not be read (unreadable) -- the target's"
+        _alrt "root client failed: ${_XM_REPL_CLIENT:-no error text}"
+        _alrt "on 'Access denied' the source rotated its MySQL root password since init:"
+        _alrt "re-transfer /root/.my.cnf and /root/.my.pass.txt to the target (the"
+        _alrt "init/cutover step-10 form), then re-run status"
+      ;;
+      UNREACHABLE)
+        _lag="unreachable"
+        _alrt "target ${_tgt} did not answer ssh (${_XM_REPL_CLIENT:-no error text}) -- the"
+        _alrt "replica state cannot be read from here; check the box and csf both ways"
+      ;;
+      *)
+        _lag="unknown"
+        _alrt "replica on ${_tgt} reports both threads running but no lag figure"
+        _alrt "(${_XM_LAG_FIELD}='${_XM_REPL_LAG}') -- re-run status in a moment"
       ;;
     esac
   fi
@@ -7224,7 +7319,7 @@ _xmass_cmd_status() {
   echo "  Percona version  : ${_XMASS_PERCONA_V:-unknown}"
   echo "  Init time        : ${_XMASS_INIT_TIME:-n/a}"
   echo "  Last file sync   : ${_XMASS_LAST_SYNC:-never}"
-  echo "  Replication lag  : ${_lag}s"
+  echo "  Replication lag  : ${_lag}"
   echo "  Transport        : $(_xmass_status_transport)"
   echo "  Proxy default    : $( [ -s "${_MIG_BOX_MODE_FILE}" ] && head -n1 "${_MIG_BOX_MODE_FILE}" 2>/dev/null || echo "none (per-account records or fallback)" )"
   echo "======================================================"
