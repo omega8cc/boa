@@ -5235,6 +5235,77 @@ _xmass_setup_migration_proxy_trust() {
   fi
 }
 
+
+# Step 15.9 teaches the target to trust THIS box. Nothing taught it about the
+# proxies relaying INTO this box, so after a promotion the documented retarget
+# ('xoct proxy <oN> <new-ip> --repair --retarget', run on the proxy box) died
+# at its first ssh -- no host key, no root key, no port 22 -- and the chain
+# kept a silent extra hop. Carry the CONTROL-PLANE reach every inbound peer
+# needs to act on the promoted box: its tagged root key line and a port-22
+# csf allow, nothing more. The serving trust (csf 80/443, realip, the trust
+# file) deliberately does NOT travel: migration_proxy_trust.sh rules that a
+# retired peer holds none, and xoct wires it itself the moment the operator
+# declares a mode and retargets (RET-E05's shape carried through). The peer
+# set is the union of the target-role records this box owns and the trust
+# control file, read while both still exist -- step 16 overwrites the records.
+# The decision to install a third box's root key on the promoted box is taken
+# here, on the demoted box, which already holds root there: continuity within
+# one pair, not a new trust domain. Idempotent, never fatal.
+_xmass_carry_inbound_reach() {
+  local _cnf _ip _key _own _peers="" _carry="" _tag
+  _own="$(hostname -I 2>/dev/null | tr ' ' '\n')"
+  for _cnf in /data/disk/*/log/migproxy.cnf; do
+    [ -e "${_cnf}" ] || continue
+    _mig_is_mine "${_cnf}" || continue
+    [ "$(_mig_get "${_cnf}" _MIG_ROLE)" = "target" ] || continue
+    for _ip in $(_mig_get "${_cnf}" _MIG_PEER_IPS) $(_mig_get "${_cnf}" _MIG_PEER_IP); do
+      _peers="${_peers} ${_ip}"
+    done
+  done
+  for _ip in $(cat /root/.migration.proxy.ips.cnf 2>/dev/null); do
+    _peers="${_peers} ${_ip}"
+  done
+  for _ip in $(printf '%s\n' ${_peers} | sort -u); do
+    _mig_valid_ip "${_ip}" || continue
+    [ "${_ip}" = "${_tgt}" ] && continue
+    printf '%s\n' "${_own}" | grep -qxF "${_ip}" && continue
+    _carry="${_carry} ${_ip}"
+  done
+  [ -n "${_carry}" ] || return 0
+  _info "Carrying inbound migration-proxy reach to ${_tgt}:${_carry} (root key + port 22; the serving trust follows the retarget) ..."
+  for _ip in ${_carry}; do
+    _tag="# xmass migration source ${_ip}"
+    _key="$(grep -hF -- "${_tag}" /root/.ssh/authorized_keys 2>/dev/null | head -n1)"
+    if [ -z "${_key}" ]; then
+      _alrt "  ${_ip}: no key line tagged '${_tag}' here (a pre-mig older than this tag"
+      _alrt "  installed it), so its root key cannot travel: append that box's"
+      _alrt "  /root/.ssh/id_ed25519.pub to /root/.ssh/authorized_keys on ${_tgt} by hand"
+    fi
+    if ! printf '%s\n' "${_key}" | ssh -o ConnectTimeout=15 root@"${_tgt}" \
+      "_IP='${_ip}' bash -s" <<'CARRY'
+mkdir -p /root/.ssh; chmod 700 /root/.ssh; touch /root/.ssh/authorized_keys
+while read -r _l; do
+  [ -n "${_l}" ] || continue
+  grep -qF -- "${_l%% # xmass migration source *}" /root/.ssh/authorized_keys \
+    || { echo >> /root/.ssh/authorized_keys; echo "${_l}" >> /root/.ssh/authorized_keys; }
+done
+chmod 600 /root/.ssh/authorized_keys
+if [ -x /usr/sbin/csf ]; then
+  grep -q "^${_IP} " /etc/csf/csf.allow 2>/dev/null \
+    || echo "${_IP} # xmass migration inbound-proxy" >> /etc/csf/csf.allow
+  grep -q "^${_IP} " /etc/csf/csf.ignore 2>/dev/null \
+    || echo "${_IP} # xmass migration inbound-proxy" >> /etc/csf/csf.ignore
+  csf -q &> /dev/null
+fi
+echo "reach for ${_IP}: key $(grep -cF -- "# xmass migration source ${_IP}" /root/.ssh/authorized_keys) line(s), csf allow $(grep -c "^${_IP} " /etc/csf/csf.allow 2>/dev/null) ignore $(grep -c "^${_IP} " /etc/csf/csf.ignore 2>/dev/null)"
+CARRY
+    then
+      _alrt "  ${_ip}: reach NOT wired on ${_tgt}; its retarget will refuse there (the refusal names the remedy)"
+    fi
+  done
+  return 0
+}
+
 ###-------------PANEL DB REWIRE ON TARGET---###
 
 _xmass_rewire_panel_db_access() {
@@ -6964,10 +7035,19 @@ _xmass_pre_mig() {
            " proxied source relays its undefined vhost onward and cannot" \
            " serve the key until it publishes again."
     fi
-    ### Only key lines travel: a stray header or footer never reaches authorized_keys.
-    grep -E '^(ssh-(ed25519|rsa)|ecdsa-sha2-nistp[0-9]+|sk-ssh-ed25519@openssh\.com) ' "${_kf}" > "${_kf}.keys"
-    echo >> /root/.ssh/authorized_keys
-    cat "${_kf}.keys" >> /root/.ssh/authorized_keys
+    ### Only key lines travel: a stray header or footer never reaches
+    ### authorized_keys. Each line is TAGGED with the source's address: after a
+    ### later promotion this box hands its inbound proxies' keys to the box
+    ### that takes over (_xmass_carry_inbound_reach), and an untagged line
+    ### cannot be attributed to a peer. A re-run never appends a duplicate.
+    _src_ip=$(getent ahostsv4 "${_hst}" 2>/dev/null | awk '{print $1; exit}')
+    grep -E '^(ssh-(ed25519|rsa)|ecdsa-sha2-nistp[0-9]+|sk-ssh-ed25519@openssh\.com) ' "${_kf}" \
+      | sed -e "s|[[:space:]]*\$| # xmass migration source ${_src_ip:-${_hst}}|" > "${_kf}.keys"
+    while read -r _kl; do
+      [ -n "${_kl}" ] || continue
+      grep -qF -- "${_kl%% # xmass migration source *}" /root/.ssh/authorized_keys 2>/dev/null \
+        || { echo >> /root/.ssh/authorized_keys; echo "${_kl}" >> /root/.ssh/authorized_keys; }
+    done < "${_kf}.keys"
     rm -f "${_kf}.keys"
     chmod 600 /root/.ssh/authorized_keys
     _info "Source SSH key installed in authorized_keys: OK ($(wc -l < "${_kf}") key line(s) from ${_hst})"
@@ -6977,7 +7057,6 @@ _xmass_pre_mig() {
     # the csf-allow that would fix it sits AFTER that check, so a target
     # firewalling the source deadlocks. Here we are on the target and we know
     # who the source is, which makes this the only place it can be done.
-    _src_ip=$(getent ahostsv4 "${_hst}" 2>/dev/null | awk '{print $1; exit}')
     if [ -n "${_src_ip}" ]; then
       _xmass_csf_allow_peer "${_src_ip}" source
     else
@@ -7305,6 +7384,11 @@ _xmass_cmd_init() {
   # both servers between now and cutover.
   _xmass_init_keepalive_stop
   _xmass_maint_off
+
+  # A standby built for a failover must be reachable by this box's inbound
+  # proxies from the day it is built ("stage it while everything is healthy"),
+  # not only at the promotion: same idempotent carry as step 15.95.
+  [ "${_XMASS_PROXY_MODE}" = "ha-switch" ] && _xmass_carry_inbound_reach
 
   _info ""
   _info "======================================================"
@@ -8198,6 +8282,10 @@ REMOTE
   # proxying, so the new host recovers the real client and never bans the proxy
   # from the first relayed request.
   _xmass_setup_migration_proxy_trust
+
+  # Step 15.95: carry this box's INBOUND proxies' reach to the promoted box
+  # while the inbound records still exist -- step 16 overwrites them.
+  _xmass_carry_inbound_reach
 
   # Step 16: Convert source vhosts to proxy via xoct (handles vhost templates,
   # nginx reload, and per-account migration-complete notification emails).
