@@ -311,8 +311,14 @@ Run on the **source**, after `pre-mig` has completed on both hosts and before
 accounts exist and before `init` replaces its datadir:
 
 ```sh
-xmass prep-target target-ip [--fix-php] [--fix-solr]
+xmass prep-target target-ip [--fix-php] [--fix-solr] [--fix-users]
 ```
+
+`--fix-users` runs a lane of its own: it re-creates a lost system user
+(`<acct>`, `<acct>.ftp`) of an account that IS installed on the target, in
+either role (nologin and recorded for the promotion's release on a standby, the
+tenant shell elsewhere), runs none of the steps below (with `--fix-solr` beside
+it the Solr reconcile rides along), and is refused together with `--fix-php`.
 
 What it does, in order:
 
@@ -502,14 +508,22 @@ What `init` does:
    Both `init` and `prep-target` first read the target's marker back and
    hard-refuse a role clash: a target serving as a DIFFERENT source's
    standby is never overlaid (same-source is the normal re-init repair
-   path), `prep-target` refuses ANY standby target, a box that itself
+   path), `prep-target` refuses ANY standby target except for its two repairs
+   (`--fix-solr` reconciles the held Solr set; `--fix-users` re-creates a lost
+   system user of an account installed there -- in either role, nologin and
+   recorded for the promotion's release on a standby), a box that itself
    carries the marker refuses to source a migration, and the probe fails
    CLOSED on a transport error. The in-flight signal tells
    second.sh that an empty role probe is expected until replication
    starts. second.sh mirrors it to a reboot-proof twin
    (`/root/.standby.init.pid`), so a target reboot inside the window
    cannot license promotion; both clear once the replica runs, or when the
-   marker goes, and both age out under a dead init.
+   marker goes, and both age out under a dead init. Outside that window a
+   leftover marker self-removes only on a box whose database the cutover
+   already unlocked (step 11.5); a standby that merely lost its replica
+   config while still read-only keeps the marker and is logged once — a
+   lost replica, not a promotion — and `xmass status` on the source names
+   the recovery.
 5b. **Purges unfinished `delete` tasks** from every eligible account's
    hostmaster queue before the databases travel: the whole panel DB
    replicates, cutover runs the task queue with force on the target, and a
@@ -827,8 +841,13 @@ delta pass is short) or `xmass autosync --off` first and re-run.
 xmass status target-ip
 ```
 
-Displays current phase, last sync timestamp, and live replication lag in
-seconds. Aim for lag < 60 s before scheduling cutover.
+Displays current phase, last sync timestamp, and the replica's state: the
+live replication lag in seconds while both threads run, or what stops it —
+a STOPPED thread with its `Last_*_Errno`/`Last_*_Error`, no replica
+configured (with both recoveries, since a promoted target must never be
+re-inited), or the target's own root client refusing (the root-password
+rotation shape, with the re-transfer remedy). Aim for lag < 60 s before
+scheduling cutover.
 
 ### Phase 4 — Cutover (`xmass cutover`)
 
@@ -867,8 +886,9 @@ first change to the source):
 - **Then** stops cron and parks the five BOA runners itself. The box's own cron
   restores a park done at `pre-mig` time within minutes, so parking here — not
   refusing and asking the operator to re-park — is what makes the window
-  reliable. If the cutover aborts after this point, the printed restore recipe
-  covers it.
+  reliable. If the cutover aborts after this point but before the MySQL lock,
+  it restores cron, the runners and the 503 gate itself; from the lock onward
+  the printed restore recipe covers it.
 
 **Cutover sequence:**
 
@@ -896,6 +916,8 @@ first change to the source):
 | Step 14 | Clear Solr transaction logs on target; start Solr; HTTP health check |
 | Step 14.5 | Compare the source's Solr core set against what the target actually registered, and name every core present as data but unregistered (registration is core-shape-specific and stays manual). Scoped to the real, dotted cores of the versions expected to **serve** on the target (used + ambiguous): a version this run deliberately denied has no service there by design, and its data trees travel with the sync regardless, so its cores are not reported |
 | Step 15 | Start cron on target; restore BOA runner scripts on target |
+| Step 15.9 | Wire the migration-proxy trust (nginx realip + csf) for THIS box on the target, before the source starts relaying — the new host recovers the real client address from the first relayed request and never bans the proxy |
+| Step 15.95 | Carry the reach of this box's own INBOUND proxies to the promoted target: the root key each of them installed here through `pre-mig` (tagged `# xmass migration source <ip>` in `authorized_keys`) and csf allow + lfd ignore lines for their addresses, read from the target-role records and the trust control file while step 16 has not yet overwritten them. Only the reach travels — the serving trust (realip, the trust file) is wired by `xoct` itself when a proxy is retargeted, so a retired peer never inherits one. Idempotent, never fatal. Without it a proxy box that fronted the demoted box could not retarget onto the promoted one (`could not write the policy record on peer`) |
 | Step 16 | `xoct proxy oN target-ip` for each account on source (records + trust + **site** vhost conversion + mode-selected notification); failures collect per account. The account's control panel is skipped by identity (the hostmaster alias `site_path`), never by which alias files exist: it keeps its local vhost and is put into Drupal maintenance mode. First checks that `migration_proxy_certs.sh` exists **and is scheduled** here — from this point the source serves the proxied sites' TLS and only the daily mirror keeps it fresh |
 | Step 16.5 | The master panel gets the same treatment on the source: never proxied, Drupal maintenance mode ON, online as the box's monitoring canary |
 | Step 17 | Remove `http-off.pid` from source accounts — a failed conversion keeps its 503 gate (its vhosts would otherwise serve the old local copy against a database that now lives on the target) |
@@ -912,11 +934,15 @@ the target is provably still a replica; a committed promotion parks resumably,
 and an unreadable target keeps the freeze with explicit instructions (see the
 step table above).
 
-Source sites remain on 503 (`http-off.pid` in place). Every abort that happens
-after the web block prints the exact commands to restore service on the source,
-so follow the printed recipe rather than reconstructing it: clear the
-`http-off.pid` files, purge the nginx speed cache, reload nginx, remove the Solr
-deny file if Solr served from here, start cron, and un-park the five runners.
+An abort BEFORE the MySQL lock (the phase is still `syncing`) hands the source
+back by itself: the 503 gate comes down, cron and the runners return, Solr is
+re-enabled when the run had denied it, and no recipe is printed (see "Aborting
+or Starting Over"). From the lock onward — phase `cutover`, a promoted target,
+or a park at `rename-failed` — the source stays on 503 (`http-off.pid` in place)
+and the tool prints the exact commands to restore service, so follow the printed
+recipe rather than reconstructing it: clear the `http-off.pid` files, purge the
+nginx speed cache, reload nginx, remove the Solr deny file if Solr served from
+here, start cron, and un-park the five runners.
 When the write freeze is still in place as the recipe prints (a post-promotion
 park), the recipe includes the thaw line and says when it is safe to use it:
 thaw only to abandon the cutover and keep the source as production — after the
@@ -1196,10 +1222,14 @@ replication user from source
 (`mysql -e "DROP USER IF EXISTS 'xmass_repl'@'target-ip';"`)
 and remove the state file.
 
-**If `cutover` aborts:** the tool prints the full restore recipe for the
-source; follow it rather than doing it from memory. An abort before the write
-freeze leaves the phase at `syncing`, so retrying is a fresh DRY plus `--live`
-with nothing else to undo. An abort at step 7 — and a step-8 failure whose
+**If `cutover` aborts:** an abort BEFORE the MySQL lock (the phase is still
+`syncing`: a lag that never settled, an rsync or store refusal) hands the
+source back by itself — the 503 gate comes down, the write flag (if any) is
+cleared, cron and the runners return, and Solr is re-enabled when the run had
+denied it — so the estate is serving again before the error is read; retrying
+is a fresh DRY plus `--live` with nothing else to undo. From the lock onward
+the tool prints the full restore recipe for the source instead; follow it
+rather than doing it from memory. An abort at step 7 — and a step-8 failure whose
 read-back proves the target is still a replica — unlocks source MySQL **and
 thaws the write freeze itself**; the phase is `cutover`, so retrying is
 `xmass reset-phase syncing`, a fresh DRY, then `--live`. A refusal at step 12

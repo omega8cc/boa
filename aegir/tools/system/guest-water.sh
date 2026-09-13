@@ -1107,6 +1107,10 @@ _csf_allow_own_patterns() {
     echo " # ${_t} ips\$"
   done
   echo " # migration proxy\$"
+  # xmass's own csf lines (migration source/target/inbound-proxy): written
+  # by a peer's pre-mig or a promotion, possibly between this pass's
+  # snapshot and its diff -- not a foreign hunk to roll back.
+  echo " # xmass migration [a-z-]*\$"
   echo " # Local DHCP out\$"
 }
 
