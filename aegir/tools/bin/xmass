@@ -6657,22 +6657,30 @@ _xmass_pre_mig() {
     ### http://undefined.<this box>/auth_undefined_keys.txt indefinitely, and
     ### a later migration can fetch the wrong box's key from it.
     rm -f /var/www/nginx-default/auth_undefined_keys.txt*
-    curl -s -A iCab \
+    ### The fetch must be a real key: curl exits 0 on a 404 (no -f), so a
+    ### source that never published -- or a proxied one relaying its undefined
+    ### vhost onward -- hands back an HTML page, and appending that to
+    ### authorized_keys while reporting OK is a false success on the trust path.
+    _kf="/root/.ssh/auth_undefined_keys.txt"
+    _kc=$(curl -s -A iCab -w '%{http_code}' \
       "http://undefined.${_hst}/auth_undefined_keys.txt" \
-      -o /root/.ssh/auth_undefined_keys.txt \
-      || _die "Failed to fetch source key from http://undefined.${_hst}/ --" \
-              " publish it first: run 'xmass pre-mig <that box's own fqdn>' ON" \
-              " ${_hst} (source/publish mode), then re-run this verb here. A" \
-              " proxied source relays its undefined vhost onward and cannot" \
-              " serve the key until it publishes again."
-    if [ -e "/root/.ssh/auth_undefined_keys.txt" ]; then
-      echo >> /root/.ssh/authorized_keys
-      cat /root/.ssh/auth_undefined_keys.txt >> /root/.ssh/authorized_keys
-      chmod 600 /root/.ssh/authorized_keys
-      _info "Source SSH key installed in authorized_keys: OK"
-    else
-      _die "Source key file empty or not fetched"
+      -o "${_kf}" 2>/dev/null)
+    if [ "${_kc}" != "200" ] \
+      || ! grep -qE '^(ssh-(ed25519|rsa)|ecdsa-sha2-nistp[0-9]+|sk-ssh-ed25519@openssh\.com) [A-Za-z0-9+/]+=*( |$)' "${_kf}" 2>/dev/null; then
+      rm -f "${_kf}"
+      _die "No public key at http://undefined.${_hst}/auth_undefined_keys.txt (HTTP ${_kc:-000}) --" \
+           " publish it first: run 'xmass pre-mig <that box's own fqdn>' ON" \
+           " ${_hst} (source/publish mode), then re-run this verb here. A" \
+           " proxied source relays its undefined vhost onward and cannot" \
+           " serve the key until it publishes again."
     fi
+    ### Only key lines travel: a stray header or footer never reaches authorized_keys.
+    grep -E '^(ssh-(ed25519|rsa)|ecdsa-sha2-nistp[0-9]+|sk-ssh-ed25519@openssh\.com) ' "${_kf}" > "${_kf}.keys"
+    echo >> /root/.ssh/authorized_keys
+    cat "${_kf}.keys" >> /root/.ssh/authorized_keys
+    rm -f "${_kf}.keys"
+    chmod 600 /root/.ssh/authorized_keys
+    _info "Source SSH key installed in authorized_keys: OK ($(wc -l < "${_kf}") key line(s) from ${_hst})"
 
     # Let the source IN. This is the ONE thing the source can never arrange
     # for itself: prep-target's reachability check runs FROM the source, and
