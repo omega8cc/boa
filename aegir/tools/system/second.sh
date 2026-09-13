@@ -66,7 +66,8 @@ if [ -e "/root/.standby.cnf" ]; then
       # window is definitively over once replication runs, so the
       # reboot-proof twin goes: a leftover would hold the marker through a
       # LATER hand promotion, which is exactly what this block is for.
-      rm -f /root/.standby.init.pid
+      # A lost-replica episode, if any, is over too.
+      rm -f /root/.standby.init.pid /run/boa_standby_lost_logged.pid
     elif [ "${_rplRc}" -eq "0" ]; then
       if [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid \
         -mmin -2880 2>/dev/null)" ]; then
@@ -74,10 +75,27 @@ if [ -e "/root/.standby.cnf" ]; then
         # are the record, and a log line per minute would flood the log
         # for the whole seed leg.
         :
-      else
-        rm -f /root/.standby.cnf /root/.standby.init.pid
-        echo "Removed STALE /root/.standby.cnf: probe ran clean, box has NO replica config on $(date)" \
+      elif [ "$(mysql -N -e 'SELECT @@super_read_only' 2>/dev/null | tr -dc '0-9')" = "0" ]; then
+        # No replica config AND the DB unlocked: only a cutover does that
+        # (its step 11.5 clears super_read_only on the promoted box before
+        # step 15 removes the marker), so a marker still here is the
+        # leftover of a step 15 that could not confirm its removal. Drop it.
+        rm -f /root/.standby.cnf /root/.standby.init.pid /run/boa_standby_lost_logged.pid
+        echo "Removed STALE /root/.standby.cnf: probe ran clean, box has NO replica config and its DB is unlocked (promoted) on $(date)" \
           >> /var/log/boa/standby.quiesce.log
+      else
+        # No replica config but the DB still read-only: a LOST replica
+        # (RESET REPLICA ALL by hand, a failed re-init), not a promotion.
+        # Dropping the marker here would un-gate every local writer and
+        # start the web tier on a box that still carries the source's
+        # identity -- a second active. Hold it; the operator decides
+        # ('xmass status' on the active names both recoveries). Logged
+        # once per episode, not per minute.
+        if [ ! -e "/run/boa_standby_lost_logged.pid" ]; then
+          touch /run/boa_standby_lost_logged.pid
+          echo "Standby marker present, NO replica config but the DB is still read-only: a LOST replica, not a promotion -- marker KEPT, VERIFY THIS BOX ('xmass status' on the active names the recovery) on $(date)" \
+            >> /var/log/boa/standby.quiesce.log
+        fi
       fi
     else
       echo "Standby marker present but the role probe FAILED (credentials?) -- no action taken, VERIFY THIS BOX on $(date)" \
