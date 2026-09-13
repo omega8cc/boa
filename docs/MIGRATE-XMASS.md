@@ -311,7 +311,7 @@ Run on the **source**, after `pre-mig` has completed on both hosts and before
 accounts exist and before `init` replaces its datadir:
 
 ```sh
-xmass prep-target target-ip [--fix-php] [--fix-solr]
+xmass prep-target target-ip [--fix-php] [--fix-solr] [--fix-users]
 ```
 
 What it does, in order:
@@ -502,7 +502,10 @@ What `init` does:
    Both `init` and `prep-target` first read the target's marker back and
    hard-refuse a role clash: a target serving as a DIFFERENT source's
    standby is never overlaid (same-source is the normal re-init repair
-   path), `prep-target` refuses ANY standby target, a box that itself
+   path), `prep-target` refuses ANY standby target except for its two repairs
+   (`--fix-solr` reconciles the held Solr set; `--fix-users` re-creates a lost
+   system user of an account installed there -- in either role, nologin and
+   recorded for the promotion's release on a standby), a box that itself
    carries the marker refuses to source a migration, and the probe fails
    CLOSED on a transport error. The in-flight signal tells
    second.sh that an empty role probe is expected until replication
