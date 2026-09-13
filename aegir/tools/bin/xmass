@@ -2803,6 +2803,13 @@ REMOTE
 
 _xmass_stop_solr_source() {
   _info "Stopping Solr on source and disabling it permanently ..."
+  # Record whether THIS run is what denies Solr here: a pre-lock abort's
+  # unwind re-arms only what it took down, never a box that already ran
+  # without Solr (the classifier's own tolerant read of the variable form).
+  if [ ! -e "${_SOLR_DENY_FILE}" ] \
+    && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_JAVA=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
+    _XMASS_SOLR_DENIED=YES
+  fi
   for _svc in solr9 solr7 solr4 jetty9; do
     if [ -x "/etc/init.d/${_svc}" ]; then
       service "${_svc}" stop &>/dev/null || true
@@ -4664,6 +4671,47 @@ _XMASS_WEB_BLOCKED=NO
 # thawed source accepts writes its decoupled replica will never see.
 _XMASS_TARGET_PROMOTED=NO
 
+# Undo the cutover's own quiesce when it refuses BEFORE the MySQL lock (the
+# phase is still 'syncing'): nothing is swapped, the target is still a replica
+# and writes taken here still reach it, so the source is handed back as
+# production instead of sitting dark on a transient -- a lag that never
+# settled, an rsync hiccup, a store DENY -- until a human runs the recipe
+# (ruling 2026-09-13). The recipe stays for the post-lock, promoted and
+# parked-for-resume paths, where the gate is load-bearing. Idempotent.
+_XMASS_SOLR_DENIED=NO       # set by _xmass_stop_solr_source when THIS run denied Solr
+_XMASS_CUT_UNWOUND=NO
+_XMASS_CUT_UNWIND_DUE=NO
+_xmass_cutover_unwind() {
+  [ "${_XMASS_CUT_UNWOUND}" = "YES" ] && return 0
+  _XMASS_CUT_UNWOUND=YES
+  _alrt "Pre-lock abort: the target is NOT promoted and this box is still production"
+  _alrt "-- restoring it to service (503 gate, write flag):"
+  _xmass_remove_http_off_all
+  service nginx reload &> /dev/null
+  _XMASS_WEB_BLOCKED=NO
+  # Nothing is normally frozen this early; a re-run can inherit a flag from
+  # an attempt that died past step 6.
+  if grep -q "xmass migration freeze" "${_XMASS_GLOBAL_INC}" 2>/dev/null; then
+    _xmass_thaw_writes
+  fi
+}
+# The Solr half runs LAST and in a subshell: _xmass_restore_solr_source dies
+# on an unwritable barracuda.cnf, and _die is exit 1 -- inline it would take
+# the cron/runner restore and the abort message down with it.
+_xmass_cutover_unwind_solr() {
+  [ "${_XMASS_SOLR_DENIED}" = "YES" ] || return 0
+  if [ -e /root/.proxy.cnf ] || [ -e /root/.standby.cnf ]; then
+    _alrt "Solr stays denied here; re-enable it by hand: xmass restore-solr"
+    return 0
+  fi
+  if ( _xmass_restore_solr_source ); then
+    _alrt "Source restored to service (Solr re-enabled as reported above). Confirm a"
+  else
+    _alrt "Solr NOT restored (see above); run by hand: xmass restore-solr. Confirm a"
+  fi
+  _alrt "site returns 200, then retry with a fresh DRY run and 'xmass cutover ${_XMASS_TARGET_IP} --live'."
+}
+
 # Every abort after the web block leaves the source down. The operator reads this
 # mid-window, so spell out the restore rather than making them find the runbook.
 _xmass_restore_hint() {
@@ -4684,13 +4732,22 @@ _xmass_restore_hint() {
     _alrt "as production instead -- do NOT follow it if you intend to resume."
   fi
   if [ "${_XMASS_WEB_BLOCKED}" = "YES" ]; then
-    _alrt "SOURCE IS STILL SERVING 503. To restore service on the SOURCE:"
-    _alrt '    rm -f /data/disk/*/static/control/http-off.pid'
-    _alrt '    find /var/lib/nginx/speed -type f -delete'
-    _alrt '    service nginx reload'
-    _alrt '    xmass restore-solr   # only if Solr was serving from here -- clears'
-    _alrt '                         # BOTH deny forms and re-arms the init script;'
-    _alrt '                         # clearing the deny by hand is NOT enough'
+    if [ "${_XMASS_TARGET_PROMOTED}" != "YES" ] \
+      && [ "${_XMASS_PHASE}" != "rename-failed" ] \
+      && [ "${_XMASS_PHASE}" != "cutover" ]; then
+      # Pre-lock abort (the phase is still 'syncing'): the gate is OURS and
+      # comes down with us -- lifted below, AFTER the cron/runner arm, so a
+      # failing Solr restore can never cancel this box's return to production.
+      _XMASS_CUT_UNWIND_DUE=YES
+    else
+      _alrt "SOURCE IS STILL SERVING 503. To restore service on the SOURCE:"
+      _alrt '    rm -f /data/disk/*/static/control/http-off.pid'
+      _alrt '    find /var/lib/nginx/speed -type f -delete'
+      _alrt '    service nginx reload'
+      _alrt '    xmass restore-solr   # only if Solr was serving from here -- clears'
+      _alrt '                         # BOTH deny forms and re-arms the init script;'
+      _alrt '                         # clearing the deny by hand is NOT enough'
+    fi
   fi
   if [ "${_XMASS_TARGET_PROMOTED}" = "YES" ] \
     || [ "${_XMASS_PHASE}" = "rename-failed" ]; then
@@ -4716,6 +4773,9 @@ _xmass_restore_hint() {
     # RESUMED keeps its mute, which is why this is the pre-promotion arm.
     _xmass_maint_off
   fi
+  # The gate lift and the thaw go here, once cron and the runners are back:
+  # the freeze paragraph below then reads a cleared include and stays silent.
+  [ "${_XMASS_CUT_UNWIND_DUE}" = "YES" ] && _xmass_cutover_unwind
   # Read the flag from the file, not from a variable: this paragraph must match
   # what is actually in the include at the moment the operator reads it (a
   # barracuda system pass on this box removes the block without a log line).
@@ -4743,7 +4803,11 @@ _xmass_restore_hint() {
     _alrt "    mv -f ${_XMASS_GLOBAL_INC}.bak ${_XMASS_GLOBAL_INC}"
     _alrt "    (no .bak? delete the '# xmass migration freeze' block instead)"
   fi
-  _alrt "Then confirm a site returns 200 before deciding what to do next."
+  if [ "${_XMASS_CUT_UNWIND_DUE}" = "YES" ]; then
+    _xmass_cutover_unwind_solr
+  else
+    _alrt "Then confirm a site returns 200 before deciding what to do next."
+  fi
 }
 
 _xmass_block_web_all() {
@@ -8284,6 +8348,15 @@ _xmass_cmd_cutover() {
   # Last wait before the first source mutation: the standby must hold no run
   # lock and run no installer or dispatch when the promotion lands on it.
   _xmass_wait_target_silent "${_tgt}" "cutover promotes the target" die locks
+
+  # Validate the lag-wait budget BEFORE the first source mutation: a bad
+  # _XMASS_SYNC_MAX_WAIT must refuse here, not die past the web block with
+  # no restore hint (_xmass_wait_for_sync keeps its own checks as backstop).
+  case "${_XMASS_SYNC_MAX_WAIT}" in
+    ''|*[!0-9]*) _die "_XMASS_SYNC_MAX_WAIT must be a whole number of seconds (got '${_XMASS_SYNC_MAX_WAIT}')" ;;
+  esac
+  [ "${_XMASS_SYNC_MAX_WAIT}" -lt 60 ] \
+    && _die "_XMASS_SYNC_MAX_WAIT of ${_XMASS_SYNC_MAX_WAIT}s is too short to be meaningful"
 
   # All gates passed: park cron + runners HERE instead of refusing -- the
   # box's own cron restores a pre-mig-time park within minutes, so demanding

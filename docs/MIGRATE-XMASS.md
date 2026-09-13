@@ -827,8 +827,13 @@ delta pass is short) or `xmass autosync --off` first and re-run.
 xmass status target-ip
 ```
 
-Displays current phase, last sync timestamp, and live replication lag in
-seconds. Aim for lag < 60 s before scheduling cutover.
+Displays current phase, last sync timestamp, and the replica's state: the
+live replication lag in seconds while both threads run, or what stops it —
+a STOPPED thread with its `Last_*_Errno`/`Last_*_Error`, no replica
+configured (with both recoveries, since a promoted target must never be
+re-inited), or the target's own root client refusing (the root-password
+rotation shape, with the re-transfer remedy). Aim for lag < 60 s before
+scheduling cutover.
 
 ### Phase 4 — Cutover (`xmass cutover`)
 
@@ -1196,10 +1201,14 @@ replication user from source
 (`mysql -e "DROP USER IF EXISTS 'xmass_repl'@'target-ip';"`)
 and remove the state file.
 
-**If `cutover` aborts:** the tool prints the full restore recipe for the
-source; follow it rather than doing it from memory. An abort before the write
-freeze leaves the phase at `syncing`, so retrying is a fresh DRY plus `--live`
-with nothing else to undo. An abort at step 7 — and a step-8 failure whose
+**If `cutover` aborts:** an abort BEFORE the MySQL lock (the phase is still
+`syncing`: a lag that never settled, an rsync or store refusal) hands the
+source back by itself — the 503 gate comes down, the write flag (if any) is
+cleared, cron and the runners return, and Solr is re-enabled when the run had
+denied it — so the estate is serving again before the error is read; retrying
+is a fresh DRY plus `--live` with nothing else to undo. From the lock onward
+the tool prints the full restore recipe for the source instead; follow it
+rather than doing it from memory. An abort at step 7 — and a step-8 failure whose
 read-back proves the target is still a replica — unlocks source MySQL **and
 thaws the write freeze itself**; the phase is `cutover`, so retrying is
 `xmass reset-phase syncing`, a fresh DRY, then `--live`. A refusal at step 12
