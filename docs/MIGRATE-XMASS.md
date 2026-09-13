@@ -314,6 +314,12 @@ accounts exist and before `init` replaces its datadir:
 xmass prep-target target-ip [--fix-php] [--fix-solr] [--fix-users]
 ```
 
+`--fix-users` runs a lane of its own: it re-creates a lost system user
+(`<acct>`, `<acct>.ftp`) of an account that IS installed on the target, in
+either role (nologin and recorded for the promotion's release on a standby, the
+tenant shell elsewhere), runs none of the steps below (with `--fix-solr` beside
+it the Solr reconcile rides along), and is refused together with `--fix-php`.
+
 What it does, in order:
 
 0. **Tool refresh + same-release gate** — forces the migration tool set
@@ -875,8 +881,9 @@ first change to the source):
 - **Then** stops cron and parks the five BOA runners itself. The box's own cron
   restores a park done at `pre-mig` time within minutes, so parking here — not
   refusing and asking the operator to re-park — is what makes the window
-  reliable. If the cutover aborts after this point, the printed restore recipe
-  covers it.
+  reliable. If the cutover aborts after this point but before the MySQL lock,
+  it restores cron, the runners and the 503 gate itself; from the lock onward
+  the printed restore recipe covers it.
 
 **Cutover sequence:**
 
@@ -920,11 +927,15 @@ the target is provably still a replica; a committed promotion parks resumably,
 and an unreadable target keeps the freeze with explicit instructions (see the
 step table above).
 
-Source sites remain on 503 (`http-off.pid` in place). Every abort that happens
-after the web block prints the exact commands to restore service on the source,
-so follow the printed recipe rather than reconstructing it: clear the
-`http-off.pid` files, purge the nginx speed cache, reload nginx, remove the Solr
-deny file if Solr served from here, start cron, and un-park the five runners.
+An abort BEFORE the MySQL lock (the phase is still `syncing`) hands the source
+back by itself: the 503 gate comes down, cron and the runners return, Solr is
+re-enabled when the run had denied it, and no recipe is printed (see "Aborting
+or Starting Over"). From the lock onward — phase `cutover`, a promoted target,
+or a park at `rename-failed` — the source stays on 503 (`http-off.pid` in place)
+and the tool prints the exact commands to restore service, so follow the printed
+recipe rather than reconstructing it: clear the `http-off.pid` files, purge the
+nginx speed cache, reload nginx, remove the Solr deny file if Solr served from
+here, start cron, and un-park the five runners.
 When the write freeze is still in place as the recipe prints (a post-promotion
 park), the recipe includes the thaw line and says when it is safe to use it:
 thaw only to abandon the cutover and keep the source as production — after the
