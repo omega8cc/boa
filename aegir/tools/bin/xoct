@@ -3126,7 +3126,10 @@ _xoct_push_peer_record() {
   fi
   _my="$(_mig_my_ip)"
   _myall="$(_mig_my_ips)"
-  ssh root@"${_pip}" "bash -s" <<PEERREC
+  _xoct_learn_peer_host_key "${_pip}"
+  _XOCT_PUSH_ERR=""
+  local _perr="/tmp/.xoct-push-err.$$"
+  ssh root@"${_pip}" "bash -s" 2>"${_perr}" <<PEERREC
 set -e
 _cnf="/data/disk/${_pacct}/log/migproxy.cnf"
 if [ -r "\${_cnf}" ] \\
@@ -3154,6 +3157,13 @@ mv -f "\${_cnf}.new.\$\$" "\${_cnf}"
 chown root:root "\${_cnf}" 2>/dev/null || true
 chmod 600 "\${_cnf}"
 PEERREC
+  local _prc=$?
+  ### The remote stderr is what names the cause a refusal must show (a host
+  ### key, a refused connection, a full disk); keep its first line.
+  _XOCT_PUSH_ERR="$(head -n1 "${_perr}" 2>/dev/null | tr -d '\r')"
+  [ -s "${_perr}" ] && [ "${_prc}" != "0" ] && [ "${_prc}" != "7" ] && cat "${_perr}" >&2
+  rm -f "${_perr}"
+  return "${_prc}"
 }
 
 ### Run reconcile on a peer so its trust set follows the record just pushed.
@@ -3163,6 +3173,49 @@ _xoct_peer_reconcile() {
   ssh root@"$1" \
     "if [ -x '${_MIG_TRUST_TOOL}' ]; then '${_MIG_TRUST_TOOL}' reconcile; else echo 'reconcile tool absent on peer (older BOA); trust left as found'; fi" \
     2>/dev/null
+}
+
+### What THIS box can arrange for itself before the first ssh to a peer it has
+### never met: the retarget after a promotion is exactly that case -- the
+### promoted mirror is a box this proxy holds no host key for, and the push
+### died as 'Host key verification failed' with nothing naming the cause.
+### Mirrors _xmass_prepare_target_reach in xmass (master and satellite copies
+### stay in step, not DRY-ed). The trust the PEER must grant is not fixable
+### from here; the refusal names it instead.
+_xoct_learn_peer_host_key() {
+  local _p="$1"
+  _mig_valid_ip "${_p}" || return 0
+  ssh-keygen -F "${_p}" > /dev/null 2>&1 && return 0
+  mkdir -p /root/.ssh
+  chmod 700 /root/.ssh
+  ssh-keyscan -H -T 10 "${_p}" >> /root/.ssh/known_hosts 2>/dev/null
+  if ssh-keygen -F "${_p}" > /dev/null 2>&1; then
+    echo "INFO: learned the host key for peer ${_p}"
+  else
+    echo "ALRT: could not learn the host key for ${_p} -- unreachable on 22?"
+  fi
+  return 0
+}
+
+### The peer did not take the record. The branch below is fail-closed for
+### more than one cause (a truncated write on a full disk trips it too), so
+### enumerate rather than assert: after a promotion the USUAL cause is that
+### the box does not let this proxy in yet -- the cutover carries the
+### demoted box's inbound proxies' reach forward, an older one did not.
+### Never tell the operator to pre-wire the SERVING trust: xoct wires that
+### itself once the push lands, and a hand-wired entry is one no record
+### accounts for.
+_xoct_peer_trust_remedy() {
+  local _p="$1" _me _one
+  _me="$(_mig_my_ips)"
+  echo "ERROR: peer ${_p} did not accept the record${_XOCT_PUSH_ERR:+ (ssh said: ${_XOCT_PUSH_ERR})}."
+  echo "ERROR: After a promotion the usual cause is that ${_p} does not let this proxy in yet"
+  echo "ERROR: (a cutover older than the reach carry). Three checks ON ${_p}, then re-run here:"
+  echo "ERROR:   1. this box's /root/.ssh/id_ed25519.pub is in its /root/.ssh/authorized_keys"
+  for _one in ${_me}; do
+    echo "ERROR:   2. csf -a ${_one}   # port 22, for this control-plane ssh"
+  done
+  echo "ERROR:   3. free disk under /data/disk there -- the record write is fail-closed on a truncated file"
 }
 
 ### Wire the migration-proxy trust on the TARGET (never on this source box:
@@ -3303,6 +3356,7 @@ _xoct_proxy_preflight() {
     ;;
     *)
       echo "ERROR: could not write the policy record on peer ${_tgt} -- refusing to proxy"
+      _xoct_peer_trust_remedy "${_tgt}"
       exit 1
     ;;
   esac
