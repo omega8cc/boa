@@ -518,7 +518,12 @@ What `init` does:
    starts. second.sh mirrors it to a reboot-proof twin
    (`/root/.standby.init.pid`), so a target reboot inside the window
    cannot license promotion; both clear once the replica runs, or when the
-   marker goes, and both age out under a dead init.
+   marker goes, and both age out under a dead init. Outside that window a
+   leftover marker self-removes only on a box whose database the cutover
+   already unlocked (step 11.5); a standby that merely lost its replica
+   config while still read-only keeps the marker and is logged once — a
+   lost replica, not a promotion — and `xmass status` on the source names
+   the recovery.
 5b. **Purges unfinished `delete` tasks** from every eligible account's
    hostmaster queue before the databases travel: the whole panel DB
    replicates, cutover runs the task queue with force on the target, and a

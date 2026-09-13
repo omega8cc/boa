@@ -7421,8 +7421,9 @@ _xmass_cmd_init() {
   # before the datadir swap) stays for the whole standby life: runner.sh
   # parks the queue and the Aegir dispatch on it, the per-job gates hold
   # every local writer, and second.sh self-removes it only when the box is
-  # definitively no replica. Cutover step 15 removes it; post-mig clears a
-  # leftover.
+  # definitively no replica AND its DB is unlocked (a promotion's witness:
+  # a standby that merely lost its replica config keeps it). Cutover step
+  # 15 removes it; post-mig clears a leftover.
   ssh -o ConnectTimeout=10 root@"${_tgt}" \
     "[ -e /root/.standby.cnf ] || echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf; rm -f /run/boa_xmass_init.pid; true" &> /dev/null
   if ssh -o ConnectTimeout=10 root@"${_tgt}" "test -e /root/.standby.cnf" 2> /dev/null; then
@@ -8360,7 +8361,8 @@ REMOTE
     _alrt "run there NOW, by hand:"
     _alrt "    rm -f /root/.standby.cnf; service cron start"
     _alrt "(the second.sh watchdog also self-removes the marker once it sees"
-    _alrt " the box is definitively no replica, but only while cron runs)"
+    _alrt " the box is definitively no replica AND its DB unlocked -- step 11.5"
+    _alrt " did that here -- but only while cron runs)"
   fi
 
   # The freeze belongs to the OLD box. Never let the new production box come up
