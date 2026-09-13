@@ -7201,6 +7201,21 @@ _xmass_cmd_init() {
   # the target's accounts with 'xoct create' by hand), and even after a clean
   # prep-target a tag on the rolling branches can move either box since.
   _xmass_assert_same_release "${_tgt}"
+  # The Percona version gate is a cheap read on both ends: it belongs HERE,
+  # with the release assert, not after the silence wait -- a cross-version
+  # pair used to drop the target's pre-pass backups, clear its pending
+  # delete tasks and set its standby marker before refusing (ring-84 drill).
+  _xmass_detect_percona_version
+  local _tgt_v
+  _tgt_v=$(ssh root@"${_tgt}" "mysql -V 2>&1" 2>/dev/null \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
+  if [ "${_tgt_v}" != "${_XMASS_PERCONA_V}" ]; then
+    _die "Target Percona version (${_tgt_v}) does not match source (${_XMASS_PERCONA_V})." \
+         " xmass requires identical versions on both servers. Use xoct instead."
+  fi
+  _info "Percona version match (${_XMASS_PERCONA_V}) on both servers: OK"
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
   # Solr's point of no return is HERE, not at cutover: the first sync lands
@@ -7297,20 +7312,6 @@ _xmass_cmd_init() {
   # travel, named BEFORE any data moves. The binding per-store gates run
   # inside the sync/cutover legs.
   _xmass_report_out_links
-
-  _xmass_detect_percona_version
-
-  # Verify target runs the same Percona version
-  local _tgt_v
-  _tgt_v=$(ssh root@"${_tgt}" "mysql -V 2>&1" 2>/dev/null \
-    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
-    | head -1 \
-    | cut -d"." -f1,2)
-  if [ "${_tgt_v}" != "${_XMASS_PERCONA_V}" ]; then
-    _die "Target Percona version (${_tgt_v}) does not match source (${_XMASS_PERCONA_V})." \
-         " xmass requires identical versions on both servers. Use xoct instead."
-  fi
-  _info "Percona version match (${_XMASS_PERCONA_V}) on both servers: OK"
 
   # Patch-level gate, SERVER-side (mysql -V above reports the CLIENT, which
   # is fine for the series switch but blind to the daemon's patch). Guests
