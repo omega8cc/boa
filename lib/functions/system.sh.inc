@@ -987,8 +987,13 @@ _global_inc_conf_update() {
   cp -af ${_locCnf}/global/global-redis.inc ${_GL_D}/global-redis.inc
   cp -af ${_locCnf}/global/global-newrelic.inc ${_GL_D}/global-newrelic.inc
   cp -af ${_locCnf}/global/global-extra.inc ${_GL_D}/global-extra.inc
-  ### Backdrop-only shared settings (Valkey wiring, visit-cron off); the
-  ### Backdrop settings tpl includes it only when present, so it ships inert.
+  ### Backdrop-only shared settings (Valkey wiring, visit-cron off, the
+  ### suspend and http-off 503 short-circuits); the Backdrop settings tpl
+  ### includes it only when present, so it ships inert. It now blocks
+  ### requests, so keep the previous copy like the per-core chain does.
+  if [ -e "${_GL_D}/global-bd.inc" ]; then
+    cp -af ${_GL_D}/global-bd.inc ${_GL_D}/global-bd.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+  fi
   cp -af ${_locCnf}/global/global-bd.inc ${_GL_D}/global-bd.inc
   ### The legacy-path dispatcher is deployed LAST: it only hands off to the
   ### per-core chain above, so it must never land without the chain present.

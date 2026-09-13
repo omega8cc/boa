@@ -1448,28 +1448,190 @@ _xmass_solr_coverage_gate() {
 ### users + install stamps), not just as rsync-created trees. $2: die | deny.
 _xmass_verify_target_accounts() {
   local _t="$1" _on_missing="${2:-die}" _oct _bad="" _out
+  local _idonly=""
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
-    _out=$(ssh root@"${_t}" "getent passwd ${_oct} >/dev/null 2>&1 \
-      && getent passwd ${_oct}.ftp >/dev/null 2>&1 \
-      && [ -e /data/disk/${_oct}/log/octopus_log.txt ] \
-      && [ -e /data/disk/${_oct}/config/includes/nginx_vhost_common.conf ] \
-      && [ -e /root/.${_oct}.octopus.cnf ] \
-      && echo XMACCT-PRESENT" 2>/dev/null)
+    # Two failure classes, two remedies: an account never installed there
+    # (no cnf, vhost include or octopus_log -- prep-target installs it) and
+    # an installed account that only lost a system identity (prep-target
+    # --fix-users re-creates it, in either role).
+    _out=$(ssh root@"${_t}" "_m=''; \
+      getent passwd ${_oct} >/dev/null 2>&1 || _m=\"\${_m} user\"; \
+      getent passwd ${_oct}.ftp >/dev/null 2>&1 || _m=\"\${_m} user.ftp\"; \
+      [ -e /data/disk/${_oct}/log/octopus_log.txt ] || _m=\"\${_m} octopus_log\"; \
+      [ -e /data/disk/${_oct}/config/includes/nginx_vhost_common.conf ] || _m=\"\${_m} vhost\"; \
+      [ -e /root/.${_oct}.octopus.cnf ] || _m=\"\${_m} cnf\"; \
+      if [ -z \"\${_m}\" ]; then echo XMACCT-PRESENT; else echo \"XMACCT-MISSING:\${_m}\"; fi" 2>/dev/null)
     # Exact-line match: shell login noise around the token (a .bashrc echo
     # on the target) must not read as a missing account.
-    printf '%s\n' "${_out}" | grep -qx "XMACCT-PRESENT" || _bad="${_bad} ${_oct}"
+    if ! printf '%s\n' "${_out}" | grep -qx "XMACCT-PRESENT"; then
+      _bad="${_bad} ${_oct}"
+      case "$(printf '%s\n' "${_out}" | grep -m1 '^XMACCT-MISSING:')" in
+        "") : ;;
+        *octopus_log*|*vhost*|*cnf*) : ;;
+        *) _idonly="${_idonly} ${_oct}" ;;
+      esac
+    fi
   done
-  _bad="${_bad## }"
+  _bad="${_bad## }"; _idonly="${_idonly## }"
   [ -z "${_bad}" ] && { _info "All eligible accounts installed on ${_t}: OK"; return 0; }
   if [ "${_on_missing}" = "deny" ]; then
     _alrt "DENY: account(s) missing or incomplete on target ${_t}: ${_bad}"
     _alrt "DENY: rsync into a never-installed account creates a root-owned tree with no"
     _alrt "DENY: system user, no FPM pool and no vhost include -- run 'xmass prep-target ${_t}'"
+    [ -n "${_idonly}" ] \
+      && _alrt "DENY: installed but missing a system user (${_idonly}): 'xmass prep-target ${_t} --fix-users'"
     _XMASS_NOT_CLEAN=YES
     return 1
   fi
+  if [ -n "${_idonly}" ] && [ "${_idonly}" = "${_bad}" ]; then
+    _die "account(s) installed on target ${_t} but missing a system user: ${_bad}." \
+         " Re-create it with 'xmass prep-target ${_t} --fix-users' (no install, no re-seed)."
+  fi
   _die "account(s) missing or incomplete on target ${_t}: ${_bad}." \
-       " Run 'xmass prep-target ${_t}' to install and seed them first."
+       " Run 'xmass prep-target ${_t}' to install and seed them first${_idonly:+ (installed but missing only a system user: ${_idonly} -- 'xmass prep-target ${_t} --fix-users')}."
+}
+
+### Re-create a MISSING system identity (<acct>, <acct>.ftp) of an account that
+### IS a real install on the target. The gate above names two remedies for two
+### shapes; this is the second one's: an installed account whose passwd entry
+### was lost has no route back -- octopus refuses on a standby by design and
+### skips proxied accounts on a demoted box, manage_ltd_users only ever mints
+### clients/ sub-users, and xoct's present-probe keys on <acct> alone. Shape
+### by ROLE, read off the target: under /root/.standby.cnf the identity is
+### born nologin and recorded FIRST so the promotion's release restores it
+### (manage_ltd_users' held-standby contract) -- and only recorded when the
+### source's own shell for it is a tenant shell, so a tenant the source
+### suspended stays suspended; on any other target it gets the box's tenant
+### shell as satellite would. The group comes from the surviving sibling
+### identity (satellite's per-instance verdict is baked into it), the uid
+### from the orphaned tree. No password is minted: _xmass_sync_shell_credentials
+### carries the source's hash. Never installs an account.
+_xmass_repair_target_identities() {
+  local _t="$1" _oct _out _rc _srcsh _fixed="" _left="" _healthy=0
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    case "${_oct}" in
+      *[!a-zA-Z0-9._-]*)
+        _alrt "refusing to splice a malformed account name into a remote shell"
+        continue ;;
+    esac
+    _srcsh=$(getent passwd "${_oct}.ftp" 2>/dev/null | cut -d: -f7)
+    if [ -z "${_srcsh}" ]; then
+      # No shell to mirror means no hold decision can be right: skip, loudly.
+      _alrt "  ${_oct}: cannot read ${_oct}.ftp's shell on this source; not repairing"
+      _left="${_left} ${_oct}"
+      continue
+    fi
+    _out=$(ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" \
+      "_A='${_oct}' _SRCSH='${_srcsh}' bash -s" <<'REMOTE'
+[ -e "/root/.${_A}.octopus.cnf" ] \
+  && [ -e "/data/disk/${_A}/config/includes/nginx_vhost_common.conf" ] \
+  && [ -e "/data/disk/${_A}/log/octopus_log.txt" ] \
+  || { echo "XMID-NOTINSTALLED"; exit 0; }
+_STANDBY=NO
+[ -e /root/.standby.cnf ] && _STANDBY=YES
+_NOLOGIN=/usr/sbin/nologin
+[ -x "${_NOLOGIN}" ] || _NOLOGIN=/bin/false
+if [ -e /usr/bin/mysecureshell ] && [ -e /etc/ssh/sftp_config ]; then
+  _TENANT=/usr/bin/mysecureshell
+else
+  _TENANT=/usr/bin/lshell
+fi
+_DONE=""
+for _I in "${_A}" "${_A}.ftp"; do
+  getent passwd "${_I}" > /dev/null 2>&1 && continue
+  # The account's OTHER identity is the system of record for the group on
+  # this box; box-wide 'users' only when there is no sibling to read.
+  _SIB="${_A}.ftp"; [ "${_I}" = "${_A}.ftp" ] && _SIB="${_A}"
+  _G=$(getent passwd "${_SIB}" 2>/dev/null | cut -d: -f4)
+  [ -n "${_G}" ] && _G=$(getent group "${_G}" 2>/dev/null | cut -d: -f1)
+  # both identities gone: the account's own per-instance group, if it exists
+  [ -n "${_G}" ] || { getent group "${_A}" > /dev/null 2>&1 && _G="${_A}"; }
+  [ -n "${_G}" ] || _G=users
+  if [ "${_I}" = "${_A}" ]; then
+    _H="/data/disk/${_A}"; _S="${_NOLOGIN}"
+  else
+    _H="/home/${_A}.ftp"
+    if [ "${_STANDBY}" = "YES" ]; then
+      _S="${_NOLOGIN}"
+      # Record only what the hold would have held: a tenant shell on the
+      # source. A source-side nologin is a suspension, not ours to lift.
+      case "${_SRCSH}" in
+        /usr/bin/lshell|/usr/bin/mysecureshell)
+          mkdir -p /var/log/boa 2>/dev/null
+          grep -qxF "${_I}" /var/log/boa/standby-held-shells.txt 2>/dev/null \
+            || echo "${_I}" >> /var/log/boa/standby-held-shells.txt
+          grep -qxF "${_I}" /var/log/boa/standby-held-shells.txt 2>/dev/null \
+            || { echo "XMID-FAILED: ${_I} could not be recorded as held; not created"; continue; }
+        ;;
+      esac
+    else
+      _S="${_TENANT}"
+      case "${_SRCSH}" in /usr/sbin/nologin|/bin/false) _S="${_SRCSH}" ;; esac
+    fi
+  fi
+  # Re-adopt the uid the orphaned tree still carries, or the repair leaves
+  # every file on the box owned by a number with no name.
+  _U=$(stat -c %u "${_H}" 2>/dev/null)
+  case "${_U}" in
+    ''|*[!0-9]*|0) _U="" ;;
+    *) getent passwd "${_U}" > /dev/null 2>&1 && _U="" ;;
+  esac
+  find /etc/[a-z]*\.lock -maxdepth 1 -type f -exec rm -f {} \; &> /dev/null
+  if [ -d "${_H}" ]; then
+    useradd ${_U:+-u ${_U}} -d "${_H}" -s "${_S}" -M -N -r -g "${_G}" "${_I}" \
+      || { echo "XMID-FAILED: useradd ${_I}"; continue; }
+  else
+    useradd ${_U:+-u ${_U}} -d "${_H}" -s "${_S}" -m -N -r -g "${_G}" "${_I}" \
+      || { echo "XMID-FAILED: useradd ${_I}"; continue; }
+  fi
+  usermod -aG users "${_I}" > /dev/null 2>&1
+  adduser "${_I}" www-data > /dev/null 2>&1
+  [ "${_I}" = "${_A}.ftp" ] && usermod -aG lshellg "${_I}" > /dev/null 2>&1
+  echo "$(date) xmass identity repair: ${_I} re-created (shell ${_S}, standby=${_STANDBY})" \
+    >> /var/log/boa/manage_ltd.incident.log
+  _DONE="${_DONE} ${_I}"
+done
+[ -n "${_DONE}" ] && echo "XMID-REPAIRED:${_DONE# }"
+exit 0
+REMOTE
+)
+    _rc=$?
+    if [ "${_rc}" -ne 0 ]; then
+      # fail CLOSED: a dead ssh is not a healthy account
+      _alrt "  ${_oct}: could not reach ${_t} (ssh rc=${_rc})"
+      _left="${_left} ${_oct}"
+      continue
+    fi
+    printf '%s\n' "${_out}" | grep -v '^XMID-REPAIRED:' | grep -v '^XMID-NOTINSTALLED$' | grep -v '^$'
+    case "${_out}" in
+      *XMID-NOTINSTALLED*)
+        _alrt "  ${_oct}: not installed on ${_t} -- prep-target (no flags) owns that, after promotion if it is a standby"
+        continue ;;
+    esac
+    case "${_out}" in
+      *XMID-FAILED*) _left="${_left} ${_oct}" ;;
+      *XMID-REPAIRED*) : ;;
+      *) _healthy=$(( _healthy + 1 )) ;;
+    esac
+    case "${_out}" in
+      *XMID-REPAIRED*)
+        _fixed="${_fixed} ${_oct}"
+        _info "  ${_oct}: identity re-created on ${_t}: $(printf '%s\n' "${_out}" | grep -m1 '^XMID-REPAIRED:' | cut -d: -f2-)"
+        _xmass_sync_shell_credentials "${_oct}" "${_t}" ;;
+    esac
+  done
+  if [ -n "${_left}" ]; then
+    _alrt "identity repair failed on ${_t} for:${_left} -- read the lines above"
+    return 1
+  fi
+  if [ -z "${_fixed}" ]; then
+    if [ "${_healthy}" -gt 0 ]; then
+      _info "No account identity missing on ${_t}: nothing to repair (${_healthy} account(s) complete)"
+    else
+      _alrt "nothing repaired and no account found complete on ${_t} -- read the lines above"
+    fi
+  fi
+  return 0
 }
 
 ### Merge the account-portable octopus.cnf lines from the source cnf into the
@@ -2424,16 +2586,18 @@ SQLEOF
 # performance_schema ON the session view remains the proof and a plain
 # session still fails closed -- the grant reading is used only where the
 # session view cannot testify.
-_xmass_repl_tls_witness() {   # 1 = target ip
+_xmass_repl_tls_witness() {   # 1 = target ip; verdict in _XM_TLS_VERDICT, readings in _XM_TLS_*
+  # Called as a plain command, never in $( ): the readings the die below
+  # quotes are globals, and a subshell would leave every one of them '?'.
   local _t="$1"
-  _XM_TLS_ALLOWED=""; _XM_TLS_CT=""; _XM_TLS_PS=""; _XM_TLS_GRANT=""; _XM_TLS_IO=""
+  _XM_TLS_VERDICT=""; _XM_TLS_ALLOWED=""; _XM_TLS_CT=""; _XM_TLS_PS=""; _XM_TLS_GRANT=""; _XM_TLS_IO=""
   _XM_TLS_ALLOWED=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
     "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
      | grep '${_XM_SSL_FIELD}:' | awk '{print \$2}'" 2>/dev/null)
   _XM_TLS_CT=$(mysql --defaults-file=/root/.my.cnf -sNe \
     "SELECT connection_type FROM performance_schema.threads WHERE processlist_user='${_REPL_USER}' AND connection_type IS NOT NULL ORDER BY thread_id DESC LIMIT 1" 2>/dev/null)
   if [ "${_XM_TLS_ALLOWED}" = "Yes" ] && [ "${_XM_TLS_CT}" = "SSL/TLS" ]; then
-    echo SESSION
+    _XM_TLS_VERDICT=SESSION
     return 0
   fi
   _XM_TLS_PS=$(mysql --defaults-file=/root/.my.cnf -sNe "SELECT @@performance_schema" 2>/dev/null)
@@ -2444,11 +2608,12 @@ _xmass_repl_tls_witness() {   # 1 = target ip
       "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>/dev/null \
        | grep '${_XM_IO_FIELD}:' | awk '{print \$2}'" 2>/dev/null)
     if [ "${_XM_TLS_GRANT}" = "ANY" ] && [ "${_XM_TLS_IO}" = "Yes" ]; then
-      echo GRANT
+      _XM_TLS_VERDICT=GRANT
       return 0
     fi
   fi
-  if [ -z "${_XM_TLS_ALLOWED}" ] && [ -z "${_XM_TLS_CT}" ]; then echo NONE; else echo PLAIN; fi
+  if [ -z "${_XM_TLS_ALLOWED}" ] && [ -z "${_XM_TLS_CT}" ]; then _XM_TLS_VERDICT=NONE; else _XM_TLS_VERDICT=PLAIN; fi
+  return 0
 }
 
 # Prove the running replica's stream is TLS, from the source's own view and
@@ -2457,7 +2622,8 @@ _xmass_repl_tls_witness() {   # 1 = target ip
 # clear" must not leave the replica pulling them while the operator reads it.
 _xmass_verify_replication_tls() {
   [ "$(_xmass_tls_mode)" = "PLAIN" ] && { _alrt "Replication transport: PLAIN (deliberate)"; return 0; }
-  case "$(_xmass_repl_tls_witness "${_tgt}")" in
+  _xmass_repl_tls_witness "${_tgt}"
+  case "${_XM_TLS_VERDICT}" in
     SESSION)
       _info "Replication transport: TLS (${_XM_SSL_FIELD}=Yes on target, source session connection_type=SSL/TLS)"
       return 0 ;;
@@ -2799,6 +2965,13 @@ REMOTE
 
 _xmass_stop_solr_source() {
   _info "Stopping Solr on source and disabling it permanently ..."
+  # Record whether THIS run is what denies Solr here: a pre-lock abort's
+  # unwind re-arms only what it took down, never a box that already ran
+  # without Solr (the classifier's own tolerant read of the variable form).
+  if [ ! -e "${_SOLR_DENY_FILE}" ] \
+    && ! grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_JAVA=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
+    _XMASS_SOLR_DENIED=YES
+  fi
   for _svc in solr9 solr7 solr4 jetty9; do
     if [ -x "/etc/init.d/${_svc}" ]; then
       service "${_svc}" stop &>/dev/null || true
@@ -4495,6 +4668,65 @@ _xmass_get_repl_lag() {
     | grep '${_XM_LAG_FIELD}' | awk '{print \$2}'" 2>/dev/null
 }
 
+# Status's own reading of the replica in ONE remote call. The lag figure alone
+# cannot tell a refused client from a stopped thread -- both come back
+# non-numeric -- so read the whole block and leave a verdict in globals; the
+# caller runs this in its own shell, never in $( ), or the readings are lost.
+# RUNNING (both threads Yes, numeric lag), STOPPED (readable, a thread not
+# Yes, with Last_*_Errno/Error -- the same names in both dialects), ABSENT
+# (client fine, no replica configured), DENIED (the target's own client
+# refused: the root-rotation shape), UNREACHABLE (no ssh), UNKNOWN (threads
+# Yes, no figure). Read-only; the cutover keeps _xmass_get_repl_lag and its
+# fail-closed aborts.
+_xmass_repl_probe() {   # 1 = target ip
+  local _t="$1" _out _rc
+  _XM_REPL_VERDICT=""; _XM_REPL_LAG=""; _XM_REPL_IO=""; _XM_REPL_SQL=""
+  _XM_REPL_ERRNO=""; _XM_REPL_ERR=""; _XM_REPL_CLIENT=""
+  _out=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
+    "mysql --defaults-file=/root/.my.cnf -e \"${_XM_SHOW_STATUS}\G\" 2>&1" 2>&1)
+  _rc=$?
+  if [ "${_rc}" = "255" ]; then
+    _XM_REPL_CLIENT=$(printf '%s\n' "${_out}" | head -n1)
+    _XM_REPL_VERDICT=UNREACHABLE
+    return 0
+  fi
+  if [ "${_rc}" != "0" ]; then
+    # The client spoke and refused -- keep its own words: 'Access denied' is
+    # the rotation, "Can't connect" a stopped server there.
+    _XM_REPL_CLIENT=$(printf '%s\n' "${_out}" | grep -m1 'ERROR')
+    [ -n "${_XM_REPL_CLIENT}" ] || _XM_REPL_CLIENT=$(printf '%s\n' "${_out}" | head -n1)
+    _XM_REPL_VERDICT=DENIED
+    return 0
+  fi
+  # No IO field in a readable reply: not a replica here (a client warning
+  # line is not a stopped thread).
+  if ! printf '%s\n' "${_out}" | grep -q "${_XM_IO_FIELD}:"; then
+    _XM_REPL_VERDICT=ABSENT
+    return 0
+  fi
+  _XM_REPL_IO=$(printf '%s\n' "${_out}" | grep -m1 "${_XM_IO_FIELD}:" | awk '{print $2}')
+  _XM_REPL_SQL=$(printf '%s\n' "${_out}" | grep -m1 "${_XM_SQL_FIELD}:" | awk '{print $2}')
+  _XM_REPL_LAG=$(printf '%s\n' "${_out}" | grep -m1 "${_XM_LAG_FIELD}:" | awk '{print $2}')
+  if [ "${_XM_REPL_SQL}" != "Yes" ] || [ "${_XM_REPL_IO}" != "Yes" ]; then
+    # Name the thread that broke; a stopped SQL thread outranks an IO thread
+    # that merely followed it down.
+    if [ "${_XM_REPL_SQL}" != "Yes" ]; then
+      _XM_REPL_ERRNO=$(printf '%s\n' "${_out}" | grep -m1 'Last_SQL_Errno:' | awk '{print $2}')
+      _XM_REPL_ERR=$(printf '%s\n' "${_out}" | sed -n 's/^ *Last_SQL_Error: //p' | head -n1)
+    else
+      _XM_REPL_ERRNO=$(printf '%s\n' "${_out}" | grep -m1 'Last_IO_Errno:' | awk '{print $2}')
+      _XM_REPL_ERR=$(printf '%s\n' "${_out}" | sed -n 's/^ *Last_IO_Error: //p' | head -n1)
+    fi
+    _XM_REPL_VERDICT=STOPPED
+    return 0
+  fi
+  case "${_XM_REPL_LAG}" in
+    ''|*[!0-9]*) _XM_REPL_VERDICT=UNKNOWN ;;
+    *)           _XM_REPL_VERDICT=RUNNING ;;
+  esac
+  return 0
+}
+
 # Say whether waiting longer would actually have helped. A replica that is falling
 # further behind will never catch up by extending the timeout, and the operator is
 # mid-outage with the web already blocked when they read this.
@@ -4601,6 +4833,54 @@ _XMASS_WEB_BLOCKED=NO
 # thawed source accepts writes its decoupled replica will never see.
 _XMASS_TARGET_PROMOTED=NO
 
+# Undo the cutover's own quiesce when it refuses BEFORE the MySQL lock (the
+# phase is still 'syncing'): nothing is swapped, the target is still a replica
+# and writes taken here still reach it, so the source is handed back as
+# production instead of sitting dark on a transient -- a lag that never
+# settled, an rsync hiccup, a store DENY -- until a human runs the recipe
+# (ruling 2026-09-13). The recipe stays for the post-lock, promoted and
+# parked-for-resume paths, where the gate is load-bearing. Idempotent.
+_XMASS_SOLR_DENIED=NO       # set by _xmass_stop_solr_source when THIS run denied Solr
+_XMASS_CUT_UNWOUND=NO
+_XMASS_CUT_UNWIND_DUE=NO
+_xmass_cutover_unwind() {
+  [ "${_XMASS_CUT_UNWOUND}" = "YES" ] && return 0
+  _XMASS_CUT_UNWOUND=YES
+  _alrt "Pre-lock abort: the target is NOT promoted and this box is still production"
+  _alrt "-- restoring it to service (503 gate, write flag):"
+  _xmass_remove_http_off_all
+  service nginx reload &> /dev/null
+  _XMASS_WEB_BLOCKED=NO
+  # Nothing is normally frozen this early; a re-run can inherit a flag from
+  # an attempt that died past step 6.
+  if grep -q "xmass migration freeze" "${_XMASS_GLOBAL_INC}" 2>/dev/null; then
+    _xmass_thaw_writes
+  fi
+}
+# The Solr half runs LAST and in a subshell: _xmass_restore_solr_source dies
+# on an unwritable barracuda.cnf, and _die is exit 1 -- inline it would take
+# the cron/runner restore and the abort message down with it.
+_xmass_cutover_unwind_solr() {
+  if [ "${_XMASS_SOLR_DENIED}" != "YES" ]; then
+    # Not ours to re-arm -- but a box handed back as production with Solr
+    # down deserves a word (a previous unwind's failed restore leaves this).
+    if [ -e "${_SOLR_DENY_FILE}" ] \
+      || grep -qiE "^[[:space:]]*(export[[:space:]]+)?_DENY_JAVA=[\"' ]*YES" /root/.barracuda.cnf 2>/dev/null; then
+      _alrt "Solr is denied on this box and this run did not deny it -- 'xmass restore-solr' if it should serve here"
+    fi
+    return 0
+  fi
+  if [ -e /root/.proxy.cnf ] || [ -e /root/.standby.cnf ]; then
+    _alrt "Solr stays denied here; re-enable it by hand: xmass restore-solr"
+    return 0
+  fi
+  if ( _xmass_restore_solr_source ); then
+    _alrt "Solr deny cleared; whether a service started is reported above"
+  else
+    _alrt "Solr NOT restored (see above); run by hand: xmass restore-solr"
+  fi
+}
+
 # Every abort after the web block leaves the source down. The operator reads this
 # mid-window, so spell out the restore rather than making them find the runbook.
 _xmass_restore_hint() {
@@ -4621,13 +4901,22 @@ _xmass_restore_hint() {
     _alrt "as production instead -- do NOT follow it if you intend to resume."
   fi
   if [ "${_XMASS_WEB_BLOCKED}" = "YES" ]; then
-    _alrt "SOURCE IS STILL SERVING 503. To restore service on the SOURCE:"
-    _alrt '    rm -f /data/disk/*/static/control/http-off.pid'
-    _alrt '    find /var/lib/nginx/speed -type f -delete'
-    _alrt '    service nginx reload'
-    _alrt '    xmass restore-solr   # only if Solr was serving from here -- clears'
-    _alrt '                         # BOTH deny forms and re-arms the init script;'
-    _alrt '                         # clearing the deny by hand is NOT enough'
+    if [ "${_XMASS_TARGET_PROMOTED}" != "YES" ] \
+      && [ "${_XMASS_PHASE}" != "rename-failed" ] \
+      && [ "${_XMASS_PHASE}" != "cutover" ]; then
+      # Pre-lock abort (the phase is still 'syncing'): the gate is OURS and
+      # comes down with us -- lifted below, AFTER the cron/runner arm, so a
+      # failing Solr restore can never cancel this box's return to production.
+      _XMASS_CUT_UNWIND_DUE=YES
+    else
+      _alrt "SOURCE IS STILL SERVING 503. To restore service on the SOURCE:"
+      _alrt '    rm -f /data/disk/*/static/control/http-off.pid'
+      _alrt '    find /var/lib/nginx/speed -type f -delete'
+      _alrt '    service nginx reload'
+      _alrt '    xmass restore-solr   # only if Solr was serving from here -- clears'
+      _alrt '                         # BOTH deny forms and re-arms the init script;'
+      _alrt '                         # clearing the deny by hand is NOT enough'
+    fi
   fi
   if [ "${_XMASS_TARGET_PROMOTED}" = "YES" ] \
     || [ "${_XMASS_PHASE}" = "rename-failed" ]; then
@@ -4653,6 +4942,9 @@ _xmass_restore_hint() {
     # RESUMED keeps its mute, which is why this is the pre-promotion arm.
     _xmass_maint_off
   fi
+  # The gate lift and the thaw go here, once cron and the runners are back:
+  # the freeze paragraph below then reads a cleared include and stays silent.
+  [ "${_XMASS_CUT_UNWIND_DUE}" = "YES" ] && _xmass_cutover_unwind
   # Read the flag from the file, not from a variable: this paragraph must match
   # what is actually in the include at the moment the operator reads it (a
   # barracuda system pass on this box removes the block without a log line).
@@ -4680,7 +4972,13 @@ _xmass_restore_hint() {
     _alrt "    mv -f ${_XMASS_GLOBAL_INC}.bak ${_XMASS_GLOBAL_INC}"
     _alrt "    (no .bak? delete the '# xmass migration freeze' block instead)"
   fi
-  _alrt "Then confirm a site returns 200 before deciding what to do next."
+  if [ "${_XMASS_CUT_UNWIND_DUE}" = "YES" ]; then
+    _xmass_cutover_unwind_solr
+    _alrt "Source handed back (503 gate lifted). Confirm a site returns 200, then retry"
+    _alrt "with a fresh DRY run and 'xmass cutover ${_XMASS_TARGET_IP} --live'."
+  else
+    _alrt "Then confirm a site returns 200 before deciding what to do next."
+  fi
 }
 
 _xmass_block_web_all() {
@@ -4966,6 +5264,92 @@ _xmass_setup_migration_proxy_trust() {
   else
     _alrt "Skipping target trust: ${_tool} missing on target ${_tgt} -- realip/csf NOT wired; real-client bans and per-site ip_access will not work through the proxy"
   fi
+}
+
+
+# Step 15.9 teaches the target to trust THIS box. Nothing taught it about the
+# proxies relaying INTO this box, so after a promotion the documented retarget
+# ('xoct proxy <oN> <new-ip> --repair --retarget', run on the proxy box) died
+# at its first ssh -- no host key, no root key, no csf allow -- and the chain
+# kept a silent extra hop. Carry the CONTROL-PLANE reach every inbound peer
+# needs to act on the promoted box: its tagged root key line and the same
+# full-IP csf allow + lfd ignore every migration peer gets, nothing more. The
+# serving trust (the trust file, realip) deliberately does NOT travel:
+# migration_proxy_trust.sh rules that a retired peer holds none, and xoct
+# wires it itself the moment the operator declares a mode and retargets
+# (RET-E05's shape carried through). The peer set is the union of the
+# target-role records this box owns and the trust control file, read while
+# both still exist -- step 16 overwrites the records; a record's whole address
+# set is one peer (the key is tagged with ONE of its addresses). The decision
+# to install a third box's root key on the promoted box is taken here, on the
+# demoted box, which already holds root there: continuity within one pair,
+# not a new trust domain. The key travels in the command environment, base64,
+# never on stdin (stdin is the remote script). Idempotent, never fatal.
+_xmass_carry_inbound_reach() {
+  local _cnf _ip _set _key _kb64 _own _sets="" _a
+  _own="$(hostname -I 2>/dev/null | tr ' ' '\n')"
+  for _cnf in /data/disk/*/log/migproxy.cnf; do
+    [ -e "${_cnf}" ] || continue
+    _mig_is_mine "${_cnf}" || continue
+    [ "$(_mig_get "${_cnf}" _MIG_ROLE)" = "target" ] || continue
+    _set="$(printf '%s\n' $(_mig_get "${_cnf}" _MIG_PEER_IPS) $(_mig_get "${_cnf}" _MIG_PEER_IP) | sort -u | tr '\n' ',')"
+    _sets="${_sets} ${_set%,}"
+  done
+  for _ip in $(cat /root/.migration.proxy.ips.cnf 2>/dev/null); do
+    _sets="${_sets} ${_ip}"
+  done
+  for _set in $(printf '%s\n' ${_sets} | sort -u); do
+    _key=""; _a=""
+    for _ip in ${_set//,/ }; do
+      _mig_valid_ip "${_ip}" || continue
+      [ "${_ip}" = "${_tgt}" ] && continue
+      printf '%s\n' "${_own}" | grep -qxF "${_ip}" && continue
+      _a="${_a} ${_ip}"
+      [ -n "${_key}" ] || _key="$(grep -hF -- "# xmass migration source ${_ip}" /root/.ssh/authorized_keys 2>/dev/null | head -n1)"
+    done
+    [ -n "${_a}" ] || continue
+    _info "Carrying inbound migration-proxy reach to ${_tgt} for peer${_a} (root key + csf allow/ignore; the serving trust follows the retarget) ..."
+    if [ -z "${_key}" ]; then
+      _alrt "  peer${_a}: no key line tagged '# xmass migration source <one of its addresses>' here"
+      _alrt "  (a pre-mig older than the tag installed it), so its root key cannot travel: append"
+      _alrt "  that box's /root/.ssh/id_ed25519.pub to /root/.ssh/authorized_keys on ${_tgt} by hand"
+    fi
+    _kb64="$(printf '%s' "${_key}" | base64 | tr -d '\n')"
+    if ! ssh -o ConnectTimeout=15 root@"${_tgt}" "_IPS='${_a# }' _KB64='${_kb64}' bash -s" <<'CARRY'
+mkdir -p /root/.ssh; chmod 700 /root/.ssh; touch /root/.ssh/authorized_keys
+_l="$(printf '%s' "${_KB64}" | base64 -d 2>/dev/null)"
+if [ -n "${_l}" ]; then
+  _b="${_l%% # xmass migration source *}"
+  if grep -qF -- "${_b}" /root/.ssh/authorized_keys; then
+    if ! grep -qF -- "${_l}" /root/.ssh/authorized_keys; then
+      _t="/root/.ssh/authorized_keys.xmass.$$"
+      while IFS= read -r _x; do
+        [ "${_x%"${_x##*[![:space:]]}"}" = "${_b}" ] && _x="${_l}"
+        printf '%s\n' "${_x}"
+      done < /root/.ssh/authorized_keys > "${_t}" && cat "${_t}" > /root/.ssh/authorized_keys
+      rm -f "${_t}"
+    fi
+  else
+    echo >> /root/.ssh/authorized_keys; echo "${_l}" >> /root/.ssh/authorized_keys
+  fi
+fi
+chmod 600 /root/.ssh/authorized_keys
+if [ -x /usr/sbin/csf ]; then
+  for _ip in ${_IPS}; do
+    grep -q "^${_ip} " /etc/csf/csf.allow 2>/dev/null \
+      || echo "${_ip} # xmass migration inbound-proxy" >> /etc/csf/csf.allow
+    grep -q "^${_ip} " /etc/csf/csf.ignore 2>/dev/null \
+      || echo "${_ip} # xmass migration inbound-proxy" >> /etc/csf/csf.ignore
+  done
+  csf -q &> /dev/null
+fi
+echo "reach for ${_IPS}: key line(s) $(grep -cF -- '# xmass migration source ' /root/.ssh/authorized_keys), csf allow $(grep -c ' # xmass migration inbound-proxy' /etc/csf/csf.allow 2>/dev/null) ignore $(grep -c ' # xmass migration inbound-proxy' /etc/csf/csf.ignore 2>/dev/null)"
+CARRY
+    then
+      _alrt "  peer${_a}: reach NOT wired on ${_tgt}; its retarget will refuse there (the refusal names the remedy)"
+    fi
+  done
+  return 0
 }
 
 ###-------------PANEL DB REWIRE ON TARGET---###
@@ -5920,19 +6304,24 @@ _xmass_refuse_role_clash() {
   fi
   if [ "${1:-init}" = "prep" ]; then
     # prep-target builds a FRESH target: its xoct installs would be refused
-    # by the standby's own super_read_only. The ONE prep that stays valid on
-    # a standing mirror is the Solr reconcile (--fix-solr alone): the
-    # source's used set can change mid-window, and every other door there is
-    # closed by design (init refuses in phase 'syncing', the target's own
-    # restore-solr refuses under the standby marker). Fall through to the
-    # same-source walk below so only OUR OWN mirror takes the reduced lane.
-    if [ "${_XMASS_FIX_SOLR}" = "YES" ] && [ "${_XMASS_FIX_PHP}" != "YES" ]; then
+    # by the standby's own super_read_only. Two preps stay valid on a
+    # standing mirror, both source-side facts that change mid-window with
+    # every other door closed by design (init refuses in phase 'syncing',
+    # the target's own restore-solr refuses under the standby marker): the
+    # Solr reconcile (--fix-solr) and the identity repair (--fix-users: a
+    # system user lost on the standby, which no octopus pass can re-create
+    # there -- widened from "the ONE prep" by ruling, 2026-09-13). Fall
+    # through to the same-source walk below so only OUR OWN mirror takes
+    # the reduced lane.
+    if [ "${_XMASS_FIX_PHP}" != "YES" ] \
+      && { [ "${_XMASS_FIX_SOLR}" = "YES" ] || [ "${_XMASS_FIX_USERS}" = "YES" ]; }; then
       _XMASS_PREP_UNDER_HOLD=YES
     else
       _die "target ${_tgt} is already a passive standby (its /root/.standby.cnf)" \
-           " -- prep-target builds fresh targets only ('--fix-solr' alone is the" \
-           " exception: it reconciles the held Solr set of a standing mirror);" \
-           " remove the marker deliberately if the mirror is being retired"
+           " -- prep-target builds fresh targets only; on a standing mirror only" \
+           " '--fix-solr' (the held Solr set) and '--fix-users' (a lost system user" \
+           " of an account installed there) are accepted, alone or together;" \
+           " remove the marker deliberately only if the mirror is being retired"
     fi
   fi
   _mrk=$(ssh -o ConnectTimeout=10 -o BatchMode=yes \
@@ -6199,17 +6588,45 @@ _xmass_cmd_prep_target() {
   _info "======================================================"
   _info "  xmass prep-target ${_tgt}"
   _info "======================================================"
-  if [ "${_XMASS_PREP_UNDER_HOLD}" = "YES" ]; then
-    # Reduced lane for a STANDING MIRROR (the role walk proved it ours):
-    # only the Solr set is reconciled. Fresh-target work -- accounts, CSF,
-    # the reverse path, the release assert -- is settled on an armed
-    # mirror, and the xoct path would die on its super_read_only. Tools go
-    # first so the probe reads current field names.
-    _info "  (standing mirror: reduced lane -- Solr reconcile only)"
+  if [ "${_XMASS_FIX_USERS}" = "YES" ] && [ "${_XMASS_PREP_UNDER_HOLD}" != "YES" ]; then
+    # Identity repair is role-independent: an account that IS installed on
+    # the target but lost a system user has no route back in either role --
+    # octopus refuses on a standby, and on a fresh or demoted target xoct's
+    # present-probe keys on <acct> alone, so the install is skipped and the
+    # gate below loops on its own remedy. Nothing else of Phase 0.5 runs --
+    # not even with --fix-solr beside it (the Solr reconcile rides along).
+    _info "  (identity repair only: lost system users of installed accounts${_XMASS_FIX_SOLR:+, plus the Solr reconcile})"
     _xmass_force_tool_update "${_tgt}"
-    _xmass_solr_coverage_gate "${_tgt}" fix \
-      || _die "Solr coverage fix failed on ${_tgt}"
-    _info "Solr set reconciled under the hold; the next sync pass re-probes it"
+    if [ "${_XMASS_FIX_SOLR}" = "YES" ]; then
+      _xmass_solr_coverage_gate "${_tgt}" fix \
+        || _die "Solr coverage fix failed on ${_tgt}"
+    fi
+    _xmass_enumerate_accounts
+    _xmass_repair_target_identities "${_tgt}" \
+      || _die "identity repair failed on ${_tgt} -- see the lines above"
+    return 0
+  fi
+  if [ "${_XMASS_PREP_UNDER_HOLD}" = "YES" ]; then
+    # Reduced lane for a STANDING MIRROR (the role walk proved it ours).
+    # Fresh-target work -- account INSTALLS, CSF, the reverse path, the
+    # release assert -- stays settled on an armed mirror, and the xoct path
+    # would die on its super_read_only; what --fix-users repairs is not an
+    # install but a lost system IDENTITY of an account already installed
+    # here, and a useradd writes no replicated database. Tools go first so
+    # the probe reads current field names.
+    _info "  (standing mirror: reduced lane --${_XMASS_FIX_SOLR:+ Solr reconcile}${_XMASS_FIX_USERS:+ identity repair} only)"
+    _xmass_force_tool_update "${_tgt}"
+    # each repair only when asked for: --fix-users alone must not touch the held Solr set
+    if [ "${_XMASS_FIX_SOLR}" = "YES" ]; then
+      _xmass_solr_coverage_gate "${_tgt}" fix \
+        || _die "Solr coverage fix failed on ${_tgt}"
+      _info "Solr set reconciled under the hold; the next sync pass re-probes it"
+    fi
+    if [ "${_XMASS_FIX_USERS}" = "YES" ]; then
+      _xmass_enumerate_accounts
+      _xmass_repair_target_identities "${_tgt}" \
+        || _die "identity repair failed on ${_tgt} -- see the lines above"
+    fi
     return 0
   fi
   _xmass_enumerate_accounts
@@ -6657,29 +7074,61 @@ _xmass_pre_mig() {
     ### http://undefined.<this box>/auth_undefined_keys.txt indefinitely, and
     ### a later migration can fetch the wrong box's key from it.
     rm -f /var/www/nginx-default/auth_undefined_keys.txt*
-    curl -s -A iCab \
+    ### The fetch must be a real key: curl exits 0 on a 404 (no -f), so a
+    ### source that never published -- or a proxied one relaying its undefined
+    ### vhost onward -- hands back an HTML page, and appending that to
+    ### authorized_keys while reporting OK is a false success on the trust path.
+    _kf="/root/.ssh/auth_undefined_keys.txt"
+    _kc=$(curl -s -A iCab -w '%{http_code}' \
       "http://undefined.${_hst}/auth_undefined_keys.txt" \
-      -o /root/.ssh/auth_undefined_keys.txt \
-      || _die "Failed to fetch source key from http://undefined.${_hst}/ --" \
-              " publish it first: run 'xmass pre-mig <that box's own fqdn>' ON" \
-              " ${_hst} (source/publish mode), then re-run this verb here. A" \
-              " proxied source relays its undefined vhost onward and cannot" \
-              " serve the key until it publishes again."
-    if [ -e "/root/.ssh/auth_undefined_keys.txt" ]; then
-      echo >> /root/.ssh/authorized_keys
-      cat /root/.ssh/auth_undefined_keys.txt >> /root/.ssh/authorized_keys
-      chmod 600 /root/.ssh/authorized_keys
-      _info "Source SSH key installed in authorized_keys: OK"
-    else
-      _die "Source key file empty or not fetched"
+      -o "${_kf}" 2>/dev/null)
+    if [ "${_kc}" != "200" ] \
+      || ! grep -qE '^(ssh-(ed25519|rsa)|ecdsa-sha2-nistp[0-9]+|sk-ssh-ed25519@openssh\.com) [A-Za-z0-9+/]+=*( |$)' "${_kf}" 2>/dev/null; then
+      rm -f "${_kf}"
+      _die "No public key at http://undefined.${_hst}/auth_undefined_keys.txt (HTTP ${_kc:-000}) --" \
+           " publish it first: run 'xmass pre-mig <that box's own fqdn>' ON" \
+           " ${_hst} (source/publish mode), then re-run this verb here. A" \
+           " proxied source relays its undefined vhost onward and cannot" \
+           " serve the key until it publishes again."
     fi
+    ### Only key lines travel: a stray header or footer never reaches
+    ### authorized_keys. Each line is TAGGED with the source's address: after a
+    ### later promotion this box hands its inbound proxies' keys to the box
+    ### that takes over (_xmass_carry_inbound_reach), and an untagged line
+    ### cannot be attributed to a peer. A re-run never appends a duplicate.
+    _src_ip=$(getent ahostsv4 "${_hst}" 2>/dev/null | awk '{print $1; exit}')
+    grep -E '^(ssh-(ed25519|rsa)|ecdsa-sha2-nistp[0-9]+|sk-ssh-ed25519@openssh\.com) ' "${_kf}" \
+      | sed -e "s|[[:space:]]*\$| # xmass migration source ${_src_ip:-${_hst}}|" > "${_kf}.keys"
+    while read -r _kl; do
+      [ -n "${_kl}" ] || continue
+      _kb="${_kl%% # xmass migration source *}"
+      if grep -qF -- "${_kb}" /root/.ssh/authorized_keys 2>/dev/null; then
+        # Installed by an older pre-mig without the tag: tag that line in
+        # place rather than appending a twin (exact-line rewrite; a key
+        # comment may carry regex metacharacters, so no sed pattern).
+        if ! grep -qF -- "${_kl}" /root/.ssh/authorized_keys 2>/dev/null; then
+          _ktmp="/root/.ssh/authorized_keys.xmass.$$"
+          while IFS= read -r _kx; do
+            [ "${_kx%"${_kx##*[![:space:]]}"}" = "${_kb}" ] && _kx="${_kl}"
+            printf '%s\n' "${_kx}"
+          done < /root/.ssh/authorized_keys > "${_ktmp}" \
+            && cat "${_ktmp}" > /root/.ssh/authorized_keys
+          rm -f "${_ktmp}"
+        fi
+      else
+        echo >> /root/.ssh/authorized_keys
+        echo "${_kl}" >> /root/.ssh/authorized_keys
+      fi
+    done < "${_kf}.keys"
+    rm -f "${_kf}.keys"
+    chmod 600 /root/.ssh/authorized_keys
+    _info "Source SSH key installed in authorized_keys: OK ($(wc -l < "${_kf}") key line(s) from ${_hst})"
 
     # Let the source IN. This is the ONE thing the source can never arrange
     # for itself: prep-target's reachability check runs FROM the source, and
     # the csf-allow that would fix it sits AFTER that check, so a target
     # firewalling the source deadlocks. Here we are on the target and we know
     # who the source is, which makes this the only place it can be done.
-    _src_ip=$(getent ahostsv4 "${_hst}" 2>/dev/null | awk '{print $1; exit}')
     if [ -n "${_src_ip}" ]; then
       _xmass_csf_allow_peer "${_src_ip}" source
     else
@@ -6755,6 +7204,21 @@ _xmass_cmd_init() {
   # the target's accounts with 'xoct create' by hand), and even after a clean
   # prep-target a tag on the rolling branches can move either box since.
   _xmass_assert_same_release "${_tgt}"
+  # The Percona version gate is a cheap read on both ends: it belongs HERE,
+  # with the release assert, not after the silence wait -- a cross-version
+  # pair used to drop the target's pre-pass backups, clear its pending
+  # delete tasks and set its standby marker before refusing (ring-84 drill).
+  _xmass_detect_percona_version
+  local _tgt_v
+  _tgt_v=$(ssh root@"${_tgt}" "mysql -V 2>&1" 2>/dev/null \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
+  if [ "${_tgt_v}" != "${_XMASS_PERCONA_V}" ]; then
+    _die "Target Percona version (${_tgt_v}) does not match source (${_XMASS_PERCONA_V})." \
+         " xmass requires identical versions on both servers. Use xoct instead."
+  fi
+  _info "Percona version match (${_XMASS_PERCONA_V}) on both servers: OK"
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
   # Solr's point of no return is HERE, not at cutover: the first sync lands
@@ -6851,20 +7315,6 @@ _xmass_cmd_init() {
   # travel, named BEFORE any data moves. The binding per-store gates run
   # inside the sync/cutover legs.
   _xmass_report_out_links
-
-  _xmass_detect_percona_version
-
-  # Verify target runs the same Percona version
-  local _tgt_v
-  _tgt_v=$(ssh root@"${_tgt}" "mysql -V 2>&1" 2>/dev/null \
-    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
-    | head -1 \
-    | cut -d"." -f1,2)
-  if [ "${_tgt_v}" != "${_XMASS_PERCONA_V}" ]; then
-    _die "Target Percona version (${_tgt_v}) does not match source (${_XMASS_PERCONA_V})." \
-         " xmass requires identical versions on both servers. Use xoct instead."
-  fi
-  _info "Percona version match (${_XMASS_PERCONA_V}) on both servers: OK"
 
   # Patch-level gate, SERVER-side (mysql -V above reports the CLIENT, which
   # is fine for the series switch but blind to the daemon's patch). Guests
@@ -6971,8 +7421,9 @@ _xmass_cmd_init() {
   # before the datadir swap) stays for the whole standby life: runner.sh
   # parks the queue and the Aegir dispatch on it, the per-job gates hold
   # every local writer, and second.sh self-removes it only when the box is
-  # definitively no replica. Cutover step 15 removes it; post-mig clears a
-  # leftover.
+  # definitively no replica AND its DB is unlocked (a promotion's witness:
+  # a standby that merely lost its replica config keeps it). Cutover step
+  # 15 removes it; post-mig clears a leftover.
   ssh -o ConnectTimeout=10 root@"${_tgt}" \
     "[ -e /root/.standby.cnf ] || echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf; rm -f /run/boa_xmass_init.pid; true" &> /dev/null
   if ssh -o ConnectTimeout=10 root@"${_tgt}" "test -e /root/.standby.cnf" 2> /dev/null; then
@@ -7007,6 +7458,11 @@ _xmass_cmd_init() {
   # both servers between now and cutover.
   _xmass_init_keepalive_stop
   _xmass_maint_off
+
+  # A standby built for a failover must be reachable by this box's inbound
+  # proxies from the day it is built ("stage it while everything is healthy"),
+  # not only at the promotion: same idempotent carry as step 15.95.
+  [ "${_XMASS_PROXY_MODE}" = "ha-switch" ] && _xmass_carry_inbound_reach
 
   _info ""
   _info "======================================================"
@@ -7058,6 +7514,16 @@ _xmass_cmd_sync() {
   # run inside the legs in LIVE regardless. It also never CONSUMES an
   # operator's pending token, so a manual DRY+--live workflow in progress is
   # left intact.
+  # Validate the lag-wait budget here, a cheap env-only refusal BEFORE the
+  # clean-dry token is consumed and before any source mutation: a bad
+  # _XMASS_SYNC_MAX_WAIT must not die past the web block with no hint, nor
+  # cost the operator a full DRY re-plan (_xmass_wait_for_sync keeps its own
+  # checks as backstop).
+  case "${_XMASS_SYNC_MAX_WAIT}" in
+    ''|*[!0-9]*) _die "_XMASS_SYNC_MAX_WAIT must be a whole number of seconds (got '${_XMASS_SYNC_MAX_WAIT}')" ;;
+  esac
+  [ "${_XMASS_SYNC_MAX_WAIT}" -lt 60 ] \
+    && _die "_XMASS_SYNC_MAX_WAIT of ${_XMASS_SYNC_MAX_WAIT}s is too short to be meaningful"
   if [ "${_MODE}" = "LIVE" ] && [ "${_XMASS_AUTO}" != "YES" ]; then
     _xmass_require_clean_dry "${_tgt}"
   fi
@@ -7176,7 +7642,8 @@ _xmass_cmd_reset_phase() {
 # side rather than guessing.
 _xmass_status_transport() {
   [ -n "${_XMASS_TARGET_IP}" ] || { echo "n/a"; return 0; }
-  case "$(_xmass_repl_tls_witness "${_XMASS_TARGET_IP}")" in
+  _xmass_repl_tls_witness "${_XMASS_TARGET_IP}"
+  case "${_XM_TLS_VERDICT}" in
     SESSION) echo "TLS (${_XM_SSL_FIELD}=Yes, session SSL/TLS)" ;;
     GRANT)   echo "TLS (${_XM_SSL_FIELD}=Yes, grant REQUIRE SSL enforced; performance_schema is OFF on the source)" ;;
     NONE)    echo "unknown (no replica session readable)" ;;
@@ -7190,19 +7657,61 @@ _xmass_cmd_status() {
   local _lag="N/A"
   if [ "${_XMASS_PHASE}" = "syncing" ] && [ -n "${_XMASS_TARGET_IP}" ]; then
     _tgt="${_XMASS_TARGET_IP}"
-    _lag=$(_xmass_get_repl_lag 2>/dev/null || echo "unreachable")
-    # An empty read is not "0s": it is the replica status coming back blank,
-    # which on an 8.4 pair is the documented shape of the ACTIVE's root
-    # password rotation having replicated into the target while the
-    # target's /root/.my.cnf kept the old string. Name it instead of
-    # printing an empty number.
-    case "${_lag}" in
-      ''|*[!0-9]*)
-        [ "${_lag}" = "unreachable" ] || _lag="unreadable"
-        _alrt "replica status on ${_tgt} could not be read (${_lag}) -- if the target's"
-        _alrt "root client fails with 'Access denied', the source rotated its MySQL root"
-        _alrt "password since init: re-transfer /root/.my.cnf and /root/.my.pass.txt to"
-        _alrt "the target (the init/cutover step-10 form), then re-run status"
+    # A non-numeric lag is three faults wearing one face -- a refused root
+    # client (the rotation), a stopped thread (readable, with its own errno)
+    # and a target that is no longer a replica -- and naming the wrong one
+    # sends the operator after a password while the standby falls behind.
+    # Probe once, in this shell, and let each fault speak for itself; the
+    # credential hint stays on the branch that holds the client's refusal.
+    _xmass_repl_probe "${_tgt}"
+    case "${_XM_REPL_VERDICT}" in
+      RUNNING)
+        _lag="${_XM_REPL_LAG}s"
+      ;;
+      STOPPED)
+        _lag="STOPPED (${_XM_IO_FIELD}=${_XM_REPL_IO:-?}, ${_XM_SQL_FIELD}=${_XM_REPL_SQL:-?})"
+        _alrt "replication on ${_tgt} is STOPPED -- ${_XM_IO_FIELD}=${_XM_REPL_IO:-?}, ${_XM_SQL_FIELD}=${_XM_REPL_SQL:-?}"
+        if [ -n "${_XM_REPL_ERRNO}" ] && [ "${_XM_REPL_ERRNO}" != "0" ]; then
+          _alrt "  last error ${_XM_REPL_ERRNO}: ${_XM_REPL_ERR}"
+        else
+          _alrt "  no error recorded -- the thread was stopped deliberately (${_XM_STOP})"
+        fi
+        if [ "${_XM_REPL_IO}" = "Connecting" ] && [ "${_XM_REPL_SQL}" = "Yes" ]; then
+          # the IO thread retries by itself after a source restart or a blip
+          _lag="CONNECTING (${_XM_IO_FIELD}=Connecting, ${_XM_SQL_FIELD}=Yes)"
+          _alrt "  the IO thread is reconnecting to the source -- re-run status in a minute before acting"
+        else
+          _alrt "  the standby is BEHIND and will not catch up by itself: fix the cause on"
+          _alrt "  ${_tgt}, then '${_XM_START}' there; a diverged standby is rebuilt with"
+          _alrt "  'xmass reset-phase init' then 'xmass init ${_tgt}'"
+        fi
+      ;;
+      ABSENT)
+        _lag="none (no replica configured on the target)"
+        _alrt "no replica is configured on ${_tgt} while the phase is 'syncing' -- either the"
+        _alrt "standby was decoupled (${_XM_RESET_SLAVE}) or never built, or the target was"
+        _alrt "PROMOTED by a cutover that was later reset to 'syncing'. Confirm which before"
+        _alrt "acting: 'xmass init' replaces the target's datadir. A promoted target resumes"
+        _alrt "with 'xmass reset-phase rename-failed'; only an unbuilt/decoupled standby is"
+        _alrt "rebuilt with 'xmass reset-phase init' then 'xmass init ${_tgt}'"
+      ;;
+      DENIED)
+        _lag="unreadable"
+        _alrt "replica status on ${_tgt} could not be read (unreadable) -- the target's"
+        _alrt "root client failed: ${_XM_REPL_CLIENT:-no error text}"
+        _alrt "on 'Access denied' the source rotated its MySQL root password since init:"
+        _alrt "re-transfer /root/.my.cnf and /root/.my.pass.txt to the target (the"
+        _alrt "init/cutover step-10 form), then re-run status"
+      ;;
+      UNREACHABLE)
+        _lag="unreachable"
+        _alrt "target ${_tgt} did not answer ssh (${_XM_REPL_CLIENT:-no error text}) -- the"
+        _alrt "replica state cannot be read from here; check the box and csf both ways"
+      ;;
+      *)
+        _lag="unknown"
+        _alrt "replica on ${_tgt} reports both threads running but no lag figure"
+        _alrt "(${_XM_LAG_FIELD}='${_XM_REPL_LAG}') -- re-run status in a moment"
       ;;
     esac
   fi
@@ -7216,7 +7725,7 @@ _xmass_cmd_status() {
   echo "  Percona version  : ${_XMASS_PERCONA_V:-unknown}"
   echo "  Init time        : ${_XMASS_INIT_TIME:-n/a}"
   echo "  Last file sync   : ${_XMASS_LAST_SYNC:-never}"
-  echo "  Replication lag  : ${_lag}s"
+  echo "  Replication lag  : ${_lag}"
   echo "  Transport        : $(_xmass_status_transport)"
   echo "  Proxy default    : $( [ -s "${_MIG_BOX_MODE_FILE}" ] && head -n1 "${_MIG_BOX_MODE_FILE}" 2>/dev/null || echo "none (per-account records or fallback)" )"
   echo "======================================================"
@@ -7852,7 +8361,8 @@ REMOTE
     _alrt "run there NOW, by hand:"
     _alrt "    rm -f /root/.standby.cnf; service cron start"
     _alrt "(the second.sh watchdog also self-removes the marker once it sees"
-    _alrt " the box is definitively no replica, but only while cron runs)"
+    _alrt " the box is definitively no replica AND its DB unlocked -- step 11.5"
+    _alrt " did that here -- but only while cron runs)"
   fi
 
   # The freeze belongs to the OLD box. Never let the new production box come up
@@ -7863,6 +8373,11 @@ REMOTE
   # proxying, so the new host recovers the real client and never bans the proxy
   # from the first relayed request.
   _xmass_setup_migration_proxy_trust
+
+  # Step 15.95: carry this box's INBOUND proxies' reach (root key + csf) to
+  # the promoted box while the inbound records still exist -- step 16
+  # overwrites them.
+  _xmass_carry_inbound_reach
 
   # Step 16: Convert source vhosts to proxy via xoct (handles vhost templates,
   # nginx reload, and per-account migration-complete notification emails).
@@ -8657,15 +9172,22 @@ case "${_cmd}" in
     shift 2>/dev/null || true
     _XMASS_FIX_PHP=""
     _XMASS_FIX_SOLR=""
+    _XMASS_FIX_USERS=""
     _XMASS_PREP_UNDER_HOLD=""
     while [ $# -gt 0 ]; do
       case "$1" in
         --fix-php) _XMASS_FIX_PHP=YES; shift ;;
         --fix-solr) _XMASS_FIX_SOLR=YES; shift ;;
+        --fix-users) _XMASS_FIX_USERS=YES; shift ;;
         *) _die "Unknown argument: $1" ;;
       esac
     done
-    [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr]"
+    [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr] [--fix-users]"
+    # --fix-users is a repair of installed accounts, never a re-seed: it does
+    # not ride the full lane, so it cannot mean "run Phase 0.5" on a box that
+    # is carrying traffic (a demoted failback target).
+    [ "${_XMASS_FIX_USERS}" = "YES" ] && [ "${_XMASS_FIX_PHP}" = "YES" ] \
+      && _die "--fix-users cannot be combined with --fix-php: the identity repair never installs"
     _check_root
     _xmass_refuse_role_clash prep
     _xmass_cmd_prep_target
@@ -8808,7 +9330,7 @@ case "${_cmd}" in
   *)
     echo ""
     echo "Usage: xmass pre-mig <source-fqdn>                    (run on BOTH source and target)"
-    echo "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr]  (run on source AFTER both"
+    echo "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr] [--fix-users]  (run on source AFTER both"
     echo "                     pre-migs: CSF both ways, Solr set, PHP coverage, per-account installs)"
     echo "Usage: xmass init    <target-ip> [--proxy-mode=temporary|permanent|ha-switch]"
     echo "                     [--proxy-deadline=YYYY-MM-DD|+Nd]  (run on source)"
