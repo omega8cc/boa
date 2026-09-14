@@ -213,7 +213,6 @@ if [ -n "${site_path}" ] \
   printf "Setting Textpattern permissions of %s\n" "${site_path}"
   find ${site_path} -path "${site_path}/private" -prune \
     -o -path "${site_path}/tmp" -prune \
-    -o -path "${site_path}/modules" -prune \
     -o -path "${site_path}/admin/plugins" -prune \
     -o -path "${site_path}/public/files" -prune \
     -o -path "${site_path}/public/images" -prune \
@@ -221,13 +220,12 @@ if [ -n "${site_path}" ] \
     -o -type d -exec chmod 0755 {} + 2> /dev/null
   find ${site_path} -path "${site_path}/private" -prune \
     -o -path "${site_path}/tmp" -prune \
-    -o -path "${site_path}/modules" -prune \
     -o -path "${site_path}/admin/plugins" -prune \
     -o -path "${site_path}/public/files" -prune \
     -o -path "${site_path}/public/images" -prune \
     -o -path "${site_path}/public/themes" -prune \
     -o -type f -exec chmod 0644 {} + 2> /dev/null
-  for _wd in tmp modules admin/plugins public/files public/images public/themes; do
+  for _wd in tmp admin/plugins public/files public/images public/themes; do
     [ -d "${site_path}/${_wd}" ] || continue
     find "${site_path}/${_wd}" -type d -exec chmod 02775 {} + 2> /dev/null
     find "${site_path}/${_wd}" -type f -exec chmod 0664 {} + 2> /dev/null
