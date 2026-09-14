@@ -892,12 +892,23 @@ content segment (404).
   majority, not the 2×-repeat tail) and uses a cheap `404`. The complete cure is a
   source-side `<base href>`/theme fix that stops the site emitting
   root-relative-without-leading-slash links.
+- **`$is_amp_chain` → 404.** The query-side cousin: a crawler that HTML-escapes every link it
+  re-follows turns each `&` into `&amp;`, then `&amp;amp;`, one layer per hop, so its query
+  keys grow into `amp;amp;page` (or the percent-encoded `amp%3Bamp%3Bpage`) and every hop
+  renders another uncached page. Matches two or more consecutive `amp;` layers, in either
+  spelling and any case, at a query-key boundary, so a single `&amp;` left by a badly
+  escaped newsletter or CMS link is still served. Blocking at two layers also stops the
+  recursion: the deeper URLs are only ever discovered from pages served at the shallower
+  one. Unlike the other chain maps it is declared in the BOA-written http-scope file
+  `/etc/nginx/conf.d/limit-req-zones-boa.conf`, and the consumer renders only when that file
+  declares the map, so no delivery order can reference an undefined variable.
 
-Both chain guards apply on **full-domain vhosts only**. They are intentionally **not** in
-`subdir.tpl.php`: a subdir site legitimately serves `/<subdir>/sites/all/...` assets, which
-`$is_static_chain` would match as buried-under-content. The node-chain / lang-chain guards
-(which match on `node/<id>` repetition and language-prefix runs, not asset paths) **do**
-apply on subdir vhosts.
+The static and content chain guards apply on **full-domain vhosts only**. They are
+intentionally **not** in `subdir.tpl.php`: a subdir site legitimately serves
+`/<subdir>/sites/all/...` assets, which `$is_static_chain` would match as
+buried-under-content. The node-chain, lang-chain and amp-chain guards (which match on
+`node/<id>` repetition, language-prefix runs and the query, not asset paths) **do** apply on
+subdir vhosts.
 
 ### Print no-referer gate → 404
 
@@ -1024,16 +1035,23 @@ Several UA-keyed maps hard-block known-bad agents:
 
 | Map | Variable | Enforcement |
 |---|---|---|
-| `$is_crawler` | scraper/SEO/abusive bots (Ahrefs, MJ12, Semrush, PetalBot, Sogou…) | `if ($is_crawler) return 444` |
+| `$is_crawler` | named scraper/SEO/abusive bots (Ahrefs, MJ12, Semrush, PetalBot, serpstatbot, HTTrack…) | `if ($is_crawler) return 444` |
 | `$is_botnet` | semalt/kambasoft referrer-spam family | `if ($is_botnet) return 444` |
-| `$is_bot` | generic crawler tokens | `return 444` inside the `/search` and `/user/login` blocks |
+| `$is_bot` | generic crawler tokens (`crawl`, `bot`, `spider`, `google`, `bing`, …) | `return 444` on private, robots-disallowed and callback locations only (search, `/user/login`, admin, AJAX/batch callbacks, private files, `/bgp-start/`, …), never on content, asset, feed or sitemap locations, which crawlers must reach; also part of the Speed Booster cache key |
+
+Legitimate search and preview crawlers (Sogou, Pinterest, TikTok) and the generic
+`Go-http-client` library token are deliberately **not** in `$is_crawler`: a hard 444 on them
+blocks real user-facing services, not scrapers.
 
 **AI-vendor traffic is classified separately** by the `$is_ai_*` maps and the per-class AI
 policy — those tokens are deliberately kept out of `$is_crawler` so they don't bypass that
 policy. See [AI-POLICY.md](AI-POLICY.md).
 
-A separate `$deny_on_high_load` UA map (crawl/spider/google/yahoo/yandex/baidu/bing) is the
-load-shedding variant: it denies almost all crawlers only while the box is under high load.
+A separate `$deny_on_high_load` UA map (the same roster as `$is_bot`:
+crawl/bot/spider/tracker/click/parser/google/yahoo/yandex/baidu/bing) is the load-shedding
+variant: it answers those agents `503` only while Spider Protection is armed, i.e. while load
+per CPU is above `_CPU_SPIDER_RATIO` (2.1 by default). Below that load a declared crawler, or
+anything borrowing a crawler's name, is served like any visitor.
 
 #### Stale-Chrome botnet detection
 
@@ -1320,7 +1338,8 @@ $is_node_chain          → 404
 $is_lang_chain          → 404
 $is_static_chain        → 444
 $is_content_chain       → 404
-$block_print_no_referer → 444
+$is_amp_chain           → 404   rendered only when the BOA zones file declares it
+$block_print_no_referer → 404
 SA-CORE-2018-002 RCE    → 444
 $is_banned              → 444   ← ban-pipeline closing guard
 =PHP… version probe     → 404
@@ -1370,7 +1389,7 @@ value disables that feature).
 
 | Variable | Default | What it controls |
 |---|---|---|
-| `_NGINX_DOS_LINES` | `1999` | Lines of `access.log` read on a baseline run (the scan window). |
+| `_NGINX_DOS_LINES` | `1999` | Lines of `access.log` read on a baseline pass only: the first run, or when the saved offset is lost or the log has rotated. Every other pass reads just the bytes appended since the previous one (about 5 s), so raising this does not widen the detection window. It also sets how many recent lines an i18n-flood snapshot covers. |
 | `_NGINX_DOS_LIMIT` | `399` | Per-IP score at which an IP is written to `web.log`. All weights below derive from it. `autoupboa` re-normalises it to `399` each pass. |
 | `_NGINX_DOS_MODE` | `2` | Per-IP algorithm. Mode `1` adds extra `+5` increments for `POST` to `/user`, `/user/(register\|pass\|login)`, `/node/add` and `GET` to `/node/add` and `/search`; mode `2` (default) skips those. **Both modes** apply the `_NGINX_DOS_STOP` check. |
 | `_NGINX_DOS_LOG` | `VERBOSE` *(script)* / `SILENT` *(seeded)* | Log verbosity: `SILENT`, `NORMAL`, or `VERBOSE`. The script's built-in fallback is `VERBOSE`, but `autoupboa` seeds `SILENT` once, so a normally-managed box runs **SILENT** unless changed. Seed-only: a set value (including the `NORMAL` the `.debug.monitor.log.cnf` fold writes) survives retunes, unlike the other `_NGINX_DOS_*` keys. |
