@@ -1044,21 +1044,26 @@ Chrome UA to dodge `$is_bot` while still being detectably stale:
 ```nginx
 map $http_user_agent $is_stale_chrome {
   default 0;
-  ~*Chrome/1([0-2][0-9]|3[01])\.  1;   # Chrome/100–131: > 12 months stale
+  ~*Chrome/1[0-3][0-9]\.  1;   # Chrome/100–139: > 12 months stale
 }
 ```
 
 `$block_stale_chrome_search` combines a stale Chrome UA with fulltext/facet search params and
-fires **only in search location blocks**. The standalone `$is_catalina_stale_chrome` adds
-macOS Catalina (10.15.7, EOL Nov 2022) + Chrome ≤ 131 — the exact combination of every
-confirmed Solr search-amplification bot observed May 2026 — and is applied directly in the
-`/search` blocks, so it needs no `$has_fulltext_search` dependency. Both shipped in BOA-5.9.3.
+fires **only in search location blocks**. The standalone `$is_catalina_stale_chrome` matches
+the Mac UA shape (`Mac OS X 10_15_7`) with Chrome ≤ 139 — the shape every confirmed Solr
+search-amplification bot has presented — and is applied directly in the `/search` blocks, so
+it needs no `$has_fulltext_search` dependency. Chrome and Safari freeze that platform token on
+every macOS release, so it does not identify Catalina itself; the stale version is what makes
+the match safe. Both shipped in BOA-5.9.3.
 
 > **Maintenance caveat (carry verbatim).** These dated regexes are self-flagging. The
-> in-source note instructs: when Chrome/132 exceeds 12 months (≈ **Feb 2027**), **widen the
-> upper bound to `3[0-2]`** and update the comment. The ceiling must move forward as Chrome
-> versions age, or the maps will eventually match current browsers (false positives) rather
-> than stale ones.
+> in-source note instructs: move the upper bound by **release date**, never by counting
+> versions — Chrome shipped a major every ~4 weeks until Chrome/153 (2026-09-08) and every
+> ~2 weeks since. Widen to the newest major whose stable release is more than 12 months old
+> (Chrome/139 reached stable on 2025-08-05) and keep both maps on the same bound. The ceiling
+> must move forward as Chrome versions age, or the maps stop catching the stale-Chrome botnet
+> class; it must never pass a version released within the last 12 months, or they start
+> matching current browsers (false positives).
 
 ### Scanner-pattern maps: `$is_denied` / `$ua_denied`
 
