@@ -873,6 +873,24 @@ _nginx_limit_req_zones_update() {
   return 0
 }
 
+### The wild-ssl front is a static copy in the master render tree and the
+### upgrade path restarts nginx without a configtest, so its crawler-fleet
+### guard may only exist while the installed zones file declares the variable
+### it reads. The range is anchored on the exact marker lines, so text that
+### merely quotes a marker can never widen what is deleted.
+_nginx_wild_ssl_fleet_gate() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _nginx_wild_ssl_fleet_gate"
+  fi
+  [[ -e "${_WILD_SSL_VHOST}" ]] || return 0
+  if ! grep -qF 'map $boa_fleet_uaid $boa_fleet_block {' /etc/nginx/conf.d/limit-req-zones-boa.conf 2> /dev/null; then
+    if ! sed -i '/^  ### BOA-FLEET-GUARD-BEGIN$/,/^  ### BOA-FLEET-GUARD-END$/d' "${_WILD_SSL_VHOST}" &> /dev/null; then
+      _msg "ALERT: could not strip the crawler-fleet guard from ${_WILD_SSL_VHOST}"
+    fi
+  fi
+  return 0
+}
+
 _nginx_wildcard_ssl_install() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _nginx_wildcard_ssl_install"
@@ -892,6 +910,7 @@ _nginx_wildcard_ssl_install() {
     ### a permanently-refusing peer; one backend hiccup then marks 127.0.0.1
     ### down as well and every proxied vhost 502s ("no live upstreams").
     cp -af ${_locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
+    _nginx_wild_ssl_fleet_gate
     sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST} &> /dev/null
     [ -e "/etc/nginx/no_ktls.conf" ] \
       && sed -i "/ssl_conf_command Options.*KTLS/d" ${_WILD_SSL_VHOST} &> /dev/null
@@ -948,6 +967,18 @@ _nginx_wildcard_ssl_install() {
       fi
       _WILD_SSL_PROXY_UP=YES
     fi
+    ### Keep the crawler-fleet guard in step with the zones file both ways:
+    ### redeploy to add it once the maps are declared, and redeploy (the gate
+    ### then strips it) when they are not.
+    local _fleet_zones=NO _fleet_front=NO
+    grep -qF 'map $boa_fleet_uaid $boa_fleet_block {' /etc/nginx/conf.d/limit-req-zones-boa.conf 2> /dev/null && _fleet_zones=YES
+    grep -qF 'BOA-FLEET-GUARD-BEGIN' "${_WILD_SSL_VHOST}" 2> /dev/null && _fleet_front=YES
+    if [[ "${_fleet_zones}" != "${_fleet_front}" ]]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: nginx_wild_ssl.conf proxy needs crawler-fleet guard update..."
+      fi
+      _WILD_SSL_PROXY_UP=YES
+    fi
     ### Re-deploy when the deployed KTLS state disagrees with the opt-out
     ### control file, so toggling _NGINX_KTLS self-heals the front either way.
     _KTLS_STATE_TEST=$(grep "Options.*KTLS" ${_WILD_SSL_VHOST} 2>&1)
@@ -960,6 +991,7 @@ _nginx_wildcard_ssl_install() {
       _validate_public_ip &> /dev/null
       _validate_xtras_ip &> /dev/null
       cp -af ${_locCnf}/nginx/nginx_wild_ssl.conf ${_WILD_SSL_VHOST}
+      _nginx_wild_ssl_fleet_gate
       sed -i "s/127.0.0.1:443/${_XTRAS_THISHTIP}:443/g" ${_WILD_SSL_VHOST}
       [ -e "/etc/nginx/no_ktls.conf" ] \
         && sed -i "/ssl_conf_command Options.*KTLS/d" ${_WILD_SSL_VHOST}
