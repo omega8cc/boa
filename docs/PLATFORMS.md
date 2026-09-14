@@ -19,7 +19,7 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 - [Drupal 11.4.6](https://drupal.org/project/drupal/releases/11.4.6)
 - [Drupal CMS 2.1.4](https://drupal.org/project/cms) (11.4.6)
 - [farmOS 4.0.5](https://drupal.org/project/farm) (11.3.14)
-- [LocalGov 4.0.4](https://drupal.org/project/localgov) (11.4.6)
+- [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.6)
 - [OpenCulturas 3.0.7](https://drupal.org/project/openculturas) (11.3.16)
 - [Thunder 8.4.4](https://drupal.org/project/thunder) (11.4.6)
 - [Varbase 11.0.0](https://drupal.org/project/varbase) (11.4.6)
