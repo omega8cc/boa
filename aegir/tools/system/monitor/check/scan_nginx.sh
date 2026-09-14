@@ -207,6 +207,9 @@ _NGINX_HARVEST_MAX_BANS=10
 # it matches neither Googlebot nor Google-. The space is Google's, not a typo,
 # and it means a /root/.barracuda.cnf override of this list must be QUOTED.
 _NGINX_HARVEST_UA_EXEMPT="Googlebot|Google-|GoogleOther|Google Favicon|Mediapartners-Google|AdsBot|Storebot-Google|bingbot|Applebot|DuckDuckBot|Yandex|Baiduspider|SeznamBot|PetalBot|Qwantbot|coccocbot|Yeti|Sogou|archive\.org_bot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|Pinterest|Site24x7|Pingdom|UptimeRobot|StatusCake"
+# Shipped copy, taken before the cnf is sourced, for the invalid-override
+# fallback in the pattern validation below.
+_HRV_UA_EXEMPT_SHIPPED="${_NGINX_HARVEST_UA_EXEMPT}"
 _HRV_STAMP="/var/xdrago/monitor/log/.harvest.stamp"
 _HRV_LOG="/var/xdrago/monitor/log/harvest.log"
 
@@ -315,8 +318,8 @@ _NGINX_PATH_FLOOD_WATCH="apachesolr_search|search_api_views_fulltext|search_api_
 # boa_i18n_anon limit_conn) emits the instant anonymous localized concurrency
 # exceeds its per-vhost cap.  It does NOT ban per IP (futile against a
 # distributed source): it alerts, snapshots the top talkers/UAs/path-classes for
-# forensics, and persists across repeat bursts.  Site24x7, files.* and the
-# webhook ignore-list are already skipped at loop scope before this runs.
+# forensics, and persists across repeat bursts.  files.* hosts and the webhook
+# ignore-list are already skipped at loop scope before this runs.
 
 # Master switch (YES/NO).
 _NGINX_I18N_FLOOD_DETECT=YES
@@ -693,11 +696,14 @@ fi
 ### above): wrapped in `if ! [[ ... ]]`, $? reports the negated compound (0),
 ### never the regex-error status 2, so the guard can never fire and a typo'd
 ### override silently voids every exemption instead of reverting.
+### An invalid exemption override reverts to the shipped list, never to an
+### empty one: voiding every exemption fails toward banning the very crawlers
+### and monitors the list protects.
 if [[ -n "${_NGINX_HARVEST_UA_EXEMPT}" ]]; then
   [[ "probe" =~ ${_NGINX_HARVEST_UA_EXEMPT} ]] 2> /dev/null
   if (( $? > 1 )); then
-    echo "CONFIG: _NGINX_HARVEST_UA_EXEMPT is not a valid ERE, exemptions disabled"
-    _NGINX_HARVEST_UA_EXEMPT=""
+    echo "CONFIG: _NGINX_HARVEST_UA_EXEMPT is not a valid ERE, using the shipped list"
+    _NGINX_HARVEST_UA_EXEMPT="${_HRV_UA_EXEMPT_SHIPPED}"
   fi
 fi
 if [[ -n "${_NGINX_HARVEST_BAN_UA}" ]]; then
@@ -2724,6 +2730,7 @@ _current_size=0
 if [[ -f "${_log_file}" ]]; then
   _current_size=$(stat -c %s "${_log_file}")
 fi
+[[ "${_last_offset}" =~ ^[0-9]+$ ]] || _last_offset=0
 if (( _current_size < _last_offset )); then
   # Log file was rotated or truncated; reset offset to start from beginning
   _last_offset=0
@@ -2733,8 +2740,13 @@ if (( _last_offset == 0 )); then
   # First run or reset: process the last $_NGINX_DOS_LINES lines as a baseline
   exec 3< <(tail -n "${_NGINX_DOS_LINES}" "${_log_file}")
 else
-  # Process only new log entries since the last recorded byte offset
-  exec 3< <(tail -c +$(( _last_offset + 1 )) "${_log_file}")
+  # Process only the bytes appended between the last recorded offset and the
+  # size taken above.  The pass records that same size as its new offset, so
+  # lines nginx appends while the loop runs are left for the next pass; a
+  # post-loop stat would jump the offset past them and they would never be
+  # scored.
+  exec 3< <(tail -c +$(( _last_offset + 1 )) "${_log_file}" \
+    | head -c $(( _current_size - _last_offset )))
 fi
 
 while IFS= read -r _line <&3; do
@@ -2896,9 +2908,9 @@ while IFS= read -r _line <&3; do
 
   # ---- Distributed localized (i18n) translation-flood tracking (Tier B) ----
   # Aggregate localized requests per vhost (a non-IP key) for the cross-run
-  # windowed detector evaluated after the loop.  files.*, the webhook
-  # ignore-list and Site24x7 are already skipped at loop scope above, so they
-  # never reach here.  Matches a leading two-letter language prefix on the
+  # windowed detector evaluated after the loop.  files.* hosts and the webhook
+  # ignore-list are already skipped at loop scope above, so they never reach
+  # here.  Matches a leading two-letter language prefix on the
   # request path (optionally with a script/region suffix, e.g. /pt-br/,
   # /zh-hans/) and the D7 ?q=<lang>/ form, mirroring the Tier-A guardrail class.
   # Lines whose client field is exactly 127.0.0.1 are skipped: a request riding
@@ -2918,7 +2930,7 @@ while IFS= read -r _line <&3; do
 
   # ---- HTTP/1.0 registration-spam botnet tracking (on by default, opt-out) ----
   # Counts HTTP/1.0 requests to auth paths per real client IP for the cross-run
-  # windowed ban below. files.*, the webhook ignore-list and Site24x7 are already
+  # windowed ban below. files.* hosts and the webhook ignore-list are already
   # skipped at loop scope above, so they never reach here.
   if (( _H10_ON )) && [[ -n "${_REAL_IP}" ]]; then
     _track_http10_auth "${_REAL_IP}" "${_line}"
@@ -2926,7 +2938,7 @@ while IFS= read -r _line <&3; do
 
   # ---- Guard-404 scraped-interactive-path tracking (on by default, opt-out) ----
   # Counts guard-family 404s per real client IP for the cross-run windowed ban
-  # below. files.*, the webhook ignore-list and Site24x7 are already skipped at
+  # below. files.* hosts and the webhook ignore-list are already skipped at
   # loop scope above, so they never reach here.
   if (( _G404_ON )) && [[ -n "${_REAL_IP}" ]]; then
     _track_guard404 "${_REAL_IP}" "${_line}"
@@ -2937,9 +2949,10 @@ done
 # Close the file descriptor for the log input
 exec 3<&-
 
-# Record the new end-of-file offset for next run
+# Record the offset this pass read up to: the size taken before the loop, so the
+# bytes appended while it ran are read by the next pass instead of skipped
 if [[ -f "${_log_file}" ]]; then
-  stat -c %s "${_log_file}" > "${_OFFSET_FILE}"
+  printf '%s\n' "${_current_size}" > "${_OFFSET_FILE}"
 fi
 
 # ==============================
