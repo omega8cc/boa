@@ -207,6 +207,9 @@ _NGINX_HARVEST_MAX_BANS=10
 # it matches neither Googlebot nor Google-. The space is Google's, not a typo,
 # and it means a /root/.barracuda.cnf override of this list must be QUOTED.
 _NGINX_HARVEST_UA_EXEMPT="Googlebot|Google-|GoogleOther|Google Favicon|Mediapartners-Google|AdsBot|Storebot-Google|bingbot|Applebot|DuckDuckBot|Yandex|Baiduspider|SeznamBot|PetalBot|Qwantbot|coccocbot|Yeti|Sogou|archive\.org_bot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|Pinterest|Site24x7|Pingdom|UptimeRobot|StatusCake"
+# Shipped copy, taken before the cnf is sourced, for the invalid-override
+# fallback in the pattern validation below.
+_HRV_UA_EXEMPT_SHIPPED="${_NGINX_HARVEST_UA_EXEMPT}"
 _HRV_STAMP="/var/xdrago/monitor/log/.harvest.stamp"
 _HRV_LOG="/var/xdrago/monitor/log/harvest.log"
 
@@ -693,11 +696,14 @@ fi
 ### above): wrapped in `if ! [[ ... ]]`, $? reports the negated compound (0),
 ### never the regex-error status 2, so the guard can never fire and a typo'd
 ### override silently voids every exemption instead of reverting.
+### An invalid exemption override reverts to the shipped list, never to an
+### empty one: voiding every exemption fails toward banning the very crawlers
+### and monitors the list protects.
 if [[ -n "${_NGINX_HARVEST_UA_EXEMPT}" ]]; then
   [[ "probe" =~ ${_NGINX_HARVEST_UA_EXEMPT} ]] 2> /dev/null
   if (( $? > 1 )); then
-    echo "CONFIG: _NGINX_HARVEST_UA_EXEMPT is not a valid ERE, exemptions disabled"
-    _NGINX_HARVEST_UA_EXEMPT=""
+    echo "CONFIG: _NGINX_HARVEST_UA_EXEMPT is not a valid ERE, using the shipped list"
+    _NGINX_HARVEST_UA_EXEMPT="${_HRV_UA_EXEMPT_SHIPPED}"
   fi
 fi
 if [[ -n "${_NGINX_HARVEST_BAN_UA}" ]]; then
