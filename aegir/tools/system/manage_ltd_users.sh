@@ -1593,10 +1593,39 @@ _ok_create_user() {
 # already rewritten). The home field points at an empty root-owned staging
 # dir for that one call and is put back at once; the group on the files is
 # the alias-copy leg's business.
+_user_in_use() {
+  # shadow's user_busy, the check usermod -d runs: a process in this root (a
+  # chrooted pure-ftpd session is not) whose real, effective or saved uid is
+  # the user's.
+  local _uid _p _pids=""
+  _uid=$(id -u "$1" 2>/dev/null) || return 1
+  for _p in /proc/[0-9]*; do
+    [ "${_p}/root" -ef / ] && _pids="${_pids} ${_p#/proc/}"
+  done
+  awk -v uid="${_uid}" -v pids="${_pids}" 'BEGIN {
+    m = split(pids, p, " ")
+    for (i = 1; i <= m; i++) {
+      f = "/proc/" p[i] "/status"
+      while ((getline l < f) > 0) {
+        if (l ~ /^Uid:/) {
+          split(l, u, /[ \t]+/)
+          if (u[2] == uid || u[3] == uid || u[4] == uid) { close(f); exit 0 }
+          break
+        }
+      }
+      close(f)
+    }
+    exit 1
+  }'
+}
 _set_primary_group() {
-  local _u="$1" _g="$2" _h _stage=/var/backups/ltd/.pg-stage
+  local _u="$1" _g="$2" _h _pgUrc _stage=/var/backups/ltd/.pg-stage
   _h=$(getent passwd "${_u}" 2>/dev/null | cut -d: -f6)
   [ -n "${_h}" ] || return 1
+  # usermod refuses -d for a user in use (exit 8, nothing changed): a
+  # logged-in session keeps the identity where it is until an idle pass.
+  # 2 = in use, not a failed move.
+  _user_in_use "${_u}" && return 2
   mkdir -p "${_stage}" && chown root:root "${_stage}" && chmod 0700 "${_stage}"
   # Recorded first (the same record instgrp keeps): a kill between the two
   # usermod calls leaves the passwd home at the staging dir, and
@@ -1604,9 +1633,12 @@ _set_primary_group() {
   [ -d /var/log/boa ] || mkdir -p /var/log/boa
   printf '%s\n' "${_h}" > "/var/log/boa/instgrp.home.${_u}"
   usermod -d "${_stage}" -g "${_g}" "${_u}" > /dev/null 2>&1
+  _pgUrc=$?
   usermod -d "${_h}" "${_u}" > /dev/null 2>&1
   rm -f "/var/log/boa/instgrp.home.${_u}"
-  [ "$(id -gn "${_u}" 2>/dev/null)" = "${_g}" ]
+  [ "$(id -gn "${_u}" 2>/dev/null)" = "${_g}" ] && return 0
+  [ "${_pgUrc}" = "8" ] && return 2
+  return 1
 }
 #
 # Any identity whose passwd home is a primary-group staging directory (this
@@ -1670,14 +1702,22 @@ _ok_update_user() {
         && [ "$(id -gn ${_usrLtd} 2>/dev/null)" != "${_usrGroup}" ] \
         && getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_usrLtd}"; then
         _set_primary_group ${_usrLtd} ${_usrGroup}
-        if id -nG ${_usrLtd} 2>/dev/null | tr ' ' '\n' | grep -qxF users; then
+        _pgRc=$?
+        if [ "${_pgRc}" = "2" ]; then
+          echo "Sub-user ${_usrLtd} has processes running; its move to primary group ${_usrGroup} waits for an idle pass"
+        elif ! id -nG ${_usrLtd} 2>/dev/null | tr ' ' '\n' | grep -qxF users; then
+          if _set_primary_group ${_usrLtd} users; then
+            echo "ALERT: ${_usrLtd} lost group users on the primary move, reverted to users"
+          else
+            echo "ALERT: ${_usrLtd} lost group users on the primary move and could not be reverted yet; retried next pass"
+          fi
+          mkdir -p /var/log/boa 2>/dev/null
+          echo "$(date) LTD primary move: ${_usrLtd} lost group users on the primary move" \
+            >> /var/log/boa/manage_ltd.incident.log
+        elif [ "$(id -gn ${_usrLtd} 2>/dev/null)" = "${_usrGroup}" ]; then
           echo "Sub-user ${_usrLtd} moved to primary group ${_usrGroup}"
         else
-          _set_primary_group ${_usrLtd} users
-          echo "ALERT: ${_usrLtd} lost group users on the primary move, reverted to users"
-          mkdir -p /var/log/boa 2>/dev/null
-          echo "$(date) LTD primary move: ${_usrLtd} lost group users on the primary move, reverted to users" \
-            >> /var/log/boa/manage_ltd.incident.log
+          echo "ALERT: ${_usrLtd} could not be moved to primary group ${_usrGroup}; left on $(id -gn ${_usrLtd} 2>/dev/null)"
         fi
       fi
     fi
@@ -3235,15 +3275,21 @@ _manage_user() {
           fi
           if getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}"; then
             _set_primary_group ${_igU} ${_USER}
-            if [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ] \
+            _pgRc=$?
+            if [ "${_pgRc}" = "2" ]; then
+              echo "Identity ${_igU} has processes running; its move back to primary group ${_USER} waits for an idle pass"
+            elif [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ] \
               && id -nG ${_igU} 2>/dev/null | tr ' ' '\n' | grep -qxF users; then
               # Listed as a member too: provision's membership test reads
               # the group database, where a primary group never shows.
               getent group ${_USER} | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}" || gpasswd -a ${_igU} ${_USER} >/dev/null 2>&1
               echo "Identity ${_igU} moved back to primary group ${_USER}"
             elif [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ]; then
-              _set_primary_group ${_igU} users
-              echo "ALERT: ${_igU} lost group users on the primary move, reverted to users"
+              if _set_primary_group ${_igU} users; then
+                echo "ALERT: ${_igU} lost group users on the primary move, reverted to users"
+              else
+                echo "ALERT: ${_igU} lost group users on the primary move and could not be reverted yet; retried next pass"
+              fi
             else
               echo "ALERT: ${_igU} could not be moved to primary group ${_USER}; left on $(id -gn ${_igU} 2>/dev/null)"
             fi
