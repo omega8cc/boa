@@ -1597,6 +1597,7 @@ _update_agents() {
     [ ! -e "/var/xdrago/mysql_repair.sh" ] && rm -f ${_pthLog}/mysql_repair.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/nginx_deny.sh" ] && rm -f ${_pthLog}/nginx_deny.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/nginx_deny6.sh" ] && rm -f ${_pthLog}/nginx_deny6.sh.ctrl.*.pid
+    [ ! -e "/var/xdrago/nginx_fleet.sh" ] && rm -f ${_pthLog}/nginx_fleet.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/night/night.inc.sh" ] && rm -f ${_pthLog}/night.inc.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/night/20-sites.sh" ] && rm -f ${_pthLog}/20-sites.sh.ctrl.*.pid
     [ ! -e "/var/xdrago/night/10-account.sh" ] && rm -f ${_pthLog}/10-account.sh.ctrl.*.pid
@@ -1740,7 +1741,7 @@ _update_agents() {
   fi
 
   _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f92 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
-  _fetch_versioned ${_optBin}/clearwebbans "${_urlHmr}/tools/bin/clearwebbans" f96 --symlink ${_usrBin}/clearwebbans --guard /local/bin/clearwebbans
+  _fetch_versioned ${_optBin}/clearwebbans "${_urlHmr}/tools/bin/clearwebbans" f95 --symlink ${_usrBin}/clearwebbans --guard /local/bin/clearwebbans
   _fetch_versioned ${_optBin}/defaultkeys "${_urlHmr}/tools/bin/defaultkeys" f99 --symlink ${_usrBin}/defaultkeys --guard /local/bin/defaultkeys
   # PHP-selecting bee launcher (D-021 identity policy). Deployed unconditionally
   # but inert until the gated _get_bee installs /opt/tools/bee; canonical path
@@ -1844,6 +1845,19 @@ _update_agents() {
     _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f94
     _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f98
     _fetch_versioned /var/xdrago/nginx_deny6.sh "${_urlHmr}/tools/system/nginx_deny6.sh" f99
+    _fetch_versioned /var/xdrago/nginx_fleet.sh "${_urlHmr}/tools/system/nginx_fleet.sh" f99
+    # The per-minute line otherwise arrives only with the crontab template on a
+    # full up-* run, so a fetched detector would sit idle until then; ensure it
+    # whenever the script is present. A line an operator commented out still
+    # matches the grep and is left alone.
+    if [[ -x "/var/xdrago/nginx_fleet.sh" ]] \
+      && [[ -e "/var/spool/cron/crontabs/root" ]] \
+      && ! grep -q "nginx_fleet" /var/spool/cron/crontabs/root 2>/dev/null; then
+      echo '* * * * *   /usr/bin/nice -n5 /usr/bin/ionice -c2 -n7 bash /var/xdrago/nginx_fleet.sh                    >/dev/null 2>&1' >> /var/spool/cron/crontabs/root
+      chown root:crontab /var/spool/cron/crontabs/root &> /dev/null
+      chmod 600 /var/spool/cron/crontabs/root &> /dev/null
+      service cron reload &> /dev/null || /etc/init.d/cron reload &> /dev/null
+    fi
     # The migration-proxy trio previously reached boxes only inside the full
     # up-* tar, so a source box that had not upgraded since the certificate
     # mirror shipped had NO mirror at all -- the exact box that needs it.
@@ -4770,7 +4784,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f88 --guard /local/bin/instgrp
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
-    _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f94 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
+    _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f93 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f90 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f18 --guard duplicity
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f23 --mode 755 --guard duplicity
