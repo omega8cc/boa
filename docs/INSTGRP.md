@@ -70,8 +70,21 @@ path left in `users` is the old state, not a new exposure, while a rollback
 would leave the busiest accounts unconverted on every release. Only a failed
 identity move rolls the account back.
 
-A shell logged in before the conversion keeps its old group set until it
-reconnects; its own files still open through the owner bits.
+The primary group of an identity in use cannot move: `usermod` refuses a
+user that has a process in its own root whose real, effective or saved uid
+is that user's (exit 8, nothing changed). A logged-in shell or SFTP session
+of `oN.ftp` or a sub-account is such a process; an FTPS session is not,
+because pure-ftpd runs it in a chroot. So `convert` asks the same question,
+waits up to a minute for every identity it still has to move (long enough
+for a cron run of the account to end) and skips the account while one stays
+in use (exit 4, an `ALRT:` line in the upgrade report naming the identity,
+its process ids and names), before it changes anything. It looks again right
+before each move; an identity that comes into use in between rolls the moved
+identities back and the account is still skipped (4), or the run fails (1)
+and names the identity when one of them could not be moved back. The next
+upgrade that finds the identity idle converts the account, or run `instgrp
+convert oN` once the session has ended. Before this check a logged-in
+`oN.ftp` failed the move half way and rolled the whole account back.
 
 `convert` refuses while another BOA run holds `/run/boa_run.pid` (the
 upgrade arm holds it itself and says so with `--from-octopus`), waits a
@@ -139,7 +152,11 @@ account members removed from the group, the marker removed, the group
 deleted once no path and no identity carries it (a path written during the
 walk keeps the group in place; re-run). It writes `_INSTANCE_GROUP=NO` into
 the account's octopus cnf, so the next unattended upgrade does not convert
-the account again (`--keep-enabled` leaves the cnf alone).
+the account again (`--keep-enabled` leaves the cnf alone). Like `convert`,
+it does not start while an identity it has to move back is in use (exit 4),
+and after the file walk it waits again before each identity's move; one
+still in use then stays on the account's group, is named, and `revert`
+exits 1 with the group kept: run it again once the identity is idle.
 
 ## Opting an account out
 
@@ -188,7 +205,9 @@ place: it belongs to the account.
   `~/tools`, the hostmaster sites, every `drushrc.php` under `~/static`)
   and runs `instgrp reclaim` on a hit; the 3-minute limited-shell worker
   moves an identity that fell back to the box-wide primary group (a hand
-  `usermod`, a restored passwd) back onto the account's group; the octopus
+  `usermod`, a restored passwd) back onto the account's group once that
+  identity is no longer in use (until then its log says the move waits
+  for an idle pass); the octopus
   upgrade re-converts. Nothing else re-groups a tree between those. An
   account frozen for a migration (`log/proxied.pid`) is outside all of it:
   the nightly never visits it and `reclaim` skips it, so a frozen

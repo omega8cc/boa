@@ -227,8 +227,9 @@ A note on INI files
 -------------------
 
 Per-site settings (caching, cookies, module opt-outs and more) do not
-live in this folder — they go in boa_site_control.ini or
-boa_platform_control.ini inside your platform tree:
+live in this folder — on Drupal and Backdrop platforms they go in
+boa_site_control.ini or boa_platform_control.ini inside your platform
+tree (Grav and Textpattern sites have neither file):
 
   https://docs.boa.io/cheat-sheets/control-files
 

@@ -91,6 +91,29 @@ _validate_ctrl_dir() {
   esac
 }
 
+_is_foreign_cms_root() {
+  # A Grav 2 or Textpattern platform root (mirrors night.inc.sh): provision's
+  # provision_platform_is_grav/_txp shape plus the platform scripts' Drupal
+  # negatives, so no Drupal or Backdrop tree can ever read as foreign. False
+  # for a link and for an absent path. $1 = platform root.
+  local _r="${1%/}"
+  [ -n "${_r}" ] && [ -d "${_r}" ] && [ ! -L "${_r}" ] || return 1
+  [ -f "${_r}/index.php" ] || return 1
+  [ -e "${_r}/core" ] && return 1
+  [ -e "${_r}/modules/system/system.module" ] && return 1
+  [ -e "${_r}/includes/bootstrap.inc" ] && return 1
+  if [ -f "${_r}/bin/grav" ] && [ -f "${_r}/system/defines.php" ]; then
+    return 0
+  fi
+  if [ -f "${_r}/css.php" ] \
+    && [ -f "${_r}/textpattern/index.php" ] \
+    && [ -f "${_r}/textpattern/lib/constants.php" ] \
+    && [ ! -e "${_r}/autoload.php" ]; then
+    return 0
+  fi
+  return 1
+}
+
 _ctrl_stage_dir() {
   # Root-only staging dir for control-INI writes, on the same filesystem as the
   # account's platform trees (they all live under the account root). The account
@@ -843,6 +866,26 @@ _check_solr() {
   fi
 }
 
+_ctrl_ini_leg_ok() {
+  # Re-check the site INI right before a read/append leg. The loop-start
+  # strip in _check_sites_list can be minutes old by now (a CoreAdmin CREATE,
+  # a jetty9 restart), and ">>" appends THROUGH a link planted since,
+  # creating its target. Re-validate the dir, strip a planted link, and act
+  # only on a regular file. Reads _Dir and _DIR_CTRL_F.
+  _validate_ctrl_dir "${_Dir}/modules" || return 1
+  _desymlink_planted "${_DIR_CTRL_F}"
+  [ -f "${_DIR_CTRL_F}" ] && [ ! -L "${_DIR_CTRL_F}" ]
+}
+
+_ctrl_ini_append() {
+  # Append one line to the site INI as the account's own user, never as root:
+  # a link planted at the name after _ctrl_ini_leg_ok then reaches only what
+  # the account could already write. $1 = the line. Reads _HM_U, _DIR_CTRL_F.
+  [ -n "${_HM_U}" ] || return 1
+  # shellcheck disable=SC2016  # $1/$2 belong to the inner bash, not this shell
+  runuser -u "${_HM_U}" -- /bin/bash -c 'printf "%s\n" "$1" >> "$2"' _ "$1" "${_DIR_CTRL_F}" &> /dev/null
+}
+
 _solr_teardown_intended() {
   # ${1} = site INI. A commented-out directive is an operator's teardown
   # request (docs/SOLR.md) -- unless the INI is the placeholder BOA itself
@@ -885,13 +928,13 @@ _setup_solr() {
   ###
   ### Support for solr_integration_module directive
   ###
-  if [ -e "${_DIR_CTRL_F}" ]; then
+  if _ctrl_ini_leg_ok; then
     _SOLR_MODULE="your_module_name_here"
     _SOLR_IM_PT=$(grep "solr_integration_module" ${_DIR_CTRL_F} 2>&1)
     if [[ "${_SOLR_IM_PT}" =~ "solr_integration_module" ]]; then
       _DO_NOTHING=YES
     else
-      echo ";solr_integration_module = your_module_name_here" >> ${_DIR_CTRL_F}
+      _ctrl_ini_append ";solr_integration_module = your_module_name_here"
     fi
     _ASOLR_T=$(grep "^solr_integration_module = apachesolr" \
       ${_DIR_CTRL_F} 2>&1)
@@ -972,12 +1015,12 @@ _setup_solr() {
   ###
   ### Support for solr_custom_config directive
   ###
-  if [ -e "${_DIR_CTRL_F}" ]; then
+  if _ctrl_ini_leg_ok; then
     _SLR_CM_CFG_P=$(grep "solr_custom_config" ${_DIR_CTRL_F} 2>&1)
     if [[ "${_SLR_CM_CFG_P}" =~ "solr_custom_config" ]]; then
       _DO_NOTHING=YES
     else
-      echo ";solr_custom_config = NO" >> ${_DIR_CTRL_F}
+      _ctrl_ini_append ";solr_custom_config = NO"
     fi
     _SLR_CM_CFG_RT=NO
     _SOLR_PROTECT_CTRL="${_SOLR_DIR}/conf/.protected.conf"
@@ -997,12 +1040,12 @@ _setup_solr() {
   ###
   ### Support for solr_update_config directive
   ###
-  if [ -e "${_DIR_CTRL_F}" ]; then
+  if _ctrl_ini_leg_ok; then
     _SOLR_UP_CFG_PT=$(grep "solr_update_config" ${_DIR_CTRL_F} 2>&1)
     if [[ "${_SOLR_UP_CFG_PT}" =~ "solr_update_config" ]]; then
       _DO_NOTHING=YES
     else
-      echo ";solr_update_config = NO" >> ${_DIR_CTRL_F}
+      _ctrl_ini_append ";solr_update_config = NO"
     fi
     _SOLR_UP_CFG_TT=$(grep "^solr_update_config = YES" ${_DIR_CTRL_F} 2>&1)
     if [[ "${_SOLR_UP_CFG_TT}" =~ "solr_update_config = YES" ]]; then
@@ -1075,6 +1118,16 @@ _check_sites_list() {
       fi
       if [ -n "${_Plr}" ] && ! _validate_safe_dir "${_Plr}"; then
         echo "SKIP: _Plr resolves outside allowed roots: ${_Plr}"
+        continue
+      fi
+      # Grav and Textpattern sites carry no BOA control INI and no Solr
+      # binding (boa-grav D-011, boa-txp D-013): never seed, read or act on
+      # one for them. A core an earlier pass made for such a site is left to
+      # the orphan sweep, which no longer counts its INI either.
+      if [ -n "${_Plr}" ] \
+        && _is_foreign_cms_root "$(realpath -e -- "${_Plr}" 2>/dev/null)"; then
+        rm -f "${_usEr}/.boa-ctrl/solr-reseeded.oct.${_HM_U}.${_Dan}" &> /dev/null
+        echo "SKIP: ${_Dom} is a Grav or Textpattern site (no control INI)"
         continue
       fi
       # The checks above validate the alias-derived roots, not the modules
@@ -1352,10 +1405,15 @@ _build_active_core_set() {
         # A site with this set is actively managed by _check_sites_list and
         # must not be archived based on index age — _add_solr will recreate
         # the core empty if we archive it, losing the index permanently.
-        local _sitePath
+        local _sitePath _rootPath
         _sitePath=$(grep "site_path'" "${_aliasFile}" \
           | cut -d: -f2 | awk '{print $3}' | sed "s/[\,']//g" 2>/dev/null)
-        if [ -n "${_sitePath}" ]; then
+        _rootPath=$(grep "'root' =>" "${_aliasFile}" \
+          | cut -d: -f2 | awk '{print $3}' | sed "s/[\,']//g" 2>/dev/null)
+        # A Grav or Textpattern site has no Solr binding for _check_sites_list
+        # to manage (it skips them), so an INI a tenant edited there must not
+        # keep a leftover core out of the orphan sweep.
+        if [ -n "${_sitePath}" ] && ! _is_foreign_cms_root "${_rootPath}"; then
           local _ctrlFile="${_sitePath}/modules/boa_site_control.ini"
           if [ -f "${_ctrlFile}" ]; then
             local _solrMod
