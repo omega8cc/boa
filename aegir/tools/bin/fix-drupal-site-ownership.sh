@@ -218,7 +218,7 @@ if [ -n "${site_path}" ] \
   # follows them into the shared core.
   printf "Setting Textpattern ownership of %s to: user => %s group => %s\n" "${site_path}" "${script_user}" "${_code_group}"
   chown -h -R ${script_user}:${_code_group} ${site_path}
-  for _wd in tmp modules admin/plugins public/files public/images public/themes private; do
+  for _wd in tmp admin/plugins public/files public/images public/themes private; do
     [ -d "${site_path}/${_wd}" ] || continue
     chown -h -R ${script_user}:${web_group:-www-data} "${site_path}/${_wd}"
   done
