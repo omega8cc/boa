@@ -1035,7 +1035,11 @@ read -r _CNT_FP _CNT_ADDR _CNT_NET <<< "${_RESULT}"
 # No scope in BAN (or DETECT=NO) means no store at all, so a later switch back
 # to BAN starts from fresh evidence instead of resurrecting old members.
 if (( _ANY_BAN )); then
-  if ! mv -f "${_STORE_TMP}" "${_STORE}"; then
+  if (( _CNT_FP == 0 )) && [[ ! -s "${_STORE}" ]]; then
+    # Nothing live and nothing recorded: leave no empty file behind, so a box
+    # that has never seen a fleet keeps a clean state directory.
+    rm -f "${_STORE}" "${_STORE_TMP}"
+  elif ! mv -f "${_STORE_TMP}" "${_STORE}"; then
     _fleet_note "ALERT: cannot install ${_STORE}; live maps left untouched"
     _fleet_cleanup
     exit 1
