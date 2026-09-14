@@ -20,8 +20,14 @@
 #                                hits forward across runs, so a cleared IP would
 #                                be re-banned from state alone, with no new
 #                                traffic at all)
+#   - crawler-fleet store        /var/xdrago/monitor/log/fleet.tempban (nginx 429
+#                                refusals by fleet fingerprint) -> removed, plus
+#                                the clear stamp .fleet.clear.stamp so the
+#                                detector ignores every pre-clear log line
+#                                instead of re-declaring from them
 #   - nginx realip geo-ban sets  regenerated via /var/xdrago/nginx_deny.sh (IPv4)
 #                                and /var/xdrago/nginx_deny6.sh (IPv6)
+#   - nginx crawler-fleet maps   regenerated via /var/xdrago/nginx_fleet.sh
 #
 # SSH and FTP bans are deliberately NOT touched -- those are real brute-force.
 #
@@ -53,6 +59,10 @@ _H10_WINDOW="/var/xdrago/monitor/log/http10_auth.window"
 _G404_WINDOW="/var/xdrago/monitor/log/guard404.window"
 _G404_CAMP_STAMP="/var/xdrago/monitor/log/.guard404.campaign.stamp"
 _NGINX_DENY6="/var/xdrago/nginx_deny6.sh"
+_FLEET_STORE="/var/xdrago/monitor/log/fleet.tempban"
+_FLEET_CLEAR="/var/xdrago/monitor/log/.fleet.clear.stamp"
+_FLEET_LOCK="/run/boa_nginx_fleet.lock"
+_NGINX_FLEET="/var/xdrago/nginx_fleet.sh"
 _LOCK="/run/clearwebbans.lock"
 
 _DRY=0
@@ -136,10 +146,24 @@ mapfile -t _LOG_IPS  < <( { _ips_from_banlog "${_WEB_LOG}"; _ips_from_banlog "${
 mapfile -t _TEMP_IPS < <( _ips_temp_web | sort -u )
 mapfile -t _PERM_IPS < <( _ips_perm_web | sort -u )
 
+# Crawler-fleet store line counts: fingerprints, member addresses, member /16s.
+_FLEET_F=0
+_FLEET_A=0
+_FLEET_N=0
+if [[ -s "${_FLEET_STORE}" ]]; then
+  _FLEET_F=$(grep -c '^F|' "${_FLEET_STORE}" 2>/dev/null)
+  _FLEET_A=$(grep -c '^A|' "${_FLEET_STORE}" 2>/dev/null)
+  _FLEET_N=$(grep -c '^N|' "${_FLEET_STORE}" 2>/dev/null)
+  [[ "${_FLEET_F}" =~ ^[0-9]+$ ]] || _FLEET_F=0
+  [[ "${_FLEET_A}" =~ ^[0-9]+$ ]] || _FLEET_A=0
+  [[ "${_FLEET_N}" =~ ^[0-9]+$ ]] || _FLEET_N=0
+fi
+
 _msg "clearwebbans — web IDS ban-state cleanup"
 _msg "  ban-log IPs (web.log + archives) : ${#_LOG_IPS[@]}"
 _msg "  csf TEMP web bans (80/443)       : ${#_TEMP_IPS[@]}"
 _msg "  csf PERMANENT web bans ('${_WEB_TAG}') : ${#_PERM_IPS[@]}"
+_msg "  crawler-fleet store (nginx 429)  : ${_FLEET_F} fingerprints, ${_FLEET_A} addresses, ${_FLEET_N} networks"
 [[ "${_HAS_CSF}" -eq 0 ]] && _alrt "  (csf not found at /usr/sbin/csf — firewall bans left untouched)"
 
 if [[ "${_DRY}" -eq 1 ]]; then
@@ -184,6 +208,23 @@ rm -f "${_WEB_LOG}" "${_WA}" "${_WX}" "${_WEB6}"
 # re-ban a just-cleared IP within seconds of this tool finishing.
 rm -f "${_H10_WINDOW}" "${_G404_WINDOW}" "${_G404_CAMP_STAMP}"
 
+# Release the crawler-fleet refusals too. Under the detector's own lock, so a
+# pass in flight cannot move its store back over the removal, and with a clear
+# stamp so the next pass ignores every pre-clear line instead of re-declaring
+# the same fleet from traffic still in the access log. The lock is released
+# before nginx_fleet.sh runs below: it takes the same lock itself.
+_FLEET_LOCKED=0
+exec 8>"${_FLEET_LOCK}"
+flock -w 60 8 && _FLEET_LOCKED=1
+rm -f "${_FLEET_STORE}"
+if [[ -d "${_FLEET_CLEAR%/*}" ]] && ! date +%s > "${_FLEET_CLEAR}"; then
+  _alrt "  (could not write ${_FLEET_CLEAR}; the fleet detector may re-declare from pre-clear log lines)"
+fi
+exec 8>&-
+if [[ "${_FLEET_LOCKED}" -eq 0 ]]; then
+  _alrt "  (crawler-fleet lock busy for 60s; store cleared without it, re-run if a stuck pass restores it)"
+fi
+
 # Reset the scan_nginx byte offset to the CURRENT end of the access log, so the
 # next scan only sees new traffic instead of reprocessing (and possibly
 # re-flagging) the lines that produced the false positives.
@@ -211,5 +252,17 @@ if [[ -x "${_NGINX_DENY6}" ]]; then
   _msg "  regenerated nginx IPv6 geo-ban set via nginx_deny6.sh"
 fi
 
-_info "Done. Removed ${_rm_perm} permanent + ${_rm_temp} temp csf web bans; cleared web.log + archives + IPv6 store; reset scan offset."
+# Re-render the crawler-fleet maps from the now-empty store: the clear stamp
+# keeps this pass from re-declaring anything from pre-clear lines, so it writes
+# empty fragments and reloads. nginx_fleet.sh handles its own locks, configtest
+# and revert; a cron pass already holding its lock performs the same release.
+if [[ -f "${_NGINX_FLEET}" ]]; then
+  if bash "${_NGINX_FLEET}" >/dev/null 2>&1; then
+    _msg "  regenerated nginx crawler-fleet maps via nginx_fleet.sh"
+  else
+    _alrt "  nginx_fleet.sh failed; see /var/xdrago/monitor/log/fleet.log"
+  fi
+fi
+
+_info "Done. Removed ${_rm_perm} permanent + ${_rm_temp} temp csf web bans; cleared web.log + archives + IPv6 store + crawler-fleet store; reset scan offset."
 exit 0
