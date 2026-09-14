@@ -1,4 +1,76 @@
 ###
+### In development - changes since BOA-5.88.855
+###
+
+@=> Security
+
+    * New crawler-fleet refusal: a distributed crawl that shares one
+      exact user agent against one site is refused by the web server
+      with 429, on by default on every box, in both of its scopes.
+    * A self-declared crawler name is refused per member /16 network;
+      every other agent only from an address already seen acting for
+      the fleet, and only for a request that carries no Referer and
+      no session cookie -- a real visitor who shares the address or
+      the string passes by following any link or by logging in.
+    * The refusal never feeds the IDS score or a firewall ban, so it
+      can never escalate into a blocked address, and an invalid
+      setting falls back to refusing rather than to allowing.
+    * Search engines, monitors, the allow-by-default AI classes and
+      the link previewers are exempt by roster; an operator exemption
+      only ever adds to that roster and can never remove from it.
+    * A site whose real-client chain has collapsed onto a CDN edge is
+      reported and skipped instead of declared, and a box degrading
+      under load is never mistaken for a fleet.
+    * Textpattern and subdir vhosts drop security-banned client
+      addresses like every other vhost; the ban pipeline's closing
+      guard had never reached them.
+    * An invalid crawler-exemption override keeps the shipped
+      exemption list instead of voiding every exemption, so one typo
+      in a control file no longer strips the protection that list
+      gives the legitimate crawlers, unfurlers and uptime probes.
+
+@=> New Features
+
+    * The new nginx_fleet.sh detector reads the last few minutes of
+      the access log once a minute and declares a fingerprint only
+      when one route class of one site clears every gate at once:
+      scale, share of the site's traffic, no Referer, a different URL
+      on almost every request, and a healthy status mix.
+    * Refusals expire on their own -- a fingerprint an hour after its
+      last sighting, a member address or network within six hours --
+      and a fingerprint's expiry releases all of its members with it.
+    * Two settings loosen the refusal one scope at a time after a
+      confirmed report from a real caller; there is no arming step
+      and no report-only soak period to sit through first.
+    * A read-only replay mode measures the refusal against saved
+      logs, per fingerprint and per scope, before anything is changed
+      on a live box.
+    * clearwebbans releases the fleet refusals along with the web
+      bans and has the detector ignore pre-clear log lines, so a
+      cleared fleet is not re-declared from traffic already logged.
+    * The generated maps go live only after an nginx configtest
+      accepts them, and the last good set is restored if it does not,
+      so a fleet map can never take the web server down.
+
+@=> Improvements
+
+    * Query-mutation spam that grows an "&amp;" chain one layer per
+      hop is answered 404 at the first doubled layer, which also
+      stops the crawler discovering the deeper URLs at all.
+    * The stale-Chrome maps cover Chrome/100-139, with the rule to
+      move that bound by release date rather than by counting
+      versions written down alongside them.
+    * Generated maps holding thousands of keys no longer make every
+      configtest and reload warn about the map hash size.
+
+@=> Important Fixes
+
+    * The web IDS scores every line of every pass: lines the web
+      server appended while a pass was running were jumped over and
+      never seen by any detector.
+
+
+###
 ### Stable BOA-5.88.855 PRO/LTS - KRAKEN EDITION
 ### Date: Thu 27 Aug 2026 15:48:31 CEST in Warsaw
 ### Enjoy the release of the Kraken
