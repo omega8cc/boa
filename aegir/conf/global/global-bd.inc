@@ -43,6 +43,45 @@ if (php_sapi_name() !== 'cli' && isset($_SERVER['DOCUMENT_ROOT'])
   exit;
 }
 
+// HTTP-off migration short-circuit -- the same contract as the Drupal
+// global-mode.inc: /data/disk/<oct>/static/control/http-off.pid (touched by
+// xoct and xmass for the cutover window, removed once the proxy vhost is in
+// place) blocks every web request on the account with a 503; the file's
+// integer contents (30..86400) override the 300 s TTL for both the Nginx
+// microcache (X-Accel-Expires) and downstream caches. Without this block a
+// Backdrop site kept serving, and accepting writes, past the GTID the
+// cutover captured -- writes that never reached the promoted box. Guarded by
+// SAPI like the suspend block above (bee and drush run under cli).
+if (php_sapi_name() !== 'cli' && isset($_SERVER['DOCUMENT_ROOT'])
+  && preg_match('#^(/data/disk/[^/]+)/#', $_SERVER['DOCUMENT_ROOT'], $bd_http_off_m)) {
+  $bd_http_off_pid = $bd_http_off_m[1] . '/static/control/http-off.pid';
+  if (file_exists($bd_http_off_pid)) {
+    $bd_http_off_ttl = (int) @file_get_contents($bd_http_off_pid);
+    if ($bd_http_off_ttl < 30 || $bd_http_off_ttl > 86400) {
+      $bd_http_off_ttl = 300;
+    }
+    header('HTTP/1.1 503 Service Unavailable');
+    header('Status: 503 Service Unavailable');
+    header('Retry-After: ' . $bd_http_off_ttl);
+    header('X-Accel-Expires: ' . $bd_http_off_ttl);
+    // no-store downstream: the gate must not outlive the window in a
+    // browser or CDN (the microcache above is purged at every toggle)
+    header('Cache-Control: no-store, must-revalidate');
+    header('Content-Type: text/html; charset=utf-8');
+    header('Connection: close');
+    $bd_http_off_tpl = '/var/www/nginx-default/maintenance.html';
+    if (@is_readable($bd_http_off_tpl)) {
+      readfile($bd_http_off_tpl);
+    }
+    else {
+      echo '<!doctype html><title>Maintenance in progress</title>'
+        . '<h1>Site maintenance in progress</h1>'
+        . '<p>We will be back shortly.</p>';
+    }
+    exit;
+  }
+}
+
 // Aegir owns cron: the hosting_cron queue fires core/cron.php?cron_key= on
 // the per-site interval. Disable Backdrop's visit-triggered cron (config
 // override, honored by the system.module threshold gate) so front-end

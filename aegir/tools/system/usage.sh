@@ -329,7 +329,9 @@ _usage_count() {
         && [ -e "${_Dir}/files" ] \
         && [ -e "${_Dir}/private" ] \
         && [ ! -e "${_Plr}/profiles/hostmaster" ]; then
-        if [ ! -e "${_Dir}/modules" ]; then
+        ### Only a Drupal or Backdrop site (it has settings.php) gets the
+        ### control-INI dir; a Grav or Textpattern site carries no INI.
+        if [ ! -e "${_Dir}/modules" ] && [ -f "${_Dir}/settings.php" ]; then
           mkdir ${_Dir}/modules
         fi
         #echo "${_THIS_U},${_Dom},sitedir-exists"

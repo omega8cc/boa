@@ -186,11 +186,13 @@ if (!$is_backend && !$is_install && isset($_SERVER['DOCUMENT_ROOT'])) {
       header('Status: 503 Service Unavailable');
       header('Retry-After: ' . $_http_off_ttl);
       header('X-Accel-Expires: ' . $_http_off_ttl);
-      header('Cache-Control: public, max-age=' . $_http_off_ttl);
+      // no-store downstream: the gate must not outlive the window in a
+      // browser or CDN (the microcache above is purged at every toggle)
+      header('Cache-Control: no-store, must-revalidate');
       header('Content-Type: text/html; charset=utf-8');
       header('Connection: close');
       $_http_off_tpl = '/var/www/nginx-default/maintenance.html';
-      if (is_readable($_http_off_tpl)) {
+      if (@is_readable($_http_off_tpl)) {
         readfile($_http_off_tpl);
       }
       else {

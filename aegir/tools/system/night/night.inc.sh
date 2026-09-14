@@ -199,6 +199,72 @@ _desymlink_planted() {
   done
 }
 
+_is_foreign_cms_root() {
+  # A Grav 2 or Textpattern platform root: the shape provision's
+  # provision_platform_is_grav/_txp test, plus the platform scripts' Drupal
+  # negatives, so no Drupal or Backdrop tree (core/, modules/system,
+  # includes/bootstrap.inc) can ever read as foreign. Keyed on the root
+  # because a site's alias root is its platform. False for a link and for an
+  # absent path. $1 = platform root.
+  local _r="${1%/}"
+  [ -n "${_r}" ] && [ -d "${_r}" ] && [ ! -L "${_r}" ] || return 1
+  [ -f "${_r}/index.php" ] || return 1
+  [ -e "${_r}/core" ] && return 1
+  [ -e "${_r}/modules/system/system.module" ] && return 1
+  [ -e "${_r}/includes/bootstrap.inc" ] && return 1
+  if [ -f "${_r}/bin/grav" ] && [ -f "${_r}/system/defines.php" ]; then
+    return 0
+  fi
+  if [ -f "${_r}/css.php" ] \
+    && [ -f "${_r}/textpattern/index.php" ] \
+    && [ -f "${_r}/textpattern/lib/constants.php" ] \
+    && [ ! -e "${_r}/autoload.php" ]; then
+    return 0
+  fi
+  return 1
+}
+
+_heal_foreign_cms_ctrl_ini() {
+  # Grav and Textpattern never read a BOA control INI, so BOA no longer seeds
+  # one there (boa-grav D-011, boa-txp D-013); this clears what an earlier
+  # release left. $1 = the dir, $2 = boa_site_control.ini or
+  # boa_platform_control.ini, or empty to drop only an empty dir. Both the
+  # default.* template and the live file go whatever they hold: nothing reads
+  # either on these CMSes, and BOA's own nightly uncommented lines in them,
+  # so their content says nothing about intent. The dir goes only when that
+  # leaves it empty, so nothing else in it is ever lost. Never follows a
+  # link: one at the dir is left alone, one at a file name goes as a link,
+  # and the unlinks and the rmdir both run in directories pinned with cd -P,
+  # so a parent swapped after a check cannot redirect them. Reads _usEr.
+  local _md="$1" _n="$2" _rmd _rus
+  [ -n "${_md}" ] || return 0
+  [ -L "${_md}" ] && return 0
+  [ -d "${_md}" ] || return 0
+  _rmd=$(realpath -e -- "${_md}" 2>/dev/null) || return 0
+  _rus=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 0
+  case "${_rmd}/" in
+    "${_rus}"/*) : ;;
+    *) return 0 ;;
+  esac
+  (
+    cd -P -- "${_rmd}" 2>/dev/null || exit 0
+    [ "$(pwd -P)" = "${_rmd}" ] || exit 0
+    if [ -n "${_n}" ]; then
+      for _f in "default.${_n}" "${_n}"; do
+        if [ -L "./${_f}" ] || [ -f "./${_f}" ]; then
+          rm -f -- "./${_f}" \
+            && echo "Foreign-CMS control INI removed: ${_rmd}/${_f}"
+        fi
+      done
+    fi
+    cd -P .. 2>/dev/null || exit 0
+    [ "$(pwd -P)" = "${_rmd%/*}" ] || exit 0
+    rmdir -- "${_rmd##*/}" 2>/dev/null \
+      && echo "Foreign-CMS empty dir removed: ${_rmd}"
+  )
+  return 0
+}
+
 _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'
 }
