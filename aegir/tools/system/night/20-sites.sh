@@ -104,6 +104,63 @@ if ! declare -F _validate_ctrl_dir > /dev/null 2>&1; then
   }
 fi
 
+### The Grav/Textpattern root test and its heal ride the same skew: with an
+### older library the test would read false everywhere (127) and every INI leg
+### below would keep seeding foreign trees, while a missing heal would leave
+### what earlier releases seeded. Carry both library bodies; they mirror
+### night.inc.sh deliberately.
+if ! declare -F _is_foreign_cms_root > /dev/null 2>&1; then
+  _is_foreign_cms_root() {
+    local _r="${1%/}"
+    [ -n "${_r}" ] && [ -d "${_r}" ] && [ ! -L "${_r}" ] || return 1
+    [ -f "${_r}/index.php" ] || return 1
+    [ -e "${_r}/core" ] && return 1
+    [ -e "${_r}/modules/system/system.module" ] && return 1
+    [ -e "${_r}/includes/bootstrap.inc" ] && return 1
+    if [ -f "${_r}/bin/grav" ] && [ -f "${_r}/system/defines.php" ]; then
+      return 0
+    fi
+    if [ -f "${_r}/css.php" ] \
+      && [ -f "${_r}/textpattern/index.php" ] \
+      && [ -f "${_r}/textpattern/lib/constants.php" ] \
+      && [ ! -e "${_r}/autoload.php" ]; then
+      return 0
+    fi
+    return 1
+  }
+fi
+if ! declare -F _heal_foreign_cms_ctrl_ini > /dev/null 2>&1; then
+  _heal_foreign_cms_ctrl_ini() {
+    local _md="$1" _n="$2" _rmd _rus
+    [ -n "${_md}" ] || return 0
+    [ -L "${_md}" ] && return 0
+    [ -d "${_md}" ] || return 0
+    _rmd=$(realpath -e -- "${_md}" 2>/dev/null) || return 0
+    _rus=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 0
+    case "${_rmd}/" in
+      "${_rus}"/*) : ;;
+      *) return 0 ;;
+    esac
+    (
+      cd -P -- "${_rmd}" 2>/dev/null || exit 0
+      [ "$(pwd -P)" = "${_rmd}" ] || exit 0
+      if [ -n "${_n}" ]; then
+        for _f in "default.${_n}" "${_n}"; do
+          if [ -L "./${_f}" ] || [ -f "./${_f}" ]; then
+            rm -f -- "./${_f}" \
+              && echo "Foreign-CMS control INI removed: ${_rmd}/${_f}"
+          fi
+        done
+      fi
+      cd -P .. 2>/dev/null || exit 0
+      [ "$(pwd -P)" = "${_rmd%/*}" ] || exit 0
+      rmdir -- "${_rmd##*/}" 2>/dev/null \
+        && echo "Foreign-CMS empty dir removed: ${_rmd}"
+    )
+    return 0
+  }
+fi
+
 ### Same delivery hazard, opposite failure direction: every "_provision_running
 ### && return" below BAILS OUT when a Provision task is running, so a missing
 ### function -- 127, i.e. false -- reads as "nothing running" and the cleanup
@@ -1651,29 +1708,40 @@ _fix_permissions() {
     && [ -e "${_Plr}" ] \
     && [ ! -L "${_Plr}/sites" ] \
     && [ ! -L "${_Plr}/sites/all" ]; then
-    mkdir -p ${_Plr}/sites/all/{modules,themes,libraries,drush}
-    find ${_Plr}/sites/all/{modules,themes,libraries,drush}/*{.tar,.tar.gz,.zip} \
-      -type f -exec rm -f {} \; &> /dev/null
-    if [ ! -e "${_usEr}/static/control/unlock.info" ] \
-      && [ ! -e "${_Plr}/skip.info" ]; then
-      if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.lock-${_NOW}.info" ]; then
-        ### -h: those three dirs are 02775 and group-writable (see the find below),
-        ### so every glob hit is a tenant-plantable name and chown -R follows a
-        ### symlink given as its starting point. -h also stops the recursion
-        ### rewriting ownership through the legitimate o_contrib* links into
-        ### the shared distro tree. Same shape as the files leg at 1550.
-        chown -h -R ${_HM_U}:${_grp} \
-          ${_Plr}/sites/all/{modules,themes,libraries}/* &> /dev/null
-        touch ${_usEr}/log/ctrl/plr.${_PlrID}.lock-${_NOW}.info
-      fi
-    elif [ -e "${_usEr}/static/control/unlock.info" ] \
-      && [ ! -e "${_Plr}/skip.info" ]; then
-      if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.unlock-${_NOW}.info" ]; then
-        ### -h for the same reason as the lock branch above; here the planted
-        ### target would be handed straight to the tenant's shell user.
-        chown -h -R ${_HM_U}.ftp:${_grp} \
-          ${_Plr}/sites/all/{modules,themes,libraries}/* &> /dev/null
-        touch ${_usEr}/log/ctrl/plr.${_PlrID}.unlock-${_NOW}.info
+    if [ "${_FOREIGN_CMS}" = "YES" ]; then
+      ### A Grav or Textpattern platform has no Drupal sites/all/{modules,
+      ### themes,libraries}; sites/all/drush is where its drushrc renders.
+      mkdir -p ${_Plr}/sites/all/drush
+    else
+      mkdir -p ${_Plr}/sites/all/{modules,themes,libraries,drush}
+    fi
+    ### Drupal's sites/all/{modules,themes,libraries} carry nothing on a Grav or
+    ### Textpattern platform, and the recursive chowns below would walk a link
+    ### planted at one of those names: skip the whole leg there.
+    if [ "${_FOREIGN_CMS}" != "YES" ]; then
+      find ${_Plr}/sites/all/{modules,themes,libraries,drush}/*{.tar,.tar.gz,.zip} \
+        -type f -exec rm -f {} \; &> /dev/null
+      if [ ! -e "${_usEr}/static/control/unlock.info" ] \
+        && [ ! -e "${_Plr}/skip.info" ]; then
+        if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.lock-${_NOW}.info" ]; then
+          ### -h: those three dirs are 02775 and group-writable (see the find below),
+          ### so every glob hit is a tenant-plantable name and chown -R follows a
+          ### symlink given as its starting point. -h also stops the recursion
+          ### rewriting ownership through the legitimate o_contrib* links into
+          ### the shared distro tree. Same shape as the files leg at 1550.
+          chown -h -R ${_HM_U}:${_grp} \
+            ${_Plr}/sites/all/{modules,themes,libraries}/* &> /dev/null
+          touch ${_usEr}/log/ctrl/plr.${_PlrID}.lock-${_NOW}.info
+        fi
+      elif [ -e "${_usEr}/static/control/unlock.info" ] \
+        && [ ! -e "${_Plr}/skip.info" ]; then
+        if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.unlock-${_NOW}.info" ]; then
+          ### -h for the same reason as the lock branch above; here the planted
+          ### target would be handed straight to the tenant's shell user.
+          chown -h -R ${_HM_U}.ftp:${_grp} \
+            ${_Plr}/sites/all/{modules,themes,libraries}/* &> /dev/null
+          touch ${_usEr}/log/ctrl/plr.${_PlrID}.unlock-${_NOW}.info
+        fi
       fi
     fi
     ### -h on the chown and find -P (never a bare glob) on the chmods: the
@@ -1718,7 +1786,9 @@ _fix_permissions() {
       _pDm=02775
       _pFm=0664
     fi
-    if [[ ! "${_Plr}" =~ /static/ ]]; then
+    ### A Grav or Textpattern root keeps the modes its own platform script
+    ### sets: this Drupal code-dir pass stripped Grav's vendor/bin exec bits.
+    if [[ ! "${_Plr}" =~ /static/ ]] && [ "${_FOREIGN_CMS}" != "YES" ]; then
       [ -L "${_Plr}" ] || chmod 0755 ${_Plr} &> /dev/null
       ### The three Drush-lock dirs keep whatever mode the lock state gave
       ### them (0400 locked, 0775 after Unlock Local Drush): prune, never
@@ -1746,7 +1816,8 @@ _fix_permissions() {
     ### tcpdf and its cache child are names the tenant can plant. A planted
     ### parent redirects the recursive chown too. Precheck both; a real
     ### directory is treated exactly as before.
-    if [ ! -L "${_Plr}/sites/all/libraries/tcpdf" ] \
+    if [ "${_FOREIGN_CMS}" != "YES" ] \
+      && [ ! -L "${_Plr}/sites/all/libraries/tcpdf" ] \
       && [ ! -L "${_Plr}/sites/all/libraries/tcpdf/cache" ]; then
       chmod -R 775 ${_Plr}/sites/all/libraries/tcpdf/cache &> /dev/null
       chown -R ${_HM_U}:www-data \
@@ -1765,7 +1836,8 @@ _fix_permissions() {
     && [ ! -L "${_Dir}" ] \
     && [ -e "${_Dir}/drushrc.php" ] \
     && [ -e "${_Dir}/files" ] \
-    && [ -e "${_Dir}/private" ]; then
+    && [ -e "${_Dir}/private" ] \
+    && [ "${_FOREIGN_CMS}" != "YES" ]; then
     ### Cleanup
     rm ${_Dir}/*.{codebasecheck*,hm-fix-*,ctm-lock-*,lock-*,perm-fix-*}.info &> /dev/null
     ### directory and settings files - site level
@@ -1922,12 +1994,9 @@ _fix_permissions() {
       || { [ -f "${_Dir}/public/index.php" ] \
         && [ -f "${_Dir}/public/css.php" ] \
         && [ -d "${_Dir}/admin" ]; }; }; then
-    ### The per-site control-INI dir is part of the BOA contract for every CMS
-    ### (both foreign-CMS provision layers create it themselves); seed it here
-    ### too so the helper pass below takes it with the rest of the tree.
-    if [ ! -e "${_Dir}/modules" ]; then
-      mkdir ${_Dir}/modules
-    fi
+    ### No control-INI dir here: a Grav or Textpattern site carries no BOA
+    ### control INI (boa-grav D-011, boa-txp D-013), and the per-site loop
+    ### clears what an earlier release seeded.
     if [ -x "/usr/local/bin/fix-drupal-site-ownership.sh" ]; then
       /usr/local/bin/fix-drupal-site-ownership.sh \
         --site-path="${_Dir}" \
@@ -2375,7 +2444,8 @@ _cleanup_ghost_drushrc() {
           # files/private: under native files-symlinking those are symlinks into
           # the static store whose target can be transiently absent (unmounted,
           # mid-repoint), so a present settings file alone keeps the site.
-          if [ ! -e "${_T_SITE_FDIR}/modules" ]; then
+          if [ ! -e "${_T_SITE_FDIR}/modules" ] \
+            && ! _is_foreign_cms_root "${_T_SITE_FDIR%/sites/*}"; then
             mkdir ${_T_SITE_FDIR}/modules
           fi
           _IS_SITE=YES
@@ -2646,6 +2716,7 @@ _daily_process() {
     _codeBaseCheckDir=
     _codeBaseCheckFile=
     _codeBaseCheckCtrl=
+    _FOREIGN_CMS=NO
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d/${_Dom}" ]; then
       _Plx=$(cat ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} \
         | grep "root " \
@@ -2722,6 +2793,23 @@ _daily_process() {
         "${_Dir}/modules/default.boa_site_control.ini" \
         "${_PLR_CTRL_F}" \
         "${_Plr}/sites/all/modules/default.boa_platform_control.ini"
+      # Grav and Textpattern trees carry no BOA control INI: nothing reads one
+      # there (boa-grav D-011, boa-txp D-013). Decide once, from the platform
+      # root, AFTER the gates above -- a planted modules link skips a foreign
+      # site's iteration exactly as it skips a Drupal one, which keeps every
+      # later leg off that path -- and clear what an earlier release seeded.
+      _FOREIGN_CMS=NO
+      _is_foreign_cms_root "${_Plr}" && _FOREIGN_CMS=YES
+      if [ "${_FOREIGN_CMS}" = "YES" ]; then
+        if [ -n "${_Dir}" ] && [ ! -f "${_Dir}/settings.php" ]; then
+          _heal_foreign_cms_ctrl_ini "${_Dir}/modules" boa_site_control.ini
+        fi
+        if [ ! -L "${_Plr}/sites" ] && [ ! -L "${_Plr}/sites/all" ]; then
+          _heal_foreign_cms_ctrl_ini "${_Plr}/sites/all/modules" boa_platform_control.ini
+          _heal_foreign_cms_ctrl_ini "${_Plr}/sites/all/themes" ""
+          _heal_foreign_cms_ctrl_ini "${_Plr}/sites/all/libraries" ""
+        fi
+      fi
       if [ -e "${_Plr}" ]; then
         _PlrID=$(echo ${_Plr} \
           | openssl md5 \
@@ -2741,8 +2829,10 @@ _daily_process() {
             touch "${_codeBaseCheckCtrl}"
           fi
         fi
-        _fix_platform_control_files
-        _fix_o_contrib_symlink
+        if [ "${_FOREIGN_CMS}" != "YES" ]; then
+          _fix_platform_control_files
+          _fix_o_contrib_symlink
+        fi
         if [ -e "${_Dir}/drushrc.php" ]; then
           cd ${_Dir}
           if [ "${_Dan}" = "hostmaster" ]; then
@@ -2760,7 +2850,9 @@ _daily_process() {
           fi
           if [ ! -z "${_Dan}" ] \
             && [ "${_Dan}" != "hostmaster" ]; then
-            _if_site_db_conversion
+            if [ "${_FOREIGN_CMS}" != "YES" ]; then
+              _if_site_db_conversion
+            fi
             searchStringB=".dev."
             searchStringC=".devel."
             searchStringD=".temp."
@@ -2778,7 +2870,9 @@ _daily_process() {
               *"$searchStringH"*) ;;
               *)
               if [ "${_MODULES_FIX}" = "YES" ]; then
-                _fix_modules
+                if [ "${_FOREIGN_CMS}" != "YES" ]; then
+                  _fix_modules
+                fi
                 _fix_robots_txt
                 _fix_llms_txt
               fi
@@ -2790,9 +2884,12 @@ _daily_process() {
               fi
               ;;
             esac
-            _fix_site_control_files
-            if [ -e "${_Plr}/modules/o_contrib_seven" ] \
-              || [ -e "${_Plr}/modules/o_contrib" ]; then
+            if [ "${_FOREIGN_CMS}" != "YES" ]; then
+              _fix_site_control_files
+            fi
+            if [ "${_FOREIGN_CMS}" != "YES" ] \
+              && { [ -e "${_Plr}/modules/o_contrib_seven" ] \
+              || [ -e "${_Plr}/modules/o_contrib" ]; }; then
               if [ "${_CLEAR_BOOST}" = "YES" ]; then
                 _fix_boost_cache
               fi
@@ -2809,22 +2906,26 @@ _daily_process() {
         ### Detect permissions fix overrides, if set per platform.
         ###
         _DONT_TOUCH_PERMISSIONS=NO
-        ### The strip at the head of this iteration is many drush runs old by
-        ### now, so re-strip before this late read/append leg. No-op on a
-        ### regular file.
-        _desymlink_planted "${_PLR_CTRL_F}"
-        if [ -e "${_PLR_CTRL_F}" ]; then
-          _FIX_PERMISSIONS_PRESENT=$(grep "fix_files_permissions_daily" \
-            ${_PLR_CTRL_F} 2>&1)
-          if [[ "${_FIX_PERMISSIONS_PRESENT}" =~ "fix_files_permissions_daily" ]]; then
-            _DO_NOTHING=YES
-          else
-            echo ";fix_files_permissions_daily = TRUE" >> ${_PLR_CTRL_F}
-          fi
-          _FIX_PERMISSIONS_TEST=$(grep "^fix_files_permissions_daily = FALSE" \
-            ${_PLR_CTRL_F} 2>&1)
-          if [[ "${_FIX_PERMISSIONS_TEST}" =~ "fix_files_permissions_daily = FALSE" ]]; then
-            _DONT_TOUCH_PERMISSIONS=YES
+        ### A Grav or Textpattern platform has no control INI to read this
+        ### opt-out from; the box-wide switches below still apply.
+        if [ "${_FOREIGN_CMS}" != "YES" ]; then
+          ### The strip at the head of this iteration is many drush runs old by
+          ### now, so re-strip before this late read/append leg. No-op on a
+          ### regular file.
+          _desymlink_planted "${_PLR_CTRL_F}"
+          if [ -e "${_PLR_CTRL_F}" ]; then
+            _FIX_PERMISSIONS_PRESENT=$(grep "fix_files_permissions_daily" \
+              ${_PLR_CTRL_F} 2>&1)
+            if [[ "${_FIX_PERMISSIONS_PRESENT}" =~ "fix_files_permissions_daily" ]]; then
+              _DO_NOTHING=YES
+            else
+              echo ";fix_files_permissions_daily = TRUE" >> ${_PLR_CTRL_F}
+            fi
+            _FIX_PERMISSIONS_TEST=$(grep "^fix_files_permissions_daily = FALSE" \
+              ${_PLR_CTRL_F} 2>&1)
+            if [[ "${_FIX_PERMISSIONS_TEST}" =~ "fix_files_permissions_daily = FALSE" ]]; then
+              _DONT_TOUCH_PERMISSIONS=YES
+            fi
           fi
         fi
         if [ -e "${_Plr}/profiles" ] \

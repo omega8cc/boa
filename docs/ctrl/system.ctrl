@@ -566,7 +566,9 @@ by the BOA install and upgrade tools exclusively.
 
   Please note that if you will change it to _SQL_CONVERT=YES, the system will
   ignore sql_conversion_mode variables set in the active INI files, and instead
-  will force conversion to InnoDB format in all sites hosted on this instance.
+  will force conversion to InnoDB format in all Drupal and Backdrop sites hosted
+  on this instance (Grav and Textpattern sites carry no INI and are never
+  converted).
 
   By the way, conversion to MyISAM format will still keep some tables at InnoDB,
   and exceptions are defined with regex:
