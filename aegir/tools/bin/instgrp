@@ -46,6 +46,11 @@
 #            Refuses while another BOA run holds /run/boa_run.pid (the octopus
 #            arm passes --from-octopus because it holds that lock itself),
 #            waits a bounded time for the account's own provision tasks,
+#            waits up to a minute for every identity still to move that
+#            usermod would call in use (a process in this root whose real,
+#            effective or saved uid is the identity's: a logged-in shell or
+#            SFTP session; a chrooted pure-ftpd session is not) and skips the
+#            account (4) while one stays so, before anything changes,
 #            skips an account frozen for a migration (log/proxied.pid, the
 #            marker every other root writer honours; --force overrides), and
 #            refuses when any fetched root-run writer on the box predates the
@@ -61,9 +66,12 @@
 #            destination, from the nightly.
 #   revert   the exact inverse, files first so no identity ever loses a group
 #            its files still carry; removes the group only once no path and
-#            no identity carries it; writes _INSTANCE_GROUP=NO into the
-#            account's octopus cnf so the next upgrade does not convert it
-#            again (--keep-enabled leaves the cnf alone).
+#            no identity carries it; skips (4) while an identity it has to
+#            move back is in use, waits again before each move after the file
+#            walk and fails (1) naming one still in use then; writes
+#            _INSTANCE_GROUP=NO into the account's octopus cnf so the next
+#            upgrade does not convert it again (--keep-enabled leaves the cnf
+#            alone).
 #   check    the writer inventory: every fetched root-run writer listed as
 #            group-aware, stale, or absent on this box class -- and whether
 #            the BOA release that carries the Octopus arm has stamped the box.
@@ -96,6 +104,13 @@ _MARK_REL=log/instance-group.txt
 # *.pid and *.log only.
 _ARM_STAMP=/var/log/boa/instgrp-arm.ready.txt
 _WAIT_MAX="${_INSTGRP_WAIT_MAX:-300}"
+# The identities of an account with a process of their own (a minute cron run
+# of the account ends by itself, a logged-in shell or SFTP session does not):
+# how long a convert or revert waits for them before skipping.
+_IDS_WAIT_MAX="${_INSTGRP_IDS_WAIT_MAX:-60}"
+# A non-numeric override would break the wait loops' tests: take the default.
+[[ "${_WAIT_MAX}" =~ ^[0-9]+$ ]] || _WAIT_MAX=300
+[[ "${_IDS_WAIT_MAX}" =~ ^[0-9]+$ ]] || _IDS_WAIT_MAX=60
 _FROM_OCTOPUS=NO
 _FORCE=NO
 _KEEP_ENABLED=NO
@@ -226,8 +241,10 @@ _gid_of() {
 # the home at an empty root-owned staging directory for that one call keeps
 # usermod off the tree; the group walk here does the files, symlink-safe and
 # immutable-aware. The home field is put back in the same breath.
+# 0 moved; 2 usermod found the user in use (exit 8, see _ids_with_procs);
+# 1 anything else.
 _set_primary() {
-  local _u="$1" _g="$2" _h _stage=/root/.instgrp.home
+  local _u="$1" _g="$2" _h _err _urc _stage=/root/.instgrp.home
   _h=$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)
   [ -n "${_h}" ] || return 1
   mkdir -p "${_stage}" && chown root:root "${_stage}" && chmod 0700 "${_stage}"
@@ -236,7 +253,8 @@ _set_primary() {
   # is what every 'su - oN' and every provision run resolves.
   [ -d /var/log/boa ] || mkdir -p /var/log/boa
   printf '%s\n' "${_h}" > "${_HOME_REC}.${_u}"
-  usermod -d "${_stage}" -g "${_g}" "${_u}" > /dev/null 2>&1
+  _err=$(usermod -d "${_stage}" -g "${_g}" "${_u}" 2>&1 > /dev/null)
+  _urc=$?
   usermod -d "${_h}" "${_u}" > /dev/null 2>&1
   if [ "$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)" != "${_h}" ]; then
     _alrt "${_u}: home field left as $(getent passwd "${_u}" | cut -d: -f6), expected ${_h}"
@@ -249,7 +267,16 @@ _set_primary() {
   else
     _alrt "${_u}: home field still not ${_h}; the record ${_HOME_REC}.${_u} is kept for the next repair"
   fi
-  [ "$(_primary_of "${_u}")" = "${_g}" ]
+  if [ "$(_primary_of "${_u}")" != "${_g}" ]; then
+    [ -n "${_err}" ] && _log "${_u}: usermod: ${_err}"
+    # usermod's own verdict, never a second look: a process that caused it
+    # may be gone by now, or be one a uid probe would miss.
+    if [ "${_urc}" = "8" ] || [[ "${_err}" == *"currently used by process"* ]]; then
+      return 2
+    fi
+    return 1
+  fi
+  return 0
 }
 
 # Any identity whose passwd home is one of the staging directories (this
@@ -522,6 +549,88 @@ _wait_idle() {
   return 0
 }
 
+# usermod refuses -d -- the staging form _set_primary moves a primary group
+# with -- for a user it finds in use ("currently used by process", exit 8,
+# passwd untouched), and _acct_busy sees only the account's provision tasks.
+# shadow's user_busy counts a process whose real, effective or saved uid is
+# the user's, and only one in usermod's own root: a logged-in shell or SFTP
+# session counts, a chrooted pure-ftpd session does not. This asks the same
+# question the same way. Sets _BUSY_IDS to the identities of the list found
+# in use and _BUSY_PROCS to "identity:pid/name" for each process (its name
+# only, never its arguments); true when any is.
+_BUSY_IDS=""
+_BUSY_PROCS=""
+_ids_with_procs() {
+  local _u _uid _want="" _pids="" _p _out _hit
+  _BUSY_IDS=""
+  _BUSY_PROCS=""
+  for _u in "$@"; do
+    _uid=$(id -u "${_u}" 2> /dev/null) || continue
+    _want="${_want} ${_uid}=${_u}"
+  done
+  [ -n "${_want}" ] || return 1
+  for _p in /proc/[0-9]*; do
+    [ "${_p}/root" -ef / ] && _pids="${_pids} ${_p#/proc/}"
+  done
+  _out=$(awk -v want="${_want}" -v pids="${_pids}" 'BEGIN {
+    n = split(want, w, " ")
+    for (i = 1; i <= n; i++) { split(w[i], kv, "="); name[kv[1]] = kv[2] }
+    m = split(pids, p, " ")
+    for (i = 1; i <= m; i++) {
+      f = "/proc/" p[i] "/status"
+      comm = ""
+      while ((getline l < f) > 0) {
+        if (l ~ /^Name:/) {
+          sub(/^Name:[ \t]*/, "", l)
+          gsub(/[^A-Za-z0-9._-]/, "_", l)
+          comm = l
+        }
+        else if (l ~ /^Uid:/) {
+          k = split(l, u, /[ \t]+/)
+          for (j = 2; j <= 4 && j <= k; j++) {
+            if (u[j] in name) {
+              hit = hit " " name[u[j]]
+              procs = procs " " name[u[j]] ":" p[i] "/" comm
+              break
+            }
+          }
+          break
+        }
+      }
+      close(f)
+    }
+    print hit
+    print procs
+  }')
+  _hit=" ${_out%%$'\n'*} "
+  case "${_out}" in
+    *$'\n'*) _BUSY_PROCS="${_out#*$'\n'}" ;;
+  esac
+  _BUSY_PROCS="${_BUSY_PROCS# }"
+  for _u in "$@"; do
+    case "${_hit}" in
+      *" ${_u} "*) _BUSY_IDS="${_BUSY_IDS} ${_u}" ;;
+    esac
+  done
+  _BUSY_IDS="${_BUSY_IDS# }"
+  [ -n "${_BUSY_IDS}" ]
+}
+
+# Waits up to _IDS_WAIT_MAX for no identity of the list to be in use (a
+# minute cron run of the account ends by itself, a logged-in session does
+# not); false with the ones still in use in _BUSY_IDS and _BUSY_PROCS.
+_wait_ids_idle() {
+  local _w=0
+  _ids_with_procs "$@"
+  while [ -n "${_BUSY_IDS}" ] && [ "${_w}" -lt "${_IDS_WAIT_MAX}" ]; do
+    [ "${_w}" -eq 0 ] && _msg "${_ACCT}: ${_BUSY_IDS} in use [${_BUSY_PROCS}], waiting up to ${_IDS_WAIT_MAX}s..."
+    sleep 5
+    _w=$((_w + 5))
+    _ids_with_procs "$@"
+  done
+  [ -z "${_BUSY_IDS}" ]
+}
+
 # chgrp on a directory keeps its setgid bit on Linux (the kernel clears
 # S_ISGID on chown only for non-directories); probe rather than assume, and
 # re-assert after the walk only on a kernel that strips it.
@@ -692,8 +801,9 @@ _assert_fpm_apart() {
 # The inverse of the identity and file moves, shared by revert and by the
 # rollback of a failed convert: files first, so no identity ever loses a group
 # its files still carry, then the primary groups, then the memberships.
+_UNDO_STUCK=""
 _undo_account() {
-  local _a="$1" _gid="$2" _roots="$3" _u _subs _ids
+  local _a="$1" _gid="$2" _roots="$3" _u _subs _ids _stuck=""
   _subs=$(_acct_subusers "${_a}" 2> /dev/null)
   _ids="${_a} ${_a}.ftp ${_subs}"
   if [ -n "${_gid}" ]; then
@@ -707,12 +817,23 @@ _undo_account() {
     getent passwd "${_u}" > /dev/null 2>&1 || continue
     _grant_sup "${_u}" "${_USRG}" || _alrt "${_u}: could not list it in ${_USRG}"
     if [ "$(_primary_of "${_u}")" != "${_USRG}" ]; then
-      _set_primary "${_u}" "${_USRG}" || _alrt "${_u}: primary group could not be set back to ${_USRG}"
-      _log "${_a}: ${_u} primary group -> ${_USRG}"
+      # The walk above can take minutes: wait for this identity right before
+      # its move, as convert does before its own.
+      _wait_ids_idle "${_u}"
+      if _set_primary "${_u}" "${_USRG}"; then
+        _log "${_a}: ${_u} primary group -> ${_USRG}"
+      else
+        _alrt "${_u}: primary group could not be set back to ${_USRG}"
+        _stuck="${_stuck} ${_u}"
+      fi
     fi
     [ -n "${_gid}" ] && _in_grp_sup "${_u}" "${_a}" && gpasswd -d "${_u}" "${_a}" > /dev/null 2>&1
   done
   [ -L "/data/disk/${_a}/${_MARK_REL}" ] || [ -f "/data/disk/${_a}/${_MARK_REL}" ] && rm -f "/data/disk/${_a}/${_MARK_REL}"
+  # False with the identities still off the box-wide group in _UNDO_STUCK:
+  # a caller must never report a rollback it did not get.
+  _UNDO_STUCK="${_stuck# }"
+  [ -z "${_UNDO_STUCK}" ]
 }
 
 # Every identity of the account already on the account's primary group, with
@@ -737,7 +858,7 @@ _marker_valid() {
 }
 
 _do_convert() {
-  local _a="$1" _subs _ids _u _uGid _aGid _roots _pass=0
+  local _a="$1" _subs _ids _u _uGid _aGid _roots _busy _src _moved=0 _pass=0
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
   # A frozen account is served from another box mid-migration; every other
@@ -787,6 +908,18 @@ _do_convert() {
     _log "${_a}: SKIP busy"
     return 4
   fi
+  # An identity still to move that has a process cannot move (see
+  # _ids_with_procs): skip before anything changes, never fail half way.
+  _busy=""
+  for _u in ${_ids}; do
+    [ "$(_primary_of "${_u}")" = "${_a}" ] || _busy="${_busy} ${_u}"
+  done
+  # shellcheck disable=SC2086
+  if ! _wait_ids_idle ${_busy}; then
+    _alrt "${_a}: ${_BUSY_IDS} still in use after ${_IDS_WAIT_MAX}s [${_BUSY_PROCS}] (a logged-in session?); an identity in use cannot change its primary group, skipped this pass -- run instgrp convert ${_a} once it is idle"
+    _log "${_a}: SKIP identity in use [${_BUSY_PROCS}]"
+    return 4
+  fi
   _group_is_ours "${_a}" || { _fail "group ${_a} exists and belongs to someone else"; return 1; }
   if ! getent group "${_a}" > /dev/null 2>&1; then
     addgroup --system "${_a}" > /dev/null 2>&1 || { _fail "addgroup --system ${_a} failed"; return 1; }
@@ -810,18 +943,41 @@ _do_convert() {
   done
   for _u in ${_ids}; do
     if [ "$(_primary_of "${_u}")" != "${_a}" ]; then
-      if ! _set_primary "${_u}" "${_a}"; then
+      # The grants above take seconds on a large account: look again right
+      # before the move, with the same bounded wait.
+      if _wait_ids_idle "${_u}"; then
+        _set_primary "${_u}" "${_a}"
+        _src=$?
+      else
+        _src=2
+      fi
+      if [ "${_src}" = "2" ]; then
+        # usermod's own refusal carries no process sample of ours.
+        [ -n "${_BUSY_PROCS}" ] || _BUSY_PROCS="usermod refused the move"
+        _alrt "${_u}: in use before its primary group could move to ${_a} [${_BUSY_PROCS}]; skipped this pass -- run instgrp convert ${_a} once it is idle"
+        if [ "${_moved}" -eq 0 ]; then
+          _log "${_a}: SKIP identity in use [${_u}] before the first move, nothing to roll back"
+          return 4
+        fi
+        if _undo_account "${_a}" "${_aGid}" "${_roots}"; then
+          _log "${_a}: SKIP identity in use [${_u}] during the move, rolled back"
+          return 4
+        fi
+        _fail "${_a}: the rollback left [${_UNDO_STUCK}] on group ${_a} (in use); run instgrp convert ${_a} or instgrp revert ${_a} once idle"
+        return 1
+      elif [ "${_src}" != "0" ]; then
         _fail "${_u}: primary group could not be set to ${_a}; rolling ${_a} back"
-        _undo_account "${_a}" "${_aGid}" "${_roots}"
+        _undo_account "${_a}" "${_aGid}" "${_roots}" || _fail "${_a}: the rollback left [${_UNDO_STUCK}] on group ${_a}"
         return 1
       fi
+      _moved=$((_moved + 1))
       _log "${_a}: ${_u} primary group -> ${_a}"
     fi
     # The effective set must still carry 'users' now that it is no longer
     # the primary group; a miss here is a lockout in the making.
     if ! _in_grp "${_u}" "${_USRG}"; then
       _fail "${_u} lost ${_USRG} on the primary move; rolling ${_a} back"
-      _undo_account "${_a}" "${_aGid}" "${_roots}"
+      _undo_account "${_a}" "${_aGid}" "${_roots}" || _fail "${_a}: the rollback left [${_UNDO_STUCK}] on group ${_a}"
       return 1
     fi
     # The primary group never shows in the group's member list; provision's
@@ -964,7 +1120,7 @@ _do_reclaim() {
 }
 
 _do_revert() {
-  local _a="$1" _gid _roots _cnf _rc=0
+  local _a="$1" _gid _roots _cnf _u _busy _rc=0
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
   _gid=$(_gid_of "${_a}")
@@ -972,12 +1128,29 @@ _do_revert() {
     _alrt "${_a}: still busy after ${_WAIT_MAX}s, skipped"
     return 4
   fi
+  # The same usermod limit as convert: an identity in use keeps its primary
+  # group. Checked here before the walk, and again before each move after it
+  # (_undo_account).
+  _busy=""
+  for _u in ${_a} ${_a}.ftp $(_acct_subusers "${_a}" 2> /dev/null); do
+    getent passwd "${_u}" > /dev/null 2>&1 || continue
+    [ "$(_primary_of "${_u}")" = "${_USRG}" ] || _busy="${_busy} ${_u}"
+  done
+  # shellcheck disable=SC2086
+  if ! _wait_ids_idle ${_busy}; then
+    _alrt "${_a}: ${_BUSY_IDS} still in use after ${_IDS_WAIT_MAX}s [${_BUSY_PROCS}] (a logged-in session?); a revert past it would leave the account half on each group, skipped -- run instgrp revert ${_a} once it is idle"
+    _log "${_a}: SKIP revert, identity in use [${_BUSY_PROCS}]"
+    return 4
+  fi
   _roots=$(_acct_roots "${_a}" 2> /dev/null)
   [ -n "${_gid}" ] && _msg "${_a}: re-grouping files (${_a} -> ${_USRG})..."
   # This is the one deliberate write of the box-wide group over an account
   # tree in the whole tree: the exact inverse of convert, on an operator's
   # explicit order.
-  _undo_account "${_a}" "${_gid}" "${_roots}"
+  if ! _undo_account "${_a}" "${_gid}" "${_roots}"; then
+    _fail "${_a}: [${_UNDO_STUCK}] still on group ${_a}, in use when its primary group had to move back; run instgrp revert ${_a} once it is idle"
+    _rc=1
+  fi
   if [ -n "${_gid}" ]; then
     # Files walked first, identities moved after: a writer running as the
     # account during the walk still wrote the account group. Walk once more
@@ -996,13 +1169,13 @@ _do_revert() {
     if _gid_left "${_gid}" ${_roots}; then
       _alrt "group ${_a} (gid ${_gid}) still owns paths under the roots; left in place -- re-run revert"
       _log "${_a}: group kept, paths still in gid ${_gid}"
-      _rc=2
+      [ "${_rc}" = "1" ] || _rc=2
     elif [ -z "$(getent group "${_a}" | cut -d: -f4)" ] \
       && ! getent passwd | awk -F: -v g="${_gid}" '$4 == g { f=1 } END { exit !f }'; then
       groupdel "${_a}" > /dev/null 2>&1 && _log "${_a}: group removed"
     else
       _alrt "group ${_a} still has members or primary users; left in place"
-      _rc=2
+      [ "${_rc}" = "1" ] || _rc=2
     fi
   fi
   # The upgrade arm converts every account whose cnf does not say NO, so a
@@ -1015,6 +1188,10 @@ _do_revert() {
       printf '\n_INSTANCE_GROUP=NO\n' >> "${_cnf}"
     fi
     _msg "NOTE: _INSTANCE_GROUP=NO written to ${_cnf}; remove it (or set YES) before the next upgrade to convert again"
+  fi
+  if [ "${_rc}" = "1" ]; then
+    _log "${_a}: REVERT INCOMPLETE, [${_UNDO_STUCK}] still on group ${_a}"
+    return 1
   fi
   _log "${_a}: REVERTED"
   _info "${_a}: reverted to the box-wide group ${_USRG}"

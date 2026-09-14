@@ -88,7 +88,11 @@ Backdrop is a Drupal-7-lineage fork, and BOA manages it through the same
   copy that older platform tarballs carried, wires each site to Valkey
   when it is available and falls back to Backdrop's database cache —
   with the shared backoff flag, so a stopped Valkey is not re-probed on
-  every request.
+  every request. The same include carries the two request-blocking
+  short-circuits the Drupal chain has, so Backdrop sites behave like
+  Drupal sites under a billing suspension (`/data/conf/suspended/<oct>.pid`)
+  and during a migration cutover window (`static/control/http-off.pid`,
+  503 with the maintenance page, `no-store` downstream).
 
 ## Command line: bee and Drush
 
