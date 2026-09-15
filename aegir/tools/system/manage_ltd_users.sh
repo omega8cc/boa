@@ -1616,13 +1616,17 @@ _ig_defer_note() {
   _stamp="/var/log/boa/instgrp.defer.${_u}"
   _now=$(date +%s)
   # The stamp's content is the start of this deferral episode, its mtime the
-  # last pass that saw it. A stamp the passes stopped touching for an hour is
-  # an old episode (the identity was moved out of band, by instgrp or by a
-  # pass that found it already in place): the count starts again, so a new
-  # deferral never alarms on a stale start.
+  # last pass that saw it. A stamp RUNNING passes stopped touching for an
+  # hour is an old episode (the identity was moved out of band, by instgrp or
+  # by a pass that found it already in place): the count starts again, so a
+  # new deferral never alarms on a stale start. Silence while no pass ran at
+  # all is not that -- a BOA run holds this worker off for the whole of its
+  # pass -- so the gap is measured against the previous pass that did run.
   _seen=$(stat -c %Y "${_stamp}" 2>/dev/null); _seen=${_seen:-0}
   _since=$(head -1 "${_stamp}" 2>/dev/null); _since=${_since//[^0-9]/}
-  if [ -z "${_since}" ] || [ "$(( _now - _seen ))" -gt 3600 ]; then
+  if [ -z "${_since}" ] \
+    || { [ "$(( _now - _seen ))" -gt 3600 ] \
+      && [ "$(( _seen + 3600 ))" -lt "$(( ${_LTD_PREV_PASS:-0} + 0 ))" ]; }; then
     _since="${_now}"
     printf '%s\n' "${_since}" > "${_stamp}"
   fi
@@ -3357,9 +3361,9 @@ _manage_user() {
         done
         if [ -z "${_igLeft}" ]; then
           rm -f "${_igPend}"
-          echo "$(date '+%Y-%m-%d %H:%M:%S') ${_USER}: REVERT COMPLETED by the limited-shell worker; run instgrp revert ${_USER} once more to remove the group" >> /var/log/boa/instgrp.log
+          echo "$(date '+%Y-%m-%d %H:%M:%S') ${_USER}: PENDING MOVE BACK COMPLETED by the limited-shell worker (a revert, or the rollback of a failed convert); instgrp revert ${_USER} removes the group, instgrp convert ${_USER} converts again" >> /var/log/boa/instgrp.log
           mkdir -p /var/log/boa 2>/dev/null
-          echo "$(date) LTD instgrp: the revert of ${_USER} is completed (every identity back on users); instgrp revert ${_USER} removes the group" \
+          echo "$(date) LTD instgrp: every identity of ${_USER} is back on users (a revert, or the rollback of a failed convert, found it in use); instgrp revert ${_USER} removes the group, instgrp convert ${_USER} converts again" \
             >> /var/log/boa/manage_ltd.incident.log
         fi
       elif [ -n "${_igGid}" ]; then
@@ -3780,6 +3784,15 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
   exit 0
 else
   rm -f /var/log/boa/wait-manage-ltd-users.pid
+  # When the PREVIOUS pass ran, read before this one stamps it: a deferral
+  # stamp stops advancing either because its episode ended, or because no
+  # pass ran at all -- a BOA run holds this worker off for the whole of its
+  # pass, an hour and more. Missing (the first pass after an upgrade): take
+  # now, so the wall-clock rule alone applies. .txt, not .pid or .log: those
+  # two are what the /var/log/boa sweeps match.
+  _LTD_PREV_PASS=$(stat -c %Y /var/log/boa/manage-ltd-pass.txt 2>/dev/null)
+  _LTD_PREV_PASS=${_LTD_PREV_PASS:-$(date +%s)}
+  touch /var/log/boa/manage-ltd-pass.txt
   # the pid, not a bare touch: the nightly's per-account pass waits only on a
   # LIVE worker (every other reader tests existence and removes the file)
   echo $$ > /run/manage_ltd_users.pid

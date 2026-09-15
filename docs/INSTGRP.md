@@ -68,7 +68,9 @@ walked directory while the walk runs. The walk is re-run over the residue
 by the next pass. The conversion is kept, never rolled back for files: a
 path left in `users` is the old state, not a new exposure, while a rollback
 would leave the busiest accounts unconverted on every release. Only a failed
-identity move rolls the account back.
+identity move rolls the account back, and a rollback that meets an identity
+in use records it in the same file a revert uses (below), for the worker to
+finish.
 
 The primary group of an identity in use cannot move: `usermod` refuses a
 user that has a process in its own root whose real, effective or saved uid
@@ -161,8 +163,10 @@ exits 1 with the group kept. That identity is recorded in
 revert, and the 3-minute limited-shell worker moves it back to `users` on
 its first pass that finds it idle (a logged-in session ends, a cron run
 completes), logs that to `instgrp.log` and the incident log, and drops the
-record; run `revert` once more to remove the now empty group. A `convert`
-in between supersedes the pending revert.
+record; run `revert` once more to remove the now empty group (or `convert`
+to convert again). A `convert` in between supersedes the pending revert;
+the nightly per-account pass writes with the box-wide group and skips its
+drift probe while the record exists.
 
 ## Opting an account out
 

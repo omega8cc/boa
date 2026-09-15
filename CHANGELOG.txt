@@ -64,9 +64,11 @@
       engine, the node access rebuild) instead of a plain log line.
     * A D10+ migrate or clone no longer spends a no-op backend call and a
       five-second pause on the old platform before its database updates.
-    * A revert of an account's per-instance group that finds an identity
-      in use records it, and the limited-shell worker finishes the move
-      back to the box-wide group on its first idle pass; a primary-group
+    * A revert of an account's per-instance group (or the rollback of a
+      convert) that finds an identity in use records it, and the
+      limited-shell worker finishes the move back to the box-wide group on
+      its first idle pass (the nightly per-account pass writes with the
+      box-wide group meanwhile); a primary-group
       move deferred for over a day is raised through the incident channel.
 
 

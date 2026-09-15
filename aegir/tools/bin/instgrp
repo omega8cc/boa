@@ -72,7 +72,8 @@
 #            /var/log/boa/instgrp.revert-pending.<account>, which the
 #            3-minute limited-shell worker finishes (each identity back to
 #            users on its first idle pass; status shows the unfinished
-#            revert until then; a re-run removes the group); writes
+#            revert until then; a re-run removes the group; the rollback of
+#            a failed convert records an identity in use the same way); writes
 #            _INSTANCE_GROUP=NO into the account's octopus cnf so the next
 #            upgrade does not convert it again (--keep-enabled leaves the cnf
 #            alone).
@@ -290,6 +291,8 @@ _set_primary() {
     fi
     return 1
   fi
+  # Moved: a deferral the 3-minute worker had open for this identity is over.
+  rm -f "/var/log/boa/instgrp.defer.${_u}"
   return 0
 }
 
@@ -869,6 +872,24 @@ _undo_account() {
   [ -z "${_UNDO_STUCK}" ]
 }
 
+# Record the identities a revert, or the rollback of a convert, could not move
+# back to the box-wide group (in use): the limited-shell worker moves each back
+# on its first idle pass and never reads the account as converted meanwhile.
+# Without the record the worker read such an account by its stuck identity
+# and re-grouped the others onto it.
+_record_stuck() {
+  [ -n "${_UNDO_STUCK}" ] || return 0
+  # shellcheck disable=SC2086
+  printf '%s\n' ${_UNDO_STUCK} > "${_REVERT_PENDING}.${1}"
+}
+
+# A convert's rollback met an identity in use: record it and fail.
+_rollback_stuck() {
+  _record_stuck "${1}"
+  _log "${1}: ROLLBACK INCOMPLETE, [${_UNDO_STUCK}] still on group ${1}; recorded for the worker to finish"
+  _fail "${1}: the rollback left [${_UNDO_STUCK}] on group ${1} (in use); the limited-shell worker moves it back once idle, then run instgrp convert ${1} again"
+}
+
 # Every identity of the account already on the account's primary group, with
 # the execute ACL still in its effective set.
 _ids_converted() {
@@ -997,11 +1018,11 @@ _do_convert() {
           _log "${_a}: SKIP identity in use [${_u}] during the move, rolled back"
           return 4
         fi
-        _fail "${_a}: the rollback left [${_UNDO_STUCK}] on group ${_a} (in use); run instgrp convert ${_a} or instgrp revert ${_a} once idle"
+        _rollback_stuck "${_a}"
         return 1
       elif [ "${_src}" != "0" ]; then
         _fail "${_u}: primary group could not be set to ${_a}; rolling ${_a} back"
-        _undo_account "${_a}" "${_aGid}" "${_roots}" || _fail "${_a}: the rollback left [${_UNDO_STUCK}] on group ${_a}"
+        _undo_account "${_a}" "${_aGid}" "${_roots}" || _rollback_stuck "${_a}"
         return 1
       fi
       _moved=$((_moved + 1))
@@ -1011,7 +1032,7 @@ _do_convert() {
     # the primary group; a miss here is a lockout in the making.
     if ! _in_grp "${_u}" "${_USRG}"; then
       _fail "${_u} lost ${_USRG} on the primary move; rolling ${_a} back"
-      _undo_account "${_a}" "${_aGid}" "${_roots}" || _fail "${_a}: the rollback left [${_UNDO_STUCK}] on group ${_a}"
+      _undo_account "${_a}" "${_aGid}" "${_roots}" || _rollback_stuck "${_a}"
       return 1
     fi
     # The primary group never shows in the group's member list; provision's
@@ -1235,8 +1256,7 @@ _do_revert() {
     # completes) and removes the record; this revert otherwise waited for an
     # operator to notice and re-run it. The group stays until a re-run finds
     # nothing carrying it.
-    # shellcheck disable=SC2086
-    printf '%s\n' ${_UNDO_STUCK} > "${_REVERT_PENDING}.${_a}"
+    _record_stuck "${_a}"
     _log "${_a}: REVERT INCOMPLETE, [${_UNDO_STUCK}] still on group ${_a}; recorded for the worker to finish"
     return 1
   fi
@@ -1278,7 +1298,7 @@ _do_status() {
     _msg "group:    none"
   fi
   if [ -s "${_REVERT_PENDING}.${_a}" ]; then
-    _msg "revert:   UNFINISHED for [$(tr '\n' ' ' < "${_REVERT_PENDING}.${_a}" | sed 's/ $//')] (in use when it ran); the limited-shell worker moves them back to ${_USRG} once idle, then instgrp revert ${_a} removes the group"
+    _msg "revert:   UNFINISHED for [$(tr '\n' ' ' < "${_REVERT_PENDING}.${_a}" | sed 's/ $//')] (in use when a revert, or the rollback of a convert, had to move it back); the limited-shell worker moves them back to ${_USRG} once idle, then instgrp revert ${_a} removes the group (or instgrp convert ${_a} converts again)"
   fi
   for _u in ${_ids}; do
     getent passwd "${_u}" > /dev/null 2>&1 || { _msg "identity: ${_u} MISSING"; _bad="${_bad} ${_u}-missing"; continue; }
