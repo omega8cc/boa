@@ -1587,6 +1587,66 @@ _ok_create_user() {
   fi
 }
 #
+# Put an identity's passwd home back, retrying for up to 10 seconds: usermod
+# -d is refused (exit 8, nothing changed) while any process of the identity
+# runs in this root, and a process that began between the two usermod calls
+# of a move is usually gone within seconds. True once the field reads right.
+_restore_home() {
+  local _u="$1" _want="$2" _t=0
+  usermod -d "${_want}" "${_u}" > /dev/null 2>&1
+  while [ "$(getent passwd "${_u}" 2>/dev/null | cut -d: -f6)" != "${_want}" ] \
+    && [ "${_t}" -lt 10 ]; do
+    sleep 1
+    _t=$((_t + 1))
+    usermod -d "${_want}" "${_u}" > /dev/null 2>&1
+  done
+  [ "$(getent passwd "${_u}" 2>/dev/null | cut -d: -f6)" = "${_want}" ]
+}
+#
+# A primary-group move deferred because the identity is in use. The per-pass
+# line alone reached nobody (this log is erased on every release), so the
+# deferral is stamped, and once it has lasted a day it goes through
+# _ltd_notice (incident log + one mail a day per identity). A completed move
+# clears the stamp (_ig_defer_clear). $1 = identity, $2 = the group it waits
+# to move to, $3 = one line saying what is waiting
+_ig_defer_note() {
+  local _u="$1" _g="$2" _what="$3" _stamp _since _seen _now _key
+  echo "${_what}"
+  mkdir -p /var/log/boa 2>/dev/null
+  _stamp="/var/log/boa/instgrp.defer.${_u}"
+  _now=$(date +%s)
+  # The stamp's content is the start of this deferral episode, its mtime the
+  # last pass that saw it. A stamp RUNNING passes stopped touching for an
+  # hour is an old episode (the identity was moved out of band, by instgrp or
+  # by a pass that found it already in place): the count starts again, so a
+  # new deferral never alarms on a stale start. Silence while no pass ran at
+  # all is not that -- a BOA run holds this worker off for the whole of its
+  # pass -- so the gap is measured against the previous pass that did run.
+  _seen=$(stat -c %Y "${_stamp}" 2>/dev/null); _seen=${_seen:-0}
+  _since=$(head -1 "${_stamp}" 2>/dev/null); _since=${_since//[^0-9]/}
+  if [ -z "${_since}" ] \
+    || { [ "$(( _now - _seen ))" -gt 3600 ] \
+      && [ "$(( _seen + 3600 ))" -lt "$(( ${_LTD_PREV_PASS:-0} + 0 ))" ]; }; then
+    _since="${_now}"
+    printf '%s\n' "${_since}" > "${_stamp}"
+  fi
+  touch "${_stamp}"
+  [ "$(( _now - _since ))" -ge 86400 ] || return 0
+  _key="instgrp-defer-${_u}"
+  _since=$(stat -c %Y "/var/log/boa/manage-ltd-${_key//[^a-zA-Z0-9._-]/}.alerted" 2>/dev/null)
+  _since=${_since:-0}
+  [ "$(( $(date +%s) - _since ))" -ge 86400 ] || return 0
+  _ltd_notice "${_key}" \
+    "Identity ${_u} has kept a process running for over a day; its move to primary group ${_g} is still deferred" \
+    "usermod refuses to change the primary group of a user in use. End the session or process (see instgrp status $(_acct_of_identity "${_u}")), or run instgrp convert/revert once it is idle; the worker retries every pass."
+}
+_ig_defer_clear() {
+  rm -f "/var/log/boa/instgrp.defer.${1}"
+}
+# the Octopus account an identity belongs to (oN, oN.ftp, oN.<sub> -> oN)
+_acct_of_identity() {
+  printf '%s\n' "${1%%.*}"
+}
 # Change a sub-user's primary group without usermod's own recursive lchown of
 # the home tree (shadow chown_tree: full pathnames, stops at the first
 # immutable inode -- and these homes carry chattr +i -- with the passwd entry
@@ -1634,8 +1694,15 @@ _set_primary_group() {
   printf '%s\n' "${_h}" > "/var/log/boa/instgrp.home.${_u}"
   usermod -d "${_stage}" -g "${_g}" "${_u}" > /dev/null 2>&1
   _pgUrc=$?
-  usermod -d "${_h}" "${_u}" > /dev/null 2>&1
-  rm -f "/var/log/boa/instgrp.home.${_u}"
+  # The restore is a -d too, so usermod busy-gates it as well: a process of
+  # the identity that began between the two calls refuses it while it lives.
+  # Retry for a few seconds (most such processes are short); the record
+  # stays until the home field reads right, for _repair_staged_homes.
+  if _restore_home "${_u}" "${_h}"; then
+    rm -f "/var/log/boa/instgrp.home.${_u}"
+  else
+    echo "ALERT: ${_u} home field left at ${_stage} (in use during the restore); repaired on a later pass"
+  fi
   [ "$(id -gn "${_u}" 2>/dev/null)" = "${_g}" ] && return 0
   [ "${_pgUrc}" = "8" ] && return 2
   return 1
@@ -1658,8 +1725,7 @@ _repair_staged_homes() {
         esac
       fi
       [ -d "${_want}" ] || continue
-      usermod -d "${_want}" "${_u}" > /dev/null 2>&1
-      if [ "$(getent passwd "${_u}" 2>/dev/null | cut -d: -f6)" = "${_want}" ]; then
+      if _restore_home "${_u}" "${_want}"; then
         echo "ALERT: ${_u} home field was left at ${_s} by an interrupted group move; restored to ${_want}"
         # the per-pass log under /var/backups/ltd is erased on every release;
         # an identity incident belongs in the durable incident log too
@@ -1698,13 +1764,15 @@ _ok_update_user() {
       # account converted since) cannot read its 0440 alias copies: align it,
       # only once the explicit 'users' membership above is in place, and
       # verified after the move.
+      # Already on the group it belongs to: no deferral is open for it.
+      [ "$(id -gn ${_usrLtd} 2>/dev/null)" = "${_usrGroup}" ] && _ig_defer_clear "${_usrLtd}"
       if [ "${_usrGroup}" != "users" ] \
         && [ "$(id -gn ${_usrLtd} 2>/dev/null)" != "${_usrGroup}" ] \
         && getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_usrLtd}"; then
         _set_primary_group ${_usrLtd} ${_usrGroup}
         _pgRc=$?
         if [ "${_pgRc}" = "2" ]; then
-          echo "Sub-user ${_usrLtd} has processes running; its move to primary group ${_usrGroup} waits for an idle pass"
+          _ig_defer_note "${_usrLtd}" "${_usrGroup}" "Sub-user ${_usrLtd} has processes running; its move to primary group ${_usrGroup} waits for an idle pass"
         elif ! id -nG ${_usrLtd} 2>/dev/null | tr ' ' '\n' | grep -qxF users; then
           if _set_primary_group ${_usrLtd} users; then
             echo "ALERT: ${_usrLtd} lost group users on the primary move, reverted to users"
@@ -1715,6 +1783,7 @@ _ok_update_user() {
           echo "$(date) LTD primary move: ${_usrLtd} lost group users on the primary move" \
             >> /var/log/boa/manage_ltd.incident.log
         elif [ "$(id -gn ${_usrLtd} 2>/dev/null)" = "${_usrGroup}" ]; then
+          _ig_defer_clear "${_usrLtd}"
           echo "Sub-user ${_usrLtd} moved to primary group ${_usrGroup}"
         else
           echo "ALERT: ${_usrLtd} could not be moved to primary group ${_usrGroup}; left on $(id -gn ${_usrLtd} 2>/dev/null)"
@@ -3168,6 +3237,27 @@ _manage_site_drush_alias_mirror() {
       fi
     fi
   done
+  # A converted yml alias whose drushrc alias is gone (the site was deleted):
+  # the rebuild below ran only when an alias was added or changed, so a
+  # deletion alone left the yml alias and its checksum in both stores until
+  # the next such change. The dotted form maps one to one onto a drushrc
+  # alias; the rebuild wipes its dashed twin with it. Both stores are read:
+  # the account's, and the limited-shell copy in the tenant's home (a
+  # barracuda pass can regenerate the first and leave the second behind).
+  if [ "${_isAliasUpdate}" != "YES" ]; then
+    for _ymlRoot in "${_pthParentUsr}/.drush" "/home/${_USER}.ftp/.drush"; do
+      for _yml in ${_ymlRoot}/sites/*.site.yml; do
+        [ -e "${_yml}" ] || continue
+        _ymlName=$(basename "${_yml}" .site.yml)
+        case "${_ymlName}" in *.*) ;; *) continue ;; esac
+        if [ ! -e "${_ymlRoot}/${_ymlName}.alias.drushrc.php" ]; then
+          echo "Alias store ${_ymlRoot}/sites carries ${_ymlName} whose drushrc alias is gone; rebuilding the stores"
+          _isAliasUpdate=YES
+          break 2
+        fi
+      done
+    done
+  fi
   # The alias-store rebuild wipes and regenerates ~/.drush/sites from the
   # drushrc aliases -- on a standby those arrive by rsync mid-window, and
   # a rebuild against a half-landed set bakes the gaps in. Scoped gate:
@@ -3259,7 +3349,45 @@ _manage_user() {
       _igMark="${_pthParentUsr}/log/instance-group.txt"
       _igGid=$(getent group "${_USER}" 2>/dev/null | cut -d: -f3)
       _igConv=NO
-      if [ -n "${_igGid}" ]; then
+      # A revert instgrp could not finish (an identity in use when its
+      # primary group had to move back) names the identities in this record;
+      # finish it here, one idle pass at a time, and never read such an
+      # account as converted meanwhile -- the heal below would otherwise move
+      # its other identities back ONTO the group the operator is reverting.
+      _igPend="/var/log/boa/instgrp.revert-pending.${_USER}"
+      if [ -s "${_igPend}" ]; then
+        _igLeft=""
+        for _igU in $(cat "${_igPend}" 2>/dev/null); do
+          case "${_igU}" in "${_USER}"|"${_USER}".*) ;; *) continue ;; esac
+          getent passwd "${_igU}" >/dev/null 2>&1 || continue
+          if [ "$(id -gn ${_igU} 2>/dev/null)" = "users" ]; then
+            _ig_defer_clear "${_igU}"
+            continue
+          fi
+          getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}" || usermod -aG users ${_igU}
+          _set_primary_group ${_igU} users
+          _pgRc=$?
+          if [ "${_pgRc}" = "2" ]; then
+            _ig_defer_note "${_igU}" users "Identity ${_igU} has processes running; its move back to primary group users (a revert instgrp could not finish) waits for an idle pass"
+            _igLeft="${_igLeft} ${_igU}"
+          elif [ "$(id -gn ${_igU} 2>/dev/null)" = "users" ]; then
+            _ig_defer_clear "${_igU}"
+            gpasswd -d ${_igU} ${_USER} >/dev/null 2>&1
+            echo "Identity ${_igU} moved back to primary group users; the revert of ${_USER} instgrp left unfinished is completed for it"
+            echo "$(date '+%Y-%m-%d %H:%M:%S') ${_USER}: ${_igU} primary group -> users (revert finished by the limited-shell worker)" >> /var/log/boa/instgrp.log
+          else
+            echo "ALERT: ${_igU} could not be moved back to primary group users; left on $(id -gn ${_igU} 2>/dev/null), retried next pass"
+            _igLeft="${_igLeft} ${_igU}"
+          fi
+        done
+        if [ -z "${_igLeft}" ]; then
+          rm -f "${_igPend}"
+          echo "$(date '+%Y-%m-%d %H:%M:%S') ${_USER}: PENDING MOVE BACK COMPLETED by the limited-shell worker (a revert, or the rollback of a failed convert); instgrp revert ${_USER} removes the group, instgrp convert ${_USER} converts again" >> /var/log/boa/instgrp.log
+          mkdir -p /var/log/boa 2>/dev/null
+          echo "$(date) LTD instgrp: every identity of ${_USER} is back on users (a revert, or the rollback of a failed convert, found it in use); instgrp revert ${_USER} removes the group, instgrp convert ${_USER} converts again" \
+            >> /var/log/boa/manage_ltd.incident.log
+        fi
+      elif [ -n "${_igGid}" ]; then
         if [ -f "${_igMark}" ] && [ ! -L "${_igMark}" ] && grep -q " gid=${_igGid}$" "${_igMark}" 2>/dev/null; then
           _igConv=YES
         elif [ "$(id -gn ${_USER} 2>/dev/null)" = "${_USER}" ] || [ "$(id -gn ${_USER}.ftp 2>/dev/null)" = "${_USER}" ]; then
@@ -3269,7 +3397,12 @@ _manage_user() {
       if [ "${_igConv}" = "YES" ]; then
         for _igU in ${_USER} ${_USER}.ftp; do
           getent passwd "${_igU}" >/dev/null 2>&1 || continue
-          [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ] && continue
+          if [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ]; then
+            # Already there (a move instgrp or an earlier pass finished): no
+            # deferral is open for it any more.
+            _ig_defer_clear "${_igU}"
+            continue
+          fi
           if ! getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}"; then
             usermod -aG users ${_igU}
           fi
@@ -3277,12 +3410,13 @@ _manage_user() {
             _set_primary_group ${_igU} ${_USER}
             _pgRc=$?
             if [ "${_pgRc}" = "2" ]; then
-              echo "Identity ${_igU} has processes running; its move back to primary group ${_USER} waits for an idle pass"
+              _ig_defer_note "${_igU}" "${_USER}" "Identity ${_igU} has processes running; its move back to primary group ${_USER} waits for an idle pass"
             elif [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ] \
               && id -nG ${_igU} 2>/dev/null | tr ' ' '\n' | grep -qxF users; then
               # Listed as a member too: provision's membership test reads
               # the group database, where a primary group never shows.
               getent group ${_USER} | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}" || gpasswd -a ${_igU} ${_USER} >/dev/null 2>&1
+              _ig_defer_clear "${_igU}"
               echo "Identity ${_igU} moved back to primary group ${_USER}"
             elif [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ]; then
               if _set_primary_group ${_igU} users; then
@@ -3299,7 +3433,15 @@ _manage_user() {
       # Group owning this account's tree, re-derived every iteration so no
       # value carries over to the next account. Falls back to the box-wide
       # default on an account that has no private group.
-      _usrGroup=$(_acct_group "${_USER}")
+      # While a revert is unfinished the account identity itself is usually
+      # the one still on the account's group, which _acct_group would read as
+      # converted: this pass then writes and moves with the box-wide group,
+      # as the revert intends, instead of pushing the sub-users back onto it.
+      if [ -s "${_igPend}" ]; then
+        _usrGroup=users
+      else
+        _usrGroup=$(_acct_group "${_USER}")
+      fi
       echo "_USER is == ${_USER} == at _manage_user"
       if getent group allow-snail >/dev/null 2>&1 && \
         ! id -nG "${_USER}" 2>/dev/null | tr ' ' '\n' | grep -qxF "allow-snail"; then
@@ -3663,6 +3805,15 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
   exit 0
 else
   rm -f /var/log/boa/wait-manage-ltd-users.pid
+  # When the PREVIOUS pass ran, read before this one stamps it: a deferral
+  # stamp stops advancing either because its episode ended, or because no
+  # pass ran at all -- a BOA run holds this worker off for the whole of its
+  # pass, an hour and more. Missing (the first pass after an upgrade): take
+  # now, so the wall-clock rule alone applies. .txt, not .pid or .log: those
+  # two are what the /var/log/boa sweeps match.
+  _LTD_PREV_PASS=$(stat -c %Y /var/log/boa/manage-ltd-pass.txt 2>/dev/null)
+  _LTD_PREV_PASS=${_LTD_PREV_PASS:-$(date +%s)}
+  touch /var/log/boa/manage-ltd-pass.txt
   # the pid, not a bare touch: the nightly's per-account pass waits only on a
   # LIVE worker (every other reader tests existence and removes the file)
   echo $$ > /run/manage_ltd_users.pid
