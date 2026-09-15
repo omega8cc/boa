@@ -51,8 +51,7 @@ platform, tracked by marker files under `~/log/ctrl/`):
   the four is ever legitimately a symlink, and the platform ownership and
   permission helpers Verify runs refuse the same shape; both also leave
   `sites/all/libraries/tcpdf` alone when it or its `cache` child is a
-  symlink, and the permission helper's sweep of stray `*.drush.inc` files
-  on a Drupal 10+ codebase skips a symlinked `modules/` or `sites/<uri>`.
+  symlink.
 - **Built-in platforms** (`~/distro/NNN/<platform>`): the tenant-writable
   `sites/all/{modules,themes,libraries}` keep `02775`/`0664`; core,
   profiles, includes, vendor and the platform root take `0755`/`0644`, no
