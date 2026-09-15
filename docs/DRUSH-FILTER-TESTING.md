@@ -188,7 +188,6 @@ su -s /bin/bash - <OCT> -c "drush @<PLATFORM> provision-dunlock && drush @<PLATF
 su -s /bin/bash - <OCT> -c "sudo --non-interactive /usr/local/bin/fix-drupal-platform-permissions.sh --root=$ROOT" >/dev/null 2>&1; echo "helper exit=$?"
 ls -la "$MOD/cprobe.drush.inc"                                      # still present
 ls /tmp/boa_probe_uid_$(id -u <OCT>).marker 2>/dev/null && echo "BACKEND LOADED IT (BAD)" || echo "backend did not load it (GOOD)"
-
 ```
 
 - [ ] 4a: `0` and `backend did not load it (GOOD)`
