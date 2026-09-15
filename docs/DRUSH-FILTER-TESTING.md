@@ -160,7 +160,10 @@ that layout; a built-in platform keeps contrib under `modules/o_contrib_eleven`)
 and pick a contributed module that is enabled on it (`token` is a safe choice on
 most distributions). `@<PLATFORM>` below is the platform's context name, listed
 by `ls /data/disk/<OCT>/.drush/platform_*.alias.drushrc.php`. The probe has its
-own name so it can coexist with the Test 2 probe.
+own name so it can coexist with the Test 2 probe. The permission helper is run
+the way the fix_permissions task runs it, by the Octopus user through sudo; it
+refuses any other caller. Test 2b already covers the limited-shell identity, so
+this test has no `<OCT>.ftp` step.
 
 ```bash
 ROOT=$(su -s /bin/bash - <OCT> -c "drush <SITE> dd" 2>/dev/null)     # or: status --fields=root --format=list
@@ -182,22 +185,20 @@ ls /tmp/boa_probe_uid_$(id -u <OCT>).marker 2>/dev/null && echo "BACKEND LOADED 
 
 # 4b — the two paths that used to delete the file now leave it in place
 su -s /bin/bash - <OCT> -c "drush @<PLATFORM> provision-dunlock && drush @<PLATFORM> provision-dlock" >/dev/null 2>&1; echo "lock cycle exit=$?"
-sudo --non-interactive /usr/local/bin/fix-drupal-platform-permissions.sh --root="$ROOT" >/dev/null 2>&1; echo "helper exit=$?"
+su -s /bin/bash - <OCT> -c "sudo --non-interactive /usr/local/bin/fix-drupal-platform-permissions.sh --root=$ROOT" >/dev/null 2>&1; echo "helper exit=$?"
 ls -la "$MOD/cprobe.drush.inc"                                      # still present
 ls /tmp/boa_probe_uid_$(id -u <OCT>).marker 2>/dev/null && echo "BACKEND LOADED IT (BAD)" || echo "backend did not load it (GOOD)"
 
-# 4c — the limited shell sees it (unfiltered), as in Test 2b
-su -s /bin/bash - <OCT>.ftp -c "drush <SITE> cc drush >/dev/null 2>&1; drush <SITE> help 2>&1" | grep -c '^ *cprobe'   # expect 1
-ls /tmp/boa_probe_uid_$(id -u <OCT>.ftp).marker 2>/dev/null && echo "MARKER PRESENT (GOOD)" || echo "no marker (BAD)"
 ```
 
 - [ ] 4a: `0` and `backend did not load it (GOOD)`
 - [ ] 4b: both exit codes `0`, the probe file still present, and `backend did not load it (GOOD)` again
-- [ ] 4c: `1` and `MARKER PRESENT (GOOD)`
 
 A real contributed command file written for Drush 12 behaves the same way for
-the backend; for the `<OCT>.ftp` identity it loads and can fail at command
-discovery, which is expected and is why clients use the site-local `vdrush` on
+the backend. For the unfiltered `<OCT>.ftp` identity it loads, and on a platform
+whose enabled modules ship such a file every Drush 8 command in the limited
+shell, `cc drush` included, ends at command discovery with the file's own
+exception. That is expected and is why clients use the site-local `vdrush` on
 Drupal 8+.
 
 ## Cleanup
