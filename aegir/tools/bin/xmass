@@ -2126,6 +2126,9 @@ REMOTE
       _alrt '    (then re-arm any Solr init scripts the hold disarmed: chmod 744'
       _alrt '     /etc/init.d/<svc>; update-rc.d <svc> defaults; update-rc.d <svc> enable)'
     fi
+    # A refused init leaves a NORMAL box on both ends: the peer exemptions
+    # this run added go with the rest of the unwind.
+    _xmass_csf_undo_peers
   fi
   rm -f "${_XMASS_LOCK_FILE}"
 }
@@ -6185,16 +6188,116 @@ _xmass_clear_pending_deletes() {
   _info "Cleared pending/interrupted delete tasks from all ${_tot} panel queue(s)"
 }
 
+# What THIS run added for a peer, so a verb that does not complete can take
+# it back. A refused prep-target -- a mistyped target IP included -- used to
+# leave the named address in csf.allow AND csf.ignore on the source, an lfd
+# exemption no xmass path ever reversed (gate ring G1-R57, 2026-09-14; ruled
+# a defect 2026-09-15). Only lines appended here are recorded; a line that
+# was there before the run is never touched.
+_XMASS_CSF_ADDED_LOCAL=()
+_XMASS_CSF_ADDED_REMOTE=()
+_XMASS_HOSTKEY_ADDED=""
+_XMASS_CSF_KEEP=""
+
 _xmass_csf_allow_peer() {
-  local _ip="$1" _what="$2"
+  local _ip="$1" _what="$2" _added=""
   [ -n "${_ip}" ] || return 1
   [ -x /usr/sbin/csf ] || { _info "No csf here; nothing to allow for ${_what}"; return 0; }
-  grep -q "^${_ip} " /etc/csf/csf.allow 2>/dev/null \
-    || echo "${_ip} # xmass migration ${_what}" >> /etc/csf/csf.allow
-  grep -q "^${_ip} " /etc/csf/csf.ignore 2>/dev/null \
-    || echo "${_ip} # xmass migration ${_what}" >> /etc/csf/csf.ignore
+  if ! grep -q "^${_ip} " /etc/csf/csf.allow 2>/dev/null; then
+    echo "${_ip} # xmass migration ${_what}" >> /etc/csf/csf.allow
+    _added="${_added} allow"
+  fi
+  if ! grep -q "^${_ip} " /etc/csf/csf.ignore 2>/dev/null; then
+    echo "${_ip} # xmass migration ${_what}" >> /etc/csf/csf.ignore
+    _added="${_added} ignore"
+  fi
+  [ -n "${_added}" ] && _XMASS_CSF_ADDED_LOCAL+=("${_ip}|${_what}|${_added# }")
   csf -q &> /dev/null
   _info "csf: ${_ip} allowed and ignored (${_what})"
+}
+
+_xmass_csf_drop_line() {
+  # Remove ONE exact line from a csf list, keeping the file's inode, and
+  # never install a copy that is not provably the original minus that line
+  # (a short write here would empty the live allow-list). rc 0 = the line is
+  # gone, rc 1 = it is still there (nothing was replaced, or the copy-back
+  # failed and the original was restored).
+  local _f="$1" _line="$2" _tmp _n _k _rc
+  [ -f "${_f}" ] || return 0
+  _k=$(grep -cxF "${_line}" "${_f}" 2>/dev/null)
+  [ "${_k:-0}" -gt 0 ] || return 0
+  _n=$(wc -l < "${_f}" 2>/dev/null | tr -d ' ')
+  _tmp=$(mktemp "${_f}.XXXXXX" 2>/dev/null) || return 1
+  grep -vxF "${_line}" "${_f}" > "${_tmp}"; _rc=$?
+  if [ "${_rc}" -gt 1 ] || [ "$(wc -l < "${_tmp}" | tr -d ' ')" != "$(( _n - _k ))" ]; then
+    rm -f "${_tmp}"
+    return 1
+  fi
+  if ! cat "${_tmp}" > "${_f}"; then
+    cat "${_tmp}" > "${_f}" 2>/dev/null; rm -f "${_tmp}"
+    return 1
+  fi
+  rm -f "${_tmp}"
+  grep -qxF "${_line}" "${_f}" 2>/dev/null && return 1
+  return 0
+}
+
+_xmass_csf_undo_peers() {
+  # Called from the exit trap of a verb that did not complete: withdraw the
+  # csf lines and the host key THIS run added, on this box and on the peer,
+  # and nothing else. Must never die -- it runs on the way out.
+  local _e _host _ip _what _files _f _line _rest _left
+  for _e in "${_XMASS_CSF_ADDED_LOCAL[@]}"; do
+    [ -n "${_e}" ] || continue
+    _ip="${_e%%|*}"; _rest="${_e#*|}"; _what="${_rest%%|*}"; _files="${_rest#*|}"
+    _line="${_ip} # xmass migration ${_what}"
+    _left=""
+    for _f in ${_files}; do
+      _xmass_csf_drop_line "/etc/csf/csf.${_f}" "${_line}" || _left="${_left} csf.${_f}"
+    done
+    if [ -z "${_left}" ]; then
+      _info "csf: ${_ip} exemption withdrawn (${_what}) -- the verb did not complete"
+    else
+      _alrt "csf: could NOT withdraw '${_line}' from${_left}; remove it by hand (the verb did not complete)"
+    fi
+  done
+  [ "${#_XMASS_CSF_ADDED_LOCAL[@]}" -gt 0 ] && [ -x /usr/sbin/csf ] && csf -q &> /dev/null
+  for _e in "${_XMASS_CSF_ADDED_REMOTE[@]}"; do
+    [ -n "${_e}" ] || continue
+    _host="${_e%%|*}"; _rest="${_e#*|}"
+    _ip="${_rest%%|*}"; _rest="${_rest#*|}"; _what="${_rest%%|*}"; _files="${_rest#*|}"
+    _line="${_ip} # xmass migration ${_what}"
+    case "${_host}${_ip}${_what}" in
+      *[!A-Za-z0-9.:-]*)
+        _alrt "csf on ${_host}: not withdrawing '${_line}' over ssh (unexpected characters); remove it there by hand"
+        continue
+      ;;
+    esac
+    if ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_host}" "_ok=YES; for _f in ${_files}; do _F=/etc/csf/csf.\${_f}; _k=\$(grep -cxF '${_line}' \"\${_F}\" 2>/dev/null); [ \"\${_k:-0}\" -gt 0 ] || continue; _n=\$(wc -l < \"\${_F}\"); grep -vxF '${_line}' \"\${_F}\" > \"\${_F}.xmass-undo\"; _rc=\$?; if [ \"\${_rc}\" -le 1 ] && [ \"\$(wc -l < \"\${_F}.xmass-undo\")\" -eq \"\$(( _n - _k ))\" ] && cat \"\${_F}.xmass-undo\" > \"\${_F}\"; then :; else _ok=NO; fi; rm -f \"\${_F}.xmass-undo\"; grep -qxF '${_line}' \"\${_F}\" 2>/dev/null && _ok=NO; done; csf -q &> /dev/null; [ \"\${_ok}\" = YES ] && echo CSF_UNDONE" 2>/dev/null | grep -q CSF_UNDONE; then
+      _info "csf on ${_host}: ${_ip} exemption withdrawn (${_what}) -- the verb did not complete"
+    else
+      _alrt "csf on ${_host}: could NOT withdraw the ${_ip} exemption this run added; remove it there by hand"
+    fi
+  done
+  if [ -n "${_XMASS_HOSTKEY_ADDED}" ]; then
+    ssh-keygen -R "${_XMASS_HOSTKEY_ADDED}" &> /dev/null
+    _info "host key for ${_XMASS_HOSTKEY_ADDED} forgotten again -- the verb did not complete"
+  fi
+  _XMASS_CSF_ADDED_LOCAL=()
+  _XMASS_CSF_ADDED_REMOTE=()
+  _XMASS_HOSTKEY_ADDED=""
+  return 0
+}
+
+_xmass_verb_unwind() {
+  # EXIT and signal handler of every locked verb: the lock always goes; what
+  # this run added for a peer goes only when the verb did not complete and
+  # nothing downstream relies on it yet (init past its commit point keeps
+  # the pair reachable; a completed verb sets _XMASS_CSF_KEEP).
+  local _rc="${1:-0}"
+  rm -f "${_XMASS_LOCK_FILE}"
+  [ "${_rc}" != "0" ] && [ "${_XMASS_CSF_KEEP}" != "YES" ] && _xmass_csf_undo_peers
+  return 0
 }
 
 # What the SOURCE can arrange for itself, done before the reachability check
@@ -6207,9 +6310,12 @@ _xmass_prepare_target_reach() {
     mkdir -p /root/.ssh
     chmod 700 /root/.ssh
     ssh-keyscan -H -T 10 "${_t}" >> /root/.ssh/known_hosts 2>/dev/null
-    ssh-keygen -F "${_t}" > /dev/null 2>&1 \
-      && _info "Learned host key for ${_t}" \
-      || _alrt "Could not learn host key for ${_t} -- target may be unreachable on 22"
+    if ssh-keygen -F "${_t}" > /dev/null 2>&1; then
+      _info "Learned host key for ${_t}"
+      _XMASS_HOSTKEY_ADDED="${_t}"
+    else
+      _alrt "Could not learn host key for ${_t} -- target may be unreachable on 22"
+    fi
   fi
   _xmass_csf_allow_peer "${_t}" target
 }
@@ -6670,9 +6776,14 @@ _xmass_cmd_prep_target() {
   # replication -- getting this wrong fails init AFTER the datadir swap.
   _xmass_csf_allow_peer "${_tgt}" target
   local _tcsf
-  _tcsf=$(ssh root@"${_tgt}" "if [ -x /usr/sbin/csf ]; then grep -q '^${_XMASS_SRC_IP} ' /etc/csf/csf.allow 2>/dev/null || echo '${_XMASS_SRC_IP} # xmass migration source' >> /etc/csf/csf.allow; grep -q '^${_XMASS_SRC_IP} ' /etc/csf/csf.ignore 2>/dev/null || echo '${_XMASS_SRC_IP} # xmass migration source' >> /etc/csf/csf.ignore; csf -q &> /dev/null && echo CSF_OK || echo CSF_FAIL; else echo CSF_NONE; fi" 2>/dev/null)
+  _tcsf=$(ssh root@"${_tgt}" "if [ -x /usr/sbin/csf ]; then _a=''; grep -q '^${_XMASS_SRC_IP} ' /etc/csf/csf.allow 2>/dev/null || { echo '${_XMASS_SRC_IP} # xmass migration source' >> /etc/csf/csf.allow; _a=\"\${_a} allow\"; }; grep -q '^${_XMASS_SRC_IP} ' /etc/csf/csf.ignore 2>/dev/null || { echo '${_XMASS_SRC_IP} # xmass migration source' >> /etc/csf/csf.ignore; _a=\"\${_a} ignore\"; }; _r=OK; csf -q &> /dev/null || _r=FAIL; echo \"CSF_\${_r}\${_a:+ added:\${_a# }}\"; else echo CSF_NONE; fi" 2>/dev/null)
+  # remembered FIRST, whatever the reload said: the lines are on the target's
+  # disk either way, and a refusal below must take back exactly those
   case "${_tcsf}" in
-    CSF_OK)   _info "Target CSF: ${_XMASS_SRC_IP} allowed and ignored" ;;
+    *added:*) _XMASS_CSF_ADDED_REMOTE+=("${_tgt}|${_XMASS_SRC_IP}|source|${_tcsf#*added:}") ;;
+  esac
+  case "${_tcsf}" in
+    CSF_OK*)  _info "Target CSF: ${_XMASS_SRC_IP} allowed and ignored" ;;
     CSF_NONE) _info "Target has no csf; nothing to allow there" ;;
     *)        _alrt "target CSF for ${_XMASS_SRC_IP} FAILED or was unreadable (${_tcsf:-no answer})" ;;
   esac
@@ -6763,6 +6874,7 @@ _xmass_cmd_prep_target() {
   _xmass_wait_target_silent "${_tgt}" "prep-target completes" warn full || true
   _info ""
   _info "======================================================"
+  _XMASS_CSF_KEEP=YES
   _info "  xmass prep-target COMPLETE for ${_tgt}"
   _info "  All eligible accounts installed and seeded."
   _info "  Next: 'xmass init ${_tgt} [--proxy-mode=...]' on this source."
@@ -7135,6 +7247,7 @@ _xmass_pre_mig() {
       _alrt "Could not resolve ${_hst} -- csf NOT opened for the source; prep-target will refuse until it is"
     fi
   fi
+  _XMASS_CSF_KEEP=YES
   _info "pre-mig complete on ${_hName}"
 }
 
@@ -9107,8 +9220,8 @@ _take_verb_lock() {
   [ "$(id -u)" = "0" ] || return 0
   while :; do
     if ( set -C; echo "$$" > "${_XMASS_LOCK_FILE}" ) 2>/dev/null; then
-      trap 'rm -f "${_XMASS_LOCK_FILE}"' EXIT
-      trap 'rm -f "${_XMASS_LOCK_FILE}"; exit 130' INT TERM HUP
+      trap '_xmass_verb_unwind "$?"' EXIT
+      trap '_xmass_verb_unwind 130; exit 130' INT TERM HUP
       return 0
     fi
     _owner=$(tr -dc '0-9' < "${_XMASS_LOCK_FILE}" 2>/dev/null | head -c 12)
