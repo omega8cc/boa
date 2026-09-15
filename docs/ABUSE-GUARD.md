@@ -1337,23 +1337,27 @@ Chrome UA to dodge `$is_bot` while still being detectably stale:
 ```nginx
 map $http_user_agent $is_stale_chrome {
   default 0;
-  ~*Chrome/1[0-3][0-9]\.  1;   # Chrome/100–139: > 12 months stale
+  ~*Chrome/1(?:[01][0-9]|2[0-79]|3[0-79])\.  1;   # Chrome/100–139 minus 128 and 138
 }
 ```
 
 `$block_stale_chrome_search` combines a stale Chrome UA with fulltext/facet search params and
 fires **only in search location blocks**. The standalone `$is_catalina_stale_chrome` matches
-the Mac UA shape (`Mac OS X 10_15_7`) with Chrome ≤ 139 — the shape every confirmed Solr
-search-amplification bot has presented — and is applied directly in the `/search` blocks, so
-it needs no `$has_fulltext_search` dependency. Chrome and Safari freeze that platform token on
-every macOS release, so it does not identify Catalina itself; the stale version is what makes
-the match safe. Both shipped in BOA-5.9.3.
+the Mac UA shape (`Mac OS X 10_15_7`) at a stale Chrome version — the shape every confirmed
+Solr search-amplification bot has presented — and is applied directly in the `/search` blocks,
+so it needs no `$has_fulltext_search` dependency. Chrome and Safari freeze that platform token
+on every macOS release, so it does not identify Catalina itself; the stale version is what
+makes the match safe. Chrome/128 and Chrome/138 are carved out of both maps: they are the last
+releases for macOS 10.15 and macOS 11, so a Mac pinned there for life is the one genuine
+browser that still presents a stale major, and it keeps site search. Both maps shipped in
+BOA-5.9.3.
 
 > **Maintenance caveat (carry verbatim).** These dated regexes are self-flagging. The
 > in-source note instructs: move the upper bound by **release date**, never by counting
 > versions — Chrome shipped a major every ~4 weeks until Chrome/153 (2026-09-08) and every
 > ~2 weeks since. Widen to the newest major whose stable release is more than 12 months old
-> (Chrome/139 reached stable on 2025-08-05) and keep both maps on the same bound. The ceiling
+> (Chrome/139 reached stable on 2025-08-05), carve out the last major any macOS is pinned at,
+> and keep both maps on the same pattern. The ceiling
 > must move forward as Chrome versions age, or the maps stop catching the stale-Chrome botnet
 > class; it must never pass a version released within the last 12 months, or they start
 > matching current browsers (false positives).
