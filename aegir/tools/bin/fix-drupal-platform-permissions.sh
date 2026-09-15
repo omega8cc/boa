@@ -274,33 +274,6 @@ find ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core} -type
 printf "Setting permissions of all codebase files inside "${drupal_root}"...\n"
 find ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core} -type f -exec chmod ${_MODE_FILE} {} \;
 
-if [ -e "${drupal_root}/core/modules/workspaces_ui" ]; then
-  printf "Removing all .drush.inc files inside codebase "${drupal_root}"...\n"
-  ### modules (below) and sites/<uri> (further down) are INTERMEDIATE
-  ### components of these start paths, so the kernel resolves them however
-  ### find is invoked; -P governs only the final name and the traversal. A
-  ### tenant composer codebase keeps its docroot at 02775 and sites/ at 02771
-  ### by design (below, and night/20-sites.sh), so a planted
-  ### modules -> /elsewhere or sites/<x> -> /elsewhere would make this a
-  ### root-run recursive rm under /elsewhere. Skip symlinked entries rather
-  ### than refuse the platform: every other leg that meets a sites/* entry
-  ### tolerates it the same way -- _chmod_safe below skips it, and the
-  ### ownership twin's _own_existing single owns the link itself (chown -h)
-  ### -- and a refusal would hand the tenant a one-symlink block on its own
-  ### permission pass.
-  if [ ! -L "${drupal_root}/modules" ] \
-    && [ ! -L "${drupal_root}/modules/contrib" ] \
-    && [ -d "${drupal_root}/modules/contrib" ]; then
-    find "${drupal_root}/modules/contrib" -type f -name "*.drush.inc" -exec rm -f {} \;
-  fi
-  for _s in ${drupal_root}/sites/*/; do
-    [ -L "${_s%/}" ] && continue
-    [ -L "${_s}modules" ] && continue
-    [ -d "${_s}modules" ] || continue
-    find "${_s}modules" -type f -name "*.drush.inc" -exec rm -f {} \;
-  done
-fi
-
 if [ -e "${drupal_root}/vendor" ]; then
   printf "Setting permissions of all codebase directories inside "${drupal_root}/vendor"...\n"
   find ${drupal_root}/vendor -type d -exec chmod ${_MODE_DIR} {} \;
