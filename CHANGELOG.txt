@@ -60,6 +60,9 @@
     * The stale-Chrome maps cover Chrome/100-139, with the rule to
       move that bound by release date rather than by counting
       versions written down alongside them.
+    * Chrome/128 and Chrome/138 are exempt from both stale-Chrome maps:
+      they are the last releases for macOS 10.15 and macOS 11, so a
+      Mac pinned there for life can still use site search.
     * Generated maps holding thousands of keys no longer make every
       configtest and reload warn about the map hash size.
 
