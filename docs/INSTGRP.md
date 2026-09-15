@@ -156,7 +156,13 @@ the account again (`--keep-enabled` leaves the cnf alone). Like `convert`,
 it does not start while an identity it has to move back is in use (exit 4),
 and after the file walk it waits again before each identity's move; one
 still in use then stays on the account's group, is named, and `revert`
-exits 1 with the group kept: run it again once the identity is idle.
+exits 1 with the group kept. That identity is recorded in
+`/var/log/boa/instgrp.revert-pending.oN`, `status` reports the unfinished
+revert, and the 3-minute limited-shell worker moves it back to `users` on
+its first pass that finds it idle (a logged-in session ends, a cron run
+completes), logs that to `instgrp.log` and the incident log, and drops the
+record; run `revert` once more to remove the now empty group. A `convert`
+in between supersedes the pending revert.
 
 ## Opting an account out
 
@@ -207,7 +213,14 @@ place: it belongs to the account.
   moves an identity that fell back to the box-wide primary group (a hand
   `usermod`, a restored passwd) back onto the account's group once that
   identity is no longer in use (until then its log says the move waits
-  for an idle pass); the octopus
+  for an idle pass; a deferral that has lasted a day is raised through
+  the worker's incident channel, `/var/log/boa/manage_ltd.incident.log`
+  plus one mail a day per identity unless `_INCIDENT_REPORT` is OFF), and
+  finishes a `revert` that left an identity on the account's group the
+  same way; both tools also put back a passwd home field an interrupted
+  group move left at a staging directory, retrying for ten seconds while
+  the identity is in use (`status` reports such a home as INCONSISTENT
+  until then); the octopus
   upgrade re-converts. Nothing else re-groups a tree between those. An
   account frozen for a migration (`log/proxied.pid`) is outside all of it:
   the nightly never visits it and `reclaim` skips it, so a frozen
