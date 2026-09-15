@@ -132,7 +132,11 @@ Two deliberate limits and one refusal:
 
 ### Confirming the renamed sites serve
 
-The run ends with a serving gate: the tool waits for each renamed site to
+The run ends with a serving gate over every site carrying the new hostname —
+the dirs this run moved and the ones an earlier or parked run had already
+moved, so a resumed run still confirms the sites its predecessor renamed;
+sites a panel has disabled (placeholder vhost) and suspended accounts are
+listed as not probed. The tool waits for each such site to
 actually answer — up to `_RENAME_SERVE_WAIT` seconds per site, default 180 —
 accepting 200/301/302 but self-calibrating against the box's catch-all vhost,
 so an "Under Construction" 200 for a nonexistent Host never counts as
