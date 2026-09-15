@@ -1942,21 +1942,21 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_ltd_users.sh.ctrl.f07.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/manage_ltd_users.sh /var/xdrago/manage_ltd_users.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/manage_ltd_users.sh" \
-      -o /var/xdrago/manage_ltd_users.sh
-    if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
-      chmod 700 /var/xdrago/manage_ltd_users.sh
-      chown root:root /var/xdrago/manage_ltd_users.sh
-      touch ${_pthLog}/manage_ltd_users.sh.ctrl.f07.${_tRee}.${_xSrl}.pid
-      rm -f /var/xdrago/manage_ltd_users.sh.old
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+    # Through _fetch_versioned like every other fetched tool, not a bare curl
+    # that stamps the serial marker on whatever bytes it got: a box whose
+    # mirror had not caught up yet installed the PREVIOUS worker under the new
+    # marker and never re-fetched it (seen 2026-09-15). The fetcher refuses
+    # bytes already deployed as "mirror not caught up" and retries next pass,
+    # revalidates within the hour, and never clobbers a running pass; the
+    # post-install steps run only when the file actually changed.
+    _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
+    _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f06 --guard /xdrago/manage_ltd_users.sh
+    if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
+      && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
       [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
       mkdir -p /var/backups/ltd/{conf,log,old}
-    else
-      mv -f /var/xdrago/manage_ltd_users.sh.old /var/xdrago/manage_ltd_users.sh
     fi
   fi
 

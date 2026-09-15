@@ -69,8 +69,11 @@
       limited-shell worker finishes the move back to the box-wide group on
       its first idle pass (the nightly per-account pass writes with the
       box-wide group meanwhile); the worker also rebuilds a tenant's yml
-      alias store when a site's drushrc alias is gone, so a deleted site
-      no longer leaves its converted alias behind; a primary-group
+      alias store (the account's and the tenant's limited-shell copy) when
+      a site's drushrc alias is gone, so a deleted site no longer leaves its
+      converted alias behind; the worker itself is installed through the
+      versioned fetcher, which refuses a mirror that has not caught up yet
+      instead of stamping the new serial on the previous bytes; a primary-group
       move deferred for over a day is raised through the incident channel.
 
 

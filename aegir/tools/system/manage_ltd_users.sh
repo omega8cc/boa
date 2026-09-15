@@ -3241,17 +3241,21 @@ _manage_site_drush_alias_mirror() {
   # the rebuild below ran only when an alias was added or changed, so a
   # deletion alone left the yml alias and its checksum in both stores until
   # the next such change. The dotted form maps one to one onto a drushrc
-  # alias; the rebuild wipes its dashed twin with it.
+  # alias; the rebuild wipes its dashed twin with it. Both stores are read:
+  # the account's, and the limited-shell copy in the tenant's home (a
+  # barracuda pass can regenerate the first and leave the second behind).
   if [ "${_isAliasUpdate}" != "YES" ]; then
-    for _yml in ${_pthParentUsr}/.drush/sites/*.site.yml; do
-      [ -e "${_yml}" ] || continue
-      _ymlName=$(basename "${_yml}" .site.yml)
-      case "${_ymlName}" in *.*) ;; *) continue ;; esac
-      if [ ! -e "${_pthParentUsr}/.drush/${_ymlName}.alias.drushrc.php" ]; then
-        echo "Alias store of ${_USER} carries ${_ymlName} whose drushrc alias is gone; rebuilding the store"
-        _isAliasUpdate=YES
-        break
-      fi
+    for _ymlRoot in "${_pthParentUsr}/.drush" "/home/${_USER}.ftp/.drush"; do
+      for _yml in ${_ymlRoot}/sites/*.site.yml; do
+        [ -e "${_yml}" ] || continue
+        _ymlName=$(basename "${_yml}" .site.yml)
+        case "${_ymlName}" in *.*) ;; *) continue ;; esac
+        if [ ! -e "${_ymlRoot}/${_ymlName}.alias.drushrc.php" ]; then
+          echo "Alias store ${_ymlRoot}/sites carries ${_ymlName} whose drushrc alias is gone; rebuilding the stores"
+          _isAliasUpdate=YES
+          break 2
+        fi
+      done
     done
   fi
   # The alias-store rebuild wipes and regenerates ~/.drush/sites from the
