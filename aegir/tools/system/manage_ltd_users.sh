@@ -3237,6 +3237,23 @@ _manage_site_drush_alias_mirror() {
       fi
     fi
   done
+  # A converted yml alias whose drushrc alias is gone (the site was deleted):
+  # the rebuild below ran only when an alias was added or changed, so a
+  # deletion alone left the yml alias and its checksum in both stores until
+  # the next such change. The dotted form maps one to one onto a drushrc
+  # alias; the rebuild wipes its dashed twin with it.
+  if [ "${_isAliasUpdate}" != "YES" ]; then
+    for _yml in ${_pthParentUsr}/.drush/sites/*.site.yml; do
+      [ -e "${_yml}" ] || continue
+      _ymlName=$(basename "${_yml}" .site.yml)
+      case "${_ymlName}" in *.*) ;; *) continue ;; esac
+      if [ ! -e "${_pthParentUsr}/.drush/${_ymlName}.alias.drushrc.php" ]; then
+        echo "Alias store of ${_USER} carries ${_ymlName} whose drushrc alias is gone; rebuilding the store"
+        _isAliasUpdate=YES
+        break
+      fi
+    done
+  fi
   # The alias-store rebuild wipes and regenerates ~/.drush/sites from the
   # drushrc aliases -- on a standby those arrive by rsync mid-window, and
   # a rebuild against a half-landed set bakes the gaps in. Scoped gate:

@@ -68,7 +68,9 @@
       convert) that finds an identity in use records it, and the
       limited-shell worker finishes the move back to the box-wide group on
       its first idle pass (the nightly per-account pass writes with the
-      box-wide group meanwhile); a primary-group
+      box-wide group meanwhile); the worker also rebuilds a tenant's yml
+      alias store when a site's drushrc alias is gone, so a deleted site
+      no longer leaves its converted alias behind; a primary-group
       move deferred for over a day is raised through the incident channel.
 
 
