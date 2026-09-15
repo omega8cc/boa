@@ -68,7 +68,12 @@
 #            its files still carry; removes the group only once no path and
 #            no identity carries it; skips (4) while an identity it has to
 #            move back is in use, waits again before each move after the file
-#            walk and fails (1) naming one still in use then; writes
+#            walk and fails (1) naming one still in use then -- recorded in
+#            /var/log/boa/instgrp.revert-pending.<account>, which the
+#            3-minute limited-shell worker finishes (each identity back to
+#            users on its first idle pass; status shows the unfinished
+#            revert until then; a re-run removes the group; the rollback of
+#            a failed convert records an identity in use the same way); writes
 #            _INSTANCE_GROUP=NO into the account's octopus cnf so the next
 #            upgrade does not convert it again (--keep-enabled leaves the cnf
 #            alone).
@@ -120,6 +125,10 @@ _ACCT=""
 # file per identity, so a kill between the two usermod calls in _set_primary
 # can be repaired on the next invocation (see _repair_homes).
 _HOME_REC=/var/log/boa/instgrp.home
+# One file per account naming the identities a revert could not move back
+# (in use); the limited-shell worker finishes the move and removes it, a
+# completed convert or revert removes it too.
+_REVERT_PENDING=/var/log/boa/instgrp.revert-pending
 _STAGE_DIRS="/root/.instgrp.home /var/backups/ltd/.pg-stage"
 
 _msg() {
@@ -176,6 +185,8 @@ Usage:
            account's current group; no identity change, no lock.
   revert   the exact inverse, files first; the group goes once nothing
            carries it; writes _INSTANCE_GROUP=NO into the account's cnf.
+           An identity in use when its group has to move back is finished
+           by the limited-shell worker once idle (exit 1 until then).
   check    are the fetched root-run writers on this box group-aware?
 
   --from-octopus  the octopus upgrade arm holds /run/boa_run.pid itself.
@@ -255,10 +266,14 @@ _set_primary() {
   printf '%s\n' "${_h}" > "${_HOME_REC}.${_u}"
   _err=$(usermod -d "${_stage}" -g "${_g}" "${_u}" 2>&1 > /dev/null)
   _urc=$?
-  usermod -d "${_h}" "${_u}" > /dev/null 2>&1
+  # The restore is a -d too, so usermod busy-gates it as well: a process of
+  # the identity that began in the milliseconds between the two calls refuses
+  # it for as long as that process lives. Most such processes are short (a
+  # cron minute, a login probe): retry for a few seconds before leaving the
+  # record to the repair paths.
+  _restore_home "${_u}" "${_h}"
   if [ "$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)" != "${_h}" ]; then
     _alrt "${_u}: home field left as $(getent passwd "${_u}" | cut -d: -f6), expected ${_h}"
-    usermod -d "${_h}" "${_u}" > /dev/null 2>&1
   fi
   # The record outlives a failed restore: it is what the next invocation
   # (or the 3-minute worker) repairs from.
@@ -276,15 +291,37 @@ _set_primary() {
     fi
     return 1
   fi
+  # Moved: a deferral the 3-minute worker had open for this identity is over.
+  rm -f "/var/log/boa/instgrp.defer.${_u}"
   return 0
+}
+
+# Put an identity's passwd home back, retrying for up to _HOME_RETRY seconds:
+# usermod -d is refused (exit 8, nothing changed) while any process of the
+# identity is running in this root, and a process that began between the two
+# usermod calls of a move is usually gone within seconds. True once the home
+# field reads as wanted.
+_HOME_RETRY=10
+_restore_home() {
+  local _u="$1" _want="$2" _t=0
+  usermod -d "${_want}" "${_u}" > /dev/null 2>&1
+  while [ "$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)" != "${_want}" ] \
+    && [ "${_t}" -lt "${_HOME_RETRY}" ]; do
+    sleep 1
+    _t=$((_t + 1))
+    usermod -d "${_want}" "${_u}" > /dev/null 2>&1
+  done
+  [ "$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)" = "${_want}" ]
 }
 
 # Any identity whose passwd home is one of the staging directories (this
 # tool's, or the limited-shell worker's) was caught between the two usermod
 # calls: put the recorded home back, or the one the name implies (an account
 # lives in /data/disk/<acct>, every other identity in /home/<name>). Runs
-# before anything else on every invocation, so the tool can always diagnose
-# and repair the state it may have left.
+# before every write verb (convert, reclaim, revert), so the tool always
+# repairs the state it may have left before it changes anything; status stays
+# read-only and reports a staged home as INCONSISTENT (the 3-minute worker
+# repairs it too, every pass).
 _repair_homes() {
   local _u _h _s _want
   for _s in ${_STAGE_DIRS}; do
@@ -301,14 +338,13 @@ _repair_homes() {
         _alrt "${_u}: home field is at ${_s} and ${_want} does not exist; not repaired"
         continue
       fi
-      usermod -d "${_want}" "${_u}" > /dev/null 2>&1
-      _h=$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)
-      if [ "${_h}" = "${_want}" ]; then
+      if _restore_home "${_u}" "${_want}"; then
         _log "repaired home of ${_u}: ${_s} -> ${_want}"
         _alrt "${_u}: home field was left at ${_s} by an interrupted group move; restored to ${_want}"
         rm -f "${_HOME_REC}.${_u}"
       else
-        _alrt "${_u}: home field is ${_h}, could not restore ${_want}"
+        _h=$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)
+        _alrt "${_u}: home field is ${_h}, could not restore ${_want} (in use? retried for ${_HOME_RETRY}s; the next invocation or the 3-minute worker tries again)"
       fi
     done
   done
@@ -836,6 +872,24 @@ _undo_account() {
   [ -z "${_UNDO_STUCK}" ]
 }
 
+# Record the identities a revert, or the rollback of a convert, could not move
+# back to the box-wide group (in use): the limited-shell worker moves each back
+# on its first idle pass and never reads the account as converted meanwhile.
+# Without the record the worker read such an account by its stuck identity
+# and re-grouped the others onto it.
+_record_stuck() {
+  [ -n "${_UNDO_STUCK}" ] || return 0
+  # shellcheck disable=SC2086
+  printf '%s\n' ${_UNDO_STUCK} > "${_REVERT_PENDING}.${1}"
+}
+
+# A convert's rollback met an identity in use: record it and fail.
+_rollback_stuck() {
+  _record_stuck "${1}"
+  _log "${1}: ROLLBACK INCOMPLETE, [${_UNDO_STUCK}] still on group ${1}; recorded for the worker to finish"
+  _fail "${1}: the rollback left [${_UNDO_STUCK}] on group ${1} (in use); the limited-shell worker moves it back once idle, then run instgrp convert ${1} again"
+}
+
 # Every identity of the account already on the account's primary group, with
 # the execute ACL still in its effective set.
 _ids_converted() {
@@ -887,6 +941,7 @@ _do_convert() {
     # shellcheck disable=SC2086
     if ! _grp_residue "${_a}" ${_roots}; then
       _marker_valid "${_a}" || _write_marker "${_a}" || _alrt "${_a}: the marker could not be written"
+      rm -f "${_REVERT_PENDING}.${_a}"
       _info "${_a}: already converted (gid ${_aGid}), nothing to re-group"
       return 0
     fi
@@ -963,11 +1018,11 @@ _do_convert() {
           _log "${_a}: SKIP identity in use [${_u}] during the move, rolled back"
           return 4
         fi
-        _fail "${_a}: the rollback left [${_UNDO_STUCK}] on group ${_a} (in use); run instgrp convert ${_a} or instgrp revert ${_a} once idle"
+        _rollback_stuck "${_a}"
         return 1
       elif [ "${_src}" != "0" ]; then
         _fail "${_u}: primary group could not be set to ${_a}; rolling ${_a} back"
-        _undo_account "${_a}" "${_aGid}" "${_roots}" || _fail "${_a}: the rollback left [${_UNDO_STUCK}] on group ${_a}"
+        _undo_account "${_a}" "${_aGid}" "${_roots}" || _rollback_stuck "${_a}"
         return 1
       fi
       _moved=$((_moved + 1))
@@ -977,13 +1032,18 @@ _do_convert() {
     # the primary group; a miss here is a lockout in the making.
     if ! _in_grp "${_u}" "${_USRG}"; then
       _fail "${_u} lost ${_USRG} on the primary move; rolling ${_a} back"
-      _undo_account "${_a}" "${_aGid}" "${_roots}" || _fail "${_a}: the rollback left [${_UNDO_STUCK}] on group ${_a}"
+      _undo_account "${_a}" "${_aGid}" "${_roots}" || _rollback_stuck "${_a}"
       return 1
     fi
     # The primary group never shows in the group's member list; provision's
     # membership test reads that list, so list it there too.
     _grant_sup "${_u}" "${_a}" || _alrt "${_u}: could not list it in ${_a}"
   done
+  # Every identity now carries the account group and no rollback path is
+  # left: a revert the worker was still finishing is superseded here, before
+  # the walk (a convert killed during the walk would otherwise leave the
+  # worker a record telling it to un-group the identities it just moved).
+  rm -f "${_REVERT_PENDING}.${_a}"
   _assert_fpm_apart "${_a}"
   _msg "${_a}: re-grouping files (${_USRG} -> ${_a}), this walks the whole account tree..."
   # The hosting queue is forced on during an octopus run and the tenant's
@@ -1148,7 +1208,7 @@ _do_revert() {
   # tree in the whole tree: the exact inverse of convert, on an operator's
   # explicit order.
   if ! _undo_account "${_a}" "${_gid}" "${_roots}"; then
-    _fail "${_a}: [${_UNDO_STUCK}] still on group ${_a}, in use when its primary group had to move back; run instgrp revert ${_a} once it is idle"
+    _fail "${_a}: [${_UNDO_STUCK}] still on group ${_a}, in use when its primary group had to move back; the limited-shell worker moves it back once idle, then run instgrp revert ${_a} again to remove the group"
     _rc=1
   fi
   if [ -n "${_gid}" ]; then
@@ -1190,9 +1250,17 @@ _do_revert() {
     _msg "NOTE: _INSTANCE_GROUP=NO written to ${_cnf}; remove it (or set YES) before the next upgrade to convert again"
   fi
   if [ "${_rc}" = "1" ]; then
-    _log "${_a}: REVERT INCOMPLETE, [${_UNDO_STUCK}] still on group ${_a}"
+    # The identities still on the account's group are recorded for the
+    # limited-shell worker, which moves each back to ${_USRG} on its first
+    # pass that finds it idle (a logged-in session ends, a cron run
+    # completes) and removes the record; this revert otherwise waited for an
+    # operator to notice and re-run it. The group stays until a re-run finds
+    # nothing carrying it.
+    _record_stuck "${_a}"
+    _log "${_a}: REVERT INCOMPLETE, [${_UNDO_STUCK}] still on group ${_a}; recorded for the worker to finish"
     return 1
   fi
+  rm -f "${_REVERT_PENDING}.${_a}"
   _log "${_a}: REVERTED"
   _info "${_a}: reverted to the box-wide group ${_USRG}"
   return "${_rc}"
@@ -1228,6 +1296,9 @@ _do_status() {
     _msg "group:    ${_a} gid=${_gid} members=[$(getent group "${_a}" | cut -d: -f4)]"
   else
     _msg "group:    none"
+  fi
+  if [ -s "${_REVERT_PENDING}.${_a}" ]; then
+    _msg "revert:   UNFINISHED for [$(tr '\n' ' ' < "${_REVERT_PENDING}.${_a}" | sed 's/ $//')] (in use when a revert, or the rollback of a convert, had to move it back); the limited-shell worker moves them back to ${_USRG} once idle, then instgrp revert ${_a} removes the group (or instgrp convert ${_a} converts again)"
   fi
   for _u in ${_ids}; do
     getent passwd "${_u}" > /dev/null 2>&1 || { _msg "identity: ${_u} MISSING"; _bad="${_bad} ${_u}-missing"; continue; }

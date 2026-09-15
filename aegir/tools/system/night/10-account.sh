@@ -1017,8 +1017,18 @@ _purge_cruft_machine() {
 
   # Both writes below land inside this account's own tree, so the group is
   # derived from the account rather than hardcoded; 'users' on an unconverted box.
-  local _acctGrp _igHit
+  local _acctGrp _igHit _igPend
   _acctGrp=$(_acct_group "${_HM_U}")
+  # A revert (or the rollback of a convert) the limited-shell worker is still
+  # finishing leaves the account's own identity on the account's group, which
+  # _acct_group reads as converted: write with the box-wide group, as the
+  # worker does meanwhile, and leave the drift probe to a later night (a
+  # reclaim now would re-group the tree onto the group being reverted).
+  _igPend=NO
+  if [ -s "/var/log/boa/instgrp.revert-pending.${_HM_U}" ]; then
+    _acctGrp=users
+    _igPend=YES
+  fi
   # Drift probe: the credential-bearing paths (~/.drush aliases, backups,
   # config, tools, the hostmaster sites, every drushrc.php under static) are
   # re-grouped by the octopus arm only, so a stale writer or a hand chown
@@ -1028,7 +1038,7 @@ _purge_cruft_machine() {
   # too: a copy or a root-run restore can land its tree in another
   # account's named group there, and reclaim hands it back to the box-wide
   # group -- the same exposure class, which the converted-only gate missed.
-  if [ -x "/opt/local/bin/instgrp" ]; then
+  if [ "${_igPend}" = "NO" ] && [ -x "/opt/local/bin/instgrp" ]; then
     # backups may be a link into the static store (relocated backups): probe
     # where the files are. The static leg is bounded to the depth where a
     # site's drushrc.php lives (<platform>[/web]/sites/<uri>/drushrc.php),

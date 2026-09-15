@@ -96,6 +96,14 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
+### Resolve the caller-supplied root ONCE, before any check or operation reads
+### it: every branch below re-walks the raw argument, and ~/static is 02775 on
+### tenant codebases, so the tenant owns the name it was handed and could
+### re-point it between _validate_path_prefix and the chmod legs. An
+### empty result falls through to the "valid Drupal root" refusal below.
+if [ -n "${drupal_root}" ] && [ -e "${drupal_root}" ]; then
+  drupal_root=$(realpath -e -- "${drupal_root}" 2>/dev/null) || drupal_root=""
+fi
 
 # --- Grav 2 platform (site capsules; boa-grav D-003) -------------------------
 # A Grav root carries no Drupal system.module; detect it positively and run
@@ -198,6 +206,21 @@ if [ -L "${drupal_root}/sites" ] || [ -L "${drupal_root}/sites/all" ]; then
   printf "Error: sites or sites/all is a symlink in %s; refusing.\n" "${drupal_root}" >&2
   exit 1
 fi
+### The four names under sites/all are plantable the same way, and the day
+### marker's rm glob and touch, the mkdir and the tcpdf leg below resolve
+### through them; _chmod_safe protects only the final component. Never
+### legitimately symlinks (the o_contrib* links live under the platform
+### root's own modules/, never under sites/all): refuse, as the site-level
+### helper does; the nightly withholds the same legs instead. Inside a
+### skeleton that passed, a symlinked entry is skipped per entry rather
+### than refused (the sites/<uri> sweep below). tcpdf and its cache child
+### are prechecked at their own leg below.
+for _d in modules themes libraries drush; do
+  if [ -L "${drupal_root}/sites/all/${_d}" ]; then
+    printf "Error: sites/all/%s is a symlink in %s; refusing.\n" "${_d}" "${drupal_root}" >&2
+    exit 1
+  fi
+done
 
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
@@ -253,8 +276,29 @@ find ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core} -type
 
 if [ -e "${drupal_root}/core/modules/workspaces_ui" ]; then
   printf "Removing all .drush.inc files inside codebase "${drupal_root}"...\n"
-  find ${drupal_root}/modules/contrib -type f -name "*.drush.inc" -exec rm -f {} \;
-  find ${drupal_root}/sites/*/modules -type f -name "*.drush.inc" -exec rm -f {} \;
+  ### modules (below) and sites/<uri> (further down) are INTERMEDIATE
+  ### components of these start paths, so the kernel resolves them however
+  ### find is invoked; -P governs only the final name and the traversal. A
+  ### tenant composer codebase keeps its docroot at 02775 and sites/ at 02771
+  ### by design (below, and night/20-sites.sh), so a planted
+  ### modules -> /elsewhere or sites/<x> -> /elsewhere would make this a
+  ### root-run recursive rm under /elsewhere. Skip symlinked entries rather
+  ### than refuse the platform: every other leg that meets a sites/* entry
+  ### tolerates it the same way -- _chmod_safe below skips it, and the
+  ### ownership twin's _own_existing single owns the link itself (chown -h)
+  ### -- and a refusal would hand the tenant a one-symlink block on its own
+  ### permission pass.
+  if [ ! -L "${drupal_root}/modules" ] \
+    && [ ! -L "${drupal_root}/modules/contrib" ] \
+    && [ -d "${drupal_root}/modules/contrib" ]; then
+    find "${drupal_root}/modules/contrib" -type f -name "*.drush.inc" -exec rm -f {} \;
+  fi
+  for _s in ${drupal_root}/sites/*/; do
+    [ -L "${_s%/}" ] && continue
+    [ -L "${_s}modules" ] && continue
+    [ -d "${_s}modules" ] || continue
+    find "${_s}modules" -type f -name "*.drush.inc" -exec rm -f {} \;
+  done
 fi
 
 if [ -e "${drupal_root}/vendor" ]; then
@@ -342,9 +386,12 @@ fi
 
 ### Known exceptions
 ### GNU chmod dereferences symlinks on cmdline args but ignores them during
-### -R traversal. Precheck the cmdline path to avoid a symlink redirect; the
-### recursive descent below is then safe.
-if [ ! -L "${drupal_root}/sites/all/libraries/tcpdf/cache" ]; then
+### -R traversal, and an intermediate symlink in the operand path is resolved
+### by the kernel regardless. tcpdf and its cache child are both names the
+### tenant can plant under the 02775 libraries/. Precheck both, as the
+### nightly does; a real directory is treated exactly as before.
+if [ ! -L "${drupal_root}/sites/all/libraries/tcpdf" ] \
+  && [ ! -L "${drupal_root}/sites/all/libraries/tcpdf/cache" ]; then
   chmod -R 775 ${drupal_root}/sites/all/libraries/tcpdf/cache &> /dev/null
 fi
 _chmod_safe 0644 "${drupal_root}/.htaccess"
