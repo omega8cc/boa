@@ -1587,12 +1587,6 @@ _ok_create_user() {
   fi
 }
 #
-# Change a sub-user's primary group without usermod's own recursive lchown of
-# the home tree (shadow chown_tree: full pathnames, stops at the first
-# immutable inode -- and these homes carry chattr +i -- with the passwd entry
-# already rewritten). The home field points at an empty root-owned staging
-# dir for that one call and is put back at once; the group on the files is
-# the alias-copy leg's business.
 # Put an identity's passwd home back, retrying for up to 10 seconds: usermod
 # -d is refused (exit 8, nothing changed) while any process of the identity
 # runs in this root, and a process that began between the two usermod calls
@@ -1616,14 +1610,24 @@ _restore_home() {
 # clears the stamp (_ig_defer_clear). $1 = identity, $2 = the group it waits
 # to move to, $3 = one line saying what is waiting
 _ig_defer_note() {
-  local _u="$1" _g="$2" _what="$3" _stamp _since _key
+  local _u="$1" _g="$2" _what="$3" _stamp _since _seen _now _key
   echo "${_what}"
   mkdir -p /var/log/boa 2>/dev/null
   _stamp="/var/log/boa/instgrp.defer.${_u}"
-  [ -e "${_stamp}" ] || touch "${_stamp}"
-  _since=$(stat -c %Y "${_stamp}" 2>/dev/null)
-  _since=${_since:-0}
-  [ "$(( $(date +%s) - _since ))" -ge 86400 ] || return 0
+  _now=$(date +%s)
+  # The stamp's content is the start of this deferral episode, its mtime the
+  # last pass that saw it. A stamp the passes stopped touching for an hour is
+  # an old episode (the identity was moved out of band, by instgrp or by a
+  # pass that found it already in place): the count starts again, so a new
+  # deferral never alarms on a stale start.
+  _seen=$(stat -c %Y "${_stamp}" 2>/dev/null); _seen=${_seen:-0}
+  _since=$(head -1 "${_stamp}" 2>/dev/null); _since=${_since//[^0-9]/}
+  if [ -z "${_since}" ] || [ "$(( _now - _seen ))" -gt 3600 ]; then
+    _since="${_now}"
+    printf '%s\n' "${_since}" > "${_stamp}"
+  fi
+  touch "${_stamp}"
+  [ "$(( _now - _since ))" -ge 86400 ] || return 0
   _key="instgrp-defer-${_u}"
   _since=$(stat -c %Y "/var/log/boa/manage-ltd-${_key//[^a-zA-Z0-9._-]/}.alerted" 2>/dev/null)
   _since=${_since:-0}
@@ -1639,6 +1643,12 @@ _ig_defer_clear() {
 _acct_of_identity() {
   printf '%s\n' "${1%%.*}"
 }
+# Change a sub-user's primary group without usermod's own recursive lchown of
+# the home tree (shadow chown_tree: full pathnames, stops at the first
+# immutable inode -- and these homes carry chattr +i -- with the passwd entry
+# already rewritten). The home field points at an empty root-owned staging
+# dir for that one call and is put back at once; the group on the files is
+# the alias-copy leg's business.
 _user_in_use() {
   # shadow's user_busy, the check usermod -d runs: a process in this root (a
   # chrooted pure-ftpd session is not) whose real, effective or saved uid is
@@ -1750,6 +1760,8 @@ _ok_update_user() {
       # account converted since) cannot read its 0440 alias copies: align it,
       # only once the explicit 'users' membership above is in place, and
       # verified after the move.
+      # Already on the group it belongs to: no deferral is open for it.
+      [ "$(id -gn ${_usrLtd} 2>/dev/null)" = "${_usrGroup}" ] && _ig_defer_clear "${_usrLtd}"
       if [ "${_usrGroup}" != "users" ] \
         && [ "$(id -gn ${_usrLtd} 2>/dev/null)" != "${_usrGroup}" ] \
         && getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_usrLtd}"; then
@@ -3318,7 +3330,7 @@ _manage_user() {
       # account as converted meanwhile -- the heal below would otherwise move
       # its other identities back ONTO the group the operator is reverting.
       _igPend="/var/log/boa/instgrp.revert-pending.${_USER}"
-      if [ -f "${_igPend}" ]; then
+      if [ -s "${_igPend}" ]; then
         _igLeft=""
         for _igU in $(cat "${_igPend}" 2>/dev/null); do
           case "${_igU}" in "${_USER}"|"${_USER}".*) ;; *) continue ;; esac
@@ -3360,7 +3372,12 @@ _manage_user() {
       if [ "${_igConv}" = "YES" ]; then
         for _igU in ${_USER} ${_USER}.ftp; do
           getent passwd "${_igU}" >/dev/null 2>&1 || continue
-          [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ] && continue
+          if [ "$(id -gn ${_igU} 2>/dev/null)" = "${_USER}" ]; then
+            # Already there (a move instgrp or an earlier pass finished): no
+            # deferral is open for it any more.
+            _ig_defer_clear "${_igU}"
+            continue
+          fi
           if ! getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_igU}"; then
             usermod -aG users ${_igU}
           fi
@@ -3391,7 +3408,15 @@ _manage_user() {
       # Group owning this account's tree, re-derived every iteration so no
       # value carries over to the next account. Falls back to the box-wide
       # default on an account that has no private group.
-      _usrGroup=$(_acct_group "${_USER}")
+      # While a revert is unfinished the account identity itself is usually
+      # the one still on the account's group, which _acct_group would read as
+      # converted: this pass then writes and moves with the box-wide group,
+      # as the revert intends, instead of pushing the sub-users back onto it.
+      if [ -s "${_igPend}" ]; then
+        _usrGroup=users
+      else
+        _usrGroup=$(_acct_group "${_USER}")
+      fi
       echo "_USER is == ${_USER} == at _manage_user"
       if getent group allow-snail >/dev/null 2>&1 && \
         ! id -nG "${_USER}" 2>/dev/null | tr ' ' '\n' | grep -qxF "allow-snail"; then

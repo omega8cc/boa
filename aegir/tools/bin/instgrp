@@ -1018,6 +1018,11 @@ _do_convert() {
     # membership test reads that list, so list it there too.
     _grant_sup "${_u}" "${_a}" || _alrt "${_u}: could not list it in ${_a}"
   done
+  # Every identity now carries the account group and no rollback path is
+  # left: a revert the worker was still finishing is superseded here, before
+  # the walk (a convert killed during the walk would otherwise leave the
+  # worker a record telling it to un-group the identities it just moved).
+  rm -f "${_REVERT_PENDING}.${_a}"
   _assert_fpm_apart "${_a}"
   _msg "${_a}: re-grouping files (${_USRG} -> ${_a}), this walks the whole account tree..."
   # The hosting queue is forced on during an octopus run and the tenant's
@@ -1040,8 +1045,6 @@ _do_convert() {
     _msg "${_a}: paths were written during the walk, walking again (${_pass})..."
   done
   _write_marker "${_a}" || _alrt "${_a}: the marker could not be written; status reports the conversion without it"
-  # A conversion supersedes a revert the worker was still finishing.
-  rm -f "${_REVERT_PENDING}.${_a}"
   _log "${_a}: CONVERTED identities=[${_ids}] roots=[$(printf '%s ' ${_roots})] walks=${_pass}"
   _info "${_a}: converted to per-instance group ${_a} (gid ${_aGid})"
   _msg "NOTE: a shell session logged in before this keeps its old group set until it reconnects"
@@ -1184,7 +1187,7 @@ _do_revert() {
   # tree in the whole tree: the exact inverse of convert, on an operator's
   # explicit order.
   if ! _undo_account "${_a}" "${_gid}" "${_roots}"; then
-    _fail "${_a}: [${_UNDO_STUCK}] still on group ${_a}, in use when its primary group had to move back; run instgrp revert ${_a} once it is idle"
+    _fail "${_a}: [${_UNDO_STUCK}] still on group ${_a}, in use when its primary group had to move back; the limited-shell worker moves it back once idle, then run instgrp revert ${_a} again to remove the group"
     _rc=1
   fi
   if [ -n "${_gid}" ]; then
