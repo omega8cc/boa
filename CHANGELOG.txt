@@ -28,6 +28,23 @@
       exemption list instead of voiding every exemption, so one typo
       in a control file no longer strips the protection that list
       gives the legitimate crawlers, unfurlers and uptime probes.
+    * The nightly's platform and site permission legs withhold the
+      passes that walk through a code directory name, and say so in
+      the account's night log, when that name (modules, themes,
+      libraries or drush under sites/all; modules, themes or libraries
+      in a site directory) is a symlink, instead of expanding into
+      whatever it points at, while the narrowing passes still run so
+      a refused platform or site ends no wider than an accepted one
+      (on a tenant-built platform the whole-tree pass that widens the
+      tree narrows every site's settings-class files back itself, so
+      a site the pass skips altogether ends no wider either); the
+      platform ownership and permission helpers refuse the same
+      shape, resolve the root they were handed before any check reads
+      it and leave libraries/tcpdf alone when it or its cache child is
+      a symlink; the permission helper's Drupal 10+ .drush.inc sweep
+      no longer walks through a symlinked modules/ or site directory;
+      and the site legs handle the files/ and private/ child entries
+      on the resolved store path only, never through a planted link.
 
 @=> New Features
 
