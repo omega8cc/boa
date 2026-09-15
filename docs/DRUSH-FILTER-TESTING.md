@@ -147,10 +147,58 @@ ls /tmp/boa_probe_uid_$(id -u <OCT>).marker 2>/dev/null && echo "BACKEND LOADED 
 - [ ] The task completes normally
 - [ ] `backend did not load it (GOOD)`
 
+## Test 4 — Drupal 10/11 contributed command files stay on disk and never load for the backend
+
+BOA no longer deletes contributed `*.drush.inc` files from Drupal 10+ codebases
+(the sweep that removed them on Drupal 11 platforms and under
+`modules/contrib/webform` is retired), so this test proves the property that
+replaced it: a command file inside an ENABLED contributed module's directory on a
+locked Drupal 10+ platform is found by Drush's recursive scan, denied for the
+backend, and a backend task completes with the file still in place. Use a site
+whose platform is locked (Verify leaves it locked) and pick a contributed module
+that is enabled on it (`token` is a safe choice on most distributions).
+
+```bash
+ROOT=$(su - <OCT> -c "drush <SITE> dd" 2>/dev/null)     # or: status --fields=root --format=list
+MOD="$ROOT/modules/contrib/token"                         # any ENABLED contrib module dir
+cat > "$MOD/bprobe.drush.inc" <<'PHP'
+<?php
+@file_put_contents('/tmp/boa_probe_uid_' . posix_geteuid() . '.marker', date('c') . "\n", FILE_APPEND);
+function bprobe_drush_command() {
+  return array('bprobe' => array('description' => 'BOA probe command', 'bootstrap' => DRUSH_BOOTSTRAP_DRUSH));
+}
+function drush_bprobe() { drush_print('BOA-PROBE-RAN'); }
+PHP
+chown <OCT>:<OCT> "$MOD/bprobe.drush.inc"; chmod 0644 "$MOD/bprobe.drush.inc"
+rm -f /tmp/boa_probe_uid_*.marker
+
+# 4a — backend: full site bootstrap, the probe must not appear and must not run
+su - <OCT> -c "drush <SITE> help 2>&1" | grep -c '^ *bprobe'       # expect 0
+ls /tmp/boa_probe_uid_$(id -u <OCT>).marker 2>/dev/null && echo "BACKEND LOADED IT (BAD)" || echo "backend did not load it (GOOD)"
+
+# 4b — a real backend task completes with the file in place, and leaves it there
+su - <OCT> -c "drush <SITE> provision-verify" >/dev/null 2>&1; echo "verify exit=$?"
+ls -la "$MOD/bprobe.drush.inc"                                      # still present
+
+# 4c — the limited shell sees it (unfiltered), as in Test 2b
+su -s /bin/bash - <OCT>.ftp -c "drush <SITE> help 2>&1" | grep -c '^ *bprobe'   # expect 1
+ls /tmp/boa_probe_uid_$(id -u <OCT>.ftp).marker
+```
+
+- [ ] 4a: `0` and `backend did not load it (GOOD)`
+- [ ] 4b: `verify exit=0` and the probe file still present afterwards
+- [ ] 4c: `1` and the `<OCT>.ftp` marker present
+
+A real Drush-12-only command file (webform 6.3's `webform_devel.drush.inc` is one)
+behaves the same way for the backend; for the `<OCT>.ftp` identity it loads and
+can fail at command discovery, which is expected and is why clients use the
+site-local `vdrush` on Drupal 8+.
+
 ## Cleanup
 
 ```bash
 rm -f "$ROOT/sites/all/drush/bprobe.drush.inc"
+rm -f "$ROOT/modules/contrib/token/bprobe.drush.inc"   # Test 4 probe, if planted
 rmdir "$ROOT/sites/all/drush" 2>/dev/null   # removes it only if we created it and it is now empty
 rm -f /tmp/boa_probe_uid_*.marker /tmp/boa_check.php
 su - <OCT> -c "drush <SITE> cc drush >/dev/null 2>&1"
@@ -162,4 +210,5 @@ su - <OCT> -c "drush <SITE> cc drush >/dev/null 2>&1"
 |---|---|---|
 | 1 | Protection still works | Test 1 as `<OCT>`: `allowed(tenant)=false`; Test 2a: `bprobe` not found and no marker; Test 3: no backend marker |
 | 2 | Limited-shell CLI unaffected | Test 1 as `<OCT>.ftp`: `allowed(tenant)=true`; Test 2b: `BOA-PROBE-RAN` and marker present |
+| 3 | Files stay on disk, never load for the backend | Test 4a: `0` and no backend marker; Test 4b: `verify exit=0` with the probe still present |
 | — | No over-block / patch active | Both identities: `patched=yes` and `allowed(BOA-tool)=true` |
