@@ -139,7 +139,7 @@ always use — your site's contributed-module Drush commands (for example `civic
 `elysia-cron`, or any other module-provided command) are discovered and run normally.
 
 If core commands such as `drush @alias cc all` work but a contributed command like
-`drush @alias elysia-cron run somecron` is *not recognized*, the usual cause is
+`drush @alias elysia-cron run somecron` is *not recognised*, the usual cause is
 running Drush as the `oN` bash user instead of `oN.ftp`: the `oN` account is an Ægir
 backend identity, so the filter applies there. Reconnect as `oN.ftp` and the
 contributed commands will load. If you instead need a contributed command to run from
