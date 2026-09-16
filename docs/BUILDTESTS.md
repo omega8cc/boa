@@ -400,7 +400,10 @@ install profile), then gzip the remaining (distribution) platforms:
   cp -a ~/static/MONTH-DAY/*.tar.gz                   /var/www/static/distro/   # then remove the drupal-* copies from distro/
 ```
 
-Raw cores (`drupal-*`) go to `core/`; everything else goes to `distro/`.
+Raw cores (`drupal-*`) go to `core/`; the distributions go to `distro/`. The Backdrop, Grav
+and Textpattern artefacts are `core/` shelf content too: their family targets publish them
+there and `staticbuild distribute` routes any of their tarballs it finds in the day dir there
+as well, never to `distro/`, which nothing reads for them.
 
 ## Add them all as platforms in Ægir
 
