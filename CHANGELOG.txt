@@ -24,6 +24,14 @@
       Valkey backoff flag on recovery: the first web worker runs the
       pool-wide APCu flush the flag exists for, so a recovery seen first
       by cron or a task no longer leaves stale front-layer entries.
+    * The shared Valkey backoff flag now lives in its own non-sticky
+      directory: in the sticky /var/tmp/fpm only the pool that armed the
+      flag could refresh or consume it, so on a box with several
+      instances the other pools never ran their recovery flush and, with
+      a foreign flag in place, could not arm a backoff of their own.
+    * A failed Valkey probe drops its connection instead of closing it:
+      the close sent a QUIT and waited a second full read timeout on a
+      server that had accepted the connection but answered nothing.
 
 @=> Security
 
@@ -130,6 +138,21 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * xmass no longer aborts a live sync when a file vanishes between rsync's
+      directory listing and its extended-attribute read: rsync then exits 23
+      instead of 24, and the three transfer wrappers now read an exit 23 made
+      only of such sender-side "No such file or directory" errors as the
+      benign vanished-file case they already tolerate. Any other error keeps
+      the pass denied. Found by the readiness-gate ring on a churning tree.
+
+    * A tenant's queued upgrade (static/control/run-upgrade.pid) is no longer
+      lost when two per-account runners tick in the same second and the
+      second octopus refuses on the first one's lock: the runner now watches
+      the octopus it launched and puts the trigger back when it exited
+      without running, so the next quiet tick retries it. Found by the same
+      ring after a promotion re-armed five deferred upgrades at once.
+
 
     * A clone or rename whose deploy fails no longer leaves the new site's
       context behind (the Drush alias and its converted yml alias); the
