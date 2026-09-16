@@ -26,12 +26,25 @@ if ($drupal_core >= 8) {
   $config['system.performance']['response.gzip'] = FALSE;          // Nginx already compresses everything
   //$config['system.file']['default_scheme'] = 'public';             // Force public downloads by default
 }
+elseif (!empty($backdropcms)) {
+  //
+  // Backdrop: the forced defaults of the D6/D7 branch below that have a
+  // Backdrop home, on that home. A $config override is consumed lazily by
+  // Config::get() (override first, stored value second), so it holds whether
+  // or not the site ever saved the key; config() itself is not loaded yet
+  // when settings.php runs and is never called here.
+  //
+  $config['system.core']['page_compression'] = 0;    // Nginx already compresses everything
+  $config['system.core']['cron_safe_threshold'] = 0; // Aegir owns cron; a visit must never run it
+  $config['system.core']['preprocess_css'] = 1;      // Enable hardcoded CSS aggregation
+  $config['system.core']['preprocess_js'] = 1;       // Enable hardcoded JS aggregation
+  $config['system.core']['file_default_scheme'] = 'public'; // Force public downloads by default
+  $config['system.core']['error_level'] = 'hide';    // Disable errors on screen
+  $settings['css_gzip_compression'] = FALSE;         // Nginx already compresses everything
+  $settings['js_gzip_compression'] = FALSE;          // Documented name; core reads the JS switch under 'system.core' today, so this holds only once core reads the name it documents
+  $settings['backdrop_drupal_compatibility'] = TRUE; // Keep the Drupal 7 API layer on (the settings template sets it too)
+}
 else {
-  if ($backdropcms) {
-    $conf['css_gzip_compression'] = FALSE; // Nginx already compresses everything
-    $conf['js_gzip_compression'] = FALSE;  // Nginx already compresses everything
-    $settings['backdrop_drupal_compatibility'] = TRUE; // Enable Drupal backwards compatibility
-  }
   $conf['page_compression'] = 0;    // Nginx already compresses everything
   $conf['boost_crawl_on_cron'] = 0; // Deny Boost crawler
   $conf['cron_safe_threshold'] = 0; // Disable poormanscron
@@ -119,6 +132,12 @@ if (!$is_backend) {
         //
       }
     }
+    elseif (!empty($backdropcms)) {
+      unset($config['system.core']['cache']);          // Stop hardcoding internal page cache
+      unset($config['system.core']['error_level']);    // Stop hardcoding no errors on screen
+      unset($config['system.core']['preprocess_css']); // Stop hardcoding CSS aggregation
+      unset($config['system.core']['preprocess_js']);  // Stop hardcoding JS aggregation
+    }
     else {
       $conf['xmlsitemap_submit'] = 0; // Disable XML Sitemap for foo.dev.domain
       $conf['xmlsitemap_update'] = 0; // Disable XML Sitemap for foo.dev.domain
@@ -159,6 +178,9 @@ if (!$is_backend && !$is_dev) {
     if ($drupal_core >= 8) {
       $config['system.performance']['cache.page.max_age'] = 0;
     }
+    elseif (!empty($backdropcms)) {
+      $config['system.core']['cache'] = 0;
+    }
     else {
       $conf['cache'] = 0;
     }
@@ -166,6 +188,16 @@ if (!$is_backend && !$is_dev) {
   else {
     if ($drupal_core >= 8) {
       $config['system.performance']['cache.page.max_age'] = 60;
+    }
+    elseif (!empty($backdropcms)) {
+      // Backdrop: the site's own page cache switch stands. Backdrop folds D7's
+      // cache_lifetime and the Cache-Control max-age into one key,
+      // page_cache_maximum_age, which is the entry lifetime itself; a site
+      // converted from Drupal 7 carries 0 there (system_update_1003 copies the
+      // D7 variable, which BOA never set), and forcing the cache on with a
+      // 0 lifetime would make every anonymous request serve a stale entry
+      // and rebuild the page in the background. So neither key is forced on;
+      // only the TRUE branch above forces the cache off.
     }
     else {
       $conf['cache'] = 1;
@@ -181,6 +213,9 @@ if (!$is_bot && isset($_SERVER['REQUEST_URI']) &&
     preg_match("/nocache=1/", $_SERVER['REQUEST_URI'])) {
   if ($drupal_core >= 8) {
     $config['system.performance']['cache.page.max_age'] = 0;
+  }
+  elseif (!empty($backdropcms)) {
+    $config['system.core']['cache'] = 0;
   }
   else {
     $conf['cache'] = 0;
@@ -221,6 +256,9 @@ if (isset($_SERVER['SERVER_NAME']) &&
   unset($conf['file_downloads']); // Disable hardcoded public downloads for D6
   unset($conf['file_default_scheme']); // Disable hardcoded public downloads for D7
   //unset($config['system.file']['default_scheme']); // Disable hardcoded public downloads for D8+
+  if (!empty($backdropcms)) {
+    unset($config['system.core']['file_default_scheme']); // Disable hardcoded public downloads for Backdrop
+  }
   if ($is_dev && !$is_backend) {
     header('X-Is-Cart: YES');
   }

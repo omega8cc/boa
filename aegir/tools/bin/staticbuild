@@ -144,7 +144,8 @@ _BDEXT_TAG=""
 # redis_backdrop-<tag>.tar.gz: the shared /data/all/000/modules store BOA
 # symlinks into every Backdrop platform through the o_contrib_backdrop bundle,
 # replacing the retired per-platform modules/redis bake. The settings side is
-# /data/conf/global/global-bd.inc, which prefers the shared bundle and still
+# /data/conf/global/global-bd-valkey.inc (the Backdrop wiring partial the
+# global-bd.inc chain head includes), which prefers the shared bundle and still
 # falls back to a baked modules/redis copy on platforms built from older
 # tarballs. NB: BOA fetches this by its pinned version -- after publishing a
 # new tag here, bump the pin in OCTOPUS.sh.txt and BOA.sh.txt together.
@@ -1480,13 +1481,18 @@ do_distribute() {
     _base="${_t##*/}"
     # Dev extensions first: backdrop-drush-extension.tar.gz must NOT fall into the
     # backdrop-* core arm. The version-less backdrop.tar.gz is the compat tarball
-    # built by package_backdrop_compat (extracts to backdrop/).
+    # built by package_backdrop_compat (extracts to backdrop/). Grav and
+    # Textpattern are core-shelf families too: their own targets publish to
+    # core/ (stamp last), so a same-day "all" run must re-copy any of their
+    # tarballs left in the day dir to core/ as well, never to distro/, which
+    # nothing reads for them (a satellite fetches grav-<ver>.tar.gz and
+    # textpattern-<ver>.tar.gz through _get_core_ext).
     case "${_base}" in
       bee.tar.gz|backdrop-drush-extension.tar.gz)
         _publish_devext "${_t}" && _n=$((_n + 1)) ;;
       redis_backdrop-*.tar.gz|webform-*.tar.gz)
         _publish_contrib "${_t}" && _n=$((_n + 1)) ;;
-      drupal-*.tar.gz|backdrop-[0-9]*.tar.gz|backdrop.tar.gz)
+      drupal-*.tar.gz|backdrop-[0-9]*.tar.gz|backdrop.tar.gz|grav-[0-9]*.tar.gz|grav.tar.gz|textpattern-[0-9]*.tar.gz|textpattern.tar.gz)
         cp -a "${_t}" "${_CORE_OUT}/"   && { _msg "core   <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
       *)
         cp -a "${_t}" "${_DISTRO_OUT}/" && { _msg "distro <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;

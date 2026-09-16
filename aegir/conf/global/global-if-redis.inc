@@ -2,7 +2,7 @@
 
 
 /* ---------------- Feature switch -------------------------------------- */
-if ($drupal_core >= 6) {
+if ($drupal_core >= 6 || !empty($backdropcms)) {
   $use_valkey = TRUE;
 }
 
@@ -60,11 +60,26 @@ $redis_debug     = isset($all_ini['redis_debug']) ? (bool) $all_ini['redis_debug
 $redis_debug_on  = ($redis_debug && is_file('/data/conf/redis.debug.flag'));
 
 /* ---------------- Helpers (filesystem only) ---------------------------- */
+/* The flag is SHARED by every FPM pool on the box and by the CLI, which all
+ * run as different users. /var/tmp/fpm is sticky (1777), and in a sticky
+ * directory only the owner of a file can rename() or unlink() it: a flag
+ * armed by one pool could then never be consumed by another pool's
+ * recovery, so the pool-wide APCu flush and the clear happened only for the
+ * pool that armed it. The flag therefore lives in its own, non-sticky, 0777
+ * subdirectory, created by whichever process first needs it, and is made
+ * 0666 by its creator so every other pool can refresh (touch) it too. */
 function _valkey_backoff_flag_path($flag_dir_run, $fallback) {
   $path = $fallback;
   if (is_dir($flag_dir_run)) {
     if (is_writable($flag_dir_run)) {
-      $path = rtrim($flag_dir_run, '/').'/valkey.disabled.flag';
+      $sub = rtrim($flag_dir_run, '/').'/valkey';
+      if (!is_dir($sub)) {
+        @mkdir($sub, 0777);
+        @chmod($sub, 0777);
+      }
+      if (is_dir($sub) && is_writable($sub)) {
+        $path = $sub.'/disabled.flag';
+      }
     }
   }
   return $path;
@@ -82,7 +97,11 @@ function _valkey_backoff_is_active($flag_path, $ttl) {
 }
 
 function _valkey_backoff_touch($flag_path) {
+  $existed = is_file($flag_path);
   @touch($flag_path);
+  if (!$existed) {
+    @chmod($flag_path, 0666);
+  }
 }
 
 function _valkey_backoff_clear($flag_path) {
@@ -102,8 +121,9 @@ function _valkey_dbg_write($enabled, $log_path, $line) {
  * $reason is set by-ref to 'ok' or a short failure code. Keeps each
  * attempt self-contained so the caller can retry cheaply before
  * tripping the shared backoff flag. */
-function _valkey_probe_once($socket_path, $host, $port, $pass, $connect_timeout_s, $read_timeout_s, &$reason) {
+function _valkey_probe_once($socket_path, $host, $port, $pass, $connect_timeout_s, $read_timeout_s, &$reason, &$transport = NULL) {
   $reason = 'init';
+  $transport = FALSE;
   if (!class_exists('Redis')) {
     $reason = 'no-phpredis';
     return FALSE;
@@ -118,6 +138,9 @@ function _valkey_probe_once($socket_path, $host, $port, $pass, $connect_timeout_
       $connected = FALSE;
       $reason = 'connect-socket-exception';
     }
+    if ($connected) {
+      $transport = 'socket';
+    }
   }
   // Fallback to TCP.
   if (!$connected) {
@@ -126,6 +149,9 @@ function _valkey_probe_once($socket_path, $host, $port, $pass, $connect_timeout_
     } catch (Exception $e) {
       $connected = FALSE;
       $reason = 'connect-tcp-exception';
+    }
+    if ($connected) {
+      $transport = 'tcp';
     }
   }
   if (!$connected) {
@@ -137,16 +163,17 @@ function _valkey_probe_once($socket_path, $host, $port, $pass, $connect_timeout_
   if (defined('Redis::OPT_READ_TIMEOUT')) {
     $r->setOption(Redis::OPT_READ_TIMEOUT, $read_timeout_s);
   }
-  // Authenticate if a password is configured.
+  // Authenticate if a password is configured. On any failure the object is
+  // simply dropped: close() sends QUIT and waits for the reply, so on a
+  // server that accepted the connection but answers nothing it costs a
+  // second full read timeout; the destructor closes the socket without one.
   if ($pass !== '') {
     try {
       if (!$r->auth($pass)) {
-        try { $r->close(); } catch (Exception $e) {}
         $reason = 'auth-failed';
         return FALSE;
       }
     } catch (Exception $e) {
-      try { $r->close(); } catch (Exception $e2) {}
       $reason = 'auth-exception';
       return FALSE;
     }
@@ -163,8 +190,10 @@ function _valkey_probe_once($socket_path, $host, $port, $pass, $connect_timeout_
   } catch (Exception $e) {
     $reason = 'ping-exception';
   }
-  try { $r->close(); } catch (Exception $e) {}
   if ($ok) {
+    // A server that just answered PONG answers QUIT at once; only then is
+    // an explicit close() free (see the auth block above).
+    try { $r->close(); } catch (Exception $e) {}
     $reason = 'ok';
   }
   return $ok;
@@ -175,6 +204,7 @@ $flag_path = _valkey_backoff_flag_path($flag_dir_run, $flag_file_fallback);
 $flag_existed = is_file($flag_path);
 $skip_probe = _valkey_backoff_is_active($flag_path, $backoff_ttl_s);
 $last_reason = 'init';
+$valkey_transport = FALSE; // 'socket' or 'tcp' once a probe answered: the wiring must reuse the transport that worked
 
 if ($use_valkey) {
   if (!$skip_probe) {
@@ -189,7 +219,7 @@ if ($use_valkey) {
     // drop the whole worker pool into DB-cache mode for the backoff window.
     $attempts = $probe_retry ? 2 : 1;
     for ($i = 0; $i < $attempts; $i++) {
-      $valkey_up = _valkey_probe_once($valkey_socket_path, $valkey_host, $valkey_port, $auth_pass, $connect_timeout_s, $read_timeout_s, $last_reason);
+      $valkey_up = _valkey_probe_once($valkey_socket_path, $valkey_host, $valkey_port, $auth_pass, $connect_timeout_s, $read_timeout_s, $last_reason, $valkey_transport);
       if ($valkey_up) {
         break;
       }
@@ -215,8 +245,16 @@ if ($use_valkey) {
       // not in BOA's disable_functions list. A '.flushing' temp left behind by
       // a crashed winner is harmless: backoff logic only looks at $flag_path,
       // and the next rename() simply overwrites it.
+      //
+      // A CLI process (drush, bee) shares nothing with the FPM pool's APCu:
+      // its apcu_clear_cache() clears its own, empty, per-process cache. So a
+      // CLI recovery must neither win the election nor consume the flag --
+      // it leaves the expired flag in place for the first web worker, which
+      // then runs the pool-wide flush. The flag past its TTL costs nothing:
+      // _valkey_backoff_is_active() is already FALSE for it.
       $flush_claimed = FALSE;
-      if ($flag_existed && $flush_apcu_recov) {
+      $flush_context = ($flush_apcu_recov && PHP_SAPI !== 'cli');
+      if ($flag_existed && $flush_context) {
         $claim_path = $flag_path . '.flushing';
         $flush_claimed = @rename($flag_path, $claim_path);
       }
@@ -226,7 +264,7 @@ if ($use_valkey) {
           _valkey_dbg_write($redis_debug_on, $redis_debug_log, 'REDIS RECOVERY action=apcu_clear winner=1 flag='.$flag_path);
         }
         @unlink($claim_path);
-      } else {
+      } elseif ($flush_context || !$flush_apcu_recov) {
         // Lost the election, flushing disabled, or no flag was set: just make
         // sure the backoff flag is cleared.
         _valkey_backoff_clear($flag_path);

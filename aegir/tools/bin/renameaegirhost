@@ -52,9 +52,11 @@
 ###       changes, and (with --hex-blob) never reached blob values anyway.
 ###       A plain dump is still taken first, as a backup only.
 ###   §6  Reload nginx
-###   §9  Confirm every renamed site actually serves before reporting
-###       success, waiting out PHP's per-worker realpath cache instead of
-###       leaving that judgement to an operator with curl
+###   §9  Confirm every site carrying the new hostname actually serves
+###       before reporting success -- the dirs this run moved AND the ones
+###       an earlier or parked run had already moved -- waiting out PHP's
+###       per-worker realpath cache instead of leaving that judgement to an
+###       operator with curl
 ###   §7  Flush Drush cache and run Aegir task queue (5 passes) to regenerate
 ###       all aliases, vhosts, and db-host entries from the updated database,
 ###       plus one queued verify per site §2c renamed (server verifies
@@ -77,6 +79,9 @@ _SITESPHP_N=0
 _TENANT_DIRS_N=0
 _SETTINGS_SKIPPED_N=0
 _RENAMED_SITE_URIS=()
+_SERVE_CHECK_URIS=()
+_SERVE_N=0
+_SERVE_SKIPPED_N=0
 _URI_SURFACES_CHANGED=NO
 _SERVE_FAILED=""
 _SERVE_WAIT="${_RENAME_SERVE_WAIT:-180}"
@@ -496,6 +501,18 @@ _converge_renamed_site_surfaces() {
     _safe_name "${_D}" "site dir" || continue
     _OLDNAME="${_NAME//${_NEW_HOST}/${_OLD_HOST}}"
     [ "${_OLDNAME}" = "${_NAME}" ] && continue
+    # Every site already on the new hostname is §9's to confirm, repaired
+    # here or not: on a resume after a refusal the dirs were moved by the
+    # parked run, nothing below changes, and without this line the serving
+    # gate would have nothing to probe and the summary nothing to say.
+    # Host-derived means the name ENDS in the hostname (label.<host>, the
+    # panel's own oN.<host>); a substring match would drag in an unrelated
+    # domain that merely contains it.
+    case "${_NAME}" in
+      *".${_NEW_HOST}"|"${_NEW_HOST}")
+        [ -f "${_D}/settings.php" ] && _SERVE_CHECK_URIS+=("${_NAME}")
+      ;;
+    esac
     _URI_SURFACES_CHANGED=NO
     _rename_site_uri_surfaces "${_OLDNAME}" "${_NAME}" "${_D}" "${_D}"
     if [ "${_URI_SURFACES_CHANGED}" = "YES" ]; then
@@ -1919,8 +1936,18 @@ _verify_renamed_sites_serve() {
   # rolls back a migration that was fine; calling it fine because one early
   # curl happened to hit a warm worker ships a box whose sites answer 400.
   # So the tool waits, decides, and says which -- bounded, never forever.
-  local _U _code _deadline _md5 _bad=""
-  [ "${#_RENAMED_SITE_URIS[@]}" -eq 0 ] && return 0
+  #
+  # The set is every site on the new hostname, not only the dirs THIS run
+  # moved. A run that refuses at §7 (a stray dir beside a renamed one) has
+  # already moved every site of the root; the resume finds nothing to move,
+  # and bounding the gate to the moved set left those sites confirmed by
+  # neither run -- the summary printed no Sites line at all while an
+  # operator read "Rename complete". Found by gate ring G1-R57 (2026-09-14)
+  # and ruled a defect.
+  local _U _code _deadline _md5 _bad="" _ALL
+  _ALL=$(printf '%s\n' "${_RENAMED_SITE_URIS[@]}" "${_SERVE_CHECK_URIS[@]}" \
+    | sed '/^$/d' | sort -u)
+  [ -z "${_ALL}" ] && return 0
 
   if [ "${_DRY_RUN}" = "YES" ]; then
     _info "§9 (dry-run) Would confirm each renamed site serves before reporting success"
@@ -1955,9 +1982,27 @@ _verify_renamed_sites_serve() {
     /data/disk/o*) [ -e "/data/conf/suspended/${_AEGIR_ROOT##*/}.pid" ] && _susp=YES ;;
   esac
   _info "§9 Confirming each renamed site actually serves (up to ${_SERVE_WAIT}s each) ..."
-  for _U in $(printf '%s\n' "${_RENAMED_SITE_URIS[@]}" | sort -u); do
+  local _VH
+  _SERVE_N=0
+  for _U in ${_ALL}; do
     if [ "${_susp}" = "YES" ]; then
       _info "    ${_U}: account suspended -- 503 by design, not probed"
+      _SERVE_SKIPPED_N=$((_SERVE_SKIPPED_N + 1))
+      continue
+    fi
+    # The gate is for sites nginx serves. A site disabled in the panel keeps
+    # its dir and settings.php but carries the placeholder vhost, whose body
+    # IS the catch-all page the probe below calibrates against, so probing it
+    # could only end in a false NOT SERVING after the full wait. Judged here,
+    # after §4 and §6, where the vhost under the new name is final.
+    _VH="${_AEGIR_ROOT}/config/server_master/nginx/vhost.d/${_U}"
+    if [ ! -f "${_VH}" ]; then
+      _info "    ${_U}: no vhost -- not probed"
+      _SERVE_SKIPPED_N=$((_SERVE_SKIPPED_N + 1))
+      continue
+    elif grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default' "${_VH}" 2>/dev/null; then
+      _info "    ${_U}: disabled -- placeholder vhost by design, not probed"
+      _SERVE_SKIPPED_N=$((_SERVE_SKIPPED_N + 1))
       continue
     fi
     _deadline=$(( $(date +%s) + _SERVE_WAIT ))
@@ -1984,11 +2029,13 @@ _verify_renamed_sites_serve() {
     case "${_code}" in
       200|301|302)
         _info "    ${_U} serves (${_code})"
+        _SERVE_N=$((_SERVE_N + 1))
       ;;
       401|403)
         # basic auth or an IP allow-list in front of the site: the answer
         # proves the vhost is live and routed to the right site
         _info "    ${_U} serves (${_code}, protected)"
+        _SERVE_N=$((_SERVE_N + 1))
       ;;
       *)
         _alrt "    ${_U} does NOT serve (${_code}) after ${_SERVE_WAIT}s"
@@ -2027,8 +2074,11 @@ _print_summary() {
   fi
   if [ -n "${_SERVE_FAILED}" ]; then
     echo "  NOT SERVING  :${_SERVE_FAILED}"
-  elif [ "${#_RENAMED_SITE_URIS[@]}" -gt 0 ] && [ "${_DRY_RUN}" != "YES" ]; then
-    echo "  Sites        : all ${#_RENAMED_SITE_URIS[@]} renamed site(s) confirmed serving"
+  elif [ "${_SERVE_N}" -gt 0 ] && [ "${_DRY_RUN}" != "YES" ]; then
+    echo "  Sites        : all ${_SERVE_N} renamed site(s) confirmed serving"
+  fi
+  if [ "${_SERVE_SKIPPED_N}" -gt 0 ] && [ "${_DRY_RUN}" != "YES" ]; then
+    echo "  Not probed   : ${_SERVE_SKIPPED_N} site(s) -- suspended account, disabled placeholder or no vhost (see §9)"
   fi
   if [ "${_ACCT_AXIS}" = "YES" ]; then
     echo "  Old account  : ${_OLD_ACCT}"

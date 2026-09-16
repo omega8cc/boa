@@ -118,6 +118,14 @@ while [ "$#" -gt 0 ]; do
   shift
 done
 
+### Resolve the caller-supplied root ONCE, before any check or operation reads
+### it: every branch below re-walks the raw argument, and ~/static is 02775 on
+### tenant codebases, so the tenant owns the name it was handed and could
+### re-point it between _validate_path_prefix and the chown legs. An
+### empty result falls through to the "valid Drupal root" refusal below.
+if [ -n "${drupal_root}" ] && [ -e "${drupal_root}" ]; then
+  drupal_root=$(realpath -e -- "${drupal_root}" 2>/dev/null) || drupal_root=""
+fi
 
 # --- Grav 2 platform (site capsules; boa-grav D-003) -------------------------
 # A Grav root carries no Drupal system.module; detect it positively and run
@@ -216,6 +224,19 @@ if [ -L "${drupal_root}/sites" ] || [ -L "${drupal_root}/sites/all" ]; then
   printf "Error: sites or sites/all is a symlink in %s; refusing.\n" "${drupal_root}" >&2
   exit 1
 fi
+### The four names under sites/all are plantable the same way, and the day
+### marker's rm glob and touch, the mkdir, the drushrc.php chown and the
+### tcpdf leg below resolve through them; -h protects only the final
+### component. Never legitimately symlinks (the o_contrib* links live under
+### the platform root's own modules/, never under sites/all): refuse, as the
+### site-level helper does; the nightly withholds the same legs instead.
+### tcpdf and its cache child are prechecked at their own leg below.
+for _d in modules themes libraries drush; do
+  if [ -L "${drupal_root}/sites/all/${_d}" ]; then
+    printf "Error: sites/all/%s is a symlink in %s; refusing.\n" "${_d}" "${drupal_root}" >&2
+    exit 1
+  fi
+done
 
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
@@ -304,7 +325,15 @@ _own_existing single \
   ${drupal_root}/sites/all
 
 ### known exceptions
-chown -h -R ${script_user}:www-data \
-  ${drupal_root}/sites/all/libraries/tcpdf/cache &> /dev/null
+### libraries/ is tenant-writable, so tcpdf and its cache child are names the
+### tenant can plant. An intermediate symlink in the operand path is resolved
+### by the kernel; -h and the -R default -P govern only the final component
+### and the traversal. Precheck both, as the nightly does; a real directory
+### is treated exactly as before.
+if [ ! -L "${drupal_root}/sites/all/libraries/tcpdf" ] \
+  && [ ! -L "${drupal_root}/sites/all/libraries/tcpdf/cache" ]; then
+  chown -h -R ${script_user}:www-data \
+    ${drupal_root}/sites/all/libraries/tcpdf/cache &> /dev/null
+fi
 
 echo "Done setting proper ownership of platform files and directories."

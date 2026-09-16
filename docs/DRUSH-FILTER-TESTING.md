@@ -57,7 +57,7 @@ drush_print('allowed(BOA-tool) = ' . var_export(boa_drush_extension_allowed($boa
 PHP
 
 echo "--- as <OCT> (Ægir backend identity) ---"
-su - <OCT> -c "drush php-script /tmp/boa_check.php"
+su -s /bin/bash - <OCT> -c "drush php-script /tmp/boa_check.php"
 
 echo "--- as <OCT>.ftp (limited shell) ---"
 su -s /bin/bash - <OCT>.ftp -c "drush php-script /tmp/boa_check.php"
@@ -89,7 +89,7 @@ truth.
 
 ```bash
 # Locate the Drupal root (must sit under /data/disk/<OCT>/{distro,static,platforms}/…)
-ROOT=$(su - <OCT> -c "drush <SITE> dd" 2>/dev/null); echo "ROOT=$ROOT"
+ROOT=$(su -s /bin/bash - <OCT> -c "drush <SITE> dd" 2>/dev/null); echo "ROOT=$ROOT"
 # (fallback if 'dd' is unavailable: drush <SITE> status --fields=root --format=list)
 
 mkdir -p "$ROOT/sites/all/drush"
@@ -111,7 +111,7 @@ chmod 644 "$ROOT/sites/all/drush/bprobe.drush.inc"
 
 ```bash
 rm -f /tmp/boa_probe_uid_*.marker
-su - <OCT> -c "drush <SITE> cc drush >/dev/null 2>&1; drush <SITE> bprobe; echo EXIT=\$?"
+su -s /bin/bash - <OCT> -c "drush <SITE> cc drush >/dev/null 2>&1; drush <SITE> bprobe; echo EXIT=\$?"
 ls /tmp/boa_probe_uid_$(id -u <OCT>).marker 2>/dev/null && echo "MARKER PRESENT (BAD)" || echo "no marker (GOOD)"
 ```
 
@@ -134,26 +134,80 @@ that the client runs from their own `oN.ftp` shell.
 
 ## Test 3 — (optional) confirm via a real Ægir task
 
-Proves the actual backend queue path — not just `su - <OCT>` — is protected. With the
+Proves the actual backend queue path — not just `su -s /bin/bash - <OCT>` — is protected. With the
 probe still planted:
 
 ```bash
 rm -f /tmp/boa_probe_uid_*.marker
 # Run a Verify on the site or its platform from the Ægir control panel, or:
-#   su - <OCT> -c "drush @hostmaster hosting-task <SITE> verify -y"
+#   su -s /bin/bash - <OCT> -c "drush @hostmaster hosting-task <SITE> verify -y"
 ls /tmp/boa_probe_uid_$(id -u <OCT>).marker 2>/dev/null && echo "BACKEND LOADED IT (BAD)" || echo "backend did not load it (GOOD)"
 ```
 
 - [ ] The task completes normally
 - [ ] `backend did not load it (GOOD)`
 
+## Test 4 — Drupal 11 contributed command files stay on disk and never load for the backend
+
+BOA no longer deletes contributed `*.drush.inc` files from codebases (the sweep
+that removed them on Drupal 11 platforms at lock time and in the platform
+permission helper is retired), so this test proves the property that replaced
+it: a command file inside an ENABLED contributed module's directory on a locked
+Drupal 11 composer codebase is found by Drush's recursive scan, denied for the
+backend, and the two paths that used to delete it now leave it in place. Use a
+site on a locked Drupal 11 composer codebase (`modules/contrib` exists only in
+that layout; a built-in platform keeps contrib under `modules/o_contrib_eleven`)
+and pick a contributed module that is enabled on it (`token` is a safe choice on
+most distributions). `@<PLATFORM>` below is the platform's context name, listed
+by `ls /data/disk/<OCT>/.drush/platform_*.alias.drushrc.php`. The probe has its
+own name so it can coexist with the Test 2 probe. The permission helper is run
+the way the fix_permissions task runs it, by the Octopus user through sudo; it
+refuses any other caller. Test 2b already covers the limited-shell identity, so
+this test has no `<OCT>.ftp` step.
+
+```bash
+ROOT=$(su -s /bin/bash - <OCT> -c "drush <SITE> dd" 2>/dev/null)     # or: status --fields=root --format=list
+MOD="$ROOT/modules/contrib/token"                         # any ENABLED contrib module dir
+cat > "$MOD/cprobe.drush.inc" <<'PHP'
+<?php
+@file_put_contents('/tmp/boa_probe_uid_' . posix_geteuid() . '.marker', date('c') . "\n", FILE_APPEND);
+function cprobe_drush_command() {
+  return array('cprobe' => array('description' => 'BOA probe command', 'bootstrap' => DRUSH_BOOTSTRAP_DRUSH));
+}
+function drush_cprobe() { drush_print('BOA-PROBE-RAN'); }
+PHP
+chown <OCT>:$(id -gn <OCT>) "$MOD/cprobe.drush.inc"; chmod 0644 "$MOD/cprobe.drush.inc"
+rm -f /tmp/boa_probe_uid_*.marker
+
+# 4a — backend: full site bootstrap after a cache clear; the probe must not appear or run
+su -s /bin/bash - <OCT> -c "drush <SITE> cc drush >/dev/null 2>&1; drush <SITE> help 2>&1" | grep -c '^ *cprobe'   # expect 0
+ls /tmp/boa_probe_uid_$(id -u <OCT>).marker 2>/dev/null && echo "BACKEND LOADED IT (BAD)" || echo "backend did not load it (GOOD)"
+
+# 4b — the two paths that used to delete the file now leave it in place
+su -s /bin/bash - <OCT> -c "drush @<PLATFORM> provision-dunlock && drush @<PLATFORM> provision-dlock" >/dev/null 2>&1; echo "lock cycle exit=$?"
+su -s /bin/bash - <OCT> -c "sudo --non-interactive /usr/local/bin/fix-drupal-platform-permissions.sh --root=$ROOT" >/dev/null 2>&1; echo "helper exit=$?"
+ls -la "$MOD/cprobe.drush.inc"                                      # still present
+ls /tmp/boa_probe_uid_$(id -u <OCT>).marker 2>/dev/null && echo "BACKEND LOADED IT (BAD)" || echo "backend did not load it (GOOD)"
+```
+
+- [ ] 4a: `0` and `backend did not load it (GOOD)`
+- [ ] 4b: both exit codes `0`, the probe file still present, and `backend did not load it (GOOD)` again
+
+A real contributed command file written for Drush 12 behaves the same way for
+the backend. For the unfiltered `<OCT>.ftp` identity it loads, and on a platform
+whose enabled modules ship such a file every Drush 8 command in the limited
+shell, `cc drush` included, ends at command discovery with the file's own
+exception. That is expected and is why clients use the site-local `vdrush` on
+Drupal 8+.
+
 ## Cleanup
 
 ```bash
 rm -f "$ROOT/sites/all/drush/bprobe.drush.inc"
+rm -f "$ROOT/modules/contrib/token/cprobe.drush.inc"   # Test 4 probe, if planted
 rmdir "$ROOT/sites/all/drush" 2>/dev/null   # removes it only if we created it and it is now empty
 rm -f /tmp/boa_probe_uid_*.marker /tmp/boa_check.php
-su - <OCT> -c "drush <SITE> cc drush >/dev/null 2>&1"
+su -s /bin/bash - <OCT> -c "drush <SITE> cc drush >/dev/null 2>&1"
 ```
 
 ## Pass criteria
@@ -162,4 +216,5 @@ su - <OCT> -c "drush <SITE> cc drush >/dev/null 2>&1"
 |---|---|---|
 | 1 | Protection still works | Test 1 as `<OCT>`: `allowed(tenant)=false`; Test 2a: `bprobe` not found and no marker; Test 3: no backend marker |
 | 2 | Limited-shell CLI unaffected | Test 1 as `<OCT>.ftp`: `allowed(tenant)=true`; Test 2b: `BOA-PROBE-RAN` and marker present |
+| 3 | Files stay on disk, never load for the backend | Test 4a: `0` and no backend marker; Test 4b: lock cycle and helper exit `0`, probe still present, no backend marker |
 | — | No over-block / patch active | Both identities: `patched=yes` and `allowed(BOA-tool)=true` |

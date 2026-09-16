@@ -1647,6 +1647,21 @@ _fix_static_permissions() {
     if [ ! -f "${_usEr}/log/ctrl/plr.${_PlrID}.perm-fix-${_NOW}.info" ]; then
       find ${_use_Plr} -type d -exec chmod 0775 {} \; &> /dev/null
       find ${_use_Plr} -type f -exec chmod 0664 {} \; &> /dev/null
+      ### The pass above widened every sites/<uri>/*.php to 0664, and only an
+      ### ACCEPTED site's arm narrows its own back (the 0440 pass at site
+      ### level). A site the per-site loop refuses -- a symlinked modules at
+      ### the control-dir gate, a path failing _validate_loop_dir, a tree
+      ### without private/ -- would keep a world-readable, group-writable
+      ### settings.php until the plant is gone. Narrow the credential files
+      ### here, where the widening happens, for every site dir on the
+      ### platform: a refused site must end no wider than an accepted one.
+      ### find -P never descends a symlinked sites/ or sites/<uri>, -type f
+      ### skips a planted link, so nothing here follows a tenant-plantable
+      ### name; the scaffold's default.* copies and sites/all are not named.
+      find ${_rPlr}/sites -mindepth 2 -maxdepth 2 -type f \
+        \( -name settings.php -o -name local.settings.php \
+        -o -name civicrm.settings.php -o -name solr.php -o -name drushrc.php \) \
+        ! -path "${_rPlr}/sites/all/*" -exec chmod 0440 {} \; &> /dev/null
       ### chmod follows a symlink named on the command line and has no -h, and
       ### the find above just made every dir in the tree 0775 group-writable, so
       ### all three of these are tenant-plantable names. None is ever
@@ -1704,11 +1719,39 @@ _fix_permissions() {
   ### docroot is group-writable), and every root op below walks THROUGH
   ### them; -h and find -P protect only the final component. A symlinked
   ### skeleton is never legitimate, so leave such a platform alone.
+  ### The four names under sites/all -- modules, themes, libraries and
+  ### drush -- are plantable as well: a codebase the tenant built under
+  ### ~/static carries whatever it was unpacked with, and sites/all is
+  ### group-writable for the shell pair between _fix_static_permissions
+  ### widening every dir and the sites/* narrowing below. The archive sweep
+  ### expands a glob THROUGH all four, both chown -R legs through the first
+  ### three and the drushrc.php chown through drush; -h protects only the last
+  ### component of each path (the chmod finds take the names as starting
+  ### points and never follow them). The loop head already refuses a
+  ### symlinked modules; the other three were not covered. None is ever
+  ### legitimately a symlink (the o_contrib* links live under the platform
+  ### root's own modules/, never under sites/all) -- the shape
+  ### fix-drupal-site-ownership.sh refuses outright at site level -- so
+  ### withhold every leg that walks through them here, but still re-assert
+  ### the skeleton modes and stamp the per-pass marker: a withheld platform
+  ### must end no wider than an accepted one, and the whole-tree chmod pass
+  ### in _fix_static_permissions keys on that marker. A foreign-CMS platform
+  ### is withheld and reported the same way, its sites/all/drush mkdir
+  ### included.
+  local _plrCodeLink=""
+  local _cd
+  for _cd in modules themes libraries drush; do
+    if [ -n "${_Plr}" ] && [ -L "${_Plr}/sites/all/${_cd}" ]; then
+      _plrCodeLink="${_plrCodeLink} ${_cd}"
+    fi
+  done
   if [ ! -f "${_usEr}/log/ctrl/plr.${_PlrID}.perm-fix-${_NOW}.info" ] \
     && [ -e "${_Plr}" ] \
     && [ ! -L "${_Plr}/sites" ] \
     && [ ! -L "${_Plr}/sites/all" ]; then
-    if [ "${_FOREIGN_CMS}" = "YES" ]; then
+    if [ -n "${_plrCodeLink}" ]; then
+      echo "SKIP: symlinked sites/all code dir on ${_Plr}:${_plrCodeLink}"
+    elif [ "${_FOREIGN_CMS}" = "YES" ]; then
       ### A Grav or Textpattern platform has no Drupal sites/all/{modules,
       ### themes,libraries}; sites/all/drush is where its drushrc renders.
       mkdir -p ${_Plr}/sites/all/drush
@@ -1718,7 +1761,7 @@ _fix_permissions() {
     ### Drupal's sites/all/{modules,themes,libraries} carry nothing on a Grav or
     ### Textpattern platform, and the recursive chowns below would walk a link
     ### planted at one of those names: skip the whole leg there.
-    if [ "${_FOREIGN_CMS}" != "YES" ]; then
+    if [ "${_FOREIGN_CMS}" != "YES" ] && [ -z "${_plrCodeLink}" ]; then
       find ${_Plr}/sites/all/{modules,themes,libraries,drush}/*{.tar,.tar.gz,.zip} \
         -type f -exec rm -f {} \; &> /dev/null
       if [ ! -e "${_usEr}/static/control/unlock.info" ] \
@@ -1746,9 +1789,14 @@ _fix_permissions() {
     fi
     ### -h on the chown and find -P (never a bare glob) on the chmods: the
     ### sites/* entries are tenant-creatable names once sites/ takes group
-    ### write below, so none of them may be followed.
+    ### write below, so none of them may be followed. drushrc.php sits BELOW
+    ### drush, the one path here that resolves through a plantable name, so
+    ### it is withheld with the code-dir legs above.
+    if [ -z "${_plrCodeLink}" ]; then
+      chown -h ${_HM_U}:${_grp} \
+        ${_Plr}/sites/all/drush/drushrc.php &> /dev/null
+    fi
     chown -h ${_HM_U}:${_grp} \
-      ${_Plr}/sites/all/drush/drushrc.php \
       ${_Plr}/sites \
       ${_Plr}/sites/* \
       ${_Plr}/sites/sites.php \
@@ -1817,6 +1865,7 @@ _fix_permissions() {
     ### parent redirects the recursive chown too. Precheck both; a real
     ### directory is treated exactly as before.
     if [ "${_FOREIGN_CMS}" != "YES" ] \
+      && [ -z "${_plrCodeLink}" ] \
       && [ ! -L "${_Plr}/sites/all/libraries/tcpdf" ] \
       && [ ! -L "${_Plr}/sites/all/libraries/tcpdf/cache" ]; then
       chmod -R 775 ${_Plr}/sites/all/libraries/tcpdf/cache &> /dev/null
@@ -1832,6 +1881,29 @@ _fix_permissions() {
   ### every rm/mkdir/chown/find in this block through it, and none of them
   ### re-checks. A site_path is never legitimately a symlink (alias links point
   ### AT it), so refuse one and leave the site alone.
+  ### Same shape one level down: the site's modules, themes and libraries
+  ### are 02775 group-writable and the site dir is the tenant's under
+  ### unlock.info; the archive sweep and both chown -R legs below expand a
+  ### glob through them and the local-allow.info rm resolves through
+  ### modules, and only modules is refused by the _validate_ctrl_dir gate
+  ### at the head of the loop. Withhold exactly those four legs and let
+  ### the rest of the arm run: unlike
+  ### fix-drupal-site-ownership.sh, which refuses the whole site and widens
+  ### nothing first, this pass has just run _fix_static_permissions over a
+  ### ~/static platform (every file 0664), and the *.php 0440 pass in the
+  ### arm is the only thing that narrows settings.php back -- a refused site
+  ### must end no wider than an accepted one, the platform leg's rule. The
+  ### foreign-CMS arm further down expands no glob through those names, so
+  ### it is neither withheld nor reported.
+  local _siteCodeLink=""
+  for _cd in modules themes libraries; do
+    if [ -n "${_Dir}" ] && [ -L "${_Dir}/${_cd}" ]; then
+      _siteCodeLink="${_siteCodeLink} ${_cd}"
+    fi
+  done
+  if [ -n "${_siteCodeLink}" ] && [ "${_FOREIGN_CMS}" != "YES" ]; then
+    echo "SKIP: symlinked site code dir in ${_Dir}:${_siteCodeLink}"
+  fi
   if [ -e "${_Dir}" ] \
     && [ ! -L "${_Dir}" ] \
     && [ -e "${_Dir}/drushrc.php" ] \
@@ -1842,7 +1914,7 @@ _fix_permissions() {
     rm ${_Dir}/*.{codebasecheck*,hm-fix-*,ctm-lock-*,lock-*,perm-fix-*}.info &> /dev/null
     ### directory and settings files - site level
     if [ ! -e "${_Dir}/modules" ]; then
-      mkdir ${_Dir}/modules
+      mkdir ${_Dir}/modules &> /dev/null
     fi
     if [ -e "${_Dir}/aegir.services.yml" ]; then
       rm -f ${_Dir}/aegir.services.yml
@@ -1872,24 +1944,33 @@ _fix_permissions() {
     [ -L "${_Dir}/civicrm.settings.php" ] \
       || chmod 0640 ${_Dir}/civicrm.settings.php &> /dev/null
     ### modules,themes,libraries - site level
-    find ${_Dir}/{modules,themes,libraries}/*{.tar,.tar.gz,.zip} -type f -exec \
-      rm -f {} \; &> /dev/null
-    rm -f ${_Dir}/modules/local-allow.info
-    if [ ! -e "${_usEr}/static/control/unlock.info" ] \
-      && [ ! -e "${_Plr}/skip.info" ]; then
-      ### -h: these three dirs are 02775 group 'users' (see the find below), so
-      ### every glob hit is a tenant-plantable name and chown -R follows a
-      ### symlink given as its starting point. Same shape as the files leg.
-      chown -h -R ${_HM_U}:${_grp} \
-        ${_Dir}/{modules,themes,libraries}/* &> /dev/null
-    elif [ -e "${_usEr}/static/control/unlock.info" ] \
-      && [ ! -e "${_Plr}/skip.info" ]; then
-      chown -h -R ${_HM_U}.ftp:${_grp} \
-        ${_Dir}/{modules,themes,libraries}/* &> /dev/null
+    ### A symlink at any of the three redirects the legs below into whatever
+    ### was planted -- the glob legs by expansion, the local-allow.info rm
+    ### through modules as a path component (the refusal above names it):
+    ### withhold exactly these four and nothing else in the arm. The
+    ### head-of-loop modules gate is many drush runs old by now, so modules
+    ### is re-checked here as well.
+    if [ -z "${_siteCodeLink}" ]; then
+      find ${_Dir}/{modules,themes,libraries}/*{.tar,.tar.gz,.zip} -type f -exec \
+        rm -f {} \; &> /dev/null
+      rm -f ${_Dir}/modules/local-allow.info
+      if [ ! -e "${_usEr}/static/control/unlock.info" ] \
+        && [ ! -e "${_Plr}/skip.info" ]; then
+        ### -h: these three dirs are 02775 group 'users' (see the find below),
+        ### so every glob hit is a tenant-plantable name and chown -R follows
+        ### a symlink given as its starting point. Same shape as the files leg.
+        chown -h -R ${_HM_U}:${_grp} \
+          ${_Dir}/{modules,themes,libraries}/* &> /dev/null
+      elif [ -e "${_usEr}/static/control/unlock.info" ] \
+        && [ ! -e "${_Plr}/skip.info" ]; then
+        chown -h -R ${_HM_U}.ftp:${_grp} \
+          ${_Dir}/{modules,themes,libraries}/* &> /dev/null
+      fi
     fi
     ### -h: all four are names in a site dir the tenant owns under
-    ### unlock.info, and only modules is covered by the _validate_ctrl_dir gate
-    ### at the head of the loop. None is ever legitimately a symlink.
+    ### unlock.info; the glob legs above are withheld on a symlinked code dir
+    ### and -h keeps these on the names themselves, so nothing here expands
+    ### through a link. None is ever legitimately a symlink.
     chown -h ${_HM_U}:${_grp} \
       ${_Dir}/drushrc.php \
       ${_Dir}/{modules,themes,libraries} &> /dev/null
@@ -1923,22 +2004,25 @@ _fix_permissions() {
           find "${_rFls}/" -type f -exec chmod 0664 {} \; &> /dev/null
           chmod 02775 "${_rFls}" &> /dev/null
           chown ${_HM_U}:www-data "${_rFls}" &> /dev/null
+          ### These names sit inside the tenant-writable files dir, so any of
+          ### them can be a planted symlink; -h keeps the chown on the link
+          ### instead of its target and is a no-op on the regular directories
+          ### they normally are. Spelled against the resolved store, inside
+          ### this arm only: on the raw path they would still walk root
+          ### through a planted files link the case above just refused.
+          chown -h ${_HM_U}:www-data "${_rFls}"/{tmp,images,pictures,css,js} &> /dev/null
+          chown -h ${_HM_U}:www-data "${_rFls}"/{advagg_css,advagg_js,ctools} &> /dev/null
+          chown -h ${_HM_U}:www-data "${_rFls}"/{ctools/css,imagecache,locations} &> /dev/null
+          chown -h ${_HM_U}:www-data "${_rFls}"/{xmlsitemap,deployment,styles,private} &> /dev/null
+          chown -h ${_HM_U}:www-data "${_rFls}"/{civicrm,civicrm/templates_c} &> /dev/null
+          chown -h ${_HM_U}:www-data "${_rFls}"/{civicrm/upload,civicrm/persist} &> /dev/null
+          chown -h ${_HM_U}:www-data "${_rFls}"/{civicrm/custom,civicrm/dynamic} &> /dev/null
           ;;
         *)
           echo "SKIP: ${_Dir}/files resolves outside any static store: ${_rFls}"
           ;;
       esac
     fi
-    ### These names sit inside the tenant-writable files dir, so any of them can
-    ### be a planted symlink; -h keeps the chown on the link instead of its
-    ### target and is a no-op on the regular directories they normally are.
-    chown -h ${_HM_U}:www-data ${_Dir}/files/{tmp,images,pictures,css,js} &> /dev/null
-    chown -h ${_HM_U}:www-data ${_Dir}/files/{advagg_css,advagg_js,ctools} &> /dev/null
-    chown -h ${_HM_U}:www-data ${_Dir}/files/{ctools/css,imagecache,locations} &> /dev/null
-    chown -h ${_HM_U}:www-data ${_Dir}/files/{xmlsitemap,deployment,styles,private} &> /dev/null
-    chown -h ${_HM_U}:www-data ${_Dir}/files/{civicrm,civicrm/templates_c} &> /dev/null
-    chown -h ${_HM_U}:www-data ${_Dir}/files/{civicrm/upload,civicrm/persist} &> /dev/null
-    chown -h ${_HM_U}:www-data ${_Dir}/files/{civicrm/custom,civicrm/dynamic} &> /dev/null
     ### private - site level
     chown -h -R ${_HM_U}:www-data ${_Dir}/private &> /dev/null
     ### Same trailing-slash resolution as the files/ leg above, same reason and
@@ -1953,16 +2037,18 @@ _fix_permissions() {
           find "${_rPrv}/" -type d -exec chmod 02775 {} \; &> /dev/null
           find "${_rPrv}/" -type f -exec chmod 0664 {} \; &> /dev/null
           chown ${_HM_U}:www-data "${_rPrv}" &> /dev/null
+          ### Same as the files leg: the child entries only on the resolved
+          ### store, inside the accepted arm, never on the raw path.
+          chown -h ${_HM_U}:www-data "${_rPrv}"/{files,temp} &> /dev/null
+          chown -h ${_HM_U}:www-data "${_rPrv}"/files/backup_migrate &> /dev/null
+          chown -h ${_HM_U}:www-data "${_rPrv}"/files/backup_migrate/{manual,scheduled} &> /dev/null
+          chown -h -R ${_HM_U}:www-data "${_rPrv}"/config &> /dev/null
           ;;
         *)
           echo "SKIP: ${_Dir}/private resolves outside any static store: ${_rPrv}"
           ;;
       esac
     fi
-    chown -h ${_HM_U}:www-data ${_Dir}/private/{files,temp} &> /dev/null
-    chown -h ${_HM_U}:www-data ${_Dir}/private/files/backup_migrate &> /dev/null
-    chown -h ${_HM_U}:www-data ${_Dir}/private/files/backup_migrate/{manual,scheduled} &> /dev/null
-    chown -h -R ${_HM_U}:www-data ${_Dir}/private/config &> /dev/null
     _DB_HOST_PRESENT=$(grep "^\$_SERVER\['db_host'\] = \$options\['db_host'\];" \
       ${_Dir}/drushrc.php 2>&1)
     if [[ "${_DB_HOST_PRESENT}" =~ "db_host" ]]; then
