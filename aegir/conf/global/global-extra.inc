@@ -39,6 +39,13 @@ if ($all_ini['set_composer_manager_vendor_dir'] && !$is_install) {
 /**
  * Domain Access Module Paths Detection
  */
+if (!empty($backdropcms)) {
+  // Neither Domain Access nor Drupal for Facebook has a Backdrop port, and
+  // neither probe below looks where Backdrop keeps its modules: skip the
+  // stat() calls. The X-Ini headers already reported the INI values.
+  $all_ini['auto_detect_domain_access_integration'] = FALSE;
+  $all_ini['auto_detect_facebook_integration'] = FALSE;
+}
 if ($all_ini['auto_detect_domain_access_integration']) {
   if (is_readable('sites/all/modules/domain/settings.inc')) {
     $da_inc = 'sites/all/modules/domain/settings.inc';
