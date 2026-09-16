@@ -61,7 +61,7 @@ After the run the instance has:
 ## How a Backdrop site differs from a Drupal site (operator view)
 
 Backdrop is a Drupal-7-lineage fork, and BOA manages it through the same
-Ægir tasks — but four mechanics differ and all four are handled for you:
+Ægir tasks — but a few mechanics differ and all of them are handled for you:
 
 - **Configuration is file-based JSON**, written at runtime by the web
   process into `sites/<domain>/private/config/{active,staging}`. BOA
@@ -83,16 +83,31 @@ Backdrop is a Drupal-7-lineage fork, and BOA manages it through the same
   and refreshes it on every upgrade, the platform verify task symlinks
   it as `modules/o_contrib_backdrop` into every platform (including
   platforms uploaded to the `static/` tree), and the nightly agent
-  repairs a missing symlink. The BOA global include (`global-bd.inc`)
-  prefers the shared bundle, still honours the baked `modules/redis`
-  copy that older platform tarballs carried, wires each site to Valkey
-  when it is available and falls back to Backdrop's database cache —
-  with the shared backoff flag, so a stopped Valkey is not re-probed on
-  every request. The same include carries the two request-blocking
-  short-circuits the Drupal chain has, so Backdrop sites behave like
-  Drupal sites under a billing suspension (`/data/conf/suspended/<oct>.pid`)
-  and during a migration cutover window (`static/control/http-off.pid`,
-  503 with the maintenance page, `no-store` downstream).
+  repairs a missing symlink. The Backdrop wiring partial of the BOA
+  global chain (`global-bd-valkey.inc`) prefers the shared bundle, still
+  honours the baked `modules/redis` copy that older platform tarballs
+  carried, wires each site to Valkey when the shared probe found it up
+  and falls back to Backdrop's database cache — with the shared backoff
+  flag, so a stopped Valkey is not re-probed on every request.
+- **The BOA settings chain is the Drupal one.** A Backdrop site's
+  settings.php includes `/data/conf/global/global-bd.inc`, a chain head
+  of the same shape as `global-7.inc`: the same partials in the same
+  order, so `boa_platform_control.ini` and `boa_site_control.ini` are
+  read and honoured exactly as on a Drupal site (sessions, the anonymous
+  access gates, cookie domain, the Speed Booster TTL, the query cap, the
+  Valkey switches and probe tuning, the dev-alias `X-Ini-*` headers), the
+  mode gates apply (bots and web cron refused on tmp/dev names, nodns,
+  hidden URIs, the billing-suspend and http-off 503s), and the two
+  `/data/conf` override hooks reach Backdrop too. Three keys read
+  differently, each for a Backdrop reason: `disable_drupal_page_cache`
+  only ever switches the page cache off (Backdrop's maximum cache
+  lifetime is also the entry lifetime, so the site's own setting is not
+  forced on); `redis_flush_forced_mode` applies its 24-hour cap on
+  permanent entries but no flush modes (the Backdrop module has none);
+  `redis_scan_enable`, the `redis_old_*` modes, the AdvAgg, Domain
+  Access, Facebook and Composer Manager keys and the Drupal 7 module
+  opt-outs have no Backdrop counterpart and are read for the headers
+  only. The shipped INI templates say so per key.
 
 ## Command line: bee and Drush
 

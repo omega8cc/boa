@@ -144,7 +144,8 @@ _BDEXT_TAG=""
 # redis_backdrop-<tag>.tar.gz: the shared /data/all/000/modules store BOA
 # symlinks into every Backdrop platform through the o_contrib_backdrop bundle,
 # replacing the retired per-platform modules/redis bake. The settings side is
-# /data/conf/global/global-bd.inc, which prefers the shared bundle and still
+# /data/conf/global/global-bd-valkey.inc (the Backdrop wiring partial the
+# global-bd.inc chain head includes), which prefers the shared bundle and still
 # falls back to a baked modules/redis copy on platforms built from older
 # tarballs. NB: BOA fetches this by its pinned version -- after publishing a
 # new tag here, bump the pin in OCTOPUS.sh.txt and BOA.sh.txt together.
