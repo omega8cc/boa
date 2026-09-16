@@ -3478,6 +3478,35 @@ _xmass_leg_args() {   # 1 = source dir
   fi
 }
 
+# rsync exit 23 ("some files/attrs were not transferred") is the same benign
+# event as 24 when every error rsync printed is a SENDER-side ENOENT: a file
+# or directory that vanished after rsync listed it is reported through
+# whichever call met it first -- the xattr names or data read (-X), the ACL
+# read (-A), the lstat, the open, the opendir -- instead of as "file has
+# vanished", and the run then exits 23, not 24; yet the path is gone on the
+# source exactly as in the 24 case. The one sender ENOENT that is NOT a
+# vanished file is link_stat: that is a source ARGUMENT that never existed,
+# the leg copied nothing, and reading it as 24 would let the mount path
+# replace the target's store with a link to an empty directory. Any
+# receiver-side error and any other errno (a permission refusal, a full disk,
+# a broken pipe) keeps 23 as the failure it is.
+# $1 = the captured rsync stderr; returns 0 when 23 may be read as 24.
+_xmass_rsync_vanished_only() {
+  local _err="$1" _bad
+  [ -s "${_err}" ] || return 1
+  grep -q 'No such file or directory' "${_err}" || return 1
+  grep -qE 'rsync: (\[sender\] )?link_stat ' "${_err}" && return 1
+  # rsync before 3.2.3 (a legacy source) prints no [sender] role tag, so the
+  # untagged form is accepted only for the sender's own listing calls
+  _bad=$(grep -E '^rsync(:| error:| warning:)' "${_err}" \
+    | grep -vE '^rsync: \[sender\] .*No such file or directory \(2\)$' \
+    | grep -vE '^rsync: (get_xattr_names|get_xattr_data|get_acl|readlink_stat|send_files|opendir)[ :(].*No such file or directory \(2\)$' \
+    | grep -vE '^rsync error: some files/attrs were not transferred \(see previous errors\) \(code 23\)' \
+    | grep -vE '^rsync warning: some files vanished before they could be transferred \(code 24\)' \
+    | head -1)
+  [ -z "${_bad}" ]
+}
+
 # Mode-aware rsync: performs the transfer in LIVE, only reports it in DRY.
 _xmass_rsync() {
   local _rc=0
@@ -3492,8 +3521,20 @@ _xmass_rsync() {
     # without the map a converted source lands its tree on an unconverted
     # standby in a gid that is no group there or another account's -- and
     # re-stamps it on every 15-minute pass.
+    # stderr is kept for the rc-23 read below and replayed afterwards, so the
+    # log still carries every rsync error line
+    # a full /tmp must not turn into a DENY of its own: without the capture the
+    # 23 read below is skipped and rsync's stderr streams as before
+    local _err
+    _err=$(mktemp /tmp/xmass-rsync-err.XXXXXX 2>/dev/null) || _err=""
     # shellcheck disable=SC2086
-    rsync "$@" ${_XMASS_GMAP:+--groupmap="${_XMASS_GMAP}"} --no-devices --no-specials || _rc=$?
+    rsync "$@" ${_XMASS_GMAP:+--groupmap="${_XMASS_GMAP}"} --no-devices --no-specials 2>>"${_err:-/dev/stderr}" || _rc=$?
+    [ -s "${_err}" ] && cat "${_err}" >&2
+    if [ "${_rc}" = "23" ] && [ -n "${_err}" ] && _xmass_rsync_vanished_only "${_err}"; then
+      _rc=24
+      _info "  rsync: rc=23 carried only vanished-file errors (a file gone between listing and read), read as rc=24"
+    fi
+    [ -n "${_err}" ] && rm -f "${_err}"
     if [ "${_rc}" != "0" ]; then
       if [ "${_rc}" = "24" ]; then
         # 24 = "some files vanished before transfer". Expected on a live tree and
@@ -3577,9 +3618,17 @@ _xmass_put_on_root() {
   # (_xmass_handle_store returned an assignment's status instead of this one), so
   # making it work exposes it to the benign case: on a live tree during `xmass
   # sync`, files vanishing mid-transfer is normal and must not deny the run.
-  local _rc=0
+  local _rc=0 _err
+  _err=$(mktemp /tmp/xmass-rsync-err.XXXXXX 2>/dev/null) || _err=""
   rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh \
-    "${_real}/" root@"${_th}":"${_dstRoot}/" || _rc=$?
+    "${_real}/" root@"${_th}":"${_dstRoot}/" 2>>"${_err:-/dev/stderr}" || _rc=$?
+  [ -s "${_err}" ] && cat "${_err}" >&2
+  # 23 with only vanished-file errors is the rc-24 case (see _xmass_rsync_vanished_only)
+  if [ "${_rc}" = "23" ] && [ -n "${_err}" ] && _xmass_rsync_vanished_only "${_err}"; then
+    _rc=24
+    _info "  ${_dstRoot}: rc=23 carried only vanished-file errors, read as rc=24"
+  fi
+  [ -n "${_err}" ] && rm -f "${_err}"
   if [ "${_rc}" = "25" ]; then
     _xmass_deny_maxdelete "${_dstRoot} on target root"
     return 3
@@ -3604,9 +3653,16 @@ _xmass_put_on_mount() {
   _qm="$(_shq "${_mntDest}")"; _qd="$(_shq "${_dstRoot}")"
   ssh -n root@"${_th}" "mkdir -p '${_qm}'"
   # Same rc-24 tolerance as _xmass_put_on_root; see the note there.
-  local _rc=0
+  local _rc=0 _err
+  _err=$(mktemp /tmp/xmass-rsync-err.XXXXXX 2>/dev/null) || _err=""
   rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh \
-    "${_real}/" root@"${_th}":"${_mntDest}/" || _rc=$?
+    "${_real}/" root@"${_th}":"${_mntDest}/" 2>>"${_err:-/dev/stderr}" || _rc=$?
+  [ -s "${_err}" ] && cat "${_err}" >&2
+  if [ "${_rc}" = "23" ] && [ -n "${_err}" ] && _xmass_rsync_vanished_only "${_err}"; then
+    _rc=24
+    _info "  ${_lbl}: rc=23 carried only vanished-file errors, read as rc=24"
+  fi
+  [ -n "${_err}" ] && rm -f "${_err}"
   if [ "${_rc}" = "25" ]; then
     _xmass_deny_maxdelete "${_lbl} -> ${_mntDest}"
     return 3
