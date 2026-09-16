@@ -973,6 +973,9 @@ _global_inc_conf_update() {
     fi
     cp -af ${_locCnf}/global/global-${e}.inc ${_GL_D}/global-${e}.inc
   done
+  ### The shared INI parse lands BEFORE global-main.inc, which includes it:
+  ### a main without the parse would run every site on the INI defaults.
+  cp -af ${_locCnf}/global/global-ini-parse.inc ${_GL_D}/global-ini-parse.inc
   cp -af ${_locCnf}/global/global-main.inc ${_GL_D}/global-main.inc
   cp -af ${_locCnf}/global/global-ini.inc ${_GL_D}/global-ini.inc
   cp -af ${_locCnf}/global/global-mode.inc ${_GL_D}/global-mode.inc
@@ -987,10 +990,12 @@ _global_inc_conf_update() {
   cp -af ${_locCnf}/global/global-redis.inc ${_GL_D}/global-redis.inc
   cp -af ${_locCnf}/global/global-newrelic.inc ${_GL_D}/global-newrelic.inc
   cp -af ${_locCnf}/global/global-extra.inc ${_GL_D}/global-extra.inc
-  ### Backdrop-only shared settings (Valkey wiring, visit-cron off, the
-  ### suspend and http-off 503 short-circuits); the Backdrop settings tpl
-  ### includes it only when present, so it ships inert. It now blocks
-  ### requests, so keep the previous copy like the per-core chain does.
+  ### The Backdrop chain: its Valkey wiring partial first, then the chain
+  ### head that includes it together with the shared partials above. The
+  ### Backdrop settings tpl includes the head only when present, so it ships
+  ### inert; it blocks requests, so keep the previous copy like the per-core
+  ### chain does.
+  cp -af ${_locCnf}/global/global-bd-valkey.inc ${_GL_D}/global-bd-valkey.inc
   if [ -e "${_GL_D}/global-bd.inc" ]; then
     cp -af ${_GL_D}/global-bd.inc ${_GL_D}/global-bd.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
   fi

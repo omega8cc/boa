@@ -69,6 +69,7 @@ manual cleanup.
 | Persistent escalator | `aegir/tools/system/guest-water.sh` | Archive repeat offenders → `csf.deny` |
 | Geo regenerator (IPv4) | `aegir/tools/system/nginx_deny.sh` | CSF state → `nginx_banned_ips.conf` → reload |
 | Geo regenerator (IPv6) | `aegir/tools/system/nginx_deny6.sh` | nginx-native IPv6 store → `nginx_banned_ips.conf6` → reload |
+| Crawler-fleet detector | `aegir/tools/system/nginx_fleet.sh` | Declare fleet fingerprints from `access.log`, render the `$boa_fleet_*` map fragments → reload; refuses with `429`, never touches CSF |
 
 The nginx-template files live in the `provision` codebase under
 `http/Provision/Config/Nginx/`; the scripts live in `boa-private`. On a box, the scripts
@@ -527,6 +528,166 @@ Both run after the existing blocking passes and are gated on `_NGINX_I18N_FLOOD_
 `_NGINX_FPM_SAT_DETECT` (default `YES`); the per-line tally is skipped entirely when the
 detector is off, so the hot loop pays nothing.
 
+### Crawler-fleet fingerprint detector (`nginx_fleet.sh`)
+
+A distributed crawler fleet rotates hundreds of addresses, so no per-address scorer ever
+sees more than a few dozen requests from one of them. What the fleet cannot rotate is the
+thing it shares: **one exact user agent, walking one route class of one vhost, from many
+addresses at once, without a Referer and with a different URL on almost every request.**
+That shape defeats every detector above — the per-IP scorer never reaches its floor, the
+shared-UA and UA-burst aggregates need bad statuses the fleet does not produce (it gets
+`200`s), the harvest detector needs a per-address document count the fleet stays under, and
+the shared string alone cannot be blocked because real browsers send it too.
+
+This is **not** a `scan_nginx` detector. `/var/xdrago/nginx_fleet.sh` is its own root-cron
+job, once a minute at `nice -n5 ionice -c2 -n7`, and it is the **sole writer** of its store
+and of the three map fragments it renders under `/data/conf/`. It never writes `web.log`,
+never calls csf, and never bans an address at the firewall: its only enforcement is the
+`$boa_fleet_block` guard in the vhost (Part 3), which answers **`429`**. It exits at once on
+a box with no nginx, and on a passive replication standby that is not serving.
+
+**On by default, both scopes.** The refusal ships armed on every box; `_NGINX_FLEET_ACTION`
+and `_NGINX_FLEET_CRAWLER_ACTION` both default to `BAN`. They exist for **reactive
+loosening after a confirmed legitimate report**, not for per-box arming, and there is no
+`REPORT` soak period to sit through. Action values are case-insensitive; an invalid address
+action falls back to the shipped `BAN` with a `CONFIG` line, and an invalid crawler action
+inherits the address action — a typo must never switch the protection off.
+
+**What one pass does.** It reads the last `_NGINX_FLEET_TAIL_MB` (64 MB) of
+`/var/log/nginx/access.log`, keeps the lines inside `_NGINX_FLEET_WINDOW` (300 s), and
+groups them by *(vhost, exact lower-cased user agent, route class)*. The route class is the
+first path segment after an optional language prefix, taken from the path nginx itself would
+route — percent-decoded, slashes merged, dot segments resolved, lower-cased — so case or
+encoding games on the first segment cannot split one crawl into many small classes; dot
+names and the machine-standard files (`robots.txt`, `sitemap.xml`, `favicon.ico`, `ads.txt`,
+`apple-app-site-association`) belong to other controls and are never classed. Requests from
+whitelisted addresses (csf.allow, `web6.allow`, the box's own address) are kept out of the
+key's own counts and tallied separately for the realip check below; they still count in the
+vhost total the share gate measures against. If the tail does not reach at least
+`_NGINX_FLEET_MIN_SPAN` (180 s) back from now, the pass **fails closed** and declares
+nothing, because a sample that narrow is not representative. The `NOTE` that says so is
+written only when the tail was actually truncated — the read started mid-file, so raising
+`_NGINX_FLEET_TAIL_MB` would help. When the whole log is short (just after a rotation, say)
+detection is skipped silently: there is nothing to raise.
+
+A key is declared a fleet fingerprint only when **all six** gates hold at once:
+
+| Gate | Default | Meaning |
+|---|---|---|
+| `_NGINX_FLEET_REQ_MIN` | `48` | requests under that (vhost, agent, class) key in the window |
+| `_NGINX_FLEET_IP_MIN` | `32` | distinct non-whitelisted addresses under it |
+| `_NGINX_FLEET_SHARE_PCT` | `8` | minimum % of everything that vhost served in the window |
+| `_NGINX_FLEET_NOREF_PCT` | `95` | minimum % of those requests carrying no Referer |
+| `_NGINX_FLEET_UNIQ_PCT` | `80` | minimum % of distinct request targets (a crawl reads each URL once) |
+| `_NGINX_FLEET_BAD_PCT` | `5` | **maximum** % of `5xx`/`444` — a degrading box is not evidence of a fleet |
+
+Two guards run before any declaration. A group any of whose requests came from an agent on
+the **exemption roster** is logged `EXEMPT` and never declared — the roster is the harvest
+detector's crawler and monitor list plus the allow-by-default AI classes and the
+user-driven link previewers, which the AI policy governs with its own per-vendor limits, and
+`_NGINX_FLEET_UA_EXEMPT` only ever **adds** to it. A key whose whitelisted
+addresses are `_NGINX_FLEET_ALLOW_PCT` (20 %) or more of its distinct addresses is logged
+`REALIP-SUSPECT` and skipped — that shape means the vhost is reporting CDN edges as clients,
+so its "many addresses" are an artefact of a collapsed realip chain. Only the busiest route
+class of a (vhost, agent) pair becomes its fingerprint; one pair never yields more than one.
+
+**Scope — what a fingerprint is allowed to refuse.** The agent decides, and the scope is
+fixed when the fingerprint is first stored:
+
+- **Network scope (`N`)** — an agent that **names itself a crawler** (`bot`, `crawl`,
+  `spider`, `slurp`, `scrap`, `headless`, or an `http://`/`https://` URL in the string) and is **not**
+  browser-shaped. No human browses with such an agent, so it is refused per member **/16**
+  (per address for IPv6), with any Referer and any cookie.
+- **Address scope (`A`)** — everything else, including every browser-shaped
+  `Mozilla/5.0 (…) AppleWebKit…`/`Gecko…` string. Refused only from an address already seen
+  acting as a member, only with that exact agent, only when the request carries **no
+  Referer**, and only when it carries **no session cookie** (a Drupal/Backdrop `SESS…` cookie
+  with a value, a Grav `-admin` cookie, `txp_login`/`txp_login_public`). A real visitor who
+  shares the address or the string passes by following any link or by logging in.
+
+**Membership.** Addresses are recorded as members of a (vhost, agent) group while its
+fingerprint is live, on any pass where the group either declares again or shows at least
+`_NGINX_FLEET_CAND_IPS` (16) distinct addresses. In address scope an address joins only if
+at least `_NGINX_FLEET_NOREF_PCT` of *its own* requests were Referer-less. In network scope
+IPv4 members collapse to their /16, and a /16 joins only with at least
+`_NGINX_FLEET_NET_MIN_IPS` (2) distinct member addresses in it and only when it holds no
+whitelisted address seen in that group, no csf.allow entry and not the box's own address;
+IPv6 members join as single addresses. At most 2000 addresses per group are considered in
+one pass (an internal bound, not a knob).
+
+**Store and TTLs.** `/var/xdrago/monitor/log/fleet.tempban` is rewritten and pruned on every
+pass, agents carried as base64 so no log byte is ever interpreted:
+
+```
+F|<expiry>|<host>|<A or N>|<b64 lower-cased agent>   fingerprint + scope
+A|<expiry>|<host>|<address>|<b64 agent>              member address
+N|<expiry>|<host>|<a.b or IPv6>|<b64 agent>          member network
+```
+
+A fingerprint lives `_NGINX_FLEET_TTL` (3600 s) from its last declaring pass; a member lives
+`_NGINX_FLEET_MEMBER_TTL` (21600 s). Members are rendered **only** while their fingerprint is
+live and its scope matches, so a fingerprint expiry releases all of its members in one
+reload. At most `_NGINX_FLEET_MAX_FP` (16) fingerprints are kept, newest expiry first, and
+each rendered map holds at most `_NGINX_FLEET_MAX_ENTRIES` (20000) entries; anything dropped
+is logged `CAP`. An agent that no exact map key could carry — outside the printable-ASCII
+map-safe grammar, or longer than the 174-byte key ceiling the `map_hash_bucket_size` allows —
+is logged `UNBANNABLE` and reported only, never stored, so it cannot occupy a fingerprint
+slot a refusable fleet needs. With **no** scope in `BAN` (or `_NGINX_FLEET_DETECT=NO`) no
+store is kept at all, so a later switch back to `BAN` starts from fresh evidence instead of
+resurrecting old members.
+
+**`fleet.log`** (`/var/xdrago/monitor/log/fleet.log`, rotated daily, 7 copies) carries one
+line per event:
+
+| Line | Meaning |
+|---|---|
+| `CONFIG` | an operator value was invalid and the shipped default (or the inherited action) is in use |
+| `NOTE` | detection was skipped because the truncated read tail spanned too little time, or the pass declared and wrote its store but deferred the fragment install because the shared nginx-config lock was busy |
+| `DECLARE` | a fingerprint was declared or refreshed in a scope that is refusing, with its gate statistics |
+| `WOULD-BAN` | the same, in a scope set to `REPORT`: logged, never stored, never rendered |
+| `EXEMPT` | the group carries an exempt agent; not declared |
+| `REALIP-SUSPECT` | too many whitelisted addresses in the key; the realip chain is suspect, not the traffic |
+| `UNBANNABLE` | the agent is outside the map-safe grammar; reported only |
+| `CAP` | a fingerprint or map entry was dropped at `_NGINX_FLEET_MAX_FP` / `_NGINX_FLEET_MAX_ENTRIES` |
+| `RELOAD` | the fleet maps went live, with the fingerprint / address / network counts |
+| `ALERT` | the analyser failed, or a fragment could not be installed, or configtest/reload rejected the set |
+
+**Replay mode — what a fleet would have cost, on saved logs.** Read-only and safe to run on
+a copy of any log set; it writes nothing but the files you name:
+
+```bash
+bash /var/xdrago/nginx_fleet.sh --replay [--action BAN|REPORT] \
+     [--crawler-action BAN|REPORT] [--flags FILE] [--allow /etc/csf/csf.allow] \
+     [--dump DIR] LOG...
+```
+
+It walks the logs chronologically, runs one simulated pass per minute boundary, and prints a
+`REPLAY` summary (lines, passes, reloads, refused requests, peak fingerprints/addresses/
+networks), an `EVENTS` count of the log line types above, a `SCOPE` line per scope and one
+`FINGERPRINT` line per fingerprint. Both scopes replay as `BAN` unless the flags say
+otherwise, so a replay on a loosened box still shows what `BAN` would refuse; the tuning
+knobs come from `/root/.barracuda.cnf` as usual, the **action** knobs do not. `--flags`
+writes one `0`/`1` line per input line (which requests would have been refused) and `--dump`
+writes the peak map fragments. Replay has no cookies to read, so it treats every request as
+anonymous — its address-scope count is therefore an upper bound.
+
+**Measured.** On one hosted site's anonymised two-day log (439,597 lines) with both scopes
+refusing: a self-declared crawler-name fleet had **76,776 of its 76,972** requests refused;
+two stock desktop-browser strings arriving over cloud addresses had **37,474 of 40,001** and
+**36,688 of 39,295** refused. Every other cohort on that vhost, and all 114,296 requests on
+the other vhosts in the same log, were refused **zero** times. A 766,782-line synthetic
+battery — a busy general-audience site, a campus audience behind shared egress, a mobile app
+backend, newsletter bursts and an AI assistant fan-out — produced **zero** non-fleet
+refusals.
+
+**Known limits, stated honestly.** The detector does not refuse a fleet that fakes a
+same-site Referer, one that sends a single request per address under a current browser
+string, one that mints a new agent per address, or any fleet below the scale bar (fewer than
+32 addresses, or under 8 % of the vhost's traffic). Those shapes are the price paid for the
+zero non-fleet refusals measured above. Collateral is bounded the same way: an
+address enters as a member for at most `_NGINX_FLEET_MEMBER_TTL`, only while its fingerprint
+lives, and in address scope it is only ever felt on an anonymous Referer-less request.
+
 ### Whitelisting (scorer side)
 
 Four layers protect known-good addresses from every detector:
@@ -770,6 +931,52 @@ The rebuild only disturbs nginx when something actually changed:
   cycles never overlap. If the lock can't be taken within 30 s the run skips and retries next
   tick.
 
+### Stage 3c — crawler-fleet map regeneration (`nginx_fleet.sh`)
+
+A parallel path with the same shape as Stages 3 and 3b, for a refusal that never enters CSF
+at all. Each per-minute pass of the fleet detector (Part 1) renders three exact-match include
+fragments from its store and installs them the same careful way the geo sets are installed:
+
+```
+/data/conf/nginx_fleet_ua.conf     "<agent>" f<8 hex of its md5>;   (the fingerprint id)
+/data/conf/nginx_fleet_addr.conf   "<host>|<address>|<id>" 1;       (address-scope members)
+/data/conf/nginx_fleet_net.conf    "<host>|<a.b or IPv6>|<id>" 1;   (network-scope members)
+```
+
+- **Render gate.** The fragments are inert unless the BOA-written zones file
+  `/etc/nginx/conf.d/limit-req-zones-boa.conf` contains the exact declaration line
+  `map $boa_fleet_uaid $boa_fleet_block {`. Until it does, the pass writes no fragment at
+  all — the same order-independence contract the `bgp_flood` and `boa_perhost_anon` zones use,
+  so no delivery order can reference an undeclared variable.
+- **Nothing-live short-circuit.** With no live fingerprint and no fragment on disk the pass
+  exits leaving the include globs empty; `$boa_fleet_block` is then `0` for everything.
+- **Change gate.** Each freshly built fragment is compared with the live one (`cmp -s`); if
+  all three are identical the pass exits with no reload.
+- **Hold-down on member-only changes.** A live fleet adds members on most passes. A new or
+  expired **fingerprint** applies at once (the `ua` fragment changed); a member-only change
+  waits until `_NGINX_FLEET_RELOAD_GAP` (600 s) has passed since the last reload, so a long
+  fleet costs one reload per gap, not one per minute.
+- **Shared lock.** The install holds `/run/boa_nginx_config.lock` (`flock -w 30`), the same
+  advisory lock `nginx_deny6`, `ip_access`, `cloudflare_realip`, `ai_policy` and
+  `migration_proxy_realip` take, so no two configtest+reload cycles overlap. A busy lock
+  writes a `NOTE` and defers to the next pass. The detector also holds its own
+  `/run/boa_nginx_fleet.lock` for the whole run, so passes never stack.
+- **Back up all three, then install.** Every live fragment is copied to its
+  `.nginx_fleet_<name>.last_good.conf` **before** any is replaced, so a failed copy (a full
+  disk) leaves the live set exactly as it was. Temporary files are leading-dot names in the
+  same directory, so the `.c*` include globs never see a half-written file.
+- **Configtest and revert.** After installing, the pass runs `service nginx configtest`; on
+  rejection it restores the last-good set and writes an `ALERT` naming the first
+  `[emerg]`/`[crit]`/`[error]` line of the output, not whatever warning happened to come
+  first. A failing `service nginx reload` reverts and reloads again, also with an `ALERT`.
+  A bad fleet map can therefore never take nginx down.
+- **Store first, maps second.** The pruned store is installed before the fragments; if it
+  cannot be installed the live maps are left untouched. The store is kept while **either**
+  scope is still in `BAN`; only when no scope is in `BAN` (or `_NGINX_FLEET_DETECT=NO`) is it
+  removed outright. A scope moved to `REPORT` is therefore released by the load, not by the
+  removal: `store_load` refuses to load a fingerprint whose scope is no longer refusing, the
+  prune drops its members behind it, and the next render leaves both out.
+
 ### Why the geo self-expires
 
 The geo file holds no state of its own. Each `nginx_deny.sh` run rebuilds it **from
@@ -812,6 +1019,17 @@ before any `try_files`, `@drupal` fallback, or FastCGI round-trip.
   flag-toggle gates (their traffic class includes search crawlers, which surface a 444 as
   a 5xx), and special `.php`-probe URLs. A 404 still avoids a PHP bootstrap, so it is
   nearly as cheap as 444 but safer when the pattern *could* rarely match real content.
+
+- **`return 429`** — "too many requests", used by exactly one guard: the crawler-fleet
+  refusal `$boa_fleet_block`. The status is chosen for what it does **not** do. No
+  `scan_nginx` scorer counts a `429`: the per-IP scorer counts `400`/`403`/`404`/`410`/`444`/
+  `500`, the UA-burst aggregate `301`/`302`/`307`/`308`/`400`/`403`/`404`/`410`, the harvest
+  and Tier-B i18n detectors `5xx`+`444`, the guard-404 detector `404`, and the path-flood
+  aggregate `200`+`444`. So a fleet refusal can never feed the per-address ban score, the
+  UA-burst csf ban or the i18n shedding signal — the refusal and the scorers stay
+  independent, which is what keeps a wrong refusal from escalating into a firewall ban. It is
+  also FPM-free like `444`, and, unlike `444`, it does not reach a Cloudflare-fronted client
+  as a `520`.
 
 > **A note on `return 403`.** `vhost_include.tpl.php` also emits `return 403` in several
 > places, but these are **not** abuse denials. Each is an `if ($cache_uid = '')`
@@ -870,6 +1088,63 @@ include never picks up a half-written file). Because the deny keys on the realip
 it bites a Cloudflare-proxied attacker at the origin's nginx — where an origin CSF/iptables
 ban on a CF-fronted IP would only see the CF edge and miss.
 
+### `$boa_fleet_block` → 429 — the crawler-fleet refusal
+
+The enforcement half of the fleet detector (Part 1). The maps live in the BOA-written
+http-scope file `/etc/nginx/conf.d/limit-req-zones-boa.conf`, and their keys are the exact
+strings `/var/xdrago/nginx_fleet.sh` renders into `/data/conf/nginx_fleet_*.conf`:
+
+```nginx
+map $http_user_agent $boa_fleet_uaid {           # "" for every agent not in the set
+  default  "";
+  include  /data/conf/nginx_fleet_ua.c*;
+}
+map $remote_addr $boa_fleet_net {                # the address collapsed to its /16
+  default                           $remote_addr;
+  "~^([0-9]{1,3}\.[0-9]{1,3})\."    $1;
+}
+map "$host|$remote_addr|$boa_fleet_uaid" $boa_fleet_addr { … nginx_fleet_addr.c* }
+map "$host|$boa_fleet_net|$boa_fleet_uaid"  $boa_fleet_nt { … nginx_fleet_net.c* }
+map $http_referer $boa_fleet_noref { default 0; "" 1; }
+map $http_cookie  $boa_fleet_anon  { default 1; … session cookies → 0 }
+### Bits: member network, member address, no Referer, anonymous.
+map "$boa_fleet_nt$boa_fleet_addr$boa_fleet_noref$boa_fleet_anon" $boa_fleet_hit {
+  default  0;
+  "~^1"    1;      # a network member is refused outright
+  "0111"   1;      # an address member needs no Referer and no session
+}
+map $boa_fleet_uaid $boa_fleet_block {
+  ""       0;
+  default  $boa_fleet_hit;
+}
+```
+
+enforced as `if ($boa_fleet_block) { return 429; }` immediately after the `$is_banned` guard,
+so a banned address still gets its `444` first.
+
+- **An unlisted agent costs one exact lookup.** `$boa_fleet_uaid` is empty for everything the
+  detector has not fingerprinted, and `$boa_fleet_block` stops there without evaluating the
+  rest of the chain. Map keys are exact strings, compared case-insensitively by nginx, never
+  a regex built from a user agent.
+- **The session tests mirror the cache gates.** The `$boa_fleet_anon` map reproduces the
+  Drupal/Backdrop `SESS…=<value>` test of `$boa_perhost_anon_key` (itself a mirror of
+  `$cache_uid`) and the `$boa_grav_admin_cookie` test declared just above it, then adds
+  Textpattern's `txp_login` / `txp_login_public` — **keep them in step** when any one of them
+  changes.
+- **Absent fragments are safe.** The `.c*` include globs then match nothing, every lookup
+  takes its default, and `$boa_fleet_block` is `0` for every request. The in-flight temp and
+  the last-good backup are leading-dot names, so the glob never picks up a half-written file.
+- **Self-contained by design.** Every consumer renders its guard **only** when the installed
+  zones file contains the exact declaration line `map $boa_fleet_uaid $boa_fleet_block {`, so
+  no BOA/provision delivery order can emit a reference to an undeclared variable — which
+  would be a box-wide `nginx -t` failure on an upgrade path that restarts nginx without a
+  configtest. Keep that line byte-identical if you ever touch it.
+- **A wider key space needs a wider hash.** The generated maps can hold thousands of exact
+  keys, so the shared `http {}` block sets `map_hash_max_size 32768` alongside the existing
+  `map_hash_bucket_size 192`; without it every configtest and reload warns "could not build
+  optimal map_hash". That bucket size is also what caps a usable key at 174 bytes, which is
+  why an over-long agent is reported `UNBANNABLE` rather than stored.
+
 ### Chain-mutation flood maps
 
 A distributed botnet that exploits broken relative-URL resolution appends Drupal asset
@@ -892,12 +1167,23 @@ content segment (404).
   majority, not the 2×-repeat tail) and uses a cheap `404`. The complete cure is a
   source-side `<base href>`/theme fix that stops the site emitting
   root-relative-without-leading-slash links.
+- **`$is_amp_chain` → 404.** The query-side cousin: a crawler that HTML-escapes every link it
+  re-follows turns each `&` into `&amp;`, then `&amp;amp;`, one layer per hop, so its query
+  keys grow into `amp;amp;page` (or the percent-encoded `amp%3Bamp%3Bpage`) and every hop
+  renders another uncached page. Matches two or more consecutive `amp;` layers, in either
+  spelling and any case, at a query-key boundary, so a single `&amp;` left by a badly
+  escaped newsletter or CMS link is still served. Blocking at two layers also stops the
+  recursion: the deeper URLs are only ever discovered from pages served at the shallower
+  one. Unlike the other chain maps it is declared in the BOA-written http-scope file
+  `/etc/nginx/conf.d/limit-req-zones-boa.conf`, and the consumer renders only when that file
+  declares the map, so no delivery order can reference an undefined variable.
 
-Both chain guards apply on **full-domain vhosts only**. They are intentionally **not** in
-`subdir.tpl.php`: a subdir site legitimately serves `/<subdir>/sites/all/...` assets, which
-`$is_static_chain` would match as buried-under-content. The node-chain / lang-chain guards
-(which match on `node/<id>` repetition and language-prefix runs, not asset paths) **do**
-apply on subdir vhosts.
+The static and content chain guards apply on **full-domain vhosts only**. They are
+intentionally **not** in `subdir.tpl.php`: a subdir site legitimately serves
+`/<subdir>/sites/all/...` assets, which `$is_static_chain` would match as
+buried-under-content. The node-chain, lang-chain and amp-chain guards (which match on
+`node/<id>` repetition, language-prefix runs and the query, not asset paths) **do** apply on
+subdir vhosts.
 
 ### Print no-referer gate → 404
 
@@ -1024,16 +1310,23 @@ Several UA-keyed maps hard-block known-bad agents:
 
 | Map | Variable | Enforcement |
 |---|---|---|
-| `$is_crawler` | scraper/SEO/abusive bots (Ahrefs, MJ12, Semrush, PetalBot, Sogou…) | `if ($is_crawler) return 444` |
+| `$is_crawler` | named scraper/SEO/abusive bots (Ahrefs, MJ12, Semrush, PetalBot, serpstatbot, HTTrack…) | `if ($is_crawler) return 444` |
 | `$is_botnet` | semalt/kambasoft referrer-spam family | `if ($is_botnet) return 444` |
-| `$is_bot` | generic crawler tokens | `return 444` inside the `/search` and `/user/login` blocks |
+| `$is_bot` | generic crawler tokens (`crawl`, `bot`, `spider`, `google`, `bing`, …) | `return 444` on private, robots-disallowed and callback locations only (search, `/user/login`, admin, AJAX/batch callbacks, private files, `/bgp-start/`, …), never on content, asset, feed or sitemap locations, which crawlers must reach; also part of the Speed Booster cache key |
+
+Legitimate search and preview crawlers (Sogou, Pinterest, TikTok) and the generic
+`Go-http-client` library token are deliberately **not** in `$is_crawler`: a hard 444 on them
+blocks real user-facing services, not scrapers.
 
 **AI-vendor traffic is classified separately** by the `$is_ai_*` maps and the per-class AI
 policy — those tokens are deliberately kept out of `$is_crawler` so they don't bypass that
 policy. See [AI-POLICY.md](AI-POLICY.md).
 
-A separate `$deny_on_high_load` UA map (crawl/spider/google/yahoo/yandex/baidu/bing) is the
-load-shedding variant: it denies almost all crawlers only while the box is under high load.
+A separate `$deny_on_high_load` UA map (the same roster as `$is_bot`:
+crawl/bot/spider/tracker/click/parser/google/yahoo/yandex/baidu/bing) is the load-shedding
+variant: it answers those agents `503` only while Spider Protection is armed, i.e. while load
+per CPU is above `_CPU_SPIDER_RATIO` (2.1 by default). Below that load a declared crawler, or
+anything borrowing a crawler's name, is served like any visitor.
 
 #### Stale-Chrome botnet detection
 
@@ -1044,21 +1337,30 @@ Chrome UA to dodge `$is_bot` while still being detectably stale:
 ```nginx
 map $http_user_agent $is_stale_chrome {
   default 0;
-  ~*Chrome/1([0-2][0-9]|3[01])\.  1;   # Chrome/100–131: > 12 months stale
+  ~*Chrome/1(?:[01][0-9]|2[0-79]|3[0-79])\.  1;   # Chrome/100–139 minus 128 and 138
 }
 ```
 
 `$block_stale_chrome_search` combines a stale Chrome UA with fulltext/facet search params and
-fires **only in search location blocks**. The standalone `$is_catalina_stale_chrome` adds
-macOS Catalina (10.15.7, EOL Nov 2022) + Chrome ≤ 131 — the exact combination of every
-confirmed Solr search-amplification bot observed May 2026 — and is applied directly in the
-`/search` blocks, so it needs no `$has_fulltext_search` dependency. Both shipped in BOA-5.9.3.
+fires **only in search location blocks**. The standalone `$is_catalina_stale_chrome` matches
+the Mac UA shape (`Mac OS X 10_15_7`) at a stale Chrome version — the shape every confirmed
+Solr search-amplification bot has presented — and is applied directly in the `/search` blocks,
+so it needs no `$has_fulltext_search` dependency. Chrome and Safari freeze that platform token
+on every macOS release, so it does not identify Catalina itself; the stale version is what
+makes the match safe. Chrome/128 and Chrome/138 are carved out of both maps: they are the last
+releases for macOS 10.15 and macOS 11, so a Mac pinned there for life is the one genuine
+browser that still presents a stale major, and it keeps site search. Both maps shipped in
+BOA-5.9.3.
 
 > **Maintenance caveat (carry verbatim).** These dated regexes are self-flagging. The
-> in-source note instructs: when Chrome/132 exceeds 12 months (≈ **Feb 2027**), **widen the
-> upper bound to `3[0-2]`** and update the comment. The ceiling must move forward as Chrome
-> versions age, or the maps will eventually match current browsers (false positives) rather
-> than stale ones.
+> in-source note instructs: move the upper bound by **release date**, never by counting
+> versions — Chrome shipped a major every ~4 weeks until Chrome/153 (2026-09-08) and every
+> ~2 weeks since. Widen to the newest major whose stable release is more than 12 months old
+> (Chrome/139 reached stable on 2025-08-05), carve out the last major any macOS is pinned at,
+> and keep both maps on the same pattern. The ceiling
+> must move forward as Chrome versions age, or the maps stop catching the stale-Chrome botnet
+> class; it must never pass a version released within the last 12 months, or they start
+> matching current browsers (false positives).
 
 ### Scanner-pattern maps: `$is_denied` / `$ua_denied`
 
@@ -1315,9 +1617,11 @@ $is_node_chain          → 404
 $is_lang_chain          → 404
 $is_static_chain        → 444
 $is_content_chain       → 404
-$block_print_no_referer → 444
+$is_amp_chain           → 404   rendered only when the BOA zones file declares it
+$block_print_no_referer → 404
 SA-CORE-2018-002 RCE    → 444
 $is_banned              → 444   ← ban-pipeline closing guard
+$boa_fleet_block        → 429   rendered only when the BOA zones file declares it
 =PHP… version probe     → 404
 $is_secret_path         → 444   edge-policy
 $is_cms_probe           → 444   edge-policy
@@ -1333,6 +1637,23 @@ $tls_on_plain           → 444
   and at location = /index.php: limit_conn boa_i18n_anon → 444 (Tier-A i18n guardrail)
 ```
 
+The fleet guard fires on every front a fleet can reach, each on the same render gate:
+the Drupal/Backdrop vhost include (above), the Grav location block, the Textpattern plain
+and SSL vhosts, and the subdir location. It also fires on the **wildcard SSL front**, inside
+marker lines that `_nginx_wild_ssl_fleet_gate` strips whenever the installed zones file does
+not declare the maps (that front is a static copy in the master render tree and the upgrade
+path restarts nginx without a configtest, so it may only carry the guard while the variable
+exists); the wild-ssl install redeploys the file whenever the two disagree, adding the guard
+or removing it. On that front the guard sits next to `$is_banned` for the same reason the ban
+does: the maps key on `$remote_addr`, which the port-80 vhosts only ever see as `127.0.0.1`
+on the proxied path.
+
+The Textpattern vhosts and the standalone subdir server carry the ban guard themselves:
+neither pulls in the full-domain vhost include, so each restates the unconditional
+`if ($is_banned) { return 444; }` next to its fleet guard. A banned address is therefore
+dropped at nginx on those vhosts as on every other one — which is what matters on a
+Cloudflare-fronted origin, where an origin CSF ban only ever sees the edge.
+
 > **Under the hood.** Two related nginx tunables were adjusted alongside these maps. In the
 > shared `http {}` block, `variables_hash_max_size 2048` was raised to accommodate the growing
 > set of `map` variables. Separately, the per-location FastCGI microcache directive
@@ -1341,7 +1662,8 @@ $tls_on_plain           → 444
 
 ## Part 4 — configuration reference
 
-Every tuning knob lives in `scan_nginx.sh` as a built-in default; then
+Every tuning knob lives in `scan_nginx.sh` as a built-in default — the crawler-fleet knobs in
+`nginx_fleet.sh`, under the same contract; then
 `/root/.barracuda.cnf` is sourced and **replaces** any value it sets (a plain assignment,
 not a merge). A scalar override simply wins; a **list** override
 (`_NGINX_DOS_IGNORE_PATHS`, `_NGINX_PATH_FLOOD_WATCH`) replaces the whole list (an empty
@@ -1365,7 +1687,7 @@ value disables that feature).
 
 | Variable | Default | What it controls |
 |---|---|---|
-| `_NGINX_DOS_LINES` | `1999` | Lines of `access.log` read on a baseline run (the scan window). |
+| `_NGINX_DOS_LINES` | `1999` | Lines of `access.log` read on a baseline pass only: the first run, or when the saved offset is lost or the log has rotated. Every other pass reads just the bytes appended since the previous one (about 5 s), so raising this does not widen the detection window. It also sets how many recent lines an i18n-flood snapshot covers. |
 | `_NGINX_DOS_LIMIT` | `399` | Per-IP score at which an IP is written to `web.log`. All weights below derive from it. `autoupboa` re-normalises it to `399` each pass. |
 | `_NGINX_DOS_MODE` | `2` | Per-IP algorithm. Mode `1` adds extra `+5` increments for `POST` to `/user`, `/user/(register\|pass\|login)`, `/node/add` and `GET` to `/node/add` and `/search`; mode `2` (default) skips those. **Both modes** apply the `_NGINX_DOS_STOP` check. |
 | `_NGINX_DOS_LOG` | `VERBOSE` *(script)* / `SILENT` *(seeded)* | Log verbosity: `SILENT`, `NORMAL`, or `VERBOSE`. The script's built-in fallback is `VERBOSE`, but `autoupboa` seeds `SILENT` once, so a normally-managed box runs **SILENT** unless changed. Seed-only: a set value (including the `NORMAL` the `.debug.monitor.log.cnf` fold writes) survives retunes, unlike the other `_NGINX_DOS_*` keys. |
@@ -1502,6 +1824,43 @@ Govern Detector 4 (Part 1). All take the built-in default unless added to
 | `_NGINX_HTTP10_AUTH_IP_THRESHOLD` | `3` | Windowed HTTP/1.0 auth-path hits from one IP before it is banned. |
 | `_NGINX_HTTP10_AUTH_CIDR_THRESHOLD` | `6` | Windowed hits aggregated over an IP's `/24` before every **observed** contributor is banned (CIDR escalation for the slow distributed block). |
 
+### Crawler-fleet refusal
+
+Govern `nginx_fleet.sh` (Part 1) and its `429` guard (Part 3). All take the script's built-in
+default unless added to `/root/.barracuda.cnf`; none is seeded by `autoupboa`, and the three
+policy knobs are listed in the example configuration (`docs/cnf/barracuda.cnf`).
+**Every value is validated**, and an out-of-range number is as invalid as a
+non-number: the pass logs a `CONFIG` line and runs on the shipped default, so a typo can
+never turn a gate into a hair trigger — or switch the refusal off.
+
+| Variable | Default | Range | What it controls |
+|---|---|---|---|
+| `_NGINX_FLEET_DETECT` | `YES` | `YES`/`NO` | Master switch. `NO` stops detection and releases every fleet refusal on the next pass (the store is removed, the maps render empty). |
+| `_NGINX_FLEET_ACTION` | `BAN` | `BAN`/`REPORT` | Address scope: browser-shaped agents and everything that does not name itself a crawler. `REPORT` logs `WOULD-BAN` and neither stores nor renders that scope. Case-insensitive; anything else falls back to `BAN`. |
+| `_NGINX_FLEET_CRAWLER_ACTION` | *(empty)* | `BAN`/`REPORT`/empty | Network scope: self-declared crawler names, refused per /16. Empty **inherits** the address action; an invalid value inherits it too, with a `CONFIG` line. |
+| `_NGINX_FLEET_WINDOW` | `300` | 180–900 | Seconds of log a pass analyses. |
+| `_NGINX_FLEET_MIN_SPAN` | `180` | 60–900 | The read tail must reach back at least this far, or the pass declares nothing (fail-closed). A value above `_NGINX_FLEET_WINDOW` reverts to 180. |
+| `_NGINX_FLEET_TAIL_MB` | `64` | 8–512 | Megabytes of `access.log` read per pass. Raise it on a box whose 64 MB tail no longer spans `_NGINX_FLEET_MIN_SPAN` (the pass says so in its `NOTE`). |
+| `_NGINX_FLEET_IP_MIN` | `32` | 12–100000 | Distinct non-whitelisted addresses on the key before a fingerprint can be declared. |
+| `_NGINX_FLEET_REQ_MIN` | `48` | 24–1000000 | Requests on the key in the window. |
+| `_NGINX_FLEET_SHARE_PCT` | `8` | 2–100 | Minimum % of the vhost's windowed traffic the key must hold. |
+| `_NGINX_FLEET_NOREF_PCT` | `95` | 50–100 | Minimum % of Referer-less requests, on the key and again on each address before it joins as a member. |
+| `_NGINX_FLEET_UNIQ_PCT` | `80` | 50–100 | Minimum % of distinct request targets — a crawl reads each URL once, an audience re-reads. |
+| `_NGINX_FLEET_BAD_PCT` | `5` | 0–100 | **Maximum** % of `5xx`/`444` on the key; above it the box is degrading, which is not evidence of a fleet. |
+| `_NGINX_FLEET_ALLOW_PCT` | `20` | 1–100 | Whitelisted share of the key's distinct addresses that marks it `REALIP-SUSPECT` and skips it. |
+| `_NGINX_FLEET_CAND_IPS` | `16` | 4–100000 | Distinct addresses that let a live fingerprint keep collecting members on a pass where it did not declare again. |
+| `_NGINX_FLEET_NET_MIN_IPS` | `2` | 2–1000 | Distinct member addresses inside a /16 before that /16 is refused in network scope. |
+| `_NGINX_FLEET_TTL` | `3600` | 600–86400 | Seconds a fingerprint lives after its last declaring pass. Its expiry releases every member it owns. |
+| `_NGINX_FLEET_MEMBER_TTL` | `21600` | 600–604800 | Seconds a member address or network lives. This is the ceiling on any collateral. |
+| `_NGINX_FLEET_RELOAD_GAP` | `600` | 0–3600 | Minimum seconds between reloads for a member-only change; a fingerprint change always applies at once. |
+| `_NGINX_FLEET_MAX_FP` | `16` | 1–64 | Live fingerprints kept, newest expiry first; the rest are dropped with a `CAP` line. |
+| `_NGINX_FLEET_MAX_ENTRIES` | `20000` | 100–100000 | Entries per rendered map, newest expiry first. |
+| `_NGINX_FLEET_UA_EXEMPT` | *(empty)* | ERE | **Additive**: agents to exempt on top of the shipped roster, which it can never remove. Quote the value (the shipped roster contains a space, as with `_NGINX_HARVEST_UA_EXEMPT`). An invalid pattern is dropped with a `CONFIG` line and the shipped roster alone applies. |
+
+The two action knobs exist for **reactive loosening after a confirmed legitimate report**,
+not for arming a box: the refusal is on everywhere by default, in both scopes, with no
+`REPORT` soak period. Tune the gates **tighter, never looser**, and only on evidence.
+
 ## Part 5 — operations and tuning
 
 ### Reading live state
@@ -1518,6 +1877,9 @@ Everything the Abuse Guard does is reflected in plain-text files, safe to `cat`/
 | Persistent denies | `csf -g <ip>` / `/etc/csf/csf.deny` | water's escalations tagged `Brute force Web Server` |
 | i18n-flood + FPM alerts | `/var/xdrago/monitor/log/i18n_flood.log` | Tier-B detector trips and FPM `max_children` hits |
 | i18n-flood snapshots | `/var/xdrago/monitor/log/i18n_flood/` | per-trip top talkers/UAs/lang-prefixes; the window state and FPM byte-offsets live here too |
+| Crawler-fleet events | `/var/xdrago/monitor/log/fleet.log` | one line per `CONFIG`/`NOTE`/`DECLARE`/`WOULD-BAN`/`EXEMPT`/`REALIP-SUSPECT`/`UNBANNABLE`/`CAP`/`RELOAD`/`ALERT`; rotated daily |
+| Crawler-fleet store | `/var/xdrago/monitor/log/fleet.tempban` | live fingerprints (`F`) and members (`A`/`N`), agents base64; rewritten every pass, **do not hand-edit** |
+| Live fleet maps | `/data/conf/nginx_fleet_{ua,addr,net}.conf` | the rendered exact-match keys; regenerated by `nginx_fleet.sh`, **do not hand-edit** |
 
 ```bash
 # Who is currently temp-banned, and on which ports
@@ -1535,6 +1897,32 @@ cut -d'#' -f1 /var/xdrago/monitor/log/scan_nginx.archive.log | sort | uniq -c | 
 # How many entries are in the live geo right now?
 grep -c . /data/conf/nginx_banned_ips.conf
 ```
+
+For the crawler-fleet refusal, read its own log and its rendered maps:
+
+```bash
+# What has the fleet detector declared, refused or refused to declare?
+tail -n 50 /var/xdrago/monitor/log/fleet.log
+
+# Which fingerprints are live, in which scope, and until when? (expiry is epoch seconds)
+awk -F'|' '$1 == "F" { print $3, "scope=" $4, "expires=" $2 }' \
+  /var/xdrago/monitor/log/fleet.tempban
+date +%s
+
+# Which agent does a fingerprint id stand for, and how many members does it hold?
+cat /data/conf/nginx_fleet_ua.conf
+grep -c . /data/conf/nginx_fleet_addr.conf /data/conf/nginx_fleet_net.conf
+
+# Is a specific visitor being refused? (its address appears with the vhost and the id)
+grep -F '203.0.113.7' /data/conf/nginx_fleet_addr.conf
+
+# What would BAN have refused in a saved log set? (read-only, writes nothing)
+bash /var/xdrago/nginx_fleet.sh --replay /var/log/nginx/access.log
+```
+
+A `429` in a vhost access log is the refusal itself: count them per agent to see which
+fingerprint is doing the work. `loadreport` lists `nginx_fleet.sh` as a cron launcher, so its
+whole per-minute cost (itself plus its analyser) lands in one row of the BY LAUNCHER view.
 
 For the i18n-flood activity specifically, `floodreport` summarises the detector's own log
 and snapshots into a windowed report — what happened, when and how (per-vhost event counts,
@@ -1592,7 +1980,17 @@ touching SSH/FTP bans:
 5. re-asserts the synproxy rules (`synproxy_reassert -p "443 80" --no-quic`) when
    `/etc/csf/csfpost.d/synproxy.sh` is present — the bulk `csf -dr`/`csf -tr` above can flush
    the synproxy chain, so this restores it (mirrors `scan_nginx` / `guest-water`);
-6. regenerates the nginx geo-ban set via `nginx_deny.sh` so `$is_banned` clears at once.
+6. releases the crawler-fleet refusals: it removes the fleet store under the detector's own
+   lock (so a pass in flight cannot move its store back over the removal) and writes the
+   clear stamp `/var/xdrago/monitor/log/.fleet.clear.stamp`, which makes the detector ignore
+   every pre-clear log line instead of re-declaring the same fleet from traffic still sitting
+   in `access.log`;
+7. regenerates the nginx geo-ban set via `nginx_deny.sh` so `$is_banned` clears at once, and
+   the fleet maps via `nginx_fleet.sh` so `$boa_fleet_block` clears with it.
+
+Its report counts the fleet store alongside the csf bans (`crawler-fleet store (nginx 429) :
+N fingerprints, N addresses, N networks`), and `--dry-run` shows those counts without
+touching anything.
 
 ```bash
 clearwebbans --dry-run   # report counts + a sample, change nothing
@@ -1692,6 +2090,51 @@ show `HTTP/1.0`, the box is behind a downgrading proxy — fix that proxy to
 The windowed state lives at `/var/xdrago/monitor/log/http10_auth.window`; bans land in
 `web.log` and the csf pipeline like any other detector, so `clearwebbans` (above) recovers a
 false positive.
+
+### Loosening the crawler-fleet refusal after a confirmed false positive
+
+The refusal is on by default in both scopes, so there is nothing to arm — you only ever act
+to **loosen**, and only on a confirmed report from a real caller. Confirm it first: the
+caller's requests answer `429`, its agent appears in `/data/conf/nginx_fleet_ua.conf`, its
+address (or its /16) appears in the matching `addr`/`net` fragment, and `fleet.log` carries
+the `DECLARE` line with the gate statistics that produced it. A replay over the saved log
+(`--replay`, above) shows the same decision offline, including what the other action would
+have done.
+
+Then reach for the smallest lever that fits, in this order:
+
+```bash
+# in /root/.barracuda.cnf
+
+# 1. the caller is a legitimate, identifiable agent: exempt it. ADDITIVE — this
+#    never removes a shipped exemption. Quote the value.
+_NGINX_FLEET_UA_EXEMPT="PartnerFetcher|InternalIndexer"
+
+# 2. the caller cannot be named, but its scope can: loosen that ONE scope and
+#    leave the other refusing (REPORT logs WOULD-BAN and refuses nothing)
+_NGINX_FLEET_CRAWLER_ACTION=REPORT     # self-declared crawler names, per /16
+_NGINX_FLEET_ACTION=REPORT             # everything else, per address
+
+# 3. the shape was simply too easy to reach on this box: tighten a gate
+_NGINX_FLEET_IP_MIN=64
+_NGINX_FLEET_SHARE_PCT=15
+
+# 4. last resort, and it gives up the protection entirely
+_NGINX_FLEET_DETECT=NO
+```
+
+Every one of these takes effect on the next per-minute pass; nothing needs a hand reload. A
+scope moved to `REPORT` (or `_NGINX_FLEET_DETECT=NO`) stops storing and rendering that
+scope's fingerprints, so its refusals lift on that same pass. To release everything at once,
+including the evidence still sitting in `access.log`, run `clearwebbans` (above) — it clears
+the fleet store, stamps the clear so the detector ignores pre-clear lines, and re-renders the
+maps. Left alone, a fingerprint expires `_NGINX_FLEET_TTL` after its last declaring pass and
+takes all its members with it.
+
+An address you trust permanently belongs in `csf.allow` (or `web6.allow` for IPv6): a
+whitelisted address is excluded from every gate count, never joins a member list, and a /16
+holding one is never refused as a network. That is the durable fix for a partner service or
+a monitoring fleet, and it protects it from every other detector at the same time.
 
 ### Enabling debug output
 

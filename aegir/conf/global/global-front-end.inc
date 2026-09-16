@@ -51,7 +51,7 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
       $base_url = 'https://' . $_SERVER['HTTP_HOST'];
       if ($conf['install_profile'] != 'hostmaster') {
         $_SERVER['HTTPS'] = 'on';
-        if ($drupal_core >= 7) {
+        if ($drupal_core >= 7 || !empty($backdropcms)) {
           ini_set('session.cookie_secure', TRUE);
           if ($is_dev) {
             header('X-Cookie-Sec: YES');
@@ -164,8 +164,10 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
         header('X-Is-Logged-In-A:' . $is_logged_in);
       }
     }
-    elseif ($drupal_core == 7) {
-      // For Drupal 7 use sha256 hash and cookie prefix based on session.cookie_secure
+    elseif ($drupal_core == 7 || !empty($backdropcms)) {
+      // For Drupal 7 (and Backdrop, which derives its session name the same
+      // way from $cookie_domain) use sha256 hash and cookie prefix based on
+      // session.cookie_secure
       $cookie_prefix = ini_get('session.cookie_secure') ? 'SSESS' : 'SESS';
       $test_sess_name = $cookie_prefix . substr(hash('sha256', $cookie_domain), 0, 32);
       if ($is_dev) {
@@ -274,7 +276,12 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     if ($conf['install_profile'] != 'hostmaster' && ($expire_in_seconds > -1)) {
       header("X-Accel-Expires: " . $expire_in_seconds);
       if ($expire_in_seconds > -1 && $expire_in_seconds < 2) {
-        $conf['cache'] = 0; // Disable page caching on the fly
+        if (!empty($backdropcms)) {
+          $config['system.core']['cache'] = 0; // Disable page caching on the fly
+        }
+        else {
+          $conf['cache'] = 0; // Disable page caching on the fly
+        }
       }
     }
   }
