@@ -24,6 +24,14 @@
       Valkey backoff flag on recovery: the first web worker runs the
       pool-wide APCu flush the flag exists for, so a recovery seen first
       by cron or a task no longer leaves stale front-layer entries.
+    * The shared Valkey backoff flag now lives in its own non-sticky
+      directory: in the sticky /var/tmp/fpm only the pool that armed the
+      flag could refresh or consume it, so on a box with several
+      instances the other pools never ran their recovery flush and, with
+      a foreign flag in place, could not arm a backoff of their own.
+    * A failed Valkey probe drops its connection instead of closing it:
+      the close sent a QUIT and waited a second full read timeout on a
+      server that had accepted the connection but answered nothing.
 
 @=> Security
 
