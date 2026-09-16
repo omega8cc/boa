@@ -2,6 +2,29 @@
 ### In development - changes since BOA-5.88.855
 ###
 
+@=> Backdrop CMS
+
+    * Backdrop sites now honour the BOA control INI files exactly as
+      Drupal sites do: the Backdrop settings include is a chain head of
+      the same shape as the Drupal ones and runs the same partials, so
+      sessions, the anonymous access gates, the cookie domain, the Speed
+      Booster TTL, the web query cap, the Valkey switches and probe
+      tuning, the dev-alias diagnostic headers, the bot, web-cron, nodns
+      and hidden-URI gates and the /data/conf override hooks all reach
+      Backdrop; the shared Valkey backoff flag is armed and cleared with
+      the same accounting on both cores.
+    * Three keys read differently on Backdrop, each documented in the
+      INI templates: disable_drupal_page_cache only switches the page
+      cache off, redis_flush_forced_mode applies its 24-hour cap only,
+      and the keys without a Backdrop counterpart are read for the
+      headers alone.
+    * The dev-alias diagnostic headers now also show the Valkey probe
+      tuning keys and the web query cap, on every core.
+    * A command-line process (drush, bee) no longer consumes the shared
+      Valkey backoff flag on recovery: the first web worker runs the
+      pool-wide APCu flush the flag exists for, so a recovery seen first
+      by cron or a task no longer leaves stale front-layer entries.
+
 @=> Security
 
     * New crawler-fleet refusal: a distributed crawl that shares one

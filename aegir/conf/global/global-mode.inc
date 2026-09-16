@@ -123,6 +123,9 @@ elseif ($drupal_core == 10) {
 elseif ($drupal_core == 11) {
   $drupal_id = 'DXI';
 }
+elseif (!empty($backdropcms)) {
+  $drupal_id = 'BD';
+}
 else {
   $drupal_id = 'ND';
 }
