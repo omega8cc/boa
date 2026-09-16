@@ -19,7 +19,10 @@ if ($is_bot) {
  * Site cron protection - cron works only for live sites
  */
 if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) ||
-    preg_match("/^\/cron\//", $_SERVER['REQUEST_URI'])) {
+    preg_match("/^\/cron\//", $_SERVER['REQUEST_URI']) ||
+    (!empty($backdropcms) && isset($_SERVER['REQUEST_URI']) &&
+     preg_match("/^\/core\/cron\.php/", $_SERVER['REQUEST_URI']))) {
+  // Backdrop serves web cron from core/cron.php only; same gate, same policy.
   if (($is_tmp) || (file_exists('/data/conf/sites-cron-off.ctrl'))) {
     // Ignore cron requests
     header('X-Accel-Expires: 300');
@@ -161,7 +164,7 @@ if (isset($_SERVER['HTTP_HOST']) && !isset($_SERVER['SERVER_NAME'])) {
 if (!$is_backend) {
   if (isset($_SERVER['SERVER_SOFTWARE']) &&
       !preg_match("/ApacheSolarisNginx/i", $_SERVER['SERVER_SOFTWARE'])) {
-    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.31.5';
+    $_SERVER['SERVER_SOFTWARE'] = 'ApacheSolarisNginx/1.31.6';
   }
 }
 
@@ -254,27 +257,14 @@ if ($conf['install_profile'] == 'hostmaster') {
 /**
  * Optional site and platform level settings defined in the ini files
  * Note: the site-level ini file takes precedence over platform level ini
+ *
+ * The parse itself lives in the core-agnostic global-ini-parse.inc, shared
+ * with the Backdrop chain head; $all_ini is seeded here so every consumer
+ * below has the defaults even if that partial is unreadable.
  */
 $all_ini = $boa_ini;
-if (is_readable('sites/all/modules/boa_platform_control.ini')) {
-  $ini_plr_src = 'sites/all/modules/boa_platform_control.ini';
-}
-if ($ini_plr_src) {
-  $usr_plr_ini = array();
-  $usr_plr_ini = parse_ini_file($ini_plr_src);
-}
-if (is_readable('sites/' . $_SERVER['SERVER_NAME'] . '/modules/boa_site_control.ini')) {
-  $ini_loc_src = 'sites/' . $_SERVER['SERVER_NAME'] . '/modules/boa_site_control.ini';
-}
-if ($ini_loc_src) {
-  $usr_loc_ini = array();
-  $usr_loc_ini = parse_ini_file($ini_loc_src);
-}
-if (is_array($usr_plr_ini) && $usr_plr_ini) {
-  $all_ini = array_merge($all_ini, $usr_plr_ini);
-}
-if (is_array($usr_loc_ini) && $usr_loc_ini) {
-  $all_ini = array_merge($all_ini, $usr_loc_ini);
+if (is_readable('/data/conf/global/global-ini-parse.inc')) {
+  include_once('/data/conf/global/global-ini-parse.inc');
 }
 
 
@@ -321,6 +311,16 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
   header("X-Ini-Set-Composer-Manager-Vendor-Dir: " . $all_ini['set_composer_manager_vendor_dir']);
   header("X-Ini-AutoSlave-Enable: " . $all_ini['autoslave_enable']);
   header("X-Ini-CacheConsistent-Enable: " . $all_ini['cache_consistent_enable']);
+  header("X-Ini-Valkey-Connect-Timeout: " . $all_ini['redis_connect_timeout']);
+  header("X-Ini-Valkey-Read-Timeout: " . $all_ini['redis_read_timeout']);
+  header("X-Ini-Valkey-Backoff-Ttl: " . $all_ini['redis_backoff_ttl']);
+  header("X-Ini-Valkey-Probe-Retry: " . $all_ini['redis_probe_retry']);
+  header("X-Ini-Valkey-Flush-Apcu-On-Recovery: " . $all_ini['redis_flush_apcu_on_recovery']);
+  header("X-Ini-Valkey-Debug-Header: " . $all_ini['redis_debug_header']);
+  header("X-Ini-Valkey-Debug: " . $all_ini['redis_debug']);
+  if (isset($all_ini['sql_web_max_exec_ms'])) {
+    header("X-Ini-Sql-Web-Max-Exec-Ms: " . $all_ini['sql_web_max_exec_ms']);
+  }
 }
 
 /**
@@ -407,6 +407,30 @@ if (PHP_SAPI !== 'cli' && isset($databases['default']['default'])) {
       $databases['default']['default']['init_commands'] = array();
     }
     $databases['default']['default']['init_commands']['boa_max_exec'] =
+      'SET @boa_max_exec = 1 /*!50708 , SESSION max_execution_time = ' . $boa_max_exec_ms . ' */';
+  }
+  unset($boa_max_exec_ms);
+}
+
+/**
+ * The same cap for Backdrop, on the array Backdrop actually reads.
+ *
+ * The Backdrop settings template writes the simplified scalar $database, a
+ * local of backdrop_settings_initialize() that core copies wholesale into
+ * $databases['default']['default'] only AFTER settings.php has returned, so
+ * the $databases form above is never seen there. The mysql driver merges
+ * and executes init_commands the same way, so only the target array differs.
+ */
+if (PHP_SAPI !== 'cli' && !empty($backdropcms) && isset($database) && is_array($database)) {
+  $boa_max_exec_ms = 30000;
+  if (isset($all_ini['sql_web_max_exec_ms'])) {
+    $boa_max_exec_ms = (int) $all_ini['sql_web_max_exec_ms'];
+  }
+  if ($boa_max_exec_ms > 0) {
+    if (!isset($database['init_commands']) || !is_array($database['init_commands'])) {
+      $database['init_commands'] = array();
+    }
+    $database['init_commands']['boa_max_exec'] =
       'SET @boa_max_exec = 1 /*!50708 , SESSION max_execution_time = ' . $boa_max_exec_ms . ' */';
   }
   unset($boa_max_exec_ms);

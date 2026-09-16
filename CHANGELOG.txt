@@ -1,4 +1,174 @@
 ###
+### In development - changes since BOA-5.88.855
+###
+
+@=> Backdrop CMS
+
+    * Backdrop sites now honour the BOA control INI files exactly as
+      Drupal sites do: the Backdrop settings include is a chain head of
+      the same shape as the Drupal ones and runs the same partials, so
+      sessions, the anonymous access gates, the cookie domain, the Speed
+      Booster TTL, the web query cap, the Valkey switches and probe
+      tuning, the dev-alias diagnostic headers, the bot, web-cron, nodns
+      and hidden-URI gates and the /data/conf override hooks all reach
+      Backdrop; the shared Valkey backoff flag is armed and cleared with
+      the same accounting on both cores.
+    * Three keys read differently on Backdrop, each documented in the
+      INI templates: disable_drupal_page_cache only switches the page
+      cache off, redis_flush_forced_mode applies its 24-hour cap only,
+      and the keys without a Backdrop counterpart are read for the
+      headers alone.
+    * The dev-alias diagnostic headers now also show the Valkey probe
+      tuning keys and the web query cap, on every core.
+    * A command-line process (drush, bee) no longer consumes the shared
+      Valkey backoff flag on recovery: the first web worker runs the
+      pool-wide APCu flush the flag exists for, so a recovery seen first
+      by cron or a task no longer leaves stale front-layer entries.
+    * The shared Valkey backoff flag now lives in its own non-sticky
+      directory: in the sticky /var/tmp/fpm only the pool that armed the
+      flag could refresh or consume it, so on a box with several
+      instances the other pools never ran their recovery flush and, with
+      a foreign flag in place, could not arm a backoff of their own.
+    * A failed Valkey probe drops its connection instead of closing it:
+      the close sent a QUIT and waited a second full read timeout on a
+      server that had accepted the connection but answered nothing.
+
+@=> Security
+
+    * New crawler-fleet refusal: a distributed crawl that shares one
+      exact user agent against one site is refused by the web server
+      with 429, on by default on every box, in both of its scopes.
+    * A self-declared crawler name is refused per member /16 network;
+      every other agent only from an address already seen acting for
+      the fleet, and only for a request that carries no Referer and
+      no session cookie -- a real visitor who shares the address or
+      the string passes by following any link or by logging in.
+    * The refusal never feeds the IDS score or a firewall ban, so it
+      can never escalate into a blocked address, and an invalid
+      setting falls back to refusing rather than to allowing.
+    * Search engines, monitors, the allow-by-default AI classes and
+      the link previewers are exempt by roster; an operator exemption
+      only ever adds to that roster and can never remove from it.
+    * A site whose real-client chain has collapsed onto a CDN edge is
+      reported and skipped instead of declared, and a box degrading
+      under load is never mistaken for a fleet.
+    * Textpattern and subdir vhosts drop security-banned client
+      addresses like every other vhost; the ban pipeline's closing
+      guard had never reached them.
+    * An invalid crawler-exemption override keeps the shipped
+      exemption list instead of voiding every exemption, so one typo
+      in a control file no longer strips the protection that list
+      gives the legitimate crawlers, unfurlers and uptime probes.
+    * The nightly's platform and site permission legs withhold the
+      passes that walk through a code directory name, and say so in
+      the account's night log, when that name (modules, themes,
+      libraries or drush under sites/all; modules, themes or libraries
+      in a site directory) is a symlink, instead of expanding into
+      whatever it points at, while the narrowing passes still run so
+      a refused platform or site ends no wider than an accepted one
+      (on a tenant-built platform the whole-tree pass that widens the
+      tree narrows every site's settings-class files back itself, so
+      a site the pass skips altogether ends no wider either); the
+      platform ownership and permission helpers refuse the same
+      shape, resolve the root they were handed before any check reads
+      it and leave libraries/tcpdf alone when it or its cache child is
+      a symlink; the permission helper's Drupal 10+ .drush.inc sweep
+      no longer walks through a symlinked modules/ or site directory;
+      and the site legs handle the files/ and private/ child entries
+      on the resolved store path only, never through a planted link.
+
+@=> New Features
+
+    * The new nginx_fleet.sh detector reads the last few minutes of
+      the access log once a minute and declares a fingerprint only
+      when one route class of one site clears every gate at once:
+      scale, share of the site's traffic, no Referer, a different URL
+      on almost every request, and a healthy status mix.
+    * Refusals expire on their own -- a fingerprint an hour after its
+      last sighting, a member address or network within six hours --
+      and a fingerprint's expiry releases all of its members with it.
+    * Two settings loosen the refusal one scope at a time after a
+      confirmed report from a real caller; there is no arming step
+      and no report-only soak period to sit through first.
+    * A read-only replay mode measures the refusal against saved
+      logs, per fingerprint and per scope, before anything is changed
+      on a live box.
+    * clearwebbans releases the fleet refusals along with the web
+      bans and has the detector ignore pre-clear log lines, so a
+      cleared fleet is not re-declared from traffic already logged.
+    * The generated maps go live only after an nginx configtest
+      accepts them, and the last good set is restored if it does not,
+      so a fleet map can never take the web server down.
+
+@=> Improvements
+
+    * The Run db updates command (provision-update) applies a Drupal 10+
+      site's pending database updates with the site's own Drush, through
+      the same window the deploy uses: a real unlock of a locked platform,
+      the site-local updatedb, a real re-lock and core's own container
+      rebuild. Aegir's Drush 8 never runs updatedb on Drupal 10+ any more.
+    * A deploy whose closing in-process pass cannot start Drupal ends
+      WARNING and names what it skipped (the packages map, the URL-rename
+      engine, the node access rebuild) instead of a plain log line.
+    * A D10+ migrate or clone no longer spends a no-op backend call and a
+      five-second pause on the old platform before its database updates.
+    * A revert of an account's per-instance group (or the rollback of a
+      convert) that finds an identity in use records it, and the
+      limited-shell worker finishes the move back to the box-wide group on
+      its first idle pass (the nightly per-account pass writes with the
+      box-wide group meanwhile); the worker also rebuilds a tenant's yml
+      alias store (the account's and the tenant's limited-shell copy) when
+      a site's drushrc alias is gone, so a deleted site no longer leaves its
+      converted alias behind; the worker itself is installed through the
+      versioned fetcher, which refuses a mirror that has not caught up yet
+      instead of stamping the new serial on the previous bytes; a primary-group
+      move deferred for over a day is raised through the incident channel.
+
+
+    * Query-mutation spam that grows an "&amp;" chain one layer per
+      hop is answered 404 at the first doubled layer, which also
+      stops the crawler discovering the deeper URLs at all.
+    * The stale-Chrome maps cover Chrome/100-139, with the rule to
+      move that bound by release date rather than by counting
+      versions written down alongside them.
+    * Chrome/128 and Chrome/138 are exempt from both stale-Chrome maps:
+      they are the last releases for macOS 10.15 and macOS 11, so a
+      Mac pinned there for life can still use site search.
+    * Generated maps holding thousands of keys no longer make every
+      configtest and reload warn about the map hash size.
+
+@=> Important Fixes
+
+    * xmass no longer aborts a live sync when a file vanishes between rsync's
+      directory listing and its extended-attribute read: rsync then exits 23
+      instead of 24, and the three transfer wrappers now read an exit 23 made
+      only of such sender-side "No such file or directory" errors as the
+      benign vanished-file case they already tolerate. Any other error keeps
+      the pass denied. Found by the readiness-gate ring on a churning tree.
+
+    * A tenant's queued upgrade (static/control/run-upgrade.pid) is no longer
+      lost when two per-account runners tick in the same second and the
+      second octopus refuses on the first one's lock: the runner now watches
+      the octopus it launched and puts the trigger back when it exited
+      without running, so the next quiet tick retries it. Found by the same
+      ring after a promotion re-armed five deferred upgrades at once.
+
+
+    * A clone or rename whose deploy fails no longer leaves the new site's
+      context behind (the Drush alias and its converted yml alias); the
+      source site keeps its own aliases untouched.
+    * A per-instance group move that was interrupted by a process starting
+      in the same instant no longer parks the identity's home field at the
+      staging directory until the next repair pass: both tools retry the
+      restore for ten seconds and keep the repair record until it is back.
+
+
+    * The web IDS scores every line of every pass: lines the web
+      server appended while a pass was running were jumped over and
+      never seen by any detector.
+
+
+###
 ### Stable BOA-5.88.855 PRO/LTS - KRAKEN EDITION
 ### Date: Thu 27 Aug 2026 15:48:31 CEST in Warsaw
 ### Enjoy the release of the Kraken

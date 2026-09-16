@@ -143,6 +143,31 @@ _if_octopus_upgrade() {
     _UP_OCTOPUS_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-octopus-${_NOW}.log"
     mkdir -p ${_LOG_UP_DIR}
     nohup /opt/local/bin/octopus up-${_tRee} ${_H_USER} force log noscreen >${_UP_OCTOPUS_LOG} 2>&1 &
+    _upPid=$!
+    # The guard above is not atomic with octopus's own lock: two runners
+    # ticking in the same second both pass it, both delete their trigger,
+    # and the octopus that reaches _up_start second refuses on the first
+    # one's boa_run.pid and exits within a second -- the losing tenant's
+    # queued upgrade is then gone (seen on a promoted mirror re-arming five
+    # accounts at once). A real upgrade never ends this fast, so an octopus
+    # that is gone within the wait did not run: put the trigger back and
+    # let the next tick retry once the lock is free. The refusal text is the
+    # fast path; the liveness check covers every other early exit (the load
+    # ceiling's "try again later", a wait marker), and a slow box that takes
+    # longer than the window to reach the lock check still holds a live
+    # octopus at its end, which is left alone.
+    _upWait=0
+    while [ "${_upWait}" -lt 30 ]; do
+      if grep -qE 'Another BOA installer is running|Some important system task is running|is still in flight' ${_UP_OCTOPUS_LOG} 2>/dev/null \
+        || ! kill -0 "${_upPid}" 2>/dev/null; then
+        sleep 1
+        touch ${_upCtr}
+        echo "${_H_USER}: octopus did not start (BOA lock held or refused), run-upgrade.pid kept for the next tick" >>${_UP_OCTOPUS_LOG}
+        break
+      fi
+      sleep 1
+      _upWait=$(( _upWait + 1 ))
+    done
   fi
 }
 

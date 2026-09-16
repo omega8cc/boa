@@ -132,10 +132,13 @@ _NGINX_DOS_DIV_INC_NR="40" #--------- Default divisor for increments
 _NGINX_DOS_IGNORE="foo|bar" #-------- Keywords to ignore the requests if found
 _NGINX_DOS_INC_MIN="3" #------------- Default min allowed number for increments
 _NGINX_DOS_LIMIT=399 #--------------- Default 399/1999 limit of page views per IP
-_NGINX_DOS_LINES=1999 #-------------- Default number of access.log lines to check
+_NGINX_DOS_LINES=1999 #-------------- Lines read on a baseline pass only (first run, lost offset, rotation); later passes read just the new bytes
 _NGINX_DOS_LOG=SILENT #-------------- DOS logging: SILENT, NORMAL or VERBOSE; absorbs .debug.monitor.log.cnf (marker ensures NORMAL; off = rm marker AND set SILENT); survives retunes unlike its _NGINX_DOS_* siblings
 _NGINX_DOS_MODE=2 #------------------ 1 or 2 (default)
 _NGINX_DOS_STOP="foo|bar" #---------- Adds full _NGINX_DOS_LIMIT to counter (immediate ban)
+_NGINX_FLEET_ACTION=BAN #------------ Crawler-fleet refusal, address scope (browser-shaped agents): BAN (default) refuses member addresses with 429; REPORT only logs WOULD-BAN, for a confirmed false positive
+_NGINX_FLEET_CRAWLER_ACTION="" #----- Same for the network scope (self-declared crawler names, per /16): BAN or REPORT; empty inherits _NGINX_FLEET_ACTION
+_NGINX_FLEET_DETECT=YES #------------ Crawler-fleet detector (nginx_fleet.sh) on when YES; NO also releases every fleet refusal on its next run
 ###
 _NGINX_EXTRA_CONF="" #---------- Allows to add custom options to Nginx build
 _NGINX_FORWARD_SECRECY=YES #---- Installs PFS Nginx support when YES (default)

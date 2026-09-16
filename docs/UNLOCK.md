@@ -37,7 +37,21 @@ platform, tracked by marker files under `~/log/ctrl/`):
   execute-only on `sites`, every `sites/<uri>` stays `0755`, and a
   symlinked `sites` or `sites/all` makes the pass skip the platform);
   stray code archives (`*.tar`, `*.tar.gz`, `*.zip`) inside `sites/all`
-  trees are deleted.
+  trees are deleted. A platform whose `sites/all/modules`,
+  `sites/all/themes`, `sites/all/libraries` or `sites/all/drush` is a
+  symlink has the legs that walk through those names withheld (a `SKIP`
+  line in the account's nightly log names the link, once per night); the
+  `sites/` skeleton modes are still re-asserted and the pass marker still
+  stamped, so the platform ends no wider than an accepted one and is
+  examined again the next night (a `modules` link already in place when
+  the pass starts is refused earlier still, at the per-site control-dir
+  gate, which skips that site's whole iteration with its own `SKIP`
+  line; a Grav or Textpattern platform is withheld and reported the same
+  way, its `sites/all/drush` not created for that pass either). None of
+  the four is ever legitimately a symlink, and the platform ownership and
+  permission helpers Verify runs refuse the same shape; both also leave
+  `sites/all/libraries/tcpdf` alone when it or its `cache` child is a
+  symlink.
 - **Built-in platforms** (`~/distro/NNN/<platform>`): the tenant-writable
   `sites/all/{modules,themes,libraries}` keep `02775`/`0664`; core,
   profiles, includes, vendor and the platform root take `0755`/`0644`, no
@@ -50,7 +64,23 @@ platform, tracked by marker files under `~/log/ctrl/`):
   `oN` and the account's group with directories `02775` and files `0664`; settings-class
   files (`settings.php`, `local.settings.php`, `civicrm.settings.php`)
   kept at `oN:www-data`, mode `0440`/`0640`; the site's `files/` tree
-  chowned to `oN:www-data` (symlink-safe, `chown -h`).
+  chowned to `oN:www-data` (symlink-safe, `chown -h`). A site whose
+  `modules`, `themes` or `libraries` is a symlink has only the legs that
+  reach through those names withheld (the archive sweep, the
+  `modules/local-allow.info` removal and the code-dir ownership pass),
+  with a `SKIP` line naming the link; the settings-file narrowing and the
+  `files/` and `private/` legs still run, so the site ends no wider than
+  an accepted one. That split covers a link that appears while the pass
+  is already under way; a `modules` link already in place when the site's
+  iteration begins is refused earlier still, at the per-site control-dir
+  gate, which skips that whole iteration, so no leg of the site pass runs
+  for it that night and the `SKIP` line naming `<site>/modules` is the
+  gate's, not the site pass's (on a tenant-built platform the whole-tree
+  pass that widened the tree narrows every site's settings-class files
+  back itself, so that site ends no wider either). The site ownership and
+  permission helpers Verify runs refuse that shape outright; the `files/`
+  and `private/` child entries are handled on the resolved store path
+  only, never through a planted link.
 
 Group-write for the shell pair survives all of this — the lock manages the
 **ownership axis**, and with it the owner-only rights: chmod, git's
