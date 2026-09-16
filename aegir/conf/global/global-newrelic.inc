@@ -34,7 +34,7 @@ if (extension_loaded('newrelic') && !empty($all_ini['enable_newrelic_integration
       elseif (isset($_SERVER['DRUPAL_SITE_URI'])) {
         $uri = $_SERVER['DRUPAL_SITE_URI'];
       }
-      else {
+      elseif (class_exists('\Drupal')) {
         // Fallback: Attempt to determine URI using Drupal APIs
         // Note: In Drush context, some Drupal services might not be fully bootstrapped
         try {
@@ -44,6 +44,15 @@ if (extension_loaded('newrelic') && !empty($all_ini['enable_newrelic_integration
         catch (\Exception $e) {
           // Unable to determine URI; proceed without setting it
         }
+      }
+      elseif (!empty($_SERVER['HTTP_HOST'])) {
+        // No static Drupal class (Backdrop under bee, or any pre-D8 core
+        // without Drush 8): the site name the CLI exported is all there is;
+        // bee puts it in HTTP_HOST and leaves SERVER_NAME at 'localhost'.
+        $uri = $_SERVER['HTTP_HOST'];
+      }
+      elseif (isset($_SERVER['SERVER_NAME'])) {
+        $uri = $_SERVER['SERVER_NAME'];
       }
     }
 
