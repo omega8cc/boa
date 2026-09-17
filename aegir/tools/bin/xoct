@@ -252,7 +252,7 @@ _mig_resolve() {
 ### relaying source can hold several routable addresses and the target's
 ### reconcile must keep trusting all of them, not just the primary.
 _mig_write_record() {
-  local _root="$1" _role="$2" _peer_ip="$3" _peer_oct="$4" _mode="$5" _scope="$6" _dl="$7" _peer_ips="$8"
+  local _root="$1" _role="$2" _peer_ip="$3" _peer_oct="$4" _mode="$5" _scope="$6" _dl="$7" _peer_ips="$8" _rdl="$9"
   local _cnf="${_root}/${_MIG_CNF_NAME}" _tmp
   _mig_valid_mode "${_mode}" || { echo "ALRT: refusing to write invalid mode '${_mode}'"; return 1; }
   mkdir -p "${_root}/log" 2>/dev/null
@@ -266,6 +266,10 @@ _mig_write_record() {
     echo "_MIG_MODE=${_mode}"
     echo "_MIG_SCOPE=${_scope}"
     echo "_MIG_DEADLINE=${_dl}"
+    ### The withdrawal date a retirement promised is its own key: a deadline
+    ### on a retired record would be inherited by a later mode declaration
+    ### and mailed inside the wrong arrangement block.
+    [ -n "${_rdl}" ] && echo "_MIG_RETIRE_DATE=${_rdl}"
     [ -n "${_peer_ips}" ] && echo "_MIG_PEER_IPS=${_peer_ips}"
     echo "_MIG_STAMPED=$(date -u '+%Y-%m-%d')"
   } > "${_tmp}" || { rm -f "${_tmp}"; return 1; }
@@ -1149,6 +1153,15 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
               wait
               sed -i "s/_domain_name/${_Dom}/g" ${_Vhs}
               wait
+              ### The renamed-site redirect (see the HTTP vhost below): keep
+              ### the template's listen/TLS lines -- the old name still has
+              ### its certificate here -- and answer every path with the 301
+              ### instead of proxying to a name the target no longer serves.
+              if [ -n "${_XOCT_TARGET_FQDN}" ] && [ -n "${_XOCT_MY_FQDN}" ] \
+                && [ "${_Dom}" != "${_Dom%.${_oct}.${_XOCT_MY_FQDN}}" ]; then
+                sed -i "/^  location /,/^  }/d" ${_Vhs}
+                sed -i "s|^  log_not_found .*|&\n  return 301                   \$scheme://${_Dom%.${_XOCT_MY_FQDN}}.${_XOCT_TARGET_FQDN}\$request_uri;|" ${_Vhs}
+              fi
               chown ${_oct}:${_OCT_GRP} ${_Vhs}
               chmod 600 ${_Vhs}
             elif [ -d "${_USR}/config/server_master/ssl.d/${_Dom}" ]; then
@@ -1174,11 +1187,42 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             else
               mv -f ${_Vht} ${_Vhd}
             fi
-            cp -a /var/xdrago/conf/proxy.conf ${_Vht}
-            sed -i "s/.*server_name.*;/  server_name  ${_NMS};/g" ${_Vht}
-            wait
-            sed -i "s/_target_ip/${_tgt}/g" ${_Vht}
-            wait
+            ### A site named under THIS box's own hostname was renamed on the
+            ### target by the cutover (step 13), so its old name no longer
+            ### exists there: proxying it forwards to the target's catch-all.
+            ### When the caller names the target's hostname, the old name is
+            ### answered with a 301 to the renamed site instead (design ruling
+            ### D-17; e2e CUT-E36). The control panel is never proxied and is
+            ### not a site of this loop.
+            _REDIR_TO=""
+            if [ -n "${_XOCT_TARGET_FQDN}" ] && [ -n "${_XOCT_MY_FQDN}" ] \
+              && [ "${_Dom}" != "${_Dom%.${_oct}.${_XOCT_MY_FQDN}}" ]; then
+              _REDIR_TO="${_Dom%.${_XOCT_MY_FQDN}}.${_XOCT_TARGET_FQDN}"
+            fi
+            if [ -n "${_REDIR_TO}" ]; then
+              cat > ${_Vht} <<REDIR
+###
+### Plain HTTP proxy (START) -- renamed site: redirect to its new name
+###
+server {
+  listen                       *:80;
+  server_name                  ${_NMS};
+  access_log                   off;
+  log_not_found                off;
+  return 301                   \$scheme://${_REDIR_TO}\$request_uri;
+}
+###
+### Plain HTTP proxy (END)
+###
+REDIR
+              echo "INFO: site ${_Dom} on ${_oct}: renamed by the cutover, its old name answers 301 to ${_REDIR_TO}"
+            else
+              cp -a /var/xdrago/conf/proxy.conf ${_Vht}
+              sed -i "s/.*server_name.*;/  server_name  ${_NMS};/g" ${_Vht}
+              wait
+              sed -i "s/_target_ip/${_tgt}/g" ${_Vht}
+              wait
+            fi
             chown ${_oct}:${_OCT_GRP} ${_Vht}
             chmod 600 ${_Vht}
             _XOCT_PROXY_OK=$(( ${_XOCT_PROXY_OK:-0} + 1 ))
@@ -3044,6 +3088,7 @@ _mig_render_table() {
         _m="$(_mig_get "${_cnf}" _MIG_MODE)"
         _mig_valid_mode "${_m}" || _m="-"
         _d="$(_mig_get "${_cnf}" _MIG_DEADLINE)"
+        [ "${_m}" = "retired" ] && _d="$(_mig_get "${_cnf}" _MIG_RETIRE_DATE)"
         _mig_valid_date "${_d}" || _d="-"
         _s="$(_mig_get "${_cnf}" _MIG_SCOPE)"
         [ "${_s}" = "account" ] || _s=box
@@ -3118,7 +3163,7 @@ _xoct_warn_proxy_cert_horizon() {
 ### fatal (fresh conversion: yes) or an alert (late policy edits: no).
 ### Args: 1 peer-ip 2 peer-acct 3 role 4 mode 5 scope 6 deadline 7 src-acct
 _xoct_push_peer_record() {
-  local _pip="$1" _pacct="$2" _prole="$3" _pmode="$4" _pscope="$5" _pdl="$6" _psrc="$7"
+  local _pip="$1" _pacct="$2" _prole="$3" _pmode="$4" _pscope="$5" _pdl="$6" _psrc="$7" _prdl="$8"
   local _my _myall
   if ! _mig_valid_acct "${_pacct}" || ! _mig_valid_acct "${_psrc}"; then
     echo "ALRT: refusing peer record push: invalid account name '${_pacct}'/'${_psrc}'"
@@ -3150,6 +3195,7 @@ _MIG_PEER_OCT=${_psrc}
 _MIG_MODE=${_pmode}
 _MIG_SCOPE=${_pscope}
 _MIG_DEADLINE=${_pdl}
+${_prdl:+_MIG_RETIRE_DATE=${_prdl}}
 _MIG_PEER_IPS=${_myall}
 _MIG_STAMPED=$(date -u '+%Y-%m-%d')
 RECEOF
@@ -3599,7 +3645,7 @@ _xoct_retire_one() {
   _peer_ips="$(_mig_get "${_cnf}" _MIG_PEER_IPS)"
   if [ "${_role}" = "source" ] && [ -n "${_peer}" ]; then
     _xoct_push_peer_record "${_peer}" "${_peer_oct:-${_a}}" target \
-      retired "${_scope}" "" "${_a}"
+      retired "${_scope}" "" "${_a}" "${_wdl}"
     case "$?" in
       0)
         _xoct_peer_reconcile "${_peer}" \
@@ -3616,8 +3662,11 @@ _xoct_retire_one() {
       ;;
     esac
   fi
+  ### The withdrawal date the customer was promised is part of the record, not
+  ### only of the mail: without it the policy table could not show when a
+  ### retired proxy is due to go (e2e RET-E03). It travels as its own key.
   _mig_write_record "${_root}" "${_role}" "${_peer}" "${_peer_oct:-${_a}}" \
-    retired "${_scope}" "" "${_peer_ips}" || return 1
+    retired "${_scope}" "" "${_peer_ips}" "${_wdl}" || return 1
   _mig_log "${_root}" xoct retire "${_scope}" retired "${_wdl}" "${_peer}"
   echo "INFO: ${_a}: proxy policy retired"
   if [ "${_role}" = "target" ] && [ -x "${_MIG_TRUST_TOOL}" ]; then
