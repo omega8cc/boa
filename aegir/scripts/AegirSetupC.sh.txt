@@ -1842,11 +1842,31 @@ _d_core_platform_install() {
 }
 
 _d_dist_loop() {
+  # Drupal 11 needs MySQL 8. On a Percona 5.7 box its platforms built and
+  # verified without a word, and every site Install then died inside the
+  # installer ("database server version 5.7.x is less than the minimum
+  # required version 8.0"), one notice among hundreds in the task log --
+  # omega8cc/boa#1943 came from such a box. Skip a requested Drupal 11
+  # symbol here and say why; the probe is the one system.sh.inc uses for _DB_V.
+  local _d_db_v
+  _d_db_v=$(mysql -V 2>&1 \
+    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | head -1 \
+    | cut -d"." -f1,2)
   # Loop through the _distros_names
   for _dist in "${!_distros_names[@]}"; do
     _d_name="${_distros_names[${_dist}]}"
     _d_vers="${_distros_versions[${_dist}]}"
     _d_core="${_distros_drupal_cores[${_dist}]}"
+    if [[ "${_d_core%%.*}" =~ ^[0-9]+$ ]] \
+      && [ "${_d_core%%.*}" -ge 11 ] \
+      && [ -n "${_d_db_v}" ] \
+      && [ "${_d_db_v%%.*}" -lt 8 ] \
+      && { [[ "${_PLATFORMS_LIST}" =~ ALL ]] || [[ "${_PLATFORMS_LIST}" =~ ${_dist} ]]; }; then
+      _msg "NOTE! ${_dist} (${_d_name} ${_d_vers} on Drupal ${_d_core}) needs MySQL 8; this server runs Percona ${_d_db_v}: skipped"
+      _msg "NOTE! Move the box to Percona 8.4 first (docs.boa.io: Percona 8 upgrade readiness), then run this again"
+      continue
+    fi
     _d_desc="${_d_name} ${_d_vers} ${_d_core} [${_THIS_CORE}]"
     _d_xdes="${_d_name} ${_d_vers}"
     _d_ppth="${_distros_profiles_paths[${_dist}]}"

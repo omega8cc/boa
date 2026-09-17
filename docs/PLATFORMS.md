@@ -12,6 +12,12 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 
 ## Drupal 11
 
+Drupal 11 needs MySQL 8, on BOA a box on Percona 8.4. On a Percona 5.7 box the
+Octopus upgrade skips every requested Drupal 11 symbol and says so in its log,
+and a Drupal 11 site Install stops with that one reason before the codebase is
+touched. Move the box first: `barracuda up-<tree> system percona-8.0`, then
+`barracuda up-<tree> system percona-8.4`, after `codebasecheck` says READY.
+
 - [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.7)
 - [Drupal 11.1.10](https://drupal.org/project/drupal/releases/11.1.10)
 - [Drupal 11.2.14](https://drupal.org/project/drupal/releases/11.2.14)
