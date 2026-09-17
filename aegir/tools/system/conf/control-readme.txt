@@ -64,6 +64,12 @@ ignored. Note that platforms.info REPLACES the default list — pinned
 symbols mean you skip distributions added in future releases, while
 ALL never skips anything.
 
+Drupal 11 symbols (DE4 DE3 DE2 DE1 and the Drupal 11 distributions CMS CK3
+LGV THR VBX FOS OCS) need MySQL 8, which on BOA means Percona 8.4. On a
+Percona 5.7 server they are skipped with a NOTE in the upgrade log, and a
+Drupal 11 site Install stops with that one reason; ask your host to move
+the server first (docs.boa.io: Percona 8 upgrade readiness).
+
 Platform symbols:
 
   Backdrop (built by default; a server can opt out)
