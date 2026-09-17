@@ -122,6 +122,8 @@
 
    The last `{percona-8.4|newrelickey|php-8.5|php-min|php-max|nodns}` part is optional and can be used either to install Percona version other than default 5.7 (can be `percona-8.0` or `percona-8.4`) or New Relic Apps Monitor (you should replace the `newrelickey` keyword with a valid license key), or to define a single PHP version to install and use both for Ægir Master and Satellite instances.
 
+   **NOTE:** BOA installs **Percona 5.7 by default**, and **Drupal 11 needs MySQL 8** -- on BOA that means **Percona 8.4**. To host Drupal 11, or any distribution built on it (Drupal CMS, Commerce Kickstart 3, Thunder, LocalGov, farmOS, OpenCulturas, Varbase), either add `percona-8.4` to the install command from the start, or upgrade a Percona 5.7 server later in two steps: `barracuda up-lts system percona-8.0`, then `barracuda up-lts system percona-8.4` -- there is no direct jump, it works on Devuan Daedalus only, and it wants a whole-server snapshot and a `codebasecheck --box --deep` run first (see [docs/MAJORUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MAJORUPGRADE.md)). On a Percona 5.7 server the Octopus upgrade skips the Drupal 11 platforms with a NOTE in its log, and a Drupal 11 site Install stops with that one reason before the codebase is touched. The default stays 5.7 on purpose: what runs keeps running, legacy Drupal 6 and 7 codebases and sites on the PHP 5.6 pool included, so the newest database is a choice you make at install. On Devuan Excalibur BOA installs Percona 8.4 regardless of the argument.
+
    The `nodns` option allows skipping DNS and SMTP checks.
 
    When `php-min` is defined, then 3 versions will be installed: `8.5`, `8.4`, `8.3`, with `8.4` configured as default.
@@ -183,7 +185,7 @@
      boa in-lts public server.mydomain.org my@email o1 php-8.5
      ```
 
-   - Barracuda and Octopus with Percona 8.4 and 3 PHP versions
+   - Barracuda and Octopus with Percona 8.4 (required for Drupal 11) and 3 PHP versions
      ```sh
      boa in-lts public server.mydomain.org my@email o1 percona-8.4
      ```

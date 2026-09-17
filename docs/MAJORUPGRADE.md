@@ -14,6 +14,8 @@ You can easily upgrade your system from any supported Debian version, starting w
 
 **NOTE:** You can upgrade from Percona 5.7 to Percona 8.0 and then from Percona 8.0 to Percona 8.4 only on Devuan Daedalus.
 
+**NOTE:** Drupal 11 needs MySQL 8, which on BOA means Percona 8.4 -- the most common reason to leave the default Percona 5.7. A new server avoids this upgrade altogether by installing with the `percona-8.4` argument (see [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md)).
+
 **NOTE:** You can't upgrade from Percona 5.7 to Percona 8.4 directly, so you first run `barracuda up-lts system percona-8.0` and then `barracuda up-lts system percona-8.4`
 
 **NOTE:** Because one shared Percona server serves the whole host, its oldest codebase gates this upgrade. Before you start, run `codebasecheck --box --deep` to see which accounts (if any) cannot run on Percona 8 and must move to a legacy Percona 5.7 host first — see the Percona 8 Upgrade Readiness How To [docs/CODEBASECHECK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CODEBASECHECK.md)
