@@ -138,7 +138,11 @@ back. It is moved to `/var/backups/off-run/run-<oN>` instead, visibly
 parked. Returning it would let the account's own dispatcher tick and
 regenerate the platform vhosts, silently un-converting the proxy.
 
-**Stage C — `finalize`.** Only when every account is shrunk: removes the
+**Stage C — `finalize`.** Only when every account is shrunk — all-accounts-or-nothing:
+one account short of `stage-b` refuses the whole run and names it with its phase,
+the check runs before anything else (so a dry `finalize` is a usable pre-flight),
+and a panel-only account (a local panel, no other live vhost) is exempt, not
+waited for, its panel served through the MySQL finalize keeps: removes the
 shared codebases (`/data/all` and `/data/disk/all`), stops and disables
 MySQL (`--drop-datadir` is a separate explicit flag), stops solr/jetty
 and disarms their monitor watchdog by dropping the init scripts' exec

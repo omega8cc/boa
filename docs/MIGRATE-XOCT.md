@@ -405,7 +405,10 @@ xoct proxy-retire o1 [--deadline=+14d]        # mark retired + send the withdraw
 Every policy change is pushed to the target's record and re-reconciled there,
 so the target's teardown decision follows the promise; the client is mailed a
 short follow-up whenever the promised arrangement changes (`--no-notify`
-suppresses and logs, `--renotify` forces).
+suppresses and logs, `--renotify` forces). A retired record keeps the
+withdrawal date it promised as `_MIG_RETIRE_DATE` (the table's deadline
+column shows it on retired rows), so the date stays readable after the
+proxy policy itself is gone.
 
 `post-mig` restores BOA runner scripts on source and reconciles migration-proxy
 trust from the policy records (a quiet no-op on a box holding none).

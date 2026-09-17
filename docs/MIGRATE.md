@@ -145,8 +145,8 @@ serving. The closing summary ends with either
 the run itself still exits 0, so read that line rather than the exit status;
 a 400 there is the trusted-host check. The wait exists because `settings.php`
 is resolved through PHP's per-worker realpath cache, so a single immediate
-check proves nothing in either direction. The gate covers only sites the
-rename moved — an account-axis move still needs the usual manual check.
+check proves nothing in either direction. An account-axis move still needs
+the usual manual check of the panel front.
 
 ### Reading the residual report
 
