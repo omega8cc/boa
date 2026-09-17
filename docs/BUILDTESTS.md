@@ -301,6 +301,7 @@ opigno     # Opigno's documented create-project is broken as shipped, in three w
            # composer require --no-update --no-scripts h5p/h5p-core:'1.27.*'
            # composer update --no-install --no-scripts
            # composer install --no-dev
+           # composer require drush/drush --no-scripts --no-interaction   # upstream keeps it in require-dev; non-interactive confirms the move to require; land the site-local Drush HERE, not at platform verify on every box
            # cd web && patch -p1 < the #3561556 getOperators patch
            # ACCEPTED TRADE: the platform ships dompdf 2.0.8 with open advisories -
            # the profile pins dompdf ~2.0.0 and the fixed line (3.x) is outside it,
@@ -321,6 +322,7 @@ social     # Open Social ships NO create-project template for its current major:
            # composer require --no-update --no-scripts goalgorilla/open_social:^13
            # composer update --no-install --no-scripts
            # composer install --no-dev
+           # composer require drush/drush --no-scripts --no-interaction   # the chassis ships none; land the site-local Drush HERE, not at platform verify on every box
            # name by goalgorilla/open_social read from the LOCK (13.1.0) - upstream's
            # 13.0.2 tag still declares version '13.0.1' inside social.info.yml
            # builds under php83: 13.1.0 requires php ^8.3 and SOC is capped at 8.3
@@ -342,7 +344,11 @@ varbase    # RE-ENABLED 2026-08-11: upstream fixed the template in July 2026 (co
            # build uninstallable. Builds the 11 line since 2026-09-10 (stable upstream
            # since 2026-09-08; web/ layout, the catalogue VBX web_dir moved with it);
            # the 10 line's last build stays on the mirror for existing platforms.
-           # composer create-project Vardot/varbase-project:~11 varbase-VERSION-CORE --no-dev --no-interaction --no-install --no-scripts
+           # PINNED to the 11.0.7 template (2026-09-17): 11.0.8's lock moves canvas
+           # 1.10.1 -> 1.11.0 and a fresh install on it drops canvas_page_template_component
+           # from core.extension while its config stays -- every page 500s, clones fail
+           # updatedb. Move the pin only after a rig proves install AND clone.
+           # composer create-project Vardot/varbase-project:11.0.7 varbase-VERSION-CORE --no-dev --no-interaction --no-install --no-scripts
            # cd ~/static/MONTH-DAY/varbase-VERSION-CORE
            # composer config --no-plugins allow-plugins true
            # (NO composer update: varbase installs from upstream's shipped lock; a
