@@ -410,6 +410,12 @@ _check_report() {
     && ! [[ "${_RESULT_BYE}" =~ "binary file matches" ]]; then
     _SEND_ALERT=YES
   fi
+  # The BYE token is printed by the inner pass before its last steps, so a
+  # pass that died after it still carried BYE and was mailed as a success;
+  # the installer's exit status is the completion test the token is not.
+  if [ -n "${_passRc}" ] && [ "${_passRc}" != "0" ]; then
+    _SEND_ALERT=YES
+  fi
   if [[ "${_RESULT_ALREADY}" =~ "This Ægir Instance is already up" ]] \
     || [[ "${_RESULT_ALREADY}" =~ "binary file matches" ]]; then
     _SEND_ALERT=NO
@@ -422,6 +428,9 @@ _check_report() {
 }
 
 _up_mode() {
+  # The inner installer's own exit status, read by _check_report: OCTOPUS.sh.txt
+  # exits 0 only at its one completion exit and non-zero on every abort.
+  _passRc=""
   if [ "${_mCmd}" = "aegir" ]; then
     sed -i "s/^_HM_ONLY=NO/_HM_ONLY=YES/g"                            ${_octCnf}
     wait
@@ -432,6 +441,7 @@ _up_mode() {
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${_vBs}/${_tocIncO}
     wait
     bash  ${_vBs}/${_tocName}
+    _passRc=$?
     touch ${_usEr}/log/up-${_TODAY}
   elif [ "${_mCmd}" = "platforms" ]; then
     sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"              ${_octCnf}
@@ -443,6 +453,7 @@ _up_mode() {
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                   ${_vBs}/${_tocIncO}
     wait
     bash  ${_vBs}/${_tocName}
+    _passRc=$?
     touch ${_usEr}/log/up-${_TODAY}
   elif [ "${_mCmd}" = "both" ] || [ "${_mCmd}" = "force" ]; then
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                            ${_octCnf}
@@ -454,6 +465,7 @@ _up_mode() {
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${_vBs}/${_tocIncO}
     wait
     bash  ${_vBs}/${_tocName}
+    _passRc=$?
     touch ${_usEr}/log/up-${_TODAY}
   else
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                            ${_octCnf}
@@ -465,6 +477,7 @@ _up_mode() {
     sed -i "s/^_PLATFORMS_ONLY=YES/_PLATFORMS_ONLY=NO/g"     ${_vBs}/${_tocIncO}
     wait
     bash  ${_vBs}/${_tocName}
+    _passRc=$?
     touch ${_usEr}/log/up-${_TODAY}
   fi
 }
@@ -934,10 +947,18 @@ _up_finish() {
   # waiters still terminate, but do not report a clean finish for a run that
   # already raised an alert.
   if [ "${_SEND_ALERT}" = "YES" ]; then
-    echo "OCTOPUS upgrade completed WITH ERRORS -- review ${_UP_LOG:-the ALRT line above}"
+    _upDone="OCTOPUS upgrade completed WITH ERRORS -- review ${_UP_LOG:-the ALRT line above}"
   else
-    echo OCTOPUS upgrade completed
+    _upDone="OCTOPUS upgrade completed"
   fi
+  echo "${_upDone}"
+  # The silent-mode console tells the operator to `tail -f` the per-account
+  # pass log and wait for this line, but the line was printed here, to the
+  # console only, after every pass log had been closed: a watcher of the log
+  # never saw it. Append it to each pass log this run wrote.
+  for _upLog in ${_LOG_DIR}/$(basename "$0")-up-*-${_NOW}.log; do
+    [ -f "${_upLog}" ] && echo "${_upDone}" >> ${_upLog}
+  done
   echo Bye
   echo
   exit 0
