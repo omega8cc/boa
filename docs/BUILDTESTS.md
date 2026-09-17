@@ -344,7 +344,11 @@ varbase    # RE-ENABLED 2026-08-11: upstream fixed the template in July 2026 (co
            # build uninstallable. Builds the 11 line since 2026-09-10 (stable upstream
            # since 2026-09-08; web/ layout, the catalogue VBX web_dir moved with it);
            # the 10 line's last build stays on the mirror for existing platforms.
-           # composer create-project Vardot/varbase-project:~11 varbase-VERSION-CORE --no-dev --no-interaction --no-install --no-scripts
+           # PINNED to the 11.0.7 template (2026-09-17): 11.0.8's lock moves canvas
+           # 1.10.1 -> 1.11.0 and a fresh install on it drops canvas_page_template_component
+           # from core.extension while its config stays -- every page 500s, clones fail
+           # updatedb. Move the pin only after a rig proves install AND clone.
+           # composer create-project Vardot/varbase-project:11.0.7 varbase-VERSION-CORE --no-dev --no-interaction --no-install --no-scripts
            # cd ~/static/MONTH-DAY/varbase-VERSION-CORE
            # composer config --no-plugins allow-plugins true
            # (NO composer update: varbase installs from upstream's shipped lock; a

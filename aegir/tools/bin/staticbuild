@@ -178,7 +178,16 @@ _LOCALGOV_SPEC="drupal/localgov_project:^4"
 _LOCALGOV_DISTPKG="drupal/localgov"
 _THUNDER_SPEC="thunder/thunder-project"
 _THUNDER_DISTPKG="thunder/thunder-distribution"
-_VARBASE_SPEC="Vardot/varbase-project:~11"
+# PINNED to the 11.0.7 template (2026-09-17): the 11.0.8 template keeps the same
+# vardot/varbase 11.0.0 distribution but its lock moves drupal/canvas 1.10.1 ->
+# 1.11.0, and a fresh install on that lock leaves canvas_page_template_component
+# (enabled by the varbase_starter recipe) out of core.extension while its
+# page-template config stays -- every page of the new site then dies on a
+# PluginNotFoundException, and a clone's updatedb fails the same way. The 11.0.7
+# lock (canvas 1.10.1) installed and cloned cleanly on 2026-09-10 and again on
+# 2026-09-17. Move the pin only after a rig proves a newer template installs
+# AND clones; the distribution version in the platform name does not change.
+_VARBASE_SPEC="Vardot/varbase-project:11.0.7"
 # The 11 line's committed lock pins drupal/ai_provider_amazeeio 1.4.2 (via
 # drupal/drupal_cms_ai), which declares ext-pdo_pgsql; BOA's PHP builds carry no
 # PostgreSQL driver, so a lock-faithful install must ignore that one platform
