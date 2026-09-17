@@ -132,6 +132,15 @@ _if_octopus_upgrade() {
     return 0
   fi
   if [ -e "${_plCtr}" ] && [ -e "${_upCtr}" ]; then
+    # A proxied account is served elsewhere: octopus refuses it with an ALRT
+    # and exits at once, the kept-trigger branch below puts the trigger back,
+    # and the next tick does it again -- a refusal, a wrapper log and an
+    # alert mail every tick until the account is promoted or its runner
+    # removed. Leave the trigger where it is and say nothing: a promotion
+    # removes proxied.pid and the queued upgrade runs on the next quiet tick.
+    if [ -e "/data/disk/${_H_USER}/log/proxied.pid" ]; then
+      return 0
+    fi
     rm -f ${_upCtr}
     [ -e "/root/.silent.update.cnf" ] && rm -f /root/.silent.update.cnf
     _TODAY=$(date +%y%m%d)
