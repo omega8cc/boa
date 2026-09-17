@@ -138,7 +138,8 @@ To abandon and start over, remove the state file — but only do so if
 replication has already been torn down on the target.
 
 **Single-flight.** Every state-mutating verb (`pre-mig`, `prep-target`,
-`init`, `sync`, `cutover`, `reset-phase`, `post-mig`, `restore-solr`) takes a
+`init`, `sync`, `cutover`, `reset-phase`, `post-mig`, `restore-solr`,
+`restore-target`) takes a
 box-wide owner-PID lock and a concurrent run is refused non-zero, naming the
 owning process. `status` and `verify` stay unlocked, so a migration can always
 be inspected mid-run. Liveness — not the file — is what is checked: a killed
@@ -478,7 +479,15 @@ What `init` does:
    or `post-mig` re-arm symmetrically.
 5a. **Arms the standby write gates on the target.** `/root/.standby.cnf`
    is written FIRST, before the datadir swap, together with an in-flight
-   signal (`/run/boa_xmass_init.pid`). Cron stays RUNNING for the whole
+   signal (`/run/boa_xmass_init.pid`) and its twin `/root/.standby.init.pid`
+   (`/run` is tmpfs: the twin survives a reboot mid-window, and either one
+   holds the gates). The swap parks the target's own data directory as
+   `/var/lib/mysql.xmass_pre_<stamp>` together with the credential pair that
+   opens it (`/root/.my.cnf` and `/root/.my.pass.txt`, same suffix); a
+   standby that was never promoted returns to that state with
+   `xmass restore-target` (dry by default, `--live` performs it; refused
+   while a window is in flight, under a barracuda/octopus run, or on a box a
+   cutover promoted). Cron stays RUNNING for the whole
    window — a standby is a working BOA box, with IDS and every watchdog
    live — and passivity comes from per-job gates on the marker in every
    local writer: the task queue and the Aegir dispatch it parks, the
@@ -581,7 +590,7 @@ Syncs the following to the target on each run:
 | FTP account SSH keys | `/home/oN.ftp/.ssh` |
 | Sub-account registry + backups/undo | `/data/disk/oN/clients/`, `backups/`, `undo/` (`clients/` drives sub-user creation on the target; `backups/` is required by `renameaegirhost`'s Ægir-root validation and is space-gated like the Solr trees) |
 | Client toolchains | `/opt/user/gems/oN.ftp`, `/opt/user/npm/oN.ftp` |
-| Shell credentials | `<oN>.ftp` shadow hash + `log/pass.txt` as a pair, the sub-account password store `/home/oN.ftp/users/`, and each sub-user's hash and `.ssh` |
+| Shell credentials | `<oN>.ftp` shadow hash + `log/pass.txt` as a pair, the sub-account password store `/home/oN.ftp/users/`, and each sub-user's hash and `.ssh` (a sub-user absent on the target gets its `.ssh` staged at `/var/backups/migrate-subuser-ssh/<oN>.<name>/`, adopted and removed by `manage_ltd_users.sh` when it creates the user from `clients/`) |
 | Per-account config | `/root/.<oN>.octopus.cnf` (portable values merged into the target's copy), `static/control/{fpm,cli,multi-fpm}.info` and `log/{fpm,cli,email,option,cores,subscr}.txt` (forced, no `-u`) |
 | Suspension flag | `/data/conf/suspended/<oN>.pid` (mirrored, presence and absence) |
 | Out-of-root symlink content | Every synced tree is swept for symlinks whose target lives **outside** the synced trees (typically a secondary `/mnt` volume — per-account backup stores under `/data/disk/arch/sql` are the canonical case). Their content **materialises** on the target as real dirs/files: mirrored onto the target's own single mount when it has one and the store lands under `/data/disk`, de-referenced to a real dir/file on the target root otherwise. Space-gated per store/batch like everything else |

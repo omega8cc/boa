@@ -178,7 +178,16 @@ _LOCALGOV_SPEC="drupal/localgov_project:^4"
 _LOCALGOV_DISTPKG="drupal/localgov"
 _THUNDER_SPEC="thunder/thunder-project"
 _THUNDER_DISTPKG="thunder/thunder-distribution"
-_VARBASE_SPEC="Vardot/varbase-project:~11"
+# PINNED to the 11.0.7 template (2026-09-17): the 11.0.8 template keeps the same
+# vardot/varbase 11.0.0 distribution but its lock moves drupal/canvas 1.10.1 ->
+# 1.11.0, and a fresh install on that lock leaves canvas_page_template_component
+# (enabled by the varbase_starter recipe) out of core.extension while its
+# page-template config stays -- every page of the new site then dies on a
+# PluginNotFoundException, and a clone's updatedb fails the same way. The 11.0.7
+# lock (canvas 1.10.1) installed and cloned cleanly on 2026-09-10 and again on
+# 2026-09-17. Move the pin only after a rig proves a newer template installs
+# AND clones; the distribution version in the platform name does not change.
+_VARBASE_SPEC="Vardot/varbase-project:11.0.7"
 # The 11 line's committed lock pins drupal/ai_provider_amazeeio 1.4.2 (via
 # drupal/drupal_cms_ai), which declares ext-pdo_pgsql; BOA's PHP builds carry no
 # PostgreSQL driver, so a lock-faithful install must ignore that one platform
@@ -814,10 +823,18 @@ build_opigno() {
   # 1.28.0 added an interface method drupal/h5p 2.0.0-beta1 does not implement (h5p
   # #3578071; the pin is the community-endorsed workaround and sits inside the module's
   # own ^1.27 constraint).
+  # Land drush/drush in require here, on the build box, under the PHP the
+  # platform runs on. Upstream keeps it in require-dev, so the --no-dev tarball
+  # carried no site-local Drush and provision's lock step ran the same
+  # composer require on every box at platform verify -- under the instance's
+  # PHP CLI, which may be newer than the lock allows: on an 8.5 CLI the resolve
+  # failed and composer-patches had already deleted calendar and h5p, so every
+  # site install died on "Required modules not found" (2026-09-17).
   if ! { _composer_prepare "${_wd}" \
          && _run_as_o8 "cd '${_wd}' && composer config --unset replace" \
          && _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts h5p/h5p-core:'1.27.*'" \
-         && _with_core_fallback "${_wd}" "opigno" _composer_build; }; then
+         && _with_core_fallback "${_wd}" "opigno" _composer_build \
+         && _run_as_o8 "cd '${_wd}' && composer require drush/drush --no-scripts"; }; then
     _record_fail "opigno"
     return 1
   fi
@@ -851,9 +868,16 @@ build_social() {
   # The chassis template is frozen on the 12.4 line, so move the distribution itself to the
   # current major before resolving; everything else (html/ docroot, scaffold, installer-paths)
   # is upstream's own layout and is left alone.
+  # Land drush/drush in require here, on the build box, under the PHP the
+  # platform runs on: the chassis template ships none, so the tarball carried no
+  # site-local Drush and provision's lock step ran composer require on every
+  # box at platform verify -- on an 8.5 PHP CLI the resolve failed
+  # (eluceo/ical caps PHP at 8.4) after composer-patches had deleted
+  # simple_oauth from the platform (2026-09-17).
   if ! { _composer_prepare "${_wd}" \
          && _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts ${_SOCIAL_DISTPKG}:'${_SOCIAL_CONSTRAINT}'" \
-         && _with_core_fallback "${_wd}" "social" _composer_build; }; then
+         && _with_core_fallback "${_wd}" "social" _composer_build \
+         && _run_as_o8 "cd '${_wd}' && composer require drush/drush --no-scripts"; }; then
     _record_fail "social"
     return 1
   fi

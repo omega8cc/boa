@@ -1714,14 +1714,19 @@ _up_finish() {
   # A pass whose only alert is the kernel notice finished cleanly; say what
   # it needs instead of calling it errored.
   if [ "${_SEND_ALERT}" = "YES" ] && [ "${_ONLY_REBOOT}" = "YES" ]; then
-    echo "BARRACUDA upgrade completed, REBOOT REQUIRED -- run 'boa reboot' (log: ${_UP_LOG})"
+    _upDone="BARRACUDA upgrade completed, REBOOT REQUIRED -- run 'boa reboot' (log: ${_UP_LOG})"
   elif [ "${_SEND_ALERT}" = "YES" ] && [ "${_REBOOT_ALSO:-NO}" = "YES" ]; then
-    echo "BARRACUDA upgrade completed WITH ERRORS -- review ${_UP_LOG}; new kernel, run 'boa reboot' after the review"
+    _upDone="BARRACUDA upgrade completed WITH ERRORS -- review ${_UP_LOG}; new kernel, run 'boa reboot' after the review"
   elif [ "${_SEND_ALERT}" = "YES" ]; then
-    echo "BARRACUDA upgrade completed WITH ERRORS -- review ${_UP_LOG}"
+    _upDone="BARRACUDA upgrade completed WITH ERRORS -- review ${_UP_LOG}"
   else
-    echo BARRACUDA upgrade completed
+    _upDone="BARRACUDA upgrade completed"
   fi
+  echo "${_upDone}"
+  # The silent-mode console tells the operator to `tail -f` the pass log and
+  # wait for this line, but the line was printed here, to the console only,
+  # after the log had been closed: a watcher of the log never saw it.
+  [ -f "${_UP_LOG}" ] && echo "${_upDone}" >> ${_UP_LOG}
   echo Bye
   echo
   exit 0

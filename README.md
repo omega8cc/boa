@@ -1,6 +1,6 @@
 # Welcome to BOA!
 
-BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 11, as well as Backdrop CMS and Grav CMS (soon).
+BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 11 (which needs Percona 8.4, see [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md)), as well as **Backdrop CMS**, **Grav CMS** and **Textpattern CMS**.
 
 ## BOA-5.88.855: The Kraken Edition
 
@@ -108,7 +108,7 @@ Check out the details in [**docs/PROVIDES.md**](https://github.com/omega8cc/boa/
 
 ### Devuan (recommended)
 
-- Daedalus (default, with Percona 5.7, 8.0 or 8.4)
+- Daedalus (default; installs Percona 5.7 unless you pass `percona-8.0` or `percona-8.4` - Drupal 11 needs Percona 8.4)
 - Excalibur (supported, but only with Percona 8.4)
 - Chimaera (deprecated, not tested in any context - upgrade to Daedalus)
 - Beowulf (deprecated, not tested in any context - a hop on the way up only)
