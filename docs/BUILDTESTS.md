@@ -301,6 +301,7 @@ opigno     # Opigno's documented create-project is broken as shipped, in three w
            # composer require --no-update --no-scripts h5p/h5p-core:'1.27.*'
            # composer update --no-install --no-scripts
            # composer install --no-dev
+           # composer require drush/drush --no-scripts   # upstream keeps it in require-dev; land the site-local Drush HERE, not at platform verify on every box
            # cd web && patch -p1 < the #3561556 getOperators patch
            # ACCEPTED TRADE: the platform ships dompdf 2.0.8 with open advisories -
            # the profile pins dompdf ~2.0.0 and the fixed line (3.x) is outside it,
@@ -321,6 +322,7 @@ social     # Open Social ships NO create-project template for its current major:
            # composer require --no-update --no-scripts goalgorilla/open_social:^13
            # composer update --no-install --no-scripts
            # composer install --no-dev
+           # composer require drush/drush --no-scripts   # the chassis ships none; land the site-local Drush HERE, not at platform verify on every box
            # name by goalgorilla/open_social read from the LOCK (13.1.0) - upstream's
            # 13.0.2 tag still declares version '13.0.1' inside social.info.yml
            # builds under php83: 13.1.0 requires php ^8.3 and SOC is capped at 8.3

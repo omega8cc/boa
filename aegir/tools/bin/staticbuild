@@ -814,10 +814,18 @@ build_opigno() {
   # 1.28.0 added an interface method drupal/h5p 2.0.0-beta1 does not implement (h5p
   # #3578071; the pin is the community-endorsed workaround and sits inside the module's
   # own ^1.27 constraint).
+  # Land drush/drush in require here, on the build box, under the PHP the
+  # platform runs on. Upstream keeps it in require-dev, so the --no-dev tarball
+  # carried no site-local Drush and provision's lock step ran the same
+  # composer require on every box at platform verify -- under the instance's
+  # PHP CLI, which may be newer than the lock allows: on an 8.5 CLI the resolve
+  # failed and composer-patches had already deleted calendar and h5p, so every
+  # site install died on "Required modules not found" (2026-09-17).
   if ! { _composer_prepare "${_wd}" \
          && _run_as_o8 "cd '${_wd}' && composer config --unset replace" \
          && _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts h5p/h5p-core:'1.27.*'" \
-         && _with_core_fallback "${_wd}" "opigno" _composer_build; }; then
+         && _with_core_fallback "${_wd}" "opigno" _composer_build \
+         && _run_as_o8 "cd '${_wd}' && composer require drush/drush --no-scripts"; }; then
     _record_fail "opigno"
     return 1
   fi
@@ -851,9 +859,16 @@ build_social() {
   # The chassis template is frozen on the 12.4 line, so move the distribution itself to the
   # current major before resolving; everything else (html/ docroot, scaffold, installer-paths)
   # is upstream's own layout and is left alone.
+  # Land drush/drush in require here, on the build box, under the PHP the
+  # platform runs on: the chassis template ships none, so the tarball carried no
+  # site-local Drush and provision's lock step ran composer require on every
+  # box at platform verify -- on an 8.5 PHP CLI the resolve failed
+  # (eluceo/ical caps PHP at 8.4) after composer-patches had deleted
+  # simple_oauth from the platform (2026-09-17).
   if ! { _composer_prepare "${_wd}" \
          && _run_as_o8 "cd '${_wd}' && composer require --no-update --no-scripts ${_SOCIAL_DISTPKG}:'${_SOCIAL_CONSTRAINT}'" \
-         && _with_core_fallback "${_wd}" "social" _composer_build; }; then
+         && _with_core_fallback "${_wd}" "social" _composer_build \
+         && _run_as_o8 "cd '${_wd}' && composer require drush/drush --no-scripts"; }; then
     _record_fail "social"
     return 1
   fi
