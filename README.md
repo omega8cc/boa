@@ -1,6 +1,6 @@
 # Welcome to BOA!
 
-BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 11 (which needs Percona 8.4, see [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md)), as well as Backdrop CMS and Grav CMS (soon).
+BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 11 (which needs Percona 8.4, see [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md)), as well as **Backdrop CMS**, **Grav CMS** and **Textpattern CMS**.
 
 ## BOA-5.88.855: The Kraken Edition
 
