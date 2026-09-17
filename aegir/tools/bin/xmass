@@ -2772,6 +2772,13 @@ _xmass_restore_backup() {
   ssh root@"${_tgt}" bash <<'REMOTE'
 _ts=$(date +%Y%m%d%H%M%S)
 mv -f /var/lib/mysql /var/lib/mysql.xmass_pre_${_ts} &>/dev/null || true
+# The parked data directory is only usable with the credentials that open
+# it: the copy-back brings the source's root password with it and the next
+# rotation moves on from there, so without this pair the parked copy could
+# never be opened again (e2e INIT-E19). Parked beside it, same stamp, 0600.
+for _f in /root/.my.cnf /root/.my.pass.txt; do
+  [ -e "${_f}" ] && cp -a "${_f}" "${_f}.xmass_pre_${_ts}" && chmod 600 "${_f}.xmass_pre_${_ts}"
+done
 mkdir -p /var/lib/mysql
 REMOTE
 
@@ -3054,6 +3061,115 @@ _xmass_regen_solr_initd() {
 ### BOA cannot self-heal it either: _if_solr_nine re-runs install_solr_service.sh
 ### only when /var/solr<N>/data or the version stamp is missing, and a rolled-back
 ### source still has both -- so no barracuda up-* pass ever brings it back.
+### xmass restore-target [--live] -- run ON A STANDBY TARGET that was never
+### promoted: put back the MySQL data directory init parked aside
+### (/var/lib/mysql.xmass_pre_<stamp>) with the credential pair parked beside
+### it, stop and forget the replication, drop the standby hold and its
+### markers, re-arm what the init disarmed (Solr, cron) and leave the box the
+### plain BOA box it was before `xmass init`. Until now a mirror slot could
+### only be reimaged (e2e FB-E04 / TD-E01). DRY by default: prints the plan;
+### --live does it. The replica's data directory is kept aside as
+### /var/lib/mysql.xmass_standby_<stamp>, never deleted here.
+_xmass_restore_target() {
+  local _live="$1" _pre _ts _stamp _mk _ver _stop _reset _cnf _d _inc_dir _sro _svc _waited
+  [ -e /root/.standby.cnf ] \
+    || _die "this box carries no standby marker (/root/.standby.cnf): nothing to restore --" \
+            " restore-target serves a target xmass init made a standby and that was never promoted"
+  for _mk in /run/boa_xmass_init.pid /root/.standby.init.pid; do
+    [ -e "${_mk}" ] && _die "a migration window is in flight here (${_mk}); wait for it to close, or unwind the init on the source"
+  done
+  [ -e /run/boa_run.pid ] && _die "a barracuda/octopus run is in flight (/run/boa_run.pid); retry when it ends"
+  if grep -ls '^_MIG_ROLE=target' /data/disk/o*/log/migproxy.cnf >/dev/null 2>&1; then
+    _die "this box carries inbound proxy policy records: a cutover PROMOTED it, there is no pre-init state to return to"
+  fi
+  _pre=$(ls -1d /var/lib/mysql.xmass_pre_* 2>/dev/null | sort | tail -1)
+  [ -n "${_pre}" ] || _die "no parked data directory (/var/lib/mysql.xmass_pre_<stamp>) on this box"
+  _ts="${_pre#/var/lib/mysql.xmass_pre_}"
+  for _cnf in /root/.my.cnf /root/.my.pass.txt; do
+    [ -e "${_cnf}.xmass_pre_${_ts}" ] \
+      || _die "no parked credential file ${_cnf}.xmass_pre_${_ts} beside ${_pre}: the parked data directory" \
+              " cannot be opened without it (an init by older bytes parked none) -- reimage this box instead"
+  done
+  _ver=$(mysql -V 2>&1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1 | cut -d"." -f1,2)
+  if [ "${_ver}" = "8.4" ]; then
+    _stop="STOP REPLICA"; _reset="RESET REPLICA ALL"
+  else
+    _stop="STOP SLAVE"; _reset="RESET SLAVE ALL"
+  fi
+  _stamp=$(date +%Y%m%d%H%M%S)
+  _info "restore-target on $(hostname -f): $(head -1 /root/.standby.cnf 2>/dev/null)"
+  _info "  parked data directory: ${_pre} (credentials parked at the same stamp)"
+  _info "  the current replica data directory is kept aside as /var/lib/mysql.xmass_standby_${_stamp}"
+  _info "  replication stopped and forgotten (${_stop}; ${_reset}); the standby hold, its cnf block and"
+  _info "  every marker removed; Solr init scripts the init disarmed re-armed; cron started"
+  if [ "${_live}" != "YES" ]; then
+    _info "DRY RUN -- nothing changed. Re-run with --live to return this box to its pre-init state."
+    return 0
+  fi
+  _info "Stopping and forgetting the replication ..."
+  mysql --defaults-file=/root/.my.cnf -e "${_stop}; ${_reset};" 2>/dev/null \
+    || _alrt "  could not stop/reset the replica (mysql down or unauthable?) -- continuing with the data directory swap"
+  _info "Stopping MySQL via move_sql.sh ..."
+  /var/xdrago/move_sql.sh stop || _die "MySQL stop failed"
+  mv -f /var/lib/mysql "/var/lib/mysql.xmass_standby_${_stamp}" \
+    || _die "could not move the replica data directory aside"
+  mv -f "${_pre}" /var/lib/mysql \
+    || _die "could not put ${_pre} back as /var/lib/mysql (the replica copy is at /var/lib/mysql.xmass_standby_${_stamp})"
+  for _cnf in /root/.my.cnf /root/.my.pass.txt; do
+    cp -a "${_cnf}.xmass_pre_${_ts}" "${_cnf}" && chmod 600 "${_cnf}"
+  done
+  # The standby hold: the cnf block init wrote (super_read_only at every
+  # start) goes before the restart, exactly as the init unwind strips it.
+  _inc_dir=$(grep -hE '^[[:space:]]*!includedir[[:space:]]' /etc/mysql/my.cnf 2>/dev/null \
+    | head -1 \
+    | sed -E 's/^[[:space:]]*!includedir[[:space:]]+//; s#/[[:space:]]*$##; s/[[:space:]]*$//')
+  for _d in "${_inc_dir}" /etc/mysql/conf.d /etc/mysql/percona-server.conf.d \
+    /etc/mysql/mysql.conf.d /etc/mysql; do
+    [ -n "${_d}" ] || continue
+    _cnf="${_d}/xmass_gtid.cnf"
+    if [ -r "${_cnf}" ] && grep -q "xmass-standby-hold" "${_cnf}"; then
+      sed -i '/xmass-standby-hold/,+2d' "${_cnf}"
+    fi
+  done
+  rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid \
+    /var/log/boa/.xmass_solr_hold.pid /run/boa_standby_lost_logged.pid
+  _info "Starting MySQL via move_sql.sh ..."
+  /var/xdrago/move_sql.sh start \
+    || _die "MySQL start failed -- the pre-init data directory is in place; check the MySQL error log"
+  _waited=0
+  until mysqladmin --defaults-file=/root/.my.cnf ping >/dev/null 2>&1 || [ "${_waited}" -ge 60 ]; do
+    sleep 2; _waited=$(( _waited + 2 ))
+  done
+  mysqladmin --defaults-file=/root/.my.cnf ping >/dev/null 2>&1 \
+    || _die "MySQL does not answer with the parked credentials after ${_waited}s"
+  mysql --defaults-file=/root/.my.cnf \
+    -e "SET GLOBAL super_read_only=OFF; SET GLOBAL read_only=OFF;" 2>/dev/null
+  _sro=$(mysql --defaults-file=/root/.my.cnf \
+    -sNe "SHOW VARIABLES LIKE 'super_read_only'" 2>/dev/null | awk '{print $2}')
+  [ "${_sro}" = "OFF" ] \
+    || _alrt "  super_read_only still ${_sro:-unknown} -- clear it by hand: mysql -e \"SET GLOBAL super_read_only=OFF\""
+  if [ -e "/var/log/boa/.xmass_solr_disarmed.list" ]; then
+    while read -r _svc; do
+      case "${_svc}" in solr9|solr7|solr4|jetty9) : ;; *) continue ;; esac
+      if [ -e "/etc/init.d/${_svc}" ]; then
+        chmod 744 "/etc/init.d/${_svc}" 2>/dev/null
+        update-rc.d ${_svc} defaults >/dev/null 2>&1 || true
+        update-rc.d ${_svc} enable >/dev/null 2>&1 || true
+        service ${_svc} start >/dev/null 2>&1 || true
+      fi
+    done < /var/log/boa/.xmass_solr_disarmed.list
+    rm -f /var/log/boa/.xmass_solr_disarmed.list
+  fi
+  service cron start &>/dev/null
+  echo "$(date -u '+%Y-%m-%d %H:%M:%S') restore-target: ${_pre} restored as /var/lib/mysql; replica copy kept as /var/lib/mysql.xmass_standby_${_stamp}" \
+    >> /var/log/boa/xmass-restore-target.log
+  _info "restore-target COMPLETE: this box is a plain BOA box again (its pre-init data directory and"
+  _info "  credentials back, no standby marker, the replication forgotten). The replica's data directory"
+  _info "  is kept as /var/lib/mysql.xmass_standby_${_stamp}; remove it by hand when no longer needed."
+  _info "  On the SOURCE, forget this target with 'xmass reset-phase init' before any new init."
+  return 0
+}
+
 _xmass_restore_solr_source() {
   local _svc _initd _parked _port _denyVar _waited
   local _restored=NO _skipped=NO
@@ -5220,7 +5336,16 @@ _xmass_convert_source_to_proxy() {
   # database now lives on the target.
   _info "Converting all source accounts to proxy vhosts via xoct ..."
   _XMASS_PROXY_CONV_FAILED=""
-  local _oct _rc
+  local _oct _rc _tgt_fqdn _my_fqdn
+  # The sites named under this box's hostname were renamed on the target by
+  # step 13; handed both names, xoct answers their OLD names with a 301 to
+  # the renamed sites instead of proxying them to the target's catch-all
+  # (design ruling D-17; e2e CUT-E36). Read once, never guessed.
+  _my_fqdn=$(hostname -f 2>/dev/null)
+  _tgt_fqdn=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "hostname -f" 2>/dev/null)
+  if [ -z "${_tgt_fqdn}" ]; then
+    _alrt "  cannot read the target's hostname over ssh -- renamed sites' old names are proxied, not redirected"
+  fi
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     if [ -e "/data/disk/${_oct}/log/proxied.pid" ]; then
       _info "  ${_oct}: already proxied earlier; leaving as is"
@@ -5228,7 +5353,7 @@ _xmass_convert_source_to_proxy() {
     fi
     touch "/data/disk/${_oct}/log/exported.pid"
     _info "  xoct proxy ${_oct} ${_tgt} ..."
-    xoct proxy "${_oct}" "${_tgt}"
+    _XOCT_TARGET_FQDN="${_tgt_fqdn}" _XOCT_MY_FQDN="${_my_fqdn}" xoct proxy "${_oct}" "${_tgt}"
     _rc=$?
     if [ "${_rc}" -ne 0 ]; then
       _alrt "xoct proxy returned rc=${_rc} for account ${_oct} -- NOT converted"
@@ -6994,7 +7119,7 @@ _xmass_cmd_verify() {
   # breakage. Plus the local leftovers that keep sites 503-gated and the cron/
   # certificate-mirror state a long-lived proxy depends on.
   _xmass_enumerate_accounts
-  local _oct _dom _vhd _c1 _c2 _cr _cs _src_fqdn _tgt_fqdn _panel _sub _site _kind _dom_t _picked _ok
+  local _oct _dom _vhd _c1 _c2 _cr _cs _cn _cu _src_fqdn _tgt_fqdn _panel _sub _site _kind _dom_t _picked _ok
   _src_fqdn=$(hostname -f 2>/dev/null)
   _tgt_fqdn=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "hostname -f" 2>/dev/null)
   [ -z "${_tgt_fqdn}" ] && _alrt "  cannot read the target's hostname over ssh -- renamed sites are probed by their old name"
@@ -7037,26 +7162,49 @@ _xmass_cmd_verify() {
         _cr=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
           -H "Host: ${_dom}" "http://127.0.0.1/" 2>/dev/null)
       fi
-      _cs="-"
+      _cs="-"; _cn="-"
       if [ -d "/data/disk/${_oct}/config/server_master/ssl.d/${_dom}" ]; then
         _cs=$(curl -sk -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
           --resolve "${_dom_t}:443:${_tgt}" "https://${_dom_t}/" 2>/dev/null)
+        # The certificate the target actually SERVES for this name: a site
+        # can answer 200 over TLS on the box's wildcard or a neighbour's
+        # certificate, which a status code never shows (e2e VER-E04).
+        _cn=$(echo | timeout 20 openssl s_client -connect "${_tgt}:443" \
+          -servername "${_dom_t}" 2>/dev/null \
+          | openssl x509 -noout -subject 2>/dev/null \
+          | sed -n 's/.*CN *= *\([^,/]*\).*/\1/p' | head -1)
+        [ -z "${_cn}" ] && _cn="none"
+      fi
+      # A front page that redirects (a login-only site, a canonical-host
+      # rule) is only judged on where it lands: fetch /user once, direct to
+      # the target, so a redirect to nowhere is not read as a working site.
+      _cu="-"
+      if [ "${_c1}" = "301" ] || [ "${_c1}" = "302" ]; then
+        _cu=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
+          --resolve "${_dom_t}:80:${_tgt}" "http://${_dom_t}/user" 2>/dev/null)
       fi
       _ok=NO
       if [ "${_c1}" = "200" ] || [ "${_c2}" = "200" ] || [ "${_c1}" = "301" ] || [ "${_c1}" = "302" ]; then
         if [ "${_cr}" = "-" ] || [ "${_cr}" = "200" ] || [ "${_cr}" = "301" ] || [ "${_cr}" = "302" ]; then
           _ok=YES
         fi
+        case "${_cu}" in -|200|301|302|401|403) : ;; *) _ok=NO ;; esac
       elif [ "${_c1}" = "401" ] || [ "${_c1}" = "403" ]; then
         if [ "${_c1}" = "${_c2}" ] && { [ "${_cr}" = "-" ] || [ "${_cr}" = "${_c1}" ]; }; then
           _ok=PROTECTED
         fi
       fi
+      # The served name must be the site's own or a wildcard of its parent
+      # zone; anything else is served on someone else's certificate.
+      if [ "${_cn}" != "-" ] && [ "${_cn}" != "${_dom_t}" ] \
+        && [ "${_cn}" != "*.${_dom_t#*.}" ]; then
+        _alrt "  ${_oct}: ${_dom_t} is served on certificate CN '${_cn}' -- not its own name"
+      fi
       case "${_ok}" in
-        YES)       _info "  ${_oct}: ${_dom_t} target=${_c1}/${_c2} relay=${_cr} https=${_cs}: OK" ;;
-        PROTECTED) _info "  ${_oct}: ${_dom_t} target=${_c1}/${_c2} relay=${_cr} https=${_cs}: OK (protected, same answer direct and relayed)" ;;
+        YES)       _info "  ${_oct}: ${_dom_t} target=${_c1}/${_c2} relay=${_cr} https=${_cs} cn=${_cn} user=${_cu}: OK" ;;
+        PROTECTED) _info "  ${_oct}: ${_dom_t} target=${_c1}/${_c2} relay=${_cr} https=${_cs} cn=${_cn}: OK (protected, same answer direct and relayed)" ;;
         *)
-          _alrt "  ${_oct}: ${_dom_t} target=${_c1}/${_c2} relay=${_cr} https=${_cs} -- investigate"
+          _alrt "  ${_oct}: ${_dom_t} target=${_c1}/${_c2} relay=${_cr} https=${_cs} cn=${_cn} user=${_cu} -- investigate"
           _alrt "    (transient 200 'Page not found' bodies are BOA burst protection; re-run"
           _alrt "    verify before recording a site broken)" ;;
       esac
@@ -8510,7 +8658,7 @@ _xmass_cutover_finish() {
 # gates keep holding the queue and every local writer on the box this
 # step just promoted. The cron start is vintage tolerance -- a target
 # quiesced by pre-gate BOA bytes still has its cron stopped.
-rm -f /root/.standby.cnf /run/boa_xmass_init.pid
+rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid
 service cron start &>/dev/null
 for _s in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
   if [ ! -e "/var/xdrago/${_s}" ] \
@@ -8690,7 +8838,7 @@ _xmass_cmd_cutover() {
     # Re-assert the promotion-window signal too: the parked run's touch
     # does not survive a target reboot or a long park's age ceiling, and
     # the tail runs the renames and queue passes the signal protects.
-    ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid" &> /dev/null
+    ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid; : > /root/.standby.init.pid" &> /dev/null
     # Re-assert the 503 gate: it persists on disk from the parked run, but an
     # operator may have lifted it via the abandon recipe before deciding to
     # resume after all -- and the tail assumes a non-serving source. Also
@@ -8991,7 +9139,10 @@ _xmass_cmd_cutover() {
   # while the standby marker must HOLD through steps 9-15 (renames, queue
   # passes) -- without it second.sh would self-remove the marker within a
   # minute and un-gate every writer mid-cutover. Step 15 clears both.
-  ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid" &> /dev/null
+  # Both the tmpfs signal and its on-disk twin: /run does not survive a
+  # target reboot inside the window, and the twin is what the per-job
+  # gates and autosync read after one (e2e INIT-E18; design G1).
+  ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid; : > /root/.standby.init.pid" &> /dev/null
   _info "Stopping and decoupling slave on target ${_tgt} ..."
   if ! ssh root@"${_tgt}" \
     "mysql --defaults-file=/root/.my.cnf \
@@ -9135,7 +9286,7 @@ _xmass_post_mig() {
   # the backup and cleanup tools all exit on it). Cutover step 15 clears
   # it; catch anything that slipped through.
   if [ -e "/root/.standby.cnf" ]; then
-    rm -f /root/.standby.cnf /run/boa_xmass_init.pid
+    rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid
     _alrt "  Removed a LEFTOVER /root/.standby.cnf -- cutover step 15 should have"
     _alrt "  cleared it; verify cron and the task queue are actually running here"
   fi
@@ -9307,7 +9458,7 @@ _take_verb_lock() {
 }
 
 case "${_cmd}" in
-  pre-mig|prep-target|init|sync|cutover|reset-phase|post-mig|restore-solr)
+  pre-mig|prep-target|init|sync|cutover|reset-phase|post-mig|restore-solr|restore-target)
     _take_verb_lock
   ;;
 esac
@@ -9454,6 +9605,12 @@ case "${_cmd}" in
     _check_root
     _xmass_restore_solr_source
   ;;
+  restore-target)
+    _check_root
+    _live=NO
+    [ "$1" = "--live" ] && _live=YES
+    _xmass_restore_target "${_live}"
+  ;;
   autosync)
     # Forms: autosync <target-ip> [--every=N]  (arm)
     #        autosync --off | --status | --run
@@ -9514,6 +9671,8 @@ case "${_cmd}" in
     echo "Usage: xmass post-mig                                 (run on target after DNS)"
     echo "Usage: xmass reset-phase <phase>                      (run on source; recovery)"
     echo "Usage: xmass restore-solr                             (run on source; recovery)"
+    echo "Usage: xmass restore-target [--live]                  (run on a standby target never promoted:"
+    echo "                     the pre-init data directory and credentials back, the standby undone; recovery)"
     echo ""
     echo "Notes:"
     echo "  - Requires identical Percona MySQL versions on both servers."

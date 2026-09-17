@@ -102,6 +102,49 @@
 
 @=> Improvements
 
+    * xoct proxy-retire now keeps the withdrawal date it was given in the
+      account's policy record, on both ends of the pair, so the policy table
+      (xoct proxy-mode --all) shows when a retired proxy is due to go
+      instead of a dash; before, the date survived only in the migration log
+      and in the notice mailed to the customer.
+    * A silent-mode barracuda or octopus run now ends its pass log with the
+      same completion line it prints to the console (`BARRACUDA upgrade
+      completed`, `OCTOPUS upgrade completed`, or their WITH ERRORS forms):
+      the console told the operator to `tail -f` that log and wait for the
+      line, but the line was never written there.
+    * xmass restore-target (new, run on the standby): a target that xmass
+      init made a replication standby and that was never promoted can be
+      returned to its pre-init state -- the data directory init parked
+      aside is put back with the credentials that open it, the replication
+      is stopped and forgotten, the standby hold and its markers are
+      removed, the Solr services the init disarmed are re-armed and cron is
+      started; the replica's data directory is kept aside, never deleted.
+      Until now such a box could only be reimaged. A dry run by default,
+      --live does it, under the same single-flight lock as every other
+      state-mutating verb.
+    * xmass init now parks the target's /root/.my.cnf and .my.pass.txt
+      beside the data directory it moves aside, with the same stamp: the
+      copy-back brings the source's root password with it, so the parked
+      copy could never be opened again after the next rotation.
+    * The promotion window's signal is written twice at the cutover: the
+      tmpfs /run/boa_xmass_init.pid and its on-disk twin
+      /root/.standby.init.pid, so a target rebooted inside the window keeps
+      its write gates armed; both are removed together when the window
+      closes.
+    * xmass cutover hands xoct the target's hostname, and the old name of a
+      site the cutover renamed (a site under the box's own hostname) now
+      answers 301 to its new name on the target, over HTTP and HTTPS,
+      instead of being proxied to the target's catch-all page.
+    * xmass verify follows a front page that redirects with one /user fetch
+      on the same name, and reads the certificate the target serves for
+      each HTTPS site, alerting when the certificate's name is neither the
+      site's own nor a wildcard of its parent: a redirect to nowhere and a
+      site served on a neighbour's certificate both passed before.
+    * The per-account runner no longer launches octopus for a queued
+      upgrade of a proxied account: octopus refused it with an alert every
+      tick and the runner kept re-arming the trigger. The trigger stays in
+      place quietly until a promotion removes proxied.pid, then the upgrade
+      runs on the next quiet tick.
     * The Run db updates command (provision-update) applies a Drupal 10+
       site's pending database updates with the site's own Drush, through
       the same window the deploy uses: a real unlock of a locked platform,
