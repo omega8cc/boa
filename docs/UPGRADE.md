@@ -123,7 +123,7 @@ octopus up-lts all platforms
 
 ## NOTE on Percona SQL Server versions management
 
-**Drupal 11 needs MySQL 8**, which on BOA means Percona 8.4 -- the most common reason to leave the default Percona 5.7. The move is two steps, never a direct jump, on Devuan Daedalus only, after a whole-server snapshot and a `codebasecheck --box --deep` run (see [docs/MAJORUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MAJORUPGRADE.md)).
+**Drupal 11 needs MySQL 8**, which on BOA means Percona 8.4 -- so a server that will host Drupal 11 has to leave the default Percona 5.7. The move is two steps, never a direct jump, on Devuan Daedalus only, after a whole-server snapshot and a `codebasecheck --box --deep` run (see [docs/MAJORUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MAJORUPGRADE.md)).
 
 You can upgrade Percona from default 5.7 to 8.0, or once you run 8.0 to 8.4 LTS during `barracuda` upgrade with commands like:
 
