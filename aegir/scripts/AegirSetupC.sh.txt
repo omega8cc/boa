@@ -1863,7 +1863,11 @@ _d_dist_loop() {
       && [ -n "${_d_db_v}" ] \
       && [ "${_d_db_v%%.*}" -lt 8 ] \
       && { [[ "${_PLATFORMS_LIST}" =~ ALL ]] || [[ "${_PLATFORMS_LIST}" =~ ${_dist} ]]; }; then
-      _msg "NOTE! ${_dist} (${_d_name} ${_d_vers} on Drupal ${_d_core}) needs MySQL 8; this server runs Percona ${_d_db_v}: skipped"
+      if [ "${_d_vers}" = "${_d_core}" ]; then
+        _msg "NOTE! ${_dist} (${_d_name} ${_d_vers}) needs MySQL 8; this server runs Percona ${_d_db_v}: skipped"
+      else
+        _msg "NOTE! ${_dist} (${_d_name} ${_d_vers} on Drupal ${_d_core}) needs MySQL 8; this server runs Percona ${_d_db_v}: skipped"
+      fi
       _msg "NOTE! Move the box to Percona 8.4 first (docs.boa.io: Percona 8 upgrade readiness), then run this again"
       continue
     fi
