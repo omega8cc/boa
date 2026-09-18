@@ -36,7 +36,8 @@ operates on PROXIED accounts only and skips the rest with a notice.
 
 Every verb is gated on a per-account phase, which `xtrim status` prints
 as `phase=` — `none`, `stage-a`, `stage-b-started`, `stage-b` or
-`restored`. A stage B interrupted mid-run leaves the account at
+`restored`. An account whose only live vhost is its own local control
+panel is listed as `panel-only` with nothing to shrink, not with a target. A stage B interrupted mid-run leaves the account at
 `stage-b-started`, where `quiesce` ("deletion may be partial"), `shrink`,
 `restore` and `finalize` all refuse and only `status` and `plan` remain
 useful; inspect such an account by hand from the tool's working directory
@@ -72,10 +73,16 @@ unambiguously; no `sqlclean` (mutual lock) and no
 barracuda/octopus/xoct/xmass/provision/install in flight; the eligibility
 triple present; `log/CANCELLED` means `boa cleanup`, never xtrim;
 `log/proxied.pid` present and older than `_XTRIM_MIN_DAYS` (default 14,
-hard floor 7); every live vhost a proxy vhost agreeing on ONE target IP;
-`migproxy.cnf` record agreeing with the vhosts (disagreement names
-`xoct proxy --repair --retarget`); no expired certificate behind a
-retained HTTPS vhost; every `server_name` serving through the target AND
+hard floor 7); every live vhost a proxy vhost agreeing on ONE target IP — or the
+cutover's own 301 redirect for a site that was named under the old box name
+(recognised by its banner: no proxy, no content; kept in the map as its own
+class, and an account whose sites were all box-named takes its target from
+the policy record); `migproxy.cnf` record agreeing with the vhosts
+(disagreement names `xoct proxy --repair --retarget`; an all-box-named account
+has no vhost target to compare, so the record is taken as given); no expired
+certificate behind a retained HTTPS vhost (a retired box-named name is outside
+that gate — nothing renews its certificate, so its expiry is reported, not
+refused); every `server_name` serving through the target AND
 through the proxy relay (redirects accepted — SSL-Required sites answer
 301 on port 80). The serving probe is not status-only: once per run the
 tool fingerprints the target's answer for an impossible hostname, and a
@@ -177,7 +184,11 @@ the account's entire `config/` tree including `ssl.d`, and `tools/le/` in
 its entirety — delete `tools/le` and every HTTPS proxy vhost has a
 dangling `ssl_certificate` and nginx will not start. Certificate refresh
 stays with the daily `migration_proxy_certs.sh` mirror, which must keep
-running long after the shrink.
+running long after the shrink. The one class it cannot refresh is a
+retired box-named name (answered with the cutover's 301): no target issues
+for it, so the mirror names it on every run and mails the admin once when
+its certificate enters the `_MIGRATION_PROXY_CERT_WARN_DAYS` window and once
+when it has expired.
 
 ## Rollback truth
 
