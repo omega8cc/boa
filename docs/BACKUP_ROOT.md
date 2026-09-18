@@ -36,7 +36,7 @@ dcysetup <command>
 ```
 
 - **Commands**:
-  - `install`: Installs required dependencies for the backup system.
+  - `install`: Installs required dependencies for the backup system. Before it downloads or changes anything it checks `/var/tmp`, `/usr/local` and `/opt/pipx` for 75,000 free inodes and 2,560 MB free space and refuses with the measured numbers when either floor is missed (`df -h` can look fine while `df -i` is full), leaving the installed tooling untouched. A filesystem without inode accounting is exempt from the inode floor. `backboa install` and `duobackboa install` carry the same gate; a routine backup run only warns when inodes on `/` run very low.
   - `setup`: Configures global backups, generating default configuration files and cron jobs.
   - `update`: Alias for `setup`.
 
@@ -114,7 +114,7 @@ The system supports multiple storage providers. Credentials for these providers 
 | **Backblaze B2**           | Hot                                   | Multi-region          | US, Europe  | Server-side (AES-256) + Client-side    | B2 API, S3 Compatible  |
 | **Cloudflare R2**          | Hot                                   | Multi (Regionless)    | Global      | Server-side (AES-256) + In-transit TLS | S3 API (boto3)         |
 | **DigitalOcean Spaces**    | Standard (Hot)                        | Multi-region          | Global      | Server-side (AES-256) + Client-side    | S3 API (boto3)         |
-| **Google Cloud Storage**   | Standard, Nearline, Coldline, Archive | Multi-region          | Global      | Server-side (AES-256) + Client-side    | Native, S3 Compatible  |
+| **Google Cloud Storage**   | Standard, Nearline, Coldline, Archive | Multi-region          | Global      | Server-side (AES-256) + Client-side    | S3 API (boto3, HMAC keys) |
 | **IBM Cloud**              | Standard, Vault, Cold Vault, Archive  | Multi-region          | Global      | Server-side (AES-256) + Client-side    | S3 API (boto3)         |
 | **Linode Object Storage**  | Standard (Hot)                        | Multi-region          | Global      | Server-side (AES-256) + Client-side    | S3 API (boto3)         |
 | **Microsoft Azure**        | Hot, Cool, Archive                    | LRS, ZRS, GRS, RA-GRS | Global      | Server-side (AES-256) + Client-side    | Azure Blob API         |
@@ -214,6 +214,19 @@ export B2_APPLICATION_KEY="your_b2_application_key"
 export KEEP_WITHIN="3M"
 export FULL_BACKUP_FREQUENCY="28D"
 ```
+
+### **Google Cloud Storage (`gcs.txt`) and IBM Cloud Object Storage (`ibm.txt`)**
+Both are reached through their S3-compatible APIs with HMAC keys (Duplicity has no native `gs://` backend):
+```bash
+export GCS_ACCESS_KEY_ID="your_gcs_hmac_access_key"
+export GCS_SECRET_ACCESS_KEY="your_gcs_hmac_secret"
+```
+```bash
+export IBM_ACCESS_KEY_ID="your_ibm_hmac_access_key_id"
+export IBM_SECRET_ACCESS_KEY="your_ibm_hmac_secret_access_key"
+export IBM_REGION="your_ibm_region"
+```
+A `gcs.txt` or `ibm.txt` written before the switch to HMAC keys carries the old variable names, so the run stops with `Error: no GCS_ACCESS_KEY_ID / GCS_SECRET_ACCESS_KEY pair in the gcs credentials file` (or the IBM equivalent) rather than handing Duplicity an empty key pair. Re-fill the file from the generated `README.txt` in the same directory, which lists the expected names for every service.
 
 ### **Permissions**
 Ensure all credentials are secured:

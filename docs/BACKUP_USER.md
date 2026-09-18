@@ -60,6 +60,7 @@ This section covers a quick-start approach, focusing on minimal setup.
      mybackup restore <SERVICE>
      ```
    - This command will restore everything to your `/data/disk/your_username/static/restores/` folder.
+   - A restore is queued and run for you by the server. If the queued command is refused (arguments that fail validation, or a symlink where `static`, `static/control` or `remote_backups` should be a real directory) it is dropped without a message to you; your host can read the reason in `/var/log/mybackup_invalid_queued.log`.
    - If you need to restore just a specific directory or from a certain date, see the **Advanced Use** section below.
 
 5. **Monitor Usage**
