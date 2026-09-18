@@ -90,6 +90,28 @@ probe the box at runtime, and `check` gates DB-generation parity against
 the target. A non-apt (RPM-family) source is refused cleanly at stage 1
 (its preflight requires `apt-get`); there is no path for it.
 
+### Building a rehearsal estate: aegir3-install
+
+The drills below ran against disposable vanilla estates, and a first run on an
+estate you have never seen should too. `aegir3-install` builds that source: an
+unattended installer for upstream Ægir 3.x (Drupal 7 hostmaster plus Drush 8
+from git.drupalcode.org, the LAMP stack from the distro's own apt). It is
+deliberately **not a BOA tool**: it ships in the source tree at
+`aegir/tools/bin/aegir3-install` and the mirror serves it at the same path as
+the three tools above, but no BOA box fetches or runs it. Download it onto the
+fresh rehearsal box only, with the same `wget` form as above.
+
+- **Targets:** Debian 11 (PHP 7.4, MariaDB 10.5) and Ubuntu 20.04 / 22.04
+  (PHP 7.4, MySQL 8.0). PHP 7.4 is the floor on purpose: vanilla hosting modules
+  carry none of BOA's PHP 8 patches, so PHP 8 is refused without `--allow-php8`.
+- **Unattended and idempotent:** the FQDN comes from `hostname -f`, the MySQL root
+  password is generated and kept in `/root/.aegir_install.cnf` so a re-run reuses
+  it, and the log is `/var/log/aegir3-install.log`. Exit 0 means installed or
+  already installed.
+- **Options:** `--fqdn`, `--email`, `--db-pass`, `--nginx` (Nginx + php-fpm instead
+  of Apache, to drill stage 2 without stage 1), `--branch` (default `7.x-3.x`),
+  `--allow-php8`, `--force`, `-h`.
+
 ## Validation status — read before using on a client box
 
 Proven end-to-end on disposable VMs (2026-07): both stage-2 routes, every

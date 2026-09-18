@@ -376,6 +376,12 @@ directory would fail the configtest for the whole conversion. A site missing
 any of the three is counted and **named with the missing files** rather than
 skipped silently; re-run with `--repair` once the material exists.
 
+Both proxy templates forward `/.well-known/acme-challenge` to the target, which
+is what lets the target issue certificates for names that still resolve to the
+proxy. One vhost is not proxied at all: when `xmass` drives the conversion, a site
+named under the source box's own hostname, which the cutover renamed on the
+target, answers a `301` to its new name over HTTP and HTTPS.
+
 Repair and repoint (the tool names the flag when you need it):
 
 ```sh
@@ -399,7 +405,7 @@ Policy without re-running a migration:
 xoct proxy-mode --all                         # the table: mode, deadline, scope, peer, last told
 xoct proxy-mode o1 permanent                  # pin one account (wins over any box default)
 xoct proxy-mode --all temporary --deadline=+30d   # box sweep; never overwrites pins (--force-pinned overrides)
-xoct proxy-retire o1 [--deadline=+14d]        # mark retired + send the withdrawal notice
+xoct proxy-retire {o1|--all} [--deadline=+14d] [--no-notify]   # mark retired + send the withdrawal notice; --all skips an already-retired account by name
 ```
 
 Every policy change is pushed to the target's record and re-reconciled there,
