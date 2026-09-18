@@ -135,6 +135,16 @@ upgrade does not rebuild on a companion bump (the dynamically linked Unbound
 and cURL simply follow the upgraded library in place) correctly stay
 untouched.
 
+Two guards keep a same-version republish honest. `sync` never moves a peer
+file backwards in time: each builder also carries the peer's codename files,
+so the transfer runs with `--update` (and `--delay-updates`), and a sync that
+overlaps the peer's publish window can no longer push an older copy over a
+package the peer has just republished. A deliberate rollback goes through
+`force`, which republishes with a current mtime. `publish` checks its own
+`mv`: a refused overwrite is reported as `publish failed (cannot replace)`
+and the package is skipped, instead of old bytes staying in place under a
+sidecar rebuilt from them.
+
 ## Adding a Builder Mirror for a New Release
 
 To bring up the next release's builder (for example Excalibur alongside
