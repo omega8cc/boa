@@ -55,6 +55,7 @@
 ```text
 ;redis_old_nine_mode = FALSE
 ;;
+;;  DRUPAL 9 ONLY -- ignored on every other core and on Backdrop.
 ;;  If you are running Drupal 9 older than 9.3 you need to uncomment
 ;;  the line above and change it to TRUE to make Redis work again.
 ```
@@ -62,6 +63,7 @@
 ```text
 ;redis_old_eight_mode = FALSE
 ;;
+;;  DRUPAL 8 ONLY -- ignored on every other core and on Backdrop.
 ;;  If you are running Drupal 8 older than 8.8 you need to uncomment
 ;;  the line above and change it to TRUE to make Redis work again.
 ```
@@ -69,18 +71,22 @@
 ```text
 ;redis_lock_enable = TRUE
 ;;
+;;  DRUPAL 6/7 AND BACKDROP ONLY -- ignored on Drupal 8 and newer.
 ;;  The blazing fast Redis lock implementation is also enabled by default.
 ```
 
 ```text
 ;redis_path_enable = TRUE
 ;;
+;;  DRUPAL 6/7 AND BACKDROP ONLY -- ignored on Drupal 8 and newer.
 ;;  The blazing fast Redis path cache implementation is also enabled by default.
 ```
 
 ```text
 ;redis_scan_enable = FALSE
 ;;
+;;  DRUPAL 6/7 ONLY -- ignored on Drupal 8 and newer, and on Backdrop
+;;  (its Redis module has no SCAN delete).
 ;;  The blazing fast Redis method on wildcard cache delete. Uses non-atomic,
 ;;  non-blocking, and concurrency friendly SCAN command instead of KEYS
 ;;  to perform cache wildcard key deletions. Not enabled by default, because
@@ -93,6 +99,9 @@
 ```text
 ;redis_flush_forced_mode = TRUE
 ;;
+;;  DRUPAL 6/7 AND BACKDROP ONLY -- ignored on Drupal 8 and newer. On
+;;  Backdrop only the 24-hour cap on permanent entries applies (its Redis
+;;  module knows no per-bin flush modes).
 ;;  The more aggressive cache flush mode is now enabled by default, but you can
 ;;  still disable it with FALSE below, if you wish, after some testing, since
 ;;  it will further improve your site's performance.
@@ -134,6 +143,8 @@
 ```text
 ;redis_exclude_bins = FALSE
 ;;
+;;  On Backdrop name the bins the way core does, without the cache_ prefix
+;;  (form, page, menu); a leading cache_ is accepted and dropped.
 ;;  Sometimes you may want to exclude some problematic cache bins from Redis
 ;;  so they will use default SQL engine, at least until related issue will be
 ;;  fixed either in your contrib code or in the Redis integration module.
@@ -156,6 +167,90 @@
 ;;  Normally you should never disable Redis, unless for debugging rare issues.
 ;;  If you are sure you need to disable Redis for this site,
 ;;  uncomment the line above and set the value to TRUE.
+```
+
+### INI (site level) for Redis / Valkey Cache Reliability and Observability
+
+```text
+;;  IMPORTANT NAMESPACE NOTE: even when this server runs Valkey instead of
+;;  Redis, ALL of the cache control INI variables use the stable "redis_"
+;;  namespace. Valkey is a drop-in Redis fork and BOA keeps a single "redis_"
+;;  INI namespace to avoid confusion. The valkey/redis distinction exists only
+;;  internally, in the global-*-valkey.inc vs global-*-redis.inc includes.
+;;
+;;  The defaults below are safe for everyone; uncomment a line only to override.
+```
+
+```text
+;redis_connect_timeout = 0.7
+;;
+;;  Seconds the per-request cache backend probe waits for a TCP connect before
+;;  treating the backend as unreachable for this request. Raise on a busy or
+;;  higher-latency host; lower only if you know connects are always instant.
+```
+
+```text
+;redis_read_timeout = 0.7
+;;
+;;  Seconds the probe waits for the AUTH/PING reply before giving up.
+```
+
+```text
+;redis_backoff_ttl = 15
+;;
+;;  After a failed probe, skip re-probing for this many seconds (a short
+;;  circuit-breaker). Lower means faster recovery after a blip but more probe
+;;  attempts while the backend is genuinely down; higher is the opposite.
+```
+
+```text
+;redis_probe_retry = TRUE
+;;
+;;  Retry the probe once before tripping the backoff. Prevents a single
+;;  sub-second blip from dropping the whole PHP worker pool to the database
+;;  cache for the backoff window. Set FALSE to disable the retry.
+```
+
+```text
+;redis_flush_apcu_on_recovery = TRUE
+;;
+;;  When the backend transitions from down back to up, clear the local APCu so
+;;  any stale ChainedFast front-layer entries written/missed during the
+;;  degraded window are discarded and rebuilt from Redis/Valkey. This is the
+;;  main guard against "config changes not applied" lingering after a blip.
+;;  Set FALSE only if you have a specific reason to keep APCu across recovery.
+```
+
+```text
+;redis_debug_header = FALSE
+;;
+;;  Emit always-on, non-sensitive diagnostic HTTP response headers so cache
+;;  state can be inspected with a plain curl, without admin access or a .dev
+;;  hostname. Default FALSE; enable per-site or per-platform only while you are
+;;  investigating, then disable again. Never exposes the password or topology.
+;;  Headers (neutral X-Cache-* prefix, identical on Redis or Valkey):
+;;    X-Cache-State    : up | down | backoff | nophpredis | disabled
+;;    X-Cache-Reason   : last probe reason (ok, connect-tcp-exception, ...)
+;;    X-Cache-Backend  : chainedfast | redis | db   (db on a request = degraded)
+;;    X-Cache-Anon     : ANONYMOUS | LOGGED
+```
+
+```text
+;redis_debug = FALSE
+;;
+;;  Arm the lightweight probe fallback log. Setting this TRUE is the only
+;;  tenant-side step, and while FALSE there is zero extra disk I/O. When it is
+;;  TRUE, and ONLY then, the includes look for a control flag file and, while
+;;  that flag exists, append probe up/down/recovery events to a fallback log.
+;;
+;;  NOTE: both the control flag file and the fallback log live in the root-level
+;;  system administrator area, which tenants cannot access by default. The paths
+;;  below are listed only for cross-reference; creating or removing the flag and
+;;  reading the log are performed by the server administrator, not from here:
+;;    Valkey servers: /data/conf/valkey.debug.flag  ->  /var/tmp/fpm/valkey-fallback.log
+;;    Redis  servers: /data/conf/redis.debug.flag   ->  /var/tmp/fpm/redis-fallback.log
+;;  The administrator removes the flag to stop logging live, with no INI edit
+;;  or redeploy. Arming redis_debug here simply lets that toggle take effect.
 ```
 
 ### INI (site level) for Nginx Microcache Control
@@ -211,6 +306,12 @@
 ;;      header('X-Accel-Expires: 1'); // This disables Speed Booster
 ;;      $conf['cache'] = 0; // This disables page caching on the fly
 ;;    }
+;;
+;;  On Backdrop TRUE switches the page cache off the same way, but the
+;;  default does not force it on: Backdrop's "maximum cache lifetime" is
+;;  also how long an entry stays valid, so the site's own page cache
+;;  setting stands. The on-the-fly form there is
+;;  $config['system.core']['cache'] = 0;
 ```
 
 ### INI (site level) for Drupal Sites Access Control
@@ -310,6 +411,7 @@
 ```text
 ;set_composer_manager_vendor_dir = FALSE
 ;;
+;;  DRUPAL ONLY -- ignored on Backdrop (no Composer Manager there).
 ;;  When set to TRUE it will enforce site specific path to Composer Manager
 ;;  composer_manager_vendor_dir path: sites/domain/vendor but only once the site
 ;;  is already installed, so it will not override the variable on install,
@@ -477,6 +579,7 @@
 ```text
 ;advagg_auto_configuration = FALSE
 ;;
+;;  DRUPAL ONLY -- ignored on Backdrop (no AdvAgg there).
 ;;  When set to TRUE allows to enable auto-configuration for the AdvAgg module
 ;;  on the global.inc level. Supported locations, in the order of precedence:
 ;;
@@ -499,6 +602,7 @@
 ```text
 ;auto_detect_domain_access_integration = FALSE
 ;;
+;;  DRUPAL ONLY -- ignored on Backdrop (no Domain Access port).
 ;;  When set to TRUE allows to enable auto-detection and auto-include for
 ;;  the Domain Access module. Supported locations, in the order of precedence:
 ;;
@@ -524,6 +628,7 @@
 ```text
 ;auto_detect_facebook_integration = FALSE
 ;;
+;;  DRUPAL ONLY -- ignored on Backdrop (no Drupal for Facebook port).
 ;;  When set to TRUE allows to enable auto-detection and auto-include for
 ;;  the Drupal for Facebook (fb) module. Supported locations, in the order
 ;;  of precedence:
