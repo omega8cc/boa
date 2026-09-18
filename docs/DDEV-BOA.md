@@ -39,7 +39,8 @@ SSH, and each one is already permitted by the BOA limited shell:
   reaches the jail.
 - `lshell`'s `overssh` set is what governs non-interactive commands. It permits `drush`
   (and `drush8`/`drush10`/`drush11`), `mysql`/`mysqldump`/`mydumper`, `rsync` and `scp`,
-  among others. It does **not** permit `tar`, `cat`, `vdrush` or a site-local
+  among others (`scp` only where the Node gate is open: on a default box the gate strips it
+  from every list, which is why the add-on moves files with `rsync`). It does **not** permit `tar`, `cat`, `vdrush` or a site-local
   `vendor/drush/drush/drush.php`, so the add-on never relies on those over SSH.
 - The master and server Drush contexts (`@hostmaster`, `master_db`, `server_master`,
   `server_localhost`) are forbidden. The add-on only ever uses the site's own `@alias`.
