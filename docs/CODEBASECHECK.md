@@ -25,6 +25,9 @@ these thresholds only flag a customer's frozen custom platform pinned to an old 
 - **Drupal 7**: **7.76+** (the release that added MySQL-8 support). Older is flagged.
 - **Drupal 8**: **8.6.0+**. Older is flagged.
 - **Drupal 9 / 10 / 11 and Backdrop**: supported.
+- **Textpattern**: reported as MySQL-8 compatible.
+- **Grav**: always `OK`, worded "MySQL-8 review not applicable" -- a flat-file site has no
+  database.
 - **Unrecognised codebase**: flagged for manual review (fail-safe).
 
 A flagged (incompatible) codebase means that account must move to a legacy Percona 5.7

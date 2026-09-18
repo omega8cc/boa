@@ -55,7 +55,7 @@ migratefs [--target <mount>] [--account <oN>] [--no-arch] [--apply] [--yes]
 | *(no `--apply`)* | DRY plan only — print what would happen, change nothing |
 | `--apply` | perform the relocation (pauses the Ægir queue, drains tasks) |
 | `--target <mount>` | attached mount to relocate onto, always a mountpoint under `/mnt` (the only supported store placement: the nightly's root-run relocations refuse a store elsewhere); auto-detected as the single real mountpoint under `/mnt` if omitted |
-| `--account <oN>` | limit to one account, and skip `arch` (default: all accounts **plus** `arch`) |
+| `--account <oN>` | limit to one account, and skip `arch` (default: all accounts **plus** `arch`). Must be an Octopus account directory name: `arch`, `all`, `legacy`, a path or a dot-name is refused and the run exits 1 before it pauses the queue |
 | `--no-arch` | do not relocate `/data/disk/arch` |
 | `--yes` | in `--apply`, skip the interactive confirmation |
 | `--grace <sec>` | queue-pause grace before draining tasks (default 15) |
