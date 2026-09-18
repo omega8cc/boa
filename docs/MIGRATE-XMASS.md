@@ -330,8 +330,8 @@ What it does, in order:
 1. **CSF both directions** — appends each peer to both `csf.allow` and
    `csf.ignore` here and there (an allow alone still leaves the peer exposed
    to a guard temp-deny mid-migration), reloads CSF, then proves the reverse
-   `target → source:3306` path by opening it — a few times over ~30 s, because the
-   CSF reloads just before it can drop the first packet. A dead reverse path is fatal now
+   `target → source:3306` path by opening it — up to six times, five seconds apart,
+   because the CSF reloads just before it can drop the first packet. A dead reverse path is fatal now
    rather than at `init`, which fails *after* the target datadir has already
    been replaced. Override with `_XMASS_SKIP_REVERSE_CHECK=YES` if you
    firewall differently.
@@ -396,9 +396,10 @@ no account has `static/control/run-upgrade.pid` armed, every root's
 `hosting_task` queue is empty (current revisions, queued or processing) and no
 dispatch, verify or installer process runs. The probe fails closed: an
 unreadable root or an unreadable target counts as busy. `init` applies the same
-probe to the source itself before it snapshots the source's data directory, under
-the same ceiling and the same bypass — a pass running under the snapshot rewrites
-schemas the replica cannot apply.
+probe to the source itself, twice: a cheap read (run locks and pass processes)
+before it touches either box, and the full read immediately before it snapshots
+the source's data directory — a pass running under the snapshot rewrites schemas
+the replica cannot apply. Same ceiling, its own bypass.
 
 - `prep-target` waits before **every** account create (each create leaves the
   target mid-motion, and `boa in-octopus` refuses on any run lock -- an account
@@ -412,8 +413,10 @@ schemas the replica cannot apply.
   rows are the source's), after every cheap refusal and before the first
   source mutation; the DRY run reports a busy target as a DENY.
 
-Knobs: `_XMASS_TARGET_SILENT_MAX_WAIT` (seconds, default 2400) and
-`_XMASS_SKIP_TARGET_SILENCE=YES` (skip the wait deliberately, logged). Related
+Knobs: `_XMASS_TARGET_SILENT_MAX_WAIT` (seconds, default 2400),
+`_XMASS_SKIP_TARGET_SILENCE=YES` (skip the target's wait deliberately, logged)
+and `_XMASS_SKIP_SOURCE_SILENCE=YES` (skip `init`'s wait for the source; the two
+are separate so that bypassing one never disarms the other). Related
 `xoct create` knobs: `_XOCT_TARGET_QUIET_MAX_WAIT` (wait for a quiet target
 before the account install -- no run lock and no armed `run-upgrade.pid`, held
 on two consecutive polls; default 1800) and `_XOCT_CREATE_MAX_WAIT` (the

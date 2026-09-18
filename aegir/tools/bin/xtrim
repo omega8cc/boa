@@ -213,7 +213,7 @@ _map_account() {
   local _oN="$1" _v _d _al _sp _db
   _USR="/data/disk/${_oN}"
   _VHD="${_USR}/config/server_master/nginx/vhost.d"
-  _MAP_DOMS=""; _MAP_TGT=""; _MAP_TGT_BAD=""; _MAP_REDIR=""
+  _MAP_DOMS=""; _MAP_TGT=""; _MAP_TGT_BAD=""; _MAP_REDIR=""; _MAP_TGT_FROM_REC=NO
   _MAP_SITES=""; _MAP_DBS=""; _MAP_HM_DB=""; _MAP_ALL_DBS=""
   _MAP_PLATS=""; _MAP_NOSAVED=""
   ### The account's own control panel is never proxied: the cutover leaves
@@ -239,14 +239,17 @@ _map_account() {
     _MAP_DOMS="${_MAP_DOMS} ${_d}"
     ### A site named under THIS box's own hostname was renamed on the target
     ### by the cutover, and its old name is answered here with a 301 to the
-    ### new one: xoct's redirect vhost carries no proxy_pass and no fastcgi
-    ### site, only a bare return 301. It is a live vhost of a proxied account,
-    ### not an integrity failure: it stays in the map (the liveness probe
-    ### re-probes a renamed name under its new name on the target) and is
-    ### counted as its own class -- no stage reads a target from it, no stage
-    ### has content to shrink behind it, and it keeps serving after finalize
-    ### like every other kept vhost under config/.
-    if ! grep -q "proxy_pass" "${_v}" 2>/dev/null \
+    ### new one: xoct's redirect vhost carries its own banner, no proxy_pass
+    ### and no fastcgi site, only a bare return 301. It is a live vhost of a
+    ### proxied account, not an integrity failure: it stays in the map (the
+    ### liveness probe re-probes a renamed name under its new name on the
+    ### target) and is counted as its own class -- no stage reads a target
+    ### from it, no stage has content to shrink behind it, and it keeps
+    ### serving after finalize like every other kept vhost under config/.
+    ### The reader matches the writer: any other 301-only vhost still fails
+    ### the integrity check below.
+    if grep -q "renamed site: redirect to its new name" "${_v}" 2>/dev/null \
+      && ! grep -q "proxy_pass" "${_v}" 2>/dev/null \
       && ! grep -q "fastcgi_param db_name" "${_v}" 2>/dev/null \
       && grep -q "^[[:space:]]*return 301 " "${_v}" 2>/dev/null; then
       _MAP_REDIR="${_MAP_REDIR} ${_d}"
@@ -268,6 +271,14 @@ _map_account() {
     fi
     [ -e "${_VHD}/.${_d}" ] || _MAP_NOSAVED="${_MAP_NOSAVED} ${_d}"
   done
+  ### An account whose sites were ALL named under the old box name carries
+  ### only redirect vhosts, so no proxy_pass names its target: the policy
+  ### record does. Derived HERE, not in the preflight, so every reader of the
+  ### map (status, restore) sees the same target.
+  if [ -z "${_MAP_TGT}" ] && [ -n "${_MAP_REDIR// /}" ]; then
+    _MAP_TGT="$(_mig_get "${_USR}/log/migproxy.cnf" _MIG_PEER_IP)"
+    [ -n "${_MAP_TGT}" ] && _MAP_TGT_FROM_REC=YES
+  fi
   ### Sites + DBs from the drush aliases (authoritative), sqlclean idioms:
   ### context_type == site, anchored db_name parse, fail-closed idents.
   for _al in "${_USR}"/.drush/*.alias.drushrc.php; do
@@ -545,6 +556,11 @@ _cert_horizon() {
   _now=$(date +%s)
   for _v in "${_VHD}"/https.*; do
     [ -e "${_v}" ] || continue
+    ### A retired (renamed) name's certificate is outside the horizon --
+    ### nothing renews it; the preflight reports that class by name.
+    case " ${_MAP_REDIR} " in
+      *" $(basename "${_v}" | sed 's/^https\.//') "*) continue ;;
+    esac
     _crt=$(grep -m1 "ssl_certificate " "${_v}" 2>/dev/null \
       | awk '{ print $2 }' | tr -d ';')
     [ -r "${_crt}" ] || continue
@@ -655,20 +671,18 @@ _preflight() {
   fi
   [ -n "${_MAP_REDIR// /}" ] \
     && _info "${_oN}: renamed box-named site(s) answered here with a 301 to the new name (no proxy behind them, kept in the map):${_MAP_REDIR}"
-  ### Record disagreement guard, same stance as the cert mirror. An account
-  ### whose sites were ALL named under the old box name carries only redirect
-  ### vhosts, so no proxy_pass names its target: the policy record does.
-  local _rec
-  _rec="$(_mig_get "${_USR}/log/migproxy.cnf" _MIG_PEER_IP)"
-  if [ -z "${_MAP_TGT}" ] && [ -n "${_MAP_REDIR// /}" ] && [ -n "${_rec}" ]; then
-    _MAP_TGT="${_rec}"
-    _info "${_oN}: every live vhost is a rename redirect -- target ${_MAP_TGT} taken from the policy record"
-  fi
-  [ -z "${_MAP_TGT}" ] && _die "${_oN}: could not derive the target IP from proxy_pass"
+  [ "${_MAP_TGT_FROM_REC}" = "YES" ] \
+    && _info "${_oN}: every live vhost is a rename redirect -- target ${_MAP_TGT} taken from the policy record"
+  [ -z "${_MAP_TGT}" ] \
+    && _die "${_oN}: could not derive the target IP: no proxy_pass names it and log/migproxy.cnf carries no _MIG_PEER_IP"
   if [ -n "${_MAP_NOSAVED// /}" ]; then
-    _alrt "${_oN}: live proxy vhosts without a saved .original:${_MAP_NOSAVED}"
+    _alrt "${_oN}: live vhosts without a saved .original:${_MAP_NOSAVED}"
     _alrt "${_oN}: their site/db map cannot be cross-checked from the saved vhost"
   fi
+  ### Record disagreement guard, same stance as the cert mirror (void by
+  ### construction when the record itself named the target above).
+  local _rec
+  _rec="$(_mig_get "${_USR}/log/migproxy.cnf" _MIG_PEER_IP)"
   if [ -n "${_rec}" ] && [ "${_rec}" != "${_MAP_TGT}" ]; then
     _die "${_oN}: migproxy.cnf peer ${_rec} disagrees with vhost target ${_MAP_TGT} -- run 'xoct proxy ${_oN} <ip> --repair --retarget' first"
   fi
@@ -677,6 +691,24 @@ _preflight() {
   if [ "${_hz}" != "999999" ] && [ "${_hz}" -lt "0" ]; then
     _die "${_oN}: certificate for ${_hzd} already EXPIRED -- fix the mirror first"
   fi
+  ### A retired (renamed) name is outside that horizon: the target no longer
+  ### issues for it and the daily certificate mirror skips a vhost with no
+  ### proxy_pass, so nothing on either box can renew it and a refusal here
+  ### could never be cleared. Reported, never refused: the 301 keeps working
+  ### over HTTP, an HTTPS visitor of the old URL meets the browser's warning.
+  local _rd _rcrt _rend _rdays
+  for _rd in ${_MAP_REDIR}; do
+    [ -e "${_VHD}/https.${_rd}" ] || continue
+    _rcrt=$(grep -m1 "ssl_certificate " "${_VHD}/https.${_rd}" 2>/dev/null | awk '{ print $2 }' | tr -d ';')
+    [ -r "${_rcrt}" ] || continue
+    _rend=$(openssl x509 -noout -enddate -in "${_rcrt}" 2>/dev/null | cut -d= -f2)
+    _rend=$(date -d "${_rend}" +%s 2>/dev/null)
+    [ -n "${_rend}" ] || continue
+    _rdays=$(( (_rend - $(date +%s)) / 86400 ))
+    if [ "${_rdays}" -lt "14" ]; then
+      _alrt "${_oN}: retired name ${_rd} still answers HTTPS here on a certificate nothing renews ($( [ "${_rdays}" -lt "0" ] && echo "EXPIRED ${_rdays#-}d ago" || echo "${_rdays}d left")) -- reported, not refused"
+    fi
+  done
   ### Target liveness for every server_name, direct AND through the proxy.
   _probe_all_doms "${_oN}" || _die "${_oN}: target liveness probes failed"
   ### Target-side proof, mandatory in v1.

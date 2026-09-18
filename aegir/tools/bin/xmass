@@ -6731,9 +6731,16 @@ _xmass_wait_target_silent() {
   local _w=0 _ok=0 _rc _last_alrt=-300 _tn="$1"
   local _max="${_XMASS_TARGET_SILENT_MAX_WAIT:-2400}"
   case "${_max}" in ''|*[!0-9]*) _max=2400 ;; esac
-  [ "${_t}" = "local" ] && _tn="this box (the source)"
-  if [ "${_XMASS_SKIP_TARGET_SILENCE}" = "YES" ]; then
-    _alrt "_XMASS_SKIP_TARGET_SILENCE=YES: NOT waiting for ${_tn} to be silent before ${_why}"
+  # The source's wait has its own bypass: skipping one leg knowingly must
+  # never disarm the other.
+  local _skip_knob="_XMASS_SKIP_TARGET_SILENCE" _skip_val="${_XMASS_SKIP_TARGET_SILENCE}"
+  if [ "${_t}" = "local" ]; then
+    _tn="this box (the source)"
+    _skip_knob="_XMASS_SKIP_SOURCE_SILENCE"
+    _skip_val="${_XMASS_SKIP_SOURCE_SILENCE}"
+  fi
+  if [ "${_skip_val}" = "YES" ]; then
+    _alrt "${_skip_knob}=YES: NOT waiting for ${_tn} to be silent before ${_why}"
     return 0
   fi
   _info "Waiting for ${_tn} to be completely silent before ${_why} (scope ${_scope}, up to ${_max}s) ..."
@@ -6766,6 +6773,11 @@ _xmass_wait_target_silent() {
   if [ "${_on_timeout}" = "warn" ]; then
     _alrt "${_tn} still busy after ${_max}s (${_XMASS_TGT_STATE:-unreadable}) -- an octopus pass or its queued verifies are running there; the next verb waits for silence again"
     return 1
+  fi
+  if [ "${_t}" = "local" ]; then
+    _die "${_tn} still busy after ${_max}s (${_XMASS_TGT_STATE:-unreadable}) -- a barracuda" \
+         " or octopus pass, an armed per-account upgrade or queued panel tasks are active on" \
+         " this box; let them finish, then re-run (${_skip_knob}=YES bypasses this wait knowingly)"
   fi
   _die "${_tn} still busy after ${_max}s (${_XMASS_TGT_STATE:-unreadable}) -- an octopus" \
        " pass or its queued verifies are running there; let it finish, then re-run"
@@ -6981,13 +6993,13 @@ _xmass_cmd_prep_target() {
   # Fail closed: init's failure mode for a dead reverse path is a refused
   # replication AFTER the target datadir has been replaced. The peer-allow
   # reloads above (csf -q here, then on the target) precede this probe by
-  # moments, and a reload window on either box drops the first packet -- a
-  # sound path read as dead once in five readiness-gate rings. Probe a few
-  # times over ~30 s before calling it dead.
+  # moments, and a reload window on either box drops the first packet, so a
+  # sound path reads as dead. Probe up to six times, five seconds apart,
+  # before calling it dead; each attempt is bounded on its own.
   local _rp=0 _rp_ok=NO
   while [ "${_rp}" -lt 6 ]; do
     _rp=$(( _rp + 1 ))
-    if ssh root@"${_tgt}" "timeout 5 bash -c '</dev/tcp/${_XMASS_SRC_IP}/3306'" 2>/dev/null; then
+    if ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "timeout 5 bash -c '</dev/tcp/${_XMASS_SRC_IP}/3306'" 2>/dev/null; then
       _rp_ok=YES
       break
     fi
@@ -7005,7 +7017,7 @@ _xmass_cmd_prep_target() {
   elif [ "${_XMASS_SKIP_REVERSE_CHECK}" = "YES" ]; then
     _alrt "reverse path target->source:3306 is DEAD after ${_rp} probes; continuing on _XMASS_SKIP_REVERSE_CHECK=YES"
   else
-    _die "target ${_tgt} cannot reach ${_XMASS_SRC_IP}:3306 (${_rp} probes over ~30s) -- replication WILL fail at init," \
+    _die "target ${_tgt} cannot reach ${_XMASS_SRC_IP}:3306 (${_rp} probes, 5s apart) -- replication WILL fail at init," \
          " after the target datadir has already been replaced." \
          " Check CSF on the source and any parent-host firewall (a Proxmox parent running CSF" \
          " must be trusted by hand: migration_proxy_trust.sh trust <ip> --csf-only -- xmass" \
@@ -7586,13 +7598,15 @@ _xmass_cmd_init() {
     _info "target ${_tgt} is already a standby (an earlier init committed its swap): waiting on run locks and processes only"
   fi
   _xmass_wait_target_silent "${_tgt}" "init replaces the target datadir" die "${_silence_scope}"
-  # The snapshot below is taken while THIS box serves. A barracuda or octopus
-  # pass here -- a release pass, or an armed per-account upgrade the runner
-  # launches on its next quiet tick -- rewrites schemas mid-snapshot, and the
-  # replica the target builds from that snapshot dies on the pass's DDL
-  # (error 1146 in the readiness gate's third cutover). The source must be as
-  # silent as the target, under the same bound and the same skip knob.
-  _xmass_wait_target_silent local "init snapshots this box's datadir" die full
+  # The snapshot further down is taken while THIS box serves. A barracuda or
+  # octopus pass here -- a release pass, or an armed per-account upgrade the
+  # runner launches on its next quiet tick -- rewrites schemas mid-snapshot,
+  # and the replica the target builds from that snapshot dies on the pass's
+  # DDL (error 1146: a table the snapshot never carried). Two reads: a cheap
+  # one here (run locks and pass processes), where a refusal costs nothing
+  # because neither box has been touched yet, and the decisive full-scope one
+  # immediately before the snapshot.
+  _xmass_wait_target_silent local "init touches either box" die locks
 
   # Every octopus pass the target ran while it was being provisioned (the
   # install, its in-flow upgrade, the pin-seed pass) snapshotted its own empty
@@ -7759,6 +7773,12 @@ _xmass_cmd_init() {
   _xmass_create_repl_user
   _xmass_prevent_solr_target
   _xmass_decide_transfer_method
+  # The decisive source-side read: minutes have passed since the early check
+  # (pending deletes cleared, tools installed, GTID configured) and the runner
+  # consumes an armed per-account upgrade within a minute. Full scope: run
+  # locks, pass processes, armed upgrades and the panel queues. Nothing is
+  # committed yet, so a refusal here still unwinds cleanly.
+  _xmass_wait_target_silent local "the datadir snapshot starts" die full
   _xmass_init_inflight_touch
   _xmass_take_backup
   # Point of no return: the next step displaces the target's datadir, so
