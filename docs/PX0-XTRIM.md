@@ -36,7 +36,8 @@ operates on PROXIED accounts only and skips the rest with a notice.
 
 Every verb is gated on a per-account phase, which `xtrim status` prints
 as `phase=` — `none`, `stage-a`, `stage-b-started`, `stage-b` or
-`restored`. A stage B interrupted mid-run leaves the account at
+`restored`. An account whose only live vhost is its own local control
+panel is listed as `panel-only` with nothing to shrink, not with a target. A stage B interrupted mid-run leaves the account at
 `stage-b-started`, where `quiesce` ("deletion may be partial"), `shrink`,
 `restore` and `finalize` all refuse and only `status` and `plan` remain
 useful; inspect such an account by hand from the tool's working directory
@@ -183,7 +184,11 @@ the account's entire `config/` tree including `ssl.d`, and `tools/le/` in
 its entirety — delete `tools/le` and every HTTPS proxy vhost has a
 dangling `ssl_certificate` and nginx will not start. Certificate refresh
 stays with the daily `migration_proxy_certs.sh` mirror, which must keep
-running long after the shrink.
+running long after the shrink. The one class it cannot refresh is a
+retired box-named name (answered with the cutover's 301): no target issues
+for it, so the mirror names it on every run and mails the admin once when
+its certificate enters the `_MIGRATION_PROXY_CERT_WARN_DAYS` window and once
+when it has expired.
 
 ## Rollback truth
 

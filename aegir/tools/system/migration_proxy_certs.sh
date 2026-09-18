@@ -34,6 +34,15 @@
 ### residual relay window harms nothing. Withdrawal is an operator act
 ### (xoct proxy-retire), never a certificate accident.
 ###
+### One class is NOT mirrored, because nothing can be: a site that was named
+### under this box's own hostname was renamed on the target by the cutover,
+### and its old name is answered here with a bare 301 to the new one. No
+### proxy_pass names a peer and the target no longer issues for the retired
+### name, so its certificate simply runs out. That is reported, by name and
+### by mail, once when it enters the warning window and once when it has
+### expired -- an HTTPS visitor of the old URL then meets the browser's
+### warning before the redirect, and only the site's owner can act on that.
+###
 ### Usage: migration_proxy_certs.sh [--dry]
 ###
 
@@ -76,7 +85,16 @@ _cert_end_epoch() {
 
 _CHANGED=NO
 _FAIL_REFRESH=""
+_RETIRED=""
 _SWAPPED_DIRS=""
+
+### True for the cutover's redirect vhost: the HTTPS proxy header is still
+### there, but every location (and with it every proxy_pass) was replaced by
+### a bare 301 to the renamed site.
+_is_retired_vhost() {
+  ! grep -q 'proxy_pass' "$1" 2>/dev/null \
+    && grep -q '^[[:space:]]*return 301 ' "$1" 2>/dev/null
+}
 _EARLIEST_EPOCH=""
 _EARLIEST_DOM=""
 
@@ -211,6 +229,12 @@ for _PID in /data/disk/*/log/proxied.pid; do
     grep -q "Secure HTTPS proxy for" "${_VHS}" 2>/dev/null || continue
     _DOM=$(grep -m1 "Secure HTTPS proxy for" "${_VHS}" \
       | sed 's/.*proxy for //; s/ (START).*//')
+    ### A retired (renamed) name has no peer to pull from: its own class,
+    ### reported below, never a parse failure.
+    if _is_retired_vhost "${_VHS}"; then
+      _valid_dom "${_DOM}" && _RETIRED="${_RETIRED} ${_OCT}/${_DOM}"
+      continue
+    fi
     _VIP=$(grep -m1 'proxy_pass' "${_VHS}" \
       | sed 's/.*https:\/\///; s/;.*//' | tr -d ' ')
     if ! _valid_dom "${_DOM}" || ! _valid_ip "${_VIP}"; then
@@ -263,6 +287,9 @@ for _PID in /data/disk/*/log/proxied.pid; do
   for _VHS in "${_ROOT}"/config/server_master/nginx/vhost.d/https.*; do
     [ -e "${_VHS}" ] || continue
     grep -q "Secure HTTPS proxy for" "${_VHS}" 2>/dev/null || continue
+    ### A retired name cannot be refreshed, so it has no place in the horizon
+    ### that the refresh-failure mail speaks for; it is reported on its own.
+    _is_retired_vhost "${_VHS}" && continue
     _DOM=$(grep -m1 "Secure HTTPS proxy for" "${_VHS}" \
       | sed 's/.*proxy for //; s/ (START).*//')
     _valid_dom "${_DOM}" || continue
@@ -295,6 +322,71 @@ or retire the proxy (xoct proxy-retire) if it is no longer meant to serve.
 -- migration_proxy_certs.sh
 EOF
       fi
+    fi
+  fi
+fi
+
+### Retired (renamed) names: nothing renews their certificates, so the expiry
+### is reported rather than fought. One line per name on every run; one mail
+### when a name first enters the warning window and one when it has expired
+### (markers under /var/log/boa, cleared again if the certificate is ever
+### healthy), so the notice is loud once instead of daily noise.
+_RET_NEW=""
+for _R in ${_RETIRED}; do
+  _OCT="${_R%%/*}"
+  _DOM="${_R#*/}"
+  _VHS="/data/disk/${_OCT}/config/server_master/nginx/vhost.d/https.${_DOM}"
+  _CRT=$(grep -m1 'ssl_certificate ' "${_VHS}" 2>/dev/null | awk '{ print $2 }' | tr -d ';')
+  [ -r "${_CRT}" ] || _CRT="/data/disk/${_OCT}/tools/le/certs/${_DOM}/fullchain.pem"
+  _END=$(_cert_end_epoch "${_CRT}")
+  if [ -z "${_END}" ]; then
+    _msg "${_OCT}/${_DOM}: retired name (answers 301 to its renamed site); its certificate could not be read"
+    continue
+  fi
+  _RDAYS=$(( (_END - _NOW_EPOCH) / 86400 ))
+  _MARK="/var/log/boa/.migration_proxy_certs.retired.${_DOM}"
+  if [ "${_END}" -le "${_NOW_EPOCH}" ]; then
+    _msg "${_OCT}/${_DOM}: retired name (answers 301 to its renamed site); certificate EXPIRED, nothing renews it"
+    if [ ! -e "${_MARK}.expired" ]; then
+      _RET_NEW="${_RET_NEW} ${_DOM}(EXPIRED)"
+      [ "${_DRY}" != "YES" ] && : > "${_MARK}.expired"
+    fi
+  else
+    _msg "${_OCT}/${_DOM}: retired name (answers 301 to its renamed site); certificate valid ${_RDAYS} more day(s), nothing renews it"
+    if [ "${_RDAYS}" -lt "${_WARN_DAYS}" ]; then
+      if [ ! -e "${_MARK}.warned" ]; then
+        _RET_NEW="${_RET_NEW} ${_DOM}(${_RDAYS}d)"
+        [ "${_DRY}" != "YES" ] && : > "${_MARK}.warned"
+      fi
+    elif [ "${_DRY}" != "YES" ]; then
+      rm -f "${_MARK}.warned" "${_MARK}.expired"
+    fi
+  fi
+done
+
+if [ -n "${_RET_NEW}" ]; then
+  _msg "ALRT: certificate(s) of retired site name(s) running out, nothing renews them:${_RET_NEW}"
+  if [ "${_DRY}" != "YES" ] && [ -n "${_ADM_EMAIL}" ]; then
+    _MAILX_TEST=$(s-nail -V 2>&1)
+    if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+      _HOST=$(hostname -f 2>/dev/null)
+      cat <<EOF | s-nail -s "NOTICE: certificate of a retired site name is running out on ${_HOST}" ${_ADM_EMAIL}
+These site names were under this box's own hostname and were renamed on the
+target by the migration; ${_HOST} answers them with a 301 to the new name:
+${_RET_NEW}
+
+Nothing renews their certificates: the target no longer issues for a retired
+name, and there is no proxy behind it to mirror from. Once a certificate has
+expired, an HTTPS visitor of the old URL meets the browser's warning before
+the redirect; plain HTTP visitors are redirected as before.
+
+Nothing on this box needs fixing. If the old HTTPS address is still in use,
+have its links moved to the site's new name, or retire the proxy
+(xoct proxy-retire) when it is no longer meant to serve. This notice is sent
+once when a name enters the last ${_WARN_DAYS} day(s) and once when it expires.
+
+-- migration_proxy_certs.sh
+EOF
     fi
   fi
 fi

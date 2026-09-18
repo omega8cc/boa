@@ -413,7 +413,7 @@ the replica cannot apply. Same ceiling, its own bypass.
   rows are the source's), after every cheap refusal and before the first
   source mutation; the DRY run reports a busy target as a DENY.
 
-Knobs: `_XMASS_TARGET_SILENT_MAX_WAIT` (seconds, default 2400),
+Knobs: `_XMASS_TARGET_SILENT_MAX_WAIT` (wall-clock seconds, default 2400),
 `_XMASS_SKIP_TARGET_SILENCE=YES` (skip the target's wait deliberately, logged)
 and `_XMASS_SKIP_SOURCE_SILENCE=YES` (skip `init`'s wait for the source; the two
 are separate so that bypassing one never disarms the other). Related

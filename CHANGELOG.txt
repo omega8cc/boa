@@ -135,6 +135,21 @@
       schemas the replica cannot apply, and the replication died on
       exactly that. Same bound as the target's wait; its own bypass is
       _XMASS_SKIP_SOURCE_SILENCE=YES.
+    * The certificate mirror on a migration proxy now reports the one
+      class it cannot refresh: a site that was named under the old box
+      name and renamed on the target is answered with a 301, no target
+      issues for the retired name any more, and its certificate runs
+      out. The mirror used to skip that vhost as unparseable, silently;
+      it now names it on every run and mails the admin once when the
+      certificate enters the warning window and once when it has
+      expired, so the owner can move the old HTTPS links in time.
+    * The bounded waits xmass runs before prep-target, init and cutover
+      now count wall time: the ceiling used to count only the sleeps
+      between polls, and a poll costs one drush bootstrap per account,
+      so on a box with many accounts the real wait ran well past the
+      printed number.
+    * xtrim status names a panel-only account as such instead of
+      printing a target of "?".
     * xmass restore-target (new, run on the standby): a target that xmass
       init made a replication standby and that was never promoted can be
       returned to its pre-init state -- the data directory init parked

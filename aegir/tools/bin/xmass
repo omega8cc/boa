@@ -6728,7 +6728,12 @@ _xmass_target_silence_probe() {
 ### deliberately, loudly.
 _xmass_wait_target_silent() {
   local _t="$1" _why="${2:-continuing}" _on_timeout="${3:-die}" _scope="${4:-full}"
-  local _w=0 _ok=0 _rc _last_alrt=-300 _tn="$1"
+  # _w is WALL time since the wait began, not the sum of the sleeps: a
+  # full-scope poll costs one drush bootstrap per Aegir root, so on a box with
+  # many accounts the sleeps are the smaller part of the wait and a ceiling
+  # counted in sleeps alone ran several times past the number it printed.
+  local _w=0 _ok=0 _rc _last_alrt=-300 _tn="$1" _t0
+  _t0=$(date +%s)
   local _max="${_XMASS_TARGET_SILENT_MAX_WAIT:-2400}"
   case "${_max}" in ''|*[!0-9]*) _max=2400 ;; esac
   # The source's wait has its own bypass: skipping one leg knowingly must
@@ -6754,7 +6759,7 @@ _xmass_wait_target_silent() {
         return 0
       fi
       sleep 10
-      _w=$(( _w + 10 ))
+      _w=$(( $(date +%s) - _t0 ))
       continue
     fi
     _ok=0
@@ -6766,9 +6771,10 @@ _xmass_wait_target_silent() {
       fi
       _last_alrt="${_w}"
     fi
+    _w=$(( $(date +%s) - _t0 ))
     [ "${_w}" -lt "${_max}" ] || break
     sleep 47
-    _w=$(( _w + 47 ))
+    _w=$(( $(date +%s) - _t0 ))
   done
   if [ "${_on_timeout}" = "warn" ]; then
     _alrt "${_tn} still busy after ${_max}s (${_XMASS_TGT_STATE:-unreadable}) -- an octopus pass or its queued verifies are running there; the next verb waits for silence again"

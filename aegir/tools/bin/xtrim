@@ -1251,6 +1251,12 @@ _cmd_status() {
       echo "${_n}: NOT proxied -- not xtrim material"
       continue
     fi
+    ### A panel-only account has no proxied domain, so no vhost and no record
+    ### names a target for it: say what it is instead of "proxied -> ?".
+    if _panel_only "${_n}"; then
+      echo "${_n}: panel-only (its control panel is local, no proxied domain) | phase=${_ph:-none} | nothing to shrink"
+      continue
+    fi
     _map_account "${_n}"
     read -r _hz _hzd <<< "$(_cert_horizon "${_n}")"
     _sz=$(du -sk "${_USR}/backups" "${_USR}/src" "${_USR}/distro" \
