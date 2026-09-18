@@ -102,6 +102,46 @@
 
 @=> Improvements
 
+    * A filesystem running out of room now prunes the archived site stores
+      on its own: `boa archived heal`, which runner.sh runs every minute
+      after its standby, proxy, maintenance, queue-stop and load holds and
+      ahead of its own disk gate, removes the oldest entries under
+      static/files/.archived across every Octopus instance while the
+      filesystem holding them is used above 85% (below the 90% at which
+      runner.sh, the backup scripts and some twenty other BOA scripts
+      refuse to run at all), one heal at a time, leaving alone an entry
+      younger than two minutes or written to in the last two minutes (a
+      sweep still filling it), logs each removal to
+      /var/log/boa/archived-heal.log, mails a run that removed something
+      once and reports an entry that will not go once per six hours. Age
+      alone still never prunes the pile: an entry is a deleted or renamed
+      site's last copy. /data/conf/archived_heal_threshold.cnf (a two-digit
+      percent, 50..99) tunes the level, /data/conf/disable_archived_heal.cnf
+      turns the heal off. A clone of a 74 GB site beside a 100 GB pile had
+      filled a disk mid-task and taken nginx and mysqld down with it.
+    * A Clone, Migrate or Restore (Drupal, Backdrop, Grav and Textpattern
+      alike) now refuses before its safety copy starts when the copies
+      cannot fit: the site is measured following its links into the
+      per-account store (the tagged-out cache directories left out), every
+      copy is counted at its full size (the safety copy, the unpacked copy,
+      the database dump, a renamed site's own copy of the store, a clone's
+      store on a separate filesystem), the copies on one filesystem are
+      summed, and a headroom of 2 GB or 2% of the filesystem is required
+      on top, so a passing task never lands the box at the 90% where BOA's
+      own scripts stop. PROVISION_INSUFFICIENT_SPACE names the filesystem,
+      the need, the headroom and the free figure with nothing written; the
+      free space is measured again at the deploy seam once the safety copy
+      exists, and a task whose room went elsewhere meanwhile rolls back
+      there, archive included; the deploy also refuses an archive larger
+      than the free space before its first member. A site the measure
+      cannot finish within its bound is let through with a warning, never
+      refused on a guess; /data/conf/disable_space_preflight.cnf lets a
+      task run regardless. A failed tar, on the backup side and on the
+      deploy side alike, now reaches the task log in tar's own words
+      (capped at twenty lines, the first one on the failure line with the
+      free space at that moment) instead of the bare "could not be
+      extracted" that read the same for a full disk and a truncated
+      archive.
     * xoct proxy-retire now keeps the withdrawal date it was given in the
       account's policy record, on both ends of the pair, so the policy table
       (xoct proxy-mode --all) shows when a retired proxy is due to go
