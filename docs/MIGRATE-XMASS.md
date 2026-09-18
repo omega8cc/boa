@@ -330,7 +330,8 @@ What it does, in order:
 1. **CSF both directions** — appends each peer to both `csf.allow` and
    `csf.ignore` here and there (an allow alone still leaves the peer exposed
    to a guard temp-deny mid-migration), reloads CSF, then proves the reverse
-   `target → source:3306` path by opening it. A dead reverse path is fatal now
+   `target → source:3306` path by opening it — a few times over ~30 s, because the
+   CSF reloads just before it can drop the first packet. A dead reverse path is fatal now
    rather than at `init`, which fails *after* the target datadir has already
    been replaced. Override with `_XMASS_SKIP_REVERSE_CHECK=YES` if you
    firewall differently.
@@ -394,7 +395,10 @@ lock (`/run/boa_run.pid`, `/run/boa_wait.pid`, `/run/octopus_install_run.pid`),
 no account has `static/control/run-upgrade.pid` armed, every root's
 `hosting_task` queue is empty (current revisions, queued or processing) and no
 dispatch, verify or installer process runs. The probe fails closed: an
-unreadable root or an unreadable target counts as busy.
+unreadable root or an unreadable target counts as busy. `init` applies the same
+probe to the source itself before it snapshots the source's data directory, under
+the same ceiling and the same bypass — a pass running under the snapshot rewrites
+schemas the replica cannot apply.
 
 - `prep-target` waits before **every** account create (each create leaves the
   target mid-motion, and `boa in-octopus` refuses on any run lock -- an account

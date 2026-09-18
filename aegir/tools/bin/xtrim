@@ -213,7 +213,7 @@ _map_account() {
   local _oN="$1" _v _d _al _sp _db
   _USR="/data/disk/${_oN}"
   _VHD="${_USR}/config/server_master/nginx/vhost.d"
-  _MAP_DOMS=""; _MAP_TGT=""; _MAP_TGT_BAD=""
+  _MAP_DOMS=""; _MAP_TGT=""; _MAP_TGT_BAD=""; _MAP_REDIR=""
   _MAP_SITES=""; _MAP_DBS=""; _MAP_HM_DB=""; _MAP_ALL_DBS=""
   _MAP_PLATS=""; _MAP_NOSAVED=""
   ### The account's own control panel is never proxied: the cutover leaves
@@ -237,6 +237,22 @@ _map_account() {
       continue
     fi
     _MAP_DOMS="${_MAP_DOMS} ${_d}"
+    ### A site named under THIS box's own hostname was renamed on the target
+    ### by the cutover, and its old name is answered here with a 301 to the
+    ### new one: xoct's redirect vhost carries no proxy_pass and no fastcgi
+    ### site, only a bare return 301. It is a live vhost of a proxied account,
+    ### not an integrity failure: it stays in the map (the liveness probe
+    ### re-probes a renamed name under its new name on the target) and is
+    ### counted as its own class -- no stage reads a target from it, no stage
+    ### has content to shrink behind it, and it keeps serving after finalize
+    ### like every other kept vhost under config/.
+    if ! grep -q "proxy_pass" "${_v}" 2>/dev/null \
+      && ! grep -q "fastcgi_param db_name" "${_v}" 2>/dev/null \
+      && grep -q "^[[:space:]]*return 301 " "${_v}" 2>/dev/null; then
+      _MAP_REDIR="${_MAP_REDIR} ${_d}"
+      [ -e "${_VHD}/.${_d}" ] || _MAP_NOSAVED="${_MAP_NOSAVED} ${_d}"
+      continue
+    fi
     if ! grep -q "proxy_pass" "${_v}" 2>/dev/null \
       || grep -q "fastcgi_param db_name" "${_v}" 2>/dev/null; then
       _MAP_TGT_BAD="${_MAP_TGT_BAD} ${_d}:not-a-proxy-vhost"
@@ -635,16 +651,24 @@ _preflight() {
   [ -z "${_MAP_DOMS// /}" ] && _die "${_oN}: no live vhosts at all"
   if [ -n "${_MAP_TGT_BAD// /}" ]; then
     _alrt "${_oN}: proxy integrity failures:${_MAP_TGT_BAD}"
-    _die "${_oN}: every live vhost must be a proxy vhost agreeing on one target"
+    _die "${_oN}: every live vhost must be a proxy vhost agreeing on one target, or the cutover's 301 redirect for a renamed box-named site"
+  fi
+  [ -n "${_MAP_REDIR// /}" ] \
+    && _info "${_oN}: renamed box-named site(s) answered here with a 301 to the new name (no proxy behind them, kept in the map):${_MAP_REDIR}"
+  ### Record disagreement guard, same stance as the cert mirror. An account
+  ### whose sites were ALL named under the old box name carries only redirect
+  ### vhosts, so no proxy_pass names its target: the policy record does.
+  local _rec
+  _rec="$(_mig_get "${_USR}/log/migproxy.cnf" _MIG_PEER_IP)"
+  if [ -z "${_MAP_TGT}" ] && [ -n "${_MAP_REDIR// /}" ] && [ -n "${_rec}" ]; then
+    _MAP_TGT="${_rec}"
+    _info "${_oN}: every live vhost is a rename redirect -- target ${_MAP_TGT} taken from the policy record"
   fi
   [ -z "${_MAP_TGT}" ] && _die "${_oN}: could not derive the target IP from proxy_pass"
   if [ -n "${_MAP_NOSAVED// /}" ]; then
     _alrt "${_oN}: live proxy vhosts without a saved .original:${_MAP_NOSAVED}"
     _alrt "${_oN}: their site/db map cannot be cross-checked from the saved vhost"
   fi
-  ### Record disagreement guard, same stance as the cert mirror.
-  local _rec
-  _rec="$(_mig_get "${_USR}/log/migproxy.cnf" _MIG_PEER_IP)"
   if [ -n "${_rec}" ] && [ "${_rec}" != "${_MAP_TGT}" ]; then
     _die "${_oN}: migproxy.cnf peer ${_rec} disagrees with vhost target ${_MAP_TGT} -- run 'xoct proxy ${_oN} <ip> --repair --retarget' first"
   fi
@@ -699,6 +723,7 @@ _write_manifest() {
     echo "# xtrim manifest ${_oN} mode=${_mode} $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
     echo "target=${_MAP_TGT}"
     echo "domains=${_MAP_DOMS# }"
+    echo "redirect_domains=${_MAP_REDIR# }"
     echo "site_dbs=${_MAP_DBS# }"
     echo "panel_db=${_MAP_HM_DB}"
     echo "platform_roots=${_MAP_PLATS# }"

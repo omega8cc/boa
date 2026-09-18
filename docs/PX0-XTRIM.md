@@ -72,7 +72,10 @@ unambiguously; no `sqlclean` (mutual lock) and no
 barracuda/octopus/xoct/xmass/provision/install in flight; the eligibility
 triple present; `log/CANCELLED` means `boa cleanup`, never xtrim;
 `log/proxied.pid` present and older than `_XTRIM_MIN_DAYS` (default 14,
-hard floor 7); every live vhost a proxy vhost agreeing on ONE target IP;
+hard floor 7); every live vhost a proxy vhost agreeing on ONE target IP — or the cutover's
+301 redirect for a site that was named under the old box name (no proxy, no
+content; kept in the map as its own class, and an account whose sites were
+all box-named takes its target from the policy record);
 `migproxy.cnf` record agreeing with the vhosts (disagreement names
 `xoct proxy --repair --retarget`); no expired certificate behind a
 retained HTTPS vhost; every `server_name` serving through the target AND

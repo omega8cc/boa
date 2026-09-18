@@ -112,6 +112,24 @@
       completed`, `OCTOPUS upgrade completed`, or their WITH ERRORS forms):
       the console told the operator to `tail -f` that log and wait for the
       line, but the line was never written there.
+    * xtrim now admits the redirect vhost the cutover writes for a site
+      that was named under the old box name (its old name answers 301 to
+      the new one on the target) beside the account's proxy vhosts: it
+      stays in the account's map as its own class instead of failing the
+      "every live vhost is a proxy" integrity check, which refused status,
+      plan, quiesce, shrink and finalize on every account carrying such a
+      site; an account whose sites were all box-named takes its target
+      from the policy record, since no proxy names it.
+    * xmass prep-target probes the reverse target -> source:3306 path a
+      few times over half a minute before calling it dead: the CSF
+      reloads it performs just before the probe can drop the first
+      packet, and one packet read a sound path as dead.
+    * xmass init waits for the source itself to be silent -- no barracuda
+      or octopus pass, no run lock, no armed per-account upgrade, no
+      queued panel task -- before it snapshots the source's data
+      directory, under the same bound as the target's wait: a pass
+      running under the snapshot rewrites schemas the replica cannot
+      apply, and the replication died on exactly that.
     * xmass restore-target (new, run on the standby): a target that xmass
       init made a replication standby and that was never promoted can be
       returned to its pre-init state -- the data directory init parked
