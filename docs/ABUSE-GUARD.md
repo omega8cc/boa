@@ -870,13 +870,23 @@ The fast path: a 15-minute temporary CSF ban for every fresh offender in `web.lo
 web tier it reads `/var/xdrago/monitor/log/web.log`, takes the IP field
 (`cut -d '#' -f1 | sort | uniq`), and for each unique IP:
 
-1. Looks the IP up in CSF (`csf -g`) and checks `csf.allow` for an explicit
-   `tcp|in|d=80|s=<ip>` allow entry.
-2. **If allowed** (in `csf.allow`, or showing an `ALLOW … ACCEPT … dpt:80` rule), it is
-   *cleared* — `csf -dr` and `csf -tr` remove any stray block — and never banned. The allow
+1. Tests membership **in-shell** against `/etc/csf/csf.allow`, `/etc/csf/csf.deny`,
+   `/var/lib/csf/csf.tempban` and `/var/lib/csf/csf.tempallow`. There is no `csf -g` lookup and
+   no parsing of firewall rules: csf is invoked only to **change** state (a `csf -g` per IP
+   was a fork storm that could push a flood run past the stuck-process watchdog). A candidate
+   must first pass strict IPv4 validation — every octet 0-255, no leading zeros, not in `0/8`,
+   `127/8` or `224` and above.
+2. **If allowed**, it is never banned. *Any* appearance in `csf.allow` counts: a bare IP, an
+   `IP/32`, an advanced `|s=` / `|d=` form, or a covering CIDR. Stray blocks are cleared
+   (`csf -dr` and `csf -tr`) only when the allow covers the port — a first-field plain IP or
+   CIDR, or an exact `tcp|in|d=<port>|s=<ip>` line; an allow scoped to another port leaves
+   existing blocks alone. An operator **temporary allow** (`csf.tempallow`) is never banned
+   either, and never `csf -tr`'d, because that would delete the temp allow itself. The allow
    list always wins.
-3. **If already denied** on 80 or 443, nothing is done.
-4. **Otherwise** it issues a 15-minute temporary ban on both web ports:
+3. **If already denied**, nothing is done for that port. Each port is judged on its own, so an
+   IP temp-banned on 443 only still gets its missing 80 ban.
+4. **Otherwise** it issues a 15-minute temporary ban on both web ports (and, when any rule
+   changed, one `synproxy_reassert -p "443 80" --no-quic` at the end of the pass, not per IP):
 
    ```bash
    csf -td ${_IP} 900 -p 80
@@ -917,8 +927,11 @@ from the cumulative archive `/var/xdrago/monitor/log/scan_nginx.archive.log`. Fo
 unique IP it counts how many times that IP appears across the whole archive:
 
 ```bash
-_NR_TEST=$(tr -s ' ' '\n' < ${_WA} | grep -cF "${_IP}")
+_NR_TEST=$(awk -v ip="${_IP}" '$1 == ip { _n++ } END { print _n + 0 }' ${_WA})
 ```
+
+The count is by **exact first-field equality**, not by substring: only a row whose first field
+*is* the address counts, so `1.2.3.4` is not inflated by a token such as `11.2.3.45`.
 
 After the `csf.allow` / `/root/.local.IP.list` exemptions, that count drives a two-tier
 escalation:
@@ -957,8 +970,9 @@ first) and `rm`s it at the very end — and once escalation is done it clears th
 > the file, so only a changed or missing operator line counts — never the position the
 > pass's own DHCP lines land in, and the pass refreshes its own resolver lines before it
 > takes the snapshot, so that churn is never in the compared window; a rollback is
-> written to the incident log
-> and mailed to `_MY_EMAIL` as an ALERT with the rejected copy, the snapshot and the diff,
+> always written to `/var/log/boa/system.incident.log` as an `ALERT:` line with the rejected
+> copy, the snapshot and the diff, and mailed to `_MY_EMAIL` as well (unless `_MY_EMAIL` is
+> empty, `_INCIDENT_REPORT` is `OFF` or `NO`, or `s-nail` is missing),
 > since the box keeps yesterday's ranges until the next pass succeeds) and per-provider
 > backups under `/var/backups/csf/water/`. Every fetched provider fetches *before* it clears its own
 > tagged lines and keeps the existing entries when the list comes back empty (endpoint
@@ -1267,6 +1281,11 @@ references onto deep content URLs, producing self-mutating chains. BOA classifie
 with purpose-built maps, split by whether the mutated URL ends in a static asset (444) or a
 content segment (404).
 
+- **`$is_node_chain` → 404.** Matches a path in which `node/<id>` repeats, with or without
+  language prefixes between the repeats (`/node/1771/pl/node/1771/es/node/1771/…`).
+- **`$is_lang_chain` → 404.** Matches **four or more** consecutive leading language-like
+  segments (`/xx/` or `/xx-xxxx/`). The threshold was three until July 2026; it was raised
+  because three 404-ed real multilingual content with short slugs (`/pl/co/to-jest/…`).
 - **`$is_static_chain` → 444.** Matches a Drupal asset-dir marker (`sites/all/modules`,
   `ui/external`, …) **buried under** a content path, or a canonical Drupal core asset file
   (`system.base.css`, `drupal.js`, …) buried the same way, or the same asset-dir token
@@ -1734,6 +1753,8 @@ $is_static_chain        → 444
 $is_content_chain       → 404
 $is_amp_chain           → 404   rendered only when the BOA zones file declares it
 $block_print_no_referer → 404
+$block_flag_no_referer  → 404
+$block_hybridauth_no_referer → 404
 SA-CORE-2018-002 RCE    → 444
 $is_banned              → 444   ← ban-pipeline closing guard
 $boa_fleet_block        → 429   rendered only when the BOA zones file declares it
