@@ -31,8 +31,8 @@ BOA runs a MySQL watchdog from cron (`/var/xdrago/monitor/check/mysql.sh`) that
 auto-heals a sick server: it restarts a down `mysqld`, breaks apparent table
 locks, and kills long-running queries. During normal operation that is exactly
 what you want. During a *controlled* database operation it is a race straight
-into corrupt data — the watchdog cannot tell a deliberate `FLUSH TABLES WITH
-READ LOCK` cutover, an `innodb_fast_shutdown=0` package upgrade, or an
+into corrupt data — the watchdog cannot tell a cutover's promotion and host-rename
+database work, an `innodb_fast_shutdown=0` package upgrade, or an
 xtrabackup snapshot apart from a genuine hang, and "healing" any of them mid-flight
 can lose data.
 
@@ -52,8 +52,10 @@ The watchdog is therefore armed with a single maintenance marker,
     across the whole apt transaction and the `innodb_fast_shutdown=0` restart;
   - **`xmass`** holds it on **both** hosts across `init` (the source snapshot and
     the target restore/replica bring-up) and across the whole `cutover` — the
-    `FLUSH TABLES WITH READ LOCK` window is the single highest data-loss risk in
-    the entire toolchain;
+    final position read, the target's promotion and the host rename's database
+    work are the highest data-loss risk in the entire toolchain (the cutover
+    takes no global read lock: the 503 gate and the parked cron and runners are
+    the write barrier);
   - **`xoct`** holds it for `export` (`mydumper` on the source) and `import`
     (`myloader` plus `renameaegirhost`'s dump/reimport on the target).
 
