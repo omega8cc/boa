@@ -146,8 +146,8 @@ Two deliberate limits and one refusal:
 The run ends with a serving gate over every site carrying the new hostname —
 the dirs this run moved and the ones an earlier or parked run had already
 moved, so a resumed run still confirms the sites its predecessor renamed;
-sites a panel has disabled (placeholder vhost) and suspended accounts are
-listed as not probed. The tool waits for each such site to
+sites a panel has disabled (placeholder vhost), sites with no vhost file and
+suspended accounts are listed as not probed. The tool waits for each such site to
 actually answer — up to `_RENAME_SERVE_WAIT` seconds per site, default 180 —
 accepting 200/301/302, and a 401 or 403 as well (an auth or IP allow-list answer proves the
 vhost is live and routed to the right site, logged as `serves (<code>, protected)`), but
