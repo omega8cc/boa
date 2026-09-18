@@ -6653,8 +6653,12 @@ _xmass_refuse_role_clash() {
 ### so an armed pid there is never consumed (the promotion clears it), and its
 ### hosting_task rows are the SOURCE's, replicated.
 _xmass_target_silence_probe() {
-  local _t="$1" _scope="${2:-full}" _raw
-  _raw=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" '
+  ### $1 is the target's address, or the word 'local' for THIS box: init
+  ### snapshots the source's datadir, so the source must be as silent as the
+  ### target (a pass here mid-snapshot rewrites schemas the replica then
+  ### cannot apply). The same probe runs either over ssh or in a local shell.
+  local _t="$1" _scope="${2:-full}" _raw _s
+  _s='
     _p=$(ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr "\n" " ")
     _a=""
     _q=""
@@ -6700,7 +6704,12 @@ _xmass_target_silence_probe() {
     if [ -n "${_q// /}" ]; then
       _d=$(( _d + $(ps -eww -o args | grep -c -E "[h]osting-tasks|[h]osting-dispatch") ))
     fi
-    echo "XMSTATE locks=[${_p}] armed=[${_a}] queue=[${_q}] procs=${_d}"' 2>/dev/null)
+    echo "XMSTATE locks=[${_p}] armed=[${_a}] queue=[${_q}] procs=${_d}"'
+  if [ "${_t}" = "local" ]; then
+    _raw=$(bash -c "${_s}" 2>/dev/null)
+  else
+    _raw=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "${_s}" 2>/dev/null)
+  fi
   _XMASS_TGT_STATE=$(printf '%s\n' "${_raw}" | grep '^XMSTATE ' | tail -1 | sed 's/^XMSTATE //')
   [ -z "${_XMASS_TGT_STATE}" ] && return 2
   case "${_XMASS_TGT_STATE}" in
@@ -6719,45 +6728,64 @@ _xmass_target_silence_probe() {
 ### deliberately, loudly.
 _xmass_wait_target_silent() {
   local _t="$1" _why="${2:-continuing}" _on_timeout="${3:-die}" _scope="${4:-full}"
-  local _w=0 _ok=0 _rc _last_alrt=-300
+  # _w is WALL time since the wait began, not the sum of the sleeps: a
+  # full-scope poll costs one drush bootstrap per Aegir root, so on a box with
+  # many accounts the sleeps are the smaller part of the wait and a ceiling
+  # counted in sleeps alone ran several times past the number it printed.
+  local _w=0 _ok=0 _rc _last_alrt=-300 _tn="$1" _t0
+  _t0=$(date +%s)
   local _max="${_XMASS_TARGET_SILENT_MAX_WAIT:-2400}"
   case "${_max}" in ''|*[!0-9]*) _max=2400 ;; esac
-  if [ "${_XMASS_SKIP_TARGET_SILENCE}" = "YES" ]; then
-    _alrt "_XMASS_SKIP_TARGET_SILENCE=YES: NOT waiting for ${_t} to be silent before ${_why}"
+  # The source's wait has its own bypass: skipping one leg knowingly must
+  # never disarm the other.
+  local _skip_knob="_XMASS_SKIP_TARGET_SILENCE" _skip_val="${_XMASS_SKIP_TARGET_SILENCE}"
+  if [ "${_t}" = "local" ]; then
+    _tn="this box (the source)"
+    _skip_knob="_XMASS_SKIP_SOURCE_SILENCE"
+    _skip_val="${_XMASS_SKIP_SOURCE_SILENCE}"
+  fi
+  if [ "${_skip_val}" = "YES" ]; then
+    _alrt "${_skip_knob}=YES: NOT waiting for ${_tn} to be silent before ${_why}"
     return 0
   fi
-  _info "Waiting for ${_t} to be completely silent before ${_why} (scope ${_scope}, up to ${_max}s) ..."
+  _info "Waiting for ${_tn} to be completely silent before ${_why} (scope ${_scope}, up to ${_max}s) ..."
   while :; do
     _xmass_target_silence_probe "${_t}" "${_scope}"
     _rc=$?
     if [ "${_rc}" -eq 0 ]; then
       _ok=$(( _ok + 1 ))
       if [ "${_ok}" -ge 2 ]; then
-        _info "  ${_t} silent on two consecutive polls (${_w}s)"
+        _info "  ${_tn} silent on two consecutive polls (${_w}s)"
         return 0
       fi
       sleep 10
-      _w=$(( _w + 10 ))
+      _w=$(( $(date +%s) - _t0 ))
       continue
     fi
     _ok=0
     if [ $(( _w - _last_alrt )) -ge 300 ]; then
       if [ "${_rc}" -eq 2 ]; then
-        _alrt "  cannot read the run state on ${_t} over ssh -- treating it as busy"
+        _alrt "  cannot read the run state on ${_tn} -- treating it as busy"
       else
-        _info "  ${_t} busy: ${_XMASS_TGT_STATE}"
+        _info "  ${_tn} busy: ${_XMASS_TGT_STATE}"
       fi
       _last_alrt="${_w}"
     fi
+    _w=$(( $(date +%s) - _t0 ))
     [ "${_w}" -lt "${_max}" ] || break
     sleep 47
-    _w=$(( _w + 47 ))
+    _w=$(( $(date +%s) - _t0 ))
   done
   if [ "${_on_timeout}" = "warn" ]; then
-    _alrt "target ${_t} still busy after ${_max}s (${_XMASS_TGT_STATE:-unreadable}) -- an octopus pass or its queued verifies are running there; the next verb waits for silence again"
+    _alrt "${_tn} still busy after ${_max}s (${_XMASS_TGT_STATE:-unreadable}) -- an octopus pass or its queued verifies are running there; the next verb waits for silence again"
     return 1
   fi
-  _die "target ${_t} still busy after ${_max}s (${_XMASS_TGT_STATE:-unreadable}) -- an octopus" \
+  if [ "${_t}" = "local" ]; then
+    _die "${_tn} still busy after ${_max}s (${_XMASS_TGT_STATE:-unreadable}) -- a barracuda" \
+         " or octopus pass, an armed per-account upgrade or queued panel tasks are active on" \
+         " this box; let them finish, then re-run (${_skip_knob}=YES bypasses this wait knowingly)"
+  fi
+  _die "${_tn} still busy after ${_max}s (${_XMASS_TGT_STATE:-unreadable}) -- an octopus" \
        " pass or its queued verifies are running there; let it finish, then re-run"
 }
 
@@ -6969,13 +6997,33 @@ _xmass_cmd_prep_target() {
     *)        _alrt "target CSF for ${_XMASS_SRC_IP} FAILED or was unreadable (${_tcsf:-no answer})" ;;
   esac
   # Fail closed: init's failure mode for a dead reverse path is a refused
-  # replication AFTER the target datadir has been replaced.
-  if ssh root@"${_tgt}" "timeout 5 bash -c '</dev/tcp/${_XMASS_SRC_IP}/3306'" 2>/dev/null; then
-    _info "Reverse path target->source:3306: OK"
+  # replication AFTER the target datadir has been replaced. The peer-allow
+  # reloads above (csf -q here, then on the target) precede this probe by
+  # moments, and a reload window on either box drops the first packet, so a
+  # sound path reads as dead. Probe up to six times, five seconds apart,
+  # before calling it dead; each attempt is bounded on its own.
+  local _rp=0 _rp_ok=NO
+  while [ "${_rp}" -lt 6 ]; do
+    _rp=$(( _rp + 1 ))
+    if ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "timeout 5 bash -c '</dev/tcp/${_XMASS_SRC_IP}/3306'" 2>/dev/null; then
+      _rp_ok=YES
+      break
+    fi
+    if [ "${_rp}" -lt 6 ]; then
+      _info "Reverse path target->source:3306 not open on probe ${_rp}/6 -- retrying in 5s"
+      sleep 5
+    fi
+  done
+  if [ "${_rp_ok}" = "YES" ]; then
+    if [ "${_rp}" -gt 1 ]; then
+      _info "Reverse path target->source:3306: OK (open on probe ${_rp}/6)"
+    else
+      _info "Reverse path target->source:3306: OK"
+    fi
   elif [ "${_XMASS_SKIP_REVERSE_CHECK}" = "YES" ]; then
-    _alrt "reverse path target->source:3306 is DEAD; continuing on _XMASS_SKIP_REVERSE_CHECK=YES"
+    _alrt "reverse path target->source:3306 is DEAD after ${_rp} probes; continuing on _XMASS_SKIP_REVERSE_CHECK=YES"
   else
-    _die "target ${_tgt} cannot reach ${_XMASS_SRC_IP}:3306 -- replication WILL fail at init," \
+    _die "target ${_tgt} cannot reach ${_XMASS_SRC_IP}:3306 (${_rp} probes, 5s apart) -- replication WILL fail at init," \
          " after the target datadir has already been replaced." \
          " Check CSF on the source and any parent-host firewall (a Proxmox parent running CSF" \
          " must be trusted by hand: migration_proxy_trust.sh trust <ip> --csf-only -- xmass" \
@@ -7556,6 +7604,15 @@ _xmass_cmd_init() {
     _info "target ${_tgt} is already a standby (an earlier init committed its swap): waiting on run locks and processes only"
   fi
   _xmass_wait_target_silent "${_tgt}" "init replaces the target datadir" die "${_silence_scope}"
+  # The snapshot further down is taken while THIS box serves. A barracuda or
+  # octopus pass here -- a release pass, or an armed per-account upgrade the
+  # runner launches on its next quiet tick -- rewrites schemas mid-snapshot,
+  # and the replica the target builds from that snapshot dies on the pass's
+  # DDL (error 1146: a table the snapshot never carried). Two reads: a cheap
+  # one here (run locks and pass processes), where a refusal costs nothing
+  # because neither box has been touched yet, and the decisive full-scope one
+  # immediately before the snapshot.
+  _xmass_wait_target_silent local "init touches either box" die locks
 
   # Every octopus pass the target ran while it was being provisioned (the
   # install, its in-flow upgrade, the pin-seed pass) snapshotted its own empty
@@ -7722,6 +7779,12 @@ _xmass_cmd_init() {
   _xmass_create_repl_user
   _xmass_prevent_solr_target
   _xmass_decide_transfer_method
+  # The decisive source-side read: minutes have passed since the early check
+  # (pending deletes cleared, tools installed, GTID configured) and the runner
+  # consumes an armed per-account upgrade within a minute. Full scope: run
+  # locks, pass processes, armed upgrades and the panel queues. Nothing is
+  # committed yet, so a refusal here still unwinds cleanly.
+  _xmass_wait_target_silent local "the datadir snapshot starts" die full
   _xmass_init_inflight_touch
   _xmass_take_backup
   # Point of no return: the next step displaces the target's datadir, so

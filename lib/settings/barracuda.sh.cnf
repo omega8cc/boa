@@ -1441,7 +1441,9 @@ _XTRIM_MIN_DAYS=14
 ###
 ### Warn the admin when the earliest certificate behind a retained
 ### migration-proxy vhost expires within this many days AND the daily
-### mirror could not refresh it (migration_proxy_certs.sh).
+### mirror could not refresh it (migration_proxy_certs.sh). The same
+### window governs the one-time notice for a retired (renamed) site name,
+### whose certificate nothing renews.
 ###
 _MIGRATION_PROXY_CERT_WARN_DAYS=21
 
