@@ -102,6 +102,46 @@
 
 @=> Improvements
 
+    * A filesystem running out of room now prunes the archived site stores
+      on its own: `boa archived heal`, which runner.sh runs every minute
+      after its standby, proxy, maintenance, queue-stop and load holds and
+      ahead of its own disk gate, removes the oldest entries under
+      static/files/.archived across every Octopus instance while the
+      filesystem holding them is used above 85% (below the 90% at which
+      runner.sh, the backup scripts and some twenty other BOA scripts
+      refuse to run at all), one heal at a time, leaving alone an entry
+      younger than two minutes or written to in the last two minutes (a
+      sweep still filling it), logs each removal to
+      /var/log/boa/archived-heal.log, mails a run that removed something
+      once and reports an entry that will not go once per six hours. Age
+      alone still never prunes the pile: an entry is a deleted or renamed
+      site's last copy. /data/conf/archived_heal_threshold.cnf (a two-digit
+      percent, 50..99) tunes the level, /data/conf/disable_archived_heal.cnf
+      turns the heal off. A clone of a 74 GB site beside a 100 GB pile had
+      filled a disk mid-task and taken nginx and mysqld down with it.
+    * A Clone, Migrate or Restore (Drupal, Backdrop, Grav and Textpattern
+      alike) now refuses before its safety copy starts when the copies
+      cannot fit: the site is measured following its links into the
+      per-account store (the tagged-out cache directories left out), every
+      copy is counted at its full size (the safety copy, the unpacked copy,
+      the database dump, a renamed site's own copy of the store, a clone's
+      store on a separate filesystem), the copies on one filesystem are
+      summed, and a headroom of 2 GB or 2% of the filesystem is required
+      on top, so a passing task never lands the box at the 90% where BOA's
+      own scripts stop. PROVISION_INSUFFICIENT_SPACE names the filesystem,
+      the need, the headroom and the free figure with nothing written; the
+      free space is measured again at the deploy seam once the safety copy
+      exists, and a task whose room went elsewhere meanwhile rolls back
+      there, archive included; the deploy also refuses an archive larger
+      than the free space before its first member. A site the measure
+      cannot finish within its bound is let through with a warning, never
+      refused on a guess; /data/conf/disable_space_preflight.cnf lets a
+      task run regardless. A failed tar, on the backup side and on the
+      deploy side alike, now reaches the task log in tar's own words
+      (capped at twenty lines, the first one on the failure line with the
+      free space at that moment) instead of the bare "could not be
+      extracted" that read the same for a full disk and a truncated
+      archive.
     * xoct proxy-retire now keeps the withdrawal date it was given in the
       account's policy record, on both ends of the pair, so the policy table
       (xoct proxy-mode --all) shows when a retired proxy is due to go
@@ -112,6 +152,44 @@
       completed`, `OCTOPUS upgrade completed`, or their WITH ERRORS forms):
       the console told the operator to `tail -f` that log and wait for the
       line, but the line was never written there.
+    * xtrim now admits the redirect vhost the cutover writes for a site
+      that was named under the old box name (its old name answers 301 to
+      the new one on the target) beside the account's proxy vhosts: it is
+      recognised by the cutover's own banner and stays in the account's
+      map as its own class instead of failing the "every live vhost is a
+      proxy" integrity check, which refused plan, quiesce and shrink on
+      every account carrying such a site, and with them the box's
+      finalize. An account whose sites were all box-named takes its
+      target from the policy record, since no proxy names it; and a
+      retired name's HTTPS certificate, which nothing renews, is reported
+      when it nears expiry instead of refusing the run.
+    * xmass prep-target probes the reverse target -> source:3306 path up
+      to six times, five seconds apart, before calling it dead: the CSF
+      reloads it performs just before the probe can drop the first
+      packet, and one packet read a sound path as dead.
+    * xmass init waits for the source itself to be silent -- a cheap read
+      (no barracuda or octopus pass, no run lock) before it touches
+      either box, and the full read (also no armed per-account upgrade
+      and no queued panel task) immediately before it snapshots the
+      source's data directory: a pass running under the snapshot rewrites
+      schemas the replica cannot apply, and the replication died on
+      exactly that. Same bound as the target's wait; its own bypass is
+      _XMASS_SKIP_SOURCE_SILENCE=YES.
+    * The certificate mirror on a migration proxy now reports the one
+      class it cannot refresh: a site that was named under the old box
+      name and renamed on the target is answered with a 301, no target
+      issues for the retired name any more, and its certificate runs
+      out. The mirror used to skip that vhost as unparseable, silently;
+      it now names it on every run and mails the admin once when the
+      certificate enters the warning window and once when it has
+      expired, so the owner can move the old HTTPS links in time.
+    * The bounded waits xmass runs before prep-target, init and cutover
+      now count wall time: the ceiling used to count only the sleeps
+      between polls, and a poll costs one drush bootstrap per account,
+      so on a box with many accounts the real wait ran well past the
+      printed number.
+    * xtrim status names a panel-only account as such instead of
+      printing a target of "?".
     * xmass restore-target (new, run on the standby): a target that xmass
       init made a replication standby and that was never promoted can be
       returned to its pre-init state -- the data directory init parked
