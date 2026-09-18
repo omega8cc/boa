@@ -4,7 +4,7 @@
 
 ### Xtras Included with "ALL" Wildcard:
 
-- **ADM**: Adminer DB Manager (installed by default in LOCAL mode)
+- **ADM**: Adminer DB Manager (installed by default in LOCAL mode and on omega8.cc-hosted systems)
 - **CSF**: Firewall (installed by default in PUBLIC mode)
 - **FTP**: Pure-FTPd server with forced FTPS (installed by default on hosted systems)
 - **IMG**: Image Optimize binaries: `advdef`, `advpng`, `jpegoptim`, `jpegtran`, `optipng`, `pngcrush`, `pngquant` (installed by default on hosted systems)
@@ -54,7 +54,7 @@ Refer to our [DNS wildcard configuration guidance](https://docs.boa.io/self-host
 With `_EASY_SETUP=PUBLIC` option (default), Barracuda will install automatically the extra services listed below:
 
 - Your Ægir Octopus Instance control panel will be available at `https://your-octopus-aegir-url/`
-- Your Adminer Percona Manager will be available at `https://your-octopus-aegir-url/sqladmin/`
+- Your Adminer Percona Manager will be available at `https://your-octopus-aegir-url/sqladmin/` (only when `_XTRAS_LIST` carries `ADM` or `ALL`, or on an omega8.cc-hosted system, where `ADM` is added automatically; a plain PUBLIC install adds only `CSF`)
 - Your Ægir Master Instance control panel will be available at `https://master.f-q-d-n`
 - Your CSF/LFD Firewall will support integrated Nginx Abuse Guard.
 
