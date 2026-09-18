@@ -186,7 +186,11 @@ All of these — plus the migration-time realip tool `/var/xdrago/migration_prox
 `/run/boa_nginx_config.lock` (`flock -w 30`, then skip and retry next tick) so their
 `configtest`+`reload` cycles never collide on the same host nginx. Each one is a content
 change-gate → atomic write → `configtest` → `reload`, with rollback to the last-good copy
-if `configtest` fails. The four generators above are serial-gated via `_fetch_versioned`;
+if `configtest` fails. On a passive replication standby whose web tier is held
+(`/root/.standby.cnf` present, no `/root/.standby.serve.cnf`, no fresh init marker) the AI
+policy pass writes the fragments and advances its change-gate markers, but skips both the
+reload and the revert and logs `replication standby -- reload skipped (web tier held)`: the
+configuration is correct on disk and activates at promotion. The four generators above are serial-gated via `_fetch_versioned`;
 any change must decrement the tool's `fNN` in `BOA.sh.txt` in the same commit.
 
 ## Verify

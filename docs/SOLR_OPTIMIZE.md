@@ -498,6 +498,7 @@ After each cleanup run the script queries the Solr STATUS API and logs:
 - `HEALTH-WARN ... high segment count=N` — merge policy not keeping up
 - `HEALTH-WARN ... deleted=N/M (X%)` — unmerged deletes above 20%
 - `HEALTH-WARN ... large index=NMB` — informational, >500MB
+- `HEALTH-WARN: <name> has core.properties under <datadir> but <label> does not list it` — a core directory Solr has not registered; move that `core.properties` aside and a bound site's core is re-registered on the next pass, or restart that Solr
 
 ## 9. Automated Index Optimization — manage_solr_config.sh
 

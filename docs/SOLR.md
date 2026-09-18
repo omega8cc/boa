@@ -39,7 +39,7 @@ Supported values for the `solr_integration_module` variable:
 - `search_api_solr`  (Activates Solr 7 core if installed)
 - `apachesolr`       (Activates Solr 4 core if installed) (deprecated)
 
-To delete an existing Solr core, simply comment out the relevant line. The system will delete the existing Solr core within 15 minutes.
+To delete an existing Solr core, simply comment out the relevant line. The system will delete the existing Solr core within 15 minutes. The core is archived first (unloaded and moved under `/var/backups/solr9` or `/var/backups/solr7`, or tarred for Solr 4) and is left in place if the archive cannot be written. An INI that went missing and was re-created by BOA from the template is a placeholder, not a delete request: the core stays until you edit the directive line yourself.
 
 ```text
 ;solr_integration_module = your_module_name_here

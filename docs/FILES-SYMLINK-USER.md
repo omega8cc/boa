@@ -48,6 +48,13 @@ staging site to your live domain), works the same way: the moved or renamed site
 keeps its own files, symlinked into its own store — you don't lose your uploads
 and don't need to do anything.
 
+## Deleting a site
+
+Deleting a site does not delete its uploaded files. The Delete task sets the
+site's store aside into your account's `static/files/.archived/` area, and a store
+another of your sites reads through a share control file is left in place. If you
+need a copy back, ask your server administrator.
+
 ## Reusing a site name
 
 If you delete a site and later create a new one with the **same name**, the new
