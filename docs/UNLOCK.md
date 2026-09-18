@@ -118,9 +118,10 @@ trees).
 
 - **`_PERMISSIONS_FIX=YES`** in `/root/.barracuda.cnf` (default `YES`)
   gates the entire nightly permission/ownership machinery.
-- **`/etc/boa/.dont.touch.permissions.cnf`** — box-wide kill file; its
-  presence skips the machinery for every platform, overriding everything
-  below.
+- **`_SKIP_PERMISSIONS_PASS=YES`** in `/root/.barracuda.cnf` — the box-wide
+  switch; it skips the machinery for every platform, overriding everything
+  below. It replaces the kill file `/etc/boa/.dont.touch.permissions.cnf`,
+  which is still honoured for one release and wins while it exists.
 - **`fix_files_permissions_daily = FALSE`** in a platform's active INI file
   opts that platform out. The nightly worker seeds the variable into each
   platform INI as a commented-out `TRUE` default. One exception overrides
