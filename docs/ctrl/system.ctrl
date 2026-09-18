@@ -43,8 +43,10 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /root/.ip.protected.vhost.whitelist.cnf
 
-  This file, if exists, allows to whitelist IP addresses (one valid IP per line)
-  for access to vhosts protected via valid shell login (chive, cgp, sqlbuddy).
+  RETIRED. This file no longer does anything: no code in the current tree reads
+  it. Access to the database GUI vhost is limited by the generated
+  ip_access/sqladmin* include instead. An existing file is harmless and can be
+  deleted at leisure.
 
 
  ### All other (empty) .cnf control files
@@ -407,13 +409,17 @@ by the BOA install and upgrade tools exclusively.
 
  @=> /root/.no.fpm.cpu.limit.cnf
 
-  This file, if exists, allows to disable aggressive php-fpm processes
-  monitoring and killing if any is using really too much CPU power.
+  RETIRED. This file no longer does anything: its reader went with the legacy
+  Perl monitors, and no code in the current tree reads it. An existing file is
+  harmless and can be deleted at leisure.
 
  @=> /root/.no.sql.cpu.limit.cnf
 
-  This file, if exists, allows to disable mysql processes monitoring
-  and restarting mysql server if any is using really too much CPU power.
+  RETIRED. This file no longer does anything: its reader went with the legacy
+  Perl monitors, and no code in the current tree reads it. The MySQL watchdog
+  restarts only a server that does not answer, and its long-query limits are
+  _SQL_MAX_TTL and _SQL_LOW_MAX_TTL in /root/.barracuda.cnf. An existing file is
+  harmless and can be deleted at leisure.
 
  @=> /root/.no.swap.clear.cnf
 

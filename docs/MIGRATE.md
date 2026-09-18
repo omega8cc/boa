@@ -112,7 +112,11 @@ the URI-derived values inside the provision-generated `settings.php`
 identity, the absolute `local.settings.php` include, and
 `trusted_host_patterns` in **both** its plain and backslash-escaped
 spellings — the escaped one is what produces the HTTP 400 when left stale),
-and the site's per-site PHP pin row in `static/control/multi-fpm.info`. It
+and the site's per-site PHP pin row in `static/control/multi-fpm.info`. A
+`sites/<name>` directory under the old hostname that holds no `settings.php`
+is not a site: it is moved into the rename's backup directory under
+`stray-sites/` (nothing is deleted) and the run says so, so the platform
+verify cannot import it as a bogus site. It
 then queues one site verify per renamed site, because the queue's server
 verifies regenerate no per-site artefact at all — none of this is
 self-healing if left behind.

@@ -47,7 +47,7 @@ database). At cutover:
 1. All source web traffic is blocked (503 via `http-off.pid`).
 2. Source Solr is stopped and locked out permanently.
 3. A final rsync of all data runs.
-4. The tool waits for replica lag to reach zero, then triple-confirms.
+4. The tool waits for replica lag to reach zero, then triple-confirms (three checks 10 s apart; a lag that comes back on any of them re-enters the wait instead of aborting, on the same `_XMASS_SYNC_MAX_WAIT` budget).
 5. A final `static/files` pass runs — deliberately **before** the lock. The web
    block in step 1 is what stops file writes; a database read lock never gated
    them, so holding one across a walk of every store bought nothing and could
@@ -915,7 +915,7 @@ first change to the source):
 | Step 2 | Stop all Solr instances on source; touch `/root/.deny.java.cnf` AND set `_DENY_JAVA=YES` in `/root/.barracuda.cnf` (permanent deny; to reverse on a rolled-back source run `xmass restore-solr` -- clearing the deny by hand is **not** enough, see below) |
 | Step 3 | Final rsync: shared data, Solr (now clean — source stopped), all account data |
 | Step 3.5 | **Gate:** abort if any store could not be placed or any transfer failed — before anything destructive |
-| Step 4 | Wait for replica lag = 0 (polls every 15 s; ceiling `_XMASS_SYNC_MAX_WAIT`, default 7200 s; on timeout reports whether the lag is closing or growing) |
+| Step 4 | Wait for replica lag = 0 (polls every 15 s; ceiling `_XMASS_SYNC_MAX_WAIT`, default 7200 s; on timeout reports whether the lag is closing or growing), then confirm it three times 10 s apart: a returning lag re-enters the wait and spends the same budget, so only a spent budget or an unreadable lag ends the verb here; the post-lock triple check is strict and aborts on any non-zero reading |
 | Step 5 | Final rsync pass of `static/files` only, **before** the lock (the web block already stopped file writes) |
 | Step 5.5 | **Gate:** re-check both of the above, then persist `phase=cutover` |
 | Step 6 | Append the **advisory** read-only flag to `/data/conf/global/global-extra.inc` (previous file kept as `.bak`), then `FLUSH TABLES` to push buffers. The flag is belt-and-braces only (box-wide, ignored by most site shapes, dropped by the next BOA system pass) and the cutover **continues with a warning if it cannot be written**: the write barrier is the step-1 503 gate plus the parked cron and runners. A session read lock is not relied on — it cannot survive a disconnect |
