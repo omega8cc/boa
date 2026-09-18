@@ -6,7 +6,7 @@ It is **imperative** to never grant anyone access to the Ægir **system user** o
 
 # Security Considerations for Node/NPM Access
 
-Given that `node` can be exploited to bypass Limited Shell and pose a significant security risk to the BOA system, it should not be enabled on any BOA system with multiple `lshell` users. Consequently, Node/NPM support is not enabled in BOA by default. To enable it, you must create an empty control file `/root/.allow.node.lshell.cnf` to lift the restriction. In hosted BOA environments, Node/NPM support is available only on dedicated systems such as Phantom and Cluster.
+Given that `node` can be exploited to bypass Limited Shell and pose a significant security risk to the BOA system, it should not be enabled on any BOA system with multiple `lshell` users. Consequently, Node/NPM support is not enabled in BOA by default. It is enabled when the empty control file `/root/.allow.node.lshell.cnf` exists, or automatically when any Octopus instance on the box is of type PHANTOM, CLUSTER, ULTRA or MONSTER; on every other box `node`, `npm`, `npx` and `scp` are stripped from the limited shell's command lists on every pass. In hosted BOA environments, Node/NPM support is available only on dedicated systems such as Phantom and Cluster.
 
 # BOA System Security Features Explained
 
