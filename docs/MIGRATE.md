@@ -30,8 +30,10 @@ indices) where per-account mydumper/myloader cycles would be impractical.
   `xmass` takes an owner-PID lock (`/run/<tool>.verb.pid`) and a second run
   refuses loudly and non-zero, naming the live owner's pid. The guard is
   liveness-based — a killed run or a reboot wedges nothing, and there is no
-  stale lock to clear. Read-only verbs (`status`, `verify`, `proxy-mode`)
-  stay unlocked so a migration can always be inspected mid-run.
+  stale lock to clear. The read-only verbs (`status`, `verify`) stay
+  unlocked so a migration can always be inspected mid-run. `xoct proxy-mode` is unlocked as
+  well although it WRITES: it pins the per-account policy record on both ends and can mail
+  the client.
 - **The tools force themselves current.** `xmass pre-mig` (both hosts) and
   `prep-target` (the target) drop the per-tool control markers for the
   migration tool set and run the housekeeping fetcher synchronously, logging
@@ -112,7 +114,12 @@ the URI-derived values inside the provision-generated `settings.php`
 identity, the absolute `local.settings.php` include, and
 `trusted_host_patterns` in **both** its plain and backslash-escaped
 spellings — the escaped one is what produces the HTTP 400 when left stale),
-and the site's per-site PHP pin row in `static/control/multi-fpm.info`. A
+and the site's per-site PHP pin row in `static/control/multi-fpm.info`. On an
+Octopus root the tool also parks the old-name panel SSL proxy include
+(`/var/aegir/config/server_master/nginx/pre.d/z_<account>.<old-hostname>_ssl_proxy.conf`)
+into the rename's backup directory: the account pass regenerates it under the new
+name once the new certificate exists, while the old file would keep naming a
+certificate that is about to go and fail the box-wide configtest. A
 `sites/<name>` directory under the old hostname that holds no `settings.php`
 is not a site: it is moved into the rename's backup directory under
 `stray-sites/` (nothing is deleted) and the run says so, so the platform
@@ -142,7 +149,9 @@ moved, so a resumed run still confirms the sites its predecessor renamed;
 sites a panel has disabled (placeholder vhost) and suspended accounts are
 listed as not probed. The tool waits for each such site to
 actually answer — up to `_RENAME_SERVE_WAIT` seconds per site, default 180 —
-accepting 200/301/302 but self-calibrating against the box's catch-all vhost,
+accepting 200/301/302, and a 401 or 403 as well (an auth or IP allow-list answer proves the
+vhost is live and routed to the right site, logged as `serves (<code>, protected)`), but
+self-calibrating against the box's catch-all vhost,
 so an "Under Construction" 200 for a nonexistent Host never counts as
 serving. The closing summary ends with either
 `Sites : all N renamed site(s) confirmed serving` or `NOT SERVING : <uris>` —
