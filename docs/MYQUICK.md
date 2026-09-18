@@ -12,15 +12,15 @@ This file is created automatically for every account by a periodic system agent,
 
 It's faster than you would expect! We have observed it speeding up clone and migration tasks that normally take 1-2 hours to just 3-6 minutes. Yes, that's how fast it is!
 
-This file, while present, enables a super fast per-table and parallel database dump and import. However, it will not leave a conventional complete database dump file in the site archive normally created by Ægir when you run not only the backup task, but also clone, migrate, and delete tasks. Consequently, the restore task will not work with those archives.
+This file, while present, enables a super fast per-table and parallel database dump and import. However, it will not leave a conventional complete database dump file in the internal safety copies Ægir makes for itself during clone, migrate, restore and delete tasks, so the restore task will not work with those archives. A Backup task is different: it always carries a Backup Mode, and when none is chosen it defaults to the restorable one.
 
 We need to emphasize this again: with this control file present, all normally slow tasks will become blazing fast, but at the cost of not keeping an archived complete database dump file in the site directory archive where it would otherwise be included.
 
 ## Important Considerations
 
-Of course, the system still maintains nightly backups of all your sites using the new split SQL dump archives. However, with this control file present, you won't be able to use the restore task in Ægir because the site archive won't include the database dump. You can still find that SQL dump split into per-table files in the backups directory, though, in a subdirectory with a timestamp added, so you can still access it manually if needed.
+Of course, the system still maintains nightly backups of all your sites using the new split SQL dump archives. However, with this control file present, the restore task cannot use those split archives, because they do not include a single database dump. You can still find that SQL dump split into per-table files in the backups directory, though, in a subdirectory with a timestamp added, so you can still access it manually if needed.
 
-If you need a Restore-capable archive without opting out of super-fast dumps for the whole account, run the site Backup task and choose the **Site files with classic mysqldump DB** option under Backup Mode. That one archive bypasses `MyQuick.info` and produces a conventional single-file mysqldump that the Restore task can use, while `MyQuick.info` continues to provide fast dumps for all other Ægir tasks. It is the only Backup Mode option usable for the Site Restore task.
+If you need a Restore-capable archive without opting out of super-fast dumps for the whole account, run the site Backup task and choose the **Site files with classic mysqldump DB** option under Backup Mode. That one archive bypasses `MyQuick.info` and produces a conventional single-file mysqldump that the Restore task can use, while `MyQuick.info` continues to provide fast dumps for all other Ægir tasks. A Backup task queued without a mode gets this one by default. Each mode restores exactly what it contains, and this is the only one that carries the database.
 
 ## mydumper and myloader Compatibility
 

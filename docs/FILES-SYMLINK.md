@@ -112,8 +112,10 @@ autosymlink --site example.com [--account o1] --apply [--force-unshare]
   file-sharing control file exists — used by cloning so a fresh clone (which never
   opted into sharing) always gets its own copy.
 
-The narrow mode never touches the global batch state and **defers** while the
-nightly maintenance pause is active, so it never races the batch sweep. It also
+The narrow mode never touches the global batch state and listens to no global
+pause or install marker of its own: it is controlled only by its invokers, and the
+nightly batch bails while a provision/clone process runs, so it never races the
+batch sweep. It also
 sets each new symlink's owner:group to match its store target (so the link is not
 left `root`-owned).
 
@@ -270,7 +272,7 @@ alongside the `fix-drupal-*.sh` family) validates its arguments and forwards
 modes:
 
 ```bash
-sudo /usr/local/bin/fix-drupal-site-symlinks.sh --site=example.com [--account=o1] [--force-unshare]
+sudo /usr/local/bin/fix-drupal-site-symlinks.sh --site=example.com [--account=o1] [--force-unshare|--archive-store]
 ```
 
 ### `symlinkinfo` — query a site's history (read-only)
@@ -731,8 +733,8 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
 - **Fail-open.** If the store is unavailable or a link cannot be created, the site
   falls back to plain real directories — never a dangling link and never an
   aborted task.
-- **No concurrent corruption.** The narrow apply defers while the nightly batch's
-  maintenance pause is active, and the nightly batch skips while a provision/clone
+- **No concurrent corruption.** The narrow apply is driven only by its invoking
+  task, and the nightly batch skips while a provision/clone
   task is running. The backups relocation additionally holds the task queue with a
   self-healing `/run/boa_queue_stop.pid` and serialises with a `flock`, so no
   backup is moved mid-write.
@@ -740,7 +742,8 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   deleted) into `.archived/`, and only when the name has **neither** a Drush alias
   **nor** a vhost. A disabled or active site keeps both, so it is never touched; and
   the nightly sweep runs with the task queue paused + drained, so a live site cannot
-  momentarily look deleted. Pruning `.archived/` remains the operator's call.
+  momentarily look deleted. Pruning `.archived/` by age remains the operator's call; the one automatic
+  exception is the disk-pressure heal described under "Pruning the archived store".
 
 ## Verify
 

@@ -84,7 +84,11 @@ staging.example.com    198.51.100.42 2001:db8:1::1
   run, lifting the restriction (the site becomes open again).
 - **Safety** — per context: back up the current fragments, regenerate atomically,
   `service nginx configtest`, then `reload`; on a failed configtest or reload, restore
-  the last-good backup and reload. The whole script holds the shared
+  the last-good backup and reload. The last-good archive is proved readable before the live fragments are deleted: an
+  unreadable one leaves the fragments on disk alone and prints an `ALRT:` line naming the
+  control file to fix, and a freshly written last-good that does not verify is removed. On a
+  replication standby whose web tier is held, the fragments are written and the change-gate
+  markers advance, but the reload and the revert are both skipped until promotion. The whole script holds the shared
   `/run/boa_nginx_config.lock` (`flock -w 30`) so it never overlaps `ai_policy` /
   `nginx_deny` / `cloudflare_realip`.
 - **Schedule / serial** — `*/2` cron; serial-gated via `_fetch_versioned` in `BOA.sh.txt`

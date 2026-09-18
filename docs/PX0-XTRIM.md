@@ -124,7 +124,10 @@ port are recorded in a map), reloads nginx under the shared config lock,
 and re-probes every domain. Any regression auto-restores and aborts.
 
 **Stage B — one-way on this box.** Dumps and gzip-verifies every
-database once (the panel db is already in the map), re-proves the target,
+database once (a PROXIED panel's db is already in the map; a LOCAL
+panel's database, the account's own dedicated-site database and the
+panel platform tree under `aegir/` are kept out of the map and are
+neither dumped-and-dropped nor removed), re-proves the target,
 then drops databases and their
 single-grant users (all three grant hosts), removes `backups/`, `src/`,
 `undo/`, `distro/`, the platform trees named by the `platform_*` aliases,
@@ -151,10 +154,15 @@ the check runs before anything else (so a dry `finalize` is a usable pre-flight)
 and a panel-only account (a local panel, no other live vhost) is exempt, not
 waited for, its panel served through the MySQL finalize keeps: removes the
 shared codebases (`/data/all` and `/data/disk/all`), stops and disables
-MySQL (`--drop-datadir` is a separate explicit flag), stops solr/jetty
+MySQL only when NO account keeps a local control panel (with a local panel
+present MySQL is KEPT running for the panel databases, the run prints
+`mysql KEPT running for the local control panel database(s)`, and
+`--drop-datadir`, otherwise a separate explicit flag, is REFUSED, in a dry
+run as well), stops solr/jetty
 and disarms their monitor watchdog by dropping the init scripts' exec
 bit (the `/var/xdrago/monitor` tree is deliberately not proxy-gated),
-stands down every FPM master except the panel front's, and LAST touches
+stands down every FPM master except the panel front's and any master a
+local panel still answers through, and LAST touches
 `/root/.proxy.cnf`, which stands the BOA machinery down while the nginx
 watchdog keeps running.
 
@@ -182,7 +190,11 @@ uses /run/boa_php_idle_quiesce.pid (owner-PID keyed, self-cleaning).
 dotfiles, `/etc/ssl/private`, `/etc/csf`, `/var/xdrago`, `/opt/local/bin`,
 the account's entire `config/` tree including `ssl.d`, and `tools/le/` in
 its entirety — delete `tools/le` and every HTTPS proxy vhost has a
-dangling `ssl_certificate` and nginx will not start. Certificate refresh
+dangling `ssl_certificate` and nginx will not start. A LOCAL control
+panel is kept whole: stage A leaves `fpm_include_default.inc` and the
+account's default-version FPM pool in place, stage B keeps the panel
+database, the account's own dedicated-site database and the `aegir/`
+panel platform tree. Certificate refresh
 stays with the daily `migration_proxy_certs.sh` mirror, which must keep
 running long after the shrink. The one class it cannot refresh is a
 retired box-named name (answered with the cutover's 301): no target issues

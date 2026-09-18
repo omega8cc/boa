@@ -479,6 +479,119 @@ malformed numeric overrides revert to the defaults, and a malformed `_NGINX_GUAR
 override is reverted to the default class with a startup warning rather than left to
 silently match nothing.
 
+### Detector 7 — coordinated document harvesting (report by default)
+
+Every detector above keys on an error ratio or a per-IP rate. A distributed
+content scraper trips neither: its requests succeed (mostly `2xx`) and each of
+its addresses stays far below `_NGINX_DOS_LIMIT`. What it cannot hide is its
+**shape** — many addresses under one exact User-Agent against one vhost, each
+pulling a different document and almost never re-reading one.
+
+**Its own pass, not the per-line loop.** `nginx_guard.sh` launches the scorer
+roughly every 5 s and the byte-offset reader hands each pass only a few seconds
+of log; every signal for this attack class is dead or inverted at that width.
+So the harvest pass runs at most once per `_NGINX_HARVEST_INTERVAL` (default
+**60** s, claimed by the mtime of `/var/xdrago/monitor/log/.harvest.stamp`),
+re-reads a bounded tail of the access log on its own (`_NGINX_HARVEST_MAX_LINES`,
+default **20000** lines) and analyses the last `_NGINX_HARVEST_WINDOW` seconds
+(default **300**). It **fails closed**: when that tail spans fewer than
+`_NGINX_HARVEST_MIN_SPAN` seconds (default **180**) the box is too busy for the
+line cap, the sample is not representative, and the pass writes a `NOTE` line
+and declares nothing. It runs after the guard-404 pass and before the Tier-B
+i18n pass.
+
+**What a cohort is.** One vhost plus one exact User-Agent, IPv4 clients only.
+Query strings are stripped before documents are counted, so cache-busting
+parameters cannot make a visitor's repeated ajax call look like a run of
+distinct documents.
+
+**Two ways in.**
+
+- **VOLUME** — the fast harvest. At least `_NGINX_HARVEST_IP_THRESHOLD`
+  (default **32**) addresses have each pulled `_NGINX_HARVEST_IP_MIN_REQS`
+  (default **10**) or more documents in the window, and at least
+  `_NGINX_HARVEST_OK_PCT` (default **70**) percent of the cohort's requests
+  succeeded.
+- **COST** — the slow harvest that melts a box on a handful of expensive pages
+  per address, which no volume floor can see. The cohort holds at least
+  `_NGINX_HARVEST_COST_PCT` (default **50**) percent of all backend seconds in
+  the window, across at least `_NGINX_HARVEST_COST_IP_MIN` (default **16**)
+  addresses, at a mean of `_NGINX_HARVEST_COST_MEAN` (default **5**) seconds per
+  request or more. Backend time is the upstream time when the log line carries
+  it, the request time otherwise.
+
+**The gates every cohort must pass.** The keystone is the distinct-URI share,
+at or above `_NGINX_HARVEST_UNIQ_PCT` (default **85**): a harvest reads each
+document once, while a real audience re-reads popular pages and sits far below.
+A cohort of more than `_NGINX_HARVEST_IP_MAX` (default **400**) qualifying
+addresses is skipped, and so is one whose `5xx`/`444` share exceeds
+`_NGINX_HARVEST_BAD_PCT` (default **5**) — the melt guard: under saturation
+everything degrades, and a degrading box is not evidence of a harvest. A
+User-Agent matching `_NGINX_HARVEST_UA_EXEMPT` is logged as `EXEMPT` and
+skipped; the exemption outranks even `BAN_NAMED`. Last comes the
+**collapsed-realip guard**: when `_NGINX_HARVEST_ALLOW_PCT` (default **20**)
+percent or more of the cohort's addresses are whitelisted, the vhost is
+probably reporting CDN edges as clients, so the whole cohort is logged as
+`REALIP-SUSPECT` and skipped.
+
+**Per-address gates.** Inside a declared cohort each address is tested on its
+own, and a failed test writes a `SKIP … gate=<name>` line instead of a verdict:
+`uniq` (its own distinct-URI share is below the keystone), `multi-ua` (it sent
+more than `_NGINX_HARVEST_IP_MAX_UAS`, default **2**, User-Agents — a shared
+NAT, not a bot), `shared-ip` (under `_NGINX_HARVEST_EXCL_PCT`, default **90**,
+percent of its requests belong to this cohort), `already-banned`, `allowed`,
+`whitelisted`, `logged-in` and `local`.
+
+**Action model.** `_NGINX_HARVEST_ACTION` takes three values. **REPORT**
+(default) writes `WOULD-BAN` lines and bans nothing. **BAN_NAMED** bans only a
+cohort whose User-Agent also matches `_NGINX_HARVEST_BAN_UA` — an operator
+decision about a known attacker. **BAN** arms the heuristic itself and is not
+meant to be a default. Bans go through `_block_ip`, at most
+`_NGINX_HARVEST_MAX_BANS` (default **10**) per pass; the rest are logged as
+`CAP`. Any other action value falls back to `REPORT`, and `BAN_NAMED` with an
+empty pattern falls back to `REPORT` with a `CONFIG:` line, so a typo cannot
+arm it. A malformed `_NGINX_HARVEST_UA_EXEMPT` override reverts to the shipped
+list, never to an empty one — voiding every exemption would fail toward banning
+the very crawlers and monitors the list protects — a malformed
+`_NGINX_HARVEST_BAN_UA` disables named bans, and non-numeric overrides of the
+numeric knobs revert to the defaults. On by default;
+`_NGINX_HARVEST_DETECT=NO` disables the pass.
+
+Everything the pass decides goes to `/var/xdrago/monitor/log/harvest.log`: the
+`NOTE`, `EXEMPT` and `REALIP-SUSPECT` lines above, a two-line
+`=== HARVEST COHORT via VOLUME|COST [...] ===` header carrying the member
+count, documents, distinct-URI, success and error shares, cost share, mean and
+span, then one `SKIP`, `WOULD-BAN`, `BAN` or `CAP` line per address.
+
+| Variable | Default | What it controls |
+|---|---|---|
+| `_NGINX_HARVEST_DETECT` | `YES` | Master switch; `NO` opts the box out. |
+| `_NGINX_HARVEST_ACTION` | `REPORT` | `REPORT` logs `WOULD-BAN` lines and bans nothing; `BAN_NAMED` bans only cohorts whose User-Agent matches `_NGINX_HARVEST_BAN_UA`; `BAN` arms the heuristic. Any other value, or `BAN_NAMED` with an empty pattern, falls back to `REPORT`. |
+| `_NGINX_HARVEST_BAN_UA` | empty | Bash ERE naming the attacker's User-Agent for `BAN_NAMED`. A malformed pattern disables named bans. |
+| `_NGINX_HARVEST_INTERVAL` | `60` | Minimum seconds between two harvest passes. |
+| `_NGINX_HARVEST_WINDOW` | `300` | Seconds of log analysed per pass. |
+| `_NGINX_HARVEST_MIN_SPAN` | `180` | Fail-closed floor: a tail spanning fewer seconds is not representative and declares nothing. |
+| `_NGINX_HARVEST_MAX_LINES` | `20000` | Size of the bounded access-log tail the pass reads. |
+| `_NGINX_HARVEST_IP_MIN_REQS` | `10` | Documents an address must pull before it counts as a cohort member (VOLUME path). |
+| `_NGINX_HARVEST_IP_THRESHOLD` | `32` | Qualifying members needed to call the cohort coordinated (VOLUME path). |
+| `_NGINX_HARVEST_IP_MAX` | `400` | A cohort with more qualifying members than this is skipped. |
+| `_NGINX_HARVEST_UNIQ_PCT` | `85` | The keystone: minimum distinct-URI share, for the cohort and again for each address. |
+| `_NGINX_HARVEST_OK_PCT` | `70` | Minimum success share of the cohort's requests (VOLUME path). |
+| `_NGINX_HARVEST_BAD_PCT` | `5` | Melt guard: maximum `5xx`/`444` share; `0` is accepted. |
+| `_NGINX_HARVEST_ALLOW_PCT` | `20` | Collapsed-realip guard: a cohort with this share of whitelisted addresses is logged `REALIP-SUSPECT` and skipped. |
+| `_NGINX_HARVEST_COST_PCT` | `50` | COST path: minimum share of all backend seconds in the window. |
+| `_NGINX_HARVEST_COST_IP_MIN` | `16` | COST path: minimum addresses in the cohort. |
+| `_NGINX_HARVEST_COST_MEAN` | `5` | COST path: minimum mean backend seconds per request. |
+| `_NGINX_HARVEST_IP_MAX_UAS` | `2` | An address that sent more User-Agents than this is skipped as `multi-ua`. |
+| `_NGINX_HARVEST_EXCL_PCT` | `90` | An address with a smaller share of its requests inside the cohort is skipped as `shared-ip`. |
+| `_NGINX_HARVEST_MAX_BANS` | `10` | Per-pass ban cap; the rest are logged as `CAP`. |
+| `_NGINX_HARVEST_UA_EXEMPT` | shipped crawler and monitor roster | Bash ERE of User-Agents never declared; it outranks `BAN_NAMED`. A malformed override reverts to the shipped roster, never to an empty list. |
+
+Non-numeric overrides of the numeric knobs revert to the defaults. None is seeded by
+`autoupboa`: the script defaults apply unless a line is added to `/root/.barracuda.cnf` by
+hand. An override of `_NGINX_HARVEST_UA_EXEMPT` must be **quoted**: the SERP favicon
+fetcher's token is `Google Favicon`, with a space.
+
 ### Distributed-i18n-flood detection and the FPM saturation trigger
 
 Detectors 1–3 score and ban individual IPs. A distributed flood of **localized**
@@ -513,7 +626,7 @@ Detector 1.
   snapshot (top client IPs / UAs / language-prefixes for that vhost) under
   `/var/xdrago/monitor/log/i18n_flood/`, with a per-vhost cool-down so a multi-minute burst
   yields a handful of records, not one per tick. The same loop-scope skips (`files.*`,
-  `_NGINX_DOS_IGNORE_PATHS`, Site24x7) run first, so monitors and webhooks are never classed,
+  `_NGINX_DOS_IGNORE_PATHS`) run first, so internal file-server and webhook traffic is never classed,
   and it keys on the realip'd client and vhost, never the CF/PX0 edge.
 
 - **FPM saturation trigger.** Byte-offset-tails the per-version PHP-FPM error logs
@@ -616,7 +729,9 @@ IPv6 members join as single addresses. At most 2000 addresses per group are cons
 one pass (an internal bound, not a knob).
 
 **Store and TTLs.** `/var/xdrago/monitor/log/fleet.tempban` is rewritten and pruned on every
-pass, agents carried as base64 so no log byte is ever interpreted:
+pass that has something to record (a box that has never seen a fleet keeps no store file: a
+pass with nothing live and nothing recorded writes none and removes an empty one), agents
+carried as base64 so no log byte is ever interpreted:
 
 ```
 F|<expiry>|<host>|<A or N>|<b64 lower-cased agent>   fingerprint + scope

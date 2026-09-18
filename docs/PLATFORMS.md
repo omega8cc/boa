@@ -70,6 +70,18 @@ server avoids the move by installing with the `percona-8.4` argument (docs/INSTA
 * Backdrop sites are managed with both `bee` (the native Backdrop CLI) and Drush 8 (via the backdrop-drush-extension).
 * Ships ON by default: Backdrop platforms build whenever the platform list includes the `BDR` symbol (or `ALL`); set `_BACKDROP_SUPPORT=NO` in the Octopus config to opt an instance out.
 
+## Grav CMS
+
+- [Grav 2 (official release, admin bundle)](https://getgrav.org)
+
+* Opt-in: the `GRV` platform builds only when `_GRAV_SUPPORT=YES` is set in the instance's Octopus config. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Grav sites.
+
+## Textpattern CMS
+
+- [Textpattern (official release)](https://textpattern.com)
+
+* Opt-in: the `TXP` platform builds only when `_TXP_SUPPORT=YES` is set in the instance's Octopus config. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Textpattern sites.
+
 * All D7 platforms have been enhanced using [Drupal 7.105.2 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
 
 * All D6 platforms have been enhanced using [Pressflow (LTS) 6.60.1 +Extra core](https://github.com/omega8cc/pressflow6/tree/pressflow-plus)
@@ -162,6 +174,11 @@ This file, if it exists and contains a list of symbols used to define supported 
 ### Backdrop
 
 - `BDR` — Backdrop CMS prod/stage/dev (built by default; skipped when `_BACKDROP_SUPPORT=NO`)
+
+### Grav and Textpattern
+
+- `GRV` — Grav 2 prod/stage/dev (skipped unless `_GRAV_SUPPORT=YES` in the instance config)
+- `TXP` — Textpattern prod/stage/dev (skipped unless `_TXP_SUPPORT=YES` in the instance config)
 
 You can also use the special keyword `ALL` instead of any other symbols to have all available platforms installed, including newly added platforms in all future BOA system releases.
 
