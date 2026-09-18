@@ -358,9 +358,9 @@ echo 5242880 > /data/conf/native_files_archive_alert_kb.cnf
 Remove the file to restore the 1 GiB default. This controls only the *alert*; it
 never moves or deletes anything.
 
-### Pruning the archived store by hand
+### Pruning the archived store
 
-Nothing prunes `.archived/` on its own: an archived store is a deleted or renamed
+Age never prunes `.archived/` on its own: an archived store is a deleted or renamed
 site's last copy, and how long to keep it is the operator's call. The `boa` tool
 shows the pile and removes what you name, per Octopus instance or box-wide:
 
@@ -369,6 +369,8 @@ boa archived list o1            # every entry of o1: its stamp, age in days, the
 boa archived list all           # the same for every instance, with a total per instance
 boa archived prune o1 30        # remove o1's entries older than 30 days, listing each
 boa archived prune all 90       # box-wide, older than 90 days
+boa archived heal all           # remove entries oldest-first only where a filesystem is above the heal threshold
+boa archived heal o1 80         # the same for one instance, at 80% used for this run
 ```
 
 The age is read from the entry's own stamp (`.archived/<UTC stamp>-<pid>/`), not
@@ -376,7 +378,24 @@ from file times, so a store moved around keeps its true age. `prune` needs the a
 in days (at least one), removes only entries under `static/files/.archived/` that
 carry the stamp shape, prints each one it removes with the site names inside, and
 refuses an unknown instance or a malformed age with nothing touched. `list` is the
-dry run. Run it from a root shell; it never runs from the nightly.
+dry run. `list` and `prune` run from a root shell only; neither runs from the nightly.
+
+**Disk pressure does prune automatically.** `runner.sh` runs `boa archived heal all`
+every minute, after its standby, proxy, maintenance, queue-stop and load holds and
+ahead of its own disk gate: while the filesystem holding an entry is used above the
+heal threshold — **85% by default**, deliberately below the 90% at which `runner.sh`,
+the backup scripts and some twenty other BOA scripts refuse to run at all — the oldest
+entry across all instances goes, then the next, until the filesystem is back under the
+threshold or the pile is empty. An entry younger than two minutes, or whose directory
+was written to in the last two minutes (a sweep still moving into it), is left alone;
+a store is judged on its own filesystem; nothing is followed through a link; one heal
+runs at a time. The threshold comes from `/data/conf/archived_heal_threshold.cnf`
+(a two-digit percent, 50..99; anything else keeps 85) and
+`/data/conf/disable_archived_heal.cnf` switches the heal off. Removals go to
+`/var/log/boa/archived-heal.log` and a run that removed something mails the list once
+to `_MY_EMAIL`; an entry that cannot be removed is reported once per six hours. The
+reasoning: a clone of a 74 GB site beside a 100 GB pile filled a disk mid-task and took
+nginx and mysqld down with it.
 
 ### Disabling deleted-site auto-archiving
 
