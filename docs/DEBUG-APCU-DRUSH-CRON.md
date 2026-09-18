@@ -100,36 +100,40 @@ fatal errors.
 A full cache clear resolves the burst because it forces a clean rebuild under quieter
 conditions and temporarily repopulates Valkey — until eviction pressure returns.
 
-### BOA default formula and why it may be insufficient
+### How BOA sizes the ceiling, and why it may be insufficient
 
-BOA sets Valkey's `maxmemory` using the formula:
+`_RAM / 3` is the **cap and the last fallback**, not the value BOA sets:
 
 ```bash
 _MAX_MEM_VALKEY=$(( _RAM / 3 ))
 ```
 
-Here `_RAM` is not physical RAM: BOA first subtracts a reservation — a quarter of physical
-RAM by default — leaving the usable figure the formula divides. On a 24GB server that
-reservation is ~6GB, leaving ~18GB usable, so the formula produces a ceiling of about 6GB.
-For a server hosting a small number of sites this is more than adequate, but for servers
-hosting 100+ Drupal 8/9/10 sites the working set of bootstrap, discovery, config, render
-cache, and dynamic page cache across all sites can still exceed this allocation.
+Here `_RAM` is not physical RAM: BOA first subtracts a reservation (`_RESERVED_RAM`, a quarter
+of physical RAM when it is 0), leaving the usable figure. On a 24GB server that reservation is
+~6GB, leaving ~18GB usable, so the cap is about 6GB. The ceiling is then derived in this order:
 
-Older BOA installations used a smaller `_RAM / 6` allocation (a 3GB ceiling on the same
-24GB host). Servers upgraded to current BOA have the ceiling recalculated to `_RAM / 3`
-automatically. On installations that have not been upgraded, or where the ceiling has been
-manually set, review and increase as described below.
+1. a pin, `_VALKEY_MAXMEM_FORCE` in `/root/.barracuda.cnf`, wins outright;
+2. on a Valkey box with a fresh `sqlprobe` demand window (`/var/log/boa/.valkey.demand.txt`)
+   the hit-rate policy sizes the ceiling one bounded step at a time from hit, miss and eviction
+   behaviour, keeping its state in `/var/log/boa/.valkey.ceiling.txt`;
+3. otherwise the measured guard: peak use x4, floored at `_RAM / 16` and 512M, never above the cap;
+4. otherwise `_RAM / 3`. Redis-legacy boxes (no `valkey.conf`) keep `_RAM / 3` unconditionally.
+
+For a server hosting 100+ Drupal 8/9/10 sites the working set of bootstrap, discovery, config,
+render cache and dynamic page cache across all sites can still exceed what the policy grants.
 
 ### Fix
 
-Increase `maxmemory` to approximately 1/3 of available RAM, ensuring sufficient headroom
-remains for MySQL buffer pool, PHP-FPM workers, and the OS:
+Pin the ceiling durably in `/root/.barracuda.cnf`, leaving headroom for the MySQL buffer pool,
+PHP-FPM workers and the OS:
 
 ```bash
-# Apply immediately (replace PASSWORD and adjust size as appropriate)
-valkey-cli -a 'PASSWORD' config set maxmemory 8gb
-valkey-cli -a 'PASSWORD' config rewrite
+_VALKEY_MAXMEM_FORCE=8192   # megabytes; accepted from 64 up to the installed RAM
 ```
+
+An out-of-range value is ignored with a NOTE and the derived value stays. The next `barracuda`
+pass applies the pin. A value written into `valkey.conf` by hand (`config set` plus
+`config rewrite`) does not survive, because BOA re-templates that file on its reinstall paths.
 
 Then monitor evictions and hit rate:
 
@@ -141,8 +145,7 @@ Evictions should drop to zero within minutes. Hit rate will remain low while the
 warms from a cold start — allow 15-30 minutes for the working set to repopulate before
 evaluating steady-state hit rate. On a server with many sites full warm-up may take longer.
 
-**Note:** The `config rewrite` command persists the change to `valkey.conf`. Verify that
-BOA's nightly maintenance does not override this value on your installation.
+**Note:** only the `_VALKEY_MAXMEM_FORCE` pin is durable; see above.
 
 ### RAM sizing guidance
 
