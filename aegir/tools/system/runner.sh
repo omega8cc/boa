@@ -6,6 +6,12 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 
 ###-------------SYSTEM-----------------###
 
+_root_fs_used_pct() {
+  LC_ALL=C command df -P -l / 2>/dev/null | awk '
+    NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
+    NR==2 && u { gsub(/%/,"",$u); print $u }'
+}
+
 _check_root() {
   if [ "$(id -u)" -eq 0 ]; then
     chmod a+w /dev/null
@@ -13,9 +19,52 @@ _check_root() {
     echo "ERROR: This script should be run as a root user"
     exit 1
   fi
-  _DF_TEST="$(LC_ALL=C command df -P -l / 2>/dev/null | awk '
-    NR==1 { for (i=1; i<=NF; i++) if ($i=="Use%" || $i=="Capacity") u=i }
-    NR==2 && u { gsub(/%/,"",$u); print $u }')"
+}
+_check_root
+
+# The heal threshold the boa tool applies (its default and its cnf), read here
+# so the tool is entered only when a filesystem is actually above it.
+_archived_heal_threshold() {
+  local _t=85 _v
+  _v=$(head -n 1 /data/conf/archived_heal_threshold.cnf 2>/dev/null | tr -d '[:space:]')
+  [[ "${_v}" =~ ^[0-9]{2}$ ]] && [ "${_v}" -ge 50 ] && _t="${_v}"
+  echo "${_t}"
+}
+_fs_used_pct() {
+  LC_ALL=C command df -P -- "$1" 2>/dev/null | awk 'NR==2 { gsub(/%/, "", $5); print $5 }' | tr -dc '0-9'
+}
+
+# The one pile BOA reclaims on its own: the archived site stores
+# (static/files/.archived, a deleted or renamed site's last copy) go oldest
+# first while the filesystem holding them is used above the heal threshold
+# (85 by default, below the 90 at which this script and some twenty others
+# refuse to run), and only then. Every minute, AFTER the standby, proxy,
+# maintenance, queue-stop and load holds above (a replica must not diverge,
+# a held queue means a sweep may be filling the pile) and AHEAD of the disk
+# gate below, so a clone or migrate that is filling the disk beside a large
+# pile gets its room back while it still writes instead of taking nginx and
+# mysqld down with ENOSPC. The boa tool is entered only when the root
+# filesystem or an instance's store is above the threshold: its startup is
+# not free, and nothing else here needs it every minute. A store on attached
+# storage is judged on its own filesystem, which the disk gate never sees.
+_disk_gate() {
+  local _t _p _s _pressure=NO
+  if [ -x "/opt/local/bin/boa" ] && [ ! -e "/data/conf/disable_archived_heal.cnf" ]; then
+    _t=$(_archived_heal_threshold)
+    _p=$(_fs_used_pct /)
+    [[ "${_p}" =~ ^[0-9]+$ ]] && [ "${_p}" -gt "${_t}" ] && _pressure=YES
+    if [ "${_pressure}" = "NO" ]; then
+      for _s in /data/disk/*/static/files/.archived; do
+        [ -d "${_s}" ] || continue
+        _p=$(_fs_used_pct "${_s}")
+        [[ "${_p}" =~ ^[0-9]+$ ]] && [ "${_p}" -gt "${_t}" ] && { _pressure=YES; break; }
+      done
+    fi
+    if [ "${_pressure}" = "YES" ]; then
+      /opt/local/bin/boa archived heal all > /dev/null 2>&1
+    fi
+  fi
+  _DF_TEST="$(_root_fs_used_pct)"
   [[ "${_DF_TEST}" =~ ^[0-9]+$ ]] || _DF_TEST=""
   if [ ! -z "${_DF_TEST}" ] && [ "${_DF_TEST}" -gt 90 ]; then
     echo "ERROR: Your disk space is almost full !!! ${_DF_TEST}/100"
@@ -23,7 +72,6 @@ _check_root() {
     exit 1
   fi
 }
-_check_root
 
 _enable_master_cron() {
   _mCronOn="/var/spool/cron/crontabs/aegir"
@@ -164,6 +212,7 @@ fi
 if [ "${_accel_now}" != "YES" ]; then
   [ -e "/run/max_load.pid" ] || [ -e "/run/critical_load.pid" ] && exit 0
 fi
+_disk_gate
 
 _sanitize_number() {
   echo "$1" | sed 's/[^0-9.]//g'

@@ -998,9 +998,10 @@ _explain_space() {
       _explain_log "    run, so several planned copies onto one filesystem are counted together"
       _explain_log "    rather than each 'fitting' on its own."
       _explain_log "  Fix        : free space on the target, then re-run the dry run. The archived"
-      _explain_log "    store pile under <account>/static/files/.archived is never pruned"
-      _explain_log "    automatically and is usually the cheapest thing to reclaim -- the report"
-      _explain_log "    run lists its size per account."
+      _explain_log "    store pile under <account>/static/files/.archived is never pruned by age"
+      _explain_log "    (only a filesystem above the heal threshold empties it, oldest first) and"
+      _explain_log "    is usually the cheapest thing to reclaim by hand (boa archived prune) --"
+      _explain_log "    the report run lists its size per account."
       ;;
   esac
 }

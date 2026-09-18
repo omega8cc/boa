@@ -3563,12 +3563,167 @@ _archived_prune_user() {
   done < <(_archived_entries "${_d}")
   echo "${_u}: ${_cnt} entries older than ${_days} days removed, $(( _tot / 1024 )) MB freed, $(find "${_d}" -mindepth 1 -maxdepth 1 -type d 2> /dev/null | wc -l | tr -d ' ') left"
 }
+# boa archived heal {oN|all} [percent] -- the one automatic prune. Age never
+# empties the pile (an entry is a deleted or renamed site's last copy); disk
+# pressure does: while the filesystem holding an entry is used above the
+# threshold, the oldest entry goes, then the next, until the filesystem is
+# back under it or the pile is empty. A clone or migrate unpacking a site as
+# large as the pile beside it used to fill the disk and take nginx and mysqld
+# down with ENOSPC (2026-09-18: a 74 GB clone, a 100 GB pile). runner.sh
+# calls this every minute, so the room comes back while such a task is still
+# writing. The threshold is percent used, default 85: below the 90 at which
+# runner.sh, the backup scripts and some twenty other BOA scripts refuse to
+# run at all, so the pile is gone before any of them stops -- a heal that
+# waited for 90 would find the box already refusing the work it was meant to
+# save. /data/conf/archived_heal_threshold.cnf overrides it (50..99, anything
+# else keeps the default; above 89 the refusals win the race) and
+# /data/conf/disable_archived_heal.cnf turns the heal off. Each store is judged
+# on its own filesystem (a relocated store under /mnt counts for itself), an
+# entry younger than two minutes is left alone (a sweep may still be moving
+# into it), nothing is followed through a link. Silent when there is nothing
+# to do; every removal is logged to /var/log/boa/archived-heal.log and the
+# run's removals are mailed once to _MY_EMAIL.
+_archived_heal_threshold() {
+  # prints the percent-used threshold, from the cnf when its first line is a
+  # whole two-digit number in range; anything else keeps the default (a bad
+  # value never disables the heal, it only fails to move the line)
+  local _t=85 _c="/data/conf/archived_heal_threshold.cnf" _v
+  if [ -f "${_c}" ] && [ ! -L "${_c}" ]; then
+    _v=$(head -n 1 "${_c}" 2> /dev/null | tr -d '[:space:]')
+    if [[ "${_v}" =~ ^[0-9]{2}$ ]] && [ "${_v}" -ge 50 ]; then
+      _t="${_v}"
+    fi
+  fi
+  echo "${_t}"
+}
+_archived_fs_used_pct() {
+  # $1 = a path; prints the Use% of the filesystem holding it, empty if unknown
+  LC_ALL=C df -P -- "$1" 2> /dev/null | awk 'NR==2 { gsub(/%/, "", $5); print $5 }' | tr -dc '0-9'
+}
+_archived_age_secs() {
+  # $1 = an entry name, YYYYMMDDTHHMMSSZ-<pid>, checked WHOLE: the tenant owns
+  # static/, so a name is admitted to the heal only in the exact shape BOA's
+  # own tools write; prints its age in seconds
+  local _s="${1%%-*}" _t
+  [[ "${1}" =~ ^[0-9]{8}T[0-9]{6}Z-[0-9]+$ ]] || return 1
+  _t=$(date -u -d "${_s:0:4}-${_s:4:2}-${_s:6:2} ${_s:9:2}:${_s:11:2}:${_s:13:2}" +%s 2> /dev/null) || return 1
+  echo $(( $(date -u +%s) - _t ))
+}
+_archived_heal() {
+  # $1 = the instances to act on, one per line; $2 = the threshold in percent
+  local _t="$2" _u _d _e _n _rc _pct _kb _sites _age _cnt=0 _tot=0 _list _line _report=""
+  local _log="/var/log/boa/archived-heal.log" _hn _lock="/run/boa_archived_heal.pid" _lpid _mark
+  if [ -f "/data/conf/disable_archived_heal.cnf" ]; then
+    [ -t 1 ] && echo "archived heal is switched off by /data/conf/disable_archived_heal.cnf"
+    return 0
+  fi
+  # one heal at a time: a removal can outlive the minute that started it and
+  # the next minute's pass must not join it; the pid file counts only while
+  # its writer is alive, a dead writer's file is taken over
+  if [ -e "${_lock}" ]; then
+    _lpid=$(tr -dc '0-9' < "${_lock}" 2> /dev/null)
+    if [ -n "${_lpid}" ] && [ "${_lpid}" != "$$" ] && kill -0 "${_lpid}" 2> /dev/null; then
+      [ -t 1 ] && echo "archived heal already running (pid ${_lpid})"
+      return 0
+    fi
+  fi
+  echo "$$" > "${_lock}"
+  # every stamped entry of every selected instance whose store's filesystem
+  # is above the threshold, oldest first ACROSS instances: the stamp sorts,
+  # then the instance, then the bare path. Safe as text lines because an
+  # entry name is admitted only in the exact shape BOA writes (the tenant
+  # owns static/) and the instance name only as Octopus installs it.
+  _list=$(while read -r _u; do
+    [ -n "${_u}" ] || continue
+    _d=$(_archived_store "${_u}" 2> /dev/null) || continue
+    _pct=$(_archived_fs_used_pct "${_d}")
+    [[ "${_pct}" =~ ^[0-9]+$ ]] && [ "${_pct}" -gt "${_t}" ] || continue
+    while IFS= read -r -d '' _e; do
+      _n=$(basename -- "${_e}")
+      _archived_age_secs "${_n}" > /dev/null 2>&1 || continue
+      [ -L "${_e}" ] && continue
+      printf '%s\t%s\t%s\n' "${_n}" "${_u}" "${_e}"
+    done < <(_archived_entries "${_d}")
+  done <<< "${1}" | sort)
+  if [ -z "${_list}" ]; then
+    rm -f "${_lock}"
+    return 0
+  fi
+  while IFS=$'\t' read -r _n _u _e; do
+    [ -n "${_e}" ] && [ -d "${_e}" ] && [ ! -L "${_e}" ] || continue
+    _pct=$(_archived_fs_used_pct "${_e}")
+    [[ "${_pct}" =~ ^[0-9]+$ ]] || continue
+    [ "${_pct}" -gt "${_t}" ] || continue
+    _age=$(_archived_age_secs "${_n}") || continue
+    [ "${_age}" -ge 120 ] || continue
+    # a stamp dir still being filled has a fresh mtime whatever its name says
+    [ -z "$(find "${_e}" -maxdepth 0 -mmin -2 2> /dev/null)" ] || continue
+    _mark="/run/boa_archived_heal.stuck.${_u}.${_n}"
+    _sites=$(find "${_e}" -mindepth 1 -maxdepth 1 -printf '%f ' 2> /dev/null)
+    _kb=$(du -sk -- "${_e}" 2> /dev/null | cut -f1)
+    chattr -R -i -- "${_e}" &> /dev/null
+    rm -rf -- "${_e}"; _rc=$?
+    if [ ! -e "${_e}" ] && [ ! -L "${_e}" ]; then
+      _line="$(date '+%F %T') removed ${_u} ${_n} (${_kb:-0} KB; its filesystem was ${_pct}% used, above ${_t}%): ${_sites}"
+      _cnt=$(( _cnt + 1 )); _tot=$(( _tot + ${_kb:-0} ))
+      rm -f "${_mark}"
+    else
+      # an entry that will not go is reported once per six hours, not once a
+      # minute for as long as the pressure lasts
+      [ -z "$(find "${_mark}" -mmin -360 2> /dev/null)" ] || continue
+      touch "${_mark}"
+      if [ "${_rc}" -ne 0 ]; then
+        _line="$(date '+%F %T') partially removed ${_u} ${_n}: rm failed inside it (rc ${_rc}), the tree is incomplete, inspect ${_e}"
+      else
+        _line="$(date '+%F %T') could not remove ${_u} ${_n}, left as is, inspect ${_e}"
+      fi
+    fi
+    echo "${_line}"
+    echo "${_line}" >> "${_log}"
+    _report="${_report}${_line}"$'\n'
+  done <<< "${_list}"
+  if [ "${_cnt}" -gt 0 ]; then
+    _line="$(date '+%F %T') heal done: ${_cnt} archived site store(s) removed, $(( _tot / 1024 )) MB freed"
+    echo "${_line}"
+    echo "${_line}" >> "${_log}"
+    # one mail per run that removed something, to the box-wide alert address
+    [ -r "${_barCnf}" ] && source "${_barCnf}" &> /dev/null
+    if [ -n "${_MY_EMAIL}" ] && command -v s-nail &> /dev/null; then
+      _hn="$(tr -d '\n' < /etc/hostname 2> /dev/null)"
+      [ -n "${_hn}" ] || _hn="$(hostname -f 2> /dev/null)"
+      printf '%s\n%s\n\nThe archived site stores below (static/files/.archived, a deleted or\nrenamed site'"'"'s last copy) were removed because the filesystem holding them\nwas used above %s%% -- the automatic heal that keeps a clone, a migrate or a\nbackup from filling the disk. Tune the threshold in\n/data/conf/archived_heal_threshold.cnf (50..99) or disable the heal with\n/data/conf/disable_archived_heal.cnf; see /var/log/boa/archived-heal.log.\n' \
+        "${_report}" "${_line}" "${_t}" \
+        | s-nail -s "Archived site stores pruned on ${_hn}: disk above ${_t}% used" "${_MY_EMAIL}" &> /dev/null
+    fi
+  fi
+  rm -f "${_lock}"
+  return 0
+}
 _octopus_archived() {
-  local _u _users
+  local _u _users _t
+  if [ "${_aCtn}" = "heal" ]; then
+    # quiet by design: runner.sh runs it every minute; a person at a
+    # terminal still gets the reason for a no-op
+    if ! _users=$(_archived_users "${_usEr}") || [ -z "${_users}" ]; then
+      [ -t 1 ] && echo "OOPS.. ${_usEr} is not an Octopus instance here, nothing to heal"
+      exit 0
+    fi
+    if [ -n "${_dAys}" ]; then
+      if [[ ! "${_dAys}" =~ ^[0-9]+$ ]] || [ "${_dAys}" -lt 50 ] || [ "${_dAys}" -gt 99 ]; then
+        echo "OOPS.. heal takes the threshold in percent used, 50..99: $(basename "$0") archived heal {oN|all} [percent]"
+        exit 1
+      fi
+      _t="${_dAys}"
+    else
+      _t=$(_archived_heal_threshold)
+    fi
+    _archived_heal "${_users}" "${_t}"
+    exit 0
+  fi
   echo
   case "${_aCtn}" in
     list|prune) ;;
-    *) echo "Usage: $(basename "$0") archived {list|prune} {oN|all} [days]"; echo; exit 1 ;;
+    *) echo "Usage: $(basename "$0") archived {list|prune|heal} {oN|all} [days|percent]"; echo; exit 1 ;;
   esac
   if ! _users=$(_archived_users "${_usEr}"); then
     echo "OOPS.. ${_usEr} is not an Octopus instance here, nothing to do"
@@ -3692,7 +3847,7 @@ _if_display_help() {
     echo "Usage: $(basename "$0") cleanup {detect|purge} {user|batch}"
     echo "Usage: $(basename "$0") suspend {user}"
     echo "Usage: $(basename "$0") unsuspend {user}"
-    echo "Usage: $(basename "$0") archived {list|prune} {oN|all} [days]"
+    echo "Usage: $(basename "$0") archived {list|prune|heal} {oN|all} [days|percent]"
     echo "Usage: $(basename "$0") reboot"
     echo
     cat <<EOF
@@ -3744,7 +3899,7 @@ _if_display_help() {
       cleanup <------ (detect|purge) cancelled Octopus instances files (no dbs)
       suspend <------ turn off web serving on an Octopus instance (503)
       unsuspend <---- restore web serving on a suspended Octopus instance
-      archived <----- (list|prune) archived stores of deleted or renamed sites (prune REMOVES them)
+      archived <----- (list|prune|heal) archived stores of deleted or renamed sites (prune REMOVES them by age, heal only while the disk is above 90% used)
       reboot <------- run accelerated system reboot
 
     See docs/INSTALL.md for more details.
