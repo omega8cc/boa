@@ -65,8 +65,10 @@ Every generated `geo` always allows, regardless of the listed addresses:
 - `127.0.0.1` and `::1` — loopback;
 - the server's own IPv4, from `/root/.found_correct_ipv4.cnf` (BOA tracks no server IPv6);
 - **every established inbound SSH client IP (IPv4 or IPv6)**, read from `netstat -tn` (peers
-  on an `ESTABLISHED` `:22` connection — the peer address is taken by stripping the trailing
-  `:port`, so both families are harvested) — the same source `ip_access` uses, because
+  on an `ESTABLISHED` connection to any local SSH port — the union of `22`, the cnf
+  `_SSH_PORT` and every port the live sshd config serves, so the harvest follows a custom
+  port yet can never go dark on a default-port box; the peer address is taken by stripping
+  the trailing `:port`, so both families are harvested) — the same source `ip_access` uses, because
   `who --ips` is unavailable on Excalibur and newer.
 
 So an admin working over SSH — over IPv4 or IPv6 — is added to every site's allow-list
@@ -99,7 +101,11 @@ staging.example.com    198.51.100.42 2001:db8:1::1
   next run, lifting the restriction (the admin surface becomes open again).
 - **Safety** — per context: back up the current fragments, regenerate atomically,
   `service nginx configtest`, then `reload`; on a failed configtest or reload, restore the
-  last-good backup and reload. The whole script holds the shared
+  last-good backup and reload. The last-good archive is proved readable before the live fragments are deleted: an
+  unreadable one leaves the fragments on disk alone and prints an `ALRT:` line naming the
+  control file to fix, and a freshly written last-good that does not verify is removed. On a
+  replication standby whose web tier is held, the fragments are written and the change-gate
+  markers advance, but the reload and the revert are both skipped until promotion. The whole script holds the shared
   `/run/boa_nginx_config.lock` (`flock -w 30`) so it never overlaps `ip_access` /
   `ai_policy` / `nginx_deny` / `cloudflare_realip`.
 - **Schedule / serial** — `*/2` cron; serial-gated via `_fetch_versioned` in `BOA.sh.txt`

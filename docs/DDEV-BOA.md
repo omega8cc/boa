@@ -99,5 +99,6 @@ as a commented opt-in only, never switched. It does not reproduce the
 BOA server itself: there is no Ægir/Hostmaster panel, no Octopus multi-tenancy, no CSF, and
 DDEV's nginx/PHP are stock builds, not BOA's own compiled ones. Per-site `php.ini` tuning
 and BOA's nginx directives are not exported (they are not readable through the limited
-shell). For a full local BOA server, see *BOA Local* (a prebuilt VM/LXC image), a separate
-effort.
+shell). For a full local BOA server, see *BOA Local*: an install mode of the ordinary
+installer (`boa in-lts local <email>`, with `in-dev` and `in-pro` equally valid) that puts a
+whole BOA server on a local VM. It is not a prebuilt image.
