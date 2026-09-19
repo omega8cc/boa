@@ -8,14 +8,18 @@ but nothing about the mechanism is billing-specific.
 
 Both commands are instant and idempotent: suspending an already-suspended
 instance (or unsuspending a non-suspended one) just reports the current state.
-Other instances on the same box are not affected.
+The serving state of other instances on the same box is not affected; the Nginx speed
+cache purge at both toggle points is box-wide (`/var/lib/nginx/speed` in full), so every
+account takes a briefly cold microcache.
 
 ## What suspend does — and what it deliberately does not
 
 When suspended:
 
-- **Web requests get a 503** on every site of the account, Drupal and Backdrop
-  alike. The response carries `Retry-After: 3600` and `Cache-Control: no-store`,
+- **Web requests get a 503** on every site of the account — Drupal and Backdrop
+  through the global settings include, Grav and Textpattern through the same flag
+  test in their own vhosts — and on the account's own Ægir control panel as well,
+  so a suspended tenant cannot log in to the panel either. The response carries `Retry-After: 3600` and `Cache-Control: no-store`,
   so nothing downstream caches the outage page, and the Nginx speed cache is
   purged at both toggle points — the 503 appears immediately on suspend and
   clears immediately on unsuspend.

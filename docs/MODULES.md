@@ -108,7 +108,7 @@ Contrib [S]upported and [B]undled:
 
 Contrib [F]orce[E]nabled
 
- entitycache ---------------- [D7] --------- [S] [B] [FE] unless entitycache_dont_enable = TRUE
+ entitycache ---------------- [D7] --------- [S] [B] [FE] unless entitycache_dont_enable = TRUE or the platform ships profiles/commons
  robotstxt ------------------ [D6,D7] ------ [S] [B] [FE] static file is generated in sites/foo.com/files/robots.txt
 
 Core [F]orce[D]isabled:
