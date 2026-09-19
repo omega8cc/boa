@@ -386,6 +386,12 @@
       static/files keeps its own pruning leg and static/control stays
       additive as its own leg (a static/control that is a symlink is never
       followed); the cutover legs stay additive throughout.
+    * xmass cutover no longer reports a database lock it does not take:
+      the abort messages name the write freeze as the boundary ("Pre-freeze
+      abort", "aborted before the write freeze", "cutover aborted; writes
+      thawed"), and three UNLOCK TABLES calls that released nothing are
+      gone, along with the "tables unlocked" line and the reset-phase hint
+      to run one by hand.
 
 
 ###
