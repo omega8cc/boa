@@ -54,12 +54,15 @@ _check_root
 # upgrade or an xmass/xoct migration deliberately stops, locks, dumps, restores
 # or restarts MySQL, and ANY action from this watchdog -- auto-heal restart,
 # high-load restart, busy restart, long-query kill -- races that into a corrupt
-# xtrabackup snapshot, a broken replica, a broken cutover FLUSH-lock (DATA LOSS),
-# or a half-applied 5.7->8.0 DD upgrade (the ibdata1 lock loop). The operation
-# holds /run/boa_sql_maintenance.pid for its critical section and clears it at
-# the end. A STALE marker (>4h, e.g. an operation that died without cleanup) is
-# ignored so auto-heal can never be disabled forever; /run is tmpfs so it also
-# clears on reboot.
+# xtrabackup snapshot, a broken replica, writes lost past the position an xmass
+# cutover captured (DATA LOSS: a restart between its final position read and
+# the promotion, or mid target promote + renameaegirhost DB work -- the cutover
+# takes no read lock, its 503 gate and parked cron + runners are the write
+# barrier), or a half-applied 5.7->8.0 DD upgrade (the ibdata1 lock loop). The
+# operation holds /run/boa_sql_maintenance.pid for its critical section and
+# clears it at the end. A STALE marker (>4h, e.g. an operation that died without
+# cleanup) is ignored so auto-heal can never be disabled forever; /run is tmpfs
+# so it also clears on reboot.
 if [ -e "/run/boa_sql_maintenance.pid" ]; then
   if [ -n "$(find /run/boa_sql_maintenance.pid -mmin +240 2>/dev/null)" ]; then
     rm -f /run/boa_sql_maintenance.pid
