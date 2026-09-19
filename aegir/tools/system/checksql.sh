@@ -197,19 +197,34 @@ touch "${_TOUCH_FILE}"
 
 _hName="$(hostname -f 2>/dev/null)"
 
+_MAIL_ON=NO
 if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" != "OFF" ]; then
-  if [ "${_STATUS}" != "CLEAN" ]; then
+  _MAIL_ON=YES
+fi
+
+# The repair runs whether or not anyone is mailed about it: switching incident
+# mail off silences the report, never the repair. It used to sit inside the
+# mail block, so a box with mail off detected a crashed table, wrote the
+# script and repaired nothing.
+if [ "${_STATUS}" != "CLEAN" ]; then
+  if [ "${_MAIL_ON}" = "YES" ]; then
     s-nail -s "SQL check ERROR [${_hName}] ${_TIMEDATE}" \
       "${_MY_EMAIL}" < "${_LOG_FILE}"
-    if [ -f "${_FIX_WORK}" ]; then
+  fi
+  if [ -f "${_FIX_WORK}" ]; then
+    if [ "${_MAIL_ON}" = "YES" ]; then
       bash "${_FIX_WORK}" \
         | s-nail -s "SQL REPAIR done [${_hName}] ${_TIMEDATE}" "${_MY_EMAIL}"
+    else
+      bash "${_FIX_WORK}" &> /dev/null
     fi
   fi
-  if [ "${_STATUS}" != "ERROR" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
-    s-nail -s "SQL check CLEAN [${_hName}] ${_TIMEDATE}" \
-      "${_MY_EMAIL}" < "${_LOG_FILE}"
-  fi
+fi
+if [ "${_MAIL_ON}" = "YES" ] \
+  && [ "${_STATUS}" != "ERROR" ] \
+  && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
+  s-nail -s "SQL check CLEAN [${_hName}] ${_TIMEDATE}" \
+    "${_MY_EMAIL}" < "${_LOG_FILE}"
 fi
 
 # Publish the completed script under the well-known name, for an operator who
