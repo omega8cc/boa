@@ -102,6 +102,13 @@
 
 @=> Improvements
 
+    * The mycnfup tuner and the cluster tool are retired. mycnfup refused
+      every verb on anything but Debian, so it never ran on a Devuan box,
+      and only the discontinued Simple Cluster tooling ever called it; the
+      memory limits in my.cnf follow the RAM on every barracuda pass without
+      it. A box that still carries /opt/local/bin/mycnfup loses it, with its
+      fetch markers, on the next pass.
+
     * A filesystem running out of room now prunes the archived site stores
       on its own: `boa archived heal`, which runner.sh runs every minute
       after its standby, proxy, maintenance, queue-stop and load holds and
@@ -259,6 +266,12 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * A crashed table is now repaired whether or not incident mail is on.
+      checksql.sh ran the repair script it generates only inside its mail
+      block, so a box with _INCIDENT_REPORT=OFF (or no _MY_EMAIL) detected
+      the crash, wrote /var/xdrago/acrashsql.sh and repaired nothing. OFF now
+      silences the two mails about the repair, never the repair itself.
 
     * xmass no longer aborts a live sync when a file vanishes between rsync's
       directory listing and its extended-attribute read: rsync then exits 23
