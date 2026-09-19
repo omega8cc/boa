@@ -1772,7 +1772,7 @@ $is_ai_forged           → 444   edge-policy
 AI training / evasive   → 444   edge-policy
 $is_crawler             → 444
 $is_botnet              → 444
-bad request method      → 444
+bad request method      → 444   (anything but GET HEAD POST PUT PATCH DELETE OPTIONS; every vhost shape)
 $is_denied              → 444
 $ua_denied              → 444
 $tls_on_plain           → 444
