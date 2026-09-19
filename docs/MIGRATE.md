@@ -12,7 +12,7 @@ migration, without the automatic intermediate DNS proxy.
 | Scope | Single Octopus account | Full server (all accounts + Solr) |
 | Method | mydumper/myloader export→transfer→import | MySQL GTID replication + rsync |
 | Percona version match required | No — cross-version safe | Yes — identical versions on both ends |
-| Downtime window | Per-account (minutes to hours) | Whole-server cutover (1–3 h typical) |
+| Downtime window | Per-account, export to proxy; follows the account's database size (files are sent ahead) | Whole-server cutover, 15–20 min measured on 4–6 Ægir roots; a few minutes more per extra root |
 | Intermediate DNS proxy | Yes (automatic) | Yes (automatic via xoct) |
 | Concurrent account migration | No — sequential | Yes — all accounts in one operation |
 | Incremental pre-sync | No | Yes — repeat `xmass sync` freely |
