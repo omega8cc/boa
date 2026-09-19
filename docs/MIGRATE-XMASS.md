@@ -98,8 +98,17 @@ database). At cutover:
     canaries. The target does not serve source-named panels.
 12. DNS is updated; traffic flows directly to target.
 
-Typical total cutover window: **1–3 hours** (dominated by `renameaegirhost`
-task queues for large numbers of accounts).
+How long visitors see the 503: the data crosses before the window opens
+(replication carries the databases, `sync` and the autosync passes carry the
+files), so the window does not grow with the size of the data. Inside it are
+the final files delta, the lag confirmation, the promotion, the target's
+web-layer proof and `renameaegirhost` for the master and then for each
+account's Ægir root in series, under a box-wide gate. Every clean cutover,
+failover and failback measured so far, on estates of 4–6 Ægir roots and up to
+46 sites on both Percona generations, kept a client domain on the 503 for
+**15 to 20 minutes**. Budget a few more minutes per additional Ægir root; on a
+very large file estate add the two no-change tree walks inside the window,
+which scale with the number of files rather than their size.
 
 ## State Machine
 
