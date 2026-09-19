@@ -177,7 +177,7 @@ When you are done, re-lock the platform with the new 'Lock Local Drush' task —
 2. Connect to your server as `oN.ftp` (not `oN`) using SSH.
 3. Find the correct Drush `@site-alias` with the `drush11 aliases` command.
 4. Switch to the Platform app root where `vendor` exists using `cd`.
-5. Run `vdrush --version` or install it with `composer require drush/drush`.
+5. Run `vdrush --version`. If the codebase has no site-local Drush, install it with `composer require drush/drush` ONLY when the codebase carries no Composer patches (`extra.patches` / `extra.patches-file` in composer.json, or `cweagans/composer-patches` in composer.lock, as the distribution platforms do) and its lock accepts the box's PHP CLI (`composer check-platform-reqs`): on a patched codebase the require makes composer-patches delete every patched package before re-resolving, and they come back unpatched or not at all. Provision's own lock/unlock steps refuse the require in exactly those two cases.
 6. Use `vdrush @site-alias updbst`, `vdrush @site-alias updb`, etc.
 7. Re-lock the platform with the 'Lock Local Drush' task (or a full 'Platform Verify') to restore compatibility with Drush 8.
 

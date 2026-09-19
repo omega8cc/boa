@@ -50,8 +50,11 @@ if [ -e "/root/.standby.cnf" ]; then
   # ceiling as the /run file, so a dead init still ages out, and it is
   # reaped the moment the window is definitively over (replication
   # confirmed, marker gone, or marker self-removed).
+  # The twin carries the SIGNAL's own mtime, not "now": re-stamping it every
+  # minute restarted its ceiling at the moment the mirroring stopped, so a
+  # dead init read as in flight for up to twice the 2880 minutes.
   if [ -n "$(find /run/boa_xmass_init.pid -mmin -2880 2>/dev/null)" ]; then
-    touch /root/.standby.init.pid
+    touch -r /run/boa_xmass_init.pid /root/.standby.init.pid
   fi
   if mysqladmin ping &> /dev/null; then
     _rplState=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
@@ -67,20 +70,48 @@ if [ -e "/root/.standby.cnf" ]; then
       # reboot-proof twin goes: a leftover would hold the marker through a
       # LATER hand promotion, which is exactly what this block is for.
       # A lost-replica episode, if any, is over too.
-      rm -f /root/.standby.init.pid /run/boa_standby_lost_logged.pid
+      rm -f /root/.standby.init.pid /run/boa_standby_lost_logged.pid \
+        /run/boa_standby_stall_logged.pid
     elif [ "${_rplRc}" -eq "0" ]; then
       if [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid \
         -mmin -2880 2>/dev/null)" ]; then
-        # Init in flight: hold the marker silently -- the in-flight files
-        # are the record, and a log line per minute would flood the log
-        # for the whole seed leg.
-        :
+        # A window is open: hold the marker. Silently while a live xmass
+        # owns it -- the in-flight files are the record, and a log line
+        # per minute would flood the log for the whole seed leg. But
+        # "held" must not mean "silent for 48 hours": xmass re-touches its
+        # /run signal at every init phase boundary and every 1200 s from
+        # its keepalive, so on a box whose DB is still locked a signal
+        # untouched for 90 minutes means no live run owns this window --
+        # a replica lost before
+        # this watchdog confirmed it, or a re-init that died between its
+        # reset and its re-point. Log-only, once per episode, and only
+        # while the DB is locked: a cutover's tail past step 11.5 is
+        # unlocked and may run longer than that. Both carriers are read:
+        # the twin holds the signal's own timestamp, so a target reboot
+        # inside a live window (which empties /run) is not an abandoned
+        # init, while a dead one still ages past the bound. A cutover
+        # writes the pair once at its step 8 and never refreshes it, so a
+        # cutover parked before its step 11.5 trips the same line -- the
+        # recovery there is to resume it. The twin is KEPT: it still gates
+        # restore-target, autosync and the unattended reboot. The web
+        # tier does not depend on any of this -- the nginx watchdog holds
+        # it on the database's own answer.
+        if [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid \
+          -mmin -90 2>/dev/null)" ]; then
+          rm -f /run/boa_standby_stall_logged.pid
+        elif [ ! -e "/run/boa_standby_stall_logged.pid" ] \
+          && [ "$(mysql -N -e 'SELECT @@super_read_only' 2>/dev/null | tr -dc '0-9')" = "1" ]; then
+          touch /run/boa_standby_stall_logged.pid
+          echo "Standby marker present, NO replica config, the DB still read-only and the xmass in-flight signal untouched for over 90 minutes: no live xmass run owns this box (a dead init, or a cutover parked before its step 11.5 -- resume it) -- marker KEPT, web tier held, VERIFY THIS BOX ('xmass status' on the active names the recovery) on $(date)" \
+            >> /var/log/boa/standby.quiesce.log
+        fi
       elif [ "$(mysql -N -e 'SELECT @@super_read_only' 2>/dev/null | tr -dc '0-9')" = "0" ]; then
         # No replica config AND the DB unlocked: only a cutover does that
         # (its step 11.5 clears super_read_only on the promoted box before
         # step 15 removes the marker), so a marker still here is the
         # leftover of a step 15 that could not confirm its removal. Drop it.
-        rm -f /root/.standby.cnf /root/.standby.init.pid /run/boa_standby_lost_logged.pid
+        rm -f /root/.standby.cnf /root/.standby.init.pid /run/boa_standby_lost_logged.pid \
+          /run/boa_standby_stall_logged.pid
         echo "Removed STALE /root/.standby.cnf: probe ran clean, box has NO replica config and its DB is unlocked (promoted) on $(date)" \
           >> /var/log/boa/standby.quiesce.log
       else
@@ -117,7 +148,12 @@ fi
 # (cutover promotion, an init unwind, a hand removal): it only ever
 # qualifies a marker, and a leftover would hold the marker written by the
 # NEXT seed run long past that run's own window.
-[ -e "/root/.standby.cnf" ] || rm -f /root/.standby.init.pid
+# The promoted latch and the nginx watchdog's probe stamp go with it: they
+# only ever qualify a marker too, and a latch that outlived one would read
+# the NEXT seed of this box as promoted until its first definitive probe.
+[ -e "/root/.standby.cnf" ] || rm -f /root/.standby.init.pid \
+  /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid \
+  /run/boa_standby_stall_logged.pid /run/boa_standby_noretrofit_logged.pid
 # Reap the defer-log stamp whenever the deferral condition no longer
 # holds (mysqld back, or the marker itself gone) -- a leaked stamp would
 # silently swallow the log line for the NEXT genuine outage.

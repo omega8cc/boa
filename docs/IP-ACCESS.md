@@ -47,7 +47,7 @@ This replaces the older per-Octopus `nginx_ip_access_<oct>.sh` copies with one s
 Every generated fragment always allows, regardless of the listed IPs:
 
 - `127.0.0.1` and `::1` — loopback;
-- the server's own IPv4, from `/root/.found_correct_ipv4.cnf` (BOA tracks no server IPv6);
+- the server's own IPv4, from `/root/.found_correct_ipv4.cnf` (BOA tracks no server IPv6). The cache heals itself after a server move: when the cached address is no longer one of the box's global IPv4 addresses and the box carries a public IPv4, BOA re-probes once per process and replaces it only with a validated, different address;
 - **every established inbound SSH client IP**, read from `netstat -tn` (peers on an
   `ESTABLISHED` connection to any local SSH port — the union of `22`, the cnf `_SSH_PORT`
   and every port the live sshd config serves, so the harvest follows a custom port yet can

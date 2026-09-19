@@ -191,7 +191,11 @@ process does not block.
   displacing anything (override: `_XMASS_SKIP_DISK_GATE=YES`).
 - CSF: source IP allowed on the target **and** target IP allowed on the source
   — the target dials back to source:3306. `prep-target` appends each peer to
-  **both** `csf.allow` and `csf.ignore` (append-once) and reloads CSF: an
+  **both** `csf.allow` and `csf.ignore` (append-once) and reloads CSF (every
+  locked xmass verb records the csf lines and the peer host key it adds and
+  withdraws exactly those, here and on the peer, when it does not complete;
+  a completed `prep-target` or `pre-mig` keeps them, and a line it could not
+  withdraw is named for a hand removal): an
   allow on its own is not durable, because the login-failure daemon can still
   temp-deny the peer mid-migration, and a temp-deny on the reverse path fails
   `init` *after* the target datadir has been replaced. The reverse path is
@@ -477,7 +481,11 @@ What `init` does:
 3. Enables GTID mode on both servers (writes `xmass_gtid.cnf` into the
    detected MySQL include dir — see [GTID Configuration](#gtid-configuration)
    for the path — then restarts MySQL via `move_sql.sh`).
-4. Creates the replication user `xmass_repl`@`target-ip` on source.
+4. Checks the source's TLS material for the replication stream. The
+   replication user `xmass_repl`@`target-ip` itself is created on the source
+   last before the swap, behind the snapshot and every step that can still
+   refuse (a re-init must not cut the credentials of a replica that is
+   running and then unwind), and outside the binary log.
 5. Prevents Solr from starting on the target: stops it AND disarms its
    init scripts (exec bit and rc links dropped), so neither boot, a
    barracuda pass, nor the java.sh watchdog can bring it back mid-sync.
@@ -485,10 +493,25 @@ What `init` does:
    re-asserts the disarm every minute while it exists. Cutover step 14
    or `post-mig` re-arm symmetrically.
 5a. **Arms the standby write gates on the target.** `/root/.standby.cnf`
-   is written FIRST, before the datadir swap, together with an in-flight
-   signal (`/run/boa_xmass_init.pid`) and its twin `/root/.standby.init.pid`
-   (`/run` is tmpfs: the twin survives a reboot mid-window, and either one
-   holds the gates). The swap parks the target's own data directory as
+   is written FIRST, before the datadir swap, in one command with the
+   in-flight signal (`/run/boa_xmass_init.pid`) and the RUNTIME database lock
+   (`read_only` + `super_read_only`), which init reads back and refuses
+   without: from that moment the marker means "this box takes no writes".
+   second.sh mirrors the signal to a twin, `/root/.standby.init.pid` (`/run`
+   is tmpfs: the twin survives a reboot mid-window, and either one holds the
+   marker). A target that is RELAYING traffic -- a demoted ha-switch failback
+   target, still shaped as a proxy -- loses its web tier at this step, not at
+   the end of the seed: `prep-target` and `init` both say so with an `ALRT`
+   naming the account count, so move visitors to the active box first. An
+   init that refuses before the swap unwinds the target again — marker,
+   signal and lock, reported as restored only once the unlock is read back —
+   unless that target was already a committed standby, which is left exactly
+   as it was found (only this run's window signal and its twin are removed).
+   The witness is the `init-committed` line init adds to the marker when it
+   enters the swap (every live sync adds it to a mirror built by older
+   bytes), a replica config, or a parked pre-swap datadir newer than the
+   marker; a box that reads as promoted is never taken for a standby. The
+   swap parks the target's own data directory as
    `/var/lib/mysql.xmass_pre_<stamp>` together with the credential pair that
    opens it (`/root/.my.cnf` and `/root/.my.pass.txt`, same suffix); a
    standby that was never promoted returns to that state with
@@ -505,18 +528,43 @@ What `init` does:
    the replica's database outright: the `xmass-standby-hold` block
    (`read_only` + `super_read_only`) is written into the target's
    `xmass_gtid.cnf` — so the lock survives every mysqld restart and
-   reboot — and set live once the replica threads verify. The
+   reboot — on top of the runtime lock set with the marker (a target whose
+   GTID mode is already on, such as a box promoted once and now seeded again,
+   is not restarted at this point, so the runtime half is what covers its
+   pre-swap leg). The
    replication appliers are exempt by definition; everything else, root
    included, is refused at the server. The mysql watchdog re-asserts the
    lock every minute, converts a standing mirror built by older bytes
    the same way (it appends the block and locks the runtime), and
    releases it only once the marker is gone — with the runtime unlock
-   verified BEFORE the block is stripped. The web tier is held DOWN for
-   the whole window (the `start()` gate in the shipped nginx init script
-   covers even the boot rc links, the per-minute enforcer covers
-   everything else, and the `BOA_STANDBY_WEB` firewall chain — IPv4+IPv6,
-   loopback exempt — is re-added by `csfpost.sh` after any `csf -r`),
-   FTPS is killed on sight with its self-healer standing down, and
+   verified BEFORE the block is stripped; it converts a mirror built by older bytes wherever the block
+   is missing under the marker, except on a box cutover step 11.5 unlocked
+   (the step leaves a line saying so in `xmass_gtid.cnf`), so
+   a promoted box that still holds its marker is not locked again (the
+   watchdog also honours the window signal ten minutes longer than
+   `second.sh` does, so that watchdog's removal of a promoted box's leftover
+   marker at the 48-hour ceiling always lands first); one whose
+   unlock could not be proven keeps its block and is re-asserted once the
+   window signal has aged out, which is what its resume clears. The web tier is held DOWN for as
+   long as the box is not PROMOTED, and that is read from the database, not
+   from the xmass window: promoted means the role probe ran clean, returned
+   no replica config, and `super_read_only` reads 0. An init or a re-init
+   therefore never opens the web tier of a mirror, and a mirror that loses
+   its replica config stays dark. The answer is latched in
+   `/var/log/boa/.standby_promoted.pid`: a definitive read moves it, an
+   ambiguous one (mysqld restarting, credentials rotating) changes nothing,
+   absent means held, and it survives a reboot — so a cutover parked after
+   its step 11.5 boots serving while a mirror boots dark. Three surfaces read
+   the same rule: the `start()` gate in the shipped nginx init script (it
+   covers even the boot rc links and derives the answer once, bounded, when
+   there is no latch yet), the nginx watchdog several times a minute, and the
+   `BOA_STANDBY_WEB` firewall chain — IPv4+IPv6, loopback exempt — which
+   `csfpost.sh` re-adds after any `csf -r` from the latch alone (on a box that
+   carries an older block it is removed and the current one appended at the
+   end of the file, and only when its two marker lines are present exactly
+   once and in order — otherwise the file is left alone and
+   `/var/log/boa/csfpost.standby.retrofit.log` says so).
+   FTPS is killed on sight on the marker alone, with its self-healer standing down, and
    tenant lshell/mysecureshell logins flip to `nologin` (recorded, with
    the release restoring exactly the recorded users). The operator
    escape hatch `/root/.standby.serve.cnf` opens the WEB tier only — a
@@ -532,9 +580,16 @@ What `init` does:
    CLOSED on a transport error. The in-flight signal tells
    second.sh that an empty role probe is expected until replication
    starts. second.sh mirrors it to a reboot-proof twin
-   (`/root/.standby.init.pid`), so a target reboot inside the window
-   cannot license promotion; both clear once the replica runs, or when the
-   marker goes, and both age out under a dead init. Outside that window a
+   (`/root/.standby.init.pid`, carrying the signal's own timestamp), so a
+   target reboot inside the window cannot license promotion; both clear once
+   the replica runs, or when the marker goes, and both age out under a dead
+   init. While that window is open the marker is held silently — unless the
+   database is still locked and neither the signal nor its twin has been
+   touched for 90 minutes (init refreshes the signal at every phase and every
+   20 minutes; a cutover writes the pair once at its step 8, so a cutover
+   parked before its step 11.5 trips the same line and the recovery is to
+   resume it): then no live xmass run owns the box, and second.sh says so
+   once in `/var/log/boa/standby.quiesce.log`. Outside that window a
    leftover marker self-removes only on a box whose database the cutover
    already unlocked (step 11.5); a standby that merely lost its replica
    config while still read-only keeps the marker and is logged once — a
@@ -607,7 +662,10 @@ MySQL data is **not** rsynced — replication keeps it current continuously.
 ### Deletions: what a sync removes on the target, and what it never does
 
 Source-side deletions **propagate on the data trees** during `sync` (manual
-and automated alike): `distro/`, `src/`, `static/files`, `arch`, `backups/`,
+and automated alike): `distro/`, `src/`, `static/` (everything under it but
+`static/control`: tenants build codebases anywhere there, and a removed one
+used to stay on the mirror for good; `static/files` is the store and prunes
+as its own leg), `arch`, `backups/`,
 `undo/`, the client toolchains, the Solr data trees and the shared
 `/data/all`, `/data/disk/all`, `/data/disk/legacy` and `/var/www/static`
 trees. Without this a standing mirror grows without bound, and it grows
@@ -620,9 +678,12 @@ mirror.
 Three things are deliberately **not** pruned:
 
 - **Control, credential and target-role legs stay additive** — `log/`,
-  `.drush/`, `config/`, the sub-account password store and the PHP pin
-  witnesses under `static/control`. They carry target-owned state or are
-  force-copied, and deleting there would fight the target's own install.
+  `.drush/`, `config/`, the sub-account password store and the whole of
+  `static/control` (its own leg, the PHP pin witnesses force-copied on top;
+  a `static/control` that is a symlink is never followed — neither leg runs
+  for that account, and the pass says so once a day). They carry
+  target-owned state or are force-copied, and deleting there would fight the
+  target's own install.
 - **The cutover legs stay additive**, plan and live alike. That is the one
   window where the target is about to become production and a wrong deletion
   is unrecoverable; a promoted box resumes its own `owl.sh` cleanup within
@@ -638,10 +699,12 @@ The guards on every pruning leg, none of them optional:
 | `--delete-after` | Nothing is removed until the transfer succeeded, so a failed leg cannot leave the target both pruned and un-copied |
 | `--max-delete` (`_XMASS_MAX_DELETE`, default 5000) | rsync **refuses** (exit 25) rather than carry out a mass deletion — the catastrophe guard: "wiped the mirror" becomes "a loud pass failure a human reads" |
 | Never with `--ignore-errors` | That flag means *delete even though the source had read errors*, which is exactly what must not happen; a leg either prunes or keeps the historical tolerance, never both |
-| Empty-source refusal | An unmounted secondary volume reads as an **empty directory**; a `--delete` against it would erase the mirror's only copy of every client file. An empty source is never a licence to delete — the leg logs it and stays additive |
+| Empty-source refusal | An unmounted secondary volume reads as an **empty directory**; a `--delete` against it would erase the mirror's only copy of every client file. An empty source is never a licence to delete — the leg logs it and stays additive (the `static/` leg is covered one step earlier: a `static/` that is a link into an unmounted volume is no directory, and the leg does not run) |
 
 A tripped delete guard is a refusal to read, not an error to retry: nothing
-beyond the limit was deleted. Confirm the source really lost that many files
+beyond the limit was deleted. One removed codebase is enough to trip it — a
+Composer-built Drupal tree runs to tens of thousands of files, under
+`static/` exactly as under `distro/`. Confirm the source really lost that many files
 — an unmounted volume and a genuine mass deletion look identical from the
 sending side — and only then re-run once with `_XMASS_MAX_DELETE` raised.
 Expect it to trip on the **first** pruning pass against a mirror that has
@@ -924,7 +987,7 @@ first change to the source):
 | Step 9 | Belt-and-braces `UNLOCK TABLES` on source (no lock is normally held); the write freeze stays — the source serves through the proxy from here |
 | Step 10 | Re-transfer `/root/.my.pass.txt` and `/root/.my.cnf` to target (belt-and-braces) |
 | Step 11 | Drop replication user `xmass_repl` from source. Runs at the head of the cutover tail (idempotent), so a park upstream of it — the step-8 committed-promotion park — still gets the grant dropped when the resumed run completes |
-| Step 11.5 | Unlock the promoted target's database — on EVERY entry into the cutover tail, resumes included, since every step after it writes the target DB. `SET GLOBAL super_read_only=OFF` plus `read_only=OFF`, with the runtime readback verified (both variables) BEFORE the `xmass-standby-hold` block is stripped from `xmass_gtid.cnf`; a failed unlock **parks resumably at `phase=rename-failed`** rather than marching the renames into a read-only DB, and with mysql unreachable the cnf block deliberately survives as the watchdog's retry key |
+| Step 11.5 | Unlock the promoted target's database — on EVERY entry into the cutover tail, resumes included, since every step after it writes the target DB. `SET GLOBAL super_read_only=OFF` plus `read_only=OFF`, with the runtime readback verified (both variables) BEFORE the `xmass-standby-hold` block is stripped from `xmass_gtid.cnf`; a failed unlock **parks resumably at `phase=rename-failed`** rather than marching the renames into a read-only DB, and with mysql unreachable the cnf block deliberately survives as the watchdog's retry key. With the unlock proven and no replica config left, the step writes the promoted latch (`/var/log/boa/.standby_promoted.pid`) itself: the target's web hold follows its database, and step 12 must not wait for a watchdog pass to read the same thing. Step 15 removes the latch with the marker |
 | Step 12 | Prove the target's web layer, then start nginx there: the `BOA_STANDBY_WEB` firewall hold is removed first (both address families), then `nginx -t` on the target (an invalid config **refuses the conversion**, printing the tail of the test output), then require a real HTTP answer on the target's port 80 — on loopback AND externally from the source (the path client traffic takes after the DNS flip; a browser UA, because curl's default lands in BOA's own crawler map, and HTTPS too when the target has a public 443 listener), since the loopback curl cannot see an INPUT-chain firewall drop. This proof runs at the **head of the cutover tail**, so every entry re-runs it — the normal flow and each resume of a parked cutover (nothing later in the tail gates on the web layer: the step-13 serve-wait measures and reports, and nothing else can *start* a stopped nginx). Either refusal **parks resumably at `phase=rename-failed`** and prints the full source-restore recipe (write-freeze guidance included): the target stays promoted, the source stays 503-gated and frozen, and the SQL watchdogs stay paused. Fix nginx on the target, then re-run `xmass cutover target-ip --live` — the resume re-runs this proof and starts nginx itself |
 | Step 12.5 | Rewire panel DB access on target per Ægir root (rediscover live hostmaster DB, reset its user's password, rewrite the panel dir's credentials — the datadir swap killed the fresh-install panel DBs). When the source's panel platform number diverges from the target's (an aged source vs a fresh target — the normal production shape), the step adopts the target's code-bearing panel platform and repoints the hostmaster platform row in the live DB; the DB persist is load-bearing because the rename queue's hostmaster verify regenerates the alias FROM the DB, so an alias-only correction is undone and the panel 404s from a hollow platform path |
 | Step 13 | `renameaegirhost --aegir-root /var/aegir --force-old source-fqdn` on target (Ægir master) |
