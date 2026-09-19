@@ -9080,10 +9080,11 @@ _xmass_cmd_cutover() {
   _xmass_park_runners_and_cron
   _xmass_check_no_boa_running
 
-  # Pause the mysql.sh watchdog on BOTH hosts for the whole cutover: the
-  # FLUSH TABLES WITH READ LOCK on the source piles up connections, and the
-  # watchdog's busy/high-load restart would break that lock mid-cutover =>
-  # DATA LOSS. Also covers the target promote + renameaegirhost DB work.
+  # Pause the mysql.sh watchdog on BOTH hosts for the whole cutover: a
+  # watchdog restart of MySQL between the final position read and the
+  # promotion, or in the middle of the target promote + renameaegirhost DB
+  # work, is DATA LOSS. (No global read lock is taken any more: the 503 gate
+  # and the parked cron + runners are the write barrier.)
   _xmass_maint_on
 
   # What is queued in the panels right now, before anything is blocked: it
@@ -9187,7 +9188,7 @@ _xmass_cmd_cutover() {
       # refused cutover must hand it back writable, not read-only.
       _xmass_thaw_writes
       _xmass_restore_hint
-      _die "Replica lag not zero after FLUSH LOCK on check ${_pass}/3" \
+      _die "Replica lag not zero after the write freeze on check ${_pass}/3" \
            " (lag=${_lag}s) — cutover aborted; source MySQL unlocked, writes thawed"
     fi
     _info "Post-lock confirmation check ${_pass}/3: lag=${_lag}s OK"

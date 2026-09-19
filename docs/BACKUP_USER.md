@@ -39,6 +39,7 @@ This section covers a quick-start approach, focusing on minimal setup.
    - Local database backups: `/data/disk/your_username/static/files/dbackup/`
    - Retained for 14 days by default (modifiable via `/data/disk/your_username/static/control/dBackupCycle.info`).
    - Local database backups count toward your file-space quota.
+   - If `dbackup/` is replaced with a symbolic link, the nightly clean-up follows it only while it resolves inside your own `static/files` store (or the server's single `/mnt` files store). A link pointing anywhere else makes the clean-up skip your account with a warning, and old dumps then accumulate.
 
 2. **Enable or Verify That Backups Are Enabled**
    - By default, backups for your account are typically enabled. If in doubt, contact support to confirm that scheduled backups are running.

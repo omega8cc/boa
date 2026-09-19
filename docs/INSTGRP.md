@@ -144,7 +144,13 @@ rewrites the marker. Every action logs one line to
 `reclaim` is the file half alone: every path under the roots takes the
 account's current group (`users` while unconverted), a marker that does not
 record this box's group is dropped. No identity change and no lock, so it
-is what a root-run restore, a migration destination and the nightly run. It
+is what a root-run restore, a migration destination and the nightly run. It still
+defers (exit 4) while a BOA install or upgrade run is live (`/run/boa_run.pid`,
+`/run/boa_wait.pid` or `/run/octopus_install_run.pid`), unless the Octopus arm
+called it with `--from-octopus`, and it refuses with exit 3 when the account reads
+as converted while an identity is still on the box-wide group: reclaiming then
+would re-flatten the tree, so run `instgrp convert <account>` (or let the
+limited-shell worker heal the identity) first. It
 honours the migration freeze exactly as `convert` does: an account carrying
 `log/proxied.pid` is skipped (exit 4) unless `--force` is given.
 
