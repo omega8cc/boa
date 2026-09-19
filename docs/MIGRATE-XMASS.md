@@ -662,7 +662,10 @@ MySQL data is **not** rsynced — replication keeps it current continuously.
 ### Deletions: what a sync removes on the target, and what it never does
 
 Source-side deletions **propagate on the data trees** during `sync` (manual
-and automated alike): `distro/`, `src/`, `static/files`, `arch`, `backups/`,
+and automated alike): `distro/`, `src/`, `static/` (everything under it but
+`static/control`: tenants build codebases anywhere there, and a removed one
+used to stay on the mirror for good; `static/files` is the store and prunes
+as its own leg), `arch`, `backups/`,
 `undo/`, the client toolchains, the Solr data trees and the shared
 `/data/all`, `/data/disk/all`, `/data/disk/legacy` and `/var/www/static`
 trees. Without this a standing mirror grows without bound, and it grows
@@ -675,9 +678,12 @@ mirror.
 Three things are deliberately **not** pruned:
 
 - **Control, credential and target-role legs stay additive** — `log/`,
-  `.drush/`, `config/`, the sub-account password store and the PHP pin
-  witnesses under `static/control`. They carry target-owned state or are
-  force-copied, and deleting there would fight the target's own install.
+  `.drush/`, `config/`, the sub-account password store and the whole of
+  `static/control` (its own leg, the PHP pin witnesses force-copied on top;
+  a `static/control` that is a symlink is never followed — neither leg runs
+  for that account, and the pass says so once a day). They carry
+  target-owned state or are force-copied, and deleting there would fight the
+  target's own install.
 - **The cutover legs stay additive**, plan and live alike. That is the one
   window where the target is about to become production and a wrong deletion
   is unrecoverable; a promoted box resumes its own `owl.sh` cleanup within
@@ -693,10 +699,12 @@ The guards on every pruning leg, none of them optional:
 | `--delete-after` | Nothing is removed until the transfer succeeded, so a failed leg cannot leave the target both pruned and un-copied |
 | `--max-delete` (`_XMASS_MAX_DELETE`, default 5000) | rsync **refuses** (exit 25) rather than carry out a mass deletion — the catastrophe guard: "wiped the mirror" becomes "a loud pass failure a human reads" |
 | Never with `--ignore-errors` | That flag means *delete even though the source had read errors*, which is exactly what must not happen; a leg either prunes or keeps the historical tolerance, never both |
-| Empty-source refusal | An unmounted secondary volume reads as an **empty directory**; a `--delete` against it would erase the mirror's only copy of every client file. An empty source is never a licence to delete — the leg logs it and stays additive |
+| Empty-source refusal | An unmounted secondary volume reads as an **empty directory**; a `--delete` against it would erase the mirror's only copy of every client file. An empty source is never a licence to delete — the leg logs it and stays additive (the `static/` leg is covered one step earlier: a `static/` that is a link into an unmounted volume is no directory, and the leg does not run) |
 
 A tripped delete guard is a refusal to read, not an error to retry: nothing
-beyond the limit was deleted. Confirm the source really lost that many files
+beyond the limit was deleted. One removed codebase is enough to trip it — a
+Composer-built Drupal tree runs to tens of thousands of files, under
+`static/` exactly as under `distro/`. Confirm the source really lost that many files
 — an unmounted volume and a genuine mass deletion look identical from the
 sending side — and only then re-run once with `_XMASS_MAX_DELETE` raised.
 Expect it to trip on the **first** pruning pass against a mirror that has

@@ -376,6 +376,12 @@
       of older mirrors used to win the race against second.sh's removal
       of a promoted box's leftover marker, and locked a promoted database
       whose cutover had parked with the marker still present.
+    * xmass sync passes prune static/ the way they prune distro/, under
+      the same guards: tenants build codebases anywhere under static/, and
+      one removed on the active box used to stay on the mirror for good.
+      static/files keeps its own pruning leg and static/control stays
+      additive as its own leg (a static/control that is a symlink is never
+      followed); the cutover legs stay additive throughout.
 
 
 ###

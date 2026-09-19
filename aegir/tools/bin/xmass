@@ -3560,6 +3560,10 @@ _xmass_finalize_dry() {   # 1 tgt
 ###     additive: log/, .drush/, config/, the sub-account password store and
 ###     the PHP pin witnesses either carry target-owned state or are force-
 ###     copied, and deleting there would fight the target's own install.
+###   - (2026-09-19 ruling) static/ IS a data tree, minus two of its children:
+###     tenants build codebases anywhere under it and a removed one stayed on
+###     the mirror for good. static/files is the store (its own leg, which
+###     prunes already) and static/control is control state (additive).
 ###   - `sync` passes only, manual and automated alike. The CUTOVER legs stay
 ###     additive on purpose: that is the one window where the target is about
 ###     to become production and a wrong deletion is unrecoverable, and a
@@ -4377,9 +4381,34 @@ _xmass_sync_static_symlink_safe() {
 
   [ -d "${_src_static}" ] || return 0
 
-  # Pass 1: sync static/ tree preserving symlinks, skip files/
-  _xmass_rsync -aEAXqu ${_ieni} --exclude=/files \
+  # Pass 1: sync static/ tree preserving symlinks, skip files/ (the store,
+  # pass 2) and control/ (pass 1a). What is left is tenant code -- composer
+  # and hand-built codebases live anywhere under static/ -- and the account
+  # data the ACTIVE box rotates there itself (trash, goaccess, usage), so
+  # this is a DATA leg: on a sync pass it prunes like distro/, under the
+  # same three guards, or a codebase the tenant removed stays on the mirror
+  # for good. Excluded paths are never deletion candidates.
+  _xmass_rsync -aEAXqu $(_xmass_leg_args "${_src_static}") \
+    --exclude=/files --exclude=/control \
     -e ssh "${_src_static}/" "root@${_tgt}:${_dst_static}/"
+
+  # Pass 1a: control/ stays ADDITIVE in every mode: the target's own install
+  # writes files there the source may never have carried, and the cutover
+  # plants its own (http-off.pid). static/ is tenant-writable: a control
+  # that is a symlink is never followed (these legs read as root, and the
+  # forced pins below would land whatever it points at), where the single
+  # pass used to carry it across as the link it was. Named once a day on
+  # the cadence: the account's control files and PHP pins go stale on the
+  # mirror until the link is gone.
+  local _ctl_link=NO
+  if [ -L "${_src_static}/control" ]; then
+    _ctl_link=YES
+    _xmass_warn_daily "static_control_link_${_dst_acct}" \
+      "  ${_src_static}/control is a SYMLINK -- not followed: no control file and no PHP pin of ${_dst_acct} travels until it is a directory again"
+  elif [ -d "${_src_static}/control" ]; then
+    _xmass_rsync -aEAXqu ${_ieni} \
+      -e ssh "${_src_static}/control/" "root@${_tgt}:${_dst_static}/control/"
+  fi
 
   # Pass 1b: the static sync uses -u (skip-newer), but the target's own fresh
   # Octopus install wrote default control files with a NEWER mtime, which
@@ -4396,6 +4425,7 @@ _xmass_sync_static_symlink_safe() {
   # site without a pool.
   local _ctl
   for _ctl in multi-fpm.info fpm.info cli.info; do
+    [ "${_ctl_link}" = "YES" ] && break
     if [ -e "${_src_static}/control/${_ctl}" ]; then
       _xmass_rsync -aEAX ${_ieni} -e ssh \
         "${_src_static}/control/${_ctl}" \
