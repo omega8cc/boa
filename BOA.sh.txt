@@ -1794,9 +1794,9 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f39
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f80
-    _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f64
-    _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f76
-    _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f94
+    _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f63
+    _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f75
+    _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f93
     _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f73
     _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f98
     _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f94
@@ -1805,7 +1805,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f00
     _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f77
-    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f70
+    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f69
     _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f80
     _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f97
     _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f90
@@ -1834,18 +1834,18 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f82 --guard mysql_cluster_backup.sh
     _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f62
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f78
-    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f79
-    _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f83
-    _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f94
+    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f78
+    _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f82
+    _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f93
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f98
     # Activate Cloudflare realip immediately by writing the set_real_ip_from
     # ranges include now, so a fresh/updated box does not wait for the daily
     # cron; the tool no-ops when nginx is absent and is idempotent otherwise.
     [ -e "/var/xdrago/cloudflare_realip.sh" ] && bash /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
-    _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f94
+    _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f93
     _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f98
     _fetch_versioned /var/xdrago/nginx_deny6.sh "${_urlHmr}/tools/system/nginx_deny6.sh" f99
-    _fetch_versioned /var/xdrago/nginx_fleet.sh "${_urlHmr}/tools/system/nginx_fleet.sh" f98
+    _fetch_versioned /var/xdrago/nginx_fleet.sh "${_urlHmr}/tools/system/nginx_fleet.sh" f97
     # The per-minute line otherwise arrives only with the crontab template on a
     # full up-* run, so a fetched detector would sit idle until then; ensure it
     # whenever the script is present. A line an operator commented out still
@@ -4699,14 +4699,43 @@ _update_boa_tools() {
   if [ -x "/usr/sbin/csf" ] \
     && [ -e "/etc/csf/csf.deny" ] \
     && [ -e "/etc/csf/csfpost.sh" ] \
-    && ! grep -q "boa-standby-web-hold" /etc/csf/csfpost.sh 2> /dev/null; then
+    && ! grep -q "boa-standby-web-hold-v2" /etc/csf/csfpost.sh 2> /dev/null; then
+    # Retrofit, not append-once: the first block keyed on the xmass in-flight
+    # signal and sits on every box already, where a csf restart would
+    # re-assert the chain on a rule the nginx watchdog no longer uses (a
+    # promoted box still carrying its marker would get its web ports
+    # dropped). Strip what sits between BOA's own two marker lines, then
+    # write the current block; the version token inside is what the next
+    # revision tests. The file is the operator's: the strip happens ONLY
+    # when each marker line is there exactly once and in order -- a lone
+    # opening line would make the range run to the end of the file.
+    _csfStbO=$(grep -n '^# >>> boa-standby-web-hold >>>$' /etc/csf/csfpost.sh 2> /dev/null | cut -d: -f1)
+    _csfStbC=$(grep -n '^# <<< boa-standby-web-hold <<<$' /etc/csf/csfpost.sh 2> /dev/null | cut -d: -f1)
+    _csfStbW=NO
+    if [ -z "${_csfStbO}" ] && [ -z "${_csfStbC}" ]; then
+      _csfStbW=YES
+    elif [[ "${_csfStbO}" =~ ^[0-9]+$ ]] && [[ "${_csfStbC}" =~ ^[0-9]+$ ]] \
+      && [ "${_csfStbO}" -lt "${_csfStbC}" ]; then
+      sed -i "${_csfStbO},${_csfStbC}d" /etc/csf/csfpost.sh 2> /dev/null \
+        && _csfStbW=YES
+    elif [ ! -e "${_pthLog}/csfpost.standby.retrofit.log" ]; then
+      echo "$(date) csfpost.sh: the boa-standby-web-hold marker lines are not one ordered pair (open at '${_csfStbO}', close at '${_csfStbC}') -- block NOT rewritten; restore the two marker lines around BOA's block or remove the block, and the next refresh writes the current one" \
+        > ${_pthLog}/csfpost.standby.retrofit.log 2> /dev/null
+    fi
+  else
+    _csfStbW=NO
+  fi
+  if [ "${_csfStbW}" = "YES" ]; then
     cat >> /etc/csf/csfpost.sh <<'CSFSTANDBY'
 # >>> boa-standby-web-hold >>>
+# boa-standby-web-hold-v2
 # Passive replication standby: drop inbound web while the marker holds.
-# Same triple condition as the nginx watchdog enforcer; loopback exempt.
+# The promoted latch is the nginx watchdog's last PROVEN answer (no replica
+# config AND the database unlocked); absent means HELD, which is what a csf
+# restart on an unjudged box must do. Loopback exempt.
 if [ -e "/root/.standby.cnf" ] \
   && [ ! -e "/root/.standby.serve.cnf" ] \
-  && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
+  && [ ! -e "/var/log/boa/.standby_promoted.pid" ]; then
   for _ipt in iptables ip6tables; do
     command -v "${_ipt}" > /dev/null 2>&1 || continue
     "${_ipt}" -w 5 -nL BOA_STANDBY_WEB > /dev/null 2>&1 \
@@ -4720,6 +4749,7 @@ fi
 # <<< boa-standby-web-hold <<<
 CSFSTANDBY
     chmod 700 /etc/csf/csfpost.sh
+    rm -f ${_pthLog}/csfpost.standby.retrofit.log
   fi
   rm -f ${_pthLog}/vmnetfix.sh.ctrl.*
   if [ -e "${_pthLog}" ]; then
@@ -4802,9 +4832,9 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_rollback "${_urlHmr}/${_tBn}/synproxy_rollback" f94 --guard /local/bin/synproxy_rollback
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
-    _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f96 --guard /local/bin/webserver
+    _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f95 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f60 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f63 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f62 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f22 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f78 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f94 --guard /local/bin/solrtrim

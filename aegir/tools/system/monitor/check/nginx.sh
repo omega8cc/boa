@@ -378,6 +378,72 @@ _sql_mutation_in_flight() {
   return 1
 }
 
+###
+### Is this marker-carrying box PROMOTED?
+###
+_standby_promoted() {
+  # The web hold follows the DATABASE, never the xmass in-flight signal. That
+  # signal opens at INIT as well as at the cutover, and a (re-)init is the
+  # window in which a committed mirror, or a box holding a copied-in
+  # production datadir, is most exposed: keyed on the signal, every init
+  # released the web tier for its whole length, and a replica lost before the
+  # role watchdog confirmed it left the tier open for as long as the signal's
+  # age ceiling. The FTPS hold below already took this reasoning.
+  #
+  # PROMOTED = the role probe ran clean AND returned no replica config AND
+  # super_read_only reads 0. Cutover step 11.5 proves exactly that before step
+  # 12 starts nginx, and publishes the latch itself so no pass is waited on.
+  #
+  # Latched on disk, deliberately. A definitive read moves the latch; an
+  # ambiguous one (mysqld restarting, an auth error, an empty variable)
+  # changes NOTHING, so a database restart can neither open the tier on a
+  # mirror nor shut it on a promoted box that still carries the marker (a
+  # cutover parked at rename-failed, a step 15 whose removal was not
+  # confirmed). Absent means HELD. It lives beside the other standby
+  # breadcrumbs, so a reboot inherits the last proven answer.
+  #
+  # One probe a minute, every pass while an xmass window is open: a cutover
+  # driven by bytes that do not publish the latch must not wait up to a
+  # minute at step 12. A box without the marker never gets here.
+  local _sro _rpl _rc _lat="/var/log/boa/.standby_promoted.pid"
+  local _stm="/run/boa_standby_role_probed.pid"
+  if [ -z "$(find "${_stm}" -mmin -1 2>/dev/null)" ] \
+    || [ -n "$(find /run/boa_xmass_init.pid -mmin -2880 2>/dev/null)" ]; then
+    touch "${_stm}" 2>/dev/null
+    _rpl=$(mysql --connect-timeout=5 -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+    _rc=$?
+    if [ "${_rc}" -ne "0" ]; then
+      _rpl=$(mysql --connect-timeout=5 -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+      _rc=$?
+    fi
+    # The return code decides, never emptiness alone: on Percona 5.7 the
+    # first dialect always fails, and a dropped connection on the second
+    # would otherwise read as "no replica config" on a running replica.
+    if [ "${_rc}" -eq "0" ]; then
+      _sro=$(mysql --connect-timeout=5 -N -e "SELECT @@super_read_only" 2>/dev/null | tr -dc '0-9')
+      if [ -z "${_rpl}" ] && [ "${_sro}" = "0" ]; then
+        if [ ! -e "${_lat}" ]; then
+          echo "$(date) NGX standby: NO replica config and the DB is unlocked -- this box reads as PROMOTED, web tier released" >> ${_pthOml}
+          mkdir -p /var/log/boa 2>/dev/null
+          touch "${_lat}" 2>/dev/null
+        fi
+      elif [ -n "${_rpl}" ] || [ "${_sro}" = "1" ]; then
+        # Never remove a latch written AFTER this probe began: the cutover
+        # publishes it the moment its own readback proves the unlock, and a
+        # read taken a second earlier is already stale. No stamp means no
+        # publish to protect: -nt reads true against a missing file, and
+        # without that test a stale latch would be pinned for good.
+        if [ -e "${_lat}" ] \
+          && { [ ! -e "${_stm}" ] || [ ! "${_lat}" -nt "${_stm}" ]; }; then
+          echo "$(date) NGX standby: replica config present or the DB locked -- this box reads as a STANDBY again, web tier held" >> ${_pthOml}
+          rm -f "${_lat}"
+        fi
+      fi
+    fi
+  fi
+  [ -e "${_lat}" ]
+}
+
 # A passive mirror must not serve HTTP. A single rendered Drupal page writes
 # its own panel/tenant database -- cache_bootstrap, the drupal_css_cache_files
 # and drupal_js_cache_files aggregate registries, sessions, watchdog -- and on
@@ -388,12 +454,12 @@ _sql_mutation_in_flight() {
 # enforcer: it runs several times a minute, so an nginx a barracuda pass
 # restarts underneath us is taken back down within seconds.
 #
-# Stands down while an xmass window is in flight. Cutover step 12
-# (_xmass_prove_target_web) deliberately starts nginx and requires it to
-# answer, and it runs BEFORE step 15 removes the standby marker -- racing that
-# would park the cutover at rename-failed. xmass owns the same signal for the
-# same window (it writes /run/boa_xmass_init.pid at step 8 so second.sh cannot
-# reap the marker mid-promotion), so honouring it here needs no new state.
+# Stands down once the box is PROMOTED (_standby_promoted above), not while
+# an xmass window is open. Cutover step 12 (_xmass_prove_target_web) starts
+# nginx and requires it to answer BEFORE step 15 removes the standby marker;
+# step 11.5 runs first on every entry, resumes included, proves the database
+# unlocked and publishes the latch, so step 12 never meets this hold. No init
+# step needs the web tier, so an init window holds like any other minute.
 #
 # Operator escape hatch for a mirror that must genuinely serve:
 # /root/.standby.serve.cnf
@@ -404,11 +470,9 @@ _sql_mutation_in_flight() {
 # script; on a standby it exists only if something resurrected it (the
 # system.sh healer is gated on the same marker), so kill on sight, log on
 # transition only. Deliberately OUTSIDE the serve.cnf-exempt block below:
-# serve is a web-only preview, never a tenant write channel. It does not
-# honour the xmass in-flight signal either, unlike the web-tier hold below:
-# that signal opens at INIT, the window in which the copied-in datadir and
-# the freshly seeded trees are most exposed to a tenant upload, and no
-# cutover step needs FTPS -- step 15's removal of the standby marker is
+# serve is a web-only preview, never a tenant write channel. It follows the
+# MARKER alone, not the promoted latch the web-tier hold below reads: no
+# cutover step needs FTPS, so step 15's removal of the standby marker is
 # what releases this hold, within one monitor pass.
 if [ -e "/root/.standby.cnf" ]; then
   if pgrep -f '^pure-ftpd( |$)' > /dev/null 2>&1; then
@@ -430,8 +494,11 @@ if [ -e "/root/.standby.cnf" ] && [ -e "/root/.standby.serve.cnf" ]; then
 fi
 if [ -e "/root/.standby.cnf" ] \
   && [ ! -e "/root/.standby.serve.cnf" ] \
-  && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
-  if pgrep -f '^nginx: master process' > /dev/null 2>&1; then
+  && ! _standby_promoted; then
+  # Re-read the latch right before acting: the cutover may have published it
+  # while the probe above was still reading a locked database.
+  if pgrep -f '^nginx: master process' > /dev/null 2>&1 \
+    && [ ! -e "/var/log/boa/.standby_promoted.pid" ]; then
     # Log on TRANSITION only: an orphan pidfile alone would otherwise write
     # ~9 lines a minute into the incident log forever.
     echo "$(date) NGX replication standby: holding the web tier DOWN" >> ${_pthOml}
@@ -455,30 +522,38 @@ if [ -e "/root/.standby.cnf" ] \
   # this blocks. csfpost.sh re-adds the same rules right after any csf
   # restart flushes them; this loop heals the drift within a minute both
   # ways. Cutover step 12 removes the chain itself before proving the port
-  # externally, so promotion never waits on this loop.
-  for _ipt in iptables ip6tables; do
-    command -v "${_ipt}" > /dev/null 2>&1 || continue
-    "${_ipt}" -w 5 -nL BOA_STANDBY_WEB > /dev/null 2>&1 \
-      || "${_ipt}" -w 5 -N BOA_STANDBY_WEB > /dev/null 2>&1
-    "${_ipt}" -w 5 -C INPUT -j BOA_STANDBY_WEB > /dev/null 2>&1 \
-      || "${_ipt}" -w 5 -I INPUT -j BOA_STANDBY_WEB > /dev/null 2>&1
-    "${_ipt}" -w 5 -C BOA_STANDBY_WEB ! -i lo -p tcp -m multiport --dports 80,443 -j DROP > /dev/null 2>&1 \
-      || "${_ipt}" -w 5 -A BOA_STANDBY_WEB ! -i lo -p tcp -m multiport --dports 80,443 -j DROP > /dev/null 2>&1
-  done
-  # Breadcrumb for the release path: only a box that ever HELD pays the
-  # iptables execs on release checks -- a normal box pays one file test.
-  mkdir -p /var/log/boa 2>/dev/null
-  touch /var/log/boa/.standby_web_held.pid 2>/dev/null
-  echo "Replication standby: web tier held down."
-  exit 0
+  # externally, so promotion never waits on this loop. The latch is read
+  # once more here for the same reason as above: a chain re-added under
+  # step 12's external proof would park the cutover. With the latch present
+  # this pass falls through to the release path below.
+  if [ ! -e "/var/log/boa/.standby_promoted.pid" ]; then
+    for _ipt in iptables ip6tables; do
+      command -v "${_ipt}" > /dev/null 2>&1 || continue
+      "${_ipt}" -w 5 -nL BOA_STANDBY_WEB > /dev/null 2>&1 \
+        || "${_ipt}" -w 5 -N BOA_STANDBY_WEB > /dev/null 2>&1
+      "${_ipt}" -w 5 -C INPUT -j BOA_STANDBY_WEB > /dev/null 2>&1 \
+        || "${_ipt}" -w 5 -I INPUT -j BOA_STANDBY_WEB > /dev/null 2>&1
+      "${_ipt}" -w 5 -C BOA_STANDBY_WEB ! -i lo -p tcp -m multiport --dports 80,443 -j DROP > /dev/null 2>&1 \
+        || "${_ipt}" -w 5 -A BOA_STANDBY_WEB ! -i lo -p tcp -m multiport --dports 80,443 -j DROP > /dev/null 2>&1
+    done
+    # Breadcrumb for the release path: only a box that ever HELD pays the
+    # iptables execs on release checks -- a normal box pays one file test.
+    mkdir -p /var/log/boa 2>/dev/null
+    touch /var/log/boa/.standby_web_held.pid 2>/dev/null
+    echo "Replication standby: web tier held down."
+    exit 0
+  fi
 fi
 
-# Not held (no marker, serve.cnf, or promotion window): the firewall half
+# Not held (no marker, serve.cnf, or a promoted box): the firewall half
 # must not survive -- remove it so a promotion by bare marker removal (no
 # cutover) opens the web path within a minute, and serve.cnf opens the web
 # tier without touching the DB/tenant/backup holds. Logs on transition only
-# (the chain exists exactly once after a release).
-if [ -e "/var/log/boa/.standby_web_held.pid" ]; then
+# (the chain exists exactly once after a release). A box that still carries
+# the marker looks every pass, breadcrumb or not: a csf restart through a
+# csfpost.sh block of an older vintage may re-assert the chain there, and
+# that must not outlive one pass on a promoted box.
+if [ -e "/var/log/boa/.standby_web_held.pid" ] || [ -e "/root/.standby.cnf" ]; then
   for _ipt in iptables ip6tables; do
     command -v "${_ipt}" > /dev/null 2>&1 || continue
     if "${_ipt}" -w 5 -nL BOA_STANDBY_WEB > /dev/null 2>&1; then

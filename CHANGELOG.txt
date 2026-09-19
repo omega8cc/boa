@@ -318,6 +318,64 @@
     * The web IDS scores every line of every pass: lines the web
       server appended while a pass was running were jumped over and
       never seen by any detector.
+    * A replication standby's web tier now follows its DATABASE, not the
+      xmass window. The hold used to stand down whenever an init or
+      cutover signal was fresh, so every (re-)init of a mirror released
+      its web tier for the whole run, and a mirror that lost its replica
+      config before the role watchdog had confirmed it -- a reset in the
+      minute after an init, or a re-init that died between its reset and
+      its re-point -- kept serving, with nothing logged, for up to 48
+      hours. The box is now released only when it reads as promoted: a
+      clean role probe, no replica config, super_read_only off. The
+      answer is latched (/var/log/boa/.standby_promoted.pid): a definitive
+      read moves it, an ambiguous one changes nothing, absent means held,
+      and it survives a reboot. The nginx watchdog, the nginx init
+      script's start() gate, the csf post hook (on boxes carrying the
+      older block it is removed and the current one appended, only when
+      its own marker pair is intact), the reload-skipping config writers,
+      the upgrade's nginx restart and `webserver up` all read the same
+      rule; cutover step 11.5 publishes the latch the
+      moment its unlock is proven, so step 12 waits for nothing.
+    * xmass init locks the target's database at run time in the same
+      command that writes the standby marker and reads the lock back: a
+      box promoted once and seeded again is not restarted by the GTID
+      step, so its pre-swap leg used to run with the gates armed over an
+      unlocked database. A target that is still relaying traffic (a
+      demoted failback target) therefore goes dark at the marker write;
+      prep-target and init both name it with an ALRT beforehand.
+    * A dead xmass run no longer reads as "in flight" in silence: with
+      the database still locked and the window signal untouched for 90
+      minutes (a dead init, or a cutover parked before its step 11.5),
+      second.sh logs once that no live run owns the box. The reboot-proof twin of the signal now carries the signal's
+      own timestamp, so its 48-hour ceiling no longer restarts when the
+      mirroring stops.
+    * The FTPS healer stands aside on the standby marker alone: during
+      every xmass window it used to restart the daemon the standby
+      enforcer kept killing. The mysql watchdog no longer re-locks a
+      promoted box that still carries its marker once the window signal
+      has aged out: cutover step 11.5 leaves a line in xmass_gtid.cnf
+      saying the box was promoted, and the watchdog's conversion of
+      mirrors built by older bytes skips a box that carries it.
+    * xmass init arms its unwind before it writes the standby marker: the
+      same command now locks the database, and a refusal in between used
+      to have nothing to undo it. The unwind reports a box as restored
+      only once the unlock is read back, and cutover step 12 names the
+      standby gate when that, not nginx, is what kept port 80 closed.
+    * A re-init that refuses before its datadir swap leaves a target
+      that was already a standby exactly as it found it. The unwind used
+      to strip the marker and unlock the database there too, un-gating
+      every local writer and the web tier over a replicated production
+      datadir. Init now records in the marker that it entered the swap;
+      that line, a replica config or a parked datadir newer than the
+      marker tells a standby from a normal box with a leftover marker.
+      The replication account is rotated after the snapshot, behind every
+      step that can still refuse and outside the binary log, so such a
+      refusal no longer cuts the credentials of a replica that runs.
+    * The mysql watchdog honours the xmass window signal ten minutes
+      longer than second.sh: on the shared 48-hour ceiling its conversion
+      of older mirrors used to win the race against second.sh's removal
+      of a promoted box's leftover marker, and locked a promoted database
+      whose cutover had parked with the marker still present.
 
 
 ###

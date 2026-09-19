@@ -7804,7 +7804,8 @@ _web_tier_up_while_unarmed() {
   _mrun "/opt/local/bin/webserver up"
   # _mrun keeps the tool's output in the info log and returns 0 regardless,
   # so the pass log itself names the outcome.
-  if [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ]; then
+  if [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ] \
+    && [ ! -e "/var/log/boa/.standby_promoted.pid" ]; then
     _msg "NOTE: Replication standby, Nginx stays held down by design"
   elif [ -e "/run/nginx.pid" ] \
     && pgrep -f '^nginx: master process' > /dev/null 2>&1; then
@@ -12363,8 +12364,11 @@ _initd_update() {
     # A replication standby holds its web tier down (the nginx watchdog is the
     # enforcer); restarting it here would only flap it for the few seconds
     # before the watchdog takes it back down. Promotion restores serving at
-    # cutover step 12.
-    if [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ]; then
+    # cutover step 12. Held means "not promoted": a box the cutover already
+    # promoted may still carry the marker (a parked resume), serves, and must
+    # get its new configuration activated like any other box.
+    if [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ] \
+      && [ ! -e "/var/log/boa/.standby_promoted.pid" ]; then
       _msg "NOTE: replication standby -- Nginx restart skipped (web tier held)"
     else
       _mrun "service nginx restart"
