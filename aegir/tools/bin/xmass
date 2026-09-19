@@ -3010,7 +3010,7 @@ REMOTE
 
 _xmass_stop_solr_source() {
   _info "Stopping Solr on source and disabling it permanently ..."
-  # Record whether THIS run is what denies Solr here: a pre-lock abort's
+  # Record whether THIS run is what denies Solr here: a pre-freeze abort's
   # unwind re-arms only what it took down, never a box that already ran
   # without Solr (the classifier's own tolerant read of the variable form).
   if [ ! -e "${_SOLR_DENY_FILE}" ] \
@@ -5074,12 +5074,12 @@ _XMASS_WEB_BLOCKED=NO
 # thawed source accepts writes its decoupled replica will never see.
 _XMASS_TARGET_PROMOTED=NO
 
-# Undo the cutover's own quiesce when it refuses BEFORE the MySQL lock (the
+# Undo the cutover's own quiesce when it refuses BEFORE the write freeze (the
 # phase is still 'syncing'): nothing is swapped, the target is still a replica
 # and writes taken here still reach it, so the source is handed back as
 # production instead of sitting dark on a transient -- a lag that never
 # settled, an rsync hiccup, a store DENY -- until a human runs the recipe
-# (ruling 2026-09-13). The recipe stays for the post-lock, promoted and
+# (ruling 2026-09-13). The recipe stays for the post-freeze, promoted and
 # parked-for-resume paths, where the gate is load-bearing. Idempotent.
 _XMASS_SOLR_DENIED=NO       # set by _xmass_stop_solr_source when THIS run denied Solr
 _XMASS_CUT_UNWOUND=NO
@@ -5087,7 +5087,7 @@ _XMASS_CUT_UNWIND_DUE=NO
 _xmass_cutover_unwind() {
   [ "${_XMASS_CUT_UNWOUND}" = "YES" ] && return 0
   _XMASS_CUT_UNWOUND=YES
-  _alrt "Pre-lock abort: the target is NOT promoted and this box is still production"
+  _alrt "Pre-freeze abort: the target is NOT promoted and this box is still production"
   _alrt "-- restoring it to service (503 gate, write flag):"
   _xmass_remove_http_off_all
   service nginx reload &> /dev/null
@@ -5145,7 +5145,7 @@ _xmass_restore_hint() {
     if [ "${_XMASS_TARGET_PROMOTED}" != "YES" ] \
       && [ "${_XMASS_PHASE}" != "rename-failed" ] \
       && [ "${_XMASS_PHASE}" != "cutover" ]; then
-      # Pre-lock abort (the phase is still 'syncing'): the gate is OURS and
+      # Pre-freeze abort (the phase is still 'syncing'): the gate is OURS and
       # comes down with us -- lifted below, AFTER the cron/runner arm, so a
       # failing Solr restore can never cancel this box's return to production.
       _XMASS_CUT_UNWIND_DUE=YES
@@ -5296,8 +5296,9 @@ _xmass_remove_http_off_target() {
 # Pause / resume the mysql.sh watchdog on BOTH hosts for a migration's critical
 # section. While /run/boa_sql_maintenance.pid exists the watchdog stands down
 # entirely (see monitor/check/mysql.sh), so it never restarts, lock-breaks, or
-# query-kills MySQL mid xtrabackup snapshot, replica setup, or the cutover
-# FLUSH lock. Best-effort on the target; the watchdog self-ignores a stale
+# query-kills MySQL mid xtrabackup snapshot, replica setup, or the cutover's
+# window from the final position read to the end of the target promote +
+# rename. Best-effort on the target; the watchdog self-ignores a stale
 # marker (>4h) and /run is tmpfs, so a died operation never wedges auto-heal.
 _xmass_report_queued_tasks() {
   # What is sitting in the panel queues at the moment the box moves.
@@ -8179,10 +8180,10 @@ _xmass_cmd_reset_phase() {
   _info "======================================================"
   if [ "${_new}" = "rename-failed" ]; then
     _alrt "'rename-failed' arms the RESUME path, which skips the final sync, the"
-    _alrt "lag wait, the MySQL lock and the target promote. It RE-ASSERTS the 503"
-    _alrt "gate and the write freeze on this source, then re-proves the target's"
-    _alrt "web layer before the panel rewire and the renames. Set it ONLY when"
-    _alrt "the target was already promoted and only the cutover tail remains."
+    _alrt "lag wait and the target promote. It RE-ASSERTS the 503 gate and the"
+    _alrt "write freeze on this source, then re-proves the target's web layer"
+    _alrt "before the panel rewire and the renames. Set it ONLY when the target"
+    _alrt "was already promoted and only the cutover tail remains."
   fi
   if [ "${_new}" = "complete" ]; then
     _alrt "'complete' closes the migration: no subcommand will resume afterwards."
@@ -8195,8 +8196,8 @@ _xmass_cmd_reset_phase() {
     _alrt "case use 'xmass reset-phase rename-failed' to resume the rename tail"
     _alrt "instead, and only rebuild from a fresh 'xmass init' if the promote"
     _alrt "itself did not complete."
-    _alrt "Also confirm the source is not still holding a read lock (UNLOCK TABLES)"
-    _alrt "and that its cron and runners are back before you resume."
+    _alrt "Also confirm the advisory read-only flag is gone from this source and"
+    _alrt "that its cron and runners are back before you resume."
   fi
   _XMASS_PHASE="${_new}"
   # phase=complete also disarms a still-armed autosync cadence, at the
@@ -9180,7 +9181,7 @@ _xmass_cmd_cutover() {
     esac
   fi
 
-  # cutover is destructive and irreversible (locks MySQL, promotes the target,
+  # cutover is destructive and irreversible (freezes source writes, promotes the target,
   # renames the Aegir host). The DRY run therefore does the storage-plan pass ONLY,
   # for all accounts + shared, and STOPS before any destructive step — nothing on
   # source or target is altered. --live requires that CLEAN dry, then proceeds.
@@ -9346,21 +9347,21 @@ _xmass_cmd_cutover() {
   done
 
   # A store/symlink that could not be placed on the target, or a failed transfer, is
-  # a hard stop BEFORE any destructive step (MySQL lock, target promotion) — abort
+  # a hard stop BEFORE any destructive step (write freeze, target promotion) — abort
   # with source untouched.
   if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
     _xmass_restore_hint
-    _die "a store/symlink could not be placed on the target (see DENY above); cutover aborted before locking MySQL"
+    _die "a store/symlink could not be placed on the target (see DENY above); cutover aborted before the write freeze"
   fi
   if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
     _xmass_restore_hint
-    _die "a file transfer failed (see DENY above); the target tree may be incomplete — cutover aborted before locking MySQL"
+    _die "a file transfer failed (see DENY above); the target tree may be incomplete — cutover aborted before the write freeze"
   fi
 
   # Step 4: Wait for replica to fully catch up
   _xmass_wait_for_sync
 
-  # Step 5: Final static/files pass — deliberately BEFORE the MySQL lock.
+  # Step 5: Final static/files pass — deliberately BEFORE the write freeze.
   #
   # This pass used to run INSIDE FLUSH TABLES WITH READ LOCK, which was wrong on
   # both counts: a read lock gates database writes, not file writes, so it bought
@@ -9368,8 +9369,8 @@ _xmass_cmd_cutover() {
   # `df` probe, so on a large account it held the entire source database locked for
   # hours while it walked millions of files, with the SQL watchdog muted. What
   # actually quiesces the files is the web block from step 1, which is already in
-  # force, and nothing between here and the lock writes to them.
-  _info "Final static/files rsync pass (web already blocked; pre-lock) ..."
+  # force, and nothing between here and the write freeze writes to them.
+  _info "Final static/files rsync pass (web already blocked; pre-freeze) ..."
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _xmass_sync_static_symlink_safe \
       "/data/disk/${_oct}" "/data/disk/${_oct}" "${_TGT_MNT}"
@@ -9379,17 +9380,17 @@ _xmass_cmd_cutover() {
   # them, so a store that failed placement here proceeded to promote the target.
   if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
     _xmass_restore_hint
-    _die "a store/symlink could not be placed on the target in the final pass (see DENY above); cutover aborted before locking MySQL"
+    _die "a store/symlink could not be placed on the target in the final pass (see DENY above); cutover aborted before the write freeze"
   fi
   if [ "${_XMASS_RSYNC_RC:-0}" != "0" ]; then
     _xmass_restore_hint
-    _die "the final static/files transfer failed (see DENY above); cutover aborted before locking MySQL"
+    _die "the final static/files transfer failed (see DENY above); cutover aborted before the write freeze"
   fi
 
   # Everything above this line is still recoverable: the source serves 503, but
   # nothing on either host has been mutated destructively, so an abort should
   # leave the state machine at "syncing" and let the operator simply re-run.
-  # Persisting phase=cutover any earlier wedged the run on a pre-lock failure and
+  # Persisting phase=cutover any earlier wedged the run on a pre-freeze failure and
   # made the abort messages ("source untouched") untrue.
   _XMASS_PHASE="cutover"
   _xmass_save_state
@@ -9405,32 +9406,28 @@ _xmass_cmd_cutover() {
     || _alrt "Advisory read-only flag not written -- continuing; the 503 gate and the parked runners hold the source"
   mysql --defaults-file=/root/.my.cnf -e "FLUSH TABLES;" &> /dev/null
 
-  # Step 7: Triple-check lag is still zero after the lock
+  # Step 7: Triple-check lag is still zero after the write freeze
   local _lag _pass
   for _pass in 1 2 3; do
     sleep 10
     _lag=$(_xmass_get_repl_lag)
     if [ "${_lag}" != "0" ]; then
-      # Unlock before aborting so source MySQL is not stuck
-      mysql --defaults-file=/root/.my.cnf \
-        -e "UNLOCK TABLES;" &>/dev/null || true
       # The target is NOT promoted yet, so this box is still production: a
       # refused cutover must hand it back writable, not read-only.
       _xmass_thaw_writes
       _xmass_restore_hint
       _die "Replica lag not zero after the write freeze on check ${_pass}/3" \
-           " (lag=${_lag}s) — cutover aborted; source MySQL unlocked, writes thawed"
+           " (lag=${_lag}s) — cutover aborted; writes thawed"
     fi
-    _info "Post-lock confirmation check ${_pass}/3: lag=${_lag}s OK"
+    _info "Post-freeze confirmation check ${_pass}/3: lag=${_lag}s OK"
   done
 
   # Step 8: Promote target — stop slave, decouple completely.
-  # On failure the source MUST be unlocked before aborting, exactly as step 7 does.
-  # Without this the source was left holding a global read lock indefinitely, with
-  # the SQL watchdog deliberately muted by _xmass_maint_on — so nothing on the box
-  # would recover it and every site stayed down until someone found it by hand.
+  # A failure here releases no lock, because none is held: what it must get
+  # right is the write freeze, thawed only when the read-back below proves the
+  # target is still a replica.
   # Promotion-window signal FIRST: the RESET below empties the role probe
-  # while the standby marker must HOLD through steps 9-15 (renames, queue
+  # while the standby marker must HOLD through steps 10-15 (renames, queue
   # passes) -- without it second.sh would self-remove the marker within a
   # minute and un-gate every writer mid-cutover. Step 15 clears both.
   # Both the tmpfs signal and its on-disk twin: /run does not survive a
@@ -9441,8 +9438,6 @@ _xmass_cmd_cutover() {
   if ! ssh root@"${_tgt}" \
     "mysql --defaults-file=/root/.my.cnf \
      -e '${_XM_STOP}; ${_XM_RESET_SLAVE};'"; then
-    mysql --defaults-file=/root/.my.cnf \
-      -e "UNLOCK TABLES;" &>/dev/null || true
     # The rc alone cannot say whether the promotion committed -- transport can
     # fail AFTER mysql ran. Read the replica state back: only a target still
     # CONFIGURED as a replica proves the promotion did not hold, and only then
@@ -9463,7 +9458,7 @@ _xmass_cmd_cutover() {
       _xmass_thaw_writes
       _xmass_restore_hint
       _die "Failed to stop/decouple slave on target ${_tgt} (still a replica)" \
-           "— cutover aborted; source MySQL unlocked, writes thawed"
+           "— cutover aborted; writes thawed"
     fi
     if [ "${_probe_rc}" = "0" ]; then
       # Replica config is GONE: the promotion committed despite the rc.
@@ -9490,10 +9485,9 @@ _xmass_cmd_cutover() {
   _info "Target MySQL is now standalone: OK"
   _XMASS_TARGET_PROMOTED=YES
 
-  # Step 9: Unlock source MySQL
-  mysql --defaults-file=/root/.my.cnf \
-    -e "UNLOCK TABLES;" &>/dev/null || true
-  _info "Source MySQL tables unlocked"
+  # Step 9 is vacant: it issued an UNLOCK TABLES for a read lock the cutover
+  # does not take. The write freeze stays on the source; the 503 gate holds
+  # until steps 16-17 convert this box to a proxy.
 
   # Step 10: Re-transfer MySQL credentials (belt and braces after promotion)
   scp /root/.my.cnf "root@${_tgt}:/root/.my.cnf" \

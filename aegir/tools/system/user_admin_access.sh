@@ -38,10 +38,22 @@
 # out of /admin.  A site removed from the control file has both fragments pruned
 # (restriction lifted).
 #
+# Grav 2 and Textpattern sites keep their admin surface elsewhere, so a site whose
+# platform root positively reads as one of them gets ONE extra line in the same
+# $uri map, and nothing else changes — no new variable, no new include, and a
+# Drupal or Backdrop site's fragment stays byte-identical:
+#   Grav 2       /api  — Admin2 at /admin is only a shell; every login, account,
+#                page, media and config operation runs through the API plugin, so
+#                a list that stopped at /admin left the data surface open.
+#   Textpattern  /txpadmin — where BOA maps the Textpattern admin.
+# A Grav site that serves a deliberately public headless API adds the keyword
+# `api-open` to its record: /admin stays on the list, /api stays public.
+#
 # Control file (Octopus only — regular-site vhosts; hostmaster has its own,
 # out-of-scope vhost):
 #   /data/disk/<oct>/static/control/ip/user_admin.txt
 #   Record: `example.com  203.0.113.10  10.0.0.0/8  2001:db8::/32  2001:db8::1`
+#   Record: `headless.example.com  203.0.113.10  api-open`
 
 _aegir_health_check="/var/aegir/.drush/hm.alias.drushrc.php"
 _drush_health_check="/var/aegir/drush/drush"
@@ -49,7 +61,7 @@ _server_ip_file="/root/.found_correct_ipv4.cnf"
 
 # Bump when the emitted directive shape changes, to force regeneration
 # independent of the control-file mtime.
-_emit_version="1"
+_emit_version="2"
 
 # Validators.  Each accepts an IPv4 or IPv6 address, with an optional CIDR prefix
 # length, and is a strict SUBSET of what nginx `geo` accepts — cross-checked
@@ -99,6 +111,49 @@ _valid_ip() {
   [[ "${_ip}" =~ ${_ipv4_regex} ]] && return 0
   [[ "${_ip}" =~ ${_ipv6_regex} ]] && return 0
   return 1
+}
+
+_foreign_cms_kind() {
+  # Prints grav or txp when the site's platform root positively reads as one,
+  # nothing otherwise. The root comes from the instance's own drush alias
+  # (written by the backend, never by the tenant) and the shape test is the one
+  # the nightly and the Solr agent share: provision's platform detection plus
+  # the Drupal negatives, so no Drupal or Backdrop tree can ever read as
+  # foreign. Every doubt (no alias, a root that does not resolve, an unknown
+  # shape) prints nothing, and the site then keeps the plain /user + /admin
+  # line -- a miss leaves a site as it was, it never widens what one matches.
+  # $1 = instance root, $2 = site name.
+  local _alias="${1}/.drush/${2}.alias.drushrc.php"
+  local _r
+  [[ -f "${_alias}" ]] || return 0
+  _r=$(grep "'root' =>" "${_alias}" 2>/dev/null | head -n 1 | cut -d"'" -f4)
+  [[ -n "${_r}" ]] || return 0
+  _r=$(realpath -e -- "${_r}" 2>/dev/null)
+  [[ -n "${_r}" && -d "${_r}" && -f "${_r}/index.php" ]] || return 0
+  [[ -e "${_r}/core" ]] && return 0
+  [[ -e "${_r}/modules/system/system.module" ]] && return 0
+  [[ -e "${_r}/includes/bootstrap.inc" ]] && return 0
+  if [[ -f "${_r}/bin/grav" && -f "${_r}/system/defines.php" ]]; then
+    echo "grav"
+  elif [[ -f "${_r}/css.php" && -f "${_r}/textpattern/index.php" \
+    && -f "${_r}/textpattern/lib/constants.php" && ! -e "${_r}/autoload.php" ]]; then
+    echo "txp"
+  fi
+  return 0
+}
+
+_kinds_signature() {
+  # One `<site>:<kind>` line per valid record, for the change-gate.
+  # $1 = instance root, $2 = control file.
+  local _line _s
+  while IFS= read -r _line; do
+    _line="${_line%%#*}"
+    [[ -z "${_line// /}" ]] && continue
+    read -r _s _ <<< "${_line}"
+    _s=$(echo "${_s}" | tr '[:upper:]' '[:lower:]')
+    [[ ${_s} =~ ${_site_name_regex} ]] || continue
+    echo "${_s}:$(_foreign_cms_kind "${1}" "${_s}")"
+  done < "${2}"
 }
 
 if [[ ! -f "${_aegir_health_check}" ]] || [[ ! -x "${_drush_health_check}" ]]; then
@@ -174,6 +229,7 @@ _process_instance() {
   local _timestamp_file="${_srv_path}/.ua_last_mod_time"
   local _ssh_hash_file="${_srv_path}/.ua_ssh_ips_hash"
   local _version_file="${_srv_path}/.ua_emit_version"
+  local _kinds_file="${_srv_path}/.ua_cms_kinds_hash"
 
   [[ -f "${_input_file}" ]] || return 0
   [[ -d "${_root}/config/includes" ]] || return 0
@@ -181,16 +237,23 @@ _process_instance() {
   mkdir -p "${_map_path}" "${_srv_path}" "${_backup_dir}"
 
   # Change-gate: regenerate only when the control file changed, the host SSH-IP
-  # set changed (a newly logged-in admin must propagate), or the emit version
-  # bumped.  No change -> no write, no reload.
+  # set changed (a newly logged-in admin must propagate), the emit version
+  # bumped, or a listed site's CMS kind changed.  No change -> no write, no
+  # reload.  The kind is baked into the fragment, so a record written before
+  # its Grav or Textpattern site exists, or a name re-created as another CMS,
+  # must regenerate without anyone touching the control file.
   local _current_mod_time _last_mod_time=0 _previous_ssh_hash="" _last_version=""
+  local _kinds_hash _previous_kinds_hash=""
   _current_mod_time=$(stat -c %Y "${_input_file}" 2>/dev/null) || return 0
+  _kinds_hash=$(_kinds_signature "${_root}" "${_input_file}" | md5sum | awk '{print $1}')
   [[ -f "${_timestamp_file}" ]] && _last_mod_time=$(cat "${_timestamp_file}" 2>/dev/null || echo 0)
   [[ -f "${_ssh_hash_file}" ]] && _previous_ssh_hash=$(cat "${_ssh_hash_file}" 2>/dev/null || echo "")
   [[ -f "${_version_file}" ]] && _last_version=$(cat "${_version_file}" 2>/dev/null || echo "")
+  [[ -f "${_kinds_file}" ]] && _previous_kinds_hash=$(cat "${_kinds_file}" 2>/dev/null || echo "")
   if [[ "${_current_mod_time}" -le "${_last_mod_time}" \
      && "${_ssh_ips_hash}" == "${_previous_ssh_hash}" \
-     && "${_last_version}" == "${_emit_version}" ]]; then
+     && "${_last_version}" == "${_emit_version}" \
+     && "${_kinds_hash}" == "${_previous_kinds_hash}" ]]; then
     return 0
   fi
 
@@ -201,6 +264,7 @@ _process_instance() {
   # Generate per-site fragments; track configured sites for pruning.
   local -a _configured=() _fields _ip_list
   local _line _site _hash _ip _norm _ip_sorted _frag _tmp _e _d _f _base _keep _s
+  local _kind _api_open
   while IFS= read -r _line; do
     _line="${_line%%#*}"
     [[ -z "${_line// /}" ]] && continue
@@ -220,7 +284,15 @@ _process_instance() {
     for _ip in ${_ssh_ips}; do
       _valid_ip "${_ip}" && _ip_list+=("${_ip}")
     done
+    _kind=$(_foreign_cms_kind "${_root}" "${_site}")
+    _api_open=""
     for _ip in "${_fields[@]:1}"; do
+      # A keyword, not an address: the site keeps its API public. It means
+      # nothing outside a Grav record and is accepted silently there.
+      if [[ $(echo "${_ip}" | tr '[:upper:]' '[:lower:]') == "api-open" ]]; then
+        _api_open="yes"
+        continue
+      fi
       if _valid_ip "${_ip}"; then
         # Drop a redundant host prefix so a listed 1.2.3.4/32 (or v6 …/128) does
         # not collide as a duplicate geo network with the plain anti-lockout form.
@@ -257,6 +329,19 @@ _process_instance() {
       echo "map \$uri \$ua_u_${_hash} {"
       echo "  default 0;"
       echo "  ~*^/+(?:user|admin)(?:/|\$) 1;"
+      # The whole /api route, not /api/v1, so a later version segment is
+      # covered too. The (?:/|\$) tail holds the match to the plugin's real
+      # routes: it wakes on any path that merely begins with /api, but such a
+      # lookalike (same length or not) lands on no endpoint, it only draws the
+      # plugin's own 401. The prefix is the API plugin's default: a site that
+      # renames its route moves it out from under the list. A language prefix
+      # needs no arm -- on a multi-language capsule /en/admin and /en/api/v1
+      # are plain 404s.
+      if [[ "${_kind}" == "grav" && -z "${_api_open}" ]]; then
+        echo "  ~*^/+api(?:/|\$) 1;"
+      elif [[ "${_kind}" == "txp" ]]; then
+        echo "  ~*^/+txpadmin(?:/|\$) 1;"
+      fi
       echo "}"
       echo "map \"\$ua_u_${_hash}\$ua_ip_ok_${_hash}\" \$ua_deny_${_hash} {"
       echo "  default 0;"
@@ -297,6 +382,7 @@ _process_instance() {
     echo "${_current_mod_time}" > "${_timestamp_file}"
     echo "${_ssh_ips_hash}" > "${_ssh_hash_file}"
     echo "${_emit_version}" > "${_version_file}"
+    echo "${_kinds_hash}" > "${_kinds_file}"
     echo "user_admin_access written (${_root}); replication standby -- reload skipped (web tier held)."
     return 0
   fi
@@ -338,6 +424,7 @@ _process_instance() {
   echo "${_current_mod_time}" > "${_timestamp_file}"
   echo "${_ssh_ips_hash}" > "${_ssh_hash_file}"
   echo "${_emit_version}" > "${_version_file}"
+  echo "${_kinds_hash}" > "${_kinds_file}"
   echo "user_admin_access updated (${_root}): ${_configured[*]:-none}; Nginx reloaded."
   return 0
 }

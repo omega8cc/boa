@@ -39,6 +39,46 @@ percent-decodes it nor de-duplicates it the way Drupal reads `$_GET['q']`), so a
 match there would be a bypassable false control. `<hash>` is a short digest of the site
 name, so each site's variables are unique in the shared `http{}`.
 
+### Grav 2 and Textpattern sites
+
+Both keep their admin surface outside `/user` and `/admin`, and both vhost templates
+include the two fragments unchanged, so the generator widens the `$uri` map itself — by
+exactly one line, for a site whose platform root positively reads as one of them:
+
+```
+Grav 2        ~*^/+api(?:/|$) 1;        (unless the record carries api-open)
+Textpattern   ~*^/+txpadmin(?:/|$) 1;
+```
+
+No variable is added and no include changes, so nothing has to be re-verified: the
+emitted-directive version bump regenerates every fragment on the next pass, and a Drupal or
+Backdrop site's fragment comes out byte-identical.
+
+- **Why `/api` on Grav 2.** Admin2 at `/admin` is only a shell; every login, account, page,
+  media and configuration operation runs through the API plugin at `/api/v1` (JWT from
+  `POST /api/v1/auth/token`, or an API key). A list that stopped at `/admin` restricted the
+  shell and left the data surface open. The whole `/api` route is matched, not `/api/v1`,
+  so a later version segment is covered. The `(?:/|$)` tail holds the match to the plugin's
+  real routes: the plugin wakes on any path that merely begins with `/api`, but a lookalike
+  such as `/apix/v1/auth/token` (same length as the real base or not) lands on no endpoint
+  and only draws the plugin's own 401, so its pre-authentication layer, and nothing behind
+  it, stays reachable on those paths. A language prefix needs no arm: on a multi-language
+  capsule `/en/admin` and `/en/api/v1/…` are plain 404s.
+- **The prefix is fixed at the plugin's default.** The route is a per-site plugin setting
+  (`route: /api`), and the generator deliberately does not read it: that would mean root
+  parsing tenant-written YAML on every pass, across the site config and its per-host
+  environment overlays. A site that renames the route moves its API out from under the list.
+- **`api-open`.** A site that serves a deliberately public headless API adds the keyword to
+  its record; `/admin` stays on the list and `/api` stays public. The keyword is
+  case-insensitive, means nothing outside a Grav record and is accepted silently there.
+- **Detection** reads the platform root from the instance's own drush alias
+  (`<oct>/.drush/<site>.alias.drushrc.php`, written by the backend, never by the tenant) and
+  applies the shape test the nightly and the Solr agent share — provision's platform
+  detection plus the Drupal negatives (`core/`, `modules/system/system.module`,
+  `includes/bootstrap.inc`). Every doubt (no alias, a root that does not resolve, an unknown
+  shape) leaves the site with the plain `/user` + `/admin` line: a miss never widens what a
+  site matches.
+
 The per-site vhost pulls the http-scope fragment **once at the file head** via
 `include $server->include_path/user_admin_access_map/{uri}.conf*` and the server-scope
 fragment inside **every serving server block** (co-located with `ip_access`) via
@@ -85,6 +125,7 @@ staging.example.com    198.51.100.42 2001:db8:1::1
 ```
 
 - One site per line: the site name, then space-separated allowed addresses.
+- A Grav 2 site's record may also carry the keyword `api-open` (see above).
 - Each address may be an **IPv4 or IPv6 address, with an optional CIDR prefix** (`/24`,
   `/32`, `/64`, `/128`, …). A bare address is a single host.
 - Invalid site names and malformed addresses are skipped with a logged warning; the rest
@@ -95,8 +136,10 @@ staging.example.com    198.51.100.42 2001:db8:1::1
 ## Generator behaviour
 
 - **Change-gate** — a context regenerates only when its control file's mtime advanced, the
-  host's SSH-client set changed, or the emitted-directive version bumped. No change → no
-  write, no reload.
+  host's SSH-client set changed, the emitted-directive version bumped, or a listed site's
+  CMS kind changed (the kind is baked into the fragment, so a record written before its
+  Grav or Textpattern site exists picks up the extra line on the first pass after the site
+  appears, with no edit to the control file). No change → no write, no reload.
 - **Pruning** — removing a site from the control file deletes both its fragments on the
   next run, lifting the restriction (the admin surface becomes open again).
 - **Safety** — per context: back up the current fragments, regenerate atomically,
