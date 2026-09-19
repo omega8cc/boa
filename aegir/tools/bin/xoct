@@ -740,6 +740,56 @@ _xoct_revert_converted_vhosts() {
   return 0
 }
 
+### The rule renameaegirhost applies on the new box: a site whose name carries
+### the old box hostname is renamed by replacing that hostname. Deferral and
+### the renamed-site redirect both key on it, so the three never disagree.
+_xoct_named_under_host() {
+  [ -n "$2" ] && [ "$1" != "${1//$2/}" ]
+}
+
+### Can the per-host gate (static/control/http-off-host.pid) hold this site
+### on 503 while it stays local? A Grav or Textpattern vhost named under the
+### box hostname carries its own test of the file. Drupal and Backdrop reach
+### it through the global settings chain -- and the DEPLOYED include must
+### carry the per-host block: it arrives with a system upgrade, this tool by
+### its own channel, so either can be ahead of the other. A site the gate
+### cannot hold is never deferred: left local and ungated it would keep
+### taking writes into a database that has already moved.
+_xoct_site_host_gateable() {
+  local _usr="$1"
+  local _dom="$2"
+  local _vht="$3"
+  local _sp
+  grep -q "http-off-host.pid" "${_vht}" 2>/dev/null && return 0
+  grep -q "http-off-host.pid" /data/conf/global/global-mode.inc 2>/dev/null || return 1
+  ### The global chain matches the site's own name, as nginx hands it over.
+  grep -q "MAIN_SITE_NAME" "${_vht}" 2>/dev/null || return 1
+  _sp=$(grep "site_path'" "${_usr}/.drush/${_dom}.alias.drushrc.php" 2>/dev/null \
+    | head -1 \
+    | sed "s/.*=>//; s/[' ,;]//g")
+  [ -n "${_sp}" ] && grep -q "global.inc" "${_sp}/settings.php" 2>/dev/null
+}
+
+### Write the per-host gate for one hostname. Same symlink-safe shape as the
+### account gate: static/control is tenant-writable, so neither the directory
+### nor the file may be followed.
+_xoct_plant_host_gate() {
+  local _usr="$1"
+  local _oct_id="$2"
+  local _grp="$3"
+  local _fqdn="$4"
+  local _hg="${_usr}/static/control/http-off-host.pid"
+  [ -L "${_usr}/static/control" ] && return 1
+  [ -d "${_usr}/static/control" ] || return 1
+  [ -L "${_hg}" ] && rm -f "${_hg}"
+  if ! grep -q -x -F "${_fqdn}" "${_hg}" 2>/dev/null; then
+    echo "${_fqdn}" >> "${_hg}" || return 1
+  fi
+  chown -h "${_oct_id}:${_grp}" "${_hg}" &> /dev/null
+  chmod 644 "${_hg}" &> /dev/null
+  grep -q -x -F "${_fqdn}" "${_hg}" 2>/dev/null
+}
+
 _xoct_ssl_material_missing() {
   ### Echo the cert files the HTTPS proxy template references that do NOT
   ### exist, named relative to the account root; empty output means the
@@ -807,10 +857,34 @@ _migrate_sites() {
       fi
       continue
     fi
-    ### Every vhost past the panel skip is a site the conversion is expected
-    ### to touch; the verdict below tells "nothing to convert" apart from
-    ### "nothing converted" by this count.
-    _XOCT_PROXY_ELIGIBLE=$(( ${_XOCT_PROXY_ELIGIBLE:-0} + 1 ))
+    ### A whole-server move relays the client-domain sites BEFORE the new box
+    ### renames the sites named under this box's hostname. Those stay local
+    ### and held on 503 by the per-host gate until the second pass (--repair,
+    ### no defer flag) turns their old names into redirects. Skipped before
+    ### the eligibility count, so an account holding nothing else is not read
+    ### as a failed conversion. Only a site the gate can really hold, and only
+    ### while its vhost is still the local one.
+    if [ "${_cmd}" = "proxy" ] && [ -n "${_XOCT_DEFER_FQDN}" ] \
+      && [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ] \
+      && _xoct_named_under_host "${_Dom}" "${_XOCT_DEFER_FQDN}" \
+      && ! grep -q "Plain HTTP proxy (START)" "${_Vht}" 2>/dev/null; then
+      if _xoct_site_host_gateable "${_USR}" "${_Dom}" "${_Vht}"; then
+        _XOCT_PROXY_DEFERRED="${_XOCT_PROXY_DEFERRED} ${_Dom}"
+        echo "INFO: site ${_Dom} on ${_oct}: named under ${_XOCT_DEFER_FQDN}, deferred (stays local on 503 until it is renamed)"
+        continue
+      fi
+      echo "ALRT: site ${_Dom} on ${_oct}: named under ${_XOCT_DEFER_FQDN} but the per-host gate cannot hold it -- converted now, not deferred"
+    fi
+    ### Every SITE past the panel skip is one the conversion is expected to
+    ### touch; the verdict below tells "nothing to convert" apart from
+    ### "nothing converted" by this count. The https.<dom> companions and the
+    ### saved dot-files live in the same directory and are not sites: counting
+    ### them made an account whose sites were all deferred read as "0
+    ### converted of N" -- a failed conversion.
+    case "${_Dom}" in
+      https.*|.*) ;;
+      *) _XOCT_PROXY_ELIGIBLE=$(( ${_XOCT_PROXY_ELIGIBLE:-0} + 1 )) ;;
+    esac
     if [ -e "${_Vht}" ] && [ ! -z "${_oct}" ]; then
       chown ${_oct}:${_OCT_GRP} ${_Vht}
       chmod 600 ${_Vht}
@@ -1108,7 +1182,16 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           || { [ "${_XOCT_FORCE}" = "YES" ] \
           && [ -e "${_USR}/log/export_failed.pid" ]; }; } \
           && [ ! -z "${_tgt}" ]; then
-          if [ -e "${_Vht}" ]; then
+          if [ ! -s "/var/xdrago/conf/proxy.conf" ] \
+            && ! { [ -n "${_XOCT_TARGET_FQDN}" ] \
+              && _xoct_named_under_host "${_Dom}" "${_XOCT_MY_FQDN}"; }; then
+            ### Checked BEFORE the real vhost is moved aside: with the template
+            ### gone the copy below fails quietly, the site is left with no :80
+            ### server block at all and was still counted as converted. A
+            ### renamed site's redirect is written inline and needs no template.
+            _XOCT_PROXY_FAIL=$(( ${_XOCT_PROXY_FAIL:-0} + 1 ))
+            echo "ALRT: site ${_Dom} proxy conversion on ${_oct} failed: /var/xdrago/conf/proxy.conf is missing or empty"
+          elif [ -e "${_Vht}" ]; then
             ### On a repair ${_Vht} is already a proxy vhost, whose name list a
             ### previous repair could have narrowed. The saved real vhost is the
             ### authoritative source, so prefer it whenever it exists.
@@ -1157,10 +1240,10 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
               ### the template's listen/TLS lines -- the old name still has
               ### its certificate here -- and answer every path with the 301
               ### instead of proxying to a name the target no longer serves.
-              if [ -n "${_XOCT_TARGET_FQDN}" ] && [ -n "${_XOCT_MY_FQDN}" ] \
-                && [ "${_Dom}" != "${_Dom%.${_oct}.${_XOCT_MY_FQDN}}" ]; then
+              if [ -n "${_XOCT_TARGET_FQDN}" ] \
+                && _xoct_named_under_host "${_Dom}" "${_XOCT_MY_FQDN}"; then
                 sed -i "/^  location /,/^  }/d" ${_Vhs}
-                sed -i "s|^  log_not_found .*|&\n  return 301                   \$scheme://${_Dom%.${_XOCT_MY_FQDN}}.${_XOCT_TARGET_FQDN}\$request_uri;|" ${_Vhs}
+                sed -i "s|^  log_not_found .*|&\n  return 301                   \$scheme://${_Dom//${_XOCT_MY_FQDN}/${_XOCT_TARGET_FQDN}}\$request_uri;|" ${_Vhs}
               fi
               chown ${_oct}:${_OCT_GRP} ${_Vhs}
               chmod 600 ${_Vhs}
@@ -1175,6 +1258,27 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
               _XOCT_PROXY_NOSSL="${_XOCT_PROXY_NOSSL} ${_Dom}"
               echo "ALRT: site ${_Dom} on ${_oct}: NO HTTPS proxy vhost written -- missing:${_SSL_MISSING}"
             fi
+            ### Fail closed on TLS. When no HTTPS proxy vhost could be written,
+            ### the site's REAL https vhost must not stay live beside the
+            ### converted :80 one: the account gate is lifted below, so plain
+            ### HTTP would reach the new box while HTTPS kept serving -- and
+            ### taking writes into -- the local database that has already
+            ### moved. Park it under the first-backup rule (the revert puts it
+            ### back); HTTPS then fails at the handshake, visibly, which is
+            ### what the report below tells the operator.
+            if [ -f "${_Vhs}" ] \
+              && ! grep -q "Secure HTTPS proxy" "${_Vhs}" 2>/dev/null; then
+              if [ ! -f "${_Vhs%/*}/.https.${_Dom}" ]; then
+                mv -f ${_Vhs} ${_Vhs%/*}/.https.${_Dom}
+              else
+                rm -f ${_Vhs}
+              fi
+              case " ${_XOCT_PROXY_NOSSL} " in
+                *" ${_Dom} "*) ;;
+                *) _XOCT_PROXY_NOSSL="${_XOCT_PROXY_NOSSL} ${_Dom}" ;;
+              esac
+              echo "ALRT: site ${_Dom} on ${_oct}: its local HTTPS vhost is parked (saved as .https.${_Dom}) -- no HTTPS until the keys exist and a --repair runs"
+            fi
             ### Preserve the FIRST backup only. On a repair pass ${_Vht} is
             ### already the proxy template, and mv -f would overwrite ${_Vhd}
             ### with it -- destroying the only surviving copy of the real vhost
@@ -1186,18 +1290,22 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
               echo "INFO: site ${_Dom} on ${_oct}: proxy vhost already in place, keeping saved ${_Vhd}"
             else
               mv -f ${_Vht} ${_Vhd}
+              ### What THIS run moved aside for the first time: the only
+              ### vhosts a failed configtest may put back on a repair pass.
+              _XOCT_FIRST_BACKUP_DOMS="${_XOCT_FIRST_BACKUP_DOMS} ${_Dom}"
             fi
-            ### A site named under THIS box's own hostname was renamed on the
-            ### target by the cutover (step 13), so its old name no longer
-            ### exists there: proxying it forwards to the target's catch-all.
-            ### When the caller names the target's hostname, the old name is
-            ### answered with a 301 to the renamed site instead (design ruling
-            ### D-17; e2e CUT-E36). The control panel is never proxied and is
-            ### not a site of this loop.
+            ### A site named under THIS box's own hostname is renamed on the
+            ### target by the cutover, so its old name no longer exists
+            ### there: proxying it forwards to the target's catch-all. When
+            ### the caller names the target's hostname -- which a whole-server
+            ### move does only AFTER the renames -- the old name is answered
+            ### with a 301 to the renamed site instead (design ruling D-17;
+            ### e2e CUT-E36). The control panel is never proxied and is not a
+            ### site of this loop.
             _REDIR_TO=""
-            if [ -n "${_XOCT_TARGET_FQDN}" ] && [ -n "${_XOCT_MY_FQDN}" ] \
-              && [ "${_Dom}" != "${_Dom%.${_oct}.${_XOCT_MY_FQDN}}" ]; then
-              _REDIR_TO="${_Dom%.${_XOCT_MY_FQDN}}.${_XOCT_TARGET_FQDN}"
+            if [ -n "${_XOCT_TARGET_FQDN}" ] \
+              && _xoct_named_under_host "${_Dom}" "${_XOCT_MY_FQDN}"; then
+              _REDIR_TO="${_Dom//${_XOCT_MY_FQDN}/${_XOCT_TARGET_FQDN}}"
             fi
             if [ -n "${_REDIR_TO}" ]; then
               cat > ${_Vht} <<REDIR
@@ -3302,6 +3410,8 @@ _xoct_proxy_preflight() {
   _XOCT_PROXY_OK=0
   _XOCT_PROXY_FAIL=0
   _XOCT_PROXY_ELIGIBLE=0
+  _XOCT_PROXY_DEFERRED=""
+  _XOCT_FIRST_BACKUP_DOMS=""
   _XOCT_WAS_PROXIED=NO
   [ -e "${_USR}/log/proxied.pid" ] && _XOCT_WAS_PROXIED=YES
   _XOCT_PEER_ACCT="${_dst:-${_oct}}"
@@ -4101,7 +4211,24 @@ _migrate_init() {
           ### told that the panel moved -- a live cutover once left such an
           ### account 503-gated on the source for a "0 site(s) converted".
           if [ "${_XOCT_PROXY_ELIGIBLE:-0}" = "0" ] && [ "${_XOCT_PROXY_FAIL:-0}" = "0" ]; then
-            echo "INFO: nothing to proxy for ${_oct}: the account holds only its control panel -- treated as converted"
+            if [ -n "${_XOCT_PROXY_DEFERRED}" ]; then
+              echo "INFO: nothing to proxy for ${_oct} yet: every site is deferred -- treated as converted"
+            else
+              echo "INFO: nothing to proxy for ${_oct}: the account holds only its control panel -- treated as converted"
+            fi
+          fi
+          ### The per-host gate goes up BEFORE anything is reloaded or lifted:
+          ### a deferred site must never be reachable ungated. A gate that
+          ### cannot be written refuses the run with the account gate intact.
+          if [ -n "${_XOCT_PROXY_DEFERRED}" ]; then
+            if ! _xoct_plant_host_gate "${_USR}" "${_oct}" "${_OCT_GRP}" "${_XOCT_DEFER_FQDN}"; then
+              echo "ERROR: could not write ${_USR}/static/control/http-off-host.pid for the deferred sites"
+              _xoct_revert_converted_vhosts \
+                "${_USR}/config/server_master/nginx/vhost.d" \
+                "${_XOCT_FIRST_BACKUP_DOMS}"
+              echo "ERROR: ${_oct} was NOT converted; the vhosts this run converted are back as found"
+              exit 1
+            fi
           fi
           if [ "${_XOCT_PROXY_FAIL:-0}" != "0" ] || { [ "${_XOCT_PROXY_OK:-0}" = "0" ] && [ "${_XOCT_PROXY_ELIGIBLE:-0}" != "0" ]; }; then
             echo "ALRT: proxy conversion for ${_oct}: ${_XOCT_PROXY_OK:-0} site(s) converted, ${_XOCT_PROXY_FAIL:-0} failed"
@@ -4134,12 +4261,27 @@ _migrate_init() {
               ### nothing correct to revert to -- restoring it would serve
               ### the account locally against a database that lives on the
               ### target. Leave it and make the danger explicit instead.
-              echo "ERROR: this was a --repair, so the saved vhost is the pre-migration ORIGINAL"
-              echo "ERROR: and restoring it would serve this account against the OLD local database."
-              echo "ERROR: nginx has NOT been reloaded and still runs the previous, working config,"
-              echo "ERROR: but the invalid files are on disk: the next reload or restart on this box"
-              echo "ERROR: (including an unrelated one) will fail. Fix the reported error NOW, then:"
-              echo "ERROR:   nginx -t && service nginx reload"
+              ### What this run converted for the FIRST time is the
+              ### exception: those vhosts were local (and gated) when it
+              ### started, so putting them back is exactly the state before
+              ### the run -- and it is the usual cause, since they are the
+              ### only files this pass wrote from scratch.
+              if [ -n "${_XOCT_FIRST_BACKUP_DOMS}" ]; then
+                _xoct_revert_converted_vhosts \
+                  "${_USR}/config/server_master/nginx/vhost.d" \
+                  "${_XOCT_FIRST_BACKUP_DOMS}"
+                echo "ALRT: put back the vhosts this run converted for the first time:${_XOCT_FIRST_BACKUP_DOMS}"
+              fi
+              if nginx -t &> /dev/null; then
+                echo "INFO: the config is valid again; nginx was NOT reloaded and nothing was lifted"
+              else
+                echo "ERROR: this was a --repair, so the saved vhost is the pre-migration ORIGINAL"
+                echo "ERROR: and restoring it would serve this account against the OLD local database."
+                echo "ERROR: nginx has NOT been reloaded and still runs the previous, working config,"
+                echo "ERROR: but the invalid files are on disk: the next reload or restart on this box"
+                echo "ERROR: (including an unrelated one) will fail. Fix the reported error NOW, then:"
+                echo "ERROR:   nginx -t && service nginx reload"
+              fi
             else
               ### A first conversion: reverting to the saved originals is
               ### exactly the pre-conversion state, so restore what THIS run
@@ -4159,18 +4301,28 @@ _migrate_init() {
             exit 1
           fi
           if [ -n "${_XOCT_PROXY_NOSSL}" ]; then
-            echo "ALRT: converted WITHOUT an HTTPS proxy vhost (ssl.d openssl.key missing):${_XOCT_PROXY_NOSSL}"
+            echo "ALRT: converted WITHOUT an HTTPS proxy vhost (certificate material missing):${_XOCT_PROXY_NOSSL}"
             echo "ALRT: HTTPS via the old address will fail for those sites; once the keys exist,"
             echo "ALRT: re-run: xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair"
           fi
+          if [ -n "${_XOCT_PROXY_DEFERRED}" ]; then
+            echo "INFO: deferred, still local and held on 503 by the per-host gate:${_XOCT_PROXY_DEFERRED}"
+            echo "INFO: once they are renamed on the new box, convert them with:"
+            echo "INFO:   xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair"
+          fi
           ###
-          ### All sites on this account are now served by the proxy vhost
-          ### template, so the PHP-level 503 short-circuit is no longer
-          ### needed. Remove the per-account pid file and purge any
-          ### lingering cached 503 responses from the speed cache so
-          ### post-migration traffic to the proxy vhost is unaffected.
+          ### Every site on this account now answers from a proxy or redirect
+          ### vhost, or is held by the per-host gate written above, so the
+          ### account-wide 503 short-circuit is no longer needed. Remove the
+          ### per-account pid file and purge any lingering cached 503
+          ### responses from the speed cache so post-migration traffic to the
+          ### proxy vhost is unaffected. A pass that deferred nothing is the
+          ### full conversion: the per-host gate has nothing left to hold.
           ###
           rm -f ${_USR}/static/control/http-off.pid
+          if [ -z "${_XOCT_PROXY_DEFERRED}" ] && [ -z "${_XOCT_DEFER_FQDN}" ]; then
+            rm -f ${_USR}/static/control/http-off-host.pid
+          fi
           if [ -d "/var/lib/nginx/speed" ]; then
             find /var/lib/nginx/speed -type f -delete &> /dev/null
           fi
@@ -4670,10 +4822,23 @@ case "$1" in
     _XOCT_MODE_FLAG=""; _XOCT_DEADLINE_FLAG=""; _XOCT_NO_DEADLINE=""
     _XOCT_PROXY_REPAIR=""; _XOCT_PROXY_RETARGET=""
     _XOCT_RENOTIFY=""; _XOCT_NO_NOTIFY=""; _XOCT_FORCE_PINNED=""
+    _XOCT_DEFER_FQDN=""
     _margs=()
     for _a in "$@"; do
       case "${_a}" in
         --proxy-mode=*|--mode=*)         _XOCT_MODE_FLAG="${_a#*=}" ;;
+        ### For proxy: leave the sites named under this hostname local and
+        ### held on 503 by the per-host gate -- a whole-server move converts
+        ### them in a second pass, once the new box has renamed them.
+        --defer-host-named=*)
+          _XOCT_DEFER_FQDN="${_a#*=}"
+          case "${_XOCT_DEFER_FQDN}" in
+            ''|*[!a-zA-Z0-9.-]*|.*|*.|*..*)
+              echo "ERROR: --defer-host-named needs a hostname, got '${_XOCT_DEFER_FQDN}'"
+              exit 1
+              ;;
+          esac
+          ;;
         --proxy-deadline=*|--deadline=*) _XOCT_DEADLINE_FLAG="${_a#*=}" ;;
         --no-deadline)       _XOCT_NO_DEADLINE=YES ;;
         --repair)            _XOCT_PROXY_REPAIR=YES ;;
