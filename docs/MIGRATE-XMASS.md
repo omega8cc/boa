@@ -48,8 +48,8 @@ database). At cutover:
 2. Source Solr is stopped and locked out permanently.
 3. A final rsync of all data runs.
 4. The tool waits for replica lag to reach zero, then triple-confirms (three checks 10 s apart; a lag that comes back on any of them re-enters the wait instead of aborting, on the same `_XMASS_SYNC_MAX_WAIT` budget).
-5. A final `static/files` pass runs — deliberately **before** the lock. The web
-   block in step 1 is what stops file writes; a database read lock never gated
+5. A final `static/files` pass runs — deliberately **before** the write freeze
+   (step 6 below). The web block in step 1 is what stops file writes; a database read lock never gated
    them, so holding one across a walk of every store bought nothing and could
    hold the source database locked for hours on a large account.
 6. An **advisory** read-only flag is appended to
@@ -98,8 +98,17 @@ database). At cutover:
     canaries. The target does not serve source-named panels.
 12. DNS is updated; traffic flows directly to target.
 
-Typical total cutover window: **1–3 hours** (dominated by `renameaegirhost`
-task queues for large numbers of accounts).
+How long visitors see the 503: the data crosses before the window opens
+(replication carries the databases, `sync` and the autosync passes carry the
+files), so the window does not grow with the size of the data. Inside it are
+the final files delta, the lag confirmation, the promotion, the target's
+web-layer proof and `renameaegirhost` for the master and then for each
+account's Ægir root in series, under a box-wide gate. Every clean cutover,
+failover and failback measured so far, on estates of 4–6 Ægir roots and up to
+46 sites on both Percona generations, kept a client domain on the 503 for
+**15 to 20 minutes**. Budget a few more minutes per additional Ægir root; on a
+very large file estate add the two no-change tree walks inside the window,
+which scale with the number of files rather than their size.
 
 ## State Machine
 
@@ -112,7 +121,7 @@ task queues for large numbers of accounts).
 ```
 
 Each subcommand checks the current phase and refuses to run out of sequence.
-`phase=cutover` is written only immediately before the MySQL lock, so anything
+`phase=cutover` is written only immediately before the write freeze, so anything
 that aborts earlier in the cutover — a failed transfer, a store that will not
 fit, a replica that never catches up — leaves the phase at `syncing` and is
 recovered by simply re-running the DRY and `--live`.
@@ -965,8 +974,8 @@ first change to the source):
 - **Then** stops cron and parks the five BOA runners itself. The box's own cron
   restores a park done at `pre-mig` time within minutes, so parking here — not
   refusing and asking the operator to re-park — is what makes the window
-  reliable. If the cutover aborts after this point but before the MySQL lock,
-  it restores cron, the runners and the 503 gate itself; from the lock onward
+  reliable. If the cutover aborts after this point but before the write freeze,
+  it restores cron, the runners and the 503 gate itself; from the freeze onward
   the printed restore recipe covers it.
 
 **Cutover sequence:**
@@ -978,13 +987,13 @@ first change to the source):
 | Step 2 | Stop all Solr instances on source; touch `/root/.deny.java.cnf` AND set `_DENY_JAVA=YES` in `/root/.barracuda.cnf` (permanent deny; to reverse on a rolled-back source run `xmass restore-solr` -- clearing the deny by hand is **not** enough, see below) |
 | Step 3 | Final rsync: shared data, Solr (now clean — source stopped), all account data |
 | Step 3.5 | **Gate:** abort if any store could not be placed or any transfer failed — before anything destructive |
-| Step 4 | Wait for replica lag = 0 (polls every 15 s; ceiling `_XMASS_SYNC_MAX_WAIT`, default 7200 s; on timeout reports whether the lag is closing or growing), then confirm it three times 10 s apart: a returning lag re-enters the wait and spends the same budget, so only a spent budget or an unreadable lag ends the verb here; the post-lock triple check is strict and aborts on any non-zero reading |
-| Step 5 | Final rsync pass of `static/files` only, **before** the lock (the web block already stopped file writes) |
+| Step 4 | Wait for replica lag = 0 (polls every 15 s; ceiling `_XMASS_SYNC_MAX_WAIT`, default 7200 s; on timeout reports whether the lag is closing or growing), then confirm it three times 10 s apart: a returning lag re-enters the wait and spends the same budget, so only a spent budget or an unreadable lag ends the verb here; the post-freeze triple check is strict and aborts on any non-zero reading |
+| Step 5 | Final rsync pass of `static/files` only, **before** the write freeze (the web block already stopped file writes) |
 | Step 5.5 | **Gate:** re-check both of the above, then persist `phase=cutover` |
 | Step 6 | Append the **advisory** read-only flag to `/data/conf/global/global-extra.inc` (previous file kept as `.bak`), then `FLUSH TABLES` to push buffers. The flag is belt-and-braces only (box-wide, ignored by most site shapes, dropped by the next BOA system pass) and the cutover **continues with a warning if it cannot be written**: the write barrier is the step-1 503 gate plus the parked cron and runners. A session read lock is not relied on — it cannot survive a disconnect |
-| Step 7 | Triple-check lag = 0 at 10 s intervals. On any failed check: unlock source MySQL, **thaw the write freeze**, and abort — the target is not promoted at this point, so the source is handed back writable |
-| Step 8 | `STOP SLAVE; RESET SLAVE ALL` on target → target MySQL is now standalone. On failure the exit code alone cannot say whether the promotion committed (transport can fail after mysql ran), so the tool **reads the target's replica state back** and picks one of three exits: still a replica → unlock, **thaw**, abort (the source is the only production box); replica config gone → the promotion committed → **park resumably** at `phase=rename-failed`; state unreadable → the source stays 503-gated with the flag in place (lifting either could silently lose writes) and the message spells out how to determine the state and which recovery to run |
-| Step 9 | Belt-and-braces `UNLOCK TABLES` on source (no lock is normally held); the write freeze stays — the source serves through the proxy from here |
+| Step 7 | Triple-check lag = 0 at 10 s intervals. On any failed check: **thaw the write freeze** and abort — the target is not promoted at this point, so the source is handed back writable |
+| Step 8 | `STOP SLAVE; RESET SLAVE ALL` on target → target MySQL is now standalone. On failure the exit code alone cannot say whether the promotion committed (transport can fail after mysql ran), so the tool **reads the target's replica state back** and picks one of three exits: still a replica → **thaw**, abort (the source is the only production box); replica config gone → the promotion committed → **park resumably** at `phase=rename-failed`; state unreadable → the source stays 503-gated with the flag in place (lifting either could silently lose writes) and the message spells out how to determine the state and which recovery to run |
+| Step 9 | Vacant: no lock is held on the source, so nothing is released. The write freeze stays — the source serves through the proxy from here |
 | Step 10 | Re-transfer `/root/.my.pass.txt` and `/root/.my.cnf` to target (belt-and-braces) |
 | Step 11 | Drop replication user `xmass_repl` from source. Runs at the head of the cutover tail (idempotent), so a park upstream of it — the step-8 committed-promotion park — still gets the grant dropped when the resumed run completes |
 | Step 11.5 | Unlock the promoted target's database — on EVERY entry into the cutover tail, resumes included, since every step after it writes the target DB. `SET GLOBAL super_read_only=OFF` plus `read_only=OFF`, with the runtime readback verified (both variables) BEFORE the `xmass-standby-hold` block is stripped from `xmass_gtid.cnf`; a failed unlock **parks resumably at `phase=rename-failed`** rather than marching the renames into a read-only DB, and with mysql unreachable the cnf block deliberately survives as the watchdog's retry key. With the unlock proven and no replica config left, the step writes the promoted latch (`/var/log/boa/.standby_promoted.pid`) itself: the target's web hold follows its database, and step 12 must not wait for a watchdog pass to read the same thing. Step 15 removes the latch with the marker |
@@ -1004,19 +1013,18 @@ first change to the source):
 | Step 18.5 | Start cron and un-park the five runners **on the source**. Without this the source proxy runs nothing again — including its own certificate mirror, which is what keeps a long-lived proxy from serving expired certificates ~90 days later |
 | Step 19 | Mark state `complete` |
 
-If any step between 4 and 8 fails the tool aborts; no session lock is held any
-more, so there is nothing to unlock (the belt-and-braces `UNLOCK TABLES` runs
-regardless). An abort at step 7 also **thaws the write freeze by itself** — the
-target is not promoted at that point, so the source is handed back writable. A
-step-8 failure first reads the target's replica state back and thaws only when
+If any step between 4 and 8 fails the tool aborts; no session lock is held, so
+there is nothing to unlock. An abort at step 7 **thaws the write freeze by
+itself** — the target is not promoted at that point, so the source is handed
+back writable. A step-8 failure first reads the target's replica state back and thaws only when
 the target is provably still a replica; a committed promotion parks resumably,
 and an unreadable target keeps the freeze with explicit instructions (see the
 step table above).
 
-An abort BEFORE the MySQL lock (the phase is still `syncing`) hands the source
+An abort BEFORE the write freeze (the phase is still `syncing`) hands the source
 back by itself: the 503 gate comes down, cron and the runners return, Solr is
 re-enabled when the run had denied it, and no recipe is printed (see "Aborting
-or Starting Over"). From the lock onward — phase `cutover`, a promoted target,
+or Starting Over"). From the freeze onward — phase `cutover`, a promoted target,
 or a park at `rename-failed` — the source stays on 503 (`http-off.pid` in place)
 and the tool prints the exact commands to restore service, so follow the printed
 recipe rather than reconstructing it: clear the `http-off.pid` files, purge the
@@ -1301,16 +1309,16 @@ replication user from source
 (`mysql -e "DROP USER IF EXISTS 'xmass_repl'@'target-ip';"`)
 and remove the state file.
 
-**If `cutover` aborts:** an abort BEFORE the MySQL lock (the phase is still
+**If `cutover` aborts:** an abort BEFORE the write freeze (the phase is still
 `syncing`: a lag that never settled, an rsync or store refusal) hands the
 source back by itself — the 503 gate comes down, the write flag (if any) is
 cleared, cron and the runners return, and Solr is re-enabled when the run had
 denied it — so the estate is serving again before the error is read; retrying
-is a fresh DRY plus `--live` with nothing else to undo. From the lock onward
+is a fresh DRY plus `--live` with nothing else to undo. From the freeze onward
 the tool prints the full restore recipe for the source instead; follow it
 rather than doing it from memory. An abort at step 7 — and a step-8 failure whose
-read-back proves the target is still a replica — unlocks source MySQL **and
-thaws the write freeze itself**; the phase is `cutover`, so retrying is
+read-back proves the target is still a replica — **thaws the write freeze
+itself**; the phase is `cutover`, so retrying is
 `xmass reset-phase syncing`, a fresh DRY, then `--live`. A refusal at step 12
 or later (and a step-8 failure whose promotion actually committed) parks
 resumably at `phase=rename-failed` with the target promoted: the source stays

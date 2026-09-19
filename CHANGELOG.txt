@@ -76,6 +76,18 @@
       no longer walks through a symlinked modules/ or site directory;
       and the site legs handle the files/ and private/ child entries
       on the resolved store path only, never through a planted link.
+    * The per-site /user + /admin allow-list (user_admin_access) now
+      covers where Grav 2 and Textpattern sites keep their admin
+      surface: on a Grav 2 site the whole /api route, because the
+      Admin2 panel at /admin is only a shell and every login, account,
+      page, media and configuration operation runs through the API
+      plugin, and on a Textpattern site /txpadmin, which the list
+      never matched. A Grav site that serves a deliberately public
+      headless API adds the keyword api-open to its record and keeps
+      /api open while /admin stays on the list. Drupal and Backdrop
+      sites match exactly what they matched before, no vhost needs a
+      re-verify, and the change reaches every listed site on the
+      generator's next pass.
 
 @=> New Features
 
@@ -386,6 +398,12 @@
       static/files keeps its own pruning leg and static/control stays
       additive as its own leg (a static/control that is a symlink is never
       followed); the cutover legs stay additive throughout.
+    * xmass cutover no longer reports a database lock it does not take:
+      the abort messages name the write freeze as the boundary ("Pre-freeze
+      abort", "aborted before the write freeze", "cutover aborted; writes
+      thawed"), and three UNLOCK TABLES calls that released nothing are
+      gone, along with the "tables unlocked" line and the reset-phase hint
+      to run one by hand.
 
 
 ###
