@@ -191,7 +191,11 @@ process does not block.
   displacing anything (override: `_XMASS_SKIP_DISK_GATE=YES`).
 - CSF: source IP allowed on the target **and** target IP allowed on the source
   — the target dials back to source:3306. `prep-target` appends each peer to
-  **both** `csf.allow` and `csf.ignore` (append-once) and reloads CSF: an
+  **both** `csf.allow` and `csf.ignore` (append-once) and reloads CSF (every
+  locked xmass verb records the csf lines and the peer host key it adds and
+  withdraws exactly those, here and on the peer, when it does not complete;
+  a completed `prep-target` or `pre-mig` keeps them, and a line it could not
+  withdraw is named for a hand removal): an
   allow on its own is not durable, because the login-failure daemon can still
   temp-deny the peer mid-migration, and a temp-deny on the reverse path fails
   `init` *after* the target datadir has been replaced. The reverse path is
