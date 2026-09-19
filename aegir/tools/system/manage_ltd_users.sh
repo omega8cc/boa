@@ -2700,7 +2700,21 @@ _site_socket_inc_gen() {
     if [ ! -z "${_diffFpmTest}" ]; then
       _mltFpmUpdate=YES
     fi
-    if [ ! -f "${_mltNgx}" ] \
+    # While a whole-server move's promotion window is open on this box (the
+    # standby marker plus the fresh in-flight signal), the per-site includes
+    # are left exactly as found. The rename running in that window rewrites
+    # the pin names and deliberately keeps a stale baseline, so this pass
+    # would wipe and rebuild every include of the account -- and the box may
+    # already be serving relayed visitors, for whom a pinned site dropping to
+    # the account's default PHP version for even one pass is an outage. The
+    # move runs this pass itself, once, as soon as its renames are done.
+    # Scoped to this block on purpose: the rest of the script must keep
+    # running on a standby, and a steady mirror (no fresh signal) still
+    # builds its includes as pins arrive.
+    if [ -e "/root/.standby.cnf" ] \
+      && [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
+      _mltFpmUpdate=HOLD
+    elif [ ! -f "${_mltNgx}" ] \
       || [ "${_mltFpmUpdate}" = "YES" ] \
       || [ "${_mltFpmUpdateForce}" = "YES" ]; then
       rm -f ${_fpmPth}/fpm_include_site_*
@@ -2728,8 +2742,16 @@ _site_socket_inc_gen() {
       touch ${_mltNgx}
       rm -rf ${_preFpm}
       cp -af ${_mltFpm} ${_preFpm}
-      ### reload nginx
-      service nginx reload &> /dev/null
+      ### reload nginx -- only a config that passes its own test: a failed
+      ### reload keeps the running config, but an invalid one left on disk
+      ### turns the next unrelated restart into a box-wide outage
+      if nginx -t &> /dev/null; then
+        service nginx reload &> /dev/null
+      else
+        _ltd_notice "nginx-configtest-${_USER}" \
+          "nginx -t FAILED after the per-site FPM includes of ${_USER} were rebuilt -- NOT reloaded" \
+          "$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
+      fi
     fi
   else
     if [ -f "${_mltNgx}" ]; then
