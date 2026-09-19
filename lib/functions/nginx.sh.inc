@@ -778,13 +778,16 @@ _nginx_initd_check() {
     ### predates the hold passes the three tests above and was never
     ### refreshed, so an upgraded mirror still booted its web tier and
     ### served its own panel until the watchdog caught up. Refresh on the
-    ### gate's absence too.
-    _X_INIT_TEST_D=$(cat /etc/init.d/nginx | grep standby.serve.cnf 2>&1)
+    ### gate's absence too. The gate now follows the DATABASE, not the
+    ### xmass window (every init released the web tier), and a deployed
+    ### copy with the older predicate still names standby.serve.cnf -- so
+    ### the test names a string only the CURRENT gate carries.
+    _X_INIT_TEST_D=$(cat /etc/init.d/nginx | grep standby_promoted 2>&1)
   fi
   if [[ "${_X_INIT_TEST_A}" =~ ULIMIT ]] \
     && [[ "${_X_INIT_TEST_B}" =~ Giedymin ]] \
     && [[ "${_X_INIT_TEST_C}" =~ rotate ]] \
-    && [[ "${_X_INIT_TEST_D}" =~ standby.serve.cnf ]]; then
+    && [[ "${_X_INIT_TEST_D}" =~ standby_promoted ]]; then
     chmod 755 /etc/init.d/nginx &> /dev/null
     _mrun "update-rc.d nginx defaults"
   else

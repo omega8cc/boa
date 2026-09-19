@@ -616,11 +616,19 @@ _standby_sql_hold() {
   # built by pre-hold bytes (their cnf lacks the block -- append it once and
   # lock the runtime, no hands on the box).
   #
-  # Stands down while an xmass window is in flight (same signal as the web
-  # enforcer: xmass owns the box during promotion) and whenever the server
-  # is not answering (never poke a recovering DB). serve.cnf does NOT
-  # exempt: serve is a web-only preview, never a write channel.
-  [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ] && return 0
+  # Stands down while an xmass window is in flight -- xmass itself drives
+  # this lock through the init and the cutover, and the watchdog must not
+  # fight its own tool. The WEB hold does not share this signal: it follows
+  # the database, so an init never opens a mirror's web tier; do not
+  # re-align the two. Also stands down whenever the server is not answering
+  # (never poke a recovering DB). serve.cnf does NOT exempt: serve is a
+  # web-only preview, never a write channel.
+  # Ten minutes LONGER than second.sh honours the same signal: at its 2880
+  # that watchdog drops the leftover marker of a promoted box, once a minute,
+  # while this one runs many times a minute -- on a shared ceiling the
+  # retrofit below won the race and locked a promoted production database
+  # whose cutover had parked with the marker still present.
+  [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2890 2>/dev/null)" ] && return 0
   local _cnf="" _d _sro _inc_dir
   # The dir my.cnf ACTUALLY reads first (same parse as the xmass writer) --
   # a box whose include layout changed across a Percona upgrade can carry a
@@ -650,14 +658,36 @@ _standby_sql_hold() {
     # Only a box that IS an xmass replica carries xmass_gtid.cnf (checked
     # above); never lock a box whose replication this tool did not set up.
     if ! grep -q "xmass-standby-hold" "${_cnf}" 2>/dev/null; then
-      # Retrofit path for standing mirrors: the cnf is [mysqld]-scoped to
-      # the end of file, so appending stays in section.
+      # Retrofit path for standing mirrors built by pre-hold bytes -- never
+      # on a box the cutover PROMOTED. Step 11.5 strips the block while the
+      # marker is still there (step 15 not reached yet, a parked resume, a
+      # removal that could not be confirmed) and leaves a line saying so;
+      # once the in-flight signal has aged out, a re-append here would lock
+      # a promoted production database again -- and its web tier with it,
+      # since the web hold follows this lock. Keyed on that line, not on a
+      # role probe: a mirror that lost its replica config must still be
+      # converted and locked, and a probe cannot tell the two apart.
+      if grep -q "xmass-promoted-unlock" "${_cnf}" 2>/dev/null; then
+        if [ ! -e "/run/boa_standby_noretrofit_logged.pid" ]; then
+          touch /run/boa_standby_noretrofit_logged.pid
+          echo "$(date) SQL replication standby: marker present on a box the cutover already promoted (hold block stripped at promotion) -- NOT locking it; the marker is a leftover, VERIFY THIS BOX" >> ${_pthOml}
+        fi
+        return 0
+      fi
+      rm -f /run/boa_standby_noretrofit_logged.pid
+      # The cnf is [mysqld]-scoped to the end of file, so appending stays in
+      # section.
       {
         echo "# xmass-standby-hold (cleared at promotion)"
         echo "read_only                    = ON"
         echo "super_read_only              = ON"
       } >> "${_cnf}"
       echo "$(date) SQL replication standby: persisted super_read_only in ${_cnf}" >> ${_pthOml}
+    elif [ -e "/run/boa_standby_noretrofit_logged.pid" ]; then
+      # The block is back (a re-seed rewrote the cnf): the episode the stamp
+      # belongs to is over, and a leaked stamp would swallow the next one's
+      # line. second.sh reaps it when the marker goes.
+      rm -f /run/boa_standby_noretrofit_logged.pid
     fi
     _sro=$(mysql --defaults-file=/root/.my.cnf \
       -sNe "SHOW VARIABLES LIKE 'super_read_only'" 2>/dev/null | awk '{print $2}')

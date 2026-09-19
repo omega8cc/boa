@@ -86,8 +86,12 @@ _site_name_regex="^([a-zA-Z0-9_-]+\.)*[a-zA-Z0-9_-]+\.[a-zA-Z]{2,}$"
 # advance the change-gate markers as a success would, and skip both the reload
 # and the revert.
 _nginx_held_down() {
+  # The nginx watchdog's published verdict: the promoted latch. Absent means
+  # HELD, and here "held" only ever means "write the fragments, skip the
+  # reload and the revert" -- an unjudged box costs a deferred reload, never
+  # a write into the synced undo/ trees on a box whose nginx is down.
   [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ] \
-    && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]
+    && [ ! -e "/var/log/boa/.standby_promoted.pid" ]
 }
 
 _valid_ip() {
