@@ -905,12 +905,6 @@ _set_cmd() {
 
 _run_backup() {
   if [ -e "/root/.randomize_duplicity_full_backup_day.cnf" ]; then
-    if [ ! -e "/root/tmp/home/" ]; then
-      _n=$((RANDOM%300+8))
-      echo "Waiting ${_n} seconds on $(date) before running restore home 7D tmp/home" >> ${_LOGFILE}
-      sleep ${_n}
-      restore home 7D tmp/home >> ${_LOGFILE}
-    fi
     _n=$((RANDOM%300+8))
     echo "Waiting ${_n} seconds on $(date) before running ${_MODE} backup" >> ${_LOGFILE}
     sleep ${_n}

@@ -267,6 +267,10 @@
 
 @=> Important Fixes
 
+    * backboa and duobackboa no longer log a 'command not found' line on boxes
+      with the randomised full-backup day: a test restore call left behind by a
+      function rename never ran, and the dead block is removed.
+
     * wkhtmltopdf installs on Debian Trixie: the installer asked the mirror
       for a trixie build that does not exist, while its Devuan twin Excalibur
       already took the bookworm build. Trixie now takes the same package.
