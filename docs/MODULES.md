@@ -4,7 +4,7 @@ added to all 6.x and 7.x platforms -- even to your custom
 platforms created in the ~/static directory tree.
 
 Some core and contrib modules are either enabled or disabled
-by default, by running weekly (on Tuesday) maintenance monitor.
+by default, on two cadences. The nightly pass (every night except Tuesday) force-disables `dblog`, `syslog` and `backup_migrate` and force-enables `robotstxt` (plus `path_alias_cache` on Drupal 6); the weekly (Tuesday) maintenance monitor runs the broad list below INSTEAD of that small one. `entitycache` is force-enabled on every pass, Tuesday included.
 This applies to Drupal 6 and Drupal 7 sites. On Drupal 8+ nothing
 is enabled, and the only force-disabled module is linkchecker,
 enforced by a different route -- see the last section.
