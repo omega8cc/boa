@@ -447,6 +447,13 @@ _xmass_save_state() {
   mkdir -p "$(dirname "${_XMASS_STATE_FILE}")"
   # _XMASS_PERMANENT_PROXY is the legacy key, written for one more release so
   # a rolled-back xmass mid-migration still reads a coherent file.
+  # State v3 records the two acts of a cutover no later run may be blind to:
+  # _XMASS_SOURCE_PROXIED (this box relays visitors to the target, which has
+  # taken live writes since _XMASS_PROXIED_AT -- saved BEFORE the first
+  # account is converted, so a killed run cannot hide it) and
+  # _XMASS_TARGET_ARMED (step 15 ran: the target's own dispatcher is live).
+  # _XMASS_FLIP_FIRST=NO keeps a resumed tail on the rename-first order the
+  # pre-live gate chose. A v2 file simply lacks the keys: all read as unset.
   # Written to a sibling temp file and renamed: a plain `cat >` truncates
   # BEFORE it writes, so an ENOSPC (autosync passes are exempt from the 90%
   # disk gate precisely so a filling active keeps its mirror fresh) or a
@@ -466,7 +473,11 @@ _XMASS_PERMANENT_PROXY=${_XMASS_PERMANENT_PROXY}
 _XMASS_PROXY_MODE=${_XMASS_PROXY_MODE}
 _XMASS_PROXY_DEADLINE=${_XMASS_PROXY_DEADLINE}
 _XMASS_LAST_SYNC_SECS=${_XMASS_LAST_SYNC_SECS}
-_XMASS_STATE_V=2
+_XMASS_SOURCE_PROXIED=${_XMASS_SOURCE_PROXIED}
+_XMASS_PROXIED_AT=${_XMASS_PROXIED_AT}
+_XMASS_TARGET_ARMED=${_XMASS_TARGET_ARMED}
+_XMASS_FLIP_FIRST=${_XMASS_FLIP_FIRST}
+_XMASS_STATE_V=3
 STATEEOF
   then
     chmod 600 "${_tf}"
@@ -1996,6 +2007,8 @@ _xmass_park_runners_and_cron() {
 # sit with cron down waiting for an operator to find the restore hint.
 _xmass_unpark_runners_and_cron() {
   local _p
+  # Only the pause this tool planted: an operator's own hold stays.
+  grep -q "^xmass " "${_XMASS_HEAVY_PAUSE}" 2>/dev/null && rm -f "${_XMASS_HEAVY_PAUSE}"
   /etc/init.d/cron start &> /dev/null || service cron start &> /dev/null
   for _p in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ ! -e "/var/xdrago/${_p}" ] && [ -e "/var/xdrago/.${_p}.off" ]; then
@@ -2007,6 +2020,31 @@ _xmass_unpark_runners_and_cron() {
   if ! pgrep -x cron &> /dev/null; then
     _alrt "cron did not start on this box; the daily certificate mirror and"
     _alrt "every watchdog are DOWN -- start it manually: /etc/init.d/cron start"
+  fi
+}
+
+# The cron half alone, for a source that has just become the relay while the
+# new box is still renaming. From that moment this box is the only front door
+# of every migrated site, so it must not sit without its web-layer watchdog,
+# its IDS, the real-client refresh and the daily certificate mirror for as
+# long as the renames take. The heavy night jobs (backups, the night worker,
+# usage, graceful) stay held by BOA's own heavy-tasks pause, which nothing
+# clears behind our back; the five parked runners stay parked, and the full
+# restore above lifts both at the end of the cutover. The task pause marker
+# is deliberately NOT used: on a hosted box the self-update agent clears it
+# within minutes, and what it would hold here -- the dispatcher and the
+# sub-user pass on a box whose accounts are already stamped proxied -- is the
+# ordinary life of a relay box.
+_XMASS_HEAVY_PAUSE="/root/.pause_heavy_tasks_maint.cnf"
+_xmass_start_cron_relay() {
+  [ -e "${_XMASS_HEAVY_PAUSE}" ] \
+    || echo "xmass cutover relay window" > "${_XMASS_HEAVY_PAUSE}"
+  /etc/init.d/cron start &> /dev/null || service cron start &> /dev/null
+  if pgrep -x cron &> /dev/null; then
+    _info "cron is back on this box (watchdogs, IDS, certificate mirror); heavy night jobs stay held until the cutover ends"
+  else
+    _alrt "cron did not start on this box; the web-layer watchdog, the IDS and the"
+    _alrt "certificate mirror are DOWN while it relays -- start it manually: /etc/init.d/cron start"
   fi
 }
 
@@ -4514,11 +4552,22 @@ _xmass_sync_account() {
     -e ssh "${_udir}/.drush/" \
     "root@${_tgt}:${_dst}/.drush/"
 
-  # Nginx vhost configs
-  _xmass_rsync -aEAXqu ${_ieni} \
-    --exclude=host8.biz --exclude=boa.io --exclude=aegir.cc \
-    -e ssh "${_udir}/config/server_master/nginx/vhost.d/" \
-    "root@${_tgt}:${_dst}/config/server_master/nginx/vhost.d/"
+  # Nginx vhost configs. Never from an account this box already relays: its
+  # vhost.d holds relay vhosts pointing AT the target, and -u only skips files
+  # newer on the receiver, so freshly written ones would land there as
+  # self-relays -- the loop the promotion cleanup exists to break. The same
+  # reasoning as the log/ leg above, applied at the damage site so a hand-run
+  # sync is refused too. The saved pre-conversion vhosts (dot-files) never
+  # travel: they are this box's revert copies, not configuration.
+  if [ -e "${_udir}/log/proxied.pid" ]; then
+    _alrt "  ${_udir##*/}: this box relays the account (log/proxied.pid) -- its vhost.d is NOT synced"
+  else
+    _xmass_rsync -aEAXqu ${_ieni} \
+      --exclude=host8.biz --exclude=boa.io --exclude=aegir.cc \
+      --exclude='.*' \
+      -e ssh "${_udir}/config/server_master/nginx/vhost.d/" \
+      "root@${_tgt}:${_dst}/config/server_master/nginx/vhost.d/"
+  fi
 
   # These six are OPTIONAL: an account without subdir.d, or without any SSL
   # material, is perfectly normal. rsync answers a missing source with rc 23,
@@ -5125,6 +5174,25 @@ _xmass_cutover_unwind_solr() {
 # Every abort after the web block leaves the source down. The operator reads this
 # mid-window, so spell out the restore rather than making them find the runbook.
 _xmass_restore_hint() {
+  # Once this box relays the migrated sites, none of the recipes below is
+  # true any more: there is no gated source to re-open, and "keep THIS box as
+  # production" would throw away every write the target has taken since the
+  # relay started. Read from the state record, not from this process's own
+  # flags -- a resumed or freshly started run must say the same thing. This
+  # box is the sites' only front door for as long as the park lasts, so its
+  # cron (watchdogs, IDS, certificate mirror) is restored here, not advised.
+  if [ "${_XMASS_SOURCE_PROXIED}" = "YES" ]; then
+    _alrt "This cutover is PARKED with this box already RELAYING the client-domain"
+    _alrt "sites to ${_XMASS_TARGET_IP} (since ${_XMASS_PROXIED_AT:-the relay step}): they keep SERVING."
+    _alrt "Still held on 503 here: the sites named under this box's hostname, and any"
+    _alrt "account whose conversion failed. To RESUME, fix the cause reported with the"
+    _alrt "final error, then re-run:"
+    _alrt "    xmass cutover ${_XMASS_TARGET_IP} --live"
+    _alrt "There is NO way back to this box as production: the target has taken live"
+    _alrt "writes since the relay started, and abandoning it loses them."
+    _xmass_start_cron_relay
+    return 0
+  fi
   # Fire when the web block is up OR when only the park happened (an abort
   # between the park and the web block must still tell the operator that
   # cron and the runners are down on this box).
@@ -5225,8 +5293,19 @@ _xmass_restore_hint() {
 _xmass_block_web_all() {
   _info "Blocking web (http-off.pid) on all source accounts ..."
   _XMASS_WEB_BLOCKED=YES
-  local _oct
+  local _oct _held=""
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    # An account already converted to the relay has no PHP left to gate on
+    # its relayed sites: writing the account gate there would be inert and
+    # the closing line below a lie. What it may still hold locally are the
+    # sites deferred until the new box has renamed them, so the per-host
+    # gate is what gets re-asserted for it (a resumed cutover lands here).
+    if [ -e "/data/disk/${_oct}/log/proxied.pid" ]; then
+      _xmass_plant_host_gate "${_oct}" "$(_xmass_src_fqdn)" \
+        || _alrt "  ${_oct}: could not re-assert the per-host gate"
+      _held="${_held} ${_oct}"
+      continue
+    fi
     # static/ is tenant-writable, so both the control directory and the pid
     # name can be planted as symlinks: mkdir -p succeeds silently on a link to
     # a directory and > follows a live link and creates the target of a
@@ -5249,7 +5328,47 @@ _xmass_block_web_all() {
     find /var/lib/nginx/speed -type f -delete &>/dev/null
   fi
   service nginx reload &>/dev/null
-  _info "Web blocked on all source accounts: OK"
+  if [ -n "${_held}" ]; then
+    _info "Web blocked on the source accounts still serving locally; already relaying, per-host gate re-asserted:${_held}"
+  else
+    _info "Web blocked on all source accounts: OK"
+  fi
+}
+
+# The old box hostname as the panels know it -- the name renameaegirhost is
+# told to replace on the new box. The deferred set of the relay conversion
+# and the rename must agree on it, so both read it here.
+_xmass_src_fqdn() {
+  local _f
+  _f=$(grep "remote_host" /var/aegir/.drush/server_master.alias.drushrc.php 2>/dev/null \
+    | head -1 \
+    | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
+  _f=${_f//[^a-zA-Z0-9.\-]/}
+  [ -z "${_f}" ] && _f=$(hostname -f 2>/dev/null | tr -d '\n')
+  echo "${_f}"
+}
+
+# The per-host twin of the account gate: holds only the sites named under the
+# listed hostname (the global settings chain matches the request's Host; a
+# Grav or Textpattern vhost named under the box hostname tests the file's
+# presence). Same symlink-safe shape as the account gate above.
+_xmass_plant_host_gate() {
+  local _oct="$1"
+  local _fqdn="$2"
+  local _hg="/data/disk/${_oct}/static/control/http-off-host.pid"
+  [ -n "${_fqdn}" ] || return 1
+  [ -L "/data/disk/${_oct}/static/control" ] \
+    && rm -f "/data/disk/${_oct}/static/control" &>/dev/null
+  mkdir -p "/data/disk/${_oct}/static/control"
+  [ -L "${_hg}" ] && rm -f "${_hg}" &>/dev/null
+  if [ ! -d "/data/disk/${_oct}/static/control" ] \
+    || [ -L "/data/disk/${_oct}/static/control" ]; then
+    return 1
+  fi
+  grep -q -x -F "${_fqdn}" "${_hg}" 2>/dev/null || echo "${_fqdn}" >> "${_hg}"
+  chown -h "${_oct}:$(_acct_group "${_oct}")" "${_hg}" &>/dev/null || true
+  chmod 644 "${_hg}" &>/dev/null
+  grep -q -x -F "${_fqdn}" "${_hg}" 2>/dev/null
 }
 
 _xmass_remove_http_off_all() {
@@ -5267,6 +5386,16 @@ _xmass_remove_http_off_all() {
       ;;
     esac
     rm -f "/data/disk/${_oct}/static/control/http-off.pid"
+    # The per-host gate goes with it only once the account's deferred sites
+    # were converted too; a failed second pass keeps them held.
+    case " ${_XMASS_PROXY_DEFER_FAILED:-} " in
+      *" ${_oct} "*)
+        _alrt "  ${_oct}: its deferred sites were NOT converted; keeping the per-host gate up"
+      ;;
+      *)
+        rm -f "/data/disk/${_oct}/static/control/http-off-host.pid"
+      ;;
+    esac
   done
   if [ -d "/var/lib/nginx/speed" ]; then
     find /var/lib/nginx/speed -type f -delete &>/dev/null
@@ -5282,8 +5411,10 @@ _xmass_remove_http_off_target() {
   _info "Removing http-off.pid from all target accounts on ${_tgt} ..."
   local _oct
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    # The per-host twin goes too: one left by an earlier move of this box
+    # rides the same sync and would hold the renamed sites on 503 here.
     ssh root@"${_tgt}" \
-      "rm -f /data/disk/${_oct}/static/control/http-off.pid" 2>/dev/null \
+      "rm -f /data/disk/${_oct}/static/control/http-off.pid /data/disk/${_oct}/static/control/http-off-host.pid" 2>/dev/null \
       || _alrt "Could not remove http-off.pid for ${_oct} on target ${_tgt}"
   done
   ssh root@"${_tgt}" \
@@ -5355,6 +5486,77 @@ _xmass_maint_off() {
     ssh root@"${_tgt}" "rm -f /run/boa_sql_maintenance.pid" 2>/dev/null || true
   fi
 }
+# The target's half alone. The mute exists to keep a watchdog restart of MySQL
+# away from the promotion; once the promoted box is about to take live traffic
+# it must have its database watchdog back (auto-heal, lock-break, long-query
+# kill), and the renames' database work is ordinary client work the watchdog
+# is meant to supervise. The source keeps its mute to the end of the cutover.
+_xmass_maint_off_target() {
+  [ -n "${_tgt}" ] || return 0
+  ssh root@"${_tgt}" "rm -f /run/boa_sql_maintenance.pid" 2>/dev/null \
+    || _alrt "could not re-arm the SQL watchdog on ${_tgt} (rm -f /run/boa_sql_maintenance.pid there)"
+}
+
+# The standby marker is the ONE thing keeping the old-identity task queue
+# unarmed on the promoted box until its renames are done: the runner parks
+# the master dispatch crontab and exits on it, every minute. Once visitors
+# are relayed there, a marker that went missing (removed by hand, aged out)
+# would let a dispatch run under the old server identity against live
+# production. Proven present before the relay starts and again between roots.
+_xmass_assert_standby_marker() {
+  ssh -o ConnectTimeout=15 root@"${_tgt}" \
+    "test -e /root/.standby.cnf && test ! -e /var/spool/cron/crontabs/aegir" 2>/dev/null
+}
+
+# What is queued in the panels travelled with the database. The rename forces
+# the queue several times per root, and from now on that would run a
+# replicated verify, migrate, clone or restore against sites already serving
+# visitors. Fail them out first -- by current revision, the dispatcher's own
+# view: hosting_add_task() never sets executed, and every finished task
+# leaves its creation revision frozen at status 0 -- then re-count, and
+# refuse to go on while anything is left. The operator re-queues what is
+# still wanted once the move is done. Site auto-import stays off for the
+# window: a platform verify of the rename must not register sites twice.
+_xmass_failout_travelling_tasks() {
+  local _root _usr _left _bad=0 _roots="/var/aegir"
+  local _oct
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _roots="${_roots} /data/disk/${_oct}"
+  done
+  _info "Failing out the task rows that travelled with the panels on ${_tgt} ..."
+  for _root in ${_roots}; do
+    _usr="${_root##*/}"
+    ssh -o ConnectTimeout=15 root@"${_tgt}" \
+      "[ -f '${_root}/.drush/hostmaster.alias.drushrc.php' ]" 2>/dev/null || continue
+    _left=$(ssh -o ConnectTimeout=15 root@"${_tgt}" bash -s -- "${_usr}" <<'REMOTE' 2>/dev/null
+_u="$1"
+_q() { su -s /bin/bash - "${_u}" -c "drush8 @hostmaster sqlq \"$1\"" 2>/dev/null; }
+_q "UPDATE hosting_task t INNER JOIN node n ON n.vid = t.vid SET t.task_status='2' WHERE t.task_status IN ('-1','0') AND (t.executed IS NULL OR t.executed=0)" >/dev/null
+su -s /bin/bash - "${_u}" -c "drush8 @hostmaster vset --always-set hosting_platform_automatic_site_import 0" &>/dev/null
+_q "SELECT COUNT(*) FROM hosting_task t INNER JOIN node n ON n.vid = t.vid WHERE t.task_status = '-1' OR (t.task_status = '0' AND (t.executed IS NULL OR t.executed=0))" | tail -1 | tr -dc '0-9'
+REMOTE
+)
+    if [ -z "${_left}" ] || [ "${_left}" != "0" ]; then
+      _bad=$((_bad + 1))
+      _alrt "  ${_root}: ${_left:-unknown} task(s) still queued after the fail-out"
+    fi
+  done
+  [ "${_bad}" -eq 0 ]
+}
+
+# The auto-import default comes back once the renames are done.
+_xmass_restore_site_auto_import() {
+  local _root _usr _roots="/var/aegir"
+  local _oct
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _roots="${_roots} /data/disk/${_oct}"
+  done
+  for _root in ${_roots}; do
+    _usr="${_root##*/}"
+    ssh -o ConnectTimeout=15 root@"${_tgt}" \
+      "[ -f '${_root}/.drush/hostmaster.alias.drushrc.php' ] && su -s /bin/bash - '${_usr}' -c 'drush8 @hostmaster vdel -y hosting_platform_automatic_site_import' &>/dev/null; true" 2>/dev/null
+  done
+}
 
 _xmass_check_no_boa_running() {
   _info "Verifying BOA background jobs are stopped ..."
@@ -5401,30 +5603,81 @@ _xmass_convert_source_to_proxy() {
   # conversion must keep its 503 gate (step 17) and must not be stamped
   # proxied (step 18) -- its vhosts still serve the OLD local copy while the
   # database now lives on the target.
-  _info "Converting all source accounts to proxy vhosts via xoct ..."
-  _XMASS_PROXY_CONV_FAILED=""
-  local _oct _rc _tgt_fqdn _my_fqdn
-  # The sites named under this box's hostname were renamed on the target by
-  # step 13; handed both names, xoct answers their OLD names with a 301 to
-  # the renamed sites instead of proxying them to the target's catch-all
-  # (design ruling D-17; e2e CUT-E36). Read once, never guessed.
-  _my_fqdn=$(hostname -f 2>/dev/null)
-  _tgt_fqdn=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "hostname -f" 2>/dev/null)
-  if [ -z "${_tgt_fqdn}" ]; then
-    _alrt "  cannot read the target's hostname over ssh -- renamed sites' old names are proxied, not redirected"
+  #
+  # Two passes when the relay starts BEFORE the renames (mode 'relay', then
+  # 'final'); one ('whole') when it starts after them:
+  #   relay  the client-domain sites are converted; the sites named under
+  #          this box's hostname are deferred -- they stay local, held on 503
+  #          by the per-host gate, because the new box has not renamed them
+  #          yet and a relay or a redirect would land on nothing. The
+  #          target's hostname is deliberately NOT handed down here.
+  #   final  after the renames: the deferred names are converted, and, handed
+  #          both hostnames, xoct answers them with a 301 to the renamed
+  #          sites (design ruling D-17; e2e CUT-E36). An account the relay
+  #          pass could not convert gets its whole conversion here.
+  #   whole  the single pass of the rename-first order: everything at once,
+  #          redirects included.
+  local _pass="${1:-whole}"
+  local _oct _rc _tgt_fqdn="" _my_fqdn="" _defer_fqdn=""
+  if [ "${_pass}" = "relay" ]; then
+    _info "Converting the source accounts to relay the client-domain sites via xoct ..."
+    _XMASS_PROXY_CONV_FAILED=""
+    _defer_fqdn=$(_xmass_src_fqdn)
+  else
+    [ "${_pass}" = "final" ] \
+      && _info "Converting the sites deferred until the renames were done via xoct ..." \
+      || _info "Converting all source accounts to proxy vhosts via xoct ..."
+    [ "${_pass}" = "whole" ] && _XMASS_PROXY_CONV_FAILED=""
+    _XMASS_PROXY_DEFER_FAILED=""
+    # Read once, never guessed.
+    _my_fqdn=$(_xmass_src_fqdn)
+    _tgt_fqdn=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "hostname -f" 2>/dev/null)
+    if [ -z "${_tgt_fqdn}" ]; then
+      _alrt "  cannot read the target's hostname over ssh -- renamed sites' old names are proxied, not redirected"
+    fi
   fi
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     if [ -e "/data/disk/${_oct}/log/proxied.pid" ]; then
-      _info "  ${_oct}: already proxied earlier; leaving as is"
+      if [ "${_pass}" != "final" ]; then
+        _info "  ${_oct}: already proxied earlier; leaving as is"
+        continue
+      fi
+      # Already relaying: the repair pass converts what was deferred and
+      # keeps quiet towards the client unless the promise changed.
+      _info "  xoct proxy ${_oct} ${_tgt} --repair ..."
+      _XOCT_TARGET_FQDN="${_tgt_fqdn}" _XOCT_MY_FQDN="${_my_fqdn}" xoct proxy "${_oct}" "${_tgt}" --repair
+      _rc=$?
+      if [ "${_rc}" -ne 0 ]; then
+        _alrt "xoct proxy --repair returned rc=${_rc} for account ${_oct} -- its deferred sites stay held on 503"
+        _XMASS_PROXY_DEFER_FAILED="${_XMASS_PROXY_DEFER_FAILED} ${_oct}"
+      fi
       continue
     fi
     touch "/data/disk/${_oct}/log/exported.pid"
-    _info "  xoct proxy ${_oct} ${_tgt} ..."
-    _XOCT_TARGET_FQDN="${_tgt_fqdn}" _XOCT_MY_FQDN="${_my_fqdn}" xoct proxy "${_oct}" "${_tgt}"
+    if [ "${_pass}" = "relay" ]; then
+      # The per-host gate goes up before xoct lifts the account gate; xoct
+      # writes it too, and refuses the account when it cannot.
+      _xmass_plant_host_gate "${_oct}" "${_defer_fqdn}" \
+        || _alrt "  ${_oct}: could not write the per-host gate here; xoct will retry and refuse without it"
+      _info "  xoct proxy ${_oct} ${_tgt} --defer-host-named=${_defer_fqdn} ..."
+      xoct proxy "${_oct}" "${_tgt}" --defer-host-named="${_defer_fqdn}"
+    else
+      _info "  xoct proxy ${_oct} ${_tgt} ..."
+      _XOCT_TARGET_FQDN="${_tgt_fqdn}" _XOCT_MY_FQDN="${_my_fqdn}" xoct proxy "${_oct}" "${_tgt}"
+    fi
     _rc=$?
     if [ "${_rc}" -ne 0 ]; then
       _alrt "xoct proxy returned rc=${_rc} for account ${_oct} -- NOT converted"
-      _XMASS_PROXY_CONV_FAILED="${_XMASS_PROXY_CONV_FAILED} ${_oct}"
+      case " ${_XMASS_PROXY_CONV_FAILED} " in
+        *" ${_oct} "*) ;;
+        *) _XMASS_PROXY_CONV_FAILED="${_XMASS_PROXY_CONV_FAILED} ${_oct}" ;;
+      esac
+    elif [ "${_pass}" = "final" ]; then
+      # Converted after all: no longer a failed conversion for steps 17/18.
+      _XMASS_PROXY_CONV_FAILED=" ${_XMASS_PROXY_CONV_FAILED} "
+      _XMASS_PROXY_CONV_FAILED="${_XMASS_PROXY_CONV_FAILED// ${_oct} / }"
+      _XMASS_PROXY_CONV_FAILED="${_XMASS_PROXY_CONV_FAILED% }"
+      [ -n "${_XMASS_PROXY_CONV_FAILED// /}" ] || _XMASS_PROXY_CONV_FAILED=""
     fi
   done
   _info "Source proxy conversion via xoct complete"
@@ -5508,13 +5761,39 @@ _xmass_setup_migration_proxy_trust() {
       && ssh root@"${_tgt}" "chmod 0755 '${_tool}' '${_realip}'" 2>/dev/null
   fi
 
-  if ssh root@"${_tgt}" "[ -x '${_tool}' ]" 2>/dev/null; then
-    _info "Trusting migration proxy ${_src_ips// /, } on target ${_tgt} (realip + csf) ..."
-    ssh root@"${_tgt}" "${_tool} trust ${_src_ips} ${_perm}" \
-      || _alrt "migration_proxy_trust setup returned non-zero on target ${_tgt}"
-  else
-    _alrt "Skipping target trust: ${_tool} missing on target ${_tgt} -- realip/csf NOT wired; real-client bans and per-site ip_access will not work through the proxy"
+  # Fail closed: the caller starts relaying right after this, and an unwired
+  # target would ban the relay's address within minutes and blackhole every
+  # migrated site at once. A failure returns non-zero and the cutover parks
+  # with the source still gated.
+  if ! ssh root@"${_tgt}" "[ -x '${_tool}' ]" 2>/dev/null; then
+    _alrt "target trust NOT wired: ${_tool} missing on target ${_tgt} -- realip/csf would not work through the proxy"
+    return 1
   fi
+  _info "Trusting migration proxy ${_src_ips// /, } on target ${_tgt} (realip + csf) ..."
+  if ! ssh root@"${_tgt}" "${_tool} trust ${_src_ips} ${_perm}"; then
+    _alrt "migration_proxy_trust setup returned non-zero on target ${_tgt}"
+    return 1
+  fi
+  # Prove it landed, never assume: the persisted peer list the firewall
+  # re-asserts from, the allow and ignore lines where csf is present, and the
+  # path itself -- this box must reach the target's web port right now.
+  local _ip
+  for _ip in ${_src_ips}; do
+    if ! ssh -o ConnectTimeout=15 root@"${_tgt}" \
+      "grep -q -x -F '${_ip}' /root/.migration.proxy.ips.cnf 2>/dev/null \
+       && { [ ! -x /usr/sbin/csf ] || [ ! -e /etc/csf/csf.allow ] \
+         || { grep -q -F 'tcp|in|d=80|s=${_ip} # migration proxy' /etc/csf/csf.allow \
+           && grep -q -F 'tcp|in|d=443|s=${_ip} # migration proxy' /etc/csf/csf.allow \
+           && grep -q -F '${_ip} # migration proxy' /etc/csf/csf.ignore; }; }" 2>/dev/null; then
+      _alrt "target trust NOT proven for ${_ip} on ${_tgt} (peer list, csf.allow or csf.ignore lacks it)"
+      return 1
+    fi
+  done
+  if ! curl -s -o /dev/null --max-time 15 -A iCab "http://${_tgt}/" 2>/dev/null; then
+    _alrt "this box cannot reach ${_tgt} on port 80 after the trust was wired -- a relay would answer 502"
+    return 1
+  fi
+  return 0
 }
 
 
@@ -5623,11 +5902,7 @@ _xmass_rewire_panel_db_access() {
   # collect like the rename step's so the caller parks the cutover
   # resumably.
   local _rc _src_fqdn
-  _src_fqdn=$(grep "remote_host" /var/aegir/.drush/server_master.alias.drushrc.php 2>/dev/null \
-    | head -1 \
-    | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
-  _src_fqdn=${_src_fqdn//[^a-zA-Z0-9.\-]/}
-  [ -z "${_src_fqdn}" ] && _src_fqdn=$(hostname -f 2>/dev/null | tr -d '\n')
+  _src_fqdn=$(_xmass_src_fqdn)
   if [ -z "${_src_fqdn}" ]; then
     _alrt "Cannot determine the source FQDN for the panel rewire step"
     _XMASS_PANEL_FAILED=" fqdn-detection"
@@ -6231,6 +6506,23 @@ PROMCLEAN
   done
 }
 
+# Between roots, once visitors are already relayed to the target: a rename
+# can take many minutes per root, so one check before the first root cannot
+# guard the last. A missing marker stops the loop BEFORE the next root's
+# queue passes run, and the caller parks with the sites still serving.
+_xmass_rename_marker_holds() {
+  [ "${_XMASS_SOURCE_PROXIED}" = "YES" ] || return 0
+  # Step 15 removed the marker itself and said so in the state record: a
+  # resumed tail re-enters the renames (they converge) and must not demand
+  # a marker this very cutover has already, correctly, taken away.
+  [ "${_XMASS_TARGET_ARMED}" = "YES" ] && return 0
+  _xmass_assert_standby_marker && return 0
+  _alrt "the standby marker is GONE on ${_tgt} (or its master dispatch crontab is armed) before the rename of $1"
+  _alrt "-- a dispatch under the old server identity could run against live production; stopping here"
+  _XMASS_RENAME_FAILED="${_XMASS_RENAME_FAILED} $1(standby-marker)"
+  return 1
+}
+
 _xmass_renameaegirhost_all() {
   # OLD is pinned via --force-old to the source's own server_master alias
   # value (what a first-run auto-detect would see on the target) because:
@@ -6243,11 +6535,7 @@ _xmass_renameaegirhost_all() {
   # failure makes this return non-zero so the caller parks the cutover
   # resumably instead of saving phase=complete.
   local _rc _src_fqdn
-  _src_fqdn=$(grep "remote_host" /var/aegir/.drush/server_master.alias.drushrc.php 2>/dev/null \
-    | head -1 \
-    | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
-  _src_fqdn=${_src_fqdn//[^a-zA-Z0-9.\-]/}
-  [ -z "${_src_fqdn}" ] && _src_fqdn=$(hostname -f 2>/dev/null | tr -d '\n')
+  _src_fqdn=$(_xmass_src_fqdn)
   if [ -z "${_src_fqdn}" ]; then
     # Return, never _die: a die here would exit past the caller's park
     # block and wedge the state at phase=cutover with no resume path.
@@ -6269,7 +6557,9 @@ _xmass_renameaegirhost_all() {
     "[ -d '/var/aegir' ] && \
      [ -f '/var/aegir/.drush/server_master.alias.drushrc.php' ]" 2>/dev/null
   _probe_rc=$?
-  if [ "${_probe_rc}" -eq 0 ]; then
+  if [ "${_probe_rc}" -eq 0 ] && ! _xmass_rename_marker_holds "/var/aegir"; then
+    return 1
+  elif [ "${_probe_rc}" -eq 0 ]; then
     _info "  Renaming /var/aegir on target ..."
     ssh root@"${_tgt}" "renameaegirhost --aegir-root /var/aegir --force-old ${_src_fqdn}"
     _rc=$?
@@ -6291,7 +6581,9 @@ _xmass_renameaegirhost_all() {
       "[ -f '/data/disk/${_oct}/.drush/server_master.alias.drushrc.php' ]" \
       2>/dev/null
     _probe_rc=$?
-    if [ "${_probe_rc}" -eq 0 ]; then
+    if [ "${_probe_rc}" -eq 0 ] && ! _xmass_rename_marker_holds "/data/disk/${_oct}"; then
+      return 1
+    elif [ "${_probe_rc}" -eq 0 ]; then
       _info "  Renaming /data/disk/${_oct} on target ..."
       ssh root@"${_tgt}" "renameaegirhost --aegir-root /data/disk/${_oct} --force-old ${_src_fqdn}"
       _rc=$?
@@ -7944,6 +8236,12 @@ REMOTE
   _XMASS_REPL_PSWD=$(head -c 48 /dev/urandom \
     | base64 | tr -dc 'a-zA-Z0-9' | head -c 32)
   _XMASS_INIT_TIME=$(date +%Y%m%d-%H%M%S)
+  # A new migration starts with no cutover on record: the three keys below
+  # describe ONE cutover and must never leak in from an earlier state file.
+  _XMASS_SOURCE_PROXIED=""
+  _XMASS_PROXIED_AT=""
+  _XMASS_TARGET_ARMED=""
+  _XMASS_FLIP_FIRST=""
   _XMASS_LAST_SYNC=""
   _XMASS_PHASE="init"
   # Legacy boolean derived from the mode (kept one release for a rolled-back
@@ -8187,6 +8485,19 @@ _xmass_cmd_reset_phase() {
   fi
   if [ "${_new}" = "complete" ]; then
     _alrt "'complete' closes the migration: no subcommand will resume afterwards."
+  fi
+  # Once this box relays visitors to the target, the target has taken live
+  # writes. 'syncing' (or 'init') would re-enter the normal flow: another
+  # final sync -- whose vhost leg would overwrite the target's vhosts with
+  # this box's relay vhosts -- and a second promotion of a box that is
+  # already production. Refused outright, never merely warned about: with the
+  # sites UP, this state reads as "nothing irreversible has happened".
+  if [ "${_XMASS_SOURCE_PROXIED}" = "YES" ] \
+    && { [ "${_new}" = "syncing" ] || [ "${_new}" = "init" ]; }; then
+    _die "reset-phase ${_new} REFUSED: this box has been relaying the migrated sites to" \
+         "${_XMASS_TARGET_IP} since ${_XMASS_PROXIED_AT:-the relay step}; the target has taken live writes" \
+         "and cannot be synced over or promoted again. Resume the cutover tail instead:" \
+         "'xmass reset-phase rename-failed', then 'xmass cutover ${_XMASS_TARGET_IP} --live'."
   fi
   if [ "${_XMASS_PHASE}" = "cutover" ] && [ "${_new}" = "syncing" ]; then
     _alrt "Returning to 'syncing' is correct ONLY if the cutover aborted BEFORE the"
@@ -8720,8 +9031,8 @@ FWOPEN
     _xmass_save_state
     _xmass_restore_hint
     _die "refusing to convert the source into a proxy pointing at a target whose nginx config is invalid" \
-         "— cutover PARKED (phase=rename-failed); the target stays promoted, the source stays" \
-         "503-gated and the SQL watchdogs stay paused. Fix nginx on ${_tgt}, then re-run" \
+         "— cutover PARKED (phase=rename-failed); the target stays promoted." \
+         "$(_xmass_park_source_state) Fix nginx on ${_tgt}, then re-run" \
          "'xmass cutover ${_tgt} --live' — the resume re-runs this proof and starts nginx itself." \
          "(If the invalid config stems from a half-renamed root, running renameaegirhost" \
          "manually on ${_tgt} converges it — it is safe to re-run.)"
@@ -8747,8 +9058,8 @@ FWOPEN
       _alrt "on 5.7) and 'SELECT @@super_read_only'; the re-run below records it again."
     fi
     _die "target ${_tgt}: nginx is not answering on port 80 after start" \
-         "— cutover PARKED (phase=rename-failed); the target stays promoted, the source stays" \
-         "503-gated and the SQL watchdogs stay paused. Fix nginx on ${_tgt} so port 80 answers," \
+         "— cutover PARKED (phase=rename-failed); the target stays promoted." \
+         "$(_xmass_park_source_state) Fix nginx on ${_tgt} so port 80 answers," \
          "then re-run 'xmass cutover ${_tgt} --live' — the resume re-runs this proof."
   fi
   # External reachability -- from the source, the same path client traffic
@@ -8864,6 +9175,151 @@ UNLOCKDB
   _info "Promoted target DB unlocked: super_read_only=OFF"
 }
 
+# Which order the cutover tail takes. Relay-first needs every site to reach
+# its database locally: _THIS_DB_HOST is 'localhost' by default, but 'FQDN'
+# is supported, and on such an estate every site's settings name the OLD box
+# as the database host until the rename's verifies regenerate them. Relaying
+# visitors to the target before that would have its PHP dial the demoted
+# source's MySQL: writes would fork silently. There the rename-first order
+# still applies, whole and unchanged. Read on both boxes; an unreadable
+# target is treated as not local. The choice is saved with the state so a
+# resumed tail keeps it.
+_xmass_decide_flip_first() {
+  local _vals _v _why=""
+  _vals=$( { grep -h "^_THIS_DB_HOST=" /root/.barracuda.cnf /root/.*.octopus.cnf 2>/dev/null;
+    ssh -o ConnectTimeout=15 root@"${_tgt}" \
+      "grep -h '^_THIS_DB_HOST=' /root/.barracuda.cnf /root/.*.octopus.cnf 2>/dev/null; echo _THIS_DB_HOST=__read_ok__" 2>/dev/null; } \
+    | sed "s/^_THIS_DB_HOST=//; s/[\"' ]//g" | sort -u)
+  case "${_vals}" in
+    *__read_ok__*) ;;
+    *) _why="the target's database host setting could not be read" ;;
+  esac
+  for _v in ${_vals}; do
+    case "${_v}" in
+      localhost|127.0.0.1|__read_ok__) ;;
+      *) _why="_THIS_DB_HOST=${_v} is in use" ;;
+    esac
+  done
+  if [ -n "${_why}" ]; then
+    _XMASS_FLIP_FIRST=NO
+    _alrt "cutover order: RENAME FIRST (${_why}) -- the sites stay on 503 until every"
+    _alrt "Ægir root is renamed, so the window grows with the number of accounts"
+  else
+    _XMASS_FLIP_FIRST=YES
+    _info "cutover order: relay first -- client-domain sites return before the renames"
+  fi
+}
+
+# What a park must say about the source. Before the relay starts it is gated;
+# after, it is the live front door of every client-domain site, and telling
+# the operator it "stays 503-gated" would be the opposite of the truth at the
+# very park the early relay exists for.
+_xmass_park_source_state() {
+  if [ "${_XMASS_SOURCE_PROXIED}" = "YES" ]; then
+    echo "The source RELAYS the client-domain sites to ${_tgt} (since ${_XMASS_PROXIED_AT:-the relay step}): they keep serving through the park; the sites named under the old box hostname and the panels stay held, and the source's SQL watchdog stays paused."
+  else
+    echo "The source stays 503-gated and the SQL watchdogs stay paused."
+  fi
+}
+
+# Steps 12.85..12.94 -- the relay starts BEFORE the renames. The promoted
+# target already serves every client-domain site (nothing on their request
+# path carries the box hostname), while renameaegirhost costs minutes per
+# Ægir root, in series. Relaying first takes the renames out of the visitors'
+# window, which then no longer grows with the number of accounts. What keeps
+# this safe is the standby marker: until step 15 removes it, no dispatch can
+# run under the old server identity on the target. Every refusal returns
+# non-zero with the reason in _XMASS_RELAY_REFUSED, BEFORE the first account
+# is converted, so the caller parks with the source still gated. Safe to
+# re-enter: every step converges, and converted accounts are skipped.
+_xmass_cutover_start_relay() {
+  _XMASS_RELAY_REFUSED=""
+  local _fqdn
+  _fqdn=$(_xmass_src_fqdn)
+  if [ -z "${_fqdn}" ]; then
+    _XMASS_RELAY_REFUSED="the old box hostname cannot be determined (needed to defer the sites named under it)"
+    return 1
+  fi
+
+  # Step 12.85: the freeze belongs to the OLD box. The new production box
+  # must not take live traffic read-only because it inherited the flag.
+  _xmass_thaw_writes "${_tgt}"
+
+  # Step 12.86: the box about to be production gets its SQL watchdog back.
+  _xmass_maint_off_target
+
+  if [ "${_XMASS_TARGET_ARMED}" != "YES" ]; then
+    # Step 12.87: the queue hold that makes the early relay safe is proven
+    # present, never assumed.
+    if ! _xmass_assert_standby_marker; then
+      _XMASS_RELAY_REFUSED="the standby marker is missing on ${_tgt} (or its master dispatch crontab is armed): the task queue would run under the old server identity against live production"
+      return 1
+    fi
+  fi
+
+  # Step 12.89: realip + csf trust on the target, fail-closed.
+  if ! _xmass_setup_migration_proxy_trust; then
+    _XMASS_RELAY_REFUSED="the migration-proxy trust could not be wired and proven on ${_tgt}: a relay into it would be banned"
+    return 1
+  fi
+
+  # Step 12.895: carry this box's INBOUND proxies' reach (root key + csf) to
+  # the promoted box while the inbound records still exist -- the conversion
+  # below overwrites them.
+  _xmass_carry_inbound_reach
+
+  if [ "${_XMASS_TARGET_ARMED}" != "YES" ]; then
+    # Step 12.90: no replicated task may run against sites serving visitors.
+    if ! _xmass_failout_travelling_tasks; then
+      _XMASS_RELAY_REFUSED="task rows that travelled with the panels could not be failed out on ${_tgt}: the rename's forced queue passes would run them against live sites"
+      return 1
+    fi
+  fi
+
+  # Step 12.91: the irreversible act is on record BEFORE it happens, so a
+  # killed run cannot hide it: from the first converted account on, the
+  # target takes live writes and abandoning it loses them. The csf lines
+  # this run added are what the relay reaches the target through, so a
+  # signal must no longer withdraw them.
+  if [ "${_XMASS_SOURCE_PROXIED}" != "YES" ]; then
+    _XMASS_SOURCE_PROXIED=YES
+    _XMASS_PROXIED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+  fi
+  _XMASS_CSF_KEEP=YES
+  _xmass_save_state
+
+  # Step 12.92: convert the client-domain sites to the relay via xoct
+  # (handles vhost templates, nginx reload, per-account completion mail and
+  # the account gate). END of the client-domain outage. First confirm the
+  # certificate mirror is present on this box: from here on the source
+  # serves the relayed sites' TLS, renewals stop by design, and only the
+  # daily mirror keeps a long-lived proxy from serving expired certificates
+  # in ~90 days.
+  _xmass_cert_mirror_check
+  _xmass_convert_source_to_proxy relay
+
+  # Step 12.93: the master panel is not an xoct account: never proxied, kept
+  # online as this box's monitoring canary in Drupal's own maintenance mode.
+  _xmass_source_master_panel_maintenance
+
+  # Step 12.94: this box is now the only front door; it gets cron back.
+  _xmass_start_cron_relay
+  return 0
+}
+
+_xmass_cert_mirror_check() {
+  if [ ! -x "/var/xdrago/migration_proxy_certs.sh" ]; then
+    _alrt "/var/xdrago/migration_proxy_certs.sh is MISSING on this source -- long-lived"
+    _alrt "proxies will serve expired certificates once the current ones age out."
+    _alrt "It ships with the current release: run 'barracuda up-<tree> system noscreen'"
+    _alrt "here after the cutover, or copy the script from the target."
+  elif ! grep -q "migration_proxy_certs" /var/spool/cron/crontabs/root 2>/dev/null; then
+    _alrt "migration_proxy_certs.sh is present but NOT SCHEDULED (no root crontab line);"
+    _alrt "the daily mirror never runs until the 06:45 line exists -- a barracuda up-* run"
+    _alrt "or the BOA fetch pass restores it."
+  fi
+}
+
 _xmass_cutover_finish() {
   # Steps 12..18 — everything after the target promotion. Shared by the
   # normal cutover flow and the 'rename-failed' resume path; every step here
@@ -8895,7 +9351,7 @@ _xmass_cutover_finish() {
     _xmass_save_state
     _xmass_restore_hint
     _die "panel DB rewire failed on target for:${_XMASS_PANEL_FAILED} — cutover PARKED (phase=rename-failed)." \
-         " The source stays 503-gated and the SQL watchdogs stay paused." \
+         " $(_xmass_park_source_state)" \
          " Fix the cause on ${_tgt}, then re-run 'xmass cutover ${_tgt} --live' to resume from this step."
   fi
 
@@ -8910,24 +9366,40 @@ _xmass_cutover_finish() {
   # tool ends every root with a serving gate that curls the renamed panel and
   # sites; with the source's http-off.pid still riding in each account's
   # static/control it can only ever see the 503/404 the gate produces, so it
-  # reported NOT SERVING on every account of a healthy cutover. Nothing
-  # reaches the target before DNS moves and the source proxies only from
-  # step 16, so serving here is safe; step 13.5 repeats the clear, idempotent,
-  # for a pid a rename pass may have re-imported.
+  # reported NOT SERVING on every account of a healthy cutover. It is also
+  # what lets the target serve the relayed visitors from step 12.92 on; step
+  # 13.5 repeats the clear, idempotent, for a pid a rename pass may have
+  # re-imported.
   _xmass_remove_http_off_target
+
+  # Steps 12.85-12.94: start relaying the client-domain sites BEFORE the
+  # renames (see the function). Skipped only on an estate whose sites reach
+  # their database by the box hostname (_XMASS_FLIP_FIRST=NO, decided by the
+  # pre-live gate): there the rename-first order below still applies.
+  if [ "${_XMASS_FLIP_FIRST}" = "YES" ]; then
+    if ! _xmass_cutover_start_relay; then
+      _XMASS_PHASE="rename-failed"
+      _xmass_save_state
+      _xmass_restore_hint
+      _die "the relay could not be started: ${_XMASS_RELAY_REFUSED} — cutover PARKED (phase=rename-failed)." \
+           " $(_xmass_park_source_state)" \
+           " Fix the cause, then re-run 'xmass cutover ${_tgt} --live' to resume from this step."
+    fi
+  fi
 
   # Step 13: Run renameaegirhost on target for all Aegir roots.
   # This rewrites drush aliases, vhosts, and the Aegir DB to the new hostname,
   # then runs the Aegir task queue 5 times to regenerate everything on disk.
   # On any per-root failure: park resumably — NEVER save phase=complete over
   # a half-renamed target (the failure would only surface later as a
-  # wrong-host control panel).
+  # wrong-host control panel). With the relay already started, a park here
+  # leaves every client-domain site SERVING through it.
   if ! _xmass_renameaegirhost_all; then
     _XMASS_PHASE="rename-failed"
     _xmass_save_state
     _xmass_restore_hint
     _die "renameaegirhost failed on target for:${_XMASS_RENAME_FAILED} — cutover PARKED (phase=rename-failed)." \
-         " The source stays 503-gated and the SQL watchdogs stay paused." \
+         " $(_xmass_park_source_state)" \
          " Fix the cause on ${_tgt}, then re-run 'xmass cutover ${_tgt} --live' to resume from this step."
   fi
 
@@ -8975,45 +9447,73 @@ REMOTE
     _alrt " the box is definitively no replica AND its DB unlocked -- step 11.5"
     _alrt " did that here -- but only while cron runs)"
   fi
+  # On record: from here on the target's own dispatcher is live and takes
+  # real client tasks, so a resumed tail must neither expect the marker nor
+  # fail out what is queued there.
+  _XMASS_TARGET_ARMED=YES
+  _xmass_save_state
 
-  # The freeze belongs to the OLD box. Never let the new production box come up
-  # read-only because it inherited the flag along with the rest of the tree.
-  _xmass_thaw_writes "${_tgt}"
+  if [ "${_XMASS_FLIP_FIRST}" = "YES" ]; then
+    # Step 15.1: the window's hold on site auto-import ends, and the per-site
+    # PHP-FPM includes are regenerated ONCE, visibly, now that the renames
+    # are done: the sub-user pass leaves them as found while the promotion
+    # window is open (the rename rewrites the pin names and deliberately
+    # keeps a stale baseline, so an unattended pass mid-rename would wipe
+    # and rebuild them account-wide under live traffic). Its own reload is
+    # configtest-gated.
+    _xmass_restore_site_auto_import
+    _info "Regenerating the per-site PHP-FPM includes on ${_tgt} (one synchronous sub-user pass) ..."
+    ssh -o ConnectTimeout=15 root@"${_tgt}" \
+      "[ -e /var/xdrago/manage_ltd_users.sh ] && bash /var/xdrago/manage_ltd_users.sh &> /dev/null; nginx -t &> /dev/null && service nginx reload &> /dev/null" 2>/dev/null \
+      || _alrt "the sub-user pass or the nginx configtest failed on ${_tgt} -- run there: bash /var/xdrago/manage_ltd_users.sh; nginx -t"
 
-  # Step 15.9: Wire migration-proxy realip+csf trust BEFORE the source starts
-  # proxying, so the new host recovers the real client and never bans the proxy
-  # from the first relayed request.
-  _xmass_setup_migration_proxy_trust
+    # Step 15.2: the sites deferred at step 12.92 are renamed now: convert
+    # them, their old names answering a 301 to the new ones. A failure keeps
+    # the per-host gate up for that account (step 17) and is reported in
+    # the closing summary; it never parks a cutover whose sites all serve.
+    _xmass_convert_source_to_proxy final
+  else
+    # Rename-first order (an estate whose sites reach their database by the
+    # box hostname): the relay starts only now, as one whole conversion.
 
-  # Step 15.95: carry this box's INBOUND proxies' reach (root key + csf) to
-  # the promoted box while the inbound records still exist -- step 16
-  # overwrites them.
-  _xmass_carry_inbound_reach
+    # The freeze belongs to the OLD box. Never let the new production box come up
+    # read-only because it inherited the flag along with the rest of the tree.
+    _xmass_thaw_writes "${_tgt}"
 
-  # Step 16: Convert source vhosts to proxy via xoct (handles vhost templates,
-  # nginx reload, and per-account migration-complete notification emails).
-  # http-off.pid removal per account is also handled by xoct proxy.
-  # First confirm the certificate mirror is present on this box: from here on
-  # the source serves the proxied sites' TLS, renewals stop by design, and
-  # only the daily mirror keeps a long-lived proxy from serving expired
-  # certificates in ~90 days.
-  if [ ! -x "/var/xdrago/migration_proxy_certs.sh" ]; then
-    _alrt "/var/xdrago/migration_proxy_certs.sh is MISSING on this source -- long-lived"
-    _alrt "proxies will serve expired certificates once the current ones age out."
-    _alrt "It ships with the current release: run 'barracuda up-<tree> system noscreen'"
-    _alrt "here after the cutover, or copy the script from the target."
-  elif ! grep -q "migration_proxy_certs" /var/spool/cron/crontabs/root 2>/dev/null; then
-    _alrt "migration_proxy_certs.sh is present but NOT SCHEDULED (no root crontab line);"
-    _alrt "the daily mirror never runs until the 06:45 line exists -- a barracuda up-* run"
-    _alrt "or the BOA fetch pass restores it."
+    # Step 15.9: Wire migration-proxy realip+csf trust BEFORE the source starts
+    # proxying, so the new host recovers the real client and never bans the proxy
+    # from the first relayed request. Fail-closed here too: the source is
+    # still gated, and an unwired target would ban the relay within minutes.
+    if ! _xmass_setup_migration_proxy_trust; then
+      _XMASS_PHASE="rename-failed"
+      _xmass_save_state
+      _xmass_restore_hint
+      _die "the migration-proxy trust could not be wired and proven on ${_tgt} — cutover PARKED (phase=rename-failed)." \
+           " $(_xmass_park_source_state)" \
+           " Fix the cause, then re-run 'xmass cutover ${_tgt} --live' to resume from this step."
+    fi
+
+    # Step 15.95: carry this box's INBOUND proxies' reach (root key + csf) to
+    # the promoted box while the inbound records still exist -- step 16
+    # overwrites them.
+    _xmass_carry_inbound_reach
+
+    # Step 16: Convert source vhosts to proxy via xoct (handles vhost templates,
+    # nginx reload, and per-account migration-complete notification emails).
+    # http-off.pid removal per account is also handled by xoct proxy.
+    _XMASS_SOURCE_PROXIED=YES
+    [ -n "${_XMASS_PROXIED_AT}" ] || _XMASS_PROXIED_AT=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+    _XMASS_CSF_KEEP=YES
+    _xmass_save_state
+    _xmass_cert_mirror_check
+    _xmass_convert_source_to_proxy whole
+
+    # Step 16.5: The master panel is not an xoct account, so it gets the same
+    # treatment here: never proxied, kept online as this box's monitoring
+    # canary in Drupal's own maintenance mode (admins can still log in, nobody
+    # else can queue tasks against a database that now lives on the target).
+    _xmass_source_master_panel_maintenance
   fi
-  _xmass_convert_source_to_proxy
-
-  # Step 16.5: The master panel is not an xoct account, so it gets the same
-  # treatment here: never proxied, kept online as this box's monitoring
-  # canary in Drupal's own maintenance mode (admins can still log in, nobody
-  # else can queue tasks against a database that now lives on the target).
-  _xmass_source_master_panel_maintenance
 
   # Step 17: Remove http-off.pid on source (belt-and-braces; xoct proxy
   # already removes it per account, but clean up any missed by xoct).
@@ -9083,6 +9583,11 @@ REMOTE
     _alrt "  They stay 503-gated on this source; fix the cause and re-run"
     _alrt "  'xoct proxy <oN> ${_tgt}' for each, then clear its http-off.pid"
   fi
+  if [ -n "${_XMASS_PROXY_DEFER_FAILED}" ]; then
+    _alrt "  Accounts whose sites named under the old box hostname were NOT converted:${_XMASS_PROXY_DEFER_FAILED}"
+    _alrt "  Those sites stay held on 503 here (per-host gate); fix the cause and re-run"
+    _alrt "  'xoct proxy <oN> ${_tgt} --repair' for each"
+  fi
   _info "  Proxy modes are per account: see 'xoct proxy-mode --all' on this box"
   _info "  Next: run 'xmass post-mig' on the TARGET after DNS is updated"
   _info "======================================================"
@@ -9117,6 +9622,9 @@ _xmass_cmd_cutover() {
     _info "  xmass cutover RESUME (parked cutover tail)"
     _info "  Target           : ${_tgt}"
     _info "======================================================"
+    # A tail parked by an earlier release carries no order in its state
+    # record. Unknown never means relay-first: decide it now, from the boxes.
+    [ -n "${_XMASS_FLIP_FIRST}" ] || _xmass_decide_flip_first
     _xmass_enumerate_accounts
     # A run parked by a pre-mode xmass has its mode only in the mapped state,
     # not on disk yet; the resumed tail re-runs xoct proxy, which resolves
@@ -9128,10 +9636,24 @@ _xmass_cmd_cutover() {
     _xmass_report_account_modes
     [ -n "${_XMASS_MODE_UNDECLARED}" ] \
       && _die "undeclared proxy mode for:${_XMASS_MODE_UNDECLARED} -- declare it (see above), then re-run"
-    _xmass_park_runners_and_cron
+    if [ "${_XMASS_SOURCE_PROXIED}" = "YES" ]; then
+      # This box already relays the client-domain sites: it is their only
+      # front door, so its cron (watchdogs, IDS, certificate mirror) stays
+      # up through the resumed tail, under the same heavy-jobs pause the
+      # relay step planted. The csf lines of the parked run are what the
+      # relay reaches the target through: a signal must not withdraw them.
+      _XMASS_CSF_KEEP=YES
+      _info "  Source            : already RELAYING since ${_XMASS_PROXIED_AT:-the relay step} -- cron stays up"
+      _xmass_start_cron_relay
+    else
+      _xmass_park_runners_and_cron
+    fi
     # Re-assert the promotion-window signal too: the parked run's touch
     # does not survive a target reboot or a long park's age ceiling, and
-    # the tail runs the renames and queue passes the signal protects.
+    # the tail runs the renames and queue passes the signal protects. Not
+    # once step 15 has armed the target: the window is closed there, and a
+    # fresh signal would stand its per-job gates down again.
+    [ "${_XMASS_TARGET_ARMED}" = "YES" ] || \
     ssh -o ConnectTimeout=10 root@"${_tgt}" ": > /run/boa_xmass_init.pid; : > /root/.standby.init.pid" &> /dev/null
     # Re-assert the 503 gate: it persists on disk from the parked run, but an
     # operator may have lifted it via the abandon recipe before deciding to
@@ -9144,14 +9666,28 @@ _xmass_cmd_cutover() {
     # is what the resumed tail depends on.
     _xmass_freeze_source_writes \
       || _alrt "Advisory read-only flag not re-asserted -- resuming anyway; the 503 gate above holds the source"
-    _xmass_check_no_boa_running
-    # Keep the SQL watchdogs paused through the resumed tail (idempotent;
-    # re-asserts the marker in case the box rebooted while parked)
-    _xmass_maint_on
+    if [ "${_XMASS_SOURCE_PROXIED}" = "YES" ]; then
+      # Relaying: cron runs here by design, and the target serves visitors,
+      # so only THIS box's SQL watchdog stays paused.
+      : > /run/boa_sql_maintenance.pid
+    else
+      _xmass_check_no_boa_running
+      # Keep the SQL watchdogs paused through the resumed tail (idempotent;
+      # re-asserts the marker in case the box rebooted while parked)
+      _xmass_maint_on
+    fi
     _xmass_cutover_finish
     return 0
   fi
 
+  # A run killed after the relay started leaves phase=cutover with the sites
+  # UP. The only way forward is the tail; 'reset-phase syncing' is refused.
+  if [ "${_XMASS_PHASE}" != "syncing" ] && [ "${_XMASS_SOURCE_PROXIED}" = "YES" ]; then
+    _die "Not in syncing phase (phase=${_XMASS_PHASE}), and this box has been RELAYING the" \
+         "migrated sites to ${_XMASS_TARGET_IP} since ${_XMASS_PROXIED_AT:-the relay step}: the target is" \
+         "production and has taken live writes. Resume the cutover tail with" \
+         "'xmass reset-phase rename-failed', then 'xmass cutover ${_XMASS_TARGET_IP} --live'."
+  fi
   [ "${_XMASS_PHASE}" = "syncing" ] \
     || _die "Not in syncing phase (phase=${_XMASS_PHASE}) — cannot cut over." \
             "If a previous cutover aborted before promoting the target, resume with" \
@@ -9227,6 +9763,8 @@ _xmass_cmd_cutover() {
     _xmass_report_account_modes
     [ -n "${_XMASS_MODE_UNDECLARED}" ] \
       && _alrt "[DRY] --live would REFUSE: undeclared proxy mode for:${_XMASS_MODE_UNDECLARED}"
+    # The plan names the order --live will take; nothing is saved from a DRY.
+    _xmass_decide_flip_first
     _XMASS_STORE_RC=0
     _XMASS_RSYNC_RC=0
     # Cutover legs stay ADDITIVE, plan and live alike (2026-08-26 ruling): the
@@ -9293,6 +9831,10 @@ _xmass_cmd_cutover() {
   _xmass_report_account_modes
   [ -n "${_XMASS_MODE_UNDECLARED}" ] \
     && _die "undeclared proxy mode for:${_XMASS_MODE_UNDECLARED} -- declare it (see above), then re-run --live"
+
+  # The order of the tail, decided while nothing is touched yet and saved
+  # with the state at phase=cutover.
+  _xmass_decide_flip_first
 
   # --live requires a prior CLEAN dry run for THIS target (mass plan for all accounts).
   _xmass_require_clean_dry "${_tgt}"

@@ -1812,8 +1812,21 @@ PHPEOF
 
 _reload_nginx() {
   _info "§6 Reloading nginx ..."
-  _maybe_run nginx -t
-  _maybe_run service nginx reload
+  # Only a config that passes its own test is reloaded. A failed reload is
+  # harmless in itself (nginx keeps the running config), but an invalid
+  # config left on disk turns the next unrelated restart -- the web-layer
+  # watchdog runs every minute -- into a box-wide outage, and this box may
+  # already be serving relayed visitors while it is renamed.
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    _maybe_run nginx -t
+    _maybe_run service nginx reload
+  elif nginx -t &> /dev/null; then
+    _maybe_run service nginx reload
+  else
+    _alrt "§6 nginx -t FAILED after the rename rewrote the vhosts -- NOT reloaded:"
+    nginx -t 2>&1 | tail -5
+    _alrt "§6 nginx keeps serving its previous config; fix the reported error, then: nginx -t && service nginx reload"
+  fi
 }
 
 ###-------------§7 AEGIR TASK QUEUE------###
@@ -1850,7 +1863,8 @@ _queue_renamed_site_verifies() {
 _run_aegir_tasks() {
   _info "§7 Flushing Drush cache and running Aegir task queue (5 passes) ..."
   _info "    Each pass: cc drush + server verify tasks + dispatch + hosting-tasks"
-  _info "    This regenerates aliases, db-host entries, and nginx vhosts on disk."
+  _info "    Server verifies refresh the server-level records and config; the per-site"
+  _info "    verifies queued below regenerate each RENAMED site's own artefacts."
 
   if [ "${_DRY_RUN}" = "YES" ]; then
     _info "(dry-run) Would run 5 passes of drush cc + hosting task queue"
