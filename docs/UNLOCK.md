@@ -46,8 +46,10 @@ platform, tracked by marker files under `~/log/ctrl/`):
   examined again the next night (a `modules` link already in place when
   the pass starts is refused earlier still, at the per-site control-dir
   gate, which skips that site's whole iteration with its own `SKIP`
-  line; a Grav or Textpattern platform is withheld and reported the same
-  way, its `sites/all/drush` not created for that pass either). None of
+  line). A Grav or Textpattern platform is different again: BOA still
+  creates its `sites/all/drush` (that is where its drushrc renders) and
+  prints no `SKIP` line; what it withholds there is the `sites/all` archive
+  sweep and the `sites/all/{modules,themes,libraries}` ownership legs. None of
   the four is ever legitimately a symlink, and the platform ownership and
   permission helpers Verify runs refuse the same shape; both also leave
   `sites/all/libraries/tcpdf` alone when it or its `cache` child is a
@@ -126,7 +128,11 @@ trees).
   opts that platform out. The nightly worker seeds the variable into each
   platform INI as a commented-out `TRUE` default. One exception overrides
   the INI opt-out: a Drupal 7 platform missing the SA-CORE-2014-005 core
-  patch is always fixed (and patched) regardless.
+  patch always gets the permission pass. The patch half is narrower: the
+  patch helper is only ever reached for platforms under an account's
+  `static/` tree, so a D7 platform outside it is re-permissioned and never
+  patched. The box-wide skip (`_SKIP_PERMISSIONS_PASS=YES` or
+  `/etc/boa/.dont.touch.permissions.cnf`) still wins over the exception.
 
 ## Interplay with Ægir tasks
 

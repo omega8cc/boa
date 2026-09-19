@@ -2061,6 +2061,7 @@ _xmass_init_keepalive_stop() {
 # keepalive and the lockfile.
 _XMASS_INIT_COMMITTED=NO
 _XMASS_INIT_UNWOUND=NO
+_XMASS_TGT_WAS_STANDBY=NO
 _xmass_init_unwind() {
   [ "${_XMASS_INIT_UNWOUND}" = "YES" ] && return 0
   _XMASS_INIT_UNWOUND=YES
@@ -2069,13 +2070,28 @@ _xmass_init_unwind() {
   # refused init leaves a NORMAL box, and the mute would otherwise sit
   # for its full 240-min expiry on the live source.
   _xmass_maint_off
-  if [ "${_XMASS_INIT_COMMITTED}" != "YES" ]; then
+  if [ "${_XMASS_INIT_COMMITTED}" != "YES" ] \
+    && [ "${_XMASS_TGT_WAS_STANDBY}" = "YES" ]; then
+    # A RE-init that refuses before its swap met a box that was ALREADY a
+    # standby: the marker, the database lock and the Solr hold are the
+    # earlier init's, and that box holds a replicated production datadir.
+    # "Leaves a normal box" would un-gate every local writer over it and
+    # start its web tier. Nothing before the swap touches its replica (the
+    # replication account is rotated behind the last leg that can refuse),
+    # so close this run's window -- both carriers: second.sh has minted the
+    # twin from this run's signal by now, and restore-target, the remedy
+    # for this box, refuses while either exists -- and leave the rest.
+    ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
+      "rm -f /run/boa_xmass_init.pid /root/.standby.init.pid" &> /dev/null
+    _info "init unwound: target ${_tgt} left as the standby it already was (marker, database lock and holds untouched)"
+  elif [ "${_XMASS_INIT_COMMITTED}" != "YES" ]; then
     # Re-arm ONLY what our own hold disarmed (the target-side list the
     # prevent step wrote): an ha-switch failback target is a finalized
     # proxy whose Solr xtrim disarmed on purpose -- those never enter
     # the list and stay down.
     if ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" bash <<'REMOTE' &> /dev/null
-rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid /var/log/boa/.xmass_solr_hold.pid
+rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid /var/log/boa/.xmass_solr_hold.pid \
+  /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid
 # A refused init leaves a NORMAL box: the DB hold this init already wrote
 # (cnf block + runtime super_read_only) must not survive the unwind -- the
 # mysql watchdog's release branch would eventually heal it, but only after
@@ -2113,13 +2129,18 @@ if [ -e "/var/log/boa/.xmass_solr_disarmed.list" ]; then
   done < /var/log/boa/.xmass_solr_disarmed.list
   rm -f /var/log/boa/.xmass_solr_disarmed.list
 fi
-test ! -e /root/.standby.cnf && test ! -e /var/log/boa/.xmass_solr_hold.pid
+# The verdict covers the database too: init locks it with the marker now,
+# and "restored to a normal box" over a lock that did not clear would hide
+# the one hand step the recipe below exists to name.
+test ! -e /root/.standby.cnf && test ! -e /var/log/boa/.xmass_solr_hold.pid \
+  && [ "${_sro_now}" = "OFF" ]
 REMOTE
     then
       _info "init unwound: target restored to a normal box"
     else
       _alrt "could NOT verify the init unwind on ${_tgt} -- run there by hand:"
       _alrt '    rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid'
+      _alrt '    rm -f /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid'
       _alrt '    rm -f /var/log/boa/.xmass_solr_hold.pid'
       _alrt '    mysql -e "SET GLOBAL super_read_only=OFF; SET GLOBAL read_only=OFF;"'
       _alrt '    (and strip the xmass-standby-hold block from xmass_gtid.cnf)'
@@ -2510,6 +2531,12 @@ _keep_logbin=NO
 chmod 644 "\${_cnf}"
 REMOTEBASH
   if [ "${_mode}" = "ON" ]; then
+    # No restart on this path, so the hold block just persisted is not live
+    # yet: assert the runtime half again. The marker write set it, but a
+    # mysqld restart since then (a crash, a reboot) came up from a cnf that
+    # did not carry the block, and the web hold reads this lock.
+    ssh -o ConnectTimeout=10 root@"${_tgt}" \
+      "mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e 'SET SESSION lock_wait_timeout=10; SET GLOBAL read_only=ON; SET GLOBAL super_read_only=ON;' 2>/dev/null; true" &> /dev/null
     _info "GTID already ON on target ${_tgt} (conf persisted): OK"
     return
   fi
@@ -2563,12 +2590,20 @@ _xmass_source_tls_ready() {
        " certificates with auto_generate_certs=ON) or set _XMASS_PLAIN_REPLICATION=YES deliberately."
 }
 
+# The TLS material is gated by the caller (_xmass_source_tls_ready), early,
+# where a refusal costs nothing. This drops and re-creates the account with
+# a fresh password, which a replica already running against it loses at its
+# next reconnect -- so it runs last before the swap, not before the legs of
+# init that can still refuse. That is AFTER the snapshot, so the statements
+# stay out of the binary log: the account authorises the target's connection
+# to THIS box and means nothing on the replica, which until now never
+# replayed them either (they sat inside the snapshot).
 _xmass_create_repl_user() {
   local _require=""
-  _xmass_source_tls_ready
   [ "$(_xmass_tls_mode)" = "TLS" ] && _require=" REQUIRE SSL"
   _info "Creating replication user '${_REPL_USER}'@'${_tgt}' on source ($(_xmass_tls_mode)) ..."
   mysql --defaults-file=/root/.my.cnf <<SQLEOF
+SET SESSION sql_log_bin=0;
 DROP USER IF EXISTS '${_REPL_USER}'@'${_tgt}';
 CREATE USER '${_REPL_USER}'@'${_tgt}' IDENTIFIED BY '${_XMASS_REPL_PSWD}'${_require};
 GRANT REPLICATION SLAVE ON *.* TO '${_REPL_USER}'@'${_tgt}';
@@ -3132,7 +3167,8 @@ _xmass_restore_target() {
     fi
   done
   rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid \
-    /var/log/boa/.xmass_solr_hold.pid /run/boa_standby_lost_logged.pid
+    /var/log/boa/.xmass_solr_hold.pid /run/boa_standby_lost_logged.pid \
+    /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid
   _info "Starting MySQL via move_sql.sh ..."
   /var/xdrago/move_sql.sh start \
     || _die "MySQL start failed -- the pre-init data directory is in place; check the MySQL error log"
@@ -3524,6 +3560,10 @@ _xmass_finalize_dry() {   # 1 tgt
 ###     additive: log/, .drush/, config/, the sub-account password store and
 ###     the PHP pin witnesses either carry target-owned state or are force-
 ###     copied, and deleting there would fight the target's own install.
+###   - (2026-09-19 ruling) static/ IS a data tree, minus two of its children:
+###     tenants build codebases anywhere under it and a removed one stayed on
+###     the mirror for good. static/files is the store (its own leg, which
+###     prunes already) and static/control is control state (additive).
 ###   - `sync` passes only, manual and automated alike. The CUTOVER legs stay
 ###     additive on purpose: that is the one window where the target is about
 ###     to become production and a wrong deletion is unrecoverable, and a
@@ -4341,9 +4381,34 @@ _xmass_sync_static_symlink_safe() {
 
   [ -d "${_src_static}" ] || return 0
 
-  # Pass 1: sync static/ tree preserving symlinks, skip files/
-  _xmass_rsync -aEAXqu ${_ieni} --exclude=/files \
+  # Pass 1: sync static/ tree preserving symlinks, skip files/ (the store,
+  # pass 2) and control/ (pass 1a). What is left is tenant code -- composer
+  # and hand-built codebases live anywhere under static/ -- and the account
+  # data the ACTIVE box rotates there itself (trash, goaccess, usage), so
+  # this is a DATA leg: on a sync pass it prunes like distro/, under the
+  # same three guards, or a codebase the tenant removed stays on the mirror
+  # for good. Excluded paths are never deletion candidates.
+  _xmass_rsync -aEAXqu $(_xmass_leg_args "${_src_static}") \
+    --exclude=/files --exclude=/control \
     -e ssh "${_src_static}/" "root@${_tgt}:${_dst_static}/"
+
+  # Pass 1a: control/ stays ADDITIVE in every mode: the target's own install
+  # writes files there the source may never have carried, and the cutover
+  # plants its own (http-off.pid). static/ is tenant-writable: a control
+  # that is a symlink is never followed (these legs read as root, and the
+  # forced pins below would land whatever it points at), where the single
+  # pass used to carry it across as the link it was. Named once a day on
+  # the cadence: the account's control files and PHP pins go stale on the
+  # mirror until the link is gone.
+  local _ctl_link=NO
+  if [ -L "${_src_static}/control" ]; then
+    _ctl_link=YES
+    _xmass_warn_daily "static_control_link_${_dst_acct}" \
+      "  ${_src_static}/control is a SYMLINK -- not followed: no control file and no PHP pin of ${_dst_acct} travels until it is a directory again"
+  elif [ -d "${_src_static}/control" ]; then
+    _xmass_rsync -aEAXqu ${_ieni} \
+      -e ssh "${_src_static}/control/" "root@${_tgt}:${_dst_static}/control/"
+  fi
 
   # Pass 1b: the static sync uses -u (skip-newer), but the target's own fresh
   # Octopus install wrote default control files with a NEWER mtime, which
@@ -4360,6 +4425,7 @@ _xmass_sync_static_symlink_safe() {
   # site without a pool.
   local _ctl
   for _ctl in multi-fpm.info fpm.info cli.info; do
+    [ "${_ctl_link}" = "YES" ] && break
     if [ -e "${_src_static}/control/${_ctl}" ]; then
       _xmass_rsync -aEAX ${_ieni} -e ssh \
         "${_src_static}/control/${_ctl}" \
@@ -6619,7 +6685,7 @@ _xmass_refuse_role_clash() {
   # is never set in this script's environment -- so the recorded identity
   # is always an interface address and the interface walk below is exactly
   # symmetric with the writer.
-  _mrk_src=$(printf '%s' "${_mrk}" | awk '{print $5}')
+  _mrk_src=$(printf '%s' "${_mrk}" | awk 'NR==1 {print $5}')
   if [ -n "${_mrk_src}" ]; then
     for _one in $(hostname -I 2>/dev/null); do
       [ "${_one}" = "${_mrk_src}" ] && return 0
@@ -7101,6 +7167,23 @@ _xmass_cmd_prep_target() {
   # timeout here is not a failure -- nothing destructive follows, and init
   # waits for silence again -- so it warns and completes.
   _xmass_wait_target_silent "${_tgt}" "prep-target completes" warn full || true
+  # The planning verb is where a relaying target must be named: init locks
+  # its database with the standby marker, and the web tier of a locked
+  # marker-carrying box is held from that moment.
+  # (aegir2boa's import freeze writes the same path with its own body: no relay.)
+  local _relay
+  _relay=$(ssh -o ConnectTimeout=10 root@"${_tgt}" \
+    "grep -LFx 'A2B-IMPORT-FREEZE' /data/disk/*/log/proxied.pid 2>/dev/null | wc -l" 2> /dev/null | tr -dc '0-9')
+  if [ -z "${_relay}" ]; then
+    _alrt "could NOT read whether target ${_tgt} is relaying traffic: if it is (a demoted"
+    _alrt "failback target), 'xmass init' takes its web tier DOWN at the standby marker"
+    _alrt "write and it stays down until the failback cutover promotes this box."
+  elif [ "${_relay}" -gt "0" ]; then
+    _alrt "target ${_tgt} is RELAYING traffic for ${_relay} account(s) (a demoted failback"
+    _alrt "target): 'xmass init' takes its web tier DOWN at the standby marker write,"
+    _alrt "early in the run, and it stays down until the failback cutover promotes"
+    _alrt "this box. Move visitors to the active box before running init."
+  fi
   _info ""
   _info "======================================================"
   _XMASS_CSF_KEEP=YES
@@ -7601,7 +7684,41 @@ _xmass_cmd_init() {
   local _silence_scope=full
   if ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "test -e /root/.standby.cnf" 2>/dev/null; then
     _silence_scope=locks
-    _info "target ${_tgt} is already a standby (an earlier init committed its swap): waiting on run locks and processes only"
+    # The unwind must know: a box that was a standby BEFORE this run is
+    # never stripped back to "a normal box" by a refusal of this run. A
+    # marker alone is no witness (an earlier unwind that could not finish
+    # leaves one on a normal box). An init that entered its swap is: the
+    # line it leaves in the marker, a replica config, or a parked pre-swap
+    # datadir NEWER than the marker -- an older one is a leftover of an
+    # earlier standby life on a box promoted since, and nothing ever
+    # collects those. A box that reads as promoted (a clean probe, no
+    # replica config, the database unlocked) is no standby whatever it
+    # carries: second.sh would drop that marker itself.
+    local _was
+    _was=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" bash <<'REMOTE' 2> /dev/null
+_w=NO
+_r=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e "SHOW REPLICA STATUS\G" 2>/dev/null); _rc=$?
+if [ "${_rc}" -ne "0" ]; then
+  _r=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e "SHOW SLAVE STATUS\G" 2>/dev/null); _rc=$?
+fi
+_s=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe "SHOW VARIABLES LIKE 'super_read_only'" 2>/dev/null | awk '{print $2}')
+if grep -q '^init-committed' /root/.standby.cnf 2>/dev/null \
+  || [ -n "${_r}" ] \
+  || [ -n "$(find /var/lib/mysql.xmass_pre_* -maxdepth 0 -newer /root/.standby.cnf 2>/dev/null | head -1)" ]; then
+  _w=YES
+fi
+if [ "${_rc}" -eq "0" ] && [ -z "${_r}" ] && [ "${_s}" = "OFF" ]; then
+  _w=NO
+fi
+echo "${_w}"
+REMOTE
+)
+    if [ "${_was}" = "YES" ]; then
+      _XMASS_TGT_WAS_STANDBY=YES
+      _info "target ${_tgt} is already a standby (an earlier init committed its swap): waiting on run locks and processes only"
+    else
+      _info "target ${_tgt} carries a standby marker no committed init stands behind: waiting on run locks and processes only"
+    fi
   fi
   _xmass_wait_target_silent "${_tgt}" "init replaces the target datadir" die "${_silence_scope}"
   # The snapshot further down is taken while THIS box serves. A barracuda or
@@ -7639,9 +7756,10 @@ _xmass_cmd_init() {
   # in-flight signal written beside the marker tells second.sh's
   # stale-marker self-removal to hold; it is touched again at every phase
   # boundary below, clears with /run on a reboot, and ages out under a
-  # dead init, after which the stale marker self-removes as usual. An init
-  # refusal below therefore leaves at worst a marker+signal pair that
-  # self-heals -- nothing an operator must remember to restart. A
+  # dead init. The marker is written together with the runtime database lock
+  # (below), so an init refusal before the datadir swap UNWINDS the target --
+  # marker, signal and lock -- rather than leaving it to age out: a locked
+  # box with no replica config reads as a lost replica and keeps its marker. A
   # proxy-shaped target (ha-switch failback leg) takes the marker like any
   # other: its writers are proxy-gated already, and the standby gates are
   # a superset that lifts at cutover.
@@ -7657,8 +7775,62 @@ _xmass_cmd_init() {
          " its clear.sh to self-update (or run the BOA.sh.txt refresh there)," \
          " then re-run init."
   fi
+  # The web tier of a marker-carrying box is held for as long as its database
+  # is locked, and the lock lands with the marker below -- so a target that
+  # is RELAYING traffic (a demoted ha-switch failback target still shaped as
+  # a proxy) goes dark here, not at the end of the seed. Say so before it
+  # happens: the operator must have moved DNS off this box already.
+  # The marker of aegir2boa's import freeze lives at the same path with its
+  # own body and is no relay; a probe that cannot answer is not a zero. A
+  # box that is a standby already relays nothing (its web tier is held, and
+  # the stamps of its proxy life are target-role state no sync clears), and
+  # a refusal of this run leaves it held.
+  local _relay
+  _relay=$(ssh -o ConnectTimeout=10 root@"${_tgt}" \
+    "grep -LFx 'A2B-IMPORT-FREEZE' /data/disk/*/log/proxied.pid 2>/dev/null | wc -l" 2> /dev/null | tr -dc '0-9')
+  if [ "${_XMASS_TGT_WAS_STANDBY}" = "YES" ]; then
+    :
+  elif [ -z "${_relay}" ]; then
+    _alrt "could NOT read whether target ${_tgt} is relaying traffic: if it is (a demoted"
+    _alrt "failback target), its web tier goes DARK at the standby marker write below and"
+    _alrt "stays dark until the failback cutover promotes it."
+  elif [ "${_relay}" -gt "0" ]; then
+    _alrt "target ${_tgt} is RELAYING traffic for ${_relay} account(s) (a demoted failback"
+    _alrt "target): its web tier goes DARK NOW, at the standby marker write, and stays"
+    _alrt "dark until the failback cutover promotes this box; a refused init restores"
+    _alrt "it on unwind. Visitors must already reach the active box directly."
+  fi
+  # From here every refusal unwinds the target back to a normal box; the
+  # trap reaps the lockfile too. Armed BEFORE the marker write: that command
+  # also locks the database, and a refusal between the lock and the trap
+  # would leave a read-only box with nothing left to explain or heal it.
+  # Signals get their own handler that EXITS: a bash signal trap otherwise
+  # returns to the next statement, and an interrupted init must never unwind
+  # the gates and then keep marching into the datadir swap.
+  trap '_xmass_init_unwind' EXIT
+  trap '_xmass_init_unwind; exit 130' INT TERM HUP
+  # The RUNTIME database lock, the marker and the in-flight signal in one
+  # command, the lock FIRST: from the moment the marker exists it means "this
+  # box takes no writes", which is what the web hold reads, and no watchdog
+  # pass can meet a marker over an unlocked database and read it as promoted.
+  # lock_wait_timeout bounds the wait SET GLOBAL read_only takes on a
+  # transaction in flight -- a target that still serves (a relaying failback
+  # target, a box with its own panel) must not hang the init here. The cnf
+  # half lands later (_xmass_configure_gtid_target), and on a target whose
+  # gtid_mode is already ON -- a box promoted once and now seeded again --
+  # that function does not restart mysqld, so without this the whole pre-swap
+  # leg would run unlocked. The promoted latch of an earlier life goes in the
+  # same command. The unwind clears both halves. The marker of a box that
+  # was a standby already is the earlier init's and stays as written (its
+  # age is one of the witnesses above); it only gains the witness line.
+  local _mrk_write
+  if [ "${_XMASS_TGT_WAS_STANDBY}" = "YES" ]; then
+    _mrk_write="grep -q '^init-committed' /root/.standby.cnf 2>/dev/null || echo 'init-committed (witnessed $(date '+%Y-%m-%d'))' >> /root/.standby.cnf"
+  else
+    _mrk_write="echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf"
+  fi
   ssh -o ConnectTimeout=10 root@"${_tgt}" \
-    "echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf; : > /run/boa_xmass_init.pid" &> /dev/null
+    "mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e 'SET SESSION lock_wait_timeout=10; SET GLOBAL read_only=ON; SET GLOBAL super_read_only=ON;' 2>/dev/null; ${_mrk_write}; : > /run/boa_xmass_init.pid; rm -f /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid; true" &> /dev/null
   if ssh -o ConnectTimeout=10 root@"${_tgt}" "test -e /root/.standby.cnf" 2> /dev/null; then
     _info "Standby marker set on the target (per-job write gates armed)"
   else
@@ -7666,13 +7838,19 @@ _xmass_cmd_init() {
          " box would take local writes into the copied-in datadir (cache" \
          " TRUNCATEs, task queue); fix target access and re-run init."
   fi
-  # From here every refusal unwinds the target back to a normal box; the
-  # trap reaps the lockfile too. Signals get their own handler that EXITS:
-  # a bash signal trap otherwise returns to the next statement, and an
-  # interrupted init must never unwind the gates and then keep marching
-  # into the datadir swap.
-  trap '_xmass_init_unwind' EXIT
-  trap '_xmass_init_unwind; exit 130' INT TERM HUP
+  # The lock written with the marker, read back: gates armed over an unlocked
+  # database is the state a stray writer needs, and the web hold would read
+  # this box as not yet locked.
+  local _tsro
+  _tsro=$(ssh -o ConnectTimeout=10 root@"${_tgt}" "mysql --defaults-file=/root/.my.cnf \
+    --connect-timeout=5 -sNe \"SHOW VARIABLES LIKE 'super_read_only'\" 2>/dev/null | awk '{print \$2}'" 2> /dev/null)
+  if [ "${_tsro}" = "ON" ]; then
+    _info "Target database locked with the marker (super_read_only=ON): OK"
+  else
+    _die "target ${_tgt}: super_read_only reads '${_tsro:-unreadable}' (not ON) right after" \
+         " the marker write -- the write gates are armed but the database is not" \
+         " locked; fix MySQL access on the target and re-run init."
+  fi
   local _src_sid _tgt_sid
   _src_sid=$(_ip_to_server_id "${_XMASS_SRC_IP}")
   _tgt_sid=$(_ip_to_server_id "${_tgt}")
@@ -7776,7 +7954,9 @@ _xmass_cmd_init() {
   esac
   _xmass_save_state
 
-  _xmass_create_repl_user
+  # The cheap half of the replication account's gate stays here; the account
+  # itself is rotated after the snapshot (below).
+  _xmass_source_tls_ready
   _xmass_prevent_solr_target
   _xmass_decide_transfer_method
   # The decisive source-side read: minutes have passed since the early check
@@ -7787,10 +7967,18 @@ _xmass_cmd_init() {
   _xmass_wait_target_silent local "the datadir snapshot starts" die full
   _xmass_init_inflight_touch
   _xmass_take_backup
+  # Rotated HERE, behind every leg that can still refuse: a re-init against a
+  # standby whose replica runs must not cut that replica's credentials and
+  # then unwind "leaving the box as it was".
+  _xmass_create_repl_user
   # Point of no return: the next step displaces the target's datadir, so
   # from here a refusal must KEEP the role pair (the gates protect the
   # copied-in data) and the unwind only reaps the keepalive and the lock.
+  # The marker says so from now on: a later init reads this line as the
+  # witness that the box is a standby and not a normal box with a leftover.
   _XMASS_INIT_COMMITTED=YES
+  ssh -o ConnectTimeout=10 root@"${_tgt}" \
+    "grep -q '^init-committed' /root/.standby.cnf 2>/dev/null || echo 'init-committed $(date '+%Y-%m-%d')' >> /root/.standby.cnf; true" &> /dev/null
   _xmass_init_inflight_touch
   _xmass_restore_backup
   _xmass_init_inflight_touch
@@ -7805,7 +7993,7 @@ _xmass_cmd_init() {
   # a standby that merely lost its replica config keeps it). Cutover step
   # 15 removes it; post-mig clears a leftover.
   ssh -o ConnectTimeout=10 root@"${_tgt}" \
-    "[ -e /root/.standby.cnf ] || echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf; rm -f /run/boa_xmass_init.pid; true" &> /dev/null
+    "[ -e /root/.standby.cnf ] || echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf; grep -q '^init-committed' /root/.standby.cnf || echo 'init-committed $(date '+%Y-%m-%d')' >> /root/.standby.cnf; rm -f /run/boa_xmass_init.pid; true" &> /dev/null
   if ssh -o ConnectTimeout=10 root@"${_tgt}" "test -e /root/.standby.cnf" 2> /dev/null; then
     _info "Standby marker verified on the running replica (in-flight signal cleared)"
   else
@@ -7931,7 +8119,7 @@ _xmass_cmd_sync() {
     # the passivity. DRY runs promise "no changes made" and never touch
     # the target.
     ssh -o ConnectTimeout=10 root@"${_tgt}" \
-      "[ -e /root/.standby.cnf ] || echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf; true" &> /dev/null
+      "[ -e /root/.standby.cnf ] || echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf; grep -q '^init-committed' /root/.standby.cnf || echo 'init-committed $(date '+%Y-%m-%d')' >> /root/.standby.cnf; true" &> /dev/null
     if ! ssh -o ConnectTimeout=10 root@"${_tgt}" "test -e /root/.standby.cnf" 2> /dev/null; then
       _alrt "could NOT restore /root/.standby.cnf on ${_tgt} -- without it the"
       _alrt "replica takes local writes; set the marker there by hand"
@@ -8507,10 +8695,11 @@ _xmass_autosync_run() {
 # models.
 _xmass_prove_target_web() {
   # The standby web hold also lives in the firewall (chain BOA_STANDBY_WEB,
-  # asserted by the nginx watchdog and csfpost.sh while the marker holds).
-  # The enforcer stands down for the promotion window, but the chain it
-  # already installed stays -- remove it here, both families, before proving
-  # the port. Idempotent; a pre-hold target has no chain and this no-ops.
+  # asserted by the nginx watchdog and csfpost.sh while the box is not
+  # promoted). Step 11.5 published the promoted latch, so the watchdog
+  # releases the chain on its next pass -- remove it here, both families,
+  # so this proof waits for no pass and cannot race one. Idempotent; a
+  # pre-hold target has no chain and this no-ops.
   ssh root@"${_tgt}" "bash -s" <<'FWOPEN'
 for _ipt in iptables ip6tables; do
   command -v "${_ipt}" >/dev/null 2>&1 || continue
@@ -8545,6 +8734,17 @@ FWOPEN
     _XMASS_PHASE="rename-failed"
     _xmass_save_state
     _xmass_restore_hint
+    # The start above goes through the init script's standby gate, which
+    # follows the database: name that cause when it is the one, or the
+    # operator repairs an nginx that was never the problem.
+    if ssh -o ConnectTimeout=10 root@"${_tgt}" \
+      "[ -e /root/.standby.cnf ] && [ ! -e /root/.standby.serve.cnf ] && [ ! -e /var/log/boa/.standby_promoted.pid ]" 2> /dev/null; then
+      _alrt "target ${_tgt} does NOT read as promoted: the standby gate refused the nginx"
+      _alrt "start. Either a replica config is still present there, or the role probe"
+      _alrt "could not run when the database was unlocked, so the promotion was never"
+      _alrt "recorded. Check there: mysql -e 'SHOW REPLICA STATUS\\G' (SHOW SLAVE STATUS"
+      _alrt "on 5.7) and 'SELECT @@super_read_only'; the re-run below records it again."
+    fi
     _die "target ${_tgt}: nginx is not answering on port 80 after start" \
          "— cutover PARKED (phase=rename-failed); the target stays promoted, the source stays" \
          "503-gated and the SQL watchdogs stay paused. Fix nginx on ${_tgt} so port 80 answers," \
@@ -8603,6 +8803,23 @@ mysql --defaults-file=/root/.my.cnf \
 _sro_now=$(mysql --defaults-file=/root/.my.cnf \
   -sNe "SHOW VARIABLES LIKE 'super_read_only'" 2>/dev/null | awk '{print $2}')
 if [ "${_sro_now}" = "OFF" ]; then
+  # Publish the promoted latch here, where the unlock is PROVEN: the web
+  # hold on this box follows the database, and step 12 starts nginx seconds
+  # from now -- it must not wait for a watchdog pass to read the same thing.
+  # Same predicate as the watchdog: a clean role probe with no replica
+  # config, the return code deciding (the first dialect always fails on
+  # 5.7). Step 15 removes the latch with the marker; a re-seed clears it at
+  # its marker write.
+  _rpl=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+  _rrc=$?
+  if [ "${_rrc}" -ne "0" ]; then
+    _rpl=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+    _rrc=$?
+  fi
+  if [ "${_rrc}" -eq "0" ] && [ -z "${_rpl}" ]; then
+    mkdir -p /var/log/boa 2>/dev/null
+    : > /var/log/boa/.standby_promoted.pid
+  fi
   _inc_dir=$(grep -hE '^[[:space:]]*!includedir[[:space:]]' /etc/mysql/my.cnf 2>/dev/null \
     | head -1 \
     | sed -E 's/^[[:space:]]*!includedir[[:space:]]+//; s#/[[:space:]]*$##; s/[[:space:]]*$//')
@@ -8610,9 +8827,20 @@ if [ "${_sro_now}" = "OFF" ]; then
     /etc/mysql/mysql.conf.d /etc/mysql; do
     [ -n "${_d}" ] || continue
     _c="${_d}/xmass_gtid.cnf"
-    if [ -r "${_c}" ] && grep -q "xmass-standby-hold" "${_c}"; then
+    [ -r "${_c}" ] || continue
+    if grep -q "xmass-standby-hold" "${_c}"; then
       sed -i '/xmass-standby-hold/,+2d' "${_c}"
     fi
+    # Say WHY this cnf carries no hold block: this box was promoted. The
+    # mysql watchdog converts a mirror built by older bytes by appending
+    # the block wherever it is missing under the marker, and without this
+    # line it would lock a PROMOTED production database again once the
+    # window signal has aged out -- on a resume after an older xmass
+    # stripped the block, and on a target that never carried one, as much
+    # as here. The next init rewrites the whole file, so the line never
+    # outlives this promotion.
+    grep -q "xmass-standby-hold" "${_c}" || grep -q "xmass-promoted-unlock" "${_c}" \
+      || echo "# xmass-promoted-unlock (promoted: no hold block belongs here)" >> "${_c}"
   done
 fi
 exit 0
@@ -8720,8 +8948,10 @@ _xmass_cutover_finish() {
 # The standby marker must go FIRST: with it still present, the per-job
 # gates keep holding the queue and every local writer on the box this
 # step just promoted. The cron start is vintage tolerance -- a target
-# quiesced by pre-gate BOA bytes still has its cron stopped.
-rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid
+# quiesced by pre-gate BOA bytes still has its cron stopped. The promoted
+# latch only ever qualified the marker, so it goes with it.
+rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid \
+  /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid
 service cron start &>/dev/null
 for _s in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
   if [ ! -e "/var/xdrago/${_s}" ] \
@@ -9225,8 +9455,9 @@ _xmass_cmd_cutover() {
       # Still a replica: the promotion did NOT hold, so the source is still
       # the only production box -- thaw it on the way out, as step 7 does.
       # And CLOSE the promotion window this step just opened: the fresh pid
-      # would otherwise stand every hold down for its full 48h ceiling on a
-      # box that remains a standby.
+      # would otherwise stand the DATABASE hold down for its full 48h ceiling
+      # on a box that remains a standby (the web hold follows the promoted
+      # latch and is unaffected).
       ssh -o ConnectTimeout=10 root@"${_tgt}" \
         "rm -f /run/boa_xmass_init.pid /root/.standby.init.pid" &> /dev/null
       _xmass_thaw_writes
@@ -9350,7 +9581,8 @@ _xmass_post_mig() {
   # the backup and cleanup tools all exit on it). Cutover step 15 clears
   # it; catch anything that slipped through.
   if [ -e "/root/.standby.cnf" ]; then
-    rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid
+    rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid \
+      /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid
     _alrt "  Removed a LEFTOVER /root/.standby.cnf -- cutover step 15 should have"
     _alrt "  cleared it; verify cron and the task queue are actually running here"
   fi

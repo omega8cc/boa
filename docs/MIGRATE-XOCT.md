@@ -124,15 +124,16 @@ xoct pretransfer o1 target-ip
 
 `reset-state` replaces the hand-typed `rm -f` lines. It clears
 `src/*.sql` (including `prev_hostmaster.sql`), the
-`exported`/`transferred`/`imported`/`proxied` pid stamps and the recorded
-import panel database (`log/panel_db.txt`), which is also what a **chained**
+`exported`/`transferred`/`imported`/`proxied` pid stamps, the export- and
+import-failure latches (`log/export_failed.pid`, `log/import_failed.pid`)
+and the recorded import panel database (`log/panel_db.txt`), which is also what a **chained**
 migration needs — a box that was once a target keeps a stale dump, an
 `imported.pid` that blocks it from ever being an import target again, and a
 panel-database pointer that belongs to the previous move.
 It never touches serving state, so a site's 503 gate is left alone.
 
 `transfer shared` syncs `/data/all`, `/data/disk/all`, `/data/disk/arch`,
-Solr cores, `/var/www/static`, `/etc/bind`, and the usage logs under
+`/data/disk/legacy` (when the source has one), Solr cores, `/var/www/static`, `/etc/bind`, and the usage logs under
 `/var/log/boa/usage` to the target. A Solr index tree that does not fit on
 the target is a **hard stop**, not a skip: each Solr home is space-checked
 before its rsync and a failure refuses the run non-zero ("refusing to migrate
@@ -463,7 +464,8 @@ xoct proxy o1 target-ip o2
 - A mistyped or unknown `--flag` on `create`, `transfer`, `pretransfer`,
   `import` or `proxy` is a **hard error**, precisely because on those verbs
   the next free positional argument is this rename value — a silently
-  consumed flag would have become a rename instruction.
+  consumed flag would have become a rename instruction. `proxy-mode` and
+  `proxy-retire` refuse an unknown flag the same way.
 
 ---
 

@@ -514,12 +514,12 @@ Source-resident verbs (vanilla box, root):
   status
 
 Target-resident verbs (BOA box, root):
-  peer       --source <ip> [--pubkey-file <f>]              [--live]
   import     --account <oN> --route per-site|db-import
              [--site <dom>|--all] [--source-fqdn <fqdn>]
              [--welcome-node]                               [--live]
   import     --account <oN> --revert-db-import              [--live]
   import     --account <oN> --reset-sites                   [--live]
+  peer       --source <ip> [--pubkey-file <f>]              [--live]
   target-status --account <oN>
 ```
 
@@ -543,7 +543,10 @@ discovery output — the route is never operator-asserted**:
   plus its own enumeration, and refuses `--route db-import` if any leg
   fails:
   - every platform D7-class,
-  - `hosting` schema_version at the high-water mark,
+  - `hosting` schema_version EQUAL to the validated number, `7304` (the
+    highest `hosting_update_N` in the verified vanilla 7.x-3.x tree): a
+    schema below OR above it makes the estate per-site only, named as
+    `hosting-schema-<n>` in the refusal,
   - single-box topology (no cluster/pack, no remote web/db servers).
 
   Two procedural requirements ride along: the source must be in nginx
@@ -720,7 +723,12 @@ re-running against an already-registered node — a retry quirk the drill
 caught), map its PHP version in the account's `multi-fpm.info` and wait
 for the pool socket (D6 without its socket is a per-site FAIL; the site
 must not serve under the account default), wait the chained verify, probe
-HTTP against the source baseline, and re-enable the site's Drupal cron —
+HTTP against the source baseline (not status-only: the run fingerprints
+what this box answers for an impossible hostname once at its head and
+refuses any site whose 200 body is that catch-all page -- NOT adopted on
+the per-site route, left unproven on db-import, in both cases fix serving
+and re-run import for that site; when the fingerprint cannot be taken the
+run warns that serve probes lose that discrimination), and re-enable the site's Drupal cron —
 adopted sites land with cron dark by BOA design, and the source
 dispatcher that used to run it is paused, so leaving it dark means silent
 job loss. One site's failure never blocks the next; failed sites are
@@ -857,6 +865,12 @@ first-defined server wins (nginx only warns, and `nginx -t` still passes),
 so claiming that name would capture an unmigrated site's traffic; on those
 estates the `www.` challenge has to come from that other conf, and both
 the dry run and the swap say so by name.
+
+For the same reason, before each swap the tool lists any OTHER conf still
+in `vhost.d` that already declares a name the proxy block is about to
+claim ("name <n> is ALSO declared by vhost.d/<file> - only the
+first-included block gets it"). That one is advisory, never blocking: the
+overlap is often a sibling already proxied at the same target.
 
 `proxy --refresh` (dry, then `--live`) re-renders the proxy vhost(s) of
 already-proxied sites in place, from the dotfile original plus the

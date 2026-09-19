@@ -17,6 +17,8 @@ handles the per-distro quirks (see Notes), packages, and publishes. Run it as ro
   staticbuild package            # clean + tar (cores keep core/profiles, distros strip)
   staticbuild distribute         # copy tarballs to /var/www/static/{distro,core,dev/{dev,lts,pro}}
   staticbuild catalogue [tree]   # audit each tree's PUBLISHED catalogue against the distro mirror
+                                 # (PRODUCER=none: hand-published, nothing here rebuilds it; a tree that
+                                 #  cannot be read is INCONCLUSIVE and exits non-zero, never "0 missing")
 ```
 
 Configuration (Composer specs + core floor/exclude) is the block at the top of the
@@ -395,8 +397,8 @@ Then strip the stock core profiles from the distributions (they ship their own
 install profile), then gzip the remaining (distribution) platforms:
 
 ```sh
-  rm -rf */*/core/profiles/*
-  for d in */ ; do case "${d%/}" in drupal-*) continue ;; esac ; tar -czf "${d%/}.tar.gz" "${d%/}" ; done
+  for d in */ ; do case "${d%/}" in drupal-*|backdrop-[0-9]*) continue ;; esac ; rm -rf "${d%/}"/*/core/profiles/* ; done
+  for d in */ ; do case "${d%/}" in drupal-*|backdrop-[0-9]*) continue ;; esac ; tar -czf "${d%/}.tar.gz" "${d%/}" ; done
 ```
 
 ### Publish the tarballs to the static mirror
