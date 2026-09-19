@@ -267,6 +267,15 @@
 
 @=> Important Fixes
 
+    * The weekly database conversion no longer carries one site's setting
+      over to the next. The nightly worker kept the conversion mode in one
+      shell variable for the whole account, so a site with
+      sql_conversion_mode in its INI made every later site of that account
+      convert the same way on the Tuesday pass. Every site now starts from
+      the instance value, and _SQL_CONVERT=YES (or innodb) in the instance
+      settings ignores the INI files and forces InnoDB everywhere, as the
+      settings file has always said it does.
+
     * A crashed table is now repaired whether or not incident mail is on.
       checksql.sh ran the repair script it generates only inside its mail
       block, so a box with _INCIDENT_REPORT=OFF (or no _MY_EMAIL) detected
