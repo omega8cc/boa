@@ -6,7 +6,7 @@ It is **imperative** to never grant anyone access to the Ægir **system user** o
 
 # Security Considerations for Node/NPM Access
 
-Given that `node` can be exploited to bypass Limited Shell and pose a significant security risk to the BOA system, it should not be enabled on any BOA system with multiple `lshell` users. Consequently, Node/NPM support is not enabled in BOA by default. To enable it, you must create an empty control file `/root/.allow.node.lshell.cnf` to lift the restriction. In hosted BOA environments, Node/NPM support is available only on dedicated systems such as Phantom and Cluster.
+Given that `node` can be exploited to bypass Limited Shell and pose a significant security risk to the BOA system, it should not be enabled on any BOA system with multiple `lshell` users. Consequently, Node/NPM support is not enabled in BOA by default. It is enabled when the empty control file `/root/.allow.node.lshell.cnf` exists, or automatically when any Octopus instance on the box is of type PHANTOM, CLUSTER, ULTRA or MONSTER; on every other box `node`, `npm`, `npx` and `scp` are stripped from the limited shell's command lists on every pass. In hosted BOA environments, Node/NPM support is available only on dedicated systems such as Phantom and Cluster.
 
 # BOA System Security Features Explained
 
@@ -16,7 +16,7 @@ BOA offers a highly secure hosting environment for Ægir and Drupal sites, featu
 2. **Restricted PHP Scripts**: Only recognized Drupal PHP files are allowed in the BOA secure environment. The web server does not have write access to the website codebase, blocking common attack vectors even for sites with otherwise vulnerable codebases.
 3. **Web Server Monitoring**: IP addresses exhibiting DoS-like activity are temporarily blocked for 15 minutes and permanently blocked after repeated offenses. You can [whitelist your IP on the fly](https://docs.boa.io/using/when-somethings-wrong/blocked-or-slow) by maintaining an active SSH connection.
 4. **Firewall Monitoring**: Repeated failed login attempts for SSH, SFTP, or FTPS result in temporary one-hour blocks, escalating to permanent blocks. Whitelisted IPs are not exempt if abuse is detected.
-5. **Load Management**: The web server may be temporarily disabled during high system loads due to undetected DoS attacks. Normal service resumes within 10 seconds after load stabilization.
+5. **Load Management**: The web server may be temporarily disabled during high system loads due to undetected DoS attacks. The web tier resumes only after `_RESUME_HOLD_PASSES` (default 3) consecutive readings below the resume threshold, which is the maximum load times `_RESUME_FRACTION` (default 0.8): a single calm reading does not release it.
 6. **Port Scan and Flood Protection**: Detected port scans or floods result in temporary one-hour blocks, escalating to permanent blocks after repeated offenses. False positives are detailed in our [How Firewall Works article](https://docs.boa.io/using/when-somethings-wrong/blocked-or-slow).
 7. **Per-Plan Resource Limits**: PHP-FPM runs each account with a capped worker pool, so a single site cannot monopolize the server or destabilize its neighbours during a traffic spike. Shared plans keep a fixed per-plan worker limit; dedicated plans size their pool dynamically from available RAM and CPU.
 8. **Perfect Forward Secrecy and HTTP/2**: All HTTPS services utilize Perfect Forward Secrecy and HTTP/2 for enhanced security and speed. Non-supportive browsers default to classic HTTPS with SSL and Perfect Forward Secrecy.
