@@ -96,7 +96,7 @@ dcysetup <command>
 The system supports multiple storage providers. Credentials for these providers are stored in `/root/.remote_backups/credentials/`.
 
 ### **Supported Services**
-- **Amazon S3** (Standard, One Zone, Standard-IA)
+- **Amazon S3** (three service keys, `aws`, `aws_one_zone` and `aws_standard_ia`: three separate buckets; both IA keys request the Standard-IA storage class, nothing selects One Zone-IA)
 - **Backblaze B2**
 - **Cloudflare R2**
 - **DigitalOcean Spaces**
@@ -110,7 +110,7 @@ The system supports multiple storage providers. Credentials for these providers 
 
 | **Service**                | **Storage Class**                     | **Redundancy**        | **Regions** | **Encryption**                         | **Interface**          |
 |----------------------------|---------------------------------------|-----------------------|-------------|----------------------------------------|------------------------|
-| **Amazon S3**              | Standard, One Zone-IA, Standard-IA    | Multi-AZ / Single AZ  | Global      | Server-side (AES-256) + Client-side    | S3 API (boto3)         |
+| **Amazon S3**              | Standard, Standard-IA (both IA keys)  | Multi-AZ              | Global      | Server-side (AES-256) + Client-side    | S3 API (boto3)         |
 | **Backblaze B2**           | Hot                                   | Multi-region          | US, Europe  | Server-side (AES-256) + Client-side    | B2 API, S3 Compatible  |
 | **Cloudflare R2**          | Hot                                   | Multi (Regionless)    | Global      | Server-side (AES-256) + In-transit TLS | S3 API (boto3)         |
 | **DigitalOcean Spaces**    | Standard (Hot)                        | Multi-region          | Global      | Server-side (AES-256) + Client-side    | S3 API (boto3)         |

@@ -956,7 +956,7 @@ if ! command -v nginx > /dev/null 2>&1; then
 fi
 # Passive replication standby: the web tier is held down, nothing to learn.
 if [[ -e "/root/.standby.cnf" ]] && [[ ! -e "/root/.standby.serve.cnf" ]] \
-  && [[ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2> /dev/null)" ]]; then
+  && [[ ! -e "/var/log/boa/.standby_promoted.pid" ]]; then
   exit 0
 fi
 

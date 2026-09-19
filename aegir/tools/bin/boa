@@ -3899,7 +3899,7 @@ _if_display_help() {
       cleanup <------ (detect|purge) cancelled Octopus instances files (no dbs)
       suspend <------ turn off web serving on an Octopus instance (503)
       unsuspend <---- restore web serving on a suspended Octopus instance
-      archived <----- (list|prune|heal) archived stores of deleted or renamed sites (prune REMOVES them by age, heal only while the disk is above 90% used)
+      archived <----- (list|prune|heal) archived stores of deleted or renamed sites (prune REMOVES them by age, heal only while the disk is above the heal threshold, 85% used by default)
       reboot <------- run accelerated system reboot
 
     See docs/INSTALL.md for more details.

@@ -977,7 +977,7 @@ first) and `rm`s it at the very end — and once escalation is done it clears th
 > backups under `/var/backups/csf/water/`. Every fetched provider fetches *before* it clears its own
 > tagged lines and keeps the existing entries when the list comes back empty (endpoint
 > down, format change), so a failed refresh never strips a live range for a day; the
-> static `csf.deny` healing of the Google, Bing and Imperva refreshes runs either way.
+> static `csf.deny` healing of the Google, Bing and Imperva refreshes runs either way. The Sucuri refresh heals `csf.deny` too, unconditionally and from its built-in ranges (any deny line inside them is deleted on every pass, so an operator deny placed there does not survive the daily run), and the Auth0 refresh removes each address it fetched, which is a no-op when its fetch comes back empty.
 > Every provider is allowed on both web ports, 80 and 443 — crawlers, WAF edges and
 > monitors all reach the sites over https, and a port-80-only entry left 443 exposed to a
 > `csf.deny` hit because the per-port allow rule precedes the all-port deny — and
@@ -1772,7 +1772,7 @@ $is_ai_forged           → 444   edge-policy
 AI training / evasive   → 444   edge-policy
 $is_crawler             → 444
 $is_botnet              → 444
-bad request method      → 444
+bad request method      → 444   (anything but GET HEAD POST PUT PATCH DELETE OPTIONS; every vhost shape)
 $is_denied              → 444
 $ua_denied              → 444
 $tls_on_plain           → 444

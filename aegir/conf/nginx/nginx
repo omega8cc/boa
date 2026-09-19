@@ -142,6 +142,30 @@ getPSCount() {
     return `pgrep -f $PS | wc -l`
 }
 
+_standby_promoted_readback() {
+    # PROMOTED = the role probe ran clean AND returned no replica config AND
+    # super_read_only reads 0. The return code decides, never emptiness
+    # alone: on Percona 5.7 the first dialect always fails, and a dropped
+    # connection on the second would otherwise read as "no replica config".
+    local _sro _rpl _rc
+    _rpl=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 \
+      -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+    _rc=$?
+    if [ "${_rc}" -ne "0" ]; then
+        _rpl=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 \
+          -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+        _rc=$?
+    fi
+    [ "${_rc}" -eq "0" ] || return 1
+    [ -z "${_rpl}" ] || return 1
+    _sro=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 \
+      -N -e "SELECT @@super_read_only" 2>/dev/null | tr -dc '0-9')
+    [ "${_sro}" = "0" ] || return 1
+    mkdir -p /var/log/boa 2>/dev/null
+    touch /var/log/boa/.standby_promoted.pid 2>/dev/null
+    return 0
+}
+
 isRunning() {
     if [ $1 ]; then
         pidof_daemon $1
@@ -229,16 +253,23 @@ start() {
     # through, including the boot-time rc links, which no cron enforcer can
     # cover because it is not running yet.
     #
-    # Cleared for a promotion: xmass writes /run/boa_xmass_init.pid across the
-    # cutover window (step 8 onward) precisely so the role machinery stands
-    # down there, and step 12 must be able to start nginx to prove the web
-    # layer before the marker is removed at step 15. Same predicate as the
-    # nginx watchdog, deliberately.
+    # Cleared for a PROMOTION, read from the database and not from the xmass
+    # in-flight signal: that signal is open across every init too, and no
+    # init step needs the web tier on this box. Same predicate as the nginx
+    # watchdog, deliberately (standby_promoted names both).
+    #
+    # The latch is the last PROVEN answer and survives a reboot, so a cutover
+    # parked after its step 11.5 still boots serving. With no latch the
+    # answer is derived once, bounded: that is cutover step 12, which calls
+    # this primitive seconds after step 11.5 proved the unlock. At boot with
+    # mysqld not up yet the derivation fails and the start is REFUSED, which
+    # is the right answer on a box that carries the marker.
     #
     # Operator escape hatch: /root/.standby.serve.cnf
     if [ -e "/root/.standby.cnf" ] \
       && [ ! -e "/root/.standby.serve.cnf" ] \
-      && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
+      && [ ! -e "/var/log/boa/.standby_promoted.pid" ] \
+      && ! _standby_promoted_readback; then
         log_warning_msg "$DESCRIPTION not started: replication standby (web tier held)"
         rc=0
         return

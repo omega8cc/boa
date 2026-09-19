@@ -1454,6 +1454,21 @@ _if_site_db_conversion() {
   ###
   ### Detect db conversion mode, if set per platform or per site.
   ###
+  ### Every site starts from the instance value. _SQL_CONVERT is a shell
+  ### global this function assigns from the INI files, so without the reset
+  ### one site's sql_conversion_mode carried over to every later site of the
+  ### same account. The instance value is captured on the account's first
+  ### site, before anything here has touched it.
+  if [ "${_sqlCnvFor:-}" != "${_HM_U}" ]; then
+    _sqlCnvFor="${_HM_U}"
+    _sqlCnvAcct="${_SQL_CONVERT:-}"
+  fi
+  _SQL_CONVERT="${_sqlCnvAcct}"
+  ### An instance-wide force ignores the INI files, as octopus.cnf promises.
+  _sqlCnvForced=NO
+  case "${_sqlCnvAcct}" in
+    YES|innodb) _sqlCnvForced=YES ;;
+  esac
   if [ -e "${_PLR_CTRL_F}" ]; then
     _SQL_INDB_P=$(grep "sql_conversion_mode" \
       ${_PLR_CTRL_F} 2>&1)
@@ -1464,12 +1479,14 @@ _if_site_db_conversion() {
     fi
     _SQL_INDB_T=$(grep "^sql_conversion_mode = innodb" \
       ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_SQL_INDB_T}" =~ "sql_conversion_mode = innodb" ]]; then
+    if [[ "${_SQL_INDB_T}" =~ "sql_conversion_mode = innodb" ]] \
+      && [ "${_sqlCnvForced}" != "YES" ]; then
       _SQL_CONVERT=innodb
     fi
     _SQL_MYSM_T=$(grep "^sql_conversion_mode = myisam" \
       ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_SQL_MYSM_T}" =~ "sql_conversion_mode = myisam" ]]; then
+    if [[ "${_SQL_MYSM_T}" =~ "sql_conversion_mode = myisam" ]] \
+      && [ "${_sqlCnvForced}" != "YES" ]; then
       _SQL_CONVERT=myisam
     fi
   fi
@@ -1483,12 +1500,14 @@ _if_site_db_conversion() {
     fi
     _SQL_INDB_T=$(grep "^sql_conversion_mode = innodb" \
       ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_SQL_INDB_T}" =~ "sql_conversion_mode = innodb" ]]; then
+    if [[ "${_SQL_INDB_T}" =~ "sql_conversion_mode = innodb" ]] \
+      && [ "${_sqlCnvForced}" != "YES" ]; then
       _SQL_CONVERT=innodb
     fi
     _SQL_MYSM_T=$(grep "^sql_conversion_mode = myisam" \
       ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_SQL_MYSM_T}" =~ "sql_conversion_mode = myisam" ]]; then
+    if [[ "${_SQL_MYSM_T}" =~ "sql_conversion_mode = myisam" ]] \
+      && [ "${_sqlCnvForced}" != "YES" ]; then
       _SQL_CONVERT=myisam
     fi
   fi
@@ -1736,8 +1755,9 @@ _fix_permissions() {
   ### the skeleton modes and stamp the per-pass marker: a withheld platform
   ### must end no wider than an accepted one, and the whole-tree chmod pass
   ### in _fix_static_permissions keys on that marker. A foreign-CMS platform
-  ### is withheld and reported the same way, its sites/all/drush mkdir
-  ### included.
+  ### is different: its sites/all/drush IS created below (its drushrc renders
+  ### there) and no SKIP line is printed; only the legs for the three Drupal
+  ### directories it does not carry are withheld.
   local _plrCodeLink=""
   local _cd
   for _cd in modules themes libraries drush; do

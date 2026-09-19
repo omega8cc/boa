@@ -64,6 +64,11 @@ These settings ensure:
    - The system retains all incremental backups linked to full backups within the `KEEP_WITHIN` period.
    - This ensures backup chains remain valid for restoration.
 
+3. **What the cleanup pass does under the fleet's Duplicity (3.2.0.2)**:
+   - A `remove-older-than --force` pass begins by deleting the newest backup set of the newest chain when that set is incomplete (the leftovers of an interrupted upload, never a restorable set).
+   - The deleting legs always run at a `notice` verbosity floor, whatever `_AWS_VLV` says, because Duplicity announces deletions only at that level.
+   - The same legs cap the backend retry budget at `--num-retries 2 --backend-retry-delay 5`.
+
 3. **`remove-all-but-n-full` Not Used**:
    - Routine cleanup does not use `remove-all-but-n-full`, as it is unsuitable for trimming live backups. It deletes full backups and their associated incremental chains, which can disrupt active backup sets.
    - The `purge` action does not use it either. Duplicity has no command that can empty a repository — every removal command keeps the newest chain — so `purge` wipes a bucket by deleting every file Duplicity's own naming parser recognizes at the target, directly through Duplicity's backend layer (same interpreter, target URL, and credentials as the backup runs; files not created by Duplicity are left untouched). It repeats the deletion until a re-list comes back clean (on a versioning bucket removing the newest version of a name can reveal the one below it), then removes the local Duplicity cache for the backup set. A clean listing is the strongest proof this layer has: bucket-level versioning or soft-delete, where enabled, can retain unlisted older versions no Duplicity backend can see -- the wipe notes this limit in its log; such remnants follow the provider's own lifecycle settings. If the wipe fails, `purge` reports the failure loudly and exits non-zero without printing a collection status; the closing collection status appears only after a verified wipe.
