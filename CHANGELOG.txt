@@ -267,6 +267,12 @@
 
 @=> Important Fixes
 
+    * A crashed table is now repaired whether or not incident mail is on.
+      checksql.sh ran the repair script it generates only inside its mail
+      block, so a box with _INCIDENT_REPORT=OFF (or no _MY_EMAIL) detected
+      the crash, wrote /var/xdrago/acrashsql.sh and repaired nothing. OFF now
+      silences the two mails about the repair, never the repair itself.
+
     * xmass no longer aborts a live sync when a file vanishes between rsync's
       directory listing and its extended-attribute read: rsync then exits 23
       instead of 24, and the three transfer wrappers now read an exit 23 made
