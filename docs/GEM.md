@@ -6,7 +6,7 @@ Similarly, to enable Node/NPM support, you need to initialize your account to au
 
 ## Security Considerations for Node/NPM
 
-Since `node` can be used to bypass Limited Shell and create a significant security risk within the BOA system, it should not be enabled on any BOA system with multiple `lshell` users. Consequently, Node/NPM support is not enabled in BOA by default. To enable it, you must create an empty control file `/root/.allow.node.lshell.cnf`. Node/NPM support on hosted BOA is available only on dedicated systems like Phantom and Cluster.
+Since `node` can be used to bypass Limited Shell and create a significant security risk within the BOA system, it should not be enabled on any BOA system with multiple `lshell` users. Consequently, Node/NPM support is not enabled in BOA by default. It is enabled when the empty control file `/root/.allow.node.lshell.cnf` exists, or automatically when any Octopus instance on the box is of type PHANTOM, CLUSTER, ULTRA or MONSTER; on every other box `node`, `npm`, `npx` and `scp` are stripped from the limited shell's command lists on every pass. Node/NPM support on hosted BOA is available only on dedicated systems like Phantom and Cluster.
 
 Please note that Node/NPM support, if allowed with `/root/.allow.node.lshell.cnf` file, will be enabled only on the main Ægir Octopus `lshell` account. The `client` level sub-accounts will receive their own Ruby Gems access only.
 
@@ -29,7 +29,7 @@ When you log into your SSH account, you will be presented with a helpful intro:
 
 ```
 
-      ======== Welcome to the Ægir, Drush and Compass Shell ========
+      ======== Welcome to the Ægir, Drush, Bee and Compass Shell ========
 
          Type '?' or 'help' to get the list of allowed commands
              Note that not all Drush commands are available

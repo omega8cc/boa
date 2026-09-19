@@ -74,7 +74,12 @@ The worker count is `base × engines × 2`, where *engines* is the instance's
 allotted cores (`_CLIENT_CORES`, default 1). The `memory_limit` band is capped
 at the box's RAM-scaled ceiling (below), so on a small VM even these values are
 reduced. (`QUIET` is the exception — its worker count is not doubled, so it
-lands on the floor of 8.)
+lands on 8.) The two writers floor the value differently: the Octopus
+install/upgrade writer uses it only when it is 8 or more and writes 8 otherwise,
+so straight after an Octopus install or upgrade the 4- and 2-worker plans carry 8;
+the live agent, when it rebuilds a pool (PHP-FPM version switch, multi-FPM change,
+or its own serial changing after a BOA upgrade), writes any value of 2 or more,
+which is where the 4 and the 2 come from.
 
 ### Dedicated plans
 
