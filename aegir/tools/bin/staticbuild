@@ -22,6 +22,8 @@
 #                                   (backdrop core + bee + backdrop-drush-extension
 #                                   + redis_backdrop + webform_backdrop), all at
 #                                   latest - lightweight, no Composer
+#   staticbuild grav                build+package+publish ONLY the Grav family
+#                                   (official admin bundle at latest; no Composer)
 #   staticbuild txp                 build+package+publish ONLY Textpattern (official
 #                                   release tarball at latest; never the .zip, which
 #                                   omits the /sites multisite scaffold)
@@ -40,7 +42,7 @@
 #   -C         skip "composer clearcache" at the start of a build
 # Build target names: farm cms culturas commerce localgov openfed opigno social thunder
 #   varbase backdrop (core, versioned like the Drupal cores) bee backdrop-drush-extension
-#   redis_backdrop webform_backdrop cores
+#   redis_backdrop webform_backdrop grav txp cores
 #
 # The Backdrop family (backdrop core, bee, backdrop-drush-extension,
 # redis_backdrop, webform_backdrop) is always fetched at its newest upstream version, so BOA

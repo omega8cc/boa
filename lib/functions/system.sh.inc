@@ -5183,6 +5183,7 @@ _if_install_wkhtmltox() {
   fi
 
   if [ "${_OS_CODE}" = "excalibur" ] \
+    || [ "${_OS_CODE}" = "trixie" ] \
     || [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "chimaera" ] \
     || [ "${_OS_CODE}" = "bookworm" ] \
@@ -5203,7 +5204,8 @@ _if_install_wkhtmltox() {
     _WKHTML_SYS_RV="bullseye"
   elif [ "${_OS_CODE}" = "daedalus" ]; then
     _WKHTML_SYS_RV="bookworm"
-  elif [ "${_OS_CODE}" = "excalibur" ]; then
+  elif [ "${_OS_CODE}" = "excalibur" ] || [ "${_OS_CODE}" = "trixie" ]; then
+    ### No trixie build exists upstream; like its Devuan twin it takes bookworm's.
     _WKHTML_SYS_RV="bookworm"
   else
     _WKHTML_SYS_RV="${_OS_CODE}"

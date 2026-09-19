@@ -1822,7 +1822,7 @@ case "$1" in
   ;;
   *)        echo
             echo "Usage: xcopy {pre-mig} {fqdn} (source+target vms)"
-            echo "Usage: xcopy {export|create|pretransfer|transfer|proxy} {o1|shared} {target-ip} {o2}"
+            echo "Usage: xcopy {export|create|pretransfer|transfer|noproxy} {o1|shared} {target-ip} {o2}"
             echo "Usage: xcopy {import} {o1} {target-ip} (target vms)"
             echo "Usage: xcopy {post-mig} {fqdn} (source+target vms)"
             echo

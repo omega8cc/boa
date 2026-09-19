@@ -267,6 +267,15 @@
 
 @=> Important Fixes
 
+    * wkhtmltopdf installs on Debian Trixie: the installer asked the mirror
+      for a trixie build that does not exist, while its Devuan twin Excalibur
+      already took the bookworm build. Trixie now takes the same package.
+
+    * Three help texts say what the tools do: `boa help` names the archived
+      heal threshold as 85% (it said 90), `staticbuild -h` lists the grav
+      verb and the grav and txp build targets, and xcopy's usage line names
+      `noproxy` instead of a `proxy` verb it never had.
+
     * The weekly database conversion no longer carries one site's setting
       over to the next. The nightly worker kept the conversion mode in one
       shell variable for the whole account, so a site with
