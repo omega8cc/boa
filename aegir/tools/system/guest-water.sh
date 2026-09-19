@@ -174,12 +174,18 @@ _whitelist_ip_pingdom() {
   #   Plain IPv4 list: https://my.pingdom.com/probes/ipv4  (preferred - no parsing needed)
   #   RSS feed:        https://my.pingdom.com/probes/feed  (fallback - XML parsing required)
   # The plain list is simpler and less fragile; RSS is kept as fallback.
+  # Only a line that is nothing but an address counts: an error page served
+  # with a 200 in place of the list shows the caller's address somewhere in
+  # its text, and taken from anywhere in the body that one token replaced the
+  # whole probe list. Such a body now yields nothing and the RSS feed (its
+  # own <pingdom:ip> tag as the anchor) or the keep below applies.
   # Fetch BEFORE the tagged-line cleanup: an empty fetch (both endpoints down,
   # format change) must keep the existing entries -- never strip a monitor's
   # probes for a day. Allow both web ports: the probes check https far more
   # often than http, and a d=80-only entry leaves 443 exposed to a csf.deny hit.
   _IPS=$(curl ${_crlGet} https://my.pingdom.com/probes/ipv4 \
-    | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+' \
+    | tr -d '\r' \
+    | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' \
     | sort \
     | uniq 2>&1)
   if [ -z "${_IPS}" ]; then

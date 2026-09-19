@@ -986,7 +986,11 @@ first) and `rm`s it at the very end — and once escalation is done it clears th
 > as the A/AAAA records of `ip.uptimerobot.com`, a different channel from its CDN. BugBug
 > publishes its runner hosts through one API endpoint only, so that refresh has no second
 > source and no built-in copy — a stale address would go on trusting a cloud host the
-> vendor no longer holds — and relies on the keep alone. Every
+> vendor no longer holds — and relies on the keep alone. The two feeds that are a bare
+> list of hosts (Pingdom's plain list, BugBug's array) count only a line or an element
+> that is nothing but an address, so an error page served with a 200 in place of the list,
+> which shows the caller's address somewhere in its text, yields nothing and the keep
+> applies instead of that one address replacing the list. Every
 > fetched token is value-validated before it is written (octets `0-255`, an
 > IPv4 prefix of `/8` or narrower, so a mangled or hostile body can never open the web
 > ports to the internet), and the resolver lines the pass keeps for its own DNS egress
