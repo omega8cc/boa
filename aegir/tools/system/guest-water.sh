@@ -1372,7 +1372,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   if [ -f "${_useCnf}" ]; then
     if [ ! -s "${_preCnf}" ]; then
       # No snapshot: nothing to roll back to, so the live file stays
-      # (siblings in sql.sh.inc and mycnfup take the same way out).
+      # (the sibling in sql.sh.inc takes the same way out).
       _useCnfUpdate=YES
       echo "NO $(date) diff3 no snapshot ${_preCnf}" >> ${_vBs}/dragon/t/csf.log
     else

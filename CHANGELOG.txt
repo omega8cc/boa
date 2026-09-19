@@ -102,6 +102,13 @@
 
 @=> Improvements
 
+    * The mycnfup tuner and the cluster tool are retired. mycnfup refused
+      every verb on anything but Debian, so it never ran on a Devuan box,
+      and only the discontinued Simple Cluster tooling ever called it; the
+      memory limits in my.cnf follow the RAM on every barracuda pass without
+      it. A box that still carries /opt/local/bin/mycnfup loses it, with its
+      fetch markers, on the next pass.
+
     * A filesystem running out of room now prunes the archived site stores
       on its own: `boa archived heal`, which runner.sh runs every minute
       after its standby, proxy, maintenance, queue-stop and load holds and
