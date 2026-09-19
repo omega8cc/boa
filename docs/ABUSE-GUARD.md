@@ -964,7 +964,7 @@ first) and `rm`s it at the very end — and once escalation is done it clears th
 > **Under the hood.** `guest-water.sh` also refreshes the `csf.allow` provider ranges
 > (Cloudflare, Googlebot, Google's special-case crawlers — the AdsBot / Mediapartners /
 > SERP-favicon-fetcher family, published separately from googlebot.json — Bingbot, the
-> two uptime monitors Pingdom and UptimeRobot, and — behind
+> two uptime monitors Pingdom and UptimeRobot, the BugBug cloud test runners, and — behind
 > `/root/.extended.firewall.exceptions.cnf` — Imperva, Sucuri, Auth0, Site24x7), with a
 > diff-guard that reverts an unexpected `csf.allow` change (it compares sorted copies of
 > the file, so only a changed or missing operator line counts — never the position the
@@ -983,7 +983,10 @@ first) and `rm`s it at the very end — and once escalation is done it clears th
 > `csf.deny` hit because the per-port allow rule precedes the all-port deny — and
 > membership is an exact-line test, so a manual entry carrying the same address never
 > blocks a provider's own line. UptimeRobot's fallback is the same address set published
-> as the A/AAAA records of `ip.uptimerobot.com`, a different channel from its CDN. Every
+> as the A/AAAA records of `ip.uptimerobot.com`, a different channel from its CDN. BugBug
+> publishes its runner hosts through one API endpoint only, so that refresh has no second
+> source and no built-in copy — a stale address would go on trusting a cloud host the
+> vendor no longer holds — and relies on the keep alone. Every
 > fetched token is value-validated before it is written (octets `0-255`, an
 > IPv4 prefix of `/8` or narrower, so a mangled or hostile body can never open the web
 > ports to the internet), and the resolver lines the pass keeps for its own DNS egress
