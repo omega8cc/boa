@@ -144,6 +144,8 @@ Contrib [S]oft[E]nabled:
 
  admin ---------------------- [D6,D7] --- [S] [B] [SE]
  rubik ---------------------- [D6,D7] --- [S] [B] [SE]
+ tao ------------------------ [D6,D7] --- [S] [B] [SE] (base theme rubik requires)
+ image ---------------------- [D6] ------ [S] [B]
 
 Core [F]orce[E]nabled:
 
