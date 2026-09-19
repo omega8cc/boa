@@ -152,6 +152,7 @@ The system automatically includes the following directories:
 2. **Default Exclusion**:
    - Under `/data/disk/your_username/`: `.tmp/`, `clients/`, `u/`, `undo/`, and within `static/`: `restores/`, `tmp/`, `trash/`.
    - Under `/home/your_username.ftp/`: `.tmp/`, `backups/`, `clients/`, `platforms/`, `static/`.
+   - By pattern, anywhere under the included roots (a duplicity exclude filelist seeded once per account unless the host keeps a legacy `/root/.backboa.exclude`): `**files/advagg_css/**`, `**files/advagg_js/**`, `**files/css/**`, `**files/js/**`, `**private/temp/**`.
 
 3. **Customization**:
    - You can include or exclude additional directories using configuration files located in:
@@ -378,6 +379,7 @@ mybackup restore <SERVICE> [RESTORE_PATH] [RESTORE_TIME]
 
 1. **Restore Path Must Be Absolute Without Leading Slash**:
    - Paths must reflect the full directory structure used during backups, but cannot start with `/`.
+   - The path must contain no whitespace at all, and none of `; & | ` $ < > ( ) { } " ' \` (a wider set than the config-file list below). Interactively `mybackup restore` prints the error and queues nothing; a queued file that fails the same check is dropped by the root consumer with a line in `/var/log/mybackup_invalid_queued.log`.
    - Example:
      - Correct: `data/disk/your_username/static/projects`
      - Incorrect: `/data/disk/your_username/static/projects`
