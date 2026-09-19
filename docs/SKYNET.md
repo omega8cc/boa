@@ -23,9 +23,9 @@ We have also added hourly updates for a few key scripts responsible for your sys
 Gradually it grew into its current incarnation, so at the moment BOA Skynet auto-updates do these things for you, while you sleep:
 
 * Daily version/release check and notification
-* Every 6 minutes update for all meta-installers and related tools
-* Hourly update for key BOA tools, monitors and self-healing agents
-* Hourly check if your DNS resolver works as expected and repair if not
+* Every 5 minutes (one and the same tick, the root cron line that runs `clear.sh`, whenever no install lock is held): update for all meta-installers and related tools
+* The same tick: update for key BOA tools, monitors and self-healing agents (the per-file serial stamp, not a clock, decides whether a given tool is refetched)
+* The same tick: check if your DNS resolver works as expected and repair if not
 * Automatic OS security-only updates between BOA upgrades, on modern systems
 
 While it is a very convenient to have all this work done for you, and we
