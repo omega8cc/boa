@@ -38,7 +38,7 @@ Now you can disable this convenient magic by adding the line:
 
   `_SKYNET_MODE=OFF`
 
-NOTE: Critically important BOA tools will be still auto-updated every 6 minutes to keep your system ready for upgrade if/when needed and as initially intended.
+NOTE: Critically important BOA tools will be still auto-updated every 5 minutes to keep your system ready for upgrade if/when needed and as initially intended.
 
 Better idea, though:
 
