@@ -609,6 +609,141 @@ _mysql_health_check_fix() {
   _sql_restart "DOWN MySQL"
 }
 
+###
+### Is this box PROMOTED, or just missing its marker for a moment?
+###
+# A bare /root/.standby.cnf gap is NOT a promotion. 'xmass sync --live'
+# treats a missing marker on its target as an accident and rewrites it on
+# every run, so a gap of seconds is an ORDINARY event on a healthy mirror
+# -- and every hold that follows the marker alone releases inside it. That
+# is not theoretical: a measured 24 s gap cleared super_read_only here, the
+# nginx watchdog then read the database as unlocked and opened the web
+# tier, and the standby's own panel writes killed the replica's SQL thread
+# on a duplicate key 38 s later.
+#
+# PROMOTED is what the cutover and the nginx watchdog already mean by it:
+# the marker gone AND (a role probe that RAN CLEAN and found no replica
+# config, or the cutover's promoted latch) AND no LOST-replica breadcrumb
+# from second.sh over a database that is still locked. A box that still
+# carries a replica config is not promoted whatever its marker says -- it
+# keeps applying the source's binlog, so a local write is a divergence and
+# an errant own-UUID GTID. A promotion by hand is therefore "remove the
+# marker AND reset the replica", which the operator must do anyway; until
+# then every hold is KEPT and the reason is logged once per episode.
+#
+# Cutover invariants this must not change: step 11.5 unlocks the database,
+# strips the hold block and publishes the latch ITSELF while the marker is
+# still present, so nothing here is waited on; step 15 then removes marker
+# and latch together, and this function's release branch returns at its own
+# grep because the block is already gone. A re-seed rewrites both.
+_standby_role_probe() {
+  # 0 = the probe RAN CLEAN and this box carries NO replica config.
+  # The return code decides, never emptiness alone: 8.4 removed the SLAVE
+  # dialect and 5.7 lacks the REPLICA one, so the first call legitimately
+  # fails on 5.7, and a refused or dropped connection would otherwise read
+  # as "no replica config" on a running replica. Sets _STANDBY_ROLE_WHY so
+  # the caller's single line says which of the two answers it got.
+  local _rpl _rc
+  _rpl=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 \
+    -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+  _rc=$?
+  if [ "${_rc}" -ne "0" ]; then
+    _rpl=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 \
+      -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+    _rc=$?
+  fi
+  if [ "${_rc}" -ne "0" ]; then
+    _STANDBY_ROLE_WHY="the role probe did not run clean (credentials?)"
+    return 1
+  fi
+  if [ -n "${_rpl}" ]; then
+    _STANDBY_ROLE_WHY="a replica config is still present"
+    return 1
+  fi
+  _STANDBY_ROLE_WHY=""
+  return 0
+}
+
+_standby_sql_role_cache() {
+  # Stamp the read that just ran and keep its answer beside the stamp:
+  # KEEP caches the reason phrase this pass computed (the next passes in
+  # this minute quote the same one), RELEASE drops the file so no pass can
+  # ever release on a remembered answer.
+  local _stm="${1}" _ans="${2}"
+  touch "${_stm}" 2>/dev/null
+  if [ "${3}" = "KEEP" ]; then
+    { printf '%s\n' "${_STANDBY_ROLE_WHY}" > "${_ans}"; } 2>/dev/null
+  else
+    rm -f "${_ans}"
+  fi
+  return 0
+}
+
+_standby_sql_promoted() {
+  # The latch is read first because it costs one file test, and because it
+  # is the answer the cutover PROVED at step 11.5. It is not the durable
+  # half: second.sh reaps it as soon as the marker is gone (it only ever
+  # qualifies a marker), so on a box promoted by hand the probe is what
+  # answers -- which is why the probe, not the latch, is the reason logged.
+  #
+  # Throttled to one probe a minute, exactly like the nginx watchdog's
+  # marker-gap arm and for the same reason: the half-promoted box this
+  # answers on is a state the operator may leave alone for days, and at
+  # nine passes a minute the two watchdogs together spent 20 to 40 mysql
+  # clients a minute on it against a replica that is applying the source's
+  # binlog. The nginx arm's stamp is the shared key; the reason phrase is
+  # the cached answer, in a file of this script's own because the two
+  # vocabularies differ (a box with no replica config and a locked DB is
+  # LOCKED there, and promoted here unless second.sh's lost breadcrumb
+  # says otherwise).
+  #
+  # Only a KEEP is ever cached. The release is the irreversible half -- it
+  # clears super_read_only and strips this healer's own retry key -- so it
+  # is always taken on a fresh read, and the worst a stale cache can do is
+  # leave the lock on for the minute the marker arm already waits. The
+  # cache is read only while the STAMP is there, and second.sh reaps that
+  # stamp every minute the marker is gone, so nothing can be pinned across
+  # a re-seed.
+  local _stm="/run/boa_standby_role_probed.pid"
+  local _ans="/run/boa_standby_sql_answer"
+  [ -e "/root/.standby.cnf" ] && return 1
+  if [ -e "/var/log/boa/.standby_promoted.pid" ]; then
+    _STANDBY_ROLE_WHY=""
+    return 0
+  fi
+  if [ -e "${_stm}" ] && [ -n "$(find "${_ans}" -mmin -1 2>/dev/null)" ]; then
+    _STANDBY_ROLE_WHY=$(head -1 "${_ans}" 2>/dev/null)
+    [ -n "${_STANDBY_ROLE_WHY}" ] && return 1
+  fi
+  # "No replica config" alone is not a promotion: second.sh classifies a
+  # box with no config whose DB is still read-only as a LOST replica (a
+  # RESET REPLICA ALL by hand, a failed re-init) and KEEPS the marker
+  # there. Its breadcrumb is the discriminator this predicate cannot read
+  # for itself -- super_read_only is what the release below CLEARS, so
+  # testing it as evidence of promotion would be circular -- and its
+  # marker-gap reap deliberately spares that breadcrumb, so it survives
+  # the very gap this answers in. Honoured only while the runtime is still
+  # locked: that IS the lost state, and an operator who unlocked the box
+  # by hand has already answered the question the breadcrumb asks, which
+  # is what lets this healer strip its own cnf block afterwards.
+  if [ -e "/run/boa_standby_lost_logged.pid" ]; then
+    local _lost_sro
+    _lost_sro=$(mysql --defaults-file=/root/.my.cnf \
+      -sNe "SHOW VARIABLES LIKE 'super_read_only'" 2>/dev/null | awk '{print $2}')
+    if [ "${_lost_sro}" != "OFF" ]; then
+      _STANDBY_ROLE_WHY="there is no replica config but the DB is still locked -- a LOST replica, never promoted (second.sh); reset the replica, then remove /run/boa_standby_lost_logged.pid, or clear super_read_only by hand"
+      _standby_sql_role_cache "${_stm}" "${_ans}" KEEP
+      return 1
+    fi
+  fi
+  if _standby_role_probe; then
+    _standby_sql_role_cache "${_stm}" "${_ans}" RELEASE
+    return 0
+  fi
+  _standby_sql_role_cache "${_stm}" "${_ans}" KEEP
+  return 1
+}
+
 _standby_sql_hold() {
   # DB half of the passive-mirror hold (2026-08-25 ruling): super_read_only
   # refuses DDL/DML from every connection including root while exempting the
@@ -657,6 +792,11 @@ _standby_sql_hold() {
   fi
   _mysql_is_answering || return 0
   if [ -e "/root/.standby.cnf" ]; then
+    # The marker is back (the sync restores it, or an init rewrote it): the
+    # kept-hold episode is over, and a leaked stamp would swallow the next
+    # one's line.
+    [ -e "/run/boa_standby_sqlkept_logged.pid" ] \
+      && rm -f /run/boa_standby_sqlkept_logged.pid
     # HOLD: assert runtime, and persist across restarts/reboots via the cnf.
     # Only a box that IS an xmass replica carries xmass_gtid.cnf (checked
     # above); never lock a box whose replication this tool did not set up.
@@ -718,20 +858,36 @@ _standby_sql_hold() {
   else
     # RELEASE: only ever on a box whose cnf carries OUR hold block -- a
     # deliberate operator read_only on a non-mirror box is not ours to
-    # clear. Handles a promotion by bare marker removal (no cutover ran)
-    # and any cutover interrupted between steps 11.5 and 15. The cnf strip
-    # happens ONLY after the runtime readback proves the unlock landed:
-    # the block is this healer's only retry key, and stripping it on a
-    # failed unlock would leave the box read-only forever with nothing
-    # left to notice.
+    # clear -- and only on a box that reads as PROMOTED. Handles a
+    # promotion by hand (marker removed AND the replica reset, no cutover
+    # ran) and any cutover interrupted between steps 11.5 and 15. The cnf
+    # strip happens ONLY after the runtime readback proves the unlock
+    # landed: the block is this healer's only retry key, and stripping it
+    # on a failed unlock would leave the box read-only forever with
+    # nothing left to notice.
     grep -q "xmass-standby-hold" "${_cnf}" 2>/dev/null || return 0
+    if ! _standby_sql_promoted; then
+      # KEEP: a marker gap on a box that is still a replica. Everything
+      # stays as it is -- the runtime lock is untouched (so local writes
+      # keep being refused) and the cnf block stays, which is both the
+      # retry key and what re-locks the box across a mysqld restart. The
+      # sync puts the marker back within seconds and the hold path above
+      # resumes. Logged once per episode: this loop runs many times a
+      # minute and the state lasts as long as the operator leaves it.
+      if [ ! -e "/run/boa_standby_sqlkept_logged.pid" ]; then
+        touch /run/boa_standby_sqlkept_logged.pid
+        echo "$(date) SQL standby hold KEPT: marker gone but ${_STANDBY_ROLE_WHY} -- not a promotion (reset the replica to promote by hand; xmass sync restores the marker)" >> ${_pthOml}
+      fi
+      return 0
+    fi
+    rm -f /run/boa_standby_sqlkept_logged.pid
     mysql --defaults-file=/root/.my.cnf \
       -e "SET GLOBAL super_read_only=OFF; SET GLOBAL read_only=OFF;" 2>/dev/null
     _sro=$(mysql --defaults-file=/root/.my.cnf \
       -sNe "SHOW VARIABLES LIKE 'super_read_only'" 2>/dev/null | awk '{print $2}')
     if [ "${_sro}" = "OFF" ]; then
       sed -i '/xmass-standby-hold/,+2d' "${_cnf}" 2>/dev/null
-      echo "$(date) SQL standby hold released: super_read_only cleared (marker gone)" >> ${_pthOml}
+      echo "$(date) SQL standby hold released: super_read_only cleared (marker gone and this box reads as promoted)" >> ${_pthOml}
     else
       echo "$(date) SQL standby release: unlock readback '${_sro:-empty}' not OFF -- keeping the cnf block for retry" >> ${_pthOml}
     fi
