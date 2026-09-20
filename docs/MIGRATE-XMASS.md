@@ -102,13 +102,25 @@ How long visitors see the 503: the data crosses before the window opens
 (replication carries the databases, `sync` and the autosync passes carry the
 files), so the window does not grow with the size of the data. Inside it are
 the final files delta, the lag confirmation, the promotion, the target's
-web-layer proof and `renameaegirhost` for the master and then for each
-account's Ægir root in series, under a box-wide gate. Every clean cutover,
-failover and failback measured so far, on estates of 4–6 Ægir roots and up to
-46 sites on both Percona generations, kept a client domain on the 503 for
-**15 to 20 minutes**. Budget a few more minutes per additional Ægir root; on a
-very large file estate add the two no-change tree walks inside the window,
-which scale with the number of files rather than their size.
+web-layer proof and the conversion of this box into a relay for the
+client-domain sites (steps 12.85–12.94). The renames run after that, with
+those sites already serving through the relay, so the window does not grow
+with the number of Ægir roots either: measured on one rig pair (Percona 8.4,
+a plain and a cache-honouring client), a 3-root estate came back in
+**2 min 10 s** and an 8-root estate in **3 min 25 s**. The older order, with
+every root renamed inside the window, measured 15 to 20 minutes on 4–6 roots
+and grew by minutes per root; no production move has been timed under the
+new order yet. What stays held for the whole of the renames, minutes per root
+in series, is narrower and named: the sites whose names carry the old box
+hostname (`<site>.oN.<old-fqdn>`), which cannot serve anywhere until the new
+box has renamed them, and the control panels; their old names answer a 503
+with `Retry-After` while they wait and a 301 to the new names afterwards. On
+a box whose sites reach their database by the box hostname (`_THIS_DB_HOST`
+set to the FQDN rather than `localhost`) the tool keeps the older order, every
+site held until the last root is renamed; the DRY plan names the order it
+will take (`cutover order: relay first` or `cutover order: RENAME FIRST`).
+On a very large file estate add the two no-change tree walks inside the
+window, which scale with the number of files rather than their size.
 
 ## State Machine
 
