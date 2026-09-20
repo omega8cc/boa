@@ -37,7 +37,11 @@ resembles:
   A suspended instance never enters that machinery.
 - `static/control/http-off.pid` is the **migration** web-off gate managed by
   `xoct`/`xmass` (see [MIGRATE-XOCT.md](MIGRATE-XOCT.md)). It lives inside the
-  account tree and serves a cacheable maintenance page.
+  account tree; the 503 it serves is uncacheable (`no-store, must-revalidate`,
+  with a `Retry-After`), and the Grav and Textpattern vhosts honour it at the
+  nginx level from their next verify on. Its per-host twin `http-off-host.pid`
+  holds only the sites named under the box hostname while a whole-server move
+  renames them.
 
 ## Mechanism
 
