@@ -123,6 +123,23 @@ _XMASS_SYNC_MAX_WAIT="${_XMASS_SYNC_MAX_WAIT:-7200}"
 ### destructive step so a truncated tree can never reach the target promote.
 _XMASS_RSYNC_RC=0
 
+### The firewall half of the standby web hold (chain BOA_STANDBY_WEB, asserted
+### by the nginx watchdog and csfpost.sh while the box is not promoted). One
+### text, used verbatim by every site that removes the "this box was held" web
+### breadcrumb: nginx.sh tears the chain down ONLY while that breadcrumb or
+### /root/.standby.cnf is present, so a site that removes the key without the
+### chain leaves 80/443 DROPped with nothing left on the box able to open them
+### again. One string so the shell that runs it -- here or on the target --
+### expands it. Idempotent: a box that was never held carries no chain.
+_XMASS_FW_WEB_RELEASE='for _ipt in iptables ip6tables; do
+  command -v "${_ipt}" >/dev/null 2>&1 || continue
+  if "${_ipt}" -w 5 -nL BOA_STANDBY_WEB >/dev/null 2>&1; then
+    while "${_ipt}" -w 5 -D INPUT -j BOA_STANDBY_WEB 2>/dev/null; do :; done
+    "${_ipt}" -w 5 -F BOA_STANDBY_WEB 2>/dev/null
+    "${_ipt}" -w 5 -X BOA_STANDBY_WEB 2>/dev/null
+  fi
+done'
+
 ###-------------HELPERS--------------------###
 
 _info() {
@@ -2127,9 +2144,22 @@ _xmass_init_unwind() {
     # prevent step wrote): an ha-switch failback target is a finalized
     # proxy whose Solr xtrim disarmed on purpose -- those never enter
     # the list and stay down.
-    if ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" bash <<'REMOTE' &> /dev/null
+    # The chain release leads the same body: the rm below takes nginx.sh's
+    # only key to the BOA_STANDBY_WEB teardown with it, and a refused init
+    # must not hand back a box that silently drops 80/443. Fed in ahead of
+    # the here-document so the body itself stays unexpanded here.
+    if { printf '%s\n' "${_XMASS_FW_WEB_RELEASE}"
+      cat <<'REMOTE'
 rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid /var/log/boa/.xmass_solr_hold.pid \
-  /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid
+  /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid \
+  /var/log/boa/.standby_web_held.pid /var/log/boa/.standby_ftps_held.pid
+REMOTE
+      # And once more AFTER the rm (as restore-target does): a watchdog pass
+      # between the flush and the rm re-asserts the chain and re-touches the
+      # key the rm then takes; after the rm nothing can assert. The body is
+      # split around it so the here-document itself stays unexpanded.
+      printf '%s\n' "${_XMASS_FW_WEB_RELEASE}"
+      cat <<'REMOTE'
 # A refused init leaves a NORMAL box: the DB hold this init already wrote
 # (cnf block + runtime super_read_only) must not survive the unwind -- the
 # mysql watchdog's release branch would eventually heal it, but only after
@@ -2173,12 +2203,16 @@ fi
 test ! -e /root/.standby.cnf && test ! -e /var/log/boa/.xmass_solr_hold.pid \
   && [ "${_sro_now}" = "OFF" ]
 REMOTE
+    } | ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" bash &> /dev/null
     then
       _info "init unwound: target restored to a normal box"
     else
       _alrt "could NOT verify the init unwind on ${_tgt} -- run there by hand:"
       _alrt '    rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid'
       _alrt '    rm -f /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid'
+      _alrt '    rm -f /var/log/boa/.standby_web_held.pid /var/log/boa/.standby_ftps_held.pid'
+      _alrt '    iptables  -D INPUT -j BOA_STANDBY_WEB; iptables  -F BOA_STANDBY_WEB; iptables  -X BOA_STANDBY_WEB'
+      _alrt '    ip6tables -D INPUT -j BOA_STANDBY_WEB; ip6tables -F BOA_STANDBY_WEB; ip6tables -X BOA_STANDBY_WEB'
       _alrt '    rm -f /var/log/boa/.xmass_solr_hold.pid'
       _alrt '    mysql -e "SET GLOBAL super_read_only=OFF; SET GLOBAL read_only=OFF;"'
       _alrt '    (and strip the xmass-standby-hold block from xmass_gtid.cnf)'
@@ -3204,9 +3238,22 @@ _xmass_restore_target() {
       sed -i '/xmass-standby-hold/,+2d' "${_cnf}"
     fi
   done
+  # The web and FTPS "was held" breadcrumbs go with the marker: this box is
+  # being handed back as a normal box, and the watchdog reads them whenever
+  # the marker is absent. The DROP chain goes FIRST, in the same step: the
+  # breadcrumb and the marker are the only two keys nginx.sh's teardown reads,
+  # and removing both without flushing the chain would leave this "plain BOA
+  # box" dropping all inbound 80/443 with nothing able to open it again.
+  bash -c "${_XMASS_FW_WEB_RELEASE}"
   rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid \
     /var/log/boa/.xmass_solr_hold.pid /run/boa_standby_lost_logged.pid \
-    /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid
+    /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid \
+    /var/log/boa/.standby_web_held.pid /var/log/boa/.standby_ftps_held.pid
+  # And once more AFTER the rm: the watchdog re-asserts the chain on every
+  # pass while the marker is present, so a pass landing between the flush
+  # above and the rm would have recreated the chain and re-touched the key
+  # the rm then took. After the rm nothing can assert, so this one is final.
+  bash -c "${_XMASS_FW_WEB_RELEASE}"
   _info "Starting MySQL via move_sql.sh ..."
   /var/xdrago/move_sql.sh start \
     || _die "MySQL start failed -- the pre-init data directory is in place; check the MySQL error log"
@@ -5518,7 +5565,7 @@ _xmass_assert_standby_marker() {
 # still wanted once the move is done. Site auto-import stays off for the
 # window: a platform verify of the rename must not register sites twice.
 _xmass_failout_travelling_tasks() {
-  local _root _usr _left _bad=0 _roots="/var/aegir"
+  local _root _usr _out _rc _probe_rc _left _err _bad=0 _roots="/var/aegir"
   local _oct
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _roots="${_roots} /data/disk/${_oct}"
@@ -5527,18 +5574,56 @@ _xmass_failout_travelling_tasks() {
   for _root in ${_roots}; do
     _usr="${_root##*/}"
     ssh -o ConnectTimeout=15 root@"${_tgt}" \
-      "[ -f '${_root}/.drush/hostmaster.alias.drushrc.php' ]" 2>/dev/null || continue
-    _left=$(ssh -o ConnectTimeout=15 root@"${_tgt}" bash -s -- "${_usr}" <<'REMOTE' 2>/dev/null
+      "[ -f '${_root}/.drush/hostmaster.alias.drushrc.php' ]" 2>/dev/null
+    _probe_rc=$?
+    # Same 0/1-vs-ssh-failure split the panel rewire makes: rc 1 is the alias
+    # genuinely absent (this root has no panel here), while 255, a timeout or
+    # a host-key refusal never read anything at all. Skipping those silently
+    # is how this gate passes with every root's queue unread, and step 12.91
+    # -- which converts the source into a proxy and cannot be re-run -- is the
+    # next thing to happen.
+    if [ "${_probe_rc}" -eq 1 ]; then
+      continue
+    elif [ "${_probe_rc}" -ne 0 ]; then
+      _bad=$((_bad + 1))
+      _alrt "  ${_root}: could not reach ${_tgt} (ssh rc=${_probe_rc}) — the task queue was never read"
+      continue
+    fi
+    # Two lines back: the count, then -- only when the count came back empty --
+    # drush's own first error line. An empty count is almost never a queue
+    # that will not drain; it is drush unable to bootstrap the panel at all
+    # (an alias uri naming a site dir this box does not have, a dead
+    # credential), and without the reason the refusal below sends the operator
+    # to the queue instead of to the panel. Live-observed on a failback.
+    _out=$(ssh -o ConnectTimeout=15 root@"${_tgt}" bash -s -- "${_usr}" <<'REMOTE' 2>/dev/null
 _u="$1"
-_q() { su -s /bin/bash - "${_u}" -c "drush8 @hostmaster sqlq \"$1\"" 2>/dev/null; }
+_e=$(mktemp 2>/dev/null) || _e="/tmp/.xmass-failout.$$"
+_q() { su -s /bin/bash - "${_u}" -c "drush8 @hostmaster sqlq \"$1\"" 2>>"${_e}"; }
 _q "UPDATE hosting_task t INNER JOIN node n ON n.vid = t.vid SET t.task_status='2' WHERE t.task_status IN ('-1','0') AND (t.executed IS NULL OR t.executed=0)" >/dev/null
 su -s /bin/bash - "${_u}" -c "drush8 @hostmaster vset --always-set hosting_platform_automatic_site_import 0" &>/dev/null
-_q "SELECT COUNT(*) FROM hosting_task t INNER JOIN node n ON n.vid = t.vid WHERE t.task_status = '-1' OR (t.task_status = '0' AND (t.executed IS NULL OR t.executed=0))" | tail -1 | tr -dc '0-9'
+_n=$(_q "SELECT COUNT(*) FROM hosting_task t INNER JOIN node n ON n.vid = t.vid WHERE t.task_status = '-1' OR (t.task_status = '0' AND (t.executed IS NULL OR t.executed=0))" | tail -1 | tr -dc '0-9')
+printf '%s\n' "${_n}"
+[ -n "${_n}" ] || grep -m1 '[^[:space:]]' "${_e}" 2>/dev/null \
+  | sed 's/^[[:space:]]*//' | cut -c1-200
+rm -f "${_e}"
 REMOTE
 )
+    _rc=$?
+    # ssh's own rc, captured before anything else runs: a connection that
+    # never ran the body (255, a timeout, a host key) also returns an empty
+    # count, and blaming the panel for that sends the operator to drush on a
+    # box he cannot reach. The drush wording belongs to rc 0 only.
+    _left=$(printf '%s\n' "${_out}" | sed -n '1p')
+    _err=$(printf '%s\n' "${_out}" | sed -n '2p')
     if [ -z "${_left}" ] || [ "${_left}" != "0" ]; then
       _bad=$((_bad + 1))
-      _alrt "  ${_root}: ${_left:-unknown} task(s) still queued after the fail-out"
+      if [ -z "${_left}" ] && [ "${_rc}" -ne 0 ]; then
+        _alrt "  ${_root}: could not reach ${_tgt} (ssh rc=${_rc}) — the task count was never read"
+      elif [ -z "${_left}" ]; then
+        _alrt "  ${_root}: unknown task(s) still queued after the fail-out — count unreadable: ${_err:-drush returned nothing on stderr either}"
+      else
+        _alrt "  ${_root}: ${_left} task(s) still queued after the fail-out"
+      fi
     fi
   done
   [ "${_bad}" -eq 0 ]
@@ -6006,6 +6091,95 @@ fi
 if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ]; then
   echo "PANEL-ERROR: no panel settings.php/drushrc.php under ${_R} (looked at ${_SP})"
   exit 1
+fi
+# The panel dir is settled; now the alias must NAME it. The sync carries
+# /data/disk/oN/.drush/ as a plain -u leg, so on a box that already holds its
+# own promoted panels the SOURCE's alias can win the mtime race and leave
+# 'uri' (and the 'site_path' built from it) naming the SOURCE's panel while
+# this box serves its own. The repoints below heal the platform path, the
+# platform reference and the root, none of which is the site NAME: drush
+# resolves @hostmaster to sites/<uri>, finds no settings.php there and every
+# panel query comes back empty -- step 12.90 then reads an unreadable queue on
+# every Octopus root and parks the cutover, which is where a failback was
+# live-observed and repaired by hand with exactly this substitution. Step 13
+# writes the box's own name anyway, so this only brings that write forward to
+# where the queue work already needs it. Whole-file substring rename, as
+# renameaegirhost §3 does on the same files (the name recurs in 'uri', in
+# 'site_path' and in any other key built from it), with §3's line guard for
+# the NEW-contains-OLD regime. Idempotent: equal names do nothing.
+_PURI=$(basename "${_SP}")
+case "${_PURI}" in
+  ''|*[!A-Za-z0-9.-]*)
+    echo "PANEL-ERROR: panel dir ${_SP} is not hostname-named -- refusing to correct the alias uri"
+    exit 1
+  ;;
+esac
+# ... and only when that dir is named after THIS box. The settled dir is the
+# alias's own site_path whenever the NEW-named one does not exist, and on a
+# resume it can legitimately be the SOURCE's: a diverged distro number keeps
+# the substituted path from existing while the source's platform tree rsynced
+# in complete and in use. Writing that name into 'uri' would point the panel
+# at the dead name -- and would silently undo an operator who had already
+# repaired 'uri' by hand. Leave the alias alone instead: step 12.90 then parks
+# the cutover with drush's own reason, which is the fail-closed direction.
+# Only the two shapes this box can legitimately own: the master root's panel
+# dir is exactly ${_NEW}, an Octopus root's is oN.${_NEW}. A bare substring
+# test calls a SOURCE-named dir this box's own whenever the target FQDN
+# appears anywhere inside it, and end-anchoring alone is not enough either --
+# o1.old.example.com ends in example.com. The rewrite arm would then write
+# the dead name into 'uri', which is the one outcome this gate exists to
+# prevent, so the label in front is counted too.
+_UOWN=""
+case "${_PURI}" in
+  "${_NEW}") _UOWN="y" ;;
+  *".${_NEW}")
+    [ "${_PURI}" = "${_PURI%%.*}.${_NEW}" ] && _UOWN="y"
+  ;;
+esac
+if [ -z "${_UOWN}" ]; then
+  _AURI=$(sed -n "s/.*'uri' => '\([^']*\)'.*/\1/p" "${_ALS}" | head -1)
+  echo "PANEL-NOTE: alias uri left as ${_AURI:-unreadable}: the panel dir in use (${_SP}) is not named after this box (${_NEW})"
+else
+  for _UFI in "${_ALS}" "$(dirname "${_ALS}")/hm.alias.drushrc.php"; do
+    [ -f "${_UFI}" ] || continue
+    _AURI=$(sed -n "s/.*'uri' => '\([^']*\)'.*/\1/p" "${_UFI}" | head -1)
+    # No quoted uri key at all is a shape this correction does not understand;
+    # leave it to the rename rather than guess at it.
+    [ -n "${_AURI}" ] || continue
+    [ "${_AURI}" = "${_PURI}" ] && continue
+    case "${_AURI}" in
+      *[!A-Za-z0-9.-]*)
+        echo "PANEL-ERROR: ${_UFI} carries a uri that is not a hostname ('${_AURI}') -- refusing to rewrite it"
+        exit 1
+      ;;
+      *.*) : ;;
+      # A single-label value is not a site name, and the substitution below is
+      # whole-file: 'localhost' would take 'db_host' with it and cost the panel
+      # its database. Refuse rather than rewrite a value this does not own.
+      *)
+        echo "PANEL-ERROR: ${_UFI} carries a single-label uri ('${_AURI}') -- refusing to rewrite it"
+        exit 1
+      ;;
+    esac
+    _UGD=""
+    case "${_PURI}" in *"${_AURI}"*) _UGD="/${_PURI}/!" ;; esac
+    _UO=$(stat -c '%U:%G' "${_UFI}")
+    _UM=$(stat -c '%a' "${_UFI}")
+    if ! sed -i "${_UGD}s|${_AURI}|${_PURI}|g" "${_UFI}"; then
+      echo "PANEL-ERROR: could not rewrite the uri in ${_UFI}"
+      exit 1
+    fi
+    [ -n "${_UO}" ] && chown "${_UO}" "${_UFI}"
+    [ -n "${_UM}" ] && chmod "${_UM}" "${_UFI}"
+    # The substitution is unanchored, so assert where it landed: the key this
+    # correction exists for must now read the panel's own name. Every other
+    # rewrite in this body is key-anchored or post-checked; this one was not.
+    if ! grep -qF "'uri' => '${_PURI}'" "${_UFI}"; then
+      echo "PANEL-ERROR: the uri in ${_UFI} did not land as '${_PURI}' -- correct it by hand"
+      exit 1
+    fi
+    echo "PANEL-NOTE: uri in ${_UFI} corrected ${_AURI} -> ${_PURI}"
+  done
 fi
 # The replicated panel DB names the SOURCE's hostmaster platform for the
 # panel site (distro/025 after years of upgrades there) while this box's
@@ -7529,6 +7703,312 @@ _xmass_probe_target_panels() {
   return 0
 }
 
+_xmass_verify_serve_sweep() {
+  # Every vhost name on the target, not a sample of two per account. The
+  # sampling above picks one client-domain site and one subdomain site and
+  # judges them the way a Drupal site answers; on one e2e ring that passed
+  # while the Grav and the Textpattern sites 404'd, and it was xtrim's plan
+  # probe -- which walks every name -- that caught them. This is that probe,
+  # read-only: run ON the target in one call, the relay leg only (it is the
+  # target's own answer that is in question, and no DNS points here yet).
+  # Catch-all discrimination is xtrim's too: a 200 whose body hashes like the
+  # answer to an impossible hostname is the box's "Under Construction" vhost
+  # replying, not a site, and a status code alone would call it served.
+  # 401/403 count as serving (a protected site answering as configured, the
+  # same judgement the sampling makes); 301/302/303 too -- on port 80 an
+  # SSL-required BOA site answers a redirect to https. WHERE a redirect lands
+  # is the sampling's question (it follows /user for its two sites per
+  # account); this sweep asks only whether the NAME reaches a vhost that is
+  # not the catch-all. A failure is re-probed once after a pause: BOA answers
+  # request bursts with transient soft-404 bodies, so a single bad answer is
+  # not evidence.
+  # Scoped to the accounts this cutover moved: an account outside it keeps its
+  # own 503 gates and its own state, and folding those names into this verdict
+  # reports on a cutover that never touched them.
+  # $1 target, $2 this box's FQDN (its own names are retired by the rename),
+  # $3 the eligible accounts.
+  local _t="$1" _src="$2" _acc="$3" _out _tag _oct _dom _code _why
+  local _bad=0 _n=0 _skp=0 _end="" _end_skp="" _gated=""
+  local _nobase="" _nobase_bytes="" _nobase_why=""
+  _info "Serve probe over every vhost name on ${_t} ..."
+  # A ceiling on the remote body: one blocking command substitution walks
+  # every name, with a re-probe after a pause per failure, so a broadly broken
+  # box would otherwise hold verify for hours with nothing on stdout. Healthy
+  # names are not paced at all, which is what keeps a large target inside the
+  # ceiling. A run cut short by it is caught by the missing terminator, and a
+  # run that lost lines in transport by the count mismatch against END.
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
+    "timeout 1800 bash -s -- '${_src}' '${_acc}'" <<'SERVEPROBE' 2>/dev/null
+_s="$1"
+_s=${_s//[^a-zA-Z0-9.-]/}
+_acc="$2"
+_acc=${_acc//[^a-zA-Z0-9 ._-]/}
+_g="no-such-site.xmass-probe.invalid"
+# mktemp as everywhere else in this tool: these are root-owned bodies written
+# on a box that carries tenant shell users, and a $$-predictable name is the
+# one thing a tenant can aim at. The ceiling above delivers ONE TERM and then
+# waits, so the TERM handler must exit after the cleanup -- a handler that
+# only removes the files would absorb the signal and the body would walk on
+# to its own END line, hours past the ceiling, with the local side blocked.
+_b=$(mktemp 2>/dev/null) || _b="/tmp/.xmass-serve.$$"
+_bb=$(mktemp 2>/dev/null) || _bb="/tmp/.xmass-serve-base.$$"
+trap 'rm -f "${_b}" "${_bb}"' EXIT
+trap 'rm -f "${_b}" "${_bb}"; exit 143' TERM
+_n=0
+_skp=0
+_probe() {
+  curl -s -o "${_b}" -w '%{http_code}' -A iCab --max-time 30 \
+    -H "Host: $1" "http://127.0.0.1/" 2>/dev/null
+}
+# The baseline is a POSITIVE control, not "whatever came back": md5sum
+# answers for an empty body too, so a shed request (return 444), a dead port
+# 80 or a missing curl would arm the comparison against the hash of nothing.
+# Every broken name answered by the catch-all would then read OK -- the one
+# thing this discriminator exists to prevent. One retry, and when it still
+# does not answer 200 with a body, say so rather than pretend to discriminate.
+_base=""
+_bc=$(curl -s -o "${_bb}" -w '%{http_code}' -A iCab --max-time 30 \
+  -H "Host: ${_g}" "http://127.0.0.1/" 2>/dev/null)
+if [ "${_bc}" != "200" ] || [ ! -s "${_bb}" ]; then
+  sleep 5
+  _bc=$(curl -s -o "${_bb}" -w '%{http_code}' -A iCab --max-time 30 \
+    -H "Host: ${_g}" "http://127.0.0.1/" 2>/dev/null)
+fi
+if [ "${_bc}" = "200" ] && [ -s "${_bb}" ]; then
+  _base=$(md5sum < "${_bb}" | cut -d' ' -f1)
+else
+  # Which of the two terms failed, and how much body there was: a 404 catch-all
+  # WITH a page and a 200 with an empty one are different breakages, and the
+  # local alert can only name the cause it is handed.
+  _bz=$(wc -c 2>/dev/null < "${_bb}" | tr -dc '0-9')
+  if [ "${_bc}" = "200" ]; then
+    echo "NOBASE 200 ${_bz:-0} empty-body"
+  else
+    echo "NOBASE ${_bc:-000} ${_bz:-0} status"
+  fi
+fi
+_judge() {
+  case "$1" in
+    200)
+      [ -n "${_base}" ] \
+        && [ "$(md5sum < "${_b}" | cut -d' ' -f1)" = "${_base}" ] \
+        && { echo "catch-all vhost body"; return 1; }
+      return 0
+    ;;
+    301|302|303|401|403) return 0 ;;
+  esac
+  echo "not served"
+  return 1
+}
+for _o in ${_acc}; do
+  _d="/data/disk/${_o}"
+  if [ -e "${_d}/log/CANCELLED" ]; then
+    echo "SKIP ${_o} - - account cancelled"
+    _skp=$((_skp + 1))
+    continue
+  fi
+  if [ -e "/data/conf/suspended/${_o}.pid" ]; then
+    echo "SKIP ${_o} - - account suspended, 503 by design"
+    _skp=$((_skp + 1))
+    continue
+  fi
+  # This list is the accounts the cutover MOVED, and a seeded Octopus account
+  # always carries this directory: its absence means the account never landed
+  # here at all -- a cutover failure, not a shape to skip past. After the two
+  # states the operator chose, so a cancelled or suspended account is still
+  # read as the state it is in whatever is left of its tree.
+  if [ ! -d "${_d}/config/server_master/nginx/vhost.d" ]; then
+    echo "BAD ${_o} - - eligible account has no vhost.d on the target"
+    _n=$((_n + 1))
+    continue
+  fi
+  # The 503 gate the cutover clears per account -- and only warns about when
+  # it cannot. While it is in place EVERY name under the account answers 503:
+  # that is the account's state, not a per-name breakage, so no name is
+  # probed. On the TARGET it is not a state anyone chose either: step 13.5
+  # clears it for every eligible account, so a survivor is that step failed
+  # and the whole account is dark. Its own tag, so the local half can alert
+  # on it without reporting each name broken.
+  if [ -e "${_d}/static/control/http-off.pid" ] \
+    || [ -e "${_d}/static/control/http-off-host.pid" ]; then
+    echo "HTTPOFF ${_o} - - http-off gate still present, every site under it answers 503"
+    _skp=$((_skp + 1))
+    continue
+  fi
+  _a="${_d}/.drush/hostmaster.alias.drushrc.php"
+  _p=""
+  if [ -f "${_a}" ]; then
+    _p=$(grep "site_path'" "${_a}" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
+    [ -n "${_p}" ] && _p=$(basename "${_p}")
+  fi
+  for _f in "${_d}/config/server_master/nginx/vhost.d"/*; do
+    [ -f "${_f}" ] || continue
+    _v=$(basename "${_f}")
+    # The dot-prefixed entries are the conversion's pre-proxy backups and the
+    # https.* ones are TLS companions of a name probed in its own right --
+    # the same two shapes the sampling above skips.
+    case "${_v}" in .*|https.*) continue ;; esac
+    printf '%s' "${_v}" | grep -qE '^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$' || continue
+    # The account's own panel has its own sweep, by its new name.
+    if [ -n "${_p}" ] && [ "${_v}" = "${_p}" ]; then
+      echo "SKIP ${_o} ${_v} - the account's own control panel, probed by its new name"
+      _skp=$((_skp + 1))
+      continue
+    fi
+    # renameaegirhost renames the vhost.d FILE itself at cutover, so a name
+    # still ending in the SOURCE's FQDN is not a retired name that was
+    # replaced -- it is a rename that never reached this file, and the name
+    # serves nothing. Calling that a benign skip is how a half-renamed box
+    # passes its verify. The renamed counterpart, where it exists, is a file
+    # of its own and is probed in its own turn.
+    if [ -n "${_s}" ]; then
+      case "${_v}" in
+        *".${_s}")
+          echo "BAD ${_o} ${_v} - source-named vhost survived the rename"
+          _n=$((_n + 1))
+          continue
+        ;;
+      esac
+    fi
+    _c=$(_probe "${_v}")
+    _r=$(_judge "${_c}")
+    if [ -n "${_r}" ]; then
+      sleep 5
+      _c=$(_probe "${_v}")
+      _r=$(_judge "${_c}")
+    fi
+    if [ -n "${_r}" ]; then
+      echo "BAD ${_o} ${_v} ${_c:-000} ${_r}"
+    else
+      echo "OK ${_o} ${_v} ${_c} -"
+    fi
+    # No pacing between healthy names: these are loopback requests and the
+    # port-80 limreq zones do not key on 127.0.0.1, so a per-name pause buys
+    # nothing and spends the ceiling above -- one second per name puts a
+    # target with 1500 vhost names past it, and a truncated sweep summarises
+    # as nothing at all. Only a FAILURE still pauses, before its re-probe.
+    _n=$((_n + 1))
+  done
+done
+# The terminator: without it a connection dropped (or the ceiling above)
+# mid-sweep hands the local side a partial result it summarises as a complete
+# one, and a sweep that legitimately probes nothing reads as a dead ssh.
+echo "END ${_n} ${_skp}"
+SERVEPROBE
+)
+  while read -r _tag _oct _dom _code _why; do
+    case "${_tag}" in
+      OK)
+        _n=$((_n + 1))
+      ;;
+      BAD)
+        _n=$((_n + 1))
+        _bad=$((_bad + 1))
+        if [ "${_dom}" = "-" ]; then
+          _alrt "  ${_oct}: ${_why} -- investigate"
+        elif [ "${_code}" = "-" ]; then
+          _alrt "  ${_oct}: ${_dom} -- ${_why} -- investigate"
+        else
+          _alrt "  ${_oct}: ${_dom} does not serve on the target (HTTP ${_code}, ${_why}) -- investigate"
+        fi
+      ;;
+      SKIP)
+        _skp=$((_skp + 1))
+        if [ "${_dom}" = "-" ]; then
+          _info "  ${_oct}: no name probed (${_why})"
+        else
+          _info "  ${_oct}: ${_dom} not probed (${_why})"
+        fi
+      ;;
+      HTTPOFF)
+        # Counted as skipped -- no name under it was probed -- but never
+        # reported as normal: the cutover is what clears this gate, so a
+        # survivor is a failed step and an account-wide 503 on a box that is
+        # supposed to be serving.
+        _skp=$((_skp + 1))
+        _gated="${_gated} ${_oct}"
+        _alrt "  ${_oct}: http-off.pid still present on the TARGET -- this cutover should"
+        _alrt "    have cleared it; every site under the account answers 503 and none of"
+        _alrt "    its names was probed. Clear the gate and re-run verify"
+      ;;
+      NOBASE)
+        _nobase="${_oct}"
+        _nobase_bytes="${_dom}"
+        _nobase_why="${_code}"
+      ;;
+      END)
+        _end="${_oct}"
+        _end_skp="${_dom}"
+      ;;
+    esac
+  done <<< "${_out}"
+  # Completeness before content. An empty result is not evidence of a dead
+  # ssh (a target whose accounts are all skipped legitimately prints skips
+  # only), and a non-empty one is not evidence of a finished sweep. The
+  # terminator is both, so nothing is summarised without it.
+  if [ -z "${_end}" ]; then
+    _alrt "  the serve probe did not finish on ${_t}: no terminator (ssh, or the"
+    _alrt "  30 min ceiling) -- re-run verify; any lines above are a PARTIAL sweep"
+    return 1
+  fi
+  # The target's own counters against this side's. They are incremented on the
+  # same events, so a difference is lines lost between the two halves -- a
+  # partial sweep that DID print its terminator, which the check above cannot
+  # see.
+  _info "  the target counted ${_end} name(s) probed and ${_end_skp} skipped"
+  if [ "${_end}" != "${_n}" ] || [ "${_end_skp}" != "${_skp}" ]; then
+    _alrt "  count mismatch on ${_t}: this side parsed ${_n} probed and ${_skp} skipped --"
+    _alrt "  lines were lost in transport; treat the lines above as a PARTIAL sweep"
+    return 1
+  fi
+  if [ -n "${_nobase}" ]; then
+    if [ "${_nobase_why}" = "empty-body" ]; then
+      _alrt "  catch-all discrimination unavailable on ${_t} (the impossible-hostname"
+      _alrt "  baseline answered HTTP 200 with an EMPTY body): every 200 in this sweep"
+      _alrt "  was judged on status alone, so a name the default vhost answers reads"
+      _alrt "  as served"
+    else
+      _alrt "  catch-all discrimination unavailable on ${_t} (the impossible-hostname"
+      _alrt "  baseline answered HTTP ${_nobase} with ${_nobase_bytes:-0} byte(s) of body): every 200 in"
+      _alrt "  this sweep was judged on status alone, so a name the default vhost"
+      _alrt "  answers reads as served"
+    fi
+  fi
+  if [ "${_n}" -eq 0 ]; then
+    # Every name skipped is a legitimate shape (a suspended or cancelled
+    # account, an account's own panel); no name at all after a cutover is not,
+    # and neither is an account this cutover left 503-gated.
+    if [ "${_skp}" -gt 0 ] && [ -z "${_gated}" ]; then
+      _info "  every vhost name on ${_t} was skipped (suspended/cancelled accounts or panels only)"
+      return 0
+    fi
+    if [ -n "${_gated}" ]; then
+      _alrt "  no vhost name on ${_t} was probed: account(s)${_gated} are still 503-gated"
+    else
+      _alrt "  no vhost name on the target was probeable -- investigate"
+    fi
+    return 1
+  fi
+  if [ "${_bad}" -gt 0 ]; then
+    _alrt "  ${_bad} of ${_n} vhost name(s) probed on ${_t} do not serve -- investigate"
+    _alrt "    (transient 200 'Page not found' bodies are BOA burst protection; each"
+    _alrt "    failure above was already re-probed once before being reported)"
+    return 1
+  fi
+  if [ -n "${_gated}" ]; then
+    _alrt "  the ${_n} vhost name(s) probed on ${_t} serve, but account(s)${_gated} are"
+    _alrt "  still 503-gated and no name under them was probed -- not a clean verify"
+    return 1
+  fi
+  if [ -n "${_nobase}" ]; then
+    _info "  all ${_n} vhost name(s) probed on ${_t} serve: OK (status only -- catch-all"
+    _info "  discrimination was unavailable, see above)"
+    return 0
+  fi
+  _info "  all ${_n} vhost name(s) probed on ${_t} serve: OK"
+  return 0
+}
+
 _xmass_cmd_verify() {
   # Read-only post-cutover sweep replacing the manual checklist: per account,
   # one client-domain site (its name does not change at cutover) and one site
@@ -7602,17 +8082,22 @@ _xmass_cmd_verify() {
       # A front page that redirects (a login-only site, a canonical-host
       # rule) is only judged on where it lands: fetch /user once, direct to
       # the target, so a redirect to nowhere is not read as a working site.
+      # 303 with them: the serve sweep and the panel probe both count it as
+      # serving, and a status this file judges three different ways is how a
+      # name reads OK in one line of a verify and "investigate" in the next.
       _cu="-"
-      if [ "${_c1}" = "301" ] || [ "${_c1}" = "302" ]; then
+      if [ "${_c1}" = "301" ] || [ "${_c1}" = "302" ] || [ "${_c1}" = "303" ]; then
         _cu=$(curl -s -o /dev/null -w '%{http_code}' -A iCab --max-time 30 \
           --resolve "${_dom_t}:80:${_tgt}" "http://${_dom_t}/user" 2>/dev/null)
       fi
       _ok=NO
-      if [ "${_c1}" = "200" ] || [ "${_c2}" = "200" ] || [ "${_c1}" = "301" ] || [ "${_c1}" = "302" ]; then
-        if [ "${_cr}" = "-" ] || [ "${_cr}" = "200" ] || [ "${_cr}" = "301" ] || [ "${_cr}" = "302" ]; then
+      if [ "${_c1}" = "200" ] || [ "${_c2}" = "200" ] \
+        || [ "${_c1}" = "301" ] || [ "${_c1}" = "302" ] || [ "${_c1}" = "303" ]; then
+        if [ "${_cr}" = "-" ] || [ "${_cr}" = "200" ] \
+          || [ "${_cr}" = "301" ] || [ "${_cr}" = "302" ] || [ "${_cr}" = "303" ]; then
           _ok=YES
         fi
-        case "${_cu}" in -|200|301|302|401|403) : ;; *) _ok=NO ;; esac
+        case "${_cu}" in -|200|301|302|303|401|403) : ;; *) _ok=NO ;; esac
       elif [ "${_c1}" = "401" ] || [ "${_c1}" = "403" ]; then
         if [ "${_c1}" = "${_c2}" ] && { [ "${_cr}" = "-" ] || [ "${_cr}" = "${_c1}" ]; }; then
           _ok=PROTECTED
@@ -7635,6 +8120,9 @@ _xmass_cmd_verify() {
     done
     [ -z "${_picked}" ] && _info "  ${_oct}: no site besides the control panel (probed below by its new name)"
   done
+  # The sample above is two sites per account; this is every name the target
+  # carries. Kept separate because it runs on the target, not from here.
+  _xmass_verify_serve_sweep "${_tgt}" "${_src_fqdn}" "${_ELIGIBLE_ACCOUNTS}" || true
   # Materialisation acceptance: a dangling symlink on the TARGET under a synced
   # root is content that never travelled (or a link class the sweep only
   # reports). Advisory -- BOA trees carry a few intentionally parked links, so
@@ -9012,17 +9500,15 @@ _xmass_prove_target_web() {
   # releases the chain on its next pass -- remove it here, both families,
   # so this proof waits for no pass and cannot race one. Idempotent; a
   # pre-hold target has no chain and this no-ops.
-  ssh root@"${_tgt}" "bash -s" <<'FWOPEN'
-for _ipt in iptables ip6tables; do
-  command -v "${_ipt}" >/dev/null 2>&1 || continue
-  if "${_ipt}" -w 5 -nL BOA_STANDBY_WEB >/dev/null 2>&1; then
-    while "${_ipt}" -w 5 -D INPUT -j BOA_STANDBY_WEB 2>/dev/null; do :; done
-    "${_ipt}" -w 5 -F BOA_STANDBY_WEB 2>/dev/null
-    "${_ipt}" -w 5 -X BOA_STANDBY_WEB 2>/dev/null
-  fi
-done
+  { printf '%s\n' "${_XMASS_FW_WEB_RELEASE}"
+    cat <<'FWOPEN'
+# The "this box was held" breadcrumbs go with the chain. They are what the
+# watchdog's marker-gap arm reads, so one left behind on a box this step is
+# about to prove serving is a hold waiting to re-assert itself.
+rm -f /var/log/boa/.standby_web_held.pid /var/log/boa/.standby_ftps_held.pid
 exit 0
 FWOPEN
+  } | ssh root@"${_tgt}" "bash -s"
   _info "Starting nginx on target ${_tgt} ..."
   if ! ssh root@"${_tgt}" "nginx -t" &>/dev/null; then
     _alrt "target ${_tgt}: nginx -t FAILED — output follows:"
@@ -9422,9 +9908,12 @@ _xmass_cutover_finish() {
 # gates keep holding the queue and every local writer on the box this
 # step just promoted. The cron start is vintage tolerance -- a target
 # quiesced by pre-gate BOA bytes still has its cron stopped. The promoted
-# latch only ever qualified the marker, so it goes with it.
+# latch only ever qualified the marker, so it goes with it. The web and FTPS
+# "was held" breadcrumbs go too: the watchdog reads them on a marker gap, and
+# on a promoted box they describe a state that has ended.
 rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid \
-  /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid
+  /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid \
+  /var/log/boa/.standby_web_held.pid /var/log/boa/.standby_ftps_held.pid
 service cron start &>/dev/null
 for _s in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
   if [ ! -e "/var/xdrago/${_s}" ] \
@@ -10117,8 +10606,13 @@ _xmass_post_mig() {
   # the backup and cleanup tools all exit on it). Cutover step 15 clears
   # it; catch anything that slipped through.
   if [ -e "/root/.standby.cnf" ]; then
+    # The DROP chain before the breadcrumb that unlocks it: this box is taking
+    # direct traffic, and nginx.sh flushes BOA_STANDBY_WEB only while the
+    # breadcrumb or the marker is still there.
+    bash -c "${_XMASS_FW_WEB_RELEASE}"
     rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid \
-      /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid
+      /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid \
+      /var/log/boa/.standby_web_held.pid /var/log/boa/.standby_ftps_held.pid
     _alrt "  Removed a LEFTOVER /root/.standby.cnf -- cutover step 15 should have"
     _alrt "  cleared it; verify cron and the task queue are actually running here"
   fi
