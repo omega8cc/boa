@@ -133,12 +133,164 @@ _dedup_ltd_conf_sections() {
 # that signal opens at INIT, the window in which the copied-in production
 # datadir and the freshly seeded trees are most exposed, and a tenant file
 # modified on the mirror then permanently shadows the active's copy under
-# the -u sync legs. The hold releases on the MARKER alone -- cutover step
-# 15 removes it, as does an init unwind or a hand removal -- and this
-# script runs every 3 minutes, so promotion is followed at once.
+# the -u sync legs.
+#
+# A bare marker GAP is not a promotion. 'xmass sync --live' treats a
+# missing marker on its target as an accident and rewrites it on every
+# run, so a gap of seconds is an ordinary event on a healthy mirror, and
+# a hold that follows the marker alone hands tenant logins back inside it
+# -- on a box whose database is still applying the source's binlog, where
+# every tenant write diverges the mirror and permanently shadows the
+# active's copy. Measured: a 24 s gap released all four tenants.
+#
+# So the role, not the marker, decides -- the same predicate the nginx
+# watchdog and the DB hold use: PROMOTED = the marker gone AND (the
+# cutover's latch, or a role probe that RAN CLEAN, found no replica config
+# and read super_read_only as 0). A promotion by hand is "remove the
+# marker AND reset the replica", which the operator must do anyway.
+# Cutover step 15 removes the marker on a box that is genuinely promoted,
+# so the release there is unchanged and still lands within one pass.
+#
+# The three answers are kept DISTINCT on purpose, because the two
+# directions are not symmetrical: flipping live shells to nologin and
+# restoring them are both actions, and an unreadable probe justifies
+# neither. REPLICA holds, PROMOTED releases, UNKNOWN restores nothing and
+# says so once -- but it does NOT hand out a live shell either, which is
+# the one direction that is free to be conservative (see the CREATE flag
+# below).
+_standby_ltd_role() {
+  # Publishes _LTD_STANDBY_ROLE (REPLICA|PROMOTED|UNKNOWN), and with it
+  # _LTD_STANDBY_WHY -- the whole reason phrase for a caller's one line,
+  # empty on PROMOTED.
+  # The return code decides, never emptiness alone: 8.4 removed the SLAVE
+  # dialect and 5.7 lacks the REPLICA one, so the first call legitimately
+  # fails on 5.7, and a refused connection would otherwise read as "no
+  # replica config" on a running replica.
+  local _rpl _rc _sro
+  _LTD_STANDBY_WHY=""
+  if [ -e "/root/.standby.cnf" ]; then
+    _LTD_STANDBY_ROLE=REPLICA
+    _LTD_STANDBY_WHY="the marker is back (the sync restores a missing one)"
+    return 0
+  fi
+  # The latch is the answer the cutover PROVED at its step 11.5; it is not
+  # the durable half (second.sh reaps it once the marker is gone), so on a
+  # box promoted by hand the probe below is what answers.
+  if [ -e "/var/log/boa/.standby_promoted.pid" ]; then
+    _LTD_STANDBY_ROLE=PROMOTED
+    return 0
+  fi
+  if ! command -v mysql > /dev/null 2>&1; then
+    _LTD_STANDBY_ROLE=UNKNOWN
+    _LTD_STANDBY_WHY="marker gone but the role probe could not run (no mysql client)"
+    return 0
+  fi
+  _rpl=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 \
+    -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+  _rc=$?
+  if [ "${_rc}" -ne "0" ]; then
+    _rpl=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 \
+      -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+    _rc=$?
+  fi
+  if [ "${_rc}" -ne "0" ]; then
+    _LTD_STANDBY_ROLE=UNKNOWN
+    _LTD_STANDBY_WHY="marker gone but the role probe did not run clean (credentials? mysqld down?)"
+    return 0
+  fi
+  if [ -n "${_rpl}" ]; then
+    _LTD_STANDBY_ROLE=REPLICA
+    _LTD_STANDBY_WHY="marker gone but a replica config is still present"
+    return 0
+  fi
+  # No replica config is not yet a promotion: second.sh classifies "no
+  # config but the DB still read-only" as a LOST replica (a RESET REPLICA
+  # ALL by hand, a failed re-init) and deliberately KEEPS the marker there,
+  # and the nginx watchdog reads the same variable before it opens the web
+  # tier. Without this leg a lost replica released every tenant shell
+  # inside an ordinary sync gap -- the incident this hold exists to
+  # prevent, narrowed to lost boxes. It answers REPLICA because the only
+  # thing that matters here is that it HOLDS; the reason says which it is.
+  _sro=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 \
+    -N -e "SELECT @@super_read_only" 2>/dev/null | tr -dc '0-9')
+  if [ "${_sro}" = "1" ]; then
+    _LTD_STANDBY_ROLE=REPLICA
+    _LTD_STANDBY_WHY="marker gone, no replica config, but the database is still read-only -- a LOST replica, never promoted"
+    return 0
+  fi
+  if [ "${_sro}" != "0" ]; then
+    _LTD_STANDBY_ROLE=UNKNOWN
+    _LTD_STANDBY_WHY="marker gone but super_read_only was unreadable (credentials?)"
+    return 0
+  fi
+  _LTD_STANDBY_ROLE=PROMOTED
+  return 0
+}
+
+_standby_ltd_promoted() {
+  # Re-probes on every call, deliberately: this script runs for minutes
+  # and the role can change under it.
+  _standby_ltd_role
+  [ "${_LTD_STANDBY_ROLE}" = "PROMOTED" ]
+}
+
+_standby_ltd_hold_kept_log() {
+  # One line per episode, shared by both readers below: this script runs
+  # every 3 minutes and a half-promoted box can sit there for days.
+  # Cleared when the marker returns or the tenants are released.
+  #
+  # Nothing to report once the marker is back: that is the ordinary held
+  # state of a mirror, not a gap-hold, and the remedy this line prescribes
+  # (reset the replica by hand) would be wrong advice on a healthy box.
+  # The sweep's hold branch reaps the stamp, so the next genuine gap still
+  # gets its line.
+  [ -e "/root/.standby.cnf" ] && return 0
+  [ -e "/run/boa_standby_ltdkept_logged.pid" ] && return 0
+  mkdir -p /var/log/boa 2>/dev/null
+  touch /run/boa_standby_ltdkept_logged.pid
+  echo "$(date) LTD standby hold KEPT: ${_LTD_STANDBY_WHY} -- not a promotion (reset the replica to promote by hand; xmass sync restores the marker)" \
+    >> /var/log/boa/manage_ltd.incident.log
+  return 0
+}
+
+# The HOLD side, read once at the top: it decides the per-user branches
+# further down (a tenant created mid-pass is created at nologin, and the
+# per-user shell heal stands down) as well as the end-of-pass sweep, and
+# they must all agree for the whole pass. The record file is the
+# breadcrumb that keeps every box that never held to a single file test:
+# only a box whose tenants this hold flipped pays a role probe, and only
+# while its marker is missing.
+#
+# TWO flags, because the two directions are not the same question:
+#   _LTD_STANDBY_HOLD        flips live shells to nologin and BLOCKS the
+#                            restore -- only a POSITIVE "still a replica"
+#                            earns that, and UNKNOWN must not restore a
+#                            tenant on a box that may still be a replica.
+#   _LTD_STANDBY_CREATE_HELD creates a NEW tenant at nologin plus a record
+#                            line, and suppresses the per-user shell heal.
+# The create direction is set on every answer that is not PROMOTED,
+# UNKNOWN included: handing a live shell to a tenant born inside a gap is
+# the only irreversible half (its writes shadow the active's copy for
+# good), while creating at nologin + recording is fully reversible -- the
+# sweep restores exactly the recorded users once the box reads PROMOTED.
 _LTD_STANDBY_HOLD=NO
+_LTD_STANDBY_CREATE_HELD=NO
 if [ -e "/root/.standby.cnf" ]; then
   _LTD_STANDBY_HOLD=YES
+  _LTD_STANDBY_CREATE_HELD=YES
+elif [ -s "/var/log/boa/standby-held-shells.txt" ]; then
+  _standby_ltd_role
+  if [ "${_LTD_STANDBY_ROLE}" != "PROMOTED" ]; then
+    _standby_ltd_hold_kept_log
+    _LTD_STANDBY_CREATE_HELD=YES
+    # Only a POSITIVE "still a replica" re-holds. UNKNOWN restores nobody
+    # and flips nobody: the box may be promoted with a database that
+    # cannot answer, and the sweep keeps the record file either way, so
+    # the next pass retries.
+    if [ "${_LTD_STANDBY_ROLE}" = "REPLICA" ]; then
+      _LTD_STANDBY_HOLD=YES
+    fi
+  fi
 fi
 
 _standby_tenant_sweep() {
@@ -166,6 +318,13 @@ _standby_tenant_sweep() {
   # match *.pid and *.log, neither of which this .txt name matches.
   local _lsh_rec="/var/log/boa/standby-held-shells.txt"
   if [ "${_LTD_STANDBY_HOLD}" = "YES" ]; then
+    # Re-read the MARKER, not the flag: a hold kept across a marker gap is
+    # also YES here, and its episode is not over until the marker itself is
+    # back. A stamp left behind then would swallow the next episode's line.
+    if [ -e "/root/.standby.cnf" ] \
+      && [ -e "/run/boa_standby_ltdkept_logged.pid" ]; then
+      rm -f /run/boa_standby_ltdkept_logged.pid
+    fi
     for _lsh_usr in $(getent group lshellg 2>/dev/null | cut -d: -f4 | tr ',' ' '); do
       _lsh_cur=$(getent passwd "${_lsh_usr}" 2>/dev/null | cut -d: -f7)
       if [ "${_lsh_cur}" = "/usr/bin/lshell" ] \
@@ -183,6 +342,18 @@ _standby_tenant_sweep() {
       fi
     done
   elif [ -s "${_lsh_rec}" ]; then
+    # RELEASE only on a box that reads as PROMOTED, and re-probe HERE: the
+    # flag above is the answer from the top of a pass that runs for
+    # minutes, and the sync can have restored the marker since.
+    if ! _standby_ltd_promoted; then
+      # KEEP: the record file is left exactly as it is (it is the sole
+      # input of the release, and the only thing that can restore these
+      # tenants later), the shells stay at nologin, and the next pass
+      # retries. Logged once per episode.
+      _standby_ltd_hold_kept_log
+      return 0
+    fi
+    rm -f /run/boa_standby_ltdkept_logged.pid
     # Restore ONLY recorded users, verify each restore actually landed, and
     # keep any failure in the record so the next pass retries it -- one
     # transient usermod failure must never become a permanent lockout.
@@ -1462,10 +1633,12 @@ _ok_create_user() {
       mv -f ${_usrLtdRoot} /var/backups/zombie/deleted/${_NOW}/ &> /dev/null
     fi
     if [ ! -d "${_usrLtdRoot}" ]; then
-      if [ "${_LTD_STANDBY_HOLD}" = "YES" ]; then
+      if [ "${_LTD_STANDBY_CREATE_HELD}" = "YES" ]; then
         # A user born on a held standby (users.txt arrives from the active
         # by sync) never gets a live shell, not even for one pass; record
-        # it so promotion restores it like every other held tenant.
+        # it so promotion restores it like every other held tenant. The
+        # CREATE flag, not the sweep's: an unreadable role is not a reason
+        # to hand out a shell, and this branch is the reversible one.
         useradd -d ${_usrLtdRoot} -s /usr/sbin/nologin -m -N -r \
           -g ${_usrGroup:-users} ${_usrLtd}
         mkdir -p /var/log/boa 2>/dev/null
@@ -1540,10 +1713,11 @@ _ok_create_user() {
       usermod -aG ltd-shell ${_usrLtd}
     fi
     if [ ! -z "${_ESC_LUPASS}" ]; then
-      if [ "${_LTD_STANDBY_HOLD}" = "YES" ]; then
+      if [ "${_LTD_STANDBY_CREATE_HELD}" = "YES" ]; then
         : # tenant shells stay nologin while the standby hold is on --
         # healing them back here would reopen the login for the minutes
-        # between this heal and the end-of-pass sweep
+        # between this heal and the end-of-pass sweep, and an unreadable
+        # role is no warrant for that either
       elif [ -e "/usr/bin/mysecureshell" ] \
         && [ -e "/etc/ssh/sftp_config" ]; then
         chsh -s /usr/bin/mysecureshell ${_usrLtd}

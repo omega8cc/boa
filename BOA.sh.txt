@@ -1794,8 +1794,8 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f39
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f80
-    _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f62
-    _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f75
+    _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f61
+    _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f74
     _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f93
     _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f73
     _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f98
@@ -1805,7 +1805,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f00
     _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f77
-    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f69
+    _fetch_versioned /var/xdrago/monitor/check/system.sh "${_urlHmr}/tools/system/monitor/check/system.sh" f68
     _fetch_versioned /var/xdrago/monitor/check/unbound.sh "${_urlHmr}/tools/system/monitor/check/unbound.sh" f80
     _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f97
     _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f90
@@ -1951,7 +1951,7 @@ _update_agents() {
     # revalidates within the hour, and never clobbers a running pass; the
     # post-install steps run only when the file actually changed.
     _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f05 --guard /xdrago/manage_ltd_users.sh
+    _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f04 --guard /xdrago/manage_ltd_users.sh
     if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
       && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid

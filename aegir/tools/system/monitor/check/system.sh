@@ -471,12 +471,21 @@ _ftpd_health_check_fix() {
   # A passive mirror holds FTPS down (2026-08-25 ruling: tenant denial): an
   # authenticated upload lands in the synced trees and permanently shadows
   # the active's copy under the -u legs. The nginx.sh enforcer kills a
-  # resurrected daemon on the MARKER alone -- no serve.cnf exemption (a
-  # web-only preview, never a write channel) and no xmass-window exemption
-  # either: the window that matters is INIT, and no cutover step needs FTPS.
+  # resurrected daemon while the marker is present, and across a marker gap
+  # while its own breadcrumb is there and the box still reads as a REPLICA
+  # -- no serve.cnf exemption (a web-only preview, never a write channel)
+  # and no xmass-window exemption either: the window that matters is INIT,
+  # and no cutover step needs FTPS.
   # This healer used to stand aside only outside a window, so for the whole
   # of every window it restarted the daemon the enforcer kept killing.
-  if [ -e "/root/.standby.cnf" ]; then
+  # The enforcer's own breadcrumb counts too: it holds a box that WAS held
+  # across a marker gap ('xmass sync --live' rewrites a missing marker on
+  # every run), and a healer left on the bare marker would resurrect the
+  # daemon once a minute for the length of the gap -- a live FTPS window
+  # between each heal and each kill. The breadcrumb goes when that box
+  # reads as promoted, and the cutover removes it itself.
+  if [ -e "/root/.standby.cnf" ] \
+    || [ -e "/var/log/boa/.standby_ftps_held.pid" ]; then
     return 0
   fi
   _ftpd_init="/usr/local/sbin/pure-config.pl"
