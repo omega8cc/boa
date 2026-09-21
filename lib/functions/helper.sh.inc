@@ -1415,6 +1415,10 @@ _os_detection() {
   if [ -z "${_NGINX_KTLS}" ]; then
     _NGINX_KTLS=YES
   fi
+  ### Same fallback shape: never clobber an operator _NGINX_QUIC_BPF=NO.
+  if [ -z "${_NGINX_QUIC_BPF}" ]; then
+    _NGINX_QUIC_BPF=YES
+  fi
   if [ "${_DB_SERIES}" = "8.4" ]; then
     _DBS_VRN="${_PERCONA_8_4_VRN}"
     ### Not on a replication standby: this arms the rotation by DESTROYING the

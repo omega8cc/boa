@@ -699,6 +699,11 @@ _pam_many_check_fix
 _avatars_check_fix
 _sysctl_update
 _initd_update
+### On every pass, heavy or not, and only here: after any Nginx build, after
+### the wildcard front whose certificate the probe borrows, and after the
+### last Nginx restart of the pass -- the fragment is switched by reload, and
+### the first real start with it in place should be one the monitor covers.
+_nginx_quic_bpf_sync
 _apticron_update
 _barracuda_log_update
 _instgrp_arm_stamp
