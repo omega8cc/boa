@@ -51,11 +51,15 @@ The watchdog is therefore armed with a single maintenance marker,
   - the **Percona package upgrade** (`_install_with_aptitude_sql`) holds it
     across the whole apt transaction and the `innodb_fast_shutdown=0` restart;
   - **`xmass`** holds it on **both** hosts across `init` (the source snapshot and
-    the target restore/replica bring-up) and across the whole `cutover` — the
-    final position read, the target's promotion and the host rename's database
-    work are the highest data-loss risk in the entire toolchain (the cutover
-    takes no global read lock: the 503 gate and the parked cron and runners are
-    the write barrier);
+    the target restore/replica bring-up) and, in `cutover`, across the final
+    position read and the target's promotion — the highest data-loss risk in
+    the entire toolchain (the cutover takes no global read lock: the 503 gate
+    and the parked cron and runners are the write barrier). On the default
+    relay-first order the **target** gets its watchdog back just before visitors
+    are relayed to it, so the renames' database work runs under the watchdog as
+    ordinary client work, while the **source** stays paused to the end of the
+    cutover; an estate that keeps the rename-first order (`_THIS_DB_HOST` set to
+    the box hostname) keeps both paused through the renames;
   - **`xoct`** holds it for `export` (`mydumper` on the source) and `import`
     (`myloader` plus `renameaegirhost`'s dump/reimport on the target).
 
