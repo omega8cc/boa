@@ -464,6 +464,14 @@
       was "killed and restarted" every minute for as long as it took
       someone to look, while the box resolved through its fallback
       servers and nothing else looked wrong.
+    * _SEND_UPGRADE_EMAIL=NO in an instance's octopus cnf now does what it
+      says: the client is not mailed the upgrade notice after an upgrade
+      of that instance. The value never reached the step that sends the
+      notice, so the switch had no effect. It is a documented setting now
+      (default YES, written into every instance cnf, docs/cnf/octopus.cnf),
+      only an exact NO switches the notice off, the welcome email of a new
+      instance always sends, and xoct and xmass carry the value to a
+      migration target with the account's other settings.
 
 
 ###
