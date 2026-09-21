@@ -706,6 +706,21 @@ _STRONG_PASSWORDS=YES
 
 
 ###----------------------------------------###
+### UPGRADE NOTICE EMAIL                   ###
+###----------------------------------------###
+###
+### After an upgrade of this instance its
+### client is mailed an upgrade notice (the
+### release summary, rendered in the account's
+### log/upgrademail.txt). NO switches that
+### notice off for this instance; any other
+### value sends it. The welcome email of a new
+### instance is not affected and always sends.
+###
+_SEND_UPGRADE_EMAIL=YES
+
+
+###----------------------------------------###
 ### DB ENGINE AUTO-CONVERSION              ###
 ###----------------------------------------###
 ###
