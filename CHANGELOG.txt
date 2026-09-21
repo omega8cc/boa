@@ -279,6 +279,27 @@
 
 @=> Important Fixes
 
+    * A large site backup downloaded from the control panel in a browser
+      no longer fails part way, however often it is retried. An Nginx
+      reload hands the shared QUIC sockets to the new workers, so an
+      HTTP/3 transfer in flight was reset within seconds of every reload,
+      while a TCP transfer drains on its old worker -- and a BOA system
+      reloads every few minutes. The control panel front no longer offers
+      HTTP/3 and answers Alt-Svc: clear, so a browser returns to HTTP/2 on
+      its next request; an existing front is regenerated once. The
+      "Remove export backup" task that follows every download is the
+      download's own clean-up of its temporary link and was never the
+      cause.
+
+    * HTTP/3 transfers on hosted sites now survive Nginx reloads: quic_bpf
+      routes every QUIC packet to the worker that owns its connection. It
+      is written only while a live start-up probe passes (its eBPF init
+      runs on a real start alone, and a failed one refuses to start
+      Nginx), it is checked again on the reload that enables it, and the
+      Nginx monitor sheds it and leaves a latch if a start ever fails with
+      it in place. New _NGINX_QUIC_BPF in barracuda.cnf, YES by default.
+      See docs/NGINX-QUIC-BPF.md.
+
     * backboa and duobackboa no longer log a 'command not found' line on boxes
       with the randomised full-backup day: a test restore call left behind by a
       function rename never ran, and the dead block is removed.

@@ -1556,6 +1556,14 @@ _NGINX_FORWARD_SECRECY=YES
 _NGINX_KTLS=YES
 
 ###
+### eBPF routing of QUIC packets in Nginx (quic_bpf). With the default YES
+### an HTTP/3 transfer in flight survives an Nginx reload, as HTTP/2 does;
+### without it every reload resets it. It is written only while a live
+### start-up probe passes on this box. Set to NO to keep it off.
+###
+_NGINX_QUIC_BPF=YES
+
+###
 ### Use this only when you need to always
 ### compile in some extra/custom module(s).
 ###
