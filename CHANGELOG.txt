@@ -300,6 +300,18 @@
       it in place. New _NGINX_QUIC_BPF in barracuda.cnf, YES by default.
       See docs/NGINX-QUIC-BPF.md.
 
+    * HTTP/3 is no longer several times slower than HTTP/2 for anything
+      large. Nginx keeps at most http3_stream_buffer_size of unacknowledged
+      data in flight per stream, so a stream moves that much per round
+      trip, and the 64k default held a download to 1.3 MB/s on a 44 ms
+      path where HTTP/2 did 13.5 (a few hundred KB/s across continents);
+      page assets are smaller than the buffer and never showed it. The
+      server config now sets 2m wherever Nginx has the HTTP/3 module,
+      which measured level with HTTP/2 in throughput and still answered a
+      small request three times sooner than HTTP/2 while a bulk transfer
+      shared the connection. Memory follows streams times buffer, only
+      for large responses in flight.
+
     * backboa and duobackboa no longer log a 'command not found' line on boxes
       with the randomised full-backup day: a test restore call left behind by a
       function rename never ran, and the dead block is removed.
