@@ -731,6 +731,33 @@ sending side — and only then re-run once with `_XMASS_MAX_DELETE` raised.
 Expect it to trip on the **first** pruning pass against a mirror that has
 been accreting for months; that is the guard doing its job.
 
+One mass deletion is the tools' own work and is budgeted out of the limit: a
+box that takes production renames every box-named site onto its own hostname
+— the site directory `sites/<sub>.<host>` and its files store
+`static/files/<sub>.<host>` — so the first sync from it back onto the demoted
+ex-active (a failback) deletes each of those under the target's name while
+the twin under the source's name arrives beside it. A flat-file site alone
+is a complete install of several thousand files. For every such pair the
+`distro/`, `static/` and `static/files` legs raise their own `--max-delete`
+by as many deletions as the twin re-delivers, never more, and say so in the
+pass log (`prune: … budgeted out of the delete guard`). A loss *inside* the
+renamed site still counts against the limit with the difference, a site the
+source simply deleted has no twin and is not budgeted, nothing between a
+leg's root and a counted directory may be a symlink on either box (the root
+itself may be one, as a files store on an attached disk is), a files store
+placed on the target's mount keeps the raise only when the path it was
+measured through is that mount copy, entries are counted one per file
+whatever its name holds,
+and an account that was never renamed on the sending box (no
+`backups/rename-hostname`) budgets nothing at all. The raise is leg-wide,
+because `--max-delete` is one counter per leg: a genuine loss elsewhere in
+the same leg, in the same pass, rides under it up to the budgeted amount. A target that holds the sites under a **third**
+box name — a standing mirror re-pointed at the box its active was moved to —
+is deliberately not covered, because the sending side cannot tell a former
+box name from a client domain: there the guard trips once and the remedy
+above applies. When a budgeted leg still trips, the DENY names the limit the
+leg ran with and how much of it was budget.
+
 A mirror-side *rewrite* of a file that still exists on the source is still
 never undone — `-u` keeps the newer copy, and only the accretion of files the
 source no longer has is what deletion addresses.

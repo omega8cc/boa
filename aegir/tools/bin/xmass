@@ -3676,12 +3676,140 @@ _XMASS_MAX_DELETE="${_XMASS_MAX_DELETE:-5000}"
 # placements), and the store legs -- static/files and arch, the largest
 # trees and so the likeliest to trip -- are exactly the ones an operator
 # must not meet as a bare "failed (rc=25)".
-_xmass_deny_maxdelete() {   # 1 = label
+_xmass_deny_maxdelete() {   # 1 = label  2 = the limit the leg ran with
+  local _lim="${2:-${_XMASS_MAX_DELETE}}"
   _alrt "DENY: ${1}: the delete guard stopped this leg — the source has lost more than"
-  _alrt "DENY: ${_XMASS_MAX_DELETE} files the target still holds; rsync removed the first"
-  _alrt "DENY: ${_XMASS_MAX_DELETE} and skipped the rest. Confirm the source really lost that many"
+  _alrt "DENY: ${_lim} files the target still holds; rsync removed the first"
+  _alrt "DENY: ${_lim} and skipped the rest. Confirm the source really lost that many"
   _alrt "DENY: (an unmounted volume and a genuine mass deletion look identical from"
   _alrt "DENY: here); if it is genuine, re-run once with a raised _XMASS_MAX_DELETE."
+  if [[ "${_lim}" =~ ^[0-9]+$ ]] && [[ "${_XMASS_MAX_DELETE}" =~ ^[0-9]+$ ]] \
+    && [ "${_lim}" -gt "${_XMASS_MAX_DELETE}" ]; then
+    _alrt "DENY: (${_lim} = _XMASS_MAX_DELETE ${_XMASS_MAX_DELETE} + $(( 10#${_lim} - 10#${_XMASS_MAX_DELETE} )) already budgeted for dirs the target holds under its own hostname; the limit is leg-wide)"
+  fi
+}
+
+# The --max-delete a leg ran with, read back from its own argument string.
+_xmass_maxdelete_of() {   # 1 = the leg's arguments
+  local _a _lim="${_XMASS_MAX_DELETE}"
+  for _a in $1; do
+    case "${_a}" in --max-delete=*) _lim="${_a#--max-delete=}" ;; esac
+  done
+  printf '%s' "${_lim}"
+}
+
+# The rename's own churn on one DATA leg, budgeted out of the delete guard.
+# A box that takes production moves every box-named site onto its own
+# hostname (renameaegirhost): the site dir sites/<sub>.<host> and its files
+# store static/files/<sub>.<host>. The first prune pass from it onto the
+# demoted ex-active -- which still holds those sites under ITS name -- then
+# deletes each old-named dir whole while the twin arrives beside it. A
+# flat-file site is a complete install of several thousand files and a files
+# store is larger still, so that one event tripped the guard at every
+# failback. Those deletions are the tools' own work, not a loss on the
+# source, and are budgeted: for each <sub>.<this box> the source holds, the
+# target's <sub>.<the target's own name> beside it -- an exact path, asked
+# for by index: the one name that comes back is the target's own hostname,
+# charset-checked and used only where putting this box's name in its place
+# gives the source's dir, and no name off the target's filesystem ever does
+# -- for as many deletions as the twin re-delivers and never more. A source
+# that lost files INSIDE the renamed site still meets the guard with the
+# difference, an unmounted or emptied source holds no twin at all, and a
+# site the source simply deleted has no twin either. A box that holds the
+# sites under a THIRD name (a mirror re-pointed at the box its active moved
+# to) is deliberately not covered: the source cannot tell a former box name
+# from a client domain, and the operator's raised _XMASS_MAX_DELETE stands.
+# Nothing between the leg root and a counted dir may be a symlink on either
+# side: rsync would remove the link, never the tree a walk through it counts.
+# Entries are counted by NUL, never by line: a file name may hold newlines,
+# and under a tenant-writable tree a line count is whatever the tenant says.
+# Only a box that was itself renamed can have caused such churn, so a source
+# account without renameaegirhost's own backup dir budgets nothing and asks
+# the target nothing. What the pairing proves is a name held under each
+# box's own hostname, not the rename itself -- the records say just that.
+# The price, stated once: --max-delete is one counter per leg, so the raise
+# is not confined to the paired dirs. A genuine loss elsewhere in the same
+# leg, in the same pass, rides under it up to the budgeted amount.
+# stdout is the count alone (the caller splices it); the record goes to stderr.
+_xmass_rename_churn() {   # 1 = source leg root  2 = target leg root  3 = top-level children the leg excludes  4 = sites|flat  5 = the account's rename backup dir
+  local _src="${1%/}" _dst="${2%/}" _skip=" ${3} " _how="${4:-sites}" _fq _own="" _d _rel _s _p _t _b _n _m _i=0
+  local _ask="" _ans="" _srcP _sP _q _sum=0 _pairs=0 _max=200 _k _c
+  local -A _as=() _ap=()
+  [ -n "$5" ] && [ -d "$5" ] || { printf '0'; return 0; }
+  _fq=$(hostname -f 2>/dev/null | tr -d '[:space:]')
+  case "${_fq}" in
+    ''|*[!A-Za-z0-9.-]*|.*|*.|*..*) printf '0'; return 0 ;;
+  esac
+  [[ "${_fq}" = *.* ]] || { printf '0'; return 0; }
+  _srcP=$(cd "${_src}" 2>/dev/null && pwd -P) || { printf '0'; return 0; }
+  while IFS= read -r _d; do
+    _rel="${_d#"${_src}"/}"
+    case "${_rel}" in ''|*[!A-Za-z0-9._/-]*|*..*|/*) continue ;; esac
+    [[ "${_skip}" = *" ${_rel%%/*} "* ]] && continue
+    _t="${_rel##*/}"
+    _p="${_t%"${_fq}"}"
+    [ -n "${_p}" ] && [ "${_p}${_fq}" = "${_t}" ] || continue
+    _s="."
+    [[ "${_rel}" = */* ]] && _s="${_rel%/*}"
+    if [ "${_i}" -ge "${_max}" ]; then
+      _alrt "  prune: more than ${_max} box-named site dirs under ${_src} -- the rest are not budgeted" >&2
+      break
+    fi
+    _i=$(( _i + 1 ))
+    _as[${_i}]="${_s}"
+    _ap[${_i}]="${_p}"
+    _ask="${_ask}${_i}|${_s}|${_p}"$'\n'
+  done < <(
+    if [ "${_how}" = "flat" ]; then
+      find "${_src}/" -mindepth 1 -maxdepth 1 -type d -name "*.${_fq}" 2>/dev/null | sed 's#//*#/#g' | sort
+    else
+      find "${_src}" -maxdepth 7 -type d -path '*/sites/*' -name "*.${_fq}" \
+        -not -path '*/backups/*' -not -path '*/.drush/*' -not -path '*/sites/*/*' 2>/dev/null | sort
+    fi
+  )
+  [ -n "${_ask}" ] || { printf '0'; return 0; }
+  _q="$(_shq "${_dst}")"
+  _ans=$(printf '%s' "${_ask}" | ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
+    "_r='${_q}'; _o=\$(hostname -f 2>/dev/null | tr -d '[:space:]'); case \"\${_o}\" in ''|*[!A-Za-z0-9.-]*|.*|*.|*..*) exit 0 ;; esac; _rp=\$(cd \"\${_r}\" 2>/dev/null && pwd -P) || exit 0; echo \"XMCHURN O|\${_o}\"; while IFS='|' read -r _i _s _p; do [ -n \"\${_p}\" ] || continue; if [ \"\${_s}\" = . ]; then _w=\"\${_rp}\"; else _w=\"\${_rp}/\${_s}\"; fi; [ \"\$(cd \"\${_r}/\${_s}\" 2>/dev/null && pwd -P)\" = \"\${_w}\" ] || continue; _c=\"\${_r}/\${_s}/\${_p}\${_o}\"; [ -d \"\${_c}\" ] && [ ! -L \"\${_c}\" ] || continue; echo \"XMCHURN C|\${_i}|\$(find \"\${_c}\" -print0 2>/dev/null | tr -dc '\0' | wc -c | tr -d '[:space:]')\"; done" 2>/dev/null \
+    | grep '^XMCHURN [OC]|' | cut -d' ' -f2-)
+  _own=$(printf '%s\n' "${_ans}" | grep -m1 '^O|' | cut -d'|' -f2)
+  case "${_own}" in
+    ''|*[!A-Za-z0-9.-]*|.*|*.|*..*) printf '0'; return 0 ;;
+  esac
+  [[ "${_own}" = *.* ]] && [ "${_own}" != "${_fq}" ] || { printf '0'; return 0; }
+  while IFS='|' read -r _c _k _n; do
+    [ "${_c}" = "C" ] || continue
+    [[ "${_k}" =~ ^[0-9]+$ ]] && [[ "${_n}" =~ ^[0-9]+$ ]] || continue
+    # only what this pass asked, and once: the answer is a remote shell's output
+    _s="${_as[${_k}]}"
+    _p="${_ap[${_k}]}"
+    [ -n "${_s}" ] && [ -n "${_p}" ] || continue
+    unset "_as[${_k}]"
+    _t="${_p}${_fq}"
+    _b="${_p}${_own}"
+    # the rename's own mapping, a whole-name host substitution, gives the twin
+    [ "${_b//"${_own}"/${_fq}}" = "${_t}" ] || continue
+    # still on the source under the target's name as well: not a deletion
+    if [ -e "${_src}/${_s}/${_b}" ] || [ -L "${_src}/${_s}/${_b}" ]; then continue; fi
+    [ -d "${_src}/${_s}/${_t}" ] && [ ! -L "${_src}/${_s}/${_t}" ] || continue
+    if [ "${_s}" = "." ]; then _sP="${_srcP}"; else _sP="${_srcP}/${_s}"; fi
+    [ "$(cd "${_src}/${_s}" 2>/dev/null && pwd -P)" = "${_sP}" ] || continue
+    _m=$(find "${_src}/${_s}/${_t}" -print0 2>/dev/null | tr -dc '\0' | wc -c | tr -d '[:space:]')
+    [[ "${_m}" =~ ^[0-9]+$ ]] || continue
+    _c="${_dst}/${_s}/${_b}"
+    _c="${_c/\/.\//\/}"
+    if [ "${_n}" -gt "${_m}" ]; then
+      _info "  prune: ${_c} holds $(( _n - _m )) more entries than its twin ${_t} re-delivers -- those stay against the guard" >&2
+      _n="${_m}"
+    fi
+    [ "${_n}" -gt 0 ] || continue
+    _sum=$(( _sum + _n ))
+    _pairs=$(( _pairs + 1 ))
+    _info "  prune: ${_c} is the source's ${_t} under the target's own hostname -- ${_n} deletion(s) budgeted" >&2
+  done <<< "${_ans}"
+  [ "${_pairs}" -gt 0 ] \
+    && _info "  prune: ${_sum} deletion(s) under ${_pairs} dir(s) named for the target's own hostname budgeted out of the delete guard for ${_dst} (leg-wide)" >&2
+  printf '%s' "${_sum}"
 }
 
 # Delete-flags for one DATA leg, or nothing when it must stay additive.
@@ -3689,7 +3817,7 @@ _xmass_deny_maxdelete() {   # 1 = label
 # live on a secondary volume, and an unmounted volume reads as an EMPTY
 # directory -- against which a --delete would erase the mirror's only copy of
 # every client file. An empty source is therefore never a licence to delete.
-_xmass_prune_args() {   # 1 = source dir
+_xmass_prune_args() {   # 1 = source dir  [2 = target dir of a leg a hostname rename moves dirs in  3 = its excluded top-level children  4 = sites|flat  5 = the account's rename backup dir]
   [ "${_XMASS_PRUNE}" = "YES" ] || return 0
   [ -d "$1" ] || return 0
   if [ -z "$(ls -A "$1" 2>/dev/null | head -c 1)" ]; then
@@ -3703,15 +3831,22 @@ _xmass_prune_args() {   # 1 = source dir
     _alrt "  prune: (an unmounted secondary volume reads exactly like this)" >&2
     return 0
   fi
-  printf '%s' "--delete-after --max-delete=${_XMASS_MAX_DELETE}"
+  local _max="${_XMASS_MAX_DELETE}" _churn
+  if [ -n "$2" ] && [[ "${_max}" =~ ^[0-9]+$ ]]; then
+    _churn="$(_xmass_rename_churn "$1" "$2" "$3" "$4" "$5")"
+    # 10#: a limit written with a leading zero is decimal to rsync and must
+    # stay decimal here; with nothing to add it is passed on as written
+    [[ "${_churn}" =~ ^[0-9]+$ ]] && [ "${_churn}" -gt 0 ] && _max=$(( 10#${_max} + 10#${_churn} ))
+  fi
+  printf '%s' "--delete-after --max-delete=${_max}"
 }
 
 # What a DATA leg passes where every other leg passes ${_ieni}: the prune
 # flags when pruning is on and safe, the historical --ignore-errors when not.
 # Never both -- see guard 3 above.
-_xmass_leg_args() {   # 1 = source dir
+_xmass_leg_args() {   # 1 = source dir  [2 3 4 5 = as _xmass_prune_args]
   local _p
-  _p="$(_xmass_prune_args "$1")"
+  _p="$(_xmass_prune_args "$1" "$2" "$3" "$4" "$5")"
   if [ -n "${_p}" ]; then
     printf '%s' "${_p}"
   else
@@ -3786,7 +3921,7 @@ _xmass_rsync() {
         # deleted, which is exactly what the guard is for -- so this is a
         # refusal to read, not a failure to retry blindly. It still fails the
         # pass (the tree is now knowingly incomplete on the delete side).
-        _xmass_deny_maxdelete "$*"
+        _xmass_deny_maxdelete "$*" "$(_xmass_maxdelete_of "$*")"
         _XMASS_RSYNC_RC="${_rc}"
         _XMASS_NOT_CLEAN=YES
       else
@@ -3871,7 +4006,7 @@ _xmass_put_on_root() {
   fi
   [ -n "${_err}" ] && rm -f "${_err}"
   if [ "${_rc}" = "25" ]; then
-    _xmass_deny_maxdelete "${_dstRoot} on target root"
+    _xmass_deny_maxdelete "${_dstRoot} on target root" "$(_xmass_maxdelete_of "${_ie}")"
     return 3
   fi
   if [ "${_rc}" != "0" ] && [ "${_rc}" != "24" ]; then
@@ -3893,6 +4028,18 @@ _xmass_put_on_mount() {
   local _th="$1" _real="$2" _mntDest="$3" _dstRoot="$4" _ie="$5" _lbl="$6" _qm _qd
   _qm="$(_shq "${_mntDest}")"; _qd="$(_shq "${_dstRoot}")"
   ssh -n root@"${_th}" "mkdir -p '${_qm}'"
+  # A raised delete limit was measured THROUGH ${_dstRoot} before the
+  # placement was decided. It is only good here if that path is this mount
+  # copy; a root copy beside a stale mount copy (a link step that failed, a
+  # placement that flipped) would lend its count to the wrong tree.
+  if [ "$(_xmass_maxdelete_of "${_ie}")" != "${_XMASS_MAX_DELETE}" ]; then
+    local _same
+    _same=$(ssh -n root@"${_th}" "a=\$(cd '${_qd}' 2>/dev/null && pwd -P); b=\$(cd '${_qm}' 2>/dev/null && pwd -P); [ -n \"\$a\" ] && [ \"\$a\" = \"\$b\" ] && echo XMSAME" 2>/dev/null | grep -m1 -x 'XMSAME')
+    if [ "${_same}" != "XMSAME" ]; then
+      _info "  ${_lbl}: ${_dstRoot} on the target is not ${_mntDest} -- the delete budget measured there is dropped for this pass"
+      _ie="$(printf '%s' "${_ie}" | sed "s/--max-delete=[0-9][0-9]*/--max-delete=${_XMASS_MAX_DELETE}/")"
+    fi
+  fi
   # Same rc-24 tolerance as _xmass_put_on_root; see the note there.
   local _rc=0 _err
   _err=$(mktemp /tmp/xmass-rsync-err.XXXXXX 2>/dev/null) || _err=""
@@ -3905,7 +4052,7 @@ _xmass_put_on_mount() {
   fi
   [ -n "${_err}" ] && rm -f "${_err}"
   if [ "${_rc}" = "25" ]; then
-    _xmass_deny_maxdelete "${_lbl} -> ${_mntDest}"
+    _xmass_deny_maxdelete "${_lbl} -> ${_mntDest}" "$(_xmass_maxdelete_of "${_ie}")"
     return 3
   fi
   if [ "${_rc}" != "0" ] && [ "${_rc}" != "24" ]; then
@@ -4473,7 +4620,7 @@ _xmass_sync_static_symlink_safe() {
   # this is a DATA leg: on a sync pass it prunes like distro/, under the
   # same three guards, or a codebase the tenant removed stays on the mirror
   # for good. Excluded paths are never deletion candidates.
-  _xmass_rsync -aEAXqu $(_xmass_leg_args "${_src_static}") \
+  _xmass_rsync -aEAXqu $(_xmass_leg_args "${_src_static}" "${_dst_static}" "files control" sites "${_src_usr}/backups/rename-hostname") \
     --exclude=/files --exclude=/control \
     -e ssh "${_src_static}/" "root@${_tgt}:${_dst_static}/"
 
@@ -4524,7 +4671,7 @@ _xmass_sync_static_symlink_safe() {
     "${_src_usr}/static/files" \
     "${_dst_sf}" \
     "files/${_dst_acct}/static/files" \
-    "${_tgt}" "${_tgt_mnt}" "$(_xmass_leg_args "${_src_usr}/static/files")" \
+    "${_tgt}" "${_tgt_mnt}" "$(_xmass_leg_args "${_src_usr}/static/files" "${_dst_sf}" "" flat "${_src_usr}/backups/rename-hostname")" \
     "static/files (${_dst_acct})" || _XMASS_STORE_RC=$?
 }
 
@@ -4550,7 +4697,7 @@ _xmass_sync_account() {
   _info "  Syncing account ${_oct} ..."
 
   # Platform codebases (large; delta-synced efficiently by rsync)
-  _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/distro") -e ssh \
+  _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/distro" "${_dst}/distro" "" sites "${_udir}/backups/rename-hostname") -e ssh \
     "${_udir}/distro/" "root@${_tgt}:${_dst}/distro/"
 
   # User uploaded files (symlink-safe, storage-aware relocation of static/files)
