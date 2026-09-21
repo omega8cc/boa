@@ -57,6 +57,16 @@
 #                                   regardless of state + publish + sync
 # Component names: ssl3 ssl-legacy icu curl valkey nginx unbound pure-ftpd php56 php70 .. php85
 #
+# A package rebuilt at an unchanged version is republished under the SAME
+# filename, and a CDN in front of the mirrors keeps the previous .gz for its
+# full TTL while the sidecar beside it, which such caches do not hold, is
+# already the new one: every consumer behind that edge then fails the
+# checksum and falls back to a source build, for as long as the edge entry
+# lives. stackbuild knows nothing about any CDN; it hands the files it just
+# published to an optional hook, _PURGE_HOOK in /root/.stackbuild.cnf (a
+# command, called with their absolute paths), and without one it names the
+# replaced files so the purge is not forgotten.
+#
 # The builder box MUST keep _USE_PREBUILT_PKGS=NO in /root/.barracuda.cnf
 # (it must always compile from source, or it would install its own packages
 # and repackage them in a circle) - stackbuild refuses to run otherwise.
@@ -77,6 +87,14 @@ _PUB_DIR=""
 # skip sync with a WARNING. Passive mirrors keep syncing from the
 # authoritative mirror exactly as they do today - that is not stackbuild's job.
 _PEER_MIRROR=""
+
+# Optional command run after publish (and after the cross-sync, in 'all' and
+# 'force') with the absolute paths of every file published in this run, e.g.
+# a tool that purges a CDN's copies once the mirrors serve the new bytes. Set
+# it in /root/.stackbuild.cnf. Empty = no hook; replaced files are then named
+# in the output instead. A failing hook is reported, never fatal: the
+# packages are published either way.
+_PURGE_HOOK=""
 
 # Codenames packages are built for (D-2026-07-14: daedalus + excalibur only;
 # beowulf/chimaera age out on the source path).
@@ -99,6 +117,8 @@ fi
 _OS_CODE=""
 _LOCK_HELD=0
 _RESULTS=()
+_PUBLISHED_FILES=()
+_REPLACED_FILES=()
 
 # ---------------------------------------------------------------------------
 # Output helpers.
@@ -601,7 +621,7 @@ do_publish() {
   # The sidecar hashes the COMPRESSED file (the installer verifies before
   # gunzip). Old versions are never deleted - mirrors keep them so slower
   # trees and older pins keep finding their exact filename.
-  local _t _base _comp _ref _n=0
+  local _t _base _comp _ref _n=0 _was=""
   _detect_pub_dir
   for _t in "${_WORK_DIR}"/boa-*.deb; do
     [[ -e "${_t}" ]] || continue
@@ -626,6 +646,8 @@ do_publish() {
       rm -f "${_PUB_DIR}/${_base}.gz.tmp"
       continue
     fi
+    _was=""
+    [[ -e "${_PUB_DIR}/${_base}.gz" ]] && _was="YES"
     # Checked: on a same-version republish the target already exists, and a
     # refused overwrite (immutable bit, permissions) would otherwise leave the
     # old bytes in place while the sidecar below is rebuilt from them and the
@@ -648,9 +670,58 @@ do_publish() {
     fi
     rm -f "${_t}"
     _msg "published: ${_base}.gz (+ sha256)"
+    _PUBLISHED_FILES+=("${_PUB_DIR}/${_base}.gz" "${_PUB_DIR}/${_base}.gz.sha256")
+    [[ -n "${_was}" ]] && _REPLACED_FILES+=("${_base}.gz")
     _n=$((_n + 1))
   done
   [[ "${_n}" -gt 0 ]] || _msg "nothing to publish (run 'package' first)"
+}
+
+_name_replaced_files() {
+  # Whoever ends up purging by hand (no hook, a missing one, a failed one)
+  # needs the names, not a count.
+  local _f
+  [[ "${#_REPLACED_FILES[@]}" -gt 0 ]] || return 0
+  _alrt "republished under an existing filename; a CDN edge in front of the"
+  _alrt "mirrors may keep the previous bytes beside the new sidecar until its"
+  _alrt "TTL, and consumers behind it fall back to sources. Purge there:"
+  for _f in "${_REPLACED_FILES[@]}"; do
+    _alrt "  ${_f}"
+  done
+}
+
+do_purge_hook() {
+  # Hand the files published in this run to the operator's hook, or, with no
+  # hook, name the ones that replaced an existing file: only those can have
+  # an older copy cached in front of the mirrors.
+  local _hook=() _rc=0
+  [[ "${#_PUBLISHED_FILES[@]}" -gt 0 ]] || return 0
+  if [[ -z "${_PURGE_HOOK// /}" ]]; then
+    if [[ "${#_REPLACED_FILES[@]}" -gt 0 ]]; then
+      _name_replaced_files
+      _RESULTS+=("NOTE  ${#_REPLACED_FILES[@]} republished file(s) need a CDN purge (no _PURGE_HOOK set)")
+    fi
+    return 0
+  fi
+  # shellcheck disable=SC2206  # intentional word splitting: command + arguments
+  _hook=(${_PURGE_HOOK})
+  if ! command -v "${_hook[0]}" >/dev/null 2>&1; then
+    _alrt "purge hook not found: ${_hook[0]} (packages are published; purge by hand)"
+    _RESULTS+=("WARN  purge hook not found: ${_hook[0]}")
+    _name_replaced_files
+    return 0
+  fi
+  _msg "purge hook: ${_PURGE_HOOK} (${#_PUBLISHED_FILES[@]} file(s))"
+  "${_hook[@]}" "${_PUBLISHED_FILES[@]}"
+  _rc=$?
+  if [[ "${_rc}" -eq 0 ]]; then
+    _RESULTS+=("PURGE ${#_PUBLISHED_FILES[@]} file(s) handed to the purge hook")
+  else
+    _alrt "purge hook failed (rc ${_rc}); packages are published, edges may serve the previous bytes"
+    _RESULTS+=("WARN  purge hook failed (rc ${_rc})")
+    _name_replaced_files
+  fi
+  return 0
 }
 
 do_sync() {
@@ -729,6 +800,8 @@ main() {
       trap '_cleanup' EXIT
       _acquire_lock
       do_publish
+      do_purge_hook
+      print_summary
       ;;
     sync)
       _require_root
@@ -744,6 +817,7 @@ main() {
       do_package
       do_publish
       do_sync
+      do_purge_hook
       print_summary
       ;;
     force)
@@ -766,6 +840,7 @@ main() {
       do_package ${_targets}
       do_publish
       do_sync
+      do_purge_hook
       print_summary
       ;;
     *)

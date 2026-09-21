@@ -89,6 +89,16 @@
       re-verify, and the change reaches every listed site on the
       generator's next pass.
 
+    * The per-site legacy TLS switch (tls-legacy-enable-<name>.info) is
+      retired, and the server config no longer lists TLSv1.1 at http
+      level. Neither had any effect left: Nginx is built with OpenSSL 3,
+      which refuses TLSv1.1 at its default security level whatever
+      ssl_protocols says. Tested with the control file in place and the
+      line rendered in a Drupal and a Textpattern vhost, a TLSv1.1
+      handshake was still answered with a protocol version alert while
+      TLSv1.2 connected. TLSv1.2 and TLSv1.3 are what every site speaks,
+      as before; a control file left behind is ignored.
+
 @=> New Features
 
     * The new nginx_fleet.sh detector reads the last few minutes of
@@ -114,6 +124,15 @@
 
 @=> Improvements
 
+    * The prebuilt package builder can have a CDN purged after a republish.
+      A component rebuilt at an unchanged version is republished under the
+      same filename, and an edge in front of the mirrors kept the previous
+      package for its full TTL beside the new checksum file, so consumers
+      behind it failed the checksum and compiled from sources instead. With
+      _PURGE_HOOK set in /root/.stackbuild.cnf, stackbuild hands every file
+      it published to that command after the cross-sync; without it, a run
+      that replaced an existing file names it. A failing hook is reported
+      and never stops the publish.
     * The mycnfup tuner and the cluster tool are retired. mycnfup refused
       every verb on anything but Debian, so it never ran on a Devuan box,
       and only the discontinued Simple Cluster tooling ever called it; the
