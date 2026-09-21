@@ -6279,6 +6279,18 @@ _satellite_letsencrypt_vhost_sync() {
   ### check on every upgrade while nginx keeps serving KTLS.
   [ -e "/etc/nginx/no_ktls.conf" ] \
     && sed -i "/ssl_conf_command Options.*KTLS/d" ${_Ssl}
+  ### The control panel front does not offer HTTP/3. A reload hands the
+  ### shared UDP sockets to the new workers, so a QUIC transfer in flight
+  ### is cut within seconds of every reload, while a TCP one drains on the
+  ### old worker. Reloads follow tasks and ban-list updates every few
+  ### minutes, so a multi-gigabyte backup download never completed over
+  ### HTTP/3. Alt-Svc clear makes a browser drop the alternative it cached
+  ### from earlier visits. Same two-layer shape as the KTLS strip above:
+  ### the fetched generator can lag this lib.
+  sed -i "/^[[:space:]]*listen .*:443 quic;/d; /^[[:space:]]*http3\(_hq\)\?[[:space:]].*on;/d" ${_Ssl}
+  if ! grep -q "Alt-Svc" ${_Ssl}; then
+    sed -i "s/^\([[:space:]]*\)proxy_buffering[[:space:]].*off;/&\n\1proxy_hide_header          Alt-Svc;\n\1add_header                 Alt-Svc clear always;/" ${_Ssl}
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Reloading Nginx..."
     _mrun "service nginx reload"
@@ -6320,7 +6332,11 @@ _satellite_letsencrypt_vhost_setup() {
           _msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf exists, OK!"
         fi
         _satellite_letsencrypt_crt_key_copy
-        _HTTP3_TEST=$(grep http3 ${_Ssl} 2>&1)
+        ### The panel front carries no QUIC listener and clears Alt-Svc
+        ### (see _satellite_letsencrypt_vhost_sync); either one missing
+        ### marks a front written before that and needing one regen.
+        _HTTP3_TEST=$(grep -E "^[[:space:]]*(listen .* quic;|http3)" ${_Ssl} 2>&1)
+        _ALTSVC_TEST=$(grep "Alt-Svc clear" ${_Ssl} 2>&1)
         _KTLS_TEST=$(grep KTLS ${_Ssl} 2>&1)
         _RPRT_TEST=$(grep reuseport ${_Ssl} 2>&1)
         _SQLADMIN_TEST=$(grep sqladmin ${_Ssl} 2>&1)
@@ -6346,7 +6362,8 @@ _satellite_letsencrypt_vhost_setup() {
           [[ ! "${_KTLS_TEST}" =~ "KTLS" ]] && _KTLS_NEEDS_UPDATE=YES
         fi
         if [[ ! "${_FPM_SOCKET_TEST}" =~ "fpm.socket" ]] \
-          || [[ ! "${_HTTP3_TEST}" =~ "http3" ]] \
+          || [[ "${_HTTP3_TEST}" =~ (quic|http3) ]] \
+          || [[ ! "${_ALTSVC_TEST}" =~ "Alt-Svc" ]] \
           || [ "${_KTLS_NEEDS_UPDATE}" = "YES" ] \
           || [[ "${_RPRT_TEST}" =~ "reuseport" ]] \
           || [[ ! "${_SQLADMIN_TEST}" =~ "sqladmin" ]] \
