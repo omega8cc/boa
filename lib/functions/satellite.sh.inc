@@ -945,6 +945,7 @@ _satellite_cnf() {
     echo "_GHOST_SITE_FILES_CLEANUP=${_GHOST_SITE_FILES_CLEANUP}" >> ${_octCnf}
     echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}"     >> ${_octCnf}
     echo "_INSTANCE_GROUP=${_INSTANCE_GROUP:-YES}"              >> ${_octCnf}
+    echo "_SEND_UPGRADE_EMAIL=${_SEND_UPGRADE_EMAIL:-YES}"      >> ${_octCnf}
     echo "_DEL_OLD_BACKUPS=${_DEL_OLD_BACKUPS}"                 >> ${_octCnf}
     echo "_DEL_OLD_TMP=${_DEL_OLD_TMP}"                         >> ${_octCnf}
     echo "_LOCAL_NETWORK_IP=${_LOCAL_NETWORK_IP}"               >> ${_octCnf}
@@ -1391,6 +1392,13 @@ _satellite_cnf() {
       _DO_NOTHING=YES
     else
       echo "_INSTANCE_GROUP=${_INSTANCE_GROUP:-YES}" >> ${_octCnf}
+    fi
+
+    _SEND_UPGRADE_EMAIL_TEST=$(grep "^_SEND_UPGRADE_EMAIL=" ${_octCnf} 2>&1)
+    if [[ "${_SEND_UPGRADE_EMAIL_TEST}" =~ "_SEND_UPGRADE_EMAIL=" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_SEND_UPGRADE_EMAIL=${_SEND_UPGRADE_EMAIL:-YES}" >> ${_octCnf}
     fi
 
     _DEL_OLD_BACKUPS_TEST=$(grep _DEL_OLD_BACKUPS ${_octCnf} 2>&1)
@@ -5219,6 +5227,15 @@ _satellite_make() {
   echo "export _USRG=\"${_USRG}\""                           >> ${_writeTo}
   echo "export _ACCG=\"${_ACCG}\""                           >> ${_writeTo}
   echo "export _INSTANCE_GROUP=\"${_INSTANCE_GROUP:-YES}\""    >> ${_writeTo}
+  # The upgrade notice is sent by the stage A child, which sees only this
+  # include: without the line the instance's NO never reached the send and
+  # the switch did nothing. Only an exact NO is handed on, so a mistyped
+  # value can never silence the notice.
+  if [ "${_SEND_UPGRADE_EMAIL}" = "NO" ]; then
+    echo "export _SEND_UPGRADE_EMAIL=\"NO\""                    >> ${_writeTo}
+  else
+    echo "export _SEND_UPGRADE_EMAIL=\"YES\""                   >> ${_writeTo}
+  fi
   echo "export _WEBG=\"${_WEBG}\""                           >> ${_writeTo}
   echo "export _xSrl=\"${_xSrl}\""                           >> ${_writeTo}
   echo "export _X_VERSION=\"${_X_VERSION}\""                 >> ${_writeTo}
