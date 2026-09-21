@@ -89,6 +89,16 @@
       re-verify, and the change reaches every listed site on the
       generator's next pass.
 
+    * The per-site legacy TLS switch (tls-legacy-enable-<name>.info) is
+      retired, and the server config no longer lists TLSv1.1 at http
+      level. Neither had any effect left: Nginx is built with OpenSSL 3,
+      which refuses TLSv1.1 at its default security level whatever
+      ssl_protocols says. Tested with the control file in place and the
+      line rendered in a Drupal and a Textpattern vhost, a TLSv1.1
+      handshake was still answered with a protocol version alert while
+      TLSv1.2 connected. TLSv1.2 and TLSv1.3 are what every site speaks,
+      as before; a control file left behind is ignored.
+
 @=> New Features
 
     * The new nginx_fleet.sh detector reads the last few minutes of
