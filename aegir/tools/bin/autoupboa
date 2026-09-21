@@ -829,7 +829,19 @@ APT::Periodic::Unattended-Upgrade "1";'
   # BOA policy overlay (apt merges *.conf.d): the archive-based a=*-security
   # origin matches both Debian and Devuan security archives, where the stock
   # origin= patterns miss Devuan. The blacklist documents intent -- our
-  # nginx/php are source-built and Percona is not a *-security repo.
+  # nginx/php are source-built and Percona is not a *-security repo. The
+  # unbound entry is load-bearing: the distro unbound packages stay
+  # installed and are not held, our build sits on the same paths, and the
+  # distro daemon cannot start on our config, so a security upload would
+  # take the resolver down until the next barracuda pass puts ours back.
+  # It covers unattended upgrades only: a barracuda pass still upgrades
+  # those packages in its own full-upgrade and reinstalls our build a
+  # minute later, in the same pass. Each entry is a Python regular
+  # expression anchored at the start of the package name (re.match), not a
+  # glob: "unbound*" is "unboun" plus any number of "d", so it reaches
+  # unbound, unbound-anchor and unbound-host but neither libunbound8 (a
+  # shared library other packages link, which keeps its security updates)
+  # nor python3-unbound.
   _write_managed_apt_conf "/etc/apt/apt.conf.d/51unattended-upgrades-boa" \
 '// Managed by BOA (autoupboa). Security-only unattended upgrades.
 // Opt out with _SYSTEM_AUTO_SECURITY=NO in /root/.barracuda.cnf.
@@ -840,6 +852,7 @@ Unattended-Upgrade::Package-Blacklist {
   "percona-*";
   "nginx*";
   "php*";
+  "unbound*";
 };'
   [[ "$?" -eq 2 ]] && _uu_changed=YES
   # Narrate only when something actually changed; converged runs stay quiet.

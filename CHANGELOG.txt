@@ -446,6 +446,24 @@
       a failed send. The pass now says "NOTE: No upgrade email for oN"; a
       notice that has a body and does not go out, and a body that failed
       to render, are reported as before.
+    * The local DNS cache no longer stays down once the distro ships the
+      same Unbound release BOA pins. On a box that builds Unbound from
+      sources, a distro package upgrade puts the distro build back over
+      BOA's; that build reads a different config path, finds the root
+      trust anchor named twice there and refuses to start, and the
+      upgrade pass, comparing versions only, called the box current and
+      never reinstalled. The pass now recognises a distro build on its
+      path and reinstalls BOA's, unattended security upgrades leave the
+      unbound packages alone (the shared library still updates), the
+      package builder refuses to publish a distro build as boa-unbound,
+      and "boa info" flags it.
+    * The Unbound monitor no longer logs a restart that never happened.
+      When a restart leaves no daemon behind it records why, as far as
+      unbound-checkconf can tell, and mails at the default reporting
+      level, once per six hours; before, a resolver that could not start
+      was "killed and restarted" every minute for as long as it took
+      someone to look, while the box resolved through its fallback
+      servers and nothing else looked wrong.
 
 
 ###

@@ -383,6 +383,39 @@ _check_connection() {
 }
 
 #
+# Tell our own Unbound build from a distro one. Ours is configured with
+# --prefix=/usr and no sysconfdir, so it reads /usr/etc/unbound/unbound.conf;
+# a distro build reads /etc/unbound/unbound.conf, where the distro's own
+# trust anchor drop-in sits next to our staged copy, names the same anchor
+# file a second time, and the daemon refuses to start ("trust anchor
+# presented twice"). The distro unbound packages stay installed and are not
+# held, so any apt upgrade of them lands that build over ours unless the
+# boa-unbound overlay owns the paths. The version cannot tell the two apart
+# once the distro ships the pinned release, which left a box without its
+# resolver until someone looked. The usage text names the compiled-in
+# config path, which is the property everything else here depends on.
+# Prints boa, distro or unknown. Callers act on distro only: a usage text
+# that names neither path (a reworded upstream help line, a binary that
+# cannot load its libraries) must never read as a foreign build, or one
+# upstream edit would rebuild Unbound on every pass, fleet-wide.
+_unbound_build_kind() {
+  local _bin="${1:-/usr/sbin/unbound}"
+  local _use=""
+  if [ ! -x "${_bin}" ]; then
+    echo "unknown"
+    return 0
+  fi
+  _use="$("${_bin}" -h 2>&1)"
+  if [[ "${_use}" =~ "instead of /usr/etc/unbound/unbound.conf" ]]; then
+    echo "boa"
+  elif [[ "${_use}" =~ "instead of /etc/unbound/unbound.conf" ]]; then
+    echo "distro"
+  else
+    echo "unknown"
+  fi
+}
+
+#
 # Try the prebuilt boa-unbound .deb for the pinned version; fall back to
 # sources on any failure. The payload carries the six /usr/sbin binaries
 # only, overlaying files the distro unbound and unbound-anchor packages
@@ -462,6 +495,7 @@ _install_unbound_deb() {
     && [ -x "/usr/sbin/unbound-control-setup" ] \
     && [ -x "/usr/sbin/unbound-host" ] \
     && [ "${_UNBOUND_DEB_ITD}" = "${_UNBOUND_VRN}" ] \
+    && [ "$(_unbound_build_kind "/usr/sbin/unbound")" != "distro" ] \
     && [[ "${_UNBOUND_DEB_LIBVT}" =~ "libevent" ]] \
     && [ -z "${_UNBOUND_DEB_MISSING}" ]; then
     rm -rf /var/opt/unbound-pre-deb
@@ -693,11 +727,18 @@ _dns_unbound_install_upgrade() {
       | cut -d" " -f2 \
       | awk '{ print $1}' \
       | sed "s/Configure//gi" 2>&1)
-    if [ "${_UNBOUND_V_ITD}" = "${_UNBOUND_VRN}" ]; then
+    _UNBOUND_KIND="$(_unbound_build_kind "${_isUnbnd}")"
+    if [ "${_UNBOUND_V_ITD}" = "${_UNBOUND_VRN}" ] \
+      && [ "${_UNBOUND_KIND}" != "distro" ]; then
       _UNBOUND_INSTALL_REQUIRED=NO
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: Installed Unbound version ${_UNBOUND_V_ITD}, OK"
       fi
+    elif [ "${_UNBOUND_V_ITD}" = "${_UNBOUND_VRN}" ]; then
+      # The pinned version, but not our build: a distro package upgrade has
+      # replaced the binaries, and that build cannot start on our config.
+      _UNBOUND_INSTALL_REQUIRED=YES
+      _msg "INFO: Installed Unbound ${_UNBOUND_V_ITD} is a distro build, reinstalling ours"
     else
       _UNBOUND_INSTALL_REQUIRED=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
