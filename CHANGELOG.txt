@@ -331,6 +331,18 @@
       shared the connection. Memory follows streams times buffer, only
       for large responses in flight.
 
+    * Audio and video files on Drupal and Backdrop sites are no longer cut
+      short for a listener whose player, or the CDN edge in front of the
+      site, reads far ahead of playback and then reads nothing until the
+      listener catches up: many minutes on an audio file, while Nginx
+      closed any response it could not write to for 180 seconds, so a
+      podcast could stop half an hour in. Audio and video extensions now
+      have a location of their own with send_timeout 3600s, as do the
+      mp4/m4a and flv locations; every other file type keeps 180 seconds.
+      Tested with a reader that takes 8 MB and then nothing for 200
+      seconds: mp3, aac and mp4 were cut before and arrive whole now,
+      also through the short /files/ URI, and a zip is still cut.
+
     * backboa and duobackboa no longer log a 'command not found' line on boxes
       with the randomised full-backup day: a test restore call left behind by a
       function rename never ran, and the dead block is removed.
