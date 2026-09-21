@@ -145,6 +145,22 @@ package the peer has just republished. A deliberate rollback goes through
 and the package is skipped, instead of old bytes staying in place under a
 sidecar rebuilt from them.
 
+A republish under an unchanged filename has one more consequence, outside
+the mirrors themselves. A CDN in front of them keeps the previous `.gz` for
+its full TTL, while the sidecar beside it, which such caches do not hold, is
+already the new one; every consumer behind that edge then fails the checksum
+and falls back to a source build for as long as the edge entry lives. The
+tool knows nothing about any CDN. It hands the files it has just published
+to an optional hook instead: set `_PURGE_HOOK` in `/root/.stackbuild.cnf` to
+a command, and `publish`, `all` and `force` call it once, after the
+cross-sync, with the absolute paths of every package and sidecar published
+in that run. The hook is expected to wait until the mirrors serve the new
+bytes before it purges anything, since purging early only re-caches the old
+ones. A missing or failing hook is reported in the summary and never stops
+the publish. With no hook set, a run that replaced an existing file names
+it, so the purge is not forgotten; a new filename has no older copy cached
+anywhere and is not mentioned.
+
 ## Adding a Builder Mirror for a New Release
 
 To bring up the next release's builder (for example Excalibur alongside
@@ -172,7 +188,8 @@ Daedalus):
    copies are refreshed by the serial-gated fetch on every barracuda run,
    which resets in-script edits (a build with it unset publishes only
    locally and warns). Passive mirrors keep syncing from the authoritative
-   mirror exactly as before.
+   mirror exactly as before. Where a CDN fronts the mirrors, set
+   `_PURGE_HOOK` in the same file as well (see the republish notes above).
 5. Add the daily cron: `barracuda up-<tree>` then `stackbuild all`.
 6. Only after the new release's package set is published and propagated,
    the shipped default for that release flips to `YES` in a BOA update --
