@@ -437,6 +437,15 @@
       thawed"), and three UNLOCK TABLES calls that released nothing are
       gone, along with the "tables unlocked" line and the reset-phase hint
       to run one by hand.
+    * An Octopus account just created on a migration target (xmass
+      prep-target, xoct create) no longer ends its first upgrade passes
+      "completed WITH ERRORS" with an "ALERT: Failed Octopus upgrade" mail
+      for a pass that did nothing wrong. Such an account is installed
+      without a welcome mail on purpose, so no upgrade notice body exists
+      for it until its files arrive, and the missing body was reported as
+      a failed send. The pass now says "NOTE: No upgrade email for oN"; a
+      notice that has a body and does not go out, and a body that failed
+      to render, are reported as before.
 
 
 ###

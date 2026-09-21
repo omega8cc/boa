@@ -4879,7 +4879,7 @@ _satellite_send_welcome_email() {
       ### Never fall back to the INIT-time setupmail render: it carries the
       ### original password under a Welcome body, so resending it under an
       ### Upgrade subject would mail stale credentials. No upgrademail.txt
-      ### means no send, only the loud ALRT trail below.
+      ### means no send; the trail below says which kind of miss it was.
       _mailBody="${_ROOT}/log/upgrademail.txt"
       _MAIL_SENT=NO
       if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
@@ -4898,8 +4898,25 @@ _satellite_send_welcome_email() {
         fi
       fi
       if [ "${_MAIL_SENT}" = "NO" ]; then
-        _msg "ALRT: Upgrade email for ${_USER} was NOT sent"
-        _msg "ALRT: The intended message body is in ${_mailBody}"
+        ### The upgrade body is rendered only beside an INIT-time setupmail
+        ### render (_satellite_prepare_setup_email_tpl), and an account
+        ### installed under /root/.silent.update.cnf has none until its
+        ### files arrive. With neither file present there was nothing to
+        ### send and nothing failed, while an ALRT reports the whole pass
+        ### as failed. A missing body beside a setupmail render is a failed
+        ### render and a body that did not go out is a failed send: both
+        ### stay loud.
+        local _mailInit _mailCand
+        _mailInit=NO
+        for _mailCand in setupmail.txt legacy_setupmail.txt latest_setupmail.txt; do
+          [ -e "${_ROOT}/log/${_mailCand}" ] && _mailInit=YES
+        done
+        if [ ! -e "${_mailBody}" ] && [ "${_mailInit}" = "NO" ]; then
+          _msg "NOTE: No upgrade email for ${_USER}: no setup email render exists in ${_ROOT}/log"
+        else
+          _msg "ALRT: Upgrade email for ${_USER} was NOT sent"
+          _msg "ALRT: The intended message body is in ${_mailBody}"
+        fi
       fi
     else
       _SEND_UPGRADE_EMAIL=NO
