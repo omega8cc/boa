@@ -183,6 +183,15 @@ _all_components() {
   printf '%s\n' "${_c}"
 }
 
+# Our Unbound build reads /usr/etc/unbound/unbound.conf (--prefix=/usr, no
+# sysconfdir); a distro build reads /etc/unbound/unbound.conf. Mirrors the
+# installer's test (dns.sh.inc): true only on positive evidence of a distro
+# build, so a reworded upstream usage line never stops the publishing.
+_unbound_is_distro_build() {
+  [[ -x /usr/sbin/unbound ]] || return 1
+  /usr/sbin/unbound -h 2>&1 | grep -q "instead of /etc/unbound/unbound.conf"
+}
+
 _comp_version() {
   local _comp="$1" _v=""
   case "${_comp}" in
@@ -224,8 +233,12 @@ _comp_version() {
       # Mirror the installer's parse (dns.sh.inc) so the filename version
       # equals the _UNBOUND_VRN pin character-for-character; the newline
       # strip glues 'Configure' onto the 'Version N.N.N' banner field,
-      # which the sed removes.
-      [[ -x /usr/sbin/unbound ]] \
+      # which the sed removes. A distro build on the same path counts as
+      # not installed: the distro packages are not held, an apt upgrade
+      # lands their binaries over ours, and at the pinned version the
+      # filename would be identical -- the fleet would receive a daemon
+      # that cannot start on our config, under our package name.
+      [[ -x /usr/sbin/unbound ]] && ! _unbound_is_distro_build \
         && _v="$(/usr/sbin/unbound -V 2>/dev/null | tr -d '\n' | cut -d' ' -f2 \
           | awk '{print $1}' | sed 's/Configure//gi')" ;;
     pure-ftpd)
@@ -436,7 +449,11 @@ _package_one() {
   local _ver _deb _paths _excludes _stage _work _deps _replaces _ref
   _ver="$(_comp_version "${_comp}")"
   if [[ -z "${_ver}" ]]; then
-    _RESULTS+=("SKIP  ${_comp} (not installed on this box)")
+    if [[ "${_comp}" = "unbound" ]] && _unbound_is_distro_build; then
+      _RESULTS+=("SKIP  ${_comp} (/usr/sbin/unbound is a distro build, not ours; a barracuda pass reinstalls it)")
+    else
+      _RESULTS+=("SKIP  ${_comp} (not installed on this box)")
+    fi
     return 0
   fi
   _deb="$(_deb_name "${_comp}" "${_ver}")"
@@ -500,7 +517,11 @@ do_check() {
   for _comp in $(_all_components); do
     _ver="$(_comp_version "${_comp}")"
     if [[ -z "${_ver}" ]]; then
-      printf '  %-12s %-12s %s\n' "${_comp}" "-" "not installed on this box"
+      if [[ "${_comp}" = "unbound" ]] && _unbound_is_distro_build; then
+        printf '  %-12s %-12s %s\n' "${_comp}" "-" "DISTRO BUILD on /usr/sbin/unbound, not ours (a barracuda pass reinstalls it)"
+      else
+        printf '  %-12s %-12s %s\n' "${_comp}" "-" "not installed on this box"
+      fi
       continue
     fi
     _deb="$(_deb_name "${_comp}" "${_ver}")"

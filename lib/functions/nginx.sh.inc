@@ -14,6 +14,9 @@ _nginx_conf_update() {
       mv -f /etc/nginx/nginx.conf ${_vBs}/dragon/t/nginx.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
       mv -f /etc/nginx/fastcgi_params ${_vBs}/dragon/t/fastcgi_params-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
       cp -af ${_locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
+      ### The template includes main.d from its main context; the directory
+      ### must never lag the line that names it.
+      mkdir -p /etc/nginx/main.d
       cp -af ${_locCnf}/nginx/fastcgi_params.txt /etc/nginx/fastcgi_params
       touch ${_pthLog}/nginx-config-params-fixed-${_xSrl}-${_X_VERSION}.log
     fi
@@ -1019,6 +1022,224 @@ _nginx_ktls_control_update() {
     fi
   else
     rm -f /etc/nginx/no_ktls.conf
+  fi
+}
+
+_nginx_quic_bpf_probe() {
+  ### The only test that exercises the eBPF init behind quic_bpf before the
+  ### directive is written: nginx -t skips it (no SO_REUSEPORT during a
+  ### config test), and on a real start a failed init refuses to start Nginx
+  ### at all. So start a throwaway master from a minimal config -- same
+  ### binary, same worker count, one QUIC listener with reuseport on a
+  ### loopback port -- and see whether it lives. Returns 0 only for a master
+  ### that started and logged no complaint. Its life is bounded to a few
+  ### seconds, and the Nginx monitor leaves a master of this title alone.
+  local _pDir="/run/boa-nginx-quic-bpf-probe"
+  local _pCnf="${_pDir}/nginx.conf"
+  local _pPid="${_pDir}/nginx.pid"
+  local _pLog="${_pDir}/error.log"
+  local _pCrt="/etc/ssl/private/nginx-wild-ssl.crt"
+  local _pKey="/etc/ssl/private/nginx-wild-ssl.key"
+  local _pPort="" _try _wrk _usr _mPid="" _w _rc=1
+  [ -x "/usr/sbin/nginx" ] || return 1
+  [ -e "${_pCrt}" ] && [ -e "${_pKey}" ] || return 1
+  command -v ss > /dev/null 2>&1 || return 1
+  ### Below the ephemeral range, and -a so that a connected UDP socket (which
+  ### -l would not list) counts as busy too.
+  for _try in 28443 28444 28445 28446; do
+    if ! ss -Huna 2> /dev/null | grep -q "[:.]${_try} "; then
+      _pPort="${_try}"
+      break
+    fi
+  done
+  [ -n "${_pPort}" ] || return 1
+  _wrk=$(sed -n 's/^worker_processes[[:space:]]\{1,\}\([a-z0-9]\{1,\}\);.*/\1/p' \
+    /etc/nginx/nginx.conf 2> /dev/null | head -n 1)
+  [ -n "${_wrk}" ] || _wrk="auto"
+  _usr=$(sed -n 's/^user[[:space:]]\{1,\}\([a-zA-Z0-9_. -]\{1,\}\);.*/\1/p' \
+    /etc/nginx/nginx.conf 2> /dev/null | head -n 1)
+  [ -n "${_usr}" ] || _usr="www-data"
+  ### A master left by a pass that was killed mid-probe still holds its port
+  ### and would outlive the config removed below.
+  for _mPid in $(pgrep -f "^nginx: master process /usr/sbin/nginx -c ${_pCnf}" 2> /dev/null); do
+    pkill -9 -P "${_mPid}" 2> /dev/null
+    kill -9 "${_mPid}" 2> /dev/null
+  done
+  _mPid=""
+  rm -rf "${_pDir}"
+  mkdir -p "${_pDir}" || return 1
+  chmod 700 "${_pDir}"
+  {
+    echo "user ${_usr};"
+    echo "worker_processes ${_wrk};"
+    echo "pid ${_pPid};"
+    echo "error_log ${_pLog} notice;"
+    echo "quic_bpf on;"
+    echo "events {"
+    echo "  worker_connections 64;"
+    echo "}"
+    echo "http {"
+    echo "  access_log off;"
+    echo "  server {"
+    echo "    listen 127.0.0.1:${_pPort} quic reuseport;"
+    echo "    ssl_certificate ${_pCrt};"
+    echo "    ssl_certificate_key ${_pKey};"
+    echo "  }"
+    echo "}"
+  } > "${_pCnf}"
+  if /usr/sbin/nginx -c "${_pCnf}" > /dev/null 2>&1; then
+    _w=0
+    while [ ! -s "${_pPid}" ] && [ "${_w}" -lt 4 ]; do
+      sleep 0.5
+      _w=$(( _w + 1 ))
+    done
+    _mPid=$( { tr -dc '0-9' < "${_pPid}"; } 2> /dev/null )
+    if [ -n "${_mPid}" ] \
+      && [ "$(cat /proc/${_mPid}/comm 2> /dev/null)" = "nginx" ]; then
+      _rc=0
+      ### The verdict is read now, before the teardown below can write its
+      ### own alert (a worker killed by signal) into the same log.
+      if grep -qiE "\[(emerg|alert|crit)\]|bpf.*(fail|error)" "${_pLog}" 2> /dev/null; then
+        _rc=1
+      fi
+    fi
+  fi
+  ### Stop it whatever the verdict, and by its own identity only -- the pid
+  ### file, or failing that the config path in its title: a plain name match
+  ### would take the box's real Nginx with it, and a master left behind
+  ### would keep the port and read as the real one to the Nginx monitor.
+  if [ -z "${_mPid}" ]; then
+    _mPid=$(pgrep -f "^nginx: master process /usr/sbin/nginx -c ${_pCnf}" 2> /dev/null | head -n 1)
+  fi
+  if [ -n "${_mPid}" ] \
+    && [ "$(cat /proc/${_mPid}/comm 2> /dev/null)" = "nginx" ]; then
+    kill -QUIT "${_mPid}" 2> /dev/null
+    _w=0
+    while kill -0 "${_mPid}" 2> /dev/null && [ "${_w}" -lt 4 ]; do
+      sleep 0.5
+      _w=$(( _w + 1 ))
+    done
+    if kill -0 "${_mPid}" 2> /dev/null; then
+      pkill -9 -P "${_mPid}" 2> /dev/null
+      kill -9 "${_mPid}" 2> /dev/null
+    fi
+  fi
+  ### Nothing of this title may survive the config it was started from.
+  for _mPid in $(pgrep -f "^nginx: master process /usr/sbin/nginx -c ${_pCnf}" 2> /dev/null); do
+    pkill -9 -P "${_mPid}" 2> /dev/null
+    kill -9 "${_mPid}" 2> /dev/null
+  done
+  rm -rf "${_pDir}"
+  return ${_rc}
+}
+
+_nginx_quic_bpf_sync() {
+  ### An Nginx reload hands the inherited UDP sockets to the new workers, so
+  ### every HTTP/3 transfer in flight is reset within seconds of it -- and a
+  ### BOA box reloads every few minutes (tasks, ban lists). quic_bpf routes
+  ### each QUIC packet to the worker that owns its connection, which lets
+  ### the old workers drain as they do for TCP. It lives in its own main.d
+  ### fragment, written only while the live probe passes, because a box
+  ### where the eBPF init fails would otherwise have an Nginx that refuses
+  ### to start. _NGINX_QUIC_BPF=NO in barracuda.cnf sheds it for good; the
+  ### latch is left after an init that failed with the fragment in place
+  ### (here on the enabling reload, or by the Nginx monitor after a failed
+  ### start) and holds it off until an operator removes it.
+  local _mDir="/etc/nginx/main.d"
+  local _frag="${_mDir}/quic_bpf.conf"
+  local _latch="${_mDir}/quic_bpf.failed"
+  local _cnf="/etc/nginx/nginx.conf"
+  local _eLog="/var/log/nginx/error.log"
+  local _want=NO _why="" _kMaj _kMin _eOld _eNow
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _nginx_quic_bpf_sync"
+  fi
+  [ -e "${_cnf}" ] && [ -x "/usr/sbin/nginx" ] || return 0
+  mkdir -p "${_mDir}"
+  ### Left only by a monitor killed in the middle of its trial start.
+  rm -f "${_frag}.trial"
+  if ! grep -q "^include /etc/nginx/main.d/\*\.conf;" "${_cnf}"; then
+    ### A nginx.conf from before the template carried the include line: it is
+    ### replaced once per release only, so add the line in place.
+    cp -af "${_cnf}" "${_cnf}.pre-main-d"
+    sed -i "0,/^pid .*;/s|^pid .*;|&\ninclude /etc/nginx/main.d/*.conf;|" "${_cnf}"
+    ### Restored by rename, so that a configtest running beside this one
+    ### never reads half a file.
+    if ! grep -q "^include /etc/nginx/main.d/\*\.conf;" "${_cnf}"; then
+      mv -f "${_cnf}.pre-main-d" "${_cnf}"
+      _msg "INFO: nginx.conf has no pid line to put the main.d include after; left as it is"
+    elif ! nginx -t > /dev/null 2>&1; then
+      mv -f "${_cnf}.pre-main-d" "${_cnf}"
+      _msg "ALERT: nginx -t rejected the main.d include; previous nginx.conf restored"
+    fi
+    rm -f "${_cnf}.pre-main-d"
+  fi
+  _kMaj=$(uname -r | cut -d. -f1 | tr -dc '0-9')
+  _kMin=$(uname -r | cut -d. -f2 | tr -dc '0-9')
+  if [ "${_NGINX_QUIC_BPF}" = "NO" ]; then
+    _why="_NGINX_QUIC_BPF=NO"
+  elif [ -e "${_latch}" ]; then
+    _why="${_latch} is present, delete it to probe again"
+  elif ! grep -q "^include /etc/nginx/main.d/\*\.conf;" "${_cnf}"; then
+    _why="nginx.conf does not include main.d"
+  elif [ -z "${_kMaj}" ] || [ -z "${_kMin}" ] \
+    || [ "${_kMaj}" -lt 5 ] \
+    || { [ "${_kMaj}" -eq 5 ] && [ "${_kMin}" -lt 7 ]; }; then
+    _why="it needs Linux 5.7 or newer"
+  elif ! /usr/sbin/nginx -V 2>&1 | grep -Fq -- ' --with-http_v3_module'; then
+    _why="this Nginx has no HTTP/3 module"
+  elif _nginx_quic_bpf_probe; then
+    _want=YES
+  else
+    ### Once more before a verdict that withdraws a working fragment: the
+    ### probe can lose its port, or be swept up by a monitor's restart.
+    sleep 3
+    if _nginx_quic_bpf_probe; then
+      _want=YES
+    else
+      _why="the start-up probe failed on this system"
+    fi
+  fi
+  if [ "${_want}" = "YES" ]; then
+    if [ ! -e "${_frag}" ]; then
+      echo "quic_bpf on;" > "${_frag}"
+      if nginx -t > /dev/null 2>&1; then
+        _eOld=$( { wc -l < "${_eLog}"; } 2> /dev/null | tr -dc '0-9' )
+        [ -n "${_eOld}" ] || _eOld=0
+        _mrun "service nginx reload"
+        sleep 3
+        ### A reload only logs a failed eBPF init and carries on, and this is
+        ### the one init that sees the box's real listeners and the running
+        ### master's limits. Left alone, the fragment would sit here until
+        ### the next real start refused to come up.
+        _eNow=$( { wc -l < "${_eLog}"; } 2> /dev/null | tr -dc '0-9' )
+        [ -n "${_eNow}" ] || _eNow=0
+        [ "${_eNow}" -ge "${_eOld}" ] || _eOld=0
+        if tail -n "+$(( _eOld + 1 ))" "${_eLog}" 2> /dev/null \
+          | grep -qE "ngx_quic_bpf_module failed|failed to create BPF"; then
+          rm -f "${_frag}"
+          echo "$(date) The eBPF init failed when quic_bpf was enabled by reload; the fragment was removed. Delete this file to let the next barracuda pass probe again." > "${_latch}"
+          _mrun "service nginx reload"
+          _msg "ALERT: Nginx could not initialise quic_bpf on reload; left off, see ${_latch}"
+        else
+          _msg "INFO: HTTP/3 transfers now survive Nginx reloads (quic_bpf enabled)"
+        fi
+      else
+        rm -f "${_frag}"
+        _msg "ALERT: nginx -t rejected ${_frag}; quic_bpf left off"
+      fi
+    fi
+  else
+    if [ -e "${_frag}" ]; then
+      rm -f "${_frag}"
+      if nginx -t > /dev/null 2>&1; then
+        _mrun "service nginx reload"
+      fi
+      _msg "INFO: quic_bpf disabled: ${_why}"
+    elif [ "${_NGINX_QUIC_BPF}" != "NO" ]; then
+      ### Say why: a quiet decline reads exactly like a quiet success.
+      _msg "INFO: quic_bpf stays off: ${_why}"
+    fi
   fi
 }
 

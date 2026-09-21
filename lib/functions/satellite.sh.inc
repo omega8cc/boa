@@ -4879,7 +4879,7 @@ _satellite_send_welcome_email() {
       ### Never fall back to the INIT-time setupmail render: it carries the
       ### original password under a Welcome body, so resending it under an
       ### Upgrade subject would mail stale credentials. No upgrademail.txt
-      ### means no send, only the loud ALRT trail below.
+      ### means no send; the trail below says which kind of miss it was.
       _mailBody="${_ROOT}/log/upgrademail.txt"
       _MAIL_SENT=NO
       if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
@@ -4898,8 +4898,25 @@ _satellite_send_welcome_email() {
         fi
       fi
       if [ "${_MAIL_SENT}" = "NO" ]; then
-        _msg "ALRT: Upgrade email for ${_USER} was NOT sent"
-        _msg "ALRT: The intended message body is in ${_mailBody}"
+        ### The upgrade body is rendered only beside an INIT-time setupmail
+        ### render (_satellite_prepare_setup_email_tpl), and an account
+        ### installed under /root/.silent.update.cnf has none until its
+        ### files arrive. With neither file present there was nothing to
+        ### send and nothing failed, while an ALRT reports the whole pass
+        ### as failed. A missing body beside a setupmail render is a failed
+        ### render and a body that did not go out is a failed send: both
+        ### stay loud.
+        local _mailInit _mailCand
+        _mailInit=NO
+        for _mailCand in setupmail.txt legacy_setupmail.txt latest_setupmail.txt; do
+          [ -e "${_ROOT}/log/${_mailCand}" ] && _mailInit=YES
+        done
+        if [ ! -e "${_mailBody}" ] && [ "${_mailInit}" = "NO" ]; then
+          _msg "NOTE: No upgrade email for ${_USER}: no setup email render exists in ${_ROOT}/log"
+        else
+          _msg "ALRT: Upgrade email for ${_USER} was NOT sent"
+          _msg "ALRT: The intended message body is in ${_mailBody}"
+        fi
       fi
     else
       _SEND_UPGRADE_EMAIL=NO
@@ -6279,6 +6296,18 @@ _satellite_letsencrypt_vhost_sync() {
   ### check on every upgrade while nginx keeps serving KTLS.
   [ -e "/etc/nginx/no_ktls.conf" ] \
     && sed -i "/ssl_conf_command Options.*KTLS/d" ${_Ssl}
+  ### The control panel front does not offer HTTP/3. A reload hands the
+  ### shared UDP sockets to the new workers, so a QUIC transfer in flight
+  ### is cut within seconds of every reload, while a TCP one drains on the
+  ### old worker. Reloads follow tasks and ban-list updates every few
+  ### minutes, so a multi-gigabyte backup download never completed over
+  ### HTTP/3. Alt-Svc clear makes a browser drop the alternative it cached
+  ### from earlier visits. Same two-layer shape as the KTLS strip above:
+  ### the fetched generator can lag this lib.
+  sed -i "/^[[:space:]]*listen .*:443 quic;/d; /^[[:space:]]*http3\(_hq\)\?[[:space:]].*on;/d" ${_Ssl}
+  if ! grep -q "Alt-Svc" ${_Ssl}; then
+    sed -i "s/^\([[:space:]]*\)proxy_buffering[[:space:]].*off;/&\n\1proxy_hide_header          Alt-Svc;\n\1add_header                 Alt-Svc clear always;/" ${_Ssl}
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Reloading Nginx..."
     _mrun "service nginx reload"
@@ -6320,7 +6349,11 @@ _satellite_letsencrypt_vhost_setup() {
           _msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf exists, OK!"
         fi
         _satellite_letsencrypt_crt_key_copy
-        _HTTP3_TEST=$(grep http3 ${_Ssl} 2>&1)
+        ### The panel front carries no QUIC listener and clears Alt-Svc
+        ### (see _satellite_letsencrypt_vhost_sync); either one missing
+        ### marks a front written before that and needing one regen.
+        _HTTP3_TEST=$(grep -E "^[[:space:]]*(listen .* quic;|http3)" ${_Ssl} 2>&1)
+        _ALTSVC_TEST=$(grep "Alt-Svc clear" ${_Ssl} 2>&1)
         _KTLS_TEST=$(grep KTLS ${_Ssl} 2>&1)
         _RPRT_TEST=$(grep reuseport ${_Ssl} 2>&1)
         _SQLADMIN_TEST=$(grep sqladmin ${_Ssl} 2>&1)
@@ -6346,7 +6379,8 @@ _satellite_letsencrypt_vhost_setup() {
           [[ ! "${_KTLS_TEST}" =~ "KTLS" ]] && _KTLS_NEEDS_UPDATE=YES
         fi
         if [[ ! "${_FPM_SOCKET_TEST}" =~ "fpm.socket" ]] \
-          || [[ ! "${_HTTP3_TEST}" =~ "http3" ]] \
+          || [[ "${_HTTP3_TEST}" =~ (quic|http3) ]] \
+          || [[ ! "${_ALTSVC_TEST}" =~ "Alt-Svc" ]] \
           || [ "${_KTLS_NEEDS_UPDATE}" = "YES" ] \
           || [[ "${_RPRT_TEST}" =~ "reuseport" ]] \
           || [[ ! "${_SQLADMIN_TEST}" =~ "sqladmin" ]] \
