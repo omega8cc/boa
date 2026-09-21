@@ -124,6 +124,15 @@
 
 @=> Improvements
 
+    * The prebuilt package builder can have a CDN purged after a republish.
+      A component rebuilt at an unchanged version is republished under the
+      same filename, and an edge in front of the mirrors kept the previous
+      package for its full TTL beside the new checksum file, so consumers
+      behind it failed the checksum and compiled from sources instead. With
+      _PURGE_HOOK set in /root/.stackbuild.cnf, stackbuild hands every file
+      it published to that command after the cross-sync; without it, a run
+      that replaced an existing file names it. A failing hook is reported
+      and never stops the publish.
     * The mycnfup tuner and the cluster tool are retired. mycnfup refused
       every verb on anything but Debian, so it never ran on a Devuan box,
       and only the discontinued Simple Cluster tooling ever called it; the
