@@ -3365,6 +3365,7 @@ _barracuda_cnf() {
     echo "_NGINX_NAXSI=${_NGINX_NAXSI}"                       >> ${_barCnf}
     echo "_NGINX_SPDY=${_NGINX_SPDY}"                         >> ${_barCnf}
     echo "_NGINX_KTLS=${_NGINX_KTLS}"                         >> ${_barCnf}
+    echo "_NGINX_QUIC_BPF=${_NGINX_QUIC_BPF}"                 >> ${_barCnf}
     echo "_NGINX_WORKERS=${_NGINX_WORKERS}"                   >> ${_barCnf}
 
     echo "###"                                                >> ${_barCnf}
@@ -4034,6 +4035,11 @@ _barracuda_cnf() {
       echo "_NGINX_KTLS=${_NGINX_KTLS}" >> ${_barCnf}
     fi
 
+    _NGINX_QUIC_BPF_TEST=$(grep _NGINX_QUIC_BPF ${_barCnf} 2>&1)
+    if [[ ! "${_NGINX_QUIC_BPF_TEST}" =~ "_NGINX_QUIC_BPF" ]]; then
+      echo "_NGINX_QUIC_BPF=${_NGINX_QUIC_BPF}" >> ${_barCnf}
+    fi
+
     _NGINX_FORWARD_SECRECY_TEST=$(grep _NGINX_FORWARD_SECRECY ${_barCnf} 2>&1)
     if [[ ! "${_NGINX_FORWARD_SECRECY_TEST}" =~ "_NGINX_FORWARD_SECRECY" ]]; then
       echo "_NGINX_FORWARD_SECRECY=${_NGINX_FORWARD_SECRECY}" >> ${_barCnf}
@@ -4221,6 +4227,8 @@ _barracuda_cnf() {
     ### defaults; YES/NO/number options must display their effective value.
     ### Exact-empty match only, so operator-set values are never touched.
     sed -i "s/^_NGINX_KTLS=$/_NGINX_KTLS=YES/g"                  ${_barCnf}
+    wait
+    sed -i "s/^_NGINX_QUIC_BPF=$/_NGINX_QUIC_BPF=YES/g"          ${_barCnf}
     wait
     sed -i "s/^_NIGHT_MAX_PARALLEL=$/_NIGHT_MAX_PARALLEL=AUTO/g" ${_barCnf}
     wait

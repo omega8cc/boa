@@ -148,6 +148,83 @@ _stop_nginx_processes() {
   pkill -9 -f '^nginx: ' || true
 }
 
+_nginx_master_pids() {
+  # The box's own master(s) only. A barracuda pass probes quic_bpf with a
+  # throwaway master that lives a second or two and carries its config path
+  # in its title; counting it would read as a second master, and taking it
+  # for the real one would stand a genuine outage down.
+  pgrep -af '^nginx: master process' 2> /dev/null \
+    | grep -v 'boa-nginx-quic-bpf-probe' \
+    | awk '{print $1}'
+}
+
+_nginx_quic_bpf_shed() {
+  # A start that failed with the quic_bpf fragment in place. The eBPF init
+  # behind it runs only on a real start (nginx -t skips it) and a failed init
+  # refuses to start Nginx. The barracuda pass probes before it writes the
+  # fragment, but a probe cannot cover what changes later -- a kernel, a
+  # limit, a rebuilt binary -- so shed the fragment here, leave the latch
+  # that keeps the pass from writing it again, start once more and say so.
+  # On positive evidence first: the error log was rotated just before the
+  # restart, so a BPF line in it belongs to this start, and an unknown
+  # directive means the binary lost the module. Failing that, by trial:
+  # start without the fragment, and keep it shed only if that is what made
+  # the difference -- a start that fails for some other reason (a busy port,
+  # a broken vhost) gets its fragment back.
+  local _frag="/etc/nginx/main.d/quic_bpf.conf"
+  local _latch="/etc/nginx/main.d/quic_bpf.failed"
+  local _tried="/run/boa_nginx_quic_bpf_trial.pid"
+  local _how="" _w=0 _now _last
+  # Only a monitor killed in the middle of the trial below leaves this.
+  rm -f "${_frag}.trial"
+  [ -e "${_frag}" ] || return 0
+  while [ -z "$(_nginx_master_pids)" ] && [ "${_w}" -lt 4 ]; do
+    sleep 0.5
+    _w=$(( _w + 1 ))
+  done
+  [ -z "$(_nginx_master_pids)" ] || return 0
+  if grep -qE "ngx_quic_bpf_module failed|failed to create BPF" /var/log/nginx/error.log 2> /dev/null; then
+    _how="the error log shows the eBPF init failing"
+  elif nginx -t 2>&1 | grep -q "quic_bpf"; then
+    _how="this Nginx no longer knows the directive"
+  fi
+  if [ -n "${_how}" ]; then
+    rm -f "${_frag}"
+    service nginx restart
+  elif nginx -t > /dev/null 2>&1; then
+    # At most one trial in ten minutes: an outage with some other cause must
+    # not pay a second restart on every pass, yet the trial has to come
+    # round again once that cause has cleared.
+    _now=$(date +%s)
+    _last=$( { tr -dc '0-9' < "${_tried}"; } 2> /dev/null )
+    if [ -n "${_last}" ] && [ $(( _now - _last )) -ge 0 ] \
+      && [ $(( _now - _last )) -lt 600 ]; then
+      return 0
+    fi
+    echo "${_now}" > "${_tried}"
+    mv -f "${_frag}" "${_frag}.trial"
+    service nginx restart
+    _w=0
+    while [ -z "$(_nginx_master_pids)" ] && [ "${_w}" -lt 6 ]; do
+      sleep 0.5
+      _w=$(( _w + 1 ))
+    done
+    if [ -n "$(_nginx_master_pids)" ]; then
+      rm -f "${_frag}.trial"
+      _how="Nginx started once the fragment was taken away"
+    else
+      # Inconclusive, not negative: something else kept Nginx down.
+      mv -f "${_frag}.trial" "${_frag}"
+      return 0
+    fi
+  else
+    return 0
+  fi
+  echo "$(date) Nginx did not start with quic_bpf on (${_how}); the fragment was removed. Delete this file to let the next barracuda pass probe again." > "${_latch}"
+  echo "$(date) NGX failed to start with quic_bpf on (${_how}); fragment removed, latch left at ${_latch}, restarted" >> ${_pthOml}
+  _incident_email_report "Nginx failed to start with quic_bpf on, fragment removed"
+}
+
 _restart_nginx() {
   touch /run/boa_nginx_auto_healing.pid
   sleep 3
@@ -168,6 +245,7 @@ _restart_nginx() {
   _stop_nginx_processes
   mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
   service nginx restart
+  _nginx_quic_bpf_shed
   date +%s > "${_cd}"
   if pidof nginx > /dev/null; then
     echo "Nginx service restarted successfully."
@@ -211,11 +289,11 @@ _nginx_health_check_fix() {
   _NGINX_PROCESSES=$(ps aux | grep 'nginx: ' | grep -v 'grep')
   # Check for multiple master processes (shouldn't happen)
   if [ "${_NGINX_RESTARTED}" = false ]; then
-    _MASTER_COUNT=$(pgrep -fc '^nginx: master process')
+    _MASTER_COUNT=$(_nginx_master_pids | grep -c .)
     if [ "${_MASTER_COUNT}" -gt 1 ]; then
       # Double-check after a short grace to avoid flapping
       sleep 5
-      _MASTER_COUNT=$(pgrep -fc '^nginx: master process')
+      _MASTER_COUNT=$(_nginx_master_pids | grep -c .)
       if [ "${_MASTER_COUNT}" -gt 1 ]; then
         echo "Multiple (${_MASTER_COUNT}) Nginx master processes detected. Possible stuck processes."
         echo "$(date) NGX multiple (${_MASTER_COUNT}) master processes detected" >> ${_pthOml}
@@ -258,11 +336,11 @@ _nginx_health_check_fix() {
 _nginx_if_up_check_fix() {
   # Standard check first
   if [ -x "/etc/init.d/nginx" ]; then
-    if ! pgrep -f '^nginx: master process' \
+    if [ -z "$(_nginx_master_pids)" ] \
       || [ ! -e "/run/nginx.pid" ]; then
       # Double-check after a short grace to avoid flapping
       sleep 3
-      if ! pgrep -f '^nginx: master process' \
+      if [ -z "$(_nginx_master_pids)" ] \
         || [ ! -e "/run/nginx.pid" ]; then
         _now=$(date +%s)
         if [ -s "${_cd}" ]; then
@@ -279,7 +357,7 @@ _nginx_if_up_check_fix() {
         # listen sockets and keep serving headless, so a listening port is
         # exactly what the one state this restart exists to clear looks
         # like, and standing down on it would leave the box unhealable.
-        if pgrep -f '^nginx: master process' >/dev/null 2>&1 \
+        if [ -n "$(_nginx_master_pids)" ] \
           && command -v ss >/dev/null 2>&1 \
           && ss -Hltn 2>/dev/null | grep -qE ':(80|443) '; then
           echo "$(date) INFO: Nginx master alive and serving; missing pidfile treated as an artefact, standing down" >> ${_pthOml}
@@ -288,6 +366,7 @@ _nginx_if_up_check_fix() {
         _stop_nginx_processes
         mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
         service nginx restart
+        _nginx_quic_bpf_shed
         # Stamp cooldown after attempting recovery
         date +%s > "${_cd}"
         _thisErrLog="$(date) Nginx Server was down, restarted"
@@ -795,14 +874,14 @@ fi
 if _standby_web_hold_wanted; then
   # Re-read the latch right before acting: the cutover may have published it
   # while the probe above was still reading a locked database.
-  if pgrep -f '^nginx: master process' > /dev/null 2>&1 \
+  if [ -n "$(_nginx_master_pids)" ] \
     && [ ! -e "/var/log/boa/.standby_promoted.pid" ]; then
     # Log on TRANSITION only: an orphan pidfile alone would otherwise write
     # ~9 lines a minute into the incident log forever.
     echo "$(date) NGX replication standby: holding the web tier DOWN" >> ${_pthOml}
     service nginx stop &> /dev/null
     sleep 2
-    if pgrep -f '^nginx: master process' > /dev/null 2>&1; then
+    if [ -n "$(_nginx_master_pids)" ]; then
       _stop_nginx_processes
     fi
   fi
@@ -810,7 +889,7 @@ if _standby_web_hold_wanted; then
   # _stop_nginx_processes never does; a stale one left here would make the
   # health checks re-enter every pass.
   if [ -e "/run/nginx.pid" ] \
-    && ! pgrep -f '^nginx: master process' > /dev/null 2>&1; then
+    && [ -z "$(_nginx_master_pids)" ]; then
     rm -f /run/nginx.pid
   fi
   # Firewall half of the web hold (2026-08-25 ruling): insurance against a
