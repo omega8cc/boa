@@ -58,6 +58,20 @@ Before any in-place rewrite begins, the plain pre-rename database dump is
 verified complete — exit status plus the dumper's closing marker — and the
 run aborts rather than rewrite the database without a complete backup.
 
+The master root's run (`--aegir-root /var/aegir`) also renames the names the
+box was given at install and nothing else rewrites: postfix `myhostname` and
+a `mydestination` entry naming the box, `/etc/mailname`, and BOA's
+self-signed fallback certificate (`/etc/ssl/private/nginx-wild-ssl.crt`,
+re-issued for `*.<new-fqdn>` on its existing key, the old one kept under
+`backups/rename-hostname/`). Each is renamed only when it carries one of the
+box's former names — the old hostname, or the name that certificate was
+issued for, which is how a box restored from an image and renamed by an older
+tool is still recognised — so a custom `myhostname` or a certificate you
+installed yourself is left alone. Every root's run also rewrites the yml
+alias copies Drush 9+ reads (`<root>/.drush/sites`, and for an account the
+limited-shell user's `/home/oN.ftp/.drush/sites`), so `master_url` there
+follows the rename.
+
 ### Pre-flight for an in-place rename
 
 The tool takes the NEW hostname from the system FQDN (`hostname -f`), and on a

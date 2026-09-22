@@ -2804,7 +2804,46 @@ _xmass_raise_nofile() {
   _info "xtrabackup: open-files limit on source: $(ulimit -Sn) (was ${_was})"
 }
 
+# A source whose GTID and binary log the restart above has just switched on
+# has executed no transaction since, if nothing wrote in between (an idle
+# box, measured on a rig): the snapshot then records an EMPTY GTID set, which
+# _xmass_backup_gtid_set refuses as a source without GTID -- init stopped on a
+# source that was ready. A scratch schema created and dropped (two harmless
+# transactions) gives the snapshot a set; the replica takes them as purged
+# and replicates from after them. A read that fails is never taken for an
+# empty set, and the DDL waits for no lock longer than ten seconds.
+_xmass_seed_empty_gtid_set() {
+  local _gx
+  _gx=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe \
+    "SELECT @@GLOBAL.gtid_executed" 2>/dev/null) \
+    || _die "cannot read gtid_executed on the source before the snapshot"
+  _gx="${_gx//[[:space:]]/}"
+  [ -n "${_gx}" ] && return 0
+  _info "GTID set on source is empty (no transaction since GTID was enabled) -- writing two ..."
+  local _wrc=0
+  mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e \
+    "SET SESSION lock_wait_timeout=10; CREATE DATABASE IF NOT EXISTS xmass_gtid_seed; DROP DATABASE IF EXISTS xmass_gtid_seed;" \
+    || _wrc=$?
+  # A create that landed before the drop failed is still a transaction: the
+  # set decides, and the scratch schema must not stay behind either way.
+  if [ "${_wrc}" != "0" ]; then
+    mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e \
+      "SET SESSION lock_wait_timeout=10; DROP DATABASE IF EXISTS xmass_gtid_seed;" &> /dev/null
+  fi
+  _gx=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -sNe \
+    "SELECT @@GLOBAL.gtid_executed" 2>/dev/null) \
+    || _die "cannot read gtid_executed on the source after the seed transactions"
+  _gx="${_gx//[[:space:]]/}"
+  if [ -z "${_gx}" ] && [ "${_wrc}" != "0" ]; then
+    _die "could not write a transaction on the source to give its snapshot a GTID set"
+  fi
+  [ -n "${_gx}" ] \
+    || _die "GTID set on source still empty after a transaction -- is gtid_mode ON with the binary log enabled?"
+  _info "GTID set on source: ${_gx}"
+}
+
 _xmass_take_backup() {
+  _xmass_seed_empty_gtid_set
   # Ensure stage dir on target exists regardless of method
   ssh root@"${_tgt}" "rm -rf ${_XTRA_STAGE_TGT}; mkdir -p ${_XTRA_STAGE_TGT}"
   _xmass_raise_nofile
@@ -2868,6 +2907,7 @@ _xmass_take_backup() {
   fi
 
   _info "xtrabackup snapshot complete"
+  _xmass_backup_gtid_set early
 }
 
 _xmass_restore_backup() {
@@ -2932,9 +2972,15 @@ _xmass_hold_target_db() {
   _info "Target DB locked: super_read_only=ON (appliers exempt)"
 }
 
-_xmass_setup_slave() {
+# The snapshot's GTID set, from the xtrabackup_binlog_info both transfer
+# methods leave in the target stage. Read right after the snapshot, while
+# the target datadir is still untouched ($1 = early), so an unusable set
+# refuses before the point of no return; and again where the replica is
+# configured. Sets _XM_BACKUP_GTID and _XM_GTID_UUIDS.
+_xmass_backup_gtid_set() {
+  local _binlog_info _gtid_set _when=""
+  [ "${1:-}" = "early" ] && _when=" -- the target datadir is NOT touched"
   _info "Reading GTID set from xtrabackup_binlog_info on target ${_tgt} ..."
-  local _binlog_info _gtid_set
   _binlog_info=$(ssh root@"${_tgt}" \
     "cat ${_XTRA_STAGE_TGT}/xtrabackup_binlog_info 2>/dev/null || echo ''" )
   ### xtrabackup writes the GTID set as the THIRD tab-separated field of
@@ -2954,14 +3000,14 @@ _xmass_setup_slave() {
 
   if [ -z "${_gtid_set}" ]; then
     _die "Empty GTID set in xtrabackup_binlog_info — " \
-         "was GTID enabled on source before taking backup?"
+         "was GTID enabled on source before taking backup?${_when}"
   fi
   ### Fail closed on anything that is not a well-formed set: feeding a
   ### truncated or malformed value to gtid_purged produces a replica that
   ### looks configured and silently re-applies history.
   if ! printf '%s' "${_gtid_set}" | grep -qE \
     '^[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}:[0-9]+(-[0-9]+)?(:[0-9]+(-[0-9]+)?)*(,[0-9a-fA-F]{8}(-[0-9a-fA-F]{4}){3}-[0-9a-fA-F]{12}:[0-9]+(-[0-9]+)?(:[0-9]+(-[0-9]+)?)*)*$'; then
-    _die "Unparseable GTID set from xtrabackup_binlog_info: '${_gtid_set}'"
+    _die "Unparseable GTID set from xtrabackup_binlog_info: '${_gtid_set}'${_when}"
   fi
   ### Count entries, not newlines: `printf '%s' | wc -l` undercounts by one
   ### because the final element carries no newline, and a line that reports
@@ -2969,6 +3015,13 @@ _xmass_setup_slave() {
   ### teaches operators to look.
   _XM_GTID_UUIDS=$(printf '%s' "${_gtid_set}" | tr ',' '\n' | grep -c ':')
   _info "GTID set from backup (${_XM_GTID_UUIDS} source UUID(s)): ${_gtid_set}"
+  _XM_BACKUP_GTID="${_gtid_set}"
+}
+
+_xmass_setup_slave() {
+  local _gtid_set
+  _xmass_backup_gtid_set
+  _gtid_set="${_XM_BACKUP_GTID}"
 
   # Runtime half of the 5.7 parallel-apply setup (the conf half persists it):
   # covers a target whose GTID was already ON, where no restart read the conf.
@@ -8979,6 +9032,100 @@ REMOTE
   _info "======================================================"
 }
 
+# The active owns the MySQL root password (sql.sh.inc: a standby never mints
+# its own) and a barracuda pass on it rotates the password. Replication
+# carries the new mysql.user rows to the standby but not the client pair, so
+# from the first rotation after init every root client on the standby -- its
+# monitors, its backups, this tool's replica reads -- met Access denied until
+# cutover step 10 re-sent the pair. A live pass carries the pair whenever it
+# differs, only to a box that still holds the standby marker, and installs it
+# only once it opens the standby's own database: until replication has
+# applied the rotation the old pair is the one that works, so it stays and
+# the next pass retries. The replaced pair is kept once as *.xmass_prev.
+# Never fatal: the file legs do not depend on it.
+_xmass_carry_db_credentials() {
+  local _f _loc _rem _out
+  for _f in /root/.my.cnf /root/.my.pass.txt; do
+    if [ ! -s "${_f}" ]; then
+      _alrt "MySQL credentials NOT carried to ${_tgt}: ${_f} is missing or empty here"
+      return 0
+    fi
+  done
+  _loc="$(cat /root/.my.cnf /root/.my.pass.txt | md5sum | cut -c1-32)"
+  _rem="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
+    "if [ -e /root/.standby.cnf ]; then cat /root/.my.cnf /root/.my.pass.txt 2>/dev/null | md5sum | cut -c1-32; else echo NOMARKER; fi" \
+    2>/dev/null)" || _rem="TRANSPORT"
+  case "${_rem}" in
+    "${_loc}")
+      _info "MySQL credentials on ${_tgt}: current"
+      return 0
+    ;;
+    NOMARKER)
+      _alrt "MySQL credentials NOT carried: ${_tgt} holds no /root/.standby.cnf"
+      return 0
+    ;;
+    ""|TRANSPORT)
+      _alrt "MySQL credentials NOT compared with ${_tgt} (ssh transport failure); the next pass retries"
+      return 0
+    ;;
+  esac
+  if ! scp -q -o ConnectTimeout=10 -o BatchMode=yes /root/.my.cnf \
+      "root@${_tgt}:/root/.my.cnf.xmass_carry" 2>/dev/null \
+    || ! scp -q -o ConnectTimeout=10 -o BatchMode=yes /root/.my.pass.txt \
+      "root@${_tgt}:/root/.my.pass.txt.xmass_carry" 2>/dev/null; then
+    _alrt "MySQL credentials NOT carried to ${_tgt}: the copy failed; the next pass retries"
+    ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
+      "rm -f /root/.my.cnf.xmass_carry /root/.my.pass.txt.xmass_carry" &> /dev/null
+    return 0
+  fi
+  _out="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "bash -s" 2>/dev/null <<'CARRY'
+_n=/root/.my.cnf.xmass_carry
+_p=/root/.my.pass.txt.xmass_carry
+chmod 600 "${_n}" "${_p}" 2>/dev/null
+if [ ! -e /root/.standby.cnf ]; then
+  rm -f "${_n}" "${_p}"; echo NOMARKER; exit 0
+fi
+# Bounded both ways: a standby mysqld that accepts but never answers must
+# not hold the pass, and the file legs, for the driver's whole ceiling.
+if ! timeout 20 mysql --defaults-file="${_n}" --connect-timeout=10 -N -e 'SELECT 1' > /dev/null 2>&1; then
+  rm -f "${_n}" "${_p}"
+  if timeout 20 mysql --defaults-file=/root/.my.cnf --connect-timeout=10 -N -e 'SELECT 1' > /dev/null 2>&1; then
+    echo NOAUTH
+  else
+    echo NODB
+  fi
+  exit 0
+fi
+cp -af /root/.my.cnf /root/.my.cnf.xmass_prev 2>/dev/null
+cp -af /root/.my.pass.txt /root/.my.pass.txt.xmass_prev 2>/dev/null
+mv -f "${_p}" /root/.my.pass.txt && mv -f "${_n}" /root/.my.cnf && echo CARRIED
+CARRY
+)"
+  case "${_out}" in
+    CARRIED)
+      _info "MySQL credentials carried to ${_tgt} (rotated here since they last travelled)"
+    ;;
+    NOAUTH)
+      _alrt "MySQL credentials on ${_tgt} differ from this box's, and this box's pair"
+      _alrt "does not open the standby's database yet (replication has not applied"
+      _alrt "the rotation, or the replica is stopped): left as they are, the next"
+      _alrt "pass retries; 'xmass status ${_tgt}' shows the replica"
+    ;;
+    NODB)
+      _alrt "MySQL credentials NOT carried: the standby's database on ${_tgt} opens"
+      _alrt "with neither pair (mysqld down, or the replica diverged); 'xmass status"
+      _alrt "${_tgt}' shows why"
+    ;;
+    NOMARKER)
+      _alrt "MySQL credentials NOT carried: ${_tgt} holds no /root/.standby.cnf"
+    ;;
+    *)
+      _alrt "MySQL credentials carry to ${_tgt} ended without a verdict (${_out:-no output}); the next pass retries"
+    ;;
+  esac
+  return 0
+}
+
 _xmass_cmd_sync() {
   # How long a pass actually takes is the number the cadence has to respect
   # (and, on a large estate, the one that decides whether a 15-minute
@@ -9061,6 +9208,9 @@ _xmass_cmd_sync() {
     _info "xmass sync: syncing files to ${_tgt} ..."
   else
     _info "xmass sync: DRY run — planning file relocation to ${_tgt} (no changes made) ..."
+  fi
+  if [ "${_MODE}" = "LIVE" ]; then
+    _xmass_carry_db_credentials
   fi
   # (Accounts were enumerated above, before the readiness gates. Nothing
   # between here and there can change /data/disk, and only this function
@@ -9214,7 +9364,9 @@ _xmass_cmd_status() {
         _lag="unreadable"
         _alrt "replica status on ${_tgt} could not be read (unreadable) -- the target's"
         _alrt "root client failed: ${_XM_REPL_CLIENT:-no error text}"
-        _alrt "on 'Access denied' the source rotated its MySQL root password since init:"
+        _alrt "on 'Access denied' the source rotated its MySQL root password since the"
+        _alrt "pair last travelled: the next live 'xmass sync' or autosync pass carries"
+        _alrt "it once replication has applied the rotation; the same fix by hand:"
         _alrt "re-transfer /root/.my.cnf and /root/.my.pass.txt to the target (the"
         _alrt "init/cutover step-10 form), then re-run status"
       ;;
@@ -9288,7 +9440,13 @@ _xmass_autosync_read_cnf() {
     | head -n1 | cut -d= -f2 | tr -cd 'A-Za-z0-9.:_-')
   _AS_EVERY=$(grep '^_XMASS_AUTOSYNC_EVERY=' "${_XMASS_AUTOSYNC_CNF}" 2>/dev/null \
     | head -n1 | cut -d= -f2 | tr -cd '0-9')
+  # As the driver reads it (monitor/check/autosync.sh): no leading zeros, and
+  # never under 5 minutes, whatever a hand-edited marker says.
+  while [ "${#_AS_EVERY}" -gt 1 ] && [ "${_AS_EVERY:0:1}" = "0" ]; do
+    _AS_EVERY="${_AS_EVERY:1}"
+  done
   [ -n "${_AS_EVERY}" ] || _AS_EVERY=15
+  [ "${_AS_EVERY}" -lt 5 ] && _AS_EVERY=5
 }
 
 # The ONE standby-marker probe both arm and every pass use (a second copy had
@@ -9465,13 +9623,41 @@ _xmass_autosync_show_status() {
   else
     _info "  no completed automatic pass recorded yet"
   fi
+  # The driver stands down before it reaches its interval in these states,
+  # so no interval is honoured at all: say so instead of printing one.
+  local _park="" _rt
+  if [ "${_USE_XMASS_AUTOSYNC}" = "NO" ]; then
+    _park="_USE_XMASS_AUTOSYNC=NO in /root/.barracuda.cnf"
+  elif [ ! -e "/var/log/boa/reset_no_new_password.pid" ]; then
+    _park="this system has not finished installing"
+  elif [ -e "/root/.standby.cnf" ]; then
+    _park="this box is a passive standby"
+  elif [ -e "/root/.proxy.cnf" ]; then
+    _park="this box is a finalized PX0 proxy"
+  else
+    for _rt in excalibur daedalus chimaera beowulf; do
+      [ -e "/root/.run-to-${_rt}.cnf" ] && _park="a major system transition is in flight (/root/.run-to-${_rt}.cnf)"
+    done
+  fi
+  if [ -n "${_park}" ]; then
+    _alrt "  the autosync driver is parked -- ${_park}; no automatic pass runs"
+  fi
   local _dur
   _dur="$(cat /var/log/boa/xmass_autosync/.last_duration 2>/dev/null | tr -dc '0-9' | head -c 9)"
-  if [ -n "${_dur}" ] && [ "${_dur}" -gt 0 ]; then
+  if [ -z "${_park}" ] && [ -n "${_dur}" ] && [ "${_dur}" -gt 0 ]; then
     # What the driver will actually honour: the armed interval, or the
     # duty-cycle floor derived from the last pass, whichever is longer.
-    local _floor
-    _floor=$(( (_dur * (_XMASS_AUTOSYNC_DUTY + 1)) / 60 ))
+    # Same inputs and arithmetic as monitor/check/autosync.sh: the knob as
+    # /root/.barracuda.cnf leaves it (sourced by _check_root, as the driver
+    # sources it), digits only, and the ceiling -- a 279s pass at duty 3 is
+    # 19m there, not 18m.
+    local _duty _floor
+    _duty="${_XMASS_AUTOSYNC_DUTY//[^0-9]/}"
+    while [ "${#_duty}" -gt 1 ] && [ "${_duty:0:1}" = "0" ]; do
+      _duty="${_duty:1}"
+    done
+    [ -n "${_duty}" ] || _duty=3
+    _floor=$(( (_dur * (_duty + 1) + 59) / 60 ))
     if [ "${_floor}" -gt "${_AS_EVERY}" ]; then
       _info "  last pass ${_dur}s — effective interval ${_floor}m (duty-cycle floor, above the armed ${_AS_EVERY}m)"
     else

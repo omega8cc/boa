@@ -468,6 +468,53 @@
       thawed"), and three UNLOCK TABLES calls that released nothing are
       gone, along with the "tables unlocked" line and the reset-phase hint
       to run one by hand.
+    * xmass autosync --status reports the interval the autosync driver
+      really keeps: it rounded the duty-cycle rest down where the driver
+      rounds up, so a 279-second pass read as 18 minutes on a pair held
+      to 19; it read _XMASS_AUTOSYNC_DUTY without the driver's cleaning,
+      so a zero-padded value such as 08 stopped it with an arithmetic
+      error and a non-numeric one gave a wrong interval; it showed a
+      hand-edited cadence under five minutes that the driver raises to
+      five; and it printed an interval while the driver was parked
+      (_USE_XMASS_AUTOSYNC=NO, a standby or proxy role, a major system
+      transition), which it now names instead.
+    * xmass init no longer stops on an idle source with "Empty GTID set
+      in xtrabackup_binlog_info -- was GTID enabled on source before
+      taking backup?". Init switches GTID and the binary log on and
+      restarts MySQL; when nothing wrote between that restart and the
+      snapshot, the snapshot carried an empty GTID set and could not
+      seed the replica, though GTID was on. Init now creates and drops a
+      scratch schema first when the set is still empty (two harmless
+      transactions), and a snapshot whose GTID set is empty or unreadable
+      for any other reason now stops init before the target's datadir is
+      touched, where it used to stop after.
+    * A standing xmass standby keeps working MySQL root credentials. The
+      active rotates its root password on its upgrade passes and
+      replication carries the new password to the standby, but the client
+      files stayed as init left them, so every root client on the standby
+      met Access denied until the next cutover. Every live xmass sync and
+      autosync pass now carries /root/.my.cnf and /root/.my.pass.txt when
+      they differ, installs them only once they open the standby's
+      database, and keeps the replaced pair once as *.xmass_prev.
+    * renameaegirhost renames the box-level names written at install:
+      postfix myhostname and a mydestination entry, /etc/mailname, and
+      the self-signed certificate Nginx presents for a name it does not
+      serve, re-issued on its own key. A renamed, cloned or restored box
+      used to go on introducing itself by its former name in every mail it
+      sent. Only values that carry a former name of the box are changed,
+      so a custom postfix name or an installed certificate stays. The yml
+      aliases Drush 9+ reads follow the rename too, master_url included.
+    * The barracuda launcher refreshes itself when its release is older
+      than the tree it is about to upgrade to, and runs again with the
+      same arguments. An older launcher stamped the new tree with its own
+      release, and the Octopus half of the upgrade then refused to run
+      while the run still ended with exit code 0: seen on a box restored
+      from an image, whose first upgrade beat its first tool refresh. The
+      check runs after the launcher's own resolver and curl repairs,
+      inside its run lock, which it hands to the launcher it re-runs; the
+      launcher it installs must arrive complete, and if the refresh fails
+      the run stops with a message before it fetches the tree. Fixes
+      shipped under the same release still arrive through BOA.sh.txt.
     * An Octopus account just created on a migration target (xmass
       prep-target, xoct create) no longer ends its first upgrade passes
       "completed WITH ERRORS" with an "ALERT: Failed Octopus upgrade" mail
