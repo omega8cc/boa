@@ -5103,7 +5103,7 @@ case "$1" in
             echo "Usage: xoct {post-mig} {fqdn} (source+target vms)"
             echo
             echo "Usage: xoct {proxy} {o1} {target-ip} {o2} [--proxy-mode=temporary|permanent|ha-switch]"
-            echo "            [--deadline=YYYY-MM-DD|+Nd] [--repair] [--retarget] [--renotify] [--no-notify]"
+            echo "            [--deadline=YYYY-MM-DD|+Nd|--no-deadline] [--repair] [--retarget] [--renotify] [--no-notify]"
             echo "Usage: xoct {proxy-mode} {o1|--all} [temporary|permanent|ha-switch]"
             echo "            [--deadline=YYYY-MM-DD|+Nd|--no-deadline] [--force-pinned] [--renotify|--no-notify]"
             echo "            (no mode = print the per-account proxy policy table)"

@@ -315,7 +315,7 @@ which side's alias copy survived the transfer) which:
 
 **On source:**
 ```sh
-xoct proxy o1 target-ip [--proxy-mode=temporary|permanent|ha-switch] [--deadline=YYYY-MM-DD|+Nd]
+xoct proxy o1 target-ip [--proxy-mode=temporary|permanent|ha-switch] [--deadline=YYYY-MM-DD|+Nd|--no-deadline]
 service nginx reload
 xoct post-mig
 ```
@@ -421,9 +421,11 @@ proxy policy itself is gone.
 The deadline resolves per account. A date the account's record holds wins,
 and so does an explicit `--no-deadline`, which the record keeps as `none`
 (`_MIG_DEADLINE=none`, on both ends of the pair); only a record with no
-deadline at all takes the box default in `/data/conf/migproxy_deadline.txt`.
-A later `proxy-mode` or `proxy` run without a deadline flag keeps what the
-record holds, `--deadline=` replaces it, and a `--force-pinned` sweep
+deadline at all, or an account with no record yet, takes the box default in
+`/data/conf/migproxy_deadline.txt`. A later `proxy-mode` or `proxy` run
+without a deadline flag keeps what the record holds (a switch to
+`ha-switch` keeps a `none` but drops a date, which leaves the deadline
+unset), `--deadline=` replaces it, and a `--force-pinned` sweep
 replaces a pinned mode but keeps its deadline unless the sweep carries a
 deadline flag itself. `proxy-retire` clears it, so a mode declared after a
 retirement takes the box default again. The table shows `none` for an

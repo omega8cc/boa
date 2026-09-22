@@ -433,7 +433,7 @@ _xmass_report_account_modes() {
   if [ -n "${_XMASS_MODE_UNDECLARED}" ]; then
     _alrt "Declare a mode before 'cutover --live' (it refuses undeclared accounts):"
     _alrt "  box-wide:    xmass cutover <target-ip> --proxy-mode=<temporary|permanent|ha-switch>"
-    _alrt "  per account: xoct proxy-mode <oN> <mode> [--deadline=YYYY-MM-DD|+Nd]"
+    _alrt "  per account: xoct proxy-mode <oN> <mode> [--deadline=YYYY-MM-DD|+Nd|--no-deadline]"
   fi
   return 0
 }

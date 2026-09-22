@@ -507,8 +507,9 @@
       it, a later --deadline= replaces it, and the policy table and the
       xmass per-account report show it. A record with no deadline at all
       still takes the box default, as before. So does a record an earlier
-      --no-deadline wrote, which cannot be told apart from one: run that
-      xoct proxy-mode command once more to store the explicit none.
+      --no-deadline wrote, which cannot be told apart from one: run
+      xoct proxy-mode oN <mode> --no-deadline once more, whichever verb
+      set it first, to store the explicit none.
     * renameaegirhost renames the box-level names written at install:
       postfix myhostname and a mydestination entry, /etc/mailname, and
       the self-signed certificate Nginx presents for a name it does not
