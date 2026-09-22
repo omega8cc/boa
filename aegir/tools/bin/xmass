@@ -9470,8 +9470,22 @@ _xmass_autosync_show_status() {
   if [ -n "${_dur}" ] && [ "${_dur}" -gt 0 ]; then
     # What the driver will actually honour: the armed interval, or the
     # duty-cycle floor derived from the last pass, whichever is longer.
-    local _floor
-    _floor=$(( (_dur * (_XMASS_AUTOSYNC_DUTY + 1)) / 60 ))
+    # Same inputs and arithmetic as monitor/check/autosync.sh, which sources
+    # /root/.barracuda.cnf over its environment, keeps the digits and
+    # divides with the ceiling: a 279s pass at duty 3 is 19m there, not 18m.
+    local _duty _floor
+    if grep -q '^_XMASS_AUTOSYNC_DUTY=' /root/.barracuda.cnf 2>/dev/null; then
+      _duty="$(grep '^_XMASS_AUTOSYNC_DUTY=' /root/.barracuda.cnf 2>/dev/null \
+        | tail -1 | sed -E 's/^[^=]*=//; s/#.*$//')"
+    else
+      _duty="${_XMASS_AUTOSYNC_DUTY}"
+    fi
+    _duty="${_duty//[^0-9]/}"
+    while [ "${#_duty}" -gt 1 ] && [ "${_duty:0:1}" = "0" ]; do
+      _duty="${_duty:1}"
+    done
+    [ -n "${_duty}" ] || _duty=3
+    _floor=$(( (_dur * (_duty + 1) + 59) / 60 ))
     if [ "${_floor}" -gt "${_AS_EVERY}" ]; then
       _info "  last pass ${_dur}s — effective interval ${_floor}m (duty-cycle floor, above the armed ${_AS_EVERY}m)"
     else

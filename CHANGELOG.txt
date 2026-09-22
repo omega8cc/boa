@@ -468,6 +468,11 @@
       thawed"), and three UNLOCK TABLES calls that released nothing are
       gone, along with the "tables unlocked" line and the reset-phase hint
       to run one by hand.
+    * xmass autosync --status reports the interval the autosync driver
+      really keeps: it rounded the duty-cycle rest down where the driver
+      rounds up, so a 279-second pass read as 18 minutes on a pair held
+      to 19, and it ignored an _XMASS_AUTOSYNC_DUTY set in barracuda.cnf,
+      which the driver honours.
     * An Octopus account just created on a migration target (xmass
       prep-target, xoct create) no longer ends its first upgrade passes
       "completed WITH ERRORS" with an "ALERT: Failed Octopus upgrade" mail
