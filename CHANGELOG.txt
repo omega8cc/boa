@@ -503,6 +503,37 @@
       only an exact NO switches the notice off, the welcome email of a new
       instance always sends, and xoct and xmass carry the value to a
       migration target with the account's other settings.
+    * An octopus upgrade run on the console (no "log" argument) now states
+      its outcome the way barracuda does: the pass is judged before the
+      completion line is printed, so a pass that logged an ALRT or a FATAL
+      ERROR, never reached its end, or whose installer exited non-zero
+      ends with "OCTOPUS upgrade completed WITH ERRORS -- review <log>"
+      instead of a plain "OCTOPUS upgrade completed". An installer that
+      refused to run in seconds used to read as a completed upgrade. The
+      console run mails nothing, as before, and it now writes its pass
+      log under /var/backups/reports/up/octopus/ like a silent run does;
+      it never did, whatever the console showed. The "... upgrade
+      completed" prefix is unchanged, so a watcher waiting on it still
+      terminates.
+    * "octopus up-<tree> all" states the verdict of every account, not of
+      the last one: the completion line names each pass log that failed,
+      and each account's pass log ends with its own verdict. Before, a
+      failed account followed by a clean one ended in a plain completion
+      line, and a clean account's log could be closed with another
+      account's WITH ERRORS line.
+    * An upgrade asked for without "force" on an instance that is already
+      up to date is no longer mailed as "ALERT: Failed Octopus upgrade" in
+      silent mode: the notice printed for a named instance was never
+      recognised as the skip it is.
+    * "octopus up-<tree> o1" no longer reads as a completed upgrade when
+      nothing was upgraded. A named instance that is cancelled, is not an
+      Octopus instance at all, or is met while the load is over the
+      ceiling now gets an ALRT line saying why and the run ends "OCTOPUS
+      upgrade completed WITH ERRORS", as a named proxied instance already
+      did; the first two used to print nothing and end in the plain line.
+      A run over all instances stays quiet for cancelled and proxied ones
+      and names every instance it left out under load on the completion
+      line: it never waited for the load to drop, whatever it printed.
 
 
 ###
