@@ -2752,6 +2752,7 @@ _rename_host_identity() {
     _info "  fallback certificate: CN=*.${_built} -> CN=*.${_NEW_HOST} (same key)"
     if [ "${_DRY_RUN}" = "YES" ]; then
       echo "DRY:  openssl req -x509 -new -key ${_key} -subj .../CN=*.${_NEW_HOST} -out ${_crt}"
+      _HOST_NAMES_DONE="${_HOST_NAMES_DONE} fallback-certificate"
     else
       mkdir -p "${_BACKUP_DIR}"
       cp -a "${_crt}" "${_BACKUP_DIR}/nginx-wild-ssl.crt_${_ts}"
@@ -2766,6 +2767,7 @@ _rename_host_identity() {
       else
         rm -f "${_tmp}"
         _alrt "§5b could not re-issue ${_crt} for *.${_NEW_HOST} -- left as it was"
+        _HOST_NAMES_DONE="${_HOST_NAMES_DONE} fallback-certificate(FAILED)"
       fi
     fi
   fi
