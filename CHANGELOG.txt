@@ -473,6 +473,14 @@
       rounds up, so a 279-second pass read as 18 minutes on a pair held
       to 19, and it ignored an _XMASS_AUTOSYNC_DUTY set in barracuda.cnf,
       which the driver honours.
+    * A standing xmass standby keeps working MySQL root credentials. The
+      active rotates its root password on its upgrade passes and
+      replication carries the new password to the standby, but the client
+      files stayed as init left them, so every root client on the standby
+      met Access denied until the next cutover. Every live xmass sync and
+      autosync pass now carries /root/.my.cnf and /root/.my.pass.txt when
+      they differ, installs them only once they open the standby's
+      database, and keeps the replaced pair once as *.xmass_prev.
     * An Octopus account just created on a migration target (xmass
       prep-target, xoct create) no longer ends its first upgrade passes
       "completed WITH ERRORS" with an "ALERT: Failed Octopus upgrade" mail

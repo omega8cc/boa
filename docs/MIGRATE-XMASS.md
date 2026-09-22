@@ -973,8 +973,9 @@ live replication lag in seconds while both threads run, or what stops it —
 a STOPPED thread with its `Last_*_Errno`/`Last_*_Error`, no replica
 configured (with both recoveries, since a promoted target must never be
 re-inited), or the target's own root client refusing (the root-password
-rotation shape, with the re-transfer remedy). Aim for lag < 60 s before
-scheduling cutover.
+rotation shape: the next live sync or autosync pass carries the pair, see
+MySQL Credentials; the by-hand re-transfer is named too). Aim for lag < 60 s
+before scheduling cutover.
 
 ### Phase 4 — Cutover (`xmass cutover`)
 
@@ -1318,6 +1319,16 @@ password becomes the source's password. `/root/.my.pass.txt` and
 `/root/.my.cnf` are therefore transferred from source to target at two points:
 immediately after restore (so MySQL client tools work during slave setup) and
 again after promotion at cutover (belt-and-braces, in case anything changed).
+
+In between, the source keeps rotating its root password on its upgrade
+passes and replication carries the new password to the standby, so every
+live `xmass sync` and every autosync pass also compares the pair with the
+standby's and carries it when it differs. It is installed only once it opens
+the standby's own database; until replication has applied the rotation the
+old pair is the one that works, so it stays and the next pass retries. The
+replaced pair is kept once as `/root/.my.cnf.xmass_prev` and
+`/root/.my.pass.txt.xmass_prev`. Only a box that holds `/root/.standby.cnf`
+receives it, and a failed carry never fails the pass.
 
 ---
 

@@ -8979,6 +8979,98 @@ REMOTE
   _info "======================================================"
 }
 
+# The active owns the MySQL root password (sql.sh.inc: a standby never mints
+# its own) and a barracuda pass on it rotates the password. Replication
+# carries the new mysql.user rows to the standby but not the client pair, so
+# from the first rotation after init every root client on the standby -- its
+# monitors, its backups, this tool's replica reads -- met Access denied until
+# cutover step 10 re-sent the pair. A live pass carries the pair whenever it
+# differs, only to a box that still holds the standby marker, and installs it
+# only once it opens the standby's own database: until replication has
+# applied the rotation the old pair is the one that works, so it stays and
+# the next pass retries. The replaced pair is kept once as *.xmass_prev.
+# Never fatal: the file legs do not depend on it.
+_xmass_carry_db_credentials() {
+  local _f _loc _rem _out
+  for _f in /root/.my.cnf /root/.my.pass.txt; do
+    if [ ! -s "${_f}" ]; then
+      _alrt "MySQL credentials NOT carried to ${_tgt}: ${_f} is missing or empty here"
+      return 0
+    fi
+  done
+  _loc="$(cat /root/.my.cnf /root/.my.pass.txt | md5sum | cut -c1-32)"
+  _rem="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
+    "if [ -e /root/.standby.cnf ]; then cat /root/.my.cnf /root/.my.pass.txt 2>/dev/null | md5sum | cut -c1-32; else echo NOMARKER; fi" \
+    2>/dev/null)" || _rem="TRANSPORT"
+  case "${_rem}" in
+    "${_loc}")
+      _info "MySQL credentials on ${_tgt}: current"
+      return 0
+    ;;
+    NOMARKER)
+      _alrt "MySQL credentials NOT carried: ${_tgt} holds no /root/.standby.cnf"
+      return 0
+    ;;
+    ""|TRANSPORT)
+      _alrt "MySQL credentials NOT compared with ${_tgt} (ssh transport failure); the next pass retries"
+      return 0
+    ;;
+  esac
+  if ! scp -q -o ConnectTimeout=10 -o BatchMode=yes /root/.my.cnf \
+      "root@${_tgt}:/root/.my.cnf.xmass_carry" 2>/dev/null \
+    || ! scp -q -o ConnectTimeout=10 -o BatchMode=yes /root/.my.pass.txt \
+      "root@${_tgt}:/root/.my.pass.txt.xmass_carry" 2>/dev/null; then
+    _alrt "MySQL credentials NOT carried to ${_tgt}: the copy failed; the next pass retries"
+    ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
+      "rm -f /root/.my.cnf.xmass_carry /root/.my.pass.txt.xmass_carry" &> /dev/null
+    return 0
+  fi
+  _out="$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "bash -s" 2>/dev/null <<'CARRY'
+_n=/root/.my.cnf.xmass_carry
+_p=/root/.my.pass.txt.xmass_carry
+chmod 600 "${_n}" "${_p}" 2>/dev/null
+if [ ! -e /root/.standby.cnf ]; then
+  rm -f "${_n}" "${_p}"; echo NOMARKER; exit 0
+fi
+if ! mysql --defaults-file="${_n}" -N -e 'SELECT 1' > /dev/null 2>&1; then
+  rm -f "${_n}" "${_p}"
+  if mysql --defaults-file=/root/.my.cnf -N -e 'SELECT 1' > /dev/null 2>&1; then
+    echo NOAUTH
+  else
+    echo NODB
+  fi
+  exit 0
+fi
+cp -af /root/.my.cnf /root/.my.cnf.xmass_prev 2>/dev/null
+cp -af /root/.my.pass.txt /root/.my.pass.txt.xmass_prev 2>/dev/null
+mv -f "${_p}" /root/.my.pass.txt && mv -f "${_n}" /root/.my.cnf && echo CARRIED
+CARRY
+)"
+  case "${_out}" in
+    CARRIED)
+      _info "MySQL credentials carried to ${_tgt} (rotated here since they last travelled)"
+    ;;
+    NOAUTH)
+      _alrt "MySQL credentials on ${_tgt} differ from this box's, and this box's pair"
+      _alrt "does not open the standby's database yet (replication has not applied"
+      _alrt "the rotation, or the replica is stopped): left as they are, the next"
+      _alrt "pass retries; 'xmass status ${_tgt}' shows the replica"
+    ;;
+    NODB)
+      _alrt "MySQL credentials NOT carried: the standby's database on ${_tgt} opens"
+      _alrt "with neither pair (mysqld down, or the replica diverged); 'xmass status"
+      _alrt "${_tgt}' shows why"
+    ;;
+    NOMARKER)
+      _alrt "MySQL credentials NOT carried: ${_tgt} holds no /root/.standby.cnf"
+    ;;
+    *)
+      _alrt "MySQL credentials carry to ${_tgt} ended without a verdict (${_out:-no output}); the next pass retries"
+    ;;
+  esac
+  return 0
+}
+
 _xmass_cmd_sync() {
   # How long a pass actually takes is the number the cadence has to respect
   # (and, on a large estate, the one that decides whether a 15-minute
@@ -9061,6 +9153,9 @@ _xmass_cmd_sync() {
     _info "xmass sync: syncing files to ${_tgt} ..."
   else
     _info "xmass sync: DRY run — planning file relocation to ${_tgt} (no changes made) ..."
+  fi
+  if [ "${_MODE}" = "LIVE" ]; then
+    _xmass_carry_db_credentials
   fi
   # (Accounts were enumerated above, before the readiness gates. Nothing
   # between here and there can change /data/disk, and only this function
@@ -9214,7 +9309,9 @@ _xmass_cmd_status() {
         _lag="unreadable"
         _alrt "replica status on ${_tgt} could not be read (unreadable) -- the target's"
         _alrt "root client failed: ${_XM_REPL_CLIENT:-no error text}"
-        _alrt "on 'Access denied' the source rotated its MySQL root password since init:"
+        _alrt "on 'Access denied' the source rotated its MySQL root password since the"
+        _alrt "pair last travelled: the next live 'xmass sync' or autosync pass carries"
+        _alrt "it once replication has applied the rotation; the same fix by hand:"
         _alrt "re-transfer /root/.my.cnf and /root/.my.pass.txt to the target (the"
         _alrt "init/cutover step-10 form), then re-run status"
       ;;
