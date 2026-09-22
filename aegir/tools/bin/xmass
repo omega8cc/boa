@@ -318,12 +318,14 @@ _mig_sweep_legacy() {
   rm -f "${_MIG_LEGACY_ORPHAN}"
 }
 
-### SETS GLOBALS (_MIG_MODE/_MIG_DEADLINE/_MIG_SOURCE): never call inside
-### $( ) or a pipeline, or the resolution is lost to the subshell.
+### SETS GLOBALS (_MIG_MODE/_MIG_DEADLINE/_MIG_SOURCE/_MIG_DEADLINE_NONE):
+### never call inside $( ) or a pipeline, or the resolution is lost to the
+### subshell. A record's "none" is an explicit --no-deadline: it stops the
+### deadline ladder (_MIG_DEADLINE_NONE=YES) while _MIG_DEADLINE stays empty.
 _mig_resolve() {
   local _root="$1" _cnf _m _d
   _cnf="${_root}/${_MIG_CNF_NAME}"
-  _MIG_MODE=""; _MIG_DEADLINE=""; _MIG_SOURCE=""
+  _MIG_MODE=""; _MIG_DEADLINE=""; _MIG_SOURCE=""; _MIG_DEADLINE_NONE=""
 
   ### A target-role record is the inbound half of the peer-record pair: it
   ### describes the PEER's proxy policy from the migration that brought this
@@ -341,6 +343,7 @@ _mig_resolve() {
       _MIG_SOURCE="$(_mig_get "${_cnf}" _MIG_SCOPE)"
       [ "${_MIG_SOURCE}" = "account" ] || _MIG_SOURCE=box
       _mig_valid_date "${_d}" && _MIG_DEADLINE="${_d}"
+      [ "${_d}" = "none" ] && _MIG_DEADLINE_NONE=YES
     else
       [ -n "${_m}" ] && echo "ALRT: ${_cnf}: invalid _MIG_MODE '${_m}' ignored"
     fi
@@ -361,7 +364,10 @@ _mig_resolve() {
     fi
   fi
 
-  if [ -n "${_MIG_MODE}" ] && [ -z "${_MIG_DEADLINE}" ]; then
+  ### The override stands in for the box files only, so an account's explicit
+  ### none beats it exactly as it beats the file --live writes.
+  if [ -n "${_MIG_MODE}" ] && [ -z "${_MIG_DEADLINE}" ] \
+    && [ "${_MIG_DEADLINE_NONE}" != "YES" ]; then
     if [ -n "${_MIG_BOX_MODE_OVERRIDE}" ]; then
       _mig_valid_date "${_MIG_BOX_DEADLINE_OVERRIDE}" \
         && _MIG_DEADLINE="${_MIG_BOX_DEADLINE_OVERRIDE}"
@@ -416,12 +422,12 @@ _xmass_report_account_modes() {
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _mig_resolve "/data/disk/${_oct}" >/dev/null
     if [ "${_MIG_SOURCE}" = "account" ]; then
-      _info "  ${_oct}: ${_MIG_MODE}${_MIG_DEADLINE:+ until ${_MIG_DEADLINE}} [pinned per account -- box default not applied]"
+      _info "  ${_oct}: ${_MIG_MODE}${_MIG_DEADLINE:+ until ${_MIG_DEADLINE}}${_MIG_DEADLINE_NONE:+ (no deadline)} [pinned per account -- box default not applied]"
     elif [ "${_MIG_SOURCE}" = "default" ]; then
       _alrt "  ${_oct}: UNDECLARED -- would fall back to '${_MIG_MODE}'"
       _XMASS_MODE_UNDECLARED="${_XMASS_MODE_UNDECLARED} ${_oct}"
     else
-      _info "  ${_oct}: ${_MIG_MODE}${_MIG_DEADLINE:+ until ${_MIG_DEADLINE}} [box default]"
+      _info "  ${_oct}: ${_MIG_MODE}${_MIG_DEADLINE:+ until ${_MIG_DEADLINE}}${_MIG_DEADLINE_NONE:+ (no deadline)} [box default]"
     fi
   done
   if [ -n "${_XMASS_MODE_UNDECLARED}" ]; then
