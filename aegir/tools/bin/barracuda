@@ -2541,6 +2541,72 @@ _set_tree_vars() {
 
 }
 
+# A launcher older than the tree it fetches stamps that tree with its own,
+# older release (_X_VERSION in _up_action), and the Octopus half then refuses
+# the pass and exits 0 -- measured on a box restored from an image, whose
+# first upgrade pass beat its first launcher refresh. BOA.sh.txt cannot close
+# that gap for a running launcher: it never replaces a tool whose process is
+# live. So before anything else the launcher reads the release of the
+# launcher this tree publishes, and when its own is older it replaces itself
+# with that launcher (a rename, so a run still reading the old file keeps it)
+# and runs again with the same arguments. It refuses only when that refresh
+# fails, and refreshes at most once per invocation. A launcher newer than the
+# tree it asks for (an up-lts run on a dev box) is left as it is.
+_launcher_release_check() {
+  local _self _url _new _pub _own _low
+  _self=$(readlink -f "$0" 2> /dev/null)
+  [ -n "${_self}" ] && [ -f "${_self}" ] || return 0
+  _url="${_rgUrl}/aegir/tools/bin/barracuda"
+  _new="${_self}.release.$$"
+  rm -f "${_new}"
+  curl ${_crlGet} "${_url}" -o "${_new}" 2> /dev/null
+  _pub=$(sed -n 's/^[[:space:]]*\(export \)\{0,1\}_rLsn="BOA-\([0-9][0-9.]*\)"[[:space:]]*$/\2/p' \
+    "${_new}" 2> /dev/null | head -n 1)
+  _own="${_rLsn#BOA-}"
+  if [ -z "${_pub}" ] || [ "$(head -n 1 "${_new}" 2> /dev/null)" != "#!/bin/bash" ]; then
+    rm -f "${_new}"
+    echo
+    echo "  Failed to read the release of the ${_tRee} tree's launcher"
+    echo "  from ${_url} (no response, or not a BOA launcher), exit"
+    echo
+    _clean_pid_exit _launcher_release_check
+  fi
+  if [ "${_pub}" = "${_own}" ]; then
+    rm -f "${_new}"
+    return 0
+  fi
+  _low=$(printf '%s\n%s\n' "${_pub}" "${_own}" | sort -V | head -n 1)
+  if [ "${_low}" = "${_pub}" ]; then
+    rm -f "${_new}"
+    return 0
+  fi
+  if [ "${_BARRACUDA_REFRESHED_TO}" = "${_pub}" ]; then
+    rm -f "${_new}"
+    echo
+    echo "  This launcher (BOA-${_own}) is still older than the ${_tRee} tree"
+    echo "  (BOA-${_pub}) after refreshing itself once; not stamping the tree"
+    echo "  with an older release. Fetch it with: bash BOA.sh.txt, then retry"
+    echo
+    _clean_pid_exit "_launcher_release_check still BOA-${_own} after a refresh"
+  fi
+  if ! bash -n "${_new}" 2> /dev/null \
+    || ! chmod 700 "${_new}" 2> /dev/null \
+    || ! chown root:root "${_new}" 2> /dev/null \
+    || ! mv -f "${_new}" "${_self}" 2> /dev/null; then
+    rm -f "${_new}"
+    echo
+    echo "  This launcher (BOA-${_own}) is older than the ${_tRee} tree"
+    echo "  (BOA-${_pub}) and could not replace itself with ${_url}."
+    echo "  Fetch it with: bash BOA.sh.txt, then retry"
+    echo
+    _clean_pid_exit "_launcher_release_check could not install BOA-${_pub}"
+  fi
+  echo "NOTE: This launcher was BOA-${_own}, older than the ${_tRee} tree;"
+  echo "NOTE: replaced with the tree's own BOA-${_pub} launcher, running it now"
+  export _BARRACUDA_REFRESHED_TO="${_pub}"
+  exec /bin/bash "${_self}" "$@"
+}
+
 export _ARGS="$@"
 export _cmNd="$1"
 export _outP="$2"
@@ -2555,6 +2621,7 @@ export _argQ="$4"
 _check_root_direct
 _set_tree_vars
 _if_display_help
+_launcher_release_check "$@"
 # Disabled here on purpose since 2024-09-08 (e89cd9007): an upgrade pass runs
 # on a host BOA already installed, and refusing it on a manufacturer string
 # would strand a live box. The definition earlier in this file is kept in step
