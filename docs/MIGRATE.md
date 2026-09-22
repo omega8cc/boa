@@ -66,8 +66,9 @@ re-issued for `*.<new-fqdn>` on its existing key, the old one kept under
 `backups/rename-hostname/`). Each is renamed only when it carries one of the
 box's former names — the old hostname, or the name that certificate was
 issued for, which is how a box restored from an image and renamed by an older
-tool is still recognised — so a custom `myhostname` or a certificate you
-installed yourself is left alone. Every root's run also rewrites the yml
+tool is still recognised at its next rename (a run whose aliases already carry
+the system FQDN stops with "nothing to do" before this step) — so a custom
+`myhostname` or a certificate you installed yourself is left alone. Every root's run also rewrites the yml
 alias copies Drush 9+ reads (`<root>/.drush/sites`, and for an account the
 limited-shell user's `/home/oN.ftp/.drush/sites`), so `master_url` there
 follows the rename.
