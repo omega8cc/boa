@@ -525,6 +525,15 @@
       up to date is no longer mailed as "ALERT: Failed Octopus upgrade" in
       silent mode: the notice printed for a named instance was never
       recognised as the skip it is.
+    * "octopus up-<tree> o1" no longer reads as a completed upgrade when
+      nothing was upgraded. A named instance that is cancelled, is not an
+      Octopus instance at all, or is met while the load is over the
+      ceiling now gets an ALRT line saying why and the run ends "OCTOPUS
+      upgrade completed WITH ERRORS", as a named proxied instance already
+      did; the first two used to print nothing and end in the plain line.
+      A run over all instances stays quiet for cancelled and proxied ones
+      and names every instance it left out under load on the completion
+      line: it never waited for the load to drop, whatever it printed.
 
 
 ###
