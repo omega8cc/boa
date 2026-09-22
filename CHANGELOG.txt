@@ -494,13 +494,17 @@
       sent. Only values that carry a former name of the box are changed,
       so a custom postfix name or an installed certificate stays. The yml
       aliases Drush 9+ reads follow the rename too, master_url included.
-    * The barracuda launcher refreshes itself when it is older than the
-      tree it is about to upgrade to, and runs again with the same
-      arguments. An older launcher stamped the new tree with its own
+    * The barracuda launcher refreshes itself when its release is older
+      than the tree it is about to upgrade to, and runs again with the
+      same arguments. An older launcher stamped the new tree with its own
       release, and the Octopus half of the upgrade then refused to run
       while the run still ended with exit code 0: seen on a box restored
-      from an image, whose first upgrade beat its first tool refresh. If
-      the refresh fails, the launcher stops with a message instead.
+      from an image, whose first upgrade beat its first tool refresh. The
+      check runs after the launcher's own resolver and curl repairs,
+      inside its run lock, which it hands to the launcher it re-runs; the
+      launcher it installs must arrive complete, and if the refresh fails
+      the run stops with a message before it fetches the tree. Fixes
+      shipped under the same release still arrive through BOA.sh.txt.
     * An Octopus account just created on a migration target (xmass
       prep-target, xoct create) no longer ends its first upgrade passes
       "completed WITH ERRORS" with an "ALERT: Failed Octopus upgrade" mail
