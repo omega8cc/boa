@@ -511,9 +511,11 @@
       xoct proxy-mode oN <mode> --no-deadline once more, whichever verb
       set it first, to store the explicit none (as a per-account pin).
     * renameaegirhost renames the box-level names written at install:
-      postfix myhostname and a mydestination entry, /etc/mailname, and
-      the self-signed certificate Nginx presents for a name it does not
-      serve, re-issued on its own key. A renamed, cloned or restored box
+      postfix myhostname and the mydestination entries naming the box --
+      its fqdn and the localhost.<zone> token the installer writes beside
+      it, which used to keep the zone of the name the box was built under
+      -- /etc/mailname, and the self-signed certificate Nginx presents
+      for a name it does not serve, re-issued on its own key. A renamed, cloned or restored box
       used to go on introducing itself by its former name in every mail it
       sent. Only values that carry a former name of the box are changed,
       so a custom postfix name or an installed certificate stays. The yml

@@ -2729,6 +2729,7 @@ _rename_host_identity() {
   local _crt=/etc/ssl/private/nginx-wild-ssl.crt
   local _key=/etc/ssl/private/nginx-wild-ssl.key
   local _subj _iss _built="" _former _cur _val _tok _new _seen _hit _tmp _ts
+  local _zones _lhnew _lhseen
   local -a _toks
   _ts=$(date +%Y%m%d_%H%M%S)
   _HOST_NAMES_DONE=""
@@ -2787,14 +2788,31 @@ _rename_host_identity() {
     # mydestination: a token that is a former name becomes the new name, or
     # goes when the new name is already listed; every other token is kept,
     # and a value naming no former name is never rewritten.
+    # The installer writes TWO tokens from the hostname of the day: the fqdn
+    # itself and "localhost.<its parent zone>". Renaming only the first left
+    # the box accepting mail for localhost in a zone it no longer has a name
+    # in -- measured on a renamed image, where the token still named the
+    # build zone. A localhost token is therefore rewritten by ZONE, and only
+    # when its zone is a former name's, so a hand-set token is left alone.
     _val=$(postconf -h mydestination 2>/dev/null)
     _toks=()
     IFS=', ' read -r -a _toks <<< "${_val}"
+    _zones=" "
+    for _tok in ${_former}; do
+      [ -n "${_tok}" ] && [[ "${_tok}" == *.* ]] && _zones="${_zones}${_tok#*.} "
+    done
+    _lhnew=""
+    [[ "${_NEW_HOST}" == *.* ]] && _lhnew="localhost.${_NEW_HOST#*.}"
     _hit=NO
     _seen=NO
+    _lhseen=NO
     for _tok in "${_toks[@]}"; do
       [ "${_tok}" = "${_NEW_HOST}" ] && _seen=YES
+      [ -n "${_lhnew}" ] && [ "${_tok}" = "${_lhnew}" ] && _lhseen=YES
       [ -n "${_tok}" ] && [[ "${_former}" == *" ${_tok} "* ]] && _hit=YES
+      [ -n "${_lhnew}" ] && [ "${_tok}" != "${_lhnew}" ] \
+        && [[ "${_tok}" == localhost.* ]] \
+        && [[ "${_zones}" == *" ${_tok#localhost.} "* ]] && _hit=YES
     done
     if [ "${_hit}" = "YES" ]; then
       _new=""
@@ -2803,6 +2821,12 @@ _rename_host_identity() {
           [ "${_seen}" = "YES" ] && continue
           _tok="${_NEW_HOST}"
           _seen=YES
+        elif [ -n "${_lhnew}" ] && [ "${_tok}" != "${_lhnew}" ] \
+          && [[ "${_tok}" == localhost.* ]] \
+          && [[ "${_zones}" == *" ${_tok#localhost.} "* ]]; then
+          [ "${_lhseen}" = "YES" ] && continue
+          _tok="${_lhnew}"
+          _lhseen=YES
         fi
         _new="${_new:+${_new}, }${_tok}"
       done

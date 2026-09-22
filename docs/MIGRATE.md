@@ -60,7 +60,9 @@ run aborts rather than rewrite the database without a complete backup.
 
 The master root's run (`--aegir-root /var/aegir`) also renames the names the
 box was given at install and nothing else rewrites: postfix `myhostname` and
-a `mydestination` entry naming the box, `/etc/mailname`, and BOA's
+the `mydestination` entries naming the box (its fqdn, and the
+`localhost.<zone>` token the installer writes beside it, whose zone is
+renamed when it is a former name's), `/etc/mailname`, and BOA's
 self-signed fallback certificate (`/etc/ssl/private/nginx-wild-ssl.crt`,
 re-issued for `*.<new-fqdn>` on its existing key, the old one kept under
 `backups/rename-hostname/`). Each is renamed only when it carries one of the
