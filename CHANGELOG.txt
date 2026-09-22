@@ -478,6 +478,16 @@
       five; and it printed an interval while the driver was parked
       (_USE_XMASS_AUTOSYNC=NO, a standby or proxy role, a major system
       transition), which it now names instead.
+    * xmass init no longer stops on an idle source with "Empty GTID set
+      in xtrabackup_binlog_info -- was GTID enabled on source before
+      taking backup?". Init switches GTID and the binary log on and
+      restarts MySQL; when nothing wrote between that restart and the
+      snapshot, the snapshot carried an empty GTID set and could not
+      seed the replica, though GTID was on. Init now creates and drops a
+      scratch schema first when the set is still empty (two harmless
+      transactions), and a snapshot whose GTID set is empty or unreadable
+      for any other reason now stops init before the target's datadir is
+      touched, where it used to stop after.
     * A standing xmass standby keeps working MySQL root credentials. The
       active rotates its root password on its upgrade passes and
       replication carries the new password to the standby, but the client

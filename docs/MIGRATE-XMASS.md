@@ -1240,6 +1240,13 @@ nginx and PHP-FPM gracefully before stopping MySQL, then starts them again).
 If GTID is already enabled by BOA default configuration the existing settings
 are left untouched.
 
+Right before the snapshot, `xmass init` also makes sure the source has executed
+at least one GTID transaction. On an idle source whose GTID and binary log the
+restart above has just switched on, nothing may have run yet, and a snapshot
+with an empty GTID set cannot seed a replica. In that case init creates and
+drops a scratch schema, `xmass_gtid_seed` (two harmless transactions), and
+says so; the replica takes them as already executed.
+
 ---
 
 ## Solr Handling
