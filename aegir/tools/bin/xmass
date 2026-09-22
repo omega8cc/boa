@@ -9032,9 +9032,11 @@ chmod 600 "${_n}" "${_p}" 2>/dev/null
 if [ ! -e /root/.standby.cnf ]; then
   rm -f "${_n}" "${_p}"; echo NOMARKER; exit 0
 fi
-if ! mysql --defaults-file="${_n}" -N -e 'SELECT 1' > /dev/null 2>&1; then
+# Bounded both ways: a standby mysqld that accepts but never answers must
+# not hold the pass, and the file legs, for the driver's whole ceiling.
+if ! timeout 20 mysql --defaults-file="${_n}" --connect-timeout=10 -N -e 'SELECT 1' > /dev/null 2>&1; then
   rm -f "${_n}" "${_p}"
-  if mysql --defaults-file=/root/.my.cnf -N -e 'SELECT 1' > /dev/null 2>&1; then
+  if timeout 20 mysql --defaults-file=/root/.my.cnf --connect-timeout=10 -N -e 'SELECT 1' > /dev/null 2>&1; then
     echo NOAUTH
   else
     echo NODB
@@ -9385,7 +9387,13 @@ _xmass_autosync_read_cnf() {
     | head -n1 | cut -d= -f2 | tr -cd 'A-Za-z0-9.:_-')
   _AS_EVERY=$(grep '^_XMASS_AUTOSYNC_EVERY=' "${_XMASS_AUTOSYNC_CNF}" 2>/dev/null \
     | head -n1 | cut -d= -f2 | tr -cd '0-9')
+  # As the driver reads it (monitor/check/autosync.sh): no leading zeros, and
+  # never under 5 minutes, whatever a hand-edited marker says.
+  while [ "${#_AS_EVERY}" -gt 1 ] && [ "${_AS_EVERY:0:1}" = "0" ]; do
+    _AS_EVERY="${_AS_EVERY:1}"
+  done
   [ -n "${_AS_EVERY}" ] || _AS_EVERY=15
+  [ "${_AS_EVERY}" -lt 5 ] && _AS_EVERY=5
 }
 
 # The ONE standby-marker probe both arm and every pass use (a second copy had
@@ -9562,22 +9570,36 @@ _xmass_autosync_show_status() {
   else
     _info "  no completed automatic pass recorded yet"
   fi
+  # The driver stands down before it reaches its interval in these states,
+  # so no interval is honoured at all: say so instead of printing one.
+  local _park="" _rt
+  if [ "${_USE_XMASS_AUTOSYNC}" = "NO" ]; then
+    _park="_USE_XMASS_AUTOSYNC=NO in /root/.barracuda.cnf"
+  elif [ ! -e "/var/log/boa/reset_no_new_password.pid" ]; then
+    _park="this system has not finished installing"
+  elif [ -e "/root/.standby.cnf" ]; then
+    _park="this box is a passive standby"
+  elif [ -e "/root/.proxy.cnf" ]; then
+    _park="this box is a finalized PX0 proxy"
+  else
+    for _rt in excalibur daedalus chimaera beowulf; do
+      [ -e "/root/.run-to-${_rt}.cnf" ] && _park="a major system transition is in flight (/root/.run-to-${_rt}.cnf)"
+    done
+  fi
+  if [ -n "${_park}" ]; then
+    _alrt "  the autosync driver is parked -- ${_park}; no automatic pass runs"
+  fi
   local _dur
   _dur="$(cat /var/log/boa/xmass_autosync/.last_duration 2>/dev/null | tr -dc '0-9' | head -c 9)"
-  if [ -n "${_dur}" ] && [ "${_dur}" -gt 0 ]; then
+  if [ -z "${_park}" ] && [ -n "${_dur}" ] && [ "${_dur}" -gt 0 ]; then
     # What the driver will actually honour: the armed interval, or the
     # duty-cycle floor derived from the last pass, whichever is longer.
-    # Same inputs and arithmetic as monitor/check/autosync.sh, which sources
-    # /root/.barracuda.cnf over its environment, keeps the digits and
-    # divides with the ceiling: a 279s pass at duty 3 is 19m there, not 18m.
+    # Same inputs and arithmetic as monitor/check/autosync.sh: the knob as
+    # /root/.barracuda.cnf leaves it (sourced by _check_root, as the driver
+    # sources it), digits only, and the ceiling -- a 279s pass at duty 3 is
+    # 19m there, not 18m.
     local _duty _floor
-    if grep -q '^_XMASS_AUTOSYNC_DUTY=' /root/.barracuda.cnf 2>/dev/null; then
-      _duty="$(grep '^_XMASS_AUTOSYNC_DUTY=' /root/.barracuda.cnf 2>/dev/null \
-        | tail -1 | sed -E 's/^[^=]*=//; s/#.*$//')"
-    else
-      _duty="${_XMASS_AUTOSYNC_DUTY}"
-    fi
-    _duty="${_duty//[^0-9]/}"
+    _duty="${_XMASS_AUTOSYNC_DUTY//[^0-9]/}"
     while [ "${#_duty}" -gt 1 ] && [ "${_duty:0:1}" = "0" ]; do
       _duty="${_duty:1}"
     done
