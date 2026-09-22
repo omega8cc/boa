@@ -26,6 +26,8 @@ octopus up-lts all force log
 
 Note that the silent, non-interactive mode will automatically say Y/Yes to all prompts and is thus useful for running auto-upgrades scheduled in cron.
 
+The `BOA.sh.txt` step stays the documented first step: it refreshes every tool, including launcher fixes shipped under the same release. On top of it, `barracuda` checks its own release before it fetches the tree: it reads the release of the launcher the tree you asked for publishes, and when its own release is older (a box upgraded before its tools refreshed) it replaces itself with that launcher and runs again with the same arguments, printing two `NOTE:` lines that say so. An older launcher used to stamp the new tree with its own release, and the Octopus half of the upgrade then refused to run. If the refresh fails, the launcher stops with a message instead, before it fetches the tree. Only a release difference triggers it, only launchers that carry the check do it (a box restored from an image made before it still needs `BOA.sh.txt` first), and a launcher newer than the tree you asked for is left as it is.
+
 **Important:** Do not run any installer via `sudo`. You must be logged in as root or use `sudo -i` first.
 
 All commands will honor settings in their respective config files:

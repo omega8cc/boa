@@ -47,7 +47,10 @@
 ###       whose rows key on the site URI: left stale, every host-derived
 ###       site's pin goes inert and the site silently falls back to the
 ###       account default PHP version
-###   §3  Rewrite all Drush alias files in <aegir-root>/.drush/
+###   §3  Rewrite all Drush alias files in <aegir-root>/.drush/, and the yml
+###       copies Drush 9+ reads (<aegir-root>/.drush/sites, and for an
+###       Octopus account /home/<acct>.ftp/.drush/sites), keeping the checksum
+###       of a copy Drush still manages in step with its new bytes
 ###   §4  Rename + rewrite vhost files in <aegir-root>/config/server_master/nginx/vhost.d/,
 ###       then rewrite the platform sites/sites.php alias maps (the queued
 ###       verifies only ever ADD new-hostname records there; stale
@@ -60,6 +63,12 @@
 ###       that corrupts PHP-serialized byte lengths when the FQDN length
 ###       changes, and (with --hex-blob) never reached blob values anyway.
 ###       A plain dump is still taken first, as a backup only.
+###   §5b /var/aegir only: rename the host-level names written at install --
+###       postfix myhostname and a mydestination entry, /etc/mailname, and
+###       BOA's self-signed fallback certificate (re-issued on its own key) --
+###       when they carry one of the box's former names: the old hostname, or
+###       the name that certificate was issued for. Anything else is left
+###       alone.
 ###   §6  Reload nginx
 ###   §9  Confirm every site carrying the new hostname actually serves
 ###       before reporting success -- the dirs this run moved AND the ones
@@ -98,6 +107,7 @@ _SERVE_CHECK_URIS=()
 _SERVE_N=0
 _SERVE_SKIPPED_N=0
 _URI_SURFACES_CHANGED=NO
+_HOST_NAMES_DONE=""
 _SERVE_FAILED=""
 _SERVE_WAIT="${_RENAME_SERVE_WAIT:-180}"
 
@@ -1664,6 +1674,44 @@ _rewrite_drush_files() {
       _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
     fi
   done
+  _rewrite_site_yml_files
+}
+
+# The yml aliases Drush 9+ reads are converted copies of the drushrc aliases
+# (site:alias-convert into <root>/.drush/sites, and for an Octopus account
+# the limited-shell user's copy in /home/<acct>.ftp/.drush/sites). The
+# converter re-runs only when a site alias changes, so after a rename the
+# copies kept the old name -- master_url above all -- for as long as no site
+# alias moved. Rewritten in place, ownership kept. A copy Drush still manages
+# (its checksum matches the old bytes) gets the checksum of the new bytes, so
+# the next conversion keeps managing it instead of treating it as hand-edited.
+_rewrite_site_yml_files() {
+  local _store _F _OWN _MODE _SUM _OLD_SUM _NEW_SUM
+  for _store in "${_DRUSH_DIR}/sites" "/home/${_AEGIR_USER}.ftp/.drush/sites"; do
+    [ -d "${_store}" ] || continue
+    for _F in "${_store}"/*.site.yml; do
+      [ -f "${_F}" ] && [ ! -L "${_F}" ] || continue
+      _file_needs_rename "${_F}" || continue
+      _info "  sed in-place: ${_F}"
+      _SUM="${_store}/.checksums/$(basename "${_F}" .yml).md5"
+      _OLD_SUM=$(md5sum < "${_F}" | cut -c1-32)
+      _OWN=$(stat -c '%u:%g' "${_F}")
+      _MODE=$(stat -c '%a' "${_F}")
+      _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
+      [ "${_DRY_RUN}" = "YES" ] && continue
+      chown "${_OWN}" "${_F}"
+      chmod "${_MODE}" "${_F}"
+      if [ -f "${_SUM}" ] && [ ! -L "${_SUM}" ] \
+        && grep -q "${_OLD_SUM}" "${_SUM}" 2>/dev/null; then
+        _NEW_SUM=$(md5sum < "${_F}" | cut -c1-32)
+        _OWN=$(stat -c '%u:%g' "${_SUM}")
+        _MODE=$(stat -c '%a' "${_SUM}")
+        sed -i "s/${_OLD_SUM}/${_NEW_SUM}/" "${_SUM}"
+        chown "${_OWN}" "${_SUM}"
+        chmod "${_MODE}" "${_SUM}"
+      fi
+    done
+  done
 }
 
 ###-------------§4 RENAME + REWRITE VHOSTS-###
@@ -2661,6 +2709,127 @@ PHPEOF
 
 ###-------------§6 RELOAD NGINX----------###
 
+###-------------§5b HOST-LEVEL NAMES-----###
+
+# The box-level names none of the Aegir surfaces above reach: postfix's
+# myhostname (and a mydestination entry naming the box), /etc/mailname, and
+# the self-signed fallback certificate nginx presents for a name it does not
+# serve -- all written once, at install, from the hostname of the day. A box
+# renamed in place, cloned, or restored from an image went on introducing
+# itself by a former name in every mail it sent and on that certificate.
+# Master root only (the box's own name is the master's). A value is renamed
+# only when it is one of the box's former names: the old Aegir hostname, or
+# the name BOA's own fallback certificate was issued for -- an image restored
+# and renamed by an older tool leaves postfix on its build-time name, which
+# only that certificate still records. A myhostname or a certificate set to
+# anything else is left alone.
+_rename_host_identity() {
+  [ "${_AEGIR_ROOT}" = "/var/aegir" ] || return 0
+  _info "§5b Renaming the host-level names (postfix, mailname, fallback certificate) ..."
+  local _crt=/etc/ssl/private/nginx-wild-ssl.crt
+  local _key=/etc/ssl/private/nginx-wild-ssl.key
+  local _subj _iss _built="" _former _cur _val _tok _new _seen _hit _tmp _ts
+  local -a _toks
+  _ts=$(date +%Y%m%d_%H%M%S)
+  _HOST_NAMES_DONE=""
+  # BOA's own certificate: self-signed, issued with the install subject.
+  if [ -s "${_crt}" ] && [ -s "${_key}" ] && command -v openssl > /dev/null 2>&1; then
+    _subj=$(openssl x509 -in "${_crt}" -noout -subject -nameopt RFC2253 2>/dev/null)
+    _iss=$(openssl x509 -in "${_crt}" -noout -issuer -nameopt RFC2253 2>/dev/null)
+    _subj="${_subj#subject=}"
+    _iss="${_iss#issuer=}"
+    if [ -n "${_subj}" ] && [ "${_subj}" = "${_iss}" ] \
+      && [[ ",${_subj}," == *",O=Aegir,"* ]] && [[ ",${_subj}," == *",OU=Cloud,"* ]]; then
+      _built=$(printf '%s' "${_subj}" | sed -n 's/^\(.*,\)\{0,1\}CN=\*\.\([^,]*\).*/\2/p')
+      _built=${_built//[^a-zA-Z0-9.\-]/}
+    fi
+  fi
+  _former=" ${_OLD_HOST} "
+  if [ -n "${_built}" ] && [ "${_built}" != "${_NEW_HOST}" ]; then
+    _former="${_former}${_built} "
+  fi
+  if [ -n "${_built}" ] && [ "${_built}" != "${_NEW_HOST}" ]; then
+    _info "  fallback certificate: CN=*.${_built} -> CN=*.${_NEW_HOST} (same key)"
+    if [ "${_DRY_RUN}" = "YES" ]; then
+      echo "DRY:  openssl req -x509 -new -key ${_key} -subj .../CN=*.${_NEW_HOST} -out ${_crt}"
+      _HOST_NAMES_DONE="${_HOST_NAMES_DONE} fallback-certificate"
+    else
+      mkdir -p "${_BACKUP_DIR}"
+      cp -a "${_crt}" "${_BACKUP_DIR}/nginx-wild-ssl.crt_${_ts}"
+      _tmp="${_crt}.rename.$$"
+      if openssl req -x509 -nodes -sha256 -days 7300 -new -key "${_key}" \
+          -subj "/C=US/ST=New York/O=Aegir/OU=Cloud/L=New York/CN=*.${_NEW_HOST}" \
+          -out "${_tmp}" -batch 2> /dev/null && [ -s "${_tmp}" ]; then
+        chown --reference="${_crt}" "${_tmp}"
+        chmod --reference="${_crt}" "${_tmp}"
+        mv -f "${_tmp}" "${_crt}"
+        _HOST_NAMES_DONE="${_HOST_NAMES_DONE} fallback-certificate"
+      else
+        rm -f "${_tmp}"
+        _alrt "§5b could not re-issue ${_crt} for *.${_NEW_HOST} -- left as it was"
+        _HOST_NAMES_DONE="${_HOST_NAMES_DONE} fallback-certificate(FAILED)"
+      fi
+    fi
+  fi
+  if command -v postconf > /dev/null 2>&1 && [ -e "/etc/postfix/main.cf" ]; then
+    # Never through _maybe_run: its eval would expand the $myhostname-style
+    # references a postfix value carries.
+    _cur=$(postconf -h myhostname 2>/dev/null)
+    if [ -n "${_cur}" ] && [[ "${_former}" == *" ${_cur} "* ]]; then
+      _info "  postfix myhostname: ${_cur} -> ${_NEW_HOST}"
+      if [ "${_DRY_RUN}" = "YES" ]; then
+        echo "DRY:  postconf -e 'myhostname = ${_NEW_HOST}'"
+      else
+        postconf -e "myhostname = ${_NEW_HOST}"
+      fi
+      _HOST_NAMES_DONE="${_HOST_NAMES_DONE} postfix-myhostname"
+    fi
+    # mydestination: a token that is a former name becomes the new name, or
+    # goes when the new name is already listed; every other token is kept,
+    # and a value naming no former name is never rewritten.
+    _val=$(postconf -h mydestination 2>/dev/null)
+    _toks=()
+    IFS=', ' read -r -a _toks <<< "${_val}"
+    _hit=NO
+    _seen=NO
+    for _tok in "${_toks[@]}"; do
+      [ "${_tok}" = "${_NEW_HOST}" ] && _seen=YES
+      [ -n "${_tok}" ] && [[ "${_former}" == *" ${_tok} "* ]] && _hit=YES
+    done
+    if [ "${_hit}" = "YES" ]; then
+      _new=""
+      for _tok in "${_toks[@]}"; do
+        if [ -n "${_tok}" ] && [[ "${_former}" == *" ${_tok} "* ]]; then
+          [ "${_seen}" = "YES" ] && continue
+          _tok="${_NEW_HOST}"
+          _seen=YES
+        fi
+        _new="${_new:+${_new}, }${_tok}"
+      done
+      _info "  postfix mydestination: ${_val} -> ${_new}"
+      if [ "${_DRY_RUN}" = "YES" ]; then
+        echo "DRY:  postconf -e 'mydestination = ${_new}'"
+      else
+        postconf -e "mydestination = ${_new}"
+      fi
+      _HOST_NAMES_DONE="${_HOST_NAMES_DONE} postfix-mydestination"
+    fi
+    if [ "${_DRY_RUN}" != "YES" ] && [[ "${_HOST_NAMES_DONE}" == *postfix* ]] \
+      && postfix status > /dev/null 2>&1; then
+      postfix reload > /dev/null 2>&1
+    fi
+  fi
+  if [ -s "/etc/mailname" ]; then
+    _cur=$(head -n 1 /etc/mailname | tr -d '[:space:]')
+    if [ -n "${_cur}" ] && [[ "${_former}" == *" ${_cur} "* ]]; then
+      _info "  /etc/mailname: ${_cur} -> ${_NEW_HOST}"
+      _maybe_run "echo '${_NEW_HOST}' > /etc/mailname"
+      _HOST_NAMES_DONE="${_HOST_NAMES_DONE} mailname"
+    fi
+  fi
+  [ -n "${_HOST_NAMES_DONE}" ] || _info "  nothing names a former hostname"
+}
+
 _reload_nginx() {
   _info "§6 Reloading nginx ..."
   # Only a config that passes its own test is reloaded. A failed reload is
@@ -2957,6 +3126,9 @@ _print_summary() {
   if [ "${_SERVE_SKIPPED_N}" -gt 0 ] && [ "${_DRY_RUN}" != "YES" ]; then
     echo "  Not probed   : ${_SERVE_SKIPPED_N} site(s) -- suspended account, disabled placeholder or no vhost (see §9)"
   fi
+  if [ -n "${_HOST_NAMES_DONE}" ]; then
+    echo "  Host names   :${_HOST_NAMES_DONE}"
+  fi
   if [ "${_ACCT_AXIS}" = "YES" ]; then
     echo "  Old account  : ${_OLD_ACCT}"
     echo "  New account  : ${_NEW_ACCT}"
@@ -2983,6 +3155,7 @@ _rewrite_sites_php
 _rename_in_database
 _rename_account_on_disk
 _rename_account_in_database
+_rename_host_identity
 _reload_nginx
 _assert_site_dirs_converged
 _run_aegir_tasks
