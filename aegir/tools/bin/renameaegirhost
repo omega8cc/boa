@@ -64,11 +64,12 @@
 ###       changes, and (with --hex-blob) never reached blob values anyway.
 ###       A plain dump is still taken first, as a backup only.
 ###   §5b /var/aegir only: rename the host-level names written at install --
-###       postfix myhostname and a mydestination entry, /etc/mailname, and
-###       BOA's self-signed fallback certificate (re-issued on its own key) --
-###       when they carry one of the box's former names: the old hostname, or
-###       the name that certificate was issued for. Anything else is left
-###       alone.
+###       postfix myhostname and the mydestination entries naming the box (its
+###       fqdn and the localhost.<zone> token written beside it), /etc/mailname,
+###       and BOA's self-signed fallback certificate (re-issued on its own key)
+###       -- when they carry one of the box's former names: the old hostname, or
+###       the name that certificate was issued for; the localhost token moves
+###       when its zone is a former name's. Anything else is left alone.
 ###   §6  Reload nginx
 ###   §9  Confirm every site carrying the new hostname actually serves
 ###       before reporting success -- the dirs this run moved AND the ones
@@ -2718,8 +2719,10 @@ PHPEOF
 # renamed in place, cloned, or restored from an image went on introducing
 # itself by a former name in every mail it sent and on that certificate.
 # Master root only (the box's own name is the master's). A value is renamed
-# only when it is one of the box's former names: the old Aegir hostname, or
-# the name BOA's own fallback certificate was issued for -- an image restored
+# only when it is one of the box's former names -- the old Aegir hostname, or
+# the name BOA's own fallback certificate was issued for -- or, for the
+# localhost token mydestination carries beside the fqdn, when its zone is a
+# former name's: an image restored
 # and renamed by an older tool leaves postfix on its build-time name, which
 # only that certificate still records. A myhostname or a certificate set to
 # anything else is left alone.
@@ -2729,6 +2732,7 @@ _rename_host_identity() {
   local _crt=/etc/ssl/private/nginx-wild-ssl.crt
   local _key=/etc/ssl/private/nginx-wild-ssl.key
   local _subj _iss _built="" _former _cur _val _tok _new _seen _hit _tmp _ts
+  local _zones _lhnew _lhseen
   local -a _toks
   _ts=$(date +%Y%m%d_%H%M%S)
   _HOST_NAMES_DONE=""
@@ -2787,14 +2791,31 @@ _rename_host_identity() {
     # mydestination: a token that is a former name becomes the new name, or
     # goes when the new name is already listed; every other token is kept,
     # and a value naming no former name is never rewritten.
+    # The installer writes TWO tokens from the hostname of the day: the fqdn
+    # itself and "localhost.<its parent zone>". Renaming only the first left
+    # the box accepting mail for localhost in a zone it no longer has a name
+    # in -- measured on a renamed image, where the token still named the
+    # build zone. A localhost token is therefore rewritten by ZONE, and only
+    # when its zone is a former name's, so a hand-set token is left alone.
     _val=$(postconf -h mydestination 2>/dev/null)
     _toks=()
     IFS=', ' read -r -a _toks <<< "${_val}"
+    _zones=" "
+    for _tok in ${_former}; do
+      [ -n "${_tok}" ] && [[ "${_tok}" == *.* ]] && _zones="${_zones}${_tok#*.} "
+    done
+    _lhnew=""
+    [[ "${_NEW_HOST}" == *.* ]] && _lhnew="localhost.${_NEW_HOST#*.}"
     _hit=NO
     _seen=NO
+    _lhseen=NO
     for _tok in "${_toks[@]}"; do
       [ "${_tok}" = "${_NEW_HOST}" ] && _seen=YES
+      [ -n "${_lhnew}" ] && [ "${_tok}" = "${_lhnew}" ] && _lhseen=YES
       [ -n "${_tok}" ] && [[ "${_former}" == *" ${_tok} "* ]] && _hit=YES
+      [ -n "${_lhnew}" ] && [ "${_tok}" != "${_lhnew}" ] \
+        && [[ "${_tok}" == localhost.* ]] \
+        && [[ "${_zones}" == *" ${_tok#localhost.} "* ]] && _hit=YES
     done
     if [ "${_hit}" = "YES" ]; then
       _new=""
@@ -2803,6 +2824,12 @@ _rename_host_identity() {
           [ "${_seen}" = "YES" ] && continue
           _tok="${_NEW_HOST}"
           _seen=YES
+        elif [ -n "${_lhnew}" ] && [ "${_tok}" != "${_lhnew}" ] \
+          && [[ "${_tok}" == localhost.* ]] \
+          && [[ "${_zones}" == *" ${_tok#localhost.} "* ]]; then
+          [ "${_lhseen}" = "YES" ] && continue
+          _tok="${_lhnew}"
+          _lhseen=YES
         fi
         _new="${_new:+${_new}, }${_tok}"
       done
