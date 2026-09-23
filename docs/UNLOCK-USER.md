@@ -90,8 +90,9 @@ and restores the default protection.
   `sites/default/`) stay group-writable for your shell user, so a composer
   run can refresh its scaffold files there instead of stopping with
   `Failed to make the directory containing ... writable`.
-- **The nightly permission sweep still runs.** Directories `0775`, files
-  `0664`, hardened paths re-locked to `0400` — only the *ownership*
+- **The nightly permission sweep still runs.** Directories `0775` and files
+  `0664`, while `vendor/drush` and the two `symfony/console` directories
+  keep whatever mode the Drush lock state gave them — only the *ownership*
   direction follows `unlock.info`.
 - **Verify tasks always re-lock.** A platform Verify chowns code back to
   the backend user immediately, whatever the lock state; the nightly run
