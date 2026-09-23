@@ -413,6 +413,11 @@
       share the crawlers' entries, kept for an hour, and were shown the
       last good page while PHP was down.
 
+    * A site can keep one response out of the Speed Booster cache by
+      sending the X-Force-Nocache: YES header: that response is never
+      stored. The header was checked before the response existed, so
+      it never took effect.
+
     * A large site backup downloaded from the control panel in a browser
       no longer fails part way, however often it is retried. An Nginx
       reload hands the shared QUIC sockets to the new workers, so an
