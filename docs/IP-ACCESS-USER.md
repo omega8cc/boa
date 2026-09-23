@@ -38,7 +38,8 @@ SSH. You never need to add those yourself.
 ## When it takes effect
 
 Changes are picked up automatically within about **two minutes**. To open a site back up
-to everyone, delete its line — the restriction is removed on the next pass.
+to everyone, delete its line — the restriction is removed on the next pass. Deleting the
+whole file does **not** lift anything: remove the lines, or leave the file empty.
 
 ## Good to know
 

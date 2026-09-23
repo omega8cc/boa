@@ -36,7 +36,9 @@
 # 127.0.0.1, ::1, the server's own IPv4 and every live inbound SSH peer (v4 or v6)
 # are always allowed (anti-lockout), so an admin working over SSH can never be shut
 # out of /admin.  A site removed from the control file has both fragments pruned
-# (restriction lifted).
+# (restriction lifted).  A deleted control file changes nothing: the lists stay as
+# they are (a deletion does not travel to a mirror or a migration target, so it
+# could only ever lift one box); remove a site's line or empty the file to lift it.
 #
 # HTTPS for a site without its own certificate arrives through the wildcard SSL
 # front (nginx_wild_ssl.conf), which proxies to the site's :80 vhost, where the
@@ -225,7 +227,7 @@ _site_hosts() {
 }
 
 # name -> how many rendered vhost files on the box serve it; built by
-# _ensure_owners at most once per run.
+# _build_owners at most once per run.
 declare -A _host_owners=()
 _owners_built=""
 
@@ -234,7 +236,7 @@ _ensure_owners() {
   # takes copies and this context lists a site that has a vhost of its own.
   # Runs in the main shell, so the command substitutions after it inherit
   # the index. $1 = control file, $2 = the context's vhost.d dir.
-  local _line _s _need="" _n _h _v
+  local _line _s _need=""
   [[ -n "${_front_on}" && -z "${_owners_built}" ]] || return 0
   while IFS= read -r _line; do
     _line="${_line%%#*}"
@@ -247,6 +249,13 @@ _ensure_owners() {
     fi
   done < "$1"
   [[ -n "${_need}" ]] || return 0
+  _build_owners
+}
+
+_build_owners() {
+  # The box-wide index itself, at most once per run and in the main shell.
+  local _n _h _v
+  [[ -z "${_owners_built}" ]] || return 0
   _owners_built="yes"
   while read -r _n _h; do
     _host_owners["${_h}"]="${_n}"
@@ -285,6 +294,45 @@ _front_clear() {
   rm -f "$2"
   [[ -n "${_any}" ]] || return 0
   echo "Dropped the front copies of a skipped context: $1"
+  _nginx_held_down && return 0
+  service nginx configtest &> /dev/null && service nginx reload
+}
+
+_front_keep_valid() {
+  # A context whose control file is gone keeps its lists exactly as they are,
+  # over HTTP and HTTPS alike: a deletion never travels to a mirror or a
+  # migration target (static/control is copied additively), so lifting here
+  # would lift one box only and the lock would come back after a failover or
+  # cutover. To lift, remove a site's line or empty the file. Nothing here
+  # writes a new copy, so none is ever dropped either: each host map follows
+  # the names only its site's vhost serves, as the vhost fragments follow the
+  # vhost they are included in. A new alias is covered on HTTPS as on HTTP, a
+  # name that moved to another site leaves the map, and a site with no such
+  # name left keeps an empty map (inert) that a later run can fill again.
+  # $1 = front dir, $2 = the context's vhost.d dir, $3 = its front marker.
+  local _f _site _want _have _tmp _changed=""
+  for _f in "$1"/*.http.conf; do
+    [[ -e "${_f}" ]] || continue
+    _build_owners
+    _site=$(basename "${_f}" .http.conf)
+    _want=$(_front_hosts "$2/${_site}" | tr '\n' ' ')
+    _have=$(awk '/^map \$host /{p=1; next} p && /^}/{exit} p && $2 == "1;" {print $1}' "${_f}" \
+      | sort | tr '\n' ' ')
+    [[ "${_want}" == "${_have}" ]] && continue
+    _tmp="$1/.${_site}.http.tmp.$$"
+    if awk -v want="${_want}" '
+        /^map \$host / { print; p = 1; next }
+        p && /^}/ { n = split(want, w, " "); for (i = 1; i <= n; i++) print "  " w[i] " 1;"; p = 0; print; next }
+        p && $2 == "1;" { next }
+        { print }' "${_f}" > "${_tmp}" && mv -f "${_tmp}" "${_f}"; then
+      _changed="yes"
+      echo "The front copy of ${_site} now claims: ${_want:-no name}"
+    else
+      rm -f "${_tmp}"
+    fi
+  done
+  [[ -n "${_changed}" ]] || return 0
+  rm -f "$3"
   _nginx_held_down && return 0
   service nginx configtest &> /dev/null && service nginx reload
 }
@@ -411,7 +459,7 @@ _process_instance() {
   local _front_file="${_srv_path}/.ua_front_hash"
 
   if [[ ! -f "${_input_file}" ]]; then
-    _front_clear "${_front_path}" "${_front_file}"
+    _front_keep_valid "${_front_path}" "${_vhost_dir}" "${_front_file}"
     return 0
   fi
   [[ -d "${_root}/config/includes" ]] || return 0
