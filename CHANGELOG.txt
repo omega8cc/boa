@@ -462,6 +462,13 @@
 
 @=> Important Fixes
 
+    * A site served over HTTPS without a certificate of its own now stays
+      on HTTPS through the web server's own redirects: the clean-URL
+      redirect from /index.php/..., an alias redirected to the main name
+      and the old name of a site renamed by a move. They used to send the
+      visitor to http://. Custom rewrites get the same result with the
+      $boa_visitor_scheme variable, as the examples in REWRITES.md now do.
+
     * A Drupal 10+ site no longer fails after its platform is locked again
       following work with the site-local Drush. Re-locking a platform the
       Unlock Local Drush task left open, by the Lock Local Drush task or a
