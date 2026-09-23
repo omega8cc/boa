@@ -1314,13 +1314,156 @@ _nginx_ssl_proxy_local_refusal() {
     return 0
   fi
   for _p in "${_preD}"/*ssl_proxy.conf; do
-    [ -f "${_p}" ] || continue
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
     grep -q boa_panel_local "${_p}" && continue
     grep -q "^  log_not_found " "${_p}" || continue
     cp -af "${_p}" "${_bak}/" || continue
     awk -v blk="${_bak}/.block" '{ print }
       !d && /^  log_not_found / { while ((getline _l < blk) > 0) print _l; d = 1 }' \
       "${_bak}/${_p##*/}" > "${_p}"
+    _any="yes"
+  done
+  if [ -n "${_any}" ] && ! nginx -t > /dev/null 2>&1; then
+    for _p in "${_bak}"/*ssl_proxy.conf; do
+      [ -f "${_p}" ] && cat "${_p}" > "${_preD}/${_p##*/}"
+    done
+  fi
+  rm -rf "${_bak}"
+}
+
+_nginx_ssl_proxy_panel_lock() {
+  ### The vhost behind every HTTPS proxy in pre.d applies the IDS bans and
+  ### its site's IP lists to the proxy's own address, which the lists always
+  ### admit and no ban names, so a proxy written before the template judged
+  ### the real visitor lets anyone into a locked control panel. It gets the
+  ### template's lines, taken from this pass's build tree, for the account in
+  ### its header and the domain in its file name; a proxy for a moved account
+  ### (server_name _) gets the ban only, as ssl-gen writes it there. A file
+  ### without its anchors or with an unexpected account or domain is left
+  ### alone, and every insert is undone when the config no longer tests clean.
+  local _src="${_bldPth}/aegir/tools/system/conf/ssl_proxy.conf"
+  local _preD="/var/aegir/config/server_master/nginx/pre.d"
+  local _bak _p _n _dom _oct _any=""
+  grep -q boa_panel_lock "${_src}" 2>/dev/null || return 0
+  _bak=$(mktemp -d /var/backups/.boa-ssl-lock.XXXXXX 2>/dev/null) || return 0
+  awk '/### IDS bans and the IP lists of the site behind this proxy/ { p = 1; print "  ###" }
+    p && NF { print }
+    p && /includes\/user_admin_access\/_domain_name/ { exit }' "${_src}" > "${_bak}/.block"
+  awk '/^### The variables of the \/user \+ \/admin list/ { p = 1 }
+    p { print }
+    p && /^include / { exit }' "${_src}" > "${_bak}/.map"
+  if ! grep -q "return 444;" "${_bak}/.block" \
+    || ! grep -q "includes/ip_access/_domain_name" "${_bak}/.block" \
+    || ! grep -q "includes/user_admin_access/_domain_name" "${_bak}/.block" \
+    || ! grep -q "^include .*/user_admin_access_map/_domain_name" "${_bak}/.map"; then
+    rm -rf "${_bak}"
+    return 0
+  fi
+  for _p in "${_preD}"/*ssl_proxy.conf; do
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
+    grep -q boa_panel_lock "${_p}" && continue
+    grep -q "^  log_not_found " "${_p}" || continue
+    grep -q "^server {" "${_p}" || continue
+    _n=${_p##*/}
+    _dom=${_n#z_}
+    _dom=${_dom%_ssl_proxy.conf}
+    _oct=$(awk '/^### Secure HTTPS proxy \(START\) / { print $6; exit }' "${_p}")
+    [[ "${_dom}" =~ ^[a-z0-9][a-z0-9.-]*$ ]] || continue
+    [[ "${_oct}" =~ ^[a-z][a-z0-9_-]*$ ]] || continue
+    cp -af "${_p}" "${_bak}/" || continue
+    if [ "$(awk '$1 == "server_name" { print $2; exit }' "${_p}")" = "_;" ]; then
+      grep -v "^ *include " "${_bak}/.block" > "${_bak}/.use"
+      grep -v "^include " "${_bak}/.map" > "${_bak}/.usemap"
+    else
+      sed -e "s/_oct_uid/${_oct}/g" -e "s/_domain_name/${_dom}/g" \
+        "${_bak}/.block" > "${_bak}/.use"
+      sed -e "s/_oct_uid/${_oct}/g" -e "s/_domain_name/${_dom}/g" \
+        "${_bak}/.map" > "${_bak}/.usemap"
+    fi
+    awk -v blk="${_bak}/.use" -v map="${_bak}/.usemap" '
+      !m && /^server [{]/ { while ((getline _l < map) > 0) print _l; m = 1 }
+      { print }
+      !d && /^  log_not_found / { while ((getline _l < blk) > 0) print _l; d = 1 }' \
+      "${_bak}/${_n}" > "${_p}"
+    _any="yes"
+  done
+  ### One domain's lists never belong in a catch-all proxy: ssl-gen drops
+  ### them there, but an older xoct or xcopy run against this template
+  ### leaves them in, marker and all, which the loop above then skips.
+  for _p in "${_preD}"/*ssl_proxy.conf; do
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
+    [ "$(awk '$1 == "server_name" { print $2; exit }' "${_p}")" = "_;" ] || continue
+    grep -q "^ *include /data/disk/.*/includes/\(ip_access\|user_admin_access\|user_admin_access_map\)/" "${_p}" || continue
+    _n=${_p##*/}
+    [ -e "${_bak}/${_n}" ] || cp -af "${_p}" "${_bak}/" || continue
+    sed "/^ *include \/data\/disk\/.*\/includes\/\(ip_access\|user_admin_access\|user_admin_access_map\)\//d" \
+      "${_p}" > "${_bak}/.strip" || continue
+    cat "${_bak}/.strip" > "${_p}"
+    _any="yes"
+  done
+  if [ -n "${_any}" ] && ! nginx -t > /dev/null 2>&1; then
+    for _p in "${_bak}"/*ssl_proxy.conf; do
+      [ -f "${_p}" ] && cat "${_p}" > "${_preD}/${_p##*/}"
+    done
+  fi
+  rm -rf "${_bak}"
+}
+
+_nginx_ssl_proxy_extra_names() {
+  ### A control panel's extra names (log/extra_domain.txt) belong to its own
+  ### HTTPS proxy. An older ssl-gen gave them to every per-site proxy of a
+  ### run too, and nginx keeps whichever proxy in pre.d sorts first, so a
+  ### site's proxy could answer for a locked panel from the box's own
+  ### address. Drop a panel's extra names from every server_name in pre.d
+  ### whose file is not a panel listing them, keeping each file's own name
+  ### and its www. alias. Names compare as nginx does, without case; every
+  ### change is undone when the config no longer tests clean. edgetest
+  ### reports the same names with the same awk.
+  local _preD="/var/aegir/config/server_master/nginx/pre.d"
+  local _map="" _x _hm _e _bak _p _n _dom _any=""
+  for _x in /data/disk/*/log/extra_domain.txt; do
+    [ -f "${_x}" ] || continue
+    _hm=$(head -c 256 "${_x%/extra_domain.txt}/domain.txt" 2>/dev/null | tr -d '\r\n' | tr 'A-Z' 'a-z')
+    [[ "${_hm}" =~ ^[a-z0-9][a-z0-9.-]*$ ]] && [ "${#_hm}" -le 253 ] || continue
+    while IFS= read -r _e || [ -n "${_e}" ]; do
+      [[ "${_e}" =~ ^[a-z0-9*][a-z0-9.*-]*$ ]] && [ "${#_e}" -le 253 ] \
+        && _map="${_map} ${_e}=${_hm}"
+    done < <(head -c 65536 "${_x}" 2>/dev/null | tr -s ' \t\r' '\n' | tr 'A-Z' 'a-z')
+  done
+  [ -n "${_map}" ] || return 0
+  _bak=$(mktemp -d /var/backups/.boa-ssl-names.XXXXXX 2>/dev/null) || return 0
+  for _p in "${_preD}"/*ssl_proxy.conf; do
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
+    _n=${_p##*/}
+    _dom=${_n#z_}
+    _dom=${_dom%_ssl_proxy.conf}
+    awk -v map="${_map}" -v dom="${_dom}" '
+      BEGIN {
+        dom = tolower(dom)
+        n = split(map, a, " ")
+        for (i = 1; i <= n; i++) {
+          k = a[i]; v = a[i]; sub(/=.*/, "", k); sub(/^[^=]*=/, "", v)
+          own[k] = (k in own) ? own[k] " " v : v
+        }
+      }
+      !d && $1 == "server_name" && $2 != "_;" {
+        d = 1; out = ""; drop = 0
+        l = $0; gsub("\r", " ", l); nf = split(l, f)
+        for (i = 2; i <= nf; i++) {
+          t = f[i]; sub(/;$/, "", t); lt = tolower(t)
+          if (t == "") continue
+          if (i > 2 && lt != "www." dom && (lt in own) &&
+            index(" " own[lt] " ", " " dom " ") == 0) { drop = 1; continue }
+          out = out " " t
+        }
+        if (drop && match($0, /^[ \t]*server_name[ \t]+/)) {
+          print substr($0, 1, RLENGTH) substr(out, 2) ";"; next
+        }
+      }
+      { print }' "${_p}" > "${_bak}/.names" || continue
+    cmp -s "${_bak}/.names" "${_p}" && continue
+    cp -af "${_p}" "${_bak}/" || continue
+    cat "${_bak}/.names" > "${_p}"
     _any="yes"
   done
   if [ -n "${_any}" ] && ! nginx -t > /dev/null 2>&1; then
@@ -1472,6 +1615,8 @@ _nginx_config_update_fix() {
       sed -i "s/add_header Vary .*//g" /var/aegir/config/server_*/nginx.conf &> /dev/null
       wait
       _nginx_ssl_proxy_local_refusal
+      _nginx_ssl_proxy_panel_lock
+      _nginx_ssl_proxy_extra_names
       _nginx_migration_proxy_client
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
