@@ -72,7 +72,7 @@ manual cleanup.
 | Crawler-fleet detector | `aegir/tools/system/nginx_fleet.sh` | Declare fleet fingerprints from `access.log`, render the `$boa_fleet_*` map fragments → reload; refuses with `429`, never touches CSF |
 
 The nginx-template files live in the `provision` codebase under
-`http/Provision/Config/Nginx/`; the scripts live in `boa-private`. On a box, the scripts
+`http/Provision/Config/Nginx/`; the scripts live in `boa`. On a box, the scripts
 are deployed under `/var/xdrago/`.
 
 ## Part 1 — the scan_nginx scoring engine

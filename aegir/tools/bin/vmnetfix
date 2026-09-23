@@ -36,9 +36,10 @@ _DEF_WAS_DHCP="NO"
 # Persisted gateway hint. Required on routed blocks (e.g. Cherry /28 public IPs)
 # where the real gateway is OUTSIDE the interface subnet and none of the
 # auto-detection methods can find it — the last-resort base+1 guess there yields
-# the guest's OWN address. vmnetfix reads this first and auto-saves a good live
-# gateway into it, so networking survives transient route loss during the
-# systemd->sysvinit / interface-rename conversion.
+# the guest's OWN address. vmnetfix falls back to it when no valid live default
+# route exists, and auto-saves a good live gateway into it, so networking
+# survives transient route loss during the systemd->sysvinit / interface-rename
+# conversion.
 _GW_HINT_FILE="/root/.net_gateway.cnf"
 
 # ----------------------------- Core helpers -----------------------------------

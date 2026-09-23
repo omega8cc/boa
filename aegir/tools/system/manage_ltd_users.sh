@@ -967,7 +967,7 @@ _disable_chattr() {
   fi
 }
 #
-# Platform-level developer account (Adam, 2026-09-07). One extra account per
+# Platform-level developer account (2026-09-07 ruling). One extra account per
 # client named in _LTD_PLATFORM_CLIENTS (root-owned /root/.<oN>.octopus.cnf,
 # never a tenant file), granted only the platforms where EVERY site is that
 # client's. It is an ordinary sub-account in every other respect (creation,

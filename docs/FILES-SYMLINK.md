@@ -830,9 +830,7 @@ shows the `[native-symlink] …` line for install, clone and migrate/rename.
 2. The task log shows `DELETE/STORE/ARCHIVE` then `DELETE/STORE/ARCHIVED`
    (`DELETE/STORE/NONE` for a site that never had a store; a `DELETE/STORE/LEFT`
    warning names a store the wrapper declined, with the reason in
-   `autosymlink.log`). The boa-testing round
-   `tier2/scripts/site-delete-leftovers-round.sh <acct> <platform context>` runs
-   exactly this and asserts every line.
+   `autosymlink.log`).
 
 ### Reused site name (stale-store archiving)
 

@@ -35,6 +35,13 @@
 
 @=> Security
 
+    * The Speed Booster debug headers on Drupal and Backdrop sites now
+      say only whether a request carried a session cookie or an
+      Authorization header (X-Speed-Cache-UID: Session and
+      X-Debug-NoCache-Auth: Present). They used to repeat the values,
+      which a page script could read even where the session cookie is
+      HttpOnly. Cache keys and bypass rules are unchanged.
+
     * New crawler-fleet refusal: a distributed crawl that shares one
       exact user agent against one site is refused by the web server
       with 429, on by default on every box, in both of its scopes.

@@ -1282,7 +1282,7 @@ _run_one() {
     ### Stage A as a first-class operator step. Without it the reversible
     ### state existed only for the microseconds between stage A's last
     ### statement and stage B's first, so `restore` could never be used
-    ### deliberately -- the gap the first xtrim leg exposed and Adam ruled
+    ### deliberately -- the gap the first xtrim leg exposed and a ruling set out
     ### to close.
     case "${_phase}" in
       stage-b-started)
