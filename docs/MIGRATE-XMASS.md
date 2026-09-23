@@ -476,6 +476,9 @@ today) a travelled inbound record can never outrank the operator's explicit
 
 `--proxy-deadline` sets the box-default deadline the temporary/permanent mail
 blocks quote; it accepts an absolute date or `+Nd` and refuses past dates.
+An account whose record holds a date of its own, or an explicit
+`xoct proxy-mode oN <mode> --no-deadline`, keeps that instead; the printed
+per-account modes mark the second as `(no deadline)`.
 `--permanent-proxy` remains a deprecated alias for `--proxy-mode=permanent`.
 
 `init` prints each account's resolved mode and names any account that would
