@@ -270,10 +270,11 @@
       would never fetch it again.
     * staticbuild prints one row per platform: whether it built, the
       advisories left and fixed, what happened on the mirror and a
-      short note, with the command to run for anything refused and the
-      log lines for anything failed. Composer and tar output, advisory
-      ids and lock hashes go to a per-run log under
-      /var/backups/reports/staticbuild; --debug streams them instead.
+      note only where something needs attention, with the command to
+      run for anything refused and the log lines for anything failed.
+      Composer and tar output, advisory ids and lock hashes go to a
+      per-run log under /var/backups/reports/staticbuild; --debug
+      streams them instead.
     * The Drupal CMS, Opigno and Open Social catalogue platforms are
       built without their require-dev packages, like the others.
 

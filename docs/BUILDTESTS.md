@@ -42,11 +42,12 @@ what it does.
 Options precede the action: `-d MM-DD`, `-u USER`, `-f`, `-C`, `-O` (with `distribute`
 only), and `--debug`. By default `build`, `package`, `distribute`, `all` and the family
 actions print a header naming the run's log and then **one row per platform** (build
-result, advisories left and fixed, what happened on the mirror, a note), plus a footer
-for anything refused or failed with the command or the log lines to act on. Composer,
-git and tar output, every advisory id and the lock hashes go to the log under
-`/var/backups/reports/staticbuild/<user>/<MM-DD>/` (root only); `--debug` streams them
-instead.
+result, advisories left and fixed, what happened on the mirror, and a two- or
+three-word note only when the row needs attention, such as `lock changed` or `patch
+skipped`), plus a footer with the command for refused tarballs and the end of a failed
+build's log. Composer, git and tar output, every advisory id and the lock hashes go to
+the log under `/var/backups/reports/staticbuild/<user>/<MM-DD>/` (root only); `--debug`
+streams them instead.
 
 The two pinned catalogue platforms, `ezcontent` (EZC) and `commerce_base` (CK2), are
 build targets too: with no upstream recipe left, each starts from its own published
@@ -79,10 +80,9 @@ Instead each build applies what fixes it can, and what shipped is recorded, twic
   --locked`, never fatal) and the report is written beside its tarball as
   `~/static/MONTH-DAY/<platform>.advisories`: the count, one line per finding (id,
   package, locked version, CVE, link), a closing line on require-dev, and what the fix
-  step moved and could not move, with the reason. The summary row shows the count left,
-  how many the build fixed and the packages still affected. An audit that cannot run
-  (no lock, an advisory source unreachable) is reported the same way and loudly, and
-  the build still succeeds.
+  step moved and could not move, with the reason. The summary row shows the count left
+  and how many the build fixed. An audit that cannot run (no lock, an advisory source
+  unreachable) marks the row `audit failed`, and the build still succeeds.
 - **On the published set.** `staticbuild advisories [tree ...]` reads every catalogue
   entry of each published tree: the distributions (the list `staticbuild catalogue`
   checks, fetched from `distro/`) and the Drupal 9, 10 and 11 core platforms
