@@ -739,28 +739,51 @@ _master_fix_multi_ip_cron_access() {
     | tr -d "\s"`;do echo "  allow        ${_IP};" >> \
       /root/.local.IP.list.allow;done
   echo "  allow 127.0.0.1;" >> /root/.local.IP.list.allow
-  echo "  deny all;" >> /root/.local.IP.list.allow
-
-  sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${_mtrTpl}/Inc/vhost_include.tpl.php
-  wait
-  sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${_mtrTpl}/Inc/vhost_include.tpl.php
-  wait
-
-  sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${_mtrTpl}/subdir.tpl.php
-  wait
-  sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${_mtrTpl}/subdir.tpl.php
-  wait
-
-  sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${_mtrInc}/nginx_vhost_common.conf
-  wait
-  sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${_mtrInc}/nginx_vhost_common.conf
-  wait
+  ###
+  ### Only the locations kept for the box itself (FPM status and ping, the
+  ### cron entry points) take the box's other addresses: they are the ones
+  ### that allow 127.0.0.1. A location that denies everyone (backup_migrate
+  ### files, config sync dirs) stays closed to the box as well, or every proxy
+  ### that connects from it (the wildcard SSL front, an HTTPS proxy in pre.d)
+  ### would serve those files to any visitor. Each pass first drops the lines
+  ### it added before, in its own padded format, and any allow line inside
+  ### those two locations, so a file expanded by an older pass heals too. The
+  ### rendered subdir vhosts were copied from the template, so they get the
+  ### same treatment. These dirs belong to the aegir user, so a symlink is
+  ### skipped, the new text is staged in a root-only dir, and sed -i writes a
+  ### new file and renames it over the path, never through it. mawk has no
+  ### {n} repetition and before 1.3.4 no [:class:] sets: both are spelled out.
+  ###
+  local _f _d _t
+  _d=$(mktemp -d /var/backups/.boa-multi-ip.XXXXXX 2>/dev/null) || return 0
+  _t="${_d}/stage"
+  for _f in ${_mtrTpl}/Inc/vhost_include.tpl.php \
+    ${_mtrTpl}/subdir.tpl.php \
+    ${_mtrInc}/nginx_vhost_common.conf \
+    /var/aegir/config/server_master/nginx/subdir.d/*/*.conf; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    awk -v list="/root/.local.IP.list.allow" '
+      BEGIN { while ((getline _l < list) > 0) _ips[++_n] = _l }
+      /^[ \t]*location[ \t].*files\/(backup_migrate\/|config_)/ { _closed = 1; _depth = 0 }
+      {
+        _o = gsub(/\{/, "{"); _c = gsub(/\}/, "}")
+        if (_closed) _depth += _o - _c
+        _drop = 0
+        if ($0 ~ /^[ \t]*allow        [^ ;]+;[ \t\r]*$/) _drop = 1
+        else if (_closed && $0 ~ /^[ \t]*allow[ \t]/) _drop = 1
+        else if ($0 ~ /^[ \t]*allow 127\.0\.0\.1;[ \t\r]*$/) {
+          match($0, /^[ \t]*/); _ind = substr($0, 1, RLENGTH)
+          for (_i = 1; _i <= _n; _i++) { _s = _ips[_i]; sub(/^[ \t]*/, _ind, _s); print _s }
+          _drop = 1
+        }
+        if (!_drop) print
+        if (_closed && _depth <= 0 && (_o || _c)) _closed = 0
+      }' "${_f}" > "${_t}"
+    if [ -s "${_t}" ] && [ -s "${_f}" ] && ! cmp -s "${_t}" "${_f}"; then
+      sed -i -e "1r ${_t}" -e d "${_f}"
+    fi
+  done
+  rm -rf "${_d}"
 }
 
 _nginx_initd_check() {

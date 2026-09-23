@@ -130,6 +130,15 @@
       an octopus pass regenerates a panel proxy that still lacks it,
       taking the template from its own build tree when barracuda has
       not refreshed it yet.
+    * The locations that deny everyone in the Drupal vhosts (files
+      under a site's public backup_migrate/ and config_* dirs) stay
+      closed to the box itself too. The multi-IP cron access used to
+      give every deny all the box's own addresses, which any proxy
+      connecting from the box then passed on to its visitors. It now
+      extends only the locations kept for the box (the FPM status and
+      ping, the cron entry points), and every barracuda and octopus
+      pass closes the other two again in the vhost templates, the
+      rendered common include and the rendered subdir vhosts.
     * A deleted ip_access or user_admin_access control file of an
       Octopus instance changes nothing any more, over HTTP or HTTPS.
       Its site-vhost fragments had always stayed in force, while the
