@@ -2,7 +2,9 @@
 
 The Abuse Guard is BOA's application-layer defence for the web tier — the net that
 sits between the firewall and PHP-FPM and keeps scanners, brute-forcers and
-distributed search-amplification botnets off your backend. It has two halves that
+distributed search-amplification botnets off your backend.
+
+It has two halves that
 work on different clocks: a wall of real-time nginx `map`/`geo` guards that drop or
 downgrade a hostile request before it costs anything, and a post-hoc log scorer
 (`scan_nginx.sh`) that reads recent `access.log` lines, scores each real client, and
@@ -274,12 +276,15 @@ UA — which is why the exemption gate runs at loop scope and covers this detect
 **Window and tuning (revised after a real over-ban incident).** Every threshold here is measured
 against a short window: `nginx_guard.sh` runs `scan_nginx.sh` about every 5 s and
 byte-offset tracking means each run scores only the lines appended since the previous run.
+
 The original defaults (20 IPs / 200 reqs / 3-request block) sat far below real traffic for
 that window — on a high-traffic public site the single most common mobile-browser UA string
 is shared by far more than 20 distinct IPs (and 200 requests) every 5 s, so the detector
 flagged a legitimate popular browser and banned every visitor making ≥ 3 requests under it.
 Search sessions were hit hardest because one search fires several requests under one UA
-(results page + per-keystroke autocomplete + AJAX views + result clicks). A genuine
+(results page + per-keystroke autocomplete + AJAX views + result clicks).
+
+A genuine
 distributed botnet *randomises* its UA per IP, so a single UA shared by many IPs is the
 signature of a real browser, not a bot. The defaults are now 100 IPs / 1000 reqs /
 20-request block; genuinely abusive single IPs are still caught by Detector 1 (per-IP
@@ -306,7 +311,9 @@ guards already `444` are still caught and reported in aggregate). The per-IP **l
 cost a Solr / PHP-FPM cycle. An IP whose hits to the watched prefix were all `444` is
 already free-blocked by nginx at zero backend cost, so it is **not** individually banned: a
 `csf -td` on it would be redundant, would bloat `web.log` during distributed `444` floods,
-and risks false-positiving CGNAT / shared-egress clients. A `200` slower than
+and risks false-positiving CGNAT / shared-egress clients.
+
+A `200` slower than
 `_NGINX_PATH_FLOOD_SLOW_SECS` earns an extra per-IP increment. Watched prefixes come from
 `_NGINX_PATH_FLOOD_WATCH` (Solr / Search-API / facet endpoints by default); this detector
 was built for search-amplification attacks that bypass simple `444` rules by adding a
@@ -317,7 +324,9 @@ Referer.
 A credential / registration-spam botnet POSTs scam payloads to the Drupal auth paths
 (`/user/register`, `/user/password`) over **HTTP/1.0** while forging a modern-browser
 User-Agent. HTTP/1.0 is the clean transport-layer tell: no browser built in ~15 years speaks
-HTTP/1.0 to a public HTTPS host, so HTTP/1.0 to an auth path is never a real visitor. The bot
+HTTP/1.0 to a public HTTPS host, so HTTP/1.0 to an auth path is never a real visitor.
+
+The bot
 paces **one slow request per IP** from a small CIDR block (a `/29` was the reference case),
 which defeats Detectors 1–3 at once — the per-IP scorer never reaches its raw-request floor
 inside a window, the shared-UA aggregate needs ~100 IPs, and the path-flood watch list is
@@ -329,7 +338,9 @@ the source before nginx.
 and whose URI matches `_NGINX_HTTP10_AUTH_PATHS`. Both the protocol and the URI are read from
 the `"$request"` log field via the same positional, traversal-rejecting parse as the
 exemption gate, so a token smuggled into a User-Agent, Referer or query string can never fake
-either signal. After the loop the per-IP tallies merge into a sliding window that **spans
+either signal.
+
+After the loop the per-IP tallies merge into a sliding window that **spans
 runs** (a small state file at `/var/xdrago/monitor/log/http10_auth.window`, pruned each tick,
 exactly like the i18n window) — necessary because the bot is far too slow to accumulate
 inside one ~5 s scan window. `_handle_http10_auth_flood` then bans a **seen** IP once either:
@@ -350,7 +361,9 @@ The detector is **on by default**, opt-out per box (`_NGINX_HTTP10_AUTH_DETECT=N
 per-line tally is skipped entirely when off. One caveat drives that opt-out: `$server_protocol`
 is the protocol on the connection to **this** nginx, not the realip-recovered client's, so a
 reverse proxy that forwards to origin over HTTP/1.0 would make all proxied traffic look like
-HTTP/1.0 here. BOA's own proxy layer (the migration / PX0 `*_proxy.conf` and the wildcard-SSL
+HTTP/1.0 here.
+
+BOA's own proxy layer (the migration / PX0 `*_proxy.conf` and the wildcard-SSL
 `nginx_wild_ssl.conf`) sets `proxy_http_version 1.1`, so a correctly-updated BOA front proxy
 no longer downgrades and real visitors stay HTTP/1.1 / HTTP/2 at origin. **Opt out** only on a
 box still fronted by a non-BOA proxy or CDN that talks HTTP/1.0 to origin, or not yet updated
@@ -363,7 +376,9 @@ A distributed scanner fleet spreads a probe sweep across many IPs at a few reque
 sharing one exact User-Agent, and hits mostly nonexistent paths — so its traffic is
 overwhelmingly `3xx`/`4xx`. That defeats Detectors 1–4 at once: no single IP reaches the
 per-IP floor, the shared-UA DDoS aggregate needs ~100 IPs, the path-flood watch list is
-Solr/search-only, and the fleet is HTTP/1.1 to non-auth paths. `_track_ua_burst` builds, per
+Solr/search-only, and the fleet is HTTP/1.1 to non-auth paths.
+
+`_track_ua_burst` builds, per
 exact UA, the distinct-IP set, the total request count, and a **bad-status** count — and it
 is fed **every** line **including `301` redirects** (the redirect-heavy probe traffic the
 `301`-excluding scorers miss). "Bad" is the status set a real browsing session does not
@@ -388,7 +403,9 @@ many legitimate IPs is ~all `200`/`304`, so it never crosses the 80 % gate — w
 IP threshold can sit far below Detector 2's without re-introducing the observed
 popular-browser over-ban. When a fleet is declared, only IPs that **themselves** sent at least
 `_NGINX_UA_BURST_IP_MIN_BAD` (default **3**) bad probes under that UA are blocked; a real
-visitor sharing the UA sent `200`s (zero bad) and is never caught. UAs of 10 characters or
+visitor sharing the UA sent `200`s (zero bad) and is never caught.
+
+UAs of 10 characters or
 fewer are ignored. The ban reuses the same whitelist / logged-in / local-IP / already-banned
 guards and feeds the same `guest-fire` → `guest-water` pipeline as every other detector. The
 detector is **on by default**, opt-out per box (`_NGINX_UA_BURST_DETECT=NO`); the per-line
@@ -400,7 +417,9 @@ confirmed real report.
 The request guards in **Part 3** answer a **cold** `GET` to an interactive-only Drupal path
 — a Flag toggle, a HybridAuth login window — with a **static 404**: a real interaction
 carries a same-origin Referer (and, on the HybridAuth path, a session cookie), so the 404
-is a per-request bot verdict computed by nginx at zero backend cost. The traffic class
+is a per-request bot verdict computed by nginx at zero backend cost.
+
+The traffic class
 behind those guards is a distributed residential-proxy scraper botnet: thousands of IPs at
 a **median of one request each**, IP pools that rotate almost completely day to day,
 verbatim real-browser User-Agents rotated per request, and a status mix (`200`/`302`) the
@@ -415,7 +434,9 @@ User-Agent not on the crawler exempt list, and a query-stripped URI matching
 `_NGINX_GUARD404_PATHS`. Every field is read positionally from the log line's quoted fields
 with the same traversal-rejecting, smuggle-proof parse as Detector 4. The Referer test is
 load-bearing: without it the tally would also count Drupal's own not-found on the same
-paths, and every real visitor who reaches one. Tallies merge into a cross-run sliding
+paths, and every real visitor who reaches one.
+
+Tallies merge into a cross-run sliding
 window (`/var/xdrago/monitor/log/guard404.window`, pruned each tick, the Detector 4 shape).
 The URI is compared **as logged** — the raw request target — while nginx matched its
 normalised `$uri`, so percent-encoded and dot-segment forms go uncounted even though the
@@ -427,11 +448,14 @@ browser cannot be made to speak HTTP/1.0), this signal is **browser-inducible**:
 third-party page can carry an `<img referrerpolicy="no-referrer">` pointed at a hosted
 site's guarded path and make an innocent visitor's browser emit the exact trigger against
 someone else's site — turning a per-IP ban into a remote, box-wide denial of that visitor.
+
 Referer-less real traffic also exists (sites sending `Referrer-Policy: no-referrer`,
 privacy extensions, Referer-stripping corporate proxies), and the guard's own 404 is a
 perfect retry amplifier. So the ban is an operator decision on a confirmed campaign,
 exactly like `_NGINX_HARVEST_ACTION`: **REPORT** (default) writes `GUARD404-WOULD-BAN`
-lines and bans nothing; **BAN** arms the heuristic. In BAN mode the ban is worth more than
+lines and bans nothing; **BAN** arms the heuristic.
+
+In BAN mode the ban is worth more than
 the 404s the IP was already eating — it also cuts off the **content-crawl `200`s** the same
 address fetches in parallel, which no other scorer counts. There is deliberately **no
 `/24` aggregation** — unlike Detector 4's tight source block, this class rides
@@ -448,7 +472,9 @@ ISP-dispersed CGNAT space where a `/24` holds real users.
 **Campaign surfacing.** The median-one body of the flood never meets any per-IP threshold,
 and without an aggregate signal a rotating-IP crawl can chew a small FPM pool for months in
 silence — the reference case ran for over three months before diagnosis, entirely inside
-the IDS's blind spots. So once `_NGINX_GUARD404_CAMPAIGN_IPS` **distinct** IPs carry
+the IDS's blind spots.
+
+So once `_NGINX_GUARD404_CAMPAIGN_IPS` **distinct** IPs carry
 windowed guard-404 state at once, the handler writes one `GUARD404-CAMPAIGN` line plus a
 box-wide forensic snapshot to `i18n_flood.log` (the Tier-B alert channel), rate-limited by
 the cool-down stamp. It runs in **both** modes, because alerting can never mis-ban — this
@@ -469,11 +495,15 @@ same list the harvest detector uses — covers the legitimate crawlers and unfur
 whitelisting never reaches (Applebot, DuckDuckBot, Yandex, Baiduspider, archive.org_bot,
 the social preview fetchers, the uptime probes, and the SERP favicon fetcher, whose
 "Google Favicon" token carries a space and matches neither `Googlebot` nor `Google-`).
-The guarded URLs also answer 404, which de-indexes them. In BAN mode the ban
+The guarded URLs also answer 404, which de-indexes them.
+
+In BAN mode the ban
 reuses `_block_ip` (whitelist, logged-in, local-IP and already-banned guards all apply) and
 feeds the same `guest-fire` → `guest-water` pipeline as every other detector, and
 `clearwebbans` now clears this detector's window along with the ban logs, so an operator
-unban is not undone by carried-forward state. The detector is **on by default**, opt-out
+unban is not undone by carried-forward state.
+
+The detector is **on by default**, opt-out
 per box (`_NGINX_GUARD404_DETECT=NO`); the per-line tally is skipped entirely when off,
 malformed numeric overrides revert to the defaults, and a malformed `_NGINX_GUARD404_PATHS`
 override is reverted to the default class with a startup warning rather than left to
@@ -490,6 +520,7 @@ pulling a different document and almost never re-reading one.
 **Its own pass, not the per-line loop.** `nginx_guard.sh` launches the scorer
 roughly every 5 s and the byte-offset reader hands each pass only a few seconds
 of log; every signal for this attack class is dead or inverted at that width.
+
 So the harvest pass runs at most once per `_NGINX_HARVEST_INTERVAL` (default
 **60** s, claimed by the mtime of `/var/xdrago/monitor/log/.harvest.stamp`),
 re-reads a bounded tail of the access log on its own (`_NGINX_HARVEST_MAX_LINES`,
@@ -526,7 +557,9 @@ document once, while a real audience re-reads popular pages and sits far below.
 A cohort of more than `_NGINX_HARVEST_IP_MAX` (default **400**) qualifying
 addresses is skipped, and so is one whose `5xx`/`444` share exceeds
 `_NGINX_HARVEST_BAD_PCT` (default **5**) — the melt guard: under saturation
-everything degrades, and a degrading box is not evidence of a harvest. A
+everything degrades, and a degrading box is not evidence of a harvest.
+
+A
 User-Agent matching `_NGINX_HARVEST_UA_EXEMPT` is logged as `EXEMPT` and
 skipped; the exemption outranks even `BAN_NAMED`. Last comes the
 **collapsed-realip guard**: when `_NGINX_HARVEST_ALLOW_PCT` (default **20**)
@@ -548,7 +581,9 @@ cohort whose User-Agent also matches `_NGINX_HARVEST_BAN_UA` — an operator
 decision about a known attacker. **BAN** arms the heuristic itself and is not
 meant to be a default. Bans go through `_block_ip`, at most
 `_NGINX_HARVEST_MAX_BANS` (default **10**) per pass; the rest are logged as
-`CAP`. Any other action value falls back to `REPORT`, and `BAN_NAMED` with an
+`CAP`.
+
+Any other action value falls back to `REPORT`, and `BAN_NAMED` with an
 empty pattern falls back to `REPORT` with a `CONFIG:` line, so a typo cannot
 arm it. A malformed `_NGINX_HARVEST_UA_EXEMPT` override reverts to the shipped
 list, never to an empty one — voiding every exemption would fail toward banning
@@ -598,7 +633,9 @@ Detectors 1–3 score and ban individual IPs. A distributed flood of **localized
 (translation) pages defeats all three at once: the source spreads over thousands of IPs at
 one or two requests each (so the per-IP and shared-UA scorers never trip), and the watched
 path list is Solr/search-only (so the path-flood aggregate never sees `/de/…`,
-`/zh-hans/…` and the rest). Each uncached localized page runs a synchronous on-the-fly
+`/zh-hans/…` and the rest).
+
+Each uncached localized page runs a synchronous on-the-fly
 translation that holds a PHP-FPM worker for tens of seconds, so enough concurrent ones
 saturate the shared per-account pool and collapse every site on it.
 
@@ -631,8 +668,8 @@ Detector 1.
 
 - **FPM saturation trigger.** Byte-offset-tails the per-version PHP-FPM error logs
   (`/var/log/php/php*-fpm-error.log`) for **new** `reached max_children setting` lines — the
-  authoritative "a pool just ran out of workers" signal, captured the instant it happens. (
-  `php.sh` now byte-offset-tails the **same** `reached max_children setting` string, but
+  authoritative "a pool just ran out of workers" signal, captured the instant it happens.
+  (`php.sh` now byte-offset-tails the **same** `reached max_children setting` string, but
   emits only a plain capacity NOTE — no alert, no snapshot — so scan_nginx keeps its own
   Tier-B trigger; the periodic `fpmreport` sampler misses the live peak too.) On a new hit it
   alerts and snapshots the box-wide top talkers.
@@ -644,7 +681,9 @@ detector is off, so the hot loop pays nothing.
 ### Crawler-fleet fingerprint detector (`nginx_fleet.sh`)
 
 A distributed crawler fleet rotates hundreds of addresses, so no per-address scorer ever
-sees more than a few dozen requests from one of them. What the fleet cannot rotate is the
+sees more than a few dozen requests from one of them.
+
+What the fleet cannot rotate is the
 thing it shares: **one exact user agent, walking one route class of one vhost, from many
 addresses at once, without a Referer and with a different URL on almost every request.**
 That shape defeats every detector above — the per-IP scorer never reaches its floor, the
@@ -673,10 +712,14 @@ first path segment after an optional language prefix, taken from the path nginx 
 route — percent-decoded, slashes merged, dot segments resolved, lower-cased — so case or
 encoding games on the first segment cannot split one crawl into many small classes; dot
 names and the machine-standard files (`robots.txt`, `sitemap.xml`, `favicon.ico`, `ads.txt`,
-`apple-app-site-association`) belong to other controls and are never classed. Requests from
+`apple-app-site-association`) belong to other controls and are never classed.
+
+Requests from
 whitelisted addresses (csf.allow, `web6.allow`, the box's own address) are kept out of the
 key's own counts and tallied separately for the realip check below; they still count in the
-vhost total the share gate measures against. If the tail does not reach at least
+vhost total the share gate measures against.
+
+If the tail does not reach at least
 `_NGINX_FLEET_MIN_SPAN` (180 s) back from now, the pass **fails closed** and declares
 nothing, because a sample that narrow is not representative. The `NOTE` that says so is
 written only when the tail was actually truncated — the read started mid-file, so raising
@@ -698,7 +741,9 @@ Two guards run before any declaration. A group any of whose requests came from a
 the **exemption roster** is logged `EXEMPT` and never declared — the roster is the harvest
 detector's crawler and monitor list plus the allow-by-default AI classes and the
 user-driven link previewers, which the AI policy governs with its own per-vendor limits, and
-`_NGINX_FLEET_UA_EXEMPT` only ever **adds** to it. A key whose whitelisted
+`_NGINX_FLEET_UA_EXEMPT` only ever **adds** to it.
+
+A key whose whitelisted
 addresses are `_NGINX_FLEET_ALLOW_PCT` (20 %) or more of its distinct addresses is logged
 `REALIP-SUSPECT` and skipped — that shape means the vhost is reporting CDN edges as clients,
 so its "many addresses" are an artefact of a collapsed realip chain. Only the busiest route
@@ -721,7 +766,9 @@ fixed when the fingerprint is first stored:
 **Membership.** Addresses are recorded as members of a (vhost, agent) group while its
 fingerprint is live, on any pass where the group either declares again or shows at least
 `_NGINX_FLEET_CAND_IPS` (16) distinct addresses. In address scope an address joins only if
-at least `_NGINX_FLEET_NOREF_PCT` of *its own* requests were Referer-less. In network scope
+at least `_NGINX_FLEET_NOREF_PCT` of *its own* requests were Referer-less.
+
+In network scope
 IPv4 members collapse to their /16, and a /16 joins only with at least
 `_NGINX_FLEET_NET_MIN_IPS` (2) distinct member addresses in it and only when it holds no
 whitelisted address seen in that group, no csf.allow entry and not the box's own address;
@@ -744,7 +791,9 @@ A fingerprint lives `_NGINX_FLEET_TTL` (3600 s) from its last declaring pass; a 
 live and its scope matches, so a fingerprint expiry releases all of its members in one
 reload. At most `_NGINX_FLEET_MAX_FP` (16) fingerprints are kept, newest expiry first, and
 each rendered map holds at most `_NGINX_FLEET_MAX_ENTRIES` (20000) entries; anything dropped
-is logged `CAP`. An agent that no exact map key could carry — outside the printable-ASCII
+is logged `CAP`.
+
+An agent that no exact map key could carry — outside the printable-ASCII
 map-safe grammar, or longer than the 174-byte key ceiling the `map_hash_bucket_size` allows —
 is logged `UNBANNABLE` and reported only, never stored, so it cannot occupy a fingerprint
 slot a refusable fleet needs. With **no** scope in `BAN` (or `_NGINX_FLEET_DETECT=NO`) no
@@ -781,7 +830,9 @@ It walks the logs chronologically, runs one simulated pass per minute boundary, 
 networks), an `EVENTS` count of the log line types above, a `SCOPE` line per scope and one
 `FINGERPRINT` line per fingerprint. Both scopes replay as `BAN` unless the flags say
 otherwise, so a replay on a loosened box still shows what `BAN` would refuse; the tuning
-knobs come from `/root/.barracuda.cnf` as usual, the **action** knobs do not. `--flags`
+knobs come from `/root/.barracuda.cnf` as usual, the **action** knobs do not.
+
+`--flags`
 writes one `0`/`1` line per input line (which requests would have been refused) and `--dump`
 writes the peak map fragments. Replay has no cookies to read, so it treats every request as
 anonymous — its address-scope count is therefore an upper bound.
@@ -790,7 +841,9 @@ anonymous — its address-scope count is therefore an upper bound.
 refusing: a self-declared crawler-name fleet had **76,776 of its 76,972** requests refused;
 two stock desktop-browser strings arriving over cloud addresses had **37,474 of 40,001** and
 **36,688 of 39,295** refused. Every other cohort on that vhost, and all 114,296 requests on
-the other vhosts in the same log, were refused **zero** times. A 766,782-line synthetic
+the other vhosts in the same log, were refused **zero** times.
+
+A 766,782-line synthetic
 battery — a busy general-audience site, a campus audience behind shared egress, a mobile app
 backend, newsletter bursts and an AI assistant fan-out — produced **zero** non-fleet
 refusals.
@@ -799,7 +852,9 @@ refusals.
 same-site Referer, one that sends a single request per address under a current browser
 string, one that mints a new agent per address, or any fleet below the scale bar (fewer than
 32 addresses, or under 8 % of the vhost's traffic). Those shapes are the price paid for the
-zero non-fleet refusals measured above. Collateral is bounded the same way: an
+zero non-fleet refusals measured above.
+
+Collateral is bounded the same way: an
 address enters as a member for at most `_NGINX_FLEET_MEMBER_TTL`, only while its fingerprint
 lives, and in address scope it is only ever felt on an anonymous Referer-less request.
 
@@ -818,7 +873,9 @@ Four layers protect known-good addresses from every detector:
   daily (Bingbot's too, once Microsoft publishes any), and `_is_whitelisted_ip`
   family-dispatches every IPv6 client to
   it — same scoring gates, same `_block_ip` keystone, so a legitimate IPv6 crawler is
-  exempt from both scoring and the nginx-native v6 ban. Untagged manual entries survive
+  exempt from both scoring and the nginx-native v6 ban.
+
+  Untagged manual entries survive
   the daily refresh, and an empty provider fetch keeps the existing entries rather than
   stripping protection. Loaded only when `_NGINX_V6_BAN_DETECT=YES` (with the v6 arm
   opted out no IPv6 client is scored, so there is nothing to whitelist).
@@ -833,7 +890,9 @@ rather than exempting a path.
 > just logged in" logic lives in the SSH/login monitor `hackcheck.sh`, which builds an
 > `_accepted` set from `grep -F 'Accepted ' auth.log` and never bans those IPs.
 > scan_nginx's *web*-side login handling is the inverse — it *adds* weight on `/user/login`
-> floods. Do not expect a recent web login to protect an IP here. The one session shield
+> floods. Do not expect a recent web login to protect an IP here.
+>
+> The one session shield
 > scan_nginx has (`_is_logged_in`, threshold raised to `9999`) keys off **active SSH
 > sessions** (`netstat` ESTABLISHED on port 22), not any web or `auth.log` login. For a
 > durable, protocol-independent exemption use `csf.allow` or `/root/.local.IP.list`.
@@ -961,7 +1020,9 @@ For the whole run `guest-water.sh` holds the Stage 1 interlock — it `touch`es
 first) and `rm`s it at the very end — and once escalation is done it clears the per-tick
 `web.log` / `ssh.log` / `ftp.log` so the next `scan_nginx` window starts clean.
 
-> **Under the hood.** `guest-water.sh` also refreshes the `csf.allow` provider ranges
+> **Under the hood.**
+>
+> `guest-water.sh` also refreshes the `csf.allow` provider ranges
 > (Cloudflare, Googlebot, Google's special-case crawlers — the AdsBot / Mediapartners /
 > SERP-favicon-fetcher family, published separately from googlebot.json — Bingbot, the
 > two uptime monitors Pingdom and UptimeRobot, the BugBug cloud test runners, and — behind
@@ -974,27 +1035,40 @@ first) and `rm`s it at the very end — and once escalation is done it clears th
 > copy, the snapshot and the diff, and mailed to `_MY_EMAIL` as well (unless `_MY_EMAIL` is
 > empty, `_INCIDENT_REPORT` is `OFF` or `NO`, or `s-nail` is missing),
 > since the box keeps yesterday's ranges until the next pass succeeds) and per-provider
-> backups under `/var/backups/csf/water/`. Every fetched provider fetches *before* it clears its own
+> backups under `/var/backups/csf/water/`.
+>
+> Every fetched provider fetches *before* it clears its own
 > tagged lines and keeps the existing entries when the list comes back empty (endpoint
 > down, format change), so a failed refresh never strips a live range for a day; the
-> static `csf.deny` healing of the Google, Bing and Imperva refreshes runs either way. The Sucuri refresh heals `csf.deny` too, unconditionally and from its built-in ranges (any deny line inside them is deleted on every pass, so an operator deny placed there does not survive the daily run), and the Auth0 refresh removes each address it fetched, which is a no-op when its fetch comes back empty.
+> static `csf.deny` healing of the Google, Bing and Imperva refreshes runs either way.
+>
+> The Sucuri refresh heals `csf.deny` too, unconditionally and from its built-in ranges (any deny line inside them is deleted on every pass, so an operator deny placed there does not survive the daily run), and the Auth0 refresh removes each address it fetched, which is a no-op when its fetch comes back empty.
+>
 > Every provider is allowed on both web ports, 80 and 443 — crawlers, WAF edges and
 > monitors all reach the sites over https, and a port-80-only entry left 443 exposed to a
 > `csf.deny` hit because the per-port allow rule precedes the all-port deny — and
 > membership is an exact-line test, so a manual entry carrying the same address never
-> blocks a provider's own line. UptimeRobot's fallback is the same address set published
+> blocks a provider's own line.
+>
+> UptimeRobot's fallback is the same address set published
 > as the A/AAAA records of `ip.uptimerobot.com`, a different channel from its CDN. BugBug
 > publishes its runner hosts through one API endpoint only, so that refresh has no second
 > source and no built-in copy — a stale address would go on trusting a cloud host the
-> vendor no longer holds — and relies on the keep alone. The two feeds that are a bare
+> vendor no longer holds — and relies on the keep alone.
+>
+> The two feeds that are a bare
 > list of hosts (Pingdom's plain list, BugBug's array) count only a line or an element
 > that is nothing but an address, so an error page served with a 200 in place of the list,
 > which shows the caller's address somewhere in its text, yields nothing and the keep
-> applies instead of that one address replacing the list. Every
+> applies instead of that one address replacing the list.
+>
+> Every
 > fetched token is value-validated before it is written (octets `0-255`, an
 > IPv4 prefix of `/8` or narrower, so a mangled or hostile body can never open the web
 > ports to the internet), and the resolver lines the pass keeps for its own DNS egress
-> are matched literally, never by a wildcard that also fits a provider address. The
+> are matched literally, never by a wildcard that also fits a provider address.
+>
+> The
 > same pass mirrors the crawler `ipv6Prefix` ranges and UptimeRobot's IPv6 monitors
 > into the nginx-native IPv6 allow store `/var/xdrago/monitor/log/web6.allow` (CSF
 > cannot hold them). That allow-list maintenance is what makes the keystone
@@ -1047,7 +1121,9 @@ duplicates to the max expiry, validates each as a strict IPv6 address, and emits
 survivors as `<ip6> 1;` into `/data/conf/nginx_banned_ips.conf6`. That file is picked up by
 the **same** `geo $remote_addr $is_banned` set — its wildcard `nginx_banned_ips.c*` include
 already covers it — so an IPv6 attacker is dropped with the same `444`, at nginx, exactly
-like the IPv4 case. The store is self-expiring (default 900s, `_NGINX_V6_BAN_TTL`), the
+like the IPv4 case.
+
+The store is self-expiring (default 900s, `_NGINX_V6_BAN_TTL`), the
 nginx equivalent of CSF's 15-minute web temp ban; a re-offence refreshes it. The whole IPv6
 arm is gated by `_NGINX_V6_BAN_DETECT` (default `YES`).
 
@@ -1158,10 +1234,12 @@ before any `try_files`, `@drupal` fallback, or FastCGI round-trip.
 
 - **`return 429`** — "too many requests", used by exactly one guard: the crawler-fleet
   refusal `$boa_fleet_block`. The status is chosen for what it does **not** do. No
-  `scan_nginx` scorer counts a `429`: the per-IP scorer counts `400`/`403`/`404`/`410`/`444`/
-  `500`, the UA-burst aggregate `301`/`302`/`307`/`308`/`400`/`403`/`404`/`410`, the harvest
+  `scan_nginx` scorer counts a `429`: the per-IP scorer counts `400`/`403`/`404`/`410`/
+  `444`/`500`, the UA-burst aggregate `301`/`302`/`307`/`308`/`400`/`403`/`404`/`410`, the harvest
   and Tier-B i18n detectors `5xx`+`444`, the guard-404 detector `404`, and the path-flood
-  aggregate `200`+`444`. So a fleet refusal can never feed the per-address ban score, the
+  aggregate `200`+`444`.
+
+  So a fleet refusal can never feed the per-address ban score, the
   UA-burst csf ban or the i18n shedding signal — the refusal and the scorers stay
   independent, which is what keeps a wrong refusal from escalating into a firewall ban. It is
   also FPM-free like `444`, and, unlike `444`, it does not reach a Cloudflare-fronted client
@@ -1220,7 +1298,9 @@ wildcard `.c*` include picks it up on the next reload, and the **next** request 
 banned client is 444'd at zero backend cost. Two safety properties matter: with no entries
 `$is_banned` stays `0` (a fresh box or cleared list never errors), and the `.c*` glob is
 leading-dot-safe (the in-flight temp and the last-good backup are dot-prefixed, so the
-include never picks up a half-written file). Because the deny keys on the realip'd address,
+include never picks up a half-written file).
+
+Because the deny keys on the realip'd address,
 it bites a Cloudflare-proxied attacker at the origin's nginx — where an origin CSF/iptables
 ban on a CF-fronted IP would only see the CF edge and miss.
 
@@ -1311,7 +1391,9 @@ content segment (404).
 - **`$is_amp_chain` → 404.** The query-side cousin: a crawler that HTML-escapes every link it
   re-follows turns each `&` into `&amp;`, then `&amp;amp;`, one layer per hop, so its query
   keys grow into `amp;amp;page` (or the percent-encoded `amp%3Bamp%3Bpage`) and every hop
-  renders another uncached page. Matches two or more consecutive `amp;` layers, in either
+  renders another uncached page.
+
+  Matches two or more consecutive `amp;` layers, in either
   spelling and any case, at a query-key boundary, so a single `&amp;` left by a badly
   escaped newsletter or CMS link is still served. Blocking at two layers also stops the
   recursion: the deeper URLs are only ever discovered from pages served at the shallower
@@ -1357,7 +1439,9 @@ Drupal bootstrap answered **302** — a status the log-scoring IDS never counts.
 flood drove ~11k such bootstraps/day into a shared FPM pool from ~7k IPs at a **median of
 one request per IP** under rotated browser-family UAs, with a large share carrying
 HTML-entity-mangled tokens (`?destination=&amp%3Btoken=…`) — links scraped from raw HTML
-that no real browser produces. A real flag click always carries a same-origin `Referer`
+that no real browser produces.
+
+A real flag click always carries a same-origin `Referer`
 (and a Referer-less toggle would fail the anonymous CSRF token check anyway, bootstrapping
 only to redirect), so the gate composes the toggle path shape with `$has_no_referrer`,
 keyed on the method so only GET matches:
@@ -1397,7 +1481,9 @@ the provider's callback at `/hybridauth/endpoint` redirects the browser **back**
 login and the popup-close page. A `302` carries the original request's referrer forward
 rather than substituting the redirecting URL, so whenever the provider strips the `Referer`
 — a policy the operator can neither see nor control — the login-completing hop arrives
-Referer-less. Measured on a hosted box, the completion-shaped window `200`s were
+Referer-less.
+
+Measured on a hosted box, the completion-shaped window `200`s were
 overwhelmingly Referer-less. A Referer-only gate would therefore 404 real logins, silently,
 with no PHP-side trace to diagnose from.
 
@@ -1427,7 +1513,9 @@ map the cache-bypass gates use; any `SESS`/`SSESS` cookie sets it, including an 
 session, which is exactly the mid-flow case. The tail is anchored to a single path segment
 (the provider name) with an optional trailing slash, so deeper paths and content aliases
 never match; `HEAD` is included because a HEAD costs the same bootstrap and no login hop is
-ever a HEAD. `/hybridauth/endpoint` stays ungated — it is the provider's own callback
+ever a HEAD.
+
+`/hybridauth/endpoint` stays ungated — it is the provider's own callback
 target. Works whether or not the module is enabled. Together with the flag and print gates,
 the 404s this gate emits are the tell Detector 6 counts (see Part 1).
 
@@ -1488,7 +1576,9 @@ the Mac UA shape (`Mac OS X 10_15_7`) at a stale Chrome version — the shape ev
 Solr search-amplification bot has presented — and is applied directly in the `/search` blocks,
 so it needs no `$has_fulltext_search` dependency. Chrome and Safari freeze that platform token
 on every macOS release, so it does not identify Catalina itself; the stale version is what
-makes the match safe. Chrome/128 and Chrome/138 are carved out of both maps: they are the last
+makes the match safe.
+
+Chrome/128 and Chrome/138 are carved out of both maps: they are the last
 releases for macOS 10.15 and macOS 11, so a Mac pinned there for life is the one genuine
 browser that still presents a stale major, and it keeps site search. Both maps shipped in
 BOA-5.9.3.
@@ -1498,7 +1588,9 @@ BOA-5.9.3.
 > versions — Chrome shipped a major every ~4 weeks until Chrome/153 (2026-09-08) and every
 > ~2 weeks since. Widen to the newest major whose stable release is more than 12 months old
 > (Chrome/139 reached stable on 2025-08-05), carve out the last major any macOS is pinned at,
-> and keep both maps on the same pattern. The ceiling
+> and keep both maps on the same pattern.
+>
+> The ceiling
 > must move forward as Chrome versions age, or the maps stop catching the stale-Chrome botnet
 > class; it must never pass a version released within the last 12 months, or they start
 > matching current browsers (false positives).
@@ -1586,7 +1678,9 @@ limit_conn_status 444;
   content subdirectory — the same assumption the `/[a-z][a-z]/search` and
   `/[a-z][a-z]/civicrm` locations already rely on fleet-wide. The opt-out exists for the
   rare exception: a non-Drupal app, or a single-language site that uses a two-letter path
-  for a region with URL language-negotiation off. The map is the same two-stage idiom as
+  for a region with URL language-negotiation off.
+
+  The map is the same two-stage idiom as
   `$is_banned` (global map always defined so `nginx -t` never sees an undefined variable;
   per-host state from an included data file). See Part 5 for opting a host out.
 - **Keyed on `$request_uri`, not `$uri`.** BOA rewrites clean URLs to `/index.php` before
@@ -1637,7 +1731,9 @@ location ~* ^/\w\w/bgp-start/[^/]+/[^/]+$ { ...same body... }
 
 - **The zone is NOT in the master render.** `/var/aegir/config/server_master/nginx.conf` is
   mode 600 under a 700 directory, so a satellite instance's render user cannot read it and
-  cannot verify the declaration. Declaring the zone in a world-readable conf.d file instead
+  cannot verify the declaration.
+
+  Declaring the zone in a world-readable conf.d file instead
   lets the vhost include gate its consumer on the file's presence, which makes the two halves
   order-independent: an instance that verifies before its master upgraded renders nothing and
   keeps today's behaviour, instead of emitting a reference to an undeclared zone. That
@@ -1663,10 +1759,14 @@ location ~* ^/\w\w/bgp-start/[^/]+/[^/]+$ { ...same body... }
 Bounds how many anonymous page renders ONE vhost may hold **simultaneously**. It exists for
 a flood class that is unclassifiable at the request level: an observed distributed scraper
 swarm presented a single spoofed browser user-agent across ~270 client IPs at ~1.4 requests
-each against one vhost, every response a 200 from ordinary content routes. It is not an AI
+each against one vhost, every response a 200 from ordinary content routes.
+
+It is not an AI
 vendor, not a declared bot (so it receives the short human cache window, not the long
 crawler one), not bad-status, and far too thin per IP for any per-IP control — every request
-is individually indistinguishable from a real visitor. The renders pile up until each takes
+is individually indistinguishable from a real visitor.
+
+The renders pile up until each takes
 longer than the front cache's own TTL and lock timeout, at which point waiting requests stop
 waiting and render too, and the cache stops absorbing the herd at all. Capping the in-flight
 count keeps render time inside that horizon, which is what keeps the front cache working.
@@ -1782,12 +1882,16 @@ $tls_on_plain           → 444
 
 The fleet guard fires on every front a fleet can reach, each on the same render gate:
 the Drupal/Backdrop vhost include (above), the Grav location block, the Textpattern plain
-and SSL vhosts, and the subdir location. It also fires on the **wildcard SSL front**, inside
+and SSL vhosts, and the subdir location.
+
+It also fires on the **wildcard SSL front**, inside
 marker lines that `_nginx_wild_ssl_fleet_gate` strips whenever the installed zones file does
 not declare the maps (that front is a static copy in the master render tree and the upgrade
 path restarts nginx without a configtest, so it may only carry the guard while the variable
 exists); the wild-ssl install redeploys the file whenever the two disagree, adding the guard
-or removing it. On that front the guard sits next to `$is_banned` for the same reason the ban
+or removing it.
+
+On that front the guard sits next to `$is_banned` for the same reason the ban
 does: the maps key on `$remote_addr`, which the port-80 vhosts only ever see as `127.0.0.1`
 on the proxied path.
 
@@ -1819,7 +1923,9 @@ value disables that feature).
 > `_NGINX_DOS_INC_MIN`, `_NGINX_DOS_LOG`, `_NGINX_DOS_IGNORE`, `_NGINX_DOS_STOP`.
 > `autoupboa` also normalises `_NGINX_DOS_LIMIT` back to `399` on each pass. The DDoS,
 > path-flood, ignore-paths, 444-weight and php-probe knobs are **not** seeded — they take the
-> script's built-in defaults unless you add them to `/root/.barracuda.cnf` yourself. Where the
+> script's built-in defaults unless you add them to `/root/.barracuda.cnf` yourself.
+>
+> Where the
 > seeded value differs from the script default, the seeded one wins -- EXCEPT
 > `_NGINX_DOS_LOG`, which is seed-only: an existing uncommented line is never
 > overwritten by a retune, because it is the landing key of the converted
@@ -2206,7 +2312,9 @@ nginx -t && service nginx reload      # Devuan: service, not systemctl
 
 An absent/empty map leaves every host guarded (the default). To tune the cap set
 `nginx_i18n_anon_conn` (default `24`) and re-render the vhost; to widen it fleet-wide raise
-that option, to effectively disable Tier A on a host opt it out as above. The Tier-B detector
+that option, to effectively disable Tier A on a host opt it out as above.
+
+The Tier-B detector
 logs every trip and snapshot under `/var/xdrago/monitor/log/i18n_flood*` (see **Reading live
 state**), so a real burst leaves a forensic trail of the top talkers, UAs and
 language-prefixes. Unlike a CSF ban this is not per-IP and never appears in `csf -t`/`csf -g`

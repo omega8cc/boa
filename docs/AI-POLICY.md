@@ -39,7 +39,9 @@ user-triggered but ignore `robots.txt` and, when blocked, drop their declared UA
 rotate IPs/ASNs to slip past a UA rule — `Perplexity-User` is the current member
 (Cloudflare de-listed it as a verified bot for exactly this). It is blocked by default,
 but because the block is **by UA it is only best-effort**: once the agent abandons its UA
-it looks like an ordinary browser and the maps (fail-open) let it through. The real
+it looks like an ordinary browser and the maps (fail-open) let it through.
+
+The real
 backstop for the rotating/undeclared traffic is the IDS/csf layer, not this policy — so
 do not read a block here as a hard guarantee against Perplexity. The honest user-fetchers
 (`$is_ai_user`) identify truthfully and stay allowed; the split keeps the gentle default
@@ -166,7 +168,9 @@ instance under `/data/disk/<oct>` — real instances only, identified by the BOA
 skipped. For each instance with an activated `policy.txt` it writes one
 `config/includes/ai_policy/<site>.conf` per record — the exact path the satellite vhost
 pulls via `include $server->include_path/ai_policy/{uri}.conf*` (the `.conf*` anchor stops a
-prefix-named site pulling a longer site's fragment). `$ai_train_allow` and
+prefix-named site pulling a longer site's fragment).
+
+`$ai_train_allow` and
 `$ai_evasive_allow` are both defaulted to `0` in the vhost template before that include,
 so a site with no record keeps the global defaults. Removing a record prunes its fragment
 on the next run.
@@ -186,7 +190,9 @@ All of these — plus the migration-time realip tool `/var/xdrago/migration_prox
 `/run/boa_nginx_config.lock` (`flock -w 30`, then skip and retry next tick) so their
 `configtest`+`reload` cycles never collide on the same host nginx. Each one is a content
 change-gate → atomic write → `configtest` → `reload`, with rollback to the last-good copy
-if `configtest` fails. On a passive replication standby whose web tier is held
+if `configtest` fails.
+
+On a passive replication standby whose web tier is held
 (`/root/.standby.cnf` present, no `/root/.standby.serve.cnf`, no promoted latch
 `/var/log/boa/.standby_promoted.pid`) the AI
 policy pass writes the fragments and advances its change-gate markers, but skips both the

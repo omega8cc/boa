@@ -96,6 +96,7 @@ If none of these instant switch files are present, the system will default to th
   The one exception is the platforms build requested via `platforms.info`: the build
   machinery resolves the switch files itself, once per run, so it honours them even
   though it never passes through the shell wrapper.
+
   The wrapper is additionally temporarily deactivated during both barracuda and octopus
   upgrades to not interfere with complex procedures which depend on system dash shell. For
   this reason any Drush or Composer command you execute in the limited shell account while
