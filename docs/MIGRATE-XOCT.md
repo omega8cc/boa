@@ -413,7 +413,9 @@ with a `301`, or still holds sites on the per-host gate after a
 `--defer-host-named` pass, `proxy` reads them itself — this box's panel
 hostname (the server alias's `remote_host`, else `hostname -f`, the lookup
 `xmass` uses) and the target's `hostname -f` as it answers now, after
-learning the target's host key. So a `--repair` (with or without
+learning the target's host key.
+
+So a `--repair` (with or without
 `--renotify`) or the `--repair --retarget` after a failover keeps the old names
 answering a `301`, re-pointed at the new box's names. The run refuses before it
 changes anything when it cannot: a target that does not let this box in gets
