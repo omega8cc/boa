@@ -1,3 +1,11 @@
+# Reporting a Vulnerability
+
+**Do not open a public issue for an exploitable bug.** SKYNET keeps every enabled fleet current on a tight cadence, and a public proof-of-concept is live against every production server for the window between disclosure and the next tagged release reaching it.
+
+Report it privately to the maintainers (Omega8.cc) through the contact form at [omega8.cc/contact](https://omega8.cc/contact). If supporting material is needed, put it in a secret Gist and share the link only in that private ticket. Public issues that turn out to be security-sensitive are pulled, and you will be asked to refile privately.
+
+The full policy is under [Security disclosure](https://docs.boa.io/developing/contributing/contributing#security-disclosure) in the BOA documentation.
+
 # Security Considerations for Multi-Ægir Systems
 
 In a multi-Ægir instance system, all instances utilize the same Nginx server. Consequently, installing a site with the same domain on multiple instances can cause conflicts. **The instances are not aware of each other**, so it is crucial to manage the system responsibly.
