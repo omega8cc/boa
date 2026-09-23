@@ -37,7 +37,9 @@ old.com 5.6
 
 - **NOTE**: Each line in the `multi-fpm.info` file must start with the **main site name** (not an alias), followed by a single space, and then the PHP-FPM version to use.
 
-#### **IMPORTANT**: Supported Drupal core versions and distributions have different PHP versions requirements, while not all PHP versions out of currently supported twelve (12) versions are installed by default. Ensure that you have corresponding PHP versions installed with barracuda before attempting to install older Drupal versions and distributions. On hosted BOA contact your host if you need any legacy PHP installed again.
+#### **IMPORTANT**:
+
+Supported Drupal core versions and distributions have different PHP versions requirements, while not all PHP versions out of currently supported twelve (12) versions are installed by default. Ensure that you have corresponding PHP versions installed with barracuda before attempting to install older Drupal versions and distributions. On hosted BOA contact your host if you need any legacy PHP installed again.
 
 #### PHP CAVEATS for Drupal core 7-10 versions:
 
@@ -74,7 +76,9 @@ The worker count is `base × engines × 2`, where *engines* is the instance's
 allotted cores (`_CLIENT_CORES`, default 1). The `memory_limit` band is capped
 at the box's RAM-scaled ceiling (below), so on a small VM even these values are
 reduced. (`QUIET` is the exception — its worker count is not doubled, so it
-lands on 8.) The two writers floor the value differently: the Octopus
+lands on 8.)
+
+The two writers floor the value differently: the Octopus
 install/upgrade writer uses it only when it is 8 or more and writes 8 otherwise,
 so straight after an Octopus install or upgrade the 4- and 2-worker plans carry 8;
 the live agent, when it rebuilds a pool (PHP-FPM version switch, multi-FPM change,
@@ -116,7 +120,9 @@ process per job, not a pool of workers, so it is floored at a quarter of the
 installed RAM, capped at 1024 MB, whenever the RAM ladder derived less (a 4 GB
 box with the default 2 GB `_RESERVED_RAM` derived 466 MB, which no Drupal 11
 distribution install survives). Larger boxes already sit at 2048 MB or more
-from the ladder and are unchanged; the OpenVZ pin is not raised. The Drupal
+from the ladder and are unchanged; the OpenVZ pin is not raised.
+
+The Drupal
 11 site-install itself applies the same floor to its own subprocess, and
 `~/static/control/install-memory.info` (a number of MB) pins that subprocess
 up or down, so an Ægir install is not held to an older php.ini.
@@ -143,7 +149,9 @@ the pool from box capacity to absorb bursts; shared plans are capped on purpose,
 so a busy shared tenant is expected to queue at its ceiling.
 
 Raising `pm.max_children` is **not** the cure when the cause is *abusive* — the
-attack consumes any ceiling, and a higher one only raises the OOM point. When a
+attack consumes any ceiling, and a higher one only raises the OOM point.
+
+When a
 distributed flood of expensive anonymous requests saturates the pool (e.g. a
 scraper crawling localized on-the-fly-translation pages, which hold a worker for
 tens of seconds each), BOA bounds that request class at the nginx edge so it can

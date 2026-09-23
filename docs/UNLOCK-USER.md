@@ -7,7 +7,9 @@ running a platform *Verify* before the PHP and Nginx caches have expired
 and shown that the sites really still work — hands code ownership
 straight back to the backend user while the new code is broken. From that
 moment you cannot touch the code: the sites stay down until the next
-nightly run returns ownership to you, or until support can step in. If a
+nightly run returns ownership to you, or until support can step in.
+
+If a
 day of downtime is unacceptable, take the safe path instead: build the
 upgraded codebase as a new platform and migrate your sites onto it.
 
@@ -60,7 +62,9 @@ and restores the default protection.
    Nginx cache can go on serving the pre-upgrade code and cached pages
    for a while, so a site can look fine while the new code is already
    broken. Wait for those caches to expire, then test properly — log
-   in, hit uncached pages, watch the logs. Once you are confident, run
+   in, hit uncached pages, watch the logs.
+
+   Once you are confident, run
    *Verify* on the platform (and the site) from the Ægir control panel.
    Verify registers the changed code — and a platform Verify also
    chowns the code back to the backend user immediately. Run it while

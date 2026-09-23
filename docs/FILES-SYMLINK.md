@@ -128,7 +128,9 @@ the sweep and the narrow one alike. It has no per-site alias — provision regis
 it as `hostmaster`, so its alias file is `hostmaster.alias.drushrc.php` (and
 `hm.alias.drushrc.php` is the shortcut copy of the same site) — and is recognised
 by the `uri` that alias carries. Its store, `static/files/<panel-fqdn>/`, is a
-registered site's store, never an orphan. (The `<panel-fqdn>` alias symlink that
+registered site's store, never an orphan.
+
+(The `<panel-fqdn>` alias symlink that
 used to make the panel look like an ordinary site was a crutch the ltd-users pass
 now purges; every tool keyed on `<site>.alias.drushrc.php` files was taught the
 panel's real alias instead.)
@@ -212,7 +214,9 @@ maintenance moves a confirmed ghost's alias and vhost aside to the account's
 `undo/` dir (so the next dry run is CLEAN again), after classifying the candidate
 first: a front-end/system alias (`aegir/distro`), a missing platform root (the
 `PLATFORM GONE` verdict), or a directory found on another platform (`MIGRATE
-STRANDED`) is left for operator review and never touched. Any other site whose
+STRANDED`) is left for operator review and never touched.
+
+Any other site whose
 `site_path` is gone while its platform directory exists — `GHOST ALIAS` itself,
 but also a `RENAME LEFTOVER` or a registration on a `BROKEN PLATFORM` — is
 treated as a per-site leftover and reaped the same reversible way. When the
@@ -241,7 +245,9 @@ backups (`:00`) and the nightly backup/owl/upgrade cluster. It self-skips any ho
 heavy task is running (backup, upgrade, provision, high load) and retries the next
 hour; the first un-blocked hour does the work, records a per-night stamp
 (`/var/log/boa/autosymlink.nightok.stamp`), and every later hour that night is a cheap
-no-op. The one line serves both opt-ins: with `_AUTOSYMLINK_NIGHTLY=YES` it runs the
+no-op.
+
+The one line serves both opt-ins: with `_AUTOSYMLINK_NIGHTLY=YES` it runs the
 full pause + two-step apply (which folds the orphan report in); with only
 `_ORPHAN_FILES_REPORT=YES` it runs the read-only orphan report alone (no pause). The
 cron line is always present; it self-exits unless at least one variable is set, so
@@ -395,10 +401,14 @@ ahead of its own disk gate: while the filesystem holding an entry is used above 
 heal threshold — **85% by default**, deliberately below the 90% at which `runner.sh`,
 the backup scripts and some twenty other BOA scripts refuse to run at all — the oldest
 entry across all instances goes, then the next, until the filesystem is back under the
-threshold or the pile is empty. An entry younger than two minutes, or whose directory
+threshold or the pile is empty.
+
+An entry younger than two minutes, or whose directory
 was written to in the last two minutes (a sweep still moving into it), is left alone;
 a store is judged on its own filesystem; nothing is followed through a link; one heal
-runs at a time. The threshold comes from `/data/conf/archived_heal_threshold.cnf`
+runs at a time.
+
+The threshold comes from `/data/conf/archived_heal_threshold.cnf`
 (a two-digit percent, 50..99; anything else keeps 85) and
 `/data/conf/disable_archived_heal.cnf` switches the heal off. Removals go to
 `/var/log/boa/archived-heal.log` and a run that removed something mails the list once
@@ -468,7 +478,9 @@ While that file exists, the tools treat a cross-site symlink for `<site>` as
 copy. The copying tasks are the exception: a clone, a migrate/rename and both
 Backdrop upgrade tasks always give the resulting site its own copy
 (`--force-unshare`), because the new site name never opted into the share —
-re-create the share afterwards if it is still wanted. Restore never forces a
+re-create the share afterwards if it is still wanted.
+
+Restore never forces a
 share open (it runs without `--force-unshare`), but restoring a
 **files-carrying** archive ends one in practice: that archive dereferenced the
 link when it was taken, so the restored real directory is converted into the
@@ -513,10 +525,13 @@ dev/staging to live) deploys from a backup and then, right after the target
 verify, runs the narrow `autosymlink --force-unshare` for the migrated/renamed
 site — re-homing its `files`/`private` into its **own** store and repointing the
 symlinks, and archiving any pre-existing store at the target name aside first.
+
 The old-name store is then set aside by the task itself, the way a delete does:
 the post hook asks the wrapper for `--archive-store` before the old alias goes
 (`RENAME/STORE/ARCHIVED`; the same `NONE`, `KEPT` and `LEFT` cases as a delete, see
-*Orphan / ghost detection and stale-store archiving*). If the re-home was refused
+*Orphan / ghost detection and stale-store archiving*).
+
+If the re-home was refused
 (the `[ALERT] Clone unshare … not completed` line, usually disk), the renamed site
 still reads the old store through its links and the wrapper leaves that store where
 it is (`RENAME/STORE/LEFT`) until the unshare is re-run by hand — it is never moved
@@ -642,7 +657,9 @@ privileged wrapper to set the data in `static/files/<url>/` aside into the hidde
 timestamped archive (below) — `autosymlink --site <url> --account <acct>
 --archive-store`, logged as `DELETE/STORE/ARCHIVED` in the task log and as
 `[APPLY] Archive-store: …` in `autosymlink.log`; `DELETE/STORE/NONE` says the site
-had no store to begin with. It **never deletes**. Three cases keep the store at its
+had no store to begin with. It **never deletes**.
+
+Three cases keep the store at its
 live name: a store named by a share control file
 (`static/control/share.*.<site>.info`, another site reads it) — the task warns
 `DELETE/STORE/LEFT` and the operator decides; a store some registered site (one that
@@ -652,7 +669,9 @@ for disk, a renamed site whose re-home did not complete) — the same `DELETE/ST
 warning, with an `[ALERT]` in `autosymlink.log` naming the link, and the fix is to
 re-run that site's unshare, never to move the store; and the orphan-archiving switch
 (`/data/conf/disable_orphan_store_archiving.cnf`, below) — the task says
-`DELETE/STORE/KEPT`. A failed move (no room on a cross-filesystem archive target, a
+`DELETE/STORE/KEPT`.
+
+A failed move (no room on a cross-filesystem archive target, a
 failed `mv`) is reported as `LEFT` too, with the reason in `autosymlink.log`. A store
 left behind by an older backend, by an interrupted delete, or by those cases — for a
 delete or for the old name after a rename — is a **ghost**. Ghosts are archived aside
@@ -665,7 +684,9 @@ automatically, in two situations:
   Drush alias nor a vhost** is archived — i.e. a genuinely deleted site — and even
   then not while a share control file names it, nor while some registered site still
   reads it through its own link (left in place with an `[ALERT]` naming the file or
-  the link; the same guard as the task-time archive). A merely
+  the link; the same guard as the task-time archive).
+
+  A merely
   **disabled** site keeps both its alias and its (placeholder) vhost, so it is
   treated as active and **left in place** — its files stay live for a later
   re-enable. A partial/broken state (only one of alias/vhost present) is reported
@@ -686,7 +707,9 @@ automatically, in two situations:
   block the new site's conversion. It is **moved aside automatically** and the new
   site converts cleanly. The same archiving covers the **break-sharing** path (a
   clone/migrate whose deployed link still points at another site's store): the
-  pre-existing target store is archived aside before the copy. A stale store some registered site still reads through its own `files`/`private` link is moved anyway (the reused name needs it), with an `[ALERT]` naming that reader, whose link dangles until its unshare is re-run.
+  pre-existing target store is archived aside before the copy.
+
+  A stale store some registered site still reads through its own `files`/`private` link is moved anyway (the reused name needs it), with an `[ALERT]` naming that reader, whose link dangles until its unshare is re-run.
 
 Every archive lands under the store, on the same filesystem:
 
@@ -973,7 +996,9 @@ re-tries on failure; it does not give up after one attempt).
   the tools **never auto-delete** it, because there is no safe way to guarantee an
   auto-purge would not remove data being kept for a reason. Unlike routine backups
   (fresh-timestamped and safe to rotate by age), an archived orphan may already be
-  very old yet still wanted, so no age-based auto-clean is applied. The report
+  very old yet still wanted, so no age-based auto-clean is applied.
+
+  The report
   alerts once the pile passes a size threshold
   (`/data/conf/native_files_archive_alert_kb.cnf`, default 1 GiB); review it and
   prune by hand (see *Orphan / ghost detection and stale-store archiving*).

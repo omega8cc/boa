@@ -20,7 +20,9 @@ arrives on a connection where nginx did not supply a control-message buffer
 In practice most of these are harmless: they land on connection teardown and on
 bot / scanner traffic receiving small error responses (the client already has,
 or does not care about, the body). The visible cost is `[alert]`-level log
-spam that survives `error_log crit` and can bury other alerts. There is a
+spam that survives `error_log crit` and can bury other alerts.
+
+There is a
 theoretical tail where a long-lived TLS 1.3 connection that rekeys mid-response
 could truncate a large body, and the same kernel code path carries a 2025 local
 privilege-escalation CVE (`CVE-2025-39682`) — so a server-wide off switch is

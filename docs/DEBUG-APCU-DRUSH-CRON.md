@@ -90,7 +90,9 @@ Drupal\Core\Render\Component\Exception\ComponentNotFoundException: Unable to fin
 Valkey is hard-capped at its `maxmemory` ceiling. When that ceiling is too low for the
 number of sites hosted, Valkey is permanently full and continuously evicts cache keys using
 the `volatile-lfu` policy (BOA forces this policy in `valkey.conf`/`redis.conf`) to make
-room for new entries. The `discovery` cache bin — which
+room for new entries.
+
+The `discovery` cache bin — which
 holds plugin registration data for all modules on a site — is among the entries that get
 evicted. When a PHP-FPM worker needs the discovery cache for a site and finds it evicted,
 Drupal must rebuild it from the database. Under concurrent traffic, multiple workers
@@ -367,6 +369,7 @@ then the RAM-derived figure, which is set equal to the PHP-FPM per-pool `memory_
 there is no per-value override BOA honours. The durable way to raise APCu is to raise the
 usable RAM the tuner works from — add RAM, or lower `_RESERVED_RAM` in `barracuda.cnf` if it
 was set — then rerun the barracuda upgrade so the tuner recomputes and reapplies the value.
+
 Sustained APCu saturation on a busy server is, like Valkey starvation, usually a sign the box
 is under-provisioned for its site count. APCu memory is allocated per-server, not per-worker,
 so it has a fixed cost regardless of worker count.
