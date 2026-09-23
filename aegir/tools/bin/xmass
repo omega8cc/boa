@@ -5687,21 +5687,24 @@ _xmass_remove_http_off_target() {
 _xmass_report_queued_tasks() {
   # What is sitting in the panel queues at the moment the box moves.
   #
-  # The whole hostmaster DB travels by replication, rows and all, and cutover
-  # then runs `hosting-tasks --force` on the target -- so anything queued here
-  # executes THERE, against new production. The dangerous type, `delete`, is
-  # purged outright at init (_xmass_clear_pending_deletes, matching what the
-  # old tool did on every export). The rest are mostly benign and some are
-  # wanted, so this reports rather than deletes: an operator who queued a
-  # migrate or a restore minutes before cutover should see it named here
-  # instead of discovering it ran on the new box.
+  # The whole hostmaster DB travels by replication, rows and all. On the
+  # relay-first order step 12.90 fails every such row out on the target
+  # before the renames force its queue; on the rename-first order the
+  # renames' `hosting-tasks --force` runs them THERE, against new
+  # production. The dangerous type, `delete`, is purged outright at init
+  # (_xmass_clear_pending_deletes, matching what the old tool did on every
+  # export). The rest are mostly benign and some are wanted, so this reports
+  # rather than deletes: an operator who queued a migrate or a restore
+  # minutes before cutover should see it named here, and the last line says
+  # which of the two fates it meets on this cutover's order.
   #
   # Deliberately NOT maintenance_mode here: set before promotion it
   # replicates INTO new production and leaves the new panel in maintenance,
   # and set after the write freeze a `drush variable-set` is blocked by the
   # readonly flag the freeze just turned on. The old panels enter Drupal
-  # maintenance mode at step 16 instead (xoct proxy per account, step 16.5
-  # for the master), once the source has stopped replicating.
+  # maintenance mode when xoct converts each account instead (step 12.92 on
+  # the relay-first order, 16 on rename-first; the master at 12.93 / 16.5),
+  # once the source has stopped replicating.
   #
   # hosting_task is keyed per node REVISION: every finished task leaves its
   # creation revision frozen at task_status 0, and a queued row carries
@@ -5721,6 +5724,8 @@ _xmass_report_queued_tasks() {
   done
   if [ "${_total}" -eq 0 ]; then
     _info "  no queued or interrupted panel tasks on any account"
+  elif [ "${_XMASS_FLIP_FIRST}" = "YES" ]; then
+    _alrt "  these are failed out on the TARGET at step 12.90 and do not run there — re-queue any you still want once the move is done"
   else
     _alrt "  these will run on the TARGET when cutover starts its queue — cancel any you do not want"
   fi
@@ -5770,6 +5775,11 @@ _xmass_assert_standby_marker() {
 # refuse to go on while anything is left. The operator re-queues what is
 # still wanted once the move is done. Site auto-import stays off for the
 # window: a platform verify of the rename must not register sites twice.
+# The fail-out and the re-count use ONE predicate. A row the source was
+# running when its panel stopped travels at -1 with executed set; nothing
+# runs it on this box, so it is failed out like a queued one. Failing out
+# only the rows with executed unset left it counted on every pass, and the
+# cutover refused each resume until an operator cleared it by hand.
 _xmass_failout_travelling_tasks() {
   local _root _usr _out _rc _probe_rc _left _err _bad=0 _roots="/var/aegir"
   local _oct
@@ -5805,7 +5815,7 @@ _xmass_failout_travelling_tasks() {
 _u="$1"
 _e=$(mktemp 2>/dev/null) || _e="/tmp/.xmass-failout.$$"
 _q() { su -s /bin/bash - "${_u}" -c "drush8 @hostmaster sqlq \"$1\"" 2>>"${_e}"; }
-_q "UPDATE hosting_task t INNER JOIN node n ON n.vid = t.vid SET t.task_status='2' WHERE t.task_status IN ('-1','0') AND (t.executed IS NULL OR t.executed=0)" >/dev/null
+_q "UPDATE hosting_task t INNER JOIN node n ON n.vid = t.vid SET t.task_status='2' WHERE t.task_status = '-1' OR (t.task_status = '0' AND (t.executed IS NULL OR t.executed=0))" >/dev/null
 su -s /bin/bash - "${_u}" -c "drush8 @hostmaster vset --always-set hosting_platform_automatic_site_import 0" &>/dev/null
 _n=$(_q "SELECT COUNT(*) FROM hosting_task t INNER JOIN node n ON n.vid = t.vid WHERE t.task_status = '-1' OR (t.task_status = '0' AND (t.executed IS NULL OR t.executed=0))" | tail -1 | tr -dc '0-9')
 printf '%s\n' "${_n}"
@@ -10377,7 +10387,21 @@ REMOTE
   # forever, which silently disabled the daily certificate mirror (the one
   # mechanism that keeps a long-lived proxy's TLS fresh) and every runner.
   # The runners self-skip proxied accounts, so restoring them is safe for
-  # every proxy mode.
+  # every proxy mode. An account whose conversion FAILED is not proxied: its
+  # panel database now lives on the target, yet runner.sh would hand its
+  # dispatcher the queue that travelled from here, run against the stale
+  # local copy. Park that dispatcher first, where xoct parks a converted
+  # one; the repair's own successful conversion keeps it parked. BOA's
+  # fpm-cli pass copies every parked dispatcher back at a new tools serial
+  # and re-parks only the proxied, so the park lasts until the repair or
+  # that pass, whichever comes first.
+  for _oct in ${_XMASS_PROXY_CONV_FAILED}; do
+    if [ -e "/var/xdrago/run-${_oct}" ]; then
+      mkdir -p /var/backups/off-run
+      mv -f "/var/xdrago/run-${_oct}" /var/backups/off-run/ 2>/dev/null \
+        && _alrt "  ${_oct}: conversion FAILED; its dispatcher stays parked (/var/backups/off-run) until the repair"
+    fi
+  done
   _info "Restoring cron and BOA runners on the source ..."
   _xmass_unpark_runners_and_cron
 
@@ -10406,15 +10430,27 @@ REMOTE
   _info "======================================================"
   _info "  xmass cutover COMPLETE"
   _info "  Source ${_hName} is now proxying all sites to ${_tgt}"
+  # The re-run recipes carry the two hostnames step 15.2 hands xoct in its
+  # environment (there is no flag for them): without them xoct proxies the
+  # sites named under this box's hostname by their old names, which the
+  # renamed target no longer serves, instead of answering them with a 301.
+  # A successful conversion lifts the account's gate itself; clearing
+  # http-off.pid by hand after a failed one would serve the stale local copy.
+  local _rpx=""
+  if [ -n "${_XMASS_PROXY_CONV_FAILED}${_XMASS_PROXY_DEFER_FAILED}" ]; then
+    _rpx=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "hostname -f" 2>/dev/null)
+    _rpx="_XOCT_TARGET_FQDN=${_rpx:-<hostname -f of ${_tgt}>} _XOCT_MY_FQDN=$(_xmass_src_fqdn) "
+  fi
   if [ -n "${_XMASS_PROXY_CONV_FAILED}" ]; then
     _alrt "  Accounts NOT converted to proxy:${_XMASS_PROXY_CONV_FAILED}"
-    _alrt "  They stay 503-gated on this source; fix the cause and re-run"
-    _alrt "  'xoct proxy <oN> ${_tgt}' for each, then clear its http-off.pid"
+    _alrt "  They stay 503-gated on this source, their dispatchers parked; fix the"
+    _alrt "  cause and re-run for each (a successful run lifts the gate itself):"
+    _alrt "    ${_rpx}xoct proxy <oN> ${_tgt}"
   fi
   if [ -n "${_XMASS_PROXY_DEFER_FAILED}" ]; then
     _alrt "  Accounts whose sites named under the old box hostname were NOT converted:${_XMASS_PROXY_DEFER_FAILED}"
-    _alrt "  Those sites stay held on 503 here (per-host gate); fix the cause and re-run"
-    _alrt "  'xoct proxy <oN> ${_tgt} --repair' for each"
+    _alrt "  Those sites stay held on 503 here (per-host gate); fix the cause and re-run for each:"
+    _alrt "    ${_rpx}xoct proxy <oN> ${_tgt} --repair"
   fi
   _info "  Proxy modes are per account: see 'xoct proxy-mode --all' on this box"
   _info "  Next: run 'xmass post-mig' on the TARGET after DNS is updated"

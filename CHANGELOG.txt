@@ -637,6 +637,35 @@
       zone -- are changed, so a custom postfix name or an installed
       certificate stays. The yml aliases Drush 9+ reads follow the
       rename too, master_url included.
+    * A whole-server move no longer refuses every resume over a task the
+      source was running when its panel stopped. Step 12.90 failed out
+      only the travelled rows whose start time was unset, while its
+      re-count refused on every processing row, so one interrupted task
+      parked the cutover with "task(s) still queued after the fail-out"
+      until an operator cleared the row by hand. The fail-out and the
+      re-count now use one predicate.
+    * The cutover's queued-task report no longer says that travelled
+      tasks will run on the target when the cutover fails them out
+      there: on the relay-first order its last line says they are failed
+      out at step 12.90 and are to be re-queued after the move.
+    * A renamed site's 301 on a migration proxy survives a later xoct
+      run. Its two hostnames reach xoct only through the environment
+      xmass sets, so a hand --repair, a --renotify resend or the
+      --repair --retarget that follows a failover rendered every site
+      named under the old box hostname as a plain proxy of that old
+      name, which the renamed target answers with its catch-all page.
+      When the account already answers a renamed site with a 301, or
+      still holds sites on the per-host gate, xoct now reads the names
+      itself -- this box's own and the target's as it answers now -- and
+      refuses before writing anything when it cannot. The re-run
+      commands xmass and xoct print carry both names, and the cutover's
+      closing summary no longer says to clear http-off.pid by hand after
+      a failed conversion, which would have served the stale local copy.
+    * An account whose proxy conversion failed at cutover keeps its Aegir
+      dispatcher parked when the source's runners come back, as a
+      converted account's is: its panel database lives on the target
+      now, and its travelled queue would have run against the stale
+      local copy.
     * The barracuda launcher refreshes itself when its release is older
       than the tree it is about to upgrade to, and runs again with the
       same arguments. An older launcher stamped the new tree with its own

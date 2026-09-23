@@ -406,6 +406,18 @@ proxy. One vhost is not proxied at all: when `xmass` drives the conversion, a si
 named under the source box's own hostname, which the cutover renamed on the
 target, answers a `301` to its new name over HTTP and HTTPS.
 
+The redirect needs both hostnames, which `xmass` hands over in the
+environment (`_XOCT_TARGET_FQDN`, `_XOCT_MY_FQDN`; there is no flag). A later
+run keeps it without them: when the account already answers a renamed site
+with a `301`, or still holds sites on the per-host gate after a
+`--defer-host-named` pass, `proxy` reads them itself — this box's own name
+(the one the gate file names, else the one the redirects were written from)
+and the target's `hostname -f` as it answers now. So a `--repair`, a
+`--renotify` resend or the `--repair --retarget` after a failover keeps the
+old names answering a `301`, re-pointed at the new box's names. When the
+target's name cannot be read, the run refuses before anything is written and
+prints the command with both variables to set.
+
 Repair and repoint (the tool names the flag when you need it):
 
 ```sh
