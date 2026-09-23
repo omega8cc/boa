@@ -24,7 +24,7 @@ repository owner.
 
 That is exactly what stands between you and an in-place `composer update`
 or a git-driven core upgrade. Composer needs to chmod and replace things
-like `vendor/drush` (which BOA locks to `0400` nightly); git refuses to
+like `vendor/drush` (which BOA keeps locked at `0400`); git refuses to
 work in a repository owned by a different user. The supported answer is a
 single control file — the key to the lock:
 
@@ -56,7 +56,8 @@ and restores the default protection.
    composer-managed codebases run composer in the **repository root** (the
    directory holding `composer.json`), not the web docroot. If a hardened
    path such as `vendor/drush` is in the way, you now own it — chmod it
-   and carry on; the nightly sweep re-hardens it later.
+   and carry on; the Verify in the next step locks it again (the nightly
+   sweep leaves its mode as it finds it).
 5. **Prove the sites still work — only then run Verify.** Do not trust
    the first page loads after the code swap: the PHP opcache and the
    Nginx cache can go on serving the pre-upgrade code and cached pages
