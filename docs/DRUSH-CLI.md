@@ -182,6 +182,8 @@ When you are done, re-lock the platform with the new 'Lock Local Drush' task —
 6. Use `vdrush @site-alias updbst`, `vdrush @site-alias updb`, etc.
 7. Re-lock the platform with the 'Lock Local Drush' task (or a full 'Platform Verify') to restore compatibility with Drush 8.
 
+Re-locking a platform unlocked earlier, by that task or by a Verify, also rebuilds every Drupal 10+ site on it with Drupal core's own rebuild. A site whose service container the local Drush compiled (a module installed or removed, a recipe applied) could not run on that container once the local Drush is locked away, so the rebuild replaces it. In the task log, `REBUILD/RELOCK` lines open and close the run, with one `REBUILD/CORE` rebuild per site between them.
+
 ---
 
 ### Supported Drush Versions:

@@ -399,6 +399,15 @@
 
 @=> Important Fixes
 
+    * A Drupal 10+ site no longer fails after its platform is locked again
+      following work with the site-local Drush. Re-locking a platform the
+      Unlock Local Drush task left open, by the Lock Local Drush task or a
+      Verify, now rebuilds every Drupal 10+ site on it with Drupal core's
+      own rebuild. A service container compiled by the site-local Drush
+      (a module installed or removed, a recipe applied) used to stay in
+      the cache, and the site failed every request that writes a log
+      entry, a 404 included, until its next Verify.
+
     * Speed Booster leaves a query out of a page's cache key only when
       every parameter in it is a campaign tag or a click id (utm_*,
       gclid, fbclid, msclkid and the like). It used to drop the whole
