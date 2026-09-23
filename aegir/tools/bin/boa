@@ -2878,6 +2878,12 @@ _display_info() {
         | head -1 \
         | cut -d" " -f2 \
         | awk '{ print $1}' 2>&1)
+      # A distro build on our path reads /etc/unbound/unbound.conf and cannot
+      # start on our config; at the pinned version it looks current otherwise.
+      if /usr/sbin/unbound -h 2>&1 \
+        | grep -q "instead of /etc/unbound/unbound.conf"; then
+        _UNB="${_UNB} (DISTRO BUILD, not ours)"
+      fi
     fi
     _isLshell="$(which lshell)"
     _LSH=$(${_isLshell} --version 2>&1 \
@@ -3899,7 +3905,7 @@ _if_display_help() {
       cleanup <------ (detect|purge) cancelled Octopus instances files (no dbs)
       suspend <------ turn off web serving on an Octopus instance (503)
       unsuspend <---- restore web serving on a suspended Octopus instance
-      archived <----- (list|prune|heal) archived stores of deleted or renamed sites (prune REMOVES them by age, heal only while the disk is above 90% used)
+      archived <----- (list|prune|heal) archived stores of deleted or renamed sites (prune REMOVES them by age, heal only while the disk is above the heal threshold, 85% used by default)
       reboot <------- run accelerated system reboot
 
     See docs/INSTALL.md for more details.

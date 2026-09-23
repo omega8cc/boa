@@ -31,8 +31,8 @@ BOA runs a MySQL watchdog from cron (`/var/xdrago/monitor/check/mysql.sh`) that
 auto-heals a sick server: it restarts a down `mysqld`, breaks apparent table
 locks, and kills long-running queries. During normal operation that is exactly
 what you want. During a *controlled* database operation it is a race straight
-into corrupt data — the watchdog cannot tell a deliberate `FLUSH TABLES WITH
-READ LOCK` cutover, an `innodb_fast_shutdown=0` package upgrade, or an
+into corrupt data — the watchdog cannot tell a cutover's promotion and host-rename
+database work, an `innodb_fast_shutdown=0` package upgrade, or an
 xtrabackup snapshot apart from a genuine hang, and "healing" any of them mid-flight
 can lose data.
 
@@ -51,9 +51,17 @@ The watchdog is therefore armed with a single maintenance marker,
   - the **Percona package upgrade** (`_install_with_aptitude_sql`) holds it
     across the whole apt transaction and the `innodb_fast_shutdown=0` restart;
   - **`xmass`** holds it on **both** hosts across `init` (the source snapshot and
-    the target restore/replica bring-up) and across the whole `cutover` — the
-    `FLUSH TABLES WITH READ LOCK` window is the single highest data-loss risk in
-    the entire toolchain;
+    the target restore/replica bring-up) and, in `cutover`, across the final
+    position read and the target's promotion — the highest data-loss risk in
+    the entire toolchain (the cutover takes no global read lock: the 503 gate
+    and the parked cron and runners are the write barrier).
+
+    On the default
+    relay-first order the **target** gets its watchdog back just before visitors
+    are relayed to it, so the renames' database work runs under the watchdog as
+    ordinary client work, while the **source** stays paused to the end of the
+    cutover; an estate that keeps the rename-first order (`_THIS_DB_HOST` set to
+    the box hostname) keeps both paused through the renames;
   - **`xoct`** holds it for `export` (`mydumper` on the source) and `import`
     (`myloader` plus `renameaegirhost`'s dump/reimport on the target).
 
@@ -117,8 +125,8 @@ answers its own "Site off-line" 503. Loading the plugin
 (`mysql_native_password=ON`) is necessary but not sufficient.
 
 BOA's 8.4 config pass therefore also sets
-`authentication_policy = mysql_native_password,,` (sql.sh.inc directive sync,
-aegir2boa D-015): the greeting is native, a native-plugin user connects from
+`authentication_policy = mysql_native_password,,` (sql.sh.inc directive sync):
+the greeting is native, a native-plugin user connects from
 PHP 5.6, and `caching_sha2` users — root, every modern-PHP site — still
 authenticate via the client auth-switch. The reset phase comments the
 directive for every other version (5.7 aborts on the unknown variable, so a
@@ -130,7 +138,9 @@ Horizon: this lane exists only for the 8.x generation. `mysql_native_password`
 is deprecated-but-shipped in 8.4 and REMOVED in MySQL/Percona 9.x, so
 php56-pool sites cannot follow a future move to 9.x — they would need to stay
 on 8.4 hosts (the natural gate for that, when a 9.x target ever appears, is
-codebasecheck). Note the Drupal-side split: the D6 CODE compatibility with
+codebasecheck).
+
+Note the Drupal-side split: the D6 CODE compatibility with
 MySQL 8 comes from d6lts/Pressflow 6.51+ (docs/CODEBASECHECK.md thresholds);
 what BOA's config provides is the PHP 5.6 CLIENT runtime lane, which no
 Drupal version bump could supply.
@@ -148,7 +158,9 @@ migrate onto a fresh Percona 8 target:
   Instead both `xoct import` and `xmass post-mig` do a **hard infrastructure
   flush**: cold-restart Valkey (or Redis) to drop the object cache, and restart
   every PHP-FPM master to drop opcache/APCu. This is the only treatment trusted
-  against cache/container poisoning. Operational consequence: sites are briefly
+  against cache/container poisoning.
+
+  Operational consequence: sites are briefly
   unavailable (seconds) immediately after the flush and warm up on the next
   request — expected, not a fault.
 - **Per-site PHP version pin.** Each site's PHP version lives in the account's
@@ -161,7 +173,9 @@ migrate onto a fresh Percona 8 target:
 `xoct`'s optional fourth argument renames the account on the target. Rename mode
 rewrites account references — including the per-site FPM `$user_socket` account
 token, so a renamed site is served by its own account's FPM pool rather than the
-target's install-time account of the same old name. Same-name migrations (the
+target's install-time account of the same old name.
+
+Same-name migrations (the
 common production case, and the only mode `xmass` performs) do not exercise the
 rename rewrites at all. When you do rename, verify the renamed site serves a real
 `200` **direct to the target** (not a proxy or catch-all) — a site-wide `403`

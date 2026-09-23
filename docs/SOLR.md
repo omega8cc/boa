@@ -39,7 +39,7 @@ Supported values for the `solr_integration_module` variable:
 - `search_api_solr`  (Activates Solr 7 core if installed)
 - `apachesolr`       (Activates Solr 4 core if installed) (deprecated)
 
-To delete an existing Solr core, simply comment out the relevant line. The system will delete the existing Solr core within 15 minutes.
+To delete an existing Solr core, simply comment out the relevant line. The system will delete the existing Solr core within 15 minutes. The core is archived first (unloaded and moved under `/var/backups/solr9` or `/var/backups/solr7`, or tarred for Solr 4) and is left in place if the archive cannot be written. An INI that went missing and was re-created by BOA from the template is a placeholder, not a delete request: the core stays until you edit the directive line yourself.
 
 ```text
 ;solr_integration_module = your_module_name_here
@@ -96,13 +96,17 @@ Solr 7 and Solr 9 discover their cores by the `core.properties` file inside each
 directory. When that file is missing (typically after the core's `conf/` was replaced
 from an archive that did not carry it), the core directory is still there and the index
 is intact, but Solr starts without the core and the site's search server answers with
-errors. The four-minute `manage_solr_config.sh` pass repairs the missing file for any
+errors.
+
+The four-minute `manage_solr_config.sh` pass repairs the missing file for any
 site whose `solr_integration_module` directive names a supported module whose Solr
 instance is installed: it asks Solr whether the core is registered and, if it is not,
 re-registers the existing directory in place with a CoreAdmin `CREATE` (index files
 untouched), logging `CORE-REREGISTERED` in the pass log under `/var/backups/solr/log/`
 (pass logs are kept for a day). A core Solr still serves from memory gets the file
-written back (`CORE-REREGISTER-PERSISTED`), so the next Solr start finds it. A
+written back (`CORE-REREGISTER-PERSISTED`), so the next Solr start finds it.
+
+A
 directory without `conf/solrconfig.xml` is left alone (`CORE-REREGISTER-SKIP`), and a
 core Solr refuses to load is retried once its `conf/` changes or after an hour, not on
 every pass. A directory that carries `core.properties` but is not listed by Solr (a

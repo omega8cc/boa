@@ -127,7 +127,7 @@ if [ -n "${drupal_root}" ] && [ -e "${drupal_root}" ]; then
   drupal_root=$(realpath -e -- "${drupal_root}" 2>/dev/null) || drupal_root=""
 fi
 
-# --- Grav 2 platform (site capsules; boa-grav D-003) -------------------------
+# --- Grav 2 platform (site capsules) -----------------------------------------
 # A Grav root carries no Drupal system.module; detect it positively and run
 # the capsule model instead of refusing (union seam: further foreign-CMS
 # branches join here the same way).
@@ -155,7 +155,7 @@ if [ -n "${drupal_root}" ] \
       [ -d "${_capsule}${_wd}" ] || continue
       chown -h -R ${script_user}:${web_group:-www-data} "${_capsule}${_wd}"
     done
-    # The root .env drops its world bit under D-008, so FPM's read comes via
+    # The secret root .env drops its world bit, so FPM's read comes via
     # the web group -- the code pass above homed it to the account group.
     [ -f "${_capsule}.env" ] \
       && chown -h ${script_user}:${web_group:-www-data} "${_capsule}.env"
@@ -164,7 +164,7 @@ if [ -n "${drupal_root}" ] \
   exit 0
 fi
 
-# --- Textpattern platform (shared core; boa-txp D-002) -----------------------
+# --- Textpattern platform (shared core) --------------------------------------
 # A TXP root carries no Drupal system.module; detect it positively (the same
 # probe as codebasecheck: textpattern/lib/constants.php + css.php + no core/)
 # and run the shared-core model instead of refusing.

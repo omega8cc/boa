@@ -94,8 +94,11 @@ _nginx_health_check_fix() {
   # `webserver up` is the sanctioned web-tier restore point after a BOA run,
   # but on a replication standby the web tier is deliberately held down --
   # bringing it back would re-open the HTTP-driven local-write path the hold
-  # exists to close. Promotion (cutover step 12) restores serving.
-  if [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ]; then
+  # exists to close. Promotion (cutover step 12) restores serving. Held means
+  # "not promoted": a box the cutover already promoted may still carry the
+  # marker (a parked resume) and must get its web tier back like any other.
+  if [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ] \
+    && [ ! -e "/var/log/boa/.standby_promoted.pid" ]; then
     echo "NOTE: replication standby -- Nginx left down (web tier held)"
     return 0
   fi

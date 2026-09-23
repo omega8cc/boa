@@ -4,7 +4,9 @@ This guide addresses common issues that may arise when working with Ægir, Drush
 
 ### 1. **Task Failure: Error - Declaration of `Drupal\Core\Logger\LoggerChannel`**
 
-This error typically shouldn't occur in any `site-task` if you have run `Platform Verify + Lock Drush` (or the lighter `Lock Local Drush`) before executing other tasks like `site clone`, `site migrate` or `site verify`. The `Unlock Local Drush` task is required for `site-local` Drush or Composer to work on the command line, after which the platform must be re-locked before running other Ægir tasks. Forgetting to re-lock, or other underlying issues, may cause tasks such as `site clone`, `site migrate` or `site verify` to fail with the PHP error. The `Lock Local Drush` and `Unlock Local Drush` tasks are themselves idempotent — re-running either on a platform already in that state is a harmless no-op, not an error.
+This error typically shouldn't occur in any `site-task` if you have run `Platform Verify + Lock Drush` (or the lighter `Lock Local Drush`) before executing other tasks like `site clone`, `site migrate` or `site verify`. The `Unlock Local Drush` task is required for `site-local` Drush or Composer to work on the command line, after which the platform must be re-locked before running other Ægir tasks. Forgetting to re-lock, or other underlying issues, may cause tasks such as `site clone`, `site migrate` or `site verify` to fail with the PHP error.
+
+The `Lock Local Drush` and `Unlock Local Drush` tasks are themselves idempotent — re-running either on a platform already in that state is a harmless no-op, not an error.
 
 **Resolution Steps:**
 

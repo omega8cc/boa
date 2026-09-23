@@ -174,12 +174,18 @@ _whitelist_ip_pingdom() {
   #   Plain IPv4 list: https://my.pingdom.com/probes/ipv4  (preferred - no parsing needed)
   #   RSS feed:        https://my.pingdom.com/probes/feed  (fallback - XML parsing required)
   # The plain list is simpler and less fragile; RSS is kept as fallback.
+  # Only a line that is nothing but an address counts: an error page served
+  # with a 200 in place of the list shows the caller's address somewhere in
+  # its text, and taken from anywhere in the body that one token replaced the
+  # whole probe list. Such a body now yields nothing and the RSS feed (its
+  # own <pingdom:ip> tag as the anchor) or the keep below applies.
   # Fetch BEFORE the tagged-line cleanup: an empty fetch (both endpoints down,
   # format change) must keep the existing entries -- never strip a monitor's
   # probes for a day. Allow both web ports: the probes check https far more
   # often than http, and a d=80-only entry leaves 443 exposed to a csf.deny hit.
   _IPS=$(curl ${_crlGet} https://my.pingdom.com/probes/ipv4 \
-    | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+\.[0-9]\+' \
+    | tr -d '\r' \
+    | grep -E '^([0-9]{1,3}\.){3}[0-9]{1,3}$' \
     | sort \
     | uniq 2>&1)
   if [ -z "${_IPS}" ]; then
@@ -280,6 +286,58 @@ _whitelist_ip_uptimerobot() {
       if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # uptimerobot ips" /etc/csf/csf.allow 2>/dev/null; then
         echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
         echo "tcp|in|d=${_PORT}|s=${_IP} # uptimerobot ips" >> /etc/csf/csf.allow
+      else
+        echo "${_IP} already listed for d=${_PORT} in /etc/csf/csf.allow"
+      fi
+    done
+  done
+}
+
+_whitelist_ip_bugbug() {
+  # BugBug runs a tenant's end-to-end browser tests from a handful of cloud
+  # runner hosts, published as a JSON array of addresses by its API -- the
+  # only channel it offers, so there is no fallback source and no static copy
+  # here either: a stale built-in address would go on trusting a cloud host
+  # its vendor has since handed back. A test suite replays logins and form
+  # posts in bursts, which is what the web IDS scores, so an unlisted runner
+  # gets banned mid-run and the tenant reads that as a failed release.
+  # Reference: https://docs.bugbug.io/troubleshooting/ips-list-of-cloud-runners
+  # The array is split into one element per line and only a line that is
+  # nothing but a quoted address counts (no jq on a BOA box): an error page
+  # served with a 200 that shows an address in its text, or carries one as a
+  # quoted attribute, yields nothing, and so does any other shape of body, and
+  # the keep below applies. A prefix is kept if one is ever published, and
+  # every token is value-validated like any other provider's.
+  # Fetch BEFORE the tagged-line cleanup: an empty fetch (endpoint down,
+  # format change) must keep the existing entries -- never strip a tenant's
+  # test runners for a day. Allow both web ports: the runners drive https,
+  # and a d=80-only entry leaves 443 exposed to a csf.deny hit.
+  _IPS=$(curl ${_crlGet} https://api.bugbug.io/v2/config/ips/ 2>/dev/null \
+    | tr ',' '\n' \
+    | tr -d '[] \t\r' \
+    | grep -E '^"([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?"$' \
+    | tr -d '"' \
+    | sort \
+    | uniq 2>&1)
+  _IPS=$(echo "${_IPS}" | _emit_valid_ips)
+  echo _IPS bugbug list..
+  echo ${_IPS}
+  if [ -z "${_IPS}" ]; then
+    echo "water: empty bugbug list; keeping existing csf.allow entries"
+    return 0
+  fi
+  if [ ! -e "/etc/boa/.whitelist.dont.cleanup.cnf" ]; then
+    echo removing bugbug ips from csf.allow
+    _NOW=$(date +%y%m%d-%H%M%S)
+    cp -a /etc/csf/csf.allow /var/backups/csf/water/csf.allow-bugbug-${_NOW}
+    sed -i "/ # bugbug ips$/d" /etc/csf/csf.allow
+    wait
+  fi
+  for _IP in ${_IPS}; do
+    for _PORT in 80 443; do
+      if ! grep -qF "tcp|in|d=${_PORT}|s=${_IP} # bugbug ips" /etc/csf/csf.allow 2>/dev/null; then
+        echo "${_IP} not yet listed for d=${_PORT} in /etc/csf/csf.allow"
+        echo "tcp|in|d=${_PORT}|s=${_IP} # bugbug ips" >> /etc/csf/csf.allow
       else
         echo "${_IP} already listed for d=${_PORT} in /etc/csf/csf.allow"
       fi
@@ -1096,7 +1154,7 @@ _guard_stats() {
 # the diff-guard and named by the rollback alert instead of being tolerated
 # and hidden. A provider added above is added here, once -- left out, its own
 # lines would roll every pass back and the alert would name them.
-_CSF_ALLOW_OWN_TAGS="pingdom uptimerobot cloudflare googlebot googlespecial microsoft imperva sucuri authzero site24x7 site24x7_extra"
+_CSF_ALLOW_OWN_TAGS="pingdom uptimerobot bugbug cloudflare googlebot googlespecial microsoft imperva sucuri authzero site24x7 site24x7_extra"
 
 # One pattern per line, anchored at the end of the line. Basic regular
 # expressions (what diff -I reads) that are valid extended ones too, so the
@@ -1299,6 +1357,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
 
   _whitelist_ip_pingdom
   _whitelist_ip_uptimerobot
+  _whitelist_ip_bugbug
   _whitelist_ip_cloudflare
   _whitelist_ip_migration_proxy
   _whitelist_ip_googlebot
@@ -1313,7 +1372,7 @@ if [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ]; then
   if [ -f "${_useCnf}" ]; then
     if [ ! -s "${_preCnf}" ]; then
       # No snapshot: nothing to roll back to, so the live file stays
-      # (siblings in sql.sh.inc and mycnfup take the same way out).
+      # (the sibling in sql.sh.inc takes the same way out).
       _useCnfUpdate=YES
       echo "NO $(date) diff3 no snapshot ${_preCnf}" >> ${_vBs}/dragon/t/csf.log
     else

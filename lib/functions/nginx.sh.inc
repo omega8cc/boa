@@ -14,9 +14,23 @@ _nginx_conf_update() {
       mv -f /etc/nginx/nginx.conf ${_vBs}/dragon/t/nginx.conf-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
       mv -f /etc/nginx/fastcgi_params ${_vBs}/dragon/t/fastcgi_params-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
       cp -af ${_locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
+      ### The template includes main.d from its main context; the directory
+      ### must never lag the line that names it.
+      mkdir -p /etc/nginx/main.d
       cp -af ${_locCnf}/nginx/fastcgi_params.txt /etc/nginx/fastcgi_params
       touch ${_pthLog}/nginx-config-params-fixed-${_xSrl}-${_X_VERSION}.log
     fi
+  fi
+  ### PHP's global.inc believes a remote peer's client address only on
+  ### nginx's word (BOA_NGINX_CLIENT). A box whose fastcgi_params predate
+  ### that param takes the current file now, not at the next version change.
+  if [ -e "${_locCnf}/nginx/fastcgi_params.txt" ] \
+    && [ -e "/etc/nginx/fastcgi_params" ] \
+    && grep -q BOA_NGINX_CLIENT "${_locCnf}/nginx/fastcgi_params.txt" \
+    && ! grep -q BOA_NGINX_CLIENT /etc/nginx/fastcgi_params; then
+    mkdir -p ${_vBs}/dragon/t
+    cp -af /etc/nginx/fastcgi_params ${_vBs}/dragon/t/fastcgi_params-pre-client-${_NOW}
+    cp -af ${_locCnf}/nginx/fastcgi_params.txt /etc/nginx/fastcgi_params
   fi
   if [ -e "${_mtrNgx}/pre.d/nginx_speed_purge.conf" ]; then
     rm -f ${_mtrNgx}/pre.d/nginx_speed_purge.conf
@@ -736,28 +750,51 @@ _master_fix_multi_ip_cron_access() {
     | tr -d "\s"`;do echo "  allow        ${_IP};" >> \
       /root/.local.IP.list.allow;done
   echo "  allow 127.0.0.1;" >> /root/.local.IP.list.allow
-  echo "  deny all;" >> /root/.local.IP.list.allow
-
-  sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${_mtrTpl}/Inc/vhost_include.tpl.php
-  wait
-  sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${_mtrTpl}/Inc/vhost_include.tpl.php
-  wait
-
-  sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${_mtrTpl}/subdir.tpl.php
-  wait
-  sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${_mtrTpl}/subdir.tpl.php
-  wait
-
-  sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${_mtrInc}/nginx_vhost_common.conf
-  wait
-  sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${_mtrInc}/nginx_vhost_common.conf
-  wait
+  ###
+  ### Only the locations kept for the box itself (FPM status and ping, the
+  ### cron entry points) take the box's other addresses: they are the ones
+  ### that allow 127.0.0.1. A location that denies everyone (backup_migrate
+  ### files, config sync dirs) stays closed to the box as well, or every proxy
+  ### that connects from it (the wildcard SSL front, an HTTPS proxy in pre.d)
+  ### would serve those files to any visitor. Each pass first drops the lines
+  ### it added before, in its own padded format, and any allow line inside
+  ### those two locations, so a file expanded by an older pass heals too. The
+  ### rendered subdir vhosts were copied from the template, so they get the
+  ### same treatment. These dirs belong to the aegir user, so a symlink is
+  ### skipped, the new text is staged in a root-only dir, and sed -i writes a
+  ### new file and renames it over the path, never through it. mawk has no
+  ### {n} repetition and before 1.3.4 no [:class:] sets: both are spelled out.
+  ###
+  local _f _d _t
+  _d=$(mktemp -d /var/backups/.boa-multi-ip.XXXXXX 2>/dev/null) || return 0
+  _t="${_d}/stage"
+  for _f in ${_mtrTpl}/Inc/vhost_include.tpl.php \
+    ${_mtrTpl}/subdir.tpl.php \
+    ${_mtrInc}/nginx_vhost_common.conf \
+    /var/aegir/config/server_master/nginx/subdir.d/*/*.conf; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    awk -v list="/root/.local.IP.list.allow" '
+      BEGIN { while ((getline _l < list) > 0) _ips[++_n] = _l }
+      /^[ \t]*location[ \t].*files\/(backup_migrate\/|config_)/ { _closed = 1; _depth = 0 }
+      {
+        _o = gsub(/\{/, "{"); _c = gsub(/\}/, "}")
+        if (_closed) _depth += _o - _c
+        _drop = 0
+        if ($0 ~ /^[ \t]*allow        [^ ;]+;[ \t\r]*$/) _drop = 1
+        else if (_closed && $0 ~ /^[ \t]*allow[ \t]/) _drop = 1
+        else if ($0 ~ /^[ \t]*allow 127\.0\.0\.1;[ \t\r]*$/) {
+          match($0, /^[ \t]*/); _ind = substr($0, 1, RLENGTH)
+          for (_i = 1; _i <= _n; _i++) { _s = _ips[_i]; sub(/^[ \t]*/, _ind, _s); print _s }
+          _drop = 1
+        }
+        if (!_drop) print
+        if (_closed && _depth <= 0 && (_o || _c)) _closed = 0
+      }' "${_f}" > "${_t}"
+    if [ -s "${_t}" ] && [ -s "${_f}" ] && ! cmp -s "${_t}" "${_f}"; then
+      sed -i -e "1r ${_t}" -e d "${_f}"
+    fi
+  done
+  rm -rf "${_d}"
 }
 
 _nginx_initd_check() {
@@ -778,13 +815,16 @@ _nginx_initd_check() {
     ### predates the hold passes the three tests above and was never
     ### refreshed, so an upgraded mirror still booted its web tier and
     ### served its own panel until the watchdog caught up. Refresh on the
-    ### gate's absence too.
-    _X_INIT_TEST_D=$(cat /etc/init.d/nginx | grep standby.serve.cnf 2>&1)
+    ### gate's absence too. The gate now follows the DATABASE, not the
+    ### xmass window (every init released the web tier), and a deployed
+    ### copy with the older predicate still names standby.serve.cnf -- so
+    ### the test names a string only the CURRENT gate carries.
+    _X_INIT_TEST_D=$(cat /etc/init.d/nginx | grep standby_promoted 2>&1)
   fi
   if [[ "${_X_INIT_TEST_A}" =~ ULIMIT ]] \
     && [[ "${_X_INIT_TEST_B}" =~ Giedymin ]] \
     && [[ "${_X_INIT_TEST_C}" =~ rotate ]] \
-    && [[ "${_X_INIT_TEST_D}" =~ standby.serve.cnf ]]; then
+    && [[ "${_X_INIT_TEST_D}" =~ standby_promoted ]]; then
     chmod 755 /etc/init.d/nginx &> /dev/null
     _mrun "update-rc.d nginx defaults"
   else
@@ -802,15 +842,21 @@ _nginx_mime_check_fix() {
     _msg "PROC: _nginx_mime_check_fix"
   fi
   if [ -e "${_locCnf}/nginx/mime.types" ]; then
-    mv -f /etc/nginx/mime.types \
-      /etc/nginx/mime.types-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af ${_locCnf}/nginx/mime.types /etc/nginx/mime.types
+    # Back up and replace only on a change: every pass otherwise left one
+    # more identical copy behind, and nginx-default serves its directory.
+    if ! cmp -s "${_locCnf}/nginx/mime.types" /etc/nginx/mime.types; then
+      mv -f /etc/nginx/mime.types \
+        /etc/nginx/mime.types-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+      cp -af ${_locCnf}/nginx/mime.types /etc/nginx/mime.types
+    fi
     if [ ! -L "/var/www/nginx-default/index.html" ] \
       && [ ! -L "/var/www/nginx-default/under_construction.jpg" ]; then
       mkdir -p /var/www/nginx-default
-      mv -f /var/www/nginx-default/index.html \
-        /var/www/nginx-default/index.html-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
-      cp -af ${_locCnf}/tpl/uc.html /var/www/nginx-default/index.html
+      if ! cmp -s "${_locCnf}/tpl/uc.html" /var/www/nginx-default/index.html; then
+        mv -f /var/www/nginx-default/index.html \
+          /var/www/nginx-default/index.html-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+        cp -af ${_locCnf}/tpl/uc.html /var/www/nginx-default/index.html
+      fi
       cp -af ${_locCnf}/tpl/under_construction.jpg \
         /var/www/nginx-default/under_construction.jpg
     fi
@@ -967,6 +1013,13 @@ _nginx_wildcard_ssl_install() {
       fi
       _WILD_SSL_PROXY_UP=YES
     fi
+    _FRONTACL_TEST=$(grep boa_front_local_deny ${_WILD_SSL_VHOST} 2>&1)
+    if [[ ! "${_FRONTACL_TEST}" =~ "boa_front_local_deny" ]]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: nginx_wild_ssl.conf proxy needs per-site access-list update..."
+      fi
+      _WILD_SSL_PROXY_UP=YES
+    fi
     ### Keep the crawler-fleet guard in step with the zones file both ways:
     ### redeploy to add it once the maps are declared, and redeploy (the gate
     ### then strips it) when they are not.
@@ -1017,6 +1070,454 @@ _nginx_ktls_control_update() {
   else
     rm -f /etc/nginx/no_ktls.conf
   fi
+}
+
+_nginx_quic_bpf_probe() {
+  ### The only test that exercises the eBPF init behind quic_bpf before the
+  ### directive is written: nginx -t skips it (no SO_REUSEPORT during a
+  ### config test), and on a real start a failed init refuses to start Nginx
+  ### at all. So start a throwaway master from a minimal config -- same
+  ### binary, same worker count, one QUIC listener with reuseport on a
+  ### loopback port -- and see whether it lives. Returns 0 only for a master
+  ### that started and logged no complaint. Its life is bounded to a few
+  ### seconds, and the Nginx monitor leaves a master of this title alone.
+  local _pDir="/run/boa-nginx-quic-bpf-probe"
+  local _pCnf="${_pDir}/nginx.conf"
+  local _pPid="${_pDir}/nginx.pid"
+  local _pLog="${_pDir}/error.log"
+  local _pCrt="/etc/ssl/private/nginx-wild-ssl.crt"
+  local _pKey="/etc/ssl/private/nginx-wild-ssl.key"
+  local _pPort="" _try _wrk _usr _mPid="" _w _rc=1
+  [ -x "/usr/sbin/nginx" ] || return 1
+  [ -e "${_pCrt}" ] && [ -e "${_pKey}" ] || return 1
+  command -v ss > /dev/null 2>&1 || return 1
+  ### Below the ephemeral range, and -a so that a connected UDP socket (which
+  ### -l would not list) counts as busy too.
+  for _try in 28443 28444 28445 28446; do
+    if ! ss -Huna 2> /dev/null | grep -q "[:.]${_try} "; then
+      _pPort="${_try}"
+      break
+    fi
+  done
+  [ -n "${_pPort}" ] || return 1
+  _wrk=$(sed -n 's/^worker_processes[[:space:]]\{1,\}\([a-z0-9]\{1,\}\);.*/\1/p' \
+    /etc/nginx/nginx.conf 2> /dev/null | head -n 1)
+  [ -n "${_wrk}" ] || _wrk="auto"
+  _usr=$(sed -n 's/^user[[:space:]]\{1,\}\([a-zA-Z0-9_. -]\{1,\}\);.*/\1/p' \
+    /etc/nginx/nginx.conf 2> /dev/null | head -n 1)
+  [ -n "${_usr}" ] || _usr="www-data"
+  ### A master left by a pass that was killed mid-probe still holds its port
+  ### and would outlive the config removed below.
+  for _mPid in $(pgrep -f "^nginx: master process /usr/sbin/nginx -c ${_pCnf}" 2> /dev/null); do
+    pkill -9 -P "${_mPid}" 2> /dev/null
+    kill -9 "${_mPid}" 2> /dev/null
+  done
+  _mPid=""
+  rm -rf "${_pDir}"
+  mkdir -p "${_pDir}" || return 1
+  chmod 700 "${_pDir}"
+  {
+    echo "user ${_usr};"
+    echo "worker_processes ${_wrk};"
+    echo "pid ${_pPid};"
+    echo "error_log ${_pLog} notice;"
+    echo "quic_bpf on;"
+    echo "events {"
+    echo "  worker_connections 64;"
+    echo "}"
+    echo "http {"
+    echo "  access_log off;"
+    echo "  server {"
+    echo "    listen 127.0.0.1:${_pPort} quic reuseport;"
+    echo "    ssl_certificate ${_pCrt};"
+    echo "    ssl_certificate_key ${_pKey};"
+    echo "  }"
+    echo "}"
+  } > "${_pCnf}"
+  if /usr/sbin/nginx -c "${_pCnf}" > /dev/null 2>&1; then
+    _w=0
+    while [ ! -s "${_pPid}" ] && [ "${_w}" -lt 4 ]; do
+      sleep 0.5
+      _w=$(( _w + 1 ))
+    done
+    _mPid=$( { tr -dc '0-9' < "${_pPid}"; } 2> /dev/null )
+    if [ -n "${_mPid}" ] \
+      && [ "$(cat /proc/${_mPid}/comm 2> /dev/null)" = "nginx" ]; then
+      _rc=0
+      ### The verdict is read now, before the teardown below can write its
+      ### own alert (a worker killed by signal) into the same log.
+      if grep -qiE "\[(emerg|alert|crit)\]|bpf.*(fail|error)" "${_pLog}" 2> /dev/null; then
+        _rc=1
+      fi
+    fi
+  fi
+  ### Stop it whatever the verdict, and by its own identity only -- the pid
+  ### file, or failing that the config path in its title: a plain name match
+  ### would take the box's real Nginx with it, and a master left behind
+  ### would keep the port and read as the real one to the Nginx monitor.
+  if [ -z "${_mPid}" ]; then
+    _mPid=$(pgrep -f "^nginx: master process /usr/sbin/nginx -c ${_pCnf}" 2> /dev/null | head -n 1)
+  fi
+  if [ -n "${_mPid}" ] \
+    && [ "$(cat /proc/${_mPid}/comm 2> /dev/null)" = "nginx" ]; then
+    kill -QUIT "${_mPid}" 2> /dev/null
+    _w=0
+    while kill -0 "${_mPid}" 2> /dev/null && [ "${_w}" -lt 4 ]; do
+      sleep 0.5
+      _w=$(( _w + 1 ))
+    done
+    if kill -0 "${_mPid}" 2> /dev/null; then
+      pkill -9 -P "${_mPid}" 2> /dev/null
+      kill -9 "${_mPid}" 2> /dev/null
+    fi
+  fi
+  ### Nothing of this title may survive the config it was started from.
+  for _mPid in $(pgrep -f "^nginx: master process /usr/sbin/nginx -c ${_pCnf}" 2> /dev/null); do
+    pkill -9 -P "${_mPid}" 2> /dev/null
+    kill -9 "${_mPid}" 2> /dev/null
+  done
+  rm -rf "${_pDir}"
+  return ${_rc}
+}
+
+_nginx_quic_bpf_sync() {
+  ### An Nginx reload hands the inherited UDP sockets to the new workers, so
+  ### every HTTP/3 transfer in flight is reset within seconds of it -- and a
+  ### BOA box reloads every few minutes (tasks, ban lists). quic_bpf routes
+  ### each QUIC packet to the worker that owns its connection, which lets
+  ### the old workers drain as they do for TCP. It lives in its own main.d
+  ### fragment, written only while the live probe passes, because a box
+  ### where the eBPF init fails would otherwise have an Nginx that refuses
+  ### to start. _NGINX_QUIC_BPF=NO in barracuda.cnf sheds it for good; the
+  ### latch is left after an init that failed with the fragment in place
+  ### (here on the enabling reload, or by the Nginx monitor after a failed
+  ### start) and holds it off until an operator removes it.
+  local _mDir="/etc/nginx/main.d"
+  local _frag="${_mDir}/quic_bpf.conf"
+  local _latch="${_mDir}/quic_bpf.failed"
+  local _cnf="/etc/nginx/nginx.conf"
+  local _eLog="/var/log/nginx/error.log"
+  local _want=NO _why="" _kMaj _kMin _eOld _eNow
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _nginx_quic_bpf_sync"
+  fi
+  [ -e "${_cnf}" ] && [ -x "/usr/sbin/nginx" ] || return 0
+  mkdir -p "${_mDir}"
+  ### Left only by a monitor killed in the middle of its trial start.
+  rm -f "${_frag}.trial"
+  if ! grep -q "^include /etc/nginx/main.d/\*\.conf;" "${_cnf}"; then
+    ### A nginx.conf from before the template carried the include line: it is
+    ### replaced once per release only, so add the line in place.
+    cp -af "${_cnf}" "${_cnf}.pre-main-d"
+    sed -i "0,/^pid .*;/s|^pid .*;|&\ninclude /etc/nginx/main.d/*.conf;|" "${_cnf}"
+    ### Restored by rename, so that a configtest running beside this one
+    ### never reads half a file.
+    if ! grep -q "^include /etc/nginx/main.d/\*\.conf;" "${_cnf}"; then
+      mv -f "${_cnf}.pre-main-d" "${_cnf}"
+      _msg "INFO: nginx.conf has no pid line to put the main.d include after; left as it is"
+    elif ! nginx -t > /dev/null 2>&1; then
+      mv -f "${_cnf}.pre-main-d" "${_cnf}"
+      _msg "ALERT: nginx -t rejected the main.d include; previous nginx.conf restored"
+    fi
+    rm -f "${_cnf}.pre-main-d"
+  fi
+  _kMaj=$(uname -r | cut -d. -f1 | tr -dc '0-9')
+  _kMin=$(uname -r | cut -d. -f2 | tr -dc '0-9')
+  if [ "${_NGINX_QUIC_BPF}" = "NO" ]; then
+    _why="_NGINX_QUIC_BPF=NO"
+  elif [ -e "${_latch}" ]; then
+    _why="${_latch} is present, delete it to probe again"
+  elif ! grep -q "^include /etc/nginx/main.d/\*\.conf;" "${_cnf}"; then
+    _why="nginx.conf does not include main.d"
+  elif [ -z "${_kMaj}" ] || [ -z "${_kMin}" ] \
+    || [ "${_kMaj}" -lt 5 ] \
+    || { [ "${_kMaj}" -eq 5 ] && [ "${_kMin}" -lt 7 ]; }; then
+    _why="it needs Linux 5.7 or newer"
+  elif ! /usr/sbin/nginx -V 2>&1 | grep -Fq -- ' --with-http_v3_module'; then
+    _why="this Nginx has no HTTP/3 module"
+  elif _nginx_quic_bpf_probe; then
+    _want=YES
+  else
+    ### Once more before a verdict that withdraws a working fragment: the
+    ### probe can lose its port, or be swept up by a monitor's restart.
+    sleep 3
+    if _nginx_quic_bpf_probe; then
+      _want=YES
+    else
+      _why="the start-up probe failed on this system"
+    fi
+  fi
+  if [ "${_want}" = "YES" ]; then
+    if [ ! -e "${_frag}" ]; then
+      echo "quic_bpf on;" > "${_frag}"
+      if nginx -t > /dev/null 2>&1; then
+        _eOld=$( { wc -l < "${_eLog}"; } 2> /dev/null | tr -dc '0-9' )
+        [ -n "${_eOld}" ] || _eOld=0
+        _mrun "service nginx reload"
+        sleep 3
+        ### A reload only logs a failed eBPF init and carries on, and this is
+        ### the one init that sees the box's real listeners and the running
+        ### master's limits. Left alone, the fragment would sit here until
+        ### the next real start refused to come up.
+        _eNow=$( { wc -l < "${_eLog}"; } 2> /dev/null | tr -dc '0-9' )
+        [ -n "${_eNow}" ] || _eNow=0
+        [ "${_eNow}" -ge "${_eOld}" ] || _eOld=0
+        if tail -n "+$(( _eOld + 1 ))" "${_eLog}" 2> /dev/null \
+          | grep -qE "ngx_quic_bpf_module failed|failed to create BPF"; then
+          rm -f "${_frag}"
+          echo "$(date) The eBPF init failed when quic_bpf was enabled by reload; the fragment was removed. Delete this file to let the next barracuda pass probe again." > "${_latch}"
+          _mrun "service nginx reload"
+          _msg "ALERT: Nginx could not initialise quic_bpf on reload; left off, see ${_latch}"
+        else
+          _msg "INFO: HTTP/3 transfers now survive Nginx reloads (quic_bpf enabled)"
+        fi
+      else
+        rm -f "${_frag}"
+        _msg "ALERT: nginx -t rejected ${_frag}; quic_bpf left off"
+      fi
+    fi
+  else
+    if [ -e "${_frag}" ]; then
+      rm -f "${_frag}"
+      if nginx -t > /dev/null 2>&1; then
+        _mrun "service nginx reload"
+      fi
+      _msg "INFO: quic_bpf disabled: ${_why}"
+    elif [ "${_NGINX_QUIC_BPF}" != "NO" ]; then
+      ### Say why: a quiet decline reads exactly like a quiet success.
+      _msg "INFO: quic_bpf stays off: ${_why}"
+    fi
+  fi
+}
+
+_nginx_ssl_proxy_local_refusal() {
+  ### Every HTTPS proxy in pre.d (a control panel's, or a per-site one made by
+  ### xoct ssl-gen) connects to its vhost from the box's own address, which
+  ### that vhost admits to its loopback-only paths. A proxy written before the
+  ### template refused them gets the template's own block here, taken from
+  ### this pass's build tree: a panel would otherwise wait for its instance's
+  ### next octopus pass, and nothing regenerates a per-site proxy. A file
+  ### without the anchor line is left alone, and every insert is undone when
+  ### the config no longer tests clean.
+  local _src="${_bldPth}/aegir/tools/system/conf/ssl_proxy.conf"
+  local _preD="/var/aegir/config/server_master/nginx/pre.d"
+  local _bak _p _any=""
+  grep -q boa_panel_local "${_src}" 2>/dev/null || return 0
+  _bak=$(mktemp -d /var/backups/.boa-ssl-proxy.XXXXXX 2>/dev/null) || return 0
+  awk '/### Loopback-only paths of the vhost behind this proxy/ { p = 1; print "  ###" }
+    p && NF { print }
+    p && /return 403;/ { r = 1 }
+    r && /^  }$/ { exit }' "${_src}" > "${_bak}/.block"
+  if ! grep -q 'set $boa_panel_local "";' "${_bak}/.block" \
+    || ! grep -q "return 403;" "${_bak}/.block"; then
+    rm -rf "${_bak}"
+    return 0
+  fi
+  for _p in "${_preD}"/*ssl_proxy.conf; do
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
+    grep -q boa_panel_local "${_p}" && continue
+    grep -q "^  log_not_found " "${_p}" || continue
+    cp -af "${_p}" "${_bak}/" || continue
+    awk -v blk="${_bak}/.block" '{ print }
+      !d && /^  log_not_found / { while ((getline _l < blk) > 0) print _l; d = 1 }' \
+      "${_bak}/${_p##*/}" > "${_p}"
+    _any="yes"
+  done
+  if [ -n "${_any}" ] && ! nginx -t > /dev/null 2>&1; then
+    for _p in "${_bak}"/*ssl_proxy.conf; do
+      [ -f "${_p}" ] && cat "${_p}" > "${_preD}/${_p##*/}"
+    done
+  fi
+  rm -rf "${_bak}"
+}
+
+_nginx_ssl_proxy_panel_lock() {
+  ### The vhost behind every HTTPS proxy in pre.d applies the IDS bans and
+  ### its site's IP lists to the proxy's own address, which the lists always
+  ### admit and no ban names, so a proxy written before the template judged
+  ### the real visitor lets anyone into a locked control panel. It gets the
+  ### template's lines, taken from this pass's build tree, for the account in
+  ### its header and the domain in its file name; a proxy for a moved account
+  ### (server_name _) gets the ban only, as ssl-gen writes it there. A file
+  ### without its anchors or with an unexpected account or domain is left
+  ### alone, and every insert is undone when the config no longer tests clean.
+  local _src="${_bldPth}/aegir/tools/system/conf/ssl_proxy.conf"
+  local _preD="/var/aegir/config/server_master/nginx/pre.d"
+  local _bak _p _n _dom _oct _any=""
+  grep -q boa_panel_lock "${_src}" 2>/dev/null || return 0
+  _bak=$(mktemp -d /var/backups/.boa-ssl-lock.XXXXXX 2>/dev/null) || return 0
+  awk '/### IDS bans and the IP lists of the site behind this proxy/ { p = 1; print "  ###" }
+    p && NF { print }
+    p && /includes\/user_admin_access\/_domain_name/ { exit }' "${_src}" > "${_bak}/.block"
+  awk '/^### The variables of the \/user \+ \/admin list/ { p = 1 }
+    p { print }
+    p && /^include / { exit }' "${_src}" > "${_bak}/.map"
+  if ! grep -q "return 444;" "${_bak}/.block" \
+    || ! grep -q "includes/ip_access/_domain_name" "${_bak}/.block" \
+    || ! grep -q "includes/user_admin_access/_domain_name" "${_bak}/.block" \
+    || ! grep -q "^include .*/user_admin_access_map/_domain_name" "${_bak}/.map"; then
+    rm -rf "${_bak}"
+    return 0
+  fi
+  for _p in "${_preD}"/*ssl_proxy.conf; do
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
+    grep -q boa_panel_lock "${_p}" && continue
+    grep -q "^  log_not_found " "${_p}" || continue
+    grep -q "^server {" "${_p}" || continue
+    _n=${_p##*/}
+    _dom=${_n#z_}
+    _dom=${_dom%_ssl_proxy.conf}
+    _oct=$(awk '/^### Secure HTTPS proxy \(START\) / { print $6; exit }' "${_p}")
+    [[ "${_dom}" =~ ^[a-z0-9][a-z0-9.-]*$ ]] || continue
+    [[ "${_oct}" =~ ^[a-z][a-z0-9_-]*$ ]] || continue
+    cp -af "${_p}" "${_bak}/" || continue
+    if [ "$(awk '$1 == "server_name" { print $2; exit }' "${_p}")" = "_;" ]; then
+      grep -v "^ *include " "${_bak}/.block" > "${_bak}/.use"
+      grep -v "^include " "${_bak}/.map" > "${_bak}/.usemap"
+    else
+      sed -e "s/_oct_uid/${_oct}/g" -e "s/_domain_name/${_dom}/g" \
+        "${_bak}/.block" > "${_bak}/.use"
+      sed -e "s/_oct_uid/${_oct}/g" -e "s/_domain_name/${_dom}/g" \
+        "${_bak}/.map" > "${_bak}/.usemap"
+    fi
+    awk -v blk="${_bak}/.use" -v map="${_bak}/.usemap" '
+      !m && /^server [{]/ { while ((getline _l < map) > 0) print _l; m = 1 }
+      { print }
+      !d && /^  log_not_found / { while ((getline _l < blk) > 0) print _l; d = 1 }' \
+      "${_bak}/${_n}" > "${_p}"
+    _any="yes"
+  done
+  ### One domain's lists never belong in a catch-all proxy: ssl-gen drops
+  ### them there, but an older xoct or xcopy run against this template
+  ### leaves them in, marker and all, which the loop above then skips.
+  for _p in "${_preD}"/*ssl_proxy.conf; do
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
+    [ "$(awk '$1 == "server_name" { print $2; exit }' "${_p}")" = "_;" ] || continue
+    grep -q "^ *include /data/disk/.*/includes/\(ip_access\|user_admin_access\|user_admin_access_map\)/" "${_p}" || continue
+    _n=${_p##*/}
+    [ -e "${_bak}/${_n}" ] || cp -af "${_p}" "${_bak}/" || continue
+    sed "/^ *include \/data\/disk\/.*\/includes\/\(ip_access\|user_admin_access\|user_admin_access_map\)\//d" \
+      "${_p}" > "${_bak}/.strip" || continue
+    cat "${_bak}/.strip" > "${_p}"
+    _any="yes"
+  done
+  if [ -n "${_any}" ] && ! nginx -t > /dev/null 2>&1; then
+    for _p in "${_bak}"/*ssl_proxy.conf; do
+      [ -f "${_p}" ] && cat "${_p}" > "${_preD}/${_p##*/}"
+    done
+  fi
+  rm -rf "${_bak}"
+}
+
+_nginx_ssl_proxy_extra_names() {
+  ### A control panel's extra names (log/extra_domain.txt) belong to its own
+  ### HTTPS proxy. An older ssl-gen gave them to every per-site proxy of a
+  ### run too, and nginx keeps whichever proxy in pre.d sorts first, so a
+  ### site's proxy could answer for a locked panel from the box's own
+  ### address. Drop a panel's extra names from every server_name in pre.d
+  ### whose file is not a panel listing them, keeping each file's own name
+  ### and its www. alias. Names compare as nginx does, without case; every
+  ### change is undone when the config no longer tests clean. edgetest
+  ### reports the same names with the same awk.
+  local _preD="/var/aegir/config/server_master/nginx/pre.d"
+  local _map="" _x _hm _e _bak _p _n _dom _any=""
+  for _x in /data/disk/*/log/extra_domain.txt; do
+    [ -f "${_x}" ] || continue
+    _hm=$(head -c 256 "${_x%/extra_domain.txt}/domain.txt" 2>/dev/null | tr -d '\r\n' | tr 'A-Z' 'a-z')
+    [[ "${_hm}" =~ ^[a-z0-9][a-z0-9.-]*$ ]] && [ "${#_hm}" -le 253 ] || continue
+    while IFS= read -r _e || [ -n "${_e}" ]; do
+      [[ "${_e}" =~ ^[a-z0-9*][a-z0-9.*-]*$ ]] && [ "${#_e}" -le 253 ] \
+        && _map="${_map} ${_e}=${_hm}"
+    done < <(head -c 65536 "${_x}" 2>/dev/null | tr -s ' \t\r' '\n' | tr 'A-Z' 'a-z')
+  done
+  [ -n "${_map}" ] || return 0
+  _bak=$(mktemp -d /var/backups/.boa-ssl-names.XXXXXX 2>/dev/null) || return 0
+  for _p in "${_preD}"/*ssl_proxy.conf; do
+    [ -f "${_p}" ] && [ ! -L "${_p}" ] || continue
+    _n=${_p##*/}
+    _dom=${_n#z_}
+    _dom=${_dom%_ssl_proxy.conf}
+    awk -v map="${_map}" -v dom="${_dom}" '
+      BEGIN {
+        dom = tolower(dom)
+        n = split(map, a, " ")
+        for (i = 1; i <= n; i++) {
+          k = a[i]; v = a[i]; sub(/=.*/, "", k); sub(/^[^=]*=/, "", v)
+          own[k] = (k in own) ? own[k] " " v : v
+        }
+      }
+      !d && $1 == "server_name" && $2 != "_;" {
+        d = 1; out = ""; drop = 0
+        l = $0; gsub("\r", " ", l); nf = split(l, f)
+        for (i = 2; i <= nf; i++) {
+          t = f[i]; sub(/;$/, "", t); lt = tolower(t)
+          if (t == "") continue
+          if (i > 2 && lt != "www." dom && (lt in own) &&
+            index(" " own[lt] " ", " " dom " ") == 0) { drop = 1; continue }
+          out = out " " t
+        }
+        if (drop && match($0, /^[ \t]*server_name[ \t]+/)) {
+          print substr($0, 1, RLENGTH) substr(out, 2) ";"; next
+        }
+      }
+      { print }' "${_p}" > "${_bak}/.names" || continue
+    cmp -s "${_bak}/.names" "${_p}" && continue
+    cp -af "${_p}" "${_bak}/" || continue
+    cat "${_bak}/.names" > "${_p}"
+    _any="yes"
+  done
+  if [ -n "${_any}" ] && ! nginx -t > /dev/null 2>&1; then
+    for _p in "${_bak}"/*ssl_proxy.conf; do
+      [ -f "${_p}" ] && cat "${_p}" > "${_preD}/${_p##*/}"
+    done
+  fi
+  rm -rf "${_bak}"
+}
+
+_nginx_migration_proxy_client() {
+  ### A site proxy that xoct or xcopy wrote before its template handed on
+  ### the wildcard SSL front's visitor still gives the new host 127.0.0.1
+  ### for every HTTPS request that came through the front. It gets the
+  ### template's block, taken from this pass's build tree, and its client
+  ### headers point at that block's variable. The vhost dirs belong to the
+  ### instance users, so a symlink is skipped, the new text is staged in a
+  ### root-only dir and sed -i replaces the file; every change is undone
+  ### when the config no longer tests clean.
+  local _src="${_bldPth}/aegir/tools/system/conf/proxy.conf"
+  local _d _f _n=0 _i
+  grep -q boa_mig_client "${_src}" 2>/dev/null || return 0
+  _d=$(mktemp -d /var/backups/.boa-mig-proxy.XXXXXX 2>/dev/null) || return 0
+  awk '/### HTTPS for a site without its own certificate reaches this vhost/ { p = 1; print "  ###" }
+    p { print }
+    p && /^  }$/ { exit }' "${_src}" > "${_d}/block"
+  if ! grep -q 'set $boa_mig_client $remote_addr;' "${_d}/block" \
+    || ! grep -q 'set $boa_mig_client $http_x_real_ip;' "${_d}/block"; then
+    rm -rf "${_d}"
+    return 0
+  fi
+  for _f in /data/disk/*/config/server_master/nginx/vhost.d/*; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    grep -q "Plain HTTP proxy (START)" "${_f}" || continue
+    grep -q boa_mig_client "${_f}" && continue
+    grep -q 'CF-Connecting-IP  *\$remote_addr;' "${_f}" || continue
+    grep -q "^  log_not_found " "${_f}" || continue
+    _n=$(( _n + 1 ))
+    cat "${_f}" > "${_d}/${_n}.orig"
+    echo "${_f}" > "${_d}/${_n}.path"
+    awk -v blk="${_d}/block" '
+      /proxy_set_header[ \t]+(X-Real-IP|CF-Connecting-IP)[ \t]+\$remote_addr;/ { sub(/\$remote_addr;/, "$boa_mig_client;") }
+      { print }
+      !d && /^  log_not_found / { while ((getline _l < blk) > 0) print _l; d = 1 }' \
+      "${_d}/${_n}.orig" > "${_d}/stage"
+    [ -s "${_d}/stage" ] && sed -i -e "1r ${_d}/stage" -e d "${_f}"
+  done
+  if [ "${_n}" -gt 0 ] && ! nginx -t > /dev/null 2>&1; then
+    for (( _i = 1; _i <= _n; _i++ )); do
+      _f=$(cat "${_d}/${_i}.path")
+      [ -f "${_f}" ] && [ ! -L "${_f}" ] && sed -i -e "1r ${_d}/${_i}.orig" -e d "${_f}"
+    done
+  fi
+  rm -rf "${_d}"
 }
 
 _nginx_config_update_fix() {
@@ -1113,6 +1614,10 @@ _nginx_config_update_fix() {
       wait
       sed -i "s/add_header Vary .*//g" /var/aegir/config/server_*/nginx.conf &> /dev/null
       wait
+      _nginx_ssl_proxy_local_refusal
+      _nginx_ssl_proxy_panel_lock
+      _nginx_ssl_proxy_extra_names
+      _nginx_migration_proxy_client
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
       sed -i "s/:443;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null

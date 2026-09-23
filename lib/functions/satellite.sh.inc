@@ -85,7 +85,7 @@ _stage_d6d7_kit() {
 #
 # Stage the newest official Grav admin-bundle release zip for the
 # per-instance upgrade channel: provision-grav-upgrade resolves the newest
-# grav-admin-v*.zip under ${_ROOT}/static/grav-releases/ (boa-grav D-004 --
+# grav-admin-v*.zip under ${_ROOT}/static/grav-releases/ (the channel is
 # mirror-fed; this box never talks to getgrav.org). Version from the same
 # mirror stamp the platform build resolves; presence-gated for idempotency
 # and re-checked on every up-* run. The resolver always picks the newest by
@@ -945,6 +945,7 @@ _satellite_cnf() {
     echo "_GHOST_SITE_FILES_CLEANUP=${_GHOST_SITE_FILES_CLEANUP}" >> ${_octCnf}
     echo "_GHOST_ALIASES_CLEANUP=${_GHOST_ALIASES_CLEANUP}"     >> ${_octCnf}
     echo "_INSTANCE_GROUP=${_INSTANCE_GROUP:-YES}"              >> ${_octCnf}
+    echo "_SEND_UPGRADE_EMAIL=${_SEND_UPGRADE_EMAIL:-YES}"      >> ${_octCnf}
     echo "_DEL_OLD_BACKUPS=${_DEL_OLD_BACKUPS}"                 >> ${_octCnf}
     echo "_DEL_OLD_TMP=${_DEL_OLD_TMP}"                         >> ${_octCnf}
     echo "_LOCAL_NETWORK_IP=${_LOCAL_NETWORK_IP}"               >> ${_octCnf}
@@ -1061,14 +1062,14 @@ _satellite_cnf() {
     else
       echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_octCnf}
     fi
-    ### Ships dark (boa-grav D-002); no _MIGRATED heal by design.
+    ### Ships dark; no _MIGRATED heal by design.
     _GRAV_SUPPORT_TEST=$(grep "^_GRAV_SUPPORT=" ${_octCnf} 2>&1)
     if [[ "${_GRAV_SUPPORT_TEST}" =~ "_GRAV_SUPPORT=" ]]; then
       _DO_NOTHING=YES
     else
       echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}" >> ${_octCnf}
     fi
-    ### Ships dark (boa-txp D-002); no _MIGRATED heal by design.
+    ### Ships dark; no _MIGRATED heal by design.
     _TXP_SUPPORT_TEST=$(grep "^_TXP_SUPPORT=" ${_octCnf} 2>&1)
     if [[ "${_TXP_SUPPORT_TEST}" =~ "_TXP_SUPPORT=" ]]; then
       _DO_NOTHING=YES
@@ -1393,6 +1394,13 @@ _satellite_cnf() {
       echo "_INSTANCE_GROUP=${_INSTANCE_GROUP:-YES}" >> ${_octCnf}
     fi
 
+    _SEND_UPGRADE_EMAIL_TEST=$(grep "^_SEND_UPGRADE_EMAIL=" ${_octCnf} 2>&1)
+    if [[ "${_SEND_UPGRADE_EMAIL_TEST}" =~ "_SEND_UPGRADE_EMAIL=" ]]; then
+      _DO_NOTHING=YES
+    else
+      echo "_SEND_UPGRADE_EMAIL=${_SEND_UPGRADE_EMAIL:-YES}" >> ${_octCnf}
+    fi
+
     _DEL_OLD_BACKUPS_TEST=$(grep _DEL_OLD_BACKUPS ${_octCnf} 2>&1)
     if [[ "${_DEL_OLD_BACKUPS_TEST}" =~ "_DEL_OLD_BACKUPS" ]]; then
       _DO_NOTHING=YES
@@ -1662,28 +1670,51 @@ _satellite_fix_multi_ip_cron_access() {
     | tr -d "\s"`;do echo "  allow        ${_IP};" >> \
       /root/.local.IP.list.allow;done
   echo "  allow 127.0.0.1;" >> /root/.local.IP.list.allow
-  echo "  deny all;" >> /root/.local.IP.list.allow
-
-  sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${_octTpl}/Inc/vhost_include.tpl.php
-  wait
-  sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${_octTpl}/Inc/vhost_include.tpl.php
-  wait
-
-  sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${_octTpl}/subdir.tpl.php
-  wait
-  sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${_octTpl}/subdir.tpl.php
-  wait
-
-  sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${_octInc}/nginx_vhost_common.conf
-  wait
-  sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${_octInc}/nginx_vhost_common.conf
-  wait
+  ###
+  ### Only the locations kept for the box itself (FPM status and ping, the
+  ### cron entry points) take the box's other addresses: they are the ones
+  ### that allow 127.0.0.1. A location that denies everyone (backup_migrate
+  ### files, config sync dirs) stays closed to the box as well, or every proxy
+  ### that connects from it (the wildcard SSL front, an HTTPS proxy in pre.d)
+  ### would serve those files to any visitor. Each pass first drops the lines
+  ### it added before, in its own padded format, and any allow line inside
+  ### those two locations, so a file expanded by an older pass heals too. The
+  ### rendered subdir vhosts were copied from the template, so they get the
+  ### same treatment. These dirs belong to the instance user, so a symlink is
+  ### skipped, the new text is staged in a root-only dir, and sed -i writes a
+  ### new file and renames it over the path, never through it. mawk has no
+  ### {n} repetition and before 1.3.4 no [:class:] sets: both are spelled out.
+  ###
+  local _f _d _t
+  _d=$(mktemp -d /var/backups/.boa-multi-ip.XXXXXX 2>/dev/null) || return 0
+  _t="${_d}/stage"
+  for _f in ${_octTpl}/Inc/vhost_include.tpl.php \
+    ${_octTpl}/subdir.tpl.php \
+    ${_octInc}/nginx_vhost_common.conf \
+    ${_ROOT}/config/server_master/nginx/subdir.d/*/*.conf; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    awk -v list="/root/.local.IP.list.allow" '
+      BEGIN { while ((getline _l < list) > 0) _ips[++_n] = _l }
+      /^[ \t]*location[ \t].*files\/(backup_migrate\/|config_)/ { _closed = 1; _depth = 0 }
+      {
+        _o = gsub(/\{/, "{"); _c = gsub(/\}/, "}")
+        if (_closed) _depth += _o - _c
+        _drop = 0
+        if ($0 ~ /^[ \t]*allow        [^ ;]+;[ \t\r]*$/) _drop = 1
+        else if (_closed && $0 ~ /^[ \t]*allow[ \t]/) _drop = 1
+        else if ($0 ~ /^[ \t]*allow 127\.0\.0\.1;[ \t\r]*$/) {
+          match($0, /^[ \t]*/); _ind = substr($0, 1, RLENGTH)
+          for (_i = 1; _i <= _n; _i++) { _s = _ips[_i]; sub(/^[ \t]*/, _ind, _s); print _s }
+          _drop = 1
+        }
+        if (!_drop) print
+        if (_closed && _depth <= 0 && (_o || _c)) _closed = 0
+      }' "${_f}" > "${_t}"
+    if [ -s "${_t}" ] && [ -s "${_f}" ] && ! cmp -s "${_t}" "${_f}"; then
+      sed -i -e "1r ${_t}" -e d "${_f}"
+    fi
+  done
+  rm -rf "${_d}"
 }
 
 #
@@ -4879,7 +4910,7 @@ _satellite_send_welcome_email() {
       ### Never fall back to the INIT-time setupmail render: it carries the
       ### original password under a Welcome body, so resending it under an
       ### Upgrade subject would mail stale credentials. No upgrademail.txt
-      ### means no send, only the loud ALRT trail below.
+      ### means no send; the trail below says which kind of miss it was.
       _mailBody="${_ROOT}/log/upgrademail.txt"
       _MAIL_SENT=NO
       if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
@@ -4898,8 +4929,25 @@ _satellite_send_welcome_email() {
         fi
       fi
       if [ "${_MAIL_SENT}" = "NO" ]; then
-        _msg "ALRT: Upgrade email for ${_USER} was NOT sent"
-        _msg "ALRT: The intended message body is in ${_mailBody}"
+        ### The upgrade body is rendered only beside an INIT-time setupmail
+        ### render (_satellite_prepare_setup_email_tpl), and an account
+        ### installed under /root/.silent.update.cnf has none until its
+        ### files arrive. With neither file present there was nothing to
+        ### send and nothing failed, while an ALRT reports the whole pass
+        ### as failed. A missing body beside a setupmail render is a failed
+        ### render and a body that did not go out is a failed send: both
+        ### stay loud.
+        local _mailInit _mailCand
+        _mailInit=NO
+        for _mailCand in setupmail.txt legacy_setupmail.txt latest_setupmail.txt; do
+          [ -e "${_ROOT}/log/${_mailCand}" ] && _mailInit=YES
+        done
+        if [ ! -e "${_mailBody}" ] && [ "${_mailInit}" = "NO" ]; then
+          _msg "NOTE: No upgrade email for ${_USER}: no setup email render exists in ${_ROOT}/log"
+        else
+          _msg "ALRT: Upgrade email for ${_USER} was NOT sent"
+          _msg "ALRT: The intended message body is in ${_mailBody}"
+        fi
       fi
     else
       _SEND_UPGRADE_EMAIL=NO
@@ -5202,6 +5250,15 @@ _satellite_make() {
   echo "export _USRG=\"${_USRG}\""                           >> ${_writeTo}
   echo "export _ACCG=\"${_ACCG}\""                           >> ${_writeTo}
   echo "export _INSTANCE_GROUP=\"${_INSTANCE_GROUP:-YES}\""    >> ${_writeTo}
+  # The upgrade notice is sent by the stage A child, which sees only this
+  # include: without the line the instance's NO never reached the send and
+  # the switch did nothing. Only an exact NO is handed on, so a mistyped
+  # value can never silence the notice.
+  if [ "${_SEND_UPGRADE_EMAIL}" = "NO" ]; then
+    echo "export _SEND_UPGRADE_EMAIL=\"NO\""                    >> ${_writeTo}
+  else
+    echo "export _SEND_UPGRADE_EMAIL=\"YES\""                   >> ${_writeTo}
+  fi
   echo "export _WEBG=\"${_WEBG}\""                           >> ${_writeTo}
   echo "export _xSrl=\"${_xSrl}\""                           >> ${_writeTo}
   echo "export _X_VERSION=\"${_X_VERSION}\""                 >> ${_writeTo}
@@ -5383,7 +5440,7 @@ _satellite_make() {
   fi
 
   ### Stage the pinned D6->D7 contrib kit for provision-backdrop-d6-upgrade,
-  ### behind _BACKDROP_SUPPORT (D-012). Stamp-gated no-op when current.
+  ### behind _BACKDROP_SUPPORT. Stamp-gated no-op when current.
   _stage_d6d7_kit
   _stage_grav_releases
   ### Backstop bee for octopus-only boxes; no-op when already installed.
@@ -6279,12 +6336,39 @@ _satellite_letsencrypt_vhost_sync() {
   ### check on every upgrade while nginx keeps serving KTLS.
   [ -e "/etc/nginx/no_ktls.conf" ] \
     && sed -i "/ssl_conf_command Options.*KTLS/d" ${_Ssl}
+  ### The control panel front does not offer HTTP/3. A reload hands the
+  ### shared UDP sockets to the new workers, so a QUIC transfer in flight
+  ### is cut within seconds of every reload, while a TCP one drains on the
+  ### old worker. Reloads follow tasks and ban-list updates every few
+  ### minutes, so a multi-gigabyte backup download never completed over
+  ### HTTP/3. Alt-Svc clear makes a browser drop the alternative it cached
+  ### from earlier visits. Same two-layer shape as the KTLS strip above:
+  ### the fetched generator can lag this lib.
+  sed -i "/^[[:space:]]*listen .*:443 quic;/d; /^[[:space:]]*http3\(_hq\)\?[[:space:]].*on;/d" ${_Ssl}
+  if ! grep -q "Alt-Svc" ${_Ssl}; then
+    sed -i "s/^\([[:space:]]*\)proxy_buffering[[:space:]].*off;/&\n\1proxy_hide_header          Alt-Svc;\n\1add_header                 Alt-Svc clear always;/" ${_Ssl}
+  fi
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Reloading Nginx..."
     _mrun "service nginx reload"
   else
     _mrun "service nginx reload"
   fi
+}
+
+_satellite_ssl_proxy_template_refresh() {
+  ### xoct ssl-gen renders the panel proxy from /var/xdrago/conf/ssl_proxy.conf,
+  ### which only a barracuda pass refreshes. An octopus pass that runs first
+  ### would regenerate from the stale template on every pass until then, so take
+  ### the template from this pass's own build tree when it carries a marker the
+  ### deployed one lacks. The newest marker is enough: each template carries
+  ### every older one.
+  local _tpl="/var/xdrago/conf/ssl_proxy.conf"
+  local _src="${_bldPth}/aegir/tools/system/conf/ssl_proxy.conf"
+  grep -q boa_panel_lock "${_tpl}" 2>/dev/null && return 0
+  grep -q boa_panel_lock "${_src}" 2>/dev/null || return 0
+  mkdir -p /var/xdrago/conf
+  cp -af "${_src}" "${_tpl}"
 }
 
 _satellite_letsencrypt_vhost_setup() {
@@ -6320,7 +6404,11 @@ _satellite_letsencrypt_vhost_setup() {
           _msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf exists, OK!"
         fi
         _satellite_letsencrypt_crt_key_copy
-        _HTTP3_TEST=$(grep http3 ${_Ssl} 2>&1)
+        ### The panel front carries no QUIC listener and clears Alt-Svc
+        ### (see _satellite_letsencrypt_vhost_sync); either one missing
+        ### marks a front written before that and needing one regen.
+        _HTTP3_TEST=$(grep -E "^[[:space:]]*(listen .* quic;|http3)" ${_Ssl} 2>&1)
+        _ALTSVC_TEST=$(grep "Alt-Svc clear" ${_Ssl} 2>&1)
         _KTLS_TEST=$(grep KTLS ${_Ssl} 2>&1)
         _RPRT_TEST=$(grep reuseport ${_Ssl} 2>&1)
         _SQLADMIN_TEST=$(grep sqladmin ${_Ssl} 2>&1)
@@ -6328,6 +6416,14 @@ _satellite_letsencrypt_vhost_setup() {
         ### so their absence marks a pre-hardening vhost needing one regen.
         _SQLADMCRWL_TEST=$(grep is_crawler ${_Ssl} 2>&1)
         _HTTPVER_TEST=$(grep proxy_http_version ${_Ssl} 2>&1)
+        ### The loopback-only path refusal (FPM status and ping, cron, stub
+        ### status) arrived later; a front without it proxies those paths to
+        ### the panel vhost from the box's own address, which admits them.
+        _PANELLOCAL_TEST=$(grep boa_panel_local ${_Ssl} 2>&1)
+        ### The IDS ban and the panel's own IP lists came after that; without
+        ### them the panel vhost judges this proxy's address, which the lists
+        ### always admit, so a locked panel answered anyone over HTTPS.
+        _PANELLOCK_TEST=$(grep boa_panel_lock ${_Ssl} 2>&1)
         _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
         _PHP_CN="www${_PHP_SV}"
         _FPM_SOCKET_VAR=$(grep "unix:/var/run/${_PHP_CN}.fpm.socket" ${_Ssl} 2>&1)
@@ -6346,15 +6442,19 @@ _satellite_letsencrypt_vhost_setup() {
           [[ ! "${_KTLS_TEST}" =~ "KTLS" ]] && _KTLS_NEEDS_UPDATE=YES
         fi
         if [[ ! "${_FPM_SOCKET_TEST}" =~ "fpm.socket" ]] \
-          || [[ ! "${_HTTP3_TEST}" =~ "http3" ]] \
+          || [[ "${_HTTP3_TEST}" =~ (quic|http3) ]] \
+          || [[ ! "${_ALTSVC_TEST}" =~ "Alt-Svc" ]] \
           || [ "${_KTLS_NEEDS_UPDATE}" = "YES" ] \
           || [[ "${_RPRT_TEST}" =~ "reuseport" ]] \
           || [[ ! "${_SQLADMIN_TEST}" =~ "sqladmin" ]] \
           || [[ ! "${_SQLADMCRWL_TEST}" =~ "is_crawler" ]] \
-          || [[ ! "${_HTTPVER_TEST}" =~ "proxy_http_version" ]]; then
+          || [[ ! "${_HTTPVER_TEST}" =~ "proxy_http_version" ]] \
+          || [[ ! "${_PANELLOCAL_TEST}" =~ "boa_panel_local" ]] \
+          || [[ ! "${_PANELLOCK_TEST}" =~ "boa_panel_lock" ]]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf needs update..."
           fi
+          _satellite_ssl_proxy_template_refresh
           echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL} ${_THISHTIP}" > /root/.ssl.proxy.cnf
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             bash /opt/local/bin/xoct ssl-gen
@@ -6372,6 +6472,7 @@ _satellite_letsencrypt_vhost_setup() {
       else
         _msg "${_STATUS} A: Creating LE vhost for Hostmaster, please wait..."
         _satellite_letsencrypt_crt_key_copy
+        _satellite_ssl_proxy_template_refresh
         echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL} ${_THISHTIP}" > /root/.ssl.proxy.cnf
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           bash /opt/local/bin/xoct ssl-gen
@@ -7426,19 +7527,19 @@ _satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster en hosting_site_backup_manager -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_http_basic_auth -y &> /dev/null
     ### Backdrop platform awareness in the hostmaster frontend; gated dark
-    ### behind _BACKDROP_SUPPORT (D-012). Enabling the module also enables
+    ### behind _BACKDROP_SUPPORT. Enabling the module also enables
     ### its 'backdropcms' hosting feature via hosting_modules_enabled().
     if [ "${_BACKDROP_SUPPORT}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster en hosting_backdrop -y &> /dev/null
     fi
     ### Grav platform awareness in the hostmaster frontend; gated dark
-    ### behind _GRAV_SUPPORT (boa-grav D-002). Enabling the module also
+    ### behind _GRAV_SUPPORT. Enabling the module also
     ### enables its 'gravcms' hosting feature via hosting_modules_enabled().
     if [ "${_GRAV_SUPPORT}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster en hosting_grav -y &> /dev/null
     fi
     ### Textpattern platform awareness in the hostmaster frontend; gated dark
-    ### behind _TXP_SUPPORT (boa-txp D-002). Enabling the module also enables
+    ### behind _TXP_SUPPORT. Enabling the module also enables
     ### its 'txpcms' hosting feature via hosting_modules_enabled().
     if [ "${_TXP_SUPPORT}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster en hosting_txp -y &> /dev/null
