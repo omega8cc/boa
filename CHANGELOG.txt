@@ -463,6 +463,12 @@
       directories as it finds them: only the Lock and Unlock Local Drush
       tasks and a Verify change the lock.
 
+    * Drupal 8 and 9 sites get the same rebuild when a lock closes an
+      earlier Unlock Local Drush window. Their platform's lock is the
+      chmod alone, and the Drush 10 or 11 they carry compiles the same
+      Drush-only logger into a site's container, so such a site also
+      failed every request that writes a log entry until its next Verify.
+
     * Speed Booster leaves a query out of a page's cache key only when
       every parameter in it is a campaign tag or a click id (utm_*,
       gclid, fbclid, msclkid and the like). It used to drop the whole
