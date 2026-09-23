@@ -126,7 +126,9 @@ unchanged.
 > per the *target's* disk reality: its contents are **mirrored onto the target's `/mnt`
 > mount** (with the on-target path re-pointed there) if the target has one, or
 > **de-referenced into a real dir** on the target root if it has none — never copied as a
-> bare (dangling) symlink. Make sure those tools are current (storage-aware)
+> bare (dangling) symlink.
+>
+> Make sure those tools are current (storage-aware)
 > before migrating a host whose `arch`/`static/files` is relocated;
 > older versions would copy/skip the bare symlink and transfer **no** SQL dumps or cluster
 > backups. (Consumers that read a path *under* `arch`, e.g. `copydbackup` and

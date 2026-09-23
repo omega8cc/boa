@@ -32,7 +32,9 @@ user_admin_access/<site>.conf       (server scope)
 arrives from an address the `geo` did not allow. BOA enforces Drupal clean URLs, so those
 paths always arrive in `$uri` — which nginx percent-decodes and normalises (collapsing
 `/./` and, under the default `merge_slashes on`, `//`); the `^/+` anchor also catches a
-multi-slash `//admin` even if a vhost ever disabled `merge_slashes`. The legacy `?q=admin`
+multi-slash `//admin` even if a vhost ever disabled `merge_slashes`.
+
+The legacy `?q=admin`
 query form is not a clean path (not served by default on BOA) and is deliberately not
 matched here — `$arg_q` cannot be reliably gated at the nginx layer (nginx neither
 percent-decodes it nor de-duplicates it the way Drupal reads `$_GET['q']`), so a partial
@@ -58,7 +60,9 @@ Backdrop site's fragment comes out byte-identical.
   media and configuration operation runs through the API plugin at `/api/v1` (JWT from
   `POST /api/v1/auth/token`, or an API key). A list that stopped at `/admin` restricted the
   shell and left the data surface open. The whole `/api` route is matched, not `/api/v1`,
-  so a later version segment is covered. The `(?:/|$)` tail holds the match to the plugin's
+  so a later version segment is covered.
+
+  The `(?:/|$)` tail holds the match to the plugin's
   real routes: the plugin wakes on any path that merely begins with `/api`, but a lookalike
   such as `/apix/v1/auth/token` (same length as the real base or not) lands on no endpoint
   and only draws the plugin's own 401, so its pre-authentication layer, and nothing behind
@@ -86,7 +90,9 @@ fragment inside **every serving server block** (co-located with `ip_access`) via
 so a site with no fragment is a no-op — the feature is strict opt-in. The `.conf*` anchor
 (not a bare `{uri}*`) matters: a bare glob would also match a longer site whose name extends
 this one (`example.com` vs `example.com.au`), pulling that site's fragment into this vhost
-and wrongly applying its restriction here. Regular sites carry their `:80` and `:443` blocks
+and wrongly applying its restriction here.
+
+Regular sites carry their `:80` and `:443` blocks
 in one vhost file; the geo/map is emitted once and referenced from both (nginx resolves
 map/geo variables across the whole `http{}` regardless of textual order, so the `:443`
 block's forward reference is fine).
@@ -147,7 +153,9 @@ staging.example.com    198.51.100.42 2001:db8:1::1
   `service nginx configtest`, then `reload`; on a failed configtest or reload, restore the
   last-good backup and reload. The last-good archive is proved readable before the live fragments are deleted: an
   unreadable one leaves the fragments on disk alone and prints an `ALRT:` line naming the
-  control file to fix, and a freshly written last-good that does not verify is removed. On a
+  control file to fix, and a freshly written last-good that does not verify is removed.
+
+  On a
   replication standby whose web tier is held, the fragments are written and the change-gate
   markers advance, but the reload and the revert are both skipped until promotion. The whole script holds the shared
   `/run/boa_nginx_config.lock` (`flock -w 30`) so it never overlaps `ip_access` /
@@ -176,7 +184,9 @@ Copies are written only once the deployed front carries their include lines (a b
 upgrade updates it), and only for a site with a rendered vhost. A deleted control file
 changes nothing, on HTTP or HTTPS (a deletion does not travel to a mirror or a migration
 target, so it could only ever lift one box); to lift, remove a site's line or empty the
-file. The copies still follow their sites' names then: a new alias is covered, a name that
+file.
+
+The copies still follow their sites' names then: a new alias is covered, a name that
 moved to another site is released, and a site with no name of its own left keeps an inert
 copy.
 They share the instance's
