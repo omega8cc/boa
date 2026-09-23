@@ -34,7 +34,10 @@ if (preg_match("/^\/cron\.php/", $_SERVER['REQUEST_URI']) ||
 
 
 /**
- * Support real IP detection behind proxies (Cloudflare, Akamai, etc.)
+ * The client address: nginx realip's answer (BOA_NGINX_CLIENT) for a peer
+ * realip trusts (the Cloudflare ranges, migration sources), X-Real-IP from a
+ * proxy on this box, else the TCP peer. The header chain below serves only
+ * nginx whose fastcgi_params predate BOA_NGINX_CLIENT.
  */
 if (isset($_SERVER['REMOTE_ADDR']) && php_sapi_name() !== 'cli') {
 
@@ -53,8 +56,36 @@ if (isset($_SERVER['REMOTE_ADDR']) && php_sapi_name() !== 'cli') {
     $proxy_ip = end($proxy_ip_list); // Trust the last proxy in the chain
   }
 
-  // Detect real client IP using known proxy headers
-  if (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
+  if (isset($_SERVER['BOA_NGINX_CLIENT'])) {
+    // nginx passes both the TCP peer (REMOTE_ADDR) and the client its realip
+    // module resolved (BOA_NGINX_CLIENT). They differ only when realip trusted
+    // that peer, a Cloudflare range or a migration source, the one trust
+    // list this box keeps: take its answer. A client header from any other
+    // peer is believed by nobody, or a visitor could name its own address.
+    $boa_nginx_client = trim($_SERVER['BOA_NGINX_CLIENT']);
+    if (!empty($proxy_ip) && filter_var($boa_nginx_client, FILTER_VALIDATE_IP) &&
+        $boa_nginx_client !== $proxy_ip) {
+      $real_ip = $boa_nginx_client;
+      $proxy_header = 'CF-Connecting-IP';
+    }
+    // A peer on this box (loopback, or the address the request came in on)
+    // is the wildcard SSL front or one of BOA's HTTPS proxies. They overwrite
+    // X-Real-IP with their own visitor and pass every other client header
+    // through untouched, so that one header is the only one believed.
+    elseif (!empty($proxy_ip) && !empty($_SERVER['HTTP_X_REAL_IP']) &&
+        ($proxy_ip === '127.0.0.1' || $proxy_ip === '::1' ||
+         (isset($_SERVER['SERVER_ADDR']) && $proxy_ip === $_SERVER['SERVER_ADDR']))) {
+      $boa_hop_client = trim($_SERVER['HTTP_X_REAL_IP']);
+      if (filter_var($boa_hop_client, FILTER_VALIDATE_IP)) {
+        $real_ip = $boa_hop_client;
+        $proxy_header = 'X-Real-IP';
+      }
+    }
+    unset($boa_nginx_client, $boa_hop_client);
+  }
+  // nginx whose fastcgi_params predate BOA_NGINX_CLIENT (a barracuda pass
+  // refreshes them): the header detection it replaced, until then.
+  elseif (!empty($_SERVER['HTTP_CF_CONNECTING_IP'])) {
     // Cloudflare (single IP, trusted)
     $real_ip = trim($_SERVER['HTTP_CF_CONNECTING_IP']);
     $proxy_header = 'CF-Connecting-IP';

@@ -111,8 +111,9 @@ include /data/conf/nginx_cloudflare_real_ip.c*;   # set_real_ip_from <CF ranges>
 that include (daily cron, and once at install time from `BOA.sh.txt` so a fresh box does
 not wait for the cron). With it active, `$remote_addr` is the **real visitor** and
 `$realip_remote_addr` is the edge. Enforcement and logging therefore bite the real
-client even for CF-proxied sites; PHP is still fed the peer (`fastcgi_param REMOTE_ADDR
-$realip_remote_addr`) so it keeps treating the edge as the proxy.
+client even for CF-proxied sites. PHP is still fed the peer (`fastcgi_param REMOTE_ADDR
+$realip_remote_addr`) plus the realip answer (`BOA_NGINX_CLIENT`), and `global.inc` takes the
+client from that answer, never from a header a remote peer sent.
 
 The empty-glob include (`*.c*`) means the config is valid before the ranges file exists,
 so there is no chicken-and-egg at first boot.

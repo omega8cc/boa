@@ -119,6 +119,25 @@
       reload, and checks a freshly written archive, as ip_access
       does: an unreadable one leaves the fragments in place and
       names the control file to fix.
+    * The client address a Drupal or Backdrop site sees can no longer be
+      named by the visitor. The PHP layer took CF-Connecting-IP,
+      True-Client-IP, X-Real-IP or X-Forwarded-For from any peer, so
+      anyone could pick the address flood control, logs and IP-based
+      modules saw. It now takes the client nginx's realip resolved from
+      a peer it trusts (the Cloudflare ranges, a migration source),
+      passed as the new BOA_NGINX_CLIENT fastcgi param, and from a peer
+      on the box (the wildcard SSL front, BOA's HTTPS proxies) only
+      their X-Real-IP; any other peer is the client itself. A site
+      behind a CDN or proxy that realip does not trust now sees that
+      proxy's address. A barracuda pass installs the new
+      fastcgi_params. aegir2boa-stage2's peer step on the target now
+      registers its source as a trusted migration source, as xmass and
+      xoct do, so sites relayed from a vanilla Aegir box keep their
+      visitors' addresses (a Cloudflare-fronted one arrives as the edge
+      address, as the vanilla source has no Cloudflare realip). The
+      source now prints the address it reaches the target from, and
+      migration_proxy_trust.sh gains an untrust verb that removes one
+      peer and leaves every other migration's trust in place.
     * A migration site proxy (the vhost xoct or xcopy leaves on the old
       box) hands the new host the real visitor of an HTTPS request that
       came through the wildcard SSL front, not the front's 127.0.0.1.

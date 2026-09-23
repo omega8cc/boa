@@ -335,7 +335,8 @@ look on any failure.
   aegir2boa-stage2 peer --target <target-ip> --live
 
   # ON THE TARGET: open csf.allow AND csf.ignore, clear any tripped block,
-  # reload csf, authorise the key (the command printed above supplies it)
+  # reload csf, register the source as a trusted migration source (nginx
+  # realip), authorise the key (the command printed above supplies it)
   aegir2boa-stage2 peer --source <source-ip> --pubkey-file <f>   # dry
   aegir2boa-stage2 peer --source <source-ip> --pubkey-file <f> --live
 
@@ -1077,7 +1078,10 @@ deliberately:
    the migration log), snapshot the box if the provider makes that cheap,
    then power it off.
 7. **Clean the target**: remove the source's CSF allow/ignore lines
-   (`csf -ra` after), drop the migration key from
+   (`csf -ra` after), drop its migration-source trust with
+   `/var/xdrago/migration_proxy_trust.sh untrust <ip>` (the address the peer
+   step reported as trusted; every other migration's trust stays), drop the
+   migration key from
    `/root/.ssh/authorized_keys`, and optionally the tool copy and the
    landed `src/a2b/` artifacts once the estate has run clean past a
    backup cycle.

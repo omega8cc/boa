@@ -1273,8 +1273,10 @@ trusted ranges the `CF-Connecting-IP` header is ignored and `$remote_addr` is le
 One subtlety on the FastCGI side: BOA pins `fastcgi_param REMOTE_ADDR $realip_remote_addr;`,
 so the PHP global sees the **original TCP peer** (the CF edge), while nginx's own
 `$remote_addr` stays realip-rewritten to the real client for rate-limit keys, logs and the
-deny geo. This keeps Provision's own PHP-side real-client resolution correct and the
-nginx-side guards correct at the same time.
+deny geo. PHP also gets that realip answer as `BOA_NGINX_CLIENT`, and `global.inc` takes the
+client from it when realip trusted the peer, or from `X-Real-IP` when the peer is on the box
+(the wildcard SSL front, BOA's HTTPS proxies). A header any other peer sends is ignored, so a
+visitor cannot name the address Drupal sees.
 
 ### `$is_banned` — the closing link of the pipeline
 

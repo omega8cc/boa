@@ -21,6 +21,17 @@ _nginx_conf_update() {
       touch ${_pthLog}/nginx-config-params-fixed-${_xSrl}-${_X_VERSION}.log
     fi
   fi
+  ### PHP's global.inc believes a remote peer's client address only on
+  ### nginx's word (BOA_NGINX_CLIENT). A box whose fastcgi_params predate
+  ### that param takes the current file now, not at the next version change.
+  if [ -e "${_locCnf}/nginx/fastcgi_params.txt" ] \
+    && [ -e "/etc/nginx/fastcgi_params" ] \
+    && grep -q BOA_NGINX_CLIENT "${_locCnf}/nginx/fastcgi_params.txt" \
+    && ! grep -q BOA_NGINX_CLIENT /etc/nginx/fastcgi_params; then
+    mkdir -p ${_vBs}/dragon/t
+    cp -af /etc/nginx/fastcgi_params ${_vBs}/dragon/t/fastcgi_params-pre-client-${_NOW}
+    cp -af ${_locCnf}/nginx/fastcgi_params.txt /etc/nginx/fastcgi_params
+  fi
   if [ -e "${_mtrNgx}/pre.d/nginx_speed_purge.conf" ]; then
     rm -f ${_mtrNgx}/pre.d/nginx_speed_purge.conf
   fi
