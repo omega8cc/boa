@@ -363,6 +363,20 @@
 
 @=> Important Fixes
 
+    * Speed Booster leaves a query out of a page's cache key only when
+      every parameter in it is a campaign tag or a click id (utm_*,
+      gclid, fbclid, msclkid and the like). It used to drop the whole
+      query whenever such a tag appeared anywhere in it, even inside
+      another parameter's name, so ?page=2&utm_source=... or
+      ?datasource=... could be served the plain page's copy, while a
+      link carrying only a click id got a cache entry of its own.
+
+    * Uptime monitors (Pingdom, UptimeRobot) always reach the site now:
+      Speed Booster never answers them from its cache, never stores
+      their responses and never shows them a stale copy. They used to
+      share the crawlers' entries, kept for an hour, and were shown the
+      last good page while PHP was down.
+
     * A large site backup downloaded from the control panel in a browser
       no longer fails part way, however often it is retried. An Nginx
       reload hands the shared QUIC sockets to the new workers, so an
