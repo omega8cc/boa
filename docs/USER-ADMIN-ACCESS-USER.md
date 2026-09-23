@@ -73,5 +73,8 @@ the file empty.
   a CIDR range.
 - It is an extra gate at the web-server edge — your normal Drupal login still applies on
   top of it. It holds over HTTP and HTTPS, whether or not the site has its own certificate.
+- Your control panel's domain can be listed too; its login page is then locked the same
+  way. A wrong list locks you out of the panel login until you fix the file over SSH or
+  SFTP (the address you log in from is let in within about two minutes of logging in).
 - If your sites sit behind Cloudflare, the list still works on the visitor's real address
   (the platform recovers it), so enter the real client address as usual.

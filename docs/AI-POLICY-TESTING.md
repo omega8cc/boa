@@ -49,6 +49,16 @@ phase is the exception: it asks the wildcard SSL front and every other HTTPS pro
 from another loopback address (`127.0.0.2`), for a path kept for the box itself (the stub
 status, the FPM ping) and expects a **403**; a `200` there is a leak (`FAIL`).
 
+It also asks each such proxy whose site has an `access.txt` lock for `/` from `127.0.0.2`
+and expects a **403** there too; a `200` or a redirect means the lock does not hold at the
+proxy (`FAIL`). It skips that probe where the list admits `127.0.0.2` (a `NOTE`), and for
+a moved account's catch-all proxy (`server_name _`), which leaves the lists to the new
+host and gets a `WARN` if it still carries one domain's lists.
+
+A proxy written before the lock gets a `WARN`; the next barracuda pass adds it. So does a
+proxy that claims another panel's extra name (from `log/extra_domain.txt`), which the next
+barracuda pass drops.
+
 **HTTPS is not assumed** — it probes https and falls back to
 http if https isn't cleanly served (a test VM with no real SSL behind a self-signed proxy);
 force a scheme with `--http` / `--https`. What it does **not** automate (do these manually from the

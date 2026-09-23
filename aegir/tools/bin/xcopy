@@ -1448,6 +1448,7 @@ _pre_mig() {
 _sub_ssl_gen() {
   IFS=$'\12'
   for p in `cat /root/.ssl.proxy.cnf`;do
+    _hmFrontExtra=""
     _domain_name=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
     _target_ip=`echo $p | cut -d' ' -f2 | awk '{ print $1}'`
     _oct_uid=`echo $p | cut -d' ' -f3 | awk '{ print $1}'`
@@ -1462,7 +1463,12 @@ _sub_ssl_gen() {
       _oct_mail=`echo ${_oct_mail} | sed "s/\@/\\\@/g"`;
       if [ "${_target_ip}" = "${_dedicated_ip}" ]; then
         _dedicated_ip="*"
-        if [ -e "/data/disk/${_oct_uid}/log/extra_domain.txt" ]; then
+        ### extra_domain.txt holds the control panel's extra names: only the
+        ### panel's own record claims them, or nginx keeps whichever proxy
+        ### sorts first and a site's proxy answers for the panel.
+        _hmFront=$(cat "/data/disk/${_oct_uid}/log/domain.txt" 2>/dev/null | tr -d '\n')
+        if [ -n "${_hmFront}" ] && [ "${_domain_name}" = "${_hmFront}" ] \
+          && [ -e "/data/disk/${_oct_uid}/log/extra_domain.txt" ]; then
           _hmFrontExtra=$(cat /data/disk/${_oct_uid}/log/extra_domain.txt 2>&1)
           _hmFrontExtra=$(echo -n ${_hmFrontExtra} | tr -d "\n" 2>&1)
         fi
@@ -1545,7 +1551,9 @@ _sub_ssl_gen() {
       ### TCP one drains on the old worker; with reloads every few minutes
       ### a large backup download never completed. Alt-Svc clear makes a
       ### browser drop the alternative it cached from earlier visits. The
-      ### proxy for a moved instance (_single=NO) keeps the template as is.
+      ### proxy for a moved instance (_single=NO) keeps HTTP/3, and drops the
+      ### template's IP list includes: those judge one domain, while this
+      ### proxy answers every name on its address and the new host judges them.
       if [ "${_single}" = "YES" ]; then
         sed -i "/^[[:space:]]*listen .*:443 quic;/d; /^[[:space:]]*http3\(_hq\)\?[[:space:]].*on;/d" ${_Ssl}
         wait
@@ -1553,18 +1561,35 @@ _sub_ssl_gen() {
           sed -i "s/^\([[:space:]]*\)proxy_buffering[[:space:]].*off;/&\n\1proxy_hide_header          Alt-Svc;\n\1add_header                 Alt-Svc clear always;/" ${_Ssl}
           wait
         fi
+      else
+        sed -i "/^[[:space:]]*include \/data\/disk\/.*\/includes\/\(ip_access\|user_admin_access\|user_admin_access_map\)\//d" ${_Ssl}
+        wait
+      fi
+      ### The satellite pass rewrites the template's fastcgi target to the
+      ### fpm socket after calling this generator; a standalone run left
+      ### 127.0.0.1:9000 behind -- nothing listens there, so /sqladmin
+      ### answers 502 until the next satellite pass. Do the same rewrite
+      ### here: resolve the master pool from the cnf without sourcing it
+      ### and rewrite only when that pool socket really listens (fail-safe:
+      ### the satellite pass still converges the vhost otherwise).
+      _fpmVer=$(sed -n 's/^_PHP_FPM_VERSION=//p' /root/.barracuda.cnf 2>/dev/null \
+        | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
+      _fpmCn="www${_fpmVer//[^0-9]/}"
+      if [ -n "${_fpmVer}" ] && [ -S "/var/run/${_fpmCn}.fpm.socket" ]; then
+        sed -i "s/127.0.0.1:9000;/unix:\/var\/run\/${_fpmCn}.fpm.socket;/g" ${_Ssl}
+        wait
       fi
       ###
       if [ -e "${_Ssl}" ]; then
         _sslFile="/etc/ssl/private/${_domain_name}.dhp"
         if [ ! -e "${_sslFile}" ]; then
           echo "We will generate .dhp file now, please wait..."
-          openssl dhparam -out ${_sslFile} 2048
+          openssl dhparam -out ${_sslFile} 2048 &> /dev/null
         else
           _PFS_TEST=$(grep "DH PARAMETERS" ${_sslFile} 2>&1)
           if [[ ! "${_PFS_TEST}" =~ "DH PARAMETERS" ]]; then
             echo "We will generate .dhp file now, please wait..."
-            openssl dhparam -out ${_sslFile} 2048
+            openssl dhparam -out ${_sslFile} 2048 &> /dev/null
           fi
         fi
       fi

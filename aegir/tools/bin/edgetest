@@ -23,7 +23,8 @@
 # a 403 when another loopback address (127.0.0.2) asks the wildcard SSL front or
 # any other HTTPS proxy in pre.d (a control panel's, a per-site one) for a path
 # kept for the box itself (FPM status and ping, cron, the stub status), and a 200
-# there is a leak.
+# there is a leak. It also expects a 403 from such a proxy whose site has an
+# access.txt lock, when 127.0.0.2 asks for its front page.
 #
 # Scheme: defaults to HTTP and switches to HTTPS only when the site ENFORCES it (an
 # http request redirects to https). This tests the real https path where https is
@@ -366,7 +367,17 @@ _phase_front() {
   # Every other HTTPS proxy in pre.d (each control panel's, and any per-site
   # one made by xoct ssl-gen) connects to its vhost from the box's address,
   # so it must refuse the same paths itself.
-  local _p _n _sn _ip _url _code _any=""
+  local _p _n _sn _ip _url _code _oct _x _hm _e _t _xmap="" _any=""
+  # each panel's extra names (log/extra_domain.txt), as name=panel pairs,
+  # read as barracuda's _nginx_ssl_proxy_extra_names reads them
+  for _x in /data/disk/*/log/extra_domain.txt; do
+    [[ -f "${_x}" ]] || continue
+    _hm=$(head -c 256 "${_x%/extra_domain.txt}/domain.txt" 2>/dev/null | tr -d '\r\n' | tr 'A-Z' 'a-z')
+    [[ "${_hm}" =~ ^[a-z0-9][a-z0-9.-]*$ && "${#_hm}" -le 253 ]] || continue
+    while IFS= read -r _e || [[ -n "${_e}" ]]; do
+      [[ "${_e}" =~ ^[a-z0-9*][a-z0-9.*-]*$ && "${#_e}" -le 253 ]] && _xmap="${_xmap} ${_e}=${_hm}"
+    done < <(head -c 65536 "${_x}" 2>/dev/null | tr -s ' \t\r' '\n' | tr 'A-Z' 'a-z')
+  done
   for _p in /var/aegir/config/server_master/nginx/pre.d/*ssl_proxy.conf; do
     [[ -f "${_p}" ]] || continue
     _any="yes"
@@ -377,9 +388,40 @@ _phase_front() {
       _ip=$(cat /root/.found_correct_ipv4.cnf 2>/dev/null)
       [[ -n "${_ip}" ]] || _ip="127.0.0.1"
     fi
+    # a panel's extra name in another proxy wins it when that file sorts
+    # first: the names barracuda's heal drops, found by its own rule
+    if [[ -n "${_xmap}" ]]; then
+      while IFS= read -r _t; do
+        if [[ -L "${_p}" ]]; then
+          _warn "HTTPS proxy ${_n}: claims another panel's extra name ${_t} (a symlink, which barracuda leaves alone; fix it by hand)"
+        else
+          _warn "HTTPS proxy ${_n}: claims another panel's extra name ${_t} (the next barracuda pass drops it)"
+        fi
+      done < <(awk -v map="${_xmap}" -v dom="${_n}" '
+        BEGIN {
+          dom = tolower(dom)
+          n = split(map, a, " ")
+          for (i = 1; i <= n; i++) {
+            k = a[i]; v = a[i]; sub(/=.*/, "", k); sub(/^[^=]*=/, "", v)
+            own[k] = (k in own) ? own[k] " " v : v
+          }
+        }
+        $1 == "server_name" && $2 != "_;" {
+          l = $0; gsub("\r", " ", l); nf = split(l, f)
+          for (i = 3; i <= nf; i++) {
+            t = f[i]; sub(/;$/, "", t); lt = tolower(t)
+            if (t != "" && lt != "www." dom && (lt in own) &&
+              index(" " own[lt] " ", " " dom " ") == 0) print t
+          }
+          exit
+        }' "${_p}")
+    fi
     if ! grep -q boa_panel_local "${_p}"; then
       _warn "HTTPS proxy ${_n}: predates the loopback-only refusal (the next barracuda pass adds it)"
       continue
+    fi
+    if ! grep -q boa_panel_lock "${_p}"; then
+      _warn "HTTPS proxy ${_n}: predates the IP lock at the proxy (the next barracuda pass adds it)"
     fi
     # a catch-all proxy on its own address: reach it by that address, but ask
     # for the site it fronts (its file is named after it), the name the vhost
@@ -392,6 +434,29 @@ _phase_front() {
       403) _pass "HTTPS proxy ${_n}: /fpm-ping from another address -> 403" ;;
       200) _fail "HTTPS proxy ${_n}: /fpm-ping from another address -> 200 (the FPM ping leaks)" ;;
       *)   _warn "HTTPS proxy ${_n}: /fpm-ping from another address -> ${_code:-000} (inconclusive)" ;;
+    esac
+    # a site locked by its account's access.txt: the proxy must judge the
+    # visitor, not pass it to a vhost that sees the box's own address
+    # (a catch-all proxy for a moved account leaves that to the new host,
+    # so one domain's lists there would judge every name on its address)
+    if grep -Eq "^[[:space:]]*server_name[[:space:]]+_;" "${_p}"; then
+      grep -Eq "^[[:space:]]*include /data/disk/.*/includes/(ip_access|user_admin_access|user_admin_access_map)/" "${_p}" \
+        && _warn "HTTPS proxy ${_n}: a catch-all proxy carries one domain's IP lists (the next barracuda pass drops them)"
+      continue
+    fi
+    _oct=$(awk '/^### Secure HTTPS proxy \(START\) / {print $6; exit}' "${_p}")
+    [[ -n "${_oct}" && -f "/data/disk/${_oct}/config/includes/ip_access/${_n}.conf" ]] || continue
+    if grep -Eq "^allow (127\.0\.0\.2|127\.[0-9.]+/[0-9]+|0\.0\.0\.0/0|all);" \
+      "/data/disk/${_oct}/config/includes/ip_access/${_n}.conf"; then
+      _note "HTTPS proxy ${_n}: its access.txt admits 127.0.0.2, lock probe skipped"
+      continue
+    fi
+    _code=$(curl -sk --http1.1 -o /dev/null -w '%{http_code}' --max-time 10 --interface 127.0.0.2 \
+      --resolve "${_sn}:443:${_ip}" "https://${_sn}/" 2>/dev/null)
+    case "${_code}" in
+      403) _pass "HTTPS proxy ${_n}: locked by access.txt, / from another address -> 403" ;;
+      200|30?) _fail "HTTPS proxy ${_n}: locked by access.txt, / from another address -> ${_code} (the lock does not hold)" ;;
+      *)   _warn "HTTPS proxy ${_n}: locked by access.txt, / from another address -> ${_code:-000} (inconclusive)" ;;
     esac
   done
   [[ -n "${_any}" ]] || _note "no HTTPS proxies in pre.d on this box"

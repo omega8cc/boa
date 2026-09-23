@@ -134,6 +134,13 @@ carries too, stays out, so the front never applies one site's list to another si
 A site with its own certificate has its own `:443` server block, which includes the vhost
 fragment directly and never passes through the front.
 
+An instance's control panel is served over HTTPS by its own proxy in `pre.d`, which
+reaches the panel vhost from the box's IPv4, an address the anti-lockout admits. So the
+proxy includes the panel's fragment itself, with its `/user` + `/admin` list and the IDS
+ban check, and judges the real visitor there. Its `/sqladmin` locations keep the master's
+`sqladmin` list, and inherit the panel's list only where that is missing. A barracuda
+upgrade adds these lines to a proxy written before them.
+
 ## Interaction with realip
 
 The `deny`/`allow` rules key on `$remote_addr`. With Cloudflare realip active (see

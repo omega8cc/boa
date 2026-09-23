@@ -6361,11 +6361,12 @@ _satellite_ssl_proxy_template_refresh() {
   ### which only a barracuda pass refreshes. An octopus pass that runs first
   ### would regenerate from the stale template on every pass until then, so take
   ### the template from this pass's own build tree when it carries a marker the
-  ### deployed one lacks.
+  ### deployed one lacks. The newest marker is enough: each template carries
+  ### every older one.
   local _tpl="/var/xdrago/conf/ssl_proxy.conf"
   local _src="${_bldPth}/aegir/tools/system/conf/ssl_proxy.conf"
-  grep -q boa_panel_local "${_tpl}" 2>/dev/null && return 0
-  grep -q boa_panel_local "${_src}" 2>/dev/null || return 0
+  grep -q boa_panel_lock "${_tpl}" 2>/dev/null && return 0
+  grep -q boa_panel_lock "${_src}" 2>/dev/null || return 0
   mkdir -p /var/xdrago/conf
   cp -af "${_src}" "${_tpl}"
 }
@@ -6419,6 +6420,10 @@ _satellite_letsencrypt_vhost_setup() {
         ### status) arrived later; a front without it proxies those paths to
         ### the panel vhost from the box's own address, which admits them.
         _PANELLOCAL_TEST=$(grep boa_panel_local ${_Ssl} 2>&1)
+        ### The IDS ban and the panel's own IP lists came after that; without
+        ### them the panel vhost judges this proxy's address, which the lists
+        ### always admit, so a locked panel answered anyone over HTTPS.
+        _PANELLOCK_TEST=$(grep boa_panel_lock ${_Ssl} 2>&1)
         _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
         _PHP_CN="www${_PHP_SV}"
         _FPM_SOCKET_VAR=$(grep "unix:/var/run/${_PHP_CN}.fpm.socket" ${_Ssl} 2>&1)
@@ -6444,7 +6449,8 @@ _satellite_letsencrypt_vhost_setup() {
           || [[ ! "${_SQLADMIN_TEST}" =~ "sqladmin" ]] \
           || [[ ! "${_SQLADMCRWL_TEST}" =~ "is_crawler" ]] \
           || [[ ! "${_HTTPVER_TEST}" =~ "proxy_http_version" ]] \
-          || [[ ! "${_PANELLOCAL_TEST}" =~ "boa_panel_local" ]]; then
+          || [[ ! "${_PANELLOCAL_TEST}" =~ "boa_panel_local" ]] \
+          || [[ ! "${_PANELLOCK_TEST}" =~ "boa_panel_lock" ]]; then
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf needs update..."
           fi
