@@ -61,7 +61,7 @@ Provision install/clone task cannot create or move data inside it. The
 move-and-symlink therefore always runs **as root**, via a hardened NOPASSWD sudo
 wrapper:
 
-- Provision (install, clone and migrate/rename hooks) calls
+- Provision (install, clone, migrate/rename and delete hooks) calls
   `sudo /usr/local/bin/fix-drupal-site-symlinks.sh --site=<url> …`.
 - The wrapper validates its arguments and invokes **only** the narrow single-site
   `autosymlink` apply — it cannot reach the global batch/live modes.
@@ -94,11 +94,12 @@ autosymlink --batch-if-clean # DRY, and if clean, BATCH — cron-safe, one shot
 autosymlink --help          # the modes and options (no root needed); an unknown argument is refused, exit 2
 ```
 
-Narrow single-site mode (used by the Provision install/clone hooks; also handy for
-one-off fixes):
+Narrow single-site mode (used by the Provision install, clone, migrate/rename and
+delete hooks; also handy for one-off fixes):
 
 ```bash
 autosymlink --site example.com [--account o1] --apply [--force-unshare]
+autosymlink --site example.com --account o1 --archive-store --apply
 ```
 
 - `--site` / `--account` scope the run to one site. With an explicit `--account`
@@ -111,6 +112,9 @@ autosymlink --site example.com [--account o1] --apply [--force-unshare]
 - `--force-unshare` breaks an inherited cross-site/cross-account link even if a
   file-sharing control file exists — used by cloning so a fresh clone (which never
   opted into sharing) always gets its own copy.
+- `--archive-store` sets the site's whole store aside into
+  `static/files/.archived/<stamp>/<url>/`, never deleting it — the Delete task's
+  path, and a rename's for the old-name store.
 
 The narrow mode never touches the global batch state and listens to no global
 pause or install marker of its own: it is controlled only by its invokers, and the
@@ -274,6 +278,9 @@ modes:
 ```bash
 sudo /usr/local/bin/fix-drupal-site-symlinks.sh --site=example.com [--account=o1] [--force-unshare|--archive-store]
 ```
+
+The Delete task, and a rename for its old-name store, call it with
+`--archive-store` before the site's alias goes.
 
 ### `symlinkinfo` — query a site's history (read-only)
 
