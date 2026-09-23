@@ -69,7 +69,7 @@ These settings ensure:
    - The deleting legs always run at a `notice` verbosity floor, whatever `_AWS_VLV` says, because Duplicity announces deletions only at that level.
    - The same legs cap the backend retry budget at `--num-retries 2 --backend-retry-delay 5`.
 
-3. **`remove-all-but-n-full` Not Used**:
+4. **`remove-all-but-n-full` Not Used**:
    - Routine cleanup does not use `remove-all-but-n-full`, as it is unsuitable for trimming live backups. It deletes full backups and their associated incremental chains, which can disrupt active backup sets.
    - The `purge` action does not use it either. Duplicity has no command that can empty a repository — every removal command keeps the newest chain — so `purge` wipes a bucket by deleting every file Duplicity's own naming parser recognizes at the target, directly through Duplicity's backend layer (same interpreter, target URL, and credentials as the backup runs; files not created by Duplicity are left untouched).
 

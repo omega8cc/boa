@@ -11,7 +11,7 @@
 
    **Don't reboot your VM until all procedures are finalized, including post-install auto-upgrades.**
 
-   When invoked via `boa` command, it will run installation is several steps, automatically:
+   When invoked via `boa` command, it will run installation in several steps, automatically:
 
    1. The `autoinit` phase to upgrade vendor provided OS to the matching Devuan release (Daedalus from Bookworm and older, Excalibur from Trixie)
    2. The `barracuda install` phase to install BOA system and Ægir Master
@@ -216,7 +216,7 @@
 
    **Don't reboot your VM until all procedures are finalized, including post-install auto-upgrades.**
 
-   When invoked via `boa` command, it will run installation is several steps, automatically.
+   When invoked via `boa` command, it will run installation in several steps, automatically.
 
    **But how you will know it's ready?** Once all procedures are finalized you will see **three (3) lines** reported by this command:
 
