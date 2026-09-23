@@ -24,7 +24,8 @@ live site over the network from this box's IP.
 
 ```bash
 # local: read-only checks (run ON the host serving <SITE>): presence, realip config,
-# AI UA matrix, rate-limiting, ban wiring, fragments, regression spot-checks
+# AI UA matrix, rate-limiting, fragments, the wildcard SSL front and HTTPS proxies,
+# ban wiring, regression spot-checks
 edgetest --site <SITE> --oct <OCT>
 
 # local + state-changing proofs (realip+ban bite, per-site AI toggles incl. the
@@ -38,9 +39,27 @@ edgetest --site <SITE> --oct <OCT> --full
 edgetest --site <SITE> --remote
 ```
 
-It exits `0` when every critical check passes, non-zero otherwise. It treats a **5xx**
-(backend/upstream error — e.g. a proxied 502) and a **403** (ip_access deny) as *inconclusive*
-(`WARN`), not as a policy result. **HTTPS is not assumed** — it probes https and falls back to
+It exits `0` when every critical check passes, non-zero otherwise. In the AI and
+rate-limit probes it treats a **5xx** (backend/upstream error — e.g. a proxied 502) and a
+**403** (ip_access deny) as *inconclusive* (`WARN`), not as a policy result.
+
+The front
+phase is the exception: it asks the wildcard SSL front and every other HTTPS proxy in `pre.d`
+(each control panel's, any per-site one),
+from another loopback address (`127.0.0.2`), for a path kept for the box itself (the stub
+status, the FPM ping) and expects a **403**; a `200` there is a leak (`FAIL`).
+
+It also asks each such proxy whose site has an `access.txt` lock for `/` from `127.0.0.2`
+and expects a **403** there too; a `200` or a redirect means the lock does not hold at the
+proxy (`FAIL`). It skips that probe where the list admits `127.0.0.2` (a `NOTE`), and for
+a moved account's catch-all proxy (`server_name _`), which leaves the lists to the new
+host and gets a `WARN` if it still carries one domain's lists.
+
+A proxy written before the lock gets a `WARN`; the next barracuda pass adds it. So does a
+proxy that claims another panel's extra name (from `log/extra_domain.txt`), which the next
+barracuda pass drops.
+
+**HTTPS is not assumed** — it probes https and falls back to
 http if https isn't cleanly served (a test VM with no real SSL behind a self-signed proxy);
 force a scheme with `--http` / `--https`. What it does **not** automate (do these manually from the
 phases below): the realip rewrite seen from a real external client, and the `configtest`

@@ -1552,6 +1552,7 @@ EOFMYSQL
     if [ -e "${_locCnf}/nginx/nginx.conf" ]; then
       mv -f /etc/nginx/nginx.conf /etc/nginx/nginx.conf-old &> /dev/null
       cp -af ${_locCnf}/nginx/nginx.conf /etc/nginx/nginx.conf
+      mkdir -p /etc/nginx/main.d
     fi
     _mrun "service nginx reload"
     _msg "INFO: Ægir Master Instance installed"

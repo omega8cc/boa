@@ -47,7 +47,7 @@ This replaces the older per-Octopus `nginx_ip_access_<oct>.sh` copies with one s
 Every generated fragment always allows, regardless of the listed IPs:
 
 - `127.0.0.1` and `::1` — loopback;
-- the server's own IPv4, from `/root/.found_correct_ipv4.cnf` (BOA tracks no server IPv6);
+- the server's own IPv4, from `/root/.found_correct_ipv4.cnf` (BOA tracks no server IPv6). The cache heals itself after a server move: when the cached address is no longer one of the box's global IPv4 addresses and the box carries a public IPv4, BOA re-probes once per process and replaces it only with a validated, different address;
 - **every established inbound SSH client IP**, read from `netstat -tn` (peers on an
   `ESTABLISHED` connection to any local SSH port — the union of `22`, the cnf `_SSH_PORT`
   and every port the live sshd config serves, so the harvest follows a custom port yet can
@@ -77,18 +77,69 @@ staging.example.com    198.51.100.42 2001:db8:1::1
 
 ## Generator behaviour
 
-- **Change-gate** — a context regenerates only when its control file's mtime advanced
-  **or** the host's SSH-client set changed (so newly logged-in admins propagate). No
+- **Change-gate** — a context regenerates only when its control file's mtime advanced, the
+  host's SSH-client set changed (so newly logged-in admins propagate), the emitted shape
+  changed, or the front state or a listed site's server names changed (see below). No
   change → no write, no reload.
 - **Pruning** — removing a site from the control file deletes its fragment on the next
   run, lifting the restriction (the site becomes open again).
 - **Safety** — per context: back up the current fragments, regenerate atomically,
   `service nginx configtest`, then `reload`; on a failed configtest or reload, restore
-  the last-good backup and reload. The whole script holds the shared
+  the last-good backup and reload. The last-good archive is proved readable before the live fragments are deleted: an
+  unreadable one leaves the fragments on disk alone and prints an `ALRT:` line naming the
+  control file to fix, and a freshly written last-good that does not verify is removed.
+
+  On a
+  replication standby whose web tier is held, the fragments are written and the change-gate
+  markers advance, but the reload and the revert are both skipped until promotion. The whole script holds the shared
   `/run/boa_nginx_config.lock` (`flock -w 30`) so it never overlaps `ai_policy` /
   `nginx_deny` / `cloudflare_realip`.
 - **Schedule / serial** — `*/2` cron; serial-gated via `_fetch_versioned` in `BOA.sh.txt`
   (decrement its `fNN` on any change).
+
+## HTTPS through the wildcard SSL front
+
+A site without a certificate of its own is served over HTTPS by the wildcard SSL front
+(`nginx_wild_ssl.conf`), which proxies to the site's port-80 vhost. There the peer is always
+`127.0.0.1`, which the anti-lockout admits, so the vhost fragment alone cannot hold on that
+path.
+
+The generator therefore also writes a front copy of every listed site into the context's
+`ip_access_front/`. `<site>.http.conf` holds a `geo` of the same list and a `$host` map of
+the site's server names, aliases included; `<site>.srv.conf` holds the `403`. The front
+includes both and judges the real visitor.
+
+A name goes into the `$host` map only when it is a plain hostname of at most 174 bytes that
+no other rendered vhost on the box also serves. A wildcard alias, or a name another instance
+carries too, stays out, so the front never applies one site's list to another site's visitors.
+
+- The ACME challenge (`/.well-known/acme-challenge/`) and the MTA-STS policy
+  (`/.well-known/mta-sts.txt`) stay open at the front, as their allow-all locations keep
+  them open in the vhosts.
+- Copies are written only once the deployed front carries their include lines (a barracuda
+  upgrade updates it), and only for a site with a rendered vhost.
+- A deleted instance control file changes nothing, on HTTP or HTTPS: the fragments and
+  copies stay as they are. A deletion does not travel to a mirror or a migration target
+  (`static/control` is copied additively), so it could only ever lift one box. To lift,
+  remove a site's line or empty the file. The copies still follow their sites' names: a
+  new alias is covered, a name that moved to another site is released, and a site with
+  no name of its own left keeps an inert copy.
+- The master's `/var/aegir/control/ip/access.txt` is different: when it is missing, the
+  generator writes the default `sqladmin.com 192.168.1.1` record and regenerates the
+  master context from it, so its other sites' fragments and copies are pruned.
+- They share the context's change-gate and configtest, but are never backed up: a failed
+  configtest or reload drops them rather than restoring an older set, which could still
+  claim a name that has since moved to another site.
+
+A site with its own certificate has its own `:443` server block, which includes the vhost
+fragment directly and never passes through the front.
+
+An instance's control panel is served over HTTPS by its own proxy in `pre.d`, which
+reaches the panel vhost from the box's IPv4, an address the anti-lockout admits. So the
+proxy includes the panel's fragment itself, with its `/user` + `/admin` list and the IDS
+ban check, and judges the real visitor there. Its `/sqladmin` locations keep the master's
+`sqladmin` list, and inherit the panel's list only where that is missing. A barracuda
+upgrade adds these lines to a proxy written before them.
 
 ## Interaction with realip
 
@@ -119,7 +170,9 @@ For a full end-to-end runbook on a disposable VM, see
 This is a **pure nginx `allow`/`deny` layer** — it keys on the recovered client IP at the
 web tier and does not touch csf. So it takes **both address families and subnets**: an entry
 may be an IPv4 or IPv6 address, singly or as a CIDR range (`203.0.113.0/24`, `2001:db8::/32`,
-…). The validator is a strict subset of what the nginx access module accepts, so a
+…).
+
+The validator is a strict subset of what the nginx access module accepts, so a
 validated entry can never break the box-wide configtest. Note this is independent of csf:
 adding an IPv6 rule here restricts the site at nginx but does **not** add a host-firewall
 rule (csf remains a separate layer).

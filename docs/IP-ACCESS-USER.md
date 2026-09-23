@@ -38,12 +38,18 @@ SSH. You never need to add those yourself.
 ## When it takes effect
 
 Changes are picked up automatically within about **two minutes**. To open a site back up
-to everyone, delete its line — the restriction is removed on the next pass.
+to everyone, delete its line — the restriction is removed on the next pass. Deleting the
+whole file does **not** lift anything: remove the lines, or leave the file empty.
 
 ## Good to know
 
 - Addresses are listed with spaces between them; each can be a single IPv4/IPv6 address or a
   CIDR range.
-- The restriction covers the whole site.
+- The restriction covers the whole site, over HTTP and HTTPS, whether or not the site has
+  its own certificate.
+- Your control panel's domain can be listed like any site, and the lock holds over HTTPS
+  too. Check the addresses first: a wrong list locks you out of the panel until you fix
+  the file over SSH or SFTP (the address you log in from is let in within about two
+  minutes of logging in).
 - If your sites sit behind Cloudflare, the list still works on the visitor's real IP (the
   platform recovers it), so enter the real client address as usual.

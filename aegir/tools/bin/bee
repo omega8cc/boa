@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # PHP-selecting launcher for the native Backdrop CLI (bee), enforcing the
-# identity-based destructive-verb policy (D-021). Standalone tool: _msg/_alrt
+# identity-based destructive-verb policy. Standalone tool: _msg/_alrt
 # are permitted here (not a lib/functions or main installer script).
 #
 # 1. Full access ONLY for backend identities (root, aegir, o<N>). Every other
@@ -34,7 +34,7 @@ _pick_modern() {
   return 1
 }
 
-# --- Identity gate (D-021) ---------------------------------------------------
+# --- Identity gate -----------------------------------------------------------
 # The verb is resolved exactly as bee itself resolves it (bee_parse_input in
 # includes/command.inc): every -*/--* token is an option, and the command is
 # the first remaining token that bee's `empty($_bee_command)` test does not

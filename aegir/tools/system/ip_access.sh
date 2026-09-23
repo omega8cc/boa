@@ -18,11 +18,37 @@
 #   master  : /var/aegir/control/ip/access.txt          (the sqladmin proxy)
 #   octopus : /data/disk/<oct>/static/control/ip/access.txt
 # A site removed from the control file has its fragment pruned (restriction
-# lifted).  Record format: `example.com 203.0.113.2 10.0.0.0/8 2001:db8::/32`.
+# lifted).  A deleted Octopus control file changes nothing: the lists stay as they
+# are (a deletion does not travel to a mirror or a migration target, so it could
+# only ever lift one box); remove a site's line or empty the file to lift it.
+# Record format: `example.com 203.0.113.2 10.0.0.0/8 2001:db8::/32`.
+#
+# HTTPS for a site without its own certificate arrives through the wildcard SSL
+# front (nginx_wild_ssl.conf), which proxies to the site's :80 vhost, where the
+# peer is always 127.0.0.1 -- an address the anti-lockout allows.  So once the
+# deployed front includes them, each listed site with a rendered vhost also gets
+# two front files in the context's ip_access_front/: <site>.http.conf (a geo of
+# the same list and a $host map of the server names in the vhost that no other
+# vhost on the box also serves) and <site>.srv.conf (the 403 gate), judged at
+# the front against the real visitor.
+# The ACME challenge and the MTA-STS policy stay open there, as in the vhosts.
+# A control panel's HTTPS proxy in pre.d reaches its vhost from the box's own
+# IPv4, which the anti-lockout also allows, so it includes the panel's <site>.conf
+# itself and judges the real visitor there.
 
 _aegir_health_check="/var/aegir/.drush/hm.alias.drushrc.php"
 _drush_health_check="/var/aegir/drush/drush"
 _server_ip_file="/root/.found_correct_ipv4.cnf"
+
+# Bump when the emitted shape changes, to force regeneration independent of the
+# control-file mtime. A context with no marker yet reads as a change.
+_emit_version="2"
+
+# The deployed front includes the front files only once it carries these lines;
+# until then none are written, so a front deploy never meets an unvalidated one.
+_front_conf="/var/aegir/config/server_master/nginx/pre.d/nginx_wild_ssl.conf"
+_front_on=""
+grep -qF 'ip_access_front/*.srv.conf' "${_front_conf}" 2>/dev/null && _front_on="yes"
 
 # Accept an IPv4 or IPv6 address, each with an optional CIDR prefix length — the
 # nginx access module (`allow`/`deny`) takes all four forms. The validators are a
@@ -50,6 +76,12 @@ ${_hex}:((:${_hex}){1,6})|\
 (${_hex}:){1,4}:(${_ipv4}))"
 _ipv6_regex="^${_ipv6_core}(/(12[0-8]|1[01][0-9]|[0-9]?[0-9]))?$"
 _site_name_regex="^([a-zA-Z0-9_-]+\.)*[a-zA-Z0-9_-]+\.[a-zA-Z]{2,}$"
+# The front map carries plain lowercased hostnames of at most 174 bytes (the
+# exact-key ceiling of map_hash_bucket_size 192). A wildcard alias is skipped:
+# at :80 an exact name elsewhere on the box beats it, while a front map would
+# claim that other site's traffic. A skipped name only stays as it was; a
+# malformed or oversized key would fail the box-wide configtest.
+_host_max=174
 
 
 # A held web tier (replication standby) makes `service nginx reload` return
@@ -61,8 +93,12 @@ _site_name_regex="^([a-zA-Z0-9_-]+\.)*[a-zA-Z0-9_-]+\.[a-zA-Z]{2,}$"
 # advance the change-gate markers as a success would, and skip both the reload
 # and the revert.
 _nginx_held_down() {
+  # The nginx watchdog's published verdict: the promoted latch. Absent means
+  # HELD, and here "held" only ever means "write the fragments, skip the
+  # reload and the revert" -- an unjudged box costs a deferred reload, never
+  # a write into the synced undo/ trees on a box whose nginx is down.
   [ -e "/root/.standby.cnf" ] && [ ! -e "/root/.standby.serve.cnf" ] \
-    && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]
+    && [ ! -e "/var/log/boa/.standby_promoted.pid" ]
 }
 
 _valid_ip() {
@@ -71,6 +107,181 @@ _valid_ip() {
   [[ "${_ip}" =~ ${_ipv6_regex} ]] && return 0
   return 1
 }
+
+# The server_name tokens of each vhost file given, unique per file, lowercased,
+# and only those the front map may carry: a plain hostname (no wildcard, no
+# regex name, no `_`) of at most _host_max bytes. One program serves the
+# per-site read and the box-wide index, so the two can never parse apart. Files
+# are read with getline: mawk ends the whole pass at a file argument it cannot
+# open, and a vhost removed by a task between the glob and the read must only
+# drop out of the count, never truncate it.
+_names_awk='
+function flush(   rest, seg, n, i, t, seen) {
+  rest = buf
+  while (match(rest, /server_name[ \t]+[^;]*;/)) {
+    seg = substr(rest, RSTART + 11, RLENGTH - 12)
+    rest = substr(rest, RSTART + RLENGTH)
+    n = split(seg, tok, /[ \t]+/)
+    for (i = 1; i <= n; i++) {
+      t = tolower(tok[i])
+      if (t ~ /^([a-z0-9_-]+\.)+[a-z0-9_-]+$/ && length(t) <= max && !(t in seen)) {
+        seen[t] = 1
+        print t
+      }
+    }
+  }
+  buf = ""
+}
+BEGIN {
+  for (a = 1; a < ARGC; a++) {
+    buf = ""
+    while ((getline line < ARGV[a]) > 0) {
+      sub(/#.*/, "", line)
+      buf = buf " " line
+    }
+    close(ARGV[a])
+    flush()
+  }
+  exit
+}
+'
+
+_site_hosts() {
+  # The names nginx routes to a site that the front map may carry, from its
+  # rendered vhost ($1), one per line. Regular files only: a FIFO would hang
+  # the read under the shared lock. No file, no names.
+  [[ -f "$1" ]] || return 0
+  awk -v max="${_host_max}" "${_names_awk}" "$1" 2>/dev/null | sort -u
+}
+
+# name -> how many rendered vhost files on the box serve it; built by
+# _build_owners at most once per run.
+declare -A _host_owners=()
+_owners_built=""
+
+_ensure_owners() {
+  # One pass over every rendered vhost on the box, and only when the front
+  # takes copies and this context lists a site that has a vhost of its own.
+  # Runs in the main shell, so the command substitutions after it inherit
+  # the index. $1 = control file, $2 = the context's vhost.d dir.
+  local _line _s _need=""
+  [[ -n "${_front_on}" && -z "${_owners_built}" ]] || return 0
+  while IFS= read -r _line; do
+    _line="${_line%%#*}"
+    [[ -z "${_line// /}" ]] && continue
+    read -r _s _ <<< "${_line}"
+    _s=$(echo "${_s}" | tr '[:upper:]' '[:lower:]')
+    if [[ ${_s} =~ ${_site_name_regex} && -f "${2}/${_s}" ]]; then
+      _need="yes"
+      break
+    fi
+  done < "$1"
+  [[ -n "${_need}" ]] || return 0
+  _build_owners
+}
+
+_build_owners() {
+  # The box-wide index itself, at most once per run and in the main shell.
+  local _n _h _v
+  [[ -z "${_owners_built}" ]] || return 0
+  _owners_built="yes"
+  while read -r _n _h; do
+    _host_owners["${_h}"]="${_n}"
+  done < <(for _v in /var/aegir/config/server_master/nginx/vhost.d/* \
+      /data/disk/*/config/server_master/nginx/vhost.d/*; do
+      [[ -f "${_v}" ]] && printf '%s\0' "${_v}"
+    done | xargs -0 -r awk -v max="${_host_max}" "${_names_awk}" 2>/dev/null \
+      | sort | uniq -c)
+}
+
+_front_hosts() {
+  # The names the front map may claim for a site: those of its vhost ($1)
+  # that no other rendered vhost on the box also serves, compared without
+  # case as nginx matches them. Aegir keeps aliases unique per instance only,
+  # so a name another instance also carries is left out -- at :80 only one
+  # of them wins it, and a front map must never hand one tenant's list to
+  # another tenant's visitors.
+  local _h
+  _site_hosts "$1" | while IFS= read -r _h; do
+    [[ "${_host_owners[${_h}]:-0}" == "1" ]] && echo "${_h}"
+  done
+}
+
+_front_clear() {
+  # A context the run skips keeps no front copies: the front includes every
+  # instance's dir, and a copy nobody regenerates could go on claiming a name
+  # that has since moved to another site. Its marker goes too, so the copies
+  # are rebuilt when the context comes back. Each srv.conf goes before the
+  # http.conf that defines its variables. $1 = front dir, $2 = its marker.
+  local _f _any=""
+  for _f in "$1"/*.srv.conf "$1"/*.conf; do
+    [[ -e "${_f}" ]] || continue
+    rm -f "${_f}"
+    _any="yes"
+  done
+  rm -f "$2"
+  [[ -n "${_any}" ]] || return 0
+  echo "Dropped the front copies of a skipped context: $1"
+  _nginx_held_down && return 0
+  service nginx configtest &> /dev/null && service nginx reload
+}
+
+_front_keep_valid() {
+  # A context whose control file is gone keeps its lists exactly as they are,
+  # over HTTP and HTTPS alike: a deletion never travels to a mirror or a
+  # migration target (static/control is copied additively), so lifting here
+  # would lift one box only and the lock would come back after a failover or
+  # cutover. To lift, remove a site's line or empty the file. Nothing here
+  # writes a new copy, so none is ever dropped either: each host map follows
+  # the names only its site's vhost serves, as the vhost fragments follow the
+  # vhost they are included in. A new alias is covered on HTTPS as on HTTP, a
+  # name that moved to another site leaves the map, and a site with no such
+  # name left keeps an empty map (inert) that a later run can fill again.
+  # $1 = front dir, $2 = the context's vhost.d dir, $3 = its front marker.
+  local _f _site _want _have _tmp _changed=""
+  for _f in "$1"/*.http.conf; do
+    [[ -e "${_f}" ]] || continue
+    _build_owners
+    _site=$(basename "${_f}" .http.conf)
+    _want=$(_front_hosts "$2/${_site}" | tr '\n' ' ')
+    _have=$(awk '/^map \$host /{p=1; next} p && /^}/{exit} p && $2 == "1;" {print $1}' "${_f}" \
+      | sort | tr '\n' ' ')
+    [[ "${_want}" == "${_have}" ]] && continue
+    _tmp="$1/.${_site}.http.tmp.$$"
+    if awk -v want="${_want}" '
+        /^map \$host / { print; p = 1; next }
+        p && /^}/ { n = split(want, w, " "); for (i = 1; i <= n; i++) print "  " w[i] " 1;"; p = 0; print; next }
+        p && $2 == "1;" { next }
+        { print }' "${_f}" > "${_tmp}" && mv -f "${_tmp}" "${_f}"; then
+      _changed="yes"
+      echo "The front copy of ${_site} now claims: ${_want:-no name}"
+    else
+      rm -f "${_tmp}"
+    fi
+  done
+  [[ -n "${_changed}" ]] || return 0
+  rm -f "$3"
+  _nginx_held_down && return 0
+  service nginx configtest &> /dev/null && service nginx reload
+}
+
+_front_signature() {
+  # The front state and each listed site's routed names, for the change-gate:
+  # a front deploy, or an alias added or removed by a Verify, regenerates.
+  # $1 = control file, $2 = the context's vhost.d dir.
+  local _line _s
+  echo "front:${_front_on}"
+  [[ -n "${_front_on}" ]] || return 0
+  while IFS= read -r _line; do
+    _line="${_line%%#*}"
+    [[ -z "${_line// /}" ]] && continue
+    read -r _s _ <<< "${_line}"
+    _s=$(echo "${_s}" | tr '[:upper:]' '[:lower:]')
+    [[ ${_s} =~ ${_site_name_regex} ]] || continue
+    echo "${_s}:$(_front_hosts "${2}/${_s}" | tr '\n' ' ')"
+  done < "${1}"
+}
+
 
 if [[ ! -f "${_aegir_health_check}" ]] || [[ ! -x "${_drush_health_check}" ]]; then
   echo "Server is not ready yet. Exiting."
@@ -131,31 +342,47 @@ _ssh_ips=$(_get_ssh_ips)
 _ssh_ips_hash=$(echo "${_ssh_ips} ${_server_ip}" | md5sum | awk '{print $1}')
 
 _process_context() {
-  local _input_file="$1" _nginx_path="$2" _backup_dir="$3"
-  [[ -f "${_input_file}" ]] || return 0
+  local _input_file="$1" _nginx_path="$2" _backup_dir="$3" _vhost_dir="$4"
+  if [[ ! -f "${_input_file}" ]]; then
+    _front_keep_valid "${_nginx_path}_front" "${_vhost_dir}" "${_nginx_path}/.access_front_hash"
+    return 0
+  fi
 
   local _current_backup="${_backup_dir}/.nginx_access_conf.current.bak.tar.gz"
   local _last_good_backup="${_backup_dir}/.nginx_access_conf.last_good.bak.tar.gz"
+  local _front_path="${_nginx_path}_front"
   local _timestamp_file="${_nginx_path}/.access_last_mod_time"
   local _ssh_hash_file="${_nginx_path}/.ssh_ips_hash"
+  local _version_file="${_nginx_path}/.access_emit_version"
+  local _front_file="${_nginx_path}/.access_front_hash"
 
-  mkdir -p "${_nginx_path}" "${_backup_dir}"
+  mkdir -p "${_nginx_path}" "${_front_path}" "${_backup_dir}"
 
-  # Change-gate: regenerate when the control file changed OR the host SSH-IP set
-  # changed (so a newly logged-in admin is added to every allow list).
-  local _current_mod_time _last_mod_time=0 _previous_ssh_hash=""
+  # Change-gate: regenerate when the control file changed, the host SSH-IP set
+  # changed (so a newly logged-in admin is added to every allow list), the emit
+  # version bumped, or the front state or a listed site's routed names changed.
+  local _current_mod_time _last_mod_time=0 _previous_ssh_hash="" _last_version=""
+  local _front_hash _previous_front_hash=""
   _current_mod_time=$(stat -c %Y "${_input_file}" 2>/dev/null) || return 0
+  _ensure_owners "${_input_file}" "${_vhost_dir}"
+  _front_hash=$(_front_signature "${_input_file}" "${_vhost_dir}" | md5sum | awk '{print $1}')
   [[ -f "${_timestamp_file}" ]] && _last_mod_time=$(cat "${_timestamp_file}" 2>/dev/null || echo 0)
   [[ -f "${_ssh_hash_file}" ]] && _previous_ssh_hash=$(cat "${_ssh_hash_file}" 2>/dev/null || echo "")
-  if [[ "${_current_mod_time}" -le "${_last_mod_time}" && "${_ssh_ips_hash}" == "${_previous_ssh_hash}" ]]; then
+  [[ -f "${_version_file}" ]] && _last_version=$(cat "${_version_file}" 2>/dev/null || echo "")
+  [[ -f "${_front_file}" ]] && _previous_front_hash=$(cat "${_front_file}" 2>/dev/null || echo "")
+  if [[ "${_current_mod_time}" -le "${_last_mod_time}" \
+     && "${_ssh_ips_hash}" == "${_previous_ssh_hash}" \
+     && "${_last_version}" == "${_emit_version}" \
+     && "${_front_hash}" == "${_previous_front_hash}" ]]; then
     return 0
   fi
 
   [[ -d "${_nginx_path}" ]] && tar -czf "${_current_backup}" -C "${_nginx_path}" . 2>/dev/null
 
-  # Generate per-site allow/deny fragments; track configured sites for pruning.
-  local -a _configured=()
-  local _line _site _ip _ip_sorted _frag _tmp
+  # Generate per-site allow/deny fragments; track configured sites and written
+  # front files for pruning.
+  local -a _configured=() _front_kept=()
+  local _line _site _ip _ip_sorted _frag _tmp _hash _hosts _geo_sorted _e _f _base _keep _s
   local -a _ip_list
   while IFS= read -r _line; do
     _line="${_line%%#*}"
@@ -188,11 +415,74 @@ _process_context() {
       echo "deny all;"
     } > "${_tmp}"
     mv -f "${_tmp}" "${_frag}"
+
+    # Front copy: the same list as a geo, judged at the wildcard SSL front on
+    # the real visitor for every name the site's vhost serves. The host map
+    # comes first and selects the rest, so an unrelated request costs one
+    # lookup. A redundant /32 or /128 is dropped so it cannot collide as a
+    # duplicate geo network with the plain anti-lockout form.
+    _hosts=""
+    [[ -n "${_front_on}" ]] && _hosts=$(_front_hosts "${_vhost_dir}/${_site}")
+    if [[ -n "${_hosts}" ]]; then
+      # The front copies of every context share one http{}: key their
+      # variables by context and site, never by the site name alone.
+      _hash=$(echo -n "${_nginx_path}/${_site}" | md5sum | awk '{print $1}' | cut -c1-12)
+      _geo_sorted=$(for _ip in ${_ip_sorted}; do
+        if [[ "${_ip}" == *:* ]]; then echo "${_ip%/128}"; else echo "${_ip%/32}"; fi
+      done | sort -u)
+      _frag="${_front_path}/${_site}.http.conf"
+      _tmp="${_front_path}/.${_site}.http.tmp.$$"
+      {
+        echo "# Generated by /var/xdrago/ip_access.sh — DO NOT EDIT BY HAND."
+        echo "# Wildcard SSL front copy of the whole-site list for ${_site}."
+        echo "map \$host \$ipaf_h_${_hash} {"
+        echo "  hostnames;"
+        echo "  default 0;"
+        # read, not a bare for: a *.name wildcard must never glob.
+        while IFS= read -r _e; do echo "  ${_e} 1;"; done <<< "${_hosts}"
+        echo "}"
+        echo "geo \$ipaf_ok_${_hash} {"
+        echo "  default 0;"
+        for _e in ${_geo_sorted}; do echo "  ${_e} 1;"; done
+        echo "}"
+        echo "map \$ipaf_ok_${_hash} \$ipaf_d_${_hash} {"
+        echo "  default 0;"
+        echo "  0 \$boa_front_ipa_scope;"
+        echo "}"
+        echo "map \$ipaf_h_${_hash} \$ipaf_deny_${_hash} {"
+        echo "  default 0;"
+        echo "  1 \$ipaf_d_${_hash};"
+        echo "}"
+      } > "${_tmp}"
+      mv -f "${_tmp}" "${_frag}"
+      _frag="${_front_path}/${_site}.srv.conf"
+      _tmp="${_front_path}/.${_site}.srv.tmp.$$"
+      {
+        echo "# Generated by /var/xdrago/ip_access.sh — DO NOT EDIT BY HAND."
+        echo "if (\$ipaf_deny_${_hash}) { return 403; }"
+      } > "${_tmp}"
+      mv -f "${_tmp}" "${_frag}"
+      _front_kept+=("${_site}.http.conf" "${_site}.srv.conf")
+    fi
     _configured+=("${_site}")
   done < "${_input_file}"
 
+  # Prune front files not written by this run: an unlisted site, a site with
+  # no rendered vhost, or every one while the front does not include them.
+  for _f in "${_front_path}"/*.srv.conf "${_front_path}"/*.conf; do
+    [[ -e "${_f}" ]] || continue
+    _base=$(basename "${_f}")
+    _keep=""
+    for _s in "${_front_kept[@]}"; do
+      [[ "${_s}" == "${_base}" ]] && _keep="yes" && break
+    done
+    if [[ -z "${_keep}" ]]; then
+      rm -f "${_f}"
+      echo "Pruned stale ip_access front file: ${_base} (${_input_file})"
+    fi
+  done
+
   # Prune fragments for sites no longer in the control file (restriction lifted).
-  local _f _base _keep _s
   for _f in "${_nginx_path}"/*.conf; do
     [[ -e "${_f}" ]] || continue
     _base=$(basename "${_f}" .conf)
@@ -209,15 +499,21 @@ _process_context() {
   if _nginx_held_down; then
     echo "${_current_mod_time}" > "${_timestamp_file}"
     echo "${_ssh_ips_hash}" > "${_ssh_hash_file}"
+    echo "${_emit_version}" > "${_version_file}"
+    echo "${_front_hash}" > "${_front_file}"
     echo "ip_access written (${_input_file}); replication standby -- reload skipped (web tier held)."
     return 0
   fi
 
-  # Validate the whole host nginx config; revert THIS context on failure.
+  # Validate the whole host nginx config; revert THIS context on failure. The
+  # front copies are dropped on every failure and never restored: they only
+  # narrow what the front lets through, and an older set could still claim a
+  # name that has since moved to another site.
   local _ct
   _ct=$(service nginx configtest 2>&1)
   if [[ $? -ne 0 ]]; then
     echo "Nginx configtest failed after ip_access update (${_input_file}): ${_ct}"
+    rm -f "${_front_path}"/*.srv.conf "${_front_path}"/*.conf
     if [[ -f "${_last_good_backup}" ]]; then
       echo "Reverting ${_input_file} ip_access to last known good."
       ### Prove the archive is readable BEFORE deleting what is on disk:
@@ -234,6 +530,8 @@ _process_context() {
         echo "ALRT: last-good backup ${_last_good_backup} is unreadable -- keeping the"
         echo "ALRT: fragments now on disk rather than deleting them for an archive"
         echo "ALRT: that cannot be restored. Fix ${_input_file} and re-run."
+        # With the front copies gone the rest may pass again.
+        service nginx configtest &> /dev/null && service nginx reload
       fi
     else
       # No last-good yet (a first run failed configtest). nginx never reloaded the
@@ -243,11 +541,15 @@ _process_context() {
       echo "No last-good backup for ${_input_file}; removing just-written fragments."
       rm -f "${_nginx_path}"/*.conf
     fi
+    # The front copies were dropped and the markers may have come back from
+    # the archive: forget the front state so the next pass rebuilds them.
+    rm -f "${_front_file}"
     return 1
   fi
 
   if ! service nginx reload; then
     echo "Nginx reload failed after ip_access update (${_input_file}); reverting."
+    rm -f "${_front_path}"/*.srv.conf "${_front_path}"/*.conf
     if [[ -f "${_last_good_backup}" ]]; then
       if tar -tzf "${_last_good_backup}" &> /dev/null; then
         rm -f "${_nginx_path}"/*.conf
@@ -259,6 +561,7 @@ _process_context() {
         echo "ALRT: last-good backup ${_last_good_backup} is unreadable -- fragments left in place."
       fi
     fi
+    rm -f "${_front_file}"
     return 1
   fi
 
@@ -273,6 +576,8 @@ _process_context() {
   fi
   echo "${_current_mod_time}" > "${_timestamp_file}"
   echo "${_ssh_ips_hash}" > "${_ssh_hash_file}"
+  echo "${_emit_version}" > "${_version_file}"
+  echo "${_front_hash}" > "${_front_file}"
   echo "ip_access updated (${_input_file}): ${_configured[*]:-none}; Nginx reloaded."
   return 0
 }
@@ -280,14 +585,25 @@ _process_context() {
 # Master (sqladmin) context — seed the control file if absent.
 mkdir -p /var/aegir/control/ip
 [[ ! -f /var/aegir/control/ip/access.txt ]] && echo "sqladmin.com 192.168.1.1" > /var/aegir/control/ip/access.txt
-_process_context /var/aegir/control/ip/access.txt /var/aegir/config/includes/ip_access /var/aegir/undo
+_process_context /var/aegir/control/ip/access.txt /var/aegir/config/includes/ip_access /var/aegir/undo \
+  /var/aegir/config/server_master/nginx/vhost.d
 
 # Octopus instances. Real instances carry tools/drush; the BOA-canonical instance
 # test (see autosymlink) transparently skips every non-instance pseudo-dir
 # (arch, all, legacy, global, static, custom, …), not just 'arch' by name.
 for _root in /data/disk/*; do
-  [[ -d "${_root}" && -e "${_root}/tools/drush" ]] || continue
-  _process_context "${_root}/static/control/ip/access.txt" "${_root}/config/includes/ip_access" "${_root}/undo"
+  [[ -d "${_root}" ]] || continue
+  if [[ ! -e "${_root}/tools/drush" ]]; then
+    # Only an instance that is gone: an Octopus upgrade moves tools/drush
+    # aside for a moment while the instance itself stays live.
+    [[ ! -e "/root/.${_root##*/}.octopus.cnf" \
+      && -d "${_root}/config/includes/ip_access_front" ]] \
+      && _front_clear "${_root}/config/includes/ip_access_front" \
+        "${_root}/config/includes/ip_access/.access_front_hash"
+    continue
+  fi
+  _process_context "${_root}/static/control/ip/access.txt" "${_root}/config/includes/ip_access" "${_root}/undo" \
+    "${_root}/config/server_master/nginx/vhost.d"
 done
 
 exit 0

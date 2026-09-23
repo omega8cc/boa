@@ -1454,6 +1454,21 @@ _if_site_db_conversion() {
   ###
   ### Detect db conversion mode, if set per platform or per site.
   ###
+  ### Every site starts from the instance value. _SQL_CONVERT is a shell
+  ### global this function assigns from the INI files, so without the reset
+  ### one site's sql_conversion_mode carried over to every later site of the
+  ### same account. The instance value is captured on the account's first
+  ### site, before anything here has touched it.
+  if [ "${_sqlCnvFor:-}" != "${_HM_U}" ]; then
+    _sqlCnvFor="${_HM_U}"
+    _sqlCnvAcct="${_SQL_CONVERT:-}"
+  fi
+  _SQL_CONVERT="${_sqlCnvAcct}"
+  ### An instance-wide force ignores the INI files, as octopus.cnf promises.
+  _sqlCnvForced=NO
+  case "${_sqlCnvAcct}" in
+    YES|innodb) _sqlCnvForced=YES ;;
+  esac
   if [ -e "${_PLR_CTRL_F}" ]; then
     _SQL_INDB_P=$(grep "sql_conversion_mode" \
       ${_PLR_CTRL_F} 2>&1)
@@ -1464,12 +1479,14 @@ _if_site_db_conversion() {
     fi
     _SQL_INDB_T=$(grep "^sql_conversion_mode = innodb" \
       ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_SQL_INDB_T}" =~ "sql_conversion_mode = innodb" ]]; then
+    if [[ "${_SQL_INDB_T}" =~ "sql_conversion_mode = innodb" ]] \
+      && [ "${_sqlCnvForced}" != "YES" ]; then
       _SQL_CONVERT=innodb
     fi
     _SQL_MYSM_T=$(grep "^sql_conversion_mode = myisam" \
       ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_SQL_MYSM_T}" =~ "sql_conversion_mode = myisam" ]]; then
+    if [[ "${_SQL_MYSM_T}" =~ "sql_conversion_mode = myisam" ]] \
+      && [ "${_sqlCnvForced}" != "YES" ]; then
       _SQL_CONVERT=myisam
     fi
   fi
@@ -1483,12 +1500,14 @@ _if_site_db_conversion() {
     fi
     _SQL_INDB_T=$(grep "^sql_conversion_mode = innodb" \
       ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_SQL_INDB_T}" =~ "sql_conversion_mode = innodb" ]]; then
+    if [[ "${_SQL_INDB_T}" =~ "sql_conversion_mode = innodb" ]] \
+      && [ "${_sqlCnvForced}" != "YES" ]; then
       _SQL_CONVERT=innodb
     fi
     _SQL_MYSM_T=$(grep "^sql_conversion_mode = myisam" \
       ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_SQL_MYSM_T}" =~ "sql_conversion_mode = myisam" ]]; then
+    if [[ "${_SQL_MYSM_T}" =~ "sql_conversion_mode = myisam" ]] \
+      && [ "${_sqlCnvForced}" != "YES" ]; then
       _SQL_CONVERT=myisam
     fi
   fi
@@ -1645,7 +1664,20 @@ _fix_static_permissions() {
       fi
     fi
     if [ ! -f "${_usEr}/log/ctrl/plr.${_PlrID}.perm-fix-${_NOW}.info" ]; then
-      find ${_use_Plr} -type d -exec chmod 0775 {} \; &> /dev/null
+      ### The three Drush-lock dirs keep whatever mode the lock state gave
+      ### them (0400 locked, 0775 after Unlock Local Drush), as on a built-in
+      ### platform below: only a provision lock or unlock changes that state.
+      ### Setting them to 0400 here, after the widening, closed an owner's
+      ### unlock as a half-lock: no Aegir patches, and no rebuild of the sites
+      ### whose container the site-local Drush compiled in the window, which
+      ### then fail every request that logs; the next lock, finding 0400,
+      ### skipped that rebuild too. Only the three directories themselves are
+      ### skipped (their contents are still walked), and nothing here names
+      ### them on a command line, so a link planted at one is never followed.
+      find "${_use_Plr}" -type d \
+        ! \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
+        -o -path "*/vendor/symfony/console/Style" \) \
+        -exec chmod 0775 {} \; &> /dev/null
       find ${_use_Plr} -type f -exec chmod 0664 {} \; &> /dev/null
       ### The pass above widened every sites/<uri>/*.php to 0664, and only an
       ### ACCEPTED site's arm narrows its own back (the 0440 pass at site
@@ -1662,22 +1694,6 @@ _fix_static_permissions() {
         \( -name settings.php -o -name local.settings.php \
         -o -name civicrm.settings.php -o -name solr.php -o -name drushrc.php \) \
         ! -path "${_rPlr}/sites/all/*" -exec chmod 0440 {} \; &> /dev/null
-      ### chmod follows a symlink named on the command line and has no -h, and
-      ### the find above just made every dir in the tree 0775 group-writable, so
-      ### all three of these are tenant-plantable names. None is ever
-      ### legitimately a symlink -- skip rather than lock whatever was planted.
-      if [ -e "${_use_Plr}/vendor/drush" ] \
-        && [ ! -L "${_use_Plr}/vendor/drush" ]; then
-        chmod 0400 ${_use_Plr}/vendor/drush
-      fi
-      if [ -e "${_use_Plr}/vendor/symfony/console/Input" ] \
-        && [ ! -L "${_use_Plr}/vendor/symfony/console/Input" ]; then
-        chmod 0400 ${_use_Plr}/vendor/symfony/console/Input
-      fi
-      if [ -e "${_use_Plr}/vendor/symfony/console/Style" ] \
-        && [ ! -L "${_use_Plr}/vendor/symfony/console/Style" ]; then
-        chmod 0400 ${_use_Plr}/vendor/symfony/console/Style
-      fi
     fi
   fi
 }
@@ -1736,8 +1752,9 @@ _fix_permissions() {
   ### the skeleton modes and stamp the per-pass marker: a withheld platform
   ### must end no wider than an accepted one, and the whole-tree chmod pass
   ### in _fix_static_permissions keys on that marker. A foreign-CMS platform
-  ### is withheld and reported the same way, its sites/all/drush mkdir
-  ### included.
+  ### is different: its sites/all/drush IS created below (its drushrc renders
+  ### there) and no SKIP line is printed; only the legs for the three Drupal
+  ### directories it does not carry are withheld.
   local _plrCodeLink=""
   local _cd
   for _cd in modules themes libraries drush; do
@@ -2081,7 +2098,7 @@ _fix_permissions() {
         && [ -f "${_Dir}/public/css.php" ] \
         && [ -d "${_Dir}/admin" ]; }; }; then
     ### No control-INI dir here: a Grav or Textpattern site carries no BOA
-    ### control INI (boa-grav D-011, boa-txp D-013), and the per-site loop
+    ### control INI, and the per-site loop
     ### clears what an earlier release seeded.
     if [ -x "/usr/local/bin/fix-drupal-site-ownership.sh" ]; then
       /usr/local/bin/fix-drupal-site-ownership.sh \
@@ -2880,7 +2897,7 @@ _daily_process() {
         "${_PLR_CTRL_F}" \
         "${_Plr}/sites/all/modules/default.boa_platform_control.ini"
       # Grav and Textpattern trees carry no BOA control INI: nothing reads one
-      # there (boa-grav D-011, boa-txp D-013). Decide once, from the platform
+      # there. Decide once, from the platform
       # root, AFTER the gates above -- a planted modules link skips a foreign
       # site's iteration exactly as it skips a Drupal one, which keeps every
       # later leg off that path -- and clear what an earlier release seeded.

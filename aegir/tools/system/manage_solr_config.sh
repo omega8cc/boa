@@ -1121,7 +1121,7 @@ _check_sites_list() {
         continue
       fi
       # Grav and Textpattern sites carry no BOA control INI and no Solr
-      # binding (boa-grav D-011, boa-txp D-013): never seed, read or act on
+      # binding: never seed, read or act on
       # one for them. A core an earlier pass made for such a site is left to
       # the orphan sweep, which no longer counts its INI either.
       if [ -n "${_Plr}" ] \

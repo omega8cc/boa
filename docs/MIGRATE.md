@@ -12,7 +12,7 @@ migration, without the automatic intermediate DNS proxy.
 | Scope | Single Octopus account | Full server (all accounts + Solr) |
 | Method | mydumper/myloader export→transfer→import | MySQL GTID replication + rsync |
 | Percona version match required | No — cross-version safe | Yes — identical versions on both ends |
-| Downtime window | Per-account (minutes to hours) | Whole-server cutover (1–3 h typical) |
+| Downtime window | Per-account, export to proxy; follows the account's database size (files are sent ahead) | Whole-server cutover; the client-domain sites come back once this box relays for them, before the renames, so their window is flat in the number of accounts (2–3.5 min measured on a rig, 3–8 Ægir roots); the sites named under the box hostname and the panels wait for the renames |
 | Intermediate DNS proxy | Yes (automatic) | Yes (automatic via xoct) |
 | Concurrent account migration | No — sequential | Yes — all accounts in one operation |
 | Incremental pre-sync | No | Yes — repeat `xmass sync` freely |
@@ -30,8 +30,10 @@ indices) where per-account mydumper/myloader cycles would be impractical.
   `xmass` takes an owner-PID lock (`/run/<tool>.verb.pid`) and a second run
   refuses loudly and non-zero, naming the live owner's pid. The guard is
   liveness-based — a killed run or a reboot wedges nothing, and there is no
-  stale lock to clear. Read-only verbs (`status`, `verify`, `proxy-mode`)
-  stay unlocked so a migration can always be inspected mid-run.
+  stale lock to clear. The read-only verbs (`status`, `verify`) stay
+  unlocked so a migration can always be inspected mid-run. `xoct proxy-mode` is unlocked as
+  well although it WRITES: it pins the per-account policy record on both ends and can mail
+  the client.
 - **The tools force themselves current.** `xmass pre-mig` (both hosts) and
   `prep-target` (the target) drop the per-tool control markers for the
   migration tool set and run the housekeeping fetcher synchronously, logging
@@ -56,6 +58,28 @@ Before any in-place rewrite begins, the plain pre-rename database dump is
 verified complete — exit status plus the dumper's closing marker — and the
 run aborts rather than rewrite the database without a complete backup.
 
+The master root's run (`--aegir-root /var/aegir`) also renames the names the
+box was given at install and nothing else rewrites: postfix `myhostname` and
+the `mydestination` entries naming the box (its fqdn, and the
+`localhost.<zone>` token the installer writes beside it, whose zone is
+renamed when it is a former name's), `/etc/mailname`, and BOA's
+self-signed fallback certificate (`/etc/ssl/private/nginx-wild-ssl.crt`,
+re-issued for `*.<new-fqdn>` on its existing key, the old one kept under
+`backups/rename-hostname/`).
+
+Each is renamed only when it carries one of the
+box's former names — the old hostname, or the name that certificate was
+issued for, and for the localhost token one of their zones — which is how a
+box restored from an image and renamed by an older
+tool is still recognised at its next rename (a run whose aliases already carry
+the system FQDN stops with "nothing to do" before this step) — so a custom
+`myhostname` or a certificate you installed yourself is left alone.
+
+Every root's run also rewrites the yml
+alias copies Drush 9+ reads (`<root>/.drush/sites`, and for an account the
+limited-shell user's `/home/oN.ftp/.drush/sites`), so `master_url` there
+follows the rename.
+
 ### Pre-flight for an in-place rename
 
 The tool takes the NEW hostname from the system FQDN (`hostname -f`), and on a
@@ -66,7 +90,9 @@ background monitor additionally restores the running hostname from
 `/etc/hostname` within seconds). A stale cnf therefore reverts the hostname
 mid-rename; the observed collateral is provision flipping to remote-host mode
 against the old identity (failed self-rsync on missing SSH host keys) and a
-regenerated legacy nginx config that fails `nginx -t`. Set the full box
+regenerated legacy nginx config that fails `nginx -t`.
+
+Set the full box
 identity BEFORE running the tool on an existing box:
 
 1. `/etc/hostname` — the new FQDN;
@@ -87,7 +113,9 @@ nothing — including when the new FQDN contains the old one (a
 subdomain-augmenting rename). One qualification: a re-run on a box renamed by
 EARLIER tooling repairs the per-site surfaces the older rename left behind —
 settings.php, the `files`/`private` symlinks, the client symlink, the alias
-file and the static store. Every repair stays conditioned on old-name
+file and the static store.
+
+Every repair stays conditioned on old-name
 evidence, so a correct site (including one freshly installed on a migration
 target) is untouched and not even queued; on such a box the aliases already
 carry the new hostname, so pin the old one with `--force-old`. After a partial
@@ -104,7 +132,9 @@ renameaegirhost --aegir-root /data/disk/o1 --force-old old.example.com
 ### Sites whose name contains the box hostname
 
 A tenant site whose URI embeds the box FQDN follows the box through a
-hostname rename. The tool carries, per such site: the site directory itself,
+hostname rename.
+
+The tool carries, per such site: the site directory itself,
 its per-site Drush alias file, its `static/files` store, the site's own
 `files`/`private` symlinks into that store, its `clients/<client>/` symlink,
 the URI-derived values inside the provision-generated `settings.php`
@@ -112,7 +142,20 @@ the URI-derived values inside the provision-generated `settings.php`
 identity, the absolute `local.settings.php` include, and
 `trusted_host_patterns` in **both** its plain and backslash-escaped
 spellings — the escaped one is what produces the HTTP 400 when left stale),
-and the site's per-site PHP pin row in `static/control/multi-fpm.info`. It
+and the site's per-site PHP pin row in `static/control/multi-fpm.info`.
+
+On an
+Octopus root the tool also parks the old-name panel SSL proxy include
+(`/var/aegir/config/server_master/nginx/pre.d/z_<account>.<old-hostname>_ssl_proxy.conf`)
+into the rename's backup directory: the account pass regenerates it under the new
+name once the new certificate exists, while the old file would keep naming a
+certificate that is about to go and fail the box-wide configtest.
+
+A
+`sites/<name>` directory under the old hostname that holds no `settings.php`
+is not a site: it is moved into the rename's backup directory under
+`stray-sites/` (nothing is deleted) and the run says so, so the platform
+verify cannot import it as a bogus site. It
 then queues one site verify per renamed site, because the queue's server
 verifies regenerate no per-site artefact at all — none of this is
 self-healing if left behind.
@@ -135,12 +178,18 @@ Two deliberate limits and one refusal:
 The run ends with a serving gate over every site carrying the new hostname —
 the dirs this run moved and the ones an earlier or parked run had already
 moved, so a resumed run still confirms the sites its predecessor renamed;
-sites a panel has disabled (placeholder vhost) and suspended accounts are
-listed as not probed. The tool waits for each such site to
+sites a panel has disabled (placeholder vhost), sites with no vhost file and
+suspended accounts are listed as not probed.
+
+The tool waits for each such site to
 actually answer — up to `_RENAME_SERVE_WAIT` seconds per site, default 180 —
-accepting 200/301/302 but self-calibrating against the box's catch-all vhost,
+accepting 200/301/302, and a 401 or 403 as well (an auth or IP allow-list answer proves the
+vhost is live and routed to the right site, logged as `serves (<code>, protected)`), but
+self-calibrating against the box's catch-all vhost,
 so an "Under Construction" 200 for a nonexistent Host never counts as
-serving. The closing summary ends with either
+serving.
+
+The closing summary ends with either
 `Sites : all N renamed site(s) confirmed serving` or `NOT SERVING : <uris>` —
 the run itself still exits 0, so read that line rather than the exit status;
 a 400 there is the trusted-host check. The wait exists because `settings.php`

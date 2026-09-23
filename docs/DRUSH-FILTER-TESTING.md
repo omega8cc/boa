@@ -154,12 +154,16 @@ that removed them on Drupal 11 platforms at lock time and in the platform
 permission helper is retired), so this test proves the property that replaced
 it: a command file inside an ENABLED contributed module's directory on a locked
 Drupal 11 composer codebase is found by Drush's recursive scan, denied for the
-backend, and the two paths that used to delete it now leave it in place. Use a
+backend, and the two paths that used to delete it now leave it in place.
+
+Use a
 site on a locked Drupal 11 composer codebase (`modules/contrib` exists only in
 that layout; a built-in platform keeps contrib under `modules/o_contrib_eleven`)
 and pick a contributed module that is enabled on it (`token` is a safe choice on
 most distributions). `@<PLATFORM>` below is the platform's context name, listed
-by `ls /data/disk/<OCT>/.drush/platform_*.alias.drushrc.php`. The probe has its
+by `ls /data/disk/<OCT>/.drush/platform_*.alias.drushrc.php`.
+
+The probe has its
 own name so it can coexist with the Test 2 probe. The permission helper is run
 the way the fix_permissions task runs it, by the Octopus user through sudo; it
 refuses any other caller. Test 2b already covers the limited-shell identity, so

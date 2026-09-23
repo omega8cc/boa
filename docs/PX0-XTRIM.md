@@ -37,7 +37,9 @@ operates on PROXIED accounts only and skips the rest with a notice.
 Every verb is gated on a per-account phase, which `xtrim status` prints
 as `phase=` — `none`, `stage-a`, `stage-b-started`, `stage-b` or
 `restored`. An account whose only live vhost is its own local control
-panel is listed as `panel-only` with nothing to shrink, not with a target. A stage B interrupted mid-run leaves the account at
+panel is listed as `panel-only` with nothing to shrink, not with a target.
+
+A stage B interrupted mid-run leaves the account at
 `stage-b-started`, where `quiesce` ("deletion may be partial"), `shrink`,
 `restore` and `finalize` all refuse and only `status` and `plan` remain
 useful; inspect such an account by hand from the tool's working directory
@@ -84,25 +86,33 @@ certificate behind a retained HTTPS vhost (a retired box-named name is outside
 that gate — nothing renews its certificate, so its expiry is reported, not
 refused); every `server_name` serving through the target AND
 through the proxy relay (redirects accepted — SSL-Required sites answer
-301 on port 80). The serving probe is not status-only: once per run the
+301 on port 80).
+
+The serving probe is not status-only: once per run the
 tool fingerprints the target's answer for an impossible hostname, and a
 200 whose body matches that catch-all fingerprint FAILS the probe
 (reported as `direct=CATCH-ALL` / `relay=CATCH-ALL`) — a BOA box answers
 any unknown Host with its "Under Construction" page, so a bare 200 proves
-nothing; a 301/302 is still accepted on status alone. One deliberate
+nothing; a 301/302 is still accepted on status alone.
+
+One deliberate
 exception: after a whole-server move that renamed the box, the source's
 host-derived site names are retired by design, so a failing name that
 embeds the old box name is re-probed as the same label under the target's
 FQDN — on the direct leg only, since the relay runs through the source,
 which never served that name. A customer's own domain is never remapped
-and must prove itself by name. Also: ssh to the target working; the SQL
+and must prove itself by name.
+
+Also: ssh to the target working; the SQL
 endpoint answering as THIS box's own server (`@@hostname` must match —
 the classification is derived from this box's aliases, and a cluster or
 remote credential file would judge them against the wrong server); and,
 for every CLIENT database
 about to be dropped, the TARGET holding a populated schema of that name
 plus at least one real (non-proxy) vhost — which is what stops a proxy
-chain being mistaken for a target. The account's OWN panel and dedicated
+chain being mistaken for a target.
+
+The account's OWN panel and dedicated
 site are the deliberate exception: an xoct target builds those named for
 ITS host, never the source's, so a name match would refuse every migrated
 source. They are proved instead by a live account of the same number on
@@ -123,13 +133,20 @@ dir (an `/mnt`-store index never lands on the root filesystem; origin and
 port are recorded in a map), reloads nginx under the shared config lock,
 and re-probes every domain. Any regression auto-restores and aborts.
 
-**Stage B — one-way on this box.** Dumps and gzip-verifies every
-database once (the panel db is already in the map), re-proves the target,
+**Stage B — one-way on this box.**
+
+Dumps and gzip-verifies every
+database once (a PROXIED panel's db is already in the map; a LOCAL
+panel's database, the account's own dedicated-site database and the
+panel platform tree under `aegir/` are kept out of the map and are
+neither dumped-and-dropped nor removed), re-proves the target,
 then drops databases and their
 single-grant users (all three grant hosts), removes `backups/`, `src/`,
 `undo/`, `distro/`, the platform trees named by the `platform_*` aliases,
 and the static trees — resolving every store symlink FIRST and refusing
-any target outside the account or the single `/mnt` store. The proxy
+any target outside the account or the single `/mnt` store.
+
+The proxy
 keeps serving throughout: nothing in stage B is in its dependency set.
 
 The irreversible phase stamp lands just before the FIRST drop, not at
@@ -145,16 +162,23 @@ back. It is moved to `/var/backups/off-run/run-<oN>` instead, visibly
 parked. Returning it would let the account's own dispatcher tick and
 regenerate the platform vhosts, silently un-converting the proxy.
 
-**Stage C — `finalize`.** Only when every account is shrunk — all-accounts-or-nothing:
+**Stage C — `finalize`.**
+
+Only when every account is shrunk — all-accounts-or-nothing:
 one account short of `stage-b` refuses the whole run and names it with its phase,
 the check runs before anything else (so a dry `finalize` is a usable pre-flight),
 and a panel-only account (a local panel, no other live vhost) is exempt, not
 waited for, its panel served through the MySQL finalize keeps: removes the
 shared codebases (`/data/all` and `/data/disk/all`), stops and disables
-MySQL (`--drop-datadir` is a separate explicit flag), stops solr/jetty
+MySQL only when NO account keeps a local control panel (with a local panel
+present MySQL is KEPT running for the panel databases, the run prints
+`mysql KEPT running for the local control panel database(s)`, and
+`--drop-datadir`, otherwise a separate explicit flag, is REFUSED, in a dry
+run as well), stops solr/jetty
 and disarms their monitor watchdog by dropping the init scripts' exec
 bit (the `/var/xdrago/monitor` tree is deliberately not proxy-gated),
-stands down every FPM master except the panel front's, and LAST touches
+stands down every FPM master except the panel front's and any master a
+local panel still answers through, and LAST touches
 `/root/.proxy.cnf`, which stands the BOA machinery down while the nginx
 watchdog keeps running.
 
@@ -166,6 +190,7 @@ published tool landed on a finalized proxy through the normal
 channel), graceful.sh (box hygiene incl. the rsyslog watchdog the IDS
 depends on), manage_ltd_users.sh (host hardening for the system users
 that survive finalize), loadreport --log (relay load is the point).
+
 Still gated: owl.sh (night worker — per-site/account work, meaningless
 here; proxied-account certs renew on the target and mirror back), all
 mysql_* tools and move_sql.sh (the monitor must never resurrect what
@@ -182,7 +207,13 @@ uses /run/boa_php_idle_quiesce.pid (owner-PID keyed, self-cleaning).
 dotfiles, `/etc/ssl/private`, `/etc/csf`, `/var/xdrago`, `/opt/local/bin`,
 the account's entire `config/` tree including `ssl.d`, and `tools/le/` in
 its entirety — delete `tools/le` and every HTTPS proxy vhost has a
-dangling `ssl_certificate` and nginx will not start. Certificate refresh
+dangling `ssl_certificate` and nginx will not start. A LOCAL control
+panel is kept whole: stage A leaves `fpm_include_default.inc` and the
+account's default-version FPM pool in place, stage B keeps the panel
+database, the account's own dedicated-site database and the `aegir/`
+panel platform tree.
+
+Certificate refresh
 stays with the daily `migration_proxy_certs.sh` mirror, which must keep
 running long after the shrink. The one class it cannot refresh is a
 retired box-named name (answered with the cutover's 301): no target issues
@@ -199,6 +230,7 @@ there rather than running straight on into stage B.
 `restore` is honest about partial failure rather than unconditionally
 clean. It refuses an account name it does not recognise and refuses when
 no quarantine exists (instead of reporting cheerful success on a no-op).
+
 Two partial paths and their remedies: a Solr core is re-registered with
 CREATE (an unloaded core is de-registered, so RELOAD cannot bring it
 back) — if the re-register answers non-200, the index is intact on disk

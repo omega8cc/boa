@@ -40,6 +40,10 @@ _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
 _DB_SERIES=5.7 #---------------- Supported values: 5.7 8.0 8.4
 _DB_SERVER=Percona #------------ Install Percona or MySQL Server (8.4 from Trixie)
 _SOLR_HEAP_FORCE="" #----------- Pins Solr 7/9 JVM heap -Xmx in MB (AUTO when empty)
+_USE_SQLPROBE=YES #------------- Log-only SQL sensor feeding the memorytuner advisory; changes no setting
+_USE_BATCH_GUARD=YES #---------- Batch storm guard; _BATCH_GUARD_DETECT_ONLY=YES alerts without deleting
+_USE_TASK_GUARD=YES #----------- Crashed-task reaper; _TASK_GUARD_DETECT_ONLY=YES alerts without writing
+_XDR9000=YES #------------------ Permanent read-only health and attack archive under /var/log/boa/xdr9000/
 _SQL_BUFFER_POOL_FORCE="" #----- Pins innodb_buffer_pool_size in MB (plain integer; AUTO when empty)
 _SQL_KEY_BUFFER_FORCE="" #------ Pins key_buffer_size in MB (AUTO when empty)
 _SQL_LOG_FILE_SIZE_FORCE="" #--- Pins innodb_log_file_size / redo capacity in MB (restart applies)
@@ -146,6 +150,7 @@ _NGINX_HEADERS=NO #------------- Installs Nginx Headers More support when YES
 _NGINX_KTLS=YES #--------------- Kernel TLS on when YES (default); NO sheds EIO noise
 _NGINX_LDAP=NO #---------------- Installs LDAP Nginx support when YES
 _NGINX_NAXSI=NO #--------------- Installs NAXSI WAF when YES - experimental
+_NGINX_QUIC_BPF=YES #----------- HTTP/3 survives Nginx reloads when YES (default), probed
 _NGINX_SPDY=YES #--------------- Installs SPDY Nginx support when YES (default)
 _NGINX_WORKERS=AUTO #----------- Allows to override AUTO with a valid integer
 ###
@@ -168,6 +173,11 @@ _SSH_PORT=22 #------------------ Allows to configure non-standard SSH port
 _STRICT_BIN_PERMISSIONS=YES #--- Aggressively protect all binaries when YES
 _STRONG_PASSWORDS=YES #--------- Configurable length: 32-128, YES (64), NO (32)
 _USE_PREBUILT_PKGS=NO #--------- Prebuilt stack packages when YES; auto-YES on Daedalus
+_BACKDROP_SUPPORT=YES #--------- Backdrop system tools (bee, Drush extension, lshell exposure); NO skips them
+_GRAV_SUPPORT=NO #-------------- Recorded for reference only; the instance cnf is the switch
+_TXP_SUPPORT=NO #--------------- Recorded for reference only; the instance cnf is the switch
+_XTRIM_MIN_DAYS=14 #------------ Min age in days of log/proxied.pid before xtrim shrinks an account (hard floor 7)
+_MIGRATION_PROXY_CERT_WARN_DAYS=21 #-- Warn when a retained proxy vhost's certificate expires within N days unrefreshed
 _VALKEY_LISTEN_MODE=SOCKET #---- Valkey listen mode: SOCKET (recommended) or PORT
 _VALKEY_MAJOR_RELEASE=9 #------- Valkey major release version: 9, 8, 7
 ###

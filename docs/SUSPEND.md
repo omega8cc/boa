@@ -8,14 +8,18 @@ but nothing about the mechanism is billing-specific.
 
 Both commands are instant and idempotent: suspending an already-suspended
 instance (or unsuspending a non-suspended one) just reports the current state.
-Other instances on the same box are not affected.
+The serving state of other instances on the same box is not affected; the Nginx speed
+cache purge at both toggle points is box-wide (`/var/lib/nginx/speed` in full), so every
+account takes a briefly cold microcache.
 
 ## What suspend does — and what it deliberately does not
 
 When suspended:
 
-- **Web requests get a 503** on every site of the account, Drupal and Backdrop
-  alike. The response carries `Retry-After: 3600` and `Cache-Control: no-store`,
+- **Web requests get a 503** on every site of the account — Drupal and Backdrop
+  through the global settings include, Grav and Textpattern through the same flag
+  test in their own vhosts — and on the account's own Ægir control panel as well,
+  so a suspended tenant cannot log in to the panel either. The response carries `Retry-After: 3600` and `Cache-Control: no-store`,
   so nothing downstream caches the outage page, and the Nginx speed cache is
   purged at both toggle points — the 503 appears immediately on suspend and
   clears immediately on unsuspend.
@@ -33,7 +37,11 @@ resembles:
   A suspended instance never enters that machinery.
 - `static/control/http-off.pid` is the **migration** web-off gate managed by
   `xoct`/`xmass` (see [MIGRATE-XOCT.md](MIGRATE-XOCT.md)). It lives inside the
-  account tree and serves a cacheable maintenance page.
+  account tree; the 503 it serves is uncacheable (`no-store, must-revalidate`,
+  with a `Retry-After`), and the Grav and Textpattern vhosts honour it at the
+  nginx level from their next verify on. Its per-host twin `http-off-host.pid`
+  holds only the sites named under the box hostname while a whole-server move
+  renames them.
 
 ## Mechanism
 

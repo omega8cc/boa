@@ -35,6 +35,13 @@
 
 @=> Security
 
+    * The Speed Booster debug headers on Drupal and Backdrop sites now
+      say only whether a request carried a session cookie or an
+      Authorization header (X-Speed-Cache-UID: Session and
+      X-Debug-NoCache-Auth: Present). They used to repeat the values,
+      which a page script could read even where the session cookie is
+      HttpOnly. Cache keys and bypass rules are unchanged.
+
     * New crawler-fleet refusal: a distributed crawl that shares one
       exact user agent against one site is refused by the web server
       with 429, on by default on every box, in both of its scopes.
@@ -76,6 +83,143 @@
       no longer walks through a symlinked modules/ or site directory;
       and the site legs handle the files/ and private/ child entries
       on the resolved store path only, never through a planted link.
+    * The per-site /user + /admin allow-list (user_admin_access) now
+      covers where Grav 2 and Textpattern sites keep their admin
+      surface: on a Grav 2 site the whole /api route, because the
+      Admin2 panel at /admin is only a shell and every login, account,
+      page, media and configuration operation runs through the API
+      plugin, and on a Textpattern site /txpadmin, which the list
+      never matched. A Grav site that serves a deliberately public
+      headless API adds the keyword api-open to its record and keeps
+      /api open while /admin stays on the list. Drupal and Backdrop
+      sites match exactly what they matched before, no vhost needs a
+      re-verify, and the change reaches every listed site on the
+      generator's next pass.
+    * Both per-site IP lists (ip_access for the whole site and
+      user_admin_access for the admin surface) now also hold over
+      HTTPS on a site without a certificate of its own. Such a site
+      is reached through the wildcard SSL front, which hands every
+      request on as a local one, and both lists always admit the box
+      itself. Each generator now also writes a front copy of every
+      listed site's list, keyed by the names only that site's vhost
+      serves on the box (a wildcard alias, or a name another instance
+      also carries, stays out), and the front judges it against the
+      real visitor. On a
+      whole-site list the ACME challenge and the MTA-STS policy stay
+      open, as they do in the vhosts. The copies appear on the
+      generators' first pass after a barracuda upgrade has updated
+      the front; a site with its own certificate was never affected.
+    * The wildcard SSL front also refuses the paths the vhosts keep
+      for the box itself (the PHP-FPM status and ping pages, the cron
+      entry points and the Nginx stub status) unless the request
+      comes from the box, so the web method of the Aegir cron keeps
+      working and nobody else reaches them through the front.
+    * user_admin_access now proves its last-good archive readable
+      before it deletes the live fragments on a failed configtest or
+      reload, and checks a freshly written archive, as ip_access
+      does: an unreadable one leaves the fragments in place and
+      names the control file to fix.
+    * The client address a Drupal or Backdrop site sees can no longer be
+      named by the visitor. The PHP layer took CF-Connecting-IP,
+      True-Client-IP, X-Real-IP or X-Forwarded-For from any peer, so
+      anyone could pick the address flood control, logs and IP-based
+      modules saw. It now takes the client nginx's realip resolved from
+      a peer it trusts (the Cloudflare ranges, a migration source),
+      passed as the new BOA_NGINX_CLIENT fastcgi param, and from a peer
+      on the box (the wildcard SSL front, BOA's HTTPS proxies) only
+      their X-Real-IP; any other peer is the client itself. A site
+      behind a CDN or proxy that realip does not trust now sees that
+      proxy's address. A barracuda pass installs the new
+      fastcgi_params. aegir2boa-stage2's peer step on the target now
+      registers its source as a trusted migration source, as xmass and
+      xoct do, so sites relayed from a vanilla Aegir box keep their
+      visitors' addresses (a Cloudflare-fronted one arrives as the edge
+      address, as the vanilla source has no Cloudflare realip). The
+      source now prints the address it reaches the target from, and
+      migration_proxy_trust.sh gains an untrust verb that removes one
+      peer and leaves every other migration's trust in place.
+    * A migration site proxy (the vhost xoct or xcopy leaves on the old
+      box) hands the new host the real visitor of an HTTPS request that
+      came through the wildcard SSL front, not the front's 127.0.0.1.
+      The new host trusts the old box's CF-Connecting-IP, so it took
+      every such request for its own loopback. A barracuda pass gives
+      proxies written before this the same fix.
+    * The PHP layer no longer takes a request through the wildcard SSL
+      front for a local one. It tested only the connecting address,
+      which for the front is always 127.0.0.1, so the nodns aliases
+      and the /api/hidden/ paths kept for the box answered any visitor
+      over HTTPS. It now judges the visitor the front passes on:
+      local only when that is loopback or the address the request came
+      in on, as the front itself decides.
+    * Each control panel's own HTTPS proxy now refuses the same paths
+      kept for the box itself (the PHP-FPM status and ping pages, the
+      cron entry points, the stub status) unless the request comes
+      from the box: it proxies to the panel's vhost from the box's own
+      address, which those locations admit, so a panel's FPM status
+      was readable by anyone over HTTPS. A barracuda pass adds the
+      same refusal, taken from its own template, to every older HTTPS
+      proxy in pre.d, per-site ones made by xoct ssl-gen included, and
+      an octopus pass regenerates a panel proxy that still lacks it,
+      taking the template from its own build tree when barracuda has
+      not refreshed it yet.
+    * A control panel listed in its instance's access.txt or
+      user_admin.txt is now locked over HTTPS too, the only scheme it
+      serves. Its HTTPS proxy reached the panel vhost from the box's
+      own address, which both lists always admit, so the lock held on
+      plain HTTP alone. The proxy now includes the panel's lists
+      itself and judges the real visitor, keeping the anti-lockout
+      (the box, loopback, live SSH peers), and applies the IDS ban,
+      which the vhost behind it never saw either. A barracuda pass
+      adds these lines to every older HTTPS proxy in pre.d, and an
+      octopus pass regenerates a panel proxy that lacks them. A proxy
+      for a moved account answers every name on its address, so it
+      keeps the ban only, whether ssl-gen writes it or barracuda heals
+      it, and a barracuda pass drops the lists from one an older xoct
+      or xcopy wrote. Neither barracuda heal follows a symlink in
+      pre.d. edgetest probes a locked panel from another address.
+    * xoct and xcopy ssl-gen give the control panel's extra names
+      (log/extra_domain.txt) to the panel's own proxy only. Every
+      per-site record claimed them too, and nginx kept whichever proxy
+      sorted first, so a site's proxy could answer for the panel. A
+      barracuda pass drops them from the proxies an older ssl-gen
+      wrote (never from a panel that lists them), and edgetest warns
+      on a proxy that claims one.
+    * xcopy ssl-gen now points /sqladmin at the master PHP-FPM socket,
+      as xoct ssl-gen does: a standalone run left it on 127.0.0.1:9000,
+      where nothing listens, until the next octopus pass.
+    * The locations that deny everyone in the Drupal vhosts (files
+      under a site's public backup_migrate/ and config_* dirs) stay
+      closed to the box itself too. The multi-IP cron access used to
+      give every deny all the box's own addresses, which any proxy
+      connecting from the box then passed on to its visitors. It now
+      extends only the locations kept for the box (the FPM status and
+      ping, the cron entry points), and every barracuda and octopus
+      pass closes the other two again in the vhost templates, the
+      rendered common include and the rendered subdir vhosts.
+    * A deleted ip_access or user_admin_access control file of an
+      Octopus instance changes nothing any more, over HTTP or HTTPS.
+      Its site-vhost fragments had always stayed in force, while the
+      wildcard front's copies were dropped, so HTTPS alone was lifted.
+      A deletion does not travel to a standby mirror or a migration
+      target, so lifting would only ever lift one box. To lift, remove
+      a site's line or empty the file. The front copies keep following
+      each site's current names, as the vhost fragments do, so a new
+      alias is covered on HTTPS too and a moved one is released.
+    * edgetest checks the wildcard SSL front and every other HTTPS
+      proxy in pre.d: the refusal is deployed, and a request from another
+      loopback address for the stub status or the FPM ping answers
+      403 (a 200 is reported as a leak). Its presence and fragment
+      checks now cover user_admin_access too.
+
+    * The per-site legacy TLS switch (tls-legacy-enable-<name>.info) is
+      retired, and the server config no longer lists TLSv1.1 at http
+      level. Neither had any effect left: Nginx is built with OpenSSL 3,
+      which refuses TLSv1.1 at its default security level whatever
+      ssl_protocols says. Tested with the control file in place and the
+      line rendered in a Drupal and a Textpattern vhost, a TLSv1.1
+      handshake was still answered with a protocol version alert while
+      TLSv1.2 connected. TLSv1.2 and TLSv1.3 are what every site speaks,
+      as before; a control file left behind is ignored.
 
 @=> New Features
 
@@ -99,8 +243,66 @@
     * The generated maps go live only after an nginx configtest
       accepts them, and the last good set is restored if it does not,
       so a fleet map can never take the web server down.
+    * Every distribution staticbuild builds now applies the fixed
+      releases of its advisory-affected packages that the
+      distribution's own constraints allow, before any of the build's
+      own corrections, keeping its core and the package that names the
+      platform, and records what it could not fix and why; a fixed lock
+      that does not install fails the build and the published copy
+      stays.
+    * The pinned EzContent and Commerce v.2 catalogue platforms are
+      staticbuild targets again: each is rebuilt from its own published
+      tarball, so it receives the same fixes under the same name, while
+      its core stays on the pinned minor.
+    * Every distribution and vanilla core staticbuild builds is
+      audited against the published security advisories: the advisory
+      ids are recorded beside the tarball, the counts left and fixed
+      in the run summary, and the build is never blocked by them.
+    * New staticbuild advisories re-checks every published catalogue
+      platform, distributions and Drupal 9 to 11 cores, against
+      today's advisories, one row per tarball with the trees that list
+      it, and lists, with versions, the contrib BOA adds to Drupal 8+
+      platforms outside Composer.
+    * staticbuild distribute replaces a published distribution or core
+      with a same-name tarball whose lock differs only when the new
+      lock fixes advisories (it clears some and adds none) or the
+      platform is named with -O, since the boxes that already hold it
+      would never fetch it again.
+    * staticbuild prints one row per platform: whether it built, the
+      advisories left and fixed, what happened on the mirror and a
+      short note, with the command to run for anything refused and the
+      log lines for anything failed. Composer and tar output, advisory
+      ids and lock hashes go to a per-run log under
+      /var/backups/reports/staticbuild; --debug streams them instead.
+    * The Drupal CMS, Opigno and Open Social catalogue platforms are
+      built without their require-dev packages, like the others.
 
 @=> Improvements
+
+    * The control panel theme declares the page language, its skip link
+      now lands on the page content, and the logo link is announced as
+      Home, on regular pages and on the maintenance page alike.
+    * BOA's own default page (unknown hosts and disabled sites) and the
+      server migration page declare a doctype, the page language and a
+      viewport, and fit a phone screen without zooming out.
+    * A barracuda pass no longer leaves another backup copy of the
+      default page and of mime.types behind when neither has changed.
+
+    * The prebuilt package builder can have a CDN purged after a republish.
+      A component rebuilt at an unchanged version is republished under the
+      same filename, and an edge in front of the mirrors kept the previous
+      package for its full TTL beside the new checksum file, so consumers
+      behind it failed the checksum and compiled from sources instead. With
+      _PURGE_HOOK set in /root/.stackbuild.cnf, stackbuild hands every file
+      it published to that command after the cross-sync; without it, a run
+      that replaced an existing file names it. A failing hook is reported
+      and never stops the publish.
+    * The mycnfup tuner and the cluster tool are retired. mycnfup refused
+      every verb on anything but Debian, so it never ran on a Devuan box,
+      and only the discontinued Simple Cluster tooling ever called it; the
+      memory limits in my.cnf follow the RAM on every barracuda pass without
+      it. A box that still carries /opt/local/bin/mycnfup loses it, with its
+      fetch markers, on the next pass.
 
     * A filesystem running out of room now prunes the archived site stores
       on its own: `boa archived heal`, which runner.sh runs every minute
@@ -260,6 +462,131 @@
 
 @=> Important Fixes
 
+    * A site served over HTTPS without a certificate of its own now stays
+      on HTTPS through the web server's own redirects: the clean-URL
+      redirect from /index.php/..., an alias redirected to the main name
+      and the old name of a site renamed by a move. They used to send the
+      visitor to http://. Custom rewrites get the same result with the
+      $boa_visitor_scheme variable, as the examples in REWRITES.md now do.
+
+    * A Drupal 10+ site no longer fails after its platform is locked again
+      following work with the site-local Drush. Re-locking a platform the
+      Unlock Local Drush task left open, by the Lock Local Drush task or a
+      Verify, now rebuilds every Drupal 10+ site on it with Drupal core's
+      own rebuild. A service container compiled by the site-local Drush
+      (a module installed or removed, a recipe applied) used to stay in
+      the cache, and the site failed every request that writes a log
+      entry, a 404 included, until its next Verify.
+
+    * A platform unlocked with Unlock Local Drush now stays unlocked
+      through the nightly maintenance. The nightly permission pass on a
+      platform in ~/static set vendor/drush and two symfony/console
+      directories back to 0400 without the Aegir patches and without the
+      rebuild above, so a site whose service container the site-local
+      Drush had compiled failed every request that writes a log entry,
+      and the Lock that followed, finding the platform already at 0400,
+      skipped the rebuild too. The pass now leaves those three
+      directories as it finds them: only the Lock and Unlock Local Drush
+      tasks and a Verify change the lock.
+
+    * Drupal 8 and 9 sites get the same rebuild when a lock closes an
+      earlier Unlock Local Drush window. Their platform's lock is the
+      chmod alone, and the Drush 10 or 11 they carry compiles the same
+      Drush-only logger into a site's container, so such a site also
+      failed every request that writes a log entry until its next Verify.
+
+    * Speed Booster leaves a query out of a page's cache key only when
+      every parameter in it is a campaign tag or a click id (utm_*,
+      gclid, fbclid, msclkid and the like). It used to drop the whole
+      query whenever such a tag appeared anywhere in it, even inside
+      another parameter's name, so ?page=2&utm_source=... or
+      ?datasource=... could be served the plain page's copy, while a
+      link carrying only a click id got a cache entry of its own.
+
+    * Uptime monitors (Pingdom, UptimeRobot) always reach the site now:
+      Speed Booster never answers them from its cache, never stores
+      their responses and never shows them a stale copy. They used to
+      share the crawlers' entries, kept for an hour, and were shown the
+      last good page while PHP was down.
+
+    * A site can keep one response out of the Speed Booster cache by
+      sending the X-Force-Nocache: YES header: that response is never
+      stored. The header was checked before the response existed, so
+      it never took effect.
+
+    * A large site backup downloaded from the control panel in a browser
+      no longer fails part way, however often it is retried. An Nginx
+      reload hands the shared QUIC sockets to the new workers, so an
+      HTTP/3 transfer in flight was reset within seconds of every reload,
+      while a TCP transfer drains on its old worker -- and a BOA system
+      reloads every few minutes. The control panel front no longer offers
+      HTTP/3 and answers Alt-Svc: clear, so a browser returns to HTTP/2 on
+      its next request; an existing front is regenerated once. The
+      "Remove export backup" task that follows every download is the
+      download's own clean-up of its temporary link and was never the
+      cause.
+
+    * HTTP/3 transfers on hosted sites now survive Nginx reloads: quic_bpf
+      routes every QUIC packet to the worker that owns its connection. It
+      is written only while a live start-up probe passes (its eBPF init
+      runs on a real start alone, and a failed one refuses to start
+      Nginx), it is checked again on the reload that enables it, and the
+      Nginx monitor sheds it and leaves a latch if a start ever fails with
+      it in place. New _NGINX_QUIC_BPF in barracuda.cnf, YES by default.
+      See docs/NGINX-QUIC-BPF.md.
+
+    * HTTP/3 is no longer several times slower than HTTP/2 for anything
+      large. Nginx keeps at most http3_stream_buffer_size of unacknowledged
+      data in flight per stream, so a stream moves that much per round
+      trip, and the 64k default held a download to 1.3 MB/s on a 44 ms
+      path where HTTP/2 did 13.5 (a few hundred KB/s across continents);
+      page assets are smaller than the buffer and never showed it. The
+      server config now sets 2m wherever Nginx has the HTTP/3 module,
+      which measured level with HTTP/2 in throughput and still answered a
+      small request three times sooner than HTTP/2 while a bulk transfer
+      shared the connection. Memory follows streams times buffer, only
+      for large responses in flight.
+
+    * Audio and video files on Drupal and Backdrop sites are no longer cut
+      short for a listener whose player, or the CDN edge in front of the
+      site, reads far ahead of playback and then reads nothing until the
+      listener catches up: many minutes on an audio file, while Nginx
+      closed any response it could not write to for 180 seconds, so a
+      podcast could stop half an hour in. Audio and video extensions now
+      have a location of their own with send_timeout 3600s, as do the
+      mp4/m4a and flv locations; every other file type keeps 180 seconds.
+      Tested with a reader that takes 8 MB and then nothing for 200
+      seconds: mp3, aac and mp4 were cut before and arrive whole now,
+      also through the short /files/ URI, and a zip is still cut.
+
+    * backboa and duobackboa no longer log a 'command not found' line on boxes
+      with the randomised full-backup day: a test restore call left behind by a
+      function rename never ran, and the dead block is removed.
+
+    * wkhtmltopdf installs on Debian Trixie: the installer asked the mirror
+      for a trixie build that does not exist, while its Devuan twin Excalibur
+      already took the bookworm build. Trixie now takes the same package.
+
+    * Three help texts say what the tools do: `boa help` names the archived
+      heal threshold as 85% (it said 90), `staticbuild -h` lists the grav
+      verb and the grav and txp build targets, and xcopy's usage line names
+      `noproxy` instead of a `proxy` verb it never had.
+
+    * The weekly database conversion no longer carries one site's setting
+      over to the next. The nightly worker kept the conversion mode in one
+      shell variable for the whole account, so a site with
+      sql_conversion_mode in its INI made every later site of that account
+      convert the same way on the Tuesday pass. Every site now starts from
+      the instance value, and _SQL_CONVERT=YES (or innodb) in the instance
+      settings ignores the INI files and forces InnoDB everywhere, as the
+      settings file has always said it does.
+
+    * A crashed table is now repaired whether or not incident mail is on.
+      checksql.sh ran the repair script it generates only inside its mail
+      block, so a box with _INCIDENT_REPORT=OFF (or no _MY_EMAIL) detected
+      the crash, wrote /var/xdrago/acrashsql.sh and repaired nothing. OFF now
+      silences the two mails about the repair, never the repair itself.
+
     * xmass no longer aborts a live sync when a file vanishes between rsync's
       directory listing and its extended-attribute read: rsync then exits 23
       instead of 24, and the three transfer wrappers now read an exit 23 made
@@ -287,6 +614,238 @@
     * The web IDS scores every line of every pass: lines the web
       server appended while a pass was running were jumped over and
       never seen by any detector.
+    * A replication standby's web tier now follows its DATABASE, not the
+      xmass window. The hold used to stand down whenever an init or
+      cutover signal was fresh, so every (re-)init of a mirror released
+      its web tier for the whole run, and a mirror that lost its replica
+      config before the role watchdog had confirmed it -- a reset in the
+      minute after an init, or a re-init that died between its reset and
+      its re-point -- kept serving, with nothing logged, for up to 48
+      hours. The box is now released only when it reads as promoted: a
+      clean role probe, no replica config, super_read_only off. The
+      answer is latched (/var/log/boa/.standby_promoted.pid): a definitive
+      read moves it, an ambiguous one changes nothing, absent means held,
+      and it survives a reboot. The nginx watchdog, the nginx init
+      script's start() gate, the csf post hook (on boxes carrying the
+      older block it is removed and the current one appended, only when
+      its own marker pair is intact), the reload-skipping config writers,
+      the upgrade's nginx restart and `webserver up` all read the same
+      rule; cutover step 11.5 publishes the latch the
+      moment its unlock is proven, so step 12 waits for nothing.
+    * xmass init locks the target's database at run time in the same
+      command that writes the standby marker and reads the lock back: a
+      box promoted once and seeded again is not restarted by the GTID
+      step, so its pre-swap leg used to run with the gates armed over an
+      unlocked database. A target that is still relaying traffic (a
+      demoted failback target) therefore goes dark at the marker write;
+      prep-target and init both name it with an ALRT beforehand.
+    * A dead xmass run no longer reads as "in flight" in silence: with
+      the database still locked and the window signal untouched for 90
+      minutes (a dead init, or a cutover parked before its step 11.5),
+      second.sh logs once that no live run owns the box. The reboot-proof twin of the signal now carries the signal's
+      own timestamp, so its 48-hour ceiling no longer restarts when the
+      mirroring stops.
+    * The FTPS healer stands aside on the standby marker alone: during
+      every xmass window it used to restart the daemon the standby
+      enforcer kept killing. The mysql watchdog no longer re-locks a
+      promoted box that still carries its marker once the window signal
+      has aged out: cutover step 11.5 leaves a line in xmass_gtid.cnf
+      saying the box was promoted, and the watchdog's conversion of
+      mirrors built by older bytes skips a box that carries it.
+    * xmass init arms its unwind before it writes the standby marker: the
+      same command now locks the database, and a refusal in between used
+      to have nothing to undo it. The unwind reports a box as restored
+      only once the unlock is read back, and cutover step 12 names the
+      standby gate when that, not nginx, is what kept port 80 closed.
+    * A re-init that refuses before its datadir swap leaves a target
+      that was already a standby exactly as it found it. The unwind used
+      to strip the marker and unlock the database there too, un-gating
+      every local writer and the web tier over a replicated production
+      datadir. Init now records in the marker that it entered the swap;
+      that line, a replica config or a parked datadir newer than the
+      marker tells a standby from a normal box with a leftover marker.
+      The replication account is rotated after the snapshot, behind every
+      step that can still refuse and outside the binary log, so such a
+      refusal no longer cuts the credentials of a replica that runs.
+    * The mysql watchdog honours the xmass window signal ten minutes
+      longer than second.sh: on the shared 48-hour ceiling its conversion
+      of older mirrors used to win the race against second.sh's removal
+      of a promoted box's leftover marker, and locked a promoted database
+      whose cutover had parked with the marker still present.
+    * xmass sync passes prune static/ the way they prune distro/, under
+      the same guards: tenants build codebases anywhere under static/, and
+      one removed on the active box used to stay on the mirror for good.
+      static/files keeps its own pruning leg and static/control stays
+      additive as its own leg (a static/control that is a symlink is never
+      followed); the cutover legs stay additive throughout.
+    * xmass cutover no longer reports a database lock it does not take:
+      the abort messages name the write freeze as the boundary ("Pre-freeze
+      abort", "aborted before the write freeze", "cutover aborted; writes
+      thawed"), and three UNLOCK TABLES calls that released nothing are
+      gone, along with the "tables unlocked" line and the reset-phase hint
+      to run one by hand.
+    * xmass autosync --status reports the interval the autosync driver
+      really keeps: it rounded the duty-cycle rest down where the driver
+      rounds up, so a 279-second pass read as 18 minutes on a pair held
+      to 19; it read _XMASS_AUTOSYNC_DUTY without the driver's cleaning,
+      so a zero-padded value such as 08 stopped it with an arithmetic
+      error and a non-numeric one gave a wrong interval; it showed a
+      hand-edited cadence under five minutes that the driver raises to
+      five; and it printed an interval while the driver was parked
+      (_USE_XMASS_AUTOSYNC=NO, a standby or proxy role, a major system
+      transition), which it now names instead.
+    * xmass init no longer stops on an idle source with "Empty GTID set
+      in xtrabackup_binlog_info -- was GTID enabled on source before
+      taking backup?". Init switches GTID and the binary log on and
+      restarts MySQL; when nothing wrote between that restart and the
+      snapshot, the snapshot carried an empty GTID set and could not
+      seed the replica, though GTID was on. Init now creates and drops a
+      scratch schema first when the set is still empty (two harmless
+      transactions), and a snapshot whose GTID set is empty or unreadable
+      for any other reason now stops init before the target's datadir is
+      touched, where it used to stop after.
+    * A standing xmass standby keeps working MySQL root credentials. The
+      active rotates its root password on its upgrade passes and
+      replication carries the new password to the standby, but the client
+      files stayed as init left them, so every root client on the standby
+      met Access denied until the next cutover. Every live xmass sync and
+      autosync pass now carries /root/.my.cnf and /root/.my.pass.txt when
+      they differ, installs them only once they open the standby's
+      database, and keeps the replaced pair once as *.xmass_prev.
+    * A migration proxy account set with --no-deadline (xoct proxy-mode
+      or xoct proxy) is no longer mailed "This arrangement ends on
+      <date>" against that instruction. The record stored it as an empty
+      deadline, and every later resolution -- the conversion an xmass
+      cutover runs, a repair, a proxy-mode run without a deadline flag --
+      filled it from the box default (/data/conf/migproxy_deadline.txt,
+      which xmass --proxy-deadline writes). It is now kept as
+      _MIG_DEADLINE=none on both ends of the pair, xoct and xmass stop on
+      it, a later --deadline= replaces it, and the policy table and the
+      xmass per-account report show it. A record with no deadline at all
+      still takes the box default, as before. So does a record an earlier
+      --no-deadline wrote, which cannot be told apart from one: run
+      xoct proxy-mode oN <mode> --no-deadline once more, whichever verb
+      set it first, to store the explicit none (as a per-account pin).
+    * renameaegirhost renames the box-level names written at install:
+      postfix myhostname and the mydestination entries naming the box --
+      its fqdn and the localhost.<zone> token the installer writes beside
+      it, which used to keep the zone of the name the box was built under
+      -- /etc/mailname, and the self-signed certificate Nginx presents
+      for a name it does not serve, re-issued on its own key. A renamed,
+      cloned or restored box used to go on introducing itself by its
+      former name in every mail it sent. Only values that carry a former
+      name of the box -- or, for the localhost token, a former name's
+      zone -- are changed, so a custom postfix name or an installed
+      certificate stays. The yml aliases Drush 9+ reads follow the
+      rename too, master_url included.
+    * A whole-server move no longer refuses every resume over a task the
+      source was running when its panel stopped. Step 12.90 failed out
+      only the travelled rows whose start time was unset, while its
+      re-count refused on every processing row, so one interrupted task
+      parked the cutover with "task(s) still queued after the fail-out"
+      until an operator cleared the row by hand. The fail-out and the
+      re-count now use one predicate; a row whose runner is still alive
+      on the target is left to finish, and the refusal says so.
+    * The cutover's queued-task report no longer says that travelled
+      tasks will run on the target when the cutover fails them out
+      there: on the relay-first order its last line says they are failed
+      out at step 12.90 and are to be re-queued after the move.
+    * A renamed site's 301 on a migration proxy survives a later xoct
+      run. Its two hostnames reach xoct only through the environment
+      xmass sets, so a hand --repair, a --renotify resend or the
+      --repair --retarget that follows a failover rendered every site
+      named under the old box hostname as a plain proxy of that old
+      name, which the renamed target answers with its catch-all page.
+      When the account already answers a renamed site with a 301, or
+      still holds sites on the per-host gate, xoct now reads the names
+      itself -- this box's own and the target's as it answers now -- and
+      refuses before it changes anything when it cannot. The re-run
+      commands in the cutover's closing summary and in xoct's failure,
+      HTTPS and resend messages carry both names, and the summary no
+      longer says to clear http-off.pid by hand after a failed
+      conversion, which would have served the stale local copy.
+    * An account whose proxy conversion failed at cutover keeps its Aegir
+      dispatcher parked when the source's runners come back, as a
+      converted account's is: its panel database lives on the target
+      now, and its travelled queue would have run against the stale
+      local copy.
+    * The barracuda launcher refreshes itself when its release is older
+      than the tree it is about to upgrade to, and runs again with the
+      same arguments. An older launcher stamped the new tree with its own
+      release, and the Octopus half of the upgrade then refused to run
+      while the run still ended with exit code 0: seen on a box restored
+      from an image, whose first upgrade beat its first tool refresh. The
+      check runs after the launcher's own resolver and curl repairs,
+      inside its run lock, which it hands to the launcher it re-runs; the
+      launcher it installs must arrive complete, and if the refresh fails
+      the run stops with a message before it fetches the tree. Fixes
+      shipped under the same release still arrive through BOA.sh.txt.
+    * An Octopus account just created on a migration target (xmass
+      prep-target, xoct create) no longer ends its first upgrade passes
+      "completed WITH ERRORS" with an "ALERT: Failed Octopus upgrade" mail
+      for a pass that did nothing wrong. Such an account is installed
+      without a welcome mail on purpose, so no upgrade notice body exists
+      for it until its files arrive, and the missing body was reported as
+      a failed send. The pass now says "NOTE: No upgrade email for oN"; a
+      notice that has a body and does not go out, and a body that failed
+      to render, are reported as before.
+    * The local DNS cache no longer stays down once the distro ships the
+      same Unbound release BOA pins. On a box that builds Unbound from
+      sources, a distro package upgrade puts the distro build back over
+      BOA's; that build reads a different config path, finds the root
+      trust anchor named twice there and refuses to start, and the
+      upgrade pass, comparing versions only, called the box current and
+      never reinstalled. The pass now recognises a distro build on its
+      path and reinstalls BOA's, unattended security upgrades leave the
+      unbound packages alone (the shared library still updates), the
+      package builder refuses to publish a distro build as boa-unbound,
+      and "boa info" flags it.
+    * The Unbound monitor no longer logs a restart that never happened.
+      When a restart leaves no daemon behind it records why, as far as
+      unbound-checkconf can tell, and mails at the default reporting
+      level, once per six hours; before, a resolver that could not start
+      was "killed and restarted" every minute for as long as it took
+      someone to look, while the box resolved through its fallback
+      servers and nothing else looked wrong.
+    * _SEND_UPGRADE_EMAIL=NO in an instance's octopus cnf now does what it
+      says: the client is not mailed the upgrade notice after an upgrade
+      of that instance. The value never reached the step that sends the
+      notice, so the switch had no effect. It is a documented setting now
+      (default YES, written into every instance cnf, docs/cnf/octopus.cnf),
+      only an exact NO switches the notice off, the welcome email of a new
+      instance always sends, and xoct and xmass carry the value to a
+      migration target with the account's other settings.
+    * An octopus upgrade run on the console (no "log" argument) now states
+      its outcome the way barracuda does: the pass is judged before the
+      completion line is printed, so a pass that logged an ALRT or a FATAL
+      ERROR, never reached its end, or whose installer exited non-zero
+      ends with "OCTOPUS upgrade completed WITH ERRORS -- review <log>"
+      instead of a plain "OCTOPUS upgrade completed". An installer that
+      refused to run in seconds used to read as a completed upgrade. The
+      console run mails nothing, as before, and it now writes its pass
+      log under /var/backups/reports/up/octopus/ like a silent run does;
+      it never did, whatever the console showed. The "... upgrade
+      completed" prefix is unchanged, so a watcher waiting on it still
+      terminates.
+    * "octopus up-<tree> all" states the verdict of every account, not of
+      the last one: the completion line names each pass log that failed,
+      and each account's pass log ends with its own verdict. Before, a
+      failed account followed by a clean one ended in a plain completion
+      line, and a clean account's log could be closed with another
+      account's WITH ERRORS line.
+    * An upgrade asked for without "force" on an instance that is already
+      up to date is no longer mailed as "ALERT: Failed Octopus upgrade" in
+      silent mode: the notice printed for a named instance was never
+      recognised as the skip it is.
+    * "octopus up-<tree> o1" no longer reads as a completed upgrade when
+      nothing was upgraded. A named instance that is cancelled, is not an
+      Octopus instance at all, or is met while the load is over the
+      ceiling now gets an ALRT line saying why and the run ends "OCTOPUS
+      upgrade completed WITH ERRORS", as a named proxied instance already
+      did; the first two used to print nothing and end in the plain line.
+      A run over all instances stays quiet for cancelled and proxied ones
+      and names every instance it left out under load on the completion
+      line: it never waited for the load to drop, whatever it printed.
 
 
 ###

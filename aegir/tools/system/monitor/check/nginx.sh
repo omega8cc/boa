@@ -148,6 +148,83 @@ _stop_nginx_processes() {
   pkill -9 -f '^nginx: ' || true
 }
 
+_nginx_master_pids() {
+  # The box's own master(s) only. A barracuda pass probes quic_bpf with a
+  # throwaway master that lives a second or two and carries its config path
+  # in its title; counting it would read as a second master, and taking it
+  # for the real one would stand a genuine outage down.
+  pgrep -af '^nginx: master process' 2> /dev/null \
+    | grep -v 'boa-nginx-quic-bpf-probe' \
+    | awk '{print $1}'
+}
+
+_nginx_quic_bpf_shed() {
+  # A start that failed with the quic_bpf fragment in place. The eBPF init
+  # behind it runs only on a real start (nginx -t skips it) and a failed init
+  # refuses to start Nginx. The barracuda pass probes before it writes the
+  # fragment, but a probe cannot cover what changes later -- a kernel, a
+  # limit, a rebuilt binary -- so shed the fragment here, leave the latch
+  # that keeps the pass from writing it again, start once more and say so.
+  # On positive evidence first: the error log was rotated just before the
+  # restart, so a BPF line in it belongs to this start, and an unknown
+  # directive means the binary lost the module. Failing that, by trial:
+  # start without the fragment, and keep it shed only if that is what made
+  # the difference -- a start that fails for some other reason (a busy port,
+  # a broken vhost) gets its fragment back.
+  local _frag="/etc/nginx/main.d/quic_bpf.conf"
+  local _latch="/etc/nginx/main.d/quic_bpf.failed"
+  local _tried="/run/boa_nginx_quic_bpf_trial.pid"
+  local _how="" _w=0 _now _last
+  # Only a monitor killed in the middle of the trial below leaves this.
+  rm -f "${_frag}.trial"
+  [ -e "${_frag}" ] || return 0
+  while [ -z "$(_nginx_master_pids)" ] && [ "${_w}" -lt 4 ]; do
+    sleep 0.5
+    _w=$(( _w + 1 ))
+  done
+  [ -z "$(_nginx_master_pids)" ] || return 0
+  if grep -qE "ngx_quic_bpf_module failed|failed to create BPF" /var/log/nginx/error.log 2> /dev/null; then
+    _how="the error log shows the eBPF init failing"
+  elif nginx -t 2>&1 | grep -q "quic_bpf"; then
+    _how="this Nginx no longer knows the directive"
+  fi
+  if [ -n "${_how}" ]; then
+    rm -f "${_frag}"
+    service nginx restart
+  elif nginx -t > /dev/null 2>&1; then
+    # At most one trial in ten minutes: an outage with some other cause must
+    # not pay a second restart on every pass, yet the trial has to come
+    # round again once that cause has cleared.
+    _now=$(date +%s)
+    _last=$( { tr -dc '0-9' < "${_tried}"; } 2> /dev/null )
+    if [ -n "${_last}" ] && [ $(( _now - _last )) -ge 0 ] \
+      && [ $(( _now - _last )) -lt 600 ]; then
+      return 0
+    fi
+    echo "${_now}" > "${_tried}"
+    mv -f "${_frag}" "${_frag}.trial"
+    service nginx restart
+    _w=0
+    while [ -z "$(_nginx_master_pids)" ] && [ "${_w}" -lt 6 ]; do
+      sleep 0.5
+      _w=$(( _w + 1 ))
+    done
+    if [ -n "$(_nginx_master_pids)" ]; then
+      rm -f "${_frag}.trial"
+      _how="Nginx started once the fragment was taken away"
+    else
+      # Inconclusive, not negative: something else kept Nginx down.
+      mv -f "${_frag}.trial" "${_frag}"
+      return 0
+    fi
+  else
+    return 0
+  fi
+  echo "$(date) Nginx did not start with quic_bpf on (${_how}); the fragment was removed. Delete this file to let the next barracuda pass probe again." > "${_latch}"
+  echo "$(date) NGX failed to start with quic_bpf on (${_how}); fragment removed, latch left at ${_latch}, restarted" >> ${_pthOml}
+  _incident_email_report "Nginx failed to start with quic_bpf on, fragment removed"
+}
+
 _restart_nginx() {
   touch /run/boa_nginx_auto_healing.pid
   sleep 3
@@ -168,6 +245,7 @@ _restart_nginx() {
   _stop_nginx_processes
   mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
   service nginx restart
+  _nginx_quic_bpf_shed
   date +%s > "${_cd}"
   if pidof nginx > /dev/null; then
     echo "Nginx service restarted successfully."
@@ -211,11 +289,11 @@ _nginx_health_check_fix() {
   _NGINX_PROCESSES=$(ps aux | grep 'nginx: ' | grep -v 'grep')
   # Check for multiple master processes (shouldn't happen)
   if [ "${_NGINX_RESTARTED}" = false ]; then
-    _MASTER_COUNT=$(pgrep -fc '^nginx: master process')
+    _MASTER_COUNT=$(_nginx_master_pids | grep -c .)
     if [ "${_MASTER_COUNT}" -gt 1 ]; then
       # Double-check after a short grace to avoid flapping
       sleep 5
-      _MASTER_COUNT=$(pgrep -fc '^nginx: master process')
+      _MASTER_COUNT=$(_nginx_master_pids | grep -c .)
       if [ "${_MASTER_COUNT}" -gt 1 ]; then
         echo "Multiple (${_MASTER_COUNT}) Nginx master processes detected. Possible stuck processes."
         echo "$(date) NGX multiple (${_MASTER_COUNT}) master processes detected" >> ${_pthOml}
@@ -258,11 +336,11 @@ _nginx_health_check_fix() {
 _nginx_if_up_check_fix() {
   # Standard check first
   if [ -x "/etc/init.d/nginx" ]; then
-    if ! pgrep -f '^nginx: master process' \
+    if [ -z "$(_nginx_master_pids)" ] \
       || [ ! -e "/run/nginx.pid" ]; then
       # Double-check after a short grace to avoid flapping
       sleep 3
-      if ! pgrep -f '^nginx: master process' \
+      if [ -z "$(_nginx_master_pids)" ] \
         || [ ! -e "/run/nginx.pid" ]; then
         _now=$(date +%s)
         if [ -s "${_cd}" ]; then
@@ -279,7 +357,7 @@ _nginx_if_up_check_fix() {
         # listen sockets and keep serving headless, so a listening port is
         # exactly what the one state this restart exists to clear looks
         # like, and standing down on it would leave the box unhealable.
-        if pgrep -f '^nginx: master process' >/dev/null 2>&1 \
+        if [ -n "$(_nginx_master_pids)" ] \
           && command -v ss >/dev/null 2>&1 \
           && ss -Hltn 2>/dev/null | grep -qE ':(80|443) '; then
           echo "$(date) INFO: Nginx master alive and serving; missing pidfile treated as an artefact, standing down" >> ${_pthOml}
@@ -288,6 +366,7 @@ _nginx_if_up_check_fix() {
         _stop_nginx_processes
         mv -f /var/log/nginx/error.log /var/log/nginx/$(date +%y%m%d-%H%M)-error.log
         service nginx restart
+        _nginx_quic_bpf_shed
         # Stamp cooldown after attempting recovery
         date +%s > "${_cd}"
         _thisErrLog="$(date) Nginx Server was down, restarted"
@@ -305,7 +384,15 @@ _if_nginx_restart() {
   # self-service request, delivered here only because static/control rides the
   # sync leg. Never consume it on the standby -- acting restarts a box that
   # serves nothing, and deleting the file eats a request that was never ours.
+  # The web hold's own breadcrumb counts too: inside a marker gap the hold
+  # is kept on the breadcrumb alone, and a stand-down on the bare marker ate
+  # the ACTIVE box's synced request there and restarted the mirror with it.
+  # In the shipped flow no pass reaches here with the breadcrumb on disk (a
+  # held pass and a no-answer pass both exit before the tail; a released one
+  # removed the breadcrumb first), so this second line is belt against a
+  # later removal of that exit, not the guard itself.
   [ -e "/root/.standby.cnf" ] && return 0
+  [ -e "/var/log/boa/.standby_web_held.pid" ] && return 0
 
   _PrTestPower=$(grep "POWER" /root/.*.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.*.octopus.cnf 2>&1)
@@ -351,6 +438,14 @@ _if_nginx_restart() {
 export _SQL_MUTATION_MAX_MINS=${_SQL_MUTATION_MAX_MINS//[^0-9]/}
 : "${_SQL_MUTATION_MAX_MINS:=15}"
 
+# Pass-scoped state for the standby block below: the cached restart answer,
+# the cached marker-gap role, and the two "this pass could not tell, so it
+# changed nothing" flags the release paths read.
+_NGX_SQL_MUT_RC=""
+_NGX_GAP_ROLE=""
+_NGX_GAP_UNKNOWN=NO
+_NGX_FTPS_GAP_UNKNOWN=NO
+
 _sql_mutation_in_flight() {
   # move_sql.sh stops Nginx and every PHP-FPM pool to restart the database, and
   # it never brings them back: these watchdogs are the intended recovery. That
@@ -359,22 +454,358 @@ _sql_mutation_in_flight() {
   # pile onto failed connections and the whole herd arrives at a cold cache the
   # moment the database returns; that cascade is what turns a brief database
   # fault into a site-wide one. runner.sh and system.sh already stand down on
-  # the same two markers: mysql_restart_running.pid, written by move_sql.sh and
-  # by mycnfup, and boa_mysql_auto_healing.pid, held by the database watchdog
-  # for the length of its heal.
+  # the same two markers: mysql_restart_running.pid, written by move_sql.sh,
+  # and boa_mysql_auto_healing.pid, held by the database watchdog for the
+  # length of its heal.
   #
   # Honoured only while the marker is recent, deliberately. clear.sh reaps a
   # leaked mysql_restart_running.pid an hour after the writer died, and an hour
   # with no web auto-healing is a worse outcome than the cascade this avoids; a
   # marker older than the bound is treated as abandoned rather than authoritative.
+  #
+  # Answered once per pass and cached: the standby role read below asks as
+  # well as the health checks at the tail, and one pass must not write the
+  # stand-down line twice.
+  [ -n "${_NGX_SQL_MUT_RC}" ] && return "${_NGX_SQL_MUT_RC}"
   local _m
   for _m in /run/mysql_restart_running.pid /run/boa_mysql_auto_healing.pid; do
     [ -e "${_m}" ] || continue
     if [ -z "$(find "${_m}" -mmin "+${_SQL_MUTATION_MAX_MINS}" 2>/dev/null)" ]; then
       echo "$(date) INFO: MySQL restart in progress (${_m##*/}); standing down this pass" >> ${_pthOml}
+      _NGX_SQL_MUT_RC=0
       return 0
     fi
   done
+  _NGX_SQL_MUT_RC=1
+  return 1
+}
+
+###
+### One definitive read of the database's own answer
+###
+_standby_role_read() {
+  # Publishes _NGX_ROLE_ANSWER and, with it, _NGX_STANDBY_ROLE_WHY -- the
+  # reason phrase a caller's single line quotes:
+  #   REPLICA  a replica config is present
+  #   LOCKED   no replica config but the DB is still read-only: a lost
+  #            replica or an unlock that did not land, never a promotion
+  #   PROMOTED clean read, no replica config, super_read_only 0
+  #   UNKNOWN  the probe did not run clean, or the variable was unreadable
+  # LOCKED is kept DISTINCT from REPLICA because the two holds below need
+  # different answers from it: it drops the promoted latch (it is a
+  # definitive "not promoted"), but it must never make the marker-gap arm
+  # hold, which only a positive replica read may do.
+  #
+  # The return code decides, never emptiness alone: on Percona 5.7 the
+  # first dialect always fails, and a dropped connection on the second
+  # would otherwise read as "no replica config" on a running replica.
+  local _rpl _rc _sro
+  _rpl=$(mysql --connect-timeout=5 -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+  _rc=$?
+  if [ "${_rc}" -ne "0" ]; then
+    _rpl=$(mysql --connect-timeout=5 -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+    _rc=$?
+  fi
+  if [ "${_rc}" -ne "0" ]; then
+    _NGX_ROLE_ANSWER=UNKNOWN
+    _NGX_STANDBY_ROLE_WHY="the role probe did not run clean (credentials? mysqld down?)"
+    return 0
+  fi
+  if [ -n "${_rpl}" ]; then
+    _NGX_ROLE_ANSWER=REPLICA
+    _NGX_STANDBY_ROLE_WHY="a replica config is still present"
+    return 0
+  fi
+  _sro=$(mysql --connect-timeout=5 -N -e "SELECT @@super_read_only" 2>/dev/null | tr -dc '0-9')
+  if [ "${_sro}" = "0" ]; then
+    _NGX_ROLE_ANSWER=PROMOTED
+    _NGX_STANDBY_ROLE_WHY=""
+    return 0
+  fi
+  if [ "${_sro}" = "1" ]; then
+    _NGX_ROLE_ANSWER=LOCKED
+    _NGX_STANDBY_ROLE_WHY="the database is still read-only -- this box is not promoted, clear super_read_only"
+    return 0
+  fi
+  _NGX_ROLE_ANSWER=UNKNOWN
+  _NGX_STANDBY_ROLE_WHY="super_read_only was unreadable (credentials?)"
+  return 0
+}
+
+###
+### Is this marker-carrying box PROMOTED?
+###
+_standby_promoted() {
+  # The web hold follows the DATABASE, never the xmass in-flight signal. That
+  # signal opens at INIT as well as at the cutover, and a (re-)init is the
+  # window in which a committed mirror, or a box holding a copied-in
+  # production datadir, is most exposed: keyed on the signal, every init
+  # released the web tier for its whole length, and a replica lost before the
+  # role watchdog confirmed it left the tier open for as long as the signal's
+  # age ceiling. The FTPS hold below already took this reasoning.
+  #
+  # PROMOTED = the role probe ran clean AND returned no replica config AND
+  # super_read_only reads 0. Cutover step 11.5 proves exactly that before step
+  # 12 starts nginx, and publishes the latch itself so no pass is waited on.
+  #
+  # Latched on disk, deliberately. A definitive read moves the latch; an
+  # ambiguous one (mysqld restarting, an auth error, an empty variable)
+  # changes NOTHING, so a database restart can neither open the tier on a
+  # mirror nor shut it on a promoted box that still carries the marker (a
+  # cutover parked at rename-failed, a step 15 whose removal was not
+  # confirmed). Absent means HELD. It lives beside the other standby
+  # breadcrumbs, so a reboot inherits the last proven answer.
+  #
+  # One probe a minute, every pass while an xmass window is open: a cutover
+  # driven by bytes that do not publish the latch must not wait up to a
+  # minute at step 12. A box without the marker never gets here.
+  local _lat="/var/log/boa/.standby_promoted.pid"
+  local _stm="/run/boa_standby_role_probed.pid"
+  # A false answer always carries a reason, including on the passes that do
+  # not probe: the latch is then the answer of the last definitive read, and
+  # that is what the kept-hold line must report.
+  _NGX_STANDBY_ROLE_WHY="the last role probe did not read this box as promoted"
+  if [ -z "$(find "${_stm}" -mmin -1 2>/dev/null)" ] \
+    || [ -n "$(find /run/boa_xmass_init.pid -mmin -2880 2>/dev/null)" ]; then
+    touch "${_stm}" 2>/dev/null
+    _standby_role_read
+    case "${_NGX_ROLE_ANSWER}" in
+      PROMOTED)
+        if [ ! -e "${_lat}" ]; then
+          echo "$(date) NGX standby: NO replica config and the DB is unlocked -- this box reads as PROMOTED, web tier released" >> ${_pthOml}
+          mkdir -p /var/log/boa 2>/dev/null
+          touch "${_lat}" 2>/dev/null
+        fi
+        ;;
+      REPLICA|LOCKED)
+        # Never remove a latch written AFTER this probe began: the cutover
+        # publishes it the moment its own readback proves the unlock, and a
+        # read taken a second earlier is already stale. No stamp means no
+        # publish to protect: -nt reads true against a missing file, and
+        # without that test a stale latch would be pinned for good.
+        if [ -e "${_lat}" ] \
+          && { [ ! -e "${_stm}" ] || [ ! "${_lat}" -nt "${_stm}" ]; }; then
+          echo "$(date) NGX standby: replica config present or the DB locked -- this box reads as a STANDBY again, web tier held" >> ${_pthOml}
+          rm -f "${_lat}"
+        fi
+        ;;
+    esac
+  fi
+  if [ -e "${_lat}" ]; then
+    _NGX_STANDBY_ROLE_WHY=""
+    return 0
+  fi
+  return 1
+}
+
+###
+### A marker GAP is not a promotion
+###
+# Every hold used to key on the bare presence of /root/.standby.cnf and
+# released within one pass of its absence, while 'xmass sync --live' treats
+# the same absence as an ACCIDENT and rewrites the marker on every run: a
+# gap of seconds is an ordinary event on a healthy mirror. Measured on a
+# 24 s gap: the DB hold released, this loop read the database as unlocked
+# and opened the web tier, and the standby's own panel wrote 207 local
+# transactions before the marker came back -- the replica's SQL thread died
+# on a duplicate key and stayed dead.
+#
+# So a hold survives a gap on a box that still READS as a replica, and
+# releases on a PROMOTED one: marker gone AND (a clean role probe with no
+# replica config and an unlocked database, or the cutover's latch). A
+# promotion by hand is "remove the marker AND reset the replica" -- the
+# operator must reset it anyway, or the box keeps applying the source's
+# binlog.
+#
+# Only a POSITIVE replica read may HOLD here, and that asymmetry is the
+# point: an unreadable database is not evidence of anything, and a gap arm
+# that held on "could not tell" would stop nginx and DROP 80/443 on a box
+# being returned to service -- 'xmass restore-target' stops mysqld with
+# this hold's breadcrumb still on disk. So LOCKED and UNKNOWN change
+# NOTHING in either direction this pass: nothing is held, and the release
+# paths below are skipped too (_NGX_GAP_UNKNOWN), so neither the chain nor
+# the breadcrumb is removed on an answer that was never given.
+#
+# Cutover invariants this must not change: step 11.5 unlocks the database
+# and publishes the latch while the marker is still present, so this hold
+# is already released (chain gone, breadcrumb gone) before step 12 starts
+# nginx; step 12 and step 15 remove the breadcrumbs themselves, so the arm
+# below never engages on a promoted box.
+_standby_hold_kept_log() {
+  # One line per episode, shared by both holds below: this loop runs
+  # several times a minute and the kept state lasts as long as the operator
+  # leaves a half-promoted box alone. Cleared when the marker returns or
+  # the box promotes. The reason is the one the read actually gave
+  # (_NGX_STANDBY_ROLE_WHY): a line that guessed between the legs sent the
+  # operator of a web-dark box after the wrong one.
+  [ -e "/run/boa_standby_webkept_logged.pid" ] && return 0
+  touch /run/boa_standby_webkept_logged.pid 2>/dev/null
+  echo "$(date) NGX standby hold KEPT: marker gone but ${_NGX_STANDBY_ROLE_WHY} -- not a promotion (reset the replica to promote by hand; xmass sync restores the marker)" >> ${_pthOml}
+  return 0
+}
+
+_standby_no_answer_log() {
+  # The legs that answer NEITHER way (LOCKED, UNKNOWN) leave the box
+  # firewalled off the web and its tenant channel shut, and they used to
+  # write nothing at all: the reason the read composed was discarded, and
+  # the only line such a box produced was the healer's misleading "Nginx
+  # Server was down, restarted". This is the sole diagnostic for a
+  # web-dark box, so it says what the read gave and that nothing moved.
+  # Same stamp and cadence as the kept-hold line above -- one line per
+  # episode, cleared when the marker returns or the box releases -- so the
+  # two can never both speak for one episode.
+  [ -e "/run/boa_standby_webkept_logged.pid" ] && return 0
+  touch /run/boa_standby_webkept_logged.pid 2>/dev/null
+  local _kept=""
+  [ -e "/var/log/boa/.standby_web_held.pid" ] \
+    && _kept="the firewall hold and the web breadcrumb"
+  if [ -e "/var/log/boa/.standby_ftps_held.pid" ]; then
+    [ -n "${_kept}" ] && _kept="${_kept} and "
+    _kept="${_kept}the FTPS hold"
+  fi
+  : "${_kept:=the standby holds}"
+  if [ "${_NGX_GAP_UNKNOWN}" = "YES" ]; then
+    echo "$(date) NGX standby: marker gone but ${_NGX_STANDBY_ROLE_WHY} -- no answer, nothing changed this pass (${_kept} are kept)" >> ${_pthOml}
+  else
+    # Only the FTPS hold had no answer: a serving mirror's web tier is not
+    # held, and this pass may just have released it, so the sentence must
+    # not claim the whole pass stood still.
+    echo "$(date) NGX standby: marker gone but ${_NGX_STANDBY_ROLE_WHY} -- no answer for the FTPS hold, it is kept" >> ${_pthOml}
+  fi
+  return 0
+}
+
+_standby_gap_role() {
+  # The marker-GAP answer, shared by the two holds that key on their own
+  # "was held" breadcrumb. Read once per pass and cached: both holds ask,
+  # and a box that answered REPLICA to one must not answer PROMOTED to the
+  # other within the same pass.
+  #
+  # The latch is read first: one file test, and it is the answer the
+  # cutover PROVED at its step 11.5. second.sh reaps it within a minute of
+  # the marker going, so a latch met here is a fresh one.
+  #
+  # Throttled to one probe a minute like the marker-present arm, and for a
+  # harder reason: this is the ONE state the slice is built to sustain for
+  # days (a half-promoted box, a LOST replica), and at nine passes a minute
+  # every pass spent two to four mysql clients against a replica that is
+  # applying the source's binlog. The stamp the marker arm writes is the
+  # key, and the answer is cached beside it.
+  #
+  # The cache can only ever KEEP a hold, never take one down: PROMOTED is
+  # the answer that releases, and it is never written to the cache, so a
+  # release is always a fresh read (or the latch above, which is a file
+  # test taken before it). The worst a stale cache can do is leave a box
+  # held for the same minute the marker-present arm already waits.
+  #
+  # It cannot pin an answer across a re-seed either: the cache is read only
+  # while the STAMP is present, second.sh reaps that stamp every minute the
+  # marker is gone (its marker-gap reap) and xmass drops it at init, and
+  # the answer file carries its own one-minute ceiling on top.
+  # Only a box that was held and has lost its marker ever gets here.
+  [ -n "${_NGX_GAP_ROLE}" ] && return 0
+  local _stm="/run/boa_standby_role_probed.pid"
+  local _ans="/run/boa_standby_role_answer"
+  if [ -e "/var/log/boa/.standby_promoted.pid" ]; then
+    _NGX_GAP_ROLE=PROMOTED
+    _NGX_STANDBY_ROLE_WHY=""
+    return 0
+  fi
+  # A database being torn down and restarted cannot be asked what it is.
+  if _sql_mutation_in_flight; then
+    _NGX_GAP_ROLE=UNKNOWN
+    _NGX_STANDBY_ROLE_WHY="the database is being restarted"
+    return 0
+  fi
+  if [ -e "${_stm}" ] && [ -n "$(find "${_ans}" -mmin -1 2>/dev/null)" ]; then
+    local _cached
+    _cached=$(head -1 "${_ans}" 2>/dev/null)
+    case "${_cached}" in
+      REPLICA|LOCKED|UNKNOWN)
+        _NGX_GAP_ROLE="${_cached}"
+        # The reason travels with the answer: a kept-hold line that guessed
+        # between the legs sent the operator of a web-dark box after the
+        # wrong one, and a cached answer must not reintroduce that guess.
+        _NGX_STANDBY_ROLE_WHY=$(sed -n '2p' "${_ans}" 2>/dev/null)
+        return 0
+        ;;
+    esac
+  fi
+  _standby_role_read
+  _NGX_GAP_ROLE="${_NGX_ROLE_ANSWER}"
+  touch "${_stm}" 2>/dev/null
+  if [ "${_NGX_ROLE_ANSWER}" = "PROMOTED" ]; then
+    rm -f "${_ans}"
+  else
+    { printf '%s\n%s\n' "${_NGX_ROLE_ANSWER}" "${_NGX_STANDBY_ROLE_WHY}" \
+      > "${_ans}"; } 2>/dev/null
+  fi
+  return 0
+}
+
+_standby_held_without_marker() {
+  # A box that WAS held (the web breadcrumb) and has lost its marker stays
+  # held while it still reads as a REPLICA. The breadcrumb is what keeps a
+  # normal box out of here for one file test, and what makes this
+  # self-limiting: the release path below removes it, so a box released
+  # once never re-enters.
+  [ -e "/root/.standby.cnf" ] && return 1
+  [ -e "/var/log/boa/.standby_web_held.pid" ] || return 1
+  _standby_gap_role
+  case "${_NGX_GAP_ROLE}" in
+    REPLICA)
+      _standby_hold_kept_log
+      return 0
+      ;;
+    PROMOTED)
+      return 1
+      ;;
+  esac
+  # LOCKED or UNKNOWN: no answer, so no action -- and the release path must
+  # not act either.
+  _NGX_GAP_UNKNOWN=YES
+  return 1
+}
+
+_standby_web_hold_wanted() {
+  # serve.cnf semantics unchanged: a deliberately serving mirror is never
+  # held here (and never wrote the breadcrumb, so it cannot reach the
+  # marker-gap arm either).
+  [ -e "/root/.standby.serve.cnf" ] && return 1
+  if [ -e "/root/.standby.cnf" ]; then
+    # The marker is back: the kept-hold episode is over, and a leaked stamp
+    # would swallow the next one's line.
+    [ -e "/run/boa_standby_webkept_logged.pid" ] \
+      && rm -f /run/boa_standby_webkept_logged.pid
+    _standby_promoted && return 1
+    return 0
+  fi
+  _standby_held_without_marker
+}
+
+_standby_ftps_hold_wanted() {
+  # FTPS keys on its OWN breadcrumb, never the web one: serve.cnf exempts
+  # the web tier only, so a deliberately serving mirror never writes the
+  # web breadcrumb -- borrowing it left exactly that box's tenant write
+  # channel open for the whole of a marker gap, which is the one thing the
+  # serve exemption is not meant to open. The breadcrumb is written by the
+  # hold itself below, marker or gap, and removed when the box reads as
+  # PROMOTED (the cutover and restore-target remove it too).
+  [ -e "/root/.standby.cnf" ] && return 0
+  [ -e "/var/log/boa/.standby_ftps_held.pid" ] || return 1
+  _standby_gap_role
+  case "${_NGX_GAP_ROLE}" in
+    REPLICA)
+      _standby_hold_kept_log
+      return 0
+      ;;
+    PROMOTED)
+      return 1
+      ;;
+  esac
+  # LOCKED or UNKNOWN: no answer, so the breadcrumb stays and nothing is
+  # killed this pass.
+  _NGX_FTPS_GAP_UNKNOWN=YES
   return 1
 }
 
@@ -388,12 +819,12 @@ _sql_mutation_in_flight() {
 # enforcer: it runs several times a minute, so an nginx a barracuda pass
 # restarts underneath us is taken back down within seconds.
 #
-# Stands down while an xmass window is in flight. Cutover step 12
-# (_xmass_prove_target_web) deliberately starts nginx and requires it to
-# answer, and it runs BEFORE step 15 removes the standby marker -- racing that
-# would park the cutover at rename-failed. xmass owns the same signal for the
-# same window (it writes /run/boa_xmass_init.pid at step 8 so second.sh cannot
-# reap the marker mid-promotion), so honouring it here needs no new state.
+# Stands down once the box is PROMOTED (_standby_promoted above), not while
+# an xmass window is open. Cutover step 12 (_xmass_prove_target_web) starts
+# nginx and requires it to answer BEFORE step 15 removes the standby marker;
+# step 11.5 runs first on every entry, resumes included, proves the database
+# unlocked and publishes the latch, so step 12 never meets this hold. No init
+# step needs the web tier, so an init window holds like any other minute.
 #
 # Operator escape hatch for a mirror that must genuinely serve:
 # /root/.standby.serve.cnf
@@ -402,19 +833,31 @@ _sql_mutation_in_flight() {
 # authenticated tenant upload lands in the synced trees and permanently
 # shadows the active's copy under the -u legs. pure-ftpd has no init
 # script; on a standby it exists only if something resurrected it (the
-# system.sh healer is gated on the same marker), so kill on sight, log on
-# transition only. Deliberately OUTSIDE the serve.cnf-exempt block below:
-# serve is a web-only preview, never a tenant write channel. It does not
-# honour the xmass in-flight signal either, unlike the web-tier hold below:
-# that signal opens at INIT, the window in which the copied-in datadir and
-# the freshly seeded trees are most exposed to a tenant upload, and no
-# cutover step needs FTPS -- step 15's removal of the standby marker is
-# what releases this hold, within one monitor pass.
-if [ -e "/root/.standby.cnf" ]; then
+# system.sh healer stands aside on the marker OR on this hold's own
+# breadcrumb, so the two do not fight across a gap), so kill on sight, log
+# on transition only. Deliberately OUTSIDE the serve.cnf-exempt block
+# below: serve is a web-only preview, never a tenant write channel. No
+# cutover step needs FTPS, so the hold runs the whole cutover and step 15's
+# removal of the standby marker is what releases it, within one monitor
+# pass -- but a marker GAP is not that removal, so the same rule as the
+# web tier applies: a box that was held and has lost its marker keeps FTPS
+# down while it still reads as a REPLICA. The marker arm short-circuits,
+# so a held mirror still pays one file test and no probe.
+if _standby_ftps_hold_wanted; then
+  # Written on every held pass, marker or gap: this is the record of "this
+  # box was held as a standby" that the gap arm keys on, and a serve.cnf
+  # mirror writes it too.
+  mkdir -p /var/log/boa 2>/dev/null
+  touch /var/log/boa/.standby_ftps_held.pid 2>/dev/null
   if pgrep -f '^pure-ftpd( |$)' > /dev/null 2>&1; then
     echo "$(date) FTPD replication standby: holding FTPS DOWN" >> ${_pthOml}
     pkill -9 -f '^pure-ftpd( |$)' > /dev/null 2>&1
   fi
+elif [ "${_NGX_FTPS_GAP_UNKNOWN}" != "YES" ] \
+  && [ -e "/var/log/boa/.standby_ftps_held.pid" ]; then
+  # Released (PROMOTED): the breadcrumb goes with the hold, so this box
+  # never re-enters the gap arm. A normal box pays one file test.
+  rm -f /var/log/boa/.standby_ftps_held.pid
 fi
 
 # A serving standby is deliberate but must stay VISIBLE (2026-08-25 ruling:
@@ -428,16 +871,17 @@ if [ -e "/root/.standby.cnf" ] && [ -e "/root/.standby.serve.cnf" ]; then
     touch /var/log/boa/.standby_serve_logged
   fi
 fi
-if [ -e "/root/.standby.cnf" ] \
-  && [ ! -e "/root/.standby.serve.cnf" ] \
-  && [ -z "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2880 2>/dev/null)" ]; then
-  if pgrep -f '^nginx: master process' > /dev/null 2>&1; then
+if _standby_web_hold_wanted; then
+  # Re-read the latch right before acting: the cutover may have published it
+  # while the probe above was still reading a locked database.
+  if [ -n "$(_nginx_master_pids)" ] \
+    && [ ! -e "/var/log/boa/.standby_promoted.pid" ]; then
     # Log on TRANSITION only: an orphan pidfile alone would otherwise write
     # ~9 lines a minute into the incident log forever.
     echo "$(date) NGX replication standby: holding the web tier DOWN" >> ${_pthOml}
     service nginx stop &> /dev/null
     sleep 2
-    if pgrep -f '^nginx: master process' > /dev/null 2>&1; then
+    if [ -n "$(_nginx_master_pids)" ]; then
       _stop_nginx_processes
     fi
   fi
@@ -445,7 +889,7 @@ if [ -e "/root/.standby.cnf" ] \
   # _stop_nginx_processes never does; a stale one left here would make the
   # health checks re-enter every pass.
   if [ -e "/run/nginx.pid" ] \
-    && ! pgrep -f '^nginx: master process' > /dev/null 2>&1; then
+    && [ -z "$(_nginx_master_pids)" ]; then
     rm -f /run/nginx.pid
   fi
   # Firewall half of the web hold (2026-08-25 ruling): insurance against a
@@ -455,30 +899,47 @@ if [ -e "/root/.standby.cnf" ] \
   # this blocks. csfpost.sh re-adds the same rules right after any csf
   # restart flushes them; this loop heals the drift within a minute both
   # ways. Cutover step 12 removes the chain itself before proving the port
-  # externally, so promotion never waits on this loop.
-  for _ipt in iptables ip6tables; do
-    command -v "${_ipt}" > /dev/null 2>&1 || continue
-    "${_ipt}" -w 5 -nL BOA_STANDBY_WEB > /dev/null 2>&1 \
-      || "${_ipt}" -w 5 -N BOA_STANDBY_WEB > /dev/null 2>&1
-    "${_ipt}" -w 5 -C INPUT -j BOA_STANDBY_WEB > /dev/null 2>&1 \
-      || "${_ipt}" -w 5 -I INPUT -j BOA_STANDBY_WEB > /dev/null 2>&1
-    "${_ipt}" -w 5 -C BOA_STANDBY_WEB ! -i lo -p tcp -m multiport --dports 80,443 -j DROP > /dev/null 2>&1 \
-      || "${_ipt}" -w 5 -A BOA_STANDBY_WEB ! -i lo -p tcp -m multiport --dports 80,443 -j DROP > /dev/null 2>&1
-  done
-  # Breadcrumb for the release path: only a box that ever HELD pays the
-  # iptables execs on release checks -- a normal box pays one file test.
-  mkdir -p /var/log/boa 2>/dev/null
-  touch /var/log/boa/.standby_web_held.pid 2>/dev/null
-  echo "Replication standby: web tier held down."
-  exit 0
+  # externally, so promotion never waits on this loop. The latch is read
+  # once more here for the same reason as above: a chain re-added under
+  # step 12's external proof would park the cutover. With the latch present
+  # this pass falls through to the release path below.
+  if [ ! -e "/var/log/boa/.standby_promoted.pid" ]; then
+    for _ipt in iptables ip6tables; do
+      command -v "${_ipt}" > /dev/null 2>&1 || continue
+      "${_ipt}" -w 5 -nL BOA_STANDBY_WEB > /dev/null 2>&1 \
+        || "${_ipt}" -w 5 -N BOA_STANDBY_WEB > /dev/null 2>&1
+      "${_ipt}" -w 5 -C INPUT -j BOA_STANDBY_WEB > /dev/null 2>&1 \
+        || "${_ipt}" -w 5 -I INPUT -j BOA_STANDBY_WEB > /dev/null 2>&1
+      "${_ipt}" -w 5 -C BOA_STANDBY_WEB ! -i lo -p tcp -m multiport --dports 80,443 -j DROP > /dev/null 2>&1 \
+        || "${_ipt}" -w 5 -A BOA_STANDBY_WEB ! -i lo -p tcp -m multiport --dports 80,443 -j DROP > /dev/null 2>&1
+    done
+    # Breadcrumb for the release path: only a box that ever HELD pays the
+    # iptables execs on release checks -- a normal box pays one file test.
+    mkdir -p /var/log/boa 2>/dev/null
+    touch /var/log/boa/.standby_web_held.pid 2>/dev/null
+    echo "Replication standby: web tier held down."
+    exit 0
+  fi
 fi
 
-# Not held (no marker, serve.cnf, or promotion window): the firewall half
-# must not survive -- remove it so a promotion by bare marker removal (no
-# cutover) opens the web path within a minute, and serve.cnf opens the web
-# tier without touching the DB/tenant/backup holds. Logs on transition only
-# (the chain exists exactly once after a release).
-if [ -e "/var/log/boa/.standby_web_held.pid" ]; then
+# Not held (no marker and never held, serve.cnf, or a PROMOTED box): the
+# firewall half must not survive -- remove it so a promotion by hand
+# (marker removed AND the replica reset, no cutover) opens the web path
+# within a minute, and serve.cnf opens the web tier without touching the
+# DB/tenant/backup holds. A marker gap on a box that still reads as a
+# replica never reaches this path: the hold above exits the pass first.
+# A gap the role read could not answer (LOCKED, UNKNOWN) does not reach it
+# either -- removing the chain and the breadcrumb there would release the
+# box on no evidence, and the breadcrumb is what the next pass needs to
+# ask the question again.
+# Logs on transition only
+# (the chain exists exactly once after a release). A box that still carries
+# the marker looks every pass, breadcrumb or not: a csf restart through a
+# csfpost.sh block of an older vintage may re-assert the chain there, and
+# that must not outlive one pass on a promoted box.
+if [ "${_NGX_GAP_UNKNOWN}" != "YES" ] \
+  && { [ -e "/var/log/boa/.standby_web_held.pid" ] \
+    || [ -e "/root/.standby.cnf" ]; }; then
   for _ipt in iptables ip6tables; do
     command -v "${_ipt}" > /dev/null 2>&1 || continue
     if "${_ipt}" -w 5 -nL BOA_STANDBY_WEB > /dev/null 2>&1; then
@@ -488,7 +949,30 @@ if [ -e "/var/log/boa/.standby_web_held.pid" ]; then
       "${_ipt}" -w 5 -X BOA_STANDBY_WEB > /dev/null 2>&1
     fi
   done
-  rm -f /var/log/boa/.standby_web_held.pid
+  # The breadcrumb goes with the chain: it is what keeps a released box out
+  # of the marker-gap arm above. The kept-hold stamp goes with it -- that
+  # episode ended the moment this box released.
+  rm -f /var/log/boa/.standby_web_held.pid /run/boa_standby_webkept_logged.pid
+fi
+
+# A gap the role read could not answer changes NOTHING for the whole pass,
+# the health checks below included. Without this exit the pass that must
+# change nothing handed the deliberately stopped nginx to the healer at the
+# tail: no master process, no restart marker, so it restarted a box that is
+# dark on purpose, mailed an outage report about it, and the next pass that
+# read REPLICA again stopped it -- the healer-versus-enforcer flap, in the
+# fail-open direction, while this same pass keeps the DROP chain and the
+# breadcrumb in place. The hold arm exits on its own answer for the same
+# reason; this is the no-answer half of it. The FTPS leg gets its line
+# here too, but never this exit: a serving mirror's web tier is up on
+# purpose and its health checks must still run.
+if [ "${_NGX_GAP_UNKNOWN}" = "YES" ] \
+  || [ "${_NGX_FTPS_GAP_UNKNOWN}" = "YES" ]; then
+  _standby_no_answer_log
+fi
+if [ "${_NGX_GAP_UNKNOWN}" = "YES" ]; then
+  echo "Replication standby: no role answer this pass, nothing changed."
+  exit 0
 fi
 
 if [ ! -e "/run/max_load.pid" ] && [ ! -e "/run/critical_load.pid" ] \

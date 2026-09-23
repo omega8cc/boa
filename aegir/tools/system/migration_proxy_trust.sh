@@ -4,6 +4,7 @@
 # leave out, wiring the L7 realip recovery and the L4 csf whitelist together.
 #
 #   migration_proxy_trust.sh trust <ip|cidr> [<ip|cidr>...] [--permanent] [--csf-only]
+#   migration_proxy_trust.sh untrust <ip|cidr> [<ip|cidr>...]
 #   migration_proxy_trust.sh teardown [--force]
 #   migration_proxy_trust.sh reconcile [--force]
 #
@@ -18,6 +19,11 @@
 #     to never ban the new host; it has no realip recovery of its own to do.
 #   --permanent: drop /data/conf/.migration_proxy_permanent.pid so a later
 #     teardown is a deliberate no-op (proxy stays in service indefinitely).
+#
+# untrust: remove the given peer IP(s) only, exactly the lines trust writes for
+#   them (both control files, csf.allow on 80 and 443, csf.ignore), then refresh
+#   the realip include. Every other peer and the permanent marker stay as they
+#   are, so one retired source never costs another migration its trust.
 #
 # teardown: remove ALL migration-proxy trust on this host (both control files,
 #   the .cmig realip include, the csf entries) unless the permanent marker is set
@@ -150,6 +156,64 @@ _cmd_trust() {
     : > "${_perm_flag}"
     _msg "marked migration proxy trust PERMANENT (${_perm_flag})"
   fi
+}
+
+# Drop the lines equal to $2 from file $1, in place (owner and mode kept).
+# 0 = dropped, 1 = not there, 2 = the rewrite failed and the file is as found:
+# a short write (a full disk) must never leave a truncated firewall list.
+_drop_line() {
+  local _f="$1" _v="$2" _t _rc
+  [ -f "${_f}" ] && grep -qxF -- "${_v}" "${_f}" 2>/dev/null || return 1
+  _t="$(mktemp "${_f}.untrust.XXXXXX")" || return 2
+  grep -vxF -- "${_v}" "${_f}" > "${_t}"
+  _rc=$?
+  # grep: 0 = lines kept, 1 = none left (every line matched), above 1 = error
+  # and the copy must hold every other line (grep -c '' counts an
+  # unterminated last line too)
+  if [ "${_rc}" -gt 1 ] || [ "$(( $(grep -c '' "${_f}") - $(grep -cxF -- "${_v}" "${_f}") ))" -ne "$(grep -c '' "${_t}")" ]; then
+    rm -f "${_t}"
+    return 2
+  fi
+  if ! cat "${_t}" > "${_f}"; then
+    rm -f "${_t}"
+    return 2
+  fi
+  rm -f "${_t}"
+  return 0
+}
+
+_cmd_untrust() {
+  local _a _ip _port
+  local -a _ips=()
+  for _a in "$@"; do
+    case "${_a}" in
+      --*) _die "unknown option ${_a}" ;;
+      *)   _is_ip "${_a}" || _die "not an IP/CIDR: ${_a}"; _ips+=("${_a}") ;;
+    esac
+  done
+  [ "${#_ips[@]}" -gt 0 ] || _die "untrust: no IP/CIDR given"
+
+  local _f _v _rc
+  for _ip in "${_ips[@]}"; do
+    for _f in "${_realip_ctrl}" "${_csf_ctrl}"; do
+      _drop_line "${_f}" "${_ip}"
+      [ "$?" -eq 2 ] && _die "untrust: could not rewrite ${_f}; left as found"
+    done
+    if _csf_present; then
+      for _v in "tcp|in|d=80|s=${_ip} # migration proxy" "tcp|in|d=443|s=${_ip} # migration proxy"; do
+        _drop_line "${_csf_allow}" "${_v}"; _rc=$?
+        [ "${_rc}" -eq 2 ] && _die "untrust: could not rewrite ${_csf_allow}; left as found"
+        [ "${_rc}" -eq 0 ] && _CSF_CHANGED="YES"
+      done
+      _drop_line "${_csf_ignore}" "${_ip} # migration proxy"; _rc=$?
+      [ "${_rc}" -eq 2 ] && _die "untrust: could not rewrite ${_csf_ignore}; left as found"
+      [ "${_rc}" -eq 0 ] && _CSF_CHANGED="YES"
+    fi
+    _msg "untrusted migration peer ${_ip}"
+  done
+
+  [ "${_CSF_CHANGED}" = "YES" ] && _csf_reload
+  [ -x "${_realip_tool}" ] && "${_realip_tool}"
 }
 
 _cmd_teardown() {
@@ -361,10 +425,12 @@ _cmd_reconcile() {
 
 case "${1:-}" in
   trust)     shift; _cmd_trust "$@" ;;
+  untrust)   shift; _cmd_untrust "$@" ;;
   teardown)  shift; _cmd_teardown "$@" ;;
   reconcile) shift; _cmd_reconcile "$@" ;;
   *)
     echo "Usage: $0 trust <ip|cidr>... [--permanent] [--csf-only]"
+    echo "       $0 untrust <ip|cidr>..."
     echo "       $0 teardown [--force]"
     echo "       $0 reconcile [--force]"
     exit 1

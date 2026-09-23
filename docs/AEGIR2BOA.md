@@ -40,7 +40,9 @@ them current at `/opt/local/bin/` (root-only; `aegir2boa-stage2` also answers
 at `/usr/local/bin/aegir2boa-stage2`, a symlink the fetch maintains). Nothing
 on a BOA box runs them by itself, and a BOA box refuses every source-side
 verb. So the target end of a migration is always ready, and the source end —
-the vanilla box, which fetches nothing — is where you place them. Download
+the vanilla box, which fetches nothing — is where you place them.
+
+Download
 them directly; the source box needs no BOA installation, no account and no
 credentials to do it:
 
@@ -78,7 +80,9 @@ BOA. Target verbs assume a healthy BOA box.
 
 Source OS: a Debian-family box — Debian, Ubuntu or Devuan. Vanilla Ægir 3
 itself shipped one joint apt suite for Debian AND Ubuntu, and most legacy
-estates ran Ubuntu, so both families are first-class sources. Nothing in
+estates ran Ubuntu, so both families are first-class sources.
+
+Nothing in
 the tools branches on the distro name: everything the families share
 (apt/dpkg, the `apache2` layout, `www-data`) is used as-is, and everywhere
 their ERAS or install routes genuinely diverge — init system
@@ -87,15 +91,43 @@ conf-available behind a2enconf, the deb postinst's bare conf-enabled
 symlink, 2.2 conf.d), distro nginx and OpenSSH floors, the DB flavour
 (Ubuntu 20.04+ ships MySQL 8.0 where Debian ships MariaDB) — the tools
 probe the box at runtime, and `check` gates DB-generation parity against
-the target. A non-apt (RPM-family) source is refused cleanly at stage 1
+the target.
+
+A non-apt (RPM-family) source is refused cleanly at stage 1
 (its preflight requires `apt-get`); there is no path for it.
+
+### Building a rehearsal estate: aegir3-install
+
+The drills below ran against disposable vanilla estates, and a first run on an
+estate you have never seen should too. `aegir3-install` builds that source: an
+unattended installer for upstream Ægir 3.x (Drupal 7 hostmaster plus Drush 8
+from git.drupalcode.org, the LAMP stack from the distro's own apt).
+
+It is
+deliberately **not a BOA tool**: it ships in the source tree at
+`aegir/tools/bin/aegir3-install` and the mirror serves it at the same path as
+the three tools above, but no BOA box fetches or runs it. Download it onto the
+fresh rehearsal box only, with the same `wget` form as above.
+
+- **Targets:** Debian 11 (PHP 7.4, MariaDB 10.5) and Ubuntu 20.04 / 22.04
+  (PHP 7.4, MySQL 8.0). PHP 7.4 is the floor on purpose: vanilla hosting modules
+  carry none of BOA's PHP 8 patches, so PHP 8 is refused without `--allow-php8`.
+- **Unattended and idempotent:** the FQDN comes from `hostname -f`, the MySQL root
+  password is generated and kept in `/root/.aegir_install.cnf` so a re-run reuses
+  it, and the log is `/var/log/aegir3-install.log`. Exit 0 means installed or
+  already installed.
+- **Options:** `--fqdn`, `--email`, `--db-pass`, `--nginx` (Nginx + php-fpm instead
+  of Apache, to drill stage 2 without stage 1), `--branch` (default `7.x-3.x`),
+  `--allow-php8`, `--force`, `-h`.
 
 ## Validation status — read before using on a client box
 
 Proven end-to-end on disposable VMs (2026-07): both stage-2 routes, every
 revert path (single-site, full two-box, target reset, db-import undo,
 resume), stage-1 flip/revert/re-flip, and public serving through the proxy
-window. That drill estate was Drupal-7-only and HTTP-only. The OS axis:
+window. That drill estate was Drupal-7-only and HTTP-only.
+
+The OS axis:
 Debian 11 (bullseye) sources for every drill through 2026-08-12, and an
 Ubuntu source drilled end to end on 2026-08-13 (jammy + PPA PHP 7.4 +
 distro MySQL 8.0, on the deb-installed apache include layout) — stage-1
@@ -105,7 +137,9 @@ into a Percona 8.4 target, proxy window and reverts included.
 
 Re-validated in full on 2026-08-11 against a fresh vanilla source and a
 fresh BOA target, on published tool bytes, with an estate carrying real
-Let's Encrypt sites and a Drupal 9 composer platform. That re-validation
+Let's Encrypt sites and a Drupal 9 composer platform.
+
+That re-validation
 changed tool behaviour — including the new `peer` verb — so use current
 published tool bytes: earlier copies do not carry the stage-1 HTTPS flip,
 composer-platform adoption, `peer`, the HTTPS proxy window itself (an
@@ -113,7 +147,9 @@ earlier https proxy template emitted an HTTP/2 directive a distro nginx
 rejects, so every HTTPS site failed `nginx -t` and refused to cut over
 while HTTP sites proxied fine), or site-profile carry-over (2026-08-12) —
 without which any site whose install profile is not `standard` fails its
-import, every Drupal 6 site included. The target's copy keeps itself current
+import, every Drupal 6 site included.
+
+The target's copy keeps itself current
 with the fleet; the source copy is the one that goes stale, so re-copy it
 from the target when a migration resumes after a pause or the target has
 upgraded since (`check` and `pre-mig` warn when the two differ). What the
@@ -133,6 +169,7 @@ upgraded since (`check` and `pre-mig` warn when the two differ). What the
   retry-needs-fresh-export path taken all the way back — the reverted estate
   was re-exported, re-adopted over its already-registered panel nodes (a path
   the first adoption never exercises) and re-proxied to the serving state.
+
   The db-import refusal is also verified as a refusal, not assumed:
   `check --route db-import` dies naming the non-D7 platform on a mixed
   estate.
@@ -161,7 +198,7 @@ into a NEW account on a php-max target. What that drill settled:
   and graded D6 as `?`).
 
 Re-run in full on **2026-08-25** as an OS × Percona matrix on published
-tool bytes (record: boa-testing `tier3/results/A2B-MX-2026-08-25.md`), the
+tool bytes, the
 first complete suite after ~130 commits to the toolset and the tree: the
 Debian 11 estate (MariaDB 10.5; mixed D6 + D7 with two real-LE HTTPS sites
 and a D9 composer platform, seven sites) adopted per-site into a Percona 5.7
@@ -173,25 +210,30 @@ by `check` against a Percona 5.7 target exactly as the DB-parity gate
 promises (exit 1, `DB_PARITY=REFUSED`, route blanked); both stage-1 flips
 green on both include layouts (a2enconf and the deb bare symlink), every
 site's HTTP and HTTPS response matching its baseline at every transition.
+
 The matrix found the one cell no earlier drill had visited, **D6 on a
 Percona 8.4 target**: site users were minted `caching_sha2_password` and
 PHP 5.6's mysqli aborts at the greeting, so both D6 sites served 503 while
 the pre-fix import counted them adopted (exit 0; only the proxy gate
-refused). Fixed the same day (aegir2boa 31723df = boa-private eff026d22):
+refused).
+
+Fixed the same day:
 D6 users pinned native at DB land, a serve-probe equality gate, exit-code
 honesty; re-verified on the republished bytes (stage2 md5 1ae65afc) with a
 fresh pair — db-import on 8.4 green, and the D6 per-site leg both ways: the
 stock `authentication_policy` target FAILS the site loudly with the users
 verifiably pinned, and the my.cnf remedy applied verbatim flips both D6
 sites to 200 with the re-import landing clean. The server-side half is the
-*Prerequisites* bullet on native auth; BOA sets it on Percona 8.4 (D-015).
+*Prerequisites* bullet on native auth; BOA sets it on Percona 8.4.
 
 Which leaves, honestly:
 
 - **The HTTPS story is drilled end to end, and its certificate step is
   manual.** 2026-08-11: all five sites of an ssl-bearing estate served
   publicly through the source-side proxy with DNS still pointing at the old
-  box, both encrypted ones presenting their own real certificates. Later the
+  box, both encrypted ones presenting their own real certificates.
+
+  Later the
   same day the full certificate loop closed: Encryption enabled per site on
   the target, real LE certificates issued THROUGH the proxy window (the
   bare-name ACME challenge validated via the proxy; the default `www.` SAN
@@ -208,7 +250,9 @@ Which leaves, honestly:
   their baselines), proxied, and then fully reverted on both boxes
   (`--revert-db-import` restored the pre-import panel exactly; the source
   served locally again, HTTPS included). Its refusal on ineligible estates
-  is verified as a refusal too. One route nuance stands (see cert-sync):
+  is verified as a refusal too.
+
+  One route nuance stands (see cert-sync):
   db-import keeps vanilla's alias settings, so enabling Encryption there
   needs the `www.` alias added or a bare-name certificate requested.
 - **A target without a php56 pool is not drilled.** D6 adoption is
@@ -225,10 +269,11 @@ Which leaves, honestly:
 - **The upstart-era and apache 2.2 Ubuntu/Debian populations are
   feature-detected but undrilled.** The Ubuntu axis itself is drilled
   (2026-08-13: jammy source, MySQL 8.0, deb-installed include layout,
-  full adoption + reverts — record: boa-testing
-  tier3/results/A2B-UBUNTU-2026-08-13.md), and the tools are
+  full adoption + reverts), and the tools are
   OS-agnostic by construction (same-day audit: no distro gate
-  anywhere). What no cloud image exists to drill is the oldest era:
+  anywhere).
+
+  What no cloud image exists to drill is the oldest era:
   upstart init (Ubuntu 12.04/14.04) and apache 2.2 (Debian 7 /
   Ubuntu 12.04) go through code paths that are reviewed and
   unit-verified only — treat a real estate of that era with the usual
@@ -290,7 +335,8 @@ look on any failure.
   aegir2boa-stage2 peer --target <target-ip> --live
 
   # ON THE TARGET: open csf.allow AND csf.ignore, clear any tripped block,
-  # reload csf, authorise the key (the command printed above supplies it)
+  # reload csf, register the source as a trusted migration source (nginx
+  # realip), authorise the key (the command printed above supplies it)
   aegir2boa-stage2 peer --source <source-ip> --pubkey-file <f>   # dry
   aegir2boa-stage2 peer --source <source-ip> --pubkey-file <f> --live
 
@@ -314,22 +360,28 @@ look on any failure.
   greeting when the server's default first-factor is
   `caching_sha2_password` — before the user's own plugin is even
   consulted — so a D6 site bootstraps in CLI yet serves its own
-  "Site off-line" 503 on the web. The import pins each D6 site's DB
+  "Site off-line" 503 on the web.
+
+  The import pins each D6 site's DB
   user to `mysql_native_password` (and refuses, loudly, when the plugin
   is disabled), but the server-side default must also be native:
   `authentication_policy = mysql_native_password,,` in my.cnf, and on 8.0
   also `default_authentication_plugin = mysql_native_password`, which is
   what 8.0's handshake greeting follows. Current BOA writes them
-  automatically on Percona 8.0 and 8.4 (sql config sync, aegir2boa D-015)
+  automatically on Percona 8.0 and 8.4 (sql config sync)
   — on a target whose BOA predates that, add the lines yourself and
   restart mysql. Modern-PHP sites and `caching_sha2` users are
-  unaffected — clients negotiate the switch. `check` grades this per
+  unaffected — clients negotiate the switch.
+
+  `check` grades this per
   D6 site as well, from what the target's server actually advertises —
   its handshake greeting, or the `authentication_policy` /
   `default_authentication_plugin` variables when the greeting cannot be
   read — so a non-native target is named before `pre-mig` pauses
   anything; a target that answers neither is reported UNKNOWN and
-  accuses nobody. Past that gate the import still FAILS the site
+  accuses nobody.
+
+  Past that gate the import still FAILS the site
   honestly at its serve probe instead of adopting a site that cannot
   serve — though a probe that lands before the FPM agent maps the site
   onto its php56 pool can pass on the account-default modern-PHP pool
@@ -360,7 +412,9 @@ there is root's alone (`umask 077`): the report inventories the estate.
 Its lock is `/tmp/aegir2boa-preflight.lock`; a path already sitting there
 that is not root's own directory (another owner, a symlink) is refused by
 name with exit 2 and never taken over, and a report path that already
-exists is refused the same way — remove the planted path and re-run. The one sanctioned
+exists is refused the same way — remove the planted path and re-run.
+
+The one sanctioned
 exception is the optional `drush @hostmaster status` health check (a
 Drupal bootstrap writes cache tables); set `A2B_NO_DRUSH=1` to suppress it
 — at the cost of a permanent `frontend_bootstrap_failed` WARN in that run.
@@ -433,12 +487,15 @@ payload carrying the estate's own port and, for an `*_ssl` class, its
 verify that writes the nginx config tree), waits out the platform verify
 cascade, then **verifies every site** (hostmaster first — the verify
 cascade stops at platforms, so this per-site loop is what populates
-`nginx/vhost.d`), asserting each site's nginx vhost file exists. Only
+`nginx/vhost.d`), asserting each site's nginx vhost file exists.
+
+Only
 then: `nginx -t`, a **scratch-port FCGI probe** that executes real PHP
 through nginx+FPM while Apache still serves — and reports the
 interpreter version it reached, so a pool whose socket name lies about
 its binary fails the gate too — and the daemon handover
 (stop+disable apache, start+enable nginx and FPM — reboot-persistent).
+
 Finally every site's HTTP code is compared against the pre-flip
 baseline — and for every site the front end reports as encrypted, the
 HTTPS response too, probed with real SNI and hostname verification, so a
@@ -452,7 +509,9 @@ nginx still serves** — the dry run parses a temp wrapper conf with
 back into `conf-enabled`/`conf.d` on the deb-installed and apache 2.2
 layouts — the tool probes where the include actually lives) and runs
 `apache2ctl configtest` before nginx stops — then hands the daemons back
-in reverse order and flips the config plane back. The
+in reverse order and flips the config plane back.
+
+The
 revert guarantee is that provision never deletes the Apache tree — so
 during the whole stage-1/stage-2 window, do NOT prune
 `/var/aegir/config/server_master/apache*`, the `apache2` /
@@ -461,7 +520,9 @@ during the whole stage-1/stage-2 window, do NOT prune
 Timing from the drill (with the hosting-queued daemon running): flip ≈
 65 s, revert ≈ 43 s, re-flip ≈ 54 s. On a cron-dispatch-only box every
 queued verify waits for the next cron minute, so expect materially
-longer. If the flip completes with sites differing from baseline, the
+longer.
+
+If the flip completes with sites differing from baseline, the
 instant daemon-level fallback is printed by the tool — paste it exactly
 as printed: the middle command re-enables the apache include in the form
 the BOX's layout needs (`a2enconf aegir` on the conf-available layout, a
@@ -492,12 +553,12 @@ Source-resident verbs (vanilla box, root):
   status
 
 Target-resident verbs (BOA box, root):
-  peer       --source <ip> [--pubkey-file <f>]              [--live]
   import     --account <oN> --route per-site|db-import
              [--site <dom>|--all] [--source-fqdn <fqdn>]
              [--welcome-node]                               [--live]
   import     --account <oN> --revert-db-import              [--live]
   import     --account <oN> --reset-sites                   [--live]
+  peer       --source <ip> [--pubkey-file <f>]              [--live]
   target-status --account <oN>
 ```
 
@@ -521,7 +582,10 @@ discovery output — the route is never operator-asserted**:
   plus its own enumeration, and refuses `--route db-import` if any leg
   fails:
   - every platform D7-class,
-  - `hosting` schema_version at the high-water mark,
+  - `hosting` schema_version EQUAL to the validated number, `7304` (the
+    highest `hosting_update_N` in the verified vanilla 7.x-3.x tree): a
+    schema below OR above it makes the estate per-site only, named as
+    `hosting-schema-<n>` in the refusal,
   - single-box topology (no cluster/pack, no remote web/db servers).
 
   Two procedural requirements ride along: the source must be in nginx
@@ -573,12 +637,16 @@ parity**: both `SELECT VERSION()`s are read and recorded into
 `check.env`, and a MySQL/Percona ≥ 8.0 or MariaDB ≥ 10.6 source is
 REFUSED against a pre-8.0 target (its dumps carry collation names the
 target rejects at import) — the refusal also blanks any earlier recorded
-route, so `export` cannot ride a stale clean check. A provably ≥ 8.0
+route, so `export` cannot ride a stale clean check.
+
+A provably ≥ 8.0
 source with an unreadable target version is refused too; any other
 unreadable version — the source's, or the target's when the source is
 not provably a newer generation — SKIPS the gate with a named warning,
 so a `check` that only warned here has not actually verified the
-pairing. It computes db-import
+pairing.
+
+It computes db-import
 eligibility, enumerates every enabled non-core module on the hostmaster
 (the scrub review list), grades per-site PHP parity (a D6 site with no
 php56 pool on the target is flagged and later SKIPPED, not blocking),
@@ -586,7 +654,9 @@ raises the same per-site flag for a D6 site when the target's DB server
 advertises a non-native first factor (the Prerequisites bullet on native
 auth says what to set — the point of grading it here is that it is named
 before `pre-mig` pauses anything), and
-records route+target for the following verbs. Re-run `check` freely; it
+records route+target for the following verbs.
+
+Re-run `check` freely; it
 is always read-only.
 
 ### pre-mig — pause the source automation
@@ -639,7 +709,9 @@ shadow server block in nginx `pre.d/` that wins over the real vhost
 `nginx -t`-gated with automatic stub removal on failure — then dumps the
 site's DB **with the site's own credentials** from its drushrc (no root
 DB access is ever needed on the source) into `/var/aegir/src/a2b/`, and
-writes the site's manifest. Skips honestly, per site: missing vhost or
+writes the site's manifest.
+
+Skips honestly, per site: missing vhost or
 alias paths, multi-host DB, unparsable credentials, a 443 vhost whose
 cert files are missing, or insufficient dump headroom. A failed dump
 leaves the stub UP (data consistency over uptime) — `revert --site <dom>`
@@ -669,6 +741,7 @@ source-uid tree is unreadable to the account and breaks every later
 import), each site dump + manifest to `/data/disk/<oN>/src/a2b/`, plus
 the ssl.d trees and the nginx configs as reference copies (never into the
 target's live config — vhosts are regenerated natively by verify tasks).
+
 Drush aliases are deliberately NOT transferred on either route: vanilla
 aliases carry `/var/aegir` roots that would poison the target; everything
 is regenerated fresh. The route marker ships on every
@@ -690,7 +763,9 @@ For the window it sets `hosting_platform_automatic_site_import = 0`
 every `sites/` dir it finds, colliding with the explicit imports. Then,
 per platform: provision-save a `platform_a2b_<name>` context, create the
 platform node, and verify it (the verify registers the install-profile
-package — a hard prerequisite for site imports). Per site: create its DB
+package — a hard prerequisite for site imports).
+
+Per site: create its DB
 and user with the site's own credentials (settings.php keeps working
 unmodified; refuses to overwrite an existing DB), provision-save the site
 context, `hosting-import` it and drive the import task (inline when
@@ -698,10 +773,17 @@ re-running against an already-registered node — a retry quirk the drill
 caught), map its PHP version in the account's `multi-fpm.info` and wait
 for the pool socket (D6 without its socket is a per-site FAIL; the site
 must not serve under the account default), wait the chained verify, probe
-HTTP against the source baseline, and re-enable the site's Drupal cron —
+HTTP against the source baseline (not status-only: the run fingerprints
+what this box answers for an impossible hostname once at its head and
+refuses any site whose 200 body is that catch-all page -- NOT adopted on
+the per-site route, left unproven on db-import, in both cases fix serving
+and re-run import for that site; when the fingerprint cannot be taken the
+run warns that serve probes lose that discrimination), and re-enable the site's Drupal cron —
 adopted sites land with cron dark by BOA design, and the source
 dispatcher that used to run it is paused, so leaving it dark means silent
-job loss. One site's failure never blocks the next; failed sites are
+job loss.
+
+One site's failure never blocks the next; failed sites are
 listed and stay un-adopted.
 
 ### import, db-import route
@@ -755,7 +837,9 @@ repair restore it. The steps, each idempotent behind its own marker:
 7. **Per-site content DBs** are created and loaded with each site's own
    credentials.
 8. **Identity surgery — targeted UPDATEs by nid, never a blanket
-   rename.** The imported server node's title becomes the target FQDN
+   rename.**
+
+   The imported server node's title becomes the target FQDN
    (Ægir regenerates `remote_host` from that title on every server
    verify — a stale value would silently re-point the account at the old
    box over ssh); the panel site node adopts the account's own panel
@@ -764,7 +848,9 @@ repair restore it. The steps, each idempotent behind its own marker:
    `server_localhost` node gets the TARGET account's own DB credentials
    restored from the snapshot (the imported node carries the SOURCE's —
    its verify would otherwise poison the account alias with a dead DSN;
-   this failure is FATAL). History rows keep old FQDN references by
+   this failure is FATAL).
+
+   History rows keep old FQDN references by
    design and are reported, not rewritten.
 9. **Inline verify ladder, while the dispatcher stays held**: server
    verifies (with an assert that `remote_host` regenerated to the target
@@ -788,7 +874,9 @@ repair restore it. The steps, each idempotent behind its own marker:
 
 Per site, gated on the **target actually answering** for that site (HTTP
 probe against the manifest baseline; a differing 2xx/3xx needs
-`--accept-http-diff`, anything else is a SKIP). The gate is not
+`--accept-http-diff`, anything else is a SKIP).
+
+The gate is not
 status-only: before the per-site probes the tool fingerprints what the
 target answers for an impossible hostname, and refuses any site whose
 200 response body is byte-identical to that fingerprint — a BOA box
@@ -796,7 +884,9 @@ answers an unknown Host with its "Under Construction" catch-all, so a
 200 alone proves nothing. This refusal is unconditional:
 `--accept-http-diff` tolerates a DIFFERENT status but can never accept a
 target that is not serving the site at all; hitting it means the import
-did not produce a serving vhost for that site. Then: the real vhost is moved
+did not produce a serving vhost for that site.
+
+Then: the real vhost is moved
 aside to the dotfile `.<domain>` (THE revert artifact) and a proxy vhost
 pointing at the target written in its place; for https sites a per-site
 proxy cert store is seeded from the site's existing cert files and an
@@ -814,7 +904,9 @@ cert paths, so they cannot be dropped onto a distro nginx verbatim). The
 emitted https vhost also adapts its HTTP/2 syntax to the source's own
 nginx version — the standalone directive only where that nginx knows it,
 the listen-parameter form otherwise — because a vanilla box runs the
-distribution build, not BOA's. The
+distribution build, not BOA's.
+
+The
 catch-all location also forwards `/.well-known/acme-challenge/` — so the
 TARGET can mint and renew real Let's Encrypt certs for domains whose DNS
 still points at the source, for the whole proxy window.
@@ -825,16 +917,26 @@ requests a SAN certificate for the bare name AND `www.` by default, and
 the adopting BOA box answers `www.` itself — but the challenge for it
 arrives at THIS box, and without the alias it lands on the catch-all and
 the whole certificate order fails (measured live 2026-08-11: bare name
-validated through the proxy, `www.` got 404, `cert.pem` left empty). A
+validated through the proxy, `www.` got 404, `cert.pem` left empty).
+
+A
 name the client's DNS does not resolve simply never arrives, so the
 extra alias is inert on estates without `www.` records. It is also
 skipped, with a warning, when `www.<domain>` is served on the source by a
 conf of its own — an estate that manages it as a separate site, which
-vanilla allows. `vhost.d` is included by a sorted glob and the
+vanilla allows.
+
+`vhost.d` is included by a sorted glob and the
 first-defined server wins (nginx only warns, and `nginx -t` still passes),
 so claiming that name would capture an unmigrated site's traffic; on those
 estates the `www.` challenge has to come from that other conf, and both
 the dry run and the swap say so by name.
+
+For the same reason, before each swap the tool lists any OTHER conf still
+in `vhost.d` that already declares a name the proxy block is about to
+claim ("name <n> is ALSO declared by vhost.d/<file> - only the
+first-included block gets it"). That one is advisory, never blocking: the
+overlap is often a sibling already proxied at the same target.
 
 `proxy --refresh` (dry, then `--live`) re-renders the proxy vhost(s) of
 already-proxied sites in place, from the dotfile original plus the
@@ -876,7 +978,9 @@ mirrors the box that does. Remove that cron at decommission (stage 3).
 > enabled on the target and LE issued through the proxy window,
 > `cert-sync --live` reported `2 refreshed`, exit 0, reloaded nginx, and
 > the proxy served the target-issued certificates from then on
-> (serial-verified via `openssl s_client`). Two practical notes from that
+> (serial-verified via `openssl s_client`).
+>
+> Two practical notes from that
 > drill: BOA requests a SAN certificate (bare + `www.`) by default, which
 > is why proxy vhosts carry `www.<domain>`; and back-to-back verifies can
 > collide on the LE tooling's per-account lock — enable and verify sites
@@ -974,7 +1078,10 @@ deliberately:
    the migration log), snapshot the box if the provider makes that cheap,
    then power it off.
 7. **Clean the target**: remove the source's CSF allow/ignore lines
-   (`csf -ra` after), drop the migration key from
+   (`csf -ra` after), drop its migration-source trust with
+   `/var/xdrago/migration_proxy_trust.sh untrust <ip>` (the address the peer
+   step reported as trusted; every other migration's trust stays), drop the
+   migration key from
    `/root/.ssh/authorized_keys`, and optionally the tool copy and the
    landed `src/a2b/` artifacts once the estate has run clean past a
    backup cycle.

@@ -55,7 +55,7 @@ migratefs [--target <mount>] [--account <oN>] [--no-arch] [--apply] [--yes]
 | *(no `--apply`)* | DRY plan only — print what would happen, change nothing |
 | `--apply` | perform the relocation (pauses the Ægir queue, drains tasks) |
 | `--target <mount>` | attached mount to relocate onto, always a mountpoint under `/mnt` (the only supported store placement: the nightly's root-run relocations refuse a store elsewhere); auto-detected as the single real mountpoint under `/mnt` if omitted |
-| `--account <oN>` | limit to one account, and skip `arch` (default: all accounts **plus** `arch`) |
+| `--account <oN>` | limit to one account, and skip `arch` (default: all accounts **plus** `arch`). Must be an Octopus account directory name: `arch`, `all`, `legacy`, a path or a dot-name is refused and the run exits 1 before it pauses the queue |
 | `--no-arch` | do not relocate `/data/disk/arch` |
 | `--yes` | in `--apply`, skip the interactive confirmation |
 | `--grace <sec>` | queue-pause grace before draining tasks (default 15) |
@@ -126,7 +126,9 @@ unchanged.
 > per the *target's* disk reality: its contents are **mirrored onto the target's `/mnt`
 > mount** (with the on-target path re-pointed there) if the target has one, or
 > **de-referenced into a real dir** on the target root if it has none — never copied as a
-> bare (dangling) symlink. Make sure those tools are current (storage-aware)
+> bare (dangling) symlink.
+>
+> Make sure those tools are current (storage-aware)
 > before migrating a host whose `arch`/`static/files` is relocated;
 > older versions would copy/skip the bare symlink and transfer **no** SQL dumps or cluster
 > backups. (Consumers that read a path *under* `arch`, e.g. `copydbackup` and

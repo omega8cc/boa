@@ -83,13 +83,17 @@ Backdrop is a Drupal-7-lineage fork, and BOA manages it through the same
   and refreshes it on every upgrade, the platform verify task symlinks
   it as `modules/o_contrib_backdrop` into every platform (including
   platforms uploaded to the `static/` tree), and the nightly agent
-  repairs a missing symlink. The Backdrop wiring partial of the BOA
+  repairs a missing symlink.
+
+  The Backdrop wiring partial of the BOA
   global chain (`global-bd-valkey.inc`) prefers the shared bundle, still
   honours the baked `modules/redis` copy that older platform tarballs
   carried, wires each site to Valkey when the shared probe found it up
   and falls back to Backdrop's database cache — with the shared backoff
   flag, so a stopped Valkey is not re-probed on every request.
-- **The BOA settings chain is the Drupal one.** A Backdrop site's
+- **The BOA settings chain is the Drupal one.**
+
+  A Backdrop site's
   settings.php includes `/data/conf/global/global-bd.inc`, a chain head
   of the same shape as `global-7.inc`: the same partials in the same
   order, so `boa_platform_control.ini` and `boa_site_control.ini` are
@@ -98,7 +102,9 @@ Backdrop is a Drupal-7-lineage fork, and BOA manages it through the same
   Valkey switches and probe tuning, the dev-alias `X-Ini-*` headers), the
   mode gates apply (bots and web cron refused on tmp/dev names, nodns,
   hidden URIs, the billing-suspend and http-off 503s), and the two
-  `/data/conf` override hooks reach Backdrop too. Three keys read
+  `/data/conf` override hooks reach Backdrop too.
+
+  Three keys read
   differently, each for a Backdrop reason: `disable_drupal_page_cache`
   only ever switches the page cache off (Backdrop's maximum cache
   lifetime is also the entry lifetime, so the site's own setting is not
@@ -122,12 +128,16 @@ Backdrop sites answer to **both** CLIs:
   control files and hands the choice to the launcher; direct backend
   calls (root, `aegir`, `oN`) resolve the same files themselves — from
   the account tree they run in, or the calling identity's own account.
+
   One clamp on top: `bee` requires a modern PHP (Backdrop's own floor
   is 7.1; BOA enforces 7.4), so an account choice below that makes
   `bee` alone use the newest installed modern version while Drush still
   honours the choice exactly. The matching php.ini always follows the
-  version finally picked, including any per-account
-  `~/.drush/phpNN/php.ini` override. Backend identities (root, `aegir`,
+  version finally picked: the per-account `~/.drush/php.ini` applies when its
+  `extension_dir` names the `/opt/phpNN/` tree of the PHP just picked, and the
+  global `/opt/phpNN/lib/php.ini` otherwise.
+
+  Backend identities (root, `aegir`,
   `o1`-style Octopus users) have the full verb set. Client shell
   identities (`o1.ftp`-style) get the everyday verbs, while destructive
   ones (database import and drop, fresh site install, `eval`-class
@@ -154,7 +164,9 @@ from the Ægir frontend with the same semantics as Drupal sites. Notes:
   platform tracking a newer Backdrop release) or renaming it to a new
   domain. The Migrate form lists only Backdrop platforms for a Backdrop
   site (and only Drupal platforms for a Drupal site); the backend
-  refuses a cross-lineage pair outright. As with Drupal, the source is
+  refuses a cross-lineage pair outright.
+
+  As with Drupal, the source is
   backed up first, deployed onto the target into a fresh copy database,
   verified, and only then is the old copy retired; a rename disables
   Encryption for the new name (re-enable it deliberately afterwards).
@@ -167,7 +179,9 @@ from the Ægir frontend with the same semantics as Drupal sites. Notes:
   then renamed to the freed domain through the same machinery as
   Migrate. If nothing holds the domain (say, after an earlier attempt
   stopped between the two steps), the task degrades to a plain rename —
-  that is also the re-run recovery path. Encryption ends up disabled
+  that is also the re-run recovery path.
+
+  Encryption ends up disabled
   for the new name (certificates are name-bound); re-enable it
   deliberately afterwards. Custom aliases of the retired site are not
   carried over, and the domain is unserved while the rename completes —
@@ -392,6 +406,7 @@ removes them (files and database) when discarded.
   was Drupal 6's era standard, whatever the server) — while on a
   Percona 8.4 box new tables default to utf8mb4, so such sites end up
   mixed and can surface illegal-collation errors on JOIN-heavy pages.
+
   The dedicated **Convert to utf8mb4** site task (Aegir
   Extras / hosting_tasks_extra, works on any Drupal 7 site) fixes this:
   probe first (an already-converted database completes as an honest
@@ -446,7 +461,9 @@ intermediate's domain in one task (the intermediate backed up and
 retired, the copy renamed, serving the content at the original domain,
 Encryption off with the re-enable reminder in the task log), the
 follow-up verify came back green, and the claim-mode re-run leg renamed
-the same site onto a free domain with no delete step. Refusals drilled:
+the same site onto a free domain with no delete step.
+
+Refusals drilled:
 taking over the site's own domain, taking over the hosting front-end,
 and running cutover on a Drupal-lineage site (backend validation).
 
@@ -456,7 +473,9 @@ stock one-command BOA install with zero Backdrop configuration landed
 D6 → D7 kit from the mirror, enabled the Backdrop frontend module with
 all its task permissions (including Cutover), and — once the operator
 listed BDR in the standard platforms control file — built and verified
-all three Backdrop platforms. The opt-out is drilled on the same box:
+all three Backdrop platforms.
+
+The opt-out is drilled on the same box:
 with `_BACKDROP_SUPPORT=NO` an upgrade run stages nothing new (the
 removed kit stays absent) while everything already provisioned keeps
 serving — opting out disables provisioning surfaces, it never tears
@@ -470,7 +489,9 @@ backup, converted in a maintenance window and verified the database
 fully utf8mb4 against information_schema (independently confirmed),
 with the site serving and JOIN-heavy listings clean afterwards — and a
 Backdrop upgrade of the converted site produced a serving copy with
-zero 3-byte tables, closing the illegal-mix scenario for good. The
+zero 3-byte tables, closing the illegal-mix scenario for good.
+
+The
 drill also hit a real transient ALTER deadlock against a live request:
 the task failed honestly (backup named in the log, site brought back
 online) and the re-run converted the remainder — which is why the task

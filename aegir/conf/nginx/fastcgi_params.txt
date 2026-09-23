@@ -16,6 +16,10 @@ fastcgi_param   SERVER_SOFTWARE         ApacheSolarisNginx/$nginx_version;
 # $realip_remote_addr = original TCP peer (CF edge) so PHP global.inc resolves
 # the real client itself; nginx $remote_addr is realip-rewritten to the client.
 fastcgi_param   REMOTE_ADDR             $realip_remote_addr;
+# The client realip resolved: it differs from REMOTE_ADDR only when realip
+# trusted the peer (Cloudflare, a migration source), and global.inc believes
+# a client address from a remote peer on no other evidence.
+fastcgi_param   BOA_NGINX_CLIENT        $remote_addr;
 fastcgi_param   REMOTE_PORT             $remote_port;
 fastcgi_param   SERVER_ADDR             $server_addr;
 fastcgi_param   SERVER_PORT             $server_port;

@@ -790,7 +790,7 @@ _LOCAL_NETWORK_HN=""
 ###
 ### Change to NO if you prefer the running
 ### daily script to not fix permissions on all
-### files belonging to hosted sites an their
+### files belonging to hosted sites and their
 ### platforms (and any shared code).
 ###
 ### Note that this feature is again enabled
@@ -1556,6 +1556,14 @@ _NGINX_FORWARD_SECRECY=YES
 _NGINX_KTLS=YES
 
 ###
+### eBPF routing of QUIC packets in Nginx (quic_bpf). With the default YES
+### an HTTP/3 transfer in flight survives an Nginx reload, as HTTP/2 does;
+### without it every reload resets it. It is written only while a live
+### start-up probe passes on this box. Set to NO to keep it off.
+###
+_NGINX_QUIC_BPF=YES
+
+###
 ### Use this only when you need to always
 ### compile in some extra/custom module(s).
 ###
@@ -1587,9 +1595,9 @@ _PHP_MONGODB=NO
 ### the BOA mirrors, with automatic fallback to
 ### the source build for any component that has
 ### no matching package. NO always builds from
-### sources. On Devuan Daedalus it defaults to
-### YES unless set explicitly in the cnf file,
-### which always wins, both ways.
+### sources. On Devuan Daedalus and Excalibur it
+### defaults to YES unless set explicitly in the
+### cnf file, which always wins, both ways.
 ###
 _USE_PREBUILT_PKGS=NO
 
