@@ -41,11 +41,15 @@ edgetest --site <SITE> --remote
 
 It exits `0` when every critical check passes, non-zero otherwise. In the AI and
 rate-limit probes it treats a **5xx** (backend/upstream error — e.g. a proxied 502) and a
-**403** (ip_access deny) as *inconclusive* (`WARN`), not as a policy result. The front
+**403** (ip_access deny) as *inconclusive* (`WARN`), not as a policy result.
+
+The front
 phase is the exception: it asks the wildcard SSL front and every other HTTPS proxy in `pre.d`
 (each control panel's, any per-site one),
 from another loopback address (`127.0.0.2`), for a path kept for the box itself (the stub
-status, the FPM ping) and expects a **403**; a `200` there is a leak (`FAIL`). **HTTPS is not assumed** — it probes https and falls back to
+status, the FPM ping) and expects a **403**; a `200` there is a leak (`FAIL`).
+
+**HTTPS is not assumed** — it probes https and falls back to
 http if https isn't cleanly served (a test VM with no real SSL behind a self-signed proxy);
 force a scheme with `--http` / `--https`. What it does **not** automate (do these manually from the
 phases below): the realip rewrite seen from a real external client, and the `configtest`
