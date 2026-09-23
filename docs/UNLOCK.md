@@ -26,8 +26,12 @@ platform, tracked by marker files under `~/log/ctrl/`):
   Drupal CMS)
   the pass operates on the **repository root**, so `vendor/` and
   `composer.json` are covered too. Then the permission sweep: directories
-  `0775`, files `0664`, and the hardened read-only paths (`vendor/drush`,
-  selected `vendor/symfony/console` internals) locked to `0400`.
+  `0775` and files `0664`, except `vendor/drush` and the two
+  `vendor/symfony/console` directories the Drush lock uses (`Input` and
+  `Style`), which keep the mode the lock state gave them: `0400` while the
+  platform is locked, `0775` after **Unlock Local Drush**. The nightly pass
+  never locks or unlocks a platform; the Lock and Unlock Local Drush tasks
+  and a Verify do.
 - **Platform level** (every registered platform, in addition to the pass
   above): `sites/all/{modules,themes,libraries}/*` chowned to `oN` and the
   account's group;
