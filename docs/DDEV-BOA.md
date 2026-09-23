@@ -75,6 +75,14 @@ public `files` directory is pulled, not the separate `private` directory.
 
 ## Helping a client
 
+- **A pulled database is live user data.** It holds the site's users' accounts and email
+  addresses, and so does any snapshot of it. Snapshots stay in the project's
+  `.ddev/db_snapshots`, which DDEV's generated `.ddev/.gitignore` keeps out of Git; the
+  developer never force-adds one (`git add -f`), whatever DDEV's own guides say about
+  committing seed snapshots. With DDEV v1.25.4 or newer, `ddev snapshot --name=seed` after
+  the first pull lets `ddev restart --reset-database -Oy` return to it without another pull.
+  Settle the database engine first: a snapshot restores only into the engine and version it
+  was taken on.
 - **`ddev boa-aliases` shows nothing / `ddev pull boa` cannot find the alias.** The site's
   aliases are mirrored into `/home/oN.ftp/.drush/` by `manage_ltd_users.sh` (cron), and
   only for registered, live sites. On a freshly provisioned site the mirror may not have
