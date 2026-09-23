@@ -88,6 +88,30 @@
       sites match exactly what they matched before, no vhost needs a
       re-verify, and the change reaches every listed site on the
       generator's next pass.
+    * Both per-site IP lists (ip_access for the whole site and
+      user_admin_access for the admin surface) now also hold over
+      HTTPS on a site without a certificate of its own. Such a site
+      is reached through the wildcard SSL front, which hands every
+      request on as a local one, and both lists always admit the box
+      itself. Each generator now also writes a front copy of every
+      listed site's list, keyed by the names only that site's vhost
+      serves on the box (a wildcard alias, or a name another instance
+      also carries, stays out), and the front judges it against the
+      real visitor. On a
+      whole-site list the ACME challenge and the MTA-STS policy stay
+      open, as they do in the vhosts. The copies appear on the
+      generators' first pass after a barracuda upgrade has updated
+      the front; a site with its own certificate was never affected.
+    * The wildcard SSL front also refuses the paths the vhosts keep
+      for the box itself (the PHP-FPM status and ping pages, the cron
+      entry points and the Nginx stub status) unless the request
+      comes from the box, so the web method of the Aegir cron keeps
+      working and nobody else reaches them through the front.
+    * user_admin_access now proves its last-good archive readable
+      before it deletes the live fragments on a failed configtest or
+      reload, and checks a freshly written archive, as ip_access
+      does: an unreadable one leaves the fragments in place and
+      names the control file to fix.
 
     * The per-site legacy TLS switch (tls-legacy-enable-<name>.info) is
       retired, and the server config no longer lists TLSv1.1 at http
