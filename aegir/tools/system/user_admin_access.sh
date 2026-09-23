@@ -61,8 +61,9 @@
 # A Grav site that serves a deliberately public headless API adds the keyword
 # `api-open` to its record: /admin stays on the list, /api stays public.
 #
-# Control file (Octopus only — regular-site vhosts; hostmaster has its own,
-# out-of-scope vhost):
+# Control file (Octopus only — the instance's sites and its control panel, whose
+# HTTPS proxy in pre.d includes the panel's fragment and map itself; the master's
+# hostmaster has its own, out-of-scope vhost):
 #   /data/disk/<oct>/static/control/ip/user_admin.txt
 #   Record: `example.com  203.0.113.10  10.0.0.0/8  2001:db8::/32  2001:db8::1`
 #   Record: `headless.example.com  203.0.113.10  api-open`
