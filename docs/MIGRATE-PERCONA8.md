@@ -54,7 +54,9 @@ The watchdog is therefore armed with a single maintenance marker,
     the target restore/replica bring-up) and, in `cutover`, across the final
     position read and the target's promotion — the highest data-loss risk in
     the entire toolchain (the cutover takes no global read lock: the 503 gate
-    and the parked cron and runners are the write barrier). On the default
+    and the parked cron and runners are the write barrier).
+
+    On the default
     relay-first order the **target** gets its watchdog back just before visitors
     are relayed to it, so the renames' database work runs under the watchdog as
     ordinary client work, while the **source** stays paused to the end of the
@@ -136,7 +138,9 @@ Horizon: this lane exists only for the 8.x generation. `mysql_native_password`
 is deprecated-but-shipped in 8.4 and REMOVED in MySQL/Percona 9.x, so
 php56-pool sites cannot follow a future move to 9.x — they would need to stay
 on 8.4 hosts (the natural gate for that, when a 9.x target ever appears, is
-codebasecheck). Note the Drupal-side split: the D6 CODE compatibility with
+codebasecheck).
+
+Note the Drupal-side split: the D6 CODE compatibility with
 MySQL 8 comes from d6lts/Pressflow 6.51+ (docs/CODEBASECHECK.md thresholds);
 what BOA's config provides is the PHP 5.6 CLIENT runtime lane, which no
 Drupal version bump could supply.
@@ -154,7 +158,9 @@ migrate onto a fresh Percona 8 target:
   Instead both `xoct import` and `xmass post-mig` do a **hard infrastructure
   flush**: cold-restart Valkey (or Redis) to drop the object cache, and restart
   every PHP-FPM master to drop opcache/APCu. This is the only treatment trusted
-  against cache/container poisoning. Operational consequence: sites are briefly
+  against cache/container poisoning.
+
+  Operational consequence: sites are briefly
   unavailable (seconds) immediately after the flush and warm up on the next
   request — expected, not a fault.
 - **Per-site PHP version pin.** Each site's PHP version lives in the account's
@@ -167,7 +173,9 @@ migrate onto a fresh Percona 8 target:
 `xoct`'s optional fourth argument renames the account on the target. Rename mode
 rewrites account references — including the per-site FPM `$user_socket` account
 token, so a renamed site is served by its own account's FPM pool rather than the
-target's install-time account of the same old name. Same-name migrations (the
+target's install-time account of the same old name.
+
+Same-name migrations (the
 common production case, and the only mode `xmass` performs) do not exercise the
 rename rewrites at all. When you do rename, verify the renamed site serves a real
 `200` **direct to the target** (not a proxy or catch-all) — a site-wide `403`

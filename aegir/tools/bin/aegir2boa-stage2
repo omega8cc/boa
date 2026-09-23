@@ -2593,17 +2593,35 @@ _peer_source() {
 }
 
 _peer_my_ip() {
-  # the address the target will see; falls back to the first global v4
-  ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -1
+  # the address the target will see: the source address of the route to the
+  # target (a private network or a second interface can carry the relay), or
+  # of the default route when the target does not resolve
+  local _t
+  _t="$(getent ahostsv4 "${_TARGET}" 2>/dev/null | awk 'NR == 1 { print $1 }')"
+  ip -4 route get "${_t:-1.1.1.1}" 2>/dev/null | sed -n 's/.* src \([0-9.]*\).*/\1/p' | head -1
 }
 
 _peer_target() {
   local _f _line _added=0
   [[ -n "${_SOURCE_IP}" ]] || _die "peer on a BOA box needs --source <ip>"
   if [[ "${_LIVE}" != "YES" ]]; then
+    local _dv4 _drc=0
     _info "[DRY] would allow ${_SOURCE_IP} in csf.allow AND csf.ignore, clear any temp block, reload csf"
+    # the trust step's own checks, so a clean dry run does not arm a live
+    # run that the trust step would stop
+    if [[ ! -x /var/xdrago/migration_proxy_trust.sh ]]; then
+      _alrt "/var/xdrago/migration_proxy_trust.sh is missing: the full BOA agents pass (a barracuda upgrade) delivers it"
+      _drc=1
+    fi
+    _dv4="$(getent ahostsv4 "${_SOURCE_IP}" 2>/dev/null | awk 'NR == 1 { print $1 }')"
+    if [[ -z "${_dv4}" ]]; then
+      _alrt "cannot resolve ${_SOURCE_IP} to an IPv4 address"
+      _drc=1
+    else
+      _info "[DRY] would register ${_dv4} as a trusted migration source (nginx realip, migration_proxy_trust.sh)"
+    fi
     [[ -n "${_PUBKEY_FILE}" ]] && _info "[DRY] would install the supplied public key for root"
-    return 0
+    return "${_drc}"
   fi
   # BOTH files: allow opens the port, ignore stops lfd re-blocking mid-run
   for _f in /etc/csf/csf.allow /etc/csf/csf.ignore; do
@@ -2620,6 +2638,21 @@ _peer_target() {
     csf -tr "${_SOURCE_IP}" >/dev/null 2>&1
     [[ "${_added}" -eq 1 ]] && csf -ra >/dev/null 2>&1 && _info "csf reloaded"
   }
+  # The source relays every migrated site here during the proxy window and
+  # hands on its own client address in CF-Connecting-IP (the visitor, or the
+  # Cloudflare edge for a CF-fronted site, as a vanilla source has no
+  # Cloudflare realip). Register it as a trusted migration source, as xmass
+  # and xoct do for theirs, or nginx and the sites on this box see the
+  # source's address for every visitor. Fail closed: a window with no trust
+  # would key every ban and flood limit on the source.
+  local _v4
+  [[ -x /var/xdrago/migration_proxy_trust.sh ]] \
+    || _die "/var/xdrago/migration_proxy_trust.sh is missing: the full BOA agents pass (a barracuda upgrade) delivers it"
+  _v4="$(getent ahostsv4 "${_SOURCE_IP}" 2>/dev/null | awk 'NR == 1 { print $1 }')"
+  [[ -n "${_v4}" ]] || _die "cannot resolve ${_SOURCE_IP} to an IPv4 address"
+  /var/xdrago/migration_proxy_trust.sh trust "${_v4}" >/dev/null 2>&1 \
+    || _die "migration_proxy_trust.sh could not register ${_v4} as a trusted migration source"
+  _info "trusted ${_v4} as the migration source (nginx realip); at decommission: /var/xdrago/migration_proxy_trust.sh untrust ${_v4}"
   if [[ -n "${_PUBKEY_FILE}" ]]; then
     [[ -r "${_PUBKEY_FILE}" ]] || _die "cannot read --pubkey-file ${_PUBKEY_FILE}"
     _line="$(head -1 "${_PUBKEY_FILE}")"

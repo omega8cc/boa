@@ -2,7 +2,9 @@
 
 BOA treats code ownership on tenant platforms as managed state. Once per
 night, the maintenance worker walks every **registered** site, resolves its
-platform root, and re-asserts both ownership and permissions. The historical
+platform root, and re-asserts both ownership and permissions.
+
+The historical
 motivation (post-Drupalgeddon) was to make sure a compromised site cannot
 rewrite code at all, and a leaked SFTP credential cannot strip the hardening
 or subvert git's repository-ownership trust (the code trees stay
@@ -37,7 +39,9 @@ platform, tracked by marker files under `~/log/ctrl/`):
   execute-only on `sites`, every `sites/<uri>` stays `0755`, and a
   symlinked `sites` or `sites/all` makes the pass skip the platform);
   stray code archives (`*.tar`, `*.tar.gz`, `*.zip`) inside `sites/all`
-  trees are deleted. A platform whose `sites/all/modules`,
+  trees are deleted.
+
+  A platform whose `sites/all/modules`,
   `sites/all/themes`, `sites/all/libraries` or `sites/all/drush` is a
   symlink has the legs that walk through those names withheld (a `SKIP`
   line in the account's nightly log names the link, once per night); the
@@ -46,7 +50,9 @@ platform, tracked by marker files under `~/log/ctrl/`):
   examined again the next night (a `modules` link already in place when
   the pass starts is refused earlier still, at the per-site control-dir
   gate, which skips that site's whole iteration with its own `SKIP`
-  line). A Grav or Textpattern platform is different again: BOA still
+  line).
+
+  A Grav or Textpattern platform is different again: BOA still
   creates its `sites/all/drush` (that is where its drushrc renders) and
   prints no `SKIP` line; what it withholds there is the `sites/all` archive
   sweep and the `sites/all/{modules,themes,libraries}` ownership legs. None of
@@ -66,20 +72,26 @@ platform, tracked by marker files under `~/log/ctrl/`):
   `oN` and the account's group with directories `02775` and files `0664`; settings-class
   files (`settings.php`, `local.settings.php`, `civicrm.settings.php`)
   kept at `oN:www-data`, mode `0440`/`0640`; the site's `files/` tree
-  chowned to `oN:www-data` (symlink-safe, `chown -h`). A site whose
+  chowned to `oN:www-data` (symlink-safe, `chown -h`).
+
+  A site whose
   `modules`, `themes` or `libraries` is a symlink has only the legs that
   reach through those names withheld (the archive sweep, the
   `modules/local-allow.info` removal and the code-dir ownership pass),
   with a `SKIP` line naming the link; the settings-file narrowing and the
   `files/` and `private/` legs still run, so the site ends no wider than
-  an accepted one. That split covers a link that appears while the pass
+  an accepted one.
+
+  That split covers a link that appears while the pass
   is already under way; a `modules` link already in place when the site's
   iteration begins is refused earlier still, at the per-site control-dir
   gate, which skips that whole iteration, so no leg of the site pass runs
   for it that night and the `SKIP` line naming `<site>/modules` is the
   gate's, not the site pass's (on a tenant-built platform the whole-tree
   pass that widened the tree narrows every site's settings-class files
-  back itself, so that site ends no wider either). The site ownership and
+  back itself, so that site ends no wider either).
+
+  The site ownership and
   permission helpers Verify runs refuse that shape outright; the `files/`
   and `private/` child entries are handled on the resolved store path
   only, never through a planted link.

@@ -91,6 +91,27 @@ if (isset($_SERVER['REMOTE_ADDR']) &&
     (preg_match("/(^127\.0\.0\.1)$/i", $_SERVER['REMOTE_ADDR']) ||
      preg_match("/(^127\.0\.0\.1\, 127\.0\.0\.1)$/i", $_SERVER['REMOTE_ADDR']))) {
   $local_req = TRUE;
+  // A loopback peer that carries X-Real-IP is a proxy on this box, the
+  // wildcard SSL front among them, and the front overwrites that header
+  // with its own visitor. Judge that visitor the way the front does: local
+  // only when it is loopback or the address it connected to (X-Forwarded-By
+  // is that address and port), which is how the box reaches its own sites.
+  if (!empty($_SERVER['HTTP_X_REAL_IP'])) {
+    $boa_hop_visitor = trim($_SERVER['HTTP_X_REAL_IP']);
+    $boa_hop_server = '';
+    if (!empty($_SERVER['HTTP_X_FORWARDED_BY'])) {
+      $boa_hop_server = trim($_SERVER['HTTP_X_FORWARDED_BY']);
+      $boa_hop_colon = strrpos($boa_hop_server, ':');
+      if ($boa_hop_colon !== FALSE) {
+        $boa_hop_server = substr($boa_hop_server, 0, $boa_hop_colon);
+      }
+    }
+    if ($boa_hop_visitor !== '127.0.0.1' && $boa_hop_visitor !== '::1' &&
+        $boa_hop_visitor !== $boa_hop_server) {
+      $local_req = FALSE;
+    }
+    unset($boa_hop_visitor, $boa_hop_server, $boa_hop_colon);
+  }
 }
 
 

@@ -36,7 +36,9 @@ the rest of the run, so the run already writes with the new group), and an
 account created after this ships is born converted -- when the box is ready
 for it: the tool present and every fetched root-run writer group-aware
 (`instgrp check`), else it is born on the box-wide group and the next
-upgrade converts it. A group name already held by another identity (a
+upgrade converts it.
+
+A group name already held by another identity (a
 member, or a user whose primary group it is) leaves the newborn on the
 box-wide group too, with a NOTE and no conversion attempt in that run;
 every later upgrade alarms until the name is freed. Each conversion writes
@@ -65,7 +67,9 @@ The hosting queue keeps running during an octopus upgrade and a tenant's
 sessions keep their old group set, so a file can be written into a not yet
 walked directory while the walk runs. The walk is re-run over the residue
 (twice at most); whatever still remains is reported as `DRIFT` and finished
-by the next pass. The conversion is kept, never rolled back for files: a
+by the next pass.
+
+The conversion is kept, never rolled back for files: a
 path left in `users` is the old state, not a new exposure, while a rollback
 would leave the busiest accounts unconverted on every release. Only a failed
 identity move rolls the account back, and a rollback that meets an identity
@@ -74,13 +78,17 @@ finish.
 
 The primary group of an identity in use cannot move: `usermod` refuses a
 user that has a process in its own root whose real, effective or saved uid
-is that user's (exit 8, nothing changed). A logged-in shell or SFTP session
+is that user's (exit 8, nothing changed).
+
+A logged-in shell or SFTP session
 of `oN.ftp` or a sub-account is such a process; an FTPS session is not,
 because pure-ftpd runs it in a chroot. So `convert` asks the same question,
 waits up to a minute for every identity it still has to move (long enough
 for a cron run of the account to end) and skips the account while one stays
 in use (exit 4, an `ALRT:` line in the upgrade report naming the identity,
-its process ids and names), before it changes anything. It looks again right
+its process ids and names), before it changes anything.
+
+It looks again right
 before each move; an identity that comes into use in between rolls the moved
 identities back and the account is still skipped (4), or the run fails (1)
 and names the identity when one of them could not be moved back. The next
@@ -101,7 +109,9 @@ barracuda pass; `instgrp check` shows both): an old `fix-drupal-*` script or
 nightly worker would write `users` back on its next pass, an old `websh` would
 lock the tenant out of its shell, and on a box that only received the fetched
 tools ahead of its upgrade (a staged publish) the tar's own Octopus and system
-libraries still write the box-wide group. An account that is already
+libraries still write the box-wide group.
+
+An account that is already
 converted takes its read-only re-pass regardless of the stamp. A skipped or
 refused account is reported in
 the upgrade report (the `ALRT:` line the octopus report reads); nothing
@@ -133,7 +143,9 @@ files), and one verdict line — `CONVERTED`, `UNCONVERTED`, `DRIFT` (paths
 under the roots are not in the account's group: back in `users`, in no
 group, or in a foreign group -- an import, a hand `chown`, a tool predating
 the form; re-run `convert` or `reclaim`, both only touch what drifted) or
-`INCONSISTENT`. Exit status 0 / 0 / 2 / 3 in that order (4 = skipped, 5 =
+`INCONSISTENT`.
+
+Exit status 0 / 0 / 2 / 3 in that order (4 = skipped, 5 =
 not ready; over `all` the worst class wins: failed, inconsistent, drift, not
 ready, skipped, done). A converted
 account without a valid marker (born converted with the tool absent, a
@@ -144,7 +156,9 @@ rewrites the marker. Every action logs one line to
 `reclaim` is the file half alone: every path under the roots takes the
 account's current group (`users` while unconverted), a marker that does not
 record this box's group is dropped. No identity change and no lock, so it
-is what a root-run restore, a migration destination and the nightly run. It still
+is what a root-run restore, a migration destination and the nightly run.
+
+It still
 defers (exit 4) while a BOA install or upgrade run is live (`/run/boa_run.pid`,
 `/run/boa_wait.pid` or `/run/octopus_install_run.pid`), unless the Octopus arm
 called it with `--from-octopus`, and it refuses with exit 3 when the account reads
@@ -160,11 +174,15 @@ account members removed from the group, the marker removed, the group
 deleted once no path and no identity carries it (a path written during the
 walk keeps the group in place; re-run). It writes `_INSTANCE_GROUP=NO` into
 the account's octopus cnf, so the next unattended upgrade does not convert
-the account again (`--keep-enabled` leaves the cnf alone). Like `convert`,
+the account again (`--keep-enabled` leaves the cnf alone).
+
+Like `convert`,
 it does not start while an identity it has to move back is in use (exit 4),
 and after the file walk it waits again before each identity's move; one
 still in use then stays on the account's group, is named, and `revert`
-exits 1 with the group kept. That identity is recorded in
+exits 1 with the group kept.
+
+That identity is recorded in
 `/var/log/boa/instgrp.revert-pending.oN`, `status` reports the unfinished
 revert, and the 3-minute limited-shell worker moves it back to `users` on
 its first pass that finds it idle (a logged-in session ends, a cron run
@@ -178,7 +196,9 @@ drift probe while the record exists.
 
 `_INSTANCE_GROUP=NO` in `/root/.oN.octopus.cnf` keeps that account on the
 box-wide model: the upgrade arm skips it, and a fresh account carrying the
-line is born the old way. For a NEW account, create `/root/.oN.octopus.cnf`
+line is born the old way.
+
+For a NEW account, create `/root/.oN.octopus.cnf`
 before `boa in-octopus` holding just two lines, `_USER="oN"` and
 `_INSTANCE_GROUP=NO`; the install completes the file with its defaults and
 keeps the seeded lines. Never copy another account's cnf for that: it carries
@@ -231,7 +251,9 @@ place: it belongs to the account.
   group move left at a staging directory, retrying for ten seconds while
   the identity is in use (`status` reports such a home as INCONSISTENT
   until then); the octopus
-  upgrade re-converts. Nothing else re-groups a tree between those. An
+  upgrade re-converts.
+
+  Nothing else re-groups a tree between those. An
   account frozen for a migration (`log/proxied.pid`) is outside all of it:
   the nightly never visits it and `reclaim` skips it, so a frozen
   destination is healed only by the migration tool's own pass (below).
@@ -248,6 +270,7 @@ place: it belongs to the account.
   name has different GIDs on two boxes. rsync maps ids by name, and the
   source account's group has no name on a destination whose account is not
   converted, so a moved tree lands there in an unassigned numeric gid.
+
   `xoct transfer`, `xcopy transfer`, a hand-run `xmass sync --live` and
   `aegir2boa-stage2 transfer` therefore run a group pass on the destination
   after every copy (`instgrp reclaim` where the tool is installed: paths in
@@ -261,6 +284,8 @@ place: it belongs to the account.
   destination account's group as they copy (so the 15-minute standby
   autosync never lands a foreign gid), and none of them carry the
   conversion marker -- it recorded the source box's
-  conversion. `instgrp` reads a marker whose gid is not the account group's
+  conversion.
+
+  `instgrp` reads a marker whose gid is not the account group's
   gid on this box as STALE (ignored), and `convert`/`reclaim` claim any path
   of the account's roots that is in no group or in another named group.

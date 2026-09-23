@@ -119,6 +119,38 @@
       reload, and checks a freshly written archive, as ip_access
       does: an unreadable one leaves the fragments in place and
       names the control file to fix.
+    * The client address a Drupal or Backdrop site sees can no longer be
+      named by the visitor. The PHP layer took CF-Connecting-IP,
+      True-Client-IP, X-Real-IP or X-Forwarded-For from any peer, so
+      anyone could pick the address flood control, logs and IP-based
+      modules saw. It now takes the client nginx's realip resolved from
+      a peer it trusts (the Cloudflare ranges, a migration source),
+      passed as the new BOA_NGINX_CLIENT fastcgi param, and from a peer
+      on the box (the wildcard SSL front, BOA's HTTPS proxies) only
+      their X-Real-IP; any other peer is the client itself. A site
+      behind a CDN or proxy that realip does not trust now sees that
+      proxy's address. A barracuda pass installs the new
+      fastcgi_params. aegir2boa-stage2's peer step on the target now
+      registers its source as a trusted migration source, as xmass and
+      xoct do, so sites relayed from a vanilla Aegir box keep their
+      visitors' addresses (a Cloudflare-fronted one arrives as the edge
+      address, as the vanilla source has no Cloudflare realip). The
+      source now prints the address it reaches the target from, and
+      migration_proxy_trust.sh gains an untrust verb that removes one
+      peer and leaves every other migration's trust in place.
+    * A migration site proxy (the vhost xoct or xcopy leaves on the old
+      box) hands the new host the real visitor of an HTTPS request that
+      came through the wildcard SSL front, not the front's 127.0.0.1.
+      The new host trusts the old box's CF-Connecting-IP, so it took
+      every such request for its own loopback. A barracuda pass gives
+      proxies written before this the same fix.
+    * The PHP layer no longer takes a request through the wildcard SSL
+      front for a local one. It tested only the connecting address,
+      which for the front is always 127.0.0.1, so the nodns aliases
+      and the /api/hidden/ paths kept for the box answered any visitor
+      over HTTPS. It now judges the visitor the front passes on:
+      local only when that is loopback or the address the request came
+      in on, as the front itself decides.
     * Each control panel's own HTTPS proxy now refuses the same paths
       kept for the box itself (the PHP-FPM status and ping pages, the
       cron entry points, the stub status) unless the request comes
@@ -130,6 +162,15 @@
       an octopus pass regenerates a panel proxy that still lacks it,
       taking the template from its own build tree when barracuda has
       not refreshed it yet.
+    * The locations that deny everyone in the Drupal vhosts (files
+      under a site's public backup_migrate/ and config_* dirs) stay
+      closed to the box itself too. The multi-IP cron access used to
+      give every deny all the box's own addresses, which any proxy
+      connecting from the box then passed on to its visitors. It now
+      extends only the locations kept for the box (the FPM status and
+      ping, the cron entry points), and every barracuda and octopus
+      pass closes the other two again in the vhost templates, the
+      rendered common include and the rendered subdir vhosts.
     * A deleted ip_access or user_admin_access control file of an
       Octopus instance changes nothing any more, over HTTP or HTTPS.
       Its site-vhost fragments had always stayed in force, while the
@@ -177,6 +218,20 @@
     * The generated maps go live only after an nginx configtest
       accepts them, and the last good set is restored if it does not,
       so a fleet map can never take the web server down.
+    * Every distribution and vanilla core staticbuild builds is
+      audited against the published security advisories: the count
+      and the advisory ids are recorded beside the tarball and in the
+      run summary, and the build is never blocked by them.
+    * New staticbuild advisories re-checks every published catalogue
+      platform, distributions and Drupal 9 to 11 cores, against
+      today's advisories and lists, with versions, the contrib BOA
+      adds to Drupal 8+ platforms outside Composer.
+    * staticbuild distribute no longer replaces a published
+      distribution or core with a same-name tarball whose lock
+      differs unless the platform is named with -O, since the boxes
+      that already hold it would never fetch it again.
+    * The Drupal CMS, Opigno and Open Social catalogue platforms are
+      built without their require-dev packages, like the others.
 
 @=> Improvements
 
@@ -362,6 +417,34 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * A Drupal 10+ site no longer fails after its platform is locked again
+      following work with the site-local Drush. Re-locking a platform the
+      Unlock Local Drush task left open, by the Lock Local Drush task or a
+      Verify, now rebuilds every Drupal 10+ site on it with Drupal core's
+      own rebuild. A service container compiled by the site-local Drush
+      (a module installed or removed, a recipe applied) used to stay in
+      the cache, and the site failed every request that writes a log
+      entry, a 404 included, until its next Verify.
+
+    * Speed Booster leaves a query out of a page's cache key only when
+      every parameter in it is a campaign tag or a click id (utm_*,
+      gclid, fbclid, msclkid and the like). It used to drop the whole
+      query whenever such a tag appeared anywhere in it, even inside
+      another parameter's name, so ?page=2&utm_source=... or
+      ?datasource=... could be served the plain page's copy, while a
+      link carrying only a click id got a cache entry of its own.
+
+    * Uptime monitors (Pingdom, UptimeRobot) always reach the site now:
+      Speed Booster never answers them from its cache, never stores
+      their responses and never shows them a stale copy. They used to
+      share the crawlers' entries, kept for an hour, and were shown the
+      last good page while PHP was down.
+
+    * A site can keep one response out of the Speed Booster cache by
+      sending the X-Force-Nocache: YES header: that response is never
+      stored. The header was checked before the response existed, so
+      it never took effect.
 
     * A large site backup downloaded from the control panel in a browser
       no longer fails part way, however often it is retried. An Nginx
@@ -587,6 +670,37 @@
       zone -- are changed, so a custom postfix name or an installed
       certificate stays. The yml aliases Drush 9+ reads follow the
       rename too, master_url included.
+    * A whole-server move no longer refuses every resume over a task the
+      source was running when its panel stopped. Step 12.90 failed out
+      only the travelled rows whose start time was unset, while its
+      re-count refused on every processing row, so one interrupted task
+      parked the cutover with "task(s) still queued after the fail-out"
+      until an operator cleared the row by hand. The fail-out and the
+      re-count now use one predicate; a row whose runner is still alive
+      on the target is left to finish, and the refusal says so.
+    * The cutover's queued-task report no longer says that travelled
+      tasks will run on the target when the cutover fails them out
+      there: on the relay-first order its last line says they are failed
+      out at step 12.90 and are to be re-queued after the move.
+    * A renamed site's 301 on a migration proxy survives a later xoct
+      run. Its two hostnames reach xoct only through the environment
+      xmass sets, so a hand --repair, a --renotify resend or the
+      --repair --retarget that follows a failover rendered every site
+      named under the old box hostname as a plain proxy of that old
+      name, which the renamed target answers with its catch-all page.
+      When the account already answers a renamed site with a 301, or
+      still holds sites on the per-host gate, xoct now reads the names
+      itself -- this box's own and the target's as it answers now -- and
+      refuses before it changes anything when it cannot. The re-run
+      commands in the cutover's closing summary and in xoct's failure,
+      HTTPS and resend messages carry both names, and the summary no
+      longer says to clear http-off.pid by hand after a failed
+      conversion, which would have served the stale local copy.
+    * An account whose proxy conversion failed at cutover keeps its Aegir
+      dispatcher parked when the source's runners come back, as a
+      converted account's is: its panel database lives on the target
+      now, and its travelled queue would have run against the stale
+      local copy.
     * The barracuda launcher refreshes itself when its release is older
       than the tree it is about to upgrade to, and runs again with the
       same arguments. An older launcher stamped the new tree with its own

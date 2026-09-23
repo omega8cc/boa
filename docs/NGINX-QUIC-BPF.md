@@ -29,6 +29,7 @@ So on every barracuda pass, a fresh install included, after the last Nginx
 restart of that pass, BOA first starts a throwaway Nginx master — the same
 binary, user and worker count, one QUIC listener on a loopback port — and
 writes the directive only when that master started and logged no complaint.
+
 The probe normally takes about half a second, gives up within a few seconds
 at most, stops its master by its own pid and removes its files. A probe that
 fails is tried once more before the verdict counts. The directive also needs
@@ -49,7 +50,9 @@ never with a restart of its own. A reload cannot take Nginx down — a failed
 eBPF load is only logged there — but it is also the first load that sees the
 system's real listeners and the running master's limits, so BOA reads the
 error log right after the enabling reload: a failure there removes the
-fragment again and leaves the latch described below. What remains is the
+fragment again and leaves the latch described below.
+
+What remains is the
 first real start with the fragment in place (a reboot, a service restart),
 and that is what the safety net is for.
 
