@@ -123,8 +123,8 @@ answers its own "Site off-line" 503. Loading the plugin
 (`mysql_native_password=ON`) is necessary but not sufficient.
 
 BOA's 8.4 config pass therefore also sets
-`authentication_policy = mysql_native_password,,` (sql.sh.inc directive sync,
-aegir2boa D-015): the greeting is native, a native-plugin user connects from
+`authentication_policy = mysql_native_password,,` (sql.sh.inc directive sync):
+the greeting is native, a native-plugin user connects from
 PHP 5.6, and `caching_sha2` users — root, every modern-PHP site — still
 authenticate via the client auth-switch. The reset phase comments the
 directive for every other version (5.7 aborts on the unknown variable, so a

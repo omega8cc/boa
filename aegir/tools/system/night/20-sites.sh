@@ -2101,7 +2101,7 @@ _fix_permissions() {
         && [ -f "${_Dir}/public/css.php" ] \
         && [ -d "${_Dir}/admin" ]; }; }; then
     ### No control-INI dir here: a Grav or Textpattern site carries no BOA
-    ### control INI (boa-grav D-011, boa-txp D-013), and the per-site loop
+    ### control INI, and the per-site loop
     ### clears what an earlier release seeded.
     if [ -x "/usr/local/bin/fix-drupal-site-ownership.sh" ]; then
       /usr/local/bin/fix-drupal-site-ownership.sh \
@@ -2900,7 +2900,7 @@ _daily_process() {
         "${_PLR_CTRL_F}" \
         "${_Plr}/sites/all/modules/default.boa_platform_control.ini"
       # Grav and Textpattern trees carry no BOA control INI: nothing reads one
-      # there (boa-grav D-011, boa-txp D-013). Decide once, from the platform
+      # there. Decide once, from the platform
       # root, AFTER the gates above -- a planted modules link skips a foreign
       # site's iteration exactly as it skips a Drupal one, which keeps every
       # later leg off that path -- and clear what an earlier release seeded.

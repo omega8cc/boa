@@ -95,7 +95,7 @@ if [ ! -e "${_pthLog}/.migrated.txt" ] && [ -d "${_xpthLog}" ]; then
   touch "${_pthLog}/.migrated.txt"
 fi
 #
-# C-003: one-time copy of operator markers /root -> /etc/boa (originals left for
+# One-time copy of operator markers /root -> /etc/boa (originals left for
 # later cleanup). Guard-once per group so an operator's later removal of an
 # /etc/boa marker is not undone by a re-copy from the stale /root original.
 if [ ! -e "${_pthEtc}/.migrated.svc-control.txt" ]; then
@@ -1743,13 +1743,13 @@ _update_agents() {
   _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f92 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
   _fetch_versioned ${_optBin}/clearwebbans "${_urlHmr}/tools/bin/clearwebbans" f95 --symlink ${_usrBin}/clearwebbans --guard /local/bin/clearwebbans
   _fetch_versioned ${_optBin}/defaultkeys "${_urlHmr}/tools/bin/defaultkeys" f99 --symlink ${_usrBin}/defaultkeys --guard /local/bin/defaultkeys
-  # PHP-selecting bee launcher (D-021 identity policy). Deployed unconditionally
+  # PHP-selecting bee launcher (identity verb policy). Deployed unconditionally
   # but inert until the gated _get_bee installs /opt/tools/bee; canonical path
   # /opt/local/bin/bee (no /usr/bin symlink, websh's PATH resolves it);
   # clients execute it, so it ships world-executable.
   _fetch_versioned ${_optBin}/bee "${_urlHmr}/tools/bin/bee" f96 --mode 755 --guard /local/bin/bee
-  # PHP-selecting Grav CLI wrapper (identity verb policy + the D-005 enforced
-  # 8.3 floor; boa-grav map par.3.3.3). Deployed unconditionally but inert
+  # PHP-selecting Grav CLI wrapper (identity verb policy + the enforced
+  # 8.3 floor). Deployed unconditionally but inert
   # without a Grav install in reach (it resolves the target from CWD and
   # refuses vendor-less trees); the gated surfaces are the platforms and the
   # release staging, not this launcher. Canonical path /opt/local/bin/grav
@@ -4847,7 +4847,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f94 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
-    _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f92 --guard /local/bin/memorytuner
+    _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f91 --guard /local/bin/memorytuner
     _fetch_versioned ${_optBin}/mergecsf "${_urlHmr}/${_tBn}/mergecsf" f99 --guard /local/bin/mergecsf
     # mycnfup is retired: a Debian-only tuner that only the discontinued
     # cluster tooling ever called. Markers go with the file.

@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # PHP-selecting launcher for the Grav 2 CLI family, enforcing the enforced-PHP
-# floor (boa-grav D-005: >= 8.3, 8.4 preferred) and the identity verb policy
-# (map par.3.3.3). Standalone tool: _msg/_alrt are permitted here.
+# floor (>= 8.3, 8.4 preferred) and the identity verb policy
+# (point 1 below). Standalone tool: _msg/_alrt are permitted here.
 #
 # Unlike bee (one global /opt/tools copy), Grav's real CLI lives INSIDE each
 # install (a site capsule or a platform seed), so the target root is resolved
@@ -13,11 +13,11 @@
 # 1. Full verb access ONLY for backend identities (root, aegir, o<N>). Every
 #    other identity (*.ftp clients) is denied the platform-mutating set before
 #    exec: self-upgrade/direct-install move a capsule out from under the Ægir
-#    upgrade channel (mirror-fed, boa-grav D-004/D-006), sandbox creates
+#    upgrade channel (mirror-fed), sandbox creates
 #    installs outside management, clean deletes user/config/security.yaml (a
 #    release-build tool, never a hosting operation), scheduler is a later
 #    deliberate wave, and bare `grav install` is a network composer run.
-#    GPM package install/update stays OPEN for clients (D-006: the plugin
+#    GPM package install/update stays OPEN for clients (the plugin
 #    long tail is client-managed). new-project is denied with them -- it
 #    runs sandbox and then install internally. The gate matches Symfony's
 #    own resolution rule: a verb that is a PREFIX of a denied name is
@@ -105,7 +105,7 @@ if [[ "${_BACKEND}" = "NO" ]]; then
   # PREFIX of any denied name. Nothing legitimate is lost -- an exact command
   # name wins Symfony's own lookup first and is never a strict prefix of a
   # denied name (`install` is not a prefix of `direct-install`, so GPM package
-  # install/update stays open per D-006), and a prefix that is ambiguous would
+  # install/update stays open for clients), and a prefix that is ambiguous would
   # fail in Symfony anyway. new-project is denied with the rest because its own
   # serve() resolves and runs `sandbox` and then `install` internally.
   _DENY=""
@@ -166,7 +166,7 @@ if [[ -z "${_GRAV_PHP}" ]]; then
   fi
 fi
 
-# Clamp to the floor (D-005: the version is ENFORCED for Grav - a sub-8.3
+# Clamp to the floor (the version is ENFORCED for Grav - a sub-8.3
 # selection from the Drupal-shaped control files is overridden, not honoured).
 if [[ -n "${_GRAV_PHP}" ]] && [[ -x "${_GRAV_PHP}" ]]; then
   _n="$(printf '%s' "${_GRAV_PHP}" | tr -cd '0-9')"

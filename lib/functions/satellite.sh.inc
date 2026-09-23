@@ -85,7 +85,7 @@ _stage_d6d7_kit() {
 #
 # Stage the newest official Grav admin-bundle release zip for the
 # per-instance upgrade channel: provision-grav-upgrade resolves the newest
-# grav-admin-v*.zip under ${_ROOT}/static/grav-releases/ (boa-grav D-004 --
+# grav-admin-v*.zip under ${_ROOT}/static/grav-releases/ (the channel is
 # mirror-fed; this box never talks to getgrav.org). Version from the same
 # mirror stamp the platform build resolves; presence-gated for idempotency
 # and re-checked on every up-* run. The resolver always picks the newest by
@@ -1062,14 +1062,14 @@ _satellite_cnf() {
     else
       echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_octCnf}
     fi
-    ### Ships dark (boa-grav D-002); no _MIGRATED heal by design.
+    ### Ships dark; no _MIGRATED heal by design.
     _GRAV_SUPPORT_TEST=$(grep "^_GRAV_SUPPORT=" ${_octCnf} 2>&1)
     if [[ "${_GRAV_SUPPORT_TEST}" =~ "_GRAV_SUPPORT=" ]]; then
       _DO_NOTHING=YES
     else
       echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}" >> ${_octCnf}
     fi
-    ### Ships dark (boa-txp D-002); no _MIGRATED heal by design.
+    ### Ships dark; no _MIGRATED heal by design.
     _TXP_SUPPORT_TEST=$(grep "^_TXP_SUPPORT=" ${_octCnf} 2>&1)
     if [[ "${_TXP_SUPPORT_TEST}" =~ "_TXP_SUPPORT=" ]]; then
       _DO_NOTHING=YES
@@ -5417,7 +5417,7 @@ _satellite_make() {
   fi
 
   ### Stage the pinned D6->D7 contrib kit for provision-backdrop-d6-upgrade,
-  ### behind _BACKDROP_SUPPORT (D-012). Stamp-gated no-op when current.
+  ### behind _BACKDROP_SUPPORT. Stamp-gated no-op when current.
   _stage_d6d7_kit
   _stage_grav_releases
   ### Backstop bee for octopus-only boxes; no-op when already installed.
@@ -7477,19 +7477,19 @@ _satellite_child_b_aegir_ui_enhance() {
     ${_DRUSHCMD} @hostmaster en hosting_site_backup_manager -y &> /dev/null
     ${_DRUSHCMD} @hostmaster en hosting_http_basic_auth -y &> /dev/null
     ### Backdrop platform awareness in the hostmaster frontend; gated dark
-    ### behind _BACKDROP_SUPPORT (D-012). Enabling the module also enables
+    ### behind _BACKDROP_SUPPORT. Enabling the module also enables
     ### its 'backdropcms' hosting feature via hosting_modules_enabled().
     if [ "${_BACKDROP_SUPPORT}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster en hosting_backdrop -y &> /dev/null
     fi
     ### Grav platform awareness in the hostmaster frontend; gated dark
-    ### behind _GRAV_SUPPORT (boa-grav D-002). Enabling the module also
+    ### behind _GRAV_SUPPORT. Enabling the module also
     ### enables its 'gravcms' hosting feature via hosting_modules_enabled().
     if [ "${_GRAV_SUPPORT}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster en hosting_grav -y &> /dev/null
     fi
     ### Textpattern platform awareness in the hostmaster frontend; gated dark
-    ### behind _TXP_SUPPORT (boa-txp D-002). Enabling the module also enables
+    ### behind _TXP_SUPPORT. Enabling the module also enables
     ### its 'txpcms' hosting feature via hosting_modules_enabled().
     if [ "${_TXP_SUPPORT}" = "YES" ]; then
       ${_DRUSHCMD} @hostmaster en hosting_txp -y &> /dev/null
