@@ -52,9 +52,9 @@ server avoids the move by installing with the `percona-8.4` argument (docs/INSTA
 
 ## Drupal 7
 
-- [Commerce v.1](https://drupal.org/project/commerce_kickstart) (7.105.2)
-- [Drupal 7.105.2](https://docs.tag1.com/faqs/)
-- [Ubercart 3.13](https://drupal.org/project/ubercart) (7.105.2)
+- [Commerce v.1](https://drupal.org/project/commerce_kickstart) (7.106.1)
+- [Drupal 7.106.1](https://docs.tag1.com/faqs/)
+- [Ubercart 3.13](https://drupal.org/project/ubercart) (7.106.1)
 
 ## Drupal 6
 
@@ -82,7 +82,7 @@ server avoids the move by installing with the `percona-8.4` argument (docs/INSTA
 
 * Opt-in: the `TXP` platform builds only when `_TXP_SUPPORT=YES` is set in the instance's Octopus config. Official releases only, run on the server's default modern PHP, and no BOA INI files apply to Textpattern sites.
 
-* All D7 platforms have been enhanced using [Drupal 7.105.2 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
+* All D7 platforms have been enhanced using [Drupal 7.106.1 +Extra core](https://github.com/omega8cc/7x/tree/7.x-om8)
 
 * All D6 platforms have been enhanced using [Pressflow (LTS) 6.60.1 +Extra core](https://github.com/omega8cc/pressflow6/tree/pressflow-plus)
 
