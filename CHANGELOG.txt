@@ -119,6 +119,31 @@
       reload, and checks a freshly written archive, as ip_access
       does: an unreadable one leaves the fragments in place and
       names the control file to fix.
+    * Each control panel's own HTTPS proxy now refuses the same paths
+      kept for the box itself (the PHP-FPM status and ping pages, the
+      cron entry points, the stub status) unless the request comes
+      from the box: it proxies to the panel's vhost from the box's own
+      address, which those locations admit, so a panel's FPM status
+      was readable by anyone over HTTPS. A barracuda pass adds the
+      same refusal, taken from its own template, to every older HTTPS
+      proxy in pre.d, per-site ones made by xoct ssl-gen included, and
+      an octopus pass regenerates a panel proxy that still lacks it,
+      taking the template from its own build tree when barracuda has
+      not refreshed it yet.
+    * A deleted ip_access or user_admin_access control file of an
+      Octopus instance changes nothing any more, over HTTP or HTTPS.
+      Its site-vhost fragments had always stayed in force, while the
+      wildcard front's copies were dropped, so HTTPS alone was lifted.
+      A deletion does not travel to a standby mirror or a migration
+      target, so lifting would only ever lift one box. To lift, remove
+      a site's line or empty the file. The front copies keep following
+      each site's current names, as the vhost fragments do, so a new
+      alias is covered on HTTPS too and a moved one is released.
+    * edgetest checks the wildcard SSL front and every other HTTPS
+      proxy in pre.d: the refusal is deployed, and a request from another
+      loopback address for the stub status or the FPM ping answers
+      403 (a 200 is reported as a leak). Its presence and fragment
+      checks now cover user_admin_access too.
 
     * The per-site legacy TLS switch (tls-legacy-enable-<name>.info) is
       retired, and the server config no longer lists TLSv1.1 at http

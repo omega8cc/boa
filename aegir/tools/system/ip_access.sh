@@ -18,7 +18,10 @@
 #   master  : /var/aegir/control/ip/access.txt          (the sqladmin proxy)
 #   octopus : /data/disk/<oct>/static/control/ip/access.txt
 # A site removed from the control file has its fragment pruned (restriction
-# lifted).  Record format: `example.com 203.0.113.2 10.0.0.0/8 2001:db8::/32`.
+# lifted).  A deleted Octopus control file changes nothing: the lists stay as they
+# are (a deletion does not travel to a mirror or a migration target, so it could
+# only ever lift one box); remove a site's line or empty the file to lift it.
+# Record format: `example.com 203.0.113.2 10.0.0.0/8 2001:db8::/32`.
 #
 # HTTPS for a site without its own certificate arrives through the wildcard SSL
 # front (nginx_wild_ssl.conf), which proxies to the site's :80 vhost, where the
@@ -149,7 +152,7 @@ _site_hosts() {
 }
 
 # name -> how many rendered vhost files on the box serve it; built by
-# _ensure_owners at most once per run.
+# _build_owners at most once per run.
 declare -A _host_owners=()
 _owners_built=""
 
@@ -158,7 +161,7 @@ _ensure_owners() {
   # takes copies and this context lists a site that has a vhost of its own.
   # Runs in the main shell, so the command substitutions after it inherit
   # the index. $1 = control file, $2 = the context's vhost.d dir.
-  local _line _s _need="" _n _h _v
+  local _line _s _need=""
   [[ -n "${_front_on}" && -z "${_owners_built}" ]] || return 0
   while IFS= read -r _line; do
     _line="${_line%%#*}"
@@ -171,6 +174,13 @@ _ensure_owners() {
     fi
   done < "$1"
   [[ -n "${_need}" ]] || return 0
+  _build_owners
+}
+
+_build_owners() {
+  # The box-wide index itself, at most once per run and in the main shell.
+  local _n _h _v
+  [[ -z "${_owners_built}" ]] || return 0
   _owners_built="yes"
   while read -r _n _h; do
     _host_owners["${_h}"]="${_n}"
@@ -209,6 +219,45 @@ _front_clear() {
   rm -f "$2"
   [[ -n "${_any}" ]] || return 0
   echo "Dropped the front copies of a skipped context: $1"
+  _nginx_held_down && return 0
+  service nginx configtest &> /dev/null && service nginx reload
+}
+
+_front_keep_valid() {
+  # A context whose control file is gone keeps its lists exactly as they are,
+  # over HTTP and HTTPS alike: a deletion never travels to a mirror or a
+  # migration target (static/control is copied additively), so lifting here
+  # would lift one box only and the lock would come back after a failover or
+  # cutover. To lift, remove a site's line or empty the file. Nothing here
+  # writes a new copy, so none is ever dropped either: each host map follows
+  # the names only its site's vhost serves, as the vhost fragments follow the
+  # vhost they are included in. A new alias is covered on HTTPS as on HTTP, a
+  # name that moved to another site leaves the map, and a site with no such
+  # name left keeps an empty map (inert) that a later run can fill again.
+  # $1 = front dir, $2 = the context's vhost.d dir, $3 = its front marker.
+  local _f _site _want _have _tmp _changed=""
+  for _f in "$1"/*.http.conf; do
+    [[ -e "${_f}" ]] || continue
+    _build_owners
+    _site=$(basename "${_f}" .http.conf)
+    _want=$(_front_hosts "$2/${_site}" | tr '\n' ' ')
+    _have=$(awk '/^map \$host /{p=1; next} p && /^}/{exit} p && $2 == "1;" {print $1}' "${_f}" \
+      | sort | tr '\n' ' ')
+    [[ "${_want}" == "${_have}" ]] && continue
+    _tmp="$1/.${_site}.http.tmp.$$"
+    if awk -v want="${_want}" '
+        /^map \$host / { print; p = 1; next }
+        p && /^}/ { n = split(want, w, " "); for (i = 1; i <= n; i++) print "  " w[i] " 1;"; p = 0; print; next }
+        p && $2 == "1;" { next }
+        { print }' "${_f}" > "${_tmp}" && mv -f "${_tmp}" "${_f}"; then
+      _changed="yes"
+      echo "The front copy of ${_site} now claims: ${_want:-no name}"
+    else
+      rm -f "${_tmp}"
+    fi
+  done
+  [[ -n "${_changed}" ]] || return 0
+  rm -f "$3"
   _nginx_held_down && return 0
   service nginx configtest &> /dev/null && service nginx reload
 }
@@ -292,7 +341,7 @@ _ssh_ips_hash=$(echo "${_ssh_ips} ${_server_ip}" | md5sum | awk '{print $1}')
 _process_context() {
   local _input_file="$1" _nginx_path="$2" _backup_dir="$3" _vhost_dir="$4"
   if [[ ! -f "${_input_file}" ]]; then
-    _front_clear "${_nginx_path}_front" "${_nginx_path}/.access_front_hash"
+    _front_keep_valid "${_nginx_path}_front" "${_vhost_dir}" "${_nginx_path}/.access_front_hash"
     return 0
   fi
 

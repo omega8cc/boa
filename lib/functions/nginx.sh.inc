@@ -1250,6 +1250,47 @@ _nginx_quic_bpf_sync() {
   fi
 }
 
+_nginx_ssl_proxy_local_refusal() {
+  ### Every HTTPS proxy in pre.d (a control panel's, or a per-site one made by
+  ### xoct ssl-gen) connects to its vhost from the box's own address, which
+  ### that vhost admits to its loopback-only paths. A proxy written before the
+  ### template refused them gets the template's own block here, taken from
+  ### this pass's build tree: a panel would otherwise wait for its instance's
+  ### next octopus pass, and nothing regenerates a per-site proxy. A file
+  ### without the anchor line is left alone, and every insert is undone when
+  ### the config no longer tests clean.
+  local _src="${_bldPth}/aegir/tools/system/conf/ssl_proxy.conf"
+  local _preD="/var/aegir/config/server_master/nginx/pre.d"
+  local _bak _p _any=""
+  grep -q boa_panel_local "${_src}" 2>/dev/null || return 0
+  _bak=$(mktemp -d /var/backups/.boa-ssl-proxy.XXXXXX 2>/dev/null) || return 0
+  awk '/### Loopback-only paths of the vhost behind this proxy/ { p = 1; print "  ###" }
+    p && NF { print }
+    p && /return 403;/ { r = 1 }
+    r && /^  }$/ { exit }' "${_src}" > "${_bak}/.block"
+  if ! grep -q 'set $boa_panel_local "";' "${_bak}/.block" \
+    || ! grep -q "return 403;" "${_bak}/.block"; then
+    rm -rf "${_bak}"
+    return 0
+  fi
+  for _p in "${_preD}"/*ssl_proxy.conf; do
+    [ -f "${_p}" ] || continue
+    grep -q boa_panel_local "${_p}" && continue
+    grep -q "^  log_not_found " "${_p}" || continue
+    cp -af "${_p}" "${_bak}/" || continue
+    awk -v blk="${_bak}/.block" '{ print }
+      !d && /^  log_not_found / { while ((getline _l < blk) > 0) print _l; d = 1 }' \
+      "${_bak}/${_p##*/}" > "${_p}"
+    _any="yes"
+  done
+  if [ -n "${_any}" ] && ! nginx -t > /dev/null 2>&1; then
+    for _p in "${_bak}"/*ssl_proxy.conf; do
+      [ -f "${_p}" ] && cat "${_p}" > "${_preD}/${_p##*/}"
+    done
+  fi
+  rm -rf "${_bak}"
+}
+
 _nginx_config_update_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _nginx_config_update_fix"
@@ -1344,6 +1385,7 @@ _nginx_config_update_fix() {
       wait
       sed -i "s/add_header Vary .*//g" /var/aegir/config/server_*/nginx.conf &> /dev/null
       wait
+      _nginx_ssl_proxy_local_refusal
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
       sed -i "s/:443;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
