@@ -60,14 +60,18 @@ run aborts rather than rewrite the database without a complete backup.
 
 The master root's run (`--aegir-root /var/aegir`) also renames the names the
 box was given at install and nothing else rewrites: postfix `myhostname` and
-a `mydestination` entry naming the box, `/etc/mailname`, and BOA's
+the `mydestination` entries naming the box (its fqdn, and the
+`localhost.<zone>` token the installer writes beside it, whose zone is
+renamed when it is a former name's), `/etc/mailname`, and BOA's
 self-signed fallback certificate (`/etc/ssl/private/nginx-wild-ssl.crt`,
 re-issued for `*.<new-fqdn>` on its existing key, the old one kept under
 `backups/rename-hostname/`). Each is renamed only when it carries one of the
 box's former names — the old hostname, or the name that certificate was
-issued for, which is how a box restored from an image and renamed by an older
-tool is still recognised — so a custom `myhostname` or a certificate you
-installed yourself is left alone. Every root's run also rewrites the yml
+issued for, and for the localhost token one of their zones — which is how a
+box restored from an image and renamed by an older
+tool is still recognised at its next rename (a run whose aliases already carry
+the system FQDN stops with "nothing to do" before this step) — so a custom
+`myhostname` or a certificate you installed yourself is left alone. Every root's run also rewrites the yml
 alias copies Drush 9+ reads (`<root>/.drush/sites`, and for an account the
 limited-shell user's `/home/oN.ftp/.drush/sites`), so `master_url` there
 follows the rename.

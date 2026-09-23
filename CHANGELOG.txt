@@ -496,14 +496,32 @@
       autosync pass now carries /root/.my.cnf and /root/.my.pass.txt when
       they differ, installs them only once they open the standby's
       database, and keeps the replaced pair once as *.xmass_prev.
+    * A migration proxy account set with --no-deadline (xoct proxy-mode
+      or xoct proxy) is no longer mailed "This arrangement ends on
+      <date>" against that instruction. The record stored it as an empty
+      deadline, and every later resolution -- the conversion an xmass
+      cutover runs, a repair, a proxy-mode run without a deadline flag --
+      filled it from the box default (/data/conf/migproxy_deadline.txt,
+      which xmass --proxy-deadline writes). It is now kept as
+      _MIG_DEADLINE=none on both ends of the pair, xoct and xmass stop on
+      it, a later --deadline= replaces it, and the policy table and the
+      xmass per-account report show it. A record with no deadline at all
+      still takes the box default, as before. So does a record an earlier
+      --no-deadline wrote, which cannot be told apart from one: run
+      xoct proxy-mode oN <mode> --no-deadline once more, whichever verb
+      set it first, to store the explicit none (as a per-account pin).
     * renameaegirhost renames the box-level names written at install:
-      postfix myhostname and a mydestination entry, /etc/mailname, and
-      the self-signed certificate Nginx presents for a name it does not
-      serve, re-issued on its own key. A renamed, cloned or restored box
-      used to go on introducing itself by its former name in every mail it
-      sent. Only values that carry a former name of the box are changed,
-      so a custom postfix name or an installed certificate stays. The yml
-      aliases Drush 9+ reads follow the rename too, master_url included.
+      postfix myhostname and the mydestination entries naming the box --
+      its fqdn and the localhost.<zone> token the installer writes beside
+      it, which used to keep the zone of the name the box was built under
+      -- /etc/mailname, and the self-signed certificate Nginx presents
+      for a name it does not serve, re-issued on its own key. A renamed,
+      cloned or restored box used to go on introducing itself by its
+      former name in every mail it sent. Only values that carry a former
+      name of the box -- or, for the localhost token, a former name's
+      zone -- are changed, so a custom postfix name or an installed
+      certificate stays. The yml aliases Drush 9+ reads follow the
+      rename too, master_url included.
     * The barracuda launcher refreshes itself when its release is older
       than the tree it is about to upgrade to, and runs again with the
       same arguments. An older launcher stamped the new tree with its own

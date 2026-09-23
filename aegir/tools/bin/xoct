@@ -191,11 +191,14 @@ _mig_sweep_legacy() {
 ### cutover refuses, because one wrong mail is recoverable and a boxful is not.
 ### The deadline resolves independently over the same ladder: "everyone off
 ### this box by X" is a legitimate box-wide statement even where one account
-### carries its own mode.
+### carries its own mode. An explicit --no-deadline is a value on that ladder
+### too: the record stores it as "none", and _MIG_DEADLINE_NONE=YES says the
+### ladder stopped on it. _MIG_DEADLINE itself stays empty for it, because
+### every consumer tests, logs, compares and mails it as empty-means-none.
 _mig_resolve() {
   local _root="$1" _cnf _m _d
   _cnf="${_root}/${_MIG_CNF_NAME}"
-  _MIG_MODE=""; _MIG_DEADLINE=""; _MIG_SOURCE=""
+  _MIG_MODE=""; _MIG_DEADLINE=""; _MIG_SOURCE=""; _MIG_DEADLINE_NONE=""
   _mig_sweep_legacy
 
   ### A target-role record is the inbound half of the peer-record pair: it
@@ -213,6 +216,7 @@ _mig_resolve() {
       _MIG_SOURCE="$(_mig_get "${_cnf}" _MIG_SCOPE)"
       [ "${_MIG_SOURCE}" = "account" ] || _MIG_SOURCE=box
       _mig_valid_date "${_d}" && _MIG_DEADLINE="${_d}"
+      [ "${_d}" = "none" ] && _MIG_DEADLINE_NONE=YES
     else
       [ -n "${_m}" ] && echo "ALRT: ${_cnf}: invalid _MIG_MODE '${_m}' ignored"
     fi
@@ -225,7 +229,10 @@ _mig_resolve() {
     fi
   fi
 
+  ### A legacy empty deadline still takes the box default; an explicit none
+  ### does not -- refilling it mailed an end date the operator had removed.
   if [ -n "${_MIG_MODE}" ] && [ -z "${_MIG_DEADLINE}" ] \
+    && [ "${_MIG_DEADLINE_NONE}" != "YES" ] \
     && [ -r "${_MIG_BOX_DEADLINE_FILE}" ]; then
     _d="$(head -n1 "${_MIG_BOX_DEADLINE_FILE}" 2>/dev/null | tr -d '\r\n')"
     _mig_valid_date "${_d}" && _MIG_DEADLINE="${_d}"
@@ -265,6 +272,8 @@ _mig_write_record() {
     echo "_MIG_PEER_OCT=${_peer_oct}"
     echo "_MIG_MODE=${_mode}"
     echo "_MIG_SCOPE=${_scope}"
+    ### Record form: a date, "none" (explicit, the resolvers stop on it) or
+    ### empty (unset, the box default fills it).
     echo "_MIG_DEADLINE=${_dl}"
     ### The withdrawal date a retirement promised is its own key: a deadline
     ### on a retired record would be inherited by a later mode declaration
@@ -3197,7 +3206,9 @@ _mig_render_table() {
         _mig_valid_mode "${_m}" || _m="-"
         _d="$(_mig_get "${_cnf}" _MIG_DEADLINE)"
         [ "${_m}" = "retired" ] && _d="$(_mig_get "${_cnf}" _MIG_RETIRE_DATE)"
-        _mig_valid_date "${_d}" || _d="-"
+        ### "none" is an explicit --no-deadline, which no box default fills;
+        ### "-" is unset and takes the box default's date, if there is one.
+        _mig_valid_date "${_d}" || [ "${_d}" = "none" ] || _d="-"
         _s="$(_mig_get "${_cnf}" _MIG_SCOPE)"
         [ "${_s}" = "account" ] || _s=box
         _p="$(_mig_get "${_cnf}" _MIG_PEER_IP)/$(_mig_get "${_cnf}" _MIG_PEER_OCT)"
@@ -3269,7 +3280,8 @@ _xoct_warn_proxy_cert_horizon() {
 ### rc 7 = the peer owns a SOURCE-role record for that account (it has since
 ### become a source itself, chained migration); callers decide whether that is
 ### fatal (fresh conversion: yes) or an alert (late policy edits: no).
-### Args: 1 peer-ip 2 peer-acct 3 role 4 mode 5 scope 6 deadline 7 src-acct
+### Args: 1 peer-ip 2 peer-acct 3 role 4 mode 5 scope 6 deadline in record
+### form (a date, "none" or empty) 7 src-acct
 _xoct_push_peer_record() {
   local _pip="$1" _pacct="$2" _prole="$3" _pmode="$4" _pscope="$5" _pdl="$6" _psrc="$7" _prdl="$8"
   local _my _myall
@@ -3405,7 +3417,7 @@ _xoct_wire_target_proxy_trust() {
 ### peer that cannot take the record now is a peer whose reconcile would later
 ### decide teardown from a stale or absent one.
 _xoct_proxy_preflight() {
-  local _cnf _old_peer
+  local _cnf _old_peer _rec_dl
   _cnf="${_USR}/${_MIG_CNF_NAME}"
   _XOCT_PROXY_OK=0
   _XOCT_PROXY_FAIL=0
@@ -3476,13 +3488,17 @@ _xoct_proxy_preflight() {
     _MIG_SOURCE=flag
     _XOCT_SCOPE=account
   fi
+  ### Neither deadline flag keeps what the resolver found, an explicit none
+  ### included; a date replaces a none, --no-deadline records one.
   if [ "${_XOCT_NO_DEADLINE}" = "YES" ]; then
     _MIG_DEADLINE=""
+    _MIG_DEADLINE_NONE=YES
   elif [ -n "${_XOCT_DEADLINE_FLAG}" ]; then
     if ! _MIG_DEADLINE="$(_mig_norm_deadline "${_XOCT_DEADLINE_FLAG}")"; then
       echo "ERROR: invalid --deadline '${_XOCT_DEADLINE_FLAG}' (YYYY-MM-DD or +Nd, today or later)"
       exit 1
     fi
+    _MIG_DEADLINE_NONE=""
   fi
   if [ "${_MIG_MODE}" = "ha-switch" ] && [ -n "${_MIG_DEADLINE}" ]; then
     echo "ALRT: ha-switch ignores the resolved deadline ${_MIG_DEADLINE}"
@@ -3496,10 +3512,14 @@ _xoct_proxy_preflight() {
     echo "ALRT: this tool cannot verify one exists -- confirm the pair is real first"
   fi
 
-  echo "INFO: ${_oct}: proxy mode ${_MIG_MODE}${_MIG_DEADLINE:+ (deadline ${_MIG_DEADLINE})} [source: ${_MIG_SOURCE}]"
+  echo "INFO: ${_oct}: proxy mode ${_MIG_MODE}${_MIG_DEADLINE:+ (deadline ${_MIG_DEADLINE})}${_MIG_DEADLINE_NONE:+ (no deadline)} [source: ${_MIG_SOURCE}]"
 
+  ### Both records carry the none, or the peer's copy (and this one) would
+  ### read as unset and be refilled on the next resolution.
+  _rec_dl="${_MIG_DEADLINE}"
+  [ -z "${_rec_dl}" ] && [ "${_MIG_DEADLINE_NONE}" = "YES" ] && _rec_dl=none
   _xoct_push_peer_record "${_tgt}" "${_XOCT_PEER_ACCT}" target \
-    "${_MIG_MODE}" "${_XOCT_SCOPE}" "${_MIG_DEADLINE}" "${_oct}"
+    "${_MIG_MODE}" "${_XOCT_SCOPE}" "${_rec_dl}" "${_oct}"
   case "$?" in
     0) : ;;
     7)
@@ -3515,7 +3535,7 @@ _xoct_proxy_preflight() {
     ;;
   esac
   _mig_write_record "${_USR}" source "${_tgt}" "${_XOCT_PEER_ACCT}" \
-    "${_MIG_MODE}" "${_XOCT_SCOPE}" "${_MIG_DEADLINE}" || exit 1
+    "${_MIG_MODE}" "${_XOCT_SCOPE}" "${_rec_dl}" || exit 1
   _mig_log "${_USR}" xoct set "${_XOCT_SCOPE}" "${_MIG_MODE}" "${_MIG_DEADLINE}" "${_tgt}"
   _xoct_wire_target_proxy_trust
 }
@@ -3585,6 +3605,7 @@ _xoct_policy_notify() {
 _xoct_apply_policy() {
   local _a="$1" _mode="$2" _scope="$3"
   local _root="/data/disk/${_a}" _cnf _role=source _peer="" _peer_oct="" _dl="" _oldscope="" _oldmode="" _peer_ips=""
+  local _dl_none="" _rec_dl
   _cnf="${_root}/${_MIG_CNF_NAME}"
   if [ -r "${_cnf}" ] && _mig_is_mine "${_cnf}"; then
     _role="$(_mig_get "${_cnf}" _MIG_ROLE)"
@@ -3595,25 +3616,31 @@ _xoct_apply_policy() {
     _oldscope="$(_mig_get "${_cnf}" _MIG_SCOPE)"
     _oldmode="$(_mig_get "${_cnf}" _MIG_MODE)"
     _dl="$(_mig_get "${_cnf}" _MIG_DEADLINE)"
+    [ "${_dl}" = "none" ] && _dl_none=YES
     _mig_valid_date "${_dl}" || _dl=""
     _peer_ips="$(_mig_get "${_cnf}" _MIG_PEER_IPS)"
   fi
   ### A box-wide sweep never overwrites a per-account pin (requirement 5).
   if [ "${_scope}" = "box" ] && [ "${_oldscope}" = "account" ] \
     && [ "${_XOCT_FORCE_PINNED}" != "YES" ]; then
-    echo "PIN ${_a}: mode pinned per account (${_oldmode}${_dl:+ until ${_dl}}) -- box sweep not applied (--force-pinned overrides)"
+    echo "PIN ${_a}: mode pinned per account (${_oldmode}${_dl:+ until ${_dl}}${_dl_none:+, no deadline}) -- box sweep not applied (--force-pinned overrides)"
     return 0
   fi
-  ### Deadline: explicit flag wins; --no-deadline clears; otherwise keep the
-  ### record's own, else the box default.
+  ### Deadline: explicit flag wins; --no-deadline records an explicit none;
+  ### otherwise keep the record's own (a date, or that none), else the box
+  ### default. --force-pinned lets a sweep replace a pinned MODE only: its
+  ### deadline follows these same rules.
   if [ "${_XOCT_NO_DEADLINE}" = "YES" ]; then
     _dl=""
+    _dl_none=YES
   elif [ -n "${_XOCT_DEADLINE_FLAG}" ]; then
     if ! _dl="$(_mig_norm_deadline "${_XOCT_DEADLINE_FLAG}")"; then
       echo "ERROR: invalid --deadline '${_XOCT_DEADLINE_FLAG}' (YYYY-MM-DD or +Nd, today or later)"
       exit 1
     fi
-  elif [ -z "${_dl}" ] && [ -r "${_MIG_BOX_DEADLINE_FILE}" ]; then
+    _dl_none=""
+  elif [ -z "${_dl}" ] && [ "${_dl_none}" != "YES" ] \
+    && [ -r "${_MIG_BOX_DEADLINE_FILE}" ]; then
     _dl="$(head -n1 "${_MIG_BOX_DEADLINE_FILE}" 2>/dev/null | tr -d '\r\n')"
     _mig_valid_date "${_dl}" || _dl=""
   fi
@@ -3628,13 +3655,17 @@ _xoct_apply_policy() {
     echo "ALRT: ${_a}: the client mail asserts a live mirror with automatic failover;"
     echo "ALRT: this tool cannot verify one exists -- confirm the pair is real first"
   fi
+  ### Both records store the none; the log, the mail and the re-notify
+  ### comparison keep reading an empty deadline as none.
+  _rec_dl="${_dl}"
+  [ -z "${_rec_dl}" ] && [ "${_dl_none}" = "YES" ] && _rec_dl=none
   ### Peer propagation first, fail closed PER ACCOUNT (a --all sweep must not
   ### abort half-applied on one unreachable peer -- the caller collects the
   ### failures and exits non-zero at the end). Source-authored records only:
   ### on a target the record is this box's own reconcile input, goes nowhere.
   if [ "${_role}" = "source" ] && [ -n "${_peer}" ]; then
     _xoct_push_peer_record "${_peer}" "${_peer_oct:-${_a}}" target \
-      "${_mode}" "${_scope}" "${_dl}" "${_a}"
+      "${_mode}" "${_scope}" "${_rec_dl}" "${_a}"
     case "$?" in
       0)
         _xoct_peer_reconcile "${_peer}" \
@@ -3657,9 +3688,9 @@ _xoct_apply_policy() {
   ### A target-role rewrite must carry the _MIG_PEER_IPS list forward: it is
   ### the source's full address set and reconcile trusts from it.
   _mig_write_record "${_root}" "${_role}" "${_peer}" "${_peer_oct:-${_a}}" \
-    "${_mode}" "${_scope}" "${_dl}" "${_peer_ips}" || return 1
+    "${_mode}" "${_scope}" "${_rec_dl}" "${_peer_ips}" || return 1
   _mig_log "${_root}" xoct set "${_scope}" "${_mode}" "${_dl}" "${_peer}"
-  echo "INFO: ${_a}: proxy mode set to ${_mode}${_dl:+ (deadline ${_dl})} [${_scope}]"
+  echo "INFO: ${_a}: proxy mode set to ${_mode}${_dl:+ (deadline ${_dl})}${_dl_none:+ (no deadline)} [${_scope}]"
   ### On a TARGET record the change affects THIS box's own trust set.
   if [ "${_role}" = "target" ] && [ -x "${_MIG_TRUST_TOOL}" ]; then
     "${_MIG_TRUST_TOOL}" reconcile \
@@ -5072,7 +5103,7 @@ case "$1" in
             echo "Usage: xoct {post-mig} {fqdn} (source+target vms)"
             echo
             echo "Usage: xoct {proxy} {o1} {target-ip} {o2} [--proxy-mode=temporary|permanent|ha-switch]"
-            echo "            [--deadline=YYYY-MM-DD|+Nd] [--repair] [--retarget] [--renotify] [--no-notify]"
+            echo "            [--deadline=YYYY-MM-DD|+Nd|--no-deadline] [--repair] [--retarget] [--renotify] [--no-notify]"
             echo "Usage: xoct {proxy-mode} {o1|--all} [temporary|permanent|ha-switch]"
             echo "            [--deadline=YYYY-MM-DD|+Nd|--no-deadline] [--force-pinned] [--renotify|--no-notify]"
             echo "            (no mode = print the per-account proxy policy table)"
