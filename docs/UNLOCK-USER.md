@@ -7,7 +7,9 @@ running a platform *Verify* before the PHP and Nginx caches have expired
 and shown that the sites really still work — hands code ownership
 straight back to the backend user while the new code is broken. From that
 moment you cannot touch the code: the sites stay down until the next
-nightly run returns ownership to you, or until support can step in. If a
+nightly run returns ownership to you, or until support can step in.
+
+If a
 day of downtime is unacceptable, take the safe path instead: build the
 upgraded codebase as a new platform and migrate your sites onto it.
 
@@ -22,7 +24,7 @@ repository owner.
 
 That is exactly what stands between you and an in-place `composer update`
 or a git-driven core upgrade. Composer needs to chmod and replace things
-like `vendor/drush` (which BOA locks to `0400` nightly); git refuses to
+like `vendor/drush` (which BOA keeps locked at `0400`); git refuses to
 work in a repository owned by a different user. The supported answer is a
 single control file — the key to the lock:
 
@@ -54,13 +56,16 @@ and restores the default protection.
    composer-managed codebases run composer in the **repository root** (the
    directory holding `composer.json`), not the web docroot. If a hardened
    path such as `vendor/drush` is in the way, you now own it — chmod it
-   and carry on; the nightly sweep re-hardens it later.
+   and carry on; the Verify in the next step locks it again (the nightly
+   sweep leaves its mode as it finds it).
 5. **Prove the sites still work — only then run Verify.** Do not trust
    the first page loads after the code swap: the PHP opcache and the
    Nginx cache can go on serving the pre-upgrade code and cached pages
    for a while, so a site can look fine while the new code is already
    broken. Wait for those caches to expire, then test properly — log
-   in, hit uncached pages, watch the logs. Once you are confident, run
+   in, hit uncached pages, watch the logs.
+
+   Once you are confident, run
    *Verify* on the platform (and the site) from the Ægir control panel.
    Verify registers the changed code — and a platform Verify also
    chowns the code back to the backend user immediately. Run it while
@@ -85,8 +90,9 @@ and restores the default protection.
   `sites/default/`) stay group-writable for your shell user, so a composer
   run can refresh its scaffold files there instead of stopping with
   `Failed to make the directory containing ... writable`.
-- **The nightly permission sweep still runs.** Directories `0775`, files
-  `0664`, hardened paths re-locked to `0400` — only the *ownership*
+- **The nightly permission sweep still runs.** Directories `0775` and files
+  `0664`, while `vendor/drush` and the two `symfony/console` directories
+  keep whatever mode the Drush lock state gave them — only the *ownership*
   direction follows `unlock.info`.
 - **Verify tasks always re-lock.** A platform Verify chowns code back to
   the backend user immediately, whatever the lock state; the nightly run

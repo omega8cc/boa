@@ -31,6 +31,26 @@ CIDR notation (`203.0.113.0/24`, `2001:db8::/32`, …). Use the visitor's **real
 address** (what `https://ifconfig.co` or similar shows for them) — not a local/LAN
 address. `#` comments and blank lines are ignored.
 
+## Grav and Textpattern sites
+
+The same file and the same one line per site work for Grav 2 and Textpattern sites; the
+list simply covers where those systems keep their admin surface:
+
+- **Grav 2** — `/admin` **and** `/api`. The Grav 2 admin panel is only a shell: every
+  login, account, page, media and configuration operation runs through the API plugin at
+  `/api/v1`, so the list covers the whole `/api` route too. If the site serves a
+  deliberately **public** API (a headless front end reading content from it), add the
+  keyword `api-open` to its line and `/api` stays open to everyone while `/admin` stays
+  on the list:
+
+  ```
+  headless.example.com   203.0.113.10 api-open
+  ```
+
+  The list follows the API plugin's default route. A site that renames that route in the
+  plugin's settings moves its API out from under the list.
+- **Textpattern** — `/txpadmin`, the address of the Textpattern admin on this platform.
+
 ## You cannot lock yourself (or the server) out
 
 Some addresses are always allowed in addition to your list, so a typo can't strand you out
@@ -41,7 +61,8 @@ logged in over SSH. You never need to add those yourself.
 
 Changes are picked up automatically within about **two minutes**. To open `/user` and
 `/admin` back up to everyone, delete the site's line — the restriction is removed on the
-next pass.
+next pass. Deleting the whole file does **not** lift anything: remove the lines, or leave
+the file empty.
 
 ## Good to know
 
@@ -51,6 +72,9 @@ next pass.
 - Addresses are listed with spaces between them; each can be a single IPv4/IPv6 address or
   a CIDR range.
 - It is an extra gate at the web-server edge — your normal Drupal login still applies on
-  top of it.
+  top of it. It holds over HTTP and HTTPS, whether or not the site has its own certificate.
+- Your control panel's domain can be listed too; its login page is then locked the same
+  way. A wrong list locks you out of the panel login until you fix the file over SSH or
+  SFTP (the address you log in from is let in within about two minutes of logging in).
 - If your sites sit behind Cloudflare, the list still works on the visitor's real address
   (the platform recovers it), so enter the real client address as usual.

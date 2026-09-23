@@ -51,7 +51,9 @@ For full-server migrations where Percona versions match, consider
 > file (`/var/log/boa/xoct.migrate.<oct>_<tgt>.state`). To perform the transfer, append
 > **`--live`**; it is accepted only after a `CLEAN` dry run for the same account+target
 > and refuses if the dry run reported any `DENY` (dangling source symlink, multiple
-> `/mnt` mounts, or a store that fits nowhere). The `CLEAN` dry token is **single-use** —
+> `/mnt` mounts, or a store that fits nowhere).
+>
+> The `CLEAN` dry token is **single-use** —
 > running `--live` consumes it, so one dry run cannot arm two live runs; re-run the dry
 > pass before each additional `--live`. So each transfer below is a two-step: run it once
 > to review, then re-run with `--live`. Only `transfer`/`pretransfer` are gated —
@@ -124,15 +126,16 @@ xoct pretransfer o1 target-ip
 
 `reset-state` replaces the hand-typed `rm -f` lines. It clears
 `src/*.sql` (including `prev_hostmaster.sql`), the
-`exported`/`transferred`/`imported`/`proxied` pid stamps and the recorded
-import panel database (`log/panel_db.txt`), which is also what a **chained**
+`exported`/`transferred`/`imported`/`proxied` pid stamps, the export- and
+import-failure latches (`log/export_failed.pid`, `log/import_failed.pid`)
+and the recorded import panel database (`log/panel_db.txt`), which is also what a **chained**
 migration needs — a box that was once a target keeps a stale dump, an
 `imported.pid` that blocks it from ever being an import target again, and a
 panel-database pointer that belongs to the previous move.
 It never touches serving state, so a site's 503 gate is left alone.
 
 `transfer shared` syncs `/data/all`, `/data/disk/all`, `/data/disk/arch`,
-Solr cores, `/var/www/static`, `/etc/bind`, and the usage logs under
+`/data/disk/legacy` (when the source has one), Solr cores, `/var/www/static`, `/etc/bind`, and the usage logs under
 `/var/log/boa/usage` to the target. A Solr index tree that does not fit on
 the target is a **hard stop**, not a skip: each Solr home is space-checked
 before its rsync and a failure refuses the run non-zero ("refusing to migrate
@@ -194,7 +197,9 @@ hostmaster database via mysqldump, and marks `exported.pid` — but ONLY when
 every dump completed truthfully. A database carrying any non-transactional
 table is dumped with mydumper's transactional-only mode turned off, selected
 automatically per database, so a stray MyISAM table neither fails the export
-nor withholds the account's export stamp. The hostmaster dump must exit clean and be
+nor withholds the account's export stamp.
+
+The hostmaster dump must exit clean and be
 non-empty, and every per-site mydumper run must exit clean AND leave its
 final `metadata` marker. Any failure withholds `exported.pid`, records the
 failed databases in `log/export_failed.pid`, prints an INCOMPLETE verdict
@@ -237,7 +242,9 @@ The account arrives carrying the source's per-release FPM markers
 clearing them the target treats the pool set as already built, never
 creates pools for versions that exist only here, and never regenerates
 the per-site socket includes — leaving every pinned site served by the
-account DEFAULT pool indefinitely. The import clears the markers, lets
+account DEFAULT pool indefinitely.
+
+The import clears the markers, lets
 the normal sweep rebuild in two passes, and then reports either
 `every pinned PHP pool is live` or an `ALRT` naming each pin that is
 not. Treat such an ALRT as a stop: a site answering 200 with the right
@@ -254,11 +261,15 @@ loads are truthful: a transferred dump directory without mydumper's final
 `metadata` marker is SKIPPED (a partial dump silently restoring an
 incomplete database is the failure being guarded against), a failed
 myloader run is counted, and a site whose db credentials cannot be parsed
-is counted too. One exception keeps mixed accounts importable: a site with
+is counted too.
+
+One exception keeps mixed accounts importable: a site with
 no transferred dump whose database on this box is **already populated** is
 a target-native site (the account's own pre-existing dedicated site is the
 common shape) and is left as-is, not counted as a failure — only a site
-with neither a dump nor a populated local database counts. Sites with a counted failure do NOT get their `verify`
+with neither a dump nor a populated local database counts.
+
+Sites with a counted failure do NOT get their `verify`
 scheduled; clean sites import and verify normally. Any counted failure
 writes `log/import_failed.pid`, prints an INCOMPLETE verdict naming the
 databases and exits non-zero — the printed recovery re-runs the full
@@ -270,7 +281,9 @@ post-install upgrade does exactly that), which replaces the panel database
 and leaves the on-disk alias naming the dropped one — pouring the dump into
 a nonexistent database. So the alias-derived name is validated against the
 live database set, and when it is gone the live panel database is
-rediscovered the same way the `xmass` cutover does. A previous partial run
+rediscovered the same way the `xmass` cutover does.
+
+A previous partial run
 is picked up too: a database already carrying the source panel front is
 resumed into rather than abandoned, and the winning name is recorded under
 `log/panel_db.txt` so a re-run is deterministic. The dump import is checked;
@@ -282,7 +295,9 @@ absorbs distro-number drift: the imported database names the SOURCE's
 hostmaster platform path, while the target account's live panel usually sits
 on a different `aegir/distro/NNN` (the panel platform is rebuilt whenever
 the PHP pin changes, and retired platform trees keep their code, so code
-presence at the imported number proves nothing). The import locates the
+presence at the imported number proves nothing).
+
+The import locates the
 target's unique live panel — the site dir carrying `drushrc.php` +
 `settings.php` on a code-bearing platform — and repoints the hostmaster
 platform row in the imported database before the rename runs, so the rename
@@ -290,7 +305,9 @@ queue's DB-derived regeneration lands on a platform that really serves. If
 that live panel's stored credentials still name a replaced database, they
 are rewritten to the database actually holding the import (with a fresh
 password) — `renameaegirhost` reads those files to find the Ægir database
-and cannot bootstrap otherwise. An unresolvable panel (zero or several
+and cannot bootstrap otherwise.
+
+An unresolvable panel (zero or several
 candidates, or a repoint that matches no row) aborts the import with
 recovery steps rather than completing with a dead control panel.
 
@@ -314,7 +331,7 @@ which side's alias copy survived the transfer) which:
 
 **On source:**
 ```sh
-xoct proxy o1 target-ip [--proxy-mode=temporary|permanent|ha-switch] [--deadline=YYYY-MM-DD|+Nd]
+xoct proxy o1 target-ip [--proxy-mode=temporary|permanent|ha-switch] [--deadline=YYYY-MM-DD|+Nd|--no-deadline]
 service nginx reload
 xoct post-mig
 ```
@@ -332,7 +349,9 @@ recovery + CSF whitelist of this source's IP, `--permanent` for
 `permanent`/`ha-switch`), converts all nginx vhost files for the account to
 proxy templates that forward traffic to `target-ip`, removes `http-off.pid`
 (sites return to 200 responses, now proxied), and sends the mode-selected
-migration-complete notification to the account owner. A failed conversion
+migration-complete notification to the account owner.
+
+A failed conversion
 sends nothing, stamps nothing and exits non-zero.
 
 The account's **control panel is never proxied**. It is identified by what it
@@ -341,7 +360,9 @@ keeps its local vhost, and is put into Drupal's own maintenance mode once the
 conversion is in: it stays online on the old box as a monitoring canary, an
 admin can still log in, and nobody else can queue tasks against a database
 that now lives on the target. The target does not serve a source-named panel,
-so a proxied panel would only ever answer the new box's catch-all page. A
+so a proxied panel would only ever answer the new box's catch-all page.
+
+A
 panel an earlier conversion had proxied is restored from its saved dot-file
 copy on the next `proxy` run. The legacy `<panel-fqdn>.alias.drushrc.php`
 symlink to the hostmaster alias, which used to make the panel look like a site
@@ -364,9 +385,12 @@ vhost from its dot-backup (`.<domain>`) and the site's real HTTPS server
 block, which the conversion saves as `.https.<domain>` before overwriting it
 (first copy only, so a repair pass cannot destroy the original) — so
 "reverted to the pre-conversion vhosts" means TLS is back too, not just that
-nginx parses. A `--repair` (where the saved copy is the pre-migration
+nginx parses.
+
+A `--repair` (where the saved copy is the pre-migration
 original, not the working proxy vhost) refuses and says exactly why restoring
 it would be wrong. Either way nginx is never reloaded into a broken config.
+
 An HTTPS proxy vhost is written only when **all three** files its template
 references exist — the account's `ssl.d/<domain>/openssl.key` and
 `openssl_chain.crt`, plus the Let's Encrypt `tools/le/certs/<domain>/chain.pem`
@@ -375,6 +399,29 @@ missing and the proxy render is box-wide, so one partial certificate
 directory would fail the configtest for the whole conversion. A site missing
 any of the three is counted and **named with the missing files** rather than
 skipped silently; re-run with `--repair` once the material exists.
+
+Both proxy templates forward `/.well-known/acme-challenge` to the target, which
+is what lets the target issue certificates for names that still resolve to the
+proxy. One vhost is not proxied at all: when `xmass` drives the conversion, a site
+named under the source box's own hostname, which the cutover renamed on the
+target, answers a `301` to its new name over HTTP and HTTPS.
+
+The redirect needs both hostnames, which `xmass` hands over in the
+environment (`_XOCT_TARGET_FQDN`, `_XOCT_MY_FQDN`; there is no flag). A later
+run keeps it without them: when the account already answers a renamed site
+with a `301`, or still holds sites on the per-host gate after a
+`--defer-host-named` pass, `proxy` reads them itself — this box's panel
+hostname (the server alias's `remote_host`, else `hostname -f`, the lookup
+`xmass` uses) and the target's `hostname -f` as it answers now, after
+learning the target's host key.
+
+So a `--repair` (with or without
+`--renotify`) or the `--repair --retarget` after a failover keeps the old names
+answering a `301`, re-pointed at the new box's names. The run refuses before it
+changes anything when it cannot: a target that does not let this box in gets
+the same remedy as a refused retarget, and one that answers without a usable
+name gets the command's prefix to set by hand. Names handed over in the
+environment must be hostnames too.
 
 Repair and repoint (the tool names the flag when you need it):
 
@@ -389,7 +436,9 @@ re-running here: this proxy's root key in its `authorized_keys`, `csf -a` for
 each of this box's addresses, and free disk under `/data/disk` (the record
 write is fail-closed on a truncated file). After a failover the usual cause is
 the first two: an `xmass cutover` carries the demoted box's inbound proxies'
-reach forward at promotion (its step 15.95), an older cutover did not. Never
+reach forward at promotion (its step 15.95), an older cutover did not.
+
+Never
 pre-wire the SERVING trust by hand for this — `xoct` wires it itself once the
 push lands, and a hand-wired entry is one no record accounts for.
 
@@ -398,8 +447,9 @@ Policy without re-running a migration:
 ```sh
 xoct proxy-mode --all                         # the table: mode, deadline, scope, peer, last told
 xoct proxy-mode o1 permanent                  # pin one account (wins over any box default)
+xoct proxy-mode o1 temporary --no-deadline    # pin one account with no end date
 xoct proxy-mode --all temporary --deadline=+30d   # box sweep; never overwrites pins (--force-pinned overrides)
-xoct proxy-retire o1 [--deadline=+14d]        # mark retired + send the withdrawal notice
+xoct proxy-retire {o1|--all} [--deadline=+14d] [--no-notify]   # mark retired + send the withdrawal notice; --all skips an already-retired account by name
 ```
 
 Every policy change is pushed to the target's record and re-reconciled there,
@@ -409,6 +459,21 @@ suppresses and logs, `--renotify` forces). A retired record keeps the
 withdrawal date it promised as `_MIG_RETIRE_DATE` (the table's deadline
 column shows it on retired rows), so the date stays readable after the
 proxy policy itself is gone.
+
+The deadline resolves per account. A date the account's record holds wins,
+and so does an explicit `--no-deadline`, which the record keeps as `none`
+(`_MIG_DEADLINE=none`, on both ends of the pair); only a record with no
+deadline at all, or an account with no record yet, takes the box default in
+`/data/conf/migproxy_deadline.txt`.
+
+A later `proxy-mode` or `proxy` run
+without a deadline flag keeps what the record holds (a switch to
+`ha-switch` keeps a `none` but drops a date, which leaves the deadline
+unset), `--deadline=` replaces it, and a `--force-pinned` sweep
+replaces a pinned mode but keeps its deadline unless the sweep carries a
+deadline flag itself. `proxy-retire` clears it, so a mode declared after a
+retirement takes the box default again. The table shows `none` for an
+explicit no-deadline and `-` for an unset one.
 
 `post-mig` restores BOA runner scripts on source and reconciles migration-proxy
 trust from the policy records (a quiet no-op on a box holding none).
@@ -457,7 +522,8 @@ xoct proxy o1 target-ip o2
 - A mistyped or unknown `--flag` on `create`, `transfer`, `pretransfer`,
   `import` or `proxy` is a **hard error**, precisely because on those verbs
   the next free positional argument is this rename value — a silently
-  consumed flag would have become a rename instruction.
+  consumed flag would have become a rename instruction. `proxy-mode` and
+  `proxy-retire` refuse an unknown flag the same way.
 
 ---
 
@@ -520,7 +586,9 @@ Replace `/data/disk/o1` with `/data/disk/o2` if rename mode was used.
   source-role latches that travelled inside the account's `log/` tree
   (`exported.pid`, `transferred.pid`, `export_failed.pid`) are cleared in the
   same breath as stamping `imported.pid`, so a box that has just received an
-  account can be a source for the next leg without hand-clearing them. What
+  account can be a source for the next leg without hand-clearing them.
+
+  What
   is deliberately left behind: `src/prev_hostmaster.sql` and
   `log/imported.pid`. With `prev_hostmaster.sql` present,
   a new `xoct export` does NOT write a fresh dump (the dump step is gated on

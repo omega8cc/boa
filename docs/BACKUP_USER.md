@@ -39,6 +39,7 @@ This section covers a quick-start approach, focusing on minimal setup.
    - Local database backups: `/data/disk/your_username/static/files/dbackup/`
    - Retained for 14 days by default (modifiable via `/data/disk/your_username/static/control/dBackupCycle.info`).
    - Local database backups count toward your file-space quota.
+   - If `dbackup/` is replaced with a symbolic link, the nightly clean-up follows it only while it resolves inside your own `static/files` store (or the server's single `/mnt` files store). A link pointing anywhere else makes the clean-up skip your account with a warning, and old dumps then accumulate.
 
 2. **Enable or Verify That Backups Are Enabled**
    - By default, backups for your account are typically enabled. If in doubt, contact support to confirm that scheduled backups are running.
@@ -60,6 +61,7 @@ This section covers a quick-start approach, focusing on minimal setup.
      mybackup restore <SERVICE>
      ```
    - This command will restore everything to your `/data/disk/your_username/static/restores/` folder.
+   - A restore is queued and run for you by the server. If the queued command is refused (arguments that fail validation, or a symlink where `static`, `static/control` or `remote_backups` should be a real directory) it is dropped without a message to you; your host can read the reason in `/var/log/mybackup_invalid_queued.log`.
    - If you need to restore just a specific directory or from a certain date, see the **Advanced Use** section below.
 
 5. **Monitor Usage**
@@ -150,6 +152,7 @@ The system automatically includes the following directories:
 2. **Default Exclusion**:
    - Under `/data/disk/your_username/`: `.tmp/`, `clients/`, `u/`, `undo/`, and within `static/`: `restores/`, `tmp/`, `trash/`.
    - Under `/home/your_username.ftp/`: `.tmp/`, `backups/`, `clients/`, `platforms/`, `static/`.
+   - By pattern, anywhere under the included roots (a duplicity exclude filelist seeded once per account unless the host keeps a legacy `/root/.backboa.exclude`): `**files/advagg_css/**`, `**files/advagg_js/**`, `**files/css/**`, `**files/js/**`, `**private/temp/**`.
 
 3. **Customization**:
    - You can include or exclude additional directories using configuration files located in:
@@ -376,6 +379,7 @@ mybackup restore <SERVICE> [RESTORE_PATH] [RESTORE_TIME]
 
 1. **Restore Path Must Be Absolute Without Leading Slash**:
    - Paths must reflect the full directory structure used during backups, but cannot start with `/`.
+   - The path must contain no whitespace at all, and none of `; & | ` $ < > ( ) { } " ' \` (a wider set than the config-file list below). Interactively `mybackup restore` prints the error and queues nothing; a queued file that fails the same check is dropped by the root consumer with a line in `/var/log/mybackup_invalid_queued.log`.
    - Example:
      - Correct: `data/disk/your_username/static/projects`
      - Incorrect: `/data/disk/your_username/static/projects`

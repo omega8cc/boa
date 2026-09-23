@@ -53,6 +53,7 @@
 ```text
 ;redis_old_nine_mode = FALSE
 ;;
+;;  DRUPAL 9 ONLY -- ignored on every other core and on Backdrop.
 ;;  If you are running Drupal 9 older than 9.3 you need to uncomment
 ;;  the line above and change it to TRUE to make Redis work again.
 ```
@@ -60,6 +61,7 @@
 ```text
 ;redis_old_eight_mode = FALSE
 ;;
+;;  DRUPAL 8 ONLY -- ignored on every other core and on Backdrop.
 ;;  If you are running Drupal 8 older than 8.8 you need to uncomment
 ;;  the line above and change it to TRUE to make Redis work again.
 ```
@@ -67,21 +69,22 @@
 ```text
 ;redis_lock_enable = TRUE
 ;;
-;;  DRUPAL 6/7 ONLY -- ignored on Drupal 8 and newer.
+;;  DRUPAL 6/7 AND BACKDROP ONLY -- ignored on Drupal 8 and newer.
 ;;  The blazing fast Redis lock implementation is also enabled by default.
 ```
 
 ```text
 ;redis_path_enable = TRUE
 ;;
-;;  DRUPAL 6/7 ONLY -- ignored on Drupal 8 and newer.
+;;  DRUPAL 6/7 AND BACKDROP ONLY -- ignored on Drupal 8 and newer.
 ;;  The blazing fast Redis path cache implementation is also enabled by default.
 ```
 
 ```text
 ;redis_scan_enable = FALSE
 ;;
-;;  DRUPAL 6/7 ONLY -- ignored on Drupal 8 and newer.
+;;  DRUPAL 6/7 ONLY -- ignored on Drupal 8 and newer, and on Backdrop
+;;  (its Redis module has no SCAN delete).
 ;;  The blazing fast Redis method on wildcard cache delete. Uses non-atomic,
 ;;  non-blocking, and concurrency friendly SCAN command instead of KEYS
 ;;  to perform cache wildcard key deletions. Not enabled by default, because
@@ -94,14 +97,16 @@
 ```text
 ;redis_flush_forced_mode = TRUE
 ;;
-;;  DRUPAL 6/7 ONLY -- ignored on Drupal 8 and newer.
+;;  DRUPAL 6/7 AND BACKDROP ONLY -- ignored on Drupal 8 and newer. On
+;;  Backdrop only the 24-hour cap on permanent entries applies (its Redis
+;;  module knows no per-bin flush modes).
 ;;  The more aggressive cache flush mode is now enabled by default, but you can
 ;;  still disable it with FALSE below, if you wish, after some testing, since
 ;;  it will further improve your site's performance.
 ;;
 ;;  NOTE: This option, enabled by default, may cause mysterious and random WSOD
 ;;        depending on the site's dependence on entries in the cache, because
-;;        it limits each cache entry TTL to 6 hours max, hence any module using
+;;        it limits each cache entry TTL to 24 hours max, hence any module using
 ;;        cacheBackendInterface::CACHE_PERMANENT will be surprised by suddenly
 ;;        and mysteriously missing entries. If that happens, uncomment this line
 ;;        and set it to FALSE below.
@@ -136,6 +141,8 @@
 ```text
 ;redis_exclude_bins = FALSE
 ;;
+;;  On Backdrop name the bins the way core does, without the cache_ prefix
+;;  (form, page, menu); a leading cache_ is accepted and dropped.
 ;;  Sometimes you may want to exclude some problematic cache bins from Redis
 ;;  so they will use default SQL engine, at least until related issue will be
 ;;  fixed either in your contrib code or in the Redis integration module.
@@ -277,10 +284,12 @@
 ;;
 ;;  If for some reason this default BOA configuration breaks something
 ;;  important in your site, like some page which should display not cached
-;;  in a full-page cache results for anonymous visitors, even if they don't
-;;  have a cookie set in the browser, didn't submit any form etc, so no other
-;;  method to make the displayed page dynamic on the fly could be triggered,
-;;  you could (very carefully) consider changing this variable to TRUE.
+;;  in a full-page cache results for anonymous visitors, where no other
+;;  method to make the displayed page dynamic on the fly could be triggered
+;;  (Speed Booster sets a visitor apart only for a login session, or for 15
+;;  seconds after a form post; no other cookie in the browser makes a page
+;;  dynamic), you could (very carefully) consider changing this variable to
+;;  TRUE.
 ;;
 ;;  But please think twice before using this variable. While Redis will still
 ;;  improve performance for all other cache bins, the cache_page bin will
@@ -297,6 +306,12 @@
 ;;      header('X-Accel-Expires: 1'); // This disables Speed Booster
 ;;      $conf['cache'] = 0; // This disables page caching on the fly
 ;;    }
+;;
+;;  On Backdrop TRUE switches the page cache off the same way, but the
+;;  default does not force it on: Backdrop's "maximum cache lifetime" is
+;;  also how long an entry stays valid, so the site's own page cache
+;;  setting stands. The on-the-fly form there is
+;;  $config['system.core']['cache'] = 0;
 ```
 
 ### INI (platform level) for Drupal Sites Access Control
@@ -422,6 +437,7 @@
 ```text
 ;set_composer_manager_vendor_dir = FALSE
 ;;
+;;  DRUPAL ONLY -- ignored on Backdrop (no Composer Manager there).
 ;;  When set to TRUE it will enforce site specific path to Composer Manager
 ;;  composer_manager_vendor_dir path: sites/domain/vendor but only once the site
 ;;  is already installed, so it will not override the variable on install,
@@ -515,6 +531,7 @@
 ```text
 ;auto_detect_domain_access_integration = FALSE
 ;;
+;;  DRUPAL ONLY -- ignored on Backdrop (no Domain Access port).
 ;;  When set to TRUE allows to enable auto-detection and auto-include for
 ;;  the Domain Access module. Supported locations, in the order of precedence:
 ;;
@@ -539,6 +556,7 @@
 ```text
 ;auto_detect_facebook_integration = FALSE
 ;;
+;;  DRUPAL ONLY -- ignored on Backdrop (no Drupal for Facebook port).
 ;;  When set to TRUE allows to enable auto-detection and auto-include for
 ;;  the Drupal for Facebook (fb) module. Supported locations, in the order
 ;;  of precedence:
@@ -564,6 +582,7 @@
 ```text
 ;entitycache_dont_enable = FALSE
 ;;
+;;  DRUPAL 7 ONLY -- the nightly enables that module on Drupal 7 platforms only.
 ;;  When set to TRUE allows to avoid having the entitycache module, which is
 ;;  included by default, auto-enabled during daily maintenance.
 ;;
@@ -585,6 +604,7 @@
 ```text
 ;views_cache_bully_dont_enable = FALSE
 ;;
+;;  DRUPAL 7 ONLY -- the nightly enables that module on Drupal 7 platforms only.
 ;;  When set to TRUE allows to avoid having the views_cache_bully module,
 ;;  which is included by default, auto-enabled during daily maintenance,
 ;;  but only if there is special, global, non-default control file present:
@@ -633,6 +653,7 @@
 ```text
 ;views_content_cache_dont_enable = FALSE
 ;;
+;;  DRUPAL 7 ONLY -- the nightly enables that module on Drupal 7 platforms only.
 ;;  When set to TRUE allows to avoid having the views_content_cache module,
 ;;  which is included by default, auto-enabled during daily maintenance,
 ;;  but only if there is special, global, non-default control file present:

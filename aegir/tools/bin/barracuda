@@ -2325,6 +2325,7 @@ _proceed() {
   _barracuda_downgrade_protection
   _os_detection_minimal
   _check_dns_curl
+  _launcher_release_check "${_ARGV[@]}"
   _check_php_cli
   _if_force_php_rebuild
   _old_apt_keys_cleanup &> /dev/null
@@ -2541,7 +2542,113 @@ _set_tree_vars() {
 
 }
 
+# A launcher older than the tree it fetches stamps that tree with its own,
+# older release (_X_VERSION in _up_action), and the Octopus half then refuses
+# the pass and exits 0 -- measured on a box restored from an image, whose
+# first upgrade pass beat its first launcher refresh. BOA.sh.txt cannot close
+# that gap for a running launcher: it never replaces a tool whose process is
+# live. So, before it fetches the tree -- after the pre-flight repairs and
+# gates, inside the run lock, which it hands over -- the launcher reads the
+# release of the launcher this tree publishes, and when its own is older it
+# replaces itself with that launcher (a rename, so a run still reading the
+# old file keeps it) and runs again with the same arguments. Only a release
+# difference triggers it: a launcher fix shipped under the same release still
+# arrives through BOA.sh.txt. It refuses only when that refresh fails, and
+# refreshes at most once per invocation. A launcher newer than the tree it
+# asks for (an up-lts run on a dev box) is left as it is. The heir retakes
+# the lock a few seconds after this one drops it; clear.sh, BOA.sh.txt and
+# autoupboa still see an installer alive in that gap.
+#
+# The fetch is gated on the launcher's own last two statements: curl keeps a
+# partial body on a dropped transfer, and one cut after the release line can
+# still parse, so without the tail an incomplete launcher could be installed
+# that defines its functions and exits 0 without running anything.
+_launcher_release_fetch() {
+  local _url="$1" _dst="$2"
+  rm -f "${_dst}"
+  curl ${_crlGet} "${_url}" -o "${_dst}" 2> /dev/null || rm -f "${_dst}"
+  if [ ! -s "${_dst}" ] \
+    || [ "$(head -n 1 "${_dst}" 2> /dev/null)" != "#!/bin/bash" ] \
+    || ! tail -n 4 "${_dst}" 2> /dev/null | grep -qx '_proceed' \
+    || [ "$(tail -n 1 "${_dst}" 2> /dev/null)" != "exit 0" ]; then
+    rm -f "${_dst}"
+    return 1
+  fi
+  sed -n 's/^[[:space:]]*\(export \)\{0,1\}_rLsn="BOA-\([0-9][0-9.]*\)"[[:space:]]*$/\2/p' \
+    "${_dst}" 2> /dev/null | head -n 1
+}
+
+_launcher_release_check() {
+  local _self="${_SELF_PATH}" _url _new _pub _own _low
+  # Only the upgrade verbs name the tree they ask for; php-idle and up-distro
+  # run on the dev tree whatever the box carries, and must never install a
+  # dev launcher on an lts or pro box.
+  case "${_cmNd}" in
+    up-dev|up-pro|up-lts) ;;
+    *) return 0 ;;
+  esac
+  [ -n "${_self}" ] && [ -f "${_self}" ] || return 0
+  _url="${_rgUrl}/aegir/tools/bin/barracuda"
+  _new="${_self}.release.$$"
+  _pub=$(_launcher_release_fetch "${_url}" "${_new}")
+  _own="${_rLsn#BOA-}"
+  if [ -z "${_pub}" ]; then
+    rm -f "${_new}"
+    echo
+    echo "  Failed to read the release of the ${_tRee} tree's launcher"
+    echo "  from ${_url} (no response, or not a complete BOA launcher), exit"
+    echo
+    _clean_pid_exit _launcher_release_check
+  fi
+  if [ "${_pub}" = "${_own}" ]; then
+    rm -f "${_new}"
+    return 0
+  fi
+  _low=$(printf '%s\n%s\n' "${_pub}" "${_own}" | sort -V | head -n 1)
+  if [ "${_low}" = "${_pub}" ]; then
+    rm -f "${_new}"
+    return 0
+  fi
+  if [ "${_BARRACUDA_REFRESHED_TO}" = "${_pub}" ]; then
+    rm -f "${_new}"
+    echo
+    echo "  This launcher (BOA-${_own}) is still older than the ${_tRee} tree"
+    echo "  (BOA-${_pub}) after refreshing itself once; not stamping the tree"
+    echo "  with an older release. Refresh the tools, then retry:"
+    echo "    wget -qO- https://files.boa.io/BOA.sh.txt | bash"
+    echo
+    _clean_pid_exit "_launcher_release_check still BOA-${_own} after a refresh"
+  fi
+  if ! bash -n "${_new}" 2> /dev/null \
+    || ! chmod 700 "${_new}" 2> /dev/null \
+    || ! chown root:root "${_new}" 2> /dev/null \
+    || ! mv -f "${_new}" "${_self}" 2> /dev/null; then
+    rm -f "${_new}"
+    echo
+    echo "  This launcher (BOA-${_own}) is older than the ${_tRee} tree"
+    echo "  (BOA-${_pub}) and could not replace itself with ${_url}."
+    echo "  Refresh the tools, then retry:"
+    echo "    wget -qO- https://files.boa.io/BOA.sh.txt | bash"
+    echo
+    _clean_pid_exit "_launcher_release_check could not install BOA-${_pub}"
+  fi
+  echo "NOTE: This launcher was BOA-${_own}, older than the ${_tRee} tree;"
+  echo "NOTE: replaced with the tree's own BOA-${_pub} launcher, running it now"
+  export _BARRACUDA_REFRESHED_TO="${_pub}"
+  # The run lock is this invocation's (_up_start); the one it hands over to
+  # takes it again, so release it rather than leave it to refuse its heir.
+  if [ "${_PID_LOCK_OWNER}" = "YES" ]; then
+    rm -f /run/boa_run.pid /run/boa_wait.pid
+  fi
+  exec /bin/bash "${_self}" "$@"
+}
+
 export _ARGS="$@"
+# The invocation as typed, for a launcher that refreshes itself and re-runs
+# (_launcher_release_check): _ARGS is reshaped below, noscreen dropped.
+_ARGV=("$@")
+# Resolved now: _proceed changes directory before the check runs.
+_SELF_PATH=$(readlink -f "$0" 2> /dev/null)
 export _cmNd="$1"
 export _outP="$2"
 export _rKey="$3"

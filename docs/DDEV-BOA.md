@@ -39,7 +39,8 @@ SSH, and each one is already permitted by the BOA limited shell:
   reaches the jail.
 - `lshell`'s `overssh` set is what governs non-interactive commands. It permits `drush`
   (and `drush8`/`drush10`/`drush11`), `mysql`/`mysqldump`/`mydumper`, `rsync` and `scp`,
-  among others. It does **not** permit `tar`, `cat`, `vdrush` or a site-local
+  among others (`scp` only where the Node gate is open: on a default box the gate strips it
+  from every list, which is why the add-on moves files with `rsync`). It does **not** permit `tar`, `cat`, `vdrush` or a site-local
   `vendor/drush/drush/drush.php`, so the add-on never relies on those over SSH.
 - The master and server Drush contexts (`@hostmaster`, `master_db`, `server_master`,
   `server_localhost`) are forbidden. The add-on only ever uses the site's own `@alias`.
@@ -50,11 +51,15 @@ The database dump uses `drush @alias sql-dump` — that is, **Drush 8**, the onl
 Drush that is integrated with Ægir site aliases. `sql-dump` gets the site's database
 credentials from the site's own `drushrc.php` (the alias itself carries `db_server` and the
 site context, not the credentials), so it produces a correct dump for any Drupal version
-(6 through 11+) without bootstrapping Drupal. `drushrc.php` is Drush 8 configuration and
+(6 through 11+) without bootstrapping Drupal.
+
+`drushrc.php` is Drush 8 configuration and
 only Drush 8 reads it; a site-local modern Drush ignores it, which is why a cloaked
 `settings.php` parses that file itself rather than relying on Drush to load it. The dump
 path is therefore unaffected by credential cloaking, which removes the literal values from
-`settings.php` only. Standalone `drush10`/`drush11` exist on BOA
+`settings.php` only.
+
+Standalone `drush10`/`drush11` exist on BOA
 only to convert alias names and return nothing useful for a dump; site-local `vdrush` is
 the right tool for updates but is not reachable over a non-interactive SSH command. So the
 add-on defaults to `drush` and documents `drush8` as the explicit synonym.
@@ -74,6 +79,14 @@ public `files` directory is pulled, not the separate `private` directory.
 
 ## Helping a client
 
+- **A pulled database is live user data.** It holds the site's users' accounts and email
+  addresses, and so does any snapshot of it. Snapshots stay in the project's
+  `.ddev/db_snapshots`, which DDEV's generated `.ddev/.gitignore` keeps out of Git; the
+  developer never force-adds one (`git add -f`), whatever DDEV's own guides say about
+  committing seed snapshots. With DDEV v1.25.4 or newer, `ddev snapshot --name=seed` after
+  the first pull lets `ddev restart --reset-database -Oy` return to it without another pull.
+  Settle the database engine first: a snapshot restores only into the engine and version it
+  was taken on.
 - **`ddev boa-aliases` shows nothing / `ddev pull boa` cannot find the alias.** The site's
   aliases are mirrored into `/home/oN.ftp/.drush/` by `manage_ltd_users.sh` (cron), and
   only for registered, live sites. On a freshly provisioned site the mirror may not have
@@ -99,5 +112,8 @@ as a commented opt-in only, never switched. It does not reproduce the
 BOA server itself: there is no Ægir/Hostmaster panel, no Octopus multi-tenancy, no CSF, and
 DDEV's nginx/PHP are stock builds, not BOA's own compiled ones. Per-site `php.ini` tuning
 and BOA's nginx directives are not exported (they are not readable through the limited
-shell). For a full local BOA server, see *BOA Local* (a prebuilt VM/LXC image), a separate
-effort.
+shell).
+
+For a full local BOA server, see *BOA Local*: an install mode of the ordinary
+installer (`boa in-lts local <email>`, with `in-dev` and `in-pro` equally valid) that puts a
+whole BOA server on a local VM. It is not a prebuilt image.

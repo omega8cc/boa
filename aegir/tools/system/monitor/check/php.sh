@@ -520,9 +520,9 @@ _sql_mutation_in_flight() {
   # pile onto failed connections and the whole herd arrives at a cold cache the
   # moment the database returns; that cascade is what turns a brief database
   # fault into a site-wide one. runner.sh and system.sh already stand down on
-  # the same two markers: mysql_restart_running.pid, written by move_sql.sh and
-  # by mycnfup, and boa_mysql_auto_healing.pid, held by the database watchdog
-  # for the length of its heal.
+  # the same two markers: mysql_restart_running.pid, written by move_sql.sh,
+  # and boa_mysql_auto_healing.pid, held by the database watchdog for the
+  # length of its heal.
   #
   # Honoured only while the marker is recent, deliberately. clear.sh reaps a
   # leaked mysql_restart_running.pid an hour after the writer died, and an hour

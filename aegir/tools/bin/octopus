@@ -392,7 +392,9 @@ _check_report() {
   _SEND_ALERT=NO
   _RESULT_ALRT=$(grep "ALRT" ${_UP_LOG} 2>&1)
   _RESULT_FATAL=$(grep "FATAL ERROR" ${_UP_LOG} 2>&1)
-  _RESULT_ALREADY=$(grep "This Ægir Instance is already up" ${_UP_LOG} 2>&1)
+  # Both skip notices: the one printed for a named instance carries the name
+  # between "Instance" and "is", where a fixed string can never match it.
+  _RESULT_ALREADY=$(grep -E "This Ægir Instance( [^ ]+)? is already up to date" ${_UP_LOG} 2>&1)
   _RESULT_BYE=$(grep "BYE" ${_UP_LOG} 2>&1)
   if [[ "${_RESULT_ALRT}" =~ "ALRT" ]] \
     || [[ "${_RESULT_ALRT}" =~ "binary file matches" ]]; then
@@ -416,9 +418,18 @@ _check_report() {
   if [ -n "${_passRc}" ] && [ "${_passRc}" != "0" ]; then
     _SEND_ALERT=YES
   fi
-  if [[ "${_RESULT_ALREADY}" =~ "This Ægir Instance is already up" ]] \
+  if [[ "${_RESULT_ALREADY}" =~ "is already up to date" ]] \
     || [[ "${_RESULT_ALREADY}" =~ "binary file matches" ]]; then
     _SEND_ALERT=NO
+  fi
+  # Every account is judged from NO again, so the completion line cannot
+  # read this flag alone: a run over all accounts would state the verdict
+  # of the last one. The logs that failed are remembered for _up_finish.
+  if [ "${_SEND_ALERT}" = "YES" ]; then
+    _ALERT_LOGS="${_ALERT_LOGS} ${_UP_LOG}"
+  fi
+  if [ "${_NO_MAIL:-NO}" = "YES" ]; then
+    return 0
   fi
   if [ "${_SEND_ALERT}" = "YES" ]; then
     _send_alert
@@ -664,6 +675,18 @@ _up_one() {
   fi
 }
 
+_up_one_console() {
+  # The pipeline runs the pass in a subshell, so the installer's exit status
+  # comes back as the status of that subshell or not at all.
+  _passRc=""
+  { _up_one; exit "${_passRc:-0}"; } 2>&1 | tee ${_UP_LOG}
+  _passRc="${PIPESTATUS[0]}"
+  # The console showed the pass; the completion line still needs the
+  # verdict, and this arm mails nothing.
+  _NO_MAIL=YES
+  _check_report
+}
+
 _count_cpu() {
   _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -738,8 +761,10 @@ _up_action_all() {
           wait
         fi
 
+        # Named before the mode is known: the console arm used to tee into an
+        # unset name, which wrote no pass log at all.
+        _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_octUsr}-${_NOW}.log"
         if [ "${_outP}" = "log" ]; then
-          _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_octUsr}-${_NOW}.log"
           echo
           echo "Preparing the upgrade in silent mode..."
           echo
@@ -766,7 +791,7 @@ _up_action_all() {
         else
           sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                   ${_octCnf}
           wait
-          _up_one 2>&1 | tee ${_UP_LOG}
+          _up_one_console
         fi
         _n=$((RANDOM%9+2))
         echo "Waiting ${_n} seconds..."
@@ -778,6 +803,11 @@ _up_action_all() {
       else
         echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
         echo "...we have to wait..."
+        ### Nothing waits here: the sweep moves on, and the caller who asked
+        ### for all accounts did not get this one. It is named on the
+        ### completion line.
+        echo "ALRT: skipping ${_usEr}: load too high - nothing was upgraded"
+        _LOAD_SKIPPED="${_LOAD_SKIPPED} $(basename "${_usEr}")"
       fi
     fi
   done
@@ -824,8 +854,9 @@ _up_action_one() {
         wait
       fi
 
+      # Named before the mode is known, as in the run over all accounts.
+      _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_octUsr}-${_NOW}.log"
       if [ "${_outP}" = "log" ]; then
-        _UP_LOG="${_LOG_DIR}/$(basename "$0")-up-${_octUsr}-${_NOW}.log"
         echo
         echo "Preparing the upgrade in silent mode..."
         echo
@@ -852,7 +883,7 @@ _up_action_one() {
       else
         sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=NO/g"                     ${_octCnf}
         wait
-        _up_one 2>&1 | tee ${_UP_LOG}
+        _up_one_console
       fi
       sleep 3
       rm -f ${_vBs}/${_tocName}
@@ -862,7 +893,21 @@ _up_action_one() {
     else
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
       echo try again later
+      ### Same rule as the proxied skip above: the caller named this one
+      ### account and nothing ran.
+      echo "ALRT: skipping ${_usEr}: load too high - nothing was upgraded"
+      _SEND_ALERT=YES
     fi
+  else
+    ### Same rule again; without these lines the skip prints nothing at all.
+    ### The sweep over all accounts stays quiet for these, as it does for
+    ### a proxied account.
+    if [ -e "${_usEr}/log/CANCELLED" ]; then
+      echo "ALRT: skipping ${_usEr}: cancelled (log/CANCELLED) - nothing was upgraded"
+    else
+      echo "ALRT: skipping ${_usEr}: not an Octopus instance (no vhost.d or no log/cores.txt) - nothing was upgraded"
+    fi
+    _SEND_ALERT=YES
   fi
 }
 
@@ -945,9 +990,19 @@ _up_finish() {
   echo
   # Same as the barracuda launcher: keep the documented completion prefix so
   # waiters still terminate, but do not report a clean finish for a run that
-  # already raised an alert.
-  if [ "${_SEND_ALERT}" = "YES" ]; then
-    _upDone="OCTOPUS upgrade completed WITH ERRORS -- review ${_UP_LOG:-the ALRT line above}"
+  # already raised an alert. The console names every pass log that failed
+  # and every account the sweep left out under load; a named account that
+  # was skipped raised its alert without a pass log.
+  _upWhy=""
+  [ -n "${_ALERT_LOGS}" ] && _upWhy="review${_ALERT_LOGS}"
+  if [ -n "${_LOAD_SKIPPED}" ]; then
+    [ -n "${_upWhy}" ] && _upWhy="${_upWhy}; "
+    _upWhy="${_upWhy}not upgraded under load:${_LOAD_SKIPPED}"
+  fi
+  if [ -n "${_upWhy}" ]; then
+    _upDone="OCTOPUS upgrade completed WITH ERRORS -- ${_upWhy}"
+  elif [ "${_SEND_ALERT}" = "YES" ]; then
+    _upDone="OCTOPUS upgrade completed WITH ERRORS -- review the ALRT line above"
   else
     _upDone="OCTOPUS upgrade completed"
   fi
@@ -955,9 +1010,14 @@ _up_finish() {
   # The silent-mode console tells the operator to `tail -f` the per-account
   # pass log and wait for this line, but the line was printed here, to the
   # console only, after every pass log had been closed: a watcher of the log
-  # never saw it. Append it to each pass log this run wrote.
+  # never saw it. Each pass log this run wrote ends with its own verdict.
   for _upLog in ${_LOG_DIR}/$(basename "$0")-up-*-${_NOW}.log; do
-    [ -f "${_upLog}" ] && echo "${_upDone}" >> ${_upLog}
+    [ -f "${_upLog}" ] || continue
+    if [[ " ${_ALERT_LOGS} " =~ " ${_upLog} " ]]; then
+      echo "OCTOPUS upgrade completed WITH ERRORS -- review ${_upLog}" >> ${_upLog}
+    else
+      echo "OCTOPUS upgrade completed" >> ${_upLog}
+    fi
   done
   echo Bye
   echo
@@ -1452,6 +1512,8 @@ _up_proceed() {
   _fetch_boa_file "${_rgUrl}/${_octName}" "${_vBs}/${_octName}" '_vBs="/var/backups"'
   _fetch_boa_file "${_rgUrl}/${_pthIncO}" "${_vBs}/${_filIncO}" "^_X_VERSION="
 
+  _ALERT_LOGS=""
+  _LOAD_SKIPPED=""
   if [ "${_sCnd}" = "all" ]; then
     _up_action_all
   else

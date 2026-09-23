@@ -96,6 +96,7 @@ If none of these instant switch files are present, the system will default to th
   The one exception is the platforms build requested via `platforms.info`: the build
   machinery resolves the switch files itself, once per run, so it honours them even
   though it never passes through the shell wrapper.
+
   The wrapper is additionally temporarily deactivated during both barracuda and octopus
   upgrades to not interfere with complex procedures which depend on system dash shell. For
   this reason any Drush or Composer command you execute in the limited shell account while
@@ -177,9 +178,13 @@ When you are done, re-lock the platform with the new 'Lock Local Drush' task —
 2. Connect to your server as `oN.ftp` (not `oN`) using SSH.
 3. Find the correct Drush `@site-alias` with the `drush11 aliases` command.
 4. Switch to the Platform app root where `vendor` exists using `cd`.
-5. Run `vdrush --version` or install it with `composer require drush/drush`.
+5. Run `vdrush --version`. If the codebase has no site-local Drush, install it with `composer require drush/drush` ONLY when the codebase carries no Composer patches (`extra.patches` / `extra.patches-file` in composer.json, or `cweagans/composer-patches` in composer.lock, as the distribution platforms do) and its lock accepts the box's PHP CLI (`composer check-platform-reqs`): on a patched codebase the require makes composer-patches delete every patched package before re-resolving, and they come back unpatched or not at all. Provision's own lock/unlock steps refuse the require in exactly those two cases.
 6. Use `vdrush @site-alias updbst`, `vdrush @site-alias updb`, etc.
 7. Re-lock the platform with the 'Lock Local Drush' task (or a full 'Platform Verify') to restore compatibility with Drush 8.
+
+Re-locking a platform unlocked earlier, by that task or by a Verify, also rebuilds every Drupal 8+ site on it with Drupal core's own rebuild. A site whose service container the local Drush compiled (a module installed or removed, a recipe applied) could not run on that container once the local Drush is locked away, so the rebuild replaces it. In the task log, `REBUILD/RELOCK` lines open and close the run, with one `REBUILD/CORE` rebuild per site between them.
+
+The nightly maintenance never locks or unlocks a platform: one you unlocked stays unlocked, overnight included, until you run 'Lock Local Drush' or a Verify locks it, and that lock then runs the rebuild above.
 
 ---
 

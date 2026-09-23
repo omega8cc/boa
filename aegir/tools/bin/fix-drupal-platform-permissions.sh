@@ -105,7 +105,7 @@ if [ -n "${drupal_root}" ] && [ -e "${drupal_root}" ]; then
   drupal_root=$(realpath -e -- "${drupal_root}" 2>/dev/null) || drupal_root=""
 fi
 
-# --- Grav 2 platform (site capsules; boa-grav D-003) -------------------------
+# --- Grav 2 platform (site capsules) -----------------------------------------
 # A Grav root carries no Drupal system.module; detect it positively and run
 # the capsule model instead of refusing (union seam: further foreign-CMS
 # branches join here the same way).
@@ -146,7 +146,7 @@ if [ -n "${drupal_root}" ] \
       find "${_capsule}${_wd}" -type f -exec chmod 0664 {} + 2> /dev/null
     done
     # Secret surfaces AFTER the generic pass, which would re-widen them
-    # (boa-grav D-008): group-rw for FPM, owner-rw for the CLI, NO world
+    # otherwise: group-rw for FPM, owner-rw for the CLI, NO world
     # bits; the root .env keeps FPM's read via group.
     for _sd in user/accounts user/config user/env; do
       [ -d "${_capsule}${_sd}" ] || continue
@@ -161,7 +161,7 @@ if [ -n "${drupal_root}" ] \
   exit 0
 fi
 
-# --- Textpattern platform (shared core; boa-txp D-002) -----------------------
+# --- Textpattern platform (shared core) --------------------------------------
 # A TXP root carries no Drupal system.module; detect it positively (the same
 # probe as codebasecheck: textpattern/lib/constants.php + css.php + no core/)
 # and run the shared-core model instead of refusing.

@@ -80,8 +80,11 @@ as explained in this document further below.
   certificate on the fly, to match current settings and aliases to list.
 
   BOA runs auto-renewal checks for you daily, and forces renewal if there is
-  less than 30 days to the certificate expiration date (Let's Encrypt certs
-  are valid for up to 90 days before they have to be renewed).
+  less than 69 days to the certificate expiration date (Let's Encrypt certs
+  are valid for up to 90 days before they have to be renewed). BOA's bundled
+  dehydrated ships `RENEW_DAYS="69"` as its default where stock upstream
+  uses 30, so a fresh certificate is re-issued about three weeks after it
+  was obtained.
 
   Also every Verify task against SSL enabled site runs this check on the fly.
 
@@ -111,6 +114,12 @@ as explained in this document further below.
   and limits you should be aware of. Please visit their website for details:
 
     https://letsencrypt.org/docs/rate-limits/
+
+  NOTE: A site whose main name ends in a BOA service suffix (`*.host8.biz`,
+  `*.boa.io`, `*.aegir.cc`, `*.o8.cc`, in general any `host8`, `boa`, `aegir`
+  or `o8` name under `.biz`, `.io` or `.cc`) or contains `.nodns.` is skipped
+  unconditionally: no certificate is requested, it gets only the self-signed
+  one, and the `ssl-yes-dev-<site>.info` control file does NOT lift this skip.
 
   NOTE: All sites with one or more keywords (listed below) in the site's
   main name, or in their redirection target, if used, will be ignored,

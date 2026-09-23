@@ -6,6 +6,7 @@ per-release `.deb` packages published on the BOA mirrors, instead of compiling
 each of them from sources on every box. A fresh PHP version lands in seconds
 instead of minutes; a version pin bump upgrades the whole fleet without
 recompiling anything.
+
 PHP extensions are still built on the fly on every box (they are cheap and
 bound to the exact PHP build), and every package install is verified against
 a `sha256` sidecar before it is unpacked.
@@ -48,7 +49,9 @@ the source path without any extra configuration. The same shipped-defaults
 rule gates the other components: a custom Nginx module set keeps the source
 path, Valkey packages exist for major 9 only, and the Unbound and Pure-FTPd
 packages are refused on a box without the Modern OpenSSL tree their binaries
-link against. The Nginx and PHP packages are additionally verified against
+link against.
+
+The Nginx and PHP packages are additionally verified against
 the compiled-in OpenSSL (and, for PHP 8.1+, ICU) versions the box currently
 expects -- the same tokens the next run's rebuild decision reads -- so a
 stale package published before a pin bump is refused and purged, and that
@@ -135,6 +138,36 @@ upgrade does not rebuild on a companion bump (the dynamically linked Unbound
 and cURL simply follow the upgraded library in place) correctly stay
 untouched.
 
+Two guards keep a same-version republish honest. `sync` never moves a peer
+file backwards in time: each builder also carries the peer's codename files,
+so the transfer runs with `--update` (and `--delay-updates`), and a sync that
+overlaps the peer's publish window can no longer push an older copy over a
+package the peer has just republished. A deliberate rollback goes through
+`force`, which republishes with a current mtime. `publish` checks its own
+`mv`: a refused overwrite is reported as `publish failed (cannot replace)`
+and the package is skipped, instead of old bytes staying in place under a
+sidecar rebuilt from them.
+
+A republish under an unchanged filename has one more consequence, outside
+the mirrors themselves. A CDN in front of them keeps the previous `.gz` for
+its full TTL, while the sidecar beside it, which such caches do not hold, is
+already the new one; every consumer behind that edge then fails the checksum
+and falls back to a source build for as long as the edge entry lives.
+
+The
+tool knows nothing about any CDN. It hands the files it has just published
+to an optional hook instead: set `_PURGE_HOOK` in `/root/.stackbuild.cnf` to
+a command, and `publish`, `all` and `force` call it once, after the
+cross-sync, with the absolute paths of every package and sidecar published
+in that run.
+
+The hook is expected to wait until the mirrors serve the new
+bytes before it purges anything, since purging early only re-caches the old
+ones. A missing or failing hook is reported in the summary and never stops
+the publish. With no hook set, a run that replaced an existing file names
+it, so the purge is not forgotten; a new filename has no older copy cached
+anywhere and is not mentioned.
+
 ## Adding a Builder Mirror for a New Release
 
 To bring up the next release's builder (for example Excalibur alongside
@@ -152,7 +185,9 @@ Daedalus):
    boxes carrying it, and a box without it carries neither: the same pass
    removes both tools, their `/usr/local/bin` symlinks and their fetch
    markers, so removing the file retires a builder on its next agent pass
-   and re-creating it re-deploys both. Confirm the box serves (or will serve) the mirror
+   and re-creating it re-deploys both.
+
+   Confirm the box serves (or will serve) the mirror
    `/dev/` tree; set `_PUB_DIR` in the cnf if the auto-detection (keyed on
    the existing prebuilt packages under `/var/www`) does not apply yet on a
    fresh mirror.
@@ -162,7 +197,8 @@ Daedalus):
    copies are refreshed by the serial-gated fetch on every barracuda run,
    which resets in-script edits (a build with it unset publishes only
    locally and warns). Passive mirrors keep syncing from the authoritative
-   mirror exactly as before.
+   mirror exactly as before. Where a CDN fronts the mirrors, set
+   `_PURGE_HOOK` in the same file as well (see the republish notes above).
 5. Add the daily cron: `barracuda up-<tree>` then `stackbuild all`.
 6. Only after the new release's package set is published and propagated,
    the shipped default for that release flips to `YES` in a BOA update --
@@ -193,7 +229,9 @@ straight from `repo.percona.com`. This is insurance for the day that stops
 being true -- and for any local reason apt delivers nothing (network, DNS,
 keyring), since the symptom is the same either way: "no installation
 candidate" from apt and, because that error is silent, a box that hangs
-forever waiting for a MySQLD that never installs. BOA therefore archives
+forever waiting for a MySQLD that never installs.
+
+BOA therefore archives
 the frozen 5.7 debs -- `percona-server-common-5.7`, `libperconaserverclient20`,
 `libperconaserverclient20-dev`, `percona-server-client-5.7`,
 `percona-server-server-5.7` -- on its own static `/dev/` mirror, each as a
@@ -206,7 +244,9 @@ the five archived debs from the mirror, verifies each checksum before unpacking,
 installs them with `dpkg -i`, and pulls the distro-lib dependencies
 (`libaio1`, `libdbi-perl` ...) from the OS repos with `apt-get install -f` --
 these are ordinary distro packages, so whatever kept the Percona path from
-delivering does not affect them. It is idempotent: an upgrade run on a box with a working 5.7 already
+delivering does not affect them.
+
+It is idempotent: an upgrade run on a box with a working 5.7 already
 installed never triggers it, and it only ever runs for the 5.7/bookworm Percona
 path -- the 8.x and Excalibur paths are untouched. If both the apt path and the
 mirror fallback fail to install a database server, the install now aborts
