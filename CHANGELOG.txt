@@ -643,7 +643,8 @@
       re-count refused on every processing row, so one interrupted task
       parked the cutover with "task(s) still queued after the fail-out"
       until an operator cleared the row by hand. The fail-out and the
-      re-count now use one predicate.
+      re-count now use one predicate; a row whose runner is still alive
+      on the target is left to finish, and the refusal says so.
     * The cutover's queued-task report no longer says that travelled
       tasks will run on the target when the cutover fails them out
       there: on the relay-first order its last line says they are failed
@@ -657,10 +658,11 @@
       When the account already answers a renamed site with a 301, or
       still holds sites on the per-host gate, xoct now reads the names
       itself -- this box's own and the target's as it answers now -- and
-      refuses before writing anything when it cannot. The re-run
-      commands xmass and xoct print carry both names, and the cutover's
-      closing summary no longer says to clear http-off.pid by hand after
-      a failed conversion, which would have served the stale local copy.
+      refuses before it changes anything when it cannot. The re-run
+      commands in the cutover's closing summary and in xoct's failure,
+      HTTPS and resend messages carry both names, and the summary no
+      longer says to clear http-off.pid by hand after a failed
+      conversion, which would have served the stale local copy.
     * An account whose proxy conversion failed at cutover keeps its Aegir
       dispatcher parked when the source's runners come back, as a
       converted account's is: its panel database lives on the target

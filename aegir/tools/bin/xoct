@@ -765,40 +765,69 @@ _xoct_named_under_host() {
 ### renamed target never serves: its catch-all for every visitor. So when
 ### the caller named no hostnames and this account either answers a renamed
 ### site with a 301 already or still holds sites on the per-host gate, read
-### them here: this box's own name (the one the gate file names, else the
-### one the redirects were written from) and the target's as it answers now,
-### so a retarget points the redirects at the new box. A target whose name
-### cannot be read refuses the run before anything is written.
+### them here: this box's own name, by the same lookup xmass uses, and the
+### target's as it answers now, so a retarget points the redirects at the
+### new box. The gate file only says that the account needs this; its
+### content is the tenant's to write and is never used as a name. Called
+### from the preflight once its own refusals have passed; a target whose
+### name cannot be read refuses the run before anything is written.
+_xoct_valid_host() {
+  case "$1" in
+    ''|*[!a-zA-Z0-9.-]*|.*|*.|*..*) return 1 ;;
+  esac
+  return 0
+}
 _xoct_keep_renamed_redirects() {
   local _vd="${_USR}/config/server_master/nginx/vhost.d"
   local _hg="${_USR}/static/control/http-off-host.pid"
-  local _why="" _tf _mf
-  [ -n "${_XOCT_TARGET_FQDN}" ] && return 0
+  local _why="" _tf _mf _n _trc=0
+  ### Both names are written into nginx vhosts and sed replacements: one a
+  ### caller hands over must be a hostname too, never merely non-empty.
+  for _n in "${_XOCT_TARGET_FQDN}" "${_XOCT_MY_FQDN}"; do
+    if [ -n "${_n}" ] && ! _xoct_valid_host "${_n}"; then
+      echo "ERROR: ${_oct}: '${_n}' (from _XOCT_TARGET_FQDN/_XOCT_MY_FQDN) is not a hostname"
+      exit 1
+    fi
+  done
+  [ -n "${_XOCT_TARGET_FQDN}" ] && [ -n "${_XOCT_MY_FQDN}" ] && return 0
   [ -n "${_XOCT_DEFER_FQDN}" ] && return 0
-  if [ -s "${_hg}" ]; then
+  if [ -s "${_hg}" ] && [ ! -L "${_hg}" ]; then
     _why="it still holds sites on the per-host gate"
-    _mf=$(grep -m1 '[^[:space:]]' "${_hg}" 2>/dev/null | tr -d ' \r\n')
   elif grep -q -s -F "renamed site: redirect to its new name" "${_vd}"/* 2>/dev/null; then
     _why="it answers renamed sites with a 301"
   else
     return 0
   fi
+  _mf="${_XOCT_MY_FQDN}"
   if [ -z "${_mf}" ]; then
     _mf=$(grep "remote_host" /var/aegir/.drush/server_master.alias.drushrc.php 2>/dev/null \
       | head -1 | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
-    _mf=${_mf//[^a-zA-Z0-9.\-]/}
-    [ -z "${_mf}" ] && _mf=$(hostname -f 2>/dev/null | tr -d '\n')
+    _xoct_valid_host "${_mf}" || _mf=$(hostname -f 2>/dev/null | tr -d '\n')
+    _xoct_valid_host "${_mf}" || _mf=""
   fi
-  _tf=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "hostname -f" 2>/dev/null | tr -d ' \r\n')
+  _tf="${_XOCT_TARGET_FQDN}"
+  if [ -z "${_tf}" ]; then
+    _xoct_learn_peer_host_key "${_tgt}"
+    _tf=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "hostname -f" 2>/dev/null)
+    _trc=$?
+    _tf=$(printf '%s\n' "${_tf}" | tail -n 1 | tr -d '\r')
+    _xoct_valid_host "${_tf}" || _tf=""
+  fi
+  if [ -z "${_tf}" ] && [ "${_trc}" -ne 0 ]; then
+    echo "ERROR: ${_oct}: ${_why}, and ${_tgt} does not let this box in to read its"
+    echo "ERROR: hostname (ssh rc=${_trc}); the renamed sites' 301 needs it."
+    _xoct_peer_trust_remedy "${_tgt}"
+    exit 1
+  fi
   if [ -z "${_tf}" ] || [ -z "${_mf}" ]; then
     echo "ERROR: ${_oct}: ${_why}, and the hostnames that keep its renamed sites"
     echo "ERROR: answering a 301 could not be read (target '${_tf}', this box '${_mf}')."
-    echo "ERROR: Re-run with both set:"
-    echo "ERROR:   _XOCT_TARGET_FQDN=<hostname -f of ${_tgt}> _XOCT_MY_FQDN=<this box's hostname> xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair"
+    echo "ERROR: Re-run the command exactly as typed, with both set in front of it:"
+    echo "ERROR:   _XOCT_TARGET_FQDN=<hostname -f of ${_tgt}> _XOCT_MY_FQDN=<this box's hostname> xoct proxy ..."
     exit 1
   fi
   _XOCT_TARGET_FQDN="${_tf}"
-  [ -n "${_XOCT_MY_FQDN}" ] || _XOCT_MY_FQDN="${_mf}"
+  _XOCT_MY_FQDN="${_mf}"
   echo "INFO: ${_oct}: ${_why}; its sites named under ${_XOCT_MY_FQDN} answer a 301 to the same name under ${_XOCT_TARGET_FQDN}"
 }
 
@@ -3522,6 +3551,9 @@ _xoct_proxy_preflight() {
     fi
   fi
 
+  ### After the refusals above, before anything is written.
+  _xoct_keep_renamed_redirects
+
   _mig_resolve "${_USR}"
   if [ "${_MIG_MODE}" = "retired" ]; then
     echo "ERROR: ${_oct}: proxy policy is retired; declare a mode first:"
@@ -4276,7 +4308,6 @@ _migrate_init() {
         ### happen BEFORE any vhost is touched; a peer that cannot take the
         ### record refuses the whole conversion.
         if [ "${_cmd}" = "proxy" ]; then
-          _xoct_keep_renamed_redirects
           _xoct_proxy_preflight
         fi
         ### We are using max verbose mode by default

@@ -5776,12 +5776,16 @@ _xmass_assert_standby_marker() {
 # still wanted once the move is done. Site auto-import stays off for the
 # window: a platform verify of the rename must not register sites twice.
 # The fail-out and the re-count use ONE predicate. A row the source was
-# running when its panel stopped travels at -1 with executed set; nothing
-# runs it on this box, so it is failed out like a queued one. Failing out
+# running when its panel stopped travels at -1 with executed set; no runner
+# on this box holds it, so it is failed out like a queued one. Failing out
 # only the rows with executed unset left it counted on every pass, and the
-# cutover refused each resume until an operator cleared it by hand.
+# cutover refused each resume until an operator cleared it by hand. The one
+# -1 row left alone is one whose runner is alive HERE -- a resume after a
+# step-13 park can meet a verify the rename forked -- tested the way the
+# hosting reaper tests it (the recorded pid runs a hosting-task command):
+# it stays counted, and the pass refuses until it ends.
 _xmass_failout_travelling_tasks() {
-  local _root _usr _out _rc _probe_rc _left _err _bad=0 _roots="/var/aegir"
+  local _root _usr _out _rc _probe_rc _left _err _live _bad=0 _roots="/var/aegir"
   local _oct
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _roots="${_roots} /data/disk/${_oct}"
@@ -5805,7 +5809,8 @@ _xmass_failout_travelling_tasks() {
       _alrt "  ${_root}: could not reach ${_tgt} (ssh rc=${_probe_rc}) — the task queue was never read"
       continue
     fi
-    # Two lines back: the count, then -- only when the count came back empty --
+    # Three lines back: the live runner pids the fail-out left alone (LIVE=,
+    # usually empty), the count, then -- only when the count came back empty --
     # drush's own first error line. An empty count is almost never a queue
     # that will not drain; it is drush unable to bootstrap the panel at all
     # (an alias uri naming a site dir this box does not have, a dead
@@ -5815,9 +5820,13 @@ _xmass_failout_travelling_tasks() {
 _u="$1"
 _e=$(mktemp 2>/dev/null) || _e="/tmp/.xmass-failout.$$"
 _q() { su -s /bin/bash - "${_u}" -c "drush8 @hostmaster sqlq \"$1\"" 2>>"${_e}"; }
-_q "UPDATE hosting_task t INNER JOIN node n ON n.vid = t.vid SET t.task_status='2' WHERE t.task_status = '-1' OR (t.task_status = '0' AND (t.executed IS NULL OR t.executed=0))" >/dev/null
+_live=$(pgrep -u "${_u}" -f 'hosting-task' 2>/dev/null | tr -dc '0-9\n' | paste -sd, -)
+_x=""
+[ -n "${_live}" ] && _x=" AND (t.pid IS NULL OR t.pid NOT IN (${_live}))"
+_q "UPDATE hosting_task t INNER JOIN node n ON n.vid = t.vid SET t.task_status='2' WHERE (t.task_status = '-1'${_x}) OR (t.task_status = '0' AND (t.executed IS NULL OR t.executed=0))" >/dev/null
 su -s /bin/bash - "${_u}" -c "drush8 @hostmaster vset --always-set hosting_platform_automatic_site_import 0" &>/dev/null
 _n=$(_q "SELECT COUNT(*) FROM hosting_task t INNER JOIN node n ON n.vid = t.vid WHERE t.task_status = '-1' OR (t.task_status = '0' AND (t.executed IS NULL OR t.executed=0))" | tail -1 | tr -dc '0-9')
+printf 'LIVE=%s\n' "${_live}"
 printf '%s\n' "${_n}"
 [ -n "${_n}" ] || grep -m1 '[^[:space:]]' "${_e}" 2>/dev/null \
   | sed 's/^[[:space:]]*//' | cut -c1-200
@@ -5829,14 +5838,17 @@ REMOTE
     # never ran the body (255, a timeout, a host key) also returns an empty
     # count, and blaming the panel for that sends the operator to drush on a
     # box he cannot reach. The drush wording belongs to rc 0 only.
-    _left=$(printf '%s\n' "${_out}" | sed -n '1p')
-    _err=$(printf '%s\n' "${_out}" | sed -n '2p')
+    _live=$(printf '%s\n' "${_out}" | sed -n 's/^LIVE=//p' | head -1)
+    _left=$(printf '%s\n' "${_out}" | sed -n '2p')
+    _err=$(printf '%s\n' "${_out}" | sed -n '3p')
     if [ -z "${_left}" ] || [ "${_left}" != "0" ]; then
       _bad=$((_bad + 1))
       if [ -z "${_left}" ] && [ "${_rc}" -ne 0 ]; then
         _alrt "  ${_root}: could not reach ${_tgt} (ssh rc=${_rc}) — the task count was never read"
       elif [ -z "${_left}" ]; then
         _alrt "  ${_root}: unknown task(s) still queued after the fail-out — count unreadable: ${_err:-drush returned nothing on stderr either}"
+      elif [ -n "${_live}" ]; then
+        _alrt "  ${_root}: ${_left} task(s) still queued or running after the fail-out — a task runner is live on ${_tgt} (pid ${_live}); re-run once it has ended"
       else
         _alrt "  ${_root}: ${_left} task(s) still queued after the fail-out"
       fi
@@ -5933,7 +5945,10 @@ _xmass_convert_source_to_proxy() {
     # Read once, never guessed.
     _my_fqdn=$(_xmass_src_fqdn)
     _tgt_fqdn=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "hostname -f" 2>/dev/null)
-    if [ -z "${_tgt_fqdn}" ]; then
+    if [ -z "${_tgt_fqdn}" ] && [ "${_pass}" = "final" ]; then
+      _alrt "  cannot read the target's hostname over ssh -- xoct tries again per account and refuses"
+      _alrt "  without it: the sites named under the old box hostname stay held on 503 until the re-run below"
+    elif [ -z "${_tgt_fqdn}" ]; then
       _alrt "  cannot read the target's hostname over ssh -- renamed sites' old names are proxied, not redirected"
     fi
   fi

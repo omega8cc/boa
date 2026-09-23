@@ -410,13 +410,16 @@ The redirect needs both hostnames, which `xmass` hands over in the
 environment (`_XOCT_TARGET_FQDN`, `_XOCT_MY_FQDN`; there is no flag). A later
 run keeps it without them: when the account already answers a renamed site
 with a `301`, or still holds sites on the per-host gate after a
-`--defer-host-named` pass, `proxy` reads them itself — this box's own name
-(the one the gate file names, else the one the redirects were written from)
-and the target's `hostname -f` as it answers now. So a `--repair`, a
-`--renotify` resend or the `--repair --retarget` after a failover keeps the
-old names answering a `301`, re-pointed at the new box's names. When the
-target's name cannot be read, the run refuses before anything is written and
-prints the command with both variables to set.
+`--defer-host-named` pass, `proxy` reads them itself — this box's panel
+hostname (the server alias's `remote_host`, else `hostname -f`, the lookup
+`xmass` uses) and the target's `hostname -f` as it answers now, after
+learning the target's host key. So a `--repair` (with or without
+`--renotify`) or the `--repair --retarget` after a failover keeps the old names
+answering a `301`, re-pointed at the new box's names. The run refuses before it
+changes anything when it cannot: a target that does not let this box in gets
+the same remedy as a refused retarget, and one that answers without a usable
+name gets the command's prefix to set by hand. Names handed over in the
+environment must be hostnames too.
 
 Repair and repoint (the tool names the flag when you need it):
 
