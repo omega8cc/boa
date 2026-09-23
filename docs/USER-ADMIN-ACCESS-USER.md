@@ -71,6 +71,6 @@ next pass.
 - Addresses are listed with spaces between them; each can be a single IPv4/IPv6 address or
   a CIDR range.
 - It is an extra gate at the web-server edge — your normal Drupal login still applies on
-  top of it.
+  top of it. It holds over HTTP and HTTPS, whether or not the site has its own certificate.
 - If your sites sit behind Cloudflare, the list still works on the visitor's real address
   (the platform recovers it), so enter the real client address as usual.

@@ -44,6 +44,7 @@ to everyone, delete its line — the restriction is removed on the next pass.
 
 - Addresses are listed with spaces between them; each can be a single IPv4/IPv6 address or a
   CIDR range.
-- The restriction covers the whole site.
+- The restriction covers the whole site, over HTTP and HTTPS, whether or not the site has
+  its own certificate.
 - If your sites sit behind Cloudflare, the list still works on the visitor's real IP (the
   platform recovers it), so enter the real client address as usual.
