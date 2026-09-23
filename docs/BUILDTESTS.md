@@ -276,10 +276,8 @@ openfed    # The openfed-project template requires only three composer helpers; 
            # composer install --no-dev                    # bootstrap; rc 4 EXPECTED, tolerated
            # composer update --no-install --no-scripts    # complete lock incl. include-file libraries
            # composer install --no-dev
-           # ACCEPTED TRADE: the platform ships drupal/entity_browser 2.15.0 with an open
-           # XSS advisory (SA-CONTRIB-2026-094) - the profile pins entity_browser 2.15
-           # exactly and the fixed release (2.16.0) is outside it, so advisory blocking
-           # must stay off for this build.
+           # The profile pins drupal/entity_browser exactly: 2.16 in 13.6.7, the release
+           # that fixes SA-CONTRIB-2026-094.
            # name by openfed/openfed read from the LOCK (the drupal.org release number);
            # profile openfed, docroot docroot/; the profile pins core-recommended ~10.6,
            # so no older-core fallback applies; builds under php83 (its catalogue cap)
