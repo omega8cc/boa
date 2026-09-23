@@ -183,7 +183,7 @@ into a NEW account on a php-max target. What that drill settled:
   and graded D6 as `?`).
 
 Re-run in full on **2026-08-25** as an OS × Percona matrix on published
-tool bytes (record: boa-testing `tier3/results/A2B-MX-2026-08-25.md`), the
+tool bytes, the
 first complete suite after ~130 commits to the toolset and the tree: the
 Debian 11 estate (MariaDB 10.5; mixed D6 + D7 with two real-LE HTTPS sites
 and a D9 composer platform, seven sites) adopted per-site into a Percona 5.7
@@ -199,14 +199,14 @@ The matrix found the one cell no earlier drill had visited, **D6 on a
 Percona 8.4 target**: site users were minted `caching_sha2_password` and
 PHP 5.6's mysqli aborts at the greeting, so both D6 sites served 503 while
 the pre-fix import counted them adopted (exit 0; only the proxy gate
-refused). Fixed the same day (aegir2boa 31723df = boa-private eff026d22):
+refused). Fixed the same day:
 D6 users pinned native at DB land, a serve-probe equality gate, exit-code
 honesty; re-verified on the republished bytes (stage2 md5 1ae65afc) with a
 fresh pair — db-import on 8.4 green, and the D6 per-site leg both ways: the
 stock `authentication_policy` target FAILS the site loudly with the users
 verifiably pinned, and the my.cnf remedy applied verbatim flips both D6
 sites to 200 with the re-import landing clean. The server-side half is the
-*Prerequisites* bullet on native auth; BOA sets it on Percona 8.4 (D-015).
+*Prerequisites* bullet on native auth; BOA sets it on Percona 8.4.
 
 Which leaves, honestly:
 
@@ -247,8 +247,7 @@ Which leaves, honestly:
 - **The upstart-era and apache 2.2 Ubuntu/Debian populations are
   feature-detected but undrilled.** The Ubuntu axis itself is drilled
   (2026-08-13: jammy source, MySQL 8.0, deb-installed include layout,
-  full adoption + reverts — record: boa-testing
-  tier3/results/A2B-UBUNTU-2026-08-13.md), and the tools are
+  full adoption + reverts), and the tools are
   OS-agnostic by construction (same-day audit: no distro gate
   anywhere). What no cloud image exists to drill is the oldest era:
   upstart init (Ubuntu 12.04/14.04) and apache 2.2 (Debian 7 /
@@ -342,7 +341,7 @@ look on any failure.
   `authentication_policy = mysql_native_password,,` in my.cnf, and on 8.0
   also `default_authentication_plugin = mysql_native_password`, which is
   what 8.0's handshake greeting follows. Current BOA writes them
-  automatically on Percona 8.0 and 8.4 (sql config sync, aegir2boa D-015)
+  automatically on Percona 8.0 and 8.4 (sql config sync)
   — on a target whose BOA predates that, add the lines yourself and
   restart mysql. Modern-PHP sites and `caching_sha2` users are
   unaffected — clients negotiate the switch. `check` grades this per
