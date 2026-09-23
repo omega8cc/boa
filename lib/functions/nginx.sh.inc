@@ -973,6 +973,13 @@ _nginx_wildcard_ssl_install() {
       fi
       _WILD_SSL_PROXY_UP=YES
     fi
+    _FRONTACL_TEST=$(grep boa_front_local_deny ${_WILD_SSL_VHOST} 2>&1)
+    if [[ ! "${_FRONTACL_TEST}" =~ "boa_front_local_deny" ]]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: nginx_wild_ssl.conf proxy needs per-site access-list update..."
+      fi
+      _WILD_SSL_PROXY_UP=YES
+    fi
     ### Keep the crawler-fleet guard in step with the zones file both ways:
     ### redeploy to add it once the maps are declared, and redeploy (the gate
     ### then strips it) when they are not.
