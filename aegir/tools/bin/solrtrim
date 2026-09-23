@@ -205,7 +205,7 @@ _classify() {
   [ -e "/var/backups/${_V_SVC}.initd" ] && [ ! -e "/etc/init.d/${_V_SVC}" ] && _C_PARKED=YES
   ### autoupboa SOURCES the cnf, so quoted/exported forms count — match its
   ### own tolerant clamav read. Per-version /root markers are NOT read: only
-  ### /etc/boa twins are consumed (the C-003 copy leaves inert /root
+  ### /etc/boa twins are consumed (the marker copy leaves inert /root
   ### originals behind); /root is the blanket java marker's home only.
   _C_DENY=NO
   grep -qiE "^[[:space:]]*(export[[:space:]]+)?${_V_DVAR}=[\"' ]*YES" "${_BAR_CNF}" 2>/dev/null && _C_DENY=YES

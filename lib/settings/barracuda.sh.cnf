@@ -790,7 +790,7 @@ _LOCAL_NETWORK_HN=""
 ###
 ### Change to NO if you prefer the running
 ### daily script to not fix permissions on all
-### files belonging to hosted sites an their
+### files belonging to hosted sites and their
 ### platforms (and any shared code).
 ###
 ### Note that this feature is again enabled
@@ -1595,9 +1595,9 @@ _PHP_MONGODB=NO
 ### the BOA mirrors, with automatic fallback to
 ### the source build for any component that has
 ### no matching package. NO always builds from
-### sources. On Devuan Daedalus it defaults to
-### YES unless set explicitly in the cnf file,
-### which always wins, both ways.
+### sources. On Devuan Daedalus and Excalibur it
+### defaults to YES unless set explicitly in the
+### cnf file, which always wins, both ways.
 ###
 _USE_PREBUILT_PKGS=NO
 

@@ -602,7 +602,7 @@ _lfd_health_check_fix() {
       # A csf disabled with csf -x (its /etc/csf/csf.disable marker) refuses
       # every lfd start, so the firewall must be re-enabled first or this
       # healer starts nothing for as long as the marker lives. A box is never
-      # left without its firewall, whoever disabled it (Adam's ruling,
+      # left without its firewall, whoever disabled it (ruled
       # 2026-09-09, reversing the 07-26 review that dropped the csf -e for
       # the operator's sake): a marker older than the grace is re-enabled.
       # Never while a BOA pass is in flight -- barracuda brackets its own

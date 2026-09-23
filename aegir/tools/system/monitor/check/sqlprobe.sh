@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# BOA SQL sensor — sqlprobe v1.1 (C-004 Phase 2 + real-needs Phase A,
-# LOG-ONLY).
+# BOA SQL sensor — sqlprobe v1.1
+# (LOG-ONLY).
 #
 # Appends one JSONL record per ~5 min to /var/log/boa/sqlprobe/<date>.jsonl:
 # per-second rates between THIS sample and the previous one (never cumulative
@@ -28,7 +28,7 @@
 #     cache has >= 1h uptime — the up-* password rotation restarts valkey
 #     minutes before the tune pass, so tune-time measurement alone stays
 #     dormant on standard runs; this store is what un-dormants it.
-#   - /var/log/boa/.valkey.demand.txt   the RM-14 hit-rate demand window
+#   - /var/log/boa/.valkey.demand.txt   the hit-rate demand window
 #     ("v1 <start_ts> <samples> <hits> <misses> <evicted> <peak_mb>",
 #     7-day decaying accumulation of >=1h-uptime same-run deltas;
 #     peak_mb is the high-water LIVE occupancy WITHIN the window, never
@@ -337,7 +337,7 @@ if [ -e "/etc/valkey/valkey.conf" ]; then
     fi
     #
     # Demand window for the hit-rate ceiling in _tune_memory_limits
-    # (RM-14): occupancy of a long-TTL cache is "space granted so far",
+    # — occupancy of a long-TTL cache is "space granted so far",
     # not need, so the tune pass sizes from hit/miss/eviction behaviour
     # instead. Deltas follow the SQL-sample discipline exactly — only
     # between two >=1h-uptime samples of the SAME server run (uptime

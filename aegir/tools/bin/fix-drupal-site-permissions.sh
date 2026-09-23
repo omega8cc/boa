@@ -138,7 +138,7 @@ if [ -n "${site_path}" ] && [ -e "${site_path}" ]; then
   site_path=$(realpath -e -- "${site_path}" 2>/dev/null) || site_path=""
 fi
 
-# --- Grav 2 site capsule (boa-grav D-003) ------------------------------------
+# --- Grav 2 site capsule -----------------------------------------------------
 # A capsule is a full Grav install at sites/<uri>/ with no settings.php;
 # detect it positively and run the capsule permission model instead of
 # refusing (union seam: further foreign-CMS branches join here the same way).
@@ -175,7 +175,7 @@ if [ -n "${site_path}" ] \
     find "${site_path}/${_wd}" -type f -exec chmod 0664 {} + 2> /dev/null
   done
   # Secret surfaces AFTER the generic pass, which would re-widen them
-  # (boa-grav D-008; same class as the TXP private/ store): accounts hold
+  # (same class as the TXP private/ store): accounts hold
   # password hashes and live reset tokens, config holds the session salt and
   # SMTP/API credentials. Group-rw for FPM, owner-rw for the CLI, NO world
   # bits. The root .env (phase 2: DB credentials) keeps FPM's read via group.
@@ -190,7 +190,7 @@ if [ -n "${site_path}" ] \
   exit 0
 fi
 
-# --- Textpattern multisite site (boa-txp D-002) -------------------------------
+# --- Textpattern multisite site -----------------------------------------------
 # A TXP site is sites/<uri>/{admin,private,public} with no settings.php; detect
 # it positively and run the TXP permission model instead of refusing (union seam
 # shared with the Grav branch above).

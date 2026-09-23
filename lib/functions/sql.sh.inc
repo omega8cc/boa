@@ -739,7 +739,7 @@ _sql_conf_update() {
         # aborts on a caching_sha2 greeting BEFORE the user's own plugin is
         # consulted, so a php56-pool site loses its DB on the web while CLI
         # drush stays healthy. Advertise native; caching_sha2 users still
-        # authenticate via the client auth-switch (aegir2boa D-015).
+        # authenticate via the client auth-switch.
         # 8.0 greets with caching_sha2 as well and is not a corner case: it
         # is a first-class series and the staged middle of every 5.7 -> 8.4
         # upgrade, where a box sits for a whole run; written for 8.4 alone,
