@@ -77,8 +77,9 @@ staging.example.com    198.51.100.42 2001:db8:1::1
 
 ## Generator behaviour
 
-- **Change-gate** — a context regenerates only when its control file's mtime advanced
-  **or** the host's SSH-client set changed (so newly logged-in admins propagate). No
+- **Change-gate** — a context regenerates only when its control file's mtime advanced, the
+  host's SSH-client set changed (so newly logged-in admins propagate), the emitted shape
+  changed, or the front state or a listed site's server names changed (see below). No
   change → no write, no reload.
 - **Pruning** — removing a site from the control file deletes its fragment on the next
   run, lifting the restriction (the site becomes open again).
@@ -93,6 +94,35 @@ staging.example.com    198.51.100.42 2001:db8:1::1
   `nginx_deny` / `cloudflare_realip`.
 - **Schedule / serial** — `*/2` cron; serial-gated via `_fetch_versioned` in `BOA.sh.txt`
   (decrement its `fNN` on any change).
+
+## HTTPS through the wildcard SSL front
+
+A site without a certificate of its own is served over HTTPS by the wildcard SSL front
+(`nginx_wild_ssl.conf`), which proxies to the site's port-80 vhost. There the peer is always
+`127.0.0.1`, which the anti-lockout admits, so the vhost fragment alone cannot hold on that
+path.
+
+The generator therefore also writes a front copy of every listed site into the context's
+`ip_access_front/`. `<site>.http.conf` holds a `geo` of the same list and a `$host` map of
+the site's server names, aliases included; `<site>.srv.conf` holds the `403`. The front
+includes both and judges the real visitor.
+
+A name goes into the `$host` map only when it is a plain hostname of at most 174 bytes that
+no other rendered vhost on the box also serves. A wildcard alias, or a name another instance
+carries too, stays out, so the front never applies one site's list to another site's visitors.
+
+- The ACME challenge (`/.well-known/acme-challenge/`) and the MTA-STS policy
+  (`/.well-known/mta-sts.txt`) stay open at the front, as their allow-all locations keep
+  them open in the vhosts.
+- Copies are written only once the deployed front carries their include lines (a barracuda
+  upgrade updates it), and only for a site with a rendered vhost. A context whose control
+  file is gone keeps none.
+- They share the context's change-gate and configtest, but are never backed up: a failed
+  configtest or reload drops them rather than restoring an older set, which could still
+  claim a name that has since moved to another site.
+
+A site with its own certificate has its own `:443` server block, which includes the vhost
+fragment directly and never passes through the front.
 
 ## Interaction with realip
 

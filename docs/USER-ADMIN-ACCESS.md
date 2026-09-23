@@ -136,10 +136,11 @@ staging.example.com    198.51.100.42 2001:db8:1::1
 ## Generator behaviour
 
 - **Change-gate** — a context regenerates only when its control file's mtime advanced, the
-  host's SSH-client set changed, the emitted-directive version bumped, or a listed site's
-  CMS kind changed (the kind is baked into the fragment, so a record written before its
-  Grav or Textpattern site exists picks up the extra line on the first pass after the site
-  appears, with no edit to the control file). No change → no write, no reload.
+  host's SSH-client set changed, the emitted-directive version bumped, a listed site's CMS
+  kind changed, or the front state or a listed site's server names changed (see below). The
+  kind is baked into the fragment, so a record written before its Grav or Textpattern site
+  exists picks up the extra line on the first pass after the site appears, with no edit to
+  the control file. No change → no write, no reload.
 - **Pruning** — removing a site from the control file deletes both its fragments on the
   next run, lifting the restriction (the admin surface becomes open again).
 - **Safety** — per context: back up the current fragments, regenerate atomically,
@@ -153,6 +154,31 @@ staging.example.com    198.51.100.42 2001:db8:1::1
   `ai_policy` / `nginx_deny` / `cloudflare_realip`.
 - **Schedule / serial** — `*/2` cron; serial-gated via `_fetch_versioned` in `BOA.sh.txt`
   (decrement its `fNN` on any change).
+
+## HTTPS through the wildcard SSL front
+
+A site without a certificate of its own is served over HTTPS by the wildcard SSL front
+(`nginx_wild_ssl.conf`), which proxies to the site's port-80 vhost. There the peer is always
+`127.0.0.1`, which the anti-lockout admits, so the vhost fragments alone cannot hold on that
+path.
+
+The generator therefore also writes a front copy of every listed site into
+`user_admin_access_front/`. `<site>.http.conf` holds its own `geo`, the same `$uri` map (the
+Grav and Textpattern lines included) and a `$host` map of the site's server names, aliases
+included; `<site>.srv.conf` holds the `403`. The front includes both and judges the real
+visitor.
+
+A name goes into the `$host` map only when it is a plain hostname of at most 174 bytes that
+no other rendered vhost on the box also serves. A wildcard alias, or a name another instance
+carries too, stays out, so the front never applies one site's list to another site's visitors.
+
+Copies are written only once the deployed front carries their include lines (a barracuda
+upgrade updates it), and only for a site with a rendered vhost; an instance whose control
+file is gone keeps none. They share the instance's
+change-gate and configtest, but are never backed up: a failed configtest or reload drops
+them rather than restoring an older set, which could still claim a name that has since moved
+to another site. A site with its own certificate has its own `:443` server block, which
+includes the vhost fragments directly and never passes through the front.
 
 ## Interaction with realip
 
