@@ -64,11 +64,12 @@
 ###       changes, and (with --hex-blob) never reached blob values anyway.
 ###       A plain dump is still taken first, as a backup only.
 ###   §5b /var/aegir only: rename the host-level names written at install --
-###       postfix myhostname and a mydestination entry, /etc/mailname, and
-###       BOA's self-signed fallback certificate (re-issued on its own key) --
-###       when they carry one of the box's former names: the old hostname, or
-###       the name that certificate was issued for. Anything else is left
-###       alone.
+###       postfix myhostname and the mydestination entries naming the box (its
+###       fqdn and the localhost.<zone> token written beside it), /etc/mailname,
+###       and BOA's self-signed fallback certificate (re-issued on its own key)
+###       -- when they carry one of the box's former names: the old hostname, or
+###       the name that certificate was issued for; the localhost token moves
+###       when its zone is a former name's. Anything else is left alone.
 ###   §6  Reload nginx
 ###   §9  Confirm every site carrying the new hostname actually serves
 ###       before reporting success -- the dirs this run moved AND the ones
@@ -2718,8 +2719,10 @@ PHPEOF
 # renamed in place, cloned, or restored from an image went on introducing
 # itself by a former name in every mail it sent and on that certificate.
 # Master root only (the box's own name is the master's). A value is renamed
-# only when it is one of the box's former names: the old Aegir hostname, or
-# the name BOA's own fallback certificate was issued for -- an image restored
+# only when it is one of the box's former names -- the old Aegir hostname, or
+# the name BOA's own fallback certificate was issued for -- or, for the
+# localhost token mydestination carries beside the fqdn, when its zone is a
+# former name's: an image restored
 # and renamed by an older tool leaves postfix on its build-time name, which
 # only that certificate still records. A myhostname or a certificate set to
 # anything else is left alone.

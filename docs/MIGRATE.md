@@ -67,7 +67,8 @@ self-signed fallback certificate (`/etc/ssl/private/nginx-wild-ssl.crt`,
 re-issued for `*.<new-fqdn>` on its existing key, the old one kept under
 `backups/rename-hostname/`). Each is renamed only when it carries one of the
 box's former names — the old hostname, or the name that certificate was
-issued for, which is how a box restored from an image and renamed by an older
+issued for, and for the localhost token one of their zones — which is how a
+box restored from an image and renamed by an older
 tool is still recognised at its next rename (a run whose aliases already carry
 the system FQDN stops with "nothing to do" before this step) — so a custom
 `myhostname` or a certificate you installed yourself is left alone. Every root's run also rewrites the yml

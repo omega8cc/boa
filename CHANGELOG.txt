@@ -515,11 +515,13 @@
       its fqdn and the localhost.<zone> token the installer writes beside
       it, which used to keep the zone of the name the box was built under
       -- /etc/mailname, and the self-signed certificate Nginx presents
-      for a name it does not serve, re-issued on its own key. A renamed, cloned or restored box
-      used to go on introducing itself by its former name in every mail it
-      sent. Only values that carry a former name of the box are changed,
-      so a custom postfix name or an installed certificate stays. The yml
-      aliases Drush 9+ reads follow the rename too, master_url included.
+      for a name it does not serve, re-issued on its own key. A renamed,
+      cloned or restored box used to go on introducing itself by its
+      former name in every mail it sent. Only values that carry a former
+      name of the box -- or, for the localhost token, a former name's
+      zone -- are changed, so a custom postfix name or an installed
+      certificate stays. The yml aliases Drush 9+ reads follow the
+      rename too, master_url included.
     * The barracuda launcher refreshes itself when its release is older
       than the tree it is about to upgrade to, and runs again with the
       same arguments. An older launcher stamped the new tree with its own
