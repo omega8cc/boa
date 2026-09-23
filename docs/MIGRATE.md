@@ -65,13 +65,17 @@ the `mydestination` entries naming the box (its fqdn, and the
 renamed when it is a former name's), `/etc/mailname`, and BOA's
 self-signed fallback certificate (`/etc/ssl/private/nginx-wild-ssl.crt`,
 re-issued for `*.<new-fqdn>` on its existing key, the old one kept under
-`backups/rename-hostname/`). Each is renamed only when it carries one of the
+`backups/rename-hostname/`).
+
+Each is renamed only when it carries one of the
 box's former names — the old hostname, or the name that certificate was
 issued for, and for the localhost token one of their zones — which is how a
 box restored from an image and renamed by an older
 tool is still recognised at its next rename (a run whose aliases already carry
 the system FQDN stops with "nothing to do" before this step) — so a custom
-`myhostname` or a certificate you installed yourself is left alone. Every root's run also rewrites the yml
+`myhostname` or a certificate you installed yourself is left alone.
+
+Every root's run also rewrites the yml
 alias copies Drush 9+ reads (`<root>/.drush/sites`, and for an account the
 limited-shell user's `/home/oN.ftp/.drush/sites`), so `master_url` there
 follows the rename.
@@ -86,7 +90,9 @@ background monitor additionally restores the running hostname from
 `/etc/hostname` within seconds). A stale cnf therefore reverts the hostname
 mid-rename; the observed collateral is provision flipping to remote-host mode
 against the old identity (failed self-rsync on missing SSH host keys) and a
-regenerated legacy nginx config that fails `nginx -t`. Set the full box
+regenerated legacy nginx config that fails `nginx -t`.
+
+Set the full box
 identity BEFORE running the tool on an existing box:
 
 1. `/etc/hostname` — the new FQDN;
@@ -107,7 +113,9 @@ nothing — including when the new FQDN contains the old one (a
 subdomain-augmenting rename). One qualification: a re-run on a box renamed by
 EARLIER tooling repairs the per-site surfaces the older rename left behind —
 settings.php, the `files`/`private` symlinks, the client symlink, the alias
-file and the static store. Every repair stays conditioned on old-name
+file and the static store.
+
+Every repair stays conditioned on old-name
 evidence, so a correct site (including one freshly installed on a migration
 target) is untouched and not even queued; on such a box the aliases already
 carry the new hostname, so pin the old one with `--force-old`. After a partial
@@ -124,7 +132,9 @@ renameaegirhost --aegir-root /data/disk/o1 --force-old old.example.com
 ### Sites whose name contains the box hostname
 
 A tenant site whose URI embeds the box FQDN follows the box through a
-hostname rename. The tool carries, per such site: the site directory itself,
+hostname rename.
+
+The tool carries, per such site: the site directory itself,
 its per-site Drush alias file, its `static/files` store, the site's own
 `files`/`private` symlinks into that store, its `clients/<client>/` symlink,
 the URI-derived values inside the provision-generated `settings.php`
@@ -132,12 +142,16 @@ the URI-derived values inside the provision-generated `settings.php`
 identity, the absolute `local.settings.php` include, and
 `trusted_host_patterns` in **both** its plain and backslash-escaped
 spellings — the escaped one is what produces the HTTP 400 when left stale),
-and the site's per-site PHP pin row in `static/control/multi-fpm.info`. On an
+and the site's per-site PHP pin row in `static/control/multi-fpm.info`.
+
+On an
 Octopus root the tool also parks the old-name panel SSL proxy include
 (`/var/aegir/config/server_master/nginx/pre.d/z_<account>.<old-hostname>_ssl_proxy.conf`)
 into the rename's backup directory: the account pass regenerates it under the new
 name once the new certificate exists, while the old file would keep naming a
-certificate that is about to go and fail the box-wide configtest. A
+certificate that is about to go and fail the box-wide configtest.
+
+A
 `sites/<name>` directory under the old hostname that holds no `settings.php`
 is not a site: it is moved into the rename's backup directory under
 `stray-sites/` (nothing is deleted) and the run says so, so the platform
@@ -165,13 +179,17 @@ The run ends with a serving gate over every site carrying the new hostname —
 the dirs this run moved and the ones an earlier or parked run had already
 moved, so a resumed run still confirms the sites its predecessor renamed;
 sites a panel has disabled (placeholder vhost), sites with no vhost file and
-suspended accounts are listed as not probed. The tool waits for each such site to
+suspended accounts are listed as not probed.
+
+The tool waits for each such site to
 actually answer — up to `_RENAME_SERVE_WAIT` seconds per site, default 180 —
 accepting 200/301/302, and a 401 or 403 as well (an auth or IP allow-list answer proves the
 vhost is live and routed to the right site, logged as `serves (<code>, protected)`), but
 self-calibrating against the box's catch-all vhost,
 so an "Under Construction" 200 for a nonexistent Host never counts as
-serving. The closing summary ends with either
+serving.
+
+The closing summary ends with either
 `Sites : all N renamed site(s) confirmed serving` or `NOT SERVING : <uris>` —
 the run itself still exits 0, so read that line rather than the exit status;
 a 400 there is the trusted-host check. The wait exists because `settings.php`

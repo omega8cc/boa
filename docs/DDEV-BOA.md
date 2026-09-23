@@ -51,11 +51,15 @@ The database dump uses `drush @alias sql-dump` — that is, **Drush 8**, the onl
 Drush that is integrated with Ægir site aliases. `sql-dump` gets the site's database
 credentials from the site's own `drushrc.php` (the alias itself carries `db_server` and the
 site context, not the credentials), so it produces a correct dump for any Drupal version
-(6 through 11+) without bootstrapping Drupal. `drushrc.php` is Drush 8 configuration and
+(6 through 11+) without bootstrapping Drupal.
+
+`drushrc.php` is Drush 8 configuration and
 only Drush 8 reads it; a site-local modern Drush ignores it, which is why a cloaked
 `settings.php` parses that file itself rather than relying on Drush to load it. The dump
 path is therefore unaffected by credential cloaking, which removes the literal values from
-`settings.php` only. Standalone `drush10`/`drush11` exist on BOA
+`settings.php` only.
+
+Standalone `drush10`/`drush11` exist on BOA
 only to convert alias names and return nothing useful for a dump; site-local `vdrush` is
 the right tool for updates but is not reachable over a non-interactive SSH command. So the
 add-on defaults to `drush` and documents `drush8` as the explicit synonym.
@@ -108,6 +112,8 @@ as a commented opt-in only, never switched. It does not reproduce the
 BOA server itself: there is no Ægir/Hostmaster panel, no Octopus multi-tenancy, no CSF, and
 DDEV's nginx/PHP are stock builds, not BOA's own compiled ones. Per-site `php.ini` tuning
 and BOA's nginx directives are not exported (they are not readable through the limited
-shell). For a full local BOA server, see *BOA Local*: an install mode of the ordinary
+shell).
+
+For a full local BOA server, see *BOA Local*: an install mode of the ordinary
 installer (`boa in-lts local <email>`, with `in-dev` and `in-pro` equally valid) that puts a
 whole BOA server on a local VM. It is not a prebuilt image.

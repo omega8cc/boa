@@ -21,6 +21,17 @@ _nginx_conf_update() {
       touch ${_pthLog}/nginx-config-params-fixed-${_xSrl}-${_X_VERSION}.log
     fi
   fi
+  ### PHP's global.inc believes a remote peer's client address only on
+  ### nginx's word (BOA_NGINX_CLIENT). A box whose fastcgi_params predate
+  ### that param takes the current file now, not at the next version change.
+  if [ -e "${_locCnf}/nginx/fastcgi_params.txt" ] \
+    && [ -e "/etc/nginx/fastcgi_params" ] \
+    && grep -q BOA_NGINX_CLIENT "${_locCnf}/nginx/fastcgi_params.txt" \
+    && ! grep -q BOA_NGINX_CLIENT /etc/nginx/fastcgi_params; then
+    mkdir -p ${_vBs}/dragon/t
+    cp -af /etc/nginx/fastcgi_params ${_vBs}/dragon/t/fastcgi_params-pre-client-${_NOW}
+    cp -af ${_locCnf}/nginx/fastcgi_params.txt /etc/nginx/fastcgi_params
+  fi
   if [ -e "${_mtrNgx}/pre.d/nginx_speed_purge.conf" ]; then
     rm -f ${_mtrNgx}/pre.d/nginx_speed_purge.conf
   fi
@@ -739,28 +750,51 @@ _master_fix_multi_ip_cron_access() {
     | tr -d "\s"`;do echo "  allow        ${_IP};" >> \
       /root/.local.IP.list.allow;done
   echo "  allow 127.0.0.1;" >> /root/.local.IP.list.allow
-  echo "  deny all;" >> /root/.local.IP.list.allow
-
-  sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${_mtrTpl}/Inc/vhost_include.tpl.php
-  wait
-  sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${_mtrTpl}/Inc/vhost_include.tpl.php
-  wait
-
-  sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${_mtrTpl}/subdir.tpl.php
-  wait
-  sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${_mtrTpl}/subdir.tpl.php
-  wait
-
-  sed -i "s/allow 127.0.0.1;//g; s/ *$//g; /^$/d" \
-    ${_mtrInc}/nginx_vhost_common.conf
-  wait
-  sed -i '/deny all;/ {r /root/.local.IP.list.allow
-d;};' ${_mtrInc}/nginx_vhost_common.conf
-  wait
+  ###
+  ### Only the locations kept for the box itself (FPM status and ping, the
+  ### cron entry points) take the box's other addresses: they are the ones
+  ### that allow 127.0.0.1. A location that denies everyone (backup_migrate
+  ### files, config sync dirs) stays closed to the box as well, or every proxy
+  ### that connects from it (the wildcard SSL front, an HTTPS proxy in pre.d)
+  ### would serve those files to any visitor. Each pass first drops the lines
+  ### it added before, in its own padded format, and any allow line inside
+  ### those two locations, so a file expanded by an older pass heals too. The
+  ### rendered subdir vhosts were copied from the template, so they get the
+  ### same treatment. These dirs belong to the aegir user, so a symlink is
+  ### skipped, the new text is staged in a root-only dir, and sed -i writes a
+  ### new file and renames it over the path, never through it. mawk has no
+  ### {n} repetition and before 1.3.4 no [:class:] sets: both are spelled out.
+  ###
+  local _f _d _t
+  _d=$(mktemp -d /var/backups/.boa-multi-ip.XXXXXX 2>/dev/null) || return 0
+  _t="${_d}/stage"
+  for _f in ${_mtrTpl}/Inc/vhost_include.tpl.php \
+    ${_mtrTpl}/subdir.tpl.php \
+    ${_mtrInc}/nginx_vhost_common.conf \
+    /var/aegir/config/server_master/nginx/subdir.d/*/*.conf; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    awk -v list="/root/.local.IP.list.allow" '
+      BEGIN { while ((getline _l < list) > 0) _ips[++_n] = _l }
+      /^[ \t]*location[ \t].*files\/(backup_migrate\/|config_)/ { _closed = 1; _depth = 0 }
+      {
+        _o = gsub(/\{/, "{"); _c = gsub(/\}/, "}")
+        if (_closed) _depth += _o - _c
+        _drop = 0
+        if ($0 ~ /^[ \t]*allow        [^ ;]+;[ \t\r]*$/) _drop = 1
+        else if (_closed && $0 ~ /^[ \t]*allow[ \t]/) _drop = 1
+        else if ($0 ~ /^[ \t]*allow 127\.0\.0\.1;[ \t\r]*$/) {
+          match($0, /^[ \t]*/); _ind = substr($0, 1, RLENGTH)
+          for (_i = 1; _i <= _n; _i++) { _s = _ips[_i]; sub(/^[ \t]*/, _ind, _s); print _s }
+          _drop = 1
+        }
+        if (!_drop) print
+        if (_closed && _depth <= 0 && (_o || _c)) _closed = 0
+      }' "${_f}" > "${_t}"
+    if [ -s "${_t}" ] && [ -s "${_f}" ] && ! cmp -s "${_t}" "${_f}"; then
+      sed -i -e "1r ${_t}" -e d "${_f}"
+    fi
+  done
+  rm -rf "${_d}"
 }
 
 _nginx_initd_check() {
@@ -1297,6 +1331,52 @@ _nginx_ssl_proxy_local_refusal() {
   rm -rf "${_bak}"
 }
 
+_nginx_migration_proxy_client() {
+  ### A site proxy that xoct or xcopy wrote before its template handed on
+  ### the wildcard SSL front's visitor still gives the new host 127.0.0.1
+  ### for every HTTPS request that came through the front. It gets the
+  ### template's block, taken from this pass's build tree, and its client
+  ### headers point at that block's variable. The vhost dirs belong to the
+  ### instance users, so a symlink is skipped, the new text is staged in a
+  ### root-only dir and sed -i replaces the file; every change is undone
+  ### when the config no longer tests clean.
+  local _src="${_bldPth}/aegir/tools/system/conf/proxy.conf"
+  local _d _f _n=0 _i
+  grep -q boa_mig_client "${_src}" 2>/dev/null || return 0
+  _d=$(mktemp -d /var/backups/.boa-mig-proxy.XXXXXX 2>/dev/null) || return 0
+  awk '/### HTTPS for a site without its own certificate reaches this vhost/ { p = 1; print "  ###" }
+    p { print }
+    p && /^  }$/ { exit }' "${_src}" > "${_d}/block"
+  if ! grep -q 'set $boa_mig_client $remote_addr;' "${_d}/block" \
+    || ! grep -q 'set $boa_mig_client $http_x_real_ip;' "${_d}/block"; then
+    rm -rf "${_d}"
+    return 0
+  fi
+  for _f in /data/disk/*/config/server_master/nginx/vhost.d/*; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    grep -q "Plain HTTP proxy (START)" "${_f}" || continue
+    grep -q boa_mig_client "${_f}" && continue
+    grep -q 'CF-Connecting-IP  *\$remote_addr;' "${_f}" || continue
+    grep -q "^  log_not_found " "${_f}" || continue
+    _n=$(( _n + 1 ))
+    cat "${_f}" > "${_d}/${_n}.orig"
+    echo "${_f}" > "${_d}/${_n}.path"
+    awk -v blk="${_d}/block" '
+      /proxy_set_header[ \t]+(X-Real-IP|CF-Connecting-IP)[ \t]+\$remote_addr;/ { sub(/\$remote_addr;/, "$boa_mig_client;") }
+      { print }
+      !d && /^  log_not_found / { while ((getline _l < blk) > 0) print _l; d = 1 }' \
+      "${_d}/${_n}.orig" > "${_d}/stage"
+    [ -s "${_d}/stage" ] && sed -i -e "1r ${_d}/stage" -e d "${_f}"
+  done
+  if [ "${_n}" -gt 0 ] && ! nginx -t > /dev/null 2>&1; then
+    for (( _i = 1; _i <= _n; _i++ )); do
+      _f=$(cat "${_d}/${_i}.path")
+      [ -f "${_f}" ] && [ ! -L "${_f}" ] && sed -i -e "1r ${_d}/${_i}.orig" -e d "${_f}"
+    done
+  fi
+  rm -rf "${_d}"
+}
+
 _nginx_config_update_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _nginx_config_update_fix"
@@ -1392,6 +1472,7 @@ _nginx_config_update_fix() {
       sed -i "s/add_header Vary .*//g" /var/aegir/config/server_*/nginx.conf &> /dev/null
       wait
       _nginx_ssl_proxy_local_refusal
+      _nginx_migration_proxy_client
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
       sed -i "s/:443;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null

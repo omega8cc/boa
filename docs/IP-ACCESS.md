@@ -87,7 +87,9 @@ staging.example.com    198.51.100.42 2001:db8:1::1
   `service nginx configtest`, then `reload`; on a failed configtest or reload, restore
   the last-good backup and reload. The last-good archive is proved readable before the live fragments are deleted: an
   unreadable one leaves the fragments on disk alone and prints an `ALRT:` line naming the
-  control file to fix, and a freshly written last-good that does not verify is removed. On a
+  control file to fix, and a freshly written last-good that does not verify is removed.
+
+  On a
   replication standby whose web tier is held, the fragments are written and the change-gate
   markers advance, but the reload and the revert are both skipped until promotion. The whole script holds the shared
   `/run/boa_nginx_config.lock` (`flock -w 30`) so it never overlaps `ai_policy` /
@@ -161,7 +163,9 @@ For a full end-to-end runbook on a disposable VM, see
 This is a **pure nginx `allow`/`deny` layer** — it keys on the recovered client IP at the
 web tier and does not touch csf. So it takes **both address families and subnets**: an entry
 may be an IPv4 or IPv6 address, singly or as a CIDR range (`203.0.113.0/24`, `2001:db8::/32`,
-…). The validator is a strict subset of what the nginx access module accepts, so a
+…).
+
+The validator is a strict subset of what the nginx access module accepts, so a
 validated entry can never break the box-wide configtest. Note this is independent of csf:
 adding an IPv6 rule here restricts the site at nginx but does **not** add a host-firewall
 rule (csf remains a separate layer).

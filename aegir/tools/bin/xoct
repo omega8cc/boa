@@ -756,6 +756,89 @@ _xoct_named_under_host() {
   [ -n "$2" ] && [ "$1" != "${1//$2/}" ]
 }
 
+### The renamed-site 301 needs both hostnames, and a whole-server move hands
+### them over only in the environment (_XOCT_TARGET_FQDN, _XOCT_MY_FQDN);
+### there is no flag. A later run without them -- a hand --repair, the
+### --repair --retarget that follows a failover, a --renotify resend, or the
+### --repair that is to convert the sites a --defer-host-named pass held --
+### rendered those sites as plain proxies of their old names, which the
+### renamed target never serves: its catch-all for every visitor. So when
+### the caller named no hostnames and this account either answers a renamed
+### site with a 301 already or still holds sites on the per-host gate, read
+### them here: this box's own name, by the same lookup xmass uses, and the
+### target's as it answers now, so a retarget points the redirects at the
+### new box. The gate file only says that the account needs this; its
+### content is the tenant's to write and is never used as a name. Called
+### from the preflight once its own refusals have passed; a target whose
+### name cannot be read refuses the run before anything is written.
+_xoct_valid_host() {
+  case "$1" in
+    ''|*[!a-zA-Z0-9.-]*|.*|*.|*..*) return 1 ;;
+  esac
+  return 0
+}
+_xoct_keep_renamed_redirects() {
+  local _vd="${_USR}/config/server_master/nginx/vhost.d"
+  local _hg="${_USR}/static/control/http-off-host.pid"
+  local _why="" _tf _mf _n _trc=0
+  ### Both names are written into nginx vhosts and sed replacements: one a
+  ### caller hands over must be a hostname too, never merely non-empty.
+  for _n in "${_XOCT_TARGET_FQDN}" "${_XOCT_MY_FQDN}"; do
+    if [ -n "${_n}" ] && ! _xoct_valid_host "${_n}"; then
+      echo "ERROR: ${_oct}: '${_n}' (from _XOCT_TARGET_FQDN/_XOCT_MY_FQDN) is not a hostname"
+      exit 1
+    fi
+  done
+  [ -n "${_XOCT_TARGET_FQDN}" ] && [ -n "${_XOCT_MY_FQDN}" ] && return 0
+  [ -n "${_XOCT_DEFER_FQDN}" ] && return 0
+  if [ -s "${_hg}" ] && [ ! -L "${_hg}" ]; then
+    _why="it still holds sites on the per-host gate"
+  elif grep -q -s -F "renamed site: redirect to its new name" "${_vd}"/* 2>/dev/null; then
+    _why="it answers renamed sites with a 301"
+  else
+    return 0
+  fi
+  _mf="${_XOCT_MY_FQDN}"
+  if [ -z "${_mf}" ]; then
+    _mf=$(grep "remote_host" /var/aegir/.drush/server_master.alias.drushrc.php 2>/dev/null \
+      | head -1 | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
+    _xoct_valid_host "${_mf}" || _mf=$(hostname -f 2>/dev/null | tr -d '\n')
+    _xoct_valid_host "${_mf}" || _mf=""
+  fi
+  _tf="${_XOCT_TARGET_FQDN}"
+  if [ -z "${_tf}" ]; then
+    _xoct_learn_peer_host_key "${_tgt}"
+    _tf=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "hostname -f" 2>/dev/null)
+    _trc=$?
+    _tf=$(printf '%s\n' "${_tf}" | tail -n 1 | tr -d '\r')
+    _xoct_valid_host "${_tf}" || _tf=""
+  fi
+  if [ -z "${_tf}" ] && [ "${_trc}" -ne 0 ]; then
+    echo "ERROR: ${_oct}: ${_why}, and ${_tgt} does not let this box in to read its"
+    echo "ERROR: hostname (ssh rc=${_trc}); the renamed sites' 301 needs it."
+    _xoct_peer_trust_remedy "${_tgt}"
+    exit 1
+  fi
+  if [ -z "${_tf}" ] || [ -z "${_mf}" ]; then
+    echo "ERROR: ${_oct}: ${_why}, and the hostnames that keep its renamed sites"
+    echo "ERROR: answering a 301 could not be read (target '${_tf}', this box '${_mf}')."
+    echo "ERROR: Re-run the command exactly as typed, with both set in front of it:"
+    echo "ERROR:   _XOCT_TARGET_FQDN=<hostname -f of ${_tgt}> _XOCT_MY_FQDN=<this box's hostname> xoct proxy ..."
+    exit 1
+  fi
+  _XOCT_TARGET_FQDN="${_tf}"
+  _XOCT_MY_FQDN="${_mf}"
+  echo "INFO: ${_oct}: ${_why}; its sites named under ${_XOCT_MY_FQDN} answer a 301 to the same name under ${_XOCT_TARGET_FQDN}"
+}
+
+### The prefix a printed re-run needs to keep those redirects; empty when
+### this run had no hostnames to hand on.
+_xoct_repair_env() {
+  [ -n "${_XOCT_TARGET_FQDN}" ] && [ -n "${_XOCT_MY_FQDN}" ] \
+    && printf '_XOCT_TARGET_FQDN=%s _XOCT_MY_FQDN=%s ' "${_XOCT_TARGET_FQDN}" "${_XOCT_MY_FQDN}"
+  return 0
+}
+
 ### Can the per-host gate (static/control/http-off-host.pid) hold this site
 ### on 503 while it stays local? A Grav or Textpattern vhost named under the
 ### box hostname carries its own test of the file. Drupal and Backdrop reach
@@ -1308,8 +1391,8 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             ### there: proxying it forwards to the target's catch-all. When
             ### the caller names the target's hostname -- which a whole-server
             ### move does only AFTER the renames -- the old name is answered
-            ### with a 301 to the renamed site instead (design ruling D-17;
-            ### e2e CUT-E36). The control panel is never proxied and is not a
+            ### with a 301 to the renamed site instead.
+            ### The control panel is never proxied and is not a
             ### site of this loop.
             _REDIR_TO=""
             if [ -n "${_XOCT_TARGET_FQDN}" ] \
@@ -3468,6 +3551,9 @@ _xoct_proxy_preflight() {
     fi
   fi
 
+  ### After the refusals above, before anything is written.
+  _xoct_keep_renamed_redirects
+
   _mig_resolve "${_USR}"
   if [ "${_MIG_MODE}" = "retired" ]; then
     echo "ERROR: ${_oct}: proxy policy is retired; declare a mode first:"
@@ -3805,7 +3891,7 @@ _xoct_retire_one() {
   fi
   ### The withdrawal date the customer was promised is part of the record, not
   ### only of the mail: without it the policy table could not show when a
-  ### retired proxy is due to go (e2e RET-E03). It travels as its own key.
+  ### retired proxy is due to go. It travels as its own key.
   _mig_write_record "${_root}" "${_role}" "${_peer}" "${_peer_oct:-${_a}}" \
     retired "${_scope}" "" "${_peer_ips}" "${_wdl}" || return 1
   _mig_log "${_root}" xoct retire "${_scope}" retired "${_wdl}" "${_peer}"
@@ -4328,13 +4414,13 @@ _migrate_init() {
               fi
             fi
             echo "ERROR: ${_oct} was NOT converted. Fix the reported error, then re-run:"
-            echo "ERROR:   xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair"
+            echo "ERROR:   $(_xoct_repair_env)xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair"
             exit 1
           fi
           if [ -n "${_XOCT_PROXY_NOSSL}" ]; then
             echo "ALRT: converted WITHOUT an HTTPS proxy vhost (certificate material missing):${_XOCT_PROXY_NOSSL}"
             echo "ALRT: HTTPS via the old address will fail for those sites; once the keys exist,"
-            echo "ALRT: re-run: xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair"
+            echo "ALRT: re-run: $(_xoct_repair_env)xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair"
           fi
           if [ -n "${_XOCT_PROXY_DEFERRED}" ]; then
             echo "INFO: deferred, still local and held on 503 by the per-host gate:${_XOCT_PROXY_DEFERRED}"
@@ -4402,7 +4488,7 @@ _migrate_init() {
             if [ "${_MAIL_SENT}" = "YES" ]; then
               _mig_log "${_USR}" xoct mail "${_XOCT_MAIL_KIND}" "${_MIG_MODE}" "${_MIG_DEADLINE}" "${_tgt}"
             else
-              echo "ALRT: resend later with: xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair --renotify"
+              echo "ALRT: resend later with: $(_xoct_repair_env)xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair --renotify"
             fi
           fi
           ### A repair never re-stamps; the stamp is migration STATE owned by
