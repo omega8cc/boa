@@ -32,6 +32,9 @@
 # vhost on the box also serves) and <site>.srv.conf (the 403 gate), judged at
 # the front against the real visitor.
 # The ACME challenge and the MTA-STS policy stay open there, as in the vhosts.
+# A control panel's HTTPS proxy in pre.d reaches its vhost from the box's own
+# IPv4, which the anti-lockout also allows, so it includes the panel's <site>.conf
+# itself and judges the real visitor there.
 
 _aegir_health_check="/var/aegir/.drush/hm.alias.drushrc.php"
 _drush_health_check="/var/aegir/drush/drush"
