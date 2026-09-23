@@ -808,15 +808,21 @@ _nginx_mime_check_fix() {
     _msg "PROC: _nginx_mime_check_fix"
   fi
   if [ -e "${_locCnf}/nginx/mime.types" ]; then
-    mv -f /etc/nginx/mime.types \
-      /etc/nginx/mime.types-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
-    cp -af ${_locCnf}/nginx/mime.types /etc/nginx/mime.types
+    # Back up and replace only on a change: every pass otherwise left one
+    # more identical copy behind, and nginx-default serves its directory.
+    if ! cmp -s "${_locCnf}/nginx/mime.types" /etc/nginx/mime.types; then
+      mv -f /etc/nginx/mime.types \
+        /etc/nginx/mime.types-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+      cp -af ${_locCnf}/nginx/mime.types /etc/nginx/mime.types
+    fi
     if [ ! -L "/var/www/nginx-default/index.html" ] \
       && [ ! -L "/var/www/nginx-default/under_construction.jpg" ]; then
       mkdir -p /var/www/nginx-default
-      mv -f /var/www/nginx-default/index.html \
-        /var/www/nginx-default/index.html-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
-      cp -af ${_locCnf}/tpl/uc.html /var/www/nginx-default/index.html
+      if ! cmp -s "${_locCnf}/tpl/uc.html" /var/www/nginx-default/index.html; then
+        mv -f /var/www/nginx-default/index.html \
+          /var/www/nginx-default/index.html-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+        cp -af ${_locCnf}/tpl/uc.html /var/www/nginx-default/index.html
+      fi
       cp -af ${_locCnf}/tpl/under_construction.jpg \
         /var/www/nginx-default/under_construction.jpg
     fi
