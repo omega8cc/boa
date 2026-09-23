@@ -96,7 +96,7 @@ _PEER_MIRROR=""
 # packages are published either way.
 _PURGE_HOOK=""
 
-# Codenames packages are built for (D-2026-07-14: daedalus + excalibur only;
+# Codenames packages are built for (daedalus + excalibur only;
 # beowulf/chimaera age out on the source path).
 _BUILD_CODENAMES="daedalus excalibur"
 

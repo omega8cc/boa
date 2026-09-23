@@ -1040,7 +1040,7 @@ _fix_on_upgrade() {
 # limits (_USE_PHP/_USE_OPC/_USE_CLI) and the matching Percona buffer sizes
 # (_QCE_SQL/_RND_SQL/_JBF_SQL); platform-specific caps are applied by the caller.
 # NB _QCE_SQL is a dead output: every tier still computes it, nothing consumes
-# it since the query-cache era ended. Kept inert on purpose (C-004 Q9 ruling).
+# it since the query-cache era ended. Kept inert on purpose.
 _php_budget_for_ram() {
   if [ "${_USE}" -ge 16384 ]; then
     _USE_PHP=8192
@@ -1199,7 +1199,7 @@ _sql_budget_derive() {
 # clamped against installed RAM so a stale pin on a resized guest
 # fails closed to the derived value instead of over-committing.
 #
-# Derive the Valkey maxmemory ceiling (RM-14). Factored out of
+# Derive the Valkey maxmemory ceiling. Factored out of
 # _tune_memory_limits so the Tier-2 harness can drive it directly, the
 # same way sql-budget-harness drives _sql_budget_derive. Outputs are
 # global by contract: _MAX_MEM_VALKEY (the decided ceiling in MB),
@@ -1207,7 +1207,7 @@ _sql_budget_derive() {
 # _VK_LIVE_USED_MB (consumed by the conf-write/live-apply site).
 _valkey_ceiling_derive() {
   _MAX_MEM_VALKEY=$(( _RAM / 3 ))
-  # The Valkey ceiling, in preference order (RM-14): a pin wins outright;
+  # The Valkey ceiling, in preference order: a pin wins outright;
   # else the HIT-RATE policy below sizes from sqlprobe's demand window
   # (/var/log/boa/.valkey.demand.txt) — occupancy of a long-TTL cache is
   # "space granted so far", not need, so peak-based sizing ratchets to
@@ -1255,7 +1255,7 @@ _valkey_ceiling_derive() {
         _VK_USED="${_VK_PEAK}"
       fi
     fi
-    # RM-14 hit-rate policy: a control loop that converges on the
+    # Hit-rate policy: a control loop that converges on the
     # smallest ceiling the workload's hit rate tolerates, instead of
     # tracking occupancy (which a long-TTL cache inflates to whatever it
     # is granted). Its integrator state lives in ITS OWN store,
@@ -1701,7 +1701,7 @@ _tune_memory_limits() {
   # VZ outputs are unchanged from the pre-refactor formula.
   # NB _L_NGX_WRKS is a dead output: the ladder below still derives it, nothing
   # consumes it (the vhost writer reads the _CPU_* values directly). Kept inert
-  # on purpose (C-004 Q9 ruling).
+  # on purpose.
   if [ "${_NGINX_WORKERS}" = "AUTO" ]; then
     _L_NGX_WRKS=${_CPU_MX}
   else
@@ -2981,14 +2981,14 @@ _if_php_idle_on_off() {
 #
 # One-shot converter for control-file markers: a marker present sets
 # the matching /root/.barracuda.cnf variable to YES. The table field is
-# a full path -- some markers live in /etc/boa (C-003 relocated them
+# a full path -- some markers live in /etc/boa (the marker copy relocated them
 # there) and some are /root-native and never moved. WRITE-ONLY by design: markers are never deleted here, so the
 # file arms still honoured at every read site keep old and new readers
 # in agreement on every path, including runs that abort before any
 # tool delivery. While a marker exists the flip re-asserts on every
 # pass (the marker wins, as it always has); the provenance stamp makes
 # the record-keeping one-shot so neither the cnf nor the log gains
-# duplicates. A /root-only twin is never consumed: after the C-003
+# duplicates. A /root-only twin is never consumed: after the marker
 # copy it is either a deliberate opt-out or an inert leftover, and
 # both mean off today. That advisory applies only to /etc/boa entries;
 # a /root-native entry is read from /root because that IS its live path.
@@ -3001,7 +3001,7 @@ _convert_etcboa_markers_to_cnf() {
   _mnfDir="${_vBs:-/var/backups}/dragon/config/markers"
   _mnf="${_mnfDir}/converted-markers.txt"
   # The first field is a full PATH, not a bare filename: half these
-  # markers are /root-native and were never part of the C-003 copy, so
+  # markers are /root-native and were never part of the marker copy, so
   # a bare name would send them to the /root-only advisory arm forever.
   # A '|'-separated first field means either marker sets the key; the
   # first one that exists wins and is recorded as the provenance path.
@@ -3094,7 +3094,7 @@ _convert_etcboa_markers_to_cnf() {
       fi
     elif [ "${_mrkPth%/*}" = "/etc/boa" ] && [ -e "/root/${_mrk}" ]; then
       # One-shot advisory, /etc/boa entries only: the /root twin is
-      # permanent by C-003 design, so an unguarded note would repeat on
+      # permanent by the copy's design, so an unguarded note would repeat on
       # every pass forever. A /root-native entry has no twin to report.
       if ! grep -q "${_mrk} root-only" "${_mnf}" 2>/dev/null; then
         mkdir -p "${_mnfDir}" 2>/dev/null
@@ -3484,14 +3484,14 @@ _barracuda_cnf() {
     wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${_barCnf}
     wait
-    ### Retired: ImageMagick is distro-packages-only now (D-2026-07-15)
+    ### Retired: ImageMagick is distro-packages-only now (since 2026-07-15)
     sed -i "/^_MAGICK_FROM_SOURCES=/d"                           ${_barCnf}
     wait
     sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${_barCnf}
     wait
     sed -i "s/^_FORCE_GIT_.*/_FORCE_GIT_MIRROR=\"\"/g"           ${_barCnf}
     wait
-    ### Retired: OpenSSH is an always-on component now (D-2026-07-14)
+    ### Retired: OpenSSH is an always-on component now (since 2026-07-14)
     sed -i "/^_SSH_FROM_SOURCES=/d"                              ${_barCnf}
     wait
     sed -i "s/^_STRICT_BIN_.*/_STRICT_BIN_PERMISSIONS=YES/g"     ${_barCnf}
@@ -3672,13 +3672,13 @@ _barracuda_cnf() {
     if [[ ! "${_BACKDROP_SUPPORT_TEST}" =~ "_BACKDROP_SUPPORT=" ]]; then
       echo "_BACKDROP_SUPPORT=${_BACKDROP_SUPPORT}" >> ${_barCnf}
     fi
-    ### Ships dark (boa-grav D-002); anchored like _BACKDROP_SUPPORT above.
+    ### Ships dark; anchored like _BACKDROP_SUPPORT above.
     ### No _MIGRATED heal: the gate has never defaulted differently.
     _GRAV_SUPPORT_TEST=$(grep "^_GRAV_SUPPORT=" ${_barCnf} 2>&1)
     if [[ ! "${_GRAV_SUPPORT_TEST}" =~ "_GRAV_SUPPORT=" ]]; then
       echo "_GRAV_SUPPORT=${_GRAV_SUPPORT}" >> ${_barCnf}
     fi
-    ### Ships dark (boa-txp D-002); anchored like the gates above. No
+    ### Ships dark; anchored like the gates above. No
     ### _MIGRATED heal: the gate has never defaulted differently (that
     ### machinery belongs to the commit that ever flips the default).
     _TXP_SUPPORT_TEST=$(grep "^_TXP_SUPPORT=" ${_barCnf} 2>&1)
@@ -4207,10 +4207,10 @@ _barracuda_cnf() {
     wait
     sed -i "s/^_NGINX_FORWARD.*/_NGINX_FORWARD_SECRECY=YES/g"    ${_barCnf}
     wait
-    ### Retired: ImageMagick is distro-packages-only now (D-2026-07-15)
+    ### Retired: ImageMagick is distro-packages-only now (since 2026-07-15)
     sed -i "/^_MAGICK_FROM_SOURCES=/d"                           ${_barCnf}
     wait
-    ### Retired: OpenSSH is an always-on component now (D-2026-07-14)
+    ### Retired: OpenSSH is an always-on component now (since 2026-07-14)
     sed -i "/^_SSH_FROM_SOURCES=/d"                              ${_barCnf}
     wait
     sed -i "s/^_AUTOPILOT=.*/_AUTOPILOT=YES/g"                   ${_barCnf}

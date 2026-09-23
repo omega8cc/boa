@@ -112,7 +112,7 @@ _BACKDROP_TAG=""
 
 # Grav 2 core: the latest GitHub release is resolved automatically; set
 # _GRAV_TAG to pin one. The published artefact is the official ADMIN BUNDLE
-# (grav-admin-v<ver>.zip -- boa-grav D-004: admin/login/form/email + api +
+# (grav-admin-v<ver>.zip -- admin/login/form/email + api +
 # admin2 preinstalled), repackaged versioned as grav-<ver>.tar.gz (extracts
 # to grav-<ver>/) for the platform build, PLUS the raw official zip kept
 # verbatim on the /core/ shelf as grav-admin-v<ver>.zip for the per-site
@@ -123,8 +123,8 @@ _GRAV_REPO="getgrav/grav"
 _GRAV_TAG=""
 
 # Textpattern: official GitHub release TARBALL (never the .zip -- the zip ships
-# no /sites scaffold, which the always-multisite layout requires; boa-txp
-# D-002). Stable releases are tags on main; the release publishes a
+# no /sites scaffold, which the always-multisite layout requires).
+# Stable releases are tags on main; the release publishes a
 # .SHA256SUM alongside each asset, which the build verifies before packaging.
 _TXP_REPO="textpattern/textpattern"
 _TXP_TAG=""

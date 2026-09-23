@@ -164,7 +164,7 @@ if [ -n "${site_path}" ] && [ -e "${site_path}" ]; then
   site_path=$(realpath -e -- "${site_path}" 2>/dev/null) || site_path=""
 fi
 
-# --- Grav 2 site capsule (boa-grav D-003) ------------------------------------
+# --- Grav 2 site capsule -----------------------------------------------------
 # A capsule is a full Grav install at sites/<uri>/ with no settings.php;
 # detect it positively and run the capsule ownership model instead of
 # refusing (union seam: further foreign-CMS branches join here the same way).
@@ -187,7 +187,7 @@ if [ -n "${site_path}" ] \
     [ -d "${site_path}/${_wd}" ] || continue
     chown -h -R ${script_user}:${web_group:-www-data} "${site_path}/${_wd}"
   done
-  # The root .env drops its world bit under D-008, so FPM's read comes via
+  # The secret root .env drops its world bit, so FPM's read comes via
   # the web group -- the code pass above homed it to the account group.
   [ -f "${site_path}/.env" ] \
     && chown -h ${script_user}:${web_group:-www-data} "${site_path}/.env"
@@ -195,7 +195,7 @@ if [ -n "${site_path}" ] \
   exit 0
 fi
 
-# --- Textpattern multisite site (boa-txp D-002) -------------------------------
+# --- Textpattern multisite site -----------------------------------------------
 # A TXP site is sites/<uri>/{admin,private,public} with no settings.php; detect
 # it positively and run the TXP ownership model instead of refusing (union seam
 # shared with the Grav branch above; further foreign CMSes join the same way).
