@@ -180,6 +180,15 @@
 
 @=> Improvements
 
+    * The control panel theme declares the page language, its skip link
+      now lands on the page content, and the logo link is announced as
+      Home, on regular pages and on the maintenance page alike.
+    * BOA's own default page (unknown hosts and disabled sites) and the
+      server migration page declare a doctype, the page language and a
+      viewport, and fit a phone screen without zooming out.
+    * A barracuda pass no longer leaves another backup copy of the
+      default page and of mime.types behind when neither has changed.
+
     * The prebuilt package builder can have a CDN purged after a republish.
       A component rebuilt at an unchanged version is republished under the
       same filename, and an edge in front of the mirrors kept the previous
