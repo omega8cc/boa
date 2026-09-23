@@ -1202,6 +1202,18 @@ _resolve_txp_tag() {
     | grep -oE '"tag_name":[[:space:]]*"[^"]+"' | head -n 1 | sed -E 's/.*"([^"]+)"$/\1/'
 }
 
+_gh_quota_note() {
+  # After a GitHub API lookup failed: when GitHub's anonymous quota is spent, prints
+  # "; GitHub API quota spent until HH:MM UTC" for the row, else nothing. The
+  # rate_limit endpoint itself does not count against the quota. PHP 5.6-safe.
+  curl -fsS --max-time 20 -A "${_UA}" "https://api.github.com/rate_limit" 2>/dev/null \
+    | php -r '$j = json_decode(stream_get_contents(STDIN), true);
+      if (is_array($j) && isset($j["resources"]["core"]["remaining"], $j["resources"]["core"]["reset"])
+        && (int) $j["resources"]["core"]["remaining"] === 0) {
+        echo "; GitHub API quota spent until ", gmdate("H:i", (int) $j["resources"]["core"]["reset"]), " UTC";
+      }' 2>/dev/null
+}
+
 _latest_git_tag() {
   # Highest version-sorted git tag of a repo (works for backdrop-contrib repos
   # that publish tags but not GitHub Releases). Drops peeled ^{} refs and keeps
@@ -1712,7 +1724,7 @@ build_backdrop() {
   fi
   local _tag _zip _url
   _tag="$(_resolve_backdrop_tag)"
-  [[ -n "${_tag}" ]] || { _record_fail "backdrop (could not resolve release tag)"; return 1; }
+  [[ -n "${_tag}" ]] || { _record_fail "backdrop (could not resolve release tag$(_gh_quota_note))"; return 1; }
   # The tag comes from the GitHub API and lands in a root shell command and in
   # file names - accept plain dotted versions only, fail closed on anything else.
   if [[ ! "${_tag}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
@@ -1751,7 +1763,7 @@ build_grav() {
   fi
   local _tag _zip _url
   _tag="$(_resolve_grav_tag)"
-  [[ -n "${_tag}" ]] || { _record_fail "grav (could not resolve release tag)"; return 1; }
+  [[ -n "${_tag}" ]] || { _record_fail "grav (could not resolve release tag$(_gh_quota_note))"; return 1; }
   # The tag lands in root shell commands and file names - accept plain dotted
   # versions only, fail closed on anything else.
   if [[ ! "${_tag}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
@@ -1778,7 +1790,7 @@ build_txp() {
   # .SHA256SUM is verified before packaging. textpattern.txt stamps the newest.
   local _tag _tgz _url _sum
   _tag="$(_resolve_txp_tag)"
-  [[ -n "${_tag}" ]] || { _record_fail "textpattern (could not resolve release tag)"; return 1; }
+  [[ -n "${_tag}" ]] || { _record_fail "textpattern (could not resolve release tag$(_gh_quota_note))"; return 1; }
   # The tag lands in root shell commands and file names - accept plain dotted
   # versions only, fail closed on anything else.
   if [[ ! "${_tag}" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
