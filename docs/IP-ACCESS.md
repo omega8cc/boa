@@ -115,8 +115,16 @@ carries too, stays out, so the front never applies one site's list to another si
   (`/.well-known/mta-sts.txt`) stay open at the front, as their allow-all locations keep
   them open in the vhosts.
 - Copies are written only once the deployed front carries their include lines (a barracuda
-  upgrade updates it), and only for a site with a rendered vhost. A context whose control
-  file is gone keeps none.
+  upgrade updates it), and only for a site with a rendered vhost.
+- A deleted instance control file changes nothing, on HTTP or HTTPS: the fragments and
+  copies stay as they are. A deletion does not travel to a mirror or a migration target
+  (`static/control` is copied additively), so it could only ever lift one box. To lift,
+  remove a site's line or empty the file. The copies still follow their sites' names: a
+  new alias is covered, a name that moved to another site is released, and a site with
+  no name of its own left keeps an inert copy.
+- The master's `/var/aegir/control/ip/access.txt` is different: when it is missing, the
+  generator writes the default `sqladmin.com 192.168.1.1` record and regenerates the
+  master context from it, so its other sites' fragments and copies are pruned.
 - They share the context's change-gate and configtest, but are never backed up: a failed
   configtest or reload drops them rather than restoring an older set, which could still
   claim a name that has since moved to another site.

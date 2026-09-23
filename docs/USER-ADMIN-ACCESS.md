@@ -173,8 +173,13 @@ no other rendered vhost on the box also serves. A wildcard alias, or a name anot
 carries too, stays out, so the front never applies one site's list to another site's visitors.
 
 Copies are written only once the deployed front carries their include lines (a barracuda
-upgrade updates it), and only for a site with a rendered vhost; an instance whose control
-file is gone keeps none. They share the instance's
+upgrade updates it), and only for a site with a rendered vhost. A deleted control file
+changes nothing, on HTTP or HTTPS (a deletion does not travel to a mirror or a migration
+target, so it could only ever lift one box); to lift, remove a site's line or empty the
+file. The copies still follow their sites' names then: a new alias is covered, a name that
+moved to another site is released, and a site with no name of its own left keeps an inert
+copy.
+They share the instance's
 change-gate and configtest, but are never backed up: a failed configtest or reload drops
 them rather than restoring an older set, which could still claim a name that has since moved
 to another site. A site with its own certificate has its own `:443` server block, which
