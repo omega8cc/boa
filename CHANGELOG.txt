@@ -119,6 +119,13 @@
       reload, and checks a freshly written archive, as ip_access
       does: an unreadable one leaves the fragments in place and
       names the control file to fix.
+    * The PHP layer no longer takes a request through the wildcard SSL
+      front for a local one. It tested only the connecting address,
+      which for the front is always 127.0.0.1, so the nodns aliases
+      and the /api/hidden/ paths kept for the box answered any visitor
+      over HTTPS. It now judges the visitor the front passes on:
+      local only when that is loopback or the address the request came
+      in on, as the front itself decides.
     * Each control panel's own HTTPS proxy now refuses the same paths
       kept for the box itself (the PHP-FPM status and ping pages, the
       cron entry points, the stub status) unless the request comes
