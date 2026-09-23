@@ -452,6 +452,17 @@
       the cache, and the site failed every request that writes a log
       entry, a 404 included, until its next Verify.
 
+    * A platform unlocked with Unlock Local Drush now stays unlocked
+      through the nightly maintenance. The nightly permission pass on a
+      platform in ~/static set vendor/drush and two symfony/console
+      directories back to 0400 without the Aegir patches and without the
+      rebuild above, so a site whose service container the site-local
+      Drush had compiled failed every request that writes a log entry,
+      and the Lock that followed, finding the platform already at 0400,
+      skipped the rebuild too. The pass now leaves those three
+      directories as it finds them: only the Lock and Unlock Local Drush
+      tasks and a Verify change the lock.
+
     * Speed Booster leaves a query out of a page's cache key only when
       every parameter in it is a campaign tag or a click id (utm_*,
       gclid, fbclid, msclkid and the like). It used to drop the whole

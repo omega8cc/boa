@@ -1664,7 +1664,20 @@ _fix_static_permissions() {
       fi
     fi
     if [ ! -f "${_usEr}/log/ctrl/plr.${_PlrID}.perm-fix-${_NOW}.info" ]; then
-      find ${_use_Plr} -type d -exec chmod 0775 {} \; &> /dev/null
+      ### The three Drush-lock dirs keep whatever mode the lock state gave
+      ### them (0400 locked, 0775 after Unlock Local Drush), as on a built-in
+      ### platform below: only a provision lock or unlock changes that state.
+      ### Setting them to 0400 here, after the widening, closed an owner's
+      ### unlock as a half-lock: no Aegir patches, and no rebuild of the sites
+      ### whose container the site-local Drush compiled in the window, which
+      ### then fail every request that logs; the next lock, finding 0400,
+      ### skipped that rebuild too. Only the three directories themselves are
+      ### skipped (their contents are still walked), and nothing here names
+      ### them on a command line, so a link planted at one is never followed.
+      find "${_use_Plr}" -type d \
+        ! \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
+        -o -path "*/vendor/symfony/console/Style" \) \
+        -exec chmod 0775 {} \; &> /dev/null
       find ${_use_Plr} -type f -exec chmod 0664 {} \; &> /dev/null
       ### The pass above widened every sites/<uri>/*.php to 0664, and only an
       ### ACCEPTED site's arm narrows its own back (the 0440 pass at site
@@ -1681,22 +1694,6 @@ _fix_static_permissions() {
         \( -name settings.php -o -name local.settings.php \
         -o -name civicrm.settings.php -o -name solr.php -o -name drushrc.php \) \
         ! -path "${_rPlr}/sites/all/*" -exec chmod 0440 {} \; &> /dev/null
-      ### chmod follows a symlink named on the command line and has no -h, and
-      ### the find above just made every dir in the tree 0775 group-writable, so
-      ### all three of these are tenant-plantable names. None is ever
-      ### legitimately a symlink -- skip rather than lock whatever was planted.
-      if [ -e "${_use_Plr}/vendor/drush" ] \
-        && [ ! -L "${_use_Plr}/vendor/drush" ]; then
-        chmod 0400 ${_use_Plr}/vendor/drush
-      fi
-      if [ -e "${_use_Plr}/vendor/symfony/console/Input" ] \
-        && [ ! -L "${_use_Plr}/vendor/symfony/console/Input" ]; then
-        chmod 0400 ${_use_Plr}/vendor/symfony/console/Input
-      fi
-      if [ -e "${_use_Plr}/vendor/symfony/console/Style" ] \
-        && [ ! -L "${_use_Plr}/vendor/symfony/console/Style" ]; then
-        chmod 0400 ${_use_Plr}/vendor/symfony/console/Style
-      fi
     fi
   fi
 }
