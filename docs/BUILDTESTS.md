@@ -1,8 +1,11 @@
-# How we build newer codebases for testing
+# How we build the distribution catalogue and test codebases
 
-The newer Drupal core and distribution codebases we build for install / clone /
-migration testing and publish to the static mirror (`/var/www/static/{core,distro}`).
-Run on the mirror source VM.
+The newer Drupal core and distribution codebases we build and publish to the static
+mirror (`/var/www/static/{core,distro}`). They are the catalogue every Octopus instance
+installs, declared for demonstration and compatibility testing only, not for production:
+tenants run production on their own builds in `~/static`, and security updates for the
+catalogue are best effort, never chased. The same cores and distributions are what we
+install, clone and migrate in testing. Run on the mirror source VM.
 
 ## Automated: staticbuild
 
@@ -16,15 +19,115 @@ handles the per-distro quirks (see Notes), packages, and publishes. Run it as ro
   staticbuild build [name ...]   # build all, or only named targets
   staticbuild package            # clean + tar (cores keep core/profiles, distros strip)
   staticbuild distribute         # copy tarballs to /var/www/static/{distro,core,dev/{dev,lts,pro}}
+                                 # (a same-name distro or vanilla core tarball whose lock changed
+                                 #  is refused; the run ends with exit 3)
+  staticbuild -O distribute <platform> ...
+                                 # the same, overwriting the named platforms' published tarballs
   staticbuild catalogue [tree]   # audit each tree's PUBLISHED catalogue against the distro mirror
                                  # (PRODUCER=none: hand-published, nothing here rebuilds it; a tree that
                                  #  cannot be read is INCONCLUSIVE and exits non-zero, never "0 missing")
+  staticbuild advisories [tree]  # read-only: audit the lock of every PUBLISHED catalogue platform
+                                 # (distributions and the Drupal 9-11 cores) against today's
+                                 # advisories, and list BOA's own non-Composer contrib (exits
+                                 # non-zero only when something could not be audited)
 ```
 
 Configuration (Composer specs + core floor/exclude) is the block at the top of the
 script. If a distro fails to build on the newest core, it is retried on progressively
 older core minors and the newest that works is kept. The manual steps below document
 what it does.
+
+### Advisories: audited, not blocked
+
+Composer's security-advisory blocking stays **off** for the distributions that resolve
+their dependencies (`policy.advisories.block false`, set with the other build config;
+current Composer blocks by default, and commerce_kickstart enables it itself). varbase
+installs from upstream's lock, which Composer does not filter. One upstream advisory must
+not halt a catalogue build, and blocking would also defeat the older-core fallback. What
+shipped is recorded instead, twice:
+
+- **At build time.** Every finished distribution and vanilla core is audited
+  (`composer audit --locked`, never fatal) and the report is written beside its tarball
+  as `~/static/MONTH-DAY/<platform>.advisories`: the count, one line per finding (id,
+  package, locked version, CVE, link) and a closing line on require-dev. The count and
+  the ids also appear as an `AUDIT` row in the run summary. An audit that cannot run
+  (no lock, an advisory source unreachable) is reported the same way and loudly, and
+  the build still succeeds.
+- **On the published set.** `staticbuild advisories [tree ...]` reads every catalogue
+  entry of each published tree: the distributions (the list `staticbuild catalogue`
+  checks, fetched from `distro/`) and the Drupal 9, 10 and 11 core platforms
+  (`DL9`, `DX*`, `DE*`, fetched from `core/`). It pulls `composer.lock` and
+  `vendor/composer/installed.json` out of each published tarball's stream and audits
+  them against today's advisories, since advisories keep arriving after a build. Each
+  tarball is audited once per run and listed under the first tree that ships it. The
+  Drupal 6/7 cores are BOA's own forks, outside Composer, and are not audited here.
+  Read-only; it needs curl, tar, composer and php, not root.
+
+Both audits run on a disposable copy of the platform's lock, never inside the
+platform. The copy's `composer.json` carries nothing of the platform's: no scripts
+(Composer runs a composer.json's `init` and `pre-command-run` scripts even for
+`audit`), no config (ignore lists, `cache-dir`), no repositories (a `packagist.org`
+false entry would hide advisories). It declares only `https://packages.drupal.org/8`,
+because drupal.org's **contrib** advisories reach Composer only through that
+repository: a lock audited against Packagist alone reports none of them (measured with
+`drupal/entity_browser` 2.15.0 and SA-CONTRIB-2026-094). The audit runs with
+`--no-plugins --no-scripts` and a Composer home of its own, so no global config applies
+either.
+
+A platform whose `installed.json` says require-dev was not installed is audited with
+`--no-dev`; otherwise the whole lock is. Composer's filter-list hits (its malware
+list) count as findings, with the list name before the id. The count is Composer's
+own, so a core advisory that both drupal.org (`SA-CORE-*`) and Packagist's advisory
+database (`PKSA-*`) carry is listed under both ids.
+
+BOA's own contrib — `robotstxt`, `readonlymode` and the Redis integration module the
+`o_contrib_*` bundles link into every Drupal 8+ platform (`_satellite_download_o_contrib_*`
+in `lib/functions/satellite.sh.inc`) — lives outside Composer, so no `composer audit`
+sees it. `staticbuild advisories` lists those modules with the versions the published
+tree fetches, marked "not auditable by composer": check them against drupal.org's
+advisories by hand. A hit there is fixed in `satellite.sh.inc` and ships with BOA,
+not through staticbuild.
+
+By hand, the same audit of a built platform is:
+
+```sh
+  mkdir /tmp/audit && cp ~/static/MONTH-DAY/<platform>/composer.lock /tmp/audit/
+  printf '{"name": "x/audit", "repositories": [{"type": "composer", "url": "https://packages.drupal.org/8"}]}\n' > /tmp/audit/composer.json
+  cd /tmp/audit && composer audit --locked --no-plugins --no-scripts    # add --no-dev when require-dev was not installed
+```
+
+### Same-name respins: distribute refuses a changed lock
+
+A box fetches a catalogue platform only while its directory is absent, so a tarball
+republished under the same name with a different lock reaches new boxes and never the
+boxes that already hold that platform. Contrib-only fixes therefore never ride the
+catalogue between BOA releases: site owners rebuild their own platform in `~/static`
+meanwhile, and the catalogue moves to a new platform name with the next BOA release.
+
+`staticbuild distribute` enforces it for every Composer-built tarball: the
+distributions on `distro/` and the vanilla `drupal-*` cores on `core/`. When the shelf
+already holds a tarball of the same name, it compares the sha256 of the `composer.lock`
+inside both, joined with that of a `patches.lock.json` beside it, so a respin whose
+patch list moved under an unchanged lock still differs. A patch whose content changed
+behind the same URL is not seen: varbase's `patches.lock.json` records no patch hashes,
+so a same-name varbase respin needs a deliberate look before it is published. A
+difference, or a lock missing on either side, leaves
+the published tarball in place, prints both hashes and adds a `REFUSED` row to the
+summary; once the other tarballs are published the run exits 3, a status of its own so
+a wrapper can tell the guard working from a fatal error (exit 1). Per-target FAIL rows
+are reported in the summary only, as before. The same lock under new bytes, an ordinary
+re-tar, passes.
+
+A deliberate same-name rebuild names what it overwrites:
+`staticbuild -O distribute <platform> ...` overwrites only those platforms' published
+tarballs, logs both lock hashes and an `OVERWRITTEN` summary row, and warns that the
+boxes which already fetched them keep the old bytes; any other changed tarball in the
+day dir is still refused. `-O` without names, names without `-O`, a name not in the
+day dir and `-O` with any other action are refused before anything is copied. The
+Backdrop, Grav and Textpattern tarballs carry no lock and are copied as before, as are
+the dev-extension and contrib shelves. Every copy onto a shelf takes only a plain file
+from the day dir (never a symlink or a FIFO) and replaces the destination rather than
+writing through a symlink already there.
 
 ## What it builds (example run; versions are derived per build)
 
@@ -209,6 +312,7 @@ farmos     # farm-4.0.6-11.3.17  (farmOS caps core at 11.3)
            # tar -xzf farmOS-4.0.6.tar.gz && mv farmOS farm-4.0.6-11.3.17
            # cd ~/static/MONTH-DAY/farm-4.0.6-11.3.17
            # composer config --no-plugins allow-plugins true
+           # composer config --no-plugins --json policy.advisories.block false
            # composer update --no-install --no-scripts
            # composer install --no-dev
 ```
@@ -217,15 +321,17 @@ farmos     # farm-4.0.6-11.3.17  (farmOS caps core at 11.3)
 cms        # composer create-project drupal/cms drupal_cms_installer-2.1.4-11.4.7 --no-dev --no-interaction --no-install --no-scripts
            # cd ~/static/MONTH-DAY/drupal_cms_installer-2.1.4-11.4.7
            # composer config --no-plugins allow-plugins true
+           # composer config --no-plugins --json policy.advisories.block false
            # composer update --no-install --no-scripts
            # composer install --no-dev
-           # composer require drush/drush drupal/migrate_plus drupal/migrate_tools drupal/migrate_upgrade --no-scripts --no-interaction   # post-update-cmd exits non-zero; cms dev-requires drush, non-interactive confirms the move to require; migration pipeline contribs absent upstream
+           # composer require drush/drush drupal/migrate_plus drupal/migrate_tools drupal/migrate_upgrade --no-scripts --no-interaction --update-no-dev   # post-update-cmd exits non-zero; cms dev-requires drush, non-interactive confirms the move to require; migration pipeline contribs absent upstream; --update-no-dev keeps require-dev out of the platform, as the builds ending in install --no-dev do
 ```
 
 ```sh
 culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.7-11.3.17 --no-dev --no-interaction --no-install --no-scripts
            # cd ~/static/MONTH-DAY/openculturas-3.0.7-11.3.17/
            # composer config --no-plugins allow-plugins true
+           # composer config --no-plugins --json policy.advisories.block false
            # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # drop dependency patches (stale + composer-patches 2.x cannot apply to dist installs)
            # composer update --no-install --no-scripts
            # composer install --no-dev
@@ -254,6 +360,7 @@ localgov   # composer create-project drupal/localgov_project:^4 localgov-4.0.5-1
            # name by drupal/localgov (the distribution, 4.0.5); localgov_project versions separately
            # cd ~/static/MONTH-DAY/localgov-4.0.5-11.4.7
            # composer config --no-plugins allow-plugins true
+           # composer config --no-plugins --json policy.advisories.block false
            # composer update --no-install --no-scripts
            # composer install --no-dev
 ```
@@ -303,7 +410,7 @@ opigno     # Opigno's documented create-project is broken as shipped, in three w
            # composer require --no-update --no-scripts h5p/h5p-core:'1.27.*'
            # composer update --no-install --no-scripts
            # composer install --no-dev
-           # composer require drush/drush --no-scripts --no-interaction   # upstream keeps it in require-dev; non-interactive confirms the move to require; land the site-local Drush HERE, not at platform verify on every box
+           # composer require drush/drush --no-scripts --no-interaction --update-no-dev   # upstream keeps it in require-dev; non-interactive confirms the move to require; land the site-local Drush HERE, not at platform verify on every box
            # cd web && patch -p1 < the #3561556 getOperators patch
            # ACCEPTED TRADE: the platform ships dompdf 2.0.8 with open advisories -
            # the profile pins dompdf ~2.0.0 and the fixed line (3.x) is outside it,
@@ -321,10 +428,11 @@ social     # Open Social ships NO create-project template for its current major:
            # composer create-project goalgorilla/social_template:dev-master social-13.1.0-10.6.17 --no-dev --no-interaction --no-install --no-scripts
            # cd ~/static/MONTH-DAY/social-13.1.0-10.6.17
            # composer config --no-plugins allow-plugins true
+           # composer config --no-plugins --json policy.advisories.block false
            # composer require --no-update --no-scripts goalgorilla/open_social:^13
            # composer update --no-install --no-scripts
            # composer install --no-dev
-           # composer require drush/drush --no-scripts --no-interaction   # the chassis ships none; land the site-local Drush HERE, not at platform verify on every box
+           # composer require drush/drush --no-scripts --no-interaction --update-no-dev   # the chassis ships none; land the site-local Drush HERE, not at platform verify on every box
            # name by goalgorilla/open_social read from the LOCK (13.1.0) - upstream's
            # 13.0.2 tag still declares version '13.0.1' inside social.info.yml
            # builds under php83: 13.1.0 requires php ^8.3 and SOC is capped at 8.3
@@ -336,6 +444,7 @@ thunder    # composer create-project thunder/thunder-project thunder-8.4.4-11.4.
            # name by thunder/thunder-distribution (8.4.4); thunder/thunder-project versions separately (5.0.0)
            # cd ~/static/MONTH-DAY/thunder-8.4.4-11.4.7
            # composer config --no-plugins allow-plugins true
+           # composer config --no-plugins --json policy.advisories.block false
            # composer update --no-install --no-scripts
            # composer install --no-dev
 ```
@@ -368,7 +477,8 @@ Vanilla cores, latest patch of each supported minor (full install, add drush, au
 ```sh
 vanilla    # for each minor 10.2 10.3 10.4 10.5 10.6 11.1 11.2 11.3 11.4:
            # composer create-project drupal/recommended-project:<minor>.* drupal-<version> --no-dev --no-interaction
-           # cd drupal-<version> && composer require drush/drush && composer audit
+           # cd drupal-<version> && composer require drush/drush
+           # then audit the lock as under "By hand" above (never fatal)
            # built: 10.2.12 10.3.14 10.4.10 10.5.12 10.6.17 11.1.10 11.2.14 11.3.17 11.4.7
 ```
 
@@ -408,6 +518,11 @@ install profile), then gzip the remaining (distribution) platforms:
   cp -a ~/static/MONTH-DAY/*.tar.gz                   /var/www/static/distro/   # then remove the drupal-* copies from distro/
 ```
 
+Before a same-name distribution tarball replaces one already in `distro/`, compare the
+`composer.lock` inside both: a changed lock under an old name never reaches the boxes that
+already hold that platform (see "Same-name respins" above; `staticbuild distribute`
+refuses it unless `-O`).
+
 Raw cores (`drupal-*`) go to `core/`; the distributions go to `distro/`. The Backdrop, Grav
 and Textpattern artefacts are `core/` shelf content too: their family targets publish them
 there and `staticbuild distribute` routes any of their tarballs it finds in the day dir there
@@ -436,9 +551,11 @@ Some codebases need extra handling; staticbuild does all of this automatically.
   reference `entity_reference_revisions` relationship handlers that only exist with the
   ERR issue-2799479 patch — without it every front page request throws
   `ViewsData->get()` InvalidArgumentException and the site serves 500s.
-- **commerce** — commerce_kickstart enables Composer security-advisory blocking, which
-  refuses advisory-affected core/deps; disable it (`policy.advisories.block false`) for the
-  test build.
+- **commerce** — commerce_kickstart enables Composer security-advisory blocking itself
+  (current Composer also blocks by default), which refuses advisory-affected core/deps;
+  every distro build that resolves turns it off (`policy.advisories.block false`; varbase
+  installs from upstream's lock, which Composer does not filter) and the audit records
+  what shipped instead (see "Advisories: audited, not blocked").
 - **thunder** — `thunder/thunder-project` (the template) versions independently (e.g. 5.0.0)
   from the actual distribution `thunder/thunder-distribution` (e.g. 8.4.4); name by the latter.
 - **cms** — drupal_cms's post-update-cmd cleanup script exits non-zero; run its drush

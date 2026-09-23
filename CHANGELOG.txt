@@ -193,6 +193,20 @@
     * The generated maps go live only after an nginx configtest
       accepts them, and the last good set is restored if it does not,
       so a fleet map can never take the web server down.
+    * Every distribution and vanilla core staticbuild builds is
+      audited against the published security advisories: the count
+      and the advisory ids are recorded beside the tarball and in the
+      run summary, and the build is never blocked by them.
+    * New staticbuild advisories re-checks every published catalogue
+      platform, distributions and Drupal 9 to 11 cores, against
+      today's advisories and lists, with versions, the contrib BOA
+      adds to Drupal 8+ platforms outside Composer.
+    * staticbuild distribute no longer replaces a published
+      distribution or core with a same-name tarball whose lock
+      differs unless the platform is named with -O, since the boxes
+      that already hold it would never fetch it again.
+    * The Drupal CMS, Opigno and Open Social catalogue platforms are
+      built without their require-dev packages, like the others.
 
 @=> Improvements
 
