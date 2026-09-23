@@ -77,7 +77,9 @@ Five artefacts, always rebuilt at the latest upstream tag (pin any with the matc
   points at a missing file) — BOA names the platform from the stamp and fetches the
   matching tarball — and a version-less `backdrop.tar.gz` compat tarball of the newest
   release (extracting to `backdrop/`, the pre-versioning contract) is refreshed for
-  already-deployed BOA releases. No contrib is baked into the versioned core
+  already-deployed BOA releases.
+
+  No contrib is baked into the versioned core
   tarballs — Valkey/Redis integration reaches platforms through the shared
   `o_contrib_backdrop` bundle (the `redis_backdrop` artefact below). Only the
   version-less compat tarball still carries a baked `modules/redis`, injected at
@@ -427,7 +429,9 @@ Some codebases need extra handling; staticbuild does all of this automatically.
   (`extra.composer-patches.ignore-dependency-patches`): several are stale against the
   core the distribution itself requires, and composer-patches 2.x cannot apply patches
   to dist-installed packages at all (its GitPatcher skips any package dir without
-  `.git`, its FreeformPatcher needs per-patch config). One patch is load-bearing and is
+  `.git`, its FreeformPatcher needs per-patch config).
+
+  One patch is load-bearing and is
   applied with GNU `patch` after the build instead, fail-closed: the shipped views
   reference `entity_reference_revisions` relationship handlers that only exist with the
   ERR issue-2799479 patch — without it every front page request throws
@@ -441,6 +445,7 @@ Some codebases need extra handling; staticbuild does all of this automatically.
   require with `--no-scripts`. The same require adds the migration pipeline contribs
   (`migrate_plus`, `migrate_tools`, `migrate_upgrade`) — upstream drupal/cms ships none
   of them, and core's migrate stack lives in drupal/core; inert until a site enables them.
+
   The build also corrects pathauto's `d7_pathauto_patterns` migration definition
   (adds `source_module: pathauto`, upstream pathauto #3588684): Drupal 11 prefers the
   plugin's PHP attribute, which lost `source_module` in the annotation-to-attribute
