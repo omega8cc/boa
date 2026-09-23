@@ -162,6 +162,31 @@
       an octopus pass regenerates a panel proxy that still lacks it,
       taking the template from its own build tree when barracuda has
       not refreshed it yet.
+    * A control panel listed in its instance's access.txt or
+      user_admin.txt is now locked over HTTPS too, the only scheme it
+      serves. Its HTTPS proxy reached the panel vhost from the box's
+      own address, which both lists always admit, so the lock held on
+      plain HTTP alone. The proxy now includes the panel's lists
+      itself and judges the real visitor, keeping the anti-lockout
+      (the box, loopback, live SSH peers), and applies the IDS ban,
+      which the vhost behind it never saw either. A barracuda pass
+      adds these lines to every older HTTPS proxy in pre.d, and an
+      octopus pass regenerates a panel proxy that lacks them. A proxy
+      for a moved account answers every name on its address, so it
+      keeps the ban only, whether ssl-gen writes it or barracuda heals
+      it, and a barracuda pass drops the lists from one an older xoct
+      or xcopy wrote. Neither barracuda heal follows a symlink in
+      pre.d. edgetest probes a locked panel from another address.
+    * xoct and xcopy ssl-gen give the control panel's extra names
+      (log/extra_domain.txt) to the panel's own proxy only. Every
+      per-site record claimed them too, and nginx kept whichever proxy
+      sorted first, so a site's proxy could answer for the panel. A
+      barracuda pass drops them from the proxies an older ssl-gen
+      wrote (never from a panel that lists them), and edgetest warns
+      on a proxy that claims one.
+    * xcopy ssl-gen now points /sqladmin at the master PHP-FPM socket,
+      as xoct ssl-gen does: a standalone run left it on 127.0.0.1:9000,
+      where nothing listens, until the next octopus pass.
     * The locations that deny everyone in the Drupal vhosts (files
       under a site's public backup_migrate/ and config_* dirs) stay
       closed to the box itself too. The multi-IP cron access used to

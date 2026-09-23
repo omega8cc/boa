@@ -102,7 +102,10 @@ block's forward reference is fine).
 `/data/disk/<oct>/config/includes/user_admin_access{,_map}/`. Instances are identified by
 the BOA-canonical `tools/drush` marker, so the non-instance pseudo-dirs (`arch`, `all`,
 `legacy`, …) are skipped. Unlike `ip_access` there is no master/sqladmin context: the
-hostmaster front-end has its own vhost, out of scope here.
+master's hostmaster front-end has its own vhost, out of scope here.
+
+An instance's control panel is covered: its HTTPS proxy in `pre.d` loads the panel's map
+and includes its fragment, and judges the real visitor there (see IP-ACCESS.md).
 
 ## Anti-lockout
 
@@ -241,4 +244,5 @@ difference is scope (whole-site vs the admin surface).
   still apply; this layer narrows *who can reach* the login/admin surface at the edge.
 - **realip dependency** — as above, allow-lists on CF-proxied sites are only meaningful
   once realip is active; otherwise the rule sees the edge.
-- **Octopus sites only.** The hostmaster front-end uses a separate vhost and is not covered.
+- **Octopus instances only**: their sites and their control panel. The master's hostmaster
+  front-end uses a separate vhost and is not covered.
