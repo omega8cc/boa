@@ -1393,7 +1393,9 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             ### move does only AFTER the renames -- the old name is answered
             ### with a 301 to the renamed site instead.
             ### The control panel is never proxied and is not a
-            ### site of this loop.
+            ### site of this loop. The redirect keeps HTTPS for a visitor
+            ### who reached this port through the wildcard SSL front, which
+            ### says so in X-Forwarded-Proto.
             _REDIR_TO=""
             if [ -n "${_XOCT_TARGET_FQDN}" ] \
               && _xoct_named_under_host "${_Dom}" "${_XOCT_MY_FQDN}"; then
@@ -1409,7 +1411,11 @@ server {
   server_name                  ${_NMS};
   access_log                   off;
   log_not_found                off;
-  return 301                   \$scheme://${_REDIR_TO}\$request_uri;
+  set                          \$boa_visitor_scheme \$scheme;
+  if (\$http_x_forwarded_proto = "https") {
+    set                        \$boa_visitor_scheme "https";
+  }
+  return 301                   \$boa_visitor_scheme://${_REDIR_TO}\$request_uri;
 }
 ###
 ### Plain HTTP proxy (END)

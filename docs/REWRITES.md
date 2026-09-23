@@ -16,6 +16,8 @@ These files will be included if exist and will never be modified or touched by Ã
 
 Note: your custom rewrite rules will apply to *all* sites on the same Ã†gir Satellite Instance, unless you will use site/domain specific `if{}` embedded locations, as shown in the examples below.
 
+Note: build a redirect back to the site with `$boa_visitor_scheme`, not `$scheme`, as the examples below do. A site without a certificate of its own is served over HTTPS by the server's wildcard SSL proxy, which reaches the site over plain HTTP, so `$scheme` reads `http` there and sends an HTTPS visitor to `http://`. `$boa_visitor_scheme` reads `https` whenever the request arrived with `X-Forwarded-Proto: https` (from that proxy or from a CDN in front of the site) and is the same as `$scheme` otherwise.
+
 ## Custom rewrites to map legacy content to the Drupal multisite.
 
 ```nginx
@@ -40,7 +42,7 @@ location ~* ^.+\.(?:jpe?g|gif|png|ico|swf|pdf|ttf|html?)$ {
 location ^~ /some-ltsral-path/no-regex-here {
   location ~* ^/some-path/or-regex-here {
     if ($host ~* ^(www\.)?(domain\.com)$) {
-      return 301 $scheme://$host/destination/url;
+      return 301 $boa_visitor_scheme://$host/destination/url;
     }
     try_files $uri @cache;
   }
@@ -52,20 +54,20 @@ location ^~ /some-ltsral-path/no-regex-here {
 ```nginx
 location ^~ /services {
   location ~* ^/services {
-    rewrite ^/services/accounting\.php$ $scheme://$host/node/18 permanent;
-    rewrite ^/services/assurance\.php$  $scheme://$host/node/11 permanent;
-    rewrite ^/services/audit\.php$      $scheme://$host/node/11 permanent;
-    rewrite ^/services/taxation\.php$   $scheme://$host/node/92 permanent;
-    rewrite ^/services/wealth\.php$     $scheme://$host/node/15 permanent;
-    rewrite ^/services\.php$            $scheme://$host/node/17 permanent;
+    rewrite ^/services/accounting\.php$ $boa_visitor_scheme://$host/node/18 permanent;
+    rewrite ^/services/assurance\.php$  $boa_visitor_scheme://$host/node/11 permanent;
+    rewrite ^/services/audit\.php$      $boa_visitor_scheme://$host/node/11 permanent;
+    rewrite ^/services/taxation\.php$   $boa_visitor_scheme://$host/node/92 permanent;
+    rewrite ^/services/wealth\.php$     $boa_visitor_scheme://$host/node/15 permanent;
+    rewrite ^/services\.php$            $boa_visitor_scheme://$host/node/17 permanent;
     try_files $uri @cache;
   }
   try_files $uri @cache;
 }
 location ^~ /our_team {
   location ~* ^/our_team {
-    rewrite ^/our_team\.php$ $scheme://$host/node/10 permanent;
-    rewrite ^/our_team$      $scheme://$host/node/10 permanent;
+    rewrite ^/our_team\.php$ $boa_visitor_scheme://$host/node/10 permanent;
+    rewrite ^/our_team$      $boa_visitor_scheme://$host/node/10 permanent;
     try_files $uri @cache;
   }
   try_files $uri @cache;
@@ -77,7 +79,7 @@ location ^~ /our_team {
 ```nginx
 location = /about_us.php {
   if ($host ~* ^(www\.)?(foo\.com)$) {
-    return 301 $scheme://$host/node/19;
+    return 301 $boa_visitor_scheme://$host/node/19;
   }
   return 444;
 }
