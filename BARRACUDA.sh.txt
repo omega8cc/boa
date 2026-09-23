@@ -504,7 +504,7 @@ fi
 
 ###
 ### Install OpenSSH from sources
-### Always-on component since D-2026-07-14 (the retired _SSH_FROM_SOURCES
+### Always-on component since 2026-07-14 (the retired _SSH_FROM_SOURCES
 ### opt-out was effectively forced YES anyway); _sshd_install_src still
 ### rebuilds only when its own version/linkage checks say so.
 ###

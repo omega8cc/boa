@@ -226,7 +226,7 @@ _is_foreign_cms_root() {
 
 _heal_foreign_cms_ctrl_ini() {
   # Grav and Textpattern never read a BOA control INI, so BOA no longer seeds
-  # one there (boa-grav D-011, boa-txp D-013); this clears what an earlier
+  # one there; this clears what an earlier
   # release left. $1 = the dir, $2 = boa_site_control.ini or
   # boa_platform_control.ini, or empty to drop only an empty dir. Both the
   # default.* template and the live file go whatever they hold: nothing reads

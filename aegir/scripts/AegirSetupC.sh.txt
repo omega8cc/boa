@@ -940,7 +940,7 @@ _create_grav_basic_version() {
 # textpattern.txt stamp at satellite-make time), which extracts to
 # textpattern-<ver>/, then names the platform via _SHRD_PLNAME. The tarball is
 # the release .tar.gz on purpose: the .zip ships no /sites scaffold, and the
-# always-multisite layout (boa-txp D-002) needs it.
+# always-multisite layout needs it.
 _create_txp_basic_version() {
   if [ ! -d "${_OCTO_PLPATH}" ]; then
     _enter_this_distro_root || return 1
