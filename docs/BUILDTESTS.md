@@ -4,7 +4,8 @@ The newer Drupal core and distribution codebases we build and publish to the sta
 mirror (`/var/www/static/{core,distro}`). They are the catalogue every Octopus instance
 installs, declared for demonstration and compatibility testing only, not for production:
 tenants run production on their own builds in `~/static`, and security updates for the
-catalogue are best effort, never chased. The same cores and distributions are what we
+catalogue are best effort: each build applies the fixed releases the constraints allow.
+The same cores and distributions are what we
 install, clone and migrate in testing. Run on the mirror source VM.
 
 ## Automated: staticbuild
@@ -20,7 +21,8 @@ handles the per-distro quirks (see Notes), packages, and publishes. Run it as ro
   staticbuild package            # clean + tar (cores keep core/profiles, distros strip)
   staticbuild distribute         # copy tarballs to /var/www/static/{distro,core,dev/{dev,lts,pro}}
                                  # (a same-name distro or vanilla core tarball whose lock changed
-                                 #  is refused; the run ends with exit 3)
+                                 #  replaces the published one only when it fixes advisories;
+                                 #  otherwise it is refused and the run ends with exit 3)
   staticbuild -O distribute <platform> ...
                                  # the same, overwriting the named platforms' published tarballs
   staticbuild catalogue [tree]   # audit each tree's PUBLISHED catalogue against the distro mirror
@@ -37,20 +39,48 @@ script. If a distro fails to build on the newest core, it is retried on progress
 older core minors and the newest that works is kept. The manual steps below document
 what it does.
 
+Options precede the action: `-d MM-DD`, `-u USER`, `-f`, `-C`, `-O` (with `distribute`
+only), and `--debug`. By default `build`, `package`, `distribute`, `all` and the family
+actions print a header naming the run's log and then **one row per platform** (build
+result, advisories left and fixed, what happened on the mirror, a note), plus a footer
+for anything refused or failed with the command or the log lines to act on. Composer,
+git and tar output, every advisory id and the lock hashes go to the log under
+`/var/backups/reports/staticbuild/<user>/<MM-DD>/` (root only); `--debug` streams them
+instead.
+
+The two pinned catalogue platforms, `ezcontent` (EZC) and `commerce_base` (CK2), are
+build targets too: with no upstream recipe left, each starts from its own published
+tarball (the local shelf, else the distro mirror) and only the advisory fix step
+changes it, so distribution, core and name stay and the rebuild replaces the published
+copy when it clears advisories. Their core minors are past security support, so core
+advisories remain. CK2 resolves one package from a GitHub repository; when GitHub
+refuses anonymous requests (rate limit), its row says so, and a GitHub token in the
+build user's Composer configuration lifts the limit.
+
 ### Advisories: audited, not blocked
 
 Composer's security-advisory blocking stays **off** for the distributions that resolve
 their dependencies (`policy.advisories.block false`, set with the other build config;
 current Composer blocks by default, and commerce_kickstart enables it itself). varbase
 installs from upstream's lock, which Composer does not filter. One upstream advisory must
-not halt a catalogue build, and blocking would also defeat the older-core fallback. What
-shipped is recorded instead, twice:
+not halt a catalogue build, and blocking would also defeat the older-core fallback.
+Instead each build applies what fixes it can, and what shipped is recorded, twice:
 
-- **At build time.** Every finished distribution and vanilla core is audited
-  (`composer audit --locked`, never fatal) and the report is written beside its tarball
-  as `~/static/MONTH-DAY/<platform>.advisories`: the count, one line per finding (id,
-  package, locked version, CVE, link) and a closing line on require-dev. The count and
-  the ids also appear as an `AUDIT` row in the run summary. An audit that cannot run
+- **At build time.** A finished distribution first gets a fix step: each package with
+  an advisory moves to the newest release the distribution's own constraints allow, one
+  package at a time with its non-root dependencies (`--with-dependencies
+  --minimal-changes`), so the core pins stay put. A move that would change Drupal core
+  is put back (a newer core is a new platform name, a catalogue move with a BOA
+  release); the build's distribution package and any module it patches by hand are
+  left alone; the result installs once, and if it does not, the lock as built goes back
+  and is reinstalled. The fixed amazee.io provider releases declare `ext-pdo_pgsql`, so
+  that one platform requirement is ignored, as for varbase.
+- Every finished distribution and vanilla core is then audited (`composer audit
+  --locked`, never fatal) and the report is written beside its tarball as
+  `~/static/MONTH-DAY/<platform>.advisories`: the count, one line per finding (id,
+  package, locked version, CVE, link), a closing line on require-dev, and what the fix
+  step moved and could not move, with the reason. The summary row shows the count left,
+  how many the build fixed and the packages still affected. An audit that cannot run
   (no lock, an advisory source unreachable) is reported the same way and loudly, and
   the build still succeeds.
 - **On the published set.** `staticbuild advisories [tree ...]` reads every catalogue
@@ -58,9 +88,10 @@ shipped is recorded instead, twice:
   checks, fetched from `distro/`) and the Drupal 9, 10 and 11 core platforms
   (`DL9`, `DX*`, `DE*`, fetched from `core/`). It pulls `composer.lock` and
   `vendor/composer/installed.json` out of each published tarball's stream and audits
-  them against today's advisories, since advisories keep arriving after a build. Each
-  tarball is audited once per run and listed under the first tree that ships it. The
-  Drupal 6/7 cores are BOA's own forks, outside Composer, and are not audited here.
+  them against today's advisories, since advisories keep arriving after a build. It
+  prints one row per tarball with the trees that list it and its advisory count; each
+  tarball is audited once per run, and `--debug` adds every advisory id under its row.
+  The Drupal 6/7 cores are BOA's own forks, outside Composer, and are not audited here.
   Read-only; it needs curl, tar, composer and php, not root.
 
 Both audits run on a disposable copy of the platform's lock, never inside the
@@ -83,8 +114,8 @@ database (`PKSA-*`) carry is listed under both ids.
 BOA's own contrib — `robotstxt`, `readonlymode` and the Redis integration module the
 `o_contrib_*` bundles link into every Drupal 8+ platform (`_satellite_download_o_contrib_*`
 in `lib/functions/satellite.sh.inc`) — lives outside Composer, so no `composer audit`
-sees it. `staticbuild advisories` lists those modules with the versions the published
-tree fetches, marked "not auditable by composer": check them against drupal.org's
+sees it. `staticbuild advisories` lists those modules per bundle (once when the trees
+agree) with the versions the published tree fetches: check them against drupal.org's
 advisories by hand. A hit there is fixed in `satellite.sh.inc` and ships with BOA,
 not through staticbuild.
 
@@ -96,13 +127,15 @@ By hand, the same audit of a built platform is:
   cd /tmp/audit && composer audit --locked --no-plugins --no-scripts    # add --no-dev when require-dev was not installed
 ```
 
-### Same-name respins: distribute refuses a changed lock
+### Same-name respins: only a fix replaces a published platform
 
 A box fetches a catalogue platform only while its directory is absent, so a tarball
-republished under the same name with a different lock reaches new boxes and never the
-boxes that already hold that platform. Contrib-only fixes therefore never ride the
-catalogue between BOA releases: site owners rebuild their own platform in `~/static`
-meanwhile, and the catalogue moves to a new platform name with the next BOA release.
+republished under the same name with a different lock reaches new installs and never
+the boxes that already hold that platform. A same-name tarball whose lock changed
+therefore replaces the published one only when it **fixes advisories**: distribute
+audits both locks against today's advisories, and the new one must carry fewer and none
+the published one lacks. Every other lock change is refused. Site owners who need a fix
+on a platform already on their box rebuild their own platform in `~/static`.
 
 `staticbuild distribute` enforces it for every Composer-built tarball: the
 distributions on `distro/` and the vanilla `drupal-*` cores on `core/`. When the shelf
@@ -111,16 +144,17 @@ inside both, joined with that of a `patches.lock.json` beside it, so a respin wh
 patch list moved under an unchanged lock still differs. A patch whose content changed
 behind the same URL is not seen: varbase's `patches.lock.json` records no patch hashes,
 so a same-name varbase respin needs a deliberate look before it is published. A
-difference, or a lock missing on either side, leaves
-the published tarball in place, prints both hashes and adds a `REFUSED` row to the
-summary; once the other tarballs are published the run exits 3, a status of its own so
-a wrapper can tell the guard working from a fatal error (exit 1). Per-target FAIL rows
-are reported in the summary only, as before. The same lock under new bytes, an ordinary
+difference that is not a fix (including a lock missing on either side, or an audit
+that cannot finish) leaves the published tarball in place, logs both hashes and both
+advisory counts, and marks the row `REFUSED`, with the `-O` command below the table;
+once the other tarballs are published the run exits 3, a status of its own so a wrapper
+can tell the guard working from a fatal error (exit 1). Failed builds are reported in
+their rows and do not change the exit code. The same lock under new bytes, an ordinary
 re-tar, passes.
 
 A deliberate same-name rebuild names what it overwrites:
 `staticbuild -O distribute <platform> ...` overwrites only those platforms' published
-tarballs, logs both lock hashes and an `OVERWRITTEN` summary row, and warns that the
+tarballs, logs both lock hashes, marks the row `OVERWRITTEN`, and warns that the
 boxes which already fetched them keep the old bytes; any other changed tarball in the
 day dir is still refused. `-O` without names, names without `-O`, a name not in the
 day dir and `-O` with any other action are refused before anything is copied. The
