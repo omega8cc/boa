@@ -119,6 +119,12 @@
       reload, and checks a freshly written archive, as ip_access
       does: an unreadable one leaves the fragments in place and
       names the control file to fix.
+    * A migration site proxy (the vhost xoct or xcopy leaves on the old
+      box) hands the new host the real visitor of an HTTPS request that
+      came through the wildcard SSL front, not the front's 127.0.0.1.
+      The new host trusts the old box's CF-Connecting-IP, so it took
+      every such request for its own loopback. A barracuda pass gives
+      proxies written before this the same fix.
     * The PHP layer no longer takes a request through the wildcard SSL
       front for a local one. It tested only the connecting address,
       which for the front is always 127.0.0.1, so the nodns aliases

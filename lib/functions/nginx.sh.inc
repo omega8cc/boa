@@ -1320,6 +1320,52 @@ _nginx_ssl_proxy_local_refusal() {
   rm -rf "${_bak}"
 }
 
+_nginx_migration_proxy_client() {
+  ### A site proxy that xoct or xcopy wrote before its template handed on
+  ### the wildcard SSL front's visitor still gives the new host 127.0.0.1
+  ### for every HTTPS request that came through the front. It gets the
+  ### template's block, taken from this pass's build tree, and its client
+  ### headers point at that block's variable. The vhost dirs belong to the
+  ### instance users, so a symlink is skipped, the new text is staged in a
+  ### root-only dir and sed -i replaces the file; every change is undone
+  ### when the config no longer tests clean.
+  local _src="${_bldPth}/aegir/tools/system/conf/proxy.conf"
+  local _d _f _n=0 _i
+  grep -q boa_mig_client "${_src}" 2>/dev/null || return 0
+  _d=$(mktemp -d /var/backups/.boa-mig-proxy.XXXXXX 2>/dev/null) || return 0
+  awk '/### HTTPS for a site without its own certificate reaches this vhost/ { p = 1; print "  ###" }
+    p { print }
+    p && /^  }$/ { exit }' "${_src}" > "${_d}/block"
+  if ! grep -q 'set $boa_mig_client $remote_addr;' "${_d}/block" \
+    || ! grep -q 'set $boa_mig_client $http_x_real_ip;' "${_d}/block"; then
+    rm -rf "${_d}"
+    return 0
+  fi
+  for _f in /data/disk/*/config/server_master/nginx/vhost.d/*; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    grep -q "Plain HTTP proxy (START)" "${_f}" || continue
+    grep -q boa_mig_client "${_f}" && continue
+    grep -q 'CF-Connecting-IP  *\$remote_addr;' "${_f}" || continue
+    grep -q "^  log_not_found " "${_f}" || continue
+    _n=$(( _n + 1 ))
+    cat "${_f}" > "${_d}/${_n}.orig"
+    echo "${_f}" > "${_d}/${_n}.path"
+    awk -v blk="${_d}/block" '
+      /proxy_set_header[ \t]+(X-Real-IP|CF-Connecting-IP)[ \t]+\$remote_addr;/ { sub(/\$remote_addr;/, "$boa_mig_client;") }
+      { print }
+      !d && /^  log_not_found / { while ((getline _l < blk) > 0) print _l; d = 1 }' \
+      "${_d}/${_n}.orig" > "${_d}/stage"
+    [ -s "${_d}/stage" ] && sed -i -e "1r ${_d}/stage" -e d "${_f}"
+  done
+  if [ "${_n}" -gt 0 ] && ! nginx -t > /dev/null 2>&1; then
+    for (( _i = 1; _i <= _n; _i++ )); do
+      _f=$(cat "${_d}/${_i}.path")
+      [ -f "${_f}" ] && [ ! -L "${_f}" ] && sed -i -e "1r ${_d}/${_i}.orig" -e d "${_f}"
+    done
+  fi
+  rm -rf "${_d}"
+}
+
 _nginx_config_update_fix() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _nginx_config_update_fix"
@@ -1415,6 +1461,7 @@ _nginx_config_update_fix() {
       sed -i "s/add_header Vary .*//g" /var/aegir/config/server_*/nginx.conf &> /dev/null
       wait
       _nginx_ssl_proxy_local_refusal
+      _nginx_migration_proxy_client
     fi
     if [ "${_NGINX_SPDY}" = "YES" ]; then
       sed -i "s/:443;/:443 ssl;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
