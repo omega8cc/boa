@@ -22,12 +22,23 @@
 # block below are settings to review.
 #
 # Composer's advisory blocking stays off for the distro builds, so one upstream advisory
-# cannot halt a catalogue build. Every finished distro and vanilla core is audited
-# instead (composer audit --locked, never fatal) and the result is recorded beside its
-# tarball as <platform>.advisories and in the run summary. distribute never replaces a
-# published distro or vanilla core tarball with a same-name one whose lock differs
-# unless -O names it: a box fetches a platform only while its directory is absent, so
-# the boxes that already hold the old bytes keep them.
+# cannot halt a catalogue build. Instead each finished distribution gets a fix step: every
+# advisory-affected package moves to the newest release its constraints allow (never
+# drupal/core, whose newer release is a new platform name, and never a package the build
+# holds). Every distro and vanilla core is then audited (composer audit --locked, never
+# fatal); the result, with what the fix step moved and what it could not, is recorded
+# beside the tarball as <platform>.advisories and counted in the run summary.
+# distribute replaces a published distro or vanilla core tarball with a same-name one
+# whose lock differs only when the new lock clears advisories and adds none (both sides
+# audited at that moment), or when -O names it; any other lock change is refused. A box
+# fetches a platform only while its directory is absent, so the boxes that already hold
+# the old bytes keep them either way.
+#
+# Output: build, package, distribute, all and the family actions print one row per
+# platform (build result, advisories left and fixed, what happened on the mirror, a
+# note) plus a footer for anything that needs action; everything else goes to a log
+# under /var/backups/reports/staticbuild/<user>/<MM-DD>/. --debug streams it all
+# instead, as before, and makes "advisories" list every advisory id.
 #
 # Usage:
 #   staticbuild backdrop            build+package+publish ONLY the Backdrop family
@@ -44,7 +55,9 @@
 #   staticbuild package             clean + tar (cores keep core/profiles, distros strip)
 #   staticbuild distribute          copy tarballs to /var/www/static/{distro,core,dev/{dev,lts,pro}};
 #                                   a same-name distro or vanilla core tarball whose
-#                                   lock changed is refused (exit 3 at the end)
+#                                   lock changed replaces the published one only when
+#                                   it clears advisories and adds none; otherwise it
+#                                   is refused (exit 3 at the end)
 #   staticbuild -O distribute <platform> ...
 #                                   the same, overwriting the named platforms'
 #                                   published tarballs even though their lock changed
@@ -67,9 +80,13 @@
 #   -O         with distribute and the platform names after it only: overwrite
 #              those published tarballs although their lock changed (logs both
 #              lock hashes; boxes that already fetched them keep the old bytes)
+#   --debug    stream everything (Composer, git, tar, every advisory id) as it
+#              happens instead of writing it to the run log; the one-row-per-
+#              platform summary still closes the run
 # Build target names: farm cms culturas commerce localgov openfed opigno social thunder
-#   varbase backdrop (core, versioned like the Drupal cores) bee backdrop-drush-extension
-#   redis_backdrop webform_backdrop grav txp cores
+#   varbase ezcontent commerce_base (the two pinned catalogue platforms, rebuilt from
+#   their published tarballs) backdrop (core, versioned like the Drupal cores) bee
+#   backdrop-drush-extension redis_backdrop webform_backdrop grav txp cores
 #
 # The Backdrop family (backdrop core, bee, backdrop-drush-extension,
 # redis_backdrop, webform_backdrop) is always fetched at its newest upstream version, so BOA
@@ -95,6 +112,7 @@ _STATIC_ROOT="/data/disk"                       # o8 home base; static lives und
 _DISTRO_OUT="/var/www/static/distro"            # non-core (distribution) tarballs
 _CORE_OUT="/var/www/static/core"                # raw core tarballs
 _DEVEXT_BASE="/var/www/static/dev"              # dev extensions (bee, drush ext) BOA _get_dev_ext pulls
+_LOG_DIR="/var/backups/reports/staticbuild"     # per-run logs: <user>/<MM-DD>/<action>-<HHMMSS>.log
 
 # Catalogue audit (staticbuild catalogue). The published BOA tree is the source of
 # truth for WHICH tarballs must exist -- read it per tree rather than duplicating
@@ -230,6 +248,11 @@ _VARBASE_SPEC="Vardot/varbase-project:11.0.7"
 # only to its own PostgreSQL-backed features. Empty this to enforce the lock.
 _VARBASE_IGNORE_EXT="--ignore-platform-req=ext-pdo_pgsql"
 _VARBASE_DISTPKG="vardot/varbase"
+# The advisory fix step moves an affected package to its fixed release. The same one
+# platform requirement is ignored there, for the same reason: the fixed amazee.io
+# provider releases declare ext-pdo_pgsql too, so without it Drupal CMS stays on the
+# affected 1.3.x line it resolves to today.
+_FIX_IGNORE_EXT="--ignore-platform-req=ext-pdo_pgsql"
 # Open Social ships NO create-project template for its current major: goalgorilla/social_template
 # has not been touched since 2024-05-21 and its committed lock pins open_social 12.4.2 on core
 # 10.2.6, i.e. an unsupported branch. So we take that template as the chassis - it owns the
@@ -253,6 +276,16 @@ _OPIGNO_DISTPKG="opigno/opigno_lms"
 _OPENFED_SPEC="openfed/openfed-project:^13"
 _OPENFED_DISTPKG="openfed/openfed"
 _CORE_SPEC="drupal/recommended-project"
+# Pinned catalogue platforms: nothing upstream rebuilds them any more, so their build
+# starts from the published tarball itself (the local shelf, else the distro mirror)
+# and only the advisory fix step changes it. Distribution and core stay, and so does
+# the name, which lets distribute replace the published copy when the fix step clears
+# advisories. The core minors are past their security support: core advisories stay.
+_EZC_PINNED="ezcontent-2.2.15-10.3.6"
+_EZC_DISTPKG="srijanone/ezcontent"
+_CK2_PINNED="commerce_base-2.40-10.1.8"
+_CK2_DISTPKG="drupalcommerce/commerce_base"
+_PHP_PINNED="${_PHP_83}"
 
 # Vanilla core minors to build. Empty (default) = auto-discover every released minor
 # >= _CORE_FLOOR, minus _CORE_EXCLUDE, so the newest minor is always built without
@@ -275,7 +308,7 @@ _CORE_CP_FLAGS="--no-dev --no-interaction"
 # patch set is fetched from mutable branch refs with no hashes, so REBUILDS are not
 # reproducible -- each published tarball is the frozen artefact, same as every other
 # distro here.
-_ALL_DISTROS="farm cms culturas commerce localgov openfed opigno social thunder varbase"
+_ALL_DISTROS="farm cms culturas commerce localgov openfed opigno social thunder varbase ezcontent commerce_base"
 
 _LOCK="/run/staticbuild.lock"
 _UA="staticbuild version-check"
@@ -291,16 +324,138 @@ _OVERWRITE_NAMES=""
 _REFUSED=0
 _ADV_TMP=""
 _LOCK_HELD=0
-_RESULTS=()
+_DEBUG_MODE="${_DEBUG_MODE:-NO}"                 # --debug: stream everything, no run log
+_LOG=""                                          # this run's log; empty = output streams
+_FALLBACK_NOTE=""                                # set by _with_core_fallback for the row note
+_FIX_BEFORE=""                                   # advisory count before the fix step
+_FIX_LINES=()                                    # the fix step's record for the .advisories file
+_FIX_NOTE=""                                     # the fix step's word for the row
+_PENDING_NOTE=""                                 # a build warning waiting for its platform's row
+_FIX_MOVED=""                                    # what a rejected fix resolve would have moved
+_TAIL_FROM=0                                     # run log size when the current target started
+_ACTION=""
+
+# The run record: one summary row per key -- a platform (its tarball name without
+# .tar.gz), or a build target that failed before it had a name -- in the order the
+# run first touched it.
+_P_KEYS=()
+declare -gA _P_SEEN=() _P_NAME=() _P_BUILD=() _P_ADV=() _P_PUB=() _P_NOTE=() _P_TAIL=()
 
 # ---------------------------------------------------------------------------
 # Output helpers.
 # ---------------------------------------------------------------------------
 
+# While a run log is open (_start_log), stdout and stderr both go to it and the
+# console is kept on fds 3 and 4: _msg/_info/_alrt then write detail to the log only,
+# and _say is the one way onto the console (a copy lands in the log too). Colour only
+# on a terminal, so logs and cron mail carry no escape codes.
 _msg()  { printf '%s\n' "$*"; }
-_info() { printf '\033[0;32m%s\033[0m\n' "$*"; }
-_alrt() { printf '\033[0;33m%s\033[0m\n' "$*" >&2; }
-_die()  { printf '\033[0;31mFATAL ERROR: %s\033[0m\n' "$*" >&2; _cleanup; exit 1; }
+_info() { if [[ -t 1 ]]; then printf '\033[0;32m%s\033[0m\n' "$*"; else printf '%s\n' "$*"; fi; }
+_alrt() { if [[ -t 2 ]]; then printf '\033[0;33m%s\033[0m\n' "$*" >&2; else printf '%s\n' "$*" >&2; fi; }
+_say()  {
+  if [[ -n "${_LOG}" ]]; then
+    printf '%s\n' "$*" >&3
+    printf '%s\n' "$*"
+  else
+    printf '%s\n' "$*"
+  fi
+}
+_progress() {
+  # One self-overwriting status line, only when a person watches the console.
+  [[ -n "${_LOG}" && -t 3 ]] || return 0
+  printf '\r\033[K%s' "$*" >&3
+}
+_progress_end() {
+  [[ -n "${_LOG}" && -t 3 ]] || return 0
+  printf '\r\033[K' >&3
+}
+_die() {
+  if [[ -n "${_LOG}" ]]; then
+    printf 'FATAL ERROR: %s\n' "$*"
+    _progress_end
+    printf 'FATAL ERROR: %s (log: %s)\n' "$*" "${_LOG}" >&4
+  elif [[ -t 2 ]]; then
+    printf '\033[0;31mFATAL ERROR: %s\033[0m\n' "$*" >&2
+  else
+    printf 'FATAL ERROR: %s\n' "$*" >&2
+  fi
+  # What the run did before it stopped still gets its rows (not from a subshell,
+  # whose output would land in a capture).
+  [[ "${BASH_SUBSHELL}" == "0" ]] && print_summary
+  _cleanup
+  exit 1
+}
+
+_start_log() {
+  # $1 = action. Send the whole run to a log and keep only the summary on the console;
+  # --debug keeps today's streaming. Never fatal: without a log, output streams.
+  [[ "${_DEBUG_MODE}" == "YES" ]] && return 0
+  local _dir="${_LOG_DIR}/${_O8_USER}/${_DAY}"
+  if ! mkdir -p "${_dir}" 2>/dev/null || ! chmod 700 "${_LOG_DIR}" 2>/dev/null; then
+    _alrt "cannot create ${_dir}; output streams instead of going to a log"
+    return 0
+  fi
+  _LOG="${_dir}/${1}-$(date -u +%H%M%S).log"
+  if ! { : > "${_LOG}" && chmod 600 "${_LOG}"; } 2>/dev/null; then
+    _alrt "cannot write ${_LOG}; output streams instead of going to a log"
+    _LOG=""
+    return 0
+  fi
+  exec 3>&1 4>&2
+  exec >>"${_LOG}" 2>&1
+  _msg "# staticbuild ${1}, $(date -u '+%F %T') UTC, day dir ${_DAY_DIR}"
+}
+
+_tail_mark() {
+  # Where the current build starts in the run log, so a failure shows only its own lines.
+  if [[ -n "${_LOG}" ]]; then
+    _TAIL_FROM="$(stat -c %s "${_LOG}" 2>/dev/null || echo 0)"
+  fi
+}
+
+_log_tail() {
+  # The last lines of the run log, for a failed row's footer: what the failing step
+  # printed just before it gave up. Empty without a log (--debug already showed it).
+  [[ -n "${_LOG}" && -r "${_LOG}" ]] || return 0
+  tail -c +"$((_TAIL_FROM + 1))" "${_LOG}" | grep -v '^[[:space:]]*$' | tail -n 8 | cut -c1-200
+}
+
+# ---------------------------------------------------------------------------
+# The run record (see _P_KEYS) and the summary built from it.
+# ---------------------------------------------------------------------------
+
+_rec() {
+  # $1 key, $2 field (NAME BUILD ADV PUB), $3 value. The first touch fixes the row order.
+  local _k="$1"
+  [[ -n "${_P_SEEN[${_k}]:-}" ]] || { _P_SEEN[${_k}]=1; _P_KEYS+=("${_k}"); }
+  case "$2" in
+    NAME)  _P_NAME[${_k}]="$3" ;;
+    BUILD) _P_BUILD[${_k}]="$3" ;;
+    ADV)   _P_ADV[${_k}]="$3" ;;
+    PUB)   _P_PUB[${_k}]="$3" ;;
+  esac
+}
+
+_rec_note() {
+  # $1 key, $2 text; notes accumulate, joined by "; ".
+  local _k="$1"
+  [[ -n "${_P_SEEN[${_k}]:-}" ]] || { _P_SEEN[${_k}]=1; _P_KEYS+=("${_k}"); }
+  _P_NOTE[${_k}]="${_P_NOTE[${_k}]:+${_P_NOTE[${_k}]}; }$2"
+}
+
+_rec_pub() {
+  # $1 key, $2 publish outcome. Several copies can feed one row (three dev trees, a
+  # compat tarball, a stamp): the row keeps the outcome that matters most.
+  local _k="$1" _new="$2" _old _r _i=0 _ro=-1 _rn=-1
+  _old="${_P_PUB[${_k}]:-}"
+  for _r in same new updated replaced OVERWRITTEN REFUSED FAILED; do
+    [[ "${_r}" == "${_old}" ]] && _ro="${_i}"
+    [[ "${_r}" == "${_new}" ]] && _rn="${_i}"
+    _i=$((_i + 1))
+  done
+  [[ "${_rn}" -ge "${_ro}" ]] && _rec "${_k}" PUB "${_new}"
+  return 0
+}
 
 _cleanup() {
   # Restore the original /usr/bin/php symlink and release the lock. Safe to call
@@ -393,7 +548,17 @@ _begin_build() {
         || { _record_fail "${_label}"; return 1; }
     else
       _msg "SKIP: ${_gp}* already built (use -f to rebuild)"
-      _RESULTS+=("SKIP  ${_label}")
+      # Key the row by the platform already in the day dir, so its publish outcome
+      # lands on the same row.
+      local _have
+      _have="$(_run_as_o8 "cd '${_DAY_DIR}' && ls -d ${_gp}*/ 2>/dev/null" | head -n 1)"
+      _have="${_have%/}"
+      if [[ -z "${_have}" ]]; then
+        _have="$(_run_as_o8 "cd '${_DAY_DIR}' && ls ${_gp}*.tar.gz 2>/dev/null" | head -n 1)"
+        _have="${_have%.tar.gz}"
+      fi
+      _rec "${_have:-${_label}}" BUILD skip
+      _rec_note "${_have:-${_label}}" "already built in this day dir (-f rebuilds)"
       return 1
     fi
   fi
@@ -434,11 +599,10 @@ _composer_prepare() {
   # Composer's security-advisory blocking (on by default in current Composer, and
   # commerce_kickstart enables it itself) refuses every advisory-affected core or
   # dependency, which also defeats the older-core fallback (older cores carry
-  # advisories). These tarballs are the demonstration and compatibility-test
-  # catalogue, never chased for security releases, and blocking stays off on
-  # purpose: one upstream advisory must not halt a catalogue build. The audit in
-  # _finalize_distro records what shipped instead, and "staticbuild advisories"
-  # re-checks the published set against newer advisories.
+  # advisories). Blocking stays off on purpose: one upstream advisory must not halt a
+  # catalogue build. _finalize_distro then applies the fixed releases the constraints
+  # allow and audits what ships, and "staticbuild advisories" re-checks the published
+  # set against newer advisories.
   _run_as_o8 "cd '${_dir}' && composer config --no-plugins --json policy.advisories.block false" || return 1
 }
 
@@ -484,6 +648,7 @@ _with_core_fallback() {
     _pin_core "${_dir}" "${_m}" || continue
     if "${_fn}" "${_dir}"; then
       _info "${_label}: built on core ${_m}.*"
+      _FALLBACK_NOTE="built on older core ${_m} (newest failed)"
       return 0
     fi
   done
@@ -506,7 +671,16 @@ _detect_core_version() {
 }
 
 _record_fail() {
-  _RESULTS+=("FAIL  $1")
+  # $1 = "<target>" or "<target> (<reason>)". A failed build has no platform name
+  # yet, so its row is keyed by the target; the log's last lines go to the footer.
+  local _k="${1%% *}" _why=""
+  if [[ "$1" == *" ("*")" ]]; then
+    _why="${1#* (}"
+    _why="${_why%)}"
+  fi
+  _rec "${_k}" BUILD FAIL
+  _rec_note "${_k}" "${_why:-build failed}"
+  _P_TAIL[${_k}]="$(_log_tail)"
   _alrt "$1: build failed"
 }
 
@@ -683,43 +857,246 @@ _audit_dir() {
   return 1
 }
 
-_audit_platform() {
-  # Non-fatal advisory audit of a finished platform ($1 = its name in the day dir).
-  # The report goes beside the tarball-to-be as <name>.advisories, and a count with
-  # the advisory ids goes into the run summary; an audit that could not run is
-  # reported the same way, loudly, and never fails the build.
-  local _name="$1" _scr _rep _n _ids
-  _scr="${_DAY_DIR}/.audit.work"
-  if _run_as_o8 "rm -rf '${_scr}' && mkdir -p '${_scr}' && cp '${_DAY_DIR}/${_name}/composer.lock' '${_scr}/' && { [ ! -f '${_DAY_DIR}/${_name}/vendor/composer/installed.json' ] || cp '${_DAY_DIR}/${_name}/vendor/composer/installed.json' '${_scr}/'; }" >/dev/null 2>&1; then
+_audit_tree() {
+  # $1 = a platform dir this script made (a finished platform in the day dir, or a
+  # distro workdir before its rename). Audits a copy of its composer.lock (and
+  # vendor/composer/installed.json) in a scratch dir, never inside the platform, and
+  # prints the _audit_dir report. Its output is captured: nothing else on stdout here.
+  local _dir="$1" _scr="${_DAY_DIR}/.audit.work" _rep
+  if _run_as_o8 "rm -rf '${_scr}' && mkdir -p '${_scr}' && cp '${_dir}/composer.lock' '${_scr}/' && { [ ! -f '${_dir}/vendor/composer/installed.json' ] || cp '${_dir}/vendor/composer/installed.json' '${_scr}/'; }" >/dev/null 2>&1; then
     _rep="$(_audit_dir "${_scr}" _run_as_o8)"
   else
     _rep="advisories: unknown (no composer.lock at the platform root)"
   fi
   _run_as_o8 "rm -rf '${_scr}'" >/dev/null 2>&1
+  printf '%s\n' "${_rep}"
+}
+
+_audit_platform() {
+  # Non-fatal advisory audit of a finished platform ($1 = its name in the day dir).
+  # The report goes beside the tarball-to-be as <name>.advisories, followed by what
+  # the fix step did (_FIX_LINES); the summary row gets the count left, how many the
+  # fix step cleared, and which packages stay affected. An audit that could not run
+  # is reported the same way and never fails the build.
+  local _name="$1" _rep _n _ids _cell _left
+  _rep="$(_audit_tree "${_DAY_DIR}/${_name}")"
   if ! { printf '%s\n' "# composer audit --locked, $(date -u '+%F %T') UTC" "# ${_name}" "${_rep}" \
-         | _run_as_o8 "cat > '${_DAY_DIR}/${_name}.advisories'"; }; then
+           "${_FIX_LINES[@]}" | _run_as_o8 "cat > '${_DAY_DIR}/${_name}.advisories'"; }; then
     _alrt "${_name}: could not write ${_name}.advisories"
+    _rec_note "${_name}" "could not write ${_name}.advisories"
   fi
   _n="$(printf '%s\n' "${_rep}" | sed -n '1s/^advisories: //p')"
-  _ids="$(printf '%s\n' "${_rep}" \
-    | awk -F'\t' 'NR > 1 && !/^#/ { printf "%s%s (%s)", (_c++ ? ", " : ""), $1, $2 }')"
   case "${_n}" in
-    0)
-      _RESULTS+=("AUDIT ${_name}: no known advisories") ;;
     [0-9]*)
-      _RESULTS+=("AUDIT ${_name}: ${_n} advisories: ${_ids}")
-      _alrt "${_name}: its lock carries ${_n} known advisories: ${_ids}" ;;
+      _cell="${_n}"
+      if [[ "${_FIX_BEFORE}" =~ ^[0-9]+$ ]] && [[ "${_FIX_BEFORE}" -gt "${_n}" ]]; then
+        _cell="${_n} ($((_FIX_BEFORE - _n)) fixed)"
+      fi
+      if [[ "${_n}" -gt 0 ]]; then
+        _ids="$(printf '%s\n' "${_rep}" \
+          | awk -F'\t' 'NR > 1 && !/^#/ { printf "%s%s (%s)", (_c++ ? ", " : ""), $1, $2 }')"
+        _msg "${_name}: its lock carries ${_n} known advisories: ${_ids}"
+        # The packages still affected and why, from the fix step's own record.
+        # Grouped by reason, at most three names each, so a long list stays one row.
+        _left="$(printf '%s\n' "${_FIX_LINES[@]}" | awk '
+          /^# not fixed: / {
+            _r = $0; sub(/^[^(]*\(/, "", _r); sub(/\)$/, "", _r)
+            if (!(_r in _n)) _o[++_k] = _r
+            if (++_n[_r] <= 3) _l[_r] = _l[_r] (_n[_r] > 1 ? ", " : "") $4
+          }
+          END {
+            for (_i = 1; _i <= _k; _i++) {
+              _r = _o[_i]
+              printf "%s%s%s (%s)", (_i > 1 ? "; " : ""), _l[_r], (_n[_r] > 3 ? " +" (_n[_r] - 3) : ""), _r
+            }
+          }')"
+        [[ -n "${_left}" ]] && _rec_note "${_name}" "left: ${_left}"
+      fi
+      ;;
     *)
-      _RESULTS+=("AUDIT ${_name}: advisories ${_n:-unknown}")
-      _alrt "${_name}: advisory audit did not run: ${_n:-unknown}" ;;
+      _cell="unknown"
+      _rec_note "${_name}" "advisory audit did not run: ${_n#unknown }"
+      _alrt "${_name}: advisory audit did not run: ${_n:-unknown}"
+      ;;
   esac
+  _rec "${_name}" ADV "${_cell}"
+  return 0
+}
+
+_fix_why() {
+  # $1 = the output of a resolve that failed: the reason for the row and .advisories.
+  case "$1" in
+    *"Could not authenticate against github.com"*|*"API rate limit"*|*"github.com: Permission denied"*)
+      printf '%s' "GitHub refused an anonymous request: rerun later, or give the build user a GitHub token" ;;
+    *"Your requirements could not be resolved"*)
+      printf '%s' "no update resolves within the constraints" ;;
+    *)
+      printf '%s' "no update resolves, see the run log" ;;
+  esac
+}
+
+_fix_kept() {
+  # $1 = the workdir. 0 when drupal/core and every held package are still at the
+  # version the caller recorded in its _held map (bash's dynamic scope); otherwise 1,
+  # with what moved in _FIX_MOVED.
+  local _p
+  _FIX_MOVED=""
+  for _p in "${!_held[@]}"; do
+    if [[ "$(_lock_version "$1" "${_p}")" != "${_held[${_p}]}" ]]; then
+      case "${_p}" in
+        drupal/core) _FIX_MOVED="a newer core" ;;
+        *)           _FIX_MOVED="${_p} to move, which this build holds" ;;
+      esac
+      return 1
+    fi
+  done
+  return 0
+}
+
+_fix_advisories() {
+  # Apply the fixed releases of every advisory-affected package a distro build locked
+  # (see _fix_step for where it runs). $1 = the distro workdir, $2 = label, $3 = the
+  # packages this build holds: the ones whose versions name the platform. Every
+  # affected package moves to the newest release its constraints allow, with its
+  # non-root dependencies (-w: root requirements such as the core pins never move; -m
+  # keeps the other moves minimal). One resolve for all of them comes first: each
+  # resolve re-reads every repository, and a distribution that declares a GitHub VCS
+  # repository pays an anonymous GitHub request for it. When that resolve fails, or
+  # moves drupal/core or a held package, the packages go one at a time instead, and a
+  # move of either is put back: a newer core or distribution is a new platform name,
+  # which the catalogue takes with a BOA release. The result installs once. Sets
+  # _FIX_BEFORE (the count before), _FIX_LINES (the record for .advisories) and
+  # _FIX_NOTE (a word for the row). Returns 1 when the fixed lock does not install.
+  local _wd="$1" _label="$2" _hold=" ${3:-} " _rep _pkgs _p _v0 _v1 _moved=0
+  local _todo="" _out _rc _keep _nodev=""
+  local -A _was=() _held=() _why=()
+  local _env="COMPOSER_NO_SECURITY_BLOCKING=1"
+  local _up="${_env} composer update --no-install --no-scripts --with-dependencies --minimal-changes ${_FIX_IGNORE_EXT}"
+  _FIX_BEFORE=""
+  _FIX_NOTE=""
+  _FIX_LINES=()
+  _rep="$(_audit_tree "${_wd}")"
+  _FIX_BEFORE="$(sed -n '1s/^advisories: //p' <<< "${_rep}")"
+  if [[ ! "${_FIX_BEFORE}" =~ ^[0-9]+$ ]]; then
+    _FIX_LINES+=("# fix step skipped: the audit before it did not run")
+    _FIX_NOTE="advisory fix step skipped: the audit before it did not run"
+    _FIX_BEFORE=""
+    return 0
+  fi
+  [[ "${_FIX_BEFORE}" -gt 0 ]] || return 0
+  # Package names only as Composer writes them: they reach shell strings below.
+  _pkgs="$(awk -F'\t' 'NR > 1 && !/^#/ && $2 ~ /^[a-z0-9_.-]+\/[a-z0-9_.-]+$/ { print $2 }' <<< "${_rep}" | sort -u)"
+  _msg "${_label}: fix step for ${_FIX_BEFORE} advisories in: $(tr '\n' ' ' <<< "${_pkgs}")"
+  for _p in ${_pkgs}; do
+    _v0="$(_lock_version "${_wd}" "${_p}")"
+    case "${_p}" in
+      drupal/core|drupal/core-*)
+        _FIX_LINES+=("# not fixed: ${_p} ${_v0} (fixed only by a newer core, a new platform name)")
+        continue
+        ;;
+    esac
+    if [[ "${_hold}" == *" ${_p} "* ]]; then
+      _FIX_LINES+=("# not fixed: ${_p} ${_v0} (held by this build: its version names the platform)")
+      continue
+    fi
+    _was[${_p}]="${_v0}"
+    _todo+=" '${_p}'"
+  done
+  [[ -n "${_todo}" ]] || return 0
+  if ! _run_as_o8 "cp -f '${_wd}/composer.lock' '${_wd}/.lock.built'"; then
+    _FIX_LINES+=("# fix step skipped: could not keep a copy of composer.lock")
+    _FIX_NOTE="advisory fix step skipped: could not keep a copy of composer.lock"
+    return 0
+  fi
+  # The install keeps the tree's own require-dev scope: a tree installed with --no-dev
+  # stays so, and one that carries its dev packages (a pinned platform can) keeps them.
+  if _run_as_o8 "php -r '\$i = json_decode((string) @file_get_contents(\$argv[1]), true); exit(is_array(\$i) && array_key_exists(\"dev\", \$i) && \$i[\"dev\"] === false ? 0 : 1);' '${_wd}/vendor/composer/installed.json'"; then
+    _nodev="--no-dev"
+  fi
+  # The versions the step must leave where they are: drupal/core and the held packages.
+  _keep="drupal/core ${_hold}"
+  for _p in ${_keep}; do
+    _held[${_p}]="$(_lock_version "${_wd}" "${_p}")"
+  done
+  _out="$(_run_as_o8 "cd '${_wd}' && ${_up}${_todo} 2>&1")"
+  _rc=$?
+  printf '%s\n' "${_out}"
+  if [[ "${_rc}" != "0" ]] || ! _fix_kept "${_wd}"; then
+    _msg "${_label}: one resolve for all of them did not hold; one package at a time"
+    _run_as_o8 "cp -f '${_wd}/.lock.built' '${_wd}/composer.lock'"
+    for _p in ${_pkgs}; do
+      [[ -n "${_was[${_p}]+x}" ]] || continue
+      _run_as_o8 "cp -f '${_wd}/composer.lock' '${_wd}/.lock.step'"
+      _out="$(_run_as_o8 "cd '${_wd}' && ${_up} '${_p}' 2>&1")"
+      _rc=$?
+      printf '%s\n' "${_out}"
+      if [[ "${_rc}" != "0" ]]; then
+        _run_as_o8 "cp -f '${_wd}/.lock.step' '${_wd}/composer.lock'"
+        _why[${_p}]="$(_fix_why "${_out}")"
+      elif ! _fix_kept "${_wd}"; then
+        _run_as_o8 "cp -f '${_wd}/.lock.step' '${_wd}/composer.lock'"
+        _why[${_p}]="its fix needs ${_FIX_MOVED}"
+      fi
+    done
+  fi
+  # One line per package, read from the final lock: a package another fix moved as its
+  # dependency counts as moved, whatever its own resolve did.
+  for _p in ${_pkgs}; do
+    [[ -n "${_was[${_p}]+x}" ]] || continue
+    _v1="$(_lock_version "${_wd}" "${_p}")"
+    if [[ "${_v1}" != "${_was[${_p}]}" ]]; then
+      _FIX_LINES+=("# updated: ${_p} ${_was[${_p}]} -> ${_v1}")
+      _moved=1
+    else
+      _FIX_LINES+=("# not fixed: ${_p} ${_v1} (${_why[${_p}]:-no fixed release within the constraints})")
+    fi
+  done
+  if [[ "${_moved}" != "1" ]]; then
+    # Nothing moved, but a resolve may still have rewritten the lock (its content-hash
+    # follows composer.json): keep the lock exactly as built.
+    _run_as_o8 "cp -f '${_wd}/.lock.built' '${_wd}/composer.lock'"
+  else
+    # Never reinstall the lock as built in this tree after a failed install: a pinned
+    # composer-patches can record an aborted patch set as applied, so a second install
+    # in the same tree may exit 0 with patches missing. The build fails instead, and
+    # the published copy stays.
+    _out="$(_run_as_o8 "cd '${_wd}' && ${_env} composer install ${_nodev} ${_FIX_IGNORE_EXT} 2>&1")"
+    _rc=$?
+    printf '%s\n' "${_out}"
+    if [[ "${_rc}" != "0" ]]; then
+      _alrt "${_label}: the fixed lock did not install"
+      _run_as_o8 "rm -f '${_wd}/.lock.built' '${_wd}/.lock.step'"
+      return 1
+    fi
+    # A patch that no longer applies to a fixed release is skipped, as in any build
+    # here (composer-exit-on-patch-failure false), but never quietly.
+    if grep -qiE 'could not apply patch|cannot apply patch' <<< "${_out}"; then
+      _FIX_NOTE="a patch did not apply to a fixed release (see the run log)"
+      _FIX_LINES+=("# warning: a patch did not apply to a fixed release, see the run log")
+    fi
+  fi
+  _run_as_o8 "rm -f '${_wd}/.lock.built' '${_wd}/.lock.step'"
+  return 0
+}
+
+_fix_step() {
+  # The advisory fix step as a build runs it: straight after its Composer work and
+  # before any hand work (patches, moved directories, seds), so the hand work always
+  # applies to the final tree and fails closed if it no longer fits. $1 workdir,
+  # $2 label, $3 packages the step must not move (the one whose version names the
+  # platform). A fixed lock that does not install fails the build.
+  if ! _fix_advisories "$1" "$2" "${3:-}"; then
+    _record_fail "$2 (the fixed lock did not install; the published copy stays)"
+    return 1
+  fi
   return 0
 }
 
 _finalize_distro() {
   # Rename the working dir to <nameprefix>-<distroVer>-<coreVer> using the detected
-  # versions, record the result, then audit the finished platform (never fatal).
-  # $1 name prefix, $2 workdir, $3 distro version, $4 result label.
+  # versions, record the row, then audit the finished platform (never fatal); the
+  # row carries what the build's _fix_step did. $1 name prefix, $2 workdir, $3 distro
+  # version, $4 result label.
   local _np="$1" _wd="$2" _dver="$3" _label="$4" _core _final
   _core="$(_detect_core_version "${_wd}" 2>/dev/null)"
   # Never allow whitespace into a platform name (a dev-branch alias could carry it).
@@ -729,13 +1106,32 @@ _finalize_distro() {
   if [[ -z "${_core}" ]]; then _core="unknown"; _alrt "${_label}: could not detect core version"; fi
   _final="${_np}-${_dver}-${_core}"
   if _run_as_o8 "mv '${_wd}' '${_DAY_DIR}/${_final}'"; then
-    _RESULTS+=("OK    ${_final}")
+    _rec "${_final}" BUILD ok
+    [[ -n "${_FALLBACK_NOTE}" ]] && _rec_note "${_final}" "${_FALLBACK_NOTE}"
+    [[ -n "${_FIX_NOTE}" ]] && _rec_note "${_final}" "${_FIX_NOTE}"
+    [[ -n "${_PENDING_NOTE}" ]] && _rec_note "${_final}" "${_PENDING_NOTE}"
     _info "${_label}: built ${_final}"
     _audit_platform "${_final}"
   else
     _record_fail "${_label} (rename to ${_final} failed)"
+    _FALLBACK_NOTE=""
+    _FIX_NOTE=""
+    _FIX_BEFORE=""
+    _FIX_LINES=()
     return 1
   fi
+  _FALLBACK_NOTE=""
+  _FIX_NOTE=""
+  _FIX_BEFORE=""
+  _FIX_LINES=()
+  _PENDING_NOTE=""
+}
+
+_pending() {
+  # $1 = a warning about the platform being built, before it has a name: it goes to
+  # the log now and onto the platform's row when _finalize_distro names it.
+  _alrt "$1"
+  _PENDING_NOTE="${_PENDING_NOTE:+${_PENDING_NOTE}; }$1"
 }
 
 _ensure_example_sites() {
@@ -757,9 +1153,9 @@ _ensure_example_sites() {
     _src="$(_run_as_o8 "ls ${_DAY_DIR}/*/web/sites/example.sites.php ${_DAY_DIR}/*/docroot/sites/example.sites.php 2>/dev/null | head -1")"
   fi
   if [[ -n "${_src}" ]]; then
-    _run_as_o8 "cp -a '${_src}' '${_sitesdir}/'" || _alrt "culturas: could not copy example.sites.php"
+    _run_as_o8 "cp -a '${_src}' '${_sitesdir}/'" || _pending "culturas: could not copy example.sites.php"
   else
-    _alrt "culturas: no example.sites.php source found; skipping"
+    _pending "culturas: no example.sites.php source found; skipped"
   fi
 }
 
@@ -876,6 +1272,7 @@ build_farm() {
     _record_fail "farm"
     return 1
   fi
+  _fix_step "${_wd}" "farm" "" || return 1
   _finalize_distro "farm" "${_wd}" "${_tag}" "farm"
 }
 
@@ -906,6 +1303,7 @@ build_cms() {
   # runs as the build user like the rest of the tree: root must never read or
   # write a path the o8 account - or a composer plugin executing as it during
   # this very build - can turn into a symlink first.
+  _fix_step "${_wd}" "cms" "" || return 1
   local _pa_yml="${_wd}/web/modules/contrib/pathauto/migrations/d7_pathauto_patterns.yml"
   if _run_as_o8 "test -f '${_pa_yml}'" \
      && ! _run_as_o8 "grep -q 'source_module: pathauto' '${_pa_yml}'"; then
@@ -946,6 +1344,7 @@ build_culturas() {
   # front page request throws ViewsData->get() InvalidArgumentException (empty
   # table key from the broken relationship handler) and the site serves 500s.
   # Fail closed: a culturas platform without it is broken by default.
+  _fix_step "${_wd}" "culturas" "${_CULTURAS_DISTPKG}" || return 1
   local _err_patch_url="https://www.drupal.org/files/issues/2023-06-29/entity_reference_revisions-2799479-fix-only.patch"
   local _err_mod="${_wd}/web/modules/contrib/entity_reference_revisions"
   if ! { _run_as_o8 "curl -fsS --retry 3 -o '${_wd}/.err-2799479.patch' '${_err_patch_url}'" \
@@ -964,12 +1363,12 @@ build_culturas() {
     # hidden files move too, and rmdir (not rm -rf) so a layout drift can never
     # delete unmoved contents.
     if _run_as_o8 "cd '${_wrap}' && mv profile openculturas && mv openculturas '${_contrib}/' && shopt -s dotglob nullglob && for _f in *; do mv -- \"\${_f}\" '${_contrib}/' || exit 1; done"; then
-      _run_as_o8 "rmdir '${_wrap}'" || _alrt "culturas: wrapper not empty after flatten; left for inspection"
+      _run_as_o8 "rmdir '${_wrap}'" || _pending "culturas: wrapper not empty after flatten; left for inspection"
     else
-      _alrt "culturas: flatten failed (layout may have changed); wrapper left intact"
+      _pending "culturas: flatten failed (layout may have changed); wrapper left intact"
     fi
   else
-    _alrt "culturas: expected wrapper ${_wrap##*/} not found; layout may have changed"
+    _pending "culturas: expected wrapper ${_wrap##*/} not found; layout may have changed"
   fi
   _ensure_example_sites "${_wd}/web/sites" "${_wd}"
   # Name by the openculturas distribution package (the pinned drupal.org release, e.g. 3.0.3).
@@ -993,6 +1392,7 @@ build_commerce() {
     return 1
   fi
   local _dist
+  _fix_step "${_wd}" "commerce" "${_COMMERCE_DISTPKG}" || return 1
   _dist="$(_lock_version "${_wd}" "${_COMMERCE_DISTPKG}")"
   [[ -n "${_dist}" ]] && _dver="${_dist}"
   _finalize_distro "commerce_kickstart" "${_wd}" "${_dver}" "commerce"
@@ -1010,6 +1410,7 @@ build_localgov() {
   fi
   # Name by the localgov distribution package (drupal.org's number), not the project template.
   local _dist
+  _fix_step "${_wd}" "localgov" "${_LOCALGOV_DISTPKG}" || return 1
   _dist="$(_lock_version "${_wd}" "${_LOCALGOV_DISTPKG}")"
   [[ -n "${_dist}" ]] && _dver="${_dist}"
   _finalize_distro "localgov" "${_wd}" "${_dver}" "localgov"
@@ -1050,6 +1451,7 @@ build_openfed() {
   fi
   # Fail closed on the tolerated bootstrap: if it died before the merge plugin
   # reached disk, the resolve above quietly locked three helpers and no openfed.
+  _fix_step "${_wd}" "openfed" "${_OPENFED_DISTPKG}" || return 1
   _dist="$(_lock_version "${_wd}" "${_OPENFED_DISTPKG}")"
   if [[ -z "${_dist}" ]]; then
     _record_fail "openfed (openfed/openfed missing from the lock)"
@@ -1091,6 +1493,7 @@ build_opigno() {
   # returns none, so the first front-page render 500s on a Twig SyntaxError
   # (opigno_learning_path #3561556, RTBC with no release to carry it). Fail closed:
   # an opigno platform without the fix is broken by default.
+  _fix_step "${_wd}" "opigno" "${_OPIGNO_DISTPKG}" || return 1
   local _twig_patch_url="https://www.drupal.org/files/issues/2026-02-12/3561556-opigno_learning_path--twig3-getoperators-fix.patch"
   if ! { _run_as_o8 "curl -fsS --retry 3 -o '${_wd}/.twig-3561556.patch' '${_twig_patch_url}'" \
          && _run_as_o8 "cd '${_wd}/web' && patch -p1 --no-backup-if-mismatch < '${_wd}/.twig-3561556.patch'" \
@@ -1134,6 +1537,7 @@ build_social() {
   # Name by the distribution package read from the lock, NOT social.info.yml: upstream's
   # 13.0.2 tag still declares version '13.0.1' in that file.
   local _dist
+  _fix_step "${_wd}" "social" "${_SOCIAL_DISTPKG}" || return 1
   _dist="$(_lock_version "${_wd}" "${_SOCIAL_DISTPKG}")"
   [[ -n "${_dist}" ]] && _dver="${_dist}"
   _finalize_distro "social" "${_wd}" "${_dver}" "social"
@@ -1151,6 +1555,7 @@ build_thunder() {
   fi
   # Name by the Thunder distribution package (e.g. 8.4.4), not the template (versions separately).
   local _dist
+  _fix_step "${_wd}" "thunder" "${_THUNDER_DISTPKG}" || return 1
   _dist="$(_lock_version "${_wd}" "${_THUNDER_DISTPKG}")"
   [[ -n "${_dist}" ]] && _dver="${_dist}"
   _finalize_distro "thunder" "${_wd}" "${_dver}" "thunder"
@@ -1199,15 +1604,58 @@ build_varbase() {
   fi
   # varbase expects a content dir under each recipes/ in its web root (web/ from the
   # 11 line, docroot/ on the 10 line).
+  _fix_step "${_wd}" "varbase" "${_VARBASE_DISTPKG}" || return 1
   local _vroot="web"
   [[ -d "${_wd}/docroot" && ! -d "${_wd}/web" ]] && _vroot="docroot"
   local _cmd="cd \"${_wd}/${_vroot}\" && find . -type d -name recipes -exec mkdir -p {}/default/content \;"
-  _run_as_o8 "${_cmd}" || _alrt "varbase: recipes content dir creation failed"
+  _run_as_o8 "${_cmd}" || _pending "varbase: recipes content dir creation failed"
+  [[ "${_try}" != "1" ]] && _PENDING_NOTE="${_PENDING_NOTE:+${_PENDING_NOTE}; }installed on attempt ${_try}"
   # Name by the varbase distribution package (drupal.org's number), not the project template.
   local _dist
   _dist="$(_lock_version "${_wd}" "${_VARBASE_DISTPKG}")"
   [[ -n "${_dist}" ]] && _dver="${_dist}"
   _finalize_distro "varbase" "${_wd}" "${_dver}" "varbase"
+}
+
+_fetch_pinned() {
+  # $1 = a pinned platform's published name, $2 = the workdir to unpack it into (as
+  # the build user). Takes the local shelf copy when the build user can read it (the
+  # mirror source VM holds it), else the distro mirror.
+  local _pub="$1" _wd="$2" _src="${_DISTRO_OUT}/${1}.tar.gz"
+  _run_as_o8 "rm -rf '${_wd}' '${_DAY_DIR}/.pinned.tar.gz' && mkdir -p '${_wd}'" || return 1
+  if ! _run_as_o8 "test -r '${_src}'"; then
+    _src="${_DAY_DIR}/.pinned.tar.gz"
+    _run_as_o8 "curl -fsSL -A '${_BOA_UA}' -o '${_src}' '${_BOA_DISTRO_URL}/${_pub}.tar.gz'" || return 1
+  fi
+  _run_as_o8 "tar -xzf '${_src}' --strip-components=1 -C '${_wd}' && rm -f '${_DAY_DIR}/.pinned.tar.gz' && test -f '${_wd}/composer.lock'"
+}
+
+build_ezcontent() {
+  # Pinned: rebuilt from its published tarball; only the advisory fix step moves code.
+  local _rest="${_EZC_PINNED%-*}" _wd="${_DAY_DIR}/.build.ezcontent"
+  _begin_build "${_rest%-*}-" "ezcontent" || return 0
+  use_php "${_PHP_PINNED}" || { _record_fail "ezcontent"; return 1; }
+  if ! _fetch_pinned "${_EZC_PINNED}" "${_wd}"; then
+    _record_fail "ezcontent (could not fetch the published ${_EZC_PINNED})"
+    return 1
+  fi
+  _composer_prepare "${_wd}" || { _record_fail "ezcontent"; return 1; }
+  _fix_step "${_wd}" "ezcontent" "${_EZC_DISTPKG}" || return 1
+  _finalize_distro "ezcontent" "${_wd}" "${_rest##*-}" "ezcontent"
+}
+
+build_commerce_base() {
+  # Pinned: rebuilt from its published tarball; only the advisory fix step moves code.
+  local _rest="${_CK2_PINNED%-*}" _wd="${_DAY_DIR}/.build.commerce_base"
+  _begin_build "${_rest%-*}-" "commerce_base" || return 0
+  use_php "${_PHP_PINNED}" || { _record_fail "commerce_base"; return 1; }
+  if ! _fetch_pinned "${_CK2_PINNED}" "${_wd}"; then
+    _record_fail "commerce_base (could not fetch the published ${_CK2_PINNED})"
+    return 1
+  fi
+  _composer_prepare "${_wd}" || { _record_fail "commerce_base"; return 1; }
+  _fix_step "${_wd}" "commerce_base" "${_CK2_DISTPKG} drupal/commerce" || return 1
+  _finalize_distro "commerce_base" "${_wd}" "${_rest##*-}" "commerce_base"
 }
 
 build_cores() {
@@ -1223,12 +1671,14 @@ build_cores() {
   use_php "${_PHP_CORE}" || { _record_fail "cores (php ${_PHP_CORE} missing)"; return 1; }
   local _m _wd="${_DAY_DIR}/.build.core" _core
   for _m in ${_minors}; do
+    _tail_mark
     _begin_build "drupal-${_m}." "drupal-${_m}" || continue
     if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_wd}' && composer create-project ${_CORE_SPEC}:'${_m}.*' '.build.core' ${_CORE_CP_FLAGS}"; then
       _record_fail "drupal-${_m}"
       continue
     fi
-    _run_as_o8 "cd '${_wd}' && composer require drush/drush" || _alrt "drupal-${_m}: drush require failed"
+    local _nodrush=""
+    _run_as_o8 "cd '${_wd}' && composer require drush/drush" || { _alrt "drupal-${_m}: drush require failed"; _nodrush="YES"; }
     _core="$(_detect_core_version "${_wd}" 2>/dev/null)"
     if [[ -z "${_core}" ]]; then
       _record_fail "drupal-${_m} (could not detect core version)"
@@ -1236,7 +1686,8 @@ build_cores() {
       continue
     fi
     if _run_as_o8 "mv '${_wd}' '${_DAY_DIR}/drupal-${_core}'"; then
-      _RESULTS+=("OK    drupal-${_core}")
+      _rec "drupal-${_core}" BUILD ok
+      [[ -n "${_nodrush}" ]] && _rec_note "drupal-${_core}" "ships without drush: its require failed"
       _info "drupal-${_m}: built drupal-${_core}"
       _audit_platform "drupal-${_core}"
     else
@@ -1284,7 +1735,7 @@ build_backdrop() {
   # build_redis_backdrop), the same model the Drupal cores use. The only
   # remaining bake is the version-less compat tarball's, injected at tar time
   # for pre-bundle releases (see package_backdrop_compat).
-  _RESULTS+=("OK    backdrop-${_tag}")
+  _rec "backdrop-${_tag}" BUILD ok
   _info "backdrop: built backdrop-${_tag}/"
 }
 
@@ -1316,7 +1767,7 @@ build_grav() {
     _record_fail "grav"
     return 1
   fi
-  _RESULTS+=("OK    grav-${_tag}")
+  _rec "grav-${_tag}" BUILD ok
   _info "grav: built grav-${_tag}/ (+ kept ${_zip} for the upgrade shelf)"
 }
 
@@ -1348,7 +1799,7 @@ build_txp() {
     _record_fail "textpattern"
     return 1
   fi
-  _RESULTS+=("OK    textpattern-${_tag}")
+  _rec "textpattern-${_tag}" BUILD ok
   _info "textpattern: built textpattern-${_tag}/ (checksum verified, /sites present)"
 }
 
@@ -1366,7 +1817,8 @@ build_bee() {
     _record_fail "bee"
     return 1
   fi
-  _RESULTS+=("OK    bee (${_tag})")
+  _rec bee BUILD ok
+  _rec bee NAME "bee ${_tag}"
   _info "bee: packaged bee.tar.gz (${_tag})"
 }
 
@@ -1386,7 +1838,8 @@ build_bdext() {
     _record_fail "${_d}"
     return 1
   fi
-  _RESULTS+=("OK    ${_d} (${_tag})")
+  _rec "${_d}" BUILD ok
+  _rec "${_d}" NAME "${_d} ${_tag}"
   _info "${_d}: packaged ${_d}.tar.gz (${_tag})"
 }
 
@@ -1411,7 +1864,7 @@ build_redis_backdrop() {
     _record_fail "redis_backdrop"
     return 1
   fi
-  _RESULTS+=("OK    redis_backdrop (${_tag})")
+  _rec "redis_backdrop-${_tag}" BUILD ok
   _info "redis_backdrop: packaged redis_backdrop-${_tag}.tar.gz (${_tag})"
 }
 
@@ -1430,12 +1883,21 @@ build_webform_backdrop() {
     _record_fail "webform_backdrop"
     return 1
   fi
-  _RESULTS+=("OK    webform_backdrop (${_tag})")
+  _rec "webform-${_tag}" BUILD ok
+  _rec "webform-${_tag}" NAME "webform_backdrop ${_tag}"
   _info "webform_backdrop: packaged webform-${_tag}.tar.gz (${_tag})"
 }
 
 run_build() {
   local _name="$1"
+  # Per-target state starts clean: a note or fix record a failed target left behind
+  # must never land on the next platform's row or in its .advisories.
+  _FALLBACK_NOTE=""
+  _FIX_NOTE=""
+  _FIX_BEFORE=""
+  _FIX_LINES=()
+  _PENDING_NOTE=""
+  _tail_mark
   case "${_name}" in
     farm)     build_farm ;;
     backdrop) build_backdrop ;;
@@ -1454,8 +1916,10 @@ run_build() {
     social)   build_social ;;
     thunder)  build_thunder ;;
     varbase)  build_varbase ;;
+    ezcontent) build_ezcontent ;;
+    commerce_base) build_commerce_base ;;
     cores)    build_cores ;;
-    *)        _alrt "unknown build target: ${_name}"; return 1 ;;
+    *)        _record_fail "${_name} (unknown build target)"; return 1 ;;
   esac
   return 0
 }
@@ -1469,12 +1933,16 @@ do_build() {
     _msg "composer clearcache (${_O8_USER})"
     _run_as_o8 "composer clearcache" || _alrt "composer clearcache failed (continuing)"
   fi
-  local _t
+  local _t _i=0 _all
+  _all="$(wc -w <<< "${_targets}")"
   for _t in ${_targets}; do
+    _i=$((_i + 1))
+    _progress "building ${_t} (${_i}/${_all// /})"
     _msg ""
     _msg "=== build: ${_t} ==="
     run_build "${_t}"
   done
+  _progress_end
 }
 
 # ---------------------------------------------------------------------------
@@ -1520,7 +1988,14 @@ package_batch() {
       *)                        [[ "${_kind}" == "distro" ]] || continue ;;
     esac
     _msg "tar: ${_name}.tar.gz"
-    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf '${_name}.tar.gz' '${_name}'" || _alrt "tar failed: ${_name}"
+    # A failed tar leaves a partial archive distribute would publish: remove it.
+    if ! _run_as_o8 "cd '${_DAY_DIR}' && tar -czf '${_name}.tar.gz' '${_name}'"; then
+      _alrt "tar failed: ${_name}"
+      _run_as_o8 "rm -f '${_DAY_DIR}/${_name}.tar.gz'"
+      _rec_note "${_name}" "tar failed, not published"
+    elif [[ "${_ACTION}" == "package" ]]; then
+      _rec_note "${_name}" "packaged"
+    fi
   done
 }
 
@@ -1558,14 +2033,36 @@ _copy_to_shelf() {
   cp -a --remove-destination "${_src}" "${_out}/"
 }
 
+_publish_plain() {
+  # $1 = file in the build-day dir, $2 = shelf dir, $3 = its summary row, $4 = "companion"
+  # when the file only rides along with that row's own tarball (a compat tarball, a
+  # version stamp): then only a failure changes the row. For shelves no lock guards.
+  local _src="$1" _out="$2" _k="$3" _st="new"
+  # Root reads the file before the copy (cmp), so the plain-file check comes first.
+  if [[ ! -f "${_src}" || -L "${_src}" ]]; then
+    _alrt "not a regular file, not published: ${_src##*/}"
+    _rec_pub "${_k}" FAILED
+    _rec_note "${_k}" "not a regular file, not published: ${_src##*/}"
+    return 1
+  fi
+  if [[ -e "${_out}/${_src##*/}" ]]; then
+    if cmp -s "${_src}" "${_out}/${_src##*/}"; then _st="same"; else _st="updated"; fi
+  fi
+  if _copy_to_shelf "${_src}" "${_out}"; then
+    [[ "${4:-}" == "companion" ]] || _rec_pub "${_k}" "${_st}"
+    return 0
+  fi
+  _rec_pub "${_k}" FAILED
+  _rec_note "${_k}" "copy failed: ${_src##*/} to ${_out}"
+  return 1
+}
+
 _publish_devext() {
-  # $1 = tarball path. Every box pulls dev extensions from its own tree dir
-  # (_get_dev_ext -> ${_urlDev}/${_tRee}/<file>), so the tarball must exist
-  # under dev, lts AND pro - a dev-only publish 404s every lts/pro box.
+  # $1 = a dev extension tarball (bee, the drush extension): one copy per tree.
   local _src="$1" _base _tree _ok=1
   _base="${_src##*/}"
   for _tree in ${_DEV_TREES}; do
-    if _copy_to_shelf "${_src}" "${_DEVEXT_BASE}/${_tree}"; then
+    if _publish_plain "${_src}" "${_DEVEXT_BASE}/${_tree}" "${_base%.tar.gz}"; then
       _msg "devext <- ${_base} (${_tree})"
     else
       _alrt "copy failed: ${_base} (${_tree})"
@@ -1576,18 +2073,19 @@ _publish_devext() {
 }
 
 _publish_contrib() {
-  # $1 = tarball path. Shared-contrib tarballs are pulled per tree by BOA's
-  # _get_dev_contrib (${_urlDev}/${_tRee}/contrib/<file>), so like the dev
-  # extensions the tarball must exist under dev, lts AND pro.
+  # $1 = a versioned contrib tarball (redis_backdrop, webform): one copy per tree's
+  # contrib shelf, consumed by the version BOA pins.
   local _src="$1" _base _tree _ok=1
   _base="${_src##*/}"
   for _tree in ${_DEV_TREES}; do
     if ! mkdir -p "${_DEVEXT_BASE}/${_tree}/contrib"; then
       _alrt "cannot create ${_DEVEXT_BASE}/${_tree}/contrib"
+      _rec_pub "${_base%.tar.gz}" FAILED
+      _rec_note "${_base%.tar.gz}" "cannot create the ${_tree} contrib shelf"
       _ok=0
       continue
     fi
-    if _copy_to_shelf "${_src}" "${_DEVEXT_BASE}/${_tree}/contrib"; then
+    if _publish_plain "${_src}" "${_DEVEXT_BASE}/${_tree}/contrib" "${_base%.tar.gz}"; then
       _msg "contrib <- ${_base} (${_tree})"
     else
       _alrt "copy failed: ${_base} (${_tree})"
@@ -1597,21 +2095,54 @@ _publish_contrib() {
   [[ "${_ok}" == "1" ]]
 }
 
+_family_row() {
+  # $1 = a core-shelf file of the Backdrop, Grav or Textpattern family. Prints its
+  # summary row and, for a compat tarball or a stamp, "companion": they belong to the
+  # versioned tarball of the day.
+  local _v
+  case "$1" in
+    backdrop.tar.gz|backdrop.txt)
+      _v="$(_backdrop_day_version)"; printf '%s
+' "backdrop-${_v:-unknown} companion" ;;
+    grav.tar.gz|grav.txt|grav-admin-v*.zip)
+      _v="$(_grav_day_version)"; printf '%s
+' "grav-${_v:-unknown} companion" ;;
+    textpattern.tar.gz|textpattern.txt)
+      _v="$(_txp_day_version)"; printf '%s
+' "textpattern-${_v:-unknown} companion" ;;
+    *)
+      printf '%s
+' "${1%.tar.gz}" ;;
+  esac
+}
+
+_publish_core_file() {
+  # $1 = a family file in the day dir: copy it to the core shelf, record its row.
+  local _f="$1" _key _kind
+  read -r _key _kind <<< "$(_family_row "${_f##*/}")"
+  if _publish_plain "${_f}" "${_CORE_OUT}" "${_key}" "${_kind}"; then
+    _msg "core   <- ${_f##*/}"
+    return 0
+  fi
+  _alrt "copy failed: ${_f##*/}"
+  return 1
+}
+
 _backdrop_day_version() {
   # Version stamped by the current build (empty if none).
-  [[ -e "${_DAY_DIR}/backdrop.txt" ]] || return 0
+  [[ -f "${_DAY_DIR}/backdrop.txt" && ! -L "${_DAY_DIR}/backdrop.txt" ]] || return 0
   tr -cd '0-9.' < "${_DAY_DIR}/backdrop.txt"
 }
 
 _grav_day_version() {
   # Version stamped by the current Grav build (empty if none).
-  [[ -e "${_DAY_DIR}/grav.txt" ]] || return 0
+  [[ -f "${_DAY_DIR}/grav.txt" && ! -L "${_DAY_DIR}/grav.txt" ]] || return 0
   tr -cd '0-9.' < "${_DAY_DIR}/grav.txt"
 }
 
 _txp_day_version() {
   # Version stamped by the current Textpattern build (empty if none).
-  [[ -e "${_DAY_DIR}/textpattern.txt" ]] || return 0
+  [[ -f "${_DAY_DIR}/textpattern.txt" && ! -L "${_DAY_DIR}/textpattern.txt" ]] || return 0
   tr -cd '0-9.' < "${_DAY_DIR}/textpattern.txt"
 }
 
@@ -1643,12 +2174,13 @@ package_backdrop_compat() {
       --transform 's,^\.compat\.redis,backdrop/modules/redis,' \
       'backdrop-${_ver}' .compat.redis \
       && rm -rf .compat.redis" \
-      || _alrt "tar failed: backdrop.tar.gz (compat)"
+      || { _alrt "tar failed: backdrop.tar.gz (compat)"; _run_as_o8 "rm -f '${_DAY_DIR}/backdrop.tar.gz'"; _rec_note "backdrop-${_ver}" "compat tarball failed, not published"; }
   else
     _alrt "compat redis clone failed (${_redis_tag:-no tag}); backdrop.tar.gz ships without baked modules/redis this run"
+    _rec_note "backdrop-${_ver}" "compat backdrop.tar.gz ships without the baked redis module"
     _msg "tar: backdrop.tar.gz (compat, extracts to backdrop/)"
     _run_as_o8 "cd '${_DAY_DIR}' && tar -czf backdrop.tar.gz --transform 's,^backdrop-${_ver},backdrop,' 'backdrop-${_ver}'" \
-      || _alrt "tar failed: backdrop.tar.gz (compat)"
+      || { _alrt "tar failed: backdrop.tar.gz (compat)"; _run_as_o8 "rm -f '${_DAY_DIR}/backdrop.tar.gz'"; _rec_note "backdrop-${_ver}" "compat tarball failed, not published"; }
   fi
 }
 
@@ -1672,7 +2204,7 @@ do_backdrop_family() {
   if [[ -n "${_ver}" ]] && _run_as_o8 "test -d '${_DAY_DIR}/backdrop-${_ver}'"; then
     _msg "tar: backdrop-${_ver}.tar.gz"
     _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'backdrop-${_ver}.tar.gz' 'backdrop-${_ver}'" \
-      || _alrt "tar failed: backdrop-${_ver}"
+      || { _alrt "tar failed: backdrop-${_ver}"; _run_as_o8 "rm -f '${_DAY_DIR}/backdrop-${_ver}.tar.gz'"; _rec_note "backdrop-${_ver}" "tar failed, not published"; }
     package_backdrop_compat
   fi
   # Publish only the family artifacts. Tarballs first, the backdrop.txt stamp
@@ -1683,7 +2215,11 @@ do_backdrop_family() {
   if [[ -n "${_ver}" && -e "${_DAY_DIR}/backdrop-${_ver}.tar.gz" ]]; then
     for _f in "backdrop-${_ver}.tar.gz" backdrop.tar.gz backdrop.txt; do
       [[ -e "${_DAY_DIR}/${_f}" ]] || continue
-      _copy_to_shelf "${_DAY_DIR}/${_f}" "${_CORE_OUT}" && _msg "core   <- ${_f}" || _alrt "copy failed: ${_f}"
+      # The stamp comes last and must never point at a tarball the shelf lacks.
+      if ! _publish_core_file "${_DAY_DIR}/${_f}" \
+        && [[ "${_f}" == *"-${_ver}.tar.gz" || "${_f}" == "grav-admin-v${_ver}.zip" ]]; then
+        break
+      fi
     done
   fi
   for _f in bee.tar.gz backdrop-drush-extension.tar.gz; do
@@ -1710,17 +2246,21 @@ do_grav_family() {
   if [[ -n "${_ver}" ]] && _run_as_o8 "test -d '${_DAY_DIR}/grav-${_ver}'"; then
     _msg "tar: grav-${_ver}.tar.gz"
     _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'grav-${_ver}.tar.gz' 'grav-${_ver}'" \
-      || _alrt "tar failed: grav-${_ver}"
+      || { _alrt "tar failed: grav-${_ver}"; _run_as_o8 "rm -f '${_DAY_DIR}/grav-${_ver}.tar.gz'"; _rec_note "grav-${_ver}" "tar failed, not published"; }
     _msg "tar: grav.tar.gz (version-less compat)"
     _run_as_o8 "cd '${_DAY_DIR}' && tar -czf grav.tar.gz --transform 's,^grav-${_ver},grav,' 'grav-${_ver}'" \
-      || _alrt "tar failed: grav compat"
+      || { _alrt "tar failed: grav compat"; _run_as_o8 "rm -f '${_DAY_DIR}/grav.tar.gz'"; _rec_note "grav-${_ver}" "compat tarball failed, not published"; }
   fi
   mkdir -p "${_CORE_OUT}" || _die "cannot create ${_CORE_OUT}"
   local _f
   if [[ -n "${_ver}" && -e "${_DAY_DIR}/grav-${_ver}.tar.gz" ]]; then
     for _f in "grav-${_ver}.tar.gz" grav.tar.gz "grav-admin-v${_ver}.zip" grav.txt; do
       [[ -e "${_DAY_DIR}/${_f}" ]] || continue
-      _copy_to_shelf "${_DAY_DIR}/${_f}" "${_CORE_OUT}" && _msg "core   <- ${_f}" || _alrt "copy failed: ${_f}"
+      # The stamp comes last and must never point at a tarball the shelf lacks.
+      if ! _publish_core_file "${_DAY_DIR}/${_f}" \
+        && [[ "${_f}" == *"-${_ver}.tar.gz" || "${_f}" == "grav-admin-v${_ver}.zip" ]]; then
+        break
+      fi
     done
   fi
 }
@@ -1740,12 +2280,12 @@ do_txp_family() {
   if [[ -n "${_ver}" ]] && _run_as_o8 "test -d '${_DAY_DIR}/textpattern-${_ver}'"; then
     _msg "tar: textpattern-${_ver}.tar.gz"
     _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'textpattern-${_ver}.tar.gz' 'textpattern-${_ver}'" \
-      || _alrt "tar failed: textpattern-${_ver}"
+      || { _alrt "tar failed: textpattern-${_ver}"; _run_as_o8 "rm -f '${_DAY_DIR}/textpattern-${_ver}.tar.gz'"; _rec_note "textpattern-${_ver}" "tar failed, not published"; }
     # Separate tar invocation with --transform, never a copy: the compat
     # archive must EXTRACT to the unversioned directory name.
     _msg "tar: textpattern.tar.gz (version-less compat)"
     _run_as_o8 "cd '${_DAY_DIR}' && tar -czf textpattern.tar.gz --transform 's,^textpattern-${_ver},textpattern,' 'textpattern-${_ver}'" \
-      || _alrt "tar failed: textpattern compat"
+      || { _alrt "tar failed: textpattern compat"; _run_as_o8 "rm -f '${_DAY_DIR}/textpattern.tar.gz'"; _rec_note "textpattern-${_ver}" "compat tarball failed, not published"; }
   fi
   mkdir -p "${_CORE_OUT}" || _die "cannot create ${_CORE_OUT}"
   local _f
@@ -1753,7 +2293,11 @@ do_txp_family() {
     # textpattern.txt LAST in this list on purpose (see the header).
     for _f in "textpattern-${_ver}.tar.gz" textpattern.tar.gz textpattern.txt; do
       [[ -e "${_DAY_DIR}/${_f}" ]] || continue
-      _copy_to_shelf "${_DAY_DIR}/${_f}" "${_CORE_OUT}" && _msg "core   <- ${_f}" || _alrt "copy failed: ${_f}"
+      # The stamp comes last and must never point at a tarball the shelf lacks.
+      if ! _publish_core_file "${_DAY_DIR}/${_f}" \
+        && [[ "${_f}" == *"-${_ver}.tar.gz" || "${_f}" == "grav-admin-v${_ver}.zip" ]]; then
+        break
+      fi
     done
   fi
 }
@@ -1784,57 +2328,92 @@ _overwrite_named() {
 }
 
 _publish_locked() {
-  # $1 = Composer-built platform tarball in the day dir, $2 = shelf. A same-name
-  # tarball already on the shelf is replaced only when both carry the same lock
-  # (see _lock_digest): a box fetches a platform only while its directory is
-  # absent, so a changed lock under an old name would reach new boxes and never the
-  # boxes that already hold the platform. Contrib-only fixes ride a new platform
-  # name with a BOA release instead. -O with the platform named overrides, loudly.
-  local _src="$1" _out="$2" _base _dst _old _new _ow=""
+  # $1 = Composer-built platform tarball in the day dir, $2 = shelf. A box fetches a
+  # platform only while its directory is absent, so a same-name tarball with a changed
+  # lock reaches new installs and never the boxes that already hold the platform. It
+  # replaces the published one only in three cases: the lock is unchanged; the new
+  # lock clears advisories the published one carries and adds none (both audited now,
+  # against today's advisories -- the security fix route); or -O names it. Any other
+  # lock change is refused and the published copy stays.
+  local _src="$1" _out="$2" _base _key _dst _old _new _st="new" _ra _rb _on _nn _vd
   _base="${_src##*/}"
+  _key="${_base%.tar.gz}"
   _dst="${_out}/${_base}"
   # Root reads the file before the copy (cmp, tar), so the plain-file check comes
   # first here as well.
   if [[ ! -f "${_src}" || -L "${_src}" ]]; then
     _alrt "not a regular file, not published: ${_base}"
+    _rec_pub "${_key}" FAILED
+    _rec_note "${_key}" "not a regular file, not published"
     return 1
   fi
-  if [[ -e "${_dst}" ]] && ! cmp -s "${_src}" "${_dst}"; then
-    _old="$(_lock_digest "${_dst}")"
-    _new="$(_lock_digest "${_src}")"
-    if [[ -z "${_old}" || -z "${_new}" || "${_old}" != "${_new}" ]]; then
-      if ! _overwrite_named "${_base}"; then
-        _alrt "REFUSED: ${_base} is already published and its lock differs"
-        _alrt "  published lock sha256: ${_old:-none (no composer.lock found)}"
-        _alrt "  new lock sha256:       ${_new:-none (no composer.lock found)}"
-        _alrt "  boxes that already fetched ${_base%.tar.gz} would keep the old bytes;"
-        _alrt "  ship the change under a new platform name, or run: staticbuild -O distribute ${_base%.tar.gz}"
-        _RESULTS+=("REFUSED ${_base}: its lock differs from the published one (-O overwrites)")
-        _REFUSED=$((_REFUSED + 1))
-        return 1
+  if [[ -e "${_dst}" ]]; then
+    _st="same"
+    if ! cmp -s "${_src}" "${_dst}"; then
+      _st="updated"
+      _old="$(_lock_digest "${_dst}")"
+      _new="$(_lock_digest "${_src}")"
+      if [[ -z "${_old}" || -z "${_new}" || "${_old}" != "${_new}" ]]; then
+        if _overwrite_named "${_base}"; then
+          _st="OVERWRITTEN"
+        else
+          _ra="$(_audit_tarball_file "${_dst}" 1)"
+          _rb="$(_audit_tarball_file "${_src}" 2)"
+          _on="$(sed -n '1s/^advisories: //p' <<< "${_ra}")"
+          _nn="$(sed -n '1s/^advisories: //p' <<< "${_rb}")"
+          _vd="$(_fix_verdict "${_ra}" "${_rb}")"
+          if [[ "${_vd}" == "fix" ]]; then
+            _st="replaced"
+          else
+            _alrt "REFUSED: ${_base} is already published and its lock differs"
+            _alrt "  published lock sha256: ${_old:-none (no composer.lock found)}"
+            _alrt "  new lock sha256:       ${_new:-none (no composer.lock found)}"
+            _alrt "  advisories: published ${_on:-unknown}, this build ${_nn:-unknown} (replaced only when it clears some and adds none)"
+            _alrt "  boxes that already fetched ${_key} would keep the old bytes;"
+            _alrt "  ship the change under a new platform name, or run: staticbuild -u ${_O8_USER} -d ${_DAY} -O distribute ${_key}"
+            _rec_pub "${_key}" REFUSED
+            _rec_note "${_key}" "lock changed, ${_vd}"
+            _REFUSED=$((_REFUSED + 1))
+            return 1
+          fi
+        fi
       fi
-      _ow="YES"
     fi
   fi
   if ! _copy_to_shelf "${_src}" "${_out}"; then
     _alrt "copy failed: ${_base}"
-    _RESULTS+=("FAIL  distribute ${_base} (copy failed)")
+    _rec_pub "${_key}" FAILED
+    _rec_note "${_key}" "copy failed"
     return 1
   fi
   _msg "$(printf '%-6s' "${_out##*/}") <- ${_base}"
-  if [[ "${_ow}" == "YES" ]]; then
-    _alrt "OVERWRITTEN (-O): ${_base}"
-    _alrt "  published lock sha256: ${_old:-none (no composer.lock found)}"
-    _alrt "  new lock sha256:       ${_new:-none (no composer.lock found)}"
-    _alrt "  boxes that already fetched ${_base%.tar.gz} keep the old bytes"
-    _RESULTS+=("OVERWRITTEN ${_base}: lock ${_old:-none} -> ${_new:-none}")
-  fi
+  _rec_pub "${_key}" "${_st}"
+  case "${_st}" in
+    replaced)
+      _msg "REPLACED (clears advisories): ${_base}"
+      _msg "  published lock sha256: ${_old:-none}"
+      _msg "  new lock sha256:       ${_new:-none}"
+      _msg "  advisories: published ${_on}, this build ${_nn}; boxes that already fetched ${_key} keep the old bytes"
+      _rec_note "${_key}" "replaced the mirror copy (advisories: mirror ${_on}, this build ${_nn})"
+      ;;
+    OVERWRITTEN)
+      _alrt "OVERWRITTEN (-O): ${_base}"
+      _alrt "  published lock sha256: ${_old:-none (no composer.lock found)}"
+      _alrt "  new lock sha256:       ${_new:-none (no composer.lock found)}"
+      _alrt "  boxes that already fetched ${_key} keep the old bytes"
+      _rec_note "${_key}" "lock changed, overwritten by -O"
+      ;;
+  esac
   return 0
 }
 
 do_distribute() {
   mkdir -p "${_DISTRO_OUT}" "${_CORE_OUT}" \
     || _die "cannot create ${_DISTRO_OUT} / ${_CORE_OUT}"
+  # Work dir for auditing both sides of a same-name lock change (_publish_locked).
+  if [[ -z "${_ADV_TMP}" ]]; then
+    _ADV_TMP="$(mktemp -d)" || _die "cannot create a work dir"
+  fi
   _ensure_devext_dirs
   local _t _base _n=0 _seen=0
   for _t in "${_DAY_DIR}"/*.tar.gz; do
@@ -1860,7 +2439,7 @@ do_distribute() {
       drupal-*.tar.gz)
         _publish_locked "${_t}" "${_CORE_OUT}" && _n=$((_n + 1)) ;;
       backdrop-[0-9]*.tar.gz|backdrop.tar.gz|grav-[0-9]*.tar.gz|grav.tar.gz|textpattern-[0-9]*.tar.gz|textpattern.tar.gz)
-        _copy_to_shelf "${_t}" "${_CORE_OUT}" && { _msg "core   <- ${_base}"; _n=$((_n + 1)); } || _alrt "copy failed: ${_base}" ;;
+        _publish_core_file "${_t}" && _n=$((_n + 1)) ;;
       *)
         _publish_locked "${_t}" "${_DISTRO_OUT}" && _n=$((_n + 1)) ;;
     esac
@@ -1872,9 +2451,9 @@ do_distribute() {
   local _bdrv
   _bdrv="$(_backdrop_day_version)"
   if [[ -n "${_bdrv}" && -e "${_CORE_OUT}/backdrop-${_bdrv}.tar.gz" ]]; then
-    _copy_to_shelf "${_DAY_DIR}/backdrop.txt" "${_CORE_OUT}" && _msg "core   <- backdrop.txt" || _alrt "copy failed: backdrop.txt"
+    _publish_core_file "${_DAY_DIR}/backdrop.txt"
   fi
-  [[ "${_seen}" -gt 0 ]] || _alrt "no tarballs found in ${_DAY_DIR} (run 'package' first)"
+  [[ "${_seen}" -gt 0 ]] || _say "no tarballs found in ${_DAY_DIR} (run 'package' first)"
 }
 
 # ---------------------------------------------------------------------------
@@ -2084,7 +2663,7 @@ _audit_published() {
   # string. Pulls composer.lock and vendor/composer/installed.json out of the
   # published tarball's stream (tar stops once both are out) and audits them.
   # Output and status as _audit_dir.
-  local _tar="$1" _url="$2" _x="${_ADV_TMP}/x$3" _w="${_ADV_TMP}/w$3" _top _st
+  local _tar="$1" _url="$2" _x="${_ADV_TMP}/x$3" _w="${_ADV_TMP}/w$3" _st
   if ! mkdir -p "${_x}" "${_w}"; then
     printf '%s\n' "advisories: unknown (cannot create a work dir)"
     return 1
@@ -2100,6 +2679,14 @@ _audit_published() {
     printf '%s\n' "advisories: unknown (download failed, curl exit ${_st[0]})"
     return 1
   fi
+  _audit_extracted "${_x}" "${_w}"
+}
+
+_audit_extracted() {
+  # $1 = dir a platform tarball's composer.lock (and installed.json) was pulled into,
+  # $2 = an empty work dir. Audits them there as the invoking user. Output and status
+  # as _audit_dir.
+  local _x="$1" _w="$2" _top
   # Regular files only: a symlinked member is never followed.
   _top="$(find "${_x}" -mindepth 1 -maxdepth 2 -type f -name composer.lock -printf '%h\n' | head -n 1)"
   if [[ -z "${_top}" ]] || ! cp -- "${_top}/composer.lock" "${_w}/composer.lock"; then
@@ -2111,6 +2698,55 @@ _audit_published() {
   fi
   _audit_dir "${_w}" _run_self
 }
+
+_audit_tarball_file() {
+  # $1 = a local platform tarball (in the day dir or on a shelf), $2 = a sequence
+  # number naming its work dirs. Output and status as _audit_dir.
+  # Its output is captured, so the work dir (_ADV_TMP) is made by the caller.
+  local _x _w
+  if [[ -z "${_ADV_TMP}" || ! -d "${_ADV_TMP}" ]]; then
+    printf '%s\n' "advisories: unknown (no work dir)"
+    return 1
+  fi
+  _x="${_ADV_TMP}/lx$2"
+  _w="${_ADV_TMP}/lw$2"
+  if ! rm -rf "${_x}" "${_w}" || ! mkdir -p "${_x}" "${_w}"; then
+    printf '%s\n' "advisories: unknown (cannot create a work dir)"
+    return 1
+  fi
+  tar -xzf "$1" -C "${_x}" --no-same-owner --no-same-permissions \
+    --wildcards --no-wildcards-match-slash --occurrence=1 \
+    '*/composer.lock' '*/vendor/composer/installed.json' 2>/dev/null
+  _audit_extracted "${_x}" "${_w}"
+}
+
+_adv_pairs() {
+  # An audit report on stdin: its "advisory<TAB>package" pairs, sorted, one per finding
+  # (a repeated pair stays repeated, so comm compares them as multisets).
+  awk -F'\t' 'NR > 1 && !/^#/ && NF { print $1 "\t" $2 }' | sort
+}
+
+_fix_verdict() {
+  # $1 = the published copy's audit report, $2 = the new build's. Prints "fix" when the
+  # new lock clears at least one advisory and adds none, else the reason it is not one.
+  # A report that is not a finished audit, or whose findings do not all take part in
+  # the comparison, proves nothing.
+  local _on _nn
+  _on="$(sed -n '1s/^advisories: //p' <<< "$1")"
+  _nn="$(sed -n '1s/^advisories: //p' <<< "$2")"
+  if [[ ! "${_on}" =~ ^[0-9]+$ || ! "${_nn}" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "the advisory audit did not run, so nothing proves a fix"
+  elif [[ "$(_adv_pairs <<< "$1" | grep -c .)" != "${_on}" || "$(_adv_pairs <<< "$2" | grep -c .)" != "${_nn}" ]]; then
+    printf '%s\n' "the audit reports cannot be compared (advisories: mirror ${_on}, this build ${_nn})"
+  elif [[ -n "$(comm -13 <(_adv_pairs <<< "$1") <(_adv_pairs <<< "$2"))" ]]; then
+    printf '%s\n' "adds advisories the mirror copy lacks (mirror ${_on}, this build ${_nn})"
+  elif [[ "${_nn}" -lt "${_on}" ]]; then
+    printf '%s\n' "fix"
+  else
+    printf '%s\n' "fixes nothing (advisories: mirror ${_on}, this build ${_nn})"
+  fi
+}
+
 
 _o_contrib_rows() {
   # $1 = tree. Emits "bundle<TAB>module<TAB>version" for every module the D8+
@@ -2178,20 +2814,22 @@ _o_contrib_bundle() {
 }
 
 do_advisories() {
-  # $@ = trees, or empty for all of _CATALOGUE_TREES. Exits non-zero only when a tree,
-  # a tarball or the o_contrib set could not be audited: advisories themselves are
-  # reported, never fatal (a catalogue platform moves with a BOA release).
+  # $@ = trees, or empty for all of _CATALOGUE_TREES. One row per published tarball
+  # with the trees that list it and its advisory count; the advisory ids only with
+  # --debug (every tarball's are in the audit it prints then). Exits non-zero only when
+  # a tree, a tarball or the o_contrib set could not be audited: advisories themselves
+  # are reported, never fatal.
   local _t
   for _t in curl tar composer php; do
     command -v "${_t}" >/dev/null 2>&1 || _die "${_t} not found (needed for the advisories audit)"
   done
-  local _trees="$*" _tree _key _pfx _tar _url _rows _crows _all _res _n _core _bundle _keys _oc _f
-  local _unread=0 _failed=0 _hit=0 _clean=0 _seq=0
+  local _trees="$*" _tree _key _pfx _tar _url _rows _crows _all _res _n _f _id _cell _core _bundle _keys _mods
+  local _unread=0 _failed=0 _hit=0 _clean=0 _seq=0 _ocsame=1 _octrees _inoc
+  local -a _order=()
+  local -A _intree=() _urlof=() _oc=()
   [[ -n "${_trees}" ]] || _trees="${_CATALOGUE_TREES}"
   _ADV_TMP="$(mktemp -d)" || _die "cannot create a work dir"
   for _tree in ${_trees}; do
-    _msg ""
-    _info "=== published advisories: ${_tree} ==="
     _rows="$(_catalogue_rows "${_tree}")"
     _crows="$(_catalogue_rows "${_tree}" core)"
     if [[ -z "${_rows}" ]] || [[ -z "${_crows}" ]]; then
@@ -2202,72 +2840,98 @@ do_advisories() {
     # One list, each row tagged with the mirror its tarball comes from.
     _all="$(awk -v _u="${_BOA_DISTRO_URL}" 'NF { print $0 "\t" _u }' <<< "${_rows}"
       awk -v _u="${_BOA_CORE_URL}" 'NF { print $0 "\t" _u }' <<< "${_crows}")"
-    printf '  %-5s %-46s %s\n' KEY TARBALL ADVISORIES
     while IFS=$'\t' read -r _key _pfx _tar _url; do
       [[ -n "${_key}" ]] || continue
-      if [[ ! "${_tar}" =~ ${_TARBALL_RE} ]]; then
-        printf '  %-5s %-46s %s\n' "${_key}" "(unexpected name)" "NOT AUDITED"
-        _failed=$((_failed + 1))
-        continue
-      fi
-      # Audit each tarball once: the trees mostly ship the same ones.
-      _f="${_ADV_TMP}/${_tar}.res"
-      if [[ ! -f "${_f}" ]]; then
-        _seq=$((_seq + 1))
-        _audit_published "${_tar}" "${_url}" "${_seq}" > "${_f}" < /dev/null
-        case "$(sed -n '1s/^advisories: //p' "${_f}")" in
-          0)      _clean=$((_clean + 1)) ;;
-          [0-9]*) _hit=$((_hit + 1)) ;;
-          *)      _failed=$((_failed + 1)) ;;
-        esac
-      fi
-      _res="$(cat "${_f}")"
-      _n="$(sed -n '1s/^advisories: //p' <<< "${_res}")"
-      case "${_n}" in
-        [0-9]*) printf '  %-5s %-46s %s\n' "${_key}" "${_tar}" "${_n}" ;;
-        *)      printf '  %-5s %-46s %s\n' "${_key}" "${_tar}" "NOT AUDITED"
-                _alrt "  ${_key}: ${_n:-unknown}" ;;
-      esac
-      # A tarball's advisories are listed once per run; later trees point back.
-      if [[ -e "${_f}.shown" ]]; then
-        case "${_n}" in
-          0|"") ;;
-          [0-9]*) _msg "        (listed above)" ;;
-        esac
-      else
-        sed '1d' <<< "${_res}" \
-          | awk -F'\t' 'NF && !/^#/ { printf "        %-22s %-36s %-16s %s\n", $1, $2, $3, $4 }'
-        : > "${_f}.shown"
-      fi
+      _id="${_key}"$'\t'"${_tar}"
+      [[ -n "${_intree[${_id}]:-}" ]] || _order+=("${_id}")
+      _intree[${_id}]+="${_intree[${_id}]:+ }${_tree}"
+      _urlof[${_id}]="${_url}"
     done <<< "${_all}"
-    _msg "  DL6 DL7: BOA's own Drupal 6/7 core forks, outside Composer; not audited here."
-    # Which o_contrib bundle a platform gets follows its core (see _o_contrib_bundle);
-    # every tarball name ends in its core version.
-    _oc="$(_o_contrib_rows "${_tree}")"
-    _msg ""
-    if [[ -z "${_oc}" ]]; then
+    _oc[${_tree}]="$(_o_contrib_rows "${_tree}")"
+    if [[ -z "${_oc[${_tree}]}" ]]; then
       _alrt "${_tree}: could not read the o_contrib versions of the published tree -- INCONCLUSIVE"
       _unread=$((_unread + 1))
-      continue
     fi
-    _msg "  Outside Composer -- BOA's own contrib, linked into every D8+ platform;"
-    _msg "  not auditable by composer, check each against drupal.org's advisories:"
-    for _bundle in eight nine ten eleven; do
-      _keys=""
-      while IFS=$'\t' read -r _key _pfx _tar _url; do
-        [[ -n "${_key}" ]] || continue
-        _core="${_tar%.tar.gz}"
-        _core="${_core##*-}"
-        [[ "$(_o_contrib_bundle "${_core}")" == "${_bundle}" ]] && _keys+="${_key} "
-      done <<< "${_all}"
-      [[ -n "${_keys}" ]] || continue
-      _msg "    o_contrib_${_bundle} (${_keys% })"
-      awk -F'\t' -v _b="o_contrib_${_bundle}" \
-        '$1 == _b { printf "      %-20s %-18s not auditable by composer\n", $2, $3 }' <<< "${_oc}"
-    done
   done
   _msg ""
+  _info "=== published advisories: ${_trees} ==="
+  printf '  %-5s %-46s %-12s %s\n' KEY TARBALL TREES ADVISORIES
+  for _id in "${_order[@]}"; do
+    _key="${_id%%$'\t'*}"
+    _tar="${_id#*$'\t'}"
+    if [[ ! "${_tar}" =~ ${_TARBALL_RE} ]]; then
+      # The name came off the network: show it only as safe characters.
+      printf '  %-5s %-46s %-12s %s\n' "${_key}" "${_tar//[^A-Za-z0-9._+-]/?}" "${_intree[${_id}]}" "NOT AUDITED (unexpected name)"
+      _failed=$((_failed + 1))
+      continue
+    fi
+    # Audit each tarball once: the trees mostly ship the same ones.
+    _f="${_ADV_TMP}/${_tar}.res"
+    if [[ ! -f "${_f}" ]]; then
+      _seq=$((_seq + 1))
+      _audit_published "${_tar}" "${_urlof[${_id}]}" "${_seq}" > "${_f}" < /dev/null
+      case "$(sed -n '1s/^advisories: //p' "${_f}")" in
+        0)      _clean=$((_clean + 1)) ;;
+        [0-9]*) _hit=$((_hit + 1)) ;;
+        *)      _failed=$((_failed + 1)) ;;
+      esac
+    fi
+    _res="$(cat "${_f}")"
+    _n="$(sed -n '1s/^advisories: //p' <<< "${_res}")"
+    case "${_n}" in
+      [0-9]*) _cell="${_n}" ;;
+      *)      _cell="NOT AUDITED (${_n#unknown })" ;;
+    esac
+    printf '  %-5s %-46s %-12s %s\n' "${_key}" "${_tar}" "${_intree[${_id}]}" "${_cell}"
+    if [[ "${_DEBUG_MODE}" == "YES" && ! -e "${_f}.shown" ]]; then
+      sed '1d' <<< "${_res}" \
+        | awk -F'\t' 'NF && !/^#/ { printf "        %-22s %-36s %-16s %s\n", $1, $2, $3, $4 }'
+      : > "${_f}.shown"
+    fi
+  done
+  _msg "  DL6 DL7: BOA's own Drupal 6/7 core forks, outside Composer; not audited here."
+  # BOA's own contrib, per o_contrib bundle, printed once when every tree agrees.
+  _octrees=""
+  for _tree in ${_trees}; do
+    [[ -n "${_oc[${_tree}]:-}" ]] || continue
+    if [[ -n "${_octrees}" && "${_oc[${_tree}]}" != "${_oc[${_octrees%% *}]}" ]]; then
+      _ocsame=0
+    fi
+    _octrees+="${_octrees:+ }${_tree}"
+  done
+  if [[ -n "${_octrees}" ]]; then
+    _msg ""
+    _msg "  Outside Composer: BOA's own contrib in every D8+ platform; check it against drupal.org's advisories:"
+    for _tree in ${_octrees}; do
+      for _bundle in eight nine ten eleven; do
+        _keys=""
+        for _id in "${_order[@]}"; do
+          _inoc=""
+          for _t in ${_octrees}; do
+            [[ " ${_intree[${_id}]} " == *" ${_t} "* ]] && _inoc="YES"
+          done
+          [[ -n "${_inoc}" ]] || continue
+          [[ "${_ocsame}" == "1" || " ${_intree[${_id}]} " == *" ${_tree} "* ]] || continue
+          _tar="${_id#*$'\t'}"
+          _core="${_tar%.tar.gz}"
+          _core="${_core##*-}"
+          [[ "$(_o_contrib_bundle "${_core}")" == "${_bundle}" ]] && _keys+="${_keys:+ }${_id%%$'\t'*}"
+        done
+        _mods="$(awk -F'\t' -v _b="o_contrib_${_bundle}" \
+          '$1 == _b { printf "%s%s %s", (_c++ ? ", " : ""), $2, $3 }' <<< "${_oc[${_tree}]}")"
+        [[ -n "${_keys}" && -n "${_mods}" ]] || continue
+        if [[ "${_ocsame}" == "1" ]]; then
+          _msg "    o_contrib_${_bundle} (${_keys}): ${_mods}"
+        else
+          _msg "    ${_tree}: o_contrib_${_bundle} (${_keys}): ${_mods}"
+        fi
+      done
+      [[ "${_ocsame}" == "1" ]] && break
+    done
+  fi
+  _msg ""
   _info "platform tarballs audited: $((_clean + _hit + _failed)); with advisories: ${_hit}; clean: ${_clean}; not audited: ${_failed}"
+  [[ "${_DEBUG_MODE}" == "YES" ]] || _msg "advisory ids per tarball: staticbuild --debug advisories"
   if [[ "${_unread}" -gt 0 ]] || [[ "${_failed}" -gt 0 ]]; then
     _die "audit INCONCLUSIVE: ${_unread} tree part(s) unreadable, ${_failed} tarball(s) not audited"
   fi
@@ -2278,13 +2942,44 @@ do_advisories() {
 # ---------------------------------------------------------------------------
 
 print_summary() {
-  [[ "${#_RESULTS[@]}" -gt 0 ]] || return 0
-  _msg ""
-  _info "=== build summary (${_DAY_DIR}) ==="
-  local _r
-  for _r in "${_RESULTS[@]}"; do
-    _msg "  ${_r}"
+  # One row per platform: what was built, how many advisories its lock still carries
+  # (and how many the fix step cleared), what happened on the mirror, and a short note.
+  # Rows that need action get a footer line with the command or the log lines to read.
+  _progress_end
+  if [[ "${#_P_KEYS[@]}" -eq 0 ]]; then
+    [[ -n "${_LOG}" ]] && _say "nothing was built or published (full log: ${_LOG})"
+    return 0
+  fi
+  local _k _n _w=8 _refused="" _t
+  for _k in "${_P_KEYS[@]}"; do
+    _n="${_P_NAME[${_k}]:-${_k}}"
+    [[ "${#_n}" -gt "${_w}" ]] && _w="${#_n}"
   done
+  _say ""
+  _say "$(printf '%-*s  %-5s  %-14s  %-11s  %s' "${_w}" PLATFORM BUILD ADVISORIES PUBLISH NOTE)"
+  for _k in "${_P_KEYS[@]}"; do
+    _say "$(printf '%-*s  %-5s  %-14s  %-11s  %s' "${_w}" "${_P_NAME[${_k}]:-${_k}}" \
+      "${_P_BUILD[${_k}]:--}" "${_P_ADV[${_k}]:--}" "${_P_PUB[${_k}]:--}" "${_P_NOTE[${_k}]:-}")"
+    [[ "${_P_PUB[${_k}]:-}" == "REFUSED" ]] && _refused+=" ${_k}"
+  done
+  _say ""
+  if [[ -n "${_refused}" ]]; then
+    _say "REFUSED: the mirror keeps its copy; a changed lock replaces it only when it clears some advisories and adds none."
+    _say "  to publish anyway: staticbuild -u ${_O8_USER} -d ${_DAY} -O distribute${_refused}"
+  fi
+  for _k in "${_P_KEYS[@]}"; do
+    [[ "${_P_BUILD[${_k}]:-}" == "FAIL" ]] || continue
+    _say "FAILED ${_k}: ${_P_NOTE[${_k}]:-build failed}"
+    if [[ -n "${_P_TAIL[${_k}]:-}" ]]; then
+      while IFS= read -r _t; do
+        _say "  | ${_t}"
+      done <<< "${_P_TAIL[${_k}]}"
+    fi
+  done
+  _say "advisory detail: ${_DAY_DIR}/<platform>.advisories"
+  if [[ -n "${_LOG}" ]]; then
+    _say "full log: ${_LOG} (--debug streams it instead)"
+  fi
 }
 
 usage() {
@@ -2294,8 +2989,15 @@ usage() {
 
 main() {
   local _opt
-  while getopts ':d:u:fCOh' _opt; do
+  # getopts has no long options; "-:" takes --debug as option "-" with OPTARG "debug".
+  while getopts ':d:u:fCOh-:' _opt; do
     case "${_opt}" in
+      -)
+        case "${OPTARG}" in
+          debug) _DEBUG_MODE=YES ;;
+          *)     _die "unknown option --${OPTARG} (try -h)" ;;
+        esac
+        ;;
       d) _DAY="${OPTARG}" ;;
       u) _O8_USER="${OPTARG}" ;;
       f) _FORCE=1 ;;
@@ -2310,6 +3012,7 @@ main() {
 
   local _action="${1:-}"
   [[ -n "${_action}" ]] || { usage; exit 1; }
+  _ACTION="${_action}"
   shift || true
 
   # getopts stops at the first non-option word, so options placed after the action
@@ -2352,6 +3055,8 @@ main() {
       _require_o8
       trap '_cleanup' EXIT
       _acquire_lock
+      _start_log backdrop
+      _say "staticbuild backdrop: ${_DAY_DIR}${_LOG:+ (log: ${_LOG})}"
       do_backdrop_family
       print_summary
       ;;
@@ -2362,6 +3067,8 @@ main() {
       _require_o8
       trap '_cleanup' EXIT
       _acquire_lock
+      _start_log grav
+      _say "staticbuild grav: ${_DAY_DIR}${_LOG:+ (log: ${_LOG})}"
       do_grav_family
       print_summary
       ;;
@@ -2372,6 +3079,8 @@ main() {
       _require_o8
       trap '_cleanup' EXIT
       _acquire_lock
+      _start_log txp
+      _say "staticbuild txp: ${_DAY_DIR}${_LOG:+ (log: ${_LOG})}"
       do_txp_family
       print_summary
       ;;
@@ -2407,6 +3116,8 @@ main() {
       else
         _PHP_LINK_CREATED=1
       fi
+      _start_log "${_action}"
+      _say "staticbuild ${_action}: ${_DAY_DIR}${_LOG:+ (log: ${_LOG})}"
       case "${_action}" in
         build)      do_build "$@" ;;
         package)    do_package ;;
@@ -2417,7 +3128,7 @@ main() {
       # A refusal is the guard working: its own status, apart from a fatal error (1).
       # Per-target FAIL rows are reported in the summary only, as before.
       if [[ "${_REFUSED}" -gt 0 ]]; then
-        _alrt "${_REFUSED} tarball(s) left unpublished: same name, different lock (staticbuild -O distribute <platform> overwrites)"
+        _msg "${_REFUSED} tarball(s) left unpublished: same name, changed lock, no advisory fixed"
         exit 3
       fi
       ;;
