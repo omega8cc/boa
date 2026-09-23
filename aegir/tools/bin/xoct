@@ -1391,8 +1391,8 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             ### there: proxying it forwards to the target's catch-all. When
             ### the caller names the target's hostname -- which a whole-server
             ### move does only AFTER the renames -- the old name is answered
-            ### with a 301 to the renamed site instead (design ruling D-17;
-            ### e2e CUT-E36). The control panel is never proxied and is not a
+            ### with a 301 to the renamed site instead.
+            ### The control panel is never proxied and is not a
             ### site of this loop.
             _REDIR_TO=""
             if [ -n "${_XOCT_TARGET_FQDN}" ] \
@@ -3891,7 +3891,7 @@ _xoct_retire_one() {
   fi
   ### The withdrawal date the customer was promised is part of the record, not
   ### only of the mail: without it the policy table could not show when a
-  ### retired proxy is due to go (e2e RET-E03). It travels as its own key.
+  ### retired proxy is due to go. It travels as its own key.
   _mig_write_record "${_root}" "${_role}" "${_peer}" "${_peer_oct:-${_a}}" \
     retired "${_scope}" "" "${_peer_ips}" "${_wdl}" || return 1
   _mig_log "${_root}" xoct retire "${_scope}" retired "${_wdl}" "${_peer}"
