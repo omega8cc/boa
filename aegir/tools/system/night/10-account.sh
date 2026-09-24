@@ -687,7 +687,7 @@ EOF
   _clBody="Hello,"$'\n'
   _clBody="${_clBody}"$'\n'"Automatic HTTPS (Let's Encrypt SSL) certificate renewal failed for the"$'\n'"following site(s) in your hosting account on ${_hName}:"$'\n'"${_clList}"
   _clBody="${_clBody}"$'\n'"While a certificate cannot be renewed, this check runs and fails again every"$'\n'"night, so please take one of these actions:"$'\n'
-  _clBody="${_clBody}"$'\n'"  - If the site is still in use: update its domain DNS (A/AAAA records) to"$'\n'"    point to this server, and the certificate will renew automatically."$'\n'
+  _clBody="${_clBody}"$'\n'"  - If the site is still in use: point its domain's DNS A record at this"$'\n'"    server and remove any AAAA record (the server answers on IPv4 only),"$'\n'"    and the certificate will renew automatically."$'\n'
   _clBody="${_clBody}"$'\n'"  - If the site or alias is no longer used: please disable Encryption (SSL)"$'\n'"    for it, or remove the obsolete domain alias, to stop these daily"$'\n'"    failures and notices."$'\n'
   _clBody="${_clBody}"$'\n'"This is an automated message from your hosting platform."$'\n'
   # Reply-To the account owner (else the server admin) so a client's reply
