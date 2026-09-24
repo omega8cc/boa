@@ -24,10 +24,10 @@ server avoids the move by installing with the `percona-8.4` argument (docs/INSTA
 - [Drupal 11.2.14](https://drupal.org/project/drupal/releases/11.2.14)
 - [Drupal 11.3.17](https://drupal.org/project/drupal/releases/11.3.17)
 - [Drupal 11.4.7](https://drupal.org/project/drupal/releases/11.4.7)
-- [Drupal CMS 2.1.4](https://drupal.org/project/cms) (11.4.7)
+- [Drupal CMS 2.1.6](https://drupal.org/project/cms) (11.4.7)
 - [farmOS 4.0.6](https://drupal.org/project/farm) (11.3.17)
 - [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.7)
-- [OpenCulturas 3.0.7](https://drupal.org/project/openculturas) (11.3.17)
+- [OpenCulturas 3.0.8](https://drupal.org/project/openculturas) (11.3.17)
 - [Thunder 8.4.4](https://drupal.org/project/thunder) (11.4.7)
 - [Varbase 11.0.0](https://drupal.org/project/varbase) (11.4.6)
 

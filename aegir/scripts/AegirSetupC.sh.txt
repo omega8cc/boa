@@ -1060,14 +1060,14 @@ declare -A _distros_names=(
 
 # Define distros versions for configuration
 declare -A _distros_versions=(
-  ["CMS"]="2.1.4"
+  ["CMS"]="2.1.6"
   ["CK1"]="2.77"
   ["CK2"]="2.40"
   ["CK3"]="5.1.0"
   ["EZC"]="2.2.15"
   ["FOS"]="4.0.6"
   ["LGV"]="4.0.5"
-  ["OCS"]="3.0.7"
+  ["OCS"]="3.0.8"
   ["OFD"]="13.6.7"
   ["OPG"]="3.2.7"
   ["SOC"]="13.1.0"
