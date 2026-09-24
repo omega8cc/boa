@@ -75,8 +75,9 @@ By default `build`, `package`, `distribute`, `all` and the family
 actions print a header naming the run's log and then **one row per platform** (build
 result, advisories left and fixed, what happened on the mirror, and a two- or
 three-word note only when the row needs attention, such as `adds advisories` or
-`patch skipped`), plus a footer with the command for refused tarballs and the end of a
-failed build's log. Composer, git and tar output, every advisory id and the lock hashes
+`patch skipped`), plus a footer with the command for refused tarballs, the files a CDN
+purge still needs (see "CDN purge after a republish") and the end of a failed build's
+log. Composer, git and tar output, every advisory id and the lock hashes
 go to the log under `/var/backups/reports/staticbuild/<user>/<MM-DD>/` (root only);
 `--debug` streams them instead.
 
@@ -223,6 +224,35 @@ everything before them on the shelf, the compat tarball included (the releases t
 fetch it take the stamp as its version); otherwise the platform's row says `stamp
 held`. A temporary file left by a run that was killed mid-copy is removed by the next
 run.
+
+### CDN purge after a republish
+
+A replaced tarball keeps its name, and so do the version stamps and compat tarballs
+every release rewrites. A CDN in front of the mirrors keeps serving the previous bytes
+of such a file until its cache entry expires, so new installs behind that edge still
+get the old platform. staticbuild knows nothing about any CDN; it hands the files it
+has just written to an optional hook instead: `_PURGE_HOOK` in `/root/.staticbuild.cnf`
+is a command, its words split on whitespace with no quoting, and that file is read for
+this one setting only (the script itself is redeployed on every barracuda run, so an
+edit to it would not survive).
+
+`distribute`, `all` and the `backdrop`, `grav` and `txp` actions call it once,
+after their last copy, with the absolute path of every file the run put on a shelf with
+new bytes: new names and replaced ones alike, never an identical copy or a refused
+tarball, with the compat tarballs and stamps last. The hook is expected to wait until the mirrors
+serve the new bytes before it purges anything, since purging early only re-caches the
+old ones. With no hook set, a run that replaced a published file names it below the
+summary, by its path under the mirror webroot:
+
+```
+republished under the same name, purge at the CDN: distro/ezcontent-2.2.15-10.3.6.tar.gz
+```
+
+A new name has no older copy cached anywhere and is not named. A missing, failing or
+hung hook is reported in the same place (`purge hook not found: ...`, `purge hook
+failed (rc N)`, `purge hook timed out after 3600 s`: a hook still running after an
+hour is stopped), the replaced files are named for a purge by hand, and the exit code
+stays what the copies made it.
 
 ## What it builds (example run; versions are derived per build)
 

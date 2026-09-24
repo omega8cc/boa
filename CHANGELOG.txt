@@ -329,6 +329,21 @@
       it published to that command after the cross-sync; without it, a run
       that replaced an existing file names it. A failing hook is reported
       and never stops the publish.
+    * The distribution catalogue builder can have a CDN purged the same
+      way. staticbuild rewrites files under unchanged names: a rebuilt
+      platform that replaces its published tarball, and the version
+      stamps and compat tarballs every release, which an edge in front
+      of the mirrors kept serving from its cache. With _PURGE_HOOK set in
+      /root/.staticbuild.cnf, distribute, all and the Backdrop, Grav and
+      Textpattern actions hand that command every file they put on the
+      mirror with new bytes, the compat tarballs and stamps last; without
+      it, the summary names the files that replaced a published one. A
+      missing, failing or timed-out hook (it is stopped after an hour) is
+      reported there and never changes the exit code.
+    * stackbuild stops a purge hook still running after an hour and
+      reports it, so a hung hook no longer holds the builder's lock and
+      every later run with it; the hook gets no stdin, and a multi-line
+      or array value reaches it word for word, never globbed.
     * The mycnfup tuner and the cluster tool are retired. mycnfup refused
       every verb on anything but Debian, so it never ran on a Devuan box,
       and only the discontinued Simple Cluster tooling ever called it; the
