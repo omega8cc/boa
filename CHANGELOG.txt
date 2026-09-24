@@ -35,6 +35,11 @@
 
 @=> Security
 
+    * The login and admin IP lock (static/control/ip/user_admin.txt) on a
+      Grav site now gates /admin (and /api) but no longer /user: that is
+      Grav's public theme and media tree, and a listed Grav site refused
+      its stylesheets and images to every visitor off the list. Lists
+      regenerate on the next pass.
     * Database dump and import commands, the ProxySQL user updates and
       the Backdrop site installer no longer write their passwords into
       task and upgrade logs: the command line logged or printed there
@@ -525,6 +530,21 @@
 
 @=> Important Fixes
 
+    * A Restore from an archive that carries no database dump (a files-only
+      backup, a Migrate or Delete safety copy, a snapshot from before the
+      backup modes) brings the files back and carries the site's current
+      database across unchanged again. Since the pre-restore safety copy
+      became a complete backup it failed at the database step and rolled
+      back. An account opted out of fast DB backups still refuses such an
+      archive safely.
+    * A Clone or rename of a Drupal 7 site that keeps modules in its own
+      sites/<domain>/modules folder no longer fails with "Cannot redeclare":
+      the site's module paths now point at its new folder before the first
+      registry rebuild, which used to load them from the old one too.
+    * The HTTPS renewal-failure mail asks for the domain's A record and the
+      removal of any AAAA record: the server answers on IPv4 only.
+    * The welcome mail gives the right path to a site's drushrc.php for the
+      database browser login.
     * Nginx now serves AVIF images as image/avif, with the same caching
       as WebP. BOA's mime.types had no avif entry, so an AVIF image
       style derivative or upload served from disk went out as
