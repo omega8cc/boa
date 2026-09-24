@@ -35,6 +35,11 @@
 
 @=> Security
 
+    * Database dump and import commands, the ProxySQL user updates and
+      the Backdrop site installer no longer write their passwords into
+      task and upgrade logs: the command line logged or printed there
+      carries each password masked.
+
     * The Speed Booster debug headers on Drupal and Backdrop sites now
       say only whether a request carried a session cookie or an
       Authorization header (X-Speed-Cache-UID: Session and
