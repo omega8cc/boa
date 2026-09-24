@@ -732,6 +732,14 @@ _up_action_all() {
       echo "INFO: skipping ${_usEr}: proxied (served elsewhere)"
       continue
     fi
+    ### A cutover that could not convert the account left its panel database
+    ### on the target; a pass here would rebuild it and hand its dispatcher
+    ### back against the stale local copy. Read-only: xmass writes the marker
+    ### and xoct's successful conversion removes it.
+    if [ -e "${_usEr}/log/proxy-failed.pid" ]; then
+      echo "INFO: skipping ${_usEr}: its proxy conversion failed at a cutover (repair it with xoct first)"
+      continue
+    fi
     if [ -d "${_usEr}/config/server_master/nginx/vhost.d" ] \
       && [ -e "${_usEr}/log/cores.txt" ] \
       && [ ! -e "${_usEr}/log/CANCELLED" ]; then
@@ -824,6 +832,11 @@ _up_action_one() {
     ### run is flagged and reported WITH ERRORS. The sweep over all
     ### accounts keeps its plain INFO line.
     echo "ALRT: skipping ${_usEr}: proxied (served elsewhere) - nothing was upgraded"
+    _SEND_ALERT=YES
+    return 0
+  fi
+  if [ -e "${_usEr}/log/proxy-failed.pid" ]; then
+    echo "ALRT: skipping ${_usEr}: its proxy conversion failed at a cutover (repair it with xoct first) - nothing was upgraded"
     _SEND_ALERT=YES
     return 0
   fi

@@ -1008,9 +1008,7 @@ _fix_advisories() {
   fi
   # The install keeps the tree's own require-dev scope: a tree installed with --no-dev
   # stays so, and one that carries its dev packages (a pinned platform can) keeps them.
-  if _run_as_o8 "php -r '\$i = json_decode((string) @file_get_contents(\$argv[1]), true); exit(is_array(\$i) && array_key_exists(\"dev\", \$i) && \$i[\"dev\"] === false ? 0 : 1);' '${_wd}/vendor/composer/installed.json'"; then
-    _nodev="--no-dev"
-  fi
+  _nodev="$(_tree_nodev "${_wd}")"
   # The versions the step must leave where they are: drupal/core and the held packages.
   _keep="drupal/core ${_hold}"
   for _p in ${_keep}; do
@@ -1077,6 +1075,62 @@ _fix_advisories() {
   return 0
 }
 
+_tree_nodev() {
+  # Print --no-dev when tree $1 was installed without its require-dev packages, else
+  # nothing: a later install in the tree keeps the scope it was built with.
+  if _run_as_o8 "php -r '\$i = json_decode((string) @file_get_contents(\$argv[1]), true); exit(is_array(\$i) && array_key_exists(\"dev\", \$i) && \$i[\"dev\"] === false ? 0 : 1);' '$1/vendor/composer/installed.json'"; then
+    printf '%s\n' "--no-dev"
+  fi
+}
+
+_missing_packages() {
+  # Print every package tree $1's vendor/composer/installed.json lists whose directory
+  # is absent or empty (metapackages carry no files). Composer counts such a package
+  # as not installed, but nothing in a build stops on it: composer-patches removes a
+  # package to re-patch it, and a partial operation after that (a single require, an
+  # install that skips a patch) never puts it back. Non-zero when the file is unreadable.
+  _run_as_o8 "php -r '\$f = \$argv[1] . \"/vendor/composer/installed.json\"; if (!is_file(\$f)) { exit(0); } \$d = json_decode((string) file_get_contents(\$f), true); if (!is_array(\$d)) { exit(2); } \$p = isset(\$d[\"packages\"]) ? \$d[\"packages\"] : \$d; foreach (\$p as \$x) { if (empty(\$x[\"install-path\"]) || (isset(\$x[\"type\"]) && \$x[\"type\"] === \"metapackage\")) { continue; } \$t = \$argv[1] . \"/vendor/composer/\" . \$x[\"install-path\"]; if (!is_dir(\$t) || count(scandir(\$t)) <= 2) { echo \$x[\"name\"], PHP_EOL; } }' '$1'"
+}
+
+_restore_missing_packages() {
+  # $1 workdir, $2 label. Every package the tree lists as installed must be on disk
+  # before the hand work and the tarball: a missing one passes every Composer call
+  # here and fails each site install on the platform. composer install puts it back
+  # from the lock, in the tree's own dev scope (an empty directory is removed first:
+  # Composer counts any existing path as installed). An install that fails, or
+  # anything still missing or unreadable after it, fails the build, and the
+  # published copy stays.
+  local _wd="$1" _label="$2" _miss _left _out _rc _p
+  if ! _miss="$(_missing_packages "${_wd}")"; then
+    _alrt "${_label}: could not read vendor/composer/installed.json"
+    _record_fail "${_label} (package check failed)"
+    return 1
+  fi
+  [[ -n "${_miss}" ]] || return 0
+  _alrt "${_label}: listed as installed but missing on disk: $(tr '\n' ' ' <<< "${_miss}")"
+  _run_as_o8 "cd '${_wd}' && php -r '\$d = json_decode((string) file_get_contents(\"vendor/composer/installed.json\"), true); \$p = isset(\$d[\"packages\"]) ? \$d[\"packages\"] : \$d; foreach (\$p as \$x) { if (!empty(\$x[\"install-path\"]) && in_array(\$x[\"name\"], array_slice(\$argv, 1), true)) { @rmdir(\"vendor/composer/\" . \$x[\"install-path\"]); } }' $(tr '\n' ' ' <<< "${_miss}")"
+  _out="$(_run_as_o8 "cd '${_wd}' && COMPOSER_NO_SECURITY_BLOCKING=1 composer install $(_tree_nodev "${_wd}") ${_FIX_IGNORE_EXT} 2>&1")"
+  _rc=$?
+  printf '%s\n' "${_out}"
+  if [[ "${_rc}" != "0" ]]; then
+    _alrt "${_label}: composer install did not restore the missing packages (rc ${_rc})"
+    _record_fail "${_label} (packages missing)"
+    return 1
+  fi
+  if ! _left="$(_missing_packages "${_wd}")" || [[ -n "${_left}" ]]; then
+    _alrt "${_label}: still missing after composer install: $(tr '\n' ' ' <<< "${_left:-installed.json unreadable}")"
+    _record_fail "${_label} (packages missing)"
+    return 1
+  fi
+  _FIX_LINES+=("# restored: $(tr '\n' ' ' <<< "${_miss}")(listed as installed, missing on disk)")
+  if grep -qiE 'could not apply patch|cannot apply patch' <<< "${_out}"; then
+    _FIX_LINES+=("# warning: a patch did not apply while restoring, see the run log")
+    [[ "${_FIX_NOTE}" == *"patch skipped"* ]] || _FIX_NOTE="${_FIX_NOTE:+${_FIX_NOTE}; }patch skipped"
+  fi
+  _msg "${_label}: restored $(tr '\n' ' ' <<< "${_miss}")"
+  return 0
+}
+
 _fix_step() {
   # The advisory fix step as a build runs it: straight after its Composer work and
   # before any hand work (patches, moved directories, seds), so the hand work always
@@ -1087,7 +1141,7 @@ _fix_step() {
     _record_fail "$2 (fixed lock did not install)"
     return 1
   fi
-  return 0
+  _restore_missing_packages "$1" "$2"
 }
 
 _finalize_distro() {
