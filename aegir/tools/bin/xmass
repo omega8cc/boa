@@ -4780,9 +4780,11 @@ _xmass_sync_account() {
   # the shadow hash so the two can never disagree.
   # instance-group.txt records the SOURCE box's conversion (its gid) and
   # must never travel either: the destination pass below writes its own.
+  # proxy-failed.pid is source-role state too: on the target it would park
+  # the dispatcher of an account that box serves.
   _xmass_rsync -aEAXqu ${_ieni} \
     --exclude=proxied.pid --exclude=migproxy.cnf --exclude=pass.txt \
-    --exclude=instance-group.txt \
+    --exclude=instance-group.txt --exclude=proxy-failed.pid \
     -e ssh \
     "${_udir}/log/" "root@${_tgt}:${_dst}/log/"
 
@@ -6827,6 +6829,12 @@ fi
 if [ -e "/data/disk/${_oct}/log/proxied.pid" ]; then
   rm -f "/data/disk/${_oct}/log/proxied.pid"
   echo "  ${_oct}: removed stale proxied.pid"
+fi
+# A conversion that failed while this box was the source marked the account;
+# promoted now, the account is served here and its dispatcher must stay live.
+if [ -e "/data/disk/${_oct}/log/proxy-failed.pid" ]; then
+  rm -f "/data/disk/${_oct}/log/proxy-failed.pid"
+  echo "  ${_oct}: removed stale proxy-failed.pid"
 fi
 # The demotion machinery stamped these to satisfy the conversion gate
 # (xmass touches exported.pid itself; it never runs a real export). On a
@@ -10406,11 +10414,22 @@ REMOTE
   # panel database now lives on the target, yet runner.sh would hand its
   # dispatcher the queue that travelled from here, run against the stale
   # local copy. Park that dispatcher first, where xoct parks a converted
-  # one; the repair's own successful conversion keeps it parked. BOA's
-  # fpm-cli pass copies every parked dispatcher back at a new tools serial
-  # and re-parks only the proxied, so the park lasts until the repair or
-  # that pass, whichever comes first.
+  # one, and mark the account log/proxy-failed.pid: BOA's fpm-cli pass
+  # copies every parked dispatcher back at a new tools serial and an octopus
+  # pass writes a fresh one, and the marker makes the first re-park it and
+  # the second skip the account. The repair's successful conversion stamps
+  # proxied.pid, which keeps both, and removes the marker.
+  local _pf
   for _oct in ${_XMASS_PROXY_CONV_FAILED}; do
+    # log/ belongs to the account user: whatever sits at the path goes first
+    # (a planted link would be followed, a FIFO would block this write); a
+    # planted directory survives, the write fails and the ALRT says so
+    _pf="/data/disk/${_oct}/log/proxy-failed.pid"
+    rm -f "${_pf}" &>/dev/null
+    if [ ! -d "/data/disk/${_oct}/log" ] || [ -L "/data/disk/${_oct}/log" ] \
+      || ! echo "${_tgt} $(date -u +%FT%TZ)" > "${_pf}" 2>/dev/null; then
+      _alrt "  ${_oct}: could not write ${_pf} -- BOA's next release pass or an octopus run would hand its dispatcher back"
+    fi
     if [ -e "/var/xdrago/run-${_oct}" ]; then
       mkdir -p /var/backups/off-run
       mv -f "/var/xdrago/run-${_oct}" /var/backups/off-run/ 2>/dev/null \

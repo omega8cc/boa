@@ -55,7 +55,8 @@ function hosting_le_vhost_provision_nginx_vhost_config($uri, $data) {
       $real_name = $main_name = d()->uri;
     }
 
-    if (d()->redirection) {
+    // As in provision_hosting_le: a subdirectory address is no certificate name.
+    if (d()->redirection && strpos(d()->redirection, '/') === FALSE) {
       $main_name = d()->redirection;
       if ($is_boa) {
         $cert_dir = $le_cert . "/" . $real_name;

@@ -164,7 +164,7 @@ export _DRUPAL11_4_S="${_DRUPAL11_4}-stage"
 ### The value below is only the fallback when the mirror is unreachable at
 ### make time.
 ###
-export _BACKDROP_V_FALLBACK=1.35.0
+export _BACKDROP_V_FALLBACK=1.35.1
 export _GRAV_V_FALLBACK=2.1.12
 export _TXP_V_FALLBACK=4.9.1
 export _BACKDROP_V="${_BACKDROP_V_FALLBACK}"
