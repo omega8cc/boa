@@ -2237,7 +2237,7 @@ _add_note_platform_ini() {
     echo ";;" >> ${_CTRL_F}
     echo ";;  Note that BOA reads this file on every request, so a change applies on"  >> ${_CTRL_F}
     echo ";;  the next one; a page the front cache holds for anonymous visitors can"   >> ${_CTRL_F}
-    echo ";;  hide it for a few seconds. A .dev. alias of a site skips that cache."    >> ${_CTRL_F}
+    echo ";;  hide it for a few seconds. A .dev. alias cuts that cache to 1 second."  >> ${_CTRL_F}
     echo ";;" >> ${_CTRL_F}
   fi
 }
@@ -2255,7 +2255,7 @@ _add_note_site_ini() {
     echo ";;" >> ${_CTRL_F}
     echo ";;  Note that BOA reads this file on every request, so a change applies on"  >> ${_CTRL_F}
     echo ";;  the next one; a page the front cache holds for anonymous visitors can"   >> ${_CTRL_F}
-    echo ";;  hide it for a few seconds. A .dev. alias of a site skips that cache."    >> ${_CTRL_F}
+    echo ";;  hide it for a few seconds. A .dev. alias cuts that cache to 1 second."  >> ${_CTRL_F}
     echo ";;" >> ${_CTRL_F}
   fi
 }

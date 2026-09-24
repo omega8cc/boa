@@ -155,8 +155,8 @@ Fast cloning and migration
 
 Super-fast per-table parallel database dumps are the default for the
 safety copies a Migrate or a Delete takes for itself. The trade-off:
-those archives keep no classic single-file DB dump, so restoring one
-brings back the files only. Every Backup task carries a classic dump
+those archives keep no classic single-file DB dump, so the Restore
+task cannot use them. Every Backup task carries a classic dump
 and stays restorable, and nightly backups still cover you.
 
   touch ~/static/control/MyClassic.info    opt out — classic dumps again,
