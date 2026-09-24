@@ -1627,7 +1627,8 @@ _xoct_rewrite_target_account_refs() {
   echo "INFO: rename mode active on target ${_X_TGT_HOST}: rewriting refs ${_X_SRC_OCT} -> ${_X_DST_OCT} in selected text configs"
   # Heredoc (not a nested one-liner) so the fpm socket-token rewrite -- which
   # carries literal double quotes -- stays readable. Local vars (_X_SRC_OCT
-  # etc.) expand here before ssh; remote-only vars are \-escaped.
+  # etc.) expand here before ssh; remote-only vars are \-escaped. A subdir.d
+  # conf lives one level down, in its domain's directory.
   ssh root@"${_X_TGT_HOST}" "bash -s" <<REMOTE
 _D='${_X_DST_USR}'
 for _F in \
@@ -1635,7 +1636,7 @@ for _F in \
   \$(find "\${_D}/config/server_master/nginx/vhost.d" -maxdepth 1 -type f 2>/dev/null | sort) \
   \$(find "\${_D}/config/server_master/nginx/pre.d" -maxdepth 1 -type f 2>/dev/null | sort) \
   \$(find "\${_D}/config/server_master/nginx/post.d" -maxdepth 1 -type f 2>/dev/null | sort) \
-  \$(find "\${_D}/config/server_master/nginx/subdir.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  \$(find "\${_D}/config/server_master/nginx/subdir.d" -maxdepth 2 -type f 2>/dev/null | sort) \
   \$(find "\${_D}/config/server_master/nginx/platform.d" -maxdepth 1 -type f 2>/dev/null | sort) \
   \$(find "\${_D}/config/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort) \
   \$(find "\${_D}/config/server_master/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort) \
