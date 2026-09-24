@@ -1670,7 +1670,7 @@ _check_root() {
 }
 
 # The DRY/live gate applies ONLY to the migration transfer commands. Utility commands
-# — notably `ssl-gen` (used elsewhere to generate hostmaster SSL certs), plus pre-mig,
+# — notably `ssl-gen` (renders proxy SSL vhosts from /root/.ssl.proxy.cnf), plus pre-mig,
 # post-mig, export, import, create and proxy — run unaffected (LIVE) and their arguments
 # are never touched. For transfer/pretransfer the default is a read-only DRY run and an
 # explicit --live is required (accepted only after a CLEAN dry run for the same
