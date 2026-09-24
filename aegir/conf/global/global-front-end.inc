@@ -48,7 +48,12 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     $conf['https'] = TRUE;
     $request_type = ($_SERVER['HTTP_X_FORWARDED_PROTO'] == 'https' || $_SERVER['HTTPS'] == 'on') ? 'SSL' : 'NONSSL';
     if ($request_type == "SSL") { // we check for secure connection to set correct base_url
-      $base_url = 'https://' . $_SERVER['HTTP_HOST'];
+      if ($site_subdir && $raw_host) {
+        $base_url = 'https://' . $raw_host . '/' . $site_subdir;
+      }
+      else {
+        $base_url = 'https://' . $_SERVER['HTTP_HOST'];
+      }
       if ($conf['install_profile'] != 'hostmaster') {
         $_SERVER['HTTPS'] = 'on';
         if ($drupal_core >= 7 || !empty($backdropcms)) {
