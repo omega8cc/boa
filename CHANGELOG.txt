@@ -35,6 +35,11 @@
 
 @=> Security
 
+    * The login and admin IP lock (static/control/ip/user_admin.txt) on a
+      Grav site now gates /admin (and /api) but no longer /user: that is
+      Grav's public theme and media tree, and a listed Grav site refused
+      its stylesheets and images to every visitor off the list. Lists
+      regenerate on the next pass.
     * Database dump and import commands, the ProxySQL user updates and
       the Backdrop site installer no longer write their passwords into
       task and upgrade logs: the command line logged or printed there
@@ -233,6 +238,22 @@
       as before; a control file left behind is ignored.
 
 @=> New Features
+
+    * An Octopus upgrade now replaces a built-in platform whose tarball
+      the mirror republished under the same name, once the platform is
+      proven idle: no site directory, no tenant file in sites/all, and
+      no site or pending task for it in the control panel. The new tree
+      is fetched and checked beside the old one, swapped in and verified;
+      only a newer copy counts, so a CDN edge still serving an older
+      tarball never swaps a platform back.
+    * A platform in use is never touched, and the upgrade log names it
+      once per republished copy. A replaced tree that turns out to hold a
+      site or tenant files is kept, not removed, and reported on every
+      upgrade until it is dealt with.
+    * Platforms fetched before this release have no record of their
+      tarball: the first upgrade fetches it once for each idle one,
+      records a tree that still matches it and refreshes one that does
+      not, which every verified Drupal 8+ tree is.
 
     * The new nginx_fleet.sh detector reads the last few minutes of
       the access log once a minute and declares a fingerprint only
@@ -509,6 +530,21 @@
 
 @=> Important Fixes
 
+    * A Restore from an archive that carries no database dump (a files-only
+      backup, a Migrate or Delete safety copy, a snapshot from before the
+      backup modes) brings the files back and carries the site's current
+      database across unchanged again. Since the pre-restore safety copy
+      became a complete backup it failed at the database step and rolled
+      back. An account opted out of fast DB backups still refuses such an
+      archive safely.
+    * A Clone or rename of a Drupal 7 site that keeps modules in its own
+      sites/<domain>/modules folder no longer fails with "Cannot redeclare":
+      the site's module paths now point at its new folder before the first
+      registry rebuild, which used to load them from the old one too.
+    * The HTTPS renewal-failure mail asks for the domain's A record and the
+      removal of any AAAA record: the server answers on IPv4 only.
+    * The welcome mail gives the right path to a site's drushrc.php for the
+      database browser login.
     * Nginx now serves AVIF images as image/avif, with the same caching
       as WebP. BOA's mime.types had no avif entry, so an AVIF image
       style derivative or upload served from disk went out as
