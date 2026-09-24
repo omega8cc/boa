@@ -19,7 +19,7 @@ series AND patch level** (e.g. both 8.4.13, never 8.4.10 vs 8.4.13).
 
 A series
 mismatch means xmass cannot run on this pair as it is: either upgrade the older
-server's Percona in place first ([MIGRATE-PERCONA8.md](MIGRATE-PERCONA8.md)),
+server's Percona in place first ([UPGRADE-PERCONA8.md](UPGRADE-PERCONA8.md)),
 then run xmass within one series, or use [xoct](MIGRATE-XOCT.md) per account
 instead.
 

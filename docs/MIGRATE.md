@@ -21,8 +21,9 @@ migration, without the automatic intermediate DNS proxy.
 migration, or move between servers running different Percona versions.
 
 Upgrading a server's Percona (5.7 to 8.0 and 8.4) is not a migration: `barracuda`
-does it in place on the same server once `codebasecheck` says READY — see
-[MIGRATE-PERCONA8.md](MIGRATE-PERCONA8.md). Migration and a version difference only
+does it in place on the same server once `codebasecheck` says READY (or REVIEW, with
+every finding checked) — see
+[UPGRADE-PERCONA8.md](UPGRADE-PERCONA8.md). Migration and a version difference only
 meet when you are moving between hosts anyway; [MIGRATE-VERSIONS.md](MIGRATE-VERSIONS.md)
 covers that case.
 
@@ -257,4 +258,4 @@ ln -sfn /opt/local/bin/xoct /opt/local/bin/xboa
 - [Single-account migration with xoct](MIGRATE-XOCT.md)
 - [Full-server migration with xmass](MIGRATE-XMASS.md)
 - [Migrations across Percona versions, and verifying a migration](MIGRATE-VERSIONS.md)
-- Not a migration: [upgrading a server to Percona 8 in place](MIGRATE-PERCONA8.md)
+- Not a migration: [upgrading a server to Percona 8 in place](UPGRADE-PERCONA8.md)

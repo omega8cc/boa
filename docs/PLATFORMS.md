@@ -17,7 +17,7 @@ Octopus upgrade skips every requested Drupal 11 symbol and says so in its log,
 and a Drupal 11 site Install stops with that one reason before the codebase is
 touched. Upgrade the box's Percona in place first: `barracuda up-<tree> system
 percona-8.0`, then `barracuda up-<tree> system percona-8.4`, after `codebasecheck`
-says READY (docs/MIGRATE-PERCONA8.md). A new server skips the upgrade by installing
+says READY (docs/UPGRADE-PERCONA8.md). A new server skips the upgrade by installing
 with the `percona-8.4` argument (docs/INSTALL.md).
 
 - [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.7)

@@ -131,7 +131,7 @@ Check out the details in [**ROADMAP.md**](https://github.com/omega8cc/boa/tree/5
 - Installation Instructions: [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md)
 - Upgrade Instructions: [docs/UPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE.md)
 - Major-Upgrade Instructions: [docs/MAJORUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MAJORUPGRADE.md)
-- Upgrading to Percona 8 in Place: [docs/MIGRATE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATE-PERCONA8.md)
+- Upgrading to Percona 8 in Place: [docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE-PERCONA8.md)
 - Percona 8 Upgrade Readiness (`codebasecheck`): [docs/CODEBASECHECK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CODEBASECHECK.md)
 - Importance of Keeping SKYNET Enabled in BOA: [docs/SKYNET.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SKYNET.md)
 - INI configuration per site: [docs/ini/site/INI.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/ini/site/INI.md)

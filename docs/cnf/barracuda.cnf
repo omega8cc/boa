@@ -37,7 +37,7 @@ _CPU_TASK_RATIO=3.1 #----------- Max load per CPU core to launch tasks queue
 ###
 _CUSTOM_COLLATION_SQL= #-------- By default on the DB server: utf8mb4_unicode_ci
 _DB_BINARY_LOG=NO #------------- Allows to enable binary logging when YES
-_DB_SERIES=5.7 #---------------- Supported values: 5.7 8.0 8.4 (upgrade in place with barracuda up-<tree> percona-8.x)
+_DB_SERIES=5.7 #---------------- Supported values: 5.7 8.0 8.4 (upgrade in place: barracuda up-<tree> system percona-8.0, then percona-8.4)
 _DB_SERVER=Percona #------------ Install Percona or MySQL Server (8.4 from Trixie)
 _SOLR_HEAP_FORCE="" #----------- Pins Solr 7/9 JVM heap -Xmx in MB (AUTO when empty)
 _USE_SQLPROBE=YES #------------- Log-only SQL sensor feeding the memorytuner advisory; changes no setting

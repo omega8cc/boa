@@ -12,7 +12,7 @@ You can easily upgrade your system from any supported Debian version, starting w
 
 **NOTE:** While by default BOA installs Percona 5.7 in Devuan Daedalus, it will expect Percona 8.4 on Devuan Excalibur and will refuse to upgrade your system from Daedalus to Excalibur until you first upgrade Percona to 8.4
 
-**NOTE:** The Percona upgrade is its own step, done in place with `barracuda` on the same server before the OS upgrade; it is not a migration. You can upgrade from Percona 5.7 to Percona 8.0 and then from Percona 8.0 to Percona 8.4 on Devuan Daedalus -- see [docs/MIGRATE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATE-PERCONA8.md).
+**NOTE:** The Percona upgrade is its own step, done in place with `barracuda` on the same server before the Daedalus to Excalibur upgrade; it is not a migration. You can upgrade from Percona 5.7 to Percona 8.0 and then from Percona 8.0 to Percona 8.4 only on Devuan Daedalus -- see [docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE-PERCONA8.md).
 
 **NOTE:** Drupal 11 needs MySQL 8, which on BOA means Percona 8.4 -- so a server that will host Drupal 11 has to leave the default Percona 5.7. A new server avoids this upgrade altogether by installing with the `percona-8.4` argument (see [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md)).
 

@@ -9,7 +9,7 @@ MySQL 8 blocks the upgrade for every site on the box until it is made compatible
 `codebasecheck` answers, before you run the upgrade, *which codebases — if any — block it*,
 so you can bring those up to their MySQL-8 floor first. The upgrade itself is done in place
 with `barracuda` and needs no migration — see
-[docs/MIGRATE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATE-PERCONA8.md).
+[docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE-PERCONA8.md).
 
 ## What counts as compatible
 
@@ -19,10 +19,12 @@ these thresholds only flag a customer's frozen custom platform pinned to an old 
 - **Drupal 6**: d6lts/Pressflow **6.51+** (adds MySQL-8 support — reserved-word escaping,
   `ONLY_FULL_GROUP_BY` handling, `mysql_native_password`). Older Drupal 6 is flagged.
 
-  The server side is BOA's job and handled on 8.0 and 8.4: `authentication_policy`
-  advertises the native plugin (with `default_authentication_plugin` on 8.0 and the plugin
-  loaded on 8.4), without which a `php56`-pool site cannot answer the `caching_sha2`
-  handshake greeting at all (see docs/MIGRATE-PERCONA8.md). That lane is 8.x-only —
+  The server side is BOA's job and handled on 8.0 and 8.4: BOA makes the handshake
+  greeting native, with `authentication_policy` on both, plus `default_authentication_plugin`
+  on 8.0 (which 8.0's greeting follows) and the plugin loaded on 8.4.
+
+  Without it a
+  `php56`-pool site cannot answer the `caching_sha2` handshake greeting at all (see docs/UPGRADE-PERCONA8.md). That lane is 8.x-only —
   MySQL/Percona 9.x removes `mysql_native_password` outright, so a box hosting php56-pool
   sites could not be upgraded in place to 9.x, and this check is the natural place to gate
   that if 9.x support ever lands.
@@ -34,8 +36,8 @@ these thresholds only flag a customer's frozen custom platform pinned to an old 
   database.
 - **Unrecognised codebase**: flagged for manual review (fail-safe).
 
-A flagged (incompatible) codebase has to be brought up to its floor before this box can
-upgrade: update that platform's core, or move its sites to a newer platform on this box
+A flagged codebase has to be fixed before this box can upgrade — one below its floor, or
+one whose core version could not be read (UNKNOWN, look at it by hand): update that platform's core, or move its sites to a newer platform on this box
 with Ægir's Migrate task — BOA's own current platforms always qualify. Then run the check
 again. An unused old platform still counts while its Drush alias exists, so delete old
 platforms you no longer need.
@@ -63,8 +65,9 @@ Account o3: READY (22 codebase(s))
 Account o7: BLOCKED
     BLOCK   /data/disk/o7/static/legacy/oldsite  [7.44]  Drupal 7 (7.44) predates 7.76 ...
 ...
-RESULT: BLOCKED — the codebases flagged above must reach their MySQL-8 floor before this box
-upgrades (update the core, or move their sites to a newer platform on this box), in:
+RESULT: BLOCKED — the codebases flagged above must be fixed before this box upgrades
+(update the core, or move their sites to a newer platform on this box; look at an
+UNKNOWN one by hand), in:
   - o7
 ```
 
@@ -74,7 +77,7 @@ upgrades (update the core, or move their sites to a newer platform on this box),
 |----------|------|---------|
 | READY    | 0    | Every codebase on the box is compatible with Percona 8.x. |
 | REVIEW   | 2    | Cores are compatible, but `--deep` found signals to verify first. |
-| BLOCKED  | 1    | At least one codebase's core predates its MySQL-8 floor; update it, or move its sites to a newer platform on this box, and re-run. |
+| BLOCKED  | 1    | At least one codebase's core predates its MySQL-8 floor, or its version could not be read (UNKNOWN); fix it (update the core, or move its sites to a newer platform on this box) and re-run. |
 
 ## Deep contrib/schema analysis (`--deep`)
 
@@ -112,6 +115,6 @@ tree and every database, so it takes longer.
    core version), or move its sites to a newer platform on this box, then re-run.
 4. If **REVIEW**: check each finding (raw SQL against a reserved-word table, a flagged
    module) on a test clone.
-5. When **READY**: run the in-place upgrade `barracuda up-lts system percona-8.0` then
+5. When **READY**, or **REVIEW** with every finding checked: run the in-place upgrade `barracuda up-lts system percona-8.0` then
    `barracuda up-lts system percona-8.4` (`up-pro`/`up-dev` on those trees)
-   ([docs/MIGRATE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATE-PERCONA8.md)).
+   ([docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE-PERCONA8.md)).

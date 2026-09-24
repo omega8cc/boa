@@ -442,8 +442,8 @@ run_box_mode() {
     echo "=== BOA Percona 8.x readiness — ${_host} — $(date) ==="
     echo "One shared Percona instance serves the whole box, so its oldest codebase gates the"
     echo "box-wide in-place 5.7 -> 8.0 -> 8.4 upgrade. A BLOCKED account runs a codebase below its"
-    echo "MySQL-8 floor: update that core, or move its sites to a newer platform on this box,"
-    echo "then run this check again."
+    echo "MySQL-8 floor (update that core, or move its sites to a newer platform on this box) or"
+    echo "one whose core version could not be read (look at it by hand); then run this check again."
     echo ""
   } | tee -a "${_log}"
 
@@ -515,8 +515,9 @@ run_box_mode() {
     echo ""
     echo "--------------------------------------------------------"
     if [ "${_box_status}" = "BLOCKED" ]; then
-      echo "RESULT: BLOCKED — the codebases flagged above must reach their MySQL-8 floor before this box"
-      echo "upgrades (update the core, or move their sites to a newer platform on this box), in:"
+      echo "RESULT: BLOCKED — the codebases flagged above must be fixed before this box upgrades"
+      echo "(update the core, or move their sites to a newer platform on this box; look at an"
+      echo "UNKNOWN one by hand), in:"
       printf '  - %s\n' "${_blocked_accounts[@]}"
     elif [ "${_DEEP}" = "1" ] && [ "${_DEEP_REVIEW_COUNT}" -gt 0 ]; then
       echo "RESULT: REVIEW — cores are compatible, but ${_DEEP_REVIEW_COUNT} deep finding(s) need a human"

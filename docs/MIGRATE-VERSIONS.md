@@ -1,7 +1,7 @@
 # Migrations across Percona versions, and verifying a migration
 
 Upgrading a box to Percona 8 is done **in place** and needs no migration — see
-[MIGRATE-PERCONA8.md](MIGRATE-PERCONA8.md). This page is about a different job:
+[UPGRADE-PERCONA8.md](UPGRADE-PERCONA8.md). This page is about a different job:
 you are moving accounts or a whole server between BOA hosts anyway, the two
 hosts happen to run different Percona series, and you want to know how the
 migration tools handle that. It also carries the before/after checklist that
@@ -13,16 +13,19 @@ the tool references [MIGRATE-XOCT.md](MIGRATE-XOCT.md) and
 
 - **`xoct`** moves a single Octopus account with `mydumper`/`myloader`. A logical
   dump does not care which server version wrote it, so `xoct` is
-  **cross-version safe**: a Percona 5.7 account lands cleanly on a Percona 8.4
-  box.
+  **cross-version safe** for the data: a Percona 5.7 account's databases land
+  intact on a Percona 8.4 box (the older-to-newer direction is the validated
+  one). Its codebases must still meet the MySQL-8 floors that `codebasecheck`
+  checks to run there; no migration tool checks them.
 - **`xmass`** evacuates a whole server with an xtrabackup physical snapshot plus
   GTID replication. Physical backup and replication require **identical Percona
-  series on both ends** — `xmass init` refuses a mismatch before it touches any
-  data.
+  series and patch level on both ends** (for example both 8.4.13) — `xmass init`
+  refuses a mismatch before it touches any data.
 
 So when the two hosts of a whole-server move run different series, you have two
 ways forward: bring the older box up to the same series **in place** first
-([MIGRATE-PERCONA8.md](MIGRATE-PERCONA8.md)) and then run `xmass`, or move
+([UPGRADE-PERCONA8.md](UPGRADE-PERCONA8.md)), align the patch level, and then
+run `xmass`, or move
 account by account with `xoct`. Neither migration tool upgrades anything; a box
 changes Percona series only through `barracuda`.
 
@@ -31,7 +34,7 @@ changes Percona series only through `barracuda`.
 BOA's MySQL watchdog (`/var/xdrago/monitor/check/mysql.sh`) restarts a down
 `mysqld`, breaks apparent table locks and kills long-running queries. It cannot
 tell a cutover's promotion, a host rename's database work or an xtrabackup
-snapshot apart from a genuine hang, so the migration tools hold the maintenance
+snapshot apart from a genuine hang, so `xoct` and `xmass` hold the maintenance
 marker `/run/boa_sql_maintenance.pid` around their critical sections, exactly as
 the Percona package upgrade does. While the marker exists the watchdog exits
 before any check; a marker older than four hours is treated as abandoned, and

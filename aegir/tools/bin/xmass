@@ -8705,7 +8705,7 @@ _xmass_cmd_init() {
     | cut -d"." -f1,2)
   if [ "${_tgt_v}" != "${_XMASS_PERCONA_V}" ]; then
     _die "Target Percona version (${_tgt_v}) does not match source (${_XMASS_PERCONA_V})." \
-         " xmass requires identical versions on both servers. Use xoct instead."
+         " xmass requires identical versions on both servers: upgrade the older server's Percona in place first (barracuda up-<tree> system percona-8.0, then percona-8.4), or use xoct per account."
   fi
   _info "Percona version match (${_XMASS_PERCONA_V}) on both servers: OK"
   _xmass_verify_target_accounts "${_tgt}" die
