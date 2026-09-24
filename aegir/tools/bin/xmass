@@ -10425,16 +10425,17 @@ REMOTE
   # restore -- so a successful cutover left the source with cron stopped
   # forever, which silently disabled the daily certificate mirror (the one
   # mechanism that keeps a long-lived proxy's TLS fresh) and every runner.
-  # The runners self-skip proxied accounts, so restoring them is safe for
-  # every proxy mode. An account whose conversion FAILED is not proxied: its
-  # panel database now lives on the target, yet runner.sh would hand its
-  # dispatcher the queue that travelled from here, run against the stale
-  # local copy. Park that dispatcher first, where xoct parks a converted
-  # one, and mark the account log/proxy-failed.pid: BOA's fpm-cli pass
-  # copies every parked dispatcher back at a new tools serial and an octopus
-  # pass writes a fresh one, and the marker makes the first re-park it and
-  # the second skip the account. The repair's successful conversion stamps
-  # proxied.pid, which keeps both, and removes the marker.
+  # A proxied account's dispatcher is parked, so restoring the runners is
+  # safe for every proxy mode. An account whose conversion FAILED is not
+  # proxied: its panel database now lives on the target, yet runner.sh would
+  # hand its dispatcher the queue that travelled from here, run against the
+  # stale local copy. Park that dispatcher first, where xoct parks a
+  # converted one, and mark the account log/proxy-failed.pid: BOA's fpm-cli
+  # pass hands parked dispatchers back at a new tools serial and an octopus
+  # pass writes a fresh one, and the marker keeps this one parked through
+  # the first and makes the second skip the account. The repair's
+  # successful conversion stamps proxied.pid, which keeps both, and removes
+  # the marker.
   local _pf
   for _oct in ${_XMASS_PROXY_CONV_FAILED}; do
     # log/ belongs to the account user: whatever sits at the path goes first

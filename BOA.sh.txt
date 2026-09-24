@@ -2273,7 +2273,6 @@ _update_agents() {
     && [ -e "/usr/sbin/csf" ] \
     && [ ! -e "${_pthLog}/fpm-cli.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _usrGroup=users
-    [ -d "/var/backups/off-run/" ] && cp -a /var/backups/off-run/run* /var/xdrago/ &> /dev/null
     for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       _tUsr=
       _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
@@ -2308,6 +2307,11 @@ _update_agents() {
             mv -f /var/xdrago/run-${_tUsr} /var/backups/off-run/
           fi
         else
+          ### A parked dispatcher comes back only here, for an account that
+          ### keeps it: copied back ahead of the test above, a held one would
+          ### sit in /var/xdrago, where runner.sh can fire it, until moved out
+          [ -e "/var/backups/off-run/run-${_tUsr}" ] \
+            && cp -a "/var/backups/off-run/run-${_tUsr}" /var/xdrago/ &> /dev/null
           _dscUsr="/data/disk/${_tUsr}"
           _ngxCnf="${_dscUsr}/config/includes/nginx_vhost_common.conf"
           _NGINX_CNF_TEST=$(grep "foobaroff" ${_ngxCnf} 2>&1)
@@ -2388,12 +2392,14 @@ _update_agents() {
       _USER_DIR="/data/disk/${_USER}"
       _CANCELLED_FILE="${_USER_DIR}/log/CANCELLED"
       _PROXIED_PID_FILE="${_USER_DIR}/log/proxied.pid"
+      _PROXY_FAILED_FILE="${_USER_DIR}/log/proxy-failed.pid"
       _CLI_INFO_FILE="${_USER_DIR}/static/control/cli.info"
 
       # Check the conditions
       if [ ! -d "${_USER_DIR}" ] || \
          [ -f "${_CANCELLED_FILE}" ] || \
          [ -f "${_PROXIED_PID_FILE}" ] || \
+         [ -f "${_PROXY_FAILED_FILE}" ] || \
          [ ! -f "${_CLI_INFO_FILE}" ]; then
         # Move the file if any condition is met
         mv -f "${_file}" /var/backups/off-run/
@@ -4839,7 +4845,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f95 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f56 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f45 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f44 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f09 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f78 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f94 --guard /local/bin/solrtrim

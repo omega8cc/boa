@@ -929,6 +929,12 @@
       account's. The repair's successful conversion removes the marker, as
       do a later promotion of the box, an xoct or xcopy import and xoct
       reset-state; it never travels with a transfer or a sync.
+    * BOA's once-per-release runner pass hands a parked dispatcher back
+      only to an account that keeps it. It used to copy every parked one
+      back first and move the held ones out again, and runner.sh, which
+      nothing holds during that pass, could fire a proxied or marked
+      account's dispatcher in between. The every-pass sweep that parks a
+      stray dispatcher now covers log/proxy-failed.pid too.
     * The barracuda launcher refreshes itself when its release is older
       than the tree it is about to upgrade to, and runs again with the
       same arguments. An older launcher stamped the new tree with its own
