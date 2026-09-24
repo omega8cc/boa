@@ -2273,7 +2273,6 @@ _update_agents() {
     && [ -e "/usr/sbin/csf" ] \
     && [ ! -e "${_pthLog}/fpm-cli.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _usrGroup=users
-    [ -d "/var/backups/off-run/" ] && cp -a /var/backups/off-run/run* /var/xdrago/ &> /dev/null
     for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       _tUsr=
       _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
@@ -2308,6 +2307,21 @@ _update_agents() {
             mv -f /var/xdrago/run-${_tUsr} /var/backups/off-run/
           fi
         else
+          ### This pass hands a parked dispatcher back only here, after the
+          ### park test and only when none is live: copied back ahead of the
+          ### test, a held one would sit in /var/xdrago, where runner.sh can
+          ### fire it, until moved out; copied over a live one, a stale
+          ### parked copy would replace the one octopus last wrote. Beside a
+          ### live one the parked copy is stale: set it aside, so off-run
+          ### holds only dispatchers that are parked now
+          if [ -e "/var/backups/off-run/run-${_tUsr}" ]; then
+            if [ ! -e "/var/xdrago/run-${_tUsr}" ]; then
+              mv -f "/var/backups/off-run/run-${_tUsr}" /var/xdrago/ &> /dev/null
+            else
+              mv -f "/var/backups/off-run/run-${_tUsr}" \
+                "/var/backups/off-run/.superseded-run-${_tUsr}" &> /dev/null
+            fi
+          fi
           _dscUsr="/data/disk/${_tUsr}"
           _ngxCnf="${_dscUsr}/config/includes/nginx_vhost_common.conf"
           _NGINX_CNF_TEST=$(grep "foobaroff" ${_ngxCnf} 2>&1)
@@ -2388,15 +2402,18 @@ _update_agents() {
       _USER_DIR="/data/disk/${_USER}"
       _CANCELLED_FILE="${_USER_DIR}/log/CANCELLED"
       _PROXIED_PID_FILE="${_USER_DIR}/log/proxied.pid"
+      _PROXY_FAILED_FILE="${_USER_DIR}/log/proxy-failed.pid"
       _CLI_INFO_FILE="${_USER_DIR}/static/control/cli.info"
 
       # Check the conditions
       if [ ! -d "${_USER_DIR}" ] || \
          [ -f "${_CANCELLED_FILE}" ] || \
          [ -f "${_PROXIED_PID_FILE}" ] || \
+         [ -f "${_PROXY_FAILED_FILE}" ] || \
          [ ! -f "${_CLI_INFO_FILE}" ]; then
         # Move the file if any condition is met
         mv -f "${_file}" /var/backups/off-run/
+        continue
       fi
 
       if grep -q "renice 0" "${_file}"; then
@@ -4839,16 +4856,16 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f95 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f56 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f46 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f43 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f09 --guard /local/bin/xoct
-    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f78 --guard /local/bin/xtrim
+    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f76 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f94 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f87 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f87 --guard /local/bin/autodaedalus
     _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f76 --guard /local/bin/autoinit
     _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f90 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f96 --mode 755 --guard /local/bin/backchain
-    _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f95 --guard /local/bin/codebasecheck
+    _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f93 --guard /local/bin/codebasecheck
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f94 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer

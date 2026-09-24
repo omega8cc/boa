@@ -239,6 +239,15 @@
 
 @=> New Features
 
+    * xmass sync leaves a platform refresh's staging behind: the new tree
+      an Octopus upgrade builds under distro/NNN/.boa-refresh/ for a few
+      minutes, its tarball and failed leftovers never reach the mirror, and
+      the replaced tree stays behind while a barracuda or octopus run is
+      live. A pass that copied a staged tree would otherwise have had to
+      delete thousands of files on the next pass, past the delete guard,
+      failing every pass until it was gone. Kept trees and the tarball
+      records travel as before.
+
     * An Octopus upgrade now replaces a built-in platform whose tarball
       the mirror republished under the same name, once the platform is
       proven idle: no site directory, no tenant file in sites/all, and
@@ -332,6 +341,14 @@
 
 @=> Improvements
 
+    * codebasecheck no longer tells you to move a blocked account to a
+      Percona 5.7 server: a BLOCK line and the box result now say to
+      update that core, or move its sites to a newer platform on the same
+      box. The Percona 8 upgrade is an in-place upgrade with barracuda,
+      and the docs now say so: docs/UPGRADE-PERCONA8.md is the in-place
+      guide, and moving accounts or servers between hosts on different
+      Percona versions has its own page, docs/MIGRATE-VERSIONS.md. The
+      xmass version refusal and the Drupal 11 notes say the same.
     * The control panel theme declares the page language, its skip link
       now lands on the page content, and the logo link is announced as
       Home, on regular pages and on the maintenance page alike.
@@ -920,6 +937,15 @@
       account's. The repair's successful conversion removes the marker, as
       do a later promotion of the box, an xoct or xcopy import and xoct
       reset-state; it never travels with a transfer or a sync.
+    * That once-per-release pass hands a parked dispatcher back only to
+      an account that keeps it, and only when none is live; a parked copy
+      found beside a live one is set aside as stale. It used to copy
+      every parked one back first and move the held ones out again, and
+      runner.sh, which nothing holds during that pass, could fire a
+      proxied or marked account's dispatcher in between; it also put an
+      old parked copy over the dispatcher octopus had written since. The
+      every-pass sweep that parks a stray dispatcher now covers
+      log/proxy-failed.pid too.
     * The barracuda launcher refreshes itself when its release is older
       than the tree it is about to upgrade to, and runs again with the
       same arguments. An older launcher stamped the new tree with its own

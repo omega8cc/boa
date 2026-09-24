@@ -77,7 +77,9 @@ result, advisories left and fixed, what happened on the mirror, and a two- or
 three-word note only when the row needs attention, such as `adds advisories` or
 `patch skipped`), plus a footer with the command for refused tarballs, the files a CDN
 purge still needs (see "CDN purge after a republish") and the end of a failed build's
-log. Composer, git and tar output, every advisory id and the lock hashes
+log.
+
+Composer, git and tar output, every advisory id and the lock hashes
 go to the log under `/var/backups/reports/staticbuild/<user>/<MM-DD>/` (root only);
 `--debug` streams them instead.
 
@@ -230,7 +232,9 @@ run.
 A replaced tarball keeps its name, and so do the version stamps and compat tarballs
 every release rewrites. A CDN in front of the mirrors keeps serving the previous bytes
 of such a file until its cache entry expires, so new installs behind that edge still
-get the old platform. staticbuild knows nothing about any CDN; it hands the files it
+get the old platform.
+
+staticbuild knows nothing about any CDN; it hands the files it
 has just written to an optional hook instead: `_PURGE_HOOK` in `/root/.staticbuild.cnf`
 is a command, its words split on whitespace with no quoting, and that file is read for
 this one setting only (the script itself is redeployed on every barracuda run, so an
@@ -241,7 +245,9 @@ after their last copy, with the absolute path of every file the run put on a she
 new bytes: new names and replaced ones alike, never an identical copy or a refused
 tarball, with the compat tarballs and stamps last. The hook is expected to wait until the mirrors
 serve the new bytes before it purges anything, since purging early only re-caches the
-old ones. With no hook set, a run that replaced a published file names it below the
+old ones.
+
+With no hook set, a run that replaced a published file names it below the
 summary, by its path under the mirror webroot:
 
 ```
@@ -298,7 +304,9 @@ Five artefacts, always rebuilt at the latest upstream tag (pin any with the matc
 `_*_TAG` in the config block):
 
 - **backdrop** — Backdrop CMS core (`backdrop/backdrop`), from its latest GitHub
-  release `backdrop.zip`. Repackaged versioned as `backdrop-<ver>.tar.gz` (extracts
+  release `backdrop.zip`.
+
+  Repackaged versioned as `backdrop-<ver>.tar.gz` (extracts
   to `backdrop-<ver>/`), classified as a core and managed on the mirror exactly like
   the Drupal cores: every published version is retained, the resolved version is
   stamped to `backdrop.txt` (published only after its tarball, so the stamp never

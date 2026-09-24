@@ -73,8 +73,8 @@ effort. Run production sites on a platform you build yourself in
 Drupal 11 symbols (DE4 DE3 DE2 DE1 and the Drupal 11 distributions CMS CK3
 LGV THR VBX FOS OCS) need MySQL 8, which on BOA means Percona 8.4. On a
 Percona 5.7 server they are skipped with a NOTE in the upgrade log, and a
-Drupal 11 site Install stops with that one reason; ask your host to move
-the server first (docs.boa.io: Percona 8 upgrade readiness).
+Drupal 11 site Install stops with that one reason; ask your host to upgrade
+the server's Percona to 8.4 first (docs.boa.io: Percona 8 upgrade readiness).
 
 Platform symbols:
 
