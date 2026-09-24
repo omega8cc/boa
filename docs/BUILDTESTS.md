@@ -80,9 +80,16 @@ Instead each build applies what fixes it can, and what shipped is recorded, twic
   A move that would change Drupal core
   is put back (a newer core is a new platform name, a catalogue move with a BOA
   release); the build's distribution package and any module it patches by hand are
-  left alone; the result installs once, and if it does not, the lock as built goes back
-  and is reinstalled. The fixed amazee.io provider releases declare `ext-pdo_pgsql`, so
+  left alone; the result installs once, and if it does not, the build fails and the
+  published copy stays. The fixed amazee.io provider releases declare `ext-pdo_pgsql`, so
   that one platform requirement is ignored, as for varbase.
+
+  Then every package the tree's `vendor/composer/installed.json` lists must be on disk.
+  Composer's patch plugin can remove a package to patch it again, and a later partial
+  Composer run never puts it back (EzContent lost `entity_browser` and `yoast_seo` after
+  its fix step, Opigno `calendar` and `h5p` after its `drush/drush` require). A missing
+  package is installed again from the lock in the tree's own dev scope; one still
+  missing fails the build.
 - Every finished distribution and vanilla core is then audited (`composer audit
   --locked`, never fatal) and the report is written beside its tarball as
   `~/static/MONTH-DAY/<platform>.advisories`: the count, one line per finding (id,

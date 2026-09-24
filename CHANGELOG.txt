@@ -484,6 +484,16 @@
       moment, a gate testing a variable nothing defined, and a reload
       by Aegir or the nginx watchdog in that moment failed.
 
+    * staticbuild no longer publishes a distribution that lacks a module
+      its lock lists. Composer's patch plugin can remove a package to
+      patch it again, and a later partial Composer run never puts it
+      back: the 09-24 EzContent tarball shipped without entity_browser
+      and yoast_seo, Opigno without calendar and h5p, and a site install
+      on either failed. Each distribution build now checks every package
+      its installed.json lists, installs the missing ones again from the
+      lock, and fails if any is still missing, so the published copy
+      stays.
+
     * A site served over HTTPS without a certificate of its own now stays
       on HTTPS through the web server's own redirects: the clean-URL
       redirect from /index.php/..., an alias redirected to the main name
