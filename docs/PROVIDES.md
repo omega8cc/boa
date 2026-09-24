@@ -14,7 +14,7 @@
 10. Letsencrypt.org SSL support (See [docs/SSL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SSL.md) for details).
 11. HTTP/2 or SPDY Nginx support.
 12. Perfect Forward Secrecy (PFS) support in Nginx.
-13. PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse, and ionCube.
+13. PHP extensions: Zend OPcache, PHPRedis, UploadProgress, MailParse, ionCube, and Imagick. GD writes WebP on PHP 7.4 and newer and AVIF on PHP 8.1 and newer, so Drupal 11.2+ can convert uploaded images to AVIF with no extra configuration.
 14. Fast Valkey Cache/Lock/Path with DB auto-failover for all Drupal core versions.
 15. Limited Shell, SFTP, and FTPS accounts per Ægir Client with per-site access.
 16. Drush access on the command line in all shell accounts.
