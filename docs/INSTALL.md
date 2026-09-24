@@ -130,9 +130,9 @@
 
    - Install with Percona 8.4 from the start: add `percona-8.4` to the install command (on Devuan Excalibur BOA installs Percona 8.4 regardless of the argument).
 
-   - Upgrade a Percona 5.7 server later, in two steps: `barracuda up-lts system percona-8.0`, then `barracuda up-lts system percona-8.4` (`up-pro` on a PRO server). There is no direct jump, it works on Devuan Daedalus only, and it wants a whole-server snapshot and a `codebasecheck --box --deep` run first -- see [docs/MAJORUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MAJORUPGRADE.md).
+   - Upgrade a Percona 5.7 server later, in two steps: `barracuda up-lts system percona-8.0`, then `barracuda up-lts system percona-8.4` (`up-pro` on a PRO server). The upgrade runs in place on the same server, with no migration. There is no direct jump, it works on Devuan Daedalus only, and it wants a whole-server snapshot and a `codebasecheck --box --deep` run first -- see [docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE-PERCONA8.md).
 
-   On a Percona 5.7 server the Octopus platform build skips the Drupal 11 platforms with a NOTE in its log, and a Drupal 11 site Install stops with that one reason before the codebase is touched. The default stays 5.7 on purpose: what runs keeps running, so the newest database is a choice you make at install.
+   On a Percona 5.7 server the Octopus platform build skips the Drupal 11 platforms with a NOTE in its log, and a Drupal 11 site Install stops with that one reason before the codebase is touched. The default stays 5.7 on purpose: what runs keeps running, so the newest database is a choice you make at install, or later with the in-place upgrade above.
 
    The `nodns` option allows skipping DNS and SMTP checks.
 

@@ -3900,6 +3900,17 @@ _xmass_prune_args() {   # 1 = source dir  [2 = target dir of a leg a hostname re
   printf '%s' "--delete-after --max-delete=${_max}"
 }
 
+# Status 0 while a barracuda or octopus run is live. Process-anchored
+# (task_guard.sh precedent): a stale /run/boa_run.pid from a killed run must
+# never park the cadence forever, because a silently parked file sync IS the
+# de-sync.
+_xmass_boa_run_live() {
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 \
+    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/BARRACUDA\.sh\.txt" > /dev/null 2>&1 \
+    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 \
+    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1
+}
+
 # What a DATA leg passes where every other leg passes ${_ieni}: the prune
 # flags when pruning is on and safe, the historical --ignore-errors when not.
 # Never both -- see guard 3 above.
@@ -4755,9 +4766,19 @@ _xmass_sync_account() {
   _xmass_auto_assert_standby
   _info "  Syncing account ${_oct} ..."
 
-  # Platform codebases (large; delta-synced efficiently by rsync)
-  _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/distro" "${_dst}/distro" "" sites "${_udir}/backups/rename-hostname") -e ssh \
-    "${_udir}/distro/" "root@${_tgt}:${_dst}/distro/"
+  # Platform codebases (large; delta-synced efficiently by rsync). An octopus
+  # pass that refreshes a catalogue platform stages a whole tree under
+  # distro/NNN/.boa-refresh/ for minutes: copied to the mirror, it would be
+  # pruned there by the next pass, thousands of entries past the delete
+  # guard. The staging names never travel. A replaced tree sits in
+  # <name>.old only seconds during a live run, but after an interrupted one
+  # it can be the only copy, so it is left out only while a run is live.
+  # Kept trees (<name>.kept-*) and the tarball records always travel.
+  local _stg=(--exclude='/*/.boa-refresh/*.new' --exclude='/*/.boa-refresh/*.tar.gz' \
+    --exclude='/*/.boa-refresh/*.stale-*')
+  _xmass_boa_run_live && _stg+=(--exclude='/*/.boa-refresh/*.old')
+  _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/distro" "${_dst}/distro" "" sites "${_udir}/backups/rename-hostname") \
+    "${_stg[@]}" -e ssh "${_udir}/distro/" "root@${_tgt}:${_dst}/distro/"
 
   # User uploaded files (symlink-safe, storage-aware relocation of static/files)
   _xmass_sync_static_symlink_safe "${_udir}" "${_dst}" "${_TGT_MNT}"
@@ -8684,7 +8705,7 @@ _xmass_cmd_init() {
     | cut -d"." -f1,2)
   if [ "${_tgt_v}" != "${_XMASS_PERCONA_V}" ]; then
     _die "Target Percona version (${_tgt_v}) does not match source (${_XMASS_PERCONA_V})." \
-         " xmass requires identical versions on both servers. Use xoct instead."
+         " xmass requires identical versions on both servers: upgrade the older server's Percona in place first (barracuda up-<tree> system percona-8.0, then percona-8.4), or use xoct per account."
   fi
   _info "Percona version match (${_XMASS_PERCONA_V}) on both servers: OK"
   _xmass_verify_target_accounts "${_tgt}" die
@@ -9743,13 +9764,8 @@ _xmass_autosync_run() {
     fi
   done
   # Live barracuda/octopus run: the legs would walk trees the upgrade is
-  # actively swapping. Process-anchored (task_guard.sh precedent) — a stale
-  # /run/boa_run.pid from a killed run must never park the cadence forever,
-  # because a silently parked file sync IS the de-sync.
-  if pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/barracuda( |$)" > /dev/null 2>&1 \
-    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/BARRACUDA\.sh\.txt" > /dev/null 2>&1 \
-    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/octopus( |$)" > /dev/null 2>&1 \
-    || pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/OCTOPUS\.sh\.txt" > /dev/null 2>&1; then
+  # actively swapping.
+  if _xmass_boa_run_live; then
     _info "autosync: a barracuda/octopus run is in flight — deferred"
     exit 0
   fi
@@ -10409,16 +10425,17 @@ REMOTE
   # restore -- so a successful cutover left the source with cron stopped
   # forever, which silently disabled the daily certificate mirror (the one
   # mechanism that keeps a long-lived proxy's TLS fresh) and every runner.
-  # The runners self-skip proxied accounts, so restoring them is safe for
-  # every proxy mode. An account whose conversion FAILED is not proxied: its
-  # panel database now lives on the target, yet runner.sh would hand its
-  # dispatcher the queue that travelled from here, run against the stale
-  # local copy. Park that dispatcher first, where xoct parks a converted
-  # one, and mark the account log/proxy-failed.pid: BOA's fpm-cli pass
-  # copies every parked dispatcher back at a new tools serial and an octopus
-  # pass writes a fresh one, and the marker makes the first re-park it and
-  # the second skip the account. The repair's successful conversion stamps
-  # proxied.pid, which keeps both, and removes the marker.
+  # A proxied account's dispatcher is parked, so restoring the runners is
+  # safe for every proxy mode. An account whose conversion FAILED is not
+  # proxied: its panel database now lives on the target, yet runner.sh would
+  # hand its dispatcher the queue that travelled from here, run against the
+  # stale local copy. Park that dispatcher first, where xoct parks a
+  # converted one, and mark the account log/proxy-failed.pid: BOA's fpm-cli
+  # pass hands parked dispatchers back at a new tools serial and an octopus
+  # pass writes a fresh one, and the marker keeps this one parked through
+  # the first and makes the second skip the account. The repair's
+  # successful conversion stamps proxied.pid, which keeps both, and removes
+  # the marker.
   local _pf
   for _oct in ${_XMASS_PROXY_CONV_FAILED}; do
     # log/ belongs to the account user: whatever sits at the path goes first
