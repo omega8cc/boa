@@ -838,6 +838,18 @@ box name from a client domain: there the guard trips once and the remedy
 above applies. When a budgeted leg still trips, the DENY names the limit the
 leg ran with and how much of it was budget.
 
+A platform refresh's staging never reaches the mirror, so it cannot trip the
+guard. While an Octopus upgrade replaces a republished built-in platform, it
+builds the new tree in `distro/NNN/.boa-refresh/<name>.new` and removes it
+minutes later. The `distro/` leg leaves that tree, its downloaded tarball and
+any `.stale-*` leftover behind.
+
+The replaced tree `<name>.old` stays behind
+too while a barracuda or octopus run is live; otherwise it travels, because
+after an interrupted run it can be the only copy. A tree the refresh kept
+because it held tenant files, and the tarball records in `.boa-tarball/`,
+travel like any other file.
+
 A mirror-side *rewrite* of a file that still exists on the source is still
 never undone — `-u` keeps the newer copy, and only the accretion of files the
 source no longer has is what deletion addresses.

@@ -239,6 +239,15 @@
 
 @=> New Features
 
+    * xmass sync leaves a platform refresh's staging behind: the new tree
+      an Octopus upgrade builds under distro/NNN/.boa-refresh/ for a few
+      minutes, its tarball and failed leftovers never reach the mirror, and
+      the replaced tree stays behind while a barracuda or octopus run is
+      live. A pass that copied a staged tree would otherwise have had to
+      delete thousands of files on the next pass, past the delete guard,
+      failing every pass until it was gone. Kept trees and the tarball
+      records travel as before.
+
     * An Octopus upgrade now replaces a built-in platform whose tarball
       the mirror republished under the same name, once the platform is
       proven idle: no site directory, no tenant file in sites/all, and
