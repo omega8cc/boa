@@ -41,7 +41,9 @@ older core minors and the newest that works is kept. The manual steps below docu
 what it does.
 
 Options precede the action: `-d MM-DD`, `-u USER`, `-f`, `-C`, `-O` (with `distribute`
-only), and `--debug`. By default `build`, `package`, `distribute`, `all` and the family
+only), and `--debug`.
+
+By default `build`, `package`, `distribute`, `all` and the family
 actions print a header naming the run's log and then **one row per platform** (build
 result, advisories left and fixed, what happened on the mirror, and a two- or
 three-word note only when the row needs attention, such as `adds advisories` or
@@ -55,7 +57,9 @@ build targets too: with no upstream recipe left, each starts from its own publis
 tarball (the local shelf, else the distro mirror) and only the advisory fix step
 changes it, so distribution, core and name stay and the rebuild replaces the published
 copy unless it adds advisories or cannot be checked for them. Their core minors are
-past security support, so core advisories remain. CK2 resolves one package from a
+past security support, so core advisories remain.
+
+CK2 resolves one package from a
 GitHub repository; when GitHub refuses anonymous requests (rate limit), its row says
 so, and a GitHub token in the build user's Composer configuration lifts the limit.
 
@@ -71,7 +75,9 @@ Instead each build applies what fixes it can, and what shipped is recorded, twic
 - **At build time.** A finished distribution first gets a fix step: each package with
   an advisory moves to the newest release the distribution's own constraints allow, one
   package at a time with its non-root dependencies (`--with-dependencies
-  --minimal-changes`), so the core pins stay put. A move that would change Drupal core
+  --minimal-changes`), so the core pins stay put.
+
+  A move that would change Drupal core
   is put back (a newer core is a new platform name, a catalogue move with a BOA
   release); the build's distribution package and any module it patches by hand are
   left alone; the result installs once, and if it does not, the lock as built goes back
@@ -89,7 +95,9 @@ Instead each build applies what fixes it can, and what shipped is recorded, twic
   checks, fetched from `distro/`) and the Drupal 9, 10 and 11 core platforms
   (`DL9`, `DX*`, `DE*`, fetched from `core/`). It pulls `composer.lock` and
   `vendor/composer/installed.json` out of each published tarball's stream and audits
-  them against today's advisories, since advisories keep arriving after a build. It
+  them against today's advisories, since advisories keep arriving after a build.
+
+  It
   prints one row per tarball with the trees that list it and its advisory count; each
   tarball is audited once per run, and `--debug` adds every advisory id under its row.
   The Drupal 6/7 cores are BOA's own forks, outside Composer, and are not audited here.
@@ -99,7 +107,9 @@ Both audits run on a disposable copy of the platform's lock, never inside the
 platform. The copy's `composer.json` carries nothing of the platform's: no scripts
 (Composer runs a composer.json's `init` and `pre-command-run` scripts even for
 `audit`), no config (ignore lists, `cache-dir`), no repositories (a `packagist.org`
-false entry would hide advisories). It declares only `https://packages.drupal.org/8`,
+false entry would hide advisories).
+
+It declares only `https://packages.drupal.org/8`,
 because drupal.org's **contrib** advisories reach Composer only through that
 repository: a lock audited against Packagist alone reports none of them (measured with
 `drupal/entity_browser` 2.15.0 and SA-CONTRIB-2026-094). The audit runs with
@@ -132,7 +142,9 @@ By hand, the same audit of a built platform is:
 
 A box fetches a catalogue platform only while its directory is absent, so a tarball
 republished under the same name with a different lock reaches new installs and never
-the boxes that already hold that platform. A same-name tarball whose lock changed
+the boxes that already hold that platform.
+
+A same-name tarball whose lock changed
 replaces the published one unless it **adds advisories**: distribute audits both locks
 against today's advisories, and the new one is refused when it carries an advisory the
 published one lacks, or when either audit cannot finish or be compared. A lock that
@@ -145,7 +157,9 @@ already holds a tarball of the same name, it compares the sha256 of the `compose
 inside both, joined with that of a `patches.lock.json` beside it, so a respin whose
 patch list moved under an unchanged lock still differs. A patch whose content changed
 behind the same URL is not seen: varbase's `patches.lock.json` records no patch hashes,
-so such a varbase respin passes as the same lock under new bytes. A lock that adds
+so such a varbase respin passes as the same lock under new bytes.
+
+A lock that adds
 advisories, a lock missing on either side, or an audit that cannot finish or be
 compared leaves the published tarball in place, logs both hashes and both advisory
 counts, and marks the row `REFUSED`, with the `-O` command below the table; once the
@@ -159,7 +173,9 @@ A deliberate same-name rebuild names what it overwrites:
 tarballs, logs both lock hashes, marks the row `OVERWRITTEN`, and warns that the
 boxes which already fetched them keep the old bytes; any other changed tarball in the
 day dir follows the rule above. `-O` without names, names without `-O`, a name not in
-the day dir and `-O` with any other action are refused before anything is copied. The
+the day dir and `-O` with any other action are refused before anything is copied.
+
+The
 Backdrop, Grav and Textpattern tarballs carry no lock and are copied as before, as are
 the dev-extension and contrib shelves. Every copy onto a shelf takes only a plain file
 from the day dir (never a symlink or a FIFO) and replaces the destination rather than

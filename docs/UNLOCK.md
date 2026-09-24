@@ -25,7 +25,9 @@ platform, tracked by marker files under `~/log/ctrl/`):
   `drupal/core-recommended`, the shape of drupal/recommended-project and
   Drupal CMS)
   the pass operates on the **repository root**, so `vendor/` and
-  `composer.json` are covered too. Then the permission sweep: directories
+  `composer.json` are covered too.
+
+  Then the permission sweep: directories
   `0775` and files `0664`, except `vendor/drush` and the two
   `vendor/symfony/console` directories the Drush lock uses (`Input` and
   `Style`), which keep the mode the lock state gave them: `0400` while the
