@@ -340,6 +340,10 @@
       it, the summary names the files that replaced a published one. A
       missing, failing or timed-out hook (it is stopped after an hour) is
       reported there and never changes the exit code.
+    * stackbuild stops a purge hook still running after an hour and
+      reports it, so a hung hook no longer holds the builder's lock and
+      every later run with it; the hook gets no stdin, and a multi-line
+      or array value reaches it word for word, never globbed.
     * The mycnfup tuner and the cluster tool are retired. mycnfup refused
       every verb on anything but Debian, so it never ran on a Devuan box,
       and only the discontinued Simple Cluster tooling ever called it; the
