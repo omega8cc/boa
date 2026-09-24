@@ -91,10 +91,13 @@ _PEER_MIRROR=""
 # Optional command run after publish (and after the cross-sync, in 'all' and
 # 'force') with the absolute paths of every file published in this run, e.g.
 # a tool that purges a CDN's copies once the mirrors serve the new bytes. Set
-# it in /root/.stackbuild.cnf. Empty = no hook; replaced files are then named
-# in the output instead. A failing hook is reported, never fatal: the
-# packages are published either way.
+# it in /root/.stackbuild.cnf; its words are split on whitespace, with no
+# quoting. Empty = no hook; replaced files are then named in the output
+# instead. A failing hook, or one still running after _PURGE_TIMEOUT seconds
+# (it is stopped), is reported, never fatal: the packages are published
+# either way.
 _PURGE_HOOK=""
+_PURGE_TIMEOUT=3600
 
 # Codenames packages are built for (daedalus + excalibur only;
 # beowulf/chimaera age out on the source path).
@@ -694,28 +697,40 @@ do_purge_hook() {
   # Hand the files published in this run to the operator's hook, or, with no
   # hook, name the ones that replaced an existing file: only those can have
   # an older copy cached in front of the mirrors.
-  local _hook=() _rc=0
+  local _hook=() _rc=0 _t0 _limit="${_PURGE_TIMEOUT:-}"
   [[ "${#_PUBLISHED_FILES[@]}" -gt 0 ]] || return 0
-  if [[ -z "${_PURGE_HOOK// /}" ]]; then
+  # A bad limit in the cnf never switches the bound off: the default applies.
+  [[ "${_limit}" =~ ^[1-9][0-9]{0,8}$ ]] || _limit=3600
+  # Every word of every line (an array from the cnf as one line), never globbed.
+  read -r -d '' -a _hook <<< "${_PURGE_HOOK[*]}" || true
+  if [[ "${#_hook[@]}" -eq 0 ]]; then
     if [[ "${#_REPLACED_FILES[@]}" -gt 0 ]]; then
       _name_replaced_files
       _RESULTS+=("NOTE  ${#_REPLACED_FILES[@]} republished file(s) need a CDN purge (no _PURGE_HOOK set)")
     fi
     return 0
   fi
-  # shellcheck disable=SC2206  # intentional word splitting: command + arguments
-  _hook=(${_PURGE_HOOK})
-  if ! command -v "${_hook[0]}" >/dev/null 2>&1; then
+  # An executable file, as timeout runs it (never a shell function or builtin).
+  if ! type -P "${_hook[0]}" >/dev/null 2>&1; then
     _alrt "purge hook not found: ${_hook[0]} (packages are published; purge by hand)"
     _RESULTS+=("WARN  purge hook not found: ${_hook[0]}")
     _name_replaced_files
     return 0
   fi
-  _msg "purge hook: ${_PURGE_HOOK} (${#_PUBLISHED_FILES[@]} file(s))"
-  "${_hook[@]}" "${_PUBLISHED_FILES[@]}"
+  _msg "purge hook: ${_hook[*]} (${#_PUBLISHED_FILES[@]} file(s))"
+  # A hook that waits for the mirrors holds the run's lock meanwhile: at most the
+  # limit (plus a minute for a hook that ignores the first signal), with no stdin.
+  # It stays in the foreground, so Ctrl-C stops it and the run alike; a child it
+  # leaves behind is not stopped at the limit.
+  _t0="${SECONDS}"
+  timeout --foreground -k 60 "${_limit}" "${_hook[@]}" "${_PUBLISHED_FILES[@]}" < /dev/null
   _rc=$?
   if [[ "${_rc}" -eq 0 ]]; then
     _RESULTS+=("PURGE ${#_PUBLISHED_FILES[@]} file(s) handed to the purge hook")
+  elif [[ "${_rc}" -eq 124 || "${_rc}" -eq 137 ]] && [[ "$(( SECONDS - _t0 ))" -ge "${_limit}" ]]; then
+    _alrt "purge hook timed out after ${_limit} s; packages are published, edges may serve the previous bytes"
+    _RESULTS+=("WARN  purge hook timed out after ${_limit} s")
+    _name_replaced_files
   else
     _alrt "purge hook failed (rc ${_rc}); packages are published, edges may serve the previous bytes"
     _RESULTS+=("WARN  purge hook failed (rc ${_rc})")

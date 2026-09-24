@@ -40,6 +40,15 @@
 # under /var/backups/reports/staticbuild/<user>/<MM-DD>/. --debug streams it all
 # instead, as before, and makes "advisories" list every advisory id.
 #
+# CDN purge: distribute, all and the family actions rewrite files under unchanged
+# names (a replaced tarball, and the compat tarballs and version stamps every
+# release), and a CDN in front of the mirrors keeps the previous bytes of such a file
+# until its TTL runs out. staticbuild knows nothing about any CDN; it hands every
+# file it put on a shelf with new bytes to an optional hook, _PURGE_HOOK in
+# /root/.staticbuild.cnf (a command, called once per run with their absolute paths,
+# compat tarballs and stamps last), and without one it names the files that replaced
+# a published one below the summary, so the purge is not forgotten.
+#
 # Usage:
 #   staticbuild backdrop            build+package+publish ONLY the Backdrop family
 #                                   (backdrop core + bee + backdrop-drush-extension
@@ -332,6 +341,38 @@ _ALL_DISTROS="farm cms culturas commerce localgov openfed opigno social thunder 
 _LOCK="/run/staticbuild.lock"
 _UA="staticbuild version-check"
 
+# Optional command called once at the end of distribute, all and the family actions
+# with the absolute paths of every file the run put on a shelf with new bytes (a new
+# name or a replaced file; an identical copy is left out), compat tarballs and version
+# stamps last: e.g. a tool that purges a CDN's copies once the mirrors serve the new
+# bytes. The command and its arguments are split on whitespace, with no quoting. Set
+# it in /root/.staticbuild.cnf, never by editing this copy, which every barracuda run
+# redeploys; nothing else is read from that file. Empty = no hook; the files that
+# replaced a published one are then named below the summary. A missing, failing or
+# timed-out hook (_PURGE_TIMEOUT seconds) is reported there and never changes the
+# exit code: the files are published either way.
+_PURGE_HOOK=""
+_PURGE_TIMEOUT=3600
+_CNF="/root/.staticbuild.cnf"
+if [[ -r "${_CNF}" ]]; then
+  if _CNF_OUT="$(mktemp /tmp/.staticbuild-cnf.XXXXXX)"; then
+    # Sourced in a subshell: only _PURGE_HOOK leaves it, through a file its EXIT
+    # trap writes, so an exit in the cnf does not lose it and a process the cnf
+    # leaves running holds nothing up; the trap is set again after the cnf, in case
+    # it set one of its own. An array value arrives as one command line.
+    # shellcheck source=/dev/null disable=SC2064  # the path is meant to expand now
+    ( trap "IFS=' '; builtin printf '%s' \"\${_PURGE_HOOK[*]}\" >| '${_CNF_OUT}'" EXIT
+      source "${_CNF}"
+      trap "IFS=' '; builtin printf '%s' \"\${_PURGE_HOOK[*]}\" >| '${_CNF_OUT}'" EXIT
+    ) > /dev/null 2>&1 < /dev/null
+    _PURGE_HOOK="$(cat "${_CNF_OUT}" 2> /dev/null)"
+    rm -f "${_CNF_OUT}"
+  else
+    printf 'cannot read %s (no temporary file): no purge hook this run\n' "${_CNF}" >&2
+  fi
+  unset _CNF_OUT
+fi
+
 # Runtime state.
 _DAY_DIR=""
 _PHP_ORIG=""
@@ -355,6 +396,10 @@ _PENDING_NOTE=""                                 # a build warning waiting for i
 _FIX_MOVED=""                                    # what a rejected fix resolve would have moved
 _TAIL_FROM=0                                     # run log size when the current target started
 _ACTION=""
+_PURGE_FILES=()                                  # shelf files this run wrote, for the hook
+_PURGE_LAST=()                                   # the compat tarballs and stamps among them
+declare -gA _PURGE_OLD=()                        # those that replaced a published file
+_PURGE_STATE=""                                  # the hook's outcome: ok, failed, not found
 
 # The run record: one summary row per key -- a platform (its tarball name without
 # .tar.gz), or a build target that failed before it had a name -- in the order the
@@ -482,9 +527,9 @@ _rec_pub() {
   return 0
 }
 
-_cleanup() {
-  # Restore the original /usr/bin/php symlink and release the lock. Safe to call
-  # more than once (trap on EXIT plus _die).
+_restore_php() {
+  # Put the original /usr/bin/php symlink back, or remove the one this run created.
+  # Safe to call more than once.
   if [[ -n "${_PHP_ORIG}" ]]; then
     ln -sf "${_PHP_ORIG}" "${_SYS_PHP}" 2>/dev/null
     _PHP_ORIG=""
@@ -492,6 +537,12 @@ _cleanup() {
     rm -f "${_SYS_PHP}" 2>/dev/null
     _PHP_LINK_CREATED=0
   fi
+}
+
+_cleanup() {
+  # Restore the original /usr/bin/php symlink and release the lock. Safe to call
+  # more than once (trap on EXIT plus _die).
+  _restore_php
   if [[ -n "${_ADV_TMP}" ]]; then
     rm -rf "${_ADV_TMP}" 2>/dev/null
     _ADV_TMP=""
@@ -2290,6 +2341,21 @@ _sweep_shelf_tmp() {
   return 0
 }
 
+_purge_rec() {
+  # $1 = a shelf file this run just wrote, $2 = its publish outcome, $3 = "companion"
+  # for a compat tarball or a version stamp: those reach the hook after the tarballs
+  # they describe. An identical copy changed nothing a cache could hold; any outcome
+  # but new replaced a published file, whose old bytes an edge may still serve.
+  [[ "$2" == "same" ]] && return 0
+  if [[ "${3:-}" == "companion" ]]; then
+    _PURGE_LAST+=("$1")
+  else
+    _PURGE_FILES+=("$1")
+  fi
+  [[ "$2" == "new" ]] || _PURGE_OLD["$1"]=1
+  return 0
+}
+
 _publish_plain() {
   # $1 = file in the build-day dir, $2 = shelf dir, $3 = its summary row, $4 = "companion"
   # when the file only rides along with that row's own tarball (a compat tarball, a
@@ -2309,6 +2375,7 @@ _publish_plain() {
   fi
   if _copy_to_shelf "${_src}" "${_out}"; then
     [[ "${4:-}" == "companion" ]] || _rec_pub "${_k}" "${_st}"
+    _purge_rec "${_out}/${_src##*/}" "${_st}" "${4:-}"
     return 0
   fi
   _rec_pub "${_k}" FAILED
@@ -2671,6 +2738,7 @@ _publish_locked() {
   fi
   _msg "$(printf '%-6s' "${_out##*/}") <- ${_base}"
   _rec_pub "${_key}" "${_st}"
+  _purge_rec "${_dst}" "${_st}"
   case "${_st}" in
     replaced)
       if [[ "${_vd}" == "fix" ]]; then
@@ -3253,6 +3321,72 @@ do_advisories() {
 # Summary + dispatch.
 # ---------------------------------------------------------------------------
 
+do_purge_hook() {
+  # Once per run, after every copy: hand the files the run wrote to the shelves to the
+  # operator's hook, compat tarballs and stamps last. Its outcome only reaches the
+  # footer (_purge_footer): the files are published either way.
+  local _hook=() _n _rc _t0
+  _n=$(( ${#_PURGE_FILES[@]} + ${#_PURGE_LAST[@]} ))
+  [[ "${_n}" -gt 0 ]] || return 0
+  # Every word of every line, never globbed.
+  read -r -d '' -a _hook <<< "${_PURGE_HOOK}" || true
+  [[ "${#_hook[@]}" -gt 0 ]] || return 0
+  # An executable file, as timeout runs it (never a shell function or builtin).
+  if ! type -P "${_hook[0]}" > /dev/null 2>&1; then
+    _alrt "purge hook not found: ${_hook[0]}"
+    _PURGE_STATE="not found: ${_hook[0]}"
+    return 0
+  fi
+  # A hook is expected to wait for the mirrors: the builds are over, so the build's
+  # interpreter does not stay switched in the meantime, and the lock is held for at
+  # most the timeout (plus a minute for a hook that ignores the first signal). The
+  # hook stays in the foreground, so Ctrl-C stops it and the run alike; a child it
+  # leaves behind is not stopped at the timeout. It gets no stdin and never the
+  # console descriptors, which such a child would keep open under cron.
+  _restore_php
+  _msg "purge hook: ${_PURGE_HOOK} (${_n} file(s))"
+  _progress "purge hook: ${_n} file(s)"
+  _t0="${SECONDS}"
+  timeout --foreground -k 60 "${_PURGE_TIMEOUT}" "${_hook[@]}" "${_PURGE_FILES[@]}" "${_PURGE_LAST[@]}" \
+    < /dev/null 3>&- 4>&-
+  _rc=$?
+  _progress_end
+  if [[ "${_rc}" -eq 0 ]]; then
+    _PURGE_STATE="ok"
+  elif [[ "${_rc}" -eq 124 || "${_rc}" -eq 137 ]] && [[ "$(( SECONDS - _t0 ))" -ge "${_PURGE_TIMEOUT}" ]]; then
+    _PURGE_STATE="timed out after ${_PURGE_TIMEOUT} s"
+  else
+    _PURGE_STATE="failed (rc ${_rc})"
+  fi
+  [[ "${_rc}" -eq 0 ]] || _alrt "purge hook ${_PURGE_STATE}; the files are published, edges may serve their previous bytes"
+  return 0
+}
+
+_purge_footer() {
+  # Nothing when the hook took the files. Otherwise why not, and the files that
+  # replaced a published one, by their path under the mirror webroot: only those can
+  # have older bytes cached in front of the mirrors (a new name has none).
+  local _f _old="" _hook=()
+  [[ "$(( ${#_PURGE_FILES[@]} + ${#_PURGE_LAST[@]} ))" -gt 0 ]] || return 0
+  [[ "${_PURGE_STATE}" == "ok" ]] && return 0
+  for _f in "${_PURGE_FILES[@]}" "${_PURGE_LAST[@]}"; do
+    [[ -n "${_PURGE_OLD[${_f}]:-}" ]] && _old+=" ${_f#"${_DISTRO_OUT%/*}/"}"
+  done
+  read -r -d '' -a _hook <<< "${_PURGE_HOOK}" || true
+  if [[ -n "${_PURGE_STATE}" ]]; then
+    _say ""
+    _say "purge hook ${_PURGE_STATE}"
+  elif [[ "${#_hook[@]}" -gt 0 ]]; then
+    # A fatal error stopped the run before the hook.
+    _say ""
+    _say "purge hook not run: the run stopped before it"
+  elif [[ -n "${_old}" ]]; then
+    _say ""
+  fi
+  [[ -n "${_old}" ]] && _say "republished under the same name, purge at the CDN:${_old}"
+  return 0
+}
+
 print_summary() {
   # One row per platform: what was built, how many advisories its lock still carries
   # (and how many the fix step cleared), what happened on the mirror, and a note only
@@ -3281,6 +3415,7 @@ print_summary() {
     _say ""
     _say "to publish the refused anyway: staticbuild -u ${_O8_USER} -d ${_DAY} -O distribute${_refused}"
   fi
+  _purge_footer
   for _k in "${_P_KEYS[@]}"; do
     [[ "${_P_BUILD[${_k}]:-}" == "FAIL" && -n "${_P_TAIL[${_k}]:-}" ]] || continue
     _say ""
@@ -3375,6 +3510,7 @@ main() {
       _start_log backdrop
       _say "staticbuild backdrop: ${_DAY_DIR}${_LOG:+ (log: ${_LOG})}"
       do_backdrop_family
+      do_purge_hook
       print_summary
       ;;
     grav)
@@ -3387,6 +3523,7 @@ main() {
       _start_log grav
       _say "staticbuild grav: ${_DAY_DIR}${_LOG:+ (log: ${_LOG})}"
       do_grav_family
+      do_purge_hook
       print_summary
       ;;
     txp|textpattern)
@@ -3399,6 +3536,7 @@ main() {
       _start_log txp
       _say "staticbuild txp: ${_DAY_DIR}${_LOG:+ (log: ${_LOG})}"
       do_txp_family
+      do_purge_hook
       print_summary
       ;;
     build|package|distribute|all)
@@ -3433,6 +3571,7 @@ main() {
         distribute) do_distribute ;;
         all)        do_build "$@"; do_package; do_distribute ;;
       esac
+      do_purge_hook
       print_summary
       # A refusal is the guard working: its own status, apart from a fatal error (1).
       # Per-target FAIL rows are reported in the summary only, as before.

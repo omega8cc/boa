@@ -157,14 +157,15 @@ and falls back to a source build for as long as the edge entry lives.
 The
 tool knows nothing about any CDN. It hands the files it has just published
 to an optional hook instead: set `_PURGE_HOOK` in `/root/.stackbuild.cnf` to
-a command, and `publish`, `all` and `force` call it once, after the
-cross-sync, with the absolute paths of every package and sidecar published
-in that run.
+a command (its words split on whitespace, with no quoting), and `publish`,
+`all` and `force` call it once, after the cross-sync, with the absolute paths
+of every package and sidecar published in that run, and no stdin.
 
 The hook is expected to wait until the mirrors serve the new
 bytes before it purges anything, since purging early only re-caches the old
-ones. A missing or failing hook is reported in the summary and never stops
-the publish. With no hook set, a run that replaced an existing file names
+ones. A missing or failing hook, or one still running after an hour (it is
+stopped then), is reported in the summary and never stops the publish. With
+no hook set, a run that replaced an existing file names
 it, so the purge is not forgotten; a new filename has no older copy cached
 anywhere and is not mentioned.
 
