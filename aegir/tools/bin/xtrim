@@ -803,7 +803,7 @@ _stage_a() {
   ### Park the runner OUT of /var/xdrago (runner.sh matches any 'run-'
   ### name there) and NEVER into /var/backups/off-run (BOA hands back what
   ### it finds there: the release pass to an account that keeps its
-  ### dispatcher, a promotion to every account).
+  ### dispatcher, a promotion to each account it moves).
   if [ -e "/var/xdrago/run-${_oN}" ]; then
     mv -f "/var/xdrago/run-${_oN}" "${_q}/held-run-${_oN}"
     _info "${_oN}: dispatcher parked"

@@ -2311,10 +2311,16 @@ _update_agents() {
           ### park test and only when none is live: copied back ahead of the
           ### test, a held one would sit in /var/xdrago, where runner.sh can
           ### fire it, until moved out; copied over a live one, a stale
-          ### parked copy would replace the one octopus last wrote
-          if [ ! -e "/var/xdrago/run-${_tUsr}" ] \
-            && [ -e "/var/backups/off-run/run-${_tUsr}" ]; then
-            mv -f "/var/backups/off-run/run-${_tUsr}" /var/xdrago/ &> /dev/null
+          ### parked copy would replace the one octopus last wrote. Beside a
+          ### live one the parked copy is stale: set it aside, so off-run
+          ### holds only dispatchers that are parked now
+          if [ -e "/var/backups/off-run/run-${_tUsr}" ]; then
+            if [ ! -e "/var/xdrago/run-${_tUsr}" ]; then
+              mv -f "/var/backups/off-run/run-${_tUsr}" /var/xdrago/ &> /dev/null
+            else
+              mv -f "/var/backups/off-run/run-${_tUsr}" \
+                "/var/backups/off-run/.superseded-run-${_tUsr}" &> /dev/null
+            fi
           fi
           _dscUsr="/data/disk/${_tUsr}"
           _ngxCnf="${_dscUsr}/config/includes/nginx_vhost_common.conf"
@@ -4852,7 +4858,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f56 --guard /local/bin/xcopy
     _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f44 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f09 --guard /local/bin/xoct
-    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f77 --guard /local/bin/xtrim
+    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f76 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f94 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f87 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f87 --guard /local/bin/autodaedalus
