@@ -2307,11 +2307,15 @@ _update_agents() {
             mv -f /var/xdrago/run-${_tUsr} /var/backups/off-run/
           fi
         else
-          ### A parked dispatcher comes back only here, for an account that
-          ### keeps it: copied back ahead of the test above, a held one would
-          ### sit in /var/xdrago, where runner.sh can fire it, until moved out
-          [ -e "/var/backups/off-run/run-${_tUsr}" ] \
-            && cp -a "/var/backups/off-run/run-${_tUsr}" /var/xdrago/ &> /dev/null
+          ### This pass hands a parked dispatcher back only here, after the
+          ### park test and only when none is live: copied back ahead of the
+          ### test, a held one would sit in /var/xdrago, where runner.sh can
+          ### fire it, until moved out; copied over a live one, a stale
+          ### parked copy would replace the one octopus last wrote
+          if [ ! -e "/var/xdrago/run-${_tUsr}" ] \
+            && [ -e "/var/backups/off-run/run-${_tUsr}" ]; then
+            mv -f "/var/backups/off-run/run-${_tUsr}" /var/xdrago/ &> /dev/null
+          fi
           _dscUsr="/data/disk/${_tUsr}"
           _ngxCnf="${_dscUsr}/config/includes/nginx_vhost_common.conf"
           _NGINX_CNF_TEST=$(grep "foobaroff" ${_ngxCnf} 2>&1)
@@ -2403,6 +2407,7 @@ _update_agents() {
          [ ! -f "${_CLI_INFO_FILE}" ]; then
         # Move the file if any condition is met
         mv -f "${_file}" /var/backups/off-run/
+        continue
       fi
 
       if grep -q "renice 0" "${_file}"; then
@@ -4847,7 +4852,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f56 --guard /local/bin/xcopy
     _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f44 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f09 --guard /local/bin/xoct
-    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f78 --guard /local/bin/xtrim
+    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f77 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f94 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f87 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f87 --guard /local/bin/autodaedalus
