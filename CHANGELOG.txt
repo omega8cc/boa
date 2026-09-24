@@ -287,6 +287,25 @@
       Composer and tar output, advisory ids and lock hashes go to a
       per-run log under /var/backups/reports/staticbuild; --debug
       streams them instead.
+    * staticbuild package and distribute take build target names, or
+      one platform's name, and all takes build target names, so one
+      rebuilt platform can be packaged and published without touching
+      the rest of the day's builds; -O distribute publishes only the
+      platforms it names. A name that matches nothing, and -f with
+      package or distribute, stop the run before anything is packaged
+      or copied; Grav and Textpattern keep their own actions. The
+      Backdrop compat tarball is published just before the stamp and,
+      like it, only after the same run put its versioned tarball on the
+      mirror, as staticbuild backdrop does.
+    * staticbuild copies onto the mirror under a temporary name and
+      renames the file into place, so a copy that fails part-way, on a
+      full disk for example, no longer leaves a truncated tarball under
+      the published name, and the next run removes the temporary file
+      a killed copy leaves. The Backdrop, Grav and Textpattern version
+      stamps are held unless the compat tarball reached the mirror
+      too, since the releases that fetch it take the stamp as its
+      version; the row says stamp held. distribute leaves the Grav and
+      Textpattern compat tarballs to their own actions.
     * The Drupal CMS, Opigno and Open Social catalogue platforms are
       built without their require-dev packages, like the others.
 

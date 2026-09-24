@@ -16,16 +16,20 @@ handles the per-distro quirks (see Notes), packages, and publishes. Run it as ro
 
 ```sh
   staticbuild check              # report the latest upstream versions a build would pull
-  staticbuild all                # build every distro + core, package, publish
+  staticbuild all [name ...]     # build every distro, core and the Backdrop family, package,
+                                 # publish; or only the named build targets
   staticbuild build [name ...]   # build all, or only named targets
-  staticbuild package            # clean + tar (cores keep core/profiles, distros strip)
-  staticbuild distribute         # copy tarballs to /var/www/static/{distro,core,dev/{dev,lts,pro}}
+  staticbuild package [name ...] # clean + tar every platform in the day dir, or only the named
+                                 # (cores keep core/profiles, distros strip)
+  staticbuild distribute [name ...]
+                                 # copy the day dir's tarballs, or only the named, to
+                                 # /var/www/static/{distro,core,dev/{dev,lts,pro}}
                                  # (a same-name distro or vanilla core tarball whose lock changed
                                  #  replaces the published one unless it adds advisories or
                                  #  cannot be checked for them; then it is refused and the
                                  #  run ends with exit 3)
-  staticbuild -O distribute <platform> ...
-                                 # the same, overwriting the named platforms' published tarballs
+  staticbuild -O distribute <name> ...
+                                 # only the named, overwriting their published tarballs
   staticbuild catalogue [tree]   # audit each tree's PUBLISHED catalogue against the distro mirror
                                  # (PRODUCER=none: hand-published, nothing here rebuilds it; a tree that
                                  #  cannot be read is INCONCLUSIVE and exits non-zero, never "0 missing")
@@ -40,8 +44,32 @@ script. If a distro fails to build on the newest core, it is retried on progress
 older core minors and the newest that works is kept. The manual steps below document
 what it does.
 
-Options precede the action: `-d MM-DD`, `-u USER`, `-f`, `-C`, `-O` (with `distribute`
-only), and `--debug`.
+Options precede the action: `-d MM-DD`, `-u USER`, `-f` (with `build` and `all`; it
+rebuilds, so `package` and `distribute` refuse it), `-C`, `-O` (with `distribute` only),
+and `--debug`.
+
+The names after `package` and `distribute` keep the run to what they select, so one
+rebuilt platform goes out without touching the rest of the day dir:
+
+```sh
+  staticbuild -f build ezcontent opigno
+  staticbuild package ezcontent opigno
+  staticbuild distribute ezcontent opigno
+  staticbuild -f all ezcontent opigno     # the same three steps in one run
+```
+
+A name is a build target, which takes everything that target builds (`cores` every
+vanilla core; `backdrop` its core, its compat tarball and, on `distribute`, the
+`backdrop.txt` stamp), or one platform alone as its summary row names it
+(`<name>-<version>-<core>`, `.tar.gz` optional; packaging a Backdrop platform also
+re-makes its compat tarball). `all` takes build targets only.
+
+Each name must match a platform directory (`package`) or a tarball (`distribute`) in
+the day dir, or the run stops before anything is packaged or copied. `bee`,
+`backdrop-drush-extension`, `redis_backdrop` and `webform_backdrop` are tarred by their
+own build, so `package` has nothing for them. `grav`, `txp` and the version-less
+compat tarballs are never names here: the Grav and Textpattern actions publish the
+version stamp last, and a compat tarball goes out only with its platform and stamp.
 
 By default `build`, `package`, `distribute`, `all` and the family
 actions print a header naming the run's log and then **one row per platform** (build
@@ -176,17 +204,25 @@ rows and do not change the exit code. The same lock under new bytes, an ordinary
 passes.
 
 A deliberate same-name rebuild names what it overwrites:
-`staticbuild -O distribute <platform> ...` overwrites only those platforms' published
-tarballs, logs both lock hashes, marks the row `OVERWRITTEN`, and warns that the
-boxes which already fetched them keep the old bytes; any other changed tarball in the
-day dir follows the rule above. `-O` without names, names without `-O`, a name not in
-the day dir and `-O` with any other action are refused before anything is copied.
+`staticbuild -O distribute <name> ...` publishes only the named platforms and
+overwrites their published tarballs, logs both lock hashes, marks the row
+`OVERWRITTEN`, and warns that the boxes which already fetched them keep the old bytes;
+nothing else in the day dir is copied. `-O` without names, a name that matches nothing
+in the day dir and `-O` with any other action are refused before anything is copied.
 
 The
 Backdrop, Grav and Textpattern tarballs carry no lock and are copied as before, as are
 the dev-extension and contrib shelves. Every copy onto a shelf takes only a plain file
-from the day dir (never a symlink or a FIFO) and replaces the destination rather than
-writing through a symlink already there.
+from the day dir (never a symlink or a FIFO), copies it under a temporary name and
+renames it over the destination, so a copy that fails part-way never leaves a truncated
+tarball under the published name and a symlink already there is replaced, never
+written through.
+
+The Backdrop, Grav and Textpattern stamps go out last, and only when the run put
+everything before them on the shelf, the compat tarball included (the releases that
+fetch it take the stamp as its version); otherwise the platform's row says `stamp
+held`. A temporary file left by a run that was killed mid-copy is removed by the next
+run.
 
 ## What it builds (example run; versions are derived per build)
 
@@ -239,7 +275,8 @@ Five artefacts, always rebuilt at the latest upstream tag (pin any with the matc
   points at a missing file) — BOA names the platform from the stamp and fetches the
   matching tarball — and a version-less `backdrop.tar.gz` compat tarball of the newest
   release (extracting to `backdrop/`, the pre-versioning contract) is refreshed for
-  already-deployed BOA releases.
+  already-deployed BOA releases, just before the stamp and likewise only after the
+  same run put its versioned tarball on the mirror.
 
   No contrib is baked into the versioned core
   tarballs — Valkey/Redis integration reaches platforms through the shared
@@ -584,8 +621,9 @@ refuses it when it adds advisories or cannot be checked for them, unless `-O`).
 
 Raw cores (`drupal-*`) go to `core/`; the distributions go to `distro/`. The Backdrop, Grav
 and Textpattern artefacts are `core/` shelf content too: their family targets publish them
-there and `staticbuild distribute` routes any of their tarballs it finds in the day dir there
-as well, never to `distro/`, which nothing reads for them.
+there and `staticbuild distribute` routes the versioned tarballs it finds in the day dir there
+as well, never to `distro/`, which nothing reads for them; the Grav and Textpattern compat
+tarballs and stamps come only from their own actions.
 
 ## Add them all as platforms in Ægir
 

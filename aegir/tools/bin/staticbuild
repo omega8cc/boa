@@ -50,17 +50,33 @@
 #   staticbuild txp                 build+package+publish ONLY Textpattern (official
 #                                   release tarball at latest; never the .zip, which
 #                                   omits the /sites multisite scaffold)
-#   staticbuild all                 build everything, package, publish
+#   staticbuild all [name ...]      build, package and publish every distro, core and
+#                                   the Backdrop family, or only the named targets
 #   staticbuild build [name ...]    build all (or only named) targets
-#   staticbuild package             clean + tar (cores keep core/profiles, distros strip)
-#   staticbuild distribute          copy tarballs to /var/www/static/{distro,core,dev/{dev,lts,pro}};
+#   staticbuild package [name ...]  clean + tar every platform in the day dir, or only
+#                                   the named (cores keep core/profiles, distros strip)
+#   staticbuild distribute [name ...]
+#                                   copy the day dir's tarballs, or only the named, to
+#                                   /var/www/static/{distro,core,dev/{dev,lts,pro}};
 #                                   a same-name distro or vanilla core tarball whose
 #                                   lock changed replaces the published one unless it
 #                                   adds advisories or either side cannot be audited or
 #                                   compared; then it is refused (exit 3 at the end)
-#   staticbuild -O distribute <platform> ...
-#                                   the same, overwriting the named platforms'
-#                                   published tarballs even when they are refused
+#   staticbuild -O distribute <name> ...
+#                                   the same for the named platforms only, overwriting
+#                                   their published tarballs even when they are refused
+#
+#   A name after all is a build target (listed below). After package or distribute
+#   it is a build target, taking everything that target builds (cores: every
+#   drupal-* core; backdrop: its core, its compat tarball and, on distribute, the
+#   backdrop.txt stamp), or one platform alone as its summary row names it
+#   (<name>-<version>-<core>, .tar.gz optional; packaging a Backdrop platform also
+#   re-makes its compat tarball). Each name must match a platform dir (package) or a
+#   tarball (distribute) in the day dir, or nothing is packaged or copied; bee,
+#   backdrop-drush-extension, redis_backdrop and webform_backdrop are tarred by their
+#   own build, so package has nothing for them. grav, txp and the version-less compat
+#   tarballs are never names here: grav's and txp's own actions publish the version
+#   stamp last, and a compat tarball goes out only with its platform and stamp.
 #   staticbuild check               report the latest upstream versions a build would pull
 #   staticbuild catalogue [tree ...] audit the PUBLISHED catalogue of each tree
 #                                   (default dev lts pro) against the distro mirror;
@@ -76,11 +92,12 @@
 #   -d MM-DD   build-day directory (default: today, date +%m-%d)
 #   -u USER    Octopus build user (default: o8)
 #   -f         force rebuild: remove an existing built platform before building
+#              (build and all; package and distribute refuse it)
 #   -C         skip "composer clearcache" at the start of a build
-#   -O         with distribute and the platform names after it only: overwrite
-#              those published tarballs even when their changed lock is refused
-#              (logs both lock hashes; boxes that already fetched them keep the
-#              old bytes)
+#   -O         with distribute and the names after it only: publish only those,
+#              overwriting their published tarballs even when the changed lock is
+#              refused (logs both lock hashes; boxes that already fetched them keep
+#              the old bytes)
 #   --debug    stream everything (Composer, git, tar, every advisory id) as it
 #              happens instead of writing it to the run log; the one-row-per-
 #              platform summary still closes the run
@@ -322,9 +339,11 @@ _PHP_LINK_CREATED=0
 _FORCE=0
 _SKIP_CLEARCACHE=0
 _OVERWRITE=0
-_OVERWRITE_NAMES=""
+_SCOPE=()                                        # day-dir name patterns the named run keeps to; empty = all
+_SCOPE_TARGETS=""                                # the build targets among those names
 _REFUSED=0
 _ADV_TMP=""
+_SHELF_TMP=""                                    # a shelf copy in flight, removed by _cleanup
 _LOCK_HELD=0
 _DEBUG_MODE="${_DEBUG_MODE:-NO}"                 # --debug: stream everything, no run log
 _LOG=""                                          # this run's log; empty = output streams
@@ -473,13 +492,18 @@ _cleanup() {
     rm -f "${_SYS_PHP}" 2>/dev/null
     _PHP_LINK_CREATED=0
   fi
-  if [[ "${_LOCK_HELD}" == "1" ]]; then
-    rmdir "${_LOCK}" 2>/dev/null
-    _LOCK_HELD=0
-  fi
   if [[ -n "${_ADV_TMP}" ]]; then
     rm -rf "${_ADV_TMP}" 2>/dev/null
     _ADV_TMP=""
+  fi
+  # A shelf copy in flight goes before the lock does: the next run may write it.
+  if [[ -n "${_SHELF_TMP}" ]]; then
+    rm -f "${_SHELF_TMP}" 2>/dev/null
+    _SHELF_TMP=""
+  fi
+  if [[ "${_LOCK_HELD}" == "1" ]]; then
+    rmdir "${_LOCK}" 2>/dev/null
+    _LOCK_HELD=0
   fi
 }
 
@@ -516,6 +540,7 @@ _acquire_lock() {
     _die "another staticbuild run holds ${_LOCK} (remove it if stale)"
   fi
   _LOCK_HELD=1
+  _sweep_shelf_tmp
 }
 
 _require_root() {
@@ -1319,7 +1344,7 @@ _discover_core_minors() {
 # ---------------------------------------------------------------------------
 
 build_farm() {
-  _begin_build "farm-" "farm" || return 0
+  _begin_build "$(_target_prefix farm)" "farm" || return 0
   use_php "${_PHP_DISTRO}" || { _record_fail "farm"; return 1; }
   local _tag
   _tag="$(_resolve_farm_tag)"
@@ -1343,7 +1368,7 @@ build_farm() {
 }
 
 build_cms() {
-  _begin_build "drupal_cms_installer-" "cms" || return 0
+  _begin_build "$(_target_prefix cms)" "cms" || return 0
   use_php "${_PHP_DISTRO}" || { _record_fail "cms"; return 1; }
   local _wd="${_DAY_DIR}/.build.cms" _dver
   _dver="$(_create_project "${_wd}" "${_CMS_SPEC}" "drupal/cms" "")" || { _record_fail "cms"; return 1; }
@@ -1384,7 +1409,7 @@ build_cms() {
 }
 
 build_culturas() {
-  _begin_build "openculturas-" "culturas" || return 0
+  _begin_build "$(_target_prefix culturas)" "culturas" || return 0
   use_php "${_PHP_DISTRO}" || { _record_fail "culturas"; return 1; }
   local _wd="${_DAY_DIR}/.build.culturas" _dver
   _dver="$(_create_project "${_wd}" "${_CULTURAS_SPEC}" "drupal/openculturas_project" "--remove-vcs")" \
@@ -1446,7 +1471,7 @@ build_culturas() {
 }
 
 build_commerce() {
-  _begin_build "commerce_kickstart-" "commerce" || return 0
+  _begin_build "$(_target_prefix commerce)" "commerce" || return 0
   use_php "${_PHP_DISTRO}" || { _record_fail "commerce"; return 1; }
   local _wd="${_DAY_DIR}/.build.commerce" _dver
   # Built via the -s dev project template, but named by the install profile package
@@ -1466,7 +1491,7 @@ build_commerce() {
 }
 
 build_localgov() {
-  _begin_build "localgov-" "localgov" || return 0
+  _begin_build "$(_target_prefix localgov)" "localgov" || return 0
   use_php "${_PHP_DISTRO}" || { _record_fail "localgov"; return 1; }
   local _wd="${_DAY_DIR}/.build.localgov" _dver
   _dver="$(_create_project "${_wd}" "${_LOCALGOV_SPEC}" "drupal/localgov_project" "")" \
@@ -1484,7 +1509,7 @@ build_localgov() {
 }
 
 build_openfed() {
-  _begin_build "openfed-" "openfed" || return 0
+  _begin_build "$(_target_prefix openfed)" "openfed" || return 0
   use_php "${_PHP_OPENFED}" || { _record_fail "openfed"; return 1; }
   local _wd="${_DAY_DIR}/.build.openfed" _dver _dist
   _dver="$(_create_project "${_wd}" "${_OPENFED_SPEC}" "openfed/openfed-project" "")" \
@@ -1529,7 +1554,7 @@ build_openfed() {
 }
 
 build_opigno() {
-  _begin_build "opigno_lms-" "opigno" || return 0
+  _begin_build "$(_target_prefix opigno)" "opigno" || return 0
   use_php "${_PHP_OPIGNO}" || { _record_fail "opigno"; return 1; }
   local _wd="${_DAY_DIR}/.build.opigno" _dver
   _dver="$(_create_project "${_wd}" "${_OPIGNO_SPEC}" "opigno/opigno-composer" "")" \
@@ -1579,7 +1604,7 @@ build_opigno() {
 }
 
 build_social() {
-  _begin_build "social-" "social" || return 0
+  _begin_build "$(_target_prefix social)" "social" || return 0
   # Open Social 13 declares php ^8.3 and AegirSetupC caps SOC at 8.3, so floor and cap are
   # the same number: build on 8.3 rather than the shared _PHP_DISTRO (8.5).
   use_php "${_PHP_SOCIAL}" || { _record_fail "social"; return 1; }
@@ -1613,7 +1638,7 @@ build_social() {
 }
 
 build_thunder() {
-  _begin_build "thunder-" "thunder" || return 0
+  _begin_build "$(_target_prefix thunder)" "thunder" || return 0
   use_php "${_PHP_DISTRO}" || { _record_fail "thunder"; return 1; }
   local _wd="${_DAY_DIR}/.build.thunder" _dver
   _dver="$(_create_project "${_wd}" "${_THUNDER_SPEC}" "thunder/thunder-project" "")" \
@@ -1631,7 +1656,7 @@ build_thunder() {
 }
 
 build_varbase() {
-  _begin_build "varbase-" "varbase" || return 0
+  _begin_build "$(_target_prefix varbase)" "varbase" || return 0
   use_php "${_PHP_VARBASE}" || { _record_fail "varbase"; return 1; }
   local _wd="${_DAY_DIR}/.build.varbase" _dver
   _dver="$(_create_project "${_wd}" "${_VARBASE_SPEC}" "vardot/varbase-project" "")" \
@@ -1702,7 +1727,7 @@ _fetch_pinned() {
 build_ezcontent() {
   # Pinned: rebuilt from its published tarball; only the advisory fix step moves code.
   local _rest="${_EZC_PINNED%-*}" _wd="${_DAY_DIR}/.build.ezcontent"
-  _begin_build "${_rest%-*}-" "ezcontent" || return 0
+  _begin_build "$(_target_prefix ezcontent)" "ezcontent" || return 0
   use_php "${_PHP_PINNED}" || { _record_fail "ezcontent"; return 1; }
   if ! _fetch_pinned "${_EZC_PINNED}" "${_wd}"; then
     _alrt "ezcontent: could not fetch or unpack the published ${_EZC_PINNED}"
@@ -1717,7 +1742,7 @@ build_ezcontent() {
 build_commerce_base() {
   # Pinned: rebuilt from its published tarball; only the advisory fix step moves code.
   local _rest="${_CK2_PINNED%-*}" _wd="${_DAY_DIR}/.build.commerce_base"
-  _begin_build "${_rest%-*}-" "commerce_base" || return 0
+  _begin_build "$(_target_prefix commerce_base)" "commerce_base" || return 0
   use_php "${_PHP_PINNED}" || { _record_fail "commerce_base"; return 1; }
   if ! _fetch_pinned "${_CK2_PINNED}" "${_wd}"; then
     _alrt "commerce_base: could not fetch or unpack the published ${_CK2_PINNED}"
@@ -1962,6 +1987,48 @@ build_webform_backdrop() {
   _info "webform_backdrop: packaged webform-${_tag}.tar.gz (${_tag})"
 }
 
+_target_prefix() {
+  # $1 = a distribution build target. Prints the prefix its platform's day-dir names
+  # start with (the dir, the tarball, the .advisories): build skips or -f removes by
+  # it (_begin_build), package and distribute select by it (_target_globs).
+  local _r
+  case "$1" in
+    farm)          printf '%s\n' "farm-" ;;
+    cms)           printf '%s\n' "drupal_cms_installer-" ;;
+    culturas)      printf '%s\n' "openculturas-" ;;
+    commerce)      printf '%s\n' "commerce_kickstart-" ;;
+    localgov)      printf '%s\n' "localgov-" ;;
+    openfed)       printf '%s\n' "openfed-" ;;
+    opigno)        printf '%s\n' "opigno_lms-" ;;
+    social)        printf '%s\n' "social-" ;;
+    thunder)       printf '%s\n' "thunder-" ;;
+    varbase)       printf '%s\n' "varbase-" ;;
+    ezcontent)     _r="${_EZC_PINNED%-*}"; printf '%s\n' "${_r%-*}-" ;;
+    commerce_base) _r="${_CK2_PINNED%-*}"; printf '%s\n' "${_r%-*}-" ;;
+  esac
+}
+
+_target_globs() {
+  # $1 = a build target. Prints, one per line, the patterns of the day-dir names it
+  # builds (a platform dir, or a tarball name without .tar.gz); nothing when $1 is not
+  # a target. Read them with read -r and match with [[ == ]]: never expand them
+  # unquoted, which globs them against the working directory.
+  local _p
+  case "$1" in
+    cores)                    printf '%s\n' 'drupal-[0-9]*' ;;
+    backdrop)                 printf '%s\n' 'backdrop-[0-9]*' 'backdrop' ;;
+    bee)                      printf '%s\n' 'bee' ;;
+    backdrop-drush-extension) printf '%s\n' 'backdrop-drush-extension' ;;
+    redis_backdrop)           printf '%s\n' 'redis_backdrop-*' ;;
+    webform_backdrop)         printf '%s\n' 'webform-*' ;;
+    *)
+      _p="$(_target_prefix "$1")"
+      [[ -n "${_p}" ]] && printf '%s\n' "${_p}*"
+      ;;
+  esac
+  return 0
+}
+
 run_build() {
   local _name="$1"
   # Per-target state starts clean: a note or fix record a failed target left behind
@@ -2023,17 +2090,112 @@ do_build() {
 # Packaging + publishing.
 # ---------------------------------------------------------------------------
 
+_scope_add() {
+  # $1 = a name given after package, distribute or all: add the patterns it selects to
+  # _SCOPE. A build target selects what it builds; any other name is one platform, and
+  # must be shaped like one (it reaches file names and a pattern match). 1 otherwise.
+  local _g _any=""
+  while IFS= read -r _g; do
+    [[ -n "${_g}" ]] || continue
+    _SCOPE+=("${_g}")
+    _any=1
+  done < <(_target_globs "$1")
+  if [[ -n "${_any}" ]]; then
+    _SCOPE_TARGETS+=" $1"
+    return 0
+  fi
+  _g="${1%.tar.gz}"
+  [[ "${_g}.tar.gz" =~ ${_TARBALL_RE} ]] || return 1
+  _SCOPE+=("${_g}")
+}
+
+_in_scope() {
+  # 0 when $1 (a platform dir in the day dir, or a tarball name without .tar.gz) is
+  # one the run was named to; a run given no names takes everything.
+  local _g
+  [[ "${#_SCOPE[@]}" -eq 0 ]] && return 0
+  for _g in "${_SCOPE[@]}"; do
+    # shellcheck disable=SC2053  # _SCOPE holds patterns: matched, never expanded
+    [[ "$1" == ${_g} ]] && return 0
+  done
+  return 1
+}
+
+_scope_takes() {
+  # 0 when the run takes build target $1 whole: no names given, or $1 among them. The
+  # Backdrop stamp goes out only with the whole target, never with one of its
+  # platforms named alone.
+  [[ "${#_SCOPE[@]}" -eq 0 ]] && return 0
+  [[ " ${_SCOPE_TARGETS} " == *" $1 "* ]]
+}
+
+_scope_names() {
+  # $1 = package | distribute | all, then the names given after it. Fills _SCOPE. For
+  # package and distribute every name must match a platform dir (package) or tarball
+  # (distribute) in the day dir, checked before any work, so a typo never runs as a
+  # partial or empty pass. all builds first: a target whose build fails is its row.
+  local _act="$1" _n _e _k _i _from _hit
+  shift
+  [[ "$#" -gt 0 ]] || return 0
+  if [[ "${_act}" != "all" && ! -d "${_DAY_DIR}" ]]; then
+    _die "build-day directory not found: ${_DAY_DIR}"
+  fi
+  for _n in "$@"; do
+    # Grav and Textpattern publish their version stamp (and Grav its upgrade zip)
+    # last, from their own action only: a stage here would ship a tarball no box reads.
+    # A version-less compat tarball goes out only with its platform and stamp.
+    case "${_n}" in
+      grav|txp|textpattern|grav.tar.gz|textpattern.tar.gz)
+        _die "${_n} has its own action, which also publishes its version stamp: staticbuild ${_n%%.*}" ;;
+      backdrop.tar.gz)
+        _die "backdrop.tar.gz goes out only with its platform and stamp: name the backdrop target" ;;
+    esac
+    if [[ "${_act}" == "all" && -z "$(_target_globs "${_n}")" ]]; then
+      _die "all takes build target names (try -h); not one: ${_n}"
+    fi
+    _from="${#_SCOPE[@]}"
+    _scope_add "${_n}" || _die "not a build target or platform name: ${_n}"
+    [[ "${_act}" == "all" ]] && continue
+    _hit=""
+    for _e in "${_DAY_DIR}"/*; do
+      _k="${_e##*/}"
+      if [[ "${_act}" == "package" ]]; then
+        [[ -d "${_e}" ]] || continue
+      else
+        [[ "${_k}" == *.tar.gz ]] || continue
+        _k="${_k%.tar.gz}"
+      fi
+      for (( _i = _from; _i < ${#_SCOPE[@]}; _i++ )); do
+        # shellcheck disable=SC2053  # _SCOPE holds patterns: matched, never expanded
+        [[ "${_k}" == ${_SCOPE[_i]} ]] && { _hit=1; break 2; }
+      done
+    done
+    [[ -n "${_hit}" ]] && continue
+    if [[ "${_act}" == "package" ]]; then
+      _die "nothing to package for ${_n} in ${_DAY_DIR}"
+    fi
+    _die "no ${_n} tarball in ${_DAY_DIR} (build or package it first)"
+  done
+}
+
 clean_platforms() {
-  # Strip artefacts that must not ship inside any platform tarball. -f/-rf keep
-  # non-matching globs harmless; trailing true keeps the compound green.
-  _run_as_o8 "cd '${_DAY_DIR}' && \
-    rm -f  */*/modules/o_contrib* ; \
-    rm -rf */*/sites/all/drush ; \
-    rm -f  */*/sites/all/modules/* ; \
-    rm -f  */*/sites/sites.php ; \
-    rm -f  */*/local_drush_unlocked.pid ; \
-    rm -f  */*/sites/all/libraries/*.pid ; \
-    true"
+  # Strip artefacts that must not ship inside any platform tarball, from each platform
+  # dir the run takes. -f/-rf keep non-matching globs harmless; trailing true keeps the
+  # compound green.
+  local _name _list
+  _list="$(_run_as_o8 "cd '${_DAY_DIR}' && ls -d */ 2>/dev/null")"
+  for _name in ${_list}; do
+    _name="${_name%/}"
+    _in_scope "${_name}" || continue
+    _run_as_o8 "cd '${_DAY_DIR}' && \
+      rm -f  '${_name}'/*/modules/o_contrib* ; \
+      rm -rf '${_name}'/*/sites/all/drush ; \
+      rm -f  '${_name}'/*/sites/all/modules/* ; \
+      rm -f  '${_name}'/*/sites/sites.php ; \
+      rm -f  '${_name}'/*/local_drush_unlocked.pid ; \
+      rm -f  '${_name}'/*/sites/all/libraries/*.pid ; \
+      true"
+  done
 }
 
 strip_core_profiles() {
@@ -2044,6 +2206,7 @@ strip_core_profiles() {
   _list="$(_run_as_o8 "cd '${_DAY_DIR}' && ls -d */ 2>/dev/null")"
   for _name in ${_list}; do
     _name="${_name%/}"
+    _in_scope "${_name}" || continue
     case "${_name}" in drupal-*|backdrop-[0-9]*) continue ;; esac
     _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_name}'/*/core/profiles/* ; true"
   done
@@ -2055,6 +2218,7 @@ package_batch() {
   _list="$(_run_as_o8 "cd '${_DAY_DIR}' && ls -d */ 2>/dev/null")"
   for _name in ${_list}; do
     _name="${_name%/}"
+    _in_scope "${_name}" || continue
     case "${_name}" in
       # backdrop-[0-9]* keeps backdrop-drush-extension (a dev extension, never a
       # day-dir build residue unless its build failed mid-way) out of the core arm.
@@ -2097,14 +2261,33 @@ _ensure_devext_dirs() {
 _copy_to_shelf() {
   # $1 = file in the build-day dir, $2 = shelf dir. Root copies what the build user's
   # day dir holds: take only a plain file (never a symlink or a FIFO planted in its
-  # place), and replace the destination instead of writing through a symlink that
-  # may already sit there.
-  local _src="$1" _out="$2"
+  # place). The copy goes to a temporary name and is renamed over the destination,
+  # so a copy that fails part-way (a full disk) never leaves a truncated tarball
+  # under the published name, and a symlink already at the destination is replaced,
+  # never written through.
+  local _src="$1" _out="$2" _tmp
   if [[ ! -f "${_src}" || -L "${_src}" ]]; then
     _alrt "not a regular file, not published: ${_src##*/}"
     return 1
   fi
-  cp -a --remove-destination "${_src}" "${_out}/"
+  _tmp="${_out}/.${_src##*/}.staticbuild-tmp"
+  rm -f "${_tmp}"
+  _SHELF_TMP="${_tmp}"
+  if cp -a "${_src}" "${_tmp}" && mv -fT "${_tmp}" "${_out}/${_src##*/}"; then
+    _SHELF_TMP=""
+    return 0
+  fi
+  rm -f "${_tmp}"
+  _SHELF_TMP=""
+  return 1
+}
+
+_sweep_shelf_tmp() {
+  # A copy killed outright (SIGKILL, a crash) leaves its temporary file on the shelf;
+  # the lock is held, so no other run is writing one now.
+  find "${_DISTRO_OUT}" "${_CORE_OUT}" "${_DEVEXT_BASE}" -maxdepth 3 -type f \
+    -name '.*.staticbuild-tmp' -delete 2>/dev/null
+  return 0
 }
 
 _publish_plain() {
@@ -2239,6 +2422,9 @@ package_backdrop_compat() {
   local _ver _redis_tag
   _ver="$(_backdrop_day_version)"
   [[ -n "${_ver}" ]] || return 0
+  # Re-made whenever its platform is packaged, so the day dir never holds a compat
+  # tarball older than the platform a later "distribute backdrop" stamps.
+  _in_scope "backdrop-${_ver}" || return 0
   _run_as_o8 "test -d '${_DAY_DIR}/backdrop-${_ver}'" || return 0
   _redis_tag="${_REDIS_TAG:-$(_latest_git_tag "${_REDIS_REPO}")}"
   if [[ -n "${_redis_tag}" ]] && _run_as_o8 "cd '${_DAY_DIR}' && rm -rf .compat.redis \
@@ -2288,12 +2474,13 @@ do_backdrop_family() {
   mkdir -p "${_CORE_OUT}" || _die "cannot create ${_CORE_OUT}"
   _ensure_devext_dirs
   local _f
-  if [[ -n "${_ver}" && -e "${_DAY_DIR}/backdrop-${_ver}.tar.gz" ]]; then
+  if [[ -n "${_ver}" ]]; then
     for _f in "backdrop-${_ver}.tar.gz" backdrop.tar.gz backdrop.txt; do
-      [[ -e "${_DAY_DIR}/${_f}" ]] || continue
-      # The stamp comes last and must never point at a tarball the shelf lacks.
-      if ! _publish_core_file "${_DAY_DIR}/${_f}" \
-        && [[ "${_f}" == *"-${_ver}.tar.gz" || "${_f}" == "grav-admin-v${_ver}.zip" ]]; then
+      # The stamp comes last and goes out only when everything before it reached
+      # the shelf: the releases that fetch the compat tarball take the stamp as its
+      # version.
+      if [[ ! -e "${_DAY_DIR}/${_f}" ]] || ! _publish_core_file "${_DAY_DIR}/${_f}"; then
+        [[ "${_f}" == *.txt ]] || _rec_note "backdrop-${_ver}" "stamp held"
         break
       fi
     done
@@ -2329,12 +2516,13 @@ do_grav_family() {
   fi
   mkdir -p "${_CORE_OUT}" || _die "cannot create ${_CORE_OUT}"
   local _f
-  if [[ -n "${_ver}" && -e "${_DAY_DIR}/grav-${_ver}.tar.gz" ]]; then
+  if [[ -n "${_ver}" ]]; then
     for _f in "grav-${_ver}.tar.gz" grav.tar.gz "grav-admin-v${_ver}.zip" grav.txt; do
-      [[ -e "${_DAY_DIR}/${_f}" ]] || continue
-      # The stamp comes last and must never point at a tarball the shelf lacks.
-      if ! _publish_core_file "${_DAY_DIR}/${_f}" \
-        && [[ "${_f}" == *"-${_ver}.tar.gz" || "${_f}" == "grav-admin-v${_ver}.zip" ]]; then
+      # The stamp comes last and goes out only when everything before it reached
+      # the shelf: the releases that fetch the compat tarball take the stamp as its
+      # version.
+      if [[ ! -e "${_DAY_DIR}/${_f}" ]] || ! _publish_core_file "${_DAY_DIR}/${_f}"; then
+        [[ "${_f}" == *.txt ]] || _rec_note "grav-${_ver}" "stamp held"
         break
       fi
     done
@@ -2365,13 +2553,14 @@ do_txp_family() {
   fi
   mkdir -p "${_CORE_OUT}" || _die "cannot create ${_CORE_OUT}"
   local _f
-  if [[ -n "${_ver}" && -e "${_DAY_DIR}/textpattern-${_ver}.tar.gz" ]]; then
+  if [[ -n "${_ver}" ]]; then
     # textpattern.txt LAST in this list on purpose (see the header).
     for _f in "textpattern-${_ver}.tar.gz" textpattern.tar.gz textpattern.txt; do
-      [[ -e "${_DAY_DIR}/${_f}" ]] || continue
-      # The stamp comes last and must never point at a tarball the shelf lacks.
-      if ! _publish_core_file "${_DAY_DIR}/${_f}" \
-        && [[ "${_f}" == *"-${_ver}.tar.gz" || "${_f}" == "grav-admin-v${_ver}.zip" ]]; then
+      # The stamp comes last and goes out only when everything before it reached
+      # the shelf: the releases that fetch the compat tarball take the stamp as its
+      # version.
+      if [[ ! -e "${_DAY_DIR}/${_f}" ]] || ! _publish_core_file "${_DAY_DIR}/${_f}"; then
+        [[ "${_f}" == *.txt ]] || _rec_note "textpattern-${_ver}" "stamp held"
         break
       fi
     done
@@ -2398,10 +2587,11 @@ _lock_digest() {
 }
 
 _overwrite_named() {
-  # 0 when -O names tarball $1 (distribute takes the platforms to overwrite as
-  # arguments, so an override never reaches a tarball nobody asked for).
-  case " ${_OVERWRITE_NAMES} " in *" $1 "*) return 0 ;; esac
-  return 1
+  # 0 when -O names tarball $1 (-O distribute takes the platforms to overwrite as
+  # arguments and publishes only those, so an override never reaches a tarball nobody
+  # asked for).
+  [[ "${_OVERWRITE}" == "1" && "${#_SCOPE[@]}" -gt 0 ]] || return 1
+  _in_scope "${1%.tar.gz}"
 }
 
 _replaces_published() {
@@ -2511,19 +2701,22 @@ do_distribute() {
     _ADV_TMP="$(mktemp -d)" || _die "cannot create a work dir"
   fi
   _ensure_devext_dirs
-  local _t _base _n=0 _seen=0
+  local _t _base _n=0 _seen=0 _bdrv _bdrok="" _bhold=""
+  _bdrv="$(_backdrop_day_version)"
   for _t in "${_DAY_DIR}"/*.tar.gz; do
     [[ -e "${_t}" ]] || continue
-    _seen=$((_seen + 1))
     _base="${_t##*/}"
+    _in_scope "${_base%.tar.gz}" || continue
+    _seen=$((_seen + 1))
     # Dev extensions first: backdrop-drush-extension.tar.gz must NOT fall into the
     # backdrop-* core arm. The version-less backdrop.tar.gz is the compat tarball
     # built by package_backdrop_compat (extracts to backdrop/). Grav and
     # Textpattern are core-shelf families too: their own targets publish to
-    # core/ (stamp last), so a same-day "all" run must re-copy any of their
+    # core/ (stamp last), so a same-day "all" run must re-copy their versioned
     # tarballs left in the day dir to core/ as well, never to distro/, which
     # nothing reads for them (a satellite fetches grav-<ver>.tar.gz and
-    # textpattern-<ver>.tar.gz through _get_core_ext).
+    # textpattern-<ver>.tar.gz through _get_core_ext); their compat tarballs and
+    # stamps come only from their own actions.
     case "${_base}" in
       bee.tar.gz|backdrop-drush-extension.tar.gz)
         _publish_devext "${_t}" && _n=$((_n + 1)) ;;
@@ -2534,22 +2727,45 @@ do_distribute() {
       # their version-less compat tarballs are rebuilt under the same name by design.
       drupal-*.tar.gz)
         _publish_locked "${_t}" "${_CORE_OUT}" && _n=$((_n + 1)) ;;
-      backdrop-[0-9]*.tar.gz|backdrop.tar.gz|grav-[0-9]*.tar.gz|grav.tar.gz|textpattern-[0-9]*.tar.gz|textpattern.tar.gz)
-        _publish_core_file "${_t}" && _n=$((_n + 1)) ;;
+      # A compat tarball goes out only beside its stamp: Backdrop's after the loop,
+      # Grav's and Textpattern's from their own actions, which publish their stamps.
+      backdrop.tar.gz|grav.tar.gz|textpattern.tar.gz) ;;
+      backdrop-[0-9]*.tar.gz|grav-[0-9]*.tar.gz|textpattern-[0-9]*.tar.gz)
+        if _publish_core_file "${_t}"; then
+          _n=$((_n + 1))
+          [[ -n "${_bdrv}" && "${_base}" == "backdrop-${_bdrv}.tar.gz" ]] && _bdrok=1
+        fi
+        ;;
       *)
         _publish_locked "${_t}" "${_DISTRO_OUT}" && _n=$((_n + 1)) ;;
     esac
   done
-  # Publish the Backdrop newest-version stamp AFTER the tarballs, and only when
-  # the tarball it points to is really on the mirror: BOA resolves _BACKDROP_V
-  # from the stamp and fetches the matching backdrop-<ver>.tar.gz, so the stamp
-  # must never advance ahead of its tarball.
-  local _bdrv
-  _bdrv="$(_backdrop_day_version)"
-  if [[ -n "${_bdrv}" && -e "${_CORE_OUT}/backdrop-${_bdrv}.tar.gz" ]]; then
-    _publish_core_file "${_DAY_DIR}/backdrop.txt"
+  # Publish the Backdrop compat tarball, then the newest-version stamp, AFTER the
+  # tarballs, and only when this run put the tarball the stamp points to on the
+  # mirror: BOA resolves _BACKDROP_V from the stamp and fetches the matching
+  # backdrop-<ver>.tar.gz, and the releases that still fetch the version-less compat
+  # tarball name their platform from the stamp, so neither may run ahead of the
+  # platform, and the stamp never goes out without the compat tarball (as in
+  # do_backdrop_family). A held stamp is noted on the platform's row.
+  if [[ -n "${_bdrv}" ]] && _scope_takes backdrop; then
+    if [[ -z "${_bdrok}" ]]; then
+      _bhold="backdrop-${_bdrv}.tar.gz did not reach ${_CORE_OUT} in this run"
+    elif [[ ! -e "${_DAY_DIR}/backdrop.tar.gz" ]]; then
+      _bhold="no backdrop.tar.gz in ${_DAY_DIR} (its package step failed)"
+    elif ! _publish_core_file "${_DAY_DIR}/backdrop.tar.gz"; then
+      _bhold="backdrop.tar.gz did not reach ${_CORE_OUT}"
+    else
+      _publish_core_file "${_DAY_DIR}/backdrop.txt"
+    fi
+    if [[ -n "${_bhold}" ]]; then
+      _alrt "backdrop.txt held: ${_bhold}"
+      _rec_note "backdrop-${_bdrv}" "stamp held"
+    fi
   fi
-  [[ "${_seen}" -gt 0 ]] || _say "no tarballs found in ${_DAY_DIR} (run 'package' first)"
+  # A named run checked its names up front; a named all reports a failed build in its row.
+  if [[ "${_seen}" -eq 0 && "${#_SCOPE[@]}" -eq 0 ]]; then
+    _say "no tarballs found in ${_DAY_DIR} (run 'package' first)"
+  fi
 }
 
 # ---------------------------------------------------------------------------
@@ -3112,7 +3328,7 @@ main() {
   # are not parsed; reject them rather than misread one as a target name.
   local _a
   for _a in "$@"; do
-    [[ "${_a}" == -* ]] && _die "options must precede the action (got '${_a}'); e.g. staticbuild -f ${_action} ..."
+    [[ "${_a}" == -* ]] && _die "options must precede the action: move '${_a}' before '${_action}'"
   done
 
   # Recompute derived paths after option parsing.
@@ -3121,7 +3337,15 @@ main() {
   # -O names what it may overwrite: only distribute takes it, with the platforms
   # listed after the action, so a routine run never inherits it.
   if [[ "${_OVERWRITE}" == "1" && "${_action}" != "distribute" ]]; then
-    _die "-O works only as: staticbuild -O distribute <platform> ..."
+    _die "-O works only as: staticbuild -O distribute <name> ..."
+  fi
+  # -f rebuilds; package and distribute rebuild nothing, so it would do nothing there
+  # while reading as a force.
+  if [[ "${_FORCE}" == "1" ]]; then
+    case "${_action}" in
+      package|distribute)
+        _die "-f rebuilds, so it goes with build or all; -O distribute <name> overwrites a refused tarball" ;;
+    esac
   fi
 
   case "${_action}" in
@@ -3178,23 +3402,15 @@ main() {
       print_summary
       ;;
     build|package|distribute|all)
-      if [[ "${_action}" == "distribute" ]]; then
-        if [[ "${_OVERWRITE}" == "1" ]]; then
-          [[ "$#" -gt 0 ]] || _die "-O needs the platform(s) to overwrite: staticbuild -O distribute <platform> ..."
-          local _p
-          for _p in "$@"; do
-            _p="${_p%.tar.gz}.tar.gz"
-            [[ "${_p}" =~ ${_TARBALL_RE} ]] || _die "not a platform tarball name: ${_p}"
-            [[ -f "${_DAY_DIR}/${_p}" ]] || _die "${_p} is not in ${_DAY_DIR}"
-            _OVERWRITE_NAMES+="${_p} "
-          done
-          set --
-        elif [[ "$#" -gt 0 ]]; then
-          _die "distribute takes platform names only with -O"
-        fi
+      if [[ "${_OVERWRITE}" == "1" && "$#" -eq 0 ]]; then
+        _die "-O needs the platform(s) to overwrite: staticbuild -O distribute <name> ..."
       fi
       _require_root
       _require_o8
+      # Names after package, distribute and all keep those stages to what they select.
+      case "${_action}" in
+        package|distribute|all) _scope_names "${_action}" "$@" ;;
+      esac
       _require_composer
       trap '_cleanup' EXIT
       _acquire_lock
@@ -3215,7 +3431,7 @@ main() {
         build)      do_build "$@" ;;
         package)    do_package ;;
         distribute) do_distribute ;;
-        all)        do_build; do_package; do_distribute ;;
+        all)        do_build "$@"; do_package; do_distribute ;;
       esac
       print_summary
       # A refusal is the guard working: its own status, apart from a fatal error (1).
