@@ -5063,6 +5063,18 @@ _php_install_deps() {
     fi
   done
 
+  # From libheif 1.17 (trixie/excalibur) the AV1 encoder is a separate plugin
+  # that libheif only recommends, and recommends are never installed here:
+  # without it ImageMagick, and so Imagick, reads AVIF but cannot write it.
+  # Keyed to the installed libheif1 (pulled in by libmagickwand-dev above), so
+  # a build with the encoder built in, or a newer one merely offered by an
+  # enabled backports suite, is never touched.
+  if ! _pkg_installed "libheif-plugin-aomenc" \
+    && dpkg-query -W -f='${Recommends}' libheif1 2>/dev/null \
+      | grep -q 'libheif-plugin-aomenc'; then
+    _mrun "${_INSTAPP} libheif-plugin-aomenc"
+  fi
+
   if [ "${_OS_CODE}" = "excalibur" ] \
     || [ "${_OS_CODE}" = "daedalus" ] \
     || [ "${_OS_CODE}" = "trixie" ] \
