@@ -482,6 +482,12 @@
       and CDN far-future rules listed webp but not avif. PHP 8.1 and
       newer encode AVIF since BOA-5.7.12, and Drupal 11.2 converts
       uploaded images to it with no extra configuration.
+    * ImageMagick, and so the Imagick extension, now writes AVIF on
+      Devuan Excalibur. Its libheif ships the AV1 encoder as a separate
+      plugin that it only recommends, and BOA never installs
+      recommended packages, so AVIF could be read but not written. BOA
+      now installs that plugin wherever the installed libheif calls for
+      it; Daedalus's libheif has the encoder built in.
     * An Octopus upgrade whose Drush copy fails now puts the previous
       Drush back at tools/drush. A copy cut short by a full disk was
       kept as it was, its empty drush.php counting as installed, and a
