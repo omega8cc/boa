@@ -192,11 +192,15 @@ file.
 The copies still follow their sites' names then: a new alias is covered, a name that
 moved to another site is released, and a site with no name of its own left keeps an inert
 copy.
+
 They share the instance's
 change-gate and configtest, but are never backed up: a failed configtest or reload drops
 them rather than restoring an older set, which could still claim a name that has since moved
 to another site. A site with its own certificate has its own `:443` server block, which
 includes the vhost fragments directly and never passes through the front.
+
+A site whose control file was deleted before the front copies existed gets one written from
+its frozen map, so HTTPS applies the list and paths HTTP already applies.
 
 ## Interaction with realip
 

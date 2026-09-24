@@ -184,6 +184,12 @@
       barracuda pass drops them from the proxies an older ssl-gen
       wrote (never from a panel that lists them), and edgetest warns
       on a proxy that claims one.
+    * A site whose Octopus ip_access or user_admin_access control file
+      was deleted before the wildcard SSL front copies existed now gets
+      its copy, written from the list its vhost still applies. Such a
+      frozen list kept its site locked over HTTP and open over HTTPS,
+      as nothing rewrites a frozen list; the copy follows the site's
+      names like any other, and a failed configtest drops it.
     * xcopy ssl-gen now points /sqladmin at the master PHP-FPM socket,
       as xoct ssl-gen does: a standalone run left it on 127.0.0.1:9000,
       where nothing listens, until the next octopus pass.
@@ -463,6 +469,20 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * An Octopus upgrade whose Drush copy fails now puts the previous
+      Drush back at tools/drush. A copy cut short by a full disk was
+      kept as it was, its empty drush.php counting as installed, and a
+      copy that left no drush.php moved the saved one into tools/ under
+      its backup name, beside the missing tree: either way the instance
+      was left without a working Drush, and without tools/drush it also
+      dropped out of every check that looks for it (the IP list
+      generators among them). The master's Drush step restores its tree
+      the same way; it had no restore.
+    * user_admin_access removes a site's /user + /admin gate before its
+      map when the site leaves the list. The other order left, for a
+      moment, a gate testing a variable nothing defined, and a reload
+      by Aegir or the nginx watchdog in that moment failed.
 
     * A site served over HTTPS without a certificate of its own now stays
       on HTTPS through the web server's own redirects: the clean-URL
