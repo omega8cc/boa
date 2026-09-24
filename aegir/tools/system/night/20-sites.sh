@@ -2228,15 +2228,15 @@ _add_note_platform_ini() {
   if [ -e "${_CTRL_F}" ]; then
     echo "" >> ${_CTRL_F}
     echo ";;" >> ${_CTRL_F}
-    echo ";;  This is a platform level ACTIVE INI file which can be used to modify"     >> ${_CTRL_F}
-    echo ";;  default BOA system behaviour for all sites hosted on this platform."      >> ${_CTRL_F}
+    echo ";;  This is a platform level ACTIVE INI file which can be used to modify"   >> ${_CTRL_F}
+    echo ";;  default BOA system behaviour for all sites hosted on this platform."    >> ${_CTRL_F}
     echo ";;" >> ${_CTRL_F}
-    echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> ${_CTRL_F}
-    echo ";;  default.boa_platform_control.ini, since this ACTIVE INI file"             >> ${_CTRL_F}
-    echo ";;  may not include all options available after upgrade to BOA-${_xSrl}"      >> ${_CTRL_F}
+    echo ";;  Please review complete documentation included in this file TEMPLATE:"   >> ${_CTRL_F}
+    echo ";;  default.boa_platform_control.ini, since this ACTIVE INI file"           >> ${_CTRL_F}
+    echo ";;  may not include all options available after upgrade to BOA-${_xSrl}"    >> ${_CTRL_F}
     echo ";;" >> ${_CTRL_F}
-    echo ";;  Note that BOA reads this file on every request, so a change applies on"  >> ${_CTRL_F}
-    echo ";;  the next one; a page the front cache holds for anonymous visitors can"   >> ${_CTRL_F}
+    echo ";;  Note that BOA reads this file on every request, so a change applies on" >> ${_CTRL_F}
+    echo ";;  the next one; a page the front cache holds for anonymous visitors can"  >> ${_CTRL_F}
     echo ";;  hide it for a few seconds. A .dev. alias cuts that cache to 1 second."  >> ${_CTRL_F}
     echo ";;" >> ${_CTRL_F}
   fi
@@ -2246,15 +2246,15 @@ _add_note_site_ini() {
   if [ -e "${_CTRL_F}" ]; then
     echo "" >> ${_CTRL_F}
     echo ";;" >> ${_CTRL_F}
-    echo ";;  This is a site level ACTIVE INI file which can be used to modify"         >> ${_CTRL_F}
-    echo ";;  default BOA system behaviour for this site only."                         >> ${_CTRL_F}
+    echo ";;  This is a site level ACTIVE INI file which can be used to modify"       >> ${_CTRL_F}
+    echo ";;  default BOA system behaviour for this site only."                       >> ${_CTRL_F}
     echo ";;" >> ${_CTRL_F}
-    echo ";;  Please review complete documentation included in this file TEMPLATE:"     >> ${_CTRL_F}
-    echo ";;  default.boa_site_control.ini, since this ACTIVE INI file"                 >> ${_CTRL_F}
-    echo ";;  may not include all options available after upgrade to BOA-${_xSrl}"      >> ${_CTRL_F}
+    echo ";;  Please review complete documentation included in this file TEMPLATE:"   >> ${_CTRL_F}
+    echo ";;  default.boa_site_control.ini, since this ACTIVE INI file"               >> ${_CTRL_F}
+    echo ";;  may not include all options available after upgrade to BOA-${_xSrl}"    >> ${_CTRL_F}
     echo ";;" >> ${_CTRL_F}
-    echo ";;  Note that BOA reads this file on every request, so a change applies on"  >> ${_CTRL_F}
-    echo ";;  the next one; a page the front cache holds for anonymous visitors can"   >> ${_CTRL_F}
+    echo ";;  Note that BOA reads this file on every request, so a change applies on" >> ${_CTRL_F}
+    echo ";;  the next one; a page the front cache holds for anonymous visitors can"  >> ${_CTRL_F}
     echo ";;  hide it for a few seconds. A .dev. alias cuts that cache to 1 second."  >> ${_CTRL_F}
     echo ";;" >> ${_CTRL_F}
   fi
