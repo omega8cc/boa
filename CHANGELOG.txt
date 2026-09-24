@@ -935,7 +935,8 @@
     * The INI templates say a saved value applies on the next request
       (the files are read on every one), that the session settings apply
       on Drupal 6/7 and Backdrop only, and how to name a Drupal 8+ bin
-      in redis_exclude_bins.
+      in redis_exclude_bins. The note BOA writes into the active INI
+      files says the same about timing.
 
 
 ###
