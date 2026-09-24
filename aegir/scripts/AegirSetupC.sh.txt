@@ -400,7 +400,7 @@ _get_core_ext() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      curl ${_crlGet} "https://${_USE_MIR}/core/$1" -o "$1"
+      curl ${_crlGet} -R "https://${_USE_MIR}/core/$1" -o "$1"
       _crlRc=$?
       if [ "${_crlRc}" = "0" ]; then
         _success=1
@@ -421,6 +421,7 @@ _get_core_ext() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
+      _tb_capture "https://${_USE_MIR}/core/$1" "$1" bytes
       if [ ! -z "${2}" ]; then
         _extract_archive "${1}" "${2}"
       else
@@ -446,7 +447,7 @@ _get_distro_ext() {
     _success=0
     while [ ${_attempt_num} -le ${_max_attempts} ]; do
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} of ${_max_attempts}: Downloading $1..."
-      curl ${_crlGet} "https://${_USE_MIR}/distro/$1" -o "$1"
+      curl ${_crlGet} -R "https://${_USE_MIR}/distro/$1" -o "$1"
       _crlRc=$?
       if [ "${_crlRc}" = "0" ]; then
         _success=1
@@ -465,6 +466,7 @@ _get_distro_ext() {
       fi
     done
     if [ "${_success}" -eq 1 ]; then
+      _tb_capture "https://${_USE_MIR}/distro/$1" "$1" bytes
       if [ ! -z "${2}" ]; then
         _extract_archive "${1}" "${2}"
       else
@@ -479,6 +481,476 @@ _get_distro_ext() {
       return 1  # Exit the function but continue the script
     fi
   fi
+}
+
+#
+# Catalogue platform refresh. A platform is fetched only when its directory is
+# missing, so a tarball the mirror republishes under the same name (staticbuild
+# replaces same-name builds) never reached a box that already had it. Each
+# fetch now records what it downloaded -- url, size, remote mtime, sha256 --
+# in ${_pthDst}/.boa-tarball/<platform>.info, and every pass asks the mirror
+# whether a NEWER copy is published (one HEAD; an older copy, as a CDN edge can
+# serve for weeks, never counts). A platform proven idle -- no site dir under
+# any docroot, no tenant file in sites/all, no site row and no queued or running
+# task for it in the hosting DB -- is then fetched again beside the old tree,
+# into .boa-refresh/<platform>.new, and swapped in only when the extract is
+# complete and the platform is still idle; its control files are carried over,
+# the old tree is removed once it is proven empty of sites, and the platform
+# gets a verify (re-queued on later passes until it is), which re-attaches
+# everything BOA links into platforms. A platform that is not idle is kept and
+# reported once per mirror copy. A pass that stops midway leaves .new/.old
+# entries the next pass rolls back first. A platform fetched before this
+# existed has no record: its first check fetches the tarball once, records a
+# tree that still matches it and refreshes one that does not (a verified D8+
+# tree never matches).
+_TB_SHA=""
+_TB_BYTES=""
+_TB_DOWN=""
+_TB_WHY=""
+_TB_CRL="-L --max-redirs 3 -s -A iCab --connect-timeout 15"
+
+_tb_capture() {
+  # $1 url, $2 the downloaded file (curl -R set its mtime to the remote one),
+  # $3 "bytes" to also sum the tarball's members, for the first-fetch check
+  _TB_URL="${1}"
+  _TB_LEN="$(stat -c %s "${2}" 2> /dev/null)"
+  _TB_MOD="$(stat -c %Y "${2}" 2> /dev/null)"
+  _TB_SHA="$(sha256sum "${2}" 2> /dev/null | cut -d' ' -f1)"
+  _TB_BYTES=""
+  if [ "${3:-}" = "bytes" ]; then
+    _TB_BYTES="$(tar -tvzf "${2}" 2> /dev/null | awk '{ s += $3 } END { print s + 0 }')"
+  fi
+}
+
+_tb_field() {
+  # $1 record file, $2 key
+  grep "^${2}=" "${1}" 2> /dev/null | head -n 1 | cut -d= -f2-
+}
+
+_tb_write() {
+  # $1 platform directory, $2 url, $3 size, $4 remote mtime, $5 sha256 of the
+  # tarball the tree came from, $6 the mirror copy already reported as kept,
+  # $7 "pending" while the tree still owes a verify
+  mkdir -p "${_pthDst}/.boa-tarball"
+  printf 'url=%s\nlen=%s\nmod=%s\nsha=%s\nfetched=%s\nkept=%s\nverify=%s\n' \
+    "${2}" "${3}" "${4}" "${5}" "$(date +%s)" "${6}" "${7}" \
+    > "${_pthDst}/.boa-tarball/$(basename "${1}").info"
+}
+
+_tb_record() {
+  # $1 platform directory, $2 its docroot: after the create path, keep what
+  # its fetch downloaded -- only for a tree that is really there and complete
+  # (the fetchers do not see tar's status: a short extract is not recorded,
+  # so the next pass fetches the platform again)
+  local _have
+  if [ -n "${_TB_SHA}" ] && [ -e "${2}/index.php" ]; then
+    _have="$(find "${1}" -type f -printf '%s\n' 2> /dev/null | awk '{ s += $1 } END { print s + 0 }')"
+    if [[ "${_TB_BYTES}" =~ ^[0-9]+$ ]] && [ "${_have}" -lt "${_TB_BYTES}" ]; then
+      # No record at all (an older one could describe an earlier tree), so
+      # the next pass refreshes it
+      rm -f "${_pthDst}/.boa-tarball/$(basename "${1}").info"
+      _msg "OOPS: $(basename "${1}"): the extract came out short (${_have} of ${_TB_BYTES} bytes), fetched again next pass"
+    else
+      _tb_write "${1}" "${_TB_URL}" "${_TB_LEN}" "${_TB_MOD}" "${_TB_SHA}" "" ""
+    fi
+  fi
+  _TB_SHA=""
+  _TB_BYTES=""
+}
+
+_tb_rmtree() {
+  # A verified platform can carry directories without the owner's write bit
+  [ -e "${1}" ] || return 0
+  chmod -R u+rwX "${1}" &> /dev/null
+  rm -rf "${1}" &> /dev/null
+  [ ! -e "${1}" ]
+}
+
+_tb_local() {
+  # $1 a platform tree. Status 0 when it holds something of its own: a site
+  # directory under any docroot, or a tenant file in sites/all. BOA's own
+  # files there do not count: EMPTY.txt, the fix scripts' markers and the
+  # control files the swap carries over. Sets _TB_WHY.
+  local _f _r _s
+  _f="$(find "${1}" -maxdepth 4 -path '*/sites/*' \
+    \( -name drushrc.php -o -name settings.php \) \
+    ! -path '*/sites/all/*' ! -path '*/sites/default/*' 2> /dev/null | head -n 1)"
+  if [ -n "${_f}" ]; then
+    _TB_WHY="it has a site directory"
+    return 0
+  fi
+  for _r in "${1}" "${1}/web" "${1}/html" "${1}/docroot"; do
+    _s="${_r}/sites/all"
+    [ -d "${_s}" ] || continue
+    _f="$(find "${_s}/modules" "${_s}/themes" "${_s}/libraries" -type f \
+      ! -path "${_s}/modules/EMPTY.txt" ! -path "${_s}/themes/EMPTY.txt" \
+      ! -path "${_s}/libraries/EMPTY.txt" \
+      ! -path "${_s}/modules/default.boa_platform_control.ini" \
+      ! -path "${_s}/modules/boa_platform_control.ini" \
+      ! -path "${_s}/modules/apps-allow.info" \
+      ! -path "${_s}/libraries/ownership-fixed-*.pid" \
+      ! -path "${_s}/libraries/permissions-fixed-*.pid" \
+      2> /dev/null | head -n 1)"
+    if [ -n "${_f}" ]; then
+      _TB_WHY="it carries tenant files in sites/all"
+      return 0
+    fi
+  done
+  return 1
+}
+
+_tb_retire() {
+  # $1 a replaced tree (.boa-refresh/<name>.old). A tree that holds anything
+  # of its own is renamed <name>.kept-<time> and never touched again; one
+  # that cannot be removed becomes <name>.stale-<time>, retried quietly.
+  # Either way the .old name is free afterwards: it only ever means a swap
+  # in flight. Status 0 when nothing is left under the .old name.
+  local _base="${1%.old}"
+  [ -e "${1}" ] || return 0
+  if _tb_local "${1}"; then
+    mv "${1}" "${_base}.kept-$(date +%s)" \
+      && _msg "OOPS: $(basename "${_base}"): the replaced tree is kept in ${_base}.kept-*: ${_TB_WHY}"
+  elif ! _tb_rmtree "${1}"; then
+    mv "${1}" "${_base}.stale-$(date +%s)"
+  fi
+  [ ! -e "${1}" ]
+}
+
+_tb_idle() {
+  # $1 platform directory, $2 its docroot. Status 0 only when the platform is
+  # PROVEN idle; _TB_WHY names what keeps it otherwise. Unknown is busy.
+  local _db
+  _TB_WHY=""
+  _tb_local "${1}" && return 1
+  if [ ! -d "${_THIS_HM}" ]; then
+    _TB_WHY="the hosting database could not be asked"
+    return 1
+  fi
+  _db="$(cd "${_THIS_HM}" && ${_DRUSHCMD} php-eval "\$a = '${2}'; \$b = db_like('${1}') . '/%';"'
+    $p = db_query("SELECT nid FROM {hosting_platform} WHERE status <> -2 AND (publish_path = :a OR publish_path LIKE :b)", array(":a" => $a, ":b" => $b))->fetchCol();
+    $s = 0; $t = 0;
+    if ($p) {
+      $s = db_query("SELECT COUNT(*) FROM {hosting_site} WHERE status <> -2 AND platform IN (:p)", array(":p" => $p))->fetchField();
+      $t = db_query("SELECT COUNT(*) FROM {hosting_task} t INNER JOIN {node} n ON n.nid = t.nid AND n.vid = t.vid WHERE t.task_status IN (0, -1) AND (t.rid IN (:p) OR t.nid IN (SELECT a.nid FROM {hosting_task_arguments} a WHERE a.name = :tp AND a.value IN (:v)))", array(":p" => $p, ":tp" => "target_platform", ":v" => array_map("strval", $p)))->fetchField();
+    }
+    print "TB_IDLE:" . $s . ":" . $t;' 2> /dev/null | grep -o 'TB_IDLE:[0-9]*:[0-9]*' | head -n 1)"
+  case "${_db}" in
+    TB_IDLE:0:0) return 0 ;;
+    TB_IDLE:0:*) _TB_WHY="a task for it is queued or running" ;;
+    TB_IDLE:*) _TB_WHY="it hosts sites" ;;
+    *) _TB_WHY="the hosting database gave no answer" ;;
+  esac
+  return 1
+}
+
+_tb_queue_verify() {
+  # $1 platform directory: queue a verify of its platform node (whichever
+  # docroot the node publishes). Status 0 only when one was queued.
+  [ -d "${_THIS_HM}" ] || return 1
+  (cd "${_THIS_HM}" && ${_DRUSHCMD} php-eval "\$a = '${1}'; \$b = db_like('${1}') . '/%';"'
+    $n = db_query("SELECT nid FROM {hosting_platform} WHERE status <> -2 AND (publish_path = :a OR publish_path LIKE :b) ORDER BY nid DESC", array(":a" => $a, ":b" => $b))->fetchField();
+    if ($n && hosting_add_task($n, "verify")) { print "TB_VERIFY:" . $n; }' 2> /dev/null) \
+    | grep -q 'TB_VERIFY:[0-9]'
+}
+
+_tb_rollback() {
+  # Undo whatever a stopped pass left in any revision: a staged tree is
+  # dropped; a moved-away tree goes back when its platform is missing, and is
+  # dropped when the swap had completed -- unless it gained a site or tenant
+  # files, which keeps it where it is, reported -- and the swapped platform
+  # gets its verify; a partial download is removed
+  local _dir _e _n
+  for _dir in "${_ROOT}"/distro/*/.boa-refresh; do
+    [ -d "${_dir}" ] || continue
+    for _e in "${_dir}"/*; do
+      [ -e "${_e}" ] || continue
+      case "${_e}" in
+        *.new) _tb_rmtree "${_e}" ;;
+        *.old)
+          _n="$(dirname "${_dir}")/$(basename "${_e}" .old)"
+          if [ ! -e "${_n}" ]; then
+            # The record may already describe the tarball of the tree that
+            # was being moved in: drop it, the next check decides afresh
+            mv "${_e}" "${_n}" \
+              && rm -f "$(dirname "${_dir}")/.boa-tarball/$(basename "${_n}").info" \
+              && _msg "DISTRO: $(basename "${_n}") restored from an interrupted refresh"
+          else
+            _tb_retire "${_e}"
+            _tb_queue_verify "${_n}" \
+              || _msg "OOPS: $(basename "${_n}"): a verify could not be queued after an interrupted refresh"
+          fi
+          ;;
+        *.kept-*) _msg "OOPS: a replaced tree waits for review in ${_e}" ;;
+        *.stale-*) _tb_rmtree "${_e}" ;;
+        *) [ -d "${_e}" ] || rm -f "${_e}" ;;
+      esac
+    done
+    rmdir "${_dir}" &> /dev/null
+  done
+  # A record whose platform is gone (deleted by a task or the nightly)
+  # describes nothing; a new tree under the name gets its own record
+  for _e in "${_ROOT}"/distro/*/.boa-tarball/*.info; do
+    [ -e "${_e}" ] || continue
+    [ -d "$(dirname "$(dirname "${_e}")")/$(basename "${_e}" .info)" ] || rm -f "${_e}"
+  done
+}
+
+_tb_head() {
+  # $1 url; sets _TB_HLEN and _TB_HMOD. Status 0 answered, 22 not published
+  # (404/410), anything else -- a 5xx behind a CDN, no answer at all -- marks
+  # the mirror down for the rest of the pass, so every platform does not wait
+  # out the same timeout
+  local _h _code
+  _TB_HLEN=""
+  _TB_HMOD=""
+  _h="$(curl ${_TB_CRL} --max-time 30 --retry 2 --retry-delay 5 -I \
+    -w 'TB_CODE:%{http_code}\n' "${1}" 2> /dev/null | tr -d '\r')"
+  _code="$(grep -o 'TB_CODE:[0-9]*' <<< "${_h}" | tail -n 1 | cut -d: -f2)"
+  case "${_code}" in
+    200) ;;
+    404|410) return 22 ;;
+    *)
+      _TB_DOWN=YES
+      _msg "DISTRO: the mirror did not answer (${_code:-no response}), platform refresh checks skipped this pass"
+      return 1
+      ;;
+  esac
+  _TB_HLEN="$(grep -i '^content-length:' <<< "${_h}" | tail -n 1 | awk '{print $2}')"
+  _TB_HMOD="$(grep -i '^last-modified:' <<< "${_h}" | tail -n 1 | cut -d' ' -f2-)"
+  _TB_HMOD="$(date -d "${_TB_HMOD}" +%s 2> /dev/null)"
+  return 0
+}
+
+_tb_stage() {
+  # $1 platform name, $2 url, $3 docroot relative to the platform ("" or
+  # "/web"...). Fetches and extracts beside the platform; on success the
+  # complete tree is ${_pthDst}/.boa-refresh/$1.new/<top> (in _TB_STAGED)
+  # and the tarball is captured. The old tree is not touched here.
+  local _st="${_pthDst}/.boa-refresh" _tgz _new _top _need _free
+  _TB_STAGED=""
+  _TB_SHA=""
+  mkdir -p "${_st}" || return 1
+  _tgz="${_st}/${1}.tar.gz"
+  _new="${_st}/${1}.new"
+  _tb_rmtree "${_new}" || return 1
+  rm -f "${_tgz}"
+  # The old tree, the tarball and the new tree coexist until the swap
+  _need=$(( $(du -sk "${_pthDst}/${1}" 2> /dev/null | cut -f1) * 2 + 102400 ))
+  _free="$(df -Pk "${_pthDst}" 2> /dev/null | awk 'NR==2 {print $4}')"
+  if [ -z "${_free}" ] || [ "${_free}" -lt "${_need}" ]; then
+    _msg "DISTRO: ${1} not fetched again: ${_free:-unknown} KB free, ${_need} KB needed"
+    return 1
+  fi
+  if ! curl ${_TB_CRL} --fail --max-time 1800 --retry 2 --retry-delay 10 -R "${2}" -o "${_tgz}"; then
+    rm -f "${_tgz}"
+    return 1
+  fi
+  _tb_capture "${2}" "${_tgz}"
+  mkdir -p "${_new}"
+  if ! tar -xzf "${_tgz}" -C "${_new}" &> /dev/null; then
+    rm -f "${_tgz}"
+    _tb_rmtree "${_new}"
+    _TB_SHA=""
+    return 1
+  fi
+  rm -f "${_tgz}"
+  _top="$(find "${_new}" -mindepth 1 -maxdepth 1 2> /dev/null)"
+  if [ "$(printf '%s\n' "${_top}" | grep -c .)" != "1" ] || [ ! -d "${_top}" ] \
+    || [ ! -e "${_top}${3}/index.php" ]; then
+    _tb_rmtree "${_new}"
+    _TB_SHA=""
+    return 1
+  fi
+  _TB_STAGED="${_top}"
+  return 0
+}
+
+_tb_same_tree() {
+  # $1 staged tree, $2 installed tree: every file of the tarball is in the
+  # installed tree with the same CONTENT (a version bump keeps sizes), every
+  # link with the same target; files a verify adds on the box do not count.
+  # A verified D8+ tree never matches (patched, and partly unreadable to the
+  # instance user once locked): it is refreshed once.
+  local _sum="${1}.md5" _l
+  (cd "${1}" && find . -type f -print0 | xargs -0 -r md5sum) > "${_sum}" 2> /dev/null
+  if [ ! -s "${_sum}" ] || ! (cd "${2}" && md5sum -c --quiet --status "${_sum}" 2> /dev/null); then
+    rm -f "${_sum}"
+    return 1
+  fi
+  rm -f "${_sum}"
+  _l="$(cd "${1}" && find . -type l -printf '%P\t%l\n' 2> /dev/null | sort)"
+  [ -z "$(comm -23 <(printf '%s\n' "${_l}") \
+    <(cd "${2}" && find . -type l -printf '%P\t%l\n' 2> /dev/null | sort))" ]
+}
+
+_tb_carry() {
+  # $1 old tree, $2 new tree: the platform's control files move to the new
+  # tree (regular files only: a tenant can plant a link in that directory)
+  local _r _f _dst _tmp
+  for _r in "" "/web" "/html" "/docroot"; do
+    [ -d "${1}${_r}/sites/all/modules" ] && [ -d "${2}${_r}" ] || continue
+    for _f in default.boa_platform_control.ini boa_platform_control.ini apps-allow.info; do
+      if [ -f "${1}${_r}/sites/all/modules/${_f}" ] && [ ! -L "${1}${_r}/sites/all/modules/${_f}" ]; then
+        mkdir -p "${2}${_r}/sites/all/modules"
+        _dst="${2}${_r}/sites/all/modules/${_f}"
+        _tmp="${_dst}.boa-carry"
+        rm -f "${_tmp}"
+        # The name can change after the test (the directory is tenant
+        # writable): open it without following a link and without blocking
+        # -- a FIFO then reads as empty -- into a temporary name, and move
+        # only a complete regular file over whatever the tarball shipped.
+        # Empty counts as failed, except for apps-allow.info: an empty file
+        # is that marker's normal form, only its presence is read.
+        if timeout 10 dd if="${1}${_r}/sites/all/modules/${_f}" of="${_tmp}" \
+          iflag=nofollow,nonblock status=none &> /dev/null \
+          && [ -f "${_tmp}" ] && [ ! -L "${_tmp}" ] \
+          && { [ -s "${_tmp}" ] || [ "${_f}" = "apps-allow.info" ]; }; then
+          chmod 0664 "${_tmp}" && mv -fT "${_tmp}" "${_dst}"
+        fi
+        rm -f "${_tmp}"
+      fi
+    done
+  done
+}
+
+_tb_refresh() {
+  # $1 platform name, $2 docroot relative to it ("" or "/web"...), $3 its
+  # tarball on the mirror. Runs before the create path, which then finds the
+  # directory present and fetches nothing.
+  local _dir="${_pthDst}/${1}" _info="${_pthDst}/.boa-tarball/${1}.info"
+  local _old="${_pthDst}/.boa-refresh/${1}.old" _rmod _rsha="" _why _built
+  [ -d "${_dir}" ] || return 0
+  # A tree swapped in earlier that still owes its verify
+  if [ "$(_tb_field "${_info}" verify)" = "pending" ] && _tb_queue_verify "${_dir}"; then
+    sed -i 's|^verify=.*|verify=|' "${_info}"
+  fi
+  [ "${_TB_DOWN}" = "YES" ] && return 0
+  _tb_head "${3}" || return 0
+  [ -n "${_TB_HLEN}" ] || return 0
+  if [ -e "${_info}" ]; then
+    _rmod="$(_tb_field "${_info}" mod)"
+    if [ "${_TB_HLEN}" = "$(_tb_field "${_info}" len)" ] \
+      && [ "${_TB_HMOD}" = "${_rmod}" ]; then
+      return 0
+    fi
+    # Only a NEWER copy is a republish: an older one is a CDN edge still
+    # holding a replaced tarball, or a mirror behind the others, and taking
+    # it would swap a box back and forth as its passes change mirrors
+    if [[ "${_TB_HMOD}" =~ ^[0-9]+$ ]] && [[ "${_rmod}" =~ ^[0-9]+$ ]] \
+      && [ "${_TB_HMOD}" -lt "${_rmod}" ]; then
+      return 0
+    fi
+    _rsha="$(_tb_field "${_info}" sha)"
+    [[ "${_rsha}" =~ ^[0-9a-f]{64}$ ]] || _rsha=""
+    _why="a newer copy is on the mirror"
+  else
+    # No record: the same rule, against the build time tar kept on the
+    # installed tree -- never trade a tree for an older copy
+    _built="$(stat -c %Y "${_dir}${2}/index.php" 2> /dev/null)"
+    if [[ "${_TB_HMOD}" =~ ^[0-9]+$ ]] && [[ "${_built}" =~ ^[0-9]+$ ]] \
+      && [ "${_TB_HMOD}" -lt "${_built}" ]; then
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: ${1}: the mirror copy is older than the installed tree, kept"
+      return 0
+    fi
+    _why="it has no record of its tarball"
+  fi
+  if ! _tb_idle "${_dir}" "${_dir}${2}"; then
+    # The record keeps describing the tree that is there; only the report is
+    # remembered, once per mirror copy. Idleness is asked again next pass (the
+    # site-directory test answers first, before any database query).
+    if [ -n "${_rsha}" ]; then
+      if [ "${_TB_HMOD}" != "$(_tb_field "${_info}" kept)" ]; then
+        _msg "DISTRO: ${1}: ${_why}, kept: ${_TB_WHY}"
+        sed -i "s|^kept=.*|kept=${_TB_HMOD}|" "${_info}"
+      fi
+    elif [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "DEBUG: ${1}: ${_why}, kept: ${_TB_WHY}"
+    fi
+    return 0
+  fi
+  if ! _tb_stage "${1}" "${3}" "${2}"; then
+    _msg "OOPS: ${1}: ${_why}, but the fetch or extract failed; the current tree is kept"
+    return 0
+  fi
+  if [ -n "${_rsha}" ] && [ "${_TB_SHA}" = "${_rsha}" ]; then
+    # The same bytes under a new mtime
+    _tb_write "${_dir}" "${_TB_URL}" "${_TB_LEN}" "${_TB_MOD}" "${_TB_SHA}" "" ""
+    _tb_rmtree "${_pthDst}/.boa-refresh/${1}.new"
+    _TB_SHA=""
+    return 0
+  fi
+  if [ -z "${_rsha}" ] && _tb_same_tree "${_TB_STAGED}" "${_dir}"; then
+    # No known baseline, and the tree already is the published one: record
+    # it, nothing to replace
+    _tb_write "${_dir}" "${_TB_URL}" "${_TB_LEN}" "${_TB_MOD}" "${_TB_SHA}" "" ""
+    _tb_rmtree "${_pthDst}/.boa-refresh/${1}.new"
+    _TB_SHA=""
+    [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: ${1} matches its tarball, recorded"
+    return 0
+  fi
+  # Minutes may have passed since the idle proof (the download, the extract,
+  # the compare): ask again right before the tree moves
+  if ! _tb_idle "${_dir}" "${_dir}${2}"; then
+    _msg "DISTRO: ${1}: ${_why}, kept: ${_TB_WHY} (while it was fetched)"
+    _tb_rmtree "${_pthDst}/.boa-refresh/${1}.new"
+    _TB_SHA=""
+    return 0
+  fi
+  if ! _tb_retire "${_old}"; then
+    _msg "OOPS: ${1}: a previous tree could not be moved out of the way in .boa-refresh, not replaced"
+    _tb_rmtree "${_pthDst}/.boa-refresh/${1}.new"
+    _TB_SHA=""
+    return 0
+  fi
+  _tb_carry "${_dir}" "${_TB_STAGED}"
+  if ! mv "${_dir}" "${_old}"; then
+    _tb_rmtree "${_pthDst}/.boa-refresh/${1}.new"
+    _TB_SHA=""
+    return 0
+  fi
+  if [ -e "${_dir}" ] || ! mv "${_TB_STAGED}" "${_dir}"; then
+    [ -e "${_dir}" ] || mv "${_old}" "${_dir}"
+    _msg "OOPS: ${1}: the new tree could not be moved in; the current tree is kept"
+    _tb_rmtree "${_pthDst}/.boa-refresh/${1}.new"
+    _TB_SHA=""
+    return 0
+  fi
+  _tb_write "${_dir}" "${_TB_URL}" "${_TB_LEN}" "${_TB_MOD}" "${_TB_SHA}" "" "pending"
+  _TB_SHA=""
+  _tb_rmtree "${_pthDst}/.boa-refresh/${1}.new"
+  if _tb_queue_verify "${_dir}"; then
+    sed -i 's|^verify=.*|verify=|' "${_info}"
+  else
+    _msg "OOPS: ${1}: a verify could not be queued yet, asked again next pass"
+  fi
+  _tb_retire "${_old}"
+  _msg "DISTRO: ${1} fetched again (${_why}), verify queued"
+}
+
+# One core-only platform (a member of a -dev/-stage/-prod trio) with the
+# refresh in front of its create function. The D6/D7 cores are shared trees
+# under /data/all and D9 renames its profiles after the fetch: neither is
+# refreshed from here.
+_tb_create_core() {
+  # $1 dist code, $2 web dir; uses _SHRD_PLNAME like _create_drupal_core_basic
+  local _file="" _var=""
+  case "${1}" in
+    DX[0-9]) _var="_DRUPAL10_${1:2}" ;;
+    DE[0-9]) _var="_DRUPAL11_${1:2}" ;;
+    BDR) _file="backdrop-${_BACKDROP_V}" ;;
+    GRV) _file="grav-${_GRAV_V}" ;;
+    TXP) _file="textpattern-${_TXP_V}" ;;
+  esac
+  [ -n "${_var}" ] && _file="${!_var}"
+  if [ -n "${_file}" ]; then
+    _tb_refresh "${_SHRD_PLNAME}" "${2}" "https://${_USE_MIR}/core/${_file}.tar.gz"
+  fi
+  _TB_SHA=""
+  _create_drupal_core_basic "${1}"
+  if [ -n "${_file}" ]; then
+    _tb_record "${_pthDst}/${_SHRD_PLNAME}" "${_pthDst}/${_SHRD_PLNAME}${2}"
+  fi
+  _TB_SHA=""
 }
 
 #
@@ -1666,12 +2138,15 @@ _d_dist_platform_install() {
         if _prompt_yes_no "${params[description]} - ${params[url]}" ; then
           true
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
+          _tb_refresh "${_DIST_PLNAME}" "${7}" "https://${_USE_MIR}/distro/${_DIST_PLNAME}.tar.gz"
+          _TB_SHA=""
           if [ ! -d "${_OCTO_PLPATH}" ]; then
             if _enter_this_distro_root; then
               [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_distro_ext '${_DIST_PLNAME}.tar.gz'"
               _get_distro_ext "${_DIST_PLNAME}.tar.gz"
             fi
           fi
+          _tb_record "${_pthDst}/${_DIST_PLNAME}" "${_OCTO_PLPATH}"
           if [ -d "${_OCTO_PLPATH}" ]; then
             _msg "DISTRO: ${params[description]} installed"
             [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${2}' '${3}' '${params[description]}' '${5}' '${6}' '${7}'"
@@ -1800,7 +2275,7 @@ _d_core_platform_install() {
         [[ "${1}" =~ DL7 || "${1}" =~ DL6 ]] && _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} [D.${_THIS_CORE}] ${_yOk}"
-        _create_drupal_core_basic "${params[dist]}"
+        _tb_create_core "${params[dist]}" "${7}"
         if [ -d "${_OCTO_PLPATH}" ]; then
           _msg "DISTRO: ${params[description]} [D.${_THIS_CORE}] installed"
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${_SHRD_PLNAME}' '${3}' '${params[description]} [D.${_THIS_CORE}]' '${5}' '${6}' '${7}'"
@@ -1814,7 +2289,7 @@ _d_core_platform_install() {
         [[ "${1}" =~ DL7 || "${1}" =~ DL6 ]] && _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} [S.${_THIS_CORE}] ${_yOk}"
-        _create_drupal_core_basic "${params[dist]}"
+        _tb_create_core "${params[dist]}" "${7}"
         if [ -d "${_OCTO_PLPATH}" ]; then
           _msg "DISTRO: ${params[description]} [S.${_THIS_CORE}] installed"
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${_SHRD_PLNAME}' '${3}' '${params[description]} [S.${_THIS_CORE}]' '${5}' '${6}' '${7}'"
@@ -1828,7 +2303,7 @@ _d_core_platform_install() {
         [[ "${1}" =~ DL7 || "${1}" =~ DL6 ]] && _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
         _OCTO_PLPATH="${_pthDst}/${_SHRD_PLNAME}"
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} [P.${_THIS_CORE}] ${_yOk}"
-        _create_drupal_core_basic "${params[dist]}"
+        _tb_create_core "${params[dist]}" "${7}"
         if [ -d "${_OCTO_PLPATH}" ]; then
           _msg "DISTRO: ${params[description]} [P.${_THIS_CORE}] installed"
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _save_verify_this_platform '${1}' '${_SHRD_PLNAME}' '${3}' '${params[description]} [P.${_THIS_CORE}]' '${5}' '${6}' '${7}'"
@@ -1924,6 +2399,9 @@ _prepare_drupal7_core
 
 # Prepare
 _prepare_for_save_verify_platforms
+
+# Roll back any catalogue refresh a stopped pass left half done
+_tb_rollback
 
 # Loop
 _d_dist_loop

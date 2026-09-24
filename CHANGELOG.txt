@@ -234,6 +234,22 @@
 
 @=> New Features
 
+    * An Octopus upgrade now replaces a built-in platform whose tarball
+      the mirror republished under the same name, once the platform is
+      proven idle: no site directory, no tenant file in sites/all, and
+      no site or pending task for it in the control panel. The new tree
+      is fetched and checked beside the old one, swapped in and verified;
+      only a newer copy counts, so a CDN edge still serving an older
+      tarball never swaps a platform back.
+    * A platform in use is never touched, and the upgrade log names it
+      once per republished copy. A replaced tree that turns out to hold a
+      site or tenant files is kept, not removed, and reported on every
+      upgrade until it is dealt with.
+    * Platforms fetched before this release have no record of their
+      tarball: the first upgrade fetches it once for each idle one,
+      records a tree that still matches it and refreshes one that does
+      not, which every verified Drupal 8+ tree is.
+
     * The new nginx_fleet.sh detector reads the last few minutes of
       the access log once a minute and declares a fingerprint only
       when one route class of one site clears every gate at once:
