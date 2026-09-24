@@ -171,10 +171,10 @@ Distributions, published to `/var/www/static/distro`:
 
 ```sh
   commerce_kickstart-5.1.0-11.4.7
-  drupal_cms_installer-2.1.4-11.4.7
+  drupal_cms_installer-2.1.6-11.4.7
   farm-4.0.6-11.3.17
   localgov-4.0.5-11.4.7
-  openculturas-3.0.7-11.3.17
+  openculturas-3.0.8-11.3.17
   openfed-13.6.7-10.6.17
   opigno_lms-3.2.7-10.6.17
   social-13.1.0-10.6.17
@@ -354,8 +354,8 @@ farmos     # farm-4.0.6-11.3.17  (farmOS caps core at 11.3)
 ```
 
 ```sh
-cms        # composer create-project drupal/cms drupal_cms_installer-2.1.4-11.4.7 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.1.4-11.4.7
+cms        # composer create-project drupal/cms drupal_cms_installer-2.1.6-11.4.7 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.1.6-11.4.7
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer update --no-install --no-scripts
@@ -364,8 +364,8 @@ cms        # composer create-project drupal/cms drupal_cms_installer-2.1.4-11.4.
 ```
 
 ```sh
-culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.7-11.3.17 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/openculturas-3.0.7-11.3.17/
+culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.8-11.3.17 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/openculturas-3.0.8-11.3.17/
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # drop dependency patches (stale + composer-patches 2.x cannot apply to dist installs)
@@ -376,7 +376,7 @@ culturas   # composer create-project --remove-vcs drupal/openculturas_project op
            # cd web/profiles/contrib/openculturas-distribution
            # mv profile openculturas
            # mv openculturas ../ && mv * ../ && cd ../ && rm -rf openculturas-distribution
-           # cp ~/static/MONTH-DAY/farm-4.0.6-11.3.17/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.7-11.3.17/web/sites/
+           # cp ~/static/MONTH-DAY/farm-4.0.6-11.3.17/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.8-11.3.17/web/sites/
 ```
 
 ```sh
