@@ -2235,8 +2235,9 @@ _add_note_platform_ini() {
     echo ";;  default.boa_platform_control.ini, since this ACTIVE INI file"             >> ${_CTRL_F}
     echo ";;  may not include all options available after upgrade to BOA-${_xSrl}"      >> ${_CTRL_F}
     echo ";;" >> ${_CTRL_F}
-    echo ";;  Note that it takes ~60 seconds to see any modification results in action" >> ${_CTRL_F}
-    echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."          >> ${_CTRL_F}
+    echo ";;  Note that BOA reads this file on every request, so a change applies on"  >> ${_CTRL_F}
+    echo ";;  the next one; a page the front cache holds for anonymous visitors can"   >> ${_CTRL_F}
+    echo ";;  hide it for a few seconds. A .dev. alias of a site skips that cache."    >> ${_CTRL_F}
     echo ";;" >> ${_CTRL_F}
   fi
 }
@@ -2252,8 +2253,9 @@ _add_note_site_ini() {
     echo ";;  default.boa_site_control.ini, since this ACTIVE INI file"                 >> ${_CTRL_F}
     echo ";;  may not include all options available after upgrade to BOA-${_xSrl}"      >> ${_CTRL_F}
     echo ";;" >> ${_CTRL_F}
-    echo ";;  Note that it takes ~60 seconds to see any modification results in action" >> ${_CTRL_F}
-    echo ";;  due to opcode caching enabled in PHP-FPM for all non-dev sites."          >> ${_CTRL_F}
+    echo ";;  Note that BOA reads this file on every request, so a change applies on"  >> ${_CTRL_F}
+    echo ";;  the next one; a page the front cache holds for anonymous visitors can"   >> ${_CTRL_F}
+    echo ";;  hide it for a few seconds. A .dev. alias of a site skips that cache."    >> ${_CTRL_F}
     echo ";;" >> ${_CTRL_F}
   fi
 }
