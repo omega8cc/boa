@@ -629,7 +629,7 @@ _migrate_prepare() {
         ### Clear the travelled source-role latches with the stamp -- they
         ### block this box from ever being a source itself (see xoct).
         rm -f ${_USR}/log/exported.pid ${_USR}/log/transferred.pid \
-          ${_USR}/log/export_failed.pid
+          ${_USR}/log/export_failed.pid ${_USR}/log/proxy-failed.pid
         touch ${_USR}/log/imported.pid
       fi
     else
@@ -643,7 +643,7 @@ _migrate_prepare() {
       ### Clear the travelled source-role latches with the stamp -- they
       ### block this box from ever being a source itself (see xoct).
       rm -f ${_USR}/log/exported.pid ${_USR}/log/transferred.pid \
-        ${_USR}/log/export_failed.pid
+        ${_USR}/log/export_failed.pid ${_USR}/log/proxy-failed.pid
       touch ${_USR}/log/imported.pid
     fi
 
@@ -1217,7 +1217,7 @@ _migrate_init() {
           _xcopy_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/clients/*        root@${_tgt}:${_DST}/clients/
           # instance-group.txt records the SOURCE box's conversion (its gid);
           # it must never travel, the destination pass writes its own.
-          _xcopy_rsync -aEAXqu ${_ieni} --exclude=instance-group.txt -e ssh ${_USR}/log/* root@${_tgt}:${_DST}/log/
+          _xcopy_rsync -aEAXqu ${_ieni} --exclude=instance-group.txt --exclude=proxy-failed.pid -e ssh ${_USR}/log/* root@${_tgt}:${_DST}/log/
           _xcopy_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/static/control/* root@${_tgt}:${_DST}/static/control/
           #
           _xcopy_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/backups/*        root@${_tgt}:${_DST}/backups/

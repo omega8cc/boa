@@ -184,6 +184,12 @@
       barracuda pass drops them from the proxies an older ssl-gen
       wrote (never from a panel that lists them), and edgetest warns
       on a proxy that claims one.
+    * A site whose Octopus ip_access or user_admin_access control file
+      was deleted before the wildcard SSL front copies existed now gets
+      its copy, written from the list its vhost still applies. Such a
+      frozen list kept its site locked over HTTP and open over HTTPS,
+      as nothing rewrites a frozen list; the copy follows the site's
+      names like any other, and a failed configtest drops it.
     * xcopy ssl-gen now points /sqladmin at the master PHP-FPM socket,
       as xoct ssl-gen does: a standalone run left it on 127.0.0.1:9000,
       where nothing listens, until the next octopus pass.
@@ -463,6 +469,37 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * Nginx now serves AVIF images as image/avif, with the same caching
+      as WebP. BOA's mime.types had no avif entry, so an AVIF image
+      style derivative or upload served from disk went out as
+      application/octet-stream, and the static-file, short /files/ URI
+      and CDN far-future rules listed webp but not avif. PHP 8.1 and
+      newer encode AVIF since BOA-5.7.12, and Drupal 11.2 converts
+      uploaded images to it with no extra configuration.
+    * An Octopus upgrade whose Drush copy fails now puts the previous
+      Drush back at tools/drush. A copy cut short by a full disk was
+      kept as it was, its empty drush.php counting as installed, and a
+      copy that left no drush.php moved the saved one into tools/ under
+      its backup name, beside the missing tree: either way the instance
+      was left without a working Drush, and without tools/drush it also
+      dropped out of every check that looks for it (the IP list
+      generators among them). The master's Drush step restores its tree
+      the same way; it had no restore.
+    * user_admin_access removes a site's /user + /admin gate before its
+      map when the site leaves the list. The other order left, for a
+      moment, a gate testing a variable nothing defined, and a reload
+      by Aegir or the nginx watchdog in that moment failed.
+
+    * staticbuild no longer publishes a distribution that lacks a module
+      its lock lists. Composer's patch plugin can remove a package to
+      patch it again, and a later partial Composer run never puts it
+      back: the 09-24 EzContent tarball shipped without entity_browser
+      and yoast_seo, Opigno without calendar and h5p, and a site install
+      on either failed. Each distribution build now checks every package
+      its installed.json lists, installs the missing ones again from the
+      lock, and fails if any is still missing, so the published copy
+      stays.
 
     * A site served over HTTPS without a certificate of its own now stays
       on HTTPS through the web server's own redirects: the clean-URL
@@ -793,6 +830,15 @@
       converted account's is: its panel database lives on the target
       now, and its travelled queue would have run against the stale
       local copy.
+    * That park now holds until the repair: the cutover also marks such
+      an account log/proxy-failed.pid, and while the marker exists BOA's
+      once-per-release runner pass re-parks its dispatcher instead of
+      handing it back, and octopus skips the account (an upgrade would
+      rebuild it against the stale local copy and write a fresh
+      dispatcher), and its usage notices are held back like a proxied
+      account's. The repair's successful conversion removes the marker, as
+      do a later promotion of the box, an xoct or xcopy import and xoct
+      reset-state; it never travels with a transfer or a sync.
     * The barracuda launcher refreshes itself when its release is older
       than the tree it is about to upgrade to, and runs again with the
       same arguments. An older launcher stamped the new tree with its own
