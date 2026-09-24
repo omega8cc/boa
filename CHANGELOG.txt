@@ -471,6 +471,28 @@
       visitor to http://. Custom rewrites get the same result with the
       $boa_visitor_scheme variable, as the examples in REWRITES.md now do.
 
+    * Sites in a subdirectory of a domain (example.com/blog) are served
+      now. A Verify writes their web server configuration, the domain
+      includes it over HTTPS as well as HTTP, and the domain's own site,
+      when there is one, is verified once more by itself. The domain may
+      be a site or not, created before or after its subdirectory sites,
+      and deleting its site keeps them online.
+
+    * Several subdirectory sites under one domain each serve their own
+      files and module and theme assets, the domain keeps its own paths
+      that merely start with the same name, /blog redirects to /blog/
+      without leaving HTTPS, and over HTTPS a subdirectory site's links
+      keep the subdirectory. Under a domain that is not a site, PHP pages
+      no longer fail and the same guards apply as under a site.
+
+    * Delete and restore take a subdirectory site's configuration along,
+      a clone into another subdirectory gets its own, and a moved
+      account's renamed copy rewrites it. Names the shared web server
+      configuration already uses, a domain that is another site's alias,
+      and Grav and Textpattern sites are refused. A subdirectory site's
+      one-time login link no longer loads the domain's cached data, and
+      Let's Encrypt leaves subdirectory addresses out of certificates.
+
     * A Drupal 10+ site no longer fails after its platform is locked again
       following work with the site-local Drush. Re-locking a platform the
       Unlock Local Drush task left open, by the Lock Local Drush task or a
