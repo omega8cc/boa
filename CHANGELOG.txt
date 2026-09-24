@@ -470,6 +470,13 @@
 
 @=> Important Fixes
 
+    * Nginx now serves AVIF images as image/avif, with the same caching
+      as WebP. BOA's mime.types had no avif entry, so an AVIF image
+      style derivative or upload served from disk went out as
+      application/octet-stream, and the static-file, short /files/ URI
+      and CDN far-future rules listed webp but not avif. PHP 8.1 and
+      newer encode AVIF since BOA-5.7.12, and Drupal 11.2 converts
+      uploaded images to it with no extra configuration.
     * An Octopus upgrade whose Drush copy fails now puts the previous
       Drush back at tools/drush. A copy cut short by a full disk was
       kept as it was, its empty drush.php counting as installed, and a
