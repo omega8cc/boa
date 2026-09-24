@@ -52,9 +52,11 @@
 # front files.
 #
 # Grav 2 and Textpattern sites keep their admin surface elsewhere, so a site whose
-# platform root positively reads as one of them gets ONE extra line in the same
-# $uri map, and nothing else changes — no new variable, no new include, and a
-# Drupal or Backdrop site's fragment stays byte-identical:
+# platform root positively reads as one of them gets its own lines in the same
+# $uri map, and nothing else changes — no new variable, no new include. Drupal,
+# Backdrop and Textpattern get the plain /user + /admin line; Grav gets /admin
+# only (its /user tree is the public theme and media store, served to every
+# visitor). Each adds:
 #   Grav 2       /api  — Admin2 at /admin is only a shell; every login, account,
 #                page, media and config operation runs through the API plugin, so
 #                a list that stopped at /admin left the data surface open.
@@ -75,7 +77,7 @@ _server_ip_file="/root/.found_correct_ipv4.cnf"
 
 # Bump when the emitted directive shape changes, to force regeneration
 # independent of the control-file mtime.
-_emit_version="3"
+_emit_version="4"
 
 # The deployed front includes the front files only once it carries these lines;
 # until then none are written, so a front deploy never meets an unvalidated one.
@@ -413,7 +415,8 @@ _front_fill_frozen() {
   # $4 = front dir, $5 = the instance's vhost.d dir, $6 = its front marker.
   [[ -n "${_front_on}" ]] || return 0
   local _f _site _hosts _geo _area _l _ok _known _new=""
-  _known=$(printf '%s\n' "$(_area_lines grav "")" "$(_area_lines txp "")" | sort -u)
+  _known=$(printf '%s\n' "$(_area_lines "" "")" "$(_area_lines grav "")" \
+    "$(_area_lines txp "")" | sort -u)
   for _f in "$2"/*.conf; do
     [[ -f "${_f}" && ! -L "${_f}" ]] || continue
     _site=$(basename "${_f}" .conf)
@@ -470,7 +473,16 @@ _geo_lines() {
 _area_lines() {
   # Body of the $uri map for the admin surface. $1 = CMS kind, $2 = api-open.
   echo "  default 0;"
-  echo "  ~*^/+(?:user|admin)(?:/|\$) 1;"
+  # Grav's /user is its public theme and media tree, served to every
+  # visitor, so a Grav map gates /admin only. A language-prefixed login
+  # (/de/user) is not matched: a prefix pattern would also gate a parent
+  # site's subdirectory sites, API endpoints such as /api/user/login and
+  # content paths shaped like a prefix.
+  if [[ "$1" == "grav" ]]; then
+    echo "  ~*^/+admin(?:/|\$) 1;"
+  else
+    echo "  ~*^/+(?:user|admin)(?:/|\$) 1;"
+  fi
   # The whole /api route, not /api/v1, so a later version segment is
   # covered too. The (?:/|\$) tail holds the match to the plugin's real
   # routes: it wakes on any path that merely begins with /api, but such a
