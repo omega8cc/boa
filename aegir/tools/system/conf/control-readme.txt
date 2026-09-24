@@ -64,6 +64,12 @@ ignored. Note that platforms.info REPLACES the default list — pinned
 symbols mean you skip distributions added in future releases, while
 ALL never skips anything.
 
+The Drupal 8+ platforms BOA provides (every distribution and the plain
+Drupal 9, 10 and 11 cores) are for demonstration and compatibility
+testing only, not production, and their security updates are best
+effort. Run production sites on a platform you build yourself in
+~/static (docs.boa.io: Building a platform).
+
 Drupal 11 symbols (DE4 DE3 DE2 DE1 and the Drupal 11 distributions CMS CK3
 LGV THR VBX FOS OCS) need MySQL 8, which on BOA means Percona 8.4. On a
 Percona 5.7 server they are skipped with a NOTE in the upgrade log, and a
@@ -147,21 +153,21 @@ BOA ask your host if you need one enabled.
 Fast cloning and migration
 --------------------------
 
-Super-fast per-table parallel database dumps are the default — clone
-and migrate runs that once took hours finish in minutes. The
-trade-off: the site archive keeps no classic single-file DB dump, so
-the Restore task cannot use archives made this way. Nightly backups
-still cover you, and a Backup task run in classic mysqldump mode
-stays restorable.
+Super-fast per-table parallel database dumps are the default for the
+safety copies a Migrate or a Delete takes for itself. The trade-off:
+those archives keep no classic single-file DB dump, so the Restore
+task cannot use them. Every Backup task carries a classic dump
+and stays restorable, and nightly backups still cover you.
 
-  touch ~/static/control/MyClassic.info    opt out — classic dumps again
+  touch ~/static/control/MyClassic.info    opt out — classic dumps again,
+  rm ~/static/control/MyQuick.info         once both are done
   touch ~/static/control/FastTrack.info    opt in — also skip the verify
                                            tasks run before clone/migrate
 
-Verify-first is the default; to return to it later, create
-ClassicTrack.info and delete FastTrack.info.
+Verify-first is the default; to return to it later, delete
+FastTrack.info.
 
-  Docs: https://docs.boa.io/using/sites-and-platforms/cloning-and-migrating
+  Docs: https://docs.boa.io/using/sites-and-platforms/faster-clone-migrate
 
 
 Unlock your codebase for in-place upgrades
