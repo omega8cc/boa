@@ -921,6 +921,21 @@
       A run over all instances stays quiet for cancelled and proxied ones
       and names every instance it left out under load on the completion
       line: it never waited for the load to drop, whatever it printed.
+    * The mybackup restore report email carries its own subject line
+      again; it used the recipient's address as the subject. Its usage
+      examples give restore paths in the form the archive holds them,
+      data/disk/<account>/..., so a copied example restores something.
+    * The tenant README (~/static/control/README.txt) says what the fast
+      per-table dumps apply to today: the safety copies Migrate and
+      Delete take, while every Backup task carries a classic dump; that
+      opting out needs MyQuick.info deleted as well as MyClassic.info
+      created; that deleting FastTrack.info alone restores verify-first;
+      and that the Drupal 8+ platforms BOA provides are for
+      demonstration and compatibility testing only.
+    * The INI templates say a saved value applies on the next request
+      (the files are read on every one), that the session settings apply
+      on Drupal 6/7 and Backdrop only, and how to name a Drupal 8+ bin
+      in redis_exclude_bins.
 
 
 ###
