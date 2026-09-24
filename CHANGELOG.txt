@@ -341,6 +341,13 @@
 
 @=> Improvements
 
+    * codebasecheck no longer tells you to move a blocked account to a
+      Percona 5.7 server: a BLOCK line and the box result now say to
+      update that core, or move its sites to a newer platform on the same
+      box, and check again. The Percona 8 upgrade is an in-place upgrade
+      with barracuda, and the docs now say so: docs/MIGRATE-PERCONA8.md is
+      the in-place guide, and moving accounts or servers between hosts on
+      different Percona versions has its own page, docs/MIGRATE-VERSIONS.md.
     * The control panel theme declares the page language, its skip link
       now lands on the page content, and the logo link is announced as
       Home, on regular pages and on the maintenance page alike.

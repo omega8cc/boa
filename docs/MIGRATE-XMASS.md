@@ -18,8 +18,12 @@ window is needed.
 series AND patch level** (e.g. both 8.4.13, never 8.4.10 vs 8.4.13).
 
 A series
-mismatch means xmass is the wrong tool: use [xoct](MIGRATE-XOCT.md) per
-account instead. A patch-level mismatch means align the packages first —
+mismatch means xmass cannot run on this pair as it is: either upgrade the older
+server's Percona in place first ([MIGRATE-PERCONA8.md](MIGRATE-PERCONA8.md)),
+then run xmass within one series, or use [xoct](MIGRATE-XOCT.md) per account
+instead.
+
+A patch-level mismatch means align the packages first —
 failing back a newer datadir onto an older primary is an unsupported
 downgrade. Both are enforced gates at `init` (the series gate reads the
 client binary, the patch gate asks the server via `SELECT VERSION()`); a

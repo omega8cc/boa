@@ -9,9 +9,9 @@ export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bi
 # Two modes:
 #   codebasecheck <platform-path>   Check one codebase (used by the nightly, per platform).
 #   codebasecheck --box             Scan every Octopus account on this box and print a single
-#                                   Percona-8 readiness report: which accounts (if any) block the
-#                                   box-wide 5.7 -> 8.0 -> 8.4 upgrade because one shared instance
-#                                   serves the whole box, so its oldest codebase gates the upgrade.
+#                                   Percona-8 readiness report: which codebases (if any) block the
+#                                   box-wide in-place 5.7 -> 8.0 -> 8.4 upgrade because one shared
+#                                   instance serves the whole box, so its oldest codebase gates it.
 #
 # Compatibility floor per core (mirrors BOA's own maintained cores and community MySQL-8 support):
 #   D6  >= 6.51  (d6lts/Pressflow MySQL-8 retrofits)   D7  >= 7.76   D8  >= 8.6.0
@@ -213,7 +213,7 @@ classify_codebase() {
       # d6lts / Pressflow gained MySQL-8 support at 6.51 (reserved-word escaping,
       # ONLY_FULL_GROUP_BY stripping, native_password).
       if version_lt "${_version}" "6.51"; then
-        printf 'BLOCK\t%s\tDrupal 6 (%s) predates d6lts 6.51 MySQL-8 support — migrate to a legacy Percona 5.7 VM\n' "${_version}" "${_version}"
+        printf 'BLOCK\t%s\tDrupal 6 (%s) predates d6lts 6.51 MySQL-8 support — update the core, or move its sites to a newer platform on this box\n' "${_version}" "${_version}"
         return 1
       fi
       printf 'OK\t%s\tDrupal 6 (%s) is d6lts >= 6.51 (MySQL-8 compatible)\n' "${_version}" "${_version}"
@@ -222,7 +222,7 @@ classify_codebase() {
     7)
       # D7 core gained MySQL-8 support at 7.76.
       if version_lt "${_version}" "7.76"; then
-        printf 'BLOCK\t%s\tDrupal 7 (%s) predates 7.76 MySQL-8 support — migrate to a legacy Percona 5.7 VM\n' "${_version}" "${_version}"
+        printf 'BLOCK\t%s\tDrupal 7 (%s) predates 7.76 MySQL-8 support — update the core, or move its sites to a newer platform on this box\n' "${_version}" "${_version}"
         return 1
       fi
       printf 'OK\t%s\tDrupal 7 (%s) >= 7.76 (MySQL-8 compatible)\n' "${_version}" "${_version}"
@@ -231,7 +231,7 @@ classify_codebase() {
     8)
       # D8 gained MySQL-8 support at 8.6.0.
       if version_lt "${_version}" "8.6.0"; then
-        printf 'BLOCK\t%s\tDrupal 8 (%s) predates 8.6.0 MySQL-8 support — migrate to a legacy Percona 5.7 VM\n' "${_version}" "${_version}"
+        printf 'BLOCK\t%s\tDrupal 8 (%s) predates 8.6.0 MySQL-8 support — update the core, or move its sites to a newer platform on this box\n' "${_version}" "${_version}"
         return 1
       fi
       printf 'OK\t%s\tDrupal 8 (%s) >= 8.6.0 (MySQL-8 compatible)\n' "${_version}" "${_version}"
@@ -441,8 +441,9 @@ run_box_mode() {
   {
     echo "=== BOA Percona 8.x readiness — ${_host} — $(date) ==="
     echo "One shared Percona instance serves the whole box, so its oldest codebase gates the"
-    echo "box-wide 5.7 -> 8.0 -> 8.4 upgrade. Accounts marked BLOCKED must move to a legacy"
-    echo "Percona 5.7 VM before this box can upgrade."
+    echo "box-wide in-place 5.7 -> 8.0 -> 8.4 upgrade. A BLOCKED account runs a codebase below its"
+    echo "MySQL-8 floor: update that core, or move its sites to a newer platform on this box,"
+    echo "then run this check again."
     echo ""
   } | tee -a "${_log}"
 
@@ -495,8 +496,8 @@ run_box_mode() {
     printf '%s\n' "${_acct_lines[@]}" | tee -a "${_log}"
   done
 
-  # Deep contrib analysis: only meaningful for cores that already pass (a BLOCKED box moves the
-  # offending account off first), but run regardless so the operator sees every signal at once.
+  # Deep contrib analysis: only meaningful for cores that already pass (a BLOCKED codebase is
+  # brought up to its floor first), but run regardless so the operator sees every signal at once.
   if [ "${_DEEP}" = "1" ]; then
     { echo ""; echo "=== DEEP CONTRIB ANALYSIS ==="; } | tee -a "${_log}"
     if [ "${#_all_platforms[@]}" -gt 0 ]; then
@@ -514,7 +515,8 @@ run_box_mode() {
     echo ""
     echo "--------------------------------------------------------"
     if [ "${_box_status}" = "BLOCKED" ]; then
-      echo "RESULT: BLOCKED — these account(s) must move to a legacy Percona 5.7 VM before this box upgrades:"
+      echo "RESULT: BLOCKED — the codebases flagged above must reach their MySQL-8 floor before this box"
+      echo "upgrades (update the core, or move their sites to a newer platform on this box), in:"
       printf '  - %s\n' "${_blocked_accounts[@]}"
     elif [ "${_DEEP}" = "1" ] && [ "${_DEEP_REVIEW_COUNT}" -gt 0 ]; then
       echo "RESULT: REVIEW — cores are compatible, but ${_DEEP_REVIEW_COUNT} deep finding(s) need a human"

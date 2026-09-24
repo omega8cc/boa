@@ -224,7 +224,7 @@ fresh pair — db-import on 8.4 green, and the D6 per-site leg both ways: the
 stock `authentication_policy` target FAILS the site loudly with the users
 verifiably pinned, and the my.cnf remedy applied verbatim flips both D6
 sites to 200 with the re-import landing clean. The server-side half is the
-*Prerequisites* bullet on native auth; BOA sets it on Percona 8.4.
+*Prerequisites* bullet on native auth; BOA sets it on Percona 8.0 and 8.4.
 
 Which leaves, honestly:
 
@@ -1094,7 +1094,7 @@ deliberately:
 | `check` dies: stage-2 verdict FAIL | resolve the named reasons; re-run preflight |
 | `check` dies: `http_service_type=apache… - source is not nginx-mode` on a box that is on nginx | the newest preflight report predates the stage-1 flip — re-run `aegir2boa-preflight`, then `check` |
 | `check` dies: current nginx config fails `nginx -t` | fix the box first — the tool refuses to build on a broken config |
-| `check` dies: source DB newer generation than target | the source runs MySQL/Percona ≥ 8.0 (Ubuntu 20.04+ default) or MariaDB ≥ 10.6 and the target is pre-8.0 — use a Percona 8.4 target for this source |
+| `check` dies: source DB newer generation than target | the source runs MySQL/Percona ≥ 8.0 (Ubuntu 20.04+ default) or MariaDB ≥ 10.6 and the target is pre-8.0 — use a Percona 8.4 target for this source: install one with `percona-8.4`, or upgrade this target in place (MIGRATE-PERCONA8.md) |
 | `--live` refused: no prior CLEAN dry run | run the dry form of the same verb+scope first (every failed live consumes the token) |
 | `create` waits forever | another Octopus operation on the target; it times out at 30 min with a warning — verify quiescence manually before `import` |
 | `export` skips a site | the printed reason (missing vhost/alias, multi-host DB, bad creds, missing cert files, headroom); fix or accept, re-run |

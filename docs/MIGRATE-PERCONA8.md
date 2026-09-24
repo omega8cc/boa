@@ -1,246 +1,140 @@
-# Migrating to Percona 8 — cross-version behaviour and verification
+# Upgrading to Percona 8 — in place, no migration
 
-This is the field reference for moving BOA accounts and whole servers onto
-Percona 8 (8.0 or 8.4), and for verifying that any migration — same-version or
-cross-version — actually succeeded. It complements the tool references
-[MIGRATE-XOCT.md](MIGRATE-XOCT.md) and [MIGRATE-XMASS.md](MIGRATE-XMASS.md) with
-the version-specific behaviour that only surfaces on a real Percona 8 target,
-plus the pre/post checklist to trust the result.
+BOA upgrades a server's Percona **in place**, with `barracuda`. Every account,
+site, database, password and PHP version stays on the same box: nothing is
+exported, moved or renamed, and none of the migration tools (`xoct`, `xcopy`,
+`xmass`) takes part. Getting from Percona 5.7 to 8.0 and 8.4 is an upgrade,
+not a migration.
 
-The two tools split the problem the same way they always do:
+There is one caveat. A box runs **one shared Percona server** for every Octopus
+account, every control panel and every hosted site, so every codebase on the
+box must be able to run on MySQL 8 before the box upgrades. `codebasecheck`
+answers that before you start — see
+[CODEBASECHECK.md](CODEBASECHECK.md).
 
-- **`xoct`** moves a single Octopus account with `mydumper`/`myloader`. Because
-  it exports a logical dump on the source and loads it on the target, it is
-  **cross-version safe**: a Percona 5.7 source migrates cleanly onto a Percona
-  8.4 target. This is the tool for the actual version jump.
-- **`xmass`** evacuates a whole server with an xtrabackup physical snapshot plus
-  GTID replication. Physical backup + replication require **identical Percona
-  versions on both ends** — `xmass init` refuses a mismatch before it touches
-  any data. Use `xmass` to move a fleet that is already on Percona 8, not to
-  perform the version jump itself.
+Moving accounts or servers between BOA hosts is a separate job. It can happen
+to coincide with a version difference between two hosts; when it does,
+[MIGRATE-VERSIONS.md](MIGRATE-VERSIONS.md) covers how the migration tools
+handle it.
 
-So the canonical Percona-8 adoption path is: upgrade the *target* box to Percona
-8 first (see [MAJORUPGRADE.md](MAJORUPGRADE.md) — the strict path clamps a
-5.7→8.4 request to 8.0 first, so it is two upgrade runs), then `xoct`-migrate
-accounts onto it from the old 5.7 boxes. Once a whole region is on 8.4, `xmass`
-can evacuate boxes wholesale within that version.
+## The upgrade, step by step
 
-## The MySQL watchdog stands down during migrations and upgrades
+1. **Take a whole-server snapshot** (a VM snapshot or your provider's
+   equivalent) and make sure it restores. BOA takes no database backup of its
+   own during the upgrade, and a database major upgrade cannot be undone in
+   place: the snapshot is the way back.
+2. **Check readiness:** `codebasecheck --box --deep`.
 
-BOA runs a MySQL watchdog from cron (`/var/xdrago/monitor/check/mysql.sh`) that
-auto-heals a sick server: it restarts a down `mysqld`, breaks apparent table
-locks, and kills long-running queries. During normal operation that is exactly
-what you want. During a *controlled* database operation it is a race straight
-into corrupt data — the watchdog cannot tell a cutover's promotion and host-rename
-database work, an `innodb_fast_shutdown=0` package upgrade, or an
-xtrabackup snapshot apart from a genuine hang, and "healing" any of them mid-flight
-can lose data.
+    - **READY** — go on.
+    - **REVIEW** — the cores are compatible, but look at each deep finding on
+      a test clone before you trust the upgrade.
+    - **BLOCKED** — a codebase on the box is older than its MySQL-8 floor.
+      Update that core, or move its sites to a newer platform on this box with
+      Ægir's Migrate task, then run the check again until it says READY.
 
-The watchdog is therefore armed with a single maintenance marker,
-`/run/boa_sql_maintenance.pid`:
+3. **Upgrade to 8.0:** `barracuda up-lts system percona-8.0`
+4. **Upgrade to 8.4:** `barracuda up-lts system percona-8.4`
 
-- **While the marker exists, `mysql.sh` stands down entirely** — it exits before
-  any check, so it never restarts, lock-breaks, or query-kills a server that is
-  under deliberate maintenance.
-- **A stale marker cannot disable auto-heal forever.** If the marker is older
-  than four hours, `mysql.sh` treats it as abandoned (an operation that died
-  without cleanup), removes it, and resumes normal healing. `/run` is tmpfs, so
-  a reboot also clears it.
-- The operations that set and clear the marker do so around their own critical
-  sections:
-  - the **Percona package upgrade** (`_install_with_aptitude_sql`) holds it
-    across the whole apt transaction and the `innodb_fast_shutdown=0` restart;
-  - **`xmass`** holds it on **both** hosts across `init` (the source snapshot and
-    the target restore/replica bring-up) and, in `cutover`, across the final
-    position read and the target's promotion — the highest data-loss risk in
-    the entire toolchain (the cutover takes no global read lock: the 503 gate
-    and the parked cron and runners are the write barrier).
+Use `up-pro` or `up-dev` on those trees. The two runs are the Devuan Daedalus
+path; Devuan Excalibur always runs Percona 8.4 (see below).
 
-    On the default
-    relay-first order the **target** gets its watchdog back just before visitors
-    are relayed to it, so the renames' database work runs under the watchdog as
-    ordinary client work, while the **source** stays paused to the end of the
-    cutover; an estate that keeps the rename-first order (`_THIS_DB_HOST` set to
-    the box hostname) keeps both paused through the renames;
-  - **`xoct`** holds it for `export` (`mydumper` on the source) and `import`
-    (`myloader` plus `renameaegirhost`'s dump/reimport on the target).
+**Two runs, never a jump.** Ask for `percona-8.4` on a 5.7 box and that run
+stops at 8.0: the strict upgrade path stages the middle step for that run only,
+while `/root/.barracuda.cnf` keeps the 8.4 request, so the next `barracuda` run
+finishes the upgrade to 8.4. Run that second step yourself, straight after the
+first, so its downtime lands when you choose. A standing
+`/root/.percona.8.4.cnf` marker asks for the same as the argument.
 
-You do not manage the marker by hand. It matters operationally for one reason:
-**do not manually `service cron restart` or force the watchdog to run during a
-migration or a Percona upgrade** expecting it to "help" — it is deliberately
-muted, and that is correct. If a migration or upgrade dies hard and you are
-recovering by hand, confirm the marker is gone (`ls /run/boa_sql_maintenance.pid`)
-before you rely on the watchdog again; it self-clears after four hours regardless.
+## What each run does
 
-## What xmass needs on a Percona 8 box that a 5.7 box does not
+- **Stops the watchdog from interfering.** The MySQL watchdog stands down for
+  the whole package window (see below), so it never starts a competing
+  `mysqld` while the new server is coming up.
+- **Shuts the old server down cleanly** (`innodb_fast_shutdown = 0`), so the new
+  server starts from a fully flushed datadir.
+- **Swaps the packages.** The install stops the old server and starts the new
+  one. The first 8.0 start also upgrades the data dictionary, which takes
+  minutes on a large datadir.
+- **Fails closed.** If the server package is not installed at the target series
+  after the package phase, the run stops with a FATAL before any configuration
+  is touched.
+- **Writes what the new series needs** into `my.cnf` (the authentication lane
+  below among it), restarts the server, and runs `mysqlcheck --auto-repair`
+  over every database, plus `mysql_upgrade` on the 5.7 leg.
+- **Re-arms the watchdog** once the new server is up.
 
-Whole-server replication vocabulary and defaults changed substantially between
-5.7 and 8.x. `xmass` is version-aware and handles all of the following
-automatically — they are documented here so the behaviour is understood, not so
-you configure anything:
+**What visitors see.** Nginx and PHP-FPM stay up for the whole run; any request
+that needs the database fails while `mysqld` is down, from the slow shutdown to
+the first start of the new server, and briefly again at the restarts after it.
+BOA puts up no maintenance page for this, and a 5.7 → 8.4 upgrade is two such
+windows, one per run. Plan them.
 
-- **xtrabackup version and repositories.** Physical backup needs the xtrabackup
-  build that matches the server: `percona-xtrabackup-24` for 5.7,
-  `percona-xtrabackup-80` for 8.0, `percona-xtrabackup-84-lts` for 8.4. BOA's
-  base install configures only the Percona *server* repository, so `xmass`
-  derives and enables the matching `pxb-*` repository (reusing the server repo's
-  keyring and codename) before installing. It also enables Percona's `tools`
-  repository, because xtrabackup depends on `libdbd-mysql-perl`, and the Debian
-  build of that package pulls `libmariadb3`, which BOA pins uninstallable — the
-  Percona `tools` build depends on the Percona client instead and resolves
-  cleanly.
-- **Binlog expiry.** `expire_logs_days` was removed in 8.4. On 8.0+ the GTID
-  configuration `xmass` writes uses `binlog_expire_logs_seconds`.
-- **Replication statement vocabulary.** The `CHANGE MASTER TO` / `START SLAVE` /
-  `SHOW SLAVE STATUS` / `RESET MASTER` family was removed in 8.4 in favour of
-  `CHANGE REPLICATION SOURCE TO` / `START REPLICA` / `SHOW REPLICA STATUS` /
-  `RESET BINARY LOGS AND GTIDS`. `xmass` selects the correct dialect for the
-  running version across **every** phase (`init`, `sync`, `status`, `cutover`),
-  not only at `init`.
-- **GTID persistence.** Enabling GTID at runtime is not enough — the xtrabackup
-  copy-back restarts the server, and an unpersisted `gtid_mode` reverts to OFF
-  on restart, which silently breaks the replica bring-up. `xmass` writes the
-  GTID settings into the include directory that the server's `my.cnf` actually
-  reads (`!includedir`, not a guessed `*.conf.d`) and asserts `gtid_mode=ON`
-  after the restart.
-- **Replica authentication.** `caching_sha2_password` (the 8.0+ default auth
-  plugin) refuses to authenticate a replica over a non-TLS channel unless the
-  replica is told to fetch the source's public key. `xmass` sets
-  `GET_SOURCE_PUBLIC_KEY=1` on the replication link and verifies that **both**
-  the IO and SQL replica threads report running before it proceeds.
+## Sites on the PHP 5.6 pool keep working on 8.0 and 8.4
 
-None of this applies to a same-version 5.7→5.7 `xmass` move, which uses
-`percona-xtrabackup-24` and the legacy `MASTER`/`SLAVE` vocabulary throughout.
-The whole 8.x cluster of requirements only appears the first time you run
-`xmass` against real Percona 8 servers.
+The 8.x default authentication plugin, `caching_sha2_password`, is advertised in
+the server's handshake greeting, and PHP 5.6's mysqli aborts on that greeting
+before the user's own plugin is consulted. A site served through the `php56`
+pool would lose its database on the web while CLI Drush (modern PHP) stayed
+healthy, and Drupal 6 would answer its own "Site off-line" page.
 
-## Legacy PHP web clients on Percona 8.4
+BOA's configuration pass therefore advertises the native plugin on both 8.x
+series: `authentication_policy = mysql_native_password,,` on 8.0 and 8.4, plus
+`default_authentication_plugin = mysql_native_password` on 8.0 and
+`mysql_native_password=ON` on 8.4. The greeting is native, a native-plugin user
+connects from PHP 5.6, and `caching_sha2` users (root, every modern-PHP site)
+still authenticate through the client auth-switch.
 
-Replication is not the only place the 8.x auth default bites. The handshake
-greeting advertises the server's default first-factor plugin, and PHP 5.6's
-mysqli aborts on a `caching_sha2_password` greeting BEFORE the user's own
-plugin is consulted — so a site served through the `php56` pool loses its
-database on the web while CLI drush (modern PHP) stays healthy, and Drupal 6
-answers its own "Site off-line" 503. Loading the plugin
-(`mysql_native_password=ON`) is necessary but not sufficient.
+On 5.7 the directives are commented out, since 5.7 aborts on the unknown
+variables. An existing box's `my.cnf` converges on its next `barracuda up-*`
+pass; there is nothing to do by hand. That is why `php56`-pool sites stay up
+across both runs of the upgrade.
 
-BOA's 8.4 config pass therefore also sets
-`authentication_policy = mysql_native_password,,` (sql.sh.inc directive sync):
-the greeting is native, a native-plugin user connects from
-PHP 5.6, and `caching_sha2` users — root, every modern-PHP site — still
-authenticate via the client auth-switch. The reset phase comments the
-directive for every other version (5.7 aborts on the unknown variable, so a
-half-flipped box stays bootable), and the line is inserted when an existing
-box's `my.cnf` predates the template. Existing 8.4 boxes converge on their
-next `barracuda up-*` pass; nothing to do by hand.
+The Drupal side is a separate matter: Drupal 6 code runs on MySQL 8 from
+d6lts/Pressflow 6.51 on (the `codebasecheck` floors). What BOA's configuration
+provides is the PHP 5.6 client lane, which no Drupal version bump could supply.
 
 Horizon: this lane exists only for the 8.x generation. `mysql_native_password`
-is deprecated-but-shipped in 8.4 and REMOVED in MySQL/Percona 9.x, so
-php56-pool sites cannot follow a future move to 9.x — they would need to stay
-on 8.4 hosts (the natural gate for that, when a 9.x target ever appears, is
-codebasecheck).
+is deprecated but shipped in 8.4 and removed in MySQL/Percona 9.x, so a box
+hosting `php56`-pool sites could not be upgraded in place to 9.x. When 9.x
+support ever lands, `codebasecheck` is the natural place to gate that.
 
-Note the Drupal-side split: the D6 CODE compatibility with
-MySQL 8 comes from d6lts/Pressflow 6.51+ (docs/CODEBASECHECK.md thresholds);
-what BOA's config provides is the PHP 5.6 CLIENT runtime lane, which no
-Drupal version bump could supply.
+## The MySQL watchdog stands down during the upgrade
 
-## Cross-version xoct: what transfers and what to watch
+BOA runs a MySQL watchdog from cron (`/var/xdrago/monitor/check/mysql.sh`) that
+restarts a down `mysqld`, breaks apparent table locks and kills long-running
+queries. During a deliberate database operation it cannot tell an
+`innodb_fast_shutdown=0` package upgrade from a genuine hang, and "healing" it
+mid-flight — starting a second `mysqld` that races the new one for the datadir
+— would abort the data-dictionary upgrade.
 
-`xoct`'s logical dump/restore is version-agnostic for the data itself — the DB
-lands correctly on the newer server. Two behaviours are worth knowing when you
-migrate onto a fresh Percona 8 target:
+The Percona package upgrade therefore holds the maintenance marker
+`/run/boa_sql_maintenance.pid` for the whole package window, and while the
+marker exists the watchdog exits before any check. A marker older than four
+hours is treated as abandoned and removed, and `/run` is tmpfs, so a reboot
+clears it too. The migration tools hold the same marker around their own
+database work (see [MIGRATE-VERSIONS.md](MIGRATE-VERSIONS.md)).
 
-- **Post-migration cache/container state.** A migrated-in site can carry the
-  source box's stale object cache and (for Drupal 8+) a stale service container.
-  BOA does **not** attempt a per-site `drush cr` on import — outside Provision's
-  bootstrap context that rebuild fatals on the D8+ Drush/Symfony patch state.
-  Instead both `xoct import` and `xmass post-mig` do a **hard infrastructure
-  flush**: cold-restart Valkey (or Redis) to drop the object cache, and restart
-  every PHP-FPM master to drop opcache/APCu. This is the only treatment trusted
-  against cache/container poisoning.
+You do not manage the marker by hand. Do not restart cron or force the watchdog
+to run during an upgrade expecting it to help. If an upgrade dies hard and you
+recover by hand, check the marker is gone (`ls /run/boa_sql_maintenance.pid`)
+before you rely on the watchdog again; it self-clears after four hours
+regardless.
 
-  Operational consequence: sites are briefly
-  unavailable (seconds) immediately after the flush and warm up on the next
-  request — expected, not a fault.
-- **Per-site PHP version pin.** Each site's PHP version lives in the account's
-  `static/control/multi-fpm.info`. `xoct` preserves this pin across the move, so
-  a site running on 7.4 on the source keeps running on 7.4 on the target even
-  though the target account was freshly created with a different default.
+## Devuan Excalibur, fresh installs and Drupal 11
 
-### Rename-mode caveats (`o1`→`o2`)
+- **Excalibur runs Percona 8.4 only.** `autoexcalibur` refuses the Daedalus →
+  Excalibur OS upgrade until the box is on 8.4, so upgrade Percona in place on
+  Daedalus first (see [MAJORUPGRADE.md](MAJORUPGRADE.md)).
+- **A new server can start on 8.4** by installing with the `percona-8.4`
+  argument (see [INSTALL.md](INSTALL.md)). On Daedalus the default stays 5.7 on
+  purpose: what runs keeps running, and the newer engine is a choice you make
+  at install, or later with this upgrade.
+- **Drupal 11 needs MySQL 8**, which on BOA means Percona 8.4, so a box that
+  will host Drupal 11 takes this upgrade (or installs with 8.4).
 
-`xoct`'s optional fourth argument renames the account on the target. Rename mode
-rewrites account references — including the per-site FPM `$user_socket` account
-token, so a renamed site is served by its own account's FPM pool rather than the
-target's install-time account of the same old name.
+## Field evidence
 
-Same-name migrations (the
-common production case, and the only mode `xmass` performs) do not exercise the
-rename rewrites at all. When you do rename, verify the renamed site serves a real
-`200` **direct to the target** (not a proxy or catch-all) — a site-wide `403`
-after a rename historically meant a socket token still pointed at the wrong
-account's pool.
-
-## Verification — how to trust a migration
-
-A bare "the site returns 200" proves almost nothing: it can be nginx's catch-all,
-a cached page from the source, or the wrong account's FPM pool answering. Record
-a real BEFORE baseline on the source and check the same things AFTER on the
-target, fetched **directly to the target IP**.
-
-**Before (on the source, per site):**
-
-- a unique body marker string you can grep for in the served HTML;
-- HTTP `200` on a real Drupal route (e.g. `/user/login`), not the front catch-all;
-- a known row count in a marker table (or any table you can count);
-- `drush @<alias> status` bootstraps cleanly.
-
-**After (direct to the target, per site):**
-
-| Check | What it proves |
-|---|---|
-| served HTML contains the exact BEFORE marker | the right site's content is live, not a cache or catch-all |
-| HTTP `200` on the same real route, direct to target IP | FPM is executing as the correct account, not 403/503 |
-| marker-table row count matches BEFORE | the DB imported completely, not a truncated load |
-| `drush @<alias> status` bootstraps on the target | settings/DB creds/paths rewrote correctly |
-| `static/files` content present on the target store | file store transferred |
-| site-level `files`/`private` are still symlinks | the storage layout survived (not copied as plain dirs) |
-| source serves the same marker **via proxy** | the source→target proxy hop is live for DNS-propagation window |
-
-**Whole-server (`xmass`) additional gates:**
-
-- `xmass init` prints the version-match confirmation (identical Percona on both);
-- both replica threads report running (`SHOW REPLICA STATUS` / `SHOW SLAVE
-  STATUS` per version) with lag falling to zero;
-- `xmass sync` reaches a CLEAN dry plan before you run it `--live`;
-- `xmass status` shows lag under a minute before cutover;
-- after cutover, `_XMASS_PHASE=complete`, every account serves its marker on the
-  target, replication is torn down (target standalone), and the source proxies.
-
-**Negative gate (cross-version `xmass`):** `xmass init` from a 5.7 source to an
-8.4 target must exit non-zero with the version-mismatch refusal *before* any
-xtrabackup or GTID step, leaving the target's data untouched. The refusal is the
-correct outcome — cross-version is `xoct`'s job.
-
-## Field validation — 2026-07
-
-The behaviour above was validated end-to-end on Devuan Daedalus, 8-core ephemeral
-boxes, BOA-5.10.3-lts, with two seed sites per account (Drupal 7 on PHP 7.4 and
-Drupal 10 on PHP 8.4, each with a unique page marker and a marker DB table). The
-Percona-8 boxes reached 8.4 via the real double-upgrade (5.7→8.0→8.4). Coverage
-matrix, all passing:
-
-| Scenario | Tool | Direction | Outcome |
-|---|---|---|---|
-| A57 | `xoct` | 5.7 → 5.7 | PASS (single-account, rename mode) |
-| C57 | `xmass` | 5.7 → 5.7 | PASS (whole-server; xtrabackup-24 + GTID on 5.7) |
-| A | `xoct` | 5.7 → 8.4 | PASS (cross-version DB jump, mydumper→myloader) |
-| B | `xoct` | 8.4 → 8.4 | PASS (single-account, same version) |
-| C | `xmass` | 8.4 → 8.4 | PASS (whole-server; xtrabackup-84 + GTID on 8.4) |
-| D | `xmass` | 5.7 → 8.4 | PASS — refused at the version gate, target untouched |
-
-The version-aware `xmass` behaviour and the watchdog-pause safety were first
-validated against real Percona 8.4 in that campaign, across both same-version
-and cross-version paths. This page documents the resulting behaviour, which is
-what you operate against.
+The Percona 8 boxes in the July 2026 migration campaign reached 8.4 through
+this two-run in-place upgrade (5.7 → 8.0 → 8.4), not through a fresh install;
+the campaign itself, which tested the migration tools across versions, is
+described in [MIGRATE-VERSIONS.md](MIGRATE-VERSIONS.md).
