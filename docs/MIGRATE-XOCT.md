@@ -20,8 +20,10 @@ For full-server migrations where Percona versions match, consider
 
 ## Prerequisites
 
-- Both servers running the same BOA release (minor version differences are
-  usually fine; major platform gaps are not).
+- Both servers running the same complete BOA release: a full barracuda AND
+  octopus run on the older one, never `system` alone. xoct does not check
+  this; a target missing a central-map nginx variable that a newer release
+  introduced fails the box-wide config test and takes down every migrated site.
 - Root SSH access from source to target (`xmass pre-mig` or manual key
   exchange).
 - No existing Octopus instance required on target — `xoct create` provisions it.
