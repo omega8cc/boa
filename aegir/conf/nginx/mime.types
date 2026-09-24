@@ -93,6 +93,7 @@ types {
   font/opentype                         otf;
   font/woff                             woff;
   font/woff2                            woff2;
+  image/avif                            avif;
   image/bmp                             bmp;
   image/gif                             gif;
   image/jpeg                            jpeg jpg;
