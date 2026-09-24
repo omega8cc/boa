@@ -264,10 +264,11 @@
       it, and lists, with versions, the contrib BOA adds to Drupal 8+
       platforms outside Composer.
     * staticbuild distribute replaces a published distribution or core
-      with a same-name tarball whose lock differs only when the new
-      lock fixes advisories (it clears some and adds none) or the
-      platform is named with -O, since the boxes that already hold it
-      would never fetch it again.
+      with a same-name tarball whose lock differs unless the new lock
+      adds advisories or cannot be checked for them; those are
+      refused unless the platform is named with -O. The boxes that
+      already hold a platform never fetch it again and keep its old
+      bytes.
     * staticbuild prints one row per platform: whether it built, the
       advisories left and fixed, what happened on the mirror and a
       note only where something needs attention, with the command to

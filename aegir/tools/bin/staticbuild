@@ -29,10 +29,10 @@
 # fatal); the result, with what the fix step moved and what it could not, is recorded
 # beside the tarball as <platform>.advisories and counted in the run summary.
 # distribute replaces a published distro or vanilla core tarball with a same-name one
-# whose lock differs only when the new lock clears advisories and adds none (both sides
-# audited at that moment), or when -O names it; any other lock change is refused. A box
-# fetches a platform only while its directory is absent, so the boxes that already hold
-# the old bytes keep them either way.
+# whose lock differs, unless the new lock adds advisories the published one lacks or
+# either side cannot be audited or compared (both sides audited at that moment): those
+# are refused unless -O names them. A box fetches a platform only while its directory
+# is absent, so the boxes that already hold the old bytes keep them either way.
 #
 # Output: build, package, distribute, all and the family actions print one row per
 # platform (build result, advisories left and fixed, what happened on the mirror, a
@@ -55,12 +55,12 @@
 #   staticbuild package             clean + tar (cores keep core/profiles, distros strip)
 #   staticbuild distribute          copy tarballs to /var/www/static/{distro,core,dev/{dev,lts,pro}};
 #                                   a same-name distro or vanilla core tarball whose
-#                                   lock changed replaces the published one only when
-#                                   it clears advisories and adds none; otherwise it
-#                                   is refused (exit 3 at the end)
+#                                   lock changed replaces the published one unless it
+#                                   adds advisories or either side cannot be audited or
+#                                   compared; then it is refused (exit 3 at the end)
 #   staticbuild -O distribute <platform> ...
 #                                   the same, overwriting the named platforms'
-#                                   published tarballs even though their lock changed
+#                                   published tarballs even when they are refused
 #   staticbuild check               report the latest upstream versions a build would pull
 #   staticbuild catalogue [tree ...] audit the PUBLISHED catalogue of each tree
 #                                   (default dev lts pro) against the distro mirror;
@@ -78,8 +78,9 @@
 #   -f         force rebuild: remove an existing built platform before building
 #   -C         skip "composer clearcache" at the start of a build
 #   -O         with distribute and the platform names after it only: overwrite
-#              those published tarballs although their lock changed (logs both
-#              lock hashes; boxes that already fetched them keep the old bytes)
+#              those published tarballs even when their changed lock is refused
+#              (logs both lock hashes; boxes that already fetched them keep the
+#              old bytes)
 #   --debug    stream everything (Composer, git, tar, every advisory id) as it
 #              happens instead of writing it to the run log; the one-row-per-
 #              platform summary still closes the run
@@ -279,8 +280,9 @@ _CORE_SPEC="drupal/recommended-project"
 # Pinned catalogue platforms: nothing upstream rebuilds them any more, so their build
 # starts from the published tarball itself (the local shelf, else the distro mirror)
 # and only the advisory fix step changes it. Distribution and core stay, and so does
-# the name, which lets distribute replace the published copy when the fix step clears
-# advisories. The core minors are past their security support: core advisories stay.
+# the name, so distribute replaces the published copy unless the rebuilt lock adds
+# advisories or cannot be checked for them. The core minors are past their security
+# support: core advisories stay.
 _EZC_PINNED="ezcontent-2.2.15-10.3.6"
 _EZC_DISTPKG="srijanone/ezcontent"
 _CK2_PINNED="commerce_base-2.40-10.1.8"
@@ -2325,11 +2327,12 @@ do_txp_family() {
 _lock_digest() {
   # sha256 of the composer.lock at the top of platform tarball $1, joined with that
   # of a patches.lock.json beside it, so a respin whose patch list moved under an
-  # unchanged lock still differs. A patch whose content changed behind the same URL
-  # is not seen: varbase's patches.lock.json records no patch hashes, so a varbase
-  # respin under the same name needs a deliberate look. Empty when the tarball
-  # carries no composer.lock at its top (sha256sum would still print the empty-input
-  # hash, so tar's status decides). tar stops at the first match.
+  # unchanged lock still differs and is audited before it replaces the published one.
+  # A patch whose content changed behind the same URL is not seen: varbase's
+  # patches.lock.json records no patch hashes, so such a respin passes as the same
+  # lock under new bytes. Empty when the tarball carries no composer.lock at its top
+  # (sha256sum would still print the empty-input hash, so tar's status decides). tar
+  # stops at the first match.
   local _l _p
   _l="$(set -o pipefail
     tar -xzOf "$1" --wildcards --no-wildcards-match-slash --occurrence=1 '*/composer.lock' 2>/dev/null \
@@ -2347,14 +2350,25 @@ _overwrite_named() {
   return 1
 }
 
+_replaces_published() {
+  # $1 = _fix_verdict's answer for a same-name tarball whose lock changed. 0 when the
+  # new lock may replace the published one: it clears advisories, or carries the same
+  # ones. A lock that adds advisories, or one whose audit did not finish or cannot be
+  # compared, is refused.
+  case "$1" in
+    fix|"fixes nothing"*) return 0 ;;
+  esac
+  return 1
+}
+
 _publish_locked() {
   # $1 = Composer-built platform tarball in the day dir, $2 = shelf. A box fetches a
   # platform only while its directory is absent, so a same-name tarball with a changed
-  # lock reaches new installs and never the boxes that already hold the platform. It
-  # replaces the published one only in three cases: the lock is unchanged; the new
-  # lock clears advisories the published one carries and adds none (both audited now,
-  # against today's advisories -- the security fix route); or -O names it. Any other
-  # lock change is refused and the published copy stays.
+  # lock reaches new installs and never the boxes that already hold the platform. Both
+  # locks are audited now, against today's advisories, and the new one replaces the
+  # published one unless it adds advisories the published one lacks, or either audit
+  # did not finish or cannot be compared: those are refused and the published copy
+  # stays, unless -O names the platform.
   local _src="$1" _out="$2" _base _key _dst _old _new _st="new" _ra _rb _on _nn _vd
   _base="${_src##*/}"
   _key="${_base%.tar.gz}"
@@ -2382,13 +2396,13 @@ _publish_locked() {
           _on="$(sed -n '1s/^advisories: //p' <<< "${_ra}")"
           _nn="$(sed -n '1s/^advisories: //p' <<< "${_rb}")"
           _vd="$(_fix_verdict "${_ra}" "${_rb}")"
-          if [[ "${_vd}" == "fix" ]]; then
+          if _replaces_published "${_vd}"; then
             _st="replaced"
           else
             _alrt "REFUSED: ${_base} is already published and its lock differs"
             _alrt "  published lock sha256: ${_old:-none (no composer.lock found)}"
             _alrt "  new lock sha256:       ${_new:-none (no composer.lock found)}"
-            _alrt "  advisories: published ${_on:-unknown}, this build ${_nn:-unknown} (replaced only when it clears some and adds none)"
+            _alrt "  advisories: published ${_on:-unknown}, this build ${_nn:-unknown} (refused when it adds some or either side cannot be audited or compared)"
             _alrt "  boxes that already fetched ${_key} would keep the old bytes;"
             _alrt "  ship the change under a new platform name, or run: staticbuild -u ${_O8_USER} -d ${_DAY} -O distribute ${_key}"
             _rec_pub "${_key}" REFUSED
@@ -2396,7 +2410,7 @@ _publish_locked() {
               adds*)                _rec_note "${_key}" "adds advisories" ;;
               "the advisory audit"*) _rec_note "${_key}" "audit failed" ;;
               "the audit reports"*) _rec_note "${_key}" "audit not comparable" ;;
-              *)                    _rec_note "${_key}" "lock changed" ;;
+              *)                    _rec_note "${_key}" "not verified" ;;
             esac
             _REFUSED=$((_REFUSED + 1))
             return 1
@@ -2415,7 +2429,11 @@ _publish_locked() {
   _rec_pub "${_key}" "${_st}"
   case "${_st}" in
     replaced)
-      _msg "REPLACED (clears advisories): ${_base}"
+      if [[ "${_vd}" == "fix" ]]; then
+        _msg "REPLACED (clears advisories): ${_base}"
+      else
+        _msg "REPLACED (lock changed, same advisories): ${_base}"
+      fi
       _msg "  published lock sha256: ${_old:-none}"
       _msg "  new lock sha256:       ${_new:-none}"
       _msg "  advisories: published ${_on}, this build ${_nn}; boxes that already fetched ${_key} keep the old bytes"
@@ -3149,7 +3167,7 @@ main() {
       # A refusal is the guard working: its own status, apart from a fatal error (1).
       # Per-target FAIL rows are reported in the summary only, as before.
       if [[ "${_REFUSED}" -gt 0 ]]; then
-        _msg "${_REFUSED} tarball(s) left unpublished: same name, changed lock, no advisory fixed"
+        _msg "${_REFUSED} tarball(s) left unpublished: same name, changed lock, adds advisories or not verified"
         exit 3
       fi
       ;;
