@@ -21,8 +21,9 @@ handles the per-distro quirks (see Notes), packages, and publishes. Run it as ro
   staticbuild package            # clean + tar (cores keep core/profiles, distros strip)
   staticbuild distribute         # copy tarballs to /var/www/static/{distro,core,dev/{dev,lts,pro}}
                                  # (a same-name distro or vanilla core tarball whose lock changed
-                                 #  replaces the published one only when it fixes advisories;
-                                 #  otherwise it is refused and the run ends with exit 3)
+                                 #  replaces the published one unless it adds advisories or
+                                 #  cannot be checked for them; then it is refused and the
+                                 #  run ends with exit 3)
   staticbuild -O distribute <platform> ...
                                  # the same, overwriting the named platforms' published tarballs
   staticbuild catalogue [tree]   # audit each tree's PUBLISHED catalogue against the distro mirror
@@ -43,20 +44,20 @@ Options precede the action: `-d MM-DD`, `-u USER`, `-f`, `-C`, `-O` (with `distr
 only), and `--debug`. By default `build`, `package`, `distribute`, `all` and the family
 actions print a header naming the run's log and then **one row per platform** (build
 result, advisories left and fixed, what happened on the mirror, and a two- or
-three-word note only when the row needs attention, such as `lock changed` or `patch
-skipped`), plus a footer with the command for refused tarballs and the end of a failed
-build's log. Composer, git and tar output, every advisory id and the lock hashes go to
-the log under `/var/backups/reports/staticbuild/<user>/<MM-DD>/` (root only); `--debug`
-streams them instead.
+three-word note only when the row needs attention, such as `adds advisories` or
+`patch skipped`), plus a footer with the command for refused tarballs and the end of a
+failed build's log. Composer, git and tar output, every advisory id and the lock hashes
+go to the log under `/var/backups/reports/staticbuild/<user>/<MM-DD>/` (root only);
+`--debug` streams them instead.
 
 The two pinned catalogue platforms, `ezcontent` (EZC) and `commerce_base` (CK2), are
 build targets too: with no upstream recipe left, each starts from its own published
 tarball (the local shelf, else the distro mirror) and only the advisory fix step
 changes it, so distribution, core and name stay and the rebuild replaces the published
-copy when it clears advisories. Their core minors are past security support, so core
-advisories remain. CK2 resolves one package from a GitHub repository; when GitHub
-refuses anonymous requests (rate limit), its row says so, and a GitHub token in the
-build user's Composer configuration lifts the limit.
+copy unless it adds advisories or cannot be checked for them. Their core minors are
+past security support, so core advisories remain. CK2 resolves one package from a
+GitHub repository; when GitHub refuses anonymous requests (rate limit), its row says
+so, and a GitHub token in the build user's Composer configuration lifts the limit.
 
 ### Advisories: audited, not blocked
 
@@ -127,15 +128,16 @@ By hand, the same audit of a built platform is:
   cd /tmp/audit && composer audit --locked --no-plugins --no-scripts    # add --no-dev when require-dev was not installed
 ```
 
-### Same-name respins: only a fix replaces a published platform
+### Same-name respins: a changed lock replaces unless it adds advisories
 
 A box fetches a catalogue platform only while its directory is absent, so a tarball
 republished under the same name with a different lock reaches new installs and never
 the boxes that already hold that platform. A same-name tarball whose lock changed
-therefore replaces the published one only when it **fixes advisories**: distribute
-audits both locks against today's advisories, and the new one must carry fewer and none
-the published one lacks. Every other lock change is refused. Site owners who need a fix
-on a platform already on their box rebuild their own platform in `~/static`.
+replaces the published one unless it **adds advisories**: distribute audits both locks
+against today's advisories, and the new one is refused when it carries an advisory the
+published one lacks, or when either audit cannot finish or be compared. A lock that
+clears advisories, or carries the same ones, replaces. Site owners who need a fix on a
+platform already on their box rebuild their own platform in `~/static`.
 
 `staticbuild distribute` enforces it for every Composer-built tarball: the
 distributions on `distro/` and the vanilla `drupal-*` cores on `core/`. When the shelf
@@ -143,21 +145,21 @@ already holds a tarball of the same name, it compares the sha256 of the `compose
 inside both, joined with that of a `patches.lock.json` beside it, so a respin whose
 patch list moved under an unchanged lock still differs. A patch whose content changed
 behind the same URL is not seen: varbase's `patches.lock.json` records no patch hashes,
-so a same-name varbase respin needs a deliberate look before it is published. A
-difference that is not a fix (including a lock missing on either side, or an audit
-that cannot finish) leaves the published tarball in place, logs both hashes and both
-advisory counts, and marks the row `REFUSED`, with the `-O` command below the table;
-once the other tarballs are published the run exits 3, a status of its own so a wrapper
-can tell the guard working from a fatal error (exit 1). Failed builds are reported in
-their rows and do not change the exit code. The same lock under new bytes, an ordinary
-re-tar, passes.
+so such a varbase respin passes as the same lock under new bytes. A lock that adds
+advisories, a lock missing on either side, or an audit that cannot finish or be
+compared leaves the published tarball in place, logs both hashes and both advisory
+counts, and marks the row `REFUSED`, with the `-O` command below the table; once the
+other tarballs are published the run exits 3, a status of its own so a wrapper can
+tell the guard working from a fatal error (exit 1). Failed builds are reported in their
+rows and do not change the exit code. The same lock under new bytes, an ordinary re-tar,
+passes.
 
 A deliberate same-name rebuild names what it overwrites:
 `staticbuild -O distribute <platform> ...` overwrites only those platforms' published
 tarballs, logs both lock hashes, marks the row `OVERWRITTEN`, and warns that the
 boxes which already fetched them keep the old bytes; any other changed tarball in the
-day dir is still refused. `-O` without names, names without `-O`, a name not in the
-day dir and `-O` with any other action are refused before anything is copied. The
+day dir follows the rule above. `-O` without names, names without `-O`, a name not in
+the day dir and `-O` with any other action are refused before anything is copied. The
 Backdrop, Grav and Textpattern tarballs carry no lock and are copied as before, as are
 the dev-extension and contrib shelves. Every copy onto a shelf takes only a plain file
 from the day dir (never a symlink or a FIFO) and replaces the destination rather than
@@ -555,7 +557,7 @@ install profile), then gzip the remaining (distribution) platforms:
 Before a same-name distribution tarball replaces one already in `distro/`, compare the
 `composer.lock` inside both: a changed lock under an old name never reaches the boxes that
 already hold that platform (see "Same-name respins" above; `staticbuild distribute`
-refuses it unless `-O`).
+refuses it when it adds advisories or cannot be checked for them, unless `-O`).
 
 Raw cores (`drupal-*`) go to `core/`; the distributions go to `distro/`. The Backdrop, Grav
 and Textpattern artefacts are `core/` shelf content too: their family targets publish them
