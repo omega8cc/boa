@@ -191,3 +191,11 @@ DE2 DX5 SOC UC7
 ```
 ALL
 ```
+
+# Republished Built-in Platforms
+
+A built-in platform is fetched from the mirror only when its directory is missing. When the mirror republishes a platform's tarball under the same name, for example with a security fix, every Octopus upgrade checks it. An idle platform (no site directory, no tenant file in `sites/all`, no site or pending task for it in the control panel) is fetched again beside the old tree, swapped in and verified. Only a newer copy on the mirror counts, so a CDN edge still serving an older tarball never swaps a platform back.
+
+A platform in use is left as it is, and the upgrade log says so once per republished copy. To pick up the fix, migrate its sites to a platform that has it. What each platform was fetched from is recorded in `~/distro/NNN/.boa-tarball/`; a replaced tree that turned out to hold a site or tenant files is kept in `~/distro/NNN/.boa-refresh/` and reported on every upgrade until it is dealt with.
+
+Platforms fetched before this was added have no record. For each idle one, the first upgrade that runs fetches its tarball once: a tree that still matches it is only recorded, and one that does not (every verified Drupal 8+ tree) is refreshed.

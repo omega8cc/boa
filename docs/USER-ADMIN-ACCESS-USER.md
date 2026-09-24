@@ -66,7 +66,8 @@ the file empty.
 
 ## Good to know
 
-- This restricts only `/user` and `/admin` (and pages under them). The rest of the site
+- This restricts only `/user` and `/admin` (and pages under them); on a multilingual site
+  their language-prefixed forms such as `/de/user` are not covered. The rest of the site
   stays public. To lock down a **whole** site instead, see the separate whole-site IP
   access feature.
 - Addresses are listed with spaces between them; each can be a single IPv4/IPv6 address or
