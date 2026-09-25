@@ -3542,6 +3542,25 @@ _site_socket_inc_gen() {
     if [ ! -z "${_diffFpmTest}" ]; then
       _mltFpmUpdate=YES
     fi
+    # A pin with no include yet (its site, its PHP version or its pool socket
+    # did not exist when the includes were last built) forces one rebuild in
+    # the pass it becomes applicable: the baseline alone kept it inert until
+    # the file changed, pins from before this check included. A line that
+    # never applies (a typo) costs a few stats, no rebuild.
+    local _sN _sV _sR
+    while read -r _sN _sV _sR; do
+      _sN=${_sN//[^a-zA-Z0-9-.]/}
+      _sN=${_sN,,}
+      _sV=${_sV//[^0-9]/}
+      [ -n "${_sN}" ] && [ -n "${_sV}" ] || continue
+      [ "${_sN}" = "place.holder.dont.remove" ] && continue
+      [ -e "${_fpmPth}/fpm_include_site_${_sN}.inc" ] && continue
+      if [ -x "/opt/php${_sV}/bin/php" ] \
+        && [ -e "${_dscUsr}/.drush/${_sN}.alias.drushrc.php" ] \
+        && [ -e "/run/${_USER}.${_sV}.fpm.socket" ]; then
+        _mltFpmUpdateForce=YES
+      fi
+    done <<< "${_mltFpmBody}"
     # While a whole-server move's promotion window is open on this box (the
     # standby marker plus the fresh in-flight signal), the per-site includes
     # are left exactly as found. The rename running in that window rewrites
@@ -3563,6 +3582,7 @@ _site_socket_inc_gen() {
       # local: a bare IFS= here stayed a newline for the rest of the pass,
       # and every later "for x in ${list}" saw one word
       local IFS=$'\12'
+      _mltFpmSkip=""
       for p in ${_mltFpmBody};do
         _SITE_NAME=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
         _SITE_NAME=${_SITE_NAME//[^a-zA-Z0-9-.]/}
@@ -3579,8 +3599,17 @@ _site_socket_inc_gen() {
           && [ -e "/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
           _ltd_put_in "${_fpmPth}" "fpm_include_site_${_SITE_NAME}.inc" \
             "if ( \$main_site_name = ${_SITE_NAME} ) {"$'\n'"  set \$user_socket \"${_SOCKET_L_NAME}\";"$'\n'"}"
+        elif [ -n "${_SITE_NAME}" ] && [ -n "${_SITE_SOCKET}" ] \
+          && [ "${_SITE_NAME}" != "place.holder.dont.remove" ]; then
+          _mltFpmSkip="${_mltFpmSkip}${_SITE_NAME} ${_SITE_SOCKET}"$'\n'
         fi
       done
+      # the skipped lines, for the tenant to see; the check above retries them
+      if [ -n "${_mltFpmSkip}" ]; then
+        _ltd_ctrl_put .multi-fpm-skipped.info "${_mltFpmSkip}"
+      else
+        _ltd_ctrl_rm .multi-fpm-skipped.info
+      fi
       _ltd_ctrl_stamp .multi-nginx-fpm.pid ""
       _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./.prev-multi-fpm.info
       _ltd_ctrl_put .prev-multi-fpm.info "${_mltFpmBody}"
@@ -3656,6 +3685,18 @@ _switch_php() {
       [ -x "/opt/php${1//./}/bin/php" ]
     }
 
+    # One known version per control file (8.3 or 83), as the docs promise;
+    # anything else -- a second line, a patch level, a word -- is ignored.
+    # The reads below join the lines of a file, so without this gate
+    # '8.3' + '8.4' became '8.38.4': a pool name that deleted the account's
+    # pools in single-FPM mode and a dead default socket in multi-FPM mode.
+    _ltd_php_vrn_ok() {
+      case "${1}" in
+        8.5|8.4|8.3|8.2|8.1|8.0|7.4|7.3|7.2|7.1|7.0|5.6) return 0 ;;
+      esac
+      return 1
+    }
+
     # --- CLI portion ---
     if [ -e "${_dscUsr}/static/control/cli.info" ]; then
       # Extract numeric version from file
@@ -3663,6 +3704,10 @@ _switch_php() {
 
       # Convert shorthand versions (e.g. "83" to "8.3")
       _T_CLI_VRN="$(fix_version_format "${_T_CLI_VRN}")"
+      if [ -n "${_T_CLI_VRN}" ] && ! _ltd_php_vrn_ok "${_T_CLI_VRN}"; then
+        echo "ALRT: cli.info of ${_USER} is not one PHP version, ignored"
+        _T_CLI_VRN=""
+      fi
 
       # Define fallback chains for PHP versions
       declare -A fallback=(
@@ -3733,6 +3778,17 @@ _switch_php() {
 
       # Convert shorthand versions (e.g. "83" to "8.3")
       _T_FPM_VRN="$(fix_version_format "${_T_FPM_VRN}")"
+      if [ -n "${_T_FPM_VRN}" ] && ! _ltd_php_vrn_ok "${_T_FPM_VRN}"; then
+        echo "ALRT: fpm.info of ${_USER} is not one PHP version, ignored"
+        _T_FPM_VRN=""
+      fi
+      # An instance an earlier pass already poisoned (a joined version in its
+      # octopus.cnf) is set up again on the default version below.
+      if [ -z "${_T_FPM_VRN}" ] && [ -n "${_PHP_FPM_VERSION}" ] \
+        && ! _ltd_php_vrn_ok "${_PHP_FPM_VERSION}"; then
+        echo "ALRT: _PHP_FPM_VERSION of ${_USER} is not one PHP version, set up again on 8.4"
+        _T_FPM_VRN=8.4
+      fi
 
       # Define fallback chains for PHP-FPM versions (same as CLI)
       declare -A fpm_fallback=(
@@ -3771,7 +3827,16 @@ _switch_php() {
 
       ### Update fpm_include_default.inc if needed
       _PHP_SV=${_T_FPM_VRN//[^0-9]/}
-      [ -z "${_PHP_SV}" ] && _PHP_SV=84
+      if [ -z "${_PHP_SV}" ]; then
+        # An ignored or unresolvable fpm.info keeps the version the instance
+        # already runs, rather than moving its default pool to 8.4.
+        if _ltd_php_vrn_ok "${_PHP_FPM_VERSION}" \
+          && [ -x "/opt/php${_PHP_FPM_VERSION//./}/bin/php" ]; then
+          _PHP_SV=${_PHP_FPM_VERSION//./}
+        else
+          _PHP_SV=84
+        fi
+      fi
       _FMP_D_INC="${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
 
       if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then

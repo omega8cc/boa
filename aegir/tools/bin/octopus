@@ -963,10 +963,14 @@ _up_start() {
     ### reused across runs by design (multi-step installs, bulk upgrades).
     ### With this control file present every run purges it first, so a
     ### freshly re-synced mirror is always fetched -- use on dev/test boxes.
+    ### The hostmaster sources in /opt/tmp/make_local are reused the same way
+    ### (whenever they hold hosting.module), so they go with it: left alone,
+    ### a purged run rebuilt the control panel from the previous release.
     if [ "${_DEBUG_PURGE_BUILD_TREE}" = "YES" ] \
       || [ -e "/root/.debug-purge-build-tree.cnf" ]; then
       rm -rf ${_bldPth}
       rm -f /opt/tmp/boa.tar.gz
+      rm -rf /opt/tmp/make_local
     fi
   fi
   if [ "${_mOde}" = "log" ]; then
