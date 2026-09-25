@@ -879,6 +879,10 @@ _mode_detection() {
       _msg "XTRA: ${_XTRAS_LIST}"
     fi
   fi
+  # The cnf and its hop flags are read now: refuse a hop the installed
+  # Percona cannot make before the apt preamble, the AppArmor switch-off
+  # and the hop itself.
+  _major_os_upgrade_percona_check
   [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
   [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
   pkill -9 -f '^[^ ]*systemd-udevd( |$)'

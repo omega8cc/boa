@@ -38,8 +38,8 @@ handle it.
 4. **Upgrade to 8.4:** `barracuda up-lts system percona-8.4`
 
 Use `up-pro` or `up-dev` on those trees. The two runs are the Devuan Daedalus
-path, and on Daedalus only; Devuan Excalibur always runs Percona 8.4 (see
-below).
+path (a Debian Bookworm box takes the same two runs); Devuan Excalibur always
+runs Percona 8.4 (see below).
 
 **Two runs, never a jump.** Ask for `percona-8.4` on a 5.7 box and that run
 stops at 8.0: the strict upgrade path stages the middle step for that run only,
@@ -146,10 +146,12 @@ regardless.
 
 ## Devuan Excalibur, fresh installs and Drupal 11
 
-- **Excalibur runs Percona 8.4 only.** The automated `autoexcalibur` refuses the
-  Daedalus → Excalibur OS upgrade until the box is on 8.4 (the manual path does
-  not check), so upgrade Percona in place on Daedalus first (see
-  [MAJORUPGRADE.md](MAJORUPGRADE.md)).
+- **Excalibur runs Percona 8.4 only.** Both the automated `autoexcalibur` and
+  the classic `_DAEDALUS_TO_EXCALIBUR=YES` upgrade refuse the Daedalus →
+  Excalibur OS upgrade until the box is on 8.4, so upgrade Percona in place on
+  Daedalus first (see [MAJORUPGRADE.md](MAJORUPGRADE.md)). The classic refusal
+  sets the variable to `NO` in `/root/.barracuda.cnf` so the two Percona runs
+  go ahead; set it to `YES` again once the box is on 8.4.
 - **A new server can start on 8.4** by installing with the `percona-8.4`
   argument (see [INSTALL.md](INSTALL.md)). On Daedalus the default stays 5.7 on
   purpose: what runs keeps running, and the newer engine is a choice you make
