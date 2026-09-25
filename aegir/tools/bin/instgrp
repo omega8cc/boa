@@ -4,7 +4,8 @@
 # instgrp -- the per-instance group of an Octopus account: status, convert, revert.
 #
 # An Octopus account is born with the box-wide primary group 'users' on every
-# one of its identities (oN, oN.ftp, oN.<client>), so each 0440 file in its
+# one of its identities (oN, oN.ftp, oN.<client>, a client's platform
+# developer login oN.<client>-dev), so each 0440 file in its
 # tree -- sites/<uri>/drushrc.php with the site's DB credentials, the
 # ~/.drush aliases -- is readable by every other account's identities on the
 # box. convert gives the account a private system group named after it, makes
@@ -130,6 +131,14 @@ _HOME_REC=/var/log/boa/instgrp.home
 # completed convert or revert removes it too.
 _REVERT_PENDING=/var/log/boa/instgrp.revert-pending
 _STAGE_DIRS="/root/.instgrp.home /var/backups/ltd/.pg-stage"
+# What follows "<account>." in the name of an identity the account owns: the
+# shell user and each per-client sub-account (the limited-shell worker reduces
+# a client directory name to [a-z0-9]), or the platform developer login it
+# creates for a client named in _LTD_PLATFORM_CLIENTS, <client>-dev (the
+# worker's platform suffix: the one hyphen no client directory can produce).
+# Exactly these forms: a name this matches moves with the account and never
+# counts as a foreign holder of its group.
+_SUB_ERE='[a-z0-9]+(-dev)?'
 
 _msg() {
   printf '%s\n' "$*"
@@ -372,12 +381,13 @@ _valid_account() {
   return 1
 }
 
-# The account's lshell sub-users: passwd names <acct>.<x> that are neither the
-# .ftp shell user nor an FPM pool identity (*.web), and carry an lshell group.
-# Anything else shaped <acct>.<x> is reported and left alone, never guessed.
+# The account's lshell sub-users: passwd names <acct>.<x> or <acct>.<x>-dev
+# (a platform developer login) that are neither the .ftp shell user nor an
+# FPM pool identity (*.web), and carry an lshell group. Anything else shaped
+# like them is reported and left alone, never guessed.
 _acct_subusers() {
   local _a="$1" _u
-  for _u in $(getent passwd | cut -d: -f1 | grep -E "^${_a}\.[a-z0-9]+$"); do
+  for _u in $(getent passwd | cut -d: -f1 | grep -E "^${_a}\.${_SUB_ERE}$"); do
     case "${_u}" in
       "${_a}.ftp"|*.web) continue ;;
     esac
@@ -810,10 +820,10 @@ _group_is_ours() {
   _gid=$(_gid_of "${_a}")
   [ -n "${_gid}" ] || return 0
   for _m in $(getent group "${_a}" | cut -d: -f4 | tr ',' ' '); do
-    [[ "${_m}" =~ ^${_a}(\.[a-z0-9]+)?$ ]] || return 1
+    [[ "${_m}" =~ ^${_a}(\.${_SUB_ERE})?$ ]] || return 1
   done
   for _u in $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
-    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+)?$ ]] || return 1
+    [[ "${_u}" =~ ^${_a}(\.${_SUB_ERE})?$ ]] || return 1
   done
   return 0
 }
@@ -1353,7 +1363,7 @@ _do_status() {
   if [ -n "${_gid}" ] && [ "${_prim_ok}" = "NO" ] && ! _group_is_ours "${_a}"; then
     _held=YES
     _holders="$(getent group "${_a}" | cut -d: -f4 | tr ',' '\n'; getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }')"
-    _holders="$(printf '%s\n' ${_holders} | grep -vE "^${_a}(\.[a-z0-9]+)?$" | sort -u | tr '\n' ',' | sed 's/,$//')"
+    _holders="$(printf '%s\n' ${_holders} | grep -vE "^${_a}(\.${_SUB_ERE})?$" | sort -u | tr '\n' ',' | sed 's/,$//')"
   fi
   # A same-named group with no members and no primary users at all (a
   # leftover of a purge, or one made by hand before INIT ran without the
