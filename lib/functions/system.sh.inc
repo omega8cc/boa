@@ -11532,6 +11532,113 @@ _myquick_install_upgrade() {
   _myquick_reconcile
 }
 
+### Per-box root cron lines in /var/xdrago/cron/custom.txt are appended to
+### the root crontab as written. A line that hands a directory of an account
+### to <acct>[.ftp]:users puts it back into the box-wide group on every run
+### once the account carries its per-instance group, and every other
+### account's identities can then read what the line copies there.
+### One narrow shape is rewritten to the account's own group, read at run
+### time -- $(id -gn <acct>) is the per-instance group once the account is
+### converted and 'users' before, so an unconverted box runs what it ran:
+### chown (or /bin/chown, /usr/bin/chown) in command position -- right after
+### a five-field schedule or an @keyword, or after ; && || | or a paren --
+### options before and after the owner, <acct>[.ftp]:users for an account
+### that exists on this box, one or more operands that are all
+### /data/disk/<acct> or below it, then only redirections before the end of
+### the command. A line with a comment, a quote, a backtick, a backslash, a
+### crontab % or a '..' path segment, and every other form, is left as
+### written; whatever still hands an account's tree to users afterwards is
+### named in a NOTE, also when the file could not be updated. The previous
+### file goes to the dragon config store first; a step that fails leaves the
+### file as it was.
+_custom_cron_account_group() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _custom_cron_account_group"
+  fi
+  local _cus="/var/xdrago/cron/custom.txt"
+  local _tmp=""
+  local _dir=""
+  local _a=""
+  local _accts=""
+  local _n=0
+  local _left=""
+  local _upd=YES
+  [ -f "${_cus}" ] && [ ! -L "${_cus}" ] || return 0
+  for _dir in /data/disk/*; do
+    _a="${_dir##*/}"
+    [[ "${_a}" =~ ^[a-z0-9][a-z0-9-]*$ ]] || continue
+    [ -d "${_dir}" ] && [ ! -L "${_dir}" ] || continue
+    [ -e "/root/.${_a}.octopus.cnf" ] || continue
+    getent passwd "${_a}" > /dev/null 2>&1 || continue
+    _accts="${_accts} ${_a}"
+  done
+  [ -n "${_accts}" ] || return 0
+  if ! _tmp=$(mktemp "${_cus}.XXXXXX"); then
+    _msg "NOTE: ${_cus} could not be copied for the account group check; left as written"
+    _upd=NO
+  elif ! _ACCTS="${_accts}" perl -pe '
+    BEGIN {
+      our $A = join("|", map { quotemeta } grep { /^[a-z0-9][a-z0-9-]*$/ } split(" ", $ENV{_ACCTS} // ""));
+    }
+    our $A;
+    if ($A ne "" && !/(?:^|[\s;&|()<>])#/ && !/["\x27`\\%]/ && !m{/\.\.(?:[/\s;&|<>)]|$)}) {
+      s{
+        ((?:^[-0-9*,/]+\s+(?:\S+\s+){4}|^\@[a-z]+\s+|(?<![<>])[;&|(]\s*))
+        ((?:(?:/usr)?/s?bin/)?chown(?:\s+-[a-zA-Z]+|\s+--[a-z][-a-z]*)*\s+)
+        ($A)(\.ftp)?:users
+        ((?:\s+-[a-zA-Z]+|\s+--[a-z][-a-z]*)*
+         (?:\s+/data/disk/\3(?:/[-\w./]*)?)+
+         (?:\s+\d*>>?\s*[^\s;&|<>]+|\s+\d*>&\d+|\s+&>>?\s*[^\s;&|<>]+)*
+         \s*)
+        (?=;|&&|\|\|?|$)
+      }{$1$2$3$4:\$(id -gn $3)$5}gx;
+    }
+  ' "${_cus}" > "${_tmp}"; then
+    rm -f "${_tmp}"
+    _msg "NOTE: ${_cus}: the account group check failed; left as written"
+    _upd=NO
+  elif cmp -s "${_cus}" "${_tmp}"; then
+    rm -f "${_tmp}"
+  else
+    _n=$(diff "${_cus}" "${_tmp}" | grep -c '^>')
+    _backup_to_dragon "${_cus}"
+    if [ -z "${_DRAGON_RUN_DIR}" ] \
+      || ! cmp -s "${_cus}" "${_DRAGON_RUN_DIR}/custom.txt" \
+      || ! chmod --reference="${_cus}" "${_tmp}" \
+      || ! chown --reference="${_cus}" "${_tmp}" \
+      || ! mv -f "${_tmp}" "${_cus}"; then
+      rm -f "${_tmp}"
+      _msg "NOTE: ${_cus}: ${_n} line(s) hand an account's directory to the box-wide group users, but the file could not be updated; left as written"
+    else
+      _msg "NOTE: ${_cus}: ${_n} line(s) handed an account's directory to the box-wide group users; they now take the account's own group, \$(id -gn <account>) (previous copy: ${_DRAGON_RUN_DIR}/custom.txt)"
+    fi
+  fi
+  # What still hands an account's tree to users is named, never silent: a
+  # form not rewritten above, or every such line when the update failed.
+  # Deliberately broad -- a harmless line named is fine, a live one missed
+  # is not: any line that is not a comment, names an account as a word
+  # (its path, ~acct, its shell home, a loop list), and carries a chown word
+  # with a users group (or chgrp with users); quoting characters are removed
+  # first and nothing is cut at a '#'. It reads the text an operator writes:
+  # a name that only a variable or an escape sequence produces is not seen.
+  _left=$(_ACCTS="${_accts}" perl -ne '
+    BEGIN {
+      our $A = join("|", map { quotemeta } grep { /^[a-z0-9][a-z0-9-]*$/ } split(" ", $ENV{_ACCTS} // ""));
+    }
+    our $A;
+    next if $A eq "" || /^\s*#/;
+    my $l = $_;
+    $l =~ s/\$(?=["\x27])//g;
+    $l =~ tr/"\x27`\\//d;
+    next unless $l =~ /(?<![-\w.])(?:$A)(?![-\w])/;
+    print "$. " if ($l =~ /\bchown\b/ && $l =~ /[.:](?:users|100)(?![-\w])/)
+      || ($l =~ /\bchgrp\b/ && $l =~ /(?<![-\w.])(?:users|100)(?![-\w])/);
+  ' "${_cus}" 2> /dev/null)
+  if [ -n "${_left}" ]; then
+    _msg "NOTE: ${_cus}: line(s) ${_left% } still hand an account's directory to the box-wide group users; write the group as \$(id -gn <account>)"
+  fi
+}
+
 _xdrago_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _xdrago_install_upgrade"
@@ -11600,6 +11707,7 @@ _xdrago_install_upgrade() {
     mv -f /etc/cron.daily/mlocate ${_vBs}/ &> /dev/null
     cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
     if [ -e "/var/xdrago/cron/custom.txt" ]; then
+      _custom_cron_account_group
       cat /var/xdrago/cron/custom.txt >> /var/spool/cron/crontabs/root
     fi
     chown root:crontab /var/spool/cron/crontabs/root

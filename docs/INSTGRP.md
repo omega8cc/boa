@@ -241,6 +241,15 @@ place: it belongs to the account.
   to every other tenant until it is re-grouped, and `instgrp status`
   reports it as `DRIFT`. Use `chown -R oN:$(id -gn oN) …`, which is right
   on both models. See `FIXREPO.md`.
+- Root cron lines in `/var/xdrago/cron/custom.txt` follow the same rule.
+  Every barracuda upgrade rewrites a plain
+  `chown [options] oN[.ftp]:users [options] /data/disk/oN[/…]` (every path
+  under the account, only redirections after it) to `oN[.ftp]:$(id -gn oN)`
+  before it appends the file to root's crontab, keeps the previous file in
+  the dragon config store (`/var/backups/dragon/config/<run>/custom.txt`)
+  and prints a NOTE. Any other form (a `chgrp`, a chown that also names
+  another path, a quoted or commented line) is appended as written and named
+  in a second NOTE: write it with `$(id -gn oN)`.
 - What heals drift, and when: the site and platform verifies and the
   nightly re-group the paths they write; the nightly account worker also
   probes the credential-bearing paths (`~/.drush`, `~/backups`, `~/config`,
