@@ -547,6 +547,15 @@
 
 @=> Important Fixes
 
+    * codebasecheck --box no longer reports a false UNKNOWN, and so a
+      BLOCKED server, for a Composer platform registered with its app
+      root. That platform's Drush alias keeps the app root, while Ægir
+      serves the web root below it and its sites' aliases name that, so
+      the report listed the app root as UNKNOWN next to an OK web root.
+      Each alias root is now followed to the web root Ægir serves
+      (docroot/, html/ or web/ when the root has no index.php) and the
+      platform is checked once, there. codebasecheck <platform-path>
+      takes the app root the same way.
     * The classic major OS upgrade no longer takes a server that is not
       on Percona 8.4 to Devuan Excalibur or Debian Trixie, where Percona
       ships only 8.4. The upgrade runs before the database step, so a
