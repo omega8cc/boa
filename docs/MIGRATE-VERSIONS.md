@@ -34,11 +34,11 @@ changes Percona series only through `barracuda`.
 BOA's MySQL watchdog (`/var/xdrago/monitor/check/mysql.sh`) restarts a down
 `mysqld`, breaks apparent table locks and kills long-running queries. It cannot
 tell a cutover's promotion, a host rename's database work or an xtrabackup
-snapshot apart from a genuine hang, so `xoct` and `xmass` hold the maintenance
-marker `/run/boa_sql_maintenance.pid` around their critical sections, exactly as
-the Percona package upgrade does. While the marker exists the watchdog exits
-before any check; a marker older than four hours is treated as abandoned, and
-`/run` is tmpfs, so a reboot clears it.
+snapshot apart from a genuine hang, so `xmass`, `xoct` and `xcopy` hold the
+maintenance marker `/run/boa_sql_maintenance.pid` around their critical
+sections, exactly as the Percona package upgrade does. While the marker exists
+the watchdog exits before any check; a marker older than four hours is treated
+as abandoned, and `/run` is tmpfs, so a reboot clears it.
 
 - **`xmass`** holds it on **both** hosts across `init` (the source snapshot and
   the target restore/replica bring-up) and, in `cutover`, across the final
@@ -54,6 +54,15 @@ before any check; a marker older than four hours is treated as abandoned, and
   renames.
 - **`xoct`** holds it for `export` (`mydumper` on the source) and `import`
   (`myloader` plus `renameaegirhost`'s dump/reimport on the target).
+- **`xcopy`** holds it the same way for `export` and `import`: the panel
+  database dump and restore and every site's `mydumper` or `myloader` run.
+
+`xoct` and `xcopy` write their process ID into the marker and keep it fresh
+for as long as their database work runs, however long one dump or load takes.
+They remove it when they exit (a finished run, a refused check, a failed dump,
+Ctrl-C), but only while it still carries their ID. A marker another operation
+already holds is left to that operation. Only a hard kill (`kill -9`, the OOM
+killer) leaves it behind, and then the four-hour limit above applies.
 
 Do not restart cron or force the watchdog to run during a migration expecting
 it to help. If a migration dies hard and you recover by hand, check the marker
