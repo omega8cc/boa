@@ -466,9 +466,11 @@ _drush_refused_say() {
   echo
   if [ "${_DR_WHY}" = "G" ]; then
     echo " Drush 8 runs only read-only commands (uli, status) on a Drupal 8+ site."
-    # vdrush runs vendor/drush from the working directory, or from its parent
-    # when that is a web/html/docroot docroot, so it reaches the docroot's
-    # parent's vendor/, or the docroot's own under any other name; the panel's
+    # vdrush runs vendor/drush from the working directory, or ../vendor/drush
+    # from a web/html/docroot directory whose parent has one. From the
+    # docroot it therefore reaches: under a web/html/docroot name the
+    # parent's vendor/, else the docroot's own; under any other name the
+    # docroot's own, else the parent's (run from the parent). The panel's
     # Unlock Local Drush opens either (provision_unlock_drush_local_vnd). The
     # Drush window opens only the app root, found by the rule the window and
     # checkmyperms use (_ltd_platform_approot in manage_ltd_users.sh): the
@@ -484,13 +486,26 @@ _drush_refused_say() {
         fi ;;
     esac
     _vnd=""
-    if [ -d "${_doc%/*}/vendor/drush" ]; then
-      _vnd="${_doc%/*}"
-    else
-      case "${_doc##*/}" in
-        web|docroot|html) ;;
-        *) [ -d "${_doc}/vendor/drush" ] && _vnd="${_doc}" ;;
-      esac
+    case "${_doc##*/}" in
+      web|docroot|html)
+        if [ -d "${_doc%/*}/vendor/drush" ]; then
+          _vnd="${_doc%/*}"
+        elif [ -d "${_doc}/vendor/drush" ]; then
+          _vnd="${_doc}"
+        fi ;;
+      *)
+        if [ -d "${_doc}/vendor/drush" ]; then
+          _vnd="${_doc}"
+        elif [ -d "${_doc%/*}/vendor/drush" ]; then
+          _vnd="${_doc%/*}"
+        fi ;;
+    esac
+    # a developer login's path holds the app root and what is under it, not
+    # a vendor/ above it; only the main login, whose path holds distro/ and
+    # static/, is sent to a directory outside the app root
+    if [ -n "${_vnd}" ] && [[ "${_vnd}/" != "${_app}/"* ]] \
+      && [[ "${_LTD_UID}" != *.ftp ]]; then
+      _vnd=""
     fi
     if [ -n "${_vnd}" ]; then
       echo " Anything that changes the site runs through the platform's own Drush,"
@@ -1137,7 +1152,7 @@ if _grp_set_is "users www-data" \
         if [[ "${_LA_PATH}" == *vendor/drush/drush/drush.php ]] || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
           if [ -n "${_LA_PATH}" ] && ! _is_tenant && { [[ "${_LA_PATH}" == /* ]] || [ -n "${_LA_CD}" ]; }; then
             _DEST_DRUSH="${_LA_PATH}"
-          elif [[ "$PWD" =~ /(web|html|docroot)$ ]]; then
+          elif [[ "$PWD" =~ /(web|html|docroot)$ ]] && [ -d ../vendor/drush ]; then
             _DEST_DRUSH="../vendor/drush/drush/drush.php"
           else
             _DEST_DRUSH="vendor/drush/drush/drush.php"
@@ -1229,7 +1244,9 @@ if _grp_set_is "users www-data" \
               # tenant: an absolute path of theirs under /tmp or /home is what
               # the fast lane above keeps out on purpose
               _DEST_DRUSH="${_LA_PATH}"
-            elif [[ "$PWD" =~ /(web|html|docroot)$ ]]; then
+            # the parent's Drush only where the parent has one: a docroot
+            # named web/html/docroot can carry its own vendor/ instead
+            elif [[ "$PWD" =~ /(web|html|docroot)$ ]] && [ -d ../vendor/drush ]; then
               _DEST_DRUSH="../vendor/drush/drush/drush.php"
             else
               _DEST_DRUSH="vendor/drush/drush/drush.php"
