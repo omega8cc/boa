@@ -24,7 +24,7 @@
   signal (receive) peer=/opt/php*/bin/php,
 
   # Allow execution of /bin/sh
-  /bin/sh mrix,
+  /{,usr/}bin/sh mrix,
   /opt/local/bin/websh mrix,
 
   # Allow access to /dev

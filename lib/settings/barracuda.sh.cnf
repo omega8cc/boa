@@ -1222,8 +1222,9 @@ _ALLOW_SENDMAIL=NO
 ### Replaces /root/.no.sysctl.update.cnf
 _NO_SYSCTL_UPDATE=NO
 ###
-### Purges the reusable /opt/tmp build tree at the start of every
-### wrapper run, forcing a full re-download.
+### Purges the reusable /opt/tmp build tree and the hostmaster sources in
+### /opt/tmp/make_local at the start of every wrapper run, forcing a full
+### re-download.
 ### Replaces /root/.debug-purge-build-tree.cnf
 _DEBUG_PURGE_BUILD_TREE=NO
 ###

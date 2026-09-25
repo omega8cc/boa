@@ -874,7 +874,10 @@ _install_php_extensions() {
   _get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
   cd /var/opt/phpredis
   _mrun "${_T_PHP_PTH}/phpize"
-  if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] && [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; then
+  # the dev package installs the library under /usr/lib, which a split /usr
+  # does not reach through /lib: test both, as a merged /usr already does
+  if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] \
+    && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
     fi
@@ -1278,7 +1281,10 @@ _php_extensions_update() {
     _get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
     cd /var/opt/phpredis
     _mrun "${_T_PHP_PTH}/phpize"
-    if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] && [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; then
+    # the dev package installs the library under /usr/lib, which a split /usr
+    # does not reach through /lib: test both, as a merged /usr already does
+    if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] \
+      && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
       fi
