@@ -2051,6 +2051,7 @@ _php_note_build() {
   local _ino
   local _v
   local _keep=""
+  local _logArc
   _itd=$(/opt/php$1/bin/php -v 2>/dev/null | grep -E 'PHP [758]' | awk '{print $2}')
   _ino=$(stat -c %i "/opt/php$1/bin/php" 2>/dev/null)
   if [ -n "${_PHP_VERSION}" ] && [ "${_itd}" = "${_PHP_VERSION}" ] \
@@ -2058,6 +2059,21 @@ _php_note_build() {
     _PHP_BUILT_IN_RUN="${_PHP_BUILT_IN_RUN} $1"
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       touch "${_mrk}"
+    fi
+    # What the old binary logged says nothing about this one, and the run
+    # sweeps the logs aside at its end, not after each build: an OnigEncoding
+    # line left there would make _check_php_broken_segfault rebuild it again
+    # in this run.
+    # The copy gets its own name, or the end-of-run move into the same
+    # directory would replace it with the new binary's log. An empty log is
+    # left in place: the PHP monitor reloads a version whose log is missing.
+    if [ -e "/var/log/php/php$1-fpm-error.log" ]; then
+      _logArc="/var/backups/php-logs/${_NOW:-$(date +%y%m%d-%H%M%S)}"
+      mkdir -p "${_logArc}"
+      mv -f "/var/log/php/php$1-fpm-error.log" \
+        "${_logArc}/php$1-fpm-error-pre-build-$(date +%H%M%S).log" &> /dev/null
+      touch "/var/log/php/php$1-fpm-error.log"
+      chmod 600 "/var/log/php/php$1-fpm-error.log"
     fi
   else
     for _v in ${_PHP_BUILT_IN_RUN}; do
@@ -2900,7 +2916,11 @@ _check_php_broken_freetype() {
   if [[ ! "${_isFreeType}" =~ "with-freetype" ]] \
     || [ -z "${_isFreeType}" ]; then
     if [ -x "/usr/bin/freetype-config" ]; then
-      if [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
+      # This version was built in this run (it is on the record) and still
+      # lacks it: that build did not add it, so another build in this run is
+      # skipped. The next run starts a new record and checks it again.
+      if [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ] \
+        && [[ " ${_PHP_BUILT_IN_RUN} " != *" $1 "* ]]; then
         _msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix freetype support..."
         _install_php_multi "$1"
         _PHP_ALREADY_REBUILT=$1
@@ -2926,7 +2946,9 @@ _check_php_broken_gd() {
   _isGd=$(/opt/php$1/bin/php -i | grep GD 2>&1)
   if [[ ! "${_isGd}" =~ "GD Support" ]] \
     || [ -z "${_isGd}" ]; then
-    if [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
+    # As for freetype: built in this run and still no GD, not built again.
+    if [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ] \
+      && [[ " ${_PHP_BUILT_IN_RUN} " != *" $1 "* ]]; then
       _msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix GD support..."
       _install_php_multi "$1"
       _PHP_ALREADY_REBUILT=$1
