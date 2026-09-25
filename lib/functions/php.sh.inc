@@ -875,17 +875,20 @@ _install_php_extensions() {
   cd /var/opt/phpredis
   _mrun "${_T_PHP_PTH}/phpize"
   # the dev package installs the library under /usr/lib, which a split /usr
-  # does not reach through /lib: test both, as a merged /usr already does
+  # does not reach through /lib: test both, as a merged /usr already does;
+  # a source tarball made from the git tree has liblzf/ empty (a submodule),
+  # so the build then uses the system liblzf instead of the bundled copy
   if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] \
     && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
-    fi
+    :
+  elif [ -e "/usr/include/lzf.h" ] \
+    && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
+    _PHPREDIS_BUILD="${_PHPREDIS_BUILD} --with-liblzf=/usr"
   else
     _PHPREDIS_BUILD="--enable-redis-igbinary"
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
-    fi
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
   fi
   _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}"
   _mrun "make -j $(nproc) --quiet"
@@ -1282,17 +1285,20 @@ _php_extensions_update() {
     cd /var/opt/phpredis
     _mrun "${_T_PHP_PTH}/phpize"
     # the dev package installs the library under /usr/lib, which a split /usr
-    # does not reach through /lib: test both, as a merged /usr already does
+    # does not reach through /lib: test both, as a merged /usr already does;
+    # a source tarball made from the git tree has liblzf/ empty (a submodule),
+    # so the build then uses the system liblzf instead of the bundled copy
     if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] \
       && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
-      fi
+      :
+    elif [ -e "/usr/include/lzf.h" ] \
+      && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
+      _PHPREDIS_BUILD="${_PHPREDIS_BUILD} --with-liblzf=/usr"
     else
       _PHPREDIS_BUILD="--enable-redis-igbinary"
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
-      fi
+    fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
     fi
     _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}"
     _mrun "make -j $(nproc) --quiet"
