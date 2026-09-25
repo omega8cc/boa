@@ -6461,6 +6461,23 @@ fi
 # and renders the vhost against it: 404 by the new name. Live-observed twice
 # on one rig (the first cutover, then the failover after a root-only repair
 # of the alias). So reconcile the files with the DB truth on every entry.
+# A platform alias keeps the path the platform was registered with, which for
+# a Composer build can be its app root, so code means index.php at that root
+# or under the docroot/, html/ or web/ Provision serves.
+_root_has_code() {
+  local _s
+  [ -e "$1/index.php" ] && return 0
+  for _s in docroot html web; do
+    [ -e "$1/${_s}/index.php" ] && return 0
+  done
+  return 1
+}
+# True only when the panel DB answers that no context carries the name; a
+# query that fails answers nothing, which never reads as "no such context".
+_no_hosting_context() {
+  [ "$(mysql --defaults-file=/root/.my.cnf -N -B "$1" \
+    -e "SELECT COUNT(*) FROM hosting_context WHERE name='$2'" 2>/dev/null)" = "0" ]
+}
 _reconcile_panel_aliases() {
   local _DB="$1" _PN="$2" _DISK="$3" _CTX _REF _PA _OLDPA _OR _OLDROOT _DRUSH _AF _AN
   _CTX=$(mysql --defaults-file=/root/.my.cnf -N -B "${_DB}" \
@@ -6492,9 +6509,8 @@ _reconcile_panel_aliases() {
         && echo "PANEL-NOTE: ${_AN} alias platform reference corrected @${_REF} -> @${_CTX}"
       if [ -f "${_OLDPA}" ]; then
         _OR=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_OLDPA}" | head -1)
-        if [ -n "${_OR}" ] && [ ! -e "${_OR}/index.php" ] \
-          && [ -z "$(mysql --defaults-file=/root/.my.cnf -N -B "${_DB}" \
-               -e "SELECT nid FROM hosting_context WHERE name='${_REF}' LIMIT 1" 2>/dev/null)" ]; then
+        if [ -n "${_OR}" ] && ! _root_has_code "${_OR}" \
+          && _no_hosting_context "${_DB}" "${_REF}"; then
           rm -f "${_OLDPA}" \
             && echo "PANEL-NOTE: stale platform alias ${_REF} removed (root ${_OR} carries no code, no such context in ${_DB})"
         fi
@@ -6527,9 +6543,8 @@ _reconcile_panel_aliases() {
     [ "${_REF}" = "${_CTX}" ] && continue
     case "${_REF}" in *[!A-Za-z0-9_.-]*) continue ;; esac
     _OR=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_OLDPA}" | head -1)
-    [ -n "${_OR}" ] && [ ! -e "${_OR}/index.php" ] || continue
-    [ -z "$(mysql --defaults-file=/root/.my.cnf -N -B "${_DB}" \
-         -e "SELECT nid FROM hosting_context WHERE name='${_REF}' LIMIT 1" 2>/dev/null)" ] || continue
+    [ -n "${_OR}" ] && ! _root_has_code "${_OR}" || continue
+    _no_hosting_context "${_DB}" "${_REF}" || continue
     rm -f "${_OLDPA}" \
       && echo "PANEL-NOTE: stale platform alias ${_REF} removed (root ${_OR} carries no code, no such context in ${_DB})"
   done
@@ -7598,7 +7613,8 @@ _xmass_purge_target_only_accounts() {
   # be empty: the registered site aliases (context_type site; the account's
   # own control panel, identified by its site_path, set aside), the sites/
   # directory of every registered platform (root from the platform aliases,
-  # which also reaches a platform behind a symlink), and a sweep for site
+  # which also reaches a platform behind a symlink, followed to the docroot
+  # Provision serves when it names a Composer app root), and a sweep for site
   # directories under distro/, static/, platforms/ and aegir/ to the depth
   # BOA itself builds (a directory carrying a dot directly under a sites/
   # directory; the panel's own directory set aside by name, which also
@@ -7623,6 +7639,11 @@ _R=0
 for _f in "${_H}"/.drush/platform_*.alias.drushrc.php; do
   [ -e "${_f}" ] || continue
   _r=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_f}" | head -1)
+  if [ -n "${_r}" ] && [ ! -f "${_r}/index.php" ]; then
+    for _s in docroot html web; do
+      if [ -f "${_r}/${_s}/index.php" ]; then _r="${_r}/${_s}"; break; fi
+    done
+  fi
   [ -n "${_r}" ] && [ -d "${_r}/sites" ] || continue
   _n=$(find "${_r}/sites" -mindepth 1 -maxdepth 1 -xtype d -name '*.*' ! -name "${_PB:-/}" 2>/dev/null | wc -l | tr -d ' ')
   _R=$((_R + ${_n:-0}))

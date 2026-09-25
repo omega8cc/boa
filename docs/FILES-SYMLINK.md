@@ -184,10 +184,10 @@ first level that fails:
 |---|---|---|
 | `INCOMPLETE ALIAS` | No resolvable `root` in the alias or its platform alias. | Corrupt or truncated alias. |
 | `PLATFORM GONE` | The platform root directory is missing. | A platform deleted while it still had sites removes the root and the platform's own alias but leaves every site's alias and vhost behind — so **expect one finding per site of that platform**. A platform moved or removed outside Ægir looks identical from here. |
-| `BROKEN PLATFORM` | Platform root present, no `sites/` tree. | An incomplete or half-built platform. |
+| `BROKEN PLATFORM` | Platform root present, no `sites/` tree. | An incomplete or half-built platform. A platform is read at the docroot it serves, so an alias that names a Composer app root is checked at its `web/`, `docroot/` or `html/`. |
 | `RENAME LEFTOVER` | The alias file's name differs from its own `uri`. | A rename/migrate writes one alias file per name and only unlinks the current name; the live site runs under the other name. |
 | `MIGRATE STRANDED` | The site's directory is found on a **different** platform. | An interrupted migrate: the alias is re-pointed at the new platform before the new directory is deployed. **The data is intact — delete nothing.** |
-| `STALE ALIAS` | The alias's cached `root` disagrees with its platform's `root`. | The alias was written against a platform layout that no longer holds. |
+| `STALE ALIAS` | The alias's cached `root` disagrees with its platform's `root`, compared as the docroot each serves. | The alias was written against a platform layout that no longer holds. |
 | `GHOST ALIAS` | Platform healthy and still hosting other sites; this site's directory exists nowhere. | An install or clone that failed or was rolled back, or a directory removed outside Ægir. An interrupted *delete* is ruled out: delete unlinks the alias **first** and the directory second, so a half-done delete leaves the opposite (a directory with no alias). |
 
 Each ghost finding also reports three things that decide what to do next:
