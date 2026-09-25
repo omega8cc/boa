@@ -143,6 +143,20 @@ _fetch_geoip() {
   cd
 }
 
+# Delete only the bounce notices (null sender, listed as MAILER-DAEMON).
+# Mail a site sent that is merely deferred keeps postfix's own retry
+# lifetime: wiping the whole queue destroyed transactional mail held back
+# by a temporary delivery problem.
+_purge_postfix_bounces() {
+  local _qIds
+  _qIds="$(postqueue -p 2> /dev/null | tail -n +2 \
+    | awk 'BEGIN { RS = "" } $7 == "MAILER-DAEMON" { print $1 }' \
+    | tr -d '*!')"
+  if [ -n "${_qIds}" ]; then
+    echo "${_qIds}" | postsuper -d - &> /dev/null
+  fi
+}
+
 # Main action function
 _graceful_action() {
   echo "Starting system maintenance tasks..."
@@ -158,8 +172,8 @@ _graceful_action() {
   fi
 
   # Clean up postfix queue to get rid of bounced emails
-  echo "Cleaning up postfix queue..."
-  postsuper -d ALL &> /dev/null
+  echo "Removing bounce notices from postfix queue..."
+  _purge_postfix_bounces
 
   # Restart syslog service
   echo "Restarting syslog service..."
