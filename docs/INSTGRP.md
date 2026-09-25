@@ -2,8 +2,10 @@
 
 Every Octopus account owns a private Unix group named after itself. It is
 the primary group of the account's backend user (`oN`), its limited-shell
-user (`oN.ftp`) and every per-client sub-account (`oN.<client>`), and the
-account's files carry it. Nothing outside the account is a member.
+user (`oN.ftp`), every per-client sub-account (`oN.<client>`) and every
+platform developer login (`oN.<client>-dev`, for a client named in
+`_LTD_PLATFORM_CLIENTS`), and the account's files carry it. Nothing outside
+the account is a member.
 
 Before this, every account's identities shared the box-wide primary group
 `users`, and so did their files: a file that granted read to its group — a
@@ -15,7 +17,7 @@ read" mean "this account's identities", nothing wider.
 
 | | Before | After |
 |---|---|---|
-| Primary group of `oN`, `oN.ftp`, `oN.<client>` | `users` | `oN` |
+| Primary group of `oN`, `oN.ftp`, `oN.<client>`, `oN.<client>-dev` | `users` | `oN` |
 | Group on the account's files (`~/static`, `~/.drush`, platforms, `sites/<uri>/drushrc.php`, …) | `users` | `oN` |
 | `users` on those identities | primary | kept, supplementary |
 | `settings.php`, `files/`, `private/` | `oN:www-data` | unchanged |
@@ -41,8 +43,11 @@ upgrade converts it.
 A group name already held by another identity (a
 member, or a user whose primary group it is) leaves the newborn on the
 box-wide group too, with a NOTE and no conversion attempt in that run;
-every later upgrade alarms until the name is freed. Each conversion writes
-`/data/disk/oN/log/instance-group.txt`. An account already converted costs
+every later upgrade alarms until the name is freed. What the conversion
+counts as the account's own is exact: `oN`, `oN.<name>` and
+`oN.<client>-dev`. Any other name holding the group blocks it.
+
+Each conversion writes `/data/disk/oN/log/instance-group.txt`. An account already converted costs
 one read-only traversal on every later upgrade (early-quit on the first path
 outside its group), no walk and no write.
 
@@ -209,7 +214,8 @@ NOTE). It does not undo a conversion already made — run
 is persisted per instance (written at install, appended with its default on
 upgrade when absent).
 
-`boa cleanup purge oN` removes the account's group after its identities; what
+`boa cleanup purge oN` removes the account's group after its identities (the
+platform developer logins included); what
 the purge leaves on disk (a static store relocated under `/mnt`, the gems
 and npm trees) is handed to `root:root` first, and the group stays while any
 path still carries it. Removing a single sub-account leaves the group in

@@ -560,6 +560,15 @@
 
 @=> Important Fixes
 
+    * An account whose client has a platform developer login (a client
+      named in _LTD_PLATFORM_CLIENTS, login <account>.<client>-dev) no
+      longer fails its per-instance group step on every octopus upgrade
+      with "group exists and belongs to someone else": instgrp counts that
+      login as one of the account's identities, so convert and revert move
+      it with the others, status lists it, and it is never named as a
+      foreign holder of the group. Only that exact name form is accepted.
+      boa cleanup purge removes the login with its account, which no
+      longer leaves it behind holding the account's group.
     * A new release of one PHP version no longer rebuilds every PHP
       version after it as well. The rebuild decision of one version was
       carried on to the next, so a new 8.3 release rebuilt 8.3, 8.4 and

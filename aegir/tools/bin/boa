@@ -3356,10 +3356,11 @@ _octopus_cleanup() {
             service php${e}-fpm reload &> /dev/null
           fi
         done
-        # The account's limited-shell sub-users (oN.<client>) go with it:
-        # they hold the account's private group as their primary group, and
-        # a purged account has no clients left to serve.
-        for _subUsr in $(getent passwd | cut -d: -f1 | grep -E "^${_usEr}\.[a-z0-9]+$" \
+        # The account's limited-shell sub-users (oN.<client>, and a client's
+        # platform developer login oN.<client>-dev) go with it: they hold the
+        # account's private group as their primary group, and a purged
+        # account has no clients left to serve.
+        for _subUsr in $(getent passwd | cut -d: -f1 | grep -E "^${_usEr}\.[a-z0-9]+(-dev)?$" \
           | grep -vE "\.ftp$|\.web$"); do
           echo "${_subUsr}:/home/${_subUsr}" >> ${_zombie_dir}.purge.list
         done
