@@ -251,9 +251,9 @@ through the site's own Drush, `vdrush` (see below).
 
 If core commands such as `drush @alias cc all` work but a contributed command like
 `drush @alias elysia-cron run somecron` is *not recognised*, the usual cause is
-running Drush as the `oN` bash user instead of `oN.ftp`: the `oN` account is an Ægir
-backend identity, so the filter applies there. Reconnect as `oN.ftp` and the
-contributed commands will load. If you instead need a contributed command to run from
+running Drush in a bash shell as `oN` (root's `su -s /bin/bash - oN`) instead of as
+`oN.ftp`: the `oN` account is an Ægir backend identity, so the filter applies there. Run it
+as `oN.ftp` and the contributed commands will load. If you instead need a contributed command to run from
 an **Ægir backend task** (such as backend-mode cron), ask your host to enable it for
 your instance — see [SECURITY.md](SECURITY.md).
 
@@ -291,9 +291,9 @@ When you are done, re-lock the platform with the new 'Lock Local Drush' task —
 #### Steps to Use Site-Local Drush:
 
 > **Important:** All steps below must be performed as `oN.ftp` under the BOA limited shell,
-> not as `oN` under bash. Connecting as `oN` will result in the wrong PHP environment and
-> `vdrush` will not work correctly. If `vdrush` has not worked for you in the past, this is
-> the most likely reason.
+> not in a bash shell as `oN` (root's `su -s /bin/bash - oN`). A bash shell as `oN` gives the
+> wrong PHP environment and `vdrush` will not work correctly. If `vdrush` has not worked for
+> you in the past, this is the most likely reason.
 
 1. Run the 'Unlock Local Drush' task on the site's Platform in Ægir.
 2. Connect to your server as `oN.ftp` (not `oN`) using SSH.
