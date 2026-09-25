@@ -837,14 +837,17 @@ _check_old_empty_platforms() {
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
-        _T_PFM_SITE=$(grep "${_T_PFM_ROOT}/sites/" \
+        # The alias keeps the path the platform was registered with, which for
+        # a Composer build can be its app root; site_path and sites/all live
+        # under the docroot Provision serves, so both tests below read that.
+        _T_PFM_DOC=$(_detect_real_docroot "${_T_PFM_ROOT}")
+        _T_PFM_SITE=$(grep -e "${_T_PFM_ROOT}/sites/" \
+          -e "${_T_PFM_DOC:-${_T_PFM_ROOT}}/sites/" \
           ${_usEr}/.drush/*.drushrc.php \
           | grep site_path 2>&1)
-        if [ -z "$(_detect_real_docroot "${_T_PFM_ROOT}")" ]; then
-          # Version-agnostic emptiness: no index.php at the (already docroot-
-          # corrected) alias root nor under web/docroot/html. Do NOT key on
-          # sites/all (D8+ dropped it); the old ${_T_PFM_ROOT}/vendor guard was
-          # dead for D8+ since the corrected root is already the web/ docroot.
+        if [ -z "${_T_PFM_DOC}" ]; then
+          # Version-agnostic emptiness: no index.php at the alias root nor
+          # under web/docroot/html. Do NOT key on sites/all (D8+ dropped it).
           if _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_PLATFORMS_CLEANUP \
             || _cnf_flag_yes /root/.barracuda.cnf _GHOST_PLATFORMS_CLEANUP; then
             mkdir -p ${_usEr}/undo
@@ -858,7 +861,7 @@ _check_old_empty_platforms() {
           echo "WARNING: ghost site leftover found: ${_T_PFM_SITE}"
         fi
         if [ -z "${_T_PFM_SITE}" ] \
-          && [ -e "${_T_PFM_ROOT}/sites/all" ]; then
+          && [ -e "${_T_PFM_DOC:-${_T_PFM_ROOT}}/sites/all" ]; then
           _delete_this_platform
         fi
       done
