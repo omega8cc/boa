@@ -418,6 +418,106 @@ _desymlink_planted() {
   done
   return 0
 }
+# An alias copy in a home its account owns: every step is on a name the
+# account can swap while this runs. Only a regular file is compared, and the
+# compare is bounded (a FIFO swapped in after the test would block root's
+# read); anything but a clean "same" copies again. The copy never follows a
+# link at its own name nor lands in a directory (-T), the old name is removed
+# first, and the mode is set when the file is created, never by name afterwards
+# (umask, no preserved mode). The directory holding the copy is the account's
+# too: callers run both inside _ltd_in_real_dir. $1 = main, $2 = copy.
+_ltd_alias_same() {
+  [ -f "${2}" ] && [ ! -L "${2}" ] \
+    && timeout -k 5 10 diff -w -B "${2}" "${1}" > /dev/null 2>&1
+}
+_ltd_alias_put() {
+  ( umask 0337
+    cp -aT --no-preserve=mode --remove-destination "${1}" "${2}" ) 2> /dev/null
+}
+# Run "$@" inside the real directory $1, never one reached through a link the
+# account planted at that name: it owns the directory, not the root-placed home
+# above it. Once entered, ./name stays in that directory whatever is swapped.
+_ltd_in_real_dir() {
+  local _d="${1}" _want
+  shift
+  _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# A root stamp in the current (pinned) directory: the name is removed and
+# created exclusively, so a link put there in between is never followed.
+# $1 = name, $2 = content.
+_ltd_stamp_put() {
+  rm -f -- "./${1}"
+  printf '%s\n' "${2}" | dd of="./${1}" conv=excl status=none 2> /dev/null
+}
+# The reset of an account's ~/.drush, run inside the real directory: its
+# globs expand there, and usr/ is entered the same way. $1 = hosted YES|NO.
+_ltd_drush_strip() {
+  if [ "${1}" = "YES" ]; then
+    find . -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2> /dev/null
+  else
+    rm -f -- ./drush_make ./registry_rebuild ./clean_missing_modules
+    rm -f -- ./drupalgeddon ./drush_ecl ./make_local ./safe_cache_form*
+    _ltd_in_real_dir ./usr _ltd_drush_strip_usr
+    rm -f -- ./.ctrl*
+    rm -rf -- ./cache ./drush.ini ./*drushrc* ./*.inc
+  fi
+  mkdir -p ./usr
+}
+_ltd_drush_strip_usr() {
+  rm -f -- ./drush_make ./registry_rebuild ./clean_missing_modules
+  rm -f -- ./drupalgeddon ./drush_ecl ./make_local ./safe_cache_form*
+  rm -f -- ./mydropwizard ./utf8mb4_convert ./backdrop
+}
+# The instance's Drush 8 extensions linked into the real ~/.drush/usr.
+# $1 = the instance's .drush/usr.
+_ltd_drush_usr_links() {
+  local _t
+  for _t in registry_rebuild clean_missing_modules drupalgeddon drush_ecl \
+    safe_cache_form_clear utf8mb4_convert backdrop; do
+    if [ ! -L "./${_t}" ] && [ -e "${1}/${_t}" ]; then
+      ln -sfn "${1}/${_t}" "./${_t}"
+    fi
+  done
+}
+# The account's Drush CLI php.ini and its stamps, written inside the real
+# ~/.drush. $1 = PHP version digits (85, 84, ...; empty: none installed),
+# $2 = the account's ~/.tmp.
+_ltd_drush_ini_put() {
+  local _v="${1}" _qtp="${2//\//\\\/}" _w=""
+  rm -f -- ./.ctrl.php* ./php.ini
+  [ -n "${_v}" ] || return 0
+  # Edited in root's own temp directory and put in place once: a name here is
+  # the account's, so a FIFO or link put at php.ini is never opened by sed
+  # and the copy never follows a link at the name into a directory (-T).
+  _w=$(mktemp -d 2> /dev/null) || return 0
+  [ -n "${_w}" ] && [ -d "${_w}" ] || return 0
+  if cp -a "/opt/php${_v}/lib/php.ini" "${_w}/php.ini" 2> /dev/null; then
+    # open_basedir stays out of the CLI ini: it breaks Drush and turns the
+    # realpath cache off (every file operation checked against every listed
+    # tree, uncached); lshell users are confined by their own measures, and
+    # the FPM ini keeps its own list
+    sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      "${_w}/php.ini"
+    wait
+    sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               "${_w}/php.ini"
+    wait
+    sed -i "s/.*session.save_path =.*/session.save_path = ${_qtp}/g"     "${_w}/php.ini"
+    wait
+    sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_qtp}/g" "${_w}/php.ini"
+    wait
+    sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_qtp}/g"               "${_w}/php.ini"
+    wait
+    sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_qtp}/g"           "${_w}/php.ini"
+    wait
+    if cp -aT --remove-destination "${_w}/php.ini" ./php.ini 2> /dev/null; then
+      _ltd_stamp_put ".ctrl.php${_v}.${_xSrl}.pid" ""
+      _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" ""
+    fi
+  fi
+  rm -f -- "${_w}/php.ini"
+  rmdir -- "${_w}" 2> /dev/null
+  return 0
+}
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
 _aptAllow="--allow-unauthenticated"
@@ -612,68 +712,30 @@ _enable_chattr() {
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
     _U_II="${_U_HD}/php.ini"
-    if [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    # A link at ~/.drush always takes the strip branch: the marker test would
+    # otherwise read through it into whatever directory it points at.
+    if [ -L "${_U_HD}" ] || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
       # Strip planted links BEFORE the deletes below act on these paths: a
       # tenant who swapped ~/.drush for a symlink would otherwise have root
       # rm -rf through it.
       _desymlink_planted "${_U_TP}" "${_U_HD}"
       _if_hosted_sys
-      if [ "${_hostedSys}" = "YES" ]; then
-        rm -rf ${_U_HD}/
-      else
-        rm -f ${_U_HD}/{drush_make,registry_rebuild,clean_missing_modules}
-        rm -f ${_U_HD}/{drupalgeddon,drush_ecl,make_local,safe_cache_form*}
-        rm -f ${_U_HD}/usr/{drush_make,registry_rebuild,clean_missing_modules}
-        rm -f ${_U_HD}/usr/{drupalgeddon,drush_ecl,make_local,safe_cache_form*}
-        rm -f ${_U_HD}/usr/{mydropwizard,utf8mb4_convert,backdrop}
-        rm -f ${_U_HD}/.ctrl*
-        rm -rf ${_U_HD}/{cache,drush.ini,*drushrc*,*.inc}
-      fi
-      mkdir -p ${_U_HD}/usr
+      # The account owns both names and can swap them while this runs: every
+      # remove and write inside them happens in the real directory
+      # (_ltd_in_real_dir), never by a path through a link put there since.
+      mkdir -p ${_U_HD}
+      _ltd_in_real_dir "${_U_HD}" _ltd_drush_strip "${_hostedSys}"
       mkdir -p ${_U_TP}
-      touch ${_U_TP}
+      _ltd_in_real_dir "${_U_TP}" touch .
       # Bare path, not ${_U_TP}/ -- a trailing slash makes find follow a
       # planted link and purge the target tree instead.
-      find ${_U_TP} -mindepth 1 -mtime +0 -exec rm -rf {} \; &> /dev/null
+      find ${_U_TP} -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null
       chown -h $1:${_accGrp} ${_U_TP}
       chown -h $1:${_accGrp} ${_U_HD}
-      [ ! -L "${_U_TP}" ] && chmod 02755 ${_U_TP}
-      [ ! -L "${_U_HD}" ] && chmod 02755 ${_U_HD}
-      if [ ! -L "${_U_HD}/usr/registry_rebuild" ] \
-        && [ -e "${_dscUsr}/.drush/usr/registry_rebuild" ]; then
-        ln -sfn ${_dscUsr}/.drush/usr/registry_rebuild \
-          ${_U_HD}/usr/registry_rebuild
-      fi
-      if [ ! -L "${_U_HD}/usr/clean_missing_modules" ] \
-        && [ -e "${_dscUsr}/.drush/usr/clean_missing_modules" ]; then
-        ln -sfn ${_dscUsr}/.drush/usr/clean_missing_modules \
-          ${_U_HD}/usr/clean_missing_modules
-      fi
-      if [ ! -L "${_U_HD}/usr/drupalgeddon" ] \
-        && [ -e "${_dscUsr}/.drush/usr/drupalgeddon" ]; then
-        ln -sfn ${_dscUsr}/.drush/usr/drupalgeddon \
-          ${_U_HD}/usr/drupalgeddon
-      fi
-      if [ ! -L "${_U_HD}/usr/drush_ecl" ] \
-        && [ -e "${_dscUsr}/.drush/usr/drush_ecl" ]; then
-        ln -sfn ${_dscUsr}/.drush/usr/drush_ecl \
-          ${_U_HD}/usr/drush_ecl
-      fi
-      if [ ! -L "${_U_HD}/usr/safe_cache_form_clear" ] \
-        && [ -e "${_dscUsr}/.drush/usr/safe_cache_form_clear" ]; then
-        ln -sfn ${_dscUsr}/.drush/usr/safe_cache_form_clear \
-          ${_U_HD}/usr/safe_cache_form_clear
-      fi
-      if [ ! -L "${_U_HD}/usr/utf8mb4_convert" ] \
-        && [ -e "${_dscUsr}/.drush/usr/utf8mb4_convert" ]; then
-        ln -sfn ${_dscUsr}/.drush/usr/utf8mb4_convert \
-          ${_U_HD}/usr/utf8mb4_convert
-      fi
-      if [ ! -L "${_U_HD}/usr/backdrop" ] \
-        && [ -e "${_dscUsr}/.drush/usr/backdrop" ]; then
-        ln -sfn ${_dscUsr}/.drush/usr/backdrop \
-          ${_U_HD}/usr/backdrop
-      fi
+      _ltd_in_real_dir "${_U_TP}" chmod 02755 .
+      _ltd_in_real_dir "${_U_HD}" chmod 02755 .
+      _ltd_in_real_dir "${_U_HD}" \
+        _ltd_in_real_dir ./usr _ltd_drush_usr_links "${_dscUsr}/.drush/usr"
     fi
 
     if [ -e "${_dscUsr}/tools/drush/drush.php" ]; then
@@ -695,8 +757,6 @@ _enable_chattr() {
       || [ ! -e "${_U_II}" ] \
       || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p ${_U_HD}
-      rm -f ${_U_HD}/.ctrl.php*
-      rm -f ${_U_II}
       if [ ! -z "${_T_CLI_VRN}" ]; then
         _USE_PHP_CLI="${_T_CLI_VRN}"
         echo "_USE_PHP_CLI is ${_USE_PHP_CLI} for $1 at ${_USER} WTF"
@@ -735,69 +795,13 @@ _enable_chattr() {
         fi
       fi
       echo _USE_PHP_CLI is ${_USE_PHP_CLI} for $1
-      if [ "${_USE_PHP_CLI}" = "8.5" ]; then
-        cp -af /opt/php85/lib/php.ini ${_U_II}
-        _U_INI=85
-      elif [ "${_USE_PHP_CLI}" = "8.4" ]; then
-        cp -af /opt/php84/lib/php.ini ${_U_II}
-        _U_INI=84
-      elif [ "${_USE_PHP_CLI}" = "8.3" ]; then
-        cp -af /opt/php83/lib/php.ini ${_U_II}
-        _U_INI=83
-      elif [ "${_USE_PHP_CLI}" = "8.2" ]; then
-        cp -af /opt/php82/lib/php.ini ${_U_II}
-        _U_INI=82
-      elif [ "${_USE_PHP_CLI}" = "8.1" ]; then
-        cp -af /opt/php81/lib/php.ini ${_U_II}
-        _U_INI=81
-      elif [ "${_USE_PHP_CLI}" = "8.0" ]; then
-        cp -af /opt/php80/lib/php.ini ${_U_II}
-        _U_INI=80
-      elif [ "${_USE_PHP_CLI}" = "7.4" ]; then
-        cp -af /opt/php74/lib/php.ini ${_U_II}
-        _U_INI=74
-      elif [ "${_USE_PHP_CLI}" = "7.3" ]; then
-        cp -af /opt/php73/lib/php.ini ${_U_II}
-        _U_INI=73
-      elif [ "${_USE_PHP_CLI}" = "7.2" ]; then
-        cp -af /opt/php72/lib/php.ini ${_U_II}
-        _U_INI=72
-      elif [ "${_USE_PHP_CLI}" = "7.1" ]; then
-        cp -af /opt/php71/lib/php.ini ${_U_II}
-        _U_INI=71
-      elif [ "${_USE_PHP_CLI}" = "7.0" ]; then
-        cp -af /opt/php70/lib/php.ini ${_U_II}
-        _U_INI=70
-      elif [ "${_USE_PHP_CLI}" = "5.6" ]; then
-        cp -af /opt/php56/lib/php.ini ${_U_II}
-        _U_INI=56
-      fi
-      if [ -e "${_U_II}" ]; then
-        # open_basedir stays out of the CLI ini: it breaks Drush and turns the
-        # realpath cache off (every file operation checked against every listed
-        # tree, uncached); lshell users are confined by their own measures, and
-        # the FPM ini keeps its own list
-        _QTP=${_U_TP//\//\\\/}
-        sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      ${_U_II}
-        wait
-        sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
-        wait
-        sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
-        wait
-        sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
-        wait
-        sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
-        wait
-        sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
-        wait
-        # Root-maintained stamps inside a tenant-owned .drush: the .ctrl.php*
-        # rm above does not cover the tree stamp, and `echo >` follows a link
-        # (truncating an existing target, creating a dangling one).
-        _desymlink_planted "${_U_HD}/.ctrl.php${_U_INI}.${_xSrl}.pid" \
-          "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid"
-        echo > ${_U_HD}/.ctrl.php${_U_INI}.${_xSrl}.pid
-        echo > ${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid
-      fi
+      _U_INI=""
+      case "${_USE_PHP_CLI}" in
+        8.5|8.4|8.3|8.2|8.1|8.0|7.4|7.3|7.2|7.1|7.0|5.6) _U_INI="${_USE_PHP_CLI/./}" ;;
+      esac
+      # written inside the real ~/.drush: the ini, its sed rewrites and the
+      # stamps never go through a link the account put at one of the names
+      _ltd_in_real_dir "${_U_HD}" _ltd_drush_ini_put "${_U_INI}" "${_U_TP}"
     fi
 
     _UQ="$1"
@@ -979,10 +983,23 @@ _disable_chattr() {
 # unlock (provision-dunlock on every granted composer platform, provision-dlock
 # at expiry on those that were locked; see _ltd_platform_window below), opened
 # when the account touches ~/.tmp/drush-window.request and closed by this
-# worker once root's own clock says the minutes are up.
+# worker once root's own clock says the minutes are up. Every pass also writes
+# what the account reaches and why each refused platform is refused, which
+# checkmyperms prints: to the account without another client's site names,
+# to the main login with them.
 _LTD_PLATFORM_SUFFIX="-dev"
 _LTD_PLATFORM_WINDOW_MIN=60
 _LTD_PLATFORM_TOOLS="'composer', 'drush', 'drush10', 'drush11', 'drush8', 'vdrush', 'vendor/drush/drush/drush.php'"
+# The self-check the account keeps with or without a granted platform: a
+# developer whose every platform was refused is the one who needs it most.
+# On `allowed` only: it runs builtins alone, so lshell's noexec layer stays on.
+_LTD_PLATFORM_SELF="'checkmyperms'"
+# What checkmyperms prints: one root-written file per login, owned by that
+# login and readable by it alone, replaced by rename inside this root-only
+# directory, so no tenant ever controls a path root writes to.
+_LTD_STATUS_DIR="/var/backups/ltd/status"
+_LTD_PLATFORM_ACCT=NO
+_LTD_REFUSED_FILE=""
 #
 # The docroot of a platform dir: index.php at the root or one level down.
 _ltd_platform_docroot() {
@@ -1083,8 +1100,19 @@ _ltd_platform_roots() {
     [ -n "${_tgt}" ] && [ -d "${_tgt}" ] || continue
     _root=$(_ltd_platform_approot "${_tgt}")
     # lands inside single quotes in the root-written config: same class as
-    # _PATH_DOM, and a path the class mutates is not granted at all
+    # _PATH_DOM, and a path the class mutates is not granted at all -- but
+    # never silently: the operator page promises every platform missing from
+    # ~/platforms a named reason
     if [ "${_root}" != "${_root//[^a-zA-Z0-9._\/-]/}" ]; then
+      _root=$(_ltd_bytes_printable "${_root}")
+      case " ${_seen} " in
+        *" ${_root} "*) continue ;;
+      esac
+      _seen="${_seen} ${_root}"
+      _ltd_notice "platform-badpath-${_acct}-$(basename "${_root}")" \
+        "platform ${_root} refused for ${_acct}" \
+        "its path has characters outside a-z A-Z 0-9 . _ / -" >&2
+      _ltd_refused_note charset "${_root}" ""
       continue
     fi
     [ -n "${_root}" ] && [ -d "${_root}" ] || continue
@@ -1096,14 +1124,35 @@ _ltd_platform_roots() {
     if [ -n "${_why}" ]; then
       # stdout of this function IS the grant list (command substitution in
       # the caller); the notice echoes, so it goes to stderr or the refused
-      # root's own words would land in the path
-      _ltd_notice "platform-refused-${_acct}-$(basename "${_root}")" \
-        "platform ${_root} refused for ${_acct}" \
-        "not single-client: ${_why}" >&2
+      # root's own words would land in the path. The refuser names either the
+      # site directory that is not the client's or one of its fixed reasons;
+      # only the first is a single-client refusal.
+      case "${_why}" in
+        /*)
+          _ltd_notice "platform-refused-${_acct}-$(basename "${_root}")" \
+            "platform ${_root} refused for ${_acct}" \
+            "not single-client: ${_why}" >&2
+          _ltd_refused_note site "${_root}" "${_why}"
+          ;;
+        *)
+          _ltd_notice "platform-refused-${_acct}-$(basename "${_root}")" \
+            "platform ${_root} refused for ${_acct}" \
+            "${_why}" >&2
+          _ltd_refused_note structure "${_root}" "${_why}"
+          ;;
+      esac
       continue
     fi
     printf '%s\n' "${_root}"
   done
+}
+#
+# One refusal for the status writer: kind|root|detail, appended to the file
+# the caller named (the roots above run in a command substitution, so a
+# variable could not carry them back).
+_ltd_refused_note() {
+  [ -n "${_LTD_REFUSED_FILE}" ] || return 0
+  printf '%s|%s|%s\n' "${1}" "${2}" "${3}" >> "${_LTD_REFUSED_FILE}"
 }
 #
 # The Drush window. A locked platform and a running site-local Drush exclude
@@ -1249,16 +1298,29 @@ _ltd_platform_farm() {
   if [ -n "${_keep}" ]; then
     cat > "${_farm}/README.txt" <<EOF
 Platforms granted to this account are linked here, one per codebase, and are
-also on your shell path. A Drupal 8+ platform is locked for Aegir's own Drush
-between uses, and its site-local Drush cannot run while it is locked; to
-unlock your platforms for ${_LTD_PLATFORM_WINDOW_MIN} minutes run:
+also on your shell path. Run checkmyperms to see what this login reaches, the
+state of each platform, and why a platform carrying one of your sites is not
+linked here.
+
+Drupal 7 and Backdrop: drush8 works at any time.
+
+Drupal 8+: the platform is locked for Aegir's own Drush between uses. While
+it is locked, Drush 8 answers read-only commands only (drush @site uli,
+drush @site status). Anything that changes a site runs through the
+platform's own Drush, which needs the platform unlocked; to unlock your
+platforms for ${_LTD_PLATFORM_WINDOW_MIN} minutes run:
 
   touch ~/.tmp/drush-window.request
 
-then, within three minutes, cd into the platform and run vdrush. Touch it
-again to extend. While a platform is unlocked, control-panel tasks on its
-sites can fail and a site Verify re-locks it (reopened within three minutes);
-at expiry every platform is locked again.
+then, within three minutes:
+
+  cd ~/platforms/<name>
+  vdrush @<alias> <command>
+
+(drush11 aliases lists the alias names). Touch it again to extend. While a
+platform is unlocked Drush 8 cannot run on it, control-panel tasks on its
+sites can fail, and a site Verify re-locks it (reopened within three
+minutes); at expiry every platform is locked again.
 https://docs.boa.io/using/connecting/extra-accounts
 EOF
     chmod 0644 "${_farm}/README.txt"
@@ -1285,6 +1347,7 @@ _ltd_reap_account() {
     --backup-to /var/backups/zombie/deleted/${_NOW} ${_acct} &> /dev/null
   rm -f /home/${_parent}.ftp/users/${_acct}
   rm -f "/var/backups/ltd/window/${_acct}" "/var/backups/ltd/window/${_acct}.prev"
+  rm -f "${_LTD_STATUS_DIR}/${_acct}" "/var/backups/ltd/aliases/${_acct}.md5"
   echo Zombie from etc.passwd ${_acct} killed
   if [ -n "${_why}" ]; then
     [ -d /var/log/boa ] || mkdir -p /var/log/boa
@@ -1299,8 +1362,278 @@ _ltd_reap_account() {
 # group policy and the default path, i.e. wider than it ever was.
 _ltd_platform_retire() {
   local _acct="${1}"
+  local _why="${2:-not in _LTD_PLATFORM_CLIENTS of ${_USER}}"
   _ltd_platform_window_close "${_acct}"
-  _ltd_reap_account "${_acct}" "${_USER}" "platform account retired (not in _LTD_PLATFORM_CLIENTS of ${_USER})"
+  _ltd_reap_account "${_acct}" "${_USER}" "platform account retired (${_why})"
+}
+#
+# The status files checkmyperms prints. The directory is root's (0711: a
+# login reaches its own file by name, lists nothing); each file is owned by
+# the one login that reads it, mode 0400, and replaced by rename.
+_ltd_status_dir() {
+  if [ -L "${_LTD_STATUS_DIR}" ] \
+    || { [ -e "${_LTD_STATUS_DIR}" ] && [ ! -d "${_LTD_STATUS_DIR}" ]; }; then
+    rm -f "${_LTD_STATUS_DIR}"
+  fi
+  [ -d "${_LTD_STATUS_DIR}" ] || mkdir -p "${_LTD_STATUS_DIR}"
+  chown root:root "${_LTD_STATUS_DIR}"
+  chmod 0711 "${_LTD_STATUS_DIR}"
+}
+_ltd_status_tmp() {
+  mktemp "${_LTD_STATUS_DIR}/.tmp.XXXXXXXX"
+}
+_ltd_status_put() {
+  local _login="${1}"
+  local _tmp="${2}"
+  [ -f "${_tmp}" ] || return 0
+  if ! getent passwd "${_login}" > /dev/null 2>&1; then
+    rm -f "${_tmp}"
+    return 0
+  fi
+  chown "${_login}" "${_tmp}" && chmod 0400 "${_tmp}" \
+    && mv -f "${_tmp}" "${_LTD_STATUS_DIR}/${_login}"
+  rm -f "${_tmp}"
+}
+# printable, and nothing a reader could take for markup or a control code;
+# byte by byte whatever locale cron or an upgrade runs this under, the way
+# checkmyperms spells the directory it compares with a refused root
+_ltd_status_safe() {
+  local LC_ALL=C
+  local _s="${1}"
+  printf '%s' "${_s//[^a-zA-Z0-9._\/@:, ()+-]/?}"
+}
+_ltd_bytes_printable() {
+  local LC_ALL=C
+  printf '%s' "${1//[^[:print:]]/?}"
+}
+# "Drupal 10.1.8", "Drupal 7.105", "Backdrop 1.34.3" from the codebase itself
+_ltd_platform_label() {
+  local _doc=""
+  local _v=""
+  _doc=$(_ltd_platform_docroot "${1}") || { printf '%s\n' "unknown codebase"; return 0; }
+  if [ -f "${_doc}/core/lib/Drupal.php" ]; then
+    _v=$(grep -m1 -oE "const VERSION = '[^']+'" "${_doc}/core/lib/Drupal.php" 2>/dev/null | cut -d"'" -f2)
+    printf 'Drupal %s\n' "$(_ltd_status_safe "${_v:-8+}")"
+  elif [ -f "${_doc}/core/includes/bootstrap.inc" ]; then
+    _v=$(grep -m1 -oE "define\('BACKDROP_VERSION', '[^']+'" "${_doc}/core/includes/bootstrap.inc" 2>/dev/null | cut -d"'" -f4)
+    printf 'Backdrop %s\n' "$(_ltd_status_safe "${_v:-1}")"
+  elif [ -f "${_doc}/includes/bootstrap.inc" ]; then
+    _v=$(grep -m1 -oE "define\('VERSION', '[^']+'" "${_doc}/includes/bootstrap.inc" 2>/dev/null | cut -d"'" -f4)
+    printf 'Drupal %s\n' "$(_ltd_status_safe "${_v:-7}")"
+  else
+    printf '%s\n' "unknown codebase"
+  fi
+}
+# The alias a Drush 9+ store names a site by: every dot but the last becomes
+# a hyphen (site:alias-convert's own rule; a bare domain keeps its name).
+_ltd_modern_alias() {
+  local _n="${1}"
+  local _h="${1%.*}"
+  [ "${_h}" = "${_n}" ] && { printf '%s' "${_n}"; return 0; }
+  printf '%s.%s' "${_h//./-}" "${_n##*.}"
+}
+# The client's own sites on one app root, space-separated, by link name.
+_ltd_platform_sites() {
+  local _root="${1}"
+  local _cdir="${2}"
+  local _lnk=""
+  local _out=""
+  for _lnk in "${_cdir}"/*; do
+    [ -L "${_lnk}" ] || continue
+    [ "$(_ltd_platform_approot "$(readlink -f "${_lnk}")")" = "${_root}" ] || continue
+    _out="${_out} $(basename "${_lnk}")"
+  done
+  printf '%s' "${_out# }"
+}
+# Why a site directory keeps a platform from this client, in the words one
+# reader may see. $1 = the refusing site dir, $2 = the client dir, $3 = full
+# (the main login, which owns every site of the instance) or dev (the platform
+# account, which never learns another client's site). Prints two lines:
+# the reason, then the fix.
+_ltd_refused_site_why() {
+  local _site="${1}"
+  local _cdir="${2}"
+  local _view="${3}"
+  local _real=""
+  local _name=""
+  local _own=""
+  local _lnk=""
+  local _al=""
+  local _sp=""
+  local _live=""
+  local _mine=NO
+  _real=$(readlink -f "${_site}")
+  _name=$(basename "${_site}")
+  for _lnk in "${_pthParentUsr}"/clients/*/*; do
+    [ -L "${_lnk}" ] || continue
+    if [ "$(readlink -f "${_lnk}")" = "${_real}" ]; then
+      _own=$(basename "$(dirname "${_lnk}")")
+      break
+    fi
+  done
+  [ -L "${_cdir}/${_name}" ] && _mine=YES
+  _al="${_pthParentUsr}/.drush/${_name}.alias.drushrc.php"
+  if [ -f "${_al}" ]; then
+    _sp=$(grep -m1 -oE "'site_path' => '[^']+'" "${_al}" 2>/dev/null | cut -d"'" -f4)
+    if [ -n "${_sp}" ] && [ "$(readlink -f "${_sp}")" != "${_real}" ]; then
+      _live=$(basename "$(_ltd_platform_approot "$(readlink -f "${_sp}")")")
+    fi
+  fi
+  _name=$(_ltd_status_safe "${_name}")
+  _own=$(_ltd_status_safe "${_own}")
+  _live=$(_ltd_status_safe "${_live}")
+  if [ -n "${_own}" ]; then
+    if [ "${_view}" = "full" ]; then
+      printf '%s\n' "it also carries ${_name}, a site of client ${_own}"
+      printf '%s\n' "assign ${_name} to this client in the control panel, or migrate it to another platform"
+    else
+      printf '%s\n' "it also carries a site of another client"
+      printf '%s\n' "ask the account owner: checkmyperms on the main login names the site"
+    fi
+  elif [ -n "${_live}" ]; then
+    if [ "${_view}" = "full" ] || [ "${_mine}" = "YES" ]; then
+      printf '%s\n' "it also carries a leftover copy of ${_name}; the live site runs on ${_live}"
+    else
+      printf '%s\n' "it also carries a leftover site directory of another site"
+    fi
+    if [ "${_view}" = "full" ]; then
+      printf '%s\n' "ask your host to remove the leftover directory (it is read-only for every login)"
+    else
+      printf '%s\n' "ask the account owner to have the leftover directory removed"
+    fi
+  elif [ -n "${_sp}" ]; then
+    if [ "${_view}" = "full" ]; then
+      printf '%s\n' "it also carries ${_name}, a site assigned to no client with a developer login"
+      printf '%s\n' "assign ${_name} to this client in the control panel, or migrate it to another platform"
+    else
+      printf '%s\n' "it also carries a site that is not one of this client's sites"
+      printf '%s\n' "ask the account owner: checkmyperms on the main login names the site"
+    fi
+  else
+    if [ "${_view}" = "full" ] || [ "${_mine}" = "YES" ]; then
+      printf '%s\n' "it also carries ${_name}, a site directory with no live site behind it"
+    else
+      printf '%s\n' "it also carries a site directory with no live site behind it"
+    fi
+    if [ "${_view}" = "full" ]; then
+      printf '%s\n' "ask your host to remove the leftover directory (it is read-only for every login)"
+    else
+      printf '%s\n' "ask the account owner to have the leftover directory removed"
+    fi
+  fi
+}
+# One account's report. $1 = account, $2 = client name, $3 = client dir,
+# $4 = granted roots, $5 = refusals file, $6 = full or dev. Machine lines
+# (#grant, #refuse) close it for checkmyperms' own look at the cwd.
+_ltd_platform_report() {
+  local _acct="${1}"
+  local _client="${2}"
+  local _cdir="${3}"
+  local _granted="${4}"
+  local _refused="${5}"
+  local _view="${6}"
+  local _state="/var/backups/ltd/window/${1}"
+  local _root=""
+  local _doc=""
+  local _lbl=""
+  local _lock=""
+  local _sites=""
+  local _s=""
+  local _line=""
+  local _kind=""
+  local _det=""
+  local _why=""
+  local _n=0
+  echo "Developer login $(_ltd_status_safe "${_acct}") (client $(_ltd_status_safe "${_client}")), $(date '+%Y-%m-%d %H:%M %Z')"
+  echo
+  if [ -s "${_state}" ] \
+    && [ -n "$(find "${_state}" -maxdepth 0 -mmin -${_LTD_PLATFORM_WINDOW_MIN} 2>/dev/null)" ]; then
+    echo "Drush window: OPEN until $(date -d "@$(( $(stat -c %Y "${_state}") + _LTD_PLATFORM_WINDOW_MIN * 60 ))" '+%H:%M %Z')."
+    echo "  Drupal 8+ platforms are unlocked: vdrush works, Drush 8 does not."
+  else
+    echo "Drush window: closed. Drupal 8+ platforms are locked: Drush 8 answers"
+    echo "  read-only commands (uli, status). To unlock them for vdrush for"
+    echo "  ${_LTD_PLATFORM_WINDOW_MIN} minutes: touch ~/.tmp/drush-window.request (applied within three minutes)."
+  fi
+  echo
+  echo "Platforms this login reaches (linked in ~/platforms):"
+  for _root in ${_granted}; do
+    _n=$(( _n + 1 ))
+    _lbl=$(_ltd_platform_label "${_root}")
+    _doc=$(_ltd_platform_docroot "${_root}")
+    _lock=""
+    if [ -f "${_doc}/core/lib/Drupal.php" ]; then
+      if [ ! -d "${_root}/vendor/drush" ]; then
+        _lock=", no site-local Drush (no vdrush here)"
+      elif _ltd_platform_locked "${_root}"; then
+        _lock=", locked"
+      else
+        _lock=", unlocked"
+      fi
+    fi
+    echo "  $(_ltd_status_safe "$(basename "$(dirname "${_root}")")-$(basename "${_root}")"): ${_lbl}${_lock}"
+    _sites=$(_ltd_platform_sites "${_root}" "${_cdir}")
+    for _s in ${_sites}; do
+      if [ -f "${_doc}/core/lib/Drupal.php" ] && [ -d "${_root}/vendor/drush" ]; then
+        echo "    $(_ltd_status_safe "${_s}")  (vdrush @$(_ltd_status_safe "$(_ltd_modern_alias "${_s}")"))"
+      else
+        echo "    $(_ltd_status_safe "${_s}")"
+      fi
+    done
+  done
+  [ "${_n}" -gt 0 ] || echo "  none"
+  echo
+  echo "Platforms carrying this client's sites that this login does NOT reach:"
+  _n=0
+  if [ -s "${_refused}" ]; then
+    while IFS= read -r _line; do
+      _kind="${_line%%|*}"
+      _line="${_line#*|}"
+      _root="${_line%%|*}"
+      _det="${_line#*|}"
+      _n=$(( _n + 1 ))
+      echo "  $(_ltd_status_safe "${_root}"): $(_ltd_platform_label "${_root}")"
+      _sites=$(_ltd_platform_sites "${_root}" "${_cdir}")
+      [ -n "${_sites}" ] && echo "    sites: $(_ltd_status_safe "${_sites}")"
+      case "${_kind}" in
+        site)
+          _why=$(_ltd_refused_site_why "${_det}" "${_cdir}" "${_view}")
+          echo "    why: ${_why%%$'\n'*}"
+          echo "    fix: ${_why#*$'\n'}"
+          ;;
+        structure)
+          echo "    why: $(_ltd_status_safe "${_det}")"
+          echo "    fix: only Drupal and Backdrop platforms are granted"
+          ;;
+        charset)
+          echo "    why: its path has characters outside a-z A-Z 0-9 . _ / -"
+          echo "    fix: deploy the platform under a plain directory name"
+          ;;
+      esac
+    done < "${_refused}"
+  fi
+  [ "${_n}" -gt 0 ] || echo "  none"
+  echo
+  echo "Every site of this client stays reachable under ~/sites (files, themes,"
+  echo "modules, libraries). Drush and the platform code are reachable only on the"
+  echo "platforms listed as reached above; on any other, Drush fails with"
+  echo "'Failed opening required .../autoload.php'."
+  echo
+  echo "Drush on a reached platform:"
+  echo "  Drupal 7, Backdrop:    drush8 @<site> <command>, at any time"
+  echo "  Drupal 8+, locked:     drush @<site> uli, drush @<site> status (Drush 8,"
+  echo "                         read-only commands only)"
+  echo "  Drupal 8+, any change: open the window, then"
+  echo "                         cd ~/platforms/<name> && vdrush @<alias> <command>"
+  for _root in ${_granted}; do
+    echo "#grant ${_root}"
+  done
+  if [ -s "${_refused}" ]; then
+    while IFS= read -r _line; do
+      _line="${_line#*|}"
+      echo "#refuse $(_ltd_status_safe "${_line%%|*}")"
+    done < "${_refused}"
+  fi
 }
 #
 # Platform accounts of this instance, after the ordinary sub-accounts.
@@ -1314,14 +1647,35 @@ _manage_sec_platform() {
   local _granted=""
   local _on=""
   local _ex=""
+  local _listed=0
+  local _nosite=""
+  local _nodir=""
+  local _ftpv=""
+  local _devv=""
+  _ltd_status_dir
+  # the main login's view: every platform account of the instance, with the
+  # names only the owner of every site may see
+  _ftpv=$(_ltd_status_tmp)
+  {
+    echo "Platform developer logins of ${_USER}, $(date '+%Y-%m-%d %H:%M %Z')"
+    echo "(the worker refreshes this every three minutes)"
+  } > "${_ftpv}"
   for _client in ${_LTD_PLATFORM_CLIENTS}; do
     _client=${_client//[^a-zA-Z0-9._-]/}
     [ -n "${_client}" ] || continue
+    _listed=$(( _listed + 1 ))
     _cdir="${_pthParentUsr}/clients/${_client}"
     if [ ! -d "${_cdir}" ] || [ -L "${_cdir}" ]; then
       _ltd_notice "platform-noclient-${_USER}-${_client}" \
         "platform account for ${_USER}: no client directory ${_cdir}" \
         "listed in _LTD_PLATFORM_CLIENTS; nothing granted"
+      {
+        echo
+        echo "Client ${_client}: enabled by your host, but no developer login exists:"
+        echo "  the client owns no Drupal or Backdrop site (or no such client)."
+      } >> "${_ftpv}"
+      _nam=$(_ltd_name_from_client_dir "${_cdir}")
+      [ -n "${_nam}" ] && _nodir="${_nodir} ${_USER}.${_nam}${_LTD_PLATFORM_SUFFIX}"
       continue
     fi
     _nam=$(_ltd_name_from_client_dir "${_cdir}")
@@ -1335,9 +1689,14 @@ _manage_sec_platform() {
       _ltd_notice "platform-toolong-${_acct}" \
         "platform account name ${_acct} is longer than 32 characters" \
         "shorten the client directory name; nothing granted"
+      {
+        echo
+        echo "Client ${_client}: enabled by your host, but the login name ${_acct}"
+        echo "  would be longer than 32 characters; a shorter client name is needed."
+      } >> "${_ftpv}"
       continue
     fi
-    _on="${_on} ${_acct}"
+    _LTD_REFUSED_FILE=$(_ltd_status_tmp)
     _roots=$(_ltd_platform_roots "${_cdir}" "${_acct}")
     _usrLtd="${_acct}"
     _Client="${_cdir}"
@@ -1353,19 +1712,43 @@ _manage_sec_platform() {
       _granted="${_granted} ${_r}"
     done
     if [ -n "${_granted}" ]; then
-      _LTD_EXTRA_STANZA="allowed : + [${_LTD_PLATFORM_TOOLS}]
+      _LTD_EXTRA_STANZA="allowed : + [${_LTD_PLATFORM_TOOLS}, ${_LTD_PLATFORM_SELF}]
 allowed_shell_escape : + [${_LTD_PLATFORM_TOOLS}]"
     else
-      _LTD_EXTRA_STANZA=""
+      _LTD_EXTRA_STANZA="allowed : + [${_LTD_PLATFORM_SELF}]"
     fi
     if [ "${_ALLD_NUM}" -ge "${_ALLD_CTL}" ]; then
+      # kept only while the client has a site to reach: an account left in
+      # place without its section would fall to the group policy
+      _on="${_on} ${_acct}"
+      _LTD_PLATFORM_ACCT=YES
       _add_user_if_not_exists
+      _LTD_PLATFORM_ACCT=NO
       if getent passwd "${_acct}" > /dev/null 2>&1; then
         _ltd_platform_farm "${_acct}" "${_granted}"
         _ltd_platform_window "${_acct}" "${_granted}"
+        _devv=$(_ltd_status_tmp)
+        _ltd_platform_report "${_acct}" "${_client}" "${_cdir}" "${_granted}" \
+          "${_LTD_REFUSED_FILE}" dev > "${_devv}"
+        _ltd_status_put "${_acct}" "${_devv}"
+        {
+          echo
+          _ltd_platform_report "${_acct}" "${_client}" "${_cdir}" "${_granted}" \
+            "${_LTD_REFUSED_FILE}" full | grep -v '^#'
+        } >> "${_ftpv}"
       fi
       echo "Done platform account ${_acct} for ${_cdir}: ${_granted:-no qualifying platform}"
+    else
+      _nosite="${_nosite} ${_acct}"
+      {
+        echo
+        echo "Client ${_client}: enabled by your host, but no developer login is kept:"
+        echo "  none of the client's sites is a Drupal or Backdrop site this pass can"
+        echo "  reach (a login that existed is retired until one is)."
+      } >> "${_ftpv}"
     fi
+    rm -f "${_LTD_REFUSED_FILE}"
+    _LTD_REFUSED_FILE=""
     _usrLtd=
     _ALLD_DIR=
     _LTD_EXTRA_STANZA=
@@ -1374,8 +1757,21 @@ allowed_shell_escape : + [${_LTD_PLATFORM_TOOLS}]"
     case " ${_on} " in
       *" ${_ex} "*) continue ;;
     esac
-    _ltd_platform_retire "${_ex}"
+    case " ${_nosite} " in
+      *" ${_ex} "*) _ltd_platform_retire "${_ex}" "its client has no Drupal or Backdrop site this pass can reach" ;;
+      *)
+        case " ${_nodir} " in
+          *" ${_ex} "*) _ltd_platform_retire "${_ex}" "its client directory is gone or is a link" ;;
+          *) _ltd_platform_retire "${_ex}" ;;
+        esac
+        ;;
+    esac
   done
+  if [ "${_listed}" -gt 0 ]; then
+    _ltd_status_put "${_USER}.ftp" "${_ftpv}"
+  else
+    rm -f "${_ftpv}" "${_LTD_STATUS_DIR}/${_USER}.ftp"
+  fi
 }
 #
 # Kill zombies.
@@ -1569,6 +1965,10 @@ _manage_sec_user_drush_aliases() {
       ln -sfn ${_Client} ${_usrLtdRoot}/sites
     fi
   fi
+  # The account owns ~/.drush and can put a link at its name: every remove and
+  # copy below runs inside the real directory (_ltd_in_real_dir), never through
+  # a link into another instance's alias store.
+  _desymlink_planted "${_usrLtdRoot}/.drush"
   if [ ! -e "${_usrLtdRoot}/.drush" ]; then
     mkdir -p ${_usrLtdRoot}/.drush
   fi
@@ -1583,32 +1983,33 @@ _manage_sec_user_drush_aliases() {
         | awk '{ print $1}' 2>&1)
       if [ ! -z "${_AliasName}" ] \
         && [ ! -e "${_usrLtdRoot}/sites/${_AliasName}" ]; then
-        rm -f ${_usrLtdRoot}/.drush/${_AliasName}.alias.drushrc.php
+        _ltd_in_real_dir "${_usrLtdRoot}/.drush" \
+          rm -f -- "./${_AliasName}.alias.drushrc.php"
       fi
     done
   fi
 
+  # an alias name that is not a regular file (a FIFO, a device link, a
+  # directory) is never root's to open: the diff below reads every copy
+  _ltd_in_real_dir "${_usrLtdRoot}/.drush" find . -maxdepth 1 \
+    -name '*.alias.drushrc.php' ! -type f -exec rm -rf {} + 2> /dev/null
   for _Symlink in `find ${_usrLtdRoot}/sites/ \
     -maxdepth 1 -mindepth 1 | sort`; do
     _SiteName=$(echo ${_Symlink}  \
       | cut -d'/' -f5 \
       | awk '{ print $1}' 2>&1)
     _pthAliasMain="${_pthParentUsr}/.drush/${_SiteName}.alias.drushrc.php"
-    _pthAliasCopy="${_usrLtdRoot}/.drush/${_SiteName}.alias.drushrc.php"
+    _pthAliasCopy="./${_SiteName}.alias.drushrc.php"
     # The copy is a root-written control file in a home the sub-user owns, and
-    # is never legitimately a link: cp -af follows a symlinked DESTINATION and
-    # chmod follows too, so strip the plant before either runs. Only the copy --
-    # the main alias may legitimately be the front-end link seeded at ~/.drush.
-    [ ! -z "${_SiteName}" ] && _desymlink_planted "${_pthAliasCopy}"
-    if [ ! -z "${_SiteName}" ] && [ ! -e "${_pthAliasCopy}" ]; then
-      cp -af ${_pthAliasMain} ${_pthAliasCopy}
-      [ ! -L "${_pthAliasCopy}" ] && chmod 440 ${_pthAliasCopy}
-    elif [ ! -z "${_SiteName}" ]  && [ -e "${_pthAliasCopy}" ]; then
-      _DIFF_T=$(diff -w -B ${_pthAliasCopy} ${_pthAliasMain} 2>&1)
-      if [ ! -z "${_DIFF_T}" ]; then
-        cp -af ${_pthAliasMain} ${_pthAliasCopy}
-        [ ! -L "${_pthAliasCopy}" ] && chmod 440 ${_pthAliasCopy}
-      fi
+    # is never legitimately a link: strip a plant at its name, then compare and
+    # copy inside the pinned ~/.drush (see _ltd_alias_put). Only the copy -- the
+    # main alias may legitimately be the front-end link seeded at ~/.drush.
+    [ -z "${_SiteName}" ] && continue
+    _ltd_in_real_dir "${_usrLtdRoot}/.drush" _desymlink_planted "${_pthAliasCopy}"
+    if ! _ltd_in_real_dir "${_usrLtdRoot}/.drush" \
+      _ltd_alias_same "${_pthAliasMain}" "${_pthAliasCopy}"; then
+      _ltd_in_real_dir "${_usrLtdRoot}/.drush" \
+        _ltd_alias_put "${_pthAliasMain}" "${_pthAliasCopy}"
     fi
   done
 }
@@ -1666,8 +2067,17 @@ _ok_create_user() {
       # minting a new one the carried store would then contradict. Normal
       # operation is unchanged: the store exists before user creation only
       # when something deliberately placed it there.
-      if [ -e "/home/${_ADMIN}/users/${_usrLtd}" ]; then
-        _ESC_LUPASS=$(cat /home/${_ADMIN}/users/${_usrLtd} 2>/dev/null | tr -d "\n")
+      # The store's directory and name are the tenant's: read inside users/
+      # pinned by its real path (a users/ swapped for a link elsewhere is
+      # refused), with one open that never follows a link, never blocks on a
+      # FIFO and reads no more than a password's length.
+      _lupHome=$(cd -P -- "/home/${_ADMIN}" 2> /dev/null && pwd -P)
+      if [ -n "${_lupHome}" ]; then
+        _ESC_LUPASS=$(cd -P -- "${_lupHome}/users" 2> /dev/null \
+          && [ "$(pwd -P)" = "${_lupHome}/users" ] \
+          && [ -f "./${_usrLtd}" ] && [ ! -L "./${_usrLtd}" ] \
+          && timeout 10 dd if="./${_usrLtd}" iflag=nofollow,nonblock bs=256 count=1 \
+            status=none 2> /dev/null | tr -d "\n")
         _LEN_LUPASS=$(echo ${#_ESC_LUPASS} 2>&1)
       fi
       if [ "${_STRONG_PASSWORDS}" = "YES" ]  ; then
@@ -1732,15 +2142,27 @@ _ok_create_user() {
       echo "path : [${_ALLD_DIR}]" >> ${_THIS_LTD_CONF}
       [ -n "${_LTD_EXTRA_STANZA}" ] && printf '%s\n' "${_LTD_EXTRA_STANZA}" >> ${_THIS_LTD_CONF}
       chmod 700 ${_usrLtdRoot}
+      # The store sits in the tenant's own home, and this runs only when the
+      # account is created, with the password just set: whatever stands at the
+      # name goes, and the file is created with O_CREAT|O_EXCL (dd conv=excl),
+      # so a name that reappears in between -- a link to a device or a FIFO
+      # included, which bash's noclobber would still open -- fails the write
+      # instead of taking it or blocking it. The store must always match the
+      # shadow hash that was just set.
+      _desymlink_planted "/home/${_ADMIN}/users"
       mkdir -p /home/${_ADMIN}/users
-      if [ ! -e "/home/${_ADMIN}/users/${_usrLtd}" ]; then
-        echo "${_ESC_LUPASS}" > /home/${_ADMIN}/users/${_usrLtd}
-      elif [ "$(cat /home/${_ADMIN}/users/${_usrLtd} 2>/dev/null | tr -d '\n')" != "${_ESC_LUPASS}" ]; then
-        # The quality floor regenerated over a too-short carried entry; the
-        # store must always match the shadow hash that was just set, never
-        # advertise a password that no longer works.
-        echo "${_ESC_LUPASS}" > /home/${_ADMIN}/users/${_usrLtd}
-      fi
+      _lupStore="/home/${_ADMIN}/users/${_usrLtd}"
+      # /home is root's, so /home/<admin> cannot be swapped: resolve it, and
+      # write only inside a users/ whose real path is exactly that one
+      _lupHome=$(cd -P -- "/home/${_ADMIN}" 2> /dev/null && pwd -P)
+      ( umask 077
+        [ -n "${_lupHome}" ] \
+          && cd -P -- "${_lupHome}/users" 2> /dev/null \
+          && [ "$(pwd -P)" = "${_lupHome}/users" ] \
+          && rm -f -- "./${_usrLtd}" \
+          && printf '%s\n' "${_ESC_LUPASS}" \
+            | dd of="./${_usrLtd}" conv=excl status=none 2> /dev/null ) \
+        || echo "ALERT: password store ${_lupStore} not written: users/ is not the real directory, or the name reappeared"
     fi
     # A migration stages a sub-account's SSH keys here because the home did
     # not exist on this box yet; adopt them now that it does, once. Only for an
@@ -1985,6 +2407,7 @@ _add_user_if_not_exists() {
       _ok_create_user
       _manage_sec_user_drush_aliases
       _enable_chattr ${_usrLtd}
+      _ltd_drush_store_after_reset YES
     elif [[ "${_ID_EXISTS}" =~ "${_usrLtd}" ]] \
       && [[ " ${_ID_SHELLS} " == *" ltd-shell "* ]]; then
       echo "We will update user == ${_usrLtd} =="
@@ -1997,10 +2420,99 @@ _add_user_if_not_exists() {
         chown -h ${_usrLtd}:$(_acct_group "${_usrLtd}") ${_usrTmp}
         [ ! -L "${_usrTmp}" ] && chmod 02755 ${_usrTmp}
       fi
-      find ${_usrTmp} -mindepth 1 -mtime +0 -exec rm -rf {} \; &> /dev/null
+      find ${_usrTmp} -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null
       _ok_update_user
+      _ltdRst=NO
+      [ ! -L "/home/${_usrLtd}/.drush" ] \
+        && [ -e "/home/${_usrLtd}/.drush/.ctrl.${_tRee}.${_xSrl}.pid" ] || _ltdRst=YES
       _enable_chattr ${_usrLtd}
+      _ltd_drush_store_after_reset "${_ltdRst}"
     fi
+  fi
+}
+#
+# The alias copies above are made before _enable_chattr, and on the first pass
+# of every release serial _enable_chattr resets ~/.drush (the whole directory
+# on a hosted system) -- so a new account, and every account after an update,
+# had no @alias for Drush until the next pass. $1 = YES when this pass's
+# _enable_chattr ran that reset (its own test: no stamp for this serial): the
+# copies are redone onto the reset tree, with ~/.drush opened only around the
+# write. A platform account's Drush 9+ store is checked every pass, and
+# ~/.drush is opened only when it has to be rebuilt.
+_ltd_drush_store_after_reset() {
+  local _rst="${1}"
+  local _hd="/home/${_usrLtd}/.drush"
+  [ -e "/home/${_USER}.ftp/users/${_usrLtd}" ] || return 0
+  getent passwd "${_usrLtd}" > /dev/null 2>&1 || return 0
+  [ -d "${_hd}" ] && [ ! -L "${_hd}" ] || return 0
+  if [ "${_rst}" = "YES" ]; then
+    chattr -i "${_hd}" 2>/dev/null
+    _manage_sec_user_drush_aliases
+    chattr +i "${_hd}" 2>/dev/null
+  fi
+  if [ "${_LTD_PLATFORM_ACCT}" = "YES" ]; then
+    _ltd_platform_alias_store "${_usrLtd}" "${_rst}"
+  fi
+}
+#
+# Drush 9+ (vdrush, drush10/11) reads site aliases only from a yml store. The
+# main login's store is converted from every alias of the instance; a platform
+# account gets its own, converted from its own alias copies -- exactly its
+# client's sites -- by the account itself, the same tested route the main
+# login's store takes. drush.yml is written with the alias path alone. The
+# store is rebuilt when the client's aliases change (summed from the
+# instance's own alias files, never from anything in the account's home), when
+# ~/.drush was reset, or when it is gone; the sum is recorded only for a
+# conversion that finished and produced a store, so a failed one is retried.
+_ltd_platform_alias_store() {
+  local _acct="${1}"
+  local _rst="${2}"
+  local _hd="/home/${_acct}/.drush"
+  local _mark="/var/backups/ltd/aliases/${_acct}.md5"
+  local _sum=""
+  local _lnk=""
+  local _src=""
+  local _rc=0
+  local _need=NO
+  [ -x "/usr/bin/drush10" ] || return 0
+  [ ! -e "/root/.standby.cnf" ] || return 0
+  [ -d "${_hd}" ] && [ ! -L "${_hd}" ] || return 0
+  _sum=$(for _lnk in "${_Client}"/*; do
+      [ -L "${_lnk}" ] || continue
+      _src="${_pthParentUsr}/.drush/$(basename "${_lnk}").alias.drushrc.php"
+      [ -f "${_src}" ] && [ ! -L "${_src}" ] && { echo "${_src}"; cat "${_src}"; }
+    done | md5sum | cut -d' ' -f1)
+  if [ "${_rst}" = "YES" ] \
+    || [ ! -d "${_hd}/sites" ] || [ -L "${_hd}/sites" ] \
+    || [ ! -f "${_hd}/drush.yml" ] || [ -L "${_hd}/drush.yml" ] \
+    || [ "$(cat "${_mark}" 2>/dev/null)" != "${_sum}" ]; then
+    _need=YES
+  fi
+  [ "${_need}" = "YES" ] || return 0
+  [ -d /var/backups/ltd/aliases ] || mkdir -p /var/backups/ltd/aliases
+  chmod 0700 /var/backups/ltd/aliases
+  rm -f "${_mark}"
+  chattr -i "${_hd}" 2>/dev/null
+  chage -M 99999 "${_acct}" &> /dev/null
+  timeout -k 10 300 su -s /bin/bash - "${_acct}" <<'EOF' &> /dev/null
+cd "${HOME}" || exit 1
+rm -rf .drush/sites .drush/drush.yml
+mkdir -p .drush/sites
+printf '%s\n' 'drush:' '  paths:' '    alias-path:' "      - '\${env.HOME}/.drush/sites'" > .drush/drush.yml
+drush10 site:alias-convert "${HOME}/.drush/sites" --yes
+EOF
+  _rc=$?
+  chage -M 90 "${_acct}" &> /dev/null
+  chattr +i "${_hd}" 2>/dev/null
+  if [ "${_rc}" -eq 0 ] \
+    && { ! compgen -G "${_hd}/*.alias.drushrc.php" > /dev/null \
+      || compgen -G "${_hd}/sites/*.site.yml" > /dev/null; }; then
+    echo "${_sum}" > "${_mark}"
+    echo "Drush 9+ alias store rebuilt for ${_acct}"
+  else
+    _ltd_notice "platform-aliasstore-${_acct}" \
+      "Drush 9+ alias store for ${_acct} not built (rc ${_rc})" \
+      "retried on the next pass; vdrush @alias has no aliases meanwhile"
   fi
 }
 #
@@ -3276,6 +3788,11 @@ _switch_php() {
 # Manage mirroring of drush aliases.
 _manage_site_drush_alias_mirror() {
 
+  # The main login owns ~/.drush (its home is never immutable): every remove
+  # and copy into it below runs inside the real directory (_ltd_in_real_dir),
+  # never through a link at its name into another alias store.
+  local _ftpD="/home/${_USER}.ftp/.drush"
+  _desymlink_planted "${_ftpD}"
   _ALS_TEST=$(ls -la /home/${_USER}.ftp/.drush/*.alias.drushrc.php 2>&1)
   if [[ ! "${_ALS_TEST}" =~ "No such file" ]]; then
     for _Alias in `find /home/${_USER}.ftp/.drush/*.alias.drushrc.php \
@@ -3283,17 +3800,17 @@ _manage_site_drush_alias_mirror() {
       _AliasFile=$(echo "${_Alias}" | cut -d'/' -f5 | awk '{ print $1}' 2>&1)
       if [ ! -e "${_pthParentUsr}/.drush/${_AliasFile}" ] \
         && [ ! -z "${_AliasFile}" ]; then
-        rm -f /home/${_USER}.ftp/.drush/${_AliasFile}
+        _ltd_in_real_dir "${_ftpD}" rm -f -- "./${_AliasFile}"
      fi
     done
   fi
 
-  if [ -e "/home/${_USER}.ftp/.drush/hm.alias.drushrc.php" ]; then
-    rm -f /home/${_USER}.ftp/.drush/hm.alias.drushrc.php
-  fi
-  if [ -e "/home/${_USER}.ftp/.drush/self.alias.drushrc.php" ]; then
-    rm -f /home/${_USER}.ftp/.drush/self.alias.drushrc.php
-  fi
+  _ltd_in_real_dir "${_ftpD}" rm -f -- ./hm.alias.drushrc.php \
+    ./self.alias.drushrc.php
+  # an alias name that is not a regular file (a FIFO, a device link, a
+  # directory) is never root's to open: the diff below reads every copy
+  _ltd_in_real_dir "${_ftpD}" find . -maxdepth 1 \
+    -name '*.alias.drushrc.php' ! -type f -exec rm -rf {} + 2> /dev/null
   if [ -e "${_dscUsr}/.drush/.alias.drushrc.php" ]; then
     rm -f ${_dscUsr}/.drush/.alias.drushrc.php
   fi
@@ -3360,21 +3877,22 @@ _manage_site_drush_alias_mirror() {
           # that recovered mid-hold never carries a stale count into a reap.
           rm -f ${_pthParentUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen 2>/dev/null
           _pthAliasMain="${_pthParentUsr}/.drush/${_SiteName}.alias.drushrc.php"
-          _pthAliasCopy="/home/${_USER}.ftp/.drush/${_SiteName}.alias.drushrc.php"
-          # Root-written control file in the tenant's own home: cp -af follows a
-          # symlinked DESTINATION and preserves ownership onto it, chmod follows
-          # too. Strip the copy only -- the main alias may legitimately be a link.
-          _desymlink_planted "${_pthAliasCopy}"
-          if [ ! -e "${_pthAliasCopy}" ]; then
-            cp -af ${_pthAliasMain} ${_pthAliasCopy}
-            [ ! -L "${_pthAliasCopy}" ] && chmod 440 ${_pthAliasCopy}
-            _isAliasUpdate=YES
-          else
-            _DIFF_T=$(diff -w -B ${_pthAliasCopy} ${_pthAliasMain} 2>&1)
-            if [ ! -z "${_DIFF_T}" ]; then
-              cp -af ${_pthAliasMain} ${_pthAliasCopy}
-              [ ! -L "${_pthAliasCopy}" ] && chmod 440 ${_pthAliasCopy}
+          _pthAliasCopy="./${_SiteName}.alias.drushrc.php"
+          # Root-written control file in the tenant's own home: strip a plant at
+          # its name, then compare and copy inside the pinned ~/.drush (see
+          # _ltd_alias_put). Only the copy -- the main alias may be a link.
+          _ltd_in_real_dir "${_ftpD}" _desymlink_planted "${_pthAliasCopy}"
+          if ! _ltd_in_real_dir "${_ftpD}" \
+            _ltd_alias_same "${_pthAliasMain}" "${_pthAliasCopy}"; then
+            # The stores are rebuilt only for a copy that landed; one that
+            # cannot land in an existing ~/.drush (a directory swapped in after
+            # the sweep) is reported. A first pass may run before ~/.drush exists.
+            if _ltd_in_real_dir "${_ftpD}" \
+              _ltd_alias_put "${_pthAliasMain}" "${_pthAliasCopy}"; then
               _isAliasUpdate=YES
+            elif [ -d "${_ftpD}" ] && [ ! -L "${_ftpD}" ]; then
+              _ltd_notice "alias-copy-${_USER}-${_SiteName}" \
+                "alias copy for ${_USER}.ftp not written" "${_SiteName}"
             fi
           fi
         else
@@ -3383,7 +3901,6 @@ _manage_site_drush_alias_mirror() {
           # MUST NOT be reaped: skip while an Ægir task is in flight, and while
           # the alias is recently written (< 60 min). Then gate on the opt-in
           # _GHOST_ALIASES_CLEANUP flag (no night.inc.sh here, so check inline).
-          _pthAliasCopy="/home/${_USER}.ftp/.drush/${_SiteName}.alias.drushrc.php"
           if _provision_running; then
             : # Ægir task in flight -- the site may be mid-build
           elif [ -n "$(find ${_Alias} -mmin -60 2>/dev/null)" ]; then
@@ -3422,7 +3939,7 @@ _manage_site_drush_alias_mirror() {
                 mkdir -p ${_pthParentUsr}/undo
                 _GHOST_REAPED=YES
                 rm -f ${_GA_MARK}
-                rm -f ${_pthAliasCopy}
+                _ltd_in_real_dir "${_ftpD}" rm -f -- "./${_SiteName}.alias.drushrc.php"
                 mv -f ${_pthParentUsr}/.drush/${_SiteName}.alias.drushrc.php ${_pthParentUsr}/undo/ &> /dev/null
                 echo "GHOST ${_SiteName}.alias.drushrc.php moved to ${_pthParentUsr}/undo/"
               else
@@ -3446,7 +3963,9 @@ _manage_site_drush_alias_mirror() {
   if [ "${_isAliasUpdate}" != "YES" ]; then
     for _ymlRoot in "${_pthParentUsr}/.drush" "/home/${_USER}.ftp/.drush"; do
       for _yml in ${_ymlRoot}/sites/*.site.yml; do
-        [ -e "${_yml}" ] || continue
+        # only a store file counts: a directory at such a name in the
+        # account's own store survives the rebuild's rm and would loop it
+        [ -f "${_yml}" ] && [ ! -L "${_yml}" ] || continue
         _ymlName=$(basename "${_yml}" .site.yml)
         case "${_ymlName}" in *.*) ;; *) continue ;; esac
         if [ ! -e "${_ymlRoot}/${_ymlName}.alias.drushrc.php" ]; then
@@ -3697,7 +4216,7 @@ _manage_user() {
         touch ${_dscUsr}/.tmp
         # Bare path, not ${_dscUsr}/.tmp/ -- a trailing slash makes find follow
         # a planted link and purge the target tree instead (as at _enable_chattr).
-        find ${_dscUsr}/.tmp -mindepth 1 -mtime +0 -exec rm -rf {} \; &> /dev/null
+        find ${_dscUsr}/.tmp -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null
         chown -h ${_USER}:${_usrGroup} ${_dscUsr}/.tmp &> /dev/null
         [ ! -L "${_dscUsr}/.tmp" ] && chmod 02755 ${_dscUsr}/.tmp &> /dev/null
         echo OK > ${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid
@@ -3858,13 +4377,15 @@ _manage_user() {
             ln -sfn ${_dscUsr}/static  /home/${_USER}.ftp/static
           fi
           if [ ! -e "/home/${_USER}.ftp/.tmp/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-            [ ! -L "/home/${_USER}.ftp/.drush" ] \
-              && rm -rf /home/${_USER}.ftp/.drush/cache
+            # the main login's home is never immutable: inside ~/.drush and
+            # ~/.tmp root works only in the real directories
+            _ltd_in_real_dir "/home/${_USER}.ftp/.drush" rm -rf -- ./cache
             rm -rf /home/${_USER}.ftp/.tmp
             mkdir -p /home/${_USER}.ftp/.tmp
-            chown ${_USER}.ftp:${_usrGroup} /home/${_USER}.ftp/.tmp &> /dev/null
-            chmod 700 /home/${_USER}.ftp/.tmp &> /dev/null
-            echo OK > /home/${_USER}.ftp/.tmp/.ctrl.${_tRee}.${_xSrl}.pid
+            chown -h ${_USER}.ftp:${_usrGroup} /home/${_USER}.ftp/.tmp &> /dev/null
+            _ltd_in_real_dir "/home/${_USER}.ftp/.tmp" chmod 700 . &> /dev/null
+            _ltd_in_real_dir "/home/${_USER}.ftp/.tmp" \
+              _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
           fi
           _enable_chattr ${_USER}.ftp
           echo Done for ${_pthParentUsr}
@@ -4036,6 +4557,13 @@ else
   _find_correct_ip
   sed -i "s/1.1.1.1/${_LOC_IP}/g" ${_THIS_LTD_CONF}
   wait
+  # lshell 0.10 (kept where python3 is older than 3.10) appends env_path to
+  # PATH raw, no separator, gluing it onto the last entry; it also never
+  # checks that a command exists, which is all the line is for on 0.11
+  if lshell --version 2>&1 | grep -q "lshell-0\.10"; then
+    sed -i "/^env_path[[:space:]]*:/d" ${_THIS_LTD_CONF}
+    wait
+  fi
   if [ ! -e "/root/.allow.mc.cnf" ]; then
     sed -i "s/'mc', //g" ${_THIS_LTD_CONF}
     wait

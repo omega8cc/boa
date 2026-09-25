@@ -89,6 +89,10 @@ The procedure discussed above automates major OS upgrades by running them in the
 
 **NOTE:** Percona is available only as 8.4 on Devuan Excalibur and Debian Trixie, so `_DAEDALUS_TO_EXCALIBUR`, `_TRIXIE_TO_EXCALIBUR` and `_BOOKWORM_TO_TRIXIE` refuse to start until the server already runs Percona 8.4. The refusal prints the in-place Percona upgrade commands (on Debian Trixie a server still on 5.7 has none, as there is no Percona 8.0 for it) and sets the variable to `NO` in `/root/.barracuda.cnf`, so those Percona upgrade runs go ahead normally. Once the server runs Percona 8.4, set it to `YES` again -- see [docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE-PERCONA8.md).
 
+**NOTE:** Devuan Excalibur requires a merged `/usr` (`/bin`, `/sbin` and `/lib` as links into `/usr`), and so do the prebuilt packages. A Devuan Daedalus system upgraded in place from an older release may still keep them apart. Every `barracuda up-lts system` run converts such a system once, early in the pass, with the `usrmerge` package -- but only when a read-only check of the converter's own rules says it would run through, as the conversion has no dry run and cannot be undone.
+
+**NOTE:** When that check finds pairs the converter would stop at, barracuda lists them (and keeps them in `/root/.usrmerge.refused.info`), leaves the system as it is, builds the stack from sources and refuses `_DAEDALUS_TO_EXCALIBUR` the same way as the Percona check above. Fix the listed pairs and run barracuda again. If a conversion ever stops half way, every later run stops before its first package operation, with the details in `/root/.usrmerge.failed.info`, until `/usr/lib/usrmerge/convert-usrmerge` has been run to success.
+
 ### Devuan to Devuan Major OS Upgrades
 
 - Devuan Daedalus => upgrade to Excalibur with `_DAEDALUS_TO_EXCALIBUR=YES`

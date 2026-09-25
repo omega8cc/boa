@@ -18,6 +18,7 @@
   # Read access to its own config and logs
   /etc/ssh/sftp_config r,
   /etc/lshell.conf r,
+  /var/backups/ltd/status/* r,
   /var/log/lsh/ r,
   /var/log/lsh/* rw,
   /opt/php*/lib/php.ini r,
@@ -132,6 +133,7 @@
   /bin/touch mrix,
   /bin/true mrix,
   /data/disk/*/tools/drush/drush.php mrix,
+  /opt/local/bin/checkmyperms mrix,
   /opt/local/bin/mybackup mrix,
   /opt/local/bin/sqlmagic mrix,
   /opt/php*/bin/php mrix,
