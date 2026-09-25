@@ -36,6 +36,14 @@ old.com 5.6
 ```
 
 - **NOTE**: Each line in the `multi-fpm.info` file must start with the **main site name** (not an alias), followed by a single space, and then the PHP-FPM version to use.
+- A line applies once its site is installed on the account, its PHP version is installed on
+  the server and the account's pool for that version is running. Until then it waits,
+  listed in `~/static/control/.multi-fpm-skipped.info`, and is tried again on every pass
+  of the system worker, so you can pin a site before you create it.
+- `fpm.info` and `multi-fpm.info` choose the PHP that serves web requests only. Drush,
+  Composer and the Ægir tasks follow the command-line files: `cli.info`, the `phpNN.info`
+  switches, and `cli-per-platform.info` for a platform that needs its own version (see
+  [DRUSH-CLI.md](DRUSH-CLI.md)).
 
 #### **IMPORTANT**:
 

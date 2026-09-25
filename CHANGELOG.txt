@@ -250,6 +250,31 @@
 
 @=> New Features
 
+    * New ~/static/control/cli-per-platform.info gives one platform its
+      own command-line PHP, one "<platform folder> <X.Y>" line each, the
+      folder written under ~/static (or pasted as its Publish path,
+      ~/distro/NNN/<name> or /data/all/...). The line outranks the
+      phpNN.info switch for drush, vdrush, bee, composer and every Ægir
+      task on that platform; everything else keeps phpNN.info, then
+      cli.info. The control panel never takes a line, BOA never writes
+      the file, and PHP-FPM is not changed by it. A line that cannot
+      apply is ignored and named in a WARNING on every tenant command and
+      in every task log.
+    * On every account, a drush command or Ægir task whose Drupal core
+      cannot run on the PHP chosen for it is refused before the PHP
+      starts, instead of dying on a PHP fatal: Drupal 7 below 7.79 or
+      Drupal 8 on PHP 8.0 or newer, and a codebase below the floor of its
+      vendor/composer/platform_check.php. The message names the PHP, the
+      file that chose it and the fix. A Clone or Migrate is checked for
+      its target before the safety copy; a platform task gets the Drupal
+      7 or 8 text as a warning.
+    * Every task log opens with the command-line PHP the task runs on and
+      the control file that chose it.
+    * Composer install, update and require warn when they run on a newer
+      PHP than a site on that platform is set to in fpm.info or
+      multi-fpm.info: a package that needs the newer PHP would make that
+      site answer HTTP 500.
+
     * xmass sync leaves a platform refresh's staging behind: the new tree
       an Octopus upgrade builds under distro/NNN/.boa-refresh/ for a few
       minutes, its tarball and failed leftovers never reach the mirror, and
@@ -570,6 +595,12 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * A drush line that also names composer, git or mysql, or starts with
+      "cd DIR &&", now runs on the PHP chosen by cli.info and the
+      phpNN.info switch; it ran on the server's default PHP.
+    * The Drush 10/11 PHP NOTE goes to stderr, where it no longer ends up
+      in drush11 ... > file, and only on a line that runs Drush 10/11.
 
     * An fpm.info or cli.info that holds more than one PHP version (or
       anything else than one version) is ignored again, as the docs say:
