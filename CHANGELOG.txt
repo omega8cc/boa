@@ -547,6 +547,15 @@
 
 @=> Important Fixes
 
+    * Barracuda never installs an older Percona series over a newer one.
+      On a box running Percona 8.0 or 8.4, a _DB_SERIES in
+      /root/.barracuda.cnf that asked for an older series (a hand edit, a
+      missing line, which reads as the 5.7 default, or a value BOA does
+      not know) sent every run into an install of that series: on 8.4 it
+      switched the Percona apt source, tried the archived 5.7 packages
+      and aborted on a FATAL that blamed the network. The run now keeps
+      the installed series, writes it back to the cnf and reports the
+      refusal on two ALRT lines.
     * A Restore from an archive that carries no database dump (a files-only
       backup, a Migrate or Delete safety copy, a snapshot from before the
       backup modes) brings the files back and carries the site's current

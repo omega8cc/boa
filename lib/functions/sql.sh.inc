@@ -551,6 +551,63 @@ _sql_strict_upgrade_path() {
 }
 
 #
+# Never downgrade the database server. A _DB_SERIES that resolves lower than
+# the installed series -- a hand edit, a cnf without the line (the default is
+# 5.7), or a value this installer does not know (read as 5.7) -- would make
+# the run switch the Percona apt source, reinstall the server at the older
+# series and hand it a datadir the newer one wrote. The installed series
+# wins: keep it for this run, write it back to the cnf so the next run is
+# quiet, and say so. Runs right after the cnf is read or written, before any
+# apt source, client library or package decision uses it.
+_sql_series_never_downgrade() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _sql_series_never_downgrade"
+  fi
+  local _insV=""
+  # The same probe as the reinstall decision in _sql_strict_upgrade_path:
+  # the server binary first (--no-defaults so a rejected my.cnf directive
+  # cannot kill the probe), then the client, but only beside a datadir -- a
+  # torn transaction that removed the server; a stray client alone protects
+  # nothing. A configured series at or above the probed one is never touched.
+  if [ -x "/usr/sbin/mysqld" ]; then
+    _insV=$(/usr/sbin/mysqld --no-defaults -V 2>&1 \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
+  fi
+  if [ -z "${_insV}" ] && [ -d "/var/lib/mysql/mysql" ] \
+    && [ ! -z "$(which mysql)" ]; then
+    _insV=$(mysql -V 2>&1 \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
+  fi
+  case "${_insV}" in
+    8.0|8.4) ;;
+    *) return 0 ;;
+  esac
+  [ "${_DB_SERIES}" = "${_insV}" ] && return 0
+  local _lowV=$(printf '%s\n%s\n' "${_DB_SERIES}" "${_insV}" | sort -V | head -1)
+  [ "${_lowV}" = "${_insV}" ] && return 0
+  _msg "ALRT: _DB_SERIES resolves to Percona ${_DB_SERIES}, older than the installed ${_insV}: a downgrade is never done"
+  _msg "ALRT: This run keeps Percona ${_insV} and sets _DB_SERIES=${_insV} in ${_barCnf}"
+  _DB_SERIES="${_insV}"
+  if [ "${_insV}" = "8.4" ]; then
+    _DBS_VRN="${_PERCONA_8_4_VRN}"
+  else
+    _DBS_VRN="${_PERCONA_8_0_VRN}"
+  fi
+  if [ -e "${_barCnf}" ]; then
+    if grep -q "^_DB_SERIES=" "${_barCnf}"; then
+      sed -i "s/^_DB_SERIES=.*/_DB_SERIES=${_insV}/g" "${_barCnf}"
+    else
+      echo "_DB_SERIES=${_insV}" >> "${_barCnf}"
+    fi
+    wait
+  fi
+}
+
+#
 # Update innodb_log_file_size.
 _innodb_log_file_size_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
