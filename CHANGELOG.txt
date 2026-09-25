@@ -547,6 +547,30 @@
 
 @=> Important Fixes
 
+    * The classic major OS upgrade no longer takes a server that is not
+      on Percona 8.4 to Devuan Excalibur or Debian Trixie, where Percona
+      ships only 8.4. The upgrade runs before the database step, so a
+      Daedalus server on 5.7 with _DAEDALUS_TO_EXCALIBUR=YES reached
+      Excalibur still on 5.7, and every barracuda run after the reboot
+      then stopped at the database step. On 5.7 or 8.0,
+      _DAEDALUS_TO_EXCALIBUR, _TRIXIE_TO_EXCALIBUR and
+      _BOOKWORM_TO_TRIXIE now stop the run before the upgrade starts:
+      it names the in-place Percona runs this server needs, if any, and
+      sets the variable to NO, so those runs go ahead; set it to YES
+      again once the server runs Percona 8.4. autoexcalibur already
+      refused. A php-idle run is never refused: it stops before the
+      upgrade.
+    * That check and autoexcalibur's own read the version from the
+      installed server binary, not the client, and refuse when the
+      binary cannot answer: an interrupted package upgrade can leave an
+      8.4 client beside an older server.
+    * A one-shot OS upgrade variable in /root/.barracuda.cnf that is
+      exported, indented or followed by more on its line is now
+      switched off after its run too: its value becomes NO and the rest
+      of the line stays, so a block around it still parses. A line that
+      holds only the variable is removed as before, and
+      _BOOKWORM_TO_TRIXIE now is too.
+
     * Barracuda never installs an older Percona series over a newer one.
       On a box running Percona 8.0 or 8.4, a _DB_SERIES in
       /root/.barracuda.cnf that asked for an older series (a hand edit, a
