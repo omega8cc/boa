@@ -2032,10 +2032,37 @@ _install_php_multi_src() {
   fi
 }
 
+#
+# Mark PHP $1 as rebuilt in the run that follows a major OS upgrade. The
+# marker stops a second build of this version in that run, so it is written
+# only when this build replaced the binary (its inode differs from $2, the one
+# before the build: dpkg and make install both write a new file and rename it
+# into place) and the new binary runs and reports the wanted version. A failed
+# build leaves the old binary, often at the same release, and keeps its retry.
+_php_post_upgrade_marker() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_post_upgrade_marker $1"
+  fi
+  local _mrk="${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info"
+  local _itd
+  local _ino
+  [ -e "/root/.run_post_major_os_upgrade.info" ] || return 0
+  _itd=$(/opt/php$1/bin/php -v 2>/dev/null | grep -E 'PHP [758]' | awk '{print $2}')
+  _ino=$(stat -c %i "/opt/php$1/bin/php" 2>/dev/null)
+  if [ -n "${_PHP_VERSION}" ] && [ "${_itd}" = "${_PHP_VERSION}" ] \
+    && [ -n "${_ino}" ] && [ "${_ino}" != "${2}" ]; then
+    touch "${_mrk}"
+  else
+    rm -f "${_mrk}"
+  fi
+}
+
 _install_php_multi() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _install_php_multi $1"
   fi
+  local _binIno
+  _binIno=$(stat -c %i "/opt/php$1/bin/php" 2>/dev/null)
   _if_to_do_fix
   # Prebuilt package path (_USE_PREBUILT_PKGS): replaces only the source
   # build; the shared post-install below (CLI/phpize symlinks, extensions,
@@ -2045,6 +2072,9 @@ _install_php_multi() {
     _install_php_deb "$1"
   fi
   if [ "${_PHP_DEB_INSTALLED}" = "NO" ]; then
+    # A prebuilt package that failed its check is purged with its binary;
+    # measure what the source build will replace, not what was there before.
+    _binIno=$(stat -c %i "/opt/php$1/bin/php" 2>/dev/null)
     _install_php_multi_src "$1"
   fi
   if [ -x "/opt/php$1/bin/php" ]; then
@@ -2099,9 +2129,7 @@ _install_php_multi() {
     rm -f /etc/init.d/php$1-fpm*
     cp -af ${_locCnf}/php/php$1-fpm /etc/init.d/php$1-fpm
     chmod 755 /etc/init.d/php$1-fpm
-    if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
-      touch ${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info
-    fi
+    _php_post_upgrade_marker "$1" "${_binIno}"
     _mrun "update-rc.d php$1-fpm defaults"
   else
     _msg "WARN: Building PHP ${_PHP_VERSION} failed!"
@@ -2812,7 +2840,11 @@ _check_php_rebuild() {
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
     if [ -e "/var/log/boa" ]; then
       rm -f /var/log/boa/._php_libs_fix_*.pid
-      rm -f /var/log/boa/re-installed-php*
+      # In the run after a major OS upgrade a marker means this version was
+      # already rebuilt there and runs; outside that run any marker is stale.
+      if [ ! -e "/root/.run_post_major_os_upgrade.info" ]; then
+        rm -f /var/log/boa/re-installed-php*
+      fi
     fi
     if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2820,7 +2852,10 @@ _check_php_rebuild() {
       fi
       _PHP_FORCE_REINSTALL=NO
     else
-      if [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
+      # A marker skips only a version already at the wanted release: a new
+      # release is never held back by it.
+      if [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ] \
+        || [ "${_PHP_ITD}" != "${_PHP_VERSION}" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: PHP ${_PHP_ITD} rebuild happening now..."
         fi
@@ -3172,6 +3207,12 @@ _php_upgrade_all() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_upgrade_all $1"
   fi
+  # _check_php_rebuild sets _PHP_FORCE_REINSTALL=YES when this version needs a
+  # rebuild (new release, OpenSSL/ICU header or mysqli driver mismatch) and the
+  # _check_php_broken_* helpers set NO after fixing a broken build, so each
+  # version starts again from the value the caller passed in: one version's
+  # result must not decide the next one, and a caller force reaches them all.
+  local _force_in="${_PHP_FORCE_REINSTALL}"
   if [ ! -z "${1}" ] && [ "${1}" != "force" ]; then
     _PHP_V="${1}"
   else
@@ -3210,6 +3251,7 @@ _php_upgrade_all() {
       fi
       _PHP_BIN_BROKEN=NO
       _BROKEN_LIBCURL_TEST=""
+      _PHP_FORCE_REINSTALL="${_force_in}"
       _switch_php_cli "${e}"
       if [ "${1}" = "force" ]; then
         _install_php_multi "${e}"
@@ -3224,6 +3266,7 @@ _php_upgrade_all() {
       _T_PHP_PTH=""
     fi
   done
+  _PHP_FORCE_REINSTALL="${_force_in}"
 }
 
 _get_php_conf_extra() {
@@ -3444,14 +3487,20 @@ _php_check_if_rebuild() {
     if [[ ! "${_isSodium}" =~ "with-sodium" ]] \
       || [ -z "${_isSodium}" ]; then
       _msg "INFO: PHP rebuild required to add Sodium support..."
-      _PHP_FORCE_REINSTALL=YES
-      _php_if_versions_cleanup_cnf
-      if [ "${_OS_CODE}" = "stretch" ]; then
-        _php_upgrade_all "74 80 81"
-      else
-        _php_upgrade_all "74 80 81 82 83 84"
+      # A force already set rebuilds every version in the full pass that
+      # always follows this check: a pass over some of them now would build
+      # those twice, and ending it on NO would cancel the force for the rest.
+      if [ "${_PHP_FORCE_REINSTALL}" != "YES" ] \
+        && [ "${_FULL_FORCE_REINSTALL}" != "YES" ]; then
+        _PHP_FORCE_REINSTALL=YES
+        _php_if_versions_cleanup_cnf
+        if [ "${_OS_CODE}" = "stretch" ]; then
+          _php_upgrade_all "74 80 81"
+        else
+          _php_upgrade_all "74 80 81 82 83 84"
+        fi
+        _PHP_FORCE_REINSTALL=NO
       fi
-      _PHP_FORCE_REINSTALL=NO
     fi
   fi
   if [ -x "/opt/php56/bin/php" ]; then
@@ -3460,10 +3509,13 @@ _php_check_if_rebuild() {
     if [[ ! "${_isIgbinary}" =~ "igbinary" ]] \
       || [ -z "${_isIgbinary}" ]; then
       _msg "INFO: PHP 5.6 rebuild required to add igbinary support..."
-      _PHP_FORCE_REINSTALL=YES
-      _php_if_versions_cleanup_cnf
-      _php_upgrade_all "56"
-      _PHP_FORCE_REINSTALL=NO
+      if [ "${_PHP_FORCE_REINSTALL}" != "YES" ] \
+        && [ "${_FULL_FORCE_REINSTALL}" != "YES" ]; then
+        _PHP_FORCE_REINSTALL=YES
+        _php_if_versions_cleanup_cnf
+        _php_upgrade_all "56"
+        _PHP_FORCE_REINSTALL=NO
+      fi
     fi
   fi
   _isWebP=

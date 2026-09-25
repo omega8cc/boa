@@ -8982,6 +8982,8 @@ _if_post_major_os_upgrade() {
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       rm -f /root/.run_post_major_os_upgrade.info
     fi
+    # The PHP rebuild markers mean something only while that file exists.
+    rm -f ${_pthLog}/re-installed-php*-on-post_major_os_upgrade.info
     if [ -e "/root/.force.newrelic.update.cnf" ]; then
       rm -f /root/.force.newrelic.update.cnf
     fi
@@ -9178,6 +9180,7 @@ _if_major_os_upgrade() {
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       rm -f /root/.run_post_major_os_upgrade.info
     fi
+    rm -f ${_pthLog}/re-installed-php*-on-post_major_os_upgrade.info
     if [ -e "/root/.completed_post_major_os_upgrade.info" ]; then
       rm -f /root/.completed_post_major_os_upgrade.info
     fi

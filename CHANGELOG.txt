@@ -547,6 +547,29 @@
 
 @=> Important Fixes
 
+    * A new release of one PHP version no longer rebuilds every PHP
+      version after it as well. The rebuild decision of one version was
+      carried on to the next, so a new 8.3 release rebuilt 8.3, 8.4 and
+      8.5, and an update with new 8.2, 8.4 and 8.5 releases rebuilt 8.3
+      as well, carried on from 8.2, with no 8.3 release to install. Each
+      version is now rebuilt for its own reasons (a new release, an
+      OpenSSL or ICU mismatch, a missing MySQL driver or a broken build),
+      never for another version's.
+    * _PHP_FORCE_REINSTALL=YES, and _SSL_FORCE_REINSTALL, which sets it,
+      now reach every installed PHP version. A broken build found in one
+      version ended the forced rebuild before the versions after it, and
+      the extra rebuilds that add igbinary to PHP 5.6 or Sodium to
+      7.4-8.4 ended it outright, so only the versions they covered were
+      rebuilt. Those two are now skipped under a forced rebuild, which
+      covers them, so under _FULL_FORCE_REINSTALL the versions they cover
+      are no longer built twice.
+    * The first barracuda run after a major OS upgrade builds each PHP
+      version once, not twice. The marker that records a version rebuilt
+      there is now kept until that post-upgrade step ends, then removed,
+      and it is written only when the build replaced the binary and the
+      new one reports the wanted version: a build that failed is still
+      tried again in the same run, and a new release is never held back.
+
     * A Composer platform registered with its app root (its Drush
       alias names the app root while its sites live under web/,
       docroot/ or html/) is now read at the web root Ægir serves
