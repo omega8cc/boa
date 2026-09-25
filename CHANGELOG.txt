@@ -547,6 +547,69 @@
 
 @=> Important Fixes
 
+    * A new release of one PHP version no longer rebuilds every PHP
+      version after it as well. The rebuild decision of one version was
+      carried on to the next, so a new 8.3 release rebuilt 8.3, 8.4 and
+      8.5, and an update with new 8.2, 8.4 and 8.5 releases rebuilt 8.3
+      as well, carried on from 8.2, with no 8.3 release to install. Each
+      version is now rebuilt for its own reasons (a new release, an
+      OpenSSL or ICU mismatch, a missing MySQL driver or a broken build),
+      never for another version's.
+    * _PHP_FORCE_REINSTALL=YES, and _SSL_FORCE_REINSTALL, which sets it,
+      now reach every installed PHP version. A broken build found in one
+      version ended the forced rebuild before the versions after it, and
+      the extra rebuilds that add igbinary to PHP 5.6 or Sodium to
+      7.4-8.4 ended it outright, so only the versions they covered were
+      rebuilt. Those two are now skipped under a forced rebuild, which
+      covers them, so under _FULL_FORCE_REINSTALL the versions they cover
+      are no longer built twice.
+    * The first barracuda run after a major OS upgrade builds each PHP
+      version once, not twice. The marker that records a version rebuilt
+      there is now kept until that post-upgrade step ends, then removed,
+      and it is written only when the build replaced the binary and the
+      new one reports the wanted version: a build that failed is still
+      tried again in the same run, and a new release is never held back.
+    * The forced rebuild in the main PHP pass no longer rebuilds a version
+      already built earlier in the same barracuda run. Under
+      _FULL_FORCE_REINSTALL=YES a version rebuilt to fix a broken build, or
+      by a library repair that rebuilds every version, was built a second
+      time by the full reinstall. A version whose build replaced the binary
+      and reports the wanted release is now recorded for the run, and a
+      force alone skips it; a version not at the wanted release, one with
+      an OpenSSL or ICU mismatch or a missing MySQL driver, or one whose
+      last build failed, is still built. The library repairs still rebuild
+      every version, and the record starts again after the post-upgrade
+      step of the first run following a major OS upgrade.
+
+    * A Composer platform registered with its app root (its Drush
+      alias names the app root while its sites live under web/,
+      docroot/ or html/) is now read at the web root Ægir serves
+      everywhere else it mattered. The nightly ghost-site check
+      reported a site stranded on such a platform by an interrupted
+      migrate as a ghost, which could mail the client and, with
+      _GHOST_SITES_CLEANUP=YES, move its alias and vhost aside. The
+      old-empty-platform cleanup never deleted such a platform once
+      empty; it now does, like any other empty platform, wherever
+      _DEL_OLD_EMPTY_PLATFORMS applies (hosted systems default it to 60
+      days). The limited-shell Drush window could not
+      find its alias, so it never unlocked it and sent a "no platform
+      alias found" notice instead. autosymlink's NOT CLEAN explanation
+      called it a BROKEN PLATFORM, or advised deleting a site whose
+      data still sat on it. xmass did not count its sites in the
+      target-only purge inventory, and its panel alias repair judged
+      it code-less.
+    * The xmass panel alias repair no longer removes a platform alias
+      when the panel database query fails: only an answer of no such
+      context counts.
+    * codebasecheck --box no longer reports a false UNKNOWN, and so a
+      BLOCKED server, for a Composer platform registered with its app
+      root. That platform's Drush alias keeps the app root, while Ægir
+      serves the web root below it and its sites' aliases name that, so
+      the report listed the app root as UNKNOWN next to an OK web root.
+      Each alias root is now followed to the web root Ægir serves
+      (docroot/, html/ or web/ when the root has no index.php) and the
+      platform is checked once, there. codebasecheck <platform-path>
+      takes the app root the same way.
     * The classic major OS upgrade no longer takes a server that is not
       on Percona 8.4 to Devuan Excalibur or Debian Trixie, where Percona
       ships only 8.4. The upgrade runs before the database step, so a
