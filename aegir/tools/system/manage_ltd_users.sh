@@ -3542,21 +3542,25 @@ _site_socket_inc_gen() {
     if [ ! -z "${_diffFpmTest}" ]; then
       _mltFpmUpdate=YES
     fi
-    # A line the last rebuild skipped (its site, its PHP version or its pool
-    # socket did not exist yet) forces one rebuild in the pass it becomes
-    # applicable: the baseline alone kept it inert until the file changed.
-    # A line that never applies (a typo) costs three stats, no rebuild.
-    local _sN _sV
-    while read -r _sN _sV; do
-      _sN=${_sN//[^a-z0-9.-]/}
+    # A pin with no include yet (its site, its PHP version or its pool socket
+    # did not exist when the includes were last built) forces one rebuild in
+    # the pass it becomes applicable: the baseline alone kept it inert until
+    # the file changed, pins from before this check included. A line that
+    # never applies (a typo) costs a few stats, no rebuild.
+    local _sN _sV _sR
+    while read -r _sN _sV _sR; do
+      _sN=${_sN//[^a-zA-Z0-9-.]/}
+      _sN=${_sN,,}
       _sV=${_sV//[^0-9]/}
       [ -n "${_sN}" ] && [ -n "${_sV}" ] || continue
+      [ "${_sN}" = "place.holder.dont.remove" ] && continue
+      [ -e "${_fpmPth}/fpm_include_site_${_sN}.inc" ] && continue
       if [ -x "/opt/php${_sV}/bin/php" ] \
         && [ -e "${_dscUsr}/.drush/${_sN}.alias.drushrc.php" ] \
         && [ -e "/run/${_USER}.${_sV}.fpm.socket" ]; then
         _mltFpmUpdateForce=YES
       fi
-    done <<< "$(_ltd_ctrl_read .multi-fpm-skipped.info)"
+    done <<< "${_mltFpmBody}"
     # While a whole-server move's promotion window is open on this box (the
     # standby marker plus the fresh in-flight signal), the per-site includes
     # are left exactly as found. The rename running in that window rewrites
@@ -3600,7 +3604,7 @@ _site_socket_inc_gen() {
           _mltFpmSkip="${_mltFpmSkip}${_SITE_NAME} ${_SITE_SOCKET}"$'\n'
         fi
       done
-      # the skipped lines, retried above on every pass until they apply
+      # the skipped lines, for the tenant to see; the check above retries them
       if [ -n "${_mltFpmSkip}" ]; then
         _ltd_ctrl_put .multi-fpm-skipped.info "${_mltFpmSkip}"
       else
