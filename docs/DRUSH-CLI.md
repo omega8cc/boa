@@ -15,9 +15,10 @@ BOA provisions two separate user accounts per Octopus instance:
 - `oN.ftp` — the FTP/limited shell user, accessible via SSH with BOA's special shell wrapper
 
 The PHP-CLI version management and `vdrush` described in this document depend on BOA's
-**special shell wrapper**, which is only active in the `oN.ftp` limited shell environment.
-This wrapper correctly reads and applies the PHP-CLI version you have configured via the
-control files described below, and makes `vdrush` available.
+**special shell wrapper**. Of your two logins, only the `oN.ftp` limited shell runs your
+commands through it. The wrapper also runs every Ægir task on your account, which is why the
+control files steer those tasks too. It reads and applies the PHP-CLI version you have
+configured via the control files described below, and makes `vdrush` available.
 
 Note that PHP-CLI and PHP-FPM are **two independent systems** in BOA. PHP-FPM version is
 controlled separately via `~/static/control/fpm.info` or `~/static/control/multi-fpm.info`
@@ -26,8 +27,9 @@ each site's PHP-FPM version — you are responsible for configuring PHP-CLI to m
 sites' PHP-FPM version using the control files, so that drush and Composer run against the
 correct PHP version.
 
-**When logged in as `oN` under bash, the shell wrapper is not active.** The PHP-CLI control
-files are ignored entirely, `vdrush` will not behave correctly, and you will be running
+**When logged in as `oN` under bash, the commands you type do not go through the shell
+wrapper.** The PHP-CLI control files are ignored for them, `vdrush` will not behave
+correctly, and you will be running
 drush and Composer against whatever PHP version happens to be the system default. Errors
 caused by this are difficult to diagnose and are easily mistaken for server or Drupal
 problems.
@@ -39,13 +41,17 @@ account should not be used for these operations.
 
 ## PHP-CLI Version Management in BOA
 
-BOA provides two mechanisms for managing the PHP-CLI version used in command-line operations (such as Drush and Composer):
+BOA provides three mechanisms for managing the PHP-CLI version used in command-line operations (such as Drush and Composer):
 
 1. **`~/static/control/cli.info`**: This is the **main configuration file** that defines the
    **default PHP-CLI version** to use across the Octopus instance. If no instant
    configuration switches are present, this version will be used.
 2. **Instant Switch Configuration Files**: These files enable instant PHP-CLI version
    switching for command-line and Ægir backend task operations.
+3. **`~/static/control/cli-per-platform.info`**: one line per platform folder, for an
+   account whose platforms need different PHP versions (old and new Drupal cores side by
+   side). A listed platform runs on its own version, whatever the two account-wide files
+   above say. See "One platform on another command-line PHP" below.
 
 ### How Instant PHP-CLI Switching Works
 
@@ -108,6 +114,103 @@ If none of these instant switch files are present, the system will default to th
 8.1
 ```
 This version will be used by default if no instant switch files (e.g., `php83.info`) are detected.
+
+### One platform on another command-line PHP: `cli-per-platform.info`
+
+`cli.info` and the `phpNN.info` switches choose one PHP-CLI version for the whole account:
+your shell, Composer and every Ægir task. An account that hosts old and new Drupal cores
+side by side cannot pick one version that suits both. A Drupal 7 site older than 7.79 and
+any Drupal 8 site stop on a PHP 8 fatal, while a Drupal 10 or 11 platform needs PHP 8.1 or
+8.3 and newer.
+
+`~/static/control/cli-per-platform.info` gives a platform its own PHP-CLI version. One line
+per platform: the platform folder, a space, the version.
+
+```
+d7-legacy 7.4
+platforms/drupal-8.9 7.4
+```
+
+**The rule:** anything that runs on a listed platform uses that platform's line; everything
+else uses your `phpNN.info` switch, else `cli.info`. "Anything that runs on the platform"
+means:
+
+- `drush`, `vdrush`, `bee` and `composer` in your shell, when you work inside the platform
+  folder or aim at one of its sites (`drush @site ...`, `--root`, `composer -d`);
+- every Ægir task on the platform or on one of its sites: Verify, Backup, Clone, Migrate,
+  Flush all caches and the rest. A Clone or Migrate target runs on the TARGET platform's
+  line, or on the account-wide files when the target platform has none.
+
+In the shell that holds for the command a line starts with (a leading `cd DIR &&` is fine).
+A `drush` behind a pipe or after another command runs on the server's default PHP, whatever
+the control files say, so start the line with it.
+
+A platform line **outranks the `phpNN.info` switch**. Renaming `php74.info` to `php84.info`
+to work on your Drupal 10 platform no longer moves the Drupal 7 platform you listed. The
+Ægir control panel itself never takes a line: it follows `phpNN.info`, else `cli.info`.
+PHP-FPM (the web) is never changed by this file. Plain `php` / `phpNN` commands are not
+changed either.
+
+How to write the folder:
+
+- relative to `~/static`, as above (`~/static/d7-legacy` works too), or pasted as the
+  platform's **Publish path** from the control panel (`/data/disk/oN/static/d7-legacy`); a trailing `/web`, `/docroot` or
+  `/html` is dropped, so a Composer platform is listed by the folder that holds its
+  `composer.json`;
+- a folder covers everything under it; if two lines match, the longer folder wins, and for
+  the same folder the last line wins;
+- a platform your host ships to your account is written as it appears in your `~/distro`
+  folder (`~/distro/002/drupal-7.105.2-prod`), or by its Publish path; a shared one under
+  `/data/all/...` by its full path.
+
+The file is read on every command; nothing needs to be restarted, and BOA never writes to
+it. A line that cannot apply is ignored and named in a `WARNING` on every drush, vdrush,
+bee or Composer command you run, and in the log of every Ægir task on the account: a site
+name instead of a folder, a folder that does not exist, or a version that is not installed
+on the server.
+
+You can see the choice at any time:
+
+- in your shell, a `NOTE: command-line PHP 7.4 for static/d7-legacy (cli-per-platform.info
+  line 1 (outranks php84.info))` on stderr whenever a line overrides your account-wide
+  version;
+- in the Ægir task log, a line such as `Command-line PHP 7.4.33 for @old.example.com
+  (static/d7-legacy): cli-per-platform.info line 1 (outranks php84.info)`.
+
+### Refused before the PHP starts
+
+On every account, with or without `cli-per-platform.info`, a drush command or Ægir task
+whose Drupal core cannot run on the PHP chosen for it is refused before the PHP starts,
+instead of dying half-way on a PHP fatal:
+
+- a site on Drupal 7 older than 7.79, or on any Drupal 8, on PHP 8.0 or newer;
+- a codebase whose `vendor/composer/platform_check.php` needs a newer PHP than the one
+  chosen (Drupal 10 needs 8.1, Drupal 11 and site-local Drush 13 need 8.3).
+
+The message names the PHP, the file that chose it and the line that would fix it, e.g.
+`Refused before Drupal starts: @old.example.com is Drupal 7.78 (static/d7-legacy), which
+cannot run on PHP 8.0 or newer. This would use PHP 8.4, chosen by php84.info. Fix: add
+the line "d7-legacy 7.4" to ~/static/control/cli-per-platform.info (or switch back to
+php74.info).`
+
+A Clone or Migrate is checked for its target before the safety copy starts. A platform
+task, which boots no site, gets the Drupal 7 or 8 text as a warning and runs; a
+`platform_check.php` floor refuses it too, because Drush stops at that check whatever it
+runs. Commands that never load the codebase (deleting a backup file, the `version` and
+alias listing of the server's Drush 8) run as before; `help` can boot the site, so it is
+judged like any other command. Composer is never refused, because it is the tool that
+repairs `vendor/`.
+
+A tool floor never overrides a platform line: Drush 10/11 on a platform listed below PHP
+8.1 is refused, not raised.
+
+Composer resolves packages for the PHP it runs on, not for the PHP-FPM that serves your
+site. When `install`, `update` or `require` runs on a newer PHP than a site on that platform
+is set to in `fpm.info` or `multi-fpm.info`, and `composer.json` sets no
+`config.platform.php`, Composer prints a `WARNING` with both versions. A package that needs
+the newer PHP would make that site answer every request with HTTP 500 "Composer detected
+issues in your platform". Run Composer on the site's version (a line in
+`cli-per-platform.info`) or set `config.platform.php`.
 
 ---
 
