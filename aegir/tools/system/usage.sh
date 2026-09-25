@@ -186,6 +186,7 @@ _detect_deprecated_php() {
   _PHP_FPM_VERSION=
   if [ -e "${_usEr}/static/control/fpm.info" ] \
     && [ ! -e "${_usEr}/log/proxied.pid" ] \
+    && [ ! -e "${_usEr}/log/proxy-failed.pid" ] \
     && [ ! -e "${_usEr}/log/CANCELLED" ]; then
     _PHP_FPM_VERSION=$(cat ${_usEr}/static/control/fpm.info 2>&1)
     _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
@@ -629,7 +630,8 @@ _check_limits() {
 
   if [ "${_SumDatH}" -gt "${_SQL_MAX_LIMIT}" ]; then
     if [ ! -e "${_usEr}/log/CANCELLED" ] \
-      && [ ! -e "${_usEr}/log/proxied.pid" ]; then
+      && [ ! -e "${_usEr}/log/proxied.pid" ] \
+      && [ ! -e "${_usEr}/log/proxy-failed.pid" ]; then
       if [ "${_THIS_MODE}" = "verbose" ]; then
         _send_notice_sql "LIVE"
       fi
@@ -638,7 +640,8 @@ _check_limits() {
     [ "${_THIS_MODE}" = "verbose" ] && echo "  SQL Usage for ${_THIS_U} above limits" >> "${_uLogFil}"
   elif [ "${_SkipDtH}" -gt "${_SQL_DEV_LIMIT}" ]; then
     if [ ! -e "${_usEr}/log/CANCELLED" ] \
-      && [ ! -e "${_usEr}/log/proxied.pid" ]; then
+      && [ ! -e "${_usEr}/log/proxied.pid" ] \
+      && [ ! -e "${_usEr}/log/proxy-failed.pid" ]; then
       if [ "${_THIS_MODE}" = "verbose" ]; then
         _send_notice_sql "DEV"
       fi
@@ -651,7 +654,8 @@ _check_limits() {
   fi
   if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
     if [ ! -e "${_usEr}/log/CANCELLED" ] \
-      && [ ! -e "${_usEr}/log/proxied.pid" ]; then
+      && [ ! -e "${_usEr}/log/proxied.pid" ] \
+      && [ ! -e "${_usEr}/log/proxy-failed.pid" ]; then
       if [ "${_THIS_MODE}" = "verbose" ]; then
         _send_notice_disk
       fi
@@ -888,7 +892,8 @@ EOF
             wait
             if [ ! -e "${_usEr}/log/CANCELLED" ] \
               && [ "${_DEV_EXC}" = "NO" ] \
-              && [ ! -e "${_usEr}/log/proxied.pid" ]; then
+              && [ ! -e "${_usEr}/log/proxied.pid" ] \
+              && [ ! -e "${_usEr}/log/proxy-failed.pid" ]; then
               _eMail=${_CLIENT_EMAIL//\\\@/\@}
               _AegirUrl=$(cat ${_usEr}/log/domain.txt 2>&1)
               if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
@@ -932,7 +937,8 @@ EOF
             wait
             if [ ! -e "${_usEr}/log/CANCELLED" ] \
               && [ "${_DEV_EXC}" = "NO" ] \
-              && [ ! -e "${_usEr}/log/proxied.pid" ]; then
+              && [ ! -e "${_usEr}/log/proxied.pid" ] \
+              && [ ! -e "${_usEr}/log/proxy-failed.pid" ]; then
               _eMail=${_CLIENT_EMAIL//\\\@/\@}
               _AegirUrl=$(cat ${_usEr}/log/domain.txt 2>&1)
               if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then

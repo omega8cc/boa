@@ -6777,10 +6777,11 @@ _satellite_child_b_install_drush() {
     fi
   fi
   # Checked cd: a relative mv after a failed cd acts on the wrong tree.
+  local _drCpFail=""
   if [ -f "/opt/tools/drush/8/drush/drush.php" ]; then
     cd ${_ROOT}/tools || return 1
     mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
-    cp -af /opt/tools/drush/8/drush ${_ROOT}/tools/
+    cp -af /opt/tools/drush/8/drush ${_ROOT}/tools/ || _drCpFail=YES
   else
     cd ${_ROOT}/tools || return 1
     if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -6788,8 +6789,16 @@ _satellite_child_b_install_drush() {
     fi
     _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
   fi
-  if [ ! -f "${_ROOT}/tools/drush/drush.php" ]; then
-    mv -f ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} ${_ROOT}/tools/
+  ### Restore to the real path: a mv into the existing tools/ dir parked the
+  ### backup beside a missing or partial tools/drush instead of replacing it,
+  ### and the live instance then dropped out of every tools/drush check. A
+  ### copy that fails part way still leaves a drush.php behind, so its own
+  ### status counts too.
+  if [ -n "${_ROOT}" ] \
+    && { [ -n "${_drCpFail}" ] || [ ! -f "${_ROOT}/tools/drush/drush.php" ]; } \
+    && [ -f "${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW}/drush.php" ]; then
+    rm -rf ${_ROOT}/tools/drush
+    mv -f ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} ${_ROOT}/tools/drush
   fi
   cd ${_ROOT}/tools/drush/
   find ${_ROOT}/tools/drush -type d -exec chmod 0755 {} \; &> /dev/null

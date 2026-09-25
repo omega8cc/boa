@@ -1,6 +1,6 @@
 # How To: Run a Major OS Upgrade
 
-Unlike non-major system upgrades, which can be run with **BARRACUDA** using the Self-Upgrade How To [docs/SELFUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/SELFUPGRADE.md), a major OS upgrade requires different procedures explained below. There are two options: Modern, which is very reliable and easy to use but gives you only two supported upgrade paths—to Devuan Daedalus, or Devuan Excalibur, and Classic, which allows you to upgrade just to the next supported Debian or Devuan OS version.
+Unlike non-major system upgrades, which can be run with **BARRACUDA** using the Self-Upgrade How To [docs/SELFUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/SELFUPGRADE.md), a major OS upgrade requires different procedures explained below. There are two options: Modern, which is very reliable and easy to use but gives you only two supported upgrade paths—to Devuan Daedalus, or Devuan Excalibur, and Classic, which allows you to upgrade just to the next supported Debian or Devuan OS version.
 
 If you don’t mind several Classic procedures to get to the latest supported Devuan version, or if you wish to continue running your BOA on Debian (with systemd removed by yourself or by older BOA versions), then the Classic procedure is for you.
 
@@ -12,13 +12,13 @@ You can easily upgrade your system from any supported Debian version, starting w
 
 **NOTE:** While by default BOA installs Percona 5.7 in Devuan Daedalus, it will expect Percona 8.4 on Devuan Excalibur and will refuse to upgrade your system from Daedalus to Excalibur until you first upgrade Percona to 8.4
 
-**NOTE:** You can upgrade from Percona 5.7 to Percona 8.0 and then from Percona 8.0 to Percona 8.4 only on Devuan Daedalus.
+**NOTE:** The Percona upgrade is its own step, done in place with `barracuda` on the same server before the Daedalus to Excalibur upgrade; it is not a migration. You can upgrade from Percona 5.7 to Percona 8.0 and then from Percona 8.0 to Percona 8.4 only on Devuan Daedalus -- see [docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE-PERCONA8.md).
 
 **NOTE:** Drupal 11 needs MySQL 8, which on BOA means Percona 8.4 -- so a server that will host Drupal 11 has to leave the default Percona 5.7. A new server avoids this upgrade altogether by installing with the `percona-8.4` argument (see [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md)).
 
 **NOTE:** You can't upgrade from Percona 5.7 to Percona 8.4 directly, so you first run `barracuda up-lts system percona-8.0` and then `barracuda up-lts system percona-8.4`
 
-**NOTE:** Because one shared Percona server serves the whole host, its oldest codebase gates this upgrade. Before you start, run `codebasecheck --box --deep` to see which accounts (if any) cannot run on Percona 8 and must move to a legacy Percona 5.7 host first — see the Percona 8 Upgrade Readiness How To [docs/CODEBASECHECK.md](https://github.com/omega8cc/boa/tree/5.x-lts/docs/CODEBASECHECK.md)
+**NOTE:** Because one shared Percona server serves the whole host, its oldest codebase gates this upgrade. Before you start, run `codebasecheck --box --deep` to see which codebases (if any) must be brought up to their MySQL-8 floor first -- update the core, or move their sites to a newer platform on the same server -- see the Percona 8 Upgrade Readiness How To [docs/CODEBASECHECK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/CODEBASECHECK.md)
 
 Please follow the required steps closely!
 

@@ -990,6 +990,7 @@ _migrate_sites() {
       _Dir=`cat ${_USR}/.drush/${_Dom}.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       _Plr=`cat ${_USR}/.drush/${_Dom}.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
       if [ "${_cmd}" = "import" ] || [ "${_cmd}" = "export" ]; then
+        _xoct_sql_maint_hold
         _DBN=`cat ${_Dir}/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
         echo "site ${_Dom} raw _DBN is ${_DBN}"
         _DBN=${_DBN//[^a-zA-Z0-9_]/}
@@ -1627,7 +1628,8 @@ _xoct_rewrite_target_account_refs() {
   echo "INFO: rename mode active on target ${_X_TGT_HOST}: rewriting refs ${_X_SRC_OCT} -> ${_X_DST_OCT} in selected text configs"
   # Heredoc (not a nested one-liner) so the fpm socket-token rewrite -- which
   # carries literal double quotes -- stays readable. Local vars (_X_SRC_OCT
-  # etc.) expand here before ssh; remote-only vars are \-escaped.
+  # etc.) expand here before ssh; remote-only vars are \-escaped. A subdir.d
+  # conf lives one level down, in its domain's directory.
   ssh root@"${_X_TGT_HOST}" "bash -s" <<REMOTE
 _D='${_X_DST_USR}'
 for _F in \
@@ -1635,7 +1637,7 @@ for _F in \
   \$(find "\${_D}/config/server_master/nginx/vhost.d" -maxdepth 1 -type f 2>/dev/null | sort) \
   \$(find "\${_D}/config/server_master/nginx/pre.d" -maxdepth 1 -type f 2>/dev/null | sort) \
   \$(find "\${_D}/config/server_master/nginx/post.d" -maxdepth 1 -type f 2>/dev/null | sort) \
-  \$(find "\${_D}/config/server_master/nginx/subdir.d" -maxdepth 1 -type f 2>/dev/null | sort) \
+  \$(find "\${_D}/config/server_master/nginx/subdir.d" -maxdepth 2 -type f 2>/dev/null | sort) \
   \$(find "\${_D}/config/server_master/nginx/platform.d" -maxdepth 1 -type f 2>/dev/null | sort) \
   \$(find "\${_D}/config/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort) \
   \$(find "\${_D}/config/server_master/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort) \
@@ -2312,13 +2314,10 @@ _xoct_reconcile_panel_platform() {
 ### for the export window.
 
 _migrate_prepare() {
-  # Pause the mysql.sh watchdog for the DB-critical commands: export runs
-  # mydumper against the LIVE source; import runs myloader + renameaegirhost
-  # (which dumps and reimports the Aegir DB). A watchdog restart or long-query
-  # kill mid dump/load corrupts the migrated data. Cleared at function end; the
-  # watchdog self-ignores a stale marker (>4h) and /run is tmpfs.
+  # The watchdog stands down for the database verbs (_xoct_sql_maint_hold);
+  # released at the end of this function, or by the EXIT trap.
   case "${_cmd}" in
-    import|export) : > /run/boa_sql_maintenance.pid ;;
+    import|export) _xoct_sql_maint_hold ;;
   esac
   _THIS_HM_USER=$(_xoct_runtime_oct)
   _USR=/data/disk/${_THIS_HM_USER}
@@ -2592,9 +2591,11 @@ _migrate_prepare() {
     ### refuses "already exported" -- exactly the chained shape a staged
     ### fleet move needs (old box -> new primary -> HA mirror). A completed
     ### import starts a fresh lifecycle here, so the latches of the
-    ### migration that ENDED with this import are cleared with the stamp.
+    ### migration that ENDED with this import are cleared with the stamp. A
+    ### proxy-failed.pid (an older source shipped it) goes too: this box
+    ### serves the account now, and the marker would park its dispatcher.
     rm -f ${_USR}/log/exported.pid ${_USR}/log/transferred.pid \
-      ${_USR}/log/export_failed.pid
+      ${_USR}/log/export_failed.pid ${_USR}/log/proxy-failed.pid
     touch ${_USR}/log/imported.pid
     if ! _xoct_reconcile_panel_platform "${_USR}" "${_oct}" "${_HDB}"; then
       echo "ERROR: panel platform reconciliation failed for ${_USR} — this import is INCOMPLETE"
@@ -2956,9 +2957,7 @@ _migrate_prepare() {
       rm -f ${_USR}/log/import_failed.pid
     fi
   fi
-  case "${_cmd}" in
-    import|export) rm -f /run/boa_sql_maintenance.pid ;;
-  esac
+  _xoct_sql_maint_release
   echo Done ${_cmd} for ${_USR}
   _enable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
 }
@@ -4177,7 +4176,7 @@ _migrate_init() {
           _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/clients/*        root@${_tgt}:${_DST}/clients/        &> /dev/null
           # instance-group.txt records the SOURCE box's conversion (its gid);
           # it must never travel, the destination pass writes its own.
-          _xoct_rsync -aEAXqu ${_ieni} --exclude=instance-group.txt -e ssh ${_USR}/log/* root@${_tgt}:${_DST}/log/
+          _xoct_rsync -aEAXqu ${_ieni} --exclude=instance-group.txt --exclude=proxy-failed.pid -e ssh ${_USR}/log/* root@${_tgt}:${_DST}/log/
           _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/static/control/* root@${_tgt}:${_DST}/static/control/ &> /dev/null
           #
           _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/backups/*        root@${_tgt}:${_DST}/backups/        &> /dev/null
@@ -4501,6 +4500,13 @@ _migrate_init() {
           ### this first successful conversion.
           if [ ! -e "${_USR}/log/proxied.pid" ]; then
             echo COMPLETE > ${_USR}/log/proxied.pid
+          fi
+          ### A cutover that could not convert this account marked it so that
+          ### BOA kept its dispatcher parked and octopus skipped it; converted
+          ### now, it is proxied and proxied.pid keeps both.
+          if [ -e "${_USR}/log/proxy-failed.pid" ]; then
+            rm -f "${_USR}/log/proxy-failed.pid"
+            echo "INFO: ${_oct}: converted after a failed cutover conversion; proxy-failed.pid removed"
           fi
           ### Park this account's dispatcher NOW, in the same breath as the
           ### conversion. BOA parks it on the proxied.pid marker, but only
@@ -4899,7 +4905,7 @@ _check_root() {
 }
 
 # The DRY/live gate applies ONLY to the migration transfer commands. Utility commands
-# — notably `ssl-gen` (used elsewhere to generate hostmaster SSL certs), plus pre-mig,
+# — notably `ssl-gen` (renders proxy SSL vhosts from /root/.ssl.proxy.cnf), plus pre-mig,
 # post-mig, export, import, create and proxy — run unaffected (LIVE) and their arguments
 # are never touched. For transfer/pretransfer the default is a read-only DRY run and an
 # explicit --live is required (accepted only after a CLEAN dry run for the same
@@ -5090,6 +5096,84 @@ _take_verb_lock() {
   done
 }
 
+###-------------SQL WATCHDOG PAUSE-------###
+
+# export runs mysqldump and mydumper against the LIVE source; import runs
+# mysql and myloader plus renameaegirhost (which dumps and reimports the Aegir
+# DB). While /run/boa_sql_maintenance.pid exists the mysql.sh watchdog stands
+# down entirely, so a restart or a mydumper kill cannot land mid dump or load.
+#
+# The marker carries this run's PID, so the launchers read a killed run's
+# marker as released. The EXIT trap removes it on every exit the shell can
+# trap -- a refused gate or a failed dump no longer leaves the watchdog paused
+# for four hours -- and only while it still carries this PID; a kill -9 leaves
+# it to the watchdog's 240-minute staleness limit. A marker another operation
+# holds -- a live PID that is not ours, or a fresh empty one -- is left to its
+# owner. Re-asserted before each site, so a marker its owner released mid-run
+# is taken over at the next site; a background beat refreshes ours every 20
+# minutes, so one step longer than the staleness limit (a large site, or the
+# panel restore plus the host rename) stays paused. The traps are armed before
+# the marker is written and the flag is cleared after it is removed, so no
+# signal can land between the two.
+#
+# Kept in step with xcopy's _xcopy_sql_maint_hold -- mirror any fix there.
+_XOCT_SQL_MAINT=""
+_XOCT_SQL_MAINT_BEAT=""
+_xoct_sql_maint_hold() {
+  local _mf=/run/boa_sql_maintenance.pid _mPid _pp=$$ _pst
+  # Start time of this run: a recycled PID must not keep a dead run's marker fresh.
+  _pst=$(cut -d' ' -f22 /proc/$$/stat 2>/dev/null)
+  if [ -e "${_mf}" ] && [ -z "$(find "${_mf}" -mmin +240 2>/dev/null)" ]; then
+    _mPid=$(tr -dc '0-9' 2>/dev/null < "${_mf}")
+    if [ -z "${_mPid}" ] \
+      || { [ "${_mPid}" != "$$" ] && kill -0 "${_mPid}" 2>/dev/null; }; then
+      [ "${_XOCT_SQL_MAINT}" = "OTHER" ] \
+        || echo "INFO: ${_mf} is held by another operation (pid ${_mPid:-none}); left to its owner"
+      _XOCT_SQL_MAINT=OTHER
+      return 0
+    fi
+  fi
+  if [ "${_XOCT_SQL_MAINT}" != "YES" ]; then
+    _XOCT_SQL_MAINT=YES
+    trap '_xoct_sql_maint_release; rm -f "${_XOCT_LOCK_FILE}"' EXIT
+    trap 'exit 130' INT TERM HUP
+    if [ -z "${_XOCT_SQL_MAINT_BEAT}" ] || ! kill -0 "${_XOCT_SQL_MAINT_BEAT}" 2>/dev/null; then
+      # Detached, not a child of this shell: the bare `wait` calls in this
+      # tool must never wait on it. Ends on its own when this run is gone
+      # (kill -9, OOM): an orphaned beat would keep the watchdog paused.
+      _XOCT_SQL_MAINT_BEAT=$(
+        (
+          # The sleep goes with the beat, so a stopped beat leaves no process;
+          # jobs -p also covers a TERM landing before $! is read.
+          trap 'kill $(jobs -p) 2>/dev/null; exit 0' TERM
+          while :; do
+            sleep 1200 & _bs=$!
+            wait "${_bs}"
+            [ -z "${_pst}" ] || [ "$(cut -d' ' -f22 "/proc/${_pp}/stat" 2>/dev/null)" = "${_pst}" ] || exit 0
+            kill -0 "${_pp}" 2>/dev/null || exit 0
+            [ "$(tr -dc '0-9' 2>/dev/null < "${_mf}")" = "${_pp}" ] && touch -c "${_mf}"
+          done
+        ) > /dev/null 2>&1 < /dev/null &
+        echo "$!"
+      )
+    fi
+    echo "INFO: SQL watchdog paused for the ${_cmd} database work (${_mf})"
+  fi
+  echo "$$" > "${_mf}"
+}
+_xoct_sql_maint_release() {
+  if [ -n "${_XOCT_SQL_MAINT_BEAT}" ]; then
+    kill "${_XOCT_SQL_MAINT_BEAT}" 2>/dev/null
+    _XOCT_SQL_MAINT_BEAT=""
+  fi
+  [ "${_XOCT_SQL_MAINT}" = "YES" ] || return 0
+  if [ "$(tr -dc '0-9' 2>/dev/null < /run/boa_sql_maintenance.pid)" = "$$" ]; then
+    rm -f /run/boa_sql_maintenance.pid
+  fi
+  _XOCT_SQL_MAINT=""
+  return 0
+}
+
 case "$1" in
   export|create|import|pretransfer|transfer|proxy|proxy-retire|reset-state|pre-mig|post-mig|ssl-gen)
     _take_verb_lock "$1"
@@ -5166,14 +5250,14 @@ case "$1" in
             fi
             echo "ALRT: clearing migration state for ${_oct}:"
             echo "ALRT:   src/*.sql dumps (incl. prev_hostmaster.sql),"
-            echo "ALRT:   log/{exported,transferred,imported,proxied}.pid,"
+            echo "ALRT:   log/{exported,transferred,imported,proxied,proxy-failed}.pid,"
             echo "ALRT:   log/{export_failed,import_failed}.pid and"
             echo "ALRT:   log/panel_db.txt (the recorded import panel DB)"
             echo "ALRT: removing proxied.pid re-arms migration AND re-enables LE renewal"
             echo "ALRT: on this box -- only do this when the account is meant to migrate"
             echo "ALRT: (again) FROM here."
             rm -f /data/disk/${_oct}/src/*.sql
-            for _p in exported transferred imported proxied export_failed import_failed; do
+            for _p in exported transferred imported proxied proxy-failed export_failed import_failed; do
               rm -f /data/disk/${_oct}/log/${_p}.pid
             done
             ### A chained migration lands on a different panel DB; a stale
