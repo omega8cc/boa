@@ -121,7 +121,8 @@ Drush is the primary tool for managing Drupal sites within BOA, allowing you to 
 2. Site-local Drush can be invoked using `vdrush`.
 3. PHP-CLI version switching for Drush and Composer is instantaneous using the **instant switch configuration files**.
 4. Using standalone Drush versions newer than version 8 is deprecated.
-5. Drush 8 remains available as `drush8` or simply `drush`.
+5. Drush 8 remains available as `drush8` or simply `drush` — on a Drupal 8+ site for
+   read-only commands only (`uli`, `status`).
 6. Drush 10 is available as standalone `drush10`.
 7. Drush 11 is available as standalone `drush11`.
 8. Drush 12 or newer is available only as **site-local**, invoked via `vdrush`.
@@ -138,6 +139,8 @@ are described in [SECURITY.md](SECURITY.md).
 `oN.ftp` limited-shell account — which, as stressed above, is the account you should
 always use — your site's contributed-module Drush commands (for example `civicrm`,
 `elysia-cron`, or any other module-provided command) are discovered and run normally.
+That is Drush 8 on Drupal 6/7 sites; on a Drupal 8+ site the same commands run
+through the site's own Drush, `vdrush` (see below).
 
 If core commands such as `drush @alias cc all` work but a contributed command like
 `drush @alias elysia-cron run somecron` is *not recognised*, the usual cause is
@@ -152,10 +155,21 @@ your instance — see [SECURITY.md](SECURITY.md).
 Code and database updates are usually driven through Ægir (a **Verify** or **Migrate**
 task), but you can also run them from the `oN.ftp` limited shell.
 
-On a **Drupal 8+** platform, use the site-local `vdrush` (see below) — the standalone
-Ægir Drush 8 cannot start up a Drupal 8/9/10/11 site to apply updates. The system `drush`
-(Drush 8) is for legacy Drupal 6/7 sites, where `drush @site-alias updb` (or `updatedb`)
-runs normally.
+On a **Drupal 8+** platform, use the site-local `vdrush` (see below) for anything that
+changes a site — updates, a cache rebuild, enabling a module.
+
+The system `drush` (Drush 8) starts a Drupal 8/9/10/11 site only while its platform is
+locked, and there it runs read-only commands alone: `drush @site-alias uli` and `drush
+@site-alias status` answer (the control panel's one-time login links on Drupal 8+ come from
+the same Drush 8). Every other Drush 8 command on a Drupal 8+ codebase is refused in the
+limited shell, with a pointer to `vdrush`.
+
+On legacy Drupal 6/7 sites Drush 8 runs everything as before, `drush @site-alias updb` (or
+`updatedb`) included.
+
+A platform developer login (`oN.<client>-dev`) and the main `oN.ftp` login can run
+`checkmyperms` to see which platforms the developer login reaches, why a platform carrying
+the client's sites is not reached, the Drush window, and which Drush to use where.
 
 ---
 

@@ -51,6 +51,17 @@ path, Valkey packages exist for major 9 only, and the Unbound and Pure-FTPd
 packages are refused on a box without the Modern OpenSSL tree their binaries
 link against.
 
+A system whose `/bin`, `/sbin` and `/lib` are still apart from `/usr` (a
+split `/usr`, left by an in-place upgrade from an older release) is refused
+every package: they are built on merged-`/usr` systems and may name paths a
+split system does not have -- the PHP packages' `phpize` and `php-config`
+call `/usr/bin/sed`, so every extension build failed there.
+
+Barracuda converts such a Devuan Daedalus system to merged `/usr` early in its system
+pass (see [docs/MAJORUPGRADE.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MAJORUPGRADE.md));
+until it is converted, every component builds from sources, with a
+`NOTE: Split /usr on this system` line.
+
 The Nginx and PHP packages are additionally verified against
 the compiled-in OpenSSL (and, for PHP 8.1+, ICU) versions the box currently
 expects -- the same tokens the next run's rebuild decision reads -- so a

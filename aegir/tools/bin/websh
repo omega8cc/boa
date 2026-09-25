@@ -257,9 +257,102 @@ _drush_cmd_word() {
   done
   return 1
 }
+# Drush 8 on a Drupal 8+ codebase (G): it bootstraps a LOCKED platform for
+# read-only work -- the control panel's own login links on Drupal 8+ come
+# from it -- but it never changes what is installed there (a module enabled
+# or a container rebuilt by Drush 8 broke real sites); that is the site's own
+# Drush, vdrush. So for a tenant Drush 8 runs only the read-only commands
+# below on such a codebase. The codebase is the one Drush 8 itself would
+# boot: --root, else the @alias's root, else the Drupal root above the
+# working directory (a "cd DIR &&" earlier in the line moves it).
+_D8_READONLY_CMDS="uli user-login status st core-status version help sa site-alias aliases"
+_GD_CWD=""
+_GD_DOC=""
+_d8plus_root() {
+  # $1 = a codebase path: a Drupal 8+ docroot, by the files Drush 8's own
+  # valid_root() checks
+  [ -n "$1" ] && [ -f "$1/autoload.php" ] && [ -f "$1/core/core.services.yml" ] \
+    && [ -f "$1/core/includes/common.inc" ]
+}
+_d8plus_target() {
+  # $1 = the drush argument string; true when the codebase is Drupal 8+
+  local _ws _w _next="" _root="" _al="" _f _c _p
+  read -r -a _ws <<< "$1"
+  for _w in "${_ws[@]}"; do
+    if [ "${_next}" = "root" ]; then
+      _root="${_w}"
+      _next=""
+      continue
+    fi
+    case "${_w}" in
+      --root=*) _root="${_w#--root=}" ;;
+      -r|--root) _next=root ;;
+      @*) [ -z "${_al}" ] && _al="${_w#@}" ;;
+    esac
+  done
+  if [ -n "${_root}" ]; then
+    _root="${_root/#\~/${HOME}}"
+    [[ "${_root}" == /* ]] || _root="${_GD_CWD}/${_root}"
+    _GD_DOC="${_root}"
+    _d8plus_root "${_root}"
+    return $?
+  fi
+  case "${_al}" in
+    ""|self|sites) ;;
+    none) return 1 ;;
+    *)
+      # the alias stores Drush 8 reads for a tenant; what it cannot read
+      # here, the same confined Drush 8 cannot read either
+      for _f in "${HOME}/.drush/${_al}.alias.drushrc.php" \
+        "/data/disk/${_Y_USR}/.drush/${_al}.alias.drushrc.php"; do
+        [ -f "${_f}" ] || continue
+        { _c=$(< "${_f}"); } 2> /dev/null
+        if [[ "${_c}" =~ \'root\'[[:space:]]*=\>[[:space:]]*\'([^\']+)\' ]]; then
+          _GD_DOC="${BASH_REMATCH[1]}"
+          _d8plus_root "${_GD_DOC}"
+          return $?
+        fi
+      done
+      return 1
+      ;;
+  esac
+  # the Drupal root at or above the working directory, nearest first; a
+  # Drupal 7 or Backdrop root found first ends the walk
+  _p="${_GD_CWD}"
+  while [ -n "${_p}" ]; do
+    _d8plus_root "${_p}" && { _GD_DOC="${_p}"; return 0; }
+    [ -f "${_p}/includes/bootstrap.inc" ] && return 1
+    [ -f "${_p}/core/includes/bootstrap.inc" ] && return 1
+    [ "${_p}" = "/" ] && break
+    _p="${_p%/*}"
+    [ -n "${_p}" ] || _p="/"
+  done
+  return 1
+}
+# Drush 8 by where it lives, never by its name: the bare word (websh's own
+# dispatch runs it as Drush 8), else the launcher resolved against the tracked
+# working directory, links followed, into BOA's Drush 8 trees or an account's
+# launcher. A codebase's own Drush -- vendor/bin/drush, drush.php, a composer
+# bin-dir of its own choosing -- resolves elsewhere and is not Drush 8.
+_d8_launcher() {
+  local _p="$1"
+  case "${_p##*/}" in
+    drush|drush8|drush.php) ;;
+    *) return 1 ;;
+  esac
+  [[ "${_p}" == */* ]] || return 0
+  [[ "${_p}" == /* ]] || _p="${_GD_CWD}/${_p}"
+  _p=$(readlink -f -- "${_p}" 2> /dev/null) || return 1
+  case "${_p}" in
+    /opt/tools/drush/8/*|/var/aegir/drush/*) return 0 ;;
+  esac
+  [[ "${_p}" =~ ^(/mnt/.+)?/data/disk/[^/]+/tools/drush/ ]]
+}
 _drush_refused() {
-  local _seg _w1 _w2 _rest _cw _f _n _env _again _pini
+  local _seg _w1 _w2 _rest _cw _f _n _env _again _pini _d8 _cd
   _DR_WHY=""
+  _GD_DOC=""
+  _GD_CWD=$(pwd -P 2> /dev/null)
   while IFS= read -r _seg; do
     # leading NAME=value words and leading shell words, until neither
     # applies; an environment word other than lshell's own noexec prefix
@@ -290,6 +383,17 @@ _drush_refused() {
       esac
     done
     read -r _w1 _w2 _rest <<< "${_seg}"
+    # a cd earlier in the line moves the codebase a later Drush 8 boots
+    if [ "${_w1}" = "cd" ]; then
+      _cd="${_w2/#\~/${HOME}}"
+      [ -n "${_cd}" ] || _cd="${HOME}"
+      [[ "${_cd}" == /* ]] || _cd="${_GD_CWD}/${_cd}"
+      _cd=$(cd -P -- "${_cd}" 2> /dev/null && pwd -P)
+      [ -n "${_cd}" ] && _GD_CWD="${_cd}"
+      continue
+    fi
+    _d8=NO
+    _d8_launcher "${_w1}" && _d8=YES
     case "${_w1##*/}" in
       drush|drush8|drush10|drush11|vdrush|drush.php)
         _rest="${_w2} ${_rest}"
@@ -309,6 +413,12 @@ _drush_refused() {
           _rest="${_rest#"${BASH_REMATCH[0]}"}"
         done
         read -r _w2 _rest <<< "${_rest}"
+        # php opens its script operand against the cwd, never through PATH
+        if [[ "${_w2}" == */* ]]; then
+          _d8_launcher "${_w2}" && _d8=YES
+        else
+          _d8_launcher "./${_w2}" && _d8=YES
+        fi
         case "${_w2##*/}" in
           drush|drush8|drush10|drush11|drush.php)
             if [ "${_pini}" = "YES" ]; then _DR_WHY=F; return 0; fi
@@ -342,8 +452,70 @@ _drush_refused() {
         return 0
       fi
     done
+    if [ "${_d8}" = "YES" ] && [[ " ${_D8_READONLY_CMDS} " != *" ${_cw} "* ]] \
+      && _d8plus_target "${_rest}"; then
+      _DR_WHY=G
+      return 0
+    fi
   done < <(_drush_segments "$1")
   return 1
+}
+# what a refusal tells the tenant: G has its own way forward
+_drush_refused_say() {
+  local _lc="" _app="" _doc="" _vnd=""
+  echo
+  if [ "${_DR_WHY}" = "G" ]; then
+    echo " Drush 8 runs only read-only commands (uli, status) on a Drupal 8+ site."
+    # vdrush runs vendor/drush from the working directory, or from its parent
+    # when that is a web/html/docroot docroot, so it reaches the docroot's
+    # parent's vendor/, or the docroot's own under any other name; the panel's
+    # Unlock Local Drush opens either (provision_unlock_drush_local_vnd). The
+    # Drush window opens only the app root, found by the rule the window and
+    # checkmyperms use (_ltd_platform_approot in manage_ltd_users.sh): the
+    # docroot, or its parent when a web/docroot/html one sits under a
+    # composer root.
+    _doc=$(readlink -f -- "${_GD_DOC}" 2> /dev/null)
+    [ -n "${_doc}" ] || _doc="${_GD_DOC%/}"
+    _app="${_doc}"
+    case "${_app##*/}" in
+      web|docroot|html)
+        if [ -f "${_app%/*}/composer.json" ] || [ -d "${_app%/*}/vendor" ]; then
+          _app="${_app%/*}"
+        fi ;;
+    esac
+    _vnd=""
+    if [ -d "${_doc%/*}/vendor/drush" ]; then
+      _vnd="${_doc%/*}"
+    else
+      case "${_doc##*/}" in
+        web|docroot|html) ;;
+        *) [ -d "${_doc}/vendor/drush" ] && _vnd="${_doc}" ;;
+      esac
+    fi
+    if [ -n "${_vnd}" ]; then
+      echo " Anything that changes the site runs through the platform's own Drush,"
+      echo " from ${_vnd} while the platform is unlocked:"
+      echo "   vdrush @alias <command>"
+      if [ -d "${_app}/vendor/drush" ]; then
+        echo " Unlock: the platform's Unlock Local Drush task in the control panel, or"
+        echo " on a developer login: touch ~/.tmp/drush-window.request"
+      else
+        echo " Unlock: the platform's Unlock Local Drush task in the control panel."
+      fi
+    else
+      echo " This platform has no site-local Drush: Drush 8 read-only commands"
+      echo " (uli, status) only; the Drush window does not apply to it."
+    fi
+    # named only where this box's shell policy already offers it (a box
+    # can carry this websh before the template that allows checkmyperms)
+    { _lc=$(< /etc/lshell.conf); } 2> /dev/null
+    if [ -x /opt/local/bin/checkmyperms ] && [[ "${_lc}" == *"'checkmyperms'"* ]]; then
+      echo " checkmyperms shows the platforms, the aliases and the window."
+    fi
+  else
+    echo " This drush command is not available (${_DR_WHY})"
+  fi
+  echo
 }
 _is_tenant() {
   [[ "${_LTD_UID}" == *.ftp ]] || _in_grp lshellg || _in_grp ltd-shell || _in_grp ltd-shell-more
@@ -351,9 +523,7 @@ _is_tenant() {
 # every tenant exec site hands its final line through here
 _exec_dash_c() {
   if _is_tenant && _drush_refused "$1"; then
-    echo
-    echo " This drush command is not available (${_DR_WHY})"
-    echo
+    _drush_refused_say
     exit 0
   fi
   exec /bin/dash -c "$1"
@@ -423,9 +593,7 @@ _forward_to_dash() {
         # Command option
         if [[ -n "$2" ]]; then
           if _is_tenant && _drush_refused "$2"; then
-            echo
-            echo " This drush command is not available (${_DR_WHY})"
-            echo
+            _drush_refused_say
             exit 0
           fi
           _options+=("-c" "$2")
