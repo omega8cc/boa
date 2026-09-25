@@ -1125,7 +1125,10 @@ _ltd_platform_alias() {
   local _doc=""
   local _f=""
   _doc=$(_ltd_platform_docroot "${_root}") || return 1
-  _f=$(grep -lF "'root' => '${_doc}'" /data/disk/${_USER}/.drush/platform_*.alias.drushrc.php 2>/dev/null | head -1)
+  # The alias keeps the path the platform was registered with: the docroot,
+  # or for a Composer build possibly its app root. Either names this tree.
+  _f=$(grep -lF -e "'root' => '${_doc}'" -e "'root' => '${_root}'" \
+    /data/disk/${_USER}/.drush/platform_*.alias.drushrc.php 2>/dev/null | head -1)
   [ -n "${_f}" ] || return 1
   _f=$(basename "${_f}")
   _f=${_f#platform_}

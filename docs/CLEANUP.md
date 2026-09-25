@@ -12,6 +12,10 @@ differs from the application root and which no longer ship a `sites/all`
 directory, are therefore recognised as valid and are **never** treated as ghosts.
 The same docroot detection keeps the per-account FTP `platforms/` symlinks and the
 codebase permissions correct for those platforms (see [PLATFORMS.md](PLATFORMS.md)).
+It is also where the nightly looks for a ghost site's directory on the account's
+other platforms and for the sites of an old empty platform: a platform alias keeps
+the path the platform was registered with, which for a Composer build can be its
+app root, so each platform is read at the docroot it serves.
 
 Every move here is **opt-in and off by default**. Out of the box each check runs
 in **dry-run**: it logs what it *would* move and changes nothing. You enable the

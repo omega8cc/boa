@@ -547,6 +547,26 @@
 
 @=> Important Fixes
 
+    * A Composer platform registered with its app root (its Drush
+      alias names the app root while its sites live under web/,
+      docroot/ or html/) is now read at the web root Ægir serves
+      everywhere else it mattered. The nightly ghost-site check
+      reported a site stranded on such a platform by an interrupted
+      migrate as a ghost, which could mail the client and, with
+      _GHOST_SITES_CLEANUP=YES, move its alias and vhost aside. The
+      old-empty-platform cleanup never deleted such a platform once
+      empty; it now does, like any other empty platform, wherever
+      _DEL_OLD_EMPTY_PLATFORMS applies (hosted systems default it to 60
+      days). The limited-shell Drush window could not
+      find its alias, so it never unlocked it and sent a "no platform
+      alias found" notice instead. autosymlink's NOT CLEAN explanation
+      called it a BROKEN PLATFORM, or advised deleting a site whose
+      data still sat on it. xmass did not count its sites in the
+      target-only purge inventory, and its panel alias repair judged
+      it code-less.
+    * The xmass panel alias repair no longer removes a platform alias
+      when the panel database query fails: only an answer of no such
+      context counts.
     * codebasecheck --box no longer reports a false UNKNOWN, and so a
       BLOCKED server, for a Composer platform registered with its app
       root. That platform's Drush alias keeps the app root, while Ægir

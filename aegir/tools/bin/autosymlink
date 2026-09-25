@@ -379,8 +379,9 @@ _get_site_path() {
 # oN-owned tree.
 #
 # Probe locals are all prefixed _EXP_/_AN_ because this file is global-by-design
-# (it has exactly one `local`), and render time is late enough that clobbering a
-# name like _SITE_PATH or _ALIAS_FILE would corrupt state a caller still reads.
+# (`local` appears only in the shared _detect_real_docroot helper and for one
+# associative array), and render time is late enough that clobbering a name like
+# _SITE_PATH or _ALIAS_FILE would corrupt state a caller still reads.
 
 _explain_log() {
   # One [EXPLAINED] line, through _log so it keeps the timestamp and reaches the
@@ -493,14 +494,54 @@ _exp_is_abs_path() {
   esac
 }
 
+# Echo a platform's real Drupal docroot on stdout, or nothing if none found.
+# The docroot is the platform root for Drupal 7-era codebases, but a subdir for
+# Composer D8+ codebases whose web root differs from the app root: docroot/,
+# html/, web/, in that order. Keyed on index.php, the front controller present
+# in every Drupal docroot (D6..D11) regardless of build recipe. -f follows the
+# symlink and is false for a dangling link, so a decoy like web -> /etc cannot
+# register as a docroot. Returns 0 with the path, 1 if no docroot is found.
+# Embedded here (not sourced from the install-time helper.sh.inc) so this
+# standalone tool carries its own structure-detection logic.
+_detect_real_docroot() {
+  local _plat="${1%/}"
+  local _sub
+  [ -n "${_plat}" ] && [ -d "${_plat}" ] || return 1
+  if [ -f "${_plat}/index.php" ]; then
+    printf '%s\n' "${_plat}"
+    return 0
+  fi
+  for _sub in docroot html web; do
+    if [ -f "${_plat}/${_sub}/index.php" ]; then
+      printf '%s\n' "${_plat}/${_sub}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+_exp_docroot() {
+  # The docroot Provision serves for a root taken out of an alias. A platform
+  # alias keeps the path the platform was registered with, which for a Composer
+  # build can be its app root, while its sites live under the web root. Echoes
+  # the value unchanged when it is not absolute or has no docroot, so the
+  # malformed-root and PLATFORM GONE diagnoses still see what the alias says.
+  # Args: 1 root.
+  if _exp_is_abs_path "$1" && _detect_real_docroot "$1"; then
+    return
+  fi
+  echo "$1"
+}
+
 _exp_file_stamp() {
   # Args: 1 path. Echoes "" when the file is gone.
   date -r "$1" "+%Y-%m-%d %H:%M:%S" 2>/dev/null
 }
 
 _exp_platform_root() {
-  # Resolve a site alias's 'platform' ref (@platform_foo) to the platform's own
-  # recorded root. Echoes "" when the platform alias is gone -- itself a finding.
+  # Resolve a site alias's 'platform' ref (@platform_foo) to the docroot of the
+  # platform's own recorded root. Echoes "" when the platform alias is gone --
+  # itself a finding.
   # Args: 1 account dir, 2 platform ref.
   _EXP_PR_ACCT="$1"
   _EXP_PR_REF="${2#@}"
@@ -509,7 +550,7 @@ _exp_platform_root() {
     echo ""
     return
   fi
-  _alias_field "${_EXP_PR_ACCT}/.drush/${_EXP_PR_REF}.alias.drushrc.php" "root"
+  _exp_docroot "$(_alias_field "${_EXP_PR_ACCT}/.drush/${_EXP_PR_REF}.alias.drushrc.php" "root")"
 }
 
 _exp_site_on_other_platform() {
@@ -527,7 +568,7 @@ _exp_site_on_other_platform() {
 
   for _EXP_OP_ALIAS in "${_EXP_OP_ACCT}"/.drush/platform_*.alias.drushrc.php; do
     [ -f "${_EXP_OP_ALIAS}" ] || continue
-    _EXP_OP_ROOT=$(_alias_field "${_EXP_OP_ALIAS}" "root")
+    _EXP_OP_ROOT=$(_exp_docroot "$(_alias_field "${_EXP_OP_ALIAS}" "root")")
     _exp_is_abs_path "${_EXP_OP_ROOT}" || continue
     _EXP_OP_CAND="${_EXP_OP_ROOT}/sites/${_EXP_OP_SITE}"
     [ "${_EXP_OP_CAND}" = "${_EXP_OP_SKIP}" ] && continue
@@ -682,9 +723,10 @@ _explain_ghost_alias() {
       _explain_log "    disk alone."
       _explain_log "    The data shown above is intact -- do not delete anything."
       _EXP_GA_FIX="Verify the site in the Aegir front-end so its alias matches where the site actually lives; if the migrate failed, re-run or roll it back from the front-end."
-    elif [ -n "${_EXP_GA_SROOT}" ] && [ -n "${_EXP_GA_PROOT}" ] && [ "${_EXP_GA_SROOT}" != "${_EXP_GA_PROOT}" ]; then
+    elif [ -n "${_EXP_GA_SROOT}" ] && [ -n "${_EXP_GA_PROOT}" ] \
+      && [ "$(_exp_docroot "${_EXP_GA_SROOT}")" != "${_EXP_GA_PROOT}" ]; then
       _explain_log "  Site dir   : MISSING (not found on any other platform of this account)"
-      _explain_log "  Root drift : alias root='${_EXP_GA_SROOT}' but platform alias root='${_EXP_GA_PROOT}'"
+      _explain_log "  Root drift : alias root='${_EXP_GA_SROOT}' but its platform's docroot='${_EXP_GA_PROOT}'"
       _explain_log "  Diagnosis  : STALE ALIAS -- the site alias's cached root disagrees with its"
       _explain_log "    own platform's current root, so the alias was written against a platform"
       _explain_log "    layout that no longer holds."
