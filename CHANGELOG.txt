@@ -35,6 +35,17 @@
 
 @=> Security
 
+    * A per-box root cron line in /var/xdrago/cron/custom.txt that
+      chowns an account's directory to <account>[.ftp]:users put it back
+      into the box-wide group on every run once the account had its
+      per-instance group, so every other account's identities could read
+      what the line copied there (log copies, for one). Every barracuda
+      upgrade now rewrites the plain form, a chown whose every path is
+      /data/disk/<account> or below it, to the account's own group,
+      $(id -gn <account>), in custom.txt too, keeps the previous file in
+      the dragon config store and prints a NOTE. Every other form is
+      appended as written, and a line that still hands an account's
+      files to users is named in a second NOTE.
     * The login and admin IP lock (static/control/ip/user_admin.txt) on a
       Grav site now gates /admin (and /api) but no longer /user: that is
       Grav's public theme and media tree, and a listed Grav site refused
