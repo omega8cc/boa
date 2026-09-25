@@ -2033,27 +2033,40 @@ _install_php_multi_src() {
 }
 
 #
-# Mark PHP $1 as rebuilt in the run that follows a major OS upgrade. The
-# marker stops a second build of this version in that run, so it is written
-# only when this build replaced the binary (its inode differs from $2, the one
-# before the build: dpkg and make install both write a new file and rename it
-# into place) and the new binary runs and reports the wanted version. A failed
-# build leaves the old binary, often at the same release, and keeps its retry.
-_php_post_upgrade_marker() {
+# Record PHP $1 as built in this run when this build replaced the binary (its
+# inode differs from $2, the one before the build: dpkg and make install both
+# write a new file and rename it into place) and the new binary runs and
+# reports the wanted version. A force (an operator's, a full reinstall, the
+# first run after a major OS upgrade) then does not build that version again
+# in the same run; the record starts again where a major OS upgrade step
+# starts or ends. A failed build leaves the old binary, often at the same
+# release: it drops the version from the record, so it keeps its retry. In the
+# run that follows a major OS upgrade the record is also kept as a marker file.
+_php_note_build() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _php_post_upgrade_marker $1"
+    _msg "PROC: _php_note_build $1"
   fi
   local _mrk="${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info"
   local _itd
   local _ino
-  [ -e "/root/.run_post_major_os_upgrade.info" ] || return 0
+  local _v
+  local _keep=""
   _itd=$(/opt/php$1/bin/php -v 2>/dev/null | grep -E 'PHP [758]' | awk '{print $2}')
   _ino=$(stat -c %i "/opt/php$1/bin/php" 2>/dev/null)
   if [ -n "${_PHP_VERSION}" ] && [ "${_itd}" = "${_PHP_VERSION}" ] \
     && [ -n "${_ino}" ] && [ "${_ino}" != "${2}" ]; then
-    touch "${_mrk}"
+    _PHP_BUILT_IN_RUN="${_PHP_BUILT_IN_RUN} $1"
+    if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
+      touch "${_mrk}"
+    fi
   else
-    rm -f "${_mrk}"
+    for _v in ${_PHP_BUILT_IN_RUN}; do
+      [ "${_v}" = "$1" ] || _keep="${_keep} ${_v}"
+    done
+    _PHP_BUILT_IN_RUN="${_keep}"
+    if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
+      rm -f "${_mrk}"
+    fi
   fi
 }
 
@@ -2129,7 +2142,7 @@ _install_php_multi() {
     rm -f /etc/init.d/php$1-fpm*
     cp -af ${_locCnf}/php/php$1-fpm /etc/init.d/php$1-fpm
     chmod 755 /etc/init.d/php$1-fpm
-    _php_post_upgrade_marker "$1" "${_binIno}"
+    _php_note_build "$1" "${_binIno}"
     _mrun "update-rc.d php$1-fpm defaults"
   else
     _msg "WARN: Building PHP ${_PHP_VERSION} failed!"
@@ -2755,6 +2768,7 @@ _check_php_rebuild() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_php_rebuild $1"
   fi
+  local _ownWhy=NO
 
   _if_to_do_fix
 
@@ -2770,6 +2784,7 @@ _check_php_rebuild() {
       _msg "INFO: Upgrade needed from PHP ${_PHP_ITD} to ${_PHP_VERSION}"
     fi
     _PHP_FORCE_REINSTALL=YES
+    _ownWhy=YES
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: PHP version ${_PHP_VERSION} already installed"
@@ -2782,6 +2797,7 @@ _check_php_rebuild() {
       _msg "INFO: PHP ${_PHP_ITD} uses incorrect OpenSSL, forcing rebuild"
     fi
     _PHP_FORCE_REINSTALL=YES
+    _ownWhy=YES
   fi
 
   if [ "$1" -gt 80 ] \
@@ -2794,6 +2810,7 @@ _check_php_rebuild() {
         _msg "INFO: PHP ${_PHP_ITD} uses incorrect ICU, forcing rebuild"
       fi
       _PHP_FORCE_REINSTALL=YES
+      _ownWhy=YES
     fi
   fi
 
@@ -2824,6 +2841,7 @@ _check_php_rebuild() {
         _msg "INFO: PHP $1 has missing mysql drivers, forcing rebuild"
       fi
       _PHP_FORCE_REINSTALL=YES
+      _ownWhy=YES
     else
       _PHP_DRIVERS_BUILD=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2852,10 +2870,15 @@ _check_php_rebuild() {
       fi
       _PHP_FORCE_REINSTALL=NO
     else
-      # A marker skips only a version already at the wanted release: a new
-      # release is never held back by it.
-      if [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ] \
-        || [ "${_PHP_ITD}" != "${_PHP_VERSION}" ]; then
+      # A version not at the wanted release is always built. In the run after
+      # a major OS upgrade its marker says it was already rebuilt there. Else a
+      # version built earlier in this run (recorded by _php_note_build) is not
+      # built again for a force alone; its own reason (an OpenSSL or ICU
+      # mismatch or a missing mysqli driver found now) still builds it.
+      if [ "${_PHP_ITD}" != "${_PHP_VERSION}" ] \
+        || { [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ] \
+          && { [ "${_ownWhy}" = "YES" ] \
+            || [[ " ${_PHP_BUILT_IN_RUN} " != *" $1 "* ]]; }; }; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: PHP ${_PHP_ITD} rebuild happening now..."
         fi
@@ -3487,9 +3510,10 @@ _php_check_if_rebuild() {
     if [[ ! "${_isSodium}" =~ "with-sodium" ]] \
       || [ -z "${_isSodium}" ]; then
       _msg "INFO: PHP rebuild required to add Sodium support..."
-      # A force already set rebuilds every version in the full pass that
-      # always follows this check: a pass over some of them now would build
-      # those twice, and ending it on NO would cancel the force for the rest.
+      # A force already set rebuilds, in the full pass that always follows
+      # this check, every version not already built in this run: a pass over
+      # some of them now would build those twice, and ending it on NO would
+      # cancel the force for the rest.
       if [ "${_PHP_FORCE_REINSTALL}" != "YES" ] \
         && [ "${_FULL_FORCE_REINSTALL}" != "YES" ]; then
         _PHP_FORCE_REINSTALL=YES
