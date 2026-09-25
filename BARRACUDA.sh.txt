@@ -361,10 +361,12 @@ if pgrep -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)' >/dev/nul
   pkill -9 -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)'
   /usr/bin/dpkg --configure -a &> /dev/null
 fi
+_usrmerge_failed_guard
 _sources_list_update
 _basic_packages_install_on_init
 _more_packages_install_on_init
 _run_aptitude_full_upgrade
+_usrmerge_enforce
 
 
 ###
