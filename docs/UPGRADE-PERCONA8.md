@@ -135,8 +135,8 @@ The Percona package upgrade therefore holds the maintenance marker
 `/run/boa_sql_maintenance.pid` for the whole package window, and while the
 marker exists the watchdog exits before any check. A marker older than four
 hours is treated as abandoned and removed, and `/run` is tmpfs, so a reboot
-clears it too. `xoct` and `xmass` hold the same marker around their own
-database work (see [MIGRATE-VERSIONS.md](MIGRATE-VERSIONS.md)).
+clears it too. `xmass`, `xoct` and `xcopy` hold the same marker around their
+own database work (see [MIGRATE-VERSIONS.md](MIGRATE-VERSIONS.md)).
 
 You do not manage the marker by hand. Do not restart cron or force the watchdog
 to run during an upgrade expecting it to help. If an upgrade dies hard and you

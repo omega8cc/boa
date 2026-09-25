@@ -51,7 +51,7 @@ _check_mysql_version() {
 # Our own marker (written with $$ by _install_with_aptitude_sql) and a
 # marker whose writer has died must not suppress the recovery start in the
 # bounded waits below; an EMPTY fresh marker keeps its historical "held"
-# meaning (xoct/xmass/mysql_repair still write it bare), and a stale one
+# meaning (xmass and mysql_repair still write it bare), and a stale one
 # (>240 min) is ignored the same way the watchdog ignores it.
 _sql_maint_foreign() {
   [ -e "/run/boa_sql_maintenance.pid" ] || return 1
@@ -81,7 +81,7 @@ _check_sql_running() {
   # (a bare `service mysql start` is a no-op on a stale pidfile), skipped
   # while a fresh SQL-maintenance marker is held by another operation. The
   # marker is deliberately NOT removed on abort here: this generic wait
-  # cannot know who owns it (xoct/xmass/mysql_repair hold it too) and the
+  # cannot know who owns it (xoct/xcopy/xmass/mysql_repair hold it too) and the
   # watchdog age-reaps a stale one on its own.
   [ -e "/root/.proxy.cnf" ] && return 0
   local _dead=0
