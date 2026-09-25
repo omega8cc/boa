@@ -600,7 +600,10 @@
       ClamAV, Pure-FTPd) now match their binaries on a merged /usr too; in
       enforce mode on a merged /usr they refused every exec they meant to
       allow.
-    * PhpRedis is built with lzf on a split /usr as well.
+    * PhpRedis is built with lzf again on PHP 7.4 and newer: its 6.3.0
+      source comes without the bundled liblzf, so the build now uses the
+      system liblzf, which BOA already installs. A split /usr finds the
+      library as well.
     * The build-tree purge switch (_DEBUG_PURGE_BUILD_TREE=YES or
       /root/.debug-purge-build-tree.cnf) now also clears the hostmaster
       sources in /opt/tmp/make_local, which an upgrade otherwise reuses:
