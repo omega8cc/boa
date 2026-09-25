@@ -447,6 +447,15 @@ _satellite_make
 _satellite_if_instance_group post
 _satellite_queue_dbvars_site_verifies
 _satellite_post_cleanup
+
+
+###
+### Turn AppArmor back on in the mode barracuda keeps (an older lib tree has
+### no such step and leaves it off, as before)
+###
+if declare -F _turn_on_apparmor_after_octopus > /dev/null 2>&1; then
+  _turn_on_apparmor_after_octopus
+fi
 exit 0
 
 

@@ -631,6 +631,13 @@
       ClamAV, Pure-FTPd) now match their binaries on a merged /usr too; in
       enforce mode on a merged /usr they refused every exec they meant to
       allow.
+    * AppArmor in enforce or complain mode is on again when a barracuda
+      upgrade ends: the pass loaded the profiles before its last MySQL
+      check, which unloads them all, so the box ran unconfined until it
+      was rebooted.
+    * An octopus upgrade turns AppArmor back on in the chosen mode when it
+      ends: it was left off until the next barracuda upgrade, and a reboot
+      in between loaded every profile in complain mode only.
     * PhpRedis is built with lzf again on PHP 7.4 and newer: its 6.3.0
       source comes without the bundled liblzf, so the build now uses the
       system liblzf, which BOA already installs. A split /usr finds the
