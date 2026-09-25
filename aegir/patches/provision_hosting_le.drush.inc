@@ -29,7 +29,9 @@ function drush_provision_hosting_le_post_provision_verify() {
       $real_name = $main_name = d()->uri;
     }
 
-    if (d()->redirection) {
+    // A subdirectory address (example.com/site1) is a path, not a name a
+    // certificate can carry: such a site keeps its own name here.
+    if (d()->redirection && strpos(d()->redirection, '/') === FALSE) {
       drush_log('[hosting_le] This sitename redirection target is ' . d()->redirection, 'info');
       $main_name = d()->redirection;
       if ($is_boa) {
@@ -265,13 +267,15 @@ function drush_provision_hosting_le_post_provision_verify() {
             if ($is_wildcard) {
               if (!preg_match("/\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/", $alias) &&
                 !preg_match("/\.(?:nodns)\./", $alias) &&
+                strpos($alias, '/') === FALSE &&
                 !strpos($alias, $main_name)) {
                 $alt_names .= ' --domain ' . str_replace('/', '.', $alias);
               }
             }
             else {
               if (!preg_match("/\.(?:host8|boa|aegir|o8)\.(?:biz|io|cc)$/", $alias) &&
-                !preg_match("/\.(?:nodns)\./", $alias)) {
+                !preg_match("/\.(?:nodns)\./", $alias) &&
+                strpos($alias, '/') === FALSE) {
                 $alt_names .= ' --domain ' . str_replace('/', '.', $alias);
               }
             }
@@ -279,9 +283,14 @@ function drush_provision_hosting_le_post_provision_verify() {
         }
       }
       else {
-        if (!empty(d()->aliases)) {
-          $alt_names = implode(' --domain ', str_replace('/', '.', d()->aliases));
-          $alt_names = ' --domain ' . $alt_names;
+        $names = array();
+        foreach ((array) d()->aliases as $alias) {
+          if (strpos($alias, '/') === FALSE) {
+            $names[] = $alias;
+          }
+        }
+        if (!empty($names)) {
+          $alt_names = ' --domain ' . implode(' --domain ', $names);
         }
       }
       drush_log('[hosting_le] ALT names:' . $alt_names, 'info');

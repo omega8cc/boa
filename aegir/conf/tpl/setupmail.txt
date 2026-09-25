@@ -59,7 +59,7 @@ Two things to know before it will open for you:
 
 1. It's kept closed to the internet. To let yourself in, first connect over SSH or SFTP (port 22) with your dragon.ftp login and keep that session open; the server notices your address within a couple of minutes and unlocks the page for it. Once your last SSH session closes, the door shuts again a couple of minutes later, so stay connected while you work. An FTPS connection on port 21 does not unlock it. If you can't use SSH from where you are, ask your host's support to allow your address instead. And on a brand-new server, give it a little while to finish setting itself up before the address answers at all.
 
-2. It has no password of its own. You log in with one site's own database name, user and password, which BOA generated for you when it built the site; read them from that site's drushrc.php file (platforms/<platform>/sites/<yourdomain>/drushrc.php).
+2. It has no password of its own. You log in with one site's own database name, user and password, which BOA generated for you when it built the site; read them from that site's drushrc.php file (platforms/<NNN>/<platform>/<yourdomain>/drushrc.php).
 
 The full walkthrough:
 

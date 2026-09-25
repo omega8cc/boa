@@ -3557,6 +3557,7 @@ _barracuda_cnf() {
       wait
     fi
     _convert_etcboa_markers_to_cnf
+    _sql_series_never_downgrade
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Reading your ${_barCnf} config file"
@@ -4382,6 +4383,8 @@ _barracuda_cnf() {
       fi
     fi
 
+    _sql_series_never_downgrade
+
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
       _if_hosted_sys
       if [ "${_hostedSys}" != "YES" ]; then
@@ -5062,6 +5065,18 @@ _php_install_deps() {
       _mrun "${_INSTAPP} ${_PKG}"
     fi
   done
+
+  # From libheif 1.17 (trixie/excalibur) the AV1 encoder is a separate plugin
+  # that libheif only recommends, and recommends are never installed here:
+  # without it ImageMagick, and so Imagick, reads AVIF but cannot write it.
+  # Keyed to the installed libheif1 (pulled in by libmagickwand-dev above), so
+  # a build with the encoder built in, or a newer one merely offered by an
+  # enabled backports suite, is never touched.
+  if ! _pkg_installed "libheif-plugin-aomenc" \
+    && dpkg-query -W -f='${Recommends}' libheif1 2>/dev/null \
+      | grep -q 'libheif-plugin-aomenc'; then
+    _mrun "${_INSTAPP} libheif-plugin-aomenc"
+  fi
 
   if [ "${_OS_CODE}" = "excalibur" ] \
     || [ "${_OS_CODE}" = "daedalus" ] \

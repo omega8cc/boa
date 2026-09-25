@@ -20,8 +20,10 @@ For full-server migrations where Percona versions match, consider
 
 ## Prerequisites
 
-- Both servers running the same BOA release (minor version differences are
-  usually fine; major platform gaps are not).
+- Both servers running the same complete BOA release: a full barracuda AND
+  octopus run on the older one, never `system` alone. xoct does not check
+  this; a target missing a central-map nginx variable that a newer release
+  introduced fails the box-wide config test and takes down every migrated site.
 - Root SSH access from source to target (`xmass pre-mig` or manual key
   exchange).
 - No existing Octopus instance required on target — `xoct create` provisions it.
@@ -126,7 +128,7 @@ xoct pretransfer o1 target-ip
 
 `reset-state` replaces the hand-typed `rm -f` lines. It clears
 `src/*.sql` (including `prev_hostmaster.sql`), the
-`exported`/`transferred`/`imported`/`proxied` pid stamps, the export- and
+`exported`/`transferred`/`imported`/`proxied`/`proxy-failed` pid stamps, the export- and
 import-failure latches (`log/export_failed.pid`, `log/import_failed.pid`)
 and the recorded import panel database (`log/panel_db.txt`), which is also what a **chained**
 migration needs — a box that was once a target keeps a stale dump, an
@@ -378,6 +380,13 @@ un-converts the proxy — the old box then resumes serving its own stale copy.
 `proxied.pid` instead of handing back the dispatcher that would undo the
 proxy; the same reasoning governs a later restore, see
 [PX0-XTRIM.md](PX0-XTRIM.md).
+
+An account whose conversion failed at an `xmass` cutover carries
+`log/proxy-failed.pid`, which keeps its dispatcher parked, makes octopus skip
+it and holds back the usage notices until the repair; the successful `proxy`
+run that repairs it removes the marker. It never travels with a transfer, an
+`import` clears one that did, and `reset-state` clears it with the other
+migration stamps.
 
 The completion reload is configtest-gated: if `nginx -t` fails, a first
 conversion reverts **both halves** of every vhost it rewrote — the plain HTTP

@@ -44,17 +44,20 @@ name, so each site's variables are unique in the shared `http{}`.
 ### Grav 2 and Textpattern sites
 
 Both keep their admin surface outside `/user` and `/admin`, and both vhost templates
-include the two fragments unchanged, so the generator widens the `$uri` map itself — by
-exactly one line, for a site whose platform root positively reads as one of them:
+include the two fragments unchanged, so the generator writes their `$uri` map itself, for a
+site whose platform root positively reads as one of them:
 
 ```
-Grav 2        ~*^/+api(?:/|$) 1;        (unless the record carries api-open)
-Textpattern   ~*^/+txpadmin(?:/|$) 1;
+Grav 2        ~*^/+admin(?:/|$) 1;
+              ~*^/+api(?:/|$) 1;        (unless the record carries api-open)
+Textpattern   ~*^/+(?:user|admin)(?:/|$) 1;
+              ~*^/+txpadmin(?:/|$) 1;
 ```
 
-No variable is added and no include changes, so nothing has to be re-verified: the
-emitted-directive version bump regenerates every fragment on the next pass, and a Drupal or
-Backdrop site's fragment comes out byte-identical.
+Grav's `/user` is its public theme and media tree (`/user/themes/…`, served to every
+visitor, with the account and config folders already refused), so a Grav map gates `/admin`
+only. No variable is added and no include changes; the emitted-directive version bump
+regenerates every fragment of an instance with a control file on the next pass.
 
 - **Why `/api` on Grav 2.** Admin2 at `/admin` is only a shell; every login, account, page,
   media and configuration operation runs through the API plugin at `/api/v1` (JWT from
@@ -192,11 +195,15 @@ file.
 The copies still follow their sites' names then: a new alias is covered, a name that
 moved to another site is released, and a site with no name of its own left keeps an inert
 copy.
+
 They share the instance's
 change-gate and configtest, but are never backed up: a failed configtest or reload drops
 them rather than restoring an older set, which could still claim a name that has since moved
 to another site. A site with its own certificate has its own `:443` server block, which
 includes the vhost fragments directly and never passes through the front.
+
+A site whose control file was deleted before the front copies existed gets one written from
+its frozen map, so HTTPS applies the list and paths HTTP already applies.
 
 ## Interaction with realip
 
@@ -233,7 +240,16 @@ difference is scope (whole-site vs the admin surface).
 ## Caveats
 
 - **Admin surface only.** The gate covers the `/user` and `/admin` URL paths (and their
-  sub-paths). It is not a whole-site ACL — use `ip_access` for that.
+  sub-paths) on Drupal, Backdrop and Textpattern; Grav gates `/admin` (and `/api`). The
+  match is anchored at the start of the path, so a multilingual site's language-prefixed
+  forms (`/de/user`, `/pt-br/admin`) are not covered. A prefix pattern was weighed and
+  left out: it would also gate a parent site's subdirectory sites (`/pl/user`), API login
+  endpoints (`/api/user/login`) and content paths shaped like a prefix. It is not a
+  whole-site ACL — use `ip_access` for that.
+- **A frozen list keeps its paths.** An instance whose control file was deleted keeps
+  every site's fragments as they were: a Grav map written before the Grav `/admin` line
+  keeps the plain `/user` + `/admin` line, theme assets included, until the control file
+  exists again.
 - **Clean URLs only.** BOA enforces Drupal clean URLs, so `/user` and `/admin` arrive as the
   real `$uri`, which the match is keyed on (nginx decodes/normalises `$uri`, so the match is
   encoding- and multi-slash-safe). The legacy `?q=admin` query form is not gated at the

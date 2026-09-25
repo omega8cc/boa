@@ -51,7 +51,7 @@ _check_root
 [ ! -e "/var/log/boa/reset_no_new_password.pid" ] && exit 0
 
 # Stand down ENTIRELY during a controlled SQL maintenance window. A Percona
-# upgrade or an xmass/xoct migration deliberately stops, locks, dumps, restores
+# upgrade or an xmass/xoct/xcopy migration deliberately stops, locks, dumps, restores
 # or restarts MySQL, and ANY action from this watchdog -- auto-heal restart,
 # high-load restart, busy restart, long-query kill -- races that into a corrupt
 # xtrabackup snapshot, a broken replica, writes lost past the position an xmass

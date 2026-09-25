@@ -1403,12 +1403,22 @@ content segment (404).
   `/etc/nginx/conf.d/limit-req-zones-boa.conf`, and the consumer renders only when that file
   declares the map, so no delivery order can reference an undefined variable.
 
-The static and content chain guards apply on **full-domain vhosts only**. They are
-intentionally **not** in `subdir.tpl.php`: a subdir site legitimately serves
-`/<subdir>/sites/all/...` assets, which `$is_static_chain` would match as
-buried-under-content. The node-chain, lang-chain and amp-chain guards (which match on
-`node/<id>` repetition, language-prefix runs and the query, not asset paths) **do** apply on
-subdir vhosts.
+The static and content chain guards live in the full-domain vhost include and are **not**
+in `subdir.tpl.php`. A subdirectory site under a domain that is a site still passes through
+them, because its conf is included in that site's server block, where the include runs
+them for every path.
+
+A subdir site legitimately serves `/<subdir>/sites/all/...` assets,
+which `$is_static_chain` would match as buried-under-content, so each subdir conf clears
+that flag at server level for `/<subdir>/` followed by the same root directories the map
+lets through at a domain's root (`sites`, `modules`, `misc`, `themes`, `core` and so on),
+and the site's vhost includes the subdir confs before the shared include. Anything deeper
+under `/<subdir>/` stays guarded.
+
+The standalone server of a domain that is not a site
+carries neither chain guard. The node-chain, lang-chain and amp-chain guards (which match
+on `node/<id>` repetition, language-prefix runs and the query, not asset paths) **do**
+apply on subdir vhosts.
 
 ### Print no-referer gate → 404
 
@@ -1899,7 +1909,12 @@ on the proxied path.
 
 The Textpattern vhosts and the standalone subdir server carry the ban guard themselves:
 neither pulls in the full-domain vhost include, so each restates the unconditional
-`if ($is_banned) { return 444; }` next to its fleet guard. A banned address is therefore
+`if ($is_banned) { return 444; }` next to its fleet guard, at server level. For the
+standalone subdir server that is `subdir_vhost.tpl.php`, not the copies inside the subdir
+conf's master location: nginx runs a location's `if` only for requests that end in that
+location, never for the nested ones that serve almost every request.
+
+A banned address is therefore
 dropped at nginx on those vhosts as on every other one — which is what matters on a
 Cloudflare-fronted origin, where an origin CSF ban only ever sees the edge.
 
