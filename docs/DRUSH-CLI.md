@@ -253,7 +253,9 @@ If core commands such as `drush @alias cc all` work but a contributed command li
 `drush @alias elysia-cron run somecron` is *not recognised*, the usual cause is
 running Drush in a bash shell as `oN` (root's `su -s /bin/bash - oN`) instead of as
 `oN.ftp`: the `oN` account is an Ægir backend identity, so the filter applies there. Run it
-as `oN.ftp` and the contributed commands will load. If you instead need a contributed command to run from
+as `oN.ftp` and the contributed commands will load.
+
+If you instead need a contributed command to run from
 an **Ægir backend task** (such as backend-mode cron), ask your host to enable it for
 your instance — see [SECURITY.md](SECURITY.md).
 
