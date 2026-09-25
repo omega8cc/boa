@@ -71,6 +71,11 @@ UNKNOWN one by hand), in:
   - o7
 ```
 
+An alias root is followed to the web root Ægir serves (`docroot/`, `html/` or
+`web/` when the root itself has no `index.php`), so a Composer platform registered
+with its app root is checked once, at its web root. `codebasecheck <platform-path>`
+takes the app root the same way.
+
 ## Verdicts and exit codes
 
 | Verdict  | Exit | Meaning |
