@@ -580,6 +580,15 @@
       last build failed, is still built. The library repairs still rebuild
       every version, and the record starts again after the post-upgrade
       step of the first run following a major OS upgrade.
+    * After a major OS upgrade a PHP version is no longer rebuilt again, in
+      the same run, because its FPM error log still holds the OnigEncoding
+      errors its old binary wrote. A run sweeps the logs aside at its end,
+      not after each build, so a build that replaces the binary with one
+      at the wanted release now moves that version's log aside itself,
+      under its own name, and leaves an empty log in its place. The GD and
+      freetype checks no longer rebuild a version already on the run's
+      record of built versions (see above) that still lacks them; the next
+      run checks it again.
 
     * A Composer platform registered with its app root (its Drush
       alias names the app root while its sites live under web/,
