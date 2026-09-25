@@ -4799,7 +4799,7 @@ CSFSTANDBY
     # None of the three runs on its own and every source-side verb refuses a
     # BOA box. stage2 is dual-resident and run by name on the target, so the
     # documented /usr/local/bin path stays a symlink to the fleet copy.
-    _fetch_versioned ${_optBin}/aegir2boa-preflight "${_urlHmr}/${_tBn}/aegir2boa-preflight" f98 --guard /local/bin/aegir2boa-preflight
+    _fetch_versioned ${_optBin}/aegir2boa-preflight "${_urlHmr}/${_tBn}/aegir2boa-preflight" f97 --guard /local/bin/aegir2boa-preflight
     _fetch_versioned ${_optBin}/aegir2boa-stage1 "${_urlHmr}/${_tBn}/aegir2boa-stage1" f97 --guard /local/bin/aegir2boa-stage1
     _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f95 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f96 --guard /local/bin/aptcleanup
