@@ -3542,6 +3542,21 @@ _site_socket_inc_gen() {
     if [ ! -z "${_diffFpmTest}" ]; then
       _mltFpmUpdate=YES
     fi
+    # A line the last rebuild skipped (its site, its PHP version or its pool
+    # socket did not exist yet) forces one rebuild in the pass it becomes
+    # applicable: the baseline alone kept it inert until the file changed.
+    # A line that never applies (a typo) costs three stats, no rebuild.
+    local _sN _sV
+    while read -r _sN _sV; do
+      _sN=${_sN//[^a-z0-9.-]/}
+      _sV=${_sV//[^0-9]/}
+      [ -n "${_sN}" ] && [ -n "${_sV}" ] || continue
+      if [ -x "/opt/php${_sV}/bin/php" ] \
+        && [ -e "${_dscUsr}/.drush/${_sN}.alias.drushrc.php" ] \
+        && [ -e "/run/${_USER}.${_sV}.fpm.socket" ]; then
+        _mltFpmUpdateForce=YES
+      fi
+    done <<< "$(_ltd_ctrl_read .multi-fpm-skipped.info)"
     # While a whole-server move's promotion window is open on this box (the
     # standby marker plus the fresh in-flight signal), the per-site includes
     # are left exactly as found. The rename running in that window rewrites
@@ -3563,6 +3578,7 @@ _site_socket_inc_gen() {
       # local: a bare IFS= here stayed a newline for the rest of the pass,
       # and every later "for x in ${list}" saw one word
       local IFS=$'\12'
+      _mltFpmSkip=""
       for p in ${_mltFpmBody};do
         _SITE_NAME=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
         _SITE_NAME=${_SITE_NAME//[^a-zA-Z0-9-.]/}
@@ -3579,8 +3595,17 @@ _site_socket_inc_gen() {
           && [ -e "/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
           _ltd_put_in "${_fpmPth}" "fpm_include_site_${_SITE_NAME}.inc" \
             "if ( \$main_site_name = ${_SITE_NAME} ) {"$'\n'"  set \$user_socket \"${_SOCKET_L_NAME}\";"$'\n'"}"
+        elif [ -n "${_SITE_NAME}" ] && [ -n "${_SITE_SOCKET}" ] \
+          && [ "${_SITE_NAME}" != "place.holder.dont.remove" ]; then
+          _mltFpmSkip="${_mltFpmSkip}${_SITE_NAME} ${_SITE_SOCKET}"$'\n'
         fi
       done
+      # the skipped lines, retried above on every pass until they apply
+      if [ -n "${_mltFpmSkip}" ]; then
+        _ltd_ctrl_put .multi-fpm-skipped.info "${_mltFpmSkip}"
+      else
+        _ltd_ctrl_rm .multi-fpm-skipped.info
+      fi
       _ltd_ctrl_stamp .multi-nginx-fpm.pid ""
       _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./.prev-multi-fpm.info
       _ltd_ctrl_put .prev-multi-fpm.info "${_mltFpmBody}"
