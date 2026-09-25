@@ -3656,6 +3656,18 @@ _switch_php() {
       [ -x "/opt/php${1//./}/bin/php" ]
     }
 
+    # One known version per control file (8.3 or 83), as the docs promise;
+    # anything else -- a second line, a patch level, a word -- is ignored.
+    # The reads below join the lines of a file, so without this gate
+    # '8.3' + '8.4' became '8.38.4': a pool name that deleted the account's
+    # pools in single-FPM mode and a dead default socket in multi-FPM mode.
+    _ltd_php_vrn_ok() {
+      case "${1}" in
+        8.5|8.4|8.3|8.2|8.1|8.0|7.4|7.3|7.2|7.1|7.0|5.6) return 0 ;;
+      esac
+      return 1
+    }
+
     # --- CLI portion ---
     if [ -e "${_dscUsr}/static/control/cli.info" ]; then
       # Extract numeric version from file
@@ -3663,6 +3675,10 @@ _switch_php() {
 
       # Convert shorthand versions (e.g. "83" to "8.3")
       _T_CLI_VRN="$(fix_version_format "${_T_CLI_VRN}")"
+      if [ -n "${_T_CLI_VRN}" ] && ! _ltd_php_vrn_ok "${_T_CLI_VRN}"; then
+        echo "ALRT: cli.info of ${_USER} is not one PHP version, ignored"
+        _T_CLI_VRN=""
+      fi
 
       # Define fallback chains for PHP versions
       declare -A fallback=(
@@ -3733,6 +3749,17 @@ _switch_php() {
 
       # Convert shorthand versions (e.g. "83" to "8.3")
       _T_FPM_VRN="$(fix_version_format "${_T_FPM_VRN}")"
+      if [ -n "${_T_FPM_VRN}" ] && ! _ltd_php_vrn_ok "${_T_FPM_VRN}"; then
+        echo "ALRT: fpm.info of ${_USER} is not one PHP version, ignored"
+        _T_FPM_VRN=""
+      fi
+      # An instance an earlier pass already poisoned (a joined version in its
+      # octopus.cnf) is set up again on the default version below.
+      if [ -z "${_T_FPM_VRN}" ] && [ -n "${_PHP_FPM_VERSION}" ] \
+        && ! _ltd_php_vrn_ok "${_PHP_FPM_VERSION}"; then
+        echo "ALRT: _PHP_FPM_VERSION of ${_USER} is not one PHP version, set up again on 8.4"
+        _T_FPM_VRN=8.4
+      fi
 
       # Define fallback chains for PHP-FPM versions (same as CLI)
       declare -A fpm_fallback=(
@@ -3771,7 +3798,16 @@ _switch_php() {
 
       ### Update fpm_include_default.inc if needed
       _PHP_SV=${_T_FPM_VRN//[^0-9]/}
-      [ -z "${_PHP_SV}" ] && _PHP_SV=84
+      if [ -z "${_PHP_SV}" ]; then
+        # An ignored or unresolvable fpm.info keeps the version the instance
+        # already runs, rather than moving its default pool to 8.4.
+        if _ltd_php_vrn_ok "${_PHP_FPM_VERSION}" \
+          && [ -x "/opt/php${_PHP_FPM_VERSION//./}/bin/php" ]; then
+          _PHP_SV=${_PHP_FPM_VERSION//./}
+        else
+          _PHP_SV=84
+        fi
+      fi
       _FMP_D_INC="${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
 
       if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
