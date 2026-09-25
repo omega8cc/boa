@@ -560,6 +560,40 @@
 
 @=> Important Fixes
 
+    * An fpm.info or cli.info that holds more than one PHP version (or
+      anything else than one version) is ignored again, as the docs say:
+      the two lines were joined into a version such as 8.38.4, which in
+      single-FPM mode deleted the account's pools and was written back to
+      its octopus.cnf and fpm.info, and in multi-FPM mode pointed the
+      default pool at a socket that does not exist. An instance already
+      carrying such a version is set up again on 8.4.
+    * A multi-fpm.info line whose site was not installed yet, or whose PHP
+      version or pool was not ready, is now retried every three minutes
+      until it applies (the skipped lines are listed in
+      static/control/.multi-fpm-skipped.info); it used to stay inert until
+      the file was edited again.
+    * Speed Booster no longer replays a cached 5xx while the site keeps
+      failing: an error is cached for one second and refreshed, as
+      designed, and a 5xx never keeps the page's cache lifetime (up to an
+      hour for crawlers). A site whose PHP is down or times out still gets
+      the last good copy.
+    * On Drupal 8+ and Backdrop, the paths Speed Booster never caches
+      (/user, login, cart, checkout and the others) are no longer
+      microcached for anonymous visitors: the fallback to index.php erased
+      their skip.
+    * The Drupal 10+ platform lock no longer patches core when the Drush 8
+      psr/log template of the account is missing: it stops before the
+      patches, as for any overlay that cannot land, instead of leaving a
+      codebase the web cannot serve.
+    * The AppArmor profiles (PHP, PHP-FPM, lshell, MySecureShell, node,
+      ClamAV, Pure-FTPd) now match their binaries on a merged /usr too; in
+      enforce mode on a merged /usr they refused every exec they meant to
+      allow.
+    * PhpRedis is built with lzf on a split /usr as well.
+    * The build-tree purge switch (_DEBUG_PURGE_BUILD_TREE=YES or
+      /root/.debug-purge-build-tree.cnf) now also clears the hostmaster
+      sources in /opt/tmp/make_local, which an upgrade otherwise reuses:
+      a purged run rebuilt the control panel from the previous release.
     * An account whose client has a platform developer login (a client
       named in _LTD_PLATFORM_CLIENTS, login <account>.<client>-dev) no
       longer fails its per-instance group step on every octopus upgrade
