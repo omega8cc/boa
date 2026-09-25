@@ -124,6 +124,8 @@ carries too, stays out, so the front never applies one site's list to another si
   remove a site's line or empty the file. The copies still follow their sites' names: a
   new alias is covered, a name that moved to another site is released, and a site with
   no name of its own left keeps an inert copy.
+- A site whose control file was deleted before the front copies existed gets one written
+  from its frozen vhost fragment, so HTTPS applies the list HTTP already applies.
 - The master's `/var/aegir/control/ip/access.txt` is different: when it is missing, the
   generator writes the default `sqladmin.com 192.168.1.1` record and regenerates the
   master context from it, so its other sites' fragments and copies are pruned.

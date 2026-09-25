@@ -757,9 +757,10 @@ _hostmaster_dr_up() {
   [ -d "/drush" ] && [ ! -L "/drush" ] && [ -f "/drush/drush.php" ] \
     && [ -f "/drush/drush.info" ] && [ -f "/drush/includes/boa_extension_filter.inc" ] && rm -rf /drush
   [ -d "/backups/system" ] && rm -rf /backups/system/drush-pre-* &> /dev/null
+  local _drCpFail=""
   if [ -f "/opt/tools/drush/8/drush/drush.php" ]; then
     mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
-    cp -af /opt/tools/drush/8/drush ${_ROOT}/
+    cp -af /opt/tools/drush/8/drush ${_ROOT}/ || _drCpFail=YES
   else
     mv -f drush ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} &> /dev/null
     _get_dev_ext "drush-${_DRUSH_VERSION}.tar.gz"
@@ -774,6 +775,16 @@ _hostmaster_dr_up() {
     chmod 755 ${_ROOT}/drush/examples/drush.wrapper
     chmod 755 ${_ROOT}/drush/examples/git-bisect.example.sh
     chmod 755 ${_ROOT}/drush/examples/helloworld.script
+  fi
+  ### A failed copy or download left the master without Drush: put the tree
+  ### rotated aside above back, rather than run without one until next pass.
+  ### A copy that fails part way still leaves a drush.php behind, so its own
+  ### status counts too; a failed download leaves no tree.
+  if [ -n "${_ROOT}" ] \
+    && { [ -n "${_drCpFail}" ] || [ ! -f "${_ROOT}/drush/drush.php" ]; } \
+    && [ -f "${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW}/drush.php" ]; then
+    rm -rf ${_ROOT}/drush
+    mv -f ${_ROOT}/backups/system/drush-pre-${_DISTRO}-${_NOW} ${_ROOT}/drush
   fi
 }
 

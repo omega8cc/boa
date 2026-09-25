@@ -15,19 +15,20 @@ On hosted BOA contact your host if you need any legacy PHP installed again.
 Drupal 11 needs MySQL 8, on BOA a box on Percona 8.4. On a Percona 5.7 box the
 Octopus upgrade skips every requested Drupal 11 symbol and says so in its log,
 and a Drupal 11 site Install stops with that one reason before the codebase is
-touched. Move the box first: `barracuda up-<tree> system percona-8.0`, then
-`barracuda up-<tree> system percona-8.4`, after `codebasecheck` says READY. A new
-server avoids the move by installing with the `percona-8.4` argument (docs/INSTALL.md).
+touched. Upgrade the box's Percona in place first: `barracuda up-<tree> system
+percona-8.0`, then `barracuda up-<tree> system percona-8.4`, after `codebasecheck`
+says READY (docs/UPGRADE-PERCONA8.md). A new server skips the upgrade by installing
+with the `percona-8.4` argument (docs/INSTALL.md).
 
 - [Commerce 5.1.0](https://drupal.org/project/commerce) (11.4.7)
 - [Drupal 11.1.10](https://drupal.org/project/drupal/releases/11.1.10)
 - [Drupal 11.2.14](https://drupal.org/project/drupal/releases/11.2.14)
 - [Drupal 11.3.17](https://drupal.org/project/drupal/releases/11.3.17)
 - [Drupal 11.4.7](https://drupal.org/project/drupal/releases/11.4.7)
-- [Drupal CMS 2.1.4](https://drupal.org/project/cms) (11.4.7)
+- [Drupal CMS 2.1.6](https://drupal.org/project/cms) (11.4.7)
 - [farmOS 4.0.6](https://drupal.org/project/farm) (11.3.17)
 - [LocalGov 4.0.5](https://drupal.org/project/localgov) (11.4.7)
-- [OpenCulturas 3.0.7](https://drupal.org/project/openculturas) (11.3.17)
+- [OpenCulturas 3.0.8](https://drupal.org/project/openculturas) (11.3.17)
 - [Thunder 8.4.4](https://drupal.org/project/thunder) (11.4.7)
 - [Varbase 11.0.0](https://drupal.org/project/varbase) (11.4.6)
 
@@ -191,3 +192,11 @@ DE2 DX5 SOC UC7
 ```
 ALL
 ```
+
+# Republished Built-in Platforms
+
+A built-in platform is fetched from the mirror only when its directory is missing. When the mirror republishes a platform's tarball under the same name, for example with a security fix, every Octopus upgrade checks it. An idle platform (no site directory, no tenant file in `sites/all`, no site or pending task for it in the control panel) is fetched again beside the old tree, swapped in and verified. Only a newer copy on the mirror counts, so a CDN edge still serving an older tarball never swaps a platform back.
+
+A platform in use is left as it is, and the upgrade log says so once per republished copy. To pick up the fix, migrate its sites to a platform that has it. What each platform was fetched from is recorded in `~/distro/NNN/.boa-tarball/`; a replaced tree that turned out to hold a site or tenant files is kept in `~/distro/NNN/.boa-refresh/` and reported on every upgrade until it is dealt with.
+
+Platforms fetched before this was added have no record. For each idle one, the first upgrade that runs fetches its tarball once: a tree that still matches it is only recorded, and one that does not (every verified Drupal 8+ tree) is refreshed.

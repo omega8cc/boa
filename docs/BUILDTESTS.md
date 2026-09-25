@@ -16,15 +16,20 @@ handles the per-distro quirks (see Notes), packages, and publishes. Run it as ro
 
 ```sh
   staticbuild check              # report the latest upstream versions a build would pull
-  staticbuild all                # build every distro + core, package, publish
+  staticbuild all [name ...]     # build every distro, core and the Backdrop family, package,
+                                 # publish; or only the named build targets
   staticbuild build [name ...]   # build all, or only named targets
-  staticbuild package            # clean + tar (cores keep core/profiles, distros strip)
-  staticbuild distribute         # copy tarballs to /var/www/static/{distro,core,dev/{dev,lts,pro}}
+  staticbuild package [name ...] # clean + tar every platform in the day dir, or only the named
+                                 # (cores keep core/profiles, distros strip)
+  staticbuild distribute [name ...]
+                                 # copy the day dir's tarballs, or only the named, to
+                                 # /var/www/static/{distro,core,dev/{dev,lts,pro}}
                                  # (a same-name distro or vanilla core tarball whose lock changed
-                                 #  replaces the published one only when it fixes advisories;
-                                 #  otherwise it is refused and the run ends with exit 3)
-  staticbuild -O distribute <platform> ...
-                                 # the same, overwriting the named platforms' published tarballs
+                                 #  replaces the published one unless it adds advisories or
+                                 #  cannot be checked for them; then it is refused and the
+                                 #  run ends with exit 3)
+  staticbuild -O distribute <name> ...
+                                 # only the named, overwriting their published tarballs
   staticbuild catalogue [tree]   # audit each tree's PUBLISHED catalogue against the distro mirror
                                  # (PRODUCER=none: hand-published, nothing here rebuilds it; a tree that
                                  #  cannot be read is INCONCLUSIVE and exits non-zero, never "0 missing")
@@ -39,23 +44,55 @@ script. If a distro fails to build on the newest core, it is retried on progress
 older core minors and the newest that works is kept. The manual steps below document
 what it does.
 
-Options precede the action: `-d MM-DD`, `-u USER`, `-f`, `-C`, `-O` (with `distribute`
-only), and `--debug`. By default `build`, `package`, `distribute`, `all` and the family
+Options precede the action: `-d MM-DD`, `-u USER`, `-f` (with `build` and `all`; it
+rebuilds, so `package` and `distribute` refuse it), `-C`, `-O` (with `distribute` only),
+and `--debug`.
+
+The names after `package` and `distribute` keep the run to what they select, so one
+rebuilt platform goes out without touching the rest of the day dir:
+
+```sh
+  staticbuild -f build ezcontent opigno
+  staticbuild package ezcontent opigno
+  staticbuild distribute ezcontent opigno
+  staticbuild -f all ezcontent opigno     # the same three steps in one run
+```
+
+A name is a build target, which takes everything that target builds (`cores` every
+vanilla core; `backdrop` its core, its compat tarball and, on `distribute`, the
+`backdrop.txt` stamp), or one platform alone as its summary row names it
+(`<name>-<version>-<core>`, `.tar.gz` optional; packaging a Backdrop platform also
+re-makes its compat tarball). `all` takes build targets only.
+
+Each name must match a platform directory (`package`) or a tarball (`distribute`) in
+the day dir, or the run stops before anything is packaged or copied. `bee`,
+`backdrop-drush-extension`, `redis_backdrop` and `webform_backdrop` are tarred by their
+own build, so `package` has nothing for them. `grav`, `txp` and the version-less
+compat tarballs are never names here: the Grav and Textpattern actions publish the
+version stamp last, and a compat tarball goes out only with its platform and stamp.
+
+By default `build`, `package`, `distribute`, `all` and the family
 actions print a header naming the run's log and then **one row per platform** (build
-result, advisories left and fixed, what happened on the mirror, a note), plus a footer
-for anything refused or failed with the command or the log lines to act on. Composer,
-git and tar output, every advisory id and the lock hashes go to the log under
-`/var/backups/reports/staticbuild/<user>/<MM-DD>/` (root only); `--debug` streams them
-instead.
+result, advisories left and fixed, what happened on the mirror, and a two- or
+three-word note only when the row needs attention, such as `adds advisories` or
+`patch skipped`), plus a footer with the command for refused tarballs, the files a CDN
+purge still needs (see "CDN purge after a republish") and the end of a failed build's
+log.
+
+Composer, git and tar output, every advisory id and the lock hashes
+go to the log under `/var/backups/reports/staticbuild/<user>/<MM-DD>/` (root only);
+`--debug` streams them instead.
 
 The two pinned catalogue platforms, `ezcontent` (EZC) and `commerce_base` (CK2), are
 build targets too: with no upstream recipe left, each starts from its own published
 tarball (the local shelf, else the distro mirror) and only the advisory fix step
 changes it, so distribution, core and name stay and the rebuild replaces the published
-copy when it clears advisories. Their core minors are past security support, so core
-advisories remain. CK2 resolves one package from a GitHub repository; when GitHub
-refuses anonymous requests (rate limit), its row says so, and a GitHub token in the
-build user's Composer configuration lifts the limit.
+copy unless it adds advisories or cannot be checked for them. Their core minors are
+past security support, so core advisories remain.
+
+CK2 resolves one package from a
+GitHub repository; when GitHub refuses anonymous requests (rate limit), its row says
+so, and a GitHub token in the build user's Composer configuration lifts the limit.
 
 ### Advisories: audited, not blocked
 
@@ -69,26 +106,36 @@ Instead each build applies what fixes it can, and what shipped is recorded, twic
 - **At build time.** A finished distribution first gets a fix step: each package with
   an advisory moves to the newest release the distribution's own constraints allow, one
   package at a time with its non-root dependencies (`--with-dependencies
-  --minimal-changes`), so the core pins stay put. A move that would change Drupal core
+  --minimal-changes`), so the core pins stay put.
+
+  A move that would change Drupal core
   is put back (a newer core is a new platform name, a catalogue move with a BOA
   release); the build's distribution package and any module it patches by hand are
-  left alone; the result installs once, and if it does not, the lock as built goes back
-  and is reinstalled. The fixed amazee.io provider releases declare `ext-pdo_pgsql`, so
+  left alone; the result installs once, and if it does not, the build fails and the
+  published copy stays. The fixed amazee.io provider releases declare `ext-pdo_pgsql`, so
   that one platform requirement is ignored, as for varbase.
+
+  Then every package the tree's `vendor/composer/installed.json` lists must be on disk.
+  Composer's patch plugin can remove a package to patch it again, and a later partial
+  Composer run never puts it back (EzContent lost `entity_browser` and `yoast_seo` after
+  its fix step, Opigno `calendar` and `h5p` after its `drush/drush` require). A missing
+  package is installed again from the lock in the tree's own dev scope; one still
+  missing fails the build.
 - Every finished distribution and vanilla core is then audited (`composer audit
   --locked`, never fatal) and the report is written beside its tarball as
   `~/static/MONTH-DAY/<platform>.advisories`: the count, one line per finding (id,
   package, locked version, CVE, link), a closing line on require-dev, and what the fix
-  step moved and could not move, with the reason. The summary row shows the count left,
-  how many the build fixed and the packages still affected. An audit that cannot run
-  (no lock, an advisory source unreachable) is reported the same way and loudly, and
-  the build still succeeds.
+  step moved and could not move, with the reason. The summary row shows the count left
+  and how many the build fixed. An audit that cannot run (no lock, an advisory source
+  unreachable) marks the row `audit failed`, and the build still succeeds.
 - **On the published set.** `staticbuild advisories [tree ...]` reads every catalogue
   entry of each published tree: the distributions (the list `staticbuild catalogue`
   checks, fetched from `distro/`) and the Drupal 9, 10 and 11 core platforms
   (`DL9`, `DX*`, `DE*`, fetched from `core/`). It pulls `composer.lock` and
   `vendor/composer/installed.json` out of each published tarball's stream and audits
-  them against today's advisories, since advisories keep arriving after a build. It
+  them against today's advisories, since advisories keep arriving after a build.
+
+  It
   prints one row per tarball with the trees that list it and its advisory count; each
   tarball is audited once per run, and `--debug` adds every advisory id under its row.
   The Drupal 6/7 cores are BOA's own forks, outside Composer, and are not audited here.
@@ -98,7 +145,9 @@ Both audits run on a disposable copy of the platform's lock, never inside the
 platform. The copy's `composer.json` carries nothing of the platform's: no scripts
 (Composer runs a composer.json's `init` and `pre-command-run` scripts even for
 `audit`), no config (ignore lists, `cache-dir`), no repositories (a `packagist.org`
-false entry would hide advisories). It declares only `https://packages.drupal.org/8`,
+false entry would hide advisories).
+
+It declares only `https://packages.drupal.org/8`,
 because drupal.org's **contrib** advisories reach Composer only through that
 repository: a lock audited against Packagist alone reports none of them (measured with
 `drupal/entity_browser` 2.15.0 and SA-CONTRIB-2026-094). The audit runs with
@@ -127,15 +176,18 @@ By hand, the same audit of a built platform is:
   cd /tmp/audit && composer audit --locked --no-plugins --no-scripts    # add --no-dev when require-dev was not installed
 ```
 
-### Same-name respins: only a fix replaces a published platform
+### Same-name respins: a changed lock replaces unless it adds advisories
 
 A box fetches a catalogue platform only while its directory is absent, so a tarball
 republished under the same name with a different lock reaches new installs and never
-the boxes that already hold that platform. A same-name tarball whose lock changed
-therefore replaces the published one only when it **fixes advisories**: distribute
-audits both locks against today's advisories, and the new one must carry fewer and none
-the published one lacks. Every other lock change is refused. Site owners who need a fix
-on a platform already on their box rebuild their own platform in `~/static`.
+the boxes that already hold that platform.
+
+A same-name tarball whose lock changed
+replaces the published one unless it **adds advisories**: distribute audits both locks
+against today's advisories, and the new one is refused when it carries an advisory the
+published one lacks, or when either audit cannot finish or be compared. A lock that
+clears advisories, or carries the same ones, replaces. Site owners who need a fix on a
+platform already on their box rebuild their own platform in `~/static`.
 
 `staticbuild distribute` enforces it for every Composer-built tarball: the
 distributions on `distro/` and the vanilla `drupal-*` cores on `core/`. When the shelf
@@ -143,25 +195,70 @@ already holds a tarball of the same name, it compares the sha256 of the `compose
 inside both, joined with that of a `patches.lock.json` beside it, so a respin whose
 patch list moved under an unchanged lock still differs. A patch whose content changed
 behind the same URL is not seen: varbase's `patches.lock.json` records no patch hashes,
-so a same-name varbase respin needs a deliberate look before it is published. A
-difference that is not a fix (including a lock missing on either side, or an audit
-that cannot finish) leaves the published tarball in place, logs both hashes and both
-advisory counts, and marks the row `REFUSED`, with the `-O` command below the table;
-once the other tarballs are published the run exits 3, a status of its own so a wrapper
-can tell the guard working from a fatal error (exit 1). Failed builds are reported in
-their rows and do not change the exit code. The same lock under new bytes, an ordinary
-re-tar, passes.
+so such a varbase respin passes as the same lock under new bytes.
+
+A lock that adds
+advisories, a lock missing on either side, or an audit that cannot finish or be
+compared leaves the published tarball in place, logs both hashes and both advisory
+counts, and marks the row `REFUSED`, with the `-O` command below the table; once the
+other tarballs are published the run exits 3, a status of its own so a wrapper can
+tell the guard working from a fatal error (exit 1). Failed builds are reported in their
+rows and do not change the exit code. The same lock under new bytes, an ordinary re-tar,
+passes.
 
 A deliberate same-name rebuild names what it overwrites:
-`staticbuild -O distribute <platform> ...` overwrites only those platforms' published
-tarballs, logs both lock hashes, marks the row `OVERWRITTEN`, and warns that the
-boxes which already fetched them keep the old bytes; any other changed tarball in the
-day dir is still refused. `-O` without names, names without `-O`, a name not in the
-day dir and `-O` with any other action are refused before anything is copied. The
+`staticbuild -O distribute <name> ...` publishes only the named platforms and
+overwrites their published tarballs, logs both lock hashes, marks the row
+`OVERWRITTEN`, and warns that the boxes which already fetched them keep the old bytes;
+nothing else in the day dir is copied. `-O` without names, a name that matches nothing
+in the day dir and `-O` with any other action are refused before anything is copied.
+
+The
 Backdrop, Grav and Textpattern tarballs carry no lock and are copied as before, as are
 the dev-extension and contrib shelves. Every copy onto a shelf takes only a plain file
-from the day dir (never a symlink or a FIFO) and replaces the destination rather than
-writing through a symlink already there.
+from the day dir (never a symlink or a FIFO), copies it under a temporary name and
+renames it over the destination, so a copy that fails part-way never leaves a truncated
+tarball under the published name and a symlink already there is replaced, never
+written through.
+
+The Backdrop, Grav and Textpattern stamps go out last, and only when the run put
+everything before them on the shelf, the compat tarball included (the releases that
+fetch it take the stamp as its version); otherwise the platform's row says `stamp
+held`. A temporary file left by a run that was killed mid-copy is removed by the next
+run.
+
+### CDN purge after a republish
+
+A replaced tarball keeps its name, and so do the version stamps and compat tarballs
+every release rewrites. A CDN in front of the mirrors keeps serving the previous bytes
+of such a file until its cache entry expires, so new installs behind that edge still
+get the old platform.
+
+staticbuild knows nothing about any CDN; it hands the files it
+has just written to an optional hook instead: `_PURGE_HOOK` in `/root/.staticbuild.cnf`
+is a command, its words split on whitespace with no quoting, and that file is read for
+this one setting only (the script itself is redeployed on every barracuda run, so an
+edit to it would not survive).
+
+`distribute`, `all` and the `backdrop`, `grav` and `txp` actions call it once,
+after their last copy, with the absolute path of every file the run put on a shelf with
+new bytes: new names and replaced ones alike, never an identical copy or a refused
+tarball, with the compat tarballs and stamps last. The hook is expected to wait until the mirrors
+serve the new bytes before it purges anything, since purging early only re-caches the
+old ones.
+
+With no hook set, a run that replaced a published file names it below the
+summary, by its path under the mirror webroot:
+
+```
+republished under the same name, purge at the CDN: distro/ezcontent-2.2.15-10.3.6.tar.gz
+```
+
+A new name has no older copy cached anywhere and is not named. A missing, failing or
+hung hook is reported in the same place (`purge hook not found: ...`, `purge hook
+failed (rc N)`, `purge hook timed out after 3600 s`: a hook still running after an
+hour is stopped), the replaced files are named for a purge by hand, and the exit code
+stays what the copies made it.
 
 ## What it builds (example run; versions are derived per build)
 
@@ -169,10 +266,10 @@ Distributions, published to `/var/www/static/distro`:
 
 ```sh
   commerce_kickstart-5.1.0-11.4.7
-  drupal_cms_installer-2.1.4-11.4.7
+  drupal_cms_installer-2.1.6-11.4.7
   farm-4.0.6-11.3.17
   localgov-4.0.5-11.4.7
-  openculturas-3.0.7-11.3.17
+  openculturas-3.0.8-11.3.17
   openfed-13.6.7-10.6.17
   opigno_lms-3.2.7-10.6.17
   social-13.1.0-10.6.17
@@ -207,14 +304,17 @@ Five artefacts, always rebuilt at the latest upstream tag (pin any with the matc
 `_*_TAG` in the config block):
 
 - **backdrop** — Backdrop CMS core (`backdrop/backdrop`), from its latest GitHub
-  release `backdrop.zip`. Repackaged versioned as `backdrop-<ver>.tar.gz` (extracts
+  release `backdrop.zip`.
+
+  Repackaged versioned as `backdrop-<ver>.tar.gz` (extracts
   to `backdrop-<ver>/`), classified as a core and managed on the mirror exactly like
   the Drupal cores: every published version is retained, the resolved version is
   stamped to `backdrop.txt` (published only after its tarball, so the stamp never
   points at a missing file) — BOA names the platform from the stamp and fetches the
   matching tarball — and a version-less `backdrop.tar.gz` compat tarball of the newest
   release (extracting to `backdrop/`, the pre-versioning contract) is refreshed for
-  already-deployed BOA releases.
+  already-deployed BOA releases, just before the stamp and likewise only after the
+  same run put its versioned tarball on the mirror.
 
   No contrib is baked into the versioned core
   tarballs — Valkey/Redis integration reaches platforms through the shared
@@ -352,8 +452,8 @@ farmos     # farm-4.0.6-11.3.17  (farmOS caps core at 11.3)
 ```
 
 ```sh
-cms        # composer create-project drupal/cms drupal_cms_installer-2.1.4-11.4.7 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.1.4-11.4.7
+cms        # composer create-project drupal/cms drupal_cms_installer-2.1.6-11.4.7 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.1.6-11.4.7
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer update --no-install --no-scripts
@@ -362,8 +462,8 @@ cms        # composer create-project drupal/cms drupal_cms_installer-2.1.4-11.4.
 ```
 
 ```sh
-culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.7-11.3.17 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/openculturas-3.0.7-11.3.17/
+culturas   # composer create-project --remove-vcs drupal/openculturas_project openculturas-3.0.8-11.3.17 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/openculturas-3.0.8-11.3.17/
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer config --json extra.composer-patches.ignore-dependency-patches '["openculturas/openculturas-distribution"]'  # drop dependency patches (stale + composer-patches 2.x cannot apply to dist installs)
@@ -374,7 +474,7 @@ culturas   # composer create-project --remove-vcs drupal/openculturas_project op
            # cd web/profiles/contrib/openculturas-distribution
            # mv profile openculturas
            # mv openculturas ../ && mv * ../ && cd ../ && rm -rf openculturas-distribution
-           # cp ~/static/MONTH-DAY/farm-4.0.6-11.3.17/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.7-11.3.17/web/sites/
+           # cp ~/static/MONTH-DAY/farm-4.0.6-11.3.17/web/sites/example.sites.php ~/static/MONTH-DAY/openculturas-3.0.8-11.3.17/web/sites/
 ```
 
 ```sh
@@ -555,12 +655,13 @@ install profile), then gzip the remaining (distribution) platforms:
 Before a same-name distribution tarball replaces one already in `distro/`, compare the
 `composer.lock` inside both: a changed lock under an old name never reaches the boxes that
 already hold that platform (see "Same-name respins" above; `staticbuild distribute`
-refuses it unless `-O`).
+refuses it when it adds advisories or cannot be checked for them, unless `-O`).
 
 Raw cores (`drupal-*`) go to `core/`; the distributions go to `distro/`. The Backdrop, Grav
 and Textpattern artefacts are `core/` shelf content too: their family targets publish them
-there and `staticbuild distribute` routes any of their tarballs it finds in the day dir there
-as well, never to `distro/`, which nothing reads for them.
+there and `staticbuild distribute` routes the versioned tarballs it finds in the day dir there
+as well, never to `distro/`, which nothing reads for them; the Grav and Textpattern compat
+tarballs and stamps come only from their own actions.
 
 ## Add them all as platforms in Ægir
 

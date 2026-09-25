@@ -1762,8 +1762,8 @@ _update_agents() {
   # existing build user (o8 unless -u says otherwise) and never guesses one
   # from /data/disk.
   if [ -e "/root/.stackbuild.cnf" ]; then
-    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f67 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
-    _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f93 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
+    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f62 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+    _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f92 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
   else
     # A box that is not a build box carries no copy of either. Boxes that had
     # fetched staticbuild before this gate existed kept an unmanaged copy the
@@ -1795,7 +1795,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f39
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f80
-    _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f61
+    _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f60
     _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f73
     _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f93
     _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f73
@@ -1836,8 +1836,8 @@ _update_agents() {
     _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f62
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f78
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f78
-    _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f79
-    _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f89
+    _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f78
+    _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f87
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f98
     # Activate Cloudflare realip immediately by writing the set_real_ip_from
     # ranges include now, so a fresh/updated box does not wait for the daily
@@ -1882,8 +1882,8 @@ _update_agents() {
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f72
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f71
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f62
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f64
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f60
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f63
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f78
     _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f76
     ###
@@ -1909,7 +1909,7 @@ _update_agents() {
       rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     fi
     _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f76
-    _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f68
+    _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f67
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
@@ -2273,7 +2273,6 @@ _update_agents() {
     && [ -e "/usr/sbin/csf" ] \
     && [ ! -e "${_pthLog}/fpm-cli.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _usrGroup=users
-    [ -d "/var/backups/off-run/" ] && cp -a /var/backups/off-run/run* /var/xdrago/ &> /dev/null
     for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
       _tUsr=
       _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
@@ -2295,8 +2294,12 @@ _update_agents() {
           && [ ! -e "${_pthSysUsr}/static/control/cli.info" ]; then
           cp ${_pthSysUsr}/static/control/fpm.info ${_pthSysUsr}/static/control/cli.info
         fi
+        ### proxy-failed.pid: a cutover could not convert the account, and its
+        ### panel database lives on the target; its dispatcher would run the
+        ### travelled queue against the stale local copy until xoct repairs it
         if [ -e "${_pthSysUsr}/log/CANCELLED" ] \
           || [ -e "${_pthSysUsr}/log/proxied.pid" ] \
+          || [ -e "${_pthSysUsr}/log/proxy-failed.pid" ] \
           || [ ! -e "${_pthSysUsr}/static/control/cli.info" ]; then
           if [ -e "/var/xdrago/run-${_tUsr}" ] \
             && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
@@ -2304,6 +2307,21 @@ _update_agents() {
             mv -f /var/xdrago/run-${_tUsr} /var/backups/off-run/
           fi
         else
+          ### This pass hands a parked dispatcher back only here, after the
+          ### park test and only when none is live: copied back ahead of the
+          ### test, a held one would sit in /var/xdrago, where runner.sh can
+          ### fire it, until moved out; copied over a live one, a stale
+          ### parked copy would replace the one octopus last wrote. Beside a
+          ### live one the parked copy is stale: set it aside, so off-run
+          ### holds only dispatchers that are parked now
+          if [ -e "/var/backups/off-run/run-${_tUsr}" ]; then
+            if [ ! -e "/var/xdrago/run-${_tUsr}" ]; then
+              mv -f "/var/backups/off-run/run-${_tUsr}" /var/xdrago/ &> /dev/null
+            else
+              mv -f "/var/backups/off-run/run-${_tUsr}" \
+                "/var/backups/off-run/.superseded-run-${_tUsr}" &> /dev/null
+            fi
+          fi
           _dscUsr="/data/disk/${_tUsr}"
           _ngxCnf="${_dscUsr}/config/includes/nginx_vhost_common.conf"
           _NGINX_CNF_TEST=$(grep "foobaroff" ${_ngxCnf} 2>&1)
@@ -2384,15 +2402,18 @@ _update_agents() {
       _USER_DIR="/data/disk/${_USER}"
       _CANCELLED_FILE="${_USER_DIR}/log/CANCELLED"
       _PROXIED_PID_FILE="${_USER_DIR}/log/proxied.pid"
+      _PROXY_FAILED_FILE="${_USER_DIR}/log/proxy-failed.pid"
       _CLI_INFO_FILE="${_USER_DIR}/static/control/cli.info"
 
       # Check the conditions
       if [ ! -d "${_USER_DIR}" ] || \
          [ -f "${_CANCELLED_FILE}" ] || \
          [ -f "${_PROXIED_PID_FILE}" ] || \
+         [ -f "${_PROXY_FAILED_FILE}" ] || \
          [ ! -f "${_CLI_INFO_FILE}" ]; then
         # Move the file if any condition is met
         mv -f "${_file}" /var/backups/off-run/
+        continue
       fi
 
       if grep -q "renice 0" "${_file}"; then
@@ -4818,8 +4839,8 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f93 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f90 --guard /local/bin/lock.inc
     _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f18 --guard duplicity
-    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f23 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f73 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f22 --mode 755 --guard duplicity
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f72 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f94 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f73 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
@@ -4834,17 +4855,17 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f95 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f58 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f47 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f12 --guard /local/bin/xoct
-    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f78 --guard /local/bin/xtrim
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f55 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f43 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f08 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f76 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f94 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f87 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f87 --guard /local/bin/autodaedalus
     _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f76 --guard /local/bin/autoinit
     _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f90 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f96 --mode 755 --guard /local/bin/backchain
-    _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f95 --guard /local/bin/codebasecheck
+    _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f93 --guard /local/bin/codebasecheck
     _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f94 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer

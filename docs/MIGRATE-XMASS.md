@@ -18,8 +18,12 @@ window is needed.
 series AND patch level** (e.g. both 8.4.13, never 8.4.10 vs 8.4.13).
 
 A series
-mismatch means xmass is the wrong tool: use [xoct](MIGRATE-XOCT.md) per
-account instead. A patch-level mismatch means align the packages first —
+mismatch means xmass cannot run on this pair as it is: either upgrade the older
+server's Percona in place first ([UPGRADE-PERCONA8.md](UPGRADE-PERCONA8.md)),
+then run xmass within one series, or use [xoct](MIGRATE-XOCT.md) per account
+instead.
+
+A patch-level mismatch means align the packages first —
 failing back a newer datadir onto an older primary is an unsupported
 downgrade. Both are enforced gates at `init` (the series gate reads the
 client binary, the patch gate asks the server via `SELECT VERSION()`); a
@@ -838,6 +842,18 @@ box name from a client domain: there the guard trips once and the remedy
 above applies. When a budgeted leg still trips, the DENY names the limit the
 leg ran with and how much of it was budget.
 
+A platform refresh's staging never reaches the mirror, so it cannot trip the
+guard. While an Octopus upgrade replaces a republished built-in platform, it
+builds the new tree in `distro/NNN/.boa-refresh/<name>.new` and removes it
+minutes later. The `distro/` leg leaves that tree, its downloaded tarball and
+any `.stale-*` leftover behind.
+
+The replaced tree `<name>.old` stays behind
+too while a barracuda or octopus run is live; otherwise it travels, because
+after an interrupted run it can be the only copy. A tree the refresh kept
+because it held tenant files, and the tarball records in `.boa-tarball/`,
+travel like any other file.
+
 A mirror-side *rewrite* of a file that still exists on the source is still
 never undone — `-u` keeps the newer copy, and only the accretion of files the
 source no longer has is what deletion addresses.
@@ -1148,7 +1164,7 @@ first change to the source):
 | Step 16.5 | *(rename-first order only; 12.93 otherwise)* The master panel gets the same treatment on the source: never proxied, Drupal maintenance mode ON, online as the box's monitoring canary |
 | Step 17 | Remove `http-off.pid` and `http-off-host.pid` from source accounts — a failed conversion keeps its 503 gate, a failed second pass keeps the per-host one (its vhosts would otherwise serve the old local copy against a database that now lives on the target) |
 | Step 18 | Write `proxied.pid` for successfully converted accounts only |
-| Step 18.5 | Lift the heavy-tasks pause (only the one this tool planted), start cron and un-park the five runners **on the source**. Without this the source proxy runs nothing again — including its own certificate mirror, which is what keeps a long-lived proxy from serving expired certificates ~90 days later. An account whose conversion failed keeps its Ægir dispatcher parked (BOA's off-run directory, where `xoct` parks a converted one) until its repair converts it: its panel database lives on the target now, and its queue would otherwise run against the stale local copy. BOA's fpm-cli pass hands every parked dispatcher back at a new tools serial and re-parks only the proxied accounts, so a repair left that long needs the dispatcher parked again |
+| Step 18.5 | Lift the heavy-tasks pause (only the one this tool planted), start cron and un-park the five runners **on the source**. Without this the source proxy runs nothing again — including its own certificate mirror, which is what keeps a long-lived proxy from serving expired certificates ~90 days later. An account whose conversion failed has its Ægir dispatcher parked (BOA's off-run directory, where `xoct` parks a converted one) and is marked `log/proxy-failed.pid`: its panel database lives on the target now, and its queue would otherwise run against the stale local copy. While the marker exists, BOA's fpm-cli pass (once per release serial it hands parked dispatchers back) keeps it parked, its every-pass sweep moves a stray one back to the off-run directory, and `octopus up-*` skips the account. The repair's successful conversion stamps `proxied.pid`, which keeps both, and removes the marker; so does a later promotion of this box |
 | Step 18.9 | Probe every control panel on the target by its new name; a dead panel is named and the cutover completes saying so (`xmass verify` re-checks) |
 | Step 18.95 | Re-arm on the target the upgrade `prep-target` seeded while the box was demoted (step 12.7 parked it rather than defusing it), so it runs at the promoted box's first quiet tick |
 | Step 19 | Mark state `complete` |
