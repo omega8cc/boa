@@ -3557,6 +3557,7 @@ _barracuda_cnf() {
       wait
     fi
     _convert_etcboa_markers_to_cnf
+    _sql_series_never_downgrade
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: Reading your ${_barCnf} config file"
@@ -4381,6 +4382,8 @@ _barracuda_cnf() {
         wait
       fi
     fi
+
+    _sql_series_never_downgrade
 
     if [[ "${_MY_EMAIL}" =~ "omega8.cc" ]]; then
       _if_hosted_sys
