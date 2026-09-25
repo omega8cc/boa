@@ -257,8 +257,9 @@ by the BOA install and upgrade tools exclusively.
   during the transition, set the variable to NO *and* remove the file: while
   the file exists it wins and is re-asserted on every pass.
 
-  Purges the reusable /opt/tmp build tree at the start of every barracuda or
-  octopus wrapper run, forcing a full re-download of the sources.
+  Purges the reusable /opt/tmp build tree, and the hostmaster sources in
+  /opt/tmp/make_local, at the start of every barracuda or octopus wrapper
+  run, forcing a full re-download of the sources.
 
  @=> /root/.debug_daily.info
 
