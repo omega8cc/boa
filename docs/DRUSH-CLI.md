@@ -7,8 +7,9 @@ BOA (Barracuda Octopus Ægir) provides robust tools for managing PHP-CLI and Dru
 ## Required: Use the `oN.ftp` Limited Shell for All CLI Operations
 
 **Everything described in this document — `vdrush`, PHP-CLI version switching, Composer, and
-all other drush operations — applies to the commands you type only under the `oN.ftp`
-limited shell account.** The Ægir tasks on your account follow the same control files.
+all other drush operations — applies to the commands you type in your limited shell logins:
+`oN.ftp`, and a platform developer login (`oN.<client>-dev`) if you have one.** Both read the
+account's control files. The Ægir tasks on your account follow the same control files.
 
 BOA provisions two separate user accounts per Octopus instance:
 
@@ -17,8 +18,8 @@ BOA provisions two separate user accounts per Octopus instance:
 - `oN.ftp` — the FTP/limited shell user, accessible via SSH with BOA's special shell wrapper
 
 The PHP-CLI version management and `vdrush` described in this document depend on BOA's
-**special shell wrapper**. Of your two logins, only the `oN.ftp` limited shell runs your
-commands through it. The wrapper also runs every Ægir task on your account, which is why the
+**special shell wrapper**. Of these two accounts only `oN.ftp` is a login, and its limited
+shell runs your commands through the wrapper. The wrapper also runs every Ægir task on your account, which is why the
 control files steer those tasks too. It reads and applies the PHP-CLI version you have
 configured via the control files described below, and makes `vdrush` available.
 
@@ -58,9 +59,9 @@ BOA provides three mechanisms for managing the PHP-CLI version used in command-l
 
 In addition to the `cli.info` file, BOA supports **instant PHP-CLI switching** through **specific configuration files** located in `~/static/control/`. The filenames of these configuration files dictate the PHP version to use, and their content is irrelevant. This enables you to switch the PHP-CLI version for Drush, Composer, and other CLI operations, including Ægir tasks, instantly. The platform builds you request via `platforms.info` follow the marker too — each build resolves it once, when its run starts (on accounts force-pinned to PHP 5.6 for `path_alias_cache` the pin outranks any marker for builds).
 
-> **Reminder:** Instant PHP-CLI switching applies to the commands you type only under the
-> `oN.ftp` limited shell, and to your Ægir tasks. It only applies to CLI operations — it
-> does not affect PHP-FPM. See the prerequisite section above.
+> **Reminder:** Instant PHP-CLI switching applies to the commands you type in your limited
+> shell logins (`oN.ftp`, a platform developer login) and to your Ægir tasks. It only
+> applies to CLI operations — it does not affect PHP-FPM. See the prerequisite section above.
 
 #### Example Instant Switch Files:
 
@@ -98,7 +99,8 @@ If none of these instant switch files are present, the system will default to th
   PHP until the background helper corrects the file on its next pass.
 - This smart feature, similarly to the classic `~/static/control/cli.info`, depends on the
   BOA special shell wrapper. The wrapper is the server's `/bin/sh`: it runs the commands
-  typed in the `oN.ftp` limited shell and every Ægir task on the account. It reads these
+  typed in the limited shell logins (`oN.ftp`, a platform developer login) and every Ægir
+  task on the account. It reads these
   control files to determine which PHP-CLI version to use — a command that does not go
   through it (typed in a bash shell as `oN`) ignores the control files and runs drush
   against the system default PHP version.
