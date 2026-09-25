@@ -264,8 +264,9 @@ _drush_cmd_word() {
 # Drush, vdrush. So for a tenant Drush 8 runs only the read-only commands
 # below on such a codebase. The codebase is the one Drush 8 itself would
 # boot: --root, else the @alias's root, else the Drupal root above the
-# working directory (a "cd DIR &&" earlier in the line moves it).
-_D8_READONLY_CMDS="uli user-login status st core-status version help sa site-alias aliases"
+# working directory (a "cd DIR &&" earlier in the line moves it). "help
+# COMMAND" runs Drush 8 again through /bin/sh as "helpsingle COMMAND".
+_D8_READONLY_CMDS="uli user-login status st core-status version help helpsingle sa site-alias aliases"
 _GD_CWD=""
 _GD_DOC=""
 _d8plus_root() {
