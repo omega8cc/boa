@@ -47,6 +47,18 @@ while `/root/.barracuda.cnf` keeps the 8.4 request, so the next `barracuda` run
 finishes the upgrade to 8.4, whatever starts it. Run that second step yourself,
 straight after the first, so its downtime lands when you choose.
 
+**Never a downgrade.** BOA does not install an older Percona series over a
+newer one. On a box running 8.0 or 8.4, a `_DB_SERIES` in
+`/root/.barracuda.cnf` that asks for an older series — a hand edit, a missing
+`_DB_SERIES` line (the default is 5.7), or a value BOA does not know (read as
+5.7) — is refused. The next `barracuda` run keeps the installed series, writes
+it back to `/root/.barracuda.cnf`, and reports the refusal on two `ALRT` lines,
+so that run's report mail flags it.
+
+The `percona-X.Y` argument and the `/root/.percona.X.Y.cnf` markers never ask
+for an older series either. The way back from an upgrade is the snapshot from
+step 1.
+
 Asking for 8.4 also switches on the rotation of the MySQL root password on every upgrade run
 and removes the `/root/.mysql.no.new.password.cnf` opt-out, except on a
 replication standby (see
