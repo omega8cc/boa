@@ -434,13 +434,26 @@ _ltd_alias_put() {
   ( umask 0337
     cp -aT --no-preserve=mode --remove-destination "${1}" "${2}" ) 2> /dev/null
 }
-# Run "$@" inside the real directory $1, never one reached through a link the
-# account planted at that name: it owns the directory, not the root-placed home
-# above it. Once entered, ./name stays in that directory whatever is swapped.
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way. Below /home and /data/disk (root's) every name
+# on the path must be a real directory: an instance user owns everything under
+# its /data/disk/<oN> and can swap static/, log/ or config/ as easily as the
+# last name (BOA's own links there -- static/files, backups, arch -- are never
+# on a path given here). Elsewhere the last name is checked against its
+# resolved parent. Once entered, ./name stays in that directory whatever is
+# swapped.
 _ltd_in_real_dir() {
-  local _d="${1}" _want
+  local _d="${1}" _a="" _want
   shift
-  _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
   ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
 }
 # A root stamp in the current (pinned) directory: the name is removed and
@@ -485,8 +498,10 @@ _ltd_drush_usr_links() {
 # $2 = the account's ~/.tmp.
 _ltd_drush_ini_put() {
   local _v="${1}" _qtp="${2//\//\\\/}" _w=""
-  rm -f -- ./.ctrl.php* ./php.ini
-  [ -n "${_v}" ] || return 0
+  # the old ini stays until its replacement is in place (the final copy
+  # replaces it): a temp directory that cannot be made leaves it, not none
+  rm -f -- ./.ctrl.php*
+  [ -n "${_v}" ] || { rm -f -- ./php.ini; return 0; }
   # Edited in root's own temp directory and put in place once: a name here is
   # the account's, so a FIFO or link put at php.ini is never opened by sed
   # and the copy never follows a link at the name into a directory (-T).
@@ -517,6 +532,254 @@ _ltd_drush_ini_put() {
   rm -f -- "${_w}/php.ini"
   rmdir -- "${_w}" 2> /dev/null
   return 0
+}
+# The same where php.ini is kept immutable between passes: unlocked and
+# locked again by name inside the pinned directory, only when it is a regular
+# file.
+_ltd_drush_ini_put_locked() {
+  [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr -i ./php.ini 2> /dev/null
+  _ltd_drush_ini_put "${1}" "${2}"
+  [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr +i ./php.ini 2> /dev/null
+  return 0
+}
+# A mode set on names in a directory an account owns, never through a link:
+# each name is opened without following one and without blocking on a FIFO,
+# checked to be the expected type and changed through the open handle, so a
+# name swapped for a link at any moment is refused, not followed. Run it
+# inside _ltd_in_real_dir or from find -execdir: O_NOFOLLOW covers the last
+# name only. Args: f|d (regular file or directory), the mode (octal, or
+# +octal to add bits), the names.
+_LTD_FCHMOD_PL='use Fcntl;
+my ($t, $m) = (shift @ARGV, shift @ARGV);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (($t eq "f" && -f _) || ($t eq "d" && -d _)) {
+    chmod($m =~ /^\+/ ? (($s[2] & 07777) | oct(substr($m, 1))) : oct($m), $h);
+  }
+  close($h);
+}'
+_ltd_chmod_nofollow() {
+  # $1 = mode, the rest = regular files
+  local _m="${1}"
+  shift
+  [ "$#" -gt 0 ] || return 0
+  perl -e "${_LTD_FCHMOD_PL}" f "${_m}" "$@" 2> /dev/null
+}
+# The same for every regular file directly in the current (pinned) directory:
+# the glob expands here, never in the caller's directory. $1 = mode.
+_ltd_chmod_nofollow_here() (
+  shopt -s dotglob nullglob
+  _ltd_chmod_nofollow "${1}" ./*
+)
+# rm -f of a glob in the current (pinned) directory; $1 = the pattern,
+# quoted by the caller so it expands here.
+_ltd_rm_here() {
+  # shellcheck disable=SC2086
+  rm -f -- ./${1}
+}
+# True in a pinned directory that is the account's own, or the empty
+# root-owned one root has just made at the name: a root-owned directory of
+# the account's own tree renamed onto the name (/data/disk/<oN>/.boa-ctrl or
+# undo/, a developer home's platforms/) is never swept, handed over or
+# written. $1 = the account.
+_ltd_mine_here() {
+  [ "$(stat -c %U .)" = "${1}" ] && return 0
+  [ "$(stat -c %u .)" = "0" ] && [ -z "$(ls -A . 2> /dev/null)" ]
+}
+# An account's own temp or dot directory, inside the real directory: handed
+# to the account, aged out when asked (entries older than a day) and given
+# its mode, only when _ltd_mine_here holds. $1 = owner:group, $2 = mode,
+# $3 = YES to age it out.
+_ltd_own_dir_here() {
+  _ltd_mine_here "${1%%:*}" || return 1
+  chown -h "${1}" . || return 1
+  if [ "${3}" = "YES" ]; then
+    touch .
+    find . -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null
+  fi
+  chmod "${2}" .
+}
+# Entries older than a day aged out of an account's own temp directory, from
+# inside the real directory (-execdir: rm never resolves a path through a
+# name), and only when _ltd_mine_here holds. $1 = the account.
+_ltd_age_out_here() {
+  _ltd_mine_here "${1}" || return 1
+  find . -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null
+}
+# A dot directory root seeds in a home its account owns and can change while
+# this runs: created, then handed over and given its mode only inside the
+# real directory (never by a name the account can swap meanwhile).
+# $1 = path, $2 = mode, $3 = owner:group.
+_ltd_dot_dir() {
+  [ -d "${1}" ] && return 0
+  mkdir -p "${1}"
+  _ltd_in_real_dir "${1}" _ltd_own_dir_here "${3}" "${2}" NO
+}
+# ~/.lhistory, inside the real home: created exclusively (0644 by umask) and
+# handed over only when it is the empty root file just made. $1 = owner:group.
+_ltd_lhistory_put() {
+  ( umask 022; dd of=./.lhistory conv=excl status=none < /dev/null 2> /dev/null ) || return 0
+  [ -f ./.lhistory ] && [ ! -L ./.lhistory ] && [ ! -s ./.lhistory ] \
+    && [ "$(stat -c %u ./.lhistory)" = "0" ] && chown -h "${1}" ./.lhistory
+  return 0
+}
+# ~/.bazaar's config, inside the real directory. $1 = owner:group.
+_ltd_bzr_conf() {
+  ( umask 022; _ltd_stamp_put bazaar.conf "ignore_missing_extensions=True" ) \
+    && chown -h "${1}" ./bazaar.conf
+  chmod 700 .
+}
+# An Aegir identity's Drush 8 files inside its real ~/.drush: 0440, the
+# control ones 0400, the directory 0710. oN (or aegir) owns the directory,
+# the identity every Aegir task and site-local Drush run as, so a hostile
+# drush include or a compromised task can swap any of these names (or
+# ~/.drush itself) for a link; 0400 on a shared system path would take the
+# box down.
+_ltd_drush_alias_modes() {
+  find . -maxdepth 1 -name '*.php' -type f \
+    -exec perl -e "${_LTD_FCHMOD_PL}" f 0440 {} + 2> /dev/null
+  _ltd_chmod_nofollow 0400 ./drushrc.php ./hm.alias.drushrc.php \
+    ./hostmaster*.php ./platform_*.php ./server_*.php
+  chmod 0710 .
+}
+# A file root keeps in a directory an account owns (static/control, oN's
+# log/ and nginx post.d/): put as a fresh file inside the real directory,
+# read without following a link or blocking on a FIFO (bounded), removed and
+# unlocked only there. The account can put a link in any of these
+# directories with no race to win. $1 = the directory, then the name (and
+# content).
+_ltd_put_in() {
+  local _d="${1}"
+  shift
+  _ltd_in_real_dir "${_d}" _ltd_stamp_put "$@"
+}
+_ltd_read_in() {
+  _ltd_in_real_dir "${1}" timeout 10 dd if="./${2}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+_ltd_rm_in() {
+  local _d="${1}"
+  shift
+  _ltd_in_real_dir "${_d}" _ltd_rm_here "$@"
+}
+_ltd_unlock_here() {
+  # +i cleared on regular files only (chattr also refuses a link given by
+  # its bare path); names = the args
+  local _f
+  for _f in "$@"; do
+    [ -f "./${_f}" ] && [ ! -L "./${_f}" ] && chattr -i "./${_f}" &> /dev/null
+  done
+  return 0
+}
+# The tenant's static/control: the main login owns it (and any co-tenant can
+# replace the name in 02775 static/). A file root writes for the main login
+# is handed to it by chown -h; root's stamps stay root's.
+_ltd_ctrl_read() {
+  # $1 = name; prints its content, empty for a link, a FIFO or nothing
+  _ltd_read_in "${_dscUsr}/static/control" "${1}"
+}
+_ltd_ctrl_put_here() {
+  ( umask 022; _ltd_stamp_put "${1}" "${2}" ) \
+    && chown -h "${_USER}.ftp:${_usrGroup}" "./${1}"
+}
+_ltd_ctrl_put() {
+  # $1 = name, $2 = content: a file of the main login's
+  _ltd_in_real_dir "${_dscUsr}/static/control" _ltd_ctrl_put_here "$@"
+}
+_ltd_ctrl_stamp() {
+  # $1 = name, $2 = content: a stamp of root's
+  _ltd_put_in "${_dscUsr}/static/control" "$@"
+}
+_ltd_ctrl_rm() {
+  # $1 = name or pattern (quoted), removed inside the real directory
+  _ltd_rm_in "${_dscUsr}/static/control" "$@"
+}
+_ltd_ctrl_info_owner() {
+  chown -h "${_USER}.ftp:${_usrGroup}" ./*.info 2> /dev/null
+}
+# The control directory on the first pass of a serial, inside the real
+# directory: the README put in place as a fresh 0644 file, the tree handed to
+# the main login (chown -R never follows a link), old stamps swept and this
+# serial's written exclusively.
+_ltd_ctrl_init() {
+  chmod 755 .
+  if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
+    ( umask 022
+      cp -T --no-preserve=mode --remove-destination \
+        /var/xdrago/conf/control-readme.txt ./README.txt ) &> /dev/null
+  fi
+  chown -R "${_USER}.ftp:${_usrGroup}" .
+  rm -f -- ./.ctrl.*
+  _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
+}
+# Inside the real clients/: the retired client directories go, and each
+# real client directory's backups/ (never through a client name that is a
+# link).
+_ltd_clients_sweep() {
+  local _c
+  rm -rf -- ./admin ./omega8ccgmailcom ./nocomega8cc
+  for _c in ./*; do
+    [ -d "${_c}" ] && [ ! -L "${_c}" ] || continue
+    _ltd_in_real_dir "${_c}" rm -rf -- ./backups
+  done
+  return 0
+}
+# ~/.drush locked and unlocked inside the real directory. Locking takes the
+# directory first, after which no name in it can change; unlocking clears
+# the names while it still holds. chattr opens a name without following a
+# link (O_NOFOLLOW), so a link at usr/ or at an ini is refused.
+_ltd_drush_lock_here() {
+  chattr +i . &> /dev/null
+  [ -d ./usr ] && [ ! -L ./usr ] && chattr +i ./usr &> /dev/null
+  chattr +i ./*.ini &> /dev/null
+  return 0
+}
+_ltd_drush_unlock_here() {
+  [ -d ./usr ] && [ ! -L ./usr ] && chattr -i ./usr &> /dev/null
+  chattr -i ./*.ini &> /dev/null
+  chattr -i . &> /dev/null
+  return 0
+}
+# The same for a main login's platforms/ and its entries.
+_ltd_lock_all_here() {
+  chattr +i . &> /dev/null
+  chattr +i ./* &> /dev/null
+  return 0
+}
+_ltd_unlock_all_here() {
+  chattr -i ./* &> /dev/null
+  chattr -i . &> /dev/null
+  return 0
+}
+# ~/.drush/cache of an instance dropped inside the real directory, only when
+# it is the instance user's own. $1 = the instance user.
+_ltd_drush_cache_drop() {
+  _ltd_mine_here "${1}" && rm -rf -- ./cache
+  return 0
+}
+# A migration marker moved from oN's log/ into its src/ (the current, pinned
+# directory): read without following a link or blocking, written as a fresh
+# file, removed from log/ only inside the real one. $1 = name.
+_ltd_log_marker_to_src() {
+  local _c
+  [ -e "${_dscUsr}/log/${1}" ] || return 0
+  _c="$(_ltd_read_in "${_dscUsr}/log" "${1}")"
+  _ltd_stamp_put "${1}" "${_c}" && _ltd_rm_in "${_dscUsr}/log" "${1}"
+}
+# sed -i on a file of the current (pinned) directory, only when it is a
+# regular file: through a link sed -i puts a copy of the target at the name.
+# $1 = name, $2 = sed script.
+_ltd_sed_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 0
+  sed -i "${2}" "./${1}" &> /dev/null
+}
+# The instance's aegir.sh, inside the real /data/disk/oN: a fresh file, owned
+# by oN and 0700 through a handle that never follows a link. $1 = content.
+_ltd_aegir_sh_put() {
+  ( umask 077; _ltd_stamp_put aegir.sh "${1}" ) || return 1
+  chown -h "${_USER}:${_usrGroup}" ./aegir.sh &> /dev/null
+  _ltd_chmod_nofollow 0700 ./aegir.sh
 }
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
@@ -726,20 +989,19 @@ _enable_chattr() {
       mkdir -p ${_U_HD}
       _ltd_in_real_dir "${_U_HD}" _ltd_drush_strip "${_hostedSys}"
       mkdir -p ${_U_TP}
-      _ltd_in_real_dir "${_U_TP}" touch .
-      # Bare path, not ${_U_TP}/ -- a trailing slash makes find follow a
-      # planted link and purge the target tree instead.
-      find ${_U_TP} -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null
-      chown -h $1:${_accGrp} ${_U_TP}
+      # aged out (-execdir: rm never resolves a path through a name),
+      # handed over and given its mode inside the real directory, and only
+      # when it is the account's own: a root-owned directory of the home
+      # renamed onto the name is left alone
+      _ltd_in_real_dir "${_U_TP}" _ltd_own_dir_here "$1:${_accGrp}" 02755 YES
       chown -h $1:${_accGrp} ${_U_HD}
-      _ltd_in_real_dir "${_U_TP}" chmod 02755 .
       _ltd_in_real_dir "${_U_HD}" chmod 02755 .
       _ltd_in_real_dir "${_U_HD}" \
         _ltd_in_real_dir ./usr _ltd_drush_usr_links "${_dscUsr}/.drush/usr"
     fi
 
     if [ -e "${_dscUsr}/tools/drush/drush.php" ]; then
-      _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_dscUsr}/tools/drush/drush.php 2>&1)
+      _CHECK_USE_PHP_CLI=$(_ltd_read_in "${_dscUsr}/tools/drush" drush.php | grep "/opt/php" 2>&1)
     else
       _CHECK_USE_PHP_CLI=php84
     fi
@@ -763,7 +1025,7 @@ _enable_chattr() {
         echo "_T_CLI_VRN is ${_T_CLI_VRN}"
       else
         if [ -e "${_dscUsr}/tools/drush/drush.php" ]; then
-          _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_dscUsr}/tools/drush/drush.php 2>&1)
+          _CHECK_USE_PHP_CLI=$(_ltd_read_in "${_dscUsr}/tools/drush" drush.php | grep "/opt/php" 2>&1)
         else
           _CHECK_USE_PHP_CLI=php84
         fi
@@ -842,8 +1104,8 @@ _enable_chattr() {
       [ -e "/home/${_UQ}/.npm" ] && rm -rf /home/${_UQ}/.npm*
       [ -e "/opt/user/gems/${_UQ}" ] && rm -rf /opt/user/gems/${_UQ}
       [ -e "/opt/user/npm/${_UQ}" ] && rm -rf /opt/user/npm/${_UQ}
-      [ -e "${_dscUsr}/log" ] && rm -f ${_dscUsr}/log/.gems.build*
-      [ -e "${_dscUsr}/log" ] && rm -f ${_dscUsr}/log/.npm.build*
+      _ltd_rm_in "${_dscUsr}/log" '.gems.build*'
+      _ltd_rm_in "${_dscUsr}/log" '.npm.build*'
     fi
     if [ "${_UPDATE_GEMS}" = "YES" ]; then
       ###
@@ -856,13 +1118,16 @@ _enable_chattr() {
       if [ -d "/opt/user/gems/${_UQ}" ] \
         && [ -e "/usr/local/lib/ruby/gems/3.3.0/gems/oily_png-1.1.1" ] \
         && [ ! -e "/opt/user/gems/${_UQ}/gems/oily_png-1.1.1" ]; then
-        cp -a /usr/local/lib/ruby/gems/3.3.0/gems /opt/user/gems/${_UQ}/
-        cp -a /usr/local/lib/ruby/gems/3.3.0/specifications /opt/user/gems/${_UQ}/
-        cp -a /usr/local/lib/ruby/gems/3.3.0/extensions /opt/user/gems/${_UQ}/
-        cp -a /usr/local/lib/ruby/gems/3.3.0/doc /opt/user/gems/${_UQ}/
+        # the account can rename its own entry in the sticky gems/: the trees
+        # are copied into the real directory only
+        _ltd_in_real_dir "/opt/user/gems/${_UQ}" cp -a \
+          /usr/local/lib/ruby/gems/3.3.0/gems \
+          /usr/local/lib/ruby/gems/3.3.0/specifications \
+          /usr/local/lib/ruby/gems/3.3.0/extensions \
+          /usr/local/lib/ruby/gems/3.3.0/doc ./
         chown -R ${_UQ}:${_accGrp} /opt/user/gems/${_UQ}
-        [ -e "${_dscUsr}/log" ] && rm -f ${_dscUsr}/log/.gems.build*
-        touch ${_dscUsr}/log/.gems.build.rb.${_UQ}.${_xSrl}.txt
+        _ltd_rm_in "${_dscUsr}/log" '.gems.build*'
+        _ltd_put_in "${_dscUsr}/log" ".gems.build.rb.${_UQ}.${_xSrl}.txt" ""
       fi
       ###
       ### Check if NPM support is allowed and if needs an update
@@ -891,13 +1156,13 @@ _enable_chattr() {
           mkdir -p /opt/user/npm/${_UQ}/.npm-packages/lib/node_modules
           mkdir -p /opt/user/npm/${_UQ}/.sass-cache
           chown -R ${_UQ}:${_accGrp} /opt/user/npm/${_UQ}
-          [ -e "${_dscUsr}/log" ] && rm -f ${_dscUsr}/log/.npm.build*
-          touch ${_dscUsr}/log/.npm.build.${_UQ}.${_xSrl}.txt
+          _ltd_rm_in "${_dscUsr}/log" '.npm.build*'
+          _ltd_put_in "${_dscUsr}/log" ".npm.build.${_UQ}.${_xSrl}.txt" ""
         fi
       else
         [ -e "/home/${_UQ}/.npm" ] && rm -rf /home/${_UQ}/.npm*
         [ -e "/opt/user/npm/${_UQ}" ] && rm -rf /opt/user/npm/${_UQ}
-        [ -e "${_dscUsr}/log" ] && rm -f ${_dscUsr}/log/.npm.build*
+        _ltd_rm_in "${_dscUsr}/log" '.npm.build*'
       fi
     fi
     rm -f /home/${_UQ}/{.profile,.bash_logout,.bash_profile,.bashrc,.z_login,.zshrc}
@@ -909,28 +1174,17 @@ _enable_chattr() {
       fi
     else
       # A *.ftp home is never made immutable, so every name below is tenant
-      # replaceable; chattr always opens the referent. Test the bare path --
-      # [ -L "x/" ] with a trailing slash resolves the link and is always false.
-      if [ -d "/home/$1/platforms/" ] && [ ! -L "/home/$1/platforms" ]; then
-        chattr +i /home/$1/platforms/
-        chattr +i /home/$1/platforms/* &> /dev/null
-      fi
+      # replaceable. chattr refuses a link named by its bare path but follows
+      # one behind a trailing slash, so no target here carries one; the tests
+      # take the bare path too -- [ -L "x/" ] resolves the link, always false.
+      _ltd_in_real_dir "/home/$1/platforms" _ltd_lock_all_here
     fi
-    if [ -d "/home/$1/.drush/" ] && [ ! -L "/home/$1/.drush" ]; then
-      chattr +i /home/$1/.drush/
-      if [ -d "/home/$1/.drush/usr/" ] && [ ! -L "/home/$1/.drush/usr" ]; then
-        chattr +i /home/$1/.drush/usr/
-      fi
-      if [ -f "/home/$1/.drush/php.ini" ] \
-        && [ ! -L "/home/$1/.drush/php.ini" ]; then
-        chattr +i /home/$1/.drush/*.ini
-      fi
-    fi
+    _ltd_in_real_dir "/home/$1/.drush" _ltd_drush_lock_here
     if [ -d "/home/$1/.bee/" ] && [ ! -L "/home/$1/.bee" ]; then
-      chattr +i /home/$1/.bee/
+      chattr +i /home/$1/.bee
     fi
     if [ -d "/home/$1/.bazaar/" ] && [ ! -L "/home/$1/.bazaar" ]; then
-      chattr +i /home/$1/.bazaar/
+      chattr +i /home/$1/.bazaar
     fi
   fi
 }
@@ -947,26 +1201,14 @@ _disable_chattr() {
     else
       # Mirrors the guards in _enable_chattr: same plantable names, same
       # dereference, inverse primitive (clearing +i on a root-protected path).
-      if [ -d "/home/$1/platforms/" ] && [ ! -L "/home/$1/platforms" ]; then
-        chattr -i /home/$1/platforms/
-        chattr -i /home/$1/platforms/* &> /dev/null
-      fi
+      _ltd_in_real_dir "/home/$1/platforms" _ltd_unlock_all_here
     fi
-    if [ -d "/home/$1/.drush/" ] && [ ! -L "/home/$1/.drush" ]; then
-      chattr -i /home/$1/.drush/
-      if [ -d "/home/$1/.drush/usr/" ] && [ ! -L "/home/$1/.drush/usr" ]; then
-        chattr -i /home/$1/.drush/usr/
-      fi
-      if [ -f "/home/$1/.drush/php.ini" ] \
-        && [ ! -L "/home/$1/.drush/php.ini" ]; then
-        chattr -i /home/$1/.drush/*.ini
-      fi
-    fi
+    _ltd_in_real_dir "/home/$1/.drush" _ltd_drush_unlock_here
     if [ -d "/home/$1/.bee/" ] && [ ! -L "/home/$1/.bee" ]; then
-      chattr -i /home/$1/.bee/
+      chattr -i /home/$1/.bee
     fi
     if [ -d "/home/$1/.bazaar/" ] && [ ! -L "/home/$1/.bazaar" ]; then
-      chattr -i /home/$1/.bazaar/
+      chattr -i /home/$1/.bazaar
     fi
   fi
 }
@@ -1266,37 +1508,45 @@ _ltd_platform_window() {
 # each qualifying app root is linked under ~/platforms/<rev>-<codebase>; a
 # link whose platform stopped qualifying goes the same pass. The home is
 # immutable between passes, so it is opened and closed around the edit.
+# While it is open the account can rename ~/platforms and put a link there,
+# so everything after the mkdir runs inside the real directory: once it is
+# root:root 0755 nothing in it is the account's.
 _ltd_platform_farm() {
   local _acct="${1}"
   local _roots="${2}"
   local _home="/home/${_acct}"
   local _farm="/home/${_acct}/platforms"
-  local _root=""
-  local _name=""
-  local _lnk=""
-  local _keep=""
   [ -d "${_home}" ] && [ ! -L "${_home}" ] || return 0
   chattr -i "${_home}" 2>/dev/null
   if [ -L "${_farm}" ] || { [ -e "${_farm}" ] && [ ! -d "${_farm}" ]; }; then
     rm -f "${_farm}"
   fi
   [ -d "${_farm}" ] || mkdir -p "${_farm}"
-  chown root:root "${_farm}"
-  chmod 0755 "${_farm}"
-  for _root in ${_roots}; do
+  _ltd_in_real_dir "${_farm}" _ltd_platform_farm_fill "${_roots}" \
+    || echo "ALERT: ${_farm} not refreshed: not the real directory, or root could not take it over"
+  chattr +i "${_home}" 2>/dev/null
+}
+# The farm's links and README, inside the real ~/platforms. $1 = the roots.
+_ltd_platform_farm_fill() {
+  local _root=""
+  local _name=""
+  local _lnk=""
+  local _keep=""
+  chown -h root:root . && chmod 0755 . || return 1
+  for _root in ${1}; do
     _name="$(basename "$(dirname "${_root}")")-$(basename "${_root}")"
     _keep="${_keep} ${_name}"
-    ln -sfn "${_root}" "${_farm}/${_name}"
+    ln -sfn "${_root}" "./${_name}"
   done
-  for _lnk in "${_farm}"/*; do
+  for _lnk in ./*; do
     [ -L "${_lnk}" ] || continue
     case " ${_keep} " in
-      *" $(basename "${_lnk}") "*) ;;
-      *) rm -f "${_lnk}" ;;
+      *" ${_lnk#./} "*) ;;
+      *) rm -f -- "${_lnk}" ;;
     esac
   done
   if [ -n "${_keep}" ]; then
-    cat > "${_farm}/README.txt" <<EOF
+    ( umask 022; _ltd_stamp_put README.txt "$(cat <<EOF
 Platforms granted to this account are linked here, one per codebase, and are
 also on your shell path. Run checkmyperms to see what this login reaches, the
 state of each platform, and why a platform carrying one of your sites is not
@@ -1323,11 +1573,11 @@ sites can fail, and a site Verify re-locks it (reopened within three
 minutes); at expiry every platform is locked again.
 https://docs.boa.io/using/connecting/extra-accounts
 EOF
-    chmod 0644 "${_farm}/README.txt"
+)" )
   else
-    rm -f "${_farm}/README.txt"
+    rm -f -- ./README.txt
   fi
-  chattr +i "${_home}" 2>/dev/null
+  return 0
 }
 #
 # One removal for every account this worker takes away: the reaper's zombies
@@ -1345,7 +1595,9 @@ _ltd_reap_account() {
   deluser \
     --remove-home \
     --backup-to /var/backups/zombie/deleted/${_NOW} ${_acct} &> /dev/null
-  rm -f /home/${_parent}.ftp/users/${_acct}
+  # users/ is the main login's and can be a link by now: the store goes only
+  # from the real directory
+  _ltd_in_real_dir "/home/${_parent}.ftp/users" rm -f -- "./${_acct}"
   rm -f "/var/backups/ltd/window/${_acct}" "/var/backups/ltd/window/${_acct}.prev"
   rm -f "${_LTD_STATUS_DIR}/${_acct}" "/var/backups/ltd/aliases/${_acct}.md5"
   echo Zombie from etc.passwd ${_acct} killed
@@ -1850,9 +2102,8 @@ _kill_zombies() {
             # as what it is rather than as a move.
             [ -d /var/log/boa ] || mkdir -p /var/log/boa
             if mv "/home/${_Existing}" "/var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}"; then
-              if [ -e "/home/${_usrParent}.ftp/users/${_Existing}" ]; then
-                rm -f "/home/${_usrParent}.ftp/users/${_Existing}"
-              fi
+              _ltd_in_real_dir "/home/${_usrParent}.ftp/users" \
+                rm -f -- "./${_Existing}"
               rm -f "${_ltd_orphan_seen}"
               echo "Zombie from home.dir ${_Existing} killed"
               echo "$(date) LTD zombie sweep: orphan home /home/${_Existing} had no passwd entry; moved to /var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}" \
@@ -1890,58 +2141,35 @@ _fix_dot_dirs() {
     local _accGrp
     _accGrp=$(_acct_group "${_usrLtd}")
     _usrTmp="/home/${_usrLtd}/.tmp"
-    # Every dot name this function seeds is root-created and root-chowned in a
-    # home the sub-user owns, and none is ever legitimately a symlink here --
-    # the [ ! -d ] tests and the chown/chmod that follow them all dereference,
-    # so a planted link aims root at any target it names.
+    # Every dot name this function seeds is root-created in a home the
+    # sub-user owns and can change while this runs (the home is mutable
+    # here), and none is ever legitimately a symlink: a planted link is
+    # stripped first, and because one can be planted again in between, owners
+    # are set by name only with chown -h, modes and writes happen only inside
+    # the real directory, and a file is created exclusively, never through a
+    # link at its name.
     _desymlink_planted "${_usrTmp}" "/home/${_usrLtd}/.lftp" \
       "/home/${_usrLtd}/.lhistory" "/home/${_usrLtd}/.drush" \
       "/home/${_usrLtd}/.bee" "/home/${_usrLtd}/.ssh" \
       "/home/${_usrLtd}/.bazaar"
-    if [ ! -d "${_usrTmp}" ]; then
-      mkdir -p ${_usrTmp}
-      chown -h ${_usrLtd}:${_accGrp} ${_usrTmp}
-      [ ! -L "${_usrTmp}" ] && chmod 02755 ${_usrTmp}
-    fi
-    _usrLftp="/home/${_usrLtd}/.lftp"
-    if [ ! -d "${_usrLftp}" ]; then
-      mkdir -p ${_usrLftp}
-      chown -h ${_usrLtd}:${_accGrp} ${_usrLftp}
-      [ ! -L "${_usrLftp}" ] && chmod 02755 ${_usrLftp}
-    fi
+    _ltd_dot_dir "${_usrTmp}" 02755 "${_usrLtd}:${_accGrp}"
+    _ltd_dot_dir "/home/${_usrLtd}/.lftp" 02755 "${_usrLtd}:${_accGrp}"
     _usrLhist="/home/${_usrLtd}/.lhistory"
     if [ ! -e "${_usrLhist}" ]; then
-      touch ${_usrLhist}
-      chown -h ${_usrLtd}:${_accGrp} ${_usrLhist}
-      [ ! -L "${_usrLhist}" ] && chmod 644 ${_usrLhist}
+      _ltd_in_real_dir "/home/${_usrLtd}" _ltd_lhistory_put "${_usrLtd}:${_accGrp}"
     fi
-    _usrDrush="/home/${_usrLtd}/.drush"
-    if [ ! -d "${_usrDrush}" ]; then
-      mkdir -p ${_usrDrush}
-      chown ${_usrLtd}:${_accGrp} ${_usrDrush}
-      chmod 700 ${_usrDrush}
-    fi
-    _usrBee="/home/${_usrLtd}/.bee"
-    if [ ! -d "${_usrBee}" ]; then
-      mkdir -p ${_usrBee}
-      chown ${_usrLtd}:${_accGrp} ${_usrBee}
-      chmod 700 ${_usrBee}
-    fi
+    _ltd_dot_dir "/home/${_usrLtd}/.drush" 700 "${_usrLtd}:${_accGrp}"
+    _ltd_dot_dir "/home/${_usrLtd}/.bee" 700 "${_usrLtd}:${_accGrp}"
     _usrSsh="/home/${_usrLtd}/.ssh"
-    if [ ! -d "${_usrSsh}" ]; then
-      mkdir -p ${_usrSsh}
-      chown -R ${_usrLtd}:${_accGrp} ${_usrSsh}
-      chmod 700 ${_usrSsh}
-    fi
-    chmod 600 ${_usrSsh}/id_{r,d}sa &> /dev/null
-    chmod 600 ${_usrSsh}/known_hosts &> /dev/null
+    _ltd_dot_dir "${_usrSsh}" 700 "${_usrLtd}:${_accGrp}"
+    _ltd_in_real_dir "${_usrSsh}" \
+      _ltd_chmod_nofollow 600 ./id_rsa ./id_dsa ./known_hosts
     _usrBzr="/home/${_usrLtd}/.bazaar"
     if [ -x "/usr/local/bin/bzr" ]; then
       if [ ! -z "${_usrLtd}" ] && [ ! -e "${_usrBzr}/bazaar.conf" ]; then
         mkdir -p ${_usrBzr}
-        echo ignore_missing_extensions=True > ${_usrBzr}/bazaar.conf
-        chown -R ${_usrLtd}:${_accGrp} ${_usrBzr}
-        chmod 700 ${_usrBzr}
+        chown -h ${_usrLtd}:${_accGrp} ${_usrBzr}
+        _ltd_in_real_dir "${_usrBzr}" _ltd_bzr_conf "${_usrLtd}:${_accGrp}"
       fi
     else
       if [ ! -z "${_usrLtd}" ] && [ -d "${_usrBzr}" ]; then
@@ -2172,12 +2400,17 @@ _ok_create_user() {
     if [ -d "/var/backups/migrate-subuser-ssh/${_usrLtd}/.ssh" ] \
       && [ -d "${_usrLtdRoot}" ] \
       && getent passwd "${_usrLtd}" > /dev/null 2>&1; then
-      cp -af "/var/backups/migrate-subuser-ssh/${_usrLtd}/.ssh" "${_usrLtdRoot}/"
+      # a home that was already there may carry a link at .ssh
+      # copied into the real home, every file put as a fresh one: a link at
+      # .ssh, or at a key name inside it, is replaced, never written through
+      _desymlink_planted "${_usrLtdRoot}/.ssh"
+      _ltd_in_real_dir "${_usrLtdRoot}" \
+        cp -a --remove-destination "/var/backups/migrate-subuser-ssh/${_usrLtd}/.ssh" ./
       # Group half derived, not the user name: no group named after a
       # sub-user is ever created, so that chgrp half always failed.
       chown -R ${_usrLtd}:$(_acct_group "${_usrLtd}") "${_usrLtdRoot}/.ssh" &> /dev/null
-      chmod 700 "${_usrLtdRoot}/.ssh" &> /dev/null
-      chmod 600 "${_usrLtdRoot}"/.ssh/* &> /dev/null
+      _ltd_in_real_dir "${_usrLtdRoot}/.ssh" chmod 700 . &> /dev/null
+      _ltd_in_real_dir "${_usrLtdRoot}/.ssh" _ltd_chmod_nofollow_here 600
       rm -rf "/var/backups/migrate-subuser-ssh/${_usrLtd}"
       echo "Adopted migrated SSH keys for ${_usrLtd}"
     fi
@@ -2415,12 +2648,8 @@ _add_user_if_not_exists() {
       rm -rf /home/${_usrLtd}/drush-backups
       _usrTmp="/home/${_usrLtd}/.tmp"
       _desymlink_planted "${_usrTmp}"
-      if [ ! -d "${_usrTmp}" ]; then
-        mkdir -p ${_usrTmp}
-        chown -h ${_usrLtd}:$(_acct_group "${_usrLtd}") ${_usrTmp}
-        [ ! -L "${_usrTmp}" ] && chmod 02755 ${_usrTmp}
-      fi
-      find ${_usrTmp} -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null
+      _ltd_dot_dir "${_usrTmp}" 02755 "${_usrLtd}:$(_acct_group "${_usrLtd}")"
+      _ltd_in_real_dir "${_usrTmp}" _ltd_age_out_here "${_usrLtd}"
       _ok_update_user
       _ltdRst=NO
       [ ! -L "/home/${_usrLtd}/.drush" ] \
@@ -2661,7 +2890,8 @@ _php_cli_local_ini_update() {
   if [ ! -e "${_DRUSH_FILE}" ]; then
     return 1  # Exit the function but continue the script
   fi
-  _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
+  # tools/drush is oN's: a FIFO or link there must not hold or steer root
+  _CHECK_USE_PHP_CLI=$(_ltd_read_in "${_DRUSH_FILE%/*}" "${_DRUSH_FILE##*/}" | grep "/opt/php" 2>&1)
   _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
@@ -2669,80 +2899,33 @@ _php_cli_local_ini_update() {
       _PHP_CLI_UPDATE=YES
     fi
   done
-  if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
+  # oN owns /data/disk/oN, so .tmp and .drush (never a link in BOA's own
+  # layout) can be swapped for a link at any time: a link takes the rebuild,
+  # which strips it; the age sweep never resolves a path through a name
+  # (bare path, -execdir); owners change by name only with chown -h; every
+  # other remove and write, the CLI ini and both stamps included, happens
+  # inside the real directory
+  if [ -L "${_U_HD}" ] || [ -L "${_U_TP}" ] \
+    || [ "${_PHP_CLI_UPDATE}" = "YES" ] \
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
     || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    mkdir -p ${_U_TP}
-    touch ${_U_TP}
-    find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
-    mkdir -p ${_U_HD}
-    chown ${_USER}:${_usrGroup} ${_U_TP}
-    chown ${_USER}:${_usrGroup} ${_U_HD}
-    chmod 755 ${_U_TP}
-    chmod 755 ${_U_HD}
-    chattr -i ${_U_II}
-    rm -f ${_U_HD}/.ctrl.php*
-    rm -f ${_U_II}
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php85" ]]; then
-      cp -af /opt/php85/lib/php.ini ${_U_II}
-      _U_INI=85
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php84" ]]; then
-      cp -af /opt/php84/lib/php.ini ${_U_II}
-      _U_INI=84
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php83" ]]; then
-      cp -af /opt/php83/lib/php.ini ${_U_II}
-      _U_INI=83
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php82" ]]; then
-      cp -af /opt/php82/lib/php.ini ${_U_II}
-      _U_INI=82
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php81" ]]; then
-      cp -af /opt/php81/lib/php.ini ${_U_II}
-      _U_INI=81
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php80" ]]; then
-      cp -af /opt/php80/lib/php.ini ${_U_II}
-      _U_INI=80
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php74" ]]; then
-      cp -af /opt/php74/lib/php.ini ${_U_II}
-      _U_INI=74
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
-      cp -af /opt/php73/lib/php.ini ${_U_II}
-      _U_INI=73
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
-      cp -af /opt/php72/lib/php.ini ${_U_II}
-      _U_INI=72
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php71" ]]; then
-      cp -af /opt/php71/lib/php.ini ${_U_II}
-      _U_INI=71
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php70" ]]; then
-      cp -af /opt/php70/lib/php.ini ${_U_II}
-      _U_INI=70
-    elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php56" ]]; then
-      cp -af /opt/php56/lib/php.ini ${_U_II}
-      _U_INI=56
+    _desymlink_planted "${_U_TP}" "${_U_HD}"
+    mkdir -p ${_U_TP} ${_U_HD}
+    if _ltd_in_real_dir "${_U_TP}" _ltd_own_dir_here "${_USER}:${_usrGroup}" 755 YES \
+      && _ltd_in_real_dir "${_U_HD}" _ltd_own_dir_here "${_USER}:${_usrGroup}" 755 NO; then
+      # a literal list: a ${_PHP_V} split by a changed IFS would match nothing
+      _U_INI=""
+      for e in 85 84 83 82 81 80 74 73 72 71 70 56; do
+        if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]]; then
+          _U_INI="${e}"
+          break
+        fi
+      done
+      _ltd_in_real_dir "${_U_HD}" _ltd_drush_ini_put_locked "${_U_INI}" "${_U_TP}"
+    else
+      echo "ALERT: ${_U_TP} or ${_U_HD} is not ${_USER}'s own directory; its CLI ini left as it was"
     fi
-    if [ -e "${_U_II}" ]; then
-      # open_basedir stays out of the CLI ini: it breaks Drush and turns the
-      # realpath cache off (every file operation checked against every listed
-      # tree, uncached); lshell users are confined by their own measures, and
-      # the FPM ini keeps its own list
-      _QTP=${_U_TP//\//\\\/}
-      sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      ${_U_II}
-      wait
-      sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
-      wait
-      sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
-      wait
-      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
-      wait
-      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
-      wait
-      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
-      wait
-      echo > ${_U_HD}/.ctrl.php${_U_INI}.${_xSrl}.pid
-      echo > ${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid
-    fi
-    chattr +i ${_U_II}
   fi
 }
 #
@@ -2756,58 +2939,27 @@ _php_cli_drush_update() {
   if [ ! -e "${_DRUSH_FILE}" ]; then
     return 1  # Exit the function but continue the script
   fi
-  if [ "${_T_CLI_VRN}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php85\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _T_CLI=/opt/php85/bin
-  elif [ "${_T_CLI_VRN}" = "8.4" ] && [ -x "/opt/php84/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php84\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _T_CLI=/opt/php84/bin
-  elif [ "${_T_CLI_VRN}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _T_CLI=/opt/php83/bin
-  elif [ "${_T_CLI_VRN}" = "8.2" ] && [ -x "/opt/php82/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _T_CLI=/opt/php82/bin
-  elif [ "${_T_CLI_VRN}" = "8.1" ] && [ -x "/opt/php81/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _T_CLI=/opt/php81/bin
-  elif [ "${_T_CLI_VRN}" = "8.0" ] && [ -x "/opt/php80/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php80\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _T_CLI=/opt/php80/bin
-  elif [ "${_T_CLI_VRN}" = "7.4" ] && [ -x "/opt/php74/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _T_CLI=/opt/php74/bin
-  elif [ "${_T_CLI_VRN}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _T_CLI=/opt/php73/bin
-  elif [ "${_T_CLI_VRN}" = "7.2" ] && [ -x "/opt/php72/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php72\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _T_CLI=/opt/php72/bin
-  elif [ "${_T_CLI_VRN}" = "7.1" ] && [ -x "/opt/php71/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php71\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _T_CLI=/opt/php71/bin
-  elif [ "${_T_CLI_VRN}" = "7.0" ] && [ -x "/opt/php70/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _T_CLI=/opt/php70/bin
-  elif [ "${_T_CLI_VRN}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
-    _T_CLI=/opt/php56/bin
-  else
-    _T_CLI=/foo/bar
-  fi
+  _T_CLI=/foo/bar
+  case "${_T_CLI_VRN}" in
+    8.5|8.4|8.3|8.2|8.1|8.0|7.4|7.3|7.2|7.1|7.0|5.6)
+      if [ -x "/opt/php${_T_CLI_VRN/./}/bin/php" ]; then
+        _T_CLI="/opt/php${_T_CLI_VRN/./}/bin"
+        # tools/drush is oN's: the shebang is edited inside the real
+        # directory, and only on a regular file (sed -i through a link
+        # would put a copy of its target in its place)
+        _ltd_in_real_dir "${_dscUsr}/tools/drush" _ltd_sed_here \
+          "${_DRUSH_FILE##*/}" "s/^#\!\/.*/#\!\/opt\/php${_T_CLI_VRN/./}\/bin\/php/g"
+      fi
+      ;;
+  esac
   if [ -x "${_T_CLI}/php" ]; then
     #_DRUSH_HOSTING_TASKS_CMD="/usr/bin/drush @hostmaster hosting-tasks --force"
     _DRUSH_HOSTING_DISPATCH_CMD="${_T_CLI}/php ${_dscUsr}/tools/drush/drush.php @hostmaster hosting-dispatch"
-    if [ -e "${_dscUsr}/aegir.sh" ]; then
-      rm -f ${_dscUsr}/aegir.sh
-    fi
-    touch ${_dscUsr}/aegir.sh
-    echo -e "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n \
+    # aegir.sh sits in oN's own home: put in place as a fresh file inside the
+    # real directory, never through a link at the name
+    _ltd_in_real_dir "${_dscUsr}" _ltd_aegir_sh_put "$(echo -e "#!/bin/bash\n\nPATH=.:${_T_CLI}:/usr/sbin:/usr/bin:/sbin:/bin\n \
       \n${_DRUSH_HOSTING_DISPATCH_CMD} \
-      \ntouch ${_dscUsr}/${_USER}-task.done" \
-      | fmt -su -w 2500 | tee -a ${_dscUsr}/aegir.sh >/dev/null 2>&1
-    chown ${_USER}:${_usrGroup} ${_dscUsr}/aegir.sh &> /dev/null
-    chmod 0700 ${_dscUsr}/aegir.sh &> /dev/null
+      \ntouch ${_dscUsr}/${_USER}-task.done" | fmt -su -w 2500)"
     # The shebang pin on drush.php is bypassed whenever the drush 8 finder
     # runs: it execs drush.launcher, which re-selects PHP via `which php`.
     # The launcher also cannot run at all via its stock `env sh` shebang,
@@ -2818,13 +2970,16 @@ _php_cli_drush_update() {
     # that runtime choice must always win over the baked pin.
     _DRUSH_LNCH="${_dscUsr}/tools/drush/drush.launcher"
     if [ -e "${_DRUSH_LNCH}" ]; then
-      sed -i "1s/^#\!.*/#\!\/bin\/bash/" ${_DRUSH_LNCH} &> /dev/null
-      sed -i "/^export DRUSH_PHP=/d" ${_DRUSH_LNCH} &> /dev/null
-      sed -i "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${_T_CLI}/php}\"" ${_DRUSH_LNCH} &> /dev/null
+      _ltd_in_real_dir "${_dscUsr}/tools/drush" _ltd_sed_here drush.launcher \
+        "1s/^#\!.*/#\!\/bin\/bash/"
+      _ltd_in_real_dir "${_dscUsr}/tools/drush" _ltd_sed_here drush.launcher \
+        "/^export DRUSH_PHP=/d"
+      _ltd_in_real_dir "${_dscUsr}/tools/drush" _ltd_sed_here drush.launcher \
+        "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${_T_CLI}/php}\""
     fi
   fi
-  rm -f ${_dscUsr}/static/control/.ctrl.cli.*.pid
-  echo "${_T_CLI_VRN}" > ${_dscUsr}/static/control/.ctrl.cli.${_T_CLI_VRN}.${_xSrl}.pid
+  _ltd_ctrl_rm '.ctrl.cli.*.pid'
+  _ltd_ctrl_stamp ".ctrl.cli.${_T_CLI_VRN}.${_xSrl}.pid" "${_T_CLI_VRN}"
 }
 
 #
@@ -3031,7 +3186,7 @@ _satellite_tune_fpm_workers() {
 
   if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge 1 ]; then
     if [ -e "${_dscUsr}/log/cores.txt" ]; then
-      _CLIENT_CORES=$(cat ${_dscUsr}/log/cores.txt 2>&1)
+      _CLIENT_CORES=$(_ltd_read_in "${_dscUsr}/log" cores.txt)
       _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
     fi
     _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
@@ -3080,7 +3235,7 @@ _disable_newrelic() {
 #
 # Enable New Relic per Octopus instance.
 _enable_newrelic() {
-  _LOC_NEW_RELIC_KEY=$(cat ${_dscUsr}/static/control/newrelic.info 2>&1)
+  _LOC_NEW_RELIC_KEY=$(_ltd_ctrl_read newrelic.info)
   _LOC_NEW_RELIC_KEY=${_LOC_NEW_RELIC_KEY//[^0-9a-zA-Z]/}
   _LOC_NEW_RELIC_KEY=$(echo -n ${_LOC_NEW_RELIC_KEY} | tr -d "\n" 2>&1)
   if [ -z "${_LOC_NEW_RELIC_KEY}" ]; then
@@ -3129,6 +3284,54 @@ _switch_newrelic() {
   fi
 }
 #
+# The web user's CLI ini and its stamp, inside the real ~/.drush. While the
+# directory is still immutable no name in it can change, so the ini is
+# unlocked first; the ini is edited in root's own temp directory and put in
+# place once, created 0440, so no name the web user can swap is opened or
+# chmod-ed. $1 = the source ini (empty: none), $2 = its version digits,
+# $3 = the web user's ~/.tmp.
+_ltd_web_ini_put() {
+  local _src="${1}" _v="${2}" _qtp="${3//\//\\\/}" _w=""
+  [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr -i ./php.ini 2> /dev/null
+  chattr -i . 2> /dev/null
+  [ -n "${_src}" ] && [ -e "${_src}" ] || return 0
+  _w=$(mktemp -d 2> /dev/null) || return 0
+  [ -n "${_w}" ] && [ -d "${_w}" ] || return 0
+  if cp -f -- "${_src}" "${_w}/php.ini" 2> /dev/null; then
+    # open_basedir stays out of the CLI ini: it breaks Drush and turns the
+    # realpath cache off (every file operation checked against every listed
+    # tree, uncached); lshell users are confined by their own measures, and
+    # the FPM ini keeps its own list
+    sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      "${_w}/php.ini"
+    wait
+    sed -i "s/.*session.save_path =.*/session.save_path = ${_qtp}/g"     "${_w}/php.ini"
+    wait
+    sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_qtp}/g" "${_w}/php.ini"
+    wait
+    sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_qtp}/g"               "${_w}/php.ini"
+    wait
+    sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_qtp}/g"           "${_w}/php.ini"
+    wait
+    if ( umask 0337
+      cp -T --no-preserve=mode --remove-destination "${_w}/php.ini" ./php.ini ) 2> /dev/null; then
+      rm -f -- ./.ctrl.php*
+      _ltd_stamp_put ".ctrl.php${_v}.${_xSrl}.pid" ""
+    fi
+  fi
+  rm -f -- "${_w}/php.ini"
+  rmdir -- "${_w}" 2> /dev/null
+  return 0
+}
+# The web user's ~/.drush locked again inside the real directory: the
+# directory first, after which no name in it can change, then a regular
+# php.ini.
+_ltd_web_drush_lock() {
+  chmod 550 .
+  chattr +i . 2> /dev/null
+  [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr +i ./php.ini 2> /dev/null
+  return 0
+}
+#
 # Update web user.
 _satellite_web_user_update() {
   _isTest="${_WEB}"
@@ -3141,96 +3344,39 @@ _satellite_web_user_update() {
     if [ -d "/home/${_WEB}" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
       chattr -i /home/${_WEB}
       # /home/<user>.web is owned by the FPM user, so a compromised hosted site
-      # can plant these names; chattr, mkdir -p and cp -af all walk through a
-      # link. Order matters: .drush first, then the file inside it.
+      # can plant these names, and plant them again once they are stripped:
+      # after the strip every write, mode and chattr inside ~/.drush happens
+      # in the real directory, the ini is edited in root's own temp directory
+      # and put in place once, and the lock and the stamp are created
+      # exclusively, never through a link at the name.
       _desymlink_planted "/home/${_WEB}/.drush" "/home/${_WEB}/.tmp" \
         "/home/${_WEB}/.aws" "${_T_II}"
-      if [ -d "/home/${_WEB}/.drush" ]; then
-        chattr -i /home/${_WEB}/.drush
-      fi
-      if [ -e "${_T_II}" ]; then
-        chattr -i ${_T_II}
-      fi
       mkdir -p /home/${_WEB}/.{tmp,drush,aws}
-      touch /home/${_WEB}/.lock
+      _ltd_in_real_dir "/home/${_WEB}" _ltd_stamp_put .lock ""
       _isTest="$1"
       _isTest=${_isTest//[^a-z0-9]/}
       if [ ! -z "${_isTest}" ]; then
         _T_PV=$1
       fi
+      _T_SRC=""
       if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
-        cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
+        _T_SRC="/opt/php${_T_PV}/etc/php${_T_PV}.ini"
       else
-        if [ -e "/opt/php85/etc/php85.ini" ]; then
-          cp -af /opt/php85/etc/php85.ini ${_T_II}
-          _T_PV=85
-        elif [ -e "/opt/php84/etc/php84.ini" ]; then
-          cp -af /opt/php84/etc/php84.ini ${_T_II}
-          _T_PV=84
-        elif [ -e "/opt/php83/etc/php83.ini" ]; then
-          cp -af /opt/php83/etc/php83.ini ${_T_II}
-          _T_PV=83
-        elif [ -e "/opt/php82/etc/php82.ini" ]; then
-          cp -af /opt/php82/etc/php82.ini ${_T_II}
-          _T_PV=82
-        elif [ -e "/opt/php81/etc/php81.ini" ]; then
-          cp -af /opt/php81/etc/php81.ini ${_T_II}
-          _T_PV=81
-        elif [ -e "/opt/php80/etc/php80.ini" ]; then
-          cp -af /opt/php80/etc/php80.ini ${_T_II}
-          _T_PV=80
-        elif [ -e "/opt/php74/etc/php74.ini" ]; then
-          cp -af /opt/php74/etc/php74.ini ${_T_II}
-          _T_PV=74
-        elif [ -e "/opt/php73/etc/php73.ini" ]; then
-          cp -af /opt/php73/etc/php73.ini ${_T_II}
-          _T_PV=73
-        elif [ -e "/opt/php72/etc/php72.ini" ]; then
-          cp -af /opt/php72/etc/php72.ini ${_T_II}
-          _T_PV=72
-        elif [ -e "/opt/php71/etc/php71.ini" ]; then
-          cp -af /opt/php71/etc/php71.ini ${_T_II}
-          _T_PV=71
-        elif [ -e "/opt/php70/etc/php70.ini" ]; then
-          cp -af /opt/php70/etc/php70.ini ${_T_II}
-          _T_PV=70
-        elif [ -e "/opt/php56/etc/php56.ini" ]; then
-          cp -af /opt/php56/etc/php56.ini ${_T_II}
-          _T_PV=56
-        fi
+        for e in 85 84 83 82 81 80 74 73 72 71 70 56; do
+          if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
+            _T_SRC="/opt/php${e}/etc/php${e}.ini"
+            _T_PV=${e}
+            break
+          fi
+        done
       fi
-      if [ -e "${_T_II}" ]; then
-        # open_basedir stays out of the CLI ini: it breaks Drush and turns the
-        # realpath cache off (every file operation checked against every listed
-        # tree, uncached); lshell users are confined by their own measures, and
-        # the FPM ini keeps its own list
-        _QTP=${_T_TP//\//\\\/}
-        sed -i "s/.*open_basedir =.*/;open_basedir =/g"                              ${_T_II}
-        wait
-        sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_T_II}
-        wait
-        sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_T_II}
-        wait
-        sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_T_II}
-        wait
-        sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_T_II}
-        wait
-        rm -f ${_T_HD}/.ctrl.php*
-        echo > ${_T_HD}/.ctrl.php${_T_PV}.${_xSrl}.pid
-      fi
+      _ltd_in_real_dir "${_T_HD}" _ltd_web_ini_put "${_T_SRC}" "${_T_PV}" "${_T_TP}"
       chmod 700 /home/${_WEB}
       chown -R ${_WEB}:${_WEBG} /home/${_WEB}
-      chmod 550 /home/${_WEB}/.drush
-      chmod 440 /home/${_WEB}/.drush/php.ini
+      _ltd_in_real_dir "${_T_HD}" _ltd_web_drush_lock
       rm -f /home/${_WEB}/.lock
       if [ -d "/home/${_WEB}" ]; then
         chattr +i /home/${_WEB}
-      fi
-      if [ -d "/home/${_WEB}/.drush" ]; then
-        chattr +i /home/${_WEB}/.drush
-      fi
-      if [ -e "${_T_II}" ]; then
-        chattr +i ${_T_II}
       fi
     fi
   fi
@@ -3247,7 +3393,7 @@ _satellite_remove_web_user() {
       # stderr once per installed PHP into this worker's log
       [ -d "/home/${_WEB}/" ] && chattr -i /home/${_WEB}/
       if [ -d "/home/${_WEB}/.drush/" ]; then
-        chattr -i /home/${_WEB}/.drush/
+        chattr -i /home/${_WEB}/.drush
       fi
       # only this user's agent (none for a user that never existed): -f
       # matched every gpg-agent on the box
@@ -3291,12 +3437,15 @@ _site_socket_inc_gen() {
   # over to every account after it in the same pass
   _mltFpmUpdateForce=NO
 
-  _hmFront=$(cat ${_dscUsr}/log/domain.txt 2>&1)
-  _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
+  # log/ is oN's: read without following a link or blocking on a FIFO, and
+  # the panel name reaches the sed below as host name characters only (a
+  # slash there would end the s/// and let the rest run as sed commands)
+  _hmFront=$(_ltd_read_in "${_dscUsr}/log" domain.txt | tr -d "\n")
+  _hmFront=${_hmFront//[^a-zA-Z0-9.-]/}
   _hmstAls="${_dscUsr}/.drush/${_hmFront}.alias.drushrc.php"
 
-  _hmstCli=$(cat ${_dscUsr}/log/cli.txt 2>&1)
-  _hmstCli=$(echo -n ${_hmstCli} | tr -d "\n" 2>&1)
+  _hmstCli=$(_ltd_read_in "${_dscUsr}/log" cli.txt | tr -d "\n")
+  _hmstCli=${_hmstCli//[^0-9.]/}
 
   # The <panel-fqdn> symlink to hostmaster.alias.drushrc.php was a crutch for
   # accounts whose hostmaster internals an old migration had left half
@@ -3313,22 +3462,18 @@ _site_socket_inc_gen() {
   done
 
   _desymlink_planted "${_mltFpm}"
-  _PLACEHOLDER_TEST=$(grep "place.holder.dont.remove" ${_mltFpm} 2>&1)
+  # multi-fpm.info is the main login's: read without following a link or
+  # blocking on a FIFO, edited here and put back as a fresh file (sed -i and
+  # >> would write through a link put at the name, and sed -i would put a
+  # copy of its target there, which the chown below hands to the tenant)
+  _mltFpmBody="$(_ltd_ctrl_read multi-fpm.info)"
+  _PLACEHOLDER_TEST=$(grep "place.holder.dont.remove" <<< "${_mltFpmBody}" 2>&1)
 
   if [ ! -e "${_dscUsr}/log/no-lock-aegir-fpm.txt" ] \
     || [[ ! "${_PLACEHOLDER_TEST}" =~ "place.holder.dont.remove" ]]; then
-    # a young account has no multi-fpm.info yet (the agents pass writes it
-    # later); the two seds below have nothing to clean there and only left
-    # "sed: can't read" in this worker's log every three minutes until it
-    # appeared
-    if [ -f "${_mltFpm}" ]; then
-      sed -i "s/^${_hmFront} .*//g" ${_mltFpm}
-      wait
-      sed -i "s/^place.holder.dont.remove .*//g" ${_mltFpm}
-      wait
-    fi
     _PHP_V="85 84 83 82 81 74"
     _phpFnd=NO
+    _mltFpmAdd=""
     for e in ${_PHP_V}; do
       if [ -x "/opt/php${e}/bin/php" ] && [ "${_phpFnd}" = "NO" ]; then
         if [ "${e}" = 85 ]; then
@@ -3346,16 +3491,22 @@ _site_socket_inc_gen() {
         fi
         # static/control itself is created later in this pass (behind the
         # ftp home's clients link); until then there is nowhere to write
-        [ -d "${_dscUsr}/static/control" ] && echo "place.holder.dont.remove ${_phpDot}" >> ${_mltFpm}
+        [ -d "${_dscUsr}/static/control" ] && _mltFpmAdd="place.holder.dont.remove ${_phpDot}"
         _phpFnd=YES
       fi
     done
-    # still absent when no PHP binary was found above and nothing appended
-    [ -f "${_mltFpm}" ] && sed -i "s/ *$//g; /^$/d" ${_mltFpm}
-    wait
-    touch ${_dscUsr}/log/no-lock-aegir-fpm.txt
-    rm -f ${_dscUsr}/log/locked-aegir-fpm.txt
-    touch ${_dscUsr}/log/unlocked-aegir-fpm.txt
+    # a young account has no multi-fpm.info yet (the agents pass writes it
+    # later): it stays absent when no PHP binary was found above
+    if [ -f "${_mltFpm}" ] || [ -n "${_mltFpmAdd}" ]; then
+      _mltFpmBody="$( { sed -e "s/^${_hmFront} .*//g" \
+          -e "s/^place.holder.dont.remove .*//g" <<< "${_mltFpmBody}"
+        [ -n "${_mltFpmAdd}" ] && echo "${_mltFpmAdd}"; } \
+        | sed -e "s/ *$//g" -e "/^$/d")"
+      _ltd_ctrl_put multi-fpm.info "${_mltFpmBody}"
+    fi
+    _ltd_put_in "${_dscUsr}/log" no-lock-aegir-fpm.txt ""
+    _ltd_rm_in "${_dscUsr}/log" locked-aegir-fpm.txt
+    _ltd_put_in "${_dscUsr}/log" unlocked-aegir-fpm.txt ""
     _mltFpmUpdateForce=YES
   fi
 
@@ -3379,13 +3530,15 @@ _site_socket_inc_gen() {
   if [ -f "${_mltFpm}" ]; then
     # static/control is tenant-owned, so a symlink named <x>.info is matched by
     # this glob; -h keeps the chown on the link instead of its target.
-    chown -h ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/*.info
+    _ltd_in_real_dir "${_dscUsr}/static/control" _ltd_ctrl_info_owner
+    _mltFpmBody="$(_ltd_ctrl_read multi-fpm.info)"
     _mltFpmUpdate=NO
     if [ ! -f "${_preFpm}" ]; then
-      rm -rf ${_preFpm}
-      cp -af ${_mltFpm} ${_preFpm}
+      _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./.prev-multi-fpm.info
+      _ltd_ctrl_put .prev-multi-fpm.info "${_mltFpmBody}"
     fi
-    _diffFpmTest=$(diff -w -B ${_mltFpm} ${_preFpm} 2>&1)
+    _diffFpmTest=$(diff -w -B <(printf '%s\n' "${_mltFpmBody}") \
+      <(_ltd_ctrl_read .prev-multi-fpm.info) 2>&1)
     if [ ! -z "${_diffFpmTest}" ]; then
       _mltFpmUpdate=YES
     fi
@@ -3406,9 +3559,11 @@ _site_socket_inc_gen() {
     elif [ ! -f "${_mltNgx}" ] \
       || [ "${_mltFpmUpdate}" = "YES" ] \
       || [ "${_mltFpmUpdateForce}" = "YES" ]; then
-      rm -f ${_fpmPth}/fpm_include_site_*
-      IFS=$'\12'
-      for p in `cat ${_mltFpm}`;do
+      _ltd_rm_in "${_fpmPth}" 'fpm_include_site_*'
+      # local: a bare IFS= here stayed a newline for the rest of the pass,
+      # and every later "for x in ${list}" saw one word
+      local IFS=$'\12'
+      for p in ${_mltFpmBody};do
         _SITE_NAME=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
         _SITE_NAME=${_SITE_NAME//[^a-zA-Z0-9-.]/}
         _SITE_NAME=$(echo -n ${_SITE_NAME} | tr A-Z a-z 2>&1)
@@ -3422,15 +3577,13 @@ _site_socket_inc_gen() {
           && [ -x "/opt/php${_SITE_SOCKET}/bin/php" ] \
           && [ -e "${_dscUsr}/.drush/${_SITE_NAME}.alias.drushrc.php" ] \
           && [ -e "/run/${_SOCKET_L_NAME}.fpm.socket" ]; then
-          _fpmInc="${_fpmPth}/fpm_include_site_${_SITE_NAME}.inc"
-          echo "if ( \$main_site_name = ${_SITE_NAME} ) {" > ${_fpmInc}
-          echo "  set \$user_socket \"${_SOCKET_L_NAME}\";" >> ${_fpmInc}
-          echo "}" >> ${_fpmInc}
+          _ltd_put_in "${_fpmPth}" "fpm_include_site_${_SITE_NAME}.inc" \
+            "if ( \$main_site_name = ${_SITE_NAME} ) {"$'\n'"  set \$user_socket \"${_SOCKET_L_NAME}\";"$'\n'"}"
         fi
       done
-      touch ${_mltNgx}
-      rm -rf ${_preFpm}
-      cp -af ${_mltFpm} ${_preFpm}
+      _ltd_ctrl_stamp .multi-nginx-fpm.pid ""
+      _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./.prev-multi-fpm.info
+      _ltd_ctrl_put .prev-multi-fpm.info "${_mltFpmBody}"
       ### reload nginx -- only a config that passes its own test: a failed
       ### reload keeps the running config, but an invalid one left on disk
       ### turns the next unrelated restart into a box-wide outage
@@ -3444,10 +3597,10 @@ _site_socket_inc_gen() {
     fi
   else
     if [ -f "${_mltNgx}" ]; then
-      rm -f ${_mltNgx}
+      _ltd_ctrl_rm .multi-nginx-fpm.pid
     fi
     if [ -f "${_preFpm}" ]; then
-      rm -f ${_preFpm}
+      _ltd_ctrl_rm .prev-multi-fpm.info
     fi
   fi
 }
@@ -3463,21 +3616,19 @@ _switch_php() {
   if [ -e "${_dscUsr}/static/control/fpm.info" ] || [ -e "${_dscUsr}/static/control/cli.info" ]; then
     echo "Custom FPM and CLI settings for ${_USER} exist, running _switch_php checks"
     if [ ! -e "${_dscUsr}/log/un-chattr-ctrl.info" ]; then
-      # static/control is tenant-owned; chattr opens the referent, so refuse a
-      # planted link rather than clearing +i on whatever it points at.
-      [ ! -L "${_dscUsr}/static/control/fpm.info" ] \
-        && chattr -i ${_dscUsr}/static/control/fpm.info &> /dev/null
-      [ ! -L "${_dscUsr}/static/control/cli.info" ] \
-        && chattr -i ${_dscUsr}/static/control/cli.info &> /dev/null
-      chattr -i ${_dscUsr}/log/fpm.txt &> /dev/null
-      chattr -i ${_dscUsr}/log/cli.txt &> /dev/null
-      chattr -i ${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc &> /dev/null
-      touch ${_dscUsr}/log/un-chattr-ctrl.info
+      # static/control is tenant-owned, log/ and config/ are oN's: +i is
+      # cleared only on regular files inside the real directories, never on
+      # whatever a planted link points at.
+      _ltd_in_real_dir "${_dscUsr}/static/control" _ltd_unlock_here fpm.info cli.info
+      _ltd_in_real_dir "${_dscUsr}/log" _ltd_unlock_here fpm.txt cli.txt
+      _ltd_in_real_dir "${_dscUsr}/config/server_master/nginx/post.d" \
+        _ltd_unlock_here fpm_include_default.inc
+      _ltd_put_in "${_dscUsr}/log" un-chattr-ctrl.info ""
     fi
 
     if [ ! -e "${_dscUsr}/static/control/.single-fpm.${_xSrl}.pid" ]; then
-      rm -f ${_dscUsr}/static/control/.single-fpm*.pid
-      echo OK > ${_dscUsr}/static/control/.single-fpm.${_xSrl}.pid
+      _ltd_ctrl_rm '.single-fpm*.pid'
+      _ltd_ctrl_stamp ".single-fpm.${_xSrl}.pid" "OK"
       _FORCE_FPM_SETUP=YES
     fi
 
@@ -3508,7 +3659,7 @@ _switch_php() {
     # --- CLI portion ---
     if [ -e "${_dscUsr}/static/control/cli.info" ]; then
       # Extract numeric version from file
-      _T_CLI_VRN="$(tr -d '\n' < "${_dscUsr}/static/control/cli.info" | tr -cd '0-9.')"
+      _T_CLI_VRN="$(_ltd_ctrl_read cli.info | tr -d '\n' | tr -cd '0-9.')"
 
       # Convert shorthand versions (e.g. "83" to "8.3")
       _T_CLI_VRN="$(fix_version_format "${_T_CLI_VRN}")"
@@ -3552,10 +3703,8 @@ _switch_php() {
           if [ -x "${_T_CLI}/php" ]; then
             _php_cli_local_ini_update
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_T_CLI_VRN}/g" /root/.${_USER}.octopus.cnf &> /dev/null
-            echo "${_T_CLI_VRN}" > "${_dscUsr}/log/cli.txt"
-            _desymlink_planted "${_dscUsr}/static/control/cli.info"
-            echo "${_T_CLI_VRN}" > "${_dscUsr}/static/control/cli.info"
-            chown -h "${_USER}.ftp:${_usrGroup}" "${_dscUsr}/static/control/cli.info"
+            _ltd_put_in "${_dscUsr}/log" cli.txt "${_T_CLI_VRN}"
+            _ltd_ctrl_put cli.info "${_T_CLI_VRN}"
           fi
         fi
       fi
@@ -3567,20 +3716,20 @@ _switch_php() {
       if [ -f "${_dscUsr}/static/control/multi-fpm.info" ] && [ -d "${_dscUsr}/tools/le" ]; then
         _PHP_FPM_MULTI=YES
         if [ ! -e "${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid" ]; then
-          rm -f ${_dscUsr}/static/control/.multi-fpm*.pid
-          echo OK > ${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid
+          _ltd_ctrl_rm '.multi-fpm*.pid'
+          _ltd_ctrl_stamp ".multi-fpm.${_xSrl}.pid" "OK"
           _FORCE_FPM_SETUP=YES
         fi
       else
         if [ -e "${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc" ]; then
-          rm -f ${_dscUsr}/config/server_master/nginx/post.d/fpm_include_*
-          rm -f ${_dscUsr}/static/control/.multi-fpm*.pid
+          _ltd_rm_in "${_dscUsr}/config/server_master/nginx/post.d" 'fpm_include_*'
+          _ltd_ctrl_rm '.multi-fpm*.pid'
           service nginx reload &> /dev/null
         fi
       fi
 
       # Read and sanitize the FPM version
-      _T_FPM_VRN=$(tr -d '\n' < ${_dscUsr}/static/control/fpm.info | tr -cd '0-9.')
+      _T_FPM_VRN=$(_ltd_ctrl_read fpm.info | tr -d '\n' | tr -cd '0-9.')
 
       # Convert shorthand versions (e.g. "83" to "8.3")
       _T_FPM_VRN="$(fix_version_format "${_T_FPM_VRN}")"
@@ -3629,33 +3778,34 @@ _switch_php() {
         _PHP_M_V="85 84 83 82 81 80 74 73 72 71 70 56"
         _D_POOL="${_USER}.${_PHP_SV}"
         if [ ! -e "${_FMP_D_INC}" ]; then
-          echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
-          touch ${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid
+          _ltd_put_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" "set \$user_socket \"${_D_POOL}\";"
+          _ltd_ctrl_stamp ".multi-fpm.${_xSrl}.pid" ""
           _NEW_FPM_SETUP=YES
         else
-          _CHECK_FMP_D=$(grep "${_D_POOL}" ${_FMP_D_INC} 2>&1)
+          _CHECK_FMP_D=$(_ltd_read_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" | grep "${_D_POOL}" 2>&1)
           if [[ ! "${_CHECK_FMP_D}" =~ "${_D_POOL}" ]]; then
             echo "${_D_POOL} must be updated in ${_FMP_D_INC}"
-            echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
-            touch ${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid
+            _ltd_put_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" "set \$user_socket \"${_D_POOL}\";"
+            _ltd_ctrl_stamp ".multi-fpm.${_xSrl}.pid" ""
             _NEW_FPM_SETUP=YES
           fi
         fi
       else
         _PHP_M_V="${_PHP_SV}"
-        rm -f ${_dscUsr}/static/control/.multi-fpm*.pid
-        rm -f ${_FMP_D_INC}
+        _ltd_ctrl_rm '.multi-fpm*.pid'
+        _ltd_rm_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}"
       fi
 
       if [ -n "${_T_FPM_VRN}" ] && [ "${_NEW_FPM_SETUP}" = "YES" ]; then
         _satellite_tune_fpm_workers
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_T_FPM_VRN}/g" /root/.${_USER}.octopus.cnf &> /dev/null
-        echo "${_T_FPM_VRN}" > ${_dscUsr}/log/fpm.txt
+        _ltd_put_in "${_dscUsr}/log" fpm.txt "${_T_FPM_VRN}"
         if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
-          _desymlink_planted "${_dscUsr}/static/control/fpm.info"
-        echo "${_T_FPM_VRN}" > ${_dscUsr}/static/control/fpm.info
+          _ltd_ctrl_put fpm.info "${_T_FPM_VRN}"
+        else
+          _ltd_in_real_dir "${_dscUsr}/static/control" \
+            chown -h "${_USER}.ftp:${_usrGroup}" ./fpm.info
         fi
-        chown -h ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control/fpm.info
 
         _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
         _PHP_SV=${_T_FPM_VRN//[^0-9]/}
@@ -3666,20 +3816,20 @@ _switch_php() {
           _PHP_M_V="85 84 83 82 81 80 74 73 72 71 70 56"
           _D_POOL="${_USER}.${_PHP_SV}"
           if [ ! -e "${_FMP_D_INC}" ] && [ -e "/run/${_D_POOL}.fpm.socket" ] && [ -x "/opt/php${_PHP_SV}/bin/php" ]; then
-            echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
-            touch ${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid
+            _ltd_put_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" "set \$user_socket \"${_D_POOL}\";"
+            _ltd_ctrl_stamp ".multi-fpm.${_xSrl}.pid" ""
           else
-            _CHECK_FMP_D=$(grep "${_D_POOL}" ${_FMP_D_INC} 2>&1)
+            _CHECK_FMP_D=$(_ltd_read_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" | grep "${_D_POOL}" 2>&1)
             if [[ ! "${_CHECK_FMP_D}" =~ "${_D_POOL}" ]] && [ -e "/run/${_D_POOL}.fpm.socket" ] && [ -x "/opt/php${_PHP_SV}/bin/php" ]; then
               echo "${_D_POOL} must be updated in ${_FMP_D_INC}"
-              echo "set \$user_socket \"${_D_POOL}\";" > ${_FMP_D_INC}
-              touch ${_dscUsr}/static/control/.multi-fpm.${_xSrl}.pid
+              _ltd_put_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" "set \$user_socket \"${_D_POOL}\";"
+              _ltd_ctrl_stamp ".multi-fpm.${_xSrl}.pid" ""
             fi
           fi
         else
           _PHP_M_V="${_PHP_SV}"
-          rm -f ${_dscUsr}/static/control/.multi-fpm*.pid
-          rm -f ${_FMP_D_INC}
+          _ltd_ctrl_rm '.multi-fpm*.pid'
+          _ltd_rm_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}"
         fi
 
         # Update/create web users
@@ -3693,7 +3843,7 @@ _switch_php() {
               _POOL="${_USER}"
             fi
             if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
-              _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
+              _OLD_PHP_IN_USE=$(_ltd_read_in "/home/${_WEB}/.drush" php.ini | grep "/lib/php" 2>&1)
               _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
               for e in ${_PHP_V}; do
                 if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
@@ -3857,7 +4007,7 @@ _manage_site_drush_alias_mirror() {
           rm -f ${_pthParentUsr}/.drush/${_SiteName}.alias.drushrc.php
         fi
       else
-        _SiteDir=$(cat ${_Alias} \
+        _SiteDir=$(_ltd_read_in "${_pthParentUsr}/.drush" "${_Alias##*/}" \
           | grep "site_path'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
@@ -4171,10 +4321,11 @@ _manage_user() {
       _octTpl="${_dscUsr}/.drush/sys/provision/http/Provision/Config/Nginx"
       if [ -e "${_dscUsr}/log/imported.pid" ] \
         && [ -e "${_dscUsr}/log/post-merge-fix.pid" ]; then
-        [ -e "${_dscUsr}/log/imported.pid" ] && mv -f ${_dscUsr}/log/imported.pid ${_dscUsr}/src/
-        [ -e "${_dscUsr}/log/exported.pid" ] && mv -f ${_dscUsr}/log/exported.pid ${_dscUsr}/src/
-        [ -e "${_dscUsr}/log/hmpathfix.pid" ] && mv -f ${_dscUsr}/log/hmpathfix.pid ${_dscUsr}/src/
-        [ -e "${_dscUsr}/log/post-merge-fix.pid" ] && mv -f ${_dscUsr}/log/post-merge-fix.pid ${_dscUsr}/src/
+        # src/ and log/ are oN's: each marker is read and removed inside the
+        # real log/ and written fresh inside the real src/
+        for _mvPid in imported exported hmpathfix post-merge-fix; do
+          _ltd_in_real_dir "${_dscUsr}/src" _ltd_log_marker_to_src "${_mvPid}.pid"
+        done
       fi
       if [ ! -e "${_dscUsr}/rector.php" ]; then
         rm -f ${_dscUsr}/*.php* &> /dev/null
@@ -4186,40 +4337,46 @@ _manage_user() {
         rm -f -r ${_dscUsr}/.config/composer &> /dev/null
         rm -f -r ${_dscUsr}/.composer &> /dev/null
       fi
-      ### .drush is owned by oN, the identity every Ægir task and site-local
-      ### Drush run as, so a hostile drush include or a compromised task can
-      ### unlink an alias and plant a symlink at its name. chmod follows that link, and 0400 on a shared system path takes
-      ### the box down. Only ever chmod a real file.
-      for _aFil in ${_dscUsr}/.drush/*.php; do
-        [ -f "${_aFil}" ] && [ ! -L "${_aFil}" ] \
-          && chmod 0440 "${_aFil}" &> /dev/null
+      # every root write under /data/disk/<oN> refuses a path with a link on
+      # it (BOA makes none at these names): say so once a day, not silently
+      for _pinChk in static log config tools clients src; do
+        if [ -L "${_dscUsr}/${_pinChk}" ] \
+          && [ -z "$(find "/var/log/boa/manage-ltd-pinlink-${_USER}-${_pinChk}.alerted" -mmin -1440 2> /dev/null)" ]; then
+          _ltd_notice "pinlink-${_USER}-${_pinChk}" \
+            "${_dscUsr}/${_pinChk} is a link: the ltd worker writes nothing there" \
+            "BOA makes no link at this name; put the real directory back"
+        fi
       done
-      for _aFil in ${_dscUsr}/.drush/drushrc.php \
-        ${_dscUsr}/.drush/hm.alias.drushrc.php \
-        ${_dscUsr}/.drush/hostmaster*.php \
-        ${_dscUsr}/.drush/platform_*.php \
-        ${_dscUsr}/.drush/server_*.php; do
-        [ -f "${_aFil}" ] && [ ! -L "${_aFil}" ] \
-          && chmod 0400 "${_aFil}" &> /dev/null
+      _ltd_in_real_dir "${_dscUsr}/.drush" _ltd_drush_alias_modes &> /dev/null
+      # config/ is oN's: the tree is walked from inside the real directory
+      # and every mode goes through a handle that never follows a link (a
+      # link at passwords.d/<x> would have made its target world-readable)
+      _ltd_in_real_dir "${_dscUsr}/config/server_master" \
+        find . -type d -execdir perl -e "${_LTD_FCHMOD_PL}" d 0700 {} + &> /dev/null
+      _ltd_in_real_dir "${_dscUsr}/config/server_master" \
+        find . -type f -execdir perl -e "${_LTD_FCHMOD_PL}" f 0600 {} + &> /dev/null
+      for _cfgDir in config config/server_master config/server_master/nginx \
+        config/server_master/nginx/passwords.d; do
+        _ltd_in_real_dir "${_dscUsr}/${_cfgDir}" \
+          perl -e "${_LTD_FCHMOD_PL}" d +0555 . &> /dev/null
       done
-      chmod 0710 ${_dscUsr}/.drush &> /dev/null
-      find ${_dscUsr}/config/server_master \
-        -type d -exec chmod 0700 {} \; &> /dev/null
-      find ${_dscUsr}/config/server_master \
-        -type f -exec chmod 0600 {} \; &> /dev/null
-      chmod +rx ${_dscUsr}/config{,/server_master{,/nginx{,/passwords.d}}} &> /dev/null
-      chmod +r ${_dscUsr}/config/server_master/nginx/passwords.d/* &> /dev/null
-      if [ ! -e "${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-        rm -rf ${_dscUsr}/.drush/cache
+      _ltd_in_real_dir "${_dscUsr}/config/server_master/nginx/passwords.d" \
+        _ltd_chmod_nofollow_here +0444
+      # .tmp is oN's to swap too: a link there always takes this block, which
+      # strips it (a stamp read through the link could skip it), and every
+      # remove, mode and stamp happens inside the real directory
+      if [ -L "${_dscUsr}/.tmp" ] \
+        || [ ! -e "${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+        _ltd_in_real_dir "${_dscUsr}/.drush" _ltd_drush_cache_drop "${_USER}"
         _desymlink_planted "${_dscUsr}/.tmp"
         mkdir -p ${_dscUsr}/.tmp
-        touch ${_dscUsr}/.tmp
-        # Bare path, not ${_dscUsr}/.tmp/ -- a trailing slash makes find follow
-        # a planted link and purge the target tree instead (as at _enable_chattr).
-        find ${_dscUsr}/.tmp -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null
-        chown -h ${_USER}:${_usrGroup} ${_dscUsr}/.tmp &> /dev/null
-        [ ! -L "${_dscUsr}/.tmp" ] && chmod 02755 ${_dscUsr}/.tmp &> /dev/null
-        echo OK > ${_dscUsr}/.tmp/.ctrl.${_tRee}.${_xSrl}.pid
+        if _ltd_in_real_dir "${_dscUsr}/.tmp" \
+          _ltd_own_dir_here "${_USER}:${_usrGroup}" 02755 YES; then
+          _ltd_in_real_dir "${_dscUsr}/.tmp" \
+            _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
+        else
+          echo "ALERT: ${_dscUsr}/.tmp is not ${_USER}'s own directory; left as it was"
+        fi
       fi
       _prune_psr_log_stash "${_dscUsr}"
       # ~/static is 02775 group `users` with no sticky bit, so any co-tenant on
@@ -4230,20 +4387,7 @@ _manage_user() {
       if [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
         && [ -e "/home/${_USER}.ftp/clients" ]; then
         mkdir -p ${_dscUsr}/static/control
-        [ ! -L "${_dscUsr}/static/control" ] \
-          && chmod 755 ${_dscUsr}/static/control
-        if [ -e "/var/xdrago/conf/control-readme.txt" ] \
-          && [ -d "${_dscUsr}/static/control" ] \
-          && [ ! -L "${_dscUsr}/static/control" ]; then
-          _desymlink_planted "${_dscUsr}/static/control/README.txt"
-          cp -af /var/xdrago/conf/control-readme.txt \
-            ${_dscUsr}/static/control/README.txt &> /dev/null
-          [ ! -L "${_dscUsr}/static/control/README.txt" ] \
-            && chmod 0644 ${_dscUsr}/static/control/README.txt
-        fi
-        chown -R ${_USER}.ftp:${_usrGroup} ${_dscUsr}/static/control
-        rm -f ${_dscUsr}/static/control/.ctrl.*
-        echo OK > ${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid
+        _ltd_in_real_dir "${_dscUsr}/static/control" _ltd_ctrl_init
       fi
       if [ -e "${_dscUsr}/static/control/ssl-live-mode.info" ]; then
         if [ -e "${_dscUsr}/tools/le/.ctrl/ssl-demo-mode.pid" ]; then
@@ -4281,7 +4425,7 @@ _manage_user() {
       # shellcheck disable=SC1091
       [ -e "/root/.${_USER}.octopus.cnf" ] && source /root/.${_USER}.octopus.cnf
 
-      _THIS_HM_PLR=$(cat ${_dscUsr}/.drush/hostmaster.alias.drushrc.php \
+      _THIS_HM_PLR=$(_ltd_read_in "${_dscUsr}/.drush" hostmaster.alias.drushrc.php \
         | grep "root'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
@@ -4290,7 +4434,7 @@ _manage_user() {
         && [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
         if [ -x "/opt/php56/bin/php" ]; then
         _desymlink_planted "${_dscUsr}/static/control/cli.info"
-        echo 5.6 > ${_dscUsr}/static/control/cli.info
+        _ltd_ctrl_put cli.info 5.6
         fi
       fi
       _nrCheck=
@@ -4322,14 +4466,16 @@ _manage_user() {
       _site_socket_inc_gen
       if [ -e "${_pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
         echo Managing Users for ${_pthParentUsr} Instance
-        rm -rf ${_pthParentUsr}/clients/admin &> /dev/null
-        rm -rf ${_pthParentUsr}/clients/omega8ccgmailcom &> /dev/null
-        rm -rf ${_pthParentUsr}/clients/nocomega8cc &> /dev/null
-        rm -rf ${_pthParentUsr}/clients/*/backups &> /dev/null
-        symlinks -dr ${_pthParentUsr}/clients &> /dev/null
+        # clients/ is oN's: a client name there can be a link to anywhere,
+        # so the removals run inside the real directories only
+        _ltd_in_real_dir "${_pthParentUsr}/clients" _ltd_clients_sweep &> /dev/null
+        # dangling links go by a walk from inside the real directory (symlinks
+        # -r rebuilds absolute paths as it walks, so a name swapped
+        # meanwhile would redirect it)
+        _ltd_in_real_dir "${_pthParentUsr}/clients" find . -xtype l -delete &> /dev/null
         if [ -d "/home/${_USER}.ftp" ]; then
           _disable_chattr ${_USER}.ftp
-          symlinks -dr /home/${_USER}.ftp &> /dev/null
+          _ltd_in_real_dir "/home/${_USER}.ftp" find . -xtype l -delete &> /dev/null
           # Attached files mount = the SINGLE real mountpoint under /mnt (naming-agnostic).
           # Fail-closed: empty when NONE or when MORE THAN ONE is mounted -- multi-mount
           # is unsupported fleet-wide and cannot be disambiguated, so refuse to guess.
@@ -4364,11 +4510,13 @@ _manage_user() {
           _manage_sec
           _manage_sec_platform
           if [ -d "/home/${_USER}.ftp/users" ]; then
+            # the main login owns users/ and every name in it: the modes are
+            # set inside the real directory, each store through a handle that
+            # never follows a link put at its name
             chown -R ${_USER}.ftp:${_usrGroup} /home/${_USER}.ftp/users
-            [ ! -L "/home/${_USER}.ftp/users" ] \
-              && chmod 700 /home/${_USER}.ftp/users
-            find /home/${_USER}.ftp/users -maxdepth 1 -type f \
-              -exec chmod 600 {} \; &> /dev/null
+            _ltd_in_real_dir "/home/${_USER}.ftp/users" chmod 700 .
+            _ltd_in_real_dir "/home/${_USER}.ftp/users" \
+              _ltd_chmod_nofollow_here 600
           fi
           if [ ! -L "/home/${_USER}.ftp/static" ]; then
             rm -f /home/${_USER}.ftp/{backups,clients,static}
@@ -4486,9 +4634,9 @@ if [ ! -e "/home/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
           chown -R ${_uid}:${_gid} ${_homedir}/.tmp &> /dev/null
         fi
         if [ -d "${_homedir}/.drush" ]; then
-          chattr +i ${_homedir}/.drush/usr
-          chattr +i ${_homedir}/.drush/*.ini
-          chattr +i ${_homedir}/.drush
+          # a link at ~/.drush (a main login's home is never immutable) must
+          # not aim chattr at <target>/usr: locked inside the real directory
+          _ltd_in_real_dir "${_homedir}/.drush" _ltd_drush_lock_here
         fi
         if [[ ! "${_login}" =~ ".ftp"($) ]] \
           && [[ ! "${_login}" =~ ".web"($) ]]; then
@@ -4682,22 +4830,17 @@ else
         esac
       done
   fi
-  # -type f refuses a planted link; a tenant swapping its OWN name between the
-  # lstat and the chmod is the house-wide check-then-act residual (chmod has no
-  # -h), bounded by the sweep above. A young box has no log yet, hence no bare
-  # glob (it printed "cannot access").
-  find /var/log/lsh -maxdepth 1 -type f -exec chmod 0600 {} + 2>/dev/null
-  chmod 0440 /var/aegir/.drush/*.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/drushrc.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/hm.alias.drushrc.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/hostmaster*.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/platform_*.php &> /dev/null
-  chmod 0400 /var/aegir/.drush/server_*.php &> /dev/null
-  chmod 0710 /var/aegir/.drush &> /dev/null
-  find /var/aegir/config/server_master \
-    -type d -exec chmod 0700 {} \; &> /dev/null
-  find /var/aegir/config/server_master \
-    -type f -exec chmod 0600 {} \; &> /dev/null
+  # -type f refuses a planted link, and the mode goes through a handle that
+  # never follows one, so a tenant swapping its own name after find's lstat
+  # gains nothing. A young box has no log yet, hence no bare glob (it printed
+  # "cannot access").
+  find /var/log/lsh -maxdepth 1 -type f \
+    -execdir perl -e "${_LTD_FCHMOD_PL}" f 0600 {} + 2>/dev/null
+  _ltd_in_real_dir /var/aegir/.drush _ltd_drush_alias_modes &> /dev/null
+  _ltd_in_real_dir /var/aegir/config/server_master \
+    find . -type d -execdir perl -e "${_LTD_FCHMOD_PL}" d 0700 {} + &> /dev/null
+  _ltd_in_real_dir /var/aegir/config/server_master \
+    find . -type f -execdir perl -e "${_LTD_FCHMOD_PL}" f 0600 {} + &> /dev/null
   sleep 5
   _drush_ini_open_basedir_sweep
   _standby_tenant_sweep
