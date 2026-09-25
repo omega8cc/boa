@@ -36,11 +36,26 @@ fpm.info:
 
 Need your shell on another version right now? Create an empty marker
 like php83.info here and your next shell/Drush command uses it
-immediately. The marker also steers the platform builds you request
+immediately. The marker steers your Ægir tasks too (Verify, Clone,
+Migrate...) from the next task on, and the platform builds you request
 below — each build reads it once, when its run starts.
 
 Drush, Composer and bee all follow cli.info (or your phpNN.info
-marker) in the shell.
+marker) in the shell. fpm.info and multi-fpm.info never change the
+command line.
+
+Old and new Drupal cores on one account? Give a platform its own
+command-line PHP, one line per platform folder (relative to ~/static,
+or the Publish path shown in the control panel):
+
+  echo "d7-legacy 7.4" >> ~/static/control/cli-per-platform.info
+
+Anything that runs on a listed platform — drush, vdrush, bee and
+composer in your shell, and every Ægir task on it or its sites — uses
+its line, even when a phpNN.info marker names another version.
+Everything else follows your marker, else cli.info. A task whose
+Drupal core cannot run on the PHP chosen for it is refused before it
+starts, with the line that would fix it.
 
   Docs: https://docs.boa.io/using/tuning/php-version
 
