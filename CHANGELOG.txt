@@ -556,6 +556,15 @@
       and aborted on a FATAL that blamed the network. The run now keeps
       the installed series, writes it back to the cnf and reports the
       refusal on two ALRT lines.
+    * xcopy export and import now pause the MySQL watchdog for their
+      database work, as xoct does: without the maintenance marker it
+      could restart MySQL or kill mydumper in the middle of a panel or
+      site dump or load. xoct and xcopy now write their process ID into
+      the marker, keep it fresh through a dump or load of any length,
+      and remove it when they exit, on an error or Ctrl-C too, but only
+      while it is still theirs; only a kill -9 leaves it, to the
+      four-hour limit. An xoct export or import that stopped on an error
+      used to leave the watchdog paused for up to four hours.
     * A Restore from an archive that carries no database dump (a files-only
       backup, a Migrate or Delete safety copy, a snapshot from before the
       backup modes) brings the files back and carries the site's current
