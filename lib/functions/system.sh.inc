@@ -7159,8 +7159,10 @@ _switch_to_dash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _switch_to_dash"
   fi
+  # a link, not a copy: a second regular file beside /usr/bin/dash drifts on
+  # the next dash upgrade and stops the merged /usr conversion
   if [ -x "/usr/bin/dash" ] && [ ! -e "/bin/dash" ]; then
-    cp -a /usr/bin/dash /bin/
+    ln -sfn /usr/bin/dash /bin/dash
   fi
   if [ -x "/bin/dash" ]; then
     _get_bin_paths
@@ -7224,8 +7226,9 @@ _switch_to_bash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _switch_to_bash"
   fi
+  # a link, not a copy (see _switch_to_dash)
   if [ -x "/usr/bin/bash" ] && [ ! -e "/bin/bash" ]; then
-    cp -a /usr/bin/bash /bin/
+    ln -sfn /usr/bin/bash /bin/bash
   fi
   if [ -x "/bin/bash" ]; then
     _get_bin_paths
@@ -9006,6 +9009,226 @@ _if_post_major_os_upgrade() {
     touch /root/.completed_post_major_os_upgrade.info
     _msg "INFO: The post_major_os_upgrade procedure is complete"
   fi
+}
+
+#
+# Merged /usr on a Devuan Daedalus system upgraded in place from an older
+# release. Excalibur refuses a split system (its base-files and libc6
+# preinsts), and packages built on a merged system name /usr paths a split one
+# does not have (the prebuilt PHP phpize and php-config call /usr/bin/sed), so
+# a split system is converted here, once, with the usrmerge package. The
+# conversion has no dry run and no way back, and convert-usrmerge stops at the
+# first pair it cannot resolve, leaving a half-converted system that must not
+# see a package operation until it runs again cleanly. So it runs only when a
+# read-only forecast of that tool's own rules is clear, and a failed run stops
+# this pass and every later one until it is repaired.
+_usrmerge_is_split() {
+  local _d
+  for _d in /bin /sbin /lib; do
+    if [ -d "${_d}" ] && [ ! -L "${_d}" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+#
+# Read-only forecast of convert-usrmerge 37: its preconditions, then its
+# convert_file() decision for every entry, branch for branch (symlink targets
+# are compared as strings, two regular files always conflict). Prints one
+# reason per line; returns 1 when the tool would stop.
+_usrmerge_forecast() {
+  local _rc=0 _d _imm
+  if mountpoint -q /usr && [ ! -d "/run/initramfs" ]; then
+    echo "/usr is a separate filesystem and there is no initramfs"
+    _rc=1
+  fi
+  if mountpoint -q /lib/modules 2> /dev/null; then
+    echo "/lib/modules is a mount point"
+    _rc=1
+  fi
+  case "$(stat -f -c %T / 2> /dev/null)" in
+    overlayfs|nfs*)
+      echo "the root filesystem is $(stat -f -c %T / 2> /dev/null)"
+      _rc=1
+    ;;
+  esac
+  if awk '{ print $2 }' /proc/mounts | grep -q -E '^/(bin|sbin|lib|lib32|lib64|libx32)(/|$)'; then
+    echo "a filesystem is mounted under /bin, /sbin or /lib*"
+    _rc=1
+  fi
+  # lsattr -R also prints "<dir>:" headers; only "<flags> <path>" lines count
+  _imm=$(for _d in /bin /sbin /lib /lib32 /lib64 /libx32; do
+    [ -d "${_d}" ] && [ ! -L "${_d}" ] || continue
+    lsattr -d "${_d}" 2> /dev/null
+    lsattr -R "${_d}" 2> /dev/null
+  done | awk 'NF == 2 && $1 ~ /^[-A-Za-z]+$/ && index($1, "i") { print $2 }' | head -5)
+  if [ -n "${_imm}" ]; then
+    echo "immutable: $(echo ${_imm})"
+    _rc=1
+  fi
+  perl -e '
+    use strict;
+    use warnings;
+    my %ignore = map { $_ => 1 } qw(/lib/udev/hwdb.bin);
+    my $rc = 0;
+    sub entries {
+      my ($dir) = @_;
+      opendir(my $dh, $dir) or return ();
+      my @e = map { "$dir/$_" } grep { $_ ne "." && $_ ne ".." } readdir($dh);
+      closedir($dh);
+      return sort @e;
+    }
+    sub bad { print "$_[0]\n"; $rc = 1; }
+    sub check {
+      my ($n) = @_;
+      my $u = "/usr$n";
+      return if (-l $n and not -e $n and -e $u);
+      return if (-d $n and not -e $u);
+      return if (not -e $u);
+      if (-l $n and -l $u) {
+        my ($l1, $l2) = (readlink($n), readlink($u));
+        my ($b) = $n =~ m#^(.+)/[^/]+$#;
+        return if $l1 eq $l2 or "$b/$l1" eq $l2 or $l1 eq "/usr$b/$l2";
+        return if $l1 eq $u or $l2 eq $n;
+        bad("both $n and $u are links to different targets");
+        return;
+      }
+      if (-l $n) {
+        return if readlink($n) eq $u;
+        bad("$n is a link and $u is not");
+        return;
+      }
+      if (-l $u) {
+        return if readlink($u) eq $n;
+        bad("$u is a link and $n is not");
+        return;
+      }
+      if (-d $n and -d $u) {
+        check($_) foreach entries($n);
+        return;
+      }
+      if (-d $n or -d $u) {
+        bad("$n and $u are a directory and a file");
+        return;
+      }
+      return if exists $ignore{$n};
+      bad("both $n and $u exist");
+    }
+    foreach my $d (qw(/bin /sbin /lib /lib32 /lib64 /libo32 /libx32)) {
+      next if -l $d or not -d $d;
+      check($_) foreach entries($d);
+    }
+    exit $rc;
+  ' || _rc=1
+  if apt-get -s install usrmerge 2> /dev/null | grep -q '^Remv '; then
+    echo "apt would remove packages to install usrmerge"
+    _rc=1
+  fi
+  return ${_rc}
+}
+
+#
+# Pairs BOA itself leaves on a split system that convert-usrmerge would refuse:
+# /usr/bin/sh flipped to another target than /bin/sh (the two are flipped
+# together, but not always in the same second), and the dated old-openssl
+# copies _ssl_paths_update keeps in both /bin and /usr/bin.
+_usrmerge_normalize_boa_pairs() {
+  local _f
+  if [ -L "/bin/sh" ] && [ -L "/usr/bin/sh" ] \
+    && [ "$(readlink /bin/sh)" != "$(readlink /usr/bin/sh)" ]; then
+    ln -sfn "$(readlink /bin/sh)" /usr/bin/sh
+  fi
+  for _f in /bin/old-openssl-*; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    if [ -e "/usr${_f}" ] || [ -L "/usr${_f}" ]; then
+      rm -f "${_f}"
+    fi
+  done
+}
+
+#
+# A conversion that stopped half way must not see a package operation, so the
+# pass stops before its first apt call until the system is merged.
+_usrmerge_failed_guard() {
+  if [ ! -e "/root/.usrmerge.failed.info" ]; then
+    return 0
+  fi
+  if ! _usrmerge_is_split; then
+    rm -f /root/.usrmerge.failed.info
+    _msg "INFO: Merged /usr is complete now, the stop marker is cleared"
+    return 0
+  fi
+  echo
+  _msg "OOPS: The merged /usr conversion stopped half way on an earlier run"
+  _msg "OOPS: No package can be installed or upgraded until it is finished"
+  _msg "OOPS: Fix the pairs listed in /root/.usrmerge.failed.info, then run"
+  _msg "OOPS: /usr/lib/usrmerge/convert-usrmerge until it reports success"
+  echo
+  sleep 3
+  echo "Bye"
+  _clean_pid_exit _usrmerge_failed_guard
+}
+
+#
+# Convert a split Daedalus system to merged /usr (see _usrmerge_is_split).
+# Runs after the apt full upgrade and before the major OS upgrade and the
+# package installs, inside the pass, so the ltd worker and the task queues
+# are held. A forecast that is not clear leaves the system split for this
+# pass: the prebuilt packages are refused there (_install_boa_deb) and a hop
+# to a release that requires merged /usr is refused here.
+_usrmerge_enforce() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _usrmerge_enforce"
+  fi
+  if [ "${_OS_CODE}" != "daedalus" ] || ! _usrmerge_is_split; then
+    rm -f /root/.usrmerge.refused.info
+    return 0
+  fi
+  local _why _rc _usmLog _line _hopVar
+  _msg "INFO: This system keeps /bin, /sbin and /lib apart from /usr"
+  _usrmerge_normalize_boa_pairs
+  _why=$(_usrmerge_forecast)
+  _rc=$?
+  if [ "${_rc}" -ne 0 ]; then
+    _msg "ALRT: Merged /usr conversion refused, convert-usrmerge would stop at:"
+    printf '%s\n' "${_why}" | head -20 | while IFS= read -r _line; do
+      _msg "ALRT:   ${_line}"
+    done
+    printf '%s\n' "${_why}" > /root/.usrmerge.refused.info
+    _msg "ALRT: Fix them and run barracuda again; prebuilt packages stay off until then"
+    if [ "${_DAEDALUS_TO_EXCALIBUR}" = "YES" ]; then
+      _hopVar=_DAEDALUS_TO_EXCALIBUR
+      echo
+      _msg "OOPS: Devuan Excalibur requires merged /usr"
+      [ -e "${_barCnf}" ] && _hop_flag_set_no "${_hopVar}"
+      _msg "OOPS: ${_hopVar} is now NO in ${_barCnf}"
+      _msg "OOPS: Set it to YES again once this system is merged"
+      echo
+      sleep 3
+      echo "Bye"
+      _clean_pid_exit _usrmerge_enforce
+    fi
+    return 0
+  fi
+  _msg "INFO: Converting this system to merged /usr (usrmerge)..."
+  _usmLog="/var/backups/usrmerge-$(date +%y%m%d-%H%M%S).log"
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -q \
+    -o Dpkg::Options::=--force-confdef \
+    -o Dpkg::Options::=--force-confold usrmerge > "${_usmLog}" 2>&1
+  _rc=$?
+  if [ "${_rc}" -eq 0 ] && ! _usrmerge_is_split \
+    && [ -z "$(dpkg --audit 2> /dev/null)" ]; then
+    rm -f /root/.usrmerge.refused.info
+    _msg "INFO: This system is merged /usr now (log: ${_usmLog})"
+    return 0
+  fi
+  {
+    echo "usrmerge exit ${_rc}, log ${_usmLog}"
+    grep -E "Both |is a directory|FATAL|E: |fatal" "${_usmLog}" | head -20
+  } > /root/.usrmerge.failed.info
+  _msg "ALRT: The merged /usr conversion failed half way (log: ${_usmLog})"
+  _usrmerge_failed_guard
 }
 
 #

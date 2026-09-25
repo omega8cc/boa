@@ -385,6 +385,13 @@ _install_boa_deb() {
   if [ -z "${_pkgName}" ] || [ -z "${_pkgVrn}" ] || [ -z "${_OS_CODE}" ]; then
     return 1
   fi
+  # The packages are built on a merged-/usr system and may name /usr paths
+  # a split one lacks (phpize calls /usr/bin/sed); a split system builds from
+  # sources until _usrmerge_enforce has converted it.
+  if _usrmerge_is_split; then
+    _msg "NOTE: Split /usr on this system, ${_pkgName} is built from sources"
+    return 1
+  fi
   mkdir -p /var/opt
   cd /var/opt
   rm -f "${_pkgName}"_*.deb "${_pkgName}"_*.deb.gz "${_pkgName}"_*.deb.gz.sha256

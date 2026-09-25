@@ -341,6 +341,19 @@
 
 @=> Improvements
 
+    * A Devuan Daedalus system upgraded in place from an older release,
+      whose /bin, /sbin and /lib are still apart from /usr, is converted
+      to merged /usr by barracuda with the usrmerge package, once, early
+      in the system pass. Devuan Excalibur refuses a split system, and
+      the prebuilt packages, built on merged systems, name /usr paths a
+      split one does not have (their phpize failed every extension build
+      there). The conversion has no dry run and no way back, so it runs
+      only when a read-only forecast of convert-usrmerge's own rules is
+      clear; otherwise barracuda lists the pairs it would stop at, keeps
+      the prebuilt packages off (source builds instead) and refuses an
+      Excalibur upgrade until the system is merged. A conversion that
+      stops half way stops every later pass before its first package
+      operation until it is finished by hand.
     * codebasecheck no longer tells you to move a blocked account to a
       Percona 5.7 server: a BLOCK line and the box result now say to
       update that core, or move its sites to a newer platform on the same
