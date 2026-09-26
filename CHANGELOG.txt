@@ -614,6 +614,20 @@
       until it applies (the skipped lines are listed in
       static/control/.multi-fpm-skipped.info); it used to stay inert until
       the file was edited again.
+    * The limited-shell worker rebuilds the Drush 9+ yml alias stores (the
+      account's and the tenant's limited-shell copy) whenever the drushrc
+      aliases differ from those the last rebuild was made from: a deleted
+      platform no longer leaves its yml alias behind, and a new or changed
+      platform or server alias no longer waits for an unrelated site change
+      to be converted. An account with no sites, or a file a tenant leaves
+      in its own ~/.drush, no longer makes the worker rebuild both stores
+      on every pass. A rebuild of the account's store that fails is
+      reported and retried hourly, and each Drush run of a rebuild is
+      stopped after five minutes. The first pass after the upgrade rebuilds
+      every account's stores once.
+    * A platform developer account's Drush 9+ alias store is no longer
+      rebuilt every day: the nightly clean-up of /var/backups/ltd removed
+      the record of its last rebuild.
     * Speed Booster no longer replays a cached 5xx while the site keeps
       failing: an error is cached for one second and refreshed, as
       designed, and a 5xx never keeps the page's cache lifetime (up to an
