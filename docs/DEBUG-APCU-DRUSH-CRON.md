@@ -316,10 +316,12 @@ The BOA default exists precisely to keep this expensive cache in fast memory.
 Two drush-related configuration mistakes produce errors that are difficult to diagnose and
 are often misattributed to server or cache problems.
 
-### Always use `oN.ftp` under the limited shell, not `oN` under bash
+### Always use your limited shell login, not `oN` under bash
 
-BOA provisions two user accounts per Ægir instance: the main Unix user (`oN`) and the FTP
-user (`oN.ftp`). **Always use `oN.ftp` under the limited shell for drush operations.**
+Two of the accounts BOA creates for each Ægir instance matter here: the main Unix user
+(`oN`) and the FTP user (`oN.ftp`). **Always use the limited shell for drush operations:
+`oN.ftp`, or a platform developer login (`oN.<client>-dev`) on the platforms granted to
+it.**
 
 Note that **PHP-CLI and PHP-FPM are two independent systems** in BOA. PHP-FPM version is
 controlled via `~/static/control/fpm.info` or `~/static/control/multi-fpm.info` (see
@@ -328,13 +330,13 @@ separately via `~/static/control/cli.info` or the instant switch files (e.g. `ph
 These do not automatically sync with each other. You are responsible for configuring the
 PHP-CLI version to match your sites' PHP-FPM version using those control files.
 
-What the `oN.ftp` limited shell provides is BOA's **special shell wrapper** for the
-commands you type: it reads the PHP-CLI control files and applies them, and makes `vdrush`
-available (the same wrapper runs your Ægir tasks). In a bash shell as `oN` (root's
-`su -s /bin/bash - oN`; `oN` has no login shell) your typed commands do not go through it —
-the control files are ignored for them,
-drush runs against whatever PHP version happens to be the system default, and `vdrush` will
-not work correctly.
+What the limited shell provides is `vdrush` and BOA's **special shell wrapper** for the
+commands you type: the wrapper reads the PHP-CLI control files and applies them, `vdrush`
+included (the same wrapper runs your Ægir tasks, except while an octopus upgrade runs). In
+a bash shell as `oN` (root's `su -s /bin/bash - oN`; `oN` has no login shell) your typed
+commands do not go through it — drush runs against whatever PHP version happens to be the
+system default while the processes it starts in turn (the batches of `updb`) run on the
+control-file version, and `vdrush` does not exist.
 
 See: https://github.com/omega8cc/boa/blob/5.x-dev/docs/DRUSH-CLI.md
 
@@ -396,8 +398,9 @@ For any BOA server experiencing the symptoms described in this document, follow 
       fpm-pool-common files rather than switching to drush cron — see FAQ.md
 - [ ] If `local.settings.php` discovery cache override was applied as a workaround:
       revert it once the root cause is resolved
-- [ ] Confirm drush operations are run as `oN.ftp` under the limited shell, not as `oN`
-      under bash; confirm PHP-CLI version control files match sites' PHP-FPM version
+- [ ] Confirm drush operations are run in the limited shell (`oN.ftp` or a platform
+      developer login), not as `oN` under bash; confirm PHP-CLI version control files
+      match sites' PHP-FPM version
 - [ ] Confirm site-local drush (Composer) is used for all Drupal 8+ sites
 - [ ] Review APCu utilisation; if sustained above 75%, raise usable RAM so the tuner
       resizes APCu — a hand-edited `apc.shm_size` does not persist

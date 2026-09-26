@@ -1620,6 +1620,7 @@ _ltd_reap_account() {
   _ltd_in_real_dir "/home/${_parent}.ftp/users" rm -f -- "./${_acct}"
   rm -f "/var/backups/ltd/window/${_acct}" "/var/backups/ltd/window/${_acct}.prev"
   rm -f "${_LTD_STATUS_DIR}/${_acct}" "/var/backups/ltd/.aliases/${_acct}.md5"
+  _ltd_cli_drop "${_acct}"
   echo Zombie from etc.passwd ${_acct} killed
   if [ -n "${_why}" ]; then
     [ -d /var/log/boa ] || mkdir -p /var/log/boa
@@ -1909,6 +1910,257 @@ _ltd_platform_report() {
 }
 #
 # Platform accounts of this instance, after the ordinary sub-accounts.
+#
+# The account's PHP control files for a developer login. Its lshell sandbox
+# holds its own client's trees only, so websh, running inside it, cannot open
+# ~/static/control, where the account keeps cli.info, cli-per-platform.info,
+# fpm.info and multi-fpm.info (the phpNN.info markers are only tested for
+# existence, which the sandbox does not stop). Every pass keeps a copy of each
+# for the login, cut to what is its own: the version digits of cli.info and
+# fpm.info, the cli-per-platform.info lines about its granted platforms or its
+# client's sites (every other line left blank, so websh names the same line
+# numbers as for the account's file), the multi-fpm.info lines of its client's
+# sites. A copy exists exactly while the main login's websh can read the
+# account's file (read by the main login, never by root; a pass that cannot
+# tell leaves the copy as it was), one file per
+# login in a root-only directory per name (0711: a login reaches its own file
+# by name, lists nothing), owned by that login, mode 0400, written anew by
+# rename every pass and never read back. The directory is a dot directory, so
+# the nightly age prune of /var/backups/ltd/*/* leaves it alone and the reaper
+# removes what a gone login left. websh reads a copy only when the account's
+# own file exists and cannot be opened.
+_LTD_CLI_DIR="/var/backups/ltd/.cli"
+_LTD_CLI_FILES="cli.info cli-per-platform.info fpm.info multi-fpm.info"
+_ltd_cli_dirs() {
+  local _d=""
+  for _d in "" ${_LTD_CLI_FILES}; do
+    _d="${_LTD_CLI_DIR}${_d:+/${_d}}"
+    if [ -L "${_d}" ] || { [ -e "${_d}" ] && [ ! -d "${_d}" ]; }; then
+      rm -f "${_d}"
+    fi
+    [ -d "${_d}" ] || mkdir -p "${_d}"
+    chown root:root "${_d}"
+    chmod 0711 "${_d}"
+  done
+}
+_ltd_cli_put() {
+  # $1 = the login, $2 = the file name, $3 = YES while the account has the
+  # file, $4 = the copy. Written without a final newline, so websh reads
+  # exactly the lines given; a failed write keeps the previous copy.
+  local _f="${_LTD_CLI_DIR}/${2}/${1}"
+  local _tmp=""
+  if [ "${3}" != "YES" ]; then
+    rm -f "${_f}"
+    return 0
+  fi
+  _tmp=$(mktemp "${_LTD_CLI_DIR}/${2}/.tmp.XXXXXXXX") || return 0
+  if printf '%s' "${4}" > "${_tmp}" \
+    && chown "${1}" "${_tmp}" && chmod 0400 "${_tmp}"; then
+    mv -f "${_tmp}" "${_f}"
+  fi
+  rm -f "${_tmp}"
+}
+_ltd_cli_drop() {
+  # $1 = the login: every copy it had
+  local _n=""
+  for _n in ${_LTD_CLI_FILES}; do
+    rm -f "${_LTD_CLI_DIR}/${_n}/${1}"
+  done
+}
+# A control file as the main login's websh reads it, decided and read by the
+# main login itself, never with root's rights: the name must be a regular file
+# once opened, links followed as websh follows them, and the file actually
+# opened must lie in the account's static tree, as far as its limited shell
+# reaches. $1 = the name, $2 = a root-only file for what websh would read,
+# $3 = head8 for cli.info (its first 8 bytes, as websh's head -c 8 takes
+# them), else the text with NUL bytes gone (websh's read and $(<) drop them),
+# up to a MiB. Root writes $2, so a full disk never looks like an empty file.
+# Returns 0 when read, 3 when the main login's websh reads nothing there (no
+# copy then), anything else when this pass cannot tell (the copy stays).
+_ltd_cli_src() {
+  local _sp=""
+  local -a _rc=()
+  _sp=$(cd -P -- "${_dscUsr}/static" 2> /dev/null && pwd -P)
+  [ -n "${_sp}" ] || return 3
+  timeout 10 setpriv --reuid="${_USER}.ftp" --regid="$(id -g "${_USER}.ftp")" \
+    --init-groups /bin/bash -c '
+      [ -f "$1" ] || exit 3
+      exec 3< "$1" || exit 3
+      [ -f "/proc/$$/fd/3" ] || exit 3
+      case "$(readlink "/proc/$$/fd/3")" in "$2"/?*) ;; *) exit 3 ;; esac
+      if [ "$3" = "head8" ]; then
+        exec head -c 8 <&3
+      fi
+      tr -d "\000" <&3 | head -c 1048576' \
+    _ "${_dscUsr}/static/control/${1}" "${_sp}" "${3}" 2> /dev/null | cat > "${2}"
+  _rc=("${PIPESTATUS[@]}")
+  [ "${_rc[1]}" = "0" ] || return 1
+  return "${_rc[0]}"
+}
+# A cli-per-platform.info folder spelt the way websh's _cpp_norm spells it
+# before any test: every trailing slash, a static prefix and a final web,
+# docroot or html dropped, ~/distro made absolute. Sets _LTD_CPP_KN.
+_ltd_cpp_key_norm() {
+  local _k="${1}"
+  local _st="${_dscUsr}/static"
+  local _di="${_dscUsr}/distro"
+  local _h="/home/${_USER}.ftp"
+  # every trailing slash in one match: a loop is quadratic on a long key
+  [[ "${_k}" =~ ^(.*[^/])?/*$ ]] && _k="${BASH_REMATCH[1]}"
+  case "${_k}" in
+    "~/static/"*) _k="${_k#"~/static/"}" ;;
+    "${_st}/"*) _k="${_k#"${_st}/"}" ;;
+    "${_h}/static/"*) _k="${_k#"${_h}/static/"}" ;;
+    static/*) _k="${_k#static/}" ;;
+    "~/distro/"*) _k="${_di}/${_k#"~/distro/"}" ;;
+    "${_h}/distro/"*) _k="${_di}/${_k#"${_h}/distro/"}" ;;
+  esac
+  case "${_k}" in
+    */web|*/docroot|*/html) _k="${_k%/*}" ;;
+  esac
+  _LTD_CPP_KN="${_k}"
+}
+# A key as _ltd_cpp_key_norm spells it, the way websh then reads it (links
+# followed): prints the physical path, and for a folder that does not exist
+# the physical path of its deepest existing parent with the rest as written,
+# so the line still belongs to the platform it names (websh then says there is
+# no such folder). Nothing when the line cannot apply anywhere. Kept in step
+# with websh by hand: the two are separate tools.
+_ltd_cpp_key_path() {
+  local _k="${1}"
+  local _di="${_dscUsr}/distro"
+  local _p=""
+  local _full=""
+  if [[ ! "${_k}" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "/${_k}/" == */../* ]] \
+    || [[ "/${_k}/" == */./* ]] || [[ "${_k}" == *//* ]]; then
+    return 1
+  fi
+  case "${_k}" in
+    /data/all/?*|"${_di}"/?*) _p="${_k}" ;;
+    /*) return 1 ;;
+    *) _p="${_dscUsr}/static/${_k}" ;;
+  esac
+  _full="${_p}"
+  # nothing longer than PATH_MAX is a directory: the walk starts below it
+  if [ "${#_p}" -gt 4096 ]; then
+    _p="${_p:0:4096}"
+    _p="${_p%/*}"
+  fi
+  while [ ! -d "${_p}" ]; do
+    _p="${_p%/*}"
+    [ -n "${_p}" ] || return 1
+  done
+  _full="${_full:${#_p}}"
+  _p=$(cd -P -- "${_p}" 2> /dev/null && printf '%s\n' "${PWD}") || return 1
+  printf '%s\n' "${_p}${_full}"
+}
+_ltd_platform_cli_copies() {
+  # $1 = the login, $2 = its client directory, $3 = its granted app roots.
+  # Each copy is parsed the way websh parses the file, so the login gets the
+  # answer the account's own file would give it on its own platforms. Bytes,
+  # not characters, as websh counts them; a whole file is only ever run
+  # through head, tr and awk, never through a bash pattern.
+  local LC_ALL=C
+  local _acct="${1}"
+  local _cdir="${2}"
+  local _granted="${3}"
+  local _src=""
+  local _has=""
+  local _txt=""
+  local _out=""
+  local _line=""
+  local _k=""
+  local _rest=""
+  local _p=""
+  local _r=""
+  local _keep=""
+  local _ln=0
+  local _sites=" "
+  local _l=""
+  _ltd_cli_dirs
+  _src=$(mktemp "${_LTD_CLI_DIR}/.tmp.src.XXXXXXXX") || return 0
+  # the client's own sites: the links in its client directory, named as the
+  # site aliases are
+  for _l in "${_cdir}"/*; do
+    [ -L "${_l}" ] || continue
+    _sites="${_sites}${_l##*/} "
+  done
+  # websh keeps the digits of the first 8 bytes. A source this pass cannot
+  # read (status other than 0 or 3) leaves the copy it had.
+  _ltd_cli_src cli.info "${_src}" head8
+  case "$?" in
+    0) _ltd_cli_put "${_acct}" cli.info YES "$(LC_ALL=C tr -cd '0-9.' < "${_src}")" ;;
+    3) _ltd_cli_put "${_acct}" cli.info NO "" ;;
+  esac
+  # and the digits of the first line
+  _ltd_cli_src fpm.info "${_src}"
+  case "$?" in
+    0) _ltd_cli_put "${_acct}" fpm.info YES "$(head -n 1 "${_src}" | LC_ALL=C tr -cd '0-9.')" ;;
+    3) _ltd_cli_put "${_acct}" fpm.info NO "" ;;
+  esac
+  # the first 64 KiB, of which 200 lines, each with a # comment stripped: a
+  # line about the login's platforms or its client's sites is kept as it
+  # stands, so websh reads it exactly as it reads the account's file, and
+  # every other line is left blank; a 201st line is kept as a blank one, so
+  # websh also says the lines after 200 are not read.
+  _ltd_cli_src cli-per-platform.info "${_src}"
+  _has="$?"
+  _txt=""
+  [ "${_has}" = "0" ] && IFS= read -r -N 65536 _txt < "${_src}"
+  while IFS= read -r _line; do
+    _ln=$(( _ln + 1 ))
+    if [ "${_ln}" -gt 200 ]; then
+      _out+=$'\n'
+      break
+    fi
+    _line="${_line%%#*}"
+    _k=""
+    read -r _k _rest <<< "${_line}"
+    _keep=NO
+    if [ -n "${_k}" ]; then
+      _ltd_cpp_key_norm "${_k%%$'\r'*}"
+      case "${_sites}" in
+        *" ${_LTD_CPP_KN} "*) _keep=YES ;;
+      esac
+      _p=$(_ltd_cpp_key_path "${_LTD_CPP_KN}")
+      if [ -n "${_p}" ]; then
+        for _r in ${_granted}; do
+          case "${_p}/" in "${_r}/"*) _keep=YES ;; esac
+          case "${_r}/" in "${_p}/"*) _keep=YES ;; esac
+        done
+      fi
+    fi
+    [ "${_keep}" = "YES" ] && _out+="${_line}"
+    _out+=$'\n'
+  done <<< "${_txt}"
+  [ "${_ln}" -gt 200 ] || _out="${_out%$'\n'}"
+  case "${_has}" in
+    0) _ltd_cli_put "${_acct}" cli-per-platform.info YES "${_out}" ;;
+    3) _ltd_cli_put "${_acct}" cli-per-platform.info NO "" ;;
+  esac
+  # "<site> <version digits>" for the client's own sites, the last line of a
+  # site winning. Split as websh's read -r splits it (spaces and tabs; the
+  # NUL bytes are gone already), never on awk's own idea of white space.
+  _ltd_cli_src multi-fpm.info "${_src}"
+  _has="$?"
+  if [ "${_has}" = "0" ]; then
+    _out=$(LC_ALL=C awk -v s="${_sites}" '
+      {
+        sub(/^[ \t]+/, "")
+        k = $0
+        sub(/[ \t].*$/, "", k)
+        if (k != "" && index(s, " " k " ")) {
+          v = substr($0, length(k) + 1)
+          gsub(/[^0-9.]/, "", v)
+          print k " " v
+        }
+      }' "${_src}")
+    _ltd_cli_put "${_acct}" multi-fpm.info YES "${_out}"
+  elif [ "${_has}" = "3" ]; then
+    _ltd_cli_put "${_acct}" multi-fpm.info NO ""
+  fi
+  rm -f "${_src}"
+}
 _manage_sec_platform() {
   local _client=""
   local _cdir=""
@@ -1999,6 +2251,7 @@ allowed_shell_escape : + [${_LTD_PLATFORM_TOOLS}]"
       if getent passwd "${_acct}" > /dev/null 2>&1; then
         _ltd_platform_farm "${_acct}" "${_granted}"
         _ltd_platform_window "${_acct}" "${_granted}"
+        _ltd_platform_cli_copies "${_acct}" "${_cdir}" "${_granted}"
         _devv=$(_ltd_status_tmp)
         _ltd_platform_report "${_acct}" "${_client}" "${_cdir}" "${_granted}" \
           "${_LTD_REFUSED_FILE}" dev > "${_devv}"
@@ -2149,6 +2402,16 @@ _kill_zombies() {
         rm -f "${_ltd_orphan_seen}"
       fi
     done
+  fi
+  # The PHP control-file copies of a login removed without this worker (an
+  # account purge, a hand deluser): the nightly age prune never reaches their
+  # dot directory. No pass is writing one now, so a temp name is a leftover.
+  if [ -d "${_LTD_CLI_DIR}" ] && [ ! -L "${_LTD_CLI_DIR}" ]; then
+    for _Existing in "${_LTD_CLI_DIR}"/*/*; do
+      [ -f "${_Existing}" ] || continue
+      getent passwd "${_Existing##*/}" > /dev/null 2>&1 || rm -f "${_Existing}"
+    done
+    rm -f "${_LTD_CLI_DIR}"/.tmp.* "${_LTD_CLI_DIR}"/*/.tmp.*
   fi
 }
 #

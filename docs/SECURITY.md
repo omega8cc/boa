@@ -55,11 +55,12 @@ BOA closes this at the Drush layer. When Drush runs **as an Ægir backend identi
 hosting tasks and all core Drush commands keep working.
 
 **The restriction does not apply to limited-shell sessions.** When a user runs
-Drush themselves as the `oN.ftp` limited-shell account — the account they are meant
-to use for all CLI work (see [DRUSH-CLI.md](DRUSH-CLI.md)) — the filter is skipped
-entirely and their site's contributed-module Drush commands load normally. Running
-as `oN.ftp` is not an escalation (the user already owns that account), so there is
-nothing to guard against there. BOA makes this distinction from the effective
+Drush themselves in a limited-shell login — `oN.ftp` or a platform developer login
+(`oN.<client>-dev`), the logins they are meant to use for all CLI work (see
+[DRUSH-CLI.md](DRUSH-CLI.md)) — the filter is skipped entirely and their site's
+contributed-module Drush commands load normally. Running in such a login is not an
+escalation (the user already owns that account), so there is nothing to guard
+against there. BOA makes this distinction from the effective
 system user of the Drush process, which a client cannot forge.
 
 ## Allowing specific extensions for the Ægir backend
