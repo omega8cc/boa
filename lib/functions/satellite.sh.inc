@@ -2950,11 +2950,14 @@ _satellite_check_fix_o_contrib() {
       _satellite_download_o_contrib_backdrop
       cd ${_CORE}/o_contrib_backdrop
       if [ -n "${_bdKeep}" ]; then
-        if [ ! -e "${_CORE}/o_contrib_backdrop/webform" ] && [ -d "${_bdKeep}/prev" ]; then
-          mv "${_bdKeep}/prev" "${_CORE}/o_contrib_backdrop/webform"
+        if [ ! -e "${_CORE}/o_contrib_backdrop/webform" ] && [ -d "${_bdKeep}/prev" ] \
+          && mv "${_bdKeep}/prev" "${_CORE}/o_contrib_backdrop/webform"; then
           _msg "${_STATUS} A: o_contrib_backdrop keeps its previous webform"
         fi
-        rm -rf "${_bdKeep}"
+        # a stage still holding the only copy waits for the restore step
+        if [ -e "${_CORE}/o_contrib_backdrop/webform" ] || [ ! -d "${_bdKeep}/prev" ]; then
+          rm -rf "${_bdKeep}"
+        fi
       fi
     fi
   fi
