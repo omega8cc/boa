@@ -31,8 +31,9 @@
 # distribute replaces a published distro or vanilla core tarball with a same-name one
 # whose lock differs, unless the new lock adds advisories the published one lacks or
 # either side cannot be audited or compared (both sides audited at that moment): those
-# are refused unless -O names them. A box fetches a platform only while its directory
-# is absent, so the boxes that already hold the old bytes keep them either way.
+# are refused unless -O names them. A box takes a republished tarball at its next
+# Octopus upgrade only for an idle copy of the platform (no site, no tenant file, no
+# task); a copy in use keeps its old bytes either way.
 #
 # Output: build, package, distribute, all and the family actions print one row per
 # platform (build result, advisories left and fixed, what happened on the mirror, a
@@ -105,8 +106,8 @@
 #   -C         skip "composer clearcache" at the start of a build
 #   -O         with distribute and the names after it only: publish only those,
 #              overwriting their published tarballs even when the changed lock is
-#              refused (logs both lock hashes; boxes that already fetched them keep
-#              the old bytes)
+#              refused (logs both lock hashes; boxes refresh only idle copies at
+#              their next upgrade, copies in use keep the old bytes)
 #   --debug    stream everything (Composer, git, tar, every advisory id) as it
 #              happens instead of writing it to the run log; the one-row-per-
 #              platform summary still closes the run
@@ -1818,6 +1819,20 @@ _ezc_asset_libraries() {
   _run_as_o8 "test -f '${_wd}/web/libraries/dropzone/dist/min/dropzone.min.js'"
 }
 
+_pinned_lock_rehash() {
+  # A pinned tree is unpacked with its published lock, and the root edits made since
+  # (the held conflicts, EzContent's installer paths) leave that lock's content-hash
+  # behind composer.json: Composer warns on every run there and validate fails. Only
+  # the hash is refreshed (update --lock moves no package), before the fix step takes
+  # its snapshot of the lock. A resolve that fails (a rate-limited GitHub repository)
+  # keeps the stale hash and says so on the row: it breaks nothing. $1 workdir,
+  # $2 label.
+  if ! _run_as_o8 "cd '$1' && COMPOSER_NO_SECURITY_BLOCKING=1 composer update --lock --no-install --no-scripts --no-plugins ${_FIX_IGNORE_EXT}"; then
+    _pending "$2" "lock hash stale" "composer update --lock failed; the lock's content-hash stays behind composer.json"
+  fi
+  return 0
+}
+
 build_ezcontent() {
   # Pinned: rebuilt from its published tarball; only the advisory fix step moves code,
   # and the asset libraries move to where the modules look for them.
@@ -1831,6 +1846,7 @@ build_ezcontent() {
   fi
   _composer_prepare "${_wd}" || { _record_fail "ezcontent"; return 1; }
   _ezc_asset_libraries "${_wd}" || { _record_fail "ezcontent (asset libraries)"; return 1; }
+  _pinned_lock_rehash "${_wd}" "ezcontent"
   _fix_step "${_wd}" "ezcontent" "${_EZC_DISTPKG}" || return 1
   _finalize_distro "ezcontent" "${_wd}" "${_rest##*-}" "ezcontent"
 }
@@ -1846,6 +1862,7 @@ build_commerce_base() {
     return 1
   fi
   _composer_prepare "${_wd}" || { _record_fail "commerce_base"; return 1; }
+  _pinned_lock_rehash "${_wd}" "commerce_base"
   _fix_step "${_wd}" "commerce_base" "${_CK2_DISTPKG} drupal/commerce" || return 1
   _finalize_distro "commerce_base" "${_wd}" "${_rest##*-}" "commerce_base"
 }
@@ -2718,9 +2735,9 @@ _replaces_published() {
 }
 
 _publish_locked() {
-  # $1 = Composer-built platform tarball in the day dir, $2 = shelf. A box fetches a
-  # platform only while its directory is absent, so a same-name tarball with a changed
-  # lock reaches new installs and never the boxes that already hold the platform. Both
+  # $1 = Composer-built platform tarball in the day dir, $2 = shelf. A box takes a
+  # same-name tarball at its next Octopus upgrade only for an idle copy of the platform,
+  # so a changed lock reaches new installs and idle copies, never a copy in use. Both
   # locks are audited now, against today's advisories, and the new one replaces the
   # published one unless it adds advisories the published one lacks, or either audit
   # did not finish or cannot be compared: those are refused and the published copy
@@ -2759,7 +2776,7 @@ _publish_locked() {
             _alrt "  published lock sha256: ${_old:-none (no composer.lock found)}"
             _alrt "  new lock sha256:       ${_new:-none (no composer.lock found)}"
             _alrt "  advisories: published ${_on:-unknown}, this build ${_nn:-unknown} (refused when it adds some or either side cannot be audited or compared)"
-            _alrt "  boxes that already fetched ${_key} would keep the old bytes;"
+            _alrt "  boxes would take it for idle copies of ${_key} at their next upgrade, copies in use keep the old bytes;"
             _alrt "  ship the change under a new platform name, or run: staticbuild -u ${_O8_USER} -d ${_DAY} -O distribute ${_key}"
             _rec_pub "${_key}" REFUSED
             case "${_vd}" in
@@ -2793,13 +2810,13 @@ _publish_locked() {
       fi
       _msg "  published lock sha256: ${_old:-none}"
       _msg "  new lock sha256:       ${_new:-none}"
-      _msg "  advisories: published ${_on}, this build ${_nn}; boxes that already fetched ${_key} keep the old bytes"
+      _msg "  advisories: published ${_on}, this build ${_nn}; boxes take it for idle copies of ${_key} at their next upgrade, copies in use keep the old bytes"
       ;;
     OVERWRITTEN)
       _alrt "OVERWRITTEN (-O): ${_base}"
       _alrt "  published lock sha256: ${_old:-none (no composer.lock found)}"
       _alrt "  new lock sha256:       ${_new:-none (no composer.lock found)}"
-      _alrt "  boxes that already fetched ${_key} keep the old bytes"
+      _alrt "  boxes take it for idle copies of ${_key} at their next upgrade, copies in use keep the old bytes"
       _rec_note "${_key}" "-O"
       ;;
   esac
