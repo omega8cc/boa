@@ -835,6 +835,15 @@
       lock, and fails if any is still missing, so the published copy
       stays.
 
+    * staticbuild keeps Composer's home and cache under its own names:
+      the limited-shell worker removes .config/composer and
+      .cache/composer from every Octopus account every few minutes, so
+      a build installing a package from git (Opigno's pdf module) failed
+      whenever a pass fell between Composer's download and install
+      steps, and a GitHub token set for the build user never stayed. A
+      build that fails on the newest core and on every older one now
+      ends its log with the newest core's failure, not the last retry's.
+
     * A site served over HTTPS without a certificate of its own now stays
       on HTTPS through the web server's own redirects: the clean-URL
       redirect from /index.php/..., an alias redirected to the main name
