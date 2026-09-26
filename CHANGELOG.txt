@@ -669,6 +669,14 @@
     * A platform developer account's Drush 9+ alias store is no longer
       rebuilt every day: the nightly clean-up of /var/backups/ltd removed
       the record of its last rebuild.
+    * A Drush 9+ alias store the limited-shell worker cannot convert keeps
+      its last aliases: each store is converted aside and put in place only
+      when the conversion finished, where one unreadable alias file used to
+      leave the account without any Drush 9+ alias. The account's store and
+      the tenant's limited-shell copy are rebuilt and retried (hourly) each
+      on its own, a store emptied by hand is rebuilt, the nightly account
+      pass leaves the rebuild to the worker instead of redoing it in place,
+      and every rebuild names its cause in the worker's report.
     * Speed Booster no longer replays a cached 5xx while the site keeps
       failing: an error is cached for one second and refreshed, as
       designed, and a 5xx never keeps the page's cache lifetime (up to an

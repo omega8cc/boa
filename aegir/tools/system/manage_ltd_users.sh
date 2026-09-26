@@ -671,6 +671,159 @@ _ltd_alias_set_sum() {
       bs=1048576 count=1 status=none 2> /dev/null
   done | md5sum | cut -d' ' -f1
 }
+# True when the directory $1 holds a name matching the glob $2: listed inside
+# the real directory (_ltd_in_real_dir), never through a link an account
+# planted at any name on the way.
+_ltd_holds() {
+  _ltd_in_real_dir "${1}" compgen -G "./${2}" > /dev/null
+}
+# What a _ltd_alias_store_rebuild return code means, for the pass report and
+# the notice, read with the step that failed (_ltdStoreStep): a failed
+# conversion leaves the store as it was, a failed swap may leave it partly
+# replaced.
+_ltd_alias_store_why() {
+  if [ "${_ltdStoreStep}" = "convert" ]; then
+    case "${1}" in
+      124) printf '%s' "drush10 site:alias-convert timed out; the last store is kept" ;;
+      137) printf '%s' "drush10 site:alias-convert timed out or was killed; the last store is kept" ;;
+      *) printf '%s' "drush10 site:alias-convert exited ${1}; the last store is kept" ;;
+    esac
+    return 0
+  fi
+  case "${1}" in
+    3) printf '%s' "the conversion wrote no yml alias; the last store is kept" ;;
+    4) printf '%s' "the store or its staging directory is not a directory; the last store is kept" ;;
+    5) printf '%s' "not every converted file could be moved in; the store is partly replaced" ;;
+    124|137) printf '%s' "moving the converted store in timed out; it may be partly replaced" ;;
+    *) printf '%s' "moving the converted store in failed (${1}); it may be partly replaced" ;;
+  esac
+}
+# The limited-shell key line a site's copy last landed with (recorded after a
+# pass in which every live copy landed), empty when it never landed. $1 = site
+# name; reads the caller's _ftpPrev.
+_ltd_ftp_line_last() {
+  printf '%s\n' "${_ftpPrev}" \
+    | awk -v n="${1}" '$1 == n && $2 == "live" { print; exit }'
+}
+# A site's alias copy put in the limited-shell ~/.drush and its key line
+# added: root's view of the alias, its name and a digest of root's bytes taken
+# before the copy is compared or put, never what the tenant's directory holds.
+# A copy that does not land adds no line and makes the pass leave that store
+# alone (_ftpMiss). $1 = site name; sets the mirror loop's _ftpKey, _ftpMiss
+# and _isAliasUpdate.
+_ltd_ftp_copy_keyed() {
+  local _n="${1}"
+  local _main="${_pthParentUsr}/.drush/${_n}.alias.drushrc.php"
+  local _copy="./${_n}.alias.drushrc.php"
+  local _dig=""
+  # Root-written file in the tenant's own home: strip a plant at its name,
+  # then compare and copy inside the pinned ~/.drush (see _ltd_alias_put).
+  # Only the copy -- the main alias may be a link.
+  _ltd_in_real_dir "${_ftpD}" _desymlink_planted "${_copy}"
+  _dig=$(_ltd_read_in "${_pthParentUsr}/.drush" "${_n}.alias.drushrc.php" \
+    | md5sum | cut -d' ' -f1)
+  if _ltd_in_real_dir "${_ftpD}" _ltd_alias_same "${_main}" "${_copy}"; then
+    _ftpKey="${_ftpKey}${_n} live ${_dig}"$'\n'
+  elif _ltd_in_real_dir "${_ftpD}" _ltd_alias_put "${_main}" "${_copy}"; then
+    _isAliasUpdate=YES
+    _ftpKey="${_ftpKey}${_n} live ${_dig}"$'\n'
+  else
+    # A copy that cannot land in an existing ~/.drush (a directory swapped
+    # in after the sweep) is reported. A first pass may run before ~/.drush
+    # exists.
+    _ftpMiss=YES
+    if [ -d "${_ftpD}" ] && [ ! -L "${_ftpD}" ]; then
+      _ltd_notice "alias-copy-${_USER}-${_n}" \
+        "alias copy for ${_USER}.ftp not written" "${_n}"
+    fi
+  fi
+}
+# True when ./$1 is a regular file, not a link (run inside _ltd_in_real_dir).
+_ltd_is_file_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ]
+}
+# True when a rebuild of the same aliases was tried less than an hour ago
+# ($1 = its try record, $2 = the current sum).
+_ltd_alias_store_held() {
+  [ "$(cat "${1}" 2>/dev/null)" = "${2}" ] \
+    && [ -n "$(find "${1}" -mmin -60 2>/dev/null)" ]
+}
+# One Drush 9+ yml store rebuilt as its own login: converted into
+# ~/.drush/sites/.stage (a dot directory, which alias discovery skips) and put
+# in place only when the conversion finished and wrote a store, so a failed
+# conversion keeps the last one instead of leaving it empty. The new files
+# are moved in first and only then the names this conversion did not write
+# are removed, so a swap cut short leaves every name in place, old or new.
+# Every step runs as the login inside its own tree and root never lists it;
+# only the two Drush runs start a login shell (their PHP settings), and every
+# step is timed. $1 = login. Returns 0, the conversion's rc, 3 when it wrote
+# no yml for existing aliases, 4 when the store or its staging directory is
+# not a directory, 5 when not every file could be moved in (a directory at a
+# name included); _ltd_alias_store_why says each in words.
+_ltd_alias_store_rebuild() {
+  local _u="${1}"
+  local _rc=0
+  # the non-login steps start from nothing of root's environment
+  local _ltdPlainPath="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+  env -i PATH="${_ltdPlainPath}" timeout -k 10 60 su -s /bin/bash "${_u}" \
+    -c 'rm -rf -- "${HOME}/.drush/sites/.stage"' &> /dev/null
+  _ltdStoreStep=convert
+  timeout -k 10 120 su -s /bin/bash - "${_u}" -c "drush10 core:init --yes" &> /dev/null
+  timeout -k 10 120 su -s /bin/bash - "${_u}" -c "drush10 site:alias-convert ~/.drush/sites/.stage --yes" &> /dev/null
+  _rc=$?
+  if [ "${_rc}" -eq 0 ]; then
+    _ltdStoreStep=swap
+    env -i PATH="${_ltdPlainPath}" timeout -k 10 120 su -s /bin/bash "${_u}" <<'EOF' &> /dev/null
+cd "${HOME}/.drush/sites" 2> /dev/null || exit 4
+[ -d .stage ] && [ ! -L .stage ] || exit 4
+if ! compgen -G '.stage/*.site.yml' > /dev/null \
+  && compgen -G '../*.alias.drushrc.php' > /dev/null; then
+  exit 3
+fi
+_bad=0
+_new=$'\n'
+_newm=$'\n'
+for _f in .stage/*.yml; do
+  [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+  mv -fT -- "${_f}" "./${_f#.stage/}" || _bad=1
+  _new="${_new}${_f#.stage/}"$'\n'
+done
+if compgen -G '.stage/.checksums/*.md5' > /dev/null; then
+  if [ -L .checksums ] || { [ -e .checksums ] && [ ! -d .checksums ]; }; then
+    rm -f -- .checksums
+  fi
+  mkdir -p .checksums || _bad=1
+  for _f in .stage/.checksums/*.md5; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    mv -fT -- "${_f}" ".checksums/${_f#.stage/.checksums/}" || _bad=1
+    _newm="${_newm}${_f#.stage/.checksums/}"$'\n'
+  done
+fi
+[ "${_bad}" = 0 ] || exit 5
+for _f in ./*.yml; do
+  [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+  [ -d "${_f}" ] && [ ! -L "${_f}" ] && continue
+  case "${_new}" in *$'\n'"${_f#./}"$'\n'*) continue ;; esac
+  rm -f -- "${_f}"
+done
+if [ -d .checksums ] && [ ! -L .checksums ]; then
+  for _f in .checksums/*.md5; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    case "${_newm}" in *$'\n'"${_f#.checksums/}"$'\n'*) continue ;; esac
+    rm -f -- "${_f}"
+  done
+fi
+rm -rf -- .stage
+exit 0
+EOF
+    _rc=$?
+  fi
+  if [ "${_rc}" -ne 0 ]; then
+    env -i PATH="${_ltdPlainPath}" timeout -k 10 60 su -s /bin/bash "${_u}" \
+      -c 'rm -rf -- "${HOME}/.drush/sites/.stage"' &> /dev/null
+  fi
+  return "${_rc}"
+}
 _ltd_rm_in() {
   local _d="${1}"
   shift
@@ -1001,6 +1154,22 @@ _enable_chattr() {
       # (_ltd_in_real_dir), never by a path through a link put there since.
       mkdir -p ${_U_HD}
       _ltd_in_real_dir "${_U_HD}" _ltd_drush_strip "${_hostedSys}"
+      # the main login's ~/.drush held its Drush 9+ yml store: the record of
+      # its last finished rebuild goes with it, and once per release serial
+      # its try record too, so the release's reset is repaired on the next
+      # pass while a reset the tenant forces later (a stamp it removed) stays
+      # held to one rebuild an hour
+      case "$1" in
+        *.ftp)
+          [ -d /var/backups/ltd/.stores ] || mkdir -p /var/backups/ltd/.stores
+          chmod 0700 /var/backups/ltd/.stores
+          rm -f "/var/backups/ltd/.stores/${1%.ftp}.ftp.md5"
+          if [ "$(cat "/var/backups/ltd/.stores/${1%.ftp}.ftp.srl" 2>/dev/null)" != "${_xSrl}" ]; then
+            rm -f "/var/backups/ltd/.stores/${1%.ftp}.ftp.try"
+            echo "${_xSrl}" > "/var/backups/ltd/.stores/${1%.ftp}.ftp.srl"
+          fi
+          ;;
+      esac
       mkdir -p ${_U_TP}
       # aged out (-execdir: rm never resolves a path through a name),
       # handed over and given its mode inside the real directory, and only
@@ -4317,6 +4486,12 @@ _manage_site_drush_alias_mirror() {
 
   _isAliasUpdate=NO
   _GHOST_REAPED=NO
+  local _ftpKey=""
+  local _ftpLast=""
+  local _ftpMiss=NO
+  local _ftpLines="/var/backups/ltd/.stores/${_USER}.ftp.lines"
+  local _ftpPrev=""
+  _ftpPrev=$(cat "${_ftpLines}" 2>/dev/null)
   for _Alias in `find ${_pthParentUsr}/.drush/*.alias.drushrc.php \
     -maxdepth 1 -type f | sort`; do
     ### echo Last_AliasName is ${_AliasName}
@@ -4368,6 +4543,15 @@ _manage_site_drush_alias_mirror() {
           || [ "${_SiteDir}" = "${_SiteDir#/data/disk/}" ]; then
           _IS_SITE=YES
           rm -f ${_pthParentUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen 2>/dev/null
+          # An alias root cannot parse is never copied: a copy of it still in
+          # place keeps the line it last landed with, none keys "<name> none".
+          _ftpLast=$(_ltd_ftp_line_last "${_SiteName}")
+          if [ -n "${_ftpLast}" ] && _ltd_in_real_dir "${_ftpD}" \
+            _ltd_is_file_here "${_SiteName}.alias.drushrc.php"; then
+            _ftpKey="${_ftpKey}${_ftpLast}"$'\n'
+          else
+            _ftpKey="${_ftpKey}${_SiteName} none"$'\n'
+          fi
         elif [ -e "${_SiteDir}/drushrc.php" ] \
           || [ -L "${_SiteDir}/drushrc.php" ]; then
           # drushrc.php present = a registered, live site. Mirror its alias to
@@ -4376,26 +4560,19 @@ _manage_site_drush_alias_mirror() {
           # A valid sighting always clears the ghost hold marker, so a site
           # that recovered mid-hold never carries a stale count into a reap.
           rm -f ${_pthParentUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen 2>/dev/null
-          _pthAliasMain="${_pthParentUsr}/.drush/${_SiteName}.alias.drushrc.php"
-          _pthAliasCopy="./${_SiteName}.alias.drushrc.php"
-          # Root-written control file in the tenant's own home: strip a plant at
-          # its name, then compare and copy inside the pinned ~/.drush (see
-          # _ltd_alias_put). Only the copy -- the main alias may be a link.
-          _ltd_in_real_dir "${_ftpD}" _desymlink_planted "${_pthAliasCopy}"
-          if ! _ltd_in_real_dir "${_ftpD}" \
-            _ltd_alias_same "${_pthAliasMain}" "${_pthAliasCopy}"; then
-            # The stores are rebuilt only for a copy that landed; one that
-            # cannot land in an existing ~/.drush (a directory swapped in after
-            # the sweep) is reported. A first pass may run before ~/.drush exists.
-            if _ltd_in_real_dir "${_ftpD}" \
-              _ltd_alias_put "${_pthAliasMain}" "${_pthAliasCopy}"; then
-              _isAliasUpdate=YES
-            elif [ -d "${_ftpD}" ] && [ ! -L "${_ftpD}" ]; then
-              _ltd_notice "alias-copy-${_USER}-${_SiteName}" \
-                "alias copy for ${_USER}.ftp not written" "${_SiteName}"
-            fi
-          fi
+          _ltd_ftp_copy_keyed "${_SiteName}"
         else
+          # A site whose copy landed before keeps it while its directory is
+          # away: put again as for a live site (a reset of ~/.drush removes
+          # every copy), so the key names the copy in place and a site the
+          # tenant takes out of view and back (a platform under ~/static
+          # renamed and back) keys the same both ways. One never landed gets
+          # no copy and keys "<name> none".
+          if [ -n "$(_ltd_ftp_line_last "${_SiteName}")" ]; then
+            _ltd_ftp_copy_keyed "${_SiteName}"
+          else
+            _ftpKey="${_ftpKey}${_SiteName} none"$'\n'
+          fi
           # drushrc.php absent = ghost candidate. This runs every 3 minutes, so a
           # mid-install/clone site (alias written before its dir is populated)
           # MUST NOT be reaped: skip while an Ægir task is in flight, and while
@@ -4453,106 +4630,117 @@ _manage_site_drush_alias_mirror() {
       fi
     fi
   done
-  # The copy compare above sees site aliases only. The stores are also rebuilt
-  # when no finished rebuild is on record for the instance's drushrc aliases,
-  # names and content: a platform or server alias added, changed or deleted,
-  # or a site deleted. The record is root's own and never taken from a store
-  # listing. The limited-shell copy is also rebuilt when it holds alias
-  # copies but no yml alias (a conversion there failed, or the tenant emptied
-  # it); an account with no sites has nothing to convert and never needs it.
-  # Neither trigger fires again within the hour for the same aliases, so a
-  # store that keeps failing costs one rebuild an hour. The records sit in a
-  # dot directory: the nightly age prune of /var/backups/ltd/*/* never
-  # reaches it.
+  # The two Drush 9+ yml stores are rebuilt each on its own: the instance's
+  # (the Aegir user's), converted from its drushrc aliases, and the
+  # limited-shell copy, converted from the site alias copies above. Each is
+  # rebuilt when no finished rebuild of it is on record for the aliases it is
+  # converted from, or when it holds aliases but no yml alias (emptied by
+  # hand, or never built). The instance's sum covers its drushrc aliases,
+  # names and content; the limited-shell copy's covers root's view of every
+  # site alias: its name and root's bytes of the copy in place (a site whose
+  # directory is away keeps its copy, put again; one never copied keys
+  # "<name> none"), so a copy that lands and a site that goes change it, and
+  # nothing the tenant does can; a pass in which a copy did not land decides
+  # nothing for that store. The
+  # records are root's own, never taken from a store listing, and each
+  # store's triggers stay quiet for an hour once a rebuild of the same
+  # aliases was tried, so a store that keeps failing costs one rebuild an
+  # hour; a failed rebuild keeps the store it had. The records sit in a dot
+  # directory: the nightly age prune of /var/backups/ltd/*/* never reaches it.
   local _aliasSetDir="/var/backups/ltd/.stores"
   local _aliasSetMark="${_aliasSetDir}/${_USER}.md5"
   local _aliasSetTry="${_aliasSetDir}/${_USER}.try"
+  local _aliasSetFtpMark="${_aliasSetDir}/${_USER}.ftp.md5"
+  local _aliasSetFtpTry="${_aliasSetDir}/${_USER}.ftp.try"
   local _aliasSetSum=""
+  local _aliasSetFtpSum=""
   local _aliasSetWhy=""
+  local _aliasSetFtpWhy=""
   local _aliasSetErr=""
   local _aliasSetRc=0
   _aliasSetSum=$(_ltd_in_real_dir "${_pthParentUsr}/.drush" _ltd_alias_set_sum)
-  if [ "${_isAliasUpdate}" != "YES" ] && [ -n "${_aliasSetSum}" ]; then
+  if [ -n "${_aliasSetSum}" ]; then
     if [ "$(cat "${_aliasSetMark}" 2>/dev/null)" != "${_aliasSetSum}" ]; then
       _aliasSetWhy="no finished rebuild on record for the current drushrc aliases"
-    elif compgen -G "${_ftpD}/*.alias.drushrc.php" > /dev/null \
-      && ! compgen -G "${_ftpD}/sites/*.site.yml" > /dev/null; then
-      _aliasSetWhy="the limited-shell store holds no yml alias"
+    elif _ltd_holds "${_pthParentUsr}/.drush" '*.alias.drushrc.php' \
+      && ! _ltd_holds "${_pthParentUsr}/.drush/sites" '*.site.yml'; then
+      _aliasSetWhy="the store holds no yml alias"
     fi
-    if [ -n "${_aliasSetWhy}" ] \
-      && [ "$(cat "${_aliasSetTry}" 2>/dev/null)" = "${_aliasSetSum}" ] \
-      && [ -n "$(find "${_aliasSetTry}" -mmin -60 2>/dev/null)" ]; then
-      _aliasSetWhy=""
-    fi
+    _ltd_alias_store_held "${_aliasSetTry}" "${_aliasSetSum}" && _aliasSetWhy=""
   fi
-  # The alias-store rebuild wipes and regenerates ~/.drush/sites from the
+  if getent passwd "${_USER}.ftp" > /dev/null 2>&1 \
+    && [ "${_ftpMiss}" != "YES" ] && _ltd_in_real_dir "${_ftpD}" true; then
+    _aliasSetFtpSum=$(printf '%s' "${_ftpKey}" | LC_ALL=C sort | md5sum | cut -d' ' -f1)
+    # every site's line as it stands after a pass in which every copy
+    # landed: which sites have a copy to keep (_ltd_ftp_line_last)
+    [ -d "${_aliasSetDir}" ] || mkdir -p "${_aliasSetDir}"
+    chmod 0700 "${_aliasSetDir}"
+    printf '%s' "${_ftpKey}" > "${_ftpLines}"
+  fi
+  if [ -n "${_aliasSetFtpSum}" ]; then
+    if [ "$(cat "${_aliasSetFtpMark}" 2>/dev/null)" != "${_aliasSetFtpSum}" ]; then
+      if [ "${_isAliasUpdate}" = "YES" ]; then
+        _aliasSetFtpWhy="a site alias copy changed"
+      else
+        _aliasSetFtpWhy="no finished rebuild on record for the current alias copies"
+      fi
+    elif _ltd_holds "${_ftpD}" '*.alias.drushrc.php' \
+      && ! _ltd_holds "${_ftpD}/sites" '*.site.yml'; then
+      _aliasSetFtpWhy="the store holds no yml alias"
+    fi
+    _ltd_alias_store_held "${_aliasSetFtpTry}" "${_aliasSetFtpSum}" && _aliasSetFtpWhy=""
+  fi
+  # The alias-store rebuild regenerates ~/.drush/sites from the
   # drushrc aliases -- on a standby those arrive by rsync mid-window, and
   # a rebuild against a half-landed set bakes the gaps in. Scoped gate:
   # everything above (users, inis, pools) already ran.
   if [ -x "/usr/bin/drush10" ] && [ "${_GHOST_REAPED}" != "YES" ] \
     && [ ! -e "/root/.standby.cnf" ]; then
-    if [ "${_isAliasUpdate}" = "YES" ] || [ -n "${_aliasSetWhy}" ]; then
-      [ -n "${_aliasSetWhy}" ] \
-        && echo "Alias stores of ${_USER}: ${_aliasSetWhy}; rebuilding"
-      # Recorded before the stores are wiped, so a pass killed mid-rebuild
-      # leaves no record of a finished one; the try record holds a retry of
-      # the same aliases to once an hour.
+    if [ -n "${_aliasSetWhy}${_aliasSetFtpWhy}" ]; then
       [ -d "${_aliasSetDir}" ] || mkdir -p "${_aliasSetDir}"
       chmod 0700 "${_aliasSetDir}"
+    fi
+    # Each store's record is dropped and its try written before the store is
+    # touched, so a pass killed mid-rebuild leaves no record of a finished one.
+    if [ -n "${_aliasSetFtpWhy}" ]; then
+      echo "Alias stores of ${_USER}: ${_aliasSetFtpWhy}; rebuilding the limited-shell store"
+      rm -f "${_aliasSetFtpMark}"
+      echo "${_aliasSetFtpSum}" > "${_aliasSetFtpTry}"
+      chage -M 99999 ${_USER}.ftp &> /dev/null
+      _ltd_alias_store_rebuild "${_USER}.ftp"
+      _aliasSetRc=$?
+      chage -M 90 ${_USER}.ftp &> /dev/null
+      if [ "${_aliasSetRc}" -eq 0 ]; then
+        echo "${_aliasSetFtpSum}" > "${_aliasSetFtpMark}"
+      else
+        # the tenant's own settings can fail it: reported here, not mailed
+        echo "Alias stores of ${_USER}: the limited-shell store was not rebuilt ($(_ltd_alias_store_why "${_aliasSetRc}")); retried after an hour"
+      fi
+    fi
+    ### Update Drush yml sites aliases also for Ægir system user
+    if [ -n "${_aliasSetWhy}" ]; then
+      echo "Alias stores of ${_USER}: ${_aliasSetWhy}; rebuilding the instance store"
       rm -f "${_aliasSetMark}"
-      if [ -n "${_aliasSetSum}" ] \
-        && ! echo "${_aliasSetSum}" > "${_aliasSetTry}"; then
+      if ! echo "${_aliasSetSum}" > "${_aliasSetTry}"; then
         _aliasSetErr="${_aliasSetTry} could not be written"
       fi
-      chage -M 99999 ${_USER}.ftp &> /dev/null
-      su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/*.yml"
-      wait
-      su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/.checksums/*.md5"
-      wait
-      timeout -k 10 300 su -s /bin/bash - ${_USER}.ftp -c "drush10 core:init --yes" &> /dev/null
-      wait
-      timeout -k 10 300 su -s /bin/bash - ${_USER}.ftp -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
-      wait
-      chage -M 90 ${_USER}.ftp &> /dev/null
-      ### Update Drush yml sites aliases also for Ægir system user
-      su -s /bin/bash - ${_USER} -c "rm -f ~/.drush/sites/*.yml"
-      wait
-      su -s /bin/bash - ${_USER} -c "rm -f ~/.drush/sites/.checksums/*.md5"
-      wait
-      timeout -k 10 300 su -s /bin/bash - ${_USER} -c "drush10 core:init --yes" &> /dev/null
-      wait
-      timeout -k 10 300 su -s /bin/bash - ${_USER} -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
+      _ltd_alias_store_rebuild "${_USER}"
       _aliasSetRc=$?
-      wait
-      # The rebuild is recorded as finished only when the instance's own store
-      # converted and holds its yml aliases (the limited-shell copy is the
-      # tenant's to break).
-      if [ -z "${_aliasSetSum}" ]; then
-        _ltd_notice "aliasstores-${_USER}" \
-          "Drush 9+ alias stores of ${_USER}: ${_pthParentUsr}/.drush is not a real directory" \
-          "rebuilt only when a site alias changes until it is"
-      elif [ -n "${_aliasSetErr}" ]; then
+      if [ -n "${_aliasSetErr}" ]; then
         :
-      elif [ "${_aliasSetRc}" -eq 124 ]; then
-        _aliasSetErr="drush10 site:alias-convert timed out"
-      elif [ "${_aliasSetRc}" -eq 137 ]; then
-        _aliasSetErr="drush10 site:alias-convert timed out or was killed"
       elif [ "${_aliasSetRc}" -ne 0 ]; then
-        _aliasSetErr="drush10 site:alias-convert exited ${_aliasSetRc}"
-      elif compgen -G "${_pthParentUsr}/.drush/*.alias.drushrc.php" > /dev/null \
-        && ! compgen -G "${_pthParentUsr}/.drush/sites/*.site.yml" > /dev/null; then
-        _aliasSetErr="the conversion wrote no yml alias"
+        _aliasSetErr="$(_ltd_alias_store_why "${_aliasSetRc}")"
       elif ! echo "${_aliasSetSum}" > "${_aliasSetMark}"; then
         _aliasSetErr="${_aliasSetMark} could not be written"
       fi
       if [ "${_aliasSetErr}" = "${_aliasSetTry} could not be written" ]; then
         _ltd_notice "aliasstores-${_USER}" \
-          "Drush 9+ alias stores of ${_USER}: ${_aliasSetErr}" \
+          "Drush 9+ alias store of ${_USER}: ${_aliasSetErr}" \
           "rebuilt on every pass until it can be"
       elif [ -n "${_aliasSetErr}" ]; then
         _ltd_notice "aliasstores-${_USER}" \
-          "Drush 9+ alias stores of ${_USER} not rebuilt: ${_aliasSetErr}" \
-          "retried after an hour, or on the next pass when an alias changes"
+          "Drush 9+ alias store of ${_USER} not rebuilt" \
+          "${_aliasSetErr}; retried after an hour, or on the next pass when an alias changes"
       fi
     fi
   fi
