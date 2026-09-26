@@ -330,8 +330,9 @@ PHP-CLI version to match your sites' PHP-FPM version using those control files.
 
 What the `oN.ftp` limited shell provides is BOA's **special shell wrapper** for the
 commands you type: it reads the PHP-CLI control files and applies them, and makes `vdrush`
-available (the same wrapper runs your Ægir tasks). When running as `oN` in a regular bash
-session your typed commands do not go through it — the control files are ignored for them,
+available (the same wrapper runs your Ægir tasks). In a bash shell as `oN` (root's
+`su -s /bin/bash - oN`; `oN` has no login shell) your typed commands do not go through it —
+the control files are ignored for them,
 drush runs against whatever PHP version happens to be the system default, and `vdrush` will
 not work correctly.
 
