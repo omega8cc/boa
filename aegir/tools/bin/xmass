@@ -554,13 +554,14 @@ _mig_php_norm() {
 ### static/control/multi-fpm.info (dotted and shorthand forms both count),
 ### every line of static/control/cli-per-platform.info and the phpNN.info
 ### marker that steers the command line. The last two are read as websh
-### reads them: the file's first 200 lines, '#' opening a comment, a line
-### counting only as "<folder> <version>"; the marker is the highest one
-### whose PHP is installed here. A line whose version the target lacks is
-### ignored there, which leaves that platform's tasks on the account-wide
-### PHP, and websh refuses them when the platform's core cannot run on it.
+### reads them: the file's first 64 KiB and 200 lines, '#' opening a comment,
+### a line counting only as "<folder> <version>", the version's digits only;
+### the marker is the highest one whose PHP is installed here. A line whose
+### version the target lacks is ignored there, which leaves that platform's
+### tasks on the account-wide PHP, and websh refuses them when the platform's
+### core cannot run on it.
 _mig_php_versions_needed() {
-  local _u="$1" _f _v _dom _rest _line _k _e _mk="" _out=""
+  local _u="$1" _f _v _dom _rest _line _k _e _mk="" _txt _n _out=""
   for _f in "${_u}/static/control/fpm.info" "${_u}/static/control/cli.info"; do
     [ -e "${_f}" ] || continue
     _v="$(_mig_php_norm "$(tr -d ' \t\r\n' < "${_f}" 2>/dev/null)")"
@@ -577,13 +578,17 @@ _mig_php_versions_needed() {
     done < "${_u}/static/control/multi-fpm.info"
   fi
   if [ -e "${_u}/static/control/cli-per-platform.info" ]; then
+    _txt=""; _n=0
+    { IFS= read -r -N 65536 _txt < "${_u}/static/control/cli-per-platform.info"; } 2>/dev/null || true
     while IFS= read -r _line; do
+      _n=$(( _n + 1 ))
+      [ "${_n}" -gt 200 ] && break
       _line="${_line%%#*}"
       read -r _k _v _rest <<< "${_line}"
       [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_rest}" ] || continue
-      _v="$(_mig_php_norm "${_v}")"
+      _v="$(_mig_php_norm "${_v//[!0-9]/}")"
       [ -n "${_v}" ] && _out="${_out} ${_v}"
-    done < <(head -c 65536 "${_u}/static/control/cli-per-platform.info" 2>/dev/null | head -n 200)
+    done <<< "${_txt}"
   fi
   for _e in 56 70 71 72 73 74 80 81 82 83 84 85; do
     [ -e "${_u}/static/control/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
