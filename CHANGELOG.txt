@@ -616,6 +616,13 @@
 
 @=> Important Fixes
 
+    * The EzContent catalogue platform carries its JavaScript libraries
+      (Dropzone, Colorbox, Slick) in web/libraries/, where the modules look
+      for them. They sat in vendor/, so the media upload and carousel
+      widgets had no library, and Dropzone's failed requirement stopped the
+      database update after every clone or migration of an EzContent site.
+      Takes effect with the next rebuild of the platform.
+
     * A Drupal 8+ platform added with its Platform Path at the Composer
       project folder (composer.json there, the docroot in web/ below it)
       now verifies. Its Verify ran on the project's own Drush from
