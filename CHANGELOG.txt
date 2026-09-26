@@ -616,6 +616,14 @@
 
 @=> Important Fixes
 
+    * A Drupal 8+ platform added with its Platform Path at the Composer
+      project folder (composer.json there, the docroot in web/ below it)
+      now verifies. Its Verify ran on the project's own Drush from
+      vendor/bin, which runs no Ægir command, and was still marked
+      successful: no install profile was registered and no site could be
+      created on it. Ægir tasks now always run on Ægir's own Drush, and a
+      task whose command reports nothing back fails instead of passing.
+
     * xmass and xoct also require on the target the PHP versions named in
       cli-per-platform.info and the phpNN.info switch the account's
       command line runs on. A target without one of them ran that
