@@ -1394,6 +1394,7 @@ _cpp_norm() {
 }
 _CPP_NW=0; _CPP_MORE=0
 # how a message names the file (_cpp_resolve changes it for a developer login)
+# shellcheck disable=SC2088 # message text, ~ literal
 _CPP_WHERE="~/static/control/cli-per-platform.info"
 _cpp_warn() {
   # $1 = a warning about the file; the first 20 are kept (each at most 400
