@@ -90,10 +90,10 @@ changes it, so distribution, core and name stay and the rebuild replaces the pub
 copy unless it adds advisories or cannot be checked for them. Their core minors are
 past security support, so core advisories remain.
 
-EzContent's JavaScript libraries (Dropzone, Colorbox, Slick, from asset-packagist) are
-also moved, same versions, to `web/libraries/`, where the modules look for them: its
-first build left them in `vendor/`, and Dropzone's missing library stopped `updatedb`
-on every clone.
+EzContent's JavaScript libraries (Dropzone, Colorbox, Slick, from asset-packagist) also
+move, same versions, to `web/libraries/`, where the modules look for them: without
+Dropzone's library there, its requirement check stops `updatedb` after a clone or
+migration of an EzContent site.
 
 CK2 resolves one package from a
 GitHub repository; when GitHub refuses anonymous requests (rate limit), its row says
