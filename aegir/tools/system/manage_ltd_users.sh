@@ -1091,6 +1091,13 @@ _enable_chattr() {
     [ -e "/home/${_UQ}/.mkshrc" ] && rm -rf /home/${_UQ}/.mkshrc
     if [ "${_UQ}" = "${_USER}.ftp" ]; then
       [ ! -d "/home/${_UQ}/.composer" ] && su -s /bin/bash - ${_UQ} -c "mkdir ~/.composer"
+    elif [[ "${_UQ}" == "${_USER}".*"${_LTD_PLATFORM_SUFFIX}" ]]; then
+      # The platform developer login runs Composer too, and its home is
+      # immutable between passes: its Composer home and cache are made here,
+      # as the login, while the pass holds the home open.
+      if [ ! -d "/home/${_UQ}/.composer" ] || [ ! -d "/home/${_UQ}/.cache/composer" ]; then
+        su -s /bin/bash - ${_UQ} -c "mkdir -p ~/.composer ~/.cache/composer" &> /dev/null
+      fi
     else
       [ -d "/home/${_UQ}/.composer" ] && rm -rf /home/${_UQ}/.composer
     fi
@@ -4458,15 +4465,18 @@ _manage_user() {
           _ltd_in_real_dir "${_dscUsr}/src" _ltd_log_marker_to_src "${_mvPid}.pid"
         done
       fi
+      # Composer project leftovers at the account root, and a vendor/ directly
+      # in ~/static, can break Aegir backend tasks and the D8+ sites below
+      # them: removed unless rector.php marks a Rector workspace. Composer's
+      # own home and cache stay: Aegir tasks and builds run Composer as this
+      # user, and a pass that removed them under a running Composer failed its
+      # install.
       if [ ! -e "${_dscUsr}/rector.php" ]; then
         rm -f ${_dscUsr}/*.php* &> /dev/null
         rm -f ${_dscUsr}/composer.lock &> /dev/null
         rm -f ${_dscUsr}/composer.json &> /dev/null
         rm -f -r ${_dscUsr}/vendor &> /dev/null
         rm -f -r ${_dscUsr}/static/vendor &> /dev/null
-        rm -f -r ${_dscUsr}/.cache/composer &> /dev/null
-        rm -f -r ${_dscUsr}/.config/composer &> /dev/null
-        rm -f -r ${_dscUsr}/.composer &> /dev/null
       fi
       # every root write under /data/disk/<oN> refuses a path with a link on
       # it (BOA makes none at these names): say so once a day, not silently
