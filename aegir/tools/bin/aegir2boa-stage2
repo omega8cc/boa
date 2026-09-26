@@ -2272,8 +2272,8 @@ _import_per_site() {
     [[ -d "${_proot}" ]] || { _alrt "site ${_uri}: platform tree ${_proot} missing - SKIP"; _fails=$(( _fails + 1 )); continue; }
     # docroot detect (D8+ composer trees) -- the same four docroot names the
     # export half recognises when it transfers a project root instead of the
-    # docroot (web|docroot|html|public_html); registering the project root as
-    # the platform would fail every site on it at verify.
+    # docroot (web|docroot|html|public_html); the platform is registered at the
+    # docroot, as the source Aegir had it.
     local _droot="${_proot}" _dr
     if [[ ! -e "${_proot}/index.php" ]]; then
       for _dr in web docroot html public_html; do
