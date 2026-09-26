@@ -1226,6 +1226,12 @@ _fetch_versioned() {
   [[ -n "${_lbl}" ]] || _lbl="${_grd##*/}"   # default notice subject = basename of guard
   # shellcheck disable=SC2154  # _pthLog/_tRee/_xSrl are globals provided by BOA.sh.txt
   local _ctl="${_pthLog}/${_cnm}.ctrl.${_srl}.${_tRee}.${_xSrl}.pid"
+  # When this box last compared the deployed bytes with the source's: the last
+  # fetch that carried a body. A 304 re-arms the marker above but not this
+  # stamp, so the daily unconditional request below counts from the last real
+  # comparison. Counted from the marker, every hourly 304 moved it and the day
+  # never ran out.
+  local _cmp="${_pthLog}/${_cnm}.compared.pid"
   # Revalidation window (minutes). Even a serial-matched marker is re-checked
   # against the mirror once it is older than this, so a box that ever recorded a
   # marker against STALE bytes -- a publish race (the serial in BOA.sh.txt visible
@@ -1304,9 +1310,10 @@ _fetch_versioned() {
   # path serves both first install (marker absent / serial change) and periodic
   # revalidation (marker past the window): if the mirror's current bytes differ
   # from what is deployed we replace and re-stamp; if they are identical we keep
-  # the file untouched and merely re-arm the marker; if the fetch failed we leave
-  # the working copy and its marker alone.
-  local _new="${_dst}.new.$$" _cod="" _znc=""
+  # the bytes, take the source's time where that is safe (below) and re-arm the
+  # marker; either way the comparison is stamped. If the fetch failed we leave the
+  # working copy and its marker alone.
+  local _new="${_dst}.new.$$" _cod="" _znc="" _t0=""
   # A box with no local tree cannot compare content locally, so it asks the server
   # instead: -z sends If-Modified-Since from the DEPLOYED copy's mtime, so an unchanged
   # source answers 304 with no body. That makes revalidation nearly free, which is what
@@ -1323,13 +1330,15 @@ _fetch_versioned() {
   #     the serial changed we are being told new content exists, so never risk a 304
   #     against it -- that is exactly how a box would re-arm the new marker over old
   #     bytes;
-  #   - that marker is younger than the hard window. At least once a day we ask
-  #     unconditionally, so a deployed copy carrying a wrong mtime (written before -R,
-  #     or touched by hand) can never answer 304 forever. Worst case degrades to the
-  #     unconditional refetch this replaced -- it can delay a heal, never prevent one.
-  if [[ -s "${_dst}" ]] && [[ -e "${_ctl}" ]] \
+  #   - the last real comparison is younger than the hard window. At least once a day
+  #     we ask unconditionally, so a deployed copy carrying a wrong mtime (written
+  #     before -R, by another installer, or touched by hand) can never answer 304
+  #     forever. Worst case degrades to the unconditional refetch this replaced -- it
+  #     can delay a heal, never prevent one. No comparison stamp yet counts as past
+  #     the window.
+  if [[ -s "${_dst}" ]] && [[ -e "${_ctl}" ]] && [[ -e "${_cmp}" ]] \
     && { [[ -z "${_tok}" ]] || tail -c 4096 "${_dst}" 2>/dev/null | grep -qF -- "${_tok}"; } \
-    && [[ -z "$(find "${_ctl}" -mmin "+${_FETCH_HARD_REVALIDATE_MIN:-1440}" 2>/dev/null)" ]]; then
+    && [[ -z "$(find "${_cmp}" -mmin "+${_FETCH_HARD_REVALIDATE_MIN:-1440}" 2>/dev/null)" ]]; then
     _znc="-z ${_dst}"
   fi
   # The local source resolved above wins: no network, and it is the very content this
@@ -1337,6 +1346,8 @@ _fetch_versioned() {
   if [[ -n "${_lcl}" ]]; then
     cp -pf "${_lcl}" "${_new}" 2>/dev/null || rm -f "${_new}"
   else
+    # the moment the fetch began: a Last-Modified is adopted only when earlier
+    _t0="$(date +%s)"
     # shellcheck disable=SC2086,SC2154  # intentional _crlGet/_znc flag-string split; _crlGet is a BOA.sh.txt global
     # A non-zero curl exit can still leave a PARTIAL body on disk (the fleet curl
     # floor forbids --remove-on-error), and a partial file passes every simple
@@ -1375,7 +1386,28 @@ _fetch_versioned() {
   fi
   if [[ -s "${_new}" ]]; then
     if [[ -e "${_dst}" ]] && cmp -s "${_new}" "${_dst}"; then
-      rm -f "${_new}"                       # already current -- no disruption
+      # Only a marker of a DIFFERENT fNN, with none for this one, promises new
+      # content (see the hold below).
+      local _fnnMove=NO _tmt
+      if [[ ! -e "${_ctl}" ]] \
+        && ls "${_pthLog}/${_cnm}.ctrl."* 2>/dev/null | grep -qv "\.ctrl\.${_srl}\."; then
+        _fnnMove=YES
+      fi
+      # Already current -- no disruption, but take the source's time: a
+      # publish re-clones the tree and gives every file a new Last-Modified,
+      # and a copy that kept its older time was sent the whole file again at
+      # every hourly -z. Only a time -R really set, strictly before this
+      # fetch began: with no Last-Modified the temp carries its own write
+      # time, and adopting that (or a future one) would answer 304 to a
+      # correct source. Not on an fNN change, where identical bytes may come
+      # from a mirror that has not caught up; not from a local source.
+      _tmt="$(stat -c %Y "${_new}" 2>/dev/null)"
+      if [[ -z "${_lcl}" ]] && [[ "${_fnnMove}" = "NO" ]] \
+        && [[ "${_tmt}" =~ ^[0-9]+$ ]] && [[ "${_t0}" =~ ^[0-9]+$ ]] \
+        && [[ "${_tmt}" -lt "${_t0}" ]]; then
+        touch -c -r "${_new}" "${_dst}"
+      fi
+      rm -f "${_new}"
       # A serial CHANGE promises new content, so identical bytes mean the
       # mirror answering us has not caught up with the publish yet (a passive
       # mirror pulls the tree once a minute; measured 2026-09-06: a box fetched
@@ -1391,8 +1423,7 @@ _fetch_versioned() {
       # tool unchanged) is the same bytes by definition and arms at once;
       # holding it re-downloaded every unchanged tool on every pass for an
       # hour after each release, unarmed and with its symlink unrepaired.
-      if [[ ! -e "${_ctl}" ]] \
-        && ls "${_pthLog}/${_cnm}.ctrl."* 2>/dev/null | grep -qv "\.ctrl\.${_srl}\."; then
+      if [[ "${_fnnMove}" = "YES" ]]; then
         local _stl="${_pthLog}/${_cnm}.stale.${_srl}.${_tRee}.${_xSrl}.pid"
         if [[ -z "$(find "${_stl}" -mmin +60 2>/dev/null)" ]]; then
           [[ -e "${_stl}" ]] || touch "${_stl}"
@@ -1409,11 +1440,13 @@ _fetch_versioned() {
     [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
     rm -f "${_pthLog}/${_cnm}.ctrl."* "${_pthLog}/${_cnm}.stale."*
     touch "${_ctl}"                         # (re-)arm marker + revalidation window
+    touch "${_cmp}"                         # the bytes were compared: restart the day
   elif [[ "${_cod}" == "304" ]]; then
     # The server confirmed the deployed copy is current, so this is success with an
     # empty body -- NOT a failed fetch. Re-arm the marker (otherwise every pass would
     # re-probe) and still repair the symlink, which a missing-link revalidation came
-    # here to fix and which the body-carrying branch above would have handled.
+    # here to fix and which the body-carrying branch above would have handled. The
+    # comparison stamp stays as it is: a 304 compared no bytes, only timestamps.
     rm -f "${_new}"
     [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
     rm -f "${_pthLog}/${_cnm}.ctrl."*
@@ -1747,7 +1780,7 @@ _update_agents() {
   # but inert until the gated _get_bee installs /opt/tools/bee; canonical path
   # /opt/local/bin/bee (no /usr/bin symlink, websh's PATH resolves it);
   # clients execute it, so it ships world-executable.
-  _fetch_versioned ${_optBin}/bee "${_urlHmr}/tools/bin/bee" f95 --mode 755 --guard /local/bin/bee
+  _fetch_versioned ${_optBin}/bee "${_urlHmr}/tools/bin/bee" f94 --mode 755 --guard /local/bin/bee
   # PHP-selecting Grav CLI wrapper (identity verb policy + the enforced
   # 8.3 floor). Deployed unconditionally but inert
   # without a Grav install in reach (it resolves the target from CWD and

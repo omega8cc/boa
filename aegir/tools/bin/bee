@@ -138,7 +138,6 @@ fi
 
 # Align the ini with the chosen CLI: websh may have exported another version's
 # PHPRC (clamp/self-resolve divergence), and direct calls carry none at all.
-# The per-account ~/.drush/phpNN/php.ini override applies exactly as in websh.
 _n="$(printf '%s' "${_BEE_PHP}" | tr -cd '0-9')"
 PHP_INI="/opt/php${_n}/lib/php.ini"
 PHPRC="/opt/php${_n}/lib"

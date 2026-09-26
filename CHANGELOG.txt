@@ -632,6 +632,12 @@
 
 @=> Important Fixes
 
+    * The install markers of Drush 8, 10 and 11 and bee in /opt/tools no
+      longer pile up, one per release: each install keeps only the marker
+      of the current tree and release, which is the one the next pass
+      reads to skip a needless reinstall. The directory clean before each
+      install skipped dotfiles, so a box kept every earlier marker.
+
     * The barracuda pass that disables unused PHP versions (on a major OS
       upgrade, with /root/.allow-php-multi-install-cleanup.cnf, and on
       php-idle disable) keeps every version an account pins: also a
