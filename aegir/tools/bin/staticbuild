@@ -1804,8 +1804,23 @@ _fetch_pinned() {
   _run_as_o8 "tar -xzf '${_src}' --strip-components=1 -C '${_wd}' && rm -f '${_DAY_DIR}/.pinned.tar.gz' && test -f '${_wd}/composer.lock'"
 }
 
+_ezc_asset_libraries() {
+  # EzContent's profile requires its JavaScript libraries (dropzone, colorbox, slick)
+  # from asset-packagist and the installers extender, and leaves their place to the
+  # project: its own template sends bower-asset and npm-asset packages to the
+  # docroot's libraries/. The pinned tree's root never did, so they sat in vendor/,
+  # where the modules never look: Dropzonejs failed its requirement, which stopped
+  # updatedb on every clone and migration. Same lock, same versions; only the place
+  # moves. $1 workdir.
+  local _wd="$1"
+  _run_as_o8 "cd '${_wd}' && php -r '\$f = \"composer.json\"; \$j = json_decode(file_get_contents(\$f)); \$k = \"web/libraries/{\\\$name}\"; if (!is_object(\$j) || !isset(\$j->extra->{\"installer-paths\"}->\$k)) { exit(1); } \$j->extra->{\"installer-types\"} = array(\"bower-asset\", \"npm-asset\"); \$p = \$j->extra->{\"installer-paths\"}->\$k; foreach (array(\"type:bower-asset\", \"type:npm-asset\") as \$t) { if (!in_array(\$t, \$p, true)) { \$p[] = \$t; } } \$j->extra->{\"installer-paths\"}->\$k = \$p; exit(file_put_contents(\$f, json_encode(\$j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . \"\\n\") ? 0 : 1);'" || return 1
+  _run_as_o8 "cd '${_wd}' && rm -rf vendor/bower-asset vendor/npm-asset && COMPOSER_NO_SECURITY_BLOCKING=1 composer install $(_tree_nodev "${_wd}") ${_FIX_IGNORE_EXT}" || return 1
+  _run_as_o8 "test -f '${_wd}/web/libraries/dropzone/dist/min/dropzone.min.js'"
+}
+
 build_ezcontent() {
-  # Pinned: rebuilt from its published tarball; only the advisory fix step moves code.
+  # Pinned: rebuilt from its published tarball; only the advisory fix step moves code,
+  # and the asset libraries move to where the modules look for them.
   local _rest="${_EZC_PINNED%-*}" _wd="${_DAY_DIR}/.build.ezcontent"
   _begin_build "$(_target_prefix ezcontent)" "ezcontent" || return 0
   use_php "${_PHP_PINNED}" || { _record_fail "ezcontent"; return 1; }
@@ -1815,6 +1830,7 @@ build_ezcontent() {
     return 1
   fi
   _composer_prepare "${_wd}" || { _record_fail "ezcontent"; return 1; }
+  _ezc_asset_libraries "${_wd}" || { _record_fail "ezcontent (asset libraries)"; return 1; }
   _fix_step "${_wd}" "ezcontent" "${_EZC_DISTPKG}" || return 1
   _finalize_distro "ezcontent" "${_wd}" "${_rest##*-}" "ezcontent"
 }
