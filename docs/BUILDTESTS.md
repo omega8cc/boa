@@ -95,9 +95,9 @@ GitHub repository; when GitHub refuses anonymous requests (rate limit), its row 
 so, and a GitHub token lifts the limit.
 
 staticbuild runs Composer with its own home and cache in the build user's home,
-`~/.config/staticbuild-composer` and `~/.cache/staticbuild-composer`: the limited-shell
-worker removes `.config/composer` and `.cache/composer` from every Octopus account every few
-minutes. The token goes into that home, set as the build user:
+`~/.config/staticbuild-composer` and `~/.cache/staticbuild-composer`, apart from the
+account's own: Aegir tasks run Composer as the same user, and the build clears its cache
+at the start of every run. The token goes into that home, set as the build user:
 
 ```sh
   COMPOSER_HOME=~/.config/staticbuild-composer composer config -g github-oauth.github.com <token>
