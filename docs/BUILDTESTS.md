@@ -95,6 +95,12 @@ move, same versions, to `web/libraries/`, where the modules look for them: witho
 Dropzone's library there, its requirement check stops `updatedb` after a clone or
 migration of an EzContent site.
 
+Both pinned builds then refresh the lock's content-hash alone (`composer update --lock`,
+no package moves) before the fix step: the root edits above (the held conflicts,
+EzContent's installer paths) would otherwise leave it behind `composer.json`, and
+Composer warns on every run there. A resolve that fails keeps the old hash and the row
+says `lock hash stale`.
+
 CK2 resolves one package from a
 GitHub repository; when GitHub refuses anonymous requests (rate limit), its row says
 so, and a GitHub token lifts the limit.
@@ -117,9 +123,13 @@ resolves its own dependencies: `_COMPOSER_CONFLICTS` in staticbuild writes a roo
 It holds `twig/twig` below 3.30 today: Twig 3.30.0 breaks every page of the Drupal
 10 and 11 releases published before Drupal's own fix (drupal.org issue 3625969),
 because the compiled templates call Twig's escaper with the argument list of Drupal's
-escape filter. The hold is lifted once every catalogue core carries that fix. varbase,
-installed from upstream's lock, and the vanilla cores, whose `drupal/core-recommended`
-pins Twig, are not affected.
+escape filter. The hold is lifted once every catalogue core carries that fix.
+
+varbase, installed from upstream's lock, is not affected, and neither are the vanilla
+cores: their build installs the lock `drupal/recommended-project` ships for each core
+release and adds only Drush, so the hold never applies there, and the templates
+published so far lock Twig below 3.30. `drupal/core-recommended` itself no longer pins
+Twig.
 
 Every published tarball records root as its owner (`--owner=0 --group=0
 --numeric-owner`): BOA unpacks some of them as root into trees every instance shares,
@@ -209,9 +219,10 @@ By hand, the same audit of a built platform is:
 
 ### Same-name respins: a changed lock replaces unless it adds advisories
 
-A box fetches a catalogue platform only while its directory is absent, so a tarball
-republished under the same name with a different lock reaches new installs and never
-the boxes that already hold that platform.
+A box takes a tarball republished under the same name at its next Octopus upgrade only
+for an idle copy of the platform (no site, no tenant file, no task; see
+`docs/PLATFORMS.md`), so a different lock reaches new installs and idle copies, never a
+copy in use, and never a box on a BOA release older than that refresh.
 
 A same-name tarball whose lock changed
 replaces the published one unless it **adds advisories**: distribute audits both locks
@@ -240,7 +251,7 @@ passes.
 A deliberate same-name rebuild names what it overwrites:
 `staticbuild -O distribute <name> ...` publishes only the named platforms and
 overwrites their published tarballs, logs both lock hashes, marks the row
-`OVERWRITTEN`, and warns that the boxes which already fetched them keep the old bytes;
+`OVERWRITTEN`, and warns that copies in use on boxes keep the old bytes;
 nothing else in the day dir is copied. `-O` without names, a name that matches nothing
 in the day dir and `-O` with any other action are refused before anything is copied.
 
@@ -692,8 +703,8 @@ install profile), then gzip the remaining (distribution) platforms:
 ```
 
 Before a same-name distribution tarball replaces one already in `distro/`, compare the
-`composer.lock` inside both: a changed lock under an old name never reaches the boxes that
-already hold that platform (see "Same-name respins" above; `staticbuild distribute`
+`composer.lock` inside both: a changed lock under an old name never reaches a copy of
+that platform in use on a box (see "Same-name respins" above; `staticbuild distribute`
 refuses it when it adds advisories or cannot be checked for them, unless `-O`).
 
 Raw cores (`drupal-*`) go to `core/`; the distributions go to `distro/`. The Backdrop, Grav

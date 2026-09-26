@@ -363,9 +363,9 @@
     * staticbuild distribute replaces a published distribution or core
       with a same-name tarball whose lock differs unless the new lock
       adds advisories or cannot be checked for them; those are
-      refused unless the platform is named with -O. The boxes that
-      already hold a platform never fetch it again and keep its old
-      bytes.
+      refused unless the platform is named with -O. A box takes the
+      new tarball at its next Octopus upgrade only where its copy of
+      the platform is idle; a copy in use keeps the old bytes.
     * staticbuild prints one row per platform: whether it built, the
       advisories left and fixed, what happened on the mirror and a
       note only where something needs attention, with the command to
@@ -616,6 +616,11 @@
 
 @=> Important Fixes
 
+    * The pinned EzContent and Commerce v.2 catalogue platforms ship a
+      composer.lock whose content-hash matches their composer.json again:
+      Composer no longer warns that the lock is out of date on every run
+      there. No package version changes.
+
     * The EzContent catalogue platform carries its JavaScript libraries
       (Dropzone, Colorbox, Slick) in web/libraries/, where the modules look
       for them. They sat in vendor/, so the media upload and carousel
@@ -630,6 +635,8 @@
       successful: no install profile was registered and no site could be
       created on it. Ægir tasks now always run on Ægir's own Drush, and a
       task whose command reports nothing back fails instead of passing.
+      Run Verify once more on such a platform added before the upgrade:
+      its earlier Verify did nothing.
 
     * xmass and xoct also require on the target the PHP versions named in
       cli-per-platform.info and the phpNN.info switch the account's
