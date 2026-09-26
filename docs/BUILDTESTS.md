@@ -369,10 +369,12 @@ Five artefacts, always rebuilt at the latest upstream tag (pin any with the matc
   suffix) wrapping a `webform/` directory, published to the per-tree contrib shelf
   `/var/www/static/dev/{dev,lts,pro}/contrib`. A plain bundle member — extracted into
   `o_contrib_backdrop` directly, no shared-store symlink, no cnf pin — fetched by the
-  satellite side as a version literal: after publishing a newer tag, bump that literal
-  in `lib/functions/satellite.sh.inc` (`_satellite_download_o_contrib_backdrop`), not in
-  `OCTOPUS.sh.txt`/`BOA.sh.txt`; `staticbuild check` surfaces the drift as the
-  `bd-webform` row.
+  satellite side by the release `_WEBFORM_B_TAG` names in `lib/functions/satellite.sh.inc`
+  (not in `OCTOPUS.sh.txt`/`BOA.sh.txt`): bump it after publishing a newer tag, and the
+  next Octopus upgrade replaces the webform of every platform generation's bundle that
+  records another release (`webform/ver-<tag>.info`). The new tree must test whole and
+  carry `webform.info` and `webform.module` before it is swapped in, root-owned;
+  `staticbuild check` surfaces upstream drift as the `bd-webform` row.
 
 ## Grav family
 

@@ -2652,6 +2652,9 @@ _update_agents() {
       cd ${_Dir}
       rm -rf ${_Dir}/redis_backdrop
       _get_dev_contrib "redis_backdrop-${_REDIS_B_VERSION}.tar.gz"
+      # every instance's Backdrop sites run this copy: root's, whatever owner
+      # the archive recorded
+      chown -R root:root ${_Dir}/redis_backdrop &> /dev/null
       echo update > ${_Dir}/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info
       find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
