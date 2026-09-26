@@ -11171,6 +11171,11 @@ _xmass_post_mig() {
 ### the sweep re-chowns what it touches, so no root-owned residue.
 ### (.prev-multi-fpm.info is deliberately left alone: the sweep recreates
 ### it from the live file before diffing, so removing it changes nothing.)
+### The carried FPM markers, removed in the current (pinned) control
+### directory: the globs expand here, never in the caller's directory.
+_xmass_rm_fpm_markers_here() {
+  rm -f -- ./.multi-fpm.*.pid ./.single-fpm.*.pid ./.multi-nginx-fpm.pid
+}
 _xmass_heal_fpm_pins() {
   local _root _acct _ctl _dom _ver _missing _healed=0
   for _root in $(find /data/disk/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
@@ -11181,8 +11186,7 @@ _xmass_heal_fpm_pins() {
     _ctl="${_root}/static/control"
     [ -e "${_ctl}/multi-fpm.info" ] || continue
     # inside the account's real control directory, never through a link
-    _xmass_in_real_dir "${_ctl}" rm -f -- ./.multi-fpm.*.pid \
-      ./.single-fpm.*.pid ./.multi-nginx-fpm.pid || continue
+    _xmass_in_real_dir "${_ctl}" _xmass_rm_fpm_markers_here || continue
     _healed=$(( _healed + 1 ))
   done
   [ "${_healed}" = "0" ] && return 0

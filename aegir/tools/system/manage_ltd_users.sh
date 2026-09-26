@@ -885,8 +885,8 @@ _ltd_ctrl_info_owner() {
 }
 # The control directory on the first pass of a serial, inside the real
 # directory: the README put in place as a fresh 0644 file, the tree handed to
-# the main login (never through a link, never a file with another link), old
-# stamps swept and this serial's written exclusively.
+# the main login (chown -R never follows a link), old stamps swept and this
+# serial's written exclusively.
 _ltd_ctrl_init() {
   chmod 755 .
   if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
@@ -894,9 +894,7 @@ _ltd_ctrl_init() {
       cp -T --no-preserve=mode --remove-destination \
         /var/xdrago/conf/control-readme.txt ./README.txt ) &> /dev/null
   fi
-  # the tree handed over without following a link (find -P) or taking a
-  # file that has another link, as a hard link the tenant made would be
-  find . \( -type d -o -links 1 \) -exec chown -h "${_USER}.ftp:${_usrGroup}" {} + 2> /dev/null
+  chown -R "${_USER}.ftp:${_usrGroup}" .
   rm -f -- ./.ctrl.*
   _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
 }

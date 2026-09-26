@@ -1534,6 +1534,11 @@ REDIR
 ### first. (.prev-multi-fpm.info is deliberately NOT touched: the sweep
 ### recreates it from the live file before diffing, so removing it proves
 ### nothing and only hides the real lever.)
+### The carried FPM markers, removed in the current (pinned) control
+### directory: the globs expand here, never in the caller's directory.
+_xoct_rm_fpm_markers_here() {
+  rm -f -- ./.multi-fpm.*.pid ./.single-fpm.*.pid ./.multi-nginx-fpm.pid
+}
 _xoct_heal_fpm_pins() {
   local _acct="$1"
   local _root="/data/disk/${_acct}"
@@ -1546,8 +1551,7 @@ _xoct_heal_fpm_pins() {
   ### Deletes only; nothing is created here, and the sweep re-chowns the
   ### .info files it touches -- so no root-owned residue is left behind in
   ### the account's control dir.
-  _xoct_in_real_dir "${_ctl}" rm -f -- ./.multi-fpm.*.pid ./.single-fpm.*.pid \
-    ./.multi-nginx-fpm.pid
+  _xoct_in_real_dir "${_ctl}" _xoct_rm_fpm_markers_here
   echo "INFO: cleared carried FPM pool markers for ${_acct}; rebuilding pinned pools"
   if [ -x "/var/xdrago/manage_ltd_users.sh" ] || [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
     bash /var/xdrago/manage_ltd_users.sh &> /dev/null

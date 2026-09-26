@@ -890,15 +890,22 @@ _purge_hits_under_account() {
     "${_acct}/static/files"|*"/files/${_acct##*/}/static/files") ;;
     *) _store= ;;
   esac
+  # the hit is removed from inside its resolved directory, entered for real,
+  # so no name on the way is resolved a second time
   while IFS= read -r -d '' _f; do
     _r=$(realpath -e -- "${_f}" 2>/dev/null) || continue
     case "${_r}/" in
-      "${_acct}"/*) rm -f -- "${_r}" &> /dev/null ; continue ;;
+      "${_acct}"/*) ;;
+      *)
+        [ -n "${_store}" ] || continue
+        case "${_r}/" in
+          "${_store}"/*) ;;
+          *) continue ;;
+        esac
+        ;;
     esac
-    [ -n "${_store}" ] || continue
-    case "${_r}/" in
-      "${_store}"/*) rm -f -- "${_r}" &> /dev/null ;;
-    esac
+    ( cd -P -- "${_r%/*}" 2>/dev/null && [ "$(pwd -P)" = "${_r%/*}" ] \
+      && rm -f -- "./${_r##*/}" ) &> /dev/null
   done
 }
 
