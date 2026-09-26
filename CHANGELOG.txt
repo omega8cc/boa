@@ -363,9 +363,9 @@
     * staticbuild distribute replaces a published distribution or core
       with a same-name tarball whose lock differs unless the new lock
       adds advisories or cannot be checked for them; those are
-      refused unless the platform is named with -O. The boxes that
-      already hold a platform never fetch it again and keep its old
-      bytes.
+      refused unless the platform is named with -O. A box takes the
+      new tarball at its next Octopus upgrade only where its copy of
+      the platform is idle; a copy in use keeps the old bytes.
     * staticbuild prints one row per platform: whether it built, the
       advisories left and fixed, what happened on the mirror and a
       note only where something needs attention, with the command to
@@ -616,6 +616,11 @@
 
 @=> Important Fixes
 
+    * The pinned EzContent and Commerce v.2 catalogue platforms ship a
+      composer.lock whose content-hash matches their composer.json again:
+      Composer no longer warns that the lock is out of date on every run
+      there. No package version changes.
+
     * The EzContent catalogue platform carries its JavaScript libraries
       (Dropzone, Colorbox, Slick) in web/libraries/, where the modules look
       for them. They sat in vendor/, so the media upload and carousel
@@ -630,6 +635,8 @@
       successful: no install profile was registered and no site could be
       created on it. Ægir tasks now always run on Ægir's own Drush, and a
       task whose command reports nothing back fails instead of passing.
+      Run Verify once more on such a platform added before the upgrade:
+      its earlier Verify did nothing.
 
     * xmass and xoct also require on the target the PHP versions named in
       cli-per-platform.info and the phpNN.info switch the account's
@@ -669,6 +676,18 @@
     * A platform developer account's Drush 9+ alias store is no longer
       rebuilt every day: the nightly clean-up of /var/backups/ltd removed
       the record of its last rebuild.
+    * A Drush 9+ alias store the limited-shell worker cannot convert keeps
+      its last aliases: each store is converted aside and put in place only
+      when the conversion finished, where one unreadable alias file used to
+      leave the account without any Drush 9+ alias. The account's store and
+      the tenant's limited-shell copy are rebuilt and retried (hourly) each
+      on its own, a store emptied by hand is rebuilt, the nightly account
+      pass leaves the rebuild to the worker instead of redoing it in place,
+      and every rebuild names its cause in the worker's report.
+    * A platform developer account's Drush 9+ alias store is converted aside
+      as well: a conversion that fails keeps the account's last aliases,
+      where it used to leave vdrush without any until a retry succeeded; the
+      retry still comes on the next pass, and the notice names the cause.
     * Speed Booster no longer replays a cached 5xx while the site keeps
       failing: an error is cached for one second and refreshed, as
       designed, and a 5xx never keeps the page's cache lifetime (up to an
