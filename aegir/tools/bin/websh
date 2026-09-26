@@ -2,6 +2,12 @@
 
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec:/usr/local/ssl3
 
+# The report of which command-line PHP a backend drush line runs on, and what
+# chose it (see _cpp_before_exec): cleared first, so no websh spawn -- the
+# verbatim fast lane included -- hands a parent's report to a child it did not
+# choose for.
+unset BOA_CLI_PHP_FROM BOA_CLI_PHP_WARN
+
 _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
 
 # Exact group membership, order-independent. id -nG prints the PRIMARY group
@@ -233,6 +239,60 @@ _composer_lead() {
   _CO_PRE=""; _CO_CD=""
   return 1
 }
+# The segment of a line that runs one of the named verbs ($2...), the way
+# dash splits the line (_drush_segments): sets _SEG_REST to its arguments and
+# _SEG_CD to a "cd DIR" segment in front of it, if any. For lines the
+# dispatch below does not take, so their platform's PHP still applies.
+_SEG_REST=""; _SEG_CD=""
+_cpp_seg_lead() {
+  local _line="$1" _seg _w1 _rest _prev="" _v
+  shift
+  _SEG_REST=""; _SEG_CD=""
+  while IFS= read -r _seg; do
+    while [[ "${_seg}" =~ ${_RE_ASSIGN} ]]; do
+      _seg="${_seg#"${BASH_REMATCH[0]}"}"
+    done
+    read -r _w1 _rest <<< "${_seg}"
+    [ -n "${_w1}" ] || continue
+    if [ "${_w1}" = "cd" ]; then
+      _prev="cd ${_rest}"
+      continue
+    fi
+    for _v in "$@"; do
+      if [ "${_w1}" = "${_v}" ]; then
+        _SEG_REST="${_rest}"
+        _SEG_CD="${_prev}"
+        return 0
+      fi
+    done
+    _prev=""
+  done < <(_drush_segments "${_line}")
+  return 1
+}
+# The bee line, read the same way, only for the command-line PHP it gets
+# (bee picks up DRUSH_PHP; the line itself goes to dash unchanged).
+_BE_REST=""; _BE_CD=""
+_RE_BELEAD='^[[:space:]]*bee([[:space:]]+(.*))?$'
+_bee_lead() {
+  local _s="$1"
+  _BE_REST=""; _BE_CD=""
+  if [[ "${_s}" =~ ${_RE_SETM} ]]; then
+    _s="${_s#"${BASH_REMATCH[0]}"}"
+  fi
+  if [[ "${_s}" =~ ${_RE_CD} ]]; then
+    _BE_CD="${BASH_REMATCH[0]}"
+    _s="${_s#"${_BE_CD}"}"
+  fi
+  while [[ "${_s}" =~ ${_RE_ASSIGN} ]]; do
+    _s="${_s#"${BASH_REMATCH[0]}"}"
+  done
+  if [[ "${_s}" =~ ${_RE_BELEAD} ]]; then
+    _BE_REST="${BASH_REMATCH[2]}"
+    return 0
+  fi
+  _BE_CD=""
+  return 1
+}
 _drush_cmd_word() {
   # the drush command word of an argument string: the first word that is
   # not an @alias, an option, the value of an option that takes one (drush
@@ -257,9 +317,103 @@ _drush_cmd_word() {
   done
   return 1
 }
+# Drush 8 on a Drupal 8+ codebase (G): it bootstraps a LOCKED platform for
+# read-only work -- the control panel's own login links on Drupal 8+ come
+# from it -- but it never changes what is installed there (a module enabled
+# or a container rebuilt by Drush 8 broke real sites); that is the site's own
+# Drush, vdrush. So for a tenant Drush 8 runs only the read-only commands
+# below on such a codebase. The codebase is the one Drush 8 itself would
+# boot: --root, else the @alias's root, else the Drupal root above the
+# working directory (a "cd DIR &&" earlier in the line moves it). "help
+# COMMAND" runs Drush 8 again through /bin/sh as "helpsingle COMMAND".
+_D8_READONLY_CMDS="uli user-login status st core-status version help helpsingle sa site-alias aliases"
+_GD_CWD=""
+_GD_DOC=""
+_d8plus_root() {
+  # $1 = a codebase path: a Drupal 8+ docroot, by the files Drush 8's own
+  # valid_root() checks
+  [ -n "$1" ] && [ -f "$1/autoload.php" ] && [ -f "$1/core/core.services.yml" ] \
+    && [ -f "$1/core/includes/common.inc" ]
+}
+_d8plus_target() {
+  # $1 = the drush argument string; true when the codebase is Drupal 8+
+  local _ws _w _next="" _root="" _al="" _f _c _p
+  read -r -a _ws <<< "$1"
+  for _w in "${_ws[@]}"; do
+    if [ "${_next}" = "root" ]; then
+      _root="${_w}"
+      _next=""
+      continue
+    fi
+    case "${_w}" in
+      --root=*) _root="${_w#--root=}" ;;
+      -r|--root) _next=root ;;
+      @*) [ -z "${_al}" ] && _al="${_w#@}" ;;
+    esac
+  done
+  if [ -n "${_root}" ]; then
+    _root="${_root/#\~/${HOME}}"
+    [[ "${_root}" == /* ]] || _root="${_GD_CWD}/${_root}"
+    _GD_DOC="${_root}"
+    _d8plus_root "${_root}"
+    return $?
+  fi
+  case "${_al}" in
+    ""|self|sites) ;;
+    none) return 1 ;;
+    *)
+      # the alias stores Drush 8 reads for a tenant; what it cannot read
+      # here, the same confined Drush 8 cannot read either
+      for _f in "${HOME}/.drush/${_al}.alias.drushrc.php" \
+        "/data/disk/${_Y_USR}/.drush/${_al}.alias.drushrc.php"; do
+        [ -f "${_f}" ] || continue
+        { _c=$(< "${_f}"); } 2> /dev/null
+        if [[ "${_c}" =~ \'root\'[[:space:]]*=\>[[:space:]]*\'([^\']+)\' ]]; then
+          _GD_DOC="${BASH_REMATCH[1]}"
+          _d8plus_root "${_GD_DOC}"
+          return $?
+        fi
+      done
+      return 1
+      ;;
+  esac
+  # the Drupal root at or above the working directory, nearest first; a
+  # Drupal 7 or Backdrop root found first ends the walk
+  _p="${_GD_CWD}"
+  while [ -n "${_p}" ]; do
+    _d8plus_root "${_p}" && { _GD_DOC="${_p}"; return 0; }
+    [ -f "${_p}/includes/bootstrap.inc" ] && return 1
+    [ -f "${_p}/core/includes/bootstrap.inc" ] && return 1
+    [ "${_p}" = "/" ] && break
+    _p="${_p%/*}"
+    [ -n "${_p}" ] || _p="/"
+  done
+  return 1
+}
+# Drush 8 by where it lives, never by its name: the bare word (websh's own
+# dispatch runs it as Drush 8), else the launcher resolved against the tracked
+# working directory, links followed, into BOA's Drush 8 trees or an account's
+# launcher. A codebase's own Drush -- vendor/bin/drush, drush.php, a composer
+# bin-dir of its own choosing -- resolves elsewhere and is not Drush 8.
+_d8_launcher() {
+  local _p="$1"
+  case "${_p##*/}" in
+    drush|drush8|drush.php) ;;
+    *) return 1 ;;
+  esac
+  [[ "${_p}" == */* ]] || return 0
+  [[ "${_p}" == /* ]] || _p="${_GD_CWD}/${_p}"
+  _p=$(readlink -f -- "${_p}" 2> /dev/null) || return 1
+  case "${_p}" in
+    /opt/tools/drush/8/*|/var/aegir/drush/*) return 0 ;;
+  esac
+  [[ "${_p}" =~ ^(/mnt/.+)?/data/disk/[^/]+/tools/drush/ ]]
+}
 _drush_refused() {
-  local _seg _w1 _w2 _rest _cw _f _n _env _again _pini
+  local _seg _w1 _w2 _rest _cw _f _n _env _again _pini _d8 _cd
   _DR_WHY=""
+  _GD_DOC=""
+  _GD_CWD=$(pwd -P 2> /dev/null)
   while IFS= read -r _seg; do
     # leading NAME=value words and leading shell words, until neither
     # applies; an environment word other than lshell's own noexec prefix
@@ -290,6 +444,17 @@ _drush_refused() {
       esac
     done
     read -r _w1 _w2 _rest <<< "${_seg}"
+    # a cd earlier in the line moves the codebase a later Drush 8 boots
+    if [ "${_w1}" = "cd" ]; then
+      _cd="${_w2/#\~/${HOME}}"
+      [ -n "${_cd}" ] || _cd="${HOME}"
+      [[ "${_cd}" == /* ]] || _cd="${_GD_CWD}/${_cd}"
+      _cd=$(cd -P -- "${_cd}" 2> /dev/null && pwd -P)
+      [ -n "${_cd}" ] && _GD_CWD="${_cd}"
+      continue
+    fi
+    _d8=NO
+    _d8_launcher "${_w1}" && _d8=YES
     case "${_w1##*/}" in
       drush|drush8|drush10|drush11|vdrush|drush.php)
         _rest="${_w2} ${_rest}"
@@ -309,6 +474,12 @@ _drush_refused() {
           _rest="${_rest#"${BASH_REMATCH[0]}"}"
         done
         read -r _w2 _rest <<< "${_rest}"
+        # php opens its script operand against the cwd, never through PATH
+        if [[ "${_w2}" == */* ]]; then
+          _d8_launcher "${_w2}" && _d8=YES
+        else
+          _d8_launcher "./${_w2}" && _d8=YES
+        fi
         case "${_w2##*/}" in
           drush|drush8|drush10|drush11|drush.php)
             if [ "${_pini}" = "YES" ]; then _DR_WHY=F; return 0; fi
@@ -342,8 +513,85 @@ _drush_refused() {
         return 0
       fi
     done
+    if [ "${_d8}" = "YES" ] && [[ " ${_D8_READONLY_CMDS} " != *" ${_cw} "* ]] \
+      && _d8plus_target "${_rest}"; then
+      _DR_WHY=G
+      return 0
+    fi
   done < <(_drush_segments "$1")
   return 1
+}
+# what a refusal tells the tenant: G has its own way forward
+_drush_refused_say() {
+  local _lc="" _app="" _doc="" _vnd=""
+  echo
+  if [ "${_DR_WHY}" = "G" ]; then
+    echo " Drush 8 runs only read-only commands (uli, status) on a Drupal 8+ site."
+    # vdrush runs vendor/drush from the working directory, or ../vendor/drush
+    # from a web/html/docroot directory whose parent has one. From the
+    # docroot it therefore reaches: under a web/html/docroot name the
+    # parent's vendor/, else the docroot's own; under any other name the
+    # docroot's own, else the parent's (run from the parent). The panel's
+    # Unlock Local Drush opens either (provision_unlock_drush_local_vnd). The
+    # Drush window opens only the app root, found by the rule the window and
+    # checkmyperms use (_ltd_platform_approot in manage_ltd_users.sh): the
+    # docroot, or its parent when a web/docroot/html one sits under a
+    # composer root.
+    _doc=$(readlink -f -- "${_GD_DOC}" 2> /dev/null)
+    [ -n "${_doc}" ] || _doc="${_GD_DOC%/}"
+    _app="${_doc}"
+    case "${_app##*/}" in
+      web|docroot|html)
+        if [ -f "${_app%/*}/composer.json" ] || [ -d "${_app%/*}/vendor" ]; then
+          _app="${_app%/*}"
+        fi ;;
+    esac
+    _vnd=""
+    case "${_doc##*/}" in
+      web|docroot|html)
+        if [ -d "${_doc%/*}/vendor/drush" ]; then
+          _vnd="${_doc%/*}"
+        elif [ -d "${_doc}/vendor/drush" ]; then
+          _vnd="${_doc}"
+        fi ;;
+      *)
+        if [ -d "${_doc}/vendor/drush" ]; then
+          _vnd="${_doc}"
+        elif [ -d "${_doc%/*}/vendor/drush" ]; then
+          _vnd="${_doc%/*}"
+        fi ;;
+    esac
+    # a developer login's path holds the app root and what is under it, not
+    # a vendor/ above it; only the main login, whose path holds distro/ and
+    # static/, is sent to a directory outside the app root
+    if [ -n "${_vnd}" ] && [[ "${_vnd}/" != "${_app}/"* ]] \
+      && [[ "${_LTD_UID}" != *.ftp ]]; then
+      _vnd=""
+    fi
+    if [ -n "${_vnd}" ]; then
+      echo " Anything that changes the site runs through the platform's own Drush,"
+      echo " from ${_vnd} while the platform is unlocked:"
+      echo "   vdrush @alias <command>"
+      if [ -d "${_app}/vendor/drush" ]; then
+        echo " Unlock: the platform's Unlock Local Drush task in the control panel, or"
+        echo " on a developer login: touch ~/.tmp/drush-window.request"
+      else
+        echo " Unlock: the platform's Unlock Local Drush task in the control panel."
+      fi
+    else
+      echo " This platform has no site-local Drush: Drush 8 read-only commands"
+      echo " (uli, status) only; the Drush window does not apply to it."
+    fi
+    # named only where this box's shell policy already offers it (a box
+    # can carry this websh before the template that allows checkmyperms)
+    { _lc=$(< /etc/lshell.conf); } 2> /dev/null
+    if [ -x /opt/local/bin/checkmyperms ] && [[ "${_lc}" == *"'checkmyperms'"* ]]; then
+      echo " checkmyperms shows the platforms, the aliases and the window."
+    fi
+  else
+    echo " This drush command is not available (${_DR_WHY})"
+  fi
+  echo
 }
 _is_tenant() {
   [[ "${_LTD_UID}" == *.ftp ]] || _in_grp lshellg || _in_grp ltd-shell || _in_grp ltd-shell-more
@@ -351,9 +599,7 @@ _is_tenant() {
 # every tenant exec site hands its final line through here
 _exec_dash_c() {
   if _is_tenant && _drush_refused "$1"; then
-    echo
-    echo " This drush command is not available (${_DR_WHY})"
-    echo
+    _drush_refused_say
     exit 0
   fi
   exec /bin/dash -c "$1"
@@ -376,15 +622,21 @@ _exec_dash_c() {
 # expansion, no whitespace normalisation, which the unquoted echo | sed used
 # to do to every drush line (a quoted select * from x was expanded against
 # the cwd). A bare verb with no argument is not dispatched, as before.
-_DL_TOK=""; _DL_PRE=""; _DL_REST=""
+_DL_TOK=""; _DL_PRE=""; _DL_REST=""; _DL_CD=""
 _RE_SETM='^[[:space:]]*set[[:space:]]+-m[[:space:]]*;[[:space:]]*'
 _RE_ASSIGN='^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+'
 _RE_DLEAD='^[[:space:]]*(drush|drush8|drush10|drush11)[[:space:]]+(.*)$'
 _drush_lead() {
   local _s="$1"
-  _DL_TOK=""; _DL_PRE=""; _DL_REST=""
+  _DL_TOK=""; _DL_PRE=""; _DL_REST=""; _DL_CD=""
   if [[ "${_s}" =~ ${_RE_SETM} ]]; then
     _s="${_s#"${BASH_REMATCH[0]}"}"
+  fi
+  # a leading "cd DIR &&" stays in front of the exec line, as it does for a
+  # launcher line: the verb after it is what the line runs
+  if [[ "${_s}" =~ ${_RE_CD} ]]; then
+    _DL_CD="${BASH_REMATCH[0]}"
+    _s="${_s#"${_DL_CD}"}"
   fi
   while [[ "${_s}" =~ ${_RE_ASSIGN} ]]; do
     _DL_PRE+="${BASH_REMATCH[0]}"
@@ -393,9 +645,10 @@ _drush_lead() {
   if [[ "${_s}" =~ ${_RE_DLEAD} ]]; then
     _DL_TOK="${BASH_REMATCH[1]}"
     _DL_REST="${BASH_REMATCH[2]}"
+    _DL_PRE="${_DL_CD}${_DL_PRE}"
     return 0
   fi
-  _DL_PRE=""
+  _DL_PRE=""; _DL_CD=""
   return 1
 }
 _forward_to_dash() {
@@ -423,9 +676,7 @@ _forward_to_dash() {
         # Command option
         if [[ -n "$2" ]]; then
           if _is_tenant && _drush_refused "$2"; then
-            echo
-            echo " This drush command is not available (${_DR_WHY})"
-            echo
+            _drush_refused_say
             exit 0
           fi
           _options+=("-c" "$2")
@@ -591,10 +842,10 @@ fi
 # status | LD_PRELOAD=/usr/libexec/sudo/sudo_noexec.so grep x), and a bare
 # substring match on "sudo" sent every such line around this block.
 # The drush dispatch: a launcher line or a bare-verb line, read at the head
-# of the line (see _drush_launcher and _drush_lead). Lines naming composer,
-# git, mysql or the sudo word take their own routes; a "cd DIR &&" prefix in
-# front of a launcher is carried into the exec line by the parser, any other
-# cd line is dash's.
+# of the line (see _drush_launcher and _drush_lead), with a "cd DIR &&"
+# prefix carried into the exec line. A line with the sudo word, and any
+# line that is neither, takes the routes further down (composer, bee, a
+# Drush 10/11 segment) or goes to dash.
 _ARR=
 if _drush_launcher "${_ARGS}"; then
   # a launcher is unambiguous at the head of the line, whatever its
@@ -603,11 +854,13 @@ if _drush_launcher "${_ARGS}"; then
   _R_M="${_LA_RM}"
   _DL_PRE="${_LA_CD}${_LA_PRE}"
   _ARR=("${_LA_REST}")
-elif [[ ! "${_ARGS}" =~ "composer" ]] \
-  && [[ ! "${_ARGS}" =~ "git" ]] \
-  && [[ ! "${_ARGS}" =~ "cd " ]] \
-  && [[ ! "${_ARGS}" =~ "mysql" ]] \
-  && [[ ! "${_ARGS}" =~ (^|[[:space:]])sudo([[:space:]]|$) ]] \
+# A line whose leading word (after a cd DIR &&) is a drush verb is a drush
+# line whatever its arguments name: the substring exclusions the old router
+# needed (composer, git, cd, mysql anywhere in the line) sent such lines --
+# drush8 en github_connect, cd SITE && drush8 @site updb -- to dash, where
+# drush.php runs on the PATH's php, ignoring cli.info, the markers and the
+# platform's line. The sudo word keeps its own route.
+elif [[ ! "${_ARGS}" =~ (^|[[:space:]])sudo([[:space:]]|$) ]] \
   && _drush_lead "${_ARGS}"; then
   # the bare verb leads the line: that one token goes, the rest is the
   # argument string as typed (_drush_lead above)
@@ -854,11 +1107,658 @@ _ini_opt() {
   fi
 }
 
+# Command-line PHP per platform. ~/static/control/cli-per-platform.info lists
+# platform folders, one "<folder> <version>" per line (d7-legacy 7.4): a
+# drush, vdrush, bee or composer line that runs on a listed folder -- the
+# tenant's own, and every Aegir task on the platform or one of its sites --
+# runs on that version, ahead of the phpNN.info switch and cli.info, which
+# keep deciding everything else. So an account that mixes old and new cores
+# pins each old platform once, and flipping the account-wide switch for the
+# new one no longer reaches them. The line's codebase is read the way Drush
+# finds it: --root, else the @alias's root, else the working directory
+# (composer: -d/--working-dir, else a leading cd DIR, else the working
+# directory); a Clone or Migrate target is its own spawn on the target
+# alias, so it follows the target platform's line. A folder is written
+# relative to ~/static or as the platform's publish path (/data/disk/oN/
+# static/..., a /data/all/... root); a trailing web, docroot or html is
+# dropped, so the key names the codebase composer works in and covers the
+# docroot below it. The longest matching key wins, the last of equal keys.
+# Read live on every command and never written by BOA. A line that cannot
+# apply -- not a folder, a site name, a version not installed -- is ignored
+# and named in every tenant command and task log: a bad value in a tenant
+# file never stops a task, the account-wide files decide instead, and the
+# core guard below still stops a pair that would fatal. The account's
+# hostmaster lives outside ~/static and /data/all, so no line reaches it.
+_CPP_FILE=""; _CPP_V=""; _CPP_LN=""; _CPP_KEY=""; _CPP_WARN=""; _CPP_NK=""; _CPP_WHY=""
+_CPP_ROOT=""; _CPP_CTX=""; _CPP_NAME=""; _CPP_CMD=""; _CPP_ACCT=""; _CPP_FROM=""; _CPP_DONE=NO
+_CPP_PROBE=NO
+# the launcher a drush line runs: "vendor" for a codebase's own
+# vendor/drush/drush/drush.php (vdrush), empty for BOA's Drush 8 and 10/11
+_CPP_FLAV=""
+_CPP_PP=()
+# what chose the account-wide PHP (check_php_cli_version), for the messages
+_CLI_FROM=""; _CLI_WHY=""
+_cpp_unq() {
+  # $1 = an option value as the backend spells it; sets _CPP_UQ
+  _CPP_UQ="${1#\'}"; _CPP_UQ="${_CPP_UQ%\'}"
+  _CPP_UQ="${_CPP_UQ#\"}"; _CPP_UQ="${_CPP_UQ%\"}"
+}
+_cpp_phys() {
+  # $@ = absolute paths; sets _CPP_PP to each one as Drush's realpath() sees
+  # it -- links followed, .. folded -- in ONE subshell, then mapped back onto
+  # /data/disk/<account>/static when it lies in that tree (a tenant reaches
+  # it through ~/static, a box may mount it elsewhere), which is how the
+  # aliases and the keys spell it. A path that does not exist (yet) keeps
+  # its lexical form. The account's static tree is resolved the same way,
+  # last, so both sides of a match always read alike.
+  local _st="/data/disk/${_Y_USR}/static" _out _l _stp _i
+  # the END sentinel keeps an unresolved (empty) last line: command
+  # substitution strips every trailing newline
+  _out=$(for _l in "$@" "${_st}"; do
+    if cd -P -- "${_l}" 2> /dev/null; then printf '%s\n' "${PWD}"; else printf '\n'; fi
+  done; printf 'END')
+  mapfile -t _CPP_PP <<< "${_out}"
+  _stp="${_CPP_PP[$#]}"
+  for (( _i = 0; _i < $#; _i++ )); do
+    _l="${_CPP_PP[${_i}]}"
+    if [ -z "${_l}" ]; then
+      _l="${@:$(( _i + 1 )):1}"
+    elif [ -n "${_stp}" ] && [ "${_stp}" != "${_st}" ]; then
+      case "${_l}/" in
+        "${_stp}/"*) _l="${_st}${_l#"${_stp}"}" ;;
+      esac
+    fi
+    _CPP_PP[${_i}]="${_l%/}"
+  done
+}
+_cpp_target() {
+  # $1 = the argument string, $2 = drush, composer or bee, $3 = a leading
+  # "cd DIR &&" of the line; sets _CPP_ROOT (the path the line runs on),
+  # _CPP_CTX (site, platform or empty), _CPP_NAME (the @alias) and _CPP_CMD
+  # (the command word)
+  local _ws _w _next="" _root="" _rset=NO _uri="" _al="" _wd="" _cmd=NO _f _c _p="" _fromal=NO _cwd _optver=NO
+  _CPP_ROOT=""; _CPP_CTX=""; _CPP_NAME=""; _CPP_CMD=""; _CPP_PROBE=NO
+  read -r -a _ws <<< "$1"
+  for _w in "${_ws[@]}"; do
+    if [ -n "${_next}" ]; then
+      _cpp_unq "${_w}"
+      case "${_next}" in
+        root) _root="${_CPP_UQ}" ;;
+        uri) _uri="${_CPP_UQ}" ;;
+        wd) _wd="${_CPP_UQ}" ;;
+      esac
+      _next=""
+      continue
+    fi
+    case "${_w}" in
+      --root=*) _cpp_unq "${_w#--root=}"; _root="${_CPP_UQ}"; _rset=YES ;;
+      -r|--root) [ "$2" = "composer" ] || { _next=root; _rset=YES; } ;;
+      --uri=*|-l=*) _cpp_unq "${_w#*=}"; _uri="${_CPP_UQ}" ;;
+      -l|--uri) [ "$2" = "composer" ] || _next=uri ;;
+      --working-dir=*) _cpp_unq "${_w#--working-dir=}"; _wd="${_CPP_UQ}" ;;
+      -d|--working-dir) [ "$2" = "composer" ] && _next=wd ;;
+      -d?*) [ "$2" = "composer" ] && { _cpp_unq "${_w#-d}"; _wd="${_CPP_UQ}"; } ;;
+      # drush's other options that take the next word as their value
+      -c|-i|-u|--user|--php|--php-options|--config|--include|--early|--alias-path|--define)
+        [ "$2" = "composer" ] || _next=skip ;;
+      # provision's Clone/Migrate target check: judged as the site task it
+      # stands for, whatever harmless command carries it
+      --boa-cli-php-probe) _CPP_PROBE=YES ;;
+      --version) _optver=YES ;;
+      -*) ;;
+      # the @alias is the one in front of the command word; an @word after it
+      # is an argument (provision-save '@site' names the context it saves)
+      @*|\'@*)
+        [ "$2" = "drush" ] && [ "${_cmd}" = "NO" ] && [ -z "${_al}" ] \
+          && { _cpp_unq "${_w}"; _al="${_CPP_UQ#@}"; }
+        ;;
+      *)
+        if [ "${_cmd}" = "NO" ]; then
+          _cpp_unq "${_w}"
+          _CPP_CMD="${_CPP_UQ}"
+        fi
+        _cmd=YES
+        ;;
+    esac
+  done
+  [ -z "${_CPP_CMD}" ] && [ "${_optver}" = "YES" ] && _CPP_CMD="--version"
+  if [ "$2" = "composer" ] && [ -n "${_wd}" ]; then
+    _root="${_wd}"; _rset=YES
+  fi
+  # an explicitly empty --root names no codebase (the backend's provision-save
+  # line carries one); the working directory is not guessed for it
+  [ "${_rset}" = "YES" ] && [ -z "${_root}" ] && return 0
+  # the directory the line starts in: the working directory, moved by a
+  # leading cd DIR
+  _cwd="${PWD}"
+  if [[ "$3" =~ ^[[:space:]]*cd[[:space:]]+([^[:space:];\&\|]+) ]]; then
+    _cpp_unq "${BASH_REMATCH[1]}"
+    _c="${_CPP_UQ/#\~/${HOME}}"
+    if [[ "${_c}" == /* ]]; then _cwd="${_c}"; else _cwd="${PWD}/${_c}"; fi
+  fi
+  if [ -z "${_root}" ] && [ -n "${_al}" ]; then
+    [[ "${_al}" =~ ^[A-Za-z0-9._-]+$ ]] || return 0
+    case "${_al}" in
+      none|hostmaster|hm|server_*) return 0 ;;
+      self|sites) ;;
+      *)
+        _CPP_NAME="@${_al}"
+        for _f in "${HOME}/.drush/${_al}.alias.drushrc.php" \
+          "/data/disk/${_Y_USR}/.drush/${_al}.alias.drushrc.php"; do
+          [ -f "${_f}" ] || continue
+          { _c=$(< "${_f}"); } 2> /dev/null
+          [[ "${_c}" =~ \'root\'[[:space:]]*=\>[[:space:]]*\'([^\']+)\' ]] || continue
+          _root="${BASH_REMATCH[1]}"
+          _fromal=YES
+          if [[ "${_c}" =~ \'context_type\'[[:space:]]*=\>[[:space:]]*\'([a-z]+)\' ]]; then
+            _CPP_CTX="${BASH_REMATCH[1]}"
+          elif [[ "${_c}" =~ \'uri\'[[:space:]]*=\>[[:space:]]*\'[^\']+\' ]]; then
+            _CPP_CTX=site
+          fi
+          break
+        done
+        # no Drush 8 alias of that name: the Drush 9+ alias BOA writes for
+        # drush10/drush11 and vdrush (~/.drush/sites/<name>.site.yml, the
+        # environment key being the part after the last dot) names the root
+        if [ -z "${_root}" ] && [[ "${_al}" == *.* ]]; then
+          _f="${HOME}/.drush/sites/${_al%.*}.site.yml"
+          if [ -f "${_f}" ]; then
+            { IFS= read -r -N 65536 _c < "${_f}"; } 2> /dev/null
+            if [[ "${_c}" =~ (^|$'\n')${_al##*.}:$'\n'.*$'\n'"  root: "([^$'\n']+) ]]; then
+              _root="${BASH_REMATCH[2]}"
+              _fromal=YES
+              _CPP_CTX=site
+            fi
+          fi
+        fi
+        if [ -z "${_root}" ]; then
+          # vdrush runs the vendor/drush of the working directory, so that is
+          # the codebase; BOA's own Drush with an alias it cannot find has no
+          # codebase here (it reports the alias itself)
+          [ "${_CPP_FLAV}" = "vendor" ] || return 0
+          _CPP_CTX=site
+        fi
+        ;;
+    esac
+  fi
+  if [ -n "${_root}" ]; then
+    _root="${_root/#\~/${HOME}}"
+    [[ "${_root}" == /* ]] || _root="${_cwd}/${_root}"
+    if [ "${_fromal}" = "YES" ] && [ -z "${_CPP_FILE}" ]; then
+      # a registered alias root is spelled the way BOA wrote it; only a
+      # match against the file's keys needs it resolved
+      _CPP_ROOT="${_root%/}"
+    else
+      _cpp_phys "${_root}" "${_cwd}"
+      _CPP_ROOT="${_CPP_PP[0]}"
+      # --root without --uri or an alias: Drush takes the site from the
+      # working directory when that is one of the codebase's site folders
+      if [ "${_rset}" = "YES" ] && [ -z "${_uri}" ] && [ -z "${_al}" ]; then
+        case "${_CPP_PP[1]}/" in
+          "${_CPP_ROOT}/sites/all/"*) ;;
+          "${_CPP_ROOT}/sites/"?*/*) _CPP_CTX=site ;;
+        esac
+      fi
+    fi
+  else
+    _cpp_phys "${_cwd}"
+    _CPP_ROOT="${_CPP_PP[0]}"
+    [ -n "${_CPP_ROOT}" ] || return 0
+    case "${_CPP_ROOT}/" in
+      */sites/all/*) ;;
+      */sites/?*/*) _CPP_CTX=site ;;
+    esac
+  fi
+  [ -n "${_uri}" ] && _CPP_CTX=site
+  # the hostmaster's own tree never takes a line, nor the guard below
+  case "${_CPP_ROOT}/" in
+    "/data/disk/${_Y_USR}/aegir/"*|/var/aegir/*) _CPP_ROOT=""; _CPP_CTX="" ;;
+  esac
+}
+_cpp_safe() {
+  # $1 = text a tenant controls (a key as written, a folder name); sets
+  # _CPP_S to it with anything outside a plain path alphabet replaced by ?,
+  # so it can go into a task log, a JSON packet or a terminal as it is, and
+  # at most 120 characters of it
+  local LC_ALL=C
+  _CPP_S="${1//[^A-Za-z0-9._\/~@+ -]/?}"
+  [ "${#_CPP_S}" -le 120 ] || _CPP_S="${_CPP_S:0:117}..."
+}
+_cpp_norm() {
+  # $1 = a folder as written in the file; sets _CPP_NK (its path) or
+  # _CPP_WHY (why it cannot apply). Accepted: a folder under ~/static
+  # (relative, ~/static/..., /home/<account>.ftp/static/... or the publish
+  # path /data/disk/<account>/static/...), a platform BOA ships to the
+  # account (~/distro/..., /home/<account>.ftp/distro/...,
+  # /data/disk/<account>/distro/...) or a /data/all/... root
+  local _k="$1" _st="/data/disk/${_Y_USR}/static" _di="/data/disk/${_Y_USR}/distro" _h="/home/${_Y_USR}.ftp"
+  _CPP_NK=""; _CPP_WHY=""
+  while [[ "${_k}" == */ ]]; do _k="${_k%/}"; done
+  case "${_k}" in
+    "~/static/"*) _k="${_k#"~/static/"}" ;;
+    "${_st}/"*) _k="${_k#"${_st}/"}" ;;
+    "${_h}/static/"*) _k="${_k#"${_h}/static/"}" ;;
+    static/*) _k="${_k#static/}" ;;
+    "~/distro/"*) _k="${_di}/${_k#"~/distro/"}" ;;
+    "${_h}/distro/"*) _k="${_di}/${_k#"${_h}/distro/"}" ;;
+  esac
+  case "${_k}" in
+    */web|*/docroot|*/html) _k="${_k%/*}" ;;
+  esac
+  if [[ ! "${_k}" =~ ^[A-Za-z0-9._/-]+$ ]] || [[ "/${_k}/" == */../* ]] \
+    || [[ "/${_k}/" == */./* ]] || [[ "${_k}" == *//* ]]; then
+    _CPP_WHY="it is not a folder name"
+    return 1
+  fi
+  case "${_k}" in
+    /data/all/?*|"${_di}"/?*) _CPP_NK="${_k}" ;;
+    /*) _CPP_WHY="it is outside ~/static, ~/distro and /data/all"; return 1 ;;
+    *) _CPP_NK="${_st}/${_k}" ;;
+  esac
+  if [ ! -d "${_CPP_NK}" ]; then
+    if [ -f "${HOME}/.drush/${_k}.alias.drushrc.php" ] \
+      || [ -f "/data/disk/${_Y_USR}/.drush/${_k}.alias.drushrc.php" ]; then
+      _CPP_WHY="${_k} is a site, not a folder; this file takes platform folders (the Aegir publish path)"
+    else
+      _CPP_WHY="there is no such folder"
+    fi
+    _CPP_NK=""
+    return 1
+  fi
+}
+_CPP_NW=0; _CPP_MORE=0
+_cpp_warn() {
+  # $1 = a warning about the file; the first 20 are kept (each at most 400
+  # characters), the rest counted
+  if [ "${_CPP_NW}" -lt 20 ]; then
+    _CPP_WARN+="${1:0:400}"$'\n'
+    _CPP_NW=$(( _CPP_NW + 1 ))
+  else
+    _CPP_MORE=$(( _CPP_MORE + 1 ))
+  fi
+}
+_cpp_match() {
+  # $1 = the path a line runs on; sets _CPP_V, _CPP_LN and _CPP_KEY from the
+  # longest matching key, and _CPP_WARN for every line that cannot apply.
+  # The keys are resolved like the target (_cpp_phys), in one subshell. Only
+  # the first 64 KiB and 200 lines are read, and at most 20 warnings of
+  # bounded length are kept: the warnings travel in the environment of every
+  # backend drush line, where a single string over 128 KiB would stop the
+  # exec itself.
+  local _txt="" _ln=0 _line _k _v _rest _best=0 _i
+  local -a _ks=() _vs=() _ls=() _nks=()
+  _CPP_V=""; _CPP_LN=""; _CPP_KEY=""; _CPP_WARN=""; _CPP_NW=0; _CPP_MORE=0; _CPP_TAIL=""
+  { IFS= read -r -N 65536 _txt < "${_CPP_FILE}"; } 2> /dev/null
+  while IFS= read -r _line; do
+    _ln=$(( _ln + 1 ))
+    if [ "${_ln}" -gt 200 ]; then
+      _CPP_TAIL="cli-per-platform.info: the lines after line 200 are not read"
+      break
+    fi
+    _line="${_line%%#*}"
+    read -r _k _v _rest <<< "${_line}"
+    [ -n "${_k}" ] || continue
+    _cpp_safe "${_k}"
+    if [ -z "${_v}" ] || [ -n "${_rest}" ]; then
+      _cpp_warn "cli-per-platform.info line ${_ln} is ignored: write one \"<folder> <version>\" per line"
+      continue
+    fi
+    _v="${_v//[!0-9]/}"
+    case "${_v}" in
+      56|70|71|72|73|74|80|81|82|83|84|85) ;;
+      *)
+        _cpp_warn "cli-per-platform.info line ${_ln} (${_CPP_S}) is ignored: its version is not one of 5.6 to 8.5"
+        continue
+        ;;
+    esac
+    if [ ! -x "/opt/php${_v}/bin/php" ]; then
+      _cpp_warn "cli-per-platform.info line ${_ln} (${_CPP_S}) is ignored: PHP ${_v:0:1}.${_v:1:1} is not installed on this server"
+      continue
+    fi
+    if ! _cpp_norm "${_k}"; then
+      _cpp_safe "${_k}"
+      _cpp_warn "cli-per-platform.info line ${_ln} (${_CPP_S}) is ignored: ${_CPP_WHY//[^A-Za-z0-9._\/~@+ ();,-]/?}"
+      continue
+    fi
+    _ks+=("${_CPP_S}"); _vs+=("${_v}"); _ls+=("${_ln}"); _nks+=("${_CPP_NK}")
+  done <<< "${_txt}"
+  [ "${_CPP_MORE}" -gt 0 ] && _CPP_WARN+="cli-per-platform.info: ${_CPP_MORE} more warnings are not shown"$'\n'
+  [ -n "${_CPP_TAIL}" ] && _CPP_WARN+="${_CPP_TAIL}"$'\n'
+  [ -n "$1" ] && [ "${#_nks[@]}" -gt 0 ] || return 0
+  _cpp_phys "${_nks[@]}"
+  for (( _i = 0; _i < ${#_nks[@]}; _i++ )); do
+    case "$1/" in
+      "${_CPP_PP[${_i}]}/"*)
+        if [ "${#_CPP_PP[${_i}]}" -ge "${_best}" ]; then
+          _best="${#_CPP_PP[${_i}]}"
+          _CPP_V="${_vs[${_i}]}"; _CPP_LN="${_ls[${_i}]}"; _CPP_KEY="${_ks[${_i}]}"
+        fi
+        ;;
+    esac
+  done
+}
+_cpp_resolve() {
+  # $1 = the argument string, $2 = drush, composer or bee, $3 = a leading
+  # cd; resolves the line's codebase and its line once per websh run
+  [ "${_CPP_DONE}" = "YES" ] && return 0
+  _CPP_DONE=YES
+  _CPP_ACCT="${DRUSH_PHP}"
+  [[ "${HOME}" == /data/disk/* ]] || [[ "${HOME}" == /home/* ]] || return 0
+  [[ "${_DRUSH_CLI_CTRL}" == /data/disk/* ]] || return 0
+  [ "${_IS_JENKINS}" = "FALSE" ] || return 0
+  _CPP_FILE=""
+  [ -f "${_DRUSH_CLI_CTRL}/cli-per-platform.info" ] && _CPP_FILE="${_DRUSH_CLI_CTRL}/cli-per-platform.info"
+  _cpp_target "$1" "$2" "$3"
+  [ -n "${_CPP_FILE}" ] || return 0
+  _cpp_match "${_CPP_ROOT}"
+}
+_cpp_pick() {
+  # a matching line replaces the account-wide choice
+  [ -n "${_CPP_V}" ] || return 0
+  DRUSH_PHP="/opt/php${_CPP_V}/bin/php"
+  _account_ini "${_CPP_V}"
+  export DRUSH_PHP PHP_INI PHPRC
+}
+_cpp_rel() {
+  # $1 = a path; sets _CPP_RP to it as the tenant knows it (static/...,
+  # ~/distro/...), in the alphabet _cpp_safe keeps
+  local _p="$1"
+  case "${_p}" in
+    "/data/disk/${_Y_USR}/static/"*) _p="static/${_p#"/data/disk/${_Y_USR}/static/"}" ;;
+    "/data/disk/${_Y_USR}/distro/"*) _p="~/distro/${_p#"/data/disk/${_Y_USR}/distro/"}" ;;
+  esac
+  _cpp_safe "${_p}"
+  _CPP_RP="${_CPP_S}"
+}
+_cpp_key() {
+  # $1 = a path as _cpp_rel spells it; sets _CPP_KY to the key a line for
+  # that folder is written with
+  _CPP_KY="${1#static/}"
+}
+_cpp_json() {
+  # $1 = text; sets _CPP_J to it escaped for a JSON string (every piece a
+  # tenant controls already went through _cpp_safe; control bytes are
+  # dropped here too, belt and braces)
+  local LC_ALL=C
+  _CPP_J="${1//[[:cntrl:]]/ }"
+  _CPP_J="${_CPP_J//\\/\\\\}"
+  _CPP_J="${_CPP_J//\"/\\\"}"
+}
+_cpp_say() {
+  # $1 = a message the line cannot run with: a backend line reports it the
+  # way a failing Drush child does, anything else on stderr; then exit before
+  # any PHP starts. The lines of the file that were ignored go with it: the
+  # process that would log them never starts, and they are often why the
+  # account-wide PHP was chosen. A Drush child reports through incremental
+  # packets -- set_error, which the parent turns into its own
+  # drush_set_error, and log -- and a final output packet; once a parent has
+  # read any incremental packet (the provision-save a task runs first sends
+  # them) it never reads the final packet's log again, so a final packet
+  # alone let the task end Successful with the verify skipped (measured).
+  # All on stdout: Drush writes its packets to stderr and the line's own
+  # 2>&1 merges them into the one pipe the parent reads, but that
+  # redirection belongs to the command dash would run, never to websh
+  # itself, whose stderr is the parent's. The final packet also serves
+  # callers that read only its error_log (provision's Clone/Migrate target
+  # check).
+  local _m="$1" _ts _w _log _me
+  if [[ " ${_ARR} " =~ [[:space:]]\'?--backend ]]; then
+    printf -v _ts '%(%s)T' -1
+    _cpp_json "${_m}"
+    _me="${_CPP_J}"
+    _log="{\"type\":\"error\",\"message\":\"${_me}\",\"error\":\"BOA_CLI_PHP_REFUSED\",\"timestamp\":${_ts},\"memory\":0}"
+    while IFS= read -r _w; do
+      [ -n "${_w}" ] || continue
+      _cpp_json "${_w}"
+      _log+=",{\"type\":\"warning\",\"message\":\"${_CPP_J}\",\"timestamp\":${_ts},\"memory\":0}"
+      printf '\0DRUSH_BACKEND:{"type":"warning","message":"%s","timestamp":%s,"memory":0,"packet":"log"}\n\0' \
+        "${_CPP_J}" "${_ts}"
+    done <<< "${_CPP_WARN}"
+    printf '\0DRUSH_BACKEND:{"error":"BOA_CLI_PHP_REFUSED","message":"%s","packet":"set_error"}\n\0' "${_me}"
+    printf '\0DRUSH_BACKEND_OUTPUT_START>>>{"output":"","object":null,"error_status":1,"log":[%s],"error_log":{"BOA_CLI_PHP_REFUSED":["%s"]},"context":[]}<<<DRUSH_BACKEND_OUTPUT_END' \
+      "${_log}" "${_me}"
+  else
+    echo >&2
+    echo " ${_m}" >&2
+    while IFS= read -r _w; do
+      [ -n "${_w}" ] && echo " WARNING: ${_w}" >&2
+    done <<< "${_CPP_WARN}"
+    echo >&2
+  fi
+  exit 1
+}
+# The core guard, on every account: a line whose codebase cannot run on the
+# PHP just chosen stops before PHP starts, naming the file that chose it and
+# the fix, instead of dying on a PHP fatal half-way through a task. Only
+# pairs that fatal anyway: Drupal 7 below 7.79 (the first release whose test
+# suite passes on PHP 8.0) or any Drupal 8 on PHP 8.0+ -- refused for a site,
+# only a warning for a platform line, which boots no site -- and a codebase
+# whose vendor/composer/platform_check.php floor is above the chosen PHP, for
+# any drush line (its autoloader stops at that check). composer itself is not
+# guarded: it is the tool that repairs vendor. Neither applies to the
+# commands that never load the codebase (a backup file deleted, a context
+# saved, Drush 8's own version and alias listing; its help boots the site):
+# they ran on any PHP before. A codebase's own Drush (vdrush) loads vendor/
+# for every command, so the exemption is Drush 8's only.
+_CPP_NOBOOT=" provision-backup-delete provision-save provision-leftover-import provision-leftover-purge version --version sa site-alias aliases "
+_cpp_guard() {
+  local _ch _p _dr="" _app="" _c="" _fl="" _fln="" _mj="" _mn="" _e _sug="" _fix _who
+  [ "${_CPP_PROBE}" != "YES" ] && [ "${_CPP_FLAV}" != "vendor" ] && [ -n "${_CPP_CMD}" ] \
+    && [[ "${_CPP_NOBOOT}" == *" ${_CPP_CMD} "* ]] && return 0
+  case "${DRUSH_PHP}" in
+    /opt/php[0-9][0-9]/bin/php) _ch="${DRUSH_PHP%/bin/php}"; _ch="${_ch##*/php}" ;;
+    *) return 0 ;;
+  esac
+  [ -n "${_CPP_ROOT}" ] || return 0
+  # the Drupal root at or above the path, then the vendor/ next to it, or
+  # one level up when the root is a web/docroot/html docroot under a
+  # composer root (never a vendor/ that merely sits in ~/static)
+  _p="${_CPP_ROOT}"
+  while [ -n "${_p}" ]; do
+    if [ -f "${_p}/core/lib/Drupal.php" ] || [ -f "${_p}/includes/bootstrap.inc" ]; then
+      _dr="${_p}"
+      break
+    fi
+    case "${_p}" in
+      "/data/disk/${_Y_USR}/static"|"/data/disk/${_Y_USR}/distro"|/data/all|/data/disk/*/static) break ;;
+    esac
+    _p="${_p%/*}"
+  done
+  # a composer root reached through a Drush 9+ alias or the working
+  # directory: its docroot is below it
+  if [ -z "${_dr}" ]; then
+    for _p in web docroot html; do
+      if [ -f "${_CPP_ROOT}/${_p}/core/lib/Drupal.php" ] || [ -f "${_CPP_ROOT}/${_p}/includes/bootstrap.inc" ]; then
+        _dr="${_CPP_ROOT}/${_p}"
+        break
+      fi
+    done
+  fi
+  if [ -n "${_dr}" ]; then
+    if [ -f "${_dr}/vendor/composer/platform_check.php" ]; then
+      _app="${_dr}"
+    else
+      case "${_dr##*/}" in
+        web|docroot|html)
+          [ -f "${_dr%/*}/vendor/composer/platform_check.php" ] && _app="${_dr%/*}" ;;
+      esac
+    fi
+  elif [ -f "${_CPP_ROOT}/vendor/drush/drush/drush.php" ] \
+    && [ -f "${_CPP_ROOT}/vendor/composer/platform_check.php" ]; then
+    # no Drupal found, but a site-local Drush loads this vendor/; any other
+    # codebase's vendor/ (Grav's) is never loaded by Drush
+    _app="${_CPP_ROOT}"
+  fi
+  _who="${_CPP_NAME}"
+  if [ -n "${_app}" ]; then
+    { _c=$(< "${_app}/vendor/composer/platform_check.php"); } 2> /dev/null
+    if [[ "${_c}" =~ PHP_VERSION_ID[[:space:]]*\>=[[:space:]]*([0-9]{5}) ]]; then
+      _fl=$(( 10#${BASH_REMATCH[1]} / 100 ))
+      _fln="${_fl:0:1}${_fl:2:1}"
+      if [ "${_ch}" -lt "${_fln}" ]; then
+        for _e in 70 71 72 73 74 80 81 82 83 84 85; do
+          [ "${_e}" -ge "${_fln}" ] && [ -x "/opt/php${_e}/bin/php" ] && { _sug="${_e}"; break; }
+        done
+        _cpp_rel "${_app}"
+        [ -n "${_who}" ] && _who="${_who} (${_CPP_RP})" || _who="${_CPP_RP}"
+        if [ -n "${_CPP_V}" ]; then
+          _fix="Fix: change line ${_CPP_LN} of ~/static/control/cli-per-platform.info to PHP ${_fln:0:1}.${_fln:1:1} or newer."
+        elif [ -n "${_sug}" ]; then
+          _cpp_key "${_CPP_RP}"
+          _fix="Fix: add the line \"${_CPP_KY} ${_sug:0:1}.${_sug:1:1}\" to ~/static/control/cli-per-platform.info, or switch the account to PHP ${_fln:0:1}.${_fln:1:1} or newer."
+        else
+          _fix="No PHP ${_fln:0:1}.${_fln:1:1} or newer is installed on this server; ask your host."
+        fi
+        _cpp_say "Refused before PHP starts: ${_who} needs PHP ${_fln:0:1}.${_fln:1:1} or newer (vendor/composer/platform_check.php). This would use PHP ${_ch:0:1}.${_ch:1:1}, chosen by ${_CPP_FROM}. ${_fix}"
+      fi
+    fi
+  fi
+  [ "${_ch}" -ge 80 ] && [ -n "${_dr}" ] || return 0
+  _c=""
+  if [ -f "${_dr}/core/lib/Drupal.php" ]; then
+    { IFS= read -r -N 16384 _c < "${_dr}/core/lib/Drupal.php"; } 2> /dev/null
+    [[ "${_c}" =~ const[[:space:]]+VERSION[[:space:]]*=[[:space:]]*\'([0-9]+)\.([0-9]+) ]] || return 0
+    _mj="${BASH_REMATCH[1]}"; _mn="${BASH_REMATCH[2]}"
+    [ "${_mj}" = "8" ] || return 0
+  else
+    { IFS= read -r -N 16384 _c < "${_dr}/includes/bootstrap.inc"; } 2> /dev/null
+    [[ "${_c}" =~ define\([[:space:]]*\'VERSION\'[[:space:]]*,[[:space:]]*\'7\.([0-9]+) ]] || return 0
+    _mj=7; _mn="${BASH_REMATCH[1]}"
+    [ "$(( 10#${_mn} ))" -lt 79 ] || return 0
+  fi
+  for _e in 74 73 72 71 70; do
+    [ -x "/opt/php${_e}/bin/php" ] && { _sug="${_e}"; break; }
+  done
+  _cpp_rel "${_dr}"
+  [ -n "${_who}" ] && _who="${_who} is Drupal ${_mj}.${_mn} (${_CPP_RP})" || _who="${_CPP_RP} is Drupal ${_mj}.${_mn}"
+  if [ -n "${_CPP_V}" ]; then
+    _fix="Fix: change line ${_CPP_LN} of ~/static/control/cli-per-platform.info to a PHP 7 version."
+  elif [ -n "${_sug}" ]; then
+    _cpp_key "${_CPP_RP}"
+    _fix="Fix: add the line \"${_CPP_KY} ${_sug:0:1}.${_sug:1:1}\" to ~/static/control/cli-per-platform.info"
+    [[ "${_CLI_FROM}" == php[0-9][0-9].info ]] && _fix+=" (or switch back to php${_sug}.info)"
+    _fix+="."
+  else
+    _fix="No PHP 7 version is installed on this server; ask your host."
+  fi
+  if [ "${_CPP_CTX}" = "site" ]; then
+    _cpp_say "Refused before Drupal starts: ${_who}, which cannot run on PHP 8.0 or newer. This would use PHP ${_ch:0:1}.${_ch:1:1}, chosen by ${_CPP_FROM}. ${_fix}"
+  fi
+  _CPP_WARN+="${_who}, which cannot run on PHP 8.0 or newer, and this runs on PHP ${_ch:0:1}.${_ch:1:1}, chosen by ${_CPP_FROM}; its sites' tasks will be refused. ${_fix}"$'\n'
+}
+# Every drush line, right before its exec: what chose the PHP, the guard,
+# then the report. A tenant reads a NOTE when a line overrides the
+# account-wide choice, and every warning, on stderr (never stdout, where a
+# drush sql-dump > file would take it in). The backend gets the same as
+# BOA_CLI_PHP_FROM / BOA_CLI_PHP_WARN in the process's environment, which
+# provision writes into the task log. That is a report, not configuration:
+# nothing reads it to choose anything, and every websh clears it on entry.
+_cpp_before_exec() {
+  local _w
+  if [ "$1" = "drush" ] && [ "${_CPP_DONE}" != "YES" ]; then
+    _cpp_resolve "${_ARR}" drush "${_LA_CD:-${_DL_CD}}"
+    _cpp_pick
+  fi
+  if [ -n "${_CPP_V}" ] && [ "${DRUSH_PHP}" = "/opt/php${_CPP_V}/bin/php" ]; then
+    _CPP_FROM="cli-per-platform.info line ${_CPP_LN}"
+    [ "${_CPP_ACCT}" != "${DRUSH_PHP}" ] && [ -n "${_CLI_FROM}" ] && _CPP_FROM+=" (outranks ${_CLI_FROM})"
+  elif [ -z "${_CPP_FROM}" ]; then
+    _CPP_FROM="${_CLI_WHY:-the server default}"
+  fi
+  [ "$1" = "composer" ] || _cpp_guard
+  if _is_tenant; then
+    if [ -n "${_CPP_V}" ] && [ "${_CPP_ACCT}" != "${DRUSH_PHP}" ]; then
+      _cpp_rel "${_CPP_ROOT}"
+      echo "NOTE: command-line PHP ${_CPP_V:0:1}.${_CPP_V:1:1} for ${_CPP_RP} (${_CPP_FROM})" >&2
+    fi
+    while IFS= read -r _w; do
+      [ -n "${_w}" ] && echo "WARNING: ${_w}" >&2
+    done <<< "${_CPP_WARN}"
+  elif [ "$1" = "drush" ]; then
+    BOA_CLI_PHP_FROM="${_CPP_FROM}"
+    BOA_CLI_PHP_WARN="${_CPP_WARN}"
+    export BOA_CLI_PHP_FROM BOA_CLI_PHP_WARN
+  fi
+}
+# A tenant's composer install, update or require resolves packages for the
+# PHP it runs on, while the sites of that codebase are served by their
+# PHP-FPM: a package that needs a newer PHP than a site's FPM makes
+# vendor/composer/platform_check.php answer every request of that site with
+# HTTP 500 "Composer detected issues in your platform" (measured). Warn with
+# both versions. The only place websh reads fpm.info and multi-fpm.info, and
+# never to choose. The tenant can read those two files only (the version the
+# worker resolved and the site includes it writes are not theirs), so the
+# warning names the version a site is SET to and the file that sets it, and
+# a version not installed here -- which the worker would not serve -- is
+# left out.
+_cpp_composer_warn() {
+  local _ws _w _cw="" _skip=NO _ch _c _f _nm _rt _fpm="" _mf="" _l _s _v _src _min="" _minsrc="" _site="" _i
+  local -a _nms=() _rts=()
+  _is_tenant || return 0
+  [ -n "${_CPP_ROOT}" ] && [ -f "${_CPP_ROOT}/composer.json" ] || return 0
+  case "${DRUSH_PHP}" in
+    /opt/php[0-9][0-9]/bin/php) _ch="${DRUSH_PHP%/bin/php}"; _ch="${_ch##*/php}" ;;
+    *) return 0 ;;
+  esac
+  read -r -a _ws <<< "${_C_ARR}"
+  for _w in "${_ws[@]}"; do
+    if [ "${_skip}" = "YES" ]; then
+      _skip=NO
+      continue
+    fi
+    case "${_w}" in
+      -d|--working-dir) _skip=YES ;;
+      -*) ;;
+      *) _cw="${_w}"; break ;;
+    esac
+  done
+  case "${_cw}" in
+    install|i|update|u|upgrade|require|r) ;;
+    *) return 0 ;;
+  esac
+  { _c=$(< "${_CPP_ROOT}/composer.json"); } 2> /dev/null
+  [[ "${_c}" =~ \"platform\"[[:space:]]*:[[:space:]]*\{[^}]*\"php\" ]] && return 0
+  { _fpm=$(< "${_DRUSH_CLI_CTRL}/fpm.info"); } 2> /dev/null
+  _fpm="${_fpm%%$'\n'*}"; _fpm="${_fpm//[!0-9]/}"
+  { _mf=$(< "${_DRUSH_CLI_CTRL}/multi-fpm.info"); } 2> /dev/null
+  for _f in "${HOME}"/.drush/*.alias.drushrc.php; do
+    [ -f "${_f}" ] || continue
+    _nm="${_f##*/}"; _nm="${_nm%.alias.drushrc.php}"
+    case "${_nm}" in platform_*|hostmaster|hm|server_*) continue ;; esac
+    { _c=$(< "${_f}"); } 2> /dev/null
+    [[ "${_c}" =~ \'root\'[[:space:]]*=\>[[:space:]]*\'([^\']+)\' ]] || continue
+    _nms+=("${_nm}"); _rts+=("${BASH_REMATCH[1]}")
+  done
+  [ "${#_rts[@]}" -gt 0 ] || return 0
+  # the alias roots read the way the target was (links, the tenant's
+  # ~/static), so a platform registered through a link still matches
+  _cpp_phys "${_rts[@]}"
+  for (( _i = 0; _i < ${#_rts[@]}; _i++ )); do
+    _nm="${_nms[${_i}]}"; _rt="${_CPP_PP[${_i}]}"
+    case "${_rt}/" in "${_CPP_ROOT}/"*) ;; *) continue ;; esac
+    _v="${_fpm}"; _src="fpm.info"
+    while read -r _s _l; do
+      [ "${_s}" = "${_nm}" ] && { _v="${_l//[!0-9]/}"; _src="multi-fpm.info"; }
+    done <<< "${_mf}"
+    [[ "${_v}" =~ ^[5-8][0-9]$ ]] && [ -x "/opt/php${_v}/bin/php" ] || continue
+    if [ -z "${_min}" ] || [ "${_v}" -lt "${_min}" ]; then
+      _min="${_v}"; _minsrc="${_src}"; _site="${_nm}"
+    fi
+  done
+  [ -n "${_min}" ] && [ "${_ch}" -gt "${_min}" ] || return 0
+  _cpp_rel "${_CPP_ROOT}"
+  _cpp_key "${_CPP_RP}"
+  _cpp_safe "${_site}"
+  echo "WARNING: composer runs on PHP ${_ch:0:1}.${_ch:1:1} but ${_CPP_S} on this platform is set to PHP-FPM ${_min:0:1}.${_min:1:1} in ${_minsrc}; a package that needs PHP ${_ch:0:1}.${_ch:1:1} would make that site answer HTTP 500 \"Composer detected issues in your platform\". Add \"${_CPP_KY} ${_min:0:1}.${_min:1:1}\" to ~/static/control/cli-per-platform.info, or set config.platform.php in composer.json." >&2
+}
+
 check_php_cli_version() {
   ### echo CHK start check_php_cli_version
   _PHP_CLI=
+  _CLI_FROM=""; _CLI_WHY=""
   if [ "${HOME}" = "/var/aegir" ] && [ -f "/var/aegir/drush/drush.php" ]; then
     _PHP_CLI=$(grep "/opt/php" /var/aegir/drush/drush.php 2>&1)
+    _CLI_FROM="the master's Drush pin"
   else
     _CLI_INFO="/data/disk/${_Y_USR}/static/control/cli.info"
     if [ -f "${_CLI_INFO}" ]; then
@@ -866,6 +1766,7 @@ check_php_cli_version() {
       case "${_CLI_VRN}" in
         56|70|71|72|73|74|80|81|82|83|84|85)
           [ -x "/opt/php${_CLI_VRN}/bin/php" ] && _PHP_CLI="php${_CLI_VRN}"
+          _CLI_FROM="cli.info"
           ;;
       esac
     fi
@@ -879,6 +1780,7 @@ check_php_cli_version() {
       _account_ini "${e}"
     fi
   done
+  _CLI_WHY="${_CLI_FROM}"
   ### echo CHK 2 DRUSH_PHP is ${DRUSH_PHP}
   ### echo CHK 2 PHP_INI is ${PHP_INI}
   ### echo CHK 2 PHPRC is ${PHPRC}
@@ -887,8 +1789,14 @@ check_php_cli_version() {
     if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
       DRUSH_PHP="/opt/php${e}/bin/php"
       _account_ini "${e}"
+      _CLI_FROM="php${e}.info"
+      _CLI_WHY="php${e}.info"
     fi
   done
+  if [[ "${_CLI_FROM}" == php[0-9][0-9].info ]] && [ -n "${_CLI_VRN}" ] \
+    && [ "${_CLI_FROM}" != "php${_CLI_VRN}.info" ] && [[ "${_PHP_CLI}" == php[0-9][0-9] ]]; then
+    _CLI_WHY="${_CLI_FROM} (outranks cli.info ${_CLI_VRN:0:1}.${_CLI_VRN:1:1})"
+  fi
   ### echo CHK 3 DRUSH_PHP is ${DRUSH_PHP}
   ### echo CHK 3 PHP_INI is ${PHP_INI}
   ### echo CHK 3 PHPRC is ${PHPRC}
@@ -898,6 +1806,8 @@ check_php_cli_version() {
   else
     DRUSH_PHP="/usr/bin/php"
     export DRUSH_PHP;
+    _CLI_FROM="the server default"
+    _CLI_WHY="the server default"
     ### echo CHK 4 DRUSH_PHP is ${DRUSH_PHP}
   fi
 
@@ -956,6 +1866,11 @@ if _grp_set_is "users www-data" \
         || [ -n "${_OCTO_SYS_ARR}" ] \
         || [ "${_D_IS}" = "1011" ]; then
         _PWD=$(pwd 2>&1)
+        # a bare-verb line after "cd DIR &&" runs in DIR: the checks below
+        # (drush make in ~/static, drush in a site folder) judge that folder
+        if [[ "${_DL_CD}" =~ ^[[:space:]]*cd[[:space:]]+([^[:space:]\;\&\|]+) ]]; then
+          _PWD=$(cd -- "${BASH_REMATCH[1]/#\~/${HOME}}" 2> /dev/null && pwd) || _PWD=$(pwd 2>&1)
+        fi
         _DEST_DRUSH="/opt/tools/drush/8/drush/drush.php"
         if [[ "${_ARGS}" =~ "vendor/bin/drush " ]]; then
           _DEST_DRUSH="${_R_M}/vendor/drush/drush/drush.php"
@@ -969,12 +1884,25 @@ if _grp_set_is "users www-data" \
         if [[ "${_LA_PATH}" == *vendor/drush/drush/drush.php ]] || [[ "${_ARGS}" =~ "vendor/drush/drush/drush.php " ]]; then
           if [ -n "${_LA_PATH}" ] && ! _is_tenant && { [[ "${_LA_PATH}" == /* ]] || [ -n "${_LA_CD}" ]; }; then
             _DEST_DRUSH="${_LA_PATH}"
-          elif [[ "$PWD" =~ /(web|html|docroot)$ ]]; then
+          elif [[ "$PWD" =~ /(web|html|docroot)$ ]] && [ -d ../vendor/drush ]; then
             _DEST_DRUSH="../vendor/drush/drush/drush.php"
           else
             _DEST_DRUSH="vendor/drush/drush/drush.php"
           fi
           ### echo INF 0 _DEST_DRUSH is ${_DEST_DRUSH}
+        fi
+        # the line's codebase and its cli-per-platform.info line, if any: a
+        # dispatched line from its own arguments, a Drush 10/11 line that is
+        # not dispatched (cd DIR && drush11 cr) from the segment that runs
+        # it; a line that only names drush11 in an argument takes none
+        [[ "${_DEST_DRUSH}" == *vendor/drush/drush/drush.php ]] && _CPP_FLAV=vendor
+        _D_RUNS=NO
+        if [ -n "${_ARR}" ]; then
+          _D_RUNS=YES
+          _cpp_resolve "${_ARR}" drush "${_LA_CD:-${_DL_CD}}"
+        elif [ "${_D_IS}" = "1011" ] && _cpp_seg_lead "${_ARGS}" drush10 drush11; then
+          _D_RUNS=YES
+          _cpp_resolve "${_SEG_REST}" drush "${_SEG_CD}"
         fi
         if [ "${_D_IS}" = "1011" ]; then
           if [ "${_D_TOK}" = "drush11" ]; then
@@ -1002,7 +1930,17 @@ if _grp_set_is "users www-data" \
             /opt/php[0-9][0-9]/bin/php) _D_PIN="${DRUSH_PHP:8:2}" ;;
           esac
           _D_SEL=""
-          if [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
+          # a cli-per-platform.info line is never raised: below the floor
+          # the line is refused and named, the tenant chose that version
+          if [ -n "${_CPP_V}" ]; then
+            if [ "${_CPP_V}" -ge "${_D_FLOOR_N}" ]; then
+              _D_SEL="${_CPP_V}"
+            else
+              _cpp_rel "${_CPP_ROOT}"
+              _cpp_say "Drush 11 and Drush 10 need PHP ${_D_FLOOR:0:1}.${_D_FLOOR:2:1} or newer; line ${_CPP_LN} of ~/static/control/cli-per-platform.info sets PHP ${_CPP_V:0:1}.${_CPP_V:1:1} for ${_CPP_RP}. Use drush8 there, or change the line."
+            fi
+          fi
+          if [ -z "${_D_SEL}" ] && [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
             _PHP_V="74 80 81 82 83 84 85"
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ] \
@@ -1021,7 +1959,11 @@ if _grp_set_is "users www-data" \
             for e in 85 84 83 82 81 80 74; do
               if [ -x "/opt/php${e}/bin/php" ] && [ "${e}" -ge "${_D_FLOOR_N}" ]; then
                 _D_SEL="${e}"
-                echo "  NOTE: Drush 10/11 need PHP ${_D_FLOOR:0:1}.${_D_FLOOR:2:1}+; using PHP ${e:0:1}.${e:1:1}"
+                # stderr: a NOTE on stdout lands in drush11 ... > file; and
+                # only where Drush 10/11 runs, not on a line that names it
+                [ "${_D_RUNS}" = "YES" ] \
+                  && echo "  NOTE: Drush 10/11 need PHP ${_D_FLOOR:0:1}.${_D_FLOOR:2:1}+; using PHP ${e:0:1}.${e:1:1}" >&2
+                _CPP_FROM="the Drush 10/11 floor (${_CLI_WHY:-the server default} is below ${_D_FLOOR:0:1}.${_D_FLOOR:2:1})"
                 break
               fi
             done
@@ -1061,7 +2003,9 @@ if _grp_set_is "users www-data" \
               # tenant: an absolute path of theirs under /tmp or /home is what
               # the fast lane above keeps out on purpose
               _DEST_DRUSH="${_LA_PATH}"
-            elif [[ "$PWD" =~ /(web|html|docroot)$ ]]; then
+            # the parent's Drush only where the parent has one: a docroot
+            # named web/html/docroot can carry its own vendor/ instead
+            elif [[ "$PWD" =~ /(web|html|docroot)$ ]] && [ -d ../vendor/drush ]; then
               _DEST_DRUSH="../vendor/drush/drush/drush.php"
             else
               _DEST_DRUSH="vendor/drush/drush/drush.php"
@@ -1077,6 +2021,7 @@ if _grp_set_is "users www-data" \
               fi
             done
           fi
+          _cpp_pick
           if [ ! -z "${DRUSH_PHP}" ] && [ ! -z "${PHP_INI}" ] && [ "${_IS_JENKINS}" = "FALSE" ]; then
             export DRUSH_PHP;export PHP_INI;export PHPRC;
             ### echo INF 4 DRUSH_PHP is ${DRUSH_PHP}
@@ -1516,6 +2461,7 @@ if _grp_set_is "users www-data" \
           ### echo EXD 1 _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 1 _ARR is ${_ARR}
           ### echo EXD 1 ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
+          _cpp_before_exec drush
           _ini_opt drush
           _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_INI_OPT}${_DEST_DRUSH} ${_ARR}"
           exit 0
@@ -1526,6 +2472,7 @@ if _grp_set_is "users www-data" \
           ### echo EXD 3-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 3-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
+          _cpp_before_exec drush
           _ini_opt drush
           _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_INI_OPT}${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
@@ -1536,6 +2483,7 @@ if _grp_set_is "users www-data" \
           ### echo EXD 3-NO-PHP_FWD _DEST_DRUSH is ${_DEST_DRUSH}
           ### echo EXD 3-NO-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-NO-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
+          _cpp_before_exec drush
           _ini_opt drush
           _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_INI_OPT}${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
@@ -1544,10 +2492,28 @@ if _grp_set_is "users www-data" \
           ### echo EXC 1 _C_ARR is ${_C_ARR}
           ### echo EXC 1 _F_ARR is "$@"
           ### echo EXC 1 ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
+          _cpp_resolve "${_C_ARR}" composer "${_CO_CD}"
+          _cpp_pick
+          _cpp_before_exec composer
+          _cpp_composer_warn
           _ini_opt composer
           _exec_dash_c "${_CO_CD}${_CO_PRE}${DRUSH_PHP} ${_INI_OPT}/usr/local/bin/composer ${_C_ARR}"
           exit 0
         else
+          # A line dash runs as typed still gets its platform's PHP and the
+          # guard where the tool reads DRUSH_PHP: bee, and the Drush 10/11
+          # launchers of a drush10/11 segment resolved above. A drush/drush8
+          # that is not the line's first command runs drush.php on the PATH's
+          # php, which no environment can steer; the docs name that limit.
+          if [ "${1}" = "-c" ] && [ -z "${_ARR}" ]; then
+            if _bee_lead "${_ARGS}"; then
+              _cpp_resolve "${_BE_REST}" bee "${_BE_CD}"
+              _cpp_pick
+              _cpp_before_exec bee
+            elif [ "${_D_IS}" = "1011" ] && [ "${_CPP_DONE}" = "YES" ]; then
+              _cpp_before_exec drush
+            fi
+          fi
           ### echo EXH 1 _forward_to_dash "$@"
           _forward_to_dash "$@"
           exit 0

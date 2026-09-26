@@ -869,7 +869,8 @@ _PHP_FPM_DENY=""
 ### else's site, admin sites included, is refused and reported) and writing
 ### there exactly where the main <oN>.ftp login writes, with the drush and
 ### composer commands, a ~/platforms SFTP farm and a timed window on the
-### site-local Drush. Drupal and Backdrop only. Remove
+### site-local Drush; checkmyperms, on that login and on the main one,
+### says what it reaches and why. Drupal and Backdrop only. Remove
 ### a name and the account is deleted on the next pass (home kept under
 ### /var/backups/zombie). Managed by manage_ltd_users.sh, never by hostmaster.
 ###

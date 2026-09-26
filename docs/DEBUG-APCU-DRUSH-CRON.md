@@ -328,11 +328,13 @@ separately via `~/static/control/cli.info` or the instant switch files (e.g. `ph
 These do not automatically sync with each other. You are responsible for configuring the
 PHP-CLI version to match your sites' PHP-FPM version using those control files.
 
-What the `oN.ftp` limited shell provides is BOA's **special shell wrapper**, which correctly
-reads the PHP-CLI control files and applies them, and makes `vdrush` available. When running
-as `oN` in a regular bash session the shell wrapper is not active — the control files are
-ignored entirely, drush runs against whatever PHP version happens to be the system default,
-and `vdrush` will not work correctly.
+What the `oN.ftp` limited shell provides is BOA's **special shell wrapper** for the
+commands you type: it reads the PHP-CLI control files and applies them, and makes `vdrush`
+available (the same wrapper runs your Ægir tasks). In a bash shell as `oN` (root's
+`su -s /bin/bash - oN`; `oN` has no login shell) your typed commands do not go through it —
+the control files are ignored for them,
+drush runs against whatever PHP version happens to be the system default, and `vdrush` will
+not work correctly.
 
 See: https://github.com/omega8cc/boa/blob/5.x-lts/docs/DRUSH-CLI.md
 

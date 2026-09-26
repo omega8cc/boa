@@ -167,6 +167,58 @@ get_drupal_version() {
   return
 }
 
+# Echo a platform's real Drupal docroot on stdout, or nothing if none found.
+# The docroot is the platform root for Drupal 7-era codebases, but a subdir for
+# Composer D8+ codebases whose web root differs from the app root: docroot/,
+# html/, web/, in that order. Keyed on index.php, the front controller present
+# in every Drupal docroot (D6..D11) regardless of build recipe. -f follows the
+# symlink and is false for a dangling link, so a decoy like web -> /etc cannot
+# register as a docroot. Returns 0 with the path, 1 if no docroot is found.
+# Embedded here (not sourced from the install-time helper.sh.inc) so this
+# standalone tool carries its own structure-detection logic.
+_detect_real_docroot() {
+  local _plat="${1%/}"
+  local _sub
+  [ -n "${_plat}" ] && [ -d "${_plat}" ] || return 1
+  if [ -f "${_plat}/index.php" ]; then
+    printf '%s\n' "${_plat}"
+    return 0
+  fi
+  for _sub in docroot html web; do
+    if [ -f "${_plat}/${_sub}/index.php" ]; then
+      printf '%s\n' "${_plat}/${_sub}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Print the unique codebase roots an account's Drush aliases name, one per line.
+# $1 = account home (/data/disk/<user>). Only roots under /data/disk that exist.
+# A platform alias keeps the path the platform was registered with, which for a
+# Composer build can be its app root. Provision finds the web root on the fly and
+# never writes it back, while the aliases of the platform's sites carry the web
+# root. Each root is followed to the docroot Provision serves, so an app root and
+# its web root are one codebase, checked once.
+_account_codebases() {
+  local _acct_home="$1"
+  local _plr
+  local _doc
+  grep -hE "'root'[[:space:]]*=>" "${_acct_home}/.drush/"*.alias.drushrc.php 2>/dev/null \
+    | sed -E "s/.*'root'[[:space:]]*=>[[:space:]]*'([^']+)'.*/\1/" \
+    | while IFS= read -r _plr; do
+        [ -z "${_plr}" ] && continue
+        case "${_plr}" in
+          /data/disk/*) ;;
+          *) continue ;;
+        esac
+        [ -d "${_plr}" ] || continue
+        _doc=$(_detect_real_docroot "${_plr}") && _plr="${_doc}"
+        printf '%s\n' "${_plr}"
+      done \
+    | sort -u
+}
+
 # version_lt A B -> returns 0 (true) if A is strictly less than B (version-sorted).
 version_lt() {
   test "$(printf '%s\n' "$1" "$2" | sort -V | head -n1)" != "$2"
@@ -292,10 +344,15 @@ list_contrib_modules() {
 # ---------------------------------------------------------------------------
 run_path_mode() {
   local _path="$1"
+  local _doc
   local _log
   local _result_line
   local _status
   _log="/var/log/boa/core/incompatible-$(date +%y%m%d-%H%M%S).log"
+
+  # A platform path may be the app root of a Composer build: check the docroot
+  # Provision serves, as box mode does.
+  _doc=$(_detect_real_docroot "${_path}") && _path="${_doc}"
 
   _result_line=$(classify_codebase "${_path}")
   _status=$(echo "${_result_line}" | cut -f1)
@@ -452,22 +509,15 @@ run_box_mode() {
     # Only real Octopus instances carry drush aliases.
     [ -d "${_acct_home}/.drush" ] || continue
 
-    # Harvest unique platform roots from this account's site/platform aliases (the walk the
-    # nightly already trusts), validated under /data/disk and existing on disk.
-    _platforms=$(grep -hE "'root'[[:space:]]*=>" "${_acct_home}/.drush/"*.alias.drushrc.php 2>/dev/null \
-      | sed -E "s/.*'root'[[:space:]]*=>[[:space:]]*'([^']+)'.*/\1/" \
-      | sort -u)
+    # Unique codebase roots from this account's site/platform aliases (the walk the
+    # nightly already trusts), each followed to the docroot Provision serves.
+    _platforms=$(_account_codebases "${_acct_home}")
 
     _acct_blocked=0
     local _acct_lines=()
     local _plr_count=0
     while IFS= read -r _plr; do
       [ -z "${_plr}" ] && continue
-      case "${_plr}" in
-        /data/disk/*) ;;
-        *) continue ;;
-      esac
-      [ -d "${_plr}" ] || continue
       _plr_count=$((_plr_count + 1))
       _all_platforms+=("${_plr}")
       _result_line=$(classify_codebase "${_plr}")

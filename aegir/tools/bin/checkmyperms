@@ -1,0 +1,210 @@
+#!/bin/bash -p
+
+export SHELL=/bin/bash
+export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
+
+# What this shell login reaches, and why a platform is closed to it.
+#
+# For the main login (oN.ftp) and the platform developer logins
+# (oN.<client>-dev). The limited-shell worker, running as root, writes one
+# report per login every three minutes into a root-only directory, each file
+# owned by the login it describes and readable by it alone; this script only
+# prints the caller's own file. A developer login's report never names a site
+# of another client; the main login's names every site that keeps a platform
+# from each developer login, since every site of the account is its own.
+# For a developer login the current directory is read too: which platform it
+# is on, and whether Drush can reach it from here.
+#
+# Bash builtins only, so it runs under lshell's noexec layer (it is on no
+# shell-escape list), and -p: no BASH_ENV, ENV or inherited functions.
+
+_STATUS_DIR="/var/backups/ltd/status"
+
+_usage() {
+  echo
+  echo "  Usage: checkmyperms"
+  echo
+  echo "  Shows which platforms your developer login reaches, why a platform"
+  echo "  carrying your sites is not reached, the Drush window, and which Drush"
+  echo "  to use. On the main login: the same for every developer login of the"
+  echo "  account, naming the sites that keep a platform closed."
+  echo
+}
+
+# The login name of the calling uid, from the passwd file (no id(1)).
+_login_name() {
+  local _n _x _u _rest
+  while IFS=: read -r _n _x _u _rest; do
+    if [ "${_u}" = "${EUID}" ]; then
+      printf '%s' "${_n}"
+      return 0
+    fi
+  done < /etc/passwd
+  return 1
+}
+
+# The worker's report-safe spelling of a path, byte by byte (the worker pins
+# the C locale for the same two substitutions), so a refused root with odd
+# characters still matches the directory it names.
+_safe() {
+  local LC_ALL=C
+  local _s="${1//[^[:print:]]/?}"
+  printf '%s' "${_s//[^a-zA-Z0-9._\/@:, ()+-]/?}"
+}
+
+# The platform root a report line names that holds the path, or nothing.
+# $1 = path, $2 = the report's machine-line tag (#grant or #refuse).
+_root_holding() {
+  local _p="${1}"
+  local _tag="${2}"
+  local _line=""
+  local _root=""
+  for _line in "${_REPORT[@]}"; do
+    case "${_line}" in
+      "${_tag} "*)
+        _root="${_line#"${_tag} "}"
+        if [ "${_p}" = "${_root}" ] || [[ "${_p}" == "${_root}"/* ]]; then
+          printf '%s' "${_root}"
+          return 0
+        fi
+        ;;
+    esac
+  done
+  return 1
+}
+
+# The docroot of a platform root: index.php at the root or one level down
+# (the worker's own rule).
+_docroot() {
+  local _r="${1}"
+  local _s
+  [ -f "${_r}/index.php" ] && { printf '%s' "${_r}"; return 0; }
+  for _s in docroot html web; do
+    [ -f "${_r}/${_s}/index.php" ] && { printf '%s' "${_r}/${_s}"; return 0; }
+  done
+  return 1
+}
+
+# A modern (Drush 9+) alias: every dot but the last becomes a hyphen.
+_modern_alias() {
+  local _n="${1}"
+  local _h="${1%.*}"
+  [ "${_h}" = "${_n}" ] && { printf '%s' "${_n}"; return 0; }
+  printf '%s.%s' "${_h//./-}" "${_n##*.}"
+}
+
+_here() {
+  local _cwd=""
+  local _root=""
+  local _doc=""
+  local _site=""
+  local _rest=""
+  local _up=""
+  local _farm=""
+  _cwd=$(pwd -P 2> /dev/null)
+  [ -n "${_cwd}" ] || return 0
+  echo
+  echo "Here: ${_cwd}"
+  if _root=$(_root_holding "${_cwd}" "#grant"); then
+    echo "  This platform is reached by this login: Drush can run here."
+    _doc=$(_docroot "${_root}")
+    if [ -n "${_doc}" ] && [[ "${_cwd}" == "${_doc}/sites/"* ]]; then
+      _rest="${_cwd#"${_doc}/sites/"}"
+      _site="${_rest%%/*}"
+      case "${_site}" in
+        all|default) _site="" ;;
+      esac
+    fi
+    _up="${_root%/*}"
+    _farm="${_up##*/}-${_root##*/}"
+    if [ -n "${_site}" ]; then
+      if [ -f "${_doc}/core/lib/Drupal.php" ]; then
+        echo "  Drupal 8+, while the platform is locked (read-only):"
+        echo "    drush @${_site} uli"
+        if [ -d "${_root}/vendor/drush" ]; then
+          echo "  Any change, in a Drush window:"
+          echo "    cd ~/platforms/${_farm} && vdrush @$(_modern_alias "${_site}") <command>"
+        else
+          echo "  This platform has no site-local Drush: Drush 8 read-only commands"
+          echo "  (uli, status) only; the Drush window does not apply to it."
+        fi
+      else
+        echo "  drush8 @${_site} <command>"
+      fi
+    else
+      echo "  Platform ~/platforms/${_farm}: cd into a site under its sites/ folder,"
+      echo "  or name a site with its @alias."
+    fi
+  elif _root=$(_root_holding "$(_safe "${_cwd}")" "#refuse"); then
+    echo "  This platform is NOT reached by this login (see above for why)."
+    echo "  Your site files here stay editable; Drush cannot run here, and fails"
+    echo "  with 'Failed opening required .../autoload.php' if you try."
+  else
+    echo "  Not inside a platform: cd ~/platforms/<name>, or ~/sites/<site>."
+  fi
+}
+
+case "${1}" in
+  -h|--help|help)
+    _usage
+    exit 0
+    ;;
+esac
+
+_ME=$(_login_name)
+if [ -z "${_ME}" ]; then
+  echo "checkmyperms: cannot tell which login this is"
+  exit 1
+fi
+_FILE="${_STATUS_DIR}/${_ME}"
+
+if [ -r "${_FILE}" ]; then
+  mapfile -t _REPORT < "${_FILE}"
+  echo
+  for _line in "${_REPORT[@]}"; do
+    case "${_line}" in
+      "#"*) ;;
+      *) printf '%s\n' "${_line}" ;;
+    esac
+  done
+  if [[ "${_ME}" == *-dev ]]; then
+    _here
+  fi
+  echo
+  exit 0
+fi
+
+case "${_ME}" in
+  *.ftp)
+    # a developer login of this account that has no report yet is not "none"
+    _DEVS=""
+    while IFS=: read -r _n _rest; do
+      case "${_n}" in
+        "${_ME%.ftp}".*-dev) _DEVS="${_DEVS} ${_n}" ;;
+      esac
+    done < /etc/passwd
+    echo
+    if [ -n "${_DEVS}" ]; then
+      echo "  No report yet for${_DEVS}: the worker writes it every three minutes."
+      echo "  Try again shortly."
+    else
+      echo "  No platform developer logins are enabled on this account."
+      echo "  Your host turns them on per client; see the extra accounts page:"
+      echo "  https://docs.boa.io/using/connecting/extra-accounts"
+    fi
+    echo
+    ;;
+  *-dev)
+    echo
+    echo "  No report for ${_ME} yet: the worker writes it within three minutes"
+    echo "  of the login's creation. Try again shortly."
+    echo
+    ;;
+  *)
+    echo
+    echo "  checkmyperms is for the main login and the platform developer logins."
+    echo
+    exit 1
+    ;;
+esac
+exit 0

@@ -36,41 +36,63 @@ _php_cli_local_ini_update() {
     || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
     || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    # aegir owns /var/aegir and can swap .tmp or .drush for a link: a link
+    # there is removed, the age sweep never resolves a path through a name
+    # (bare path, -execdir), and every remove and write happens inside the
+    # real directory
+    [ -L "${_U_TP}" ] && rm -f "${_U_TP}"
+    [ -L "${_U_HD}" ] && rm -f "${_U_HD}"
     mkdir -p ${_U_TP}
-    touch ${_U_TP}
-    find ${_U_TP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
-    chmod 02755 ${_U_TP}
     mkdir -p ${_U_HD}
-    rm -f ${_U_HD}/.ctrl.php*
-    rm -f ${_U_II}
+    _U_REAL="$(cd -P -- /var/aegir 2> /dev/null && pwd -P)"
+    # aged out only when .tmp is aegir's own (or the empty one just made):
+    # a root-owned directory of the tree renamed onto the name is left alone
+    ( cd -P -- "${_U_TP}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.tmp" ] || exit 0
+      [ "$(stat -c %U .)" = "aegir" ] \
+        || { [ "$(stat -c %u .)" = "0" ] && [ -z "$(ls -A . 2> /dev/null)" ]; } || exit 0
+      touch . && chmod 02755 .
+      find . -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null )
+    _U_INI=""
     _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]]; then
-        cp -af /opt/php${e}/lib/php.ini ${_U_II}
         _U_INI=${e}
       fi
     done
-    if [ -e "${_U_II}" ]; then
-      # open_basedir stays out of the CLI ini: it breaks Drush and turns the
-      # realpath cache off (every file operation checked against every listed
-      # tree, uncached); lshell users are confined by their own measures, and
-      # the FPM ini keeps its own list
-      _QTP=${_U_TP//\//\\\/}
-      sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      ${_U_II}
-      wait
-      sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               ${_U_II}
-      wait
-      sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_U_II}
-      wait
-      sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_U_II}
-      wait
-      sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_U_II}
-      wait
-      sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_U_II}
-      wait
-      echo > ${_U_HD}/.ctrl.php${_U_INI}.${_xSrl}.pid
-      echo > ${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid
-    fi
+    _QTP=${_U_TP//\//\\\/}
+    ( cd -P -- "${_U_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.drush" ] || exit 0
+      # the old ini stays until the final copy replaces it
+      rm -f -- ./.ctrl.php*
+      [ -n "${_U_INI}" ] || { rm -f -- ./php.ini; exit 0; }
+      # edited in root's own temp directory and put in place once: no link
+      # or FIFO put at php.ini is ever opened, and the stamps are created
+      # exclusively
+      _U_W=$(mktemp -d 2> /dev/null) && [ -d "${_U_W}" ] || exit 0
+      if cp -a /opt/php${_U_INI}/lib/php.ini "${_U_W}/php.ini" 2> /dev/null; then
+        # open_basedir stays out of the CLI ini: it breaks Drush and turns the
+        # realpath cache off (every file operation checked against every listed
+        # tree, uncached); lshell users are confined by their own measures, and
+        # the FPM ini keeps its own list
+        sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      "${_U_W}/php.ini"
+        wait
+        sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               "${_U_W}/php.ini"
+        wait
+        sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     "${_U_W}/php.ini"
+        wait
+        sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" "${_U_W}/php.ini"
+        wait
+        sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               "${_U_W}/php.ini"
+        wait
+        sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           "${_U_W}/php.ini"
+        wait
+        if cp -aT --remove-destination "${_U_W}/php.ini" ./php.ini 2> /dev/null; then
+          rm -f -- "./.ctrl.${_tRee}.${_xSrl}.pid"
+          echo | dd of="./.ctrl.php${_U_INI}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
+          echo | dd of="./.ctrl.${_tRee}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
+        fi
+      fi
+      rm -rf -- "${_U_W}"
+    )
   fi
   chown -R aegir:aegir ${_U_HD}
   chown -R aegir:aegir ${_U_TP}

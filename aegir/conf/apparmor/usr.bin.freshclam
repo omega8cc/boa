@@ -26,9 +26,9 @@
   network inet6 dgram,
 
   # Allow execution of necessary shells and the freshclam binary
-  /bin/dash mrix,
-  /bin/bash mrix,
-  /bin/sh mrix,
+  /{,usr/}bin/dash mrix,
+  /{,usr/}bin/bash mrix,
+  /{,usr/}bin/sh mrix,
   /usr/bin/freshclam mrix,
 
   # Allow access to /dev

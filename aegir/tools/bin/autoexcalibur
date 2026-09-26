@@ -244,10 +244,23 @@ _check_manufacturer_compatibility() {
 _check_manufacturer_compatibility
 
 _check_mysql_compatibility() {
-  _DB_V=$(mysql -V 2>&1 \
-    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
-    | head -1 \
-    | cut -d"." -f1,2)
+  # The server binary decides wherever it exists: a partial apt transaction
+  # can leave an 8.4 client next to an older server, or a server that no
+  # longer runs, and the server is what has to run on Excalibur. The client
+  # answers only where no server binary is installed.
+  _DB_V=
+  if [ -x "/usr/sbin/mysqld" ]; then
+    _DB_V=$(/usr/sbin/mysqld --no-defaults -V 2>&1 \
+      | grep -oE 'Ver [0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d" " -f2 \
+      | cut -d"." -f1,2)
+  else
+    _DB_V=$(mysql -V 2>&1 \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
+  fi
   case "${_DB_V}" in
     8.4) ;;
     8.0)
@@ -259,11 +272,23 @@ _check_mysql_compatibility() {
     5.7)
       _msg "Not supported DB server detected ${_DB_V}" >> "${_logExc}"
       _msg "Devuan Excalibur supports only Percona 8.4" >> "${_logExc}"
-      _msg "Run 'barracuda up-${_tRee} system percona-8.0' and then 'barracuda up-${_tRee} system percona-8.4' first" >> "${_logExc}"
+      if [ "$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)" = "trixie" ]; then
+        _msg "Debian Trixie has no Percona 8.0 server to upgrade 5.7 through," >> "${_logExc}"
+        _msg "so Percona cannot be upgraded in place on this box" >> "${_logExc}"
+      else
+        _msg "Run 'barracuda up-${_tRee} system percona-8.0' and then 'barracuda up-${_tRee} system percona-8.4' first" >> "${_logExc}"
+      fi
       exit 1
     ;;
     *)
-      _msg "Not supported DB server detected ${_DB_V}" >> "${_logExc}"
+      if [ -n "${_DB_V}" ]; then
+        _msg "Not supported DB server detected ${_DB_V}" >> "${_logExc}"
+      else
+        _msg "The DB server version could not be read" >> "${_logExc}"
+        if [ -x "/usr/sbin/mysqld" ]; then
+          _msg "/usr/sbin/mysqld says: $(/usr/sbin/mysqld --no-defaults -V 2>&1 | head -1)" >> "${_logExc}"
+        fi
+      fi
       exit 1
     ;;
   esac

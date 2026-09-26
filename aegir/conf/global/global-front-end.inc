@@ -280,6 +280,17 @@ if (!$is_backend && isset($_SERVER['HTTP_HOST']) &&
     }
     if ($conf['install_profile'] != 'hostmaster' && ($expire_in_seconds > -1)) {
       header("X-Accel-Expires: " . $expire_in_seconds);
+      // A 5xx this request ends up sending must not carry that lifetime:
+      // nginx would keep serving the error for all of it, recovered or not.
+      // Without the header the one-second error microcache applies.
+      if ($expire_in_seconds > 1 && function_exists('header_register_callback')
+        && function_exists('http_response_code')) {
+        header_register_callback(function () {
+          if (http_response_code() >= 500) {
+            header_remove('X-Accel-Expires');
+          }
+        });
+      }
       if ($expire_in_seconds > -1 && $expire_in_seconds < 2) {
         if (!empty($backdropcms)) {
           $config['system.core']['cache'] = 0; // Disable page caching on the fly

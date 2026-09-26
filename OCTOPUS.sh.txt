@@ -53,7 +53,7 @@ export _USER="${_USER}"
 ### Drush and Redis Variables
 ###
 
-export _DRUSH_VERSION=8.5.7
+export _DRUSH_VERSION=8.5.9
 export _REDIS_C_VERSION=com-19-04-2021
 export _REDIS_L_VERSION=7.x-3.19.1
 export _REDIS_N_VERSION=com-19-04-2021
@@ -447,6 +447,15 @@ _satellite_make
 _satellite_if_instance_group post
 _satellite_queue_dbvars_site_verifies
 _satellite_post_cleanup
+
+
+###
+### Turn AppArmor back on in the mode barracuda keeps (an older lib tree has
+### no such step and leaves it off, as before)
+###
+if declare -F _turn_on_apparmor_after_octopus > /dev/null 2>&1; then
+  _turn_on_apparmor_after_octopus
+fi
 exit 0
 
 

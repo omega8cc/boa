@@ -10,9 +10,9 @@ But if you prefer to have all major OS upgrade multi-steps and versions automate
 
 You can easily upgrade your system from any supported Debian version, starting with Debian Jessie, to Devuan Daedalus or Devuan Excalibur, which are both systemd-free equivalents of Debian Bookworm and Debian Trixie. You can upgrade from Devuan Beowulf or Chimaera to the recommended Devuan Daedalus using the same procedure.
 
-**NOTE:** While by default BOA installs Percona 5.7 in Devuan Daedalus, it will expect Percona 8.4 on Devuan Excalibur and will refuse to upgrade your system from Daedalus to Excalibur until you first upgrade Percona to 8.4
+**NOTE:** While by default BOA installs Percona 5.7 in Devuan Daedalus, it will expect Percona 8.4 on Devuan Excalibur, and both the Modern and the Classic procedure will refuse to upgrade your system from Daedalus to Excalibur until you first upgrade Percona to 8.4
 
-**NOTE:** The Percona upgrade is its own step, done in place with `barracuda` on the same server before the Daedalus to Excalibur upgrade; it is not a migration. You can upgrade from Percona 5.7 to Percona 8.0 and then from Percona 8.0 to Percona 8.4 only on Devuan Daedalus -- see [docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE-PERCONA8.md).
+**NOTE:** The Percona upgrade is its own step, done in place with `barracuda` on the same server before the Daedalus to Excalibur upgrade; it is not a migration. You can upgrade from Percona 5.7 to Percona 8.0 and then from Percona 8.0 to Percona 8.4 on Devuan Daedalus (or Debian Bookworm), never on Devuan Excalibur, which always runs Percona 8.4 -- see [docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE-PERCONA8.md).
 
 **NOTE:** Drupal 11 needs MySQL 8, which on BOA means Percona 8.4 -- so a server that will host Drupal 11 has to leave the default Percona 5.7. A new server avoids this upgrade altogether by installing with the `percona-8.4` argument (see [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md)).
 
@@ -86,6 +86,12 @@ wget -qO- https://files.boa.io/BOA.sh.txt | bash
 ```
 
 The procedure discussed above automates major OS upgrades by running them in the multi-step cycle, but you can still run the major OS upgrade with classic `barracuda up-lts system` command if you prefer, after adding the respective variable to `/root/.barracuda.cnf`.
+
+**NOTE:** Percona is available only as 8.4 on Devuan Excalibur and Debian Trixie, so `_DAEDALUS_TO_EXCALIBUR`, `_TRIXIE_TO_EXCALIBUR` and `_BOOKWORM_TO_TRIXIE` refuse to start until the server already runs Percona 8.4. The refusal prints the in-place Percona upgrade commands (on Debian Trixie a server still on 5.7 has none, as there is no Percona 8.0 for it) and sets the variable to `NO` in `/root/.barracuda.cnf`, so those Percona upgrade runs go ahead normally. Once the server runs Percona 8.4, set it to `YES` again -- see [docs/UPGRADE-PERCONA8.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/UPGRADE-PERCONA8.md).
+
+**NOTE:** Devuan Excalibur requires a merged `/usr` (`/bin`, `/sbin` and `/lib` as links into `/usr`), and so do the prebuilt packages. A Devuan Daedalus system upgraded in place from an older release may still keep them apart. Every `barracuda up-lts system` run converts such a system once, early in the pass, with the `usrmerge` package -- but only when a read-only check of the converter's own rules says it would run through, as the conversion has no dry run and cannot be undone.
+
+**NOTE:** When that check finds pairs the converter would stop at, barracuda lists them (and keeps them in `/root/.usrmerge.refused.info`), leaves the system as it is, builds the stack from sources and refuses `_DAEDALUS_TO_EXCALIBUR` the same way as the Percona check above. Fix the listed pairs and run barracuda again. If a conversion ever stops half way, every later run stops before its first package operation, with the details in `/root/.usrmerge.failed.info`, until `/usr/lib/usrmerge/convert-usrmerge` has been run to success.
 
 ### Devuan to Devuan Major OS Upgrades
 
