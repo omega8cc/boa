@@ -616,6 +616,12 @@
 
 @=> Important Fixes
 
+    * xmass and xoct also require on the target the PHP versions named in
+      cli-per-platform.info and the phpNN.info switch the account's
+      command line runs on. A target without one of them ran that
+      platform's drush commands and Ægir tasks on another PHP, and a
+      Drupal core that cannot run on it was refused there.
+
     * A drush line that also names composer, git or mysql, or starts with
       "cd DIR &&", now runs on the PHP chosen by cli.info and the
       phpNN.info switch; it ran on the server's default PHP.
