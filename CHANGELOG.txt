@@ -42,7 +42,18 @@
       first: it rejects files the user did not put in the form and forces
       certain uploaded file types to download.
 
+    * A webform release is swapped into a Backdrop bundle only when its
+      archive tests whole and holds the module's .info and .module files;
+      a pass stopped halfway through the swap is completed on the next
+      one, and a forced rebuild of the bundle keeps the webform the sites
+      run when the new one cannot be fetched.
+
 @=> Security
+
+    * The shared Backdrop redis module, the Backdrop bundle's webform and
+      bee are root's as soon as BOA unpacks them: their archives recorded
+      the account that built them, and an unpack as root kept that owner
+      until the next ownership sweep.
 
     * A per-box root cron line in /var/xdrago/cron/custom.txt that
       chowns an account's directory to <account>[.ftp]:users put it back

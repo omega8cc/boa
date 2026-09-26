@@ -155,10 +155,10 @@ _stage_bee() {
   rm -rf /opt/tools/bee/*
   ### Subshell keeps the caller's working directory untouched.
   ( cd /opt/tools/bee && _get_dev_ext "bee.tar.gz" )
+  ### Root extraction preserves the build-box owner from the tarball, the
+  ### directory itself included: root's whatever landed, like drush.
+  chown -R root:root /opt/tools/bee
   if [ -e "/opt/tools/bee/bee.php" ]; then
-    ### Root extraction preserves the build-box owner from the tarball;
-    ### normalize like drush.
-    chown -R root:root /opt/tools/bee
     find /opt/tools/bee -type d -exec chmod 0755 {} \; &> /dev/null
     find /opt/tools/bee -type f -exec chmod 0644 {} \; &> /dev/null
     chmod 755 /opt/tools/bee/bee.php
@@ -2422,9 +2422,12 @@ _satellite_o_contrib_backdrop_update_global() {
   _RMMODULES="some_foo_bar"
 
   for i in `dir -d ${_D}/*`; do
+    if [ -e "${i}/o_contrib_backdrop" ]; then
+      _satellite_restore_o_contrib_backdrop_webform "${i}/o_contrib_backdrop" "${i##*/}"
+    fi
     if [ -d "${i}/o_contrib_backdrop/webform" ] \
       && [ ! -e "${i}/o_contrib_backdrop/webform/ver-${_WEBFORM_B_TAG}.info" ]; then
-      _satellite_refresh_o_contrib_backdrop_webform "${i}/o_contrib_backdrop"
+      _satellite_refresh_o_contrib_backdrop_webform "${i}/o_contrib_backdrop" "${i##*/}"
     fi
     if [ -e "${i}/o_contrib_backdrop" ] \
       && [ ! -e "${i}/o_contrib_backdrop/update-${_xSrl}-${_X_VERSION}.info" ]; then
@@ -2481,8 +2484,11 @@ _satellite_download_o_contrib_backdrop() {
   ### Plain bundle members extract into the bundle dir itself, so they MUST
   ### run before the redis block below, whose fetch-needed branch cd's into
   ### the shared store and never returns (same ordering as o_contrib_eleven).
-  _get_dev_contrib "webform-${_WEBFORM_B_TAG}.tar.gz"
-  [ -e "./webform/webform.info" ] && echo update > ./webform/ver-${_WEBFORM_B_TAG}.info
+  if _o_contrib_backdrop_webform_get "${PWD}"; then
+    echo update > ./webform/ver-${_WEBFORM_B_TAG}.info
+  else
+    _msg "${_STATUS} A: webform-${_WEBFORM_B_TAG} not fetched into o_contrib_backdrop"
+  fi
   if [ ! -L "./redis_backdrop" ]; then
     ln -sfn ${_D}/000/modules/redis_backdrop redis_backdrop
   fi
@@ -2491,6 +2497,9 @@ _satellite_download_o_contrib_backdrop() {
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_backdrop
     _get_dev_contrib "redis_backdrop-${_REDIS_B_VERSION}.tar.gz"
+    # every instance's Backdrop sites run this copy: root's, whatever owner
+    # the archive recorded
+    chown -R root:root ${_D}/000/modules/redis_backdrop &> /dev/null
     echo update > ${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
@@ -2498,36 +2507,80 @@ _satellite_download_o_contrib_backdrop() {
 }
 
 #
-# Replace the webform member of one o_contrib_backdrop bundle ($1) with the
-# _WEBFORM_B_TAG release. The new tree is fetched into a stage dir under
-# ${_D} (a hidden dir inside the bundle would be scanned as a second module by
-# the sites) and renamed in only once complete; a failed fetch leaves the
-# member the bundle's sites run as it was.
+# Fetch the _WEBFORM_B_TAG release into directory $1 and unpack it there as
+# webform/. Returns 0 only when the archive tests whole, unpacks cleanly and
+# holds the module's .info and .module files; the tree is root's whatever owner
+# the archive recorded, since every instance's Backdrop sites run it. A failed
+# attempt leaves no webform/ behind.
+_o_contrib_backdrop_webform_get() {
+  local _dst="$1" _tgz="webform-${_WEBFORM_B_TAG}.tar.gz" _try
+  for _try in 1 2 3; do
+    rm -rf "${_dst}/webform" "${_dst}/${_tgz}"
+    if curl ${_crlGet} "${_urlDev}/${_tRee}/contrib/${_tgz}" -o "${_dst}/${_tgz}" \
+      && gzip -t "${_dst}/${_tgz}" &> /dev/null \
+      && tar -xzf "${_dst}/${_tgz}" -C "${_dst}" --no-same-owner \
+      && [ -e "${_dst}/webform/webform.info" ] \
+      && [ -e "${_dst}/webform/webform.module" ]; then
+      rm -f "${_dst}/${_tgz}"
+      chown -R root:root "${_dst}/webform" &> /dev/null
+      find "${_dst}/webform" -type d -exec chmod 0755 {} \; &> /dev/null
+      find "${_dst}/webform" -type f -exec chmod 0644 {} \; &> /dev/null
+      return 0
+    fi
+    [ "${_try}" -lt 3 ] && sleep 9
+  done
+  rm -rf "${_dst}/webform" "${_dst}/${_tgz}"
+  return 1
+}
+
+#
+# Replace the webform member of one o_contrib_backdrop bundle ($1, platform
+# generation $2) with the _WEBFORM_B_TAG release. The new tree is fetched into
+# a stage dir under ${_D} named for the generation (a hidden dir inside the
+# bundle would be scanned as a second module by the sites) and renamed in only
+# once complete; a failed fetch leaves the member the sites run as it was. A
+# stage still holding the old tree while the bundle has none is kept for
+# _satellite_restore_o_contrib_backdrop_webform.
 _satellite_refresh_o_contrib_backdrop_webform() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_refresh_o_contrib_backdrop_webform $1"
     _debug_proc
   fi
-  local _bnd="$1" _stg
+  local _bnd="$1" _gen="$2" _stg
   [ -d "${_bnd}/webform" ] && [ ! -L "${_bnd}/webform" ] || return 0
-  _stg=$(mktemp -d "${_D}/.webform-stage.XXXXXX") || return 1
-  if ( cd "${_stg}" && _get_dev_contrib "webform-${_WEBFORM_B_TAG}.tar.gz" ) \
-    && [ -e "${_stg}/webform/webform.info" ]; then
+  _stg=$(mktemp -d "${_D}/.webform-stage.${_gen}.XXXXXX") || return 1
+  if _o_contrib_backdrop_webform_get "${_stg}"; then
     echo update > ${_stg}/webform/ver-${_WEBFORM_B_TAG}.info
-    find ${_stg}/webform -type d -exec chmod 0755 {} \; &> /dev/null
-    find ${_stg}/webform -type f -exec chmod 0644 {} \; &> /dev/null
-    if mv "${_bnd}/webform" "${_stg}/prev" \
-      && mv "${_stg}/webform" "${_bnd}/webform"; then
-      _msg "${_STATUS} A: o_contrib_backdrop webform ${_WEBFORM_B_TAG} in ${_bnd}"
-    else
-      [ ! -e "${_bnd}/webform" ] && [ -d "${_stg}/prev" ] \
-        && mv "${_stg}/prev" "${_bnd}/webform"
-      _msg "${_STATUS} A: o_contrib_backdrop webform swap failed in ${_bnd}, kept"
+    if mv "${_bnd}/webform" "${_stg}/prev"; then
+      if mv "${_stg}/webform" "${_bnd}/webform"; then
+        _msg "${_STATUS} A: o_contrib_backdrop webform ${_WEBFORM_B_TAG} in ${_bnd}"
+      else
+        mv "${_stg}/prev" "${_bnd}/webform"
+        _msg "${_STATUS} A: o_contrib_backdrop webform swap failed in ${_bnd}, kept"
+      fi
     fi
   else
     _msg "${_STATUS} A: webform-${_WEBFORM_B_TAG} not fetched, ${_bnd} keeps its webform"
   fi
-  rm -rf "${_stg}"
+  if [ -e "${_bnd}/webform" ] || [ ! -d "${_stg}/prev" ]; then
+    rm -rf "${_stg}"
+  fi
+}
+
+#
+# A pass stopped between the two renames of a refresh leaves the bundle ($1,
+# generation $2) without webform/ and the old tree in the generation's stage:
+# put it back. Stages of a bundle that has its webform/ are leftovers.
+_satellite_restore_o_contrib_backdrop_webform() {
+  local _bnd="$1" _gen="$2" _s
+  for _s in ${_D}/.webform-stage.${_gen}.*; do
+    [ -d "${_s}" ] || continue
+    if [ ! -e "${_bnd}/webform" ] && [ -e "${_s}/prev/webform.info" ] \
+      && mv "${_s}/prev" "${_bnd}/webform"; then
+      _msg "${_STATUS} A: o_contrib_backdrop webform put back in ${_bnd}"
+    fi
+    [ -e "${_bnd}/webform" ] && rm -rf "${_s}"
+  done
 }
 
 
@@ -2882,10 +2935,27 @@ _satellite_check_fix_o_contrib() {
       || [ ! -d "${_CORE}/o_contrib_backdrop/webform" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_backdrop forced upgrade..."
+      # The webform the sites run waits in a stage of this generation while
+      # the bundle is rebuilt, and comes back if the new one was not fetched
+      # (_satellite_restore_o_contrib_backdrop_webform on an interrupted pass).
+      _bdKeep=""
+      if [ -d "${_CORE}/o_contrib_backdrop/webform" ] \
+        && [ ! -L "${_CORE}/o_contrib_backdrop/webform" ]; then
+        _bdKeep=$(mktemp -d "${_D}/.webform-stage.${_CORE##*/}.XXXXXX") \
+          && mv "${_CORE}/o_contrib_backdrop/webform" "${_bdKeep}/prev" \
+          || _bdKeep=""
+      fi
       cd ${_CORE}/o_contrib_backdrop
       rm -rf ${_CORE}/o_contrib_backdrop/*
       _satellite_download_o_contrib_backdrop
       cd ${_CORE}/o_contrib_backdrop
+      if [ -n "${_bdKeep}" ]; then
+        if [ ! -e "${_CORE}/o_contrib_backdrop/webform" ] && [ -d "${_bdKeep}/prev" ]; then
+          mv "${_bdKeep}/prev" "${_CORE}/o_contrib_backdrop/webform"
+          _msg "${_STATUS} A: o_contrib_backdrop keeps its previous webform"
+        fi
+        rm -rf "${_bdKeep}"
+      fi
     fi
   fi
   if [ ! -e "${_D}/000/modules/cache_backport/update-${_xSrl}-${_X_VERSION}.info" ]; then
@@ -2942,6 +3012,7 @@ _satellite_check_fix_o_contrib() {
       cd ${_D}/000/modules
       rm -rf ${_D}/000/modules/redis_backdrop
       _get_dev_contrib "redis_backdrop-${_REDIS_B_VERSION}.tar.gz"
+      chown -R root:root ${_D}/000/modules/redis_backdrop &> /dev/null
       echo update > ${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info
     fi
   fi
