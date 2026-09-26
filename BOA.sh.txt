@@ -2004,13 +2004,14 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f69
 
   # Re-fetch trigger for the current lshell.conf. The sentinel MUST be a
-  # literal that exists in the shipped file (here the env_path line that puts
-  # /opt/local/bin on lshell's PATH), and should be one the previous template
-  # lacks, so a box that stamped the new serial on stale bytes fetches again.
+  # literal that exists in the shipped file (here the comment that opens the
+  # ltd-shell-more section, which no pass edits), and should be one the
+  # previous template lacks, so a box that stamped the new serial on stale
+  # bytes fetches again.
   # A sentinel that can never match would drop the ctrl and re-fetch this
   # security-critical file on EVERY pass, on every box, forever -- the ctrl
   # mechanism exists to prevent exactly that (as-shipped E2E catch).
-  if ! grep -q "^env_path[[:space:]]*: '/opt/local/bin'" /var/xdrago/conf/lshell.conf; then
+  if ! grep -q "^##  the only group that runs PHP by name" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
     # The template that arrives carries node, npm, npx and scp; the plan check
     # below strips them again, but only once per release serial. Dropping its
@@ -2022,7 +2023,7 @@ _update_agents() {
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/lshell.ctrl.f82.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/lshell.ctrl.f81.${_tRee}.${_xSrl}.pid" ]; then
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
@@ -2031,7 +2032,7 @@ _update_agents() {
       if [ -e "/var/xdrago/conf/lshell.conf" ]; then
         chmod 644 /var/xdrago/conf/lshell.conf
         chown root:root /var/xdrago/conf/lshell.conf
-        touch ${_pthLog}/lshell.ctrl.f82.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/lshell.ctrl.f81.${_tRee}.${_xSrl}.pid
       else
         mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
       fi
@@ -4902,7 +4903,7 @@ CSFSTANDBY
     # tail-anchored sentinel refuses a wrong OR truncated payload before it
     # can reach client shells -- websh invokes its dash forwarder near EOF,
     # so the token must keep living in websh's last 4 KiB.
-    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f76 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
+    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f75 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
     _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f99 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
   fi
 
