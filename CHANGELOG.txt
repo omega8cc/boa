@@ -649,6 +649,17 @@
 
 @=> Important Fixes
 
+    * A site-local Drush started by its own path, which is how Drush 12
+      and 13 run their child processes (updatedb, deploy), now runs on
+      the PHP the account chose, where it ran on the server default PHP
+      through the script's own "env php" line.
+    * A shell account's drush line is judged by its command word only:
+      a Drush line piped into a grep for "config", and sql-cli, which
+      stays allowed, are no longer refused by a check of the last word
+      of the whole line.
+    * root's /bin/sh refuses a line that runs Drush, not one that only
+      names it (grep -c drush FILE was refused).
+
     * The install markers of Drush 8, 10 and 11 and bee in /opt/tools no
       longer pile up, one per release: each install keeps only the marker
       of the current tree and release, which is the one the next pass
