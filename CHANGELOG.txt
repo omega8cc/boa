@@ -268,6 +268,22 @@
       TLSv1.2 connected. TLSv1.2 and TLSv1.3 are what every site speaks,
       as before; a control file left behind is ignored.
 
+    * Running PHP by name is now for members of the ltd-shell-more
+      group only. For every other shell account websh refuses a command
+      whose program is a PHP interpreter (php, phpNN, php-cli, phpdbg or
+      a path to one) in a line a tool hands to /bin/sh, a Composer @php
+      script included; lshell already refused them in the shell itself.
+      Drush, vdrush, bee and Composer keep running on the PHP the account
+      chose, and a Drush launcher at the head of a line runs on that PHP
+      whatever interpreter it names; a Composer @composer script and grav
+      composer run Composer on the named /opt/phpNN/bin/php build.
+      websh also takes the account from the
+      process, not from USER, and refuses an option between -c and the
+      command string for a shell account. A member's php56, php74 and
+      php81 to php85 commands run in the limited shell again: the
+      group's list now carries the /opt/phpNN/bin/php paths the aliases
+      expand to.
+
 @=> New Features
 
     * New ~/static/control/cli-per-platform.info gives one platform its
