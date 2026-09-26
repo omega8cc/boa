@@ -90,6 +90,11 @@ changes it, so distribution, core and name stay and the rebuild replaces the pub
 copy unless it adds advisories or cannot be checked for them. Their core minors are
 past security support, so core advisories remain.
 
+EzContent's JavaScript libraries (Dropzone, Colorbox, Slick, from asset-packagist) also
+move, same versions, to `web/libraries/`, where the modules look for them: without
+Dropzone's library there, its requirement check stops `updatedb` after a clone or
+migration of an EzContent site.
+
 CK2 resolves one package from a
 GitHub repository; when GitHub refuses anonymous requests (rate limit), its row says
 so, and a GitHub token lifts the limit.
@@ -107,12 +112,14 @@ at the start of every run. The token goes into that home, set as the build user:
 
 A dependency release that breaks the distributions is held out of every build that
 resolves its own dependencies: `_COMPOSER_CONFLICTS` in staticbuild writes a root
-`conflict` into each build's `composer.json`. It holds `twig/twig` below 3.30 today:
-Twig 3.30.0 breaks every page of the Drupal 10 and 11 releases published before
-Drupal's own fix (drupal.org issue 3625969), because the compiled templates call
-Twig's escaper with the argument list of Drupal's escape filter. The hold is lifted
-once every catalogue core carries that fix. varbase, installed from upstream's lock,
-and the vanilla cores, whose `drupal/core-recommended` pins Twig, are not affected.
+`conflict` into each build's `composer.json`.
+
+It holds `twig/twig` below 3.30 today: Twig 3.30.0 breaks every page of the Drupal
+10 and 11 releases published before Drupal's own fix (drupal.org issue 3625969),
+because the compiled templates call Twig's escaper with the argument list of Drupal's
+escape filter. The hold is lifted once every catalogue core carries that fix. varbase,
+installed from upstream's lock, and the vanilla cores, whose `drupal/core-recommended`
+pins Twig, are not affected.
 
 Every published tarball records root as its owner (`--owner=0 --group=0
 --numeric-owner`): BOA unpacks some of them as root into trees every instance shares,
@@ -367,7 +374,9 @@ Five artefacts, always rebuilt at the latest upstream tag (pin any with the matc
   the first curated `o_contrib_backdrop` bundle member beyond the cache module (2026-09).
   Packaged versioned as `webform-<tag>.tar.gz` (the publish name drops the `_backdrop`
   suffix) wrapping a `webform/` directory, published to the per-tree contrib shelf
-  `/var/www/static/dev/{dev,lts,pro}/contrib`. A plain bundle member — extracted into
+  `/var/www/static/dev/{dev,lts,pro}/contrib`.
+
+  A plain bundle member — extracted into
   `o_contrib_backdrop` directly, no shared-store symlink, no cnf pin — fetched by the
   satellite side by the release `_WEBFORM_B_TAG` names in `lib/functions/satellite.sh.inc`
   (not in `OCTOPUS.sh.txt`/`BOA.sh.txt`): bump it after publishing a newer tag, and the
