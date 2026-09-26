@@ -568,11 +568,9 @@ _run_as_o8() {
   # drush when the distro template already dev-requires it (drupal/cms 2.1.3+) prompts
   # "Do you want to move this requirement?" and hangs the build; non-interactive
   # composer skips the prompt and performs the move.
-  # COMPOSER_HOME, COMPOSER_CACHE_DIR: the ltd worker removes .cache/composer,
-  # .config/composer and .composer from every Octopus account on each pass, which
-  # took a git mirror away between Composer's download and install steps and failed
-  # the build, and never let a GitHub token stay. The build keeps both under names
-  # the worker leaves alone.
+  # COMPOSER_HOME, COMPOSER_CACHE_DIR: the build's own, apart from the account's.
+  # Aegir tasks run Composer as the same user, and the build clears its cache at
+  # the start of every run. A GitHub token for the build goes into this home.
   su -s /bin/bash - "${_O8_USER}" -c "export COMPOSER_NO_INTERACTION=1 COMPOSER_HOME='${_STATIC_ROOT}/${_O8_USER}/.config/staticbuild-composer' COMPOSER_CACHE_DIR='${_STATIC_ROOT}/${_O8_USER}/.cache/staticbuild-composer'; $1"
 }
 
