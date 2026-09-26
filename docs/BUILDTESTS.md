@@ -92,7 +92,16 @@ past security support, so core advisories remain.
 
 CK2 resolves one package from a
 GitHub repository; when GitHub refuses anonymous requests (rate limit), its row says
-so, and a GitHub token in the build user's Composer configuration lifts the limit.
+so, and a GitHub token lifts the limit.
+
+staticbuild runs Composer with its own home and cache in the build user's home,
+`~/.config/staticbuild-composer` and `~/.cache/staticbuild-composer`: the limited-shell
+worker removes `.config/composer` and `.cache/composer` from every Octopus account every few
+minutes. The token goes into that home, set as the build user:
+
+```sh
+  COMPOSER_HOME=~/.config/staticbuild-composer composer config -g github-oauth.github.com <token>
+```
 
 ### Advisories: audited, not blocked
 
@@ -266,7 +275,7 @@ Distributions, published to `/var/www/static/distro`:
 
 ```sh
   commerce_kickstart-5.1.0-11.4.7
-  drupal_cms_installer-2.1.6-11.4.7
+  drupal_cms_installer-2.2.0-11.4.7
   farm-4.0.6-11.3.17
   localgov-4.0.5-11.4.7
   openculturas-3.0.8-11.3.17
@@ -411,6 +420,8 @@ published to `/var/www/static/core`:
 
 ```sh
   su -s /bin/bash - o8
+  export COMPOSER_HOME=~/.config/staticbuild-composer
+  export COMPOSER_CACHE_DIR=~/.cache/staticbuild-composer
   mkdir -p ~/static/MONTH-DAY/
   cd ~/static/MONTH-DAY/
   composer clearcache
@@ -452,8 +463,8 @@ farmos     # farm-4.0.6-11.3.17  (farmOS caps core at 11.3)
 ```
 
 ```sh
-cms        # composer create-project drupal/cms drupal_cms_installer-2.1.6-11.4.7 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.1.6-11.4.7
+cms        # composer create-project drupal/cms drupal_cms_installer-2.2.0-11.4.7 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.2.0-11.4.7
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer update --no-install --no-scripts

@@ -2472,7 +2472,7 @@ _satellite_download_o_contrib_backdrop() {
   ### Plain bundle members extract into the bundle dir itself, so they MUST
   ### run before the redis block below, whose fetch-needed branch cd's into
   ### the shared store and never returns (same ordering as o_contrib_eleven).
-  _get_dev_contrib "webform-1.x-4.26.5.tar.gz"
+  _get_dev_contrib "webform-1.x-4.26.6.tar.gz"
   if [ ! -L "./redis_backdrop" ]; then
     ln -sfn ${_D}/000/modules/redis_backdrop redis_backdrop
   fi
