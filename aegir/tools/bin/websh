@@ -107,8 +107,11 @@ _drush_segments() {
   # token is a leading word (skipped below) and anywhere else it is drush's
   # own argument, where a split would hide the option words behind it.
   # Chunked on the special characters rather than walked one character at
-  # a time: the walk was quadratic in the line length.
-  local _s="$1" _out="" _c
+  # a time: the walk was quadratic in the line length. With $2 = keep, a
+  # blank inside quotes or after a backslash becomes \001, so a quoted word
+  # stays one word for a reader that splits on blanks.
+  local _s="$1" _out="" _c _k=""
+  [ "$2" = "keep" ] && _k=$'\001'
   while [ -n "${_s}" ]; do
     _c="${_s%%[${_DR_SP}\\]*}"
     _out+="${_c}"
@@ -119,24 +122,30 @@ _drush_segments() {
     case "${_c}" in
       "'")
         _c="${_s%%\'*}"
-        _out+="${_c}"
         _s="${_s:${#_c}+1}"
+        [ -n "${_k}" ] && _c="${_c//[[:blank:]]/${_k}}"
+        _out+="${_c}"
         ;;
       '"')
         while [ -n "${_s}" ]; do
           _c="${_s%%[\"\\]*}"
-          _out+="${_c}"
           _s="${_s:${#_c}}"
+          [ -n "${_k}" ] && _c="${_c//[[:blank:]]/${_k}}"
+          _out+="${_c}"
           [ -n "${_s}" ] || break
           _c="${_s:0:1}"
           _s="${_s:1}"
           [ "${_c}" = '"' ] && break
-          _out+="${_s:0:1}"
+          _c="${_s:0:1}"
+          [ -n "${_k}" ] && _c="${_c//[[:blank:]]/${_k}}"
+          _out+="${_c}"
           _s="${_s:1}"
         done
         ;;
       '\')
-        _out+="${_s:0:1}"
+        _c="${_s:0:1}"
+        [ -n "${_k}" ] && _c="${_c//[[:blank:]]/${_k}}"
+        _out+="${_c}"
         _s="${_s:1}"
         ;;
       '&')
@@ -218,11 +227,18 @@ _drush_launcher() {
 # and word-split the rest, so provision's cd-and-exec form -- cd PLATFORM &&
 # composer require drush/drush -- ran composer with the command "cd"
 # (measured: Command "cd" is not defined) and never installed anything.
-_CO_REST=""; _CO_PRE=""; _CO_CD=""
+# For a tenant outside [grp:ltd-shell-more] the interpreter form Composer
+# and Grav spell -- a php token, Composer's own -d ini words, then
+# /usr/local/bin/composer (@composer, grav composer) -- is read as a
+# composer line too (_CO_PHP set): websh launches it itself, on the named
+# PHP when that is one of the server's /opt/phpNN/bin/php builds, else on
+# the account's, and the -d words are dropped.
+_CO_REST=""; _CO_PRE=""; _CO_CD=""; _CO_PHP=""
 _RE_COLEAD='^[[:space:]]*composer[[:space:]]+(.*)$'
+_RE_COPHP="^${_RE_LAPHP}((-d[[:space:]]*[A-Za-z_.]+=('[^']*'|[^[:space:]']*)[[:space:]]+)*)('?(/usr/local/bin/composer|/usr/bin/composer)'?)[[:space:]]+(.*)\$"
 _composer_lead() {
   local _s="$1"
-  _CO_REST=""; _CO_PRE=""; _CO_CD=""
+  _CO_REST=""; _CO_PRE=""; _CO_CD=""; _CO_PHP=""
   if [[ "${_s}" =~ ${_RE_SETM} ]]; then
     _s="${_s#"${BASH_REMATCH[0]}"}"
   fi
@@ -236,6 +252,12 @@ _composer_lead() {
   done
   if [[ "${_s}" =~ ${_RE_COLEAD} ]]; then
     _CO_REST="${BASH_REMATCH[1]}"
+    return 0
+  fi
+  if _is_tenant && ! _php_member && [[ "${_s}" =~ ${_RE_COPHP} ]] \
+    && _quotes_balance "${BASH_REMATCH[1]}" && _quotes_balance "${BASH_REMATCH[6]}"; then
+    _CO_PHP="${BASH_REMATCH[2]}"
+    _CO_REST="${BASH_REMATCH[8]}"
     return 0
   fi
   _CO_PRE=""; _CO_CD=""
@@ -598,6 +620,99 @@ _drush_refused_say() {
 _is_tenant() {
   [[ "${_LTD_UID}" == *.ftp ]] || _in_grp lshellg || _in_grp ltd-shell || _in_grp ltd-shell-more
 }
+# Running a PHP interpreter by name is for [grp:ltd-shell-more] members only,
+# the one shell group whose policy offers phpNN, and only while the box's
+# shell policy carries those aliases (/etc/lshell.conf; the PHP-CLI strip,
+# _fix_php_in_lshell_access, removes them when it is called). Every other
+# tenant gets PHP through the drush, vdrush, bee and composer launches websh
+# makes itself, on the version the account chose.
+_php_word() {
+  case "${1##*/}" in
+    php|php[0-9][0-9]|php[0-9].[0-9]|php-cgi*|php-cli*|phpdbg*) return 0 ;;
+  esac
+  return 1
+}
+_php_member() {
+  local _lc=""
+  _in_grp ltd-shell-more || return 1
+  { _lc=$(< /etc/lshell.conf); } 2> /dev/null
+  [[ "${_lc}" == *"':'/opt/php"[0-9][0-9]"/bin/php'"* ]]
+}
+_php_direct_refused() {
+  # $1 = the line as received; true when one of its simple commands names a
+  # PHP interpreter as the program it runs. The line is split the way dash
+  # splits it (_drush_segments, a quoted word kept whole); in each segment
+  # assignment words, redirections, leading shell words and wrapper words
+  # with their options are passed over, and the word left is the program.
+  # env -S hands its value on as a command line, read the same way. The
+  # interpreter of a Drush or Composer launch at the head of the line is not
+  # one: the dispatch below replaces it with the account's own.
+  local _line="$1" _seg _w _i _n _wrap _skip
+  local -a _ws
+  if _drush_launcher "${_line}"; then
+    _line="${_LA_CD}${_LA_PRE}drush.php ${_LA_REST}"
+  elif _composer_lead "${_line}" && [ -n "${_CO_PHP}" ]; then
+    _line="${_CO_CD}${_CO_PRE}composer ${_CO_REST}"
+  fi
+  while IFS= read -r _seg; do
+    read -r -a _ws <<< "${_seg}"
+    _n=${#_ws[@]}
+    _i=0
+    _wrap=""
+    _skip=NO
+    while [ "${_i}" -lt "${_n}" ]; do
+      _w="${_ws[${_i}]//$'\001'/ }"
+      _i=$(( _i + 1 ))
+      if [ "${_skip}" = "YES" ]; then
+        _skip=NO
+        continue
+      fi
+      case "${_w}" in
+        '<'|'>'|'>>'|'<>'|'>|'|'<<'|'<<-'|'>&'|'<&'|[0-9]'<'|[0-9]'>'|[0-9]'>>'|[0-9]'<>'|[0-9]'>|'|[0-9]'>&'|[0-9]'<&')
+          _skip=YES
+          continue
+          ;;
+        '<'*|'>'*|[0-9]'<'*|[0-9]'>'*) continue ;;
+      esac
+      [[ "${_w}" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] && continue
+      if [ -n "${_wrap}" ]; then
+        case "${_wrap}:${_w}" in
+          env:-S|env:--split-string)
+            [ "${_i}" -lt "${_n}" ] && _php_direct_refused "${_ws[${_i}]//$'\001'/ }" && return 0
+            _skip=YES
+            continue
+            ;;
+          env:-S?*|env:--split-string=*)
+            _w="${_w#-S}"
+            _php_direct_refused "${_w#--split-string=}" && return 0
+            continue
+            ;;
+          env:-u|env:--unset|env:-C|env:--chdir|nice:-n|nice:--adjustment|timeout:-s|timeout:--signal|timeout:-k|timeout:--kill-after|stdbuf:-i|stdbuf:-o|stdbuf:-e|ionice:-c|ionice:-n|ionice:-p|ionice:-P|ionice:-u|ionice:--class|ionice:--classdata)
+            _skip=YES
+            continue
+            ;;
+          # command -v/-V only looks the name up
+          command:-v|command:-V) break ;;
+          *:-*) continue ;;
+          timeout:[0-9]*) continue ;;
+        esac
+      fi
+      case "${_w}" in
+        '!'|'{'|'}'|'('|command|exec|nohup|time|if|then|else|elif|while|until|do|setsid)
+          _wrap="${_w}"
+          continue
+          ;;
+        env|nice|timeout|stdbuf|ionice)
+          _wrap="${_w}"
+          continue
+          ;;
+      esac
+      _php_word "${_w}" && return 0
+      break
+    done
+  done < <(_drush_segments "${_line}" keep)
+  return 1
+}
 # every tenant exec site hands its final line through here
 _exec_dash_c() {
   if _is_tenant && _drush_refused "$1"; then
@@ -739,6 +854,28 @@ if [ "${1}" = "-c" ] && [ "${2}" = "--" ]; then
   set -- "-c" "$@"
 fi
 
+# The identity every policy below keys on is the process's own, never the
+# name in $USER, which the caller's environment sets.
+_LTD_GID=$(id -nG 2>&1)
+_LTD_UID=$(id -nu 2>&1)
+
+# A tenant's -c takes the command string as the next word: every check
+# below reads it there, so an option in between is not accepted.
+if [ "${1}" = "-c" ] && [[ "${2}" == [-+]* ]] && _is_tenant; then
+  echo "sh: -c takes the command string as the next word here" >&2
+  exit 2
+fi
+
+# A tenant outside [grp:ltd-shell-more] never runs PHP by name, typed or
+# spawned by a tool it runs; refused before any route below can exec it.
+if [ "${1}" = "-c" ] && _is_tenant && ! _php_member \
+  && _php_direct_refused "${2}"; then
+  echo >&2
+  echo " Running PHP directly is not available on this account." >&2
+  echo >&2
+  exit 1
+fi
+
 # Capture all arguments
 _ALL="$@"
 ### echo "_ALL is ${_ALL}"
@@ -804,6 +941,11 @@ if [ "${1}" = "-c" ] \
       _SF_SKIP=YES
       ;;
   esac
+  # a drush launcher of a tenant outside [grp:ltd-shell-more] runs on the
+  # PHP websh selects, never on the interpreter the line names
+  if _php_word "${_SF_LEAD}" && _is_tenant && ! _php_member; then
+    _SF_SKIP=YES
+  fi
   if [[ "${_SF_LEAD}" == /* ]] && [ "${_SF_SKIP}" = "NO" ]; then
     exec /bin/dash -c "${_SF_ORIG}"
     exit 0
@@ -876,8 +1018,6 @@ if _composer_lead "${_ARGS}"; then
 fi
 
 _INTERNAL=NO
-_LTD_GID=$(id -nG ${USER} 2>&1)
-_LTD_UID=$(id -nu ${USER} 2>&1)
 if [ -z "${USER}" ]; then
   USER=$(id -nu ${USER} 2>&1)
   _LTD_QQQ=YES
@@ -2537,6 +2677,14 @@ if _grp_set_is "users www-data" \
           ### echo EXC 1 ${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}
           _cpp_resolve "${_C_ARR}" composer "${_CO_CD}"
           _cpp_pick
+          # the interpreter form names the PHP Composer runs on (grav keeps
+          # its own floor there, @composer the parent's PHP): one of the
+          # server's builds is kept, and the launch stays websh's own
+          if [[ "${_CO_PHP}" =~ ^/opt/php([0-9][0-9])/bin/php$ ]] && [ -x "${_CO_PHP}" ]; then
+            DRUSH_PHP="${_CO_PHP}"
+            _account_ini "${BASH_REMATCH[1]}"
+            export DRUSH_PHP PHP_INI PHPRC
+          fi
           _cpp_before_exec composer
           _cpp_composer_warn
           _ini_opt composer

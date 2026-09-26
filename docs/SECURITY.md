@@ -18,6 +18,14 @@ Given that `node` can be exploited to bypass Limited Shell and pose a significan
 
 In hosted BOA environments, Node/NPM support is available only on dedicated systems such as Phantom and Cluster.
 
+# Security Considerations for Running PHP by Name
+
+Only members of the hand-assigned `ltd-shell-more` group run PHP by name. In the limited shell lshell offers them `php56`, `php74` and `php81` to `php85`; any other account typing one gets lshell's own refusal.
+
+A tool the account runs can also hand `/bin/sh` a command line, a Composer or npm script for example. There BOA's `/bin/sh` wrapper refuses, for every account outside the group, a command whose program is a PHP interpreter (`php`, `phpNN`, `php-cli`, `phpdbg` or a path to one) with "Running PHP directly is not available on this account." A Composer `@php` script entry is one of those.
+
+Drush, vdrush, bee and Composer keep working: the wrapper starts them itself on the PHP version the account chose. A Drush launcher at the head of a line that names an interpreter runs on that version too. A Composer `@composer` entry and `grav composer` run Composer on the PHP they name when it is one of the server's `/opt/phpNN/bin/php` builds. Members keep PHP by name while the box's `/etc/lshell.conf` carries the `phpNN` aliases.
+
 # BOA System Security Features Explained
 
 BOA offers a highly secure hosting environment for Ægir and Drupal sites, featuring comprehensive built-in security monitoring and autonomous attack prevention systems. Below is a list of key features that collectively provide robust protection for all hosted sites. For additional information, consider reading about [running performance or load tests](https://docs.boa.io/using/protecting-your-site/load-testing).
