@@ -266,7 +266,7 @@ Distributions, published to `/var/www/static/distro`:
 
 ```sh
   commerce_kickstart-5.1.0-11.4.7
-  drupal_cms_installer-2.1.6-11.4.7
+  drupal_cms_installer-2.2.0-11.4.7
   farm-4.0.6-11.3.17
   localgov-4.0.5-11.4.7
   openculturas-3.0.8-11.3.17
@@ -452,8 +452,8 @@ farmos     # farm-4.0.6-11.3.17  (farmOS caps core at 11.3)
 ```
 
 ```sh
-cms        # composer create-project drupal/cms drupal_cms_installer-2.1.6-11.4.7 --no-dev --no-interaction --no-install --no-scripts
-           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.1.6-11.4.7
+cms        # composer create-project drupal/cms drupal_cms_installer-2.2.0-11.4.7 --no-dev --no-interaction --no-install --no-scripts
+           # cd ~/static/MONTH-DAY/drupal_cms_installer-2.2.0-11.4.7
            # composer config --no-plugins allow-plugins true
            # composer config --no-plugins --json policy.advisories.block false
            # composer update --no-install --no-scripts
