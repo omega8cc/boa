@@ -33,6 +33,15 @@
       the close sent a QUIT and waited a second full read timeout on a
       server that had accepted the connection but answered nothing.
 
+    * A Backdrop webform release BOA moves to now reaches existing
+      o_contrib_backdrop bundles: each bundle records the release it
+      holds, and the next Octopus upgrade replaces a different one in
+      every platform generation that carries webform. The new release is
+      fetched beside the bundle and swapped in only when complete, so a
+      failed fetch leaves the bundle as it was. Webform 1.x-4.26.6 is the
+      first: it rejects files the user did not put in the form and forces
+      certain uploaded file types to download.
+
 @=> Security
 
     * A per-box root cron line in /var/xdrago/cron/custom.txt that

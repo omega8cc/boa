@@ -238,8 +238,9 @@ _REDIS_TAG=""
 # the per-tree contrib shelf as webform-<tag>.tar.gz. Unlike redis_backdrop it
 # is a plain bundle member (extracted into o_contrib_backdrop directly, no
 # shared-store symlink, no cnf pin): the satellite side fetches it by a
-# version literal, so after publishing a new tag here bump that literal in
-# lib/functions/satellite.sh.inc (_satellite_download_o_contrib_backdrop).
+# version, so after publishing a new tag here bump _WEBFORM_B_TAG in
+# lib/functions/satellite.sh.inc: every bundle holding another tag is
+# refreshed on the next upgrade pass.
 _WEBFORM_B_REPO="backdrop-contrib/webform"
 _WEBFORM_B_TAG=""
 

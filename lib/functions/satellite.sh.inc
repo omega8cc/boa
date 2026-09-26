@@ -2422,6 +2422,10 @@ _satellite_o_contrib_backdrop_update_global() {
   _RMMODULES="some_foo_bar"
 
   for i in `dir -d ${_D}/*`; do
+    if [ -d "${i}/o_contrib_backdrop/webform" ] \
+      && [ ! -e "${i}/o_contrib_backdrop/webform/ver-${_WEBFORM_B_TAG}.info" ]; then
+      _satellite_refresh_o_contrib_backdrop_webform "${i}/o_contrib_backdrop"
+    fi
     if [ -e "${i}/o_contrib_backdrop" ] \
       && [ ! -e "${i}/o_contrib_backdrop/update-${_xSrl}-${_X_VERSION}.info" ]; then
       _FORCE_UP_BACKDROP=YES
@@ -2453,13 +2457,18 @@ _satellite_o_contrib_backdrop_update_global() {
 
 
 #
+# The Backdrop webform release every o_contrib_backdrop bundle carries: bumped
+# when a new tag is published to the contrib shelves. A bundle records the tag
+# it holds (webform/ver-<tag>.info); a bundle holding another one is refreshed
+# on the next upgrade pass (_satellite_refresh_o_contrib_backdrop_webform).
+_WEBFORM_B_TAG="1.x-4.26.6"
+
+#
 # Download o_contrib_backdrop. The bundle carries the Backdrop-native contrib
 # BOA maintains for every Backdrop platform; like the D6/D7 bundles the redis
 # integration is a symlink into the single shared /data/all/000/modules copy,
 # created here at download time so a fresh space is never redis-less. Plain
-# curated members (webform since 2026-09) extract into the bundle dir the
-# o_contrib_eleven way: version literal here, bumped when a new tag is
-# published to the contrib shelves.
+# curated members (webform since 2026-09) extract into the bundle dir.
 _satellite_download_o_contrib_backdrop() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_download_o_contrib_backdrop"
@@ -2472,7 +2481,8 @@ _satellite_download_o_contrib_backdrop() {
   ### Plain bundle members extract into the bundle dir itself, so they MUST
   ### run before the redis block below, whose fetch-needed branch cd's into
   ### the shared store and never returns (same ordering as o_contrib_eleven).
-  _get_dev_contrib "webform-1.x-4.26.6.tar.gz"
+  _get_dev_contrib "webform-${_WEBFORM_B_TAG}.tar.gz"
+  [ -e "./webform/webform.info" ] && echo update > ./webform/ver-${_WEBFORM_B_TAG}.info
   if [ ! -L "./redis_backdrop" ]; then
     ln -sfn ${_D}/000/modules/redis_backdrop redis_backdrop
   fi
@@ -2485,6 +2495,39 @@ _satellite_download_o_contrib_backdrop() {
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+}
+
+#
+# Replace the webform member of one o_contrib_backdrop bundle ($1) with the
+# _WEBFORM_B_TAG release. The new tree is fetched into a stage dir under
+# ${_D} (a hidden dir inside the bundle would be scanned as a second module by
+# the sites) and renamed in only once complete; a failed fetch leaves the
+# member the bundle's sites run as it was.
+_satellite_refresh_o_contrib_backdrop_webform() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_refresh_o_contrib_backdrop_webform $1"
+    _debug_proc
+  fi
+  local _bnd="$1" _stg
+  [ -d "${_bnd}/webform" ] && [ ! -L "${_bnd}/webform" ] || return 0
+  _stg=$(mktemp -d "${_D}/.webform-stage.XXXXXX") || return 1
+  if ( cd "${_stg}" && _get_dev_contrib "webform-${_WEBFORM_B_TAG}.tar.gz" ) \
+    && [ -e "${_stg}/webform/webform.info" ]; then
+    echo update > ${_stg}/webform/ver-${_WEBFORM_B_TAG}.info
+    find ${_stg}/webform -type d -exec chmod 0755 {} \; &> /dev/null
+    find ${_stg}/webform -type f -exec chmod 0644 {} \; &> /dev/null
+    if mv "${_bnd}/webform" "${_stg}/prev" \
+      && mv "${_stg}/webform" "${_bnd}/webform"; then
+      _msg "${_STATUS} A: o_contrib_backdrop webform ${_WEBFORM_B_TAG} in ${_bnd}"
+    else
+      [ ! -e "${_bnd}/webform" ] && [ -d "${_stg}/prev" ] \
+        && mv "${_stg}/prev" "${_bnd}/webform"
+      _msg "${_STATUS} A: o_contrib_backdrop webform swap failed in ${_bnd}, kept"
+    fi
+  else
+    _msg "${_STATUS} A: webform-${_WEBFORM_B_TAG} not fetched, ${_bnd} keeps its webform"
+  fi
+  rm -rf "${_stg}"
 }
 
 
