@@ -164,9 +164,11 @@ _drush_segments() {
 # as separate words -- a server verify's --http_restart_cmd='sudo
 # /etc/init.d/nginx reload' saved the alias with 'sudo' alone and provision
 # never reloaded nginx again from that alias (measured 2026-09-08) -- and a
-# quoted * was expanded against the cwd. The backend child that arrives with
-# a quoted --php prefix took the verbatim fast lane above and was never hit;
-# the bare-php launcher was.
+# quoted * was expanded against the cwd. Drush 8 writes a backend child's
+# --php prefix unquoted when it is a plain path such as /opt/phpNN/bin/php
+# (drush_escapeshellarg keeps a safe string as it is), so the child reaches
+# the bare-php launcher here; only a quoted prefix would take the verbatim
+# fast lane above.
 _LA_PATH=""; _LA_REST=""; _LA_RM=""; _LA_PRE=""; _LA_CD=""
 _RE_CD='^[[:space:]]*cd[[:space:]]+[^[:space:];&|]+[[:space:]]*(&&|;)[[:space:]]*'
 # a token may be single-quoted as escapeshellarg spells it; the quotes must
@@ -1043,11 +1045,33 @@ export USER=${USER}
 # static, distro, clients and backups, not tools): a refused read looked
 # like "no pin", so drush and composer fell to the box default while the
 # markers, tested by stat in static/control, kept working. static/control is
-# the tenant's own tree in every shell, so the value comes from there, with
-# the same two-digit + installed-binary validation the markers get; anything
-# else in the file, or no file, means the box default until the worker
-# rewrites it. The master keeps its own read of /var/aegir/drush/drush.php:
+# the tenant's own tree in the main login's shell, so the value comes from
+# there, with the same two-digit + installed-binary validation the markers
+# get; anything else in the file, or no file, means the box default until the
+# worker rewrites it. The master keeps its own read of /var/aegir/drush/drush.php:
 # it has no cli.info, and that shebang is where its pin lives.
+# A platform developer login's lshell sandbox holds its client's trees only:
+# its open() of a file in static/control is refused, while the name still
+# tests present (the markers work there as anywhere). For that login the ltd
+# worker keeps a copy of each control file read here -- cli.info,
+# cli-per-platform.info cut to the login's own platforms, fpm.info and
+# multi-fpm.info cut to its client's sites -- refreshed every three minutes,
+# in a root directory the login can read its own file in and list nothing.
+# _ctrl_file reads that copy only when the account's own file exists and
+# cannot be opened, so every other identity reads exactly what it did.
+_ctrl_file() {
+  # $1 = the control directory, $2 = a file name; sets _CTRL_F to the path
+  # to read, empty when there is none
+  local _cp="/var/backups/ltd/.cli/${2}/${_LTD_UID}"
+  _CTRL_F=""
+  [ -f "${1}/${2}" ] || return 0
+  if { : < "${1}/${2}"; } 2> /dev/null; then
+    _CTRL_F="${1}/${2}"
+  elif [[ "${_LTD_UID}" =~ ^[a-z0-9._-]+$ ]] && [ -f "${_cp}" ] \
+    && { : < "${_cp}"; } 2> /dev/null; then
+    _CTRL_F="${_cp}"
+  fi
+}
 # The account's own php.ini: ~/.drush/php.ini, written by the ltd worker from
 # the pinned version's template (open_basedir for the account's own trees, the
 # temp, upload and session paths under ~/.tmp) and applied by the drush
@@ -1162,6 +1186,7 @@ _cpp_phys() {
   for (( _i = 0; _i < $#; _i++ )); do
     _l="${_CPP_PP[${_i}]}"
     if [ -z "${_l}" ]; then
+      # shellcheck disable=SC2124 # a slice of one element
       _l="${@:$(( _i + 1 )):1}"
     elif [ -n "${_stp}" ] && [ "${_stp}" != "${_st}" ]; then
       case "${_l}/" in
@@ -1334,6 +1359,7 @@ _cpp_norm() {
   local _k="$1" _st="/data/disk/${_Y_USR}/static" _di="/data/disk/${_Y_USR}/distro" _h="/home/${_Y_USR}.ftp"
   _CPP_NK=""; _CPP_WHY=""
   while [[ "${_k}" == */ ]]; do _k="${_k%/}"; done
+  # shellcheck disable=SC2088 # keys as the tenant spells them, ~ literal
   case "${_k}" in
     "~/static/"*) _k="${_k#"~/static/"}" ;;
     "${_st}/"*) _k="${_k#"${_st}/"}" ;;
@@ -1367,6 +1393,8 @@ _cpp_norm() {
   fi
 }
 _CPP_NW=0; _CPP_MORE=0
+# how a message names the file (_cpp_resolve changes it for a developer login)
+_CPP_WHERE="~/static/control/cli-per-platform.info"
 _cpp_warn() {
   # $1 = a warning about the file; the first 20 are kept (each at most 400
   # characters), the rest counted
@@ -1384,7 +1412,9 @@ _cpp_match() {
   # the first 64 KiB and 200 lines are read, and at most 20 warnings of
   # bounded length are kept: the warnings travel in the environment of every
   # backend drush line, where a single string over 128 KiB would stop the
-  # exec itself.
+  # exec itself. 64 KiB in bytes whatever the locale: the ltd worker cuts the
+  # copy it keeps for a developer login the same way.
+  local LC_ALL=C
   local _txt="" _ln=0 _line _k _v _rest _best=0 _i
   local -a _ks=() _vs=() _ls=() _nks=()
   _CPP_V=""; _CPP_LN=""; _CPP_KEY=""; _CPP_WARN=""; _CPP_NW=0; _CPP_MORE=0; _CPP_TAIL=""
@@ -1446,8 +1476,11 @@ _cpp_resolve() {
   [[ "${HOME}" == /data/disk/* ]] || [[ "${HOME}" == /home/* ]] || return 0
   [[ "${_DRUSH_CLI_CTRL}" == /data/disk/* ]] || return 0
   [ "${_IS_JENKINS}" = "FALSE" ] || return 0
-  _CPP_FILE=""
-  [ -f "${_DRUSH_CLI_CTRL}/cli-per-platform.info" ] && _CPP_FILE="${_DRUSH_CLI_CTRL}/cli-per-platform.info"
+  # a developer login has no ~/static of its own: the file is its main login's
+  [ -d "${HOME}/static/control" ] \
+    || _CPP_WHERE="the main login's ~/static/control/cli-per-platform.info"
+  _ctrl_file "${_DRUSH_CLI_CTRL}" cli-per-platform.info
+  _CPP_FILE="${_CTRL_F}"
   _cpp_target "$1" "$2" "$3"
   [ -n "${_CPP_FILE}" ] || return 0
   _cpp_match "${_CPP_ROOT}"
@@ -1463,6 +1496,7 @@ _cpp_rel() {
   # $1 = a path; sets _CPP_RP to it as the tenant knows it (static/...,
   # ~/distro/...), in the alphabet _cpp_safe keeps
   local _p="$1"
+  # shellcheck disable=SC2088 # a name for messages, ~ literal
   case "${_p}" in
     "/data/disk/${_Y_USR}/static/"*) _p="static/${_p#"/data/disk/${_Y_USR}/static/"}" ;;
     "/data/disk/${_Y_USR}/distro/"*) _p="~/distro/${_p#"/data/disk/${_Y_USR}/distro/"}" ;;
@@ -1502,6 +1536,7 @@ _cpp_say() {
   # callers that read only its error_log (provision's Clone/Migrate target
   # check).
   local _m="$1" _ts _w _log _me
+  # shellcheck disable=SC2128 # _ARR holds the whole line in one element
   if [[ " ${_ARR} " =~ [[:space:]]\'?--backend ]]; then
     printf -v _ts '%(%s)T' -1
     _cpp_json "${_m}"
@@ -1602,10 +1637,10 @@ _cpp_guard() {
         _cpp_rel "${_app}"
         [ -n "${_who}" ] && _who="${_who} (${_CPP_RP})" || _who="${_CPP_RP}"
         if [ -n "${_CPP_V}" ]; then
-          _fix="Fix: change line ${_CPP_LN} of ~/static/control/cli-per-platform.info to PHP ${_fln:0:1}.${_fln:1:1} or newer."
+          _fix="Fix: change line ${_CPP_LN} of ${_CPP_WHERE} to PHP ${_fln:0:1}.${_fln:1:1} or newer."
         elif [ -n "${_sug}" ]; then
           _cpp_key "${_CPP_RP}"
-          _fix="Fix: add the line \"${_CPP_KY} ${_sug:0:1}.${_sug:1:1}\" to ~/static/control/cli-per-platform.info, or switch the account to PHP ${_fln:0:1}.${_fln:1:1} or newer."
+          _fix="Fix: add the line \"${_CPP_KY} ${_sug:0:1}.${_sug:1:1}\" to ${_CPP_WHERE}, or switch the account to PHP ${_fln:0:1}.${_fln:1:1} or newer."
         else
           _fix="No PHP ${_fln:0:1}.${_fln:1:1} or newer is installed on this server; ask your host."
         fi
@@ -1632,10 +1667,10 @@ _cpp_guard() {
   _cpp_rel "${_dr}"
   [ -n "${_who}" ] && _who="${_who} is Drupal ${_mj}.${_mn} (${_CPP_RP})" || _who="${_CPP_RP} is Drupal ${_mj}.${_mn}"
   if [ -n "${_CPP_V}" ]; then
-    _fix="Fix: change line ${_CPP_LN} of ~/static/control/cli-per-platform.info to a PHP 7 version."
+    _fix="Fix: change line ${_CPP_LN} of ${_CPP_WHERE} to a PHP 7 version."
   elif [ -n "${_sug}" ]; then
     _cpp_key "${_CPP_RP}"
-    _fix="Fix: add the line \"${_CPP_KY} ${_sug:0:1}.${_sug:1:1}\" to ~/static/control/cli-per-platform.info"
+    _fix="Fix: add the line \"${_CPP_KY} ${_sug:0:1}.${_sug:1:1}\" to ${_CPP_WHERE}"
     [[ "${_CLI_FROM}" == php[0-9][0-9].info ]] && _fix+=" (or switch back to php${_sug}.info)"
     _fix+="."
   else
@@ -1644,6 +1679,7 @@ _cpp_guard() {
   if [ "${_CPP_CTX}" = "site" ]; then
     _cpp_say "Refused before Drupal starts: ${_who}, which cannot run on PHP 8.0 or newer. This would use PHP ${_ch:0:1}.${_ch:1:1}, chosen by ${_CPP_FROM}. ${_fix}"
   fi
+  # shellcheck disable=SC2089 # message text for the task log, never run
   _CPP_WARN+="${_who}, which cannot run on PHP 8.0 or newer, and this runs on PHP ${_ch:0:1}.${_ch:1:1}, chosen by ${_CPP_FROM}; its sites' tasks will be refused. ${_fix}"$'\n'
 }
 # Every drush line, right before its exec: what chose the PHP, the guard,
@@ -1656,6 +1692,7 @@ _cpp_guard() {
 _cpp_before_exec() {
   local _w
   if [ "$1" = "drush" ] && [ "${_CPP_DONE}" != "YES" ]; then
+    # shellcheck disable=SC2128 # _ARR holds the whole line in one element
     _cpp_resolve "${_ARR}" drush "${_LA_CD:-${_DL_CD}}"
     _cpp_pick
   fi
@@ -1677,6 +1714,7 @@ _cpp_before_exec() {
   elif [ "$1" = "drush" ]; then
     BOA_CLI_PHP_FROM="${_CPP_FROM}"
     BOA_CLI_PHP_WARN="${_CPP_WARN}"
+    # shellcheck disable=SC2090 # message text for the task log, never run
     export BOA_CLI_PHP_FROM BOA_CLI_PHP_WARN
   fi
 }
@@ -1700,6 +1738,7 @@ _cpp_composer_warn() {
     /opt/php[0-9][0-9]/bin/php) _ch="${DRUSH_PHP%/bin/php}"; _ch="${_ch##*/php}" ;;
     *) return 0 ;;
   esac
+  # shellcheck disable=SC2128 # _C_ARR holds the whole line in one element
   read -r -a _ws <<< "${_C_ARR}"
   for _w in "${_ws[@]}"; do
     if [ "${_skip}" = "YES" ]; then
@@ -1718,9 +1757,11 @@ _cpp_composer_warn() {
   esac
   { _c=$(< "${_CPP_ROOT}/composer.json"); } 2> /dev/null
   [[ "${_c}" =~ \"platform\"[[:space:]]*:[[:space:]]*\{[^}]*\"php\" ]] && return 0
-  { _fpm=$(< "${_DRUSH_CLI_CTRL}/fpm.info"); } 2> /dev/null
+  _ctrl_file "${_DRUSH_CLI_CTRL}" fpm.info
+  [ -n "${_CTRL_F}" ] && { _fpm=$(< "${_CTRL_F}"); } 2> /dev/null
   _fpm="${_fpm%%$'\n'*}"; _fpm="${_fpm//[!0-9]/}"
-  { _mf=$(< "${_DRUSH_CLI_CTRL}/multi-fpm.info"); } 2> /dev/null
+  _ctrl_file "${_DRUSH_CLI_CTRL}" multi-fpm.info
+  [ -n "${_CTRL_F}" ] && { _mf=$(< "${_CTRL_F}"); } 2> /dev/null
   for _f in "${HOME}"/.drush/*.alias.drushrc.php; do
     [ -f "${_f}" ] || continue
     _nm="${_f##*/}"; _nm="${_nm%.alias.drushrc.php}"
@@ -1749,7 +1790,7 @@ _cpp_composer_warn() {
   _cpp_rel "${_CPP_ROOT}"
   _cpp_key "${_CPP_RP}"
   _cpp_safe "${_site}"
-  echo "WARNING: composer runs on PHP ${_ch:0:1}.${_ch:1:1} but ${_CPP_S} on this platform is set to PHP-FPM ${_min:0:1}.${_min:1:1} in ${_minsrc}; a package that needs PHP ${_ch:0:1}.${_ch:1:1} would make that site answer HTTP 500 \"Composer detected issues in your platform\". Add \"${_CPP_KY} ${_min:0:1}.${_min:1:1}\" to ~/static/control/cli-per-platform.info, or set config.platform.php in composer.json." >&2
+  echo "WARNING: composer runs on PHP ${_ch:0:1}.${_ch:1:1} but ${_CPP_S} on this platform is set to PHP-FPM ${_min:0:1}.${_min:1:1} in ${_minsrc}; a package that needs PHP ${_ch:0:1}.${_ch:1:1} would make that site answer HTTP 500 \"Composer detected issues in your platform\". Add \"${_CPP_KY} ${_min:0:1}.${_min:1:1}\" to ${_CPP_WHERE}, or set config.platform.php in composer.json." >&2
 }
 
 check_php_cli_version() {
@@ -1760,8 +1801,9 @@ check_php_cli_version() {
     _PHP_CLI=$(grep "/opt/php" /var/aegir/drush/drush.php 2>&1)
     _CLI_FROM="the master's Drush pin"
   else
-    _CLI_INFO="/data/disk/${_Y_USR}/static/control/cli.info"
-    if [ -f "${_CLI_INFO}" ]; then
+    _ctrl_file "/data/disk/${_Y_USR}/static/control" cli.info
+    _CLI_INFO="${_CTRL_F}"
+    if [ -n "${_CLI_INFO}" ]; then
       _CLI_VRN=$(head -c 8 "${_CLI_INFO}" 2> /dev/null | tr -cd '0-9')
       case "${_CLI_VRN}" in
         56|70|71|72|73|74|80|81|82|83|84|85)
@@ -1937,7 +1979,7 @@ if _grp_set_is "users www-data" \
               _D_SEL="${_CPP_V}"
             else
               _cpp_rel "${_CPP_ROOT}"
-              _cpp_say "Drush 11 and Drush 10 need PHP ${_D_FLOOR:0:1}.${_D_FLOOR:2:1} or newer; line ${_CPP_LN} of ~/static/control/cli-per-platform.info sets PHP ${_CPP_V:0:1}.${_CPP_V:1:1} for ${_CPP_RP}. Use drush8 there, or change the line."
+              _cpp_say "Drush 11 and Drush 10 need PHP ${_D_FLOOR:0:1}.${_D_FLOOR:2:1} or newer; line ${_CPP_LN} of ${_CPP_WHERE} sets PHP ${_CPP_V:0:1}.${_CPP_V:1:1} for ${_CPP_RP}. Use drush8 there, or change the line."
             fi
           fi
           if [ -z "${_D_SEL}" ] && [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
