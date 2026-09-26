@@ -5454,6 +5454,19 @@ _set_drush_perm() {
 }
 
 #
+# A tool's install marker for this tree and release: rm -rf DIR/* before the
+# fetch skips dotfiles, so the markers of every earlier release stayed in the
+# directory. Keep only the one just written; the checks below read that one.
+_tool_marker() {
+  local _m
+  touch "${1}/.ctrl.${_tRee}.${_xSrl}.pid"
+  for _m in "${1}"/.ctrl.*.pid; do
+    [ -e "${_m}" ] || continue
+    [ "${_m}" = "${1}/.ctrl.${_tRee}.${_xSrl}.pid" ] || rm -f "${_m}"
+  done
+}
+
+#
 # Install or update Drush 11.
 _get_drush_eleven() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5476,7 +5489,7 @@ _get_drush_eleven() {
     rm -rf /drush
   fi
   _get_dev_ext "drush-${_DRUSH_ELEVEN_VRN}.tar.gz"
-  touch /opt/tools/drush/11/.ctrl.${_tRee}.${_xSrl}.pid
+  _tool_marker /opt/tools/drush/11
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} installation complete"
   fi
@@ -5505,7 +5518,7 @@ _get_drush_ten() {
     rm -rf /drush
   fi
   _get_dev_ext "drush-${_DRUSH_TEN_VRN}.tar.gz"
-  touch /opt/tools/drush/10/.ctrl.${_tRee}.${_xSrl}.pid
+  _tool_marker /opt/tools/drush/10
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Drush ${_DRUSH_TEN_VRN} installation complete"
   fi
@@ -5534,7 +5547,7 @@ _get_drush_eight() {
     rm -rf /drush
   fi
   _get_dev_ext "drush-${_DRUSH_EIGHT_VRN}.tar.gz"
-  touch /opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid
+  _tool_marker /opt/tools/drush/8
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} installation complete"
   fi
@@ -5566,7 +5579,7 @@ _get_bee() {
     find /opt/tools/bee -type d -exec chmod 0755 {} \; &> /dev/null
     find /opt/tools/bee -type f -exec chmod 0644 {} \; &> /dev/null
     chmod 755 /opt/tools/bee/bee.php
-    touch /opt/tools/bee/.ctrl.${_tRee}.${_xSrl}.pid
+    _tool_marker /opt/tools/bee
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: bee installation complete"
     fi
