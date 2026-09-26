@@ -616,6 +616,14 @@
 
 @=> Important Fixes
 
+    * A Drupal 8+ platform added with its Platform Path at the Composer
+      project folder (composer.json there, the docroot in web/ below it)
+      now verifies. Its Verify ran on the project's own Drush from
+      vendor/bin, which runs no Ægir command, and was still marked
+      successful: no install profile was registered and no site could be
+      created on it. Ægir tasks now always run on Ægir's own Drush, and a
+      task whose command reports nothing back fails instead of passing.
+
     * xmass and xoct also require on the target the PHP versions named in
       cli-per-platform.info and the phpNN.info switch the account's
       command line runs on. A target without one of them ran that
@@ -695,6 +703,17 @@
       foreign holder of the group. Only that exact name form is accepted.
       boa cleanup purge removes the login with its account, which no
       longer leaves it behind holding the account's group.
+    * A platform developer login (<account>.<client>-dev) now runs drush,
+      vdrush and composer on the PHP its account chose in cli.info and in
+      cli-per-platform.info, and gets the composer PHP-FPM warning: its
+      limited shell cannot open the account's static/control, so websh
+      read none of those files there and ran the server's default PHP
+      (only the phpNN.info switches, which are tested by name, reached
+      it). The limited-shell worker keeps a read-only copy of each file
+      for the login, cut to its own platforms and sites and refreshed
+      every three minutes, and websh reads that copy when the account's
+      own file cannot be opened. A cli.info change reaches the login
+      within three minutes; the phpNN.info switches still apply at once.
     * A new release of one PHP version no longer rebuilds every PHP
       version after it as well. The rebuild decision of one version was
       carried on to the next, so a new 8.3 release rebuilt 8.3, 8.4 and
