@@ -863,6 +863,14 @@
       one now ends its log with the newest core's failure, not the last
       retry's.
 
+    * staticbuild holds twig/twig below 3.30 in every distribution build
+      that resolves its own dependencies: Twig 3.30.0 breaks every page of
+      the Drupal 10 and 11 releases published before Drupal's own fix, and
+      the catalogue tarballs built since its release answered 500 on a
+      fresh install. Every tarball staticbuild publishes now records root
+      as its owner: BOA unpacks some of them as root into trees shared by
+      all instances, and they recorded the build account.
+
     * A site served over HTTPS without a certificate of its own now stays
       on HTTPS through the web server's own redirects: the clean-URL
       redirect from /index.php/..., an alias redirected to the main name

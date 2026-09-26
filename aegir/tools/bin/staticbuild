@@ -322,6 +322,15 @@ _PHP_PINNED="${_PHP_83}"
 _CORE_MINORS=""
 _CORE_FLOOR="10.2"                               # oldest minor to build when auto-discovering
 _CORE_EXCLUDE="11.0"                             # minors to skip (short-lived/EOL), space-separated
+# Dependency releases no distribution build may resolve, as root composer.json conflicts
+# (package:constraint, space-separated). twig/twig 3.30.0 breaks every page of the Drupal
+# 10 and 11 releases published before Drupal's own fix: compiled templates call Twig's
+# escaper with the argument list of Drupal's escape filter (drupal.org issue 3625969,
+# twigphp/Twig issue 4952). Lift it once every catalogue core carries that fix.
+_COMPOSER_CONFLICTS="twig/twig:>=3.30"
+# Every published tarball records root as its owner: BOA unpacks some of them as root
+# into trees every instance shares, and tar run as root restores the recorded owner.
+_TAR_OWNER="--owner=0 --group=0 --numeric-owner"
 
 # Shared Composer flags. Distros stage the codebase without installing; vanilla cores
 # install immediately (they carry no post-create fix-ups).
@@ -690,6 +699,12 @@ _composer_prepare() {
   # allow and audits what ships, and "staticbuild advisories" re-checks the published
   # set against newer advisories.
   _run_as_o8 "cd '${_dir}' && composer config --no-plugins --json policy.advisories.block false" || return 1
+  # Held releases (_COMPOSER_CONFLICTS) go in as root conflicts. Decoded as objects, so
+  # an empty {} stays an object where Composer requires one.
+  local _c
+  for _c in ${_COMPOSER_CONFLICTS}; do
+    _run_as_o8 "cd '${_dir}' && php -r '\$f = \"composer.json\"; \$j = json_decode(file_get_contents(\$f)); if (!is_object(\$j)) { exit(1); } if (!isset(\$j->conflict)) { \$j->conflict = new stdClass(); } \$j->conflict->{\$argv[1]} = \$argv[2]; exit(file_put_contents(\$f, json_encode(\$j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . \"\\n\") ? 0 : 1);' '${_c%%:*}' '${_c#*:}'" || return 1
+  done
 }
 
 _composer_build() {
@@ -1976,7 +1991,7 @@ build_bee() {
   if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf .build.bee bee.tar.gz \
     && git clone -q --depth 1 --branch '${_tag}' 'https://github.com/${_BEE_REPO}.git' .build.bee \
     && rm -rf .build.bee/.git \
-    && tar -czf bee.tar.gz -C .build.bee . \
+    && tar -czf bee.tar.gz ${_TAR_OWNER} -C .build.bee . \
     && rm -rf .build.bee"; then
     _record_fail "bee"
     return 1
@@ -1997,7 +2012,7 @@ build_bdext() {
   if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf '${_d}' '${_d}.tar.gz' \
     && git clone -q --depth 1 --branch '${_tag}' 'https://github.com/${_BDEXT_REPO}.git' '${_d}' \
     && rm -rf '${_d}/.git' \
-    && tar -czf '${_d}.tar.gz' '${_d}' \
+    && tar -czf '${_d}.tar.gz' ${_TAR_OWNER} '${_d}' \
     && rm -rf '${_d}'"; then
     _record_fail "${_d}"
     return 1
@@ -2023,7 +2038,7 @@ build_redis_backdrop() {
   if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf .build.redis_backdrop redis_backdrop-*.tar.gz \
     && git clone -q --depth 1 --branch '${_tag}' 'https://github.com/${_REDIS_REPO}.git' .build.redis_backdrop \
     && rm -rf .build.redis_backdrop/.git \
-    && tar -czf 'redis_backdrop-${_tag}.tar.gz' --transform 's,^\.build\.redis_backdrop,redis_backdrop,' .build.redis_backdrop \
+    && tar -czf 'redis_backdrop-${_tag}.tar.gz' ${_TAR_OWNER} --transform 's,^\.build\.redis_backdrop,redis_backdrop,' .build.redis_backdrop \
     && rm -rf .build.redis_backdrop"; then
     _record_fail "redis_backdrop"
     return 1
@@ -2042,7 +2057,7 @@ build_webform_backdrop() {
   if ! _run_as_o8 "cd '${_DAY_DIR}' && rm -rf .build.webform_backdrop webform-*.tar.gz \
     && git clone -q --depth 1 --branch '${_tag}' 'https://github.com/${_WEBFORM_B_REPO}.git' .build.webform_backdrop \
     && rm -rf .build.webform_backdrop/.git \
-    && tar -czf 'webform-${_tag}.tar.gz' --transform 's,^\.build\.webform_backdrop,webform,' .build.webform_backdrop \
+    && tar -czf 'webform-${_tag}.tar.gz' ${_TAR_OWNER} --transform 's,^\.build\.webform_backdrop,webform,' .build.webform_backdrop \
     && rm -rf .build.webform_backdrop"; then
     _record_fail "webform_backdrop"
     return 1
@@ -2292,7 +2307,7 @@ package_batch() {
     esac
     _msg "tar: ${_name}.tar.gz"
     # A failed tar leaves a partial archive distribute would publish: remove it.
-    if ! _run_as_o8 "cd '${_DAY_DIR}' && tar -czf '${_name}.tar.gz' '${_name}'"; then
+    if ! _run_as_o8 "cd '${_DAY_DIR}' && tar -czf '${_name}.tar.gz' ${_TAR_OWNER} '${_name}'"; then
       _alrt "tar failed: ${_name}"
       _run_as_o8 "rm -f '${_DAY_DIR}/${_name}.tar.gz'"
       _rec_note "${_name}" "tar failed"
@@ -2512,7 +2527,7 @@ package_backdrop_compat() {
     && git clone -q --depth 1 --branch '${_redis_tag}' 'https://github.com/${_REDIS_REPO}.git' .compat.redis \
     && rm -rf .compat.redis/.git"; then
     _msg "tar: backdrop.tar.gz (compat, extracts to backdrop/, baked modules/redis ${_redis_tag})"
-    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf backdrop.tar.gz \
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf backdrop.tar.gz ${_TAR_OWNER} \
       --transform 's,^backdrop-${_ver},backdrop,' \
       --transform 's,^\.compat\.redis,backdrop/modules/redis,' \
       'backdrop-${_ver}' .compat.redis \
@@ -2522,7 +2537,7 @@ package_backdrop_compat() {
     _alrt "compat redis clone failed (${_redis_tag:-no tag}); backdrop.tar.gz ships without baked modules/redis this run"
     _rec_note "backdrop-${_ver}" "compat without redis"
     _msg "tar: backdrop.tar.gz (compat, extracts to backdrop/)"
-    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf backdrop.tar.gz --transform 's,^backdrop-${_ver},backdrop,' 'backdrop-${_ver}'" \
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf backdrop.tar.gz ${_TAR_OWNER} --transform 's,^backdrop-${_ver},backdrop,' 'backdrop-${_ver}'" \
       || { _alrt "tar failed: backdrop.tar.gz (compat)"; _run_as_o8 "rm -f '${_DAY_DIR}/backdrop.tar.gz'"; _rec_note "backdrop-${_ver}" "compat tarball failed"; }
   fi
 }
@@ -2546,7 +2561,7 @@ do_backdrop_family() {
   _ver="$(_backdrop_day_version)"
   if [[ -n "${_ver}" ]] && _run_as_o8 "test -d '${_DAY_DIR}/backdrop-${_ver}'"; then
     _msg "tar: backdrop-${_ver}.tar.gz"
-    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'backdrop-${_ver}.tar.gz' 'backdrop-${_ver}'" \
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'backdrop-${_ver}.tar.gz' ${_TAR_OWNER} 'backdrop-${_ver}'" \
       || { _alrt "tar failed: backdrop-${_ver}"; _run_as_o8 "rm -f '${_DAY_DIR}/backdrop-${_ver}.tar.gz'"; _rec_note "backdrop-${_ver}" "tar failed"; }
     package_backdrop_compat
   fi
@@ -2589,10 +2604,10 @@ do_grav_family() {
   _ver="$(_grav_day_version)"
   if [[ -n "${_ver}" ]] && _run_as_o8 "test -d '${_DAY_DIR}/grav-${_ver}'"; then
     _msg "tar: grav-${_ver}.tar.gz"
-    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'grav-${_ver}.tar.gz' 'grav-${_ver}'" \
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'grav-${_ver}.tar.gz' ${_TAR_OWNER} 'grav-${_ver}'" \
       || { _alrt "tar failed: grav-${_ver}"; _run_as_o8 "rm -f '${_DAY_DIR}/grav-${_ver}.tar.gz'"; _rec_note "grav-${_ver}" "tar failed"; }
     _msg "tar: grav.tar.gz (version-less compat)"
-    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf grav.tar.gz --transform 's,^grav-${_ver},grav,' 'grav-${_ver}'" \
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf grav.tar.gz ${_TAR_OWNER} --transform 's,^grav-${_ver},grav,' 'grav-${_ver}'" \
       || { _alrt "tar failed: grav compat"; _run_as_o8 "rm -f '${_DAY_DIR}/grav.tar.gz'"; _rec_note "grav-${_ver}" "compat tarball failed"; }
   fi
   mkdir -p "${_CORE_OUT}" || _die "cannot create ${_CORE_OUT}"
@@ -2624,12 +2639,12 @@ do_txp_family() {
   _ver="$(_txp_day_version)"
   if [[ -n "${_ver}" ]] && _run_as_o8 "test -d '${_DAY_DIR}/textpattern-${_ver}'"; then
     _msg "tar: textpattern-${_ver}.tar.gz"
-    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'textpattern-${_ver}.tar.gz' 'textpattern-${_ver}'" \
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf 'textpattern-${_ver}.tar.gz' ${_TAR_OWNER} 'textpattern-${_ver}'" \
       || { _alrt "tar failed: textpattern-${_ver}"; _run_as_o8 "rm -f '${_DAY_DIR}/textpattern-${_ver}.tar.gz'"; _rec_note "textpattern-${_ver}" "tar failed"; }
     # Separate tar invocation with --transform, never a copy: the compat
     # archive must EXTRACT to the unversioned directory name.
     _msg "tar: textpattern.tar.gz (version-less compat)"
-    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf textpattern.tar.gz --transform 's,^textpattern-${_ver},textpattern,' 'textpattern-${_ver}'" \
+    _run_as_o8 "cd '${_DAY_DIR}' && tar -czf textpattern.tar.gz ${_TAR_OWNER} --transform 's,^textpattern-${_ver},textpattern,' 'textpattern-${_ver}'" \
       || { _alrt "tar failed: textpattern compat"; _run_as_o8 "rm -f '${_DAY_DIR}/textpattern.tar.gz'"; _rec_note "textpattern-${_ver}" "compat tarball failed"; }
   fi
   mkdir -p "${_CORE_OUT}" || _die "cannot create ${_CORE_OUT}"
