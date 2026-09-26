@@ -844,6 +844,11 @@
       token set for the account never stayed. Project leftovers at the
       account root and a vendor/ directly in ~/static are still removed.
 
+    * The platform developer login now has a Composer home and cache of
+      its own, ~/.composer and ~/.cache/composer, made by the worker
+      inside its otherwise immutable home: its Composer ran without a
+      cache and could not keep a global setting such as a GitHub token.
+
     * staticbuild keeps its own Composer home and cache, apart from the
       account's. A build that fails on the newest core and on every older
       one now ends its log with the newest core's failure, not the last

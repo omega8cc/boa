@@ -1091,6 +1091,13 @@ _enable_chattr() {
     [ -e "/home/${_UQ}/.mkshrc" ] && rm -rf /home/${_UQ}/.mkshrc
     if [ "${_UQ}" = "${_USER}.ftp" ]; then
       [ ! -d "/home/${_UQ}/.composer" ] && su -s /bin/bash - ${_UQ} -c "mkdir ~/.composer"
+    elif [[ "${_UQ}" == "${_USER}".*"${_LTD_PLATFORM_SUFFIX}" ]]; then
+      # The platform developer login runs Composer too, and its home is
+      # immutable between passes: its Composer home and cache are made here,
+      # as the login, while the pass holds the home open.
+      if [ ! -d "/home/${_UQ}/.composer" ] || [ ! -d "/home/${_UQ}/.cache/composer" ]; then
+        su -s /bin/bash - ${_UQ} -c "mkdir -p ~/.composer ~/.cache/composer" &> /dev/null
+      fi
     else
       [ -d "/home/${_UQ}/.composer" ] && rm -rf /home/${_UQ}/.composer
     fi
