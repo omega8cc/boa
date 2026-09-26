@@ -658,6 +658,19 @@ _ltd_read_in() {
   _ltd_in_real_dir "${1}" timeout 10 dd if="./${2}" iflag=nofollow,nonblock,fullblock \
     bs=1048576 count=1 status=none 2> /dev/null
 }
+# The drushrc aliases a yml store is converted from, as one sum: every name,
+# and each file's content read as _ltd_read_in reads it. C collation keeps the
+# order the same whatever locale runs the pass. Run inside _ltd_in_real_dir.
+_ltd_alias_set_sum() {
+  local LC_ALL=C
+  local _a=""
+  for _a in ./*.alias.drushrc.php; do
+    [ -e "${_a}" ] || [ -L "${_a}" ] || continue
+    printf '%s\n' "${_a#./}"
+    timeout 10 dd if="${_a}" iflag=nofollow,nonblock,fullblock \
+      bs=1048576 count=1 status=none 2> /dev/null
+  done | md5sum | cut -d' ' -f1
+}
 _ltd_rm_in() {
   local _d="${1}"
   shift
@@ -1599,7 +1612,7 @@ _ltd_reap_account() {
   # from the real directory
   _ltd_in_real_dir "/home/${_parent}.ftp/users" rm -f -- "./${_acct}"
   rm -f "/var/backups/ltd/window/${_acct}" "/var/backups/ltd/window/${_acct}.prev"
-  rm -f "${_LTD_STATUS_DIR}/${_acct}" "/var/backups/ltd/aliases/${_acct}.md5"
+  rm -f "${_LTD_STATUS_DIR}/${_acct}" "/var/backups/ltd/.aliases/${_acct}.md5"
   echo Zombie from etc.passwd ${_acct} killed
   if [ -n "${_why}" ]; then
     [ -d /var/log/boa ] || mkdir -p /var/log/boa
@@ -2693,11 +2706,13 @@ _ltd_drush_store_after_reset() {
 # instance's own alias files, never from anything in the account's home), when
 # ~/.drush was reset, or when it is gone; the sum is recorded only for a
 # conversion that finished and produced a store, so a failed one is retried.
+# The sums sit in a dot directory, which the nightly age prune of
+# /var/backups/ltd/*/* never reaches (it made every store rebuild daily).
 _ltd_platform_alias_store() {
   local _acct="${1}"
   local _rst="${2}"
   local _hd="/home/${_acct}/.drush"
-  local _mark="/var/backups/ltd/aliases/${_acct}.md5"
+  local _mark="/var/backups/ltd/.aliases/${_acct}.md5"
   local _sum=""
   local _lnk=""
   local _src=""
@@ -2718,8 +2733,8 @@ _ltd_platform_alias_store() {
     _need=YES
   fi
   [ "${_need}" = "YES" ] || return 0
-  [ -d /var/backups/ltd/aliases ] || mkdir -p /var/backups/ltd/aliases
-  chmod 0700 /var/backups/ltd/aliases
+  [ -d /var/backups/ltd/.aliases ] || mkdir -p /var/backups/ltd/.aliases
+  chmod 0700 /var/backups/ltd/.aliases
   rm -f "${_mark}"
   chattr -i "${_hd}" 2>/dev/null
   chage -M 99999 "${_acct}" &> /dev/null
@@ -4168,28 +4183,37 @@ _manage_site_drush_alias_mirror() {
       fi
     fi
   done
-  # A converted yml alias whose drushrc alias is gone (the site was deleted):
-  # the rebuild below ran only when an alias was added or changed, so a
-  # deletion alone left the yml alias and its checksum in both stores until
-  # the next such change. The dotted form maps one to one onto a drushrc
-  # alias; the rebuild wipes its dashed twin with it. Both stores are read:
-  # the account's, and the limited-shell copy in the tenant's home (a
-  # barracuda pass can regenerate the first and leave the second behind).
-  if [ "${_isAliasUpdate}" != "YES" ]; then
-    for _ymlRoot in "${_pthParentUsr}/.drush" "/home/${_USER}.ftp/.drush"; do
-      for _yml in ${_ymlRoot}/sites/*.site.yml; do
-        # only a store file counts: a directory at such a name in the
-        # account's own store survives the rebuild's rm and would loop it
-        [ -f "${_yml}" ] && [ ! -L "${_yml}" ] || continue
-        _ymlName=$(basename "${_yml}" .site.yml)
-        case "${_ymlName}" in *.*) ;; *) continue ;; esac
-        if [ ! -e "${_ymlRoot}/${_ymlName}.alias.drushrc.php" ]; then
-          echo "Alias store ${_ymlRoot}/sites carries ${_ymlName} whose drushrc alias is gone; rebuilding the stores"
-          _isAliasUpdate=YES
-          break 2
-        fi
-      done
-    done
+  # The copy compare above sees site aliases only. The stores are also rebuilt
+  # when no finished rebuild is on record for the instance's drushrc aliases,
+  # names and content: a platform or server alias added, changed or deleted,
+  # or a site deleted. The record is root's own and never taken from a store
+  # listing. The limited-shell copy is also rebuilt when it holds alias
+  # copies but no yml alias (a conversion there failed, or the tenant emptied
+  # it); an account with no sites has nothing to convert and never needs it.
+  # Neither trigger fires again within the hour for the same aliases, so a
+  # store that keeps failing costs one rebuild an hour. The records sit in a
+  # dot directory: the nightly age prune of /var/backups/ltd/*/* never
+  # reaches it.
+  local _aliasSetDir="/var/backups/ltd/.stores"
+  local _aliasSetMark="${_aliasSetDir}/${_USER}.md5"
+  local _aliasSetTry="${_aliasSetDir}/${_USER}.try"
+  local _aliasSetSum=""
+  local _aliasSetWhy=""
+  local _aliasSetErr=""
+  local _aliasSetRc=0
+  _aliasSetSum=$(_ltd_in_real_dir "${_pthParentUsr}/.drush" _ltd_alias_set_sum)
+  if [ "${_isAliasUpdate}" != "YES" ] && [ -n "${_aliasSetSum}" ]; then
+    if [ "$(cat "${_aliasSetMark}" 2>/dev/null)" != "${_aliasSetSum}" ]; then
+      _aliasSetWhy="no finished rebuild on record for the current drushrc aliases"
+    elif compgen -G "${_ftpD}/*.alias.drushrc.php" > /dev/null \
+      && ! compgen -G "${_ftpD}/sites/*.site.yml" > /dev/null; then
+      _aliasSetWhy="the limited-shell store holds no yml alias"
+    fi
+    if [ -n "${_aliasSetWhy}" ] \
+      && [ "$(cat "${_aliasSetTry}" 2>/dev/null)" = "${_aliasSetSum}" ] \
+      && [ -n "$(find "${_aliasSetTry}" -mmin -60 2>/dev/null)" ]; then
+      _aliasSetWhy=""
+    fi
   fi
   # The alias-store rebuild wipes and regenerates ~/.drush/sites from the
   # drushrc aliases -- on a standby those arrive by rsync mid-window, and
@@ -4197,16 +4221,27 @@ _manage_site_drush_alias_mirror() {
   # everything above (users, inis, pools) already ran.
   if [ -x "/usr/bin/drush10" ] && [ "${_GHOST_REAPED}" != "YES" ] \
     && [ ! -e "/root/.standby.cnf" ]; then
-    if [ "${_isAliasUpdate}" = "YES" ] \
-      || [ ! -e "/home/${_USER}.ftp/.drush/sites/.checksums" ]; then
+    if [ "${_isAliasUpdate}" = "YES" ] || [ -n "${_aliasSetWhy}" ]; then
+      [ -n "${_aliasSetWhy}" ] \
+        && echo "Alias stores of ${_USER}: ${_aliasSetWhy}; rebuilding"
+      # Recorded before the stores are wiped, so a pass killed mid-rebuild
+      # leaves no record of a finished one; the try record holds a retry of
+      # the same aliases to once an hour.
+      [ -d "${_aliasSetDir}" ] || mkdir -p "${_aliasSetDir}"
+      chmod 0700 "${_aliasSetDir}"
+      rm -f "${_aliasSetMark}"
+      if [ -n "${_aliasSetSum}" ] \
+        && ! echo "${_aliasSetSum}" > "${_aliasSetTry}"; then
+        _aliasSetErr="${_aliasSetTry} could not be written"
+      fi
       chage -M 99999 ${_USER}.ftp &> /dev/null
       su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/*.yml"
       wait
       su -s /bin/bash - ${_USER}.ftp -c "rm -f ~/.drush/sites/.checksums/*.md5"
       wait
-      su -s /bin/bash - ${_USER}.ftp -c "drush10 core:init --yes" &> /dev/null
+      timeout -k 10 300 su -s /bin/bash - ${_USER}.ftp -c "drush10 core:init --yes" &> /dev/null
       wait
-      su -s /bin/bash - ${_USER}.ftp -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
+      timeout -k 10 300 su -s /bin/bash - ${_USER}.ftp -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
       wait
       chage -M 90 ${_USER}.ftp &> /dev/null
       ### Update Drush yml sites aliases also for Ægir system user
@@ -4214,10 +4249,41 @@ _manage_site_drush_alias_mirror() {
       wait
       su -s /bin/bash - ${_USER} -c "rm -f ~/.drush/sites/.checksums/*.md5"
       wait
-      su -s /bin/bash - ${_USER} -c "drush10 core:init --yes" &> /dev/null
+      timeout -k 10 300 su -s /bin/bash - ${_USER} -c "drush10 core:init --yes" &> /dev/null
       wait
-      su -s /bin/bash - ${_USER} -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
+      timeout -k 10 300 su -s /bin/bash - ${_USER} -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
+      _aliasSetRc=$?
       wait
+      # The rebuild is recorded as finished only when the instance's own store
+      # converted and holds its yml aliases (the limited-shell copy is the
+      # tenant's to break).
+      if [ -z "${_aliasSetSum}" ]; then
+        _ltd_notice "aliasstores-${_USER}" \
+          "Drush 9+ alias stores of ${_USER}: ${_pthParentUsr}/.drush is not a real directory" \
+          "rebuilt only when a site alias changes until it is"
+      elif [ -n "${_aliasSetErr}" ]; then
+        :
+      elif [ "${_aliasSetRc}" -eq 124 ]; then
+        _aliasSetErr="drush10 site:alias-convert timed out"
+      elif [ "${_aliasSetRc}" -eq 137 ]; then
+        _aliasSetErr="drush10 site:alias-convert timed out or was killed"
+      elif [ "${_aliasSetRc}" -ne 0 ]; then
+        _aliasSetErr="drush10 site:alias-convert exited ${_aliasSetRc}"
+      elif compgen -G "${_pthParentUsr}/.drush/*.alias.drushrc.php" > /dev/null \
+        && ! compgen -G "${_pthParentUsr}/.drush/sites/*.site.yml" > /dev/null; then
+        _aliasSetErr="the conversion wrote no yml alias"
+      elif ! echo "${_aliasSetSum}" > "${_aliasSetMark}"; then
+        _aliasSetErr="${_aliasSetMark} could not be written"
+      fi
+      if [ "${_aliasSetErr}" = "${_aliasSetTry} could not be written" ]; then
+        _ltd_notice "aliasstores-${_USER}" \
+          "Drush 9+ alias stores of ${_USER}: ${_aliasSetErr}" \
+          "rebuilt on every pass until it can be"
+      elif [ -n "${_aliasSetErr}" ]; then
+        _ltd_notice "aliasstores-${_USER}" \
+          "Drush 9+ alias stores of ${_USER} not rebuilt: ${_aliasSetErr}" \
+          "retried after an hour, or on the next pass when an alias changes"
+      fi
     fi
   fi
 }

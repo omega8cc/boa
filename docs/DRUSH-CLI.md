@@ -7,16 +7,19 @@ BOA (Barracuda Octopus Ægir) provides robust tools for managing PHP-CLI and Dru
 ## Required: Use the `oN.ftp` Limited Shell for All CLI Operations
 
 **Everything described in this document — `vdrush`, PHP-CLI version switching, Composer, and
-all other drush operations — works exclusively under the `oN.ftp` limited shell account.**
+all other drush operations — applies to the commands you type in your limited shell logins:
+`oN.ftp`, and a platform developer login (`oN.<client>-dev`) if you have one.** Both read the
+account's control files. The Ægir tasks on your account follow the same control files.
 
 BOA provisions two separate user accounts per Octopus instance:
 
-- `oN` — the main Unix user, accessible via SSH with a regular bash shell
+- `oN` — the system user that runs your Ægir tasks; it has no login shell, so nobody logs in
+  as it (on a self-hosted box root can switch to it with `su -s /bin/bash - oN`)
 - `oN.ftp` — the FTP/limited shell user, accessible via SSH with BOA's special shell wrapper
 
 The PHP-CLI version management and `vdrush` described in this document depend on BOA's
-**special shell wrapper**. Of your two logins, only the `oN.ftp` limited shell runs your
-commands through it. The wrapper also runs every Ægir task on your account, which is why the
+**special shell wrapper**. Of these two accounts only `oN.ftp` is a login, and its limited
+shell runs your commands through the wrapper. The wrapper also runs every Ægir task on your account, which is why the
 control files steer those tasks too. It reads and applies the PHP-CLI version you have
 configured via the control files described below, and makes `vdrush` available.
 
@@ -27,15 +30,14 @@ each site's PHP-FPM version — you are responsible for configuring PHP-CLI to m
 sites' PHP-FPM version using the control files, so that drush and Composer run against the
 correct PHP version.
 
-**When logged in as `oN` under bash, the commands you type do not go through the shell
-wrapper.** The PHP-CLI control files are ignored for them, `vdrush` will not behave
-correctly, and you will be running
-drush and Composer against whatever PHP version happens to be the system default. Errors
-caused by this are difficult to diagnose and are easily mistaken for server or Drupal
-problems.
+**In a bash shell as `oN` (root's `su -s /bin/bash - oN`), the commands you type do not go
+through the shell wrapper.** The PHP-CLI control files are ignored for them, `vdrush` will
+not behave correctly, and you will be running drush and Composer against whatever PHP
+version happens to be the system default. Errors caused by this are difficult to diagnose
+and are easily mistaken for server or Drupal problems.
 
-**Always connect as `oN.ftp` when running any drush or Composer command.** The `oN` bash
-account should not be used for these operations.
+**Always connect as `oN.ftp` when running any drush or Composer command.** A bash shell as
+`oN` should not be used for these operations.
 
 ---
 
@@ -57,9 +59,9 @@ BOA provides three mechanisms for managing the PHP-CLI version used in command-l
 
 In addition to the `cli.info` file, BOA supports **instant PHP-CLI switching** through **specific configuration files** located in `~/static/control/`. The filenames of these configuration files dictate the PHP version to use, and their content is irrelevant. This enables you to switch the PHP-CLI version for Drush, Composer, and other CLI operations, including Ægir tasks, instantly. The platform builds you request via `platforms.info` follow the marker too — each build resolves it once, when its run starts (on accounts force-pinned to PHP 5.6 for `path_alias_cache` the pin outranks any marker for builds).
 
-> **Reminder:** Instant PHP-CLI switching only works under the `oN.ftp` limited shell,
-> and only applies to CLI operations — it does not affect PHP-FPM. See the prerequisite
-> section above.
+> **Reminder:** Instant PHP-CLI switching applies to the commands you type in your limited
+> shell logins (`oN.ftp`, a platform developer login) and to your Ægir tasks. It only
+> applies to CLI operations — it does not affect PHP-FPM. See the prerequisite section above.
 
 #### Example Instant Switch Files:
 
@@ -96,14 +98,16 @@ If none of these instant switch files are present, the system will default to th
   value naming a version that is not installed runs your commands on the server's default
   PHP until the background helper corrects the file on its next pass.
 - This smart feature, similarly to the classic `~/static/control/cli.info`, depends on the
-  BOA special shell wrapper, which is only active under the `oN.ftp` limited shell account.
-  The wrapper reads these control files to determine which PHP-CLI version to use — without
-  it, the control files are ignored and drush runs against the system default PHP version.
-  The one exception is the platforms build requested via `platforms.info`: the build
+  BOA special shell wrapper. The wrapper is the server's `/bin/sh`: it runs the commands
+  typed in the limited shell logins (`oN.ftp`, a platform developer login) and every Ægir
+  task on the account. It reads these
+  control files to determine which PHP-CLI version to use — a command that does not go
+  through it (typed in a bash shell as `oN`) ignores the control files and runs drush
+  against the system default PHP version.
+- The one exception is the platforms build requested via `platforms.info`: the build
   machinery resolves the switch files itself, once per run, so it honours them even
   though it never passes through the shell wrapper.
-
-  The wrapper is additionally temporarily deactivated during both barracuda and octopus
+- The wrapper is additionally temporarily deactivated during both barracuda and octopus
   upgrades to not interfere with complex procedures which depend on system dash shell. For
   this reason any Drush or Composer command you execute in the limited shell account while
   barracuda or octopus upgrade is running will revert to the version defined in the
@@ -247,9 +251,11 @@ through the site's own Drush, `vdrush` (see below).
 
 If core commands such as `drush @alias cc all` work but a contributed command like
 `drush @alias elysia-cron run somecron` is *not recognised*, the usual cause is
-running Drush as the `oN` bash user instead of `oN.ftp`: the `oN` account is an Ægir
-backend identity, so the filter applies there. Reconnect as `oN.ftp` and the
-contributed commands will load. If you instead need a contributed command to run from
+running Drush in a bash shell as `oN` (root's `su -s /bin/bash - oN`) instead of as
+`oN.ftp`: the `oN` account is an Ægir backend identity, so the filter applies there. Run it
+as `oN.ftp` and the contributed commands will load.
+
+If you instead need a contributed command to run from
 an **Ægir backend task** (such as backend-mode cron), ask your host to enable it for
 your instance — see [SECURITY.md](SECURITY.md).
 
@@ -287,9 +293,9 @@ When you are done, re-lock the platform with the new 'Lock Local Drush' task —
 #### Steps to Use Site-Local Drush:
 
 > **Important:** All steps below must be performed as `oN.ftp` under the BOA limited shell,
-> not as `oN` under bash. Connecting as `oN` will result in the wrong PHP environment and
-> `vdrush` will not work correctly. If `vdrush` has not worked for you in the past, this is
-> the most likely reason.
+> not in a bash shell as `oN` (root's `su -s /bin/bash - oN`). A bash shell as `oN` gives the
+> wrong PHP environment and `vdrush` will not work correctly. If `vdrush` has not worked for
+> you in the past, this is the most likely reason.
 
 1. Run the 'Unlock Local Drush' task on the site's Platform in Ægir.
 2. Connect to your server as `oN.ftp` (not `oN`) using SSH.
