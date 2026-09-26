@@ -755,20 +755,36 @@ _ltd_alias_store_held() {
 # are moved in first and only then the names this conversion did not write
 # are removed, so a swap cut short leaves every name in place, old or new.
 # Every step runs as the login inside its own tree and root never lists it;
-# only the two Drush runs start a login shell (their PHP settings), and every
-# step is timed. $1 = login. Returns 0, the conversion's rc, 3 when it wrote
-# no yml for existing aliases, 4 when the store or its staging directory is
-# not a directory, 5 when not every file could be moved in (a directory at a
-# name included); _ltd_alias_store_why says each in words.
+# only the Drush runs start a login shell (their PHP settings), and every
+# step is timed. $1 = login; $2 = "own" for a platform developer account,
+# whose drush.yml names the store alone (written here, never core:init's)
+# and whose store is made again when it is not a real directory. Returns 0,
+# the conversion's rc, 3 when it wrote no yml for existing aliases, 4 when
+# the store or its staging directory is not a directory, 5 when not every
+# file could be moved in (a directory at a name included);
+# _ltd_alias_store_why says each in words.
 _ltd_alias_store_rebuild() {
   local _u="${1}"
+  local _own="${2}"
   local _rc=0
   # the non-login steps start from nothing of root's environment
   local _ltdPlainPath="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
   env -i PATH="${_ltdPlainPath}" timeout -k 10 60 su -s /bin/bash "${_u}" \
     -c 'rm -rf -- "${HOME}/.drush/sites/.stage"' &> /dev/null
   _ltdStoreStep=convert
-  timeout -k 10 120 su -s /bin/bash - "${_u}" -c "drush10 core:init --yes" &> /dev/null
+  if [ "${_own}" = "own" ]; then
+    env -i PATH="${_ltdPlainPath}" timeout -k 10 60 su -s /bin/bash "${_u}" <<'EOF' &> /dev/null
+cd "${HOME}/.drush" 2> /dev/null || exit 0
+if [ -L sites ] || { [ -e sites ] && [ ! -d sites ]; }; then
+  rm -f -- sites
+fi
+mkdir -p sites
+rm -rf -- drush.yml
+printf '%s\n' 'drush:' '  paths:' '    alias-path:' "      - '\${env.HOME}/.drush/sites'" > drush.yml
+EOF
+  else
+    timeout -k 10 120 su -s /bin/bash - "${_u}" -c "drush10 core:init --yes" &> /dev/null
+  fi
   timeout -k 10 120 su -s /bin/bash - "${_u}" -c "drush10 site:alias-convert ~/.drush/sites/.stage --yes" &> /dev/null
   _rc=$?
   if [ "${_rc}" -eq 0 ]; then
@@ -3143,7 +3159,9 @@ _ltd_drush_store_after_reset() {
 # login's store takes. drush.yml is written with the alias path alone. The
 # store is rebuilt when the client's aliases change (summed from the
 # instance's own alias files, never from anything in the account's home), when
-# ~/.drush was reset, or when it is gone; the sum is recorded only for a
+# ~/.drush was reset, or when it is gone; it is converted aside and put in
+# place like the other two stores (_ltd_alias_store_rebuild), so a failed
+# conversion keeps the last store, and the sum is recorded only for a
 # conversion that finished and produced a store, so a failed one is retried.
 # The sums sit in a dot directory, which the nightly age prune of
 # /var/backups/ltd/*/* never reaches (it made every store rebuild daily).
@@ -3177,25 +3195,17 @@ _ltd_platform_alias_store() {
   rm -f "${_mark}"
   chattr -i "${_hd}" 2>/dev/null
   chage -M 99999 "${_acct}" &> /dev/null
-  timeout -k 10 300 su -s /bin/bash - "${_acct}" <<'EOF' &> /dev/null
-cd "${HOME}" || exit 1
-rm -rf .drush/sites .drush/drush.yml
-mkdir -p .drush/sites
-printf '%s\n' 'drush:' '  paths:' '    alias-path:' "      - '\${env.HOME}/.drush/sites'" > .drush/drush.yml
-drush10 site:alias-convert "${HOME}/.drush/sites" --yes
-EOF
+  _ltd_alias_store_rebuild "${_acct}" own
   _rc=$?
   chage -M 90 "${_acct}" &> /dev/null
   chattr +i "${_hd}" 2>/dev/null
-  if [ "${_rc}" -eq 0 ] \
-    && { ! compgen -G "${_hd}/*.alias.drushrc.php" > /dev/null \
-      || compgen -G "${_hd}/sites/*.site.yml" > /dev/null; }; then
+  if [ "${_rc}" -eq 0 ]; then
     echo "${_sum}" > "${_mark}"
     echo "Drush 9+ alias store rebuilt for ${_acct}"
   else
     _ltd_notice "platform-aliasstore-${_acct}" \
-      "Drush 9+ alias store for ${_acct} not built (rc ${_rc})" \
-      "retried on the next pass; vdrush @alias has no aliases meanwhile"
+      "Drush 9+ alias store for ${_acct} not rebuilt" \
+      "$(_ltd_alias_store_why "${_rc}"); retried on the next pass"
   fi
 }
 #

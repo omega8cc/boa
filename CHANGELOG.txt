@@ -684,6 +684,10 @@
       on its own, a store emptied by hand is rebuilt, the nightly account
       pass leaves the rebuild to the worker instead of redoing it in place,
       and every rebuild names its cause in the worker's report.
+    * A platform developer account's Drush 9+ alias store is converted aside
+      as well: a conversion that fails keeps the account's last aliases,
+      where it used to leave vdrush without any until a retry succeeded; the
+      retry still comes on the next pass, and the notice names the cause.
     * Speed Booster no longer replays a cached 5xx while the site keeps
       failing: an error is cached for one second and refreshed, as
       designed, and a 5xx never keeps the page's cache lifetime (up to an
