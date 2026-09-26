@@ -8,7 +8,7 @@ The **security-facing** members of the same `/var/xdrago/monitor/` family — th
 
 ## The root crontab
 
-The installed root crontab lives at `/var/spool/cron/crontabs/root`. Its master copy is `aegir/tools/system/cron/crontabs/root`, copied into place on every install/upgrade. Do not hand-edit the installed file — its own header says so, and the next upgrade overwrites it. Per-box additions go in `/var/xdrago/cron/custom.txt`, which BOA appends after the copy.
+The installed root crontab lives at `/var/spool/cron/crontabs/root`. Its master copy is `aegir/tools/system/cron/crontabs/root`, copied into place on every install/upgrade. Do not hand-edit the installed file — its own header says so, and the next upgrade overwrites it. Per-box additions go in `/var/xdrago/cron/custom.txt`, which BOA appends after the copy. Before the append, a plain `chown [options] oN[.ftp]:users [options] /data/disk/oN[/...]` (every path under an account that exists on the box, then only redirections before the end of the command) takes the account's own group, `oN[.ftp]:$(id -gn oN)`, in `custom.txt` itself too: the upgrade prints a NOTE and keeps the previous file in the dragon config store, `/var/backups/dragon/config/<run>/custom.txt` (root-only, never purged). Every other form is appended as written, and a line that still hands an account's files to `users` is named in a second NOTE. A literal `:users` there would put the account's files back into the box-wide group on every run once the account has its per-instance group (see `INSTGRP.md`).
 
 | Cmd | Cadence | Role |
 |---|---|---|

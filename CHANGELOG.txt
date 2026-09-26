@@ -35,6 +35,17 @@
 
 @=> Security
 
+    * A per-box root cron line in /var/xdrago/cron/custom.txt that
+      chowns an account's directory to <account>[.ftp]:users put it back
+      into the box-wide group on every run once the account had its
+      per-instance group, so every other account's identities could read
+      what the line copied there (log copies, for one). Every barracuda
+      upgrade now rewrites the plain form, a chown whose every path is
+      /data/disk/<account> or below it, to the account's own group,
+      $(id -gn <account>), in custom.txt too, keeps the previous file in
+      the dragon config store and prints a NOTE. Every other form is
+      appended as written, and a line that still hands an account's
+      files to users is named in a second NOTE.
     * The login and admin IP lock (static/control/ip/user_admin.txt) on a
       Grav site now gates /admin (and /api) but no longer /user: that is
       Grav's public theme and media tree, and a listed Grav site refused
@@ -239,6 +250,31 @@
 
 @=> New Features
 
+    * New ~/static/control/cli-per-platform.info gives one platform its
+      own command-line PHP, one "<platform folder> <X.Y>" line each, the
+      folder written under ~/static (or pasted as its Publish path,
+      ~/distro/NNN/<name> or /data/all/...). The line outranks the
+      phpNN.info switch for drush, vdrush, bee, composer and every Ægir
+      task on that platform; everything else keeps phpNN.info, then
+      cli.info. The control panel never takes a line, BOA never writes
+      the file, and PHP-FPM is not changed by it. A line that cannot
+      apply is ignored and named in a WARNING on every tenant command and
+      in every task log.
+    * On every account, a drush command or Ægir task whose Drupal core
+      cannot run on the PHP chosen for it is refused before the PHP
+      starts, instead of dying on a PHP fatal: Drupal 7 below 7.79 or
+      Drupal 8 on PHP 8.0 or newer, and a codebase below the floor of its
+      vendor/composer/platform_check.php. The message names the PHP, the
+      file that chose it and the fix. A Clone or Migrate is checked for
+      its target before the safety copy; a platform task gets the Drupal
+      7 or 8 text as a warning.
+    * Every task log opens with the command-line PHP the task runs on and
+      the control file that chose it.
+    * Composer install, update and require warn when they run on a newer
+      PHP than a site on that platform is set to in fpm.info or
+      multi-fpm.info: a package that needs the newer PHP would make that
+      site answer HTTP 500.
+
     * xmass sync leaves a platform refresh's staging behind: the new tree
       an Octopus upgrade builds under distro/NNN/.boa-refresh/ for a few
       minutes, its tarball and failed leftovers never reach the mirror, and
@@ -341,6 +377,19 @@
 
 @=> Improvements
 
+    * A Devuan Daedalus system upgraded in place from an older release,
+      whose /bin, /sbin and /lib are still apart from /usr, is converted
+      to merged /usr by barracuda with the usrmerge package, once, early
+      in the system pass. Devuan Excalibur refuses a split system, and
+      the prebuilt packages, built on merged systems, name /usr paths a
+      split one does not have (their phpize failed every extension build
+      there). The conversion has no dry run and no way back, so it runs
+      only when a read-only forecast of convert-usrmerge's own rules is
+      clear; otherwise barracuda lists the pairs it would stop at, keeps
+      the prebuilt packages off (source builds instead) and refuses an
+      Excalibur upgrade until the system is merged. A conversion that
+      stops half way stops every later pass before its first package
+      operation until it is finished by hand.
     * codebasecheck no longer tells you to move a blocked account to a
       Percona 5.7 server: a BLOCK line and the box result now say to
       update that core, or move its sites to a newer platform on the same
@@ -546,6 +595,175 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * A drush line that also names composer, git or mysql, or starts with
+      "cd DIR &&", now runs on the PHP chosen by cli.info and the
+      phpNN.info switch; it ran on the server's default PHP.
+    * The Drush 10/11 PHP NOTE goes to stderr, where it no longer ends up
+      in drush11 ... > file, and only on a line that runs Drush 10/11.
+
+    * An fpm.info or cli.info that holds more than one PHP version (or
+      anything else than one version) is ignored again, as the docs say:
+      the two lines were joined into a version such as 8.38.4, which in
+      single-FPM mode deleted the account's pools and was written back to
+      its octopus.cnf and fpm.info, and in multi-FPM mode pointed the
+      default pool at a socket that does not exist. An instance already
+      carrying such a version is set up again on 8.4.
+    * A multi-fpm.info line whose site was not installed yet, or whose PHP
+      version or pool was not ready, is now retried every three minutes
+      until it applies (the skipped lines are listed in
+      static/control/.multi-fpm-skipped.info); it used to stay inert until
+      the file was edited again.
+    * The limited-shell worker rebuilds the Drush 9+ yml alias stores (the
+      account's and the tenant's limited-shell copy) whenever the drushrc
+      aliases differ from those the last rebuild was made from: a deleted
+      platform no longer leaves its yml alias behind, and a new or changed
+      platform or server alias no longer waits for an unrelated site change
+      to be converted. An account with no sites, or a file a tenant leaves
+      in its own ~/.drush, no longer makes the worker rebuild both stores
+      on every pass. A rebuild of the account's store that fails is
+      reported and retried hourly, and each Drush run of a rebuild is
+      stopped after five minutes. The first pass after the upgrade rebuilds
+      every account's stores once.
+    * A platform developer account's Drush 9+ alias store is no longer
+      rebuilt every day: the nightly clean-up of /var/backups/ltd removed
+      the record of its last rebuild.
+    * Speed Booster no longer replays a cached 5xx while the site keeps
+      failing: an error is cached for one second and refreshed, as
+      designed, and a 5xx never keeps the page's cache lifetime (up to an
+      hour for crawlers). A site whose PHP is down or times out still gets
+      the last good copy.
+    * On Drupal 8+ and Backdrop, the paths Speed Booster never caches
+      (/user, login, cart, checkout and the others) are no longer
+      microcached for anonymous visitors: the fallback to index.php erased
+      their skip.
+    * The Drupal 10+ platform lock no longer patches core when the Drush 8
+      psr/log template of the account is missing: it stops before the
+      patches, as for any overlay that cannot land, instead of leaving a
+      codebase the web cannot serve.
+    * The AppArmor profiles (PHP, PHP-FPM, lshell, MySecureShell, node,
+      ClamAV, Pure-FTPd) now match their binaries on a merged /usr too; in
+      enforce mode on a merged /usr they refused every exec they meant to
+      allow.
+    * AppArmor in enforce or complain mode is on again when a barracuda
+      upgrade ends: the pass loaded the profiles before its last MySQL
+      check, which unloads them all, so the box ran unconfined until it
+      was rebooted.
+    * An octopus upgrade turns AppArmor back on in the chosen mode when it
+      ends: it was left off until the next barracuda upgrade, and a reboot
+      in between loaded every profile in complain mode only.
+    * PhpRedis is built with lzf again on PHP 7.4 and newer: its 6.3.0
+      source comes without the bundled liblzf, so the build now uses the
+      system liblzf, which BOA already installs. A split /usr finds the
+      library as well.
+    * The build-tree purge switch (_DEBUG_PURGE_BUILD_TREE=YES or
+      /root/.debug-purge-build-tree.cnf) now also clears the hostmaster
+      sources in /opt/tmp/make_local, which an upgrade otherwise reuses:
+      a purged run rebuilt the control panel from the previous release.
+    * An account whose client has a platform developer login (a client
+      named in _LTD_PLATFORM_CLIENTS, login <account>.<client>-dev) no
+      longer fails its per-instance group step on every octopus upgrade
+      with "group exists and belongs to someone else": instgrp counts that
+      login as one of the account's identities, so convert and revert move
+      it with the others, status lists it, and it is never named as a
+      foreign holder of the group. Only that exact name form is accepted.
+      boa cleanup purge removes the login with its account, which no
+      longer leaves it behind holding the account's group.
+    * A new release of one PHP version no longer rebuilds every PHP
+      version after it as well. The rebuild decision of one version was
+      carried on to the next, so a new 8.3 release rebuilt 8.3, 8.4 and
+      8.5, and an update with new 8.2, 8.4 and 8.5 releases rebuilt 8.3
+      as well, carried on from 8.2, with no 8.3 release to install. Each
+      version is now rebuilt for its own reasons (a new release, an
+      OpenSSL or ICU mismatch, a missing MySQL driver or a broken build),
+      never for another version's.
+    * _PHP_FORCE_REINSTALL=YES, and _SSL_FORCE_REINSTALL, which sets it,
+      now reach every installed PHP version. A broken build found in one
+      version ended the forced rebuild before the versions after it, and
+      the extra rebuilds that add igbinary to PHP 5.6 or Sodium to
+      7.4-8.4 ended it outright, so only the versions they covered were
+      rebuilt. Those two are now skipped under a forced rebuild, which
+      covers them, so under _FULL_FORCE_REINSTALL the versions they cover
+      are no longer built twice.
+    * The first barracuda run after a major OS upgrade builds each PHP
+      version once, not twice. The marker that records a version rebuilt
+      there is now kept until that post-upgrade step ends, then removed,
+      and it is written only when the build replaced the binary and the
+      new one reports the wanted version: a build that failed is still
+      tried again in the same run, and a new release is never held back.
+    * The forced rebuild in the main PHP pass no longer rebuilds a version
+      already built earlier in the same barracuda run. Under
+      _FULL_FORCE_REINSTALL=YES a version rebuilt to fix a broken build, or
+      by a library repair that rebuilds every version, was built a second
+      time by the full reinstall. A version whose build replaced the binary
+      and reports the wanted release is now recorded for the run, and a
+      force alone skips it; a version not at the wanted release, one with
+      an OpenSSL or ICU mismatch or a missing MySQL driver, or one whose
+      last build failed, is still built. The library repairs still rebuild
+      every version, and the record starts again after the post-upgrade
+      step of the first run following a major OS upgrade.
+    * After a major OS upgrade a PHP version is no longer rebuilt again, in
+      the same run, because its FPM error log still holds the OnigEncoding
+      errors its old binary wrote. A run sweeps the logs aside at its end,
+      not after each build, so a build that replaces the binary with one
+      at the wanted release now moves that version's log aside itself,
+      under its own name, and leaves an empty log in its place. The GD and
+      freetype checks no longer rebuild a version already on the run's
+      record of built versions (see above) that still lacks them; the next
+      run checks it again.
+
+    * A Composer platform registered with its app root (its Drush
+      alias names the app root while its sites live under web/,
+      docroot/ or html/) is now read at the web root Ægir serves
+      everywhere else it mattered. The nightly ghost-site check
+      reported a site stranded on such a platform by an interrupted
+      migrate as a ghost, which could mail the client and, with
+      _GHOST_SITES_CLEANUP=YES, move its alias and vhost aside. The
+      old-empty-platform cleanup never deleted such a platform once
+      empty; it now does, like any other empty platform, wherever
+      _DEL_OLD_EMPTY_PLATFORMS applies (hosted systems default it to 60
+      days). The limited-shell Drush window could not
+      find its alias, so it never unlocked it and sent a "no platform
+      alias found" notice instead. autosymlink's NOT CLEAN explanation
+      called it a BROKEN PLATFORM, or advised deleting a site whose
+      data still sat on it. xmass did not count its sites in the
+      target-only purge inventory, and its panel alias repair judged
+      it code-less.
+    * The xmass panel alias repair no longer removes a platform alias
+      when the panel database query fails: only an answer of no such
+      context counts.
+    * codebasecheck --box no longer reports a false UNKNOWN, and so a
+      BLOCKED server, for a Composer platform registered with its app
+      root. That platform's Drush alias keeps the app root, while Ægir
+      serves the web root below it and its sites' aliases name that, so
+      the report listed the app root as UNKNOWN next to an OK web root.
+      Each alias root is now followed to the web root Ægir serves
+      (docroot/, html/ or web/ when the root has no index.php) and the
+      platform is checked once, there. codebasecheck <platform-path>
+      takes the app root the same way.
+    * The classic major OS upgrade no longer takes a server that is not
+      on Percona 8.4 to Devuan Excalibur or Debian Trixie, where Percona
+      ships only 8.4. The upgrade runs before the database step, so a
+      Daedalus server on 5.7 with _DAEDALUS_TO_EXCALIBUR=YES reached
+      Excalibur still on 5.7, and every barracuda run after the reboot
+      then stopped at the database step. On 5.7 or 8.0,
+      _DAEDALUS_TO_EXCALIBUR, _TRIXIE_TO_EXCALIBUR and
+      _BOOKWORM_TO_TRIXIE now stop the run before the upgrade starts:
+      it names the in-place Percona runs this server needs, if any, and
+      sets the variable to NO, so those runs go ahead; set it to YES
+      again once the server runs Percona 8.4. autoexcalibur already
+      refused. A php-idle run is never refused: it stops before the
+      upgrade.
+    * That check and autoexcalibur's own read the version from the
+      installed server binary, not the client, and refuse when the
+      binary cannot answer: an interrupted package upgrade can leave an
+      8.4 client beside an older server.
+    * A one-shot OS upgrade variable in /root/.barracuda.cnf that is
+      exported, indented or followed by more on its line is now
+      switched off after its run too: its value becomes NO and the rest
+      of the line stays, so a block around it still parses. A line that
+      holds only the variable is removed as before, and
+      _BOOKWORM_TO_TRIXIE now is too.
 
     * Barracuda never installs an older Percona series over a newer one.
       On a box running Percona 8.0 or 8.4, a _DB_SERIES in

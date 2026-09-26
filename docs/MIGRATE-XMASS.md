@@ -354,7 +354,8 @@ removed outright, whatever else the home holds is parked under
 read from three independent sources on the target, all of which must be empty:
 the account's registered site aliases (its own control panel set aside), the
 `sites/` directory of every registered platform (the platform aliases' `root`,
-which also reaches a platform behind a symlink), and a sweep for site
+which also reaches a platform behind a symlink, read at the docroot it serves when
+it names a Composer app root), and a sweep for site
 directories under `distro/`, `static/`, `platforms/` and `aegir/` to the depth
 BOA itself builds, with or without a `web/` or `docroot/` level. An account
 that carries sites is refused (`_XMASS_ALLOW_TARGET_ONLY=YES` keeps it

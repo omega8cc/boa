@@ -49,7 +49,7 @@
   /opt/php73/** r,
 
   # Allow PHP-FPM to execute some other binaries
-  /bin/dash mrix,
+  /{,usr/}bin/dash mrix,
   /opt/local/bin/websh mrix,
   /usr/bin/advdef mrix,
   /usr/bin/advpng mrix,

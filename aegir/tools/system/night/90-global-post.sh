@@ -61,13 +61,18 @@ _check_old_empty_hostmaster_platforms() {
           | cut -d: -f2 \
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
-        _T_PFM_SITE=$(grep "${_T_PFM_ROOT}/sites/" \
+        # The alias keeps the path the platform was registered with, which for
+        # a Composer build can be its app root; site_path and sites/all live
+        # under the docroot Provision serves, so both tests below read that
+        # (the site test keeps the raw-root spelling too, so it only gains).
+        _T_PFM_DOC=$(_detect_real_docroot "${_T_PFM_ROOT}")
+        _T_PFM_SITE=$(grep -e "${_T_PFM_ROOT}/sites/" \
+          -e "${_T_PFM_DOC:-${_T_PFM_ROOT}}/sites/" \
           /var/aegir/.drush/*.drushrc.php \
           | grep site_path 2>&1)
-        if [ -z "$(_detect_real_docroot "${_T_PFM_ROOT}")" ]; then
-          # Version-agnostic emptiness: no index.php at the (already docroot-
-          # corrected) alias root nor under web/docroot/html. Do NOT key on
-          # sites/all, which D8+ dropped.
+        if [ -z "${_T_PFM_DOC}" ]; then
+          # Version-agnostic emptiness: no index.php at the alias root nor
+          # under web/docroot/html. Do NOT key on sites/all, which D8+ dropped.
           if _cnf_flag_yes /root/.barracuda.cnf _GHOST_PLATFORMS_CLEANUP; then
             mkdir -p /var/aegir/undo
             mv -f /var/aegir/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php /var/aegir/undo/ &> /dev/null
@@ -80,7 +85,7 @@ _check_old_empty_hostmaster_platforms() {
           echo "WARNING: ghost site leftover found: ${_T_PFM_SITE}"
         fi
         if [ -z "${_T_PFM_SITE}" ] \
-          && [ -e "${_T_PFM_ROOT}/sites/all" ]; then
+          && [ -e "${_T_PFM_DOC:-${_T_PFM_ROOT}}/sites/all" ]; then
           _delete_this_empty_hostmaster_platform
         fi
       done

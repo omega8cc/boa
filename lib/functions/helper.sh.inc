@@ -385,6 +385,13 @@ _install_boa_deb() {
   if [ -z "${_pkgName}" ] || [ -z "${_pkgVrn}" ] || [ -z "${_OS_CODE}" ]; then
     return 1
   fi
+  # The packages are built on a merged-/usr system and may name /usr paths
+  # a split one lacks (phpize calls /usr/bin/sed); a split system builds from
+  # sources until _usrmerge_enforce has converted it.
+  if _usrmerge_is_split; then
+    _msg "NOTE: Split /usr on this system, ${_pkgName} is built from sources"
+    return 1
+  fi
   mkdir -p /var/opt
   cd /var/opt
   rm -f "${_pkgName}"_*.deb "${_pkgName}"_*.deb.gz "${_pkgName}"_*.deb.gz.sha256
@@ -879,6 +886,10 @@ _mode_detection() {
       _msg "XTRA: ${_XTRAS_LIST}"
     fi
   fi
+  # The cnf and its hop flags are read now: refuse a hop the installed
+  # Percona cannot make before the apt preamble, the AppArmor switch-off
+  # and the hop itself.
+  _major_os_upgrade_percona_check
   [ -e "/root/.use.curl.from.packages.cnf" ] && chattr -i /root/.use.curl.from.packages.cnf
   [ -e "/root/.use.curl.from.packages.cnf" ] && rm -f /root/.use.curl.from.packages.cnf
   pkill -9 -f '^[^ ]*systemd-udevd( |$)'
@@ -1837,6 +1848,7 @@ _turn_off_apparmor_in_octopus() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _turn_off_apparmor_in_octopus"
   fi
+  _aaOffInOctopus=NO
   _isAppArmOn=N
   if [ -e "/sys/module/apparmor/parameters/enabled" ]; then
     _isAppArmOn="$(cat /sys/module/apparmor/parameters/enabled 2>/dev/null | tr -d '\n')"
@@ -1852,6 +1864,42 @@ _turn_off_apparmor_in_octopus() {
     aa-teardown &> /dev/null
     service auditd stop &> /dev/null
     touch /root/.turn_off_apparmor_in_octopus.cnf
+    _aaOffInOctopus=YES
+  fi
+}
+
+#
+# Turn AppArmor back on after octopus, in the mode barracuda keeps: the run
+# above tore it down and left every profile file in complain mode, so without
+# this the box ran unconfined until the next barracuda pass, and a reboot in
+# between loaded the profiles in complain mode only.
+_turn_on_apparmor_after_octopus() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _turn_on_apparmor_after_octopus"
+  fi
+  if [ "${_aaOffInOctopus}" = "YES" ] \
+    && [ -e "/root/.keep_apparmor_on.cnf" ] \
+    && [ ! -e "/root/.deny.apparmor.cnf" ]; then
+    if [ -e "/root/.activate.apparmor.cnf" ] \
+      || [ -e "/root/.enforce.apparmor.cnf" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "ARMR: Turning AppArmor back on..."
+      fi
+      rm -rf /var/cache/apparmor/* &> /dev/null
+      if [ -x "/etc/init.d/apparmor" ]; then
+        service apparmor start &> /dev/null
+      fi
+      if [ -x "/etc/init.d/auditd" ]; then
+        service auditd start &> /dev/null
+      fi
+      apparmor_parser -r /etc/apparmor.d/* &> /dev/null
+      if [ -e "/root/.activate.apparmor.cnf" ]; then
+        aa-complain /etc/apparmor.d/* &> /dev/null
+      else
+        aa-enforce /etc/apparmor.d/* &> /dev/null
+      fi
+      rm -f /root/.turn_off_apparmor_in_octopus.cnf
+    fi
   fi
 }
 

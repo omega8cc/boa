@@ -874,15 +874,21 @@ _install_php_extensions() {
   _get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
   cd /var/opt/phpredis
   _mrun "${_T_PHP_PTH}/phpize"
-  if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] && [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
-    fi
+  # the dev package installs the library under /usr/lib, which a split /usr
+  # does not reach through /lib: test both, as a merged /usr already does;
+  # a source tarball made from the git tree has liblzf/ empty (a submodule),
+  # so the build then uses the system liblzf instead of the bundled copy
+  if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] \
+    && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
+    :
+  elif [ -e "/usr/include/lzf.h" ] \
+    && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
+    _PHPREDIS_BUILD="${_PHPREDIS_BUILD} --with-liblzf=/usr"
   else
     _PHPREDIS_BUILD="--enable-redis-igbinary"
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
-    fi
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
   fi
   _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}"
   _mrun "make -j $(nproc) --quiet"
@@ -1278,15 +1284,21 @@ _php_extensions_update() {
     _get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
     cd /var/opt/phpredis
     _mrun "${_T_PHP_PTH}/phpize"
-    if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] && [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; then
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
-      fi
+    # the dev package installs the library under /usr/lib, which a split /usr
+    # does not reach through /lib: test both, as a merged /usr already does;
+    # a source tarball made from the git tree has liblzf/ empty (a submodule),
+    # so the build then uses the system liblzf instead of the bundled copy
+    if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] \
+      && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
+      :
+    elif [ -e "/usr/include/lzf.h" ] \
+      && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
+      _PHPREDIS_BUILD="${_PHPREDIS_BUILD} --with-liblzf=/usr"
     else
       _PHPREDIS_BUILD="--enable-redis-igbinary"
-      if [ "${_DEBUG_MODE}" = "YES" ]; then
-        _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
-      fi
+    fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
     fi
     _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}"
     _mrun "make -j $(nproc) --quiet"
@@ -2032,10 +2044,66 @@ _install_php_multi_src() {
   fi
 }
 
+#
+# Record PHP $1 as built in this run when this build replaced the binary (its
+# inode differs from $2, the one before the build: dpkg and make install both
+# write a new file and rename it into place) and the new binary runs and
+# reports the wanted version. A force (an operator's, a full reinstall, the
+# first run after a major OS upgrade) then does not build that version again
+# in the same run; the record starts again where a major OS upgrade step
+# starts or ends. A failed build leaves the old binary, often at the same
+# release: it drops the version from the record, so it keeps its retry. In the
+# run that follows a major OS upgrade the record is also kept as a marker file.
+_php_note_build() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_note_build $1"
+  fi
+  local _mrk="${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info"
+  local _itd
+  local _ino
+  local _v
+  local _keep=""
+  local _logArc
+  _itd=$(/opt/php$1/bin/php -v 2>/dev/null | grep -E 'PHP [758]' | awk '{print $2}')
+  _ino=$(stat -c %i "/opt/php$1/bin/php" 2>/dev/null)
+  if [ -n "${_PHP_VERSION}" ] && [ "${_itd}" = "${_PHP_VERSION}" ] \
+    && [ -n "${_ino}" ] && [ "${_ino}" != "${2}" ]; then
+    _PHP_BUILT_IN_RUN="${_PHP_BUILT_IN_RUN} $1"
+    if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
+      touch "${_mrk}"
+    fi
+    # What the old binary logged says nothing about this one, and the run
+    # sweeps the logs aside at its end, not after each build: an OnigEncoding
+    # line left there would make _check_php_broken_segfault rebuild it again
+    # in this run.
+    # The copy gets its own name, or the end-of-run move into the same
+    # directory would replace it with the new binary's log. An empty log is
+    # left in place: the PHP monitor reloads a version whose log is missing.
+    if [ -e "/var/log/php/php$1-fpm-error.log" ]; then
+      _logArc="/var/backups/php-logs/${_NOW:-$(date +%y%m%d-%H%M%S)}"
+      mkdir -p "${_logArc}"
+      mv -f "/var/log/php/php$1-fpm-error.log" \
+        "${_logArc}/php$1-fpm-error-pre-build-$(date +%H%M%S).log" &> /dev/null
+      touch "/var/log/php/php$1-fpm-error.log"
+      chmod 600 "/var/log/php/php$1-fpm-error.log"
+    fi
+  else
+    for _v in ${_PHP_BUILT_IN_RUN}; do
+      [ "${_v}" = "$1" ] || _keep="${_keep} ${_v}"
+    done
+    _PHP_BUILT_IN_RUN="${_keep}"
+    if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
+      rm -f "${_mrk}"
+    fi
+  fi
+}
+
 _install_php_multi() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _install_php_multi $1"
   fi
+  local _binIno
+  _binIno=$(stat -c %i "/opt/php$1/bin/php" 2>/dev/null)
   _if_to_do_fix
   # Prebuilt package path (_USE_PREBUILT_PKGS): replaces only the source
   # build; the shared post-install below (CLI/phpize symlinks, extensions,
@@ -2045,6 +2113,9 @@ _install_php_multi() {
     _install_php_deb "$1"
   fi
   if [ "${_PHP_DEB_INSTALLED}" = "NO" ]; then
+    # A prebuilt package that failed its check is purged with its binary;
+    # measure what the source build will replace, not what was there before.
+    _binIno=$(stat -c %i "/opt/php$1/bin/php" 2>/dev/null)
     _install_php_multi_src "$1"
   fi
   if [ -x "/opt/php$1/bin/php" ]; then
@@ -2099,9 +2170,7 @@ _install_php_multi() {
     rm -f /etc/init.d/php$1-fpm*
     cp -af ${_locCnf}/php/php$1-fpm /etc/init.d/php$1-fpm
     chmod 755 /etc/init.d/php$1-fpm
-    if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
-      touch ${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info
-    fi
+    _php_note_build "$1" "${_binIno}"
     _mrun "update-rc.d php$1-fpm defaults"
   else
     _msg "WARN: Building PHP ${_PHP_VERSION} failed!"
@@ -2727,6 +2796,7 @@ _check_php_rebuild() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_php_rebuild $1"
   fi
+  local _ownWhy=NO
 
   _if_to_do_fix
 
@@ -2742,6 +2812,7 @@ _check_php_rebuild() {
       _msg "INFO: Upgrade needed from PHP ${_PHP_ITD} to ${_PHP_VERSION}"
     fi
     _PHP_FORCE_REINSTALL=YES
+    _ownWhy=YES
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: PHP version ${_PHP_VERSION} already installed"
@@ -2754,6 +2825,7 @@ _check_php_rebuild() {
       _msg "INFO: PHP ${_PHP_ITD} uses incorrect OpenSSL, forcing rebuild"
     fi
     _PHP_FORCE_REINSTALL=YES
+    _ownWhy=YES
   fi
 
   if [ "$1" -gt 80 ] \
@@ -2766,6 +2838,7 @@ _check_php_rebuild() {
         _msg "INFO: PHP ${_PHP_ITD} uses incorrect ICU, forcing rebuild"
       fi
       _PHP_FORCE_REINSTALL=YES
+      _ownWhy=YES
     fi
   fi
 
@@ -2796,6 +2869,7 @@ _check_php_rebuild() {
         _msg "INFO: PHP $1 has missing mysql drivers, forcing rebuild"
       fi
       _PHP_FORCE_REINSTALL=YES
+      _ownWhy=YES
     else
       _PHP_DRIVERS_BUILD=YES
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2812,7 +2886,11 @@ _check_php_rebuild() {
   if [ "${_FULL_FORCE_REINSTALL}" = "YES" ] || [ "${_PHP_FORCE_REINSTALL}" = "YES" ]; then
     if [ -e "/var/log/boa" ]; then
       rm -f /var/log/boa/._php_libs_fix_*.pid
-      rm -f /var/log/boa/re-installed-php*
+      # In the run after a major OS upgrade a marker means this version was
+      # already rebuilt there and runs; outside that run any marker is stale.
+      if [ ! -e "/root/.run_post_major_os_upgrade.info" ]; then
+        rm -f /var/log/boa/re-installed-php*
+      fi
     fi
     if [ "${_DO_FIX}" = "YES" ] || [ "${_STATUS}" != "UPGRADE" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2820,7 +2898,15 @@ _check_php_rebuild() {
       fi
       _PHP_FORCE_REINSTALL=NO
     else
-      if [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
+      # A version not at the wanted release is always built. In the run after
+      # a major OS upgrade its marker says it was already rebuilt there. Else a
+      # version built earlier in this run (recorded by _php_note_build) is not
+      # built again for a force alone; its own reason (an OpenSSL or ICU
+      # mismatch or a missing mysqli driver found now) still builds it.
+      if [ "${_PHP_ITD}" != "${_PHP_VERSION}" ] \
+        || { [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ] \
+          && { [ "${_ownWhy}" = "YES" ] \
+            || [[ " ${_PHP_BUILT_IN_RUN} " != *" $1 "* ]]; }; }; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "INFO: PHP ${_PHP_ITD} rebuild happening now..."
         fi
@@ -2842,7 +2928,11 @@ _check_php_broken_freetype() {
   if [[ ! "${_isFreeType}" =~ "with-freetype" ]] \
     || [ -z "${_isFreeType}" ]; then
     if [ -x "/usr/bin/freetype-config" ]; then
-      if [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
+      # This version was built in this run (it is on the record) and still
+      # lacks it: that build did not add it, so another build in this run is
+      # skipped. The next run starts a new record and checks it again.
+      if [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ] \
+        && [[ " ${_PHP_BUILT_IN_RUN} " != *" $1 "* ]]; then
         _msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix freetype support..."
         _install_php_multi "$1"
         _PHP_ALREADY_REBUILT=$1
@@ -2868,7 +2958,9 @@ _check_php_broken_gd() {
   _isGd=$(/opt/php$1/bin/php -i | grep GD 2>&1)
   if [[ ! "${_isGd}" =~ "GD Support" ]] \
     || [ -z "${_isGd}" ]; then
-    if [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ]; then
+    # As for freetype: built in this run and still no GD, not built again.
+    if [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ] \
+      && [[ " ${_PHP_BUILT_IN_RUN} " != *" $1 "* ]]; then
       _msg "INFO: PHP ${_PHP_VERSION} rebuild required to fix GD support..."
       _install_php_multi "$1"
       _PHP_ALREADY_REBUILT=$1
@@ -3172,6 +3264,12 @@ _php_upgrade_all() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_upgrade_all $1"
   fi
+  # _check_php_rebuild sets _PHP_FORCE_REINSTALL=YES when this version needs a
+  # rebuild (new release, OpenSSL/ICU header or mysqli driver mismatch) and the
+  # _check_php_broken_* helpers set NO after fixing a broken build, so each
+  # version starts again from the value the caller passed in: one version's
+  # result must not decide the next one, and a caller force reaches them all.
+  local _force_in="${_PHP_FORCE_REINSTALL}"
   if [ ! -z "${1}" ] && [ "${1}" != "force" ]; then
     _PHP_V="${1}"
   else
@@ -3210,6 +3308,7 @@ _php_upgrade_all() {
       fi
       _PHP_BIN_BROKEN=NO
       _BROKEN_LIBCURL_TEST=""
+      _PHP_FORCE_REINSTALL="${_force_in}"
       _switch_php_cli "${e}"
       if [ "${1}" = "force" ]; then
         _install_php_multi "${e}"
@@ -3224,6 +3323,7 @@ _php_upgrade_all() {
       _T_PHP_PTH=""
     fi
   done
+  _PHP_FORCE_REINSTALL="${_force_in}"
 }
 
 _get_php_conf_extra() {
@@ -3444,14 +3544,21 @@ _php_check_if_rebuild() {
     if [[ ! "${_isSodium}" =~ "with-sodium" ]] \
       || [ -z "${_isSodium}" ]; then
       _msg "INFO: PHP rebuild required to add Sodium support..."
-      _PHP_FORCE_REINSTALL=YES
-      _php_if_versions_cleanup_cnf
-      if [ "${_OS_CODE}" = "stretch" ]; then
-        _php_upgrade_all "74 80 81"
-      else
-        _php_upgrade_all "74 80 81 82 83 84"
+      # A force already set rebuilds, in the full pass that always follows
+      # this check, every version not already built in this run: a pass over
+      # some of them now would build those twice, and ending it on NO would
+      # cancel the force for the rest.
+      if [ "${_PHP_FORCE_REINSTALL}" != "YES" ] \
+        && [ "${_FULL_FORCE_REINSTALL}" != "YES" ]; then
+        _PHP_FORCE_REINSTALL=YES
+        _php_if_versions_cleanup_cnf
+        if [ "${_OS_CODE}" = "stretch" ]; then
+          _php_upgrade_all "74 80 81"
+        else
+          _php_upgrade_all "74 80 81 82 83 84"
+        fi
+        _PHP_FORCE_REINSTALL=NO
       fi
-      _PHP_FORCE_REINSTALL=NO
     fi
   fi
   if [ -x "/opt/php56/bin/php" ]; then
@@ -3460,10 +3567,13 @@ _php_check_if_rebuild() {
     if [[ ! "${_isIgbinary}" =~ "igbinary" ]] \
       || [ -z "${_isIgbinary}" ]; then
       _msg "INFO: PHP 5.6 rebuild required to add igbinary support..."
-      _PHP_FORCE_REINSTALL=YES
-      _php_if_versions_cleanup_cnf
-      _php_upgrade_all "56"
-      _PHP_FORCE_REINSTALL=NO
+      if [ "${_PHP_FORCE_REINSTALL}" != "YES" ] \
+        && [ "${_FULL_FORCE_REINSTALL}" != "YES" ]; then
+        _PHP_FORCE_REINSTALL=YES
+        _php_if_versions_cleanup_cnf
+        _php_upgrade_all "56"
+        _PHP_FORCE_REINSTALL=NO
+      fi
     fi
   fi
   _isWebP=

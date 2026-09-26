@@ -2217,11 +2217,25 @@ EOF
 }
 
 #
+# Set each named one-shot OS hop flag to NO in the cnf, wherever its line
+# starts with it (indented or exported too), keeping the rest of the line,
+# which may close a block. An unquoted value that could hide a command is
+# left alone; a quoted one is replaced whole.
+_hop_flag_set_no() {
+  local _hopFlag
+  for _hopFlag in "$@"; do
+    sed -i -E "s/^([[:space:]]*(export[[:space:]]+)?${_hopFlag}=)(\"[^\"\\\\]*\"|'[^']*'|[^[:space:];&|\$\`\\\\()\"']*)([[:space:];&|#]|\$)/\1NO\4/" "${_barCnf}"
+  done
+  wait
+}
+
+#
 # Cleanup for Barracuda cnf file.
 _barracuda_cnf_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _barracuda_cnf_cleanup"
   fi
+  local _hopFlags
   ###
   ### legacy config cleanup start
   ###
@@ -2371,84 +2385,101 @@ _barracuda_cnf_cleanup() {
   fi
   _DAEDALUS_TO_EXCALIBUR_TEST=$(grep _DAEDALUS_TO_EXCALIBUR ${_barCnf} 2>&1)
   if [[ "${_DAEDALUS_TO_EXCALIBUR_TEST}" =~ "_DAEDALUS_TO_EXCALIBUR" ]]; then
-    sed -i "s/^_DAEDALUS_TO_EXCALIBUR.*//g" ${_barCnf}
+    sed -i "s/^_DAEDALUS_TO_EXCALIBUR=[^;&|]*$//g" ${_barCnf}
     wait
   fi
   _TRIXIE_TO_EXCALIBUR_TEST=$(grep _TRIXIE_TO_EXCALIBUR ${_barCnf} 2>&1)
   if [[ "${_TRIXIE_TO_EXCALIBUR_TEST}" =~ "_TRIXIE_TO_EXCALIBUR" ]]; then
-    sed -i "s/^_TRIXIE_TO_EXCALIBUR.*//g" ${_barCnf}
+    sed -i "s/^_TRIXIE_TO_EXCALIBUR=[^;&|]*$//g" ${_barCnf}
     wait
   fi
   _BOOKWORM_TO_DAEDALUS_TEST=$(grep _BOOKWORM_TO_DAEDALUS ${_barCnf} 2>&1)
   if [[ "${_BOOKWORM_TO_DAEDALUS_TEST}" =~ "_BOOKWORM_TO_DAEDALUS" ]]; then
-    sed -i "s/^_BOOKWORM_TO_DAEDALUS.*//g" ${_barCnf}
+    sed -i "s/^_BOOKWORM_TO_DAEDALUS=[^;&|]*$//g" ${_barCnf}
     wait
   fi
   _CHIMAERA_TO_DAEDALUS_TEST=$(grep _CHIMAERA_TO_DAEDALUS ${_barCnf} 2>&1)
   if [[ "${_CHIMAERA_TO_DAEDALUS_TEST}" =~ "_CHIMAERA_TO_DAEDALUS" ]]; then
-    sed -i "s/^_CHIMAERA_TO_DAEDALUS.*//g" ${_barCnf}
+    sed -i "s/^_CHIMAERA_TO_DAEDALUS=[^;&|]*$//g" ${_barCnf}
     wait
   fi
   _BULLSEYE_TO_CHIMAERA_TEST=$(grep _BULLSEYE_TO_CHIMAERA ${_barCnf} 2>&1)
   if [[ "${_BULLSEYE_TO_CHIMAERA_TEST}" =~ "_BULLSEYE_TO_CHIMAERA" ]]; then
-    sed -i "s/^_BULLSEYE_TO_CHIMAERA.*//g" ${_barCnf}
+    sed -i "s/^_BULLSEYE_TO_CHIMAERA=[^;&|]*$//g" ${_barCnf}
+    wait
+  fi
+  _BOOKWORM_TO_TRIXIE_TEST=$(grep _BOOKWORM_TO_TRIXIE "${_barCnf}" 2>&1)
+  if [[ "${_BOOKWORM_TO_TRIXIE_TEST}" =~ "_BOOKWORM_TO_TRIXIE" ]]; then
+    sed -i "s/^_BOOKWORM_TO_TRIXIE=[^;&|]*$//g" "${_barCnf}"
     wait
   fi
   _BULLSEYE_TO_BOOKWORM_TEST=$(grep _BULLSEYE_TO_BOOKWORM ${_barCnf} 2>&1)
   if [[ "${_BULLSEYE_TO_BOOKWORM_TEST}" =~ "_BULLSEYE_TO_BOOKWORM" ]]; then
-    sed -i "s/^_BULLSEYE_TO_BOOKWORM.*//g" ${_barCnf}
+    sed -i "s/^_BULLSEYE_TO_BOOKWORM=[^;&|]*$//g" ${_barCnf}
     wait
   fi
   _BEOWULF_TO_CHIMAERA_TEST=$(grep _BEOWULF_TO_CHIMAERA ${_barCnf} 2>&1)
   if [[ "${_BEOWULF_TO_CHIMAERA_TEST}" =~ "_BEOWULF_TO_CHIMAERA" ]]; then
-    sed -i "s/^_BEOWULF_TO_CHIMAERA.*//g" ${_barCnf}
+    sed -i "s/^_BEOWULF_TO_CHIMAERA=[^;&|]*$//g" ${_barCnf}
     wait
   fi
   _BUSTER_TO_BEOWULF_TEST=$(grep _BUSTER_TO_BEOWULF ${_barCnf} 2>&1)
   if [[ "${_BUSTER_TO_BEOWULF_TEST}" =~ "_BUSTER_TO_BEOWULF" ]]; then
-    sed -i "s/^_BUSTER_TO_BEOWULF.*//g" ${_barCnf}
+    sed -i "s/^_BUSTER_TO_BEOWULF=[^;&|]*$//g" ${_barCnf}
     wait
   fi
   _STRETCH_TO_BEOWULF_TEST=$(grep _STRETCH_TO_BEOWULF ${_barCnf} 2>&1)
   if [[ "${_STRETCH_TO_BEOWULF_TEST}" =~ "_STRETCH_TO_BEOWULF" ]]; then
-    sed -i "s/^_STRETCH_TO_BEOWULF.*//g" ${_barCnf}
+    sed -i "s/^_STRETCH_TO_BEOWULF=[^;&|]*$//g" ${_barCnf}
     wait
   fi
   _JESSIE_TO_BEOWULF_TEST=$(grep _JESSIE_TO_BEOWULF ${_barCnf} 2>&1)
   if [[ "${_JESSIE_TO_BEOWULF_TEST}" =~ "_JESSIE_TO_BEOWULF" ]]; then
-    sed -i "s/^_JESSIE_TO_BEOWULF.*//g" ${_barCnf}
+    sed -i "s/^_JESSIE_TO_BEOWULF=[^;&|]*$//g" ${_barCnf}
     wait
   fi
   _BUSTER_TO_BULLSEYE_TEST=$(grep _BUSTER_TO_BULLSEYE ${_barCnf} 2>&1)
   if [[ "${_BUSTER_TO_BULLSEYE_TEST}" =~ "_BUSTER_TO_BULLSEYE" ]]; then
-    sed -i "s/^_BUSTER_TO_BULLSEYE.*//g" ${_barCnf}
+    sed -i "s/^_BUSTER_TO_BULLSEYE=[^;&|]*$//g" ${_barCnf}
     wait
   fi
   _STRETCH_TO_BUSTER_TEST=$(grep _STRETCH_TO_BUSTER ${_barCnf} 2>&1)
   if [[ "${_STRETCH_TO_BUSTER_TEST}" =~ "_STRETCH_TO_BUSTER" ]]; then
-    sed -i "s/^_STRETCH_TO_BUSTER.*//g" ${_barCnf}
+    sed -i "s/^_STRETCH_TO_BUSTER=[^;&|]*$//g" ${_barCnf}
     wait
   fi
   _JESSIE_TO_STRETCH_TEST=$(grep _JESSIE_TO_STRETCH ${_barCnf} 2>&1)
   if [[ "${_JESSIE_TO_STRETCH_TEST}" =~ "_JESSIE_TO_STRETCH" ]]; then
-    sed -i "s/^_JESSIE_TO_STRETCH.*//g" ${_barCnf}
+    sed -i "s/^_JESSIE_TO_STRETCH=[^;&|]*$//g" ${_barCnf}
     wait
   fi
   _WHEEZY_TO_JESSIE_TEST=$(grep _WHEEZY_TO_JESSIE ${_barCnf} 2>&1)
   if [[ "${_WHEEZY_TO_JESSIE_TEST}" =~ "_WHEEZY_TO_JESSIE" ]]; then
-    sed -i "s/^_WHEEZY_TO_JESSIE.*//g" ${_barCnf}
+    sed -i "s/^_WHEEZY_TO_JESSIE=[^;&|]*$//g" ${_barCnf}
     wait
   fi
   _SQUEEZE_TO_WHEEZY_TEST=$(grep _SQUEEZE_TO_WHEEZY ${_barCnf} 2>&1)
   if [[ "${_SQUEEZE_TO_WHEEZY_TEST}" =~ "_SQUEEZE_TO_WHEEZY" ]]; then
-    sed -i "s/^_SQUEEZE_TO_WHEEZY.*//g" ${_barCnf}
+    sed -i "s/^_SQUEEZE_TO_WHEEZY=[^;&|]*$//g" ${_barCnf}
     wait
   fi
   _LENNY_TO_SQUEEZE_TEST=$(grep _LENNY_TO_SQUEEZE ${_barCnf} 2>&1)
   if [[ "${_LENNY_TO_SQUEEZE_TEST}" =~ "_LENNY_TO_SQUEEZE" ]]; then
-    sed -i "s/^_LENNY_TO_SQUEEZE.*//g" ${_barCnf}
+    sed -i "s/^_LENNY_TO_SQUEEZE=[^;&|]*$//g" ${_barCnf}
     wait
   fi
+  # The strips above drop a hop flag that is alone on its line at the line
+  # start. The cnf is sourced, so an exported or indented one, or one with
+  # more after it on its line, counts too.
+  _hopFlags="_DAEDALUS_TO_EXCALIBUR _TRIXIE_TO_EXCALIBUR _BOOKWORM_TO_DAEDALUS"
+  _hopFlags="${_hopFlags} _CHIMAERA_TO_DAEDALUS _BULLSEYE_TO_CHIMAERA"
+  _hopFlags="${_hopFlags} _BOOKWORM_TO_TRIXIE _BULLSEYE_TO_BOOKWORM"
+  _hopFlags="${_hopFlags} _BEOWULF_TO_CHIMAERA _BUSTER_TO_BEOWULF"
+  _hopFlags="${_hopFlags} _STRETCH_TO_BEOWULF _JESSIE_TO_BEOWULF"
+  _hopFlags="${_hopFlags} _BUSTER_TO_BULLSEYE _STRETCH_TO_BUSTER"
+  _hopFlags="${_hopFlags} _JESSIE_TO_STRETCH _WHEEZY_TO_JESSIE"
+  _hopFlags="${_hopFlags} _SQUEEZE_TO_WHEEZY _LENNY_TO_SQUEEZE"
+  _hop_flag_set_no ${_hopFlags}
   sed -i "/^$/d" ${_barCnf}
   wait
   ###
@@ -7128,8 +7159,10 @@ _switch_to_dash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _switch_to_dash"
   fi
+  # a link, not a copy: a second regular file beside /usr/bin/dash drifts on
+  # the next dash upgrade and stops the merged /usr conversion
   if [ -x "/usr/bin/dash" ] && [ ! -e "/bin/dash" ]; then
-    cp -a /usr/bin/dash /bin/
+    ln -sfn /usr/bin/dash /bin/dash
   fi
   if [ -x "/bin/dash" ]; then
     _get_bin_paths
@@ -7193,8 +7226,9 @@ _switch_to_bash() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _switch_to_bash"
   fi
+  # a link, not a copy (see _switch_to_dash)
   if [ -x "/usr/bin/bash" ] && [ ! -e "/bin/bash" ]; then
-    cp -a /usr/bin/bash /bin/
+    ln -sfn /usr/bin/bash /bin/bash
   fi
   if [ -x "/bin/bash" ]; then
     _get_bin_paths
@@ -8951,6 +8985,11 @@ _if_post_major_os_upgrade() {
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       rm -f /root/.run_post_major_os_upgrade.info
     fi
+    # The PHP rebuild markers mean something only while that file exists. This
+    # run's record of built versions starts again here too: the steps that
+    # follow can change the libraries a build links against.
+    rm -f ${_pthLog}/re-installed-php*-on-post_major_os_upgrade.info
+    _PHP_BUILT_IN_RUN=
     if [ -e "/root/.force.newrelic.update.cnf" ]; then
       rm -f /root/.force.newrelic.update.cnf
     fi
@@ -8970,6 +9009,323 @@ _if_post_major_os_upgrade() {
     touch /root/.completed_post_major_os_upgrade.info
     _msg "INFO: The post_major_os_upgrade procedure is complete"
   fi
+}
+
+#
+# Merged /usr on a Devuan Daedalus system upgraded in place from an older
+# release. Excalibur refuses a split system (its base-files and libc6
+# preinsts), and packages built on a merged system name /usr paths a split one
+# does not have (the prebuilt PHP phpize and php-config call /usr/bin/sed), so
+# a split system is converted here, once, with the usrmerge package. The
+# conversion has no dry run and no way back, and convert-usrmerge stops at the
+# first pair it cannot resolve, leaving a half-converted system that must not
+# see a package operation until it runs again cleanly. So it runs only when a
+# read-only forecast of that tool's own rules is clear, and a failed run stops
+# this pass and every later one until it is repaired.
+_usrmerge_is_split() {
+  local _d
+  for _d in /bin /sbin /lib; do
+    if [ -d "${_d}" ] && [ ! -L "${_d}" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+#
+# Read-only forecast of convert-usrmerge 37: its preconditions, then its
+# convert_file() decision for every entry, branch for branch (symlink targets
+# are compared as strings, two regular files always conflict). Prints one
+# reason per line; returns 1 when the tool would stop.
+_usrmerge_forecast() {
+  local _rc=0 _d _imm
+  if mountpoint -q /usr && [ ! -d "/run/initramfs" ]; then
+    echo "/usr is a separate filesystem and there is no initramfs"
+    _rc=1
+  fi
+  if mountpoint -q /lib/modules 2> /dev/null; then
+    echo "/lib/modules is a mount point"
+    _rc=1
+  fi
+  case "$(stat -f -c %T / 2> /dev/null)" in
+    overlayfs|nfs*)
+      echo "the root filesystem is $(stat -f -c %T / 2> /dev/null)"
+      _rc=1
+    ;;
+  esac
+  if awk '{ print $2 }' /proc/mounts | grep -q -E '^/(bin|sbin|lib|lib32|lib64|libx32)(/|$)'; then
+    echo "a filesystem is mounted under /bin, /sbin or /lib*"
+    _rc=1
+  fi
+  # lsattr -R also prints "<dir>:" headers; only "<flags> <path>" lines count
+  _imm=$(for _d in /bin /sbin /lib /lib32 /lib64 /libx32; do
+    [ -d "${_d}" ] && [ ! -L "${_d}" ] || continue
+    lsattr -d "${_d}" 2> /dev/null
+    lsattr -R "${_d}" 2> /dev/null
+  done | awk 'NF == 2 && $1 ~ /^[-A-Za-z]+$/ && index($1, "i") { print $2 }' | head -5)
+  if [ -n "${_imm}" ]; then
+    echo "immutable: $(echo ${_imm})"
+    _rc=1
+  fi
+  perl -e '
+    use strict;
+    use warnings;
+    my %ignore = map { $_ => 1 } qw(/lib/udev/hwdb.bin);
+    my $rc = 0;
+    sub entries {
+      my ($dir) = @_;
+      opendir(my $dh, $dir) or return ();
+      my @e = map { "$dir/$_" } grep { $_ ne "." && $_ ne ".." } readdir($dh);
+      closedir($dh);
+      return sort @e;
+    }
+    sub bad { print "$_[0]\n"; $rc = 1; }
+    sub check {
+      my ($n) = @_;
+      my $u = "/usr$n";
+      return if (-l $n and not -e $n and -e $u);
+      return if (-d $n and not -e $u);
+      return if (not -e $u);
+      if (-l $n and -l $u) {
+        my ($l1, $l2) = (readlink($n), readlink($u));
+        my ($b) = $n =~ m#^(.+)/[^/]+$#;
+        return if $l1 eq $l2 or "$b/$l1" eq $l2 or $l1 eq "/usr$b/$l2";
+        return if $l1 eq $u or $l2 eq $n;
+        bad("both $n and $u are links to different targets");
+        return;
+      }
+      if (-l $n) {
+        return if readlink($n) eq $u;
+        bad("$n is a link and $u is not");
+        return;
+      }
+      if (-l $u) {
+        return if readlink($u) eq $n;
+        bad("$u is a link and $n is not");
+        return;
+      }
+      if (-d $n and -d $u) {
+        check($_) foreach entries($n);
+        return;
+      }
+      if (-d $n or -d $u) {
+        bad("$n and $u are a directory and a file");
+        return;
+      }
+      return if exists $ignore{$n};
+      bad("both $n and $u exist");
+    }
+    foreach my $d (qw(/bin /sbin /lib /lib32 /lib64 /libo32 /libx32)) {
+      next if -l $d or not -d $d;
+      check($_) foreach entries($d);
+    }
+    exit $rc;
+  ' || _rc=1
+  if apt-get -s install usrmerge 2> /dev/null | grep -q '^Remv '; then
+    echo "apt would remove packages to install usrmerge"
+    _rc=1
+  fi
+  return ${_rc}
+}
+
+#
+# Pairs BOA itself leaves on a split system that convert-usrmerge would refuse:
+# /usr/bin/sh flipped to another target than /bin/sh (the two are flipped
+# together, but not always in the same second), and the dated old-openssl
+# copies _ssl_paths_update keeps in both /bin and /usr/bin.
+_usrmerge_normalize_boa_pairs() {
+  local _f
+  if [ -L "/bin/sh" ] && [ -L "/usr/bin/sh" ] \
+    && [ "$(readlink /bin/sh)" != "$(readlink /usr/bin/sh)" ]; then
+    ln -sfn "$(readlink /bin/sh)" /usr/bin/sh
+  fi
+  for _f in /bin/old-openssl-*; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    if [ -e "/usr${_f}" ] || [ -L "/usr${_f}" ]; then
+      rm -f "${_f}"
+    fi
+  done
+}
+
+#
+# A conversion that stopped half way must not see a package operation, so the
+# pass stops before its first apt call until the system is merged.
+_usrmerge_failed_guard() {
+  if [ ! -e "/root/.usrmerge.failed.info" ]; then
+    return 0
+  fi
+  if ! _usrmerge_is_split; then
+    rm -f /root/.usrmerge.failed.info
+    _msg "INFO: Merged /usr is complete now, the stop marker is cleared"
+    return 0
+  fi
+  echo
+  _msg "OOPS: The merged /usr conversion stopped half way on an earlier run"
+  _msg "OOPS: No package can be installed or upgraded until it is finished"
+  _msg "OOPS: Fix the pairs listed in /root/.usrmerge.failed.info, then run"
+  _msg "OOPS: /usr/lib/usrmerge/convert-usrmerge until it reports success"
+  echo
+  sleep 3
+  echo "Bye"
+  _clean_pid_exit _usrmerge_failed_guard
+}
+
+#
+# Convert a split Daedalus system to merged /usr (see _usrmerge_is_split).
+# Runs after the apt full upgrade and before the major OS upgrade and the
+# package installs, inside the pass, so the ltd worker and the task queues
+# are held. A forecast that is not clear leaves the system split for this
+# pass: the prebuilt packages are refused there (_install_boa_deb) and a hop
+# to a release that requires merged /usr is refused here.
+_usrmerge_enforce() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _usrmerge_enforce"
+  fi
+  if [ "${_OS_CODE}" != "daedalus" ] || ! _usrmerge_is_split; then
+    rm -f /root/.usrmerge.refused.info
+    return 0
+  fi
+  local _why _rc _usmLog _line _hopVar
+  _msg "INFO: This system keeps /bin, /sbin and /lib apart from /usr"
+  _usrmerge_normalize_boa_pairs
+  _why=$(_usrmerge_forecast)
+  _rc=$?
+  if [ "${_rc}" -ne 0 ]; then
+    _msg "ALRT: Merged /usr conversion refused, convert-usrmerge would stop at:"
+    printf '%s\n' "${_why}" | head -20 | while IFS= read -r _line; do
+      _msg "ALRT:   ${_line}"
+    done
+    printf '%s\n' "${_why}" > /root/.usrmerge.refused.info
+    _msg "ALRT: Fix them and run barracuda again; prebuilt packages stay off until then"
+    if [ "${_DAEDALUS_TO_EXCALIBUR}" = "YES" ]; then
+      _hopVar=_DAEDALUS_TO_EXCALIBUR
+      echo
+      _msg "OOPS: Devuan Excalibur requires merged /usr"
+      [ -e "${_barCnf}" ] && _hop_flag_set_no "${_hopVar}"
+      _msg "OOPS: ${_hopVar} is now NO in ${_barCnf}"
+      _msg "OOPS: Set it to YES again once this system is merged"
+      echo
+      sleep 3
+      echo "Bye"
+      _clean_pid_exit _usrmerge_enforce
+    fi
+    return 0
+  fi
+  _msg "INFO: Converting this system to merged /usr (usrmerge)..."
+  _usmLog="/var/backups/usrmerge-$(date +%y%m%d-%H%M%S).log"
+  DEBIAN_FRONTEND=noninteractive apt-get install -y -q \
+    -o Dpkg::Options::=--force-confdef \
+    -o Dpkg::Options::=--force-confold usrmerge > "${_usmLog}" 2>&1
+  _rc=$?
+  if [ "${_rc}" -eq 0 ] && ! _usrmerge_is_split \
+    && [ -z "$(dpkg --audit 2> /dev/null)" ]; then
+    rm -f /root/.usrmerge.refused.info
+    _msg "INFO: This system is merged /usr now (log: ${_usmLog})"
+    return 0
+  fi
+  {
+    echo "usrmerge exit ${_rc}, log ${_usmLog}"
+    grep -E "Both |is a directory|FATAL|E: |fatal" "${_usmLog}" | head -20
+  } > /root/.usrmerge.failed.info
+  _msg "ALRT: The merged /usr conversion failed half way (log: ${_usmLog})"
+  _usrmerge_failed_guard
+}
+
+#
+# Refuse a hop onto an OS where Percona serves only 8.4 (Excalibur takes its
+# Percona packages from the trixie suite) unless the box already runs 8.4:
+# the hop exits before the SQL phase, so 5.7 or 8.0 would cross it and find
+# nothing to reinstall or upgrade from. _mode_detection calls it right after
+# the cnf is read, so a refusal comes before the apt preamble, the AppArmor
+# switch-off and the hop. It sets the hop flag's value to NO where a sed can
+# reach it (at the line start, indented or exported), or the in-place
+# Percona passes it asks for would be refused too; the rest of the line
+# stays, so a block it sits in keeps its syntax. A source check catches any
+# other form.
+_major_os_upgrade_percona_check() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _major_os_upgrade_percona_check"
+  fi
+  # A php-idle pass exits before the hop (_if_php_idle_on_off), so it is
+  # never refused.
+  if [ "${_PHP_IDLE}" = "ON" ] || [ "${_PHP_IDLE}" = "OFF" ]; then
+    return 0
+  fi
+  local _hopOs _hopVar _hopTgt _hopDbV _hopSrv
+  # lsb-release may be missing this early, as _barracuda_cnf knows.
+  _hopOs=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
+  if [ -z "${_hopOs}" ]; then
+    _hopOs=$(grep "^VERSION_CODENAME=" /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"')
+  fi
+  [ -z "${_hopOs}" ] && _hopOs="${_OS_CODE}"
+  if [ "${_TRIXIE_TO_EXCALIBUR}" = "YES" ] && [ "${_hopOs}" = "trixie" ]; then
+    _hopVar=_TRIXIE_TO_EXCALIBUR
+    _hopTgt="Devuan Excalibur"
+  elif [ "${_DAEDALUS_TO_EXCALIBUR}" = "YES" ] && [ "${_hopOs}" = "daedalus" ]; then
+    _hopVar=_DAEDALUS_TO_EXCALIBUR
+    _hopTgt="Devuan Excalibur"
+  elif [ "${_BOOKWORM_TO_TRIXIE}" = "YES" ] && [ "${_hopOs}" = "bookworm" ]; then
+    _hopVar=_BOOKWORM_TO_TRIXIE
+    _hopTgt="Debian Trixie"
+  else
+    return 0
+  fi
+  # The server binary decides wherever it exists: a partial apt transaction
+  # can leave an 8.4 client next to an older server, or a server that no
+  # longer runs, and it is the server that has to run after the hop. The
+  # client answers only where no server binary is installed.
+  if [ -x "/usr/sbin/mysqld" ]; then
+    _hopSrv=$(/usr/sbin/mysqld --no-defaults -V 2>&1)
+    _hopDbV=$(printf '%s\n' "${_hopSrv}" \
+      | grep -oE 'Ver [0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d" " -f2 \
+      | cut -d"." -f1,2)
+  else
+    _hopDbV=$(mysql -V 2>&1 \
+      | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+      | head -1 \
+      | cut -d"." -f1,2)
+  fi
+  [ "${_hopDbV}" = "8.4" ] && return 0
+  echo
+  if [ -n "${_hopDbV}" ]; then
+    _msg "OOPS: Not supported DB server detected ${_hopDbV}"
+  else
+    _msg "OOPS: The DB server version could not be read"
+    if [ -n "${_hopSrv}" ]; then
+      _msg "OOPS: /usr/sbin/mysqld says: $(printf '%s\n' "${_hopSrv}" | head -1)"
+    fi
+  fi
+  _msg "OOPS: ${_hopTgt} supports only Percona 8.4"
+  if [ "${_hopDbV}" = "8.0" ]; then
+    _msg "OOPS: Run 'barracuda up-${_tRee} system percona-8.4' first"
+  elif [ "${_hopDbV}" = "5.7" ] && [ "${_hopOs}" = "trixie" ]; then
+    _msg "OOPS: Debian Trixie has no Percona 8.0 server to upgrade 5.7 through,"
+    _msg "OOPS: so Percona cannot be upgraded in place on this box"
+  elif [ "${_hopDbV}" = "5.7" ]; then
+    _msg "OOPS: Run 'barracuda up-${_tRee} system percona-8.0' and then 'barracuda up-${_tRee} system percona-8.4' first"
+  elif [ -z "${_hopDbV}" ]; then
+    _msg "OOPS: The database server binary must run and report its version first"
+  else
+    _msg "OOPS: Upgrade Percona on this box to 8.4 in place first"
+  fi
+  [ -e "${_barCnf}" ] && _hop_flag_set_no "${_hopVar}"
+  # Verify with source semantics, as the next run reads the cnf.
+  # shellcheck disable=SC1090
+  if [ -e "${_barCnf}" ] && ! bash -n "${_barCnf}" 2> /dev/null; then
+    _msg "OOPS: ${_barCnf} does not parse, check ${_hopVar} in it by hand"
+  elif [ -e "${_barCnf}" ] \
+    && ( unset "${_hopVar}"; . "${_barCnf}" > /dev/null 2>&1; [ "${!_hopVar}" = "YES" ] ); then
+    _msg "OOPS: ${_barCnf} still sets ${_hopVar}=YES, remove it by hand"
+  else
+    _msg "OOPS: ${_hopVar} is now NO in ${_barCnf}"
+    _msg "OOPS: Set it to YES again once this box runs Percona 8.4"
+  fi
+  echo
+  sleep 3
+  echo "Bye"
+  _clean_pid_exit _major_os_upgrade_percona_check
 }
 
 _if_major_os_upgrade() {
@@ -9050,6 +9406,8 @@ _if_major_os_upgrade() {
     if [ -e "/root/.run_post_major_os_upgrade.info" ]; then
       rm -f /root/.run_post_major_os_upgrade.info
     fi
+    rm -f ${_pthLog}/re-installed-php*-on-post_major_os_upgrade.info
+    _PHP_BUILT_IN_RUN=
     if [ -e "/root/.completed_post_major_os_upgrade.info" ]; then
       rm -f /root/.completed_post_major_os_upgrade.info
     fi
@@ -11174,6 +11532,113 @@ _myquick_install_upgrade() {
   _myquick_reconcile
 }
 
+### Per-box root cron lines in /var/xdrago/cron/custom.txt are appended to
+### the root crontab as written. A line that hands a directory of an account
+### to <acct>[.ftp]:users puts it back into the box-wide group on every run
+### once the account carries its per-instance group, and every other
+### account's identities can then read what the line copies there.
+### One narrow shape is rewritten to the account's own group, read at run
+### time -- $(id -gn <acct>) is the per-instance group once the account is
+### converted and 'users' before, so an unconverted box runs what it ran:
+### chown (or /bin/chown, /usr/bin/chown) in command position -- right after
+### a five-field schedule or an @keyword, or after ; && || | or a paren --
+### options before and after the owner, <acct>[.ftp]:users for an account
+### that exists on this box, one or more operands that are all
+### /data/disk/<acct> or below it, then only redirections before the end of
+### the command. A line with a comment, a quote, a backtick, a backslash, a
+### crontab % or a '..' path segment, and every other form, is left as
+### written; whatever still hands an account's tree to users afterwards is
+### named in a NOTE, also when the file could not be updated. The previous
+### file goes to the dragon config store first; a step that fails leaves the
+### file as it was.
+_custom_cron_account_group() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _custom_cron_account_group"
+  fi
+  local _cus="/var/xdrago/cron/custom.txt"
+  local _tmp=""
+  local _dir=""
+  local _a=""
+  local _accts=""
+  local _n=0
+  local _left=""
+  local _upd=YES
+  [ -f "${_cus}" ] && [ ! -L "${_cus}" ] || return 0
+  for _dir in /data/disk/*; do
+    _a="${_dir##*/}"
+    [[ "${_a}" =~ ^[a-z0-9][a-z0-9-]*$ ]] || continue
+    [ -d "${_dir}" ] && [ ! -L "${_dir}" ] || continue
+    [ -e "/root/.${_a}.octopus.cnf" ] || continue
+    getent passwd "${_a}" > /dev/null 2>&1 || continue
+    _accts="${_accts} ${_a}"
+  done
+  [ -n "${_accts}" ] || return 0
+  if ! _tmp=$(mktemp "${_cus}.XXXXXX"); then
+    _msg "NOTE: ${_cus} could not be copied for the account group check; left as written"
+    _upd=NO
+  elif ! _ACCTS="${_accts}" perl -pe '
+    BEGIN {
+      our $A = join("|", map { quotemeta } grep { /^[a-z0-9][a-z0-9-]*$/ } split(" ", $ENV{_ACCTS} // ""));
+    }
+    our $A;
+    if ($A ne "" && !/(?:^|[\s;&|()<>])#/ && !/["\x27`\\%]/ && !m{/\.\.(?:[/\s;&|<>)]|$)}) {
+      s{
+        ((?:^[-0-9*,/]+\s+(?:\S+\s+){4}|^\@[a-z]+\s+|(?<![<>])[;&|(]\s*))
+        ((?:(?:/usr)?/s?bin/)?chown(?:\s+-[a-zA-Z]+|\s+--[a-z][-a-z]*)*\s+)
+        ($A)(\.ftp)?:users
+        ((?:\s+-[a-zA-Z]+|\s+--[a-z][-a-z]*)*
+         (?:\s+/data/disk/\3(?:/[-\w./]*)?)+
+         (?:\s+\d*>>?\s*[^\s;&|<>]+|\s+\d*>&\d+|\s+&>>?\s*[^\s;&|<>]+)*
+         \s*)
+        (?=;|&&|\|\|?|$)
+      }{$1$2$3$4:\$(id -gn $3)$5}gx;
+    }
+  ' "${_cus}" > "${_tmp}"; then
+    rm -f "${_tmp}"
+    _msg "NOTE: ${_cus}: the account group check failed; left as written"
+    _upd=NO
+  elif cmp -s "${_cus}" "${_tmp}"; then
+    rm -f "${_tmp}"
+  else
+    _n=$(diff "${_cus}" "${_tmp}" | grep -c '^>')
+    _backup_to_dragon "${_cus}"
+    if [ -z "${_DRAGON_RUN_DIR}" ] \
+      || ! cmp -s "${_cus}" "${_DRAGON_RUN_DIR}/custom.txt" \
+      || ! chmod --reference="${_cus}" "${_tmp}" \
+      || ! chown --reference="${_cus}" "${_tmp}" \
+      || ! mv -f "${_tmp}" "${_cus}"; then
+      rm -f "${_tmp}"
+      _msg "NOTE: ${_cus}: ${_n} line(s) hand an account's directory to the box-wide group users, but the file could not be updated; left as written"
+    else
+      _msg "NOTE: ${_cus}: ${_n} line(s) handed an account's directory to the box-wide group users; they now take the account's own group, \$(id -gn <account>) (previous copy: ${_DRAGON_RUN_DIR}/custom.txt)"
+    fi
+  fi
+  # What still hands an account's tree to users is named, never silent: a
+  # form not rewritten above, or every such line when the update failed.
+  # Deliberately broad -- a harmless line named is fine, a live one missed
+  # is not: any line that is not a comment, names an account as a word
+  # (its path, ~acct, its shell home, a loop list), and carries a chown word
+  # with a users group (or chgrp with users); quoting characters are removed
+  # first and nothing is cut at a '#'. It reads the text an operator writes:
+  # a name that only a variable or an escape sequence produces is not seen.
+  _left=$(_ACCTS="${_accts}" perl -ne '
+    BEGIN {
+      our $A = join("|", map { quotemeta } grep { /^[a-z0-9][a-z0-9-]*$/ } split(" ", $ENV{_ACCTS} // ""));
+    }
+    our $A;
+    next if $A eq "" || /^\s*#/;
+    my $l = $_;
+    $l =~ s/\$(?=["\x27])//g;
+    $l =~ tr/"\x27`\\//d;
+    next unless $l =~ /(?<![-\w.])(?:$A)(?![-\w])/;
+    print "$. " if ($l =~ /\bchown\b/ && $l =~ /[.:](?:users|100)(?![-\w])/)
+      || ($l =~ /\bchgrp\b/ && $l =~ /(?<![-\w.])(?:users|100)(?![-\w])/);
+  ' "${_cus}" 2> /dev/null)
+  if [ -n "${_left}" ]; then
+    _msg "NOTE: ${_cus}: line(s) ${_left% } still hand an account's directory to the box-wide group users; write the group as \$(id -gn <account>)"
+  fi
+}
+
 _xdrago_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _xdrago_install_upgrade"
@@ -11242,6 +11707,7 @@ _xdrago_install_upgrade() {
     mv -f /etc/cron.daily/mlocate ${_vBs}/ &> /dev/null
     cp -af /var/xdrago/cron/crontabs/root /var/spool/cron/crontabs/ &> /dev/null
     if [ -e "/var/xdrago/cron/custom.txt" ]; then
+      _custom_cron_account_group
       cat /var/xdrago/cron/custom.txt >> /var/spool/cron/crontabs/root
     fi
     chown root:crontab /var/spool/cron/crontabs/root
