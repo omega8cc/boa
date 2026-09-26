@@ -103,6 +103,21 @@ at the start of every run. The token goes into that home, set as the build user:
   COMPOSER_HOME=~/.config/staticbuild-composer composer config -g github-oauth.github.com <token>
 ```
 
+### Held releases
+
+A dependency release that breaks the distributions is held out of every build that
+resolves its own dependencies: `_COMPOSER_CONFLICTS` in staticbuild writes a root
+`conflict` into each build's `composer.json`. It holds `twig/twig` below 3.30 today:
+Twig 3.30.0 breaks every page of the Drupal 10 and 11 releases published before
+Drupal's own fix (drupal.org issue 3625969), because the compiled templates call
+Twig's escaper with the argument list of Drupal's escape filter. The hold is lifted
+once every catalogue core carries that fix. varbase, installed from upstream's lock,
+and the vanilla cores, whose `drupal/core-recommended` pins Twig, are not affected.
+
+Every published tarball records root as its owner (`--owner=0 --group=0
+--numeric-owner`): BOA unpacks some of them as root into trees every instance shares,
+and tar run as root restores the owner an archive records.
+
 ### Advisories: audited, not blocked
 
 Composer's security-advisory blocking stays **off** for the distributions that resolve
@@ -448,7 +463,9 @@ published to `/var/www/static/core`:
 
 Common shape for the create-project distros (farmOS is a release tarball instead).
 `allow-plugins true` matters: the distros pull composer/installers, composer-patches,
-etc., which current Composer blocks unless allowed.
+etc., which current Composer blocks unless allowed. Before the first resolve, add the
+held releases (see "Held releases") to the project's `composer.json`, as the tool does:
+`"conflict": {"twig/twig": ">=3.30"}`.
 
 ```sh
 farmos     # farm-4.0.6-11.3.17  (farmOS caps core at 11.3)
