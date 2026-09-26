@@ -616,6 +616,29 @@
 
 @=> Important Fixes
 
+    * The barracuda pass that disables unused PHP versions (on a major OS
+      upgrade, with /root/.allow-php-multi-install-cleanup.cnf, and on
+      php-idle disable) keeps every version an account pins: also a
+      two-digit version in fpm.info, cli.info or multi-fpm.info, the
+      installed versions its cli-per-platform.info lines name, and the one
+      its phpNN.info switches steer the command line to. Those were moved
+      out of /opt, and the sites or the command line pinned to them fell
+      to another PHP.
+    * An octopus upgrade no longer refuses an account whose fpm.info or
+      cli.info holds a two-digit version (84), anything else that is not
+      one version, or nothing: only a pin to PHP older than 5.6 stops it.
+      A two-digit version is read as the dotted one, and other text is
+      ignored, the account keeping the version in its octopus.cnf.
+    * With _PHP_SINGLE_INSTALL set, a barracuda pass forces each account's
+      fpm.info, cli.info, log/fpm.txt and log/cli.txt to that version
+      again; since a variable rename it wrote /fpm.info, /cli.info,
+      /fpm.txt and /cli.txt at the root of the filesystem instead.
+    * xmass and xoct read cli-per-platform.info exactly as websh does: a
+      last line without a newline counts, and a version keeps its digits
+      only. xoct compares a two-digit pin with the dotted version the
+      target's last pass recorded, so a repeated create no longer arms
+      another octopus pass for it.
+
     * The pinned EzContent and Commerce v.2 catalogue platforms ship a
       composer.lock whose content-hash matches their composer.json again:
       Composer no longer warns that the lock is out of date on every run
