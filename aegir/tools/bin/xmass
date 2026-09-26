@@ -549,6 +549,59 @@ _mig_php_norm() {
   esac
 }
 
+### static/control is the account's main login's (and oN owns the rest of
+### /data/disk/oN): it can put a link or a FIFO at any name there, or at
+### control itself. Root reads and writes those names only through these,
+### the ltd worker's rule. Run "$@" inside the real directory $1: below
+### /data/disk and /home every name on the path must be a real directory;
+### once entered, ./name stays there whatever is swapped.
+_xmass_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+### ./$1 in the current (pinned) directory: never through a link, never
+### blocked on a FIFO, at most 1 MiB; empty for anything else.
+_xmass_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+### $2 in the real directory $1, read as _xmass_read_here reads it.
+_xmass_read_in() {
+  _xmass_in_real_dir "${1}" _xmass_read_here "${2}"
+}
+### ./$1 in the current (pinned) directory with the content $2 (0644), handed
+### to $3 (owner:group): a fresh file created exclusively, then renamed over
+### the name, so a link or FIFO put there is replaced, never followed or
+### opened, and a reader (the 503 gate) never finds the name missing.
+_xmass_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    [ -n "${3}" ] && chown -h "${3}" "./${1}" &> /dev/null
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+### ./control made a real directory, run inside the real static/: a link
+### put at the name is removed, a missing directory created.
+_xmass_ctrl_dir_here() {
+  [ -L ./control ] && rm -f ./control
+  [ -d ./control ] || mkdir -p ./control
+}
+
 ### Union of PHP versions one account is pinned to: the account-level
 ### static/control/{fpm,cli}.info defaults, the per-site column of
 ### static/control/multi-fpm.info (dotted and shorthand forms both count),
@@ -562,9 +615,10 @@ _mig_php_norm() {
 ### core cannot run on it.
 _mig_php_versions_needed() {
   local _u="$1" _f _v _dom _rest _line _k _e _mk="" _txt _n _out=""
-  for _f in "${_u}/static/control/fpm.info" "${_u}/static/control/cli.info"; do
-    [ -e "${_f}" ] || continue
-    _v="$(_mig_php_norm "$(tr -d ' \t\r\n' < "${_f}" 2>/dev/null)")"
+  ### read inside the account's real static/control, never through a link
+  ### or into a FIFO put there
+  for _f in fpm.info cli.info; do
+    _v="$(_mig_php_norm "$(_xmass_read_in "${_u}/static/control" "${_f}" | tr -d ' \t\r\n')")"
     [ -n "${_v}" ] && _out="${_out} ${_v}"
   done
   if [ -e "${_u}/static/control/multi-fpm.info" ]; then
@@ -575,11 +629,11 @@ _mig_php_versions_needed() {
       case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
       _v="$(_mig_php_norm "${_v}")"
       [ -n "${_v}" ] && _out="${_out} ${_v}"
-    done < "${_u}/static/control/multi-fpm.info"
+    done <<< "$(_xmass_read_in "${_u}/static/control" multi-fpm.info)"
   fi
   if [ -e "${_u}/static/control/cli-per-platform.info" ]; then
     _txt=""; _n=0
-    { IFS= read -r -N 65536 _txt < "${_u}/static/control/cli-per-platform.info"; } 2>/dev/null || true
+    _txt="$(_xmass_read_in "${_u}/static/control" cli-per-platform.info | head -c 65536)"
     while IFS= read -r _line; do
       _n=$(( _n + 1 ))
       [ "${_n}" -gt 200 ] && break
@@ -590,9 +644,11 @@ _mig_php_versions_needed() {
       [ -n "${_v}" ] && _out="${_out} ${_v}"
     done <<< "${_txt}"
   fi
-  for _e in 56 70 71 72 73 74 80 81 82 83 84 85; do
-    [ -e "${_u}/static/control/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
-  done
+  if _xmass_in_real_dir "${_u}/static/control" true; then
+    for _e in 56 70 71 72 73 74 80 81 82 83 84 85; do
+      [ -e "${_u}/static/control/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
+    done
+  fi
   [ -n "${_mk}" ] && _out="${_out} $(_mig_php_norm "${_mk}")"
   echo "${_out}" | tr ' ' '\n' | sort -u | tr '\n' ' '
 }
@@ -4753,7 +4809,9 @@ _xmass_sync_static_symlink_safe() {
   local _ctl
   for _ctl in multi-fpm.info fpm.info cli.info; do
     [ "${_ctl_link}" = "YES" ] && break
-    if [ -e "${_src_static}/control/${_ctl}" ]; then
+    # a regular file only: a pin the tenant made a link is never carried
+    if _xmass_in_real_dir "${_src_static}/control" \
+      test -f "./${_ctl}" -a ! -L "./${_ctl}"; then
       _xmass_rsync -aEAX ${_ieni} -e ssh \
         "${_src_static}/control/${_ctl}" \
         "root@${_tgt}:${_dst_static}/control/${_ctl}"
@@ -5607,22 +5665,13 @@ _xmass_block_web_all() {
       _held="${_held} ${_oct}"
       continue
     fi
-    # static/ is tenant-writable, so both the control directory and the pid
-    # name can be planted as symlinks: mkdir -p succeeds silently on a link to
-    # a directory and > follows a live link and creates the target of a
-    # dangling one. Strip a planted link and write only into a real directory.
-    [ -L "/data/disk/${_oct}/static/control" ] \
-      && rm -f "/data/disk/${_oct}/static/control" &>/dev/null
-    mkdir -p "/data/disk/${_oct}/static/control"
-    [ -L "/data/disk/${_oct}/static/control/http-off.pid" ] \
-      && rm -f "/data/disk/${_oct}/static/control/http-off.pid" &>/dev/null
-    if [ -d "/data/disk/${_oct}/static/control" ] \
-      && [ ! -L "/data/disk/${_oct}/static/control" ]; then
-      echo 7200 > "/data/disk/${_oct}/static/control/http-off.pid"
-    fi
-    chown -h "${_oct}:$(_acct_group "${_oct}")" \
-      "/data/disk/${_oct}/static/control/http-off.pid" \
-      &>/dev/null || true
+    # static/ is tenant-writable, so the control directory and the pid name
+    # can be planted as a link or a FIFO: the directory is made real and the
+    # gate is put inside it, never through or into either.
+    _xmass_in_real_dir "/data/disk/${_oct}/static" _xmass_ctrl_dir_here
+    _xmass_in_real_dir "/data/disk/${_oct}/static/control" \
+      _xmass_put_here http-off.pid 7200 "${_oct}:$(_acct_group "${_oct}")" \
+      || _alrt "  ${_oct}: could not write the 503 gate"
   done
   # Purge the Nginx speed cache so cached 200s don't mask the 503
   if [ -d "/var/lib/nginx/speed" ]; then
@@ -5656,20 +5705,22 @@ _xmass_src_fqdn() {
 _xmass_plant_host_gate() {
   local _oct="$1"
   local _fqdn="$2"
-  local _hg="/data/disk/${_oct}/static/control/http-off-host.pid"
   [ -n "${_fqdn}" ] || return 1
-  [ -L "/data/disk/${_oct}/static/control" ] \
-    && rm -f "/data/disk/${_oct}/static/control" &>/dev/null
-  mkdir -p "/data/disk/${_oct}/static/control"
-  [ -L "${_hg}" ] && rm -f "${_hg}" &>/dev/null
-  if [ ! -d "/data/disk/${_oct}/static/control" ] \
-    || [ -L "/data/disk/${_oct}/static/control" ]; then
-    return 1
+  _xmass_in_real_dir "/data/disk/${_oct}/static" _xmass_ctrl_dir_here
+  _xmass_in_real_dir "/data/disk/${_oct}/static/control" \
+    _xmass_host_gate_here "${_fqdn}" "${_oct}:$(_acct_group "${_oct}")"
+}
+### The per-host gate in the current (pinned) control directory: the name is
+### read and rewritten, never followed or opened as a FIFO. $1 = hostname,
+### $2 = owner:group.
+_xmass_host_gate_here() {
+  local _t
+  _t="$(_xmass_read_here http-off-host.pid)"
+  if ! grep -q -x -F "${1}" <<< "${_t}"; then
+    _t="$(printf '%s\n%s\n' "${_t}" "${1}" | sed '/^$/d')"
+    _xmass_put_here http-off-host.pid "${_t}" "${2}" || return 1
   fi
-  grep -q -x -F "${_fqdn}" "${_hg}" 2>/dev/null || echo "${_fqdn}" >> "${_hg}"
-  chown -h "${_oct}:$(_acct_group "${_oct}")" "${_hg}" &>/dev/null || true
-  chmod 644 "${_hg}" &>/dev/null
-  grep -q -x -F "${_fqdn}" "${_hg}" 2>/dev/null
+  grep -q -x -F "${1}" <<< "$(_xmass_read_here http-off-host.pid)"
 }
 
 _xmass_remove_http_off_all() {
@@ -5686,7 +5737,7 @@ _xmass_remove_http_off_all() {
         continue
       ;;
     esac
-    rm -f "/data/disk/${_oct}/static/control/http-off.pid"
+    _xmass_in_real_dir "/data/disk/${_oct}/static/control" rm -f -- ./http-off.pid
     # The per-host gate goes with it only once the account's deferred sites
     # were converted too; a failed second pass keeps them held.
     case " ${_XMASS_PROXY_DEFER_FAILED:-} " in
@@ -5694,7 +5745,7 @@ _xmass_remove_http_off_all() {
         _alrt "  ${_oct}: its deferred sites were NOT converted; keeping the per-host gate up"
       ;;
       *)
-        rm -f "/data/disk/${_oct}/static/control/http-off-host.pid"
+        _xmass_in_real_dir "/data/disk/${_oct}/static/control" rm -f -- ./http-off-host.pid
       ;;
     esac
   done
@@ -5714,8 +5765,9 @@ _xmass_remove_http_off_target() {
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     # The per-host twin goes too: one left by an earlier move of this box
     # rides the same sync and would hold the renamed sites on 503 here.
+    # inside the account's real static/control on the target, as here
     ssh root@"${_tgt}" \
-      "rm -f /data/disk/${_oct}/static/control/http-off.pid /data/disk/${_oct}/static/control/http-off-host.pid" 2>/dev/null \
+      "_w=\"\$(cd -P /data/disk 2>/dev/null && pwd -P)/${_oct}/static/control\"; cd -P -- /data/disk/${_oct}/static/control 2>/dev/null && [ \"\$(pwd -P)\" = \"\${_w}\" ] && rm -f -- ./http-off.pid ./http-off-host.pid" 2>/dev/null \
       || _alrt "Could not remove http-off.pid for ${_oct} on target ${_tgt}"
   done
   ssh root@"${_tgt}" \
@@ -6843,8 +6895,8 @@ _xmass_rearm_deferred_upgrades_target() {
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     ssh root@"${_tgt}" "bash -s" <<REARM
 _d="/data/disk/${_oct}/static/control/run-upgrade.pid.deferred"
-if [ -e "\${_d}" ]; then
-  mv -f "\${_d}" "/data/disk/${_oct}/static/control/run-upgrade.pid"
+if [ -e "\${_d}" ] && [ ! -L "/data/disk/${_oct}/static/control" ]; then
+  mv -f -T "\${_d}" "/data/disk/${_oct}/static/control/run-upgrade.pid"
   echo "  ${_oct}: seeded upgrade re-armed; the dispatcher runs it on its next quiet tick"
 fi
 REARM
@@ -6925,9 +6977,11 @@ fi
 # account), so xoct marks it with run-upgrade.xmass. Park that one instead
 # of defusing it; the cutover re-arms it at its end, when the box serves
 # again and a pass is exactly what the seed asked for.
-if [ -e "/data/disk/${_oct}/static/control/run-upgrade.pid" ] \
+if [ -L "/data/disk/${_oct}/static/control" ]; then
+  echo "  ${_oct}: static/control is a symlink -- its upgrade trigger is not touched"
+elif [ -e "/data/disk/${_oct}/static/control/run-upgrade.pid" ] \
   && [ -e "/data/disk/${_oct}/static/control/run-upgrade.xmass" ]; then
-  mv -f "/data/disk/${_oct}/static/control/run-upgrade.pid" \
+  mv -f -T "/data/disk/${_oct}/static/control/run-upgrade.pid" \
     "/data/disk/${_oct}/static/control/run-upgrade.pid.deferred"
   rm -f "/data/disk/${_oct}/static/control/run-upgrade.xmass"
   echo "  ${_oct}: deferred the seeded upgrade until the cutover completes (armed by prep-target while this box was demoted)"
@@ -6935,7 +6989,8 @@ elif [ -e "/data/disk/${_oct}/static/control/run-upgrade.pid" ]; then
   rm -f "/data/disk/${_oct}/static/control/run-upgrade.pid"
   echo "  ${_oct}: cleared stale run-upgrade.pid (unattended post-promotion upgrade defused)"
 fi
-if [ "\$(cat "/data/disk/${_oct}/static/control/platforms.info" 2>/dev/null)" = "FOOBAR" ]; then
+if [ ! -L "/data/disk/${_oct}/static/control" ] \
+  && [ "\$(timeout 10 dd if="/data/disk/${_oct}/static/control/platforms.info" iflag=nofollow,nonblock bs=64 count=1 status=none 2>/dev/null)" = "FOOBAR" ]; then
   rm -f "/data/disk/${_oct}/static/control/platforms.info"
   echo "  ${_oct}: removed inert FOOBAR platforms.info seed"
 fi
@@ -11125,9 +11180,9 @@ _xmass_heal_fpm_pins() {
     esac
     _ctl="${_root}/static/control"
     [ -e "${_ctl}/multi-fpm.info" ] || continue
-    rm -f ${_ctl}/.multi-fpm.*.pid
-    rm -f ${_ctl}/.single-fpm.*.pid
-    rm -f ${_ctl}/.multi-nginx-fpm.pid
+    # inside the account's real control directory, never through a link
+    _xmass_in_real_dir "${_ctl}" rm -f -- ./.multi-fpm.*.pid \
+      ./.single-fpm.*.pid ./.multi-nginx-fpm.pid || continue
     _healed=$(( _healed + 1 ))
   done
   [ "${_healed}" = "0" ] && return 0
@@ -11135,7 +11190,7 @@ _xmass_heal_fpm_pins() {
   if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
     bash /var/xdrago/manage_ltd_users.sh &> /dev/null
     for _root in $(find /data/disk/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
-      rm -f ${_root}/static/control/.multi-nginx-fpm.pid
+      _xmass_in_real_dir "${_root}/static/control" rm -f -- ./.multi-nginx-fpm.pid
     done
     bash /var/xdrago/manage_ltd_users.sh &> /dev/null
   fi
@@ -11154,7 +11209,7 @@ _xmass_heal_fpm_pins() {
       [ -z "${_ver}" ] && continue
       [ -S "/run/${_acct}.${_ver}.fpm.socket" ] \
         || _missing="${_missing} ${_dom}:${_ver}"
-    done < ${_ctl}/multi-fpm.info
+    done <<< "$(_xmass_read_in "${_ctl}" multi-fpm.info)"
     if [ ! -z "${_missing}" ]; then
       _alrt "account ${_acct}: pinned PHP pool(s) NOT live:${_missing}"
       _alrt "  those sites are served by the account default pool right now"

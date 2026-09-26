@@ -105,20 +105,40 @@ _stage_grav_releases() {
     return 0
   fi
   _msg "INFO: Staging the official Grav admin bundle ${_gVrn} for the upgrade channel"
-  mkdir -p "${_gDir}"
-  curl ${_crlGet} -o "${_gDir}/.${_gZip}.tmp" "https://${_USE_MIR}/core/${_gZip}" 2> /dev/null
-  ### temp+mv: a truncated fetch must never be resolvable as the newest
-  ### artefact (the unzip -l probe rejects short/garbage bodies too).
-  if [ -s "${_gDir}/.${_gZip}.tmp" ] \
-    && unzip -l "${_gDir}/.${_gZip}.tmp" > /dev/null 2>&1; then
-    mv -f "${_gDir}/.${_gZip}.tmp" "${_gDir}/${_gZip}"
-    chown ${_USER}:${_ACCG:-users} "${_gDir}" "${_gDir}/${_gZip}" 2> /dev/null
+  ### static/ is group-writable: grav-releases is made a real directory and
+  ### everything below runs inside it, so a link put at any name there is
+  ### never written through, chowned or pruned into.
+  _acct_in_real_dir "${_ROOT}/static" _satellite_grav_dir_here
+  if _acct_in_real_dir "${_gDir}" _satellite_grav_fetch_here "${_gZip}"; then
     _msg "INFO: Grav admin bundle staged: ${_gDir}/${_gZip}"
-    _prune_grav_releases "${_gDir}"
   else
-    rm -f "${_gDir}/.${_gZip}.tmp"
     _msg "OOPS: Grav admin bundle ${_gVrn} download failed; the upgrade task refuses until staged"
   fi
+}
+
+#
+# ./grav-releases made a real directory, run inside the real static/.
+_satellite_grav_dir_here() {
+  [ -L ./grav-releases ] && rm -f ./grav-releases
+  [ -d ./grav-releases ] || mkdir -p ./grav-releases
+}
+
+#
+# Fetch the bundle $1 into the current (pinned) grav-releases directory.
+### temp+mv: a truncated fetch must never be resolvable as the newest
+### artefact (the unzip -l probe rejects short/garbage bodies too).
+_satellite_grav_fetch_here() {
+  rm -f -- "./.${1}.tmp"
+  curl ${_crlGet} -o "./.${1}.tmp" "https://${_USE_MIR}/core/${1}" 2> /dev/null
+  if [ -f "./.${1}.tmp" ] && [ ! -L "./.${1}.tmp" ] && [ -s "./.${1}.tmp" ] \
+    && unzip -l "./.${1}.tmp" > /dev/null 2>&1; then
+    mv -f -T "./.${1}.tmp" "./${1}"
+    chown -h ${_USER}:${_ACCG:-users} . "./${1}" 2> /dev/null
+    _prune_grav_releases .
+    return 0
+  fi
+  rm -f -- "./.${1}.tmp"
+  return 1
 }
 
 #
@@ -1087,18 +1107,18 @@ _satellite_cnf() {
 
     if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
       if [ -e "${_ROOT}/log/fpm.txt" ]; then
-        _PHP_FPM_VERSION=$(cat ${_ROOT}/log/fpm.txt 2>&1)
+        _PHP_FPM_VERSION=$(_acct_read_in "${_ROOT}/log" fpm.txt)
         _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
       else
         _PHP_FPM_VERSION=8.4
       fi
-      echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
+      _acct_put_in "${_ROOT}/static/control" fpm.info "${_PHP_FPM_VERSION}"
     fi
 
     if [ -e "${_ROOT}/static/control/fpm.info" ]; then
       # one version, dotted or two-digit; other text is ignored: the cnf's
       # version stays and the file is left as it is
-      _T_VRN=$(_satellite_php_vrn "$(cat ${_ROOT}/static/control/fpm.info 2>&1)")
+      _T_VRN=$(_satellite_php_vrn "$(_acct_read_in "${_ROOT}/static/control" fpm.info)")
       if [ -n "${_T_VRN}" ]; then
         _PHP_FPM_VERSION="${_T_VRN}"
         if [ "${_PHP_FPM_VERSION}" = "8.5" ] \
@@ -1183,27 +1203,27 @@ _satellite_cnf() {
             _msg "VARS: Set _PHP_FPM_VERSION to ${_PHP_FPM_VERSION}"
           fi
           sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_FPM_VERSION}/g" ${_octCnf}
-          echo ${_PHP_FPM_VERSION} > ${_ROOT}/log/fpm.txt
-          echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
-          chown -h ${_USER}.ftp:${_ACCG:-users} ${_ROOT}/static/control/fpm.info
+          _acct_put_in "${_ROOT}/log" fpm.txt "${_PHP_FPM_VERSION}"
+          _acct_in_real_dir "${_ROOT}/static/control" _acct_pin_here \
+            fpm.info "${_PHP_FPM_VERSION}" "${_USER}.ftp:${_ACCG:-users}"
         fi
       fi
     fi
 
     if [ ! -e "${_ROOT}/static/control/cli.info" ]; then
       if [ -e "${_ROOT}/log/cli.txt" ]; then
-        _PHP_CLI_VERSION=$(cat ${_ROOT}/log/cli.txt 2>&1)
+        _PHP_CLI_VERSION=$(_acct_read_in "${_ROOT}/log" cli.txt)
         _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
       else
         _PHP_CLI_VERSION=8.4
       fi
-      echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
+      _acct_put_in "${_ROOT}/static/control" cli.info "${_PHP_CLI_VERSION}"
     fi
 
     if [ -e "${_ROOT}/static/control/cli.info" ]; then
       # one version, dotted or two-digit; other text is ignored: the cnf's
       # version stays and the file is left as it is
-      _T_VRN=$(_satellite_php_vrn "$(cat ${_ROOT}/static/control/cli.info 2>&1)")
+      _T_VRN=$(_satellite_php_vrn "$(_acct_read_in "${_ROOT}/static/control" cli.info)")
       if [ -n "${_T_VRN}" ]; then
         _PHP_CLI_VERSION="${_T_VRN}"
         if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
@@ -1288,9 +1308,9 @@ _satellite_cnf() {
             _msg "VARS: Set _PHP_CLI_VERSION to ${_PHP_CLI_VERSION}"
           fi
           sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_PHP_CLI_VERSION}/g" ${_octCnf}
-          echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
-          echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
-          chown -h ${_USER}.ftp:${_ACCG:-users} ${_ROOT}/static/control/cli.info
+          _acct_put_in "${_ROOT}/log" cli.txt "${_PHP_CLI_VERSION}"
+          _acct_in_real_dir "${_ROOT}/static/control" _acct_pin_here \
+            cli.info "${_PHP_CLI_VERSION}" "${_USER}.ftp:${_ACCG:-users}"
         fi
       fi
     fi
@@ -1449,7 +1469,7 @@ _satellite_cnf() {
     fi
     _PRE_PLATFORMS_LIST="${_PLATFORMS_LIST}"
     if [ -e "${_ROOT}/static/control/platforms.info" ]; then
-      _PLATFORMS_LIST=$(cat ${_ROOT}/static/control/platforms.info 2>&1)
+      _PLATFORMS_LIST=$(_acct_read_in "${_ROOT}/static/control" platforms.info)
       _PLATFORMS_LIST=$(echo -n ${_PLATFORMS_LIST} | tr -d "\n" 2>&1)
       _PLATFORMS_LIST=${_PLATFORMS_LIST//[^ 0-9A-Z]/}
       _msg "NOTE! Custom Platforms List: ${_PLATFORMS_LIST}"
@@ -5526,32 +5546,8 @@ _satellite_make() {
   if [ ! -e "${_ROOT}/log/cli.txt" ]; then
     echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
   fi
-  if [ ! -e "${_ROOT}/static/control" ]; then
-    mkdir -p ${_ROOT}/static/control
-    chmod 755 ${_ROOT}/static/control
-  fi
-  if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
-    echo ${_PHP_FPM_VERSION} > ${_ROOT}/static/control/fpm.info
-  fi
-  if [ ! -e "${_ROOT}/static/control/cli.info" ]; then
-    if [ -e "${_ROOT}/static/control/fpm.info" ]; then
-      cp -af ${_ROOT}/static/control/fpm.info ${_ROOT}/static/control/cli.info
-    else
-      echo ${_PHP_CLI_VERSION} > ${_ROOT}/static/control/cli.info
-    fi
-  fi
-
-  if [ ! -e "${_ROOT}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
-    && [ -e "/home/${_USER}.ftp/clients" ]; then
-    if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
-      cp -af /var/xdrago/conf/control-readme.txt \
-        ${_ROOT}/static/control/README.txt &> /dev/null
-      chmod 0644 ${_ROOT}/static/control/README.txt
-    fi
-    rm -f ${_ROOT}/static/control/.ctrl.*
-    echo OK > ${_ROOT}/static/control/.ctrl.${_tRee}.${_xSrl}.pid
-  fi
-  chown -R ${_USER}.ftp:${_ACCG:-users} ${_ROOT}/static/control
+  _acct_in_real_dir "${_ROOT}/static" _satellite_ctrl_dir_here
+  _acct_in_real_dir "${_ROOT}/static/control" _satellite_ctrl_make_here
 
   if [ -d "/data/all/000" ]; then
     if [ ! -e "/data/all/000/core-v-${_SMALLCORE6_V}.txt" ] \
@@ -5763,6 +5759,42 @@ _satellite_detect_vm_family() {
 }
 
 #
+# The account's static/control is the main login's, so it can put a link or
+# a FIFO at any name there, or at control itself: these run inside the real
+# directory (_acct_in_real_dir) and never follow or open either.
+#
+# ./control made a real directory, run inside the real static/: a link put
+# at the name is removed, a missing directory created 0755.
+_satellite_ctrl_dir_here() {
+  [ -L ./control ] && rm -f ./control
+  [ -d ./control ] || ( umask 022; mkdir -p ./control )
+}
+# The control directory on install and upgrade (run inside it): fpm.info
+# and cli.info where missing (cli.info from a regular fpm.info), the README
+# and this serial's stamp on its first pass, the tree handed to the main
+# login (chown -R never follows a link).
+_satellite_ctrl_make_here() {
+  local _v
+  [ -e ./fpm.info ] || _acct_put_here fpm.info "${_PHP_FPM_VERSION}"
+  if [ ! -e ./cli.info ]; then
+    _v=""
+    [ -e ./fpm.info ] && _v="$(_acct_read_here fpm.info)"
+    _acct_put_here cli.info "${_v:-${_PHP_CLI_VERSION}}"
+  fi
+  if [ ! -e "./.ctrl.${_tRee}.${_xSrl}.pid" ] \
+    && [ -e "/home/${_USER}.ftp/clients" ]; then
+    if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
+      ( umask 022
+        cp -T --no-preserve=mode --remove-destination \
+          /var/xdrago/conf/control-readme.txt ./README.txt ) &> /dev/null
+    fi
+    rm -f -- ./.ctrl.*
+    _acct_put_here ".ctrl.${_tRee}.${_xSrl}.pid" OK
+  fi
+  chown -R "${_USER}.ftp:${_ACCG:-users}" .
+}
+
+#
 # One PHP version in the text of fpm.info or cli.info, dotted (8.4) or
 # two-digit (84, as the ltd worker also reads it), printed dotted; nothing for
 # any other text.
@@ -5787,7 +5819,7 @@ _satellite_check_php_compatibility() {
   # refuse: the reads below ignore what is not one version.
   _PHP_FPM_LEGACY_FREE=YES
   if [ -e "${_ROOT}/static/control/fpm.info" ]; then
-    _T_FPM_VRN=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
+    _T_FPM_VRN=$(_acct_read_in "${_ROOT}/static/control" fpm.info)
     _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
     case "${_T_FPM_VRN}" in
       5.2|5.3|5.4|5.5|52|53|54|55) _PHP_FPM_LEGACY_FREE=NO ;;
@@ -5795,7 +5827,7 @@ _satellite_check_php_compatibility() {
   fi
   _PHP_CLI_LEGACY_FREE=YES
   if [ -e "${_ROOT}/static/control/cli.info" ]; then
-    _T_CLI_VRN=$(cat ${_ROOT}/static/control/cli.info 2>&1)
+    _T_CLI_VRN=$(_acct_read_in "${_ROOT}/static/control" cli.info)
     _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
     case "${_T_CLI_VRN}" in
       5.2|5.3|5.4|5.5|52|53|54|55) _PHP_CLI_LEGACY_FREE=NO ;;
@@ -6740,10 +6772,14 @@ _satellite_batch_cleanup() {
   mv -f /data/conf/global/*inc-pre* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
-  find ${_ROOT}/static/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
-  find ${_ROOT}/static/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
-  find ${_ROOT}/static/*/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
-  find ${_ROOT}/static/*/*/*/*/module* -maxdepth 0 -mindepth 0 -type d -exec chmod 775 {} \; &> /dev/null
+  ### module* directories two to five levels below static/ made 0775. static/
+  ### is group-writable: walked from the real directory, never through a link
+  ### anyone put there (find does not follow one, -execdir acts on the bare
+  ### name in its own directory); dot names are skipped, as the per-depth
+  ### globs this replaces skipped them.
+  _acct_in_real_dir "${_ROOT}/static" find . -maxdepth 5 \
+    \( -name '.?*' -prune \) -o \( -path './*/*' -type d -name 'module*' \
+    -execdir chmod 775 {} + \) &> /dev/null
   if [ -d "${_CORE}/${_DRUPAL7}" ]; then
     [ -d "/var/backups/trash" ] || mkdir -p /var/backups/trash
     rm -rf /var/backups/trash/*

@@ -50,6 +50,23 @@
 
 @=> Security
 
+    * Root no longer follows a link, or opens a FIFO, that an account
+      puts at a name in its own static/control (or at static/control
+      itself) anywhere it reads or writes there: the barracuda, octopus
+      and self-update runs, the nightly and three-minute passes, xmass,
+      xoct, xcopy, xtrim, renameaegirhost, aegir2boa-stage2, the backup
+      tools and the migration pin gates. Each file is read in the real
+      directory, bounded and without following a link, and written as a
+      fresh file renamed over its name, so a reader never finds it
+      missing. Paths the earlier audit fixed are unchanged.
+    * A per-account remote backup credentials file may set only the names
+      the backup tools use; any other line is ignored and logged, and the
+      backup runs on.
+    * The new SFTP password a tenant asks for is delivered readable by
+      that account alone.
+    * The nightly temporary-file purge and copydbackup act only inside
+      the account's own files store, or its copy relocated by migratefs.
+
     * The shared Backdrop redis module, the Backdrop bundle's webform and
       bee are root's as soon as BOA unpacks them: their archives recorded
       the account that built them, and an unpack as root kept that owner

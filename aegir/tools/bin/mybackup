@@ -161,6 +161,18 @@ _escape_value() {
   printf '%q' "$1"
 }
 
+# The names a per-account credentials file may set: the account writes that
+# file, and this runs as root, so any other name (LD_PRELOAD, PATH, BASH_ENV,
+# PYTHONPATH, AWS_CONFIG_FILE and the like) would steer root's own process.
+# Such a line is ignored and logged; the backup runs on without it.
+_CRED_NAMES_ALLOWED="KEEP_WITHIN FULL_BACKUP_FREQUENCY AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_REGION AWS_DEFAULT_REGION AWS_SESSION_TOKEN AZURE_STORAGE_ACCOUNT AZURE_STORAGE_KEY AZURE_STORAGE_CONNECTION_STRING AZURE_CONNECTION_STRING B2_ACCOUNT_ID B2_APPLICATION_KEY DO_SPACES_KEY DO_SPACES_SECRET DO_SPACES_REGION GCS_ACCESS_KEY_ID GCS_SECRET_ACCESS_KEY IBM_ACCESS_KEY_ID IBM_SECRET_ACCESS_KEY IBM_REGION LINODE_ACCESS_KEY LINODE_SECRET_KEY LINODE_REGION R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_ACCOUNT_ID WASABI_ACCESS_KEY WASABI_SECRET_KEY WASABI_REGION"
+_cred_name_allowed() {
+  case " ${_CRED_NAMES_ALLOWED} " in
+    *" ${1} "*) return 0 ;;
+  esac
+  return 1
+}
+
 # Function to sanitize and validate credentials file
 _validate_credentials() {
   local _cred_file="$1"
@@ -186,6 +198,17 @@ _validate_credentials() {
       local _varname="${BASH_REMATCH[1]}"
       local _value="${BASH_REMATCH[2]}"
 
+      # a per-account file (the tenant's) sets only the names above
+      case "${_cred_file}" in
+        /data/disk/*)
+          if ! _cred_name_allowed "${_varname}"; then
+            _log_issue "credentials" "${_cred_file}" \
+              "Name not allowed at line ${_line_number}: ${_varname}"
+            continue
+          fi
+          ;;
+      esac
+
       # Remove surrounding quotes if present
       if [[ "${_value}" =~ ^\".*\"$ || "${_value}" =~ ^\'.*\'$ ]]; then
         _value="${_value:1:-1}"
@@ -210,7 +233,8 @@ _validate_credentials() {
     else
       _log_issue "credentials" "${_cred_file}" "Invalid syntax at line ${_line_number}: ${_line}"
     fi
-  done < "${_cred_file}"
+  done <<< "$(timeout 10 dd if="${_cred_file}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2>/dev/null)"
   _print_env "mybackup_validate_credentials"
 }
 
@@ -586,13 +610,40 @@ _main_script() {
       export _user_run_dir="${_user_dir}/${_RUN_SUBDIR}"
       export _user_cmd_file="${_user_run_dir}/${_CMD_FILE}"
       if [[ -f "${_user_cmd_file}" ]]; then
-        # Read the queue file as one arg per line. The producer side
-        # (printf '%s\n' "$@") writes the validated args this way; old
+        # These paths hang off static/control, which the tenant owns, so every
+        # component here is a name it can replace with a symlink. GNU chmod has
+        # no -h, so it always dereferences a command-line operand, and the
+        # *.txt glob both resolves through a planted directory link and matches
+        # planted links by name. The leaf is not enough: a planted INTERMEDIATE
+        # link (static/control itself, control/remote_backups or .run)
+        # redirects every operand below it, so refuse the whole run -- before
+        # the queue is even read -- when any ancestor is a link or the queue
+        # file is one. A refused queue is left where it is (never removed
+        # through a path that is not the account's own) and logged each run.
+        _user_ctl_ok=YES
+        for _p in "/data/disk/${_user}/static" \
+          "/data/disk/${_user}/static/control" \
+          "/data/disk/${_user}/static/control/remote_backups" \
+          "/data/disk/${_user}/remote_backups" \
+          "${_user_run_dir}" "${_user_cmd_file}"; do
+          if [ -L "${_p}" ]; then
+            _user_ctl_ok=NO
+            echo "[$(date)] REFUSED for ${_user}: ${_p} is a symlink" \
+              >> /var/log/mybackup_invalid_queued.log
+          fi
+        done
+        if [ "${_user_ctl_ok}" != "YES" ]; then
+          continue
+        fi
+        # Read the queue file as one arg per line, without following a link
+        # or blocking on a FIFO put at the name, at most 4 KiB. The producer
+        # side (printf '%s\n' "$@") writes the validated args this way; old
         # space-joined queue files left over from before this change parse
         # as a single args[0] that will fail the "restore"-only check below
         # and be rejected.
         local _queued_args=()
-        mapfile -t _queued_args < "${_user_cmd_file}"
+        mapfile -t _queued_args <<< "$(timeout 10 dd if="${_user_cmd_file}" \
+          iflag=nofollow,nonblock,fullblock bs=4096 count=1 status=none 2>/dev/null)"
 
         # Re-validate before exec. The queue file lives under
         # /data/disk/<user>/static/control/.run/ which is .ftp-writable
@@ -607,31 +658,9 @@ _main_script() {
         fi
 
         echo "Executing backup restore for user ${_user}."
-        # These paths hang off static/control, which the tenant owns, so every
-        # component here is a name it can replace with a symlink. GNU chmod has
-        # no -h, so it always dereferences a command-line operand, and the
-        # *.txt glob both resolves through a planted directory link and matches
-        # planted links by name. Strip the plantable components, then set modes
-        # with find -type f/-type d, which never match a link. The leaf is not
-        # enough: a planted INTERMEDIATE link (static/control itself, or
-        # control/remote_backups) redirects every operand below it, so refuse
-        # the whole run when any ancestor of the credentials dir resolves
-        # outside the account tree or is a link.
-        _user_ctl_ok=YES
-        for _p in "/data/disk/${_user}/static" \
-          "/data/disk/${_user}/static/control" \
-          "/data/disk/${_user}/static/control/remote_backups" \
-          "/data/disk/${_user}/remote_backups"; do
-          if [ -L "${_p}" ]; then
-            _user_ctl_ok=NO
-            echo "[$(date)] REFUSED for ${_user}: ${_p} is a symlink" \
-              >> /var/log/mybackup_invalid_queued.log
-          fi
-        done
-        if [ "${_user_ctl_ok}" != "YES" ]; then
-          rm -f "${_user_cmd_file}"
-          continue
-        fi
+        # The ancestors were refused above when any is a link; strip the
+        # plantable leaves here, then set modes with find -type f/-type d,
+        # which never match a link.
         [ -L "/data/disk/${_user}/remote_backups/paths" ] \
           && rm -f /data/disk/${_user}/remote_backups/paths &> /dev/null
         [ ! -L "/data/disk/${_user}/remote_backups/paths" ] \

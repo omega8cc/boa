@@ -634,7 +634,11 @@ _if_gen_goaccess() {
         cp -af /var/www/adminer/access/${_HM_U}/${1} /data/disk/${_HM_U}/static/goaccess/
       else
         rm -rf /var/www/adminer/access/${_HM_U}/${1}
-        rm -rf /data/disk/${_HM_U}/static/goaccess/${1}
+        # only inside the real directory: a link put at goaccess since the
+        # strip above is never followed
+        ( _gaD="$(cd -P /data/disk 2> /dev/null && pwd -P)/${_HM_U}/static/goaccess"
+          cd -P -- "/data/disk/${_HM_U}/static/goaccess" 2> /dev/null \
+            && [ "$(pwd -P)" = "${_gaD}" ] && rm -rf -- "./${1}" )
       fi
     fi
   fi

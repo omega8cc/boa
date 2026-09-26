@@ -1663,6 +1663,50 @@ _t_verify_inline() {   # 1 context-name 2 label
 # on a fresh account (observed: two 420s dead waits; every pool
 # appeared on the agent's first pass after the freeze lifted). Map early,
 # wait only after the freeze is off.
+# static/control is the account's main login's once the account exists: it
+# can put a link or a FIFO at any name there, or at control itself. Root
+# touches those names only inside the real directory (the ltd worker's rule):
+# run "$@" in the real directory $1, where below /data/disk every name on the
+# path must be a real directory.
+_a2b_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 read without following a link or blocking on a FIFO, at most 1 MiB.
+_a2b_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# ./$1 with the content $2 (0644), handed to $3: a fresh file created
+# exclusively, then renamed over the name.
+_a2b_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    chown -h "${3}" "./${1}" 2> /dev/null
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# ./control made a real directory, run inside the real static/.
+_a2b_ctrl_dir_here() {
+  [ -L ./control ] && rm -f ./control
+  [ -d ./control ] || mkdir -p ./control
+}
+
 _FPM_WANT=""
 _t_fpm_map() {   # 1 uri 2 dmajor; sets _FPM_WANT ("" = no mapping wanted)
   local _uri="$1" _dmaj="$2"
@@ -1672,15 +1716,25 @@ _t_fpm_map() {   # 1 uri 2 dmajor; sets _FPM_WANT ("" = no mapping wanted)
     7) [[ -d /opt/php74 ]] && _FPM_WANT="7.4" ;;
   esac
   [[ -n "${_FPM_WANT}" ]] || return 0
-  local _ctl="${_ACCT_ROOT}/static/control/multi-fpm.info"
-  mkdir -p "${_ACCT_ROOT}/static/control"
+  local _ctd="${_ACCT_ROOT}/static/control" _txt
+  _a2b_in_real_dir "${_ACCT_ROOT}/static" _a2b_ctrl_dir_here
+  if ! _a2b_in_real_dir "${_ctd}" true; then
+    # the socket wait then fails a D6 site, which cannot run without its pin
+    _alrt "site ${_uri}: ${_ctd} is not a real directory; its multi-fpm.info line is not written"
+    return 0
+  fi
+  _txt=$(_a2b_in_real_dir "${_ctd}" _a2b_read_here multi-fpm.info)
   # exact field-1 match: a domain's dots are BRE wildcards under grep,
   # so grep "^a.example.com " would false-match "aXexample.com" and
   # silently skip the second site's pool line
-  if ! awk -v u="${_uri}" '$1==u{f=1} END{exit !f}' "${_ctl}" 2>/dev/null; then
-    echo "${_uri} ${_FPM_WANT}" >> "${_ctl}"
-    chown "${_ACCOUNT}:$(_acct_group "${_ACCOUNT}")" "${_ctl}" 2>/dev/null
-    _info "site ${_uri}: multi-fpm.info -> ${_FPM_WANT}"
+  if ! awk -v u="${_uri}" '$1==u{f=1} END{exit !f}' <<< "${_txt}" 2>/dev/null; then
+    if _a2b_in_real_dir "${_ctd}" _a2b_put_here multi-fpm.info \
+      "$(printf '%s\n%s\n' "${_txt}" "${_uri} ${_FPM_WANT}" | sed '/^$/d')" \
+      "${_ACCOUNT}:$(_acct_group "${_ACCOUNT}")"; then
+      _info "site ${_uri}: multi-fpm.info -> ${_FPM_WANT}"
+    else
+      _alrt "site ${_uri}: could not write its multi-fpm.info line"
+    fi
   fi
   return 0
 }

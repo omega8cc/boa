@@ -1651,17 +1651,65 @@ _rewrite_fpm_pin_control() {
   # so leaving it stale is what makes the next manage_ltd_users pass see a
   # change, wipe every fpm_include_site_* (the stale old-hostname ones
   # included) and regenerate the lot correctly.
+  #
+  # static/control is the tenant's: only a regular file in the real
+  # directory is rewritten, read without following a link or opening a FIFO,
+  # and put back as a fresh file renamed over the name -- never sed -i on the
+  # name, which reads through a planted link and leaves an edited copy of its
+  # target, owned by the tenant, in the tenant's directory.
   local _CTL="${_AEGIR_ROOT}/static/control/multi-fpm.info"
-  local _OWN _MODE
-  [ -f "${_CTL}" ] || return 0
-  _file_needs_rename "${_CTL}" || return 0
+  local _TXT
+  _in_real_dir "${_AEGIR_ROOT}/static/control" \
+    test -f ./multi-fpm.info -a ! -L ./multi-fpm.info || return 0
+  _TXT=$(_in_real_dir "${_AEGIR_ROOT}/static/control" timeout 10 dd \
+    if=./multi-fpm.info iflag=nofollow,nonblock,fullblock bs=1048576 count=1 \
+    status=none 2>/dev/null)
+  grep -q "${_OLD_HOST}" <<< "${_TXT}" || return 0
+  if [ -n "${_SED_RENAME_GUARD}" ]; then
+    grep -v "${_NEW_HOST}" <<< "${_TXT}" | grep -q "${_OLD_HOST}" || return 0
+  fi
   _info "§2d Rewriting per-site PHP pins in static/control/multi-fpm.info ..."
-  _OWN=$(stat -c '%U:%G' "${_CTL}" 2>/dev/null)
-  _MODE=$(stat -c '%a' "${_CTL}" 2>/dev/null)
-  _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_CTL}"\'
-  [ -n "${_OWN}" ] && _maybe_run chown \'"${_OWN}"\' \'"${_CTL}"\'
-  [ -n "${_MODE}" ] && _maybe_run chmod "${_MODE}" \'"${_CTL}"\'
+  _FPM_PIN_NEW=$(sed "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" <<< "${_TXT}")
+  _FPM_PIN_OWN=$(stat -c '%U:%G' "${_CTL}" 2>/dev/null)
+  _FPM_PIN_MODE=$(stat -c '%a' "${_CTL}" 2>/dev/null)
+  _maybe_run _in_real_dir \'"${_AEGIR_ROOT}/static/control"\' _put_fpm_pin_here
   return 0
+}
+
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way (the ltd worker's rule): below /data/disk and
+# /home every name on the path must be a real directory; once entered,
+# ./name stays there whatever is swapped.
+_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+# The rewritten multi-fpm.info (_FPM_PIN_NEW) put in the current (pinned)
+# control directory: a fresh file created exclusively with the old one's
+# mode (by umask, never a chmod by name) and owner (chown -h), then renamed
+# over the name.
+_put_fpm_pin_here() {
+  local _t="./.multi-fpm.info.put.$$.${RANDOM}" _m="${_FPM_PIN_MODE:-644}"
+  rm -f -- "${_t}"
+  if ( umask "$(printf '%03o' $(( 0777 & ~0${_m} & 0777 )))"
+    printf '%s\n' "${_FPM_PIN_NEW}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && { [ -z "${_FPM_PIN_OWN}" ] || chown -h "${_FPM_PIN_OWN}" "${_t}"; } \
+    && mv -f -T -- "${_t}" ./multi-fpm.info; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
 }
 
 ###-------------§3 REWRITE DRUSH FILES---###

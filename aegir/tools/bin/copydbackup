@@ -47,6 +47,65 @@ _log_issue() {
   echo "[$(date)] Validation issue: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_VALIDATION_LOG_FILE}"
 }
 
+# The account's dbackup/ directory, resolved, in _DBK_DIR (status 0), or the
+# reason it must not be touched in _DBK_WHY (status 1). static/ is
+# tenant-writable, so a symlinked files/ or dbackup/ may be a tenant-planted
+# name -- and both are also legitimate operator shapes: migratefs relocates a
+# files store to <target>/files/<oN>/static/files (any --target the operator
+# passed) and links static/files, or dbackup/, onto it (FILES-SYMLINK.md).
+# So resolve both and accept only BOA's own layouts: files/ is the account's
+# own directory or a store in that layout named for THIS account, and
+# dbackup/ is strictly below that store or below such a store. A missing
+# dbackup/ is created in the real store. $1 = account.
+_dbk_store_dir() {
+  local _u="${1}" _own _sto _real
+  _DBK_DIR=""
+  _DBK_WHY=""
+  _own="$(cd -P /data/disk 2>/dev/null && pwd -P)/${_u}/static/files"
+  _sto=$(readlink -f "/data/disk/${_u}/static/files" 2>/dev/null)
+  case "${_sto}" in
+    "${_own}"|*"/files/${_u}/static/files") ;;
+    *)
+      _DBK_WHY="the files store resolves outside the account: ${_sto:-unresolvable}"
+      return 1
+      ;;
+  esac
+  if [ ! -e "/data/disk/${_u}/static/files/dbackup" ] \
+    && [ ! -L "/data/disk/${_u}/static/files/dbackup" ]; then
+    ( cd -P -- "${_sto}" 2>/dev/null && [ "$(pwd -P)" = "${_sto}" ] \
+      && mkdir -p ./dbackup )
+  fi
+  _real=$(readlink -f "/data/disk/${_u}/static/files/dbackup" 2>/dev/null)
+  case "${_real}" in
+    "${_sto}"/?*|*"/files/${_u}/static/files"/?*) ;;
+    *)
+      _DBK_WHY="dbackup resolves outside the account's files store: ${_real:-unresolvable}"
+      return 1
+      ;;
+  esac
+  [ -d "${_real}" ] || { _DBK_WHY="dbackup is not a directory"; return 1; }
+  _DBK_DIR="${_real}"
+  return 0
+}
+
+# Copy the dump $2 as $3 into the dated directory $1 of the current, pinned
+# dbackup directory: the dated directory is entered for real (never through
+# a link put at its name) and nothing already at the name is written through.
+# Status 0 when copied, 2 when the name was already taken, 1 on refusal.
+_dbk_copy_here() {
+  local _here
+  _here="$(pwd -P)"
+  if [ ! -d "./${1}" ] || [ -L "./${1}" ]; then
+    rm -f -- "./${1}" 2>/dev/null
+    mkdir "./${1}" 2>/dev/null || return 1
+  fi
+  cd -P -- "./${1}" 2>/dev/null && [ "$(pwd -P)" = "${_here}/${1}" ] || return 1
+  if [ -e "./${3}" ] || [ -L "./${3}" ]; then
+    return 2
+  fi
+  cp -a -- "${2}" "./${3}"
+}
+
 # -----------------------------------------------------------------------------
 # 1) Identify which user references which DB by scanning vhosts
 # -----------------------------------------------------------------------------
@@ -158,19 +217,29 @@ for _backup_dir in "${_ARCH_SQL_BASE}"/*; do
     # If this DB is used by any users, copy the file for them
     if [ -n "${_db_users_map["${_possible_dbname}"]}" ]; then
       for _user in ${_db_users_map["${_possible_dbname}"]}; do
-        _target_dir="/data/disk/${_user}/static/files/dbackup/${_datetime}"
-        [ ! -d "${_target_dir}" ] && mkdir -p "${_target_dir}"
-
-        _target_file="${_target_dir}/${_base_file}"
-
-        if [ -e "${_target_file}" ]; then
-          echo "File already exists, skipping: ${_target_file}"
-        else
-          echo "Copying ${_backup_file} => ${_target_file}"
-          cp -a "${_backup_file}" "${_target_file}"
-          # Mark that we touched this user's folder in this directory
-          _touched_users["${_user}"]=1
+        # Only into the account's own store, entered for real: a dbackup/,
+        # files/ or dated directory name the tenant turned into a link is
+        # never written through
+        if ! _dbk_store_dir "${_user}"; then
+          echo "Warning: ${_DBK_WHY}. Skipping ${_user}."
+          _log_issue "${_user}" "/data/disk/${_user}/static/files/dbackup" "${_DBK_WHY}"
+          continue
         fi
+        _target_file="${_DBK_DIR}/${_datetime}/${_base_file}"
+        ( cd -P -- "${_DBK_DIR}" 2>/dev/null && [ "$(pwd -P)" = "${_DBK_DIR}" ] \
+          && _dbk_copy_here "${_datetime}" "${_backup_file}" "${_base_file}" )
+        case $? in
+          0)
+            echo "Copied ${_backup_file} => ${_target_file}"
+            # Mark that we touched this user's folder in this directory
+            _touched_users["${_user}"]=1
+            ;;
+          2) echo "File already exists, skipping: ${_target_file}" ;;
+          *)
+            echo "Warning: could not copy into ${_DBK_DIR}/${_datetime}. Skipping ${_user}."
+            _log_issue "${_user}" "${_DBK_DIR}/${_datetime}" "Dated directory is not a real directory"
+            ;;
+        esac
       done
     fi
   done
@@ -180,9 +249,12 @@ for _backup_dir in "${_ARCH_SQL_BASE}"/*; do
     # Per iteration: the store is inside this account's own tree, so the
     # group is derived from the account, not the box-wide literal
     _grp=$(_acct_group "${_user}")
-    _target_dir="/data/disk/${_user}/static/files/dbackup/${_datetime}"
+    _dbk_store_dir "${_user}" || continue
+    _target_dir="${_DBK_DIR}/${_datetime}"
     echo "Setting ownership for ${_target_dir} => ${_user}.ftp:${_grp}"
-    chown -R "${_user}.ftp:${_grp}" "${_target_dir}"
+    # inside the real dated directory: chown -R never follows a link below
+    ( cd -P -- "${_target_dir}" 2>/dev/null && [ "$(pwd -P)" = "${_target_dir}" ] \
+      && chown -R "${_user}.ftp:${_grp}" . )
   done
 done
 
@@ -227,7 +299,8 @@ for _user in "${!_all_involved_users[@]}"; do
   elif [ -s "${_cycle_file}" ]; then
     # Bounded read: no valid value is long, and what is read is echoed to
     # the log, so never pull an arbitrary tenant file into root's memory
-    _cycle_value=$(head -c 64 "${_cycle_file}" 2>/dev/null)
+    _cycle_value=$(timeout 10 dd if="${_cycle_file}" iflag=nofollow,nonblock \
+      bs=64 count=1 status=none 2>/dev/null)
     _cycle_value="${_cycle_value#"${_cycle_value%%[![:space:]]*}"}"
     _cycle_value="${_cycle_value%"${_cycle_value##*[![:space:]]}"}"
     if [[ "${_cycle_value}" =~ ^[0-9]{1,4}$ ]] && [ "$((10#${_cycle_value}))" -gt 0 ]; then
@@ -241,59 +314,24 @@ for _user in "${!_all_involved_users[@]}"; do
     fi
   fi
 
-  _dbk="/data/disk/${_user}/static/files/dbackup"
-  # static/ is tenant-writable, so a symlinked dbackup/ may be a
-  # tenant-planted name -- and it is also a legitimate operator shape:
-  # a files store relocated onto attached storage (migratefs,
-  # FILES-SYMLINK.md) links dbackup/ onto the mount. A trailing slash
-  # would make root's find walk and purge whatever the link names, so
-  # resolve BOTH sides first and accept only BOA's own store layouts,
-  # strictly below them: the account's static/files store as it resolves
-  # (itself a link on a relocated account), or the attached mount's copy
-  # of that store. "dbackup -> ../" (the store root), /etc and another
-  # account are refused alike. The single-mount detector is the one
-  # manage_ltd_users.sh uses: empty on none OR more than one mount, so
-  # an ambiguous box refuses rather than guesses. The walk then starts
-  # one level below the resolved dir so the start dir itself is never
-  # removed.
-  if [ -L "${_dbk}" ]; then
-    _dbk_real=$(readlink -f "${_dbk}" 2>/dev/null)
-    _sto_real=$(readlink -f "/data/disk/${_user}/static/files" 2>/dev/null)
-    _mntPoint=$(_pd=$(stat -c '%d' /mnt 2>/dev/null); _n=0; _hit=; for _m in /mnt/*; do
-      [ -d "${_m}" ] || continue
-      if mountpoint -q "${_m}" 2>/dev/null \
-        || { [ -n "${_pd}" ] && [ "$(stat -c '%d' "${_m}" 2>/dev/null)" != "${_pd}" ]; }; then
-        _hit="${_m}"; _n=$((_n + 1))
-      fi
-    done; [ "${_n}" -eq 1 ] && printf '%s' "${_hit}"; :)
-    _dbk_ok=NO
-    if [ -n "${_dbk_real}" ] && [ -n "${_sto_real}" ]; then
-      case "${_dbk_real}" in
-        "${_sto_real}"/?*) _dbk_ok=YES ;;
-      esac
-    fi
-    if [ "${_dbk_ok}" != "YES" ] && [ -n "${_dbk_real}" ] && [ -n "${_mntPoint}" ]; then
-      case "${_dbk_real}" in
-        "${_mntPoint}/files/${_user}/static/files"/?*) _dbk_ok=YES ;;
-      esac
-    fi
-    if [ "${_dbk_ok}" != "YES" ]; then
-      echo "Warning: ${_dbk} resolves outside the account's files store (${_dbk_real:-unresolvable}). Skipping cleanup for ${_user}."
-      _log_issue "${_user}" "${_dbk}" "Store link resolves outside the account: ${_dbk_real:-unresolvable}"
-      continue
-    fi
-    _dbk="${_dbk_real}"
+  # dbackup/ as _dbk_store_dir resolves it: only BOA's own store layouts,
+  # the walk starting one level below it so the start dir itself is never
+  # removed
+  if ! _dbk_store_dir "${_user}"; then
+    echo "Warning: ${_DBK_WHY}. Skipping cleanup for ${_user}."
+    _log_issue "${_user}" "/data/disk/${_user}/static/files/dbackup" "${_DBK_WHY}"
+    continue
   fi
-  [ -d "${_dbk}" ] || continue
+  _dbk="${_DBK_DIR}"
   echo "User: ${_user}; removing backups older than ${_days_to_keep} days..."
   # -delete, not -exec rm: the tree is tenant-owned, and find unlinks
   # relative to the directory it already walked instead of handing an
-  # absolute path to a fresh process that resolves every component again
-  find "${_dbk}" -mindepth 1 \
-    -type f -mtime "+${_days_to_keep}" -delete
-  # Optionally remove empty directories, too:
-  find "${_dbk}" -mindepth 1 -depth \
-    -type d -empty -delete
+  # absolute path to a fresh process that resolves every component again;
+  # walked from inside the real directory, so a name on the way swapped for
+  # a link after the check is never followed either
+  ( cd -P -- "${_dbk}" 2>/dev/null && [ "$(pwd -P)" = "${_dbk}" ] \
+    && { find . -mindepth 1 -type f -mtime "+${_days_to_keep}" -delete
+      find . -mindepth 1 -depth -type d -empty -delete; } )
 done
 
 echo "Cleanup completed."

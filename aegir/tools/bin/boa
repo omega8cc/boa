@@ -1999,7 +1999,11 @@ _init_setup() {
     touch /run/octopus_install_run.pid
     sleep 3
     # Execute post-install octopus upgrade and exit
-    touch /data/disk/${_usEr}/static/control/ssl-live-mode.info
+    # created exclusively: a link at the name (static/control is the
+    # tenant's) is never followed
+    ( umask 022
+      dd of=/data/disk/${_usEr}/static/control/ssl-live-mode.info conv=excl \
+        status=none < /dev/null 2> /dev/null )
     rm -f /data/disk/${_usEr}/tools/le/.ctrl/ssl-demo-mode.pid
     rm -rf /data/disk/${_usEr}/.tmp/cache
     echo

@@ -862,24 +862,92 @@ _xoct_site_host_gateable() {
   [ -n "${_sp}" ] && grep -q "global.inc" "${_sp}/settings.php" 2>/dev/null
 }
 
-### Write the per-host gate for one hostname. Same symlink-safe shape as the
-### account gate: static/control is tenant-writable, so neither the directory
-### nor the file may be followed.
+### static/control is the account's main login's (and oN owns the rest of
+### /data/disk/oN): it can put a link or a FIFO at any name there, or at
+### control itself. Root reads and writes those names only through these,
+### the ltd worker's rule. Run "$@" inside the real directory $1: below
+### /data/disk and /home every name on the path must be a real directory;
+### once entered, ./name stays there whatever is swapped.
+_xoct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+### ./$1 in the current (pinned) directory: never through a link, never
+### blocked on a FIFO, at most 1 MiB; empty for anything else.
+_xoct_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+### $2 in the real directory $1, read as _xoct_read_here reads it.
+_xoct_read_in() {
+  _xoct_in_real_dir "${1}" _xoct_read_here "${2}"
+}
+### ./$1 in the current (pinned) directory with the content $2 (0644): a
+### fresh file created exclusively, then renamed over the name, so a link or
+### FIFO put there is replaced, never followed, and a reader (the 503 gate)
+### never finds the name missing.
+_xoct_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+### The 503 gate $1 (http-off.pid) with the TTL $2, created in the current
+### (pinned) control directory when it is not a regular file there, handed
+### to $3 (owner:group). True only when this call created it.
+_xoct_gate_put_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] && return 1
+  _xoct_put_here "${1}" "${2}" || return 1
+  chown -h "${3}" "./${1}" &> /dev/null
+  return 0
+}
+
+### The same rule on the target box: the commands $3 run there inside the
+### real static/control of the account $2 (the target $1), where _rr reads a
+### name as _xoct_read_here does and _rp puts one as _xoct_put_here does
+### (empty when no content is given). The target account is the tenant's as
+### soon as its identity has travelled.
+_XOCT_REMOTE_CTRL_FN='_rr() { timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2> /dev/null; }
+_rp() { local _t="./.${1}.put.$$.${RANDOM}"; rm -f -- "${_t}"; if ( umask 022; { [ -n "${2}" ] && printf "%s\n" "${2}"; true; } | dd of="${_t}" conv=excl status=none 2> /dev/null ) && mv -f -T -- "${_t}" "./${1}"; then return 0; fi; rm -f -- "${_t}"; return 1; }'
+_xoct_remote_ctrl() {
+  ssh root@"${1}" "${_XOCT_REMOTE_CTRL_FN}
+_w=\"\$(cd -P /data/disk 2> /dev/null && pwd -P)/${2}/static/control\"
+cd -P -- \"/data/disk/${2}/static/control\" 2> /dev/null && [ \"\$(pwd -P)\" = \"\${_w}\" ] && { ${3}; }"
+}
+
+### Write the per-host gate for one hostname. static/control is
+### tenant-writable: the gate is read and rewritten inside the real
+### directory, never through a link or FIFO put at either name.
 _xoct_plant_host_gate() {
   local _usr="$1"
   local _oct_id="$2"
   local _grp="$3"
   local _fqdn="$4"
-  local _hg="${_usr}/static/control/http-off-host.pid"
-  [ -L "${_usr}/static/control" ] && return 1
-  [ -d "${_usr}/static/control" ] || return 1
-  [ -L "${_hg}" ] && rm -f "${_hg}"
-  if ! grep -q -x -F "${_fqdn}" "${_hg}" 2>/dev/null; then
-    echo "${_fqdn}" >> "${_hg}" || return 1
+  _xoct_in_real_dir "${_usr}/static/control" \
+    _xoct_host_gate_here "${_fqdn}" "${_oct_id}:${_grp}"
+}
+_xoct_host_gate_here() {
+  local _t
+  _t="$(_xoct_read_here http-off-host.pid)"
+  if ! grep -q -x -F "${1}" <<< "${_t}"; then
+    _t="$(printf '%s\n%s\n' "${_t}" "${1}" | sed '/^$/d')"
+    _xoct_put_here http-off-host.pid "${_t}" || return 1
   fi
-  chown -h "${_oct_id}:${_grp}" "${_hg}" &> /dev/null
-  chmod 644 "${_hg}" &> /dev/null
-  grep -q -x -F "${_fqdn}" "${_hg}" 2>/dev/null
+  chown -h "${2}" ./http-off-host.pid &> /dev/null
+  grep -q -x -F "${1}" <<< "$(_xoct_read_here http-off-host.pid)"
 }
 
 _xoct_ssl_material_missing() {
@@ -1182,13 +1250,8 @@ EOFMYSQL
         [ -L "${_USR}/static/control" ] \
           && rm -f ${_USR}/static/control &> /dev/null
         mkdir -p ${_USR}/static/control
-        [ -L "${_USR}/static/control/http-off.pid" ] \
-          && rm -f ${_USR}/static/control/http-off.pid &> /dev/null
-        if [ ! -e "${_USR}/static/control/http-off.pid" ] \
-          && [ -d "${_USR}/static/control" ] \
-          && [ ! -L "${_USR}/static/control" ]; then
-          echo 3600 > ${_USR}/static/control/http-off.pid
-          chown -h ${_oct}:${_OCT_GRP} ${_USR}/static/control/http-off.pid &> /dev/null
+        if _xoct_in_real_dir "${_USR}/static/control" \
+          _xoct_gate_put_here http-off.pid 3600 "${_oct}:${_OCT_GRP}"; then
           echo "INFO: account ${_oct} http-off pid created"
         fi
         ###
@@ -1476,19 +1539,20 @@ _xoct_heal_fpm_pins() {
   local _root="/data/disk/${_acct}"
   local _ctl="${_root}/static/control"
   local _pin _dom _ver _missing=""
-  [ -d "${_ctl}" ] || return 0
+  ### the account's own directory, entered for real: never a link, and the
+  ### pin file read without following one or opening a FIFO
+  _xoct_in_real_dir "${_ctl}" true || return 0
   [ -e "${_ctl}/multi-fpm.info" ] || return 0
   ### Deletes only; nothing is created here, and the sweep re-chowns the
   ### .info files it touches -- so no root-owned residue is left behind in
   ### the account's control dir.
-  rm -f ${_ctl}/.multi-fpm.*.pid
-  rm -f ${_ctl}/.single-fpm.*.pid
-  rm -f ${_ctl}/.multi-nginx-fpm.pid
+  _xoct_in_real_dir "${_ctl}" rm -f -- ./.multi-fpm.*.pid ./.single-fpm.*.pid \
+    ./.multi-nginx-fpm.pid
   echo "INFO: cleared carried FPM pool markers for ${_acct}; rebuilding pinned pools"
   if [ -x "/var/xdrago/manage_ltd_users.sh" ] || [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
     bash /var/xdrago/manage_ltd_users.sh &> /dev/null
     ### The sockets exist now; re-arm the include generator for pass two.
-    rm -f ${_ctl}/.multi-nginx-fpm.pid
+    _xoct_in_real_dir "${_ctl}" rm -f -- ./.multi-nginx-fpm.pid
     bash /var/xdrago/manage_ltd_users.sh &> /dev/null
   fi
   ### Verify every pinned version really has a live pool socket, and name
@@ -1502,7 +1566,7 @@ _xoct_heal_fpm_pins() {
     if [ ! -S "/run/${_acct}.${_ver}.fpm.socket" ]; then
       _missing="${_missing} ${_dom}:${_ver}"
     fi
-  done < ${_ctl}/multi-fpm.info
+  done <<< "$(_xoct_read_in "${_ctl}" multi-fpm.info)"
   if [ ! -z "${_missing}" ]; then
     echo "ALRT: account ${_acct}: pinned PHP pool(s) NOT live after heal:${_missing}"
     echo "ALRT: those sites are being served by the account default pool --"
@@ -1726,9 +1790,10 @@ _mig_php_norm() {
 ### run on it.
 _mig_php_versions_needed() {
   local _u="$1" _f _v _dom _rest _line _k _e _mk="" _txt _n _out=""
-  for _f in "${_u}/static/control/fpm.info" "${_u}/static/control/cli.info"; do
-    [ -e "${_f}" ] || continue
-    _v="$(_mig_php_norm "$(tr -d ' \t\r\n' < "${_f}" 2>/dev/null)")"
+  ### read inside the account's real static/control, never through a link
+  ### or into a FIFO put there
+  for _f in fpm.info cli.info; do
+    _v="$(_mig_php_norm "$(_xoct_read_in "${_u}/static/control" "${_f}" | tr -d ' \t\r\n')")"
     [ -n "${_v}" ] && _out="${_out} ${_v}"
   done
   if [ -e "${_u}/static/control/multi-fpm.info" ]; then
@@ -1739,11 +1804,11 @@ _mig_php_versions_needed() {
       case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
       _v="$(_mig_php_norm "${_v}")"
       [ -n "${_v}" ] && _out="${_out} ${_v}"
-    done < "${_u}/static/control/multi-fpm.info"
+    done <<< "$(_xoct_read_in "${_u}/static/control" multi-fpm.info)"
   fi
   if [ -e "${_u}/static/control/cli-per-platform.info" ]; then
     _txt=""; _n=0
-    { IFS= read -r -N 65536 _txt < "${_u}/static/control/cli-per-platform.info"; } 2>/dev/null || true
+    _txt="$(_xoct_read_in "${_u}/static/control" cli-per-platform.info | head -c 65536)"
     while IFS= read -r _line; do
       _n=$(( _n + 1 ))
       [ "${_n}" -gt 200 ] && break
@@ -1754,9 +1819,11 @@ _mig_php_versions_needed() {
       [ -n "${_v}" ] && _out="${_out} ${_v}"
     done <<< "${_txt}"
   fi
-  for _e in 56 70 71 72 73 74 80 81 82 83 84 85; do
-    [ -e "${_u}/static/control/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
-  done
+  if _xoct_in_real_dir "${_u}/static/control" true; then
+    for _e in 56 70 71 72 73 74 80 81 82 83 84 85; do
+      [ -e "${_u}/static/control/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
+    done
+  fi
   [ -n "${_mk}" ] && _out="${_out} $(_mig_php_norm "${_mk}")"
   echo "${_out}" | tr ' ' '\n' | sort -u | tr '\n' ' '
 }
@@ -1965,9 +2032,13 @@ _xoct_seed_target_control_pins() {
   # account-level pins and not the per-site ones. Site lines key on the
   # domain, which migration does not change, so the copy is valid early and
   # the transfer's forced copy converges it later either way.
+  ### Only a regular file travels, from a real directory: static/control
+  ### is the tenant's, and a link carried to the target would be followed
+  ### there by root (the chown below, any later reader).
   for _f in static/control/fpm.info static/control/cli.info \
     static/control/multi-fpm.info log/fpm.txt log/cli.txt; do
-    [ -e "${_sUsr}/${_f}" ] || continue
+    _xoct_in_real_dir "${_sUsr}/${_f%/*}" \
+      test -f "./${_f##*/}" -a ! -L "./${_f##*/}" || continue
     _xoct_rsync -aEAX ${_ieni} -e ssh \
       "${_sUsr}/${_f}" \
       "root@${_t}:${_dUsr}/${_f}"
@@ -1981,7 +2052,7 @@ _xoct_seed_target_control_pins() {
   ### two writers, one of which was leaving it mis-owned.
   ### The group is the account's group ON THE TARGET (its own once converted
   ### there, the box-wide one until then), asked of the target itself.
-  ssh root@"${_t}" "_g=\$(id -gn ${_dAcct} 2>/dev/null); [ \"\$_g\" = ${_dAcct} ] || _g=users; chown ${_dAcct}.ftp:\$_g ${_dUsr}/static/control/fpm.info ${_dUsr}/static/control/cli.info ${_dUsr}/static/control/multi-fpm.info" &> /dev/null
+  ssh root@"${_t}" "_g=\$(id -gn ${_dAcct} 2>/dev/null); [ \"\$_g\" = ${_dAcct} ] || _g=users; chown -h ${_dAcct}.ftp:\$_g ${_dUsr}/static/control/fpm.info ${_dUsr}/static/control/cli.info ${_dUsr}/static/control/multi-fpm.info" &> /dev/null
   return 0
 }
 
@@ -2175,7 +2246,10 @@ _xoct_wait_boa_quiet() {
 ### key by removing its line and appending it (a reorder is not a change).
 _xoct_seed_witness() {   # 1 = account, 2 = target host
   local _u="$1" _t="$2"
-  ssh root@"${_t}" "cd /data/disk/${_u} 2>/dev/null && { sort /root/.${_u}.octopus.cnf 2>/dev/null | md5sum | sed \"s#  -\\\$#  /root/.${_u}.octopus.cnf#\"; md5sum static/control/fpm.info static/control/cli.info static/control/multi-fpm.info log/fpm.txt log/cli.txt 2>/dev/null; }" 2>/dev/null
+  ### The account's files are summed as read without following a link or
+  ### blocking on a FIFO (static/control is the tenant's there too), in
+  ### md5sum's own line shape; a name that is not a regular file is absent.
+  ssh root@"${_t}" "cd /data/disk/${_u} 2>/dev/null && { sort /root/.${_u}.octopus.cnf 2>/dev/null | md5sum | sed \"s#  -\\\$#  /root/.${_u}.octopus.cnf#\"; for _f in static/control/fpm.info static/control/cli.info static/control/multi-fpm.info log/fpm.txt log/cli.txt; do [ -f \"\${_f}\" ] && [ ! -L \"\${_f}\" ] || continue; printf '%s  %s\n' \"\$(timeout 10 dd if=\"\${_f}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null | md5sum | cut -d' ' -f1)\" \"\${_f}\"; done; }" 2>/dev/null
 }
 
 _xoct_seed_witness_delta() {   # 1 = was, 2 = now (md5sum output, one line per file)
@@ -2871,9 +2945,9 @@ _migrate_prepare() {
       ### full pass on a converged account and the target never went quiet
       ### between prep-target runs.
       ### one version, dotted or two-digit, as the target's pass records it
-      _SRC_FPM_PIN="$(_mig_php_norm "$(tr -d ' \t\r\n' < "${_USR}/static/control/fpm.info" 2>/dev/null)")"
+      _SRC_FPM_PIN="$(_mig_php_norm "$(_xoct_read_in "${_USR}/static/control" fpm.info | tr -d ' \t\r\n')")"
       [ -n "${_SRC_FPM_PIN}" ] || _SRC_FPM_PIN=$(grep "^_PHP_FPM_VERSION=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
-      _SRC_CLI_PIN="$(_mig_php_norm "$(tr -d ' \t\r\n' < "${_USR}/static/control/cli.info" 2>/dev/null)")"
+      _SRC_CLI_PIN="$(_mig_php_norm "$(_xoct_read_in "${_USR}/static/control" cli.info | tr -d ' \t\r\n')")"
       [ -n "${_SRC_CLI_PIN}" ] || _SRC_CLI_PIN=$(grep "^_PHP_CLI_VERSION=" /root/.${_oct}.octopus.cnf 2>/dev/null | tail -1 | cut -d= -f2 | tr -d '"')
       _TGT_SEED_NOW=$(_xoct_seed_witness "${_TGT_HM_USER}" "${_tgt}")
       _ARM_UPGRADE=NO
@@ -2895,10 +2969,10 @@ _migrate_prepare() {
       fi
       ### Stale-pid cleanup FIRST, then the enforced-upgrade trigger: the
       ### historical order deleted the run-upgrade.pid it had just created.
-      ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/static/control/*.pid"
+      _xoct_remote_ctrl "${_tgt}" "${_TGT_HM_USER}" 'rm -f -- ./*.pid'
       if [ "${_ARM_UPGRADE}" = "YES" ]; then
-        ssh root@${_tgt} "/bin/echo UP >> /data/disk/${_TGT_HM_USER}/static/control/platforms.info"
-        ssh root@${_tgt} "/bin/touch /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.pid"
+        _xoct_remote_ctrl "${_tgt}" "${_TGT_HM_USER}" \
+          '_rp platforms.info "$(_rr platforms.info; echo UP)"; _rp run-upgrade.pid'
         echo "INFO: enforced upgrade armed on ${_tgt} for ${_TGT_HM_USER}: ${_ARM_WHY}"
         ### A demoted box (the failback target, or any ex-active whose
         ### dispatcher was parked under /var/backups/off-run) has nothing to
@@ -2910,7 +2984,7 @@ _migrate_prepare() {
         ### it at its end, so the restored dispatcher applies the seed on its
         ### first quiet tick on the box that serves again.
         if ssh root@${_tgt} "[ ! -e /var/xdrago/run-${_TGT_HM_USER} ] && [ -e /var/backups/off-run/run-${_TGT_HM_USER} ]" 2>/dev/null; then
-          ssh root@${_tgt} "/bin/touch /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.xmass"
+          _xoct_remote_ctrl "${_tgt}" "${_TGT_HM_USER}" '_rp run-upgrade.xmass'
           echo "INFO: ${_TGT_HM_USER}'s dispatcher is parked on ${_tgt} (a demoted box refuses octopus passes); the seeded upgrade is deferred to the promotion -- the cutover re-arms it once the box serves again"
         fi
       else
@@ -2957,7 +3031,7 @@ _migrate_prepare() {
     ### THIS box is ready to serve now; the source keeps its own copy until
     ### the proxy step replaces it there.
     ###
-    rm -f ${_USR}/static/control/http-off.pid
+    _xoct_in_real_dir "${_USR}/static/control" rm -f -- ./http-off.pid
     if [ -d "/var/lib/nginx/speed" ]; then
       find /var/lib/nginx/speed -type f -delete &> /dev/null
     fi
@@ -3269,9 +3343,12 @@ _xoct_transfer_static_symlink_safe() {
   # all three are directly valid on the target: force them over WITHOUT -u.
   # The create step already gated on the pinned versions being installed on
   # the target, so the forced pins cannot strand a site without a pool.
+  # Only regular files, from the real control directory: a pin that is a
+  # link, or a control that is one, is never carried.
   local _pin
   for _pin in multi-fpm.info fpm.info cli.info; do
-    if [ -e "${_X_SRC_USR}/static/control/${_pin}" ]; then
+    if _xoct_in_real_dir "${_X_SRC_USR}/static/control" \
+      test -f "./${_pin}" -a ! -L "./${_pin}"; then
       _xoct_rsync -aEAX ${_X_IENI} -e ssh \
         "${_X_SRC_USR}/static/control/${_pin}" \
         "root@${_X_TGT_HOST}:${_X_DST_STATIC}/control/${_pin}"
@@ -4203,7 +4280,14 @@ _migrate_init() {
           # instance-group.txt records the SOURCE box's conversion (its gid);
           # it must never travel, the destination pass writes its own.
           _xoct_rsync -aEAXqu ${_ieni} --exclude=instance-group.txt --exclude=proxy-failed.pid -e ssh ${_USR}/log/* root@${_tgt}:${_DST}/log/
-          _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/static/control/* root@${_tgt}:${_DST}/static/control/ &> /dev/null
+          ### static/control is the tenant's: a control that is a link is
+          ### never followed (the glob this replaces expanded through it);
+          ### a real one travels by its contents.
+          if [ -L "${_USR}/static/control" ]; then
+            echo "ALRT: ${_USR}/static/control is a symlink -- not followed; no control file of ${_oct} travels"
+          elif [ -d "${_USR}/static/control" ]; then
+            _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/static/control/ root@${_tgt}:${_DST}/static/control/ &> /dev/null
+          fi
           #
           _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/backups/*        root@${_tgt}:${_DST}/backups/        &> /dev/null
           _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/undo/*           root@${_tgt}:${_DST}/undo/           &> /dev/null
@@ -4467,9 +4551,9 @@ _migrate_init() {
           ### proxy vhost is unaffected. A pass that deferred nothing is the
           ### full conversion: the per-host gate has nothing left to hold.
           ###
-          rm -f ${_USR}/static/control/http-off.pid
+          _xoct_in_real_dir "${_USR}/static/control" rm -f -- ./http-off.pid
           if [ -z "${_XOCT_PROXY_DEFERRED}" ] && [ -z "${_XOCT_DEFER_FQDN}" ]; then
-            rm -f ${_USR}/static/control/http-off-host.pid
+            _xoct_in_real_dir "${_USR}/static/control" rm -f -- ./http-off-host.pid
           fi
           if [ -d "/var/lib/nginx/speed" ]; then
             find /var/lib/nginx/speed -type f -delete &> /dev/null

@@ -879,11 +879,17 @@ _purge_hits_under_account() {
   # placement. Reads _usEr.
   local _f _r _acct _store
   _acct=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 0
-  # No /mnt restriction: this is the account's OWN static/files, resolved --
-  # a tenant cannot aim it -- and migratefs relocates the store to whatever
-  # --target the operator passed (/mnt is only the auto-detected default), so
-  # an /mnt-only test silently disables the purge on a relocated account.
+  # No /mnt restriction: migratefs relocates the store to whatever --target
+  # the operator passed (/mnt is only the auto-detected default), so an
+  # /mnt-only test silently disables the purge on a relocated account. But
+  # static/ is group-writable, so static/files itself can be a planted link:
+  # only the account's own directory, or a store in migratefs' layout named
+  # for THIS account (<target>/files/<oN>/static/files), counts as the store.
   _store=$(realpath -e -- "${_usEr}/static/files" 2>/dev/null) || _store=
+  case "${_store}" in
+    "${_acct}/static/files"|*"/files/${_acct##*/}/static/files") ;;
+    *) _store= ;;
+  esac
   while IFS= read -r -d '' _f; do
     _r=$(realpath -e -- "${_f}" 2>/dev/null) || continue
     case "${_r}/" in
@@ -935,10 +941,13 @@ _purge_cruft_machine() {
   find ${_usEr}/backup-exports/* -mtime +${_PURGE_TMP} -type f -exec \
     rm -rf {} \; &> /dev/null
 
+  # sites/<uri>/files and private/ are group-writable by the web and shell
+  # identities: every hit below, distro/ and static/ alike, is re-anchored
+  # before it is removed (see _purge_hits_under_account)
   find ${_usEr}/distro/*/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/distro/*/*/sites/*/private/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
 
   # These globs are expanded by the SHELL, which resolves symlinks in every
   # component, and ${_usEr}/static is 02775 and group-writable by the account's
@@ -970,29 +979,29 @@ _purge_cruft_machine() {
     -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
 
   find ${_usEr}/distro/*/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/distro/*/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/*/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/*/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
 
   # /home/<user>.ftp is the tenant's own (chrooted) home and, unlike a backend
   # account root, is never immutable, so .tmp and tmp can be swapped for

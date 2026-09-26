@@ -268,6 +268,77 @@ _acct_group() {
   echo "${_g}"
 }
 
+#
+# An account owns its static/control (and oN owns the rest of /data/disk/oN),
+# so it can put a link or a FIFO at any name there, or turn static/control
+# itself into a link. Root touches those names only through these: the ltd
+# worker's rule, one copy here for the barracuda and octopus runs.
+#
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way. Below /home and /data/disk (root's) every name
+# on the path must be a real directory; elsewhere the last name is checked
+# against its resolved parent. Once entered, ./name stays in that directory
+# whatever is swapped.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_acct_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# $2 in the real directory $1, read as _acct_read_here reads it.
+_acct_read_in() {
+  _acct_in_real_dir "${1}" _acct_read_here "${2}"
+}
+# ./$1 in the current (pinned) directory with the content $2 (0644): a
+# fresh file created exclusively, then renamed over the name, so a link or a
+# FIFO put at the name is replaced, never followed or opened, and a reader
+# never finds the name missing.
+_acct_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+# $2 with the content $3 in the real directory $1, as _acct_put_here puts it.
+_acct_put_in() {
+  _acct_in_real_dir "${1}" _acct_put_here "${2}" "${3}"
+}
+# A PHP pin (fpm.info, cli.info) root writes in the current (pinned) control
+# directory: put as _acct_put_here puts it, then handed to the main login.
+# $1 = name, $2 = version, $3 = owner:group.
+_acct_pin_here() {
+  _acct_put_here "${1}" "${2}" && chown -h "${3}" "./${1}"
+}
+# The file $2 of every account (/data/disk/*/$1/$2, $1 = static/control or
+# log), each read as _acct_read_in reads it, one after another: what a grep
+# over /data/disk/*/$1/$2 used to read, without following a link or blocking
+# on a FIFO any account put there.
+_acct_read_all() {
+  local _u
+  for _u in /data/disk/*; do
+    [ -d "${_u}/${1}" ] || continue
+    _acct_read_in "${_u}/${1}" "${2}"
+    echo
+  done
+}
+
 _sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
 }

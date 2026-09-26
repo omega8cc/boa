@@ -100,6 +100,19 @@ else
 fi
 
 # --- cleanup of --full test artifacts (idempotent; runs on any exit) --------
+# A tenant's control file this test writes or cleans (static/control is the
+# tenant's): only a regular file or a missing one, below a control/, ai/ or ip/
+# that is not a link, is ever touched -- root never appends or edits through a
+# link or into a FIFO put at any of those names.
+_edge_ctrl_ok() {
+  local _f="$1"
+  [ -L "/data/disk/${_OCT}/static/control" ] && return 1
+  [ -L "$(dirname "${_f}")" ] && return 1
+  [ -L "${_f}" ] && return 1
+  [ -e "${_f}" ] && [ ! -f "${_f}" ] && return 1
+  return 0
+}
+
 _emergency_cleanup() {
   # Read-only / remote runs create no artifacts — never touch csf or control files
   # (even a no-match `sed -i` rewrites the file and would bump its change-gate).
@@ -107,8 +120,10 @@ _emergency_cleanup() {
   rm -f /data/conf/nginx_cloudflare_real_ip.conf-edgetest 2>/dev/null
   if command -v csf >/dev/null 2>&1; then csf -tr "${_TEST_IP}" >/dev/null 2>&1; fi
   if [[ -n "${_OCT}" ]]; then
-    sed -i '/# edge-policy-test$/d' "/data/disk/${_OCT}/static/control/ai/policy.txt" 2>/dev/null
-    sed -i '/# edge-policy-test$/d' "/data/disk/${_OCT}/static/control/ip/access.txt" 2>/dev/null
+    _edge_ctrl_ok "/data/disk/${_OCT}/static/control/ai/policy.txt" \
+      && sed -i '/# edge-policy-test$/d' "/data/disk/${_OCT}/static/control/ai/policy.txt" 2>/dev/null
+    _edge_ctrl_ok "/data/disk/${_OCT}/static/control/ip/access.txt" \
+      && sed -i '/# edge-policy-test$/d' "/data/disk/${_OCT}/static/control/ip/access.txt" 2>/dev/null
     rm -f "/data/disk/${_OCT}/config/includes/ip_access/edgetest.example.com.conf" 2>/dev/null
   fi
   bash /var/xdrago/ai_policy.sh  >/dev/null 2>&1
@@ -556,7 +571,9 @@ _phase_persite_ai() {
   local _o; _o=$(_http "GPTBot/1.1"); set -- $_o
   if _server_error "$1" || _unreachable "$1" "$2"; then _skip "site not cleanly served (code $1) — cannot test the toggle"; return; fi
   if ! _blocked "$1" "$2"; then _skip "GPTBot is already allowed for ${_SITE} (HTTP $1) — cannot test the toggle"; return; fi
+  _edge_ctrl_ok "${_ctrl}" || { _skip "${_ctrl} is not a regular control file"; return; }
   mkdir -p "$(dirname "${_ctrl}")"
+  _edge_ctrl_ok "${_ctrl}" || { _skip "${_ctrl} is not a regular control file"; return; }
   echo "${_SITE} train-allow # edge-policy-test" >> "${_ctrl}"
   bash /var/xdrago/ai_policy.sh >/dev/null 2>&1
   # nginx's reload is graceful/async — a probe fired immediately races the old
@@ -568,7 +585,7 @@ _phase_persite_ai() {
   _o=$(_http "GPTBot/1.1"); set -- $_o
   if ! _blocked "$1" "$2"; then _pass "train-allow opt-in took effect: GPTBot now allowed (HTTP $1) for ${_SITE}"
   else _fail "train-allow opt-in did NOT take effect: GPTBot still blocked"; fi
-  sed -i '/# edge-policy-test$/d' "${_ctrl}" 2>/dev/null
+  _edge_ctrl_ok "${_ctrl}" && sed -i '/# edge-policy-test$/d' "${_ctrl}" 2>/dev/null
   bash /var/xdrago/ai_policy.sh >/dev/null 2>&1
   sleep 2   # settle the prune reload before re-checking
   _o=$(_http "GPTBot/1.1"); set -- $_o
@@ -584,14 +601,16 @@ _phase_persite_evasive() {
   local _o; _o=$(_http "Perplexity-User/1.0"); set -- $_o
   if _server_error "$1" || _unreachable "$1" "$2"; then _skip "site not cleanly served (code $1) — cannot test the toggle"; return; fi
   if ! _blocked "$1" "$2"; then _skip "Perplexity-User is already allowed for ${_SITE} (HTTP $1) — cannot test the toggle"; return; fi
+  _edge_ctrl_ok "${_ctrl}" || { _skip "${_ctrl} is not a regular control file"; return; }
   mkdir -p "$(dirname "${_ctrl}")"
+  _edge_ctrl_ok "${_ctrl}" || { _skip "${_ctrl} is not a regular control file"; return; }
   echo "${_SITE} evasive-allow # edge-policy-test" >> "${_ctrl}"
   bash /var/xdrago/ai_policy.sh >/dev/null 2>&1
   sleep 2   # settle the graceful reload (see the per-site AI toggle note above)
   _o=$(_http "Perplexity-User/1.0"); set -- $_o
   if ! _blocked "$1" "$2"; then _pass "evasive-allow opt-in took effect: Perplexity-User now allowed (HTTP $1) for ${_SITE}"
   else _fail "evasive-allow opt-in did NOT take effect: Perplexity-User still blocked"; fi
-  sed -i '/# edge-policy-test$/d' "${_ctrl}" 2>/dev/null
+  _edge_ctrl_ok "${_ctrl}" && sed -i '/# edge-policy-test$/d' "${_ctrl}" 2>/dev/null
   bash /var/xdrago/ai_policy.sh >/dev/null 2>&1
   sleep 2   # settle the prune reload before re-checking
   _o=$(_http "Perplexity-User/1.0"); set -- $_o
@@ -605,7 +624,9 @@ _phase_ipaccess_validation() {
   [[ -e "/data/disk/${_OCT}/tools/drush" ]] || { _skip "${_OCT} is not a real instance"; return; }
   local _ctrl="/data/disk/${_OCT}/static/control/ip/access.txt"
   local _frag="/data/disk/${_OCT}/config/includes/ip_access/edgetest.example.com.conf"
+  _edge_ctrl_ok "${_ctrl}" || { _skip "${_ctrl} is not a regular control file"; return; }
   mkdir -p "$(dirname "${_ctrl}")"
+  _edge_ctrl_ok "${_ctrl}" || { _skip "${_ctrl} is not a regular control file"; return; }
   echo "edgetest.example.com 198.51.100.7 2001:db8::/32 192.168.1.300 2001:db8::/129 # edge-policy-test" >> "${_ctrl}"
   bash /var/xdrago/ip_access.sh >/dev/null 2>&1
   if [[ -f "${_frag}" ]]; then
@@ -627,7 +648,7 @@ _phase_ipaccess_validation() {
   # Cleanup: remove the control line AND the fragment directly — do not rely on the
   # generator's prune, whose second-granularity change-gate can skip a re-run that
   # lands in the same second as the create.
-  sed -i '/# edge-policy-test$/d' "${_ctrl}" 2>/dev/null
+  _edge_ctrl_ok "${_ctrl}" && sed -i '/# edge-policy-test$/d' "${_ctrl}" 2>/dev/null
   rm -f "${_frag}"
   bash /var/xdrago/ip_access.sh >/dev/null 2>&1
   [[ -f "${_frag}" ]] && _warn "test fragment reappeared (${_frag})" || _pass "test record cleaned up"

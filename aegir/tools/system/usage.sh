@@ -126,13 +126,18 @@ _read_account_data() {
     _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x POWER"
   fi
-  if [ -e "/data/disk/${_THIS_U}/static/control/cli.info" ]; then
-    _CLIENT_CLI=$(cat /data/disk/${_THIS_U}/static/control/cli.info 2>&1)
-    _CLIENT_CLI=$(echo -n ${_CLIENT_CLI} | tr -d "\n" 2>&1)
+  # static/control is the tenant's: read without following a link or
+  # blocking on a FIFO, and kept to a version's characters -- these go into
+  # the panel footer through a shell command line
+  if [ -e "/data/disk/${_THIS_U}/static/control/cli.info" ] \
+    && [ ! -L "/data/disk/${_THIS_U}/static/control" ]; then
+    _CLIENT_CLI=$(timeout 10 dd if=/data/disk/${_THIS_U}/static/control/cli.info \
+      iflag=nofollow,nonblock bs=64 count=1 status=none 2>/dev/null | tr -cd '0-9.')
   fi
-  if [ -e "/data/disk/${_THIS_U}/static/control/fpm.info" ]; then
-    _CLIENT_FPM=$(cat /data/disk/${_THIS_U}/static/control/fpm.info 2>&1)
-    _CLIENT_FPM=$(echo -n ${_CLIENT_FPM} | tr -d "\n" 2>&1)
+  if [ -e "/data/disk/${_THIS_U}/static/control/fpm.info" ] \
+    && [ ! -L "/data/disk/${_THIS_U}/static/control" ]; then
+    _CLIENT_FPM=$(timeout 10 dd if=/data/disk/${_THIS_U}/static/control/fpm.info \
+      iflag=nofollow,nonblock bs=64 count=1 status=none 2>/dev/null | tr -cd '0-9.')
   fi
 }
 
@@ -188,8 +193,10 @@ _detect_deprecated_php() {
     && [ ! -e "${_usEr}/log/proxied.pid" ] \
     && [ ! -e "${_usEr}/log/proxy-failed.pid" ] \
     && [ ! -e "${_usEr}/log/CANCELLED" ]; then
-    _PHP_FPM_VERSION=$(cat ${_usEr}/static/control/fpm.info 2>&1)
-    _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
+    # read without following a link or blocking on a FIFO the tenant put
+    # there, and kept to a version's characters
+    _PHP_FPM_VERSION=$(timeout 10 dd if=${_usEr}/static/control/fpm.info \
+      iflag=nofollow,nonblock bs=64 count=1 status=none 2>/dev/null | tr -cd '0-9.')
     if [ "${_PHP_FPM_VERSION}" = "5.5" ] \
       || [ "${_PHP_FPM_VERSION}" = "5.4" ] \
       || [ "${_PHP_FPM_VERSION}" = "5.3" ] \
@@ -767,18 +774,20 @@ _usage_action() {
         if [ ! -e "${_usEr}/log/skip-force-cleanup.txt" ]; then
           cd ${_usEr}
           echo "Remove various tmp/dot files breaking du command"
-          find . -name "exclude.tag" -type f | xargs rm -f &> /dev/null
-          find . -name ".DS_Store" -type f | xargs rm -f &> /dev/null
-          find . -name "*~" -type f | xargs rm -f &> /dev/null
-          find . -name "*#" -type f | xargs rm -f &> /dev/null
-          find . -name ".#*" -type f | xargs rm -f &> /dev/null
-          find . -name "*--" -type f | xargs rm -f &> /dev/null
-          find . -name "._*" -type f | xargs rm -f &> /dev/null
-          find . -name "*~" -type l | xargs rm -f &> /dev/null
-          find . -name "*#" -type l | xargs rm -f &> /dev/null
-          find . -name ".#*" -type l | xargs rm -f &> /dev/null
-          find . -name "*--" -type l | xargs rm -f &> /dev/null
-          find . -name "._*" -type l | xargs rm -f &> /dev/null
+          # -delete, never a name list through xargs: the names are the
+          # tenant's, and xargs splits them at blanks and quotes
+          find . -name "exclude.tag" -type f -delete &> /dev/null
+          find . -name ".DS_Store" -type f -delete &> /dev/null
+          find . -name "*~" -type f -delete &> /dev/null
+          find . -name "*#" -type f -delete &> /dev/null
+          find . -name ".#*" -type f -delete &> /dev/null
+          find . -name "*--" -type f -delete &> /dev/null
+          find . -name "._*" -type f -delete &> /dev/null
+          find . -name "*~" -type l -delete &> /dev/null
+          find . -name "*#" -type l -delete &> /dev/null
+          find . -name ".#*" -type l -delete &> /dev/null
+          find . -name "*--" -type l -delete &> /dev/null
+          find . -name "._*" -type l -delete &> /dev/null
         fi
         echo "Counting User ${_usEr}"
         if [ "${_THIS_MODE}" = "verbose" ]; then

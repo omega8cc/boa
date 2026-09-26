@@ -382,6 +382,18 @@ _escape_value() {
   printf '%q' "$1"
 }
 
+# The names a per-account credentials file may set: the account writes that
+# file, and this runs as root, so any other name (LD_PRELOAD, PATH, BASH_ENV,
+# PYTHONPATH, AWS_CONFIG_FILE and the like) would steer root's own process.
+# Such a line is ignored and logged; the backup runs on without it.
+_CRED_NAMES_ALLOWED="KEEP_WITHIN FULL_BACKUP_FREQUENCY AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_REGION AWS_DEFAULT_REGION AWS_SESSION_TOKEN AZURE_STORAGE_ACCOUNT AZURE_STORAGE_KEY AZURE_STORAGE_CONNECTION_STRING AZURE_CONNECTION_STRING B2_ACCOUNT_ID B2_APPLICATION_KEY DO_SPACES_KEY DO_SPACES_SECRET DO_SPACES_REGION GCS_ACCESS_KEY_ID GCS_SECRET_ACCESS_KEY IBM_ACCESS_KEY_ID IBM_SECRET_ACCESS_KEY IBM_REGION LINODE_ACCESS_KEY LINODE_SECRET_KEY LINODE_REGION R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_ACCOUNT_ID WASABI_ACCESS_KEY WASABI_SECRET_KEY WASABI_REGION"
+_cred_name_allowed() {
+  case " ${_CRED_NAMES_ALLOWED} " in
+    *" ${1} "*) return 0 ;;
+  esac
+  return 1
+}
+
 # Function to sanitize and validate credentials file
 _validate_credentials() {
   local _cred_file="$1"
@@ -427,6 +439,17 @@ _validate_credentials() {
       export _varname="${BASH_REMATCH[1]}"
       export _value="${BASH_REMATCH[2]}"
 
+      # a per-account file (the tenant's) sets only the names above
+      case "${_cred_file}" in
+        /data/disk/*)
+          if ! _cred_name_allowed "${_varname}"; then
+            _log_issue "credentials" "${_cred_file}" \
+              "Name not allowed at line ${_line_number}: ${_varname}"
+            continue
+          fi
+          ;;
+      esac
+
       # Remove surrounding quotes if present
       if [[ "${_value}" =~ ^\".*\"$ || "${_value}" =~ ^\'.*\'$ ]]; then
         export _value="${_value:1:-1}"
@@ -453,7 +476,8 @@ _validate_credentials() {
       _log_issue "credentials" "${_cred_file}" \
         "Invalid syntax at line ${_line_number}: ${_line}"
     fi
-  done < "${_cred_file}"
+  done <<< "$(timeout 10 dd if="${_cred_file}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2>/dev/null)"
 
   _print_env "multiback_validate_credentials"
 }
@@ -469,6 +493,22 @@ _load_credentials() {
     && [ "${_user}" != "custom" ]; then
     local _cred_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
     local _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
+    # The credentials hang off static/control, which the tenant owns: refuse
+    # when any name on the way, or the file itself, is a link (a planted one
+    # would hand root another account's credentials), as mybackup does.
+    local _p
+    for _p in "/data/disk/${_user}/static" \
+      "/data/disk/${_user}/static/control" \
+      "/data/disk/${_user}/static/control/remote_backups" \
+      "/data/disk/${_user}/static/control/remote_backups/credentials" \
+      "${_cred_file}"; do
+      if [ -L "${_p}" ]; then
+        echo "[$(date)] REFUSED credentials for ${_user}: ${_p} is a symlink" \
+          >> /var/log/mybackup_invalid_queued.log
+        echo "Error: ${_p} is a symlink. Unable to proceed."
+        exit 1
+      fi
+    done
   fi
   if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
     local _cred_file="/root/.remote_backups/credentials/${_service}.txt"

@@ -2535,10 +2535,10 @@ _php_vrn_dotted() {
 _php_versions_pinned_more() {
   local _c _f _v _k _dom _rest _line _e _mk _txt _n _out=""
   for _c in /data/disk/*/static/control; do
-    [ -d "${_c}" ] || continue
-    for _f in "${_c}/fpm.info" "${_c}/cli.info"; do
-      [ -e "${_f}" ] || continue
-      _v="$(_php_vrn_dotted "$(tr -cd '0-9' < "${_f}" 2> /dev/null)")"
+    # the account's own directory: never a link, never a FIFO opened
+    _acct_in_real_dir "${_c}" true || continue
+    for _f in fpm.info cli.info; do
+      _v="$(_php_vrn_dotted "$(_acct_read_in "${_c}" "${_f}" | tr -cd '0-9')")"
       [ -n "${_v}" ] && _out="${_out} ${_v}"
     done
     if [ -e "${_c}/multi-fpm.info" ]; then
@@ -2546,11 +2546,11 @@ _php_versions_pinned_more() {
         case "${_dom}" in \#*|"") continue ;; esac
         _v="$(_php_vrn_dotted "${_v//[^0-9]/}")"
         [ -n "${_v}" ] && _out="${_out} ${_v}"
-      done < "${_c}/multi-fpm.info"
+      done <<< "$(_acct_read_in "${_c}" multi-fpm.info)"
     fi
     if [ -e "${_c}/cli-per-platform.info" ]; then
       _txt=""; _n=0
-      { IFS= read -r -N 65536 _txt < "${_c}/cli-per-platform.info"; } 2> /dev/null
+      _txt="$(_acct_read_in "${_c}" cli-per-platform.info | head -c 65536)"
       while IFS= read -r _line; do
         _n=$(( _n + 1 ))
         [ "${_n}" -gt 200 ] && break
@@ -2578,8 +2578,8 @@ _php_legacy_versions_cleanup_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_legacy_versions_cleanup_cnf"
   fi
-  _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.2" /data/disk/*/log/cli.txt 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.2" /data/disk/*/static/control/cli.info 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.2" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.2" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.2" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.2" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.2" ]] \
@@ -2590,8 +2590,8 @@ _php_legacy_versions_cleanup_cnf() {
     fi
   fi
 
-  _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.2" /data/disk/*/log/fpm.txt 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.2" /data/disk/*/static/control/fpm.info 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.2" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.2" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.2" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.2" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.2" ]] \
@@ -2602,8 +2602,8 @@ _php_legacy_versions_cleanup_cnf() {
     fi
   fi
 
-  _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.3" /data/disk/*/log/cli.txt 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.3" /data/disk/*/static/control/cli.info 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.3" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.3" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.3" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.3" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.3" ]] \
@@ -2614,8 +2614,8 @@ _php_legacy_versions_cleanup_cnf() {
     fi
   fi
 
-  _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.3" /data/disk/*/log/fpm.txt 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.3" /data/disk/*/static/control/fpm.info 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.3" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.3" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.3" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.3" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.3" ]] \
@@ -2626,8 +2626,8 @@ _php_legacy_versions_cleanup_cnf() {
     fi
   fi
 
-  _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.4" /data/disk/*/log/cli.txt 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.4" /data/disk/*/static/control/cli.info 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.4" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.4" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.4" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.4" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.4" ]] \
@@ -2638,8 +2638,8 @@ _php_legacy_versions_cleanup_cnf() {
     fi
   fi
 
-  _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.4" /data/disk/*/log/fpm.txt 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.4" /data/disk/*/static/control/fpm.info 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.4" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.4" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.4" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.4" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.4" ]] \
@@ -2650,8 +2650,8 @@ _php_legacy_versions_cleanup_cnf() {
     fi
   fi
 
-  _PHP_CLI_LEGACY_IF_USED_A=$(grep "5\.5" /data/disk/*/log/cli.txt 2>&1)
-  _PHP_CLI_LEGACY_IF_USED_B=$(grep "5\.5" /data/disk/*/static/control/cli.info 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_A=$(_acct_read_all log cli.txt | grep "5\.5" 2>&1)
+  _PHP_CLI_LEGACY_IF_USED_B=$(_acct_read_all static/control cli.info | grep "5\.5" 2>&1)
   _PHP_CLI_LEGACY_IF_USED_C=$(grep "CLI.*5\.5" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_CLI_LEGACY_IF_USED_A}" =~ "5.5" ]] \
     || [[ "${_PHP_CLI_LEGACY_IF_USED_B}" =~ "5.5" ]] \
@@ -2662,8 +2662,8 @@ _php_legacy_versions_cleanup_cnf() {
     fi
   fi
 
-  _PHP_FPM_LEGACY_IF_USED_A=$(grep "5\.5" /data/disk/*/log/fpm.txt 2>&1)
-  _PHP_FPM_LEGACY_IF_USED_B=$(grep "5\.5" /data/disk/*/static/control/fpm.info 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_A=$(_acct_read_all log fpm.txt | grep "5\.5" 2>&1)
+  _PHP_FPM_LEGACY_IF_USED_B=$(_acct_read_all static/control fpm.info | grep "5\.5" 2>&1)
   _PHP_FPM_LEGACY_IF_USED_C=$(grep "FPM.*5\.5" /root/.*.octopus.cnf 2>&1)
   if [[ "${_PHP_FPM_LEGACY_IF_USED_A}" =~ "5.5" ]] \
     || [[ "${_PHP_FPM_LEGACY_IF_USED_B}" =~ "5.5" ]] \
@@ -2826,9 +2826,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 5.6 if used
-      _is_PHP_multi_five_six=$(grep "5\.6" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_five_six=$(grep "5\.6" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_five_six=$(grep "5\.6" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_five_six=$(_acct_read_all static/control multi-fpm.info | grep "5\.6" 2>&1)
+      _is_PHP_FPM_five_six=$(_acct_read_all static/control fpm.info | grep "5\.6" 2>&1)
+      _is_PHP_CLI_five_six=$(_acct_read_all static/control cli.info | grep "5\.6" 2>&1)
       _is_PHP_five_six=
       if [[ "${_is_PHP_multi_five_six}" =~ "5.6" ]] \
         || [[ "${_is_PHP_FPM_five_six}" =~ "5.6" ]] \
@@ -2838,9 +2838,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.0 if used
-      _is_PHP_multi_seven_zero=$(grep "7\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_seven_zero=$(grep "7\.0" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_seven_zero=$(grep "7\.0" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_seven_zero=$(_acct_read_all static/control multi-fpm.info | grep "7\.0" 2>&1)
+      _is_PHP_FPM_seven_zero=$(_acct_read_all static/control fpm.info | grep "7\.0" 2>&1)
+      _is_PHP_CLI_seven_zero=$(_acct_read_all static/control cli.info | grep "7\.0" 2>&1)
       _is_PHP_seven_zero=
       if [[ "${_is_PHP_multi_seven_zero}" =~ "7.0" ]] \
         || [[ "${_is_PHP_FPM_seven_zero}" =~ "7.0" ]] \
@@ -2850,9 +2850,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.1 if used
-      _is_PHP_multi_seven_one=$(grep "7\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_seven_one=$(grep "7\.1" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_seven_one=$(grep "7\.1" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_seven_one=$(_acct_read_all static/control multi-fpm.info | grep "7\.1" 2>&1)
+      _is_PHP_FPM_seven_one=$(_acct_read_all static/control fpm.info | grep "7\.1" 2>&1)
+      _is_PHP_CLI_seven_one=$(_acct_read_all static/control cli.info | grep "7\.1" 2>&1)
       _is_PHP_seven_one=
       if [[ "${_is_PHP_multi_seven_one}" =~ "7.1" ]] \
         || [[ "${_is_PHP_FPM_seven_one}" =~ "7.1" ]] \
@@ -2862,9 +2862,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.2 if used
-      _is_PHP_multi_seven_two=$(grep "7\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_seven_two=$(grep "7\.2" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_seven_two=$(grep "7\.2" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_seven_two=$(_acct_read_all static/control multi-fpm.info | grep "7\.2" 2>&1)
+      _is_PHP_FPM_seven_two=$(_acct_read_all static/control fpm.info | grep "7\.2" 2>&1)
+      _is_PHP_CLI_seven_two=$(_acct_read_all static/control cli.info | grep "7\.2" 2>&1)
       _is_PHP_seven_two=
       if [[ "${_is_PHP_multi_seven_two}" =~ "7.2" ]] \
         || [[ "${_is_PHP_FPM_seven_two}" =~ "7.2" ]] \
@@ -2874,9 +2874,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.3 if used
-      _is_PHP_multi_seven_three=$(grep "7\.3" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_seven_three=$(grep "7\.3" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_seven_three=$(grep "7\.3" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_seven_three=$(_acct_read_all static/control multi-fpm.info | grep "7\.3" 2>&1)
+      _is_PHP_FPM_seven_three=$(_acct_read_all static/control fpm.info | grep "7\.3" 2>&1)
+      _is_PHP_CLI_seven_three=$(_acct_read_all static/control cli.info | grep "7\.3" 2>&1)
       _is_PHP_seven_three=
       if [[ "${_is_PHP_multi_seven_three}" =~ "7.3" ]] \
         || [[ "${_is_PHP_FPM_seven_three}" =~ "7.3" ]] \
@@ -2886,9 +2886,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 7.4 if used
-      _is_PHP_multi_seven_four=$(grep "7\.4" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_seven_four=$(grep "7\.4" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_seven_four=$(grep "7\.4" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_seven_four=$(_acct_read_all static/control multi-fpm.info | grep "7\.4" 2>&1)
+      _is_PHP_FPM_seven_four=$(_acct_read_all static/control fpm.info | grep "7\.4" 2>&1)
+      _is_PHP_CLI_seven_four=$(_acct_read_all static/control cli.info | grep "7\.4" 2>&1)
       _is_PHP_seven_four=
       if [[ "${_is_PHP_multi_seven_four}" =~ "7.4" ]] \
         || [[ "${_is_PHP_FPM_seven_four}" =~ "7.4" ]] \
@@ -2898,9 +2898,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.0 if used
-      _is_PHP_multi_eight_zero=$(grep "8\.0" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_eight_zero=$(grep "8\.0" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_eight_zero=$(grep "8\.0" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_eight_zero=$(_acct_read_all static/control multi-fpm.info | grep "8\.0" 2>&1)
+      _is_PHP_FPM_eight_zero=$(_acct_read_all static/control fpm.info | grep "8\.0" 2>&1)
+      _is_PHP_CLI_eight_zero=$(_acct_read_all static/control cli.info | grep "8\.0" 2>&1)
       _is_PHP_eight_zero=
       if [[ "${_is_PHP_multi_eight_zero}" =~ "8.0" ]] \
         || [[ "${_is_PHP_FPM_eight_zero}" =~ "8.0" ]] \
@@ -2910,9 +2910,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.1 if used
-      _is_PHP_multi_eight_one=$(grep "8\.1" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_eight_one=$(grep "8\.1" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_eight_one=$(grep "8\.1" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_eight_one=$(_acct_read_all static/control multi-fpm.info | grep "8\.1" 2>&1)
+      _is_PHP_FPM_eight_one=$(_acct_read_all static/control fpm.info | grep "8\.1" 2>&1)
+      _is_PHP_CLI_eight_one=$(_acct_read_all static/control cli.info | grep "8\.1" 2>&1)
       _is_PHP_eight_one=
       if [[ "${_is_PHP_multi_eight_one}" =~ "8.1" ]] \
         || [[ "${_is_PHP_FPM_eight_one}" =~ "8.1" ]] \
@@ -2922,9 +2922,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.2 if used
-      _is_PHP_multi_eight_two=$(grep "8\.2" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_eight_two=$(grep "8\.2" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_eight_two=$(grep "8\.2" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_eight_two=$(_acct_read_all static/control multi-fpm.info | grep "8\.2" 2>&1)
+      _is_PHP_FPM_eight_two=$(_acct_read_all static/control fpm.info | grep "8\.2" 2>&1)
+      _is_PHP_CLI_eight_two=$(_acct_read_all static/control cli.info | grep "8\.2" 2>&1)
       _is_PHP_eight_two=
       if [[ "${_is_PHP_multi_eight_two}" =~ "8.2" ]] \
         || [[ "${_is_PHP_FPM_eight_two}" =~ "8.2" ]] \
@@ -2934,9 +2934,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.3 if used
-      _is_PHP_multi_eight_three=$(grep "8\.3" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_eight_three=$(grep "8\.3" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_eight_three=$(grep "8\.3" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_eight_three=$(_acct_read_all static/control multi-fpm.info | grep "8\.3" 2>&1)
+      _is_PHP_FPM_eight_three=$(_acct_read_all static/control fpm.info | grep "8\.3" 2>&1)
+      _is_PHP_CLI_eight_three=$(_acct_read_all static/control cli.info | grep "8\.3" 2>&1)
       _is_PHP_eight_three=
       if [[ "${_is_PHP_multi_eight_three}" =~ "8.3" ]] \
         || [[ "${_is_PHP_FPM_eight_three}" =~ "8.3" ]] \
@@ -2946,9 +2946,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.4 if used
-      _is_PHP_multi_eight_four=$(grep "8\.4" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_eight_four=$(grep "8\.4" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_eight_four=$(grep "8\.4" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_eight_four=$(_acct_read_all static/control multi-fpm.info | grep "8\.4" 2>&1)
+      _is_PHP_FPM_eight_four=$(_acct_read_all static/control fpm.info | grep "8\.4" 2>&1)
+      _is_PHP_CLI_eight_four=$(_acct_read_all static/control cli.info | grep "8\.4" 2>&1)
       _is_PHP_eight_four=
       if [[ "${_is_PHP_multi_eight_four}" =~ "8.4" ]] \
         || [[ "${_is_PHP_FPM_eight_four}" =~ "8.4" ]] \
@@ -2958,9 +2958,9 @@ _php_if_versions_cleanup_cnf() {
       fi
 
       ### Add PHP 8.5 if used
-      _is_PHP_multi_eight_five=$(grep "8\.5" /data/disk/*/static/control/multi-fpm.info 2>&1)
-      _is_PHP_FPM_eight_five=$(grep "8\.5" /data/disk/*/static/control/fpm.info 2>&1)
-      _is_PHP_CLI_eight_five=$(grep "8\.5" /data/disk/*/static/control/cli.info 2>&1)
+      _is_PHP_multi_eight_five=$(_acct_read_all static/control multi-fpm.info | grep "8\.5" 2>&1)
+      _is_PHP_FPM_eight_five=$(_acct_read_all static/control fpm.info | grep "8\.5" 2>&1)
+      _is_PHP_CLI_eight_five=$(_acct_read_all static/control cli.info | grep "8\.5" 2>&1)
       _is_PHP_eight_five=
       if [[ "${_is_PHP_multi_eight_five}" =~ "8.5" ]] \
         || [[ "${_is_PHP_FPM_eight_five}" =~ "8.5" ]] \
@@ -4510,15 +4510,21 @@ _barracuda_cnf() {
         sed -i "s/^_PHP_FPM_VERSION=.*/_PHP_FPM_VERSION=${_PHP_SINGLE_INSTALL}/g" /root/.*.octopus.cnf &> /dev/null
         wait
         if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
-          for _Ctrl in `find /data/disk/*/log -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${_PHP_SINGLE_INSTALL} > "${_Ctrl}/fpm.txt"
-            echo ${_PHP_SINGLE_INSTALL} > "${_Ctrl}/cli.txt"
+          ### each account's own directories: written inside the real
+          ### directory, never through a link or into a FIFO put there
+          for _Ctrl in /data/disk/*/log; do
+            _acct_put_in "${_Ctrl}" fpm.txt "${_PHP_SINGLE_INSTALL}"
+            _acct_put_in "${_Ctrl}" cli.txt "${_PHP_SINGLE_INSTALL}"
             ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in ${_Ctrl}"
           done
-          for _Ctrl in `find /data/disk/*/static/control \
-            -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${_PHP_SINGLE_INSTALL} > "${_Ctrl}/fpm.info"
-            echo ${_PHP_SINGLE_INSTALL} > "${_Ctrl}/cli.info"
+          for _Ctrl in /data/disk/*/static/control; do
+            _ctrlUsr="${_Ctrl#/data/disk/}"
+            _ctrlUsr="${_ctrlUsr%%/*}"
+            _ctrlOwn="${_ctrlUsr}.ftp:$(_acct_group "${_ctrlUsr}")"
+            _acct_in_real_dir "${_Ctrl}" _acct_pin_here fpm.info \
+              "${_PHP_SINGLE_INSTALL}" "${_ctrlOwn}"
+            _acct_in_real_dir "${_Ctrl}" _acct_pin_here cli.info \
+              "${_PHP_SINGLE_INSTALL}" "${_ctrlOwn}"
             ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in ${_Ctrl}"
           done
           for _Ctrl in `find /data/disk/*/.drush \

@@ -907,8 +907,13 @@ _restore_stage_a() {
     ### the box-level _PHP_FPM_VERSION is a different knob and lands the
     ### pool in a tree whose master never serves this account.
     _nn=$(basename "${_p}" | sed -n "s/^${_oN}\.\([0-9]*\)\.conf$/\1/p")
-    if [ -z "${_nn}" ] && [ -r "${_USR}/static/control/fpm.info" ]; then
-      _nn=$(tr -d -c 0-9 < "${_USR}/static/control/fpm.info")
+    ### static/control is the tenant's: a regular file only, read without
+    ### following a link or blocking on a FIFO put there
+    if [ -z "${_nn}" ] && [ -f "${_USR}/static/control/fpm.info" ] \
+      && [ ! -L "${_USR}/static/control/fpm.info" ]; then
+      _nn=$(timeout 10 dd if="${_USR}/static/control/fpm.info" \
+        iflag=nofollow,nonblock bs=64 count=1 status=none 2> /dev/null \
+        | tr -d -c 0-9)
     fi
     if [ -z "${_nn}" ]; then
       _nn=$(grep -m1 '^_PHP_FPM_VERSION' /root/.barracuda.cnf 2>/dev/null | tr -d -c 0-9)

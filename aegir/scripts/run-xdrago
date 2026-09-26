@@ -86,8 +86,30 @@ _sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
 }
 
+# The new password is delivered in the account's static/control, which the
+# tenant owns: put there as a fresh file (0600, the main login's) renamed over
+# the name inside the real directory, never through a link or FIFO put at the
+# name, and never readable by another account. $1 = the password.
+_sftp_password_put_here() {
+  local _t="./.new-${_sftpUser}-password.txt.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( umask 077
+    printf '%s\n' "${1}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && chown -h "${_sftpUser}" "${_t}" \
+    && mv -f -T -- "${_t}" "./new-${_sftpUser}-password.txt"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+
 # Generate new sftp password and update expiration date
 _if_sftp_password_update() {
+  local _ctl="/data/disk/${_H_USER}/static/control" _ctlReal
+  # the password is changed only when it can be delivered: into the real
+  # control directory, never one reached through a link
+  _ctlReal="$(cd -P /data/disk 2> /dev/null && pwd -P)/${_H_USER}/static/control"
+  [ "$(cd -P -- "${_ctl}" 2> /dev/null && pwd -P)" = "${_ctlReal}" ] || return 0
   _upCtr="/data/disk/${_H_USER}/static/control/run-sftp-password-update.pid"
   if [ -e "${_upCtr}" ]; then
     _sftpUser="${_H_USER}.ftp"
@@ -115,7 +137,8 @@ _if_sftp_password_update() {
       chage -M 90 ${_sftpUser}
       chage -W 7 ${_sftpUser}
       chage -d $(date +%Y-%m-%d) ${_sftpUser}
-      echo "${_ESC_PASS}" > /data/disk/${_H_USER}/static/control/new-${_sftpUser}-password.txt
+      ( cd -P -- "${_ctl}" 2> /dev/null && [ "$(pwd -P)" = "${_ctlReal}" ] \
+        && _sftp_password_put_here "${_ESC_PASS}" )
     fi
   fi
 }
@@ -170,7 +193,10 @@ _if_octopus_upgrade() {
       if grep -qE 'Another BOA installer is running|Some important system task is running|is still in flight' ${_UP_OCTOPUS_LOG} 2>/dev/null \
         || ! kill -0 "${_upPid}" 2>/dev/null; then
         sleep 1
-        touch ${_upCtr}
+        # created exclusively: a link put at the name since the rm above is
+        # never followed (the name is the tenant's)
+        ( umask 022
+          dd of="${_upCtr}" conv=excl status=none < /dev/null 2> /dev/null )
         echo "${_H_USER}: octopus did not start (BOA lock held or refused), run-upgrade.pid kept for the next tick" >>${_UP_OCTOPUS_LOG}
         break
       fi

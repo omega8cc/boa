@@ -401,11 +401,16 @@ _enable_modules_with_drush8() {
 _sync_user_register_protection_ini_vars() {
   _IGNORE_USER_REGISTER_PROTECTION=NO
   _ENABLE_STRICT_USER_REGISTER_PROTECTION=NO
+  ### Both INI names live in tenant-writable setgid modules dirs: grep reads
+  ### through a planted link (and blocks on a FIFO), sed -i reads through
+  ### one and leaves an edited copy of its target there. Strip first, and
+  ### read or edit only a regular file (as _fix_site_control_files does).
+  _desymlink_planted "${_PLR_CTRL_F}" "${_DIR_CTRL_F}"
   if [ -e "/data/conf/default.boa_platform_control.ini" ] \
     && [ ! -e "${_PLR_CTRL_F}" ]; then
     _reseed_ctrl_ini /data/conf/default.boa_platform_control.ini "${_PLR_CTRL_F}"
   fi
-  if [ -e "${_PLR_CTRL_F}" ]; then
+  if [ -f "${_PLR_CTRL_F}" ] && [ ! -L "${_PLR_CTRL_F}" ]; then
     _EN_URP_T_S=$(grep "^enable_strict_user_register_protection = TRUE" \
       ${_PLR_CTRL_F} 2>&1)
     _EN_URP_T=$(grep "^enable_user_register_protection = TRUE" \
@@ -423,33 +428,46 @@ _sync_user_register_protection_ini_vars() {
       _IGNORE_USER_REGISTER_PROTECTION=YES
     fi
   fi
-  if [ -e "${_usEr}/static/control/enable_user_register_protection.info" ]; then
-    mv -f ${_usEr}/static/control/enable_user_register_protection.info \
-      ${_usEr}/static/control/enable_strict_user_register_protection.info
-  fi
-  if [ -e "${_usEr}/static/control/disable_user_register_protection.info" ]; then
-    mv -f ${_usEr}/static/control/disable_user_register_protection.info \
-      ${_usEr}/static/control/ignore_user_register_protection.info
-  fi
+  ### The old names renamed to the new ones inside the real static/control
+  ### (the tenant's): mv -T never moves a file into a directory or through a
+  ### link put at either name.
+  ( _ctl="$(cd -P /data/disk 2> /dev/null && pwd -P)${_usEr#/data/disk}/static/control"
+    cd -P -- "${_usEr}/static/control" 2> /dev/null && [ "$(pwd -P)" = "${_ctl}" ] || exit 0
+    if [ -f ./enable_user_register_protection.info ] \
+      && [ ! -L ./enable_user_register_protection.info ]; then
+      mv -f -T ./enable_user_register_protection.info \
+        ./enable_strict_user_register_protection.info
+    fi
+    if [ -f ./disable_user_register_protection.info ] \
+      && [ ! -L ./disable_user_register_protection.info ]; then
+      mv -f -T ./disable_user_register_protection.info \
+        ./ignore_user_register_protection.info
+    fi )
   if [ "${_ENABLE_STRICT_USER_REGISTER_PROTECTION}" = "NO" ] \
     && [ -e "${_usEr}/static/control/enable_strict_user_register_protection.info" ]; then
-    sed -i "s/.*enable.*user_register_protection.*/enable_strict_user_register_protection = TRUE/g" \
-      ${_PLR_CTRL_F} &> /dev/null
-    wait
+    _desymlink_planted "${_PLR_CTRL_F}"
+    if [ -f "${_PLR_CTRL_F}" ] && [ ! -L "${_PLR_CTRL_F}" ]; then
+      sed -i "s/.*enable.*user_register_protection.*/enable_strict_user_register_protection = TRUE/g" \
+        ${_PLR_CTRL_F} &> /dev/null
+      wait
+    fi
     _ENABLE_STRICT_USER_REGISTER_PROTECTION=YES
   fi
   if [ "${_ENABLE_STRICT_USER_REGISTER_PROTECTION}" = "YES" ] \
     && [ -e "${_usEr}/static/control/ignore_user_register_protection.info" ]; then
-    sed -i "s/.*enable.*user_register_protection.*/enable_strict_user_register_protection = FALSE/g" \
-      ${_PLR_CTRL_F} &> /dev/null
-    wait
+    _desymlink_planted "${_PLR_CTRL_F}"
+    if [ -f "${_PLR_CTRL_F}" ] && [ ! -L "${_PLR_CTRL_F}" ]; then
+      sed -i "s/.*enable.*user_register_protection.*/enable_strict_user_register_protection = FALSE/g" \
+        ${_PLR_CTRL_F} &> /dev/null
+      wait
+    fi
     _IGNORE_USER_REGISTER_PROTECTION=YES
   fi
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
     _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
   fi
-  if [ -e "${_DIR_CTRL_F}" ]; then
+  if [ -f "${_DIR_CTRL_F}" ] && [ ! -L "${_DIR_CTRL_F}" ]; then
     _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
       ${_DIR_CTRL_F} 2>&1)
     _DIS_URP_T_I=$(grep "^ignore_user_register_protection = TRUE" \

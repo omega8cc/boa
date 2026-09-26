@@ -286,6 +286,126 @@ _acct_group() {
 }
 fi
 
+# An account owns its static/control, so it can put a link or a FIFO at any
+# name there. These are helper.sh.inc's, defined here unconditionally: this
+# runs as root from cron, and a guard must never fall back to an older copy.
+# Run "$@" inside the real directory $1 (every name below /data/disk and
+# /home a real directory); ./name then stays there whatever is swapped.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 read without following a link or blocking on a FIFO, at most 1 MiB.
+_acct_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# ./$1 with the content $2 (0644): a fresh file created exclusively, then
+# renamed over the name, so a link or FIFO put there is never followed.
+_acct_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+# ./$1 as an empty file (0644), put the same way.
+_acct_touch_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    dd of="${_t}" conv=excl status=none < /dev/null 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+# ./control made a real directory, run inside the real static/: a link put
+# at the name is removed, a missing directory created 0755.
+_acct_ctrl_dir_here() {
+  [ -L ./control ] && rm -f ./control
+  [ -d ./control ] || ( umask 022; mkdir -p ./control )
+}
+# The per-serial defaults in an account's control directory (run inside the
+# real directory): each written only where missing, and cli.info taken from
+# fpm.info only when that is a regular file.
+_ctrl_seed_here() {
+  local _v
+  if [ ! -e ./MyQuick.info ] && [ ! -e ./MyClassic.info ]; then
+    _acct_put_here MyQuick.info ON
+  fi
+  if [ ! -e ./.disFastTrack.pid ]; then
+    rm -f -- ./FastTrack.info
+    _acct_touch_here .disFastTrack.pid
+  fi
+  if [ ! -e ./FastTrack.info ] && [ ! -e ./ClassicTrack.info ]; then
+    _acct_put_here ClassicTrack.info ON
+  fi
+  if [ -e ./fpm.info ] && [ ! -e ./cli.info ]; then
+    _v="$(_acct_read_here fpm.info)"
+    [ -n "${_v}" ] && _acct_put_here cli.info "${_v}"
+  fi
+  return 0
+}
+# fpm.info and cli.info of an account that has none (run inside the real
+# control directory), handed to the main login: fpm.info the default
+# version, cli.info the fpm.info version or the default.
+_ctrl_pins_here() {
+  local _v
+  if [ ! -e ./fpm.info ] && [ -n "${_useFpm}" ]; then
+    _acct_put_here fpm.info "${_useFpm}" \
+      && chown -h "${_tUsr}.ftp:${_usrGroup}" ./fpm.info
+  fi
+  if [ ! -e ./cli.info ]; then
+    if [ -e ./fpm.info ]; then
+      _v="$(_acct_read_here fpm.info)"
+    else
+      _v="${_useCli}"
+    fi
+    [ -n "${_v}" ] && _acct_put_here cli.info "${_v}" \
+      && chown -h "${_tUsr}.ftp:${_usrGroup}" ./cli.info
+  fi
+  return 0
+}
+# The control directory on the first pass of a serial (run inside the real
+# directory), as the ltd worker's _ltd_ctrl_init does it: the README put in
+# place as a fresh 0644 file, the tree handed to the main login (chown -R
+# never follows a link), old stamps swept and this serial's written
+# exclusively.
+_ctrl_init_here() {
+  chmod 755 .
+  if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
+    ( umask 022
+      cp -T --no-preserve=mode --remove-destination \
+        /var/xdrago/conf/control-readme.txt ./README.txt ) &> /dev/null
+  fi
+  chown -R "${_tUsr}.ftp:${_usrGroup}" .
+  rm -f -- ./.ctrl.*
+  _acct_put_here ".ctrl.${_tRee}.${_xSrl}.pid" OK
+}
+# An octopus upgrade queued from the account's control directory (run inside
+# the real directory): platforms.info seeded when empty and run-upgrade.pid
+# created, both exclusively and handed to the main login. True only when
+# this call queued it. $1 = owner:group.
+_ctrl_upgrade_here() {
+  if [ ! -s ./platforms.info ]; then
+    _acct_put_here platforms.info FOOBAR && chown -h "${1}" ./platforms.info 2> /dev/null
+  fi
+  [ -e ./run-upgrade.pid ] && return 1
+  _acct_touch_here run-upgrade.pid && chown -h "${1}" ./run-upgrade.pid 2> /dev/null
+}
+
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
@@ -1773,7 +1893,7 @@ _update_agents() {
     fi
   fi
 
-  _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f90 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
+  _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f89 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
   _fetch_versioned ${_optBin}/clearwebbans "${_urlHmr}/tools/bin/clearwebbans" f95 --symlink ${_usrBin}/clearwebbans --guard /local/bin/clearwebbans
   _fetch_versioned ${_optBin}/defaultkeys "${_urlHmr}/tools/bin/defaultkeys" f99 --symlink ${_usrBin}/defaultkeys --guard /local/bin/defaultkeys
   # PHP-selecting bee launcher (identity verb policy). Deployed unconditionally
@@ -1914,9 +2034,9 @@ _update_agents() {
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f88
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f72
-    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f71
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f59
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f61
+    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f70
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f58
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f60
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f77
     _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f76
     ###
@@ -1942,7 +2062,7 @@ _update_agents() {
       rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     fi
     _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f75
-    _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f67
+    _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f66
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
@@ -1985,7 +2105,7 @@ _update_agents() {
     # revalidates within the hour, and never clobbers a running pass; the
     # post-install steps run only when the file actually changed.
     _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f92 --guard /xdrago/manage_ltd_users.sh
+    _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f91 --guard /xdrago/manage_ltd_users.sh
     if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
       && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -2313,22 +2433,7 @@ _update_agents() {
       _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
       _usrGroup=$(_acct_group "${_tUsr}")
       if [ "${_tUsr}" != "arch" ]; then
-        if [ ! -e "${_pthSysUsr}/static/control/MyQuick.info" ] \
-          && [ ! -e "${_pthSysUsr}/static/control/MyClassic.info" ]; then
-          echo ON > ${_pthSysUsr}/static/control/MyQuick.info
-        fi
-        if [ ! -e "${_pthSysUsr}/static/control/.disFastTrack.pid" ]; then
-          rm -f ${_pthSysUsr}/static/control/FastTrack.info
-          touch ${_pthSysUsr}/static/control/.disFastTrack.pid
-        fi
-        if [ ! -e "${_pthSysUsr}/static/control/FastTrack.info" ] \
-          && [ ! -e "${_pthSysUsr}/static/control/ClassicTrack.info" ]; then
-          echo ON > ${_pthSysUsr}/static/control/ClassicTrack.info
-        fi
-        if [ -e "${_pthSysUsr}/static/control/fpm.info" ] \
-          && [ ! -e "${_pthSysUsr}/static/control/cli.info" ]; then
-          cp ${_pthSysUsr}/static/control/fpm.info ${_pthSysUsr}/static/control/cli.info
-        fi
+        _acct_in_real_dir "${_pthSysUsr}/static/control" _ctrl_seed_here
         ### proxy-failed.pid: a cutover could not convert the account, and its
         ### panel database lives on the target; its dispatcher would run the
         ### travelled queue against the stale local copy until xoct repairs it
@@ -2380,38 +2485,13 @@ _update_agents() {
               break
             fi
           done
-          if [ ! -e "${_dscUsr}/static/control/fpm.info" ] \
-            && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-            if [ -n "${_useFpm}" ]; then
-              echo ${_useFpm} > ${_dscUsr}/static/control/fpm.info
-              chown ${_tUsr}.ftp:${_usrGroup} ${_dscUsr}/static/control/fpm.info
-              chmod 0644 ${_dscUsr}/static/control/fpm.info
-            fi
-          fi
-          if [ ! -e "${_dscUsr}/static/control/cli.info" ] \
-            && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-            if [ -e "${_dscUsr}/static/control/fpm.info" ]; then
-              cp -af ${_dscUsr}/static/control/fpm.info ${_dscUsr}/static/control/cli.info
-            else
-              if [ -n "${_useCli}" ]; then
-                echo ${_useCli} > ${_dscUsr}/static/control/cli.info
-                chown ${_tUsr}.ftp:${_usrGroup} ${_dscUsr}/static/control/cli.info
-                chmod 0644 ${_dscUsr}/static/control/cli.info
-              fi
-            fi
+          if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+            _acct_in_real_dir "${_dscUsr}/static/control" _ctrl_pins_here
           fi
           if [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
             && [ -e "/home/${_tUsr}.ftp/clients" ]; then
-            mkdir -p ${_dscUsr}/static/control
-            chmod 755 ${_dscUsr}/static/control
-            if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
-              cp -af /var/xdrago/conf/control-readme.txt \
-                ${_dscUsr}/static/control/README.txt &> /dev/null
-              chmod 0644 ${_dscUsr}/static/control/README.txt
-            fi
-            chown -R ${_tUsr}.ftp:${_usrGroup} ${_dscUsr}/static/control
-            rm -f ${_dscUsr}/static/control/.ctrl.*
-            echo OK > ${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid
+            _acct_in_real_dir "${_dscUsr}/static" _acct_ctrl_dir_here
+            _acct_in_real_dir "${_dscUsr}/static/control" _ctrl_init_here
           fi
         fi
       fi
@@ -4436,18 +4516,9 @@ _fix_wiped_nginx_config() {
       continue
     fi
     _uSr=$(basename "${_bAse}")
-    _ctlDir="${_bAse}/static/control"
-    if [ ! -d "${_ctlDir}" ]; then
-      mkdir -p "${_ctlDir}"
-      chmod 755 "${_ctlDir}"
-    fi
-    if [ ! -s "${_ctlDir}/platforms.info" ]; then
-      echo "FOOBAR" > "${_ctlDir}/platforms.info"
-      chown ${_uSr}.ftp:$(_acct_group "${_uSr}") "${_ctlDir}/platforms.info" 2> /dev/null
-    fi
-    if [ ! -e "${_ctlDir}/run-upgrade.pid" ]; then
-      touch "${_ctlDir}/run-upgrade.pid"
-      chown ${_uSr}.ftp:$(_acct_group "${_uSr}") "${_ctlDir}/run-upgrade.pid" 2> /dev/null
+    _acct_in_real_dir "${_bAse}/static" _acct_ctrl_dir_here
+    if _acct_in_real_dir "${_bAse}/static/control" _ctrl_upgrade_here \
+      "${_uSr}.ftp:$(_acct_group "${_uSr}")"; then
       _log_crawler_fix "NOTE: wiped nginx config detected (${_wIped}); octopus upgrade queued for ${_uSr}"
     fi
   done
@@ -4839,7 +4910,7 @@ CSFSTANDBY
     # documented /usr/local/bin path stays a symlink to the fleet copy.
     _fetch_versioned ${_optBin}/aegir2boa-preflight "${_urlHmr}/${_tBn}/aegir2boa-preflight" f97 --guard /local/bin/aegir2boa-preflight
     _fetch_versioned ${_optBin}/aegir2boa-stage1 "${_urlHmr}/${_tBn}/aegir2boa-stage1" f97 --guard /local/bin/aegir2boa-stage1
-    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f94 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
+    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f93 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f96 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f86 --guard /local/bin/autobeowulf
@@ -4850,7 +4921,7 @@ CSFSTANDBY
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f79 --guard duplicity
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f49 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f46 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f45 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f92 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f79 --guard duplicity
@@ -4876,11 +4947,11 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f93 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f90 --guard /local/bin/lock.inc
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f18 --guard duplicity
-    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f22 --mode 755 --guard duplicity
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f17 --guard duplicity
+    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f21 --mode 755 --guard duplicity
     _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f71 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f94 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
-    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f73 --guard /local/bin/renameaegirhost
+    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f72 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f82 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f97 --guard /local/bin/symlinkinfo
@@ -4893,10 +4964,10 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f95 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f55 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f40 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f06 --guard /local/bin/xoct
-    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f76 --guard /local/bin/xtrim
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f54 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f39 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f05 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f75 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f94 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f87 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f87 --guard /local/bin/autodaedalus
@@ -4905,7 +4976,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f96 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/checkmyperms "${_urlHmr}/${_tBn}/checkmyperms" f99 --mode 755 --guard /local/bin/checkmyperms
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f92 --guard /local/bin/codebasecheck
-    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f94 --guard /local/bin/copydbackup
+    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f93 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
     _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f91 --guard /local/bin/memorytuner
