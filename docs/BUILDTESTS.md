@@ -92,7 +92,16 @@ past security support, so core advisories remain.
 
 CK2 resolves one package from a
 GitHub repository; when GitHub refuses anonymous requests (rate limit), its row says
-so, and a GitHub token in the build user's Composer configuration lifts the limit.
+so, and a GitHub token lifts the limit.
+
+staticbuild runs Composer with its own home and cache in the build user's home,
+`~/.config/staticbuild-composer` and `~/.cache/staticbuild-composer`: the limited-shell
+worker removes `.config/composer` and `.cache/composer` from every Octopus account every few
+minutes. The token goes into that home, set as the build user:
+
+```sh
+  COMPOSER_HOME=~/.config/staticbuild-composer composer config -g github-oauth.github.com <token>
+```
 
 ### Advisories: audited, not blocked
 
@@ -411,6 +420,8 @@ published to `/var/www/static/core`:
 
 ```sh
   su -s /bin/bash - o8
+  export COMPOSER_HOME=~/.config/staticbuild-composer
+  export COMPOSER_CACHE_DIR=~/.cache/staticbuild-composer
   mkdir -p ~/static/MONTH-DAY/
   cd ~/static/MONTH-DAY/
   composer clearcache
