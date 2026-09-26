@@ -30,7 +30,7 @@
 
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-_A2B_VERSION=0.1.3
+_A2B_VERSION=0.1.4
 _A2B_SCHEMA_VERSION=1
 
 _AEGIR_ROOT=/var/aegir
@@ -795,7 +795,7 @@ probe_apache() {
 _N_PLATFORMS=0
 
 probe_platforms() {
-  local _f _name _root _mk _core _build _contrib _ws _cl
+  local _f _name _root _app _mk _core _build _contrib _ws _cl
   for _f in "${_AEGIR_ROOT}"/.drush/platform_*.alias.drushrc.php; do
     [[ -e "${_f}" ]] || continue
     _name="$(basename "${_f}" .alias.drushrc.php)"
@@ -804,7 +804,14 @@ probe_platforms() {
     _ws="$(_alias_get "${_f}" web_server)"
     _core=""; _build=manual; _contrib=0
     if [[ -n "${_root}" && -d "${_root}" ]]; then
-      if [[ -e "${_root}/composer.json" && -d "${_root}/vendor" ]]; then
+      # a Composer platform registered by its web root keeps composer.json and
+      # vendor/ one level up, in the app root
+      _app="${_root%/}"
+      case "${_app##*/}" in
+        web|docroot|html) _app="${_app%/*}" ;;
+      esac
+      if [[ -e "${_root}/composer.json" && -d "${_root}/vendor" ]] \
+        || [[ -e "${_app}/composer.json" && -d "${_app}/vendor" ]]; then
         _build="composer"
       elif [[ -n "${_mk}" ]]; then
         _build="make"

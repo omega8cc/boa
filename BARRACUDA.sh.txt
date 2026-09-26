@@ -42,8 +42,8 @@ _CHIVE_VRN=1.3
 _COMPOSER_VRN=2.10.3
 _CSF_VRN=15.00
 _CURL_VRN=8.22.0
-_DRUSH_EIGHT_TEST_VRN=8.5.7
-_DRUSH_EIGHT_VRN=8.5.7
+_DRUSH_EIGHT_TEST_VRN=8.5.9
+_DRUSH_EIGHT_VRN=8.5.9
 _DRUSH_ELEVEN_VRN=11.6.0
 _DRUSH_TEN_VRN=10.6.2
 _GIT_VRN=2.51.0
@@ -69,7 +69,7 @@ _MONGODB_VRN=1.2.5
 _MSS_VRN=master-29-06-2024
 _MYQUICK_VRN_ONE=0.19.3-3
 _MYQUICK_VRN_TWO=1.0.5-1
-_NEW_RELIC_VRN=12.10.0.39
+_NEW_RELIC_VRN=12.11.0.40
 _NGINX_VRN=1.31.6
 _NODE_VRN=v22.21.0
 _OPENSSH_VRN=10.5p1
@@ -104,7 +104,7 @@ _PHP81_VRN=8.1.34
 _PHP82_API=20220829
 _PHP82_VRN=8.2.34
 _PHP83_API=20230831
-_PHP83_VRN=8.3.33
+_PHP83_VRN=8.3.35
 _PHP84_API=20240924
 _PHP84_VRN=8.4.26
 _PHP85_API=20250925
@@ -361,10 +361,12 @@ if pgrep -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)' >/dev/nul
   pkill -9 -f '^([^ ]*/)?python[0-9.]* /usr/bin/unattended-upgrade( |$)'
   /usr/bin/dpkg --configure -a &> /dev/null
 fi
+_usrmerge_failed_guard
 _sources_list_update
 _basic_packages_install_on_init
 _more_packages_install_on_init
 _run_aptitude_full_upgrade
+_usrmerge_enforce
 
 
 ###
@@ -670,7 +672,22 @@ _rsyslog_config_update
 
 
 ###
+### Update barracuda log, tools and system settings
+###
+_pam_umask_check_fix
+_pam_many_check_fix
+_avatars_check_fix
+_sysctl_update
+_initd_update
+
+
+###
 ### Install or uninstall AppArmor after barracuda install and upgrade
+###
+### Not before this point: the pass keeps AppArmor torn down while it runs, and
+### the MySQL and DNS steps, the last of them inside _initd_update, call
+### aa-teardown, which unloads every profile; the chosen mode is loaded once
+### they are done. Still before the Nginx step below, as it always was.
 ###
 if [ -e "/root/.keep_apparmor_on.cnf" ] && [ ! -e "/root/.deny.apparmor.cnf" ]; then
   [ ! -e "/root/.allow.apparmor.cnf" ] && touch /root/.allow.apparmor.cnf
@@ -691,14 +708,6 @@ else
 fi
 
 
-###
-### Update barracuda log, tools and system settings
-###
-_pam_umask_check_fix
-_pam_many_check_fix
-_avatars_check_fix
-_sysctl_update
-_initd_update
 ### On every pass, heavy or not, and only here: after any Nginx build, after
 ### the wildcard front whose certificate the probe borrows, and after the
 ### last Nginx restart of the pass -- the fragment is switched by reload, and

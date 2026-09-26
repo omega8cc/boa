@@ -2585,6 +2585,12 @@ _cleanup_ghost_drushrc() {
             if [ -n "${_T_SITE_ROOT}" ] && [ ! -d "${_T_SITE_ROOT}" ]; then
               _GH_CLASS=platform-gone
             else
+              # A platform alias keeps the path the platform was registered
+              # with, which for a Composer build can be its app root; its site
+              # dirs live under the docroot Provision serves. Compare and probe
+              # docroots, or a site stranded on such a platform reads as a ghost.
+              _GH_SDOC=$(_detect_real_docroot "${_T_SITE_ROOT}") \
+                || _GH_SDOC="${_T_SITE_ROOT}"
               for _GH_PALIAS in ${_usEr}/.drush/platform_*.alias.drushrc.php; do
                 [ -e "${_GH_PALIAS}" ] || continue
                 _GH_PROOT=$(cat ${_GH_PALIAS} \
@@ -2592,9 +2598,11 @@ _cleanup_ghost_drushrc() {
                   | cut -d: -f2 \
                   | awk '{ print $3}' \
                   | sed "s/[\,']//g" 2>&1)
-                if [ -n "${_GH_PROOT}" ] \
-                  && [ "${_GH_PROOT}" != "${_T_SITE_ROOT}" ] \
-                  && [ -d "${_GH_PROOT}/sites/${_T_SITE_NAME}" ]; then
+                _GH_PDOC=$(_detect_real_docroot "${_GH_PROOT}") \
+                  || _GH_PDOC="${_GH_PROOT}"
+                if [ -n "${_GH_PDOC}" ] \
+                  && [ "${_GH_PDOC}" != "${_GH_SDOC}" ] \
+                  && [ -d "${_GH_PDOC}/sites/${_T_SITE_NAME}" ]; then
                   _GH_CLASS=stranded
                   break
                 fi
