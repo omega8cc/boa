@@ -11,9 +11,10 @@
 # 2. Picks a modern /opt/phpNN CLI (>= 7.4 floor) so bee never runs under
 #    php56 (bee's own floor is 7.1). Selection authority mirrors the drush
 #    dispatch: a validated DRUSH_PHP exported by websh wins (it already encodes
-#    cli.info + the phpNN.info instant switch for the calling identity); direct
-#    invocations without websh in the chain self-resolve the same control files;
-#    the newest installed modern PHP is the last resort. PHPRC/PHP_INI are
+#    cli.info, the phpNN.info instant switch and the platform's
+#    cli-per-platform.info line); direct invocations without websh in the chain
+#    self-resolve cli.info and the phpNN.info switch only; the newest installed
+#    modern PHP is the last resort. PHPRC/PHP_INI are
 #    re-exported to match the final pick so bee never runs one PHP version
 #    with another version's ini.
 
@@ -75,8 +76,9 @@ fi
 
 # --- PHP selection (>= 7.4 clamp) --------------------------------------------
 # 1. The websh hand-off: lshell runs every client command through websh
-#    (/bin/sh), which resolves cli.info + phpNN.info per account and exports
-#    DRUSH_PHP before forwarding. Strictly validated, never trusted verbatim:
+#    (/bin/sh), which resolves cli.info + phpNN.info per account, and the
+#    platform's cli-per-platform.info line on top, and exports DRUSH_PHP
+#    before forwarding. Strictly validated, never trusted verbatim:
 #    a forged value can only select an installed /opt/phpNN CLI -- the same
 #    power the control files already grant -- and anything else is ignored.
 _BEE_PHP=""
@@ -84,8 +86,8 @@ if [[ "${DRUSH_PHP}" =~ ^/opt/php[0-9][0-9]/bin/php$ ]] && [[ -x "${DRUSH_PHP}" 
   _BEE_PHP="${DRUSH_PHP}"
 fi
 
-# 2. No websh in the chain (root/aegir/o<N> direct calls): resolve the same
-#    control files websh reads. Control dir from the PWD walk (works in any
+# 2. No websh in the chain (root/aegir/o<N> direct calls): resolve cli.info
+#    and the phpNN.info switch as websh does (not cli-per-platform.info). Control dir from the PWD walk (works in any
 #    account tree regardless of identity), else derived from the identity the
 #    way websh derives it; cli.info first, then the phpNN.info instant switch
 #    overrides it -- highest version wins, matching check_php_cli_version.

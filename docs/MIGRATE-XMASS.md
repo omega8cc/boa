@@ -423,11 +423,15 @@ What it does, in order:
    is not serviceable there surfaces only after promotion, as silently broken
    search.
 3. **PHP coverage gate** — collects every version pinned by any eligible
-   account (`static/control/fpm.info`, `cli.info`, and the per-site column of
-   `multi-fpm.info`) and verifies each is installed on the target. Missing
-   versions are fatal, because a pinned-but-absent PHP is silently downgraded
-   by BOA's own fallback ladder and the affected sites serve on the wrong
-   interpreter. With `--fix-php` the missing versions are appended to the
+   account (`static/control/fpm.info`, `cli.info`, the per-site column of
+   `multi-fpm.info`, every line of `cli-per-platform.info` and the
+   `phpNN.info` marker that steers the account's command line, the highest
+   one whose PHP is installed on the source) and verifies each is installed
+   on the target. Missing versions are fatal, because a pinned-but-absent PHP
+   is silently downgraded by BOA's own fallback ladder and the affected sites
+   serve on the wrong interpreter.
+
+   With `--fix-php` the missing versions are appended to the
    target's `_PHP_MULTI_INSTALL` and one `barracuda up-<tree> system` pass is
    driven there to build them (~30 minutes).
 4. **Certificate health sweep** on the source — names every zero-byte,
