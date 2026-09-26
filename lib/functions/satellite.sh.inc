@@ -1096,20 +1096,11 @@ _satellite_cnf() {
     fi
 
     if [ -e "${_ROOT}/static/control/fpm.info" ]; then
-      _PHP_FPM_VERSION=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
-      _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
-      if [ "${_PHP_FPM_VERSION}" = "8.5" ] \
-        || [ "${_PHP_FPM_VERSION}" = "8.4" ] \
-        || [ "${_PHP_FPM_VERSION}" = "8.3" ] \
-        || [ "${_PHP_FPM_VERSION}" = "8.2" ] \
-        || [ "${_PHP_FPM_VERSION}" = "8.1" ] \
-        || [ "${_PHP_FPM_VERSION}" = "8.0" ] \
-        || [ "${_PHP_FPM_VERSION}" = "7.4" ] \
-        || [ "${_PHP_FPM_VERSION}" = "7.3" ] \
-        || [ "${_PHP_FPM_VERSION}" = "7.2" ] \
-        || [ "${_PHP_FPM_VERSION}" = "7.1" ] \
-        || [ "${_PHP_FPM_VERSION}" = "7.0" ] \
-        || [ "${_PHP_FPM_VERSION}" = "5.6" ]; then
+      # one version, dotted or two-digit; other text is ignored: the cnf's
+      # version stays and the file is left as it is
+      _T_VRN=$(_satellite_php_vrn "$(cat ${_ROOT}/static/control/fpm.info 2>&1)")
+      if [ -n "${_T_VRN}" ]; then
+        _PHP_FPM_VERSION="${_T_VRN}"
         if [ "${_PHP_FPM_VERSION}" = "8.5" ] \
           && [ ! -x "/opt/php85/bin/php" ]; then
           if [ -x "/opt/php84/bin/php" ]; then
@@ -1210,20 +1201,11 @@ _satellite_cnf() {
     fi
 
     if [ -e "${_ROOT}/static/control/cli.info" ]; then
-      _PHP_CLI_VERSION=$(cat ${_ROOT}/static/control/cli.info 2>&1)
-      _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
-      if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
-        || [ "${_PHP_CLI_VERSION}" = "8.4" ] \
-        || [ "${_PHP_CLI_VERSION}" = "8.3" ] \
-        || [ "${_PHP_CLI_VERSION}" = "8.2" ] \
-        || [ "${_PHP_CLI_VERSION}" = "8.1" ] \
-        || [ "${_PHP_CLI_VERSION}" = "8.0" ] \
-        || [ "${_PHP_CLI_VERSION}" = "7.4" ] \
-        || [ "${_PHP_CLI_VERSION}" = "7.3" ] \
-        || [ "${_PHP_CLI_VERSION}" = "7.2" ] \
-        || [ "${_PHP_CLI_VERSION}" = "7.1" ] \
-        || [ "${_PHP_CLI_VERSION}" = "7.0" ] \
-        || [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
+      # one version, dotted or two-digit; other text is ignored: the cnf's
+      # version stays and the file is left as it is
+      _T_VRN=$(_satellite_php_vrn "$(cat ${_ROOT}/static/control/cli.info 2>&1)")
+      if [ -n "${_T_VRN}" ]; then
+        _PHP_CLI_VERSION="${_T_VRN}"
         if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
           && [ ! -x "/opt/php85/bin/php" ]; then
           if [ -x "/opt/php84/bin/php" ]; then
@@ -5780,56 +5762,44 @@ _satellite_detect_vm_family() {
   fi
 }
 
+#
+# One PHP version in the text of fpm.info or cli.info, dotted (8.4) or
+# two-digit (84, as the ltd worker also reads it), printed dotted; nothing for
+# any other text.
+_satellite_php_vrn() {
+  local _t="${1//[^0-9.]/}" _d="${1//[^0-9]/}"
+  case "${_t}" in
+    [0-9].[0-9]|[0-9][0-9]) ;;
+    *) return 0 ;;
+  esac
+  case "${_d}" in
+    56|70|71|72|73|74|80|81|82|83|84|85) echo "${_d:0:1}.${_d:1:1}" ;;
+  esac
+}
+
 _satellite_check_php_compatibility() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_check_php_compatibility"
     _debug_proc
   fi
+  # Only a pin to PHP older than 5.6 stops the upgrade. Any other text, a
+  # two-digit version or a file that holds no version, is not a reason to
+  # refuse: the reads below ignore what is not one version.
+  _PHP_FPM_LEGACY_FREE=YES
   if [ -e "${_ROOT}/static/control/fpm.info" ]; then
     _T_FPM_VRN=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
     _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
-    _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_FPM_VRN}" = "8.5" ] \
-      || [ "${_T_FPM_VRN}" = "8.4" ] \
-      || [ "${_T_FPM_VRN}" = "8.3" ] \
-      || [ "${_T_FPM_VRN}" = "8.2" ] \
-      || [ "${_T_FPM_VRN}" = "8.1" ] \
-      || [ "${_T_FPM_VRN}" = "8.0" ] \
-      || [ "${_T_FPM_VRN}" = "7.4" ] \
-      || [ "${_T_FPM_VRN}" = "7.3" ] \
-      || [ "${_T_FPM_VRN}" = "7.2" ] \
-      || [ "${_T_FPM_VRN}" = "7.1" ] \
-      || [ "${_T_FPM_VRN}" = "7.0" ] \
-      || [ "${_T_FPM_VRN}" = "5.6" ]; then
-      _PHP_FPM_LEGACY_FREE=YES
-    else
-      _PHP_FPM_LEGACY_FREE=NO
-    fi
-  else
-    _PHP_FPM_LEGACY_FREE=YES
+    case "${_T_FPM_VRN}" in
+      5.2|5.3|5.4|5.5|52|53|54|55) _PHP_FPM_LEGACY_FREE=NO ;;
+    esac
   fi
+  _PHP_CLI_LEGACY_FREE=YES
   if [ -e "${_ROOT}/static/control/cli.info" ]; then
     _T_CLI_VRN=$(cat ${_ROOT}/static/control/cli.info 2>&1)
     _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
-    _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_CLI_VRN}" = "8.5" ] \
-      || [ "${_T_CLI_VRN}" = "8.4" ] \
-      || [ "${_T_CLI_VRN}" = "8.3" ] \
-      || [ "${_T_CLI_VRN}" = "8.2" ] \
-      || [ "${_T_CLI_VRN}" = "8.1" ] \
-      || [ "${_T_CLI_VRN}" = "8.0" ] \
-      || [ "${_T_CLI_VRN}" = "7.4" ] \
-      || [ "${_T_CLI_VRN}" = "7.3" ] \
-      || [ "${_T_CLI_VRN}" = "7.2" ] \
-      || [ "${_T_CLI_VRN}" = "7.1" ] \
-      || [ "${_T_CLI_VRN}" = "7.0" ] \
-      || [ "${_T_CLI_VRN}" = "5.6" ]; then
-      _PHP_CLI_LEGACY_FREE=YES
-    else
-      _PHP_CLI_LEGACY_FREE=NO
-    fi
-  else
-    _PHP_CLI_LEGACY_FREE=YES
+    case "${_T_CLI_VRN}" in
+      5.2|5.3|5.4|5.5|52|53|54|55) _PHP_CLI_LEGACY_FREE=NO ;;
+    esac
   fi
   if [ "${_PHP_CLI_LEGACY_FREE}" = "YES" ] \
     && [ "${_PHP_FPM_LEGACY_FREE}" = "YES" ]; then
