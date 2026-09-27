@@ -237,10 +237,85 @@ _renamed_already() {
 _file_needs_rename() {
   # Eligible = the file has a line carrying OLD that is not already
   # NEW-carrying (line-level twin of _renamed_already; whole file counts
-  # when no guard regime is active).
-  grep -q "${_OLD_HOST}" "$1" 2>/dev/null || return 1
+  # when no guard regime is active). Read without following a link or
+  # blocking on a FIFO: the account owns most of what this tool reads.
+  _text_needs_rename "$(timeout 10 dd if="$1" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2>/dev/null)"
+}
+
+_text_needs_rename() {
+  # _file_needs_rename for text already read.
+  grep -q "${_OLD_HOST}" <<< "$1" || return 1
   [ -z "${_SED_RENAME_GUARD}" ] && return 0
-  grep -v "${_NEW_HOST}" "$1" 2>/dev/null | grep -q "${_OLD_HOST}"
+  grep -v "${_NEW_HOST}" <<< "$1" | grep -q "${_OLD_HOST}"
+}
+
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way (the ltd worker's rule): below /data/disk and
+# /home every name on the path must be a real directory; once entered,
+# ./name stays there whatever is swapped.
+_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+# ./$1 in the current (pinned) directory: never through a link, never
+# blocked on a FIFO, at most 1 MiB; empty for anything else.
+_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+
+# The file $1, read as _read_here reads it inside its real directory.
+_read_file() {
+  _in_real_dir "${1%/*}" _read_here "${1##*/}"
+}
+
+# ./$1 in the current (pinned) directory put at ./$2 through sed "${@:3}":
+# only a regular file under 1 MiB is read, never through a link or into a
+# FIFO; the result is a fresh file with the source's numeric owner (chown
+# -h: an owner with no name on this box still lands, and a failed chown is
+# not fatal) and mode (by umask, never a chmod by name), renamed over ./$2.
+# For a plain file this writes what sed -i wrote, without its reach through
+# a link the account put at the name.
+_sed_to() {
+  local _s="${1}" _n="${2}" _st _own _m _sz _ft _t
+  shift 2
+  _st="$(stat -c '%u:%g %a %s %F' -- "./${_s}" 2> /dev/null)" || return 1
+  case "${_st}" in
+    *" regular file"|*" regular empty file") ;;
+    *) return 1 ;;
+  esac
+  read -r _own _m _sz _ft <<< "${_st}"
+  [ "${_sz}" -lt 1048576 ] || return 1
+  _t="./.${_n}.rah.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( set -o pipefail
+    umask "$(printf '%03o' $(( 0777 & ~0${_m} )))"
+    _read_here "${_s}" | sed "$@" \
+      | dd of="${_t}" conv=excl status=none 2> /dev/null ); then
+    chown -h "${_own}" "${_t}" 2> /dev/null
+    mv -f -T -- "${_t}" "./${_n}" && return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+
+# ./$1 rewritten in place by sed "${@:2}", as _sed_to does it.
+_sed_here() {
+  local _n="${1}"
+  shift
+  _sed_to "${_n}" "${_n}" "$@"
 }
 
 ###-------------CHECKS--------------------###
@@ -300,9 +375,10 @@ _detect_old_hostname() {
   fi
 
   # Extract remote_host from server_master alias — this is the authoritative
-  # hostname stored in the Aegir drush config
-  _OLD_HOST=$(grep "remote_host" \
-    "${_DRUSH_DIR}/server_master.alias.drushrc.php" \
+  # hostname stored in the Aegir drush config (read inside the real .drush,
+  # never through a link or into a FIFO)
+  _OLD_HOST=$(_read_file "${_DRUSH_DIR}/server_master.alias.drushrc.php" \
+    | grep "remote_host" \
     | head -1 \
     | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
 
@@ -395,8 +471,8 @@ _rename_hostmaster_site_dir() {
   # source's OLD-named dir over it would clobber the target's correct
   # settings.php.
   local _HM_RAW
-  _HM_RAW=$(grep "site_path'" \
-    "${_DRUSH_DIR}/hostmaster.alias.drushrc.php" \
+  _HM_RAW=$(_read_file "${_DRUSH_DIR}/hostmaster.alias.drushrc.php" \
+    | grep "site_path'" \
     | head -1 \
     | sed "s/.*=>//; s/[' ,;]//g" \
     | tr -d ' ')
@@ -507,7 +583,9 @@ _parked_capsule_platform_root() {
   done
   for _F in "${_CANDS[@]}"; do
     [ -f "${_F}" ] || continue
-    _R=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_F}" 2>/dev/null | head -1)
+    # inside the real directory, never through a link or into a FIFO: the
+    # copies carry whatever the account's .drush held when they were taken
+    _R=$(_read_file "${_F}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
     if [ -n "${_R}" ]; then
       printf '%s' "${_R}"
       return 0
@@ -830,9 +908,13 @@ _rename_site_uri_surfaces() {
   _SD="${_OLD_D}"
   [ -d "${_NEWD}" ] && _SD="${_NEWD}"
 
+  # .drush is the account's: the rename runs on ./names inside the real
+  # directory, and -T replaces a link put at the new name instead of moving
+  # the alias into whatever directory it points at.
   if [ -f "${_OLD_ALIAS}" ] && [ ! -f "${_NEW_ALIAS}" ]; then
     _info "    alias file: ${_OLDNAME}.alias.drushrc.php -> ${_NEWNAME}.alias.drushrc.php"
-    _maybe_run mv -f \'"${_OLD_ALIAS}"\' \'"${_NEW_ALIAS}"\'
+    _maybe_run _in_real_dir \'"${_DRUSH_DIR}"\' mv -f -T -- \
+      \'"./${_OLDNAME}.alias.drushrc.php"\' \'"./${_NEWNAME}.alias.drushrc.php"\'
     _URI_SURFACES_CHANGED=YES
   fi
 
@@ -1654,62 +1736,21 @@ _rewrite_fpm_pin_control() {
   #
   # static/control is the tenant's: only a regular file in the real
   # directory is rewritten, read without following a link or opening a FIFO,
-  # and put back as a fresh file renamed over the name -- never sed -i on the
-  # name, which reads through a planted link and leaves an edited copy of its
-  # target, owned by the tenant, in the tenant's directory.
-  local _CTL="${_AEGIR_ROOT}/static/control/multi-fpm.info"
-  local _TXT
-  _in_real_dir "${_AEGIR_ROOT}/static/control" \
+  # and put back as a fresh file renamed over the name, with the owner and
+  # mode read in that same directory (numeric, so an owner with no name on
+  # this box still lands) -- never sed -i on the name, which reads through a
+  # planted link and leaves an edited copy of its target, owned by the
+  # tenant, in the tenant's directory.
+  local _CTL_D="${_AEGIR_ROOT}/static/control"
+  _in_real_dir "${_CTL_D}" \
     test -f ./multi-fpm.info -a ! -L ./multi-fpm.info || return 0
-  _TXT=$(_in_real_dir "${_AEGIR_ROOT}/static/control" timeout 10 dd \
-    if=./multi-fpm.info iflag=nofollow,nonblock,fullblock bs=1048576 count=1 \
-    status=none 2>/dev/null)
-  grep -q "${_OLD_HOST}" <<< "${_TXT}" || return 0
-  if [ -n "${_SED_RENAME_GUARD}" ]; then
-    grep -v "${_NEW_HOST}" <<< "${_TXT}" | grep -q "${_OLD_HOST}" || return 0
-  fi
+  _text_needs_rename "$(_in_real_dir "${_CTL_D}" _read_here multi-fpm.info)" \
+    || return 0
   _info "§2d Rewriting per-site PHP pins in static/control/multi-fpm.info ..."
-  _FPM_PIN_NEW=$(sed "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" <<< "${_TXT}")
-  _FPM_PIN_OWN=$(stat -c '%U:%G' "${_CTL}" 2>/dev/null)
-  _FPM_PIN_MODE=$(stat -c '%a' "${_CTL}" 2>/dev/null)
-  _maybe_run _in_real_dir \'"${_AEGIR_ROOT}/static/control"\' _put_fpm_pin_here
+  _maybe_run _in_real_dir \'"${_CTL_D}"\' _sed_here multi-fpm.info \
+    "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \
+    || _alrt "§2d: multi-fpm.info NOT rewritten -- its pins still name ${_OLD_HOST}"
   return 0
-}
-
-# Run "$@" inside the real directory $1, never one reached through a link an
-# account planted on the way (the ltd worker's rule): below /data/disk and
-# /home every name on the path must be a real directory; once entered,
-# ./name stays there whatever is swapped.
-_in_real_dir() {
-  local _d="${1}" _a="" _want
-  shift
-  case "${_d}" in
-    /home/?*) _a=/home ;;
-    /data/disk/?*) _a=/data/disk ;;
-  esac
-  if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
-  else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
-  fi
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
-}
-
-# The rewritten multi-fpm.info (_FPM_PIN_NEW) put in the current (pinned)
-# control directory: a fresh file created exclusively with the old one's
-# mode (by umask, never a chmod by name) and owner (chown -h), then renamed
-# over the name.
-_put_fpm_pin_here() {
-  local _t="./.multi-fpm.info.put.$$.${RANDOM}" _m="${_FPM_PIN_MODE:-644}"
-  rm -f -- "${_t}"
-  if ( umask "$(printf '%03o' $(( 0777 & ~0${_m} & 0777 )))"
-    printf '%s\n' "${_FPM_PIN_NEW}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
-    && { [ -z "${_FPM_PIN_OWN}" ] || chown -h "${_FPM_PIN_OWN}" "${_t}"; } \
-    && mv -f -T -- "${_t}" ./multi-fpm.info; then
-    return 0
-  fi
-  rm -f -- "${_t}"
-  return 1
 }
 
 ###-------------§3 REWRITE DRUSH FILES---###
@@ -1717,12 +1758,22 @@ _put_fpm_pin_here() {
 _rewrite_drush_files() {
   _info "§3 Rewriting Drush alias files in ${_DRUSH_DIR} ..."
 
-  for _F in $(find "${_DRUSH_DIR}" -maxdepth 1 -type f -name '*.drushrc.php' | sort); do
-    if _file_needs_rename "${_F}"; then
-      _info "  sed in-place: ${_F}"
-      _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
-    fi
-  done
+  # .drush is the account's: its files are listed, read and rewritten inside
+  # the real directory (owner and mode kept, never through a link or into a
+  # FIFO), and a name outside the hostname/path charset never reaches the
+  # eval in _maybe_run.
+  local _N
+  while IFS= read -r _N; do
+    [ -n "${_N}" ] || continue
+    _safe_name "${_N}" "alias file" || continue
+    _text_needs_rename "$(_in_real_dir "${_DRUSH_DIR}" _read_here "${_N}")" \
+      || continue
+    _info "  sed in-place: ${_DRUSH_DIR}/${_N}"
+    _maybe_run _in_real_dir \'"${_DRUSH_DIR}"\' _sed_here \'"${_N}"\' \
+      "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \
+      || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_HOST}"
+  done < <(_in_real_dir "${_DRUSH_DIR}" find . -maxdepth 1 -type f \
+    -name '*.drushrc.php' -printf '%f\n' 2>/dev/null | sort)
   _rewrite_site_yml_files
 }
 
@@ -1734,30 +1785,34 @@ _rewrite_drush_files() {
 # alias moved. Rewritten in place, ownership kept. A copy Drush still manages
 # (its checksum matches the old bytes) gets the checksum of the new bytes, so
 # the next conversion keeps managing it instead of treating it as hand-edited.
+# Both stores belong to the account or its shell user: every read and write
+# runs on names inside the real directory (_sed_here keeps owner and mode,
+# never a chown or chmod by a name that can be swapped), and a name outside
+# the hostname/path charset never reaches the eval in _maybe_run.
 _rewrite_site_yml_files() {
-  local _store _F _OWN _MODE _SUM _OLD_SUM _NEW_SUM
+  local _store _F _N _B _OLD_SUM _NEW_SUM
   for _store in "${_DRUSH_DIR}/sites" "/home/${_AEGIR_USER}.ftp/.drush/sites"; do
     [ -d "${_store}" ] || continue
     for _F in "${_store}"/*.site.yml; do
-      [ -f "${_F}" ] && [ ! -L "${_F}" ] || continue
-      _file_needs_rename "${_F}" || continue
+      _N="${_F##*/}"
+      _in_real_dir "${_store}" test -f "./${_N}" -a ! -L "./${_N}" || continue
+      _safe_name "${_N}" "yml alias" || continue
+      _text_needs_rename "$(_in_real_dir "${_store}" _read_here "${_N}")" || continue
       _info "  sed in-place: ${_F}"
-      _SUM="${_store}/.checksums/$(basename "${_F}" .yml).md5"
-      _OLD_SUM=$(md5sum < "${_F}" | cut -c1-32)
-      _OWN=$(stat -c '%u:%g' "${_F}")
-      _MODE=$(stat -c '%a' "${_F}")
-      _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
+      _B="$(basename "${_N}" .yml).md5"
+      _OLD_SUM=$(_in_real_dir "${_store}" _read_here "${_N}" | md5sum | cut -c1-32)
+      if ! _maybe_run _in_real_dir \'"${_store}"\' _sed_here \'"${_N}"\' \
+        "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g"; then
+        _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_HOST}"
+        continue
+      fi
       [ "${_DRY_RUN}" = "YES" ] && continue
-      chown "${_OWN}" "${_F}"
-      chmod "${_MODE}" "${_F}"
-      if [ -f "${_SUM}" ] && [ ! -L "${_SUM}" ] \
-        && grep -q "${_OLD_SUM}" "${_SUM}" 2>/dev/null; then
-        _NEW_SUM=$(md5sum < "${_F}" | cut -c1-32)
-        _OWN=$(stat -c '%u:%g' "${_SUM}")
-        _MODE=$(stat -c '%a' "${_SUM}")
-        sed -i "s/${_OLD_SUM}/${_NEW_SUM}/" "${_SUM}"
-        chown "${_OWN}" "${_SUM}"
-        chmod "${_MODE}" "${_SUM}"
+      if _in_real_dir "${_store}/.checksums" test -f "./${_B}" -a ! -L "./${_B}" \
+        && _in_real_dir "${_store}/.checksums" _read_here "${_B}" \
+          | grep -q "${_OLD_SUM}"; then
+        _NEW_SUM=$(_in_real_dir "${_store}" _read_here "${_N}" | md5sum | cut -c1-32)
+        _in_real_dir "${_store}/.checksums" \
+          _sed_here "${_B}" "s/${_OLD_SUM}/${_NEW_SUM}/"
       fi
     done
   done
@@ -1774,6 +1829,9 @@ _rewrite_vhosts() {
   _info "§4 Rewriting vhost files in ${_VHOSTD} ..."
 
   for _F in $(find "${_VHOSTD}" -maxdepth 1 -type f | sort); do
+    # the account names these files: a name outside the hostname/path
+    # charset never reaches the eval in _maybe_run
+    _safe_name "${_F}" "vhost file" || continue
     _BASENAME=$(basename "${_F}")
 
     # Rewrite content regardless of filename
@@ -1845,13 +1903,16 @@ _rewrite_log_stamps() {
   # is the rendered welcome mail kept as the on-disk credentials copy the
   # operator is pointed at (the upgrade resend reads only upgrademail.txt,
   # never this file). Run logs and dated files in log/ are history and
-  # stay untouched.
+  # stay untouched. log/ is the account's: a stamp is read and rewritten
+  # only as a regular file inside the real directory, owner and mode kept
+  # (_sed_here), never through a link or into a FIFO put there.
   [[ "${_AEGIR_ROOT}" == /data/disk/* ]] || return 0
-  local _F _OWN _MODE _NEEDS
-  for _F in "${_AEGIR_ROOT}/log/domain.txt" "${_AEGIR_ROOT}/log/setupmail.txt"; do
-    [ -f "${_F}" ] || continue
+  local _L="${_AEGIR_ROOT}/log" _N _T _NEEDS
+  for _N in domain.txt setupmail.txt; do
+    _in_real_dir "${_L}" test -f "./${_N}" -a ! -L "./${_N}" || continue
+    _T="$(_in_real_dir "${_L}" _read_here "${_N}")"
     _NEEDS=NO
-    if _file_needs_rename "${_F}"; then
+    if _text_needs_rename "${_T}"; then
       _NEEDS=YES
     fi
     # Account axis: the stamps carry the panel FRONT "<acct>.<fqdn>" AND
@@ -1864,27 +1925,29 @@ _rewrite_log_stamps() {
     # no-ops) still qualifies the file, even if the panel-URL wording
     # ever changes.
     if [ "${_ACCT_AXIS}" = "YES" ] \
-      && grep -Eq "${_OLD_ACCT}\.(${_OLD_HOST}|${_NEW_HOST}|ftp\b)" "${_F}" 2>/dev/null; then
+      && grep -Eq "${_OLD_ACCT}\.(${_OLD_HOST}|${_NEW_HOST}|ftp\b)" <<< "${_T}"; then
       _NEEDS=YES
     fi
     [ "${_NEEDS}" = "YES" ] || continue
-    _info "Rewriting identity stamp ${_F} ..."
-    _OWN=$(stat -c '%u:%g' "${_F}")
-    _MODE=$(stat -c '%a' "${_F}")
-    _maybe_run sed -i "${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g" \'"${_F}"\'
+    _info "Rewriting identity stamp ${_L}/${_N} ..."
+    # A root-side rewrite must never leave a backend-user-owned stamp
+    # root:root: _sed_here puts it back with the numeric owner and the mode
+    # it had. The programs are single-quoted for the eval, so their
+    # backslashes (\. and \b) reach sed as written.
+    _maybe_run _in_real_dir \'"${_L}"\' _sed_here "${_N}" \
+      \'"${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g"\' \
+      || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_HOST}"
     if [ "${_ACCT_AXIS}" = "YES" ]; then
-      _maybe_run sed -i "s/${_OLD_ACCT}\.${_NEW_HOST}/${_NEW_ACCT}.${_NEW_HOST}/g" \'"${_F}"\'
+      _maybe_run _in_real_dir \'"${_L}"\' _sed_here "${_N}" \
+        \'"s/${_OLD_ACCT}\.${_NEW_HOST}/${_NEW_ACCT}.${_NEW_HOST}/g"\' \
+        || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_ACCT}.${_NEW_HOST}"
       # The credential lines write the account as "<acct>.ftp" (username:
       # / user: / login wording), a form the front-axis sed above never
       # matches — without this the file mixes the old account in
       # credential lines with the new one in URLs.
-      _maybe_run sed -i "s/\b${_OLD_ACCT}\.ftp\b/${_NEW_ACCT}.ftp/g" \'"${_F}"\'
-    fi
-    # A root-side sed -i must never leave a backend-user-owned stamp
-    # root:root — restore the captured identity explicitly.
-    if [ "${_DRY_RUN}" != "YES" ]; then
-      chown "${_OWN}" "${_F}"
-      chmod "${_MODE}" "${_F}"
+      _maybe_run _in_real_dir \'"${_L}"\' _sed_here "${_N}" \
+        \'"s/\b${_OLD_ACCT}\.ftp\b/${_NEW_ACCT}.ftp/g"\' \
+        || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_ACCT}.ftp"
     fi
   done
 }
@@ -2023,8 +2086,8 @@ _rewrite_sites_php() {
 _detect_aegir_db() {
   # The Aegir hostmaster DB name lives in the hostmaster site's drushrc.php
   # Path is derived from the site_path in hostmaster.alias.drushrc.php
-  _HM_SITE_PATH=$(grep "site_path'" \
-    "${_DRUSH_DIR}/hostmaster.alias.drushrc.php" \
+  _HM_SITE_PATH=$(_read_file "${_DRUSH_DIR}/hostmaster.alias.drushrc.php" \
+    | grep "site_path'" \
     | head -1 \
     | sed "s/.*=>//; s/[' ,;]//g" \
     | tr -d ' ')
@@ -2176,8 +2239,18 @@ _repair_serialized_variables() {
   fi
 
   _info "  Repairing ${_CNT} serialized variable value(s) via php/mysqli ..."
-  _PHP="${_BACKUP_DIR}/varfix_${_TS}.php"
-  _VOUT="${_BACKUP_DIR}/varfix_${_TS}.log"
+  # The script runs as root with the database password in its environment,
+  # so it is written and run in a directory only root can enter: never in
+  # the account's backups/, where the account could swap the file (or the
+  # directory) between the write and the run.
+  local _PRIV
+  _PRIV=$(mktemp -d /var/backups/renameaegirhost.XXXXXXXX 2>/dev/null \
+    || mktemp -d 2>/dev/null) || {
+    _alrt "serialized variable repair NOT run: no private work directory could be made"
+    return 0
+  }
+  _PHP="${_PRIV}/varfix_${_TS}.php"
+  _VOUT="${_PRIV}/varfix_${_TS}.log"
   {
     printf '<?php\n$old = '\''%s'\'';\n$new = '\''%s'\'';\n' "${_OLD_HOST}" "${_NEW_HOST}"
     cat <<'PHPEOF'
@@ -2295,6 +2368,7 @@ PHPEOF
     && grep -q '^RAH-DONE' "${_VOUT}"; then
     grep '^RAH: ' "${_VOUT}" | sed 's/^RAH: /  /'
     rm -f "${_PHP}" "${_VOUT}"
+    rmdir "${_PRIV}" 2>/dev/null
   else
     _alrt "serialized variable repair did not confirm — last 15 lines:"
     tail -n 15 "${_VOUT}"
@@ -2464,29 +2538,36 @@ _rename_account_on_disk() {
   done
 
   # Hostmaster aliases (panel-own files ONLY — per-site alias files keep
-  # their URIs): front label plus the path pair.
-  local _F
-  for _F in "${_DRUSH_DIR}/hostmaster.alias.drushrc.php" "${_DRUSH_DIR}/hm.alias.drushrc.php"; do
-    [ -f "${_F}" ] || continue
-    if grep -q "${_OLD_FRONT}\|/data/disk/${_OLD_ACCT}/" "${_F}" 2>/dev/null; then
-      _info "  sed in-place: ${_F}"
-      _maybe_run sed -i \
+  # their URIs): front label plus the path pair. .drush is the account's:
+  # read and rewritten as in §3, inside the real directory, owner and mode
+  # kept, never through a link or into a FIFO put there.
+  local _F _N
+  for _N in hostmaster.alias.drushrc.php hm.alias.drushrc.php; do
+    _in_real_dir "${_DRUSH_DIR}" test -f "./${_N}" || continue
+    if _in_real_dir "${_DRUSH_DIR}" _read_here "${_N}" \
+      | grep -q "${_OLD_FRONT}\|/data/disk/${_OLD_ACCT}/"; then
+      _info "  sed in-place: ${_DRUSH_DIR}/${_N}"
+      _maybe_run _in_real_dir \'"${_DRUSH_DIR}"\' _sed_here "${_N}" \
         -e "\"${_ACCT_SED_GUARD}s/${_OLD_FRONT}/${_NEW_FRONT}/g\"" \
         -e "\"s#/data/disk/${_OLD_ACCT}/#/data/disk/${_NEW_ACCT}/#g\"" \
-        \'"${_F}"\'
+        || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_FRONT}"
     fi
   done
 
   # All .drush files: path pair + home/socket tokens only (URI-safe).
-  for _F in $(find "${_DRUSH_DIR}" -maxdepth 1 -type f -name '*.drushrc.php' 2>/dev/null | sort); do
-    if grep -q "/data/disk/${_OLD_ACCT}/\|/home/${_OLD_ACCT}\.ftp" "${_F}" 2>/dev/null; then
-      _info "  sed in-place: ${_F}"
-      _maybe_run sed -i \
+  while IFS= read -r _N; do
+    [ -n "${_N}" ] || continue
+    _safe_name "${_N}" "alias file" || continue
+    if _in_real_dir "${_DRUSH_DIR}" _read_here "${_N}" \
+      | grep -q "/data/disk/${_OLD_ACCT}/\|/home/${_OLD_ACCT}\.ftp"; then
+      _info "  sed in-place: ${_DRUSH_DIR}/${_N}"
+      _maybe_run _in_real_dir \'"${_DRUSH_DIR}"\' _sed_here \'"${_N}"\' \
         -e "\"s#/data/disk/${_OLD_ACCT}/#/data/disk/${_NEW_ACCT}/#g\"" \
         -e "\"s#/home/${_OLD_ACCT}\.ftp#/home/${_NEW_ACCT}.ftp#g\"" \
-        \'"${_F}"\'
+        || _alrt "  ${_N} NOT rewritten -- it still names /data/disk/${_OLD_ACCT}"
     fi
-  done
+  done < <(_in_real_dir "${_DRUSH_DIR}" find . -maxdepth 1 -type f \
+    -name '*.drushrc.php' -printf '%f\n' 2>/dev/null | sort)
 
   # Vhosts: every file gets the URI-safe pairs (paths, ftp home, fpm socket
   # tokens); ONLY the panel's own vhost files (exact <old front> basename,
@@ -2495,6 +2576,9 @@ _rename_account_on_disk() {
   if [ -d "${_VHOSTD}" ]; then
     local _BASE _NEWB
     for _F in $(find "${_VHOSTD}" -maxdepth 1 -type f 2>/dev/null | sort); do
+      # the account names these files: a name outside the hostname/path
+      # charset never reaches the eval in _maybe_run
+      _safe_name "${_F}" "vhost file" || continue
       _BASE=$(basename "${_F}")
       if grep -q "/data/disk/${_OLD_ACCT}/\|/home/${_OLD_ACCT}\.ftp\|user_socket \"${_OLD_ACCT}[.\"]" "${_F}" 2>/dev/null; then
         _info "  sed in-place content: ${_F}"
@@ -2624,9 +2708,16 @@ _repair_account_variables() {
   fi
 
   _info "  Repairing ${_CNT} account-axis variable value(s) via php/mysqli ..."
-  mkdir -p "${_BACKUP_DIR}"
-  _PHP="${_BACKUP_DIR}/acctfix_${_TS}.php"
-  _VOUT="${_BACKUP_DIR}/acctfix_${_TS}.log"
+  # Written and run in a directory only root can enter, as the host-axis
+  # repair above: never in the account's backups/.
+  local _PRIV
+  _PRIV=$(mktemp -d /var/backups/renameaegirhost.XXXXXXXX 2>/dev/null \
+    || mktemp -d 2>/dev/null) || {
+    _alrt "account-axis variable repair NOT run: no private work directory could be made"
+    return 0
+  }
+  _PHP="${_PRIV}/acctfix_${_TS}.php"
+  _VOUT="${_PRIV}/acctfix_${_TS}.log"
   {
     printf '<?php\n$pOld = '\''/data/disk/%s/'\'';\n$pNew = '\''/data/disk/%s/'\'';\n$fOld = '\''%s'\'';\n$fNew = '\''%s'\'';\n' \
       "${_OLD_ACCT}" "${_NEW_ACCT}" "${_OLD_FRONT}" "${_NEW_FRONT}"
@@ -2748,6 +2839,7 @@ PHPEOF
     && grep -q '^RAH-DONE' "${_VOUT}"; then
     grep '^RAH: ' "${_VOUT}" | sed 's/^RAH: /  /'
     rm -f "${_PHP}" "${_VOUT}"
+    rmdir "${_PRIV}" 2>/dev/null
   else
     _alrt "account-axis variable repair did not confirm — last 15 lines:"
     tail -n 15 "${_VOUT}"
