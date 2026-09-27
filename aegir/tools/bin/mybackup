@@ -38,6 +38,122 @@ _acct_group() {
   echo "${_g}"
 }
 
+# An account owns /data/disk/<oN> and, through its .ftp login, static/control,
+# so any name below either can be a link or a FIFO, and a whole directory on
+# the way can be one. The root queue pass reads and writes there only inside
+# the real directory.
+#
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory; once entered, ./name stays there
+# whatever is swapped. A copy of the helper in lib/functions/helper.sh.inc.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# The queued command ./$1 in the current (pinned) directory: never through a
+# link, never blocked on a FIFO, at most 4 KiB.
+_queue_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=4096 count=1 status=none 2> /dev/null
+}
+# The line $2 appended to ./$1 in the current (pinned) directory, never
+# through a link and never blocked on a FIFO put at the name (what >> did).
+_acct_append_here() {
+  printf '%s\n' "${2}" | timeout 10 dd of="./${1}" \
+    oflag=append,nofollow,nonblock conv=notrunc status=none 2> /dev/null
+}
+# True when $1 is root's and no one else can write it: owned by root, not
+# writable by others, group-writable only for group root.
+_root_only() {
+  local _s _u _g _m
+  _s="$(stat -c '%u %g %a' -- "${1}" 2> /dev/null)" || return 1
+  read -r _u _g _m <<< "${_s}"
+  [ "${_u}" = 0 ] || return 1
+  (( 0${_m} & 2 )) && return 1
+  (( 0${_m} & 16 )) && [ "${_g}" != 0 ] && return 1
+  return 0
+}
+
+# The restore window. A queued restore runs as the account's own user, which
+# must read the service's credentials file and remote_backups/.secret.txt.
+# For the run both are handed to that user by owner, mode 0600, never opened
+# to anyone else, and afterwards given back to the owner:group they had,
+# recorded by number. Each acts inside its real directory, on names checked
+# to be regular files, and a give-back touches only the file (by device and
+# inode) that was handed over.
+#
+# In the real credentials directory (the account's own, via its .ftp login):
+# the directory and ./$2 go to $1, 0700 and 0600 unchanged. Prints the record
+# for _cred_window_close_here: "dir-id dir-owner file-id file-owner".
+_cred_window_open_here() {
+  local _d _f="-" _fo="-"
+  _d="$(stat -c '%d:%i %u:%g' .)" || return 1
+  if [ -f "./${2}" ] && [ ! -L "./${2}" ]; then
+    _f="$(stat -c '%d:%i' -- "./${2}")" && _fo="$(stat -c '%u:%g' -- "./${2}")" \
+      && chown -h "${1}" -- "./${2}" || { _f="-"; _fo="-"; }
+  fi
+  chown -h "${1}" . && chmod 700 .
+  echo "${_d} ${_f} ${_fo}"
+}
+# ./$1 in the current (pinned) directory removed when it is a link: rm
+# unlinks the link itself, never what it points at.
+_unlink_link_here() {
+  [ -L "./${1}" ] && rm -f -- "./${1}"
+  return 0
+}
+# The same directory, given back: $1 = the record, $2 = the file name.
+_cred_window_close_here() {
+  local _di _do _fi _fo
+  read -r _di _do _fi _fo <<< "${1}"
+  [ "$(stat -c '%d:%i' .)" = "${_di}" ] || return 1
+  if [ "${_fi}" != "-" ] && [ -f "./${2}" ] && [ ! -L "./${2}" ] \
+    && [ "$(stat -c '%d:%i' -- "./${2}")" = "${_fi}" ]; then
+    chown -h "${_fo}" -- "./${2}"
+  fi
+  chown -h "${_do}" . && chmod 700 .
+}
+# In the real remote_backups (root's own; refused otherwise, since the account
+# can swap in a directory it made, so no name in it can change under root): a
+# link at paths is removed and paths/ is made 0755 as before, and
+# ./.secret.txt goes to $1 with mode 0600, kept immutable for the run. Prints
+# "file-id file-owner".
+_rb_window_open_here() {
+  local _f _fo
+  _root_only . || return 2
+  [ -L ./paths ] && rm -f -- ./paths
+  [ -d ./paths ] && [ ! -L ./paths ] && chmod 755 ./paths
+  [ -f ./.secret.txt ] && [ ! -L ./.secret.txt ] || return 1
+  _f="$(stat -c '%d:%i' ./.secret.txt)" && _fo="$(stat -c '%u:%g' ./.secret.txt)" \
+    || return 1
+  chattr -i ./.secret.txt &> /dev/null
+  chmod 600 ./.secret.txt && chown -h "${1}" ./.secret.txt
+  chattr +i ./.secret.txt &> /dev/null
+  echo "${_f} ${_fo}"
+}
+# The same file, given back: $1 = the record.
+_rb_window_close_here() {
+  local _fi _fo
+  read -r _fi _fo <<< "${1}"
+  _root_only . || return 2
+  [ -f ./.secret.txt ] && [ ! -L ./.secret.txt ] \
+    && [ "$(stat -c '%d:%i' ./.secret.txt)" = "${_fi}" ] || return 1
+  local _rc=0
+  chattr -i ./.secret.txt &> /dev/null
+  chown -h "${_fo}" ./.secret.txt && chmod 600 ./.secret.txt || _rc=1
+  chattr +i ./.secret.txt &> /dev/null
+  return "${_rc}"
+}
+
 # Function to print env for debugging
 _print_env() {
   if [ "$(id -u)" -eq 0 ] && [ -e "/root/.dev.server.cnf" ]; then
@@ -611,15 +727,14 @@ _main_script() {
       export _user_cmd_file="${_user_run_dir}/${_CMD_FILE}"
       if [[ -f "${_user_cmd_file}" ]]; then
         # These paths hang off static/control, which the tenant owns, so every
-        # component here is a name it can replace with a symlink. GNU chmod has
-        # no -h, so it always dereferences a command-line operand, and the
-        # *.txt glob both resolves through a planted directory link and matches
-        # planted links by name. The leaf is not enough: a planted INTERMEDIATE
-        # link (static/control itself, control/remote_backups or .run)
-        # redirects every operand below it, so refuse the whole run -- before
-        # the queue is even read -- when any ancestor is a link or the queue
-        # file is one. A refused queue is left where it is (never removed
-        # through a path that is not the account's own) and logged each run.
+        # component here is a name it can replace with a symlink. The leaf is
+        # not enough: a planted INTERMEDIATE link (static/control itself,
+        # control/remote_backups or .run) redirects every operand below it, so
+        # refuse the whole run -- before the queue is even read -- when any
+        # ancestor is a link or the queue file is one. A refused queue is left
+        # where it is (never removed through a path that is not the account's
+        # own) and logged each run. A name can still be swapped after this
+        # check, so everything below also acts only inside the real directory.
         _user_ctl_ok=YES
         for _p in "/data/disk/${_user}/static" \
           "/data/disk/${_user}/static/control" \
@@ -635,15 +750,15 @@ _main_script() {
         if [ "${_user_ctl_ok}" != "YES" ]; then
           continue
         fi
-        # Read the queue file as one arg per line, without following a link
-        # or blocking on a FIFO put at the name, at most 4 KiB. The producer
-        # side (printf '%s\n' "$@") writes the validated args this way; old
-        # space-joined queue files left over from before this change parse
-        # as a single args[0] that will fail the "restore"-only check below
-        # and be rejected.
+        # Read the queue file as one arg per line, inside the real .run
+        # directory, without following a link or blocking on a FIFO put at
+        # the name, at most 4 KiB. The producer side (printf '%s\n' "$@")
+        # writes the validated args this way; old space-joined queue files
+        # left over from before this change parse as a single args[0] that
+        # will fail the "restore"-only check below and be rejected.
         local _queued_args=()
-        mapfile -t _queued_args <<< "$(timeout 10 dd if="${_user_cmd_file}" \
-          iflag=nofollow,nonblock,fullblock bs=4096 count=1 status=none 2>/dev/null)"
+        mapfile -t _queued_args <<< "$(_acct_in_real_dir "${_user_run_dir}" \
+          _queue_read_here "${_CMD_FILE}")"
 
         # Re-validate before exec. The queue file lives under
         # /data/disk/<user>/static/control/.run/ which is .ftp-writable
@@ -653,28 +768,36 @@ _main_script() {
         if ! _validate_restore_command "${_queued_args[@]}"; then
           echo "[$(date)] Invalid queued command for ${_user}: $(printf '%q ' "${_queued_args[@]}")" \
             >> /var/log/mybackup_invalid_queued.log
-          rm -f "${_user_cmd_file}"
+          _acct_in_real_dir "${_user_run_dir}" rm -f -- "./${_CMD_FILE}"
           continue
         fi
 
+        # Open the restore window (see _cred_window_open_here). The account's
+        # remote_backups must be root's own directory; one it swapped in is
+        # refused like a link, and the queue is left where it is.
+        local _rb_dir="/data/disk/${_user}/remote_backups"
+        local _ctl_rb_dir="/data/disk/${_user}/static/control/remote_backups"
+        local _user_credentials_dir="${_ctl_rb_dir}/credentials"
+        local _cred_name="${_queued_args[1]}.txt"
+        local _rb_rec="" _cred_rec="" _rb_rc=0
+        if [ -e "${_rb_dir}" ]; then
+          _rb_rec="$(_acct_in_real_dir "${_rb_dir}" _rb_window_open_here "${_user}")"
+          _rb_rc=$?
+          if [ "${_rb_rc}" != 0 ] && ! _acct_in_real_dir "${_rb_dir}" true; then
+            _rb_rc=2
+          fi
+        fi
+        if [ "${_rb_rc}" = 2 ]; then
+          echo "[$(date)] REFUSED for ${_user}: ${_rb_dir} is not root's own directory" \
+            >> /var/log/mybackup_invalid_queued.log
+          continue
+        fi
+        [ "${_rb_rc}" = 0 ] || _rb_rec=""
         echo "Executing backup restore for user ${_user}."
-        # The ancestors were refused above when any is a link; strip the
-        # plantable leaves here, then set modes with find -type f/-type d,
-        # which never match a link.
-        [ -L "/data/disk/${_user}/remote_backups/paths" ] \
-          && rm -f /data/disk/${_user}/remote_backups/paths &> /dev/null
-        [ ! -L "/data/disk/${_user}/remote_backups/paths" ] \
-          && chmod 755 /data/disk/${_user}/remote_backups/paths
-        local _user_credentials_dir="/data/disk/${_user}/static/control/remote_backups/credentials"
-        [ -L "${_user_credentials_dir}" ] \
-          && rm -f "${_user_credentials_dir}" &> /dev/null
-        [ ! -L "${_user_credentials_dir}" ] && chmod 755 ${_user_credentials_dir}
-        find ${_user_credentials_dir} -maxdepth 1 -type f -name '*.txt' \
-          -exec chmod 644 {} \; &> /dev/null
-        [ ! -L "/data/disk/${_user}/remote_backups/.secret.txt" ] \
-          && chattr -i /data/disk/${_user}/remote_backups/.secret.txt
-        [ ! -L "/data/disk/${_user}/remote_backups/.secret.txt" ] \
-          && chmod 644 /data/disk/${_user}/remote_backups/.secret.txt
+        # A link at credentials is removed, never followed, as before.
+        _acct_in_real_dir "${_ctl_rb_dir}" _unlink_link_here credentials
+        _cred_rec="$(_acct_in_real_dir "${_user_credentials_dir}" \
+          _cred_window_open_here "${_user}" "${_cred_name}")" || _cred_rec=""
         # Pass the validated args positionally via -- so each arg arrives at
         # the inner mybackup as a separate $1/$2/$3/$4. No shell-interpolation
         # of attacker-controlled bytes; metacharacters in any arg are inert.
@@ -683,15 +806,23 @@ _main_script() {
         # Clean up the command file
         local _command_log="$(printf '%q ' "${_queued_args[@]}")"
         echo "[$(date)] Command was run for user ${_user}: ${_command_log}" >> /var/log/mybackup_commands_history.log
-        echo "[$(date)] Command was run for user ${_user}: ${_command_log}" >> /data/disk/${_user}/log/mybackup_commands_history.log
-        rm -f "${_user_cmd_file}"
-        [ ! -L "${_user_credentials_dir}" ] && chmod 700 ${_user_credentials_dir}
-        find ${_user_credentials_dir} -maxdepth 1 -type f -name '*.txt' \
-          -exec chmod 600 {} \; &> /dev/null
-        [ ! -L "/data/disk/${_user}/remote_backups/.secret.txt" ] \
-          && chmod 600 /data/disk/${_user}/remote_backups/.secret.txt
-        [ ! -L "/data/disk/${_user}/remote_backups/.secret.txt" ] \
-          && chattr +i /data/disk/${_user}/remote_backups/.secret.txt
+        # log/ is the account's own: appended inside the real directory
+        _acct_in_real_dir "/data/disk/${_user}/log" _acct_append_here \
+          mybackup_commands_history.log \
+          "[$(date)] Command was run for user ${_user}: ${_command_log}"
+        _acct_in_real_dir "${_user_run_dir}" rm -f -- "./${_CMD_FILE}"
+        # Close the window: ownership goes back to the recorded owners, and a
+        # failure to do so is logged, never retried by path.
+        if [ -n "${_cred_rec}" ] && ! _acct_in_real_dir "${_user_credentials_dir}" \
+          _cred_window_close_here "${_cred_rec}" "${_cred_name}"; then
+          echo "[$(date)] NOT RESTORED for ${_user}: owner of ${_user_credentials_dir} (${_cred_rec})" \
+            >> /var/log/mybackup_invalid_queued.log
+        fi
+        if [ -n "${_rb_rec}" ] && ! _acct_in_real_dir "${_rb_dir}" \
+          _rb_window_close_here "${_rb_rec}"; then
+          echo "[$(date)] NOT RESTORED for ${_user}: owner of ${_rb_dir}/.secret.txt (${_rb_rec})" \
+            >> /var/log/mybackup_invalid_queued.log
+        fi
         sleep 10
       fi
     fi

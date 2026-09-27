@@ -394,7 +394,65 @@ _cred_name_allowed() {
   return 1
 }
 
-# Function to sanitize and validate credentials file
+# An account owns /data/disk/<oN> and, through its .ftp login, static/control,
+# so any name below either can be a link or a FIFO, and a whole directory on
+# the way can be one. Root reads and writes there only inside the real
+# directory. _acct_in_real_dir and _acct_read_here are copies of the helpers
+# in lib/functions/helper.sh.inc.
+#
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory; once entered, ./name stays there
+# whatever is swapped.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_acct_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# ./$1 read as _acct_read_here reads it, only when it is a non-empty regular
+# file (what [ -s ] accepted before); fails otherwise.
+_acct_read_file_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] && [ -s "./${1}" ] || return 1
+  _acct_read_here "${1}"
+}
+# True when $1 is root's and no one else can write it: owned by root, not
+# writable by others, group-writable only for group root.
+_root_only() {
+  local _s _u _g _m
+  _s="$(stat -c '%u %g %a' -- "${1}" 2> /dev/null)" || return 1
+  read -r _u _g _m <<< "${_s}"
+  [ "${_u}" = 0 ] || return 1
+  (( 0${_m} & 2 )) && return 1
+  (( 0${_m} & 16 )) && [ "${_g}" != 0 ] && return 1
+  return 0
+}
+# ./$1 in the current (pinned) directory, read only when this directory and
+# the file are root's alone: an account can swap its own remote_backups for a
+# directory it made, but never make one root owns. Returns 2 when the
+# directory or the file is not root's, 1 when the file is missing.
+_acct_read_root_here() {
+  _root_only . || return 2
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  _root_only "./${1}" || return 2
+  _acct_read_here "${1}"
+}
+
+# Function to sanitize and validate credentials file. $3 is its content, read
+# by the caller.
 _validate_credentials() {
   local _cred_file="$1"
   local _service="$2"
@@ -476,8 +534,7 @@ _validate_credentials() {
       _log_issue "credentials" "${_cred_file}" \
         "Invalid syntax at line ${_line_number}: ${_line}"
     fi
-  done <<< "$(timeout 10 dd if="${_cred_file}" iflag=nofollow,nonblock,fullblock \
-    bs=1048576 count=1 status=none 2>/dev/null)"
+  done <<< "${3}"
 
   _print_env "multiback_validate_credentials"
 }
@@ -486,13 +543,17 @@ _validate_credentials() {
 _load_credentials() {
   local _service="$1"
   local _user="$2"
+  local _acct=NO _cred_dir _secret_dir _cred_body _secret_body
   if [ "${_user}" != "arch" ] \
     && [ "${_user}" != "data" ] \
     && [ "${_user}" != "global" ] \
     && [ "${_user}" != "static" ] \
     && [ "${_user}" != "custom" ]; then
-    local _cred_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
-    local _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
+    _acct=YES
+    _cred_dir="/data/disk/${_user}/static/control/remote_backups/credentials"
+    _secret_dir="/data/disk/${_user}/remote_backups"
+    local _cred_file="${_cred_dir}/${_service}.txt"
+    local _secret_file="${_secret_dir}/.secret.txt"
     # The credentials hang off static/control, which the tenant owns: refuse
     # when any name on the way, or the file itself, is a link (a planted one
     # would hand root another account's credentials), as mybackup does.
@@ -515,19 +576,39 @@ _load_credentials() {
     local _secret_file="/root/.remote_backups/.secret.txt"
   fi
 
-  if [ -s "${_secret_file}" ]; then
-    export PASSPHRASE=$(cat "${_secret_file}")
+  if [ "${_acct}" = "YES" ]; then
+    # The check above and a read by path are two steps, and any directory on
+    # the way can be swapped between them: both files are read inside their
+    # real directories, never through a link or from a FIFO.
+    if _secret_body="$(_acct_in_real_dir "${_secret_dir}" \
+      _acct_read_file_here .secret.txt)"; then
+      export PASSPHRASE="${_secret_body}"
+    else
+      echo "Secret file ${_secret_file} not found. Unable to proceed."
+      exit 1
+    fi
+    if ! _cred_body="$(_acct_in_real_dir "${_cred_dir}" \
+      _acct_read_file_here "${_service}.txt")"; then
+      echo "Error: Credentials file '${_cred_file}' not found."
+      exit 1
+    fi
   else
-    echo "Secret file ${_secret_file} not found. Unable to proceed."
-    exit 1
+    if [ -s "${_secret_file}" ]; then
+      export PASSPHRASE=$(cat "${_secret_file}")
+    else
+      echo "Secret file ${_secret_file} not found. Unable to proceed."
+      exit 1
+    fi
+
+    if [ ! -s "${_cred_file}" ]; then
+      echo "Error: Credentials file '${_cred_file}' not found."
+      exit 1
+    fi
+    _cred_body="$(timeout 10 dd if="${_cred_file}" iflag=nofollow,nonblock,fullblock \
+      bs=1048576 count=1 status=none 2>/dev/null)"
   fi
 
-  if [ ! -s "${_cred_file}" ]; then
-    echo "Error: Credentials file '${_cred_file}' not found."
-    exit 1
-  fi
-
-  _validate_credentials "${_cred_file}" "${_service}"
+  _validate_credentials "${_cred_file}" "${_service}" "${_cred_body}"
   _print_env "multiback_load_credentials"
 }
 
@@ -544,6 +625,14 @@ _load_paths() {
     local _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
   fi
 
+  case "${_paths_file}" in
+    /data/disk/*)
+      _load_account_paths "${_user}" "${_paths_file}"
+      _print_env "multiback_load_paths"
+      return 0
+      ;;
+  esac
+
   if [ ! -f "${_paths_file}" ]; then
     echo "Error: Paths configuration file '${_paths_file}' not found."
     exit 1
@@ -553,6 +642,51 @@ _load_paths() {
     source "${_paths_file}"
   fi
   _print_env "multiback_load_paths"
+}
+
+# An account's paths.txt is root's file in root's remote_backups/paths, but
+# the account owns /data/disk/<oN> and can swap remote_backups itself for a
+# directory it made. The file is sourced by root, so it is read once, inside
+# the real directory, and only when that directory and the file are root's
+# alone; anything else refuses the run. The filelists it names are opened by
+# duplicity by path much later, so duplicity gets root-private copies taken
+# from the same directory now. $1 = account, $2 = its paths.txt.
+_load_account_paths() {
+  local _user="$1" _paths_file="$2" _paths_dir="${2%/*}" _body _rc _v _n
+  _body="$(_acct_in_real_dir "${_paths_dir}" _acct_read_root_here "${_paths_file##*/}")"
+  _rc=$?
+  if [ "${_rc}" != 0 ]; then
+    if [ "${_rc}" = 2 ] || { [ -e "${_paths_dir}" ] \
+      && ! _acct_in_real_dir "${_paths_dir}" true; }; then
+      echo "[$(date)] REFUSED paths for ${_user}: ${_paths_dir} is not root's own directory" \
+        >> /var/log/mybackup_invalid_queued.log
+      echo "Error: ${_paths_dir} is not root's own directory. Unable to proceed."
+      exit 1
+    fi
+    echo "Error: Paths configuration file '${_paths_file}' not found."
+    exit 1
+  fi
+  if [ -z "${_LISTS_TMP}" ] || [ ! -d "${_LISTS_TMP}" ]; then
+    echo "Error: no private directory for the filelists of ${_user}. Unable to proceed."
+    exit 1
+  fi
+  eval "${_body}"
+  for _v in _INCLUDE_LIST _EXCLUDE_LIST; do
+    _n="${!_v}"
+    case "${_n}" in
+      "${_paths_dir}"/*) _n="${_n##*/}" ;;
+      *) continue ;;
+    esac
+    printf -v "${_v}" '%s' "${_LISTS_TMP}/${_n}"
+    _acct_in_real_dir "${_paths_dir}" _acct_copy_root_here "${_n}" "${_LISTS_TMP}/${_n}"
+  done
+}
+# ./$1 in the current (pinned) root-only directory copied to the new file $2
+# when it is root's own regular file; nothing is created otherwise.
+_acct_copy_root_here() {
+  _root_only . && [ -f "./${1}" ] && [ ! -L "./${1}" ] && _root_only "./${1}" || return 1
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock of="${2}" conv=excl \
+    status=none 2> /dev/null
 }
 
 # Function to validate duration format and fallback to default
@@ -911,11 +1045,42 @@ _check_if_worked_cleanly_or_log_err() {
   else
     _sentinel="${_logs_dir}/ERR-${_BUCKET_NAME}.log"
   fi
+  case "${_logs_dir}" in
+    /data/disk/*)
+      # The loop above and a write by path are two steps: logs/ is made
+      # inside the real remote_backups (mkdir never follows a link at the
+      # name) and the sentinel is put inside the real logs/.
+      _acct_in_real_dir "${_logs_dir%/*}" mkdir -- ./logs 2> /dev/null
+      _acct_in_real_dir "${_logs_dir}" _acct_copy_put_here \
+        "${_sentinel##*/}" "${_LOGFILE}"
+      return 0
+      ;;
+  esac
   [ ! -d "${_logs_dir}" ] && mkdir -p "${_logs_dir}"
   [ -d "${_logs_dir}" ] || return 0
   # rm unlinks a planted leaf link itself, never what it points at.
   [ -L "${_sentinel}" ] && rm -f "${_sentinel}"
   cp -af "${_LOGFILE}" "${_sentinel}"
+}
+
+# The root file $2 copied to ./$1 in the current (pinned) directory as cp -a
+# copies it (content, mode, owner, times), but as a fresh file created
+# exclusively and renamed over the name, so a link or a FIFO put at the name
+# is replaced, never followed or opened.
+_acct_copy_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}" _m
+  _m="$(stat -c '%a' -- "${2}" 2> /dev/null)"
+  [[ "${_m}" =~ ^[0-7]{3,4}$ ]] || _m=644
+  rm -f -- "${_t}"
+  if ( umask "$(printf '%03o' $(( 0777 & ~0${_m} & 0777 )))"
+    dd if="${2}" of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && chown -h --reference="${2}" -- "${_t}" \
+    && touch -h -r "${2}" -- "${_t}" \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
 }
 
 # Function to wipe the bucket completely. Duplicity 3.2.0.2 has no verb
@@ -1472,7 +1637,10 @@ _print_env "multiback_main"
 # lock may belong to a live run, so no trap is set yet -- an exit on a
 # held lock must not remove the owner's file
 _create_pid_file "${_PIDFILE}"
-trap "rm -f '${_PIDFILE}'; exit" EXIT
+# Root-private copies of an account's filelists (see _load_account_paths),
+# removed with the lock
+_LISTS_TMP="$(mktemp -d 2> /dev/null)"
+trap "rm -f '${_PIDFILE}'; [ -n '${_LISTS_TMP}' ] && rm -rf -- '${_LISTS_TMP}'; exit" EXIT
 # A signal death used to leave the pid file behind; exit re-enters the
 # EXIT trap above for the cleanup
 trap 'exit 1' INT TERM HUP
