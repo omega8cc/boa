@@ -606,10 +606,73 @@ _acquire_lock() {
   fi
   _LOCK_HELD=1
   _sweep_shelf_tmp
+  _shelf_reown
 }
 
 _require_root() {
   [[ "$(id -u)" == "0" ]] || _die "must run as root (needs ${_SYS_PHP} switch + ${_DISTRO_OUT%/*} writes)"
+}
+
+# The build user owns its home and everything below it, the day dir included,
+# and third-party code runs as that user during a build: any name there can
+# be a link or a FIFO, and a directory on the way can be one. Root lists and
+# reads the day dir only through these.
+#
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory; once entered, ./name stays there
+# whatever is swapped. A copy of the helper in lib/functions/helper.sh.inc.
+_sb_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_sb_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+
+# The names in the current (pinned) directory matching the glob patterns "$@",
+# one per line, in glob order.
+_sb_glob_here() {
+  local _p
+  for _p in "$@"; do
+    compgen -G "${_p}"
+  done
+  return 0
+}
+
+# The names in the real day dir matching the glob patterns "$@" (_sb_glob_here).
+_day_names() {
+  _sb_in_real_dir "${_DAY_DIR}" _sb_glob_here "$@"
+}
+
+# ./$1 in the current (pinned) directory copied once into root's file $2, its
+# modification time kept: never through a link, never blocked on a FIFO, the
+# whole file up to 2 GiB (a tarball, far larger than the 1 MiB reads above).
+# 2 = ./$1 is not a regular file, 3 = the copy failed or does not match the
+# size ./$1 has after it (a name swapped during the copy, a file past the bound).
+_sb_take_here() {
+  local _sz
+  [[ -f "./${1}" && ! -L "./${1}" ]] || return 2
+  timeout 600 dd if="./${1}" of="${2}" iflag=nofollow,nonblock,fullblock conv=excl \
+    bs=1048576 count=2048 status=none 2> /dev/null || return 3
+  [[ -f "./${1}" && ! -L "./${1}" ]] || return 3
+  _sz="$(stat -c '%s' -- "./${1}" 2> /dev/null)" || return 3
+  [[ "$(stat -c '%s' -- "${2}" 2> /dev/null)" == "${_sz}" ]] || return 3
+  touch -h -r "./${1}" -- "${2}" 2> /dev/null
+  return 0
 }
 
 _require_o8() {
@@ -2247,12 +2310,18 @@ _scope_names() {
   # package and distribute every name must match a platform dir (package) or tarball
   # (distribute) in the day dir, checked before any work, so a typo never runs as a
   # partial or empty pass. all builds first: a target whose build fails is its row.
-  local _act="$1" _n _e _k _i _from _hit
+  local _act="$1" _n _e _k _i _from _hit _entries=()
   shift
   [[ "$#" -gt 0 ]] || return 0
   if [[ "${_act}" != "all" && ! -d "${_DAY_DIR}" ]]; then
     _die "build-day directory not found: ${_DAY_DIR}"
   fi
+  # The platform dirs (package) or tarballs (distribute), listed inside the real
+  # day dir.
+  case "${_act}" in
+    package)    mapfile -t _entries < <(_day_names '*/') ;;
+    distribute) mapfile -t _entries < <(_day_names '*.tar.gz') ;;
+  esac
   for _n in "$@"; do
     # Grav and Textpattern publish their version stamp (and Grav its upgrade zip)
     # last, from their own action only: a stage here would ship a tarball no box reads.
@@ -2270,13 +2339,11 @@ _scope_names() {
     _scope_add "${_n}" || _die "not a build target or platform name: ${_n}"
     [[ "${_act}" == "all" ]] && continue
     _hit=""
-    for _e in "${_DAY_DIR}"/*; do
-      _k="${_e##*/}"
+    for _e in "${_entries[@]}"; do
       if [[ "${_act}" == "package" ]]; then
-        [[ -d "${_e}" ]] || continue
+        _k="${_e%/}"
       else
-        [[ "${_k}" == *.tar.gz ]] || continue
-        _k="${_k%.tar.gz}"
+        _k="${_e%.tar.gz}"
       fi
       for (( _i = _from; _i < ${#_SCOPE[@]}; _i++ )); do
         # shellcheck disable=SC2053  # _SCOPE holds patterns: matched, never expanded
@@ -2371,28 +2438,53 @@ _ensure_devext_dirs() {
   done
 }
 
-_copy_to_shelf() {
-  # $1 = file in the build-day dir, $2 = shelf dir. Root copies what the build user's
-  # day dir holds: take only a plain file (never a symlink or a FIFO planted in its
-  # place). The copy goes to a temporary name and is renamed over the destination,
-  # so a copy that fails part-way (a full disk) never leaves a truncated tarball
-  # under the published name, and a symlink already at the destination is replaced,
-  # never written through.
-  local _src="$1" _out="$2" _tmp
-  if [[ ! -f "${_src}" || -L "${_src}" ]]; then
-    _alrt "not a regular file, not published: ${_src##*/}"
-    return 1
-  fi
-  _tmp="${_out}/.${_src##*/}.staticbuild-tmp"
-  rm -f "${_tmp}"
-  _SHELF_TMP="${_tmp}"
-  if cp -a "${_src}" "${_tmp}" && mv -fT "${_tmp}" "${_out}/${_src##*/}"; then
+_shelf_take() {
+  # $1 = file in the build-day dir, $2 = shelf dir. Root reads what the build user's
+  # day dir holds exactly once, inside the real day dir, into a temporary name on
+  # the shelf (_SHELF_TMP): only a plain file, never a symlink or a FIFO planted in
+  # its place. Every check (cmp, the lock digest, the audit) and the publish then
+  # use that root copy, never the day-dir name again. 0 = taken, 2 = not a regular
+  # file, 3 = the copy failed.
+  local _src="$1" _out="$2" _rc
+  _SHELF_TMP="${_out}/.${_src##*/}.staticbuild-tmp"
+  rm -f "${_SHELF_TMP}"
+  _sb_in_real_dir "${_src%/*}" _sb_take_here "${_src##*/}" "${_SHELF_TMP}"
+  _rc=$?
+  [[ "${_rc}" == "0" ]] && return 0
+  _shelf_drop
+  [[ "${_rc}" == "3" ]] && return 3
+  return 2
+}
+
+_shelf_put() {
+  # $1 = shelf dir, $2 = published name. The taken copy becomes root's 0644 file and
+  # is renamed over the destination, so a copy that fails part-way (a full disk)
+  # never leaves a truncated tarball under the published name, a symlink already at
+  # the destination is replaced, never written through, and the build user cannot
+  # rewrite a published file after its checks.
+  if chown root:root "${_SHELF_TMP}" && chmod 0644 "${_SHELF_TMP}" \
+    && mv -fT "${_SHELF_TMP}" "$1/$2"; then
     _SHELF_TMP=""
     return 0
   fi
-  rm -f "${_tmp}"
-  _SHELF_TMP=""
+  _shelf_drop
   return 1
+}
+
+_shelf_drop() {
+  # A taken copy that is not published.
+  [[ -n "${_SHELF_TMP}" ]] && rm -f "${_SHELF_TMP}"
+  _SHELF_TMP=""
+  return 0
+}
+
+_shelf_reown() {
+  # Shelf files are root's. A copy an earlier run published kept the build user as
+  # its owner, and with it write access to a published file: such files are handed
+  # to root once (nothing matches on a later run).
+  find "${_DISTRO_OUT}" "${_CORE_OUT}" "${_DEVEXT_BASE}" -maxdepth 3 -user "${_O8_USER}" \
+    -exec chown -h root:root {} + 2>/dev/null
+  return 0
 }
 
 _sweep_shelf_tmp() {
@@ -2422,20 +2514,26 @@ _publish_plain() {
   # $1 = file in the build-day dir, $2 = shelf dir, $3 = its summary row, $4 = "companion"
   # when the file only rides along with that row's own tarball (a compat tarball, a
   # version stamp): then only a failure changes the row. For shelves no lock guards.
-  local _src="$1" _out="$2" _k="$3" _st="new" _what=""
+  local _src="$1" _out="$2" _k="$3" _st="new" _what="" _rc
   # A companion's failure names the file, so the row does not blame its own tarball.
   [[ "${4:-}" == "companion" ]] && _what="${_src##*/} "
-  # Root reads the file before the copy (cmp), so the plain-file check comes first.
-  if [[ ! -f "${_src}" || -L "${_src}" ]]; then
+  # Root reads the file once, into its own copy, before anything compares it.
+  _shelf_take "${_src}" "${_out}"
+  _rc=$?
+  if [[ "${_rc}" == "2" ]]; then
     _alrt "not a regular file, not published: ${_src##*/}"
     _rec_pub "${_k}" FAILED
     _rec_note "${_k}" "${_what}not a regular file"
     return 1
+  elif [[ "${_rc}" != "0" ]]; then
+    _rec_pub "${_k}" FAILED
+    _rec_note "${_k}" "${_what}copy failed"
+    return 1
   fi
   if [[ -e "${_out}/${_src##*/}" ]]; then
-    if cmp -s "${_src}" "${_out}/${_src##*/}"; then _st="same"; else _st="updated"; fi
+    if cmp -s "${_SHELF_TMP}" "${_out}/${_src##*/}"; then _st="same"; else _st="updated"; fi
   fi
-  if _copy_to_shelf "${_src}" "${_out}"; then
+  if _shelf_put "${_out}" "${_src##*/}"; then
     [[ "${4:-}" == "companion" ]] || _rec_pub "${_k}" "${_st}"
     _purge_rec "${_out}/${_src##*/}" "${_st}" "${4:-}"
     return 0
@@ -2517,21 +2615,21 @@ _publish_core_file() {
 }
 
 _backdrop_day_version() {
-  # Version stamped by the current build (empty if none).
+  # Version stamped by the current build (empty if none), read inside the real day dir.
   [[ -f "${_DAY_DIR}/backdrop.txt" && ! -L "${_DAY_DIR}/backdrop.txt" ]] || return 0
-  tr -cd '0-9.' < "${_DAY_DIR}/backdrop.txt"
+  _sb_in_real_dir "${_DAY_DIR}" _sb_read_here backdrop.txt | tr -cd '0-9.'
 }
 
 _grav_day_version() {
-  # Version stamped by the current Grav build (empty if none).
+  # Version stamped by the current Grav build (empty if none), read as above.
   [[ -f "${_DAY_DIR}/grav.txt" && ! -L "${_DAY_DIR}/grav.txt" ]] || return 0
-  tr -cd '0-9.' < "${_DAY_DIR}/grav.txt"
+  _sb_in_real_dir "${_DAY_DIR}" _sb_read_here grav.txt | tr -cd '0-9.'
 }
 
 _txp_day_version() {
-  # Version stamped by the current Textpattern build (empty if none).
+  # Version stamped by the current Textpattern build (empty if none), read as above.
   [[ -f "${_DAY_DIR}/textpattern.txt" && ! -L "${_DAY_DIR}/textpattern.txt" ]] || return 0
-  tr -cd '0-9.' < "${_DAY_DIR}/textpattern.txt"
+  _sb_in_real_dir "${_DAY_DIR}" _sb_read_here textpattern.txt | tr -cd '0-9.'
 }
 
 package_backdrop_compat() {
@@ -2617,8 +2715,10 @@ do_backdrop_family() {
   for _f in bee.tar.gz backdrop-drush-extension.tar.gz; do
     [[ -e "${_DAY_DIR}/${_f}" ]] && _publish_devext "${_DAY_DIR}/${_f}"
   done
-  for _f in "${_DAY_DIR}"/redis_backdrop-*.tar.gz "${_DAY_DIR}"/webform-*.tar.gz; do
-    [[ -e "${_f}" ]] && _publish_contrib "${_f}"
+  local _names=()
+  mapfile -t _names < <(_day_names 'redis_backdrop-*.tar.gz' 'webform-*.tar.gz')
+  for _f in "${_names[@]}"; do
+    _publish_contrib "${_DAY_DIR}/${_f}"
   done
 }
 
@@ -2742,30 +2842,37 @@ _publish_locked() {
   # published one unless it adds advisories the published one lacks, or either audit
   # did not finish or cannot be compared: those are refused and the published copy
   # stays, unless -O names the platform.
-  local _src="$1" _out="$2" _base _key _dst _old _new _st="new" _ra _rb _on _nn _vd
+  local _src="$1" _out="$2" _base _key _dst _old _new _st="new" _ra _rb _on _nn _vd _rc
   _base="${_src##*/}"
   _key="${_base%.tar.gz}"
   _dst="${_out}/${_base}"
-  # Root reads the file before the copy (cmp, tar), so the plain-file check comes
-  # first here as well.
-  if [[ ! -f "${_src}" || -L "${_src}" ]]; then
+  # Root reads the file once, into its own copy (_SHELF_TMP), before anything
+  # compares, digests or audits it; the copy is what gets published.
+  _shelf_take "${_src}" "${_out}"
+  _rc=$?
+  if [[ "${_rc}" == "2" ]]; then
     _alrt "not a regular file, not published: ${_base}"
     _rec_pub "${_key}" FAILED
     _rec_note "${_key}" "not a regular file"
     return 1
+  elif [[ "${_rc}" != "0" ]]; then
+    _alrt "copy failed: ${_base}"
+    _rec_pub "${_key}" FAILED
+    _rec_note "${_key}" "copy failed"
+    return 1
   fi
   if [[ -e "${_dst}" ]]; then
     _st="same"
-    if ! cmp -s "${_src}" "${_dst}"; then
+    if ! cmp -s "${_SHELF_TMP}" "${_dst}"; then
       _st="updated"
       _old="$(_lock_digest "${_dst}")"
-      _new="$(_lock_digest "${_src}")"
+      _new="$(_lock_digest "${_SHELF_TMP}")"
       if [[ -z "${_old}" || -z "${_new}" || "${_old}" != "${_new}" ]]; then
         if _overwrite_named "${_base}"; then
           _st="OVERWRITTEN"
         else
           _ra="$(_audit_tarball_file "${_dst}" 1)"
-          _rb="$(_audit_tarball_file "${_src}" 2)"
+          _rb="$(_audit_tarball_file "${_SHELF_TMP}" 2)"
           _on="$(sed -n '1s/^advisories: //p' <<< "${_ra}")"
           _nn="$(sed -n '1s/^advisories: //p' <<< "${_rb}")"
           _vd="$(_fix_verdict "${_ra}" "${_rb}")"
@@ -2786,13 +2893,14 @@ _publish_locked() {
               *)                    _rec_note "${_key}" "not verified" ;;
             esac
             _REFUSED=$((_REFUSED + 1))
+            _shelf_drop
             return 1
           fi
         fi
       fi
     fi
   fi
-  if ! _copy_to_shelf "${_src}" "${_out}"; then
+  if ! _shelf_put "${_out}" "${_base}"; then
     _alrt "copy failed: ${_base}"
     _rec_pub "${_key}" FAILED
     _rec_note "${_key}" "copy failed"
@@ -2831,11 +2939,12 @@ do_distribute() {
     _ADV_TMP="$(mktemp -d)" || _die "cannot create a work dir"
   fi
   _ensure_devext_dirs
-  local _t _base _n=0 _seen=0 _bdrv _bdrok="" _bhold=""
+  local _t _base _n=0 _seen=0 _bdrv _bdrok="" _bhold="" _names=()
   _bdrv="$(_backdrop_day_version)"
-  for _t in "${_DAY_DIR}"/*.tar.gz; do
-    [[ -e "${_t}" ]] || continue
-    _base="${_t##*/}"
+  # The tarballs are listed inside the real day dir.
+  mapfile -t _names < <(_day_names '*.tar.gz')
+  for _base in "${_names[@]}"; do
+    _t="${_DAY_DIR}/${_base}"
     _in_scope "${_base%.tar.gz}" || continue
     _seen=$((_seen + 1))
     # Dev extensions first: backdrop-drush-extension.tar.gz must NOT fall into the

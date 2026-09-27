@@ -12,6 +12,45 @@ _check_root() {
 }
 _check_root
 
+# An account owns /data/disk/<oN>, so its config/ tree can hold a link or a
+# FIFO at any name, and a directory on the way can be one. The vhost files
+# are listed and read only inside the real vhost.d.
+#
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory; elsewhere the last name is checked
+# against its resolved parent. A copy of the helper in
+# lib/functions/helper.sh.inc.
+_vhc_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_vhc_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+
+# The regular files of the current (pinned) directory, the names the glob
+# ./* gives, in its order, NUL-separated.
+_vhc_files_here() {
+  local _f
+  for _f in ./*; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] && printf '%s\0' "${_f#./}"
+  done
+}
+
 # Define directories
 _VHOSTS_DIRS=("/var/aegir/config/server_master/nginx/vhost.d" "/data/disk/*/config/server_master/nginx/vhost.d")
 _VHOSTS_CLEANUP_LOG="/var/log/vhost_cleanup.log"
@@ -30,20 +69,22 @@ mapfile -t _mysql_databases < <(mysql -u root -e "SHOW DATABASES;" | grep -Ev "(
 declare -A _vhost_db_map
 for _dir_pattern in "${_VHOSTS_DIRS[@]}"; do
   for _dir in ${_dir_pattern}; do
-    if [ -d "${_dir}" ]; then
-      for _vhost_file in "${_dir}"/*; do
-        if [ -f "${_vhost_file}" ]; then
-          while IFS= read -r _line; do
-            # Extract db_name by looking for the exact _line containing it
-            if echo "${_line}" | grep -q "fastcgi_param db_name"; then
-              _db_name=$(echo "${_line}" | awk '{print $NF}' | tr -d ';')
-              # Map db_name to the list of vhost files (ensure no duplicate entries within the same file)
-              if ! [[ " ${_vhost_db_map["${_db_name}"]} " =~ " ${_vhost_file} " ]]; then
-                _vhost_db_map["${_db_name}"]+="${_vhost_file} "
-              fi
+    if [ -d "${_dir}" ] && ! _vhc_in_real_dir "${_dir}" true; then
+      echo "Directory ${_dir} is not a real directory, skipping..." | tee -a "${_VHOSTS_CLEANUP_LOG}"
+    elif [ -d "${_dir}" ]; then
+      mapfile -d '' -t _vhost_names < <(_vhc_in_real_dir "${_dir}" _vhc_files_here)
+      for _vhost_name in "${_vhost_names[@]}"; do
+        _vhost_file="${_dir}/${_vhost_name}"
+        while IFS= read -r _line; do
+          # Extract db_name by looking for the exact _line containing it
+          if echo "${_line}" | grep -q "fastcgi_param db_name"; then
+            _db_name=$(echo "${_line}" | awk '{print $NF}' | tr -d ';')
+            # Map db_name to the list of vhost files (ensure no duplicate entries within the same file)
+            if ! [[ " ${_vhost_db_map["${_db_name}"]} " =~ " ${_vhost_file} " ]]; then
+              _vhost_db_map["${_db_name}"]+="${_vhost_file} "
             fi
-          done < "${_vhost_file}"
-        fi
+          fi
+        done < <(_vhc_in_real_dir "${_dir}" _vhc_read_here "${_vhost_name}")
       done
     else
       echo "Directory ${_dir} does not exist, skipping..." | tee -a "${_VHOSTS_CLEANUP_LOG}"

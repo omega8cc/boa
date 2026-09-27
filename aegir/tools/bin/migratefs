@@ -155,6 +155,82 @@ _log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "${_LOG_FILE}"
 }
 
+# An account owns /data/disk/<oN>, so static/ and every name in it can be a
+# link, and a directory in its store can be swapped for one at any time.
+# Root looks at, copies from and changes those names only through these.
+#
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory; elsewhere the last name is checked
+# against its resolved parent. Once entered, ./name stays in that directory
+# whatever is swapped. A copy of the helper in lib/functions/helper.sh.inc,
+# which also anchors /data/disk itself (the shared archive's parent).
+_mfs_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk|/data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+# What ./$1 is in the current (pinned) directory, never following it:
+# link, none, dir or other.
+_mfs_kind_here() {
+  if [ -L "./${1}" ]; then
+    echo link
+  elif [ ! -e "./${1}" ]; then
+    echo none
+  elif [ -d "./${1}" ]; then
+    echo dir
+  else
+    echo other
+  fi
+}
+
+# ./$1 a real directory in the current (pinned) directory, made when missing.
+_mfs_mkdir_here() {
+  [ -d "./${1}" ] && [ ! -L "./${1}" ] && return 0
+  mkdir -- "./${1}" 2> /dev/null
+}
+
+# Every directory from the mount $1 down to $2 a real directory that only
+# root can change, the missing ones made: no account can swap a name on
+# that path while root copies below it.
+_mfs_root_path() {
+  local _p="$1" _rest="${2#"$1"}" _n _st
+  while :; do
+    _st=$(_mfs_in_real_dir "${_p}" stat -c '%u %a' . 2> /dev/null) || return 1
+    [ "${_st%% *}" = "0" ] || return 1
+    [ $(( 8#${_st##* } & 8#022 )) -eq 0 ] || return 1
+    _rest="${_rest#/}"
+    [ -n "${_rest}" ] || return 0
+    _n="${_rest%%/*}"
+    _mfs_in_real_dir "${_p}" _mfs_mkdir_here "${_n}" || return 1
+    _p="${_p}/${_n}"
+    case "${_rest}" in
+      */*) _rest="${_rest#*/}" ;;
+      *) _rest="" ;;
+    esac
+  done
+}
+
+# The destination's parent is closed to everyone but root while the copies
+# write below it (the copied directories carry the account's owner), and
+# opened again with the mode it had before the link makes the store live.
+_LOCKED_DIR=""
+_LOCKED_MODE=""
+_mfs_unlock() {
+  [ -n "${_LOCKED_DIR}" ] || return 0
+  _mfs_in_real_dir "${_LOCKED_DIR}" chmod "${_LOCKED_MODE}" . 2> /dev/null
+  _LOCKED_DIR=""
+}
+
 _provision_running() {
   # Genuine task EXECUTIONS only. BOA spawns them as
   #   su -s /bin/bash - <user> -c "<php> /usr/bin/drush @<site> provision-<task>"
@@ -211,6 +287,7 @@ _manage_single_lock() {
 # then release the single-instance lock with explicit args (an argless unlock
 # would leave the fd empty — the historical lock.inc "ambiguous redirect" trap).
 _cleanup() {
+  _mfs_unlock
   if [ "${_stopOwned}" = "YES" ] && [ "$(cat "${_queueStop}" 2>/dev/null)" = "$$" ]; then
     rm -f "${_queueStop}" 2>/dev/null
   fi
@@ -264,14 +341,33 @@ _target_is_separate_fs() {
   [ -n "${_sd}" ] && [ -n "${_td}" ] && [ "${_sd}" != "${_td}" ]
 }
 
-# Two-pass, non-destructive relocation of a real directory onto the attached FS,
-# replacing it with a symlink. Precondition: caller has confirmed the target is a
-# separate FS. src is a real dir; dst is created (ownership inherited from ownRef).
-# Always returns 0 (logs + leaves the real dir on any failure — data never lost).
-_relocate_dir() {
-  local _src="$1" _dst="$2" _ownRef="$3" _label="$4" _szKB _avKB _ug
+# True when an interrupted relocation left ./.$2.migratefs in the real
+# directory $1 (or $1 cannot be entered as one): that copy may hold the only
+# writes made after its last pass, so nothing replaces it unreviewed.
+_mfs_aside_left() {
+  [ "$(_mfs_in_real_dir "${1}" _mfs_kind_here ".${2}.migratefs")" != "none" ]
+}
 
-  _szKB=$(du -sk "${_src}" 2>/dev/null | awk '{print $1}')
+# A failed swap puts the store back under its name; the data is also in $5.
+_mfs_back() {
+  local _par="$1" _name="$2" _label="$3" _why="$4" _dst="$5"
+  if _mfs_in_real_dir "${_par}" mv -T -- "./.${_name}.migratefs" "./${_name}" 2>/dev/null; then
+    _log "ERROR: ${_label} ${_why}; ${_par}/${_name} left as real dir (data also in ${_dst})"
+  else
+    _log "ERROR: ${_label} ${_why}, and ${_par}/.${_name}.migratefs could not be moved back to ${_name}; the data is there and in ${_dst}, move it back by hand"
+  fi
+}
+
+# Two-pass, non-destructive relocation of the real directory $1/$2 onto the
+# attached FS at $3, replacing it with a symlink. Precondition: caller has
+# confirmed the target is a separate FS. $4 = the real directory whose owner the
+# store and the link take, $5 = label. Always returns 0 (logs + leaves the real
+# dir on any failure — data never lost).
+_relocate_dir() {
+  local _par="$1" _name="$2" _dst="$3" _ownRef="$4" _label="$5"
+  local _src="${_par}/${_name}" _dpar="${_dst%/*}" _szKB _avKB _ug _mode
+
+  _szKB=$(_mfs_in_real_dir "${_src}" du -sk . 2>/dev/null | awk '{print $1}')
   _avKB=$(df -Pk "$(dirname "${_dst}")" 2>/dev/null | awk 'NR==2 {print $4}')
   [ -z "${_avKB}" ] && _avKB=$(df -Pk "${_TARGET}" 2>/dev/null | awk 'NR==2 {print $4}')
   _log "PLAN: ${_label} move ${_src} (${_szKB:-?}K) -> ${_dst} (target avail ${_avKB:-?}K) and symlink"
@@ -290,36 +386,100 @@ _relocate_dir() {
     return 0
   fi
 
-  _ug=$(stat -c '%U:%G' "${_ownRef}" 2>/dev/null)
-  mkdir -p "${_dst}" 2>/dev/null || { _log "ERROR: ${_label} could not create ${_dst}; skipping"; return 0; }
-  [ -n "${_ug}" ] && chown "${_ug}" "${_dst}" 2>/dev/null
+  if _mfs_aside_left "${_par}" "${_name}"; then
+    _log "ERROR: ${_label} ${_par}/.${_name}.migratefs is left from an interrupted run (or ${_par} is not a real directory); left ${_src} as real dir for review"
+    return 0
+  fi
+
+  _ug=$(_mfs_in_real_dir "${_ownRef}" stat -c '%U:%G' . 2>/dev/null)
+  if ! _mfs_root_path "${_TARGET}" "${_dpar}" \
+    || ! _mfs_in_real_dir "${_dpar}" _mfs_mkdir_here "${_dst##*/}"; then
+    _log "ERROR: ${_label} could not create ${_dst} below directories only root can change; skipping"
+    return 0
+  fi
+  [ -n "${_ug}" ] && chown -h "${_ug}" "${_dst}" 2>/dev/null
+
+  _mode=$(stat -c '%a' "${_dpar}" 2>/dev/null)
+  # A 0700 left by an interrupted run is not the mode to open it with again.
+  case "${_mode}" in
+    ''|700) _mode=755 ;;
+  esac
+  _LOCKED_DIR="${_dpar}"
+  _LOCKED_MODE="${_mode}"
+  if ! _mfs_in_real_dir "${_dpar}" chmod 0700 . 2>/dev/null; then
+    _LOCKED_DIR=""
+    _log "ERROR: ${_label} could not close ${_dpar} for the copy; left ${_src} as real dir"
+    return 0
+  fi
+  _mfs_in_real_dir "${_src}" _relocate_here "${_par}" "${_name}" "${_dst}" "${_mode}" "${_ug}" "${_label}" \
+    || _log "ERROR: ${_label} ${_src} is not a real directory; left for review"
+  _mfs_unlock
+}
+
+# Runs inside the real store $1/$2, which stays this process's working
+# directory while the store is renamed aside: every copy and the removal of
+# the old copy run from here, and the rename, the link and the rmdir act on
+# names inside the real $1, never through a path an account can re-point.
+# $3 = destination, $4 = the mode its parent opens with, $5 = owner, $6 = label.
+_relocate_here() {
+  local _par="$1" _name="$2" _dst="$3" _mode="$4" _ug="$5" _label="$6"
+  local _src="${_par}/${_name}" _aside=".${_name}.migratefs" _chg
 
   # TWO-PASS: pass 1 is a NON-removing copy so the (possibly web-served) source
-  # stays complete during the long cross-FS transfer; pass 2 reconciles + removes
-  # source (fast: mostly already copied), bounding any gap to the final rmdir+ln.
-  # Peak target usage is 1x (space check covers it); the source FS never grows. On
-  # any failure the real dir is left in place (data also safe in dst).
-  if [ -n "$(ls -A "${_src}" 2>/dev/null)" ]; then
-    rsync -a --no-devices --no-specials "${_src}/" "${_dst}/" 2>/dev/null \
+  # stays complete during the long cross-FS transfer; pass 2 reconciles (fast:
+  # mostly already copied). Peak target usage is 1x (space check covers it); the
+  # source FS never grows. On any failure the real dir is left in place (data
+  # also safe in dst).
+  if [ -n "$(ls -A . 2>/dev/null)" ]; then
+    rsync -a --no-devices --no-specials ./ "${_dst}/" 2>/dev/null \
       || { _log "ERROR: ${_label} rsync pre-seed failed ${_src} -> ${_dst}; left as real dir"; return 0; }
     if _provision_running; then
       _log "DEFER: ${_label} provision task active after pre-seed — left ${_src} as real dir (copy also in ${_dst})"
       return 0
     fi
-    rsync -a --no-devices --no-specials --remove-source-files "${_src}/" "${_dst}/" 2>/dev/null \
+    rsync -a --no-devices --no-specials ./ "${_dst}/" 2>/dev/null \
       || { _log "ERROR: ${_label} rsync reconcile failed ${_src} -> ${_dst}; left as real dir (data also in ${_dst})"; return 0; }
-    find "${_src}/" -mindepth 1 -depth -type d -empty -delete 2>/dev/null
   fi
 
-  # Refuse to replace the dir with a symlink unless it emptied cleanly.
-  if [ -n "$(ls -A "${_src}" 2>/dev/null)" ]; then
-    _log "ERROR: ${_label} ${_src} not empty after move; left as real dir for review"
+  # A device, FIFO or socket is never copied: a dir holding one stays.
+  if [ -n "$(find -P . \( -type b -o -type c -o -type p -o -type s \) -print -quit 2>/dev/null)" ]; then
+    _log "ERROR: ${_label} ${_src} holds a device, FIFO or socket that is not copied; left as real dir for review (data also in ${_dst})"
     return 0
   fi
 
-  rmdir "${_src}" 2>/dev/null || { _log "ERROR: ${_label} could not rmdir ${_src}; data is safe in ${_dst}, link manually"; return 0; }
-  ln -s "${_dst}" "${_src}" 2>/dev/null || { _log "ERROR: ${_label} could not symlink ${_src}; data is safe in ${_dst}, link manually"; return 0; }
-  [ -n "${_ug}" ] && chown -h "${_ug}" "${_src}" 2>/dev/null
+  # The store moves aside, and the final pass copies what was written since the
+  # reconcile: the name is free only for that pass, and the destination stays
+  # closed until it ends.
+  if ! _mfs_in_real_dir "${_par}" mv -T -- "./${_name}" "./${_aside}" 2>/dev/null; then
+    _log "ERROR: ${_label} could not move ${_src} aside; left as real dir (data also in ${_dst})"
+    return 0
+  fi
+  if ! rsync -a --no-devices --no-specials ./ "${_dst}/" 2>/dev/null; then
+    _mfs_back "${_par}" "${_name}" "${_label}" "rsync final pass failed ${_src} -> ${_dst}" "${_dst}"
+    return 0
+  fi
+  _mfs_in_real_dir "${_dst%/*}" chmod "${_mode}" . 2>/dev/null
+  # -T: a name put there meanwhile makes ln fail, never takes the link inside it.
+  if ! _mfs_in_real_dir "${_par}" ln -s -T -- "${_dst}" "./${_name}" 2>/dev/null; then
+    _mfs_back "${_par}" "${_name}" "${_label}" "could not symlink ${_src}" "${_dst}"
+    return 0
+  fi
+  [ -n "${_ug}" ] && _mfs_in_real_dir "${_par}" chown -h "${_ug}" "./${_name}" 2>/dev/null
+
+  # The old copy goes only when nothing in it is missing from, or newer than,
+  # the store (a write through a handle still open on it); find walks by
+  # directory handle and never follows a link.
+  _chg=$(rsync -a -u --no-devices --no-specials --dry-run --itemize-changes ./ "${_dst}/" 2>/dev/null) \
+    || _chg="failed"
+  if printf '%s\n' "${_chg}" | grep -qE '^([>c]|failed$)'; then
+    _log "WARN: ${_label} relocated, but ${_par}/${_aside} changed after the final pass; left for review"
+  else
+    find -P . -mindepth 1 -depth -delete 2>/dev/null
+    if [ -n "$(ls -A . 2>/dev/null)" ] \
+      || ! _mfs_in_real_dir "${_par}" rmdir -- "./${_aside}" 2>/dev/null; then
+      _log "WARN: ${_label} relocated, but ${_par}/${_aside} could not be removed; left for review"
+    fi
+  fi
   _log "APPLY: ${_label} relocated ${_src} -> ${_dst} (attached filesystem)"
 }
 
@@ -333,10 +493,11 @@ _relocate_static_for_account() {
   # relocated store is navigable by the account's FTP user. Matches the layout the
   # original migratefs.sh used.
   local _dst="${_TARGET}/files/${_acct}/static/files"
+  local _static="${_acctDir}/static"
   local _cur _ug
 
   # Must look like an Octopus account store (static/ is the store parent).
-  if [ ! -d "${_acctDir}/static" ]; then
+  if [ ! -d "${_static}" ]; then
     _log "SKIP: ${_acct} has no static/ dir — not an account store"
     return 0
   fi
@@ -349,42 +510,60 @@ _relocate_static_for_account() {
     return 0
   fi
 
-  # Already a symlink -> idempotent no-op (device gate above guarantees the target
-  # is a real attached FS, so re-creating a missing dst here is safe).
-  if [ -L "${_src}" ]; then
-    _cur=$(readlink "${_src}" 2>/dev/null)
-    if [ "${_cur}" = "${_dst}" ]; then
-      [ -d "${_dst}" ] || { [ "${_APPLY}" = "YES" ] && mkdir -p "${_dst}" 2>/dev/null; }
-      _log "OK: ${_acct} static/files already relocated -> ${_dst}"
-    else
-      _log "WARN: ${_acct} static/files is a symlink to an unexpected target (${_cur}); leaving for review"
-    fi
-    return 0
-  fi
-
-  # Fresh account: no static/files yet -> create the empty store + symlink;
-  # autosymlink will convert sites into it later.
-  if [ ! -e "${_src}" ]; then
-    _log "PLAN: ${_acct} create empty store ${_dst} and symlink ${_src} -> ${_dst}"
-    if [ "${_APPLY}" = "YES" ]; then
-      _ug=$(stat -c '%U:%G' "${_acctDir}/static" 2>/dev/null)
-      mkdir -p "${_dst}" 2>/dev/null || { _log "ERROR: ${_acct} could not create ${_dst}; skipping"; return 0; }
-      [ -n "${_ug}" ] && chown "${_ug}" "${_dst}" 2>/dev/null
-      ln -s "${_dst}" "${_src}" 2>/dev/null || { _log "ERROR: ${_acct} could not symlink ${_src}; store is at ${_dst}, link manually"; return 0; }
-      [ -n "${_ug}" ] && chown -h "${_ug}" "${_src}" 2>/dev/null
-      _log "APPLY: ${_acct} created + symlinked empty store -> ${_dst}"
-    fi
-    return 0
-  fi
-
-  # A pre-existing static/files that is neither a symlink nor a dir: leave it.
-  if [ ! -d "${_src}" ]; then
-    _log "WARN: ${_acct} static/files exists but is not a directory; leaving for review"
-    return 0
-  fi
-
-  # Real dir -> two-pass relocation (ownership from the static/ parent).
-  _relocate_dir "${_src}" "${_dst}" "${_acctDir}/static" "account ${_acct}"
+  # static/files is looked at, and static/ changed, only inside the real
+  # static/: an account can turn either into a link.
+  case "$(_mfs_in_real_dir "${_static}" _mfs_kind_here files)" in
+    link)
+      # Already a symlink -> idempotent no-op (device gate above guarantees the
+      # target is a real attached FS, so re-creating a missing dst here is safe).
+      _cur=$(_mfs_in_real_dir "${_static}" readlink -- ./files 2>/dev/null)
+      if [ "${_cur}" = "${_dst}" ]; then
+        if [ ! -d "${_dst}" ] && [ "${_APPLY}" = "YES" ]; then
+          _mfs_root_path "${_TARGET}" "${_dst%/*}" \
+            && _mfs_in_real_dir "${_dst%/*}" _mfs_mkdir_here "${_dst##*/}"
+        fi
+        _log "OK: ${_acct} static/files already relocated -> ${_dst}"
+      else
+        _log "WARN: ${_acct} static/files is a symlink to an unexpected target (${_cur}); leaving for review"
+      fi
+      ;;
+    none)
+      # Fresh account: no static/files yet -> create the empty store + symlink;
+      # autosymlink will convert sites into it later. An interrupted relocation
+      # also leaves the name free: its copy aside is never replaced unreviewed.
+      if _mfs_aside_left "${_static}" files; then
+        _log "WARN: ${_acct} static/.files.migratefs is left from an interrupted run; leaving for review"
+        return 0
+      fi
+      _log "PLAN: ${_acct} create empty store ${_dst} and symlink ${_src} -> ${_dst}"
+      if [ "${_APPLY}" = "YES" ]; then
+        _ug=$(_mfs_in_real_dir "${_static}" stat -c '%U:%G' . 2>/dev/null)
+        if ! _mfs_root_path "${_TARGET}" "${_dst%/*}" \
+          || ! _mfs_in_real_dir "${_dst%/*}" _mfs_mkdir_here "${_dst##*/}"; then
+          _log "ERROR: ${_acct} could not create ${_dst} below directories only root can change; skipping"
+          return 0
+        fi
+        [ -n "${_ug}" ] && chown -h "${_ug}" "${_dst}" 2>/dev/null
+        # -T: a name put there meanwhile makes ln fail, never takes the link inside it.
+        _mfs_in_real_dir "${_static}" ln -s -T -- "${_dst}" ./files 2>/dev/null \
+          || { _log "ERROR: ${_acct} could not symlink ${_src}; store is at ${_dst}, left for review"; return 0; }
+        [ -n "${_ug}" ] && _mfs_in_real_dir "${_static}" chown -h "${_ug}" ./files 2>/dev/null
+        _log "APPLY: ${_acct} created + symlinked empty store -> ${_dst}"
+      fi
+      ;;
+    dir)
+      # Real dir -> two-pass relocation (ownership from the static/ parent).
+      _relocate_dir "${_static}" files "${_dst}" "${_static}" "account ${_acct}"
+      ;;
+    other)
+      # A pre-existing static/files that is neither a symlink nor a dir: leave it.
+      _log "WARN: ${_acct} static/files exists but is not a directory; leaving for review"
+      ;;
+    *)
+      _log "WARN: ${_acct} static/ is not a real directory in ${_acctDir}; leaving for review"
+      ;;
+  esac
+  return 0
 }
 
 # Relocate the shared /data/disk/arch archive onto the attached filesystem.
@@ -431,7 +610,7 @@ _relocate_arch() {
     return 0
   fi
 
-  _relocate_dir "${_src}" "${_dst}" "${_src}" "arch"
+  _relocate_dir /data/disk arch "${_dst}" "${_src}" "arch"
 }
 
 # List the real mountpoint(s) under /mnt (naming-independent: mountpoint -q, with an
@@ -481,7 +660,11 @@ _account_list() {
 # ---- main --------------------------------------------------------------------
 
 _manage_single_lock
-trap _cleanup EXIT INT TERM HUP
+# A signal ends the run (the EXIT cleanup then runs once): a handler that
+# returned would carry on with the next step of a relocation, or the next
+# account, with the queue pause already released.
+trap _cleanup EXIT
+trap 'exit 1' INT TERM HUP
 
 # Enforce the SINGLE-/mnt-mount invariant fleet-wide. More than one attached
 # mountpoint under /mnt is unsupported and cannot be disambiguated (the lshell

@@ -697,29 +697,27 @@ _chgrp_keeps_dir_setgid() {
 # its target; --from=:<gid> touches only inodes still in the source group,
 # which leaves every www-data path (files/, private/, settings.php, the SSL
 # key dirs -- the FPM read and write paths) untouched; the gid is numeric so
-# a half-migrated nsswitch cannot widen the match. chown names every inode it
-# could not change on stderr (chattr +i: EPERM for root too); those paths are
-# collected for the immutable pass, so nothing walks the tree twice.
+# a half-migrated nsswitch cannot widen the match. An inode chown could not
+# change (chattr +i: EPERM for root too) is still outside the target group,
+# so the claim pass below takes it in the same walk.
 # $1 = from gid (empty: no bulk pass, the claim pass alone), $2 = to group,
-# then roots. Leaves the failed paths in ${_WALK_FAILED} (one per line).
-_WALK_FAILED=""
+# then roots.
 _grp_walk() {
-  local _from="$1" _to="$2" _r _keep _err
+  local _from="$1" _to="$2" _r _keep
   shift 2
   _keep=YES
   _chgrp_keeps_dir_setgid || _keep=NO
-  _err=$(mktemp /root/.instgrp.err.XXXXXX) || _err=/dev/null
-  : > "${_err}"
   for _r in "$@"; do
     [ -d "${_r}" ] || continue
     if [ -n "${_from}" ]; then
       if [ "${_keep}" = "NO" ]; then
+        # chmod has no no-follow form: the bit is set on '.' of each directory
+        # entered from its parent, only when it is the directory find met
+        # there, never on the target of a link swapped in after the test.
         find -P "${_r}" -type d -gid "${_from}" -perm -2000 \
-          -execdir sh -c 'g="$1"; shift; chgrp -h "$g" "$@" 2> /dev/null; chmod g+s "$@" 2> /dev/null' _ "${_to}" {} + 2> /dev/null
+          -execdir sh -c 'p=$(pwd -P); for d; do ( cd -P -- "$d" 2> /dev/null && [ "$(pwd -P)" = "${p%/}/${d#./}" ] && chgrp -h "$0" . 2> /dev/null && chmod g+s . 2> /dev/null ); done' "${_to}" {} + 2> /dev/null
       fi
-      # LC_ALL=C: the error lines are parsed, and a UTF-8 locale would quote
-      # the path with curly quotes.
-      LC_ALL=C chown -R -h -P --from=":${_from}" ":${_to}" "${_r}" 2>> "${_err}" > /dev/null
+      chown -R -h -P --from=":${_from}" ":${_to}" "${_r}" > /dev/null 2>&1
     fi
     # Everything under the roots is this account's tree. A copy from another
     # box (xoct, xcopy, xmass, a root-run restore of a foreign archive)
@@ -728,36 +726,21 @@ _grp_walk() {
     # the same system range -- the gid of a DIFFERENT named group on this
     # box, whose identities could then read the copied credential files.
     # Both take the account's group; only the FPM group and root stay.
-    LC_ALL=C find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root \
-      -execdir chgrp -h "${_to}" {} + 2>> "${_err}"
-  done
-  # Both passes name the inodes they could not change (chattr +i: EPERM for
-  # root too); those go to the immutable pass.
-  _WALK_FAILED=$(sed -n "s/^ch\(own\|grp\): changing group of '\(.*\)': Operation not permitted$/\2/p" "${_err}" 2> /dev/null)
-  rm -f "${_err}"
-}
-
-# The limited-shell homes carry chattr +i on a known set of names (the home
-# itself, .drush, its ini files, .bee, .bazaar -- manage_ltd_users.sh sets and
-# clears them around its own writes). Each path chown reported is re-grouped
-# with the flag dropped and restored around the one operation, addressed by
-# bare name from inside its parent directory (cd -P: the parent is entered
-# once, physically, and the name is acted on there -- the same shape find
-# -execdir gives), never through a pathname a tenant can re-point mid-way.
-# $1 = to group; paths on stdin, one per line.
-_grp_fix_immutable() {
-  local _to="$1" _p _d _n
-  while IFS= read -r _p; do
-    [ -n "${_p}" ] || continue
-    _d=$(dirname -- "${_p}")
-    _n=$(basename -- "${_p}")
-    ( cd -P -- "${_d}" 2> /dev/null || exit 1
-      if lsattr -d -- "${_n}" 2> /dev/null | cut -d' ' -f1 | grep -q i; then
-        chattr -i -- "${_n}" 2> /dev/null && chgrp -h "${_to}" -- "${_n}" 2> /dev/null
-        chattr +i -- "${_n}" 2> /dev/null
-      else
-        chgrp -h "${_to}" -- "${_n}" 2> /dev/null
-      fi )
+    # The limited-shell homes carry chattr +i on a known set of names (the
+    # home itself, .drush, its ini files, .bee, .bazaar -- manage_ltd_users.sh
+    # sets and clears them around its own writes): a name chgrp could not
+    # change is re-grouped with the flag dropped and restored around the one
+    # operation. Every name is acted on inside the directory find holds, by
+    # its bare name, never through a pathname a tenant can re-point mid-way.
+    find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root \
+      -execdir sh -c 'chgrp -h "$0" -- "$@" 2> /dev/null && exit 0
+        for f; do
+          chgrp -h "$0" -- "$f" 2> /dev/null && continue
+          if lsattr -d -- "$f" 2> /dev/null | cut -d" " -f1 | grep -q i; then
+            chattr -i -- "$f" 2> /dev/null && chgrp -h "$0" -- "$f" 2> /dev/null
+            chattr +i -- "$f" 2> /dev/null
+          fi
+        done' "${_to}" {} + 2> /dev/null
   done
 }
 
@@ -796,19 +779,93 @@ _gid_left() {
   return 1
 }
 
-# The marker sits in a directory the account owns, so a planted name there is
-# removed first and the file lands by rename, which never follows a link.
-_write_marker() {
-  local _a="$1" _m="/data/disk/$1/${_MARK_REL}" _t
-  [ -L "${_m}" ] && rm -f "${_m}"
-  if [ -d "${_m}" ]; then
-    rmdir "${_m}" 2> /dev/null || { _fail "${_m} is a non-empty directory; refusing to replace it"; return 1; }
+# The marker sits in log/, which the account owns (it owns /data/disk/<oN>),
+# so log/ itself can be a link and any name in it a link or a FIFO. The
+# marker is read, written and removed only inside the real log/.
+#
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory; once entered, ./name stays there
+# whatever is swapped. A copy of the helper in lib/functions/helper.sh.inc.
+_ig_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
   fi
-  _t=$(mktemp /root/.instgrp.mark.XXXXXX) || { _fail "cannot create the marker"; return 1; }
-  printf '%s %s gid=%s\n' "${_a}" "$(date '+%Y-%m-%d %H:%M:%S')" "$(_gid_of "${_a}")" > "${_t}"
-  chown root:root "${_t}"
-  chmod 0644 "${_t}"
-  mv -f "${_t}" "${_m}"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_ig_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+
+# ./$1 in the current (pinned) directory with the content $2 (root's, 0644): a
+# fresh file created exclusively, then renamed over the name, so a link or a
+# FIFO put at the name is replaced, never followed or opened.
+_ig_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+
+# The marker $1 in the current (pinned) log/: an empty directory at the name is
+# removed first (2 when it is not empty), then the marker is put.
+_marker_put_here() {
+  local _n="${_MARK_REL##*/}"
+  if [ -d "./${_n}" ] && [ ! -L "./${_n}" ]; then
+    rmdir -- "./${_n}" 2> /dev/null || return 2
+  fi
+  _ig_put_here "${_n}" "${1}"
+}
+
+# True when the marker is a regular file in the current (pinned) log/.
+_marker_here() {
+  [ -f "./${_MARK_REL##*/}" ] && [ ! -L "./${_MARK_REL##*/}" ]
+}
+
+# The marker name in the current (pinned) log/ removed when it is a file or a link.
+_marker_drop_here() {
+  if [ -L "./${_MARK_REL##*/}" ] || [ -f "./${_MARK_REL##*/}" ]; then
+    rm -f -- "./${_MARK_REL##*/}"
+  fi
+  return 0
+}
+
+# Account $1's marker: its text, whether it is there, and its removal, each
+# inside the real log/.
+_marker_text() {
+  _ig_in_real_dir "/data/disk/${1}/${_MARK_REL%/*}" _ig_read_here "${_MARK_REL##*/}"
+}
+_marker_present() {
+  _ig_in_real_dir "/data/disk/${1}/${_MARK_REL%/*}" _marker_here
+}
+_marker_drop() {
+  _ig_in_real_dir "/data/disk/${1}/${_MARK_REL%/*}" _marker_drop_here
+}
+
+_write_marker() {
+  local _a="$1" _rc
+  _ig_in_real_dir "/data/disk/${_a}/${_MARK_REL%/*}" _marker_put_here \
+    "$(printf '%s %s gid=%s' "${_a}" "$(date '+%Y-%m-%d %H:%M:%S')" "$(_gid_of "${_a}")")"
+  _rc=$?
+  if [ "${_rc}" = "2" ]; then
+    _fail "/data/disk/${_a}/${_MARK_REL} is a non-empty directory; refusing to replace it"
+    return 1
+  fi
+  return "${_rc}"
 }
 
 # A pre-existing same-named group is adopted only when everything attached to
@@ -855,9 +912,6 @@ _undo_account() {
   if [ -n "${_gid}" ]; then
     # shellcheck disable=SC2086
     _grp_walk "${_gid}" "${_USRG}" ${_roots}
-    if [ -n "${_WALK_FAILED}" ]; then
-      printf '%s\n' "${_WALK_FAILED}" | _grp_fix_immutable "${_USRG}"
-    fi
   fi
   for _u in ${_ids}; do
     getent passwd "${_u}" > /dev/null 2>&1 || continue
@@ -875,7 +929,7 @@ _undo_account() {
     fi
     [ -n "${_gid}" ] && _in_grp_sup "${_u}" "${_a}" && gpasswd -d "${_u}" "${_a}" > /dev/null 2>&1
   done
-  [ -L "/data/disk/${_a}/${_MARK_REL}" ] || [ -f "/data/disk/${_a}/${_MARK_REL}" ] && rm -f "/data/disk/${_a}/${_MARK_REL}"
+  _marker_drop "${_a}"
   # False with the identities still off the box-wide group in _UNDO_STUCK:
   # a caller must never report a rollback it did not get.
   _UNDO_STUCK="${_stuck# }"
@@ -916,9 +970,9 @@ _ids_converted() {
 # The marker records THIS box's conversion: its gid must be the gid of the
 # account group here. A copy from another box carries the source's marker.
 _marker_valid() {
-  local _a="$1" _m="/data/disk/$1/${_MARK_REL}" _gid
+  local _a="$1" _gid
   _gid=$(_gid_of "${_a}")
-  [ -n "${_gid}" ] && [ -f "${_m}" ] && [ ! -L "${_m}" ] && grep -q " gid=${_gid}$" "${_m}" 2> /dev/null
+  [ -n "${_gid}" ] && _marker_text "${_a}" | grep -q " gid=${_gid}$"
 }
 
 _do_convert() {
@@ -1067,9 +1121,6 @@ _do_convert() {
     _pass=$((_pass + 1))
     # shellcheck disable=SC2086
     _grp_walk "${_uGid}" "${_a}" ${_roots}
-    if [ -n "${_WALK_FAILED}" ]; then
-      printf '%s\n' "${_WALK_FAILED}" | _grp_fix_immutable "${_a}"
-    fi
     # shellcheck disable=SC2086
     _grp_residue "${_a}" ${_roots} || break
     [ "${_pass}" -ge 3 ] && break
@@ -1093,7 +1144,7 @@ _do_convert() {
 # current group. No identity change and no lock, so it is safe after a
 # root-run restore, on a migration destination and from the nightly.
 _do_reclaim() {
-  local _a="$1" _to _from _uGid _gid _roots _subs _ids _m _u _conv=NO _anyAcct=NO _anyUsers=NO
+  local _a="$1" _to _from _uGid _gid _roots _subs _ids _u _conv=NO _anyAcct=NO _anyUsers=NO
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
   # The same freeze convert honours: a frozen account is served from another
@@ -1147,16 +1198,13 @@ _do_reclaim() {
     _to="${_USRG}"
     _from="${_gid}"
   fi
-  _m="/data/disk/${_a}/${_MARK_REL}"
   # A clean tree costs one read-only traversal and no write: this is what
   # every automated caller pays on an already consistent account.
   # shellcheck disable=SC2086
   if ! _grp_residue "${_to}" ${_roots}; then
-    if [ -f "${_m}" ] || [ -L "${_m}" ]; then
-      _marker_valid "${_a}" || rm -f "${_m}"
-    fi
+    _marker_valid "${_a}" || _marker_drop "${_a}"
     # shellcheck disable=SC2086
-    if [ "${_to}" = "${_a}" ] && [ ! -f "${_m}" ] && _ids_converted "${_a}" ${_ids}; then
+    if [ "${_to}" = "${_a}" ] && ! _marker_present "${_a}" && _ids_converted "${_a}" ${_ids}; then
       _write_marker "${_a}" || _alrt "${_a}: the marker could not be written"
     fi
     _info "${_a}: files already in group ${_to}, nothing to reclaim"
@@ -1165,16 +1213,11 @@ _do_reclaim() {
   _msg "${_a}: reclaiming files for group ${_to}..."
   # shellcheck disable=SC2086
   _grp_walk "${_from}" "${_to}" ${_roots}
-  if [ -n "${_WALK_FAILED}" ]; then
-    printf '%s\n' "${_WALK_FAILED}" | _grp_fix_immutable "${_to}"
-  fi
   # A marker that does not record this box's group is a lie (it travelled
   # with a copy, or the account is not converted here).
-  if [ -f "${_m}" ] || [ -L "${_m}" ]; then
-    _marker_valid "${_a}" || rm -f "${_m}"
-  fi
+  _marker_valid "${_a}" || _marker_drop "${_a}"
   # shellcheck disable=SC2086
-  if [ "${_to}" = "${_a}" ] && [ ! -f "${_m}" ] && _ids_converted "${_a}" ${_ids}; then
+  if [ "${_to}" = "${_a}" ] && ! _marker_present "${_a}" && _ids_converted "${_a}" ${_ids}; then
     _write_marker "${_a}" || _alrt "${_a}: the marker could not be written"
   fi
   # shellcheck disable=SC2086
@@ -1231,9 +1274,6 @@ _do_revert() {
       _msg "${_a}: paths were written during the walk, walking again..."
       # shellcheck disable=SC2086
       _grp_walk "${_gid}" "${_USRG}" ${_roots}
-      if [ -n "${_WALK_FAILED}" ]; then
-        printf '%s\n' "${_WALK_FAILED}" | _grp_fix_immutable "${_USRG}"
-      fi
     fi
     # shellcheck disable=SC2086
     if _gid_left "${_gid}" ${_roots}; then
@@ -1285,19 +1325,20 @@ _do_status() {
   _wGid=$(_gid_of "${_WEBG}")
   _subs=$(_acct_subusers "${_a}")
   _ids="${_a} ${_a}.ftp ${_subs}"
-  _m="/data/disk/${_a}/${_MARK_REL}"
   _msg "== ${_a}"
   # A marker is a record of THIS box's conversion: its gid must be the gid of
   # the account group here. A copy from another box carries the source's
   # marker (rsync moves it with the tree); such a marker is stale and counts
-  # as absent -- convert rewrites it, revert removes it.
+  # as absent -- convert rewrites it, revert removes it. It is read once,
+  # inside the real log/.
   _mValid=NO
-  if [ -f "${_m}" ] && [ ! -L "${_m}" ]; then
-    if [ -n "${_gid}" ] && grep -q " gid=${_gid}$" "${_m}" 2> /dev/null; then
+  if _marker_present "${_a}"; then
+    _m=$(_marker_text "${_a}")
+    if [ -n "${_gid}" ] && grep -q " gid=${_gid}$" <<< "${_m}"; then
       _mValid=YES
-      _msg "marker:   $(head -1 "${_m}")"
+      _msg "marker:   $(head -1 <<< "${_m}")"
     else
-      _msg "marker:   STALE ($(head -1 "${_m}")) -- not this box's conversion, ignored"
+      _msg "marker:   STALE ($(head -1 <<< "${_m}")) -- not this box's conversion, ignored"
     fi
   else
     _msg "marker:   none"
