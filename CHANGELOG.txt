@@ -102,6 +102,10 @@
       their directories 0775 in the web server's group, which every
       account's users belong to. They are 0644 and 0755 now, as Adminer
       always was, set without following a link.
+    * The nightly pass over a ~/static platform no longer makes its
+      sites' settings.php, local.settings.php, civicrm.settings.php,
+      solr.php and drushrc.php readable by every account for a moment:
+      they stay 0440 while the rest of the platform gets its modes.
     * Root no longer changes the owner or mode of a shared-code
       revision's keys directory through a link the account put there,
       in the Octopus upgrade or in the nightly pass: the directory is

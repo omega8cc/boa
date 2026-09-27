@@ -1837,17 +1837,21 @@ _fix_seven_core_patch() {
 
 ### The walk of a static platform tree, inside its real top directory (the
 ### current one): every directory 0775 but the three Drush-lock dirs (their
-### contents are still walked), every regular file 0664. find walks without
-### following a link, and each mode is set from inside the directory walked
-### through a no-follow handle, so a name swapped for a link at any moment
-### is never followed.
+### contents are still walked), every regular file 0664 but the credential
+### files of each site dir, which _sites_cred_modes_here keeps 0440: widened
+### here and narrowed there, they were readable by every account in between.
+### The top directory is the docroot, or the composer app root one level
+### above it. find walks without following a link, and each mode is set from
+### inside the directory walked through a no-follow handle, so a name swapped
+### for a link at any moment is never followed.
 _static_perm_here() {
   _chmod_nofollow_here d 0775 .
   find . -mindepth 1 -type d \
     ! \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
     -o -path "*/vendor/symfony/console/Style" \) \
     -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0775 {} + &> /dev/null
-  find . -type f \
+  find . -type f -regextype posix-extended \
+    ! -regex '\./([^/]+/)?sites/[^/]+/(settings|local\.settings|civicrm\.settings|solr|drushrc)\.php' \
     -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0664 {} + &> /dev/null
   return 0
 }
