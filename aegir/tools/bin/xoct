@@ -89,11 +89,12 @@ _MIG_TRUST_TOOL="/var/xdrago/migration_proxy_trust.sh"
 
 ### Parsed, never sourced: log/ is rsynced host to host, so this file WILL
 ### arrive from the peer, and sourcing a line that came over the network as
-### root is not worth the convenience.
+### root is not worth the convenience. log/ is oN's: read inside the real
+### directory, never through a link or into a FIFO put at the name.
 _mig_get() {
   local _f="$1" _k="$2"
   [ -r "${_f}" ] || return 1
-  grep -m1 "^${_k}=" "${_f}" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'
+  _xoct_read_in "${_f%/*}" "${_f##*/}" | grep -m1 "^${_k}=" | cut -d= -f2- | tr -d '\r\n'
 }
 
 _mig_valid_mode() {
@@ -254,16 +255,17 @@ _mig_resolve() {
   return 0
 }
 
-### Write the policy record, preserving ownership/mode. Root-owned 0600.
+### Write the policy record. Root-owned 0600. log/ is oN's: the record is
+### put inside the real directory as a fresh root-only file renamed over the
+### name, never written, chowned or chmodded through a link put there.
 ### Optional $8 is the space-separated full peer IP list (_MIG_PEER_IPS): a
 ### relaying source can hold several routable addresses and the target's
 ### reconcile must keep trusting all of them, not just the primary.
 _mig_write_record() {
   local _root="$1" _role="$2" _peer_ip="$3" _peer_oct="$4" _mode="$5" _scope="$6" _dl="$7" _peer_ips="$8" _rdl="$9"
-  local _cnf="${_root}/${_MIG_CNF_NAME}" _tmp
+  local _cnf="${_root}/${_MIG_CNF_NAME}"
   _mig_valid_mode "${_mode}" || { echo "ALRT: refusing to write invalid mode '${_mode}'"; return 1; }
   mkdir -p "${_root}/log" 2>/dev/null
-  _tmp="${_cnf}.new.$$"
   {
     echo "# BOA migration proxy policy. Managed by xoct/xmass. Do not edit by hand."
     echo "_MIG_ROLE=${_role}"
@@ -281,11 +283,25 @@ _mig_write_record() {
     [ -n "${_rdl}" ] && echo "_MIG_RETIRE_DATE=${_rdl}"
     [ -n "${_peer_ips}" ] && echo "_MIG_PEER_IPS=${_peer_ips}"
     echo "_MIG_STAMPED=$(date -u '+%Y-%m-%d')"
-  } > "${_tmp}" || { rm -f "${_tmp}"; return 1; }
-  mv -f "${_tmp}" "${_cnf}" || { rm -f "${_tmp}"; return 1; }
-  chown root:root "${_cnf}" 2>/dev/null
-  chmod 600 "${_cnf}" 2>/dev/null
+  } | _xoct_in_real_dir "${_cnf%/*}" _xoct_write_here "${_cnf##*/}" 077 \
+    || return 1
+  _xoct_in_real_dir "${_cnf%/*}" chown -h root:root "./${_cnf##*/}" 2>/dev/null
   return 0
+}
+
+### The line $2 added to ./$1 in the current (pinned) log directory, kept
+### root's 0600 file: appended in place only when it is one, opened without
+### following a link or blocking on a FIFO; anything else at the name is
+### replaced by a fresh root-only file carrying its lines and the new one.
+_mig_log_here() {
+  if [ -f "./${1}" ] && [ ! -L "./${1}" ] \
+    && [ "$(stat -c '%u:%a' -- "./${1}" 2> /dev/null)" = "0:600" ] \
+    && ( umask 077; printf '%s\n' "${2}" | dd of="./${1}" \
+      oflag=append,nofollow,nonblock conv=notrunc status=none 2> /dev/null ); then
+    return 0
+  fi
+  { _xoct_read_here "${1}" | awk 1; printf '%s\n' "${2}"; } \
+    | _xoct_write_here "${1}" 077
 }
 
 ### Append-only audit. The only place the answer to "what were they actually
@@ -301,10 +317,9 @@ _mig_log() {
   _dl="$(printf '%s' "${_dl}" | tr -cd '[:print:]' | tr -d '|' | cut -c1-10)"
   _peer="$(printf '%s' "${_peer}" | tr -cd '[:print:]' | tr -d '|' | cut -c1-45)"
   mkdir -p "${_root}/log" 2>/dev/null
-  echo "$(date -u '+%Y-%m-%dT%H:%M:%S')|${_tool}|${_action}|${_detail}|${_mode}|${_dl:--}|${_peer:--}" \
-    >> "${_lg}" 2>/dev/null
-  chown root:root "${_lg}" 2>/dev/null
-  chmod 600 "${_lg}" 2>/dev/null
+  _xoct_in_real_dir "${_lg%/*}" _mig_log_here "${_lg##*/}" \
+    "$(date -u '+%Y-%m-%dT%H:%M:%S')|${_tool}|${_action}|${_detail}|${_mode}|${_dl:--}|${_peer:--}"
+  _xoct_in_real_dir "${_lg%/*}" chown -h root:root "./${_lg##*/}" 2>/dev/null
   return 0
 }
 
@@ -316,7 +331,8 @@ _mig_log() {
 ### ever written after a confirmed send.
 _mig_last_mail() {
   local _l
-  _l="$(grep '|mail|' "${1}/${_MIG_LOG_NAME}" 2>/dev/null | tail -1)"
+  _l="$(_xoct_read_in "${1}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+    | grep '|mail|' | tail -1)"
   [ -n "${_l}" ] || return 0
   printf '%s' "${_l}" | awk -F'|' '{ print $5 "|" $6 }'
 }
@@ -326,10 +342,12 @@ _mig_last_mail() {
 _mig_load_account_mail_facts() {
   local _root="$1" _a="$2"
   _THIS_HM_USER="${_a}"
+  ### log/ is oN's: read inside the real directory, never through a link or
+  ### into a FIFO put at the name
   _DOMAIN=""
-  [ -e "${_root}/log/domain.txt" ] && _DOMAIN="$(tr -d '\n' < "${_root}/log/domain.txt")"
+  [ -e "${_root}/log/domain.txt" ] && _DOMAIN="$(_xoct_read_in "${_root}/log" domain.txt | tr -d '\n')"
   _CLIENT_EMAIL=""
-  [ -e "${_root}/log/email.txt" ] && _CLIENT_EMAIL="$(tr -d '\n' < "${_root}/log/email.txt")"
+  [ -e "${_root}/log/email.txt" ] && _CLIENT_EMAIL="$(_xoct_read_in "${_root}/log" email.txt | tr -d '\n')"
   [[ "${_CLIENT_EMAIL}" =~ "@" ]] || _CLIENT_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
 }
@@ -856,7 +874,10 @@ _xoct_site_host_gateable() {
   grep -q "http-off-host.pid" /data/conf/global/global-mode.inc 2>/dev/null || return 1
   ### The global chain matches the site's own name, as nginx hands it over.
   grep -q "MAIN_SITE_NAME" "${_vht}" 2>/dev/null || return 1
-  _sp=$(grep "site_path'" "${_usr}/.drush/${_dom}.alias.drushrc.php" 2>/dev/null \
+  ### .drush is oN's: the alias read inside the real directory, never
+  ### through a link or into a FIFO put at the name
+  _sp=$(_xoct_read_in "${_usr}/.drush" "${_dom}.alias.drushrc.php" \
+    | grep "site_path'" \
     | head -1 \
     | sed "s/.*=>//; s/[' ,;]//g")
   [ -n "${_sp}" ] && grep -q "global.inc" "${_sp}/settings.php" 2>/dev/null
@@ -914,18 +935,80 @@ _xoct_gate_put_here() {
   chown -h "${3}" "./${1}" &> /dev/null
   return 0
 }
+### ./$1 in the current (pinned) directory with exactly the bytes read from
+### stdin, created under the umask $2 (022 gives 0644, 077 a root-only 0600)
+### and put as _xoct_put_here puts it.
+_xoct_write_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask "${2}"
+    dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+### ./$1 in the current (pinned) directory as an empty marker (0644), put
+### the same way: a link put at the name is replaced, never created through.
+_xoct_touch_here() {
+  _xoct_write_here "${1}" 022 < /dev/null
+}
+### ./control made a real directory, run inside the real static/: a link put
+### at the name is removed, a missing directory created 0755.
+_xoct_ctrl_dir_here() {
+  [ -L ./control ] && rm -f ./control
+  [ -d ./control ] || ( umask 022; mkdir -p ./control )
+}
+### The regular file ./$1 of the current (pinned) directory copied, forced
+### (no -u), to the same name in the real directory $3 on the target $2, $4
+### the caller's rsync error option. A link is never carried and neither end
+### resolves a name on its path through a link the account put there. Nothing
+### travels when ./$1 is not a regular file.
+_xoct_put_file_remote_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 0
+  _xoct_rsync -aEAX --no-links ${4} \
+    --rsync-path="$(_xoct_rsync_path_in "${3}")" -e ssh \
+    "./${1}" "root@${2}:./${1}"
+}
+### The entries of the current (pinned) directory the glob $3 names (empty:
+### the directory's contents), expanded here, copied with the rsync options
+### that follow into the real directory $2 on the target $1: neither end
+### resolves a name on its path through a link the account put there.
+_xoct_copy_here() {
+  local _h="${1}" _d="${2}" _g="${3}"
+  shift 3
+  # shellcheck disable=SC2086
+  _xoct_rsync "$@" --rsync-path="$(_xoct_rsync_path_in "${_d}")" -e ssh \
+    ./${_g} "root@${_h}:./"
+}
 
 ### The same rule on the target box: the commands $3 run there inside the
-### real static/control of the account $2 (the target $1), where _rr reads a
-### name as _xoct_read_here does and _rp puts one as _xoct_put_here does
-### (empty when no content is given). The target account is the tenant's as
-### soon as its identity has travelled.
+### real directory $2 (below /data/disk or /home every name on the path a
+### real directory) of the target $1, where _rr reads a name as
+### _xoct_read_here does and _rp puts one as _xoct_put_here does (empty when
+### no content is given). The target account is the tenant's as soon as its
+### identity has travelled.
 _XOCT_REMOTE_CTRL_FN='_rr() { timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2> /dev/null; }
 _rp() { local _t="./.${1}.put.$$.${RANDOM}"; rm -f -- "${_t}"; if ( umask 022; { [ -n "${2}" ] && printf "%s\n" "${2}"; true; } | dd of="${_t}" conv=excl status=none 2> /dev/null ) && mv -f -T -- "${_t}" "./${1}"; then return 0; fi; rm -f -- "${_t}"; return 1; }'
-_xoct_remote_ctrl() {
+_xoct_remote_in() {
+  local _a=/data/disk
+  case "${2}" in /home/?*) _a=/home ;; esac
   ssh root@"${1}" "${_XOCT_REMOTE_CTRL_FN}
-_w=\"\$(cd -P /data/disk 2> /dev/null && pwd -P)/${2}/static/control\"
-cd -P -- \"/data/disk/${2}/static/control\" 2> /dev/null && [ \"\$(pwd -P)\" = \"\${_w}\" ] && { ${3}; }"
+_w=\"\$(cd -P ${_a} 2> /dev/null && pwd -P)${2#"${_a}"}\"
+cd -P -- \"${2}\" 2> /dev/null && [ \"\$(pwd -P)\" = \"\${_w}\" ] && { ${3}; }"
+}
+### The commands $3 inside the real static/control of the account $2 there.
+_xoct_remote_ctrl() {
+  _xoct_remote_in "${1}" "/data/disk/${2}/static/control" "${3}"
+}
+### An --rsync-path that starts the receiving rsync on the target inside the
+### real directory $1 (below /data/disk or /home every name on the path a
+### real directory), so the destination is given as ./ and never resolves
+### through a link the account put there; the copy fails when $1 is not
+### that directory.
+_xoct_rsync_path_in() {
+  local _a=/data/disk
+  case "${1}" in /home/?*) _a=/home ;; esac
+  printf '%s' "cd -P -- '${1}' && [ \"\$(pwd -P)\" = \"\$(cd -P ${_a} && pwd -P)${1#"${_a}"}\" ] && rsync"
 }
 
 ### Write the per-host gate for one hostname. static/control is
@@ -986,8 +1069,10 @@ _migrate_sites() {
   ### source-named panel, so the panel answered 404 from the new box's
   ### catch-all and the source lost its own monitoring canary. Identify the
   ### panel by what it is (the hostmaster alias site_path), not by which
-  ### alias files happen to exist.
-  _HM_PANEL_FQDN=$(grep "site_path'" ${_USR}/.drush/hostmaster.alias.drushrc.php 2>/dev/null \
+  ### alias files happen to exist. .drush is oN's: every alias is read inside
+  ### the real directory, never through a link or into a FIFO put there.
+  _HM_PANEL_FQDN=$(_xoct_read_in "${_USR}/.drush" hostmaster.alias.drushrc.php \
+    | grep "site_path'" \
     | head -1 \
     | sed "s/.*=>//; s/[' ,;]//g")
   _HM_PANEL_FQDN=$(basename "${_HM_PANEL_FQDN}" 2>/dev/null)
@@ -1055,8 +1140,8 @@ _migrate_sites() {
     fi
     if [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
       echo Dom is ${_Dom}
-      _Dir=`cat ${_USR}/.drush/${_Dom}.alias.drushrc.php | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
-      _Plr=`cat ${_USR}/.drush/${_Dom}.alias.drushrc.php | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g"`
+      _Dir=$(_xoct_read_in "${_USR}/.drush" "${_Dom}.alias.drushrc.php" | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")
+      _Plr=$(_xoct_read_in "${_USR}/.drush" "${_Dom}.alias.drushrc.php" | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")
       if [ "${_cmd}" = "import" ] || [ "${_cmd}" = "export" ]; then
         _xoct_sql_maint_hold
         _DBN=`cat ${_Dir}/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
@@ -1247,9 +1332,8 @@ EOFMYSQL
         ### static/ is tenant-writable, so control and the pid name can be
         ### planted as symlinks; -e is false for a DANGLING link, so the guard
         ### below would otherwise let > create the tenant's chosen target.
-        [ -L "${_USR}/static/control" ] \
-          && rm -f ${_USR}/static/control &> /dev/null
-        mkdir -p ${_USR}/static/control
+        ### control is made a real directory from inside the real static/.
+        _xoct_in_real_dir "${_USR}/static" _xoct_ctrl_dir_here
         if _xoct_in_real_dir "${_USR}/static/control" \
           _xoct_gate_put_here http-off.pid 3600 "${_oct}:${_OCT_GRP}"; then
           echo "INFO: account ${_oct} http-off pid created"
@@ -1538,6 +1622,11 @@ REDIR
 ### directory: the globs expand here, never in the caller's directory.
 _xoct_rm_fpm_markers_here() {
   rm -f -- ./.multi-fpm.*.pid ./.single-fpm.*.pid ./.multi-nginx-fpm.pid
+}
+### The dumps in the current (pinned) src/ directory removed: the glob
+### expands here, never in a directory a link put in its place names.
+_xoct_rm_sql_dumps_here() {
+  rm -f -- ./*.sql
 }
 _xoct_heal_fpm_pins() {
   local _acct="$1"
@@ -2036,16 +2125,14 @@ _xoct_seed_target_control_pins() {
   # account-level pins and not the per-site ones. Site lines key on the
   # domain, which migration does not change, so the copy is valid early and
   # the transfer's forced copy converges it later either way.
-  ### Only a regular file travels, from a real directory: static/control
-  ### is the tenant's, and a link carried to the target would be followed
-  ### there by root (the chown below, any later reader).
+  ### Only a regular file travels, from the real directory into the real
+  ### directory: static/control and log/ are the account's on both boxes,
+  ### and a link carried to the target, or one put on either path, would be
+  ### followed there by root (the chown below, any later reader).
   for _f in static/control/fpm.info static/control/cli.info \
     static/control/multi-fpm.info log/fpm.txt log/cli.txt; do
-    _xoct_in_real_dir "${_sUsr}/${_f%/*}" \
-      test -f "./${_f##*/}" -a ! -L "./${_f##*/}" || continue
-    _xoct_rsync -aEAX ${_ieni} -e ssh \
-      "${_sUsr}/${_f}" \
-      "root@${_t}:${_dUsr}/${_f}"
+    _xoct_in_real_dir "${_sUsr}/${_f%/*}" _xoct_put_file_remote_here \
+      "${_f##*/}" "${_t}" "${_dUsr}/${_f%/*}" "${_ieni}"
   done
   ### multi-fpm.info gets the same owner as its two siblings. It was left out,
   ### so it kept the SOURCE's owner name -- which in rename mode does not
@@ -2055,8 +2142,10 @@ _xoct_seed_target_control_pins() {
   ### more now that renameaegirhost §2d rewrites this file during a rename:
   ### two writers, one of which was leaving it mis-owned.
   ### The group is the account's group ON THE TARGET (its own once converted
-  ### there, the box-wide one until then), asked of the target itself.
-  ssh root@"${_t}" "_g=\$(id -gn ${_dAcct} 2>/dev/null); [ \"\$_g\" = ${_dAcct} ] || _g=users; chown -h ${_dAcct}.ftp:\$_g ${_dUsr}/static/control/fpm.info ${_dUsr}/static/control/cli.info ${_dUsr}/static/control/multi-fpm.info" &> /dev/null
+  ### there, the box-wide one until then), asked of the target itself. The
+  ### chown runs inside the real static/control there, on ./names.
+  _xoct_remote_in "${_t}" "${_dUsr}/static/control" \
+    "_g=\$(id -gn ${_dAcct} 2> /dev/null); [ \"\${_g}\" = ${_dAcct} ] || _g=users; chown -h ${_dAcct}.ftp:\${_g} ./fpm.info ./cli.info ./multi-fpm.info" &> /dev/null
   return 0
 }
 
@@ -2088,10 +2177,11 @@ _xoct_sync_shell_credentials() {
   ### pass.txt travels ONLY when the paired hash actually landed: it is what
   ### the client is shown, and shipping it after a failed chpasswd would
   ### advertise a password that does not work. A re-run converges both.
+  ### log/ is oN's on both boxes: a regular file only, from the real
+  ### directory into the real directory.
   if [ "${_set}" = "YES" ] && [ -e "${_sUsr}/log/pass.txt" ]; then
-    _xoct_rsync -aEAX ${_ieni} -e ssh \
-      "${_sUsr}/log/pass.txt" \
-      "root@${_t}:${_dUsr}/log/pass.txt"
+    _xoct_in_real_dir "${_sUsr}/log" _xoct_put_file_remote_here \
+      pass.txt "${_t}" "${_dUsr}/log" "${_ieni}"
   elif [ -e "${_sUsr}/log/pass.txt" ]; then
     echo "ALRT: NOT carrying log/pass.txt for ${_dst} -- the shadow hash was not set on ${_t}"
   fi
@@ -2168,7 +2258,10 @@ _xoct_wait_target_install_settled() {
   fi
   echo "INFO: waiting for the install on ${_t} to settle (octopus_log >= 2 lines, up to ${_max}s)"
   while [ "${_w}" -lt "${_max}" ]; do
-    _n=$(ssh root@"${_t}" "wc -l < /data/disk/${_dst}/log/octopus_log.txt 2>/dev/null" 2>/dev/null | tr -d ' \n')
+    ### log/ is oN's there too: read inside the real directory, never
+    ### through a link or into a FIFO put at the name
+    _n=$(_xoct_remote_in "${_t}" "/data/disk/${_dst}/log" \
+      '_rr octopus_log.txt | wc -l' 2>/dev/null | tr -d ' \n')
     case "${_n}" in ''|*[!0-9]*) _n=0 ;; esac
     if [ "${_n}" -ge 2 ]; then
       echo "INFO: install on ${_t} settled after ${_w}s"
@@ -2250,10 +2343,11 @@ _xoct_wait_boa_quiet() {
 ### key by removing its line and appending it (a reorder is not a change).
 _xoct_seed_witness() {   # 1 = account, 2 = target host
   local _u="$1" _t="$2"
-  ### The account's files are summed as read without following a link or
-  ### blocking on a FIFO (static/control is the tenant's there too), in
-  ### md5sum's own line shape; a name that is not a regular file is absent.
-  ssh root@"${_t}" "cd /data/disk/${_u} 2>/dev/null && { sort /root/.${_u}.octopus.cnf 2>/dev/null | md5sum | sed \"s#  -\\\$#  /root/.${_u}.octopus.cnf#\"; for _f in static/control/fpm.info static/control/cli.info static/control/multi-fpm.info log/fpm.txt log/cli.txt; do [ -f \"\${_f}\" ] && [ ! -L \"\${_f}\" ] || continue; printf '%s  %s\n' \"\$(timeout 10 dd if=\"\${_f}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null | md5sum | cut -d' ' -f1)\" \"\${_f}\"; done; }" 2>/dev/null
+  ### The account's files are summed as read inside their real directory,
+  ### without following a link or blocking on a FIFO (static/control and
+  ### log/ are the tenant's there too), in md5sum's own line shape; a name
+  ### that is not a regular file there is absent.
+  ssh root@"${_t}" "cd /data/disk/${_u} 2>/dev/null && { sort /root/.${_u}.octopus.cnf 2>/dev/null | md5sum | sed \"s#  -\\\$#  /root/.${_u}.octopus.cnf#\"; _w=\"\$(cd -P /data/disk 2>/dev/null && pwd -P)/${_u}\"; for _f in static/control/fpm.info static/control/cli.info static/control/multi-fpm.info log/fpm.txt log/cli.txt; do ( cd -P -- \"\${_f%/*}\" 2>/dev/null && [ \"\$(pwd -P)\" = \"\${_w}/\${_f%/*}\" ] && [ -f \"./\${_f##*/}\" ] && [ ! -L \"./\${_f##*/}\" ] && printf '%s  %s\n' \"\$(timeout 10 dd if=\"./\${_f##*/}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null | md5sum | cut -d' ' -f1)\" \"\${_f}\" ); done; }" 2>/dev/null
 }
 
 _xoct_seed_witness_delta() {   # 1 = was, 2 = now (md5sum output, one line per file)
@@ -2424,11 +2518,13 @@ _migrate_prepare() {
   esac
   _THIS_HM_USER=$(_xoct_runtime_oct)
   _USR=/data/disk/${_THIS_HM_USER}
-  _THIS_HM_SITE=`cat ${_USR}/.drush/hostmaster.alias.drushrc.php \
+  ### .drush and log/ are oN's: read inside the real directories, never
+  ### through a link or into a FIFO put at a name there
+  _THIS_HM_SITE=$(_xoct_read_in "${_USR}/.drush" hostmaster.alias.drushrc.php \
     | grep "site_path'" \
     | cut -d: -f2 \
     | awk '{ print $3}' \
-    | sed "s/[\,']//g"`
+    | sed "s/[\,']//g")
   echo _THIS_HM_USER ${_THIS_HM_USER}
   echo _USR ${_USR}
   echo _THIS_HM_SITE ${_THIS_HM_SITE}
@@ -2436,23 +2532,23 @@ _migrate_prepare() {
   ### proxy/export notice has gone out with an empty subject tail. Read the
   ### per-account stamp here, alongside the other facts the mails are built from.
   if [ -e "${_USR}/log/domain.txt" ]; then
-    _DOMAIN=`cat ${_USR}/log/domain.txt`
+    _DOMAIN=$(_xoct_read_in "${_USR}/log" domain.txt)
     _DOMAIN=`echo -n ${_DOMAIN} | tr -d "\n"`
   fi
   if [ -e "${_USR}/log/option.txt" ]; then
-    _CLIENT_OPTION=`cat ${_USR}/log/option.txt`
+    _CLIENT_OPTION=$(_xoct_read_in "${_USR}/log" option.txt)
     _CLIENT_OPTION=`echo -n ${_CLIENT_OPTION} | tr -d "\n"`
   fi
   if [ -e "${_USR}/log/cores.txt" ]; then
-    _CLIENT_CORES=`cat ${_USR}/log/cores.txt`
+    _CLIENT_CORES=$(_xoct_read_in "${_USR}/log" cores.txt)
     _CLIENT_CORES=`echo -n ${_CLIENT_CORES} | tr -d "\n"`
   fi
   if [ -e "${_USR}/log/subscr.txt" ]; then
-    _CLIENT_SUBSCR=`cat ${_USR}/log/subscr.txt`
+    _CLIENT_SUBSCR=$(_xoct_read_in "${_USR}/log" subscr.txt)
     _CLIENT_SUBSCR=`echo -n ${_CLIENT_SUBSCR} | tr -d "\n"`
   fi
   if [ -e "${_USR}/log/email.txt" ]; then
-    _CLIENT_EMAIL=`cat ${_USR}/log/email.txt`
+    _CLIENT_EMAIL=$(_xoct_read_in "${_USR}/log" email.txt)
     _CLIENT_EMAIL=`echo -n ${_CLIENT_EMAIL} | tr -d "\n"`
     if [[ "${_CLIENT_EMAIL}" =~ "@" ]]; then
       _DO_NOTHING=YES
@@ -2485,9 +2581,9 @@ _migrate_prepare() {
     ### dedupe on the recorded mail line (field 7 = peer), so a later migration
     ### to a DIFFERENT target still notifies. reset-state clears nothing here
     ### by design: the log is the audit trail of what the client was told.
-    _XOCT_START_MAILED=$(awk -F'|' -v t="${_tgt}" \
-      '$3=="mail" && $4=="start" && $7==t { c++ } END { print c+0 }' \
-      ${_USR}/log/migproxy.log 2>/dev/null)
+    _XOCT_START_MAILED=$(_xoct_read_in "${_USR}/log" migproxy.log \
+      | awk -F'|' -v t="${_tgt}" \
+      '$3=="mail" && $4=="start" && $7==t { c++ } END { print c+0 }')
     if [ "${_XOCT_START_MAILED:-0}" != "0" ]; then
       echo "INFO: migration start notice already sent for ${_oct} to ${_tgt}; not re-mailing"
     else
@@ -2571,12 +2667,16 @@ _migrate_prepare() {
       # imported DB still holds this FQDN. Recording it here pins OLD
       # deterministically (and keeps an aborted rename re-runnable after §3
       # already rewrote the aliases). Travels with the log/ transfer sync.
-      _SRC_FQDN=$(grep "remote_host" ${_USR}/.drush/server_master.alias.drushrc.php 2>/dev/null \
+      # The alias is read and the record put inside the real .drush and
+      # log/ (both oN's), never through a link put at either name.
+      _SRC_FQDN=$(_xoct_read_in "${_USR}/.drush" server_master.alias.drushrc.php \
+        | grep "remote_host" \
         | head -1 \
         | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
       _SRC_FQDN=${_SRC_FQDN//[^a-zA-Z0-9.\-]/}
       [ -z "${_SRC_FQDN}" ] && _SRC_FQDN=$(hostname -f 2>/dev/null | tr -d '\n')
-      echo -n "${_SRC_FQDN}" > ${_USR}/log/sourcefqdn.txt
+      printf '%s' "${_SRC_FQDN}" \
+        | _xoct_in_real_dir "${_USR}/log" _xoct_write_here sourcefqdn.txt 022
       ### exported.pid is stamped by the run verdict AFTER _migrate_sites,
       ### and only when every site dump completed -- the marker now means
       ### "this account's export is restorable", not "a dump was attempted".
@@ -2620,9 +2720,11 @@ _migrate_prepare() {
     # partial run leaves the live DB holding SOURCE-form rows, invisible to
     # the dest-form scan — its hostmaster front names the recorded source
     # FQDN, which nothing else on the box can carry). The winner is recorded
-    # so the printed recovery path stays deterministic.
+    # so the printed recovery path stays deterministic. log/ is oN's: its
+    # records are read and put inside the real directory, never through a
+    # link or into a FIFO put at the name.
     if [ -s "${_USR}/log/panel_db.txt" ]; then
-      _HDB_REC=$(cat ${_USR}/log/panel_db.txt | tr -d "\n")
+      _HDB_REC=$(_xoct_read_in "${_USR}/log" panel_db.txt | tr -d "\n")
       _HDB_REC=${_HDB_REC//[^a-zA-Z0-9_]/}
       if [ -n "${_HDB_REC}" ] && [ -n "$(mysql --silent -u root -h${_SQL_CONNECT} \
           -P${_THIS_DB_PORT} --protocol=tcp -N -B \
@@ -2636,7 +2738,7 @@ _migrate_prepare() {
         --protocol=tcp -N -B -e "SHOW DATABASES LIKE '${_HDB}'" 2>/dev/null)" ]; then
       _SRC_FRONT=""
       if [ -s "${_USR}/log/sourcefqdn.txt" ]; then
-        _SRC_FRONT="${_oct}.$(cat ${_USR}/log/sourcefqdn.txt | tr -d "\n")"
+        _SRC_FRONT="${_oct}.$(_xoct_read_in "${_USR}/log" sourcefqdn.txt | tr -d "\n")"
         _SRC_FRONT=${_SRC_FRONT//[^a-zA-Z0-9.-]/}
       fi
       _HDB_LIVE=""
@@ -2681,7 +2783,8 @@ _migrate_prepare() {
         exit 1
       fi
     fi
-    echo -n "${_HDB}" > ${_USR}/log/panel_db.txt
+    printf '%s' "${_HDB}" \
+      | _xoct_in_real_dir "${_USR}/log" _xoct_write_here panel_db.txt 022
     if ! mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql; then
       echo "ERROR: hostmaster dump import into ${_HDB} FAILED — this import is INCOMPLETE"
       echo "ERROR: nothing was renamed; fix the cause, then re-run the FULL import"
@@ -2697,9 +2800,9 @@ _migrate_prepare() {
     ### migration that ENDED with this import are cleared with the stamp. A
     ### proxy-failed.pid (an older source shipped it) goes too: this box
     ### serves the account now, and the marker would park its dispatcher.
-    rm -f ${_USR}/log/exported.pid ${_USR}/log/transferred.pid \
-      ${_USR}/log/export_failed.pid ${_USR}/log/proxy-failed.pid
-    touch ${_USR}/log/imported.pid
+    _xoct_in_real_dir "${_USR}/log" rm -f -- ./exported.pid ./transferred.pid \
+      ./export_failed.pid ./proxy-failed.pid
+    _xoct_in_real_dir "${_USR}/log" _xoct_touch_here imported.pid
     if ! _xoct_reconcile_panel_platform "${_USR}" "${_oct}" "${_HDB}"; then
       echo "ERROR: panel platform reconciliation failed for ${_USR} — this import is INCOMPLETE"
       echo "ERROR: the imported DB names a hostmaster platform this box cannot serve; continuing"
@@ -2711,7 +2814,7 @@ _migrate_prepare() {
     fi
 
     if [ "${_fix}" = "fix" ]; then
-      _DOMAIN=`cat ${_USR}/log/domain.txt`
+      _DOMAIN=$(_xoct_read_in "${_USR}/log" domain.txt)
       _DOMAIN=`echo -n ${_DOMAIN} | tr -d "\n"`
 
       _vSet="variable-set --always-set"
@@ -2741,7 +2844,7 @@ _migrate_prepare() {
     ###
     _RAH_OLD=""
     if [ -s "${_USR}/log/sourcefqdn.txt" ]; then
-      _RAH_OLD=$(cat ${_USR}/log/sourcefqdn.txt | tr -d "\n")
+      _RAH_OLD=$(_xoct_read_in "${_USR}/log" sourcefqdn.txt | tr -d "\n")
       _RAH_OLD=${_RAH_OLD//[^a-zA-Z0-9.\-]/}
     fi
     # Rename-mode import (source account lands under a different target
@@ -2918,7 +3021,8 @@ _migrate_prepare() {
       ### could never arm the pass that applies it.
       _TGT_SEED_WAS=$(_xoct_seed_witness "${_TGT_HM_USER}" "${_tgt}")
       _TGT_ARMED_WAS=$(ssh root@${_tgt} "[ -e /data/disk/${_TGT_HM_USER}/static/control/run-upgrade.pid ] && echo YES" 2>/dev/null)
-      _TGT_LAST_PASS=$(ssh root@${_tgt} "tail -1 /data/disk/${_TGT_HM_USER}/log/octopus_log.txt 2>/dev/null" 2>/dev/null)
+      _TGT_LAST_PASS=$(_xoct_remote_in "${_tgt}" "/data/disk/${_TGT_HM_USER}/log" \
+        '_rr octopus_log.txt | tail -1' 2>/dev/null)
       _TGT_FPM_RUN=$(printf '%s' "${_TGT_LAST_PASS}" | grep -oE 'FPM [0-9.]+' | awk '{print $2}')
       _TGT_CLI_RUN=$(printf '%s' "${_TGT_LAST_PASS}" | grep -oE 'CLI [0-9.]+' | awk '{print $2}')
       ### Post-install seeding: merge the portable cnf values, force the
@@ -2975,8 +3079,11 @@ _migrate_prepare() {
       ### historical order deleted the run-upgrade.pid it had just created.
       _xoct_remote_ctrl "${_tgt}" "${_TGT_HM_USER}" 'rm -f -- ./*.pid'
       if [ "${_ARM_UPGRADE}" = "YES" ]; then
+        ### Both put fresh as root, then handed to the main login as the
+        ### queue's own writer does (the group asked of the target itself),
+        ### so the account can still edit its platform list in place.
         _xoct_remote_ctrl "${_tgt}" "${_TGT_HM_USER}" \
-          '_rp platforms.info "$(_rr platforms.info; echo UP)"; _rp run-upgrade.pid'
+          "_rp platforms.info \"\$(_rr platforms.info; echo UP)\"; _rp run-upgrade.pid; _g=\$(id -gn ${_TGT_HM_USER} 2> /dev/null); [ \"\${_g}\" = ${_TGT_HM_USER} ] || _g=users; chown -h ${_TGT_HM_USER}.ftp:\${_g} ./platforms.info ./run-upgrade.pid 2> /dev/null"
         echo "INFO: enforced upgrade armed on ${_tgt} for ${_TGT_HM_USER}: ${_ARM_WHY}"
         ### A demoted box (the failback target, or any ex-active whose
         ### dispatcher was parked under /var/backups/off-run) has nothing to
@@ -3009,20 +3116,21 @@ _migrate_prepare() {
     if [ "${_XOCT_EXPORT_FAIL:-0}" != "0" ]; then
       ### Parsed never sourced. Travels with the log/ transfer sync, so the
       ### import side refuses on it even when the operator skips the source
-      ### side gate.
+      ### side gate. log/ is oN's: the markers are put and removed inside the
+      ### real directory, never through a link put at the name.
       {
         echo "failed=${_XOCT_EXPORT_FAIL}"
         echo "dbs=${_XOCT_EXPORT_FAILED_DBS# }"
         echo "time=$(date -u '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null)"
-      } > ${_USR}/log/export_failed.pid
+      } | _xoct_in_real_dir "${_USR}/log" _xoct_write_here export_failed.pid 022
       echo "ALRT: export for ${_oct}: ${_XOCT_EXPORT_FAIL} site database export(s) FAILED:${_XOCT_EXPORT_FAILED_DBS}"
       echo "ERROR: NOT stamping exported.pid; transfer and import will refuse this account"
       echo "ERROR: fix the cause, then re-run 'xoct export ${_oct} ${_tgt}${_dst:+ ${_dst}}'"
       echo "ERROR: (site dumps are redone in place; the hostmaster dump is kept)"
       _XOCT_RUN_FAIL=YES
     elif [ -s "${_USR}/src/prev_hostmaster.sql" ]; then
-      rm -f ${_USR}/log/export_failed.pid
-      touch ${_USR}/log/exported.pid
+      _xoct_in_real_dir "${_USR}/log" rm -f -- ./export_failed.pid
+      _xoct_in_real_dir "${_USR}/log" _xoct_touch_here exported.pid
       echo "INFO: export for ${_oct}: every site database dump completed; exported.pid stamped"
     fi
   fi
@@ -3049,7 +3157,7 @@ _migrate_prepare() {
         echo "failed=${_XOCT_IMPORT_FAIL}"
         echo "dbs=${_XOCT_IMPORT_FAILED_DBS# }"
         echo "time=$(date -u '+%Y-%m-%d %H:%M:%S UTC' 2>/dev/null)"
-      } > ${_USR}/log/import_failed.pid
+      } | _xoct_in_real_dir "${_USR}/log" _xoct_write_here import_failed.pid 022
       echo "ALRT: import for ${_oct}: ${_XOCT_IMPORT_FAIL} site database import(s) FAILED or SKIPPED:${_XOCT_IMPORT_FAILED_DBS}"
       echo "ERROR: their verifies were NOT scheduled; sites with clean loads were imported normally"
       echo "ERROR: recovery -- fix the cause (re-export/re-transfer the failed dumps if hollow), then:"
@@ -3058,7 +3166,7 @@ _migrate_prepare() {
       echo "ERROR: (safe: the full import re-run re-imports from the same transferred dumps)"
       _XOCT_RUN_FAIL=YES
     else
-      rm -f ${_USR}/log/import_failed.pid
+      _xoct_in_real_dir "${_USR}/log" rm -f -- ./import_failed.pid
     fi
   fi
   _xoct_sql_maint_release
@@ -3334,7 +3442,19 @@ _xoct_transfer_static_symlink_safe() {
 
   echo "INFO: Static sync pass 1/2 (preserve symlinks, exclude static/files)"
   mkdir -p "${_X_SRC_USR}/static"
-  _xoct_rsync -aEAXqu ${_X_IENI} --exclude=/files -e ssh "${_X_SRC_USR}/static/" "root@${_X_TGT_HOST}:${_X_DST_STATIC}/"
+  ### static/ is the account's on both boxes: the copy runs from inside the
+  ### real directory with a relative source, and the receiving rsync starts
+  ### inside the real static/ on the target, so neither end resolves static/
+  ### through a link put in its place. A static/ that is not a real
+  ### directory here is never followed, and the transfer is not complete.
+  if ! _xoct_in_real_dir "${_X_SRC_STATIC}" true; then
+    echo "DENY: ${_X_SRC_STATIC} is not a real directory -- not followed; static/ not copied"
+    _XOCT_NOT_CLEAN=YES
+    _XOCT_STORE_RC=1
+    return 1
+  fi
+  _xoct_in_real_dir "${_X_SRC_STATIC}" _xoct_copy_here "${_X_TGT_HOST}" \
+    "${_X_DST_STATIC}" '' -aEAXqu ${_X_IENI} --exclude=/files
 
   # The static sync uses -u (skip-newer), but `xoct create` on the target just
   # wrote FRESH default control files (newer mtime) that shadow the migrated
@@ -3347,16 +3467,13 @@ _xoct_transfer_static_symlink_safe() {
   # all three are directly valid on the target: force them over WITHOUT -u.
   # The create step already gated on the pinned versions being installed on
   # the target, so the forced pins cannot strand a site without a pool.
-  # Only regular files, from the real control directory: a pin that is a
-  # link, or a control that is one, is never carried.
+  # Only regular files, from the real control directory into the real
+  # control directory on the target: a pin that is a link, or a control on
+  # either box that is one, is never carried or written through.
   local _pin
   for _pin in multi-fpm.info fpm.info cli.info; do
-    if _xoct_in_real_dir "${_X_SRC_USR}/static/control" \
-      test -f "./${_pin}" -a ! -L "./${_pin}"; then
-      _xoct_rsync -aEAX ${_X_IENI} -e ssh \
-        "${_X_SRC_USR}/static/control/${_pin}" \
-        "root@${_X_TGT_HOST}:${_X_DST_STATIC}/control/${_pin}"
-    fi
+    _xoct_in_real_dir "${_X_SRC_USR}/static/control" _xoct_put_file_remote_here \
+      "${_pin}" "${_X_TGT_HOST}" "${_X_DST_STATIC}/control" "${_X_IENI}"
   done
 
   echo "INFO: Static sync pass 2/2 (materialize/mirror static/files per target disk reality)"
@@ -3413,7 +3530,8 @@ _mig_render_table() {
       fi
     fi
     _lt="(never)"
-    _lastline="$(grep '|mail|' "${_root}/${_MIG_LOG_NAME}" 2>/dev/null | tail -1)"
+    _lastline="$(_xoct_read_in "${_root}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+      | grep '|mail|' | tail -1)"
     [ -n "${_lastline}" ] \
       && _lt="$(printf '%s' "${_lastline}" | awk -F'|' '{ print $5 "/" $6 " on " substr($1,1,10) }')"
     if [ -e "${_root}/log/proxied.pid" ] && [ "${_m}" = "-" ]; then
@@ -3471,7 +3589,10 @@ _xoct_warn_proxy_cert_horizon() {
 ### pushed record carries the PEER's address as its identity, this box as the
 ### peer field(s), and the local account name for tracing.
 ### set -e on the remote side: without it the exit status is the trailing
-### chmod's and a truncated write (full disk) would pass the fail-closed gate.
+### chown's and a truncated write (full disk) would pass the fail-closed gate.
+### log/ is the account's on the peer too: the record is read and put inside
+### the real directory, read without following a link or opening a FIFO and
+### put as a fresh root-only file renamed over the name.
 ### rc 7 = the peer owns a SOURCE-role record for that account (it has since
 ### become a source itself, chained migration); callers decide whether that is
 ### fatal (fresh conversion: yes) or an alert (late policy edits: no).
@@ -3491,17 +3612,21 @@ _xoct_push_peer_record() {
   local _perr="/var/backups/.xoct.pusherr.$$"
   ssh root@"${_pip}" "bash -s" 2>"${_perr}" <<PEERREC
 set -e
-_cnf="/data/disk/${_pacct}/log/migproxy.cnf"
-if [ -r "\${_cnf}" ] \\
-  && grep -qx "_MIG_ROLE=source" "\${_cnf}" \\
+mkdir -p "/data/disk/${_pacct}/log" 2>/dev/null || true
+_w="\$(cd -P /data/disk && pwd -P)/${_pacct}/log"
+cd -P -- "/data/disk/${_pacct}/log"
+[ "\$(pwd -P)" = "\${_w}" ]
+_old="\$(timeout 10 dd if=./migproxy.cnf iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null || true)"
+if printf '%s\\n' "\${_old}" | grep -qx "_MIG_ROLE=source" \\
   && hostname -I 2>/dev/null | tr ' ' '\\n' \\
-     | grep -qxF "\$(grep -m1 '^_MIG_HOST_IP=' "\${_cnf}" | cut -d= -f2-)"; then
+     | grep -qxF "\$(printf '%s\\n' "\${_old}" | grep -m1 '^_MIG_HOST_IP=' | cut -d= -f2-)"; then
   # This box authored its own SOURCE record for the account (it migrated on
   # somewhere else); an inbound push must not destroy its outbound policy.
   exit 7
 fi
-mkdir -p "/data/disk/${_pacct}/log" 2>/dev/null
-cat > "\${_cnf}.new.\$\$" <<'RECEOF'
+_t="./.migproxy.cnf.put.\$\$.\${RANDOM}"
+rm -f -- "\${_t}"
+( umask 077; dd of="\${_t}" conv=excl status=none 2>/dev/null ) <<'RECEOF' || { rm -f -- "\${_t}"; exit 1; }
 # BOA migration proxy policy. Managed by xoct/xmass. Do not edit by hand.
 _MIG_ROLE=${_prole}
 _MIG_HOST_IP=${_pip}
@@ -3514,9 +3639,8 @@ ${_prdl:+_MIG_RETIRE_DATE=${_prdl}}
 _MIG_PEER_IPS=${_myall}
 _MIG_STAMPED=$(date -u '+%Y-%m-%d')
 RECEOF
-mv -f "\${_cnf}.new.\$\$" "\${_cnf}"
-chown root:root "\${_cnf}" 2>/dev/null || true
-chmod 600 "\${_cnf}"
+mv -f -T -- "\${_t}" ./migproxy.cnf
+chown -h root:root ./migproxy.cnf 2>/dev/null || true
 PEERREC
   local _prc=$?
   ### The remote stderr is what names the cause a refusal must show (a host
@@ -4227,14 +4351,14 @@ _migrate_init() {
       && [ "${_XOCT_FORCE}" != "YES" ]; then
       echo "_USR ${_oct} is not eligible for migration: export incomplete"
       echo "ALRT: log/export_failed.pid is present -- the last export left FAILED site dumps:"
-      sed "s/^/ALRT:   /" ${_USR}/log/export_failed.pid 2>/dev/null
+      _xoct_read_in "${_USR}/log" export_failed.pid | sed "s/^/ALRT:   /"
       echo "INFO: re-run 'xoct export' after fixing the cause, or pass --force to transfer anyway"
       exit 1
     elif [ "${_cmd}" = "import" ] && [ -e "${_USR}/log/export_failed.pid" ] \
       && [ "${_XOCT_FORCE}" != "YES" ]; then
       echo "_USR ${_oct} is not eligible for migration: export incomplete"
       echo "ALRT: log/export_failed.pid travelled with this account -- the source export left FAILED site dumps:"
-      sed "s/^/ALRT:   /" ${_USR}/log/export_failed.pid 2>/dev/null
+      _xoct_read_in "${_USR}/log" export_failed.pid | sed "s/^/ALRT:   /"
       echo "INFO: fix and re-run export + transfer on the source, or pass --force to import anyway"
       exit 1
     elif [ "${_cmd}" = "import" ] && [ -e "${_USR}/log/imported.pid" ]; then
@@ -4283,14 +4407,21 @@ _migrate_init() {
           _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/clients/*        root@${_tgt}:${_DST}/clients/        &> /dev/null
           # instance-group.txt records the SOURCE box's conversion (its gid);
           # it must never travel, the destination pass writes its own.
-          _xoct_rsync -aEAXqu ${_ieni} --exclude=instance-group.txt --exclude=proxy-failed.pid -e ssh ${_USR}/log/* root@${_tgt}:${_DST}/log/
-          ### static/control is the tenant's: a control that is a link is
-          ### never followed (the glob this replaces expanded through it);
-          ### a real one travels by its contents.
+          ### log/ is oN's on both boxes: copied from inside the real
+          ### directory into the real directory, the glob expanded there.
+          _xoct_in_real_dir "${_USR}/log" _xoct_copy_here "${_tgt}" "${_DST}/log" '*' \
+            -aEAXqu ${_ieni} --exclude=instance-group.txt --exclude=proxy-failed.pid
+          ### static/control is the tenant's on both boxes: a control that is
+          ### a link is never followed (the glob this replaces expanded
+          ### through it); a real one travels by its top-level entries, from
+          ### inside it into the real control directory on the target. Its
+          ### subdirectories came with the static pass above and are never
+          ### entered here by name.
           if [ -L "${_USR}/static/control" ]; then
             echo "ALRT: ${_USR}/static/control is a symlink -- not followed; no control file of ${_oct} travels"
           elif [ -d "${_USR}/static/control" ]; then
-            _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/static/control/ root@${_tgt}:${_DST}/static/control/ &> /dev/null
+            _xoct_in_real_dir "${_USR}/static/control" _xoct_copy_here "${_tgt}" \
+              "${_DST}/static/control" '' -aEAXqu ${_ieni} --exclude='*/' &> /dev/null
           fi
           #
           _xoct_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/backups/*        root@${_tgt}:${_DST}/backups/        &> /dev/null
@@ -4337,11 +4468,11 @@ _migrate_init() {
           # (log/sourcefqdn.txt) instead of trusting alias auto-detection.
           # Do NOT add excludes for server_master/hostmaster here: the
           # rename converges either way, and the source platform_* and
-          # per-site aliases must always arrive.
-          _xoct_rsync -aEAXqu \
-            ${_ieni} \
-            -e ssh ${_USR}/.drush/*.alias.drushrc.php \
-            root@${_tgt}:${_DST}/.drush/
+          # per-site aliases must always arrive. .drush is oN's on both boxes:
+          # copied from inside the real directory into the real directory,
+          # the glob expanded there.
+          _xoct_in_real_dir "${_USR}/.drush" _xoct_copy_here "${_tgt}" \
+            "${_DST}/.drush" '*.alias.drushrc.php' -aEAXqu ${_ieni}
 
           _xoct_rsync -aEAXqu \
             ${_ieni} \
@@ -4411,10 +4542,12 @@ _migrate_init() {
               ### export is clean now -- a stale export_failed.pid that
               ### travelled with an earlier --force transfer must not wedge
               ### the import on the target forever.
+              ### log/ is oN's on both boxes: removed and stamped inside the
+              ### real directory, never through a link put there.
               if [ ! -e "${_USR}/log/export_failed.pid" ]; then
-                ssh root@${_tgt} "rm -f ${_DST}/log/export_failed.pid" &> /dev/null
+                _xoct_remote_in "${_tgt}" "${_DST}/log" 'rm -f -- ./export_failed.pid' &> /dev/null
               fi
-              touch ${_USR}/log/transferred.pid
+              _xoct_in_real_dir "${_USR}/log" _xoct_touch_here transferred.pid
             fi
           else
             _xoct_finalize_dry "${_oct}" "${_tgt}"
@@ -4611,15 +4744,16 @@ _migrate_init() {
             fi
           fi
           ### A repair never re-stamps; the stamp is migration STATE owned by
-          ### this first successful conversion.
+          ### this first successful conversion. log/ is oN's: stamped and
+          ### cleared inside the real directory, never through a link.
           if [ ! -e "${_USR}/log/proxied.pid" ]; then
-            echo COMPLETE > ${_USR}/log/proxied.pid
+            _xoct_in_real_dir "${_USR}/log" _xoct_put_here proxied.pid COMPLETE
           fi
           ### A cutover that could not convert this account marked it so that
           ### BOA kept its dispatcher parked and octopus skipped it; converted
           ### now, it is proxied and proxied.pid keeps both.
           if [ -e "${_USR}/log/proxy-failed.pid" ]; then
-            rm -f "${_USR}/log/proxy-failed.pid"
+            _xoct_in_real_dir "${_USR}/log" rm -f -- ./proxy-failed.pid
             echo "INFO: ${_oct}: converted after a failed cutover conversion; proxy-failed.pid removed"
           fi
           ### Park this account's dispatcher NOW, in the same breath as the
@@ -4814,12 +4948,18 @@ _sub_ssl_gen() {
         _dedicated_ip="*"
         ### extra_domain.txt holds the control panel's extra names: only the
         ### panel's own record claims them, or nginx keeps whichever proxy
-        ### sorts first and a site's proxy answers for the panel.
-        _hmFront=$(cat "/data/disk/${_oct_uid}/log/domain.txt" 2>/dev/null | tr -d '\n')
+        ### sorts first and a site's proxy answers for the panel. log/ is
+        ### oN's: both read inside the real directory, never through a link
+        ### or into a FIFO, and only host names reach the server_name line.
+        _hmFront=$(_xoct_read_in "/data/disk/${_oct_uid}/log" domain.txt | tr -d '\n')
         if [ -n "${_hmFront}" ] && [ "${_domain_name}" = "${_hmFront}" ] \
           && [ -e "/data/disk/${_oct_uid}/log/extra_domain.txt" ]; then
-          _hmFrontExtra=$(cat /data/disk/${_oct_uid}/log/extra_domain.txt 2>&1)
-          _hmFrontExtra=$(echo -n ${_hmFrontExtra} | tr -d "\n" 2>&1)
+          _hmFrontExtra=$(_xoct_read_in "/data/disk/${_oct_uid}/log" extra_domain.txt \
+            | tr -s ' \t\r' '\n' \
+            | grep -E '^[a-zA-Z0-9*][a-zA-Z0-9.*-]*$' \
+            | awk 'length($0) <= 253' \
+            | tr '\n' ' ')
+          _hmFrontExtra="${_hmFrontExtra% }"
         fi
         if [ ! -z "${_hmFrontExtra}" ]; then
           _dedicated_sn="${_domain_name} ${_hmFrontExtra} www.${_domain_name}"
@@ -5370,14 +5510,16 @@ case "$1" in
             echo "ALRT: removing proxied.pid re-arms migration AND re-enables LE renewal"
             echo "ALRT: on this box -- only do this when the account is meant to migrate"
             echo "ALRT: (again) FROM here."
-            rm -f /data/disk/${_oct}/src/*.sql
+            ### src/ and log/ are oN's: removed inside the real directories,
+            ### the dump glob expanded there, never through a link put there.
+            _xoct_in_real_dir "/data/disk/${_oct}/src" _xoct_rm_sql_dumps_here
             for _p in exported transferred imported proxied proxy-failed export_failed import_failed; do
-              rm -f /data/disk/${_oct}/log/${_p}.pid
+              _xoct_in_real_dir "/data/disk/${_oct}/log" rm -f -- "./${_p}.pid"
             done
             ### A chained migration lands on a different panel DB; a stale
             ### recorded name that happens to exist here would be preferred
             ### over the correct alias-derived one.
-            rm -f /data/disk/${_oct}/log/panel_db.txt
+            _xoct_in_real_dir "/data/disk/${_oct}/log" rm -f -- ./panel_db.txt
             echo "INFO: migration state cleared for ${_oct}"
   ;;
   pre-mig)  _cmd="$1"

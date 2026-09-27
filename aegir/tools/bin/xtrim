@@ -84,11 +84,44 @@ _take_sqlclean_lock() {
   fi
 }
 
-### migproxy.cnf is parsed, never sourced (log/ arrives over rsync).
+### The account's static/control is its main login's, and oN owns the rest
+### of /data/disk/oN (log/, .drush): either can put a link or a FIFO at any
+### name there, or at the directory itself. Run "$@" inside the real
+### directory $1: below /data/disk and /home every name on the path must be
+### a real directory; once entered, ./name stays there whatever is swapped.
+_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+### ./$1 in the current (pinned) directory: never through a link, never
+### blocked on a FIFO, at most 1 MiB; empty for anything else.
+_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+
+### The file $1, read as _read_here reads it inside its real directory.
+_read_file() {
+  _in_real_dir "${1%/*}" _read_here "${1##*/}"
+}
+
+### migproxy.cnf is parsed, never sourced (log/ arrives over rsync), and
+### read inside the real log/, never through a link or into a FIFO.
 _mig_get() {
   local _f="$1" _k="$2"
   [ -r "${_f}" ] || return 1
-  grep -m1 "^${_k}=" "${_f}" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'
+  _read_file "${_f}" | grep -m1 "^${_k}=" | cut -d= -f2- | tr -d '\r\n'
 }
 
 _sane_ident() {
@@ -96,9 +129,12 @@ _sane_ident() {
   [ "${_v}" = "$1" ] && [ -n "${_v}" ] && echo "${_v}"
 }
 
+### An alias field; .drush is oN's, so the alias is read inside the real
+### directory, never through a link or into a FIFO put at the name.
 _alias_field() {
-  sed -n "s/.*'$2'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" "$1" \
-    2>/dev/null | head -n1
+  _read_file "$1" \
+    | sed -n "s/.*'$2'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+    | head -n1
 }
 
 ### -------------------------------------------------------------- state ---
@@ -190,7 +226,10 @@ _resolve_mnt_store() {
 
 _safe_resolved() {
   ### $1 path, $2 acct root: resolved target must live inside the account
-  ### or inside the single /mnt store. Anything else is refused upstream.
+  ### or inside this account's own part of the single /mnt store (the
+  ### store layout <mount>/files/<oN>/...). static/ is group-writable, so a
+  ### link there can name another account's store: anything else is refused
+  ### upstream.
   local _r
   _r=$(readlink -f "$1" 2>/dev/null)
   [ -z "${_r}" ] && return 1
@@ -199,12 +238,43 @@ _safe_resolved() {
   esac
   if [ -n "${_MNT_STORE}" ]; then
     case "${_r}" in
-      "${_MNT_STORE}"/*) echo "${_r}"; return 0 ;;
+      "${_MNT_STORE}/files/${2##*/}"/*) echo "${_r}"; return 0 ;;
     esac
   elif [ "${_MNT_COUNT}" != "0" ]; then
     return 1
   fi
   return 1
+}
+
+### The static/ trees removed, run inside the real static/ ($1 account, $2
+### its root), control kept: a link's store is removed only when it
+### resolves where _safe_resolved allows, and as a name inside its real
+### parent directory; the link itself always goes, never followed by rm.
+_trim_static_here() {
+  local _f _r
+  if [ -L ./files ]; then
+    _r="$(_safe_resolved ./files "${2}")"
+    if [ -n "${_r}" ]; then
+      _in_real_dir "${_r%/*}" rm -rf -- "./${_r##*/}" && rm -f -- ./files \
+        && _info "${1}: removed resolved files store ${_r}"
+    else
+      _alrt "${1}: static/files resolves outside the account/store -- left in place"
+    fi
+  fi
+  for _f in ./*; do
+    [ -e "${_f}" ] || continue
+    case "${_f#./}" in
+      control) continue ;;
+    esac
+    if [ -L "${_f}" ]; then
+      _r="$(_safe_resolved "${_f}" "${2}")"
+      [ -n "${_r}" ] && _in_real_dir "${_r%/*}" rm -rf -- "./${_r##*/}"
+      rm -f -- "${_f}"
+    else
+      rm -rf -- "${_f}"
+    fi
+    _info "${1}: removed static tree ${2}/static/${_f#./}"
+  done
 }
 
 _map_account() {
@@ -907,13 +977,11 @@ _restore_stage_a() {
     ### the box-level _PHP_FPM_VERSION is a different knob and lands the
     ### pool in a tree whose master never serves this account.
     _nn=$(basename "${_p}" | sed -n "s/^${_oN}\.\([0-9]*\)\.conf$/\1/p")
-    ### static/control is the tenant's: a regular file only, read without
-    ### following a link or blocking on a FIFO put there
-    if [ -z "${_nn}" ] && [ -f "${_USR}/static/control/fpm.info" ] \
-      && [ ! -L "${_USR}/static/control/fpm.info" ]; then
-      _nn=$(timeout 10 dd if="${_USR}/static/control/fpm.info" \
-        iflag=nofollow,nonblock bs=64 count=1 status=none 2> /dev/null \
-        | tr -d -c 0-9)
+    ### static/control is the tenant's: read inside the real directory,
+    ### never through a link or into a FIFO put at either name
+    if [ -z "${_nn}" ]; then
+      _nn=$(_in_real_dir "${_USR}/static/control" _read_here fpm.info \
+        | head -c 64 | tr -d -c 0-9)
     fi
     if [ -z "${_nn}" ]; then
       _nn=$(grep -m1 '^_PHP_FPM_VERSION' /root/.barracuda.cnf 2>/dev/null | tr -d -c 0-9)
@@ -1083,37 +1151,32 @@ _stage_b() {
   for _f in "${_USR}/backups" "${_USR}/src" "${_USR}/undo" "${_USR}/distro"; do
     [ -e "${_f}" ] && rm -rf "${_f}" && _info "${_oN}: removed ${_f}"
   done
+  ### A platform root comes from an alias in .drush, which is oN's: it is
+  ### removed only as a name inside its real parent directory in the
+  ### account, so no link or .. on the way can take the removal elsewhere.
   for _f in ${_MAP_PLATS}; do
+    _f="${_f%/}"
     case "${_f}" in
-      "${_USR}"/*) [ -e "${_f}" ] && rm -rf "${_f}" && _info "${_oN}: removed platform ${_f}" ;;
-      *) _alrt "${_oN}: platform root ${_f} lies outside the account -- left in place" ;;
+      "${_USR}"/?*) ;;
+      *) _alrt "${_oN}: platform root ${_f} lies outside the account -- left in place"; continue ;;
     esac
+    [ -e "${_f}" ] || continue
+    if ! _in_real_dir "${_f%/*}" true; then
+      _alrt "${_oN}: platform root ${_f} is not in a real directory of the account -- left in place"
+      continue
+    fi
+    _in_real_dir "${_f%/*}" rm -rf -- "./${_f##*/}" \
+      && _info "${_oN}: removed platform ${_f}"
   done
   ### The files store: resolve FIRST, delete the resolved directory, then
   ### the symlink -- never 'rm -rf static' blind (the known cleanup leak).
-  if [ -L "${_USR}/static/files" ]; then
-    _r="$(_safe_resolved "${_USR}/static/files" "${_USR}")"
-    if [ -n "${_r}" ]; then
-      rm -rf "${_r}" && rm -f "${_USR}/static/files" \
-        && _info "${_oN}: removed resolved files store ${_r}"
-    else
-      _alrt "${_oN}: static/files resolves outside the account/store -- left in place"
-    fi
+  ### static/ is group-writable: its entries are listed and removed from
+  ### inside the real directory, never through a link put in its place.
+  if _in_real_dir "${_USR}/static" true; then
+    _in_real_dir "${_USR}/static" _trim_static_here "${_oN}" "${_USR}"
+  elif [ -e "${_USR}/static" ] || [ -L "${_USR}/static" ]; then
+    _alrt "${_oN}: static/ is not a real directory of the account -- left in place"
   fi
-  for _f in "${_USR}"/static/*; do
-    [ -e "${_f}" ] || continue
-    case "$(basename "${_f}")" in
-      control) continue ;;
-    esac
-    if [ -L "${_f}" ]; then
-      _r="$(_safe_resolved "${_f}" "${_USR}")"
-      [ -n "${_r}" ] && rm -rf "${_r}"
-      rm -f "${_f}"
-    else
-      rm -rf "${_f}"
-    fi
-    _info "${_oN}: removed static tree ${_f}"
-  done
   ### Stamp BEFORE the closing probe: the deletion is already complete, so
   ### a probe wobble must not leave the account stuck at stage-b-started,
   ### where finalize would refuse for ever and restore is meaningless.
