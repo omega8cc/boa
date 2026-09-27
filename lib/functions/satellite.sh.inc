@@ -125,20 +125,28 @@ _satellite_grav_dir_here() {
 
 #
 # Fetch the bundle $1 into the current (pinned) grav-releases directory.
-### temp+mv: a truncated fetch must never be resolvable as the newest
-### artefact (the unzip -l probe rejects short/garbage bodies too).
+### Downloaded and checked in root's own temp directory, then put in place
+### once: a truncated fetch must never be resolvable as the newest artefact
+### (the unzip -l probe rejects short/garbage bodies too), and the directory
+### is the account's, so the bundle is created there exclusively under a
+### fresh name and renamed over the name, never written through a link or a
+### FIFO put at either.
 _satellite_grav_fetch_here() {
+  local _w _rc=1
   rm -f -- "./.${1}.tmp"
-  curl ${_crlGet} -o "./.${1}.tmp" "https://${_USE_MIR}/core/${1}" 2> /dev/null
-  if [ -f "./.${1}.tmp" ] && [ ! -L "./.${1}.tmp" ] && [ -s "./.${1}.tmp" ] \
-    && unzip -l "./.${1}.tmp" > /dev/null 2>&1; then
-    mv -f -T "./.${1}.tmp" "./${1}"
-    chown -h ${_USER}:${_ACCG:-users} . "./${1}" 2> /dev/null
+  _w="$(mktemp -d /opt/tmp/.grav-stage.XXXXXX 2> /dev/null)" \
+    && [ -d "${_w}" ] || return 1
+  curl ${_crlGet} --max-time 600 -o "${_w}/${1}" \
+    "https://${_USE_MIR}/core/${1}" 2> /dev/null
+  if [ -s "${_w}/${1}" ] && unzip -l "${_w}/${1}" > /dev/null 2>&1 \
+    && _satellite_put_stdin_here "${1}" 0644 "${_USER}:${_ACCG:-users}" \
+    < "${_w}/${1}"; then
+    chown -h "${_USER}:${_ACCG:-users}" . 2> /dev/null
     _prune_grav_releases .
-    return 0
+    _rc=0
   fi
-  rm -f -- "./.${1}.tmp"
-  return 1
+  rm -rf -- "${_w}"
+  return "${_rc}"
 }
 
 #
@@ -644,7 +652,7 @@ _satellite_tune_fpm_config() {
 
   if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge 1 ]; then
     if [ -e "${_ROOT}/log/cores.txt" ]; then
-      _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>/dev/null | tr -d '\n')
+      _CLIENT_CORES=$(_acct_read_in "${_ROOT}/log" cores.txt | tr -d '\n')
     fi
     _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
     if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge 1 ]; then
@@ -757,7 +765,8 @@ _satellite_tune_fpm_config() {
     chmod 770 /var/www/phpcache/${_USER}/${_USER}.{85,84,83,82,81,80,74,73,72,71,70,56}
     if [ ! -d "${_ROOT}/tmp" ]; then
       mkdir -p ${_ROOT}/tmp
-      chown ${_USER}:${_ACCG:-users} ${_ROOT}/tmp &> /dev/null
+      _acct_in_real_dir "${_ROOT}/tmp" \
+        chown -h "${_USER}:${_ACCG:-users}" . &> /dev/null
     fi
     if [ ! -z "${_PHP_OLD_SV}" ] \
       && [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ]; then
@@ -1644,15 +1653,15 @@ _satellite_fix_cron_curl() {
     _debug_proc
   fi
   if [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ]; then
-    _THIS_HM_ROOT=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
-      | grep "root'" \
-      | cut -d: -f2 \
-      | awk '{ print $3}' \
-      | sed "s/[\,']//g" 2>&1)
+    _THIS_HM_ROOT=$(_satellite_hm_alias_get "root'")
     _pthA="profiles/hostmaster/modules/aegir/hosting/cron"
     _pthB="hosting_cron.module"
-    if [ -e "${_THIS_HM_ROOT}/${_pthA}/${_pthB}" ]; then
-      sed -i "s/127.0.0.1/${_CRON_IP}/g" ${_THIS_HM_ROOT}/${_pthA}/${_pthB}
+    ### Edited only in the account's own real hostmaster tree, never
+    ### through a link put at the module or on the way to it.
+    if _satellite_hm_path_ok "${_THIS_HM_ROOT}" \
+      && [ -e "${_THIS_HM_ROOT}/${_pthA}/${_pthB}" ]; then
+      _acct_in_real_dir "${_THIS_HM_ROOT}/${_pthA}" _satellite_copy_here \
+        "${_pthB}" "${_pthB}" "s/127.0.0.1/${_CRON_IP}/g"
     fi
   fi
 }
@@ -1785,11 +1794,11 @@ _satellite_force_advanced_nginx_config() {
   fi
   _satellite_sub_satellite_force_advanced_nginx_config
   if [ -e "${_ROOT}/config/includes/nginx_vhost_common.conf" ]; then
-    rm -f ${_ROOT}/config/includes/nginx_advanced_include.conf
-    rm -f ${_ROOT}/config/includes/nginx_legacy_include.conf
-    rm -f ${_ROOT}/config/includes/nginx_modern_include.conf
-    rm -f ${_ROOT}/config/includes/nginx_octopus_include.conf
-    rm -f ${_ROOT}/config/includes/nginx_simple_include.conf
+    # removed inside the instance user's real config/includes only
+    _acct_in_real_dir "${_ROOT}/config/includes" rm -f -- \
+      ./nginx_advanced_include.conf ./nginx_legacy_include.conf \
+      ./nginx_modern_include.conf ./nginx_octopus_include.conf \
+      ./nginx_simple_include.conf
   fi
 }
 
@@ -1883,6 +1892,16 @@ _satellite_update_ini_php_cli() {
 }
 
 #
+# drush.php or drush.launcher of the account's own Drush (tools/drush, the
+# instance user's) edited with the sed script $2 inside the real directory,
+# as _satellite_copy_here edits: never through a link put at the file or at
+# tools/ or drush/ on the way.
+_satellite_tools_drush_edit() {
+  _acct_in_real_dir "${_ROOT}/tools/drush" _satellite_copy_here \
+    "${1}" "${1}" "${2}"
+}
+
+#
 # Update php-cli for Drush.
 _satellite_update_drush_php_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1891,29 +1910,29 @@ _satellite_update_drush_php_cli() {
   fi
   _DRUSH_FILE="${_ROOT}/tools/drush/drush.php"
   if [ "${_PHP_CLI_VERSION}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php85\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _satellite_tools_drush_edit drush.php "s/^#\!\/.*/#\!\/opt\/php85\/bin\/php/g" &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "8.4" ] && [ -x "/opt/php84/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php84\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _satellite_tools_drush_edit drush.php "s/^#\!\/.*/#\!\/opt\/php84\/bin\/php/g" &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _satellite_tools_drush_edit drush.php "s/^#\!\/.*/#\!\/opt\/php83\/bin\/php/g" &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "8.2" ] && [ -x "/opt/php82/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _satellite_tools_drush_edit drush.php "s/^#\!\/.*/#\!\/opt\/php82\/bin\/php/g" &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "8.1" ] && [ -x "/opt/php81/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _satellite_tools_drush_edit drush.php "s/^#\!\/.*/#\!\/opt\/php81\/bin\/php/g" &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "8.0" ] && [ -x "/opt/php80/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php80\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _satellite_tools_drush_edit drush.php "s/^#\!\/.*/#\!\/opt\/php80\/bin\/php/g" &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "7.4" ] && [ -x "/opt/php74/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _satellite_tools_drush_edit drush.php "s/^#\!\/.*/#\!\/opt\/php74\/bin\/php/g" &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "7.3" ] && [ -x "/opt/php73/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _satellite_tools_drush_edit drush.php "s/^#\!\/.*/#\!\/opt\/php73\/bin\/php/g" &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "7.2" ] && [ -x "/opt/php72/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php72\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _satellite_tools_drush_edit drush.php "s/^#\!\/.*/#\!\/opt\/php72\/bin\/php/g" &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "7.1" ] && [ -x "/opt/php71/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php71\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _satellite_tools_drush_edit drush.php "s/^#\!\/.*/#\!\/opt\/php71\/bin\/php/g" &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "7.0" ] && [ -x "/opt/php70/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _satellite_tools_drush_edit drush.php "s/^#\!\/.*/#\!\/opt\/php70\/bin\/php/g" &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "5.6" ] && [ -x "/opt/php56/bin/php" ]; then
-    sed -i "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g"  ${_DRUSH_FILE} &> /dev/null
+    _satellite_tools_drush_edit drush.php "s/^#\!\/.*/#\!\/opt\/php56\/bin\/php/g" &> /dev/null
   else
     _msg "${_STATUS} B: FATAL ERROR: _PHP_CLI_VERSION is not set correctly"
     _msg "${_STATUS} B: FATAL ERROR: Aborting AegirSetupB installer NOW!"
@@ -1935,9 +1954,12 @@ _satellite_update_drush_php_cli() {
   _DRUSH_LNCH="${_ROOT}/tools/drush/drush.launcher"
   _LNCH_PHP="/opt/php${_PHP_CLI_VERSION//./}/bin/php"
   if [ -e "${_DRUSH_LNCH}" ] && [ -x "${_LNCH_PHP}" ]; then
-    sed -i "1s/^#\!.*/#\!\/bin\/bash/" ${_DRUSH_LNCH} &> /dev/null
-    sed -i "/^export DRUSH_PHP=/d" ${_DRUSH_LNCH} &> /dev/null
-    sed -i "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${_LNCH_PHP}}\"" ${_DRUSH_LNCH} &> /dev/null
+    _satellite_tools_drush_edit drush.launcher \
+      "1s/^#\!.*/#\!\/bin\/bash/" &> /dev/null
+    _satellite_tools_drush_edit drush.launcher \
+      "/^export DRUSH_PHP=/d" &> /dev/null
+    _satellite_tools_drush_edit drush.launcher \
+      "1a export DRUSH_PHP=\"\${DRUSH_PHP:-${_LNCH_PHP}}\"" &> /dev/null
   fi
 }
 
@@ -3336,10 +3358,12 @@ _provision_backend_dbpass_generate() {
     _ENC_PASS="${_ESC_PASS}"
   fi
 
+  ### Both files are put in the account root (the instance user's) as fresh
+  ### 0600 files handed to that user, never written, handed over or given a
+  ### mode through a link put at the name.
   _L_SYS="${_ROOT}/.${_USER}.pass.txt"
-  echo "${_ESC_PASS}" > ${_L_SYS}
-  chown ${_USER}:${_ACCG:-users} ${_L_SYS}
-  chmod 0600 ${_L_SYS}
+  echo "${_ESC_PASS}" | _acct_in_real_dir "${_ROOT}" _satellite_put_stdin_here \
+    ".${_USER}.pass.txt" 0600 "${_USER}:${_ACCG:-users}"
 
   ### The install path resolves the mode before it writes this file (FQDN
   ### becomes the box's own name, PROXYSQL the local proxy address); this
@@ -3353,14 +3377,14 @@ _provision_backend_dbpass_generate() {
     _OCT_DB_HOST_W=127.0.0.1
   fi
   _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
-  echo "<?php" > ${_L_SYS_PHP}
-  echo "\$oct_db_user = \"${_USER}\";" >> ${_L_SYS_PHP}
-  echo "\$oct_db_pass = \"${_ESC_PASS}\";" >> ${_L_SYS_PHP}
-  echo "\$oct_db_host = \"${_OCT_DB_HOST_W}\";" >> ${_L_SYS_PHP}
-  echo "\$oct_db_port = \"${_THIS_DB_PORT}\";" >> ${_L_SYS_PHP}
-  echo "\$oct_db_dirs = \"/data/disk/${_USER}/backups\";" >> ${_L_SYS_PHP}
-  chown ${_USER}:${_ACCG:-users} ${_L_SYS_PHP}
-  chmod 0600 ${_L_SYS_PHP}
+  { echo "<?php"
+    echo "\$oct_db_user = \"${_USER}\";"
+    echo "\$oct_db_pass = \"${_ESC_PASS}\";"
+    echo "\$oct_db_host = \"${_OCT_DB_HOST_W}\";"
+    echo "\$oct_db_port = \"${_THIS_DB_PORT}\";"
+    echo "\$oct_db_dirs = \"/data/disk/${_USER}/backups\";"
+  } | _acct_in_real_dir "${_ROOT}" _satellite_put_stdin_here \
+    ".${_USER}.pass.php" 0600 "${_USER}:${_ACCG:-users}"
 
   _ESC="*.*"
 
@@ -3537,10 +3561,12 @@ _provision_backend_dbpass_sync() {
   ### readable by local users by exact path; never trust the moved file's
   ### inherited mode -- set 0600 explicitly.
   mv -f ${_L_SYS} ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
-  chmod 0600 ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+  _acct_in_real_dir "${_ROOT}" _satellite_chmod_nofollow f 0600 \
+    "./.${_USER}.pass.txt-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
   _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
   mv -f ${_L_SYS_PHP} ${_L_SYS_PHP}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
-  chmod 0600 ${_L_SYS_PHP}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+  _acct_in_real_dir "${_ROOT}" _satellite_chmod_nofollow f 0600 \
+    "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
   _provision_backend_dbpass_generate
   if [ ! -z "${_ESC_PASS}" ] || [ ! -z "${_ENC_PASS}" ]; then
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD} @hostmaster \
@@ -3582,9 +3608,11 @@ GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
 ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
-    sed -i \
+    ### The aliases are the instance user's: edited inside the real .drush,
+    ### never through a link put at an alias or at .drush.
+    _acct_in_real_dir "${_ROOT}/.drush" _satellite_edit_all_here \
       "s/mysql:\/\/${_USER}:.*/mysql:\/\/${_USER}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
-      ${_ROOT}/.drush/server_*.alias.drushrc.php &> /dev/null
+      'server_*.alias.drushrc.php' &> /dev/null
     wait
   else
     _msg "CRIT: _ESC_PASS empty or not generated"
@@ -3598,7 +3626,7 @@ EOFMYSQL
   fi
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
   wait
-  rm -rf ${_ROOT}/.tmp/cache
+  _acct_in_real_dir "${_ROOT}/.tmp" rm -rf -- ./cache
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
     su -s /bin/bash - ${_USER} -c "${_DRUSHCMD:-drush8} @hostmaster \
       hosting-task @server_localhost verify --force" &> /dev/null
@@ -3657,21 +3685,25 @@ _hostmaster_frontend_dbpass_sync() {
   else
     _THIS_DB_PORT=3306
   fi
-  _THIS_HM_SPTH=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
-    | grep "site_path'" \
-    | cut -d: -f2 \
-    | awk '{ print $3}' \
-    | sed "s/[\,']//g" 2>&1)
-  _THIS_HM_DBUR=$(cat ${_THIS_HM_SPTH}/drushrc.php \
-    | grep "options\['db_user'\] = " \
-    | cut -d: -f2 \
-    | awk '{ print $3}' \
-    | sed "s/[\,';]//g" 2>&1)
-  _THIS_HM_DBPD=$(cat ${_THIS_HM_SPTH}/drushrc.php \
-    | grep "options\['db_passwd'\] = " \
-    | cut -d: -f2 \
-    | awk '{ print $3}' \
-    | sed "s/[\,';]//g" 2>&1)
+  ### The alias and the site's drushrc.php are the instance user's: read
+  ### bounded, never through a link or from a FIFO, and only from a site in
+  ### the account's own hostmaster tree.
+  _THIS_HM_SPTH=$(_satellite_hm_alias_get "site_path'")
+  _satellite_hm_path_ok "${_THIS_HM_SPTH}" site || _THIS_HM_SPTH=""
+  _THIS_HM_DBUR=""
+  _THIS_HM_DBPD=""
+  if [ -n "${_THIS_HM_SPTH}" ]; then
+    _THIS_HM_DBUR=$(_acct_read_in "${_THIS_HM_SPTH}" drushrc.php \
+      | grep "options\['db_user'\] = " \
+      | cut -d: -f2 \
+      | awk '{ print $3}' \
+      | sed "s/[\,';]//g" 2>&1)
+    _THIS_HM_DBPD=$(_acct_read_in "${_THIS_HM_SPTH}" drushrc.php \
+      | grep "options\['db_passwd'\] = " \
+      | cut -d: -f2 \
+      | awk '{ print $3}' \
+      | sed "s/[\,';]//g" 2>&1)
+  fi
   if [ -e "${_THIS_HM_SPTH}" ] \
     && [ ! -z "${_THIS_HM_DBUR}" ] \
     && [ ! -z "${_THIS_HM_DBPD}" ]; then
@@ -3888,47 +3920,56 @@ _satellite_run_child_b() {
     if [ "${_PLATFORMS_ONLY}" = "YES" ]; then
       _msg "${_STATUS} A: Satellite Instance Hostmaster upgrade skipped"
     else
+      ### .drush is the instance user's: its layout is rebuilt by that user
+      ### (the clone lands in its own tree as before, handed to it below),
+      ### and root removes names there only inside the real directories.
       if [ ! -d "${_ROOT}/.drush/sys/provision/http" ]; then
-        mkdir -p ${_ROOT}/.drush/{sys,xts,usr}
-        rm -rf ${_ROOT}/.drush/provision
-        rm -rf ${_ROOT}/.drush/sys/provision
-        ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
-          ${_ROOT}/.drush/sys/provision &> /dev/null
+        su -s /bin/bash ${_USER} -c "mkdir -p ${_ROOT}/.drush/sys \
+          ${_ROOT}/.drush/xts ${_ROOT}/.drush/usr; \
+          rm -rf ${_ROOT}/.drush/provision ${_ROOT}/.drush/sys/provision; \
+          ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
+          ${_ROOT}/.drush/sys/provision" &> /dev/null
       fi
-      rm -rf ${_ROOT}/.drush/drush_make
-      rm -rf ${_ROOT}/.drush/sys/drush_make
+      _acct_in_real_dir "${_ROOT}/.drush" rm -rf -- ./drush_make
+      _acct_in_real_dir "${_ROOT}/.drush/sys" rm -rf -- ./drush_make
       _hostmaster_frontend_dbpass_sync
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "${_STATUS} A: Switching user and running AegirSetupB..."
       fi
       rm -f /opt/tmp/testecho*
-      _THIS_HM_ROOT=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
-        | grep "root'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
-      _THIS_HM_SITE=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
-        | grep "site_path'" \
-        | cut -d: -f2 \
-        | awk '{ print $3}' \
-        | sed "s/[\,']//g" 2>&1)
+      _THIS_HM_ROOT=$(_satellite_hm_alias_get "root'")
+      _THIS_HM_SITE=$(_satellite_hm_alias_get "site_path'")
       _U_HD="${_ROOT}/.drush"
       if [ -e "${_U_HD}/php.ini" ]; then
         chattr -i ${_U_HD}/php.ini
       fi
-      chown -R ${_USER}:${_ACCG:-users} ${_ROOT}/.drush
-      chown -R ${_USER}:${_ACCG:-users} ${_ROOT}/backups
-      chown -R ${_USER}:${_ACCG:-users} ${_ROOT}/clients
-      chown -R ${_USER}:${_ACCG:-users} ${_ROOT}/config
-      chown -R ${_USER}:${_ACCG:-users} ${_ROOT}/tools
-      chown -R ${_USER} ${_THIS_HM_ROOT}
-      chown -R ${_USER}:${_WEBG} ${_THIS_HM_SITE}/files
-      chmod -R 02775 ${_THIS_HM_SITE}/files
+      ### handed over inside each real directory, so chown -R never follows
+      ### a link the account put at .drush, backups, clients, config or tools
+      _acct_in_real_dir "${_ROOT}/.drush" chown -R "${_USER}:${_ACCG:-users}" .
+      _acct_in_real_dir "${_ROOT}/backups" chown -R "${_USER}:${_ACCG:-users}" .
+      _acct_in_real_dir "${_ROOT}/clients" chown -R "${_USER}:${_ACCG:-users}" .
+      _acct_in_real_dir "${_ROOT}/config" chown -R "${_USER}:${_ACCG:-users}" .
+      _acct_in_real_dir "${_ROOT}/tools" chown -R "${_USER}:${_ACCG:-users}" .
+      ### The hostmaster root and site come from the account's own alias:
+      ### handed over only inside its own real hostmaster tree.
+      if _satellite_hm_path_ok "${_THIS_HM_ROOT}"; then
+        _acct_in_real_dir "${_THIS_HM_ROOT}" chown -R "${_USER}" .
+      else
+        _msg "${_STATUS} A: NOTE: hostmaster root outside ${_ROOT}/aegir/distro left as it is"
+      fi
+      if _satellite_hm_path_ok "${_THIS_HM_SITE}" site; then
+        _acct_in_real_dir "${_THIS_HM_SITE}/files" \
+          chown -R "${_USER}:${_WEBG}" .
+        _acct_in_real_dir "${_THIS_HM_SITE}/files" chmod -R 02775 .
+      else
+        _msg "${_STATUS} A: NOTE: hostmaster site outside ${_ROOT}/aegir/distro left as it is"
+      fi
       chown root:${_USRG} /data/u &> /dev/null
       chmod 0771 /data/u &> /dev/null
       su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupB} ${_USER}"
       wait
-      chown -R ${_USER}:${_ACCG:-users} ${_ROOT}/tools/drush
+      _acct_in_real_dir "${_ROOT}/tools/drush" \
+        chown -R "${_USER}:${_ACCG:-users}" .
       _satellite_update_drush_php_cli
       _satellite_update_ini_php_cli
       if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL" ] \
@@ -3969,14 +4010,17 @@ _satellite_if_create_local_bin() {
     _msg "PROC: _satellite_if_create_local_bin"
     _debug_proc
   fi
+  ### bin/ is the instance user's: handed over and linked inside the real
+  ### directory only, never through a link put at bin.
   _L_BIN="${_ROOT}/bin"
   if [ ! -d "${_L_BIN}" ]; then
     mkdir -p ${_L_BIN}
-    chown ${_USER}:${_ACCG:-users} ${_L_BIN}
-    chmod 700 ${_L_BIN}
+    _acct_in_real_dir "${_L_BIN}" _satellite_own_dir_here \
+      "${_USER}:${_ACCG:-users}" 700
   fi
   if [ ! -L "${_L_BIN}/drush" ]; then
-    ln -sfn ${_ROOT}/tools/drush/drush ${_L_BIN}/drush
+    _acct_in_real_dir "${_L_BIN}" \
+      ln -sfn "${_ROOT}/tools/drush/drush" ./drush
   fi
 }
 
@@ -3991,8 +4035,12 @@ _satellite_run_post_install() {
   if [ "${_LOCAL_STATUS}" = "INIT" ]; then
     if [ ! -e "${_ROOT}/config/${_USER}.nginx.conf" ]; then
       rm -f /var/aegir/config/server_master/nginx/platform.d/${_USER}.conf
-      echo "include ${_ROOT}/config/server_master/nginx/vhost.d/*;" > \
-        ${_ROOT}/config/${_USER}.nginx.conf
+      ### config/ is the instance user's: the include file is put there as a
+      ### fresh file inside the real directory, never through a link put at
+      ### the name.
+      echo "include ${_ROOT}/config/server_master/nginx/vhost.d/*;" \
+        | _acct_in_real_dir "${_ROOT}/config" _satellite_put_stdin_here \
+          "${_USER}.nginx.conf" 0644 ""
       ln -sfn ${_ROOT}/config/${_USER}.nginx.conf \
         /var/aegir/config/server_master/nginx/platform.d/${_USER}.conf
     fi
@@ -4022,29 +4070,43 @@ _satellite_set_permissions_for_all() {
   chmod 0755 ${_HM_ROOT} &> /dev/null
   find ${_ROOT}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
   find ${_ROOT}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
-  chmod 0711 ${_ROOT}/config &> /dev/null
-  chmod 0711 ${_ROOT}/config/includes &> /dev/null
-  chmod 0750 ${_ROOT}/backups &> /dev/null
-  chmod 0750 ${_ROOT}/clients &> /dev/null
+  _acct_in_real_dir "${_ROOT}/config" chmod 0711 . &> /dev/null
+  _acct_in_real_dir "${_ROOT}/config/includes" chmod 0711 . &> /dev/null
+  _acct_in_real_dir "${_ROOT}/backups" chmod 0750 . &> /dev/null
+  _acct_in_real_dir "${_ROOT}/clients" chmod 0750 . &> /dev/null
   find ${_ROOT}/aegir/distro/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_ROOT}/aegir/distro/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
   find ${_ROOT}/aegir/distro/*/sites/all/* -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_ROOT}/aegir/distro/*/sites/all/* -type f -exec chmod 0644 {} \; &> /dev/null
-  chown -R ${_USER}:${_ACCG:-users} ${_ROOT}/.drush &> /dev/null
-  find ${_ROOT}/.drush -type d -exec chmod 0710 {} \; &> /dev/null
-  find ${_ROOT}/.drush/usr -type d -exec chmod 0750 {} \; &> /dev/null
-  find ${_ROOT}/.drush -type f -exec chmod 0640 {} \; &> /dev/null
-  chmod 0440 ${_ROOT}/.drush/*.php &> /dev/null
-  if [ ! -e "${_ROOT}/.drush/hm.alias.drushrc.php" ]; then
-    cp -a ${_ROOT}/.drush/hostmaster.alias.drushrc.php ${_ROOT}/.drush/hm.alias.drushrc.php
-    sed -i "s/\['hostmaster'\]/['hm']/g" ${_ROOT}/.drush/hm.alias.drushrc.php
-  fi
-  chmod 0400 ${_ROOT}/.drush/server_*.php &> /dev/null
-  chmod 0400 ${_ROOT}/.drush/platform_*.php &> /dev/null
-  chmod 0400 ${_ROOT}/.drush/hostmaster*.php &> /dev/null
-  chmod 0400 ${_ROOT}/.drush/hm.alias.drushrc.php &> /dev/null
-  chmod 0710 ${_ROOT}/.drush &> /dev/null
+  _acct_in_real_dir "${_ROOT}/.drush" \
+    chown -R "${_USER}:${_ACCG:-users}" . &> /dev/null
+  _acct_in_real_dir "${_ROOT}/.drush" _satellite_drush_modes_here &> /dev/null
 }
+
+#
+# The instance user's .drush, run inside the real directory: directories
+# 0710 (usr and below 0750), files 0640, the top-level PHP files 0440 and the
+# aliases 0400, hm.alias made from the hostmaster alias where missing. Every
+# mode is set through a handle opened without following a link, in the
+# directory find walked (-execdir), so a name swapped for a link is refused.
+_satellite_drush_modes_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  shopt -s nullglob
+  find . -mindepth 1 -type d \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 0710 {} +
+  find ./usr -type d \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 0750 {} +
+  find . -type f \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f 0640 {} +
+  _satellite_chmod_nofollow f 0440 ./*.php
+  if [ ! -e ./hm.alias.drushrc.php ]; then
+    _satellite_copy_here hostmaster.alias.drushrc.php hm.alias.drushrc.php \
+      "s/\['hostmaster'\]/['hm']/g"
+  fi
+  _satellite_chmod_nofollow f 0400 ./server_*.php ./platform_*.php \
+    ./hostmaster*.php ./hm.alias.drushrc.php
+  _satellite_chmod_nofollow d 0710 .
+)
 
 #
 # Run child C.
@@ -4256,10 +4318,10 @@ _satellite_if_add_ftps_lshell_access() {
     # explicitly so an account carrying its per-instance group gets that one.
     useradd -d /home/${_USERFTP} -s ${_PATH_LSHELL} -m -N -r \
       -g ${_ACCG:-users} ${_USERFTP} &> /dev/null
-    # Make sure new file which contains password is private
+    # The file which contains the password is private from the start: made
+    # 0600 below as a fresh file inside the real log/ (the instance user's),
+    # never through a link or a FIFO put at the name
     cd ${_ROOT}/log
-    touch ${_ROOT}/log/pass.txt
-    chmod 0600 ${_ROOT}/log/pass.txt
     # generate a nice secure password and put it in a file
     _ESC_LUPASS=""
     _LEN_LUPASS=0
@@ -4296,7 +4358,8 @@ _satellite_if_add_ftps_lshell_access() {
       _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
       _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}" 2>&1)
     fi
-    echo "${_ESC_LUPASS}" > ${_ROOT}/log/pass.txt
+    echo "${_ESC_LUPASS}" \
+      | _acct_in_real_dir "${_ROOT}/log" _satellite_put_stdin_here pass.txt 0600 ""
     # get the password hash via stdin so the plaintext never reaches
     # /proc/<pid>/cmdline; set the hash via chpasswd -e via stdin so the
     # hash never reaches /proc either.
@@ -4487,11 +4550,22 @@ _satellite_if_add_update_user_symlinks() {
     fi
     ln -sfn ${_ROOT}/clients ${_USER_HD}/clients
   fi
-  rm -rf ${_ROOT}/clients/admin &> /dev/null
-  rm -rf ${_ROOT}/clients/omega8ccgmailcom &> /dev/null
-  rm -rf ${_ROOT}/clients/nocomega8cc &> /dev/null
-  rm -rf ${_ROOT}/clients/*/backups &> /dev/null
-  symlinks -dr ${_ROOT}/clients &> /dev/null
+  _acct_in_real_dir "${_ROOT}/clients" _satellite_clients_clean_here &> /dev/null
+}
+
+#
+# The instance user's clients/ (the current, pinned directory) cleaned: the
+# legacy client dirs removed, each client's backups/ removed inside that
+# client's real directory, dangling links dropped; nothing is reached
+# through a link put at clients or at a client name.
+_satellite_clients_clean_here() {
+  local _c
+  rm -rf -- ./admin ./omega8ccgmailcom ./nocomega8cc
+  for _c in ./*; do
+    [ -d "${_c}" ] && [ ! -L "${_c}" ] || continue
+    _acct_in_real_dir "$(pwd -P)/${_c#./}" rm -rf -- ./backups
+  done
+  symlinks -dr . &> /dev/null
 }
 
 _satellite_if_add_update_user_dot_dirs() {
@@ -4518,7 +4592,10 @@ _satellite_if_add_update_user_dot_dirs() {
     chown -R ${_USERFTP}:${_ACCG:-users} ${_USER_SSH}
     chmod 700 ${_USER_SSH}
   fi
-  chmod 600 ${_USER_SSH}/id_{r,d}sa &> /dev/null
+  # the main login's own keys: set through a handle inside the real .ssh,
+  # never through a link put at a key name or at .ssh
+  _acct_in_real_dir "${_USER_SSH}" _satellite_chmod_nofollow f 0600 \
+    ./id_rsa ./id_dsa &> /dev/null
 
   ###---### Create .bazaar dir and conf file if not exist.
   #
@@ -4544,6 +4621,7 @@ _satellite_if_add_update_user_dot_dirs() {
 ###---### Reading or creating pass.txt.
 #
 _satellite_if_read_create_pass_txt() {
+  local _pSt
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_if_read_create_pass_txt"
     _debug_proc
@@ -4551,18 +4629,24 @@ _satellite_if_read_create_pass_txt() {
   if [ "${_HM_ONLY}" = "YES" ]; then
     _DO_NOTHING=YES
   else
+    ### The account root and log/ are the instance user's: pass.txt is read
+    ### bounded, never through a link or from a FIFO, and written as a fresh
+    ### 0600 file (moved: with the old file's owner and mode) inside the
+    ### real log/, never through a link put at either name.
     if [ -e "${_ROOT}/pass.txt" ]; then
-      _PASWD=$(cat ${_ROOT}/pass.txt 2>&1)
+      _PASWD=$(_acct_read_in "${_ROOT}" pass.txt)
       _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
-      mv -f ${_ROOT}/pass.txt ${_ROOT}/log/pass.txt &> /dev/null
+      _pSt="$(_acct_in_real_dir "${_ROOT}" _satellite_stat_here pass.txt)" \
+        && _acct_read_in "${_ROOT}" pass.txt \
+        | _acct_in_real_dir "${_ROOT}/log" _satellite_put_stdin_here \
+          pass.txt "${_pSt#* }" "${_pSt%% *}" \
+        && rm -f "${_ROOT}/pass.txt"
     elif [ -e "${_ROOT}/log/pass.txt" ]; then
-      _PASWD=$(cat ${_ROOT}/log/pass.txt 2>&1)
+      _PASWD=$(_acct_read_in "${_ROOT}/log" pass.txt)
       _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
       rm -f ${_ROOT}/pass.txt
     else
       cd ${_ROOT}/log
-      touch ${_ROOT}/log/pass.txt
-      chmod 0600 ${_ROOT}/log/pass.txt
       _ESC_LUPASS=""
       _LEN_LUPASS=0
       if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
@@ -4598,13 +4682,14 @@ _satellite_if_read_create_pass_txt() {
         _ESC_LUPASS=$(echo -n "${_ESC_LUPASS}" | tr -d "\n" 2>&1)
         _ESC_LUPASS=$(_sanitize_string "${_ESC_LUPASS}" 2>&1)
       fi
-      echo "${_ESC_LUPASS}" > ${_ROOT}/log/pass.txt
+      echo "${_ESC_LUPASS}" \
+        | _acct_in_real_dir "${_ROOT}/log" _satellite_put_stdin_here pass.txt 0600 ""
       # See sibling site above — stdin-based mkpasswd + chpasswd -e keep
       # the plaintext password and the resulting hash out of /proc/PID/cmdline.
       _salt=$(openssl rand -base64 16 | tr -d '+=' | head -c 16)
       ph=$(printf '%s' "${_ESC_LUPASS}" | mkpasswd -m sha-512 -s -S "${_salt}")
       printf '%s:%s\n' "${_USERFTP}" "${ph}" | chpasswd -e &> /dev/null
-      _PASWD=$(cat ${_ROOT}/log/pass.txt 2>&1)
+      _PASWD=$(_acct_read_in "${_ROOT}/log" pass.txt)
       _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
     fi
   fi
@@ -4719,17 +4804,20 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
     mkdir -p ${_ROOT}/static
     ln -sfn ${_ROOT}/static /home/${_USERFTP}/static
   fi
-  chown ${_USER}:${_ACCG:-users} ${_ROOT}/static &> /dev/null
-  chmod 02775 ${_ROOT}/static &> /dev/null
-  echo empty > ${_ROOT}/static/EMPTY.txt
+  ### static/ is the account's and group-writable: its owner and mode are set
+  ### and EMPTY.txt is put inside the real directory, never through a link
+  ### put at static or at EMPTY.txt.
+  _acct_in_real_dir "${_ROOT}/static" _satellite_own_dir_here \
+    "${_USER}:${_ACCG:-users}" 02775 &> /dev/null
+  _acct_put_in "${_ROOT}/static" EMPTY.txt empty
 
   ###---### Create ~/.tmp dir if not exists.
   #
   if [ ! -d "${_ROOT}/.tmp" ]; then
     rm -rf ${_ROOT}/.tmp
     mkdir -p ${_ROOT}/.tmp
-    chown ${_USER}:${_ACCG:-users} ${_ROOT}/.tmp
-    chmod 02775 ${_ROOT}/.tmp
+    _acct_in_real_dir "${_ROOT}/.tmp" _satellite_own_dir_here \
+      "${_USER}:${_ACCG:-users}" 02775
   fi
 
   ###---### Create .ssh dir and keys if not exist, plus some known_hosts for system user.
@@ -4759,8 +4847,15 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
     wait
     su -s /bin/bash - ${_USER} -c "ssh-keyscan -t rsa -H unfuddle.com >> ~/.ssh/known_hosts" &> /dev/null
     wait
-    cp -af ${_ROOT}/.ssh/id_ed25519.pub ${_ROOT}/static/${_USER}.id_ed25519.pub
-    chmod 644 ${_ROOT}/static/${_USER}.id_ed25519.pub
+    ### The public key is copied as the instance user's 0644 file: read
+    ### bounded from the real .ssh, created exclusively in the real static/,
+    ### never through a link put at either name.
+    local _pubK
+    _pubK="$(_acct_read_in "${_ROOT}/.ssh" id_ed25519.pub)"
+    if [ -n "${_pubK}" ]; then
+      _acct_in_real_dir "${_ROOT}/static" _acct_pin_here \
+        "${_USER}.id_ed25519.pub" "${_pubK}" "${_USER}:${_ACCG:-users}"
+    fi
   fi
 
   ###---### Create .bazaar dir and conf file if not exist for system user.
@@ -4769,9 +4864,9 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
   if [ -x "/usr/local/bin/bzr" ]; then
     if [ ! -e "${_SYSTEM_USER_BZR}/bazaar.conf" ]; then
       mkdir -p ${_SYSTEM_USER_BZR}
-      echo ignore_missing_extensions=True > ${_SYSTEM_USER_BZR}/bazaar.conf
+      _acct_put_in "${_SYSTEM_USER_BZR}" bazaar.conf ignore_missing_extensions=True
       chown -R ${_USER}:${_ACCG:-users} ${_SYSTEM_USER_BZR}
-      chmod 700 ${_SYSTEM_USER_BZR}
+      _acct_in_real_dir "${_SYSTEM_USER_BZR}" chmod 700 .
     fi
   else
     if [ -d "${_SYSTEM_USER_BZR}" ]; then
@@ -4819,6 +4914,7 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
 ###---### Preparing setupmail.txt.
 #
 _satellite_prepare_setup_email_tpl() {
+  local _mW _mT
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_prepare_setup_email_tpl"
     _debug_proc
@@ -4837,119 +4933,138 @@ _satellite_prepare_setup_email_tpl() {
       if [ "${_DIST_INSTALL}" = "YES" ]; then
         cd ${_ROOT}/log
         if [ -e "${_ROOT}/log/upgrademail.txt" ]; then
-          mv -f ${_ROOT}/log/upgrademail.txt \
-            ${_ROOT}/log/upgrademail-pre-${_THIS_CORE}.txt
+          _acct_in_real_dir "${_ROOT}/log" mv -f -T -- ./upgrademail.txt \
+            "./upgrademail-pre-${_THIS_CORE}.txt"
         fi
-        cp -af /opt/tmp/boa/aegir/conf/tpl/upgrademail.txt ./
-        ### Anchored patterns: an unescaped dot or bare 'dragon' would also
-        ### match inside a real instance domain injected by an earlier sed.
-        sed -i "s/aegir\.url\.name/${_DOMAIN}/g" ${_ROOT}/log/upgrademail.txt
-        wait
-        sed -i "s/dragon\.ftp/${_USER}.ftp/g" ${_ROOT}/log/upgrademail.txt
-        wait
-        sed -i "s/FN8rXcQn/${_PASWD}/g" ${_ROOT}/log/upgrademail.txt
-        wait
-        sed -i "s/166\.84\.6\.231/${_THISHTIP}/g" ${_ROOT}/log/upgrademail.txt
-        wait
-        sed -i "s/boa\.version/${_X_VERSION}/g" ${_ROOT}/log/upgrademail.txt
-        wait
+        ### log/ is the instance user's: the email is rendered in root's own
+        ### temp directory and put there once, as a fresh file, never written
+        ### through a link or a FIFO put at the name.
+        _mW="$(mktemp -d /opt/tmp/.mail-render.XXXXXX 2> /dev/null)"
+        _mT="${_mW}/upgrademail.txt"
+        if [ -d "${_mW}" ] \
+          && cp -af /opt/tmp/boa/aegir/conf/tpl/upgrademail.txt "${_mT}"; then
+          ### Anchored patterns: an unescaped dot or bare 'dragon' would also
+          ### match inside a real instance domain injected by an earlier sed.
+          sed -i "s/aegir\.url\.name/${_DOMAIN}/g" "${_mT}"
+          wait
+          sed -i "s/dragon\.ftp/${_USER}.ftp/g" "${_mT}"
+          wait
+          sed -i "s/FN8rXcQn/${_PASWD}/g" "${_mT}"
+          wait
+          sed -i "s/166\.84\.6\.231/${_THISHTIP}/g" "${_mT}"
+          wait
+          sed -i "s/boa\.version/${_X_VERSION}/g" "${_mT}"
+          wait
+          _acct_in_real_dir "${_ROOT}/log" _satellite_put_stdin_here \
+            upgrademail.txt "$(stat -c %a "${_mT}")" "" < "${_mT}"
+        fi
+        [ -n "${_mW}" ] && rm -rf -- "${_mW}"
       else
         _SEND_UPGRADE_EMAIL=NO
       fi
     elif [ "${_STATUS}" = "INIT" ]; then
      cd ${_ROOT}/log
-     cp -af /opt/tmp/boa/aegir/conf/tpl/setupmail.txt ./
-     ### Anchored patterns: an unescaped dot or bare 'dragon' would also
-     ### match inside a real instance domain injected by an earlier sed.
-     sed -i "s/aegir\.url\.name/${_DOMAIN}/g" ${_ROOT}/log/setupmail.txt
-     wait
-     sed -i "s/dragon\.ftp/${_USER}.ftp/g" ${_ROOT}/log/setupmail.txt
-     wait
-     sed -i "s/FN8rXcQn/${_PASWD}/g" ${_ROOT}/log/setupmail.txt
-     wait
-     ### The template placeholder is a real foreign address, so only a
-     ### validated IPv4 may replace it; anything else keeps _ipOk=NO and
-     ### the GOING LIVE strip below removes the whole section instead.
-     _ipOk=NO
-     if [ -n "${_THISHTIP}" ]; then
-       if [ -e "/usr/bin/sipcalc" ]; then
-         _IP_TEST=$(sipcalc ${_THISHTIP} 2>&1)
-         [[ ! "${_IP_TEST}" =~ "ERR" ]] && _ipOk=YES
-       elif [[ "${_THISHTIP}" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then
-         _ipOk=YES
-       fi
-     fi
-     if [ "${_ipOk}" = "YES" ]; then
-       sed -i "s/166\.84\.6\.231/${_THISHTIP}/g" ${_ROOT}/log/setupmail.txt
+     ### Rendered in root's own temp directory and put in log/ once, as the
+     ### upgrade email above is.
+     _mW="$(mktemp -d /opt/tmp/.mail-render.XXXXXX 2> /dev/null)"
+     _mT="${_mW}/setupmail.txt"
+     if [ -d "${_mW}" ] \
+       && cp -af /opt/tmp/boa/aegir/conf/tpl/setupmail.txt "${_mT}"; then
+       ### Anchored patterns: an unescaped dot or bare 'dragon' would also
+       ### match inside a real instance domain injected by an earlier sed.
+       sed -i "s/aegir\.url\.name/${_DOMAIN}/g" "${_mT}"
        wait
-     else
-       _msg "ALRT: _THISHTIP is empty or invalid; dropping the GOING LIVE section from the welcome email"
-     fi
-     sed -i "s/boa\.version/${_X_VERSION}/g" ${_ROOT}/log/setupmail.txt
-     wait
-     ### FTPS is an opt-in xtra; drop its port line when Pure-FTPd is absent
-     ### so the email never advertises a port nothing is listening on.
-     if [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
-       sed -i "/21 (FTPS/d" ${_ROOT}/log/setupmail.txt
+       sed -i "s/dragon\.ftp/${_USER}.ftp/g" "${_mT}"
        wait
-     fi
-     ### Adminer is guaranteed only where the hosted-aware gate installs it
-     ### (hosted systems, or ADM/ALL in _XTRAS_LIST); a self-hosted box
-     ### without it would email a database-browser URL that never opens.
-     ### Strip the MANAGING YOUR DATABASES section (rule line above the
-     ### heading through the line before the next section's rule) when the
-     ### app is absent. Bounds are computed from the rendered file, so a
-     ### template reflow cannot misdelete; no end rule found = keep.
-     if [ ! -e "/var/www/adminer/index.php" ]; then
-       _dbHead=$(grep -n '^MANAGING YOUR DATABASES$' ${_ROOT}/log/setupmail.txt \
-         | head -n 1 | cut -d: -f1)
-       if [ -n "${_dbHead}" ] && [ "${_dbHead}" -gt 1 ]; then
-         _dbTop=$(( _dbHead - 1 ))
-         ### Literal 40-dash rule line: mawk has no {n} interval support.
-         _dbNext=$(awk -v s="${_dbHead}" 'NR > (s + 1) && /^----------------------------------------$/ { print NR; exit }' \
-           ${_ROOT}/log/setupmail.txt)
-         if [ -n "${_dbNext}" ] && [ "${_dbNext}" -gt "$(( _dbTop + 2 ))" ]; then
-           _dbEnd=$(( _dbNext - 1 ))
-           sed -i "${_dbTop},${_dbEnd}d" ${_ROOT}/log/setupmail.txt
-           wait
+       sed -i "s/FN8rXcQn/${_PASWD}/g" "${_mT}"
+       wait
+       ### The template placeholder is a real foreign address, so only a
+       ### validated IPv4 may replace it; anything else keeps _ipOk=NO and
+       ### the GOING LIVE strip below removes the whole section instead.
+       _ipOk=NO
+       if [ -n "${_THISHTIP}" ]; then
+         if [ -e "/usr/bin/sipcalc" ]; then
+           _IP_TEST=$(sipcalc ${_THISHTIP} 2>&1)
+           [[ ! "${_IP_TEST}" =~ "ERR" ]] && _ipOk=YES
+         elif [[ "${_THISHTIP}" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]]; then
+           _ipOk=YES
          fi
        fi
-     fi
-     ### The template hardcodes the default SSH port; a self-hosted box may
-     ### run sshd on a custom _SSH_PORT (hosted boxes are forced to 22).
-     ### Substitute both the credentials line (anchored, so the FTPS line
-     ### stays untouched) and the /sqladmin unlock wording. Guarded: only a
-     ### validated numeric port is written, else the template's 22 stays.
-     if [[ "${_SSH_PORT}" =~ ^[0-9]+$ ]] && [ "${_SSH_PORT}" != "22" ]; then
-       sed -i "s/^port: 22 /port: ${_SSH_PORT} /" ${_ROOT}/log/setupmail.txt
+       if [ "${_ipOk}" = "YES" ]; then
+         sed -i "s/166\.84\.6\.231/${_THISHTIP}/g" "${_mT}"
+         wait
+       else
+         _msg "ALRT: _THISHTIP is empty or invalid; dropping the GOING LIVE section from the welcome email"
+       fi
+       sed -i "s/boa\.version/${_X_VERSION}/g" "${_mT}"
        wait
-       sed -i "s/(port 22)/(port ${_SSH_PORT})/" ${_ROOT}/log/setupmail.txt
-       wait
-     fi
-     ### GOING LIVE tells the client to publish this box's address as an
-     ### A record; strip the whole section (rule line above the heading
-     ### through the section's closing rule line) when there is nothing
-     ### publishable: LOCAL-network topologies (RFC1918 never belongs in
-     ### client DNS) or an empty/invalid _THISHTIP (the placeholder would
-     ### otherwise ship as a real foreign address). Bounds are computed
-     ### from the rendered file, so a template reflow cannot misdelete.
-     if [ -n "${_LOCAL_NETWORK_IP}" ] || [ "${_ipOk}" != "YES" ]; then
-       _glHead=$(grep -n '^GOING LIVE$' ${_ROOT}/log/setupmail.txt \
-         | head -n 1 | cut -d: -f1)
-       if [ -n "${_glHead}" ] && [ "${_glHead}" -gt 1 ]; then
-         _glTop=$(( _glHead - 1 ))
-         ### Literal 40-dash rule line: mawk has no {n} interval support.
-         ### Stop BEFORE the next rule line: deleting through it removed
-         ### the separator between the preceding section and the sign-off.
-         _glNext=$(awk -v s="${_glHead}" 'NR > (s + 1) && /^----------------------------------------$/ { print NR; exit }' \
-           ${_ROOT}/log/setupmail.txt)
-         if [ -n "${_glNext}" ] && [ "${_glNext}" -gt "$(( _glTop + 2 ))" ]; then
-           _glEnd=$(( _glNext - 1 ))
-           sed -i "${_glTop},${_glEnd}d" ${_ROOT}/log/setupmail.txt
-           wait
+       ### FTPS is an opt-in xtra; drop its port line when Pure-FTPd is absent
+       ### so the email never advertises a port nothing is listening on.
+       if [ ! -e "/usr/local/sbin/pure-ftpd" ]; then
+         sed -i "/21 (FTPS/d" "${_mT}"
+         wait
+       fi
+       ### Adminer is guaranteed only where the hosted-aware gate installs it
+       ### (hosted systems, or ADM/ALL in _XTRAS_LIST); a self-hosted box
+       ### without it would email a database-browser URL that never opens.
+       ### Strip the MANAGING YOUR DATABASES section (rule line above the
+       ### heading through the line before the next section's rule) when the
+       ### app is absent. Bounds are computed from the rendered file, so a
+       ### template reflow cannot misdelete; no end rule found = keep.
+       if [ ! -e "/var/www/adminer/index.php" ]; then
+         _dbHead=$(grep -n '^MANAGING YOUR DATABASES$' "${_mT}" \
+           | head -n 1 | cut -d: -f1)
+         if [ -n "${_dbHead}" ] && [ "${_dbHead}" -gt 1 ]; then
+           _dbTop=$(( _dbHead - 1 ))
+           ### Literal 40-dash rule line: mawk has no {n} interval support.
+           _dbNext=$(awk -v s="${_dbHead}" 'NR > (s + 1) && /^----------------------------------------$/ { print NR; exit }' \
+             "${_mT}")
+           if [ -n "${_dbNext}" ] && [ "${_dbNext}" -gt "$(( _dbTop + 2 ))" ]; then
+             _dbEnd=$(( _dbNext - 1 ))
+             sed -i "${_dbTop},${_dbEnd}d" "${_mT}"
+             wait
+           fi
          fi
        fi
+       ### The template hardcodes the default SSH port; a self-hosted box may
+       ### run sshd on a custom _SSH_PORT (hosted boxes are forced to 22).
+       ### Substitute both the credentials line (anchored, so the FTPS line
+       ### stays untouched) and the /sqladmin unlock wording. Guarded: only a
+       ### validated numeric port is written, else the template's 22 stays.
+       if [[ "${_SSH_PORT}" =~ ^[0-9]+$ ]] && [ "${_SSH_PORT}" != "22" ]; then
+         sed -i "s/^port: 22 /port: ${_SSH_PORT} /" "${_mT}"
+         wait
+         sed -i "s/(port 22)/(port ${_SSH_PORT})/" "${_mT}"
+         wait
+       fi
+       ### GOING LIVE tells the client to publish this box's address as an
+       ### A record; strip the whole section (rule line above the heading
+       ### through the section's closing rule line) when there is nothing
+       ### publishable: LOCAL-network topologies (RFC1918 never belongs in
+       ### client DNS) or an empty/invalid _THISHTIP (the placeholder would
+       ### otherwise ship as a real foreign address). Bounds are computed
+       ### from the rendered file, so a template reflow cannot misdelete.
+       if [ -n "${_LOCAL_NETWORK_IP}" ] || [ "${_ipOk}" != "YES" ]; then
+         _glHead=$(grep -n '^GOING LIVE$' "${_mT}" \
+           | head -n 1 | cut -d: -f1)
+         if [ -n "${_glHead}" ] && [ "${_glHead}" -gt 1 ]; then
+           _glTop=$(( _glHead - 1 ))
+           ### Literal 40-dash rule line: mawk has no {n} interval support.
+           ### Stop BEFORE the next rule line: deleting through it removed
+           ### the separator between the preceding section and the sign-off.
+           _glNext=$(awk -v s="${_glHead}" 'NR > (s + 1) && /^----------------------------------------$/ { print NR; exit }' \
+             "${_mT}")
+           if [ -n "${_glNext}" ] && [ "${_glNext}" -gt "$(( _glTop + 2 ))" ]; then
+             _glEnd=$(( _glNext - 1 ))
+             sed -i "${_glTop},${_glEnd}d" "${_mT}"
+             wait
+           fi
+         fi
+       fi
+       _acct_in_real_dir "${_ROOT}/log" _satellite_put_stdin_here \
+         setupmail.txt "$(stat -c %a "${_mT}")" "" < "${_mT}"
      fi
+     [ -n "${_mW}" ] && rm -rf -- "${_mW}"
     fi
   fi
 }
@@ -5003,11 +5118,14 @@ _satellite_send_welcome_email() {
     fi
     _TIME=$(date)
     _Q="Your Ægir Install on ${_TIME} [${_USER}]"
-    echo ${_TIME} > ${_ROOT}/log/date-init.txt
+    # one space between words, as the unquoted echo wrote the date
+    _acct_put_in "${_ROOT}/log" date-init.txt "${_TIME//  / }"
     ### Historic renders can exist under legacy names; resolve the body
     ### once and use the SAME file for the guard and the send, so the
     ### guard can never pass on a name the send does not read (that
-    ### combination mailed an empty credentials email).
+    ### combination mailed an empty credentials email). log/ is the
+    ### instance user's: the body is read bounded from the real directory,
+    ### never through a link or from a FIFO put at the name.
     _mailSrc=""
     for _mailCand in setupmail.txt legacy_setupmail.txt latest_setupmail.txt; do
       if [ -e "${_ROOT}/log/${_mailCand}" ]; then
@@ -5022,12 +5140,12 @@ _satellite_send_welcome_email() {
       if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
         && [ -n "${_CLIENT_EMAIL}" ]; then
         if [ -n "${_MY_OCTO_EMAIL}" ]; then
-          cat ${_mailSrc} \
+          _acct_read_in "${_ROOT}/log" "${_mailSrc##*/}" \
             | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
             -b "${_MY_OCTO_EMAIL}" -s "${_Q}" "${_CLIENT_EMAIL}" \
             && _MAIL_SENT=YES
         else
-          cat ${_mailSrc} \
+          _acct_read_in "${_ROOT}/log" "${_mailSrc##*/}" \
             | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
             -s "${_Q}" "${_CLIENT_EMAIL}" \
             && _MAIL_SENT=YES
@@ -5048,7 +5166,7 @@ _satellite_send_welcome_email() {
       fi
       _TIME=$(date)
       _Q="[${_X_VERSION}] Ægir Upgrade [${_USER}]"
-      echo ${_TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
+      _acct_put_in "${_ROOT}/log" "date-upgrade-${_THIS_CORE}.txt" "${_TIME//  / }"
       ### Never fall back to the INIT-time setupmail render: it carries the
       ### original password under a Welcome body, so resending it under an
       ### Upgrade subject would mail stale credentials. No upgrademail.txt
@@ -5059,12 +5177,12 @@ _satellite_send_welcome_email() {
         && [ -e "${_mailBody}" ] \
         && [ -n "${_CLIENT_EMAIL}" ]; then
         if [ -n "${_MY_OCTO_EMAIL}" ]; then
-          cat ${_mailBody} \
+          _acct_read_in "${_ROOT}/log" upgrademail.txt \
             | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
             -b "${_MY_OCTO_EMAIL}" -s "${_Q}" "${_CLIENT_EMAIL}" \
             && _MAIL_SENT=YES
         else
-          cat ${_mailBody} \
+          _acct_read_in "${_ROOT}/log" upgrademail.txt \
             | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
             -s "${_Q}" "${_CLIENT_EMAIL}" \
             && _MAIL_SENT=YES
@@ -5421,11 +5539,7 @@ _satellite_make() {
   _MRK_CLI_VERSION=
   _MRK_HM_PLR=
   if [ -e "${_ROOT}/.drush/hostmaster.alias.drushrc.php" ]; then
-    _MRK_HM_PLR=$(cat ${_ROOT}/.drush/hostmaster.alias.drushrc.php \
-      | grep "root'" \
-      | cut -d: -f2 \
-      | awk '{ print $3}' \
-      | sed "s/[\,']//g" 2>&1)
+    _MRK_HM_PLR=$(_satellite_hm_alias_get "root'")
   fi
   if [ -z "${_MRK_HM_PLR}" ] \
     || [ ! -e "${_MRK_HM_PLR}/modules/path_alias_cache" ] \
@@ -5528,23 +5642,25 @@ _satellite_make() {
   # writes must use the account's real group.
   _ACCG=$(_acct_group "${_USER}")
 
+  ### log/ is the instance user's: a missing name is put there as a fresh
+  ### file inside the real directory, never created through a dangling link.
   if [ ! -e "${_ROOT}/log/email.txt" ]; then
-    echo ${_CLIENT_EMAIL} > ${_ROOT}/log/email.txt
+    _acct_put_in "${_ROOT}/log" email.txt "${_CLIENT_EMAIL}"
   fi
   if [ ! -e "${_ROOT}/log/option.txt" ]; then
-    echo ${_CLIENT_OPTION} > ${_ROOT}/log/option.txt
+    _acct_put_in "${_ROOT}/log" option.txt "${_CLIENT_OPTION}"
   fi
   if [ ! -e "${_ROOT}/log/cores.txt" ]; then
-    echo ${_CLIENT_CORES} > ${_ROOT}/log/cores.txt
+    _acct_put_in "${_ROOT}/log" cores.txt "${_CLIENT_CORES}"
   fi
   if [ ! -e "${_ROOT}/log/subscr.txt" ]; then
-    echo ${_CLIENT_SUBSCR} > ${_ROOT}/log/subscr.txt
+    _acct_put_in "${_ROOT}/log" subscr.txt "${_CLIENT_SUBSCR}"
   fi
   if [ ! -e "${_ROOT}/log/fpm.txt" ]; then
-    echo ${_PHP_FPM_VERSION} > ${_ROOT}/log/fpm.txt
+    _acct_put_in "${_ROOT}/log" fpm.txt "${_PHP_FPM_VERSION}"
   fi
   if [ ! -e "${_ROOT}/log/cli.txt" ]; then
-    echo ${_PHP_CLI_VERSION} > ${_ROOT}/log/cli.txt
+    _acct_put_in "${_ROOT}/log" cli.txt "${_PHP_CLI_VERSION}"
   fi
   _acct_in_real_dir "${_ROOT}/static" _satellite_ctrl_dir_here
   _acct_in_real_dir "${_ROOT}/static/control" _satellite_ctrl_make_here
@@ -5795,6 +5911,134 @@ _satellite_ctrl_make_here() {
 }
 
 #
+# The instance user owns the rest of the account (log/, .drush/, tools/,
+# .ssh/, the hostmaster tree), so any name there can be a link or a FIFO too.
+# Root reads, writes, copies, edits and sets modes there only through these,
+# run inside the real directory (_acct_in_real_dir), beside the shared
+# _acct_* helpers.
+#
+# A mode set on names in the current (pinned) directory, never through a
+# link: each name is opened without following one and without blocking on a
+# FIFO, checked to be the expected type and changed through the open handle.
+# Run it inside a pinned directory or from find -execdir: O_NOFOLLOW covers
+# the last name only. Args: f|d (regular file or directory), the mode
+# (octal), the names.
+_SAT_NOFOLLOW_CHMOD_PL='use Fcntl;
+my ($t, $m) = (shift @ARGV, oct(shift @ARGV));
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  stat($h);
+  if (($t eq "f" && -f _) || ($t eq "d" && -d _)) {
+    chmod($m, $h);
+  }
+  close($h);
+}'
+_satellite_chmod_nofollow() {
+  local _t="${1}" _m="${2}"
+  shift 2
+  [ "$#" -gt 0 ] || return 0
+  perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" "${_t}" "${_m}" "$@" 2> /dev/null
+}
+# ./$1 in the current (pinned) directory made from stdin: a fresh file
+# created exclusively (0600 until it is complete), handed to $3 (owner:group;
+# empty leaves it root's), given the mode $2 through its handle and renamed
+# over the name, so a link or a FIFO put at the name is replaced, never
+# followed or opened.
+_satellite_put_stdin_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( umask 077; dd of="${_t}" bs=1048576 conv=excl status=none 2> /dev/null ) \
+    && { [ -z "${3}" ] || chown -h "${3}" "${_t}" 2> /dev/null; } \
+    && _satellite_chmod_nofollow f "${2:-0644}" "${_t}" \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# stdin appended to ./$1 in the current (pinned) directory, as >> appends
+# (a missing file created 0644), but only to a regular file: a link or a FIFO
+# put at the name is refused, never followed or opened.
+_SAT_APPEND_PL='use Fcntl;
+sysopen(my $h, $ARGV[0], O_WRONLY | O_APPEND | O_CREAT | O_NOFOLLOW | O_NONBLOCK, 0644)
+  or exit 1;
+-f $h or exit 1;
+local $/;
+my $d = <STDIN>;
+print {$h} $d if defined $d;
+close($h) or exit 1;'
+_satellite_append_here() {
+  perl -e "${_SAT_APPEND_PL}" "./${1}" 2> /dev/null
+}
+# The last MiB of ./$1 in the current (pinned) directory (all of it when
+# smaller), read as _acct_read_here reads: for a log whose newest lines are
+# at its end.
+_satellite_read_tail_here() {
+  local _s
+  _s="$(stat -c %s -- "./${1}" 2> /dev/null)"
+  _s="$(( ${_s:-0} > 1048576 ? ${_s:-0} - 1048576 : 0 ))"
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock,skip_bytes \
+    skip="${_s}" bs=1048576 count=1 status=none 2> /dev/null
+}
+# uid:gid and mode of ./$1 in the current (pinned) directory when it is a
+# regular file _acct_read_here reads whole (1 MiB at most); fails otherwise.
+_satellite_stat_here() {
+  local _o _m _s
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  read -r _o _m _s <<< "$(stat -c '%u:%g %a %s' -- "./${1}" 2> /dev/null)"
+  [ -n "${_s}" ] && [ "${_s}" -le 1048576 ] || return 1
+  echo "${_o} ${_m}"
+}
+# ./$2 in the current (pinned) directory made from the regular file ./$1 (the
+# same name edits it in place), through the sed script $3 when given, with
+# $1's owner and mode: what cp -a or sed -i did there, without following a
+# link or opening a FIFO at either name.
+_satellite_copy_here() {
+  local _st
+  _st="$(_satellite_stat_here "${1}")" || return 1
+  _acct_read_here "${1}" | sed -e "${3:-}" \
+    | _satellite_put_stdin_here "${2}" "${_st#* }" "${_st%% *}"
+}
+# The sed script $1 applied as _satellite_copy_here applies it to every name
+# the glob $2 matches in the current (pinned) directory, expanded there.
+_satellite_edit_all_here() (
+  local _f
+  shopt -s nullglob
+  # shellcheck disable=SC2086
+  for _f in ./${2}; do
+    _satellite_copy_here "${_f#./}" "${_f#./}" "${1}"
+  done
+)
+# The current (pinned) directory handed to $1 (owner:group) with the mode $2.
+_satellite_own_dir_here() {
+  chown -h "${1}" . && chmod "${2}" .
+}
+# One value of the account's hostmaster alias ($1 = the key and its closing
+# quote, as root' or site_path'), parsed as before from a bounded read that
+# never follows a link or blocks on a FIFO.
+_satellite_hm_alias_get() {
+  _acct_read_in "${_ROOT}/.drush" hostmaster.alias.drushrc.php \
+    | grep "${1}" \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,']//g" 2>&1
+}
+# True when $1 names one of the account's own hostmaster roots
+# (<root>/aegir/distro/<name>) or, with $2 = site, a site in one
+# (.../<name>/sites/<site>). The alias is the account's file: a path read
+# from it is used only there, and only through _acct_in_real_dir, which also
+# refuses a link or a dot name on the way.
+_satellite_hm_path_ok() {
+  local _p="${1#"${_ROOT}/aegir/distro/"}"
+  [ -n "${1}" ] && [ "${_p}" != "${1}" ] || return 1
+  if [ "${2}" = "site" ]; then
+    [[ "${_p}" =~ ^[^/]+/sites/[^/]+$ ]]
+  else
+    [[ "${_p}" =~ ^[^/]+$ ]]
+  fi
+}
+
+#
 # One PHP version in the text of fpm.info or cli.info, dotted (8.4) or
 # two-digit (84, as the ltd worker also reads it), printed dotted; nothing for
 # any other text.
@@ -5874,12 +6118,17 @@ _satellite_check_octopus_vs_barracuda_ver() {
     fi
   fi
   if [ -e "${_ROOT}/log/octopus_log.txt" ]; then
+    ### tools/ and log/ are the instance user's: the key is put as a fresh
+    ### file and the log read bounded (its newest lines), both inside the
+    ### real directories, never through a link or a FIFO put there.
     if [ -e "/var/aegir/key/barracuda_key.txt" ] \
       && [ ! -e "${_ROOT}/tools/key/octopus_key.txt" ]; then
-      mkdir ${_ROOT}/tools/key
-      cat /var/aegir/key/barracuda_key.txt > ${_ROOT}/tools/key/octopus_key.txt
+      _acct_in_real_dir "${_ROOT}/tools" mkdir -p ./key
+      _acct_in_real_dir "${_ROOT}/tools/key" _satellite_put_stdin_here \
+        octopus_key.txt 0644 "" < /var/aegir/key/barracuda_key.txt
     fi
-    _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
+    _SERIES_TEST=$(_acct_in_real_dir "${_ROOT}/log" \
+      _satellite_read_tail_here octopus_log.txt)
     if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
       _VERSIONS_TEST_RESULT=OK
@@ -5898,7 +6147,8 @@ _satellite_check_octopus_vs_barracuda_ver() {
   fi
   if [ -e "${_ROOT}/log/octopus_log.txt" ] \
     && [ "${_tRee}" = "lts" ]; then
-    _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
+    _SERIES_TEST=$(_acct_in_real_dir "${_ROOT}/log" \
+      _satellite_read_tail_here octopus_log.txt)
     if [[ "${_SERIES_TEST}" =~ "Octopus ${_rLsn}-pro" ]]; then
       _msg "ERROR: Your Octopus has been already upgraded to ${_rLsn}-pro"
       _msg "You can not downgrade back to previous/older/lts BOA version"
@@ -5956,8 +6206,10 @@ _satellite_domain_stamp_guard() {
         _msg "NOTE: hostmaster site (${_realDom}) — converging the stamp"
       fi
       _DOMAIN="${_realDom}"
-      echo "${_DOMAIN}" > ${_ROOT}/log/domain.txt
-      chown ${_USER}:${_ACCG:-users} ${_ROOT}/log/domain.txt &> /dev/null
+      ### a fresh file in the real log/ handed to the instance user, never
+      ### written or handed over through a link put at the name
+      _acct_in_real_dir "${_ROOT}/log" _acct_pin_here domain.txt \
+        "${_DOMAIN}" "${_USER}:${_ACCG:-users}" &> /dev/null
     fi
     if [ -e "${_octCnfG}" ] && [ "${_cnfDom}" != "${_realDom}" ]; then
       if [ -n "${_cnfDom}" ]; then
@@ -5982,8 +6234,8 @@ _satellite_domain_stamp_guard() {
       fi
     elif [ -n "${_cnfDom}" ] && [ -z "${_DOMAIN}" ]; then
       _DOMAIN="${_cnfDom}"
-      echo "${_DOMAIN}" > ${_ROOT}/log/domain.txt
-      chown ${_USER}:${_ACCG:-users} ${_ROOT}/log/domain.txt &> /dev/null
+      _acct_in_real_dir "${_ROOT}/log" _acct_pin_here domain.txt \
+        "${_DOMAIN}" "${_USER}:${_ACCG:-users}" &> /dev/null
       _msg "NOTE: empty log/domain.txt healed from ${_octCnfG}: ${_DOMAIN}"
     elif [ -z "${_cnfDom}" ] && [ -n "${_DOMAIN}" ] && [ -e "${_octCnfG}" ]; then
       ### No arbiter and no cnf witness: proceed on the stamp but never
@@ -6002,8 +6254,11 @@ _satellite_if_init_or_upgrade() {
   if [ -d "${_ROOT}" ]; then
     _msg "Octopus Satellite Instance Upgrade in progress..."
     if [ -d "${_ROOT}/distro" ]; then
+      ### log/ is the instance user's: its files are read bounded, never
+      ### through a link or from a FIFO, and written as fresh files inside
+      ### the real directory.
       if [ -e "${_ROOT}/log/domain.txt" ]; then
-        _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>/dev/null | tr -d '\n')
+        _DOMAIN=$(_acct_read_in "${_ROOT}/log" domain.txt | tr -d '\n')
       fi
       _satellite_domain_stamp_guard
       if [ -z "${_DOMAIN}" ]; then
@@ -6019,31 +6274,31 @@ _satellite_if_init_or_upgrade() {
         if [ -e "${_ROOT}/log/amazing_upgrade.txt" ] \
           && [ ! -e "${_ROOT}/log/amazing_upgrade_complete.txt" ]; then
           if [ -e "${_ROOT}/log/original_option.txt" ]; then
-            cp -af ${_ROOT}/log/option.txt \
-              ${_ROOT}/log/prev_option.txt
-            cp -af ${_ROOT}/log/original_option.txt \
-              ${_ROOT}/log/option.txt
+            _acct_in_real_dir "${_ROOT}/log" _satellite_copy_here \
+              option.txt prev_option.txt
+            _acct_in_real_dir "${_ROOT}/log" _satellite_copy_here \
+              original_option.txt option.txt
           fi
           if [ -e "${_ROOT}/log/original_cores.txt" ]; then
-            cp -af ${_ROOT}/log/cores.txt \
-              ${_ROOT}/log/prev_cores.txt
-            cp -af ${_ROOT}/log/original_cores.txt \
-              ${_ROOT}/log/cores.txt
+            _acct_in_real_dir "${_ROOT}/log" _satellite_copy_here \
+              cores.txt prev_cores.txt
+            _acct_in_real_dir "${_ROOT}/log" _satellite_copy_here \
+              original_cores.txt cores.txt
           fi
-          echo completed > ${_ROOT}/log/amazing_upgrade_complete.txt
+          _acct_put_in "${_ROOT}/log" amazing_upgrade_complete.txt completed
         fi
       fi
       if [ -e "${_ROOT}/log/option.txt" ]; then
-        _CLIENT_OPTION=$(cat ${_ROOT}/log/option.txt 2>/dev/null | tr -d '\n')
+        _CLIENT_OPTION=$(_acct_read_in "${_ROOT}/log" option.txt | tr -d '\n')
       fi
       if [ -e "${_ROOT}/log/cores.txt" ]; then
-        _CLIENT_CORES=$(cat ${_ROOT}/log/cores.txt 2>/dev/null | tr -d '\n')
+        _CLIENT_CORES=$(_acct_read_in "${_ROOT}/log" cores.txt | tr -d '\n')
       fi
       if [ -e "${_ROOT}/log/subscr.txt" ]; then
-        _CLIENT_SUBSCR=$(cat ${_ROOT}/log/subscr.txt 2>/dev/null | tr -d '\n')
+        _CLIENT_SUBSCR=$(_acct_read_in "${_ROOT}/log" subscr.txt | tr -d '\n')
       fi
       if [ -e "${_ROOT}/log/email.txt" ]; then
-        _CLIENT_EMAIL=$(cat ${_ROOT}/log/email.txt 2>/dev/null | tr -d '\n')
+        _CLIENT_EMAIL=$(_acct_read_in "${_ROOT}/log" email.txt | tr -d '\n')
         if [[ "${_CLIENT_EMAIL}" =~ "@" ]]; then
           _DO_NOTHING=YES
         else
@@ -6119,7 +6374,7 @@ _satellite_if_init_or_upgrade() {
     #
     elif [ ! -d "${_ROOT}/distro" ]; then
       if [ -e "${_ROOT}/log/domain.txt" ]; then
-        _DOMAIN=$(cat ${_ROOT}/log/domain.txt 2>&1)
+        _DOMAIN=$(_acct_read_in "${_ROOT}/log" domain.txt)
         _DOMAIN=$(echo -n ${_DOMAIN} | tr -d "\n" 2>&1)
       fi
       _satellite_domain_stamp_guard
@@ -6152,7 +6407,8 @@ _satellite_if_major_upgrade() {
   fi
   if [ "${_CLIENT_OPTION}" = "POWER" ] \
     && [ -e "${_ROOT}/log/octopus_log.txt" ]; then
-    _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
+    _SERIES_TEST=$(_acct_in_real_dir "${_ROOT}/log" \
+      _satellite_read_tail_here octopus_log.txt)
     if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
       _IT_IS_OK=YES
@@ -6167,7 +6423,8 @@ _satellite_if_major_upgrade() {
   fi
   if [ "${_CLIENT_OPTION}" = "CLUSTER" ] \
     && [ -e "${_ROOT}/log/octopus_log.txt" ]; then
-    _SERIES_TEST=$(cat ${_ROOT}/log/octopus_log.txt 2>&1)
+    _SERIES_TEST=$(_acct_in_real_dir "${_ROOT}/log" \
+      _satellite_read_tail_here octopus_log.txt)
     if [[ "${_SERIES_TEST}" =~ "BOA-5." ]] \
       || [[ "${_SERIES_TEST}" =~ "BOA-4." ]]; then
       _IT_IS_OK=YES
@@ -6390,7 +6647,7 @@ _satellite_post_cleanup() {
   rm -rf /tmp/make_tmp*
   rm -f /tmp/pm-updatecode*
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
-  rm -rf ${_ROOT}/.tmp/cache
+  _acct_in_real_dir "${_ROOT}/.tmp" rm -rf -- ./cache
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
 }
@@ -6642,18 +6899,22 @@ _satellite_log_update() {
     _msg "PROC: _satellite_log_update"
     _debug_proc
   fi
+  ### log/ is the instance user's: the stamps are put as fresh files and
+  ### the entry appended only to a regular octopus_log.txt, inside the real
+  ### directory, never through a link or a FIFO put at a name (one space
+  ### between words, as the unquoted echo wrote the date).
   if [ "${_STATUS}" = "INIT" ]; then
-    echo ${_F_TIME} > ${_ROOT}/log/date-init.txt
+    _acct_put_in "${_ROOT}/log" date-init.txt "${_F_TIME//  / }"
   else
-    echo ${_F_TIME} > ${_ROOT}/log/date-upgrade-${_THIS_CORE}.txt
+    _acct_put_in "${_ROOT}/log" "date-upgrade-${_THIS_CORE}.txt" "${_F_TIME//  / }"
   fi
   _OCTOPUS_VERSION_INFO="${_F_TIME} / \
     ${_OS_DIST}.${_OS_CODE} / \
     Octopus ${_X_VERSION}-${_xSrl} / \
     FPM ${_PHP_FPM_VERSION} / \
     CLI ${_PHP_CLI_VERSION}"
-  echo "${_OCTOPUS_VERSION_INFO}" | fmt -su -w 2500 >> \
-    ${_ROOT}/log/octopus_log.txt
+  echo "${_OCTOPUS_VERSION_INFO}" | fmt -su -w 2500 \
+    | _acct_in_real_dir "${_ROOT}/log" _satellite_append_here octopus_log.txt
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: New entry added to ${_ROOT}/log/octopus_log.txt"
   fi
@@ -6773,18 +7034,32 @@ _satellite_batch_cleanup() {
   mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
   mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
   ### module* directories two to five levels below static/ made 0775. static/
-  ### is group-writable: walked from the real directory, never through a link
-  ### anyone put there (find does not follow one, -execdir acts on the bare
-  ### name in its own directory); dot names are skipped, as the per-depth
-  ### globs this replaces skipped them.
-  _acct_in_real_dir "${_ROOT}/static" find . -maxdepth 5 \
-    \( -name '.?*' -prune \) -o \( -path './*/*' -type d -name 'module*' \
-    -execdir chmod 775 {} + \) &> /dev/null
+  ### is group-writable: walked from the real directory (find does not
+  ### follow a link), and each match is entered and checked to be the real
+  ### directory at that path before its mode is set on '.', so a name
+  ### swapped for a link after the walk is never followed; dot names are
+  ### skipped, as the per-depth globs this replaces skipped them.
+  _acct_in_real_dir "${_ROOT}/static" _satellite_static_modules_here &> /dev/null
   if [ -d "${_CORE}/${_DRUPAL7}" ]; then
     [ -d "/var/backups/trash" ] || mkdir -p /var/backups/trash
     rm -rf /var/backups/trash/*
     mv -f ${_CORE}/${_DRUPAL7} /var/backups/trash/ &> /dev/null
   fi
+}
+
+#
+# module* directories two to five levels below the current (pinned) static/,
+# each set 0775 from inside it once cd -P lands on the real directory at the
+# path find reported.
+_satellite_static_modules_here() {
+  local _s _m
+  _s="$(pwd -P)"
+  find . -maxdepth 5 \( -name '.?*' -prune \) \
+    -o \( -path './*/*' -type d -name 'module*' -print0 \) \
+    | while IFS= read -r -d '' _m; do
+      ( cd -P -- "${_m}" 2> /dev/null \
+        && [ "$(pwd -P)" = "${_s}/${_m#./}" ] && chmod 775 . )
+    done
 }
 
 _satellite_display_url_finalize() {
@@ -6796,7 +7071,9 @@ _satellite_display_url_finalize() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _DO_NOTHING=YES
     else
-      _AEGIR_LOGIN_URL=$(tail --lines=11 ${_ROOT}/log/install.log | grep --text "^http:" 2>&1)
+      _AEGIR_LOGIN_URL=$(_acct_in_real_dir "${_ROOT}/log" \
+        _satellite_read_tail_here install.log \
+        | tail --lines=11 | grep --text "^http:" 2>&1)
       if [ ! -z "${_AEGIR_LOGIN_URL}" ]; then
         echo " "
         _msg "INFO: Congratulations, Ægir Satellite have been installed successfully!"
