@@ -321,6 +321,23 @@
       group's list now carries the /opt/phpNN/bin/php paths the aliases
       expand to.
 
+    * The far-future path (/cdn/farfuture/...) answers 404 for a site's
+      private files, its backup_migrate and config_ files, settings.php
+      and other PHP and source files, any hidden file and Composer
+      metadata. It used to serve them, settings.php included.
+
+    * A site's backup_migrate and config_ files are refused before the
+      locations that serve webform uploads, weak-module assets and paths
+      holding /external/ or /system/ are tried, and those locations,
+      image styles, imagecache and the responsive and adaptive image
+      locations among them, leave a site's private directories to the
+      private-download handling. A file whose name or path fitted one of
+      them was served from there, private files included. A PHP file
+      under a files directory, a module's own included, answers 404
+      through each of those locations and the advagg ones. Subdirectory
+      sites have the same protection, an encoded line feed after a file
+      name included.
+
 @=> New Features
 
     * New ~/static/control/cli-per-platform.info gives one platform its
@@ -1079,7 +1096,7 @@
       that merely start with the same name, /blog redirects to /blog/
       without leaving HTTPS, and over HTTPS a subdirectory site's links
       keep the subdirectory. Under a domain that is not a site, PHP pages
-      no longer fail and the same guards apply as under a site.
+      no longer fail.
 
     * Delete and restore take a subdirectory site's configuration along,
       a clone into another subdirectory gets its own, and a moved
@@ -1088,6 +1105,50 @@
       and Grav and Textpattern sites are refused. A subdirectory site's
       one-time login link no longer loads the domain's cached data, and
       Let's Encrypt leaves subdirectory addresses out of certificates.
+
+    * A subdirectory site gets the handling a site of its own gets from
+      the web server. A missing image style derivative is generated,
+      Drupal 10+ builds its aggregated CSS and JS, web cron works on
+      Backdrop and, on Drupal 10+, is refused from any address but the
+      server's own, as for a site of its own, update.php works on
+      Drupal 10+ and Backdrop, and files of every type a site serves
+      (JSON, XML, CSV, calendar and media files among them) come from
+      the site's own files directory. The request guards, rate limits,
+      cache rules and response headers of a site's vhost apply to its
+      paths as well.
+
+    * A subdirectory site runs on the PHP version set for it in
+      multi-fpm.info, and otherwise on the account's default version.
+      Under a domain's site it ran on the version set for that site.
+
+    * Under a domain served by a Grav or Textpattern site, the PHP pages
+      of a subdirectory site get a PHP pool: the domain's vhost set none
+      for them.
+
+    * A domain that is not a site but serves subdirectory sites now
+      applies its ip_access and AI crawler policy records, and the
+      request guards and response headers of a site's vhost, to every
+      path it serves. It already refused banned addresses, crawlers and
+      methods no site accepts.
+
+    * A request to a subdirectory site whose query string holds
+      "/autocomplete/" reaches that site, not the domain's site: the
+      Drupal autocomplete workaround runs in the catch-all location
+      instead of for every path of the server.
+
+    * An imagecache path under another sites directory
+      (sites/default/files/imagecache/...) is served from the site's
+      own copy when there is one, as the location always meant to: that
+      lookup never ran, and every such request went to Drupal.
+
+    * A Drupal site run on the command line as --uri=example.com/blog,
+      or under one of its aliases, keys its cache and finds its site INI
+      under its own name, as its web requests do. Drush takes the name
+      from the host of --uri, so a subdirectory site read and cleared
+      the cache entries of the domain's site and of the other
+      subdirectory sites run the same way: a drush cr left the site's
+      own pages stale, and a command could read another site's cached
+      configuration and state.
 
     * A Drupal 10+ site no longer fails after its platform is locked again
       following work with the site-local Drush. Re-locking a platform the
