@@ -50,6 +50,21 @@
 
 @=> Security
 
+    * The migration key exchange is pinned: the target's pre-mig of xoct,
+      xcopy and xmass requires --key-fp=SHA256:..., the fingerprint the
+      source's pre-mig prints, and adds only the matching key, tagged
+      with the tool and the source address. post-mig stops publishing
+      the source's key.
+    * Where the nightly, syncpass and the Solr agent replace a file in a
+      directory the account can write, the new file is created, owned
+      and moded through one handle; nothing is chowned by name there.
+    * The Solr agent reads and writes an account's site files only inside
+      the real directories, bounded and never through a link or from a
+      FIFO; an uploaded Solr config is staged and checked before it is
+      applied, and each site's pass acts only on that site's core.
+    * A migration park, a migratefs hold, a queue pause and a backup wait
+      marker count only for a live root process of the tool that wrote
+      it.
     * Root no longer follows a link, or opens a FIFO, that an account
       puts at a name in its own directories: static/control, and the
       log/, .drush/, config/, tools/, .tmp/ and .ftp home names its main
@@ -775,6 +790,28 @@
       write, and bounds its post-copy recheck with --recheck-max (MB).
     * renameaegirhost --help prints only its usage header, without the
       section banners that followed it.
+    * xoct and xcopy pre-mig keep the five runners parked until post-mig
+      (at most 24 hours): the tools refresh and a barracuda system pass no
+      longer bring them back, so create's armed upgrade and the task queue
+      no longer run in the middle of a move.
+    * xoct and xcopy transfers keep the target's own hostmaster, hm and
+      server_master aliases, and import refuses before changing anything
+      when the panel alias names no site or database on the box, instead
+      of skipping the panel import and reporting success.
+    * xcopy uses the account's own e-mail address from log/email.txt, and
+      refuses one xoct would refuse, instead of a fixed address.
+    * migratefs holds each store while it relocates it: the nightly account
+      pass, updatesymlinks, the octopus pass, usage cleanup and copydbackup
+      leave a held store alone, and the SQL backups wait up to 3 hours for
+      a held /data/disk/arch before skipping with a notice.
+    * migratefs, updatesymlinks, the nightly backups mover and the
+      migrate-source sweep never run under another live operation's queue
+      pause, which that operation could lift in the middle of their work.
+    * Solr: an uploaded config set is compared file by file and applied
+      whole, a set the core refuses to load is rolled back, the reload's
+      answer is checked, and a template check no longer depends on the
+      previous site. Drupal 8 and later cores take their config only from
+      the upload; the incomplete D8+ templates are retired.
     * The usage figure of an account with a relocated store is measured
       without following links: the account, plus its own store once.
     * The fix-drupal-* permission helpers and fixrepo set modes in
