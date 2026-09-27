@@ -1330,6 +1330,18 @@ _fetch_failed_report() {
   _FETCH_FAIL_CNT=0
 }
 
+# A runner a migration tool parked as /var/xdrago/.<name>.off stays parked
+# while its park marker lives (xoct/xcopy/xmass pre-mig until post-mig, 24 h
+# at most: clear.sh expires the marker). Fetching into the empty name undid
+# the park within one clear.sh tick, so the target ran the queue and the
+# upgrade create had armed in the middle of the move. This test skips the
+# fetch; _fetch_versioned checks the park again right before it writes, for
+# a park that lands while the fetch runs.
+_runner_parked() {
+  [[ -e "/run/boa_migration_park.pid" ]] || return 1
+  [[ ! -e "/var/xdrago/${1}" ]] && [[ -e "/var/xdrago/.${1}.off" ]]
+}
+
 _fetch_versioned() {
   local _dst="$1" _url="$2" _srl="$3"
   shift 3
@@ -1557,6 +1569,15 @@ _fetch_versioned() {
     else
       chmod "${_mode}" "${_new}"
       chown "${_own}" "${_new}"
+      # The park is checked again at the write: a migration tool can park
+      # this name after the caller's _runner_parked test, while the fetch
+      # runs, and the move would then bring the runner back mid-migration.
+      # Dropped unarmed, so the next pass asks again once the park is over.
+      if [[ -e "/run/boa_migration_park.pid" ]] && [[ ! -e "${_dst}" ]] \
+        && [[ -e "${_dst%/*}/.${_dst##*/}.off" ]]; then
+        rm -f "${_new}"
+        return 0
+      fi
       mv -f "${_new}" "${_dst}"             # first install or self-heal (atomic)
     fi
     [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
@@ -1988,7 +2009,8 @@ _update_agents() {
     _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
     _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f84
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f82 --guard mysql_cluster_backup.sh
-    _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f62
+    _runner_parked runner.sh \
+      || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f62
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f78
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f78
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f78
@@ -2035,12 +2057,13 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f91
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f88
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f72
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f71
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f68
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f52
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f55
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f72
-    _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f75
+    _runner_parked owl.sh \
+      || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f75
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
     ### state (.daily.sh.off) across to owl so a box that had the nightly run
@@ -2063,8 +2086,10 @@ _update_agents() {
       rm -f /var/xdrago/daily.sh
       rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     fi
-    _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f75
-    _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f62
+    _runner_parked graceful.sh \
+      || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f75
+    _runner_parked usage.sh \
+      || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f62
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
@@ -2106,13 +2131,15 @@ _update_agents() {
     # bytes already deployed as "mirror not caught up" and retries next pass,
     # revalidates within the hour, and never clobbers a running pass; the
     # post-install steps run only when the file actually changed.
-    _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f86 --guard /xdrago/manage_ltd_users.sh
-    if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
-      && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
-      [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
-      [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
-      mkdir -p /var/backups/ltd/{conf,log,old}
+    if ! _runner_parked manage_ltd_users.sh; then
+      _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f86 --guard /xdrago/manage_ltd_users.sh
+      if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
+        && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
+        [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+        [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
+        mkdir -p /var/backups/ltd/{conf,log,old}
+      fi
     fi
   fi
 
@@ -4812,9 +4839,9 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f95 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f48 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f32 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f97 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f47 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f31 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f96 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f70 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f93 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f87 --guard /local/bin/autochimaera

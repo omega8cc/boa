@@ -8,7 +8,9 @@
 ### migrates ALL Octopus instances and all Solr cores in a single operation.
 ###
 ### Usage:
-###   xmass pre-mig <source-fqdn>                   (run on BOTH source and target)
+###   xmass pre-mig <source-fqdn>                   (run on SOURCE first; prints the
+###                                                  key fingerprint the target needs)
+###   xmass pre-mig <source-fqdn> --key-fp=SHA256:...  (then run on TARGET)
 ###   xmass init    <target-ip> [--proxy-mode=temporary|permanent|ha-switch]
 ###                             [--proxy-deadline=YYYY-MM-DD|+Nd]   (run on SOURCE)
 ###   xmass sync    <target-ip> [--live]             (run on SOURCE, repeat as needed)
@@ -2468,12 +2470,27 @@ _xmass_solr_core_parity() {
 ### the resume path: the box's own cron restores parked runners within
 ### minutes, so a park done at pre-mig time never survives until cutover --
 ### park HERE, immediately before the destructive sequence, then verify.
+### This park, unlike pre-mig's, writes the migration park marker, so it
+### also holds through the relay window, when cron runs again.
 _xmass_park_runners_and_cron() {
   local _p
   _info "Stopping cron and parking BOA runners for the cutover window ..."
   _XMASS_RUNNERS_PARKED=YES
   /etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null
   pkill -x cron &> /dev/null
+  # The park holds while this marker lives: BOA's tools refresh leaves a
+  # runner parked as .<name>.off alone, so the relay window's cron restart
+  # does not fetch them back. The refresh tests the park before it fetches
+  # a runner and again right before it writes one; both tests need this
+  # marker and the live copy gone, so the marker is written before the
+  # runners move. A refresh already running then drops a runner it fetched
+  # while the park landed; only a write that passed its last test in the
+  # instant before a move can still land. The unpark removes the marker;
+  # clear.sh drops it after 24 hours, and /run does not survive a reboot.
+  if ! printf '%s\n' "xmass cutover ${_tgt:-none} $(date -u '+%F %T') UTC" \
+    > /run/boa_migration_park.pid; then
+    _alrt "could not write /run/boa_migration_park.pid; a cron tick would fetch the parked runners back"
+  fi
   for _p in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ -e "/var/xdrago/${_p}" ]; then
       mv -f "/var/xdrago/${_p}" "/var/xdrago/.${_p}.off"
@@ -2502,12 +2519,22 @@ _xmass_unpark_runners_and_cron() {
   # Only the pause this tool planted: an operator's own hold stays.
   grep -q "^xmass " "${_XMASS_HEAVY_PAUSE}" 2>/dev/null && rm -f "${_XMASS_HEAVY_PAUSE}"
   /etc/init.d/cron start &> /dev/null || service cron start &> /dev/null
+  # A refetch or a system pass that restored a live copy first left the
+  # parked one behind: stale bytes that read as a park again whenever the
+  # live name goes missing. Removed once the live copy is there.
   for _p in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ ! -e "/var/xdrago/${_p}" ] && [ -e "/var/xdrago/.${_p}.off" ]; then
       mv -f "/var/xdrago/.${_p}.off" "/var/xdrago/${_p}"
       _info "  Restored ${_p}"
+    elif [ -e "/var/xdrago/${_p}" ] && [ -e "/var/xdrago/.${_p}.off" ]; then
+      rm -f "/var/xdrago/.${_p}.off"
+      _info "  Removed a stale parked copy of ${_p}"
     fi
   done
+  rm -f /run/boa_migration_park.pid
+  # The move is over, or abandoned with this box staying production: it
+  # stops serving its root key either way.
+  rm -f /var/www/nginx-default/auth_undefined_keys.txt*
   _XMASS_RUNNERS_PARKED=NO
   if ! pgrep -x cron &> /dev/null; then
     _alrt "cron did not start on this box; the daily certificate mirror and"
@@ -2521,12 +2548,13 @@ _xmass_unpark_runners_and_cron() {
 # its IDS, the real-client refresh and the daily certificate mirror for as
 # long as the renames take. The heavy night jobs (backups, the night worker,
 # usage, graceful) stay held by BOA's own heavy-tasks pause, which nothing
-# clears behind our back; the five parked runners stay parked, and the full
-# restore above lifts both at the end of the cutover. The task pause marker
-# is deliberately NOT used: on a hosted box the self-update agent clears it
-# within minutes, and what it would hold here -- the dispatcher and the
-# sub-user pass on a box whose accounts are already stamped proxied -- is the
-# ordinary life of a relay box.
+# clears behind our back; the five parked runners stay parked (the park
+# marker keeps the restarted cron's tools refresh from fetching them back),
+# and the full restore above lifts both at the end of the cutover. The task
+# pause marker is deliberately NOT used: on a hosted box the self-update
+# agent clears it within minutes, and what it would hold here -- the
+# dispatcher and the sub-user pass on a box whose accounts are already
+# stamped proxied -- is the ordinary life of a relay box.
 _XMASS_HEAVY_PAUSE="/root/.pause_heavy_tasks_maint.cnf"
 _xmass_start_cron_relay() {
   [ -e "${_XMASS_HEAVY_PAUSE}" ] \
@@ -6220,6 +6248,7 @@ _xmass_restore_hint() {
     _alrt '    service cron start'
     _alrt '    for s in runner owl usage graceful manage_ltd_users; do \'
     _alrt '      mv -f /var/xdrago/.$s.sh.off /var/xdrago/$s.sh 2>/dev/null; done'
+    _alrt '    rm -f /run/boa_migration_park.pid'
   elif [ "${_XMASS_RUNNERS_PARKED}" = "YES" ]; then
     # Pre-promotion abort: this box REMAINS production and must not sit
     # with cron down (no duplicity, no IDS, no certificate mirror) until
@@ -6862,13 +6891,14 @@ _xmass_setup_migration_proxy_trust() {
 ### address list root keeps beside each peer record it receives (every
 ### address the peer relays from, so a record's whole set stays witnessed
 ### after the relay list is retired), a root key line tagged for that
-### address by pre-mig, or the firewall line an xmass run wrote for it. An
-### address named only in an account's log/ is none of these.
+### address by an xmass, xoct or xcopy pre-mig, or the firewall line an xmass
+### run wrote for it. An address named only in an account's log/ is none of
+### these.
 _xmass_peer_witnessed() {
   local _rx="${1//./\\.}"
   grep -qxF -- "${1}" /root/.migration.proxy.ips.cnf 2> /dev/null && return 0
   grep -qxF -- "${1}" /root/.migration.peer.addrs 2> /dev/null && return 0
-  grep -qE -- " # xmass migration source ${_rx}[[:space:]]*\$" /root/.ssh/authorized_keys 2> /dev/null && return 0
+  grep -qE -- " # (xmass|xoct|xcopy) migration source ${_rx}[[:space:]]*\$" /root/.ssh/authorized_keys 2> /dev/null && return 0
   grep -qE -- "^${_rx} # xmass migration " /etc/csf/csf.allow 2> /dev/null
 }
 
@@ -6904,34 +6934,32 @@ _xmass_carry_inbound_reach() {
       printf '%s\n' "${_own}" | grep -qxF "${_ip}" && continue
       _a="${_a} ${_ip}"
       # the tag ends the line: one peer's address never picks up the key of
-      # another whose address it is a prefix of
-      [ -n "${_key}" ] || _key="$(grep -hE -- " # xmass migration source ${_ip//./\\.}[[:space:]]*\$" /root/.ssh/authorized_keys 2>/dev/null | head -n1)"
+      # another whose address it is a prefix of; a commented-out line is a
+      # revoked key, never the one that travels
+      [ -n "${_key}" ] || _key="$(grep -vE '^[[:space:]]*#' /root/.ssh/authorized_keys 2>/dev/null \
+        | grep -E -- " # (xmass|xoct|xcopy) migration source ${_ip//./\\.}[[:space:]]*\$" | head -n1)"
     done
     [ -n "${_a}" ] || continue
     _info "Carrying inbound migration-proxy reach to ${_tgt} for peer${_a} (root key + csf allow/ignore; the serving trust follows the retarget) ..."
     if [ -z "${_key}" ]; then
-      _alrt "  peer${_a}: no key line tagged '# xmass migration source <one of its addresses>' here"
+      _alrt "  peer${_a}: no key line tagged '# xmass|xoct|xcopy migration source <one of its addresses>' here"
       _alrt "  (a pre-mig older than the tag installed it), so its root key cannot travel: append"
       _alrt "  that box's /root/.ssh/id_ed25519.pub to /root/.ssh/authorized_keys on ${_tgt} by hand"
     fi
     _kb64="$(printf '%s' "${_key}" | base64 | tr -d '\n')"
-    if ! ssh -o ConnectTimeout=15 root@"${_tgt}" "_IPS='${_a# }' _KB64='${_kb64}' bash -s" <<'CARRY'
+    # The promoted box applies the pre-mig rule (_xmass_key_trust_line,
+    # shipped with the script): the same key already there under another
+    # peer's tag, or under options, must not keep this peer's line out.
+    if ! { declare -f _xmass_key_tagged_in _xmass_key_trust_line; cat <<'CARRY'
 mkdir -p /root/.ssh; chmod 700 /root/.ssh; touch /root/.ssh/authorized_keys
 _l="$(printf '%s' "${_KB64}" | base64 -d 2>/dev/null)"
+_l="${_l%"${_l##*[![:space:]]}"}"
 if [ -n "${_l}" ]; then
   _b="${_l%% # xmass migration source *}"
-  if grep -qF -- "${_b}" /root/.ssh/authorized_keys; then
-    if ! grep -qF -- "${_l}" /root/.ssh/authorized_keys; then
-      _t="/root/.ssh/authorized_keys.xmass.$$"
-      while IFS= read -r _x; do
-        [ "${_x%"${_x##*[![:space:]]}"}" = "${_b}" ] && _x="${_l}"
-        printf '%s\n' "${_x}"
-      done < /root/.ssh/authorized_keys > "${_t}" && cat "${_t}" > /root/.ssh/authorized_keys
-      rm -f "${_t}"
-    fi
-  else
-    echo >> /root/.ssh/authorized_keys; echo "${_l}" >> /root/.ssh/authorized_keys
-  fi
+  _b="${_b%% # xoct migration source *}"
+  _b="${_b%% # xcopy migration source *}"
+  _xmass_key_trust_line /root/.ssh/authorized_keys "${_b}" "${_l#"${_b}"}" \
+    || echo "the carried key line is NOT in /root/.ssh/authorized_keys"
 fi
 chmod 600 /root/.ssh/authorized_keys
 if [ -x /usr/sbin/csf ]; then
@@ -6943,8 +6971,9 @@ if [ -x /usr/sbin/csf ]; then
   done
   csf -q &> /dev/null
 fi
-echo "reach for ${_IPS}: key line(s) $(grep -cF -- '# xmass migration source ' /root/.ssh/authorized_keys), csf allow $(grep -c ' # xmass migration inbound-proxy' /etc/csf/csf.allow 2>/dev/null) ignore $(grep -c ' # xmass migration inbound-proxy' /etc/csf/csf.ignore 2>/dev/null)"
+echo "reach for ${_IPS}: key line(s) $(grep -cE -- '# (xmass|xoct|xcopy) migration source ' /root/.ssh/authorized_keys), csf allow $(grep -c ' # xmass migration inbound-proxy' /etc/csf/csf.allow 2>/dev/null) ignore $(grep -c ' # xmass migration inbound-proxy' /etc/csf/csf.ignore 2>/dev/null)"
 CARRY
+      } | ssh -o ConnectTimeout=15 root@"${_tgt}" "_IPS='${_a# }' _KB64='${_kb64}' bash -s"
     then
       _alrt "  peer${_a}: reach NOT wired on ${_tgt}; its retarget will refuse there (the refusal names the remedy)"
     fi
@@ -8566,7 +8595,8 @@ _xmass_cmd_prep_target() {
     || _die "Cannot SSH to target ${_tgt}. All three causes are common and none" \
             " is fixable from here, because fixing the target needs the ssh this" \
             " check just failed:" \
-            " (1) key exchange — run 'xmass pre-mig <source-fqdn>' on BOTH hosts;" \
+            " (1) key exchange — run 'xmass pre-mig <source-fqdn>' here, then on the" \
+            " target with the --key-fp=SHA256:... it prints;" \
             " (2) the TARGET's firewall is blocking this box — on the target run" \
             " 'csf -g ${_XMASS_SRC_IP:-<source-ip>}' to see it, 'csf -tr" \
             " ${_XMASS_SRC_IP:-<source-ip>}' to clear a temp deny, and 'csf -a" \
@@ -9344,15 +9374,171 @@ _xmass_pre_mig_panel_sanity() {
   return 0
 }
 
+### pre-mig key exchange. The source publishes its root public key on its
+### undefined vhost and the target fetches it over plain HTTP, so the target
+### trusts it only when its fingerprint equals the one the source printed,
+### carried across by the operator as --key-fp. Anything else answering on
+### that name, or a stale key another box still serves there, would
+### otherwise be granted root on the target.
+_XMASS_KEY_LINE_RE='^(ssh-(ed25519|rsa)|ecdsa-sha2-nistp[0-9]+|sk-ssh-ed25519@openssh\.com) [A-Za-z0-9+/]+=*( |$)'
+
+### The form 'ssh-keygen -l -E sha256' prints: SHA256: and 43 base64
+### characters. A pasted '=' pad is accepted and dropped before comparing.
+_xmass_valid_key_fp() {
+  [[ "$1" =~ ^SHA256:[A-Za-z0-9+/]{43}=?$ ]]
+}
+
+### Whether authorized_keys $1 holds the key $2 ('<type> <blob>') under the
+### tag $3: a live line (no comment, no options before the key type) that
+### starts with the key and ends with exactly that tag. xoct and xcopy keep
+### the same test; the carry to a promoted box ships this one.
+_xmass_key_tagged_in() {
+  local _l
+  [ -f "${1}" ] || return 1
+  while IFS= read -r _l || [ -n "${_l}" ]; do
+    _l="${_l%"${_l##*[![:space:]]}"}"
+    case "${_l}" in
+      "${2}${3}"|"${2}"[[:space:]]*"${3}") return 0 ;;
+    esac
+  done < "${1}"
+  return 1
+}
+
+### authorized_keys $1 trusts the key line $2 under the tag $3. Present only
+### as _xmass_key_tagged_in reads it: a substring test counted the key tagged
+### for another peer, or bound by an operator's options, as present, so the
+### new source got no line of its own (no witness, no carried reach) and was
+### held by the old options. Otherwise an exact untagged copy of $2 is tagged
+### in place (exact-line rewrite: a key comment may carry regex
+### metacharacters, and a last line without a newline is kept), else the
+### tagged line is appended; a second line for one key is harmless to sshd
+### and gives this peer its own witness line. A commented-out copy is never
+### present: it would leave the key untrusted. The rewrite replaces the file
+### only when it is whole: a write that failed (a full disk) or a line count
+### that differs from the file's leaves authorized_keys as it was and
+### returns 1, where a cut-short copy would drop every key past the break.
+_xmass_key_trust_line() {
+  local _ak="${1}" _kb="${2}" _tag="${3}" _kt _kx _ktmp _hit=NO _wok=YES _n=0
+  _kx="${_kb#* }"
+  _kt="${_kb%% *} ${_kx%% *}"
+  _xmass_key_tagged_in "${_ak}" "${_kt}" "${_tag}" && return 0
+  if [ -f "${_ak}" ]; then
+    _ktmp="${_ak}.xmass.$$"
+    while IFS= read -r _kx || [ -n "${_kx}" ]; do
+      _n=$((_n + 1))
+      if [ "${_kx%"${_kx##*[![:space:]]}"}" = "${_kb}" ]; then
+        _kx="${_kb}${_tag}"
+        _hit=YES
+      fi
+      printf '%s\n' "${_kx}" || _wok=NO
+    done < "${_ak}" > "${_ktmp}" || _wok=NO
+    [ "${_n}" = "$(grep -ac '' "${_ak}" 2>/dev/null)" ] || _wok=NO
+    if [ "${_wok}" != "YES" ]; then
+      rm -f "${_ktmp}"
+      echo "ERROR: could not rewrite ${_ak} in full; it was left as it was"
+      return 1
+    fi
+    if [ "${_hit}" = "YES" ] && ! cat "${_ktmp}" > "${_ak}"; then
+      echo "ERROR: writing ${_ak} failed; its full rewrite is kept at ${_ktmp}"
+      return 1
+    fi
+    rm -f "${_ktmp}"
+  fi
+  if [ "${_hit}" = "NO" ]; then
+    echo >> "${_ak}"
+    printf '%s\n' "${_kb}${_tag}" >> "${_ak}"
+  fi
+  chmod 600 "${_ak}"
+  _xmass_key_tagged_in "${_ak}" "${_kt}" "${_tag}"
+}
+
+### Target side, run before anything is refreshed or parked: sets
+### _XMASS_SRC_KEY to the one fetched key line whose fingerprint is
+### --key-fp, or refuses with nothing added to authorized_keys.
+_xmass_fetch_source_key() {
+  local _kf="/root/.ssh/auth_undefined_keys.txt" _kc _krc _kl _fp _seen=""
+  _XMASS_SRC_KEY=""
+  case "${_hst}" in
+    ''|*[!a-zA-Z0-9.-]*|.*|*.|*..*)
+      _die "pre-mig on the target needs the source's hostname, got '${_hst}'"
+      ;;
+  esac
+  [ -n "${_XMASS_KEY_FP}" ] \
+    || _die "pre-mig on the target needs --key-fp=SHA256:..., the fingerprint" \
+            "'xmass pre-mig ${_hst}' printed on ${_hst}; nothing was changed here"
+  _xmass_valid_key_fp "${_XMASS_KEY_FP}" \
+    || _die "--key-fp '${_XMASS_KEY_FP}' is not a SHA256 key fingerprint" \
+            "(SHA256: and 43 base64 characters); nothing was changed here"
+  _XMASS_KEY_FP="${_XMASS_KEY_FP%=}"
+  _info "Target mode: fetching the source SSH key and checking its fingerprint ..."
+  mkdir -p /root/.ssh
+  chmod 700 /root/.ssh
+  rm -f /root/.ssh/auth_undefined_keys.txt*
+  ### ...and this box's OWN published copy. A target that was ever a source
+  ### (or had pre-mig run in source mode) goes on serving a root public key
+  ### at http://undefined.<this box>/auth_undefined_keys.txt indefinitely,
+  ### and a later migration can fetch the wrong box's key from it.
+  rm -f /var/www/nginx-default/auth_undefined_keys.txt*
+  ### The fetch must be a real key: curl exits 0 on a 404 (no -f), so a
+  ### source that never published -- or a proxied one relaying its undefined
+  ### vhost onward -- hands back an HTML page, and appending that to
+  ### authorized_keys while reporting OK is a false success on the trust path.
+  ### Bounded: a name that answers and then stalls, or a body no key file
+  ### comes near, is the same refusal rather than a hang; a failed transfer
+  ### counts even when the status line said 200.
+  _kc=$(curl -s -A iCab --connect-timeout 15 --max-time 60 \
+    --max-filesize 65536 -w '%{http_code}' \
+    "http://undefined.${_hst}/auth_undefined_keys.txt" \
+    -o "${_kf}" 2>/dev/null)
+  _krc=$?
+  if [ "${_krc}" != "0" ] || [ "${_kc}" != "200" ] \
+    || ! grep -qE "${_XMASS_KEY_LINE_RE}" "${_kf}" 2>/dev/null; then
+    rm -f "${_kf}"
+    _die "No public key at http://undefined.${_hst}/auth_undefined_keys.txt (HTTP ${_kc:-000}, curl exit ${_krc}) --" \
+         " publish it first: run 'xmass pre-mig <that box's own fqdn>' ON" \
+         " ${_hst} (source/publish mode), then re-run this verb here. A" \
+         " proxied source relays its undefined vhost onward and cannot" \
+         " serve the key until it publishes again."
+  fi
+  ### Only key lines are read, each fingerprinted on its own: a stray header
+  ### or footer, or any key but the named one, never reaches authorized_keys.
+  while IFS= read -r _kl; do
+    printf '%s\n' "${_kl}" > "${_kf}.one"
+    _fp=$(ssh-keygen -l -E sha256 -f "${_kf}.one" 2>/dev/null \
+      | awk '{print $2; exit}')
+    [ -n "${_fp}" ] || continue
+    _seen="${_seen:+${_seen} }${_fp}"
+    if [ "${_fp}" = "${_XMASS_KEY_FP}" ]; then
+      _XMASS_SRC_KEY="${_kl}"
+      break
+    fi
+  done < <(grep -E "${_XMASS_KEY_LINE_RE}" "${_kf}")
+  rm -f "${_kf}.one"
+  if [ -z "${_XMASS_SRC_KEY}" ]; then
+    rm -f "${_kf}"
+    _die "the key ${_hst} serves does not match --key-fp: expected" \
+         "${_XMASS_KEY_FP}, served ${_seen:-none}. Nothing was added to" \
+         "authorized_keys and nothing was parked here."
+  fi
+  _info "The key ${_hst} serves matches --key-fp ${_XMASS_KEY_FP}"
+}
+
 _xmass_pre_mig() {
   # Stop BOA background jobs and exchange SSH keys between source and target.
-  # Run on BOTH hosts: first on source (to publish its pub key),
-  # then on target (to fetch and install that key).
+  # Run on BOTH hosts: first on source (to publish its pub key and print its
+  # fingerprint), then on target (to fetch that key and install it only when
+  # its fingerprint is the --key-fp given).
+  local _src_ip _kb _fp
   if [ -e "/vservers" ]; then
     _die "Cannot run pre-mig on a parent/host system"
   fi
   _info "Running pre-mig on ${_hName} ..."
-  # FIRST, before anything is parked: make sure this box's migration tools are
+  # Target mode checks --key-fp and the key it names before anything else,
+  # so a refusal leaves this box as it was.
+  if [ "${_hName}" != "${_hst}" ]; then
+    _xmass_fetch_source_key
+  fi
+  # Then, before anything is parked: make sure this box's migration tools are
   # the published ones. Done here because pre-mig runs on BOTH hosts.
   _info "Forcing a tool refresh so this migration runs on current code ..."
   _xmass_force_tool_update
@@ -9373,70 +9559,34 @@ _xmass_pre_mig() {
     cp -af /root/.ssh/id_ed25519.pub \
       /var/www/nginx-default/auth_undefined_keys.txt
     _info "Source key published at http://undefined.${_hName}/auth_undefined_keys.txt"
+    # The key travels over plain HTTP; its fingerprint travels by the
+    # operator's hand, and the target installs the key only when they match.
+    _fp=$(ssh-keygen -l -E sha256 -f /root/.ssh/id_ed25519.pub 2>/dev/null \
+      | awk '{print $2; exit}')
+    if _xmass_valid_key_fp "${_fp}"; then
+      _info "Published key fingerprint: ${_fp}"
+      _info "On the target run: xmass pre-mig ${_hName} --key-fp=${_fp}"
+    else
+      _alrt "could not read the fingerprint of /root/.ssh/id_ed25519.pub; the"
+      _alrt "target's pre-mig needs it: ssh-keygen -l -E sha256 -f /root/.ssh/id_ed25519.pub"
+    fi
     # Advisory link map: surface secondary-mount content (and anything that
     # will NOT travel) at the cheapest possible moment. No target yet, so
     # sizes only; init repeats this with the aggregate space probe.
     _xmass_report_out_links
   else
-    _info "Target mode: fetching and installing source SSH key ..."
-    mkdir -p /root/.ssh
-    chmod 700 /root/.ssh
-    rm -f /root/.ssh/auth_undefined_keys.txt*
-    ### ...and this box's OWN published copy, which xoct and xcopy both remove
-    ### and xmass did not. A target that was ever a source (or had pre-mig run
-    ### in source mode) goes on serving a root public key at
-    ### http://undefined.<this box>/auth_undefined_keys.txt indefinitely, and
-    ### a later migration can fetch the wrong box's key from it.
-    rm -f /var/www/nginx-default/auth_undefined_keys.txt*
-    ### The fetch must be a real key: curl exits 0 on a 404 (no -f), so a
-    ### source that never published -- or a proxied one relaying its undefined
-    ### vhost onward -- hands back an HTML page, and appending that to
-    ### authorized_keys while reporting OK is a false success on the trust path.
-    _kf="/root/.ssh/auth_undefined_keys.txt"
-    _kc=$(curl -s -A iCab -w '%{http_code}' \
-      "http://undefined.${_hst}/auth_undefined_keys.txt" \
-      -o "${_kf}" 2>/dev/null)
-    if [ "${_kc}" != "200" ] \
-      || ! grep -qE '^(ssh-(ed25519|rsa)|ecdsa-sha2-nistp[0-9]+|sk-ssh-ed25519@openssh\.com) [A-Za-z0-9+/]+=*( |$)' "${_kf}" 2>/dev/null; then
-      rm -f "${_kf}"
-      _die "No public key at http://undefined.${_hst}/auth_undefined_keys.txt (HTTP ${_kc:-000}) --" \
-           " publish it first: run 'xmass pre-mig <that box's own fqdn>' ON" \
-           " ${_hst} (source/publish mode), then re-run this verb here. A" \
-           " proxied source relays its undefined vhost onward and cannot" \
-           " serve the key until it publishes again."
-    fi
-    ### Only key lines travel: a stray header or footer never reaches
-    ### authorized_keys. Each line is TAGGED with the source's address: after a
-    ### later promotion this box hands its inbound proxies' keys to the box
-    ### that takes over (_xmass_carry_inbound_reach), and an untagged line
-    ### cannot be attributed to a peer. A re-run never appends a duplicate.
+    _info "Target mode: installing the source SSH key checked above ..."
+    ### Only the verified line travels. It is TAGGED with the source's
+    ### address: after a later promotion this box hands its inbound proxies'
+    ### keys to the box that takes over (_xmass_carry_inbound_reach), and an
+    ### untagged line cannot be attributed to a peer. A re-run never appends
+    ### a duplicate (see _xmass_key_trust_line).
     _src_ip=$(getent ahostsv4 "${_hst}" 2>/dev/null | awk '{print $1; exit}')
-    grep -E '^(ssh-(ed25519|rsa)|ecdsa-sha2-nistp[0-9]+|sk-ssh-ed25519@openssh\.com) ' "${_kf}" \
-      | sed -e "s|[[:space:]]*\$| # xmass migration source ${_src_ip:-${_hst}}|" > "${_kf}.keys"
-    while read -r _kl; do
-      [ -n "${_kl}" ] || continue
-      _kb="${_kl%% # xmass migration source *}"
-      if grep -qF -- "${_kb}" /root/.ssh/authorized_keys 2>/dev/null; then
-        # Installed by an older pre-mig without the tag: tag that line in
-        # place rather than appending a twin (exact-line rewrite; a key
-        # comment may carry regex metacharacters, so no sed pattern).
-        if ! grep -qF -- "${_kl}" /root/.ssh/authorized_keys 2>/dev/null; then
-          _ktmp="/root/.ssh/authorized_keys.xmass.$$"
-          while IFS= read -r _kx; do
-            [ "${_kx%"${_kx##*[![:space:]]}"}" = "${_kb}" ] && _kx="${_kl}"
-            printf '%s\n' "${_kx}"
-          done < /root/.ssh/authorized_keys > "${_ktmp}" \
-            && cat "${_ktmp}" > /root/.ssh/authorized_keys
-          rm -f "${_ktmp}"
-        fi
-      else
-        echo >> /root/.ssh/authorized_keys
-        echo "${_kl}" >> /root/.ssh/authorized_keys
-      fi
-    done < "${_kf}.keys"
-    rm -f "${_kf}.keys"
-    chmod 600 /root/.ssh/authorized_keys
-    _info "Source SSH key installed in authorized_keys: OK ($(wc -l < "${_kf}") key line(s) from ${_hst})"
+    _kb="${_XMASS_SRC_KEY%"${_XMASS_SRC_KEY##*[![:space:]]}"}"
+    _xmass_key_trust_line /root/.ssh/authorized_keys "${_kb}" \
+      " # xmass migration source ${_src_ip:-${_hst}}" \
+      || _die "could not add the key from ${_hst} to /root/.ssh/authorized_keys"
+    _info "Source SSH key installed in authorized_keys: OK (${_XMASS_KEY_FP} from ${_hst})"
 
     # Let the source IN. This is the ONE thing the source can never arrange
     # for itself: prep-target's reachability check runs FROM the source, and
@@ -9523,7 +9673,8 @@ _xmass_cmd_init() {
     || _die "Cannot SSH to target ${_tgt}. All three causes are common and none" \
             " is fixable from here, because fixing the target needs the ssh this" \
             " check just failed:" \
-            " (1) key exchange — run 'xmass pre-mig <source-fqdn>' on BOTH hosts;" \
+            " (1) key exchange — run 'xmass pre-mig <source-fqdn>' here, then on the" \
+            " target with the --key-fp=SHA256:... it prints;" \
             " (2) the TARGET's firewall is blocking this box — on the target run" \
             " 'csf -g ${_XMASS_SRC_IP:-<source-ip>}' to see it, 'csf -tr" \
             " ${_XMASS_SRC_IP:-<source-ip>}' to clear a temp deny, and 'csf -a" \
@@ -11873,13 +12024,22 @@ _xmass_post_mig() {
     [ -x "${_fpm}" ] && service "$(basename "${_fpm}")" restart &>/dev/null
   done
   rm -f /run/boa_wait.pid
+  # A refetch or a system pass that restored a live copy first left the
+  # parked one behind: stale bytes that read as a park again whenever the
+  # live name goes missing. Removed once the live copy is there.
   for _script in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ ! -e "/var/xdrago/${_script}" ] \
       && [ -e "/var/xdrago/.${_script}.off" ]; then
       mv -f "/var/xdrago/.${_script}.off" "/var/xdrago/${_script}"
       _info "  Restored ${_script}"
+    elif [ -e "/var/xdrago/${_script}" ] \
+      && [ -e "/var/xdrago/.${_script}.off" ]; then
+      rm -f "/var/xdrago/.${_script}.off"
+      _info "  Removed a stale parked copy of ${_script}"
     fi
   done
+  # The move is over: this box stops serving a root key it published.
+  rm -f /var/www/nginx-default/auth_undefined_keys.txt*
   # Belt-and-braces: a leftover standby marker on a box taking direct
   # traffic holds the task queue and every per-job gate (runner.sh, owl,
   # the backup and cleanup tools all exit on it). Cutover step 15 clears
@@ -12091,8 +12251,19 @@ esac
 
 case "${_cmd}" in
   pre-mig)
-    _hst="$1"
-    [ -z "${_hst}" ] && _die "Usage: xmass pre-mig <source-fqdn>"
+    _hst=""
+    _XMASS_KEY_FP=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --key-fp=*) _XMASS_KEY_FP="${1#*=}"; shift ;;
+        --*) _die "Unknown argument: $1" ;;
+        *)
+          [ -z "${_hst}" ] || _die "Unknown argument: $1"
+          _hst="$1"
+          shift ;;
+      esac
+    done
+    [ -z "${_hst}" ] && _die "Usage: xmass pre-mig <source-fqdn> [--key-fp=SHA256:...]"
     _check_root
     _xmass_pre_mig
   ;;
@@ -12264,7 +12435,10 @@ case "${_cmd}" in
   ;;
   *)
     echo ""
-    echo "Usage: xmass pre-mig <source-fqdn>                    (run on BOTH source and target)"
+    echo "Usage: xmass pre-mig <source-fqdn>                    (run on the source first: publishes"
+    echo "                     its key and prints its fingerprint)"
+    echo "Usage: xmass pre-mig <source-fqdn> --key-fp=SHA256:... (then on the target, with the"
+    echo "                     fingerprint the source printed)"
     echo "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr] [--fix-users]  (run on source AFTER both"
     echo "                     pre-migs: CSF both ways, Solr set, PHP coverage, per-account installs)"
     echo "Usage: xmass init    <target-ip> [--proxy-mode=temporary|permanent|ha-switch]"

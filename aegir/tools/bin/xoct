@@ -2206,7 +2206,7 @@ _xoct_heal_fpm_pins() {
   local _acct="$1"
   local _root="/data/disk/${_acct}"
   local _ctl="${_root}/static/control"
-  local _pin _dom _ver _missing=""
+  local _pin _dom _ver _missing="" _ltd=/var/xdrago/manage_ltd_users.sh
   ### the account's own directory, entered for real: never a link, and the
   ### pin file read without following one or opening a FIFO
   _xoct_in_real_dir "${_ctl}" true || return 0
@@ -2216,11 +2216,16 @@ _xoct_heal_fpm_pins() {
   ### the account's control dir.
   _xoct_in_real_dir "${_ctl}" _xoct_rm_fpm_markers_here
   echo "INFO: cleared carried FPM pool markers for ${_acct}; rebuilding pinned pools"
-  if [ -x "/var/xdrago/manage_ltd_users.sh" ] || [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
-    bash /var/xdrago/manage_ltd_users.sh &> /dev/null
+  ### pre-mig parks the worker as .manage_ltd_users.sh.off until post-mig;
+  ### import runs with cron stopped, so the parked copy is run here.
+  [ -e "${_ltd}" ] || _ltd=/var/xdrago/.manage_ltd_users.sh.off
+  if [ -e "${_ltd}" ]; then
+    bash "${_ltd}" &> /dev/null
     ### The sockets exist now; re-arm the include generator for pass two.
     _xoct_in_real_dir "${_ctl}" rm -f -- ./.multi-nginx-fpm.pid
-    bash /var/xdrago/manage_ltd_users.sh &> /dev/null
+    bash "${_ltd}" &> /dev/null
+  else
+    _ltd=/var/xdrago/manage_ltd_users.sh
   fi
   ### Verify every pinned version really has a live pool socket, and name
   ### the ones that do not -- a silent wrong-interpreter site is the whole
@@ -2238,7 +2243,7 @@ _xoct_heal_fpm_pins() {
     echo "ALRT: account ${_acct}: pinned PHP pool(s) NOT live after heal:${_missing}"
     echo "ALRT: those sites are being served by the account default pool --"
     echo "ALRT: check /opt/php<NN>/bin/php exists here and re-run:"
-    echo "ALRT:   bash /var/xdrago/manage_ltd_users.sh"
+    echo "ALRT:   bash ${_ltd}"
   else
     echo "INFO: account ${_acct}: every pinned PHP pool is live"
   fi
@@ -2967,9 +2972,10 @@ _xoct_sync_shell_credentials() {
       fi
     else
       ### The sub-user does not exist there yet: manage_ltd_users creates it
-      ### from clients/ within minutes and honours the carried store entry
-      ### above, so the password converges. Its .ssh cannot be placed before
-      ### the home exists -- stage it for the post-creation pass instead.
+      ### from clients/ on its next pass (after post-mig while the target's
+      ### runners are parked) and honours the carried store entry above, so
+      ### the password converges. Its .ssh cannot be placed before the home
+      ### exists -- stage it for the post-creation pass instead.
       if _xoct_subuser_ssh_ok "${_src}.${_n}"; then
         ssh root@"${_t}" "mkdir -p /var/backups/migrate-subuser-ssh/${_dst}.${_n}" &> /dev/null
         _xoct_in_real_dir "/home/${_src}.${_n}/.ssh" _xoct_rsync -aEAXqu ${_ieni} -e ssh \
@@ -3039,8 +3045,14 @@ _xoct_wait_target_quiet() {
     ### An armed run-upgrade.pid whose dispatcher is parked (a demoted
     ### target keeps every /var/xdrago/run-<acct> under /var/backups/off-run)
     ### is inert and not busy, as xmass's silence probe already reads it;
-    ### counting it burnt the whole bound and refused the create.
-    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e \"\${_f}\" ] || continue; _n=\${_f#/data/disk/}; _n=\${_n%%/*}; [ ! -e \"/var/xdrago/run-\${_n}\" ] && [ -e \"/var/backups/off-run/run-\${_n}\" ] && continue; printf '%s:armed ' \"\${_n}\"; done" 2>/dev/null)
+    ### counting it burnt the whole bound and refused the create. The same
+    ### holds for every armed pid while the box's runner itself is parked
+    ### (pre-mig's .runner.sh.off, held by the park marker until post-mig):
+    ### nothing consumes them before post-mig, so a second account's create
+    ### would wait out the bound on the first one's armed upgrade. Without
+    ### the marker the next tools refresh brings the runner back, so the
+    ### pid still counts.
+    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; { [ -e /run/boa_migration_park.pid ] && [ ! -e /var/xdrago/runner.sh ] && [ -e /var/xdrago/.runner.sh.off ]; } || for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e \"\${_f}\" ] || continue; _n=\${_f#/data/disk/}; _n=\${_n%%/*}; [ ! -e \"/var/xdrago/run-\${_n}\" ] && [ -e \"/var/backups/off-run/run-\${_n}\" ] && continue; printf '%s:armed ' \"\${_n}\"; done" 2>/dev/null)
     if [ -z "${_busy// /}" ]; then
       _ok=$(( _ok + 1 ))
       if [ "${_ok}" -ge 2 ]; then
@@ -3249,6 +3261,49 @@ _xoct_reconcile_panel_platform() {
 ### 503 gate (static/control/http-off.pid) is what actually quiesces writes
 ### for the export window.
 
+### The db_name line of the panel site $1's drushrc.php, as found: read
+### inside the real site directory, so a link or a FIFO at the name, or a
+### link in the account's part of the path, gives nothing. The callers keep
+### only [a-zA-Z0-9_] of it.
+_xoct_panel_db_line() {
+  _xoct_read_in "${1}" drushrc.php \
+    | grep "options\['db_name'\] = " \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,';]//g"
+}
+
+### What import needs before it touches anything: the account installed here,
+### the transferred panel dump, the source hostname export recorded (the
+### rename pins OLD from it; this box's own server_master alias names this
+### box), and a hostmaster alias naming a panel site this box really has,
+### whose drushrc.php names the panel database. Each gap used to skip the
+### whole panel import silently and still lift the 503 gate and exit 0.
+### Refused here instead, before cron, chattr or any file of the account is
+### changed.
+_xoct_import_precheck() {
+  local _why="" _hdb=""
+  if [ ! -e "${_USR}/config/includes/nginx_vhost_common.conf" ]; then
+    _why="${_THIS_HM_USER} is not installed on this box; run 'xoct create ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}' on the source first"
+  elif [ ! -e "${_USR}/src/prev_hostmaster.sql" ]; then
+    _why="${_USR}/src/prev_hostmaster.sql is missing; export and transfer have not completed"
+  elif [ -z "$(_xoct_read_in "${_USR}/log" sourcefqdn.txt | tr -cd 'a-zA-Z0-9.-')" ]; then
+    _why="${_USR}/log/sourcefqdn.txt is missing or empty; on the source run 'xoct reset-state ${_oct}', then export and transfer again"
+  elif [ -z "${_THIS_HM_SITE}" ] || [ ! -e "${_THIS_HM_SITE}/drushrc.php" ]; then
+    _why="the hostmaster alias names ${_THIS_HM_SITE:-no site_path}, which has no drushrc.php on this box"
+  else
+    _hdb="$(_xoct_panel_db_line "${_THIS_HM_SITE}")"
+    _hdb="${_hdb//[^a-zA-Z0-9_]/}"
+    if [ -z "${_hdb}" ]; then
+      _why="${_THIS_HM_SITE}/drushrc.php names no panel database (no db_name line, or not a regular file inside a real directory)"
+    fi
+  fi
+  [ -z "${_why}" ] && return 0
+  echo "ERROR: import for ${_oct}: ${_why}"
+  echo "ERROR: nothing was imported and nothing on this box was changed; fix the cause and re-run"
+  return 1
+}
+
 _migrate_prepare() {
   # The watchdog stands down for the database verbs (_xoct_sql_maint_hold);
   # released at the end of this function, or by the EXIT trap.
@@ -3304,7 +3359,7 @@ _migrate_prepare() {
   [ -z "${_CLIENT_CORES}" ]  && _CLIENT_CORES=1
   [ -z "${_CLIENT_EMAIL}" ]  && _CLIENT_EMAIL="inbox@boa.io"
 
-  echo "_CLIENT_EMAIL is ${_CLIENT_EMAIL}"
+  echo "_CLIENT_EMAIL is ${_CLIENT_EMAIL//[^[:print:]]/?}"
   echo "_THIS_HM_USER is ${_THIS_HM_USER}"
   echo "_CLIENT_OPTION is ${_CLIENT_OPTION}"
   echo "_CLIENT_SUBSCR is ${_CLIENT_SUBSCR}"
@@ -3343,6 +3398,30 @@ _migrate_prepare() {
     fi
   fi
 
+  if [ "${_cmd}" = "import" ] && [ ! -e "${_USR}/log/imported.pid" ]; then
+    _xoct_import_precheck || exit 1
+  fi
+  ### The panel site is the account's: drushrc.php is read inside its real
+  ### directory, never through a link or into a FIFO. Read before anything
+  ### below changes the box, so the refusal that follows leaves it as it was.
+  if [ -e "${_THIS_HM_SITE}/drushrc.php" ]; then
+    _HDB=$(_xoct_panel_db_line "${_THIS_HM_SITE}")
+    echo "raw _HDB is ${_HDB}"
+    _HDB=${_HDB//[^a-zA-Z0-9_]/}
+    echo "clean _HDB is ${_HDB}"
+  else
+    echo "no ${_THIS_HM_SITE}/drushrc.php found"
+  fi
+  ### The precheck read the same name; a drushrc.php swapped since then
+  ### must not skip the panel import below and still lift the 503 gate.
+  ### Refused before chattr, the task queue, cron or the gate is touched.
+  if [ "${_cmd}" = "import" ] && [ ! -e "${_USR}/log/imported.pid" ] \
+    && [ -z "${_HDB}" ]; then
+    echo "ERROR: import for ${_oct}: ${_THIS_HM_SITE}/drushrc.php names no panel database"
+    echo "ERROR: nothing was imported and nothing on this box was changed; fix the cause and re-run"
+    exit 1
+  fi
+
   su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush" &> /dev/null
   wait
   _disable_chattr ${_THIS_HM_USER}.ftp &> /dev/null
@@ -3354,24 +3433,11 @@ _migrate_prepare() {
   ### the real clients/ -- never rm -rf or symlinks -dr through a link the
   ### account put at clients or at a client name.
   _xoct_clean_clients "${_USR}/clients"
-  ### The .ftp home and the panel site are the account's: the dangling-link
-  ### prune runs inside the real home, and drushrc.php is read inside its
-  ### real directory, never through a link or into a FIFO.
+  ### The .ftp home is the account's: the dangling-link prune runs inside
+  ### the real home.
   if [ -d "/home/${_THIS_HM_USER}.ftp" ]; then
     _xoct_in_real_dir "/home/${_THIS_HM_USER}.ftp" symlinks -dr . &> /dev/null
     rm -f /home/${_THIS_HM_USER}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
-  fi
-  if [ -e "${_THIS_HM_SITE}/drushrc.php" ]; then
-    _HDB=`_xoct_read_in "${_THIS_HM_SITE}" drushrc.php \
-      | grep "options\['db_name'\] = " \
-      | cut -d: -f2 \
-      | awk '{ print $3}' \
-      | sed "s/[\,';]//g"`
-    echo "raw _HDB is ${_HDB}"
-    _HDB=${_HDB//[^a-zA-Z0-9_]/}
-    echo "clean _HDB is ${_HDB}"
-  else
-    echo "no ${_THIS_HM_SITE}/drushrc.php found"
   fi
   ### src/ belongs to oN: make it a real directory (a link the account put at
   ### the name is removed) so the dump below cannot be steered elsewhere.
@@ -3410,14 +3476,13 @@ _migrate_prepare() {
     if [ "${_XOCT_HM_DUMP_OK}" = "YES" ] \
       && [ -s "${_USR}/src/prev_hostmaster.sql" ]; then
       echo "INFO: hostmaster ${_oct} db export complete"
-      # Record the source FQDN for the import-side rename. renameaegirhost
-      # auto-detects OLD from whichever server_master alias survived the
-      # transfer, and the alias rsync runs with -u (skip-newer), so whether
-      # the source copy wins over the target's fresh one is an mtime race —
-      # a lost race makes the rename silently no-op at OLD==NEW while the
-      # imported DB still holds this FQDN. Recording it here pins OLD
-      # deterministically (and keeps an aborted rename re-runnable after §3
-      # already rewrote the aliases). Travels with the log/ transfer sync.
+      # Record the source FQDN for the import-side rename. The target keeps
+      # its own server_master alias (the transfer never sends this one), so
+      # renameaegirhost's auto-detection there would read OLD==NEW and
+      # silently no-op while the imported DB still holds this FQDN.
+      # Recording it here pins OLD deterministically (and keeps an aborted
+      # rename re-runnable after §3 already rewrote the aliases); import
+      # refuses without it. Travels with the log/ transfer sync.
       # The alias is read and the record put inside the real .drush and
       # log/ (both oN's), never through a link put at either name.
       _SRC_FQDN=$(_xoct_read_in "${_USR}/.drush" server_master.alias.drushrc.php \
@@ -3462,11 +3527,14 @@ _migrate_prepare() {
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL6 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
     fi
     # The alias-derived _HDB can name a DB an enforced upgrade has already
-    # replaced: fresh dest panels are rebuilt between create and import (new
-    # panel DB created, old one dropped) while the on-disk alias stays stale,
-    # and the dump would then pour into a nonexistent DB with the import
-    # riding on. Resolution order: the recorded decision from a previous
-    # (possibly partial) import run, then the alias-derived name, then a
+    # replaced: a dest panel rebuilt between create and import (new panel DB
+    # created, old one dropped) leaves the on-disk alias stale, and the dump
+    # would then pour into a nonexistent DB with the import riding on. The
+    # pre-mig runner park holds create's armed upgrade until post-mig, so
+    # this is the shape of a park that lapsed (24 h ceiling, reboot) or was
+    # never taken on this box, no longer the norm. Resolution order: the
+    # recorded decision from a previous (possibly partial) import run,
+    # then the alias-derived name, then a
     # dest-form panel scan (the 12.5 way), then the already-poured shape (a
     # partial run leaves the live DB holding SOURCE-form rows, invisible to
     # the dest-form scan — its hostmaster front names the recorded source
@@ -3583,8 +3651,9 @@ _migrate_prepare() {
     ### Rename all source-hostname references in this Aegir instance to the
     ### FQDN of the current (target) server. renameaegirhost:
     ###   §1  old hostname: pinned via --force-old from log/sourcefqdn.txt
-    ###       (recorded at export; alias auto-detection is an rsync -u mtime
-    ###       race and a partial-rename re-run would no-op at OLD==NEW)
+    ###       (recorded at export; this box keeps its own server_master
+    ###       alias, so auto-detection and a partial-rename re-run would
+    ###       both no-op at OLD==NEW)
     ###   §2  detects new hostname from system FQDN (hostname -f)
     ###   §3  rewrites .drush/*.alias.drushrc.php files
     ###   §4  rewrites + renames nginx vhost files in config/server_master/
@@ -3618,9 +3687,10 @@ _migrate_prepare() {
       renameaegirhost --aegir-root "${_USR}" --force-old "${_RAH_OLD}"${_RAH_ACCT}
       _RAH_RC=$?
     else
-      # export predates sourcefqdn.txt — fall back to alias auto-detection
-      renameaegirhost --aegir-root "${_USR}"${_RAH_ACCT}
-      _RAH_RC=$?
+      # Unreachable past _xoct_import_precheck. Auto-detection would read
+      # this box's own server_master alias (OLD==NEW) and rename nothing.
+      echo "ERROR: log/sourcefqdn.txt names no source hostname; not renaming"
+      _RAH_RC=1
     fi
     if [ "${_RAH_RC}" -ne 0 ]; then
       echo "ERROR: renameaegirhost failed (rc=${_RAH_RC}) for ${_USR} — this import is INCOMPLETE"
@@ -3651,7 +3721,7 @@ _migrate_prepare() {
       exit 1
     fi
     if ! printf '%s' "${_CLIENT_EMAIL}" | grep -qE '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then
-      echo "ALRT: refusing create: client email '${_CLIENT_EMAIL}' failed validation"
+      echo "ALRT: refusing create: client email '${_CLIENT_EMAIL//[^[:print:]]/?}' failed validation"
       exit 1
     fi
     ### The plan stamps come from log/ files that arrive over the network on
@@ -5254,7 +5324,9 @@ _migrate_init() {
           #
           _DST_ACCT=$(basename "${_DST}")
           # The sub-account password store must land BEFORE clients/ does:
-          # manage_ltd_users creates sub-users from clients/ within minutes,
+          # manage_ltd_users creates sub-users from clients/ on its first
+          # pass that sees them (import's pool rebuild for an account with
+          # per-site PHP pins, else once post-mig ends the pre-mig park),
           # and honours a pre-existing store entry (the carried password)
           # only if it is already there. Forced (no -u): the target's fresh
           # install must never shadow the carried credentials.
@@ -5327,19 +5399,24 @@ _migrate_init() {
             _xoct_sync_shell_credentials "${_oct}" "${_DST_ACCT}" "${_tgt}"
           fi
 
-          # Drush aliases are copied WHOLE — including the source's
-          # server_master/hostmaster aliases. Which side's copy survives is
-          # an rsync -u (skip-newer) mtime race, which is why the import
-          # step pins renameaegirhost's OLD via --force-old
-          # (log/sourcefqdn.txt) instead of trusting alias auto-detection.
-          # Do NOT add excludes for server_master/hostmaster here: the
-          # rename converges either way, and the source platform_* and
-          # per-site aliases must always arrive. .drush is oN's on both boxes:
-          # copied from inside the real directory into the real directory,
-          # the glob expanded there.
+          # The target keeps its own panel aliases (hostmaster, hm and
+          # server_master). Import reads the hostmaster alias to find the
+          # panel it pours into, and drives drush @hostmaster, before the
+          # rename rewrites anything: a source copy that won the -u mtime
+          # race named a site_path the target does not have, so the whole
+          # panel import was skipped, and its server_master sent drush to
+          # the source host. The rename pins OLD from log/sourcefqdn.txt,
+          # never from these aliases. The source platform_* and per-site
+          # aliases still travel. Exact names: an rsync pattern without a
+          # slash or wildcard must match the whole final name. .drush is
+          # oN's on both boxes: copied from inside the real directory into
+          # the real directory, the glob expanded there.
           _xoct_leg_ok "${_USR}/.drush" \
             && _xoct_in_real_dir "${_USR}/.drush" _xoct_copy_here "${_tgt}" \
-              "${_DST}/.drush" '*.alias.drushrc.php' -aEAXqu ${_ieni}
+              "${_DST}/.drush" '*.alias.drushrc.php' -aEAXqu ${_ieni} \
+              --exclude=hostmaster.alias.drushrc.php \
+              --exclude=hm.alias.drushrc.php \
+              --exclude=server_master.alias.drushrc.php
 
           ### config/ and tools/ belong to oN on both boxes: every leg below
           ### expands its glob inside the real source directory and the receiver
@@ -5668,7 +5745,186 @@ _migrate_init() {
   fi
 }
 
+### pre-mig key exchange. The source publishes its root public key on its
+### undefined vhost and the target fetches it over plain HTTP, so the target
+### trusts it only when its fingerprint equals the one the source printed,
+### carried across by the operator as --key-fp. Anything else answering on
+### that name, or a stale key another box still serves there, would
+### otherwise be granted root on the target.
+_XOCT_KEY_LINE_RE='^(ssh-(ed25519|rsa)|ecdsa-sha2-nistp[0-9]+|sk-ssh-ed25519@openssh\.com) [A-Za-z0-9+/]+=*( |$)'
+
+### The form 'ssh-keygen -l -E sha256' prints: SHA256: and 43 base64
+### characters. A pasted '=' pad is accepted and dropped before comparing.
+_xoct_valid_key_fp() {
+  [[ "$1" =~ ^SHA256:[A-Za-z0-9+/]{43}=?$ ]]
+}
+
+_xoct_print_key_fp() {
+  local _fp
+  _fp=$(ssh-keygen -l -E sha256 -f /root/.ssh/id_ed25519.pub 2>/dev/null \
+    | awk '{print $2; exit}')
+  if _xoct_valid_key_fp "${_fp}"; then
+    echo "INFO: published key fingerprint: ${_fp}"
+    echo "INFO: on the target run: xoct pre-mig ${_hName} --key-fp=${_fp}"
+  else
+    echo "ALRT: could not read the fingerprint of /root/.ssh/id_ed25519.pub;"
+    echo "ALRT: the target's pre-mig needs it: ssh-keygen -l -E sha256 -f /root/.ssh/id_ed25519.pub"
+  fi
+}
+
+### Target side, run before anything is parked: sets _XOCT_SRC_KEY to the one
+### fetched key line whose fingerprint is --key-fp, or refuses with nothing
+### added to authorized_keys.
+_xoct_fetch_source_key() {
+  local _kf="/root/.ssh/auth_undefined_keys.txt" _kc _krc _kl _fp _seen=""
+  _XOCT_SRC_KEY=""
+  case "${_hst}" in
+    ''|*[!a-zA-Z0-9.-]*|.*|*.|*..*)
+      echo "ERROR: pre-mig on the target needs the source's hostname, got '${_hst}'"
+      return 1
+      ;;
+  esac
+  if [ -z "${_XOCT_KEY_FP}" ]; then
+    echo "ERROR: pre-mig on the target needs --key-fp=SHA256:..., the fingerprint"
+    echo "ERROR: 'xoct pre-mig ${_hst}' printed on ${_hst}; nothing was changed here"
+    return 1
+  fi
+  if ! _xoct_valid_key_fp "${_XOCT_KEY_FP}"; then
+    echo "ERROR: --key-fp '${_XOCT_KEY_FP}' is not a SHA256 key fingerprint"
+    echo "ERROR: (SHA256: and 43 base64 characters); nothing was changed here"
+    return 1
+  fi
+  _XOCT_KEY_FP="${_XOCT_KEY_FP%=}"
+  mkdir -p /root/.ssh
+  chmod 700 /root/.ssh
+  rm -f /root/.ssh/auth_undefined_keys.txt*
+  ### ...and this box's own published copy: a box that was ever a source goes
+  ### on serving its root key, and a later migration could fetch it.
+  rm -f /var/www/nginx-default/auth_undefined_keys.txt*
+  ### curl exits 0 on a 404 (no -f): a source that never published, or a
+  ### proxied one relaying its undefined vhost onward, hands back an HTML
+  ### page. Both the status and a real key line are required. Bounded: a
+  ### name that answers and then stalls, or a body no key file comes near,
+  ### is the same refusal rather than a hang; a failed transfer counts even
+  ### when the status line said 200.
+  _kc=$(curl -s -A iCab --connect-timeout 15 --max-time 60 \
+    --max-filesize 65536 -w '%{http_code}' \
+    "http://undefined.${_hst}/auth_undefined_keys.txt" \
+    -o "${_kf}" 2>/dev/null)
+  _krc=$?
+  if [ "${_krc}" != "0" ] || [ "${_kc}" != "200" ] \
+    || ! grep -qE "${_XOCT_KEY_LINE_RE}" "${_kf}" 2>/dev/null; then
+    rm -f "${_kf}"
+    echo "ERROR: no public key at http://undefined.${_hst}/auth_undefined_keys.txt (HTTP ${_kc:-000}, curl exit ${_krc})"
+    echo "ERROR: publish it first: run 'xoct pre-mig ${_hst}' ON ${_hst}, then re-run this here"
+    return 1
+  fi
+  ### Each key line is fingerprinted on its own: only the named key is kept.
+  while IFS= read -r _kl; do
+    printf '%s\n' "${_kl}" > "${_kf}.one"
+    _fp=$(ssh-keygen -l -E sha256 -f "${_kf}.one" 2>/dev/null \
+      | awk '{print $2; exit}')
+    [ -n "${_fp}" ] || continue
+    _seen="${_seen:+${_seen} }${_fp}"
+    if [ "${_fp}" = "${_XOCT_KEY_FP}" ]; then
+      _XOCT_SRC_KEY="${_kl}"
+      break
+    fi
+  done < <(grep -E "${_XOCT_KEY_LINE_RE}" "${_kf}")
+  rm -f "${_kf}.one"
+  if [ -z "${_XOCT_SRC_KEY}" ]; then
+    rm -f "${_kf}"
+    echo "ERROR: the key ${_hst} serves does not match --key-fp:"
+    echo "ERROR:   expected ${_XOCT_KEY_FP}"
+    echo "ERROR:   served   ${_seen:-none}"
+    echo "ERROR: nothing was added to authorized_keys and nothing was parked here"
+    return 1
+  fi
+  echo "INFO: the key ${_hst} serves matches --key-fp ${_XOCT_KEY_FP}"
+  return 0
+}
+
+### Whether authorized_keys $1 holds the key $2 ('<type> <blob>') under the
+### tag $3: a live line (no comment, no options before the key type) that
+### starts with the key and ends with exactly that tag. xcopy and xmass
+### keep the same test.
+_xoct_key_tagged_in() {
+  local _l
+  [ -f "${1}" ] || return 1
+  while IFS= read -r _l || [ -n "${_l}" ]; do
+    _l="${_l%"${_l##*[![:space:]]}"}"
+    case "${_l}" in
+      "${2}${3}"|"${2}"[[:space:]]*"${3}") return 0 ;;
+    esac
+  done < "${1}"
+  return 1
+}
+
+### authorized_keys $1 trusts the key line $2 under the tag $3. Present only
+### as _xoct_key_tagged_in reads it: a substring test counted the key tagged
+### for another peer, or bound by an operator's options, as present, so the
+### new source got no line of its own and was held by the old options.
+### Otherwise an exact untagged copy of $2 is tagged in place (exact-line
+### rewrite: a key comment may carry regex metacharacters, and a last line
+### without a newline is kept), else the tagged line is appended; a second
+### line for one key is harmless to sshd and gives this peer its own
+### witness line. A commented-out copy is never present: it would leave the
+### key untrusted. The rewrite replaces the file only when it is whole: a
+### write that failed (a full disk) or a line count that differs from the
+### file's leaves authorized_keys as it was and returns 1, where a cut-short
+### copy would drop every key past the break.
+_xoct_key_trust_line() {
+  local _ak="${1}" _kb="${2}" _tag="${3}" _kt _kx _ktmp _hit=NO _wok=YES _n=0
+  _kx="${_kb#* }"
+  _kt="${_kb%% *} ${_kx%% *}"
+  _xoct_key_tagged_in "${_ak}" "${_kt}" "${_tag}" && return 0
+  if [ -f "${_ak}" ]; then
+    _ktmp="${_ak}.xoct.$$"
+    while IFS= read -r _kx || [ -n "${_kx}" ]; do
+      _n=$((_n + 1))
+      if [ "${_kx%"${_kx##*[![:space:]]}"}" = "${_kb}" ]; then
+        _kx="${_kb}${_tag}"
+        _hit=YES
+      fi
+      printf '%s\n' "${_kx}" || _wok=NO
+    done < "${_ak}" > "${_ktmp}" || _wok=NO
+    [ "${_n}" = "$(grep -ac '' "${_ak}" 2>/dev/null)" ] || _wok=NO
+    if [ "${_wok}" != "YES" ]; then
+      rm -f "${_ktmp}"
+      echo "ERROR: could not rewrite ${_ak} in full; it was left as it was"
+      return 1
+    fi
+    if [ "${_hit}" = "YES" ] && ! cat "${_ktmp}" > "${_ak}"; then
+      echo "ERROR: writing ${_ak} failed; its full rewrite is kept at ${_ktmp}"
+      return 1
+    fi
+    rm -f "${_ktmp}"
+  fi
+  if [ "${_hit}" = "NO" ]; then
+    echo >> "${_ak}"
+    printf '%s\n' "${_kb}${_tag}" >> "${_ak}"
+  fi
+  chmod 600 "${_ak}"
+  _xoct_key_tagged_in "${_ak}" "${_kt}" "${_tag}"
+}
+
+### Only the verified line travels, TAGGED with the source's address the way
+### xmass tags its own, so a later promotion can attribute it to a peer.
+_xoct_trust_source_key() {
+  local _ak="/root/.ssh/authorized_keys" _src_ip _kb
+  _src_ip=$(getent ahostsv4 "${_hst}" 2>/dev/null | awk '{print $1; exit}')
+  _kb="${_XOCT_SRC_KEY%"${_XOCT_SRC_KEY##*[![:space:]]}"}"
+  if ! _xoct_key_trust_line "${_ak}" "${_kb}" \
+    " # xoct migration source ${_src_ip:-${_hst}}"; then
+    echo "ERROR: could not add the key from ${_hst} to ${_ak}"
+    return 1
+  fi
+  echo "INFO: key ${_XOCT_KEY_FP} from ${_hst} is in ${_ak}"
+  return 0
+}
+
 _post_mig() {
+  local _rn
   if [ -e "/vservers" ]; then
     echo You can not run _post_mig on the parent system
     echo Exit now
@@ -5711,21 +5967,21 @@ _post_mig() {
           && echo "INFO: ${_pxa} is proxied -- keeping its dispatcher parked"
       fi
     done
-    if [ ! -e "/var/xdrago/runner.sh" ] && [ -e "/var/xdrago/.runner.sh.off" ]; then
-      mv -f /var/xdrago/.runner.sh.off /var/xdrago/runner.sh
-    fi
-    if [ ! -e "/var/xdrago/owl.sh" ] && [ -e "/var/xdrago/.owl.sh.off" ]; then
-      mv -f /var/xdrago/.owl.sh.off /var/xdrago/owl.sh
-    fi
-    if [ ! -e "/var/xdrago/usage.sh" ] && [ -e "/var/xdrago/.usage.sh.off" ]; then
-      mv -f /var/xdrago/.usage.sh.off /var/xdrago/usage.sh
-    fi
-    if [ ! -e "/var/xdrago/graceful.sh" ] && [ -e "/var/xdrago/.graceful.sh.off" ]; then
-      mv -f /var/xdrago/.graceful.sh.off /var/xdrago/graceful.sh
-    fi
-    if [ ! -e "/var/xdrago/manage_ltd_users.sh" ] && [ -e "/var/xdrago/.manage_ltd_users.sh.off" ]; then
-      mv -f /var/xdrago/.manage_ltd_users.sh.off /var/xdrago/manage_ltd_users.sh
-    fi
+    ### A refetch or a system pass that restored a live copy first left the
+    ### parked one behind: stale bytes that read as a park again whenever the
+    ### live name goes missing. Removed once the live copy is there.
+    for _rn in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
+      if [ ! -e "/var/xdrago/${_rn}" ] && [ -e "/var/xdrago/.${_rn}.off" ]; then
+        mv -f "/var/xdrago/.${_rn}.off" "/var/xdrago/${_rn}"
+      elif [ -e "/var/xdrago/${_rn}" ] && [ -e "/var/xdrago/.${_rn}.off" ]; then
+        rm -f "/var/xdrago/.${_rn}.off"
+      fi
+    done
+    ### The park ends here: the runners are back, and the next tools refresh
+    ### re-checks them (their ctrl stamps were cleared while they were parked).
+    rm -f /run/boa_migration_park.pid
+    ### The move is over: a source stops serving its root key.
+    rm -f /var/www/nginx-default/auth_undefined_keys.txt*
     ### Cron must come back on WHICHEVER box runs post-mig: the import step
     ### stops it on the target, and a source that stays behind as a
     ### long-lived proxy depends on cron for the daily certificate mirror --
@@ -5746,6 +6002,27 @@ _pre_mig() {
     exit 1
   else
     echo Running _pre_mig inside vms ${_hName}
+    ### Target mode checks --key-fp and the key it names before anything is
+    ### parked, so a refusal leaves this box as it was.
+    if [ "${_hName}" != "${_hst}" ]; then
+      _xoct_fetch_source_key || exit 1
+    fi
+    ### The park holds until post-mig: while this marker lives, BOA's tools
+    ### refresh leaves a runner parked as .<name>.off alone. Without it the
+    ### next clear.sh tick fetched every parked runner back, and the queue
+    ### and create's armed upgrade ran mid-migration. The refresh tests the
+    ### park before it fetches a runner and again right before it writes
+    ### one; both tests need this marker and the live copy gone, so the
+    ### marker is written before the runners move. A refresh already running
+    ### then drops a runner it fetched while the park landed; only a write
+    ### that passed its last test in the instant before a move can still
+    ### land. clear.sh drops the marker after 24 hours and /run does not
+    ### survive a reboot, so an abandoned migration gets its runners back. A
+    ### re-run re-arms it.
+    if ! printf '%s\n' "xoct pre-mig ${_hst:-none} $(date -u '+%F %T') UTC" \
+      > /run/boa_migration_park.pid; then
+      echo "ALRT: could not write /run/boa_migration_park.pid; the next clear.sh tick fetches the parked runners back"
+    fi
     if [ -e "/var/xdrago/runner.sh" ]; then
       mv -f /var/xdrago/runner.sh /var/xdrago/.runner.sh.off
       pkill -9 -f '(^|(^| )[^ ]*bash )/var/xdrago/runner\.sh( |$)'
@@ -5775,24 +6052,14 @@ _pre_mig() {
       if [ -e "/root/.ssh/id_ed25519.pub" ]; then
         mkdir -p /var/www/nginx-default
         cp -af /root/.ssh/id_ed25519.pub /var/www/nginx-default/auth_undefined_keys.txt
+        _xoct_print_key_fp
       else
         echo Ops.. /root/.ssh/id_ed25519.pub does not exist in ${_hName}
       fi
     else
       echo Preparing target ${_hName} for incoming migration...
       echo Add remote id_ed25519.pub to authorized_keys here...
-      mkdir -p /root/.ssh
-      chmod 700 /root/.ssh
-      rm -f /root/.ssh/auth_undefined_keys.txt*
-      rm -f /var/www/nginx-default/auth_undefined_keys.txt*
-      curl -s -A iCab "http://undefined.${_hst}/auth_undefined_keys.txt" -o /root/.ssh/auth_undefined_keys.txt
-      if [ -e "/root/.ssh/auth_undefined_keys.txt" ]; then
-        echo >> /root/.ssh/authorized_keys
-        cat /root/.ssh/auth_undefined_keys.txt >> /root/.ssh/authorized_keys
-        chmod 600 /root/.ssh/authorized_keys
-      else
-        echo Ops.. /root/.ssh/auth_undefined_keys.txt does not exist in ${_hName}
-      fi
+      _xoct_trust_source_key || exit 1
     fi
   fi
   echo All done!
@@ -6083,6 +6350,23 @@ case "$1" in
     for _a in "$@"; do
       case "${_a}" in
         --fix-php) _XOCT_FIX_PHP=YES ;;
+        --*)
+          echo "ERROR: unknown option '${_a}' for $1"
+          exit 1
+          ;;
+        *) _margs+=("${_a}") ;;
+      esac
+    done
+    set -- "${_margs[@]}"
+    ;;
+  pre-mig)
+    ### --key-fp is what the target checks the fetched source key against;
+    ### a mistyped flag must never fall through as the source hostname.
+    _XOCT_KEY_FP=""
+    _margs=()
+    for _a in "$@"; do
+      case "${_a}" in
+        --key-fp=*) _XOCT_KEY_FP="${_a#*=}" ;;
         --*)
           echo "ERROR: unknown option '${_a}' for $1"
           exit 1
@@ -6408,7 +6692,8 @@ case "$1" in
             _ssl_gen
   ;;
   *)        echo
-            echo "Usage: xoct {pre-mig} {fqdn} (source+target vms)"
+            echo "Usage: xoct {pre-mig} {source-fqdn} (source vms: publishes its key and prints its fingerprint)"
+            echo "Usage: xoct {pre-mig} {source-fqdn} --key-fp=SHA256:... (target vms: the fingerprint the source printed)"
             echo "Usage: xoct {export|create|pretransfer|transfer|proxy} {o1|shared} {target-ip} {o2}"
             echo "Usage: xoct {create} {o1} {target-ip} {o2} [--fix-php] (also seeds octopus.cnf, PHP pins, credentials)"
             echo "Usage: xoct {import} {o1} {target-ip} {o2} (target vms, optional target account rename)"

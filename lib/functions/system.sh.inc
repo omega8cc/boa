@@ -11774,7 +11774,32 @@ _xdrago_install_upgrade() {
       && [ -e "/var/xdrago/conf/lshell.conf" ]; then
       cp -af /var/xdrago/conf/lshell.conf ${_vBs}/custom_lshell.conf
     fi
-    cp -af ${_bldPth}/aegir/tools/system/* /var/xdrago/ &> /dev/null
+    ### A runner a migration tool parked as /var/xdrago/.<name>.off stays
+    ### parked while its park marker lives (xoct/xcopy pre-mig until
+    ### post-mig, the xmass cutover until its unpark; 24 hours at most), the
+    ### same rule the tools refresh follows: recreating the live name here
+    ### would run the queue and create's armed upgrade in the middle of the
+    ### move.
+    local _sysItm _sysNme _sysPrk=""
+    local -a _sysSrc=()
+    for _sysItm in "${_bldPth}"/aegir/tools/system/*; do
+      _sysNme="${_sysItm##*/}"
+      case "${_sysNme}" in
+        runner.sh|owl.sh|usage.sh|graceful.sh|manage_ltd_users.sh)
+          if [ -e "/run/boa_migration_park.pid" ] \
+            && [ ! -e "/var/xdrago/${_sysNme}" ] \
+            && [ -e "/var/xdrago/.${_sysNme}.off" ]; then
+            _sysPrk="${_sysPrk} ${_sysNme}"
+            continue
+          fi
+          ;;
+      esac
+      _sysSrc+=("${_sysItm}")
+    done
+    if [ -n "${_sysPrk}" ]; then
+      _msg "INFO: Migration park kept, not redeployed:${_sysPrk}"
+    fi
+    cp -af "${_sysSrc[@]}" /var/xdrago/ &> /dev/null
     ### The tree deploy above reverts fetch-delivered tools to the release
     ### tar's vintage, while their fNN ctrl markers survive and block the
     ### re-fetch -- so a box upgrading between a mid-cycle tool wave and

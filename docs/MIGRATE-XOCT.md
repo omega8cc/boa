@@ -89,14 +89,46 @@ Run `pre-mig` on **source first**, then on **target**. Each call stops BOA
 background runners and handles SSH key exchange so root can SSH freely between
 the two hosts.
 
+On the source, `pre-mig` publishes root's public key on the box's undefined
+vhost and prints the key's fingerprint with the exact command to run on the
+target. The target fetches the key over plain HTTP, so it installs it only
+with `--key-fp`: the one served key line whose fingerprint matches is added to
+`authorized_keys`, tagged `# xoct migration source <ip>`. A missing or
+malformed `--key-fp`, or no served key matching it, is refused before
+anything is parked, and nothing is added.
+
+A re-run adds nothing, and an untagged copy of the key already there is
+tagged in place. A copy under another source's tag, behind options such as
+`from=`, or commented out does not count: the tagged line is added as a line
+of its own.
+
+The runners (`runner.sh`, `owl.sh`, `usage.sh`, `graceful.sh` and
+`manage_ltd_users.sh`) stay parked until `post-mig` runs on that box: `pre-mig`
+writes the park marker `/run/boa_migration_park.pid`, and while it exists
+BOA's five-minute tools refresh does not fetch a parked runner back. The park
+lasts **at most 24 hours** — the housekeeping script drops an older marker and
+the runners return on the next tick — and a reboot ends it too. Re-running
+`pre-mig` re-arms it. So on the target, the upgrade `create` arms and the
+creation of new sub-users run after `post-mig`, not during the transfer.
+
+A barracuda `system` pass run meanwhile keeps the park as well: while the
+marker exists it leaves a parked runner parked instead of deploying it again.
+`post-mig` ends the park on that box. It restores the parked runners, removes
+a stale parked copy (`.<name>.off`) of any runner a refresh had already
+brought back, removes the marker and stops the box serving its published root
+key.
+
 **On source:**
 ```sh
 xoct pre-mig source-host
 ```
 
+It ends with the line to run on the target, for example
+`INFO: on the target run: xoct pre-mig source-host --key-fp=SHA256:...`.
+
 **On target:**
 ```sh
-xoct pre-mig source-host
+xoct pre-mig source-host --key-fp=SHA256:<the fingerprint printed on the source>
 ```
 
 ### 3. Verify SSH Connectivity
@@ -173,9 +205,12 @@ than discovering an index-less account later.
   host-specific lines, which BOA re-derives correctly for the new box), force-
   copies the PHP pin files, and carries the client's shell credentials: the
   `<o1>.ftp` shadow hash paired with `log/pass.txt`, the sub-account password
-  store, and each sub-user's hash and SSH keys. Sub-users that do not exist on
-  the target yet converge when `manage_ltd_users.sh` creates them there from
-  `clients/`, adopting the carried password and staged keys.
+  store, and each sub-user's hash and SSH keys.
+- Sub-users that do not exist on the target yet converge when
+  `manage_ltd_users.sh` creates them there from `clients/`, adopting the
+  carried password and staged keys. While the target's runners are parked
+  that happens after `post-mig`, or during `import` when it rebuilds the
+  account's pinned PHP pools.
 - It then verifies the pins actually took, and reports any that did not.
 
 Re-running `create` on an already-installed account skips the install and
@@ -229,7 +264,11 @@ migration, `xoct proxy` also needs `--force` (exported.pid was truthfully
 withheld), which accepts the partial export on the same explicit axis.
 
 `transfer o1` rsyncs platforms, files, drush aliases, nginx vhosts, SSL certs,
-and Let's Encrypt config to the target. The `static/files` transfer uses a
+and Let's Encrypt config to the target. The platform and per-site drush
+aliases travel; the account's panel aliases (`hostmaster`, `hm` and
+`server_master`) do not — the target keeps its own, because `import` reads
+them to find the panel it imports into, and the source's copies name a panel
+site and a server the target does not have. The `static/files` transfer uses a
 two-pass symlink-safe method (see [Static Files Note](#static-files-symlink-handling)).
 
 A second `transfer shared` picks up any changes to shared data since step 5.
@@ -267,6 +306,16 @@ content can still be running on the wrong interpreter.
 > without it silently stops receiving fleet updates altogether. Check
 > `pgrep -x cron` before you walk away.
 
+`import` refuses before it changes anything — it exits non-zero with an
+`ERROR` line, leaves cron and the 503 gate alone and stamps nothing — when
+the account is not installed on the target (`create` has not run), when
+`src/prev_hostmaster.sql` has not arrived, when `log/sourcefqdn.txt` is
+missing (run `xoct reset-state o1`, `export` and `transfer` again on the
+source), when the account's hostmaster alias names a panel site with no
+`drushrc.php` on the target, or when that `drushrc.php` names no panel
+database. Each of these used to skip the whole panel import silently and
+still report success.
+
 `import` refuses while the travelled `log/export_failed.pid` marks the
 export incomplete (`--force` bypasses only that gate). Per-site database
 loads are truthful: a transferred dump directory without mydumper's final
@@ -287,13 +336,14 @@ writes `log/import_failed.pid`, prints an INCOMPLETE verdict naming the
 databases and exits non-zero — the printed recovery re-runs the full
 import from the same transferred dumps after the cause is fixed.
 
-`import` first resolves which panel database to import INTO. The dest
-account's panel is often rebuilt between `create` and `import` (the enforced
-post-install upgrade does exactly that), which replaces the panel database
-and leaves the on-disk alias naming the dropped one — pouring the dump into
-a nonexistent database. So the alias-derived name is validated against the
-live database set, and when it is gone the live panel database is
-rediscovered the same way the `xmass` cutover does.
+`import` first resolves which panel database to import INTO. The runner park
+holds the enforced post-install upgrade `create` armed until `post-mig`, but
+when the park lapsed or was never taken on the target, that upgrade rebuilds
+the dest account's panel between `create` and `import`. It replaces the panel
+database and leaves the on-disk alias naming the dropped one — pouring the
+dump into a nonexistent database. So the alias-derived name is validated
+against the live database set, and when it is gone the live panel database
+is rediscovered the same way the `xmass` cutover does.
 
 A previous partial run
 is picked up too: a database already carrying the source panel front is
@@ -325,8 +375,9 @@ recovery steps rather than completing with a dead control panel.
 
 With the panel reconciled, `import` calls
 `renameaegirhost --aegir-root /data/disk/o1 --force-old source-fqdn` (the
-source hostname was recorded at export time, so the rename never depends on
-which side's alias copy survived the transfer) which:
+source hostname was recorded at export time; the target's own
+`server_master` alias names the target, so the rename never reads OLD from
+an alias) which:
 
 - Rewrites all drush alias files (old source hostname → target FQDN).
 - Rewrites and renames nginx vhost files.
@@ -337,7 +388,10 @@ which side's alias copy survived the transfer) which:
   server_localhost verify + hosting-dispatch + hosting-tasks) to regenerate
   all aliases, vhosts, and db-host entries from the updated database.
 
-`post-mig` restarts Solr and nginx, restores BOA runner scripts.
+`post-mig` restarts Solr and nginx, restores BOA runner scripts and removes
+the park marker. The restored runner then consumes the upgrade `create`
+armed, which now runs on the imported account, and `manage_ltd_users.sh`
+creates any sub-users still missing.
 
 ### 9. Enable Proxy on Source
 
@@ -494,7 +548,8 @@ deadline flag itself. `proxy-retire` clears it, so a mode declared after a
 retirement takes the box default again. The table shows `none` for an
 explicit no-deadline and `-` for an unset one.
 
-`post-mig` restores BOA runner scripts on source and reconciles migration-proxy
+`post-mig` restores BOA runner scripts on source, removes the park marker,
+stops serving the root key `pre-mig` published and reconciles migration-proxy
 trust from the policy records (a quiet no-op on a box holding none).
 
 ### 10. Update DNS
