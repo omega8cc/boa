@@ -5058,32 +5058,47 @@ _xmass_sync_account() {
   # reasoning as the log/ leg above, applied at the damage site so a hand-run
   # sync is refused too. The saved pre-conversion vhosts (dot-files) never
   # travel: they are this box's revert copies, not configuration.
+  # The account owns config/ down to nginx/ and every directory in it: a name
+  # planted as a link there would have root copy what it points at. The nginx
+  # legs go only from the real directory, each directory sent by its own name
+  # into the parent, so a link swapped in after the check travels as a link
+  # and is never followed.
+  local _ngxW _ngx
+  _ngxW="$(cd -P -- /data/disk 2>/dev/null && pwd -P)/${_oct}/config/server_master/nginx"
+  _ngx="$(cd -P -- "${_udir}/config/server_master/nginx" 2>/dev/null && pwd -P)"
   if [ -e "${_udir}/log/proxied.pid" ]; then
     _alrt "  ${_udir##*/}: this box relays the account (log/proxied.pid) -- its vhost.d is NOT synced"
+  elif [ "${_ngx}" != "${_ngxW}" ] || [ -L "${_ngxW}/vhost.d" ]; then
+    _xmass_warn_daily "nginx_link_${_oct}_vhost.d" "  ${_oct}: nginx/vhost.d or a directory above it is a link -- not followed, not sent"
   else
     _xmass_rsync -aEAXqu ${_ieni} \
       --exclude=host8.biz --exclude=boa.io --exclude=aegir.cc \
       --exclude='.*' \
-      -e ssh "${_udir}/config/server_master/nginx/vhost.d/" \
-      "root@${_tgt}:${_dst}/config/server_master/nginx/vhost.d/"
+      -e ssh "${_ngxW}/vhost.d" \
+      "root@${_tgt}:${_dst}/config/server_master/nginx/"
   fi
 
-  # These six are OPTIONAL: an account without subdir.d, or without any SSL
+  # These seven are OPTIONAL: an account without subdir.d, or without any SSL
   # material, is perfectly normal. rsync answers a missing source with rc 23,
   # which _xmass_rsync correctly treats as DENY -- and the caller then _die's,
   # aborting a cutover with the SOURCE ALREADY IN 503. The old procedure
   # suppressed errors on exactly these transfers; skipping what does not exist
   # is the same intent stated precisely, and leaves a real rsync failure on a
   # directory that IS there still fatal. Never silent: a skip is logged.
-  for _subdir in pre.d post.d subdir.d platform.d; do
-    if [ ! -d "${_udir}/config/server_master/nginx/${_subdir}" ]; then
+  # passwords.d holds the HTTP basic auth files the carried vhosts name: only a
+  # site Verify writes them, and none runs on the target.
+  for _subdir in pre.d post.d subdir.d platform.d passwords.d; do
+    if [ "${_ngx}" != "${_ngxW}" ] || [ -L "${_ngxW}/${_subdir}" ]; then
+      _xmass_warn_daily "nginx_link_${_oct}_${_subdir}" "  ${_oct}: nginx/${_subdir} or a directory above it is a link -- not followed, not sent"
+      continue
+    fi
+    if [ ! -d "${_ngxW}/${_subdir}" ]; then
       _info "  no ${_subdir} on this account — nothing to send"
       continue
     fi
     _xmass_rsync -aEAXqu ${_ieni} \
-      -e ssh "${_udir}/config/server_master/nginx/${_subdir}/" \
-      "root@${_tgt}:${_dst}/config/server_master/nginx/${_subdir}/" \
-
+      -e ssh "${_ngxW}/${_subdir}" \
+      "root@${_tgt}:${_dst}/config/server_master/nginx/"
   done
 
   # SSL certificates and LE config

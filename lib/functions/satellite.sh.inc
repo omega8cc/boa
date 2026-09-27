@@ -3898,6 +3898,7 @@ _satellite_run_child_b() {
       _acct_in_real_dir "${_ROOT}/backups" chown -R "${_USER}:${_ACCG:-users}" .
       _acct_in_real_dir "${_ROOT}/clients" chown -R "${_USER}:${_ACCG:-users}" .
       _acct_in_real_dir "${_ROOT}/config" chown -R "${_USER}:${_ACCG:-users}" .
+      _satellite_server_master_modes basic_auth &> /dev/null
       _acct_in_real_dir "${_ROOT}/tools" chown -R "${_USER}:${_ACCG:-users}" .
       ### The hostmaster root and site come from the account's own alias:
       ### handed over only inside its own real hostmaster tree.
@@ -4007,6 +4008,77 @@ _satellite_run_post_install() {
 }
 
 #
+# A mode set on names in a directory an account owns, never through a link
+# (the ltd worker's setter): each name is opened without following one and
+# without blocking on a FIFO, checked to be the expected type and changed
+# through the open handle. Run it inside a directory pinned with cd -P and
+# checked with pwd -P, or from find -execdir there. Args: d|f|p|q|w, the mode
+# (octal), the account user, the web group, the names. p, q and w are the
+# HTTP basic auth password directory and files as the Aegir task expects
+# them: in the web server's group, the directory setgid and closed to other
+# accounts, changed only when the account owns them (q: root, only for one
+# just made) and a file has a single link.
+_SAT_FCHMOD_PL='use Fcntl;
+my ($t, $m) = (shift @ARGV, oct(shift @ARGV));
+my $uid = (getpwnam(shift @ARGV))[2];
+my $gid = (getgrnam(shift @ARGV))[2];
+defined $uid && defined $gid or exit 1;
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (($t eq "d" && -d _) || ($t eq "f" && -f _)) {
+    chmod($m, $h);
+  }
+  elsif (-d _ && (($t eq "p" && $s[4] == $uid) || ($t eq "q" && $s[4] == 0))) {
+    chown($uid, $gid, $h);
+    chmod($m, $h);
+  }
+  elsif ($t eq "w" && -f _ && $s[4] == $uid && $s[3] == 1) {
+    chown(-1, $gid, $h);
+    chmod($m, $h);
+  }
+  close($h);
+}'
+#
+# config/server_master is the account's: 0700 directories and 0600 files, set
+# from inside the real directory through the setter above. nginx (www-data)
+# opens each site's HTTP basic auth password file on every request, and the
+# ltd worker, which keeps the modes it needs, is held off until this run
+# ends, so the path to those files and the files themselves get the worker's
+# final modes in one step: server_master and nginx 0755, passwords.d 02710
+# (made when missing), each file 0640 (p and w above). $1 = all: the whole
+# tree; anything else: the password files and the path to them only.
+_satellite_server_master_modes() {
+  local _sm
+  _sm="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_USER}/config/server_master"
+  ( PATH=/usr/local/bin:/usr/bin:/bin
+    cd -P -- "${_ROOT}/config/server_master" 2> /dev/null \
+      && [ "$(pwd -P)" = "${_sm}" ] || exit 1
+    if [ "${1}" = "all" ]; then
+      find . -type d ! -path . ! -path ./nginx ! -path ./nginx/passwords.d \
+        -execdir perl -e "${_SAT_FCHMOD_PL}" d 0700 "${_USER}" "${_WEBG}" {} +
+      find . -type f ! \( -path './nginx/passwords.d/*' ! -path './nginx/passwords.d/*/*' \) \
+        -execdir perl -e "${_SAT_FCHMOD_PL}" f 0600 "${_USER}" "${_WEBG}" {} +
+    fi
+    perl -e "${_SAT_FCHMOD_PL}" d 0755 "${_USER}" "${_WEBG}" . ./nginx )
+  ( PATH=/usr/local/bin:/usr/bin:/bin
+    cd -P -- "${_ROOT}/config/server_master/nginx" 2> /dev/null \
+      && [ "$(pwd -P)" = "${_sm}/nginx" ] || exit 1
+    _t=p
+    if [ ! -e ./passwords.d ] && [ ! -L ./passwords.d ]; then
+      mkdir -m 02710 ./passwords.d && _t=q
+    fi
+    perl -e "${_SAT_FCHMOD_PL}" "${_t}" 02710 "${_USER}" "${_WEBG}" ./passwords.d )
+  ( PATH=/usr/local/bin:/usr/bin:/bin
+    cd -P -- "${_ROOT}/config/server_master/nginx/passwords.d" 2> /dev/null \
+      && [ "$(pwd -P)" = "${_sm}/nginx/passwords.d" ] || exit 1
+    shopt -s dotglob nullglob
+    set -- ./*
+    [ "$#" -gt 0 ] || exit 0
+    perl -e "${_SAT_FCHMOD_PL}" w 0640 "${_USER}" "${_WEBG}" "$@" )
+}
+
+#
 # Set permissions for all.
 _satellite_set_permissions_for_all() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -4014,8 +4086,7 @@ _satellite_set_permissions_for_all() {
     _debug_proc
   fi
   chmod 0755 ${_HM_ROOT} &> /dev/null
-  find ${_ROOT}/config/server_master -type d -exec chmod 0700 {} \; &> /dev/null
-  find ${_ROOT}/config/server_master -type f -exec chmod 0600 {} \; &> /dev/null
+  _satellite_server_master_modes all &> /dev/null
   _acct_in_real_dir "${_ROOT}/config" chmod 0711 . &> /dev/null
   _acct_in_real_dir "${_ROOT}/config/includes" chmod 0711 . &> /dev/null
   _acct_in_real_dir "${_ROOT}/backups" chmod 0750 . &> /dev/null
@@ -4678,8 +4749,11 @@ _satellite_if_add_update_user_platforms_symlinks() {
 
   for i in $(dir -d ${_usEr}/distro/* 2>/dev/null); do
     if [ -d "${i}" ]; then
-      if [ ! -d "${i}/keys" ]; then
-        mkdir -p ${i}/keys
+      # The account owns distro/ and its entries: never through a planted
+      # link (a revision or keys itself), and root's own directory stays
+      # root's (the owner and mode it has always had).
+      if [ ! -L "${i}" ] && [ ! -e "${i}/keys" ] && [ ! -L "${i}/keys" ]; then
+        mkdir -m 0755 "${i}/keys" &> /dev/null
       fi
       _RevisionTest=$(ls ${i} | wc -l 2>&1)
       # Age gate, mirroring the nightly copy in night/10-account.sh: an
@@ -4709,15 +4783,11 @@ _satellite_if_add_update_user_platforms_symlinks() {
         chattr -i /home/${_HM_U}.ftp/platforms &> /dev/null
         chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
       fi
-      if [ ! -e "${i}/keys" ]; then
-        mkdir -p ${i}/keys
-        chown ${_HM_U}.ftp:${_WEBG} ${i}/keys &> /dev/null
-        chmod 02775 ${i}/keys &> /dev/null
-      fi
       if [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}" ]; then
         mkdir -p /home/${_HM_U}.ftp/platforms/${_distTrNr}
       fi
-      if [ -e "${i}/keys" ] && [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}/keys" ]; then
+      if [ -d "${i}/keys" ] && [ ! -L "${i}/keys" ] \
+        && [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}/keys" ]; then
         ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${_distTrNr}/keys
       fi
       if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
@@ -4822,20 +4892,27 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
 
   ###---### Create other dirs and symlinks if not exist.
   #
+  # For two years _QR and _QH were unset here, so this block made /keys (with
+  # a /keys/keys self-link) at the root of the filesystem, in group www-data:
+  # take it away when it holds nothing but that link.
+  if [ -d "/keys" ] && [ ! -L "/keys" ] && [ "$(ls -A /keys 2> /dev/null)" = "keys" ] \
+    && [ -L "/keys/keys" ] && [ "$(readlink /keys/keys)" = "/keys" ]; then
+    rm -f /keys/keys && rmdir /keys
+  fi
   if [ "${_HM_ONLY}" = "YES" ]; then
     _DO_NOTHING=YES
   else
-    if [ ! -d "${_QR}/keys" ]; then
-      mkdir -p ${_QR}/keys
-      chown ${_USERFTP}:${_WEBG} ${_QR}/keys &> /dev/null
-      chmod 02775 ${_QR}/keys
+    # The new shared-code platforms lose their robots.txt: inside the real
+    # distro/<core>, never through a platform entry the account planted as a
+    # link.
+    local _qW
+    _qW="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_USER}/distro/${_THIS_CORE}"
+    if [ -n "${_THIS_CORE}" ]; then
+      ( PATH=/usr/local/bin:/usr/bin:/bin
+        cd -P -- "${_ROOT}/distro/${_THIS_CORE}" 2> /dev/null \
+          && [ "$(pwd -P)" = "${_qW}" ] || exit 0
+        find . -mindepth 2 -maxdepth 2 -name robots.txt ! -type d -delete ) &> /dev/null
     fi
-    if [ -d "${_QR}/keys" ]; then
-      if [ ! -L "${_QH}/keys" ]; then
-        ln -sfn ${_QR}/keys ${_QH}/keys
-      fi
-    fi
-    rm -f ${_QR}/*/robots.txt &> /dev/null
     if [ ! -e "${_CORE}/javascript_aggregator.out.txt" ] \
       && [ -e "${_CORE}" ]; then
       sed -i "s/, 'javascript_aggregator'//g" \

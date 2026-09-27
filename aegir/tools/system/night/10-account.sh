@@ -1110,8 +1110,11 @@ _purge_cruft_machine() {
 
   for i in $(dir -d ${_usEr}/distro/* 2>/dev/null); do
     if [ -d "${i}" ]; then
-      if [ ! -d "${i}/keys" ]; then
-        mkdir -p ${i}/keys
+      # The account owns distro/ and its entries: never through a planted
+      # link (a revision or keys itself), and root's own directory stays
+      # root's (the owner and mode it has always had).
+      if [ ! -L "${i}" ] && [ ! -e "${i}/keys" ] && [ ! -L "${i}/keys" ]; then
+        mkdir -m 0755 "${i}/keys" &> /dev/null
       fi
       _RevisionTest=$(ls ${i} | wc -l 2>&1)
       # An installer creates the new distro/NNN empty and fills it over the
@@ -1151,11 +1154,6 @@ _purge_cruft_machine() {
         chattr -i /home/${_HM_U}.ftp/platforms
         chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
       fi
-      if [ ! -e "${i}/keys" ]; then
-        mkdir -p ${i}/keys
-        chown ${_HM_U}.ftp:${_WEBG} ${i}/keys &> /dev/null
-        chmod 02775 ${i}/keys &> /dev/null
-      fi
       # platforms/ and its per-revision children are in the tenant's own home
       # and are mutable for the whole run, so a link planted at either level
       # makes the mkdir -p a silent no-op on the target and both ln -sfn below
@@ -1171,7 +1169,8 @@ _purge_cruft_machine() {
       if [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}" ]; then
         mkdir -p /home/${_HM_U}.ftp/platforms/${_distTrNr}
       fi
-      if [ -e "${i}/keys" ] && [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}/keys" ]; then
+      if [ -d "${i}/keys" ] && [ ! -L "${i}/keys" ] \
+        && [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}/keys" ]; then
         ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${_distTrNr}/keys
       fi
       if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then

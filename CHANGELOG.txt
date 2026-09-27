@@ -67,6 +67,26 @@
     * The nightly temporary-file purge and copydbackup act only inside
       the account's own files store, or its copy relocated by migratefs.
 
+    * A site's HTTP basic auth password file is no longer world-readable.
+      The ltd worker used to add read for everyone every few minutes; it
+      now keeps the file 0640 in the web server's group, inside a
+      passwords.d that is setgid in that group and that only its owner
+      and that group can enter (02710). The Aegir task writes it that
+      way. The task hashes the password with SHA-512 and a random salt,
+      where the old hash checked only the first eight characters, and no
+      longer gives the account group write access to the directory that
+      holds vhost.d. Existing files keep their old hash, and keep
+      working, until the site's next Verify rewrites them.
+    * An Octopus upgrade no longer leaves the basic auth password files
+      unreadable to nginx until the ltd worker's next pass, and the
+      worker no longer takes them to 0600 for a moment on every pass.
+    * Root no longer changes the owner or mode of a shared-code
+      revision's keys directory through a link the account put there,
+      in the Octopus upgrade or in the nightly pass: the directory is
+      made only when missing, and never through a link.
+    * xmass sends an account's nginx directories only from the real
+      directory, never through a link planted in or above them.
+
     * The shared Backdrop redis module, the Backdrop bundle's webform and
       bee are root's as soon as BOA unpacks them: their archives recorded
       the account that built them, and an unpack as root kept that owner
@@ -689,6 +709,16 @@
       of the current tree and release, which is the one the next pass
       reads to skip a needless reinstall. The directory clean before each
       install skipped dotfiles, so a box kept every earlier marker.
+
+    * An Octopus upgrade no longer makes a /keys directory, open to the
+      web group, at the root of the filesystem, nor deletes robots.txt
+      files one level below the root: it removes such a /keys when it
+      holds nothing but its own link, and takes robots.txt out of the
+      new shared-code platforms again.
+    * xmass now carries each account's HTTP basic auth password files
+      with its vhosts. A migrated site with basic auth used to answer
+      every request with an error on the new box until its next Verify,
+      since its vhost named a file that never arrived.
 
     * The barracuda pass that disables unused PHP versions (on a major OS
       upgrade, with /root/.allow-php-multi-install-cleanup.cnf, and on

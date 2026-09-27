@@ -533,6 +533,49 @@ _ltd_chmod_nofollow_here() (
   shopt -s dotglob nullglob
   _ltd_chmod_nofollow "${1}" ./*
 )
+# The HTTP basic auth password files and their directory, as the Aegir task
+# expects them: passwords.d the account's, in the web server's group, setgid
+# and 02710 (nginx traverses, no other account does), each file 0640 in that
+# group. Opened like _LTD_FCHMOD_PL and changed through the handle: the
+# directory only when the account owns it (n: root, only for one this pass
+# has just made), a file only when it is regular, the account's, with a
+# single link. Args: d|n|f, the mode (octal), the account user, the web
+# group, the names.
+_LTD_WEBREAD_PL='use Fcntl;
+my ($t, $m) = (shift @ARGV, oct(shift @ARGV));
+my $uid = (getpwnam(shift @ARGV))[2];
+my $gid = (getgrnam(shift @ARGV))[2];
+defined $uid && defined $gid or exit 1;
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (-d _ && (($t eq "d" && $s[4] == $uid) || ($t eq "n" && $s[4] == 0))) {
+    chown($uid, $gid, $h);
+    chmod($m, $h);
+  }
+  elsif ($t eq "f" && -f _ && $s[4] == $uid && $s[3] == 1) {
+    chown(-1, $gid, $h);
+    chmod($m, $h);
+  }
+  close($h);
+}'
+# passwords.d in the current (pinned) nginx dir, made when missing.
+# $1 = the account user.
+_ltd_basic_auth_dir_here() {
+  local _t=d
+  if [ ! -e ./passwords.d ] && [ ! -L ./passwords.d ]; then
+    mkdir -m 02710 ./passwords.d 2> /dev/null && _t=n
+  fi
+  perl -e "${_LTD_WEBREAD_PL}" "${_t}" 02710 "${1}" "${_WEBG}" ./passwords.d 2> /dev/null
+}
+# Every password file directly in the current (pinned) passwords.d.
+# $1 = the account user.
+_ltd_basic_auth_modes_here() (
+  shopt -s dotglob nullglob
+  set -- "${1}" ./*
+  [ "$#" -gt 1 ] || return 0
+  perl -e "${_LTD_WEBREAD_PL}" f 0640 "${1}" "${_WEBG}" "${@:2}" 2> /dev/null
+)
 # rm -f of a glob in the current (pinned) directory; $1 = the pattern,
 # quoted by the caller so it expands here.
 _ltd_rm_here() {
@@ -4907,18 +4950,24 @@ _manage_user() {
       _ltd_in_real_dir "${_dscUsr}/.drush" _ltd_drush_alias_modes &> /dev/null
       # config/ is oN's: the tree is walked from inside the real directory
       # and every mode goes through a handle that never follows a link (a
-      # link at passwords.d/<x> would have made its target world-readable)
+      # link at passwords.d/<x> would have made its target world-readable).
+      # nginx (www-data) opens the basic auth password files on every
+      # request, so the path to them and the files themselves get their
+      # final modes in one step, never 0700/0600 first.
       _ltd_in_real_dir "${_dscUsr}/config/server_master" \
-        find . -type d -execdir perl -e "${_LTD_FCHMOD_PL}" d 0700 {} + &> /dev/null
+        find . -type d ! -path . ! -path ./nginx ! -path ./nginx/passwords.d \
+        -execdir perl -e "${_LTD_FCHMOD_PL}" d 0700 {} + &> /dev/null
       _ltd_in_real_dir "${_dscUsr}/config/server_master" \
-        find . -type f -execdir perl -e "${_LTD_FCHMOD_PL}" f 0600 {} + &> /dev/null
-      for _cfgDir in config config/server_master config/server_master/nginx \
-        config/server_master/nginx/passwords.d; do
-        _ltd_in_real_dir "${_dscUsr}/${_cfgDir}" \
-          perl -e "${_LTD_FCHMOD_PL}" d +0555 . &> /dev/null
-      done
+        find . -type f ! \( -path './nginx/passwords.d/*' ! -path './nginx/passwords.d/*/*' \) \
+        -execdir perl -e "${_LTD_FCHMOD_PL}" f 0600 {} + &> /dev/null
+      _ltd_in_real_dir "${_dscUsr}/config" \
+        perl -e "${_LTD_FCHMOD_PL}" d +0555 . &> /dev/null
+      _ltd_in_real_dir "${_dscUsr}/config/server_master" \
+        perl -e "${_LTD_FCHMOD_PL}" d 0755 . ./nginx &> /dev/null
+      _ltd_in_real_dir "${_dscUsr}/config/server_master/nginx" \
+        _ltd_basic_auth_dir_here "${_USER}"
       _ltd_in_real_dir "${_dscUsr}/config/server_master/nginx/passwords.d" \
-        _ltd_chmod_nofollow_here +0444
+        _ltd_basic_auth_modes_here "${_USER}"
       # .tmp is oN's to swap too: a link there always takes this block, which
       # strips it (a stamp read through the link could skip it), and every
       # remove, mode and stamp happens inside the real directory
