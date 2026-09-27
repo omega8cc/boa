@@ -117,12 +117,23 @@ for _M in /mnt/*; do
   [ -d "\${_M}" ] && mountpoint -q "\${_M}" 2>/dev/null && { _MP="\${_M}"; _N=\$((_N + 1)); }
 done
 [ "\${_N}" = "1" ] || _MP=""
+_GI="\$(getent group "\${_G}" 2>/dev/null | cut -d: -f3)"
+_WG="\$(getent group www-data 2>/dev/null | cut -d: -f3)"
+case "\${_GI}" in ''|*[!0-9]*) _GI="" ;; esac
+case "\${_WG}" in ''|*[!0-9]*) _WG=-1 ;; esac
 for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gems/\${_A}" /opt/user/gems/"\${_A}".* "/opt/user/npm/\${_A}" /opt/user/npm/"\${_A}".* "\${_MP:+\${_MP}/files/\${_A}/static/files}"; do
   [ -n "\${_R}" ] && [ -d "\${_R}" ] && [ ! -L "\${_R}" ] || continue
   # the FPM pool users' homes (oN.web, oN.NN.web) are www-data's, never the
   # account's: the same root set the tool walks
   case "\${_R}" in /home/*.web) continue ;; esac
-  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root -execdir chgrp -h "\${_G}" {} + 2>/dev/null
+  # regrouped through a no-follow handle on each name inside the directory
+  # find holds, never by name: only a directory, or a regular file with one
+  # link, whose handle is still in none of those groups, so a hard link to
+  # another file renamed in (or put there) is never regrouped; a link's own
+  # group grants nothing and is left
+  [ -n "\${_GI}" ] || continue
+  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root \( -type f -o -type d \) \
+    -execdir perl -e 'use Fcntl; my (\$g, \$w) = splice(@ARGV, 0, 2); for my \$n (@ARGV) { sysopen(my \$h, \$n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat(\$h); chown(-1, \$g, \$h) if @s && \$s[5] != \$g && \$s[5] != \$w && \$s[5] != 0 && (-d _ || (-f _ && \$s[3] == 1)); close(\$h); } exit 0' -- "\${_GI}" "\${_WG}" {} + 2>/dev/null
 done
 # log/ is the account's own: the record is read and removed only inside the
 # real directory, never through a link or into a FIFO put there
@@ -146,58 +157,68 @@ REMOTE
   return "${_X_RC}"
 }
 
+# The immutable flag set ($1 +) or cleared ($1 -) on the names $2 ... of the
+# current (pinned) directory, each through one handle opened
+# O_NOFOLLOW|O_NONBLOCK (FS_IOC_GETFLAGS/FS_IOC_SETFLAGS, the amd64/arm64
+# numbers): only a directory, or a regular file with one link, is changed, so
+# a link the account put at a name is never followed (chattr with a trailing
+# slash follows one) and a hard link to another file is never locked or
+# unlocked. Status 1 when any name was refused.
+_XCOPY_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or do { $rc = 1; next }; my @s = stat($h); if (@s && (-d _ || (-f _ && $s[3] == 1))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); $fl = $op eq "+" ? ($fl | 0x10) : ($fl & ~0x10); ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } else { $rc = 1 } close($h); } exit $rc'
+_xcopy_chattr_here() {
+  local _op="${1}"
+  shift
+  perl -e "${_XCOPY_CHATTR_PL}" -- "${_op}" "$@" 2> /dev/null
+}
+# The same on the current (pinned) directory and every entry in it.
+_xcopy_chattr_all_here() {
+  perl -e "${_XCOPY_CHATTR_PL}" -- "${1}" . ./* 2> /dev/null
+}
+
 _enable_chattr() {
   _isTest="$1"
   _isTest=${_isTest//[^a-z0-9]/}
   if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
+    # each directory entered as the real one (every name below /home a real
+    # directory), the flag changed on "." there
     if [ "$1" != "${_THIS_HM_USER}.ftp" ]; then
-      chattr +i /home/$1/
+      _xcopy_in_real_dir "/home/$1" _xcopy_chattr_here + .
     else
-      if [ -d "/home/$1/platforms/" ]; then
-        chattr +i /home/$1/platforms/
-        chattr +i /home/$1/platforms/*
-      fi
+      _xcopy_in_real_dir "/home/$1/platforms" _xcopy_chattr_all_here +
     fi
-    if [ -d "/home/$1/.drush/" ]; then
-      chattr +i /home/$1/.drush/
-    fi
-    if [ -d "/home/$1/.drush/usr/" ]; then
-      chattr +i /home/$1/.drush/usr/
-    fi
-    if [ -d "/home/$1/.bazaar/" ]; then
-      chattr +i /home/$1/.bazaar/
-    fi
+    _xcopy_in_real_dir "/home/$1/.drush" _xcopy_chattr_here + .
+    _xcopy_in_real_dir "/home/$1/.drush/usr" _xcopy_chattr_here + .
+    _xcopy_in_real_dir "/home/$1/.bazaar" _xcopy_chattr_here + .
   fi
+}
+
+# The .ftp home is locked again when the run that unlocked it ends, on every
+# exit the shell can trap: a refused or failed verb must not leave it
+# unlocked until the next worker pass, which stays parked during a move.
+_XCOPY_CHATTR_OFF=""
+_xcopy_chattr_back() {
+  [ "${_XCOPY_CHATTR_OFF}" = "YES" ] || return 0
+  _XCOPY_CHATTR_OFF=""
+  _enable_chattr "${_THIS_HM_USER}.ftp" &> /dev/null
+  return 0
 }
 
 _disable_chattr() {
   _isTest="$1"
   _isTest=${_isTest//[^a-z0-9]/}
   if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
+    # each directory entered as the real one (every name below /home a real
+    # directory), the flag changed on "." there
     if [ "$1" != "${_THIS_HM_USER}.ftp" ]; then
-      if [ -d "/home/$1/" ]; then
-        chattr -i /home/$1/
-      fi
+      _xcopy_in_real_dir "/home/$1" _xcopy_chattr_here - .
     else
-      if [ -d "/home/$1/platforms/" ]; then
-        chattr -i /home/$1/platforms/
-        chattr -i /home/$1/platforms/*
-      fi
+      _xcopy_in_real_dir "/home/$1/platforms" _xcopy_chattr_all_here -
     fi
-    if [ -d "/home/$1/.drush/" ]; then
-      chattr -i /home/$1/.drush/
-    fi
-    if [ -d "/home/$1/.drush/usr/" ]; then
-      chattr -i /home/$1/.drush/usr/
-    fi
+    _xcopy_in_real_dir "/home/$1/.drush" _xcopy_chattr_here - .
+    _xcopy_in_real_dir "/home/$1/.drush/usr" _xcopy_chattr_here - .
     # a CLI php.ini an earlier release left, for the ltd worker to remove
-    if [ -f "/home/$1/.drush/php.ini" ] && [ ! -L "/home/$1/.drush" ] \
-      && [ ! -L "/home/$1/.drush/php.ini" ]; then
-      chattr -i /home/$1/.drush/php.ini
-    fi
-    if [ -d "/home/$1/.bazaar/" ]; then
-      chattr -i /home/$1/.bazaar/
-    fi
+    _xcopy_in_real_dir "/home/$1/.drush" _xcopy_chattr_here - ./php.ini
+    _xcopy_in_real_dir "/home/$1/.bazaar" _xcopy_chattr_here - .
   fi
 }
 
@@ -221,9 +242,11 @@ _migrate_sites() {
     _Vhd="${_USR}/config/server_master/nginx/vhost.d/.${_Dom}"
     _Vhs="${_USR}/config/server_master/nginx/vhost.d/https.${_Dom}"
     # vhost.d is under config/, which belongs to oN: the owner and mode are
-    # re-asserted inside the real directory, on names that are regular files
-    # there, with chown -h and a no-follow fchmod -- a link the account put at
-    # either name is skipped, never handed to the account.
+    # re-asserted inside the real directory, through a no-follow handle on a
+    # regular file with one link that is already the account's -- a link, a
+    # hard link to another file, or a file of another owner (a root-only one
+    # included) the account put at either name is skipped, never handed to
+    # the account.
     if [ ! -z "${_oct}" ]; then
       _xcopy_vhd_reassert "${_Vht%/*}" "${_oct}:${_octGrp}" "${_Dom}"
       _xcopy_vhd_reassert "${_Vht%/*}" "${_oct}:${_octGrp}" ".${_Dom}"
@@ -537,13 +560,15 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             _NMS=`_xcopy_read_in "${_Vht%/*}" "${_Vht##*/}" | grep "server_name" | sed "s/server_name//g; s/;//g" | sort | uniq | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | sort | uniq`
             _NMS="$(_xcopy_host_words "${_NMS}")"
             # vhost.d is oN's: every write runs inside the real directory on
-            # ./names -- the template is rendered into a fresh file (not cp -a
-            # onto the name then sed -i), the save is a pinned mv -f -T, and the
-            # owner/mode are re-asserted with chown -h and a no-follow fchmod.
+            # ./names -- the template is rendered into a fresh file owned by
+            # the account from the start (not cp -a onto the name then sed -i),
+            # the save is a pinned mv -f -T, and the owner/mode are re-asserted
+            # through a no-follow handle (_xcopy_reassert_here), never by name.
             if [ -e "${_USR}/config/server_master/ssl.d/${_Dom}/openssl.key" ] \
               && [ -e "/var/xdrago/conf/https_proxy_le.conf" ]; then
               _xcopy_in_real_dir "${_Vhs%/*}" _xcopy_tpl_to_here \
                 /var/xdrago/conf/https_proxy_le.conf "https.${_Dom}" \
+                "${_oct}:${_octGrp}" \
                 -e "s/.*server_name.*;/  server_name  ${_NMS};/g" \
                 -e "s/_target_ip/${_tgt}/g" \
                 -e "s/_oct_uid/${_oct}/g" \
@@ -552,7 +577,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             fi
             _xcopy_in_real_dir "${_Vht%/*}" mv -f -T -- "./${_Dom}" "./.${_Dom}"
             _xcopy_in_real_dir "${_Vht%/*}" _xcopy_tpl_to_here \
-              /var/xdrago/conf/proxy.conf "${_Dom}" \
+              /var/xdrago/conf/proxy.conf "${_Dom}" "${_oct}:${_octGrp}" \
               -e "s/.*server_name.*;/  server_name  ${_NMS};/g" \
               -e "s/_target_ip/${_tgt}/g"
             _xcopy_vhd_reassert "${_Vht%/*}" "${_oct}:${_octGrp}" "${_Dom}"
@@ -700,6 +725,7 @@ _migrate_prepare() {
 
   su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush"
   wait
+  _XCOPY_CHATTR_OFF=YES
   _disable_chattr ${_THIS_HM_USER}.ftp
   rm -rf /home/${_THIS_HM_USER}.ftp/drush-backups
   _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
@@ -779,7 +805,7 @@ _migrate_prepare() {
           echo "ERROR: nothing was stamped; fix the cause, then re-run the FULL import"
           exit 1
         fi
-        _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
+        ### The panel keeps the front page its dump carries, node included.
         ### Clear the travelled source-role latches with the stamp -- they
         ### block this box from ever being a source itself (see xoct).
         ### log/ is oN's: removed and stamped inside the real directory.
@@ -799,7 +825,7 @@ _migrate_prepare() {
         echo "ERROR: nothing was stamped; fix the cause, then re-run the FULL import"
         exit 1
       fi
-      _run_drush8_hmr_cmd "variable-set --always-set site_frontpage 'hosting/sites'"
+      ### The panel keeps the front page its dump carries, node included.
       ### Clear the travelled source-role latches with the stamp -- they
       ### block this box from ever being a source itself (see xoct).
       ### log/ is oN's: removed and stamped inside the real directory.
@@ -858,12 +884,13 @@ _migrate_prepare() {
       _xcopy_remote_ctrl "${_tgt}" "${_TGT_HM_USER}" 'rm -f -- ./*.pid'
       ### log/ is oN's there too: octopus_log.txt is counted as read inside
       ### the real directory, never through a link or from a FIFO. Both
-      ### control files are put fresh as root, then handed to the main login
-      ### as the queue's own writer does (the group asked of the target).
+      ### control files are put fresh, owned by the main login from the start
+      ### as the queue's own writer leaves them (the group asked of the
+      ### target), so no name is chowned after the rename.
       if _xcopy_remote_in "${_tgt}" "/data/disk/${_TGT_HM_USER}/log" \
         '[ "$(_rr octopus_log.txt | wc -l)" -lt 2 ]'; then
         _xcopy_remote_ctrl "${_tgt}" "${_TGT_HM_USER}" \
-          "_rp platforms.info \"\$(_rr platforms.info; echo UP)\"; _rp run-upgrade.pid; _g=\$(id -gn ${_TGT_HM_USER} 2> /dev/null); [ \"\${_g}\" = ${_TGT_HM_USER} ] || _g=users; chown -h ${_TGT_HM_USER}.ftp:\${_g} ./platforms.info ./run-upgrade.pid 2> /dev/null"
+          "_g=\$(id -gn ${_TGT_HM_USER} 2> /dev/null); [ \"\${_g}\" = ${_TGT_HM_USER} ] || _g=users; _rp platforms.info \"\$(_rr platforms.info; echo UP)\" ${_TGT_HM_USER}.ftp:\${_g}; _rp run-upgrade.pid '' ${_TGT_HM_USER}.ftp:\${_g}"
       fi
       echo "INFO: new octopus ${_TGT_HM_USER} setup on ${_tgt} complete"
     else
@@ -917,7 +944,7 @@ _migrate_prepare() {
   fi
   _xcopy_sql_maint_release
   echo Done ${_cmd} for ${_USR}
-  _enable_chattr ${_THIS_HM_USER}.ftp
+  _xcopy_chattr_back
 }
 
 # --- storage-aware store relocation (attached /mnt vs root, source vs target) ------
@@ -1057,14 +1084,24 @@ _xcopy_touch_here() {
   _xcopy_write_here "${1}" < /dev/null
 }
 
+# The file ./$1 (never there before) created with the bytes read from stdin,
+# the owner $2:$3 (numeric; -1 keeps root's) and the read/write bits of the
+# mode $4, all through the one handle that created it, opened
+# O_EXCL|O_NOFOLLOW: nothing is ever chowned or chmodded by name in a
+# directory the account can write (a hard link renamed over the name before a
+# chown by name would hand another file to that owner).
+_XCOPY_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
 # The same rule on the target box: the commands $3 run on the target $1
 # inside the real directory $2 (below /data/disk or /home every name on the
 # path a real directory), where _rr reads a name without following a link or
-# blocking on a FIFO and _rp puts one as a fresh file renamed over the name
-# (empty when no content is given). The target account is the tenant's once
-# its identity has travelled.
+# blocking on a FIFO and _rp puts one as a fresh file through _XCOPY_PUT_PL,
+# renamed over the name (empty when no content is given; $3 the owner:group
+# it is created with, root's when empty or when it does not resolve). The
+# target account is the tenant's once its identity has travelled. The perl
+# text is spliced in unquoted here, so it lands on the target inside single
+# quotes.
 _XCOPY_REMOTE_CTRL_FN='_rr() { timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2> /dev/null; }
-_rp() { local _t="./.${1}.put.$$.${RANDOM}"; rm -f -- "${_t}"; if ( umask 022; { [ -n "${2}" ] && printf "%s\n" "${2}"; true; } | dd of="${_t}" conv=excl status=none 2> /dev/null ) && mv -f -T -- "${_t}" "./${1}"; then return 0; fi; rm -f -- "${_t}"; return 1; }'
+_rp() { local _t="./.${1}.put.$$.${RANDOM}" _u=-1 _g=-1; if [ -n "${3}" ]; then _u="$(id -u -- "${3%%:*}" 2> /dev/null)"; _g="$(getent group "${3#*:}" 2> /dev/null | cut -d: -f3)"; case "${_u}:${_g}" in :*|*:|*[!0-9:]*) _u=-1; _g=-1 ;; esac; fi; rm -f -- "${_t}"; if { [ -n "${2}" ] && printf "%s\n" "${2}"; true; } | perl -e '"'${_XCOPY_PUT_PL}'"' "${_t}" "${_u}" "${_g}" 644 && mv -f -T -- "${_t}" "./${1}"; then return 0; fi; rm -f -- "${_t}"; return 1; }'
 _xcopy_remote_in() {
   local _a=/data/disk
   case "${2}" in /home/?*) _a=/home ;; esac
@@ -1406,30 +1443,33 @@ _xcopy_copy_canon_here() {
   _xcopy_rsync "$@" --rsync-path="$(_xcopy_canon_rpath "${_d}")" -e ssh \
     ./${_g} "root@${_h}:./"
 }
-# ./$1 in the current (pinned) directory put at ./$2 through sed "${@:3}":
-# only a regular file under 1 MiB is read, never through a link or into a
-# FIFO; the result is a fresh file with the source's numeric owner (chown -h)
-# and mode (by umask, never a chmod by name), renamed over ./$2. For a plain
+# ./$1 in the current (pinned) directory put at ./$2 through sed "${@:3}".
+# The source is read through one handle opened O_NOFOLLOW|O_NONBLOCK that
+# must be a regular file with one link under 1 MiB; the owner, group and mode
+# are taken from that same handle (the first line the reader prints), never
+# from a stat by name, so a name swapped between the look and the read never
+# lends its bytes another file's owner. The result is a fresh file with that
+# numeric owner and the read/write bits of that mode, put through
+# _XCOPY_PUT_PL (one handle creates, writes, owns and modes it), renamed over
+# ./$2: nothing is chowned or chmodded by name. The reader text stays in the
+# function, as in the copies that are shipped to the other box. For a plain
 # file this is what sed -i (and cp -a, empty program) wrote, without their
 # reach through a link put at the name.
 _xcopy_sed_to() {
-  local _s="${1}" _n="${2}" _st _own _m _sz _ft _t
+  local _s="${1}" _n="${2}" _t _u _g _m _h
+  local _rd='use Fcntl; my ($n) = @ARGV; sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $s[7] < 1048576; my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 1 if length($d) >= 1048576; } exit 1 unless defined $r; close($h); binmode(STDOUT); printf("%d %d %o\n", $s[4], $s[5], $s[2] & 07777) or exit 1; (print $d) or exit 1; exit 0'
   shift 2
-  _st="$(LC_ALL=C stat -c '%u:%g %a %s %F' -- "./${_s}" 2> /dev/null)" || return 1
-  case "${_st}" in
-    *" regular file"|*" regular empty file") ;;
-    *) return 1 ;;
-  esac
-  read -r _own _m _sz _ft <<< "${_st}"
-  [ "${_sz}" -lt 1048576 ] || return 1
   _t="./.${_n}.sed.$$.${RANDOM}"
   rm -f -- "${_t}"
   if ( set -o pipefail
-    umask "$(printf '%03o' $(( 0777 & ~0${_m} )))"
-    _xcopy_read_here "${_s}" | sed "$@" \
-      | dd of="${_t}" conv=excl status=none 2> /dev/null ); then
-    chown -h "${_own}" "${_t}" 2> /dev/null
-    mv -f -T -- "${_t}" "./${_n}" && return 0
+    perl -e "${_rd}" "./${_s}" 2> /dev/null | {
+      _h=""
+      IFS=' ' read -r _u _g _m _h || exit 1
+      [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] \
+        && [[ "${_m}" =~ ^[0-7]+$ ]] && [ -z "${_h}" ] || exit 1
+      sed "$@" | perl -e "${_XCOPY_PUT_PL}" "${_t}" "${_u}" "${_g}" "${_m}"
+    } ) && mv -f -T -- "${_t}" "./${_n}"; then
+    return 0
   fi
   rm -f -- "${_t}"
   return 1
@@ -1441,28 +1481,33 @@ _xcopy_sed_here() {
   _xcopy_sed_to "${_n}" "${_n}" "$@"
 }
 # ./$2 built from the template file $1 (absolute, root-owned) piped through
-# sed "${@:3}" into a fresh exclusive file (0600) renamed over the name: a
-# link put at the destination is replaced, never written through.
+# sed "${@:4}" into a fresh file put through _XCOPY_PUT_PL, 0600 and owned by
+# $3 (owner:group; root's when it does not resolve) from the start, renamed
+# over the name: a link put at the destination is replaced, never written
+# through, and nothing is chowned by name afterwards.
 _xcopy_tpl_to_here() {
-  local _tpl="${1}" _n="${2}" _t
-  shift 2
+  local _tpl="${1}" _n="${2}" _ids _t
+  _ids="$(_xcopy_owner_ids "${3}")" || _ids="-1 -1"
+  shift 3
   _t="./.${_n}.put.$$.${RANDOM}"
   rm -f -- "${_t}"
   if ( set -o pipefail
-    umask 077
-    sed "$@" -- "${_tpl}" | dd of="${_t}" conv=excl status=none 2> /dev/null ); then
+    sed "$@" -- "${_tpl}" \
+      | perl -e "${_XCOPY_PUT_PL}" "${_t}" "${_ids% *}" "${_ids#* }" 600 ); then
     mv -f -T -- "${_t}" "./${_n}" && return 0
   fi
   rm -f -- "${_t}"
   return 1
 }
 # chmod $1 on the regular files ./$2 ... of the current (pinned) directory
-# WITHOUT following a link.
+# WITHOUT following a link, and only on a file with one link, so a hard link
+# to another file put at a name is skipped too.
 _XCOPY_FCHMOD_PL='use Fcntl;
 my $m = shift @ARGV;
 for my $f (@ARGV) {
   sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
-  chmod(oct($m), $h) if -f $h;
+  my @s = stat($h);
+  chmod(oct($m), $h) if @s && -f _ && $s[3] == 1;
   close($h);
 }'
 _xcopy_fchmod_here() {
@@ -1471,14 +1516,36 @@ _xcopy_fchmod_here() {
   [ "$#" -gt 0 ] || return 0
   perl -e "${_XCOPY_FCHMOD_PL}" "${_m}" "$@" 2> /dev/null
 }
+# The numeric uid and gid of owner:group $1 as "uid gid"; status 1, and
+# nothing, when either does not resolve.
+_xcopy_owner_ids() {
+  local _u _g
+  _u="$(id -u -- "${1%%:*}" 2> /dev/null)"
+  _g="$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)"
+  [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
+  printf '%s %s\n' "${_u}" "${_g}"
+}
+# The owner $1:$2 (numeric; -1 leaves it) and the mode $3 (none when empty)
+# re-asserted on each existing name ./$5 ... through one handle opened
+# O_NOFOLLOW|O_NONBLOCK, and only when that handle is a regular file with one
+# link whose owner is already $1 or one of the uids in the comma-separated
+# $4: a link, a FIFO, a hard link to another file, or a file of some other
+# identity (root's included: a root-only file renamed onto the name is never
+# handed over) is left as it is, never handed to the account or chmodded.
+# What root puts for the account is created with its final owner instead.
+_XCOPY_REASSERT_PL='use Fcntl; my ($u, $g, $m, $x, @f) = @ARGV; my %ok = map { $_ => 1 } ($u, split(/,/, $x)); for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && -f _ && $s[3] == 1 && $ok{$s[4]}) { chown($u, $g, $h) if $u >= 0; chmod(oct($m), $h) if length $m; } close($h); } exit 0'
 # Re-assert owner:group $1 and mode $2 on the regular file ./$3 of the current
-# (pinned) directory: skips a non-regular name, uses chown -h and a no-follow
-# fchmod, so a link the account put at the name never hands its target away.
+# (pinned) directory through _XCOPY_REASSERT_PL: only a regular file with one
+# link, owned already by $1, is changed, through the handle that checked it,
+# so a link, a hard link to another file or another identity's file (root's
+# too) the account put at the name is never handed to the account or
+# chmodded. An owner that does not resolve changes nothing.
 _xcopy_reassert_here() {
-  local _own="${1}" _m="${2}" _n="${3}"
-  [ -f "./${_n}" ] && [ ! -L "./${_n}" ] || return 0
-  chown -h "${_own}" "./${_n}" 2> /dev/null
-  _xcopy_fchmod_here "${_m}" "./${_n}"
+  local _own="${1}" _m="${2}" _n="${3}" _ids
+  _ids="$(_xcopy_owner_ids "${_own}")" || _ids="-1 -1"
+  perl -e "${_XCOPY_REASSERT_PL}" -- "${_ids% *}" "${_ids#* }" "${_m}" "" \
+    "./${_n}" 2> /dev/null
+  return 0
 }
 # The same, run inside the real vhost.d directory $1. $2 owner:group, $3 the
 # vhost name, $4 the mode (default 600).
@@ -2827,7 +2894,7 @@ _take_verb_lock() {
   [ "$(id -u)" = "0" ] || return 0
   while :; do
     if ( set -C; echo "$$" > "${_XCOPY_LOCK_FILE}" ) 2>/dev/null; then
-      trap 'rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+      trap '_xcopy_chattr_back; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
       trap 'rm -f "${_XCOPY_LOCK_FILE}"; exit 130' INT TERM HUP
       return 0
     fi
@@ -2899,7 +2966,7 @@ _xcopy_sql_maint_hold() {
   fi
   if [ "${_XCOPY_SQL_MAINT}" != "YES" ]; then
     _XCOPY_SQL_MAINT=YES
-    trap '_xcopy_sql_maint_release; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+    trap '_xcopy_chattr_back; _xcopy_sql_maint_release; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
     trap 'exit 130' INT TERM HUP
     if [ -z "${_XCOPY_SQL_MAINT_BEAT}" ] || ! kill -0 "${_XCOPY_SQL_MAINT_BEAT}" 2>/dev/null; then
       # Detached, not a child of this shell: the bare `wait` calls in this

@@ -1493,18 +1493,34 @@ for _M in /mnt/*; do
   [ -d "\${_M}" ] && mountpoint -q "\${_M}" 2>/dev/null && { _MP="\${_M}"; _N=\$((_N + 1)); }
 done
 [ "\${_N}" = "1" ] || _MP=""
+_GI="\$(getent group "\${_G}" 2>/dev/null | cut -d: -f3)"
+_WG="\$(getent group www-data 2>/dev/null | cut -d: -f3)"
+case "\${_GI}" in ''|*[!0-9]*) _GI="" ;; esac
+case "\${_WG}" in ''|*[!0-9]*) _WG=-1 ;; esac
 for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gems/\${_A}" /opt/user/gems/"\${_A}".* "/opt/user/npm/\${_A}" /opt/user/npm/"\${_A}".* "\${_MP:+\${_MP}/files/\${_A}/static/files}"; do
   [ -n "\${_R}" ] && [ -d "\${_R}" ] && [ ! -L "\${_R}" ] || continue
   # the FPM pool users' homes (oN.web, oN.NN.web) are www-data's, never the
   # account's: the same root set the tool walks
   case "\${_R}" in /home/*.web) continue ;; esac
-  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root -execdir chgrp -h "\${_G}" {} + 2>/dev/null
+  # regrouped through a no-follow handle on each name inside the directory
+  # find holds, never by name: only a directory, or a regular file with one
+  # link, whose handle is still in none of those groups, so a hard link to
+  # another file renamed in (or put there) is never regrouped; a link's own
+  # group grants nothing and is left
+  [ -n "\${_GI}" ] || continue
+  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root \( -type f -o -type d \) \
+    -execdir perl -e 'use Fcntl; my (\$g, \$w) = splice(@ARGV, 0, 2); for my \$n (@ARGV) { sysopen(my \$h, \$n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat(\$h); chown(-1, \$g, \$h) if @s && \$s[5] != \$g && \$s[5] != \$w && \$s[5] != 0 && (-d _ || (-f _ && \$s[3] == 1)); close(\$h); } exit 0' -- "\${_GI}" "\${_WG}" {} + 2>/dev/null
 done
-_M="/data/disk/\${_A}/log/instance-group.txt"
-if [ -f "\${_M}" ]; then
+# log/ is the account's own: the record is read and removed only inside the
+# real directory, never through a link or into a FIFO put there
+_W="\$(cd -P /data/disk 2>/dev/null && pwd -P)/\${_A}/log"
+( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(pwd -P)" = "\${_W}" ] \
+    && [ -f ./instance-group.txt ] || exit 0
   _GID=\$(getent group "\${_A}" 2>/dev/null | cut -d: -f3)
-  { [ "\${_G}" = "\${_A}" ] && grep -q " gid=\${_GID}\$" "\${_M}" 2>/dev/null; } || rm -f "\${_M}"
-fi
+  { [ "\${_G}" = "\${_A}" ] \
+    && timeout 10 dd if=./instance-group.txt iflag=nofollow,nonblock,fullblock \
+      bs=1048576 count=1 status=none 2>/dev/null | grep -q " gid=\${_GID}\$"; } \
+    || rm -f -- ./instance-group.txt )
 if [ "\${_DEFERRED}" = "1" ]; then
   echo "INFO: target group pass for \${_A}: the tool deferred 13 times (a BOA run live there); the inline form ran instead, group \${_G}"
   exit 4

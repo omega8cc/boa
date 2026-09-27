@@ -233,12 +233,23 @@ for _M in /mnt/*; do
   [ -d "\${_M}" ] && mountpoint -q "\${_M}" 2>/dev/null && { _MP="\${_M}"; _N=\$((_N + 1)); }
 done
 [ "\${_N}" = "1" ] || _MP=""
+_GI="\$(getent group "\${_G}" 2>/dev/null | cut -d: -f3)"
+_WG="\$(getent group www-data 2>/dev/null | cut -d: -f3)"
+case "\${_GI}" in ''|*[!0-9]*) _GI="" ;; esac
+case "\${_WG}" in ''|*[!0-9]*) _WG=-1 ;; esac
 for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gems/\${_A}" /opt/user/gems/"\${_A}".* "/opt/user/npm/\${_A}" /opt/user/npm/"\${_A}".* "\${_MP:+\${_MP}/files/\${_A}/static/files}"; do
   [ -n "\${_R}" ] && [ -d "\${_R}" ] && [ ! -L "\${_R}" ] || continue
   # the FPM pool users' homes (oN.web, oN.NN.web) are www-data's, never the
   # account's: the same root set the tool walks
   case "\${_R}" in /home/*.web) continue ;; esac
-  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root -execdir chgrp -h "\${_G}" {} + 2>/dev/null
+  # regrouped through a no-follow handle on each name inside the directory
+  # find holds, never by name: only a directory, or a regular file with one
+  # link, whose handle is still in none of those groups, so a hard link to
+  # another file renamed in (or put there) is never regrouped; a link's own
+  # group grants nothing and is left
+  [ -n "\${_GI}" ] || continue
+  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root \( -type f -o -type d \) \
+    -execdir perl -e 'use Fcntl; my (\$g, \$w) = splice(@ARGV, 0, 2); for my \$n (@ARGV) { sysopen(my \$h, \$n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat(\$h); chown(-1, \$g, \$h) if @s && \$s[5] != \$g && \$s[5] != \$w && \$s[5] != 0 && (-d _ || (-f _ && \$s[3] == 1)); close(\$h); } exit 0' -- "\${_GI}" "\${_WG}" {} + 2>/dev/null
 done
 # log/ is the account's own: the record is read and removed only inside the
 # real directory, never through a link or into a FIFO put there
@@ -620,17 +631,26 @@ _xmass_read_in() {
 _xmass_read_file() {
   _xmass_in_real_dir "${1%/*}" _xmass_read_here "${1##*/}"
 }
-### ./$1 in the current (pinned) directory with the content $2 (0644), handed
-### to $3 (owner:group): a fresh file created exclusively, then renamed over
-### the name, so a link or FIFO put there is replaced, never followed or
-### opened, and a reader (the 503 gate) never finds the name missing.
+### ./$1 in the current (pinned) directory with the content $2 (0644), owned
+### by $3 (owner:group; root's when empty or when it does not resolve): a
+### fresh file created, written, owned and moded through one handle opened
+### O_EXCL|O_NOFOLLOW, then renamed over the name, so a link or FIFO put there
+### is replaced, never followed or opened, a reader (the 503 gate) never
+### finds the name missing, and nothing is chowned by name in a directory the
+### account can write (a hard link renamed over the name before a chown by
+### name would hand another file to the account). The perl text stays in the
+### function: _xmass_remote_guards ships it to the other box.
 _xmass_put_here() {
-  local _t="./.${1}.put.$$.${RANDOM}"
+  local _t="./.${1}.put.$$.${RANDOM}" _u=-1 _g=-1
+  local _pl='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+  if [ -n "${3}" ]; then
+    _u="$(id -u -- "${3%%:*}" 2> /dev/null)"
+    _g="$(getent group "${3#*:}" 2> /dev/null | cut -d: -f3)"
+    [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] || { _u=-1; _g=-1; }
+  fi
   rm -f -- "${_t}"
-  if ( umask 022
-    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+  if printf '%s\n' "${2}" | perl -e "${_pl}" "${_t}" "${_u}" "${_g}" 644 \
     && mv -f -T -- "${_t}" "./${1}"; then
-    [ -n "${3}" ] && chown -h "${3}" "./${1}" &> /dev/null
     return 0
   fi
   rm -f -- "${_t}"
@@ -659,30 +679,34 @@ _xmass_touch_here() {
   rm -f -- "${_t}"
   return 1
 }
-### ./$1 in the current (pinned) directory put at ./$2 through sed "${@:3}":
-### only a regular file under 1 MiB is read, never through a link or into a
-### FIFO; the result is a fresh file with the source's numeric owner (chown
-### -h, not fatal) and mode (by umask, never a chmod by name), renamed over
-### ./$2. For a plain file this is what sed -i (and cp -a, with an empty
-### program) wrote, without their reach through a link.
+### ./$1 in the current (pinned) directory put at ./$2 through sed "${@:3}".
+### The source is read through one handle opened O_NOFOLLOW|O_NONBLOCK that
+### must be a regular file with one link under 1 MiB; the owner, group and
+### mode are taken from that same handle (the first line the reader prints),
+### never from a stat by name, so a name swapped between the look and the
+### read never lends its bytes another file's owner. The result is a fresh
+### file with that numeric owner and the read/write bits of that mode,
+### created, written, owned and moded through one handle opened
+### O_EXCL|O_NOFOLLOW, then renamed over ./$2: nothing is chowned or
+### chmodded by name. Both perl texts stay in the function:
+### _xmass_remote_guards ships it. For a plain file this is what sed -i (and
+### cp -a, with an empty program) wrote, without their reach through a link.
 _xmass_sed_to() {
-  local _s="${1}" _n="${2}" _st _own _m _sz _ft _t
+  local _s="${1}" _n="${2}" _t _u _g _m _h
+  local _rd='use Fcntl; my ($n) = @ARGV; sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $s[7] < 1048576; my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 1 if length($d) >= 1048576; } exit 1 unless defined $r; close($h); binmode(STDOUT); printf("%d %d %o\n", $s[4], $s[5], $s[2] & 07777) or exit 1; (print $d) or exit 1; exit 0'
+  local _pl='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
   shift 2
-  _st="$(LC_ALL=C stat -c '%u:%g %a %s %F' -- "./${_s}" 2> /dev/null)" || return 1
-  case "${_st}" in
-    *" regular file"|*" regular empty file") ;;
-    *) return 1 ;;
-  esac
-  read -r _own _m _sz _ft <<< "${_st}"
-  [ "${_sz}" -lt 1048576 ] || return 1
   _t="./.${_n}.sed.$$.${RANDOM}"
   rm -f -- "${_t}"
   if ( set -o pipefail
-    umask "$(printf '%03o' $(( 0777 & ~0${_m} )))"
-    _xmass_read_here "${_s}" | sed "$@" \
-      | dd of="${_t}" conv=excl status=none 2> /dev/null ); then
-    chown -h "${_own}" "${_t}" 2> /dev/null
-    mv -f -T -- "${_t}" "./${_n}" && return 0
+    perl -e "${_rd}" "./${_s}" 2> /dev/null | {
+      _h=""
+      IFS=' ' read -r _u _g _m _h || exit 1
+      [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] \
+        && [[ "${_m}" =~ ^[0-7]+$ ]] && [ -z "${_h}" ] || exit 1
+      sed "$@" | perl -e "${_pl}" "${_t}" "${_u}" "${_g}" "${_m}"
+    } ) && mv -f -T -- "${_t}" "./${_n}"; then
+    return 0
   fi
   rm -f -- "${_t}"
   return 1
@@ -6365,11 +6389,17 @@ _xmass_plant_host_gate() {
     _xmass_host_gate_here "${_fqdn}" "${_oct}:$(_acct_group "${_oct}")"
 }
 ### The per-host gate in the current (pinned) control directory: the name is
-### read and rewritten, never followed or opened as a FIFO. $1 = hostname,
-### $2 = owner:group.
+### read and rewritten, never followed or opened as a FIFO. Its lines are
+### carried only from a regular file with one link that is the account's or
+### its .ftp login's, read through the handle that checked it: another file
+### renamed onto the name (a root-only one included) lends no bytes to the
+### rewrite, which is owned by the account. $1 = hostname, $2 = owner:group.
 _xmass_host_gate_here() {
   local _t
-  _t="$(_xmass_read_here http-off-host.pid)"
+  local _rd='use Fcntl; my ($n, $x) = @ARGV; my %ok = map { $_ => 1 } split(/,/, $x); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 0; my @s = stat($h); exit 0 unless @s && -f _ && $s[3] == 1 && $s[7] < 1048576 && $ok{$s[4]}; my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 0 if length($d) >= 1048576; } exit 0 unless defined $r; binmode(STDOUT); print $d; exit 0'
+  _t="$(perl -e "${_rd}" -- ./http-off-host.pid \
+    "$(id -u -- "${2%%:*}" 2> /dev/null),$(id -u -- "${2%%:*}.ftp" 2> /dev/null)" \
+    2> /dev/null)"
   if ! grep -q -x -F "${1}" <<< "${_t}"; then
     _t="$(printf '%s\n%s\n' "${_t}" "${1}" | sed '/^$/d')"
     _xmass_put_here http-off-host.pid "${_t}" "${2}" || return 1

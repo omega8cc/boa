@@ -118,8 +118,8 @@ _TWELVE_HOURS=$(date --date '12 hours ago' +"%Y-%m-%d %H:%M:%S")
 find /run/boa_wait.pid               -type f -not -newermt "${_TWELVE_HOURS}" -exec rm -f {} \; 2>/dev/null
 find /run/boa_run.pid                -type f -not -newermt "${_TWELVE_HOURS}" -exec rm -f {} \; 2>/dev/null
 find /run/octopus_install_run.pid    -type f -not -newermt "${_TWELVE_HOURS}" -exec rm -f {} \; 2>/dev/null
-# A migration's runner park (xoct/xcopy/xmass pre-mig until post-mig) holds
-# the five runners out of the tools refresh. Bounded: a migration abandoned
+# A migration's runner park (xoct/xcopy pre-mig until post-mig, an xmass
+# cutover until its unpark) holds the five runners out of the tools refresh. Bounded: a migration abandoned
 # without post-mig gets its dispatcher, nightly, usage, graceful and worker
 # back within a day. Re-running pre-mig re-arms the marker.
 _ONE_DAY=$(date --date '24 hours ago' +"%Y-%m-%d %H:%M:%S")
