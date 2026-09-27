@@ -61,6 +61,15 @@ if ! declare -F _desymlink_planted > /dev/null 2>&1; then
   }
 fi
 
+### The path a group derives from: where $1 physically resolves -- the path
+### the checks validated -- never its text. The text comes from an alias the
+### account writes, and ".." after a link in the account's own tree resolves
+### inside the account while the text names another one. Printed as given
+### when it does not resolve (the checks refuse it anyway).
+_night_phys() {
+  realpath -e -- "${1}" 2> /dev/null || printf '%s\n' "${1}"
+}
+
 ### Gate for the alias-derived per-site paths (_Dir, _Plr and their ghost-loop
 ### twins) before any root op walks them: never a symlink, and resolving
 ### under this account root -- or under the shared /data/all|/data/disk/all
@@ -1803,7 +1812,7 @@ _fix_seven_core_patch() {
   ### 'users' for those (and on an unconverted box), the account's own group
   ### only for a tree under /data/disk/<account>.
   local _grp
-  _grp=$(_acct_group "${_Plr}")
+  _grp=$(_acct_group "$(_night_phys "${_Plr}")")
   ### profiles/ is 0775 and group-writable on a static platform, so this marker path
   ### is tenant-plantable, and -f is FALSE for a dangling link. The marker is
   ### put as a fresh file inside the real profiles/ (_acct_put_here), so a link
@@ -2221,7 +2230,7 @@ _fix_permissions() {
   ### on an unconverted box), the account's own group only for a tree under
   ### /data/disk/<account>. Local, so nothing leaks across the per-site loop.
   local _grp _drTxt
-  _grp=$(_acct_group "${_Plr}")
+  _grp=$(_acct_group "$(_night_phys "${_Plr}")")
   ### modules,themes,libraries - profile level in ~/static
   searchStringT="/static/"
   case ${_Plr} in
@@ -2306,7 +2315,7 @@ _fix_permissions() {
     ### Site-level writes: re-derive from the SITE path (see the top of this
     ### function) -- a site can sit on the shared store even when its platform
     ### variable does not.
-    _grp=$(_acct_group "${_Dir}")
+    _grp=$(_acct_group "$(_night_phys "${_Dir}")")
     _site_in_resolved_dir "${_Dir}" _site_perm_here "${_grp}"
     ### files/ and private/ are legitimately symlinks into a per-account
     ### static store (a shared store may sit under another account), so each
