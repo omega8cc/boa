@@ -6235,6 +6235,32 @@ _satellite_link_new_here() {
 _satellite_host_ok() {
   [[ "${1}" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]]
 }
+# True when $1 names none of the box's own certificates in /etc/ssl/private
+# (nginx-wild-ssl), not the master's front and not the front (_DOMAIN) of
+# another account on this box: an account's front names root's
+# /etc/ssl/private/<front>.crt and .key and its proxy vhost.
+_satellite_front_free() {
+  local _c _u _d
+  [ "${1}" = "nginx-wild-ssl" ] && return 1
+  _d=$(sed -n 's/^_MY_FRONT=//p' /root/.barracuda.cnf 2> /dev/null \
+    | tail -n 1 | tr -d "\"' ")
+  [ "${_d}" = "${1}" ] && return 1
+  _d=$(grep -E "^[[:space:]]*'uri'[[:space:]]*=>" \
+    /var/aegir/.drush/hostmaster.alias.drushrc.php 2> /dev/null \
+    | head -n 1 | cut -d"'" -f4)
+  [ "${_d}" = "${1}" ] && return 1
+  for _c in /root/.*.octopus.cnf; do
+    [ -f "${_c}" ] || continue
+    _u="${_c#/root/.}"
+    _u="${_u%.octopus.cnf}"
+    [ "${_u}" = "${_USER}" ] && continue
+    [ -d "/data/disk/${_u}" ] || continue
+    _d=$(sed -n 's/^_DOMAIN=//p' "${_c}" 2> /dev/null \
+      | tail -n 1 | tr -d "\"' ")
+    [ "${_d}" = "${1}" ] && return 1
+  done
+  return 0
+}
 # True when $1 is one e-mail address, or several separated by single
 # spaces, each in a plain form: a local part of letters, digits and
 # . _ % + = ' - (a letter, a digit or _ first), '@' and a host name. The
@@ -6427,15 +6453,16 @@ _satellite_check_octopus_vs_barracuda_ver() {
 }
 
 # The stamp read from log/domain.txt (the account's file) kept only as a
-# host name, surrounding blanks dropped; any other text counts as no stamp,
-# which the guard below heals from the root cnf or refuses.
+# host name naming nothing the box or another account uses
+# (_satellite_front_free), surrounding blanks dropped; any other text counts
+# as no stamp, which the guard below heals from the root cnf or refuses.
 _satellite_domain_stamp_form() {
   local _t
   _t="$(_satellite_trim "${_DOMAIN}")"
-  if _satellite_host_ok "${_t}"; then
+  if _satellite_host_ok "${_t}" && _satellite_front_free "${_t}"; then
     _DOMAIN="${_t}"
   elif [ -n "${_DOMAIN}" ]; then
-    _msg "NOTE: ${_ROOT}/log/domain.txt is not a host name; ignored"
+    _msg "NOTE: ${_ROOT}/log/domain.txt is not a host name this account may use; ignored"
     _DOMAIN=""
   fi
 }
@@ -6473,8 +6500,9 @@ _satellite_domain_stamp_guard() {
       all|default) continue ;;
     esac
     ### a directory name in the account's own tree, written to the root
-    ### cnf: an arbiter only in the form of a host name
-    _satellite_host_ok "${_d}" || continue
+    ### cnf: an arbiter only in the form of a host name that names nothing
+    ### the box or another account uses
+    _satellite_host_ok "${_d}" && _satellite_front_free "${_d}" || continue
     if [ -z "${_realDom}" ]; then
       _realDom="${_d}"
       _realNr=1
@@ -6970,14 +6998,19 @@ _satellite_letsencrypt_crt_key_copy() {
   elif [ -e "${_leCrtPath}/cert.pem" ]; then
     _crtPath="${_leCrtPath}/cert.pem"
   fi
+  _keyPath="${_leCrtPath}/privkey.pem"
   ### tools/le is the instance user's: the certificate and the key are read
   ### bounded inside the real certs/<domain>/, through a link only to a file
   ### beside it (as the client links each name to a versioned file), and
-  ### written as root's own 0600 files.
+  ### written as root's own 0600 files, only under the account's own front.
+  if [[ ! "${_DOMAIN}" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]] \
+    || ! _satellite_front_free "${_DOMAIN}"; then
+    _msg "NOTE: the ${_USER} front is not a host name this account may use; certificate not copied"
+    return 0
+  fi
   if [ -e "${_crtPath}" ]; then
     _satellite_le_copy "${_crtPath##*/}" "/etc/ssl/private/${_DOMAIN}.crt"
   fi
-  _keyPath="${_leCrtPath}/privkey.pem"
   if [ -e "${_keyPath}" ]; then
     _satellite_le_copy privkey.pem "/etc/ssl/private/${_DOMAIN}.key"
   fi

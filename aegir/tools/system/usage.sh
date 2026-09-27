@@ -173,12 +173,14 @@ _usage_words() (
 # The addresses in $1 (words, as log/email.txt holds them) that have an
 # e-mail address's form, joined by single spaces: they reach s-nail, run as
 # root, as its recipients, where a word starting with a dash would be an
-# option and one naming a file or a command a delivery to it. An apostrophe
-# in the local part is kept: it is literal in every expansion below. Text
-# over 4 KiB holds no address list and gives nothing.
+# option and one naming a file or a command a delivery to it. The form the
+# octopus pass and the nightly take: a local part of letters, digits and
+# . _ % + = ' - (a letter, a digit or _ first), '@' and a host name. An
+# apostrophe or '=' in the local part is kept: both are literal in every
+# expansion below. Text over 4 KiB holds no address list and gives nothing.
 _usage_mail_list() (
-  local _w _o="" _re
-  _re="^[A-Za-z0-9._%+'][A-Za-z0-9._%+'-]*@[A-Za-z0-9.-]+\.[A-Za-z0-9-]+$"
+  local _w _o="" _re _q="'"
+  _re="^[A-Za-z0-9_][A-Za-z0-9._%+=${_q}-]*@[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$"
   [ "${#1}" -le 4096 ] || exit 0
   set -f
   # shellcheck disable=SC2086

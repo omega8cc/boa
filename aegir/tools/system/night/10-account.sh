@@ -169,15 +169,22 @@ _night_sub() {
 ### The account's files store as it resolves now, printed: its own
 ### static/files, or migratefs' layout on attached storage
 ### (/mnt/.../files/<oN>/static/files). static/ is group-writable, so
-### static/files can be any link: anything else is not the store (status 1).
-### Reads _usEr.
+### static/files can be any link: anything else is not the store (status 1),
+### nor is a directory of that name made inside another store or account
+### tree on the mount. Reads _usEr.
 _night_acct_store() {
-  local _a _r
+  local _a _r _m
   _a=$(realpath -e -- "${_usEr}" 2> /dev/null) || return 1
   _r=$(realpath -e -- "${_usEr}/static/files" 2> /dev/null) || return 1
   case "${_r}" in
     *[!A-Za-z0-9._/-]*) return 1 ;;
-    "${_a}/static/files"|/mnt/?*/files/"${_usEr##*/}"/static/files) ;;
+    "${_a}/static/files") ;;
+    /mnt/?*/files/"${_usEr##*/}"/static/files)
+      _m="${_r%/files/"${_usEr##*/}"/static/files}"
+      case "${_m}" in
+        */files/*|*/static/*) return 1 ;;
+      esac
+      ;;
     *) return 1 ;;
   esac
   [ -d "${_r}" ] || return 1
@@ -201,6 +208,12 @@ _night_in_bak_dir() {
     *) return 1 ;;
   esac
   _night_in_pinned "${_r}" "$@"
+}
+### One line when ${_usEr}/$1 is a link _night_in_bak_dir refused: nothing
+### below it is purged until it leads into the account's store again.
+_night_bak_unpurged() {
+  [ -L "${_usEr}/${1}" ] || return 0
+  echo "backups-on-static: ${_usEr}/${1} is a link that does not lead into the account's store; not purged"
 }
 ### Every entry below the current (pinned) directory older than $1 days
 ### removed, the top-level dot names kept as the X/* globs this replaces kept
@@ -267,10 +280,12 @@ _night_words() (
 ### The addresses in $1 (words, as log/email.txt holds them) that have an
 ### e-mail address's form, joined by single spaces; text over 4 KiB gives
 ### nothing. They are written into root's octopus.cnf, which root sources,
-### and reach s-nail as its recipients. The usage.sh rule.
+### and reach s-nail as its recipients. The form the octopus pass and
+### usage.sh take: a local part of letters, digits and . _ % + = ' - (a
+### letter, a digit or _ first), '@' and a host name.
 _night_mail_list() (
-  local _w _o="" _re
-  _re="^[A-Za-z0-9._%+'][A-Za-z0-9._%+'-]*@[A-Za-z0-9.-]+\.[A-Za-z0-9-]+$"
+  local _w _o="" _re _q="'"
+  _re="^[A-Za-z0-9_][A-Za-z0-9._%+=${_q}-]*@[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$"
   [ "${#1}" -le 4096 ] || exit 0
   set -f
   # shellcheck disable=SC2086
@@ -285,6 +300,32 @@ _night_mail_list() (
 ### files and log/ctrl markers.
 _night_host_ok() {
   [[ "${1}" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]
+}
+### True when $1 names none of the box's own certificates in
+### /etc/ssl/private (nginx-wild-ssl), not the master's front and not the
+### front (_DOMAIN) of another account on this box: the account's front
+### names root's /etc/ssl/private/<front>.crt and .key.
+_night_front_free() {
+  local _c _u _d
+  [ "${1}" = "nginx-wild-ssl" ] && return 1
+  _d=$(sed -n 's/^_MY_FRONT=//p' /root/.barracuda.cnf 2> /dev/null \
+    | tail -n 1 | tr -d "\"' ")
+  [ "${_d}" = "${1}" ] && return 1
+  _d=$(grep -E "^[[:space:]]*'uri'[[:space:]]*=>" \
+    /var/aegir/.drush/hostmaster.alias.drushrc.php 2> /dev/null \
+    | head -n 1 | cut -d"'" -f4)
+  [ "${_d}" = "${1}" ] && return 1
+  for _c in /root/.*.octopus.cnf; do
+    [ -f "${_c}" ] || continue
+    _u="${_c#/root/.}"
+    _u="${_u%.octopus.cnf}"
+    [ "${_u}" = "${_HM_U}" ] && continue
+    [ -d "/data/disk/${_u}" ] || continue
+    _d=$(sed -n 's/^_DOMAIN=//p' "${_c}" 2> /dev/null \
+      | tail -n 1 | tr -d "\"' ")
+    [ "${_d}" = "${1}" ] && return 1
+  done
+  return 0
 }
 ### True when every word of $1 is a host name.
 _night_hosts_ok() (
@@ -317,8 +358,8 @@ _relocate_one_backup_dir() {
   # onto the account's store ($2, resolved) as .$1 and replace it with the
   # link $3, so large (dereferenced) backups never fill the root partition.
   # Data-safe and never destructive: the real dir is copied whole, and only
-  # then emptied; on ANY failure it is left in place with its owner and
-  # mode, and no link is created. Idempotent.
+  # then emptied; on a failure it is left in place with its owner and mode,
+  # and no link is created. Idempotent.
   #
   # The account owns its root, the directory and everything below it, and
   # the store: while the copy runs the directory and .$1 in the store are
@@ -326,12 +367,24 @@ _relocate_one_backup_dir() {
   # starts inside the real directory and writes into .$1 held open
   # (/proc/self/fd), the directory is emptied from inside itself by find,
   # and the rmdir and the link act on names inside the real account root.
-  local _n="$1" _st="$2" _lnk="$3" _src="${_usEr}/$1" _ug _md _dm
+  #
+  # The owner and mode are recorded in root's /var/backups before anything
+  # is closed, and a TERM, INT or HUP to this pass opens both again. A pass
+  # killed outright (KILL, a reboot, OOM) leaves them closed, and Aegir's
+  # backup tasks fail there once the queue runs again; the next pass reads
+  # the record (or, without one, gives the account's own owner and 750, as
+  # the octopus pass does), finishes the relocation and hands both back.
+  local _n="$1" _st="$2" _lnk="$3" _src="${_usEr}/$1" _ug _md _dm _rec
+  _rec="$(_night_bak_rec "${_n}")"
 
-  # Already a link to the intended target -> just make sure the store has it.
+  # Already a link to the intended target -> just make sure the store has it
+  # and that it is the account's, not root's.
   if [ -L "${_src}" ]; then
     if [ "$(readlink -- "${_src}" 2>/dev/null)" = "${_lnk}" ]; then
-      _night_in_pinned "${_st}" mkdir -p -- "./.${_n}" 2>/dev/null
+      read -r _ug _md <<< "$(_night_bak_recorded "${_n}")"
+      _night_in_pinned "${_st}" _night_bak_store_here ".${_n}" \
+        "${_ug}" "${_md}"
+      rm -f -- "${_rec}"
     else
       echo "backups-on-static: ${_src} is a symlink to an unexpected target; leaving for review"
     fi
@@ -346,12 +399,30 @@ _relocate_one_backup_dir() {
   _ug=$(_acct_in_real_dir "${_src}" stat -c '%U:%G' . 2>/dev/null)
   _md=$(_acct_in_real_dir "${_src}" stat -c '%a' . 2>/dev/null)
   [ -n "${_ug}" ] && [[ "${_md}" =~ ^[0-7]+$ ]] || return 0
-
-  if ! _night_in_pinned "${_st}" _night_bak_dst_here ".${_n}"; then
-    echo "backups-on-static: ${_st}/.${_n} is not a real directory; left ${_src} as real dir"
+  # Root's: closed by a pass that was killed during the copy.
+  if [ "${_ug}" = "root:root" ]; then
+    read -r _ug _md <<< "$(_night_bak_recorded "${_n}")"
+  fi
+  if ! ( umask 077; printf '%s %s\n' "${_ug}" "${_md}" > "${_rec}" ) 2>/dev/null; then
+    echo "backups-on-static: could not record the owner of ${_src} in ${_rec}; left as real dir"
     return 0
   fi
   _dm="${_st}/.${_n}"
+  trap '_night_bak_open "${_src}" "${_dm}" "${_ug}" "${_md}"; rm -f -- "${_rec}"; exit 143' TERM INT HUP
+  _night_bak_move
+  trap - TERM INT HUP
+  rm -f -- "${_rec}"
+  return 0
+}
+# The relocation proper, for _relocate_one_backup_dir: reads its _n, _st,
+# _lnk, _src, _dm, _ug and _md. Every return leaves both directories open
+# with that owner and mode, or never closed them.
+_night_bak_move() {
+  if ! _night_in_pinned "${_st}" _night_bak_dst_here ".${_n}"; then
+    _night_bak_open "" "${_dm}" "${_ug}" "${_md}"
+    echo "backups-on-static: ${_st}/.${_n} is not a real directory; left ${_src} as real dir"
+    return 0
+  fi
 
   if [ -n "$(_acct_in_real_dir "${_src}" ls -A . 2>/dev/null)" ]; then
     # Re-check the task interlock right before the move: skip (leave the
@@ -400,6 +471,36 @@ _relocate_one_backup_dir() {
     || { echo "backups-on-static: could not symlink ${_src}; data is safe in ${_st}/.${_n}, relink manually"; return 0; }
   _acct_in_real_dir "${_usEr}" chown -h "${_ug}" "./${_n}" 2>/dev/null
   echo "backups-on-static: relocated ${_src} -> ${_st}/.${_n} (static filesystem)"
+}
+# Root's record of the owner and mode ${_usEr}/$1 had before a relocation
+# closed it.
+_night_bak_rec() {
+  printf '/var/backups/.backups-on-static.%s.%s\n' "${_usEr##*/}" "${1}"
+}
+# The owner and mode recorded for ${_usEr}/$1 (_night_bak_rec), printed as
+# "owner:group mode"; without a record, the account's own and 750, what the
+# octopus pass gives backups.
+_night_bak_recorded() {
+  local _r _re='^[A-Za-z0-9._-]+:[A-Za-z0-9._-]+ [0-7]{1,4}$'
+  _r=$(head -c 256 -- "$(_night_bak_rec "${1}")" 2> /dev/null)
+  if [[ "${_r}" =~ ${_re} ]] && [ "${_r%% *}" != "root:root" ]; then
+    printf '%s\n' "${_r}"
+  else
+    printf '%s:%s 750\n' "${_usEr##*/}" "$(_acct_group "${_usEr##*/}")"
+  fi
+}
+# In the store (the current, pinned directory): ./$1 made a real directory
+# where missing, and handed to the owner $2 with the mode $3 while it is
+# root's (made here, or left closed by a pass that was killed).
+_night_bak_store_here() {
+  [ -L "./${1}" ] && return 1
+  if [ ! -e "./${1}" ]; then
+    mkdir -m 0700 -- "./${1}" 2>/dev/null || return 1
+  elif [ "$(_night_sub "${1}" stat -c '%U' . 2>/dev/null)" != "root" ]; then
+    return 0
+  fi
+  _night_sub "${1}" chown -h "${2}" . 2>/dev/null
+  _night_sub "${1}" chmod "${3}" . 2>/dev/null
 }
 # In the store (the current, pinned directory): ./$1 a real directory, made
 # when missing, and closed for the copy (root's, 0700).
@@ -491,7 +592,8 @@ _relocate_backups_to_static_fs() {
   # with a real flock (the kernel releases it if this process dies -- no stale-lock
   # guessing), then PAUSE the Ægir task queue with the dedicated, self-healing stop
   # file so no NEW task starts mid-move. runner.sh honours /run/boa_queue_stop.pid
-  # (parent exit + per-child skip); clear.sh purges a leaked one after 3h and /run
+  # (parent exit + per-child skip); it holds for as long as this pass lives,
+  # however long the copy takes: clear.sh purges one whose pid is gone and /run
   # clears on reboot, so it can never freeze the queue. The _provision_running
   # interlock still drains any already-running task first.
   local _lockfd
@@ -545,6 +647,8 @@ _account_process() {
   _acct_in_real_dir "/home/${_HM_U}.ftp/.tmp" rm -rf -- ./cache
   _SQL_CONVERT=NO
   _DEL_OLD_EMPTY_PLATFORMS="0"
+  # The account's front as root's octopus.cnf gives it, or none.
+  _DOMAIN=
   if [ -e "/root/.${_HM_U}.octopus.cnf" ]; then
     # The account's Drush 9+ yml alias store is the ltd worker's to rebuild:
     # dropping its record of the last finished rebuild makes its next pass
@@ -595,10 +699,10 @@ _account_process() {
     # log/email.txt is oN's and the cnf is sourced by root: the file is
     # read bounded inside the real log/, never through a link or blocked on
     # a FIFO, and only its words in an e-mail address's form reach the cnf
-    # (_night_mail_list). That form holds no quote, $, backquote, backslash,
-    # '/', '&' or newline, so it is literal both inside the double quotes
-    # root sources and in the sed replacement. Nothing in that form leaves
-    # the cnf as it is.
+    # (_night_mail_list). That form holds no double quote, $, backquote,
+    # backslash, '/', '&' or newline, so it is literal both inside the
+    # double quotes root sources and in the sed replacement. Nothing in that
+    # form leaves the cnf as it is.
     _F_CLIENT_EMAIL=
     if [ -e "${_usEr}/log/email.txt" ]; then
       _F_CLIENT_EMAIL=$(_night_mail_list "$(_acct_read_in "${_usEr}/log" email.txt)")
@@ -841,9 +945,11 @@ _le_hm_ssl_check_update() {
   _hmFrontExtra=
   _exeLe="${_usEr}/tools/le/dehydrated"
   # log/ and .drush/ are oN's: each name is read bounded inside the real
-  # directory, never through a link or blocked on a FIFO, and the front-end
-  # name is used only in a host name's form: it names root's
-  # /etc/ssl/private files and a log/ctrl marker.
+  # directory, never through a link or blocked on a FIFO. The front-end
+  # name names root's /etc/ssl/private files and a log/ctrl marker: it is
+  # used only in a host name's form, only when it is the account's own
+  # front (_DOMAIN in root's octopus.cnf) and only when that front names
+  # nothing the box or another account uses there (_night_front_free).
   if [ -e "${_usEr}/log/domain.txt" ]; then
     _hmFront=$(_night_words "$(_acct_read_in "${_usEr}/log" domain.txt)")
   fi
@@ -861,6 +967,14 @@ _le_hm_ssl_check_update() {
   fi
   if [ -n "${_hmFront}" ] && ! _night_host_ok "${_hmFront}"; then
     echo "LE: the hostmaster name for ${_HM_U} is not a host name; skipped"
+    _hmFront=
+  fi
+  if [ -n "${_hmFront}" ] && [ "${_hmFront}" != "${_DOMAIN}" ]; then
+    echo "LE: the hostmaster name ${_hmFront} for ${_HM_U} is not the _DOMAIN in /root/.${_HM_U}.octopus.cnf; skipped"
+    _hmFront=
+  fi
+  if [ -n "${_hmFront}" ] && ! _night_front_free "${_hmFront}"; then
+    echo "LE: the hostmaster name ${_hmFront} for ${_HM_U} is one the box or another account uses; skipped"
     _hmFront=
   fi
   if [ -n "${_hmFrontExtra}" ] && ! _night_hosts_ok "${_hmFrontExtra}"; then
@@ -1301,10 +1415,12 @@ _purge_cruft_machine() {
   _acct_in_real_dir "${_usEr}/log/ctrl" _night_ctrl_purge_here \
     "${_PURGE_TMP}" 'plr*' '*rom-fix.info'
 
-  _night_in_bak_dir backups _night_purge_here "${_PURGE_BACKUPS}"
+  _night_in_bak_dir backups _night_purge_here "${_PURGE_BACKUPS}" \
+    || _night_bak_unpurged backups
   _acct_in_real_dir "${_usEr}/clients" _night_clients_bak_here \
     purge "${_PURGE_BACKUPS}"
-  _night_in_bak_dir backup-exports _night_purge_here "${_PURGE_TMP}" files
+  _night_in_bak_dir backup-exports _night_purge_here "${_PURGE_TMP}" files \
+    || _night_bak_unpurged backup-exports
 
   # sites/<uri>/files and private/ are group-writable by the web and shell
   # identities: every hit below, distro/ and static/ alike, is re-anchored
