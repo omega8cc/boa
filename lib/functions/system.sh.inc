@@ -3270,6 +3270,13 @@ _convert_etcboa_markers_to_cnf() {
 }
 
 #
+# The PHP CLI stamps in the current (pinned) ~/.drush of an account, removed
+# there: the glob expands in that directory, never in the caller's.
+_php_ctrl_stamps_rm_here() {
+  rm -f -- ./.ctrl.php*
+}
+
+#
 # Read or create Barracuda cnf file.
 _barracuda_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -4527,9 +4534,10 @@ _barracuda_cnf() {
               "${_PHP_SINGLE_INSTALL}" "${_ctrlOwn}"
             ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in ${_Ctrl}"
           done
-          for _Ctrl in `find /data/disk/*/.drush \
-            -maxdepth 0 -mindepth 0 | sort`; do
-            rm -f "${_Ctrl}"/.ctrl.php*
+          ### oN owns its ~/.drush: the stamps go inside the real
+          ### directory, never in one a link put there leads to
+          for _Ctrl in /data/disk/*/.drush; do
+            _acct_in_real_dir "${_Ctrl}" _php_ctrl_stamps_rm_here
             ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in ${_Ctrl}"
           done
         fi
@@ -8050,7 +8058,14 @@ _finale() {
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
   [ -e "/var/aegir/.drush/.alias.drushrc.php" ] && rm -f /var/aegir/.drush/.alias.drushrc.php
-  [ -d "/data/u" ] && rm -f /data/disk/*/.drush/.alias.drushrc.php
+  if [ -d "/data/u" ]; then
+    # removed inside each account's real ~/.drush (oN owns it), never in a
+    # directory a link put there leads to
+    local _uHd
+    for _uHd in /data/disk/*/.drush; do
+      _acct_in_real_dir "${_uHd}" rm -f -- ./.alias.drushrc.php
+    done
+  fi
   rm -f ${_pthLog}/protected-vhosts-clean.log
   rm -f ${_vBs}/.auth.IP.list*
   sed -i "s/### access .*//g; s/allow .*;//g; s/deny .*;//g; s/ *$//g; /^$/d" \
