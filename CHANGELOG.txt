@@ -743,6 +743,8 @@
       removes a copy that never went live, waits while the nightly runs,
       requires a root-owned mount chain that group and others cannot
       write, and bounds its post-copy recheck with --recheck-max (MB).
+    * renameaegirhost --help prints only its usage header, without the
+      section banners that followed it.
     * The usage figure of an account with a relocated store is measured
       without following links: the account, plus its own store once.
     * The fix-drupal-* permission helpers and fixrepo set modes in
