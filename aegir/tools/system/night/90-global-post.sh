@@ -147,13 +147,19 @@ _distro_sites_all_modes() {
 
 # Every vhost in the current (pinned) vhost.d still carrying TLSv1.1 in its
 # protocol list, edited as sed -i edited it; the others are left untouched.
+# One grep lists them: -r follows no link below the pinned '.', and -D skip
+# never opens a FIFO or a device. Names in subdirectories and dot-names are
+# not vhosts nginx reads, and _acct_sed_same_here refuses a link or a FIFO
+# swapped in after the listing.
 _vhost_tls11_drop_here() {
   local _f
-  for _f in ./*; do
+  while IFS= read -r -d '' _f; do
     _f="${_f#./}"
-    _acct_read_plain_here "${_f}" | grep -q "TLSv1.1 TLSv1.2 TLSv1.3;" || continue
+    case "${_f}" in
+      */*|.*) continue ;;
+    esac
     _acct_sed_same_here "${_f}" "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g"
-  done
+  done < <(grep -rlZ -F -D skip -- "TLSv1.1 TLSv1.2 TLSv1.3;" . 2> /dev/null)
 }
 
 _delete_this_empty_hostmaster_platform() {
@@ -262,43 +268,45 @@ _shared_codebases_cleanup() {
   done
 }
 
-# True when a registered platform alias names the tree $1. Each account's
-# aliases are read inside its real .drush, bounded and never through a link
-# or a FIFO put there; the master's aliases as they always were.
-_platform_alias_names() {
-  local _u
-  grep -qsF -e "'${1}'" -e "'${1}/" \
-    /var/aegir/.drush/platform_*.alias.drushrc.php && return 0
-  for _u in /data/disk/*; do
-    [ -d "${_u}/.drush" ] || continue
-    _acct_in_real_dir "${_u}/.drush" _platform_alias_names_here "${1}" \
-      && return 0
-  done
-  return 1
-}
-_platform_alias_names_here() {
+# The text of every platform alias in the current (pinned) .drush, one
+# after another, each read bounded and never through a link or a FIFO.
+_platform_aliases_text_here() {
   local _a
   for _a in ./platform_*.alias.drushrc.php; do
-    _acct_read_here "${_a#./}" | grep -qF -e "'${1}'" -e "'${1}/" && return 0
+    _acct_read_plain_here "${_a#./}"
+    echo
   done
-  return 1
+}
+
+# True when a registered platform alias names the tree $1: the master's
+# aliases as they always were, the accounts' ones in the text $2 holds, read
+# once per run inside each real .drush.
+_platform_alias_names() {
+  grep -qsF -e "'${1}'" -e "'${1}/" \
+    /var/aegir/.drush/platform_*.alias.drushrc.php && return 0
+  grep -qsF -e "'${1}'" -e "'${1}/" -- "${2}"
 }
 
 _ghost_codebases_cleanup() {
   _provision_running && { echo "INFO: provision task active -- skipping ghost-codebases cleanup"; return; }
+  local _aliasText _u
+  # Without the aliases nothing is known to be unused, so nothing is moved.
+  _aliasText=$(mktemp) \
+    || { echo "INFO: no temporary file for the platform aliases -- skipping ghost-codebases cleanup"; return; }
+  for _u in /data/disk/*; do
+    [ -d "${_u}/.drush" ] || continue
+    _acct_in_real_dir "${_u}/.drush" _platform_aliases_text_here >> "${_aliasText}"
+  done
   _CLD="/var/backups/ghost-codebases-cleanup"
   for i in `dir -d /data/disk/*/distro/*/*/`; do
     _CodebaseTest=$(find ${i} -maxdepth 1 -mindepth 1 \
       -type d -name vendor | sort 2>&1)
     for _vendor in ${_CodebaseTest}; do
       _ParentDir=`echo ${_vendor} | sed "s/\/vendor//g"`
-      ### The platform root is 02775 and group-writable -- by the account's
-      ### shell identities, and by ANY tenant while the instance still carries
-      ### the box-wide 'users' group -- so a tenant can delete a victim's index.php and
-      ### mkdir a decoy vendor/ to have this reap the victim's whole codebase.
-      ### A tree still named by a registered platform alias is never a ghost,
-      ### whatever it looks like on disk.
-      if _platform_alias_names "${_ParentDir}"; then
+      ### The platform root is group-writable, so what is on disk there is
+      ### not evidence that a tree is unused: a tree still named by a
+      ### registered platform alias is never treated as a ghost.
+      if _platform_alias_names "${_ParentDir}" "${_aliasText}"; then
         continue
       fi
       if [ -n "$(_detect_real_docroot "${_ParentDir}")" ]; then
@@ -310,18 +318,23 @@ _ghost_codebases_cleanup() {
         _CLEAN_THIS="${_ParentDir}"
         _TSTAMP=$(date +%y%m%d-%H%M%S)
         if _cnf_flag_yes /root/.barracuda.cnf _GHOST_CODEBASES_CLEANUP; then
-          mkdir -p ${_CLD}${i}${_TSTAMP}
-          echo "Moving ghost ${_CLEAN_THIS} to ${_CLD}${i}${_TSTAMP}/"
+          mkdir -p "${_CLD}${i}${_TSTAMP}"
           ### Moved from inside its real parent, so a name on the way that
           ### the account swapped for a link since the checks moves nothing.
-          _acct_in_real_dir "${_CLEAN_THIS%/*}" \
-            mv -f -- "./${_CLEAN_THIS##*/}" "${_CLD}${i}${_TSTAMP}/"
+          if _acct_in_real_dir "${_CLEAN_THIS%/*}" \
+            mv -f -- "./${_CLEAN_THIS##*/}" "${_CLD}${i}${_TSTAMP}/"; then
+            echo "Moved ghost ${_CLEAN_THIS} to ${_CLD}${i}${_TSTAMP}/"
+          else
+            rmdir "${_CLD}${i}${_TSTAMP}" 2> /dev/null
+            echo "Ghost ${_CLEAN_THIS} detected and not moved: not a real directory on its path, or the move failed"
+          fi
         else
           echo "Ghost ${_CLEAN_THIS} detected (dry-run; set _GHOST_CODEBASES_CLEANUP=YES in /root/.barracuda.cnf to move)"
         fi
       fi
     done
   done
+  rm -f -- "${_aliasText}"
 }
 
 _goaccess_vhosts() {
@@ -631,12 +644,10 @@ _global_cleanup() {
       chown -R root:users /data/disk/all/*/*/sites &> /dev/null
       chown -R root:users /data/disk/all/000/core/*/sites &> /dev/null
     fi
-    ### distro/NNN is 0711 (owner oN), so anything running as the account uid
-    ### (a hostile drush include, a compromised task) can create a whole decoy
-    ### platform dir there and plant these three
-    ### names as symlinks; 02775 on a symlinked FILE also adds o+r. Only ever
-    ### chmod a real directory, as '.' once inside it, so no name on the way
-    ### is ever followed through a link.
+    ### distro/NNN and every platform in it belong to the account, so any of
+    ### these three names can be a link. Only a real directory is changed,
+    ### as '.' once inside it, so no name on the way is followed through a
+    ### link.
     local _pDis
     for _pDis in /data/disk/*/distro/*/*/sites/all/{modules,libraries,themes}; do
       [ -d "${_pDis}" ] || continue
@@ -647,15 +658,11 @@ _global_cleanup() {
     echo fixed > /var/backups/permissions-fix-${_xSrl}-${_X_VERSION}-fixed-dz.info
   fi
   if [ ! -e "/var/backups/fix-sites-all-permsissions-${_xSrl}.txt" ]; then
-    ### distro/NNN is 0711 (owner oN): the account uid -- every Ægir task and
-    ### site-local Drush run as it -- can create a decoy platform dir there with its
-    ### own sites/ and point sites/all at any path. Plain chmod follows a
-    ### symlink named on its command line, so 0755 on a planted
-    ### sites/all -> /root/.barracuda.cnf would publish the MySQL root
-    ### credentials to every local user. Only ever chmod a real directory,
-    ### as '.' once inside it, so no name on the way is ever followed
-    ### through a link. None of these three names is ever legitimately a
-    ### symlink.
+    ### distro/NNN belongs to the account (every Ægir task and site-local
+    ### Drush run as it), so sites/ and the names below it can be links, and
+    ### a plain chmod follows a link named on its command line. Only a real
+    ### directory is changed, as '.' once inside it, so no name on the way is
+    ### followed through a link. None of these names is legitimately a link.
     local _pSit _pSub
     for _pSit in /data/disk/*/distro/*/*/sites; do
       [ -d "${_pSit}" ] || continue
@@ -681,12 +688,11 @@ _global_cleanup() {
   ### the newest 3 per credential file -- only the newest can hold a
   ### half-failed-rotation recovery value; older ones are dead history that
   ### only assists password guessing.
-  ### The account home is 0711 but OWNED by oN -- the identity every Ægir task and
-  ### site-local Drush run as, so a hostile drush include or a compromised
-  ### task can unlink a backup and plant a symlink at its name. chmod follows that link, and 0600 on a shared system
-  ### path (a config file, a bin dir) takes the box down. Heal real files only,
-  ### from inside the real account home, through a handle that never follows
-  ### a link, and prune there by name.
+  ### The account home is 0711 but owned by oN, the identity every Ægir task
+  ### and site-local Drush run as, so a backup name there can be a link, and
+  ### chmod follows a link. Only real files are healed, from inside the real
+  ### account home, through a handle that never follows a link, and pruned
+  ### there by name.
   local _pBak _aHome
   for _aHome in /data/disk/*; do
     [ -d "${_aHome}" ] || continue

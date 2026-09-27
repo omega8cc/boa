@@ -2019,7 +2019,7 @@ _update_agents() {
     # mirror shipped had NO mirror at all -- the exact box that needs it.
     _fetch_versioned /var/xdrago/migration_proxy_trust.sh "${_urlHmr}/tools/system/migration_proxy_trust.sh" f97
     _fetch_versioned /var/xdrago/migration_proxy_realip.sh "${_urlHmr}/tools/system/migration_proxy_realip.sh" f99
-    _fetch_versioned /var/xdrago/migration_proxy_certs.sh "${_urlHmr}/tools/system/migration_proxy_certs.sh" f97
+    _fetch_versioned /var/xdrago/migration_proxy_certs.sh "${_urlHmr}/tools/system/migration_proxy_certs.sh" f96
     # A fetch-delivered mirror without its schedule is a false comfort: the
     # daily line normally arrives only with the crontab template on a full
     # up-* run, so ensure it whenever the script is present.
@@ -2039,7 +2039,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f68
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f56
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f58
-    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f76
+    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f75
     _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f75
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
@@ -2800,6 +2800,25 @@ _fix_core_dgd() {
   _saBCoreP="${_saCoreN}-provision"
   _saBPatch="/var/xdrago/conf/${_saBCoreP}.patch"
 
+  # static/ and each Octopus hostmaster platform belong to the account's
+  # users, so any name below them can be a link: a platform is patched only
+  # from inside its real directory. The patch $1 is applied unless the
+  # platform is of the other generation (core/ present, or absent when $3 is
+  # d8) or already carries the stamp profiles/$2 (empty: no stamp). The
+  # stamp is a fresh file put inside the real profiles/, never written
+  # through a link the account put on the way.
+  _boa_core_dgd_here() {
+    if [ "${3}" = "d8" ]; then
+      [ -e ./core ] || return 0
+    else
+      [ ! -e ./core ] || return 0
+    fi
+    [ -z "${2}" ] || [ ! -e "./profiles/${2}" ] || return 0
+    patch -p1 < "${1}" &> /dev/null
+    [ -z "${2}" ] \
+      || _acct_in_real_dir "$(pwd -P)/profiles" _acct_put_here "${2}" fixed
+  }
+
   # SA-CORE D8 patch
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
@@ -2831,15 +2850,10 @@ _fix_core_dgd() {
     && [ -e "${_saPatch}" ]; then
     if [ -d "/data/all" ] \
       && [ ! -e "${_pthLog}/hostmaster-octopus-${_saCoreN}-fixed-d7.log" ]; then
-      for _File in `find /data/disk/*/aegir/distro/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-        fi
+      for _File in /data/disk/*/aegir/distro/*/${_saIncDb}; do
+        [ -e "${_File}" ] || continue
+        _acct_in_real_dir "${_File%/"${_saIncDb}"}" \
+          _boa_core_dgd_here "${_saPatch}" "" d7
       done
       touch ${_pthLog}/hostmaster-octopus-${_saCoreN}-fixed-d7.log
     fi
@@ -2941,70 +2955,14 @@ _fix_core_dgd() {
     && [ -e "${_saPatch}" ]; then
     if [ -d "/data/u" ] \
       && [ ! -e "${_pthLog}/batch-custom-${_saCoreN}-fixed-d7.log" ]; then
-      for _File in `find /data/disk/*/static/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/*/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
-        fi
+      for _File in /data/disk/*/static/*/${_saIncDb} \
+        /data/disk/*/static/*/*/${_saIncDb} \
+        /data/disk/*/static/*/*/*/${_saIncDb} \
+        /data/disk/*/static/*/*/*/*/${_saIncDb} \
+        /data/disk/*/static/*/*/*/*/*/${_saIncDb}; do
+        [ -e "${_File}" ] || continue
+        _acct_in_real_dir "${_File%/"${_saIncDb}"}" \
+          _boa_core_dgd_here "${_saPatch}" "${_saCoreS}-fix.info" d7
       done
     fi
     cd
@@ -3017,70 +2975,14 @@ _fix_core_dgd() {
     && [ -e "${_saQPatch}" ]; then
     if [ -d "/data/u" ] \
       && [ ! -e "${_pthLog}/batch-custom-${_saQCoreN}-fixed-d8.log" ]; then
-      for _File in `find /data/disk/*/static/*/${_saQIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/core.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saQPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/${_saQIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/core.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saQPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/${_saQIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/core.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saQPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/*/${_saQIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/core.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saQPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/*/*/${_saQIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/core.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saQPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
-        fi
+      for _File in /data/disk/*/static/*/${_saQIncDb} \
+        /data/disk/*/static/*/*/${_saQIncDb} \
+        /data/disk/*/static/*/*/*/${_saQIncDb} \
+        /data/disk/*/static/*/*/*/*/${_saQIncDb} \
+        /data/disk/*/static/*/*/*/*/*/${_saQIncDb}; do
+        [ -e "${_File}" ] || continue
+        _acct_in_real_dir "${_File%/"${_saQIncDb}"}" \
+          _boa_core_dgd_here "${_saQPatch}" "${_saQCoreS}-fix.info" d8
       done
     fi
     cd
@@ -3149,70 +3051,14 @@ _fix_core_dgd() {
     && [ -e "${_saXPatch}" ]; then
     if [ -d "/data/u" ] \
       && [ ! -e "${_pthLog}/batch-custom-${_saXCoreN}-finally-fixed-d6.log" ]; then
-      for _File in `find /data/disk/*/static/*/${_saXIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/${_saXIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/${_saXIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/*/${_saXIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/*/*/${_saXIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
-        fi
+      for _File in /data/disk/*/static/*/${_saXIncDb} \
+        /data/disk/*/static/*/*/${_saXIncDb} \
+        /data/disk/*/static/*/*/*/${_saXIncDb} \
+        /data/disk/*/static/*/*/*/*/${_saXIncDb} \
+        /data/disk/*/static/*/*/*/*/*/${_saXIncDb}; do
+        [ -e "${_File}" ] || continue
+        _acct_in_real_dir "${_File%/"${_saXIncDb}"}" \
+          _boa_core_dgd_here "${_saXPatch}" "${_saXCoreS}-fix-finally.info" d6
       done
     fi
     cd
@@ -4957,7 +4803,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f82 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f96 --guard /local/bin/symlinkinfo
-    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f89 --guard /local/bin/migratefs
+    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f88 --guard /local/bin/migratefs
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/${_tBn}/synproxy" f93 --guard /local/bin/synproxy
     _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/${_tBn}/synproxy_hook_fix" f99 --guard /local/bin/synproxy_hook_fix
     _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/${_tBn}/synproxy_monitor" f98 --guard /local/bin/synproxy_monitor

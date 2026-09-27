@@ -338,6 +338,61 @@ _nginx_acct_sed() {
     _acct_in_real_dir "${_d}" _nginx_sed_glob_here "${_pat}" "$@"
   done 9< <(_nginx_acct_dirs "${_rel}")
 }
+# NUL-terminated names directly in the current (pinned) directory that the
+# glob $1 matches (never a dot-name, which the glob skips) and whose text
+# grep "${@:2}" matches, listed by one grep: -r follows no link below '.' and
+# -D skip never opens a FIFO or a device. When grep cannot tell (an error,
+# an option it lacks), every name the glob matches is listed.
+_nginx_names_with_here() {
+  local _p="${1}" _l _f
+  shift
+  _l=$(mktemp 2> /dev/null) || return 1
+  if LC_ALL=C grep -rlZ -D skip "$@" . > "${_l}" 2> /dev/null \
+    || [ "$?" -eq 1 ]; then
+    while IFS= read -r -d '' _f; do
+      _f="${_f#./}"
+      case "${_f}" in
+        */*|.*) continue ;;
+      esac
+      # shellcheck disable=SC2254
+      case "${_f}" in
+        ${_p}) printf '%s\0' "${_f}" ;;
+      esac
+    done < "${_l}"
+  else
+    # shellcheck disable=SC2086
+    for _f in ./${_p}; do
+      [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+      printf '%s\0' "${_f#./}"
+    done
+  fi
+  rm -f -- "${_l}"
+}
+# As _nginx_sed_glob_here, but only on the files _nginx_names_with_here
+# lists. Args: the glob, the grep arguments, --, the sed arguments.
+_nginx_sed_if_here() {
+  local _p="${1}" _f
+  local -a _g=()
+  shift
+  while [ "$#" -gt 0 ] && [ "${1}" != "--" ]; do
+    _g+=( "${1}" )
+    shift
+  done
+  shift
+  while IFS= read -r -d '' _f; do
+    _nginx_sed_here "${_f}" "$@"
+  done < <(_nginx_names_with_here "${_p}" "${_g[@]}")
+}
+# As _nginx_acct_sed, but each file is edited only when its text holds a
+# line the sed arguments change, as the grep arguments tell. Args: the
+# directory, the glob, the grep arguments, --, the sed arguments.
+_nginx_acct_sed_if() {
+  local _rel="${1}" _d
+  shift
+  while IFS= read -r -u 9 _d; do
+    _acct_in_real_dir "${_d}" _nginx_sed_if_here "$@"
+  done 9< <(_nginx_acct_dirs "${_rel}")
+}
 # Every regular file below the real directory $1 whose text holds $2, removed:
 # the tree is listed from inside $1, each file's directory is entered again
 # for real, and the file is read as _acct_read_here reads it and removed by
@@ -1636,14 +1691,14 @@ _nginx_migration_proxy_client() {
   rm -rf "${_d}"
 }
 # Every plain HTTP proxy vhost of the current (pinned) vhost.d $2 that still
-# lacks the block, read as _acct_read_here reads it into the root-only dir
-# $1, rewritten there and put back as _nginx_sed_here puts it; each one
-# changed leaves <n>.orig and <n>.path in $1 for the rollback.
+# lacks the block (one grep lists the proxy vhosts), read as _acct_read_here
+# reads it into the root-only dir $1, rewritten there and put back as
+# _nginx_sed_here puts it; each one changed leaves <n>.orig and <n>.path in
+# $1 for the rollback.
 _nginx_migration_proxy_client_here() {
   local _d="${1}" _v="${2}" _f _k
-  for _f in ./*; do
-    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
-    _f="${_f#./}"
+  while IFS= read -r -d '' _f; do
+    [ -f "./${_f}" ] && [ ! -L "./${_f}" ] || continue
     _k=$(mktemp "${_d}/v.XXXXXX" 2> /dev/null) || continue
     _acct_read_here "${_f}" > "${_k}.orig"
     if grep -q "Plain HTTP proxy (START)" "${_k}.orig" \
@@ -1662,7 +1717,7 @@ _nginx_migration_proxy_client_here() {
       fi
     fi
     rm -f -- "${_k}" "${_k}.orig" "${_k}.new"
-  done
+  done < <(_nginx_names_with_here "*" -F -e "Plain HTTP proxy (START)")
 }
 
 _nginx_config_update_fix() {
@@ -1704,7 +1759,8 @@ _nginx_config_update_fix() {
       sed -i "s/TLSv1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
       wait
       if [ -d "/data/u" ]; then
-        _nginx_acct_sed "config/server_*/nginx/vhost.d" "*" \
+        _nginx_acct_sed_if "config/server_*/nginx/vhost.d" "*" \
+          -F -e "TLSv1.1 TLSv1.2 TLSv1.3;" -- \
           "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g"
       fi
       sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx.conf
@@ -1887,7 +1943,11 @@ _nginx_config_update_fix() {
       _nginx_acct_sed "config/server_*" nginx.conf \
         -e "s/.*listen.*127.0.0.1:80;.*//g" \
         -e "s/listen .*\*:80;/listen  \*:80;/g" &> /dev/null
-      _nginx_acct_sed "config/server_*/nginx/vhost.d" "*" \
+      ### One grep per vhost.d names the vhosts with a line these change: a
+      ### listen line not yet in the exact form written below, an ssl on
+      ### line, or the TLSv1.1 list; the others are left untouched.
+      _nginx_acct_sed_if "config/server_*/nginx/vhost.d" "*" \
+        -P -e '(?:^(?!  listen  \*:80;(?!.*\*:80;)).*listen .*\*:80;)|(?:^(?!  listen  \*:443(?!.*\*:443)).*listen .*\*:443)|(?:ssl .*on;)|(?:TLSv1\.1 TLSv1\.2 TLSv1\.3;)' -- \
         -e "s/.*listen .*\*:80;/  listen  \*:80;/g" \
         -e "s/.*listen .*\*:443/  listen  \*:443/g" \
         -e "s/.*ssl .*on;//g" \

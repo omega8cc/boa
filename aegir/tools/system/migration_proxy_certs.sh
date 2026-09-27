@@ -143,17 +143,23 @@ _mpc_cert_here() {
 _mpc_cert_in() {
   _mpc_in_real_dir "${1}" _mpc_cert_here "${2}"
 }
-### "<uid>:<gid> <mode>" of the regular file ./$1 of the current (pinned) LE
-### store names (after the one step _mpc_cert_name_here allows); nothing,
-### status 1, for anything else.
-_mpc_cert_attrs_here() {
-  local _n _st
-  _n=$(_mpc_cert_name_here "${1}") || return 1
-  _st=$(stat -c '%u:%g %a %F' -- "./${_n}" 2> /dev/null) || return 1
+### "<uid>:<gid> <mode>" of ./$1 in the current (pinned) directory when it
+### is a regular file itself; nothing, status 1, for anything else.
+_mpc_plain_attrs_here() {
+  local _st
+  _st=$(stat -c '%u:%g %a %F' -- "./${1}" 2> /dev/null) || return 1
   case "${_st}" in
     *" regular file"|*" regular empty file") printf '%s' "${_st% regular*}" ;;
     *) return 1 ;;
   esac
+}
+### "<uid>:<gid> <mode>" of the regular file ./$1 of the current (pinned) LE
+### store names (after the one step _mpc_cert_name_here allows); nothing,
+### status 1, for anything else.
+_mpc_cert_attrs_here() {
+  local _n
+  _n=$(_mpc_cert_name_here "${1}") || return 1
+  _mpc_plain_attrs_here "${_n}"
 }
 ### A mode set on names in the current (pinned) directory through a handle
 ### opened without following a link or blocking on a FIFO, only on a regular
@@ -189,32 +195,65 @@ _mpc_put_here() {
 ### each old file kept as <name>.bak and the new one put in its place, both
 ### with the old file's owner and mode (a dehydrated link is judged by the
 ### dated file it names, never by the link itself), as _mpc_put_here puts
-### them. Status 3 when not every name could be put in place.
+### them. Every .bak is written first, and nothing is put unless each name
+### that had a file got one (status 4), so a rollback never mixes an old and
+### a new half; a name with no file drops any .bak left from before. Status
+### 3 when not every name could be put in place.
 _mpc_swap_here() {
-  local _stg="${1}" _f _a _rc=0
+  local _stg="${1}" _f _a _i=0 _rc=0
+  local -a _as=()
   for _f in ${_CERT_SET}; do
     if _a=$(_mpc_cert_attrs_here "${_f}"); then
-      _mpc_cert_here "${_f}" > "${_stg}/${_f}.old" \
-        && _mpc_put_here "${_f}.bak" "${_stg}/${_f}.old" "${_a}"
+      { _mpc_cert_here "${_f}" > "${_stg}/${_f}.old" \
+        && _mpc_put_here "${_f}.bak" "${_stg}/${_f}.old" "${_a}"; } || return 4
     else
       _a=""
+      rm -f -- "./${_f}.bak"
     fi
-    _mpc_put_here "${_f}" "${_stg}/${_f}" "${_a}" || _rc=3
+    _as[_i]="${_a}"
+    _i=$(( _i + 1 ))
+  done
+  _i=0
+  for _f in ${_CERT_SET}; do
+    _mpc_put_here "${_f}" "${_stg}/${_f}" "${_as[_i]}" || _rc=3
+    _i=$(( _i + 1 ))
   done
   return "${_rc}"
 }
 ### Every name of the set in the current (pinned) LE store given back the
-### content, owner and mode of its .bak, as _mpc_put_here puts it; a .bak is
-### read never through a link or a FIFO.
+### content, owner and mode of its .bak, as _mpc_put_here puts it; only a
+### .bak that is a regular file itself is used, read never through a link or
+### a FIFO.
 _mpc_restore_here() {
   local _w _f _a
   _w=$(mktemp -d /var/backups/.boa-mig-certs.XXXXXX 2> /dev/null) || return 1
   for _f in ${_CERT_SET}; do
-    _a=$(_mpc_cert_attrs_here "${_f}.bak") || continue
+    _a=$(_mpc_plain_attrs_here "${_f}.bak") || continue
     _mpc_read_here "${_f}.bak" > "${_w}/${_f}" \
       && _mpc_put_here "${_f}" "${_w}/${_f}" "${_a}"
   done
   rm -rf "${_w}"
+}
+### The set and its .bak copies in the current (pinned) LE store that a
+### mirror run of an earlier release left as regular files with mode 0777
+### (it gave each the mode of the dehydrated link it replaced) get the mode
+### dehydrated writes them with, 0600, through handles that never follow a
+### link. Any other mode is left as it is, so this changes nothing once
+### healed.
+_MPC_HEAL777_PL='use Fcntl;
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  chmod(0600, $h) if @s && -f _ && ($s[2] & 07777) == 0777;
+  close($h);
+}'
+_mpc_heal_here() {
+  local _f
+  local -a _n=()
+  for _f in ${_CERT_SET}; do
+    _n+=( "./${_f}" "./${_f}.bak" )
+  done
+  perl -e "${_MPC_HEAL777_PL}" "${_n[@]}" 2> /dev/null
 }
 ### $3 of the LE store $2 on the target $1, printed as _mpc_cert_here prints
 ### it here: the same helpers run there, so the target's copy is read inside
@@ -280,6 +319,7 @@ _pull_domain() {
     _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
     return 1
   fi
+  [ "${_DRY}" = "YES" ] || _mpc_in_real_dir "${_dir}" _mpc_heal_here
 
   _lend=$(_mpc_cert_in "${_dir}" fullchain.pem | _cert_end_epoch)
   if [ -z "${_lend}" ]; then
@@ -371,6 +411,11 @@ _pull_domain() {
   _mpc_in_real_dir "${_dir}" _mpc_swap_here "${_stg}"
   _rc=$?
   rm -rf "${_stg}"
+  if [ "${_rc}" -eq 4 ]; then
+    _msg "ALRT: ${_oct}/${_dom}: the current set could not be kept as .bak; nothing swapped"
+    _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
+    return 1
+  fi
   if [ "${_rc}" -ne 0 ] && [ "${_rc}" -ne 3 ]; then
     _msg "ALRT: ${_oct}/${_dom}: ${_dir} is not a real directory; nothing swapped"
     _FAIL_REFRESH="${_FAIL_REFRESH} ${_dom}"
@@ -514,6 +559,8 @@ _RET_NEW=""
 for _R in ${_RETIRED}; do
   _OCT="${_R%%/*}"
   _DOM="${_R#*/}"
+  [ "${_DRY}" = "YES" ] \
+    || _mpc_in_real_dir "/data/disk/${_OCT}/tools/le/certs/${_DOM}" _mpc_heal_here
   _VHC=$(_mpc_read_in "/data/disk/${_OCT}/config/server_master/nginx/vhost.d" "https.${_DOM}")
   _CRT=$(grep -m1 'ssl_certificate ' <<< "${_VHC}" | awk '{ print $2 }' | tr -d ';')
   ### The vhost is the account's, so the path it names is read only where it
