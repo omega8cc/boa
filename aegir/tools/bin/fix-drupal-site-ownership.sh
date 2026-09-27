@@ -9,10 +9,11 @@ provide the following arguments:
   --site-path: Path to the Drupal site directory.
   --script-user: Username of the user to whom you want to give file ownership
                  (defaults to 'aegir').
-  --web-group: Web server group name (defaults to 'www-data').
+  --web-group: accepted and ignored; the web group is derived from the
+               site's account (www-data until the account has its own).
 
-Usage: (sudo) ${0##*/} --site-path=PATH --script-user=USER --web_group=GROUP
-Example: (sudo) ${0##*/} --site-path=/var/aegir/platforms/drupal-7.50/sites/example.com --script-user=aegir --web-group=www-data
+Usage: (sudo) ${0##*/} --site-path=PATH --script-user=USER
+Example: (sudo) ${0##*/} --site-path=/var/aegir/platforms/drupal-7.50/sites/example.com --script-user=aegir
 HELP
 exit 0
 }
@@ -147,6 +148,93 @@ _acct_group() {
   echo "${_g}"
 }
 
+_web_group_state() {
+  # The account's own web group, wg-<account>, derived on the box and never
+  # taken from argv or a cnf: the group its pools, backend user and shell
+  # users share for its web paths once the account is converted to it.
+  # Prints "<state> <gid> <group>", "none - -" when there is no such group
+  # (the record is root's: run as another user, converted reads as held):
+  #   none       no group of that name
+  #   foreign    the group exists, but an identity outside the account holds
+  #              it too: never joined nor written to; claim passes still leave
+  #              its paths alone (taking them would cut the pools off)
+  #   held       the group exists and only this account's identities hold it:
+  #              claim passes leave its paths alone, new identities join it
+  #   converted  and root's record names that gid: writers use the group
+  #   phaseb     and the record says the identities have left www-data
+  # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+  # phase=<A|B> ...", root's own file outside the account tree, so neither
+  # the account nor a copy or restore of its tree can make or move it.
+  # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+  # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+  # gems or npm tree, or its store on attached storage
+  # (/mnt/<m>/files/<oN>/static/files).
+  local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  # a path is read as written (an alias the account wrote can carry "..",
+  # "." or "//"): normalised by text alone, never through a link, first
+  case "${_a}" in
+    */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+  esac
+  case "${_a}" in
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+    /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+    /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+      _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+    */*) echo "none - -"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  case "${_a}" in
+    ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+  esac
+  _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  # every holder of the gid: members of each group entry carrying it (a
+  # second entry can share the number) and every user with it as primary
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+      || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+  done
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-${_a}"
+  else
+    echo "held ${_gid} wg-${_a}"
+  fi
+}
+
+_web_group() {
+  # The group a root writer gives an account's web paths (files/, private/,
+  # settings.php and the like): wg-<account> once the account is converted,
+  # www-data otherwise, as always. Until the record says converted every
+  # identity of the account still holds www-data (a conversion grants the web
+  # group first and a revert gives www-data back before it moves any path),
+  # so www-data is the old state, never an outage. Callers write
+  # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
+  # group and never hands a path to a login group. Run as any user but root,
+  # which cannot read root's record, a held group answers empty: the group
+  # each path has is kept. $1 as _web_group_state.
+  local _s
+  _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted|phaseb) echo "${_s##* }" ;;
+    held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+    *) echo "www-data" ;;
+  esac
+}
+
 # The site path and each store are resolved once below, but the account owns
 # every name on the way (the platform tree, sites/, static/files), so any of
 # them can be swapped for a link at any time. Every act runs inside a
@@ -225,18 +313,18 @@ _copy_new_here() {
 }
 
 # The Grav capsule model, run inside the real site directory: code
-# <user>:<account group>, the writable set and the .env <user>:<web_group>.
+# <user>:<account group>, the writable set and the .env <user>:<web group>.
 _grav_site_own_here() {
   local _wd
   chown -h -R "${script_user}:${_code_group}" .
   for _wd in user cache logs tmp backup images assets; do
     [ -d "./${_wd}" ] || continue
-    chown -h -R "${script_user}:${web_group:-www-data}" "./${_wd}"
+    chown -h -R "${script_user}${_wg:+:${_wg}}" "./${_wd}"
   done
   # The secret root .env drops its world bit, so FPM's read comes via
   # the web group -- the code pass above homed it to the account group.
   if [ -f ./.env ]; then
-    chown -h "${script_user}:${web_group:-www-data}" ./.env
+    chown -h "${script_user}${_wg:+:${_wg}}" ./.env
   fi
 }
 
@@ -251,10 +339,10 @@ _txp_site_own_here() {
     case "${_wd}" in
       */*)
         _in_pinned_dir "${_here}/${_wd%/*}" \
-          chown -h -R "${script_user}:${web_group:-www-data}" "./${_wd##*/}"
+          chown -h -R "${script_user}${_wg:+:${_wg}}" "./${_wd##*/}"
         ;;
       *)
-        chown -h -R "${script_user}:${web_group:-www-data}" "./${_wd}"
+        chown -h -R "${script_user}${_wg:+:${_wg}}" "./${_wd}"
         ;;
     esac
   done
@@ -266,7 +354,7 @@ _site_own_here() {
   _here="$(pwd -P)"
   ### directory and settings files - site level
   chown -h "${script_user}:${_code_group}" .
-  chown -h "${script_user}:www-data" \
+  chown -h "${script_user}${_wg:+:${_wg}}" \
     ./local.settings.php ./settings.php ./civicrm.settings.php
   # solr.php holds the site's Solr core details for its owner; no web reader
   # opens it, so it stays in the code group its writer gives it.
@@ -283,9 +371,9 @@ _site_own_here() {
 }
 
 # The files store, run inside it (entered for real): the day marker, then the
-# whole store and its known children handed to <user>:www-data.
+# whole store and its known children handed to <user>:<web group>.
 _files_own_here() {
-  local _o="${script_user}:www-data" _here
+  local _o="${script_user}${_wg:+:${_wg}}" _here
   _here="$(pwd -P)"
   ### ctrl pid
   rm -f -- ./ownership-fixed*.pid
@@ -307,7 +395,7 @@ _files_own_here() {
 
 # The private store, run inside it (entered for real).
 _priv_own_here() {
-  local _o="${script_user}:www-data" _here
+  local _o="${script_user}${_wg:+:${_wg}}" _here
   _here="$(pwd -P)"
   chown -h -R "${_o}" .
   chown -h "${_o}" .
@@ -320,7 +408,6 @@ _priv_own_here() {
 
 site_path=${1%/}
 script_user=${2:-aegir}
-web_group="${3:-www-data}"
 
 # Parse Command Line Arguments
 while [ "$#" -gt 0 ]; do
@@ -332,7 +419,8 @@ while [ "$#" -gt 0 ]; do
         script_user="${1#*=}"
         ;;
     --web-group=*)
-        web_group="${1#*=}"
+        # Accepted for the callers that pass it, never used: the web group
+        # is derived from the site's account below.
         ;;
     --help) print_help;;
     *)
@@ -365,10 +453,11 @@ if [ -n "${site_path}" ] \
   fi
   _validate_path_prefix "${site_path}"
   _code_group=$(_acct_group "${site_path}")
+  _wg=$(_web_group "${site_path}")
   # Capsule ownership model (spike-proven): code <user>:<account group>; the
-  # writable set <user>:<web_group> so FPM writes via GROUP (version-flip-immune).
+  # writable set <user>:<web group> so FPM writes via GROUP (version-flip-immune).
   # Runs inside the real site directory (_in_pinned_dir), and the owner and
-  # group stay one quoted argument whatever --web-group carries.
+  # group stay one quoted argument.
   printf "Setting Grav ownership of %s to: user => %s group => %s\n" "${site_path}" "${script_user}" "${_code_group}"
   _in_pinned_dir "${site_path}" _grav_site_own_here
   echo "Done setting proper ownership of files and directories (Grav site)."
@@ -391,13 +480,14 @@ if [ -n "${site_path}" ] \
   fi
   _validate_path_prefix "${site_path}"
   _code_group=$(_acct_group "${site_path}")
+  _wg=$(_web_group "${site_path}")
   # Code <user>:<account group>; the writable set and the credential store
-  # <user>:<web_group> so FPM reaches them via GROUP (version-flip-immune: a
-  # box-default PHP bump changes the pool USER, never its www-data group).
+  # <user>:<web group> so FPM reaches them via GROUP (version-flip-immune: a
+  # box-default PHP bump changes the pool USER, never its group).
   # -h keeps the four load-bearing admin symlinks as symlinks and never
   # follows them into the shared core.
   # Runs inside the real site directory (_in_pinned_dir), and the owner and
-  # group stay one quoted argument whatever --web-group carries.
+  # group stay one quoted argument.
   printf "Setting Textpattern ownership of %s to: user => %s group => %s\n" "${site_path}" "${script_user}" "${_code_group}"
   _in_pinned_dir "${site_path}" _txp_site_own_here
   echo "Done setting proper ownership of files and directories (Textpattern site)."
@@ -417,6 +507,7 @@ fi
 
 _validate_path_prefix "${site_path}"
 _code_group=$(_acct_group "${site_path}")
+_wg=$(_web_group "${site_path}")
 
 ### modules, themes and libraries are names the tenant can plant: it can create
 ### the site dir itself under the group-writable sites/ (02771), and the

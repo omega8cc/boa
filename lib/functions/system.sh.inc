@@ -11745,6 +11745,32 @@ _custom_cron_account_group() {
   if [ -n "${_left}" ]; then
     _msg "NOTE: ${_cus}: line(s) ${_left% } still hand an account's directory to the box-wide group users; write the group as \$(id -gn <account>)"
   fi
+  # An account that holds its own web group (wg-<account>) has its web paths
+  # there, and www-data stops reaching them once its identities leave it:
+  # the same reading, for such accounts only, of a chown or chgrp to www-data.
+  local _wgAccts=""
+  for _a in ${_accts}; do
+    case "$(_web_group_state "${_a}" | cut -d' ' -f1)" in
+      converted|phaseb) _wgAccts="${_wgAccts} ${_a}" ;;
+    esac
+  done
+  [ -n "${_wgAccts}" ] || return 0
+  _left=$(_ACCTS="${_wgAccts}" perl -ne '
+    BEGIN {
+      our $A = join("|", map { quotemeta } grep { /^[a-z0-9][a-z0-9-]*$/ } split(" ", $ENV{_ACCTS} // ""));
+    }
+    our $A;
+    next if $A eq "" || /^\s*#/;
+    my $l = $_;
+    $l =~ s/\$(?=["\x27])//g;
+    $l =~ tr/"\x27`\\//d;
+    next unless $l =~ /(?<![-\w.])(?:$A)(?![-\w])/;
+    print "$. " if ($l =~ /\bchown\b/ && $l =~ /[.:](?:www-data|33)(?![-\w])/)
+      || ($l =~ /\bchgrp\b/ && $l =~ /(?<![-\w.])(?:www-data|33)(?![-\w])/);
+  ' "${_cus}" 2> /dev/null)
+  if [ -n "${_left}" ]; then
+    _msg "NOTE: ${_cus}: line(s) ${_left% } hand the web paths of an account that has its own web group to www-data; write the group as wg-<account>"
+  fi
 }
 
 _xdrago_install_upgrade() {

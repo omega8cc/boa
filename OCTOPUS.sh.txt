@@ -320,10 +320,20 @@ done
 # derived-group form (the step is skipped, said with the token the report
 # classifier reads), abort when it predates that form too -- a pre-compat
 # satellite.sh.inc would write the box-wide group over converted accounts.
-if ! declare -F _satellite_if_instance_group > /dev/null 2>&1; then
+# The web group (wg-<account>) takes the same guard with its own mark: a tree
+# without _web_group_state writes www-data over every web path, the old state
+# while each account's identities still hold www-data, an outage once one
+# account's have left it -- the only case that aborts the run.
+if ! declare -F _satellite_if_instance_group > /dev/null 2>&1 \
+  || ! declare -F _web_group_state > /dev/null 2>&1; then
+  _libMiss=_satellite_if_instance_group
   _libRefetchMark="/opt/tmp/.libtree-refetch.${_X_VERSION:-unknown}"
+  if declare -F _satellite_if_instance_group > /dev/null 2>&1; then
+    _libMiss=_web_group_state
+    _libRefetchMark="/opt/tmp/.libtree-refetch-wg.${_X_VERSION:-unknown}"
+  fi
   if [ ! -e "${_libRefetchMark}" ]; then
-    echo "NOTE: the lib tree predates this launcher (_satellite_if_instance_group missing); fetching a fresh tree"
+    echo "NOTE: the lib tree predates this launcher (${_libMiss} missing); fetching a fresh tree"
     touch "${_libRefetchMark}"
     rm -rf /opt/tmp/boa-refetch
     mkdir -p /opt/tmp/boa-refetch
@@ -337,7 +347,8 @@ if ! declare -F _satellite_if_instance_group > /dev/null 2>&1; then
     if [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.nrml" ] \
       && [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.dist" ] \
       && [ -e "/opt/tmp/boa-refetch/boa/lib/functions/helper.sh.inc" ] \
-      && grep -q "^_satellite_if_instance_group() {" /opt/tmp/boa-refetch/boa/lib/functions/satellite.sh.inc 2> /dev/null; then
+      && grep -q "^_satellite_if_instance_group() {" /opt/tmp/boa-refetch/boa/lib/functions/satellite.sh.inc 2> /dev/null \
+      && grep -q "^_web_group_state() {" /opt/tmp/boa-refetch/boa/lib/functions/helper.sh.inc 2> /dev/null; then
       rm -rf /opt/tmp/boa
       mv -f /opt/tmp/boa-refetch/boa /opt/tmp/boa
       chown -R root:root /opt/tmp/boa &> /dev/null
@@ -358,6 +369,25 @@ if ! declare -F _satellite_if_instance_group > /dev/null 2>&1; then
     else
       echo "ALRT: the lib tree predates the derived-group form; this run would write the box-wide group over converted accounts, aborting"
       _clean_pid_exit _stale_lib_tree
+    fi
+  fi
+  if ! declare -F _web_group_state > /dev/null 2>&1; then
+    # a record counts only as the helper reads it: root's regular file, its
+    # group present with the recorded gid
+    _libPhB=NO
+    for _libRec in /root/.*.web-group.txt; do
+      [ -f "${_libRec}" ] && [ ! -L "${_libRec}" ] || continue
+      [ "$(stat -c %u -- "${_libRec}" 2> /dev/null)" = "0" ] || continue
+      read -r _libRg _libRgid _libRph _ < "${_libRec}"
+      [ "${_libRph}" = "phase=B" ] || continue
+      [ "gid=$(getent group "${_libRg}" 2> /dev/null | cut -d: -f3)" = "${_libRgid}" ] || continue
+      _libPhB=YES
+    done
+    if [ "${_libPhB}" = "YES" ]; then
+      echo "ALRT: the lib tree predates the web group while an account's identities have left www-data; this run would write www-data over its web paths, aborting"
+      _clean_pid_exit _stale_lib_tree
+    else
+      echo "NOTE: the lib tree still predates the web group (a cached boa.tar.gz on the mirror edge?); every account still holds www-data, so this pass only keeps the old group"
     fi
   fi
 fi

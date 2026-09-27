@@ -40,6 +40,103 @@ _acct_group() {
   echo "${_g}"
 }
 
+_web_group_state() {
+  # The account's own web group, wg-<account>, derived on the box and never
+  # taken from argv or a cnf: the group its pools, backend user and shell
+  # users share for its web paths once the account is converted to it.
+  # Prints "<state> <gid> <group>", "none - -" when there is no such group
+  # (the record is root's: run as another user, converted reads as held):
+  #   none       no group of that name
+  #   foreign    the group exists, but an identity outside the account holds
+  #              it too: never joined nor written to; claim passes still leave
+  #              its paths alone (taking them would cut the pools off)
+  #   held       the group exists and only this account's identities hold it:
+  #              claim passes leave its paths alone, new identities join it
+  #   converted  and root's record names that gid: writers use the group
+  #   phaseb     and the record says the identities have left www-data
+  # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+  # phase=<A|B> ...", root's own file outside the account tree, so neither
+  # the account nor a copy or restore of its tree can make or move it.
+  # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+  # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+  # gems or npm tree, or its store on attached storage
+  # (/mnt/<m>/files/<oN>/static/files).
+  local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  # a path is read as written (an alias the account wrote can carry "..",
+  # "." or "//"): normalised by text alone, never through a link, first
+  case "${_a}" in
+    */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+  esac
+  case "${_a}" in
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+    /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+    /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+      _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+    */*) echo "none - -"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  case "${_a}" in
+    ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+  esac
+  _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  # every holder of the gid: members of each group entry carrying it (a
+  # second entry can share the number) and every user with it as primary
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+      || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+  done
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-${_a}"
+  else
+    echo "held ${_gid} wg-${_a}"
+  fi
+}
+
+_web_group() {
+  # The group a root writer gives an account's web paths (files/, private/,
+  # settings.php and the like): wg-<account> once the account is converted,
+  # www-data otherwise, as always. Until the record says converted every
+  # identity of the account still holds www-data (a conversion grants the web
+  # group first and a revert gives www-data back before it moves any path),
+  # so www-data is the old state, never an outage. Callers write
+  # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
+  # group and never hands a path to a login group. Run as any user but root,
+  # which cannot read root's record, a held group answers empty: the group
+  # each path has is kept. $1 as _web_group_state.
+  local _s
+  _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted|phaseb) echo "${_s##* }" ;;
+    held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+    *) echo "www-data" ;;
+  esac
+}
+
+# An identity of an account that holds its own web group is listed in that
+# group (supplementary, verified in the group database, never by id -nG);
+# nothing to do while the account has none. $1 = the identity, $2 = the
+# group (wg-<account>).
+_ltd_wg_grant() {
+  getent group "${2}" | cut -d: -f4 | tr ',' '\n' | grep -qxF "${1}" && return 0
+  usermod -aG "${2}" "${1}" &> /dev/null
+  getent group "${2}" | cut -d: -f4 | tr ',' '\n' | grep -qxF "${1}"
+}
+
 # One channel for anything this pass has to say to the operator: a dated line
 # in the durable incident log, the pass log, and the same text mailed once a
 # day per condition unless _INCIDENT_REPORT is OFF. The box config is read
@@ -2770,7 +2867,17 @@ _ok_create_user() {
       # account carries its per-instance group); 'users' stays supplementary
       # in every case -- it is the binary execute ACL, lshell included.
       usermod -aG users ${_usrLtd}
-      adduser ${_usrLtd} ${_WEBG}
+      # www-data (files/ write, settings.php read) until the account's
+      # identities have left it for the account's own web group, which is
+      # listed as soon as the account holds one.
+      _T_WGS=$(_web_group_state "${_usrLtd}")
+      [ "${_T_WGS%% *}" = "phaseb" ] || adduser ${_usrLtd} ${_WEBG}
+      case "${_T_WGS%% *}" in
+        held|converted|phaseb)
+          _ltd_wg_grant "${_usrLtd}" "${_T_WGS##* }" \
+            || echo "ALERT: ${_usrLtd} could not be listed in ${_T_WGS##* }"
+          ;;
+      esac
       # A migration carries /home/<admin>/users/<name> from the source box
       # before this user exists here; honour that stored password so the
       # client's sub-account credential survives the move, instead of
@@ -3073,6 +3180,14 @@ _ok_update_user() {
       if ! getent group users | cut -d: -f4 | tr ',' '\n' | grep -qxF "${_usrLtd}"; then
         usermod -aG users ${_usrLtd}
       fi
+      # The account's own web group, once it holds one: listed the same way.
+      _T_WGS=$(_web_group_state "${_usrLtd}")
+      case "${_T_WGS%% *}" in
+        held|converted|phaseb)
+          _ltd_wg_grant "${_usrLtd}" "${_T_WGS##* }" \
+            || echo "ALERT: ${_usrLtd} could not be listed in ${_T_WGS##* }"
+          ;;
+      esac
       # A sub-user still on the box-wide primary group while its account
       # carries the per-instance group (born under an older worker, or the
       # account converted since) cannot read its 0440 alias copies: align it,
@@ -3873,6 +3988,16 @@ _satellite_create_web_user() {
       adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB} &> /dev/null
       _satellite_web_user_update "$1"
     fi
+    # A pool user made anew drops every group listing: once the account holds
+    # its own web group, the pool is listed in it before its pool file is
+    # written and FPM reloaded, or its workers could not read settings.php.
+    _T_WGS=$(_web_group_state "${_WEB}")
+    case "${_T_WGS%% *}" in
+      held|converted|phaseb)
+        _ltd_wg_grant "${_WEB}" "${_T_WGS##* }" \
+          || echo "ALERT: ${_WEB} could not be listed in ${_T_WGS##* }"
+        ;;
+    esac
   fi
 }
 #
@@ -4429,10 +4554,21 @@ _switch_php() {
               wait
             fi
 
+            # Once the account's identities have left www-data, its pools run
+            # in the account's own web group (after the include, which sets
+            # www-data). A group that does not resolve would fail this whole
+            # PHP version on reload, so it is written only when it does.
+            _T_WGS=$(_web_group_state "${_USER}")
+            if [ "${_T_WGS%% *}" = "phaseb" ] && [ "${_T_WGS##* }" = "wg-${_USER}" ] \
+              && getent group "${_T_WGS##* }" > /dev/null 2>&1; then
+              echo "group = ${_T_WGS##* }" >> /opt/php${m}/etc/pool.d/${_POOL}.conf
+            fi
+
             _switch_newrelic ${m} ${_POOL} 0
 
             mkdir -p /var/www/phpcache/${_USER}/${_POOL}
-            chgrp www-data /var/www/phpcache/${_USER}/${_POOL}
+            _T_WG=$(_web_group "${_USER}")
+            [ -n "${_T_WG}" ] && chgrp "${_T_WG}" /var/www/phpcache/${_USER}/${_POOL}
             chmod 770 /var/www/phpcache/${_USER}/${_POOL}
 
             [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ] && service php${_PHP_OLD_SV}-fpm reload &> /dev/null
@@ -4907,6 +5043,19 @@ _manage_user() {
         _usrGroup=users
       else
         _usrGroup=$(_acct_group "${_USER}")
+      fi
+      # An account that holds its own web group: its backend user (provision's
+      # membership test reads the group database), its SFTP user and every
+      # pool user are listed in it, healed every pass.
+      _T_WGS=$(_web_group_state "${_USER}")
+      if [ "${_T_WGS##* }" = "wg-${_USER}" ] \
+        && [[ "${_T_WGS%% *}" =~ ^(held|converted|phaseb)$ ]]; then
+        for _igU in ${_USER} ${_USER}.ftp $(getent passwd | cut -d: -f1 \
+          | grep -E "^${_USER}(\.[0-9]+)?\.web$"); do
+          getent passwd "${_igU}" > /dev/null 2>&1 || continue
+          _ltd_wg_grant "${_igU}" "${_T_WGS##* }" \
+            || echo "ALERT: ${_igU} could not be listed in ${_T_WGS##* }"
+        done
       fi
       echo "_USER is == ${_USER} == at _manage_user"
       if getent group allow-snail >/dev/null 2>&1 && \

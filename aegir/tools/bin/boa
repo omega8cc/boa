@@ -843,6 +843,15 @@ _satellite_check_id() {
       it should start with a letter, not digit"
     _clean_pid_exit
   fi
+  # wg-<account> is every account's web group: an account of that name would
+  # get its per-instance group under another account's web group name. A
+  # dot would make the account read as the one named before it (an
+  # account's identities are <account>.<name>).
+  if [[ "${_USER}" == wg-* ]] || [[ "${_USER}" == *.* ]]; then
+    echo "ERROR: ${_USER} begins with wg-, or holds a dot; both are reserved, \
+      please choose different _USER"
+    _clean_pid_exit
+  fi
 }
 
 _fix_dns_settings() {
@@ -3338,6 +3347,11 @@ _octopus_cleanup() {
         echo "${_usEr}.ftp:/home/${_usEr}.ftp" >> ${_zombie_dir}.purge.list
         echo "${_usEr}.web:/home/${_usEr}.web" >> ${_zombie_dir}.purge.list
         _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+        # an account holding its own web group also has its default pool's
+        # FPM reloaded below: a live worker there keeps wg-<account> alive
+        _dfltV=""
+        _hasWg=""
+        getent group "wg-${_usEr}" > /dev/null 2>&1 && _hasWg=YES
         for e in ${_PHP_V}; do
           if [ -e "/opt/php${e}/etc/pool.d/${_usEr}.${e}.conf" ] \
             || [ -e "/home/${_usEr}.${e}.web" ]; then
@@ -3346,6 +3360,8 @@ _octopus_cleanup() {
           fi
           if [ -e "/opt/php${e}/etc/pool.d/${_usEr}.conf" ] \
             || [ -e "/home/${_usEr}.web" ]; then
+            [ -n "${_hasWg}" ] && [ -e "/opt/php${e}/etc/pool.d/${_usEr}.conf" ] \
+              && _dfltV="${_dfltV} ${e}"
             rm -f /opt/php${e}/etc/pool.d/${_usEr}.conf
             echo "${_usEr}.web:/home/${_usEr}.web" >> ${_zombie_dir}.purge.list
           fi
@@ -3355,7 +3371,8 @@ _octopus_cleanup() {
         # per-version web users survived every purge. Reload each affected
         # FPM first; the loop below then finds nothing holding them.
         for e in ${_PHP_V}; do
-          if grep -q "^${_usEr}\.${e}\.web:" ${_zombie_dir}.purge.list 2>/dev/null \
+          if { grep -q "^${_usEr}\.${e}\.web:" ${_zombie_dir}.purge.list 2>/dev/null \
+            || [[ " ${_dfltV} " == *" ${e} "* ]]; } \
             && [ -e "/etc/init.d/php${e}-fpm" ]; then
             service php${e}-fpm reload &> /dev/null
           fi
@@ -3380,6 +3397,8 @@ _octopus_cleanup() {
           # memberless group with it, and the gid sweep below had nothing
           # to sweep with on exactly the converted boxes it is for.
           _grpGid=$(getent group "${_usEr}" 2>/dev/null | cut -d: -f3)
+          # the account's web group, the same way
+          _wgGid=$(getent group "wg-${_usEr}" 2>/dev/null | cut -d: -f3)
           for p in $(cat ${_zombie_dir}.purge.list | grep "${_usEr}" 2>&1);do
             _usr_name=`echo $p | cut -d':' -f1 | awk '{ print $1}'`
             _usr_home=`echo $p | cut -d':' -f2 | awk '{ print $1}'`
@@ -3411,6 +3430,12 @@ _octopus_cleanup() {
             mv -f "${_lftTree}" ${_zombie_dir}left/ && echo "parked surviving tree ${_lftTree} in ${_zombie_dir}left/"
           fi
         done
+        # The parked trees lie outside every gid scan below, so the account's
+        # web group is taken off them first: a gid freed by the groupdel
+        # below and handed to a later group would otherwise reach them.
+        if [ -n "${_wgGid}" ] && [ -d "${_zombie_dir}left" ] && [ ! -L "${_zombie_dir}left" ]; then
+          chown -R -h -P --from=":${_wgGid}" ":root" "${_zombie_dir}left" &> /dev/null
+        fi
         # The account's private group (per-instance group model) outlives
         # every deluser above; drop it once nothing holds it, or the GID is
         # left for a later account to inherit. What the purge leaves on
@@ -3445,6 +3470,34 @@ _octopus_cleanup() {
             groupdel "${_usEr}" &> /dev/null && echo "removed group ${_usEr}"
           fi
         fi
+        # The account's web group (wg-<account>) is no user's name, so no
+        # deluser ever takes it: the same rule, on its own gid, over the
+        # same places and the account's PHP cache dir, which only it uses.
+        if [ -n "${_wgGid}" ]; then
+          for _lftDir in /opt/user/gems/${_usEr} /opt/user/gems/${_usEr}.* \
+            /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* \
+            /mnt/*/files/${_usEr} /var/www/phpcache/${_usEr}; do
+            if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
+              chown -R -h -P --from=":${_wgGid}" "root:root" "${_lftDir}" &> /dev/null
+            fi
+          done
+          _grpLeft=$(find -P /data/disk /home /opt/user /var/www -xdev -gid "${_wgGid}" -print -quit 2>/dev/null)
+          if [ -z "${_grpLeft}" ]; then
+            for _mntDir in /mnt/*; do
+              [ -d "${_mntDir}" ] && mountpoint -q "${_mntDir}" 2>/dev/null || continue
+              _grpLeft=$(find -P "${_mntDir}" -xdev -gid "${_wgGid}" -print -quit 2>/dev/null)
+              [ -n "${_grpLeft}" ] && break
+            done
+          fi
+          if [ -n "${_grpLeft}" ]; then
+            echo "group wg-${_usEr} kept: paths still carry gid ${_wgGid} (${_grpLeft})"
+          elif [ -z "$(getent group "wg-${_usEr}" 2>/dev/null | cut -d: -f4)" ] \
+            && ! getent passwd | awk -F: -v g="${_wgGid}" '$4 == g { f=1 } END { exit !f }'; then
+            groupdel "wg-${_usEr}" &> /dev/null && echo "removed group wg-${_usEr}"
+          fi
+        fi
+        # root's record of the account's conversion to it goes with the account
+        rm -f -- "/root/.${_usEr}.web-group.txt"
         if nginx -t &> /dev/null; then
           service nginx reload &> /dev/null
           echo "nginx configtest OK, reloaded"

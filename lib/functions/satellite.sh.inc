@@ -488,6 +488,29 @@ _satellite_create_web_user() {
     adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB} &> /dev/null
     _satellite_web_user_update "$1"
   fi
+  # A pool user made anew drops every group listing: once the account holds
+  # its own web group, the pool is listed in it before its pool file is
+  # written and FPM reloaded, or its workers could not read settings.php.
+  _satellite_wg_grant "${_WEB}"
+}
+
+#
+# An identity of an account that holds its own web group is listed in that
+# group (supplementary, verified in the group database, never by id -nG);
+# nothing to do while the account has none. $1 = the identity.
+_satellite_wg_grant() {
+  local _st _g
+  _st=$(_web_group_state "${1}")
+  case "${_st%% *}" in
+    held|converted|phaseb) ;;
+    *) return 0 ;;
+  esac
+  _g="${_st##* }"
+  getent group "${_g}" | cut -d: -f4 | tr ',' '\n' | grep -qxF "${1}" && return 0
+  usermod -aG "${_g}" "${1}" &> /dev/null
+  getent group "${_g}" | cut -d: -f4 | tr ',' '\n' | grep -qxF "${1}" && return 0
+  _msg "${_STATUS} A: ALRT: ${1} could not be listed in ${_g}"
+  return 1
 }
 
 #
@@ -767,8 +790,18 @@ _satellite_tune_fpm_config() {
       echo "php_admin_value[memory_limit] = ${_FPM_MEM_LIMIT}M" >> /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
       wait
     fi
+    # Once the account's identities have left www-data, its pool runs in the
+    # account's own web group (after the include, which sets www-data). A
+    # group that does not resolve would fail this whole PHP version on
+    # reload, so it is written only when it does.
+    _T_WGS=$(_web_group_state "${_USER}")
+    if [ "${_T_WGS%% *}" = "phaseb" ] && [ "${_T_WGS##* }" = "wg-${_USER}" ] \
+      && getent group "${_T_WGS##* }" > /dev/null 2>&1; then
+      echo "group = ${_T_WGS##* }" >> /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
+    fi
     mkdir -p /var/www/phpcache/${_USER}/${_USER}.{85,84,83,82,81,80,74,73,72,71,70,56}
-    chgrp www-data /var/www/phpcache/${_USER}/${_USER}.{85,84,83,82,81,80,74,73,72,71,70,56}
+    _T_WG=$(_web_group "${_USER}")
+    [ -n "${_T_WG}" ] && chgrp "${_T_WG}" /var/www/phpcache/${_USER}/${_USER}.{85,84,83,82,81,80,74,73,72,71,70,56}
     chmod 770 /var/www/phpcache/${_USER}/${_USER}.{85,84,83,82,81,80,74,73,72,71,70,56}
     if [ ! -d "${_ROOT}/tmp" ]; then
       mkdir -p ${_ROOT}/tmp
@@ -825,6 +858,15 @@ _satellite_check_id() {
   if [[ "${_USER}" =~ "${_REGEX}" ]]; then
     _msg "ERROR: ${_USER} is a wrong username"
     _msg "ERROR: The correct username should start with a letter, not digit"
+    _clean_pid_exit
+  fi
+  # wg-<account> is every account's web group: an account of that name would
+  # get its per-instance group under another account's web group name. A
+  # dot would make the account read as the one named before it (an
+  # account's identities are <account>.<name>).
+  if [[ "${_USER}" == wg-* ]] || [[ "${_USER}" == *.* ]]; then
+    _msg "ERROR: ${_USER} begins with wg-, or holds a dot; both are reserved"
+    _msg "ERROR: Please choose a different _USER"
     _clean_pid_exit
   fi
 }
@@ -3963,12 +4005,13 @@ _satellite_run_child_b() {
         ### files/ moved into the account's store (autosymlink) is a link:
         ### the link itself is handed over, and the modes are set in the
         ### store it leads to when that is the account's own.
+        _T_WG=$(_web_group "${_USER}")
         if [ -L "${_THIS_HM_SITE}/files" ]; then
           _acct_in_real_dir "${_THIS_HM_SITE}" \
-            chown -h "${_USER}:${_WEBG}" ./files
+            chown -h "${_USER}${_T_WG:+:${_T_WG}}" ./files
         else
           _acct_in_real_dir "${_THIS_HM_SITE}/files" \
-            chown -R "${_USER}:${_WEBG}" .
+            chown -R "${_USER}${_T_WG:+:${_T_WG}}" .
         fi
         _satellite_in_store_dir "${_THIS_HM_SITE}/files" \
           _satellite_tree_mode_all_here 02775 0664
@@ -4052,8 +4095,11 @@ _satellite_run_post_install() {
       ln -sfn ${_ROOT}/config/${_USER}.nginx.conf \
         /var/aegir/config/server_master/nginx/platform.d/${_USER}.conf
     fi
-    chgrp -R ${_WEBG} ${_HM_ROOT}/sites/${_DOMAIN}/files
-    chgrp ${_WEBG} ${_HM_ROOT}/sites/${_DOMAIN}/settings.php
+    _T_WG=$(_web_group "${_USER}")
+    if [ -n "${_T_WG}" ]; then
+      chgrp -R "${_T_WG}" ${_HM_ROOT}/sites/${_DOMAIN}/files
+      chgrp "${_T_WG}" ${_HM_ROOT}/sites/${_DOMAIN}/settings.php
+    fi
     rm -rf ${_HM_ROOT}/profiles/default
     rm -rf ${_HM_ROOT}/themes/bluemarine
     rm -rf ${_HM_ROOT}/themes/chameleon
@@ -4458,7 +4504,11 @@ _satellite_if_add_ftps_lshell_access() {
   # per-instance group. Lists the identity in the group database whatever its
   # primary group is; a primary 'users' alone is not a listed membership.
   usermod -aG ${_USRG} ${_USERFTP} &> /dev/null
-  adduser ${_USERFTP} ${_WEBG} &> /dev/null
+  # www-data (files/ write, settings.php read) until the account's identities
+  # have left it for the account's own web group, listed once it holds one.
+  _T_WGS=$(_web_group_state "${_USERFTP}")
+  [ "${_T_WGS%% *}" = "phaseb" ] || adduser ${_USERFTP} ${_WEBG} &> /dev/null
+  _satellite_wg_grant "${_USERFTP}"
   usermod -aG lshellg ${_USERFTP}
   chsh -s ${_PATH_LSHELL} ${_USERFTP} &> /dev/null
   # Attached files mount = the SINGLE real mountpoint under /mnt (naming-agnostic).
@@ -7917,7 +7967,8 @@ _satellite_child_b_aegir_build() {
     mkdir -p ${_HM_ROOT}/sites/all/{modules,themes,libraries}
     mkdir -p ${_HM_ROOT}/sites/${_DOMAIN}/files/{tmp,js,css}
     chmod 02775 -R ${_HM_ROOT}/sites/${_DOMAIN}/files &> /dev/null
-    chgrp -R ${_WEBG} ${_HM_ROOT}/sites/${_DOMAIN}/files &> /dev/null
+    _T_WG=$(_web_group "${_USER}")
+    [ -n "${_T_WG}" ] && chgrp -R "${_T_WG}" ${_HM_ROOT}/sites/${_DOMAIN}/files &> /dev/null
     rm -f ${_ROOT}/u/${_DOMAIN}
     ln -sfn ${_HM_ROOT} ${_ROOT}/u/${_DOMAIN}
     rm -f /data/u/${_DOMAIN} &> /dev/null

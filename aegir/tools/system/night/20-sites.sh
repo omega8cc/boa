@@ -42,6 +42,96 @@ if ! declare -F _acct_group > /dev/null 2>&1; then
     echo "${_g}"
   }
 fi
+### The web-group helpers, for the same skew: every web-path writer below
+### derives the group through them.
+if ! declare -F _web_group_state > /dev/null 2>&1; then
+  _web_group_state() {
+    # The account's own web group, wg-<account>, derived on the box and never
+    # taken from argv or a cnf: the group its pools, backend user and shell
+    # users share for its web paths once the account is converted to it.
+    # Prints "<state> <gid> <group>", "none - -" when there is no such group
+    # (the record is root's: run as another user, converted reads as held):
+    #   none       no group of that name
+    #   foreign    the group exists, but an identity outside the account holds
+    #              it too: never joined nor written to; claim passes still leave
+    #              its paths alone (taking them would cut the pools off)
+    #   held       the group exists and only this account's identities hold it:
+    #              claim passes leave its paths alone, new identities join it
+    #   converted  and root's record names that gid: writers use the group
+    #   phaseb     and the record says the identities have left www-data
+    # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+    # phase=<A|B> ...", root's own file outside the account tree, so neither
+    # the account nor a copy or restore of its tree can make or move it.
+    # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+    # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+    # gems or npm tree, or its store on attached storage
+    # (/mnt/<m>/files/<oN>/static/files).
+    local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+    # a path is read as written (an alias the account wrote can carry "..",
+    # "." or "//"): normalised by text alone, never through a link, first
+    case "${_a}" in
+      */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+    esac
+    case "${_a}" in
+      /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+      /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+      /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+      /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+        _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+      */*) echo "none - -"; return 0 ;;
+    esac
+    _a="${_a%%.*}"
+    case "${_a}" in
+      ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+    esac
+    _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+    _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+    case "${_gid}" in
+      ""|*[!0-9]*) echo "none - -"; return 0 ;;
+    esac
+    # every holder of the gid: members of each group entry carrying it (a
+    # second entry can share the number) and every user with it as primary
+    for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+      $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+      [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+        || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+    done
+    _r="/root/.${_a}.web-group.txt"
+    if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+      && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+      read -r _rg _rgid _rph _ < "${_r}" || :
+    fi
+    if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+      echo "held ${_gid} wg-${_a}"
+    elif [ "${_rph}" = "phase=B" ]; then
+      echo "phaseb ${_gid} wg-${_a}"
+    elif [ "${_rph}" = "phase=A" ]; then
+      echo "converted ${_gid} wg-${_a}"
+    else
+      echo "held ${_gid} wg-${_a}"
+    fi
+  }
+
+  _web_group() {
+    # The group a root writer gives an account's web paths (files/, private/,
+    # settings.php and the like): wg-<account> once the account is converted,
+    # www-data otherwise, as always. Until the record says converted every
+    # identity of the account still holds www-data (a conversion grants the web
+    # group first and a revert gives www-data back before it moves any path),
+    # so www-data is the old state, never an outage. Callers write
+    # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
+    # group and never hands a path to a login group. Run as any user but root,
+    # which cannot read root's record, a held group answers empty: the group
+    # each path has is kept. $1 as _web_group_state.
+    local _s
+    _s=$(_web_group_state "${1}")
+    case "${_s%% *}" in
+      converted|phaseb) echo "${_s##* }" ;;
+      held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+      *) echo "www-data" ;;
+    esac
+  }
+fi
 
 ### night.inc.sh carries its own fNN serial and is fetched separately, so a box
 ### can briefly hold this file alongside an older library that predates the
@@ -831,6 +921,45 @@ _site_files_store() {
   esac
   return 1
 }
+### The web group a site's resolved files or private store takes: the site
+### account's own for a store that is the account's (in its tree, on its
+### attached-storage store, or a real child of the site dir); for another
+### account's store (a share), www-data while neither account has converted,
+### as always, and SKIP otherwise -- the store is then left as it is, owner,
+### group and modes, since handing it to either account's group would take it
+### from the other's pools (the conversion decides such shares). $1 = the
+### resolved store, $2 = the resolved site dir. Reads _HM_U, _Dir.
+_store_web_group() {
+  local _wgS _wgO _m
+  _wgS=$(_web_group "$(_night_phys "${_Dir}")")
+  # a real child of the site dir (only when the site dir resolved)
+  if [ -n "${2}" ]; then
+    case "${1}/" in
+      "${2}"/*) echo "${_wgS}"; return 0 ;;
+    esac
+  fi
+  case "${1}/" in
+    /data/disk/"${_HM_U}"/*)
+      echo "${_wgS}"
+      return 0
+      ;;
+    /mnt/?*/files/"${_HM_U}"/static/files/*)
+      # its store on attached storage: no files/ or static/ in the mount
+      # part (the store rule), so a path in another account's store is not
+      _m="${1%%/files/"${_HM_U}"/static/files*}"
+      case "${_m}" in
+        */files/*|*/static/*) ;;
+        *) echo "${_wgS}"; return 0 ;;
+      esac
+      ;;
+  esac
+  _wgO=$(_web_group "${1}")
+  if [ "${_wgS}" = "www-data" ] && [ "${_wgO}" = "www-data" ]; then
+    echo "www-data"
+  else
+    echo "SKIP"
+  fi
+}
 ### Run "$@" inside the directory $1, a path resolved just before: entered
 ### with cd -P and checked there, so ./name stays in it whatever is swapped.
 _in_pinned_dir() {
@@ -984,13 +1113,15 @@ _fix_llms_txt() {
   # rename() replaces a re-planted link instead of following it; the content
   # is read and hashed bounded and never through a link, and the owner and
   # mode legs never follow one.
-  local _fls _url
+  local _fls _url _wg
   if ! _site_files_store; then
     [ -e "${_Dir}/files" ] \
       && echo "SKIP: ${_Dir}/files resolves outside any static store (llms.txt)"
     return 0
   fi
   _fls="${_R_FLS}"
+  _wg=$(_store_web_group "${_fls}" "$(realpath -e -- "${_Dir}" 2> /dev/null)")
+  [ "${_wg}" = "SKIP" ] && _wg=""
   _url="http://${_Dom}/llms.txt?nocache=1&noredis=1"
   _in_pinned_dir "${_fls}" _desymlink_planted ./llms.txt
   # A tenant-uploaded policy is durable content, served as-is for as long as
@@ -1036,7 +1167,7 @@ _fix_llms_txt() {
       # The test above is a read and a grep away, and files/ is
       # tenant-writable: -h and a no-follow mode set, so a link replanted in
       # that window is never followed.
-      _in_pinned_dir "${_fls}" _own_nolink_here llms.txt "${_HM_U}:www-data" 0664
+      _in_pinned_dir "${_fls}" _own_nolink_here llms.txt "${_HM_U}${_wg:+:${_wg}}" 0664
       if [ -f "${_Plr}/llms.txt" ] || [ -L "${_Plr}/llms.txt" ]; then
         _site_in_resolved_dir "${_Plr}" rm -f -- ./llms.txt
       fi
@@ -1059,7 +1190,7 @@ _fix_llms_txt() {
     _site_in_resolved_dir "${_Dir}" rm -f -- ./.llms-fetched.md5
   else
     if _in_pinned_dir "${_fls}" test ! -L ./llms.txt; then
-      _in_pinned_dir "${_fls}" _own_nolink_here llms.txt "${_HM_U}:www-data" 0664
+      _in_pinned_dir "${_fls}" _own_nolink_here llms.txt "${_HM_U}${_wg:+:${_wg}}" 0664
       # The site dir is not group-writable in the steady state, but
       # _fix_static_permissions walks every dir of a ~/static platform through
       # a 0775 window each night, so the marker IS plantable: it is put as a
@@ -1083,12 +1214,14 @@ _fix_robots_txt() {
   # fetch only into the root-only staging dir and put the copy over the leaf
   # (_store_fetch), read it bounded and never through a link, and never
   # follow one in the owner and mode legs.
-  local _fls
+  local _fls _wg
   if ! _site_files_store; then
     [ -e "${_Dir}/files" ] \
       && echo "SKIP: ${_Dir}/files resolves outside any static store (robots.txt)"
     return 0
   fi
+  _wg=$(_store_web_group "${_R_FLS}" "$(realpath -e -- "${_Dir}" 2> /dev/null)")
+  [ "${_wg}" = "SKIP" ] && _wg=""
   _fls="${_R_FLS}"
   _in_pinned_dir "${_fls}" _desymlink_planted ./robots.txt
   _in_pinned_dir "${_fls}" find ./robots.txt -maxdepth 0 -mtime +6 \
@@ -1106,7 +1239,7 @@ _fix_robots_txt() {
     # files/ is tenant-writable, so the leaf can be replanted between the
     # read above and this call: -h and a no-follow mode set, never through
     # the link.
-    _in_pinned_dir "${_fls}" _own_nolink_here robots.txt "${_HM_U}:www-data" 0664
+    _in_pinned_dir "${_fls}" _own_nolink_here robots.txt "${_HM_U}${_wg:+:${_wg}}" 0664
     if [ -f "${_Plr}/robots.txt" ] || [ -L "${_Plr}/robots.txt" ]; then
       _site_in_resolved_dir "${_Plr}" rm -f -- ./robots.txt
     fi
@@ -1129,14 +1262,15 @@ _fix_boost_cache() {
   elif [ -e "${_Plr}/sites/all/drush/drushrc.php" ]; then
     _site_in_resolved_dir "${_Plr}" mkdir -p ./cache
   fi
-  _site_in_resolved_dir "${_Plr}/cache" _boost_cache_own_here
+  _site_in_resolved_dir "${_Plr}/cache" _boost_cache_own_here \
+    "$(_web_group "$(_night_phys "${_Plr}")")"
 }
 _boost_cache_clear_here() {
   rm -rf -- ./*
   rm -f -- ./.boost ./.htaccess
 }
 _boost_cache_own_here() {
-  chown "${_HM_U}:www-data" . &> /dev/null
+  chown "${_HM_U}${1:+:${1}}" . &> /dev/null
   chmod 02775 . &> /dev/null
 }
 
@@ -1858,12 +1992,18 @@ _fix_seven_core_patch() {
 ### inside the directory walked through a no-follow handle, so a name swapped
 ### for a link at any moment is never followed.
 _static_perm_here() {
+  ### $1 = the platform's web group. Once the account has its own, a site's
+  ### private files keep no world bits (its private store takes them in the
+  ### site leg), so a real sites/<uri>/private or files/private is left out.
+  local _pr=()
+  [[ "${1}" == wg-* ]] && _pr=( -regextype posix-extended \
+    -regex '\./([^/]+/)?sites/[^/]+/(files/)?private' -prune -o )
   _chmod_nofollow_here d 0775 .
-  find . -mindepth 1 -type d \
+  find . -mindepth 1 "${_pr[@]}" -type d \
     ! \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
     -o -path "*/vendor/symfony/console/Style" \) \
     -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0775 {} + &> /dev/null
-  find . -type f -regextype posix-extended \
+  find . "${_pr[@]}" -type f -regextype posix-extended \
     ! -regex '\./([^/]+/)?sites/[^/]+/(settings|local\.settings|civicrm\.settings|solr|drushrc)\.php' \
     -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0664 {} + &> /dev/null
   return 0
@@ -1946,7 +2086,7 @@ _fix_static_permissions() {
       ### skipped that rebuild too. Only the three directories themselves are
       ### skipped (their contents are still walked), and nothing here names
       ### them on a command line, so a link planted at one is never followed.
-      _in_pinned_dir "${_use_Plr}" _static_perm_here
+      _in_pinned_dir "${_use_Plr}" _static_perm_here "${1}"
       ### The pass above widened every sites/<uri>/*.php to 0664, and only an
       ### ACCEPTED site's arm narrows its own back (the 0440 pass at site
       ### level). A site the per-site loop refuses -- a symlinked modules at
@@ -2103,7 +2243,7 @@ _plr_perm_here() {
   ### every mode below it set through a no-follow handle from the directory
   ### walked, and chown -R follows no link below it.
   if [ "${_FOREIGN_CMS}" != "YES" ] && [ -z "${_plrCodeLink}" ]; then
-    _in_real_sub sites/all/libraries/tcpdf/cache _tcpdf_cache_here
+    _in_real_sub sites/all/libraries/tcpdf/cache _tcpdf_cache_here "${2}"
   fi
   return 0
 }
@@ -2113,15 +2253,15 @@ _tcpdf_cache_here() {
     -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0775 {} + &> /dev/null
   find . -mindepth 1 -type f \
     -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0775 {} + &> /dev/null
-  chown -R "${_HM_U}:www-data" . &> /dev/null
+  chown -R "${_HM_U}${1:+:${1}}" . &> /dev/null
   return 0
 }
 
 ### The site level of the permissions pass, inside the real site dir (the
 ### current directory; _site_in_resolved_dir), the same way as
-### _plr_perm_here. $1 = the group. Reads _siteCodeLink.
+### _plr_perm_here. $1 = the group, $2 = the web group. Reads _siteCodeLink.
 _site_perm_here() {
-  local _grp="${1}" _d
+  local _grp="${1}" _wg="${2}" _d
   ### Cleanup
   _rm_glob_here '*.codebasecheck*.info' '*.hm-fix-*.info' \
     '*.ctm-lock-*.info' '*.lock-*.info' '*.perm-fix-*.info'
@@ -2133,7 +2273,7 @@ _site_perm_here() {
   ### chown follows a link at the name: each is changed with -h. No-op on
   ### the regular files they normally are.
   chown -h "${_HM_U}:${_grp}" . &> /dev/null
-  chown -h "${_HM_U}:www-data" ./local.settings.php ./settings.php \
+  chown -h "${_HM_U}${_wg:+:${_wg}}" ./local.settings.php ./settings.php \
     ./civicrm.settings.php &> /dev/null
   ### solr.php holds the site's Solr core details for its owner; no web
   ### reader opens it, so it stays in the code group its writer gives it.
@@ -2182,7 +2322,7 @@ _site_perm_here() {
   ### changes a link itself and walks only a real child dir, without
   ### following a link planted inside it (a tar archive a tenant unpacked can
   ### carry one).
-  chown -h -R "${_HM_U}:www-data" ./files ./private &> /dev/null
+  chown -h -R "${_HM_U}${_wg:+:${_wg}}" ./files ./private &> /dev/null
   return 0
 }
 ### The site's files store, inside the real directory it resolves to (the
@@ -2192,33 +2332,55 @@ _site_perm_here() {
 ### is a name in a tenant-writable dir), the nested ones only inside their
 ### real parent.
 _files_store_perm_here() {
-  find . -mindepth 1 -type d \
+  ### $1 = the web group; once the account has its own, a Drupal 7
+  ### files/private takes the private store's modes (no world bits).
+  local _wg="${1}" _pr=()
+  [[ "${_wg}" == wg-* ]] && _pr=( -path ./private -prune -o )
+  find . -mindepth 1 "${_pr[@]}" -type d \
     -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 02775 {} + &> /dev/null
-  find . -mindepth 1 -type f \
+  find . -mindepth 1 "${_pr[@]}" -type f \
     -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0664 {} + &> /dev/null
+  if [[ "${_wg}" == wg-* ]]; then
+    _in_real_sub private _private_modes_here "${_wg}"
+  fi
   _chmod_nofollow_here d 02775 .
-  chown "${_HM_U}:www-data" . &> /dev/null
-  chown -h "${_HM_U}:www-data" ./tmp ./images ./pictures ./css ./js \
+  chown "${_HM_U}${_wg:+:${_wg}}" . &> /dev/null
+  chown -h "${_HM_U}${_wg:+:${_wg}}" ./tmp ./images ./pictures ./css ./js \
     ./advagg_css ./advagg_js ./ctools ./imagecache ./locations \
     ./xmlsitemap ./deployment ./styles ./private ./civicrm &> /dev/null
-  _in_real_sub ctools chown -h "${_HM_U}:www-data" ./css &> /dev/null
-  _in_real_sub civicrm chown -h "${_HM_U}:www-data" ./templates_c ./upload \
-    ./persist ./custom ./dynamic &> /dev/null
+  _in_real_sub ctools chown -h "${_HM_U}${_wg:+:${_wg}}" ./css &> /dev/null
+  _in_real_sub civicrm chown -h "${_HM_U}${_wg:+:${_wg}}" ./templates_c \
+    ./upload ./persist ./custom ./dynamic &> /dev/null
+  return 0
+}
+### Private files' modes in the current (real) directory: every directory
+### 02770 and regular file 0660 once the account has its own web group
+### ($1 wg-*), 02775 and 0664 otherwise, as always.
+_private_modes_here() {
+  local _d=02775 _f=0664
+  if [[ "${1}" == wg-* ]]; then
+    _d=02770
+    _f=0660
+  fi
+  find . -mindepth 1 -type d \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d "${_d}" {} + &> /dev/null
+  find . -mindepth 1 -type f \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f "${_f}" {} + &> /dev/null
+  _chmod_nofollow_here d "${_d}" .
   return 0
 }
 ### The site's private store, the same way.
 _private_store_perm_here() {
-  find . -mindepth 1 -type d \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 02775 {} + &> /dev/null
-  find . -mindepth 1 -type f \
-    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0664 {} + &> /dev/null
-  _chmod_nofollow_here d 02775 .
-  chown "${_HM_U}:www-data" . &> /dev/null
-  chown -h "${_HM_U}:www-data" ./files ./temp &> /dev/null
-  _in_real_sub files chown -h "${_HM_U}:www-data" ./backup_migrate &> /dev/null
-  _in_real_sub files/backup_migrate chown -h "${_HM_U}:www-data" \
+  ### $1 = the web group.
+  local _wg="${1}"
+  _private_modes_here "${_wg}"
+  chown "${_HM_U}${_wg:+:${_wg}}" . &> /dev/null
+  chown -h "${_HM_U}${_wg:+:${_wg}}" ./files ./temp &> /dev/null
+  _in_real_sub files chown -h "${_HM_U}${_wg:+:${_wg}}" ./backup_migrate \
+    &> /dev/null
+  _in_real_sub files/backup_migrate chown -h "${_HM_U}${_wg:+:${_wg}}" \
     ./manual ./scheduled &> /dev/null
-  chown -h -R "${_HM_U}:www-data" ./config &> /dev/null
+  chown -h -R "${_HM_U}${_wg:+:${_wg}}" ./config &> /dev/null
   return 0
 }
 
@@ -2229,13 +2391,16 @@ _fix_permissions() {
   ### instance still hosts sites on, and the helper answers 'users' there (and
   ### on an unconverted box), the account's own group only for a tree under
   ### /data/disk/<account>. Local, so nothing leaks across the per-site loop.
-  local _grp _drTxt
+  local _grp _drTxt _wgP _wgS _wgF
   _grp=$(_acct_group "$(_night_phys "${_Plr}")")
+  ### The web group the same way: www-data on the shared stores and until
+  ### the account is converted to its own.
+  _wgP=$(_web_group "$(_night_phys "${_Plr}")")
   ### modules,themes,libraries - profile level in ~/static
   searchStringT="/static/"
   case ${_Plr} in
   *"$searchStringT"*)
-  _fix_static_permissions
+  _fix_static_permissions "${_wgP}"
   ;;
   esac
   ### modules,themes,libraries - platform level
@@ -2274,7 +2439,7 @@ _fix_permissions() {
     && [ -e "${_Plr}" ] \
     && [ ! -L "${_Plr}/sites" ] \
     && [ ! -L "${_Plr}/sites/all" ]; then
-    _site_in_resolved_dir "${_Plr}" _plr_perm_here "${_grp}"
+    _site_in_resolved_dir "${_Plr}" _plr_perm_here "${_grp}" "${_wgP}"
     _log_ctrl_mark "plr.${_PlrID}.perm-fix-${_NOW}.info"
   fi
   ### sites/ is 02771 and group-writable on tenant composer codebases (the
@@ -2316,7 +2481,8 @@ _fix_permissions() {
     ### function) -- a site can sit on the shared store even when its platform
     ### variable does not.
     _grp=$(_acct_group "$(_night_phys "${_Dir}")")
-    _site_in_resolved_dir "${_Dir}" _site_perm_here "${_grp}"
+    _wgS=$(_web_group "$(_night_phys "${_Dir}")")
+    _site_in_resolved_dir "${_Dir}" _site_perm_here "${_grp}" "${_wgS}"
     ### files/ and private/ are legitimately symlinks into a per-account
     ### static store (a shared store may sit under another account), so each
     ### is resolved -- but sites/ is 02771 and the store 02775, both
@@ -2330,7 +2496,12 @@ _fix_permissions() {
     if [ -n "${_rDir}" ] && [ -n "${_rFls}" ]; then
       case "${_rFls}/" in
         */static/files/*|"${_rDir}"/*)
-          _in_pinned_dir "${_rFls}" _files_store_perm_here
+          _wgF=$(_store_web_group "${_rFls}" "${_rDir}")
+          if [ "${_wgF}" = "SKIP" ]; then
+            echo "NOTE: ${_Dir}/files is another account's store (${_rFls}) and one of the two has its own web group: left as it is"
+          else
+            _in_pinned_dir "${_rFls}" _files_store_perm_here "${_wgF}"
+          fi
           ;;
         *)
           echo "SKIP: ${_Dir}/files resolves outside any static store: ${_rFls}"
@@ -2341,7 +2512,12 @@ _fix_permissions() {
     if [ -n "${_rDir}" ] && [ -n "${_rPrv}" ]; then
       case "${_rPrv}/" in
         */static/files/*|"${_rDir}"/*)
-          _in_pinned_dir "${_rPrv}" _private_store_perm_here
+          _wgF=$(_store_web_group "${_rPrv}" "${_rDir}")
+          if [ "${_wgF}" = "SKIP" ]; then
+            echo "NOTE: ${_Dir}/private is another account's store (${_rPrv}) and one of the two has its own web group: left as it is"
+          else
+            _in_pinned_dir "${_rPrv}" _private_store_perm_here "${_wgF}"
+          fi
           ;;
         *)
           echo "SKIP: ${_Dir}/private resolves outside any static store: ${_rPrv}"
@@ -2390,7 +2566,7 @@ _fix_permissions() {
       /usr/local/bin/fix-drupal-site-ownership.sh \
         --site-path="${_Dir}" \
         --script-user="${_HM_U}" \
-        --web-group=www-data &> /dev/null
+        --web-group="$(_web_group "$(_night_phys "${_Dir}")")" &> /dev/null
     fi
     if [ -x "/usr/local/bin/fix-drupal-site-permissions.sh" ]; then
       /usr/local/bin/fix-drupal-site-permissions.sh \

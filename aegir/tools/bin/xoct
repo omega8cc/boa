@@ -56,6 +56,114 @@ _acct_group() {
   echo "${_g}"
 }
 
+_web_group_state() {
+  # The account's own web group, wg-<account>, derived on the box and never
+  # taken from argv or a cnf: the group its pools, backend user and shell
+  # users share for its web paths once the account is converted to it.
+  # Prints "<state> <gid> <group>", "none - -" when there is no such group
+  # (the record is root's: run as another user, converted reads as held):
+  #   none       no group of that name
+  #   foreign    the group exists, but an identity outside the account holds
+  #              it too: never joined nor written to; claim passes still leave
+  #              its paths alone (taking them would cut the pools off)
+  #   held       the group exists and only this account's identities hold it:
+  #              claim passes leave its paths alone, new identities join it
+  #   converted  and root's record names that gid: writers use the group
+  #   phaseb     and the record says the identities have left www-data
+  # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+  # phase=<A|B> ...", root's own file outside the account tree, so neither
+  # the account nor a copy or restore of its tree can make or move it.
+  # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+  # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+  # gems or npm tree, or its store on attached storage
+  # (/mnt/<m>/files/<oN>/static/files).
+  local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  # a path is read as written (an alias the account wrote can carry "..",
+  # "." or "//"): normalised by text alone, never through a link, first
+  case "${_a}" in
+    */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+  esac
+  case "${_a}" in
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+    /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+    /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+      _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+    */*) echo "none - -"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  case "${_a}" in
+    ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+  esac
+  _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  # every holder of the gid: members of each group entry carrying it (a
+  # second entry can share the number) and every user with it as primary
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+      || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+  done
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-${_a}"
+  else
+    echo "held ${_gid} wg-${_a}"
+  fi
+}
+
+_web_group() {
+  # The group a root writer gives an account's web paths (files/, private/,
+  # settings.php and the like): wg-<account> once the account is converted,
+  # www-data otherwise, as always. Until the record says converted every
+  # identity of the account still holds www-data (a conversion grants the web
+  # group first and a revert gives www-data back before it moves any path),
+  # so www-data is the old state, never an outage. Callers write
+  # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
+  # group and never hands a path to a login group. Run as any user but root,
+  # which cannot read root's record, a held group answers empty: the group
+  # each path has is kept. $1 as _web_group_state.
+  local _s
+  _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted|phaseb) echo "${_s##* }" ;;
+    held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+    *) echo "www-data" ;;
+  esac
+}
+
+# The group the target's own writers give an account's web paths there:
+# wg-<account> once the account is converted there, www-data otherwise,
+# derived on the target by the helper above, sent along with the question.
+# Prints nothing and returns 1 when the target cannot be asked. Verbatim in
+# xoct, xcopy and xmass.
+# $1 = account on the target, $2 = target host.
+_web_group_on_target() {
+  local _a="${1}" _h="${2}" _o
+  case "${_a}" in ""|*[!a-z0-9-]*) return 1 ;; esac
+  [ -n "${_h}" ] || return 1
+  _o=$( { declare -f _web_group_state _web_group
+    printf '%s\n' "echo \"XMWG:\$(_web_group '${_a}')\""; } \
+    | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" "bash -s" 2> /dev/null \
+    | grep -m1 -x -E 'XMWG:[a-z0-9-]+')
+  _o="${_o#XMWG:}"
+  case "${_o}" in
+    www-data|"wg-${_a}") echo "${_o}" ;;
+    *) return 1 ;;
+  esac
+}
+
 ###
 ### Avoid too many questions
 ###
@@ -2431,6 +2539,11 @@ _GI="\$(getent group "\${_G}" 2>/dev/null | cut -d: -f3)"
 _WG="\$(getent group www-data 2>/dev/null | cut -d: -f3)"
 case "\${_GI}" in ''|*[!0-9]*) _GI="" ;; esac
 case "\${_WG}" in ''|*[!0-9]*) _WG=-1 ;; esac
+# the account's own web group there, when it exists: its paths are the
+# pools' and are never claimed (by number: find refuses an unknown name)
+_XW="\$(getent group "wg-\${_A}" 2>/dev/null | cut -d: -f3)"
+_WGX=()
+case "\${_XW}" in ''|*[!0-9]*) _XW=-1 ;; *) _WGX=( ! -gid "\${_XW}" ) ;; esac
 for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gems/\${_A}" /opt/user/gems/"\${_A}".* "/opt/user/npm/\${_A}" /opt/user/npm/"\${_A}".* "\${_MP:+\${_MP}/files/\${_A}/static/files}"; do
   [ -n "\${_R}" ] && [ -d "\${_R}" ] && [ ! -L "\${_R}" ] || continue
   # the FPM pool users' homes (oN.web, oN.NN.web) are www-data's, never the
@@ -2442,8 +2555,8 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
   # another file renamed in (or put there) is never regrouped; a link's own
   # group grants nothing and is left
   [ -n "\${_GI}" ] || continue
-  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root \( -type f -o -type d \) \
-    -execdir perl -e 'use Fcntl; my (\$g, \$w) = splice(@ARGV, 0, 2); for my \$n (@ARGV) { sysopen(my \$h, \$n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat(\$h); chown(-1, \$g, \$h) if @s && \$s[5] != \$g && \$s[5] != \$w && \$s[5] != 0 && (-d _ || (-f _ && \$s[3] == 1)); close(\$h); } exit 0' -- "\${_GI}" "\${_WG}" {} + 2>/dev/null
+  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root "\${_WGX[@]}" \( -type f -o -type d \) \
+    -execdir perl -e 'use Fcntl; my (\$g, \$w, \$x) = splice(@ARGV, 0, 3); for my \$n (@ARGV) { sysopen(my \$h, \$n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat(\$h); chown(-1, \$g, \$h) if @s && \$s[5] != \$g && \$s[5] != \$w && \$s[5] != \$x && \$s[5] != 0 && (-d _ || (-f _ && \$s[3] == 1)); close(\$h); } exit 0' -- "\${_GI}" "\${_WG}" "\${_XW}" {} + 2>/dev/null
 done
 # log/ is the account's own: the record is read and removed only inside the
 # real directory, never through a link or into a FIFO put there
@@ -2469,6 +2582,45 @@ REMOTE
 
 _xoct_regroup_target_account() {
   _acct_regroup_remote "$1" "$2"
+}
+
+### An account converted to its own web group here (its web paths in
+### wg-<account>, private/ 02770/0660) must not land on a target whose tools
+### predate the web group: their claim passes and nightly would hand those
+### paths back. The target's instgrp, which the destination pass runs, is
+### asked; an answer that cannot be read counts as no. While the account
+### holds a web group here, its legs map it onto the one the target's
+### writers give the target account (_XOCT_GMAP): by name alone its paths
+### would land in a number that is no group there, or another account's;
+### an answer that cannot be read is refused, never guessed.
+### A refusal is a DENY: the dry run is not clean, a live run stops.
+_xoct_webgroup_gate() {   # 1 account here 2 account on the target 3 target
+  local _st _ans _wg
+  _XOCT_GMAP=""
+  _st=$(_web_group_state "${1}" | cut -d' ' -f1)
+  [ "${_st}" = "none" ] && return 0
+  case "${_st}" in
+    converted|phaseb)
+      _ans=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${3}" \
+        "grep -q '^_web_group_state() {' /opt/local/bin/instgrp 2>/dev/null && echo XMWG-READY || echo XMWG-OLD" \
+        2>/dev/null | grep -m1 -x -E 'XMWG-(READY|OLD)')
+      if [ "${_ans}" != "XMWG-READY" ]; then
+        echo "DENY: ${1} uses its own web group here, and the tools on ${3} predate it (or could not be asked); bring ${3} to this BOA release (barracuda AND octopus) first"
+        _XOCT_NOT_CLEAN=YES
+        [ "${_MODE}" = "LIVE" ] && exit 1
+        return 1
+      fi
+      ;;
+  esac
+  _wg=$(_web_group_on_target "${2}" "${3}") || _wg=""
+  if [ -z "${_wg}" ]; then
+    echo "DENY: could not read the web group of ${2} on ${3}; the web paths of ${1} never land in a guessed group"
+    _XOCT_NOT_CLEAN=YES
+    [ "${_MODE}" = "LIVE" ] && exit 1
+    return 1
+  fi
+  _XOCT_GMAP="wg-${1}:${_wg}"
+  return 0
 }
 
 _xoct_rewrite_target_account_refs() {
@@ -4278,7 +4430,8 @@ _xoct_rsync() {
     # Trailing (after "$@") is deliberate: callers pass -a/-aEAX which implies
     # -D; rsync honours the LAST matching option, so these must follow -a to
     # actually drop device/fifo/socket nodes. Never transfer specials.
-    rsync "$@" --no-devices --no-specials
+    # _XOCT_GMAP maps the account's web group (see _xoct_webgroup_gate).
+    rsync "$@" ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} --no-devices --no-specials
   else
     echo "[DRY-PLAN] would rsync: $*"
   fi
@@ -4325,7 +4478,9 @@ _xoct_put_on_root() {
       echo "DENY: ${_dstRoot} on the target does not resolve into ${_acct}'s own tree or store -- nothing copied"
       return 3
     fi
+    # the store is files/ and private/: the web group map rides it too
     if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
+      ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} \
       --rsync-path="$(_xoct_canon_rpath "${_dreal}")" -e ssh ./ root@"${_th}":./; then
       echo "DENY: rsync to ${_dstRoot} on target root failed"
       return 3
@@ -4334,7 +4489,8 @@ _xoct_put_on_root() {
   fi
   _q="$(_shq "${_dstRoot}")"
   ssh root@"${_th}" "if [ -L '${_q}' ]; then rm -f '${_q}'; elif [ -e '${_q}' ] && [ ! -d '${_q}' ]; then rm -f '${_q}'; fi; mkdir -p '${_q}'"
-  if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh ./ root@"${_th}":"${_dstRoot}/"; then
+  if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
+    ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} -e ssh ./ root@"${_th}":"${_dstRoot}/"; then
     echo "DENY: rsync to ${_dstRoot} on target root failed"
     return 3
   fi
@@ -4360,6 +4516,7 @@ _xoct_put_on_mount() {
       return 3
     fi
     if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
+      ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} \
       --rsync-path="$(_xoct_canon_rpath "${_mreal}")" -e ssh ./ root@"${_th}":./; then
       echo "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
       return 3
@@ -4371,7 +4528,8 @@ _xoct_put_on_mount() {
     return 0
   fi
   ssh root@"${_th}" "mkdir -p '${_qm}'"
-  if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh ./ root@"${_th}":"${_mntDest}/"; then
+  if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
+    ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} -e ssh ./ root@"${_th}":"${_mntDest}/"; then
     echo "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
     return 3
   fi
@@ -5491,6 +5649,10 @@ _migrate_init() {
         fi
         # Resolve the target's attached mount (aborts on empty/unreachable/multi-mount).
         _xoct_resolve_target_mnt "${_tgt}"
+        # The account's web group: refused on a target whose tools predate
+        # it, mapped onto the target account's otherwise (before the token
+        # below is consumed, so a refusal never costs another dry run).
+        _xoct_webgroup_gate "${_oct}" "${_DST##*/}" "${_tgt}"
         # --live requires a prior CLEAN dry run for this account+target.
         [ "${_MODE}" = "LIVE" ] && _xoct_require_clean_dry "${_oct}" "${_tgt}"
         _XOCT_STORE_RC=0
@@ -6491,6 +6653,7 @@ _check_root() {
 # recognised (and stripped), so no positional argument is ever mistaken for one.
 _MODE=LIVE
 _XOCT_NOT_CLEAN=NO
+_XOCT_GMAP=""
 _XOCT_FORCE=""
 case "$1" in
   transfer|pretransfer)

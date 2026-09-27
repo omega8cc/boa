@@ -122,6 +122,93 @@ _store_dir() {
   printf '%s' "${_res}"
 }
 
+_web_group_state() {
+  # The account's own web group, wg-<account>, derived on the box and never
+  # taken from argv or a cnf: the group its pools, backend user and shell
+  # users share for its web paths once the account is converted to it.
+  # Prints "<state> <gid> <group>", "none - -" when there is no such group
+  # (the record is root's: run as another user, converted reads as held):
+  #   none       no group of that name
+  #   foreign    the group exists, but an identity outside the account holds
+  #              it too: never joined nor written to; claim passes still leave
+  #              its paths alone (taking them would cut the pools off)
+  #   held       the group exists and only this account's identities hold it:
+  #              claim passes leave its paths alone, new identities join it
+  #   converted  and root's record names that gid: writers use the group
+  #   phaseb     and the record says the identities have left www-data
+  # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+  # phase=<A|B> ...", root's own file outside the account tree, so neither
+  # the account nor a copy or restore of its tree can make or move it.
+  # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+  # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+  # gems or npm tree, or its store on attached storage
+  # (/mnt/<m>/files/<oN>/static/files).
+  local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  # a path is read as written (an alias the account wrote can carry "..",
+  # "." or "//"): normalised by text alone, never through a link, first
+  case "${_a}" in
+    */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+  esac
+  case "${_a}" in
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+    /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+    /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+      _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+    */*) echo "none - -"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  case "${_a}" in
+    ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+  esac
+  _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  # every holder of the gid: members of each group entry carrying it (a
+  # second entry can share the number) and every user with it as primary
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+      || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+  done
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-${_a}"
+  else
+    echo "held ${_gid} wg-${_a}"
+  fi
+}
+
+_web_group() {
+  # The group a root writer gives an account's web paths (files/, private/,
+  # settings.php and the like): wg-<account> once the account is converted,
+  # www-data otherwise, as always. Until the record says converted every
+  # identity of the account still holds www-data (a conversion grants the web
+  # group first and a revert gives www-data back before it moves any path),
+  # so www-data is the old state, never an outage. Callers write
+  # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
+  # group and never hands a path to a login group. Run as any user but root,
+  # which cannot read root's record, a held group answers empty: the group
+  # each path has is kept. $1 as _web_group_state.
+  local _s
+  _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted|phaseb) echo "${_s##* }" ;;
+    held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+    *) echo "www-data" ;;
+  esac
+}
+
 # The site path and each store are resolved once below, but the account owns
 # every name on the way (the platform tree, sites/, static/files), so any of
 # them can be swapped for a link at any time. Every act runs inside a
@@ -284,8 +371,8 @@ _txp_site_perm_here() {
     _in_pinned_dir "${_here}/${_wd}" find . -type f \
       -exec perl -e "${_FCHMOD_PL}" f 0664 {} + 2> /dev/null
   done
-  # Credential store: group-traversable (FPM reads config.php through its
-  # www-data group), unreadable to everyone else.
+  # Credential store: group-traversable (FPM reads config.php through the
+  # web group), unreadable to everyone else.
   _chmod_here 0750 private
   _in_pinned_dir "${_here}/private" find . -type f \
     -exec perl -e "${_FCHMOD_PL}" f 0440 {} + 2> /dev/null
@@ -308,9 +395,21 @@ _files_perm_here() {
   ### ctrl pid
   rm -f -- ./permissions-fixed*.pid
   _mark_here "permissions-fixed-${_TODAY}.pid"
-  ### files - site level
-  find . -type d -exec perl -e "${_FCHMOD_PL}" d 02775 {} +
-  find . -type f -exec perl -e "${_FCHMOD_PL}" f 0664 {} +
+  ### files - site level; a Drupal 7 files/private is private data like the
+  ### private store and takes its modes once they drop the world bits
+  if [ "${_priv_d}" = "02775" ]; then
+    find . -type d -exec perl -e "${_FCHMOD_PL}" d 02775 {} +
+    find . -type f -exec perl -e "${_FCHMOD_PL}" f 0664 {} +
+  else
+    find . -path ./private -prune -o -type d \
+      -exec perl -e "${_FCHMOD_PL}" d 02775 {} +
+    find . -path ./private -prune -o -type f \
+      -exec perl -e "${_FCHMOD_PL}" f 0664 {} +
+    if [ -d ./private ] && [ ! -L ./private ]; then
+      find ./private -type d -exec perl -e "${_FCHMOD_PL}" d "${_priv_d}" {} +
+      find ./private -type f -exec perl -e "${_FCHMOD_PL}" f "${_priv_f}" {} +
+    fi
+  fi
   chmod 02775 .
 }
 
@@ -395,6 +494,15 @@ _validate_path_prefix "${site_path}"
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 
+### Private files keep no world bits once the account has its own web group:
+### its pools, backend user and shell users reach them through that group,
+### and nginx never serves them directly. Until then, as always.
+_priv_d=02775
+_priv_f=0664
+case "$(_web_group "${site_path}")" in
+  wg-*) _priv_d=02770; _priv_f=0660 ;;
+esac
+
 ### modules, themes and libraries are names the tenant can plant: it can create
 ### the site dir itself under the group-writable sites/ (02771), and the
 ### site-level code dirs are 02775 and group-writable. The rm below and the find start
@@ -456,9 +564,9 @@ if [ -n "${_files_dir}" ] \
   ### private - site level
   if [ -n "${_priv_dir}" ]; then
     _in_pinned_dir "${_priv_dir}" find . -type d \
-      -exec perl -e "${_FCHMOD_PL}" d 02775 {} + &> /dev/null
+      -exec perl -e "${_FCHMOD_PL}" d "${_priv_d}" {} + &> /dev/null
     _in_pinned_dir "${_priv_dir}" find . -type f \
-      -exec perl -e "${_FCHMOD_PL}" f 0664 {} + &> /dev/null
+      -exec perl -e "${_FCHMOD_PL}" f "${_priv_f}" {} + &> /dev/null
   fi
   ### known exceptions
   _chmod_in "${_files_dir}" 0644 .htaccess

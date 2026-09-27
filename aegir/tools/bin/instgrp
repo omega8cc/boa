@@ -61,12 +61,14 @@
 #            logged and the loop goes on.
 #   reclaim  the file half only: every path under the account's roots that
 #            is not in the account's current group (users while unconverted),
-#            not www-data and not root takes the account's group; a marker
+#            not www-data, not the account's own web group (wg-<account>,
+#            when it exists) and not root takes the account's group; a marker
 #            that does not record THIS box's group is dropped. No identity
 #            change, no lock: safe after a root-run restore, on a migration
 #            destination, from the nightly.
-#   revert   the exact inverse, files first so no identity ever loses a group
-#            its files still carry; removes the group only once no path and
+#   revert   the exact inverse (refused while a group wg-<account> exists,
+#            in any state: that goes first), files first so no identity ever
+#            loses a group its files still carry; removes the group only once no path and
 #            no identity carries it; skips (4) while an identity it has to
 #            move back is in use, waits again before each move after the file
 #            walk and fails (1) naming one still in use then -- recorded in
@@ -191,9 +193,13 @@ Usage:
            Idempotent; re-run it on DRIFT. Residue after the walk is DRIFT,
            never a rollback; only a failed identity move rolls back.
   reclaim  the file half only: re-group every path under the roots to the
-           account's current group; no identity change, no lock.
+           account's current group; no identity change, no lock. convert
+           and reclaim leave the paths of the account's web group
+           (wg-<account>) alone.
   revert   the exact inverse, files first; the group goes once nothing
            carries it; writes _INSTANCE_GROUP=NO into the account's cnf.
+           Refused (exit 1) while a group wg-<account> exists, in any
+           state (another identity holding it included).
            An identity in use when its group has to move back is finished
            by the limited-shell worker once idle (exit 1 until then).
   check    are the fetched root-run writers on this box group-aware?
@@ -239,6 +245,108 @@ _in_grp_sup() {
     [ "${_m}" = "${_u}" ] && return 0
   done
   return 1
+}
+
+_web_group_state() {
+  # The account's own web group, wg-<account>, derived on the box and never
+  # taken from argv or a cnf: the group its pools, backend user and shell
+  # users share for its web paths once the account is converted to it.
+  # Prints "<state> <gid> <group>", "none - -" when there is no such group
+  # (the record is root's: run as another user, converted reads as held):
+  #   none       no group of that name
+  #   foreign    the group exists, but an identity outside the account holds
+  #              it too: never joined nor written to; claim passes still leave
+  #              its paths alone (taking them would cut the pools off)
+  #   held       the group exists and only this account's identities hold it:
+  #              claim passes leave its paths alone, new identities join it
+  #   converted  and root's record names that gid: writers use the group
+  #   phaseb     and the record says the identities have left www-data
+  # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+  # phase=<A|B> ...", root's own file outside the account tree, so neither
+  # the account nor a copy or restore of its tree can make or move it.
+  # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+  # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+  # gems or npm tree, or its store on attached storage
+  # (/mnt/<m>/files/<oN>/static/files).
+  local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  # a path is read as written (an alias the account wrote can carry "..",
+  # "." or "//"): normalised by text alone, never through a link, first
+  case "${_a}" in
+    */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+  esac
+  case "${_a}" in
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+    /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+    /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+      _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+    */*) echo "none - -"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  case "${_a}" in
+    ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+  esac
+  _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  # every holder of the gid: members of each group entry carrying it (a
+  # second entry can share the number) and every user with it as primary
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+      || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+  done
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-${_a}"
+  else
+    echo "held ${_gid} wg-${_a}"
+  fi
+}
+
+_web_group() {
+  # The group a root writer gives an account's web paths (files/, private/,
+  # settings.php and the like): wg-<account> once the account is converted,
+  # www-data otherwise, as always. Until the record says converted every
+  # identity of the account still holds www-data (a conversion grants the web
+  # group first and a revert gives www-data back before it moves any path),
+  # so www-data is the old state, never an outage. Callers write
+  # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
+  # group and never hands a path to a login group. Run as any user but root,
+  # which cannot read root's record, a held group answers empty: the group
+  # each path has is kept. $1 as _web_group_state.
+  local _s
+  _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted|phaseb) echo "${_s##* }" ;;
+    held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+    *) echo "www-data" ;;
+  esac
+}
+
+# The account's own web group, as the claim passes below keep it: its gid when
+# the group exists and only the account's identities hold it, nothing
+# otherwise. $1 = one of the account's roots (/data/disk/<oN>, /home/<oN>.*,
+# its store on attached storage); a root under neither names no account.
+# Numeric, and emitted only when it resolves: find refuses an unknown group
+# name, and every claim here discards find's errors.
+_wg_keep() {
+  local _g
+  _g=$(_web_group_state "${1}" | cut -d' ' -f2)
+  case "${_g}" in
+    ""|*[!0-9]*) return 0 ;;
+  esac
+  printf '%s\n' "${_g}"
 }
 
 _grant_sup() {
@@ -703,7 +811,7 @@ _chgrp_keeps_dir_setgid() {
 # $1 = from gid (empty: no bulk pass, the claim pass alone), $2 = to group,
 # then roots.
 _grp_walk() {
-  local _from="$1" _to="$2" _r _keep
+  local _from="$1" _to="$2" _r _keep _wg _wgX
   shift 2
   _keep=YES
   _chgrp_keeps_dir_setgid || _keep=NO
@@ -725,14 +833,18 @@ _grp_walk() {
     # all), or -- the ordinary case, every box allocates account gids from
     # the same system range -- the gid of a DIFFERENT named group on this
     # box, whose identities could then read the copied credential files.
-    # Both take the account's group; only the FPM group and root stay.
+    # Both take the account's group; only the FPM group, the account's own
+    # web group (its web paths once converted) and root stay.
     # The limited-shell homes carry chattr +i on a known set of names (the
     # home itself, .drush, its ini files, .bee, .bazaar -- manage_ltd_users.sh
     # sets and clears them around its own writes): a name chgrp could not
     # change is re-grouped with the flag dropped and restored around the one
     # operation. Every name is acted on inside the directory find holds, by
     # its bare name, never through a pathname a tenant can re-point mid-way.
-    find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root \
+    _wgX=()
+    _wg=$(_wg_keep "${_r}")
+    [ -n "${_wg}" ] && _wgX=( ! -gid "${_wg}" )
+    find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" \
       -execdir sh -c 'chgrp -h "$0" -- "$@" 2> /dev/null && exit 0
         for f; do
           chgrp -h "$0" -- "$f" 2> /dev/null && continue
@@ -745,24 +857,30 @@ _grp_walk() {
 }
 
 # Residue = any path under the roots whose group is not the target group,
-# not the FPM group and not root. One early-quit traversal; the probe a
+# not the FPM group, not the account's own web group and not root. One early-quit traversal; the probe a
 # converted account pays instead of a walk.
 _grp_residue() {
-  local _to="$1" _r
+  local _to="$1" _r _wg _wgX
   shift
   for _r in "$@"; do
     [ -d "${_r}" ] || continue
-    find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root -print -quit 2> /dev/null | grep -q . && return 0
+    _wgX=()
+    _wg=$(_wg_keep "${_r}")
+    [ -n "${_wg}" ] && _wgX=( ! -gid "${_wg}" )
+    find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" -print -quit 2> /dev/null | grep -q . && return 0
   done
   return 1
 }
 
 _grp_residue_list() {
-  local _to="$1" _r
+  local _to="$1" _r _wg _wgX
   shift
   for _r in "$@"; do
     [ -d "${_r}" ] || continue
-    find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root -printf '%G %p\n' 2> /dev/null | head -5
+    _wgX=()
+    _wg=$(_wg_keep "${_r}")
+    [ -n "${_wg}" ] && _wgX=( ! -gid "${_wg}" )
+    find -P "${_r}" ! -group "${_to}" ! -group "${_WEBG}" ! -group root "${_wgX[@]}" -printf '%G %p\n' 2> /dev/null | head -5
   done
 }
 
@@ -976,7 +1094,7 @@ _marker_valid() {
 }
 
 _do_convert() {
-  local _a="$1" _subs _ids _u _uGid _aGid _roots _busy _src _moved=0 _pass=0
+  local _a="$1" _subs _ids _u _uGid _aGid _roots _busy _src _moved=0 _pass=0 _wgSt
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
   # A frozen account is served from another box mid-migration; every other
@@ -1051,10 +1169,20 @@ _do_convert() {
   # primary group may move only once every identity is LISTED in it (an
   # identity whose primary group is 'users' is not listed there, and
   # usermod -g would drop it). www-data (files/ write, settings.php read) and
-  # lshellg are listed for the same reason.
+  # lshellg are listed for the same reason; once the account has its own web
+  # group, that group is listed too, and www-data no longer once the
+  # account's identities have left it.
+  _wgSt=$(_web_group_state "${_a}")
   for _u in ${_ids}; do
     _grant_sup "${_u}" "${_USRG}" || { _fail "${_u}: cannot list it in ${_USRG}; refusing to move its primary group"; return 1; }
-    _grant_sup "${_u}" "${_WEBG}" || _alrt "${_u}: could not list it in ${_WEBG}"
+    if [ "${_wgSt%% *}" != "phaseb" ]; then
+      _grant_sup "${_u}" "${_WEBG}" || _alrt "${_u}: could not list it in ${_WEBG}"
+    fi
+    case "${_wgSt%% *}" in
+      held|converted|phaseb)
+        _grant_sup "${_u}" "${_wgSt##* }" || _alrt "${_u}: could not list it in ${_wgSt##* }"
+        ;;
+    esac
     case "${_u}" in
       "${_a}") ;;
       *) _grant_sup "${_u}" lshellg || _alrt "${_u}: could not list it in lshellg" ;;
@@ -1233,9 +1361,17 @@ _do_reclaim() {
 }
 
 _do_revert() {
-  local _a="$1" _gid _roots _cnf _u _busy _rc=0
+  local _a="$1" _gid _roots _cnf _u _busy _rc=0 _wgSt
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
+  # The account group is the base the web group sits on: taking it away
+  # first would claim the web paths into the box-wide group, which the
+  # account's pools are not in. The web group is reverted first.
+  _wgSt=$(_web_group_state "${_a}")
+  if [ "${_wgSt%% *}" != "none" ]; then
+    _fail "${_a} holds its own web group (${_wgSt##* }, ${_wgSt%% *}); revert that first"
+    return 1
+  fi
   _gid=$(_gid_of "${_a}")
   if ! _wait_idle "${_a}"; then
     _alrt "${_a}: still busy after ${_WAIT_MAX}s, skipped"
@@ -1317,7 +1453,7 @@ _do_revert() {
 }
 
 _do_status() {
-  local _a="$1" _subs _ids _u _gid _uGid _wGid _roots _r _m _mValid _cnt _g _nUsers=0 _nAcct=0 _nWeb=0 _nRoot=0 _nOther=0 _nNone=0 _foreign="" _prim_ok=YES _holders="" _gEmpty=NO _held=NO _bad="" _verdict _rc=0
+  local _a="$1" _subs _ids _u _gid _uGid _wGid _roots _r _m _mValid _cnt _g _nUsers=0 _nAcct=0 _nWeb=0 _nRoot=0 _nOther=0 _nNone=0 _foreign="" _prim_ok=YES _holders="" _gEmpty=NO _held=NO _bad="" _verdict _rc=0 _wgSt _wgGid="" _nWg=0
   _ACCT="${_a}"
   _valid_account "${_a}" || { _fail "${_a} is not an Octopus account on this box"; return 1; }
   _gid=$(_gid_of "${_a}")
@@ -1348,6 +1484,13 @@ _do_status() {
   else
     _msg "group:    none"
   fi
+  # The account's own web group, when it has one: its paths are the web
+  # paths, never drift nor foreign.
+  _wgSt=$(_web_group_state "${_a}")
+  if [ "${_wgSt%% *}" != "none" ]; then
+    _wgGid=$(cut -d' ' -f2 <<< "${_wgSt}")
+    _msg "web:      ${_wgSt##* } gid=${_wgGid} state=${_wgSt%% *} members=[$(getent group "${_wgSt##* }" | cut -d: -f4)]"
+  fi
   if [ -s "${_REVERT_PENDING}.${_a}" ]; then
     _msg "revert:   UNFINISHED for [$(tr '\n' ' ' < "${_REVERT_PENDING}.${_a}" | sed 's/ $//')] (in use when a revert, or the rollback of a convert, had to move it back); the limited-shell worker moves them back to ${_USRG} once idle, then instgrp revert ${_a} removes the group (or instgrp convert ${_a} converts again)"
   fi
@@ -1377,6 +1520,7 @@ _do_status() {
       if [ "${_g}" = "${_uGid}" ]; then _nUsers=$((_nUsers + _cnt))
       elif [ -n "${_gid}" ] && [ "${_g}" = "${_gid}" ]; then _nAcct=$((_nAcct + _cnt))
       elif [ "${_g}" = "${_wGid}" ]; then _nWeb=$((_nWeb + _cnt))
+      elif [ -n "${_wgGid}" ] && [ "${_g}" = "${_wgGid}" ]; then _nWg=$((_nWg + _cnt))
       elif [ "${_g}" = "0" ]; then _nRoot=$((_nRoot + _cnt))
       elif ! getent group "${_g}" > /dev/null 2>&1; then _nNone=$((_nNone + _cnt))
       else
@@ -1388,7 +1532,7 @@ _do_status() {
       fi
     done < <(find -P "${_r}" -printf '%G\n' 2> /dev/null | sort | uniq -c)
   done
-  _msg "files:    ${_USRG}=${_nUsers} ${_a}=${_nAcct} ${_WEBG}=${_nWeb} root=${_nRoot} nogroup=${_nNone} foreign=${_nOther}${_foreign:+ [${_foreign# }]} (roots: $(printf '%s ' ${_roots}))"
+  _msg "files:    ${_USRG}=${_nUsers} ${_a}=${_nAcct} ${_WEBG}=${_nWeb}${_wgGid:+ ${_wgSt##* }=${_nWg}} root=${_nRoot} nogroup=${_nNone} foreign=${_nOther}${_foreign:+ [${_foreign# }]} (roots: $(printf '%s ' ${_roots}))"
   for _u in ${_ids}; do
     getent passwd "${_u}" > /dev/null 2>&1 || continue
     [ "$(_primary_of "${_u}")" = "${_a}" ] || _prim_ok=NO
