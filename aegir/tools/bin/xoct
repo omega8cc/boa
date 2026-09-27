@@ -899,17 +899,9 @@ _xoct_site_host_gateable() {
 ### /data/disk and /home every name on the path must be a real directory;
 ### once entered, ./name stays there whatever is swapped.
 _xoct_in_real_dir() {
-  local _d="${1}" _a="" _want
+  local _d="${1}" _want
   shift
-  case "${_d}" in
-    /home/?*) _a=/home ;;
-    /data/disk/?*) _a=/data/disk ;;
-  esac
-  if [ -n "${_a}" ]; then
-    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
-  else
-    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
-  fi
+  _want="$(_xoct_real_want "${_d}")"
   ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
 }
 ### ./$1 in the current (pinned) directory: never through a link, never
@@ -919,6 +911,17 @@ _xoct_read_here() {
     bs=1048576 count=1 status=none 2> /dev/null
 }
 ### $2 in the real directory $1, read as _xoct_read_here reads it.
+### The words of $1 that are host names (letters, digits, dots, dashes, a
+### leading wildcard), space-separated; anything else is dropped.
+_xoct_host_words() {
+  local _w _o=""
+  for _w in ${1}; do
+    [[ "${_w}" =~ ^[A-Za-z0-9*][A-Za-z0-9.*-]*$ ]] || continue
+    [ "${#_w}" -le 253 ] || continue
+    _o="${_o} ${_w}"
+  done
+  printf '%s' "${_o# }"
+}
 _xoct_read_in() {
   _xoct_in_real_dir "${1}" _xoct_read_here "${2}"
 }
@@ -1040,13 +1043,16 @@ _xoct_remote_ctrl() {
   _xoct_remote_in "${1}" "/data/disk/${2}/static/control" "${3}"
 }
 ### An --rsync-path that starts the receiving rsync on the target inside the
-### real directory $1 (below /data/disk or /home every name on the path a
-### real directory), so the destination is given as ./ and never resolves
-### through a link the account put there; the copy fails when $1 is not
-### that directory.
+### real directory $1 (below /data/disk, /home or /opt/user every name on
+### the path a real directory), so the destination is given as ./ and never
+### resolves through a link the account put there; the copy fails when $1 is
+### not that directory.
 _xoct_rsync_path_in() {
   local _a=/data/disk
-  case "${1}" in /home/?*) _a=/home ;; esac
+  case "${1}" in
+    /home/?*) _a=/home ;;
+    /opt/user/?*) _a=/opt/user ;;
+  esac
   printf '%s' "cd -P -- '${1}' && [ \"\$(pwd -P)\" = \"\$(cd -P ${_a} && pwd -P)${1#"${_a}"}\" ] && rsync"
 }
 ### As _xoct_rsync_path_in, but the last name of $1 is made a real directory
@@ -1054,7 +1060,10 @@ _xoct_rsync_path_in() {
 ### created): for a leg whose target directory the install does not create.
 _xoct_rsync_path_mk_in() {
   local _d="${1}" _a=/data/disk _p _n
-  case "${_d}" in /home/?*) _a=/home ;; esac
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /opt/user/?*) _a=/opt/user ;;
+  esac
   _p="${_d%/*}"
   _n="${_d##*/}"
   printf '%s' "_a=\"\$(cd -P ${_a} && pwd -P)\"; cd -P -- '${_p}' && [ \"\$(pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && rsync"
@@ -1070,6 +1079,268 @@ _xoct_copy_mk_here() {
   _xoct_rsync "$@" --rsync-path="$(_xoct_rsync_path_mk_in "${_d}")" -e ssh \
     ./${_g} "root@${_h}:./"
 }
+### Where the directory $1 resolves when every name on its path below
+### /data/disk, /home or /opt/user (the client toolchain trees) is a real
+### directory; elsewhere, its last name inside its resolved parent.
+_xoct_real_want() {
+  local _d="${1}" _a=""
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+    /opt/user/?*) _a=/opt/user ;;
+  esac
+  if [ -n "${_a}" ]; then
+    printf '%s' "$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    printf '%s' "$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+}
+### "$@" run inside the canonical directory $1, only once pwd -P lands
+### exactly there.
+_xoct_in_canon_dir() {
+  local _d="${1}"
+  shift
+  case "${_d}" in
+    /?*) ;;
+    *) return 1 ;;
+  esac
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+}
+### The --rsync-path that starts the receiver inside the canonical directory
+### $1 on the target, and only once pwd -P says it is there.
+_xoct_canon_rpath() {
+  local _q
+  _q="$(_shq "${1}")"
+  printf '%s' "cd -P -- '${_q}' && [ \"\$(pwd -P)\" = '${_q}' ] && rsync"
+}
+### Whether the canonical path $2 belongs to the account $1: its own tree,
+### or its own part of an attached store, <mount>/files/<oN>/, the layout
+### migratefs moves static/files to. Another account's tree or store, and
+### anything else a link can name, never passes.
+_xoct_own_path() {
+  local _a="${1}" _p="${2}" _t _r
+  case "${_a}" in
+    ''|.|..|*/*) return 1 ;;
+  esac
+  case "${_p}" in
+    /?*) ;;
+    *) return 1 ;;
+  esac
+  case "${_p}/" in
+    *//*|*/./*|*/../*) return 1 ;;
+  esac
+  _t="$(_xoct_real_want "/data/disk/${_a}")"
+  if [ "${_t}" != "/${_a}" ]; then
+    case "${_p}/" in
+      "${_t}"/*) return 0 ;;
+    esac
+  fi
+  case "${_p}" in
+    /mnt/?*/files/?*)
+      _r="${_p#/mnt/}"
+      _r="${_r#*/}"
+      case "${_r}/" in
+        "files/${_a}"/*) return 0 ;;
+      esac
+      ;;
+  esac
+  return 1
+}
+### The canonical path $2 is the account $1's own ($3 = tree: its tree or
+### store; uid: also anything owned by one of its identities, <oN>,
+### <oN>.ftp or a sub-user <oN>.<name>).
+_xoct_store_is_own() {
+  local _o
+  _xoct_own_path "${1}" "${2}" && return 0
+  [ "${3}" = "uid" ] || return 1
+  _o="$(stat -c '%U' -- "${2}" 2> /dev/null)" || return 1
+  case "${_o}" in
+    "${1}"|"${1}".?*) return 0 ;;
+  esac
+  return 1
+}
+### Run on the target with the account's name in $1: enter the real parent
+### of $2, made as mkdir -p makes it, once the nearest existing name on the
+### way and then the parent itself resolve into the account's own tree or
+### store. Run in the shell that then acts on ./<last name>.
+_xoct_own_parent_cd() {
+  local _a="${1}" _p="${2%/*}" _e
+  [ -n "${_p}" ] || return 1
+  _e="${_p}"
+  while [ -n "${_e}" ] && [ ! -e "${_e}" ]; do
+    _e="${_e%/*}"
+  done
+  _xoct_own_path "${_a}" "$(cd -P -- "${_e:-/}" 2> /dev/null && pwd -P)" \
+    || return 1
+  mkdir -p -- "${_p}" 2> /dev/null
+  cd -P -- "${_p}" 2> /dev/null || return 1
+  _xoct_own_path "${_a}" "$(pwd -P)"
+}
+### Run there as above: make the directory $3 of the account $2 ready for a
+### copy and print XOREAL with its canonical path. A link at the last name
+### stays when it resolves into the account's own tree or store and $1 is
+### keep (the backups mover's link); otherwise it gives way to a directory.
+_xoct_own_dir_ready() {
+  local _m="${1}" _a="${2}" _n="${3##*/}" _r
+  case "${_n}" in
+    ''|.|..) return 1 ;;
+  esac
+  _xoct_own_parent_cd "${_a}" "${3}" || return 1
+  if [ -L "./${_n}" ]; then
+    _r="$(cd -P -- "./${_n}" 2> /dev/null && pwd -P)"
+    if [ "${_m}" != "keep" ] || ! _xoct_own_path "${_a}" "${_r}"; then
+      rm -f -- "./${_n}" || return 1
+    fi
+  elif [ -e "./${_n}" ] && [ ! -d "./${_n}" ]; then
+    rm -f -- "./${_n}" || return 1
+  fi
+  [ -d "./${_n}" ] || mkdir -- "./${_n}" || return 1
+  cd -P -- "./${_n}" 2> /dev/null || return 1
+  _r="$(pwd -P)"
+  _xoct_own_path "${_a}" "${_r}" || return 1
+  printf 'XOREAL %s\n' "${_r}"
+}
+### Run there as above: put the link $2 -> $3 of the account $1 in place of
+### whatever holds the name, inside its real parent.
+_xoct_own_link_ready() {
+  local _n="${2##*/}"
+  case "${_n}" in
+    ''|.|..) return 1 ;;
+  esac
+  _xoct_own_parent_cd "${1}" "${2}" || return 1
+  if [ -L "./${_n}" ]; then
+    rm -f -- "./${_n}"
+  elif [ -d "./${_n}" ]; then
+    rm -rf -- "./${_n}"
+  elif [ -e "./${_n}" ]; then
+    rm -f -- "./${_n}"
+  fi
+  ln -sfn -- "${3}" "./${_n}" || return 1
+  printf 'XOREAL %s/%s\n' "$(pwd -P)" "${_n}"
+}
+### Run there as above: link the account $1's name $2 to its store entry $3
+### only once $3 is a directory in the account's own tree or store, so a
+### directory at $2 never gives way to a link that leads nowhere.
+_xoct_own_store_link_ready() {
+  _xoct_own_path "${1}" "$(cd -P -- "${3}" 2> /dev/null && pwd -P)" || return 1
+  _xoct_own_link_ready "${1}" "${2}" "${3}"
+}
+### Run there: make the store copy's directory $1 under the attached mount
+### and print XOREAL with its canonical path, only when no name below /mnt
+### on the way is a link (checked before anything is made, and again after).
+_xoct_real_mnt_dir() {
+  local _d="${1}" _c _e
+  case "${_d}/" in
+    /mnt/?*/?*) ;;
+    *) return 1 ;;
+  esac
+  case "${_d}/" in
+    *//*|*/./*|*/../*) return 1 ;;
+  esac
+  _c="$(cd -P -- /mnt 2> /dev/null && pwd -P)" || return 1
+  [ -n "${_c}" ] || return 1
+  _e="${_d}"
+  while [ -n "${_e}" ] && [ ! -e "${_e}" ]; do
+    _e="${_e%/*}"
+  done
+  [ "$(cd -P -- "${_e:-/}" 2> /dev/null && pwd -P)" = "${_c}${_e#/mnt}" ] || return 1
+  mkdir -p -- "${_d}" 2> /dev/null
+  _c="${_c}${_d#/mnt}"
+  cd -P -- "${_d}" 2> /dev/null || return 1
+  [ "$(pwd -P)" = "${_c}" ] || return 1
+  printf 'XOREAL %s\n' "${_c}"
+}
+### Run one of the placement helpers above as root on the box $1, with the
+### helper's name and arguments after it; prints the canonical path its
+### XOREAL line names and fails when there is none.
+_xoct_tgt_place() {
+  local _h="${1}" _out _x _args=""
+  shift
+  for _x in "$@"; do
+    _args="${_args} '$(_shq "${_x}")'"
+  done
+  _out="$( { declare -f _xoct_real_want _xoct_own_path _xoct_own_parent_cd \
+      _xoct_own_dir_ready _xoct_own_link_ready _xoct_own_store_link_ready \
+      _xoct_real_mnt_dir
+    printf '%s\n' '"$@"'; } \
+    | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_h}" \
+      "bash -s --${_args}" 2> /dev/null)"
+  _out="$(printf '%s\n' "${_out}" | grep -m1 '^XOREAL /')"
+  [ -n "${_out}" ] || return 1
+  printf '%s' "${_out#XOREAL }"
+}
+### A transfer leg's source directory $1: true when it is a real directory
+### to copy from. A missing one is skipped quietly; one that is not a real
+### directory (a link on its path) is refused: nothing is followed, the dry
+### run is not clean and a live transfer is not complete.
+_xoct_leg_ok() {
+  [ -e "${1}" ] || [ -L "${1}" ] || return 1
+  _xoct_in_real_dir "${1}" true && return 0
+  echo "DENY: ${1} is not a real directory (a link on its path) -- not followed, not copied"
+  _XOCT_NOT_CLEAN=YES
+  [ "${_MODE}" = "LIVE" ] && _XOCT_STORE_RC=1
+  return 1
+}
+### backups/ or backup-exports/ ($5) of the account tree $1 carried to the
+### account tree $2 on the target $3 ($4 the rsync error option). On a box
+### whose files store sits on its own device the nightly moves both into
+### static/files/.<name> and leaves a link: the store leg carries that
+### content, so the link is reproduced on the target once the store copy is
+### there, and only when it names one plain entry straight under
+### static/files. Any other backups/ is copied from inside the real
+### directory it resolves to when that is the account's own tree or store,
+### into the target's backups/, whose mover link is kept when it resolves
+### into the account's own tree or store there; anything else is refused.
+### backup-exports/ travels only as that link, as it always did.
+_xoct_backups_leg() {
+  local _u="${1}" _d="${2}" _h="${3}" _ie="${4}" _n="${5}" _l _b _r _to
+  _l="$(readlink "${_u}/${_n}" 2> /dev/null)"
+  _b="${_l#"${_u}/static/files/"}"
+  if [ -L "${_u}/${_n}" ] && [ "${_b}" != "${_l}" ] \
+    && [[ "${_b}" =~ ^[A-Za-z0-9._-]+$ ]] \
+    && [ "${_b}" != "." ] && [ "${_b}" != ".." ]; then
+    if [ "${_MODE}" = "LIVE" ]; then
+      _xoct_tgt_place "${_h}" _xoct_own_store_link_ready "${_d##*/}" "${_d}/${_n}" \
+        "${_d}/static/files/${_b}" > /dev/null \
+        || echo "ALRT: ${_d}/${_n} on ${_h} not linked to static/files/${_b} (no store copy of it there in the account's own tree or store)"
+    else
+      echo "[DRY-PLAN] would link ${_d}/${_n} -> ${_d}/static/files/${_b} on ${_h}"
+    fi
+    return 0
+  fi
+  [ "${_n}" = "backups" ] || return 0
+  [ -e "${_u}/${_n}" ] || [ -L "${_u}/${_n}" ] || return 0
+  _r="$(cd -P -- "${_u}/${_n}" 2> /dev/null && pwd -P)"
+  if [ -z "${_r}" ] || ! _xoct_own_path "${_u##*/}" "${_r}"; then
+    echo "DENY: ${_u}/${_n} resolves to ${_r:-nothing}, outside the account's own tree and store -- not followed, not copied"
+    _XOCT_NOT_CLEAN=YES
+    [ "${_MODE}" = "LIVE" ] && _XOCT_STORE_RC=1
+    return 1
+  fi
+  _to=""
+  if [ "${_MODE}" = "LIVE" ]; then
+    _to="$(_xoct_tgt_place "${_h}" _xoct_own_dir_ready keep "${_d##*/}" "${_d}/${_n}")"
+    if [ -z "${_to}" ]; then
+      echo "DENY: ${_d}/${_n} on ${_h} does not resolve into the account's own tree or store -- not copied"
+      _XOCT_NOT_CLEAN=YES
+      _XOCT_STORE_RC=1
+      return 1
+    fi
+  fi
+  # shellcheck disable=SC2086
+  _xoct_in_canon_dir "${_r}" _xoct_copy_canon_here "${_h}" "${_to:-${_d}/${_n}}" '*' \
+    -aEAXqu ${_ie} &> /dev/null
+  return 0
+}
+### As _xoct_copy_here, but the receiver starts in the canonical directory $2
+### the target reported (see _xoct_tgt_place).
+_xoct_copy_canon_here() {
+  local _h="${1}" _d="${2}" _g="${3}"
+  shift 3
+  # shellcheck disable=SC2086
+  _xoct_rsync "$@" --rsync-path="$(_xoct_canon_rpath "${_d}")" -e ssh \
+    ./${_g} "root@${_h}:./"
+}
 ### ./$1 in the current (pinned) directory put at ./$2 through sed "${@:3}":
 ### only a regular file under 1 MiB is read, never through a link or into a
 ### FIFO; the result is a fresh file with the source's numeric owner (chown
@@ -1079,7 +1350,7 @@ _xoct_copy_mk_here() {
 _xoct_sed_to() {
   local _s="${1}" _n="${2}" _st _own _m _sz _ft _t
   shift 2
-  _st="$(stat -c '%u:%g %a %s %F' -- "./${_s}" 2> /dev/null)" || return 1
+  _st="$(LC_ALL=C stat -c '%u:%g %a %s %F' -- "./${_s}" 2> /dev/null)" || return 1
   case "${_st}" in
     *" regular file"|*" regular empty file") ;;
     *) return 1 ;;
@@ -1318,10 +1589,12 @@ _migrate_sites() {
       _Dir=$(_xoct_read_in "${_USR}/.drush" "${_Dom}.alias.drushrc.php" | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")
       _Plr=$(_xoct_read_in "${_USR}/.drush" "${_Dom}.alias.drushrc.php" | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")
       ### site_path comes from the account's own alias and points into its own
-      ### tree: confine it to the account and read drushrc.php inside its real
-      ### directory, so an alias pointing outside the account (or through a
-      ### link) never makes root read another tenant's site or write there.
-      ### _DIR_OK gates every db and drushrc step below.
+      ### tree: it is confined to the account and drushrc.php is read inside
+      ### its real directory, so root reads and writes a site only there.
+      ### _DIR_OK gates every db and drushrc step below; a refused site is
+      ### counted as failed on import and export. The per-site values start
+      ### empty on every pass, so no refusal ever names another site's.
+      _DBN="" _DBU="" _DBP="" _DBP_LIT="" _DRC=""
       _DIR_OK=NO
       case "${_Dir}/" in
         "${_USR}"/*) _xoct_in_real_dir "${_Dir}" true && _DIR_OK=YES ;;
@@ -1345,17 +1618,20 @@ _migrate_sites() {
           | head -1 | sed -e 's/\\\x27/\x27/g' -e 's/\\\\/\\/g')
         _DBP=${_DBP_LIT//[^a-zA-Z0-9_]/}
         echo "site ${_Dom} clean _DBN is ${_DBN}"
-        ### The account proves the database is its own: db_user == db_name (BOA
-        ### sets one user per site DB) and its own credentials authenticate to
-        ### it. A site that names another tenant's database in its own drushrc
-        ### cannot prove it -- root then never dumps that data on export nor
-        ### loads over it into an existing database on import.
+        ### A database is dumped, or loaded over, only when the site's own
+        ### db_user equals db_name (BOA sets one user per site DB) and its
+        ### credentials open it.
         if [ -n "${_DBN}" ] && [ "${_DBU}" = "${_DBN}" ] \
           && _xoct_cred_ok "${_DBN}" "${_DBP_LIT}"; then
           _OWN_DB=YES
         fi
       fi
-      if [ "${_cmd}" = "import" ] && [ "${_DIR_OK}" = "YES" ]; then
+      if [ "${_cmd}" = "import" ] && [ "${_DIR_OK}" != "YES" ]; then
+        _XOCT_SITE_IMPORT_OK=NO
+        _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
+        _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_Dom}:site-path-refused"
+        echo "ALRT: site ${_Dom} on ${_oct}: NOT imported (site_path refused)"
+      elif [ "${_cmd}" = "import" ]; then
         if [ "${_DBP}" != "${_DBP_LIT}" ]; then
           echo "ALRT: site ${_Dom} db_passwd carries characters outside the generated-password charset; not re-created here, fix its credentials by hand"
           _DBP=""
@@ -1428,12 +1704,10 @@ EOFMYSQL
           else
             echo "ALRT: site ${_Dom} db ${_DBN} already exists!"
           fi
-          ### A dump loaded over a database this run did NOT just create from
-          ### the account's own credentials must be proven the account's own
-          ### first: otherwise a site naming another tenant's database in its
-          ### own drushrc would have its data dropped and overwritten by
-          ### myloader here. A site with no dump (target-native) writes nothing,
-          ### so it is left to the branch below unchanged.
+          ### A dump is loaded over a database this run did NOT just create
+          ### only when the site proved it its own (_OWN_DB). A site with no
+          ### dump (target-native) writes nothing, so it is left to the branch
+          ### below unchanged.
           if [ -e "${_USR}/src/${_DBN}" ] \
             && [ "${_DB_FRESH}" != "YES" ] && [ "${_OWN_DB}" != "YES" ]; then
             _XOCT_SITE_IMPORT_OK=NO
@@ -1542,10 +1816,10 @@ EOFMYSQL
         ### Replaces readonlymode which is unavailable via system drush 8
         ### on Drupal 8+ and bypassed by commerce/API code paths.
         ###
-        ### static/ is tenant-writable, so control and the pid name can be
-        ### planted as symlinks; -e is false for a DANGLING link, so the guard
-        ### below would otherwise let > create the tenant's chosen target.
-        ### control is made a real directory from inside the real static/.
+        ### static/ is the account's, so control and the pid name can be
+        ### links, and -e is false for a dangling one: control is made a real
+        ### directory from inside the real static/ and the pid is put inside
+        ### it as a fresh file, never created through a link.
         _xoct_in_real_dir "${_USR}/static" _xoct_ctrl_dir_here
         if _xoct_in_real_dir "${_USR}/static/control" \
           _xoct_gate_put_here http-off.pid 3600 "${_oct}:${_OCT_GRP}"; then
@@ -1585,10 +1859,12 @@ EOFMYSQL
             echo "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V})"
           fi
         fi
-        ### Only a database the account can prove is its own is dumped: a site
-        ### that named another tenant's database in its own drushrc must never
-        ### make root dump that data into this account's src/ and ship it.
-        if [ "${_OWN_DB}" != "YES" ]; then
+        ### Only a database the site proved its own is dumped (see _OWN_DB).
+        if [ "${_DIR_OK}" != "YES" ]; then
+          _XOCT_EXPORT_FAIL=$(( ${_XOCT_EXPORT_FAIL:-0} + 1 ))
+          _XOCT_EXPORT_FAILED_DBS="${_XOCT_EXPORT_FAILED_DBS} ${_Dom}:site-path-refused"
+          echo "ALRT: site ${_Dom} on ${_oct}: site_path refused -- NOT dumped"
+        elif [ "${_OWN_DB}" != "YES" ]; then
           _XOCT_EXPORT_FAIL=$(( ${_XOCT_EXPORT_FAIL:-0} + 1 ))
           _XOCT_EXPORT_FAILED_DBS="${_XOCT_EXPORT_FAILED_DBS} ${_DBN:-${_Dom}}:not-owned"
           echo "ALRT: site ${_Dom} on ${_oct}: cannot prove ${_DBN:-its database} is the account's own -- NOT dumped"
@@ -1665,7 +1941,10 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
               && [ -e "${_Vhd}" ]; then
               _NMS_SRC="${_Vhd}"
             fi
-            _NMS=`cat ${_NMS_SRC} | grep "server_name" | sed "s/server_name//g; s/;//g" | sort | uniq | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | sort | uniq`
+            ### vhost.d is oN's: the names are read inside the real directory,
+            ### and only host-name words reach the server_name line built below.
+            _NMS=`_xoct_read_in "${_NMS_SRC%/*}" "${_NMS_SRC##*/}" | grep "server_name" | sed "s/server_name//g; s/;//g" | sort | uniq | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | sort | uniq`
+            _NMS="$(_xoct_host_words "${_NMS}")"
             ### B2: the template references THREE cert files unconditionally
             ### (openssl.key, openssl_chain.crt and the LE chain.pem), so every
             ### one of them must exist before it is written. nginx refuses to
@@ -2019,58 +2298,90 @@ _xoct_rewrite_target_account_refs() {
   if [ "${_X_SRC_OCT}" = "${_X_DST_OCT}" ]; then
     return 0
   fi
+  case "${_X_DST_USR}" in
+    "/data/disk/${_X_DST_OCT}") ;;
+    *) return 0 ;;
+  esac
 
   echo "INFO: rename mode active on target ${_X_TGT_HOST}: rewriting refs ${_X_SRC_OCT} -> ${_X_DST_OCT} in selected text configs"
   # Heredoc (not a nested one-liner) so the fpm socket-token rewrite -- which
   # carries literal double quotes -- stays readable. Local vars (_X_SRC_OCT
   # etc.) expand here before ssh; remote-only vars are \-escaped. A subdir.d
-  # conf lives one level down, in its domain's directory.
+  # conf lives one level down, in its domain's directory. The account tree
+  # is the tenant's on the target: every directory is entered as the real
+  # one (every name from /data/disk down), each file is rewritten as
+  # _xoct_sed_here does it (owner and mode kept, never through a link or
+  # into a FIFO), and links and owners are changed with ./names inside the
+  # directory find holds open.
   ssh root@"${_X_TGT_HOST}" "bash -s" <<REMOTE
-_D='${_X_DST_USR}'
-for _F in \
-  \$(find "\${_D}/.drush" -maxdepth 1 -type f -name '*.drushrc.php' 2>/dev/null | sort) \
-  \$(find "\${_D}/config/server_master/nginx/vhost.d" -maxdepth 1 -type f 2>/dev/null | sort) \
-  \$(find "\${_D}/config/server_master/nginx/pre.d" -maxdepth 1 -type f 2>/dev/null | sort) \
-  \$(find "\${_D}/config/server_master/nginx/post.d" -maxdepth 1 -type f 2>/dev/null | sort) \
-  \$(find "\${_D}/config/server_master/nginx/subdir.d" -maxdepth 2 -type f 2>/dev/null | sort) \
-  \$(find "\${_D}/config/server_master/nginx/platform.d" -maxdepth 1 -type f 2>/dev/null | sort) \
-  \$(find "\${_D}/config/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort) \
-  \$(find "\${_D}/config/server_master/ssl.d" -maxdepth 1 -type f 2>/dev/null | sort) \
-  ; do
-  [ -f "\${_F}" ] || continue
-  # The post.d fpm includes carry no /data/disk path -- only the account's
-  # own \$user_socket "oN.NN" token -- so match that too, else a rename left
-  # the source socket name and requests hit the WRONG account's FPM pool
-  # (403/permission-denied) on any target that also has an account by the
-  # source name.
-  grep -qE "/data/disk/${_X_SRC_OCT}|/home/${_X_SRC_OCT}\.ftp|user_socket \"${_X_SRC_OCT}[.\"]" "\${_F}" 2>/dev/null || continue
-  sed -i \
-    -e 's#/data/disk/${_X_SRC_OCT}#/data/disk/${_X_DST_OCT}#g' \
-    -e 's#/home/${_X_SRC_OCT}\.ftp#/home/${_X_DST_OCT}.ftp#g' \
-    -e 's#user_socket "${_X_SRC_OCT}\.#user_socket "${_X_DST_OCT}.#g' \
-    -e 's#user_socket "${_X_SRC_OCT}"#user_socket "${_X_DST_OCT}"#g' \
-    "\${_F}"
+_SRC='${_X_SRC_OCT}'
+_DST='${_X_DST_OCT}'
+$(declare -f _xoct_real_want _xoct_read_here _xoct_sed_to _xoct_sed_here)
+_xo_in() {
+  local _d="/data/disk/\${_DST}/\${1}" _w
+  shift
+  _w="\$(_xoct_real_want "\${_d}")"
+  ( cd -P -- "\${_d}" 2>/dev/null && [ "\$(pwd -P)" = "\${_w}" ] && "\$@" )
+}
+_xo_rewrite_here() {
+  local _F
+  find . -maxdepth 1 -type f -name "\${1:-*}" 2>/dev/null | sort | while IFS= read -r _F; do
+    _F="\${_F#./}"
+    # The post.d fpm includes carry no /data/disk path -- only the account's
+    # own \$user_socket "oN.NN" token -- so match that too, else a rename left
+    # the source socket name and requests hit the WRONG account's FPM pool
+    # (403/permission-denied) on any target that also has an account by the
+    # source name.
+    _xoct_read_here "\${_F}" \
+      | grep -qE "/data/disk/${_X_SRC_OCT}|/home/${_X_SRC_OCT}\.ftp|user_socket \"${_X_SRC_OCT}[.\"]" || continue
+    _xoct_sed_here "\${_F}" \
+      -e 's#/data/disk/${_X_SRC_OCT}#/data/disk/${_X_DST_OCT}#g' \
+      -e 's#/home/${_X_SRC_OCT}\.ftp#/home/${_X_DST_OCT}.ftp#g' \
+      -e 's#user_socket "${_X_SRC_OCT}\.#user_socket "${_X_DST_OCT}.#g' \
+      -e 's#user_socket "${_X_SRC_OCT}"#user_socket "${_X_DST_OCT}"#g'
+  done
+}
+_xo_subdirs_here() {
+  find . -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sed 's|^\./||' | sort
+}
+_xo_in .drush _xo_rewrite_here '*.drushrc.php'
+for _S in config/server_master/nginx/vhost.d config/server_master/nginx/pre.d \
+  config/server_master/nginx/post.d config/server_master/nginx/subdir.d \
+  config/server_master/nginx/platform.d config/ssl.d config/server_master/ssl.d; do
+  _xo_in "\${_S}" _xo_rewrite_here
 done
-for _L in \$(find "\${_D}/static" -type l 2>/dev/null); do
-  _T=\$(readlink "\${_L}" 2>/dev/null)
-  _R="\${_T#/data/disk/${_X_SRC_OCT}/}"
-  if [ "\${_R}" != "\${_T}" ]; then
-    _O=\$(stat -c '%U:%G' "\${_L}" 2>/dev/null)
-    ln -sfn "/data/disk/${_X_DST_OCT}/\${_R}" "\${_L}"
-    [ -n "\${_O}" ] && chown -h "\${_O}" "\${_L}" 2>/dev/null
-  fi
+_xo_in config/server_master/nginx/subdir.d _xo_subdirs_here | while IFS= read -r _S; do
+  case "\${_S}" in ''|*/*) continue ;; esac
+  _xo_in "config/server_master/nginx/subdir.d/\${_S}" _xo_rewrite_here
 done
+# A static/ link naming the source tree is repointed as ./name inside the
+# directory find holds, and handed back to its owner there.
+_xo_relink_here() {
+  local _L _T _R _O
+  for _L in "\$@"; do
+    _T=\$(readlink "\${_L}" 2>/dev/null)
+    _R="\${_T#/data/disk/\${_SRC}/}"
+    if [ "\${_R}" != "\${_T}" ]; then
+      _O=\$(stat -c '%U:%G' "\${_L}" 2>/dev/null)
+      ln -sfn "/data/disk/\${_DST}/\${_R}" "\${_L}"
+      [ -n "\${_O}" ] && chown -h "\${_O}" "\${_L}" 2>/dev/null
+    fi
+  done
+}
+export _SRC _DST
+export -f _xo_relink_here
+find "/data/disk/\${_DST}/static" -type l -execdir bash -c '_xo_relink_here "\$@"' _ {} + 2>/dev/null
 # Ownership: rsync kept the SOURCE account's uid on the migrated tree, so the
 # renamed account's files/quota/FTP were attributed to the wrong account (and
 # the site's own site-local Drush was unreachable). Remap ONLY the source
 # account's files to the dest account -- root-owned control files are left
 # untouched (find -user matches by owner, not a blanket chown -R).
-if id "${_X_SRC_OCT}" >/dev/null 2>&1; then
-  find "/data/disk/${_X_DST_OCT}" -user "${_X_SRC_OCT}" -print0 2>/dev/null | xargs -0r chown -h "${_X_DST_OCT}" 2>/dev/null
+if id "\${_SRC}" >/dev/null 2>&1; then
+  find "/data/disk/\${_DST}" -user "\${_SRC}" -execdir chown -h "\${_DST}" {} + 2>/dev/null
 fi
-if id "${_X_SRC_OCT}.ftp" >/dev/null 2>&1; then
-  find "/data/disk/${_X_DST_OCT}" -user "${_X_SRC_OCT}.ftp" -print0 2>/dev/null | xargs -0r chown -h "${_X_DST_OCT}.ftp" 2>/dev/null
-  find "/home/${_X_DST_OCT}.ftp" -user "${_X_SRC_OCT}.ftp" -print0 2>/dev/null | xargs -0r chown -h "${_X_DST_OCT}.ftp" 2>/dev/null
+if id "\${_SRC}.ftp" >/dev/null 2>&1; then
+  find "/data/disk/\${_DST}" -user "\${_SRC}.ftp" -execdir chown -h "\${_DST}.ftp" {} + 2>/dev/null
+  find "/home/\${_DST}.ftp" -user "\${_SRC}.ftp" -execdir chown -h "\${_DST}.ftp" {} + 2>/dev/null
 fi
 REMOTE
 }
@@ -2395,6 +2706,30 @@ _xoct_seed_target_control_pins() {
 ### already exists (later passes converge the rest). LIVE operations only --
 ### never call this from a DRY path or a proxy repair (a long-lived target's
 ### clients may have changed their passwords THERE since the migration).
+### The regular files of the current (pinned) sub-account password store of
+### the account $1, each put under the name it takes for the account $2
+### into the real store directory on the target $3: a link is never sent,
+### and the receiver never writes through one.
+_xoct_users_put_here() {
+  local _e _n
+  for _e in ./*; do
+    [ -f "${_e}" ] && [ ! -L "${_e}" ] || continue
+    _n="${_e#./}"
+    _n="${_n#"${1}".}"
+    # shellcheck disable=SC2086
+    _xoct_rsync -aEAX --no-links ${_ieni} \
+      --rsync-path="$(_xoct_rsync_path_mk_in "/home/${2}.ftp/users")" -e ssh \
+      "${_e}" "root@${3}:./${2}.${_n}"
+  done
+}
+### Whether the sub-user $1 has a .ssh to carry: a real directory, or none
+### (quietly); one that is not a real directory is reported and left.
+_xoct_subuser_ssh_ok() {
+  [ -e "/home/${1}/.ssh" ] || [ -L "/home/${1}/.ssh" ] || return 1
+  _xoct_in_real_dir "/home/${1}/.ssh" true && return 0
+  echo "ALRT: /home/${1}/.ssh is not a real directory -- not followed; its keys not carried"
+  return 1
+}
 _xoct_sync_shell_credentials() {
   local _src="$1" _dst="$2" _t="$3"
   local _sUsr="/data/disk/${_src}" _dUsr="/data/disk/${_dst}"
@@ -2425,21 +2760,24 @@ _xoct_sync_shell_credentials() {
   fi
   ### The store is keyed by FULL sub-user name, so a rename must rewrite the
   ### entry filenames -- an rsync of the directory would land <src>-named
-  ### files that manage_ltd_users never looks for on the target.
-  if [ -d "/home/${_src}.ftp/users" ]; then
-    ssh root@"${_t}" "mkdir -p /home/${_dst}.ftp/users" &> /dev/null
-    for _e in /home/${_src}.ftp/users/*; do
-      [ -f "${_e}" ] || continue
-      _n=$(basename "${_e}")
-      _n="${_n#${_src}.}"
-      _xoct_rsync -aEAX ${_ieni} -e ssh \
-        "${_e}" \
-        "root@${_t}:/home/${_dst}.ftp/users/${_dst}.${_n}"
-    done
-    ### The group is the account's group ON THE TARGET (its own once converted
-    ### there, the box-wide one until then), asked of the target itself: the
-    ### two boxes are in different states for the length of a rollout.
-    ssh root@"${_t}" "_g=\$(id -gn ${_dst} 2>/dev/null); [ \"\$_g\" = ${_dst} ] || _g=users; chown -R ${_dst}.ftp:\$_g /home/${_dst}.ftp/users; chmod 700 /home/${_dst}.ftp/users; chmod 600 /home/${_dst}.ftp/users/* 2>/dev/null; true" &> /dev/null
+  ### files that manage_ltd_users never looks for on the target. The store
+  ### is the account's on both boxes: its regular files are sent from inside
+  ### the real directory into the real one, and the owner and modes are set
+  ### there without following a link put at any name.
+  if [ -e "/home/${_src}.ftp/users" ] || [ -L "/home/${_src}.ftp/users" ]; then
+    if _xoct_in_real_dir "/home/${_src}.ftp/users" true; then
+      ssh root@"${_t}" "mkdir -p /home/${_dst}.ftp/users" &> /dev/null
+      _xoct_in_real_dir "/home/${_src}.ftp/users" \
+        _xoct_users_put_here "${_src}" "${_dst}" "${_t}"
+      ### The group is the account's group ON THE TARGET (its own once
+      ### converted there, the box-wide one until then), asked of the target
+      ### itself: the two boxes are in different states for the length of a
+      ### rollout.
+      _xoct_remote_in "${_t}" "/home/${_dst}.ftp/users" \
+        "_g=\$(id -gn ${_dst} 2>/dev/null); [ \"\$_g\" = ${_dst} ] || _g=users; find . -execdir chown -h ${_dst}.ftp:\$_g {} + 2>/dev/null; chmod 700 .; perl -e '${_XOCT_FCHMOD_PL}' 600 ./* 2>/dev/null; true" &> /dev/null
+    else
+      echo "ALRT: /home/${_src}.ftp/users is not a real directory -- not followed; its password store not carried"
+    fi
   fi
   for _d in "${_sUsr}"/clients/*/; do
     [ -d "${_d}" ] || continue
@@ -2453,21 +2791,20 @@ _xoct_sync_shell_credentials() {
       else
         echo "ALRT: could not carry the sub-account password for ${_dst}.${_n} on ${_t}"
       fi
-      if [ -d "/home/${_src}.${_n}/.ssh" ]; then
-        _xoct_rsync -aEAXqu ${_ieni} -e ssh \
-          "/home/${_src}.${_n}/.ssh" \
-          "root@${_t}:/home/${_dst}.${_n}/"
+      ### The sub-user's keys: from the real directory into the real one.
+      if _xoct_subuser_ssh_ok "${_src}.${_n}"; then
+        _xoct_in_real_dir "/home/${_src}.${_n}/.ssh" _xoct_copy_mk_here "${_t}" \
+          "/home/${_dst}.${_n}/.ssh" '' -aEAXqu ${_ieni}
       fi
     else
       ### The sub-user does not exist there yet: manage_ltd_users creates it
       ### from clients/ within minutes and honours the carried store entry
       ### above, so the password converges. Its .ssh cannot be placed before
       ### the home exists -- stage it for the post-creation pass instead.
-      if [ -d "/home/${_src}.${_n}/.ssh" ]; then
+      if _xoct_subuser_ssh_ok "${_src}.${_n}"; then
         ssh root@"${_t}" "mkdir -p /var/backups/migrate-subuser-ssh/${_dst}.${_n}" &> /dev/null
-        _xoct_rsync -aEAXqu ${_ieni} -e ssh \
-          "/home/${_src}.${_n}/.ssh" \
-          "root@${_t}:/var/backups/migrate-subuser-ssh/${_dst}.${_n}/"
+        _xoct_in_real_dir "/home/${_src}.${_n}/.ssh" _xoct_rsync -aEAXqu ${_ieni} -e ssh \
+          ./ "root@${_t}:/var/backups/migrate-subuser-ssh/${_dst}.${_n}/.ssh/"
         echo "INFO: sub-account ${_dst}.${_n} not created on ${_t} yet; password converges via the"
         echo "INFO: carried store, and its keys are staged at /var/backups/migrate-subuser-ssh/${_dst}.${_n}/.ssh"
       else
@@ -2847,12 +3184,15 @@ _migrate_prepare() {
   ### the real clients/ -- never rm -rf or symlinks -dr through a link the
   ### account put at clients or at a client name.
   _xoct_clean_clients "${_USR}/clients"
+  ### The .ftp home and the panel site are the account's: the dangling-link
+  ### prune runs inside the real home, and drushrc.php is read inside its
+  ### real directory, never through a link or into a FIFO.
   if [ -d "/home/${_THIS_HM_USER}.ftp" ]; then
-    symlinks -dr /home/${_THIS_HM_USER}.ftp &> /dev/null
+    _xoct_in_real_dir "/home/${_THIS_HM_USER}.ftp" symlinks -dr . &> /dev/null
     rm -f /home/${_THIS_HM_USER}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
   fi
   if [ -e "${_THIS_HM_SITE}/drushrc.php" ]; then
-    _HDB=`cat ${_THIS_HM_SITE}/drushrc.php \
+    _HDB=`_xoct_read_in "${_THIS_HM_SITE}" drushrc.php \
       | grep "options\['db_name'\] = " \
       | cut -d: -f2 \
       | awk '{ print $3}' \
@@ -3027,10 +3367,9 @@ _migrate_prepare() {
     printf '%s' "${_HDB}" \
       | _xoct_in_real_dir "${_USR}/log" _xoct_write_here panel_db.txt 022
     ### src/ is oN's on the target: the dump is streamed from inside the real
-    ### directory without following a link the account may have swapped in, and
-    ### fed with --binary-mode so a `\!`/system line planted in the dump is
-    ### never run by the client as root. pipefail keeps a streaming failure
-    ### (a link) from passing as a clean load.
+    ### directory, never through a link, and fed with --binary-mode, so the
+    ### client runs no \! or system command from the dump. pipefail keeps a
+    ### streaming failure (a link) from passing as a clean load.
     if ! ( set -o pipefail
       _xoct_in_real_dir "${_USR}/src" _xoct_cat_here prev_hostmaster.sql \
         | mysql --binary-mode --silent -u root -h${_SQL_CONNECT} \
@@ -3548,12 +3887,28 @@ _xoct_target_fits() {
 _shq() { printf "%s" "$1" | sed "s/'/'\\\\''/g"; }
 
 # De-reference: real dir at <dstRoot> on the target root; rsync the contents in.
-# Returns non-zero if the copy fails (caller denies).
+# Returns non-zero if the copy fails (caller denies). The copy leaves from
+# inside the resolved source directory ($2, canonical). With an account ($5)
+# the target directory is made inside a real parent in that account's own
+# tree or store, and the receiver starts only in the directory it reported.
 _xoct_put_on_root() {
-  local _th="$1" _real="$2" _dstRoot="$3" _ie="$4" _q
+  local _th="$1" _real="$2" _dstRoot="$3" _ie="$4" _acct="$5" _q _dreal
+  if [ -n "${_acct}" ]; then
+    _dreal="$(_xoct_tgt_place "${_th}" _xoct_own_dir_ready dir "${_acct}" "${_dstRoot}")"
+    if [ -z "${_dreal}" ]; then
+      echo "DENY: ${_dstRoot} on the target does not resolve into ${_acct}'s own tree or store -- nothing copied"
+      return 3
+    fi
+    if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
+      --rsync-path="$(_xoct_canon_rpath "${_dreal}")" -e ssh ./ root@"${_th}":./; then
+      echo "DENY: rsync to ${_dstRoot} on target root failed"
+      return 3
+    fi
+    return 0
+  fi
   _q="$(_shq "${_dstRoot}")"
   ssh root@"${_th}" "if [ -L '${_q}' ]; then rm -f '${_q}'; elif [ -e '${_q}' ] && [ ! -d '${_q}' ]; then rm -f '${_q}'; fi; mkdir -p '${_q}'"
-  if ! rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh "${_real}/" root@"${_th}":"${_dstRoot}/"; then
+  if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh ./ root@"${_th}":"${_dstRoot}/"; then
     echo "DENY: rsync to ${_dstRoot} on target root failed"
     return 3
   fi
@@ -3564,11 +3919,33 @@ _xoct_put_on_root() {
 # at <dstRoot> (e.g. an earlier de-reference to root now being moved onto a freshly
 # attached disk) is safe to replace once the mount copy is confirmed. Returns non-zero
 # on any failure (caller denies); the remote replace is fenced to /data/disk.
+# The copy leaves from inside the resolved source directory ($2, canonical).
+# With an account ($7) the mount copy lands only in a directory no link on
+# the way leads to, and the link is placed inside the real parent of
+# <dstRoot>, which must lie in that account's own tree or store.
 _xoct_put_on_mount() {
-  local _th="$1" _real="$2" _mntDest="$3" _dstRoot="$4" _ie="$5" _lbl="$6" _qm _qd
+  local _th="$1" _real="$2" _mntDest="$3" _dstRoot="$4" _ie="$5" _lbl="$6" _acct="$7"
+  local _qm _qd _mreal
   _qm="$(_shq "${_mntDest}")"; _qd="$(_shq "${_dstRoot}")"
+  if [ -n "${_acct}" ]; then
+    _mreal="$(_xoct_tgt_place "${_th}" _xoct_real_mnt_dir "${_mntDest}")"
+    if [ -z "${_mreal}" ]; then
+      echo "DENY: ${_lbl}: ${_mntDest} on the target is not a real directory under its mount -- nothing copied"
+      return 3
+    fi
+    if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
+      --rsync-path="$(_xoct_canon_rpath "${_mreal}")" -e ssh ./ root@"${_th}":./; then
+      echo "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
+      return 3
+    fi
+    if [ -z "$(_xoct_tgt_place "${_th}" _xoct_own_link_ready "${_acct}" "${_dstRoot}" "${_mntDest}")" ]; then
+      echo "DENY: ${_lbl}: could not place symlink ${_dstRoot} -> ${_mntDest} on target (its parent is not ${_acct}'s own there)"
+      return 3
+    fi
+    return 0
+  fi
   ssh root@"${_th}" "mkdir -p '${_qm}'"
-  if ! rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh "${_real}/" root@"${_th}":"${_mntDest}/"; then
+  if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh ./ root@"${_th}":"${_mntDest}/"; then
     echo "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
     return 3
   fi
@@ -3581,27 +3958,48 @@ _xoct_put_on_mount() {
 # Storage-aware transfer of one store. Args:
 #   1 source path  2 dest path on target root  3 mount-relative dest ("" => derive)
 #   4 target host  5 target mount ("path"|""|"MULTI")  6 ieni  7 label
+#   8 the account whose store this is ("" for a box tree such as arch)
+#   9 what the account's store may resolve to: tree (its own tree or its
+#     store under <mount>/files/<oN>/, the default) or uid (also anything
+#     its identities own)
+# The source is resolved once and copied from inside that real directory;
+# an account's store that resolves anywhere else is refused, never followed.
 _xoct_handle_store() {
   local _src="$1" _dstRoot="$2" _mntRel="$3" _th="$4" _tm="$5" _ie="$6" _lbl="$7"
-  local _real _link _sz _onMnt=NO _mntDest="" _act="" _reason=""
+  local _acct="$8" _rule="${9:-tree}" _dacct=""
+  local _real _link _sz _onMnt=NO _mntDest="" _act="" _reason="" _rc=0
 
   if [ ! -e "${_src}" ] && [ ! -L "${_src}" ]; then
     return 0
+  fi
+  if [ -n "${_acct}" ]; then
+    _dacct="${_dstRoot#/data/disk/}"
+    _dacct="${_dacct%%/*}"
   fi
 
   # --- classify + resolve the source ---
   if [ "${_tm}" = "MULTI" ]; then
     _act=DENY; _reason="target has multiple /mnt mounts; cannot choose one"
+  elif [ -n "${_acct}" ] && { [ "${_dstRoot}" = "/data/disk/${_dacct}" ] \
+    || [ "${_dstRoot#/data/disk/}" = "${_dstRoot}" ]; }; then
+    _act=DENY; _reason="${_dstRoot} is not a path inside an account on the target"
   elif [ -L "${_src}" ]; then
     _link="$(readlink "${_src}" 2>/dev/null)"
     _real="$(readlink -f "${_src}" 2>/dev/null)"
     if [ -z "${_real}" ] || [ ! -d "${_real}" ]; then
       _act=DENY; _reason="${_src} is a dangling symlink (attached disk not mounted?)"
+    elif [ -n "${_acct}" ] && ! _xoct_store_is_own "${_acct}" "${_real}" "${_rule}"; then
+      _act=DENY; _reason="${_src} resolves to ${_real}, outside ${_acct}'s own tree and store -- not followed"
     else
       case "${_link}" in /mnt/*) _onMnt=YES ;; esac
     fi
   elif [ -d "${_src}" ]; then
-    _real="${_src}"
+    _real="$(cd -P -- "${_src}" 2>/dev/null && pwd -P)"
+    if [ -z "${_real}" ]; then
+      _act=DENY; _reason="${_src} cannot be entered"
+    elif [ -n "${_acct}" ] && ! _xoct_store_is_own "${_acct}" "${_real}" "${_rule}"; then
+      _act=DENY; _reason="${_src} resolves to ${_real}, outside ${_acct}'s own tree and store -- not followed"
+    fi
   else
     return 0
   fi
@@ -3634,7 +4032,8 @@ _xoct_handle_store() {
       ;;
     MIRROR)
       if [ "${_MODE}" = "LIVE" ]; then
-        _xoct_put_on_mount "${_th}" "${_real}" "${_mntDest}" "${_dstRoot}" "${_ie}" "${_lbl}" || { _XOCT_NOT_CLEAN=YES; return $?; }
+        _xoct_put_on_mount "${_th}" "${_real}" "${_mntDest}" "${_dstRoot}" "${_ie}" "${_lbl}" "${_dacct}" \
+          || { _rc=$?; _XOCT_NOT_CLEAN=YES; return "${_rc}"; }
         echo "INFO: ${_lbl}: mirrored to target mount ${_mntDest}, symlinked ${_dstRoot}"
       else
         echo "[DRY-PLAN] ${_lbl}: would mirror onto target mount ${_mntDest} and symlink ${_dstRoot} (source ${_sz:-?}K)"
@@ -3642,7 +4041,8 @@ _xoct_handle_store() {
       ;;
     ROOT)
       if [ "${_MODE}" = "LIVE" ]; then
-        _xoct_put_on_root "${_th}" "${_real}" "${_dstRoot}" "${_ie}" || { _XOCT_NOT_CLEAN=YES; return $?; }
+        _xoct_put_on_root "${_th}" "${_real}" "${_dstRoot}" "${_ie}" "${_dacct}" \
+          || { _rc=$?; _XOCT_NOT_CLEAN=YES; return "${_rc}"; }
         echo "INFO: ${_lbl}: real dir on target root ${_dstRoot}"
       else
         echo "[DRY-PLAN] ${_lbl}: would place real dir on target root ${_dstRoot} (source ${_sz:-?}K)"
@@ -3656,7 +4056,9 @@ _xoct_handle_store() {
 # is /mnt/... gets the same storage-aware treatment, so non-standard legacy links are
 # never left dangling on the target. Sets _XOCT_STORE_RC on any DENY. NOTE: on a rename
 # the derived on-mount path keeps the SOURCE account name for a legacy link (it still
-# resolves; only the mount-relative path is cosmetically old-named).
+# resolves; only the mount-relative path is cosmetically old-named). A link is carried
+# only when it resolves into the account's own tree or store, or to content one of its
+# identities owns (such an old-named path); anything else is a DENY.
 _xoct_catchall_mnt_symlinks() {
   local _root="$1" _dstRoot="$2" _th="$3" _tm="$4" _ie="$5"
   local _l _lt _rel _dl
@@ -3667,7 +4069,8 @@ _xoct_catchall_mnt_symlinks() {
     case "${_lt}" in /mnt/*) : ;; *) continue ;; esac
     _rel="${_l#"${_root}"/}"
     _dl="${_dstRoot}/${_rel}"
-    _xoct_handle_store "${_l}" "${_dl}" "" "${_th}" "${_tm}" "${_ie}" "legacy symlink ${_rel}" || _XOCT_STORE_RC=$?
+    _xoct_handle_store "${_l}" "${_dl}" "" "${_th}" "${_tm}" "${_ie}" "legacy symlink ${_rel}" \
+      "${_root##*/}" uid || _XOCT_STORE_RC=$?
   done <<EOF
 $(find "${_root}" -type l 2>/dev/null)
 EOF
@@ -3699,7 +4102,7 @@ _xoct_transfer_static_symlink_safe() {
   if ! _xoct_in_real_dir "${_X_SRC_STATIC}" true; then
     echo "DENY: ${_X_SRC_STATIC} is not a real directory -- not followed; static/ not copied"
     _XOCT_NOT_CLEAN=YES
-    _XOCT_STORE_RC=1
+    [ "${_MODE}" = "LIVE" ] && _XOCT_STORE_RC=1
     return 1
   fi
   _xoct_in_real_dir "${_X_SRC_STATIC}" _xoct_copy_here "${_X_TGT_HOST}" \
@@ -3732,7 +4135,7 @@ _xoct_transfer_static_symlink_safe() {
     "${_X_DST_STATIC_FILES}" \
     "files/${_X_DST_ACCT}/static/files" \
     "${_X_TGT_HOST}" "${_X_TGT_MNT}" "${_X_IENI}" \
-    "static/files (${_X_DST_ACCT})" || _XOCT_STORE_RC=$?
+    "static/files (${_X_DST_ACCT})" "${_X_SRC_USR##*/}" || _XOCT_STORE_RC=$?
 }
 
 ###-------------MIGRATION PROXY VERBS----###
@@ -3890,6 +4293,13 @@ _MIG_STAMPED=$(date -u '+%Y-%m-%d')
 RECEOF
 mv -f -T -- "\${_t}" ./migproxy.cnf
 chown -h root:root ./migproxy.cnf 2>/dev/null || true
+# The addresses this box relays from, kept where only root writes: the
+# promoted box carries a peer's reach only for addresses root recorded.
+for _a in ${_my} ${_myall}; do
+  grep -qxF -- "\${_a}" /root/.migration.peer.addrs 2>/dev/null \
+    || ( umask 077; printf '%s\\n' "\${_a}" >> /root/.migration.peer.addrs ) \
+    || true
+done
 PEERREC
   local _prc=$?
   ### The remote stderr is what names the cause a refusal must show (a host
@@ -4642,10 +5052,14 @@ _migrate_init() {
           ### glob inside the real source directory and the receiver writes
           ### inside the real target directory (created when missing), so a link
           ### the account put at either name is never followed or written through.
-          _xoct_in_real_dir "${_USR}/distro" _xoct_copy_mk_here "${_tgt}" \
-            "${_DST}/distro" '*' -aEAXqu ${_ieni}
-          _xoct_in_real_dir "${_USR}/src" _xoct_copy_mk_here "${_tgt}" \
-            "${_DST}/src" '*' -aEAXqu ${_ieni}
+          ### A leg whose source is not a real directory is refused (DENY) by
+          ### _xoct_leg_ok, never skipped quietly.
+          _xoct_leg_ok "${_USR}/distro" \
+            && _xoct_in_real_dir "${_USR}/distro" _xoct_copy_mk_here "${_tgt}" \
+              "${_DST}/distro" '*' -aEAXqu ${_ieni}
+          _xoct_leg_ok "${_USR}/src" \
+            && _xoct_in_real_dir "${_USR}/src" _xoct_copy_mk_here "${_tgt}" \
+              "${_DST}/src" '*' -aEAXqu ${_ieni}
           _xoct_transfer_static_symlink_safe "${_USR}" "${_tgt}" "${_DST}" "${_ieni}" "${_TGT_MNT}"
           #
           _DST_ACCT=$(basename "${_DST}")
@@ -4654,20 +5068,22 @@ _migrate_init() {
           # and honours a pre-existing store entry (the carried password)
           # only if it is already there. Forced (no -u): the target's fresh
           # install must never shadow the carried credentials.
-          if [ -d "/home/${_oct}.ftp/users" ]; then
-            _xoct_rsync -aEAX ${_ieni} -e ssh \
-              /home/${_oct}.ftp/users/ \
-              root@${_tgt}:/home/${_DST_ACCT}.ftp/users/
-          fi
+          # The store is the account's: sent from inside the real directory
+          # into the real directory on the target (made when missing).
+          _xoct_leg_ok "/home/${_oct}.ftp/users" \
+            && _xoct_in_real_dir "/home/${_oct}.ftp/users" _xoct_copy_mk_here \
+              "${_tgt}" "/home/${_DST_ACCT}.ftp/users" '' -aEAX ${_ieni}
           ### clients/ is oN's on both boxes: pinned both ends, target made real.
-          _xoct_in_real_dir "${_USR}/clients" _xoct_copy_mk_here "${_tgt}" \
-            "${_DST}/clients" '*' -aEAXqu ${_ieni} &> /dev/null
+          _xoct_leg_ok "${_USR}/clients" \
+            && _xoct_in_real_dir "${_USR}/clients" _xoct_copy_mk_here "${_tgt}" \
+              "${_DST}/clients" '*' -aEAXqu ${_ieni} &> /dev/null
           # instance-group.txt records the SOURCE box's conversion (its gid);
           # it must never travel, the destination pass writes its own.
           ### log/ is oN's on both boxes: copied from inside the real
           ### directory into the real directory, the glob expanded there.
-          _xoct_in_real_dir "${_USR}/log" _xoct_copy_here "${_tgt}" "${_DST}/log" '*' \
-            -aEAXqu ${_ieni} --exclude=instance-group.txt --exclude=proxy-failed.pid
+          _xoct_leg_ok "${_USR}/log" \
+            && _xoct_in_real_dir "${_USR}/log" _xoct_copy_here "${_tgt}" "${_DST}/log" '*' \
+              -aEAXqu ${_ieni} --exclude=instance-group.txt --exclude=proxy-failed.pid
           ### static/control is the tenant's on both boxes: a control that is
           ### a link is never followed (the glob this replaces expanded
           ### through it); a real one travels by its top-level entries, from
@@ -4681,30 +5097,29 @@ _migrate_init() {
               "${_DST}/static/control" '' -aEAXqu ${_ieni} --exclude='*/' &> /dev/null
           fi
           #
-          ### backups/ and undo/ are oN's on both boxes: pinned both ends, the
-          ### target directory made real (undo/ the installer does not create).
-          _xoct_in_real_dir "${_USR}/backups" _xoct_copy_mk_here "${_tgt}" \
-            "${_DST}/backups" '*' -aEAXqu ${_ieni} &> /dev/null
-          _xoct_in_real_dir "${_USR}/undo" _xoct_copy_mk_here "${_tgt}" \
-            "${_DST}/undo" '*' -aEAXqu ${_ieni} &> /dev/null
-          if [ ! -z "${_dst}" ]; then
-            _xoct_rsync -aEAXqu ${_ieni} -e ssh /home/${_oct}.ftp/.ssh  root@${_tgt}:/home/${_dst}.ftp/
-          else
-            _xoct_rsync -aEAXqu ${_ieni} -e ssh /home/${_oct}.ftp/.ssh  root@${_tgt}:/home/${_oct}.ftp/
-          fi
+          ### backups/ and backup-exports/ follow the nightly's store layout
+          ### (see _xoct_backups_leg). undo/ is oN's on both boxes: pinned both
+          ### ends, the target directory made real (the installer does not).
+          _xoct_backups_leg "${_USR}" "${_DST}" "${_tgt}" "${_ieni}" backups
+          _xoct_backups_leg "${_USR}" "${_DST}" "${_tgt}" "${_ieni}" backup-exports
+          _xoct_leg_ok "${_USR}/undo" \
+            && _xoct_in_real_dir "${_USR}/undo" _xoct_copy_mk_here "${_tgt}" \
+              "${_DST}/undo" '*' -aEAXqu ${_ieni} &> /dev/null
+          # The account's SSH keys: from the real directory into the real one.
+          _xoct_leg_ok "/home/${_oct}.ftp/.ssh" \
+            && _xoct_in_real_dir "/home/${_oct}.ftp/.ssh" _xoct_copy_mk_here \
+              "${_tgt}" "/home/${_DST_ACCT}.ftp/.ssh" '' -aEAXqu ${_ieni}
 
           # Client-installed toolchains live outside /data/disk in the lshell
           # jail's writable trees and never travelled before -- migrate AS-IS.
-          if [ -d "/opt/user/gems/${_oct}.ftp" ]; then
-            _xoct_rsync -aEAXqu ${_ieni} -e ssh \
-              /opt/user/gems/${_oct}.ftp/ \
-              root@${_tgt}:/opt/user/gems/${_DST_ACCT}.ftp/
-          fi
-          if [ -d "/opt/user/npm/${_oct}.ftp" ]; then
-            _xoct_rsync -aEAXqu ${_ieni} -e ssh \
-              /opt/user/npm/${_oct}.ftp/ \
-              root@${_tgt}:/opt/user/npm/${_DST_ACCT}.ftp/
-          fi
+          # The parents are sticky and world-writable, so each leaf is its
+          # owner's to replace: pinned as the account legs are.
+          _xoct_leg_ok "/opt/user/gems/${_oct}.ftp" \
+            && _xoct_in_real_dir "/opt/user/gems/${_oct}.ftp" _xoct_copy_mk_here \
+              "${_tgt}" "/opt/user/gems/${_DST_ACCT}.ftp" '' -aEAXqu ${_ieni}
+          _xoct_leg_ok "/opt/user/npm/${_oct}.ftp" \
+            && _xoct_in_real_dir "/opt/user/npm/${_oct}.ftp" _xoct_copy_mk_here \
+              "${_tgt}" "/opt/user/npm/${_DST_ACCT}.ftp" '' -aEAXqu ${_ieni}
 
           # Re-converge the octopus.cnf and the client credentials on every
           # LIVE transfer: source-side changes since create (a PHP pin move,
@@ -4732,46 +5147,55 @@ _migrate_init() {
           # per-site aliases must always arrive. .drush is oN's on both boxes:
           # copied from inside the real directory into the real directory,
           # the glob expanded there.
-          _xoct_in_real_dir "${_USR}/.drush" _xoct_copy_here "${_tgt}" \
-            "${_DST}/.drush" '*.alias.drushrc.php' -aEAXqu ${_ieni}
+          _xoct_leg_ok "${_USR}/.drush" \
+            && _xoct_in_real_dir "${_USR}/.drush" _xoct_copy_here "${_tgt}" \
+              "${_DST}/.drush" '*.alias.drushrc.php' -aEAXqu ${_ieni}
 
           ### config/ and tools/ belong to oN on both boxes: every leg below
           ### expands its glob inside the real source directory and the receiver
           ### writes inside the real target directory (created when missing), so
           ### a link the account put at a directory name is never followed or
-          ### written through. Nested subdirectories are still walked by rsync
-          ### within a single run -- the residual noted for these whole-tree legs.
-          _xoct_in_real_dir "${_USR}/config/server_master/nginx/vhost.d" \
-            _xoct_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/vhost.d" '*' \
-            -aEAXqu ${_ieni} --exclude=host8.biz --exclude=boa.io --exclude=aegir.cc
+          ### written through. Subdirectories below the top level are still
+          ### walked by rsync as it finds them.
+          _xoct_leg_ok "${_USR}/config/server_master/nginx/vhost.d" \
+            && _xoct_in_real_dir "${_USR}/config/server_master/nginx/vhost.d" \
+              _xoct_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/vhost.d" '*' \
+              -aEAXqu ${_ieni} --exclude=host8.biz --exclude=boa.io --exclude=aegir.cc
 
-          _xoct_in_real_dir "${_USR}/config/server_master/nginx/pre.d" \
-            _xoct_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/pre.d" '*' \
-            -aEAXqu ${_ieni} &> /dev/null
+          _xoct_leg_ok "${_USR}/config/server_master/nginx/pre.d" \
+            && _xoct_in_real_dir "${_USR}/config/server_master/nginx/pre.d" \
+              _xoct_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/pre.d" '*' \
+              -aEAXqu ${_ieni} &> /dev/null
 
-          _xoct_in_real_dir "${_USR}/config/server_master/nginx/post.d" \
-            _xoct_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/post.d" '*' \
-            -aEAXqu ${_ieni} &> /dev/null
+          _xoct_leg_ok "${_USR}/config/server_master/nginx/post.d" \
+            && _xoct_in_real_dir "${_USR}/config/server_master/nginx/post.d" \
+              _xoct_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/post.d" '*' \
+              -aEAXqu ${_ieni} &> /dev/null
 
-          _xoct_in_real_dir "${_USR}/config/server_master/nginx/subdir.d" \
-            _xoct_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/subdir.d" '*' \
-            -aEAXqu ${_ieni} &> /dev/null
+          _xoct_leg_ok "${_USR}/config/server_master/nginx/subdir.d" \
+            && _xoct_in_real_dir "${_USR}/config/server_master/nginx/subdir.d" \
+              _xoct_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/subdir.d" '*' \
+              -aEAXqu ${_ieni} &> /dev/null
 
-          _xoct_in_real_dir "${_USR}/config/server_master/nginx/platform.d" \
-            _xoct_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/platform.d" '*' \
-            -aEAXqu ${_ieni} &> /dev/null
+          _xoct_leg_ok "${_USR}/config/server_master/nginx/platform.d" \
+            && _xoct_in_real_dir "${_USR}/config/server_master/nginx/platform.d" \
+              _xoct_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/platform.d" '*' \
+              -aEAXqu ${_ieni} &> /dev/null
 
-          _xoct_in_real_dir "${_USR}/config/ssl.d" \
-            _xoct_copy_mk_here "${_tgt}" "${_DST}/config/ssl.d" '*' \
-            -aEAXqu ${_ieni} &> /dev/null
+          _xoct_leg_ok "${_USR}/config/ssl.d" \
+            && _xoct_in_real_dir "${_USR}/config/ssl.d" \
+              _xoct_copy_mk_here "${_tgt}" "${_DST}/config/ssl.d" '*' \
+              -aEAXqu ${_ieni} &> /dev/null
 
-          _xoct_in_real_dir "${_USR}/config/server_master/ssl.d" \
-            _xoct_copy_mk_here "${_tgt}" "${_DST}/config/server_master/ssl.d" '*' \
-            -aEAXqu ${_ieni} &> /dev/null
+          _xoct_leg_ok "${_USR}/config/server_master/ssl.d" \
+            && _xoct_in_real_dir "${_USR}/config/server_master/ssl.d" \
+              _xoct_copy_mk_here "${_tgt}" "${_DST}/config/server_master/ssl.d" '*' \
+              -aEAXqu ${_ieni} &> /dev/null
 
-          _xoct_in_real_dir "${_USR}/tools" \
-            _xoct_copy_mk_here "${_tgt}" "${_DST}/tools" 'le' \
-            -aEAXqu ${_ieni} &> /dev/null
+          _xoct_leg_ok "${_USR}/tools" \
+            && _xoct_in_real_dir "${_USR}/tools" \
+              _xoct_copy_mk_here "${_tgt}" "${_DST}/tools" 'le' \
+              -aEAXqu ${_ieni} &> /dev/null
 
           # Catch-all: fix any OTHER /mnt-anchored symlink in the account tree that the
           # rsync -a passes above transferred as a bare (dangling-on-target) link.

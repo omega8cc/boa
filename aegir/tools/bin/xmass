@@ -664,7 +664,7 @@ _xmass_touch_here() {
 _xmass_sed_to() {
   local _s="${1}" _n="${2}" _st _own _m _sz _ft _t
   shift 2
-  _st="$(stat -c '%u:%g %a %s %F' -- "./${_s}" 2> /dev/null)" || return 1
+  _st="$(LC_ALL=C stat -c '%u:%g %a %s %F' -- "./${_s}" 2> /dev/null)" || return 1
   case "${_st}" in
     *" regular file"|*" regular empty file") ;;
     *) return 1 ;;
@@ -903,7 +903,7 @@ _xmass_tgt_place() {
       _xmass_own_dir_ready _xmass_own_parent_ready _xmass_own_link_ready \
       _xmass_real_mnt_dir
     printf '%s\n' '"$@"'; } \
-    | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_h}" \
+    | ssh ${_XMASS_SSH_SHARE} -o BatchMode=yes -o ConnectTimeout=30 root@"${_h}" \
       "bash -s --${_args}" 2> /dev/null)"
   _out="$(printf '%s\n' "${_out}" | grep -m1 '^XMREAL /')"
   [ -n "${_out}" ] || return 1
@@ -1177,14 +1177,14 @@ _xmass_solr_classify_source() {
   ### boa_site_control.ini declares which Solr module family the site uses.
   ### solr4 legacy estates predate the ini scheme and usually carry NO
   ### directive -- for solr4 the STATUS document count is decisive instead.
-  ### The aliases are read inside each account's real .drush, the ini files
-  ### without following a link or opening a FIFO: both are the account's.
+  ### The aliases and the ini files are the account's: each is read inside
+  ### its real directory (the ini inside the real modules/), never through a
+  ### link or into a FIFO.
   _bindraw=$(for _alias in /data/disk/*/.drush/*.alias.drushrc.php; do
     [ -f "${_alias}" ] || continue
     _apath=$(_xmass_read_file "${_alias}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
     [ -n "${_apath}" ] && [ -f "${_apath}/modules/boa_site_control.ini" ] \
-      && timeout 10 dd if="${_apath}/modules/boa_site_control.ini" \
-        iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none \
+      && _xmass_read_file "${_apath}/modules/boa_site_control.ini" \
         | grep -h "^solr_integration_module"
   done 2>/dev/null | awk -F'= *' '{ print $2 }' | tr -d ' \r')
   ### An empty tally out of a broken alias parse is indistinguishable from
@@ -2328,13 +2328,24 @@ _xmass_copy_suspended_flag() {
 ### symlink. Migrating a broken renewal means debugging two things at once
 ### inside the cutover window, so name every broken pair now. Advisory.
 _xmass_check_le_health() {
-  local _c _pem _end _bad=0
+  local _c _a _r _pem _end _bad=0
   _info "Checking source certificates for broken renewals ..."
   for _c in /data/disk/*/config/server_master/ssl.d/*/openssl.crt; do
-    [ -e "${_c}" ] || continue
-    # the account's name: read inside its real directory, never through a
-    # link or into a FIFO put there (openssl would block on one)
-    _pem="$(_xmass_read_file "${_c}")"
+    [ -e "${_c}" ] || [ -L "${_c}" ] || continue
+    # The account's name, reached through the links the Let's Encrypt layout
+    # makes (ssl.d/<dom> -> tools/le/certs/<dom>, openssl.crt -> cert.pem):
+    # resolved once, accepted only inside the account's own tree or store,
+    # and read inside that real directory, never into a FIFO (openssl would
+    # block on one).
+    _a="${_c#/data/disk/}"
+    _a="${_a%%/*}"
+    _r="$(readlink -f -- "${_c}" 2>/dev/null)"
+    if [ -z "${_r}" ] || ! _xmass_own_path "${_a}" "${_r%/*}"; then
+      _alrt "  certificate resolves outside ${_a}'s own tree: ${_c} -> ${_r:-nothing} -- not read"
+      _bad=$(( _bad + 1 ))
+      continue
+    fi
+    _pem="$(_xmass_at_canon_dir "${_r%/*}" _xmass_read_here "${_r##*/}")"
     if [ -z "${_pem}" ]; then
       _alrt "  ZERO-BYTE or unreadable certificate: ${_c} -- fix the renewal BEFORE migrating"
       _bad=$(( _bad + 1 ))
@@ -4979,6 +4990,7 @@ _xmass_scan_out_links() {
         # is ever measured or copied (see _xmass_materialise_out_links)
         if [ -n "${_acct}" ] && ! _xmass_store_is_own "${_acct}" "${_LNK_REAL}" uid; then
           _nskip=$(( _nskip + 1 ))
+          _XMASS_OUT_NOT_OWN=$(( ${_XMASS_OUT_NOT_OWN:-0} + 1 ))
           _alrt "  out-of-root link is not ${_acct}'s own (its tree, its store under"
           _alrt "    <mount>/files/${_acct}/, or its files): ${_l} -> ${_LNK_REAL} -- content will NOT travel"
           continue
@@ -5061,6 +5073,7 @@ _xmass_materialise_out_links() {
     _real="$(readlink -f "${_root}/${_rel}" 2>/dev/null)"
     if [ -n "${_acct}" ] && [ -n "${_real}" ] \
       && ! _xmass_store_is_own "${_acct}" "${_real}" uid; then
+      _XMASS_OUT_NOT_OWN=$(( ${_XMASS_OUT_NOT_OWN:-0} + 1 ))
       _alrt "  out-of-root link ${_root}/${_rel} -> ${_real} is not ${_acct}'s own"
       _alrt "    (its tree, its store under <mount>/files/${_acct}/, or its files) -- skipped, its content does NOT travel"
       continue
@@ -5133,11 +5146,16 @@ EOF
 _xmass_materialise_own_files() {
   local _root="$1" _dstRoot="$2" _files="$3" _acct="$4"
   local _rel _real _n _to _pr _qn _rp
+  # Two ssh sessions per file (placement, copy) share one connection for
+  # the whole list, so a long list costs one handshake, not two per file.
+  local _cm="-o ControlMaster=auto -o ControlPath=/root/.ssh/.xmass-cm-%C -o ControlPersist=60"
+  _XMASS_SSH_SHARE="${_cm}"
   while IFS= read -r _rel <&3; do
     [ -n "${_rel}" ] || continue
     _real="$(readlink -f "${_root}/${_rel}" 2>/dev/null)"
     if [ -z "${_real}" ] || [ ! -f "${_real}" ] \
       || ! _xmass_store_is_own "${_acct}" "${_real}" uid; then
+      _XMASS_OUT_NOT_OWN=$(( ${_XMASS_OUT_NOT_OWN:-0} + 1 ))
       _alrt "  out-of-root file link ${_root}/${_rel} -> ${_real:-?} is not ${_acct}'s own file -- skipped, it does NOT travel"
       continue
     fi
@@ -5168,11 +5186,12 @@ _xmass_materialise_own_files() {
     _rp="$(_xmass_canon_rpath "${_pr}")"
     _rp="${_rp% && rsync} && { [ ! -L './${_qn}' ] || rm -f -- './${_qn}'; } && [ ! -d './${_qn}' ] && rsync"
     _xmass_at_canon_dir "${_real%/*}" _xmass_rsync -aEAXq --no-links ${_ieni} \
-      --rsync-path="${_rp}" -e ssh "./${_real##*/}" "root@${_tgt}:./${_n}" \
+      --rsync-path="${_rp}" -e "ssh ${_cm}" "./${_real##*/}" "root@${_tgt}:./${_n}" \
       || _alrt "  ${_real%/*} is no longer the directory it resolved to -- ${_rel} not copied"
   done 3<<EOF
 ${_files}
 EOF
+  _XMASS_SSH_SHARE=""
   return 0
 }
 
@@ -5476,8 +5495,8 @@ _xmass_sync_account() {
   # reasoning as the log/ leg above, applied at the damage site so a hand-run
   # sync is refused too. The saved pre-conversion vhosts (dot-files) never
   # travel: they are this box's revert copies, not configuration.
-  # The account owns config/ down to nginx/ and every directory in it: a name
-  # planted as a link there would have root copy what it points at. The nginx
+  # The account owns config/ down to nginx/ and every directory in it, so any
+  # name there can be a link: root copies only from the real directory. The nginx
   # legs go only from the real directory, each directory sent by its own name
   # into the parent, so a link swapped in after the check travels as a link
   # and is never followed.
@@ -5661,10 +5680,19 @@ _xmass_sync_account() {
   # the source link every sync and would fight a materialised copy (see the
   # sweep header). Root-level legacy links (the historical /mnt case) are not
   # under any leg and materialise cleanly.
+  # A link whose content is not the account's own is skipped, and the pass
+  # fails as a refused leg does: a cutover never goes ahead without that
+  # content until the link is moved or its store relinked.
+  _XMASS_OUT_NOT_OWN=0
   _xmass_scan_out_links "${_udir}" "${_udir}/static/files" \
     "distro static log .drush config clients backups undo tools" "${_oct}"
   _info "  link sweep ${_oct}: ${_XMASS_LNK_RPT}"
   _xmass_materialise_out_links "${_udir}" "${_dst}" 1 "${_oct}"
+  if [ "${_XMASS_OUT_NOT_OWN}" -gt 0 ]; then
+    _alrt "DENY: ${_oct}: ${_XMASS_OUT_NOT_OWN} out-of-root link(s) resolve to content that is not ${_oct}'s own -- see above; that content does not travel"
+    _XMASS_RSYNC_RC=23
+    _XMASS_NOT_CLEAN=YES
+  fi
 
   # The legs above mapped the group as they copied; a hand-run sync or a
   # cutover also lets the destination's own tool sweep the whole account
@@ -6828,13 +6856,16 @@ _xmass_setup_migration_proxy_trust() {
 # not a new trust domain. The key travels in the command environment, base64,
 # never on stdin (stdin is the remote script). Idempotent, never fatal.
 ### Whether this box keeps a record of its own for the migration peer $1 (a
-### checked dotted quad): the relay list migration_proxy_trust keeps, a root
-### key line tagged for that address by pre-mig, or the firewall line an
-### xmass run wrote for it. An address named only in an account's log/ is
-### none of these.
+### checked dotted quad): the relay list migration_proxy_trust keeps, the
+### address list root keeps beside each peer record it receives (every
+### address the peer relays from, so a record's whole set stays witnessed
+### after the relay list is retired), a root key line tagged for that
+### address by pre-mig, or the firewall line an xmass run wrote for it. An
+### address named only in an account's log/ is none of these.
 _xmass_peer_witnessed() {
   local _rx="${1//./\\.}"
   grep -qxF -- "${1}" /root/.migration.proxy.ips.cnf 2> /dev/null && return 0
+  grep -qxF -- "${1}" /root/.migration.peer.addrs 2> /dev/null && return 0
   grep -qE -- " # xmass migration source ${_rx}[[:space:]]*\$" /root/.ssh/authorized_keys 2> /dev/null && return 0
   grep -qE -- "^${_rx} # xmass migration " /etc/csf/csf.allow 2> /dev/null
 }

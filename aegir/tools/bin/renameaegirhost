@@ -610,6 +610,26 @@ _detect_new_hostname() {
 
 ###-------------BACKUP--------------------###
 
+# Root's copies of earlier runs for this root expire by the stamp in their
+# names (YYYYmmdd_HHMMSS) once older than the days the nightly keeps backups
+# for ($1): an entry without a stamp, or with this run's, is never touched.
+# Run inside the root-only directory.
+_expire_priv_bk_here() {
+  local _days="${1}" _cut _e _n _ts
+  _cut="$(date -d "-${_days} days" +%Y%m%d_%H%M%S 2> /dev/null)" || return 0
+  [ -n "${_cut}" ] || return 0
+  for _e in ./*; do
+    [ -e "${_e}" ] || [ -L "${_e}" ] || continue
+    _n="${_e#./}"
+    _ts="$(printf '%s' "${_n}" | grep -oE '(^|_)[0-9]{8}_[0-9]{6}' | head -n1)"
+    _ts="${_ts#_}"
+    [ -n "${_ts}" ] || continue
+    [ "${_ts}" = "${_TS}" ] && continue
+    [[ "${_ts}" < "${_cut}" ]] || continue
+    rm -rf -- "${_e}"
+  done
+}
+
 _backup_files() {
   if [ "${_DRY_RUN}" = "YES" ]; then
     _info "(dry-run) Would create backup in ${_PRIV_BK}"
@@ -626,6 +646,15 @@ _backup_files() {
     _die "Could not make the root-only backup dir ${_PRIV_BK}"
   fi
   _TS=$(date +%Y%m%d_%H%M%S)
+
+  # Kept as long as the nightly keeps an account's backups
+  # (_DEL_OLD_BACKUPS, 14 days when unset), so the dumps and copies of
+  # earlier runs never pile up on the root filesystem.
+  local _KEEP
+  _KEEP=$(grep -m1 '^_DEL_OLD_BACKUPS=' /root/.barracuda.cnf 2> /dev/null \
+    | cut -d= -f2 | tr -dc '0-9')
+  [ -n "${_KEEP}" ] && [ "${_KEEP}" -gt 0 ] 2> /dev/null || _KEEP=14
+  ( cd -P -- "${_PRIV_BK}" 2> /dev/null && _expire_priv_bk_here "${_KEEP}" )
 
   # Copied from inside the real directories: .drush and vhost.d are the
   # account's, cp -a keeps a link inside them as a link.
@@ -2785,6 +2814,10 @@ _rename_in_database() {
     _die "pre-rename backup of ${_AEGIR_DB} is missing, truncated or failed (rc=${_RAH_DUMP_RC}) -- refusing to rewrite the database without a complete backup: ${_DUMP_ORIG}"
   fi
 
+  # Compressed once verified: the panel database can run to hundreds of MB.
+  if gzip -f -- "${_DUMP_ORIG}" 2> /dev/null; then
+    _DUMP_ORIG="${_DUMP_ORIG}.gz"
+  fi
   _info "  Backup size: $(du -sh "${_DUMP_ORIG}" | cut -f1), kept in ${_PRIV_BK}"
 
   # Identity rows first, keyed by hosting_context nid (aegir2boa-stage2
