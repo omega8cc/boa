@@ -155,10 +155,10 @@ _stage_bee() {
   rm -rf /opt/tools/bee/*
   ### Subshell keeps the caller's working directory untouched.
   ( cd /opt/tools/bee && _get_dev_ext "bee.tar.gz" )
+  ### Root extraction preserves the build-box owner from the tarball, the
+  ### directory itself included: root's whatever landed, like drush.
+  chown -R root:root /opt/tools/bee
   if [ -e "/opt/tools/bee/bee.php" ]; then
-    ### Root extraction preserves the build-box owner from the tarball;
-    ### normalize like drush.
-    chown -R root:root /opt/tools/bee
     find /opt/tools/bee -type d -exec chmod 0755 {} \; &> /dev/null
     find /opt/tools/bee -type f -exec chmod 0644 {} \; &> /dev/null
     chmod 755 /opt/tools/bee/bee.php
@@ -1096,20 +1096,11 @@ _satellite_cnf() {
     fi
 
     if [ -e "${_ROOT}/static/control/fpm.info" ]; then
-      _PHP_FPM_VERSION=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
-      _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
-      if [ "${_PHP_FPM_VERSION}" = "8.5" ] \
-        || [ "${_PHP_FPM_VERSION}" = "8.4" ] \
-        || [ "${_PHP_FPM_VERSION}" = "8.3" ] \
-        || [ "${_PHP_FPM_VERSION}" = "8.2" ] \
-        || [ "${_PHP_FPM_VERSION}" = "8.1" ] \
-        || [ "${_PHP_FPM_VERSION}" = "8.0" ] \
-        || [ "${_PHP_FPM_VERSION}" = "7.4" ] \
-        || [ "${_PHP_FPM_VERSION}" = "7.3" ] \
-        || [ "${_PHP_FPM_VERSION}" = "7.2" ] \
-        || [ "${_PHP_FPM_VERSION}" = "7.1" ] \
-        || [ "${_PHP_FPM_VERSION}" = "7.0" ] \
-        || [ "${_PHP_FPM_VERSION}" = "5.6" ]; then
+      # one version, dotted or two-digit; other text is ignored: the cnf's
+      # version stays and the file is left as it is
+      _T_VRN=$(_satellite_php_vrn "$(cat ${_ROOT}/static/control/fpm.info 2>&1)")
+      if [ -n "${_T_VRN}" ]; then
+        _PHP_FPM_VERSION="${_T_VRN}"
         if [ "${_PHP_FPM_VERSION}" = "8.5" ] \
           && [ ! -x "/opt/php85/bin/php" ]; then
           if [ -x "/opt/php84/bin/php" ]; then
@@ -1210,20 +1201,11 @@ _satellite_cnf() {
     fi
 
     if [ -e "${_ROOT}/static/control/cli.info" ]; then
-      _PHP_CLI_VERSION=$(cat ${_ROOT}/static/control/cli.info 2>&1)
-      _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
-      if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
-        || [ "${_PHP_CLI_VERSION}" = "8.4" ] \
-        || [ "${_PHP_CLI_VERSION}" = "8.3" ] \
-        || [ "${_PHP_CLI_VERSION}" = "8.2" ] \
-        || [ "${_PHP_CLI_VERSION}" = "8.1" ] \
-        || [ "${_PHP_CLI_VERSION}" = "8.0" ] \
-        || [ "${_PHP_CLI_VERSION}" = "7.4" ] \
-        || [ "${_PHP_CLI_VERSION}" = "7.3" ] \
-        || [ "${_PHP_CLI_VERSION}" = "7.2" ] \
-        || [ "${_PHP_CLI_VERSION}" = "7.1" ] \
-        || [ "${_PHP_CLI_VERSION}" = "7.0" ] \
-        || [ "${_PHP_CLI_VERSION}" = "5.6" ]; then
+      # one version, dotted or two-digit; other text is ignored: the cnf's
+      # version stays and the file is left as it is
+      _T_VRN=$(_satellite_php_vrn "$(cat ${_ROOT}/static/control/cli.info 2>&1)")
+      if [ -n "${_T_VRN}" ]; then
+        _PHP_CLI_VERSION="${_T_VRN}"
         if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
           && [ ! -x "/opt/php85/bin/php" ]; then
           if [ -x "/opt/php84/bin/php" ]; then
@@ -2422,6 +2404,13 @@ _satellite_o_contrib_backdrop_update_global() {
   _RMMODULES="some_foo_bar"
 
   for i in `dir -d ${_D}/*`; do
+    if [ -e "${i}/o_contrib_backdrop" ]; then
+      _satellite_restore_o_contrib_backdrop_webform "${i}/o_contrib_backdrop" "${i##*/}"
+    fi
+    if [ -d "${i}/o_contrib_backdrop/webform" ] \
+      && [ ! -e "${i}/o_contrib_backdrop/webform/ver-${_WEBFORM_B_TAG}.info" ]; then
+      _satellite_refresh_o_contrib_backdrop_webform "${i}/o_contrib_backdrop" "${i##*/}"
+    fi
     if [ -e "${i}/o_contrib_backdrop" ] \
       && [ ! -e "${i}/o_contrib_backdrop/update-${_xSrl}-${_X_VERSION}.info" ]; then
       _FORCE_UP_BACKDROP=YES
@@ -2453,13 +2442,18 @@ _satellite_o_contrib_backdrop_update_global() {
 
 
 #
+# The Backdrop webform release every o_contrib_backdrop bundle carries: bumped
+# when a new tag is published to the contrib shelves. A bundle records the tag
+# it holds (webform/ver-<tag>.info); a bundle holding another one is refreshed
+# on the next upgrade pass (_satellite_refresh_o_contrib_backdrop_webform).
+_WEBFORM_B_TAG="1.x-4.26.6"
+
+#
 # Download o_contrib_backdrop. The bundle carries the Backdrop-native contrib
 # BOA maintains for every Backdrop platform; like the D6/D7 bundles the redis
 # integration is a symlink into the single shared /data/all/000/modules copy,
 # created here at download time so a fresh space is never redis-less. Plain
-# curated members (webform since 2026-09) extract into the bundle dir the
-# o_contrib_eleven way: version literal here, bumped when a new tag is
-# published to the contrib shelves.
+# curated members (webform since 2026-09) extract into the bundle dir.
 _satellite_download_o_contrib_backdrop() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_download_o_contrib_backdrop"
@@ -2472,7 +2466,11 @@ _satellite_download_o_contrib_backdrop() {
   ### Plain bundle members extract into the bundle dir itself, so they MUST
   ### run before the redis block below, whose fetch-needed branch cd's into
   ### the shared store and never returns (same ordering as o_contrib_eleven).
-  _get_dev_contrib "webform-1.x-4.26.5.tar.gz"
+  if _o_contrib_backdrop_webform_get "${PWD}"; then
+    echo update > ./webform/ver-${_WEBFORM_B_TAG}.info
+  else
+    _msg "${_STATUS} A: webform-${_WEBFORM_B_TAG} not fetched into o_contrib_backdrop"
+  fi
   if [ ! -L "./redis_backdrop" ]; then
     ln -sfn ${_D}/000/modules/redis_backdrop redis_backdrop
   fi
@@ -2481,10 +2479,90 @@ _satellite_download_o_contrib_backdrop() {
     cd ${_D}/000/modules
     rm -rf ${_D}/000/modules/redis_backdrop
     _get_dev_contrib "redis_backdrop-${_REDIS_B_VERSION}.tar.gz"
+    # every instance's Backdrop sites run this copy: root's, whatever owner
+    # the archive recorded
+    chown -R root:root ${_D}/000/modules/redis_backdrop &> /dev/null
     echo update > ${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+}
+
+#
+# Fetch the _WEBFORM_B_TAG release into directory $1 and unpack it there as
+# webform/. Returns 0 only when the archive tests whole, unpacks cleanly and
+# holds the module's .info and .module files; the tree is root's whatever owner
+# the archive recorded, since every instance's Backdrop sites run it. A failed
+# attempt leaves no webform/ behind.
+_o_contrib_backdrop_webform_get() {
+  local _dst="$1" _tgz="webform-${_WEBFORM_B_TAG}.tar.gz" _try
+  for _try in 1 2 3; do
+    rm -rf "${_dst}/webform" "${_dst}/${_tgz}"
+    if curl ${_crlGet} "${_urlDev}/${_tRee}/contrib/${_tgz}" -o "${_dst}/${_tgz}" \
+      && gzip -t "${_dst}/${_tgz}" &> /dev/null \
+      && tar -xzf "${_dst}/${_tgz}" -C "${_dst}" --no-same-owner \
+      && [ -e "${_dst}/webform/webform.info" ] \
+      && [ -e "${_dst}/webform/webform.module" ]; then
+      rm -f "${_dst}/${_tgz}"
+      chown -R root:root "${_dst}/webform" &> /dev/null
+      find "${_dst}/webform" -type d -exec chmod 0755 {} \; &> /dev/null
+      find "${_dst}/webform" -type f -exec chmod 0644 {} \; &> /dev/null
+      return 0
+    fi
+    [ "${_try}" -lt 3 ] && sleep 9
+  done
+  rm -rf "${_dst}/webform" "${_dst}/${_tgz}"
+  return 1
+}
+
+#
+# Replace the webform member of one o_contrib_backdrop bundle ($1, platform
+# generation $2) with the _WEBFORM_B_TAG release. The new tree is fetched into
+# a stage dir under ${_D} named for the generation (a hidden dir inside the
+# bundle would be scanned as a second module by the sites) and renamed in only
+# once complete; a failed fetch leaves the member the sites run as it was. A
+# stage still holding the old tree while the bundle has none is kept for
+# _satellite_restore_o_contrib_backdrop_webform.
+_satellite_refresh_o_contrib_backdrop_webform() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_refresh_o_contrib_backdrop_webform $1"
+    _debug_proc
+  fi
+  local _bnd="$1" _gen="$2" _stg
+  [ -d "${_bnd}/webform" ] && [ ! -L "${_bnd}/webform" ] || return 0
+  _stg=$(mktemp -d "${_D}/.webform-stage.${_gen}.XXXXXX") || return 1
+  if _o_contrib_backdrop_webform_get "${_stg}"; then
+    echo update > ${_stg}/webform/ver-${_WEBFORM_B_TAG}.info
+    if mv "${_bnd}/webform" "${_stg}/prev"; then
+      if mv "${_stg}/webform" "${_bnd}/webform"; then
+        _msg "${_STATUS} A: o_contrib_backdrop webform ${_WEBFORM_B_TAG} in ${_bnd}"
+      else
+        mv "${_stg}/prev" "${_bnd}/webform"
+        _msg "${_STATUS} A: o_contrib_backdrop webform swap failed in ${_bnd}, kept"
+      fi
+    fi
+  else
+    _msg "${_STATUS} A: webform-${_WEBFORM_B_TAG} not fetched, ${_bnd} keeps its webform"
+  fi
+  if [ -e "${_bnd}/webform" ] || [ ! -d "${_stg}/prev" ]; then
+    rm -rf "${_stg}"
+  fi
+}
+
+#
+# A pass stopped between the two renames of a refresh leaves the bundle ($1,
+# generation $2) without webform/ and the old tree in the generation's stage:
+# put it back. Stages of a bundle that has its webform/ are leftovers.
+_satellite_restore_o_contrib_backdrop_webform() {
+  local _bnd="$1" _gen="$2" _s
+  for _s in ${_D}/.webform-stage.${_gen}.*; do
+    [ -d "${_s}" ] || continue
+    if [ ! -e "${_bnd}/webform" ] && [ -e "${_s}/prev/webform.info" ] \
+      && mv "${_s}/prev" "${_bnd}/webform"; then
+      _msg "${_STATUS} A: o_contrib_backdrop webform put back in ${_bnd}"
+    fi
+    [ -e "${_bnd}/webform" ] && rm -rf "${_s}"
+  done
 }
 
 
@@ -2839,10 +2917,30 @@ _satellite_check_fix_o_contrib() {
       || [ ! -d "${_CORE}/o_contrib_backdrop/webform" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_backdrop forced upgrade..."
+      # The webform the sites run waits in a stage of this generation while
+      # the bundle is rebuilt, and comes back if the new one was not fetched
+      # (_satellite_restore_o_contrib_backdrop_webform on an interrupted pass).
+      _bdKeep=""
+      if [ -d "${_CORE}/o_contrib_backdrop/webform" ] \
+        && [ ! -L "${_CORE}/o_contrib_backdrop/webform" ]; then
+        _bdKeep=$(mktemp -d "${_D}/.webform-stage.${_CORE##*/}.XXXXXX") \
+          && mv "${_CORE}/o_contrib_backdrop/webform" "${_bdKeep}/prev" \
+          || _bdKeep=""
+      fi
       cd ${_CORE}/o_contrib_backdrop
       rm -rf ${_CORE}/o_contrib_backdrop/*
       _satellite_download_o_contrib_backdrop
       cd ${_CORE}/o_contrib_backdrop
+      if [ -n "${_bdKeep}" ]; then
+        if [ ! -e "${_CORE}/o_contrib_backdrop/webform" ] && [ -d "${_bdKeep}/prev" ] \
+          && mv "${_bdKeep}/prev" "${_CORE}/o_contrib_backdrop/webform"; then
+          _msg "${_STATUS} A: o_contrib_backdrop keeps its previous webform"
+        fi
+        # a stage still holding the only copy waits for the restore step
+        if [ -e "${_CORE}/o_contrib_backdrop/webform" ] || [ ! -d "${_bdKeep}/prev" ]; then
+          rm -rf "${_bdKeep}"
+        fi
+      fi
     fi
   fi
   if [ ! -e "${_D}/000/modules/cache_backport/update-${_xSrl}-${_X_VERSION}.info" ]; then
@@ -2899,6 +2997,7 @@ _satellite_check_fix_o_contrib() {
       cd ${_D}/000/modules
       rm -rf ${_D}/000/modules/redis_backdrop
       _get_dev_contrib "redis_backdrop-${_REDIS_B_VERSION}.tar.gz"
+      chown -R root:root ${_D}/000/modules/redis_backdrop &> /dev/null
       echo update > ${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info
     fi
   fi
@@ -5663,56 +5762,44 @@ _satellite_detect_vm_family() {
   fi
 }
 
+#
+# One PHP version in the text of fpm.info or cli.info, dotted (8.4) or
+# two-digit (84, as the ltd worker also reads it), printed dotted; nothing for
+# any other text.
+_satellite_php_vrn() {
+  local _t="${1//[^0-9.]/}" _d="${1//[^0-9]/}"
+  case "${_t}" in
+    [0-9].[0-9]|[0-9][0-9]) ;;
+    *) return 0 ;;
+  esac
+  case "${_d}" in
+    56|70|71|72|73|74|80|81|82|83|84|85) echo "${_d:0:1}.${_d:1:1}" ;;
+  esac
+}
+
 _satellite_check_php_compatibility() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_check_php_compatibility"
     _debug_proc
   fi
+  # Only a pin to PHP older than 5.6 stops the upgrade. Any other text, a
+  # two-digit version or a file that holds no version, is not a reason to
+  # refuse: the reads below ignore what is not one version.
+  _PHP_FPM_LEGACY_FREE=YES
   if [ -e "${_ROOT}/static/control/fpm.info" ]; then
     _T_FPM_VRN=$(cat ${_ROOT}/static/control/fpm.info 2>&1)
     _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
-    _T_FPM_VRN=$(echo -n ${_T_FPM_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_FPM_VRN}" = "8.5" ] \
-      || [ "${_T_FPM_VRN}" = "8.4" ] \
-      || [ "${_T_FPM_VRN}" = "8.3" ] \
-      || [ "${_T_FPM_VRN}" = "8.2" ] \
-      || [ "${_T_FPM_VRN}" = "8.1" ] \
-      || [ "${_T_FPM_VRN}" = "8.0" ] \
-      || [ "${_T_FPM_VRN}" = "7.4" ] \
-      || [ "${_T_FPM_VRN}" = "7.3" ] \
-      || [ "${_T_FPM_VRN}" = "7.2" ] \
-      || [ "${_T_FPM_VRN}" = "7.1" ] \
-      || [ "${_T_FPM_VRN}" = "7.0" ] \
-      || [ "${_T_FPM_VRN}" = "5.6" ]; then
-      _PHP_FPM_LEGACY_FREE=YES
-    else
-      _PHP_FPM_LEGACY_FREE=NO
-    fi
-  else
-    _PHP_FPM_LEGACY_FREE=YES
+    case "${_T_FPM_VRN}" in
+      5.2|5.3|5.4|5.5|52|53|54|55) _PHP_FPM_LEGACY_FREE=NO ;;
+    esac
   fi
+  _PHP_CLI_LEGACY_FREE=YES
   if [ -e "${_ROOT}/static/control/cli.info" ]; then
     _T_CLI_VRN=$(cat ${_ROOT}/static/control/cli.info 2>&1)
     _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
-    _T_CLI_VRN=$(echo -n ${_T_CLI_VRN} | tr -d "\n" 2>&1)
-    if [ "${_T_CLI_VRN}" = "8.5" ] \
-      || [ "${_T_CLI_VRN}" = "8.4" ] \
-      || [ "${_T_CLI_VRN}" = "8.3" ] \
-      || [ "${_T_CLI_VRN}" = "8.2" ] \
-      || [ "${_T_CLI_VRN}" = "8.1" ] \
-      || [ "${_T_CLI_VRN}" = "8.0" ] \
-      || [ "${_T_CLI_VRN}" = "7.4" ] \
-      || [ "${_T_CLI_VRN}" = "7.3" ] \
-      || [ "${_T_CLI_VRN}" = "7.2" ] \
-      || [ "${_T_CLI_VRN}" = "7.1" ] \
-      || [ "${_T_CLI_VRN}" = "7.0" ] \
-      || [ "${_T_CLI_VRN}" = "5.6" ]; then
-      _PHP_CLI_LEGACY_FREE=YES
-    else
-      _PHP_CLI_LEGACY_FREE=NO
-    fi
-  else
-    _PHP_CLI_LEGACY_FREE=YES
+    case "${_T_CLI_VRN}" in
+      5.2|5.3|5.4|5.5|52|53|54|55) _PHP_CLI_LEGACY_FREE=NO ;;
+    esac
   fi
   if [ "${_PHP_CLI_LEGACY_FREE}" = "YES" ] \
     && [ "${_PHP_FPM_LEGACY_FREE}" = "YES" ]; then

@@ -18,6 +18,14 @@ Given that `node` can be exploited to bypass Limited Shell and pose a significan
 
 In hosted BOA environments, Node/NPM support is available only on dedicated systems such as Phantom and Cluster.
 
+# Security Considerations for Running PHP by Name
+
+Only members of the hand-assigned `ltd-shell-more` group run PHP by name. In the limited shell lshell offers them `php56`, `php74` and `php81` to `php85`; any other account typing one gets lshell's own refusal.
+
+A tool the account runs can also hand `/bin/sh` a command line, a Composer or npm script for example. There BOA's `/bin/sh` wrapper refuses, for every account outside the group, a command whose program is a PHP interpreter (`php`, `phpNN`, `php-cli`, `phpdbg` or a path to one) with "Running PHP directly is not available on this account." A Composer `@php` script entry is one of those.
+
+Drush, vdrush, bee and Composer keep working: the wrapper starts them itself on the PHP version the account chose. A Drush launcher at the head of a line that names an interpreter runs on that version too. A Composer `@composer` entry and `grav composer` run Composer on the PHP they name when it is one of the server's `/opt/phpNN/bin/php` builds. Members keep PHP by name while the box's `/etc/lshell.conf` carries the `phpNN` aliases.
+
 # BOA System Security Features Explained
 
 BOA offers a highly secure hosting environment for Ægir and Drupal sites, featuring comprehensive built-in security monitoring and autonomous attack prevention systems. Below is a list of key features that collectively provide robust protection for all hosted sites. For additional information, consider reading about [running performance or load tests](https://docs.boa.io/using/protecting-your-site/load-testing).
@@ -55,11 +63,12 @@ BOA closes this at the Drush layer. When Drush runs **as an Ægir backend identi
 hosting tasks and all core Drush commands keep working.
 
 **The restriction does not apply to limited-shell sessions.** When a user runs
-Drush themselves as the `oN.ftp` limited-shell account — the account they are meant
-to use for all CLI work (see [DRUSH-CLI.md](DRUSH-CLI.md)) — the filter is skipped
-entirely and their site's contributed-module Drush commands load normally. Running
-as `oN.ftp` is not an escalation (the user already owns that account), so there is
-nothing to guard against there. BOA makes this distinction from the effective
+Drush themselves in a limited-shell login — `oN.ftp` or a platform developer login
+(`oN.<client>-dev`), the logins they are meant to use for all CLI work (see
+[DRUSH-CLI.md](DRUSH-CLI.md)) — the filter is skipped entirely and their site's
+contributed-module Drush commands load normally. Running in such a login is not an
+escalation (the user already owns that account), so there is nothing to guard
+against there. BOA makes this distinction from the effective
 system user of the Drush process, which a client cannot forge.
 
 ## Allowing specific extensions for the Ægir backend

@@ -147,12 +147,18 @@ than discovering an index-less account later.
 `create o1` provisions the target Octopus instance **and seeds its identity**:
 
 - **Before installing** it verifies the target has every PHP version this
-  account pins — from `static/control/fpm.info`, `cli.info` and the per-site
-  column of `multi-fpm.info`. A missing version is fatal, because BOA's own
+  account pins — from `static/control/fpm.info`, `cli.info`, the per-site
+  column of `multi-fpm.info`, every line of `cli-per-platform.info` and the
+  `phpNN.info` switch that steers the command line (the highest one whose PHP
+  is installed on the source). A missing version is fatal, because BOA's own
   fallback ladder would silently downgrade the pin and serve the sites on a
   different interpreter. `xoct create o1 target-ip --fix-php` instead appends
   the missing versions to the target's `_PHP_MULTI_INSTALL` and drives one
   `barracuda up-<tree> system` pass there to build them (~30 minutes).
+
+  A `phpNN.info` switch or a `cli-per-platform.info` line that names a PHP the
+  source lacks is inert there and takes effect on a target that has that PHP,
+  so check both files when the two boxes carry different PHP sets.
 - It installs from the **target's** BOA tree, not this box's, so a cross-tree
   migration does not send the source's tree through the target's licence gate,
   and uses `boa in-oct` rather than `in-octopus` when the source account is

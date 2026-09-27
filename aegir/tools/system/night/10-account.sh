@@ -254,15 +254,13 @@ _account_process() {
   _SQL_CONVERT=NO
   _DEL_OLD_EMPTY_PLATFORMS="0"
   if [ -e "/root/.${_HM_U}.octopus.cnf" ]; then
+    # The account's Drush 9+ yml alias store is the ltd worker's to rebuild:
+    # dropping its record of the last finished rebuild makes its next pass
+    # regenerate the store the safe way (converted aside, so a failed
+    # conversion keeps the last store); an in-place rebuild here emptied the
+    # store whenever the conversion failed.
     if [ -x "/usr/bin/drush10" ]; then
-      su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/*.yml"
-      wait
-      su -s /bin/bash - ${_HM_U} -c "rm -f ~/.drush/sites/.checksums/*.md5"
-      wait
-      su -s /bin/bash - ${_HM_U} -c "drush10 core:init --yes" &> /dev/null
-      wait
-      su -s /bin/bash - ${_HM_U} -c "drush10 site:alias-convert ~/.drush/sites --yes" &> /dev/null
-      wait
+      rm -f "/var/backups/ltd/.stores/${_HM_U}.md5"
     fi
 
     _MY_OCTO_EMAIL=

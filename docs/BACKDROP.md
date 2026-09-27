@@ -123,11 +123,16 @@ Backdrop sites answer to **both** CLIs:
   no `/usr/bin` symlink — the shell wrapper's PATH resolves it) runs it
   under the same per-account PHP-CLI selection as Drush: `cli.info`
   sets the lasting choice and the `phpNN.info` markers switch it
-  instantly, highest marked-and-installed version winning. Client
-  commands arrive through the shell wrapper (websh), which resolves the
-  control files and hands the choice to the launcher; direct backend
-  calls (root, `aegir`, `oN`) resolve the same files themselves — from
-  the account tree they run in, or the calling identity's own account.
+  instantly, highest marked-and-installed version winning, while a
+  platform listed in `cli-per-platform.info` runs on its line's version
+  instead.
+
+  Client commands arrive through the shell wrapper (websh), which
+  resolves the control files and hands the choice to the launcher. Direct
+  calls with no websh in the chain (root, `aegir`, or a bash shell as
+  `oN`) resolve `cli.info` and the `phpNN.info` markers themselves — from
+  the account tree they run in, or the calling identity's own account —
+  but not `cli-per-platform.info`.
 
   One clamp on top: `bee` requires a modern PHP (Backdrop's own floor
   is 7.1; BOA enforces 7.4), so an account choice below that makes
