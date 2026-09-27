@@ -596,6 +596,12 @@ xoct proxy o1 target-ip o2
   the link's own owner (root's by root); a link its owner cannot make
   there, or one in the root group that root does not own, keeps its old
   target and is named in an `ALRT` line
+- What the source account's identities owned is handed to `o2` and
+  `o2.ftp` during transfer, in one walk per owner over the account tree,
+  the `.ftp` home and the account's part of the attached store. A hard link
+  to another file is never handed over, and a link is made again by its
+  new owner. A directory swapped for a link or another directory while the
+  walk runs is not entered and is named in an `ALRT` line
 - `import` also moves the ACCOUNT axis inside the imported Ægir DB (via
   renameaegirhost `--old-account/--new-account`): the control panel identity
   becomes `o2.<target-fqdn>` (adopting the fresh install's panel site dir and

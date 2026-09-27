@@ -1119,13 +1119,21 @@ _XOCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>;
 ### its final owner instead. No single quote in the text: it also travels
 ### inside the commands run on the target.
 _XOCT_REASSERT_PL='use Fcntl; my ($u, $g, $m, $x, @f) = @ARGV; my %ok = map { $_ => 1 } ($u, split(/,/, $x)); for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && -f _ && $s[3] == 1 && $ok{$s[4]}) { chown($u, $g, $h) if $u >= 0; chmod(oct($m), $h) if length $m; } close($h); } exit 0'
-### The names $3 ... of the current directory owned by the uid $1 handed to
-### the uid $2 (the group kept), each through one handle opened
-### O_NOFOLLOW|O_NONBLOCK: only a directory, or a regular file with one link,
-### whose handle still carries the uid $1 is changed, so a hard link to
-### another file renamed over a name while a walk runs is never handed over.
-### No single quote in the text: the rename pass on the target carries it.
-_XOCT_REOWN_PL='use Fcntl; my ($f, $u) = splice(@ARGV, 0, 2); for my $n (@ARGV) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, -1, $h) if @s && $s[4] == $f && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+### What the uid $1 owns in the current directory and below it, the
+### directory itself included, handed to the uid $2 (the group kept), in one
+### walk ($3 names the directory in its notices). Each entry is judged
+### through one handle opened O_NOFOLLOW|O_NONBLOCK: only a directory, or a
+### regular file with one link, whose handle still carries the uid $1 is
+### changed, so a hard link to another file renamed over a name while the
+### walk runs is never handed over; links, FIFOs and sockets are never
+### opened. Every directory is entered by the walk itself through a
+### no-follow handle, and only when the device and inode of the directory
+### entered equal what lstat saw of the name: a directory swapped for a link
+### or for another directory during the walk is refused, never followed.
+### The walk returns through a handle on the parent, and stops when it
+### cannot. No single quote in the text: the rename pass on the target
+### carries it.
+_XOCT_REOWN_PL='use Fcntl qw(:DEFAULT :mode); my ($f, $u, $r) = @ARGV; my $fl = O_RDONLY|O_NOFOLLOW|O_NONBLOCK; my %on; sub own { my ($n) = @_; sysopen(my $h, $n, $fl) or return; my @s = stat($h); chown($u, -1, $h) if @s && $s[4] == $f && (-d _ || (-f _ && $s[3] == 1)); close($h); } sub why { ($!{EMFILE} || $!{ENFILE}) ? ": too many directories open at once" : "" } sub walk { my ($p) = @_; my $here; sysopen($here, ".", $fl) or do { print "ALRT: $p not walked by the owner remap" . why() . "\n"; return }; my @h = stat($here); return if !@h || $on{"$h[0]:$h[1]"}; opendir(my $d, ".") or do { print "ALRT: $p not read by the owner remap" . why() . "\n"; return }; my @e = grep { $_ ne "." && $_ ne ".." } readdir($d); closedir($d); $on{"$h[0]:$h[1]"} = 1; for my $n (@e) { my @l = lstat($n) or next; my $dir = S_ISDIR($l[2]); own($n) if $l[4] == $f && ($dir || S_ISREG($l[2])); next unless $dir; my ($c, @w, $o); $o = sysopen($c, $n, $fl); if (!$o && why()) { print "ALRT: $p/$n not entered by the owner remap" . why() . "\n"; } elsif ($o && chdir($c) && (@w = stat(".")) && $w[0] == $l[0] && $w[1] == $l[1]) { close($c); walk("$p/$n"); } else { print "ALRT: $p/$n changed during the owner remap -- not entered\n"; } chdir($here) or do { print "ALRT: owner remap stopped in $p/$n: its parent cannot be entered again\n"; exit 1 }; } delete $on{"$h[0]:$h[1]"}; } own("."); walk($r); exit 0'
 ### ./$1 in the current (pinned) directory with the content $2 (0644), owned
 ### by $3 (owner:group; root's when empty or when it does not resolve): a
 ### fresh file put through _XOCT_PUT_PL, then renamed over the name, so a
@@ -2756,11 +2764,12 @@ find "/data/disk/\${_DST}/static" -type l -execdir bash -c '_xo_relink_here "\$@
 # this box has no such name; left so, the renamed account's files, quota and
 # FTP belong to someone else. Only those owners are handed to the renamed
 # identities (root's and www-data's files stay theirs), physically and never
-# by name: find holds each directory it walks and the handle below runs
-# inside it, so a directory, or a regular file with one link, is re-owned
-# only through a no-follow handle that still carries the old owner (a hard
-# link to another file renamed over a name while the walk runs is never
-# handed over), and a link is made again by its new owner (one it cannot
+# by name: one walk per tree and old owner enters each directory itself,
+# only as the directory lstat saw there (one swapped for a link during the
+# walk is refused), and a directory, or a regular file with one link, is
+# re-owned only through a no-follow handle that still carries the old owner
+# (a hard link to another file renamed over a name while the walk runs is
+# never handed over); a link is made again by its new owner (one it cannot
 # make there keeps the owner it landed with; a link's owner grants nothing
 # on its target). The walk covers the account tree, the .ftp
 # home and the account's part of the attached store, each entered as the
@@ -2790,15 +2799,15 @@ _xo_relink_as() {
       ln -sfn -T -- "\${_T}" "\${_L}" < /dev/null > /dev/null 2>&1
   done
 }
-export _XO_REOWN_PL
 export -f _xo_relink_as
-# What the uid \$1 owns in the current tree handed to the identity \$2.
+# What the uid \$1 owns in the current tree handed to the identity \$2: one
+# walk for the directories and files, then the links in batches per
+# directory.
 _xo_reown() {
   local _n
   _n="\$(id -u -- "\${2}" 2>/dev/null)"
   case "\${_n}" in ''|*[!0-9]*) return 0 ;; esac
-  find -P . -user "\${1}" \( -type f -o -type d \) \
-    -execdir perl -e "\${_XO_REOWN_PL}" -- "\${1}" "\${_n}" {} + 2>/dev/null
+  perl -e "\${_XO_REOWN_PL}" -- "\${1}" "\${_n}" "\${PWD}" < /dev/null 2>/dev/null
   find -P . -user "\${1}" -type l \
     -execdir bash -c '_xo_relink_as "\$@"' _ "\${2}" "\${1}" {} + 2>/dev/null
 }
@@ -2822,6 +2831,9 @@ _xo_dst_ident() {
 }
 _xo_remap_in() {
   ( cd -P -- "\${1}" 2>/dev/null && [ "\$(pwd -P)" = "\${2}" ] || exit 0
+    # the walker holds one directory open per level: a deep tree gets the
+    # whole hard limit, never the lower soft one
+    ulimit -n "\$(ulimit -Hn)" 2>/dev/null
     [ -n "\${_RU}" ] && _xo_reown "\${_RU}" "\${_DST}"
     [ -n "\${_RF}" ] && _xo_reown "\${_RF}" "\${_DST}.ftp"
     if [ "\${3}" = "web" ]; then
