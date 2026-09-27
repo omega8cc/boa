@@ -88,22 +88,44 @@ _root_only() {
 # must read the service's credentials file and remote_backups/.secret.txt.
 # For the run both are handed to that user by owner, mode 0600, never opened
 # to anyone else, and afterwards given back to the owner:group they had,
-# recorded by number. Each acts inside its real directory, on names checked
-# to be regular files, and a give-back touches only the file (by device and
-# inode) that was handed over.
-#
-# In the real credentials directory (the account's own, via its .ftp login):
-# the directory and ./$2 go to $1, 0700 and 0600 unchanged. Prints the record
-# for _cred_window_close_here: "dir-id dir-owner file-id file-owner".
-_cred_window_open_here() {
-  local _d _f="-" _fo="-"
-  _d="$(stat -c '%d:%i %u:%g' .)" || return 1
-  if [ -f "./${2}" ] && [ ! -L "./${2}" ]; then
-    _f="$(stat -c '%d:%i' -- "./${2}")" && _fo="$(stat -c '%u:%g' -- "./${2}")" \
-      && chown -h "${1}" -- "./${2}" || { _f="-"; _fo="-"; }
+# recorded by number. The record is put in a root-only directory before
+# anything is handed over, so a window a pass could not close (a reboot, a
+# kill) is closed by the next pass, and one queue pass runs at a time. Each
+# step acts inside the real directory, on names checked to be regular files
+# with one link, and a give-back touches only the file (by device and inode)
+# that was handed over.
+_WIN_DIR="/root/.remote_backups/restore_windows"
+
+# The record $2 of account $1's window part $3 (cred or rb), put before the
+# part is opened.
+_win_put() {
+  local _f="${_WIN_DIR}/${1}.${3}"
+  if [ ! -d "${_WIN_DIR}" ]; then
+    mkdir -p -- "${_WIN_DIR%/*}" 2> /dev/null
+    mkdir -m 700 -- "${_WIN_DIR}" 2> /dev/null
   fi
-  chown -h "${1}" . && chmod 700 .
-  echo "${_d} ${_f} ${_fo}"
+  _root_only "${_WIN_DIR}" || return 1
+  printf '%s\n' "${2}" > "${_f}.tmp" && mv -f -T -- "${_f}.tmp" "${_f}"
+}
+
+# In the real credentials directory (the account's own, via its .ftp login):
+# the record first, then the directory is taken ('.' to root, 0700), so no
+# one else can change a name in it, ./$2 is checked (a regular file with one
+# link) and recorded, and the file and then the directory go to $1, 0600 and
+# 0700 unchanged. The record: "file dir-id dir-owner file-id file-owner".
+_cred_window_open_here() {
+  local _d _do _f="-" _fo="-" _h=""
+  _d="$(stat -c '%d:%i' .)" && _do="$(stat -c '%u:%g' .)" || return 1
+  _win_put "${1}" "${2} ${_d} ${_do} - -" cred || return 1
+  chown -h 0:0 . && chmod 700 . || return 1
+  if [ -f "./${2}" ] && [ ! -L "./${2}" ]; then
+    read -r _f _fo _h <<< "$(stat -c '%d:%i %u:%g %h' -- "./${2}")"
+    if [ "${_h}" = 1 ]; then
+      _win_put "${1}" "${2} ${_d} ${_do} ${_f} ${_fo}" cred || return 1
+      chown -h "${1}" -- "./${2}" || return 1
+    fi
+  fi
+  chown -h "${1}" .
 }
 # ./$1 in the current (pinned) directory removed when it is a link: rm
 # unlinks the link itself, never what it points at.
@@ -111,22 +133,35 @@ _unlink_link_here() {
   [ -L "./${1}" ] && rm -f -- "./${1}"
   return 0
 }
-# The same directory, given back: $1 = the record, $2 = the file name.
+# The same directory given back: $1 = the record. The directory is taken
+# first ('.' to root), so the user it was handed to can no longer change a
+# name in it; the file goes back only when it is still the one handed over,
+# with one link, and the directory last. Fails when anything is not given
+# back.
 _cred_window_close_here() {
-  local _di _do _fi _fo
-  read -r _di _do _fi _fo <<< "${1}"
+  local _n _di _do _fi _fo _rc=0
+  read -r _n _di _do _fi _fo <<< "${1}"
+  [[ "${_di}" =~ ^[0-9]+:[0-9]+$ ]] && [[ "${_do}" =~ ^[0-9]+:[0-9]+$ ]] \
+    || return 1
   [ "$(stat -c '%d:%i' .)" = "${_di}" ] || return 1
-  if [ "${_fi}" != "-" ] && [ -f "./${2}" ] && [ ! -L "./${2}" ] \
-    && [ "$(stat -c '%d:%i' -- "./${2}")" = "${_fi}" ]; then
-    chown -h "${_fo}" -- "./${2}"
+  chown -h 0:0 . || return 1
+  if [ "${_fi}" != "-" ]; then
+    if [[ "${_n}" =~ ^[a-z0-9_]+\.txt$ ]] && [[ "${_fo}" =~ ^[0-9]+:[0-9]+$ ]] \
+      && [ -f "./${_n}" ] && [ ! -L "./${_n}" ] \
+      && [ "$(stat -c '%d:%i %h' -- "./${_n}")" = "${_fi} 1" ]; then
+      chown -h "${_fo}" -- "./${_n}" || _rc=1
+    else
+      _rc=1
+    fi
   fi
-  chown -h "${_do}" . && chmod 700 .
+  chown -h "${_do}" . && chmod 700 . || _rc=1
+  return "${_rc}"
 }
 # In the real remote_backups (root's own; refused otherwise, since the account
 # can swap in a directory it made, so no name in it can change under root): a
 # link at paths is removed and paths/ is made 0755 as before, and
-# ./.secret.txt goes to $1 with mode 0600, kept immutable for the run. Prints
-# "file-id file-owner".
+# ./.secret.txt is recorded, then goes to $1 with mode 0600, kept immutable
+# for the run. The record: "file-id file-owner".
 _rb_window_open_here() {
   local _f _fo
   _root_only . || return 2
@@ -135,23 +170,67 @@ _rb_window_open_here() {
   [ -f ./.secret.txt ] && [ ! -L ./.secret.txt ] || return 1
   _f="$(stat -c '%d:%i' ./.secret.txt)" && _fo="$(stat -c '%u:%g' ./.secret.txt)" \
     || return 1
+  _win_put "${1}" "${_f} ${_fo}" rb || return 1
   chattr -i ./.secret.txt &> /dev/null
   chmod 600 ./.secret.txt && chown -h "${1}" ./.secret.txt
   chattr +i ./.secret.txt &> /dev/null
-  echo "${_f} ${_fo}"
+  return 0
 }
 # The same file, given back: $1 = the record.
 _rb_window_close_here() {
-  local _fi _fo
+  local _fi _fo _rc=0
   read -r _fi _fo <<< "${1}"
+  [[ "${_fi}" =~ ^[0-9]+:[0-9]+$ ]] && [[ "${_fo}" =~ ^[0-9]+:[0-9]+$ ]] \
+    || return 1
   _root_only . || return 2
   [ -f ./.secret.txt ] && [ ! -L ./.secret.txt ] \
     && [ "$(stat -c '%d:%i' ./.secret.txt)" = "${_fi}" ] || return 1
-  local _rc=0
   chattr -i ./.secret.txt &> /dev/null
   chown -h "${_fo}" ./.secret.txt && chmod 600 ./.secret.txt || _rc=1
   chattr +i ./.secret.txt &> /dev/null
   return "${_rc}"
+}
+# Close what account $1's records name, then drop the records. A give-back
+# that cannot be done is logged, never retried by path.
+_win_close() {
+  local _u="${1}" _rec
+  if [ -f "${_WIN_DIR}/${_u}.cred" ]; then
+    read -r _rec < "${_WIN_DIR}/${_u}.cred"
+    if ! _acct_in_real_dir \
+      "/data/disk/${_u}/static/control/remote_backups/credentials" \
+      _cred_window_close_here "${_rec}"; then
+      echo "[$(date)] NOT RESTORED for ${_u}: owner of the credentials directory or file (${_rec})" \
+        >> /var/log/mybackup_invalid_queued.log
+    fi
+    rm -f -- "${_WIN_DIR}/${_u}.cred"
+  fi
+  if [ -f "${_WIN_DIR}/${_u}.rb" ]; then
+    read -r _rec < "${_WIN_DIR}/${_u}.rb"
+    if ! _acct_in_real_dir "/data/disk/${_u}/remote_backups" \
+      _rb_window_close_here "${_rec}"; then
+      echo "[$(date)] NOT RESTORED for ${_u}: owner of /data/disk/${_u}/remote_backups/.secret.txt (${_rec})" \
+        >> /var/log/mybackup_invalid_queued.log
+    fi
+    rm -f -- "${_WIN_DIR}/${_u}.rb"
+  fi
+  return 0
+}
+# Windows an earlier pass left open (it died before closing them), closed
+# while this pass holds the queue lock.
+_win_close_stale() {
+  local _w _u
+  for _w in "${_WIN_DIR}"/*.cred "${_WIN_DIR}"/*.rb; do
+    [ -f "${_w}" ] || continue
+    _u="${_w##*/}"
+    _u="${_u%.*}"
+    if [[ ! "${_u}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+      rm -f -- "${_w}"
+      continue
+    fi
+    echo "[$(date)] Closing the restore window an earlier pass left open for ${_u}" \
+      >> /var/log/mybackup_invalid_queued.log
+    _win_close "${_u}"
+  done
 }
 
 # Function to print env for debugging
@@ -288,6 +367,14 @@ _cred_name_allowed() {
   esac
   return 1
 }
+# The names whose value goes into the target URL, which reaches the duplicity
+# command line unquoted.
+_cred_name_plain() {
+  case "${1}" in
+    AWS_REGION|DO_SPACES_REGION|IBM_REGION|LINODE_REGION|R2_ACCOUNT_ID|WASABI_REGION) return 0 ;;
+  esac
+  return 1
+}
 
 # Function to sanitize and validate credentials file
 _validate_credentials() {
@@ -330,9 +417,18 @@ _validate_credentials() {
         _value="${_value:1:-1}"
       fi
 
-      # Check for forbidden characters in value
+      # Check for forbidden characters in value; the value itself is never
+      # logged (this log is mailed with the restore report)
       if echo "${_value}" | grep -q -E '[$`(){};&|<>]'; then
-        _log_issue "credentials" "${_cred_file}" "Forbidden characters in value at line ${_line_number}: ${_line}"
+        _log_issue "credentials" "${_cred_file}" "Forbidden characters in the value of ${_varname} at line ${_line_number}"
+        continue
+      fi
+
+      # A region or an account id goes into the target URL and so onto the
+      # duplicity command line: a plain name only
+      if _cred_name_plain "${_varname}" \
+        && [[ ! "${_value}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+        _log_issue "credentials" "${_cred_file}" "Not a plain name in the value of ${_varname} at line ${_line_number}"
         continue
       fi
 
@@ -347,7 +443,7 @@ _validate_credentials() {
         export ${_varname}="${_value}"
       fi
     else
-      _log_issue "credentials" "${_cred_file}" "Invalid syntax at line ${_line_number}: ${_line}"
+      _log_issue "credentials" "${_cred_file}" "Invalid syntax at line ${_line_number}"
     fi
   done <<< "$(timeout 10 dd if="${_cred_file}" iflag=nofollow,nonblock,fullblock \
     bs=1048576 count=1 status=none 2>/dev/null)"
@@ -467,18 +563,241 @@ _acct_reclaim_restored() {
   return 0
 }
 
+# Restores through links. Backups keep links as links, so an account's
+# relocated files store (static/files -> <mount>/files/<oN>/static/files) is
+# held under its own path, and a site's files/ and private/ are links into
+# static/files/<site>/. A path at or below such a link is restored from where
+# its content is held: the store first, the path as given only when
+# duplicity reports the store path not found (backups made while links were
+# followed hold the content under the link's own path). A link in the
+# restored tree that leads to the account's own static/files or store is
+# replaced by that content as of the same time, and each one is reported in
+# the mailed log. The same helpers are in multiback.
+#
+# $1 = the restore verb, $2 = the listing verb (both without time and target),
+# $3 = the time or empty, $4 = scope (acct), $5 = the account, $6 = the log
+# for the reports.
+_rst_setup() {
+  local _t=""
+  [ -n "${3}" ] && _t=" --time $(printf '%q' "${3}")"
+  _RST_CMD="${1}${_t} ${_BACKUP_TARGET}"
+  _RST_LST="${2}${_t} ${_BACKUP_TARGET}"
+  _RST_SCOPE="${4}"
+  _RST_ACCT="${5}"
+  _RST_LOG="${6}"
+  _RST_LAST=""
+  _RST_GIVEN=""
+  _RST_DONE=""
+  declare -gA _RST_STO=()
+}
+_rst_note() {
+  if [ -n "${_RST_LOG}" ]; then
+    printf '%s\n' "$*" >> "${_RST_LOG}"
+  else
+    printf '%s\n' "$*"
+  fi
+}
+# True for a path of plain names only: no empty, '.' or '..' name, and
+# nothing outside [A-Za-z0-9._-] in a name.
+_rst_plain() {
+  [[ "${1}" =~ ^/?[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ ]] || return 1
+  case "/${1#/}/" in
+    */./*|*/../*) return 1 ;;
+  esac
+  return 0
+}
+# True when archive path $1 is $2 or below it; an empty $2 is everything.
+_rst_under() {
+  [ -z "${2}" ] && return 0
+  case "${1}" in
+    "${2}"|"${2}/"*) return 0 ;;
+  esac
+  return 1
+}
+# Archive path $1 (empty: everything) restored to $2. Returns 2 when duplicity
+# reports the path not found in the archive (its output is then kept in
+# _RST_OUT for the caller, which may still try another path), 1 on any other
+# failure.
+_rst_one() {
+  local _c="${_RST_CMD}" _rc
+  [ -n "${1}" ] && _c="${_c} --path-to-restore $(printf '%q' "${1}")"
+  _c="${_c} $(printf '%q' "${2}")"
+  echo "Command is ${_c}"
+  _RST_OUT="$(eval "${_c}" 2>&1)"
+  _rc=$?
+  if [ "${_rc}" = 0 ]; then
+    [ -n "${_RST_OUT}" ] && _rst_note "${_RST_OUT}"
+    _RST_LAST="${1}"
+    return 0
+  fi
+  case "${_RST_OUT}" in
+    *"not found in archive"*) return 2 ;;
+  esac
+  [ -n "${_RST_OUT}" ] && _rst_note "${_RST_OUT}"
+  return 1
+}
+# The owner (the account) of a store that may hold archive path $1, and the
+# link its store hangs off; nothing for any other path.
+_rst_owner() {
+  local _a
+  case "${1}" in
+    data/disk/?*/static/files|data/disk/?*/static/files/*)
+      _a="${1#data/disk/}"
+      _a="${_a%%/*}"
+      ;;
+    *) return 0 ;;
+  esac
+  case "${1}" in
+    "data/disk/${_a}/static/files"|"data/disk/${_a}/static/files/"*) ;;
+    *) return 0 ;;
+  esac
+  case "${_RST_SCOPE}:${_a}" in
+    acct:"${_RST_ACCT}") echo "${_a} data/disk/${_a}/static/files" ;;
+  esac
+  return 0
+}
+# Sets _RST_S to the archive path of account $1's store read from the live
+# link; empty when there is none.
+_rst_store_live() {
+  local _k="live:${1}"
+  if [ -z "${_RST_STO[${_k}]+x}" ]; then
+    _RST_STO[${_k}]="$(_acct_relocated_store "${1}")"
+  fi
+  _RST_S="${_RST_STO[${_k}]#/}"
+}
+# Sets _RST_S to the store behind the link $2 as the archive holds it at the
+# restore time, for when the live link is gone: read only when the entry is a
+# link there (restoring that one entry), never by restoring a directory.
+# $1 = the account.
+_rst_store_archive() {
+  local _a="${1}" _e="${2}" _k="archive:${1}" _o _tmp _t=""
+  if [ -z "${_RST_STO[${_k}]+x}" ]; then
+    _RST_STO[${_k}]=""
+    _o="$(eval "${_RST_LST}" 2> /dev/null | sed -E 's/^([^ ]+ +){5}//' \
+      | grep -F -e "${_e}")"
+    if printf '%s\n' "${_o}" | grep -q -x -F -e "${_e}" \
+      && ! printf '%s\n' "${_o}" | grep -q -E "^${_e//./\\.}/"; then
+      _tmp="$(mktemp -d 2> /dev/null)"
+      if [ -n "${_tmp}" ]; then
+        if _rst_one "${_e}" "${_tmp}/entry" && [ -L "${_tmp}/entry" ]; then
+          _t="$(readlink -- "${_tmp}/entry" 2> /dev/null)"
+        fi
+        rm -rf -- "${_tmp}"
+      fi
+      if _rst_plain "${_t}"; then
+        case "${_t}" in
+          "/mnt/"?*"/files/${_a}/static/files") _RST_STO[${_k}]="${_t#/}" ;;
+        esac
+      fi
+    fi
+  fi
+  _RST_S="${_RST_STO[${_k}]}"
+}
+# Archive path $1 restored to $2 from where its content is held.
+_rst_path() {
+  local _p="${1}" _t="${2}" _a="" _e="" _s="" _o _rc
+  _o="$(_rst_owner "${_p}")"
+  [ -n "${_o}" ] && read -r _a _e <<< "${_o}"
+  if [ -n "${_a}" ]; then
+    _rst_store_live "${_a}"
+    _s="${_RST_S}"
+    if [ -n "${_s}" ]; then
+      _rst_one "${_s}${_p#"${_e}"}" "${_t}"
+      _rc=$?
+      [ "${_rc}" = 2 ] || return "${_rc}"
+    fi
+  fi
+  _rst_one "${_p}" "${_t}"
+  _rc=$?
+  if [ "${_rc}" = 2 ] && [ -n "${_a}" ] && [ -z "${_s}" ] && [ "${_p}" != "${_e}" ]; then
+    _rst_store_archive "${_a}" "${_e}"
+    if [ -n "${_RST_S}" ]; then
+      _rst_one "${_RST_S}${_p#"${_e}"}" "${_t}"
+      _rc=$?
+    fi
+  fi
+  [ "${_rc}" = 2 ] && _rst_note "${_RST_OUT}"
+  return "${_rc}"
+}
+# The link $1 (archive position $2, leading to $3) replaced by what the rest
+# of the arguments restore to a new name beside it; reported either way.
+_rst_put_link() {
+  local _l="${1}" _pos="${2}" _t="${3}" _tmp="${1}.rst.$$"
+  shift 3
+  if [ ! -e "${_tmp}" ] && [ ! -L "${_tmp}" ] && "$@" "${_tmp}"; then
+    if rm -f -- "${_l}" && mv -T -- "${_tmp}" "${_l}"; then
+      _rst_note "Restored $(printf '%q' "${_pos}"), a link to ${_t}, from ${_RST_LAST}"
+      return 0
+    fi
+    [ -L "${_l}" ] || ln -s -- "${_t}" "${_l}"
+  fi
+  rm -rf -- "${_tmp}"
+  _rst_note "Not restored: $(printf '%q' "${_pos}") is a link to ${_t}; its content was not found at the restore time"
+  return 1
+}
+# Links in the restored tree $1 that lead to the account's own static/files
+# or store: each is replaced by that content as of the same time, unless this
+# restore already holds it (_RST_GIVEN is the path asked for, _RST_DONE the
+# path restored). Any other link is left as it is.
+_rst_links() {
+  local _top="${1}" _l _rel _pos _t _a _c _d _kept=0 _links=()
+  mapfile -d '' -t _links < <(find -P "${_top}" -type l -print0 2> /dev/null)
+  for _l in "${_links[@]}"; do
+    _rel="${_l#"${_top}"}"
+    _rel="${_rel#/}"
+    if [ -n "${_RST_GIVEN}" ]; then
+      _pos="${_RST_GIVEN}${_rel:+/${_rel}}"
+    else
+      _pos="${_rel}"
+    fi
+    _t="$(readlink -- "${_l}" 2> /dev/null)"
+    case "${_t}" in
+      /*) _rst_plain "${_t}" || continue ;;
+      *) continue ;;
+    esac
+    _c="${_t#/}"
+    case "${_pos}" in
+      data/disk/?*/?*) _a="${_pos#data/disk/}"; _a="${_a%%/*}" ;;
+      home/?*.ftp/?*) _a="${_pos#home/}"; _a="${_a%%/*}"; _a="${_a%.ftp}" ;;
+      *) continue ;;
+    esac
+    [ "${_RST_SCOPE}:${_a}" = "acct:${_RST_ACCT}" ] || continue
+    _d="/data/disk/${_a}/static/files"
+    case "${_t}" in
+      "${_d}"|"${_d}/"*)
+        if _rst_under "${_c}" "${_RST_GIVEN}"; then
+          _kept=$(( _kept + 1 ))
+          continue
+        fi
+        _rst_put_link "${_l}" "${_pos}" "${_t}" _rst_path "${_c}"
+        ;;
+      /mnt/?*/files/"${_a}"/static/files|/mnt/?*/files/"${_a}"/static/files/*)
+        _rst_store_live "${_a}"
+        if [ -n "${_RST_S}" ] && ! _rst_under "${_c}" "${_RST_S}"; then
+          continue
+        fi
+        _rst_under "${_c}" "${_RST_DONE}" && continue
+        _rst_put_link "${_l}" "${_pos}" "${_t}" _rst_one "${_c}"
+        ;;
+    esac
+  done
+  if [ "${_kept}" -gt 0 ]; then
+    _rst_note "${_kept} link(s) into static/files kept as links: their content is in this restore under your static/files"
+  fi
+  return 0
+}
+
 # Function to restore backup
 _restore() {
   local _restore_path=$1
   local _restore_time=$2
-  local _restore_command="${_DCY_MN_CMD} restore --no-restore-owner"
   local _restore_target="/data/disk/${_user}/static/restores"
 
   # Ensure _restore_target exists
   if [ ! -d "${_restore_target}" ]; then
     echo "Creating restore target directory: ${_restore_target}"
-    mkdir -p ${_restore_target}
-    chown ${_user}:$(_acct_group "${_user}") ${_restore_target}
+    mkdir -p "${_restore_target}"
+    chown "${_user}:$(_acct_group "${_user}")" "${_restore_target}"
   fi
 
   # Remove any trailing slash from _restore_path for proper basename extraction
@@ -491,38 +810,13 @@ _restore() {
   # Also, remove any trailing slash from _restore_target to avoid double slashes.
   _final_restore_target="${_restore_target%/}/${_last_part}"
 
-  if [ -n "${_restore_time}" ]; then
-    _restore_command="${_restore_command} --time ${_restore_time}"
-  fi
-  _restore_command="${_restore_command} ${_BACKUP_TARGET}"
-  # Backups keep links as links, so a relocated files store is backed up
-  # under its own path: a path below the account's static/files is first
-  # restored from that store, then as given (backups made while links were
-  # still followed hold the store's content under static/files itself).
-  local _sto _alt_path=""
-  _sto=$(_acct_relocated_store "${_user}")
-  if [ -n "${_sto}" ]; then
-    case "${_clean_restore_path}" in
-      "data/disk/${_user}/static/files"|"data/disk/${_user}/static/files/"*)
-        _alt_path="${_sto#/}${_clean_restore_path#data/disk/"${_user}"/static/files}"
-        ;;
-    esac
-  fi
-  local _alt_command=""
-  if [ -n "${_alt_path}" ]; then
-    _alt_command="${_restore_command} --path-to-restore ${_alt_path} ${_final_restore_target}"
-  fi
-  if [ -n "${_restore_path}" ]; then
-    _restore_command="${_restore_command} --path-to-restore ${_restore_path}"
-  fi
-  _restore_command="${_restore_command} ${_final_restore_target}"
-
-  echo "Command is ${_alt_command:-${_restore_command}}"
-
+  _rst_setup "${_DCY_MN_CMD} restore --no-restore-owner" \
+    "${_DCY_MN_CMD} list-current-files" "${_restore_time}" acct "${_user}" "${_LOGFILE}"
   echo "MyBackup Restore for [${_user}] on [$(date)]" >> ${_LOGFILE}
-  if [ -z "${_alt_command}" ] || ! eval "${_alt_command}" >> ${_LOGFILE} 2>&1; then
-    [ -n "${_alt_command}" ] && echo "Command is ${_restore_command}"
-    eval "${_restore_command}" >> ${_LOGFILE}
+  if _rst_path "${_clean_restore_path}" "${_final_restore_target}"; then
+    _RST_GIVEN="${_clean_restore_path}"
+    _RST_DONE="${_RST_LAST}"
+    _rst_links "${_final_restore_target}"
   fi
   # --no-restore-owner lands the tree root-owned: hand it to the account,
   # owner and group, then the shared restore claim (every restored path,
@@ -538,15 +832,19 @@ _restore() {
 }
 
 # The real path of account $1's files store when static/files is a link to
-# the account's own store in BOA's relocated layout (migratefs:
-# <target>/files/<oN>/static/files), with a plain path only; nothing else.
+# the account's own store in BOA's relocated layout (migratefs, xoct, xcopy
+# and xmass: <mount>/files/<oN>/static/files under /mnt, in a directory only
+# root can write, so no account made it), with a plain path only; nothing
+# else. As in multiback.
 _acct_relocated_store() {
   local _a="${1}" _sto
   [ -L "/data/disk/${_a}/static/files" ] || return 0
   _sto=$(readlink -f "/data/disk/${_a}/static/files" 2> /dev/null)
   case "${_sto}" in
     *[!A-Za-z0-9._/-]*) return 0 ;;
-    */files/"${_a}"/static/files) [ -d "${_sto}" ] && echo "${_sto}" ;;
+    /mnt/?*/files/"${_a}"/static/files)
+      [ -d "${_sto}" ] && _root_only "${_sto%/files}" && echo "${_sto}"
+      ;;
   esac
   return 0
 }
@@ -752,6 +1050,12 @@ export _run_as_user=$(whoami)
 
 # Main script
 _main_script() {
+  # One queue pass at a time (the launcher starts one every few minutes
+  # while no duplicity runs, which includes the pauses between accounts).
+  # The lock is fd 9, never handed to the restore run: su gets it closed.
+  exec 9>> /run/mybackup_queue.lock || exit 1
+  flock -n 9 || exit 0
+  _win_close_stale
   _CNT=$(( $(pgrep -fc '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*duplicity( |$)') + $(pgrep -fc '^[^ ]*duplicity( |$)') ))
   if (( _CNT > 0 )); then
     echo "[$(date)] Active duplicity process detected, will try again later..." >> /var/log/mybackup_waiting_queue.log
@@ -823,9 +1127,9 @@ _main_script() {
         local _ctl_rb_dir="/data/disk/${_user}/static/control/remote_backups"
         local _user_credentials_dir="${_ctl_rb_dir}/credentials"
         local _cred_name="${_queued_args[1]}.txt"
-        local _rb_rec="" _cred_rec="" _rb_rc=0
+        local _rb_rc=0
         if [ -e "${_rb_dir}" ]; then
-          _rb_rec="$(_acct_in_real_dir "${_rb_dir}" _rb_window_open_here "${_user}")"
+          _acct_in_real_dir "${_rb_dir}" _rb_window_open_here "${_user}"
           _rb_rc=$?
           if [ "${_rb_rc}" != 0 ] && ! _acct_in_real_dir "${_rb_dir}" true; then
             _rb_rc=2
@@ -834,18 +1138,18 @@ _main_script() {
         if [ "${_rb_rc}" = 2 ]; then
           echo "[$(date)] REFUSED for ${_user}: ${_rb_dir} is not root's own directory" \
             >> /var/log/mybackup_invalid_queued.log
+          _win_close "${_user}"
           continue
         fi
-        [ "${_rb_rc}" = 0 ] || _rb_rec=""
         echo "Executing backup restore for user ${_user}."
         # A link at credentials is removed, never followed, as before.
         _acct_in_real_dir "${_ctl_rb_dir}" _unlink_link_here credentials
-        _cred_rec="$(_acct_in_real_dir "${_user_credentials_dir}" \
-          _cred_window_open_here "${_user}" "${_cred_name}")" || _cred_rec=""
+        _acct_in_real_dir "${_user_credentials_dir}" \
+          _cred_window_open_here "${_user}" "${_cred_name}"
         # Pass the validated args positionally via -- so each arg arrives at
         # the inner mybackup as a separate $1/$2/$3/$4. No shell-interpolation
         # of attacker-controlled bytes; metacharacters in any arg are inert.
-        su -s /bin/bash - "${_user}" -c 'exec mybackup "$@"' -- "${_queued_args[@]}"
+        su -s /bin/bash - "${_user}" -c 'exec mybackup "$@"' -- "${_queued_args[@]}" 9>&-
         wait
         # Clean up the command file
         local _command_log="$(printf '%q ' "${_queued_args[@]}")"
@@ -857,16 +1161,7 @@ _main_script() {
         _acct_in_real_dir "${_user_run_dir}" rm -f -- "./${_CMD_FILE}"
         # Close the window: ownership goes back to the recorded owners, and a
         # failure to do so is logged, never retried by path.
-        if [ -n "${_cred_rec}" ] && ! _acct_in_real_dir "${_user_credentials_dir}" \
-          _cred_window_close_here "${_cred_rec}" "${_cred_name}"; then
-          echo "[$(date)] NOT RESTORED for ${_user}: owner of ${_user_credentials_dir} (${_cred_rec})" \
-            >> /var/log/mybackup_invalid_queued.log
-        fi
-        if [ -n "${_rb_rec}" ] && ! _acct_in_real_dir "${_rb_dir}" \
-          _rb_window_close_here "${_rb_rec}"; then
-          echo "[$(date)] NOT RESTORED for ${_user}: owner of ${_rb_dir}/.secret.txt (${_rb_rec})" \
-            >> /var/log/mybackup_invalid_queued.log
-        fi
+        _win_close "${_user}"
         sleep 10
       fi
     fi
