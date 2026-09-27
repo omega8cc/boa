@@ -3473,20 +3473,36 @@ _octopus_cleanup() {
 # entry's own stamp, never from file times (a moved store keeps them).
 # Root runs the removal, so nothing here follows a link: the tenant owns
 # static/ and can put a symlink of their choosing at static/files, so the
-# store is admitted only when it resolves under the account or under /mnt (a
-# relocated store), the gate the nightly's backup relocation applies; entries
+# store is admitted only when it is the account's own real static/files or
+# its relocated store in migratefs' layout (/mnt/<mount>/files/<oN>/static/files,
+# no directory of the mount part itself named files or static), never another
+# account's store or any other directory on the mount; entries
 # are enumerated as real directories, used bare (a trailing slash makes rm
 # and chattr walk INTO a link's target), and a link is left alone -- nothing
 # of BOA's ever makes one there.
 _archived_store() {
   # $1 = oN; prints the admissible store's .archived path; 2 = no store yet
-  local _u="$1" _acct _stat _d
+  local _u="$1" _acct _stat _d _ok _m
   _acct=$(realpath -e -- "/data/disk/${_u}" 2> /dev/null) || return 1
   _stat=$(realpath -e -- "/data/disk/${_u}/static/files" 2> /dev/null) || return 2
-  case "${_stat}/" in
-    "${_acct}"/*|/mnt/*) ;;
-    *) echo "OOPS.. ${_u}'s static/files resolves to ${_stat}, outside the account and /mnt: left alone" >&2; return 1 ;;
+  _ok=NO
+  case "${_stat}" in
+    *[!A-Za-z0-9._/-]*) ;;
+    "${_acct}/static/files") _ok=YES ;;
+    /mnt/?*/files/"${_u}"/static/files)
+      _m="${_stat%/files/"${_u}"/static/files}"
+      case "${_m}" in
+        */files/*|*/static/*) ;;
+        *) _ok=YES ;;
+      esac
+      ;;
   esac
+  if [ "${_ok}" != "YES" ]; then
+    # the path is the account's choice: shown printable and bounded
+    _stat="${_stat//[^[:print:]]/?}"
+    echo "OOPS.. ${_u}'s static/files resolves to ${_stat:0:256}, not the account's own store: left alone" >&2
+    return 1
+  fi
   _d="${_stat}/.archived"
   [ -L "${_d}" ] && { echo "OOPS.. ${_u}'s .archived is a symlink: left alone" >&2; return 1; }
   [ -d "${_d}" ] || return 2

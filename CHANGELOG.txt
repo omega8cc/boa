@@ -130,6 +130,15 @@
       made only when missing, and never through a link.
     * xmass sends an account's nginx directories only from the real
       directory, never through a link planted in or above them.
+    * The ownership and permissions fix for a site takes a linked files
+      or private store only when it resolves below the account's own
+      real static/files, or below the account's store on attached
+      storage: static/files is the account's to change, so where it
+      pointed no longer decided which directory root changed.
+    * boa archived (list, prune and the disk-pressure heal) takes an
+      account's archived store only from its own real static/files or its
+      own store on attached storage, never another account's store or any
+      other directory on the mount.
 
     * The shared Backdrop redis module, the Backdrop bundle's webform and
       bee are root's as soon as BOA unpacks them: their archives recorded

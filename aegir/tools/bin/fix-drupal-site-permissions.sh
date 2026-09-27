@@ -78,10 +78,12 @@ _store_dir() {
   # static/files may itself be a symlink to a dedicated disk -- so they cannot
   # be refused outright. But the tenant owns ~/static and can own the site dir
   # itself (sites/ is 02771 on tenant codebases), so both the link and its
-  # target are plantable: accept a real directory, or a link that resolves
-  # inside THIS account's own resolved store root -- the same "never another
-  # account's tree" rule _validate_path_prefix applies to the site path.
-  local _p _acct _root _res
+  # target are plantable, static/files included: its resolved path is never
+  # the anchor. Accept a real directory, or a link that resolves strictly
+  # below THIS account's own real static/files, or below migratefs' layout
+  # for this account on attached storage (/mnt/<mount>/files/<acct>/static/files,
+  # where no directory of the mount part is itself named files or static).
+  local _p _acct="" _res _own _m
   _p="$1"
   [ -d "${_p}" ] || return 1
   if [ ! -L "${_p}" ]; then
@@ -90,20 +92,31 @@ _store_dir() {
   fi
   case "${site_path}/" in
     /var/aegir/*)
-      _acct="/var/aegir"
+      _own="/var/aegir/static/files/"
       ;;
     /data/disk/*/*)
       _acct="${site_path#/data/disk/}"
-      _acct="/data/disk/${_acct%%/*}"
+      _acct="${_acct%%/*}"
+      case "${_acct}" in
+        ""|*[!a-z0-9-]*) return 1 ;;
+      esac
+      _own="/data/disk/${_acct}/static/files/"
       ;;
     *)
       return 1
       ;;
   esac
-  _root=$(realpath -e -- "${_acct}/static/files" 2>/dev/null) || return 1
   _res=$(realpath -e -- "${_p}" 2>/dev/null) || return 1
-  case "${_res}/" in
-    "${_root}"/*) ;;
+  case "${_res}" in
+    *[!A-Za-z0-9._/-]*) return 1 ;;
+    "${_own}"?*) ;;
+    /mnt/?*/files/"${_acct}"/static/files/?*)
+      [ -n "${_acct}" ] || return 1
+      _m="${_res%%/files/"${_acct}"/static/files/*}"
+      case "${_m}" in
+        */files/*|*/static/*) return 1 ;;
+      esac
+      ;;
     *) return 1 ;;
   esac
   printf '%s' "${_res}"
