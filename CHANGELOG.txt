@@ -62,9 +62,20 @@
       the real directories, bounded and never through a link or from a
       FIFO; an uploaded Solr config is staged and checked before it is
       applied, and each site's pass acts only on that site's core.
-    * A migration park, a migratefs hold, a queue pause and a backup wait
-      marker count only for a live root process of the tool that wrote
-      it.
+    * A migratefs hold, a queue pause and a backup wait marker count only
+      for a live root process of the tool that wrote it; a migration
+      park lasts at most 24 hours.
+    * xoct, xcopy and xmass create, own and mode each file they put in an
+      account directory through one handle, re-assert an existing one
+      only when the expected identity already owns it (never a root-owned
+      file), set and clear the .ftp home's immutable flags inside the
+      real directories, and write their root-only records only through a
+      handle that checks a regular single-link root file. A rename move
+      never makes a link as root for a tenant. aegir2boa-stage2's
+      destination group pass works the same way.
+    * usage.sh, copydbackup, the nightly purge and the Octopus pass take
+      an account's files store only as its own static/files or
+      /mnt/<mount>/files/<oN>/static/files, the nightly's rule.
     * Root no longer follows a link, or opens a FIFO, that an account
       puts at a name in its own directories: static/control, and the
       log/, .drush/, config/, tools/, .tmp/ and .ftp home names its main
@@ -825,6 +836,18 @@
       answer is checked, and a template check no longer depends on the
       previous site. Drupal 8 and later cores take their config only from
       the upload; the incomplete D8+ templates are retired.
+    * After an xoct or xcopy import the panel keeps the front page its
+      database carries, instead of answering 403 until the next Octopus
+      upgrade.
+    * A refused or failed xoct or xcopy verb sets the .ftp home's
+      immutable flags again, instead of leaving them cleared until the
+      next limited-shell worker pass.
+    * Solr: solr_update_config works as documented: an apachesolr or
+      Drupal 7 core takes a newer BOA template only with YES. A core
+      whose INI sets solr_custom_config = YES is protected before the
+      pass that first reads it refreshes anything.
+    * The Octopus upgrade sets the hostmaster site's store files to 0664,
+      as the nightly does, not 2775.
     * The usage figure of an account with a relocated store is measured
       without following links: the account, plus its own store once.
     * The fix-drupal-* permission helpers and fixrepo set modes in
