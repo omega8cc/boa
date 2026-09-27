@@ -3943,9 +3943,13 @@ _satellite_run_child_b() {
       # nginx reads the basic auth password files on every request: their
       # group is the web server's, so the hand-over leaves that subtree to
       # the setter below and never takes them out of it for a moment.
-      _acct_in_real_dir "${_ROOT}/config" find . \
+      # -execdir, never -exec: chown then runs inside each directory find
+      # entered without following a link, on the bare name, so no directory
+      # between is looked up again by path (the account could have swapped
+      # it for a link by then). -execdir wants an absolute PATH.
+      _acct_in_real_dir "${_ROOT}/config" env PATH=/usr/local/bin:/usr/bin:/bin find . \
         -path ./server_master/nginx/passwords.d -prune \
-        -o -exec chown -h "${_USER}:${_ACCG:-users}" {} +
+        -o -execdir chown -h "${_USER}:${_ACCG:-users}" {} +
       _satellite_server_master_modes basic_auth &> /dev/null
       _acct_in_real_dir "${_ROOT}/tools" chown -R "${_USER}:${_ACCG:-users}" .
       ### The hostmaster root and site come from the account's own alias:
