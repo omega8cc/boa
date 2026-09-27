@@ -352,7 +352,7 @@ if ! _in_pinned_dir "${drupal_root}" true; then
   exit 1
 fi
 
-printf "Setting ownership of "${drupal_root}" to: user => "${script_user}" group => "${_code_group}"\n"
+printf 'Setting ownership of %s to: user => %s group => %s\n' "${drupal_root}" "${script_user}" "${_code_group}"
 _in_pinned_dir "${drupal_root}" chown -h "${script_user}:${_code_group}" .
 
 ### Make sure that expected sites/all sub-directories exist

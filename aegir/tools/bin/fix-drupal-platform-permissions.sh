@@ -433,7 +433,7 @@ if ! _in_pinned_dir "${drupal_root}" true; then
   exit 1
 fi
 
-printf "Setting main permissions inside "${drupal_root}"...\n"
+printf 'Setting main permissions inside %s...\n' "${drupal_root}"
 _in_pinned_dir "${drupal_root}/sites" mkdir -p ./all
 _in_pinned_dir "${drupal_root}/sites/all" \
   mkdir -p ./modules ./themes ./libraries ./drush
@@ -441,26 +441,26 @@ _in_pinned_dir "${drupal_root}/sites/all" \
 ### Create ctrl pid
 _in_pinned_dir "${drupal_root}/sites/all/libraries" _perm_marker_here
 
-printf "Setting permissions of all codebase directories inside "${drupal_root}"...\n"
+printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}"
 _in_pinned_dir "${drupal_root}" _walk_here d "${_MODE_DIR}" \
   ./modules ./themes ./libraries ./includes ./misc ./profiles ./core
 
-printf "Setting permissions of all codebase files inside "${drupal_root}"...\n"
+printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}"
 _in_pinned_dir "${drupal_root}" _walk_here f "${_MODE_FILE}" \
   ./modules ./themes ./libraries ./includes ./misc ./profiles ./core
 
 if [ -e "${drupal_root}/vendor" ]; then
-  printf "Setting permissions of all codebase directories inside "${drupal_root}/vendor"...\n"
+  printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}/vendor"
   _in_pinned_dir "${drupal_root}" find ./vendor -type d \
     -exec perl -e "${_FCHMOD_PL}" d "${_MODE_DIR}" {} +
-  printf "Setting permissions of all codebase files inside "${drupal_root}/vendor"...\n"
+  printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}/vendor"
   _in_pinned_dir "${drupal_root}" find ./vendor -type f \
     -exec perl -e "${_FCHMOD_PL}" f "${_MODE_FILE}" {} +
 elif [ -e "${drupal_root}/../vendor" ]; then
-  printf "Setting permissions of all codebase directories inside "${drupal_root}/../vendor"...\n"
+  printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}/../vendor"
   _in_pinned_dir "${drupal_root%/*}" find ./vendor -type d \
     -exec perl -e "${_FCHMOD_PL}" d "${_MODE_DIR}" {} +
-  printf "Setting permissions of all codebase files inside "${drupal_root}/../vendor"...\n"
+  printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}/../vendor"
   _in_pinned_dir "${drupal_root%/*}" find ./vendor -type f \
     -exec perl -e "${_FCHMOD_PL}" f "${_MODE_FILE}" {} +
 fi
@@ -499,12 +499,12 @@ elif [ -d "${drupal_root}/html" ]; then
   _chmod_in "${drupal_root}" "${_MODE_DIR}" html
 fi
 
-printf "Setting permissions of all codebase directories inside "${drupal_root}/sites/all"...\n"
+printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}/sites/all"
 _in_pinned_dir "${drupal_root}/sites/all" \
   find ./modules ./themes ./libraries -type d \
   -exec perl -e "${_FCHMOD_PL}" d "${_SA_DIR}" {} +
 
-printf "Setting permissions of all codebase files inside "${drupal_root}/sites/all"...\n"
+printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}/sites/all"
 _in_pinned_dir "${drupal_root}/sites/all" \
   find ./modules ./themes ./libraries -type f \
   -exec perl -e "${_FCHMOD_PL}" f "${_SA_FILE}" {} +
@@ -534,12 +534,12 @@ fi
 ### Lock Local Drush and Symfony Console Input/Style
 if [ -e "${drupal_root}/core" ]; then
   if [ -e "${drupal_root}/vendor" ]; then
-    printf "Locking Drush and Symfony Console Input in "${drupal_root}/vendor"...\n"
+    printf 'Locking Drush and Symfony Console Input in %s...\n' "${drupal_root}/vendor"
     _in_scoped_dir "${drupal_root}/vendor" _chmod_here 0400 drush
     _in_scoped_dir "${drupal_root}/vendor/symfony/console" \
       _chmod_here 0400 Input Style
   elif [ -e "${drupal_root}/../vendor" ]; then
-    printf "Locking Drush and Symfony Console Input in "${drupal_root}/../vendor"...\n"
+    printf 'Locking Drush and Symfony Console Input in %s...\n' "${drupal_root}/../vendor"
     _in_scoped_dir "${drupal_root%/*}/vendor" _chmod_here 0400 drush
     _in_scoped_dir "${drupal_root%/*}/vendor/symfony/console" \
       _chmod_here 0400 Input Style

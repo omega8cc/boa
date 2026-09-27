@@ -444,7 +444,7 @@ if [ -e "${site_path}/modules/services.yml" ] && [ ! -e "${site_path}/services.y
     ln -sfn "${site_path}/modules/services.yml" ./services.yml
 fi
 
-printf "Setting ownership of key files and directories inside "${site_path}" to: user => "${script_user}" group => "${_code_group}"\n"
+printf 'Setting ownership of key files and directories inside %s to: user => %s group => %s\n' "${site_path}" "${script_user}" "${_code_group}"
 if [ ! -e "${site_path}/libraries" ]; then
   _in_pinned_dir "${site_path}" mkdir ./libraries
 fi

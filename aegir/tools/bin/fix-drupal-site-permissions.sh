@@ -405,7 +405,7 @@ fi
 if [ -e "${site_path}/libraries/permissions-fixed.pid" ]; then
   _in_pinned_dir "${site_path}/libraries" rm -f -- ./permissions-fixed.pid
 fi
-printf "Setting correct permissions on key files and directories inside "${site_path}"...\n"
+printf 'Setting correct permissions on key files and directories inside %s...\n' "${site_path}"
 ### directory and settings files - site level
 if [ -e "${site_path}/aegir.services.yml" ]; then
   _in_pinned_dir "${site_path}" rm -f -- ./aegir.services.yml
