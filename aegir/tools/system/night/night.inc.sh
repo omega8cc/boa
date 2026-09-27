@@ -462,9 +462,6 @@ _enable_chattr() {
     if [ -d "/home/$1/.drush/usr/" ]; then
       chattr +i /home/$1/.drush/usr/
     fi
-    if [ -f "/home/$1/.drush/php.ini" ]; then
-      chattr +i /home/$1/.drush/*.ini
-    fi
     if [ -d "/home/$1/.bazaar/" ]; then
       chattr +i /home/$1/.bazaar/
     fi
@@ -496,8 +493,10 @@ _disable_chattr() {
       && [ ! -L "/home/$1/.drush/usr" ]; then
       chattr -i /home/$1/.drush/usr/
     fi
-    if [ -f "/home/$1/.drush/php.ini" ] && [ ! -L "/home/$1/.drush" ]; then
-      chattr -i /home/$1/.drush/*.ini
+    # a CLI php.ini an earlier release left, for the ltd worker to remove
+    if [ -f "/home/$1/.drush/php.ini" ] && [ ! -L "/home/$1/.drush" ] \
+      && [ ! -L "/home/$1/.drush/php.ini" ]; then
+      chattr -i /home/$1/.drush/php.ini
     fi
     if [ -d "/home/$1/.bazaar/" ] && [ ! -L "/home/$1/.bazaar" ]; then
       chattr -i /home/$1/.bazaar/

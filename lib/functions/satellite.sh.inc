@@ -355,22 +355,34 @@ _satellite_web_user_update() {
     _T_HD="/home/${_WEB}/.drush"
     _T_TP="/home/${_WEB}/.tmp"
     _T_TS="/home/${_WEB}/.aws"
-    _T_II="${_T_HD}/php.ini"
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "DEBUG: ${_WEB} in _satellite_web_user_update A"
     fi
-    if [ -d "/home/${_WEB}/" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
-      if [ -d "/home/${_WEB}/" ]; then
-        chattr -i -R /home/${_WEB}/ &> /dev/null
-      fi
-      if [ -d "/home/${_WEB}/.drush/" ]; then
-        chattr -i /home/${_WEB}/.drush/
-      fi
-      if [ -e "${_T_II}" ]; then
-        chattr -i ${_T_II}
-      fi
+    # /home is root's, so the home itself cannot be swapped; every name in it
+    # is the web user's (a compromised site in the pool can plant one at any
+    # moment): past the link strip, root works on .lock, .drush and the stamp
+    # only inside the real directories, creating files exclusively
+    _T_HR="$(cd -P -- /home 2> /dev/null && pwd -P)/${_WEB}"
+    # held off only by a lock an update wrote: a regular root file at .lock
+    # younger than an hour; a name the web user planted there, or a lock an
+    # interrupted pass left, is replaced by this update's own
+    _T_LK=NO
+    if [ -f "/home/${_WEB}/.lock" ] && [ ! -L "/home/${_WEB}/.lock" ] \
+      && [ "$(stat -c %u "/home/${_WEB}/.lock" 2> /dev/null)" = "0" ] \
+      && [ -n "$(find "/home/${_WEB}/.lock" -maxdepth 0 -mmin -60 2> /dev/null)" ]; then
+      _T_LK=YES
+    fi
+    if [ -d "/home/${_WEB}/" ] && [ ! -L "/home/${_WEB}" ] && [ "${_T_LK}" = "NO" ]; then
+      chattr -i /home/${_WEB} &> /dev/null
+      for _t_n in .drush .tmp .aws .lock; do
+        if [ -L "/home/${_WEB}/${_t_n}" ]; then
+          rm -f "/home/${_WEB}/${_t_n}"
+        fi
+      done
       mkdir -p /home/${_WEB}/.{tmp,drush,aws}
-      touch /home/${_WEB}/.lock
+      ( cd -P -- "/home/${_WEB}" 2> /dev/null && [ "$(pwd -P)" = "${_T_HR}" ] || exit 0
+        rm -f -- ./.lock
+        echo | dd of=./.lock conv=excl status=none 2> /dev/null )
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "DEBUG: ${_WEB} in _satellite_web_user_update B"
         _msg "DEBUG: ARG1 is $1 in _satellite_web_user_update B"
@@ -383,53 +395,48 @@ _satellite_web_user_update() {
           _msg "DEBUG: _T_PV is ${_T_PV} in _satellite_web_user_update C"
         fi
       fi
-      if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
-        cp -af /opt/php${_T_PV}/etc/php${_T_PV}.ini ${_T_II}
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "DEBUG: _T_PV is ${_T_PV} in _satellite_web_user_update D"
-        fi
-      else
+      # the stamp records the pool version the user was set up for (FPM runs
+      # on its version's ini and the pool's own temp paths); the php.ini kept
+      # beside it is a placeholder naming no PHP version, which the Octopus
+      # and ltd worker of earlier releases read as the web user being in
+      # place (without one they make it anew, home included). Its text is the
+      # ltd worker's _DRUSH_INI_PLACEHOLDER, byte for byte.
+      if [ -z "${_T_PV}" ] || [ ! -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
         _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
-            cp -af /opt/php${e}/etc/php${e}.ini ${_T_II}
             _T_PV=${e}
+            break
           fi
         done
       fi
-      if [ -e "${_T_II}" ]; then
-        # open_basedir stays out of the CLI ini: it breaks Drush and turns the
-        # realpath cache off (every file operation checked against every listed
-        # tree, uncached); lshell users are confined by their own measures, and
-        # the FPM ini keeps its own list
-        _QTP=${_T_TP//\//\\\/}
-        sed -i "s/.*open_basedir =.*/;open_basedir =/g"                              ${_T_II}
-        wait
-        sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     ${_T_II}
-        wait
-        sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" ${_T_II}
-        wait
-        sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               ${_T_II}
-        wait
-        sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           ${_T_II}
-        wait
-        rm -f ${_T_HD}/.ctrl.php*
-        echo > ${_T_HD}/.ctrl.php${_T_PV}.${_xSrl}.pid
+      ( cd -P -- "${_T_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_T_HR}/.drush" ] || exit 0
+        chattr -i . 2> /dev/null
+        [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr -i ./php.ini 2> /dev/null
+        # a link the web user put at the name goes first (unlink never
+        # follows it); a released copy of this upkeep wrote through one
+        [ -L ./php.ini ] && rm -f -- ./php.ini
+        if [ ! -e ./php.ini ] && [ ! -L ./php.ini ]; then
+          ( umask 0333
+            printf '%s\n' "; no per-account php.ini: the CLI runs on the global ini (kept for older releases)" \
+              | dd of=./php.ini conv=excl status=none ) 2> /dev/null
+        fi
+        if [ ! -z "${_T_PV}" ]; then
+          rm -f -- ./.ctrl.php*
+          echo | dd of="./.ctrl.php${_T_PV}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
+        fi )
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "DEBUG: _T_PV is ${_T_PV} in _satellite_web_user_update D"
       fi
       chmod 700 /home/${_WEB}/
       chown -R ${_WEB}:www-data /home/${_WEB}/
-      chmod 550 /home/${_WEB}/.drush/
-      chmod 440 /home/${_WEB}/.drush/php.ini
-      rm -f /home/${_WEB}/.lock
-      if [ -d "/home/${_WEB}/" ]; then
-        chattr +i /home/${_WEB}/
-      fi
-      if [ -d "/home/${_WEB}/.drush/" ]; then
-        chattr +i /home/${_WEB}/.drush/
-      fi
-      if [ -e "${_T_II}" ]; then
-        chattr +i ${_T_II}
-      fi
+      ( cd -P -- "${_T_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_T_HR}/.drush" ] || exit 0
+        chmod 550 .
+        chattr +i . 2> /dev/null
+        [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr +i ./php.ini 2> /dev/null )
+      ( cd -P -- "/home/${_WEB}" 2> /dev/null && [ "$(pwd -P)" = "${_T_HR}" ] || exit 0
+        rm -f -- ./.lock )
+      chattr +i /home/${_WEB}/
     fi
   fi
 }
@@ -464,15 +471,15 @@ _satellite_create_web_user() {
     _msg "PROC: _satellite_create_web_user"
     _debug_proc
   fi
-  _T_HD="/home/${_WEB}/.drush"
-  _T_II="${_T_HD}/php.ini"
+  # an account with its home in place is updated; a missing account or home
+  # is made anew
   _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
-  if [ ! -z "${_T_ID_EXISTS}" ] && [ -e "${_T_II}" ]; then
+  if [ ! -z "${_T_ID_EXISTS}" ] && [ -d "/home/${_WEB}" ]; then
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "DEBUG: ARG1 is $1 in _satellite_create_web_user B"
     fi
     _satellite_web_user_update "$1"
-  elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ]; then
+  else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "DEBUG: ARG1 is $1 in _satellite_create_web_user C"
     fi
@@ -708,17 +715,11 @@ _satellite_tune_fpm_config() {
     fi
     if [ -e "/opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf" ]; then
       ### create or update special system user if needed
-      if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
-        _OLD_PHP_IN_USE=$(grep "/lib/php" /home/${_WEB}/.drush/php.ini 2>&1)
-        _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
-        for e in ${_PHP_V}; do
-          if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
-            if [ "${e}" != "${_PHP_SV}" ] \
-              || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.${_xSrl}.pid" ]; then
-              _satellite_web_user_update "${_PHP_SV}"
-            fi
-          fi
-        done
+      # its stamp records the pool version it was set up for, this serial
+      if getent passwd "${_WEB}" &> /dev/null && [ -d "/home/${_WEB}" ]; then
+        if [ ! -e "/home/${_WEB}/.drush/.ctrl.php${_PHP_SV}.${_xSrl}.pid" ]; then
+          _satellite_web_user_update "${_PHP_SV}"
+        fi
       else
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           _msg "DEBUG: _PHP_SV is ${_PHP_SV} in _satellite_create_web_user A"
@@ -842,9 +843,6 @@ _enable_chattr() {
     if [ -d "/home/$1/.drush/usr/" ]; then
       chattr +i /home/$1/.drush/usr/
     fi
-    if [ -f "/home/$1/.drush/php.ini" ]; then
-      chattr +i /home/$1/.drush/*.ini
-    fi
     if [ -d "/home/$1/.bazaar/" ]; then
       chattr +i /home/$1/.bazaar/
     fi
@@ -871,8 +869,9 @@ _disable_chattr() {
     if [ -d "/home/$1/.drush/usr/" ]; then
       chattr -i /home/$1/.drush/usr/
     fi
-    if [ -f "/home/$1/.drush/php.ini" ]; then
-      chattr -i /home/$1/.drush/*.ini
+    # a CLI php.ini an earlier release left, for the ltd worker to remove
+    if [ -f "/home/$1/.drush/php.ini" ] && [ ! -L "/home/$1/.drush/php.ini" ]; then
+      chattr -i /home/$1/.drush/php.ini
     fi
     if [ -d "/home/$1/.bazaar/" ]; then
       chattr -i /home/$1/.bazaar/
@@ -1803,30 +1802,20 @@ _satellite_force_advanced_nginx_config() {
 }
 
 #
-# Update local INI for PHP CLI on the Ægir Satellite Instance.
-_satellite_update_ini_php_cli() {
+# The instance's own .tmp and .drush on an upgrade: the CLI keeps no php.ini
+# there (its version's global ini applies, the temp paths come from TMPDIR),
+# only the directories and the release serial's stamp.
+_satellite_update_local_dirs_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _satellite_update_ini_php_cli"
+    _msg "PROC: _satellite_update_local_dirs_cli"
     _debug_proc
   fi
   _U_HD="${_ROOT}/.drush"
   _U_TP="${_ROOT}/.tmp"
-  _U_II="${_U_HD}/php.ini"
-  _PHP_CLI_UPDATE=NO
   if [ ! -e "${_DRUSH_FILE}" ]; then
     return 1  # Exit the function but continue the script
   fi
-  _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
-  for e in ${_PHP_V}; do
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.${_xSrl}.pid" ]; then
-      _PHP_CLI_UPDATE=YES
-    fi
-  done
-  if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
-    || [ ! -e "${_U_II}" ] \
-    || [ ! -d "${_U_TP}" ] \
+  if [ ! -d "${_U_TP}" ] \
     || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     # The instance user owns ${_ROOT} and can swap .tmp or .drush for a link
     # (its own Drush runs just before this): a link there is removed, the age
@@ -1844,49 +1833,11 @@ _satellite_update_ini_php_cli() {
         || { [ "$(stat -c %u .)" = "0" ] && [ -z "$(ls -A . 2> /dev/null)" ]; } || exit 0
       touch . && chmod 02755 .
       find . -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null )
-    _U_INI=""
-    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
-    for e in ${_PHP_V}; do
-      if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]]; then
-        if [ -e "/opt/php${e}/lib/php.ini" ]; then
-          _U_INI=${e}
-        fi
-      fi
-    done
-    _QTP=${_U_TP//\//\\\/}
+    # the stamp is created exclusively, never through a link at the name
     ( cd -P -- "${_U_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.drush" ] || exit 0
       mkdir -p ./sys ./xts ./usr
-      # the old ini stays until the final copy replaces it
-      rm -f -- ./.ctrl.php*
-      [ -n "${_U_INI}" ] || { rm -f -- ./php.ini; exit 0; }
-      # edited in root's own temp directory and put in place once: no link
-      # or FIFO put at php.ini is ever opened, and the stamps are created
-      # exclusively
-      _U_W=$(mktemp -d 2> /dev/null) && [ -d "${_U_W}" ] || exit 0
-      if cp -a /opt/php${_U_INI}/lib/php.ini "${_U_W}/php.ini" 2> /dev/null; then
-        # open_basedir stays out of the CLI ini: it breaks Drush and turns the
-        # realpath cache off (every file operation checked against every listed
-        # tree, uncached); lshell users are confined by their own measures, and
-        # the FPM ini keeps its own list
-        sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      "${_U_W}/php.ini"
-        wait
-        sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               "${_U_W}/php.ini"
-        wait
-        sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     "${_U_W}/php.ini"
-        wait
-        sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" "${_U_W}/php.ini"
-        wait
-        sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               "${_U_W}/php.ini"
-        wait
-        sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           "${_U_W}/php.ini"
-        wait
-        if cp -aT --remove-destination "${_U_W}/php.ini" ./php.ini 2> /dev/null; then
-          rm -f -- "./.ctrl.${_tRee}.${_xSrl}.pid"
-          echo | dd of="./.ctrl.php${_U_INI}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
-          echo | dd of="./.ctrl.${_tRee}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
-        fi
-      fi
-      rm -rf -- "${_U_W}"
+      rm -f -- ./.ctrl.php* "./.ctrl.${_tRee}.${_xSrl}.pid"
+      echo | dd of="./.ctrl.${_tRee}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
     )
   fi
 }
@@ -3909,10 +3860,6 @@ _satellite_run_child_b() {
       touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
       exit 1
     fi
-    _U_HD="${_ROOT}/.drush"
-    if [ -e "${_U_HD}/php.ini" ]; then
-      chattr +i ${_U_HD}/php.ini
-    fi
     chmod 0700 /data/u &> /dev/null
     chown root:root /data/u &> /dev/null
     _msg "${_STATUS} A: Ægir Satellite Instance installed"
@@ -3939,8 +3886,10 @@ _satellite_run_child_b() {
       rm -f /opt/tmp/testecho*
       _THIS_HM_ROOT=$(_satellite_hm_alias_get "root'")
       _THIS_HM_SITE=$(_satellite_hm_alias_get "site_path'")
+      # a CLI php.ini an earlier release left (+i) would refuse the chown;
+      # the ltd worker removes it
       _U_HD="${_ROOT}/.drush"
-      if [ -e "${_U_HD}/php.ini" ]; then
+      if [ -f "${_U_HD}/php.ini" ] && [ ! -L "${_U_HD}/php.ini" ]; then
         chattr -i ${_U_HD}/php.ini
       fi
       ### handed over inside each real directory, so chown -R never follows
@@ -3971,7 +3920,7 @@ _satellite_run_child_b() {
       _acct_in_real_dir "${_ROOT}/tools/drush" \
         chown -R "${_USER}:${_ACCG:-users}" .
       _satellite_update_drush_php_cli
-      _satellite_update_ini_php_cli
+      _satellite_update_local_dirs_cli
       if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL" ] \
         || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupB-OK" ]; then
         _msg "${_STATUS} A: FATAL ERROR: AegirSetupB installer failed"
@@ -3979,9 +3928,6 @@ _satellite_run_child_b() {
         touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
         exit 1
       else
-        if [ -e "${_U_HD}/php.ini" ]; then
-          chattr +i ${_U_HD}/php.ini
-        fi
         mkdir -p ${_ROOT}/backups/system/old_hostmaster
         chmod 700 ${_ROOT}/backups/system/old_hostmaster
         chmod 700 ${_ROOT}/backups/system

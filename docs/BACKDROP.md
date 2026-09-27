@@ -138,9 +138,9 @@ Backdrop sites answer to **both** CLIs:
   is 7.1; BOA enforces 7.4), so an account choice below that makes
   `bee` alone use the newest installed modern version while Drush still
   honours the choice exactly. The matching php.ini always follows the
-  version finally picked: the per-account `~/.drush/php.ini` applies when its
-  `extension_dir` names the `/opt/phpNN/` tree of the PHP just picked, and the
-  global `/opt/phpNN/lib/php.ini` otherwise.
+  version finally picked: the global `/opt/phpNN/lib/php.ini` of that PHP.
+  There is no per-account php.ini; temporary files go to the calling
+  account's own `~/.tmp`, which websh sets as `TMPDIR`.
 
   Backend identities (root, `aegir`,
   `o1`-style Octopus users) have the full verb set. Client shell

@@ -792,8 +792,9 @@ Three things are deliberately **not** pruned:
   is unrecoverable; a promoted box resumes its own `owl.sh` cleanup within
   the night and reclaims normally.
 - **Files excluded from a leg are never deletion candidates** (`--delete-excluded`
-  is never passed), so `proxied.pid`, `migproxy.cnf`, `pass.txt` and the
-  target's immutable `php.ini` are safe by construction.
+  is never passed), so `proxied.pid`, `migproxy.cnf`, `pass.txt` and an
+  immutable `php.ini` an earlier release left in `.drush` are safe by
+  construction.
 
 The guards on every pruning leg, none of them optional:
 

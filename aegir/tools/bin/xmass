@@ -5037,12 +5037,14 @@ _xmass_sync_account() {
   # excludes for server_master/hostmaster here: the rename converges either
   # way, and the source platform_* and per-site aliases must always arrive.
   #
-  # php.ini is the ONE exception: BOA generates it per box for the local
-  # drush CLI and hardens it immutable (chattr +i), so the target's copy is
-  # both correct and unreplaceable. Without the exclude, every sync to a
-  # real BOA target fails rc=23 on the rename over the immutable file — a
-  # failure the pre-rc-capture code swallowed silently for years and the
-  # transfer gate now rightly refuses to ignore.
+  # php.ini is the ONE exception: earlier releases generated it per box for
+  # the local drush CLI and hardened it immutable (chattr +i). The CLI now
+  # runs on the global ini and the ltd worker removes such a copy, but a
+  # source or target on an earlier release still carries one: the source's
+  # must never land on the target, and a target's immutable copy made every
+  # sync fail rc=23 on the rename over it — a failure the pre-rc-capture
+  # code swallowed silently for years and the transfer gate now rightly
+  # refuses to ignore.
   _xmass_at_real_dir "${_udir}/.drush" _xmass_rsync -aEAXqu ${_ieni} \
     --exclude=php.ini --rsync-path="$(_xmass_pin_rpath "${_dst}/.drush")" \
     -e ssh ./ "root@${_tgt}:./" \

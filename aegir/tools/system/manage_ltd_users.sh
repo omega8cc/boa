@@ -493,53 +493,14 @@ _ltd_drush_usr_links() {
     fi
   done
 }
-# The account's Drush CLI php.ini and its stamps, written inside the real
-# ~/.drush. $1 = PHP version digits (85, 84, ...; empty: none installed),
-# $2 = the account's ~/.tmp.
-_ltd_drush_ini_put() {
-  local _v="${1}" _qtp="${2//\//\\\/}" _w=""
-  # the old ini stays until its replacement is in place (the final copy
-  # replaces it): a temp directory that cannot be made leaves it, not none
+# The release serial's stamp of an account's ~/.drush, written inside the
+# real directory: the reset above and the alias re-copy are keyed on it. No
+# CLI php.ini is kept there any more (PHP runs on its version's global ini
+# and takes its temp paths from TMPDIR), so neither are the per-version
+# stamps one was keyed on.
+_ltd_drush_stamp_put() {
   rm -f -- ./.ctrl.php*
-  [ -n "${_v}" ] || { rm -f -- ./php.ini; return 0; }
-  # Edited in root's own temp directory and put in place once: a name here is
-  # the account's, so a FIFO or link put at php.ini is never opened by sed
-  # and the copy never follows a link at the name into a directory (-T).
-  _w=$(mktemp -d 2> /dev/null) || return 0
-  [ -n "${_w}" ] && [ -d "${_w}" ] || return 0
-  if cp -a "/opt/php${_v}/lib/php.ini" "${_w}/php.ini" 2> /dev/null; then
-    # open_basedir stays out of the CLI ini: it breaks Drush and turns the
-    # realpath cache off (every file operation checked against every listed
-    # tree, uncached); lshell users are confined by their own measures, and
-    # the FPM ini keeps its own list
-    sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      "${_w}/php.ini"
-    wait
-    sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               "${_w}/php.ini"
-    wait
-    sed -i "s/.*session.save_path =.*/session.save_path = ${_qtp}/g"     "${_w}/php.ini"
-    wait
-    sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_qtp}/g" "${_w}/php.ini"
-    wait
-    sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_qtp}/g"               "${_w}/php.ini"
-    wait
-    sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_qtp}/g"           "${_w}/php.ini"
-    wait
-    if cp -aT --remove-destination "${_w}/php.ini" ./php.ini 2> /dev/null; then
-      _ltd_stamp_put ".ctrl.php${_v}.${_xSrl}.pid" ""
-      _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" ""
-    fi
-  fi
-  rm -f -- "${_w}/php.ini"
-  rmdir -- "${_w}" 2> /dev/null
-  return 0
-}
-# The same where php.ini is kept immutable between passes: unlocked and
-# locked again by name inside the pinned directory, only when it is a regular
-# file.
-_ltd_drush_ini_put_locked() {
-  [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr -i ./php.ini 2> /dev/null
-  _ltd_drush_ini_put "${1}" "${2}"
-  [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr +i ./php.ini 2> /dev/null
+  _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" ""
   return 0
 }
 # A mode set on names in a directory an account owns, never through a link:
@@ -917,7 +878,6 @@ _ltd_clients_sweep() {
 _ltd_drush_lock_here() {
   chattr +i . &> /dev/null
   [ -d ./usr ] && [ ! -L ./usr ] && chattr +i ./usr &> /dev/null
-  chattr +i ./*.ini &> /dev/null
   return 0
 }
 _ltd_drush_unlock_here() {
@@ -986,7 +946,7 @@ _pthLog="/var/log/boa"
 
 # NB: no whole-script standby gate here, on purpose. The local-only
 # reconciliation this script owns -- system users from clients/, per-user
-# php.ini, FPM $user_socket includes, lshell membership -- must run on a
+# homes, FPM $user_socket includes, lshell membership -- must run on a
 # replication standby exactly as anywhere (xmass relies on sub-users
 # appearing on the target within minutes of clients/ landing, and a
 # barracuda system pass on a standby needs its post-step). Only the two
@@ -1117,44 +1077,101 @@ _add_ltd_group_if_not_exists() {
   fi
 }
 #
-# The account's Drush 8 ini carried an active open_basedir list for years and
-# nothing applied it, until websh started handing the file to the Drush 8 and
-# composer it launches (2026-09-08): with open_basedir set php runs without its
-# realpath cache and checks every file operation against every listed tree,
-# uncached -- a hostmaster bootstrap of three seconds took a hundred and the
-# per-minute queue runners loaded every box. open_basedir was never meant for
-# the CLI (lshell users are confined by their own measures; the FPM ini keeps
-# its list): the writers no longer set it, and this heals the files already on
-# disk, once each. The file and its .drush directory are +i and the worker
-# keeps them so: the edit is written into the existing inode (no rename, which
-# an immutable directory refuses), never through a link in either place, and
-# logged only when it took.
-_drush_ini_open_basedir_off() {
-  local _ini="${1}" _dir _imm=NO _tmp
-  [ -n "${_ini}" ] && [ -f "${_ini}" ] && [ ! -L "${_ini}" ] || return 0
-  _dir="${_ini%/*}"
-  [ -d "${_dir}" ] && [ ! -L "${_dir}" ] || return 0
-  grep -q "^open_basedir = " "${_ini}" 2> /dev/null || return 0
-  if lsattr -d "${_ini}" 2> /dev/null | cut -d' ' -f1 | grep -q "i"; then
+# No identity keeps a CLI php.ini in its .drush any more -- not a shell
+# account, an instance or the master: every php runs on its version's global
+# ini, which sets no temp path, and follows the ~/.tmp in the TMPDIR websh
+# sets. A copy an earlier release left is removed once, inside the real
+# directory (never through a link at either name), the directory's +i put
+# back as it was, and the removal logged. A web user keeps a placeholder
+# instead: the Octopus and ltd worker of earlier releases read a web user
+# without a php.ini as broken and make it anew, home included, while a file
+# that names no PHP version is nothing for them to act on. Its full copy is
+# replaced by the placeholder, a missing one created, and so is a link the
+# web user put there (their Octopus copies the FPM ini through that name as
+# root), each change logged.
+_DRUSH_INI_PLACEHOLDER="; no per-account php.ini: the CLI runs on the global ini (kept for older releases)"
+_drush_ini_retire_here() {
+  # $1 = the directory as named, for the log; $2 = web for a web user's
+  local _imm=NO _what="" _cur=""
+  if [ "${2}" = "web" ]; then
+    if [ -L ./php.ini ]; then
+      :
+    elif [ -f ./php.ini ]; then
+      _cur=$(timeout 10 dd if=./php.ini iflag=nofollow,nonblock,fullblock bs=4096 count=1 status=none 2> /dev/null)
+      [ "${_cur}" = "${_DRUSH_INI_PLACEHOLDER}" ] && return 0
+    elif [ -e ./php.ini ]; then
+      return 0
+    fi
+  else
+    [ -f ./php.ini ] && [ ! -L ./php.ini ] || return 0
+  fi
+  if lsattr -d . 2> /dev/null | cut -d' ' -f1 | grep -q "i"; then
     _imm=YES
-    chattr -i "${_ini}" 2> /dev/null
+    chattr -i . 2> /dev/null
   fi
-  _tmp=$(mktemp /root/.drush-ini.XXXXXX 2> /dev/null) || return 0
-  if sed "s/^open_basedir = .*/;open_basedir =/" "${_ini}" > "${_tmp}" 2> /dev/null \
-    && cat "${_tmp}" > "${_ini}" 2> /dev/null; then
+  [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr -i ./php.ini 2> /dev/null
+  rm -f -- ./php.ini 2> /dev/null
+  if [ -e ./php.ini ] || [ -L ./php.ini ]; then
+    :
+  elif [ "${2}" = "web" ]; then
+    # created exclusively and read-only: a name put there since is never
+    # followed, and nothing after this touches it by name
+    if ( umask 0333
+      printf '%s\n' "${_DRUSH_INI_PLACEHOLDER}" | dd of=./php.ini conv=excl status=none ) 2> /dev/null; then
+      _what="set to the web user placeholder"
+    fi
+  else
+    _what="removed (the CLI runs on the global ini)"
+  fi
+  if [ -n "${_what}" ]; then
     mkdir -p /var/log/boa 2> /dev/null
-    echo "$(date 2>&1) NOTE: open_basedir removed from ${_ini} (never for the CLI)" \
-      >> /var/log/boa/drush-ini.incident.log
+    echo "$(date 2>&1) NOTE: ${1}/php.ini ${_what}" >> /var/log/boa/drush-ini.incident.log
   fi
-  rm -f "${_tmp}"
-  [ "${_imm}" = "YES" ] && chattr +i "${_ini}" 2> /dev/null
+  [ "${_imm}" = "YES" ] && chattr +i . 2> /dev/null
   return 0
 }
-# every account ini on the box, once per pass; a repaired file is silent after
-_drush_ini_open_basedir_sweep() {
-  local _i
-  for _i in /home/*/.drush/php.ini /data/disk/o*/.drush/php.ini /var/aegir/.drush/php.ini; do
-    _drush_ini_open_basedir_off "${_i}"
+# The command-line php.ini of every installed version pins no temp path, so
+# PHP follows the TMPDIR websh sets, the calling identity's own ~/.tmp. The
+# phpNN-cli.ini templates carry that; this makes the live copies follow as
+# soon as this worker runs, ahead of the barracuda pass that rewrites them
+# from those templates. Root's own files, edited in place, silent once done,
+# each change logged; never while a barracuda run is rewriting them (one
+# started after this pass did): the next pass unpins what it left.
+_cli_ini_temp_unpin() {
+  local _g
+  [ -e /run/boa_run.pid ] && return 0
+  for _g in /opt/php[0-9][0-9]/lib/php.ini; do
+    [ -f "${_g}" ] && [ ! -L "${_g}" ] || continue
+    grep -qE '^(sys_temp_dir|upload_tmp_dir|session\.save_path)[[:space:]]*=' "${_g}" 2> /dev/null || continue
+    if sed -i -e 's/^sys_temp_dir[[:space:]]*=/;&/' -e 's/^upload_tmp_dir[[:space:]]*=/;&/' \
+      -e 's/^session\.save_path[[:space:]]*=/;&/' "${_g}" 2> /dev/null; then
+      mkdir -p /var/log/boa 2> /dev/null
+      echo "$(date 2>&1) NOTE: ${_g}: temp paths no longer pinned (PHP follows TMPDIR)" \
+        >> /var/log/boa/drush-ini.incident.log
+    fi
+  done
+}
+# every identity's .drush on the box, once per pass; silent once done. An
+# instance's is one in a /data/disk/<name> its own user owns, whatever the
+# name.
+_drush_ini_retire_sweep() {
+  local _d _p _u
+  for _d in /home/*/.drush /data/disk/*/.drush /var/aegir/.drush; do
+    [ -d "${_d}" ] && [ ! -L "${_d}" ] || continue
+    _p="${_d%/.drush}"
+    _u="${_p##*/}"
+    case "${_d}" in
+      /home/*.web/.drush)
+        _ltd_in_real_dir "${_d}" _drush_ini_retire_here "${_d}" web
+        continue
+        ;;
+      /data/disk/*)
+        getent passwd "${_u}" > /dev/null 2>&1 \
+          && [ "$(stat -c %U "${_p}" 2> /dev/null)" = "${_u}" ] || continue
+        ;;
+    esac
+    [ -f "${_d}/php.ini" ] || continue
+    _ltd_in_real_dir "${_d}" _drush_ini_retire_here "${_d}"
   done
 }
 
@@ -1169,7 +1186,6 @@ _enable_chattr() {
     _accGrp=$(_acct_group "$1")
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
-    _U_II="${_U_HD}/php.ini"
     # A link at ~/.drush always takes the strip branch: the marker test would
     # otherwise read through it into whatever directory it points at.
     if [ -L "${_U_HD}" ] || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
@@ -1211,70 +1227,10 @@ _enable_chattr() {
         _ltd_in_real_dir ./usr _ltd_drush_usr_links "${_dscUsr}/.drush/usr"
     fi
 
-    if [ -e "${_dscUsr}/tools/drush/drush.php" ]; then
-      _CHECK_USE_PHP_CLI=$(_ltd_read_in "${_dscUsr}/tools/drush" drush.php | grep "/opt/php" 2>&1)
-    else
-      _CHECK_USE_PHP_CLI=php84
-    fi
-
-    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
-    for e in ${_PHP_V}; do
-      if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-        && [ ! -e "${_U_HD}/.ctrl.php${e}.${_xSrl}.pid" ]; then
-        _PHP_CLI_UPDATE=YES
-      fi
-    done
-    echo _PHP_CLI_UPDATE is ${_PHP_CLI_UPDATE} for $1
-
-    if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
-      || [ ! -e "${_U_II}" ] \
-      || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    # the stamp the reset above is keyed on, once per release serial
+    if [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p ${_U_HD}
-      if [ ! -z "${_T_CLI_VRN}" ]; then
-        _USE_PHP_CLI="${_T_CLI_VRN}"
-        echo "_USE_PHP_CLI is ${_USE_PHP_CLI} for $1 at ${_USER} WTF"
-        echo "_T_CLI_VRN is ${_T_CLI_VRN}"
-      else
-        if [ -e "${_dscUsr}/tools/drush/drush.php" ]; then
-          _CHECK_USE_PHP_CLI=$(_ltd_read_in "${_dscUsr}/tools/drush" drush.php | grep "/opt/php" 2>&1)
-        else
-          _CHECK_USE_PHP_CLI=php84
-        fi
-        echo "_CHECK_USE_PHP_CLI is ${_CHECK_USE_PHP_CLI} for $1 at ${_USER}"
-        if [[ "${_CHECK_USE_PHP_CLI}" =~ "php85" ]]; then
-          _USE_PHP_CLI=8.5
-        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php84" ]]; then
-          _USE_PHP_CLI=8.4
-        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php83" ]]; then
-          _USE_PHP_CLI=8.3
-        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php82" ]]; then
-          _USE_PHP_CLI=8.2
-        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php81" ]]; then
-          _USE_PHP_CLI=8.1
-        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php80" ]]; then
-          _USE_PHP_CLI=8.0
-        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php74" ]]; then
-          _USE_PHP_CLI=7.4
-        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php73" ]]; then
-          _USE_PHP_CLI=7.3
-        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php72" ]]; then
-          _USE_PHP_CLI=7.2
-        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php71" ]]; then
-          _USE_PHP_CLI=7.1
-        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php70" ]]; then
-          _USE_PHP_CLI=7.0
-        elif [[ "${_CHECK_USE_PHP_CLI}" =~ "php56" ]]; then
-          _USE_PHP_CLI=5.6
-        fi
-      fi
-      echo _USE_PHP_CLI is ${_USE_PHP_CLI} for $1
-      _U_INI=""
-      case "${_USE_PHP_CLI}" in
-        8.5|8.4|8.3|8.2|8.1|8.0|7.4|7.3|7.2|7.1|7.0|5.6) _U_INI="${_USE_PHP_CLI/./}" ;;
-      esac
-      # written inside the real ~/.drush: the ini, its sed rewrites and the
-      # stamps never go through a link the account put at one of the names
-      _ltd_in_real_dir "${_U_HD}" _ltd_drush_ini_put "${_U_INI}" "${_U_TP}"
+      _ltd_in_real_dir "${_U_HD}" _ltd_drush_stamp_put
     fi
 
     _UQ="$1"
@@ -3355,8 +3311,10 @@ for _Client in `find ${_pthParentUsr}/clients/ -maxdepth 1 -mindepth 1 -type d |
 done
 }
 #
-# Update local INI for PHP CLI on the Ægir Satellite Instance.
-_php_cli_local_ini_update() {
+# The instance's own .tmp and .drush on a PHP-CLI change: the CLI keeps no
+# php.ini there (its version's global ini applies, the temp paths come from
+# TMPDIR), only the directories and the release serial's stamp.
+_php_cli_local_dirs_update() {
   if [ ! -z "${1}" ]; then
     _DRUSH_FILE="${_dscUsr}/tools/drush/${1}"
   else
@@ -3364,46 +3322,25 @@ _php_cli_local_ini_update() {
   fi
   _U_HD="${_dscUsr}/.drush"
   _U_TP="${_dscUsr}/.tmp"
-  _U_II="${_U_HD}/php.ini"
-  _PHP_CLI_UPDATE=NO
   if [ ! -e "${_DRUSH_FILE}" ]; then
     return 1  # Exit the function but continue the script
   fi
-  # tools/drush is oN's: a FIFO or link there must not hold or steer root
-  _CHECK_USE_PHP_CLI=$(_ltd_read_in "${_DRUSH_FILE%/*}" "${_DRUSH_FILE##*/}" | grep "/opt/php" 2>&1)
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
-  for e in ${_PHP_V}; do
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.${_xSrl}.pid" ]; then
-      _PHP_CLI_UPDATE=YES
-    fi
-  done
   # oN owns /data/disk/oN, so .tmp and .drush (never a link in BOA's own
   # layout) can be swapped for a link at any time: a link takes the rebuild,
   # which strips it; the age sweep never resolves a path through a name
   # (bare path, -execdir); owners change by name only with chown -h; every
-  # other remove and write, the CLI ini and both stamps included, happens
-  # inside the real directory
+  # other remove and write, the stamp included, happens inside the real
+  # directory
   if [ -L "${_U_HD}" ] || [ -L "${_U_TP}" ] \
-    || [ "${_PHP_CLI_UPDATE}" = "YES" ] \
-    || [ ! -e "${_U_II}" ] \
     || [ ! -d "${_U_TP}" ] \
     || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     _desymlink_planted "${_U_TP}" "${_U_HD}"
     mkdir -p ${_U_TP} ${_U_HD}
     if _ltd_in_real_dir "${_U_TP}" _ltd_own_dir_here "${_USER}:${_usrGroup}" 755 YES \
       && _ltd_in_real_dir "${_U_HD}" _ltd_own_dir_here "${_USER}:${_usrGroup}" 755 NO; then
-      # a literal list: a ${_PHP_V} split by a changed IFS would match nothing
-      _U_INI=""
-      for e in 85 84 83 82 81 80 74 73 72 71 70 56; do
-        if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]]; then
-          _U_INI="${e}"
-          break
-        fi
-      done
-      _ltd_in_real_dir "${_U_HD}" _ltd_drush_ini_put_locked "${_U_INI}" "${_U_TP}"
+      _ltd_in_real_dir "${_U_HD}" _ltd_drush_stamp_put
     else
-      echo "ALERT: ${_U_TP} or ${_U_HD} is not ${_USER}'s own directory; its CLI ini left as it was"
+      echo "ALERT: ${_U_TP} or ${_U_HD} is not ${_USER}'s own directory; left as it was"
     fi
   fi
 }
@@ -3763,52 +3700,47 @@ _switch_newrelic() {
   fi
 }
 #
-# The web user's CLI ini and its stamp, inside the real ~/.drush. While the
-# directory is still immutable no name in it can change, so the ini is
-# unlocked first; the ini is edited in root's own temp directory and put in
-# place once, created 0440, so no name the web user can swap is opened or
-# chmod-ed. $1 = the source ini (empty: none), $2 = its version digits,
-# $3 = the web user's ~/.tmp.
-_ltd_web_ini_put() {
-  local _src="${1}" _v="${2}" _qtp="${3//\//\\\/}" _w=""
-  [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr -i ./php.ini 2> /dev/null
+# The web user's version stamp, inside the real ~/.drush: the record of the
+# pool version the user was last set up for (FPM runs on its version's ini
+# and the pool's own temp paths; the php.ini kept there is the placeholder
+# above). While the directory is still immutable no name in it can change,
+# so it is unlocked first. $1 = the pool's version digits (empty: none).
+_ltd_web_stamp_put() {
   chattr -i . 2> /dev/null
-  [ -n "${_src}" ] && [ -e "${_src}" ] || return 0
-  _w=$(mktemp -d 2> /dev/null) || return 0
-  [ -n "${_w}" ] && [ -d "${_w}" ] || return 0
-  if cp -f -- "${_src}" "${_w}/php.ini" 2> /dev/null; then
-    # open_basedir stays out of the CLI ini: it breaks Drush and turns the
-    # realpath cache off (every file operation checked against every listed
-    # tree, uncached); lshell users are confined by their own measures, and
-    # the FPM ini keeps its own list
-    sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      "${_w}/php.ini"
-    wait
-    sed -i "s/.*session.save_path =.*/session.save_path = ${_qtp}/g"     "${_w}/php.ini"
-    wait
-    sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_qtp}/g" "${_w}/php.ini"
-    wait
-    sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_qtp}/g"               "${_w}/php.ini"
-    wait
-    sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_qtp}/g"           "${_w}/php.ini"
-    wait
-    if ( umask 0337
-      cp -T --no-preserve=mode --remove-destination "${_w}/php.ini" ./php.ini ) 2> /dev/null; then
-      rm -f -- ./.ctrl.php*
-      _ltd_stamp_put ".ctrl.php${_v}.${_xSrl}.pid" ""
-    fi
+  # unlocked for the owner change after this; _ltd_web_drush_lock relocks it
+  [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr -i ./php.ini 2> /dev/null
+  # the placeholder older releases read as the web user being in place; a
+  # link at the name goes first (unlink never follows it)
+  [ -L ./php.ini ] && rm -f -- ./php.ini
+  if [ ! -e ./php.ini ] && [ ! -L ./php.ini ]; then
+    ( umask 0333
+      printf '%s\n' "${_DRUSH_INI_PLACEHOLDER}" | dd of=./php.ini conv=excl status=none ) 2> /dev/null
   fi
-  rm -f -- "${_w}/php.ini"
-  rmdir -- "${_w}" 2> /dev/null
+  [ -n "${1}" ] || return 0
+  rm -f -- ./.ctrl.php*
+  _ltd_stamp_put ".ctrl.php${1}.${_xSrl}.pid" ""
   return 0
 }
 # The web user's ~/.drush locked again inside the real directory: the
 # directory first, after which no name in it can change, then a regular
-# php.ini.
+# placeholder php.ini.
 _ltd_web_drush_lock() {
   chmod 550 .
   chattr +i . 2> /dev/null
   [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr +i ./php.ini 2> /dev/null
   return 0
+}
+#
+# A web user's update is held off only by a lock an update wrote: a regular
+# root file at .lock younger than an hour. Anything else at the name -- one
+# the web user planted (the home is its own) or a lock an interrupted pass
+# left -- is replaced by the update's own, so no planted name stops the
+# upkeep for good. $1 = the web user's home.
+_ltd_web_lock_held() {
+  local _l="${1}/.lock"
+  [ -f "${_l}" ] && [ ! -L "${_l}" ] \
+    && [ "$(stat -c %u "${_l}" 2> /dev/null)" = "0" ] \
+    && [ -n "$(find "${_l}" -maxdepth 0 -mmin -60 2> /dev/null)" ]
 }
 #
 # Update web user.
@@ -3819,17 +3751,15 @@ _satellite_web_user_update() {
     _T_HD="/home/${_WEB}/.drush"
     _T_TP="/home/${_WEB}/.tmp"
     _T_TS="/home/${_WEB}/.aws"
-    _T_II="${_T_HD}/php.ini"
-    if [ -d "/home/${_WEB}" ] && [ ! -e "/home/${_WEB}/.lock" ]; then
+    if [ -d "/home/${_WEB}" ] && ! _ltd_web_lock_held "/home/${_WEB}"; then
       chattr -i /home/${_WEB}
       # /home/<user>.web is owned by the FPM user, so a compromised hosted site
       # can plant these names, and plant them again once they are stripped:
       # after the strip every write, mode and chattr inside ~/.drush happens
-      # in the real directory, the ini is edited in root's own temp directory
-      # and put in place once, and the lock and the stamp are created
+      # in the real directory, and the lock and the stamp are created
       # exclusively, never through a link at the name.
       _desymlink_planted "/home/${_WEB}/.drush" "/home/${_WEB}/.tmp" \
-        "/home/${_WEB}/.aws" "${_T_II}"
+        "/home/${_WEB}/.aws" "/home/${_WEB}/.drush/php.ini"
       mkdir -p /home/${_WEB}/.{tmp,drush,aws}
       _ltd_in_real_dir "/home/${_WEB}" _ltd_stamp_put .lock ""
       _isTest="$1"
@@ -3837,19 +3767,15 @@ _satellite_web_user_update() {
       if [ ! -z "${_isTest}" ]; then
         _T_PV=$1
       fi
-      _T_SRC=""
-      if [ ! -z "${_T_PV}" ] && [ -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
-        _T_SRC="/opt/php${_T_PV}/etc/php${_T_PV}.ini"
-      else
+      if [ -z "${_T_PV}" ] || [ ! -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
         for e in 85 84 83 82 81 80 74 73 72 71 70 56; do
           if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
-            _T_SRC="/opt/php${e}/etc/php${e}.ini"
             _T_PV=${e}
             break
           fi
         done
       fi
-      _ltd_in_real_dir "${_T_HD}" _ltd_web_ini_put "${_T_SRC}" "${_T_PV}" "${_T_TP}"
+      _ltd_in_real_dir "${_T_HD}" _ltd_web_stamp_put "${_T_PV}"
       chmod 700 /home/${_WEB}
       chown -R ${_WEB}:${_WEBG} /home/${_WEB}
       _ltd_in_real_dir "${_T_HD}" _ltd_web_drush_lock
@@ -3892,12 +3818,12 @@ _satellite_create_web_user() {
   _isTest="${_WEB}"
   _isTest=${_isTest//[^a-z0-9]/}
   if [ ! -z "${_isTest}" ] && [[ ! "${_WEB}" =~ ".ftp"($) ]]; then
-    _T_HD="/home/${_WEB}/.drush"
-    _T_II="${_T_HD}/php.ini"
+    # an account with its home in place is updated; a missing account or
+    # home is made anew
     _T_ID_EXISTS=$(getent passwd ${_WEB} 2>&1)
-    if [ ! -z "${_T_ID_EXISTS}" ] && [ -e "${_T_II}" ]; then
+    if [ ! -z "${_T_ID_EXISTS}" ] && [ -d "/home/${_WEB}" ]; then
       _satellite_web_user_update "$1"
-    elif [ -z "${_T_ID_EXISTS}" ] || [ ! -e "${_T_II}" ]; then
+    else
       _satellite_remove_web_user "clean"
       adduser --force-badname --system --ingroup www-data --home /home/${_WEB} ${_WEB} &> /dev/null
       _satellite_web_user_update "$1"
@@ -4117,7 +4043,6 @@ _site_socket_inc_gen() {
 #
 # Switch PHP Version.
 _switch_php() {
-  _PHP_CLI_UPDATE=NO
   _FORCE_FPM_SETUP=NO
   _NEW_FPM_SETUP=NO
   _T_CLI_VRN=""
@@ -4220,13 +4145,12 @@ _switch_php() {
       else
         echo "_T_CLI_VRN is ${_T_CLI_VRN}"
         if [ "${_T_CLI_VRN}" != "${_PHP_CLI_VERSION}" ] || [ ! -e "${_dscUsr}/static/control/.ctrl.cli.${_T_CLI_VRN}.${_xSrl}.pid" ]; then
-          _PHP_CLI_UPDATE=YES
           _DRUSH_FILES="drush.php drush"
           for _df in ${_DRUSH_FILES}; do
             _php_cli_drush_update "${_df}"
           done
           if [ -x "${_T_CLI}/php" ]; then
-            _php_cli_local_ini_update
+            _php_cli_local_dirs_update
             sed -i "s/^_PHP_CLI_VERSION=.*/_PHP_CLI_VERSION=${_T_CLI_VRN}/g" /root/.${_USER}.octopus.cnf &> /dev/null
             _ltd_put_in "${_dscUsr}/log" cli.txt "${_T_CLI_VRN}"
             _ltd_ctrl_put cli.info "${_T_CLI_VRN}"
@@ -4387,17 +4311,13 @@ _switch_php() {
               _WEB="${_USER}.web"
               _POOL="${_USER}"
             fi
-            if [ -e "/home/${_WEB}/.drush/php.ini" ]; then
-              _OLD_PHP_IN_USE=$(_ltd_read_in "/home/${_WEB}/.drush" php.ini | grep "/lib/php" 2>&1)
-              _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
-              for e in ${_PHP_V}; do
-                if [[ "${_OLD_PHP_IN_USE}" =~ "php${e}" ]]; then
-                  if [ "${e}" != "${m}" ] || [ ! -e "/home/${_WEB}/.drush/.ctrl.php${m}.${_xSrl}.pid" ]; then
-                    echo "_OLD_PHP_IN_USE is ${_OLD_PHP_IN_USE} for ${_WEB}, updating to ${m}"
-                    _satellite_web_user_update "${m}"
-                  fi
-                fi
-              done
+            # the stamp records the pool version the user was set up for,
+            # this release serial
+            if getent passwd "${_WEB}" &> /dev/null && [ -d "/home/${_WEB}" ]; then
+              if [ ! -e "/home/${_WEB}/.drush/.ctrl.php${m}.${_xSrl}.pid" ]; then
+                echo "${_WEB} is updated to ${m}"
+                _satellite_web_user_update "${m}"
+              fi
             else
               echo "_NEW_PHP_TO_USE is ${m} for ${_WEB}, creating"
               _satellite_create_web_user "${m}"
@@ -5482,7 +5402,8 @@ else
   _ltd_in_real_dir /var/aegir/config/server_master \
     find . -type f -execdir perl -e "${_LTD_FCHMOD_PL}" f 0600 {} + &> /dev/null
   sleep 5
-  _drush_ini_open_basedir_sweep
+  _cli_ini_temp_unpin
+  _drush_ini_retire_sweep
   _standby_tenant_sweep
   [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
   exit 0

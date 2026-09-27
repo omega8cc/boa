@@ -492,15 +492,14 @@ _drush_refused() {
         ;;
       php|php[0-9][0-9])
         # php's own options before the launcher (-c FILE, -d k=v, -n, ...);
-        # an ini of the tenant's choosing (-c other than the account's own
-        # file, any -d) on a drush launcher is the PHPRC class: refused
+        # an ini of the tenant's choosing (any -c, any -d) on a drush
+        # launcher is the PHPRC class: refused
         _rest="${_w2} ${_rest}"
         _pini=NO
         while [[ "${_rest}" =~ ^[[:space:]]*(-c|-d|-f|-r|-z)[[:space:]]+([^[:space:]]+)[[:space:]]* ]] \
           || [[ "${_rest}" =~ ^[[:space:]]*-[^[:space:]]*[[:space:]]* ]]; do
           case "${BASH_REMATCH[1]}" in
-            -c) [ "${BASH_REMATCH[2]}" = "${HOME}/.drush/php.ini" ] || _pini=YES ;;
-            -d) _pini=YES ;;
+            -c|-d) _pini=YES ;;
           esac
           _rest="${_rest#"${BASH_REMATCH[0]}"}"
         done
@@ -916,6 +915,12 @@ fi
 
 ### echo "_ARGS is ${_ARGS}"
 
+# Every php loads the ini its binary was built for, /opt/phpNN/lib/php.ini,
+# unless PHPRC names another. websh sets none, and one inherited from the
+# caller is dropped here, ahead of every route below (the fast lane
+# included): a php started for a line never loads another version's ini.
+unset PHPRC
+
 # Composer >= 2.8.3 (and any symfony/process caller) invokes git/hg/svn/tar/... as
 # argv-arrays, which symfony/process 5.x renders for /bin/sh (= websh) as
 #   exec 'git' 'remote' '-v'
@@ -1149,10 +1154,21 @@ if [[ "${HOME}" =~ (^)"/yyydata/disk/" ]]; then
   ### echo _DRUSH_CLI_CTRL has been disabled
 fi
 
+# The temp directory of every process started here is the identity's own
+# ~/.tmp: the login's, else the instance's, else the master's, else /tmp.
+# PHP takes it from TMPDIR as well (the CLI inis set no sys_temp_dir), so a
+# directory this identity cannot write is passed over for the next one.
+_TMP_D="/tmp"
+for _t in "/home/${USER}/.tmp" "/data/disk/${_Y_USR}/.tmp" "/var/${_Y_USR}/.tmp"; do
+  if [ -d "${_t}" ] && [ -w "${_t}" ]; then
+    _TMP_D="${_t}"
+    break
+  fi
+done
+export TMP="${_TMP_D}"
+export TMPDIR="${_TMP_D}"
+export TEMP="${_TMP_D}"
 if [ -d "/home/${USER}/.tmp" ]; then
-  export TMP="/home/${USER}/.tmp"
-  export TMPDIR="/home/${USER}/.tmp"
-  export TEMP="/home/${USER}/.tmp"
   if [[ "${_ARGS}" =~ " id " ]] \
     || [[ "${_ARGS}" =~ (^)"id " ]]; then
     exit 1
@@ -1160,18 +1176,6 @@ if [ -d "/home/${USER}/.tmp" ]; then
     || [[ "${_ARGS}" =~ (^)"nrsysm" ]]; then
     exit 1
   fi
-elif [ -d "/data/disk/${_Y_USR}/.tmp" ]; then
-  export TMP="/data/disk/${_Y_USR}/.tmp"
-  export TMPDIR="/data/disk/${_Y_USR}/.tmp"
-  export TEMP="/data/disk/${_Y_USR}/.tmp"
-elif [ -d "/var/${_Y_USR}/.tmp" ]; then
-  export TMP="/var/${_Y_USR}/.tmp"
-  export TMPDIR="/var/${_Y_USR}/.tmp"
-  export TEMP="/var/${_Y_USR}/.tmp"
-else
-  export TMP="/tmp"
-  export TMPDIR="/tmp"
-  export TEMP="/tmp"
 fi
 
 export HOME=${HOME}
@@ -1241,63 +1245,17 @@ _ctrl_file() {
     _CTRL_F="${_cp}"
   fi
 }
-# The account's own php.ini: ~/.drush/php.ini, written by the ltd worker from
-# the pinned version's template (open_basedir for the account's own trees, the
-# temp, upload and session paths under ~/.tmp) and applied by the drush
-# launcher as a php OPTION (--php-ini). websh launches Drush 8 and composer
-# itself, so it hands the file to those two the same way, as -c on the
-# interpreter line (_ACCT_INI), when it exists and was built for the PHP just
-# selected: its extension_dir names the version, and a marker can select
-# another version than the pin, where a foreign extension_dir would leave
-# that binary without its extensions. Never through the environment: an
-# exported PHPRC is inherited by every descendant, and a modern Drush
-# (vendor/drush/drush/drush.php, drush10/11) refuses to run with open_basedir
-# set -- a site-local Drush 13 child of the hosting queue did, measured. So
-# PHP_INI and PHPRC stay on the global ini, and the option goes only where
-# _DEST_DRUSH is the Drush 8 launcher, or composer (PHP_INI, which Drush 8's
-# startup passes to the php it re-launches, names the file too; php itself
-# never reads that variable). The ~/.drush/phpNN/php.ini
-# this used to test was an older layout no writer has kept, so every websh
-# launch ran on the global ini, whose sys_temp_dir is /tmp -- which is how a
-# 0700 /tmp took composer away from every tenant while their own ~/.tmp
-# stood ready. Pure bash: this runs for every identity, and applies the file
-# for tenants and sub-accounts only (_is_tenant). The instance user and the
-# master are the backend: the instance user runs the hosting queue every
-# minute (hosting-tasks, hosting-cron, hosting-civicrm_cron) against its
-# hostmaster, and under the account ini's open_basedir php turns its
-# realpath cache off and checks every file operation against every basedir
-# entry uncached -- a hostmaster bootstrap that takes three seconds on the
-# global ini took a hundred, 3.5 million stats, and the per-minute runners
-# piled up on every box of the fleet (measured 2026-09-09). Those two keep
-# the global ini they always ran on.
-_ACCT_INI=""
-_account_ini() {
-  local _ini="${HOME}/.drush/php.ini" _c _v=""
+# A version's ini is its global /opt/phpNN/lib/php.ini, the file its binary
+# loads by itself (PHPRC is unset above), for every identity and every
+# route. There is no per-account ini: the temp, upload and session paths
+# under ~/.tmp that one used to carry come from the TMPDIR set above, which
+# PHP follows because the CLI inis set no sys_temp_dir. So they hold for
+# every version a switch selects and every launcher -- drush10/11, vdrush,
+# Drush 8's own children, composer's @php scripts -- not for a single pinned
+# version of two of them. PHP_INI names the same file for Drush 8's launcher
+# and its status display, next to DRUSH_PHP; php itself never reads it.
+_php_ini() {
   PHP_INI="/opt/php${1}/lib/php.ini"
-  PHPRC="/opt/php${1}/lib"
-  _ACCT_INI=""
-  _is_tenant || return 0
-  [ -f "${_ini}" ] || return 0
-  { _c=$(< "${_ini}"); } 2> /dev/null
-  if [[ "${_c}" =~ (^|$'\n')extension_dir[[:space:]]*=[[:space:]]*\"?/opt/php([0-9][0-9])/ ]]; then
-    _v="${BASH_REMATCH[2]}"
-  fi
-  if [ "${_v}" = "${1}" ]; then
-    _ACCT_INI="${_ini}"
-    # Drush 8's startup re-launches php with -c $PHP_INI, so the option on
-    # the outer interpreter alone is replaced by whatever this names; only
-    # Drush 8's own startup and launcher read it -- php itself reads PHPRC
-    # (left on the global ini), a modern drush reads neither
-    PHP_INI="${_ini}"
-  fi
-}
-# the -c option for the Drush 8 launcher and composer, empty otherwise
-_ini_opt() {
-  _INI_OPT=""
-  [ -n "${_ACCT_INI}" ] || return 0
-  if [ "${1}" = "composer" ] || [ "${_DEST_DRUSH}" = "/opt/tools/drush/8/drush/drush.php" ]; then
-    _INI_OPT="-c ${_ACCT_INI} "
-  fi
 }
 
 # Command-line PHP per platform. ~/static/control/cli-per-platform.info lists
@@ -1659,8 +1617,8 @@ _cpp_pick() {
   # a matching line replaces the account-wide choice
   [ -n "${_CPP_V}" ] || return 0
   DRUSH_PHP="/opt/php${_CPP_V}/bin/php"
-  _account_ini "${_CPP_V}"
-  export DRUSH_PHP PHP_INI PHPRC
+  _php_ini "${_CPP_V}"
+  export DRUSH_PHP PHP_INI
 }
 _cpp_rel() {
   # $1 = a path; sets _CPP_RP to it as the tenant knows it (static/...,
@@ -1989,18 +1947,17 @@ check_php_cli_version() {
   for e in ${_PHP_V}; do
     if [[ "${_PHP_CLI}" =~ "php${e}" ]] && [ -x "/opt/php${e}/bin/php" ]; then
       DRUSH_PHP="/opt/php${e}/bin/php"
-      _account_ini "${e}"
+      _php_ini "${e}"
     fi
   done
   _CLI_WHY="${_CLI_FROM}"
   ### echo CHK 2 DRUSH_PHP is ${DRUSH_PHP}
   ### echo CHK 2 PHP_INI is ${PHP_INI}
-  ### echo CHK 2 PHPRC is ${PHPRC}
 
   for e in ${_PHP_V}; do
     if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
       DRUSH_PHP="/opt/php${e}/bin/php"
-      _account_ini "${e}"
+      _php_ini "${e}"
       _CLI_FROM="php${e}.info"
       _CLI_WHY="php${e}.info"
     fi
@@ -2011,10 +1968,9 @@ check_php_cli_version() {
   fi
   ### echo CHK 3 DRUSH_PHP is ${DRUSH_PHP}
   ### echo CHK 3 PHP_INI is ${PHP_INI}
-  ### echo CHK 3 PHPRC is ${PHPRC}
 
   if [ ! -z "${PHP_INI}" ]; then
-    export DRUSH_PHP;export PHP_INI;export PHPRC;
+    export DRUSH_PHP;export PHP_INI;
   else
     DRUSH_PHP="/usr/bin/php"
     export DRUSH_PHP;
@@ -2183,11 +2139,10 @@ if _grp_set_is "users www-data" \
           fi
           if [ -n "${_D_SEL}" ]; then
             DRUSH_PHP="/opt/php${_D_SEL}/bin/php"
-            _account_ini "${_D_SEL}"
-            export DRUSH_PHP;export PHP_INI;export PHPRC;
+            _php_ini "${_D_SEL}"
+            export DRUSH_PHP;export PHP_INI;
             ### echo INF 3 DRUSH_PHP is ${DRUSH_PHP}
             ### echo INF 3 PHP_INI is ${PHP_INI}
-            ### echo INF 3 PHPRC is ${PHPRC}
             ### echo INF 3 _DEST_DRUSH is ${_DEST_DRUSH}
           else
             echo
@@ -2231,16 +2186,15 @@ if _grp_set_is "users www-data" \
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
                 DRUSH_PHP="/opt/php${e}/bin/php"
-                _account_ini "${e}"
+                _php_ini "${e}"
               fi
             done
           fi
           _cpp_pick
           if [ ! -z "${DRUSH_PHP}" ] && [ ! -z "${PHP_INI}" ] && [ "${_IS_JENKINS}" = "FALSE" ]; then
-            export DRUSH_PHP;export PHP_INI;export PHPRC;
+            export DRUSH_PHP;export PHP_INI;
             ### echo INF 4 DRUSH_PHP is ${DRUSH_PHP}
             ### echo INF 4 PHP_INI is ${PHP_INI}
-            ### echo INF 4 PHPRC is ${PHPRC}
             ### echo INF 4 _DEST_DRUSH is ${_DEST_DRUSH}
           fi
         fi
@@ -2603,8 +2557,7 @@ if _grp_set_is "users www-data" \
           ### echo EXD 1 _ARR is ${_ARR}
           ### echo EXD 1 ${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}
           _cpp_before_exec drush
-          _ini_opt drush
-          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_INI_OPT}${_DEST_DRUSH} ${_ARR}"
+          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_DEST_DRUSH} ${_ARR}"
           exit 0
         elif [ ! -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
@@ -2614,8 +2567,7 @@ if _grp_set_is "users www-data" \
           ### echo EXD 3-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
           _cpp_before_exec drush
-          _ini_opt drush
-          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_INI_OPT}${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
+          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
         elif [ -z "${PHP_FWD}" ] && [ ! -z "${_OCTO_SYS_ARR}" ]; then
           _DEST_DRUSH=${_DEST_DRUSH//\\/}
@@ -2625,8 +2577,7 @@ if _grp_set_is "users www-data" \
           ### echo EXD 3-NO-PHP_FWD _OCTO_SYS_ARR is ${_OCTO_SYS_ARR}
           ### echo EXD 3-NO-PHP_FWD ${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}
           _cpp_before_exec drush
-          _ini_opt drush
-          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_INI_OPT}${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
+          _exec_dash_c "${_DL_PRE}${DRUSH_PHP} ${_DEST_DRUSH} ${_OCTO_SYS_ARR}"
           exit 0
         elif [ ! -z "${_C_ARR}" ]; then
           ### echo EXC 1 DRUSH_PHP is ${DRUSH_PHP}
@@ -2640,13 +2591,12 @@ if _grp_set_is "users www-data" \
           # server's builds is kept, and the launch stays websh's own
           if [[ "${_CO_PHP}" =~ ^/opt/php([0-9][0-9])/bin/php$ ]] && [ -x "${_CO_PHP}" ]; then
             DRUSH_PHP="${_CO_PHP}"
-            _account_ini "${BASH_REMATCH[1]}"
-            export DRUSH_PHP PHP_INI PHPRC
+            _php_ini "${BASH_REMATCH[1]}"
+            export DRUSH_PHP PHP_INI
           fi
           _cpp_before_exec composer
           _cpp_composer_warn
-          _ini_opt composer
-          _exec_dash_c "${_CO_CD}${_CO_PRE}${DRUSH_PHP} ${_INI_OPT}/usr/local/bin/composer ${_C_ARR}"
+          _exec_dash_c "${_CO_CD}${_CO_PRE}${DRUSH_PHP} /usr/local/bin/composer ${_C_ARR}"
           exit 0
         else
           # A line dash runs as typed still gets its platform's PHP and the
