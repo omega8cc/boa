@@ -51,14 +51,20 @@
 @=> Security
 
     * Root no longer follows a link, or opens a FIFO, that an account
-      puts at a name in its own static/control (or at static/control
-      itself) anywhere it reads or writes there: the barracuda, octopus
-      and self-update runs, the nightly and three-minute passes, xmass,
-      xoct, xcopy, xtrim, renameaegirhost, aegir2boa-stage2, the backup
-      tools and the migration pin gates. Each file is read in the real
-      directory, bounded and without following a link, and written as a
-      fresh file renamed over its name, so a reader never finds it
-      missing. Paths the earlier audit fixed are unchanged.
+      puts at a name in its own directories: static/control, and the
+      log/, .drush/, config/, tools/, .tmp/ and .ftp home names its main
+      user owns (or at any of those directories itself). This covers the
+      barracuda, octopus and self-update runs, the nightly, three-minute
+      and global passes, xmass, xoct, xcopy, xtrim, renameaegirhost,
+      aegir2boa-stage2, migratefs, the remote backup setup and backup
+      tools, the permission helpers run through sudo, syncpass, the
+      migration certificate mirror and the operator report tools. Each
+      name is read in the real directory, bounded and without following a
+      link, and written as a fresh file renamed over its name; modes and
+      owners inside a walk are set through handles that never follow a
+      link, and a directory keeps its setgid bit as chmod(1) keeps it.
+      Values read from an account's log/ files are used only in their
+      plain form. Paths the earlier audit fixed are unchanged.
     * A per-account remote backup credentials file may set only the names
       the backup tools use; any other line is ignored and logged, and the
       backup runs on.
@@ -66,6 +72,14 @@
       that account alone.
     * The nightly temporary-file purge and copydbackup act only inside
       the account's own files store, or its copy relocated by migratefs.
+    * The remote backups no longer store the content a link in an
+      account's tree points at: links are backed up as links, and an
+      account's files store relocated by migratefs is included by its own
+      path. Duplicity's source reads open each file without following a
+      link or waiting on a FIFO (a pinned patch of the installed release).
+    * During a queued restore the backup credentials and passphrase are
+      handed to the account's main user, still 0600, instead of being
+      made readable by every account.
 
     * A site's HTTP basic auth password file is no longer world-readable.
       The ltd worker used to add read for everyone every few minutes; it
@@ -709,6 +723,33 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * Azure remote backups work again with the Duplicity release BOA
+      installs: the target is azure://<bucket>, and the connection string
+      Duplicity reads is composed from AZURE_STORAGE_ACCOUNT and
+      AZURE_STORAGE_KEY unless the credentials file sets
+      AZURE_CONNECTION_STRING. The old azure://<account>@<bucket> target
+      was refused as an invalid container name.
+    * A tenant restore of a path below static/files, or below a site's
+      files/ or private/ link, is served from the store it resolves to,
+      so it also works for a store relocated by migratefs; a relocated
+      /data/disk/arch is included in the global backup by its own path.
+    * backboa, duobackboa and multiback restore into an account's tree
+      through a root-only stage and a rename, accept the links BOA makes
+      on the way, refuse a destination with '..' names, and multiback no
+      longer creates a missing target under an account directory.
+    * migratefs closes the store's parent before it creates the store,
+      never reuses a store left by an earlier run (it is renamed aside),
+      removes a copy that never went live, waits while the nightly runs,
+      requires a root-owned mount chain that group and others cannot
+      write, and bounds its post-copy recheck with --recheck-max (MB).
+    * The usage figure of an account with a relocated store is measured
+      without following links: the account, plus its own store once.
+    * The fix-drupal-* permission helpers and fixrepo set modes in
+      batches through handles that never follow a link, where one
+      process per directory made them slow; a direct root run acts only
+      in the tree of the account the path lies in. syncpass fix writes
+      the resolved database host.
 
     * Classic Drush 8.5.10: a Drush 8 run whose home has no ~/.tmp, or
       that runs as root, finds a temporary directory again (TEMP, TMP,
