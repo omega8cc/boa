@@ -450,8 +450,9 @@ _satellite_remove_web_user() {
   fi
   if [ -d "/home/${_WEB}/" ] || [ "$1" = "clean" ]; then
     chattr -i -R /home/${_WEB}/ &> /dev/null
-    if [ -d "/home/${_WEB}/.drush/" ]; then
-      chattr -i /home/${_WEB}/.drush/
+    # by its bare path: chattr follows a link behind a trailing slash
+    if [ -d "/home/${_WEB}/.drush/" ] && [ ! -L "/home/${_WEB}/.drush" ]; then
+      chattr -i "/home/${_WEB}/.drush"
     fi
     mkdir -p ${_vBs}/zombie/deleted
     # only this user's agent (none for a user that never existed): -f
@@ -833,18 +834,14 @@ _enable_chattr() {
   _isTest="$1"
   _isTest=${_isTest//[^a-z0-9]/}
   if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
-    if [ -d "/home/$1/platforms/" ]; then
-      chattr +i /home/$1/platforms/
-      chattr +i /home/$1/platforms/* &> /dev/null
-    fi
-    if [ -d "/home/$1/.drush/" ]; then
-      chattr +i /home/$1/.drush/
-    fi
-    if [ -d "/home/$1/.drush/usr/" ]; then
-      chattr +i /home/$1/.drush/usr/
-    fi
-    if [ -d "/home/$1/.bazaar/" ]; then
-      chattr +i /home/$1/.bazaar/
+    ### A *.ftp home is never immutable, so every name in it is the login's:
+    ### each flag is set inside the real directory, on a name that is not a
+    ### link (chattr refuses a link named by its bare path, but follows one
+    ### behind a trailing slash or on the way).
+    _acct_in_real_dir "/home/$1/platforms" _satellite_chattr_all_here +i
+    _acct_in_real_dir "/home/$1/.drush" _satellite_chattr_drush_here +i
+    if [ -d "/home/$1/.bazaar/" ] && [ ! -L "/home/$1/.bazaar" ]; then
+      chattr +i "/home/$1/.bazaar"
     fi
   fi
 }
@@ -859,22 +856,12 @@ _disable_chattr() {
   _isTest="$1"
   _isTest=${_isTest//[^a-z0-9]/}
   if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
-    if [ -d "/home/$1/platforms/" ]; then
-      chattr -i /home/$1/platforms/
-      chattr -i /home/$1/platforms/* &> /dev/null
-    fi
-    if [ -d "/home/$1/.drush/" ]; then
-      chattr -i /home/$1/.drush/
-    fi
-    if [ -d "/home/$1/.drush/usr/" ]; then
-      chattr -i /home/$1/.drush/usr/
-    fi
-    # a CLI php.ini an earlier release left, for the ltd worker to remove
-    if [ -f "/home/$1/.drush/php.ini" ] && [ ! -L "/home/$1/.drush/php.ini" ]; then
-      chattr -i /home/$1/.drush/php.ini
-    fi
-    if [ -d "/home/$1/.bazaar/" ]; then
-      chattr -i /home/$1/.bazaar/
+    ### The same names as _enable_chattr, cleared the same way: inside the
+    ### real directory, never through a link.
+    _acct_in_real_dir "/home/$1/platforms" _satellite_chattr_all_here -i
+    _acct_in_real_dir "/home/$1/.drush" _satellite_chattr_drush_here -i
+    if [ -d "/home/$1/.bazaar/" ] && [ ! -L "/home/$1/.bazaar" ]; then
+      chattr -i "/home/$1/.bazaar"
     fi
   fi
 }
@@ -1114,10 +1101,12 @@ _satellite_cnf() {
     fi
 
     if [ ! -e "${_ROOT}/static/control/fpm.info" ]; then
+      # one version, as fpm.info is read below; any other text counts as none
+      _PHP_FPM_VERSION=""
       if [ -e "${_ROOT}/log/fpm.txt" ]; then
-        _PHP_FPM_VERSION=$(_acct_read_in "${_ROOT}/log" fpm.txt)
-        _PHP_FPM_VERSION=$(echo -n ${_PHP_FPM_VERSION} | tr -d "\n" 2>&1)
-      else
+        _PHP_FPM_VERSION=$(_satellite_php_vrn "$(_acct_read_in "${_ROOT}/log" fpm.txt)")
+      fi
+      if [ -z "${_PHP_FPM_VERSION}" ]; then
         _PHP_FPM_VERSION=8.4
       fi
       _acct_put_in "${_ROOT}/static/control" fpm.info "${_PHP_FPM_VERSION}"
@@ -1219,10 +1208,12 @@ _satellite_cnf() {
     fi
 
     if [ ! -e "${_ROOT}/static/control/cli.info" ]; then
+      # one version, as cli.info is read below; any other text counts as none
+      _PHP_CLI_VERSION=""
       if [ -e "${_ROOT}/log/cli.txt" ]; then
-        _PHP_CLI_VERSION=$(_acct_read_in "${_ROOT}/log" cli.txt)
-        _PHP_CLI_VERSION=$(echo -n ${_PHP_CLI_VERSION} | tr -d "\n" 2>&1)
-      else
+        _PHP_CLI_VERSION=$(_satellite_php_vrn "$(_acct_read_in "${_ROOT}/log" cli.txt)")
+      fi
+      if [ -z "${_PHP_CLI_VERSION}" ]; then
         _PHP_CLI_VERSION=8.4
       fi
       _acct_put_in "${_ROOT}/static/control" cli.info "${_PHP_CLI_VERSION}"
@@ -3654,6 +3645,20 @@ _hostmaster_frontend_dbpass_sync() {
       | cut -d: -f2 \
       | awk '{ print $3}' \
       | sed "s/[\,';]//g" 2>&1)
+    ### Both go into SQL root runs: the user only as a plain database user
+    ### name that is not one of the server's own, the password only in the
+    ### alphabets the provisioning and BOA generators use.
+    if [[ ! "${_THIS_HM_DBUR}" =~ ^[A-Za-z0-9_]{1,32}$ ]] \
+      || [ "${_THIS_HM_DBUR}" = "root" ] \
+      || [ "${_THIS_HM_DBUR}" = "aegir_root" ] \
+      || [ -e "/data/disk/${_THIS_HM_DBUR}" ] \
+      || [[ ! "${_THIS_HM_DBPD}" =~ ^[A-Za-z0-9%@._+=/-]+$ ]]; then
+      if [ -n "${_THIS_HM_DBUR}" ] || [ -n "${_THIS_HM_DBPD}" ]; then
+        _msg "ALRT: ${_USER} hostmaster db_user or db_passwd is not in the expected form; frontend db sync skipped"
+      fi
+      _THIS_HM_DBUR=""
+      _THIS_HM_DBPD=""
+    fi
   fi
   if [ -e "${_THIS_HM_SPTH}" ] \
     && [ ! -z "${_THIS_HM_DBUR}" ] \
@@ -3871,7 +3876,7 @@ _satellite_run_child_b() {
       ### (the clone lands in its own tree as before, handed to it below),
       ### and root removes names there only inside the real directories.
       if [ ! -d "${_ROOT}/.drush/sys/provision/http" ]; then
-        su -s /bin/bash ${_USER} -c "mkdir -p ${_ROOT}/.drush/sys \
+        _satellite_as_user "mkdir -p ${_ROOT}/.drush/sys \
           ${_ROOT}/.drush/xts ${_ROOT}/.drush/usr; \
           rm -rf ${_ROOT}/.drush/provision ${_ROOT}/.drush/sys/provision; \
           ${_gCb} ${_BRANCH_PRN} ${_gitHub}/provision.git \
@@ -3887,11 +3892,9 @@ _satellite_run_child_b() {
       _THIS_HM_ROOT=$(_satellite_hm_alias_get "root'")
       _THIS_HM_SITE=$(_satellite_hm_alias_get "site_path'")
       # a CLI php.ini an earlier release left (+i) would refuse the chown;
-      # the ltd worker removes it
+      # the ltd worker removes it. Cleared inside the real .drush only.
       _U_HD="${_ROOT}/.drush"
-      if [ -f "${_U_HD}/php.ini" ] && [ ! -L "${_U_HD}/php.ini" ]; then
-        chattr -i ${_U_HD}/php.ini
-      fi
+      _acct_in_real_dir "${_U_HD}" _satellite_unlock_here php.ini
       ### handed over inside each real directory, so chown -R never follows
       ### a link the account put at .drush, backups, clients, config or tools
       _acct_in_real_dir "${_ROOT}/.drush" chown -R "${_USER}:${_ACCG:-users}" .
@@ -3908,9 +3911,17 @@ _satellite_run_child_b() {
         _msg "${_STATUS} A: NOTE: hostmaster root outside ${_ROOT}/aegir/distro left as it is"
       fi
       if _satellite_hm_path_ok "${_THIS_HM_SITE}" site; then
-        _acct_in_real_dir "${_THIS_HM_SITE}/files" \
-          chown -R "${_USER}:${_WEBG}" .
-        _acct_in_real_dir "${_THIS_HM_SITE}/files" chmod -R 02775 .
+        ### files/ moved into the account's store (autosymlink) is a link:
+        ### the link itself is handed over, and the modes are set in the
+        ### store it leads to when that is the account's own.
+        if [ -L "${_THIS_HM_SITE}/files" ]; then
+          _acct_in_real_dir "${_THIS_HM_SITE}" \
+            chown -h "${_USER}:${_WEBG}" ./files
+        else
+          _acct_in_real_dir "${_THIS_HM_SITE}/files" \
+            chown -R "${_USER}:${_WEBG}" .
+        fi
+        _satellite_in_store_dir "${_THIS_HM_SITE}/files" chmod -R 02775 .
       else
         _msg "${_STATUS} A: NOTE: hostmaster site outside ${_ROOT}/aegir/distro left as it is"
       fi
@@ -3929,18 +3940,18 @@ _satellite_run_child_b() {
         touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
         exit 1
       else
-        mkdir -p ${_ROOT}/backups/system/old_hostmaster
-        chmod 700 ${_ROOT}/backups/system/old_hostmaster
-        chmod 700 ${_ROOT}/backups/system
-        mv -f ${_ROOT}/backups/*host8* \
-          ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
-        mv -f ${_ROOT}/backups/*o8.io* \
-          ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
-        mv -f ${_ROOT}/backups/*boa.io* \
-          ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
-        mv -f ${_ROOT}/backups/*aegir.cc* \
-          ${_ROOT}/backups/system/old_hostmaster/ &> /dev/null
-        chmod 600 ${_ROOT}/backups/system/old_hostmaster/* &> /dev/null
+        ### Old hostmaster backups go to backups/system/old_hostmaster: both
+        ### directories are made and handed over by root inside their real
+        ### directories (backups may be a link into the account's store),
+        ### and the instance user moves its own files there.
+        _satellite_in_store_dir "${_ROOT}/backups" \
+          _satellite_sys_dir_here old_hostmaster &> /dev/null
+        _satellite_as_user "_d=${_ROOT}/backups/system/old_hostmaster; \
+          mv -f ${_ROOT}/backups/*host8* \${_d}/; \
+          mv -f ${_ROOT}/backups/*o8.io* \${_d}/; \
+          mv -f ${_ROOT}/backups/*boa.io* \${_d}/; \
+          mv -f ${_ROOT}/backups/*aegir.cc* \${_d}/; \
+          chmod 600 \${_d}/*" &> /dev/null
         _hostmaster_frontend_dbpass_sync
       fi
       su -s /bin/bash - ${_USER} -c "drush8 @hm rr" &> /dev/null
@@ -4081,20 +4092,27 @@ _satellite_server_master_modes() {
 #
 # Set permissions for all.
 _satellite_set_permissions_for_all() {
+  local _hmP
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_set_permissions_for_all"
     _debug_proc
   fi
-  chmod 0755 ${_HM_ROOT} &> /dev/null
+  _acct_in_real_dir "${_HM_ROOT}" chmod 0755 . &> /dev/null
   _satellite_server_master_modes all &> /dev/null
   _acct_in_real_dir "${_ROOT}/config" chmod 0711 . &> /dev/null
   _acct_in_real_dir "${_ROOT}/config/includes" chmod 0711 . &> /dev/null
-  _acct_in_real_dir "${_ROOT}/backups" chmod 0750 . &> /dev/null
+  ### backups may be a link into the account's store (relocated backups):
+  ### the mode is set in the store it leads to when that is the account's
+  _satellite_in_store_dir "${_ROOT}/backups" chmod 0750 . &> /dev/null
   _acct_in_real_dir "${_ROOT}/clients" chmod 0750 . &> /dev/null
-  find ${_ROOT}/aegir/distro/*/profiles/* -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_ROOT}/aegir/distro/*/profiles/* -type f -exec chmod 0644 {} \; &> /dev/null
-  find ${_ROOT}/aegir/distro/*/sites/all/* -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_ROOT}/aegir/distro/*/sites/all/* -type f -exec chmod 0644 {} \; &> /dev/null
+  ### Each hostmaster platform's profiles/ and sites/all/ walked from inside
+  ### its real directory, every mode set without following a link.
+  for _hmP in "${_ROOT}"/aegir/distro/*; do
+    _acct_in_real_dir "${_hmP}/profiles" \
+      _satellite_tree_modes_here 0755 0644 &> /dev/null
+    _acct_in_real_dir "${_hmP}/sites/all" \
+      _satellite_tree_modes_here 0755 0644 &> /dev/null
+  done
   _acct_in_real_dir "${_ROOT}/.drush" \
     chown -R "${_USER}:${_ACCG:-users}" . &> /dev/null
   _acct_in_real_dir "${_ROOT}/.drush" _satellite_drush_modes_here &> /dev/null
@@ -4444,120 +4462,30 @@ _satellite_if_add_update_user_symlinks() {
 
   ###---### Remove legacy symlinks.
   #
-  if [ -e "${_USER_DS}/drush_make" ]; then
-    rm -f ${_USER_DS}/drush_make
-  fi
-  if [ -e "${_USER_DS}/registry_rebuild" ]; then
-    rm -f ${_USER_DS}/registry_rebuild
-  fi
-  if [ -e "${_USER_DS}/clean_missing_modules" ]; then
-    rm -f ${_USER_DS}/clean_missing_modules
-  fi
-  if [ -e "${_USER_DS}/drush_ecl" ]; then
-    rm -f ${_USER_DS}/drush_ecl
-  fi
-  if [ -e "${_USER_DS}/make_local" ]; then
-    rm -f ${_USER_DS}/make_local
-  fi
-  if [ -e "${_USER_DS}/safe_cache_form_clear" ]; then
-    rm -f ${_USER_DS}/safe_cache_form_clear
-  fi
-  if [ -e "${_USER_DS}/mydropwizard" ]; then
-    rm -f ${_USER_DS}/mydropwizard
-  fi
-  if [ -e "${_USER_DS}/utf8mb4_convert" ]; then
-    rm -f ${_USER_DS}/utf8mb4_convert
-  fi
+  ### ~/.drush is the main login's (never immutable while this runs): the
+  ### names are removed inside the real directory.
+  _acct_in_real_dir "${_USER_DS}" rm -f -- ./drush_make ./registry_rebuild \
+    ./clean_missing_modules ./drush_ecl ./make_local \
+    ./safe_cache_form_clear ./mydropwizard ./utf8mb4_convert &> /dev/null
 
-  ###---### Add symlink to the system registry_rebuild.
+  ###---### Add symlinks to the system drush extensions.
   #
-  if [ ! -L "${_USER_DS}/usr/registry_rebuild" ] \
-    && [ -e "${_ROOT}/.drush/usr/registry_rebuild" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "${_STATUS} A: Adding symlink to the system registry_rebuild"
+  ### ~/.drush and ~/.drush/usr are made real directories (a link put at
+  ### either name is removed first) and handed to the main login, and each
+  ### link is made, inside the real directory.
+  for _dsX in registry_rebuild clean_missing_modules drupalgeddon \
+    drush_ecl safe_cache_form_clear utf8mb4_convert; do
+    if [ ! -L "${_USER_DS}/usr/${_dsX}" ] \
+      && [ -e "${_ROOT}/.drush/usr/${_dsX}" ]; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "${_STATUS} A: Adding symlink to the system ${_dsX}"
+      fi
+      [ -L "${_USER_DS}" ] && rm -f "${_USER_DS}"
+      mkdir -p "${_USER_DS}"
+      _acct_in_real_dir "${_USER_DS}" \
+        _satellite_user_ds_link_here "${_dsX}" &> /dev/null
     fi
-    mkdir -p ${_USER_DS}/usr
-    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}
-    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}/usr
-    chmod 700 ${_USER_DS}
-    ln -sfn ${_ROOT}/.drush/usr/registry_rebuild \
-      ${_USER_DS}/usr/registry_rebuild
-  fi
-
-  ###---### Add symlink to the system clean_missing_modules.
-  #
-  if [ ! -L "${_USER_DS}/usr/clean_missing_modules" ] \
-    && [ -e "${_ROOT}/.drush/usr/clean_missing_modules" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "${_STATUS} A: Adding symlink to the system clean_missing_modules"
-    fi
-    mkdir -p ${_USER_DS}/usr
-    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}
-    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}/usr
-    chmod 700 ${_USER_DS}
-    ln -sfn ${_ROOT}/.drush/usr/clean_missing_modules \
-      ${_USER_DS}/usr/clean_missing_modules
-  fi
-
-  ###---### Add symlink to the system drupalgeddon.
-  #
-  if [ ! -L "${_USER_DS}/usr/drupalgeddon" ] \
-    && [ -e "${_ROOT}/.drush/usr/drupalgeddon" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "${_STATUS} A: Adding symlink to the system drupalgeddon"
-    fi
-    mkdir -p ${_USER_DS}/usr
-    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}
-    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}/usr
-    chmod 700 ${_USER_DS}
-    ln -sfn ${_ROOT}/.drush/usr/drupalgeddon \
-      ${_USER_DS}/usr/drupalgeddon
-  fi
-
-  ###---### Add symlink to the system drush_ecl.
-  #
-  if [ ! -L "${_USER_DS}/usr/drush_ecl" ] \
-    && [ -e "${_ROOT}/.drush/usr/drush_ecl" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "${_STATUS} A: Adding symlink to the system drush_ecl"
-    fi
-    mkdir -p ${_USER_DS}/usr
-    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}
-    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}/usr
-    chmod 700 ${_USER_DS}
-    ln -sfn ${_ROOT}/.drush/usr/drush_ecl \
-      ${_USER_DS}/usr/drush_ecl
-  fi
-
-  ###---### Add symlink to the system safe_cache_form_clear.
-  #
-  if [ ! -L "${_USER_DS}/usr/safe_cache_form_clear" ] \
-    && [ -e "${_ROOT}/.drush/usr/safe_cache_form_clear" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "${_STATUS} A: Adding symlink to the system safe_cache_form_clear"
-    fi
-    mkdir -p ${_USER_DS}/usr
-    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}
-    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}/usr
-    chmod 700 ${_USER_DS}
-    ln -sfn ${_ROOT}/.drush/usr/safe_cache_form_clear \
-      ${_USER_DS}/usr/safe_cache_form_clear
-  fi
-
-  ###---### Add symlink to the system utf8mb4_convert.
-  #
-  if [ ! -L "${_USER_DS}/usr/utf8mb4_convert" ] \
-    && [ -e "${_ROOT}/.drush/usr/utf8mb4_convert" ]; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "${_STATUS} A: Adding symlink to the system utf8mb4_convert"
-    fi
-    mkdir -p ${_USER_DS}/usr
-    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}
-    chown ${_USERFTP}:${_ACCG:-users} ${_USER_DS}/usr
-    chmod 700 ${_USER_DS}
-    ln -sfn ${_ROOT}/.drush/usr/utf8mb4_convert \
-      ${_USER_DS}/usr/utf8mb4_convert
-  fi
+  done
 
   ###---### Add symlink to the clients directory.
   #
@@ -4590,24 +4518,28 @@ _satellite_if_add_update_user_dot_dirs() {
     _msg "PROC: _satellite_if_add_update_user_dot_dirs"
     _debug_proc
   fi
+  ### The main login's home is never immutable, so every name in it is the
+  ### login's: where a directory is missing, a link at the name is removed
+  ### first, and the new directory is set up inside the real directory.
+
   ###---### Create .tmp dir if not exists.
   #
   _USER_TMP="${_USER_HD}/.tmp"
   if [ ! -d "${_USER_TMP}" ]; then
-    mkdir -p ${_USER_TMP}
-    touch ${_USER_TMP}
-    find ${_USER_TMP}/ -mtime +0 -exec rm -rf {} \; &> /dev/null
-    chown -R ${_USERFTP}:${_ACCG:-users} ${_USER_TMP}
-    chmod 755 ${_USER_TMP}
+    [ -L "${_USER_TMP}" ] && rm -f "${_USER_TMP}"
+    mkdir -p "${_USER_TMP}"
+    _acct_in_real_dir "${_USER_TMP}" _satellite_ftp_tmp_here &> /dev/null
   fi
 
   ###---### Create .ssh dir if not exists.
   #
   _USER_SSH="${_USER_HD}/.ssh"
   if [ ! -d "${_USER_SSH}" ]; then
-    mkdir -p ${_USER_SSH}
-    chown -R ${_USERFTP}:${_ACCG:-users} ${_USER_SSH}
-    chmod 700 ${_USER_SSH}
+    [ -L "${_USER_SSH}" ] && rm -f "${_USER_SSH}"
+    mkdir -p "${_USER_SSH}"
+    _acct_in_real_dir "${_USER_SSH}" \
+      chown -R "${_USERFTP}:${_ACCG:-users}" . &> /dev/null
+    _acct_in_real_dir "${_USER_SSH}" chmod 700 . &> /dev/null
   fi
   # the main login's own keys: set through a handle inside the real .ssh,
   # never through a link put at a key name or at .ssh
@@ -4619,10 +4551,10 @@ _satellite_if_add_update_user_dot_dirs() {
   _USER_BZR="${_USER_HD}/.bazaar"
   if [ -x "/usr/local/bin/bzr" ]; then
     if [ ! -e "${_USER_BZR}/bazaar.conf" ]; then
-      mkdir -p ${_USER_BZR}
-      echo ignore_missing_extensions=True > ${_USER_BZR}/bazaar.conf
-      chown -R ${_USERFTP}:${_ACCG:-users} ${_USER_BZR}
-      chmod 700 ${_USER_BZR}
+      [ -L "${_USER_BZR}" ] && rm -f "${_USER_BZR}"
+      mkdir -p "${_USER_BZR}"
+      _acct_in_real_dir "${_USER_BZR}" _satellite_bzr_seed_here \
+        "${_USERFTP}:${_ACCG:-users}" &> /dev/null
     fi
   else
     if [ -d "${_USER_BZR}" ]; then
@@ -4727,86 +4659,121 @@ _satellite_if_add_update_user_platforms_symlinks() {
   _HM_U="${_USER}"
   _LOW_NR="2"
   _usEr="${_ROOT}"
+  _PL_HOME="/home/${_HM_U}.ftp/platforms"
 
-  for i in $(dir -d /home/${_HM_U}.ftp/platforms/* 2>/dev/null); do
-    if [ -e "${i}" ]; then
-      _RevisionTest=$(ls ${i} \
-        | wc -l \
-        | tr -d "\n" 2>&1)
-      if [ "${_RevisionTest}" -lt "${_LOW_NR}" ] \
-        && [ ! -z "${_RevisionTest}" ]; then
-        if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
-          chattr -i /home/${_HM_U}.ftp/platforms &> /dev/null
-          chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
-        fi
-        _NOW=$(date +%y%m%d-%H%M%S)
-        [ -d "/var/backups/ghost/${_HM_U}/${_NOW}" ] || mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
-        [ "${_DEBUG_MODE}" = "YES" ] && echo "Moving ${i} to /var/backups/ghost/${_HM_U}/${_NOW}"
-        mv -f ${i} /var/backups/ghost/${_HM_U}/${_NOW}/
-      fi
+  ### platforms/ in the main login's home and distro/ of the instance user,
+  ### and every name in either, can be swapped for a link: each is acted on
+  ### inside its real directory, an entry is moved by its own name there,
+  ### and a revision is moved into undo/ by the instance user itself.
+  _acct_in_real_dir "${_PL_HOME}" _satellite_pl_ghosts_here
+  _acct_in_real_dir "${_usEr}/distro" _satellite_distro_ghosts_here
+  _acct_in_real_dir "${_usEr}/distro" _satellite_distro_links_here
+}
+
+#
+# Run inside the real platforms/ of the main login: an entry holding fewer
+# than two names is moved to /var/backups/ghost by its own name (a link is
+# moved as the link).
+_satellite_pl_ghosts_here() {
+  local _p _n _g
+  for _p in ./*; do
+    [ -e "${_p}" ] || continue
+    _n=$(ls -- "${_p}" 2> /dev/null | wc -l | tr -d "\n")
+    [ -n "${_n}" ] && [ "${_n}" -lt "${_LOW_NR}" ] || continue
+    _satellite_chattr_all_here -i
+    _g="/var/backups/ghost/${_HM_U}/$(date +%y%m%d-%H%M%S)"
+    [ -d "${_g}" ] || mkdir -p "${_g}"
+    [ "${_DEBUG_MODE}" = "YES" ] && echo "Moving ${_PL_HOME}/${_p#./} to ${_g}"
+    mv -f -- "${_p}" "${_g}/"
+  done
+  return 0
+}
+
+#
+# Run inside the real distro/ of the instance user: each real revision
+# directory gets its keys/ where missing, and one holding fewer than two
+# names and untouched for an hour is moved to undo/dist/<stamp>: root makes
+# that directory inside the real undo/dist and hands it over, the instance
+# user moves its own revision into it. A revision that is a link is left
+# alone.
+_satellite_distro_ghosts_here() {
+  local i _n _s
+  for i in ./*; do
+    [ -d "${i}" ] && [ ! -L "${i}" ] || continue
+    # The account owns distro/ and its entries: never through a planted
+    # link (a revision or keys itself), and root's own directory stays
+    # root's (the owner and mode it has always had).
+    if [ ! -L "${i}" ] && [ ! -e "${i}/keys" ] && [ ! -L "${i}/keys" ]; then
+      _acct_in_real_dir "${i}" mkdir -m 0755 ./keys &> /dev/null
+    fi
+    _n=$(ls -- "${i}" 2> /dev/null | wc -l | tr -d "\n")
+    # Age gate, mirroring the nightly copy in night/10-account.sh: an
+    # under-populated revision is not a ghost by itself, because an
+    # installer creates the new distro/NNN empty and the keys/ mkdir above
+    # scores it 1 on its own. This copy runs inside AegirSetupA, i.e. inside
+    # the install, so it deliberately carries NO in-flight test -- that
+    # would disable it permanently here; the mtime brake is what makes it
+    # safe, and a real ghost is stale for hours
+    if [ -n "${_n}" ] && [ "${_n}" -lt 2 ] \
+      && [ -z "$(find "${i}" -maxdepth 0 -mmin -60 2> /dev/null)" ]; then
+      [ "${_DEBUG_MODE}" = "YES" ] && echo "_RevisionTest is ${_n}"
+      _s="$(date +%y%m%d-%H%M%S)"
+      _acct_in_real_dir "${_usEr}" _satellite_sub_here undo \
+        _satellite_sub_here dist _satellite_sub_here "${_s}" \
+        chown -h "${_USER}:${_ACCG:-users}" . &> /dev/null
+      _satellite_as_user "mv -f -- \
+        ${_usEr}/distro/$(printf '%q' "${i#./}") \
+        ${_usEr}/undo/dist/${_s}/" &> /dev/null
+      [ "${_DEBUG_MODE}" = "YES" ] && echo "GHOST revision ${_usEr}/distro/${i#./} detected and moved to ${_usEr}/undo/dist/${_s}/"
     fi
   done
+  return 0
+}
 
-  for i in $(dir -d ${_usEr}/distro/* 2>/dev/null); do
-    if [ -d "${i}" ]; then
-      # The account owns distro/ and its entries: never through a planted
-      # link (a revision or keys itself), and root's own directory stays
-      # root's (the owner and mode it has always had).
-      if [ ! -L "${i}" ] && [ ! -e "${i}/keys" ] && [ ! -L "${i}/keys" ]; then
-        mkdir -m 0755 "${i}/keys" &> /dev/null
-      fi
-      _RevisionTest=$(ls ${i} | wc -l 2>&1)
-      # Age gate, mirroring the nightly copy in night/10-account.sh: an
-      # under-populated revision is not a ghost by itself, because an
-      # installer creates the new distro/NNN empty and the keys/ mkdir above
-      # scores it 1 on its own. This copy runs inside AegirSetupA, i.e. inside
-      # the install, so it deliberately carries NO in-flight test -- that
-      # would disable it permanently here; the mtime brake is what makes it
-      # safe, and a real ghost is stale for hours
-      if [ "${_RevisionTest}" -lt 2 ] && [ ! -z "${_RevisionTest}" ] \
-        && [ -z "$(find ${i} -maxdepth 0 -mmin -60 2>/dev/null)" ]; then
-        [ "${_DEBUG_MODE}" = "YES" ] && echo "_RevisionTest is ${_RevisionTest}"
-        _NOW=$(date +%y%m%d-%H%M%S)
-        mkdir -p ${_usEr}/undo/dist/${_NOW}
-        mv -f ${i} ${_usEr}/undo/dist/${_NOW}/ &> /dev/null
-        [ "${_DEBUG_MODE}" = "YES" ] && echo "GHOST revision ${i} detected and moved to ${_usEr}/undo/dist/${_NOW}/"
-      fi
+#
+# Run inside the real distro/ of the instance user: for each real revision
+# directory, the main login's platforms/<revision> (and platforms/ itself,
+# a link put at that name removed first) made where missing, and in it the
+# link to the revision's keys/ when that is a real directory and one link
+# per platform to that platform's sites/, each made inside the real
+# directory.
+_satellite_distro_links_here() {
+  local i _n _p _c
+  for i in ./*; do
+    [ -d "${i}" ] && [ ! -L "${i}" ] || continue
+    _n="${i#./}"
+    if [ ! -d "${_PL_HOME}" ]; then
+      [ -L "${_PL_HOME}" ] && rm -f "${_PL_HOME}"
+      mkdir -p "${_PL_HOME}"
     fi
+    _acct_in_real_dir "${_PL_HOME}" _satellite_chattr_all_here -i
+    _acct_in_real_dir "${_PL_HOME}" mkdir -p -- "./${_n}"
+    if [ -d "${i}/keys" ] && [ ! -L "${i}/keys" ]; then
+      _acct_in_real_dir "${_PL_HOME}/${_n}" _satellite_link_new_here \
+        "${_usEr}/distro/${_n}/keys" keys
+    fi
+    _acct_in_real_dir "${_PL_HOME}" _satellite_pl_data_here
+    for _p in "${i}"/*; do
+      [ -d "${_p}" ] && [ ! -L "${_p}" ] || continue
+      [ "${_p##*/}" = "keys" ] && continue
+      _c=$(_detect_real_docroot "${_usEr}/distro/${_n}/${_p##*/}")
+      [ -n "${_c}" ] && [ -d "${_c}/sites" ] || continue
+      _acct_in_real_dir "${_PL_HOME}/${_n}" \
+        ln -sfn "${_c}/sites" "./${_p##*/}"
+      [ "${_DEBUG_MODE}" = "YES" ] && echo "Fixed ${_p##*/} in ${_n} symlink to ${_c}/sites for ${_HM_U}.ftp"
+    done
   done
+  return 0
+}
 
-  for i in $(dir -d ${_usEr}/distro/* 2>/dev/null); do
-    if [ -e "${i}" ]; then
-      _distTrNr=$(echo ${i} \
-        | cut -d'/' -f6 \
-        | awk '{ print $1}' 2> /dev/null)
-      if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
-        chattr -i /home/${_HM_U}.ftp/platforms &> /dev/null
-        chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
-      fi
-      if [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}" ]; then
-        mkdir -p /home/${_HM_U}.ftp/platforms/${_distTrNr}
-      fi
-      if [ -d "${i}/keys" ] && [ ! -L "${i}/keys" ] \
-        && [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}/keys" ]; then
-        ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${_distTrNr}/keys
-      fi
-      if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
-        _NOW=$(date +%y%m%d-%H%M%S)
-        [ -d "/var/backups/ghost/${_HM_U}/${_NOW}" ] || mkdir -p /var/backups/ghost/${_HM_U}/${_NOW}
-        mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_NOW}/platforms_data
-      fi
-      for _PlatformDir in `find ${i}/* \
-        -maxdepth 0 \
-        -type d 2>/dev/null`; do
-        _CodebaseName=$(basename "${_PlatformDir}" 2>/dev/null)
-        [ "${_CodebaseName}" = "keys" ] && continue
-        _Codebase=$(_detect_real_docroot "${_PlatformDir}")
-        [ -n "${_Codebase}" ] && [ -d "${_Codebase}/sites" ] || continue
-        ln -sfn ${_Codebase}/sites /home/${_HM_U}.ftp/platforms/${_distTrNr}/${_CodebaseName}
-        [ "${_DEBUG_MODE}" = "YES" ] && echo "Fixed ${_CodebaseName} in ${_distTrNr} symlink to ${_Codebase}/sites for ${_HM_U}.ftp"
-      done
-    fi
-  done
+#
+# ./data in the current (pinned) platforms/ moved to /var/backups/ghost.
+_satellite_pl_data_here() {
+  local _g
+  [ -e ./data ] || return 0
+  _g="/var/backups/ghost/${_HM_U}/$(date +%y%m%d-%H%M%S)"
+  [ -d "${_g}" ] || mkdir -p "${_g}"
+  mv -f -- ./data "${_g}/platforms_data"
 }
 
 _satellite_if_add_update_backend_user_dirs_files_clean() {
@@ -4879,10 +4846,12 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
   _SYSTEM_USER_BZR="${_ROOT}/.bazaar"
   if [ -x "/usr/local/bin/bzr" ]; then
     if [ ! -e "${_SYSTEM_USER_BZR}/bazaar.conf" ]; then
-      mkdir -p ${_SYSTEM_USER_BZR}
-      _acct_put_in "${_SYSTEM_USER_BZR}" bazaar.conf ignore_missing_extensions=True
-      chown -R ${_USER}:${_ACCG:-users} ${_SYSTEM_USER_BZR}
-      _acct_in_real_dir "${_SYSTEM_USER_BZR}" chmod 700 .
+      ### a link at .bazaar is removed first, then the directory is seeded
+      ### and handed over inside the real directory
+      [ -L "${_SYSTEM_USER_BZR}" ] && rm -f "${_SYSTEM_USER_BZR}"
+      mkdir -p "${_SYSTEM_USER_BZR}"
+      _acct_in_real_dir "${_SYSTEM_USER_BZR}" _satellite_bzr_seed_here \
+        "${_USER}:${_ACCG:-users}" &> /dev/null
     fi
   else
     if [ -d "${_SYSTEM_USER_BZR}" ]; then
@@ -4898,6 +4867,16 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
   if [ -d "/keys" ] && [ ! -L "/keys" ] && [ "$(ls -A /keys 2> /dev/null)" = "keys" ] \
     && [ -L "/keys/keys" ] && [ "$(readlink /keys/keys)" = "/keys" ]; then
     rm -f /keys/keys && rmdir /keys
+  fi
+  # One that holds more is left in place, but handed back to root.
+  if [ -d "/keys" ] && [ ! -L "/keys" ]; then
+    case "$(stat -c %U /keys 2> /dev/null)" in
+      *.ftp)
+        chown -h root:root /keys
+        chmod 00755 /keys
+        _msg "NOTE: /keys at the filesystem root is not empty; handed back to root and left in place"
+        ;;
+    esac
   fi
   if [ "${_HM_ONLY}" = "YES" ]; then
     _DO_NOTHING=YES
@@ -4968,13 +4947,15 @@ _satellite_prepare_setup_email_tpl() {
           && cp -af /opt/tmp/boa/aegir/conf/tpl/upgrademail.txt "${_mT}"; then
           ### Anchored patterns: an unescaped dot or bare 'dragon' would also
           ### match inside a real instance domain injected by an earlier sed.
-          sed -i "s/aegir\.url\.name/${_DOMAIN}/g" "${_mT}"
+          ### The password (the account's log/pass.txt) and the other values
+          ### are put in as literal text (_satellite_sed_rep).
+          sed -i "s/aegir\.url\.name/$(_satellite_sed_rep "${_DOMAIN}")/g" "${_mT}"
           wait
           sed -i "s/dragon\.ftp/${_USER}.ftp/g" "${_mT}"
           wait
-          sed -i "s/FN8rXcQn/${_PASWD}/g" "${_mT}"
+          sed -i "s/FN8rXcQn/$(_satellite_sed_rep "${_PASWD}")/g" "${_mT}"
           wait
-          sed -i "s/166\.84\.6\.231/${_THISHTIP}/g" "${_mT}"
+          sed -i "s/166\.84\.6\.231/$(_satellite_sed_rep "${_THISHTIP}")/g" "${_mT}"
           wait
           sed -i "s/boa\.version/${_X_VERSION}/g" "${_mT}"
           wait
@@ -4995,11 +4976,11 @@ _satellite_prepare_setup_email_tpl() {
        && cp -af /opt/tmp/boa/aegir/conf/tpl/setupmail.txt "${_mT}"; then
        ### Anchored patterns: an unescaped dot or bare 'dragon' would also
        ### match inside a real instance domain injected by an earlier sed.
-       sed -i "s/aegir\.url\.name/${_DOMAIN}/g" "${_mT}"
+       sed -i "s/aegir\.url\.name/$(_satellite_sed_rep "${_DOMAIN}")/g" "${_mT}"
        wait
        sed -i "s/dragon\.ftp/${_USER}.ftp/g" "${_mT}"
        wait
-       sed -i "s/FN8rXcQn/${_PASWD}/g" "${_mT}"
+       sed -i "s/FN8rXcQn/$(_satellite_sed_rep "${_PASWD}")/g" "${_mT}"
        wait
        ### The template placeholder is a real foreign address, so only a
        ### validated IPv4 may replace it; anything else keeps _ipOk=NO and
@@ -5014,7 +4995,7 @@ _satellite_prepare_setup_email_tpl() {
          fi
        fi
        if [ "${_ipOk}" = "YES" ]; then
-         sed -i "s/166\.84\.6\.231/${_THISHTIP}/g" "${_mT}"
+         sed -i "s/166\.84\.6\.231/$(_satellite_sed_rep "${_THISHTIP}")/g" "${_mT}"
          wait
        else
          _msg "ALRT: _THISHTIP is empty or invalid; dropping the GOING LIVE section from the welcome email"
@@ -5330,13 +5311,16 @@ _satellite_make() {
   echo "export _BOA_REPO_NAME=\"${_BOA_REPO_NAME}\""         >> ${_writeTo}
   echo "export _BRANCH_BOA=\"${_BRANCH_BOA}\""               >> ${_writeTo}
   echo "export _BRANCH_PRN=\"${_BRANCH_PRN}\""               >> ${_writeTo}
-  echo "export _CLIENT_CORES=\"${_CLIENT_CORES}\""           >> ${_writeTo}
-  echo "export _CLIENT_EMAIL=\"${_CLIENT_EMAIL}\""           >> ${_writeTo}
-  echo "export _CLIENT_OPTION=\"${_CLIENT_OPTION}\""         >> ${_writeTo}
+  # Values the account's own files or directory names can carry (log/*.txt,
+  # distro/ names) are written quoted for the shell, never inside bare
+  # double quotes: the children source this include, AegirSetupA as root.
+  _satellite_inc_put _CLIENT_CORES
+  _satellite_inc_put _CLIENT_EMAIL
+  _satellite_inc_put _CLIENT_OPTION
   echo "export _DEBUG_MODE=\"${_DEBUG_MODE}\""               >> ${_writeTo}
   echo "export _DL_MODE=\"${_DL_MODE}\""                     >> ${_writeTo}
   echo "export _DISTRO=\"${_DISTRO}\""                       >> ${_writeTo}
-  echo "export _DOMAIN=\"${_DOMAIN}\""                       >> ${_writeTo}
+  _satellite_inc_put _DOMAIN
 
   echo "export _DRUPAL6=\"${_DRUPAL6}\""                     >> ${_writeTo}
   echo "export _DRUPAL6_D=\"${_DRUPAL6}-dev\""               >> ${_writeTo}
@@ -5466,8 +5450,8 @@ _satellite_make() {
   echo "export _HM_ONLY=\"${_HM_ONLY}\""                     >> ${_writeTo}
   echo "export _HOT_SAUCE=\"${_HOT_SAUCE}\""                 >> ${_writeTo}
   echo "export _LAST_ALL=\"${_LAST_ALL}\""                   >> ${_writeTo}
-  echo "export _LAST_HMR=\"${_LAST_HMR}\""                   >> ${_writeTo}
-  echo "export _LASTNUM=\"${_LASTNUM}\""                     >> ${_writeTo}
+  _satellite_inc_put _LAST_HMR
+  _satellite_inc_put _LASTNUM
   # The children must know a LOCAL-network topology to keep RFC1918
   # addresses out of the rendered welcome email's DNS guidance.
   echo "export _LOCAL_NETWORK_IP=\"${_LOCAL_NETWORK_IP}\""   >> ${_writeTo}
@@ -5476,8 +5460,8 @@ _satellite_make() {
   echo "export _NOW=\"${_NOW}\""                             >> ${_writeTo}
   echo "export _OS_DIST=\"${_OS_DIST}\""                     >> ${_writeTo}
   echo "export _OS_CODE=\"${_OS_CODE}\""                     >> ${_writeTo}
-  echo "export _PHP_CLI_VERSION=\"${_PHP_CLI_VERSION}\""     >> ${_writeTo}
-  echo "export _PHP_FPM_VERSION=\"${_PHP_FPM_VERSION}\""     >> ${_writeTo}
+  _satellite_inc_put _PHP_CLI_VERSION
+  _satellite_inc_put _PHP_FPM_VERSION
   echo "export _PLATFORMS_LIST=\"${_PLATFORMS_LIST}\""       >> ${_writeTo}
   echo "export _PLATFORMS_ONLY=\"${_PLATFORMS_ONLY}\""       >> ${_writeTo}
   echo "export _PURGE_MODE=\"${_PURGE_MODE}\""               >> ${_writeTo}
@@ -6060,6 +6044,179 @@ _satellite_hm_path_ok() {
     [[ "${_p}" =~ ^[^/]+$ ]]
   fi
 }
+# Run "$@" inside the real directory $1, as _acct_in_real_dir runs it, or,
+# when $1 is a link into the account's files store (backups relocated onto
+# the store, a site's files/ or private/ moved into it), inside the
+# directory the link resolves to: only one in the account's own
+# static/files, or in the store moved onto attached storage
+# (/mnt/<mount>/files/<oN>/static/files). Any other link is refused.
+_satellite_in_store_dir() {
+  local _d="${1}" _r _s _m
+  shift
+  if [ ! -L "${_d}" ]; then
+    _acct_in_real_dir "${_d}" "$@"
+    return
+  fi
+  _r="$(readlink -f -- "${_d}" 2> /dev/null)"
+  _s="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_USER}/static/files/"
+  _m="^/mnt/[^/]+/files/${_USER//./[.]}/static/files/."
+  case "${_r}" in
+    ""|*[!A-Za-z0-9._/-]*) return 1 ;;
+    "${_s}"?*) ;;
+    *) [[ "${_r}" =~ ${_m} ]] || return 1 ;;
+  esac
+  ( cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory made a directory where missing,
+# then "${@:2}" run inside it as _acct_in_real_dir runs it: a link put at
+# the name is never followed or entered.
+_satellite_sub_here() {
+  local _n="${1}"
+  shift
+  mkdir -p -- "./${_n}" 2> /dev/null
+  _acct_in_real_dir "./${_n}" "$@"
+}
+# The command line $1 run by the instance user from its own home with the
+# system PATH: whatever a link in the account's tree leads to, it reaches
+# only what that user may change.
+_satellite_as_user() {
+  su -s /bin/bash "${_USER}" \
+    -c "cd ${_ROOT} && PATH=/usr/local/bin:/usr/bin:/bin && { ${1}; }"
+}
+# +i cleared on each regular file named, in the current (pinned) directory;
+# a link given by its bare name is never passed to chattr.
+_satellite_unlock_here() {
+  local _f
+  for _f in "$@"; do
+    [ -f "./${_f}" ] && [ ! -L "./${_f}" ] && chattr -i "./${_f}" &> /dev/null
+  done
+  return 0
+}
+# The current (pinned) platforms/ of a main login and each entry in it
+# locked ($1 = +i) or unlocked (-i); chattr refuses an entry that is a link.
+_satellite_chattr_all_here() {
+  chattr "${1}" . &> /dev/null
+  chattr "${1}" ./* &> /dev/null
+  return 0
+}
+# The current (pinned) ~/.drush of a main login locked ($1 = +i) or
+# unlocked (-i) with its usr/ when that is a real directory; unlocking also
+# clears a CLI php.ini an earlier release left, for the ltd worker to remove.
+_satellite_chattr_drush_here() {
+  chattr "${1}" . &> /dev/null
+  [ -d ./usr ] && [ ! -L ./usr ] && chattr "${1}" ./usr &> /dev/null
+  [ "${1}" = "-i" ] && _satellite_unlock_here php.ini
+  return 0
+}
+# Every directory set to $1 and every file to $2 below the current (pinned)
+# directory, top-level dot names left out as the globs this replaces left
+# them, each through a handle opened without following a link, from the
+# directory find walked (-execdir).
+_satellite_tree_modes_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  find . -mindepth 1 -path './.*' -prune -o -type d \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
+  find . -mindepth 1 -path './.*' -prune -o -type f \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
+)
+# The current (pinned) backups directory's system/ (and system/$1 when
+# given) made where missing, handed to the instance user and set 0700,
+# each inside its real directory: the instance user moves its own old
+# backups there.
+_satellite_sys_dir_here() {
+  _satellite_sub_here system _satellite_own_dir_here \
+    "${_USER}:${_ACCG:-users}" 0700 || return 1
+  [ -z "${1}" ] || _acct_in_real_dir ./system _satellite_sub_here "${1}" \
+    _satellite_own_dir_here "${_USER}:${_ACCG:-users}" 0700
+}
+# The main login's new ~/.tmp (the current, pinned directory): anything
+# older than a day removed from inside the directory find walked, the tree
+# handed to the login, the directory 0755.
+_satellite_ftp_tmp_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  touch .
+  find . -mindepth 1 -mtime +0 -execdir rm -rf {} \;
+  chown -R "${_USERFTP}:${_ACCG:-users}" .
+  chmod 755 .
+)
+# A login's ~/.bazaar (the current, pinned directory) seeded: bazaar.conf
+# put as a fresh file, the tree handed to $1 (owner:group; chown -R never
+# follows a link), the directory 0700.
+_satellite_bzr_seed_here() {
+  _acct_put_here bazaar.conf ignore_missing_extensions=True
+  chown -R "${1}" .
+  chmod 700 .
+}
+# The main login's ~/.drush (the current, pinned directory) and its usr/
+# made real directories and handed to the login, ~/.drush 0700, and usr/$1
+# linked to the instance user's own copy of that drush extension: a link
+# put at usr is removed first, and no owner or mode is set through a link.
+_satellite_user_ds_link_here() {
+  [ -L ./usr ] && rm -f ./usr
+  mkdir -p ./usr
+  chown -h "${_USERFTP}:${_ACCG:-users}" . ./usr
+  chmod 700 .
+  _acct_in_real_dir ./usr ln -sfn "${_ROOT}/.drush/usr/${1}" "./${1}"
+}
+# ./$2 in the current (pinned) directory made a link to $1 where no name
+# there resolves.
+_satellite_link_new_here() {
+  [ -e "./${2}" ] || ln -sfn "${1}" "./${2}"
+}
+
+#
+# Text the account controls (log/*.txt, the names in its tree) reaches the
+# root cnf, the per-child include root sources and sed scripts root runs
+# only in the form these accept, or quoted by them.
+#
+# True when $1 is a host name in the form the install takes one: lower-case
+# letters, digits, dots and hyphens, starting and ending with a letter or a
+# digit.
+_satellite_host_ok() {
+  [[ "${1}" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]]
+}
+# True when $1 is an e-mail address in a plain form: a local part of
+# letters, digits and . _ % + = - (a letter, a digit or _ first), '@' and a
+# host name.
+_satellite_email_ok() {
+  [[ "${1}" =~ ^[A-Za-z0-9_][A-Za-z0-9._%+=-]*@[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]
+}
+# $1 without the blanks around it.
+_satellite_trim() {
+  local _t="${1}"
+  _t="${_t#"${_t%%[![:space:]]*}"}"
+  printf '%s' "${_t%"${_t##*[![:space:]]}"}"
+}
+# The account's log/$1, read bounded, blanks around it dropped, put in the
+# variable $2 when the whole of it matches the extended regular expression
+# $3; any other text leaves $2 as the root cnf set it.
+_satellite_log_value() {
+  local _v
+  _v="$(_satellite_trim "$(_acct_read_in "${_ROOT}/log" "${1}")")"
+  if [[ "${_v}" =~ ${3} ]]; then
+    printf -v "${2}" '%s' "${_v}"
+  else
+    _msg "NOTE: ${_ROOT}/log/${1} ignored, ${2} kept as set in ${_octCnf}"
+  fi
+}
+# $1 made literal for the replacement of a sed s/// command: each '\', '/'
+# and '&' escaped and line breaks dropped, so no text can end the command
+# or add to it.
+_satellite_sed_rep() {
+  local _v
+  _v=${1//$'\n'/}
+  # shellcheck disable=SC1003
+  _v=${_v//\\/'\\'}
+  _v=${_v//\//'\/'}
+  _v=${_v//&/'\&'}
+  printf '%s' "${_v}"
+}
+# export $1="the value of $1" appended to the include being written
+# (_writeTo), the value quoted for the shell (printf %q), so no text can end
+# its quotes.
+_satellite_inc_put() {
+  printf 'export %s=%q\n' "${1}" "${!1}" >> "${_writeTo}"
+}
 
 #
 # One PHP version in the text of fpm.info or cli.info, dotted (8.4) or
@@ -6184,6 +6341,20 @@ _satellite_check_octopus_vs_barracuda_ver() {
   rm -f /opt/tmp/testecho*
 }
 
+# The stamp read from log/domain.txt (the account's file) kept only as a
+# host name, surrounding blanks dropped; any other text counts as no stamp,
+# which the guard below heals from the root cnf or refuses.
+_satellite_domain_stamp_form() {
+  local _t
+  _t="$(_satellite_trim "${_DOMAIN}")"
+  if _satellite_host_ok "${_t}"; then
+    _DOMAIN="${_t}"
+  elif [ -n "${_DOMAIN}" ]; then
+    _msg "NOTE: ${_ROOT}/log/domain.txt is not a host name; ignored"
+    _DOMAIN=""
+  fi
+}
+
 _satellite_domain_stamp_guard() {
   ### The upgrade re-reads _DOMAIN from <root>/log/domain.txt, and a stale
   ### stamp silently mis-targets destructive steps: the previous-install
@@ -6209,12 +6380,16 @@ _satellite_domain_stamp_guard() {
     _cnfDom=$(grep "^_DOMAIN=" ${_octCnfG} 2>/dev/null \
       | tail -1 | cut -d= -f2- | tr -d '"' | tr -d "\n")
   fi
-  for _p in ${_ROOT}/aegir/distro/[0-9]*/sites/*/settings.php; do
+  for _p in "${_ROOT}"/aegir/distro/[0-9]*/sites/*/settings.php; do
     [ -e "${_p}" ] || continue
-    _d=$(basename $(dirname ${_p}))
+    _d="${_p%/settings.php}"
+    _d="${_d##*/}"
     case "${_d}" in
       all|default) continue ;;
     esac
+    ### a directory name in the account's own tree, written to the root
+    ### cnf: an arbiter only in the form of a host name
+    _satellite_host_ok "${_d}" || continue
     if [ -z "${_realDom}" ]; then
       _realDom="${_d}"
       _realNr=1
@@ -6282,6 +6457,7 @@ _satellite_if_init_or_upgrade() {
       ### the real directory.
       if [ -e "${_ROOT}/log/domain.txt" ]; then
         _DOMAIN=$(_acct_read_in "${_ROOT}/log" domain.txt | tr -d '\n')
+        _satellite_domain_stamp_form
       fi
       _satellite_domain_stamp_guard
       if [ -z "${_DOMAIN}" ]; then
@@ -6311,17 +6487,26 @@ _satellite_if_init_or_upgrade() {
           _acct_put_in "${_ROOT}/log" amazing_upgrade_complete.txt completed
         fi
       fi
+      ### Each value is taken in its own form only (the option and the plan
+      ### one word, the cores digits, the e-mail a plain address); other
+      ### text leaves the value the root cnf gives.
       if [ -e "${_ROOT}/log/option.txt" ]; then
-        _CLIENT_OPTION=$(_acct_read_in "${_ROOT}/log" option.txt | tr -d '\n')
+        _satellite_log_value option.txt _CLIENT_OPTION '^[A-Za-z0-9_]+$'
       fi
       if [ -e "${_ROOT}/log/cores.txt" ]; then
-        _CLIENT_CORES=$(_acct_read_in "${_ROOT}/log" cores.txt | tr -d '\n')
+        _satellite_log_value cores.txt _CLIENT_CORES '^[0-9]+$'
       fi
       if [ -e "${_ROOT}/log/subscr.txt" ]; then
-        _CLIENT_SUBSCR=$(_acct_read_in "${_ROOT}/log" subscr.txt | tr -d '\n')
+        _satellite_log_value subscr.txt _CLIENT_SUBSCR '^[A-Za-z0-9_]+$'
       fi
       if [ -e "${_ROOT}/log/email.txt" ]; then
-        _CLIENT_EMAIL=$(_acct_read_in "${_ROOT}/log" email.txt | tr -d '\n')
+        _T_EML="$(_satellite_trim "$(_acct_read_in "${_ROOT}/log" email.txt)")"
+        _T_EML=${_T_EML//\\\@/\@}
+        if _satellite_email_ok "${_T_EML}"; then
+          _CLIENT_EMAIL="${_T_EML}"
+        else
+          _msg "NOTE: ${_ROOT}/log/email.txt ignored, _CLIENT_EMAIL kept as set in ${_octCnf}"
+        fi
         if [[ "${_CLIENT_EMAIL}" =~ "@" ]]; then
           _DO_NOTHING=YES
         else
@@ -6397,8 +6582,8 @@ _satellite_if_init_or_upgrade() {
     #
     elif [ ! -d "${_ROOT}/distro" ]; then
       if [ -e "${_ROOT}/log/domain.txt" ]; then
-        _DOMAIN=$(_acct_read_in "${_ROOT}/log" domain.txt)
-        _DOMAIN=$(echo -n ${_DOMAIN} | tr -d "\n" 2>&1)
+        _DOMAIN=$(_acct_read_in "${_ROOT}/log" domain.txt | tr -d '\n')
+        _satellite_domain_stamp_form
       fi
       _satellite_domain_stamp_guard
     fi
@@ -6617,24 +6802,29 @@ _satellite_pre_cleanup() {
 _satellite_queue_dbvars_site_verifies() {
   local _inc="${_ROOT}/config/includes/nginx_vhost_common.conf"
   local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
-  local _v _d _list="" _n
+  local _v _d _t _list="" _n
   ### _DRUSHCMD exists only in the AegirSetup child scripts; this runs in
   ### the launcher's own process, where the instance user's drush8 is on
   ### the login PATH.
   local _hmDrush="${_DRUSHCMD:-drush8}"
-  [ -f "${_inc}" ] && grep -q '^set \$boa_db_type' "${_inc}" || return 0
+  ### config/ is the instance user's: the include and each vhost are read
+  ### bounded inside the real directory, never through a link or from a
+  ### FIFO put at the name.
+  [ -f "${_inc}" ] && _acct_read_in "${_inc%/*}" "${_inc##*/}" \
+    | grep -q '^set \$boa_db_type' || return 0
   [ -d "${_vhd}" ] || return 0
   for _v in "${_vhd}"/*; do
     [ -f "${_v}" ] || continue
     _d="${_v##*/}"
     case "${_d}" in .*|https.*) continue ;; esac
     [ "${_d}" = "${_DOMAIN}" ] && continue
-    grep -q 'set \$boa_db_type' "${_v}" && continue
-    grep -q 'fastcgi_param db_type' "${_v}" || continue
     ### The name becomes a PHP string literal below: a vhost file is named
     ### by the site's URI, so anything outside the hostname alphabet is not
     ### a site of ours.
     case "${_d}" in *[!A-Za-z0-9.-]*) continue ;; esac
+    _t="$(_acct_read_in "${_vhd}" "${_d}")"
+    grep -q 'set \$boa_db_type' <<< "${_t}" && continue
+    grep -q 'fastcgi_param db_type' <<< "${_t}" || continue
     _list="${_list}\"${_d}\","
   done
   [ -n "${_list}" ] || return 0
@@ -6685,33 +6875,47 @@ _satellite_letsencrypt_crt_key_copy() {
   elif [ -e "${_leCrtPath}/cert.pem" ]; then
     _crtPath="${_leCrtPath}/cert.pem"
   fi
+  ### tools/le is the instance user's: the certificate and the key are read
+  ### bounded inside the real certs/<domain>/, through a link only to a file
+  ### beside it (as the client links each name to a versioned file), and
+  ### written as root's own 0600 files.
   if [ -e "${_crtPath}" ]; then
-    if [ -L "${_crtPath}" ]; then
-      _crtPathR=$(readlink -n ${_crtPath} 2>&1)
-      _crtPathR=$(echo -n ${_crtPathR} | tr -d "\n" 2>&1)
-      if [ -f "${_leCrtPath}/${_crtPathR}" ]; then
-        rm -f /etc/ssl/private/${_DOMAIN}.crt
-        cp -a ${_leCrtPath}/${_crtPathR} /etc/ssl/private/${_DOMAIN}.crt
-      fi
-    else
-      rm -f /etc/ssl/private/${_DOMAIN}.crt
-      cp -a ${_crtPath} /etc/ssl/private/${_DOMAIN}.crt
-    fi
+    _satellite_le_copy "${_crtPath##*/}" "/etc/ssl/private/${_DOMAIN}.crt"
   fi
   _keyPath="${_leCrtPath}/privkey.pem"
   if [ -e "${_keyPath}" ]; then
-    if [ -L "${_keyPath}" ]; then
-      _keyPathR=$(readlink -n ${_keyPath} 2>&1)
-      _keyPathR=$(echo -n ${_keyPathR} | tr -d "\n" 2>&1)
-      if [ -f "${_leCrtPath}/${_keyPathR}" ]; then
-        rm -f /etc/ssl/private/${_DOMAIN}.key
-        cp -a ${_leCrtPath}/${_keyPathR} /etc/ssl/private/${_DOMAIN}.key
-      fi
-    else
-      rm -f /etc/ssl/private/${_DOMAIN}.key
-      cp -a ${_keyPath} /etc/ssl/private/${_DOMAIN}.key
-    fi
+    _satellite_le_copy privkey.pem "/etc/ssl/private/${_DOMAIN}.key"
   fi
+}
+
+#
+# ./$1 in the current (pinned) certs/<domain>/, or the file beside it its
+# link names, read as _acct_read_here reads; nothing for a link that leads
+# anywhere else.
+_satellite_le_file_here() {
+  local _f="${1}" _t
+  if [ -L "./${_f}" ]; then
+    _t="$(readlink -- "./${_f}")"
+    case "${_t}" in
+      ""|.|..|*/*) return 1 ;;
+    esac
+    _f="${_t}"
+  fi
+  _acct_read_here "${_f}"
+}
+# The file $1 of the account's certs/<domain>/ (_leCrtPath), read as
+# _satellite_le_file_here reads it, put at root's own $2 (0600) as a fresh
+# file renamed over the name; $2 stays as it is when nothing is read.
+_satellite_le_copy() {
+  local _c _t="${2}.put.$$.${RANDOM}"
+  _c="$(_acct_in_real_dir "${_leCrtPath}" _satellite_le_file_here "${1}")"
+  [ -n "${_c}" ] || return 1
+  rm -f -- "${_t}"
+  ( umask 077
+    printf '%s\n' "${_c}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "${2}" && return 0
+  rm -f -- "${_t}"
+  return 1
 }
 
 _satellite_letsencrypt_vhost_sync() {
@@ -7033,20 +7237,23 @@ _satellite_batch_cleanup() {
   rm -f /data/u/*o8.io* &> /dev/null
   rm -f /data/u/*boa.io* &> /dev/null
   rm -f /data/u/*aegir.cc* &> /dev/null
-  mv -f ${_ROOT}/backups/drupalgeddon-pre* ${_ROOT}/backups/system/ &> /dev/null
-  mv -f ${_ROOT}/backups/drush_make-pre* ${_ROOT}/backups/system/ &> /dev/null
-  mv -f ${_ROOT}/backups/drush-pre* ${_ROOT}/backups/system/ &> /dev/null
-  mv -f ${_ROOT}/backups/make_local-pre* ${_ROOT}/backups/system/ &> /dev/null
-  mv -f ${_ROOT}/backups/provision_boost-pre* ${_ROOT}/backups/system/ &> /dev/null
-  mv -f ${_ROOT}/backups/provision_cdn-pre* ${_ROOT}/backups/system/ &> /dev/null
-  mv -f ${_ROOT}/backups/provision_civicrm-pre* ${_ROOT}/backups/system/ &> /dev/null
-  mv -f ${_ROOT}/backups/provision_platform_git-pre* ${_ROOT}/backups/system/ &> /dev/null
-  mv -f ${_ROOT}/backups/provision_site_backup-pre* ${_ROOT}/backups/system/ &> /dev/null
-  mv -f ${_ROOT}/backups/provision_tasks_extra-pre* ${_ROOT}/backups/system/ &> /dev/null
-  mv -f ${_ROOT}/backups/provision-pre* ${_ROOT}/backups/system/ &> /dev/null
-  mv -f ${_ROOT}/backups/registry_rebuild-pre* ${_ROOT}/backups/system/ &> /dev/null
-  mv -f ${_ROOT}/backups/safe_cache_form_clear-pre* ${_ROOT}/backups/system/ &> /dev/null
-  mv -f ${_ROOT}/backups/mydropwizard-pre* ${_ROOT}/backups/system/ &> /dev/null
+  ### backups/ is the instance user's (or a link into its store): its own
+  ### old copies are moved into backups/system by that user.
+  _satellite_as_user "_b=${_ROOT}/backups; \
+    mv -f \${_b}/drupalgeddon-pre* \${_b}/system/; \
+    mv -f \${_b}/drush_make-pre* \${_b}/system/; \
+    mv -f \${_b}/drush-pre* \${_b}/system/; \
+    mv -f \${_b}/make_local-pre* \${_b}/system/; \
+    mv -f \${_b}/provision_boost-pre* \${_b}/system/; \
+    mv -f \${_b}/provision_cdn-pre* \${_b}/system/; \
+    mv -f \${_b}/provision_civicrm-pre* \${_b}/system/; \
+    mv -f \${_b}/provision_platform_git-pre* \${_b}/system/; \
+    mv -f \${_b}/provision_site_backup-pre* \${_b}/system/; \
+    mv -f \${_b}/provision_tasks_extra-pre* \${_b}/system/; \
+    mv -f \${_b}/provision-pre* \${_b}/system/; \
+    mv -f \${_b}/registry_rebuild-pre* \${_b}/system/; \
+    mv -f \${_b}/safe_cache_form_clear-pre* \${_b}/system/; \
+    mv -f \${_b}/mydropwizard-pre* \${_b}/system/" &> /dev/null
   mkdir -p /data/conf/arch/log
   # 0755 (not 0777): the surrounding mv operations target /data/conf/arch/,
   # not /data/conf/arch/log — the log subdirectory is vestigial and has no
