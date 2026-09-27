@@ -254,7 +254,10 @@ _site_own_here() {
   ### directory and settings files - site level
   chown -h "${script_user}:${_code_group}" .
   chown -h "${script_user}:www-data" \
-    ./local.settings.php ./settings.php ./civicrm.settings.php ./solr.php
+    ./local.settings.php ./settings.php ./civicrm.settings.php
+  # solr.php holds the site's Solr core details for its owner; no web reader
+  # opens it, so it stays in the code group its writer gives it.
+  chown -h "${script_user}:${_code_group}" ./solr.php
   ### modules,themes,libraries - site level
   for _d in modules themes libraries; do
     _in_pinned_dir "${_here}/${_d}" \

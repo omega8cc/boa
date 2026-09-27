@@ -106,6 +106,9 @@
       sites' settings.php, local.settings.php, civicrm.settings.php,
       solr.php and drushrc.php readable by every account for a moment:
       they stay 0440 while the rest of the platform gets its modes.
+    * A site's solr.php, which holds its Solr core details, stays in the
+      account's own group: the ownership fix and the nightly pass used to
+      put it in the web server's group, readable by every account.
     * Root no longer changes the owner or mode of a shared-code
       revision's keys directory through a link the account put there,
       in the Octopus upgrade or in the nightly pass: the directory is

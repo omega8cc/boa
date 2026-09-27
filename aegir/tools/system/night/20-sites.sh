@@ -2121,7 +2121,10 @@ _site_perm_here() {
   ### the regular files they normally are.
   chown -h "${_HM_U}:${_grp}" . &> /dev/null
   chown -h "${_HM_U}:www-data" ./local.settings.php ./settings.php \
-    ./civicrm.settings.php ./solr.php &> /dev/null
+    ./civicrm.settings.php &> /dev/null
+  ### solr.php holds the site's Solr core details for its owner; no web
+  ### reader opens it, so it stays in the code group its writer gives it.
+  chown -h "${_HM_U}:${_grp}" ./solr.php &> /dev/null
   _chmod_nofollow_here f 0440 ./*.php
   ### The hostmaster site's drushrc.php carries the instance DB user (ALL
   ### PRIVILEGES) and only the backend user, its owner, ever reads it:
