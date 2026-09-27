@@ -124,11 +124,16 @@ for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gem
   case "\${_R}" in /home/*.web) continue ;; esac
   find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root -execdir chgrp -h "\${_G}" {} + 2>/dev/null
 done
-_M="/data/disk/\${_A}/log/instance-group.txt"
-if [ -f "\${_M}" ]; then
+# log/ is the account's own: the record is read and removed only inside the
+# real directory, never through a link or into a FIFO put there
+_W="\$(cd -P /data/disk 2>/dev/null && pwd -P)/\${_A}/log"
+( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(pwd -P)" = "\${_W}" ] \
+    && [ -f ./instance-group.txt ] || exit 0
   _GID=\$(getent group "\${_A}" 2>/dev/null | cut -d: -f3)
-  { [ "\${_G}" = "\${_A}" ] && grep -q " gid=\${_GID}\$" "\${_M}" 2>/dev/null; } || rm -f "\${_M}"
-fi
+  { [ "\${_G}" = "\${_A}" ] \
+    && timeout 10 dd if=./instance-group.txt iflag=nofollow,nonblock,fullblock \
+      bs=1048576 count=1 status=none 2>/dev/null | grep -q " gid=\${_GID}\$"; } \
+    || rm -f -- ./instance-group.txt )
 if [ "\${_DEFERRED}" = "1" ]; then
   echo "INFO: target group pass for \${_A}: the tool deferred 13 times (a BOA run live there); the inline form ran instead, group \${_G}"
   exit 4
@@ -215,13 +220,13 @@ _migrate_sites() {
     _Vht="${_USR}/config/server_master/nginx/vhost.d/${_Dom}"
     _Vhd="${_USR}/config/server_master/nginx/vhost.d/.${_Dom}"
     _Vhs="${_USR}/config/server_master/nginx/vhost.d/https.${_Dom}"
-    if [ -e "${_Vht}" ] && [ ! -z "${_oct}" ]; then
-      chown ${_oct}:${_octGrp} ${_Vht}
-      chmod 600 ${_Vht}
-    fi
-    if [ -e "${_Vhd}" ] && [ ! -z "${_oct}" ]; then
-      chown ${_oct}:${_octGrp} ${_Vhd}
-      chmod 600 ${_Vhd}
+    # vhost.d is under config/, which belongs to oN: the owner and mode are
+    # re-asserted inside the real directory, on names that are regular files
+    # there, with chown -h and a no-follow fchmod -- a link the account put at
+    # either name is skipped, never handed to the account.
+    if [ ! -z "${_oct}" ]; then
+      _xcopy_vhd_reassert "${_Vht%/*}" "${_oct}:${_octGrp}" "${_Dom}"
+      _xcopy_vhd_reassert "${_Vht%/*}" "${_oct}:${_octGrp}" ".${_Dom}"
     fi
     if [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
       echo Dom is ${_Dom}
@@ -229,32 +234,50 @@ _migrate_sites() {
       # through a link or into a FIFO put at the name
       _Dir=$(_xcopy_read_in "${_USR}/.drush" "${_Dom}.alias.drushrc.php" | grep "site_path'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")
       _Plr=$(_xcopy_read_in "${_USR}/.drush" "${_Dom}.alias.drushrc.php" | grep "root'" | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")
-      if [ "${_cmd}" = "import" ] || [ "${_cmd}" = "export" ]; then
+      # site_path comes from the account's own alias and points into its own
+      # tree: confine it to the account and read drushrc.php inside its real
+      # directory, so an alias pointing outside the account (or through a link)
+      # never makes root read another tenant's site or write there. _DIR_OK
+      # gates every db and drushrc step below.
+      _DIR_OK=NO
+      case "${_Dir}/" in
+        "${_USR}"/*) _xcopy_in_real_dir "${_Dir}" true && _DIR_OK=YES ;;
+      esac
+      [ "${_DIR_OK}" = "YES" ] \
+        || echo "ALRT: site ${_Dom} on ${_oct}: site_path ${_Dir} is outside the account or not a real directory -- its db/drushrc steps are skipped"
+      _OWN_DB=NO
+      if { [ "${_cmd}" = "import" ] || [ "${_cmd}" = "export" ]; } \
+        && [ "${_DIR_OK}" = "YES" ]; then
         _xcopy_sql_maint_hold
-        _DBN=`cat ${_Dir}/drushrc.php | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g"`
-        echo "site ${_Dom} raw _DBN is ${_DBN}"
+        # drushrc.php is written with var_export(): each value is a single-quoted
+        # literal in which only the quote and the backslash are escaped. Read the
+        # whole file once inside its real directory, then parse the fields.
+        _DRC=$(_xcopy_read_in "${_Dir}" drushrc.php)
+        _DBN=$(printf '%s\n' "${_DRC}" | grep "options\['db_name'\] = " | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g")
         _DBN=${_DBN//[^a-zA-Z0-9_]/}
-        echo "site ${_Dom} clean _DBN is ${_DBN}"
-      fi
-      if [ "${_cmd}" = "import" ]; then
-        # drushrc.php is written with var_export(): the value is a single-quoted
-        # literal in which only the quote and the backslash are escaped. Read
-        # that literal back, then keep only what the generated-password charset
-        # admits: a password carrying anything else cannot be re-created below
-        # without corrupting it, so it is refused loudly (the empty value takes
-        # the existing skip path) instead of being rewritten into a different
-        # password.
-        _DBP_LIT=$(sed -n 's/^[[:space:]]*\$options\[\x27db_passwd\x27\][[:space:]]*=[[:space:]]*\x27\(.*\)\x27;[[:space:]]*$/\1/p' ${_Dir}/drushrc.php 2>/dev/null \
+        _DBU=$(printf '%s\n' "${_DRC}" | sed -n "s/^\$options\['db_user'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" | head -1)
+        _DBP_LIT=$(printf '%s\n' "${_DRC}" | sed -n 's/^[[:space:]]*\$options\[\x27db_passwd\x27\][[:space:]]*=[[:space:]]*\x27\(.*\)\x27;[[:space:]]*$/\1/p' \
           | head -1 | sed -e 's/\\\x27/\x27/g' -e 's/\\\\/\\/g')
         _DBP=${_DBP_LIT//[^a-zA-Z0-9_]/}
+        echo "site ${_Dom} clean _DBN is ${_DBN}"
+        # The account proves the database is its own: db_user == db_name and its
+        # own credentials authenticate to it. A site naming another tenant's
+        # database in its own drushrc cannot prove it -- root then never dumps
+        # that data on export nor loads over it into an existing DB on import.
+        if [ -n "${_DBN}" ] && [ "${_DBU}" = "${_DBN}" ] \
+          && _xcopy_cred_ok "${_DBN}" "${_DBP_LIT}"; then
+          _OWN_DB=YES
+        fi
+      fi
+      if [ "${_cmd}" = "import" ] && [ "${_DIR_OK}" = "YES" ]; then
         if [ "${_DBP}" != "${_DBP_LIT}" ]; then
           echo "ALRT: site ${_Dom} db_passwd carries characters outside the generated-password charset; not re-created here, fix its credentials by hand"
           _DBP=""
         fi
         echo "site ${_Dom} clean _DBP is ${_DBP}"
-        if [ -e "${_Vhd}" ]; then
-          mv -f ${_Vhd} ${_Vht}
-        fi
+        # vhost.d is oN's: the saved dot-file is renamed over the live name
+        # inside the real directory, so a link at either name is never followed.
+        _xcopy_in_real_dir "${_Vht%/*}" mv -f -T -- "./.${_Dom}" "./${_Dom}" 2> /dev/null
         if [ ! -z "${_dst}" ]; then
           _TGT_HM_USER="${_dst}"
         else
@@ -262,19 +285,19 @@ _migrate_sites() {
         fi
         # Derived here, inside the loop, so it can never carry over a site.
         _TGT_HM_GRP=$(_acct_group "${_TGT_HM_USER}")
-        chown ${_TGT_HM_USER}:${_TGT_HM_GRP} ${_Vht}
-        chmod 600 ${_Vht}
-        if [ -e "${_Dir}/drushrc.php" ]; then
-          sed -i "s/\$options\['db_host'\] = '.*/\$options[\'db_host\'] = \'localhost\';/g" ${_Dir}/drushrc.php
-          wait
-        fi
-        if [ -e "${_Vht}" ]; then
-          sed -i "s/.*fastcgi_param.*db_host.*;/  fastcgi_param db_host   localhost;/g" ${_Vht}
-          wait
-        fi
+        _xcopy_vhd_reassert "${_Vht%/*}" "${_TGT_HM_USER}:${_TGT_HM_GRP}" "${_Dom}"
+        # db_host rewritten to localhost inside the real directories, each as a
+        # fresh file renamed over the name (owner and mode kept), never through
+        # a link or FIFO the account put at drushrc.php or the vhost.
+        _xcopy_in_real_dir "${_Dir}" _xcopy_sed_here drushrc.php \
+          "s/\$options\['db_host'\] = '.*/\$options[\'db_host\'] = \'localhost\';/g"
+        _xcopy_in_real_dir "${_Vht%/*}" _xcopy_sed_here "${_Dom}" \
+          "s/.*fastcgi_param.*db_host.*;/  fastcgi_param db_host   localhost;/g"
         echo "INFO: site ${_Dom} db_host on ${_TGT_HM_USER} fixed"
         if [ ! -z "${_DBN}" ] && [ ! -z "${_DBP}" ]; then
+          _DB_FRESH=NO
           if [ ! -d "/var/lib/mysql/${_DBN}" ]; then
+            _DB_FRESH=YES
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
               _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
@@ -318,7 +341,19 @@ EOFMYSQL
           else
             echo "ALRT: site ${_Dom} db ${_DBN} already exists!"
           fi
-          if [ -e "${_USR}/src/${_DBN}" ]; then
+          # A dump loaded over a database this run did NOT just create from the
+          # account's own credentials must be proven the account's own first:
+          # otherwise a site naming another tenant's database in its own drushrc
+          # would have its data dropped and overwritten by myloader here. A site
+          # with no dump (target-native) writes nothing, so it is left to the
+          # branch below unchanged.
+          if [ -e "${_USR}/src/${_DBN}" ] \
+            && [ "${_DB_FRESH}" != "YES" ] && [ "${_OWN_DB}" != "YES" ]; then
+            _XCOPY_SITE_IMPORT_OK=NO
+            _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + 1 ))
+            _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_DBN}:not-owned"
+            echo "ALRT: site ${_Dom} db ${_DBN} exists but the account cannot prove it owns it -- NOT loaded"
+          elif [ -e "${_USR}/src/${_DBN}" ]; then
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
               _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
@@ -347,19 +382,23 @@ EOFMYSQL
               fi
             fi
             _XCOPY_SITE_IMPORT_OK=NO
+            ### src/ is oN's on the target: the dump directory is entered as a
+            ### real directory of the account (never through a link swapped for
+            ### its name), and myloader reads it as ./ from inside, so --directory
+            ### can only name the proven directory.
             ### mydumper writes metadata into the outputdir as its LAST act;
             ### a transferred dir without it is a partial/hollow dump and
             ### loading it would silently restore an incomplete database.
-            if [ ! -e "${_USR}/src/${_DBN}/metadata" ]; then
+            if ! _xcopy_in_real_dir "${_USR}/src/${_DBN}" test -e ./metadata; then
               _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + 1 ))
               _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_DBN}"
               echo "ALRT: site ${_Dom} db import SKIPPED on ${_oct}: no restorable dump (metadata missing in src/${_DBN})"
-            elif myloader \
+            elif _xcopy_in_real_dir "${_USR}/src/${_DBN}" myloader \
               --database=${_DBN} \
               --host=localhost \
               --defaults-file=/root/.my.cnf \
               --port=3306 \
-              --directory=${_USR}/src/${_DBN}/ \
+              --directory=. \
               --threads=4 \
               --drop-table=DROP \
               --verbose=2; then
@@ -428,7 +467,18 @@ EOFMYSQL
             echo "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V})"
           fi
         fi
-        mkdir -p ${_USR}/src/${_DBN}
+        ### Only a database the account can prove is its own is dumped: a site
+        ### that named another tenant's database in its own drushrc must never
+        ### make root dump that data into this account's src/ and ship it.
+        if [ "${_OWN_DB}" != "YES" ]; then
+          _XCOPY_EXPORT_FAIL=$(( ${_XCOPY_EXPORT_FAIL:-0} + 1 ))
+          _XCOPY_EXPORT_FAILED_DBS="${_XCOPY_EXPORT_FAILED_DBS} ${_DBN:-${_Dom}}:not-owned"
+          echo "ALRT: site ${_Dom} on ${_oct}: cannot prove ${_DBN:-its database} is the account's own -- NOT dumped"
+        else
+        ### src/ is oN's: the per-db directory is made a real directory here (a
+        ### link the account put at its name is removed) and mydumper writes it
+        ### as ./ from inside, so --clear can only act on the proven directory.
+        _xcopy_in_real_dir "${_USR}/src" _xcopy_realdir_here "${_DBN}"
         ### Any non-transactional table makes mydumper abort the whole
         ### database unless --trx-tables=0 is passed; mirrors mysql_backup.sh.
         _NON_TRX_COUNT=$(mysql -u root -s -N -e "SELECT COUNT(*) FROM \
@@ -452,19 +502,19 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           [1-9]*) _MYDUMPER_ROWS_OPT="" ;;
         esac
         ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
-        if mydumper ${_MYDUMPER_TRX_OPT} \
+        if _xcopy_in_real_dir "${_USR}/src/${_DBN}" mydumper ${_MYDUMPER_TRX_OPT} \
           --database=${_DBN} \
           --host=localhost \
           --defaults-file=/root/.my.cnf \
           --port=3306 \
-          --outputdir=${_USR}/src/${_DBN}/ \
+          --outputdir=. \
           ${_MYDUMPER_ROWS_OPT} \
           --build-empty-files \
           --threads=4 \
           --long-query-guard=900 \
           --clear \
           --verbose=2 \
-          && [ -e "${_USR}/src/${_DBN}/metadata" ]; then
+          && _xcopy_in_real_dir "${_USR}/src/${_DBN}" test -e ./metadata; then
           echo "INFO: site ${_Dom} db export on ${_oct} complete"
         else
           ### Counted, not just echoed: the run verdict must never stamp
@@ -473,32 +523,31 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           _XCOPY_EXPORT_FAILED_DBS="${_XCOPY_EXPORT_FAILED_DBS} ${_DBN}"
           echo "ALRT: site ${_Dom} db export FAILED on ${_oct}"
         fi
+        fi
       elif [ "${_cmd}" = "fooproxy" ]; then
         if [ -e "${_USR}/log/exported.pid" ] && [ ! -z "${_tgt}" ]; then
           if [ -e "${_Vht}" ]; then
             _NMS=`cat ${_Vht} | grep "server_name" | sed "s/server_name//g; s/;//g" | sort | uniq | tr -d "\n" | sed "s/  / /g; s/  / /g; s/  / /g" | sort | uniq`
+            # vhost.d is oN's: every write runs inside the real directory on
+            # ./names -- the template is rendered into a fresh file (not cp -a
+            # onto the name then sed -i), the save is a pinned mv -f -T, and the
+            # owner/mode are re-asserted with chown -h and a no-follow fchmod.
             if [ -e "${_USR}/config/server_master/ssl.d/${_Dom}/openssl.key" ] \
               && [ -e "/var/xdrago/conf/https_proxy_le.conf" ]; then
-              cp -a /var/xdrago/conf/https_proxy_le.conf ${_Vhs}
-              sed -i "s/.*server_name.*;/  server_name  ${_NMS};/g" ${_Vhs}
-              wait
-              sed -i "s/_target_ip/${_tgt}/g" ${_Vhs}
-              wait
-              sed -i "s/_oct_uid/${_oct}/g" ${_Vhs}
-              wait
-              sed -i "s/_domain_name/${_Dom}/g" ${_Vhs}
-              wait
-              chown ${_oct}:${_octGrp} ${_Vhs}
-              chmod 600 ${_Vhs}
+              _xcopy_in_real_dir "${_Vhs%/*}" _xcopy_tpl_to_here \
+                /var/xdrago/conf/https_proxy_le.conf "https.${_Dom}" \
+                -e "s/.*server_name.*;/  server_name  ${_NMS};/g" \
+                -e "s/_target_ip/${_tgt}/g" \
+                -e "s/_oct_uid/${_oct}/g" \
+                -e "s/_domain_name/${_Dom}/g"
+              _xcopy_vhd_reassert "${_Vhs%/*}" "${_oct}:${_octGrp}" "https.${_Dom}"
             fi
-            mv -f ${_Vht} ${_Vhd}
-            cp -a /var/xdrago/conf/proxy.conf ${_Vht}
-            sed -i "s/.*server_name.*;/  server_name  ${_NMS};/g" ${_Vht}
-            wait
-            sed -i "s/_target_ip/${_tgt}/g" ${_Vht}
-            wait
-            chown ${_oct}:${_octGrp} ${_Vht}
-            chmod 600 ${_Vht}
+            _xcopy_in_real_dir "${_Vht%/*}" mv -f -T -- "./${_Dom}" "./.${_Dom}"
+            _xcopy_in_real_dir "${_Vht%/*}" _xcopy_tpl_to_here \
+              /var/xdrago/conf/proxy.conf "${_Dom}" \
+              -e "s/.*server_name.*;/  server_name  ${_NMS};/g" \
+              -e "s/_target_ip/${_tgt}/g"
+            _xcopy_vhd_reassert "${_Vht%/*}" "${_oct}:${_octGrp}" "${_Dom}"
             echo "INFO: site ${_Dom} proxy conversion on ${_oct} complete"
           else
             echo "ALRT: site ${_Dom} proxy conversion on ${_oct} failed due to missing ${_Vht}"
@@ -564,8 +613,11 @@ _migrate_prepare() {
   rm -rf /home/${_THIS_HM_USER}.ftp/drush-backups
   _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='-1'\""
   _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task WHERE task_type='delete' AND task_status='0' AND executed='0'\""
-  rm -rf ${_USR}/clients/*/backups
-  symlinks -dr ${_USR}/clients
+  # clients/ belongs to oN: enter only real client subdirectories and remove
+  # only their own backups, then prune dangling links from inside the real
+  # clients/ -- never rm -rf or symlinks -dr through a link at clients or a
+  # client name.
+  _xcopy_clean_clients "${_USR}/clients"
   if [ -d "/home/${_THIS_HM_USER}.ftp" ]; then
     symlinks -dr /home/${_THIS_HM_USER}.ftp
     rm -f /home/${_THIS_HM_USER}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
@@ -582,7 +634,9 @@ _migrate_prepare() {
   else
     echo "no ${_THIS_HM_SITE}/drushrc.php found"
   fi
-  mkdir -p ${_USR}/src
+  # src/ belongs to oN: make it a real directory (a link the account put at the
+  # name is removed) so the dump below cannot be steered elsewhere.
+  _xcopy_in_real_dir "${_USR}" _xcopy_realdir_here src
   if [ "${_cmd}" = "export" ] \
     && [ ! -z "${_HDB}" ] \
     && [ ! -e "${_USR}/src/prev_hostmaster.sql" ] \
@@ -591,14 +645,17 @@ _migrate_prepare() {
       # across the entire DB on import and its task queue regenerates db-host
       # and alias entries, so a per-table allowlist (which silently dropped any
       # unlisted or newly added schema table) is no longer needed.
-      if mysqldump -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp \
+      # Written into the real src/ as a fresh file renamed over the name, so a
+      # link the account put at prev_hostmaster.sql (even a dangling one, past
+      # the -e guard above) is replaced, never followed to create its target.
+      if _xcopy_in_real_dir "${_USR}/src" _xcopy_dump_hm_here \
+        mysqldump -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp \
         --single-transaction \
         --quick \
         --no-autocommit \
         --skip-add-locks \
         --no-tablespaces \
-        --hex-blob ${_HDB} \
-        > ${_USR}/src/prev_hostmaster.sql; then
+        --hex-blob ${_HDB}; then
         _XCOPY_HM_DUMP_OK=YES
       else
         _XCOPY_HM_DUMP_OK=NO
@@ -613,7 +670,7 @@ _migrate_prepare() {
     else
       ### Remove the debris so a re-run redumps from scratch instead of
       ### skipping the hostmaster block on the pre-created file.
-      rm -f ${_USR}/src/prev_hostmaster.sql
+      _xcopy_in_real_dir "${_USR}/src" rm -f -- ./prev_hostmaster.sql
       echo "ALRT: hostmaster ${_oct} db export FAILED (mysqldump error or empty dump)"
       exit 1
     fi
@@ -629,7 +686,14 @@ _migrate_prepare() {
         ### Never stamp the account imported over a failed panel restore --
         ### the marker is what blocks a re-import, so a swallowed failure
         ### here strands the account permanently. xoct already checks this.
-        if ! mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql; then
+        ### src/ is oN's on the target: the dump is streamed from inside the
+        ### real directory (never through a link swapped in) and fed with
+        ### --binary-mode so a `\!`/system line planted in it is never run by
+        ### the client as root; pipefail keeps a streaming failure from passing.
+        if ! ( set -o pipefail
+          _xcopy_in_real_dir "${_USR}/src" _xcopy_cat_here prev_hostmaster.sql \
+            | mysql --binary-mode --silent -u root -h${_SQL_CONNECT} \
+              -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} ); then
           echo "ERROR: hostmaster dump import into ${_HDB} FAILED -- this import is INCOMPLETE"
           echo "ERROR: nothing was stamped; fix the cause, then re-run the FULL import"
           exit 1
@@ -644,7 +708,12 @@ _migrate_prepare() {
       fi
     else
       [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL6 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
-      if ! mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} < ${_USR}/src/prev_hostmaster.sql; then
+      ### src/ is oN's on the target: streamed from inside the real directory
+      ### and fed with --binary-mode (see the rename-mode branch above).
+      if ! ( set -o pipefail
+        _xcopy_in_real_dir "${_USR}/src" _xcopy_cat_here prev_hostmaster.sql \
+          | mysql --binary-mode --silent -u root -h${_SQL_CONNECT} \
+            -P${_THIS_DB_PORT} --protocol=tcp ${_HDB} ); then
         echo "ERROR: hostmaster dump import into ${_HDB} FAILED -- this import is INCOMPLETE"
         echo "ERROR: nothing was stamped; fix the cause, then re-run the FULL import"
         exit 1
@@ -923,6 +992,160 @@ _xcopy_copy_here() {
   # shellcheck disable=SC2086
   _xcopy_rsync "$@" --rsync-path="$(_xcopy_rsync_path_in "${_d}")" -e ssh \
     ./${_g} "root@${_h}:./"
+}
+# As _xcopy_rsync_path_in, but the last name of $1 is made a real directory
+# first (a link the account put there is removed, a missing directory made):
+# for a leg whose target directory the install does not create.
+_xcopy_rsync_path_mk_in() {
+  local _d="${1}" _a=/data/disk _p _n
+  case "${_d}" in /home/?*) _a=/home ;; esac
+  _p="${_d%/*}"
+  _n="${_d##*/}"
+  printf '%s' "_a=\"\$(cd -P ${_a} && pwd -P)\"; cd -P -- '${_p}' && [ \"\$(pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && rsync"
+}
+# The entries of the current (pinned) directory the glob $3 names copied into
+# the real directory $2 on the target $1, the target directory created when
+# missing (a link there removed first).
+_xcopy_copy_mk_here() {
+  local _h="${1}" _d="${2}" _g="${3}"
+  shift 3
+  # shellcheck disable=SC2086
+  _xcopy_rsync "$@" --rsync-path="$(_xcopy_rsync_path_mk_in "${_d}")" -e ssh \
+    ./${_g} "root@${_h}:./"
+}
+# ./$1 in the current (pinned) directory put at ./$2 through sed "${@:3}":
+# only a regular file under 1 MiB is read, never through a link or into a
+# FIFO; the result is a fresh file with the source's numeric owner (chown -h)
+# and mode (by umask, never a chmod by name), renamed over ./$2. For a plain
+# file this is what sed -i (and cp -a, empty program) wrote, without their
+# reach through a link put at the name.
+_xcopy_sed_to() {
+  local _s="${1}" _n="${2}" _st _own _m _sz _ft _t
+  shift 2
+  _st="$(stat -c '%u:%g %a %s %F' -- "./${_s}" 2> /dev/null)" || return 1
+  case "${_st}" in
+    *" regular file"|*" regular empty file") ;;
+    *) return 1 ;;
+  esac
+  read -r _own _m _sz _ft <<< "${_st}"
+  [ "${_sz}" -lt 1048576 ] || return 1
+  _t="./.${_n}.sed.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( set -o pipefail
+    umask "$(printf '%03o' $(( 0777 & ~0${_m} )))"
+    _xcopy_read_here "${_s}" | sed "$@" \
+      | dd of="${_t}" conv=excl status=none 2> /dev/null ); then
+    chown -h "${_own}" "${_t}" 2> /dev/null
+    mv -f -T -- "${_t}" "./${_n}" && return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# ./$1 rewritten in place by sed "${@:2}", as _xcopy_sed_to does it.
+_xcopy_sed_here() {
+  local _n="${1}"
+  shift
+  _xcopy_sed_to "${_n}" "${_n}" "$@"
+}
+# ./$2 built from the template file $1 (absolute, root-owned) piped through
+# sed "${@:3}" into a fresh exclusive file (0600) renamed over the name: a
+# link put at the destination is replaced, never written through.
+_xcopy_tpl_to_here() {
+  local _tpl="${1}" _n="${2}" _t
+  shift 2
+  _t="./.${_n}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( set -o pipefail
+    umask 077
+    sed "$@" -- "${_tpl}" | dd of="${_t}" conv=excl status=none 2> /dev/null ); then
+    mv -f -T -- "${_t}" "./${_n}" && return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# chmod $1 on the regular files ./$2 ... of the current (pinned) directory
+# WITHOUT following a link.
+_XCOPY_FCHMOD_PL='use Fcntl;
+my $m = shift @ARGV;
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  chmod(oct($m), $h) if -f $h;
+  close($h);
+}'
+_xcopy_fchmod_here() {
+  local _m="${1}"
+  shift
+  [ "$#" -gt 0 ] || return 0
+  perl -e "${_XCOPY_FCHMOD_PL}" "${_m}" "$@" 2> /dev/null
+}
+# Re-assert owner:group $1 and mode $2 on the regular file ./$3 of the current
+# (pinned) directory: skips a non-regular name, uses chown -h and a no-follow
+# fchmod, so a link the account put at the name never hands its target away.
+_xcopy_reassert_here() {
+  local _own="${1}" _m="${2}" _n="${3}"
+  [ -f "./${_n}" ] && [ ! -L "./${_n}" ] || return 0
+  chown -h "${_own}" "./${_n}" 2> /dev/null
+  _xcopy_fchmod_here "${_m}" "./${_n}"
+}
+# The same, run inside the real vhost.d directory $1. $2 owner:group, $3 the
+# vhost name, $4 the mode (default 600).
+_xcopy_vhd_reassert() {
+  _xcopy_in_real_dir "${1}" _xcopy_reassert_here "${2}" "${4:-600}" "${3}"
+}
+# The account proves it owns a database by logging in as its own user and
+# using it (BOA sets db_user == db_name). $1 = db (== user), $2 = password.
+_xcopy_cred_ok() {
+  [ -n "$1" ] && [ -n "$2" ] \
+    && mysql -u"$1" -p"$2" -h"${_SQL_CONNECT:-localhost}" \
+      -P"${_THIS_DB_PORT:-3306}" --protocol=tcp -N -B \
+      -e "USE \`$1\`" > /dev/null 2>&1
+}
+# The real (non-link) subdirectory names of the current (pinned) directory.
+_xcopy_real_subdirs_here() {
+  local _e
+  for _e in ./*; do
+    [ -d "${_e}" ] && [ ! -L "${_e}" ] && printf '%s\n' "${_e#./}"
+  done
+}
+# clients/ ($1) is oN's: enter only real client subdirectories, remove only
+# their own ./backups, then prune dangling links from inside the real dir --
+# never rm -rf or symlinks -dr through a link at clients or a client name.
+_xcopy_clean_clients() {
+  local _cd="${1}" _c
+  _xcopy_in_real_dir "${_cd}" true || return 0
+  _xcopy_in_real_dir "${_cd}" _xcopy_real_subdirs_here | while IFS= read -r _c; do
+    [ -n "${_c}" ] || continue
+    _xcopy_in_real_dir "${_cd}/${_c}" rm -rf -- ./backups
+  done
+  _xcopy_in_real_dir "${_cd}" symlinks -dr .
+}
+# ./$1 made a real directory in the current (pinned) parent: a link the account
+# put at the name is removed, a missing directory created.
+_xcopy_realdir_here() {
+  [ -L "./${1}" ] && rm -f -- "./${1}"
+  [ -d "./${1}" ] || mkdir -p -- "./${1}"
+}
+# The whole regular file ./$1 of the current (pinned) directory streamed to
+# stdout without following a link (unbounded, for a DB dump): a link put at the
+# name yields nothing, a FIFO never blocks past the read.
+_xcopy_cat_here() {
+  dd if="./${1}" iflag=nofollow,nonblock status=none 2> /dev/null
+}
+# The hostmaster dump the command "$@" writes on stdout, captured into the
+# current (pinned) src/ directory as a fresh exclusive file renamed over
+# ./prev_hostmaster.sql: the command's exit code survives the pipe, a link the
+# account put at the name is replaced, and a zero-byte result is refused.
+_xcopy_dump_hm_here() {
+  local _t="./.prev_hostmaster.sql.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( set -o pipefail
+    umask 077
+    "$@" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && [ -s "${_t}" ]; then
+    mv -f -T -- "${_t}" ./prev_hostmaster.sql && return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
 }
 
 # Mode-aware rsync: performs the transfer in LIVE, only reports it in DRY.
@@ -1330,11 +1553,19 @@ _migrate_init() {
         [ "${_MODE}" = "LIVE" ] && _xcopy_require_clean_dry "${_oct}" "${_tgt}"
         _XCOPY_STORE_RC=0
         if [ -e "${_USR}" ]; then
-          _xcopy_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/distro/*         root@${_tgt}:${_DST}/distro/
-          _xcopy_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/src/*            root@${_tgt}:${_DST}/src/
+          # distro/ and src/ belong to oN on both boxes: each leg expands its
+          # glob inside the real source directory and the receiver writes inside
+          # the real target directory (created when missing), so a link the
+          # account put at either name is never followed or written through.
+          _xcopy_in_real_dir "${_USR}/distro" _xcopy_copy_mk_here "${_tgt}" \
+            "${_DST}/distro" '*' -aEAXqu ${_ieni}
+          _xcopy_in_real_dir "${_USR}/src" _xcopy_copy_mk_here "${_tgt}" \
+            "${_DST}/src" '*' -aEAXqu ${_ieni}
           _xcopy_transfer_static_symlink_safe "${_USR}" "${_tgt}" "${_DST}" "${_ieni}" "${_TGT_MNT}"
           #
-          _xcopy_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/clients/*        root@${_tgt}:${_DST}/clients/
+          # clients/ is oN's on both boxes: pinned both ends, target made real.
+          _xcopy_in_real_dir "${_USR}/clients" _xcopy_copy_mk_here "${_tgt}" \
+            "${_DST}/clients" '*' -aEAXqu ${_ieni}
           # instance-group.txt records the SOURCE box's conversion (its gid);
           # it must never travel, the destination pass writes its own.
           # log/ is oN's on both boxes: copied from inside the real directory
@@ -1353,8 +1584,12 @@ _migrate_init() {
               "${_DST}/static/control" '' -aEAXqu ${_ieni} --exclude='*/'
           fi
           #
-          _xcopy_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/backups/*        root@${_tgt}:${_DST}/backups/
-          _xcopy_rsync -aEAXqu ${_ieni} -e ssh ${_USR}/undo/*           root@${_tgt}:${_DST}/undo/
+          # backups/ and undo/ are oN's on both boxes: pinned both ends, the
+          # target directory made real (undo/ the installer does not create).
+          _xcopy_in_real_dir "${_USR}/backups" _xcopy_copy_mk_here "${_tgt}" \
+            "${_DST}/backups" '*' -aEAXqu ${_ieni}
+          _xcopy_in_real_dir "${_USR}/undo" _xcopy_copy_mk_here "${_tgt}" \
+            "${_DST}/undo" '*' -aEAXqu ${_ieni}
           if [ ! -z "${_dst}" ]; then
             _xcopy_rsync -aEAXqu ${_ieni} -e ssh /home/${_oct}.ftp/.ssh  root@${_tgt}:/home/${_dst}.ftp/
           else
@@ -1376,48 +1611,43 @@ _migrate_init() {
           _xcopy_in_real_dir "${_USR}/.drush" _xcopy_copy_here "${_tgt}" \
             "${_DST}/.drush" '*.alias.drushrc.php' -aEAXqu ${_ieni}
 
-          _xcopy_rsync -aEAXqu \
-            ${_ieni} \
-            --exclude=host8.biz \
-            --exclude=boa.io \
-            --exclude=aegir.cc \
-            -e ssh ${_USR}/config/server_master/nginx/vhost.d/* \
-            root@${_tgt}:${_DST}/config/server_master/nginx/vhost.d/
+          # config/ and tools/ belong to oN on both boxes: every leg below
+          # expands its glob inside the real source directory and the receiver
+          # writes inside the real target directory (created when missing), so a
+          # link the account put at a directory name is never followed or written
+          # through. Nested subdirectories are still walked by rsync within a
+          # single run -- the residual noted for these whole-tree legs.
+          _xcopy_in_real_dir "${_USR}/config/server_master/nginx/vhost.d" \
+            _xcopy_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/vhost.d" '*' \
+            -aEAXqu ${_ieni} --exclude=host8.biz --exclude=boa.io --exclude=aegir.cc
 
-          _xcopy_rsync -aEAXqu \
-            ${_ieni} \
-            -e ssh ${_USR}/config/server_master/nginx/pre.d/* \
-            root@${_tgt}:${_DST}/config/server_master/nginx/pre.d/
+          _xcopy_in_real_dir "${_USR}/config/server_master/nginx/pre.d" \
+            _xcopy_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/pre.d" '*' \
+            -aEAXqu ${_ieni}
 
-          _xcopy_rsync -aEAXqu \
-            ${_ieni} \
-            -e ssh ${_USR}/config/server_master/nginx/post.d/* \
-            root@${_tgt}:${_DST}/config/server_master/nginx/post.d/
+          _xcopy_in_real_dir "${_USR}/config/server_master/nginx/post.d" \
+            _xcopy_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/post.d" '*' \
+            -aEAXqu ${_ieni}
 
-          _xcopy_rsync -aEAXqu \
-            ${_ieni} \
-            -e ssh ${_USR}/config/server_master/nginx/subdir.d/* \
-            root@${_tgt}:${_DST}/config/server_master/nginx/subdir.d/
+          _xcopy_in_real_dir "${_USR}/config/server_master/nginx/subdir.d" \
+            _xcopy_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/subdir.d" '*' \
+            -aEAXqu ${_ieni}
 
-          _xcopy_rsync -aEAXqu \
-            ${_ieni} \
-            -e ssh ${_USR}/config/server_master/nginx/platform.d/* \
-            root@${_tgt}:${_DST}/config/server_master/nginx/platform.d/
+          _xcopy_in_real_dir "${_USR}/config/server_master/nginx/platform.d" \
+            _xcopy_copy_mk_here "${_tgt}" "${_DST}/config/server_master/nginx/platform.d" '*' \
+            -aEAXqu ${_ieni}
 
-          _xcopy_rsync -aEAXqu \
-            ${_ieni} \
-            -e ssh ${_USR}/config/ssl.d/* \
-            root@${_tgt}:${_DST}/config/ssl.d/
+          _xcopy_in_real_dir "${_USR}/config/ssl.d" \
+            _xcopy_copy_mk_here "${_tgt}" "${_DST}/config/ssl.d" '*' \
+            -aEAXqu ${_ieni}
 
-          _xcopy_rsync -aEAXqu \
-            ${_ieni} \
-            -e ssh ${_USR}/config/server_master/ssl.d/* \
-            root@${_tgt}:${_DST}/config/server_master/ssl.d/
+          _xcopy_in_real_dir "${_USR}/config/server_master/ssl.d" \
+            _xcopy_copy_mk_here "${_tgt}" "${_DST}/config/server_master/ssl.d" '*' \
+            -aEAXqu ${_ieni}
 
-          _xcopy_rsync -aEAXqu \
-            ${_ieni} \
-            -e ssh ${_USR}/tools/le \
-            root@${_tgt}:${_DST}/tools/
+          _xcopy_in_real_dir "${_USR}/tools" \
+            _xcopy_copy_mk_here "${_tgt}" "${_DST}/tools" 'le' \
+            -aEAXqu ${_ieni}
 
           # Catch-all: fix any OTHER /mnt-anchored symlink in the account tree that the
           # rsync -a passes above transferred as a bare (dangling-on-target) link.

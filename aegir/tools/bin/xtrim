@@ -137,6 +137,42 @@ _alias_field() {
     | head -n1
 }
 
+### The account proves it owns a database by logging in as its own user and
+### using it: BOA sets db_user == db_name (one user per site DB), so a login
+### as that user with that password can reach only databases the account
+### really owns. $1 = db (== user), $2 = its password.
+_cred_ok() {
+  [ -n "$1" ] && [ -n "$2" ] \
+    && mysql -u"$1" -p"$2" -N -B -e "USE \`$1\`" > /dev/null 2>&1
+}
+
+### db_name for the site at $1, echoed ONLY when it is the account's own:
+### the site_path must lie under the account, its drushrc is read inside the
+### real directory (never through a link or FIFO), db_user must equal
+### db_name, and the account's own credentials must authenticate to it.
+### Anything else -- a site_path outside the account, or a db_name the
+### account wrote into its own drushrc that names another tenant's database
+### -- is refused, so nothing of that name is dumped or dropped.
+_acct_owns_db() {
+  local _sp="$1" _rc _dn _du _dp
+  case "${_sp}/" in
+    "${_USR}"/*) ;;
+    *) return 1 ;;
+  esac
+  _rc="$(_read_file "${_sp}/drushrc.php")"
+  _dn=$(printf '%s\n' "${_rc}" \
+    | sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" | head -n1)
+  _du=$(printf '%s\n' "${_rc}" \
+    | sed -n "s/^\$options\['db_user'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" | head -n1)
+  _dp=$(printf '%s\n' "${_rc}" \
+    | sed -n "s/^\$options\['db_passwd'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" | head -n1)
+  _dn="$(_sane_ident "${_dn}")"
+  [ -n "${_dn}" ] || return 1
+  [ "${_du}" = "${_dn}" ] || return 1
+  _cred_ok "${_dn}" "${_dp}" || return 1
+  echo "${_dn}"
+}
+
 ### -------------------------------------------------------------- state ---
 
 _state_file() {
@@ -268,12 +304,21 @@ _trim_static_here() {
     esac
     if [ -L "${_f}" ]; then
       _r="$(_safe_resolved "${_f}" "${2}")"
-      [ -n "${_r}" ] && _in_real_dir "${_r%/*}" rm -rf -- "./${_r##*/}"
-      rm -f -- "${_f}"
+      if [ -n "${_r}" ]; then
+        _in_real_dir "${_r%/*}" rm -rf -- "./${_r##*/}"
+        rm -f -- "${_f}"
+        _info "${1}: removed static tree ${2}/static/${_f#./} (store ${_r})"
+      else
+        ### The link resolves outside the account and its own store, so the
+        ### store is not this account's to remove: keep both, name the target,
+        ### and leave the deletion to a deliberate decision.
+        _alrt "${1}: static/${_f#./} resolves to $(readlink -f "${_f}" 2> /dev/null) outside the account/store -- link and data left in place"
+        continue
+      fi
     else
       rm -rf -- "${_f}"
+      _info "${1}: removed static tree ${2}/static/${_f#./}"
     fi
-    _info "${1}: removed static tree ${2}/static/${_f#./}"
   done
 }
 
@@ -360,12 +405,9 @@ _map_account() {
     _sp="$(_alias_field "${_al}" "site_path")"
     [ -z "${_sp}" ] && continue
     _MAP_SITES="${_MAP_SITES} ${_sp}"
-    if [ -r "${_sp}/drushrc.php" ]; then
-      _db=$(sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
-        "${_sp}/drushrc.php" 2>/dev/null | head -n1)
-      _db="$(_sane_ident "${_db}")"
-      [ -n "${_db}" ] && _MAP_DBS="${_MAP_DBS} ${_db}"
-    fi
+    ### Only a database the account can prove it owns enters the drop list.
+    _db="$(_acct_owns_db "${_sp}")"
+    [ -n "${_db}" ] && _MAP_DBS="${_MAP_DBS} ${_db}"
   done
   _MAP_DBS=$(echo "${_MAP_DBS}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
   ### The account's OWN dedicated Aegir site (oN.<this-host-fqdn>) is local
@@ -380,21 +422,16 @@ _map_account() {
   _selfdom="${_oN}.$(hostname -f 2>/dev/null | tr -d '\n')"
   if [ -r "${_USR}/.drush/${_selfdom}.alias.drushrc.php" ]; then
     _sp="$(_alias_field "${_USR}/.drush/${_selfdom}.alias.drushrc.php" "site_path")"
-    if [ -n "${_sp}" ] && [ -r "${_sp}/drushrc.php" ]; then
-      _db=$(sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
-        "${_sp}/drushrc.php" 2>/dev/null | head -n1)
-      _db="$(_sane_ident "${_db}")"
+    if [ -n "${_sp}" ]; then
+      _db="$(_acct_owns_db "${_sp}")"
       [ -n "${_db}" ] && _MAP_OWN_DBS="${_MAP_OWN_DBS} ${_db}"
     fi
   fi
-  ### The account panel database.
+  ### The account panel database. Ownership proven like every other; the
+  ### panel is only exempt from the target-NAME proof, never from ownership.
   if [ -r "${_USR}/.drush/hostmaster.alias.drushrc.php" ]; then
     _sp="$(_alias_field "${_USR}/.drush/hostmaster.alias.drushrc.php" "site_path")"
-    if [ -n "${_sp}" ] && [ -r "${_sp}/drushrc.php" ]; then
-      _db=$(sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
-        "${_sp}/drushrc.php" 2>/dev/null | head -n1)
-      _MAP_HM_DB="$(_sane_ident "${_db}")"
-    fi
+    [ -n "${_sp}" ] && _MAP_HM_DB="$(_acct_owns_db "${_sp}")"
   fi
   ### Platform roots come from platform_* aliases, never a glob.
   for _al in "${_USR}"/.drush/platform_*.alias.drushrc.php; do
