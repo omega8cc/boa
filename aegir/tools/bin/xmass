@@ -690,14 +690,16 @@ _xmass_sed_here() {
   _xmass_sed_to "${_n}" "${_n}" "$@"
 }
 ### The --rsync-path that makes the receiving side work as _xmass_in_real_dir
-### does here, in the directory $1 (below /data/disk or /home) on that box:
-### the parent must be real, a link put at the last name is removed and a
-### missing directory made, and the copy lands in ./ only once pwd -P says
-### where that is. The receiver never writes through a link put on the way.
+### does here, in the directory $1 (below /data/disk, /home or /opt/user,
+### the client toolchain trees) on that box: the parent must be real, a
+### link put at the last name is removed and a missing directory made, and
+### the copy lands in ./ only once pwd -P says where that is. The receiver
+### never writes through a link put on the way.
 _xmass_pin_rpath() {
   local _d="${1}" _a=/data/disk _p _n
   case "${_d}" in
     /home/?*) _a=/home ;;
+    /opt/user/?*) _a=/opt/user ;;
   esac
   _p="${_d%/*}"
   _n="${_d##*/}"
@@ -709,6 +711,203 @@ _xmass_remote_guards() {
   declare -f _xmass_real_want _xmass_in_real_dir _xmass_read_here \
     _xmass_read_in _xmass_read_file _xmass_put_here _xmass_touch_here \
     _xmass_sed_to _xmass_sed_here
+}
+### A leg whose source directory is missing or is not a real one (a link
+### on its path): nothing is followed or sent, and the pass fails as a
+### failed transfer does, so a cutover never goes ahead without it.
+### $1 = the directory, $2 = what does not travel.
+_xmass_leg_refused() {
+  _alrt "DENY: ${1} is missing or not a real directory (a link on its path) -- not followed: ${2} does not travel until it is one again"
+  _XMASS_RSYNC_RC=23
+  _XMASS_NOT_CLEAN=YES
+}
+### Whether the resolved (canonical) path $2 belongs to the account $1: its
+### own tree, or its own part of an attached store, <mount>/files/<oN>/, the
+### layout migratefs relocates static/files to. Another account's tree or
+### store, and anything else a link can name, never passes.
+_xmass_own_path() {
+  local _a="${1}" _p="${2}" _t _r
+  case "${_a}" in
+    ''|.|..|*/*) return 1 ;;
+  esac
+  case "${_p}" in
+    /?*) ;;
+    *) return 1 ;;
+  esac
+  case "${_p}/" in
+    *//*|*/./*|*/../*) return 1 ;;
+  esac
+  _t="$(_xmass_real_want "/data/disk/${_a}")"
+  if [ "${_t}" != "/${_a}" ]; then
+    case "${_p}/" in
+      "${_t}"/*) return 0 ;;
+    esac
+  fi
+  case "${_p}" in
+    /mnt/?*/files/?*)
+      _r="${_p#/mnt/}"
+      _r="${_r#*/}"
+      case "${_r}/" in
+        "files/${_a}"/*) return 0 ;;
+      esac
+      ;;
+  esac
+  return 1
+}
+### Whether the resolved path $2 is owned by one of the account $1's
+### identities: <oN>, <oN>.ftp or a sub-user <oN>.<name>.
+_xmass_own_uid() {
+  local _o
+  _o="$(stat -c '%U' -- "${2}" 2> /dev/null)" || return 1
+  case "${_o}" in
+    "${1}"|"${1}".?*) return 0 ;;
+  esac
+  return 1
+}
+### The resolved path $2 is the account $1's own ($3 = tree: its tree or
+### store; uid: also anything its identities own).
+_xmass_store_is_own() {
+  _xmass_own_path "${1}" "${2}" && return 0
+  [ "${3}" = "uid" ] && _xmass_own_uid "${1}" "${2}"
+}
+### _xmass_at_real_dir for a directory already resolved and checked: $1 is
+### its canonical path, and "$@" runs only once pwd -P lands exactly there,
+### then the previous working directory is restored.
+_xmass_at_canon_dir() {
+  local _d="${1}" _back _rc
+  shift
+  case "${_d}" in
+    /*) ;;
+    *) return 1 ;;
+  esac
+  _back="$(pwd -P 2> /dev/null)"
+  [ -n "${_back}" ] || _back=/
+  cd -P -- "${_d}" 2> /dev/null || return 1
+  if [ "$(pwd -P)" != "${_d}" ]; then
+    cd -P -- "${_back}" 2> /dev/null || cd / || return 1
+    return 1
+  fi
+  "$@"
+  _rc=$?
+  cd -P -- "${_back}" 2> /dev/null || cd / || return 1
+  return "${_rc}"
+}
+### The --rsync-path that starts the receiver inside the canonical
+### directory $1 on that box, and only once pwd -P says it is there.
+_xmass_canon_rpath() {
+  local _q
+  _q="$(_shq "${1}")"
+  printf '%s' "cd -P -- '${_q}' && [ \"\$(pwd -P)\" = '${_q}' ] && rsync"
+}
+### Run on the box that receives an account's copy, with the account's name
+### in $1: enter the real parent of $2, made as mkdir -p makes it, once the
+### nearest existing name on the way and then the parent itself resolve into
+### the account's own tree or store. Run in the shell that then acts on
+### ./<last name>, so a link carried there earlier is never walked through.
+_xmass_own_parent_cd() {
+  local _a="${1}" _p="${2%/*}" _e
+  [ -n "${_p}" ] || return 1
+  _e="${_p}"
+  while [ -n "${_e}" ] && [ ! -e "${_e}" ]; do
+    _e="${_e%/*}"
+  done
+  _xmass_own_path "${_a}" "$(cd -P -- "${_e:-/}" 2> /dev/null && pwd -P)" \
+    || return 1
+  mkdir -p -- "${_p}" 2> /dev/null
+  cd -P -- "${_p}" 2> /dev/null || return 1
+  _xmass_own_path "${_a}" "$(pwd -P)"
+}
+### Run there as above: make the directory $3 of the account $2 ready for a
+### copy and print XMREAL with its canonical path. A link at the last name
+### stays when it resolves into the account's own tree or store and $1 is
+### keep (the backups mover's link); otherwise it gives way to a directory.
+_xmass_own_dir_ready() {
+  local _m="${1}" _a="${2}" _n="${3##*/}" _r
+  case "${_n}" in
+    ''|.|..) return 1 ;;
+  esac
+  _xmass_own_parent_cd "${_a}" "${3}" || return 1
+  if [ -L "./${_n}" ]; then
+    _r="$(cd -P -- "./${_n}" 2> /dev/null && pwd -P)"
+    if [ "${_m}" != "keep" ] || ! _xmass_own_path "${_a}" "${_r}"; then
+      rm -f -- "./${_n}" || return 1
+    fi
+  elif [ -e "./${_n}" ] && [ ! -d "./${_n}" ]; then
+    rm -f -- "./${_n}" || return 1
+  fi
+  [ -d "./${_n}" ] || mkdir -- "./${_n}" || return 1
+  cd -P -- "./${_n}" 2> /dev/null || return 1
+  _r="$(pwd -P)"
+  _xmass_own_path "${_a}" "${_r}" || return 1
+  printf 'XMREAL %s\n' "${_r}"
+}
+### Run there as above: print XMREAL with the canonical parent of the path
+### $2 of the account $1, made ready as _xmass_own_parent_cd makes it.
+_xmass_own_parent_ready() {
+  _xmass_own_parent_cd "${1}" "${2}" || return 1
+  printf 'XMREAL %s\n' "$(pwd -P)"
+}
+### Run there as above: put the link $2 -> $3 of the account $1 in place of
+### whatever holds the name, inside its real parent.
+_xmass_own_link_ready() {
+  local _n="${2##*/}"
+  case "${_n}" in
+    ''|.|..) return 1 ;;
+  esac
+  _xmass_own_parent_cd "${1}" "${2}" || return 1
+  if [ -L "./${_n}" ]; then
+    rm -f -- "./${_n}"
+  elif [ -d "./${_n}" ]; then
+    rm -rf -- "./${_n}"
+  elif [ -e "./${_n}" ]; then
+    rm -f -- "./${_n}"
+  fi
+  ln -sfn -- "${3}" "./${_n}" || return 1
+  printf 'XMREAL %s/%s\n' "$(pwd -P)" "${_n}"
+}
+### Run there: make the store copy's directory $1 under the attached mount
+### and print XMREAL with its canonical path, only when no name below /mnt
+### on the way is a link (checked before anything is made, and again after).
+_xmass_real_mnt_dir() {
+  local _d="${1}" _c _e
+  case "${_d}/" in
+    /mnt/?*/?*) ;;
+    *) return 1 ;;
+  esac
+  case "${_d}/" in
+    *//*|*/./*|*/../*) return 1 ;;
+  esac
+  _c="$(cd -P -- /mnt 2> /dev/null && pwd -P)" || return 1
+  [ -n "${_c}" ] || return 1
+  _e="${_d}"
+  while [ -n "${_e}" ] && [ ! -e "${_e}" ]; do
+    _e="${_e%/*}"
+  done
+  [ "$(cd -P -- "${_e:-/}" 2> /dev/null && pwd -P)" = "${_c}${_e#/mnt}" ] || return 1
+  mkdir -p -- "${_d}" 2> /dev/null
+  _c="${_c}${_d#/mnt}"
+  cd -P -- "${_d}" 2> /dev/null || return 1
+  [ "$(pwd -P)" = "${_c}" ] || return 1
+  printf 'XMREAL %s\n' "${_c}"
+}
+### Run one of the placement helpers above as root on the box $1, with the
+### helper's name and arguments after it; prints the canonical path its
+### XMREAL line names and fails when there is none.
+_xmass_tgt_place() {
+  local _h="${1}" _out _x _args=""
+  shift
+  for _x in "$@"; do
+    _args="${_args} '$(_shq "${_x}")'"
+  done
+  _out="$( { declare -f _xmass_real_want _xmass_own_path _xmass_own_parent_cd \
+      _xmass_own_dir_ready _xmass_own_parent_ready _xmass_own_link_ready \
+      _xmass_real_mnt_dir
+    printf '%s\n' '"$@"'; } \
+    | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_h}" \
+      "bash -s --${_args}" 2> /dev/null)"
+  _out="$(printf '%s\n' "${_out}" | grep -m1 '^XMREAL /')"
+  [ -n "${_out}" ] || return 1
+  printf '%s' "${_out#XMREAL }"
 }
 
 ### Union of PHP versions one account is pinned to: the account-level
@@ -1862,6 +2061,44 @@ REMOTE
   return 0
 }
 
+### Whether the cnf line $1 is a plain assignment a root shell may source:
+### _KEY= followed by a double-quoted value with nothing the shell expands
+### (an escaped @, as older releases wrote e-mails, is allowed), a
+### single-quoted value, or a bare word.
+_xmass_cnf_line_ok() {
+  local _k="${1%%=*}" _v="${1#*=}"
+  case "${_k}" in
+    _[A-Z]*) ;;
+    *) return 1 ;;
+  esac
+  case "${_k}" in
+    *[!A-Z0-9_]*) return 1 ;;
+  esac
+  case "${_v}" in
+    \"*\")
+      _v="${_v#\"}"
+      _v="${_v%\"}"
+      _v="${_v//\\@/@}"
+      case "${_v}" in
+        *[\"\$\`\\]*) return 1 ;;
+      esac
+      ;;
+    \'*\')
+      _v="${_v#\'}"
+      _v="${_v%\'}"
+      case "${_v}" in
+        *\'*) return 1 ;;
+      esac
+      ;;
+    *)
+      case "${_v}" in
+        *[!A-Za-z0-9._@:,+/%=-]*) return 1 ;;
+      esac
+      ;;
+  esac
+  return 0
+}
+
 ### Merge the account-portable octopus.cnf lines from the source cnf into the
 ### target's copy: replace-or-append per key, whole lines, host axis excluded
 ### (_MY_OWNIP, _LOCAL_NETWORK_IP, _THIS_DB_HOST/_PORT, _DOMAIN are re-derived
@@ -1899,7 +2136,14 @@ _xmass_push_account_cnf() {
   echo "_USER=\"${_acct}\"" > "${_lTmp}"
   for _v in ${_lst}; do
     _l=$(grep "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
-    [ -n "${_l}" ] && printf '%s\n' "${_l}" >> "${_lTmp}"
+    [ -n "${_l}" ] || continue
+    # the target sources this cnf as root, and some values began as the
+    # account's own text: a line travels only as a plain assignment
+    if ! _xmass_cnf_line_ok "${_l}"; then
+      _alrt "  ${_acct}: ${_v} in ${_sCnf} is not a plain value -- not merged, the target keeps its own"
+      continue
+    fi
+    printf '%s\n' "${_l}" >> "${_lTmp}"
   done
   {
     echo '#!/bin/bash'
@@ -1994,15 +2238,24 @@ _xmass_sync_shell_credentials() {
   elif [ -e "${_u}/log/pass.txt" ]; then
     _alrt "  ${_acct}: NOT carrying log/pass.txt -- the shadow hash was not set on ${_t}"
   fi
-  if [ -d "/home/${_acct}.ftp/users" ]; then
-    rsync -aEAX ${_ieni} -e ssh --no-devices --no-specials \
-      "/home/${_acct}.ftp/users/" \
-      "root@${_t}:/home/${_acct}.ftp/users/" 2>/dev/null \
-      || _alrt "  ${_acct}: could not carry the sub-account password store"
+  # The store and each sub-user's .ssh are the account's own names: sent
+  # from inside the real directory here into the real one there, never
+  # through a link put at the name or on the way.
+  if [ -e "/home/${_acct}.ftp/users" ] || [ -L "/home/${_acct}.ftp/users" ]; then
+    _xmass_in_real_dir "/home/${_acct}.ftp/users" rsync -aEAX ${_ieni} -e ssh \
+      --no-devices --no-specials \
+      --rsync-path="$(_xmass_pin_rpath "/home/${_acct}.ftp/users")" \
+      ./ "root@${_t}:./" 2>/dev/null \
+      || _alrt "  ${_acct}: could not carry the sub-account password store (not a real directory here, or the copy failed)"
   fi
   for _d in "${_u}"/clients/*/; do
     [ -d "${_d}" ] || continue
     _n=$(basename "${_d}")
+    # a client directory name the account chose: only the shape a sub-user
+    # name takes goes on, into a name lookup and a remote shell
+    case "${_n}" in
+      ''|.*|-*|*[!A-Za-z0-9._-]*) continue ;;
+    esac
     getent passwd "${_acct}.${_n}" &> /dev/null || continue
     _hash=$(getent shadow "${_acct}.${_n}" 2>/dev/null | cut -d: -f2)
     [ -n "${_hash}" ] && [ "${_hash}" != "*" ] && [ "${_hash}" != "!" ] || continue
@@ -2012,11 +2265,12 @@ _xmass_sync_shell_credentials() {
       else
         _alrt "  ${_acct}: could not carry the sub-account password for ${_acct}.${_n}"
       fi
-      if [ -d "/home/${_acct}.${_n}/.ssh" ]; then
-        rsync -aEAXu ${_ieni} -e ssh --no-devices --no-specials \
-          "/home/${_acct}.${_n}/.ssh" \
-          "root@${_t}:/home/${_acct}.${_n}/" 2>/dev/null \
-          || _alrt "  ${_acct}: could not carry .ssh for ${_acct}.${_n}"
+      if [ -e "/home/${_acct}.${_n}/.ssh" ] || [ -L "/home/${_acct}.${_n}/.ssh" ]; then
+        _xmass_in_real_dir "/home/${_acct}.${_n}/.ssh" rsync -aEAXu ${_ieni} -e ssh \
+          --no-devices --no-specials \
+          --rsync-path="$(_xmass_pin_rpath "/home/${_acct}.${_n}/.ssh")" \
+          ./ "root@${_t}:./" 2>/dev/null \
+          || _alrt "  ${_acct}: could not carry .ssh for ${_acct}.${_n} (not a real directory here, or the copy failed)"
       fi
     else
       # The sub-user does not exist there yet: manage_ltd_users creates it
@@ -2025,11 +2279,11 @@ _xmass_sync_shell_credentials() {
       # exists -- stage it where that creation pass adopts it. Say so: a
       # silent branch here read as "o2.sub1 was never carried" on a rig,
       # while prep-target's copy of this routine names the staged path.
-      if [ -d "/home/${_acct}.${_n}/.ssh" ]; then
+      if [ -e "/home/${_acct}.${_n}/.ssh" ] || [ -L "/home/${_acct}.${_n}/.ssh" ]; then
         ssh root@"${_t}" "mkdir -p /var/backups/migrate-subuser-ssh/${_acct}.${_n}" &> /dev/null
-        if rsync -aEAXu ${_ieni} -e ssh --no-devices --no-specials \
-          "/home/${_acct}.${_n}/.ssh" \
-          "root@${_t}:/var/backups/migrate-subuser-ssh/${_acct}.${_n}/" 2>/dev/null; then
+        if _xmass_in_real_dir "/home/${_acct}.${_n}/.ssh" rsync -aEAXu ${_ieni} -e ssh \
+          --no-devices --no-specials ./ \
+          "root@${_t}:/var/backups/migrate-subuser-ssh/${_acct}.${_n}/.ssh/" 2>/dev/null; then
           _info "  ${_acct}: sub-account ${_acct}.${_n} not created on ${_t} yet; password converges via the"
           _info "  ${_acct}: carried store, and its keys are staged at /var/backups/migrate-subuser-ssh/${_acct}.${_n}/.ssh"
         else
@@ -2074,16 +2328,19 @@ _xmass_copy_suspended_flag() {
 ### symlink. Migrating a broken renewal means debugging two things at once
 ### inside the cutover window, so name every broken pair now. Advisory.
 _xmass_check_le_health() {
-  local _c _end _bad=0
+  local _c _pem _end _bad=0
   _info "Checking source certificates for broken renewals ..."
   for _c in /data/disk/*/config/server_master/ssl.d/*/openssl.crt; do
     [ -e "${_c}" ] || continue
-    if [ ! -s "${_c}" ]; then
-      _alrt "  ZERO-BYTE certificate: ${_c} -- fix the renewal BEFORE migrating"
+    # the account's name: read inside its real directory, never through a
+    # link or into a FIFO put there (openssl would block on one)
+    _pem="$(_xmass_read_file "${_c}")"
+    if [ -z "${_pem}" ]; then
+      _alrt "  ZERO-BYTE or unreadable certificate: ${_c} -- fix the renewal BEFORE migrating"
       _bad=$(( _bad + 1 ))
       continue
     fi
-    _end=$(openssl x509 -noout -enddate -in "${_c}" 2>/dev/null | cut -d= -f2)
+    _end=$(printf '%s\n' "${_pem}" | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
     if [ -z "${_end}" ]; then
       _alrt "  UNPARSEABLE certificate: ${_c} -- fix the renewal BEFORE migrating"
       _bad=$(( _bad + 1 ))
@@ -4221,9 +4478,11 @@ _xmass_rsync() {
 _xmass_solr_check() {   # 1 src  2 target-dest-dir  3 label
   local _sz
   [ -e "$1" ] || return 0
-  # -L: a symlink operand (e.g. a backups dir relocated into the store)
+  # -H: a symlink operand (e.g. a backups dir relocated into the store)
   # measures 0 with plain du, which waves the fit gate through unmeasured.
-  _sz="$(du -skL "$1" 2>/dev/null | awk '{print $1}')"
+  # Links below it are measured as the links the copy carries, never
+  # followed into whatever tree an account pointed them at.
+  _sz="$(du -skH "$1" 2>/dev/null | awk '{print $1}')"
   _xmass_target_fits "${_tgt}" "$2" "${_sz}" && return 0
   _alrt "DENY: $3: ${_sz:-?}K does not fit at target $2 — free space and retry"
   _XMASS_NOT_CLEAN=YES
@@ -4259,19 +4518,34 @@ _xmass_target_fits() {
 _shq() { printf "%s" "$1" | sed "s/'/'\\\\''/g"; }
 
 # De-reference: real dir at <dstRoot> on the target root; rsync the contents in.
-# Returns non-zero if the copy fails (caller denies).
+# Returns non-zero if the copy fails (caller denies). The copy leaves from
+# inside the resolved source directory ($2, canonical). With an account ($5)
+# the directory there is made ready inside its real parent, which must lie in
+# that account's own tree or store, and the receiver starts inside it: a
+# link the account's content carried to the target is never written through.
 _xmass_put_on_root() {
-  local _th="$1" _real="$2" _dstRoot="$3" _ie="$4" _q
-  _q="$(_shq "${_dstRoot}")"
-  ssh -n root@"${_th}" "if [ -L '${_q}' ]; then rm -f '${_q}'; elif [ -e '${_q}' ] && [ ! -d '${_q}' ]; then rm -f '${_q}'; fi; mkdir -p '${_q}'"
+  local _th="$1" _real="$2" _dstRoot="$3" _ie="$4" _acct="$5" _q _dreal _to _rp=()
+  if [ -n "${_acct}" ]; then
+    _dreal="$(_xmass_tgt_place "${_th}" _xmass_own_dir_ready dir "${_acct}" "${_dstRoot}")"
+    if [ -z "${_dreal}" ]; then
+      _alrt "DENY: ${_dstRoot} on the target does not resolve into ${_acct}'s own tree or store -- nothing copied"
+      return 3
+    fi
+    _rp=(--rsync-path="$(_xmass_canon_rpath "${_dreal}")")
+    _to="./"
+  else
+    _q="$(_shq "${_dstRoot}")"
+    ssh -n root@"${_th}" "if [ -L '${_q}' ]; then rm -f '${_q}'; elif [ -e '${_q}' ] && [ ! -d '${_q}' ]; then rm -f '${_q}'; fi; mkdir -p '${_q}'"
+    _to="${_dstRoot}/"
+  fi
   # Tolerate rc 24 exactly as _xmass_rsync does. This gate was previously inert
   # (_xmass_handle_store returned an assignment's status instead of this one), so
   # making it work exposes it to the benign case: on a live tree during `xmass
   # sync`, files vanishing mid-transfer is normal and must not deny the run.
   local _rc=0 _err
   _err=$(mktemp /tmp/xmass-rsync-err.XXXXXX 2>/dev/null) || _err=""
-  rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh \
-    "${_real}/" root@"${_th}":"${_dstRoot}/" 2>>"${_err:-/dev/stderr}" || _rc=$?
+  _xmass_at_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
+    "${_rp[@]}" -e ssh ./ root@"${_th}":"${_to}" 2>>"${_err:-/dev/stderr}" || _rc=$?
   [ -s "${_err}" ] && cat "${_err}" >&2
   # 23 with only vanished-file errors is the rc-24 case (see _xmass_rsync_vanished_only)
   if [ "${_rc}" = "23" ] && [ -n "${_err}" ] && _xmass_rsync_vanished_only "${_err}"; then
@@ -4298,10 +4572,26 @@ _xmass_put_on_root() {
 # at <dstRoot> (e.g. an earlier de-reference to root now being moved onto a freshly
 # attached disk) is safe to replace once the mount copy is confirmed. Returns non-zero
 # on any failure (caller denies); the remote replace is fenced to /data/disk.
+# The copy leaves from inside the resolved source directory ($2, canonical).
+# With an account ($7) the mount copy lands only in a directory no link on
+# the way leads to, and the link is placed inside the real parent of
+# <dstRoot>, which must lie in that account's own tree or store.
 _xmass_put_on_mount() {
-  local _th="$1" _real="$2" _mntDest="$3" _dstRoot="$4" _ie="$5" _lbl="$6" _qm _qd
+  local _th="$1" _real="$2" _mntDest="$3" _dstRoot="$4" _ie="$5" _lbl="$6" _acct="$7"
+  local _qm _qd _mreal _to _rp=()
   _qm="$(_shq "${_mntDest}")"; _qd="$(_shq "${_dstRoot}")"
-  ssh -n root@"${_th}" "mkdir -p '${_qm}'"
+  if [ -n "${_acct}" ]; then
+    _mreal="$(_xmass_tgt_place "${_th}" _xmass_real_mnt_dir "${_mntDest}")"
+    if [ -z "${_mreal}" ]; then
+      _alrt "DENY: ${_lbl}: ${_mntDest} on the target is not a real directory under its mount -- nothing copied"
+      return 3
+    fi
+    _rp=(--rsync-path="$(_xmass_canon_rpath "${_mreal}")")
+    _to="./"
+  else
+    ssh -n root@"${_th}" "mkdir -p '${_qm}'"
+    _to="${_mntDest}/"
+  fi
   # A raised delete limit was measured THROUGH ${_dstRoot} before the
   # placement was decided. It is only good here if that path is this mount
   # copy; a root copy beside a stale mount copy (a link step that failed, a
@@ -4317,8 +4607,8 @@ _xmass_put_on_mount() {
   # Same rc-24 tolerance as _xmass_put_on_root; see the note there.
   local _rc=0 _err
   _err=$(mktemp /tmp/xmass-rsync-err.XXXXXX 2>/dev/null) || _err=""
-  rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh \
-    "${_real}/" root@"${_th}":"${_mntDest}/" 2>>"${_err:-/dev/stderr}" || _rc=$?
+  _xmass_at_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
+    "${_rp[@]}" -e ssh ./ root@"${_th}":"${_to}" 2>>"${_err:-/dev/stderr}" || _rc=$?
   [ -s "${_err}" ] && cat "${_err}" >&2
   if [ "${_rc}" = "23" ] && [ -n "${_err}" ] && _xmass_rsync_vanished_only "${_err}"; then
     _rc=24
@@ -4336,7 +4626,12 @@ _xmass_put_on_mount() {
   if [ "${_rc}" = "24" ]; then
     _info "  ${_lbl}: some source files vanished during transfer (rc=24, benign)"
   fi
-  if ! ssh -n root@"${_th}" "d='${_qd}'; case \"\$d\" in /data/disk/*) : ;; *) echo 'refuse: dstRoot outside /data/disk'; exit 9 ;; esac; if [ -L \"\$d\" ]; then rm -f \"\$d\"; elif [ -d \"\$d\" ]; then rm -rf \"\$d\"; elif [ -e \"\$d\" ]; then rm -f \"\$d\"; fi; mkdir -p \"\$(dirname \"\$d\")\"; ln -sfn '${_qm}' \"\$d\""; then
+  if [ -n "${_acct}" ]; then
+    if [ -z "$(_xmass_tgt_place "${_th}" _xmass_own_link_ready "${_acct}" "${_dstRoot}" "${_mntDest}")" ]; then
+      _alrt "DENY: ${_lbl}: could not place symlink ${_dstRoot} -> ${_mntDest} on target (its parent is not ${_acct}'s own there)"
+      return 3
+    fi
+  elif ! ssh -n root@"${_th}" "d='${_qd}'; case \"\$d\" in /data/disk/*) : ;; *) echo 'refuse: dstRoot outside /data/disk'; exit 9 ;; esac; if [ -L \"\$d\" ]; then rm -f \"\$d\"; elif [ -d \"\$d\" ]; then rm -rf \"\$d\"; elif [ -e \"\$d\" ]; then rm -f \"\$d\"; fi; mkdir -p \"\$(dirname \"\$d\")\"; ln -sfn '${_qm}' \"\$d\""; then
     _alrt "DENY: ${_lbl}: could not place symlink ${_dstRoot} -> ${_mntDest} on target"
     return 3
   fi
@@ -4345,27 +4640,48 @@ _xmass_put_on_mount() {
 # Storage-aware transfer of one store. Args:
 #   1 source path  2 dest path on target root  3 mount-relative dest ("" => derive)
 #   4 target host  5 target mount ("path"|""|"MULTI")  6 ieni  7 label
+#   8 the account whose store this is ("" for a box tree such as arch)
+#   9 what the account's store may resolve to: tree (its own tree or its
+#     store under <mount>/files/<oN>/, the default) or uid (also anything
+#     its identities own)
+# The source is resolved once and copied from inside that real directory;
+# an account's store that resolves anywhere else is refused, never followed.
 _xmass_handle_store() {
   local _src="$1" _dstRoot="$2" _mntRel="$3" _th="$4" _tm="$5" _ie="$6" _lbl="$7"
+  local _acct="$8" _rule="${9:-tree}" _dacct=""
   local _real _link _sz _onMnt=NO _mntDest="" _act="" _reason="" _rc=0
 
   if [ ! -e "${_src}" ] && [ ! -L "${_src}" ]; then
     return 0
   fi
+  if [ -n "${_acct}" ]; then
+    _dacct="${_dstRoot#/data/disk/}"
+    _dacct="${_dacct%%/*}"
+  fi
 
   # --- classify + resolve the source ---
   if [ "${_tm}" = "MULTI" ]; then
     _act=DENY; _reason="target has multiple /mnt mounts; cannot choose one"
+  elif [ -n "${_acct}" ] && { [ "${_dstRoot}" = "/data/disk/${_dacct}" ] \
+    || [ "${_dstRoot#/data/disk/}" = "${_dstRoot}" ]; }; then
+    _act=DENY; _reason="${_dstRoot} is not a path inside an account on the target"
   elif [ -L "${_src}" ]; then
     _link="$(readlink "${_src}" 2>/dev/null)"
     _real="$(readlink -f "${_src}" 2>/dev/null)"
     if [ -z "${_real}" ] || [ ! -d "${_real}" ]; then
       _act=DENY; _reason="${_src} is a dangling symlink (attached disk not mounted?)"
+    elif [ -n "${_acct}" ] && ! _xmass_store_is_own "${_acct}" "${_real}" "${_rule}"; then
+      _act=DENY; _reason="${_src} resolves to ${_real}, outside ${_acct}'s own tree and store -- not followed"
     else
       case "${_link}" in /mnt/*) _onMnt=YES ;; esac
     fi
   elif [ -d "${_src}" ]; then
-    _real="${_src}"
+    _real="$(cd -P -- "${_src}" 2>/dev/null && pwd -P)"
+    if [ -z "${_real}" ]; then
+      _act=DENY; _reason="${_src} cannot be entered"
+    elif [ -n "${_acct}" ] && ! _xmass_store_is_own "${_acct}" "${_real}" "${_rule}"; then
+      _act=DENY; _reason="${_src} resolves to ${_real}, outside ${_acct}'s own tree and store -- not followed"
+    fi
   else
     return 0
   fi
@@ -4411,7 +4727,7 @@ _xmass_handle_store() {
         # Capture rc FIRST: `|| { _XMASS_NOT_CLEAN=YES; return $?; }` returned the
         # assignment's status (always 0), so a failed placement reported success
         # and _XMASS_STORE_RC was never set by the caller.
-        _xmass_put_on_mount "${_th}" "${_real}" "${_mntDest}" "${_dstRoot}" "${_ie}" "${_lbl}" \
+        _xmass_put_on_mount "${_th}" "${_real}" "${_mntDest}" "${_dstRoot}" "${_ie}" "${_lbl}" "${_dacct}" \
           || { _rc=$?; _XMASS_NOT_CLEAN=YES; return "${_rc}"; }
         _info "${_lbl}: mirrored to target mount ${_mntDest}, symlinked ${_dstRoot}"
       else
@@ -4420,7 +4736,7 @@ _xmass_handle_store() {
       ;;
     ROOT)
       if [ "${_MODE}" = "LIVE" ]; then
-        _xmass_put_on_root "${_th}" "${_real}" "${_dstRoot}" "${_ie}" \
+        _xmass_put_on_root "${_th}" "${_real}" "${_dstRoot}" "${_ie}" "${_dacct}" \
           || { _rc=$?; _XMASS_NOT_CLEAN=YES; return "${_rc}"; }
         _info "${_lbl}: real dir on target root ${_dstRoot}"
       else
@@ -4548,6 +4864,9 @@ _xmass_link_class() {
 # $3 (optional) - space-separated top-level subdirs whose own delta legs re-send
 #                 links each sync; out-links under them are reported, NOT
 #                 materialised (the leg would fight the materialised copy)
+# $4 (optional) - the account whose tree this is: an out-link that does not
+#                 resolve to its own (_xmass_store_is_own, uid rule) is
+#                 reported as skipped and never measured or materialised
 # The traversal behind the sweep. On an AUTO pass it PRUNES the covered
 # subtrees ($2, the caller's list of top-level names whose own delta legs
 # re-send their links every pass) instead of descending them.
@@ -4580,7 +4899,7 @@ _xmass_link_find() {
 }
 
 _xmass_scan_out_links() {
-  local _root="$1" _skip="$2" _cov="$3"
+  local _root="$1" _skip="$2" _cov="$3" _acct="$4"
   local _l _rel _top _sz _covered _uNm
   local _nfab=0 _nin=0 _nout=0 _nchain=0 _nind=0 _ndang=0 _nskip=0 _mntdang=0
   _XMASS_OUT_DIRS=""; _XMASS_OUT_FILES=""; _XMASS_OUT_EXCL=""
@@ -4656,6 +4975,14 @@ _xmass_scan_out_links() {
           _alrt "    of '${_top}' or attach the same mount on the target"
           continue
         fi
+        # An account points its links where it likes: only what is its own
+        # is ever measured or copied (see _xmass_materialise_out_links)
+        if [ -n "${_acct}" ] && ! _xmass_store_is_own "${_acct}" "${_LNK_REAL}" uid; then
+          _nskip=$(( _nskip + 1 ))
+          _alrt "  out-of-root link is not ${_acct}'s own (its tree, its store under"
+          _alrt "    <mount>/files/${_acct}/, or its files): ${_l} -> ${_LNK_REAL} -- content will NOT travel"
+          continue
+        fi
         # A rel path with whitespace or glob chars cannot ride the unquoted
         # exclude splice or the remote-shell rsync args safely. A DIR link
         # would fail placement and DENY-block the whole run over a link that
@@ -4716,8 +5043,14 @@ EOF
 # must never use -u: a fresher-mtime dangling link on the receiver silently
 # wins over the real file (verified), and the links the tree legs may still
 # deliver are exactly that shape.
+# Under an account's tree ($4 = the account) every link is the account's to
+# point anywhere: its content travels only when it resolves into the
+# account's own tree, its own store under <mount>/files/<oN>/, or to what
+# its identities own; anything else is reported and skipped. What passes is
+# copied from inside the real directory it resolved to, never through the
+# link again, and its file links one by one the same way.
 _xmass_materialise_out_links() {
-  local _root="$1" _dstRoot="$2" _depth="${3:-1}"
+  local _root="$1" _dstRoot="$2" _depth="${3:-1}" _acct="$4"
   local _dirs="${_XMASS_OUT_DIRS}" _files="${_XMASS_OUT_FILES}"
   local _fkb="${_XMASS_OUT_FILE_KB}"
   local _rel _real _key _list _n _tmArg _rcStore _nDirs _nFiles _nFkb _nExcl
@@ -4726,6 +5059,12 @@ _xmass_materialise_out_links() {
   while IFS= read -r _rel <&3; do
     [ -n "${_rel}" ] || continue
     _real="$(readlink -f "${_root}/${_rel}" 2>/dev/null)"
+    if [ -n "${_acct}" ] && [ -n "${_real}" ] \
+      && ! _xmass_store_is_own "${_acct}" "${_real}" uid; then
+      _alrt "  out-of-root link ${_root}/${_rel} -> ${_real} is not ${_acct}'s own"
+      _alrt "    (its tree, its store under <mount>/files/${_acct}/, or its files) -- skipped, its content does NOT travel"
+      continue
+    fi
     # Scan the resolved tree BEFORE its store leg runs, so nested out-of-root
     # links ride the same exclude treatment as depth 1 (a source symlink
     # re-sent over the previously materialised copy errors on a dir and
@@ -4733,7 +5072,7 @@ _xmass_materialise_out_links() {
     _nDirs=""; _nFiles=""; _nFkb=0; _nExcl=""
     if [ -n "${_real}" ] && [ -d "${_real}" ]; then
       if [ "${_depth}" -lt "${_XMASS_LINK_DEPTH_MAX}" ]; then
-        _xmass_scan_out_links "${_real}"
+        _xmass_scan_out_links "${_real}" "" "" "${_acct}"
         _nDirs="${_XMASS_OUT_DIRS}"; _nFiles="${_XMASS_OUT_FILES}"
         _nFkb="${_XMASS_OUT_FILE_KB}"; _nExcl="${_XMASS_OUT_EXCL}"
       elif [ -n "$(find "${_real}" -type l -print -quit 2>/dev/null)" ]; then
@@ -4752,7 +5091,7 @@ _xmass_materialise_out_links() {
     _rcStore=0
     _xmass_handle_store "${_root}/${_rel}" "${_dstRoot}/${_rel}" "" \
       "${_tgt}" "${_tmArg}" "${_ieni} ${_nExcl}" "out-of-root link ${_root}/${_rel}" \
-      || _rcStore=$?
+      "${_acct}" uid || _rcStore=$?
     if [ "${_rcStore}" != "0" ]; then
       _XMASS_STORE_RC="${_rcStore}"
       continue
@@ -4760,27 +5099,80 @@ _xmass_materialise_out_links() {
     if [ -n "${_nDirs}${_nFiles}" ]; then
       _XMASS_OUT_DIRS="${_nDirs}"; _XMASS_OUT_FILES="${_nFiles}"
       _XMASS_OUT_FILE_KB="${_nFkb}"
-      _xmass_materialise_out_links "${_real}" "${_dstRoot}/${_rel}" $(( _depth + 1 ))
+      _xmass_materialise_out_links "${_real}" "${_dstRoot}/${_rel}" $(( _depth + 1 )) "${_acct}"
     fi
   done 3<<EOF
 ${_dirs}
 EOF
   if [ -n "${_files}" ]; then
-    _key="$(printf '%s' "${_root}" | tr -c 'A-Za-z0-9._-' '_')"
-    _list="/var/log/boa/xmass.outlinks.${_key}.list"
-    mkdir -p /var/log/boa 2>/dev/null
-    printf '%s' "${_files}" > "${_list}"
-    _n="$(grep -c . "${_list}" 2>/dev/null)"
-    if _xmass_target_fits "${_tgt}" "${_dstRoot}" "${_fkb}"; then
-      _info "  materialising ${_n} out-of-root file link(s) under ${_root} (${_fkb}K; list: ${_list})"
-      _xmass_rsync -aEAXq --copy-links --files-from="${_list}" ${_ieni} -e ssh \
-        "${_root}/" "root@${_tgt}:${_dstRoot}/"
-    else
+    if ! _xmass_target_fits "${_tgt}" "${_dstRoot}" "${_fkb}"; then
       _alrt "DENY: out-of-root file links under ${_root}: ${_fkb}K does not fit at target ${_dstRoot} -- free space and retry"
       _XMASS_NOT_CLEAN=YES
       _XMASS_STORE_RC=3
+    elif [ -n "${_acct}" ]; then
+      _xmass_materialise_own_files "${_root}" "${_dstRoot}" "${_files}" "${_acct}"
+    else
+      _key="$(printf '%s' "${_root}" | tr -c 'A-Za-z0-9._-' '_')"
+      _list="/var/log/boa/xmass.outlinks.${_key}.list"
+      mkdir -p /var/log/boa 2>/dev/null
+      printf '%s' "${_files}" > "${_list}"
+      _n="$(grep -c . "${_list}" 2>/dev/null)"
+      _info "  materialising ${_n} out-of-root file link(s) under ${_root} (${_fkb}K; list: ${_list})"
+      _xmass_rsync -aEAXq --copy-links --files-from="${_list}" ${_ieni} -e ssh \
+        "${_root}/" "root@${_tgt}:${_dstRoot}/"
     fi
   fi
+  return 0
+}
+
+# An account's out-of-root file links ($3, root-relative, one per line)
+# under <root> ($1), materialised at <dstRoot> ($2) for the account $4: each
+# is resolved and checked as the dir links are, then sent from inside the
+# real directory holding its file, as a regular file only, into the real
+# directory its name lands in there. Never -u, as the batch above.
+_xmass_materialise_own_files() {
+  local _root="$1" _dstRoot="$2" _files="$3" _acct="$4"
+  local _rel _real _n _to _pr _qn _rp
+  while IFS= read -r _rel <&3; do
+    [ -n "${_rel}" ] || continue
+    _real="$(readlink -f "${_root}/${_rel}" 2>/dev/null)"
+    if [ -z "${_real}" ] || [ ! -f "${_real}" ] \
+      || ! _xmass_store_is_own "${_acct}" "${_real}" uid; then
+      _alrt "  out-of-root file link ${_root}/${_rel} -> ${_real:-?} is not ${_acct}'s own file -- skipped, it does NOT travel"
+      continue
+    fi
+    _n="${_rel##*/}"
+    _to="${_dstRoot}/${_rel}"
+    # the name is the receiver's argument, read by a shell there on an
+    # rsync that predates protected arguments
+    case "${_n}" in
+      -*|*[!A-Za-z0-9._@+,=-]*)
+        _alrt "  out-of-root file link name is not shell-safe: ${_root}/${_rel} -- skipped, rename the link on the source"
+        continue
+        ;;
+    esac
+    if [ "${_MODE}" != "LIVE" ]; then
+      _info "[DRY-PLAN] would materialise ${_root}/${_rel} (${_real}) at ${_to}"
+      continue
+    fi
+    _pr="$(_xmass_tgt_place "${_tgt}" _xmass_own_parent_ready "${_acct}" "${_to}")"
+    if [ -z "${_pr}" ]; then
+      _alrt "DENY: ${_to} on the target does not resolve into ${_acct}'s own tree or store -- ${_rel} not copied"
+      _XMASS_RSYNC_RC=23
+      _XMASS_NOT_CLEAN=YES
+      continue
+    fi
+    # the receiver starts in that real parent; a link at the name there
+    # gives way, a directory there fails the leg as the batch did
+    _qn="$(_shq "${_n}")"
+    _rp="$(_xmass_canon_rpath "${_pr}")"
+    _rp="${_rp% && rsync} && { [ ! -L './${_qn}' ] || rm -f -- './${_qn}'; } && [ ! -d './${_qn}' ] && rsync"
+    _xmass_at_canon_dir "${_real%/*}" _xmass_rsync -aEAXq --no-links ${_ieni} \
+      --rsync-path="${_rp}" -e ssh "./${_real##*/}" "root@${_tgt}:./${_n}" \
+      || _alrt "  ${_real%/*} is no longer the directory it resolved to -- ${_rel} not copied"
+  done 3<<EOF
+${_files}
+EOF
   return 0
 }
 
@@ -4827,7 +5219,7 @@ _xmass_report_out_links() {
         continue ;;
     esac
     _xmass_scan_out_links "${_d}" "${_d}/static/files" \
-      "distro static log .drush config clients backups undo tools"
+      "distro static log .drush config clients backups undo tools" "${_d##*/}"
     case "${_XMASS_LNK_RPT}" in
       *"materialise=0 chain=0 indirect=0 dangling=0 skipped=0") : ;;
       *) _info "  ${_d}: ${_XMASS_LNK_RPT}" ;;
@@ -4871,6 +5263,21 @@ _xmass_report_out_links() {
 
 ###-------------SYNC FUNCTIONS-----------###
 
+# One account leg, pinned at its top on both ends: the source directory $1
+# is sent as ./ from inside its real self, and the receiver starts inside
+# the real directory $2 on the target (a link put at that name there gives
+# way to a directory, a missing one is made, its parent must be real). The
+# rsync arguments follow $3, which names what the leg carries: a source that
+# is missing or not a real directory fails the pass instead of being
+# followed (_xmass_leg_refused).
+_xmass_pinned_leg() {
+  local _s="${1}" _d="${2}" _w="${3}"
+  shift 3
+  _xmass_at_real_dir "${_s}" _xmass_rsync "$@" \
+    --rsync-path="$(_xmass_pin_rpath "${_d}")" -e ssh ./ "root@${_tgt}:./" \
+    || _xmass_leg_refused "${_s}" "${_w}"
+}
+
 _xmass_sync_static_symlink_safe() {
   # Mirrors xoct's _xoct_transfer_static_symlink_safe:
   # Preserves site-level symlinks inside static/ while relocating static/files
@@ -4882,10 +5289,18 @@ _xmass_sync_static_symlink_safe() {
   local _src_static="${_src_usr}/static"
   local _dst_static="${_dst_usr}/static"
   local _dst_sf="${_dst_usr}/static/files"
-  local _dst_acct
+  local _dst_acct _src_acct
   _dst_acct="$(basename "${_dst_usr}")"
+  _src_acct="$(basename "${_src_usr}")"
 
-  [ -d "${_src_static}" ] || return 0
+  [ -e "${_src_static}" ] || [ -L "${_src_static}" ] || return 0
+  # static/ is the account's: every pass below reads it only as the real
+  # directory, and one that is a link (or has one on its path) stops them
+  # all, the store included, where a trailing-slash copy used to follow it.
+  if ! _xmass_in_real_dir "${_src_static}" true; then
+    _xmass_leg_refused "${_src_static}" "no static file, codebase or control file of ${_dst_acct}"
+    return 0
+  fi
 
   # Pass 1: sync static/ tree preserving symlinks, skip files/ (the store,
   # pass 2) and control/ (pass 1a). What is left is tenant code -- composer
@@ -4893,10 +5308,14 @@ _xmass_sync_static_symlink_safe() {
   # data the ACTIVE box rotates there itself (trash, goaccess, usage), so
   # this is a DATA leg: on a sync pass it prunes like distro/, under the
   # same three guards, or a codebase the tenant removed stays on the mirror
-  # for good. Excluded paths are never deletion candidates.
-  _xmass_rsync -aEAXqu $(_xmass_leg_args "${_src_static}" "${_dst_static}" "files control" sites "${_src_usr}/backups/rename-hostname") \
+  # for good. Excluded paths are never deletion candidates. Both ends are
+  # pinned as the log/ leg's are: the copy leaves from inside the real
+  # static/ here and lands inside the real one there.
+  _xmass_at_real_dir "${_src_static}" _xmass_rsync -aEAXqu \
+    $(_xmass_leg_args "${_src_static}" "${_dst_static}" "files control" sites "${_src_usr}/backups/rename-hostname") \
     --exclude=/files --exclude=/control \
-    -e ssh "${_src_static}/" "root@${_tgt}:${_dst_static}/"
+    --rsync-path="$(_xmass_pin_rpath "${_dst_static}")" -e ssh ./ "root@${_tgt}:./" \
+    || { _xmass_leg_refused "${_src_static}" "no static file, codebase or control file of ${_dst_acct}"; return 0; }
 
   # Pass 1a: control/ stays ADDITIVE in every mode: the target's own install
   # writes files there the source may never have carried, and the cutover
@@ -4950,13 +5369,15 @@ _xmass_sync_static_symlink_safe() {
   done
 
   # Pass 2: relocate static/files per target disk reality. Canonical mount layout
-  # uses the DEST account name, so a rename lands correctly.
+  # uses the DEST account name, so a rename lands correctly. The store is
+  # followed only into the account's own tree or its own part of the
+  # attached store (migratefs), and copied from inside that real directory.
   _xmass_handle_store \
     "${_src_usr}/static/files" \
     "${_dst_sf}" \
     "files/${_dst_acct}/static/files" \
     "${_tgt}" "${_tgt_mnt}" "$(_xmass_leg_args "${_src_usr}/static/files" "${_dst_sf}" "" flat "${_src_usr}/backups/rename-hostname")" \
-    "static/files (${_dst_acct})" || _XMASS_STORE_RC=$?
+    "static/files (${_dst_acct})" "${_src_acct}" tree || _XMASS_STORE_RC=$?
 }
 
 _xmass_sync_account() {
@@ -4991,8 +5412,11 @@ _xmass_sync_account() {
   local _stg=(--exclude='/*/.boa-refresh/*.new' --exclude='/*/.boa-refresh/*.tar.gz' \
     --exclude='/*/.boa-refresh/*.stale-*')
   _xmass_boa_run_live && _stg+=(--exclude='/*/.boa-refresh/*.old')
-  _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/distro" "${_dst}/distro" "" sites "${_udir}/backups/rename-hostname") \
-    "${_stg[@]}" -e ssh "${_udir}/distro/" "root@${_tgt}:${_dst}/distro/"
+  # Every account leg below is pinned at its top on both ends (see
+  # _xmass_pinned_leg): the account's names are never followed as root.
+  _xmass_pinned_leg "${_udir}/distro" "${_dst}/distro" "the platform codebases of ${_oct}" \
+    -aEAXqu $(_xmass_leg_args "${_udir}/distro" "${_dst}/distro" "" sites "${_udir}/backups/rename-hostname") \
+    "${_stg[@]}"
 
   # User uploaded files (symlink-safe, storage-aware relocation of static/files)
   _xmass_sync_static_symlink_safe "${_udir}" "${_dst}" "${_TGT_MNT}"
@@ -5001,9 +5425,9 @@ _xmass_sync_account() {
   # migration scratch dir -- the old tool, xoct and xcopy all carry it, and
   # xmass alone dropped the leg. Guarded because an account that has never
   # used it legitimately has no src/.
-  if [ -d "${_udir}/src" ]; then
-    _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/src") -e ssh \
-      "${_udir}/src/" "root@${_tgt}:${_dst}/src/"
+  if [ -e "${_udir}/src" ] || [ -L "${_udir}/src" ]; then
+    _xmass_pinned_leg "${_udir}/src" "${_dst}/src" "src/ of ${_oct}" \
+      -aEAXqu $(_xmass_leg_args "${_udir}/src")
   fi
 
   # Log and control files (includes domain.txt, email.txt, etc.).
@@ -5020,13 +5444,10 @@ _xmass_sync_account() {
   # log/ and .drush/ (below) are the account user's: both ends are pinned,
   # the copy leaves from inside the real directory here and lands inside
   # the real one there, never through a link put at the name or on the way.
-  _xmass_at_real_dir "${_udir}/log" _xmass_rsync -aEAXqu ${_ieni} \
+  _xmass_pinned_leg "${_udir}/log" "${_dst}/log" "the log files of ${_oct}" \
+    -aEAXqu ${_ieni} \
     --exclude=proxied.pid --exclude=migproxy.cnf --exclude=pass.txt \
-    --exclude=instance-group.txt --exclude=proxy-failed.pid \
-    --rsync-path="$(_xmass_pin_rpath "${_dst}/log")" -e ssh \
-    ./ "root@${_tgt}:./" \
-    || _xmass_warn_daily "log_link_${_oct}" \
-      "  ${_udir}/log is not a real directory (a link on its path) -- not followed: the log files of ${_oct} do not travel until it is one again"
+    --exclude=instance-group.txt --exclude=proxy-failed.pid
 
   # Drush aliases are copied WHOLE — including the source's server_master
   # and hostmaster aliases (site aliases get regenerated by renameaegirhost
@@ -5045,11 +5466,8 @@ _xmass_sync_account() {
   # sync fail rc=23 on the rename over it — a failure the pre-rc-capture
   # code swallowed silently for years and the transfer gate now rightly
   # refuses to ignore.
-  _xmass_at_real_dir "${_udir}/.drush" _xmass_rsync -aEAXqu ${_ieni} \
-    --exclude=php.ini --rsync-path="$(_xmass_pin_rpath "${_dst}/.drush")" \
-    -e ssh ./ "root@${_tgt}:./" \
-    || _xmass_warn_daily "drush_link_${_oct}" \
-      "  ${_udir}/.drush is not a real directory (a link on its path) -- not followed: the Drush aliases of ${_oct} do not travel until it is one again"
+  _xmass_pinned_leg "${_udir}/.drush" "${_dst}/.drush" "the Drush aliases of ${_oct}" \
+    -aEAXqu ${_ieni} --exclude=php.ini
 
   # Nginx vhost configs. Never from an account this box already relays: its
   # vhost.d holds relay vhosts pointing AT the target, and -u only skips files
@@ -5102,33 +5520,31 @@ _xmass_sync_account() {
   done
 
   # SSL certificates and LE config
-  if [ -d "${_udir}/config/ssl.d" ]; then
-    _xmass_rsync -aEAXqu ${_ieni} \
-      -e ssh "${_udir}/config/ssl.d/" \
-      "root@${_tgt}:${_dst}/config/ssl.d/"
+  if [ -e "${_udir}/config/ssl.d" ] || [ -L "${_udir}/config/ssl.d" ]; then
+    _xmass_pinned_leg "${_udir}/config/ssl.d" "${_dst}/config/ssl.d" \
+      "the config/ssl.d of ${_oct}" -aEAXqu ${_ieni}
   else
     _info "  no config/ssl.d on this account — nothing to send"
   fi
-  if [ -d "${_udir}/config/server_master/ssl.d" ]; then
-    _xmass_rsync -aEAXqu ${_ieni} \
-      -e ssh "${_udir}/config/server_master/ssl.d/" \
-      "root@${_tgt}:${_dst}/config/server_master/ssl.d/"
+  if [ -e "${_udir}/config/server_master/ssl.d" ] \
+    || [ -L "${_udir}/config/server_master/ssl.d" ]; then
+    _xmass_pinned_leg "${_udir}/config/server_master/ssl.d" \
+      "${_dst}/config/server_master/ssl.d" "the server_master/ssl.d of ${_oct}" \
+      -aEAXqu ${_ieni}
   else
     _info "  no server_master/ssl.d on this account — nothing to send"
   fi
-  if [ -d "${_udir}/tools/le" ]; then
-    _xmass_rsync -aEAXqu ${_ieni} \
-      -e ssh "${_udir}/tools/le" \
-      "root@${_tgt}:${_dst}/tools/"
+  if [ -e "${_udir}/tools/le" ] || [ -L "${_udir}/tools/le" ]; then
+    _xmass_pinned_leg "${_udir}/tools/le" "${_dst}/tools/le" \
+      "the tools/le of ${_oct}" -aEAXqu ${_ieni}
   else
     _info "  no tools/le on this account — nothing to send"
   fi
 
   # FTP account SSH keys
-  if [ -d "/home/${_oct}.ftp/.ssh" ]; then
-    _xmass_rsync -aEAXqu ${_ieni} \
-      -e ssh "/home/${_oct}.ftp/.ssh" \
-      "root@${_tgt}:/home/${_oct}.ftp/"
+  if [ -e "/home/${_oct}.ftp/.ssh" ] || [ -L "/home/${_oct}.ftp/.ssh" ]; then
+    _xmass_pinned_leg "/home/${_oct}.ftp/.ssh" "/home/${_oct}.ftp/.ssh" \
+      "the SSH keys of ${_oct}.ftp" -aEAXqu ${_ieni}
   fi
 
   # The sub-account password store must land BEFORE clients/ does:
@@ -5136,10 +5552,9 @@ _xmass_sync_account() {
   # target, and honours a pre-existing store entry (the carried password)
   # only if it is already there. Forced (no -u): the target's fresh install
   # must never shadow the carried credentials.
-  if [ -d "/home/${_oct}.ftp/users" ]; then
-    _xmass_rsync -aEAX ${_ieni} \
-      -e ssh "/home/${_oct}.ftp/users/" \
-      "root@${_tgt}:/home/${_oct}.ftp/users/"
+  if [ -e "/home/${_oct}.ftp/users" ] || [ -L "/home/${_oct}.ftp/users" ]; then
+    _xmass_pinned_leg "/home/${_oct}.ftp/users" "/home/${_oct}.ftp/users" \
+      "the sub-account password store of ${_oct}" -aEAX ${_ieni}
   fi
 
   # Sub-account registry + the two dirs xoct always carried and xmass did
@@ -5148,9 +5563,9 @@ _xmass_sync_account() {
   # validation -- without it the cutover rename dies on every account.
   # backups/ can be large, so it goes through the same space gate the Solr
   # trees use before any bytes move; the dir itself must exist regardless.
-  if [ -d "${_udir}/clients" ]; then
-    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
-      "${_udir}/clients/" "root@${_tgt}:${_dst}/clients/"
+  if [ -e "${_udir}/clients" ] || [ -L "${_udir}/clients" ]; then
+    _xmass_pinned_leg "${_udir}/clients" "${_dst}/clients" \
+      "the sub-account registry of ${_oct}" -aEAXqu ${_ieni}
   fi
   # On a separate-device box night/10-account.sh relocates backups and
   # backup-exports INTO the store (static/files/.backups, .backup-exports)
@@ -5159,47 +5574,72 @@ _xmass_sync_account() {
   # the target root as a real dir -- a full duplicate of the store copy.
   # Reproduce the LINK instead: it resolves against the store the
   # target-side pass has re-created, which satisfies renameaegirhost's
-  # Aegir-root validation exactly as a dir does. A link pointing anywhere
-  # OUTSIDE the store keeps the old follow-and-copy behaviour.
-  local _bkLnk
+  # Aegir-root validation exactly as a dir does. Only a link to one plain
+  # name straight under static/files is reproduced, so the text that
+  # reaches the target's shell is always that fixed shape. Any other
+  # backups/ is copied from inside the real directory it resolves to when
+  # that lies in the account's own tree or store, and refused otherwise;
+  # there it lands in the account's own backups/, the mover's link kept.
+  local _bkLnk _bkName _bkReal _bkTo
   _bkLnk="$(readlink "${_udir}/backups" 2>/dev/null)"
-  if [ -L "${_udir}/backups" ] \
-    && [[ "${_bkLnk}" = "${_udir}/static/files/"* ]]; then
+  _bkName="${_bkLnk#"${_udir}/static/files/"}"
+  if [ -L "${_udir}/backups" ] && [ "${_bkName}" != "${_bkLnk}" ] \
+    && [[ "${_bkName}" =~ ^[A-Za-z0-9._-]+$ ]] \
+    && [ "${_bkName}" != "." ] && [ "${_bkName}" != ".." ]; then
     # Act only once the store content actually exists on the target (the
     # store leg runs first in this same pass): replacing a real dir with
     # a link that dangles would lose the target's only copy.
     [ "${_MODE}" = "LIVE" ] \
-      && ssh root@"${_tgt}" "[ -e '${_bkLnk}' ] || exit 0; if [ -d '${_dst}/backups' ] && [ ! -L '${_dst}/backups' ]; then rm -rf '${_dst}/backups'; fi; ln -sfn '${_bkLnk}' '${_dst}/backups'" 2>/dev/null
-  elif [ -d "${_udir}/backups" ]; then
-    if _xmass_solr_check "${_udir}/backups" "${_dst}/backups" "backups (${_oct})"; then
-      _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/backups") -e ssh \
-        "${_udir}/backups/" "root@${_tgt}:${_dst}/backups/"
+      && ssh root@"${_tgt}" "[ -e '${_dst}/static/files/${_bkName}' ] || exit 0; if [ -d '${_dst}/backups' ] && [ ! -L '${_dst}/backups' ]; then rm -rf '${_dst}/backups'; fi; ln -sfn '${_dst}/static/files/${_bkName}' '${_dst}/backups'" 2>/dev/null
+  elif [ -e "${_udir}/backups" ] || [ -L "${_udir}/backups" ]; then
+    _bkReal="$(cd -P -- "${_udir}/backups" 2>/dev/null && pwd -P)"
+    if [ -z "${_bkReal}" ] || ! _xmass_own_path "${_oct}" "${_bkReal}"; then
+      _xmass_leg_refused "${_udir}/backups" "the backups of ${_oct} (it resolves to ${_bkReal:-nothing}, outside its own tree and store)"
+    elif _xmass_solr_check "${_bkReal}" "${_dst}/backups" "backups (${_oct})"; then
+      _bkTo=""
+      if [ "${_MODE}" = "LIVE" ]; then
+        _bkTo="$(_xmass_tgt_place "${_tgt}" _xmass_own_dir_ready keep "${_oct}" "${_dst}/backups")"
+      fi
+      if [ "${_MODE}" = "LIVE" ] && [ -z "${_bkTo}" ]; then
+        _alrt "DENY: ${_dst}/backups on ${_tgt} does not resolve into ${_oct}'s own tree or store -- the backups of ${_oct} not copied"
+        _XMASS_RSYNC_RC=23
+        _XMASS_NOT_CLEAN=YES
+      else
+        _xmass_at_canon_dir "${_bkReal}" _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/backups") \
+          --rsync-path="$(_xmass_canon_rpath "${_bkTo:-${_dst}/backups}")" -e ssh ./ "root@${_tgt}:./" \
+          || _xmass_leg_refused "${_udir}/backups" "the backups of ${_oct}"
+      fi
     fi
   fi
   # backup-exports shares the relocated shape and never had a leg of its
   # own, so the target used to lack even the symlink.
   _bkLnk="$(readlink "${_udir}/backup-exports" 2>/dev/null)"
-  if [ -L "${_udir}/backup-exports" ] \
-    && [[ "${_bkLnk}" = "${_udir}/static/files/"* ]] \
+  _bkName="${_bkLnk#"${_udir}/static/files/"}"
+  if [ -L "${_udir}/backup-exports" ] && [ "${_bkName}" != "${_bkLnk}" ] \
+    && [[ "${_bkName}" =~ ^[A-Za-z0-9._-]+$ ]] \
+    && [ "${_bkName}" != "." ] && [ "${_bkName}" != ".." ] \
     && [ "${_MODE}" = "LIVE" ]; then
-    ssh root@"${_tgt}" "[ -e '${_bkLnk}' ] || exit 0; if [ -d '${_dst}/backup-exports' ] && [ ! -L '${_dst}/backup-exports' ]; then rm -rf '${_dst}/backup-exports'; fi; ln -sfn '${_bkLnk}' '${_dst}/backup-exports'" 2>/dev/null
+    ssh root@"${_tgt}" "[ -e '${_dst}/static/files/${_bkName}' ] || exit 0; if [ -d '${_dst}/backup-exports' ] && [ ! -L '${_dst}/backup-exports' ]; then rm -rf '${_dst}/backup-exports'; fi; ln -sfn '${_dst}/static/files/${_bkName}' '${_dst}/backup-exports'" 2>/dev/null
   fi
   [ "${_MODE}" = "LIVE" ] \
     && ssh root@"${_tgt}" "mkdir -p ${_dst}/backups ${_dst}/clients" 2>/dev/null
-  if [ -d "${_udir}/undo" ]; then
-    _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/undo") -e ssh \
-      "${_udir}/undo/" "root@${_tgt}:${_dst}/undo/"
+  # undo/ is not made by the installer: the pinned receiver makes it there
+  if [ -e "${_udir}/undo" ] || [ -L "${_udir}/undo" ]; then
+    _xmass_pinned_leg "${_udir}/undo" "${_dst}/undo" "undo/ of ${_oct}" \
+      -aEAXqu $(_xmass_leg_args "${_udir}/undo")
   fi
 
   # Client-installed toolchains live outside /data/disk in the lshell jail's
-  # writable trees and never travelled before -- migrate AS-IS.
-  if [ -d "/opt/user/gems/${_oct}.ftp" ]; then
-    _xmass_rsync -aEAXqu $(_xmass_leg_args "/opt/user/gems/${_oct}.ftp") -e ssh \
-      "/opt/user/gems/${_oct}.ftp/" "root@${_tgt}:/opt/user/gems/${_oct}.ftp/"
+  # writable trees and never travelled before -- migrate AS-IS. The parents
+  # are sticky and world-writable, so each leaf is its owner's to replace:
+  # pinned as the account legs are.
+  if [ -e "/opt/user/gems/${_oct}.ftp" ] || [ -L "/opt/user/gems/${_oct}.ftp" ]; then
+    _xmass_pinned_leg "/opt/user/gems/${_oct}.ftp" "/opt/user/gems/${_oct}.ftp" \
+      "the gems of ${_oct}.ftp" -aEAXqu $(_xmass_leg_args "/opt/user/gems/${_oct}.ftp")
   fi
-  if [ -d "/opt/user/npm/${_oct}.ftp" ]; then
-    _xmass_rsync -aEAXqu $(_xmass_leg_args "/opt/user/npm/${_oct}.ftp") -e ssh \
-      "/opt/user/npm/${_oct}.ftp/" "root@${_tgt}:/opt/user/npm/${_oct}.ftp/"
+  if [ -e "/opt/user/npm/${_oct}.ftp" ] || [ -L "/opt/user/npm/${_oct}.ftp" ]; then
+    _xmass_pinned_leg "/opt/user/npm/${_oct}.ftp" "/opt/user/npm/${_oct}.ftp" \
+      "the npm tree of ${_oct}.ftp" -aEAXqu $(_xmass_leg_args "/opt/user/npm/${_oct}.ftp")
   fi
 
   # Plan/identity stamps forced over the fresh install's newer defaults
@@ -5222,9 +5662,9 @@ _xmass_sync_account() {
   # sweep header). Root-level legacy links (the historical /mnt case) are not
   # under any leg and materialise cleanly.
   _xmass_scan_out_links "${_udir}" "${_udir}/static/files" \
-    "distro static log .drush config clients backups undo tools"
+    "distro static log .drush config clients backups undo tools" "${_oct}"
   _info "  link sweep ${_oct}: ${_XMASS_LNK_RPT}"
-  _xmass_materialise_out_links "${_udir}" "${_dst}"
+  _xmass_materialise_out_links "${_udir}" "${_dst}" 1 "${_oct}"
 
   # The legs above mapped the group as they copied; a hand-run sync or a
   # cutover also lets the destination's own tool sweep the whole account
@@ -5821,7 +6261,7 @@ _xmass_block_web_all() {
       continue
     fi
     # static/ is tenant-writable, so the control directory and the pid name
-    # can be planted as a link or a FIFO: the directory is made real and the
+    # can be a link or a FIFO put there: the directory is made real and the
     # gate is put inside it, never through or into either.
     _xmass_in_real_dir "/data/disk/${_oct}/static" _xmass_ctrl_dir_here
     _xmass_in_real_dir "/data/disk/${_oct}/static/control" \
@@ -6387,6 +6827,18 @@ _xmass_setup_migration_proxy_trust() {
 # demoted box, which already holds root there: continuity within one pair,
 # not a new trust domain. The key travels in the command environment, base64,
 # never on stdin (stdin is the remote script). Idempotent, never fatal.
+### Whether this box keeps a record of its own for the migration peer $1 (a
+### checked dotted quad): the relay list migration_proxy_trust keeps, a root
+### key line tagged for that address by pre-mig, or the firewall line an
+### xmass run wrote for it. An address named only in an account's log/ is
+### none of these.
+_xmass_peer_witnessed() {
+  local _rx="${1//./\\.}"
+  grep -qxF -- "${1}" /root/.migration.proxy.ips.cnf 2> /dev/null && return 0
+  grep -qE -- " # xmass migration source ${_rx}[[:space:]]*\$" /root/.ssh/authorized_keys 2> /dev/null && return 0
+  grep -qE -- "^${_rx} # xmass migration " /etc/csf/csf.allow 2> /dev/null
+}
+
 _xmass_carry_inbound_reach() {
   local _cnf _ip _set _key _kb64 _own _sets="" _a
   _own="$(hostname -I 2>/dev/null | tr ' ' '\n')"
@@ -6394,8 +6846,19 @@ _xmass_carry_inbound_reach() {
     [ -e "${_cnf}" ] || continue
     _mig_is_mine "${_cnf}" || continue
     [ "$(_mig_get "${_cnf}" _MIG_ROLE)" = "target" ] || continue
-    _set="$(printf '%s\n' $(_mig_get "${_cnf}" _MIG_PEER_IPS) $(_mig_get "${_cnf}" _MIG_PEER_IP) | sort -u | tr '\n' ',')"
-    _sets="${_sets} ${_set%,}"
+    # The record sits in the account's own log/: a peer address it names
+    # opens the firewall on the target only when this box holds a record of
+    # its own for that peer (see _xmass_peer_witnessed).
+    _set=""
+    for _ip in $(_mig_get "${_cnf}" _MIG_PEER_IPS | tr ',' ' ') $(_mig_get "${_cnf}" _MIG_PEER_IP); do
+      _mig_valid_ip "${_ip}" || continue
+      if ! _xmass_peer_witnessed "${_ip}"; then
+        _alrt "  ${_cnf} names peer ${_ip}, which no record of this box's own confirms -- its reach is NOT carried"
+        continue
+      fi
+      _set="${_set}${_ip},"
+    done
+    [ -n "${_set}" ] && _sets="${_sets} ${_set%,}"
   done
   for _ip in $(cat /root/.migration.proxy.ips.cnf 2>/dev/null); do
     _sets="${_sets} ${_ip}"
@@ -6407,7 +6870,9 @@ _xmass_carry_inbound_reach() {
       [ "${_ip}" = "${_tgt}" ] && continue
       printf '%s\n' "${_own}" | grep -qxF "${_ip}" && continue
       _a="${_a} ${_ip}"
-      [ -n "${_key}" ] || _key="$(grep -hF -- "# xmass migration source ${_ip}" /root/.ssh/authorized_keys 2>/dev/null | head -n1)"
+      # the tag ends the line: one peer's address never picks up the key of
+      # another whose address it is a prefix of
+      [ -n "${_key}" ] || _key="$(grep -hE -- " # xmass migration source ${_ip//./\\.}[[:space:]]*\$" /root/.ssh/authorized_keys 2>/dev/null | head -n1)"
     done
     [ -n "${_a}" ] || continue
     _info "Carrying inbound migration-proxy reach to ${_tgt} for peer${_a} (root key + csf allow/ignore; the serving trust follows the retarget) ..."
@@ -6520,12 +6985,36 @@ if [ -z "${_SP}" ]; then
   echo "PANEL-ERROR: cannot read site_path from ${_ALS}"
   exit 1
 fi
+# The alias is the account's file: the panel dir it names is used only when
+# it is this root's own, <root>/aegir/distro/<n>/sites/<name> for an Octopus
+# root and <root>/<platform>/sites/<name> for the master, written in the
+# plain characters the rewrites below put into sed programs and SQL.
+_sp_own() {
+  local _t
+  case "${1}" in
+    *[!A-Za-z0-9/._-]*|*/../*|*/..|*/./*|*//*) return 1 ;;
+  esac
+  case "${_R}" in
+    /var/aegir) _t="${1#/var/aegir/}" ;;
+    *) _t="${1#"${_R}"/aegir/distro/}" ;;
+  esac
+  [ "${_t}" != "${1}" ] || return 1
+  case "${_t}" in
+    */sites/*/*|*/*/sites/*|.*) return 1 ;;
+    ?*/sites/?*) return 0 ;;
+  esac
+  return 1
+}
+if ! _sp_own "${_SP}"; then
+  echo "PANEL-ERROR: ${_ALS} names ${_SP}, which is not a panel dir of ${_R} -- refusing to rewire it"
+  exit 1
+fi
 # The alias copy that survived the rsync -u mtime race may name either
 # hostname variant, and on account roots BOTH panel dirs can exist on disk
 # (the source platform tree rsyncs in). The dir the renamed site node will
 # serve is the NEW-host-named one — prefer it whenever it exists.
 _SPN=${_SP//${_S}/${_NEW}}
-if [ -f "${_SPN}/drushrc.php" ]; then
+if _sp_own "${_SPN}" && [ -f "${_SPN}/drushrc.php" ]; then
   _SP="${_SPN}"
 fi
 _OLD_PLAT=""
@@ -6546,6 +7035,7 @@ if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ] \
   _TREE=$(dirname "$(dirname "$(dirname "${_SP}")")")
   _FOUND=""; _N=0
   for _CAND in "${_TREE}"/*/sites/*"${_NEW}"*; do
+    _sp_own "${_CAND}" || continue
     [ -f "${_CAND}/drushrc.php" ] || continue
     [ -f "${_CAND}/settings.php" ] || continue
     # A site dir on a code-less platform is the hollow shape this branch
@@ -6578,6 +7068,10 @@ if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ] \
     echo "PANEL-ERROR: ${_N} candidate panel dirs under ${_TREE} match ${_NEW} — refusing to guess"
     exit 1
   fi
+fi
+if ! _sp_own "${_SP}"; then
+  echo "PANEL-ERROR: the panel dir ${_SP} is not one of ${_R} -- refusing to rewire it"
+  exit 1
 fi
 if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ]; then
   echo "PANEL-ERROR: no panel settings.php/drushrc.php under ${_R} (looked at ${_SP})"
@@ -6706,6 +7200,22 @@ _root_has_code() {
   done
   return 1
 }
+# A plain absolute path, the only alias 'root' value the rewrites below
+# turn into a sed pattern; anything else is reported and left alone.
+_plain_root() {
+  case "${1}" in
+    '') return 1 ;;
+    /*) ;;
+    *) echo "PANEL-NOTE: alias root '${1}' is not an absolute path -- left alone"; return 1 ;;
+  esac
+  case "${1}" in
+    *[!A-Za-z0-9/._-]*)
+      echo "PANEL-NOTE: alias root '${1}' is not a plain path -- left alone"
+      return 1
+      ;;
+  esac
+  return 0
+}
 # True only when the panel DB answers that no context carries the name; a
 # query that fails answers nothing, which never reads as "no such context".
 _no_hosting_context() {
@@ -6751,8 +7261,11 @@ _reconcile_panel_aliases() {
       fi
     fi
   done
+  # The root an alias holds is the account's text and becomes a sed
+  # pattern here: only a plain absolute path is ever replaced.
   if [ -f "${_PA}" ]; then
     _OLDROOT=$(_xmass_read_file "${_PA}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
+    _plain_root "${_OLDROOT}" || _OLDROOT=""
     if [ -n "${_OLDROOT}" ] && [ "${_OLDROOT}" != "${_DISK}" ]; then
       _xmass_in_real_dir "${_DRUSH}" _xmass_sed_here "${_PA##*/}" "s|${_OLDROOT}|${_DISK}|g" \
         && echo "PANEL-NOTE: platform alias ${_CTX} root corrected ${_OLDROOT} -> ${_DISK}"
@@ -6761,6 +7274,7 @@ _reconcile_panel_aliases() {
   for _AF in "${_ALS}" "${_DRUSH}/hm.alias.drushrc.php"; do
     [ -f "${_AF}" ] || continue
     _OLDROOT=$(_xmass_read_file "${_AF}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
+    _plain_root "${_OLDROOT}" || _OLDROOT=""
     if [ -n "${_OLDROOT}" ] && [ "${_OLDROOT}" != "${_DISK}" ]; then
       _xmass_in_real_dir "${_DRUSH}" _xmass_sed_here "${_AF##*/}" "s|${_OLDROOT}|${_DISK}|g" \
         && echo "PANEL-NOTE: $(basename "${_AF}" .alias.drushrc.php) alias root corrected ${_OLDROOT} -> ${_DISK}"
@@ -6870,7 +7384,8 @@ if [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B \
   fi
   _WPW=""
   _VHD="${_SP%%/aegir/distro/*}"
-  if [ "${_VHD}" != "${_SP}" ]; then
+  # the vhosts rewritten are this root's own only
+  if [ "${_VHD}" != "${_SP}" ] && [ "${_VHD}" = "${_R}" ]; then
     for _VHF in \
       "${_VHD}/config/server_master/nginx/vhost.d/$(basename "${_SP}")" \
       "${_VHD}/config/server_master/nginx/vhost.d/https.$(basename "${_SP}")"; do
@@ -6893,6 +7408,7 @@ if [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B \
     for _VHF in \
       "${_VHD}/config/server_master/nginx/vhost.d/$(basename "${_SP}")" \
       "${_VHD}/config/server_master/nginx/vhost.d/https.$(basename "${_SP}")"; do
+      [ "${_VHD}" = "${_R}" ] || continue
       [ -f "${_VHF}" ] || continue
       _xmass_in_real_dir "${_VHF%/*}" _xmass_sed_here "${_VHF##*/}" \
         -e "s#^\( *fastcgi_param  *db_passwd  *\)[^;]*;#\1${_WPW};#"
@@ -6996,7 +7512,7 @@ done
 # settings.php, so the rewire has to land there too or the panel keeps
 # authenticating as the dead DB until the next render.
 _VHD="${_SP%%/aegir/distro/*}"
-if [ "${_VHD}" != "${_SP}" ]; then
+if [ "${_VHD}" != "${_SP}" ] && [ "${_VHD}" = "${_R}" ]; then
   for _VHF in \
     "${_VHD}/config/server_master/nginx/vhost.d/$(basename "${_SP}")" \
     "${_VHD}/config/server_master/nginx/vhost.d/https.$(basename "${_SP}")"; do
@@ -8905,13 +9421,35 @@ _xmass_pre_mig() {
 }
 
 _xmass_drop_target_prepass_backups() {
-  local _t="$1" _oct _n
+  local _t="$1" _oct _out _w _n _rc
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
-    _n=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
-      "find /data/disk/${_oct}/backups/system -maxdepth 1 -mindepth 1 -type d -name '*-pre-*' 2>/dev/null | wc -l" 2>/dev/null | tr -dc '0-9')
-    case "${_n}" in ''|0) continue ;; esac
-    if ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
-      "find /data/disk/${_oct}/backups/system -maxdepth 1 -mindepth 1 -type d -name '*-pre-*' -exec rm -rf {} +" 2>/dev/null; then
+    # backups/ is the account's there too (and may be the mover's link into
+    # its store): the snapshots are counted and removed only inside the real
+    # directory backups/system resolves to, and only when that is the
+    # account's own tree or store
+    _out=$( { declare -f _xmass_real_want _xmass_own_path; cat <<'PREPASS'
+_d="/data/disk/${1}/backups/system"
+[ -d "${_d}" ] || { echo "XMPRE 0 0"; exit 0; }
+cd -P -- "${_d}" 2> /dev/null || { echo "XMPRE 0 0"; exit 0; }
+_xmass_own_path "${1}" "$(pwd -P)" || { echo "XMPRE refused $(pwd -P)"; exit 0; }
+_n=$(find . -maxdepth 1 -mindepth 1 -type d -name '*-pre-*' 2> /dev/null | wc -l | tr -dc '0-9')
+_rc=0
+if [ "${_n:-0}" -gt 0 ]; then
+  find . -maxdepth 1 -mindepth 1 -type d -name '*-pre-*' -exec rm -rf {} + 2> /dev/null || _rc=1
+fi
+echo "XMPRE ${_n:-0} ${_rc}"
+PREPASS
+      } | ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "bash -s -- '${_oct}'" 2>/dev/null \
+      | grep -m1 '^XMPRE ')
+    read -r _w _n _rc <<< "${_out}"
+    case "${_n}" in
+      ''|0) continue ;;
+      refused)
+        _alrt "  ${_oct}: backups/system on ${_t} resolves to ${_rc:-?}, outside the account's own tree and store -- pre-pass snapshots left alone"
+        continue
+        ;;
+    esac
+    if [ "${_rc}" = "0" ]; then
       _info "  ${_oct}: dropped ${_n} pre-pass backup snapshot(s) of the target's own install on ${_t}"
     else
       _alrt "  ${_oct}: could not drop the pre-pass backup snapshots on ${_t}; the sync's delete guard may stop on them"
@@ -10722,7 +11260,7 @@ REMOTE
   for _oct in ${_XMASS_PROXY_CONV_FAILED}; do
     # log/ belongs to the account user: the marker is a fresh file made
     # inside the real directory and renamed over the name, never written
-    # through a link or into a FIFO put there; a planted directory at the
+    # through a link or into a FIFO put there; a directory put at the
     # name survives, the write fails and the ALRT says so
     _pf="/data/disk/${_oct}/log/proxy-failed.pid"
     if ! _xmass_in_real_dir "/data/disk/${_oct}/log" \
