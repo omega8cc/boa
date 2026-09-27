@@ -727,6 +727,11 @@
 
 @=> Important Fixes
 
+    * A fresh Drupal 10.1.8 platform is no longer reported as "the extract
+      came out short" and fetched again on the next Octopus pass: the
+      completeness check now leaves out the three directories the platform
+      lock keeps closed, which that tarball carries closed already.
+
     * Azure remote backups work again with the Duplicity release BOA
       installs: the target is azure://<bucket>, and the connection string
       Duplicity reads is composed from AZURE_STORAGE_ACCOUNT and
