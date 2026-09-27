@@ -541,7 +541,17 @@ _set_backup_target() {
     azure)
       _load_credentials "azure" "${_user}"
       _construct_bucket_name "azure" "${_user}"
-      _BACKUP_TARGET="azure://${AZURE_STORAGE_ACCOUNT}@${_BUCKET_NAME}"
+
+      # Duplicity's azure backend reads one name, AZURE_CONNECTION_STRING,
+      # and takes the container from the URL (azure://<container>); an
+      # account@container URL is refused as an invalid container name. A
+      # connection string carries ';', which no credentials value may, so it
+      # is composed here from the documented account and key names.
+      if [ -z "${AZURE_CONNECTION_STRING}" ] \
+        && [ -n "${AZURE_STORAGE_ACCOUNT}" ] && [ -n "${AZURE_STORAGE_KEY}" ]; then
+        export AZURE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=${AZURE_STORAGE_ACCOUNT};AccountKey=${AZURE_STORAGE_KEY};EndpointSuffix=core.windows.net"
+      fi
+      _BACKUP_TARGET="azure://${_BUCKET_NAME}"
       ;;
     b2)
       _load_credentials "b2" "${_user}"
