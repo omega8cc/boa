@@ -1895,7 +1895,7 @@ _update_agents() {
     fi
   fi
 
-  _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f89 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
+  _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f88 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
   _fetch_versioned ${_optBin}/clearwebbans "${_urlHmr}/tools/bin/clearwebbans" f95 --symlink ${_usrBin}/clearwebbans --guard /local/bin/clearwebbans
   _fetch_versioned ${_optBin}/defaultkeys "${_urlHmr}/tools/bin/defaultkeys" f99 --symlink ${_usrBin}/defaultkeys --guard /local/bin/defaultkeys
   # PHP-selecting bee launcher (identity verb policy). Deployed unconditionally
@@ -2107,7 +2107,7 @@ _update_agents() {
     # revalidates within the hour, and never clobbers a running pass; the
     # post-install steps run only when the file actually changed.
     _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f90 --guard /xdrago/manage_ltd_users.sh
+    _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f89 --guard /xdrago/manage_ltd_users.sh
     if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
       && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid

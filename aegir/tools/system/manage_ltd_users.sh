@@ -952,6 +952,16 @@ _ltd_log_marker_to_src() {
   _c="$(_ltd_read_in "${_dscUsr}/log" "${1}")"
   _ltd_stamp_put "${1}" "${_c}" && _ltd_rm_in "${_dscUsr}/log" "${1}"
 }
+# A name moved as it is (the same file, owner and mode) from the real
+# directory $1 into the current (pinned) one: taken from inside $1 and put
+# here through this shell's /proc cwd, which stays on this directory whatever
+# is renamed meanwhile, so neither end is reached through a link an account
+# put at a directory name. $2 = the name.
+_ltd_take_here() {
+  local _to="/proc/${BASHPID}/cwd"
+  [ -d "${_to}/" ] || return 1
+  _ltd_in_real_dir "${1}" mv -f -T -- "./${2}" "${_to}/${2}"
+}
 # sed -i on a file of the current (pinned) directory, only when it is a
 # regular file: through a link sed -i puts a copy of the target at the name.
 # $1 = name, $2 = sed script.
@@ -1195,7 +1205,7 @@ _enable_chattr() {
       # when it is the account's own: a root-owned directory of the home
       # renamed onto the name is left alone
       _ltd_in_real_dir "${_U_TP}" _ltd_own_dir_here "$1:${_accGrp}" 02755 YES
-      chown -h $1:${_accGrp} ${_U_HD}
+      _ltd_in_real_dir "${_U_HD}" chown "$1:${_accGrp}" .
       _ltd_in_real_dir "${_U_HD}" chmod 02755 .
       _ltd_in_real_dir "${_U_HD}" \
         _ltd_in_real_dir ./usr _ltd_drush_usr_links "${_dscUsr}/.drush/usr"
@@ -1356,13 +1366,15 @@ _enable_chattr() {
           # name, or root sets +i on whatever it points at.
           [ -e "/home/${_UQ}/.npmrc" ] && [ ! -L "/home/${_UQ}/.npmrc" ] \
             && chattr +i /home/${_UQ}/.npmrc
-          mkdir -p /opt/user/npm/${_UQ}/.bundle
-          mkdir -p /opt/user/npm/${_UQ}/.composer
-          mkdir -p /opt/user/npm/${_UQ}/.config
-          mkdir -p /opt/user/npm/${_UQ}/.npm
-          mkdir -p /opt/user/npm/${_UQ}/.npm-packages/bin
-          mkdir -p /opt/user/npm/${_UQ}/.npm-packages/lib/node_modules
-          mkdir -p /opt/user/npm/${_UQ}/.sass-cache
+          # the login owns its npm tree and every name in it: each level is
+          # made inside the real directory above it, never through a link
+          _ltd_in_real_dir "/opt/user/npm/${_UQ}" mkdir -p ./.bundle \
+            ./.composer ./.config ./.npm ./.npm-packages ./.sass-cache
+          _ltd_in_real_dir "/opt/user/npm/${_UQ}" \
+            _ltd_in_real_dir ./.npm-packages mkdir -p ./bin ./lib
+          _ltd_in_real_dir "/opt/user/npm/${_UQ}" \
+            _ltd_in_real_dir ./.npm-packages \
+            _ltd_in_real_dir ./lib mkdir -p ./node_modules
           chown -R ${_UQ}:${_accGrp} /opt/user/npm/${_UQ}
           _ltd_rm_in "${_dscUsr}/log" '.npm.build*'
           _ltd_put_in "${_dscUsr}/log" ".npm.build.${_UQ}.${_xSrl}.txt" ""
@@ -3928,7 +3940,7 @@ _site_socket_inc_gen() {
     rm -f ${_hmstLnk}
   done
 
-  _desymlink_planted "${_mltFpm}"
+  _ltd_in_real_dir "${_dscUsr}/static/control" _desymlink_planted ./multi-fpm.info
   # multi-fpm.info is the main login's: read without following a link or
   # blocking on a FIFO, edited here and put back as a fresh file (sed -i and
   # >> would write through a link put at the name, and sed -i would put a
@@ -3977,20 +3989,21 @@ _site_socket_inc_gen() {
     _mltFpmUpdateForce=YES
   fi
 
+  # config/ is oN's: the default include goes only from the real post.d
   if [ -x "/opt/php85/bin/php" ] && [ ! -e "/home/${_USER}.85.web" ]; then
-    rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
+    _ltd_rm_in "${_fpmPth}" fpm_include_default.inc
     _mltFpmUpdateForce=YES
   elif [ -x "/opt/php84/bin/php" ] && [ ! -e "/home/${_USER}.84.web" ]; then
-    rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
+    _ltd_rm_in "${_fpmPth}" fpm_include_default.inc
     _mltFpmUpdateForce=YES
   elif [ -x "/opt/php83/bin/php" ] && [ ! -e "/home/${_USER}.83.web" ]; then
-    rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
+    _ltd_rm_in "${_fpmPth}" fpm_include_default.inc
     _mltFpmUpdateForce=YES
   elif [ -x "/opt/php82/bin/php" ] && [ ! -e "/home/${_USER}.82.web" ]; then
-    rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
+    _ltd_rm_in "${_fpmPth}" fpm_include_default.inc
     _mltFpmUpdateForce=YES
   elif [ -x "/opt/php81/bin/php" ] && [ ! -e "/home/${_USER}.81.web" ]; then
-    rm -f /data/disk/${_USER}/config/server_master/nginx/post.d/fpm_include_default.inc
+    _ltd_rm_in "${_fpmPth}" fpm_include_default.inc
     _mltFpmUpdateForce=YES
   fi
 
@@ -4493,8 +4506,11 @@ _manage_site_drush_alias_mirror() {
   # directory) is never root's to open: the diff below reads every copy
   _ltd_in_real_dir "${_ftpD}" find . -maxdepth 1 \
     -name '*.alias.drushrc.php' ! -type f -exec rm -rf {} + 2> /dev/null
+  # oN's own ~/.drush, its ghost markers in log/ctrl and its undo/ are oN's
+  # to swap too: every remove, marker and move below acts inside the real
+  # directories only
   if [ -e "${_dscUsr}/.drush/.alias.drushrc.php" ]; then
-    rm -f ${_dscUsr}/.drush/.alias.drushrc.php
+    _ltd_in_real_dir "${_dscUsr}/.drush" rm -f -- ./.alias.drushrc.php
   fi
 
   _isAliasUpdate=NO
@@ -4542,7 +4558,8 @@ _manage_site_drush_alias_mirror() {
         elif [ -n "$(find ${_Alias} -mmin -60 2>/dev/null)" ]; then
           : # written in the last hour -- likely the task that owns it
         else
-          rm -f ${_pthParentUsr}/.drush/${_SiteName}.alias.drushrc.php
+          _ltd_in_real_dir "${_pthParentUsr}/.drush" \
+            rm -f -- "./${_SiteName}.alias.drushrc.php"
         fi
       else
         _SiteDir=$(_ltd_read_in "${_pthParentUsr}/.drush" "${_Alias##*/}" \
@@ -4555,7 +4572,8 @@ _manage_site_drush_alias_mirror() {
         if [ -z "${_SiteDir}" ] \
           || [ "${_SiteDir}" = "${_SiteDir#/data/disk/}" ]; then
           _IS_SITE=YES
-          rm -f ${_pthParentUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen 2>/dev/null
+          _ltd_in_real_dir "${_pthParentUsr}/log/ctrl" \
+            rm -f -- "./ghost-ltd-${_SiteName}.seen" 2>/dev/null
           # An alias root cannot parse is never copied: a copy of it still in
           # place keeps the line it last landed with, none keys "<name> none".
           _ftpLast=$(_ltd_ftp_line_last "${_SiteName}")
@@ -4572,7 +4590,8 @@ _manage_site_drush_alias_mirror() {
           # native-symlinked store targets that can be transiently absent.
           # A valid sighting always clears the ghost hold marker, so a site
           # that recovered mid-hold never carries a stale count into a reap.
-          rm -f ${_pthParentUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen 2>/dev/null
+          _ltd_in_real_dir "${_pthParentUsr}/log/ctrl" \
+            rm -f -- "./ghost-ltd-${_SiteName}.seen" 2>/dev/null
           _ltd_ftp_copy_keyed "${_SiteName}"
         else
           # A site whose copy landed before keeps it while its directory is
@@ -4620,18 +4639,27 @@ _manage_site_drush_alias_mirror() {
               # reaper (client notice, operator-review skips) acts first.
               # Markers start only while the flag is YES, so a flip never
               # mass-reaps accumulated ghosts on its first pass.
-              mkdir -p ${_pthParentUsr}/log/ctrl
+              # The marker is made exclusively inside the real log/ctrl (empty,
+              # as touch made it), never through a link at its name, and the
+              # alias moves only from the real ~/.drush into the real undo/
+              # (a link at undo/ would take it anywhere).
+              _ltd_in_real_dir "${_pthParentUsr}/log" mkdir -p ./ctrl
               _GA_MARK="${_pthParentUsr}/log/ctrl/ghost-ltd-${_SiteName}.seen"
               if [ ! -e "${_GA_MARK}" ]; then
-                touch ${_GA_MARK}
+                _ltd_in_real_dir "${_pthParentUsr}/log/ctrl" \
+                  dd of="./${_GA_MARK##*/}" conv=excl status=none < /dev/null 2> /dev/null
                 echo "GHOST ${_SiteName}.alias sighted, held for 48h before any move"
               elif [ -n "$(find ${_GA_MARK} -mmin +2880 2>/dev/null)" ]; then
                 mkdir -p ${_pthParentUsr}/undo
                 _GHOST_REAPED=YES
-                rm -f ${_GA_MARK}
+                _ltd_in_real_dir "${_pthParentUsr}/log/ctrl" rm -f -- "./${_GA_MARK##*/}"
                 _ltd_in_real_dir "${_ftpD}" rm -f -- "./${_SiteName}.alias.drushrc.php"
-                mv -f ${_pthParentUsr}/.drush/${_SiteName}.alias.drushrc.php ${_pthParentUsr}/undo/ &> /dev/null
-                echo "GHOST ${_SiteName}.alias.drushrc.php moved to ${_pthParentUsr}/undo/"
+                if _ltd_in_real_dir "${_pthParentUsr}/undo" _ltd_take_here \
+                  "${_pthParentUsr}/.drush" "${_SiteName}.alias.drushrc.php" &> /dev/null; then
+                  echo "GHOST ${_SiteName}.alias.drushrc.php moved to ${_pthParentUsr}/undo/"
+                else
+                  echo "GHOST ${_SiteName}.alias.drushrc.php not moved: ~/.drush or undo/ is not the real directory, or the move failed"
+                fi
               else
                 echo "GHOST ${_SiteName}.alias sighted, still inside the 48h hold"
               fi
@@ -4769,14 +4797,15 @@ _manage_site_drush_alias_mirror() {
 # Older releases stashed the same dirs beside the site archives under
 # backups/; those are pruned by the same age so the pile ends everywhere.
 # Bare paths, -maxdepth 1 and -type d: a planted link is neither followed nor
-# matched (as at the sweep above).
+# matched (as at the sweep above), and -execdir removes each hit from inside
+# the directory find walked, never by a path through a name swapped since.
 _prune_psr_log_stash() {
   local _h="${1}"
   [ -n "${_h}" ] && [ -d "${_h}" ] || return 0
   find ${_h}/.tmp -mindepth 1 -maxdepth 1 -type d -name 'psr-log-*' \
-    -mtime +6 -exec rm -rf {} + &> /dev/null
+    -mtime +6 -execdir rm -rf {} + &> /dev/null
   find ${_h}/backups -mindepth 1 -maxdepth 1 -type d -name 'psr-log-*' \
-    -mtime +6 -exec rm -rf {} + &> /dev/null
+    -mtime +6 -execdir rm -rf {} + &> /dev/null
 }
 
 _manage_user() {
@@ -4858,7 +4887,9 @@ _manage_user() {
             >> /var/log/boa/manage_ltd.incident.log
         fi
       elif [ -n "${_igGid}" ]; then
-        if [ -f "${_igMark}" ] && [ ! -L "${_igMark}" ] && grep -q " gid=${_igGid}$" "${_igMark}" 2>/dev/null; then
+        # log/ is oN's: the record is read without following a link or
+        # blocking on a FIFO (bounded), inside the real directory
+        if _ltd_read_in "${_igMark%/*}" "${_igMark##*/}" | grep -q " gid=${_igGid}$"; then
           _igConv=YES
         elif [ "$(id -gn ${_USER} 2>/dev/null)" = "${_USER}" ] || [ "$(id -gn ${_USER}.ftp 2>/dev/null)" = "${_USER}" ]; then
           _igConv=YES
@@ -4940,7 +4971,8 @@ _manage_user() {
         rm -f ${_dscUsr}/composer.lock &> /dev/null
         rm -f ${_dscUsr}/composer.json &> /dev/null
         rm -f -r ${_dscUsr}/vendor &> /dev/null
-        rm -f -r ${_dscUsr}/static/vendor &> /dev/null
+        # oN can swap static/ itself: vendor/ goes only from the real one
+        _ltd_in_real_dir "${_dscUsr}/static" rm -f -r -- ./vendor &> /dev/null
       fi
       # every root write under /data/disk/<oN> refuses a path with a link on
       # it (BOA makes none at these names): say so once a day, not silently
@@ -4987,16 +5019,19 @@ _manage_user() {
       # ~/static is 02775 group `users` with no sticky bit, so any co-tenant on
       # the box can replace the `control` name. Strip a plant unconditionally:
       # gating this on a stamp INSIDE the link lets a target that already
-      # carries a matching stamp skip the guard for the whole pass.
-      _desymlink_planted "${_dscUsr}/static/control"
+      # carries a matching stamp skip the guard for the whole pass. oN can
+      # swap static/ itself, so the strip and the mkdir act only inside the
+      # real static/.
+      _ltd_in_real_dir "${_dscUsr}/static" _desymlink_planted ./control
       if [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
         && [ -e "/home/${_USER}.ftp/clients" ]; then
-        mkdir -p ${_dscUsr}/static/control
+        _ltd_in_real_dir "${_dscUsr}/static" mkdir -p ./control
         _ltd_in_real_dir "${_dscUsr}/static/control" _ltd_ctrl_init
       fi
       if [ -e "${_dscUsr}/static/control/ssl-live-mode.info" ]; then
         if [ -e "${_dscUsr}/tools/le/.ctrl/ssl-demo-mode.pid" ]; then
-          rm -f ${_dscUsr}/tools/le/.ctrl/ssl-demo-mode.pid
+          # tools/ is oN's: removed only inside the real directory
+          _ltd_rm_in "${_dscUsr}/tools/le/.ctrl" ssl-demo-mode.pid
         fi
       fi
 
@@ -5038,7 +5073,6 @@ _manage_user() {
       if [ -e "${_THIS_HM_PLR}/modules/path_alias_cache" ] \
         && [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
         if [ -x "/opt/php56/bin/php" ]; then
-        _desymlink_planted "${_dscUsr}/static/control/cli.info"
         _ltd_ctrl_put cli.info 5.6
         fi
       fi
@@ -5135,7 +5169,8 @@ _manage_user() {
             _ltd_in_real_dir "/home/${_USER}.ftp/.drush" rm -rf -- ./cache
             rm -rf /home/${_USER}.ftp/.tmp
             mkdir -p /home/${_USER}.ftp/.tmp
-            chown -h ${_USER}.ftp:${_usrGroup} /home/${_USER}.ftp/.tmp &> /dev/null
+            _ltd_in_real_dir "/home/${_USER}.ftp/.tmp" \
+              chown "${_USER}.ftp:${_usrGroup}" . &> /dev/null
             _ltd_in_real_dir "/home/${_USER}.ftp/.tmp" chmod 700 . &> /dev/null
             _ltd_in_real_dir "/home/${_USER}.ftp/.tmp" \
               _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
