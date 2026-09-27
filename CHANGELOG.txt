@@ -1150,6 +1150,12 @@
       own pages stale, and a command could read another site's cached
       configuration and state.
 
+    * On nginx 1.30 and newer the far-future and AdvAgg locations send
+      no ETag again once the server is verified: provision's check for
+      the etag directive knew versions up to 1.29 only, so the vhosts
+      fell back to an empty ETag header, which nginx drops, and every
+      such file kept its ETag.
+
     * A Drupal 10+ site no longer fails after its platform is locked again
       following work with the site-local Drush. Re-locking a platform the
       Unlock Local Drush task left open, by the Lock Local Drush task or a
