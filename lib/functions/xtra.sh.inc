@@ -107,6 +107,27 @@ _if_install_adminer() {
   fi
 }
 
+# The opt-in web apps under /var/www (Chive, SQL Buddy, Collectd Graph Panel)
+# run on the master pool, whose user owns them: nothing else writes there,
+# so directories are 0755 and files 0644, as Adminer's always were (0775 and
+# 0664 in group www-data let every account edit PHP the master pool runs).
+# Modes go through a handle that never follows a link, from find -execdir
+# inside the real directory, so a name swapped for a link while the tree was
+# still group-writable is never followed.
+_XTRA_FCHMOD_PL='use Fcntl;
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (-d _) { chmod(0755, $h); }
+  elsif (-f _) { chmod(0644, $h); }
+  close($h);
+}'
+_xtra_app_modes() {
+  ( PATH=/usr/local/bin:/usr/bin:/bin
+    cd -P -- "${1}" 2> /dev/null && [ "$(pwd -P)" = "${1}" ] || exit 1
+    find . -execdir perl -e "${_XTRA_FCHMOD_PL}" {} + ) &> /dev/null
+}
+
 _if_install_chive() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_chive"
@@ -149,8 +170,7 @@ _if_install_chive() {
       _msg "NOTE: _PHP_CN not set for Chive Manager"
       chown -R www-data:www-data /var/www/chive
     fi
-    find /var/www/chive -type d -exec chmod 0775 {} \; &> /dev/null
-    find /var/www/chive -type f -exec chmod 0664 {} \; &> /dev/null
+    _xtra_app_modes /var/www/chive
   fi
 }
 
@@ -196,8 +216,7 @@ _if_install_sqlbuddy() {
       _msg "NOTE: _PHP_CN not set for SQL Buddy Manager"
       chown -R www-data:www-data /var/www/sqlbuddy
     fi
-    find /var/www/sqlbuddy -type d -exec chmod 0775 {} \; &> /dev/null
-    find /var/www/sqlbuddy -type f -exec chmod 0664 {} \; &> /dev/null
+    _xtra_app_modes /var/www/sqlbuddy
   fi
 }
 
@@ -308,8 +327,7 @@ _if_install_collectd() {
       _msg "NOTE: _PHP_CN not set for Collectd Graph Panel"
       chown -R www-data:www-data /var/www/cgp
     fi
-    find /var/www/cgp -type d -exec chmod 0775 {} \; &> /dev/null
-    find /var/www/cgp -type f -exec chmod 0664 {} \; &> /dev/null
+    _xtra_app_modes /var/www/cgp
     _fix_collectd_rrd_syslog_flood
     _fix_collectd_nginx
   fi

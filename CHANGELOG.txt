@@ -97,6 +97,11 @@
     * Nor does the upgrade take them out of the web server's group
       while it hands the account's config over: for that moment nginx
       could not read them and answered with an error.
+    * The optional Chive, SQL Buddy and Collectd Graph Panel apps are
+      no longer writable by other accounts: their files were 0664 and
+      their directories 0775 in the web server's group, which every
+      account's users belong to. They are 0644 and 0755 now, as Adminer
+      always was, set without following a link.
     * Root no longer changes the owner or mode of a shared-code
       revision's keys directory through a link the account put there,
       in the Octopus upgrade or in the nightly pass: the directory is
