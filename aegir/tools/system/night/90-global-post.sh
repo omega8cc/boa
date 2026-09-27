@@ -119,13 +119,18 @@ fi
 # Run it inside a pinned directory or from find -execdir: O_NOFOLLOW covers
 # the last name only. Args: f|d (regular file or directory), the mode
 # (octal), the names.
+# A directory keeps its set-user-ID and set-group-ID bits unless the mode has
+# five digits (02775, 00755), as chmod(1) does with a numeric mode.
 _NIGHT_FCHMOD_PL='use Fcntl;
-my ($t, $m) = (shift @ARGV, oct(shift @ARGV));
+my ($t, $ms) = (shift @ARGV, shift @ARGV);
+my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
 for my $f (@ARGV) {
   sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
-  stat($h);
-  if (($t eq "f" && -f _) || ($t eq "d" && -d _)) {
+  my @s = stat($h);
+  if ($t eq "f" && -f _) {
     chmod($m, $h);
+  } elsif ($t eq "d" && -d _) {
+    chmod($m | ($s[2] & $k), $h);
   }
   close($h);
 }'
