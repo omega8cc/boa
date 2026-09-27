@@ -173,14 +173,17 @@ _usage_words() (
 # The addresses in $1 (words, as log/email.txt holds them) that have an
 # e-mail address's form, joined by single spaces: they reach s-nail, run as
 # root, as its recipients, where a word starting with a dash would be an
-# option and one naming a file or a command a delivery to it.
+# option and one naming a file or a command a delivery to it. An apostrophe
+# in the local part is kept: it is literal in every expansion below. Text
+# over 4 KiB holds no address list and gives nothing.
 _usage_mail_list() (
-  local _w _o=""
+  local _w _o="" _re
+  _re="^[A-Za-z0-9._%+'][A-Za-z0-9._%+'-]*@[A-Za-z0-9.-]+\.[A-Za-z0-9-]+$"
+  [ "${#1}" -le 4096 ] || exit 0
   set -f
   # shellcheck disable=SC2086
   for _w in ${1//\\\@/\@}; do
-    [[ "${_w}" =~ ^[A-Za-z0-9._%+][A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\.[A-Za-z0-9-]+$ ]] \
-      || continue
+    [[ "${_w}" =~ ${_re} ]] || continue
     _o="${_o}${_o:+ }${_w}"
   done
   printf '%s' "${_o}"

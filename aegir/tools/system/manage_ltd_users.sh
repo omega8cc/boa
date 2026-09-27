@@ -3248,7 +3248,9 @@ for _Domain in `find ${_Client}/ -maxdepth 1 -mindepth 1 -type l | sort`; do
     && { { [ -f "${_PATH_DOM}/bin/grav" ] && [ -f "${_PATH_DOM}/system/defines.php" ]; } \
       || { [ -f "${_PATH_DOM}/public/index.php" ] && [ -d "${_PATH_DOM}/admin" ]; }; }; then
     echo "Skipping non-Drupal site ${_Domain} at ${_Client}"
-    [ -L "${_Domain}" ] && rm -f "${_Domain}"
+    # the client dir is oN's: the link goes only from inside the real
+    # directory, never through a client dir swapped for a link meanwhile
+    _ltd_in_real_dir "${_Client}" _desymlink_planted "./${_Domain##*/}"
     continue
   fi
   # Attached files mount = the SINGLE real mountpoint under /mnt (naming-agnostic).

@@ -1812,17 +1812,13 @@ _fix_seven_core_patch() {
     else
       ( cd -P -- "${_Plr}" 2> /dev/null \
         && patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch )
-      ### Every dir in a static platform is 0775 and group-writable, so these glob
-      ### hits are tenant-plantable names, and chown and chmod both follow a
-      ### symlink named on the command line. -h for the chown; for the chmod,
-      ### which has no -h, hand find the SHELL-expanded leaves: a legitimate
-      ### shared-core includes/ link is resolved as an intermediate either way,
-      ### while a planted leaf is -type l and never matches. No trailing slash
-      ### on a directory -- that would make find resolve a planted database/
-      ### and walk the target. Same shape as the *.php pass in _fix_permissions.
-      chown -h ${_HM_U}:${_grp} ${_Plr}/includes/database/*.inc &> /dev/null
-      find ${_Plr}/includes/database/*.inc -type f \
-        -exec chmod 0664 {} \; &> /dev/null
+      ### Every dir in a static platform is 0775 and group-writable, so these
+      ### names, and includes/ and database/ on the way, can be swapped for a
+      ### link at any moment: the *.inc files are handed over and given their
+      ### mode only inside the real includes/database as it resolves in this
+      ### account, only as regular files, never through a link.
+      _acct_in_resolved_dir "${_Plr}/includes/database" \
+        _own_glob_here "${_HM_U}:${_grp}" 0664 '*.inc'
       _acct_in_resolved_dir "${_Plr}/profiles" \
         _acct_put_here SA-CORE-2014-005-D7-fix.info fixed
     fi
@@ -1887,9 +1883,12 @@ _fix_static_permissions() {
       _fix_seven_core_patch
     fi
     _use_Plr="${_rPlr}"
+    ### composer.json is the tenant's: read bounded inside the real parent
+    ### of the resolved docroot, never through a link or blocked on a FIFO.
     if [ -e "${_Plr}/core/lib/Drupal.php" ] \
       && [ -e "${_Plr}/../vendor/autoload.php" ] \
-      && grep -qE '"drupal/core(-recommended)?"' "${_Plr}/../composer.json" 2>/dev/null; then
+      && _in_pinned_dir "${_rPlr%/*}" _acct_read_plain_here composer.json \
+        | grep -qE '"drupal/core(-recommended)?"' 2>/dev/null; then
       _use_Plr="$(cd -P -- "${_rPlr}/.." 2> /dev/null && pwd -P)"
       ### One level UP: a tenant who seeds ~/static/composer.json and
       ### ~/static/vendor/autoload.php beside a docroot placed directly
@@ -2079,14 +2078,19 @@ _plr_perm_here() {
   _fix_expected_symlinks
   ### known exceptions: the tcpdf cache, entered for real (tcpdf and its
   ### cache child are names the tenant can plant in sites/all/libraries);
-  ### chmod -R and chown -R follow no link below it.
+  ### every mode below it set through a no-follow handle from the directory
+  ### walked, and chown -R follows no link below it.
   if [ "${_FOREIGN_CMS}" != "YES" ] && [ -z "${_plrCodeLink}" ]; then
     _in_real_sub sites/all/libraries/tcpdf/cache _tcpdf_cache_here
   fi
   return 0
 }
 _tcpdf_cache_here() {
-  chmod -R 775 . &> /dev/null
+  _chmod_nofollow_here d 0775 .
+  find . -mindepth 1 -type d \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0775 {} + &> /dev/null
+  find . -mindepth 1 -type f \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0775 {} + &> /dev/null
   chown -R "${_HM_U}:www-data" . &> /dev/null
   return 0
 }
@@ -2103,9 +2107,9 @@ _site_perm_here() {
   [ -e ./modules ] || mkdir ./modules &> /dev/null
   [ -e ./aegir.services.yml ] && rm -f -- ./aegir.services.yml
   ### -h on both: the site dir is owned by the tenant's shell user in
-  ### unlock.info mode, so each of these names is plantable, and a bare chown
-  ### follows the link (settings.php -> /etc/shadow hands root's shadow file
-  ### to the tenant). No-op on the regular files they normally are.
+  ### unlock.info mode, so each of these names can be a link, and a bare
+  ### chown follows a link at the name: each is changed with -h. No-op on
+  ### the regular files they normally are.
   chown -h "${_HM_U}:${_grp}" . &> /dev/null
   chown -h "${_HM_U}:www-data" ./local.settings.php ./settings.php \
     ./civicrm.settings.php ./solr.php &> /dev/null
@@ -2291,12 +2295,11 @@ _fix_permissions() {
     ### files/ and private/ are legitimately symlinks into a per-account
     ### static store (a shared store may sit under another account), so each
     ### is resolved -- but sites/ is 02771 and the store 02775, both
-    ### tenant-writable, so the link and every name above it are plantable,
-    ### and a walk along the raw path would take root's chmod/chown into
-    ### whatever was planted (files -> /etc hands every tenant a writable
-    ### /etc). Resolve once, act only while it is still a store or a real
-    ### child of the site dir, and only inside that resolved directory,
-    ### entered for real (_in_pinned_dir).
+    ### tenant-writable, so the link and every name above it can be
+    ### repointed, and a walk along the raw path would follow a link at files
+    ### or private: only the resolved store is walked. Resolve once, act only
+    ### while it is still a store or a real child of the site dir, and only
+    ### inside that resolved directory, entered for real (_in_pinned_dir).
     _rDir=$(realpath -e -- "${_Dir}" 2>/dev/null)
     _rFls=$(realpath -e -- "${_Dir}/files" 2>/dev/null)
     if [ -n "${_rDir}" ] && [ -n "${_rFls}" ]; then
@@ -3154,7 +3157,7 @@ _le_ssl_check_update() {
         else
           sleep 3
         fi
-        echo ${_MOMENT} >> /var/log/boa/le/${_Dom}
+        echo "${_MOMENT}" >> "/var/log/boa/le/${_Dom}"
       fi
     fi
   fi
