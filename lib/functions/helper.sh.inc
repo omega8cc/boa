@@ -182,7 +182,9 @@ _debug_proc() {
     _msg "DBLS: `ls -la /usr/bin/sh`"
     _msg "DBLS: `ls -la /bin/sh`"
     _msg "DBLS: `ls -la /run/octopus_install_run.pid`"
-    [ -e "/data/disk/${_USER}/.tmp/cache" ] && _msg "DBLS: `ls -la /data/disk/${_USER}/.tmp/cache`"
+    # the account's own .tmp/cache: listed only inside the real directory
+    [ -e "/data/disk/${_USER}/.tmp/cache" ] \
+      && _msg "DBLS: $(_acct_in_real_dir "/data/disk/${_USER}/.tmp/cache" ls -la .)"
   fi
 }
 

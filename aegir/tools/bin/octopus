@@ -20,6 +20,7 @@ _aptYesUnth="-y ${_aptAllow}"
 _filIncB="barracuda.sh.cnf"
 _filIncO="octopus.sh.cnf"
 _gCb="git clone --branch"
+_gitHub="https://github.com/omega8cc"
 _octName="OCTOPUS.sh.txt"
 _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
@@ -74,11 +75,16 @@ _oct_in_real_dir() {
   ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
 }
 
-# ./$1 in the current (pinned) directory: never through a link, never blocked
-# on a FIFO, at most 1 MiB.
-_oct_read_here() {
-  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
-    bs=1048576 count=1 status=none 2> /dev/null
+# The last 1 MiB of ./$1 in the current (pinned) directory, where the newest
+# lines are, as the satellite reads the same log: never through a link, never
+# blocked on a FIFO.
+_oct_read_tail_here() {
+  local _s
+  _s="$(stat -c %s -- "./${1}" 2> /dev/null)"
+  _s="${_s//[^0-9]/}"
+  _s="$(( ${_s:-0} > 1048576 ? ${_s:-0} - 1048576 : 0 ))"
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock,skip_bytes \
+    skip="${_s}" bs=1048576 count=1 status=none 2> /dev/null
 }
 
 # The day's upgrade marker ./$1: an existing name gets a new time (never
@@ -91,16 +97,21 @@ _oct_up_mark_here() {
 }
 
 # Reset the drush extension dirs in the current (pinned) ~/.drush: rm -rf of
-# a name removes a link itself, never what it points at, and the fresh sys/
-# is entered again before anything is put into it.
+# a name removes a link itself, never what it points at. The fresh sys/ is
+# entered again and handed to the instance user, which clones provision into
+# it (as the satellite pass does), so root never writes into a directory the
+# account can change under it.
 _oct_drush_reset_here() {
-  local _want
+  local _want _own
   _want="$(pwd -P)/sys"
+  _own="${_octUsr}:$(_acct_group "${_octUsr}")"
   rm -rf -- ./sys ./xts ./usr ./provision ./drush_make
   mkdir -p -- ./sys ./xts ./usr
-  ( cd -P -- ./sys 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] \
-    && ${_gCb} ${_bRnh} ${_gitHub}/provision.git ./provision &> /dev/null )
-  chown -R "${_octUsr}:$(_acct_group "${_octUsr}")" ./sys
+  ( cd -P -- ./sys 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] || exit 0
+    chown "${_own}" .
+    su -s /bin/bash "${_octUsr}" \
+      -c "${_gCb} ${_bRnh} ${_gitHub}/provision.git ./provision" &> /dev/null
+    chown -R "${_own}" . )
 }
 
 _sanitize_number() {
@@ -538,7 +549,7 @@ _satellite_downgrade_protection() {
   _octUsr="${_sCnd}"
   if [ -e "${_usEr}/log/octopus_log.txt" ] \
     && [ "${_cmNd}" = "up-lts" ]; then
-    _SERIES_TEST=$(_oct_in_real_dir "${_usEr}/log" _oct_read_here octopus_log.txt)
+    _SERIES_TEST=$(_oct_in_real_dir "${_usEr}/log" _oct_read_tail_here octopus_log.txt)
     if [[ "${_SERIES_TEST}" =~ "Octopus ${_rLsn}-pro" ]]; then
       echo
       echo "ERROR: Your Octopus has been already upgraded to ${_rLsn}-pro"
@@ -563,7 +574,7 @@ _satellite_downgrade_protection() {
     && [ "${_cmNd}" != "up-lts" ] \
     && [ "${_cmNd}" != "info" ] \
     && [ "${_cmNd}" != "help" ]; then
-    _SERIES_TEST=$(_oct_in_real_dir "${_usEr}/log" _oct_read_here octopus_log.txt)
+    _SERIES_TEST=$(_oct_in_real_dir "${_usEr}/log" _oct_read_tail_here octopus_log.txt)
     _BOA_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_SERIES_TEST}" =~ "Octopus ${_rLsn}" ]] \
       || [[ "${_BOA_SERIES_TEST}" =~ "Barracuda ${_rLsn}" ]]; then
@@ -586,7 +597,7 @@ _satellite_check_if_already_upgraded() {
     _SERIES_TEST=
     _mCmd="${_oMcm}"
     if [ -e "${_usEr}/log/octopus_log.txt" ]; then
-      _SERIES_TEST=$(_oct_in_real_dir "${_usEr}/log" _oct_read_here octopus_log.txt)
+      _SERIES_TEST=$(_oct_in_real_dir "${_usEr}/log" _oct_read_tail_here octopus_log.txt)
       if [[ "${_SERIES_TEST}" =~ "${_rlsE}" ]]; then
         if [ "${_oMcm}" != "force" ]; then
           _mCmd=
