@@ -32,6 +32,9 @@ fi
 #     chown -L -R which explicitly dereferenced symlinks during traversal).
 #     This is compatible with any root-managed symlinks within the tree —
 #     their own metadata is adjusted but their targets are never followed.
+#  3. Every chown runs inside a directory entered for real (_in_pinned_dir),
+#     on ./names there, so a name on the way swapped for a link after the
+#     path was resolved is never followed.
 _validate_path_prefix() {
   # Scope the resolved path to the SUDO caller's OWN home tree (aegir ->
   # /var/aegir, Octopus oN -> /data/disk/oN), not merely "some BOA tree": a
@@ -132,6 +135,173 @@ _acct_group() {
   echo "${_g}"
 }
 
+# The site path and each store are resolved once below, but the account owns
+# every name on the way (the platform tree, sites/, static/files), so any of
+# them can be swapped for a link at any time. Every act runs inside a
+# directory entered for real: cd -P, then "$@" only while pwd -P there is
+# still the resolved path, so a link put on the way since is never followed,
+# and ./name then stays in that directory whatever is swapped. $1 = a path
+# resolved once above.
+_in_pinned_dir() {
+  local _d="${1}"
+  shift
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+}
+
+# chown -h (with -R when $1 is -R) to $2 of each name in the current (pinned)
+# directory that matches a pattern after them (expanded here, nowhere else);
+# a pattern that matches nothing is skipped.
+_chown_here() {
+  local _r="${1}" _o="${2}" _pat _p
+  shift 2
+  for _pat in "$@"; do
+    for _p in ${_pat}; do
+      [ -e "${_p}" ] || [ -L "${_p}" ] || continue
+      chown -h ${_r:+"${_r}"} "${_o}" "${_p}"
+    done
+  done
+}
+
+# ./$1 in the current (pinned) directory as a fresh empty file, created
+# exclusively and renamed over the name (root's, as touch made it): a link or
+# a FIFO put at the name is replaced, never followed or opened.
+_mark_here() {
+  local _t="./.${1}.mark.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  dd if=/dev/null of="${_t}" conv=excl status=none 2> /dev/null \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+
+# ./$2 of the directory $1 (resolved once above) copied into the current
+# (pinned) directory under the same name while that name is still free, as
+# cp -a copied it: the same bytes, owner, group, read/write bits and mtime.
+# The source is read bounded, never through a link or from a FIFO; the copy
+# lands as a fresh file created exclusively, then renamed over the name, so
+# nothing put at the name is written through.
+_copy_new_here() {
+  local _n="${2}" _t="./.${2}.put.$$.${RANDOM}" _st _typ _own _mod _sz _mt _c
+  if [ -e "./${_n}" ] || [ -L "./${_n}" ]; then
+    return 0
+  fi
+  _st=$(_in_pinned_dir "${1}" stat -c '%F|%u:%g|%a|%s|%Y' -- "./${_n}") \
+    || return 1
+  IFS='|' read -r _typ _own _mod _sz _mt <<< "${_st}"
+  case "${_typ}" in
+    "regular file"|"regular empty file") ;;
+    *) return 1 ;;
+  esac
+  [[ "${_mod}" =~ ^[0-7]+$ && "${_sz}" =~ ^[0-9]+$ && "${_mt}" =~ ^[0-9]+$ ]] \
+    || return 1
+  [ "${_sz}" -le 1048576 ] || return 1
+  # the x keeps the trailing newlines a command substitution would drop
+  _c=$(_in_pinned_dir "${1}" timeout 10 dd if="./${_n}" \
+    iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none \
+    2> /dev/null && echo x) || return 1
+  rm -f -- "${_t}"
+  if ( umask "$(printf '%03o' "$(( 0777 & ~8#${_mod} ))")"
+    printf '%s' "${_c%x}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && chown -h "${_own}" "${_t}" 2> /dev/null; then
+    touch -h -d "@${_mt}" "${_t}" 2> /dev/null
+    mv -f -T -- "${_t}" "./${_n}" && return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+
+# The Grav capsule model, run inside the real site directory: code
+# <user>:<account group>, the writable set and the .env <user>:<web_group>.
+_grav_site_own_here() {
+  local _wd
+  chown -h -R "${script_user}:${_code_group}" .
+  for _wd in user cache logs tmp backup images assets; do
+    [ -d "./${_wd}" ] || continue
+    chown -h -R "${script_user}:${web_group:-www-data}" "./${_wd}"
+  done
+  # The secret root .env drops its world bit, so FPM's read comes via
+  # the web group -- the code pass above homed it to the account group.
+  if [ -f ./.env ]; then
+    chown -h "${script_user}:${web_group:-www-data}" ./.env
+  fi
+}
+
+# The Textpattern model, run inside the real site directory; the two-level
+# writable dirs are handed over from inside their real parent.
+_txp_site_own_here() {
+  local _wd _here
+  _here="$(pwd -P)"
+  chown -h -R "${script_user}:${_code_group}" .
+  for _wd in tmp admin/plugins public/files public/images public/themes private; do
+    [ -d "./${_wd}" ] || continue
+    case "${_wd}" in
+      */*)
+        _in_pinned_dir "${_here}/${_wd%/*}" \
+          chown -h -R "${script_user}:${web_group:-www-data}" "./${_wd##*/}"
+        ;;
+      *)
+        chown -h -R "${script_user}:${web_group:-www-data}" "./${_wd}"
+        ;;
+    esac
+  done
+}
+
+# The Drupal site directory's own names, run inside it (entered for real).
+_site_own_here() {
+  local _d _here
+  _here="$(pwd -P)"
+  ### directory and settings files - site level
+  chown -h "${script_user}:${_code_group}" .
+  chown -h "${script_user}:www-data" \
+    ./local.settings.php ./settings.php ./civicrm.settings.php ./solr.php
+  ### modules,themes,libraries - site level
+  for _d in modules themes libraries; do
+    _in_pinned_dir "${_here}/${_d}" \
+      _chown_here -R "${script_user}:${_code_group}" '*'
+  done
+  chown -h "${script_user}:${_code_group}" ./drushrc.php
+  _in_pinned_dir "${_here}/modules" \
+    _chown_here "" "${script_user}:${_code_group}" '*.yml'
+  chown -h "${script_user}:${_code_group}" ./modules ./themes ./libraries
+}
+
+# The files store, run inside it (entered for real): the day marker, then the
+# whole store and its known children handed to <user>:www-data.
+_files_own_here() {
+  local _o="${script_user}:www-data" _here
+  _here="$(pwd -P)"
+  ### ctrl pid
+  rm -f -- ./ownership-fixed*.pid
+  _mark_here "ownership-fixed-${_TODAY}.pid"
+  ### files - site level
+  ### -h on recursive chown: never dereference symlinks; combined with default
+  ### -P traversal this prevents a tar-uploaded symlink from rerouting chown
+  ### to a system path.
+  chown -h -R "${_o}" .
+  chown -h "${_o}" .
+  chown -h "${_o}" ./tmp ./images ./pictures ./css ./js
+  chown -h "${_o}" ./advagg_css ./advagg_js ./ctools
+  chown -h "${_o}" ./imagecache ./locations
+  chown -h "${_o}" ./xmlsitemap ./deployment ./styles ./private
+  chown -h "${_o}" ./civicrm
+  _in_pinned_dir "${_here}/ctools" chown -h "${_o}" ./css
+  _in_pinned_dir "${_here}/civicrm" chown -h "${_o}" \
+    ./templates_c ./upload ./persist ./custom ./dynamic
+}
+
+# The private store, run inside it (entered for real).
+_priv_own_here() {
+  local _o="${script_user}:www-data" _here
+  _here="$(pwd -P)"
+  chown -h -R "${_o}" .
+  chown -h "${_o}" .
+  chown -h "${_o}" ./files ./temp
+  _in_pinned_dir "${_here}/files" chown -h "${_o}" ./backup_migrate
+  _in_pinned_dir "${_here}/files/backup_migrate" chown -h "${_o}" \
+    ./manual ./scheduled
+  chown -h -R "${_o}" ./config
+}
+
 site_path=${1%/}
 script_user=${2:-aegir}
 web_group="${3:-www-data}"
@@ -181,16 +351,10 @@ if [ -n "${site_path}" ] \
   _code_group=$(_acct_group "${site_path}")
   # Capsule ownership model (spike-proven): code <user>:<account group>; the
   # writable set <user>:<web_group> so FPM writes via GROUP (version-flip-immune).
+  # Runs inside the real site directory (_in_pinned_dir), and the owner and
+  # group stay one quoted argument whatever --web-group carries.
   printf "Setting Grav ownership of %s to: user => %s group => %s\n" "${site_path}" "${script_user}" "${_code_group}"
-  chown -h -R ${script_user}:${_code_group} ${site_path}
-  for _wd in user cache logs tmp backup images assets; do
-    [ -d "${site_path}/${_wd}" ] || continue
-    chown -h -R ${script_user}:${web_group:-www-data} "${site_path}/${_wd}"
-  done
-  # The secret root .env drops its world bit, so FPM's read comes via
-  # the web group -- the code pass above homed it to the account group.
-  [ -f "${site_path}/.env" ] \
-    && chown -h ${script_user}:${web_group:-www-data} "${site_path}/.env"
+  _in_pinned_dir "${site_path}" _grav_site_own_here
   echo "Done setting proper ownership of files and directories (Grav site)."
   exit 0
 fi
@@ -216,12 +380,10 @@ if [ -n "${site_path}" ] \
   # box-default PHP bump changes the pool USER, never its www-data group).
   # -h keeps the four load-bearing admin symlinks as symlinks and never
   # follows them into the shared core.
+  # Runs inside the real site directory (_in_pinned_dir), and the owner and
+  # group stay one quoted argument whatever --web-group carries.
   printf "Setting Textpattern ownership of %s to: user => %s group => %s\n" "${site_path}" "${script_user}" "${_code_group}"
-  chown -h -R ${script_user}:${_code_group} ${site_path}
-  for _wd in tmp admin/plugins public/files public/images public/themes private; do
-    [ -d "${site_path}/${_wd}" ] || continue
-    chown -h -R ${script_user}:${web_group:-www-data} "${site_path}/${_wd}"
-  done
+  _in_pinned_dir "${site_path}" _txp_site_own_here
   echo "Done setting proper ownership of files and directories (Textpattern site)."
   exit 0
 fi
@@ -252,45 +414,46 @@ for _d in modules themes libraries; do
   fi
 done
 
+### Every act below runs inside a directory entered for real
+### (_in_pinned_dir) and names only ./entries there; refuse now when the
+### site directory itself cannot be entered as resolved.
+if ! _in_pinned_dir "${site_path}" true; then
+  printf "Error: %s is not a real directory; refusing.\n" "${site_path}" >&2
+  exit 1
+fi
+
 if [ -e "${site_path}/libraries/ownership-fixed.pid" ]; then
-  rm -f ${site_path}/libraries/ownership-fixed.pid
+  _in_pinned_dir "${site_path}/libraries" rm -f -- ./ownership-fixed.pid
 fi
 
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 
+### Read and written only inside the real directories (_copy_new_here).
 if [ -e "${site_path}/../sites/default/default.services.yml" ]; then
   if [ ! -e "${site_path}/modules/default.services.yml" ]; then
-    cp -a ${site_path}/../sites/default/default.services.yml ${site_path}/modules/
+    _in_pinned_dir "${site_path}/modules" \
+      _copy_new_here "${site_path%/*}/sites/default" default.services.yml
   fi
 fi
 if [ -e "${site_path}/modules/services.yml" ] && [ ! -e "${site_path}/services.yml" ]; then
-  ln -sfn ${site_path}/modules/services.yml ${site_path}/services.yml
+  _in_pinned_dir "${site_path}" \
+    ln -sfn "${site_path}/modules/services.yml" ./services.yml
 fi
 
-cd ${site_path}
 printf "Setting ownership of key files and directories inside "${site_path}" to: user => "${script_user}" group => "${_code_group}"\n"
 if [ ! -e "${site_path}/libraries" ]; then
-  mkdir ${site_path}/libraries
+  _in_pinned_dir "${site_path}" mkdir ./libraries
 fi
-### directory and settings files - site level
-chown -h ${script_user}:${_code_group} ${site_path} &> /dev/null
-chown -h ${script_user}:www-data \
-  ${site_path}/{local.settings.php,settings.php,civicrm.settings.php,solr.php} &> /dev/null
-### modules,themes,libraries - site level
-chown -h -R ${script_user}:${_code_group} \
-  ${site_path}/{modules,themes,libraries}/* &> /dev/null
-chown -h ${script_user}:${_code_group} \
-  ${site_path}/drushrc.php \
-  ${site_path}/modules/*.yml \
-  ${site_path}/{modules,themes,libraries} &> /dev/null
+_in_pinned_dir "${site_path}" _site_own_here &> /dev/null
 
 ### files/ and private/ are LEGITIMATELY symlinks into the per-account static
 ### store, so every path below walks THROUGH them and chown -h protects only
 ### the final component: a link planted at either name aims these chowns at,
 ### say, /var/aegir/config -- whose nginx vhosts the tenant may then rewrite,
 ### with `sudo /etc/init.d/nginx` already granted. Resolve each store once,
-### bounded to this account's own store root, and operate on the resolved dir.
+### bounded to this account's own store root, and operate inside the resolved
+### dir, entered for real.
 _files_dir=$(_store_dir "${site_path}/files") || _files_dir=""
 _priv_dir=$(_store_dir "${site_path}/private") || _priv_dir=""
 if [ -z "${_files_dir}" ] && [ -e "${site_path}/files" ]; then
@@ -300,30 +463,10 @@ fi
 
 if [ -n "${_files_dir}" ] \
   && [ ! -e "${_files_dir}/ownership-fixed-${_TODAY}.pid" ]; then
-  ### ctrl pid
-  rm -f ${_files_dir}/ownership-fixed*.pid
-  touch ${_files_dir}/ownership-fixed-${_TODAY}.pid
-  ### files - site level
-  ### -h on recursive chown: never dereference symlinks; combined with default
-  ### -P traversal this prevents a tar-uploaded symlink from rerouting chown
-  ### to a system path.
-  chown -h -R ${script_user}:www-data ${_files_dir} &> /dev/null
-  chown -h ${script_user}:www-data ${_files_dir} &> /dev/null
-  chown -h ${script_user}:www-data ${_files_dir}/{tmp,images,pictures,css,js} &> /dev/null
-  chown -h ${script_user}:www-data ${_files_dir}/{advagg_css,advagg_js,ctools} &> /dev/null
-  chown -h ${script_user}:www-data ${_files_dir}/{ctools/css,imagecache,locations} &> /dev/null
-  chown -h ${script_user}:www-data ${_files_dir}/{xmlsitemap,deployment,styles,private} &> /dev/null
-  chown -h ${script_user}:www-data ${_files_dir}/{civicrm,civicrm/templates_c} &> /dev/null
-  chown -h ${script_user}:www-data ${_files_dir}/{civicrm/upload,civicrm/persist} &> /dev/null
-  chown -h ${script_user}:www-data ${_files_dir}/{civicrm/custom,civicrm/dynamic} &> /dev/null
+  _in_pinned_dir "${_files_dir}" _files_own_here &> /dev/null
   ### private - site level
   if [ -n "${_priv_dir}" ]; then
-    chown -h -R ${script_user}:www-data ${_priv_dir} &> /dev/null
-    chown -h ${script_user}:www-data ${_priv_dir} &> /dev/null
-    chown -h ${script_user}:www-data ${_priv_dir}/{files,temp} &> /dev/null
-    chown -h ${script_user}:www-data ${_priv_dir}/files/backup_migrate &> /dev/null
-    chown -h ${script_user}:www-data ${_priv_dir}/files/backup_migrate/{manual,scheduled} &> /dev/null
-    chown -h -R ${script_user}:www-data ${_priv_dir}/config &> /dev/null
+    _in_pinned_dir "${_priv_dir}" _priv_own_here &> /dev/null
   fi
 fi
 

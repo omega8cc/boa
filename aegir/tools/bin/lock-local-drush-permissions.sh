@@ -71,6 +71,24 @@ _validate_path_prefix() {
   _SCOPE_ROOT="${_home}"
 }
 
+# Run "$@" inside the directory $1, a path resolved just before: entered with
+# cd -P and checked there with pwd -P, so a name on the way the account
+# swapped for a link since is never followed, and ./name then stays in that
+# directory whatever is swapped.
+_in_pinned_dir() {
+  local _d="${1}"
+  shift
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+}
+
+# ./$2 in the current (pinned) directory given the mode $1, only while it is
+# not a link.
+_chmod_nolink_here() {
+  [ -L "./${2}" ] && return 0
+  [ -e "./${2}" ] || return 0
+  chmod "${1}" "./${2}"
+}
+
 _chmod_safe() {
   local _mode=$1
   shift
@@ -90,7 +108,15 @@ _chmod_safe() {
         continue
         ;;
     esac
-    chmod "${_mode}" "${_p}"
+    # The checked target, never the path walked again: a directory takes the
+    # mode on '.' once entered for real, anything else on its own name inside
+    # its directory entered for real, so a name swapped for a link after the
+    # check above is never followed.
+    if [ -d "${_r}" ]; then
+      _in_pinned_dir "${_r}" chmod "${_mode}" .
+    else
+      _in_pinned_dir "${_r%/*}" _chmod_nolink_here "${_mode}" "${_r##*/}"
+    fi
   done
 }
 

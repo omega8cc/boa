@@ -23,7 +23,10 @@ fi
 # A symlink planted at a known child path inside ${site_path} (e.g. via an
 # uploaded tar archive) would otherwise cause direct chmod calls to alter
 # system file permissions. Defence is the same shape used by the sibling
-# fix-drupal-* helpers: realpath prefix check + symlink precheck before chmod.
+# fix-drupal-* helpers: realpath prefix check + symlink precheck before chmod,
+# and every chmod runs inside a directory entered for real (_in_pinned_dir),
+# on ./names there, so a name on the way swapped for a link after the path
+# was resolved is never followed.
 _validate_path_prefix() {
   # Scope the resolved path to the SUDO caller's OWN home tree (aegir ->
   # /var/aegir, Octopus oN -> /data/disk/oN), not merely "some BOA tree": a
@@ -103,15 +106,154 @@ _store_dir() {
   printf '%s' "${_res}"
 }
 
-_chmod_safe() {
-  local _mode=$1
+# The site path and each store are resolved once below, but the account owns
+# every name on the way (the platform tree, sites/, static/files), so any of
+# them can be swapped for a link at any time. Every act runs inside a
+# directory entered for real: cd -P, then "$@" only while pwd -P there is
+# still the resolved path, so a link put on the way since is never followed,
+# and ./name then stays in that directory whatever is swapped. $1 = a path
+# resolved once above.
+_in_pinned_dir() {
+  local _d="${1}"
   shift
-  local _p
-  for _p in "$@"; do
-    [ -L "${_p}" ] && continue
-    [ -e "${_p}" ] || continue
-    chmod "${_mode}" "${_p}"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+}
+
+# The mode $1 on each name in the current (pinned) directory that matches a
+# pattern after it (expanded here, nowhere else), never through a link: a
+# directory takes it on '.' once entered for real, anything else only while
+# it is not a link. A pattern that matches nothing is skipped.
+_chmod_here() {
+  local _mode="${1}" _here _pat _p
+  shift
+  _here="$(pwd -P)"
+  for _pat in "$@"; do
+    for _p in ${_pat}; do
+      _p="${_p#./}"
+      [ -L "./${_p}" ] && continue
+      if [ -d "./${_p}" ]; then
+        _in_pinned_dir "${_here}/${_p}" chmod "${_mode}" .
+      elif [ -e "./${_p}" ]; then
+        chmod "${_mode}" "./${_p}"
+      fi
+    done
   done
+}
+# _chmod_here inside the directory $1 (resolved once above), entered for real.
+_chmod_in() {
+  local _d="${1}"
+  shift
+  _in_pinned_dir "${_d}" _chmod_here "$@"
+}
+
+# ./$1 in the current (pinned) directory as a fresh empty file, created
+# exclusively and renamed over the name (root's, as touch made it): a link or
+# a FIFO put at the name is replaced, never followed or opened.
+_mark_here() {
+  local _t="./.${1}.mark.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  dd if=/dev/null of="${_t}" conv=excl status=none 2> /dev/null \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+
+# The Grav capsule model, run inside the real site directory.
+_grav_site_perm_here() {
+  local _wd _sd _here
+  _here="$(pwd -P)"
+  find . -path ./user -prune \
+    -o -path ./cache -prune \
+    -o -path ./logs -prune \
+    -o -path ./tmp -prune \
+    -o -path ./backup -prune \
+    -o -path ./images -prune \
+    -o -path ./assets -prune \
+    -o -type d -exec chmod 0755 {} + 2> /dev/null
+  find . -path ./user -prune \
+    -o -path ./cache -prune \
+    -o -path ./logs -prune \
+    -o -path ./tmp -prune \
+    -o -path ./backup -prune \
+    -o -path ./images -prune \
+    -o -path ./assets -prune \
+    -o -type f -exec chmod 0644 {} + 2> /dev/null
+  _chmod_in "${_here}/bin" 0755 '*'
+  for _wd in user cache logs tmp backup images assets; do
+    [ -d "./${_wd}" ] || continue
+    find "./${_wd}" -type d -exec chmod 02775 {} + 2> /dev/null
+    find "./${_wd}" -type f -exec chmod 0664 {} + 2> /dev/null
+  done
+  # Secret surfaces AFTER the generic pass, which would re-widen them
+  # (same class as the TXP private/ store): accounts hold
+  # password hashes and live reset tokens, config holds the session salt and
+  # SMTP/API credentials. Group-rw for FPM, owner-rw for the CLI, NO world
+  # bits. The root .env (phase 2: DB credentials) keeps FPM's read via group.
+  for _sd in accounts config env; do
+    [ -d "./user/${_sd}" ] || continue
+    _in_pinned_dir "${_here}/user" \
+      find "./${_sd}" -type d -exec chmod 02770 {} + 2> /dev/null
+    _in_pinned_dir "${_here}/user" \
+      find "./${_sd}" -type f -exec chmod 0660 {} + 2> /dev/null
+  done
+  _chmod_here 0640 .env
+  _chmod_here 0440 drushrc.php
+}
+
+# The Textpattern model, run inside the real site directory.
+_txp_site_perm_here() {
+  local _wd _here
+  _here="$(pwd -P)"
+  find . -path ./private -prune \
+    -o -path ./tmp -prune \
+    -o -path ./admin/plugins -prune \
+    -o -path ./public/files -prune \
+    -o -path ./public/images -prune \
+    -o -path ./public/themes -prune \
+    -o -type d -exec chmod 0755 {} + 2> /dev/null
+  find . -path ./private -prune \
+    -o -path ./tmp -prune \
+    -o -path ./admin/plugins -prune \
+    -o -path ./public/files -prune \
+    -o -path ./public/images -prune \
+    -o -path ./public/themes -prune \
+    -o -type f -exec chmod 0644 {} + 2> /dev/null
+  for _wd in tmp admin/plugins public/files public/images public/themes; do
+    [ -d "./${_wd}" ] || continue
+    _in_pinned_dir "${_here}/${_wd}" \
+      find . -type d -exec chmod 02775 {} + 2> /dev/null
+    _in_pinned_dir "${_here}/${_wd}" \
+      find . -type f -exec chmod 0664 {} + 2> /dev/null
+  done
+  # Credential store: group-traversable (FPM reads config.php through its
+  # www-data group), unreadable to everyone else.
+  _chmod_here 0750 private
+  _in_pinned_dir "${_here}/private" \
+    find . -type f -exec chmod 0440 {} + 2> /dev/null
+  # Aegir's own site drushrc sits at the site ROOT (not inside private/) and
+  # carries the db credentials, so the generic 0644 pass above widens it to
+  # world-readable on every verify. Restore the 0440 the Drushrc writer sets --
+  # never fight the writer. (Same class as the private/ prune; caught live on
+  # a test rig by isolating this script from the verify that re-renders the file.)
+  _chmod_here 0440 drushrc.php
+}
+
+# The site's own PHP files made 0440, the glob expanded inside the real site
+# directory. find -type f excludes links.
+_site_php_here() {
+  find ./*.php -type f -exec chmod 0440 {} \;
+}
+
+# The files store, run inside it (entered for real): the day marker, then the
+# whole store.
+_files_perm_here() {
+  ### ctrl pid
+  rm -f -- ./permissions-fixed*.pid
+  _mark_here "permissions-fixed-${_TODAY}.pid"
+  ### files - site level
+  find . -type d -exec chmod 02775 {} \;
+  find . -type f -exec chmod 0664 {} \;
+  chmod 02775 .
 }
 
 site_path=${1%/}
@@ -151,41 +293,9 @@ if [ -n "${site_path}" ] \
   # set 02775 dirs + g+rw files (FPM writes via GROUP; setgid keeps the
   # group on web-created entries); the capsule's own bin/ stays executable
   # (the enforced-PHP wrapper and the upgrade engine exec bin/grav, bin/gpm).
+  # Runs inside the real site directory (_in_pinned_dir, _grav_site_perm_here).
   printf "Setting Grav permissions of %s\n" "${site_path}"
-  find ${site_path} -path "${site_path}/user" -prune \
-    -o -path "${site_path}/cache" -prune \
-    -o -path "${site_path}/logs" -prune \
-    -o -path "${site_path}/tmp" -prune \
-    -o -path "${site_path}/backup" -prune \
-    -o -path "${site_path}/images" -prune \
-    -o -path "${site_path}/assets" -prune \
-    -o -type d -exec chmod 0755 {} + 2> /dev/null
-  find ${site_path} -path "${site_path}/user" -prune \
-    -o -path "${site_path}/cache" -prune \
-    -o -path "${site_path}/logs" -prune \
-    -o -path "${site_path}/tmp" -prune \
-    -o -path "${site_path}/backup" -prune \
-    -o -path "${site_path}/images" -prune \
-    -o -path "${site_path}/assets" -prune \
-    -o -type f -exec chmod 0644 {} + 2> /dev/null
-  _chmod_safe 0755 ${site_path}/bin/*
-  for _wd in user cache logs tmp backup images assets; do
-    [ -d "${site_path}/${_wd}" ] || continue
-    find "${site_path}/${_wd}" -type d -exec chmod 02775 {} + 2> /dev/null
-    find "${site_path}/${_wd}" -type f -exec chmod 0664 {} + 2> /dev/null
-  done
-  # Secret surfaces AFTER the generic pass, which would re-widen them
-  # (same class as the TXP private/ store): accounts hold
-  # password hashes and live reset tokens, config holds the session salt and
-  # SMTP/API credentials. Group-rw for FPM, owner-rw for the CLI, NO world
-  # bits. The root .env (phase 2: DB credentials) keeps FPM's read via group.
-  for _sd in user/accounts user/config user/env; do
-    [ -d "${site_path}/${_sd}" ] || continue
-    find "${site_path}/${_sd}" -type d -exec chmod 02770 {} + 2> /dev/null
-    find "${site_path}/${_sd}" -type f -exec chmod 0660 {} + 2> /dev/null
-  done
-  _chmod_safe 0640 "${site_path}/.env"
-  _chmod_safe 0440 "${site_path}/drushrc.php"
+  _in_pinned_dir "${site_path}" _grav_site_perm_here
   echo "Done setting proper permissions of files and directories (Grav site)."
   exit 0
 fi
@@ -209,37 +319,10 @@ if [ -n "${site_path}" ] \
   #
   # find is never given -L, so the four admin symlinks are type l, are not
   # matched by -type d/f and are not descended into -- the shared core tree is
-  # never touched from here.
+  # never touched from here. Runs inside the real site directory
+  # (_in_pinned_dir, _txp_site_perm_here).
   printf "Setting Textpattern permissions of %s\n" "${site_path}"
-  find ${site_path} -path "${site_path}/private" -prune \
-    -o -path "${site_path}/tmp" -prune \
-    -o -path "${site_path}/admin/plugins" -prune \
-    -o -path "${site_path}/public/files" -prune \
-    -o -path "${site_path}/public/images" -prune \
-    -o -path "${site_path}/public/themes" -prune \
-    -o -type d -exec chmod 0755 {} + 2> /dev/null
-  find ${site_path} -path "${site_path}/private" -prune \
-    -o -path "${site_path}/tmp" -prune \
-    -o -path "${site_path}/admin/plugins" -prune \
-    -o -path "${site_path}/public/files" -prune \
-    -o -path "${site_path}/public/images" -prune \
-    -o -path "${site_path}/public/themes" -prune \
-    -o -type f -exec chmod 0644 {} + 2> /dev/null
-  for _wd in tmp admin/plugins public/files public/images public/themes; do
-    [ -d "${site_path}/${_wd}" ] || continue
-    find "${site_path}/${_wd}" -type d -exec chmod 02775 {} + 2> /dev/null
-    find "${site_path}/${_wd}" -type f -exec chmod 0664 {} + 2> /dev/null
-  done
-  # Credential store: group-traversable (FPM reads config.php through its
-  # www-data group), unreadable to everyone else.
-  _chmod_safe 0750 "${site_path}/private"
-  find "${site_path}/private" -type f -exec chmod 0440 {} + 2> /dev/null
-  # Aegir's own site drushrc sits at the site ROOT (not inside private/) and
-  # carries the db credentials, so the generic 0644 pass above widens it to
-  # world-readable on every verify. Restore the 0440 the Drushrc writer sets --
-  # never fight the writer. (Same class as the private/ prune; caught live on
-  # a test rig by isolating this script from the verify that re-renders the file.)
-  _chmod_safe 0440 "${site_path}/drushrc.php"
+  _in_pinned_dir "${site_path}" _txp_site_perm_here
   echo "Done setting proper permissions of files and directories (Textpattern site)."
   exit 0
 fi
@@ -257,7 +340,7 @@ _TODAY=${_TODAY//[^0-9]/}
 ### modules, themes and libraries are names the tenant can plant: it can create
 ### the site dir itself under the group-writable sites/ (02771), and the
 ### site-level code dirs are 02775 and group-writable. The rm below and the find start
-### points walk THROUGH them, while _chmod_safe protects only the final
+### points walk THROUGH them, while _chmod_here protects only the final
 ### component. None is ever legitimately a symlink at site level.
 for _d in modules themes libraries; do
   if [ -L "${site_path}/${_d}" ]; then
@@ -266,35 +349,43 @@ for _d in modules themes libraries; do
   fi
 done
 
-if [ -e "${site_path}/libraries/permissions-fixed.pid" ]; then
-  rm -f ${site_path}/libraries/permissions-fixed.pid
+### Every act below runs inside a directory entered for real
+### (_in_pinned_dir) and names only ./entries there; refuse now when the
+### site directory itself cannot be entered as resolved.
+if ! _in_pinned_dir "${site_path}" true; then
+  printf "Error: %s is not a real directory; refusing.\n" "${site_path}" >&2
+  exit 1
 fi
-cd ${site_path}
+
+if [ -e "${site_path}/libraries/permissions-fixed.pid" ]; then
+  _in_pinned_dir "${site_path}/libraries" rm -f -- ./permissions-fixed.pid
+fi
 printf "Setting correct permissions on key files and directories inside "${site_path}"...\n"
 ### directory and settings files - site level
 if [ -e "${site_path}/aegir.services.yml" ]; then
-  rm -f ${site_path}/aegir.services.yml
+  _in_pinned_dir "${site_path}" rm -f -- ./aegir.services.yml
 fi
 ### find -type d / -type f predicates exclude symlinks, so these are safe.
-find ${site_path}/*.php -type f -exec chmod 0440 {} \; &> /dev/null
+_in_pinned_dir "${site_path}" _site_php_here &> /dev/null
 ### The hostmaster site's drushrc.php carries the instance DB user (ALL
 ### PRIVILEGES) and only the backend user, its owner, ever reads it: no group
 ### read at all, box-wide 'users' or the account's own group alike.
 if [[ "${site_path}" =~ /aegir/(distro|host_master)/ ]]; then
-  _chmod_safe 0400 "${site_path}/drushrc.php"
+  _chmod_in "${site_path}" 0400 drushrc.php
 fi
-_chmod_safe 0640 "${site_path}/civicrm.settings.php"
+_chmod_in "${site_path}" 0640 civicrm.settings.php
 ### modules,themes,libraries - site level
-find ${site_path}/{modules,themes,libraries} -type d -exec \
-  chmod 02775 {} \; &> /dev/null
-find ${site_path}/{modules,themes,libraries} -type f -exec \
-  chmod 0664 {} \; &> /dev/null
+_in_pinned_dir "${site_path}" find ./modules ./themes ./libraries -type d \
+  -exec chmod 02775 {} \; &> /dev/null
+_in_pinned_dir "${site_path}" find ./modules ./themes ./libraries -type f \
+  -exec chmod 0664 {} \; &> /dev/null
 
 ### The trailing slash makes find DESCEND through files/ and private/, which
 ### are legitimately symlinks into the per-account static store -- so a link
 ### planted at either name walks this root chmod into an arbitrary tree
 ### (files -> /etc turns every file there 0664, i.e. world-readable). Resolve
-### each store once, bounded to this account's own store root.
+### each store once, bounded to this account's own store root, and walk it
+### from inside the resolved dir, entered for real.
 _files_dir=$(_store_dir "${site_path}/files") || _files_dir=""
 _priv_dir=$(_store_dir "${site_path}/private") || _priv_dir=""
 if [ -z "${_files_dir}" ] && [ -e "${site_path}/files" ]; then
@@ -304,20 +395,16 @@ fi
 
 if [ -n "${_files_dir}" ] \
   && [ ! -e "${_files_dir}/permissions-fixed-${_TODAY}.pid" ]; then
-  ### ctrl pid
-  rm -f ${_files_dir}/permissions-fixed*.pid
-  touch ${_files_dir}/permissions-fixed-${_TODAY}.pid
-  ### files - site level
-  find ${_files_dir}/ -type d -exec chmod 02775 {} \; &> /dev/null
-  find ${_files_dir}/ -type f -exec chmod 0664 {} \; &> /dev/null
-  _chmod_safe 02775 "${_files_dir}"
+  _in_pinned_dir "${_files_dir}" _files_perm_here &> /dev/null
   ### private - site level
   if [ -n "${_priv_dir}" ]; then
-    find ${_priv_dir}/ -type d -exec chmod 02775 {} \; &> /dev/null
-    find ${_priv_dir}/ -type f -exec chmod 0664 {} \; &> /dev/null
+    _in_pinned_dir "${_priv_dir}" \
+      find . -type d -exec chmod 02775 {} \; &> /dev/null
+    _in_pinned_dir "${_priv_dir}" \
+      find . -type f -exec chmod 0664 {} \; &> /dev/null
   fi
   ### known exceptions
-  _chmod_safe 0644 "${_files_dir}/.htaccess"
+  _chmod_in "${_files_dir}" 0644 .htaccess
 fi
 
 echo "Done setting proper permissions on site files and directories."
