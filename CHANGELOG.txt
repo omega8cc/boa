@@ -76,6 +76,13 @@
     * usage.sh, copydbackup, the nightly purge and the Octopus pass take
       an account's files store only as its own static/files or
       /mnt/<mount>/files/<oN>/static/files, the nightly's rule.
+    * Every tool that writes, claims, restores or migrates an account's
+      web paths now knows the account's own web group (wg-<account>),
+      the groundwork for taking tenants out of the shared web server
+      group. Nothing changes until an account is converted to it; xoct,
+      xcopy and xmass refuse to move a converted account to a box whose
+      tools predate it. Account names may not begin with wg- or hold a
+      dot.
     * Root no longer follows a link, or opens a FIFO, that an account
       puts at a name in its own directories: static/control, and the
       log/, .drush/, config/, tools/, .tmp/ and .ftp home names its main
