@@ -926,24 +926,45 @@ _root_link_includes() {
   done
 }
 
+# The absolute entries of the run's exclude filelist (root's own list, or the
+# root-private copy of an account's), as --exclude operands, so a store is
+# excluded where they name static/files as it is excluded by them. Include
+# lines ('+ '), patterns such as **files/css/** (which match the store as
+# they are) and entries with blanks are left to the filelist alone.
+_lst_exclude_ops() {
+  local _l
+  [ -n "${_EXCLUDE_LIST}" ] && [ -f "${_EXCLUDE_LIST}" ] || return 0
+  while IFS= read -r _l || [ -n "${_l}" ]; do
+    _l="${_l%"${_l##*[![:space:]]}"}"
+    _l="${_l#- }"
+    case "${_l}" in
+      *[[:space:]]*) continue ;;
+      /?*) printf ' --exclude %s' "${_l}" ;;
+    esac
+  done < "${_EXCLUDE_LIST}"
+}
+
 # Backups never follow links, so content held behind one is added to the
 # include set by its own path: an account's relocated files store for a
 # per-account run, every included account's for the data run, and root-made
-# links for the global and custom runs.
+# links for the global and custom runs. The excludes mapped onto a store are
+# the run's exclude operands and its exclude filelist's absolute entries.
 _acct_store_includes() {
-  local _a
+  local _a _x
   case "${_USER}" in
     global|custom)
       _root_link_includes
       ;;
     data)
+      _x="${_EXCLUDE_PATHS}$(_lst_exclude_ops)"
       for _a in /data/disk/*; do
         [ -d "${_a}/static" ] || continue
-        _acct_store_add "${_a##*/}" "${_INCLUDE_PATHS}" "${_EXCLUDE_PATHS}"
+        _acct_store_add "${_a##*/}" "${_INCLUDE_PATHS}" "${_x}"
       done
       ;;
     *)
-      _acct_store_add "${_USER}" "${_USER_INCLUDE_PATHS}" "${_USER_EXCLUDE_PATHS}"
+      _acct_store_add "${_USER}" "${_USER_INCLUDE_PATHS}" \
+        "${_USER_EXCLUDE_PATHS}$(_lst_exclude_ops)"
       ;;
   esac
   return 0
@@ -1590,30 +1611,43 @@ _backup() {
 # Restores through links. Backups keep links as links, so an account's
 # relocated files store (static/files -> <mount>/files/<oN>/static/files)
 # and the relocated archive (/data/disk/arch -> <mount>/files/system/arch)
-# are held under their own paths, and a site's files/ and private/ are links
-# into static/files/<site>/. A path at or below such a link is restored from
-# where its content is held: the store first, the path as given only when
-# duplicity reports the store path not found (backups made while links were
-# followed hold the content under the link's own path). A link in the
-# restored tree that leads to the same account's static/files or store is
-# replaced by that content as of the same time, and each one is reported.
-# The same helpers are in multiback and mybackup.
+# are held under their own paths, and a site's files/ and private/ (and the
+# account's backups/) are links into static/files. A path at or below
+# static/files or the archive is restored from where its content is held:
+# the store first, the path as given only when duplicity reports the store
+# path not found (backups made while links were followed hold the content
+# under the link's own path). A path below any other name the archive holds
+# as a link into the same account's tree is restored from where that link
+# leads. A link in the restored tree that leads to the same account's
+# static/files or store is replaced by that content as of the same time, one
+# restore per site store, up to _RST_LINK_MAX of them and while the target
+# filesystem keeps a tenth of its size free; every other one is reported with
+# the command that restores it. The same helpers are in multiback and
+# mybackup.
 #
 # $1 = the restore verb, $2 = the listing verb (both without time and target),
 # $3 = the time or empty, $4 = scope (acct, data, global or custom), $5 = the
-# account for acct, $6 = the log for the reports (empty: stdout).
+# account for acct, $6 = the log for the reports (empty: stdout, as it runs),
+# $7 = the command that restores one path to the same place, for the reports.
+# _RST_TMP is a private directory for the run's own files; fails without one.
 _rst_setup() {
   local _t=""
   [ -n "${3}" ] && _t=" --time $(printf '%q' "${3}")"
   _RST_CMD="${1}${_t} ${_BACKUP_TARGET}"
   _RST_LST="${2}${_t} ${_BACKUP_TARGET}"
+  _RST_TIME="${3}"
   _RST_SCOPE="${4}"
   _RST_ACCT="${5}"
   _RST_LOG="${6}"
+  _RST_AGAIN="${7}"
+  _RST_LINK_MAX=10
   _RST_LAST=""
   _RST_GIVEN=""
   _RST_DONE=""
+  _RST_OUT=""
+  _RST_HOPS=0
   declare -gA _RST_STO=()
+  [ -n "${_RST_TMP}" ] && [ -d "${_RST_TMP}" ] && [ ! -L "${_RST_TMP}" ]
 }
 _rst_note() {
   if [ -n "${_RST_LOG}" ]; then
@@ -1639,27 +1673,33 @@ _rst_under() {
   esac
   return 1
 }
-# Archive path $1 (empty: everything) restored to $2. Returns 2 when duplicity
-# reports the path not found in the archive (its output is then kept in
-# _RST_OUT for the caller, which may still try another path), 1 on any other
-# failure.
+# Archive path $1 (empty: everything) restored to $2. duplicity runs in the C
+# locale, so the message matched here is its own English one. Its output goes
+# to the log when there is one, and to stdout as it runs otherwise. Returns 2
+# when duplicity reports the path not found in the archive (with a log, its
+# output is then kept in _RST_OUT for the caller, which may still try another
+# path), 1 on any other failure.
 _rst_one() {
-  local _c="${_RST_CMD}" _rc
+  local _c="${_RST_CMD}" _o="${_RST_TMP}/rst.out" _rc
   [ -n "${1}" ] && _c="${_c} --path-to-restore $(printf '%q' "${1}")"
   _c="${_c} $(printf '%q' "${2}")"
   echo "Command is ${_c}"
-  _RST_OUT="$(eval "${_c}" 2>&1)"
-  _rc=$?
-  if [ "${_rc}" = 0 ]; then
-    [ -n "${_RST_OUT}" ] && _rst_note "${_RST_OUT}"
-    _RST_LAST="${1}"
-    return 0
+  _RST_OUT=""
+  if [ -n "${_RST_LOG}" ]; then
+    eval "LANGUAGE= LC_ALL=C ${_c}" > "${_o}" 2>&1
+    _rc=$?
+  else
+    eval "LANGUAGE= LC_ALL=C ${_c}" 2>&1 | tee -- "${_o}"
+    _rc="${PIPESTATUS[0]}"
   fi
-  case "${_RST_OUT}" in
-    *"not found in archive"*) return 2 ;;
-  esac
-  [ -n "${_RST_OUT}" ] && _rst_note "${_RST_OUT}"
-  return 1
+  if [ "${_rc}" != 0 ] && grep -q -F -e "not found in archive" -- "${_o}"; then
+    [ -n "${_RST_LOG}" ] && _RST_OUT="$(cat -- "${_o}")"
+    return 2
+  fi
+  [ -n "${_RST_LOG}" ] && cat -- "${_o}" >> "${_RST_LOG}"
+  [ "${_rc}" = 0 ] || return 1
+  _RST_LAST="${1}"
+  return 0
 }
 # The owner (account, or arch) of a store that may hold archive path $1 in
 # this scope, and the link its store hangs off; nothing for any other path.
@@ -1698,34 +1738,100 @@ _rst_store_live() {
   fi
   _RST_S="${_RST_STO[${_k}]#/}"
 }
+# The deepest name at or above archive path $1 that the archive lists at the
+# restore time, after 1 when it lists anything below that name and 0 when it
+# does not; nothing when no such name is listed. Read from duplicity's
+# listing as it streams (time columns cut off), so no copy of it is kept.
+_rst_listed() {
+  eval "LANGUAGE= LC_ALL=C ${_RST_LST}" 2> /dev/null \
+    | sed -E 's/^([^ ]+ +){5}//' \
+    | _RST_Q="${1}" awk '
+      BEGIN {
+        n = split(ENVIRON["_RST_Q"], c, "/")
+        for (i = 1; i <= n; i++) q[i] = (i == 1) ? c[1] : q[i - 1] "/" c[i]
+      }
+      {
+        for (i = 1; i <= n; i++) {
+          if (($0 "") == q[i]) s[i] = 1
+          else if (index($0, q[i] "/") == 1) k[i] = 1
+        }
+      }
+      END {
+        for (i = n; i >= 1; i--) if (s[i]) { print (k[i] ? 1 : 0), q[i]; exit }
+      }'
+}
+# Sets _RST_L to the text of the link archive path $1 holds at the restore
+# time, read by restoring that one entry into a private directory; empty when
+# it is not a link there.
+_rst_link_text() {
+  local _tmp
+  _RST_L=""
+  _tmp="$(mktemp -d "${_RST_TMP}/rst.entry.XXXXXX" 2> /dev/null)" || return 0
+  if _rst_one "${1}" "${_tmp}/entry" && [ -L "${_tmp}/entry" ]; then
+    _RST_L="$(readlink -- "${_tmp}/entry" 2> /dev/null)"
+  fi
+  rm -rf -- "${_tmp}"
+  return 0
+}
 # Sets _RST_S to the store behind the link $2 as the archive holds it at the
 # restore time, for a box where the live link is gone: read only when the
 # entry is a link there (restoring that one entry), never by restoring a
 # directory. $1 = the owner (an account, or arch).
 _rst_store_archive() {
-  local _a="${1}" _e="${2}" _k="archive:${1}" _o _tmp _t=""
+  local _a="${1}" _e="${2}" _k="archive:${1}"
   if [ -z "${_RST_STO[${_k}]+x}" ]; then
     _RST_STO[${_k}]=""
-    _o="$(eval "${_RST_LST}" 2> /dev/null | sed -E 's/^([^ ]+ +){5}//' \
-      | grep -F -e "${_e}")"
-    if printf '%s\n' "${_o}" | grep -q -x -F -e "${_e}" \
-      && ! printf '%s\n' "${_o}" | grep -q -E "^${_e//./\\.}/"; then
-      _tmp="$(mktemp -d 2> /dev/null)"
-      if [ -n "${_tmp}" ]; then
-        if _rst_one "${_e}" "${_tmp}/entry" && [ -L "${_tmp}/entry" ]; then
-          _t="$(readlink -- "${_tmp}/entry" 2> /dev/null)"
-        fi
-        rm -rf -- "${_tmp}"
-      fi
-      if _rst_plain "${_t}"; then
-        case "${_a}:${_t}" in
-          arch:/?*) _RST_STO[${_k}]="${_t#/}" ;;
-          "${_a}:/mnt/"?*"/files/${_a}/static/files") _RST_STO[${_k}]="${_t#/}" ;;
+    if [ "$(_rst_listed "${_e}")" = "0 ${_e}" ]; then
+      _rst_link_text "${_e}"
+      if _rst_plain "${_RST_L}"; then
+        case "${_a}:${_RST_L}" in
+          arch:/?*) _RST_STO[${_k}]="${_RST_L#/}" ;;
+          "${_a}:/mnt/"?*"/files/${_a}/static/files") _RST_STO[${_k}]="${_RST_L#/}" ;;
         esac
       fi
     fi
   fi
   _RST_S="${_RST_STO[${_k}]}"
+}
+# Archive path $1 restored to $2 when a name above it is held as a link into
+# the same account's tree (a site's files/ or private/, the account's
+# backups/): the deepest name above $1 that the archive lists with nothing
+# below it is read as a link, and the rest of the path is restored from where
+# it leads, below the account's /data/disk/<oN> (through _rst_path, so the
+# store first) or in its store. Returns 2 when there is no such link.
+_rst_via_link() {
+  local _p="${1}" _t="${2}" _k _e _a _c _rc
+  [ "${_RST_HOPS}" -lt 4 ] || return 2
+  read -r _k _e <<< "$(_rst_listed "${_p%/*}")"
+  [ "${_k}" = 0 ] && [ -n "${_e}" ] && [ "${_e}" != "${_p}" ] || return 2
+  case "${_e}" in
+    data/disk/?*/?*) _a="${_e#data/disk/}"; _a="${_a%%/*}" ;;
+    home/?*.ftp/?*) _a="${_e#home/}"; _a="${_a%%/*}"; _a="${_a%.ftp}" ;;
+    *) return 2 ;;
+  esac
+  case "${_RST_SCOPE}:${_a}" in
+    data:arch) return 2 ;;
+    data:*|acct:"${_RST_ACCT}") ;;
+    *) return 2 ;;
+  esac
+  _rst_link_text "${_e}"
+  _rst_plain "${_RST_L}" || return 2
+  _c="${_RST_L#/}${_p#"${_e}"}"
+  [ "${_c}" != "${_p}" ] || return 2
+  case "${_RST_L}" in
+    /data/disk/"${_a}"|/data/disk/"${_a}"/*) ;;
+    /mnt/?*/files/"${_a}"/static/files|/mnt/?*/files/"${_a}"/static/files/*)
+      _rst_store_live "${_a}"
+      [ -z "${_RST_S}" ] || _rst_under "${_c}" "${_RST_S}" || return 2
+      ;;
+    *) return 2 ;;
+  esac
+  _rst_note "$(printf '%q' "${_e}") is a link to ${_RST_L}: restoring $(printf '%q' "${_c}")"
+  _RST_HOPS=$(( _RST_HOPS + 1 ))
+  _rst_path "${_c}" "${_t}"
+  _rc=$?
+  _RST_HOPS=$(( _RST_HOPS - 1 ))
+  return "${_rc}"
 }
 # Archive path $1 restored to $2 from where its content is held.
 _rst_path() {
@@ -1750,7 +1856,14 @@ _rst_path() {
       _rc=$?
     fi
   fi
-  [ "${_rc}" = 2 ] && _rst_note "${_RST_OUT}"
+  if [ "${_rc}" = 2 ] && [ -z "${_a}" ]; then
+    _o="${_RST_OUT}"
+    _rst_via_link "${_p}" "${_t}"
+    _rc=$?
+    [ "${_rc}" = 2 ] && _RST_OUT="${_o}"
+  fi
+  [ "${_rc}" = 2 ] && [ "${_RST_HOPS}" = 0 ] && [ -n "${_RST_OUT}" ] \
+    && _rst_note "${_RST_OUT}"
   return "${_rc}"
 }
 # The link $1 (archive position $2, leading to $3) replaced by what the rest
@@ -1769,13 +1882,40 @@ _rst_put_link() {
   _rst_note "Not restored: $(printf '%q' "${_pos}") is a link to ${_t}; its content was not found at the restore time"
   return 1
 }
+# The link $1 (archive position $2, leading to $3) replaced by $4, the part of
+# a restored store it leads to, restored from archive path $5; reported
+# either way.
+_rst_put_from() {
+  if [ -e "${4}" ] || [ -L "${4}" ]; then
+    if rm -f -- "${1}" && mv -T -- "${4}" "${1}"; then
+      _rst_note "Restored $(printf '%q' "${2}"), a link to ${3}, from ${5}"
+      return 0
+    fi
+    [ -e "${1}" ] || [ -L "${1}" ] || ln -s -- "${3}" "${1}"
+  fi
+  _rst_note "Not restored: $(printf '%q' "${2}") is a link to ${3}; its content was not found at the restore time"
+  return 1
+}
+# True while the filesystem holding $1 keeps a tenth of its size free, or
+# when df cannot tell.
+_rst_room() {
+  local _s _f
+  read -r _s _f <<< "$(df -P -k -- "${1}" 2> /dev/null | awk 'NR == 2 { print $2, $4 }')"
+  [[ "${_s}" =~ ^[0-9]+$ ]] && [[ "${_f}" =~ ^[0-9]+$ ]] || return 0
+  [ $(( _f * 10 )) -ge "${_s}" ]
+}
 # Links in the restored tree $1 that lead to the same account's static/files
 # or store (or, for the global archive, the relocated arch): each is replaced
 # by that content as of the same time, unless this restore already holds it
-# (_RST_GIVEN is the path asked for, _RST_DONE the path restored). Any other
-# link is left as it is.
+# (_RST_GIVEN is the path asked for, _RST_DONE the path restored). The links
+# into one site store (static/files/<name>) are served by one restore of it.
+# Past _RST_LINK_MAX site stores, or once the filesystem has less than a
+# tenth free, links are kept and reported with the command that restores
+# their store. Any other link is left as it is.
 _rst_links() {
-  local _top="${1}" _l _rel _pos _t _a _c _d _kept=0 _links=()
+  local _top="${1}" _l _rel _pos _t _a _c _d _g _k _i _j _src _ok _ps
+  local _kept=0 _stop="" _links=() _keys=() _gl=() _gp=() _gt=() _gc=() _gk=()
+  local -A _how=()
   mapfile -d '' -t _links < <(find -P "${_top}" -type l -print0 2> /dev/null)
   for _l in "${_links[@]}"; do
     _rel="${_l#"${_top}"}"
@@ -1814,7 +1954,7 @@ _rst_links() {
           _kept=$(( _kept + 1 ))
           continue
         fi
-        _rst_put_link "${_l}" "${_pos}" "${_t}" _rst_path "${_c}"
+        _g="${_d#/}"
         ;;
       /mnt/?*/files/"${_a}"/static/files|/mnt/?*/files/"${_a}"/static/files/*)
         _rst_store_live "${_a}"
@@ -1822,9 +1962,61 @@ _rst_links() {
           continue
         fi
         _rst_under "${_c}" "${_RST_DONE}" && continue
-        _rst_put_link "${_l}" "${_pos}" "${_t}" _rst_one "${_c}"
+        _g="${_c%%"/files/${_a}/static/files"*}/files/${_a}/static/files"
         ;;
+      *) continue ;;
     esac
+    _k="${_c#"${_g}"}"
+    _k="${_k#/}"
+    _k="${_g}${_k:+/${_k%%/*}}"
+    _gl+=("${_l}")
+    _gp+=("${_pos}")
+    _gt+=("${_t}")
+    _gc+=("${_c}")
+    _gk+=("${_k}")
+    if [ -z "${_how[${_k}]+x}" ]; then
+      _keys+=("${_k}")
+      _how[${_k}]=_rst_one
+      [ "${_g}" = "${_d#/}" ] && _how[${_k}]=_rst_path
+    fi
+  done
+  if [ "${#_keys[@]}" -gt "${_RST_LINK_MAX}" ]; then
+    _rst_note "${#_keys[@]} site stores are behind links in this restore, more than ${_RST_LINK_MAX}: their links are kept as links"
+    _stop=0
+  fi
+  for (( _i = 0; _i < ${#_keys[@]}; _i++ )); do
+    [ -z "${_stop}" ] || break
+    if ! _rst_room "${_top}"; then
+      _rst_note "Less than a tenth of the restore's filesystem is free: the remaining links are kept as links"
+      _stop="${_i}"
+      break
+    fi
+    _k="${_keys[_i]}"
+    _src="${_top}.rst.${_i}.$$"
+    _ok=NO
+    if [ ! -e "${_src}" ] && [ ! -L "${_src}" ] \
+      && "${_how[${_k}]}" "${_k}" "${_src}"; then
+      _ok=YES
+    fi
+    for (( _j = 0; _j < ${#_gk[@]}; _j++ )); do
+      [ "${_gk[_j]}" = "${_k}" ] || continue
+      if [ "${_ok}" = YES ]; then
+        _rel="${_gc[_j]#"${_k}"}"
+        _rst_put_from "${_gl[_j]}" "${_gp[_j]}" "${_gt[_j]}" "${_src}${_rel}" \
+          "${_RST_LAST}${_rel}"
+      else
+        _rst_note "Not restored: $(printf '%q' "${_gp[_j]}") is a link to ${_gt[_j]}; its content was not found at the restore time"
+      fi
+    done
+    rm -rf -- "${_src}"
+  done
+  for (( _i = ${_stop:-${#_keys[@]}}; _i < ${#_keys[@]}; _i++ )); do
+    _k="${_keys[_i]}"
+    _ps=""
+    for (( _j = 0; _j < ${#_gk[@]}; _j++ )); do
+      [ "${_gk[_j]}" = "${_k}" ] && _ps="${_ps} $(printf '%q' "${_gp[_j]}")"
+    done
+    _rst_note "Kept as links:${_ps}; to restore their content: ${_RST_AGAIN:+${_RST_AGAIN} }$(printf '%q' "${_k}")${_RST_TIME:+ $(printf '%q' "${_RST_TIME}")}"
   done
   if [ "${_kept}" -gt 0 ]; then
     _rst_note "${_kept} link(s) into static/files kept as links: their content is in this restore under the account's static/files"
@@ -1869,10 +2061,95 @@ _rst_staged_here() {
   return "${_rc}"
 }
 
-# Function to restore backup. A target below /data/disk or /home is the
-# accounts' ground: it is entered only as a real directory, and a new one is
-# made only as a name inside its real parent. The tree itself is always
-# restored in root's staging directory there (see _rst_staged_here).
+# Run "$@" inside the directory at the resolved path $1, only when pwd -P
+# there is $1, so no name on it is a link; once entered, ./name stays there
+# whatever is swapped.
+_rst_in_dir() {
+  local _d="${1}"
+  shift
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+}
+# ./$1 made in the current (pinned) directory unless the name is taken.
+_acct_mkdir_here() {
+  [ -e "./${1}" ] || [ -L "./${1}" ] || mkdir -- "./${1}"
+}
+# The resolved path $1 made where missing, one name at a time inside its real
+# parent (mkdir never follows a link at the name); true when all of $1 is
+# then a real directory.
+_rst_mkdir_path() {
+  local _d="${1}" _rest="" _n
+  while [ -n "${_d}" ] && [ ! -e "${_d}" ] && [ ! -L "${_d}" ]; do
+    _rest="${_d##*/}${_rest:+/${_rest}}"
+    _d="${_d%/*}"
+  done
+  [ -n "${_d}" ] || _d=/
+  while [ -n "${_rest}" ]; do
+    _n="${_rest%%/*}"
+    if [ "${_n}" = "${_rest}" ]; then
+      _rest=""
+    else
+      _rest="${_rest#*/}"
+    fi
+    _rst_in_dir "${_d}" _acct_mkdir_here "${_n}" || return 1
+    _d="${_d%/}/${_n}"
+  done
+  _rst_in_dir "${_d}" true
+}
+# The account whose ground the absolute path $1 is in: /data/disk/<oN>/...,
+# /home/<name>/... (<oN> is <name> up to its first dot) or the account's
+# store <mount>/files/<oN>/static/files/... under /mnt; nothing otherwise.
+_rst_ground_acct() {
+  local _a=""
+  case "${1}" in
+    /data/disk/?*)
+      _a="${1#/data/disk/}"
+      _a="${_a%%/*}"
+      ;;
+    /home/?*)
+      _a="${1#/home/}"
+      _a="${_a%%/*}"
+      _a="${_a%%.*}"
+      ;;
+    /mnt/?*/files/?*/static/files|/mnt/?*/files/?*/static/files/*)
+      _a="${1#/mnt/*/files/}"
+      _a="${_a%%/*}"
+      ;;
+  esac
+  echo "${_a}"
+}
+# True when the resolved target $2 is where the target as given, $1 (made
+# absolute, links not resolved), may lead: $1 itself; for a path in an
+# account's ground, below the account's /data/disk/<oN>, the /home directory
+# $1 names, or the account's store in BOA's relocated layout; anywhere when
+# every link on the way to $1 is one root made in a directory only root can
+# write. BOA's own links (a relocated store, a site's files/ or private/,
+# backups/, the .ftp home links) lead to such places; a link an account put
+# anywhere else is refused.
+_rst_target_ok() {
+  local _a _h _s
+  [ "${2}" = "${1}" ] && return 0
+  _a="$(_rst_ground_acct "${1}")"
+  if [ -n "${_a}" ]; then
+    _rst_under "${2}" "/data/disk/${_a}" && return 0
+    case "${1}" in
+      /home/?*)
+        _h="${1#/home/}"
+        _rst_under "${2}" "/home/${_h%%/*}" && return 0
+        ;;
+    esac
+    _s="$(_acct_relocated_store "${_a}")"
+    [ -n "${_s}" ] && _rst_under "${2}" "${_s}" && return 0
+  fi
+  _root_links_ok "${1}"
+}
+
+# Function to restore backup. The target is used where it leads only when
+# that is where the target as given may lead (see _rst_target_ok), and only
+# as a real directory: a missing one is made one name at a time inside its
+# real parent, and the restore acts inside it by pwd -P. The tree itself is
+# restored in root's staging directory there (see _rst_staged_here), so on
+# the target's own filesystem. A full restore (no path) goes only to a
+# directory outside the accounts' ground.
 _restore() {
   # Dispatch-level _USER, never the wrapper's exported _user (see
   # _check_if_worked_cleanly_or_log_err)
@@ -1880,7 +2157,7 @@ _restore() {
   local _restore_target=$1
   local _restore_path=$2
   local _restore_time=$3
-  local _clean_restore_path _last_part _final_restore_target _real _acct=""
+  local _clean_restore_path _last_part _final_restore_target _given _real
   local _scope=acct _rc=0
 
   # Remove any trailing slash from _restore_path for proper basename extraction
@@ -1896,55 +2173,51 @@ _restore() {
   esac
 
   [ -n "${_restore_target}" ] || _restore_target="/data/disk/${_user}/static/restores"
-  # The target as given (made absolute, links not resolved) decides first: a
-  # link an account put there must not move the restore out of its ground.
-  _real="$(realpath -m -s -- "${_restore_target}" 2> /dev/null)"
-  case "${_real}" in
-    /data/disk/?*|/home/?*) _acct="${_real}" ;;
-  esac
+  # The target as given (made absolute, links not resolved) and where it
+  # leads now
+  _given="$(realpath -m -s -- "${_restore_target}" 2> /dev/null)"
   _real="$(realpath -m -- "${_restore_target}" 2> /dev/null)"
-  if [ -z "${_real}" ]; then
+  if [ -z "${_given}" ] || [ -z "${_real}" ]; then
     echo "Error: Invalid restore target '${_restore_target}'."
     exit 1
   fi
-  case "${_real}" in
-    /data/disk/?*|/home/?*) [ -n "${_acct}" ] || _acct="${_real}" ;;
-  esac
+  if ! _rst_target_ok "${_given}" "${_real}"; then
+    echo "Error: ${_given} leads to ${_real}, which is not where it may lead. Unable to proceed."
+    exit 1
+  fi
+  if [ -z "${_last_part}" ] && { [ -n "$(_rst_ground_acct "${_given}")" ] \
+    || [ -n "$(_rst_ground_acct "${_real}")" ]; }; then
+    echo "Error: A full restore goes to a directory root owns, not ${_real}."
+    exit 1
+  fi
   case "${_user}" in
     global|data|custom) _scope="${_user}" ;;
   esac
-  _rst_setup "${_DCY_UTL_CMD} restore" "${_DCY_UTL_CMD} list-current-files" \
-    "${_restore_time}" "${_scope}" "${_user}" ""
+  if ! _rst_setup "${_DCY_UTL_CMD} restore" "${_DCY_UTL_CMD} list-current-files" \
+    "${_restore_time}" "${_scope}" "${_user}" "" \
+    "multiback restore ${_SERVICE} ${_user} $(printf '%q' "${_given}")"; then
+    echo "Error: no private directory for the restore. Unable to proceed."
+    exit 1
+  fi
 
-  if [ -n "${_acct}" ]; then
-    if [ -z "${_last_part}" ]; then
-      echo "Error: A full restore goes to a directory root owns, not ${_acct}."
+  if [ ! -e "${_real}" ] && [ ! -L "${_real}" ]; then
+    echo "Creating restore target directory: ${_real}"
+    if ! _rst_mkdir_path "${_real}"; then
+      echo "Error: ${_real} could not be made: a directory on the way is not a real one. Unable to proceed."
       exit 1
     fi
-    if [ ! -e "${_acct}" ] && [ ! -L "${_acct}" ]; then
-      echo "Creating restore target directory: ${_acct}"
-      _acct_in_real_dir "${_acct%/*}" mkdir -- "./${_acct##*/}" 2> /dev/null
-    fi
-    if ! _acct_in_real_dir "${_acct}" true; then
-      echo "Error: ${_acct} is not a real directory. Unable to proceed."
-      exit 1
-    fi
-    _final_restore_target="${_acct}/${_last_part}"
-    _acct_in_real_dir "${_acct}" _rst_staged_here \
-      "${_clean_restore_path}" "${_last_part}" || _rc=1
+  fi
+  if ! _rst_in_dir "${_real}" true; then
+    echo "Error: ${_real} is not a real directory. Unable to proceed."
+    exit 1
+  fi
+  if [ -z "${_last_part}" ]; then
+    _final_restore_target="${_real}"
+    _rst_one "" "${_real}" || _rc=1
   else
-    if [ ! -d "${_real}" ]; then
-      echo "Creating restore target directory: ${_real}"
-      mkdir -p -- "${_real}"
-    fi
-    if [ -z "${_last_part}" ]; then
-      _final_restore_target="${_real}"
-      _rst_one "" "${_real}" || _rc=1
-    else
-      _final_restore_target="${_real%/}/${_last_part}"
-      ( cd -P -- "${_real}" \
-        && _rst_staged_here "${_clean_restore_path}" "${_last_part}" ) || _rc=1
-    fi
+    _final_restore_target="${_real%/}/${_last_part}"
+    _rst_in_dir "${_real}" _rst_staged_here \
+      "${_clean_restore_path}" "${_last_part}" || _rc=1
   fi
   _acct_reclaim_restored "${_final_restore_target}"
 
@@ -2001,7 +2274,10 @@ _acct_reclaim_restored() {
   [ -n "${_a}" ] && [ "${_a}" != "all" ] && getent passwd "${_a}" > /dev/null 2>&1 || return 0
   _g=$(_acct_group "${_a}" 2> /dev/null)
   [ -n "${_g}" ] || _g="users"
-  find -P "${_r}" ! -group "${_g}" ! -group www-data ! -group root -execdir chgrp -h "${_g}" {} + 2> /dev/null
+  # The walk starts inside the real directory, so a name on the way swapped
+  # for a link after the realpath above never carries it elsewhere
+  _acct_in_real_dir "${_r}" find -P . ! -group "${_g}" ! -group www-data ! -group root \
+    -execdir chgrp -h "${_g}" {} + 2> /dev/null
   if [ -x "/opt/local/bin/instgrp" ]; then
     bash /opt/local/bin/instgrp reclaim "${_a}" > /dev/null 2>&1
   fi
@@ -2194,8 +2470,9 @@ _print_env "multiback_main"
 # held lock must not remove the owner's file
 _create_pid_file "${_PIDFILE}"
 # Root-private copies of an account's filelists (see _load_account_paths),
-# removed with the lock
+# and a restore's own files (see _rst_setup), removed with the lock
 _LISTS_TMP="$(mktemp -d 2> /dev/null)"
+_RST_TMP="${_LISTS_TMP}"
 trap "rm -f '${_PIDFILE}'; [ -n '${_LISTS_TMP}' ] && rm -rf -- '${_LISTS_TMP}'; exit" EXIT
 # A signal death used to leave the pid file behind; exit re-enters the
 # EXIT trap above for the cleanup
