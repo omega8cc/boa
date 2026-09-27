@@ -451,6 +451,13 @@ What it does, in order:
    driven there to build them (~30 minutes). A `phpNN.info` switch or a
    `cli-per-platform.info` line that names a PHP the source lacks is inert
    there and takes effect on a target that has that PHP.
+
+   Then the **web-group gate**: an account converted to its own web group
+   (`wg-oN`, see `INSTGRP.md`) is refused when the target's `instgrp`
+   predates the web group, or cannot be asked, because its claim passes
+   would hand the account's web paths back. `init`, `sync` and `cutover`
+   re-gate the same way (a DENY in a dry run), and `instgrp` is part of the
+   forced tool refresh in step 0.
 4. **Certificate health sweep** on the source — names every zero-byte,
    unparseable or expired certificate, so a broken renewal is fixed before the
    migration rather than debugged alongside it.
@@ -738,10 +745,14 @@ xmass sync target-ip --live     # perform the sync (after a CLEAN dry run)
 
 > **`xmass sync` and `xmass cutover` default to a read-only DRY run** and require an
 > explicit **`--live`** to make changes — accepted only after a `CLEAN` dry run for that
-> target. The DRY pass resolves the target's storage, prints the plan (`[DRY-PLAN] …`),
+> target.
+>
+> The DRY pass resolves the target's storage, prints the plan (`[DRY-PLAN] …`),
 > pre-checks disk space for every account's files store **and the Solr indices** (which
 > can be large), and records `CLEAN`/`NOT CLEAN`
-> for the whole run — a single `DENY` (a dangling **named store** such as
+> for the whole run.
+>
+> A single `DENY` (a dangling **named store** such as
 > `static/files` or `arch`, more than one `/mnt` mount, a store that fits nowhere, an
 > account leg such as `static/`, `log/` or `.drush/` that is a link or missing, a
 > `static/files` or `backups` that resolves outside the account's own tree and store,

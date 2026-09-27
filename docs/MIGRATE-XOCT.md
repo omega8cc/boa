@@ -50,12 +50,20 @@ For full-server migrations where Percona versions match, consider
 > place real dir …`), pre-checks disk space (including the Solr indices, which can be
 > large), and records `CLEAN` or `NOT CLEAN` — making
 > **no** changes on either host. The outcome is persisted per account+target in a state
-> file (`/var/log/boa/xoct.migrate.<oct>_<tgt>.state`). To perform the transfer, append
+> file (`/var/log/boa/xoct.migrate.<oct>_<tgt>.state`).
+>
+> To perform the transfer, append
 > **`--live`**; it is accepted only after a `CLEAN` dry run for the same account+target
 > and refuses if the dry run reported any `DENY` (dangling source symlink, multiple
 > `/mnt` mounts, a store that fits nowhere, a transfer leg such as `static/`, `log/`
 > or `.drush/` that is a link, or a `static/files`, `backups` or `/mnt` link that
 > resolves outside the account's own tree and store).
+>
+> An account converted to its own web group (`wg-oN`, see `INSTGRP.md`) is also a
+> `DENY` when the target's tools predate the web group, or the target's answer cannot
+> be read; `--live` then stops before it copies anything. While `wg-oN` exists on the
+> source, every leg maps it onto the group the target's writers give the account (its
+> `wg-oN` once converted there, `www-data` until then). `xcopy` does the same.
 >
 > The `CLEAN` dry token is **single-use** —
 > running `--live` consumes it, so one dry run cannot arm two live runs; re-run the dry
@@ -248,7 +256,9 @@ The hostmaster dump must exit clean and be
 non-empty, and every per-site mydumper run must exit clean AND leave its
 final `metadata` marker. A site whose database the account cannot prove its own
 (its drushrc `db_user` is not its `db_name`, or those credentials do not open it) is
-not dumped and is recorded as a failed database. Any failure withholds `exported.pid`, records the
+not dumped and is recorded as a failed database.
+
+Any failure withholds `exported.pid`, records the
 failed databases in `log/export_failed.pid`, prints an INCOMPLETE verdict
 and exits non-zero. The recovery is simply re-running the same `export`
 after fixing the cause: site dumps are redone in place, the hostmaster dump

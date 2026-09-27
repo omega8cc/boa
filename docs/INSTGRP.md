@@ -140,8 +140,10 @@ instgrp check
 ```
 
 `status` prints the marker, the group, every identity's group set, the FPM
-pool identities (which must not be in the group), the per-group file counts
-under the account's roots (`users`, the account's, `www-data`, `root`, no
+pool identities (which must not be in the group), a `web:` line naming the
+account's own web group and its state when `wg-oN` exists (see below), the
+per-group file counts under the account's roots (`users`, the account's,
+`www-data`, `wg-oN` when it exists, `root`, no
 group, and any other named group -- a foreign account's after a numeric gid
 collision on a copy or a root-run restore, whose identities can read the
 files), and one verdict line — `CONVERTED`, `UNCONVERTED`, `DRIFT` (paths
@@ -162,6 +164,9 @@ rewrites the marker. Every action logs one line to
 account's current group (`users` while unconverted), a marker that does not
 record this box's group is dropped. No identity change and no lock, so it
 is what a root-run restore, a migration destination and the nightly run.
+`convert` and `reclaim` leave the paths of the account's own web group
+(`wg-oN`, while it exists) alone: those are the account's web paths, which
+its FPM pools reach through that group.
 
 It still
 defers (exit 4) while a BOA install or upgrade run is live (`/run/boa_run.pid`,
@@ -180,6 +185,9 @@ deleted once no path and no identity carries it (a path written during the
 walk keeps the group in place; re-run). It writes `_INSTANCE_GROUP=NO` into
 the account's octopus cnf, so the next unattended upgrade does not convert
 the account again (`--keep-enabled` leaves the cnf alone).
+
+`revert` refuses (exit 1) while a group `wg-oN` exists, in any state: the
+account's web group goes first.
 
 Like `convert`,
 it does not start while an identity it has to move back is in use (exit 4),
@@ -233,6 +241,20 @@ place: it belongs to the account.
   Cross-tenant write into a shared codebase is not closed by this change.
 - The master (`/var/aegir`) keeps its own group `aegir` plus `users`, as
   before.
+
+## The account's own web group (`wg-oN`)
+
+`wg-oN` is reserved as each account's own web group: the groundwork for
+taking tenants out of the shared `www-data` group their sites' files and
+FPM pools meet in today. No tool creates it yet, and while it does not
+exist nothing changes. New account names may not begin with `wg-` nor hold
+a dot.
+
+Once an account holds it, `convert`, `reclaim`, the nightly and the
+restore and migration passes leave its paths alone, and the account's
+identities and pools are listed in it. Writers use it for the account's
+web paths only once root's record `/root/.oN.web-group.txt` says the
+account is converted.
 
 ## Operator notes
 
@@ -305,6 +327,14 @@ place: it belongs to the account.
   autosync never lands a foreign gid), and none of them carry the
   conversion marker -- it recorded the source box's
   conversion.
+
+  The account's own web group travels too. While `wg-oN` exists on the
+  source, every leg (the files store included) maps it onto the group the
+  destination's writers give the account there: its `wg-oN` once converted
+  there, `www-data` until then. The destination's group pass leaves `wg-oN`
+  paths alone. `xoct`, `xcopy` and `xmass` refuse (a DENY in the dry run, a
+  stop with `--live`) to move an account converted to its web group onto a
+  box whose tools predate it, or whose answer cannot be read.
 
   `instgrp` reads a marker whose gid is not the account group's
   gid on this box as STALE (ignored), and `convert`/`reclaim` claim any path
