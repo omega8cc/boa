@@ -3971,7 +3971,7 @@ _satellite_run_child_b() {
             chown -R "${_USER}:${_WEBG}" .
         fi
         _satellite_in_store_dir "${_THIS_HM_SITE}/files" \
-          _satellite_tree_mode_all_here 02775
+          _satellite_tree_mode_all_here 02775 0664
       else
         _msg "${_STATUS} A: NOTE: hostmaster site outside ${_ROOT}/aegir/distro left as it is"
       fi
@@ -6115,11 +6115,19 @@ _satellite_in_store_dir() {
   fi
   _r="$(readlink -f -- "${_d}" 2> /dev/null)"
   _s="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_USER}/static/files/"
-  _m="^/mnt/[^/]+/files/${_USER//./[.]}/static/files/."
+  # The store on attached storage is /mnt/<mount>/files/<oN>/static/files,
+  # the mount itself possibly nested (migratefs accepts any single mount
+  # under /mnt), as the nightly decides it.
   case "${_r}" in
     ""|*[!A-Za-z0-9._/-]*) return 1 ;;
     "${_s}"?*) ;;
-    *) [[ "${_r}" =~ ${_m} ]] || return 1 ;;
+    /mnt/?*/files/"${_USER}"/static/files/?*)
+      _m="${_r%%/files/"${_USER}"/static/files/*}"
+      case "${_m}" in
+        */files/*|*/static/*) return 1 ;;
+      esac
+      ;;
+    *) return 1 ;;
   esac
   ( cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] && "$@" )
 }
@@ -6176,8 +6184,9 @@ _satellite_tree_modes_here() (
   find . -mindepth 1 -path './.*' -prune -o -type f \
     -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
 )
-# The current (pinned) directory and every directory and regular file below
-# it set to $1, as chmod -R set them, each through a handle opened without
+# The current (pinned) directory and every directory below it set to $1,
+# every regular file below it to $2, dot entries included, as the nightly
+# sets a site's files store, each through a handle opened without
 # following a link, from the directory find walked (-execdir): a name
 # swapped for a link during the walk is refused, never followed.
 _satellite_tree_mode_all_here() (
@@ -6186,7 +6195,7 @@ _satellite_tree_mode_all_here() (
   find . -mindepth 1 -type d \
     -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
   find . -mindepth 1 -type f \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f "${1}" {} +
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
 )
 # The current (pinned) backups directory's system/ (and system/$1 when
 # given) made where missing, handed to the instance user and set 0700,

@@ -86,31 +86,40 @@ _dbk_skip_held() {
 
 # The account's dbackup/ directory, resolved, in _DBK_DIR (status 0), or the
 # reason it must not be touched in _DBK_WHY (status 1). static/ is
-# tenant-writable, so a symlinked files/ or dbackup/ may be a tenant-planted
-# name -- and both are also legitimate operator shapes: migratefs relocates a
-# files store to <target>/files/<oN>/static/files (any --target the operator
-# passed) and links static/files, or dbackup/, onto it (FILES-SYMLINK.md).
-# So resolve both and accept only BOA's own layouts: files/ is the account's
-# own directory or a store in that layout named for THIS account, and
-# dbackup/ is strictly below that store or below such a store. A missing
-# dbackup/ is created in the real store. $1 = account.
+# tenant-writable, so a symlinked files/ may be a tenant-planted name -- and
+# it is also a legitimate operator shape: migratefs relocates a files store
+# to /mnt/<mount>/files/<oN>/static/files and links static/files onto it
+# (FILES-SYMLINK.md). So resolve both and accept only BOA's own layouts:
+# files/ is the account's own directory or its store in that layout, and
+# dbackup/ resolves strictly below that resolved store. A missing dbackup/
+# is created in the real store. $1 = account.
 _dbk_store_dir() {
-  local _u="${1}" _own _sto _real
+  local _u="${1}" _own _sto _real _ok=NO
   _DBK_DIR=""
   _DBK_WHY=""
   _own="$(cd -P /data/disk 2>/dev/null && pwd -P)/${_u}/static/files"
   _sto=$(readlink -f "/data/disk/${_u}/static/files" 2>/dev/null)
+  # The account's own static/files, or its store in migratefs' layout on
+  # attached storage (/mnt/<mount>/files/<oN>/static/files), as the nightly
+  # decides it.
   case "${_sto}" in
-    "${_own}"|*"/files/${_u}/static/files") ;;
-    *)
-      # a link target the account wrote: shown bounded and printable only,
-      # as the issue log requires
-      _sto="${_sto//[^[:print:]]/?}"
-      _DBK_WHY="the files store resolves outside the account: ${_sto:0:256}"
-      [ -n "${_sto}" ] || _DBK_WHY="${_DBK_WHY}unresolvable"
-      return 1
+    *[!A-Za-z0-9._/-]*) ;;
+    "${_own}") _ok=YES ;;
+    /mnt/?*/files/"${_u}"/static/files)
+      case "${_sto%/files/"${_u}"/static/files}" in
+        */files/*|*/static/*) ;;
+        *) _ok=YES ;;
+      esac
       ;;
   esac
+  if [ "${_ok}" != "YES" ]; then
+    # a link target the account wrote: shown bounded and printable only,
+    # as the issue log requires
+    _sto="${_sto//[^[:print:]]/?}"
+    _DBK_WHY="the files store resolves outside the account: ${_sto:0:256}"
+    [ -n "${_sto}" ] || _DBK_WHY="${_DBK_WHY}unresolvable"
+    return 1
+  fi
   if [ ! -e "/data/disk/${_u}/static/files/dbackup" ] \
     && [ ! -L "/data/disk/${_u}/static/files/dbackup" ]; then
     ( cd -P -- "${_sto}" 2>/dev/null && [ "$(pwd -P)" = "${_sto}" ] \
@@ -118,7 +127,7 @@ _dbk_store_dir() {
   fi
   _real=$(readlink -f "/data/disk/${_u}/static/files/dbackup" 2>/dev/null)
   case "${_real}" in
-    "${_sto}"/?*|*"/files/${_u}/static/files"/?*) ;;
+    "${_sto}"/?*) ;;
     *)
       _real="${_real//[^[:print:]]/?}"
       _DBK_WHY="dbackup resolves outside the account's files store: ${_real:0:256}"

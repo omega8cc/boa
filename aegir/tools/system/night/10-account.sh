@@ -1415,17 +1415,11 @@ _purge_hits_under_account() {
   # placement. Reads _usEr.
   local _f _r _acct _store
   _acct=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 0
-  # No /mnt restriction: migratefs relocates the store to whatever --target
-  # the operator passed (/mnt is only the auto-detected default), so an
-  # /mnt-only test silently disables the purge on a relocated account. But
   # static/ is group-writable, so static/files itself can be a planted link:
-  # only the account's own directory, or a store in migratefs' layout named
-  # for THIS account (<target>/files/<oN>/static/files), counts as the store.
-  _store=$(realpath -e -- "${_usEr}/static/files" 2>/dev/null) || _store=
-  case "${_store}" in
-    "${_acct}/static/files"|*"/files/${_acct##*/}/static/files") ;;
-    *) _store= ;;
-  esac
+  # only the account's own directory, or its store in migratefs' layout on
+  # attached storage (/mnt/<mount>/files/<oN>/static/files), counts as the
+  # store, the rule every nightly store leg uses.
+  _store=$(_night_acct_store) || _store=
   # the hit is removed from inside its resolved directory, entered for real,
   # so no name on the way is resolved a second time
   while IFS= read -r -d '' _f; do

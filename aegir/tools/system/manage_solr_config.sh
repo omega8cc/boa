@@ -706,13 +706,17 @@ _update_solr() {
   # ${1} is module
   # ${2} is solr core path (auto) == _SOLR_DIR
   # ${3} is solr server version: solr9 or solr7 or jetty9
+  # ${4} is "tpl" when BOA's template may replace the core's config: a new
+  # core, or a site with solr_update_config = YES. Otherwise an apachesolr
+  # or Drupal 7 core keeps the config it has, as the site INI documents.
   local _upStg="" _upOld="" _upDiff="" _upRc _upPort _upCode _upKeepOld=NO
   _SERV="${3}"
   if [ ! -z "${1}" ] && [ -e "/data/conf/solr" ]; then
     if [ "${1}" = "apachesolr" ]; then
       _SERV="jetty9"
       if [ -e "${_Plr}/modules/o_contrib_seven" ]; then
-        if [ ! -e "${2}/conf/.protected.conf" ] && [ -e "${2}/conf" ]; then
+        if [ ! -e "${2}/conf/.protected.conf" ] && [ -e "${2}/conf" ] \
+          && [ "${4}" = "tpl" ]; then
           _slrCnfUpdate=""
           _check_config_diff "/data/conf/solr/apachesolr/solr4_drupal7/schema.xml" "${2}/conf/schema.xml"
           if [ ! -z "${_slrCnfUpdate}" ]; then
@@ -727,7 +731,8 @@ _update_solr() {
           fi
         fi
       elif [ -e "${_Plr}/modules/o_contrib" ]; then
-        if [ ! -e "${2}/conf/.protected.conf" ] && [ -e "${2}/conf" ]; then
+        if [ ! -e "${2}/conf/.protected.conf" ] && [ -e "${2}/conf" ] \
+          && [ "${4}" = "tpl" ]; then
           _slrCnfUpdate=""
           _check_config_diff "/data/conf/solr/apachesolr/solr4_drupal6/schema.xml" "${2}/conf/schema.xml"
           if [ ! -z "${_slrCnfUpdate}" ]; then
@@ -743,7 +748,8 @@ _update_solr() {
         fi
       fi
     elif [ ! -e "${2}/conf/.protected.conf" ] && [ -e "${2}/conf" ] && [ -e "${_Plr}/modules/o_contrib_seven" ]; then
-      if [ "${1}" = "search_api_solr" ] || [ "${1}" = "search_api_solr7" ]; then
+      if { [ "${1}" = "search_api_solr" ] || [ "${1}" = "search_api_solr7" ]; } \
+        && [ "${4}" = "tpl" ]; then
         _check_config_diff "/data/conf/solr/search_api_solr/solr7_drupal7/schema.xml" "${2}/conf/schema.xml"
         if [ ! -z "${_slrCnfUpdate}" ]; then
           rm -f ${2}/conf/*
@@ -1009,7 +1015,7 @@ _add_solr() {
       fi
       echo "New Solr ${3} with ${1} for ${2} added"
     fi
-    _update_solr "${1}" "${2}" "${3}"
+    _update_solr "${1}" "${2}" "${3}" tpl
   fi
 }
 
@@ -1481,6 +1487,13 @@ _setup_solr() {
       [ -n "${_SolrCoreID}" ] \
         && _acct_in_real_dir "${_usEr}/.boa-ctrl" \
           rm -f -- "./solr-reseeded.${_SolrCoreID}" &> /dev/null
+      # A core this same text protects is protected before the check, which
+      # otherwise refreshes it once from a template or an upload before leg 2
+      # writes the marker.
+      if [ -n "${_SOLR_VER}" ] && [ -d "${_SOLR_DIR}/conf" ] \
+        && grep -q "^solr_custom_config = YES" <<< "${_iniTxt}"; then
+        touch "${_SOLR_DIR}/conf/.protected.conf"
+      fi
       [ -n "${_SOLR_VER}" ] && _check_solr "${_SOLR_MODULE}" "${_SOLR_DIR}" "${_SOLR_VER}"
     else
       if [ "${_SOLR_TEARDOWN}" = "YES" ]; then
@@ -1555,7 +1568,7 @@ _setup_solr() {
         && [ -n "${_SOLR_PROTECT_CTRL}" ] \
         && [ "${_SLR_CM_CFG_RT}" = "NO" ] \
         && [ ! -e "${_SOLR_PROTECT_CTRL}" ]; then
-        _update_solr "${_SOLR_MODULE}" "${_SOLR_DIR}" "${_SOLR_VER}"
+        _update_solr "${_SOLR_MODULE}" "${_SOLR_DIR}" "${_SOLR_VER}" tpl
       fi
     fi
   fi

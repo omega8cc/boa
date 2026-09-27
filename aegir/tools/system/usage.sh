@@ -131,8 +131,8 @@ _usage_log_put() {
 # What counts besides the account's own tree, which du walks without
 # following any link: each of static/files, backups and src only when it is
 # a link resolving to the account's own store -- static/files to its real
-# static/files or migratefs' <target>/files/<oN>/static/files, backups and
-# src into that store (the backups mover's static/files/.backups) -- never
+# static/files or migratefs' /mnt/<mount>/files/<oN>/static/files, backups
+# and src into that store (the backups mover's static/files/.backups) -- never
 # wherever a link put anywhere else in the tree points. Sets _uFiles (the
 # resolved store, empty when none counts) and _uStores (the du operands).
 _usage_stores() {
@@ -141,10 +141,30 @@ _usage_stores() {
   _uStores=()
   _acctR=$(realpath -e -- "${_usEr}" 2> /dev/null) || return 0
   _r=$(realpath -e -- "${_usEr}/static/files" 2> /dev/null)
+  # The account's own static/files, or its store in migratefs' layout on
+  # attached storage (/mnt/<mount>/files/<oN>/static/files), as the nightly
+  # decides it.
   case "${_r}" in
-    "${_acctR}/static/files"|*"/files/${_THIS_U}/static/files") _uFiles="${_r}" ;;
+    *[!A-Za-z0-9._/-]*) ;;
+    "${_acctR}/static/files") _uFiles="${_r}" ;;
+    /mnt/?*/files/"${_THIS_U}"/static/files)
+      case "${_r%/files/"${_THIS_U}"/static/files}" in
+        */files/*|*/static/*) ;;
+        *) _uFiles="${_r}" ;;
+      esac
+      ;;
   esac
-  [ -n "${_uFiles}" ] || return 0
+  if [ -z "${_uFiles}" ]; then
+    # A store in no layout BOA counts (an older migratefs could put one
+    # outside /mnt) is not counted here, nor purged or backed up by the
+    # nightly: said once per pass, so it is seen.
+    case "${_r}" in
+      */files/"${_THIS_U}"/static/files)
+        echo "INFO: files store of ${_THIS_U} is not in a layout BOA counts (its own static/files or /mnt/<mount>/files/${_THIS_U}/static/files): not counted"
+        ;;
+    esac
+    return 0
+  fi
   [ -L "${_usEr}/static/files" ] && _uStores+=("${_uFiles}")
   for _n in backups src; do
     [ -L "${_usEr}/${_n}" ] || continue
