@@ -347,7 +347,9 @@ _mig_load_account_mail_facts() {
   _DOMAIN=""
   [ -e "${_root}/log/domain.txt" ] && _DOMAIN="$(_xoct_read_in "${_root}/log" domain.txt | tr -d '\n')"
   _CLIENT_EMAIL=""
-  [ -e "${_root}/log/email.txt" ] && _CLIENT_EMAIL="$(_xoct_read_in "${_root}/log" email.txt | tr -d '\n')"
+  [ -e "${_root}/log/email.txt" ] && _CLIENT_EMAIL="$(_xoct_read_in "${_root}/log" email.txt | tr -s '[:space:]' ' ')"
+  _CLIENT_EMAIL="${_CLIENT_EMAIL# }"
+  _CLIENT_EMAIL="${_CLIENT_EMAIL% }"
   [[ "${_CLIENT_EMAIL}" =~ "@" ]] || _CLIENT_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
 }
@@ -457,6 +459,16 @@ Either way, sites and domains added from now on are not on the switch. They are 
   return 0
 }
 
+### True when $1 is one e-mail address, or several separated by single
+### spaces, each a plain local part (a letter, a digit or _ first) and a
+### host name. The address comes from the account's log/email.txt and is
+### given to s-nail as its words: nothing else can read as an option there.
+_xoct_email_ok() {
+  local _w _re
+  _w="[A-Za-z0-9_][A-Za-z0-9._%+=-]*@[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?"
+  _re="^${_w}( ${_w})*$"
+  [[ "${1}" =~ ${_re} ]]
+}
 ### Every sender sets _MAIL_SENT and only reports success when s-nail actually
 ### accepted the message: the mail log is the record of what the customer was
 ### told, and the old always-printed "sent OK" line meant a box without s-nail
@@ -464,7 +476,8 @@ Either way, sites and domains added from now on are not on the switch. They are 
 _send_notice_migration_complete() {
   _MAIL_SENT=NO
   _MAILX_TEST=$(s-nail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
+    && _xoct_email_ok "${_CLIENT_EMAIL}"; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to ${_tgt} for ${_DOMAIN}" ${_CLIENT_EMAIL} && _MAIL_SENT=YES
 Hello,
 
@@ -517,14 +530,15 @@ EOF
   if [ "${_MAIL_SENT}" = "YES" ]; then
     echo "INFO: Migration complete notice sent to ${_CLIENT_EMAIL} [${_THIS_HM_USER}]: OK"
   else
-    echo "ALRT: Migration complete notice NOT sent for ${_THIS_HM_USER} (s-nail unavailable or send failed)"
+    echo "ALRT: Migration complete notice NOT sent for ${_THIS_HM_USER} (s-nail unavailable, no plain client address, or send failed)"
   fi
 }
 
 _send_notice_migration_start() {
   _MAIL_SENT=NO
   _MAILX_TEST=$(s-nail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
+    && _xoct_email_ok "${_CLIENT_EMAIL}"; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "STATUS: Running migration to ${_tgt} for ${_DOMAIN}" ${_CLIENT_EMAIL} && _MAIL_SENT=YES
 Hello,
 
@@ -581,7 +595,7 @@ EOF
   if [ "${_MAIL_SENT}" = "YES" ]; then
     echo "INFO: Migration start notice sent to ${_CLIENT_EMAIL} [${_THIS_HM_USER}]: OK"
   else
-    echo "ALRT: Migration start notice NOT sent for ${_THIS_HM_USER} (s-nail unavailable or send failed)"
+    echo "ALRT: Migration start notice NOT sent for ${_THIS_HM_USER} (s-nail unavailable, no plain client address, or send failed)"
   fi
 }
 
@@ -590,7 +604,8 @@ EOF
 _send_notice_migration_change() {
   _MAIL_SENT=NO
   _MAILX_TEST=$(s-nail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
+    && _xoct_email_ok "${_CLIENT_EMAIL}"; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "IMPORTANT: Update to the forwarding arrangement for ${_DOMAIN}" ${_CLIENT_EMAIL} && _MAIL_SENT=YES
 Hello,
 
@@ -612,7 +627,7 @@ EOF
   if [ "${_MAIL_SENT}" = "YES" ]; then
     echo "INFO: Forwarding change notice sent to ${_CLIENT_EMAIL} [${_THIS_HM_USER}]: OK"
   else
-    echo "ALRT: Forwarding change notice NOT sent for ${_THIS_HM_USER} (s-nail unavailable or send failed)"
+    echo "ALRT: Forwarding change notice NOT sent for ${_THIS_HM_USER} (s-nail unavailable, no plain client address, or send failed)"
   fi
 }
 
@@ -631,7 +646,8 @@ _send_notice_migration_retire() {
     _para2="From now on every domain must resolve to the new address below. If any of your domains still point at the old address, please update them now."
   fi
   _MAILX_TEST=$(s-nail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
+    && _xoct_email_ok "${_CLIENT_EMAIL}"; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "NOTICE: forwarding from your old address is being withdrawn for ${_DOMAIN}" ${_CLIENT_EMAIL} && _MAIL_SENT=YES
 Hello,
 
@@ -651,7 +667,7 @@ EOF
   if [ "${_MAIL_SENT}" = "YES" ]; then
     echo "INFO: Retirement notice sent to ${_CLIENT_EMAIL} [${_THIS_HM_USER}]: OK"
   else
-    echo "ALRT: Retirement notice NOT sent for ${_THIS_HM_USER} (s-nail unavailable or send failed)"
+    echo "ALRT: Retirement notice NOT sent for ${_THIS_HM_USER} (s-nail unavailable, no plain client address, or send failed)"
   fi
 }
 
@@ -910,18 +926,21 @@ _xoct_read_here() {
   timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
     bs=1048576 count=1 status=none 2> /dev/null
 }
-### $2 in the real directory $1, read as _xoct_read_here reads it.
 ### The words of $1 that are host names (letters, digits, dots, dashes, a
-### leading wildcard), space-separated; anything else is dropped.
+### leading wildcard), space-separated; anything else is dropped. The words
+### are split without file name expansion, so a wildcard name stays as is.
 _xoct_host_words() {
   local _w _o=""
-  for _w in ${1}; do
+  local -a _ws
+  IFS=$' \t\n' read -r -d '' -a _ws <<< "${1}"
+  for _w in "${_ws[@]}"; do
     [[ "${_w}" =~ ^[A-Za-z0-9*][A-Za-z0-9.*-]*$ ]] || continue
     [ "${#_w}" -le 253 ] || continue
     _o="${_o} ${_w}"
   done
   printf '%s' "${_o# }"
 }
+### $2 in the real directory $1, read as _xoct_read_here reads it.
 _xoct_read_in() {
   _xoct_in_real_dir "${1}" _xoct_read_here "${2}"
 }
@@ -1291,18 +1310,24 @@ _xoct_leg_ok() {
 ### directory it resolves to when that is the account's own tree or store,
 ### into the target's backups/, whose mover link is kept when it resolves
 ### into the account's own tree or store there; anything else is refused.
-### backup-exports/ travels only as that link, as it always did.
+### A backups/ link naming a path under /mnt is left to the /mnt link pass,
+### which carries it once, fit-checked. backup-exports/ travels only as the
+### mover link, as it always did.
 _xoct_backups_leg() {
-  local _u="${1}" _d="${2}" _h="${3}" _ie="${4}" _n="${5}" _l _b _r _to
+  local _u="${1}" _d="${2}" _h="${3}" _ie="${4}" _n="${5}" _l _b _r _to _rc
   _l="$(readlink "${_u}/${_n}" 2> /dev/null)"
   _b="${_l#"${_u}/static/files/"}"
   if [ -L "${_u}/${_n}" ] && [ "${_b}" != "${_l}" ] \
     && [[ "${_b}" =~ ^[A-Za-z0-9._-]+$ ]] \
     && [ "${_b}" != "." ] && [ "${_b}" != ".." ]; then
     if [ "${_MODE}" = "LIVE" ]; then
-      _xoct_tgt_place "${_h}" _xoct_own_store_link_ready "${_d##*/}" "${_d}/${_n}" \
-        "${_d}/static/files/${_b}" > /dev/null \
-        || echo "ALRT: ${_d}/${_n} on ${_h} not linked to static/files/${_b} (no store copy of it there in the account's own tree or store)"
+      if ! _xoct_tgt_place "${_h}" _xoct_own_store_link_ready "${_d##*/}" "${_d}/${_n}" \
+        "${_d}/static/files/${_b}" > /dev/null; then
+        echo "DENY: ${_d}/${_n} on ${_h} not linked to static/files/${_b} (no store copy of it there in the account's own tree or store)"
+        _XOCT_NOT_CLEAN=YES
+        _XOCT_STORE_RC=1
+        return 1
+      fi
     else
       echo "[DRY-PLAN] would link ${_d}/${_n} -> ${_d}/static/files/${_b} on ${_h}"
     fi
@@ -1310,6 +1335,11 @@ _xoct_backups_leg() {
   fi
   [ "${_n}" = "backups" ] || return 0
   [ -e "${_u}/${_n}" ] || [ -L "${_u}/${_n}" ] || return 0
+  if [ -L "${_u}/${_n}" ]; then
+    case "${_l}" in
+      /mnt/*) return 0 ;;
+    esac
+  fi
   _r="$(cd -P -- "${_u}/${_n}" 2> /dev/null && pwd -P)"
   if [ -z "${_r}" ] || ! _xoct_own_path "${_u##*/}" "${_r}"; then
     echo "DENY: ${_u}/${_n} resolves to ${_r:-nothing}, outside the account's own tree and store -- not followed, not copied"
@@ -1327,9 +1357,20 @@ _xoct_backups_leg() {
       return 1
     fi
   fi
+  ### an empty backups/ has nothing for the glob to name
+  [ -n "$(_xoct_in_canon_dir "${_r}" find . -mindepth 1 -maxdepth 1 \
+    -name '[!.]*' -print -quit 2> /dev/null)" ] || return 0
   # shellcheck disable=SC2086
   _xoct_in_canon_dir "${_r}" _xoct_copy_canon_here "${_h}" "${_to:-${_d}/${_n}}" '*' \
-    -aEAXqu ${_ie} &> /dev/null
+    -aEAXqu ${_ie} > /dev/null
+  _rc=$?
+  ### 24: files that vanished while the copy ran (a rotated backup)
+  if [ "${_rc}" != "0" ] && [ "${_rc}" != "24" ] && [ "${_MODE}" = "LIVE" ]; then
+    echo "DENY: ${_u}/${_n} copy to ${_h} failed (rc ${_rc})"
+    _XOCT_NOT_CLEAN=YES
+    _XOCT_STORE_RC=1
+    return 1
+  fi
   return 0
 }
 ### As _xoct_copy_here, but the receiver starts in the canonical directory $2
@@ -1423,6 +1464,11 @@ _xoct_reassert_here() {
 ### the vhost name, $4 the mode (default 600).
 _xoct_vhd_reassert() {
   _xoct_in_real_dir "${1}" _xoct_reassert_here "${2}" "${4:-600}" "${3}"
+}
+### Whether the vhost $2 in the real vhost.d $1 holds the text $3, read as
+### _xoct_read_in reads it: never through a link, never blocked on a FIFO.
+_xoct_vh_has() {
+  _xoct_read_in "${1}" "${2}" | grep -q -- "${3}"
 }
 ### The account proves it owns a database by logging in as its own user and
 ### using it: BOA sets db_user == db_name, so a login as that user with that
@@ -1535,9 +1581,9 @@ _migrate_sites() {
         ### A conversion by the earlier code proxied the panel and saved the
         ### real vhost as the dot-file; put it back so the panel serves
         ### locally again (the reload below applies it).
-        if grep -q "Plain HTTP proxy (START)" "${_Vht}" 2>/dev/null \
-          && [ -s "${_Vhd}" ] \
-          && ! grep -q "Plain HTTP proxy (START)" "${_Vhd}" 2>/dev/null; then
+        if _xoct_vh_has "${_Vht%/*}" "${_Dom}" "Plain HTTP proxy (START)" \
+          && [ -n "$(_xoct_read_in "${_Vhd%/*}" ".${_Dom}")" ] \
+          && ! _xoct_vh_has "${_Vhd%/*}" ".${_Dom}" "Plain HTTP proxy (START)"; then
           ### vhost.d is oN's: restore and re-assert inside the real directory.
           _xoct_in_real_dir "${_Vht%/*}" mv -f -T -- "./.${_Dom}" "./${_Dom}"
           _xoct_vhd_reassert "${_Vht%/*}" "${_oct}:${_OCT_GRP}" "${_Dom}"
@@ -1558,7 +1604,7 @@ _migrate_sites() {
     if [ "${_cmd}" = "proxy" ] && [ -n "${_XOCT_DEFER_FQDN}" ] \
       && [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ] \
       && _xoct_named_under_host "${_Dom}" "${_XOCT_DEFER_FQDN}" \
-      && ! grep -q "Plain HTTP proxy (START)" "${_Vht}" 2>/dev/null; then
+      && ! _xoct_vh_has "${_Vht%/*}" "${_Dom}" "Plain HTTP proxy (START)"; then
       if _xoct_site_host_gateable "${_USR}" "${_Dom}" "${_Vht}"; then
         _XOCT_PROXY_DEFERRED="${_XOCT_PROXY_DEFERRED} ${_Dom}"
         echo "INFO: site ${_Dom} on ${_oct}: named under ${_XOCT_DEFER_FQDN}, deferred (stays local on 503 until it is renamed)"
@@ -1937,7 +1983,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             ### previous repair could have narrowed. The saved real vhost is the
             ### authoritative source, so prefer it whenever it exists.
             _NMS_SRC="${_Vht}"
-            if grep -q "Plain HTTP proxy (START)" "${_Vht}" 2>/dev/null \
+            if _xoct_vh_has "${_Vht%/*}" "${_Dom}" "Plain HTTP proxy (START)" \
               && [ -e "${_Vhd}" ]; then
               _NMS_SRC="${_Vhd}"
             fi
@@ -2015,7 +2061,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             ### back); HTTPS then fails at the handshake, visibly, which is
             ### what the report below tells the operator.
             if [ -f "${_Vhs}" ] \
-              && ! grep -q "Secure HTTPS proxy" "${_Vhs}" 2>/dev/null; then
+              && ! _xoct_vh_has "${_Vhs%/*}" "https.${_Dom}" "Secure HTTPS proxy"; then
               ### Parked inside the real vhost.d, on ./names.
               if [ ! -f "${_Vhs%/*}/.https.${_Dom}" ]; then
                 _xoct_in_real_dir "${_Vhs%/*}" mv -f -T -- \
@@ -2034,7 +2080,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
             ### with it -- destroying the only surviving copy of the real vhost
             ### and with it any chance of reverting or re-harvesting the names.
             _VHT_IS_PROXY=NO
-            grep -q "Plain HTTP proxy (START)" "${_Vht}" 2>/dev/null \
+            _xoct_vh_has "${_Vht%/*}" "${_Dom}" "Plain HTTP proxy (START)" \
               && _VHT_IS_PROXY=YES
             if [ "${_VHT_IS_PROXY}" = "YES" ] && [ -e "${_Vhd}" ]; then
               echo "INFO: site ${_Dom} on ${_oct}: proxy vhost already in place, keeping saved ${_Vhd}"
@@ -2291,6 +2337,7 @@ _xoct_rewrite_target_account_refs() {
   _X_DST_OCT="$2"
   _X_TGT_HOST="$3"
   _X_DST_USR="$4"
+  _X_TGT_MNT="$5"
 
   if [ -z "${_X_SRC_OCT}" ] || [ -z "${_X_DST_OCT}" ] || [ -z "${_X_TGT_HOST}" ] || [ -z "${_X_DST_USR}" ]; then
     return 0
@@ -2312,10 +2359,20 @@ _xoct_rewrite_target_account_refs() {
   # one (every name from /data/disk down), each file is rewritten as
   # _xoct_sed_here does it (owner and mode kept, never through a link or
   # into a FIFO), and links and owners are changed with ./names inside the
-  # directory find holds open.
+  # directory find holds open. The source identities' uids on this box and
+  # the target's attached mount go with it for the owner remap.
+  local _X_SU _X_SF
+  _X_SU="$(id -u "${_X_SRC_OCT}" 2> /dev/null)"
+  _X_SF="$(id -u "${_X_SRC_OCT}.ftp" 2> /dev/null)"
+  [[ "${_X_SU}" =~ ^[0-9]+$ ]] || _X_SU=""
+  [[ "${_X_SF}" =~ ^[0-9]+$ ]] || _X_SF=""
+  [[ "${_X_TGT_MNT}" =~ ^/mnt/[A-Za-z0-9._-]+$ ]] || _X_TGT_MNT=""
   ssh root@"${_X_TGT_HOST}" "bash -s" <<REMOTE
 _SRC='${_X_SRC_OCT}'
 _DST='${_X_DST_OCT}'
+_SU='${_X_SU}'
+_SF='${_X_SF}'
+_TM='${_X_TGT_MNT}'
 $(declare -f _xoct_real_want _xoct_read_here _xoct_sed_to _xoct_sed_here)
 _xo_in() {
   local _d="/data/disk/\${_DST}/\${1}" _w
@@ -2371,17 +2428,60 @@ _xo_relink_here() {
 export _SRC _DST
 export -f _xo_relink_here
 find "/data/disk/\${_DST}/static" -type l -execdir bash -c '_xo_relink_here "\$@"' _ {} + 2>/dev/null
-# Ownership: rsync kept the SOURCE account's uid on the migrated tree, so the
-# renamed account's files/quota/FTP were attributed to the wrong account (and
-# the site's own site-local Drush was unreachable). Remap ONLY the source
-# account's files to the dest account -- root-owned control files are left
-# untouched (find -user matches by owner, not a blanket chown -R).
-if id "\${_SRC}" >/dev/null 2>&1; then
-  find "/data/disk/\${_DST}" -user "\${_SRC}" -execdir chown -h "\${_DST}" {} + 2>/dev/null
+# Ownership: the copy maps owners by name, so what the source identities
+# owned landed on their namesakes here, or on their bare source uids where
+# this box has no such name; left so, the renamed account's files, quota and
+# FTP belong to someone else. Only those owners are handed to the renamed
+# identities, by chown -R --from (root's and www-data's files stay theirs),
+# one process per walk, physically: a link is changed itself, never
+# followed. The walk covers the account tree, the .ftp
+# home and the account's part of the attached store, each entered as the
+# real directory. An owner that is also one of the renamed identities here
+# cannot be told apart from it and is left as copied.
+_xo_landed() {
+  local _u
+  _u="\$(id -u "\${1}" 2>/dev/null)"
+  [ -n "\${_u}" ] || _u="\${2}"
+  case "\${_u}" in
+    ''|0|*[!0-9]*) return 1 ;;
+  esac
+  printf '%s' "\${_u}"
+}
+_xo_remap_in() {
+  ( cd -P -- "\${1}" 2>/dev/null && [ "\$(pwd -P)" = "\${2}" ] || exit 0
+    [ -n "\${_RU}" ] && chown -R -P -h --from="+\${_RU}" "\${_DST}" -- . 2>/dev/null
+    [ -n "\${_RF}" ] && chown -R -P -h --from="+\${_RF}" "\${_DST}.ftp" -- . 2>/dev/null
+    exit 0 )
+}
+_LU="\$(_xo_landed "\${_SRC}" "\${_SU}")"
+_LF="\$(_xo_landed "\${_SRC}.ftp" "\${_SF}")"
+_DU="\$(id -u "\${_DST}" 2>/dev/null)"
+_DF="\$(id -u "\${_DST}.ftp" 2>/dev/null)"
+_RU=""
+_RF=""
+if [ -z "\${_DU}" ] || [ -z "\${_DF}" ]; then
+  echo "ALRT: \${_DST} or \${_DST}.ftp does not exist here -- owners left as copied"
+else
+  if [ -n "\${_LU}" ] && [ "\${_LU}" != "\${_DU}" ]; then
+    if [ "\${_LU}" = "\${_DF}" ] || [ "\${_LU}" = "\${_LF}" ]; then
+      echo "ALRT: files of \${_SRC} landed on uid \${_LU}, which another identity of this rename holds here -- left as copied"
+    else
+      _RU="\${_LU}"
+    fi
+  fi
+  if [ -n "\${_LF}" ] && [ "\${_LF}" != "\${_DF}" ]; then
+    if [ "\${_LF}" = "\${_DU}" ] || [ "\${_LF}" = "\${_LU}" ]; then
+      echo "ALRT: files of \${_SRC}.ftp landed on uid \${_LF}, which another identity of this rename holds here -- left as copied"
+    else
+      _RF="\${_LF}"
+    fi
+  fi
 fi
-if id "\${_SRC}.ftp" >/dev/null 2>&1; then
-  find "/data/disk/\${_DST}" -user "\${_SRC}.ftp" -execdir chown -h "\${_DST}.ftp" {} + 2>/dev/null
-  find "/home/\${_DST}.ftp" -user "\${_SRC}.ftp" -execdir chown -h "\${_DST}.ftp" {} + 2>/dev/null
+_xo_remap_in "/data/disk/\${_DST}" "\$(cd -P /data/disk 2>/dev/null && pwd -P)/\${_DST}"
+_xo_remap_in "/home/\${_DST}.ftp" "\$(cd -P /home 2>/dev/null && pwd -P)/\${_DST}.ftp"
+if [ -n "\${_TM}" ]; then
+  _xo_remap_in "\${_TM}/files/\${_DST}" \
+    "\$(cd -P /mnt 2>/dev/null && pwd -P)\${_TM#/mnt}/files/\${_DST}"
 fi
 REMOTE
 }
@@ -2683,13 +2783,10 @@ _xoct_seed_target_control_pins() {
     _xoct_in_real_dir "${_sUsr}/${_f%/*}" _xoct_put_file_remote_here \
       "${_f##*/}" "${_t}" "${_dUsr}/${_f%/*}" "${_ieni}"
   done
-  ### multi-fpm.info gets the same owner as its two siblings. It was left out,
-  ### so it kept the SOURCE's owner name -- which in rename mode does not
-  ### exist on the target and resolves to a bare numeric uid. The `find -user`
-  ### remap that would otherwise repair it is gated on `id <src>.ftp`
-  ### succeeding there, so in exactly that case it never fires. It matters
-  ### more now that renameaegirhost §2d rewrites this file during a rename:
-  ### two writers, one of which was leaving it mis-owned.
+  ### multi-fpm.info gets the same owner as its two siblings. On a rename it
+  ### arrives with the source's owner, a name the target may not hold, and
+  ### renameaegirhost §2d rewrites it there, so it is not left to the
+  ### transfer's owner remap, which runs later.
   ### The group is the account's group ON THE TARGET (its own once converted
   ### there, the box-wide one until then), asked of the target itself. The
   ### chown runs inside the real static/control there, on ./names.
@@ -2709,12 +2806,20 @@ _xoct_seed_target_control_pins() {
 ### The regular files of the current (pinned) sub-account password store of
 ### the account $1, each put under the name it takes for the account $2
 ### into the real store directory on the target $3: a link is never sent,
-### and the receiver never writes through one.
+### and the receiver never writes through one. The new name is read by a
+### shell on the target (rsync before 3.2.4 sends it unescaped), so a name
+### that is not shell-safe is refused.
 _xoct_users_put_here() {
   local _e _n
   for _e in ./*; do
     [ -f "${_e}" ] && [ ! -L "${_e}" ] || continue
     _n="${_e#./}"
+    case "${_n}" in
+      ''|-*|*[!A-Za-z0-9._@+,=-]*)
+        echo "ALRT: sub-account password store entry $(printf '%q' "${_n}") is not a shell-safe name -- not carried"
+        continue
+        ;;
+    esac
     _n="${_n#"${1}".}"
     # shellcheck disable=SC2086
     _xoct_rsync -aEAX --no-links ${_ieni} \
@@ -2782,6 +2887,10 @@ _xoct_sync_shell_credentials() {
   for _d in "${_sUsr}"/clients/*/; do
     [ -d "${_d}" ] || continue
     _n=$(basename "${_d}")
+    # the name is read by a shell on the target
+    case "${_n}" in
+      ''|-*|*[!A-Za-z0-9._@+,=-]*) continue ;;
+    esac
     getent passwd "${_src}.${_n}" &> /dev/null || continue
     _hash=$(getent shadow "${_src}.${_n}" 2>/dev/null | cut -d: -f2)
     [ -n "${_hash}" ] && [ "${_hash}" != "*" ] && [ "${_hash}" != "!" ] || continue
@@ -3118,8 +3227,9 @@ _migrate_prepare() {
     _CLIENT_SUBSCR=`echo -n ${_CLIENT_SUBSCR} | tr -d "\n"`
   fi
   if [ -e "${_USR}/log/email.txt" ]; then
-    _CLIENT_EMAIL=$(_xoct_read_in "${_USR}/log" email.txt)
-    _CLIENT_EMAIL=`echo -n ${_CLIENT_EMAIL} | tr -d "\n"`
+    _CLIENT_EMAIL=$(_xoct_read_in "${_USR}/log" email.txt | tr -s '[:space:]' ' ')
+    _CLIENT_EMAIL="${_CLIENT_EMAIL# }"
+    _CLIENT_EMAIL="${_CLIENT_EMAIL% }"
     if [[ "${_CLIENT_EMAIL}" =~ "@" ]]; then
       _DO_NOTHING=YES
     else
@@ -4009,6 +4119,13 @@ _xoct_handle_store() {
     _sz="$(du -sk "${_real}" 2>/dev/null | awk '{print $1}')"
     if [ -z "${_mntRel}" ] && [ "${_onMnt}" = "YES" ]; then
       _mntRel="${_real#/mnt/*/}"
+      # On a rename the account's own part of the store takes the new name,
+      # never a path another account of the old name may hold there.
+      if [ -n "${_acct}" ] && [ -n "${_dacct}" ]; then
+        case "${_mntRel}/" in
+          "files/${_acct}/"*) _mntRel="files/${_dacct}${_mntRel#"files/${_acct}"}" ;;
+        esac
+      fi
     fi
     [ -n "${_tm}" ] && [ -n "${_mntRel}" ] && _mntDest="${_tm}/${_mntRel}"
     if [ "${_onMnt}" = "YES" ] && [ -n "${_mntDest}" ]; then
@@ -4054,11 +4171,11 @@ _xoct_handle_store() {
 
 # Catch-all: any symlink (besides static/files, handled explicitly) whose OWN target
 # is /mnt/... gets the same storage-aware treatment, so non-standard legacy links are
-# never left dangling on the target. Sets _XOCT_STORE_RC on any DENY. NOTE: on a rename
-# the derived on-mount path keeps the SOURCE account name for a legacy link (it still
-# resolves; only the mount-relative path is cosmetically old-named). A link is carried
-# only when it resolves into the account's own tree or store, or to content one of its
-# identities owns (such an old-named path); anything else is a DENY.
+# never left dangling on the target. Sets _XOCT_STORE_RC on any DENY. On a rename a
+# link into the account's own part of the store (<mount>/files/<oN>/...) lands under
+# the new name there. A link is carried only when it resolves into the account's own
+# tree or store, or to content one of its identities owns (an old-named path left by
+# an earlier rename); anything else is a DENY.
 _xoct_catchall_mnt_symlinks() {
   local _root="$1" _dstRoot="$2" _th="$3" _tm="$4" _ie="$5"
   local _l _lt _rel _dl
@@ -4207,10 +4324,17 @@ _mig_render_table() {
 ### renewed pair back from the target daily; without the mirror it is a real
 ### service horizon, so its absence is the loud case.
 _xoct_warn_proxy_cert_horizon() {
-  local _root="$1" _c _end _soon="" _soon_dom=""
+  local _root="$1" _c _r _end _soon="" _soon_dom=""
   for _c in "${_root}"/config/server_master/ssl.d/*/openssl.crt; do
     [ -e "${_c}" ] || continue
-    _end=$(openssl x509 -noout -enddate -in "${_c}" 2>/dev/null | cut -d= -f2)
+    # ssl.d is the account's: the certificate is reached through the links
+    # the Let's Encrypt layout makes, resolved once, accepted only inside
+    # the account's own tree or store, and read inside that real directory,
+    # never into a FIFO.
+    _r="$(readlink -f -- "${_c}" 2>/dev/null)"
+    [ -n "${_r}" ] && _xoct_own_path "${_root##*/}" "${_r%/*}" || continue
+    _end=$(_xoct_in_canon_dir "${_r%/*}" _xoct_read_here "${_r##*/}" \
+      | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
     [ -n "${_end}" ] || continue
     _end=$(date -u -d "${_end}" '+%Y-%m-%d' 2>/dev/null)
     [ -n "${_end}" ] || continue
@@ -5208,7 +5332,7 @@ _migrate_init() {
 
           if [ "${_MODE}" = "LIVE" ]; then
             if [ ! -z "${_dst}" ] && [ "${_dst}" != "${_oct}" ]; then
-              _xoct_rewrite_target_account_refs "${_oct}" "${_dst}" "${_tgt}" "${_DST}"
+              _xoct_rewrite_target_account_refs "${_oct}" "${_dst}" "${_tgt}" "${_DST}" "${_TGT_MNT}"
             fi
             _xoct_regroup_target_account "${_dst:-${_oct}}" "${_tgt}"
             echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} complete"

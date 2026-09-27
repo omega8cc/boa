@@ -977,19 +977,21 @@ _nginx_reload_locked() {
 ### real directory ($1 the quarantine, $2 YES keeps the default include) and
 ### put back the same way, never through a link put at post.d.
 _park_postd_here() {
-  local _p
+  local _p _r=0
   for _p in ./fpm_include_default.inc ./fpm_include_site_*; do
     [ -e "${_p}" ] || [ -L "${_p}" ] || continue
     [ "${2}" = "YES" ] && [ "${_p}" = "./fpm_include_default.inc" ] && continue
-    mv -f -T -- "${_p}" "${1}/${_p#./}" 2> /dev/null
+    mv -f -T -- "${_p}" "${1}/${_p#./}" 2> /dev/null || _r=1
   done
+  return "${_r}"
 }
 _unpark_postd_here() {
-  local _p
+  local _p _r=0
   for _p in "${1}"/*; do
     [ -e "${_p}" ] || [ -L "${_p}" ] || continue
-    mv -f -T -- "${_p}" "./${_p##*/}" 2> /dev/null
+    mv -f -T -- "${_p}" "./${_p##*/}" 2> /dev/null || _r=1
   done
+  return "${_r}"
 }
 
 _stage_a() {
@@ -1023,8 +1025,16 @@ _stage_a() {
     _panel_pool=$(grep -m1 '^_PHP_FPM_VERSION=' "/root/.${_oN}.octopus.cnf" 2>/dev/null | cut -d= -f2 | tr -d -c 0-9)
     _info "${_oN}: local panel ${_MAP_PANEL_DOM}: keeping fpm_include_default.inc and pool ${_oN}.${_panel_pool:-?}.conf"
   fi
-  _in_real_dir "${_USR}/config/server_master/nginx/post.d" \
-    _park_postd_here "${_q}/postd" "${_MAP_PANEL_LOCAL}"
+  _p="${_USR}/config/server_master/nginx/post.d"
+  if [ -e "${_p}" ] || [ -L "${_p}" ]; then
+    if ! _in_real_dir "${_p}" true; then
+      _alrt "${_oN}: post.d is not a real directory -- fpm includes not parked"
+      _fail=1
+    elif ! _in_real_dir "${_p}" _park_postd_here "${_q}/postd" "${_MAP_PANEL_LOCAL}"; then
+      _alrt "${_oN}: an fpm include in post.d could not be parked"
+      _fail=1
+    fi
+  fi
   _nginx_reload_locked || { _alrt "${_oN}: nginx reload after include removal FAILED"; _fail=1; }
   _AFFECTED_MASTERS=""
   for _p in /opt/php*/etc/pool.d/"${_oN}".conf /opt/php*/etc/pool.d/"${_oN}".*.conf; do
@@ -1117,8 +1127,14 @@ _restore_stage_a() {
       _alrt "${_oN}: cannot place pool $(basename "${_p}") -- no /opt/php${_nn:-?} tree; left in quarantine"
     fi
   done
-  _in_real_dir "${_USR}/config/server_master/nginx/post.d" \
-    _unpark_postd_here "${_q}/postd"
+  local _left=0
+  if [ -n "$(ls -A "${_q}/postd" 2> /dev/null)" ] \
+    && ! _in_real_dir "${_USR}/config/server_master/nginx/post.d" \
+      _unpark_postd_here "${_q}/postd"; then
+    _alrt "${_oN}: fpm includes NOT put back: post.d is not a real directory, or a move failed"
+    _alrt "${_oN}:   they are still in ${_q}/postd"
+    _left=1
+  fi
   ### Restore replays the recorded quarantine map -- origin dir + port were
   ### captured at stage A time; a name heuristic would misplace oct.* cores
   ### that live on solr7.
@@ -1181,7 +1197,12 @@ _restore_stage_a() {
   fi
   if _nginx_reload_locked; then
     _phase_set "${_oN}" "restored"
-    _info "${_oN}: stage A restored from quarantine"
+    if [ "${_left}" = "0" ]; then
+      _info "${_oN}: stage A restored from quarantine"
+    else
+      _alrt "${_oN}: stage A restored from quarantine EXCEPT the fpm includes (see above)"
+      return 1
+    fi
   else
     ### Do NOT claim success on a failed configtest/reload: the files are
     ### back but nginx is still serving the quiesced configuration.
@@ -1644,8 +1665,10 @@ case "$1" in
     _take_sqlclean_lock
     _load_cnf_defaults
     _map_account "${_acct}"
-    _restore_stage_a "${_acct}"
+    _rrc=0
+    _restore_stage_a "${_acct}" || _rrc=1
     _probe_all_doms "${_acct}" || _alrt "${_acct}: post-restore probes not clean -- check manually"
+    [ "${_rrc}" = "0" ] || _die "${_acct}: restore incomplete (see ALRT above)"
   ;;
   *)
     echo "Usage: xtrim status"

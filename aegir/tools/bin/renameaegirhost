@@ -647,9 +647,9 @@ _backup_files() {
   fi
   _TS=$(date +%Y%m%d_%H%M%S)
 
-  # Kept as long as the nightly keeps an account's backups
-  # (_DEL_OLD_BACKUPS, 14 days when unset), so the dumps and copies of
-  # earlier runs never pile up on the root filesystem.
+  # The dumps and copies of earlier runs are kept for _DEL_OLD_BACKUPS days
+  # as set in /root/.barracuda.cnf (14 when unset), so they never pile up
+  # on the root filesystem.
   local _KEEP
   _KEEP=$(grep -m1 '^_DEL_OLD_BACKUPS=' /root/.barracuda.cnf 2> /dev/null \
     | cut -d= -f2 | tr -dc '0-9')

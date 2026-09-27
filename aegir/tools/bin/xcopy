@@ -753,6 +753,16 @@ _migrate_prepare() {
     else
       _TGT_HM_USER="${_oct}"
     fi
+    ### The plan stamps come from the account's log/ and are spliced into a
+    ### remote root command: stripped to their legal alphabets, and the
+    ### install is refused when nothing is left.
+    _CLIENT_OPTION=${_CLIENT_OPTION//[^a-zA-Z0-9]/}
+    _CLIENT_SUBSCR=${_CLIENT_SUBSCR//[^a-zA-Z0-9]/}
+    _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
+    if [ -z "${_CLIENT_OPTION}" ] || [ -z "${_CLIENT_SUBSCR}" ] || [ -z "${_CLIENT_CORES}" ]; then
+      echo "ALRT: refusing create: plan stamps failed validation (option/subscr/cores)"
+      exit 1
+    fi
     if [ ! -z "${_CLIENT_EMAIL}" ] \
       && [ ! -z "${_TGT_HM_USER}" ] \
       && [ ! -z "${_CLIENT_OPTION}" ] \
@@ -936,18 +946,21 @@ _xcopy_read_here() {
   timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
     bs=1048576 count=1 status=none 2> /dev/null
 }
-# $2 in the real directory $1, read as _xcopy_read_here reads it.
-### The words of $1 that are host names (letters, digits, dots, dashes, a
-### leading wildcard), space-separated; anything else is dropped.
+# The words of $1 that are host names (letters, digits, dots, dashes, a
+# leading wildcard), space-separated; anything else is dropped. The words
+# are split without file name expansion, so a wildcard name stays as is.
 _xcopy_host_words() {
   local _w _o=""
-  for _w in ${1}; do
+  local -a _ws
+  IFS=$' \t\n' read -r -d '' -a _ws <<< "${1}"
+  for _w in "${_ws[@]}"; do
     [[ "${_w}" =~ ^[A-Za-z0-9*][A-Za-z0-9.*-]*$ ]] || continue
     [ "${#_w}" -le 253 ] || continue
     _o="${_o} ${_w}"
   done
   printf '%s' "${_o# }"
 }
+# $2 in the real directory $1, read as _xcopy_read_here reads it.
 _xcopy_read_in() {
   _xcopy_in_real_dir "${1}" _xcopy_read_here "${2}"
 }
@@ -1245,18 +1258,24 @@ _xcopy_leg_ok() {
 ### directory it resolves to when that is the account's own tree or store,
 ### into the target's backups/, whose mover link is kept when it resolves
 ### into the account's own tree or store there; anything else is refused.
-### backup-exports/ travels only as that link, as it always did.
+### A backups/ link naming a path under /mnt is left to the /mnt link pass,
+### which carries it once, fit-checked. backup-exports/ travels only as the
+### mover link, as it always did.
 _xcopy_backups_leg() {
-  local _u="${1}" _d="${2}" _h="${3}" _ie="${4}" _n="${5}" _l _b _r _to
+  local _u="${1}" _d="${2}" _h="${3}" _ie="${4}" _n="${5}" _l _b _r _to _rc
   _l="$(readlink "${_u}/${_n}" 2> /dev/null)"
   _b="${_l#"${_u}/static/files/"}"
   if [ -L "${_u}/${_n}" ] && [ "${_b}" != "${_l}" ] \
     && [[ "${_b}" =~ ^[A-Za-z0-9._-]+$ ]] \
     && [ "${_b}" != "." ] && [ "${_b}" != ".." ]; then
     if [ "${_MODE}" = "LIVE" ]; then
-      _xcopy_tgt_place "${_h}" _xcopy_own_store_link_ready "${_d##*/}" "${_d}/${_n}" \
-        "${_d}/static/files/${_b}" > /dev/null \
-        || echo "ALRT: ${_d}/${_n} on ${_h} not linked to static/files/${_b} (no store copy of it there in the account's own tree or store)"
+      if ! _xcopy_tgt_place "${_h}" _xcopy_own_store_link_ready "${_d##*/}" "${_d}/${_n}" \
+        "${_d}/static/files/${_b}" > /dev/null; then
+        echo "DENY: ${_d}/${_n} on ${_h} not linked to static/files/${_b} (no store copy of it there in the account's own tree or store)"
+        _XCOPY_NOT_CLEAN=YES
+        _XCOPY_STORE_RC=1
+        return 1
+      fi
     else
       echo "[DRY-PLAN] would link ${_d}/${_n} -> ${_d}/static/files/${_b} on ${_h}"
     fi
@@ -1264,6 +1283,11 @@ _xcopy_backups_leg() {
   fi
   [ "${_n}" = "backups" ] || return 0
   [ -e "${_u}/${_n}" ] || [ -L "${_u}/${_n}" ] || return 0
+  if [ -L "${_u}/${_n}" ]; then
+    case "${_l}" in
+      /mnt/*) return 0 ;;
+    esac
+  fi
   _r="$(cd -P -- "${_u}/${_n}" 2> /dev/null && pwd -P)"
   if [ -z "${_r}" ] || ! _xcopy_own_path "${_u##*/}" "${_r}"; then
     echo "DENY: ${_u}/${_n} resolves to ${_r:-nothing}, outside the account's own tree and store -- not followed, not copied"
@@ -1281,9 +1305,20 @@ _xcopy_backups_leg() {
       return 1
     fi
   fi
+  ### an empty backups/ has nothing for the glob to name
+  [ -n "$(_xcopy_in_canon_dir "${_r}" find . -mindepth 1 -maxdepth 1 \
+    -name '[!.]*' -print -quit 2> /dev/null)" ] || return 0
   # shellcheck disable=SC2086
   _xcopy_in_canon_dir "${_r}" _xcopy_copy_canon_here "${_h}" "${_to:-${_d}/${_n}}" '*' \
-    -aEAXqu ${_ie} &> /dev/null
+    -aEAXqu ${_ie}
+  _rc=$?
+  ### 24: files that vanished while the copy ran (a rotated backup)
+  if [ "${_rc}" != "0" ] && [ "${_rc}" != "24" ] && [ "${_MODE}" = "LIVE" ]; then
+    echo "DENY: ${_u}/${_n} copy to ${_h} failed (rc ${_rc})"
+    _XCOPY_NOT_CLEAN=YES
+    _XCOPY_STORE_RC=1
+    return 1
+  fi
   return 0
 }
 ### As _xcopy_copy_here, but the receiver starts in the canonical directory $2
@@ -1593,6 +1628,13 @@ _xcopy_handle_store() {
     _sz="$(du -sk "${_real}" 2>/dev/null | awk '{print $1}')"
     if [ -z "${_mntRel}" ] && [ "${_onMnt}" = "YES" ]; then
       _mntRel="${_real#/mnt/*/}"
+      # On a rename the account's own part of the store takes the new name,
+      # never a path another account of the old name may hold there.
+      if [ -n "${_acct}" ] && [ -n "${_dacct}" ]; then
+        case "${_mntRel}/" in
+          "files/${_acct}/"*) _mntRel="files/${_dacct}${_mntRel#"files/${_acct}"}" ;;
+        esac
+      fi
     fi
     [ -n "${_tm}" ] && [ -n "${_mntRel}" ] && _mntDest="${_tm}/${_mntRel}"
     if [ "${_onMnt}" = "YES" ] && [ -n "${_mntDest}" ]; then
@@ -1638,11 +1680,11 @@ _xcopy_handle_store() {
 
 # Catch-all: any symlink (besides static/files, handled explicitly) whose OWN target
 # is /mnt/... gets the same storage-aware treatment, so non-standard legacy links are
-# never left dangling on the target. Sets _XCOPY_STORE_RC on any DENY. NOTE: on a rename
-# the derived on-mount path keeps the SOURCE account name for a legacy link (it still
-# resolves; only the mount-relative path is cosmetically old-named). A link is carried
-# only when it resolves into the account's own tree or store, or to content one of its
-# identities owns (such an old-named path); anything else is a DENY.
+# never left dangling on the target. Sets _XCOPY_STORE_RC on any DENY. On a rename a
+# link into the account's own part of the store (<mount>/files/<oN>/...) lands under
+# the new name there. A link is carried only when it resolves into the account's own
+# tree or store, or to content one of its identities owns (an old-named path left by
+# an earlier rename); anything else is a DENY.
 _xcopy_catchall_mnt_symlinks() {
   local _root="$1" _dstRoot="$2" _th="$3" _tm="$4" _ie="$5"
   local _l _lt _rel _dl
