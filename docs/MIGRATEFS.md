@@ -11,8 +11,9 @@ change. It relocates two things:
 
 It is the modern, safe replacement for the old ad-hoc `migratefs.sh`. It reuses
 BOA's proven safe-mover pattern (the same one the nightly backups mover uses):
-separate-device gate, self-healing task-queue pause, provision drain, two-pass
-`rsync`, ownership preservation, idempotency, and never-destructive failure
+separate-device gate, self-healing task-queue pause, provision drain, live
+`rsync` passes plus a closed final pass, ownership preservation, idempotency, and
+never-destructive failure
 handling — on any error the real directory is left in place and no symlink is
 created, so data is never lost.
 
@@ -47,7 +48,7 @@ convention.
 
 ```
 migratefs [--target <mount>] [--account <oN>] [--no-arch] [--apply] [--yes]
-          [--grace <sec>] [--help]
+          [--grace <sec>] [--recheck-max <MB>] [--help]
 ```
 
 | Option | Meaning |
@@ -59,6 +60,7 @@ migratefs [--target <mount>] [--account <oN>] [--no-arch] [--apply] [--yes]
 | `--no-arch` | do not relocate `/data/disk/arch` |
 | `--yes` | in `--apply`, skip the interactive confirmation |
 | `--grace <sec>` | queue-pause grace before draining tasks (default 15) |
+| `--recheck-max <MB>` | most data copied again, with the store closed, when it changed during the live copy (default 1024); above it the store stays in place until a quieter run |
 
 Typical run:
 
@@ -95,23 +97,36 @@ unchanged.
   disk is not mounted (an empty `/mnt/<x>` directory on root is the same device as
   `/data/disk`), the step is skipped — data is never created or moved onto the root
   partition.
-- **Two-pass move for a live store.** `static/files` is web-served, so the copy runs
-  as a non-removing `rsync -a` first (the live store stays complete during the long
-  transfer), then a fast `--remove-source-files` reconcile, then `rmdir` + `ln -s`.
-  Peak usage on the target is one copy of the store; the source filesystem never
-  grows.
-- **Non-destructive.** The only deletions are `rsync --remove-source-files` (file by
-  file, after each is copied) and a `rmdir` that fails closed on a non-empty
-  directory. The symlink is created only after the source empties cleanly. On any
-  failure the real directory is left in place and the copied data is also present at
-  the target.
-- **Idempotent.** Re-running converges: an already-relocated store is a no-op, a
-  partial move merges and completes, a fresh account with no `static/files` yet just
-  gets an empty store created on the attached disk.
+- **Root-only destination chain.** Every directory from the mount down to
+  `<mount>/files/<oN>/static` (or `files/system`), the mount root included, must be a
+  real directory owned by root and not writable by group or others; `--apply` refuses
+  the step otherwise, and the DRY plan names the level that would be refused.
+- **Move for a live store.** `static/files` is web-served, so the copy runs as two
+  non-removing `rsync -a` passes while the store stays live; then the store is set
+  aside as `static/.files.migratefs`, closed (root, 0700) and copied a final time with
+  `--delete`. Entries that changed during the live passes are copied again by content
+  (up to `--recheck-max`), then `ln -s -T` makes the new store live and the set-aside
+  copy is removed. The sites have no files for the length of that final pass. Peak
+  usage on the target is one copy of the store.
+- **Non-destructive.** No source file is removed while copying. The deletions are
+  the final pass's `--delete` inside the new copy, the removal of a copy that never
+  went live, and, once the link is live, the removal of the set-aside store (kept for
+  review when it changed after it was set aside). On a failure the store is left, or
+  put back, as a real directory under its name; a store holding a device, FIFO or
+  socket is left in place for review.
+- **Idempotent.** Re-running converges: an already-relocated store is a no-op; a
+  deferred or failed move removes its copy and the next run copies again; a store
+  left at the destination by an earlier run is renamed aside as
+  `.files.stale.<stamp>.<pid>` for the operator to review and remove; a
+  `static/.files.migratefs` left by an interrupted run stops that account for review;
+  a fresh account with no `static/files` yet just gets an empty store created on the
+  attached disk.
 - **Interlocks.** A single-instance lock, the self-healing `/run/boa_queue_stop.pid`
   queue pause + provision drain, and — for `arch` — a defer while a backup writer
   (`duplicity`/`mydumper`/cluster/`sequential_backups`) is active, so a backup file
-  is never moved mid-write.
+  is never moved mid-write. An `--apply` run does not start while BOA's nightly
+  (`owl.sh`) runs, and defers the remaining stores when the nightly starts during the
+  run.
 
 ## Notes
 

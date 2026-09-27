@@ -728,8 +728,10 @@ xmass sync target-ip --live     # perform the sync (after a CLEAN dry run)
 > pre-checks disk space for every account's files store **and the Solr indices** (which
 > can be large), and records `CLEAN`/`NOT CLEAN`
 > for the whole run — a single `DENY` (a dangling **named store** such as
-> `static/files` or `arch`, more than one `/mnt` mount, or a store that fits nowhere)
-> makes it `NOT CLEAN` and refuses `--live` until resolved.
+> `static/files` or `arch`, more than one `/mnt` mount, a store that fits nowhere, an
+> account leg such as `static/`, `log/` or `.drush/` that is a link or missing, a
+> `static/files` or `backups` that resolves outside the account's own tree and store,
+> or out-of-root links to content that is not the account's own) makes it `NOT CLEAN` and refuses `--live` until resolved.
 >
 > A dangling link found by
 > the out-of-root **sweep** is reported but never a `DENY` by itself. Utility/DB commands (`init`, `status`, `pre-mig`, `post-mig`) are not gated,
@@ -784,7 +786,9 @@ Three things are deliberately **not** pruned:
   `.drush/`, `config/`, the sub-account password store and the whole of
   `static/control` (its own leg, the PHP pin witnesses force-copied on top;
   a `static/control` that is a symlink is never followed — neither leg runs
-  for that account, and the pass says so once a day). They carry
+  for that account, and the pass says so once a day; a `log/` or `.drush/`
+  that is a symlink is never followed either, and fails the pass with a
+  `DENY` naming it). They carry
   target-owned state or are force-copied, and deleting there would fight the
   target's own install.
 - **The cutover legs stay additive**, plan and live alike. That is the one
@@ -803,7 +807,7 @@ The guards on every pruning leg, none of them optional:
 | `--delete-after` | Nothing is removed until the transfer succeeded, so a failed leg cannot leave the target both pruned and un-copied |
 | `--max-delete` (`_XMASS_MAX_DELETE`, default 5000) | rsync **refuses** (exit 25) rather than carry out a mass deletion — the catastrophe guard: "wiped the mirror" becomes "a loud pass failure a human reads" |
 | Never with `--ignore-errors` | That flag means *delete even though the source had read errors*, which is exactly what must not happen; a leg either prunes or keeps the historical tolerance, never both |
-| Empty-source refusal | An unmounted secondary volume reads as an **empty directory**; a `--delete` against it would erase the mirror's only copy of every client file. An empty source is never a licence to delete — the leg logs it and stays additive (the `static/` leg is covered one step earlier: a `static/` that is a link into an unmounted volume is no directory, and the leg does not run) |
+| Empty-source refusal | An unmounted secondary volume reads as an **empty directory**; a `--delete` against it would erase the mirror's only copy of every client file. An empty source is never a licence to delete — the leg logs it and stays additive (the `static/` leg is covered one step earlier: a `static/` that is a link is never followed, and the pass fails with a `DENY` naming it) |
 
 A tripped delete guard is a refusal to read, not an error to retry: nothing
 beyond the limit was deleted. One removed codebase is enough to trip it — a
@@ -893,7 +897,10 @@ every symlink:
   toolchains (any standard FHS prefix that exists on every BOA box) — and
   relative links resolving inside the tree being copied.
 - **Materialises**: links whose first hop *and* final target live outside
-  those prefixes and exist (the secondary-mount class). Dir links transfer
+  those prefixes and exist (the secondary-mount class). In an account's tree
+  only links whose content is the account's own (its tree, its store under
+  `<mount>/files/<account>/`, or files its identities own) materialise; any
+  other is reported and fails the pass with a `DENY`. Dir links transfer
   one store each; file links ride one batched, space-gated `rsync
   --copy-links` per tree. Nested links inside a materialised tree are handled
   the same way, a few levels deep.

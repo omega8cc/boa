@@ -636,11 +636,16 @@ leading-dot names are skipped by the site/orphan scan, like `.archived`.
 - **Gated on a separate filesystem.** On a default single-filesystem box
   `static/files` is on the root device, so there is nowhere better to put backups
   and the relocation is a **deliberate no-op**. It only acts once a large account's
-  `static/files` is on attached storage.
-- **Safe one-time migration.** Existing backups are moved **incrementally**
-  (`rsync --remove-source-files`: ~one file of extra space at a time, per-file
-  safe); on any failure the real directory is left in place and no symlink is made.
-  It never deletes a backup.
+  `static/files` is on attached storage, and only when `static/files` is the
+  account's own directory or migratefs' layout `/mnt/<mount>/files/<account>/static/files`;
+  any other `static/files` link is skipped with a log line.
+- **Safe one-time migration.** Existing backups are copied whole (`rsync -a`) while
+  the directory and its store copy are closed to the account (root, 0700), then the
+  source is emptied and replaced by the link, so the static filesystem needs a full
+  copy's space while it runs. On any failure the real directory is handed back with
+  its owner and mode and no symlink is made; a pass killed mid-copy is healed by the
+  next nightly, which hands both back and finishes the move. It never deletes a
+  backup.
 - **Task-queue interlock.** While migrating, the run holds the Ægir task queue
   with a dedicated `/run/boa_queue_stop.pid` (honoured by `runner.sh` — the parent
   exits and each per-account child dispatch skips) so no backup task writes into a

@@ -53,7 +53,10 @@ _SITES_COLLATION_SQL= #--------- By default in sites hosted: utf8mb4_unicode_ci
 ###
 ### NOTE: the group of settings displayed below will be *overridden*
 ### by config files stored in the /data/disk/o1/log/ directory,
-### but only on upgrade.
+### but only on upgrade. Each file overrides only in its plain form
+### (domain.txt a host name, email.txt plain addresses, option.txt and
+### subscr.txt one word, cores.txt digits); any other text is ignored with
+### a NOTE and the value here is kept.
 ###
 _DOMAIN="o1.f-q-d-n" #---------- URL of the Ægir control panel
 _CLIENT_EMAIL= #---------------- Create client user if different than _MY_OCTO_EMAIL

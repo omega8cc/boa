@@ -36,7 +36,7 @@ dcysetup <command>
 ```
 
 - **Commands**:
-  - `install`: Installs required dependencies for the backup system. Before it downloads or changes anything it checks `/var/tmp`, `/usr/local` and `/opt/pipx` for 75,000 free inodes and 2,560 MB free space and refuses with the measured numbers when either floor is missed (`df -h` can look fine while `df -i` is full), leaving the installed tooling untouched. A filesystem without inode accounting is exempt from the inode floor. `backboa install` and `duobackboa install` carry the same gate; a routine backup run only warns when inodes on `/` run very low.
+  - `install`: Installs required dependencies for the backup system. Before it downloads or changes anything it checks `/var/tmp`, `/usr/local` and `/opt/pipx` for 75,000 free inodes and 2,560 MB free space and refuses with the measured numbers when either floor is missed (`df -h` can look fine while `df -i` is full), leaving the installed tooling untouched. A filesystem without inode accounting is exempt from the inode floor. `backboa install` and `duobackboa install` carry the same gate; a routine backup run only warns when inodes on `/` run very low. It also patches the pinned Duplicity so a backup never reads a source file through a link or waits on a FIFO (an entry swapped during the run is skipped and logged as an error); `setup` and `update` re-apply the patch when needed.
   - `setup`: Configures global backups, generating default configuration files and cron jobs.
   - `update`: Alias for `setup`.
 
@@ -82,6 +82,8 @@ dcysetup <command>
      - `/data/all`
      - `/data/conf`
      - `/home`
+
+   Links are backed up as links: a relocated account files store and a relocated `/data/disk/arch` are included by their own `/mnt/...` paths (and restored from those paths).
 
 2. **Absolute Path**:
    - All paths in configuration files must be full absolute paths (e.g., `/var/aegir/`).
@@ -294,6 +296,7 @@ multiback restore <SERVICE> <USER> <RESTORE_TARGET> <RESTORE_PATH> [RESTORE_TIME
 2. **Restore Target Directory Can Be Relative or Absolute**:
    - Default: `/var/backups/restored/`
    - You may specify a custom restore target directory.
+   - The target must not contain `..` names. A target inside an account's tree or relocated store is accepted only where it leads into that account's own tree or store; a missing one is created only below an existing account directory or store. A full restore (no `RESTORE_PATH`) must go to a directory outside the accounts' trees. The restored name must not already exist in the target.
 
 3. **Default Behavior**:
    - If `[RESTORE_PATH]` is omitted, the entire backup is restored.

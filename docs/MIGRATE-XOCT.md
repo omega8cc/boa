@@ -53,7 +53,9 @@ For full-server migrations where Percona versions match, consider
 > file (`/var/log/boa/xoct.migrate.<oct>_<tgt>.state`). To perform the transfer, append
 > **`--live`**; it is accepted only after a `CLEAN` dry run for the same account+target
 > and refuses if the dry run reported any `DENY` (dangling source symlink, multiple
-> `/mnt` mounts, or a store that fits nowhere).
+> `/mnt` mounts, a store that fits nowhere, a transfer leg such as `static/`, `log/`
+> or `.drush/` that is a link, or a `static/files`, `backups` or `/mnt` link that
+> resolves outside the account's own tree and store).
 >
 > The `CLEAN` dry token is **single-use** —
 > running `--live` consumes it, so one dry run cannot arm two live runs; re-run the dry
@@ -209,7 +211,9 @@ nor withholds the account's export stamp.
 
 The hostmaster dump must exit clean and be
 non-empty, and every per-site mydumper run must exit clean AND leave its
-final `metadata` marker. Any failure withholds `exported.pid`, records the
+final `metadata` marker. A site whose database the account cannot prove its own
+(its drushrc `db_user` is not its `db_name`, or those credentials do not open it) is
+not dumped and is recorded as a failed database. Any failure withholds `exported.pid`, records the
 failed databases in `log/export_failed.pid`, prints an INCOMPLETE verdict
 and exits non-zero. The recovery is simply re-running the same `export`
 after fixing the cause: site dumps are redone in place, the hostmaster dump
@@ -550,9 +554,11 @@ storage. During `xoct transfer`, the tool places the store on the target accordi
 **the target's own disk reality** — never blindly onto the target root, which may be
 too small — and never uses a blanket `rsync --copy-links`:
 
-1. Syncs `static/` with all symlinks preserved, excluding `static/files`.
-2. Resolves the source `static/files` to its real directory (a real dir, or a symlink
-   onto a mount — via `readlink -f`, scoped to this store only).
+1. Syncs `static/` with all symlinks preserved, excluding `static/files` (a
+   `static/` that is itself a link is refused with a `DENY`).
+2. Resolves the source `static/files` to its real directory — the account's own tree
+   or its own part of the attached store (`<mount>/files/<account>/`); any other
+   target is a `DENY`.
 3. Detects whether the **target** has a single attached mount under `/mnt`, then:
    - **Target has a mount** → the contents are **mirrored** onto the target mount at
      `<mount>/files/<account>/static/files`, and `static/files` on the target becomes a

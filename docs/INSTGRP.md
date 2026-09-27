@@ -278,7 +278,8 @@ place: it belongs to the account.
   duplicity re-applies the archived ownership, so `backboa`, `duobackboa`,
   `multiback` and `mybackup` re-group what they restored (and run
   `instgrp reclaim` for the account) after every restore whose destination
-  resolves inside an account's tree; a restore staged anywhere else is the
+  resolves inside an account's tree or its relocated files store (a single
+  restored file included); a restore staged anywhere else is the
   operator's to follow with `instgrp reclaim oN` once the files are in
   place.
 - GIDs are allocated per box from the system range, so the same account

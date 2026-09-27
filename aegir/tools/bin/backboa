@@ -1577,6 +1577,8 @@ else
   RESTORE EXAMPLES:
 
   Note: Be careful while restoring not to prepend a slash to the path!
+  The destination must not contain '..' names; one inside an account's tree
+  must not exist yet.
 
   Restoring a single file to tmp/
   $ backboa restore data/disk/o1/backups/foo.tar.gz tmp/foo.tar.gz

@@ -37,6 +37,8 @@
 ### (typically a secondary /mnt volume), excludes those from their tree leg, and
 ### materialises their content on the target as real dirs/files -- mirrored onto
 ### the target's own mount when it has one, space-gated like every other store.
+### In an account tree only content the account owns materialises; any other
+### out-of-root link is reported and fails the pass (DENY).
 ### Links into the normal BOA fabric (/data/all platforms, .drush, etc.) always
 ### stay links; dangling links are reported and skipped, never a DENY by
 ### themselves. pre-mig and init print the full link map (classes + sizes) before

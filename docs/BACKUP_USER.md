@@ -39,7 +39,7 @@ This section covers a quick-start approach, focusing on minimal setup.
    - Local database backups: `/data/disk/your_username/static/files/dbackup/`
    - Retained for 14 days by default (modifiable via `/data/disk/your_username/static/control/dBackupCycle.info`).
    - Local database backups count toward your file-space quota.
-   - If `dbackup/` is replaced with a symbolic link, the nightly clean-up follows it only while it resolves inside your own `static/files` store (or the server's single `/mnt` files store). A link pointing anywhere else makes the clean-up skip your account with a warning, and old dumps then accumulate.
+   - If `dbackup/` (or `static/files` itself) is replaced with a symbolic link, the nightly copy of new dumps and the clean-up follow it only while it resolves inside your own files store (`static/files`, or its relocated copy `<mount>/files/your_username/static/files`). A link pointing anywhere else makes both skip your account with a logged warning: no new dumps arrive there and old ones are not removed.
 
 2. **Enable or Verify That Backups Are Enabled**
    - By default, backups for your account are typically enabled. If in doubt, contact support to confirm that scheduled backups are running.
@@ -61,7 +61,7 @@ This section covers a quick-start approach, focusing on minimal setup.
      mybackup restore <SERVICE>
      ```
    - This command will restore everything to your `/data/disk/your_username/static/restores/` folder.
-   - A restore is queued and run for you by the server. If the queued command is refused (arguments that fail validation, or a symlink where `static`, `static/control` or `remote_backups` should be a real directory) it is dropped without a message to you; your host can read the reason in `/var/log/mybackup_invalid_queued.log`.
+   - A restore is queued and run for you by the server. If the queued command fails validation it is dropped without a message to you; if a symlink sits where `static`, `static/control`, `remote_backups`, `.run` or the queue file should be real, it is left queued and not run until that is fixed. Your host can read the reason in `/var/log/mybackup_invalid_queued.log`. While a queued restore runs, the credentials directory belongs to your main (Ægir system) user, so your SSH/SFTP login cannot open it until the restore ends.
    - If you need to restore just a specific directory or from a certain date, see the **Advanced Use** section below.
 
 5. **Monitor Usage**
@@ -149,6 +149,8 @@ The system automatically includes the following directories:
    - Platforms without codebase access in `/data/disk/your_username/distro/`.
    - Your whole FTP home directory `/home/your_username.ftp/`.
 
+   Links are backed up as links, never followed. If your `static/files` has been relocated to attached storage, that store is included by its own path, and your excludes under `static/files` apply to it.
+
 2. **Default Exclusion**:
    - Under `/data/disk/your_username/`: `.tmp/`, `clients/`, `u/`, `undo/`, and within `static/`: `restores/`, `tmp/`, `trash/`.
    - Under `/home/your_username.ftp/`: `.tmp/`, `backups/`, `clients/`, `platforms/`, `static/`.
@@ -207,9 +209,12 @@ Each credential file corresponds to a specific cloud storage service and must fo
 ```bash
 export AWS_ACCESS_KEY_ID="your_aws_access_key"
 export AWS_SECRET_ACCESS_KEY="your_aws_secret_key"
-export AWS_REGION="your_aws_region"  # Example: "us-east-1"
-export KEEP_WITHIN="3M"              # Retain backups from the last 3 months
-export FULL_BACKUP_FREQUENCY="28D"   # Create a full backup every 28 days
+# Example: us-east-1
+export AWS_REGION="your_aws_region"
+# Retain backups from the last 3 months
+export KEEP_WITHIN="3M"
+# Create a full backup every 28 days
+export FULL_BACKUP_FREQUENCY="28D"
 ```
 
 **Key Variables**:
@@ -224,6 +229,7 @@ chmod 600 /data/disk/your_username/static/control/remote_backups/credentials/*.t
 **Credential Security Measures**:
 - **Avoid Forbidden Characters**: Credential values must not contain `$`, `` ` ``, `(`, `)`, `{`, `}`, `;`, `&`, `|`, `<`, `>`.
 - **Proper Syntax**: Ensure each line is a valid variable assignment in the form `VARIABLE="value"`.
+- **Allowed Names**: only `KEEP_WITHIN`, `FULL_BACKUP_FREQUENCY` and the variable names shown for each service are read; any other name is ignored and logged. Region and account-id values must be plain names (letters, digits, `.`, `_`, `-`).
 
 ---
 
@@ -387,6 +393,10 @@ mybackup restore <SERVICE> [RESTORE_PATH] [RESTORE_TIME]
 2. **Default Behavior**:
    - If `[RESTORE_PATH]` is omitted, the entire backup is restored.
    - If `[RESTORE_TIME]` is omitted, the latest backup is restored.
+
+3. **Links**:
+   - Backups keep links as links. A path below `static/files`, a site's `files/` or `private/` link, or `~/backups` is restored from where its content is held.
+   - Links in a restored site or platform tree that lead into your `static/files` are replaced by their content (up to 10 site stores); any others stay links, and the mailed log gives the command that restores each one.
 
 ---
 

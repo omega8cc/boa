@@ -300,7 +300,7 @@ the client's sites is not reached, the Drush window, and which Drush to use wher
 
 ### Site-Local Drush is Preserved and Fully Supported
 
-In BOA, Ægir no longer removes the local copy of Drush from platforms during the 'Platform Verify' task. Instead, it locks permissions on the `vendor/drush` directory if present.
+In BOA, Ægir no longer removes the local copy of Drush from platforms during the 'Platform Verify' task. Instead, it locks permissions on the `vendor/drush` directory if present. A `vendor/` that links outside the platform owner's own tree is neither locked nor unlocked; the task log shows `Error: refusing out-of-scope path`.
 
 This change allows you to easily unlock the local Drush using a new task available on the platform node in the Ægir control panel named 'Unlock Local Drush'. This task is now a required step before you use local `vdrush` or run any updates with `composer` on the command line.
 
