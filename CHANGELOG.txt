@@ -355,6 +355,11 @@
       sites have the same protection, an encoded line feed after a file
       name included.
 
+    * Crawlers are refused at the httprl callback and at audio module
+      downloads, as the Drupal vhosts always meant to: the check sat
+      where those requests never met it. Subdirectory sites refuse them
+      there too.
+
 @=> New Features
 
     * New ~/static/control/cli-per-platform.info gives one platform its
