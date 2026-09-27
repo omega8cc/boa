@@ -790,6 +790,17 @@
 
 @=> Important Fixes
 
+    * An xoct rename transfer hands the account's files to the new
+      identities in one walk per owner again, instead of one process per
+      directory, which made the owner remap about 80 times slower on a
+      large account; a directory it cannot open is named.
+    * migratefs refuses a target the store readers would ignore (a path
+      that is not plain, or with a directory named files or static on
+      its way) before it moves anything.
+    * Solr: an upload through a files link into the account's store on a
+      nested /mnt mount is applied; a Drupal 8+ core created while the
+      site sets solr_custom_config = YES takes no upload.
+
     * Fixing a platform's permissions no longer prints "No such file or
       directory" into the task log and the Octopus log for the codebase
       folders the platform does not have (core/ on Drupal 7, includes/
