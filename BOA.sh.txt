@@ -1226,6 +1226,12 @@ _fetch_versioned() {
   [[ -n "${_lbl}" ]] || _lbl="${_grd##*/}"   # default notice subject = basename of guard
   # shellcheck disable=SC2154  # _pthLog/_tRee/_xSrl are globals provided by BOA.sh.txt
   local _ctl="${_pthLog}/${_cnm}.ctrl.${_srl}.${_tRee}.${_xSrl}.pid"
+  # When this box last compared the deployed bytes with the source's: the last
+  # fetch that carried a body. A 304 re-arms the marker above but not this
+  # stamp, so the daily unconditional request below counts from the last real
+  # comparison. Counted from the marker, every hourly 304 moved it and the day
+  # never ran out.
+  local _cmp="${_pthLog}/${_cnm}.compared.pid"
   # Revalidation window (minutes). Even a serial-matched marker is re-checked
   # against the mirror once it is older than this, so a box that ever recorded a
   # marker against STALE bytes -- a publish race (the serial in BOA.sh.txt visible
@@ -1304,9 +1310,10 @@ _fetch_versioned() {
   # path serves both first install (marker absent / serial change) and periodic
   # revalidation (marker past the window): if the mirror's current bytes differ
   # from what is deployed we replace and re-stamp; if they are identical we keep
-  # the file untouched and merely re-arm the marker; if the fetch failed we leave
-  # the working copy and its marker alone.
-  local _new="${_dst}.new.$$" _cod="" _znc=""
+  # the bytes, take the source's time where that is safe (below) and re-arm the
+  # marker; either way the comparison is stamped. If the fetch failed we leave the
+  # working copy and its marker alone.
+  local _new="${_dst}.new.$$" _cod="" _znc="" _t0=""
   # A box with no local tree cannot compare content locally, so it asks the server
   # instead: -z sends If-Modified-Since from the DEPLOYED copy's mtime, so an unchanged
   # source answers 304 with no body. That makes revalidation nearly free, which is what
@@ -1323,13 +1330,15 @@ _fetch_versioned() {
   #     the serial changed we are being told new content exists, so never risk a 304
   #     against it -- that is exactly how a box would re-arm the new marker over old
   #     bytes;
-  #   - that marker is younger than the hard window. At least once a day we ask
-  #     unconditionally, so a deployed copy carrying a wrong mtime (written before -R,
-  #     or touched by hand) can never answer 304 forever. Worst case degrades to the
-  #     unconditional refetch this replaced -- it can delay a heal, never prevent one.
-  if [[ -s "${_dst}" ]] && [[ -e "${_ctl}" ]] \
+  #   - the last real comparison is younger than the hard window. At least once a day
+  #     we ask unconditionally, so a deployed copy carrying a wrong mtime (written
+  #     before -R, by another installer, or touched by hand) can never answer 304
+  #     forever. Worst case degrades to the unconditional refetch this replaced -- it
+  #     can delay a heal, never prevent one. No comparison stamp yet counts as past
+  #     the window.
+  if [[ -s "${_dst}" ]] && [[ -e "${_ctl}" ]] && [[ -e "${_cmp}" ]] \
     && { [[ -z "${_tok}" ]] || tail -c 4096 "${_dst}" 2>/dev/null | grep -qF -- "${_tok}"; } \
-    && [[ -z "$(find "${_ctl}" -mmin "+${_FETCH_HARD_REVALIDATE_MIN:-1440}" 2>/dev/null)" ]]; then
+    && [[ -z "$(find "${_cmp}" -mmin "+${_FETCH_HARD_REVALIDATE_MIN:-1440}" 2>/dev/null)" ]]; then
     _znc="-z ${_dst}"
   fi
   # The local source resolved above wins: no network, and it is the very content this
@@ -1337,6 +1346,8 @@ _fetch_versioned() {
   if [[ -n "${_lcl}" ]]; then
     cp -pf "${_lcl}" "${_new}" 2>/dev/null || rm -f "${_new}"
   else
+    # the moment the fetch began: a Last-Modified is adopted only when earlier
+    _t0="$(date +%s)"
     # shellcheck disable=SC2086,SC2154  # intentional _crlGet/_znc flag-string split; _crlGet is a BOA.sh.txt global
     # A non-zero curl exit can still leave a PARTIAL body on disk (the fleet curl
     # floor forbids --remove-on-error), and a partial file passes every simple
@@ -1375,7 +1386,28 @@ _fetch_versioned() {
   fi
   if [[ -s "${_new}" ]]; then
     if [[ -e "${_dst}" ]] && cmp -s "${_new}" "${_dst}"; then
-      rm -f "${_new}"                       # already current -- no disruption
+      # Only a marker of a DIFFERENT fNN, with none for this one, promises new
+      # content (see the hold below).
+      local _fnnMove=NO _tmt
+      if [[ ! -e "${_ctl}" ]] \
+        && ls "${_pthLog}/${_cnm}.ctrl."* 2>/dev/null | grep -qv "\.ctrl\.${_srl}\."; then
+        _fnnMove=YES
+      fi
+      # Already current -- no disruption, but take the source's time: a
+      # publish re-clones the tree and gives every file a new Last-Modified,
+      # and a copy that kept its older time was sent the whole file again at
+      # every hourly -z. Only a time -R really set, strictly before this
+      # fetch began: with no Last-Modified the temp carries its own write
+      # time, and adopting that (or a future one) would answer 304 to a
+      # correct source. Not on an fNN change, where identical bytes may come
+      # from a mirror that has not caught up; not from a local source.
+      _tmt="$(stat -c %Y "${_new}" 2>/dev/null)"
+      if [[ -z "${_lcl}" ]] && [[ "${_fnnMove}" = "NO" ]] \
+        && [[ "${_tmt}" =~ ^[0-9]+$ ]] && [[ "${_t0}" =~ ^[0-9]+$ ]] \
+        && [[ "${_tmt}" -lt "${_t0}" ]]; then
+        touch -c -r "${_new}" "${_dst}"
+      fi
+      rm -f "${_new}"
       # A serial CHANGE promises new content, so identical bytes mean the
       # mirror answering us has not caught up with the publish yet (a passive
       # mirror pulls the tree once a minute; measured 2026-09-06: a box fetched
@@ -1391,8 +1423,7 @@ _fetch_versioned() {
       # tool unchanged) is the same bytes by definition and arms at once;
       # holding it re-downloaded every unchanged tool on every pass for an
       # hour after each release, unarmed and with its symlink unrepaired.
-      if [[ ! -e "${_ctl}" ]] \
-        && ls "${_pthLog}/${_cnm}.ctrl."* 2>/dev/null | grep -qv "\.ctrl\.${_srl}\."; then
+      if [[ "${_fnnMove}" = "YES" ]]; then
         local _stl="${_pthLog}/${_cnm}.stale.${_srl}.${_tRee}.${_xSrl}.pid"
         if [[ -z "$(find "${_stl}" -mmin +60 2>/dev/null)" ]]; then
           [[ -e "${_stl}" ]] || touch "${_stl}"
@@ -1409,11 +1440,13 @@ _fetch_versioned() {
     [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
     rm -f "${_pthLog}/${_cnm}.ctrl."* "${_pthLog}/${_cnm}.stale."*
     touch "${_ctl}"                         # (re-)arm marker + revalidation window
+    touch "${_cmp}"                         # the bytes were compared: restart the day
   elif [[ "${_cod}" == "304" ]]; then
     # The server confirmed the deployed copy is current, so this is success with an
     # empty body -- NOT a failed fetch. Re-arm the marker (otherwise every pass would
     # re-probe) and still repair the symlink, which a missing-link revalidation came
-    # here to fix and which the body-carrying branch above would have handled.
+    # here to fix and which the body-carrying branch above would have handled. The
+    # comparison stamp stays as it is: a 304 compared no bytes, only timestamps.
     rm -f "${_new}"
     [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
     rm -f "${_pthLog}/${_cnm}.ctrl."*
@@ -1747,7 +1780,7 @@ _update_agents() {
   # but inert until the gated _get_bee installs /opt/tools/bee; canonical path
   # /opt/local/bin/bee (no /usr/bin symlink, websh's PATH resolves it);
   # clients execute it, so it ships world-executable.
-  _fetch_versioned ${_optBin}/bee "${_urlHmr}/tools/bin/bee" f96 --mode 755 --guard /local/bin/bee
+  _fetch_versioned ${_optBin}/bee "${_urlHmr}/tools/bin/bee" f94 --mode 755 --guard /local/bin/bee
   # PHP-selecting Grav CLI wrapper (identity verb policy + the enforced
   # 8.3 floor). Deployed unconditionally but inert
   # without a Grav install in reach (it resolves the target from CWD and
@@ -1762,7 +1795,7 @@ _update_agents() {
   # existing build user (o8 unless -u says otherwise) and never guesses one
   # from /data/disk.
   if [ -e "/root/.stackbuild.cnf" ]; then
-    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f62 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f56 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
     _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f92 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
   else
     # A box that is not a build box carries no copy of either. Boxes that had
@@ -1883,7 +1916,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f72
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f71
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f59
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f62
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f61
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f77
     _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f76
     ###
@@ -1952,7 +1985,7 @@ _update_agents() {
     # revalidates within the hour, and never clobbers a running pass; the
     # post-install steps run only when the file actually changed.
     _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f97 --guard /xdrago/manage_ltd_users.sh
+    _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f92 --guard /xdrago/manage_ltd_users.sh
     if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
       && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
       [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -2004,13 +2037,14 @@ _update_agents() {
     && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f69
 
   # Re-fetch trigger for the current lshell.conf. The sentinel MUST be a
-  # literal that exists in the shipped file (here the env_path line that puts
-  # /opt/local/bin on lshell's PATH), and should be one the previous template
-  # lacks, so a box that stamped the new serial on stale bytes fetches again.
+  # literal that exists in the shipped file (here the comment that opens the
+  # ltd-shell-more section, which no pass edits), and should be one the
+  # previous template lacks, so a box that stamped the new serial on stale
+  # bytes fetches again.
   # A sentinel that can never match would drop the ctrl and re-fetch this
   # security-critical file on EVERY pass, on every box, forever -- the ctrl
   # mechanism exists to prevent exactly that (as-shipped E2E catch).
-  if ! grep -q "^env_path[[:space:]]*: '/opt/local/bin'" /var/xdrago/conf/lshell.conf; then
+  if ! grep -q "^##  the only group that runs PHP by name" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
     # The template that arrives carries node, npm, npx and scp; the plan check
     # below strips them again, but only once per release serial. Dropping its
@@ -2022,7 +2056,7 @@ _update_agents() {
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/lshell.ctrl.f82.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/lshell.ctrl.f81.${_tRee}.${_xSrl}.pid" ]; then
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
@@ -2031,7 +2065,7 @@ _update_agents() {
       if [ -e "/var/xdrago/conf/lshell.conf" ]; then
         chmod 644 /var/xdrago/conf/lshell.conf
         chown root:root /var/xdrago/conf/lshell.conf
-        touch ${_pthLog}/lshell.ctrl.f82.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/lshell.ctrl.f81.${_tRee}.${_xSrl}.pid
       else
         mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
       fi
@@ -2652,6 +2686,9 @@ _update_agents() {
       cd ${_Dir}
       rm -rf ${_Dir}/redis_backdrop
       _get_dev_contrib "redis_backdrop-${_REDIS_B_VERSION}.tar.gz"
+      # every instance's Backdrop sites run this copy: root's, whatever owner
+      # the archive recorded
+      chown -R root:root ${_Dir}/redis_backdrop &> /dev/null
       echo update > ${_Dir}/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info
       find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
       find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
@@ -4802,7 +4839,7 @@ CSFSTANDBY
     # documented /usr/local/bin path stays a symlink to the fleet copy.
     _fetch_versioned ${_optBin}/aegir2boa-preflight "${_urlHmr}/${_tBn}/aegir2boa-preflight" f97 --guard /local/bin/aegir2boa-preflight
     _fetch_versioned ${_optBin}/aegir2boa-stage1 "${_urlHmr}/${_tBn}/aegir2boa-stage1" f97 --guard /local/bin/aegir2boa-stage1
-    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f95 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
+    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f94 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f96 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f86 --guard /local/bin/autobeowulf
@@ -4857,8 +4894,8 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f95 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f55 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f42 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f08 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f40 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f06 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f76 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f94 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f87 --guard /local/bin/autochimaera
@@ -4899,7 +4936,7 @@ CSFSTANDBY
     # tail-anchored sentinel refuses a wrong OR truncated payload before it
     # can reach client shells -- websh invokes its dash forwarder near EOF,
     # so the token must keep living in websh's last 4 KiB.
-    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f78 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
+    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f75 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
     _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f99 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
   fi
 

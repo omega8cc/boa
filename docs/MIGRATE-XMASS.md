@@ -357,9 +357,10 @@ the account's registered site aliases (its own control panel set aside), the
 which also reaches a platform behind a symlink, read at the docroot it serves when
 it names a Composer app root), and a sweep for site
 directories under `distro/`, `static/`, `platforms/` and `aegir/` to the depth
-BOA itself builds, with or without a `web/` or `docroot/` level. An account
-that carries sites is refused (`_XMASS_ALLOW_TARGET_ONLY=YES` keeps it
-knowingly), and an inventory that cannot be read is never treated as empty.
+BOA itself builds, with or without a `web/` or `docroot/` level.
+
+An account that carries sites is refused (`_XMASS_ALLOW_TARGET_ONLY=YES` keeps
+it knowingly), and an inventory that cannot be read is never treated as empty.
 
 Run on the **source**, after `pre-mig` has completed on both hosts and before
 `init`. This is everything the target must have in place before its Octopus
@@ -423,13 +424,19 @@ What it does, in order:
    is not serviceable there surfaces only after promotion, as silently broken
    search.
 3. **PHP coverage gate** — collects every version pinned by any eligible
-   account (`static/control/fpm.info`, `cli.info`, and the per-site column of
-   `multi-fpm.info`) and verifies each is installed on the target. Missing
-   versions are fatal, because a pinned-but-absent PHP is silently downgraded
-   by BOA's own fallback ladder and the affected sites serve on the wrong
-   interpreter. With `--fix-php` the missing versions are appended to the
+   account (`static/control/fpm.info`, `cli.info`, the per-site column of
+   `multi-fpm.info`, every line of `cli-per-platform.info` and the
+   `phpNN.info` marker that steers the account's command line, the highest
+   one whose PHP is installed on the source) and verifies each is installed
+   on the target. Missing versions are fatal, because a pinned-but-absent PHP
+   is silently downgraded by BOA's own fallback ladder and the affected sites
+   serve on the wrong interpreter.
+
+   With `--fix-php` the missing versions are appended to the
    target's `_PHP_MULTI_INSTALL` and one `barracuda up-<tree> system` pass is
-   driven there to build them (~30 minutes).
+   driven there to build them (~30 minutes). A `phpNN.info` switch or a
+   `cli-per-platform.info` line that names a PHP the source lacks is inert
+   there and takes effect on a target that has that PHP.
 4. **Certificate health sweep** on the source — names every zero-byte,
    unparseable or expired certificate, so a broken renewal is fixed before the
    migration rather than debugged alongside it.
