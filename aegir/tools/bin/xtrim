@@ -1079,7 +1079,8 @@ _stage_a() {
   ### Re-probe; any regression auto-restores and aborts.
   if [ "${_fail}" != "0" ] || ! _probe_all_doms "${_oN}"; then
     _alrt "${_oN}: stage A regression detected -- auto-restoring"
-    _restore_stage_a "${_oN}"
+    _restore_stage_a "${_oN}" \
+      || _die "${_oN}: stage A aborted; restore incomplete (see ALRT above); nothing deleted"
     _die "${_oN}: stage A aborted and restored; nothing deleted"
   fi
   _phase_set "${_oN}" "stage-a"
@@ -1103,7 +1104,7 @@ _restore_stage_a() {
       _die "${_oN}: stage B already ran (or crashed mid-run) -- restore is a migration back, not an unpark (see the manifest + archived aliases)"
     ;;
   esac
-  local _nn
+  local _nn _left=0
   for _p in "${_q}"/pools/*; do
     [ -e "${_p}" ] || continue
     ### Multi pool oN.NN.conf encodes its tree in the filename; the single
@@ -1121,13 +1122,17 @@ _restore_stage_a() {
       _nn=$(grep -m1 '^_PHP_FPM_VERSION' /root/.barracuda.cnf 2>/dev/null | tr -d -c 0-9)
     fi
     if [ -n "${_nn}" ] && [ -d "/opt/php${_nn}/etc/pool.d" ]; then
-      mv -f "${_p}" "/opt/php${_nn}/etc/pool.d/"
-      service "php${_nn}-fpm" reload &> /dev/null
+      if mv -f "${_p}" "/opt/php${_nn}/etc/pool.d/"; then
+        service "php${_nn}-fpm" reload &> /dev/null
+      else
+        _alrt "${_oN}: could not move pool $(basename "${_p}") into /opt/php${_nn}/etc/pool.d; left in quarantine"
+        _left=1
+      fi
     else
       _alrt "${_oN}: cannot place pool $(basename "${_p}") -- no /opt/php${_nn:-?} tree; left in quarantine"
+      _left=1
     fi
   done
-  local _left=0
   if [ -n "$(ls -A "${_q}/postd" 2> /dev/null)" ] \
     && ! _in_real_dir "${_USR}/config/server_master/nginx/post.d" \
       _unpark_postd_here "${_q}/postd"; then
@@ -1178,6 +1183,7 @@ _restore_stage_a() {
       rm -f "${_q}/solr/MAP.txt"
     else
       _alrt "${_oN}: solr quarantine map KEPT at ${_q}/solr/MAP.txt (unfinished entries)"
+      _left=1
     fi
   fi
   if [ -e "${_q}/held-run-${_oN}" ]; then
@@ -1200,7 +1206,7 @@ _restore_stage_a() {
     if [ "${_left}" = "0" ]; then
       _info "${_oN}: stage A restored from quarantine"
     else
-      _alrt "${_oN}: stage A restored from quarantine EXCEPT the fpm includes (see above)"
+      _alrt "${_oN}: stage A restored from quarantine EXCEPT what the ALRT lines above name"
       return 1
     fi
   else

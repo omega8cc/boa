@@ -1628,11 +1628,16 @@ _xcopy_handle_store() {
     _sz="$(du -sk "${_real}" 2>/dev/null | awk '{print $1}')"
     if [ -z "${_mntRel}" ] && [ "${_onMnt}" = "YES" ]; then
       _mntRel="${_real#/mnt/*/}"
-      # On a rename the account's own part of the store takes the new name,
-      # never a path another account of the old name may hold there.
+      # On a rename the account's own part of the store takes the new name.
+      # A path under another name's part (an old-named path left by an
+      # earlier rename) lands under files/<oN>/legacy/<name>/ in the
+      # account's own part, never in a store an account of that name may
+      # hold on the target.
       if [ -n "${_acct}" ] && [ -n "${_dacct}" ]; then
         case "${_mntRel}/" in
           "files/${_acct}/"*) _mntRel="files/${_dacct}${_mntRel#"files/${_acct}"}" ;;
+          "files/${_dacct}/"*) ;;
+          files/?*/*) _mntRel="files/${_dacct}/legacy/${_mntRel#files/}" ;;
         esac
       fi
     fi
@@ -1682,9 +1687,10 @@ _xcopy_handle_store() {
 # is /mnt/... gets the same storage-aware treatment, so non-standard legacy links are
 # never left dangling on the target. Sets _XCOPY_STORE_RC on any DENY. On a rename a
 # link into the account's own part of the store (<mount>/files/<oN>/...) lands under
-# the new name there. A link is carried only when it resolves into the account's own
-# tree or store, or to content one of its identities owns (an old-named path left by
-# an earlier rename); anything else is a DENY.
+# the new name there; one into another name's part lands under
+# <mount>/files/<oN>/legacy/<name>/. A link is carried only when it resolves into
+# the account's own tree or store, or to content one of its identities owns (an
+# old-named path left by an earlier rename); anything else is a DENY.
 _xcopy_catchall_mnt_symlinks() {
   local _root="$1" _dstRoot="$2" _th="$3" _tm="$4" _ie="$5"
   local _l _lt _rel _dl

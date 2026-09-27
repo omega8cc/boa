@@ -6236,12 +6236,16 @@ _satellite_host_ok() {
   [[ "${1}" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]]
 }
 # True when $1 names none of the box's own certificates in /etc/ssl/private
-# (nginx-wild-ssl), not the master's front and not the front (_DOMAIN) of
-# another account on this box: an account's front names root's
-# /etc/ssl/private/<front>.crt and .key and its proxy vhost.
+# (a name without a dot, such as nginx-wild-ssl or ssl-cert-snakeoil; every
+# account front is a full domain name), not the master's front and not the
+# front (_DOMAIN) of another account on this box: an account's front names
+# root's /etc/ssl/private/<front>.crt and .key and its proxy vhost.
 _satellite_front_free() {
   local _c _u _d
-  [ "${1}" = "nginx-wild-ssl" ] && return 1
+  case "${1}" in
+    *.*) ;;
+    *) return 1 ;;
+  esac
   _d=$(sed -n 's/^_MY_FRONT=//p' /root/.barracuda.cnf 2> /dev/null \
     | tail -n 1 | tr -d "\"' ")
   [ "${_d}" = "${1}" ] && return 1
