@@ -710,6 +710,11 @@
 
 @=> Important Fixes
 
+    * Classic Drush 8.5.10: a Drush 8 run whose home has no ~/.tmp, or
+      that runs as root, finds a temporary directory again (TEMP, TMP,
+      /tmp), where it found none and created its temporary directories
+      at the root of the filesystem.
+
     * A site-local Drush started by its own path, which is how Drush 12
       and 13 run their child processes (updatedb, deploy), now runs on
       the PHP the account chose, where it ran on the server default PHP
