@@ -430,6 +430,30 @@
 
 @=> Improvements
 
+    * No account keeps a command-line php.ini of its own any more: every
+      PHP runs on the global php.ini of its own version and keeps its
+      temporary files in the calling account's ~/.tmp (the instance's and
+      the master's own .tmp for the Aegir backend), which websh sets as
+      TMPDIR. That now holds for every version cli.info, a phpNN.info
+      switch or a cli-per-platform.info line selects, and for every Drush,
+      Composer (its @php scripts included), bee and PHP by name, where it
+      held for Drush 8 and Composer on the pinned version only. The
+      three-minute pass removes the copies earlier releases kept, and logs
+      each removal; a web user keeps a one-line placeholder in its place,
+      which earlier releases read as the web user being in place.
+
+    * A PHP a command line starts by name or path (a member's php85, a
+      drush8 later in the line) no longer loads another version's php.ini:
+      websh drops a PHPRC it inherits and sets none.
+
+    * A web user without a php.ini is no longer deleted and made anew, home
+      included, at the next PHP-FPM change: the pool version it was set up
+      for is recorded in its version stamp, and only a missing account or
+      home is made anew. Octopus no longer follows a name the web user
+      puts in its own home (a link at .drush, .lock, the stamp or
+      php.ini) while it updates that home, and a .lock the web user plants
+      no longer stops the update for good.
+
     * A Devuan Daedalus system upgraded in place from an older release,
       whose /bin, /sbin and /lib are still apart from /usr, is converted
       to merged /usr by barracuda with the usrmerge package, once, early
