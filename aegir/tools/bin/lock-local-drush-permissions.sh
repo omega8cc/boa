@@ -20,9 +20,10 @@ if [ "$(id -u)" != 0 ]; then
   exit 1
 fi
 
-# Same defence pattern as the fix-drupal-* helpers. Without this, a symlink
-# planted at ${drupal_root}/vendor/drush could let the caller chmod 0775 or
-# chmod 0400 arbitrary system paths via the NOPASSWD sudo entry point.
+# Same defence pattern as the fix-drupal-* helpers: the account owns the
+# names under ${drupal_root}/vendor, so any of them can be a link, and the
+# modes set here through the NOPASSWD sudo entry point land only inside the
+# caller's own tree, never through a link.
 _validate_path_prefix() {
   # Scope the resolved path to the SUDO caller's OWN home tree (aegir ->
   # /var/aegir, Octopus oN -> /data/disk/oN), not merely "some BOA tree": a
@@ -30,7 +31,8 @@ _validate_path_prefix() {
   # /data/disk/oM/ files. Validating the realpath (not the raw arg) also defeats
   # a symlink planted inside the caller's own tree that points out to another
   # tenant. A direct root run (no SUDO_USER) is trusted and keeps the historical
-  # BOA-tree allowlist.
+  # BOA-tree allowlist; its targets are held to the tree of the account the
+  # root lies in (/var/aegir, /data/disk/<oN> or /home/<user>).
   local _resolved _caller _home
   _resolved=$(realpath -e -- "$1" 2>/dev/null) || {
     printf "Error: path does not resolve: %s\n" "$1" >&2
@@ -40,8 +42,14 @@ _validate_path_prefix() {
   if [ -z "${_caller}" ]; then
     case "${_resolved}/" in
       /var/aegir/*) _SCOPE_ROOT="/var/aegir" ;;
-      /data/disk/*) _SCOPE_ROOT="/data/disk" ;;
-      /home/*)      _SCOPE_ROOT="/home" ;;
+      /data/disk/*)
+        _SCOPE_ROOT="${_resolved#/data/disk/}"
+        _SCOPE_ROOT="/data/disk/${_SCOPE_ROOT%%/*}"
+        ;;
+      /home/*)
+        _SCOPE_ROOT="${_resolved#/home/}"
+        _SCOPE_ROOT="/home/${_SCOPE_ROOT%%/*}"
+        ;;
       *)
         printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved}" >&2
         exit 1
@@ -81,12 +89,36 @@ _in_pinned_dir() {
   ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
 }
 
-# ./$2 in the current (pinned) directory given the mode $1, only while it is
-# not a link.
+# A mode set on names in the current directory, never through a link: each
+# name is opened without following one and without blocking on a FIFO,
+# checked to be the expected type and changed through the open handle, so a
+# name swapped for a link at any moment is refused, not followed. O_NOFOLLOW
+# covers the last name only: run it on ./names inside a pinned directory, or
+# from find -execdir, which hands it one ./name in the directory find holds
+# open (find's -type test alone does not stop a later chmod by path from
+# following a link). As chmod does, a directory keeps its setuid and setgid
+# bits unless the mode has five digits. Args: f|d|a (regular file,
+# directory, either), the mode (octal), the names.
+_FCHMOD_PL='use Fcntl;
+my ($t, $m) = (shift @ARGV, shift @ARGV);
+$m =~ /^[0-7]{3,5}$/ or exit 1;
+my ($v, $k) = (oct($m), length($m) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (-d _ && $t ne "f") {
+    chmod($v | ($s[2] & $k), $h);
+  }
+  elsif (-f _ && $t ne "d") {
+    chmod($v, $h);
+  }
+  close($h);
+}'
+
+# ./$2 in the current (pinned) directory given the mode $1 through
+# _FCHMOD_PL: a regular file or a directory, never through a link.
 _chmod_nolink_here() {
-  [ -L "./${2}" ] && return 0
-  [ -e "./${2}" ] || return 0
-  chmod "${1}" "./${2}"
+  perl -e "${_FCHMOD_PL}" a "${1}" "./${2}"
 }
 
 _chmod_safe() {

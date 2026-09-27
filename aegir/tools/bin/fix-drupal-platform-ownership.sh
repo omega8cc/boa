@@ -22,16 +22,21 @@ if [ "$(id -u)" != 0 ]; then
   exit 1
 fi
 
+# find -execdir refuses a PATH with a relative entry: the walks below run
+# with the one sudo gives them.
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
 # Reject any caller-supplied path that resolves outside the BOA-managed roots.
-# The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users;
-# a crafted symlink under ${drupal_root}/... would otherwise let chown -R
-# rewrite ownership on arbitrary system paths. Defence is two-layered:
+# The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users,
+# and the account owns the names under ${drupal_root}, so any of them can be
+# a link. Defence:
 #  1. _validate_path_prefix on the caller-supplied root.
-#  2. chown -h on every recursive/non-recursive call below, so symlinks
-#     planted under the validated tree (e.g. via uploaded tar archives) have
-#     their own metadata adjusted but their targets are never dereferenced.
-#     This is compatible with legacy BOA platforms that legitimately use a
-#     root-managed symlink for shared core/ — those are skipped, not broken.
+#  2. chown -h on every recursive/non-recursive call below, so a symlink under
+#     the validated tree has its own metadata adjusted but its target is
+#     never dereferenced. This is compatible with legacy BOA platforms that
+#     legitimately use a root-managed symlink for shared core/ — those are
+#     skipped, not broken. A find walk hands chown each name from -execdir,
+#     one ./name in the directory find holds open.
 #  3. Every chown runs inside a directory entered for real (_in_pinned_dir),
 #     on ./names there, so a name on the way swapped for a link after the
 #     root was resolved is never followed.
@@ -272,10 +277,12 @@ if [ -n "${drupal_root}" ] \
   # carry 0440 group-read secrets (config.php, drushrc.php) and web-group
   # writable dirs the site pass owns; a platform-wide chown would re-home
   # their groups and break FPM's group-read path, so sites/* is pruned
-  # outright (only the sites/ directory itself takes core ownership).
+  # outright (only the sites/ directory itself takes core ownership). Each
+  # name is handed to chown -h from -execdir, one ./name in the directory
+  # find holds open, so no directory on the way is resolved again.
   printf "Setting Textpattern ownership of %s to: user => %s group => %s\n" "${drupal_root}" "${script_user}" "${_code_group}"
   _in_pinned_dir "${drupal_root}" find . -path "./sites/*" -prune \
-    -o -exec chown -h "${script_user}:${_code_group}" {} + 2> /dev/null
+    -o -execdir chown -h "${script_user}:${_code_group}" {} + 2> /dev/null
   echo "Done setting proper ownership of files and directories (Textpattern platform)."
   exit 0
 fi
@@ -371,10 +378,9 @@ if [[ "${drupal_root}" =~ "/static/" ]] \
     _copy_new_here "${_scaffold_yml%/*}" development.services.yml
 fi
 
-### -h on every chown: never dereference symlinks (legacy BOA-managed
-### shared-core symlinks under /var/aegir/distro/ stay untouched; attacker
-### symlinks planted under /data/disk/<o>/ or /home/<u>/ via uploaded tar
-### archives cannot redirect chown onto system paths).
+### -h on every chown: symlinks under the account tree are never
+### dereferenced (legacy BOA-managed shared-core symlinks under
+### /var/aegir/distro/ stay untouched).
 if [ -e "${drupal_root}/vendor" ]; then
   _in_pinned_dir "${drupal_root}" \
     chown -h -R "${script_user}:${_code_group}" ./vendor

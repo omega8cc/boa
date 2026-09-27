@@ -19,16 +19,20 @@ if [ "$(id -u)" != 0 ]; then
   exit 1
 fi
 
-# The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users.
-# A symlink planted at a known child path (e.g. ${drupal_root}/web -> /etc) would
-# cause direct chmod calls to alter system file permissions. Defence:
+# find -execdir refuses a PATH with a relative entry: the walks below run
+# with the one sudo gives them.
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users,
+# and the account owns the names under ${drupal_root}, so any of them can be
+# a link. Defence:
 #  1. _validate_path_prefix on the caller-supplied root.
-#  2. _chmod_here wraps each direct chmod with a symlink precheck; symlinks
-#     are skipped (so root-managed legacy symlinks remain untouched, and
-#     attacker-planted symlinks cannot be used to chmod arbitrary files).
-#     find -type d / -type f predicates already exclude symlinks, so the
-#     find-exec chmod blocks below need no change.
-#  3. Every chmod runs inside a directory entered for real (_in_pinned_dir),
+#  2. Every mode is set through _FCHMOD_PL, on the name itself (_chmod_here)
+#     or from find -execdir: a link is never followed (root-managed legacy
+#     symlinks stay untouched, and symlinks put there cannot carry a mode to
+#     another file), whether it was there before or put there during the
+#     run. find's -type test alone would not stop a later chmod by path.
+#  3. Every step runs inside a directory entered for real (_in_pinned_dir),
 #     on ./names there, so a name on the way swapped for a link after the
 #     root was resolved is never followed.
 _validate_path_prefix() {
@@ -38,7 +42,8 @@ _validate_path_prefix() {
   # /data/disk/oM/ files. Validating the realpath (not the raw arg) also defeats
   # a symlink planted inside the caller's own tree that points out to another
   # tenant. A direct root run (no SUDO_USER) is trusted and keeps the historical
-  # BOA-tree allowlist.
+  # BOA-tree allowlist; its vendor legs are held to the tree of the account
+  # the root lies in (/var/aegir, /data/disk/<oN> or /home/<user>).
   local _resolved _caller _home
   _resolved=$(realpath -e -- "$1" 2>/dev/null) || {
     printf "Error: path does not resolve: %s\n" "$1" >&2
@@ -48,8 +53,14 @@ _validate_path_prefix() {
   if [ -z "${_caller}" ]; then
     case "${_resolved}/" in
       /var/aegir/*) _SCOPE_ROOT="/var/aegir" ;;
-      /data/disk/*) _SCOPE_ROOT="/data/disk" ;;
-      /home/*)      _SCOPE_ROOT="/home" ;;
+      /data/disk/*)
+        _SCOPE_ROOT="${_resolved#/data/disk/}"
+        _SCOPE_ROOT="/data/disk/${_SCOPE_ROOT%%/*}"
+        ;;
+      /home/*)
+        _SCOPE_ROOT="${_resolved#/home/}"
+        _SCOPE_ROOT="/home/${_SCOPE_ROOT%%/*}"
+        ;;
       *)
         printf "Error: path outside allowed roots (/var/aegir, /data/disk, /home): %s\n" "${_resolved}" >&2
         exit 1
@@ -108,25 +119,46 @@ _in_scoped_dir() {
   _in_pinned_dir "${_r}" "$@"
 }
 
-# The mode $1 on each name in the current (pinned) directory that matches a
-# pattern after it (expanded here, nowhere else), never through a link: a
-# directory takes it on '.' once entered for real, anything else only while
-# it is not a link. A pattern that matches nothing is skipped.
+# A mode set on names in the current directory, never through a link: each
+# name is opened without following one and without blocking on a FIFO,
+# checked to be the expected type and changed through the open handle, so a
+# name swapped for a link at any moment is refused, not followed. O_NOFOLLOW
+# covers the last name only: run it on ./names inside a pinned directory, or
+# from find -execdir, which hands it one ./name in the directory find holds
+# open (find's -type test alone does not stop a later chmod by path from
+# following a link). As chmod does, a directory keeps its setuid and setgid
+# bits unless the mode has five digits. Args: f|d|a (regular file,
+# directory, either), the mode (octal), the names.
+_FCHMOD_PL='use Fcntl;
+my ($t, $m) = (shift @ARGV, shift @ARGV);
+$m =~ /^[0-7]{3,5}$/ or exit 1;
+my ($v, $k) = (oct($m), length($m) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (-d _ && $t ne "f") {
+    chmod($v | ($s[2] & $k), $h);
+  }
+  elsif (-f _ && $t ne "d") {
+    chmod($v, $h);
+  }
+  close($h);
+}'
+
+# The mode $1 on each regular file or directory in the current (pinned)
+# directory that matches a pattern after it (expanded here, nowhere else),
+# set through _FCHMOD_PL. A pattern that matches nothing is skipped.
 _chmod_here() {
-  local _mode="${1}" _here _pat _p
+  local _mode="${1}" _pat _p
+  local -a _n=()
   shift
-  _here="$(pwd -P)"
   for _pat in "$@"; do
     for _p in ${_pat}; do
-      _p="${_p#./}"
-      [ -L "./${_p}" ] && continue
-      if [ -d "./${_p}" ]; then
-        _in_pinned_dir "${_here}/${_p}" chmod "${_mode}" .
-      elif [ -e "./${_p}" ]; then
-        chmod "${_mode}" "./${_p}"
-      fi
+      _n+=("./${_p#./}")
     done
   done
+  [ "${#_n[@]}" -gt 0 ] || return 0
+  perl -e "${_FCHMOD_PL}" a "${_mode}" "${_n[@]}"
 }
 # _chmod_here inside the directory $1 (resolved once above), entered for real.
 _chmod_in() {
@@ -179,18 +211,20 @@ _grav_capsule_perm_here() {
   _chmod_in "${_here}/bin" 0755 '*'
   for _wd in user cache logs tmp backup images assets; do
     [ -d "./${_wd}" ] || continue
-    find "./${_wd}" -type d -exec chmod 02775 {} + 2> /dev/null
-    find "./${_wd}" -type f -exec chmod 0664 {} + 2> /dev/null
+    find "./${_wd}" -type d \
+      -execdir perl -e "${_FCHMOD_PL}" d 02775 {} + 2> /dev/null
+    find "./${_wd}" -type f \
+      -execdir perl -e "${_FCHMOD_PL}" f 0664 {} + 2> /dev/null
   done
   # Secret surfaces AFTER the generic pass, which would re-widen them
   # otherwise: group-rw for FPM, owner-rw for the CLI, NO world
   # bits; the root .env keeps FPM's read via group.
   for _sd in accounts config env; do
     [ -d "./user/${_sd}" ] || continue
-    _in_pinned_dir "${_here}/user" \
-      find "./${_sd}" -type d -exec chmod 02770 {} + 2> /dev/null
-    _in_pinned_dir "${_here}/user" \
-      find "./${_sd}" -type f -exec chmod 0660 {} + 2> /dev/null
+    _in_pinned_dir "${_here}/user" find "./${_sd}" -type d \
+      -execdir perl -e "${_FCHMOD_PL}" d 02770 {} + 2> /dev/null
+    _in_pinned_dir "${_here}/user" find "./${_sd}" -type f \
+      -execdir perl -e "${_FCHMOD_PL}" f 0660 {} + 2> /dev/null
   done
   _chmod_here 0640 .env
   _chmod_here 0440 drushrc.php
@@ -244,7 +278,7 @@ if [ -n "${drupal_root}" ] \
     -o -path "./sites/*/backup" -prune \
     -o -path "./sites/*/images" -prune \
     -o -path "./sites/*/assets" -prune \
-    -o -type d -exec chmod 0755 {} + 2> /dev/null
+    -o -type d -execdir perl -e "${_FCHMOD_PL}" d 0755 {} + 2> /dev/null
   _in_pinned_dir "${drupal_root}" find . -path "./sites/*/user" -prune \
     -o -path "./sites/*/cache" -prune \
     -o -path "./sites/*/logs" -prune \
@@ -252,7 +286,7 @@ if [ -n "${drupal_root}" ] \
     -o -path "./sites/*/backup" -prune \
     -o -path "./sites/*/images" -prune \
     -o -path "./sites/*/assets" -prune \
-    -o -type f -exec chmod 0644 {} + 2> /dev/null
+    -o -type f -execdir perl -e "${_FCHMOD_PL}" f 0644 {} + 2> /dev/null
   _in_pinned_dir "${drupal_root}/sites" _grav_capsules_perm_here
   _chmod_in "${drupal_root}/bin" 0755 '*'
   echo "Done setting proper permissions of files and directories (Grav)."
@@ -276,9 +310,9 @@ if [ -n "${drupal_root}" ] \
   # lesson: never fight the writer), so sites/* is pruned outright.
   printf "Setting Textpattern permissions of %s\n" "${drupal_root}"
   _in_pinned_dir "${drupal_root}" find . -path "./sites/*" -prune \
-    -o -type d -exec chmod 0755 {} + 2> /dev/null
+    -o -type d -execdir perl -e "${_FCHMOD_PL}" d 0755 {} + 2> /dev/null
   _in_pinned_dir "${drupal_root}" find . -path "./sites/*" -prune \
-    -o -type f -exec chmod 0644 {} + 2> /dev/null
+    -o -type f -execdir perl -e "${_FCHMOD_PL}" f 0644 {} + 2> /dev/null
   echo "Done setting proper permissions of files and directories (Textpattern platform)."
   exit 0
 fi
@@ -376,27 +410,27 @@ _in_pinned_dir "${drupal_root}/sites/all/libraries" _perm_marker_here
 printf "Setting permissions of all codebase directories inside "${drupal_root}"...\n"
 _in_pinned_dir "${drupal_root}" \
   find ./modules ./themes ./libraries ./includes ./misc ./profiles ./core \
-  -type d -exec chmod "${_MODE_DIR}" {} \;
+  -type d -execdir perl -e "${_FCHMOD_PL}" d "${_MODE_DIR}" {} +
 
 printf "Setting permissions of all codebase files inside "${drupal_root}"...\n"
 _in_pinned_dir "${drupal_root}" \
   find ./modules ./themes ./libraries ./includes ./misc ./profiles ./core \
-  -type f -exec chmod "${_MODE_FILE}" {} \;
+  -type f -execdir perl -e "${_FCHMOD_PL}" f "${_MODE_FILE}" {} +
 
 if [ -e "${drupal_root}/vendor" ]; then
   printf "Setting permissions of all codebase directories inside "${drupal_root}/vendor"...\n"
-  _in_pinned_dir "${drupal_root}" \
-    find ./vendor -type d -exec chmod "${_MODE_DIR}" {} \;
+  _in_pinned_dir "${drupal_root}" find ./vendor -type d \
+    -execdir perl -e "${_FCHMOD_PL}" d "${_MODE_DIR}" {} +
   printf "Setting permissions of all codebase files inside "${drupal_root}/vendor"...\n"
-  _in_pinned_dir "${drupal_root}" \
-    find ./vendor -type f -exec chmod "${_MODE_FILE}" {} \;
+  _in_pinned_dir "${drupal_root}" find ./vendor -type f \
+    -execdir perl -e "${_FCHMOD_PL}" f "${_MODE_FILE}" {} +
 elif [ -e "${drupal_root}/../vendor" ]; then
   printf "Setting permissions of all codebase directories inside "${drupal_root}/../vendor"...\n"
-  _in_pinned_dir "${drupal_root%/*}" \
-    find ./vendor -type d -exec chmod "${_MODE_DIR}" {} \;
+  _in_pinned_dir "${drupal_root%/*}" find ./vendor -type d \
+    -execdir perl -e "${_FCHMOD_PL}" d "${_MODE_DIR}" {} +
   printf "Setting permissions of all codebase files inside "${drupal_root}/../vendor"...\n"
-  _in_pinned_dir "${drupal_root%/*}" \
-    find ./vendor -type f -exec chmod "${_MODE_FILE}" {} \;
+  _in_pinned_dir "${drupal_root%/*}" find ./vendor -type f \
+    -execdir perl -e "${_FCHMOD_PL}" f "${_MODE_FILE}" {} +
 fi
 
 ### vendor is never symlink-prechecked (a link to elsewhere in the caller's
@@ -435,11 +469,13 @@ fi
 
 printf "Setting permissions of all codebase directories inside "${drupal_root}/sites/all"...\n"
 _in_pinned_dir "${drupal_root}/sites/all" \
-  find ./modules ./themes ./libraries -type d -exec chmod "${_SA_DIR}" {} \;
+  find ./modules ./themes ./libraries -type d \
+  -execdir perl -e "${_FCHMOD_PL}" d "${_SA_DIR}" {} +
 
 printf "Setting permissions of all codebase files inside "${drupal_root}/sites/all"...\n"
 _in_pinned_dir "${drupal_root}/sites/all" \
-  find ./modules ./themes ./libraries -type f -exec chmod "${_SA_FILE}" {} \;
+  find ./modules ./themes ./libraries -type f \
+  -execdir perl -e "${_FCHMOD_PL}" f "${_SA_FILE}" {} +
 
 _chmod_in "${drupal_root}" 0644 '*.php'
 _chmod_in "${drupal_root}" "${_MODE_FILE}" autoload.php
@@ -479,16 +515,16 @@ if [ -e "${drupal_root}/core" ]; then
 fi
 
 ### Known exceptions
-### GNU chmod dereferences symlinks on cmdline args but ignores them during
-### -R traversal, and an intermediate symlink in the operand path is resolved
-### by the kernel regardless. tcpdf and its cache child are both names the
-### tenant can plant under the 02775 libraries/. Precheck both, as the
-### nightly does, and chmod cache from inside it, entered for real, as '.';
-### a real directory is treated exactly as before.
+### tcpdf and its cache child are both names the tenant can plant under the
+### 02775 libraries/. Precheck both, as the nightly does, and walk cache from
+### inside it, entered for real, setting 775 on every file and directory
+### there as chmod -R did, through _FCHMOD_PL from -execdir (chmod -R before
+### coreutils 9.5 follows an entry swapped for a link during its walk); a
+### real directory is treated exactly as before.
 if [ ! -L "${drupal_root}/sites/all/libraries/tcpdf" ] \
   && [ ! -L "${drupal_root}/sites/all/libraries/tcpdf/cache" ]; then
   _in_pinned_dir "${drupal_root}/sites/all/libraries/tcpdf/cache" \
-    chmod -R 775 . &> /dev/null
+    find . -execdir perl -e "${_FCHMOD_PL}" a 775 {} + &> /dev/null
 fi
 _chmod_in "${drupal_root}" 0644 .htaccess
 

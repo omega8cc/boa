@@ -100,27 +100,56 @@ _in_pinned_dir() {
   ( cd -P -- "${_d}" 2>/dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
 }
 
+# Group bits added to names in the current directory, never through a link:
+# each name is opened without following one and without blocking on a FIFO,
+# checked to be a regular file or a directory and changed through the open
+# handle, so a name swapped for a link at any moment is refused, not
+# followed. Run it from find -execdir, which hands it one ./name in the
+# directory find holds open: O_NOFOLLOW covers the last name only. Status 1
+# when a mode could not be set. $1 = X: g+rwX (x only on a directory or a
+# file that already has an x bit); s: g+rws on a directory. The rest = the
+# names.
+_FIXREPO_FCHMOD_PL='use Fcntl;
+my ($t, $e) = (shift @ARGV, 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  my $m = $s[2] & 07777;
+  if (-d _) {
+    chmod($m | ($t eq "s" ? 02070 : 0070), $h) or $e = 1;
+  }
+  elsif (-f _ && $t eq "X") {
+    chmod($m | 0060 | ($m & 0111 ? 0010 : 0), $h) or $e = 1;
+  }
+  close($h);
+}
+exit $e;'
+
 _fix_permissions_tree() {
   _TARGET_DIR="${1}"
 
   [ -n "${_TARGET_DIR}" ] || return 1
-  # chmod -R below follows a symlink given AS ITS ARGUMENT (it only refuses
-  # ones met during the walk), so never hand it one: [ -d ] alone is true for
-  # a symlink to a directory.
+  # Never walk a tree given as a symlink: [ -d ] alone is true for a symlink
+  # to a directory.
   [ -L "${_TARGET_DIR}" ] && return 1
   [ -d "${_TARGET_DIR}" ] || return 1
 
   _msg "Processing tree: ${_TARGET_DIR}"
 
-  # Both passes run on '.' inside the tree, entered for real: never through a
-  # name on the way swapped for a link after the path was resolved.
+  # Both passes walk '.' inside the tree, entered for real, and set each mode
+  # through _FIXREPO_FCHMOD_PL from -execdir: never through a name on the way
+  # swapped for a link after the path was resolved, nor through an entry
+  # swapped for one during the walk (chmod -R before coreutils 9.5 follows
+  # such an entry).
   # Add group read/write to all files and dirs; add execute only to dirs and already executable files.
   _run_cmd "chmod -R g+rwX on ${_TARGET_DIR}" \
-    _in_pinned_dir "${_TARGET_DIR}" chmod -R g+rwX .
+    _in_pinned_dir "${_TARGET_DIR}" \
+    find . -execdir perl -e "${_FIXREPO_FCHMOD_PL}" X {} +
 
   # Ensure all directories are group-traversable, writable, and setgid so new files inherit group.
   _run_cmd "setgid on directories in ${_TARGET_DIR}" \
-    _in_pinned_dir "${_TARGET_DIR}" find . -type d -exec chmod g+rws {} +
+    _in_pinned_dir "${_TARGET_DIR}" \
+    find . -type d -execdir perl -e "${_FIXREPO_FCHMOD_PL}" s {} +
 
   return 0
 }
@@ -204,8 +233,8 @@ _main() {
   [ "${_REPO_ROOT}" = "-h" ] && { _usage; exit 0; }
   [ "${_REPO_ROOT}" = "--help" ] && { _usage; exit 0; }
 
-  _require_cmd chmod
   _require_cmd find
+  _require_cmd perl
 
   [ -e "${_REPO_ROOT}" ] || _die "Path does not exist: ${_REPO_ROOT}"
   [ -d "${_REPO_ROOT}" ] || _die "Path is not a directory: ${_REPO_ROOT}"
@@ -311,11 +340,9 @@ _main() {
   _fix_permissions_tree "${_REPO_ROOT}" || _die "Failed to fix codebase permissions"
 
   # Explicitly fix .git tree too (clarity + robustness in shared workflows).
-  # .git is a name a tenant can plant in the group-writable codebase root
-  # (~/static is 02775 and group-writable), and chmod -R DOES follow a symlink handed to
-  # it as its argument -- it only refuses ones met during the walk -- so a
-  # planted .git -> / would loosen the whole box. A symlinked .git is never
-  # legitimate here; skip it, the tree pass above already covered everything
+  # .git is a name a tenant can create in the group-writable codebase root
+  # (~/static is 02775 and group-writable), and a symlinked .git is never
+  # legitimate here: skip it, the tree pass above already covered everything
   # that really lives in the tree.
   if [ -L "${_REPO_ROOT}/.git" ]; then
     printf 'WARNING: %s/.git is a symlink; Git-specific steps skipped.\n' "${_REPO_ROOT}" >&2

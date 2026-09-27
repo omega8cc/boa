@@ -23,10 +23,9 @@ if [ "$(id -u)" != 0 ]; then
 fi
 
 # Reject any caller-supplied path that resolves outside the BOA-managed roots.
-# The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users;
-# a crafted symlink under ${site_path}/... (e.g. uploaded inside a tar archive)
-# would otherwise let chown -R rewrite ownership on arbitrary system paths.
-# Defence is two-layered:
+# The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users,
+# and the account owns the names under ${site_path}, so any of them can be a
+# link. Defence:
 #  1. _validate_path_prefix on the caller-supplied root.
 #  2. chown -h on every recursive/non-recursive call below (replaces the prior
 #     chown -L -R which explicitly dereferenced symlinks during traversal).
@@ -149,13 +148,15 @@ _in_pinned_dir() {
 }
 
 # chown -h (with -R when $1 is -R) to $2 of each name in the current (pinned)
-# directory that matches a pattern after them (expanded here, nowhere else);
-# a pattern that matches nothing is skipped.
+# directory that matches a pattern after them (expanded here, nowhere else),
+# handed over as ./name so no name is read as an option; a pattern that
+# matches nothing is skipped.
 _chown_here() {
   local _r="${1}" _o="${2}" _pat _p
   shift 2
   for _pat in "$@"; do
     for _p in ${_pat}; do
+      _p="./${_p#./}"
       [ -e "${_p}" ] || [ -L "${_p}" ] || continue
       chown -h ${_r:+"${_r}"} "${_o}" "${_p}"
     done
@@ -274,9 +275,8 @@ _files_own_here() {
   rm -f -- ./ownership-fixed*.pid
   _mark_here "ownership-fixed-${_TODAY}.pid"
   ### files - site level
-  ### -h on recursive chown: never dereference symlinks; combined with default
-  ### -P traversal this prevents a tar-uploaded symlink from rerouting chown
-  ### to a system path.
+  ### -h on recursive chown: with the default -P walk, no symlink in the
+  ### store is ever dereferenced.
   chown -h -R "${_o}" .
   chown -h "${_o}" .
   chown -h "${_o}" ./tmp ./images ./pictures ./css ./js
@@ -448,12 +448,10 @@ fi
 _in_pinned_dir "${site_path}" _site_own_here &> /dev/null
 
 ### files/ and private/ are LEGITIMATELY symlinks into the per-account static
-### store, so every path below walks THROUGH them and chown -h protects only
-### the final component: a link planted at either name aims these chowns at,
-### say, /var/aegir/config -- whose nginx vhosts the tenant may then rewrite,
-### with `sudo /etc/init.d/nginx` already granted. Resolve each store once,
-### bounded to this account's own store root, and operate inside the resolved
-### dir, entered for real.
+### store, and chown -h protects only the final name, so a path through such
+### a link goes wherever it points. Each store is resolved once, accepted
+### only inside this account's own store root, and handed over from inside
+### the resolved directory, entered for real.
 _files_dir=$(_store_dir "${site_path}/files") || _files_dir=""
 _priv_dir=$(_store_dir "${site_path}/private") || _priv_dir=""
 if [ -z "${_files_dir}" ] && [ -e "${site_path}/files" ]; then

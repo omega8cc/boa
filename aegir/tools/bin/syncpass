@@ -379,6 +379,15 @@ EOFMYSQL
           echo "ERROR: did not work as expected, please try again"
           exit 1
         fi
+        ### The database host as the install path writes it: FQDN becomes
+        ### the box's own name, PROXYSQL the local proxy address; any other
+        ### value is written as it is.
+        _OCT_DB_HOST_W="${_THIS_DB_HOST}"
+        if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+          _OCT_DB_HOST_W="${_hName}"
+        elif [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+          _OCT_DB_HOST_W=127.0.0.1
+        fi
         ### Put in the account root as a fresh 0600 file handed to the
         ### account, never written, handed over or given a mode through a
         ### link put at the name.
@@ -386,7 +395,7 @@ EOFMYSQL
         { echo "<?php"
           echo "\$oct_db_user = \"${_uname}\";"
           echo "\$oct_db_pass = \"${_ESC_PASS}\";"
-          echo "\$oct_db_host = \"${_THIS_DB_HOST}\";"
+          echo "\$oct_db_host = \"${_OCT_DB_HOST_W}\";"
           echo "\$oct_db_port = \"${_THIS_DB_PORT}\";"
           echo "\$oct_db_dirs = \"/data/disk/${_uname}/backups\";"
         } | _acct_in_real_dir "/data/disk/${_uname}" _put_secret_here \
@@ -394,7 +403,7 @@ EOFMYSQL
           || echo "ERROR: Could not write ${_L_SYS_PHP}"
         echo "INFO: Fixed Ægir Satellite Instance system user=${_uname}"
         echo "INFO: New system password=${_ESC_PASS} encoded=${_ENC_PASS}"
-        echo "INFO: With Satellite oct_db_host=${_THIS_DB_HOST}"
+        echo "INFO: With Satellite oct_db_host=${_OCT_DB_HOST_W}"
         echo "INFO: With Satellite oct_db_port=${_THIS_DB_PORT}"
         echo "BYE!"
       else
