@@ -6166,8 +6166,8 @@ _satellite_in_store_dir() {
   _r="$(readlink -f -- "${_d}" 2> /dev/null)"
   _s="$(cd -P -- /data/disk 2> /dev/null && pwd -P)/${_USER}/static/files/"
   # The store on attached storage is /mnt/<mount>/files/<oN>/static/files,
-  # the mount itself possibly nested (migratefs accepts any single mount
-  # under /mnt), as the nightly decides it.
+  # the mount itself possibly nested, as migratefs accepts it under /mnt,
+  # as the nightly decides it.
   case "${_r}" in
     ""|*[!A-Za-z0-9._/-]*) return 1 ;;
     "${_s}"?*) ;;

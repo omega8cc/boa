@@ -88,7 +88,9 @@ Usage:
   --target <mount>   attached mount to relocate onto (e.g. /mnt/extra); auto-detected
                      as the single real mountpoint under /mnt. Account stores land at
                      <mount>/files/<oN>/static/files, the archive at
-                     <mount>/files/system/arch
+                     <mount>/files/system/arch. Refused unless it is, as given and
+                     as it resolves, a plain path (letters, digits, . _ - /) under
+                     /mnt with no directory named files or static on the way
   --account <oN>     limit to one account and SKIP arch (default: all accounts + arch)
   --no-arch          do not relocate /data/disk/arch
   --yes              in --apply, skip the interactive confirmation prompt
@@ -1187,6 +1189,39 @@ if [ ! -d "${_TARGET}" ]; then
   echo "ERROR: target ${_TARGET} does not exist or is not a directory"
   exit 1
 fi
+
+# The store readers (the nightly, usage.sh, copydbackup, the satellite
+# tools) take a relocated store only on a plain path whose part before
+# /files/<oN>/static/files holds no directory named files or static, as they
+# resolve it. A target breaking either rule, as given or as it resolves,
+# would build a store the rest of BOA ignores, so it is refused before
+# anything moves.
+_TARGET_R="$(cd -P -- "${_TARGET}" 2>/dev/null && pwd -P)"
+if [ -z "${_TARGET_R}" ]; then
+  echo "ERROR: target ${_TARGET} cannot be resolved"
+  exit 1
+fi
+for _t in "${_TARGET}" "${_TARGET_R}"; do
+  case "${_t}" in
+    *[!A-Za-z0-9._/-]*)
+      echo "ERROR: target ${_TARGET} (resolved: ${_TARGET_R}) is not a plain path: the store readers take a store path of letters, digits, '.', '_', '-' and '/' only"
+      exit 1
+      ;;
+  esac
+  case "${_t}" in
+    /mnt/?*) : ;;
+    *)
+      echo "ERROR: target ${_TARGET} resolves to ${_TARGET_R}, outside /mnt: the store readers take a relocated store only under /mnt"
+      exit 1
+      ;;
+  esac
+  case "${_t}" in
+    */files/*|*/static/*)
+      echo "ERROR: target ${_TARGET} (resolved: ${_TARGET_R}) has a directory named files or static on its path: the store readers refuse a store whose part before /files/<oN>/static/files holds one"
+      exit 1
+      ;;
+  esac
+done
 if command -v mountpoint >/dev/null 2>&1 && ! mountpoint -q "${_TARGET}"; then
   _log "WARN: ${_TARGET} is not a mount point — if the attached disk is not mounted, the per-account same-filesystem guard will skip everything (nothing is moved onto root)"
 fi
