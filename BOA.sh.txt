@@ -2037,7 +2037,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f72
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f70
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f58
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f57
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f59
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f77
     _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f76
@@ -4978,7 +4978,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f96 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/checkmyperms "${_urlHmr}/${_tBn}/checkmyperms" f99 --mode 755 --guard /local/bin/checkmyperms
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f92 --guard /local/bin/codebasecheck
-    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f93 --guard /local/bin/copydbackup
+    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f92 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
     _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f91 --guard /local/bin/memorytuner
