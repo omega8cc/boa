@@ -176,6 +176,11 @@ prefix-named site pulling a longer site's fragment).
 so a site with no record keeps the global defaults. Removing a record prunes its fragment
 on the next run.
 
+A subdirectory site's paths (`example.com/blog`) follow the record for the domain that
+serves them: the domain's own site when it is one, and the bare domain when it is not,
+whose placeholder vhost includes `ai_policy/example.com.conf*` as well, with the same
+defaults. A record for the internal name (`blog.example.com`) governs that name only.
+
 ## Generators, lock and serials
 
 | Tool | Schedule | Writes |

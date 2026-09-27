@@ -40,6 +40,10 @@ old.com 5.6
   the server and the account's pool for that version is running. Until then it waits,
   listed in `~/static/control/.multi-fpm-skipped.info`, and is tried again on every pass
   of the system worker, so you can pin a site before you create it.
+- A subdirectory site (one served at `example.com/blog`) is listed by its own site
+  name, for example `blog.example.com 8.3`, and that version serves its paths. An
+  unlisted subdirectory site runs on the `fpm.info` version like any other unlisted
+  site, whatever version its parent domain is pinned to.
 - `fpm.info` and `multi-fpm.info` choose the PHP that serves web requests only. Drush,
   Composer and the Ægir tasks follow the command-line files: `cli.info`, the `phpNN.info`
   switches, and `cli-per-platform.info` for a platform that needs its own version (see
