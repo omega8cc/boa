@@ -123,7 +123,7 @@ be upgraded rather than kept.
 
 ### NOTE on unused PHP versions automatic deactivation
 
-The automated major OS upgrade tools will automatically disable all installed but not used in any hosted site PHP versions, effectively enforcing an otherwise optional procedure normally triggered on barracuda upgrade only when the control file exists: `/root/.allow-php-multi-install-cleanup.cnf`. The classic manual major OS upgrade with barracuda does not enforce it automatically -- there it runs only if that same control file is present.
+The automated major OS upgrade tools will automatically disable all installed PHP versions that no hosted site uses and no account pins for its command line (in `cli.info`, a `cli-per-platform.info` line or a `phpNN.info` switch), effectively enforcing an otherwise optional procedure normally triggered on barracuda upgrade only when the control file exists: `/root/.allow-php-multi-install-cleanup.cnf`. The classic manual major OS upgrade with barracuda does not enforce it automatically -- there it runs only if that same control file is present.
 
 It will not affect migration/upgrade from Debian Bullseye to Devuan Chimaera (or newer), though, since it doesn’t involve re-installing all existing PHP versions normally required in other major upgrades, which otherwise significantly extends the procedure for no good reasons (not used PHP versions should be skipped and deactivated).
 

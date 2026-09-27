@@ -2513,6 +2513,66 @@ _php_multi_uniq() {
 }
 
 #
+# A two-digit PHP version (74) in the dotted form (7.4); nothing for anything
+# else.
+_php_vrn_dotted() {
+  case "$1" in
+    56|70|71|72|73|74|80|81|82|83|84|85) echo "${1:0:1}.${1:1:1}" ;;
+  esac
+}
+
+#
+# The PHP versions the accounts pin that the dotted greps of
+# _php_if_versions_cleanup_cnf miss, so the cleanup does not disable them:
+# - a two-digit version in fpm.info, cli.info or a multi-fpm.info row (the ltd
+#   worker reads 74 as 7.4);
+# - of the versions installed now, every one a cli-per-platform.info line
+#   names (read as websh reads the file: its first 64 KiB and 200 lines, '#'
+#   opening a comment, a line counting only as "<folder> <version>"), and the
+#   one the phpNN.info switches steer the command line to (the highest switch
+#   whose PHP is installed). A line or switch naming a PHP that is not
+#   installed is ignored by websh, so it adds nothing here either.
+_php_versions_pinned_more() {
+  local _c _f _v _k _dom _rest _line _e _mk _txt _n _out=""
+  for _c in /data/disk/*/static/control; do
+    [ -d "${_c}" ] || continue
+    for _f in "${_c}/fpm.info" "${_c}/cli.info"; do
+      [ -e "${_f}" ] || continue
+      _v="$(_php_vrn_dotted "$(tr -cd '0-9' < "${_f}" 2> /dev/null)")"
+      [ -n "${_v}" ] && _out="${_out} ${_v}"
+    done
+    if [ -e "${_c}/multi-fpm.info" ]; then
+      while read -r _dom _v _rest; do
+        case "${_dom}" in \#*|"") continue ;; esac
+        _v="$(_php_vrn_dotted "${_v//[^0-9]/}")"
+        [ -n "${_v}" ] && _out="${_out} ${_v}"
+      done < "${_c}/multi-fpm.info"
+    fi
+    if [ -e "${_c}/cli-per-platform.info" ]; then
+      _txt=""; _n=0
+      { IFS= read -r -N 65536 _txt < "${_c}/cli-per-platform.info"; } 2> /dev/null
+      while IFS= read -r _line; do
+        _n=$(( _n + 1 ))
+        [ "${_n}" -gt 200 ] && break
+        _line="${_line%%#*}"
+        read -r _k _v _rest <<< "${_line}"
+        [ -n "${_k}" ] && [ -n "${_v}" ] && [ -z "${_rest}" ] || continue
+        _v="${_v//[^0-9]/}"
+        [ -x "/opt/php${_v}/bin/php" ] || continue
+        _v="$(_php_vrn_dotted "${_v}")"
+        [ -n "${_v}" ] && _out="${_out} ${_v}"
+      done <<< "${_txt}"
+    fi
+    _mk=""
+    for _e in 56 70 71 72 73 74 80 81 82 83 84 85; do
+      [ -e "${_c}/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
+    done
+    [ -n "${_mk}" ] && _out="${_out} $(_php_vrn_dotted "${_mk}")"
+  done
+  echo "${_out}"
+}
+
+#
 # Cleanup for legacy PHP versions.
 _php_legacy_versions_cleanup_cnf() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -2908,6 +2968,11 @@ _php_if_versions_cleanup_cnf() {
         _is_PHP_eight_five=8.5
         _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_five}"
       fi
+
+      ### Add the versions the checks above cannot see: a two-digit pin and
+      ### the command-line pins, cli-per-platform.info and the phpNN.info
+      ### switches
+      _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} $(_php_versions_pinned_more)"
 
       ### Overwrite _PHP_MULTI_INSTALL with the list of used PHP versions
       _PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL}"
@@ -4446,20 +4511,20 @@ _barracuda_cnf() {
         wait
         if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
           for _Ctrl in `find /data/disk/*/log -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${_PHP_SINGLE_INSTALL} > $Ctrl/fpm.txt
-            echo ${_PHP_SINGLE_INSTALL} > $Ctrl/cli.txt
-            ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in $Ctrl"
+            echo ${_PHP_SINGLE_INSTALL} > "${_Ctrl}/fpm.txt"
+            echo ${_PHP_SINGLE_INSTALL} > "${_Ctrl}/cli.txt"
+            ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in ${_Ctrl}"
           done
           for _Ctrl in `find /data/disk/*/static/control \
             -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${_PHP_SINGLE_INSTALL} > $Ctrl/fpm.info
-            echo ${_PHP_SINGLE_INSTALL} > $Ctrl/cli.info
-            ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in $Ctrl"
+            echo ${_PHP_SINGLE_INSTALL} > "${_Ctrl}/fpm.info"
+            echo ${_PHP_SINGLE_INSTALL} > "${_Ctrl}/cli.info"
+            ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in ${_Ctrl}"
           done
           for _Ctrl in `find /data/disk/*/.drush \
             -maxdepth 0 -mindepth 0 | sort`; do
-            rm -f $Ctrl/.ctrl.php*
-            ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in $Ctrl"
+            rm -f "${_Ctrl}"/.ctrl.php*
+            ### _msg "INFO: Forced PHP ${_PHP_SINGLE_INSTALL} in ${_Ctrl}"
           done
         fi
       fi
@@ -5389,6 +5454,19 @@ _set_drush_perm() {
 }
 
 #
+# A tool's install marker for this tree and release: rm -rf DIR/* before the
+# fetch skips dotfiles, so the markers of every earlier release stayed in the
+# directory. Keep only the one just written; the checks below read that one.
+_tool_marker() {
+  local _m
+  touch "${1}/.ctrl.${_tRee}.${_xSrl}.pid"
+  for _m in "${1}"/.ctrl.*.pid; do
+    [ -e "${_m}" ] || continue
+    [ "${_m}" = "${1}/.ctrl.${_tRee}.${_xSrl}.pid" ] || rm -f "${_m}"
+  done
+}
+
+#
 # Install or update Drush 11.
 _get_drush_eleven() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5411,7 +5489,7 @@ _get_drush_eleven() {
     rm -rf /drush
   fi
   _get_dev_ext "drush-${_DRUSH_ELEVEN_VRN}.tar.gz"
-  touch /opt/tools/drush/11/.ctrl.${_tRee}.${_xSrl}.pid
+  _tool_marker /opt/tools/drush/11
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Drush ${_DRUSH_ELEVEN_VRN} installation complete"
   fi
@@ -5440,7 +5518,7 @@ _get_drush_ten() {
     rm -rf /drush
   fi
   _get_dev_ext "drush-${_DRUSH_TEN_VRN}.tar.gz"
-  touch /opt/tools/drush/10/.ctrl.${_tRee}.${_xSrl}.pid
+  _tool_marker /opt/tools/drush/10
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Drush ${_DRUSH_TEN_VRN} installation complete"
   fi
@@ -5469,7 +5547,7 @@ _get_drush_eight() {
     rm -rf /drush
   fi
   _get_dev_ext "drush-${_DRUSH_EIGHT_VRN}.tar.gz"
-  touch /opt/tools/drush/8/.ctrl.${_tRee}.${_xSrl}.pid
+  _tool_marker /opt/tools/drush/8
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "INFO: Drush ${_DRUSH_EIGHT_VRN} installation complete"
   fi
@@ -5491,16 +5569,17 @@ _get_bee() {
     return 1
   fi
   _get_dev_ext "bee.tar.gz"
+  ### Root extraction preserves the build-box owner from the tarball, the
+  ### directory itself included: root's whatever landed, like drush (the
+  ### _set_drush_perm sweep ran pre-fetch).
+  chown -R root:root /opt/tools/bee
   ### The stamp must certify a landed bee only; a stamp over an empty dir
   ### hides a failed fetch from operators reading the ctrl state.
   if [ -e "/opt/tools/bee/bee.php" ]; then
-    ### Root extraction preserves the build-box owner from the tarball;
-    ### normalize like drush (the _set_drush_perm sweep ran pre-fetch).
-    chown -R root:root /opt/tools/bee
     find /opt/tools/bee -type d -exec chmod 0755 {} \; &> /dev/null
     find /opt/tools/bee -type f -exec chmod 0644 {} \; &> /dev/null
     chmod 755 /opt/tools/bee/bee.php
-    touch /opt/tools/bee/.ctrl.${_tRee}.${_xSrl}.pid
+    _tool_marker /opt/tools/bee
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: bee installation complete"
     fi

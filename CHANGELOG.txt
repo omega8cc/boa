@@ -33,7 +33,27 @@
       the close sent a QUIT and waited a second full read timeout on a
       server that had accepted the connection but answered nothing.
 
+    * A Backdrop webform release BOA moves to now reaches existing
+      o_contrib_backdrop bundles: each bundle records the release it
+      holds, and the next Octopus upgrade replaces a different one in
+      every platform generation that carries webform. The new release is
+      fetched beside the bundle and swapped in only when complete, so a
+      failed fetch leaves the bundle as it was. Webform 1.x-4.26.6 is the
+      first: it rejects files the user did not put in the form and forces
+      certain uploaded file types to download.
+
+    * A webform release is swapped into a Backdrop bundle only when its
+      archive tests whole and holds the module's .info and .module files;
+      a pass stopped halfway through the swap is completed on the next
+      one, and a forced rebuild of the bundle keeps the webform the sites
+      run when the new one cannot be fetched.
+
 @=> Security
+
+    * The shared Backdrop redis module, the Backdrop bundle's webform and
+      bee are root's as soon as BOA unpacks them: their archives recorded
+      the account that built them, and an unpack as root kept that owner
+      until the next ownership sweep.
 
     * A per-box root cron line in /var/xdrago/cron/custom.txt that
       chowns an account's directory to <account>[.ftp]:users put it back
@@ -248,6 +268,22 @@
       TLSv1.2 connected. TLSv1.2 and TLSv1.3 are what every site speaks,
       as before; a control file left behind is ignored.
 
+    * Running PHP by name is now for members of the ltd-shell-more
+      group only. For every other shell account websh refuses a command
+      whose program is a PHP interpreter (php, phpNN, php-cli, phpdbg or
+      a path to one) in a line a tool hands to /bin/sh, a Composer @php
+      script included; lshell already refused them in the shell itself.
+      Drush, vdrush, bee and Composer keep running on the PHP the account
+      chose, and a Drush launcher at the head of a line runs on that PHP
+      whatever interpreter it names; a Composer @composer script and grav
+      composer run Composer on the named /opt/phpNN/bin/php build.
+      websh also takes the account from the
+      process, not from USER, and refuses an option between -c and the
+      command string for a shell account. A member's php56, php74 and
+      php81 to php85 commands run in the limited shell again: the
+      group's list now carries the /opt/phpNN/bin/php paths the aliases
+      expand to.
+
 @=> New Features
 
     * New ~/static/control/cli-per-platform.info gives one platform its
@@ -343,9 +379,9 @@
     * staticbuild distribute replaces a published distribution or core
       with a same-name tarball whose lock differs unless the new lock
       adds advisories or cannot be checked for them; those are
-      refused unless the platform is named with -O. The boxes that
-      already hold a platform never fetch it again and keep its old
-      bytes.
+      refused unless the platform is named with -O. A box takes the
+      new tarball at its next Octopus upgrade only where its copy of
+      the platform is idle; a copy in use keeps the old bytes.
     * staticbuild prints one row per platform: whether it built, the
       advisories left and fixed, what happened on the mirror and a
       note only where something needs attention, with the command to
@@ -596,6 +632,63 @@
 
 @=> Important Fixes
 
+    * The install markers of Drush 8, 10 and 11 and bee in /opt/tools no
+      longer pile up, one per release: each install keeps only the marker
+      of the current tree and release, which is the one the next pass
+      reads to skip a needless reinstall. The directory clean before each
+      install skipped dotfiles, so a box kept every earlier marker.
+
+    * The barracuda pass that disables unused PHP versions (on a major OS
+      upgrade, with /root/.allow-php-multi-install-cleanup.cnf, and on
+      php-idle disable) keeps every version an account pins: also a
+      two-digit version in fpm.info, cli.info or multi-fpm.info, the
+      installed versions its cli-per-platform.info lines name, and the one
+      its phpNN.info switches steer the command line to. Those were moved
+      out of /opt, and the sites or the command line pinned to them fell
+      to another PHP.
+    * An octopus upgrade no longer refuses an account whose fpm.info or
+      cli.info holds a two-digit version (84), anything else that is not
+      one version, or nothing: only a pin to PHP older than 5.6 stops it.
+      A two-digit version is read as the dotted one, and other text is
+      ignored, the account keeping the version in its octopus.cnf.
+    * With _PHP_SINGLE_INSTALL set, a barracuda pass forces each account's
+      fpm.info, cli.info, log/fpm.txt and log/cli.txt to that version
+      again; since a variable rename it wrote /fpm.info, /cli.info,
+      /fpm.txt and /cli.txt at the root of the filesystem instead.
+    * xmass and xoct read cli-per-platform.info exactly as websh does: a
+      last line without a newline counts, and a version keeps its digits
+      only. xoct compares a two-digit pin with the dotted version the
+      target's last pass recorded, so a repeated create no longer arms
+      another octopus pass for it.
+
+    * The pinned EzContent and Commerce v.2 catalogue platforms ship a
+      composer.lock whose content-hash matches their composer.json again:
+      Composer no longer warns that the lock is out of date on every run
+      there. No package version changes.
+
+    * The EzContent catalogue platform carries its JavaScript libraries
+      (Dropzone, Colorbox, Slick) in web/libraries/, where the modules look
+      for them. They sat in vendor/, so the media upload and carousel
+      widgets had no library, and Dropzone's failed requirement stopped the
+      database update after every clone or migration of an EzContent site.
+      Takes effect with the next rebuild of the platform.
+
+    * A Drupal 8+ platform added with its Platform Path at the Composer
+      project folder (composer.json there, the docroot in web/ below it)
+      now verifies. Its Verify ran on the project's own Drush from
+      vendor/bin, which runs no Ægir command, and was still marked
+      successful: no install profile was registered and no site could be
+      created on it. Ægir tasks now always run on Ægir's own Drush, and a
+      task whose command reports nothing back fails instead of passing.
+      Run Verify once more on such a platform added before the upgrade:
+      its earlier Verify did nothing.
+
+    * xmass and xoct also require on the target the PHP versions named in
+      cli-per-platform.info and the phpNN.info switch the account's
+      command line runs on. A target without one of them ran that
+      platform's drush commands and Ægir tasks on another PHP, and a
+      Drupal core that cannot run on it was refused there.
+
     * A drush line that also names composer, git or mysql, or starts with
       "cd DIR &&", now runs on the PHP chosen by cli.info and the
       phpNN.info switch; it ran on the server's default PHP.
@@ -628,6 +721,18 @@
     * A platform developer account's Drush 9+ alias store is no longer
       rebuilt every day: the nightly clean-up of /var/backups/ltd removed
       the record of its last rebuild.
+    * A Drush 9+ alias store the limited-shell worker cannot convert keeps
+      its last aliases: each store is converted aside and put in place only
+      when the conversion finished, where one unreadable alias file used to
+      leave the account without any Drush 9+ alias. The account's store and
+      the tenant's limited-shell copy are rebuilt and retried (hourly) each
+      on its own, a store emptied by hand is rebuilt, the nightly account
+      pass leaves the rebuild to the worker instead of redoing it in place,
+      and every rebuild names its cause in the worker's report.
+    * A platform developer account's Drush 9+ alias store is converted aside
+      as well: a conversion that fails keeps the account's last aliases,
+      where it used to leave vdrush without any until a retry succeeded; the
+      retry still comes on the next pass, and the notice names the cause.
     * Speed Booster no longer replays a cached 5xx while the site keeps
       failing: an error is cached for one second and refreshed, as
       designed, and a 5xx never keeps the page's cache lifetime (up to an
@@ -669,6 +774,17 @@
       foreign holder of the group. Only that exact name form is accepted.
       boa cleanup purge removes the login with its account, which no
       longer leaves it behind holding the account's group.
+    * A platform developer login (<account>.<client>-dev) now runs drush,
+      vdrush and composer on the PHP its account chose in cli.info and in
+      cli-per-platform.info, and gets the composer PHP-FPM warning: its
+      limited shell cannot open the account's static/control, so websh
+      read none of those files there and ran the server's default PHP
+      (only the phpNN.info switches, which are tested by name, reached
+      it). The limited-shell worker keeps a read-only copy of each file
+      for the login, cut to its own platforms and sites and refreshed
+      every three minutes, and websh reads that copy when the account's
+      own file cannot be opened. A cli.info change reaches the login
+      within three minutes; the phpNN.info switches still apply at once.
     * A new release of one PHP version no longer rebuilds every PHP
       version after it as well. The rebuild decision of one version was
       carried on to the next, so a new 8.3 release rebuilt 8.3, 8.4 and
@@ -834,6 +950,33 @@
       its installed.json lists, installs the missing ones again from the
       lock, and fails if any is still missing, so the published copy
       stays.
+
+    * The limited-shell worker no longer removes Composer's own home and
+      cache (.config/composer, .cache/composer, .composer) from every
+      Octopus account on each pass. Aegir tasks and builds run Composer
+      as the account, and a pass that fell between Composer's download
+      and install steps failed the install: staticbuild's Opigno build
+      lost the git mirror of a source package that way, and a GitHub
+      token set for the account never stayed. Project leftovers at the
+      account root and a vendor/ directly in ~/static are still removed.
+
+    * The platform developer login now has a Composer home and cache of
+      its own, ~/.composer and ~/.cache/composer, made by the worker
+      inside its otherwise immutable home: its Composer ran without a
+      cache and could not keep a global setting such as a GitHub token.
+
+    * staticbuild keeps its own Composer home and cache, apart from the
+      account's. A build that fails on the newest core and on every older
+      one now ends its log with the newest core's failure, not the last
+      retry's.
+
+    * staticbuild holds twig/twig below 3.30 in every distribution build
+      that resolves its own dependencies: Twig 3.30.0 breaks every page of
+      the Drupal 10 and 11 releases published before Drupal's own fix, and
+      the catalogue tarballs built since its release answered 500 on a
+      fresh install. Every tarball staticbuild publishes now records root
+      as its owner: BOA unpacks some of them as root into trees shared by
+      all instances, and they recorded the build account.
 
     * A site served over HTTPS without a certificate of its own now stays
       on HTTPS through the web server's own redirects: the clean-URL
