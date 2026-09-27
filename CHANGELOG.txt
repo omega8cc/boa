@@ -727,6 +727,11 @@
 
 @=> Important Fixes
 
+    * Fixing a platform's permissions no longer prints "No such file or
+      directory" into the task log and the Octopus log for the codebase
+      folders the platform does not have (core/ on Drupal 7, includes/
+      and misc/ on Drupal 8 and newer). The modes it sets are unchanged.
+
     * A fresh Drupal 10.1.8 platform is no longer reported as "the extract
       came out short" and fetched again on the next Octopus pass: the
       completeness check now leaves out the three directories the platform

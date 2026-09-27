@@ -185,6 +185,21 @@ _chmod_in() {
   shift
   _in_pinned_dir "${_d}" _chmod_here "$@"
 }
+# Mode $2 on every entry of type $1 (d or f) below the start points after
+# them, walked from the current (pinned) directory through _FCHMOD_PL. Only
+# start points that are real directories here are walked: a Drupal 7 root
+# has no core/, a Drupal 8+ root no includes/ or misc/, and find printed an
+# error into the task log for each one missing. A link was never walked.
+_walk_here() {
+  local _t="${1}" _m="${2}" _d
+  local -a _s=()
+  shift 2
+  for _d in "$@"; do
+    [ -d "${_d}" ] && [ ! -L "${_d}" ] && _s+=("${_d}")
+  done
+  [ "${#_s[@]}" -gt 0 ] || return 0
+  find "${_s[@]}" -type "${_t}" -exec perl -e "${_FCHMOD_PL}" "${_t}" "${_m}" {} +
+}
 
 # ./$1 in the current (pinned) directory as a fresh empty file, created
 # exclusively and renamed over the name (root's, as touch made it): a link or
@@ -427,14 +442,12 @@ _in_pinned_dir "${drupal_root}/sites/all" \
 _in_pinned_dir "${drupal_root}/sites/all/libraries" _perm_marker_here
 
 printf "Setting permissions of all codebase directories inside "${drupal_root}"...\n"
-_in_pinned_dir "${drupal_root}" \
-  find ./modules ./themes ./libraries ./includes ./misc ./profiles ./core \
-  -type d -exec perl -e "${_FCHMOD_PL}" d "${_MODE_DIR}" {} +
+_in_pinned_dir "${drupal_root}" _walk_here d "${_MODE_DIR}" \
+  ./modules ./themes ./libraries ./includes ./misc ./profiles ./core
 
 printf "Setting permissions of all codebase files inside "${drupal_root}"...\n"
-_in_pinned_dir "${drupal_root}" \
-  find ./modules ./themes ./libraries ./includes ./misc ./profiles ./core \
-  -type f -exec perl -e "${_FCHMOD_PL}" f "${_MODE_FILE}" {} +
+_in_pinned_dir "${drupal_root}" _walk_here f "${_MODE_FILE}" \
+  ./modules ./themes ./libraries ./includes ./misc ./profiles ./core
 
 if [ -e "${drupal_root}/vendor" ]; then
   printf "Setting permissions of all codebase directories inside "${drupal_root}/vendor"...\n"
