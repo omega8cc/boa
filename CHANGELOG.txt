@@ -94,6 +94,9 @@
     * An Octopus upgrade no longer leaves the basic auth password files
       unreadable to nginx until the ltd worker's next pass, and the
       worker no longer takes them to 0600 for a moment on every pass.
+    * Nor does the upgrade take them out of the web server's group
+      while it hands the account's config over: for that moment nginx
+      could not read them and answered with an error.
     * Root no longer changes the owner or mode of a shared-code
       revision's keys directory through a link the account put there,
       in the Octopus upgrade or in the nightly pass: the directory is
