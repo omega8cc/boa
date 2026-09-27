@@ -114,22 +114,166 @@ _is_foreign_cms_root() {
   return 1
 }
 
-_ctrl_stage_dir() {
-  # Root-only staging dir for control-INI writes, on the same filesystem as the
-  # account's platform trees (they all live under the account root). The account
-  # root itself is 0711 (owner oN), so the tenant may traverse it but cannot create
-  # or unlink here; the staging dir is forced root:root 0700 on every call, and a
-  # symlink planted in its place is removed rather than followed. Prints the path
-  # on success. Reads _usEr from the caller.
-  local _s
-  [ -n "${_usEr}" ] && [ -d "${_usEr}" ] || return 1
-  _s="${_usEr}/.boa-ctrl"
-  [ -L "${_s}" ] && rm -f "${_s}" &> /dev/null
-  [ -d "${_s}" ] || mkdir -p "${_s}" 2>/dev/null || return 1
-  [ -d "${_s}" ] && [ ! -L "${_s}" ] || return 1
-  chown root:root "${_s}" &> /dev/null
-  chmod 0700 "${_s}" &> /dev/null
-  echo "${_s}"
+# An account owns its static/control, and oN owns the rest of its
+# /data/disk/oN (log/, .drush/, config/, tools/, .tmp/, undo/) and the site
+# trees its aliases name, so any name there can be a link or a FIFO, and any
+# directory on the way can itself be a link. Root reads and writes those
+# names only through the helpers below (the helper.sh.inc and night family
+# bodies; this standalone cron tool sources neither).
+#
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way. Below /home and /data/disk (root's) every name
+# on the path must be a real directory; elsewhere the last name is checked
+# against its resolved parent. Once entered, ./name stays in that directory
+# whatever is swapped.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_acct_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# $2 in the real directory $1, read as _acct_read_here reads it.
+_acct_read_in() {
+  _acct_in_real_dir "${1}" _acct_read_here "${2}"
+}
+# ./$1 of the current (pinned) directory as text: status 1, and nothing,
+# unless it is a regular file; read as _acct_read_here reads it.
+_acct_read_plain_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  _acct_read_here "${1}"
+}
+# ./$1 in the current (pinned) directory as a fresh empty file: created
+# exclusively, then renamed over the name, so a link or a FIFO put at the
+# name is replaced, never followed or opened.
+_acct_mark_here() {
+  local _t="./.${1}.mark.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  dd if=/dev/null of="${_t}" conv=excl status=none 2> /dev/null \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+
+# Run "$@" inside the directory $1 as it resolves now, entered for real: $1
+# is never a link itself and resolves strictly below this account root, and
+# the resolved path is checked again once entered, so a name on the way
+# swapped for a link afterwards is no longer on the path. For the
+# alias-derived platform and site trees, which the per-site gates already
+# accept through a link on the way; the account's own log/, .drush/ and
+# config/ go through _acct_in_real_dir. Reads _usEr.
+_acct_in_resolved_dir() {
+  _in_resolved_dir acct "$@"
+}
+# The same for a site dir, which may also sit on the shared /data/all or
+# /data/disk/all store a legacy instance still hosts sites on.
+_site_in_resolved_dir() {
+  _in_resolved_dir site "$@"
+}
+_in_resolved_dir() {
+  local _k="${1}" _d="${2%/}" _rd _rus
+  shift 2
+  [ -n "${_d}" ] && [ ! -L "${_d}" ] && [ -d "${_d}" ] || return 1
+  _rd=$(realpath -e -- "${_d}" 2> /dev/null) || return 1
+  _rus=$(realpath -e -- "${_usEr}" 2> /dev/null) || return 1
+  case "${_rd}/" in
+    "${_rus}"/?*) ;;
+    /data/all/?*|/data/disk/all/?*) [ "${_k}" = "site" ] || return 1 ;;
+    *) return 1 ;;
+  esac
+  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(pwd -P)" = "${_rd}" ] && "$@" )
+}
+
+# ./$1 in the current (pinned) directory replaced by the exact bytes $2, only
+# while ./$1 is a regular file below 1 MiB (so a bounded read saw all of it):
+# a fresh file with the owner, group and read/write bits of the file it
+# replaces, then renamed over the name. The temp is created, written, owned
+# and moded through one handle opened O_EXCL|O_NOFOLLOW, so nothing root owns
+# is ever chowned by name in a directory the account can write (a hard link
+# renamed over the temp name before a chown by name would have handed
+# another file to the owner of the file it replaces); a swap before the
+# rename only lands a file the account could have put there itself. The mode
+# keeps only the read/write bits of the file it replaces, as before.
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+_acct_put_same_here() {
+  local _t="./.${1}.put.$$.${RANDOM}" _st _typ _uid _gid _mod _sz
+  _st=$(stat -c '%F|%u|%g|%a|%s' -- "./${1}" 2> /dev/null) || return 1
+  IFS='|' read -r _typ _uid _gid _mod _sz <<< "${_st}"
+  case "${_typ}" in
+    "regular file"|"regular empty file") ;;
+    *) return 1 ;;
+  esac
+  [ "${_sz}" -lt 1048576 ] || return 1
+  rm -f -- "${_t}"
+  if printf '%s' "${2}" \
+    | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" "${_mod}" \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# The lines $2 appended to ./$1 as ">>" appended them (one newline after the
+# last), and put back as _acct_put_same_here puts it.
+_acct_add_same_here() {
+  local _c
+  _c=$(_acct_read_plain_here "${1}" && echo x) || return 1
+  _acct_put_same_here "${1}" "${_c%x}${2}"$'\n'
+}
+
+# The site INI sits in a tenant-writable setgid modules dir, so it can be
+# swapped for a link or a FIFO between any test and its use, and the dir
+# itself for a link. It is read and added to only inside its modules dir,
+# entered for real (_acct_in_resolved_dir): a read is bounded, never through
+# a link and never blocked on a FIFO (status 1, and nothing, unless it is a
+# regular file); an addition is made in memory and lands, written by root,
+# as a fresh file with the INI's own owner and mode, never through a link or
+# into a FIFO. $1 = the INI path.
+_ctrl_ini_read() {
+  _acct_in_resolved_dir "${1%/*}" _acct_read_plain_here "${1##*/}"
+}
+# $2 = the line(s) to add.
+_ctrl_ini_add() {
+  _acct_in_resolved_dir "${1%/*}" _acct_add_same_here "${1##*/}" "${2}"
+}
+
+_ctrl_in_stage_dir() {
+  # Root-only staging dir for the files root puts into an account's
+  # tenant-writable trees, on the same filesystem as those trees (they all
+  # live under the account root): ${_usEr}/.boa-ctrl, forced root:root 0700
+  # on every call, a link planted at the name removed rather than followed.
+  # oN owns the account root and can rename or replace any name in it, so
+  # the dir is made, fixed and checked only once entered for real, and "$@"
+  # runs inside it: ./name there is root's alone, whatever the account puts
+  # at .boa-ctrl meanwhile. Reads _usEr from the caller.
+  [ -n "${_usEr}" ] || return 1
+  _acct_in_real_dir "${_usEr}" _ctrl_stage_here "$@"
+}
+_ctrl_stage_here() {
+  local _h _st
+  _h="$(pwd -P)/.boa-ctrl"
+  [ -L ./.boa-ctrl ] && rm -f -- ./.boa-ctrl
+  [ -d ./.boa-ctrl ] || mkdir ./.boa-ctrl 2> /dev/null
+  cd -P -- ./.boa-ctrl 2> /dev/null && [ "$(pwd -P)" = "${_h}" ] || return 1
+  chown root:root . 2> /dev/null && chmod 0700 . 2> /dev/null || return 1
+  # root's, and nobody else's to enter or write
+  _st=$(stat -c '%u %a' . 2> /dev/null)
+  [ "${_st%% *}" = "0" ] && [[ "${_st##* }" =~ ^[0-7]+$ ]] \
+    && (( (8#${_st##* } & 8#077) == 0 )) || return 1
+  "$@"
 }
 
 _reseed_ctrl_ini() {
@@ -142,32 +286,35 @@ _reseed_ctrl_ini() {
   # a symlink at its path; a plain cp -af then writes THROUGH a live link and the
   # following chown/chmod retarget it.
   #
-  # Stage the new file in a root-owned 0700 dir under the account root, then
-  # mv -f -T it onto the destination. Everything the account owns lives under
-  # that root, so the rename is same-filesystem and atomic; rename() replaces a
-  # planted symlink (incl. a symlink-to-dir) instead of following it, and a
-  # real-dir decoy makes mv fail into the clean skip. Staging outside the
-  # platform tree matters: a freshly built platform can still be group-writable
-  # all the way up to its sites/ dir, and only the chown/chmod land on the temp
-  # -- so a tenant who could write the staging dir could swap the temp for a
-  # symlink and have root chown their target. The account root is 0711, so they
-  # can traverse but not create there. Refuses a symlink/non-regular SOURCE so a
-  # tenant-symlinked template cannot disclose a root file.
+  # The new file is made in the root-only staging dir (_ctrl_in_stage_dir),
+  # where only root can touch a name, and renamed from there onto the
+  # destination with mv -f -T. Everything the account owns lives under the
+  # account root, so the rename is same-filesystem and atomic; rename()
+  # replaces a planted symlink (incl. a symlink-to-dir) instead of following
+  # it, and a real-dir decoy makes mv fail into the clean skip.
   #
   # rename() refuses to follow only the FINAL component: every directory
   # above it is resolved normally, so a tenant who swaps the modules dir
   # itself for a symlink redirects the whole write. Refuse a symlinked
-  # parent, require the resolved parent to sit under the account root, and
-  # then act on that RESOLVED parent -- a link swapped in after the check
-  # is no longer on the path we traverse. Reads _usEr, _HM_U and _HM_G from
-  # the caller. $1 = source template, $2 = dest INI path.
+  # parent, require the resolved parent to sit under the account root, enter
+  # it for real and hold it open, and rename into that open directory
+  # (/proc/self/fd): a link swapped in after the check is never on the path.
+  # The template is read inside its own resolved directory, only as a
+  # regular file, bounded and never through a link or blocked on a FIFO, so
+  # a template swapped in the tenant's modules dir can neither disclose a
+  # root file nor stall the pass. Reads _usEr, _HM_U and _HM_G from the
+  # caller. $1 = source template, $2 = dest INI path.
   local _src="$1"
   local _dst="$2"
-  local _stg _new _pnt _rpn _rus
+  local _pnt _rpn _rus _rsd
   [ -L "${_src}" ] && return 1
   [ -f "${_src}" ] || return 1
   [ -n "${_HM_U}" ] || return 1
   case "${_dst}" in
+    /*/*) : ;;
+    *) return 1 ;;
+  esac
+  case "${_src}" in
     /*/*) : ;;
     *) return 1 ;;
   esac
@@ -180,20 +327,69 @@ _reseed_ctrl_ini() {
     "${_rus}"/*) : ;;
     *) return 1 ;;
   esac
-  _dst="${_rpn}/${_dst##*/}"
-  _stg=$(_ctrl_stage_dir) || return 1
-  _new=$(mktemp "${_stg}/ctrl.XXXXXX" 2>/dev/null) || return 1
-  if [ -L "${_new}" ] || [ ! -f "${_new}" ]; then
-    rm -f "${_new}" &> /dev/null
-    return 1
-  fi
-  if ! cat "${_src}" > "${_new}" 2>/dev/null; then
-    rm -f "${_new}" &> /dev/null
+  _rsd=$(realpath -e -- "${_src%/*}" 2>/dev/null) || return 1
+  (
+    cd -P -- "${_rpn}" 2>/dev/null && [ "$(pwd -P)" = "${_rpn}" ] || exit 1
+    exec 9< . || exit 1
+    _ctrl_in_stage_dir _reseed_ctrl_ini_here "${_rsd}" "${_src##*/}" "${_dst##*/}"
+  )
+}
+# In the staging dir (the current one): the template ./$2 of the resolved
+# directory $1 put as a fresh file of the account's (0664), then renamed as
+# $3 into the destination directory held open on fd 9.
+_reseed_ctrl_ini_here() {
+  local _new
+  _new=$(mktemp ./ctrl.XXXXXX 2>/dev/null) || return 1
+  if ! ( cd -P -- "${1}" 2>/dev/null && [ "$(pwd -P)" = "${1}" ] \
+    && _acct_read_plain_here "${2}" ) > "${_new}"; then
+    rm -f -- "${_new}"
     return 1
   fi
   chown "${_HM_U}:${_HM_G:-users}" "${_new}" &> /dev/null
   chmod 0664 "${_new}" &> /dev/null
-  mv -f -T "${_new}" "${_dst}" &> /dev/null || rm -f "${_new}" &> /dev/null
+  mv -f -T -- "${_new}" "/proc/self/fd/9/${3}" &> /dev/null && return 0
+  rm -f -- "${_new}"
+  return 1
+}
+
+# The site's solr.php, put as _reseed_ctrl_ini puts an INI. The site dir is
+# the account's own, and the sites/ above it is group-writable on a ~/static
+# codebase, so solr.php or the site dir can be swapped for a link at any
+# time: a write by path would follow it, and the chown and chmod after it
+# would hand the target to the account. The file is made in the root-only
+# staging dir with its owner and mode set there, then renamed into the site
+# dir, entered for real and held open on fd 9, so nothing is written,
+# chowned or chmodded through a link. Reads _usEr, _HM_U and _HM_G.
+# $1 = the solr.php path, $2 = its text.
+_put_solr_info() {
+  [ -n "${_HM_U}" ] || return 1
+  case "${1}" in
+    /*/*) : ;;
+    *) return 1 ;;
+  esac
+  _acct_in_resolved_dir "${1%/*}" _put_solr_info_held "${1##*/}" "${2}"
+}
+# In the site dir (the current one, entered for real): held open on fd 9
+# while the staging dir is entered.
+_put_solr_info_held() {
+  exec 9< . || return 1
+  _ctrl_in_stage_dir _put_solr_info_here "${1}" "${2}"
+}
+# In the staging dir (the current one): the text $2 put as a fresh file of
+# the account's (0440), then renamed as $1 into the directory held open on
+# fd 9.
+_put_solr_info_here() {
+  local _new
+  _new=$(mktemp ./solr.XXXXXX 2>/dev/null) || return 1
+  if ! printf '%s\n' "${2}" > "${_new}"; then
+    rm -f -- "${_new}"
+    return 1
+  fi
+  chown "${_HM_U}:${_HM_G:-users}" "${_new}" &> /dev/null
+  chmod 0440 "${_new}" &> /dev/null
+  mv -f -T -- "${_new}" "/proc/self/fd/9/${1}" &> /dev/null && return 0
+  rm -f -- "${_new}"
+  return 1
 }
 
 _desymlink_planted() {
@@ -211,9 +407,17 @@ _desymlink_planted() {
 _check_config_diff() {
   # $1 is template path
   # $2 is a path to core config
+  # Sets _slrCnfUpdate for this call alone: YES when the core's file differs
+  # from the template, or is missing while the template is there (a broken
+  # core), empty otherwise. Reset first, so a value left by an earlier call
+  # (another site, core or file) never decides this one.
   _preCnf="$1"
   _slrCnf="$2"
-  if [ -f "${_preCnf}" ] && [ -f "${_slrCnf}" ]; then
+  _slrCnfUpdate=""
+  if [ -f "${_preCnf}" ] && [ ! -f "${_slrCnf}" ]; then
+    _slrCnfUpdate=YES
+    echo "INFO: ${_slrCnf} missing -- update from ${_preCnf}"
+  elif [ -f "${_preCnf}" ] && [ -f "${_slrCnf}" ]; then
     _slrCnfUpdate=NO
     _diffMyTest=$(diff -w -B ${_slrCnf} ${_preCnf} 2>&1)
     if [ -z "${_diffMyTest}" ]; then
@@ -227,10 +431,203 @@ _check_config_diff() {
   fi
 }
 
+# Run "$@" inside ./$1 of the current (pinned) directory, entered one name at
+# a time: every name on the relative path $1 must be a real directory, never
+# a link, when it is entered, so no name on the way can point the walk at
+# another directory, whatever is swapped before or after. Changes the
+# directory: run it only as the "$@" of _acct_in_resolved_dir (a subshell).
+_acct_down_real_here() {
+  local _p="${1}" _n _h
+  shift
+  while [ -n "${_p}" ]; do
+    _n="${_p%%/*}"
+    if [ "${_n}" = "${_p}" ]; then
+      _p=""
+    else
+      _p="${_p#*/}"
+    fi
+    case "${_n}" in
+      ""|.|..) return 1 ;;
+    esac
+    _h="$(pwd -P)/${_n}"
+    cd -P -- "./${_n}" 2> /dev/null && [ "$(pwd -P)" = "${_h}" ] || return 1
+  done
+  "$@"
+}
+
+# Run "$@" inside the site's upload dir, sites/<site>/files/solr, entered
+# for real: the platform root as it resolves now (_acct_in_resolved_dir),
+# then sites and the site one real directory at a time
+# (_acct_down_real_here), then files (_solr_in_files_here), then solr, a
+# real directory. Reads _Plr, _Dom and _usEr.
+_solr_in_upload_dir() {
+  [ -n "${_Plr}" ] && [ -n "${_Dom}" ] || return 1
+  _acct_in_resolved_dir "${_Plr}" _acct_down_real_here \
+    "sites/${_Dom}" _solr_in_files_here "$@"
+}
+# In the site dir (the current one, entered for real): run "$@" inside
+# ./files/solr. files is a real directory, or the link autosymlink puts
+# there into the account's files store, followed only where it resolves
+# into the account's own static/files or that store moved onto attached
+# storage (/mnt/<mount>/files/<oN>/static/files), and checked again once
+# entered. Any other link on the way refuses. Changes the directory: run it
+# only inside a subshell. Reads _usEr.
+_solr_in_files_here() {
+  local _r _rus _a _m
+  if [ ! -L ./files ]; then
+    _acct_down_real_here files/solr "$@"
+    return
+  fi
+  _r=$(realpath -e -- ./files 2> /dev/null) || return 1
+  _rus=$(realpath -e -- "${_usEr}" 2> /dev/null) || return 1
+  _a="${_usEr##*/}"
+  _m="^/mnt/[^/]+/files/${_a//./[.]}/static/files/."
+  case "${_r}" in
+    ""|*[!A-Za-z0-9._/-]*) return 1 ;;
+    "${_rus}/static/files/"?*) ;;
+    *) [[ "${_r}" =~ ${_m} ]] || return 1 ;;
+  esac
+  cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] || return 1
+  _acct_down_real_here solr "$@"
+}
+
+# The site's Solr config upload (sites/<site>/files/solr) is tenant-writable,
+# so any name in it can be a link, a hard link or a FIFO, and files/solr or
+# any directory above it can be swapped for a link. It is used only inside
+# that directory, entered for real (_solr_in_upload_dir). Every regular file
+# directly in it, the set find -maxdepth 1 -type f copied, is read bounded,
+# never through a link and never blocked on a FIFO, into the root-only
+# directory $1, and only those copies are diffed and published: no tenant
+# path is ever diffed or copied by name. A hard link (another file's bytes),
+# a file of 8 MiB or more, one that changed while read, more than 512 names
+# or more than 32 MiB in all refuse the whole set, so a core never gets part
+# of one. Status 1 on a refusal. Reads _Plr, _Dom and _usEr. $1 = the
+# root-only staging dir.
+_solr_upload_stage() {
+  [ -d "${1}" ] || return 1
+  _solr_in_upload_dir _solr_upload_stage_here "${1}"
+}
+# ./$1 in the current (pinned) directory, read as _acct_read_here reads it,
+# up to 8 MiB: an uploaded synonyms or stopwords list can be large.
+_solr_upload_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=8388608 count=1 status=none 2> /dev/null
+}
+# In the upload dir (the current one, entered for real): each regular file
+# copied into the root-only directory $1 as root's own file.
+_solr_upload_stage_here() {
+  local _to="${1}" _n _q _st _typ _nl _sz _cnt=0 _tot=0
+  shopt -s nullglob dotglob
+  for _n in *; do
+    _q="${_n//[^[:alnum:]._-]/?}"
+    _cnt=$(( _cnt + 1 ))
+    if [ "${_cnt}" -gt 512 ]; then
+      echo "SOLR-UPLOAD-REFUSED: ${_Dom} more than 512 names in files/solr"
+      return 1
+    fi
+    _st=$(stat -c '%F|%h|%s' -- "./${_n}" 2> /dev/null) || continue
+    IFS='|' read -r _typ _nl _sz <<< "${_st}"
+    # A link, a FIFO or a directory is not published, as find -type f
+    # never listed one.
+    case "${_typ}" in
+      "regular file"|"regular empty file") ;;
+      *) continue ;;
+    esac
+    if [ "${_nl}" != "1" ]; then
+      echo "SOLR-UPLOAD-REFUSED: ${_Dom} ${_q} is a hard link"
+      return 1
+    fi
+    if [ "${_sz}" -ge 8388608 ]; then
+      echo "SOLR-UPLOAD-REFUSED: ${_Dom} ${_q} is 8 MiB or more"
+      return 1
+    fi
+    _tot=$(( _tot + _sz ))
+    if [ "${_tot}" -gt 33554432 ]; then
+      echo "SOLR-UPLOAD-REFUSED: ${_Dom} more than 32 MiB in files/solr"
+      return 1
+    fi
+    if ! _solr_upload_read_here "${_n}" > "${_to}/${_n}"; then
+      echo "SOLR-UPLOAD-REFUSED: ${_Dom} ${_q} could not be read"
+      return 1
+    fi
+    # The size stat saw, or the name was swapped or changed while read.
+    if [ "$(stat -c %s -- "${_to}/${_n}" 2> /dev/null)" != "${_sz}" ]; then
+      echo "SOLR-UPLOAD-REFUSED: ${_Dom} ${_q} changed while read"
+      return 1
+    fi
+  done
+  return 0
+}
+# The upload, emptied once published as before (rm -f files/solr/*), but
+# only inside the real files/solr, entered as _solr_upload_stage enters it:
+# rm unlinks a link found there and never follows one.
+_solr_upload_clear() {
+  _solr_in_upload_dir _solr_upload_clear_here
+}
+_solr_upload_clear_here() {
+  local _n
+  shopt -s nullglob
+  for _n in *; do
+    rm -f -- "./${_n}" 2> /dev/null
+  done
+  return 0
+}
+# The first file of the staged upload $1 that is missing from the core conf
+# dir $2 or differs from its copy there by a byte, printed with anything
+# unusual in its name masked; status 1 when every staged file is there as
+# uploaded. Every file counts, not solrconfig.xml alone, so a change to any
+# file of the set is applied, and a set a failed copy left short is copied
+# again. Both dirs are root's or Solr's, never the account's.
+_solr_upload_differs() (
+  local _n
+  shopt -s nullglob dotglob
+  for _n in "${1}"/*; do
+    _n="${_n##*/}"
+    [ -f "${1}/${_n}" ] || continue
+    if ! cmp -s -- "${1}/${_n}" "${2}/${_n}" 2> /dev/null; then
+      echo "${_n//[^[:alnum:]._-]/?}"
+      return 0
+    fi
+  done
+  return 1
+)
+# The staged upload $1 put in the core conf dir $2 as one set, in place of
+# the files there (what rm -f conf/* removes, which are copied aside into
+# the root-only dir $3 first). When any staged file fails to copy, the files
+# copied so far are removed and the previous ones put back, so the core
+# never keeps part of a set and the next pass still sees the upload as new.
+# Status 1 when the set is not in place, 2 when the previous files could not
+# all be put back either: $3 is then the only full copy of them.
+_solr_upload_apply() {
+  local _from="${1}" _conf="${2}" _old="${3}"
+  [ -d "${_from}" ] && [ -d "${_conf}" ] && [ -d "${_old}" ] || return 1
+  find "${_conf}" -mindepth 1 -maxdepth 1 ! -type d ! -name '.*' \
+    -exec cp -a -t "${_old}/" -- {} + &> /dev/null || return 1
+  rm -f "${_conf}"/* 2> /dev/null
+  if find "${_from}" -mindepth 1 -maxdepth 1 -type f \
+    -exec cp -f -t "${_conf}/" -- {} + &> /dev/null; then
+    return 0
+  fi
+  _solr_upload_restore "${_conf}" "${_old}" || return 2
+  return 1
+}
+# The previous files, copied aside into the root-only dir $2 by
+# _solr_upload_apply, put back into the core conf dir $1 in place of the
+# files there now, modes and owners as they were. Status 1 when they could
+# not all be put back.
+_solr_upload_restore() {
+  [ -d "${1}" ] && [ -d "${2}" ] || return 1
+  rm -f "${1}"/* 2> /dev/null
+  find "${2}" -mindepth 1 -maxdepth 1 \
+    -exec cp -a -t "${1}/" -- {} + &> /dev/null
+}
+
 _write_solr_config() {
   # ${1} is module
   # ${2} is a path to solr.php
   # ${3} is Jetty/Solr version
+  # The text is put in place by _put_solr_info, never written by path.
+  local _txt
   if [ ! -z "${1}" ] \
     && [ ! -z "${2}" ] \
     && [ ! -z "${3}" ] \
@@ -249,35 +646,36 @@ _write_solr_config() {
     if [ "${1}" = "search_api_solr" ] || [ "${1}" = "search_api_solr7" ] || [ "${1}" = "search_api_solr9" ]; then
       _module=search_api_solr
     fi
-    echo "Your SOLR core access details for ${_Dom} site are as follows:" > ${2}
-    echo                                                                 >> ${2}
-    echo "  Drupal 8 and newer"                                          >> ${2}
-    echo "  Solr version .....: ${_VRS}"                                 >> ${2}
-    echo "  Solr host ........: 127.0.0.1"                               >> ${2}
-    echo "  Solr port ........: ${_PRT}"                                 >> ${2}
-    echo "  Solr path ........: leave empty"                             >> ${2}
-    echo "  Solr core ........: ${_SolrCoreID}"                          >> ${2}
-    echo                                                                 >> ${2}
-    echo "  Don't forget to manually upload the configuration files"     >> ${2}
-    echo "  (schema.xml, solrconfig.xml) under ${_Dom}/files/solr"       >> ${2}
-    echo                                                                 >> ${2}
-    if [ "${3}" != "solr9" ]; then
-      echo "  Drupal 7:"                                                 >> ${2}
-      echo "  Solr version .....: ${_VRS}"                               >> ${2}
-      echo "  Solr host ........: 127.0.0.1"                             >> ${2}
-      echo "  Solr port ........: ${_PRT}"                               >> ${2}
-      echo "  Solr path ........: /solr/${_SolrCoreID}"                  >> ${2}
-      echo                                                               >> ${2}
-    fi
-    echo "It has been auto-configured to work with latest version"       >> ${2}
-    echo "of your integration module, but you need to add the module "   >> ${2}
-    echo "to your site codebase before you will be able to use Solr."    >> ${2}
-    echo                                                                 >> ${2}
-    echo "To learn more please make sure to check the module docs at:"   >> ${2}
-    echo                                                                 >> ${2}
-    echo "https://drupal.org/project/${_module}"                         >> ${2}
-    chown ${_HM_U}:${_HM_G:-users} ${2} &> /dev/null
-    chmod 440 ${2} &> /dev/null
+    _txt=$(
+      echo "Your SOLR core access details for ${_Dom} site are as follows:"
+      echo
+      echo "  Drupal 8 and newer"
+      echo "  Solr version .....: ${_VRS}"
+      echo "  Solr host ........: 127.0.0.1"
+      echo "  Solr port ........: ${_PRT}"
+      echo "  Solr path ........: leave empty"
+      echo "  Solr core ........: ${_SolrCoreID}"
+      echo
+      echo "  Don't forget to manually upload the configuration files"
+      echo "  (schema.xml, solrconfig.xml) under ${_Dom}/files/solr"
+      echo
+      if [ "${3}" != "solr9" ]; then
+        echo "  Drupal 7:"
+        echo "  Solr version .....: ${_VRS}"
+        echo "  Solr host ........: 127.0.0.1"
+        echo "  Solr port ........: ${_PRT}"
+        echo "  Solr path ........: /solr/${_SolrCoreID}"
+        echo
+      fi
+      echo "It has been auto-configured to work with latest version"
+      echo "of your integration module, but you need to add the module "
+      echo "to your site codebase before you will be able to use Solr."
+      echo
+      echo "To learn more please make sure to check the module docs at:"
+      echo
+      echo "https://drupal.org/project/${_module}"
+    )
+    _put_solr_info "${2}" "${_txt}"
   fi
 }
 
@@ -287,15 +685,28 @@ _reload_core_cnf() {
   # Example: _reload_core_cnf 9077 ${_SolrCoreID}
   # Example: _reload_core_cnf 9099 ${_SolrCoreID}
   # Example: _reload_core_cnf 8099 ${_SolrCoreID}
-  curl "http://127.0.0.1:${1}/solr/admin/cores?action=RELOAD&core=${2}" &> /dev/null
-  echo "Reloaded Solr core ${2} cnf on port ${1}"
+  # Solr answers a RELOAD it refuses (a config it cannot load) with an error
+  # status and keeps serving the old core from memory, so only a 200 is
+  # logged as reloaded. The status is left in _slrReloadCode, 000 when
+  # Solr gave no answer at all.
+  local _code
+  _code=$(curl -s -o /dev/null -w '%{http_code}' \
+    "http://127.0.0.1:${1}/solr/admin/cores?action=RELOAD&core=${2}" 2> /dev/null)
   wait
+  _slrReloadCode="${_code:-000}"
+  if [ "${_code}" = "200" ]; then
+    echo "Reloaded Solr core ${2} cnf on port ${1}"
+    return 0
+  fi
+  echo "SOLR-RELOAD-ERROR: core ${2} on port ${1} -- HTTP ${_code:-000}"
+  return 1
 }
 
 _update_solr() {
   # ${1} is module
   # ${2} is solr core path (auto) == _SOLR_DIR
   # ${3} is solr server version: solr9 or solr7 or jetty9
+  local _upStg="" _upOld="" _upDiff="" _upRc _upPort _upCode _upKeepOld=NO
   _SERV="${3}"
   if [ ! -z "${1}" ] && [ -e "/data/conf/solr" ]; then
     if [ "${1}" = "apachesolr" ]; then
@@ -352,7 +763,9 @@ _update_solr() {
           chown ${_SERV}:${_SERV} ${2}/conf/*
           touch ${2}/conf/.just-updated.pid
         else
-          rm -f ${2}/conf/.just-updated.pid
+          # The marker stays as the leg above left it: that leg may have
+          # just copied the whole template in (which is why this file
+          # shows no diff) and set it, and the reload below must run.
           rm -f ${2}/conf/.yes-update.txt
         fi
       fi
@@ -365,64 +778,125 @@ _update_solr() {
       && [ -e "${_Plr}/sites/${_Dom}/files/solr/solrconfig.xml" ] \
       && [ -e "${_Plr}/sites/${_Dom}/files/solr/solrcore.properties" ]; then
       if [ "${1}" = "search_api_solr" ] || [ "${1}" = "search_api_solr7" ] || [ "${1}" = "search_api_solr9" ]; then
-        _check_config_diff "${_Plr}/sites/${_Dom}/files/solr/solrconfig.xml" "${2}/conf/solrconfig.xml"
-        if [ ! -z "${_slrCnfUpdate}" ]; then
-          rm -f ${2}/conf/*
-          ### The upload dir is tenant-writable, and cp -af preserves symlinks,
-          ### so a link uploaded there lands in the core conf dir and the mode
-          ### and ownership passes below would follow it. Copy the regular
-          ### files only, and set metadata with find -type f, which never
-          ### matches a link. A client's own relative links are simply not
-          ### published -- the config they upload still is.
-          find ${_Plr}/sites/${_Dom}/files/solr -maxdepth 1 -type f \
-            -exec cp -af {} ${2}/conf/ \; &> /dev/null
-          find ${2}/conf -maxdepth 1 -type f -exec chmod 644 {} \; &> /dev/null
-          find ${2}/conf -maxdepth 1 -type f \
-            -exec chown ${_SERV}:${_SERV} {} \; &> /dev/null
-          rm -f ${_Plr}/sites/${_Dom}/files/solr/*
-          touch ${2}/conf/.yes-custom.txt
-          touch ${2}/conf/.just-updated.pid
+        ### The tests above only pick this branch. The upload is read once,
+        ### inside the real files/solr, into a root-only dir
+        ### (_solr_upload_stage), and only those copies are diffed and
+        ### published: a link or FIFO put in the upload, or a directory on
+        ### the way swapped for a link, can neither stall the pass nor make
+        ### root read or publish another directory's files. A client's own
+        ### links are simply not published -- the config they upload still
+        ### is. The set is applied whole or not at all.
+        _upStg=$(mktemp -d /tmp/solr_upload_XXXXXX 2> /dev/null)
+        if [ -n "${_upStg}" ] \
+          && _solr_upload_stage "${_upStg}" \
+          && [ -f "${_upStg}/schema.xml" ] \
+          && [ -f "${_upStg}/solrconfig.xml" ] \
+          && [ -f "${_upStg}/solrcore.properties" ]; then
+          # The core's solrcore.properties is kept in BOA's own form, which
+          # _fix_solr9_cnf and _fix_solr7_cnf put it in, and restart Solr
+          # for, at the start of a pass. The staged copy is put in that form
+          # first, so the core gets it as BOA keeps it: nothing is rewritten
+          # or restarted for it later, and the same set uploaded again
+          # compares identical below.
+          if _solr_props_boa_form "${_upStg}/solrcore.properties" "${_SERV}"; then
+            echo "INFO: ${_Dom} uploaded solrcore.properties set to this server's Solr"
+          fi
+          # Any staged file missing from the core or different there makes
+          # the set new, so a core without solrconfig.xml is repaired too.
+          if _upDiff=$(_solr_upload_differs "${_upStg}" "${2}/conf"); then
+            echo "INFO: ${_Dom} upload differs from ${2}/conf at ${_upDiff}"
+            # root's own copies of root's own staged files. The previous
+            # files stay aside until Solr has reloaded the core on the set,
+            # and a set it refuses is rolled back to them, so the core is
+            # never left with files it cannot load at its next start. The
+            # core is marked custom, and the upload emptied, only once the
+            # set is loaded; a failed copy leaves the previous files and the
+            # upload in place, for the next pass to retry.
+            _upOld=$(mktemp -d /tmp/solr_conf_XXXXXX 2> /dev/null)
+            _upRc=1
+            if [ -n "${_upOld}" ]; then
+              _solr_upload_apply "${_upStg}" "${2}/conf" "${_upOld}"
+              _upRc=$?
+            fi
+            if [ "${_upRc}" = "0" ]; then
+              find "${2}/conf" -maxdepth 1 -type f \
+                -exec chmod 644 {} \; &> /dev/null
+              find "${2}/conf" -maxdepth 1 -type f \
+                -exec chown "${_SERV}:${_SERV}" {} \; &> /dev/null
+              # This core's reload is run here, not in the shared step
+              # below, so its answer decides the set while the previous
+              # files are still aside. The marker outlives it only when a
+              # pass stops before the answer: the next pass finds the set
+              # in place and leaves the reload to the shared step.
+              touch "${2}/conf/.just-updated.pid"
+              _upPort=""
+              if [[ "${2}" =~ "/var/solr7/data" ]] && [ "${_SERV}" = "solr7" ]; then
+                _upPort=9077
+              elif [[ "${2}" =~ "/var/solr9/data" ]] && [ "${_SERV}" = "solr9" ]; then
+                _upPort=9099
+              fi
+              [ -n "${_upPort}" ] && touch "${2}/conf/${_xSrl}.conf"
+              if [ -z "${_upPort}" ] \
+                || _reload_core_cnf "${_upPort}" "${_SolrCoreID}"; then
+                touch "${2}/conf/.yes-custom.txt"
+                _solr_upload_clear
+              else
+                _upCode="${_slrReloadCode:-000}"
+                if _solr_upload_restore "${2}/conf" "${_upOld}"; then
+                  echo "SOLR-UPLOAD-ROLLED-BACK: ${_Dom} Solr answered HTTP ${_upCode} to the uploaded set, previous files put back into ${2}/conf"
+                  _reload_core_cnf "${_upPort}" "${_SolrCoreID}"
+                else
+                  _upKeepOld=YES
+                  echo "SOLR-UPLOAD-ERROR: ${_Dom} previous files could not be put back into ${2}/conf, a copy is kept in ${_upOld}"
+                fi
+                # No answer at all (Solr not running) says nothing about the
+                # set, so it is tried again on the next pass. A set Solr
+                # answered with an error is removed, as an applied one is,
+                # and not retried on every pass: the log says why.
+                if [ "${_upCode}" = "000" ]; then
+                  echo "SOLR-UPLOAD-KEPT: ${_Dom} Solr did not answer, the upload is tried again on the next pass"
+                else
+                  _solr_upload_clear
+                fi
+              fi
+              rm -f "${2}/conf/.just-updated.pid"
+            elif [ "${_upRc}" = "2" ]; then
+              _upKeepOld=YES
+              echo "SOLR-UPLOAD-ERROR: ${_Dom} copy into ${2}/conf failed and the previous files could not be put back, a copy is kept in ${_upOld}, the upload kept for the next pass"
+            else
+              echo "SOLR-UPLOAD-ERROR: ${_Dom} copy into ${2}/conf failed, previous files and the upload kept for the next pass"
+            fi
+            [ "${_upKeepOld}" = "NO" ] && [ -n "${_upOld}" ] \
+              && [ -d "${_upOld}" ] && rm -rf -- "${_upOld}"
+          else
+            # Every staged file is in the core as uploaded: a pass that
+            # applied it stopped before emptying the upload, or the same set
+            # was uploaded again. It is the account's config, marked as an
+            # applied upload is, and emptied, so it is not re-read on every
+            # pass for good. A marker left by a pass that stopped before
+            # its reload stays for the shared step below, which reloads the
+            # core on the set.
+            touch "${2}/conf/.yes-custom.txt"
+            _solr_upload_clear
+            rm -f "${2}/conf/.yes-update.txt"
+          fi
         else
-          rm -f ${2}/conf/.just-updated.pid
-          rm -f ${2}/conf/.yes-update.txt
+          echo "SKIP: Solr config upload for ${_Dom} not applied this pass"
         fi
+        [ -n "${_upStg}" ] && [ -d "${_upStg}" ] && rm -rf -- "${_upStg}"
       fi
-    elif [ "${1}" = "search_api_solr" ] \
-      && [ -e "${_Plr}/modules/o_contrib_eight" ] \
-      && [ ! -e "${_Plr}/sites/${_Dom}/files/solr/schema.xml" ]; then
-      if [ ! -e "${2}/conf/.protected.conf" ] \
-        && [ ! -e "${2}/conf/.yes-custom.txt" ] \
-        && [ -e "${2}/conf" ]; then
-        _check_config_diff "/data/conf/solr/search_api_solr/solr7_drupal8/schema.xml" "${2}/conf/schema.xml"
-        if [ ! -z "${_slrCnfUpdate}" ]; then
-          rm -f ${2}/conf/*
-          cp -af /data/conf/solr/search_api_solr/solr7_drupal8/* ${2}/conf/
-          chmod 644 ${2}/conf/*
-          chown ${_SERV}:${_SERV} ${2}/conf/*
-          touch ${2}/conf/.just-updated.pid
-        else
-          rm -f ${2}/conf/.just-updated.pid
-          rm -f ${2}/conf/.yes-update.txt
-        fi
-        _check_config_diff "/data/conf/solr/search_api_solr/solr7_drupal8/solrcore.properties" "${2}/conf/solrcore.properties"
-        if [ ! -z "${_slrCnfUpdate}" ]; then
-          rm -f ${2}/conf/*
-          cp -af /data/conf/solr/search_api_solr/solr7_drupal8/* ${2}/conf/
-          chmod 644 ${2}/conf/*
-          chown ${_SERV}:${_SERV} ${2}/conf/*
-          touch ${2}/conf/.just-updated.pid
-        else
-          rm -f ${2}/conf/.just-updated.pid
-          rm -f ${2}/conf/.yes-update.txt
-        fi
-      fi
+    # Drupal 8 and later cores are created on Solr's own managed schema
+    # (without -d); their config comes only from the account's files/solr
+    # upload above. BOA ships no template for them.
     fi
     _fiLe="${_Dir}/solr.php"
     echo "Info file for ${_Dom} is ${_fiLe}"
     echo "Info _SERV is ${_SERV}"
     _SOLR_CONFIG_INFO_UPDATE=NO
     if [ -e "${_fiLe}" ]; then
-      _SOLR_CONFIG_INFO_TEST=$(grep "${_SolrCoreID}" ${_fiLe} 2>&1)
+      # Read inside the site dir: never through a link or blocked on a FIFO.
+      _SOLR_CONFIG_INFO_TEST=$(_acct_in_resolved_dir "${_fiLe%/*}" \
+        _acct_read_plain_here "${_fiLe##*/}" | grep "${_SolrCoreID}" 2>&1)
       if [[ ! "${_SOLR_CONFIG_INFO_TEST}" =~ "${_SolrCoreID}" ]]; then
         _SOLR_CONFIG_INFO_UPDATE=YES
       fi
@@ -447,10 +921,11 @@ _update_solr() {
         _reload_core_cnf 9099 ${_SolrCoreID}
       fi
       # The marker is a one-shot request for the write and the reload
-      # above. The template branches clear it on their next no-diff pass,
-      # but the tenant-upload branch empties the upload dir and is never
-      # entered again, so its marker used to stay and every later pass
-      # rewrote solr.php and reloaded the core, forever.
+      # above. The template branches also clear it on their next no-diff
+      # pass; the upload branch reloads its core itself and clears its own,
+      # which reaches this step only from a pass that stopped before that
+      # reload. Cleared here, so no later pass rewrites solr.php and
+      # reloads the core forever.
       rm -f ${2}/conf/.just-updated.pid
     fi
   fi
@@ -599,6 +1074,8 @@ _archive_solr_core() {
 
 _delete_solr() {
   # ${1} is solr core path
+  # The site's solr.php is removed only inside the site dir, entered for real
+  # (_acct_in_resolved_dir), so a site dir swapped for a link is never used.
   if [[ "${1}" =~ "solr4" ]]; then
     _SOLR_BASE="/opt/solr4"
   elif [[ "${1}" =~ "solr7" ]]; then
@@ -638,7 +1115,7 @@ _delete_solr() {
           &> /dev/null
         wait
       fi
-      rm -f ${_Dir}/solr.php
+      _acct_in_resolved_dir "${_Dir}" rm -f -- ./solr.php &> /dev/null
     elif [ "${_SOLR_BASE}" = "/var/solr7/data" ] \
       && [ -x "/opt/solr7/bin/solr" ] \
       && [ -e "/var/solr7/data/solr.xml" ]; then
@@ -660,7 +1137,7 @@ _delete_solr() {
         su -s /bin/bash - solr7 -c "/opt/solr7/bin/solr delete -p 9077 -c ${_Legacy_SolrCoreID}"
         wait
       fi
-      rm -f ${_Dir}/solr.php
+      _acct_in_resolved_dir "${_Dir}" rm -f -- ./solr.php &> /dev/null
     elif [ "${_SOLR_BASE}" = "/opt/solr4" ] && _archive_solr_core "${1}"; then
       sed -i "s/.*instan_ceDir=\"${_SolrCoreID}\".*//g" ${_SOLR_BASE}/solr.xml
       wait
@@ -671,7 +1148,7 @@ _delete_solr() {
       sed -i "/^$/d" ${_SOLR_BASE}/solr.xml &> /dev/null
       wait
       rm -rf ${1}
-      rm -f ${_Dir}/solr.php
+      _acct_in_resolved_dir "${_Dir}" rm -f -- ./solr.php &> /dev/null
       pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
       service jetty9 start &> /dev/null
     fi
@@ -867,41 +1344,36 @@ _check_solr() {
 }
 
 _ctrl_ini_leg_ok() {
-  # Re-check the site INI right before a read/append leg. The loop-start
-  # strip in _check_sites_list can be minutes old by now (a CoreAdmin CREATE,
-  # a jetty9 restart), and ">>" appends THROUGH a link planted since,
-  # creating its target. Re-validate the dir, strip a planted link, and act
-  # only on a regular file. Reads _Dir and _DIR_CTRL_F.
+  # Re-check the site INI right before a read/add leg. The loop-start strip
+  # in _check_sites_list can be minutes old by now (a CoreAdmin CREATE, a
+  # jetty9 restart), and a link planted since stays until stripped.
+  # Re-validate the dir, strip a planted link, and act only on a regular
+  # file; the leg itself reads and adds through _ctrl_ini_read and
+  # _ctrl_ini_add, which never follow a name swapped after this test.
+  # Reads _Dir and _DIR_CTRL_F.
   _validate_ctrl_dir "${_Dir}/modules" || return 1
   _desymlink_planted "${_DIR_CTRL_F}"
   [ -f "${_DIR_CTRL_F}" ] && [ ! -L "${_DIR_CTRL_F}" ]
 }
 
-_ctrl_ini_append() {
-  # Append one line to the site INI as the account's own user, never as root:
-  # a link planted at the name after _ctrl_ini_leg_ok then reaches only what
-  # the account could already write. $1 = the line. Reads _HM_U, _DIR_CTRL_F.
-  [ -n "${_HM_U}" ] || return 1
-  # shellcheck disable=SC2016  # $1/$2 belong to the inner bash, not this shell
-  runuser -u "${_HM_U}" -- /bin/bash -c 'printf "%s\n" "$1" >> "$2"' _ "$1" "${_DIR_CTRL_F}" &> /dev/null
-}
-
 _solr_teardown_intended() {
-  # ${1} = site INI. A commented-out directive is an operator's teardown
-  # request (docs/SOLR.md) -- unless the INI is the placeholder BOA itself
-  # reseeded after the file went missing. That pass sets a root-only sentinel
-  # beside the staging dir, and later passes keep honouring it for as long as
+  # ${1} = site INI text (_ctrl_ini_read). A commented-out directive is an
+  # operator's teardown request (docs/SOLR.md) -- unless the INI is the
+  # placeholder BOA itself reseeded after the file went missing. That pass
+  # sets a root-only sentinel in the staging dir, and later passes keep
+  # honouring it for as long as
   # the INI still carries the pristine placeholder line: the first moment the
   # placeholder can carry operator intent is when that line has been edited,
   # and BOA's own nightly INI writers never touch it. The sentinel is dropped
   # again the moment a valid module directive is seen. Durable on purpose: a
   # shell flag protects one pass, and the cron runs every four minutes.
-  local _sen
+  # oN owns the account root, so the sentinel is looked up only inside the
+  # real .boa-ctrl, never through a link put at that name.
   [ "${_SOLR_INI_RESEEDED}" = "YES" ] && return 1
   [ -n "${_SolrCoreID}" ] || return 0
-  _sen="${_usEr}/.boa-ctrl/solr-reseeded.${_SolrCoreID}"
-  [ -e "${_sen}" ] || return 0
-  if grep -q "^;solr_integration_module = your_module_name_here" "$1" 2>/dev/null; then
+  _acct_in_real_dir "${_usEr}/.boa-ctrl" \
+    test -e "./solr-reseeded.${_SolrCoreID}" || return 0
+  if grep -q "^;solr_integration_module = your_module_name_here" <<< "$1" 2>/dev/null; then
     return 1
   fi
   return 0
@@ -915,44 +1387,62 @@ _setup_solr() {
   # stripped symlink all produce it), so a pass that had to reseed never tears
   # down, and -- through the sentinel _solr_teardown_intended reads -- neither
   # does any later pass until the operator has edited the directive itself.
+  #
+  # The core state below is global and every site of every account runs
+  # through here in one process, so it is cleared first: legs 2 and 3 act
+  # only on the core leg 1 chose for this site in this call (_leg1), never
+  # on one left by the site before, possibly another account's, when this
+  # site's leg 1 did not run.
+  local _iniTxt _leg1=NO
+  _SOLR_MODULE="" _SOLR_BASE="" _SOLR_VER="" _SOLR_DIR="" _SOLR_TEARDOWN=NO
+  _SLR_CM_CFG_RT=NO _SOLR_PROTECT_CTRL=""
   _SOLR_INI_RESEEDED=NO
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
     _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
     _SOLR_INI_RESEEDED=YES
     if [ -e "${_DIR_CTRL_F}" ] && [ -n "${_SolrCoreID}" ]; then
-      _sen_dir=$(_ctrl_stage_dir) \
-        && touch "${_sen_dir}/solr-reseeded.${_SolrCoreID}" &> /dev/null
+      _ctrl_in_stage_dir _acct_mark_here "solr-reseeded.${_SolrCoreID}" \
+        &> /dev/null
     fi
   fi
   ###
+  ### Each leg reads the INI once, as it stands when the leg starts
+  ### (_ctrl_ini_read), and tests that text: a leg can come minutes after the
+  ### one before it (a CoreAdmin CREATE, a jetty9 restart).
+  ###
   ### Support for solr_integration_module directive
   ###
-  if _ctrl_ini_leg_ok; then
+  if _ctrl_ini_leg_ok && _iniTxt=$(_ctrl_ini_read "${_DIR_CTRL_F}"); then
+    _leg1=YES
     _SOLR_MODULE="your_module_name_here"
-    _SOLR_IM_PT=$(grep "solr_integration_module" ${_DIR_CTRL_F} 2>&1)
+    _SOLR_IM_PT=$(grep "solr_integration_module" <<< "${_iniTxt}" 2>&1)
     if [[ "${_SOLR_IM_PT}" =~ "solr_integration_module" ]]; then
       _DO_NOTHING=YES
     else
-      _ctrl_ini_append ";solr_integration_module = your_module_name_here"
+      # The teardown test below reads this placeholder, so the text gets it
+      # too, as the file does.
+      _ctrl_ini_add "${_DIR_CTRL_F}" \
+        ";solr_integration_module = your_module_name_here" \
+        && _iniTxt="${_iniTxt}"$'\n'";solr_integration_module = your_module_name_here"
     fi
     _ASOLR_T=$(grep "^solr_integration_module = apachesolr" \
-      ${_DIR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_ASOLR_T}" =~ "apachesolr" ]]; then
       _SOLR_MODULE="apachesolr"
     fi
     _SAPI_SOLR_T=$(grep "^solr_integration_module = search_api_solr" \
-      ${_DIR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_SAPI_SOLR_T}" =~ "search_api_solr" ]]; then
       _SOLR_MODULE="search_api_solr"
     fi
     _SAPI_SOLR_U=$(grep "^solr_integration_module = search_api_solr7" \
-      ${_DIR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_SAPI_SOLR_U}" =~ "search_api_solr7" ]]; then
       _SOLR_MODULE="search_api_solr7"
     fi
     _SAPI_SOLR_V=$(grep "^solr_integration_module = search_api_solr9" \
-      ${_DIR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_SAPI_SOLR_V}" =~ "search_api_solr9" ]]; then
       _SOLR_MODULE="search_api_solr9"
     fi
@@ -975,7 +1465,7 @@ _setup_solr() {
       # not delete existing cores. The eligibility has to be carried in
       # its own flag because _SOLR_VER is blanked right here.
       if [ "${_SOLR_MODULE}" = "your_module_name_here" ] \
-        && _solr_teardown_intended "${_DIR_CTRL_F}"; then
+        && _solr_teardown_intended "${_iniTxt}"; then
         _SOLR_TEARDOWN=YES
       fi
       _SOLR_MODULE=
@@ -989,7 +1479,8 @@ _setup_solr() {
       || [ "${_SOLR_MODULE}" = "apachesolr" ]; then
       # A valid directive ends the reseed grace: the operator has spoken.
       [ -n "${_SolrCoreID}" ] \
-        && rm -f "${_usEr}/.boa-ctrl/solr-reseeded.${_SolrCoreID}" &> /dev/null
+        && _acct_in_real_dir "${_usEr}/.boa-ctrl" \
+          rm -f -- "./solr-reseeded.${_SolrCoreID}" &> /dev/null
       [ -n "${_SOLR_VER}" ] && _check_solr "${_SOLR_MODULE}" "${_SOLR_DIR}" "${_SOLR_VER}"
     else
       if [ "${_SOLR_TEARDOWN}" = "YES" ]; then
@@ -1015,41 +1506,54 @@ _setup_solr() {
   ###
   ### Support for solr_custom_config directive
   ###
-  if _ctrl_ini_leg_ok; then
-    _SLR_CM_CFG_P=$(grep "solr_custom_config" ${_DIR_CTRL_F} 2>&1)
+  ### Legs 2 and 3 still add their placeholder line to this site's own INI
+  ### whatever leg 1 found (only they add it, and the INI of a site with no
+  ### Solr needs it as well), but touch the core only after leg 1 chose a
+  ### valid one in this call.
+  ###
+  if _ctrl_ini_leg_ok && _iniTxt=$(_ctrl_ini_read "${_DIR_CTRL_F}"); then
+    _SLR_CM_CFG_P=$(grep "solr_custom_config" <<< "${_iniTxt}" 2>&1)
     if [[ "${_SLR_CM_CFG_P}" =~ "solr_custom_config" ]]; then
       _DO_NOTHING=YES
     else
-      _ctrl_ini_append ";solr_custom_config = NO"
+      _ctrl_ini_add "${_DIR_CTRL_F}" ";solr_custom_config = NO"
     fi
-    _SLR_CM_CFG_RT=NO
-    _SOLR_PROTECT_CTRL="${_SOLR_DIR}/conf/.protected.conf"
-    _SLR_CM_CFG_T=$(grep "^solr_custom_config = YES" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_SLR_CM_CFG_T}" =~ "solr_custom_config = YES" ]]; then
-      _SLR_CM_CFG_RT=YES
-      if [ ! -e "${_SOLR_PROTECT_CTRL}" ]; then
-        touch ${_SOLR_PROTECT_CTRL}
-      fi
-      echo "Solr config for ${_SOLR_DIR} is protected"
-    else
-      if [ -e "${_SOLR_PROTECT_CTRL}" ]; then
-        rm -f ${_SOLR_PROTECT_CTRL}
+    if [ "${_leg1}" = "YES" ] && [ -n "${_SOLR_VER}" ]; then
+      _SOLR_PROTECT_CTRL="${_SOLR_DIR}/conf/.protected.conf"
+      _SLR_CM_CFG_T=$(grep "^solr_custom_config = YES" <<< "${_iniTxt}" 2>&1)
+      if [[ "${_SLR_CM_CFG_T}" =~ "solr_custom_config = YES" ]]; then
+        _SLR_CM_CFG_RT=YES
+        if [ ! -e "${_SOLR_PROTECT_CTRL}" ]; then
+          touch "${_SOLR_PROTECT_CTRL}"
+        fi
+        echo "Solr config for ${_SOLR_DIR} is protected"
+      else
+        if [ -e "${_SOLR_PROTECT_CTRL}" ]; then
+          rm -f "${_SOLR_PROTECT_CTRL}"
+        fi
       fi
     fi
   fi
   ###
   ### Support for solr_update_config directive
   ###
-  if _ctrl_ini_leg_ok; then
-    _SOLR_UP_CFG_PT=$(grep "solr_update_config" ${_DIR_CTRL_F} 2>&1)
+  ### _SOLR_PROTECT_CTRL is set only by leg 2 of this call, after a valid
+  ### leg 1, so an update never runs on a protection state this call did
+  ### not read.
+  ###
+  if _ctrl_ini_leg_ok && _iniTxt=$(_ctrl_ini_read "${_DIR_CTRL_F}"); then
+    _SOLR_UP_CFG_PT=$(grep "solr_update_config" <<< "${_iniTxt}" 2>&1)
     if [[ "${_SOLR_UP_CFG_PT}" =~ "solr_update_config" ]]; then
       _DO_NOTHING=YES
     else
-      _ctrl_ini_append ";solr_update_config = NO"
+      _ctrl_ini_add "${_DIR_CTRL_F}" ";solr_update_config = NO"
     fi
-    _SOLR_UP_CFG_TT=$(grep "^solr_update_config = YES" ${_DIR_CTRL_F} 2>&1)
+    _SOLR_UP_CFG_TT=$(grep "^solr_update_config = YES" <<< "${_iniTxt}" 2>&1)
     if [[ "${_SOLR_UP_CFG_TT}" =~ "solr_update_config = YES" ]]; then
-      if [ "${_SLR_CM_CFG_RT}" = "NO" ] \
+      if [ "${_leg1}" = "YES" ] \
+        && [ -n "${_SOLR_VER}" ] \
+        && [ -n "${_SOLR_PROTECT_CTRL}" ] \
+        && [ "${_SLR_CM_CFG_RT}" = "NO" ] \
         && [ ! -e "${_SOLR_PROTECT_CTRL}" ]; then
         _update_solr "${_SOLR_MODULE}" "${_SOLR_DIR}" "${_SOLR_VER}"
       fi
@@ -1074,13 +1578,19 @@ _proceed_solr() {
 }
 
 _check_sites_list() {
-  for _Site in `find ${_usEr}/config/server_master/nginx/vhost.d \
+  # config/ and .drush/ are oN's: the vhost list is taken and every vhost
+  # and alias read only inside the real directory, bounded and never through
+  # a link or a FIFO (_acct_in_real_dir, _acct_read_in).
+  local _vhD="${_usEr}/config/server_master/nginx/vhost.d" _vhTxt _alTxt
+  for _Site in `_acct_in_real_dir "${_vhD}" find . \
     -maxdepth 1 -mindepth 1 -type f | sort`; do
+    _Site="${_vhD}/${_Site#./}"
     _MOMENT=$(date +%y%m%d-%H%M%S)
     echo ${_MOMENT} Start Checking Site ${_Site}
     _Dom=$(echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
+    _vhTxt=$(_acct_read_in "${_vhD}" "${_Dom}")
     if [ -e "${_usEr}/config/server_master/nginx/vhost.d/${_Dom}" ]; then
-      _Plx=$(cat ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} \
+      _Plx=$(printf '%s\n' "${_vhTxt}" \
         | grep "root " \
         | cut -d: -f2 \
         | awk '{ print $2}' \
@@ -1093,20 +1603,21 @@ _check_sites_list() {
     fi
     _STATUS_DISABLED=NO
     _STATUS_TEST=$(grep "Do not reveal Aegir front-end URL here" \
-      ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} 2>&1)
+      <<< "${_vhTxt}" 2>&1)
     if [[ "${_STATUS_TEST}" =~ "Do not reveal Aegir front-end URL here" ]]; then
       _STATUS_DISABLED=YES
       echo "${_Dom} site is DISABLED"
     fi
     if [ -e "${_usEr}/.drush/${_Dan}.alias.drushrc.php" ] \
       && [ "${_STATUS_DISABLED}" = "NO" ]; then
-      _Dir=$(cat ${_usEr}/.drush/${_Dan}.alias.drushrc.php \
+      _alTxt=$(_acct_read_in "${_usEr}/.drush" "${_Dan}.alias.drushrc.php")
+      _Dir=$(printf '%s\n' "${_alTxt}" \
         | grep "site_path'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       _DIR_CTRL_F="${_Dir}/modules/boa_site_control.ini"
-      _Plr=$(cat ${_usEr}/.drush/${_Dan}.alias.drushrc.php \
+      _Plr=$(printf '%s\n' "${_alTxt}" \
         | grep "root'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
@@ -1126,16 +1637,17 @@ _check_sites_list() {
       # the orphan sweep, which no longer counts its INI either.
       if [ -n "${_Plr}" ] \
         && _is_foreign_cms_root "$(realpath -e -- "${_Plr}" 2>/dev/null)"; then
-        rm -f "${_usEr}/.boa-ctrl/solr-reseeded.oct.${_HM_U}.${_Dan}" &> /dev/null
+        _acct_in_real_dir "${_usEr}/.boa-ctrl" \
+          rm -f -- "./solr-reseeded.oct.${_HM_U}.${_Dan}" &> /dev/null
         echo "SKIP: ${_Dom} is a Grav or Textpattern site (no control INI)"
         continue
       fi
       # The checks above validate the alias-derived roots, not the modules
       # dir the control INIs actually live in. That component sits in the
-      # tenant-writable setgid tree, and the bare ">>" appends further down
-      # follow a symlink planted there just as a rename does, so gate it
-      # here too. Absent is allowed; a symlink, or a dir resolving outside
-      # the account root, skips the iteration.
+      # tenant-writable setgid tree, and a symlink planted there redirects
+      # every INI leg further down, so gate it here too. Absent is allowed;
+      # a symlink, or a dir resolving outside the account root, skips the
+      # iteration.
       if [ -n "${_Dir}" ] && ! _validate_ctrl_dir "${_Dir}/modules"; then
         echo "SKIP: not a plain dir under ${_usEr}: ${_Dir}/modules"
         continue
@@ -1192,50 +1704,50 @@ _load_control() {
   _get_load
 }
 
-_fix_solr9_core() {
-  local file="$1"
-  if [ -e "${file}" ]; then
-    local _test_id
-    _test_id=$(grep "solr9" "${file}" 2>&1)
-    _test_port=$(grep "9099" "${file}" 2>&1)
-    if [[ ! "${_test_id}" =~ "solr9" ]] || [[ ! "${_test_port}" =~ "9099" ]]; then
-      sed -i "s/^solr\.replication\.masterUrl.*//g" "${file}"
-      sed -i "s/^solr\.install\.dir.*//g" "${file}"
-      sed -i "s/^solr\.contrib\.dir.*//g" "${file}"
-      echo "solr.replication.masterUrl=http://localhost:9099" >> "${file}"
-      echo "solr.install.dir=/opt/solr9" >> "${file}"
-      sed -i "/^$/d" "${file}"
-      echo "Fixed ${file}"
-      _IF_RESTART_SOLR=YES
-    fi
-  fi
+# A core's solrcore.properties ($1) put in BOA's own form for Solr $2
+# (solr7 or solr9): unless the file already names that Solr (and on Solr 9
+# its port), the install and contrib dir lines, and on Solr 9 the
+# replication URL, give way to this server's own values. The one rewrite
+# for every core's file, the Drupal 7 template and a staged upload, so a
+# file put in this form is never rewritten again. Status 0 when the file
+# was changed, 1 when it was already in that form or is not there.
+_solr_props_boa_form() {
+  local _file="${1}"
+  [ -f "${_file}" ] || return 1
+  case "${2}" in
+    solr9)
+      if grep -q "solr9" "${_file}" 2> /dev/null \
+        && grep -q "9099" "${_file}" 2> /dev/null; then
+        return 1
+      fi
+      sed -i "s/^solr\.replication\.masterUrl.*//g" "${_file}"
+      sed -i "s/^solr\.install\.dir.*//g" "${_file}"
+      sed -i "s/^solr\.contrib\.dir.*//g" "${_file}"
+      echo "solr.replication.masterUrl=http://localhost:9099" >> "${_file}"
+      echo "solr.install.dir=/opt/solr9" >> "${_file}"
+      ;;
+    solr7)
+      grep -q "solr7" "${_file}" 2> /dev/null && return 1
+      sed -i "s/^solr\.install\.dir.*//g" "${_file}"
+      sed -i "s/^solr\.contrib\.dir.*//g" "${_file}"
+      echo "solr.install.dir=/opt/solr7" >> "${_file}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  sed -i "/^$/d" "${_file}"
+  return 0
 }
 
 _fix_solr9_cnf() {
   if [ -x "/etc/init.d/solr9" ] && [ -e "/var/solr9/logs" ]; then
     _IF_RESTART_SOLR=NO
     for _pRp in `find /var/solr9/data/oct.*/conf/solrcore.properties -maxdepth 1 | sort`; do
-      if [ -e "${_pRp}" ]; then
-        _PRP_TEST_ID=$(grep "solr9" ${_pRp} 2>&1)
-        _PRP_TEST_PORT=$(grep "9099" ${_pRp} 2>&1)
-        if [[ ! "${_PRP_TEST_ID}" =~ "solr9" ]] || [[ ! "${_PRP_TEST_PORT}" =~ "9099" ]]; then
-          sed -i "s/^solr\.replication\.masterUrl.*//g" ${_pRp}
-          sed -i "s/^solr\.install\.dir.*//g" ${_pRp}
-          sed -i "s/^solr\.contrib\.dir.*//g" ${_pRp}
-          echo "solr.replication.masterUrl=http://localhost:9099" >> ${_pRp}
-          echo "solr.install.dir=/opt/solr9" >> ${_pRp}
-          sed -i "/^$/d" ${_pRp}
-          echo "Fixed ${_pRp}"
-          _IF_RESTART_SOLR=YES
-        fi
+      if _solr_props_boa_form "${_pRp}" solr9; then
+        echo "Fixed ${_pRp}"
+        _IF_RESTART_SOLR=YES
       fi
-    done
-    _solr9_paths=(
-      "/var/xdrago/conf/solr/search_api_solr/solr9_drupal10/solrcore.properties"
-      "/data/conf/solr/search_api_solr/solr9_drupal10/solrcore.properties"
-    )
-    for path in "${_solr9_paths[@]}"; do
-      _fix_solr9_core "${path}"
     done
     rStart="/var/solr9/logs/.restarted_new_fix_solr9_cnf.txt"
     if [ "${_IF_RESTART_SOLR}" = "YES" ] \
@@ -1249,18 +1761,9 @@ _fix_solr9_cnf() {
 }
 
 _fix_solr7_core() {
-  local file="$1"
-  if [ -e "${file}" ]; then
-    local _test_id
-    _test_id=$(grep "solr7" "${file}" 2>&1)
-    if [[ ! "${_test_id}" =~ "solr7" ]]; then
-      sed -i "s/^solr\.install\.dir.*//g" "${file}"
-      sed -i "s/^solr\.contrib\.dir.*//g" "${file}"
-      echo "solr.install.dir=/opt/solr7" >> "${file}"
-      sed -i "/^$/d" "${file}"
-      echo "Fixed ${file}"
-      _IF_RESTART_SOLR=YES
-    fi
+  if _solr_props_boa_form "${1}" solr7; then
+    echo "Fixed ${1}"
+    _IF_RESTART_SOLR=YES
   fi
 }
 
@@ -1268,27 +1771,11 @@ _fix_solr7_cnf() {
   if [ -x "/etc/init.d/solr7" ] && [ -e "/var/solr7/logs" ]; then
     _IF_RESTART_SOLR=NO
     for _pRp in `find /var/solr7/data/oct.*/conf/solrcore.properties -maxdepth 1 | sort`; do
-      if [ -e "${_pRp}" ]; then
-        _PRP_TEST_ID=$(grep "solr7" ${_pRp} 2>&1)
-        if [[ ! "${_PRP_TEST_ID}" =~ "solr7" ]]; then
-          sed -i "s/^solr\.install\.dir.*//g" ${_pRp}
-          sed -i "s/^solr\.contrib\.dir.*//g" ${_pRp}
-          echo "solr.install.dir=/opt/solr7" >> ${_pRp}
-          sed -i "/^$/d" ${_pRp}
-          echo "Fixed ${_pRp}"
-          _IF_RESTART_SOLR=YES
-        fi
-      fi
+      _fix_solr7_core "${_pRp}"
     done
     _solr7_paths=(
       "/var/xdrago/conf/solr/search_api_solr/solr7_drupal7/solrcore.properties"
-      "/var/xdrago/conf/solr/search_api_solr/solr7_drupal8/solrcore.properties"
-      "/var/xdrago/conf/solr/search_api_solr/solr7_drupal9/solrcore.properties"
-      "/var/xdrago/conf/solr/search_api_solr/solr7_drupal10/solrcore.properties"
       "/data/conf/solr/search_api_solr/solr7_drupal7/solrcore.properties"
-      "/data/conf/solr/search_api_solr/solr7_drupal8/solrcore.properties"
-      "/data/conf/solr/search_api_solr/solr7_drupal9/solrcore.properties"
-      "/data/conf/solr/search_api_solr/solr7_drupal10/solrcore.properties"
     )
     for path in "${_solr7_paths[@]}"; do
       _fix_solr7_core "${path}"
@@ -1372,21 +1859,26 @@ _build_active_core_set() {
 
   for _usEr in $(find /data/disk/ -maxdepth 1 -mindepth 1 | sort); do
     [ -e "${_usEr}/config/server_master/nginx/vhost.d" ] || continue
-    local _HM_U_TMP
+    local _HM_U_TMP _vhDTmp
     _HM_U_TMP=$(echo "${_usEr}" | cut -d'/' -f4 | awk '{ print $1}')
+    # The vhosts, aliases and site INIs are listed and read as
+    # _check_sites_list reads them: never through a link or a FIFO.
+    _vhDTmp="${_usEr}/config/server_master/nginx/vhost.d"
 
-    for _Site in $(find "${_usEr}/config/server_master/nginx/vhost.d" \
+    for _Site in $(_acct_in_real_dir "${_vhDTmp}" find . \
         -maxdepth 1 -mindepth 1 -type f | sort); do
-      local _DomTmp _STATUS_T _PlxTmp
+      local _DomTmp _STATUS_T _PlxTmp _vhTxtTmp _alTxtTmp
+      _Site="${_vhDTmp}/${_Site#./}"
       _DomTmp=$(echo "${_Site}" | cut -d'/' -f9 | awk '{ print $1}')
       [ -z "${_DomTmp}" ] && continue
+      _vhTxtTmp=$(_acct_read_in "${_vhDTmp}" "${_DomTmp}")
 
       # Skip disabled/parked sites
-      _STATUS_T=$(grep "Do not reveal Aegir front-end URL here" "${_Site}" 2>&1)
+      _STATUS_T=$(grep "Do not reveal Aegir front-end URL here" <<< "${_vhTxtTmp}" 2>&1)
       [[ "${_STATUS_T}" =~ "Do not reveal Aegir front-end URL here" ]] && continue
 
       # Skip hostmaster vhosts
-      _PlxTmp=$(grep "root " "${_Site}" | cut -d: -f2 | awk '{ print $2}' | sed "s/[\;]//g" 2>&1)
+      _PlxTmp=$(printf '%s\n' "${_vhTxtTmp}" | grep "root " | cut -d: -f2 | awk '{ print $2}' | sed "s/[\;]//g" 2>&1)
       [[ "${_PlxTmp}" =~ "aegir/distro" ]] && continue
 
       # Register vhost presence for all three name formats
@@ -1406,9 +1898,10 @@ _build_active_core_set() {
         # must not be archived based on index age — _add_solr will recreate
         # the core empty if we archive it, losing the index permanently.
         local _sitePath _rootPath
-        _sitePath=$(grep "site_path'" "${_aliasFile}" \
+        _alTxtTmp=$(_acct_read_in "${_usEr}/.drush" "${_DomTmp}.alias.drushrc.php")
+        _sitePath=$(printf '%s\n' "${_alTxtTmp}" | grep "site_path'" \
           | cut -d: -f2 | awk '{print $3}' | sed "s/[\,']//g" 2>/dev/null)
-        _rootPath=$(grep "'root' =>" "${_aliasFile}" \
+        _rootPath=$(printf '%s\n' "${_alTxtTmp}" | grep "'root' =>" \
           | cut -d: -f2 | awk '{print $3}' | sed "s/[\,']//g" 2>/dev/null)
         # A Grav or Textpattern site has no Solr binding for _check_sites_list
         # to manage (it skips them), so an INI a tenant edited there must not
@@ -1417,7 +1910,9 @@ _build_active_core_set() {
           local _ctrlFile="${_sitePath}/modules/boa_site_control.ini"
           if [ -f "${_ctrlFile}" ]; then
             local _solrMod
-            _solrMod=$(grep "^solr_integration_module" "${_ctrlFile}" 2>/dev/null)
+            _solrMod=$(_site_in_resolved_dir "${_ctrlFile%/*}" \
+              _acct_read_plain_here "${_ctrlFile##*/}" \
+              | grep "^solr_integration_module" 2>/dev/null)
             if [ -n "${_solrMod}" ]; then
               _CORES_WITH_SOLR_MODULE["oct.${_HM_U_TMP}.${_DomTmp}"]=1
               _CORES_WITH_SOLR_MODULE["solr.${_HM_U_TMP}.${_DomTmp}"]=1
@@ -1926,10 +2421,6 @@ _start_up() {
 
   _solr_cnf_dirs=(
     "search_api_solr/solr7_drupal7"
-    "search_api_solr/solr7_drupal8"
-    "search_api_solr/solr7_drupal9"
-    "search_api_solr/solr7_drupal10"
-    "search_api_solr/solr9_drupal10"
     "apachesolr/solr4_drupal6"
     "apachesolr/solr4_drupal7"
   )
@@ -1949,7 +2440,8 @@ _start_up() {
         # Group owning this account's tree, re-derived for every account in
         # the loop so nothing leaks from the previous iteration.
         _HM_G=$(_acct_group "${_HM_U}")
-        _THIS_HM_SITE=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
+        _THIS_HM_SITE=$(_acct_read_in "${_usEr}/.drush" \
+          hostmaster.alias.drushrc.php \
           | grep "site_path'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
@@ -1958,8 +2450,8 @@ _start_up() {
         echo "User ${_usEr}"
         ### The account home is owned by oN, the backend uid site-local Drush
         ### and the account cron run as, so a planted log symlink would
-        ### redirect this root mkdir.
-        [ ! -L "${_usEr}/log" ] && mkdir -p "${_usEr}/log/ctrl"
+        ### redirect this root mkdir: made only inside the real log/.
+        _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
         # shellcheck disable=SC1091
         [ -e "/root/.${_HM_U}.octopus.cnf" ] && source /root/.${_HM_U}.octopus.cnf
         _check_sites_list
