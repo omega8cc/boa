@@ -174,6 +174,8 @@ _vhost_tls11_drop_here() {
     _n+=( "${_f}" )
   done < <(find . -mindepth 1 -maxdepth 1 -type f -size -1048576c -print0 2> /dev/null
     printf '/rc=%s\0' "$?")
+  # A failed listing is never read as grep's "no match".
+  [ "${_rc}" = "0" ] || _rc="list"
   if [ "${_rc}" = "0" ] && [ "${#_n[@]}" -gt 0 ]; then
     _rc=""
     while IFS= read -r -d '' _f; do

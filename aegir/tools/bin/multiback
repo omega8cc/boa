@@ -1689,28 +1689,36 @@ _rst_under() {
   return 1
 }
 # Archive path $1 (empty: everything) restored to $2. duplicity runs in the C
-# locale, so the message matched here is its own English one. Its output is
-# kept in a file and goes to the log when there is one, to stdout otherwise,
-# once the attempt is final. Returns 2 when duplicity reports the path not
-# found in the archive (its output is then kept in _RST_OUT for the caller,
-# which may still try another path, and says it only when none is left), 1
-# on any other failure.
+# locale, so the message matched here is its own English one. With a log,
+# its output goes there once the attempt is final; without one, it goes to
+# stdout as it runs, all but that message. Returns 2 when duplicity reports
+# the path not found in the archive (what was held back is then kept in
+# _RST_OUT for the caller, which may still try another path, and says it
+# only when none is left), 1 on any other failure.
 _rst_one() {
-  local _c="${_RST_CMD}" _o="${_RST_TMP}/rst.out" _rc
+  local _c="${_RST_CMD}" _o="${_RST_TMP}/rst.out" _m="not found in archive" _rc
   [ -n "${1}" ] && _c="${_c} --path-to-restore $(printf '%q' "${1}")"
   _c="${_c} $(printf '%q' "${2}")"
   echo "Command is ${_c}"
   _RST_OUT=""
-  eval "LANGUAGE= LC_ALL=C ${_c}" > "${_o}" 2>&1
-  _rc=$?
-  if [ "${_rc}" != 0 ] && grep -q -F -e "not found in archive" -- "${_o}"; then
-    _RST_OUT="$(cat -- "${_o}")"
+  if [ -n "${_RST_LOG}" ]; then
+    eval "LANGUAGE= LC_ALL=C ${_c}" > "${_o}" 2>&1
+    _rc=$?
+  else
+    eval "LANGUAGE= LC_ALL=C ${_c}" 2>&1 | tee -- "${_o}" \
+      | LC_ALL=C grep --line-buffered -a -v -F -e "${_m}"
+    _rc="${PIPESTATUS[0]}"
+  fi
+  if [ "${_rc}" != 0 ] && grep -q -F -e "${_m}" -- "${_o}"; then
+    if [ -n "${_RST_LOG}" ]; then
+      _RST_OUT="$(cat -- "${_o}")"
+    else
+      _RST_OUT="$(LC_ALL=C grep -a -F -e "${_m}" -- "${_o}")"
+    fi
     return 2
   fi
   if [ -n "${_RST_LOG}" ]; then
     cat -- "${_o}" >> "${_RST_LOG}"
-  else
-    cat -- "${_o}"
   fi
   [ "${_rc}" = 0 ] || return 1
   _RST_LAST="${1}"
@@ -2219,10 +2227,10 @@ _restore() {
   esac
 
   [ -n "${_restore_target}" ] || _restore_target="/data/disk/${_user}/static/restores"
-  # The path judged is the path used: no '.' or '..' name folds a link away
+  # The path judged is the path used: no '..' name folds a link away
   case "/${_restore_target}/" in
-    */./*|*/../*)
-      echo "Error: give the restore target without '.' or '..' names, not '${_restore_target}'."
+    */../*)
+      echo "Error: give the restore target without '..' names, not '${_restore_target}'."
       exit 1
       ;;
   esac

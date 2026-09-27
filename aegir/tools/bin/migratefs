@@ -161,6 +161,8 @@ esac
 case "${_RECHECK_MAX_MB}" in
   ''|*[!0-9]*) _RECHECK_MAX_MB=1024 ;;
 esac
+# Read as decimal: a leading 0 would make it octal, or stop the arithmetic.
+_RECHECK_MAX_MB=$(( 10#${_RECHECK_MAX_MB} ))
 
 # A single-account run targets one account only, never the shared archive.
 [ -n "${_ONE_ACCOUNT}" ] && _DO_ARCH="NO"
@@ -438,6 +440,22 @@ _mfs_undo_here() {
   _mfs_back "$@"
 }
 
+# A relocation that did not go live: its copy $3 goes while the parent is
+# still closed, as only root could ever reach it there, so a deferred run
+# leaves no copy behind. It stays when the parent was opened for the link,
+# or when the store ($1/$2) is not back under its name. $4 = label.
+_mfs_drop_copy() {
+  local _par="$1" _name="$2" _dst="$3" _label="$4"
+  [ "$(_mfs_in_real_dir "${_dst%/*}" stat -c '%a' . 2> /dev/null)" = "700" ] || return 0
+  [ "$(_mfs_in_real_dir "${_par}" _mfs_kind_here "${_name}")" = "dir" ] || return 0
+  _mfs_aside_left "${_par}" "${_name}" && return 0
+  if _mfs_in_real_dir "${_dst%/*}" rm -rf -- "./${_dst##*/}" 2> /dev/null; then
+    _log "INFO: ${_label} the copy in ${_dst} never went live and is removed; the next run copies again"
+  else
+    _log "WARN: ${_label} the copy in ${_dst} never went live and could not be removed; the next run renames it aside"
+  fi
+}
+
 # Two-pass, non-destructive relocation of the real directory $1/$2 onto the
 # attached FS at $3, replacing it with a symlink. Precondition: caller has
 # confirmed the target is a separate FS. $4 = the real directory whose owner the
@@ -534,6 +552,7 @@ _relocate_dir() {
     0|3) : ;;
     *) _log "ERROR: ${_label} ${_src} is not a real directory; left for review" ;;
   esac
+  _mfs_drop_copy "${_par}" "${_name}" "${_dst}" "${_label}"
   _mfs_unlock
   _mfs_work_drop
 }
@@ -553,11 +572,11 @@ _relocate_dir() {
 _MFS_RECHECK=""
 _mfs_recheck_here() {
   local _dst="$1" _wk="$2" _topChg="$3" _label="$4" _how="${5:-}"
-  local _d _p _q _kb _n=0 _f
+  local _d _p _q _k _here _kb=0 _n=0 _f=0
   local -A _chg=() _done=()
   _MFS_RECHECK=""
   find -P . -mindepth 1 -type d -cnewer "${_wk}/start" -print0 > "${_wk}/dirs" 2> /dev/null || return 1
-  find -P . -type f -cnewer "${_wk}/start" -print0 > "${_wk}/files" 2> /dev/null || return 1
+  find -P . -type f -cnewer "${_wk}/start" -printf '%k %p\0' > "${_wk}/sized" 2> /dev/null || return 1
   : > "${_wk}/trees" || return 1
   while IFS= read -r -u 9 -d '' _d; do
     _chg["${_d}"]=1
@@ -579,27 +598,31 @@ _mfs_recheck_here() {
     printf '%s\0' "${_d}"
     _n=$(( _n + 1 ))
   done 9< "${_wk}/dirs" > "${_wk}/trees"
+  # Sized without leaving the store: a tree from inside it, entered only
+  # while it is still the directory listed (one gone or re-pointed since
+  # counts nothing), a file as find saw it.
+  _here=$(pwd -P) || return 1
+  while IFS= read -r -u 9 -d '' _d; do
+    _k=$(cd -P -- "${_d}" 2> /dev/null \
+      && [ "$(pwd -P)" = "${_here}/${_d#./}" ] && du -s -k . 2> /dev/null)
+    _k="${_k%%[!0-9]*}"
+    _kb=$(( _kb + ${_k:-0} ))
+  done 9< "${_wk}/trees"
   # A file below a tree copied again is copied with it.
-  if [ "${_n}" -gt 0 ]; then
-    while IFS= read -r -u 9 -d '' _d; do
-      _q="${_d%/*}"
-      while [ "${_q}" != "." ]; do
-        [ -n "${_done[${_q}]:-}" ] && continue 2
-        _q="${_q%/*}"
-      done
-      printf '%s\0' "${_d}"
-    done 9< "${_wk}/files" > "${_wk}/left" || return 1
-    mv -f -- "${_wk}/left" "${_wk}/files" || return 1
-  fi
-  _f=$(tr -cd '\000' < "${_wk}/files" | wc -c)
-  _f="${_f// /}"
+  while IFS= read -r -u 9 -d '' _d; do
+    _k="${_d%% *}"
+    _d="${_d#* }"
+    _q="${_d%/*}"
+    while [ "${_q}" != "." ]; do
+      [ -n "${_done[${_q}]:-}" ] && continue 2
+      _q="${_q%/*}"
+    done
+    printf '%s\0' "${_d}"
+    _kb=$(( _kb + _k ))
+    _f=$(( _f + 1 ))
+  done 9< "${_wk}/sized" > "${_wk}/files" || return 1
   [ $(( _n + _f )) -gt 0 ] || return 0
-  _kb=$(cat -- "${_wk}/trees" "${_wk}/files" \
-    | du -s -k -c --files0-from=- 2> /dev/null | awk 'END { print $1 }')
-  _MFS_RECHECK="${_n} directory trees and ${_f} files, ${_kb:-?}K"
-  case "${_kb}" in
-    ''|*[!0-9]*) return 2 ;;
-  esac
+  _MFS_RECHECK="${_n} directory trees and ${_f} files, ${_kb}K"
   [ "${_kb}" -le $(( _RECHECK_MAX_MB * 1024 )) ] || return 2
   [ "${_how}" = "count" ] && return 0
   while IFS= read -r -u 9 -d '' _d; do

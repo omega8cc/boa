@@ -1311,17 +1311,18 @@ _rst_in_pinned() {
 # duplicity writes a restore by path, so a link an account puts in its own
 # tree, before or during the restore, would carry root's writes elsewhere. A
 # destination inside an account's tree (below /data/disk/<oN>, /home/<name>,
-# or the account's relocated files store under /mnt) is restored into a
-# fresh root-only directory on the same filesystem, then renamed into the
+# or the account's relocated files store under /mnt), or one leading into
+# such a tree (BOA's /data/u/<name> leads into a platform), is restored into
+# a fresh root-only directory on the same filesystem, then renamed into the
 # directory its parent resolves to. Links on the way (BOA's own: a relocated
 # static/files, backups, a site's files/ and private/, the platform and .ftp
-# home links) are followed only into the same account's tree or its store,
-# or through root's own links alone into no account's tree, and that
-# directory is pinned for every later step. Any other destination is
-# restored as given. A '.' or '..' name is refused anywhere in it: the path
-# judged is the path written. Sets _RST_OUT, the path duplicity writes, and
-# _RST_DST, where the restore lands; fails, saying why, when the destination
-# cannot be staged. $1 = destination as given.
+# home links) are followed only into the tree of the account the path names
+# or its store, or through root's own links alone, and that directory is
+# pinned for every later step. Any other destination is restored as given. A
+# '..' name is refused anywhere in it: the path judged is the path written.
+# Sets _RST_OUT, the path duplicity writes, and _RST_DST, where the restore
+# lands; fails, saying why, when the destination cannot be staged. $1 =
+# destination as given.
 _restore_stage() {
   local _abs _acc _res _grd _dev _base _sta=""
   _RST_OUT="${1}"
@@ -1331,14 +1332,17 @@ _restore_stage() {
   _RST_NAM=""
   _RST_PIN=""
   case "/${1}/" in
-    */./*|*/../*)
-      echo "Restore destination ${1}: give it without '.' or '..' names. Will not restore."
+    */../*)
+      echo "Restore destination ${1}: give it without '..' names. Will not restore."
       return 1
       ;;
   esac
   _abs="$(realpath -m -s -- "${1}" 2> /dev/null)"
   _acc="$(_rst_acct_named "${_abs}")"
-  [ -n "${_acc}" ] || return 0
+  if [ -z "${_acc}" ]; then
+    _grd="$(_rst_ground_of "$(realpath -m -- "${_abs%/*}" 2> /dev/null)")"
+    [ -n "${_grd}" ] || return 0
+  fi
   _RST_PAR="${_abs%/*}"
   _RST_NAM="${_abs##*/}"
   _res="$(realpath -e -- "${_RST_PAR}" 2> /dev/null)"
@@ -1346,9 +1350,18 @@ _restore_stage() {
     echo "Restore destination ${1}: ${_RST_PAR} is not a directory. Will not restore."
     return 1
   fi
-  # Outside any account's ground, the directory pinned is the one root's own
-  # links lead to, as the link check itself walked them
+  # Outside any account's ground, or into one from a path naming none, the
+  # directory pinned is the one root's own links lead to, as the link check
+  # itself walked them
   _grd="$(_rst_ground_of "${_res}")"
+  if [ -z "${_acc}" ]; then
+    if [ -z "${_grd}" ] || ! { _root_links_ok "${_RST_PAR}" \
+      && [ "${_RLK_PATH}" = "${_res}" ]; }; then
+      echo "Restore destination ${1}: ${_RST_PAR} leads into an account's tree through a link not only root could make, or changed while it was checked. Give the path inside that tree. Will not restore."
+      return 1
+    fi
+    _acc="${_grd}"
+  fi
   if { [ -n "${_grd}" ] && [ "${_grd}" != "${_acc}" ]; } \
     || { [ -z "${_grd}" ] && ! { _root_links_ok "${_RST_PAR}" \
       && [ "${_RLK_PATH}" = "${_res}" ]; }; }; then
