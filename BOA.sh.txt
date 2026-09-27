@@ -1957,7 +1957,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f98
     _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f94
     _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f94
-    _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f94
+    _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f93
     _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f00
     _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f77
@@ -2017,9 +2017,9 @@ _update_agents() {
     # The migration-proxy trio previously reached boxes only inside the full
     # up-* tar, so a source box that had not upgraded since the certificate
     # mirror shipped had NO mirror at all -- the exact box that needs it.
-    _fetch_versioned /var/xdrago/migration_proxy_trust.sh "${_urlHmr}/tools/system/migration_proxy_trust.sh" f98
+    _fetch_versioned /var/xdrago/migration_proxy_trust.sh "${_urlHmr}/tools/system/migration_proxy_trust.sh" f97
     _fetch_versioned /var/xdrago/migration_proxy_realip.sh "${_urlHmr}/tools/system/migration_proxy_realip.sh" f99
-    _fetch_versioned /var/xdrago/migration_proxy_certs.sh "${_urlHmr}/tools/system/migration_proxy_certs.sh" f98
+    _fetch_versioned /var/xdrago/migration_proxy_certs.sh "${_urlHmr}/tools/system/migration_proxy_certs.sh" f97
     # A fetch-delivered mirror without its schedule is a false comfort: the
     # daily line normally arrives only with the crontab template on a full
     # up-* run, so ensure it whenever the script is present.
@@ -2039,8 +2039,8 @@ _update_agents() {
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f69
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f57
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f58
-    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f77
-    _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f76
+    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f76
+    _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f75
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
     ### state (.daily.sh.off) across to owl so a box that had the nightly run
