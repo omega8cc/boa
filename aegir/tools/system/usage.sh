@@ -74,6 +74,23 @@ _usage_read_here() {
 _usage_read_in() {
   _usage_in_real_dir "${1}" _usage_read_here "${2}"
 }
+# Run "$@" inside the site directory $1 named in an alias, as it resolves
+# now: never a link itself, and strictly below this account's own real root
+# (a link on the way that stays inside the account, such as a platform root
+# the account reaches through its own link, is accepted), entered for real,
+# so ./name stays in it whatever is swapped. Reads _usEr.
+_usage_in_site_dir() {
+  local _d="${1%/}" _rd _ra
+  shift
+  [ -n "${_d}" ] && [ ! -L "${_d}" ] && [ -d "${_d}" ] || return 1
+  _rd=$(realpath -e -- "${_d}" 2> /dev/null) || return 1
+  _ra=$(realpath -e -- "${_usEr}" 2> /dev/null) || return 1
+  case "${_rd}/" in
+    "${_ra}"/?*) ;;
+    *) return 1 ;;
+  esac
+  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(pwd -P)" = "${_rd}" ] && "$@" )
+}
 # The file $2 put as ./$1 in the current (pinned) directory (0644): a fresh
 # name created exclusively, then renamed over the name, so a link or a FIFO
 # put at the name is replaced, never followed or opened.
@@ -145,6 +162,30 @@ _fix_clear_cache() {
   fi
 }
 
+# $1 as its words joined by single spaces, what echo -n $1 printed, but
+# without expanding a glob or taking an option the account wrote there.
+_usage_words() (
+  set -f
+  # shellcheck disable=SC2086
+  set -- ${1}
+  printf '%s' "$*"
+)
+# The addresses in $1 (words, as log/email.txt holds them) that have an
+# e-mail address's form, joined by single spaces: they reach s-nail, run as
+# root, as its recipients, where a word starting with a dash would be an
+# option and one naming a file or a command a delivery to it.
+_usage_mail_list() (
+  local _w _o=""
+  set -f
+  # shellcheck disable=SC2086
+  for _w in ${1//\\\@/\@}; do
+    [[ "${_w}" =~ ^[A-Za-z0-9._%+][A-Za-z0-9._%+-]*@[A-Za-z0-9.-]+\.[A-Za-z0-9-]+$ ]] \
+      || continue
+    _o="${_o}${_o:+ }${_w}"
+  done
+  printf '%s' "${_o}"
+)
+
 _check_account_exceptions() {
   _DEV_EXC=NO
   chckStringA="omega8.cc"
@@ -176,13 +217,9 @@ _read_account_data() {
   _DEV_EXC=NO
   _DSK_CLU_LIMIT=1
   if [ -e "${_lg}/email.txt" ]; then
-    _CLIENT_EMAIL=$(_usage_read_in "${_lg}" email.txt)
-    _CLIENT_EMAIL=$(echo -n ${_CLIENT_EMAIL} | tr -d "\n" 2>&1)
-    # no address starts with a dash: such a word would reach s-nail, run as
-    # root, as an option
-    case " ${_CLIENT_EMAIL}" in
-      *" -"*) _CLIENT_EMAIL= ;;
-    esac
+    # only words in an address's form (_usage_mail_list); a file with none
+    # leaves the notices to the Bcc alone
+    _CLIENT_EMAIL=$(_usage_mail_list "$(_usage_read_in "${_lg}" email.txt)")
     _check_account_exceptions
   fi
   if [ "${_DEBUG_EMAIL}" = "YES" ] \
@@ -193,22 +230,25 @@ _read_account_data() {
   # anything else as an expression: a whole number or nothing
   if [ -e "${_lg}/cores.txt" ]; then
     _CLIENT_CORES=$(_usage_read_in "${_lg}" cores.txt)
-    _CLIENT_CORES=$(echo -n ${_CLIENT_CORES} | tr -d "\n" 2>&1)
+    _CLIENT_CORES=$(_usage_words "${_CLIENT_CORES}")
     [[ "${_CLIENT_CORES}" =~ ^[0-9]+$ ]] || _CLIENT_CORES=
   fi
   if [ -e "${_lg}/diskspace.txt" ]; then
     _DSK_CLU_LIMIT=$(_usage_read_in "${_lg}" diskspace.txt)
-    _DSK_CLU_LIMIT=$(echo -n ${_DSK_CLU_LIMIT} | tr -d "\n" 2>&1)
+    _DSK_CLU_LIMIT=$(_usage_words "${_DSK_CLU_LIMIT}")
     [[ "${_DSK_CLU_LIMIT}" =~ ^[0-9]+$ ]] || _DSK_CLU_LIMIT=
   fi
-  if [ "${_CLIENT_CORES}" -gt 1 ]; then
+  if [ "${_CLIENT_CORES:-0}" -gt 1 ]; then
     _ENGINE_NR="Engines"
   else
     _ENGINE_NR="Engine"
   fi
   if [ -e "${_lg}/option.txt" ]; then
     _CLIENT_OPTION=$(_usage_read_in "${_lg}" option.txt)
-    _CLIENT_OPTION=$(echo -n ${_CLIENT_OPTION} | tr -d "\n" 2>&1)
+    _CLIENT_OPTION=$(_usage_words "${_CLIENT_OPTION}")
+    # a plan name, one word: it goes into the report line, the panel footer
+    # and the notices, and an unknown one takes the default limits
+    [[ "${_CLIENT_OPTION}" =~ ^[A-Za-z0-9_-]+$ ]] || _CLIENT_OPTION=
   fi
   if [ -e "${_lg}/extra.txt" ]; then
     # renamed, never moved into a directory or link put at the new name
@@ -216,19 +256,19 @@ _read_account_data() {
   fi
   if [ -e "${_lg}/extra_edge.txt" ]; then
     _EXTRA_ENGINE=$(_usage_read_in "${_lg}" extra_edge.txt)
-    _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
+    _EXTRA_ENGINE=$(_usage_words "${_EXTRA_ENGINE}")
     [[ "${_EXTRA_ENGINE}" =~ ^[0-9]+$ ]] || _EXTRA_ENGINE=
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x EDGE"
   fi
   if [ -e "${_lg}/extra_aero.txt" ]; then
     _EXTRA_ENGINE=$(_usage_read_in "${_lg}" extra_aero.txt)
-    _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
+    _EXTRA_ENGINE=$(_usage_words "${_EXTRA_ENGINE}")
     [[ "${_EXTRA_ENGINE}" =~ ^[0-9]+$ ]] || _EXTRA_ENGINE=
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x AERO"
   fi
   if [ -e "${_lg}/extra_power.txt" ]; then
     _EXTRA_ENGINE=$(_usage_read_in "${_lg}" extra_power.txt)
-    _EXTRA_ENGINE=$(echo -n ${_EXTRA_ENGINE} | tr -d "\n" 2>&1)
+    _EXTRA_ENGINE=$(_usage_words "${_EXTRA_ENGINE}")
     [[ "${_EXTRA_ENGINE}" =~ ^[0-9]+$ ]] || _EXTRA_ENGINE=
     _ENGINE_NR="${_ENGINE_NR} + ${_EXTRA_ENGINE} x POWER"
   fi
@@ -456,9 +496,9 @@ _usage_count() {
         && [ -e "${_Dir}/files" ] \
         && [ -e "${_Dir}/private" ] \
         && [ ! -e "${_Plr}/profiles/hostmaster" ]; then
-        _usage_in_real_dir "${_Dir}" _usage_ini_dir_here
+        _usage_in_site_dir "${_Dir}" _usage_ini_dir_here
         #echo "${_THIS_U},${_Dom},sitedir-exists"
-        _Dat=$(_usage_read_in "${_Dir}" drushrc.php \
+        _Dat=$(_usage_in_site_dir "${_Dir}" _usage_read_here drushrc.php \
           | grep "options\['db_name'\] = " \
           | cut -d: -f2 \
           | awk '{ print $3}' \
@@ -476,7 +516,7 @@ _usage_count() {
               "${_uFiles}"/?*) _sStores+=("${_r}") ;;
             esac
           done
-          _DirSize=$(_usage_in_real_dir "${_Dir}" \
+          _DirSize=$(_usage_in_site_dir "${_Dir}" \
             du -s -c -- . "${_sStores[@]}" 2>/dev/null | tail -n 1)
           _DirSize=$(echo "${_DirSize}" \
             | cut -d'/' -f1 \
@@ -488,18 +528,16 @@ _usage_count() {
         fi
         if [ ! -z "${_Dat}" ]; then
           # reset for every site, and the name (from the site's drushrc.php)
-          # is one directory below /var/lib/mysql, never a path out of it
+          # is looked up only as a plain database name, the rule
+          # mysql_backup.sh applies: never a path, a pattern or a glob
           _DatSize=
-          case "${_Dat}" in
-            */*|.|..) ;;
-            *)
-              if [ -e "/var/log/boa/.du.local.sql" ]; then
-                _DatSize=$(grep "/var/lib/mysql/${_Dat}$" /var/log/boa/.du.local.sql 2>&1)
-              elif [ -e "/var/lib/mysql/${_Dat}" ]; then
-                _DatSize=$(du -s /var/lib/mysql/${_Dat} 2>/dev/null)
-              fi
-              ;;
-          esac
+          if [[ "${_Dat}" =~ ^[A-Za-z0-9_]+$ ]]; then
+            if [ -e "/var/log/boa/.du.local.sql" ]; then
+              _DatSize=$(grep "/var/lib/mysql/${_Dat}$" /var/log/boa/.du.local.sql 2>&1)
+            elif [ -e "/var/lib/mysql/${_Dat}" ]; then
+              _DatSize=$(du -s "/var/lib/mysql/${_Dat}" 2>/dev/null)
+            fi
+          fi
           _DatSize=$(echo "${_DatSize}" \
             | cut -d'/' -f1 \
             | awk '{ print $1}' \
@@ -1029,7 +1067,11 @@ EOF
               && [ ! -e "${_usEr}/log/proxied.pid" ] \
               && [ ! -e "${_usEr}/log/proxy-failed.pid" ]; then
               _eMail=${_CLIENT_EMAIL//\\\@/\@}
-              _AegirUrl=$(_usage_read_in "${_usEr}/log" domain.txt)
+              # the panel's host name, one per report line: nothing else the
+              # account wrote into domain.txt reaches the operator's report
+              _AegirUrl=$(_usage_read_in "${_usEr}/log" domain.txt | head -n 1 \
+                | tr -d '\r\t ')
+              [[ "${_AegirUrl}" =~ ^[A-Za-z0-9.-]+$ ]] || _AegirUrl=
               if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
                 _Files="!x!FilesAll"
               else
@@ -1074,7 +1116,11 @@ EOF
               && [ ! -e "${_usEr}/log/proxied.pid" ] \
               && [ ! -e "${_usEr}/log/proxy-failed.pid" ]; then
               _eMail=${_CLIENT_EMAIL//\\\@/\@}
-              _AegirUrl=$(_usage_read_in "${_usEr}/log" domain.txt)
+              # the panel's host name, one per report line: nothing else the
+              # account wrote into domain.txt reaches the operator's report
+              _AegirUrl=$(_usage_read_in "${_usEr}/log" domain.txt | head -n 1 \
+                | tr -d '\r\t ')
+              [[ "${_AegirUrl}" =~ ^[A-Za-z0-9.-]+$ ]] || _AegirUrl=
               if [ "${_TotSizH}" -gt "${_DSK_MAX_LIMIT}" ]; then
                 _Files="!x!FilesAll"
               else

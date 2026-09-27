@@ -60,6 +60,62 @@ _acct_group() {
   echo "${_g}"
 }
 
+# An account owns its static/control, and oN owns the rest of its
+# /data/disk/oN (log/, .drush/, config/, tools/, .tmp/, undo/), and a login
+# owns its /home/<login>, so any name there can be a link or a FIFO, and any
+# directory on the way can itself be a link. Root reads and writes those
+# names only through the helpers below (the helper.sh.inc bodies; the night
+# family never sources that file).
+#
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way. Below /home and /data/disk (root's) every name
+# on the path must be a real directory; elsewhere the last name is checked
+# against its resolved parent. Once entered, ./name stays in that directory
+# whatever is swapped.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_acct_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# $2 in the real directory $1, read as _acct_read_here reads it.
+_acct_read_in() {
+  _acct_in_real_dir "${1}" _acct_read_here "${2}"
+}
+# ./$1 of the current (pinned) directory as text: status 1, and nothing,
+# unless it is a regular file; read as _acct_read_here reads it.
+_acct_read_plain_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  _acct_read_here "${1}"
+}
+# ./$1 in the current (pinned) directory with the content $2 (0644): a fresh
+# file created exclusively, then renamed over the name, so a link or a FIFO
+# put at the name is replaced, never followed or opened, and a reader never
+# finds the name missing.
+_acct_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+
 # Validate that a caller-controlled path (parsed from a Drush alias file)
 # resolves under one of BOA's writable roots. Used by the per-site loop to
 # gate chown/chmod operations on _Dir (site_path) and _Plr (platform root):
@@ -105,22 +161,36 @@ _validate_ctrl_dir() {
   esac
 }
 
+_ctrl_in_stage_dir() {
+  # Root-only staging dir for the files root puts into an account's
+  # tenant-writable trees, on the same filesystem as those trees (they all
+  # live under the account root): ${_usEr}/.boa-ctrl, forced root:root 0700
+  # on every call, a link planted at the name removed rather than followed.
+  # oN owns the account root and can rename or replace any name in it, so
+  # the dir is made, fixed and checked only once entered for real, and "$@"
+  # runs inside it: ./name there is root's alone, whatever the account puts
+  # at .boa-ctrl meanwhile. Reads _usEr from the caller.
+  [ -n "${_usEr}" ] || return 1
+  _acct_in_real_dir "${_usEr}" _ctrl_stage_here "$@"
+}
+_ctrl_stage_here() {
+  local _h _st
+  _h="$(pwd -P)/.boa-ctrl"
+  [ -L ./.boa-ctrl ] && rm -f -- ./.boa-ctrl
+  [ -d ./.boa-ctrl ] || mkdir ./.boa-ctrl 2> /dev/null
+  cd -P -- ./.boa-ctrl 2> /dev/null && [ "$(pwd -P)" = "${_h}" ] || return 1
+  chown root:root . 2> /dev/null && chmod 0700 . 2> /dev/null || return 1
+  # root's, and nobody else's to enter or write
+  _st=$(stat -c '%u %a' . 2> /dev/null)
+  [ "${_st%% *}" = "0" ] && [[ "${_st##* }" =~ ^[0-7]+$ ]] \
+    && (( (8#${_st##* } & 8#077) == 0 )) || return 1
+  "$@"
+}
 _ctrl_stage_dir() {
-  # Root-only staging dir for control-INI writes, on the same filesystem as the
-  # account's platform trees (they all live under the account root). The account
-  # root itself is 0711 (owner oN), so the tenant may traverse it but cannot create
-  # or unlink here; the staging dir is forced root:root 0700 on every call, and a
-  # symlink planted in its place is removed rather than followed. Prints the path
-  # on success. Reads _usEr from the caller.
-  local _s
-  [ -n "${_usEr}" ] && [ -d "${_usEr}" ] || return 1
-  _s="${_usEr}/.boa-ctrl"
-  [ -L "${_s}" ] && rm -f "${_s}" &> /dev/null
-  [ -d "${_s}" ] || mkdir -p "${_s}" 2>/dev/null || return 1
-  [ -d "${_s}" ] && [ ! -L "${_s}" ] || return 1
-  chown root:root "${_s}" &> /dev/null
-  chmod 0700 "${_s}" &> /dev/null
-  echo "${_s}"
+  # The staging dir fixed as above, its path printed for a caller that still
+  # takes one.
+  _ctrl_in_stage_dir true || return 1
+  echo "${_usEr}/.boa-ctrl"
 }
 
 _reseed_ctrl_ini() {
@@ -133,32 +203,35 @@ _reseed_ctrl_ini() {
   # a symlink at its path; a plain cp -af then writes THROUGH a live link and the
   # following chown/chmod retarget it.
   #
-  # Stage the new file in a root-owned 0700 dir under the account root, then
-  # mv -f -T it onto the destination. Everything the account owns lives under
-  # that root, so the rename is same-filesystem and atomic; rename() replaces a
-  # planted symlink (incl. a symlink-to-dir) instead of following it, and a
-  # real-dir decoy makes mv fail into the clean skip. Staging outside the
-  # platform tree matters: a freshly built platform can still be group-writable
-  # all the way up to its sites/ dir, and only the chown/chmod land on the temp
-  # -- so a tenant who could write the staging dir could swap the temp for a
-  # symlink and have root chown their target. The account root is 0711, so they
-  # can traverse but not create there. Refuses a symlink/non-regular SOURCE so a
-  # tenant-symlinked template cannot disclose a root file.
+  # The new file is made in the root-only staging dir (_ctrl_in_stage_dir),
+  # where only root can touch a name, and renamed from there onto the
+  # destination with mv -f -T. Everything the account owns lives under the
+  # account root, so the rename is same-filesystem and atomic; rename()
+  # replaces a planted symlink (incl. a symlink-to-dir) instead of following
+  # it, and a real-dir decoy makes mv fail into the clean skip.
   #
   # rename() refuses to follow only the FINAL component: every directory
   # above it is resolved normally, so a tenant who swaps the modules dir
   # itself for a symlink redirects the whole write. Refuse a symlinked
-  # parent, require the resolved parent to sit under the account root, and
-  # then act on that RESOLVED parent -- a link swapped in after the check
-  # is no longer on the path we traverse. Reads _usEr and _HM_U from the
-  # caller. $1 = source template, $2 = dest INI path.
+  # parent, require the resolved parent to sit under the account root, enter
+  # it for real and hold it open, and rename into that open directory
+  # (/proc/self/fd): a link swapped in after the check is never on the path.
+  # The template is read inside its own resolved directory, only as a
+  # regular file, bounded and never through a link or blocked on a FIFO, so
+  # a template swapped in the tenant's modules dir can neither disclose a
+  # root file nor stall the pass. Reads _usEr and _HM_U from the caller.
+  # $1 = source template, $2 = dest INI path.
   local _src="$1"
   local _dst="$2"
-  local _stg _new _pnt _rpn _rus
+  local _pnt _rpn _rus _rsd
   [ -L "${_src}" ] && return 1
   [ -f "${_src}" ] || return 1
   [ -n "${_HM_U}" ] || return 1
   case "${_dst}" in
+    /*/*) : ;;
+    *) return 1 ;;
+  esac
+  case "${_src}" in
     /*/*) : ;;
     *) return 1 ;;
   esac
@@ -171,20 +244,29 @@ _reseed_ctrl_ini() {
     "${_rus}"/*) : ;;
     *) return 1 ;;
   esac
-  _dst="${_rpn}/${_dst##*/}"
-  _stg=$(_ctrl_stage_dir) || return 1
-  _new=$(mktemp "${_stg}/ctrl.XXXXXX" 2>/dev/null) || return 1
-  if [ -L "${_new}" ] || [ ! -f "${_new}" ]; then
-    rm -f "${_new}" &> /dev/null
-    return 1
-  fi
-  if ! cat "${_src}" > "${_new}" 2>/dev/null; then
-    rm -f "${_new}" &> /dev/null
+  _rsd=$(realpath -e -- "${_src%/*}" 2>/dev/null) || return 1
+  (
+    cd -P -- "${_rpn}" 2>/dev/null && [ "$(pwd -P)" = "${_rpn}" ] || exit 1
+    exec 9< . || exit 1
+    _ctrl_in_stage_dir _reseed_ctrl_ini_here "${_rsd}" "${_src##*/}" "${_dst##*/}"
+  )
+}
+# In the staging dir (the current one): the template ./$2 of the resolved
+# directory $1 put as a fresh file of the account's (0664), then renamed as
+# $3 into the destination directory held open on fd 9.
+_reseed_ctrl_ini_here() {
+  local _new
+  _new=$(mktemp ./ctrl.XXXXXX 2>/dev/null) || return 1
+  if ! ( cd -P -- "${1}" 2>/dev/null && [ "$(pwd -P)" = "${1}" ] \
+    && _acct_read_plain_here "${2}" ) > "${_new}"; then
+    rm -f -- "${_new}"
     return 1
   fi
   chown "${_HM_U}:$(_acct_group "${_HM_U}")" "${_new}" &> /dev/null
   chmod 0664 "${_new}" &> /dev/null
-  mv -f -T "${_new}" "${_dst}" &> /dev/null || rm -f "${_new}" &> /dev/null
+  mv -f -T -- "${_new}" "/proc/self/fd/9/${3}" &> /dev/null && return 0
+  rm -f -- "${_new}"
+  return 1
 }
 
 _desymlink_planted() {
@@ -380,28 +462,42 @@ _night_boa_pass_active() {
 }
 
 # Consecutive-ghost tracking so nothing is reaped on a single night's snapshot.
-# A per-item counter file (caller picks the path, e.g. under <account>/log/ctrl)
-# records how many consecutive runs the item has looked like a ghost. Returns 0
-# only once that reaches _need (default 2), giving a transient state -- a
-# verify/clone in flight, a momentarily-unmounted store, a symlink mid-repoint --
-# at least one grace run to recover. The caller MUST call _ghost_seen_reset on
-# any run where the item is found valid, so a recovered item never carries a
-# stale count into a later reap.
-_ghost_seen_enough() {
-  local _marker="$1"
-  local _need="${2:-2}"
-  local _n=0
-  [ -f "${_marker}" ] && _n=$(cat "${_marker}" 2>/dev/null)
+# A per-item counter in the account's log/ctrl, named $1 (a name, never a
+# path), records how many consecutive runs the item has looked like a ghost.
+# Returns 0 only once that reaches $2 (default 2), giving a transient state --
+# a verify/clone in flight, a momentarily-unmounted store, a symlink
+# mid-repoint -- at least one grace run to recover. The caller MUST call
+# _ghost_seen_reset_acct on any run where the item is found valid, so a
+# recovered item never carries a stale count into a later reap. log/ is oN's:
+# the counter is read, put and removed only inside the real log/ctrl, so a
+# link or a FIFO at the name, or at log/ or log/ctrl, is never followed or
+# opened, and a counter that cannot be kept there never counts. Reads _usEr.
+# 20-sites.sh carries the same two bodies.
+_ghost_seen_enough_acct() {
+  local _n
+  _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
+  _n=$(_acct_in_real_dir "${_usEr}/log/ctrl" _acct_read_plain_here "${1}" \
+    | head -c 32)
   _n="${_n//[^0-9]/}"
-  [ -n "${_n}" ] || _n=0
-  _n=$(( _n + 1 ))
-  mkdir -p "$(dirname "${_marker}")" 2>/dev/null
-  echo "${_n}" > "${_marker}" 2>/dev/null
-  [ "${_n}" -ge "${_need}" ]
+  _n="${_n:0:9}"
+  _n=$(( 10#${_n:-0} + 1 ))
+  _acct_in_real_dir "${_usEr}/log/ctrl" _acct_put_here "${1}" "${_n}" \
+    || return 1
+  [ "${_n}" -ge "${2:-2}" ]
 }
-
+_ghost_seen_reset_acct() {
+  _acct_in_real_dir "${_usEr}/log/ctrl" rm -f -- "./${1}" 2> /dev/null
+  return 0
+}
+# The same for a caller that passes the counter's path: honoured only for a
+# name directly in the account's log/ctrl; any other path never counts.
+_ghost_seen_enough() {
+  [ "${1%/*}" = "${_usEr}/log/ctrl" ] || return 1
+  _ghost_seen_enough_acct "${1##*/}" "${2:-2}"
+}
 _ghost_seen_reset() {
-  rm -f "$1" 2>/dev/null
+  [ "${1%/*}" = "${_usEr}/log/ctrl" ] || return 0
+  _ghost_seen_reset_acct "${1##*/}"
 }
 
 ###-------------LOAD-----------------###
@@ -444,63 +540,73 @@ _load_control() {
 
 ###-------------CHATTR-----------------###
 
+# A login owns its home, and a *.ftp home is never itself made immutable, so
+# every name below it can be swapped for a link, and chattr follows a link
+# named with a trailing slash. Each directory is locked and unlocked only
+# inside the real directory (_acct_in_real_dir): locking takes the
+# directory first, after which no name in it can change; unlocking clears
+# the names while it still holds. chattr refuses a link named by its bare
+# path, so a link among the entries is never followed.
+_night_lock_here() {
+  chattr +i . &> /dev/null
+  return 0
+}
+_night_unlock_here() {
+  chattr -i . &> /dev/null
+  return 0
+}
+_night_lock_all_here() {
+  chattr +i . &> /dev/null
+  chattr +i ./* &> /dev/null
+  return 0
+}
+_night_unlock_all_here() {
+  chattr -i ./* &> /dev/null
+  chattr -i . &> /dev/null
+  return 0
+}
+_night_drush_lock_here() {
+  chattr +i . &> /dev/null
+  [ -d ./usr ] && [ ! -L ./usr ] && chattr +i ./usr &> /dev/null
+  return 0
+}
+_night_drush_unlock_here() {
+  [ -d ./usr ] && [ ! -L ./usr ] && chattr -i ./usr &> /dev/null
+  # a CLI php.ini an earlier release left, for the ltd worker to remove
+  [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr -i ./php.ini &> /dev/null
+  chattr -i . &> /dev/null
+  return 0
+}
+
 _enable_chattr() {
   _isTest="$1"
   _isTest=${_isTest//[^a-z0-9]/}
   if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     if [ "$1" != "${_HM_U}.ftp" ]; then
-      chattr +i /home/$1/
+      _acct_in_real_dir "/home/$1" _night_lock_here
     else
-      if [ -d "/home/$1/platforms/" ]; then
-        chattr +i /home/$1/platforms/
-        chattr +i /home/$1/platforms/* &> /dev/null
-      fi
+      _acct_in_real_dir "/home/$1/platforms" _night_lock_all_here
     fi
-    if [ -d "/home/$1/.drush/" ]; then
-      chattr +i /home/$1/.drush/
-    fi
-    if [ -d "/home/$1/.drush/usr/" ]; then
-      chattr +i /home/$1/.drush/usr/
-    fi
-    if [ -d "/home/$1/.bazaar/" ]; then
-      chattr +i /home/$1/.bazaar/
-    fi
+    _acct_in_real_dir "/home/$1/.drush" _night_drush_lock_here
+    _acct_in_real_dir "/home/$1/.bazaar" _night_lock_here
   fi
 }
 
 _disable_chattr() {
   _isTest="$1"
   _isTest=${_isTest//[^a-z0-9]/}
-  # Same tenant-plantable names as _enable_chattr, inverted harm: clearing +i
-  # through a planted link strips the immutable protection from a tree of the
-  # tenant's choosing (e.g. /var/aegir/.drush and its *.ini, which BOA locks on
-  # purpose). Skip a symlinked component instead of resolving it.
-  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ] && [ ! -L "/home/$1" ]; then
+  # Same names as _enable_chattr, inverted harm: clearing +i through a
+  # planted link strips the immutable protection from a tree of the
+  # tenant's choosing (e.g. /var/aegir/.drush and its *.ini, which BOA locks
+  # on purpose), so the same real-directory rule applies.
+  if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     if [ "$1" != "${_HM_U}.ftp" ]; then
-      if [ -d "/home/$1/" ]; then
-        chattr -i /home/$1/
-      fi
+      _acct_in_real_dir "/home/$1" _night_unlock_here
     else
-      if [ -d "/home/$1/platforms/" ] && [ ! -L "/home/$1/platforms" ]; then
-        chattr -i /home/$1/platforms/
-        chattr -i /home/$1/platforms/* &> /dev/null
-      fi
+      _acct_in_real_dir "/home/$1/platforms" _night_unlock_all_here
     fi
-    if [ -d "/home/$1/.drush/" ] && [ ! -L "/home/$1/.drush" ]; then
-      chattr -i /home/$1/.drush/
-    fi
-    if [ -d "/home/$1/.drush/usr/" ] && [ ! -L "/home/$1/.drush" ] \
-      && [ ! -L "/home/$1/.drush/usr" ]; then
-      chattr -i /home/$1/.drush/usr/
-    fi
-    # a CLI php.ini an earlier release left, for the ltd worker to remove
-    if [ -f "/home/$1/.drush/php.ini" ] && [ ! -L "/home/$1/.drush" ] \
-      && [ ! -L "/home/$1/.drush/php.ini" ]; then
-      chattr -i /home/$1/.drush/php.ini
-    fi
-    if [ -d "/home/$1/.bazaar/" ] && [ ! -L "/home/$1/.bazaar" ]; then
-      chattr -i /home/$1/.bazaar/
-    fi
+    _acct_in_real_dir "/home/$1/.drush" _night_drush_unlock_here
+    _acct_in_real_dir "/home/$1/.bazaar" _night_unlock_here
   fi
 }
 
@@ -559,6 +665,12 @@ _run_drush8_hmr_cmd() {
 _hmr_context_exists() {
   local _name="$1"
   local _out
+  # a site name comes from a file name the account controls: a host name
+  # only, never text that could change the query
+  if [[ ! "${_name}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+    echo UNKNOWN
+    return 0
+  fi
   _out=$(su -s /bin/bash - ${_HM_U} -c "drush8 @hostmaster sqlq \"SELECT COUNT(*) FROM hosting_context WHERE name='${_name}'\"" 2>/dev/null \
     | grep -o '[0-9][0-9]*' | tail -n 1)
   case "${_out}" in
@@ -602,7 +714,21 @@ _apt_clean_update() {
   date +%s > "/run/_latest_apt_clean_update.${_CALLER_SCRIPT}.pid"
 }
 
+# In the real static/: a link put at goaccess removed, the directory made
+# when missing (root's).
+_goaccess_dir_here() {
+  [ -L ./goaccess ] && rm -f -- ./goaccess
+  [ -e ./goaccess ] || mkdir ./goaccess 2> /dev/null
+  return 0
+}
+# In the real static/goaccess, while root owns it: the report tree $1 copied
+# in as ./<its name>.
+_goaccess_copy_here() {
+  [ -O . ] && cp -af -- "${1}" ./
+}
+
 _if_gen_goaccess() {
+  local _gaD
   _PrTestPower=$(grep "POWER" /root/.${_HM_U}.octopus.cnf 2>&1)
   _PrTestPhantom=$(grep "PHANTOM" /root/.${_HM_U}.octopus.cnf 2>&1)
   _PrTestUltra=$(grep "ULTRA" /root/.${_HM_U}.octopus.cnf 2>&1)
@@ -614,30 +740,27 @@ _if_gen_goaccess() {
     || [[ "${_PrTestMonster}" =~ "MONSTER" ]] \
     || [[ "${_PrTestCluster}" =~ "CLUSTER" ]]; then
     _isWblgx="$(which weblogx)"
+    # The name comes from a vhost file name the account controls: a host
+    # name (or ALL) only, never a path, a glob or an option.
+    [[ "${1}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || return 0
     if [ -x "${_isWblgx}" ]; then
       ${_isWblgx} --site="${1}" --env="${_HM_U}"
       wait
       # static/ is tenant-writable (02775, no sticky), so goaccess can be a
-      # planted symlink: -e dereferences it and mkdir -p succeeds silently on a
-      # link to a directory, after which cp -af would drop a root-owned report
-      # tree into a location of the tenant's choosing. Strip a planted link and
-      # publish only into a real directory root itself owns.
-      _desymlink_planted "/data/disk/${_HM_U}/static/goaccess"
-      if [ ! -e "/data/disk/${_HM_U}/static/goaccess" ]; then
-        mkdir -p /data/disk/${_HM_U}/static/goaccess
-      fi
+      # planted symlink, and any name on the way can be swapped at any
+      # moment: a report tree copied through one would drop root-owned files
+      # wherever the tenant chose. goaccess is made, and a report published
+      # into it or withdrawn from it, only inside the real directory, and
+      # only while root owns it.
+      _acct_in_real_dir "/data/disk/${_HM_U}/static" _goaccess_dir_here
+      _gaD="/data/disk/${_HM_U}/static/goaccess"
       if [ -e "/var/www/adminer/access/${_HM_U}/${1}/index.html" ] \
-        && [ -d "/data/disk/${_HM_U}/static/goaccess" ] \
-        && [ ! -L "/data/disk/${_HM_U}/static/goaccess" ] \
-        && [ -O "/data/disk/${_HM_U}/static/goaccess" ]; then
-        cp -af /var/www/adminer/access/${_HM_U}/${1} /data/disk/${_HM_U}/static/goaccess/
+        && _acct_in_real_dir "${_gaD}" test -O .; then
+        _acct_in_real_dir "${_gaD}" _goaccess_copy_here \
+          "/var/www/adminer/access/${_HM_U}/${1}"
       else
-        rm -rf /var/www/adminer/access/${_HM_U}/${1}
-        # only inside the real directory: a link put at goaccess since the
-        # strip above is never followed
-        ( _gaD="$(cd -P /data/disk 2> /dev/null && pwd -P)/${_HM_U}/static/goaccess"
-          cd -P -- "/data/disk/${_HM_U}/static/goaccess" 2> /dev/null \
-            && [ "$(pwd -P)" = "${_gaD}" ] && rm -rf -- "./${1}" )
+        rm -rf -- "/var/www/adminer/access/${_HM_U}/${1}"
+        _acct_in_real_dir "${_gaD}" rm -rf -- "./${1}"
       fi
     fi
   fi

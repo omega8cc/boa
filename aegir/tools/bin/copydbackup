@@ -66,7 +66,11 @@ _dbk_store_dir() {
   case "${_sto}" in
     "${_own}"|*"/files/${_u}/static/files") ;;
     *)
-      _DBK_WHY="the files store resolves outside the account: ${_sto:-unresolvable}"
+      # a link target the account wrote: shown bounded and printable only,
+      # as the issue log requires
+      _sto="${_sto//[^[:print:]]/?}"
+      _DBK_WHY="the files store resolves outside the account: ${_sto:0:256}"
+      [ -n "${_sto}" ] || _DBK_WHY="${_DBK_WHY}unresolvable"
       return 1
       ;;
   esac
@@ -79,7 +83,9 @@ _dbk_store_dir() {
   case "${_real}" in
     "${_sto}"/?*|*"/files/${_u}/static/files"/?*) ;;
     *)
-      _DBK_WHY="dbackup resolves outside the account's files store: ${_real:-unresolvable}"
+      _real="${_real//[^[:print:]]/?}"
+      _DBK_WHY="dbackup resolves outside the account's files store: ${_real:0:256}"
+      [ -n "${_real}" ] || _DBK_WHY="${_DBK_WHY}unresolvable"
       return 1
       ;;
   esac
