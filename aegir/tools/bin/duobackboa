@@ -1075,6 +1075,114 @@ _acct_group() {
   echo "${_g}"
 }
 
+# An account owns /data/disk/<oN> and /home/<oN>.ftp, so any name below
+# either can be a link, and a whole directory on the way can be one. Root
+# acts there only inside the real directory. _acct_in_real_dir is a copy of
+# the helper in lib/functions/helper.sh.inc.
+#
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory; once entered, ./name stays there
+# whatever is swapped.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+# duplicity writes a restore by path, so a link an account puts in its own
+# tree, before or during the restore, would carry root's writes elsewhere. A
+# destination inside an account's tree (below /data/disk/<oN> or /home/<name>)
+# is restored into a fresh root-only directory on the same filesystem, then
+# renamed into its real parent directory; any other destination is restored
+# as given. Sets _RST_OUT, the path duplicity writes; fails, saying why, when
+# the destination cannot be staged. $1 = destination as given.
+_restore_stage() {
+  local _abs _dev _base
+  _RST_OUT="${1}"
+  _RST_STG=""
+  _RST_PAR=""
+  _RST_NAM=""
+  case "${1}" in
+    /*) _abs="${1}" ;;
+    *) _abs="$(pwd -P)/${1}" ;;
+  esac
+  while [ "${_abs}" != "${_abs%/}" ]; do
+    _abs="${_abs%/}"
+  done
+  case "${_abs}" in
+    /data/disk/?*/?*|/home/?*/?*) ;;
+    *) return 0 ;;
+  esac
+  _RST_PAR="${_abs%/*}"
+  _RST_NAM="${_abs##*/}"
+  _dev="$(_acct_in_real_dir "${_RST_PAR}" stat -c '%d' .)"
+  if [ -z "${_dev}" ]; then
+    echo "Restore destination ${1}: ${_RST_PAR} is not a real directory. Will not restore."
+    return 1
+  fi
+  if ! _acct_in_real_dir "${_RST_PAR}" _rst_free_here "${_RST_NAM}"; then
+    echo "Restore destination ${1} already exists. Will not overwrite."
+    return 1
+  fi
+  for _base in /var/tmp "$(stat -c '%m' -- "${_RST_PAR}" 2> /dev/null)"; do
+    [ -n "${_base}" ] && [ -d "${_base}" ] && [ ! -L "${_base}" ] || continue
+    _rst_base_ok "${_base}" || continue
+    [ "$(stat -c '%d' -- "${_base}" 2> /dev/null)" = "${_dev}" ] || continue
+    _RST_STG="$(mktemp -d "${_base%/}/boa-restore-XXXXXXXX" 2> /dev/null)" && break
+    _RST_STG=""
+  done
+  if [ -z "${_RST_STG}" ]; then
+    echo "Restore destination ${1}: no root-only directory on its filesystem to stage it in. Will not restore."
+    return 1
+  fi
+  _RST_OUT="${_RST_STG}/${_RST_NAM}"
+}
+# The name ./$1 is free in the current (pinned) directory: nothing at all is
+# there, not even a link.
+_rst_free_here() {
+  [ ! -e "./${1}" ] && [ ! -L "./${1}" ]
+}
+# $1 is root's, and what root makes in it no one else can rename: not
+# writable by group or others, or sticky.
+_rst_base_ok() {
+  local _s _u _m
+  _s="$(stat -c '%u %a' -- "${1}" 2> /dev/null)" || return 1
+  read -r _u _m <<< "${_s}"
+  [ "${_u}" = 0 ] || return 1
+  (( 0${_m} & 01000 )) && return 0
+  (( 0${_m} & 022 )) && return 1
+  return 0
+}
+# A staged restore (see _restore_stage) renamed into its real parent
+# directory: one rename on one filesystem, never a copy walked by path. Left
+# in the stage, and named, when that is not possible.
+_restore_place() {
+  [ -n "${_RST_STG}" ] || return 0
+  if [ -e "${_RST_OUT}" ] || [ -L "${_RST_OUT}" ]; then
+    if ! _acct_in_real_dir "${_RST_PAR}" _rst_rename_here "${_RST_OUT}" "${_RST_NAM}"; then
+      echo "The restored ${_RST_NAM} could not be moved into ${_RST_PAR}; it is kept in ${_RST_OUT}"
+      return 1
+    fi
+  fi
+  rmdir -- "${_RST_STG}" 2> /dev/null
+  return 0
+}
+# $1 renamed to ./$2 in the current (pinned) directory while the name is
+# free: a plain rename(2), which fails across filesystems instead of copying.
+_rst_rename_here() {
+  _rst_free_here "${2}" || return 1
+  perl -e 'rename($ARGV[0], $ARGV[1]) or exit 1' -- "${1}" "./${2}"
+}
+
 # After a root-run restore: duplicity re-applies the archived ownership, so
 # a pre-conversion archive lands files in the box-wide group inside a
 # converted account, and a foreign box's archive lands them in whatever its
@@ -1099,7 +1207,10 @@ _acct_reclaim_restored() {
   [ -n "${_a}" ] && [ "${_a}" != "all" ] && getent passwd "${_a}" > /dev/null 2>&1 || return 0
   _g=$(_acct_group "${_a}" 2> /dev/null)
   [ -n "${_g}" ] || _g="users"
-  find -P "${_r}" ! -group "${_g}" ! -group www-data ! -group root -execdir chgrp -h "${_g}" {} + 2> /dev/null
+  # The walk starts inside the real directory, so a name on the way swapped
+  # for a link after the realpath above never carries it elsewhere
+  _acct_in_real_dir "${_r}" find -P . ! -group "${_g}" ! -group www-data ! -group root \
+    -execdir chgrp -h "${_g}" {} + 2> /dev/null
   if [ -x "/opt/local/bin/instgrp" ]; then
     bash /opt/local/bin/instgrp reclaim "${_a}" > /dev/null 2>&1
   fi
@@ -1110,13 +1221,16 @@ _restore() {
   local _rDst
   if [ $# = 2 ]; then
     _rDst="$2"
-    echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} $2"
-    ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} $2
+    _restore_stage "${_rDst}" || exit 1
+    echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} ${_RST_OUT}"
+    ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} "${_RST_OUT}"
   else
     _rDst="$3"
-    echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3"
-    ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3
+    _restore_stage "${_rDst}" || exit 1
+    echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} ${_RST_OUT}"
+    ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} "${_RST_OUT}"
   fi
+  _restore_place || exit 1
   _acct_reclaim_restored "${_rDst}"
 }
 
@@ -1124,19 +1238,22 @@ _retrieve() {
   local _rDst
   if [ $# = 3 ]; then
     _rDst="$2"
+    _restore_stage "${_rDst}" || exit 1
     _HST_DASH=$(echo -n $3 | tr . - 2>&1)
     _BUCKET_NAME="daily-remote-${_HST_DASH}"
     _TARGET="boto3+s3://${_BUCKET_NAME}"
-    echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} $2"
-    ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} $2
+    echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} ${_RST_OUT}"
+    ${_DCY_MN_CMD} restore --path-to-restore $1 ${_NAME} ${_TARGET} "${_RST_OUT}"
   elif [ $# = 4 ]; then
     _rDst="$3"
+    _restore_stage "${_rDst}" || exit 1
     _HST_DASH=$(echo -n $4 | tr . - 2>&1)
     _BUCKET_NAME="daily-remote-${_HST_DASH}"
     _TARGET="boto3+s3://${_BUCKET_NAME}"
-    echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3"
-    ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} $3
+    echo "Command is ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} ${_RST_OUT}"
+    ${_DCY_MN_CMD} restore --path-to-restore $1 --time $2 ${_NAME} ${_TARGET} "${_RST_OUT}"
   fi
+  _restore_place || exit 1
   _acct_reclaim_restored "${_rDst}"
 }
 

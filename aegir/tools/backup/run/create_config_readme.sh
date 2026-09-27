@@ -30,6 +30,61 @@ _acct_group() {
   echo "${_g}"
 }
 
+# An account owns /data/disk/<oN> (log/ included) and, through its .ftp
+# login, static/control, so any name below either can be a link or a FIFO,
+# and a whole directory on the way can be one. Root acts there only inside
+# the real directory. _acct_in_real_dir is a copy of the helper in
+# lib/functions/helper.sh.inc.
+#
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory; once entered, ./name stays there
+# whatever is swapped.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory with the content read from stdin,
+# born with the mode $2 and handed to $3 (owner:group) when given: a fresh
+# file created exclusively, then renamed over the name, so a link or a FIFO
+# put at the name is replaced, never followed or opened.
+_acct_put_stdin_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( umask "$(printf '%03o' $(( 0777 & ~0${2} )))"
+    dd of="${_t}" conv=excl status=none 2> /dev/null ); then
+    [ -z "${3}" ] || chown -h -- "${3}" "${_t}"
+    mv -f -T -- "${_t}" "./${1}" && return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# ./$1 made in the current (pinned) directory unless the name is taken.
+_acct_mkdir_here() {
+  [ -e "./${1}" ] || [ -L "./${1}" ] || mkdir -- "./${1}"
+}
+# The names $2... made below the real directory $1 where missing, each inside
+# its real parent (mkdir never follows a link at the name). True when the
+# whole path is a real directory.
+_acct_mkdir_in() {
+  local _d="${1}" _n
+  shift
+  for _n in "$@"; do
+    _acct_in_real_dir "${_d}" _acct_mkdir_here "${_n}"
+    _d="${_d}/${_n}"
+  done
+  _acct_in_real_dir "${_d}" true
+}
+
 # Function to ensure the config directory exists
 _ensure_config_dir() {
   _user=$1
@@ -37,11 +92,16 @@ _ensure_config_dir() {
   _config_dir="${_BASE_DIR}/${_user}/static/control/remote_backups/config"
   _dir_ctrl_file="${_BASE_DIR}/${_user}/log/.backboa.${_user}.${_sPid}.config.dir.ctrl"
   if [ ! -d "${_config_dir}" ] || [ ! -e "${_dir_ctrl_file}" ]; then
-    mkdir -p "${_config_dir}"
-    chown -R ${_user}.ftp:${_grp} "${_config_dir}"
-    chmod 700 "${_config_dir}"
-    touch "${_dir_ctrl_file}"
-    echo "Created config directory for user: ${_user}"
+    if _acct_mkdir_in "${_BASE_DIR}/${_user}" static control remote_backups config; then
+      # Owner and mode set on the real directory, never through a link
+      _acct_in_real_dir "${_config_dir}" chown -R -- "${_user}.ftp:${_grp}" .
+      _acct_in_real_dir "${_config_dir}" chmod 700 .
+      _acct_in_real_dir "${_BASE_DIR}/${_user}/log" \
+        _acct_put_stdin_here "${_dir_ctrl_file##*/}" 644 < /dev/null
+      echo "Created config directory for user: ${_user}"
+    else
+      echo "Skipped config directory for user: ${_user} (not a real directory)"
+    fi
   fi
 }
 
@@ -59,7 +119,9 @@ _create_config_readme_file() {
   _ensure_config_dir "${_user}"
 
   if [ ! -f "${_readme_ctrl_file}" ]; then
-    cat << EOF > "${_readme_file}"
+    # A fresh 0600 file of the .ftp login inside the real config directory
+    _acct_in_real_dir "${_config_dir}" \
+      _acct_put_stdin_here "${_readme_file##*/}" 600 "${_user}.ftp:${_grp}" << EOF
 Backup Configuration README
 
 This directory contains configuration files for customizing backup behavior.
@@ -137,10 +199,13 @@ If you want to include specific documents:
   --include-regexp ^${_user_static_dir}/important_data/.*
 
 EOF
-    chmod 600 "${_readme_file}"
-    chown ${_user}.ftp:${_grp} "${_readme_file}"
-    echo "Created README file for config directory of user: ${_user}"
-    touch "${_readme_ctrl_file}"
+    if [ $? -eq 0 ]; then
+      echo "Created README file for config directory of user: ${_user}"
+      _acct_in_real_dir "${_BASE_DIR}/${_user}/log" \
+        _acct_put_stdin_here "${_readme_ctrl_file##*/}" 644 < /dev/null
+    else
+      echo "Skipped README file for config directory of user: ${_user} (not a real directory)"
+    fi
   else
     echo "README file already updated for config directory of user: ${_user}"
   fi
