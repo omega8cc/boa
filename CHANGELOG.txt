@@ -1199,9 +1199,12 @@
       multi-fpm.info, and otherwise on the account's default version.
       Under a domain's site it ran on the version set for that site.
 
-    * Under a domain served by a Grav or Textpattern site, the PHP pages
-      of a subdirectory site get a PHP pool: the domain's vhost set none
-      for them.
+    * Only Drupal and Backdrop sites live in a subdirectory or carry
+      subdirectory sites. The site form refuses a subdirectory address on
+      a Grav or Textpattern platform, and one whose domain is a Grav or
+      Textpattern site; a Verify skips such an address with a warning,
+      and the Grav and Textpattern vhosts include no subdirectory
+      configurations.
 
     * A domain that is not a site but serves subdirectory sites now
       applies its ip_access and AI crawler policy records, and the
