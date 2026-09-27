@@ -71,6 +71,8 @@ Ensure you use Solr-compatible config files.
 ;solr_custom_config = NO
 ```
 
+A Drupal 8+ core created while `solr_custom_config` is `YES` is protected from the moment it is created: it stays on Solr's own managed schema and takes no upload. An `apachesolr` or Drupal 7 `search_api_solr` core created then first goes through BOA's template check for a new core, as at any creation, and is protected from the next step of the same pass.
+
 > **NOTE:** The `solr.php` file is not used to connect to the Solr core; it is only for information on configuring Solr in the given site. Once you clone the site, the new clone will receive its own Solr core in a few minutes, with the `solr.php` file populated with unique, new credentials. Update the site admin area configuration to use the new Solr core on the cloned site. Cron is not enabled on the cloned site by default, preventing the overwriting of the original site index.
 
 ## Uploaded Solr Core Configuration Files

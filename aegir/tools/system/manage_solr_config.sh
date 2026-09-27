@@ -216,6 +216,7 @@ _acct_put_same_here() {
     "regular file"|"regular empty file") ;;
     *) return 1 ;;
   esac
+  [[ "${_mod}" =~ ^[0-7]+$ && "${_sz}" =~ ^[0-9]+$ ]] || return 1
   [ "${_sz}" -lt 1048576 ] || return 1
   rm -f -- "${_t}"
   if printf '%s' "${2}" \
@@ -469,9 +470,11 @@ _solr_in_upload_dir() {
 # ./files/solr. files is a real directory, or the link autosymlink puts
 # there into the account's files store, followed only where it resolves
 # into the account's own static/files or that store moved onto attached
-# storage (/mnt/<mount>/files/<oN>/static/files), and checked again once
-# entered. Any other link on the way refuses. Changes the directory: run it
-# only inside a subshell. Reads _usEr.
+# storage (/mnt/<mount>/files/<oN>/static/files, the mount itself possibly
+# nested, with no directory named files or static between /mnt and the
+# mount, as the nightly decides it), and checked again once entered. Any
+# other link on the way refuses. Changes the directory: run it only inside
+# a subshell. Reads _usEr.
 _solr_in_files_here() {
   local _r _rus _a _m
   if [ ! -L ./files ]; then
@@ -481,11 +484,16 @@ _solr_in_files_here() {
   _r=$(realpath -e -- ./files 2> /dev/null) || return 1
   _rus=$(realpath -e -- "${_usEr}" 2> /dev/null) || return 1
   _a="${_usEr##*/}"
-  _m="^/mnt/[^/]+/files/${_a//./[.]}/static/files/."
   case "${_r}" in
     ""|*[!A-Za-z0-9._/-]*) return 1 ;;
     "${_rus}/static/files/"?*) ;;
-    *) [[ "${_r}" =~ ${_m} ]] || return 1 ;;
+    /mnt/?*/files/"${_a}"/static/files/?*)
+      _m="${_r%%/files/"${_a}"/static/files/*}"
+      case "${_m}" in
+        */files/*|*/static/*) return 1 ;;
+      esac
+      ;;
+    *) return 1 ;;
   esac
   cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] || return 1
   _acct_down_real_here solr "$@"
@@ -1015,6 +1023,18 @@ _add_solr() {
       fi
       echo "New Solr ${3} with ${1} for ${2} added"
     fi
+    # A Drupal 8+ core created while the site INI sets solr_custom_config =
+    # YES (leg 1 of this call read it) is protected before the refresh
+    # below, so it stays on Solr's managed schema and takes no upload. An
+    # apachesolr or Drupal 7 core still goes through BOA's template check
+    # here, as a new core does, and leg 2 protects it after.
+    if [ "${_SLR_CM_CFG_L1}" = "YES" ] && [ -d "${2}/conf" ] \
+      && [ ! -L "${2}/conf" ] && [ "${1}" != "apachesolr" ] \
+      && [ ! -e "${_Plr}/modules/o_contrib_seven" ] \
+      && [ ! -e "${_Plr}/modules/o_contrib" ]; then
+      touch "${2}/conf/.protected.conf"
+      echo "Solr config for ${2} is protected"
+    fi
     _update_solr "${1}" "${2}" "${3}" tpl
   fi
 }
@@ -1240,8 +1260,12 @@ _reregister_solr_core() {
   # shortcut: Solr refuses a CREATE into an instanceDir that already holds
   # one and deletes the file on its way out, which would unregister a core
   # that merely failed to load. Solr 4 keeps its registry in solr.xml and
-  # has no such file, so it is not handled here. Runs after _update_solr,
-  # so the one attempt loads the conf the daemon has just repaired.
+  # has no such file, so it is not handled here. Runs after the check's
+  # _update_solr, which applies a Drupal 8+ site's upload when one waits,
+  # so that attempt loads the conf just published. A Drupal 7 or
+  # apachesolr core takes BOA's template only later, in the
+  # solr_update_config = YES leg, so this attempt loads the conf the core
+  # already has.
   local _path="${1}" _serv="${2}" _port _core _state _resp _rc _stamp _own
   case "${_path}" in
     /var/solr9/data/*) _port=9099; [ "${_serv}" = "solr9" ] || return 0 ;;
@@ -1401,7 +1425,7 @@ _setup_solr() {
   # site's leg 1 did not run.
   local _iniTxt _leg1=NO
   _SOLR_MODULE="" _SOLR_BASE="" _SOLR_VER="" _SOLR_DIR="" _SOLR_TEARDOWN=NO
-  _SLR_CM_CFG_RT=NO _SOLR_PROTECT_CTRL=""
+  _SLR_CM_CFG_RT=NO _SOLR_PROTECT_CTRL="" _SLR_CM_CFG_L1=NO
   _SOLR_INI_RESEEDED=NO
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
@@ -1489,10 +1513,13 @@ _setup_solr() {
           rm -f -- "./solr-reseeded.${_SolrCoreID}" &> /dev/null
       # A core this same text protects is protected before the check, which
       # otherwise refreshes it once from a template or an upload before leg 2
-      # writes the marker.
-      if [ -n "${_SOLR_VER}" ] && [ -d "${_SOLR_DIR}/conf" ] \
-        && grep -q "^solr_custom_config = YES" <<< "${_iniTxt}"; then
-        touch "${_SOLR_DIR}/conf/.protected.conf"
+      # writes the marker; a core the check creates is protected by
+      # _add_solr, right after it is made.
+      if grep -q "^solr_custom_config = YES" <<< "${_iniTxt}"; then
+        _SLR_CM_CFG_L1=YES
+        if [ -n "${_SOLR_VER}" ] && [ -d "${_SOLR_DIR}/conf" ]; then
+          touch "${_SOLR_DIR}/conf/.protected.conf"
+        fi
       fi
       [ -n "${_SOLR_VER}" ] && _check_solr "${_SOLR_MODULE}" "${_SOLR_DIR}" "${_SOLR_VER}"
     else
