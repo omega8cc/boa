@@ -100,7 +100,10 @@ _oct_up_mark_here() {
 # a name removes a link itself, never what it points at. The fresh sys/ is
 # entered again and handed to the instance user, which clones provision into
 # it (as the satellite pass does), so root never writes into a directory the
-# account can change under it.
+# account can change under it. The clone runs in that directory with the
+# user's own home (/data/disk/<oN>) and the system PATH, whatever the
+# launcher's environment holds; a clone that did not land is reported, and
+# the pass's own provision fetch (AegirSetupB) tries again.
 _oct_drush_reset_here() {
   local _want _own
   _want="$(pwd -P)/sys"
@@ -110,8 +113,11 @@ _oct_drush_reset_here() {
   ( cd -P -- ./sys 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] || exit 0
     chown "${_own}" .
     su -s /bin/bash "${_octUsr}" \
-      -c "${_gCb} ${_bRnh} ${_gitHub}/provision.git ./provision" &> /dev/null
-    chown -R "${_own}" . )
+      -c "export HOME=/data/disk/${_octUsr} PATH=/usr/local/bin:/usr/bin:/bin \
+        && ${_gCb} ${_bRnh} ${_gitHub}/provision.git ./provision" &> /dev/null
+    chown -R "${_own}" .
+    [ -d ./provision ] && [ ! -L ./provision ] \
+      || echo "ALRT: provision was not cloned into ${_want} as ${_octUsr}" )
 }
 
 _sanitize_number() {
@@ -663,12 +669,14 @@ _up_one() {
     fi
 
     if [ -e "${_vBs}/${_tocName}" ]; then
+      ### .drush is the instance user's: provision is listed from inside its
+      ### real directory, never through a link put on the way
       if [ -e "${_usEr}/.drush/sys/provision/http" ]; then
-        _IS_OLD=$(find ${_usEr}/.drush/sys/provision/ \
-          -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
+        _IS_OLD=$(_oct_in_real_dir "${_usEr}/.drush/sys/provision" \
+          find . -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
       elif [ -e "${_usEr}/.drush/provision" ]; then
-        _IS_OLD=$(find ${_usEr}/.drush/provision/ \
-          -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
+        _IS_OLD=$(_oct_in_real_dir "${_usEr}/.drush/provision" \
+          find . -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
       fi
       if [ -e "${_usEr}/.drush/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
         _IS_OLD=

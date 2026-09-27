@@ -659,8 +659,13 @@ _satellite_tune_fpm_config() {
   fi
 
   if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge 1 ]; then
+    ### the digits of the account's cores.txt, as before, taken by tr (a
+    ### pattern substitution over the whole file costs the square of its
+    ### length), leading zeros dropped and at most nine kept, so the
+    ### product below stays a number
     if [ -e "${_ROOT}/log/cores.txt" ]; then
-      _CLIENT_CORES=$(_acct_read_in "${_ROOT}/log" cores.txt | tr -d '\n')
+      _CLIENT_CORES=$(_acct_read_in "${_ROOT}/log" cores.txt \
+        | tr -cd '0-9' | sed 's/^0*//' | head -c 9)
     fi
     _CLIENT_CORES=${_CLIENT_CORES//[^0-9]/}
     if [ ! -z "${_CLIENT_CORES}" ] && [ "${_CLIENT_CORES}" -ge 1 ]; then
@@ -1468,9 +1473,13 @@ _satellite_cnf() {
     fi
     _PRE_PLATFORMS_LIST="${_PLATFORMS_LIST}"
     if [ -e "${_ROOT}/static/control/platforms.info" ]; then
-      _PLATFORMS_LIST=$(_acct_read_in "${_ROOT}/static/control" platforms.info)
-      _PLATFORMS_LIST=$(echo -n ${_PLATFORMS_LIST} | tr -d "\n" 2>&1)
-      _PLATFORMS_LIST=${_PLATFORMS_LIST//[^ 0-9A-Z]/}
+      ### the symbols of the account's file: blanks and line breaks made
+      ### single spaces and every other character but 0-9 and A-Z dropped,
+      ### by tr, never expanded as a file name pattern
+      _PLATFORMS_LIST=$(_acct_read_in "${_ROOT}/static/control" platforms.info \
+        | tr -s '[:space:]' ' ' | tr -cd ' 0-9A-Z' | tr -s ' ')
+      _PLATFORMS_LIST="${_PLATFORMS_LIST# }"
+      _PLATFORMS_LIST="${_PLATFORMS_LIST% }"
       _msg "NOTE! Custom Platforms List: ${_PLATFORMS_LIST}"
       if [ -z "${_PLATFORMS_LIST}" ]; then
         _PLATFORMS_LIST="${_PRE_PLATFORMS_LIST}"
@@ -3612,6 +3621,41 @@ EOFMYSQL
 }
 
 #
+# The option $2 (db_user, db_name, db_passwd) of the drushrc.php in the real
+# directory $1, parsed as before from a bounded read that never follows a
+# link or blocks on a FIFO.
+_satellite_drc_get() {
+  _acct_read_in "${1}" drushrc.php \
+    | grep "options\['${2}'\] = " \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,';]//g" 2>&1
+}
+# True when no other hostmaster on this box, another account's or the
+# master's, has $1 as its database user. Each alias and drushrc.php is read
+# as _satellite_drc_get reads it, and a site path is followed only inside
+# that instance's own hostmaster tree.
+_satellite_hm_dbuser_own() {
+  local _a _p
+  for _a in /var/aegir /data/disk/*; do
+    [ "${_a}" = "${_ROOT}" ] && continue
+    [ -d "${_a}/.drush" ] || continue
+    _p=$(_acct_read_in "${_a}/.drush" hostmaster.alias.drushrc.php \
+      | grep "site_path'" \
+      | cut -d: -f2 \
+      | awk '{ print $3}' \
+      | sed "s/[\,']//g" 2>&1)
+    case "${_p}" in
+      *[!A-Za-z0-9._/-]*|*/../*) continue ;;
+      "${_a}"/aegir/distro/*/sites/?*|/var/aegir/*/sites/?*) ;;
+      *) continue ;;
+    esac
+    [ "$(_satellite_drc_get "${_p}" db_user)" = "${1}" ] && return 1
+  done
+  return 0
+}
+
+#
 # Sync hostmaster frontend db_passwd.
 _hostmaster_frontend_dbpass_sync() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -3635,26 +3679,22 @@ _hostmaster_frontend_dbpass_sync() {
   _THIS_HM_DBUR=""
   _THIS_HM_DBPD=""
   if [ -n "${_THIS_HM_SPTH}" ]; then
-    _THIS_HM_DBUR=$(_acct_read_in "${_THIS_HM_SPTH}" drushrc.php \
-      | grep "options\['db_user'\] = " \
-      | cut -d: -f2 \
-      | awk '{ print $3}' \
-      | sed "s/[\,';]//g" 2>&1)
-    _THIS_HM_DBPD=$(_acct_read_in "${_THIS_HM_SPTH}" drushrc.php \
-      | grep "options\['db_passwd'\] = " \
-      | cut -d: -f2 \
-      | awk '{ print $3}' \
-      | sed "s/[\,';]//g" 2>&1)
+    _THIS_HM_DBUR=$(_satellite_drc_get "${_THIS_HM_SPTH}" db_user)
+    _THIS_HM_DBPD=$(_satellite_drc_get "${_THIS_HM_SPTH}" db_passwd)
     ### Both go into SQL root runs: the user only as a plain database user
     ### name that is not one of the server's own, the password only in the
-    ### alphabets the provisioning and BOA generators use.
+    ### alphabets the provisioning and BOA generators use. The user is also
+    ### the site's database name, as provisioning and transfers set it, and
+    ### no other hostmaster on this box names it as its own.
     if [[ ! "${_THIS_HM_DBUR}" =~ ^[A-Za-z0-9_]{1,32}$ ]] \
       || [ "${_THIS_HM_DBUR}" = "root" ] \
       || [ "${_THIS_HM_DBUR}" = "aegir_root" ] \
       || [ -e "/data/disk/${_THIS_HM_DBUR}" ] \
-      || [[ ! "${_THIS_HM_DBPD}" =~ ^[A-Za-z0-9%@._+=/-]+$ ]]; then
+      || [[ ! "${_THIS_HM_DBPD}" =~ ^[A-Za-z0-9%@._+=/-]+$ ]] \
+      || [ "${_THIS_HM_DBUR}" != "$(_satellite_drc_get "${_THIS_HM_SPTH}" db_name)" ] \
+      || ! _satellite_hm_dbuser_own "${_THIS_HM_DBUR}"; then
       if [ -n "${_THIS_HM_DBUR}" ] || [ -n "${_THIS_HM_DBPD}" ]; then
-        _msg "ALRT: ${_USER} hostmaster db_user or db_passwd is not in the expected form; frontend db sync skipped"
+        _msg "ALRT: ${_USER} hostmaster db_user or db_passwd is not in the expected form, or db_user is not this instance's own; frontend db sync skipped"
       fi
       _THIS_HM_DBUR=""
       _THIS_HM_DBPD=""
@@ -3921,7 +3961,8 @@ _satellite_run_child_b() {
           _acct_in_real_dir "${_THIS_HM_SITE}/files" \
             chown -R "${_USER}:${_WEBG}" .
         fi
-        _satellite_in_store_dir "${_THIS_HM_SITE}/files" chmod -R 02775 .
+        _satellite_in_store_dir "${_THIS_HM_SITE}/files" \
+          _satellite_tree_mode_all_here 02775
       else
         _msg "${_STATUS} A: NOTE: hostmaster site outside ${_ROOT}/aegir/distro left as it is"
       fi
@@ -4583,16 +4624,14 @@ _satellite_if_read_create_pass_txt() {
     ### 0600 file (moved: with the old file's owner and mode) inside the
     ### real log/, never through a link put at either name.
     if [ -e "${_ROOT}/pass.txt" ]; then
-      _PASWD=$(_acct_read_in "${_ROOT}" pass.txt)
-      _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
+      _PASWD=$(_satellite_pass_read "${_ROOT}" pass.txt)
       _pSt="$(_acct_in_real_dir "${_ROOT}" _satellite_stat_here pass.txt)" \
         && _acct_read_in "${_ROOT}" pass.txt \
         | _acct_in_real_dir "${_ROOT}/log" _satellite_put_stdin_here \
           pass.txt "${_pSt#* }" "${_pSt%% *}" \
         && rm -f "${_ROOT}/pass.txt"
     elif [ -e "${_ROOT}/log/pass.txt" ]; then
-      _PASWD=$(_acct_read_in "${_ROOT}/log" pass.txt)
-      _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
+      _PASWD=$(_satellite_pass_read "${_ROOT}/log" pass.txt)
       rm -f ${_ROOT}/pass.txt
     else
       cd ${_ROOT}/log
@@ -4638,8 +4677,7 @@ _satellite_if_read_create_pass_txt() {
       _salt=$(openssl rand -base64 16 | tr -d '+=' | head -c 16)
       ph=$(printf '%s' "${_ESC_LUPASS}" | mkpasswd -m sha-512 -s -S "${_salt}")
       printf '%s:%s\n' "${_USERFTP}" "${ph}" | chpasswd -e &> /dev/null
-      _PASWD=$(_acct_read_in "${_ROOT}/log" pass.txt)
-      _PASWD=$(echo -n ${_PASWD} | tr -d "\n" 2>&1)
+      _PASWD=$(_satellite_pass_read "${_ROOT}/log" pass.txt)
     fi
   fi
 }
@@ -4868,13 +4906,17 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
     && [ -L "/keys/keys" ] && [ "$(readlink /keys/keys)" = "/keys" ]; then
     rm -f /keys/keys && rmdir /keys
   fi
-  # One that holds more is left in place, but handed back to root.
+  # One that holds more is left in place, but handed back to root and closed
+  # (0700), which cuts every login off from all below it: whether its owner
+  # is still a *.ftp login, one since removed (no name), or it is still in
+  # the web group it was made in. Nothing in BOA reads /keys.
   if [ -d "/keys" ] && [ ! -L "/keys" ]; then
-    case "$(stat -c %U /keys 2> /dev/null)" in
-      *.ftp)
+    case "$(stat -c '%U:%G' /keys 2> /dev/null)" in
+      root:*|"") ;;
+      *.ftp:*|UNKNOWN:*|*:"${_WEBG:-www-data}")
         chown -h root:root /keys
-        chmod 00755 /keys
-        _msg "NOTE: /keys at the filesystem root is not empty; handed back to root and left in place"
+        chmod 0700 /keys
+        _msg "NOTE: /keys at the filesystem root is not empty; handed back to root (0700) and left in place"
         ;;
     esac
   fi
@@ -6076,12 +6118,13 @@ _satellite_sub_here() {
   mkdir -p -- "./${_n}" 2> /dev/null
   _acct_in_real_dir "./${_n}" "$@"
 }
-# The command line $1 run by the instance user from its own home with the
-# system PATH: whatever a link in the account's tree leads to, it reaches
-# only what that user may change.
+# The command line $1 run by the instance user from its own home, with HOME
+# set to it and the system PATH, whatever the calling environment holds
+# (git reads its config from HOME): whatever a link in the account's tree
+# leads to, it reaches only what that user may change.
 _satellite_as_user() {
   su -s /bin/bash "${_USER}" \
-    -c "cd ${_ROOT} && PATH=/usr/local/bin:/usr/bin:/bin && { ${1}; }"
+    -c "cd ${_ROOT} && export HOME=${_ROOT} PATH=/usr/local/bin:/usr/bin:/bin && { ${1}; }"
 }
 # +i cleared on each regular file named, in the current (pinned) directory;
 # a link given by its bare name is never passed to chattr.
@@ -6118,6 +6161,18 @@ _satellite_tree_modes_here() (
     -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
   find . -mindepth 1 -path './.*' -prune -o -type f \
     -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
+)
+# The current (pinned) directory and every directory and regular file below
+# it set to $1, as chmod -R set them, each through a handle opened without
+# following a link, from the directory find walked (-execdir): a name
+# swapped for a link during the walk is refused, never followed.
+_satellite_tree_mode_all_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  _satellite_chmod_nofollow d "${1}" .
+  find . -mindepth 1 -type d \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
+  find . -mindepth 1 -type f \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f "${1}" {} +
 )
 # The current (pinned) backups directory's system/ (and system/$1 when
 # given) made where missing, handed to the instance user and set 0700,
@@ -6175,18 +6230,38 @@ _satellite_link_new_here() {
 _satellite_host_ok() {
   [[ "${1}" =~ ^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$ ]]
 }
-# True when $1 is an e-mail address in a plain form: a local part of
-# letters, digits and . _ % + = - (a letter, a digit or _ first), '@' and a
-# host name.
+# True when $1 is one e-mail address, or several separated by single
+# spaces, each in a plain form: a local part of letters, digits and
+# . _ % + = ' - (a letter, a digit or _ first), '@' and a host name. The
+# form holds no double quote, $, backquote, backslash, '/', '&' or line
+# break.
 _satellite_email_ok() {
-  [[ "${1}" =~ ^[A-Za-z0-9_][A-Za-z0-9._%+=-]*@[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]
+  local _q="'" _w _re
+  _w="[A-Za-z0-9_][A-Za-z0-9._%+=${_q}-]*@[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?"
+  _re="^${_w}( ${_w})*$"
+  [[ "${1}" =~ ${_re} ]]
 }
-# $1 without the blanks around it.
+# $1 without the blanks around it; nothing for text over 1024 characters,
+# longer than any value read this way, so the caller keeps its own value
+# (the cost of these trims grows with the square of the length).
 _satellite_trim() {
   local _t="${1}"
+  [ "${#_t}" -le 1024 ] || return 0
   _t="${_t#"${_t%%[![:space:]]*}"}"
   printf '%s' "${_t%"${_t##*[![:space:]]}"}"
 }
+# The account's password file $2 in the real directory $1, read bounded and
+# joined into one line as echo joined it, never expanded as a file name
+# pattern; nothing for text over 256 characters (the generators make 128 at
+# most).
+_satellite_pass_read() (
+  local _v
+  _v="$(_acct_read_in "${1}" "${2}")"
+  [ "${#_v}" -le 256 ] || exit 0
+  set -f
+  # shellcheck disable=SC2086
+  echo -n ${_v}
+)
 # The account's log/$1, read bounded, blanks around it dropped, put in the
 # variable $2 when the whole of it matches the extended regular expression
 # $3; any other text leaves $2 as the root cnf set it.
@@ -6221,8 +6296,10 @@ _satellite_inc_put() {
 #
 # One PHP version in the text of fpm.info or cli.info, dotted (8.4) or
 # two-digit (84, as the ltd worker also reads it), printed dotted; nothing for
-# any other text.
+# any other text, and nothing for text over 64 characters, before any
+# pattern substitution (its cost grows with the square of the length).
 _satellite_php_vrn() {
+  [ "${#1}" -le 64 ] || return 0
   local _t="${1//[^0-9.]/}" _d="${1//[^0-9]/}"
   case "${_t}" in
     [0-9].[0-9]|[0-9][0-9]) ;;
@@ -6240,10 +6317,12 @@ _satellite_check_php_compatibility() {
   fi
   # Only a pin to PHP older than 5.6 stops the upgrade. Any other text, a
   # two-digit version or a file that holds no version, is not a reason to
-  # refuse: the reads below ignore what is not one version.
+  # refuse: the reads below ignore what is not one version (text over 64
+  # characters included, before any pattern substitution).
   _PHP_FPM_LEGACY_FREE=YES
   if [ -e "${_ROOT}/static/control/fpm.info" ]; then
     _T_FPM_VRN=$(_acct_read_in "${_ROOT}/static/control" fpm.info)
+    [ "${#_T_FPM_VRN}" -le 64 ] || _T_FPM_VRN=""
     _T_FPM_VRN=${_T_FPM_VRN//[^0-9.]/}
     case "${_T_FPM_VRN}" in
       5.2|5.3|5.4|5.5|52|53|54|55) _PHP_FPM_LEGACY_FREE=NO ;;
@@ -6252,6 +6331,7 @@ _satellite_check_php_compatibility() {
   _PHP_CLI_LEGACY_FREE=YES
   if [ -e "${_ROOT}/static/control/cli.info" ]; then
     _T_CLI_VRN=$(_acct_read_in "${_ROOT}/static/control" cli.info)
+    [ "${#_T_CLI_VRN}" -le 64 ] || _T_CLI_VRN=""
     _T_CLI_VRN=${_T_CLI_VRN//[^0-9.]/}
     case "${_T_CLI_VRN}" in
       5.2|5.3|5.4|5.5|52|53|54|55) _PHP_CLI_LEGACY_FREE=NO ;;
@@ -6488,8 +6568,9 @@ _satellite_if_init_or_upgrade() {
         fi
       fi
       ### Each value is taken in its own form only (the option and the plan
-      ### one word, the cores digits, the e-mail a plain address); other
-      ### text leaves the value the root cnf gives.
+      ### one word, the cores digits, the e-mail plain addresses, one or
+      ### several, as the nightly takes them); other text leaves the value
+      ### the root cnf gives.
       if [ -e "${_ROOT}/log/option.txt" ]; then
         _satellite_log_value option.txt _CLIENT_OPTION '^[A-Za-z0-9_]+$'
       fi
@@ -6500,7 +6581,8 @@ _satellite_if_init_or_upgrade() {
         _satellite_log_value subscr.txt _CLIENT_SUBSCR '^[A-Za-z0-9_]+$'
       fi
       if [ -e "${_ROOT}/log/email.txt" ]; then
-        _T_EML="$(_satellite_trim "$(_acct_read_in "${_ROOT}/log" email.txt)")"
+        _T_EML="$(_satellite_trim "$(_acct_read_in "${_ROOT}/log" email.txt \
+          | tr -s '[:space:]' ' ')")"
         _T_EML=${_T_EML//\\\@/\@}
         if _satellite_email_ok "${_T_EML}"; then
           _CLIENT_EMAIL="${_T_EML}"
@@ -6784,6 +6866,27 @@ _satellite_pre_cleanup() {
   fi
 }
 
+### Run inside the real vhost.d: each regular file there whose name is a
+### host name other than $1 (the hostmaster's), read as _acct_read_here
+### reads it, that declares the db_* set without the nginx db variables,
+### printed as "<name>", for the PHP array below. The name becomes a PHP
+### string literal: a vhost file is named by the site's URI, so anything
+### outside the hostname alphabet is not a site of ours.
+_satellite_dbvars_list_here() {
+  local _v _d _t
+  for _v in ./*; do
+    [ -f "${_v}" ] && [ ! -L "${_v}" ] || continue
+    _d="${_v#./}"
+    case "${_d}" in .*|https.*) continue ;; esac
+    [ "${_d}" = "${1}" ] && continue
+    case "${_d}" in *[!A-Za-z0-9.-]*) continue ;; esac
+    _t="$(_acct_read_here "${_d}")"
+    case "${_t}" in *'set $boa_db_type'*) continue ;; esac
+    case "${_t}" in *'fastcgi_param db_type'*) ;; *) continue ;; esac
+    printf '"%s",' "${_d}"
+  done
+}
+
 ### The shared nginx include now takes the site's database credentials
 ### through variables the site vhost sets after the include line; a vhost
 ### rendered before that keeps passing EMPTY credentials to the locations
@@ -6802,31 +6905,18 @@ _satellite_pre_cleanup() {
 _satellite_queue_dbvars_site_verifies() {
   local _inc="${_ROOT}/config/includes/nginx_vhost_common.conf"
   local _vhd="${_ROOT}/config/server_master/nginx/vhost.d"
-  local _v _d _t _list="" _n
+  local _list="" _n
   ### _DRUSHCMD exists only in the AegirSetup child scripts; this runs in
   ### the launcher's own process, where the instance user's drush8 is on
   ### the login PATH.
   local _hmDrush="${_DRUSHCMD:-drush8}"
   ### config/ is the instance user's: the include and each vhost are read
   ### bounded inside the real directory, never through a link or from a
-  ### FIFO put at the name.
+  ### FIFO put at the name; vhost.d is entered once for all its files.
   [ -f "${_inc}" ] && _acct_read_in "${_inc%/*}" "${_inc##*/}" \
     | grep -q '^set \$boa_db_type' || return 0
   [ -d "${_vhd}" ] || return 0
-  for _v in "${_vhd}"/*; do
-    [ -f "${_v}" ] || continue
-    _d="${_v##*/}"
-    case "${_d}" in .*|https.*) continue ;; esac
-    [ "${_d}" = "${_DOMAIN}" ] && continue
-    ### The name becomes a PHP string literal below: a vhost file is named
-    ### by the site's URI, so anything outside the hostname alphabet is not
-    ### a site of ours.
-    case "${_d}" in *[!A-Za-z0-9.-]*) continue ;; esac
-    _t="$(_acct_read_in "${_vhd}" "${_d}")"
-    grep -q 'set \$boa_db_type' <<< "${_t}" && continue
-    grep -q 'fastcgi_param db_type' <<< "${_t}" || continue
-    _list="${_list}\"${_d}\","
-  done
+  _list="$(_acct_in_real_dir "${_vhd}" _satellite_dbvars_list_here "${_DOMAIN}")"
   [ -n "${_list}" ] || return 0
   ### One hostmaster bootstrap for the whole list: a per-site drush call
   ### costs seconds each and a box with hundreds of sites would spend that
@@ -7009,6 +7099,8 @@ _satellite_letsencrypt_vhost_setup() {
   _leCrtPath="${_leRoot}/certs/${_DOMAIN}"
   _exeLe="${_leRoot}/dehydrated"
   _Ssl="/var/aegir/config/server_master/nginx/pre.d/z_${_DOMAIN}_ssl_proxy.conf"
+  ### /root/.ssl.proxy.cnf is one line of five blank-separated fields, the
+  ### fourth one address: the first of the client addresses goes there.
   if [ -e "${_leRoot}/.ctrl/ssl-demo-mode.pid" ] \
     && [ -e "${_leRoot}/config.sh" ]; then
     if [ -e "${_Ssl}" ]; then
@@ -7081,7 +7173,7 @@ _satellite_letsencrypt_vhost_setup() {
             _msg "${_STATUS} A: pre.d/z_${_DOMAIN}_ssl_proxy.conf needs update..."
           fi
           _satellite_ssl_proxy_template_refresh
-          echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL} ${_THISHTIP}" > /root/.ssl.proxy.cnf
+          echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL%% *} ${_THISHTIP}" > /root/.ssl.proxy.cnf
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             bash /opt/local/bin/xoct ssl-gen
             wait
@@ -7099,7 +7191,7 @@ _satellite_letsencrypt_vhost_setup() {
         _msg "${_STATUS} A: Creating LE vhost for Hostmaster, please wait..."
         _satellite_letsencrypt_crt_key_copy
         _satellite_ssl_proxy_template_refresh
-        echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL} ${_THISHTIP}" > /root/.ssl.proxy.cnf
+        echo "${_DOMAIN} ${_THISHTIP} ${_USER} ${_CLIENT_EMAIL%% *} ${_THISHTIP}" > /root/.ssl.proxy.cnf
         if [ "${_DEBUG_MODE}" = "YES" ]; then
           bash /opt/local/bin/xoct ssl-gen
           wait

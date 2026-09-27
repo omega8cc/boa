@@ -2533,7 +2533,7 @@ _php_vrn_dotted() {
 #   whose PHP is installed). A line or switch naming a PHP that is not
 #   installed is ignored by websh, so it adds nothing here either.
 _php_versions_pinned_more() {
-  local _c _f _v _k _dom _rest _line _e _mk _txt _n _out=""
+  local _c _f _v _k _rest _line _e _mk _txt _n _out=""
   for _c in /data/disk/*/static/control; do
     # the account's own directory: never a link, never a FIFO opened
     _acct_in_real_dir "${_c}" true || continue
@@ -2542,11 +2542,19 @@ _php_versions_pinned_more() {
       [ -n "${_v}" ] && _out="${_out} ${_v}"
     done
     if [ -e "${_c}/multi-fpm.info" ]; then
-      while read -r _dom _v _rest; do
-        case "${_dom}" in \#*|"") continue ;; esac
-        _v="$(_php_vrn_dotted "${_v//[^0-9]/}")"
-        [ -n "${_v}" ] && _out="${_out} ${_v}"
-      done <<< "$(_acct_read_in "${_c}" multi-fpm.info)"
+      # one row per site: "<site> <version>", '#' opening a comment row, the
+      # version the digits of its field. Taken for the whole file by one
+      # pipeline, each version once: no process per row, and no shell
+      # pattern substitution, whose cost grows with the square of a field's
+      # length.
+      _v="$(_acct_read_in "${_c}" multi-fpm.info \
+        | awk '$1 !~ /^#/ && NF >= 2 { print $2 }' \
+        | tr -cd '0-9\n' \
+        | grep -xE '56|7[0-4]|8[0-5]' \
+        | sort -u \
+        | sed 's/^\(.\)\(.\)$/ \1.\2/' \
+        | tr -d '\n')"
+      _out="${_out}${_v}"
     fi
     if [ -e "${_c}/cli-per-platform.info" ]; then
       _txt=""; _n=0
