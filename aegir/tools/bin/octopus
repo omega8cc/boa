@@ -774,6 +774,21 @@ _load_control() {
   _get_load
 }
 
+# migratefs relocating the account $1's files store holds it (a live root
+# process that runs migratefs, matched as executed, never as a word
+# anywhere on a command line; root read as the real uid in
+# /proc/<pid>/status, as /proc/<pid> itself shows root as the owner of any
+# process that is not dumpable): the pass sets modes in the hostmaster
+# site's store and moves that site, inside a store mid-copy or set aside.
+_oct_mfs_held() {
+  local _p
+  _p=$( { tr -dc '0-9' < "/run/migratefs-account-${1}.pid"; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?migratefs( |$)'
+}
+
 _up_action_all() {
   for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _count_cpu
@@ -797,6 +812,15 @@ _up_action_all() {
     if [ -d "${_usEr}/config/server_master/nginx/vhost.d" ] \
       && [ -e "${_usEr}/log/cores.txt" ] \
       && [ ! -e "${_usEr}/log/CANCELLED" ]; then
+      ### Only an account the sweep would upgrade: one it passes over
+      ### anyway is no error. Named on the completion line, as a load skip
+      ### is: each later account's report judges the alert flag afresh, so
+      ### the flag alone would not carry this skip to the verdict.
+      if _oct_mfs_held "${_usEr##*/}"; then
+        echo "ALRT: skipping ${_usEr}: migratefs is relocating its files store - nothing was upgraded"
+        _MFS_SKIPPED="${_MFS_SKIPPED} ${_usEr##*/}"
+        continue
+      fi
       if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
         _octUsr=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}')
         _tocName="${_octName}.${_octUsr}"
@@ -897,6 +921,14 @@ _up_action_one() {
   if [ -d "${_usEr}/config/server_master/nginx/vhost.d" ] \
     && [ -e "${_usEr}/log/cores.txt" ] \
     && [ ! -e "${_usEr}/log/CANCELLED" ]; then
+    ### Inside the eligibility test, as in the sweep: an account that is
+    ### no upgradable instance is reported as that, below.
+    if _oct_mfs_held "${_sCnd}"; then
+      echo "ALRT: skipping ${_usEr}: migratefs is relocating its files store - nothing was upgraded"
+      _MFS_SKIPPED="${_MFS_SKIPPED} ${_sCnd}"
+      _SEND_ALERT=YES
+      return 0
+    fi
     if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
       _octUsr="${_sCnd}"
       _tocName="${_octName}.${_octUsr}"
@@ -1069,6 +1101,10 @@ _up_finish() {
   if [ -n "${_LOAD_SKIPPED}" ]; then
     [ -n "${_upWhy}" ] && _upWhy="${_upWhy}; "
     _upWhy="${_upWhy}not upgraded under load:${_LOAD_SKIPPED}"
+  fi
+  if [ -n "${_MFS_SKIPPED}" ]; then
+    [ -n "${_upWhy}" ] && _upWhy="${_upWhy}; "
+    _upWhy="${_upWhy}not upgraded while migratefs relocates its files store:${_MFS_SKIPPED}"
   fi
   if [ -n "${_upWhy}" ]; then
     _upDone="OCTOPUS upgrade completed WITH ERRORS -- ${_upWhy}"
@@ -1585,6 +1621,7 @@ _up_proceed() {
 
   _ALERT_LOGS=""
   _LOAD_SKIPPED=""
+  _MFS_SKIPPED=""
   if [ "${_sCnd}" = "all" ]; then
     _up_action_all
   else

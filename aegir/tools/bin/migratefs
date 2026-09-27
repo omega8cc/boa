@@ -24,6 +24,10 @@
 # enough free space, so this is 100% an operator decision + action: run it by hand,
 # in a maintenance window, after checking the DRY plan. It is never scheduled.
 #
+# Each store is held while it is relocated (/run/migratefs-account-<oN>.pid or
+# /run/migratefs-arch.pid, naming this run's pid), and the scheduled passes that
+# change a store leave a held one alone; see _mfs_hold.
+#
 # SINGLE /mnt MOUNT ONLY. This tool AND other BOA scripts (the lshell FTP-jail
 # wiring) assume exactly ONE attached mountpoint under /mnt. Multiple /mnt
 # mountpoints are NOT supported and cannot be disambiguated, so migratefs REFUSES
@@ -98,8 +102,18 @@ OPERATOR-ONLY, NEVER AUTOMATED. There is no guarantee the attached storage has
 enough space, so run this by hand in a maintenance window after checking the DRY
 plan. It assumes exactly ONE attached mountpoint under /mnt and REFUSES to run when
 more than one is present (multiple /mnt mounts are unsupported fleet-wide). An
---apply run does not start while BOA's nightly (owl.sh) runs, and defers the
-remaining stores when the nightly starts during the run.
+--apply run does not start while BOA's nightly (owl.sh) or a BOA install or
+upgrade runs, or while another operation holds the Aegir queue pause, and defers
+the remaining stores when the nightly starts during the run.
+
+Each store is held while it is relocated: /run/migratefs-account-<oN>.pid, or
+/run/migratefs-arch.pid, names this run. The nightly account pass, updatesymlinks,
+the octopus upgrade, usage.sh and copydbackup leave a held store alone, and the SQL
+backups wait up to 3 hours for a held arch. A hold counts only while its pid is a
+root process that runs migratefs, and one left by a killed run is removed by the
+next run. A store is deferred while the nightly account pass, a BOA install or
+upgrade, autosymlink/updatesymlinks, the SQL backup run or copydbackup is active,
+and arch also while any backup writer is.
 
 After a successful relocation, run:
   autosymlink --batch-if-clean   (or wait for the nightly run)
@@ -311,14 +325,36 @@ _provision_running() {
   return 1
 }
 
-# A backup writer touching the archive (duplicity/mydumper/cluster/sequential): the
+# A backup writer touching the archive (duplicity/mydumper/SQL/sequential): the
 # archive relocation defers while one runs, so a backup file is never moved mid-write.
 _backup_running() {
+  local _p
   # Genuine executions only (an interpreter carrying the script, or the tool as
   # argv[0]); a command line that merely names one -- csf's hourly md5sum sweep
   # over /usr/local/bin, an editor, a probe -- must not defer the move.
-  pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*(duplicity|sequential_backups|dbackup|mysql_cluster_backup)[^ ]*( |$)' >/dev/null 2>&1 && return 0
-  pgrep -f '^[^ ]*(duplicity|mydumper|sequential_backups|dbackup|mysql_cluster_backup)[^ ]*( |$)' >/dev/null 2>&1 && return 0
+  pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*(duplicity|sequential_backups|dbackup|mysql_(cluster_)?backup)[^ ]*( |$)' >/dev/null 2>&1 && return 0
+  pgrep -f '^[^ ]*(duplicity|mydumper|sequential_backups|dbackup|mysql_(cluster_)?backup)[^ ]*( |$)' >/dev/null 2>&1 && return 0
+  # The SQL backups' own markers, whatever form started the run. A run
+  # writes its wait marker before it looks for this tool's arch hold, and
+  # its run marker only once no hold is left, removing the wait marker
+  # after; so one side always sees the other. The basic run marker names
+  # its pid and counts while that pid is a live root process; the cluster
+  # one carries none, and clear.sh ages it out. The wait marker names its
+  # pid and outlives a run killed in its wait until clear.sh removes it, so
+  # it counts only while that pid is a live root process that still runs an
+  # SQL backup script (the real uid in /proc/<pid>/status: /proc/<pid>
+  # itself shows root as the owner of any process that is not dumpable).
+  _p=$( { tr -dc '0-9' < /run/boa_sql_backup.pid; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && return 0
+  [ -e "/run/boa_sql_cluster_backup.pid" ] && return 0
+  _p=$( { tr -dc '0-9' < /run/boa_sql_backup_wait.pid; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?mysql_(cluster_)?backup\.sh( |$)' \
+    && return 0
   return 1
 }
 
@@ -332,6 +368,101 @@ _nightly_running() {
   _p=$( { tr -dc '0-9' < /run/daily-fix.pid; } 2> /dev/null )
   [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
     && grep -q "owl.sh" "/proc/${_p}/cmdline" 2> /dev/null
+}
+
+# A BOA install or upgrade is in flight: the test the night workers make
+# (night/night.inc.sh _night_boa_pass_active), copied as this tool has no
+# library. The octopus pass drops boa_run.pid after every account, so the
+# process forms cover the rest of its run; it sets modes inside each
+# hostmaster site's store.
+_mfs_boa_pass_active() {
+  [ -e "/run/boa_run.pid" ] && return 0
+  [ -e "/run/boa_wait.pid" ] && return 0
+  [ -e "/run/octopus_install_run.pid" ] && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
+  return 1
+}
+
+# Why the store $1 (account-<oN> or arch) cannot be relocated now, printed;
+# nothing when it can. Each pass named here changes a store and ignores the
+# queue pause; those that read the hold check it before they act, so one
+# already acting is caught here.
+_mfs_busy_why() {
+  local _p
+  if _nightly_running; then
+    echo "BOA's nightly (owl.sh) is running"
+    return 0
+  fi
+  case "${1}" in
+    account-?*)
+      _p=$( { tr -dc '0-9' < "/run/night-account-${1#account-}.pid"; } 2> /dev/null )
+      if [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null; then
+        echo "the nightly account pass (pid ${_p}) holds it"
+        return 0
+      fi
+      ;;
+  esac
+  if _mfs_boa_pass_active; then
+    echo "a BOA install or upgrade is running"
+  elif pgrep -f '^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(autosymlink|updatesymlinks)( |$)' > /dev/null 2>&1; then
+    echo "autosymlink or updatesymlinks is running"
+  elif pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_(cluster_)?backup\.sh( |$)' > /dev/null 2>&1; then
+    echo "the SQL backup run (with its usage and copydbackup legs) is running"
+  elif pgrep -f '(^|(^| )[^ ]*bash (-[^ ]+ )*)/(opt|usr)/local/bin/copydbackup( |$)' > /dev/null 2>&1; then
+    # Run on its own, outside the SQL backup run: it judges each account's
+    # hold once per run, so a store it already found free stays out of
+    # reach until it ends.
+    echo "copydbackup is running"
+  elif [ "${1}" = "arch" ] && _backup_running; then
+    echo "a backup writer is active"
+  fi
+  return 0
+}
+
+# One relocation holds its store while it runs: /run/migratefs-$1.pid names
+# this run's pid, and the passes that change a store (the nightly account
+# pass, updatesymlinks, octopus, usage.sh, copydbackup, the SQL backups on
+# arch) leave a held one alone. It counts only while that pid is a live
+# root process that runs migratefs, and readers never remove it: the next
+# run does, once it holds the single-instance lock. Checked once before it
+# is written, so a reason already known publishes nothing (a hold written
+# only to be dropped makes a reader skip the store for its whole run while
+# this run leaves it too); then written and checked again, the order the
+# nightly takes with its own marker, so of two passes starting together one
+# always sees the other. Status 1, the hold dropped and the reason logged,
+# when one of them is already in. $1 = account-<oN> or arch, $2 = label.
+_MFS_HOLD=""
+_mfs_hold() {
+  local _h="/run/migratefs-${1}.pid" _why
+  _why=$(_mfs_busy_why "${1}")
+  if [ -n "${_why}" ]; then
+    _log "DEFER: ${2} ${_why}; left in place, run again after it ends"
+    return 1
+  fi
+  # Written aside and renamed, so a reader never sees it empty.
+  if ! { printf '%s\n' "$$" > "${_h}.$$" && chmod 0644 "${_h}.$$" \
+    && mv -f -T -- "${_h}.$$" "${_h}"; } 2> /dev/null; then
+    rm -f -- "${_h}.$$" 2> /dev/null
+    _log "ERROR: ${2} could not write ${_h}; left in place"
+    return 1
+  fi
+  _MFS_HOLD="${_h}"
+  _why=$(_mfs_busy_why "${1}")
+  [ -z "${_why}" ] && return 0
+  _mfs_hold_drop
+  _log "DEFER: ${2} ${_why}; left in place, run again after it ends"
+  return 1
+}
+# The hold goes only while it still names this run.
+_mfs_hold_drop() {
+  if [ -n "${_MFS_HOLD}" ] \
+    && [ "$( { tr -dc '0-9' < "${_MFS_HOLD}"; } 2> /dev/null )" = "$$" ]; then
+    rm -f -- "${_MFS_HOLD}"
+  fi
+  _MFS_HOLD=""
 }
 
 # Single-instance lock (shared lock.inc if present; sets _LOCK_FD/_LOCK_PATH and
@@ -353,11 +484,13 @@ _manage_single_lock() {
   fi
 }
 
-# Combined EXIT cleanup: release the queue pause only if WE opened it and still
-# own it (verify the recorded PID so we never tear down a concurrent op's pause),
-# then release the single-instance lock with explicit args (an argless unlock
-# would leave the fd empty — the historical lock.inc "ambiguous redirect" trap).
+# Combined EXIT cleanup: drop this run's store hold, release the queue pause only
+# if WE opened it and still own it (verify the recorded PID so we never tear down
+# a concurrent op's pause), then release the single-instance lock with explicit
+# args (an argless unlock would leave the fd empty — the historical lock.inc
+# "ambiguous redirect" trap).
 _cleanup() {
+  _mfs_hold_drop
   _mfs_unlock
   _mfs_work_drop
   if [ "${_stopOwned}" = "YES" ] && [ "$(cat "${_queueStop}" 2>/dev/null)" = "$$" ]; then
@@ -372,11 +505,33 @@ _cleanup() {
 # first destructive move. Sets the self-healing stop file (records our PID),
 # holds a fixed grace so a runner already mid-dispatch cannot fire a task after
 # we paused, then bounded-drains pgrep provision. Returns 0 when quiescent, 1 if
-# a task is still active after the grace+drain (caller must NOT apply).
+# a task is still active after the grace+drain, or when the pause is another
+# live operation's (caller must NOT apply): that owner ends its pause when it
+# is done, and the queue would then dispatch tasks mid-relocation.
 _pause_and_drain() {
-  if [ ! -e "${_queueStop}" ]; then
-    echo "$$" > "${_queueStop}" 2>/dev/null && _stopOwned="YES"
+  local _qsPid
+  if [ -e "${_queueStop}" ]; then
+    _qsPid=$( { tr -dc '0-9' < "${_queueStop}"; } 2> /dev/null )
+    if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2> /dev/null \
+      && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_qsPid}/status" 2> /dev/null)" = "0" ]; then
+      _log "WARN: the Aegir queue pause is held by pid ${_qsPid}; its window is not ours to extend, not applying this run"
+      return 1
+    fi
+    # Only root writes the pause, so one whose pid is gone, or is now
+    # another user's process, holds nothing (clear.sh purges it too).
+    # Removed only while it still names that pid: a pause another operation
+    # created meanwhile is never taken from it.
+    if [ "$( { tr -dc '0-9' < "${_queueStop}"; } 2> /dev/null )" = "${_qsPid}" ]; then
+      rm -f "${_queueStop}"
+    fi
   fi
+  # Created only when absent, so a pause another operation took meanwhile
+  # is never overwritten.
+  if ! ( set -C; echo "$$" > "${_queueStop}" ) 2> /dev/null; then
+    _log "WARN: another operation took the Aegir queue pause first; not applying this run"
+    return 1
+  fi
+  _stopOwned="YES"
   _log "INFO: Aegir queue paused (${_queueStop}); grace ${_GRACE}s, then drain"
   sleep "${_GRACE}"
   _drain=0
@@ -859,8 +1014,13 @@ _relocate_static_for_account() {
       fi
       ;;
     dir)
-      # Real dir -> two-pass relocation (ownership from the static/ parent).
+      # Real dir -> two-pass relocation (ownership from the static/ parent),
+      # the store held for the whole of it.
+      if [ "${_APPLY}" = "YES" ] && ! _mfs_hold "account-${_acct}" "account ${_acct}"; then
+        return 0
+      fi
       _relocate_dir "${_static}" files "${_dst}" "${_static}" "account ${_acct}"
+      _mfs_hold_drop
       ;;
     other)
       # A pre-existing static/files that is neither a symlink nor a dir: leave it.
@@ -912,12 +1072,14 @@ _relocate_arch() {
   # migrating this box.
   _log "NOTE: arch will be a symlink; host-migration (xoct/xcopy/xmass, current versions) resolves it and transfers arch CONTENTS -- ensure those tools are up to date before migrating this box."
 
-  if [ "${_APPLY}" = "YES" ] && _backup_running; then
-    _log "DEFER: arch — a backup writer is active; retry when backups are idle"
+  # Held for the whole relocation; the hold's checks defer it while a backup
+  # writer is active.
+  if [ "${_APPLY}" = "YES" ] && ! _mfs_hold arch arch; then
     return 0
   fi
 
   _relocate_dir /data/disk arch "${_dst}" "${_src}" "arch"
+  _mfs_hold_drop
 }
 
 # List the real mountpoint(s) under /mnt (naming-independent: mountpoint -q, with an
@@ -967,6 +1129,15 @@ _account_list() {
 # ---- main --------------------------------------------------------------------
 
 _manage_single_lock
+# Past the lock no other migratefs is live, so every hold left now is one a
+# killed run left: removed before its pid can be reused by a process that
+# readers would take for a relocation.
+for _h in /run/migratefs-*.pid; do
+  [ -e "${_h}" ] || continue
+  if rm -f -- "${_h}"; then
+    _log "WARN: removed ${_h}, a store hold left by an earlier run that did not end cleanly"
+  fi
+done
 # A signal ends the run (the EXIT cleanup then runs once): a handler that
 # returned would carry on with the next step of a relocation, or the next
 # account, with the queue pause already released.
@@ -1045,6 +1216,10 @@ if [ "${_APPLY}" = "YES" ]; then
     _log "[DONE] migratefs aborted: BOA's nightly (owl.sh) is running; run again after it ends"
     exit 0
   fi
+  if _mfs_boa_pass_active; then
+    _log "[DONE] migratefs aborted: a BOA install or upgrade is running; run again after it ends"
+    exit 0
+  fi
   if [ "${_ASSUME_YES}" != "YES" ]; then
     echo
     echo "About to relocate onto ${_TARGET}: arch=${_DO_ARCH}, accounts: ${_accounts}"
@@ -1057,7 +1232,7 @@ if [ "${_APPLY}" = "YES" ]; then
     fi
   fi
   if ! _pause_and_drain; then
-    _log "[DONE] migratefs aborted: queue not quiescent"
+    _log "[DONE] migratefs aborted: the queue pause is not ours, or the queue is not quiescent"
     exit 0
   fi
 fi

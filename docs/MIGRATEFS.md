@@ -121,17 +121,60 @@ unchanged.
   `static/.files.migratefs` left by an interrupted run stops that account for review;
   a fresh account with no `static/files` yet just gets an empty store created on the
   attached disk.
-- **Interlocks.** A single-instance lock, the self-healing `/run/boa_queue_stop.pid`
-  queue pause + provision drain, and — for `arch` — a defer while a backup writer
-  (`duplicity`/`mydumper`/cluster/`sequential_backups`) is active, so a backup file
-  is never moved mid-write. An `--apply` run does not start while BOA's nightly
-  (`owl.sh`) runs, and defers the remaining stores when the nightly starts during the
-  run.
+- **Interlocks.** A single-instance lock and the self-healing
+  `/run/boa_queue_stop.pid` queue pause + provision drain. An `--apply` run does not
+  start while BOA's nightly (`owl.sh`) or a BOA install or upgrade runs, or while
+  another live operation holds the queue pause (its owner would end the pause
+  mid-relocation); a pause left by an owner that is gone is taken over.
+  `updatesymlinks` and the nightly backups mover take the pause the same way: while
+  another live operation holds it, `updatesymlinks` retries the next hour and the
+  mover leaves that account's backups for the next night.
+- **Store hold.** Each store is held while it is relocated:
+  `/run/migratefs-account-<oN>.pid`, or `/run/migratefs-arch.pid`, holds the
+  `migratefs` pid. The checks below run once before it is written, so a store
+  deferred for a reason already known is never held, and again once it is written;
+  it is removed when the store is done or the run ends.
+
+  A hold counts only while its pid is a live root process that runs `migratefs`
+  (matched as executed, never as a word anywhere on a command line), so a pid reused
+  by another user's process never holds a store, and the next `migratefs` run
+  removes any hold a killed run left. The passes that change a store honour it:
+  - the nightly per-account pass skips a held account for that night, with a line in
+    the account's night log;
+  - `updatesymlinks` treats a hold as a heavy task and retries the next hour;
+  - an `octopus` upgrade skips a held account with an `ALRT` line and completes
+    `WITH ERRORS`, naming it;
+  - `usage.sh` skips its tmp/dot-file cleanup for a held account;
+  - `copydbackup` skips a held account for the whole run, copy and cleanup, with one
+    line in `/var/log/backup_validation_issues.log`; a later run copies what it left;
+  - the SQL backups (`mysql_backup.sh`, `mysql_cluster_backup.sh`) wait for a held
+    `arch`, checking every minute for up to 3 hours, then dump as usual. A hold that
+    outlives 3 hours skips that run with a "Backup SKIPPED" notice. The start and
+    end of the wait are logged in `/var/log/boa/migratefs.log`.
+
+    A waiting run holds only `/run/boa_sql_backup_wait.pid`, which `migratefs` also
+    reads. It counts only while its pid is a live root process that runs an SQL
+    backup script, and `clear.sh` removes it once it is not. The run marker
+    (`/run/boa_sql_backup.pid`, `/run/boa_sql_cluster_backup.pid`) is written once the
+    wait ends, so the checks that stand down on that marker keep running meanwhile.
+
+    The task runner finds the backup by its process, so it holds the task queue for
+    the whole wait. The load tiers of `second.sh` stand down only when the load is
+    also iowait-bound, which a run that only waits does not cause.
+- **Deferrals.** A store is left in place, with the reason logged, when as its hold
+  is taken BOA's nightly or that account's nightly pass, a BOA install or upgrade,
+  `autosymlink`/`updatesymlinks`, the SQL backup run (with its `usage.sh` and
+  `copydbackup` legs), or `copydbackup` run on its own is active; `arch` also while
+  any backup writer (`duplicity`/`mydumper`/SQL/cluster/`sequential_backups`) is, so
+  a backup file is never moved mid-write. The nightly starting during the run defers
+  the remaining stores.
 
 ## Notes
 
 - Run `arch` relocation when backups are idle. `migratefs` defers `arch` if it detects
-  an active backup writer, but the safest window is one with no scheduled backups.
+  an active backup writer, and a scheduled SQL backup that starts during the
+  relocation waits for it (up to 3 hours), but the safest window is one with no
+  scheduled backups.
 - `migratefs` pauses the **Ægir task queue**, not web traffic. For a fully quiescent
   move of a busy account, put the site(s) into maintenance mode first.
 

@@ -190,6 +190,21 @@ _night_acct_store() {
   [ -d "${_r}" ] || return 1
   printf '%s\n' "${_r}"
 }
+### migratefs relocating this account's files store holds it:
+### /run/migratefs-account-<oN>.pid names a live root process that runs
+### migratefs, matched as executed, never as a word anywhere on a command
+### line (a pid reused after a kill -9, by another user's process or another
+### command, never holds). Root is read as the real uid in
+### /proc/<pid>/status: /proc/<pid> itself shows root as the owner of any
+### process that is not dumpable. Reads _HM_U.
+_night_mfs_held() {
+  local _p
+  _p=$( { tr -dc '0-9' < "/run/migratefs-account-${_HM_U}.pid"; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?migratefs( |$)'
+}
 ### Run "$@" inside ${_usEr}/$1 (backups, backup-exports): the real directory,
 ### or, once the backups mover made it a link, the directory that link
 ### resolves to, only while that lies inside the account's store; any other
@@ -608,8 +623,37 @@ _relocate_backups_to_static_fs() {
     return 0
   fi
 
-  local _stop="/run/boa_queue_stop.pid" _madeStop=NO
-  [ -e "${_stop}" ] || { echo "$$" > "${_stop}" 2>/dev/null && _madeStop=YES; }
+  # The pause is taken only as its owner: a pause another live operation
+  # holds ends when that operation is done, and the queue would then
+  # dispatch tasks mid-move. Deferred instead; the move is idempotent and
+  # the next night takes it. The flock above keeps the parallel account
+  # passes from competing for it.
+  local _stop="/run/boa_queue_stop.pid" _madeStop=NO _qsPid
+  if [ -e "${_stop}" ]; then
+    _qsPid=$( { tr -dc '0-9' < "${_stop}"; } 2> /dev/null )
+    if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2> /dev/null \
+      && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_qsPid}/status" 2> /dev/null)" = "0" ]; then
+      echo "backups-on-static: queue pause held by pid ${_qsPid}; relocation for ${_acct} deferred to the next night"
+      flock -u "${_lockfd}"
+      exec {_lockfd}>&-
+      return 0
+    fi
+    # Only root writes the pause, so one whose pid is gone, or is now
+    # another user's process, holds nothing (clear.sh purges it too).
+    # Removed only while it still names that pid: a pause another operation
+    # created meanwhile is never taken from it.
+    if [ "$( { tr -dc '0-9' < "${_stop}"; } 2> /dev/null )" = "${_qsPid}" ]; then
+      rm -f "${_stop}"
+    fi
+  fi
+  if ( set -C; echo "$$" > "${_stop}" ) 2> /dev/null; then
+    _madeStop=YES
+  else
+    echo "backups-on-static: queue pause taken meanwhile; relocation for ${_acct} deferred to the next night"
+    flock -u "${_lockfd}"
+    exec {_lockfd}>&-
+    return 0
+  fi
 
   # Drain any in-flight task (bounded ~60s); with the queue paused none starts anew.
   local _t=0
@@ -758,6 +802,16 @@ _account_process() {
   # wait only has to cover a worker already inside this account's own span.
   # The marker carries this pid: a killed pass must not hold the account.
   echo $$ > /run/night-account-${_HM_U}.pid
+  # migratefs relocating this account's files store holds it: the store legs
+  # below would act on a store mid-copy or set aside and closed. Checked with
+  # the marker above in place, the order migratefs takes with its hold, so one
+  # of the two always sees the other. Skipped, not waited for: a relocation
+  # can outlast the night, and the next night takes the account as usual.
+  if _night_mfs_held; then
+    echo "${_HM_U}: migratefs is relocating this account's files store; skipped tonight"
+    rm -f "/run/night-account-${_HM_U}.pid"
+    return 0
+  fi
   # The worker's pid file names its pid: a worker killed mid-pass leaves the
   # file behind until clear.sh sweeps it, and the nightly must not stall on a
   # dead one. Bounded on purpose; proceeding after the bound is the old race

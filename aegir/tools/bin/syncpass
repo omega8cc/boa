@@ -68,14 +68,19 @@ _acct_read_here() {
 _acct_read_in() {
   _acct_in_real_dir "${1}" _acct_read_here "${2}"
 }
-# stdin as ./$1 in the current (pinned) directory: a fresh 0600 file created
-# exclusively, handed to $2 (owner:group) and renamed over the name, so a
-# link or a FIFO put at the name is replaced, never followed or opened.
+# stdin as ./$1 in the current (pinned) directory: a fresh 0600 file handed
+# to $2 (owner:group) and renamed over the name, so a link or a FIFO put at
+# the name is replaced, never followed or opened. The temp is created,
+# written, owned and moded through one handle, as _acct_put_same_here puts
+# a file (_ACCT_PUT_PL), never chowned by name in a directory the account
+# can write.
 _put_secret_here() {
-  local _t="./.${1}.put.$$.${RANDOM}"
+  local _t="./.${1}.put.$$.${RANDOM}" _uid _gid
+  _uid=$(id -u -- "${2%%:*}" 2> /dev/null)
+  _gid=$(getent group "${2#*:}" 2> /dev/null | cut -d: -f3)
+  [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]] || return 1
   rm -f -- "${_t}"
-  if ( umask 077; dd of="${_t}" bs=1048576 conv=excl status=none 2> /dev/null ) \
-    && chown -h "${2}" "${_t}" 2> /dev/null \
+  if perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" 600 \
     && mv -f -T -- "${_t}" "./${1}"; then
     return 0
   fi
@@ -112,13 +117,20 @@ _keep_alias_copy() {
     printf '%s' "${_c%x}" > "${3}" )
 }
 # ./$1 in the current (pinned) directory replaced by the exact bytes $2, only
-# while it is a regular file below 1 MiB: a fresh file created exclusively
-# with the owner, group and read/write bits of the file it replaces, then
-# renamed over the name, so nothing is written through a link or a FIFO.
+# while ./$1 is a regular file below 1 MiB (so a bounded read saw all of it):
+# a fresh file with the owner, group and read/write bits of the file it
+# replaces, then renamed over the name. The temp is created, written, owned
+# and moded through one handle opened O_EXCL|O_NOFOLLOW, so nothing root owns
+# is ever chowned by name in a directory the account can write (a hard link
+# renamed over the temp name before a chown by name would have handed
+# another file to the owner of the file it replaces); a swap before the
+# rename only lands a file the account could have put there itself. The mode
+# keeps only the read/write bits of the file it replaces, as before.
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
 _acct_put_same_here() {
-  local _t="./.${1}.put.$$.${RANDOM}" _st _typ _own _mod _sz
-  _st=$(stat -c '%F|%u:%g|%a|%s' -- "./${1}" 2> /dev/null) || return 1
-  IFS='|' read -r _typ _own _mod _sz <<< "${_st}"
+  local _t="./.${1}.put.$$.${RANDOM}" _st _typ _uid _gid _mod _sz
+  _st=$(stat -c '%F|%u|%g|%a|%s' -- "./${1}" 2> /dev/null) || return 1
+  IFS='|' read -r _typ _uid _gid _mod _sz <<< "${_st}"
   case "${_typ}" in
     "regular file"|"regular empty file") ;;
     *) return 1 ;;
@@ -126,9 +138,8 @@ _acct_put_same_here() {
   [[ "${_mod}" =~ ^[0-7]+$ && "${_sz}" =~ ^[0-9]+$ ]] || return 1
   [ "${_sz}" -lt 1048576 ] || return 1
   rm -f -- "${_t}"
-  if ( umask "$(printf '%03o' "$(( 0777 & ~8#${_mod} ))")"
-    printf '%s' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
-    && chown -h "${_own}" "${_t}" 2> /dev/null \
+  if printf '%s' "${2}" \
+    | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" "${_mod}" \
     && mv -f -T -- "${_t}" "./${1}"; then
     return 0
   fi

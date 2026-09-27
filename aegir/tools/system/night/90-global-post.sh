@@ -68,23 +68,28 @@ fi
 if ! declare -F _acct_put_same_here > /dev/null 2>&1; then
   # ./$1 in the current (pinned) directory replaced by the exact bytes $2,
   # only while ./$1 is a regular file below 1 MiB (so a bounded read saw all
-  # of it): a fresh file created exclusively with the owner, group and
-  # read/write bits of the file it replaces, then renamed over the name.
-  # Nothing is written through a link, a FIFO or a name swapped in
-  # meanwhile, and no chmod by name follows.
+  # of it): a fresh file with the owner, group and read/write bits of the
+  # file it replaces, then renamed over the name. The temp is created,
+  # written, owned and moded through one handle opened O_EXCL|O_NOFOLLOW, so
+  # nothing root owns is ever chowned by name in a directory the account can
+  # write (a hard link renamed over the temp name before a chown by name
+  # would have handed another file to the owner of the file it replaces); a
+  # swap before the rename only lands a file the account could have put
+  # there itself. The mode keeps only the read/write bits of the file it
+  # replaces, as before.
+  _ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
   _acct_put_same_here() {
-    local _t="./.${1}.put.$$.${RANDOM}" _st _typ _own _mod _sz
-    _st=$(stat -c '%F|%u:%g|%a|%s' -- "./${1}" 2> /dev/null) || return 1
-    IFS='|' read -r _typ _own _mod _sz <<< "${_st}"
+    local _t="./.${1}.put.$$.${RANDOM}" _st _typ _uid _gid _mod _sz
+    _st=$(stat -c '%F|%u|%g|%a|%s' -- "./${1}" 2> /dev/null) || return 1
+    IFS='|' read -r _typ _uid _gid _mod _sz <<< "${_st}"
     case "${_typ}" in
       "regular file"|"regular empty file") ;;
       *) return 1 ;;
     esac
     [ "${_sz}" -lt 1048576 ] || return 1
     rm -f -- "${_t}"
-    if ( umask "$(printf '%03o' "$(( 0777 & ~8#${_mod} ))")"
-      printf '%s' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
-      && chown -h "${_own}" "${_t}" 2> /dev/null \
+    if printf '%s' "${2}" \
+      | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" "${_mod}" \
       && mv -f -T -- "${_t}" "./${1}"; then
       return 0
     fi
@@ -899,8 +904,10 @@ _migrate_source_sweep_all() {
     exec {_lockfd}>&-
     return 0
   fi
-  if [ ! -e "${_stop}" ]; then
-    echo "$$" > "${_stop}" 2>/dev/null && _madeStop=YES
+  # Created only when absent, so a pause another operation took meanwhile
+  # is never overwritten.
+  if ( set -C; echo "$$" > "${_stop}" ) 2> /dev/null; then
+    _madeStop=YES
   fi
   if [ "${_madeStop}" != "YES" ]; then
     # Another operation already holds the pause; its window is not ours to

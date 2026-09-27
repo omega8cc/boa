@@ -47,6 +47,43 @@ _log_issue() {
   echo "[$(date)] Validation issue: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_VALIDATION_LOG_FILE}"
 }
 
+# migratefs relocating the account $1's files store holds it: the hold
+# names a live root process that runs migratefs, matched as executed, never
+# as a word anywhere on a command line (a pid reused after a kill -9, by
+# another user's process or another command, never holds). Root is read as
+# the real uid in /proc/<pid>/status: /proc/<pid> itself shows root as the
+# owner of any process that is not dumpable. A copy or a deletion in the
+# store then undoes the move or leaves its old copy behind.
+_dbk_mfs_held() {
+  local _p
+  _p=$( { tr -dc '0-9' < "/run/migratefs-account-${1}.pid"; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?migratefs( |$)'
+}
+
+# Status 0 when the account $1 is held, judged once per account per run:
+# migratefs defers every relocation while this tool runs from its
+# installed path, on its own or as the SQL backup run's leg, so no hold
+# appears mid-run. A held account is skipped whole, in the copy and in the
+# cleanup, with one line in the log for the run: the hold is a passing
+# state, not a validation issue, and a later run copies and cleans up what
+# this one left.
+declare -A _dbk_held=()
+_dbk_skip_held() {
+  local _u="${1}"
+  if [ -z "${_dbk_held["${_u}"]:-}" ]; then
+    _dbk_held["${_u}"]=NO
+    if _dbk_mfs_held "${_u}"; then
+      _dbk_held["${_u}"]=YES
+      echo "Skipping ${_u}: migratefs is relocating the account's files store."
+      echo "[$(date)] Skipped: [${_u}] migratefs is relocating the account's files store; its dumps are copied and cleaned up by a later run" >> "${_VALIDATION_LOG_FILE}"
+    fi
+  fi
+  [ "${_dbk_held["${_u}"]}" = "YES" ]
+}
+
 # The account's dbackup/ directory, resolved, in _DBK_DIR (status 0), or the
 # reason it must not be touched in _DBK_WHY (status 1). static/ is
 # tenant-writable, so a symlinked files/ or dbackup/ may be a tenant-planted
@@ -273,6 +310,7 @@ for _backup_dir in "${_ARCH_SQL_BASE}"/*; do
     # If this DB is used by any users, copy the file for them
     if [ -n "${_db_users_map["${_possible_dbname}"]}" ]; then
       for _user in ${_db_users_map["${_possible_dbname}"]}; do
+        _dbk_skip_held "${_user}" && continue
         # Only into the account's own store, entered for real: a dbackup/,
         # files/ or dated directory name the tenant turned into a link is
         # never written through
@@ -339,6 +377,7 @@ done
 echo "Performing cleanup of old backups based on dBackupCycle.info..."
 
 for _user in "${!_all_involved_users[@]}"; do
+  _dbk_skip_held "${_user}" && continue
   _cycle_value=
   _days_to_keep=14
   _cycle_file="/data/disk/${_user}/static/control/dBackupCycle.info"

@@ -242,10 +242,11 @@ updatesymlinks --auto-fix --debug   # explain on stdout WHY a run skips/does not
 When either opt-in is enabled a **single** cron line runs `updatesymlinks --auto-fix`
 hourly at `:47` through the night (`22:00`–`05:59`), clear of the 6-hourly duplicity
 backups (`:00`) and the nightly backup/owl/upgrade cluster. It self-skips any hour a
-heavy task is running (backup, upgrade, provision, high load) and retries the next
-hour; the first un-blocked hour does the work, records a per-night stamp
-(`/var/log/boa/autosymlink.nightok.stamp`), and every later hour that night is a cheap
-no-op.
+heavy task is running (backup, upgrade, provision, high load, `migratefs`
+relocating an account's files store) or another live operation holds the Ægir
+queue pause, and retries the next hour; the first un-blocked hour does the work,
+records a per-night stamp (`/var/log/boa/autosymlink.nightok.stamp`), and every
+later hour that night is a cheap no-op.
 
 The one line serves both opt-ins: with `_AUTOSYMLINK_NIGHTLY=YES` it runs the
 full pause + two-step apply (which folds the orphan report in); with only
@@ -256,22 +257,29 @@ enabling or disabling is purely a `.barracuda.cnf` change with no cron edit.
 
 Because every early exit is otherwise silent, add **`--debug`** (or `-d`, any
 position) to have it print on stdout *why* a run does nothing — e.g. the opt-ins
-are off, the night is already stamped done, a heavy task is running (and which), or
-that it ran and simply found nothing to convert. It changes no behaviour; without
-the flag the run is silent as before.
+are off, the night is already stamped done, a heavy task is running (and which),
+another operation holds the Ægir queue pause (and its pid), or that it ran and
+simply found nothing to convert. It changes no behaviour; without the flag the run
+is silent as before.
 
 ```bash
 updatesymlinks --auto-fix --debug
 #   updatesymlinks[debug]: not acting — both opt-ins are off (…); enable one in /root/.barracuda.cnf
 #   updatesymlinks[debug]: not acting — already completed for this night (stamp …); remove it to force a re-run
 #   updatesymlinks[debug]: not acting — a heavy task is running, retry next hour: duplicity(1)
+#   updatesymlinks[debug]: not acting — the Aegir queue pause is held by pid 12345; its window is not ours
 ```
 
 The reason tokens name what blocked the run: a busy binary with its process
 count (`barracuda(1)`, `provision(2)`, `duplicity(1)`), a lock or load pid
-(`boa_run.pid`, `octopus_install_run.pid`, `max_load.pid`), or a chained
+(`boa_run.pid`, `octopus_install_run.pid`, `max_load.pid`), a chained
 install leg seen by its process form (`BARRACUDA.sh.txt(leg)`,
-`OCTOPUS.sh.txt(leg)`).
+`OCTOPUS.sh.txt(leg)`), or an account's files store that `migratefs` holds
+while it relocates it (`migratefs(migratefs-account-<oN>.pid)`).
+
+A queue pause another live operation holds is not a heavy task: the run takes the
+pause only when it is free, or left by an owner that is gone, and otherwise stops
+before it converts anything, leaves the night un-stamped and retries the next hour.
 
 ### `fix-drupal-site-symlinks.sh` — the privileged entry point
 
@@ -652,6 +660,11 @@ leading-dot names are skipped by the site/orphan scan, like `.archived`.
   directory being moved. It self-heals: `clear.sh` removes it once its owner PID is
   gone and `/run` clears on reboot, so it can never freeze the queue. The migration
   is serialised across accounts with a `flock`.
+
+  The pause is taken only when it is free, or left by an owner that is gone. While
+  another live operation holds it, that account's move is deferred to the next
+  night: the owner would end the pause when its own work is done, in the middle of
+  the move.
 - **Kill-switch** — see *Configuration → Relocating backups off the root
   partition*.
 
@@ -900,6 +913,10 @@ readlink /data/disk/<acct>/backup-exports   # -> .../static/files/.backup-export
 ```
 While it migrates, `/run/boa_queue_stop.pid` is present and `runner.sh` skips the
 queue; it is removed at the end (or self-healed by `clear.sh` if the run crashed).
+While another live operation holds that pause, the move is deferred to the next
+night and the run says so (`backups-on-static: queue pause held by pid <N>;
+relocation for <acct> deferred to the next night`); run it again once that
+operation has ended.
 
 ### Nightly auto-fix
 
