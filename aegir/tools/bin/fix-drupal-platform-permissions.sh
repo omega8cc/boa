@@ -9,7 +9,7 @@ to provide the following argument:
   --root: Path to the root of your Drupal installation.
 
 Usage: (sudo) ${0##*/} --root=PATH
-Example: (sudo) ${0##*/} --drupal_path=/var/aegir/platforms/drupal-7.50
+Example: (sudo) ${0##*/} --root=/var/aegir/platforms/drupal-7.50
 HELP
 exit 0
 }

@@ -10,7 +10,7 @@ to provide the following argument:
   --mode: Action mode lock/unlock (defaults to 'lock')
 
 Usage: (sudo) ${0##*/} --root=PATH --mode=MODE
-Example: (sudo) ${0##*/} --drupal_path=/var/aegir/platforms/drupal-10.1
+Example: (sudo) ${0##*/} --root=/var/aegir/platforms/drupal-10.1
 HELP
 exit 0
 }
