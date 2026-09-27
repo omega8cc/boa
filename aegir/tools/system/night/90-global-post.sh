@@ -152,19 +152,53 @@ _distro_sites_all_modes() {
 
 # Every vhost in the current (pinned) vhost.d still carrying TLSv1.1 in its
 # protocol list, edited as sed -i edited it; the others are left untouched.
-# One grep lists them: -r follows no link below the pinned '.', and -D skip
-# never opens a FIFO or a device. Names in subdirectories and dot-names are
-# not vhosts nginx reads, and _acct_sed_same_here refuses a link or a FIFO
-# swapped in after the listing.
+# One grep lists them, reading only the regular files under 1 MiB directly
+# there (the ones _acct_sed_same_here edits) for at most 60 seconds; -D skip
+# never blocks on a FIFO or a device put at a name since the listing, and
+# _acct_sed_same_here refuses a link or a FIFO swapped in after it. When the
+# listing or grep cannot tell (an error, a timeout), each vhost is read
+# bounded and edited only when it holds the line. Names in subdirectories
+# and dot-names are not vhosts nginx reads. A record starting with / carries
+# a status: no name listed here holds one.
 _vhost_tls11_drop_here() {
-  local _f
+  local _f _rc=""
+  local -a _n=() _m=()
   while IFS= read -r -d '' _f; do
+    case "${_f}" in
+      /rc=*) _rc="${_f#/rc=}"; continue ;;
+    esac
     _f="${_f#./}"
     case "${_f}" in
       */*|.*) continue ;;
     esac
-    _acct_sed_same_here "${_f}" "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g"
-  done < <(grep -rlZ -F -D skip -- "TLSv1.1 TLSv1.2 TLSv1.3;" . 2> /dev/null)
+    _n+=( "${_f}" )
+  done < <(find . -mindepth 1 -maxdepth 1 -type f -size -1048576c -print0 2> /dev/null
+    printf '/rc=%s\0' "$?")
+  if [ "${_rc}" = "0" ] && [ "${#_n[@]}" -gt 0 ]; then
+    _rc=""
+    while IFS= read -r -d '' _f; do
+      case "${_f}" in
+        /rc=*) _rc="${_f#/rc=}" ;;
+        *) _m+=( "${_f}" ) ;;
+      esac
+    done < <(LC_ALL=C timeout 60 grep -lZ -F -d skip -D skip \
+      -e "TLSv1.1 TLSv1.2 TLSv1.3;" -- "${_n[@]}" 2> /dev/null
+      printf '/rc=%s\0' "$?")
+  fi
+  case "${_rc}" in
+    0|1)
+      for _f in "${_m[@]}"; do
+        _acct_sed_same_here "${_f}" "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g"
+      done
+      ;;
+    *)
+      for _f in ./*; do
+        _f="${_f#./}"
+        _acct_read_plain_here "${_f}" | grep -qF -- "TLSv1.1 TLSv1.2 TLSv1.3;" || continue
+        _acct_sed_same_here "${_f}" "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g"
+      done
+      ;;
+  esac
 }
 
 _delete_this_empty_hostmaster_platform() {

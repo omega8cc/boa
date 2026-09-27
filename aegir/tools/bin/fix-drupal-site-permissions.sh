@@ -19,8 +19,7 @@ if [ "$(id -u)" != 0 ]; then
   exit 1
 fi
 
-# find -execdir refuses a PATH with a relative entry: the walks below run
-# with the one sudo gives them.
+# The walks below run perl and the tools from this PATH, never the caller's.
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 # The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users,
@@ -28,8 +27,8 @@ export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 # link. Defence is the same shape used by the sibling fix-drupal-* helpers:
 # the resolved path is held to the caller's own tree, every step runs inside
 # a directory entered for real (_in_pinned_dir) on ./names there, and every
-# mode is set through _FCHMOD_PL, on the name itself or from find -execdir,
-# so no link is followed, whether it was there before or put there during
+# mode is set through _FCHMOD_PL, on the name itself or from a find walk, so
+# no link is followed, whether it was there before or put there during
 # the run.
 _validate_path_prefix() {
   # Scope the resolved path to the SUDO caller's OWN home tree (aegir ->
@@ -123,21 +122,41 @@ _in_pinned_dir() {
   ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
 }
 
-# A mode set on names in the current directory, never through a link: each
-# name is opened without following one and without blocking on a FIFO,
-# checked to be the expected type and changed through the open handle, so a
-# name swapped for a link at any moment is refused, not followed. O_NOFOLLOW
-# covers the last name only: run it on ./names inside a pinned directory, or
-# from find -execdir, which hands it one ./name in the directory find holds
-# open (find's -type test alone does not stop a later chmod by path from
+# A mode set on paths below the current directory, never through a link:
+# each directory on a path is opened without following a link and entered
+# through that handle, and the last name is opened the same way without
+# blocking on a FIFO, checked to be the expected type and changed through
+# the open handle, so a name swapped for a link at any moment is refused,
+# not followed. Run it on ./names inside a pinned directory, or from
+# find -exec ... {} + there, which hands one perl the paths of the whole
+# walk (find's -type test alone does not stop a later chmod by path from
 # following a link). As chmod does, a directory keeps its setuid and setgid
 # bits unless the mode has five digits. Args: f|d|a (regular file,
-# directory, either), the mode (octal), the names.
+# directory, either), the mode (octal), the paths.
 _FCHMOD_PL='use Fcntl;
 my ($t, $m) = (shift @ARGV, shift @ARGV);
 $m =~ /^[0-7]{3,5}$/ or exit 1;
 my ($v, $k) = (oct($m), length($m) < 5 ? 06000 : 0);
-for my $f (@ARGV) {
+sysopen(my $top, ".", O_RDONLY | O_DIRECTORY) or exit 1;
+my @at;
+for my $p (@ARGV) {
+  my @n = grep { $_ ne "" && $_ ne "." } split(m{/}, $p);
+  next if $p =~ m{^/} || grep { $_ eq ".." } @n;
+  my $f = @n ? pop(@n) : ".";
+  my $i = 0;
+  $i++ while $i < @at && $i < @n && $at[$i] eq $n[$i];
+  if ($i < @at) {
+    chdir($top) or exit 1;
+    $i = 0;
+    @at = ();
+  }
+  for my $c (@n[$i .. $#n]) {
+    my $d;
+    sysopen($d, $c, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK)
+      && chdir($d) or last;
+    push(@at, $c);
+  }
+  next if @at < @n;
   sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
   my @s = stat($h);
   if (-d _ && $t ne "f") {
@@ -194,7 +213,7 @@ _grav_site_perm_here() {
     -o -path ./backup -prune \
     -o -path ./images -prune \
     -o -path ./assets -prune \
-    -o -type d -execdir perl -e "${_FCHMOD_PL}" d 0755 {} + 2> /dev/null
+    -o -type d -exec perl -e "${_FCHMOD_PL}" d 0755 {} + 2> /dev/null
   find . -path ./user -prune \
     -o -path ./cache -prune \
     -o -path ./logs -prune \
@@ -202,14 +221,14 @@ _grav_site_perm_here() {
     -o -path ./backup -prune \
     -o -path ./images -prune \
     -o -path ./assets -prune \
-    -o -type f -execdir perl -e "${_FCHMOD_PL}" f 0644 {} + 2> /dev/null
+    -o -type f -exec perl -e "${_FCHMOD_PL}" f 0644 {} + 2> /dev/null
   _chmod_in "${_here}/bin" 0755 '*'
   for _wd in user cache logs tmp backup images assets; do
     [ -d "./${_wd}" ] || continue
     find "./${_wd}" -type d \
-      -execdir perl -e "${_FCHMOD_PL}" d 02775 {} + 2> /dev/null
+      -exec perl -e "${_FCHMOD_PL}" d 02775 {} + 2> /dev/null
     find "./${_wd}" -type f \
-      -execdir perl -e "${_FCHMOD_PL}" f 0664 {} + 2> /dev/null
+      -exec perl -e "${_FCHMOD_PL}" f 0664 {} + 2> /dev/null
   done
   # Secret surfaces AFTER the generic pass, which would re-widen them
   # (same class as the TXP private/ store): accounts hold
@@ -219,9 +238,9 @@ _grav_site_perm_here() {
   for _sd in accounts config env; do
     [ -d "./user/${_sd}" ] || continue
     _in_pinned_dir "${_here}/user" find "./${_sd}" -type d \
-      -execdir perl -e "${_FCHMOD_PL}" d 02770 {} + 2> /dev/null
+      -exec perl -e "${_FCHMOD_PL}" d 02770 {} + 2> /dev/null
     _in_pinned_dir "${_here}/user" find "./${_sd}" -type f \
-      -execdir perl -e "${_FCHMOD_PL}" f 0660 {} + 2> /dev/null
+      -exec perl -e "${_FCHMOD_PL}" f 0660 {} + 2> /dev/null
   done
   _chmod_here 0640 .env
   _chmod_here 0440 drushrc.php
@@ -237,26 +256,26 @@ _txp_site_perm_here() {
     -o -path ./public/files -prune \
     -o -path ./public/images -prune \
     -o -path ./public/themes -prune \
-    -o -type d -execdir perl -e "${_FCHMOD_PL}" d 0755 {} + 2> /dev/null
+    -o -type d -exec perl -e "${_FCHMOD_PL}" d 0755 {} + 2> /dev/null
   find . -path ./private -prune \
     -o -path ./tmp -prune \
     -o -path ./admin/plugins -prune \
     -o -path ./public/files -prune \
     -o -path ./public/images -prune \
     -o -path ./public/themes -prune \
-    -o -type f -execdir perl -e "${_FCHMOD_PL}" f 0644 {} + 2> /dev/null
+    -o -type f -exec perl -e "${_FCHMOD_PL}" f 0644 {} + 2> /dev/null
   for _wd in tmp admin/plugins public/files public/images public/themes; do
     [ -d "./${_wd}" ] || continue
     _in_pinned_dir "${_here}/${_wd}" find . -type d \
-      -execdir perl -e "${_FCHMOD_PL}" d 02775 {} + 2> /dev/null
+      -exec perl -e "${_FCHMOD_PL}" d 02775 {} + 2> /dev/null
     _in_pinned_dir "${_here}/${_wd}" find . -type f \
-      -execdir perl -e "${_FCHMOD_PL}" f 0664 {} + 2> /dev/null
+      -exec perl -e "${_FCHMOD_PL}" f 0664 {} + 2> /dev/null
   done
   # Credential store: group-traversable (FPM reads config.php through its
   # www-data group), unreadable to everyone else.
   _chmod_here 0750 private
   _in_pinned_dir "${_here}/private" find . -type f \
-    -execdir perl -e "${_FCHMOD_PL}" f 0440 {} + 2> /dev/null
+    -exec perl -e "${_FCHMOD_PL}" f 0440 {} + 2> /dev/null
   # Aegir's own site drushrc sits at the site ROOT (not inside private/) and
   # carries the db credentials, so the generic 0644 pass above widens it to
   # world-readable on every verify. Restore the 0440 the Drushrc writer sets --
@@ -265,9 +284,9 @@ _txp_site_perm_here() {
 }
 
 # The site's own PHP files made 0440, the glob expanded inside the real site
-# directory, each set through _FCHMOD_PL from -execdir.
+# directory, each set through _FCHMOD_PL.
 _site_php_here() {
-  find ./*.php -type f -execdir perl -e "${_FCHMOD_PL}" f 0440 {} +
+  find ./*.php -type f -exec perl -e "${_FCHMOD_PL}" f 0440 {} +
 }
 
 # The files store, run inside it (entered for real): the day marker, then the
@@ -277,8 +296,8 @@ _files_perm_here() {
   rm -f -- ./permissions-fixed*.pid
   _mark_here "permissions-fixed-${_TODAY}.pid"
   ### files - site level
-  find . -type d -execdir perl -e "${_FCHMOD_PL}" d 02775 {} +
-  find . -type f -execdir perl -e "${_FCHMOD_PL}" f 0664 {} +
+  find . -type d -exec perl -e "${_FCHMOD_PL}" d 02775 {} +
+  find . -type f -exec perl -e "${_FCHMOD_PL}" f 0664 {} +
   chmod 02775 .
 }
 
@@ -391,8 +410,8 @@ printf "Setting correct permissions on key files and directories inside "${site_
 if [ -e "${site_path}/aegir.services.yml" ]; then
   _in_pinned_dir "${site_path}" rm -f -- ./aegir.services.yml
 fi
-### Every find walk below sets modes through _FCHMOD_PL from -execdir: a
-### name swapped for a link during the walk is refused, not followed.
+### Every find walk below sets modes through _FCHMOD_PL: a name swapped for
+### a link during the walk is refused, not followed.
 _in_pinned_dir "${site_path}" _site_php_here &> /dev/null
 ### The hostmaster site's drushrc.php carries the instance DB user (ALL
 ### PRIVILEGES) and only the backend user, its owner, ever reads it: no group
@@ -403,9 +422,9 @@ fi
 _chmod_in "${site_path}" 0640 civicrm.settings.php
 ### modules,themes,libraries - site level
 _in_pinned_dir "${site_path}" find ./modules ./themes ./libraries -type d \
-  -execdir perl -e "${_FCHMOD_PL}" d 02775 {} + &> /dev/null
+  -exec perl -e "${_FCHMOD_PL}" d 02775 {} + &> /dev/null
 _in_pinned_dir "${site_path}" find ./modules ./themes ./libraries -type f \
-  -execdir perl -e "${_FCHMOD_PL}" f 0664 {} + &> /dev/null
+  -exec perl -e "${_FCHMOD_PL}" f 0664 {} + &> /dev/null
 
 ### files/ and private/ are legitimately symlinks into the per-account static
 ### store, and a walk through such a link goes wherever it points. Each store
@@ -424,9 +443,9 @@ if [ -n "${_files_dir}" ] \
   ### private - site level
   if [ -n "${_priv_dir}" ]; then
     _in_pinned_dir "${_priv_dir}" find . -type d \
-      -execdir perl -e "${_FCHMOD_PL}" d 02775 {} + &> /dev/null
+      -exec perl -e "${_FCHMOD_PL}" d 02775 {} + &> /dev/null
     _in_pinned_dir "${_priv_dir}" find . -type f \
-      -execdir perl -e "${_FCHMOD_PL}" f 0664 {} + &> /dev/null
+      -exec perl -e "${_FCHMOD_PL}" f 0664 {} + &> /dev/null
   fi
   ### known exceptions
   _chmod_in "${_files_dir}" 0644 .htaccess

@@ -89,21 +89,41 @@ _in_pinned_dir() {
   ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
 }
 
-# A mode set on names in the current directory, never through a link: each
-# name is opened without following one and without blocking on a FIFO,
-# checked to be the expected type and changed through the open handle, so a
-# name swapped for a link at any moment is refused, not followed. O_NOFOLLOW
-# covers the last name only: run it on ./names inside a pinned directory, or
-# from find -execdir, which hands it one ./name in the directory find holds
-# open (find's -type test alone does not stop a later chmod by path from
+# A mode set on paths below the current directory, never through a link:
+# each directory on a path is opened without following a link and entered
+# through that handle, and the last name is opened the same way without
+# blocking on a FIFO, checked to be the expected type and changed through
+# the open handle, so a name swapped for a link at any moment is refused,
+# not followed. Run it on ./names inside a pinned directory, or from
+# find -exec ... {} + there, which hands one perl the paths of the whole
+# walk (find's -type test alone does not stop a later chmod by path from
 # following a link). As chmod does, a directory keeps its setuid and setgid
 # bits unless the mode has five digits. Args: f|d|a (regular file,
-# directory, either), the mode (octal), the names.
+# directory, either), the mode (octal), the paths.
 _FCHMOD_PL='use Fcntl;
 my ($t, $m) = (shift @ARGV, shift @ARGV);
 $m =~ /^[0-7]{3,5}$/ or exit 1;
 my ($v, $k) = (oct($m), length($m) < 5 ? 06000 : 0);
-for my $f (@ARGV) {
+sysopen(my $top, ".", O_RDONLY | O_DIRECTORY) or exit 1;
+my @at;
+for my $p (@ARGV) {
+  my @n = grep { $_ ne "" && $_ ne "." } split(m{/}, $p);
+  next if $p =~ m{^/} || grep { $_ eq ".." } @n;
+  my $f = @n ? pop(@n) : ".";
+  my $i = 0;
+  $i++ while $i < @at && $i < @n && $at[$i] eq $n[$i];
+  if ($i < @at) {
+    chdir($top) or exit 1;
+    $i = 0;
+    @at = ();
+  }
+  for my $c (@n[$i .. $#n]) {
+    my $d;
+    sysopen($d, $c, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK)
+      && chdir($d) or last;
+    push(@at, $c);
+  }
+  next if @at < @n;
   sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
   my @s = stat($h);
   if (-d _ && $t ne "f") {

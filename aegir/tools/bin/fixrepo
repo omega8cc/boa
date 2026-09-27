@@ -100,18 +100,38 @@ _in_pinned_dir() {
   ( cd -P -- "${_d}" 2>/dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
 }
 
-# Group bits added to names in the current directory, never through a link:
-# each name is opened without following one and without blocking on a FIFO,
-# checked to be a regular file or a directory and changed through the open
-# handle, so a name swapped for a link at any moment is refused, not
-# followed. Run it from find -execdir, which hands it one ./name in the
-# directory find holds open: O_NOFOLLOW covers the last name only. Status 1
-# when a mode could not be set. $1 = X: g+rwX (x only on a directory or a
+# Group bits added on paths below the current directory, never through a
+# link: each directory on a path is opened without following a link and
+# entered through that handle, and the last name is opened the same way
+# without blocking on a FIFO, checked to be a regular file or a directory
+# and changed through the open handle, so a name swapped for a link at any
+# moment is refused, not followed. Run it from find -exec ... {} + inside
+# the pinned tree, which hands one perl the paths of the whole walk. Status
+# 1 when a mode could not be set. $1 = X: g+rwX (x only on a directory or a
 # file that already has an x bit); s: g+rws on a directory. The rest = the
-# names.
+# paths.
 _FIXREPO_FCHMOD_PL='use Fcntl;
 my ($t, $e) = (shift @ARGV, 0);
-for my $f (@ARGV) {
+sysopen(my $top, ".", O_RDONLY | O_DIRECTORY) or exit 1;
+my @at;
+for my $p (@ARGV) {
+  my @n = grep { $_ ne "" && $_ ne "." } split(m{/}, $p);
+  next if $p =~ m{^/} || grep { $_ eq ".." } @n;
+  my $f = @n ? pop(@n) : ".";
+  my $i = 0;
+  $i++ while $i < @at && $i < @n && $at[$i] eq $n[$i];
+  if ($i < @at) {
+    chdir($top) or exit 1;
+    $i = 0;
+    @at = ();
+  }
+  for my $c (@n[$i .. $#n]) {
+    my $d;
+    sysopen($d, $c, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK)
+      && chdir($d) or last;
+    push(@at, $c);
+  }
+  next if @at < @n;
   sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
   my @s = stat($h);
   my $m = $s[2] & 07777;
@@ -137,19 +157,18 @@ _fix_permissions_tree() {
   _msg "Processing tree: ${_TARGET_DIR}"
 
   # Both passes walk '.' inside the tree, entered for real, and set each mode
-  # through _FIXREPO_FCHMOD_PL from -execdir: never through a name on the way
-  # swapped for a link after the path was resolved, nor through an entry
-  # swapped for one during the walk (chmod -R before coreutils 9.5 follows
-  # such an entry).
+  # through _FIXREPO_FCHMOD_PL: never through a name on the way swapped for a
+  # link after the path was resolved, nor through an entry swapped for one
+  # during the walk (chmod -R before coreutils 9.5 follows such an entry).
   # Add group read/write to all files and dirs; add execute only to dirs and already executable files.
   _run_cmd "chmod -R g+rwX on ${_TARGET_DIR}" \
     _in_pinned_dir "${_TARGET_DIR}" \
-    find . -execdir perl -e "${_FIXREPO_FCHMOD_PL}" X {} +
+    find . -exec perl -e "${_FIXREPO_FCHMOD_PL}" X {} +
 
   # Ensure all directories are group-traversable, writable, and setgid so new files inherit group.
   _run_cmd "setgid on directories in ${_TARGET_DIR}" \
     _in_pinned_dir "${_TARGET_DIR}" \
-    find . -type d -execdir perl -e "${_FIXREPO_FCHMOD_PL}" s {} +
+    find . -type d -exec perl -e "${_FIXREPO_FCHMOD_PL}" s {} +
 
   return 0
 }

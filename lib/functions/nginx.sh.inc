@@ -340,33 +340,50 @@ _nginx_acct_sed() {
 }
 # NUL-terminated names directly in the current (pinned) directory that the
 # glob $1 matches (never a dot-name, which the glob skips) and whose text
-# grep "${@:2}" matches, listed by one grep: -r follows no link below '.' and
-# -D skip never opens a FIFO or a device. When grep cannot tell (an error,
-# an option it lacks), every name the glob matches is listed.
+# grep "${@:2}" matches. One grep reads only the regular files under 1 MiB
+# there, the ones _nginx_sed_here edits, for at most 60 seconds; -D skip
+# never blocks on a FIFO or a device put at a name since the listing. When
+# the listing or grep cannot tell (an error, a timeout, an option it
+# lacks), every name the glob matches is listed. A record starting with /
+# carries a status: no name listed here holds one.
 _nginx_names_with_here() {
-  local _p="${1}" _l _f
+  local _p="${1}" _f _rc=""
+  local -a _n=() _m=()
   shift
-  _l=$(mktemp 2> /dev/null) || return 1
-  if LC_ALL=C grep -rlZ -D skip "$@" . > "${_l}" 2> /dev/null \
-    || [ "$?" -eq 1 ]; then
+  while IFS= read -r -d '' _f; do
+    case "${_f}" in
+      /rc=*) _rc="${_f#/rc=}"; continue ;;
+    esac
+    _f="${_f#./}"
+    case "${_f}" in
+      */*|.*) continue ;;
+    esac
+    # shellcheck disable=SC2254
+    case "${_f}" in
+      ${_p}) _n+=( "${_f}" ) ;;
+    esac
+  done < <(find . -mindepth 1 -maxdepth 1 -type f -size -1048576c -print0 2> /dev/null
+    printf '/rc=%s\0' "$?")
+  if [ "${_rc}" = "0" ]; then
+    [ "${#_n[@]}" -gt 0 ] || return 0
+    _rc=""
     while IFS= read -r -d '' _f; do
-      _f="${_f#./}"
       case "${_f}" in
-        */*|.*) continue ;;
+        /rc=*) _rc="${_f#/rc=}" ;;
+        *) _m+=( "${_f}" ) ;;
       esac
-      # shellcheck disable=SC2254
-      case "${_f}" in
-        ${_p}) printf '%s\0' "${_f}" ;;
-      esac
-    done < "${_l}"
-  else
-    # shellcheck disable=SC2086
-    for _f in ./${_p}; do
-      [ -e "${_f}" ] || [ -L "${_f}" ] || continue
-      printf '%s\0' "${_f#./}"
-    done
+    done < <(LC_ALL=C timeout 60 grep -lZ -d skip -D skip "$@" -- "${_n[@]}" 2> /dev/null
+      printf '/rc=%s\0' "$?")
+    if [ "${_rc}" = "0" ] || [ "${_rc}" = "1" ]; then
+      [ "${#_m[@]}" -gt 0 ] && printf '%s\0' "${_m[@]}"
+      return 0
+    fi
   fi
-  rm -f -- "${_l}"
+  # shellcheck disable=SC2086
+  for _f in ./${_p}; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    printf '%s\0' "${_f#./}"
+  done
 }
 # As _nginx_sed_glob_here, but only on the files _nginx_names_with_here
 # lists. Args: the glob, the grep arguments, --, the sed arguments.

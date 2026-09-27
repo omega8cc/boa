@@ -31,7 +31,7 @@
 #
 # Usage:
 #   migratefs [--target <mount>] [--account <oN>] [--no-arch] [--apply] [--yes]
-#             [--grace <sec>] [--help]
+#             [--grace <sec>] [--recheck-max <MB>] [--help]
 #
 #   default (no --apply) : DRY plan only — print what WOULD happen, change nothing
 #   --apply              : perform the relocation (pauses the queue, drains tasks)
@@ -46,6 +46,9 @@
 #   --no-arch            : do not relocate /data/disk/arch
 #   --yes                : in --apply, skip the interactive confirmation
 #   --grace <sec>        : queue-pause grace before draining (default 15)
+#   --recheck-max <MB>   : most data copied again with the store closed, when it
+#                          changed during the live copy (default 1024); above it
+#                          the store stays in place for a quieter run
 #
 
 export HOME=/root
@@ -65,6 +68,7 @@ _APPLY="NO"
 _ASSUME_YES="NO"
 _DO_ARCH="YES"
 _GRACE=15
+_RECHECK_MAX_MB=1024
 _stopOwned="NO"
 
 _usage() {
@@ -73,7 +77,7 @@ migratefs — relocate account files stores + shared archive onto attached stora
 
 Usage:
   migratefs [--target <mount>] [--account <oN>] [--no-arch] [--apply] [--yes]
-            [--grace <sec>] [--help]
+            [--grace <sec>] [--recheck-max <MB>] [--help]
 
   (no --apply)       DRY plan only: print what WOULD happen, change nothing
   --apply            perform the relocation (pauses the Aegir queue, drains tasks)
@@ -85,12 +89,17 @@ Usage:
   --no-arch          do not relocate /data/disk/arch
   --yes              in --apply, skip the interactive confirmation prompt
   --grace <sec>      queue-pause grace before draining tasks (default 15)
+  --recheck-max <MB> most data copied again with the store closed when it changed
+                     during the live copy (default 1024); above it the store stays
+                     in place and the run says to try again in a quieter window
   --help             this help
 
 OPERATOR-ONLY, NEVER AUTOMATED. There is no guarantee the attached storage has
 enough space, so run this by hand in a maintenance window after checking the DRY
 plan. It assumes exactly ONE attached mountpoint under /mnt and REFUSES to run when
-more than one is present (multiple /mnt mounts are unsupported fleet-wide).
+more than one is present (multiple /mnt mounts are unsupported fleet-wide). An
+--apply run does not start while BOA's nightly (owl.sh) runs, and defers the
+remaining stores when the nightly starts during the run.
 
 After a successful relocation, run:
   autosymlink --batch-if-clean   (or wait for the nightly run)
@@ -130,6 +139,10 @@ while [ "$#" -gt 0 ]; do
       shift
       _GRACE="$1"
       ;;
+    --recheck-max)
+      shift
+      _RECHECK_MAX_MB="$1"
+      ;;
     --help|-h|help)
       _usage
       exit 0
@@ -144,6 +157,9 @@ done
 # Numeric guard for --grace (fall back to the default on garbage input).
 case "${_GRACE}" in
   ''|*[!0-9]*) _GRACE=15 ;;
+esac
+case "${_RECHECK_MAX_MB}" in
+  ''|*[!0-9]*) _RECHECK_MAX_MB=1024 ;;
 esac
 
 # A single-account run targets one account only, never the shared archive.
@@ -254,6 +270,9 @@ _mfs_plan_chain() {
 # The destination's parent is closed to everyone but root while the copies
 # write below it (the copied directories carry the account's owner), and
 # opened again with the mode it had before the link makes the store live.
+# The store itself is made only once the parent is closed: closing it stops
+# no process that already sits inside, so a store left by an earlier run is
+# renamed aside, never copied into.
 _LOCKED_DIR=""
 _LOCKED_MODE=""
 _mfs_unlock() {
@@ -299,6 +318,18 @@ _backup_running() {
   pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*(duplicity|sequential_backups|dbackup|mysql_cluster_backup)[^ ]*( |$)' >/dev/null 2>&1 && return 0
   pgrep -f '^[^ ]*(duplicity|mydumper|sequential_backups|dbackup|mysql_cluster_backup)[^ ]*( |$)' >/dev/null 2>&1 && return 0
   return 1
+}
+
+# BOA's nightly (owl.sh) is running: its per-site pass sets the mode of every
+# entry in the site stores, which is no provision task and does not honour
+# the queue pause. Copied during a relocation, all of that would have to be
+# copied again with the store closed. The same test owl.sh makes of its own
+# marker.
+_nightly_running() {
+  local _p
+  _p=$( { tr -dc '0-9' < /run/daily-fix.pid; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && grep -q "owl.sh" "/proc/${_p}/cmdline" 2> /dev/null
 }
 
 # Single-instance lock (shared lock.inc if present; sets _LOCK_FD/_LOCK_PATH and
@@ -410,16 +441,22 @@ _mfs_undo_here() {
 # Two-pass, non-destructive relocation of the real directory $1/$2 onto the
 # attached FS at $3, replacing it with a symlink. Precondition: caller has
 # confirmed the target is a separate FS. $4 = the real directory whose owner the
-# store and the link take, $5 = label. Always returns 0 (logs + leaves the real
-# dir on any failure — data never lost).
+# link takes (the store takes the owner and mode of the directory it replaces),
+# $5 = label. Always returns 0 (logs + leaves the real dir on any failure — data
+# never lost).
 _relocate_dir() {
   local _par="$1" _name="$2" _dst="$3" _ownRef="$4" _label="$5"
-  local _src="${_par}/${_name}" _dpar="${_dst%/*}" _szKB _avKB _ug _mode _rc
+  local _src="${_par}/${_name}" _dpar="${_dst%/*}" _dname="${_dst##*/}"
+  local _szKB _avKB _ug _mode _rc _old
 
   _szKB=$(_mfs_in_real_dir "${_src}" du -sk . 2>/dev/null | awk '{print $1}')
   _avKB=$(df -Pk "$(dirname "${_dst}")" 2>/dev/null | awk 'NR==2 {print $4}')
   [ -z "${_avKB}" ] && _avKB=$(df -Pk "${_TARGET}" 2>/dev/null | awk 'NR==2 {print $4}')
   _log "PLAN: ${_label} move ${_src} (${_szKB:-?}K) -> ${_dst} (target avail ${_avKB:-?}K) and symlink"
+  case "$(_mfs_in_real_dir "${_dpar}" _mfs_kind_here "${_dname}")" in
+    none|'') ;;
+    *) _log "PLAN: ${_label} ${_dst} is left from an earlier run: it is renamed aside and never copied into again, and it holds its space until removed" ;;
+  esac
 
   if [ "${_APPLY}" != "YES" ]; then
     _mfs_plan_chain "${_dst}" "${_label}"
@@ -437,6 +474,10 @@ _relocate_dir() {
     _log "DEFER: ${_label} provision task active — left ${_src} as real dir"
     return 0
   fi
+  if _nightly_running; then
+    _log "DEFER: ${_label} BOA's nightly (owl.sh) is running — left ${_src} as real dir; run again after it ends"
+    return 0
+  fi
 
   if _mfs_aside_left "${_par}" "${_name}"; then
     _log "ERROR: ${_label} ${_par}/.${_name}.migratefs is left from an interrupted run (or ${_par} is not a real directory); left ${_src} as real dir for review"
@@ -444,11 +485,10 @@ _relocate_dir() {
   fi
 
   _ug=$(_mfs_in_real_dir "${_ownRef}" stat -c '%U:%G' . 2>/dev/null)
-  if ! _mfs_make_store "${_dst}"; then
+  if ! _mfs_root_path "${_TARGET}" "${_dpar}"; then
     _log "ERROR: ${_label} could not create ${_dst} below directories only root can change (${_MFS_REFUSED}); skipping"
     return 0
   fi
-  [ -n "${_ug}" ] && chown -h "${_ug}" "${_dst}" 2>/dev/null
 
   _MFS_WORK=$(mktemp -d /run/migratefs.XXXXXXXX 2> /dev/null) || _MFS_WORK=""
   if [ -z "${_MFS_WORK}" ]; then
@@ -456,7 +496,7 @@ _relocate_dir() {
     return 0
   fi
 
-  _mode=$(stat -c '%a' "${_dpar}" 2>/dev/null)
+  _mode=$(_mfs_in_real_dir "${_dpar}" stat -c '%a' . 2>/dev/null)
   # A 0700 left by an interrupted run is not the mode to open it with again.
   case "${_mode}" in
     ''|700) _mode=755 ;;
@@ -467,6 +507,24 @@ _relocate_dir() {
     _LOCKED_DIR=""
     _mfs_work_drop
     _log "ERROR: ${_label} could not close ${_dpar} for the copy; left ${_src} as real dir"
+    return 0
+  fi
+  # A store left by an earlier run was open to the account after that run
+  # ended, so a process of the account may still sit anywhere in it.
+  if [ "$(_mfs_in_real_dir "${_dpar}" _mfs_kind_here "${_dname}")" != "none" ]; then
+    _old=".${_dname}.stale.$(date +%y%m%d-%H%M%S).$$"
+    if ! _mfs_in_real_dir "${_dpar}" mv -T -- "./${_dname}" "./${_old}" 2>/dev/null; then
+      _mfs_unlock
+      _mfs_work_drop
+      _log "ERROR: ${_label} ${_dst} is left from an earlier run and could not be renamed aside; left ${_src} as real dir for review"
+      return 0
+    fi
+    _log "WARN: ${_label} ${_dst} left from an earlier run renamed to ${_dpar}/${_old}; it is never copied into again, remove it once reviewed"
+  fi
+  if ! _mfs_in_real_dir "${_dpar}" mkdir -m 0700 -- "./${_dname}" 2>/dev/null; then
+    _mfs_unlock
+    _mfs_work_drop
+    _log "ERROR: ${_label} could not create ${_dst}; left ${_src} as real dir"
     return 0
   fi
   _mfs_in_real_dir "${_src}" _relocate_here "${_par}" "${_name}" "${_dst}" "${_mode}" "${_ug}" "${_label}" "${_MFS_WORK}"
@@ -480,20 +538,27 @@ _relocate_dir() {
   _mfs_work_drop
 }
 
-# Runs in the closed store after the final pass ($1 = destination, $2 = work
+# Runs in the store after the live passes ($1 = destination, $2 = work
 # directory, $3 = non-empty when names directly in the store changed during
-# the live passes, $4 = label). A name re-pointed while the live passes read
-# the store leaves a status change time after the start mark on the entry it
-# names and on the directory holding it, and that time cannot be set back.
-# So every directory with such a time whose own directory has one too is
-# copied again by content with everything below it, and so is every file
-# with such a time; the store then holds below them exactly what the closed
-# copy holds, whatever the live passes read.
+# the live passes, $4 = label, $5 = count: only size it). A name re-pointed
+# while the live passes read the store leaves a status change time after the
+# start mark on the entry it names and on the directory holding it, and that
+# time cannot be set back. So every directory with such a time whose own
+# directory has one too is copied again by content with everything below it,
+# and so is every other file with such a time; run in the closed store after
+# the final pass, the store then holds below them exactly what the closed copy
+# holds, whatever the live passes read. Status 2, with the size in
+# _MFS_RECHECK, when that is more than --recheck-max: it would all be read on
+# both sides while the store is closed and its sites have no files.
+_MFS_RECHECK=""
 _mfs_recheck_here() {
-  local _dst="$1" _wk="$2" _topChg="$3" _label="$4" _d _p _q _n=0 _f=0
+  local _dst="$1" _wk="$2" _topChg="$3" _label="$4" _how="${5:-}"
+  local _d _p _q _kb _n=0 _f
   local -A _chg=() _done=()
+  _MFS_RECHECK=""
   find -P . -mindepth 1 -type d -cnewer "${_wk}/start" -print0 > "${_wk}/dirs" 2> /dev/null || return 1
   find -P . -type f -cnewer "${_wk}/start" -print0 > "${_wk}/files" 2> /dev/null || return 1
+  : > "${_wk}/trees" || return 1
   while IFS= read -r -u 9 -d '' _d; do
     _chg["${_d}"]=1
   done 9< "${_wk}/dirs"
@@ -510,16 +575,40 @@ _mfs_recheck_here() {
       [ -n "${_done[${_q}]:-}" ] && continue 2
       _q="${_q%/*}"
     done
-    rsync -a -c --no-devices --no-specials "${_d}/" "${_dst}/${_d#./}/" 2> /dev/null || return 1
     _done["${_d}"]=1
+    printf '%s\0' "${_d}"
     _n=$(( _n + 1 ))
-  done 9< "${_wk}/dirs"
+  done 9< "${_wk}/dirs" > "${_wk}/trees"
+  # A file below a tree copied again is copied with it.
+  if [ "${_n}" -gt 0 ]; then
+    while IFS= read -r -u 9 -d '' _d; do
+      _q="${_d%/*}"
+      while [ "${_q}" != "." ]; do
+        [ -n "${_done[${_q}]:-}" ] && continue 2
+        _q="${_q%/*}"
+      done
+      printf '%s\0' "${_d}"
+    done 9< "${_wk}/files" > "${_wk}/left" || return 1
+    mv -f -- "${_wk}/left" "${_wk}/files" || return 1
+  fi
+  _f=$(tr -cd '\000' < "${_wk}/files" | wc -c)
+  _f="${_f// /}"
+  [ $(( _n + _f )) -gt 0 ] || return 0
+  _kb=$(cat -- "${_wk}/trees" "${_wk}/files" \
+    | du -s -k -c --files0-from=- 2> /dev/null | awk 'END { print $1 }')
+  _MFS_RECHECK="${_n} directory trees and ${_f} files, ${_kb:-?}K"
+  case "${_kb}" in
+    ''|*[!0-9]*) return 2 ;;
+  esac
+  [ "${_kb}" -le $(( _RECHECK_MAX_MB * 1024 )) ] || return 2
+  [ "${_how}" = "count" ] && return 0
+  while IFS= read -r -u 9 -d '' _d; do
+    rsync -a -c --no-devices --no-specials "${_d}/" "${_dst}/${_d#./}/" 2> /dev/null || return 1
+  done 9< "${_wk}/trees"
   if [ -s "${_wk}/files" ]; then
     rsync -a -c --no-devices --no-specials --from0 --files-from="${_wk}/files" ./ "${_dst}/" 2> /dev/null || return 1
-    _f=$(tr -cd '\000' < "${_wk}/files" | wc -c)
   fi
-  [ $(( _n + _f )) -eq 0 ] \
-    || _log "INFO: ${_label} copied again by content what changed during the live passes (${_n} directory trees, ${_f// /} files)"
+  _log "INFO: ${_label} copied again by content what changed during the live passes (${_MFS_RECHECK})"
   return 0
 }
 
@@ -577,6 +666,20 @@ _relocate_here() {
     _log "ERROR: ${_label} could not read the owner and mode of ${_src}; left as real dir (data also in ${_dst})"
     return 0
   fi
+  # Sized before the store goes aside, so a run the recheck would keep closed
+  # too long never takes it offline; sized again after the final pass.
+  _mfs_recheck_here "${_dst}" "${_wk}" "${_topChg}" "${_label}" count
+  case "$?" in
+    0) : ;;
+    2)
+      _log "DEFER: ${_label} ${_MFS_RECHECK} changed during the live passes, more than --recheck-max ${_RECHECK_MAX_MB} MB to copy again with the store closed; left ${_src} as real dir, run again when BOA's nightly and other maintenance are idle"
+      return 0
+      ;;
+    *)
+      _log "ERROR: ${_label} could not list what changed during the live passes; left ${_src} as real dir"
+      return 0
+      ;;
+  esac
 
   # The store moves aside, and the final pass copies what was written since the
   # reconcile: the name is free only for that pass, and the destination stays
@@ -603,10 +706,18 @@ _relocate_here() {
     _mfs_undo_here "${_top}" "${_par}" "${_name}" "${_label}" "rsync final pass failed ${_src} -> ${_dst}" "${_dst}"
     return 0
   fi
-  if ! _mfs_recheck_here "${_dst}" "${_wk}" "${_topChg}" "${_label}"; then
-    _mfs_undo_here "${_top}" "${_par}" "${_name}" "${_label}" "could not copy again what changed during the live passes" "${_dst}"
-    return 0
-  fi
+  _mfs_recheck_here "${_dst}" "${_wk}" "${_topChg}" "${_label}"
+  case "$?" in
+    0) : ;;
+    2)
+      _mfs_undo_here "${_top}" "${_par}" "${_name}" "${_label}" "${_MFS_RECHECK} changed during the live passes, more than --recheck-max ${_RECHECK_MAX_MB} MB to copy again with the store closed; run again when BOA's nightly and other maintenance are idle" "${_dst}"
+      return 0
+      ;;
+    *)
+      _mfs_undo_here "${_top}" "${_par}" "${_name}" "${_label}" "could not copy again what changed during the live passes" "${_dst}"
+      return 0
+      ;;
+  esac
   # A handle still open on the closed copy that changed it while it was read.
   _chg=$(find -P . -cnewer "${_wk}/aside" -print -quit 2> /dev/null) || _chg="failed"
   if [ -n "${_chg}" ]; then
@@ -907,6 +1018,10 @@ _log "=================================================================="
 
 # In APPLY mode, confirm (unless --yes) and pause+drain the queue once for the run.
 if [ "${_APPLY}" = "YES" ]; then
+  if _nightly_running; then
+    _log "[DONE] migratefs aborted: BOA's nightly (owl.sh) is running; run again after it ends"
+    exit 0
+  fi
   if [ "${_ASSUME_YES}" != "YES" ]; then
     echo
     echo "About to relocate onto ${_TARGET}: arch=${_DO_ARCH}, accounts: ${_accounts}"
