@@ -777,9 +777,13 @@ _acct_relocated_store() {
 }
 
 # True when every link on the way to $1 is a link root owns in a directory
-# only root can write, so no account chose where it leads. $2 = depth.
+# only root can write, so no account chose where it leads. Sets _RLK_PATH to
+# the path the walk reached: each such link replaced by where it leads, '.'
+# and '..' taken where they stand. A caller pins that path, never another
+# lookup of $1. $2 = depth.
 _root_links_ok() {
   local _rest="${1#/}" _p="" _c _t _n="${2:-0}"
+  _RLK_PATH=""
   [ "${_n}" -lt 8 ] || return 1
   while [ -n "${_rest}" ]; do
     _c="${_rest%%/*}"
@@ -788,7 +792,10 @@ _root_links_ok() {
     else
       _rest="${_rest#*/}"
     fi
-    [ -n "${_c}" ] || continue
+    case "${_c}" in
+      ""|.) continue ;;
+      ..) _p="${_p%/*}"; continue ;;
+    esac
     _p="${_p}/${_c}"
     [ -L "${_p}" ] || continue
     [ "$(stat -c %u -- "${_p}" 2> /dev/null)" = 0 ] || return 1
@@ -799,7 +806,9 @@ _root_links_ok() {
       *) _t="${_p%/*}/${_t}" ;;
     esac
     _root_links_ok "${_t}" $(( _n + 1 )) || return 1
+    _p="${_RLK_PATH%/}"
   done
+  _RLK_PATH="${_p:-/}"
   return 0
 }
 
@@ -827,10 +836,11 @@ _store_report() {
 # Account $1's relocated files store, added to the run by its own path when
 # the run includes the account's static/files (that operand or a directory
 # above it): every exclude that covers static/files, or a path below it, is
-# repeated for the store first, since duplicity takes the first match. A
+# repeated for the store first, and so is every include from the exclude
+# filelist, in their order, since duplicity takes the first match. A
 # static/files link to anything but the store that leads outside the trees
 # the run includes is reported, never followed. $2 = the run's include
-# operands, $3 = its exclude operands.
+# operands, $3 = its exclude operands (with the filelist's absolute entries).
 _acct_store_add() {
   local _a="${1}" _d="/data/disk/${1}/static/files" _s _r _w _i _x _in=NO _add=""
   read -r -a _w <<< "${2}"
@@ -861,14 +871,14 @@ _acct_store_add() {
   for (( _i = 0; _i + 1 < ${#_w[@]}; _i++ )); do
     _x="${_w[_i+1]}"
     case "${_w[_i]}" in
-      --exclude)
+      --exclude|--include)
         _x="${_x%/}"
         case "${_x}" in
-          "${_d}") _add="${_add} --exclude ${_s}" ;;
-          "${_d}/"*) _add="${_add} --exclude ${_s}/${_x#"${_d}/"}" ;;
+          "${_d}") _add="${_add} ${_w[_i]} ${_s}" ;;
+          "${_d}/"*) _add="${_add} ${_w[_i]} ${_s}/${_x#"${_d}/"}" ;;
           *)
             case "${_d}/" in
-              "${_x}/"*) _add="${_add} --exclude ${_s}" ;;
+              "${_x}/"*) _add="${_add} ${_w[_i]} ${_s}" ;;
             esac
             ;;
         esac
@@ -927,19 +937,24 @@ _root_link_includes() {
 }
 
 # The absolute entries of the run's exclude filelist (root's own list, or the
-# root-private copy of an account's), as --exclude operands, so a store is
-# excluded where they name static/files as it is excluded by them. Include
-# lines ('+ '), patterns such as **files/css/** (which match the store as
-# they are) and entries with blanks are left to the filelist alone.
+# root-private copy of an account's), in their order, as --exclude operands
+# and, for include lines ('+ '), --include operands, so a store is excluded
+# and included where they name static/files as it is by them. Patterns such
+# as **files/css/** (which match the store as they are) and entries with
+# blanks are left to the filelist alone.
 _lst_exclude_ops() {
-  local _l
+  local _l _o
   [ -n "${_EXCLUDE_LIST}" ] && [ -f "${_EXCLUDE_LIST}" ] || return 0
   while IFS= read -r _l || [ -n "${_l}" ]; do
     _l="${_l%"${_l##*[![:space:]]}"}"
-    _l="${_l#- }"
+    _o=--exclude
+    case "${_l}" in
+      "+ "*) _o=--include; _l="${_l#+ }" ;;
+      "- "*) _l="${_l#- }" ;;
+    esac
     case "${_l}" in
       *[[:space:]]*) continue ;;
-      /?*) printf ' --exclude %s' "${_l}" ;;
+      /?*) printf ' %s %s' "${_o}" "${_l}" ;;
     esac
   done < "${_EXCLUDE_LIST}"
 }
@@ -947,8 +962,8 @@ _lst_exclude_ops() {
 # Backups never follow links, so content held behind one is added to the
 # include set by its own path: an account's relocated files store for a
 # per-account run, every included account's for the data run, and root-made
-# links for the global and custom runs. The excludes mapped onto a store are
-# the run's exclude operands and its exclude filelist's absolute entries.
+# links for the global and custom runs. The rules mapped onto a store are the
+# run's exclude operands and its exclude filelist's absolute entries.
 _acct_store_includes() {
   local _a _x
   case "${_USER}" in
@@ -1674,29 +1689,29 @@ _rst_under() {
   return 1
 }
 # Archive path $1 (empty: everything) restored to $2. duplicity runs in the C
-# locale, so the message matched here is its own English one. Its output goes
-# to the log when there is one, and to stdout as it runs otherwise. Returns 2
-# when duplicity reports the path not found in the archive (with a log, its
-# output is then kept in _RST_OUT for the caller, which may still try another
-# path), 1 on any other failure.
+# locale, so the message matched here is its own English one. Its output is
+# kept in a file and goes to the log when there is one, to stdout otherwise,
+# once the attempt is final. Returns 2 when duplicity reports the path not
+# found in the archive (its output is then kept in _RST_OUT for the caller,
+# which may still try another path, and says it only when none is left), 1
+# on any other failure.
 _rst_one() {
   local _c="${_RST_CMD}" _o="${_RST_TMP}/rst.out" _rc
   [ -n "${1}" ] && _c="${_c} --path-to-restore $(printf '%q' "${1}")"
   _c="${_c} $(printf '%q' "${2}")"
   echo "Command is ${_c}"
   _RST_OUT=""
-  if [ -n "${_RST_LOG}" ]; then
-    eval "LANGUAGE= LC_ALL=C ${_c}" > "${_o}" 2>&1
-    _rc=$?
-  else
-    eval "LANGUAGE= LC_ALL=C ${_c}" 2>&1 | tee -- "${_o}"
-    _rc="${PIPESTATUS[0]}"
-  fi
+  eval "LANGUAGE= LC_ALL=C ${_c}" > "${_o}" 2>&1
+  _rc=$?
   if [ "${_rc}" != 0 ] && grep -q -F -e "not found in archive" -- "${_o}"; then
-    [ -n "${_RST_LOG}" ] && _RST_OUT="$(cat -- "${_o}")"
+    _RST_OUT="$(cat -- "${_o}")"
     return 2
   fi
-  [ -n "${_RST_LOG}" ] && cat -- "${_o}" >> "${_RST_LOG}"
+  if [ -n "${_RST_LOG}" ]; then
+    cat -- "${_o}" >> "${_RST_LOG}"
+  else
+    cat -- "${_o}"
+  fi
   [ "${_rc}" = 0 ] || return 1
   _RST_LAST="${1}"
   return 0
@@ -1980,12 +1995,12 @@ _rst_links() {
       [ "${_g}" = "${_d#/}" ] && _how[${_k}]=_rst_path
     fi
   done
-  if [ "${#_keys[@]}" -gt "${_RST_LINK_MAX}" ]; then
-    _rst_note "${#_keys[@]} site stores are behind links in this restore, more than ${_RST_LINK_MAX}: their links are kept as links"
-    _stop=0
+  _stop="${#_keys[@]}"
+  if [ "${_stop}" -gt "${_RST_LINK_MAX}" ]; then
+    _rst_note "${_stop} site stores are behind links in this restore: the links into the first ${_RST_LINK_MAX} are restored, the others are kept as links"
+    _stop="${_RST_LINK_MAX}"
   fi
-  for (( _i = 0; _i < ${#_keys[@]}; _i++ )); do
-    [ -z "${_stop}" ] || break
+  for (( _i = 0; _i < _stop; _i++ )); do
     if ! _rst_room "${_top}"; then
       _rst_note "Less than a tenth of the restore's filesystem is free: the remaining links are kept as links"
       _stop="${_i}"
@@ -2010,7 +2025,7 @@ _rst_links() {
     done
     rm -rf -- "${_src}"
   done
-  for (( _i = ${_stop:-${#_keys[@]}}; _i < ${#_keys[@]}; _i++ )); do
+  for (( _i = _stop; _i < ${#_keys[@]}; _i++ )); do
     _k="${_keys[_i]}"
     _ps=""
     for (( _j = 0; _j < ${#_gk[@]}; _j++ )); do
@@ -2122,9 +2137,10 @@ _rst_ground_acct() {
 # account's ground, below the account's /data/disk/<oN>, the /home directory
 # $1 names, or the account's store in BOA's relocated layout; anywhere when
 # every link on the way to $1 is one root made in a directory only root can
-# write. BOA's own links (a relocated store, a site's files/ or private/,
-# backups/, the .ftp home links) lead to such places; a link an account put
-# anywhere else is refused.
+# write and the link check itself walked them to $2, so a name swapped
+# between the two lookups is refused. BOA's own links (a relocated store, a
+# site's files/ or private/, backups/, the .ftp home links) lead to such
+# places; a link an account put anywhere else is refused.
 _rst_target_ok() {
   local _a _h _s
   [ "${2}" = "${1}" ] && return 0
@@ -2140,16 +2156,46 @@ _rst_target_ok() {
     _s="$(_acct_relocated_store "${_a}")"
     [ -n "${_s}" ] && _rst_under "${2}" "${_s}" && return 0
   fi
-  _root_links_ok "${1}"
+  _root_links_ok "${1}" && [ "${_RLK_PATH}" = "${2}" ]
+}
+# True when the resolved path $1 is in no account's ground, or when the top of
+# its ground already exists as a real directory: an account's /data/disk/<oN>
+# (or the shared /data/disk/arch), the /home/<name> it names, or an account's
+# store <mount>/files/<oN>/static/files. Root makes missing names only below
+# that top, never an account's own directory.
+_rst_ground_made() {
+  local _a _r _top
+  _a="$(_rst_ground_acct "${1}")"
+  [ -n "${_a}" ] || return 0
+  case "${1}" in
+    /data/disk/?*)
+      _r="${1#/data/disk/}"
+      _top="/data/disk/${_r%%/*}"
+      ;;
+    /home/?*)
+      _r="${1#/home/}"
+      _top="/home/${_r%%/*}"
+      ;;
+    *)
+      _r="${1#/mnt/}"
+      _top="/mnt/${_r%%/*}/files/${_a}/static/files"
+      ;;
+  esac
+  [ -d "${_top}" ] && [ ! -L "${_top}" ] || return 1
+  case "${_top}" in
+    /data/disk/arch|/home/*) return 0 ;;
+  esac
+  getent passwd "${_a}" > /dev/null 2>&1
 }
 
 # Function to restore backup. The target is used where it leads only when
 # that is where the target as given may lead (see _rst_target_ok), and only
 # as a real directory: a missing one is made one name at a time inside its
-# real parent, and the restore acts inside it by pwd -P. The tree itself is
-# restored in root's staging directory there (see _rst_staged_here), so on
-# the target's own filesystem. A full restore (no path) goes only to a
-# directory outside the accounts' ground.
+# real parent, never an account's own directory (see _rst_ground_made), and
+# the restore acts inside it by pwd -P. The tree itself is restored in root's
+# staging directory there (see _rst_staged_here), so on the target's own
+# filesystem. A full restore (no path) goes only to a directory outside the
+# accounts' ground.
 _restore() {
   # Dispatch-level _USER, never the wrapper's exported _user (see
   # _check_if_worked_cleanly_or_log_err)
@@ -2173,6 +2219,13 @@ _restore() {
   esac
 
   [ -n "${_restore_target}" ] || _restore_target="/data/disk/${_user}/static/restores"
+  # The path judged is the path used: no '.' or '..' name folds a link away
+  case "/${_restore_target}/" in
+    */./*|*/../*)
+      echo "Error: give the restore target without '.' or '..' names, not '${_restore_target}'."
+      exit 1
+      ;;
+  esac
   # The target as given (made absolute, links not resolved) and where it
   # leads now
   _given="$(realpath -m -s -- "${_restore_target}" 2> /dev/null)"
@@ -2182,7 +2235,7 @@ _restore() {
     exit 1
   fi
   if ! _rst_target_ok "${_given}" "${_real}"; then
-    echo "Error: ${_given} leads to ${_real}, which is not where it may lead. Unable to proceed."
+    echo "Error: ${_given} leads to ${_real} through a link root did not make in a directory only root can write, outside the account's own tree and files store, or it changed while it was checked. Unable to proceed."
     exit 1
   fi
   if [ -z "${_last_part}" ] && { [ -n "$(_rst_ground_acct "${_given}")" ] \
@@ -2201,6 +2254,10 @@ _restore() {
   fi
 
   if [ ! -e "${_real}" ] && [ ! -L "${_real}" ]; then
+    if ! _rst_ground_made "${_real}"; then
+      echo "Error: ${_real} is not below an existing account's directory or files store. Unable to proceed."
+      exit 1
+    fi
     echo "Creating restore target directory: ${_real}"
     if ! _rst_mkdir_path "${_real}"; then
       echo "Error: ${_real} could not be made: a directory on the way is not a real one. Unable to proceed."
@@ -2256,28 +2313,52 @@ _acct_group() {
 # numbers map to here -- another account's group, readable by its
 # identities. The destination is resolved first (relative paths, and a
 # planted symlink under a tenant-writable directory, resolve to where the
-# files really are) and only a real path inside an account's tree is
-# touched: it is handed to that account's group (the inline form), then
-# instgrp reclaim redoes the whole account where it is installed (every
-# root, the marker rule, the DRIFT verdict). A restore staged anywhere else
-# is the operator's to follow with 'instgrp reclaim oN' once it is in place.
-# Verbatim in backboa, duobackboa, multiback and mybackup. $1 = restored dir.
+# files really are) and only a real path inside an account's tree, or inside
+# its relocated files store (<mount>/files/<oN>/static/files under /mnt,
+# whose static directory only root can write), is touched: it is handed to
+# that account's group (the inline form), then instgrp reclaim redoes the
+# whole account where it is installed (every root, the marker rule, the
+# DRIFT verdict). A restore staged anywhere else is the operator's to follow
+# with 'instgrp reclaim oN' once it is in place.
+# Verbatim in backboa, duobackboa, multiback and mybackup. $1 = the restored
+# directory or file.
 _acct_reclaim_restored() {
-  local _r _a _g
+  local _r _a _g _m _d _w=()
   _r=$(realpath -e -- "$1" 2> /dev/null) || return 0
-  [ -d "${_r}" ] || return 0
   case "${_r}" in
     /data/disk/*) _a="${_r#/data/disk/}"; _a="${_a%%/*}" ;;
     /home/*)      _a="${_r#/home/}"; _a="${_a%%/*}"; _a="${_a%%.*}" ;;
+    /mnt/?*/files/?*/static/files/?*)
+      _m="${_r#/mnt/}"
+      _m="${_m%%/*}"
+      _a="${_r#/mnt/"${_m}"/files/}"
+      _a="${_a%%/*}"
+      case "${_r}" in
+        /mnt/"${_m}"/files/"${_a}"/static/files/?*) ;;
+        *) return 0 ;;
+      esac
+      _root_only "/mnt/${_m}/files/${_a}/static" || return 0
+      ;;
     *) return 0 ;;
   esac
   [ -n "${_a}" ] && [ "${_a}" != "all" ] && getent passwd "${_a}" > /dev/null 2>&1 || return 0
   _g=$(_acct_group "${_a}" 2> /dev/null)
   [ -n "${_g}" ] || _g="users"
-  # The walk starts inside the real directory, so a name on the way swapped
-  # for a link after the realpath above never carries it elsewhere
-  _acct_in_real_dir "${_r}" find -P . ! -group "${_g}" ! -group www-data ! -group root \
-    -execdir chgrp -h "${_g}" {} + 2> /dev/null
+  if [ -d "${_r}" ]; then
+    _d="${_r}"
+    _w=(.)
+  elif [ -f "${_r}" ]; then
+    _d="${_r%/*}"
+    _w=("./${_r##*/}" -maxdepth 0)
+  else
+    return 0
+  fi
+  # The walk starts where cd -P lands exactly on the resolved directory, so
+  # no name on the way is a link then, and a name swapped for a link after
+  # the realpath above never carries it elsewhere
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] \
+    && find -P "${_w[@]}" ! -group "${_g}" ! -group www-data ! -group root \
+      -execdir chgrp -h "${_g}" {} + 2> /dev/null )
   if [ -x "/opt/local/bin/instgrp" ]; then
     bash /opt/local/bin/instgrp reclaim "${_a}" > /dev/null 2>&1
   fi

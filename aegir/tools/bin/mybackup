@@ -538,28 +538,52 @@ _send_restore_confirmation_email() {
 # numbers map to here -- another account's group, readable by its
 # identities. The destination is resolved first (relative paths, and a
 # planted symlink under a tenant-writable directory, resolve to where the
-# files really are) and only a real path inside an account's tree is
-# touched: it is handed to that account's group (the inline form), then
-# instgrp reclaim redoes the whole account where it is installed (every
-# root, the marker rule, the DRIFT verdict). A restore staged anywhere else
-# is the operator's to follow with 'instgrp reclaim oN' once it is in place.
-# Verbatim in backboa, duobackboa, multiback and mybackup. $1 = restored dir.
+# files really are) and only a real path inside an account's tree, or inside
+# its relocated files store (<mount>/files/<oN>/static/files under /mnt,
+# whose static directory only root can write), is touched: it is handed to
+# that account's group (the inline form), then instgrp reclaim redoes the
+# whole account where it is installed (every root, the marker rule, the
+# DRIFT verdict). A restore staged anywhere else is the operator's to follow
+# with 'instgrp reclaim oN' once it is in place.
+# Verbatim in backboa, duobackboa, multiback and mybackup. $1 = the restored
+# directory or file.
 _acct_reclaim_restored() {
-  local _r _a _g
+  local _r _a _g _m _d _w=()
   _r=$(realpath -e -- "$1" 2> /dev/null) || return 0
-  [ -d "${_r}" ] || return 0
   case "${_r}" in
     /data/disk/*) _a="${_r#/data/disk/}"; _a="${_a%%/*}" ;;
     /home/*)      _a="${_r#/home/}"; _a="${_a%%/*}"; _a="${_a%%.*}" ;;
+    /mnt/?*/files/?*/static/files/?*)
+      _m="${_r#/mnt/}"
+      _m="${_m%%/*}"
+      _a="${_r#/mnt/"${_m}"/files/}"
+      _a="${_a%%/*}"
+      case "${_r}" in
+        /mnt/"${_m}"/files/"${_a}"/static/files/?*) ;;
+        *) return 0 ;;
+      esac
+      _root_only "/mnt/${_m}/files/${_a}/static" || return 0
+      ;;
     *) return 0 ;;
   esac
   [ -n "${_a}" ] && [ "${_a}" != "all" ] && getent passwd "${_a}" > /dev/null 2>&1 || return 0
   _g=$(_acct_group "${_a}" 2> /dev/null)
   [ -n "${_g}" ] || _g="users"
-  # The walk starts inside the real directory, so a name on the way swapped
-  # for a link after the realpath above never carries it elsewhere
-  _acct_in_real_dir "${_r}" find -P . ! -group "${_g}" ! -group www-data ! -group root \
-    -execdir chgrp -h "${_g}" {} + 2> /dev/null
+  if [ -d "${_r}" ]; then
+    _d="${_r}"
+    _w=(.)
+  elif [ -f "${_r}" ]; then
+    _d="${_r%/*}"
+    _w=("./${_r##*/}" -maxdepth 0)
+  else
+    return 0
+  fi
+  # The walk starts where cd -P lands exactly on the resolved directory, so
+  # no name on the way is a link then, and a name swapped for a link after
+  # the realpath above never carries it elsewhere
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] \
+    && find -P "${_w[@]}" ! -group "${_g}" ! -group www-data ! -group root \
+      -execdir chgrp -h "${_g}" {} + 2> /dev/null )
   if [ -x "/opt/local/bin/instgrp" ]; then
     bash /opt/local/bin/instgrp reclaim "${_a}" > /dev/null 2>&1
   fi
@@ -630,29 +654,29 @@ _rst_under() {
   return 1
 }
 # Archive path $1 (empty: everything) restored to $2. duplicity runs in the C
-# locale, so the message matched here is its own English one. Its output goes
-# to the log when there is one, and to stdout as it runs otherwise. Returns 2
-# when duplicity reports the path not found in the archive (with a log, its
-# output is then kept in _RST_OUT for the caller, which may still try another
-# path), 1 on any other failure.
+# locale, so the message matched here is its own English one. Its output is
+# kept in a file and goes to the log when there is one, to stdout otherwise,
+# once the attempt is final. Returns 2 when duplicity reports the path not
+# found in the archive (its output is then kept in _RST_OUT for the caller,
+# which may still try another path, and says it only when none is left), 1
+# on any other failure.
 _rst_one() {
   local _c="${_RST_CMD}" _o="${_RST_TMP}/rst.out" _rc
   [ -n "${1}" ] && _c="${_c} --path-to-restore $(printf '%q' "${1}")"
   _c="${_c} $(printf '%q' "${2}")"
   echo "Command is ${_c}"
   _RST_OUT=""
-  if [ -n "${_RST_LOG}" ]; then
-    eval "LANGUAGE= LC_ALL=C ${_c}" > "${_o}" 2>&1
-    _rc=$?
-  else
-    eval "LANGUAGE= LC_ALL=C ${_c}" 2>&1 | tee -- "${_o}"
-    _rc="${PIPESTATUS[0]}"
-  fi
+  eval "LANGUAGE= LC_ALL=C ${_c}" > "${_o}" 2>&1
+  _rc=$?
   if [ "${_rc}" != 0 ] && grep -q -F -e "not found in archive" -- "${_o}"; then
-    [ -n "${_RST_LOG}" ] && _RST_OUT="$(cat -- "${_o}")"
+    _RST_OUT="$(cat -- "${_o}")"
     return 2
   fi
-  [ -n "${_RST_LOG}" ] && cat -- "${_o}" >> "${_RST_LOG}"
+  if [ -n "${_RST_LOG}" ]; then
+    cat -- "${_o}" >> "${_RST_LOG}"
+  else
+    cat -- "${_o}"
+  fi
   [ "${_rc}" = 0 ] || return 1
   _RST_LAST="${1}"
   return 0
@@ -917,12 +941,12 @@ _rst_links() {
       [ "${_g}" = "${_d#/}" ] && _how[${_k}]=_rst_path
     fi
   done
-  if [ "${#_keys[@]}" -gt "${_RST_LINK_MAX}" ]; then
-    _rst_note "${#_keys[@]} site stores are behind links in this restore, more than ${_RST_LINK_MAX}: their links are kept as links"
-    _stop=0
+  _stop="${#_keys[@]}"
+  if [ "${_stop}" -gt "${_RST_LINK_MAX}" ]; then
+    _rst_note "${_stop} site stores are behind links in this restore: the links into the first ${_RST_LINK_MAX} are restored, the others are kept as links"
+    _stop="${_RST_LINK_MAX}"
   fi
-  for (( _i = 0; _i < ${#_keys[@]}; _i++ )); do
-    [ -z "${_stop}" ] || break
+  for (( _i = 0; _i < _stop; _i++ )); do
     if ! _rst_room "${_top}"; then
       _rst_note "Less than a tenth of the restore's filesystem is free: the remaining links are kept as links"
       _stop="${_i}"
@@ -947,7 +971,7 @@ _rst_links() {
     done
     rm -rf -- "${_src}"
   done
-  for (( _i = ${_stop:-${#_keys[@]}}; _i < ${#_keys[@]}; _i++ )); do
+  for (( _i = _stop; _i < ${#_keys[@]}; _i++ )); do
     _k="${_keys[_i]}"
     _ps=""
     for (( _j = 0; _j < ${#_gk[@]}; _j++ )); do

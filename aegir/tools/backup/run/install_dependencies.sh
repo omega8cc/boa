@@ -275,9 +275,12 @@ B2NOTFOUND
 # gated on the exact 3.2.0.2 file and version, compile- and load-checked
 # before an atomic same-directory swap, so a failed patch leaves the stock
 # file untouched. Verbatim in install_dependencies.sh, backboa and
-# duobackboa. Re-check the stock Path.open at the next duplicity pin bump.
+# duobackboa. Re-check the stock Path.open at the next duplicity pin bump;
+# until then the install paths ($1 = report) say when the venv's path.py is
+# not the file the patch is made for, and the frequent patch-only call stays
+# quiet.
 _patch_duplicity_path_open() {
-  local _pthLive _pthTemp _pthSum _dcyLive
+  local _pthLive _pthTemp _pthSum
   _pthLive="${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity/path.py"
   [ -f "${_pthLive}" ] || return 0
   if grep -q "BOA-path-open-nofollow" "${_pthLive}"; then
@@ -285,9 +288,13 @@ _patch_duplicity_path_open() {
   fi
   # The stock 3.2.0.2 path.py, byte for byte (sdist and wheels alike)
   _pthSum="$(sha256sum "${_pthLive}" 2>/dev/null)"
-  [ "${_pthSum%% *}" = "d8ec60be030314a29d97ae7b47a89967d0f8da07db39172920eb4da0d58f918e" ] || return 0
-  _dcyLive=$(/usr/local/bin/duplicity --version 2>&1)
-  [[ "${_dcyLive}" == *"duplicity ${_DCY_VRN} "* ]] || return 0
+  if [ "${_pthSum%% *}" != "d8ec60be030314a29d97ae7b47a89967d0f8da07db39172920eb4da0d58f918e" ] \
+    || [[ "$(/usr/local/bin/duplicity --version 2>&1)" != *"duplicity ${_DCY_VRN} "* ]]; then
+    if [ "${1:-}" = "report" ]; then
+      echo "NOTE: duplicity path patch not applied: it is made for the stock 3.2.0.2 path.py, and this venv's duplicity differs"
+    fi
+    return 0
+  fi
   _pthTemp="${_pthLive%.py}_boapatch$$.py"
   cp -af "${_pthLive}" "${_pthTemp}" || return 0
   cat >> "${_pthTemp}" <<'PATHOPEN'
@@ -600,5 +607,5 @@ _if_python_install_src
 # Unconditional: the quick no-op path above (python, Duplicity and the tool
 # venvs on the pin) must still converge an unpatched venv
 _patch_duplicity_b2backend
-_patch_duplicity_path_open
+_patch_duplicity_path_open report
 
