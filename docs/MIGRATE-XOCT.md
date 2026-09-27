@@ -351,8 +351,9 @@ resumed into rather than abandoned, and the winning name is recorded under
 `log/panel_db.txt` so a re-run is deterministic. The dump import is checked;
 a failure aborts before anything is renamed.
 
-`import` then re-imports the Ægir hostmaster database and sets the site
-front page back to `hosting/sites`, and reconciles the panel platform, which
+`import` then re-imports the Ægir hostmaster database, keeping the panel
+front page the dump carries (a front-page node included), and reconciles the
+panel platform, which
 absorbs distro-number drift: the imported database names the SOURCE's
 hostmaster platform path, while the target account's live panel usually sits
 on a different `aegir/distro/NNN` (the panel platform is rebuilt whenever
@@ -578,8 +579,13 @@ xoct proxy o1 target-ip o2
 - `o1` = source account name
 - `o2` = target account name (must not already exist before `create`)
 - `transfer shared` does not use `o2` — it is not account-specific
-- All path references (`/data/disk/o1.ftp`, etc.) are rewritten to `o2`
-  automatically during transfer
+- The account's path references (`/data/disk/o1`, `/home/o1.ftp` and the
+  FPM `$user_socket` token) in its Drush aliases and its nginx and `ssl.d`
+  config are rewritten to `o2` automatically during transfer, and each
+  `static/` link naming the source tree is made again pointing at `o2`, by
+  the link's own owner (root's by root); a link its owner cannot make
+  there, or one in the root group that root does not own, keeps its old
+  target and is named in an `ALRT` line
 - `import` also moves the ACCOUNT axis inside the imported Ægir DB (via
   renameaegirhost `--old-account/--new-account`): the control panel identity
   becomes `o2.<target-fqdn>` (adopting the fresh install's panel site dir and

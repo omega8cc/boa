@@ -645,8 +645,10 @@ leading-dot names are skipped by the site/orphan scan, like `.archived`.
   `static/files` is on the root device, so there is nowhere better to put backups
   and the relocation is a **deliberate no-op**. It only acts once a large account's
   `static/files` is on attached storage, and only when `static/files` is the
-  account's own directory or migratefs' layout `/mnt/<mount>/files/<account>/static/files`;
-  any other `static/files` link is skipped with a log line.
+  account's own directory or migratefs' layout `/mnt/<mount>/files/<account>/static/files`
+  on a plain path (letters, digits, `.`, `_`, `-`), with no directory between `/mnt`
+  and the mount itself named `files` or `static`; any other `static/files` link is
+  skipped with a log line.
 - **Safe one-time migration.** Existing backups are copied whole (`rsync -a`) while
   the directory and its store copy are closed to the account (root, 0700), then the
   source is emptied and replaced by the link, so the static filesystem needs a full

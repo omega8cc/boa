@@ -41,8 +41,9 @@ relocates its `backups` + `backup-exports` onto the same filesystem. See
 > Unmount the extras and keep a single attached mount under `/mnt`.
 
 The mount is detected by **what it is** (a real mountpoint / a separate device), not
-by its name — any name works (e.g. `/mnt/extra`). There is no dot-in-the-name
-convention.
+by its name, and there is no dot-in-the-name convention. The rest of BOA accepts a
+relocated store only on a plain path (letters, digits, `.`, `_`, `-`), so give the
+mount a plain name, e.g. `/mnt/extra`.
 
 ## Usage
 
@@ -55,7 +56,7 @@ migratefs [--target <mount>] [--account <oN>] [--no-arch] [--apply] [--yes]
 |---|---|
 | *(no `--apply`)* | DRY plan only — print what would happen, change nothing |
 | `--apply` | perform the relocation (pauses the Ægir queue, drains tasks) |
-| `--target <mount>` | attached mount to relocate onto, always a mountpoint under `/mnt` (the only supported store placement: the nightly's root-run relocations refuse a store elsewhere); auto-detected as the single real mountpoint under `/mnt` if omitted |
+| `--target <mount>` | attached mount to relocate onto, always a mountpoint under `/mnt` (the only supported store placement); auto-detected as the single real mountpoint under `/mnt` if omitted. The nightly purges and backups relocation, `usage.sh`, `copydbackup` and the `octopus` upgrade take a relocated store only as `/mnt/<mount>/files/<oN>/static/files` on a plain path, with no directory between `/mnt` and the mount itself named `files` or `static`; `migratefs` does not check this, and a store elsewhere is left out of those passes (`usage.sh` logs that it is not counted) |
 | `--account <oN>` | limit to one account, and skip `arch` (default: all accounts **plus** `arch`). Must be an Octopus account directory name: `arch`, `all`, `legacy`, a path or a dot-name is refused and the run exits 1 before it pauses the queue |
 | `--no-arch` | do not relocate `/data/disk/arch` |
 | `--yes` | in `--apply`, skip the interactive confirmation |

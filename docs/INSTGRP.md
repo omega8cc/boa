@@ -294,8 +294,12 @@ place: it belongs to the account.
   account's group, `users` while unconverted; passed `--force`, because the
   destination's own `log/proxied.pid`, if any, is its demotion artefact
   from an earlier cutover — or, for stage2, a freeze left by a killed
-  import — not an account served from elsewhere; when the tool keeps
-  deferring behind a live BOA run, the same inline pass runs instead), the
+  import — not an account served from elsewhere; where the tool is not
+  installed, or keeps deferring behind a live BOA run, an inline pass over
+  the same roots runs instead: it regroups only directories and single-link
+  regular files, each through a handle that never follows a link, so a
+  symlink, a hard-linked file or a FIFO keeps the group it landed with and
+  `status` reports it as DRIFT until `instgrp reclaim --force` claims it), the
   xmass legs map the source account's group onto the
   destination account's group as they copy (so the 15-minute standby
   autosync never lands a foreign gid), and none of them carry the
