@@ -259,7 +259,7 @@ _log_issue() {
   local _type=$1
   local _file=$2
   local _message=$3
-  echo "[$(date)] Validation issue type: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_LOG_FILE}"
+  echo "[$(date)] Validation issue type: [${_type}] in file: [${_file}] with error: ${_message}" >> "${_LOGFILE}"
   if [ -n "${_MY_EMAIL}" ] && [ "${_INCIDENT_REPORT}" = "ALL" ]; then
     # Alert the admin
     echo "Sending Backup Validation Alert to ${_MY_EMAIL} on $(date)" >> ${_LOGFILE}
@@ -495,15 +495,35 @@ _restore() {
     _restore_command="${_restore_command} --time ${_restore_time}"
   fi
   _restore_command="${_restore_command} ${_BACKUP_TARGET}"
+  # Backups keep links as links, so a relocated files store is backed up
+  # under its own path: a path below the account's static/files is first
+  # restored from that store, then as given (backups made while links were
+  # still followed hold the store's content under static/files itself).
+  local _sto _alt_path=""
+  _sto=$(_acct_relocated_store "${_user}")
+  if [ -n "${_sto}" ]; then
+    case "${_clean_restore_path}" in
+      "data/disk/${_user}/static/files"|"data/disk/${_user}/static/files/"*)
+        _alt_path="${_sto#/}${_clean_restore_path#data/disk/"${_user}"/static/files}"
+        ;;
+    esac
+  fi
+  local _alt_command=""
+  if [ -n "${_alt_path}" ]; then
+    _alt_command="${_restore_command} --path-to-restore ${_alt_path} ${_final_restore_target}"
+  fi
   if [ -n "${_restore_path}" ]; then
     _restore_command="${_restore_command} --path-to-restore ${_restore_path}"
   fi
   _restore_command="${_restore_command} ${_final_restore_target}"
 
-  echo "Command is ${_restore_command}"
+  echo "Command is ${_alt_command:-${_restore_command}}"
 
   echo "MyBackup Restore for [${_user}] on [$(date)]" >> ${_LOGFILE}
-  eval "${_restore_command}" >> ${_LOGFILE}
+  if [ -z "${_alt_command}" ] || ! eval "${_alt_command}" >> ${_LOGFILE} 2>&1; then
+    [ -n "${_alt_command}" ] && echo "Command is ${_restore_command}"
+    eval "${_restore_command}" >> ${_LOGFILE}
+  fi
   # --no-restore-owner lands the tree root-owned: hand it to the account,
   # owner and group, then the shared restore claim (every restored path,
   # the whole account where instgrp is installed).
@@ -515,6 +535,20 @@ _restore() {
     _subject="MyBackup Restore Notification [${_user}] on [$(date)]"
     _send_restore_confirmation_email "${_userEmail}" "${_subject}"
   fi
+}
+
+# The real path of account $1's files store when static/files is a link to
+# the account's own store in BOA's relocated layout (migratefs:
+# <target>/files/<oN>/static/files), with a plain path only; nothing else.
+_acct_relocated_store() {
+  local _a="${1}" _sto
+  [ -L "/data/disk/${_a}/static/files" ] || return 0
+  _sto=$(readlink -f "/data/disk/${_a}/static/files" 2> /dev/null)
+  case "${_sto}" in
+    *[!A-Za-z0-9._/-]*) return 0 ;;
+    */files/"${_a}"/static/files) [ -d "${_sto}" ] && echo "${_sto}" ;;
+  esac
+  return 0
 }
 
 # Function to set backup target based on service
