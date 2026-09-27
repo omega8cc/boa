@@ -390,6 +390,10 @@ either role (nologin and recorded for the promotion's release on a standby, the
 tenant shell elsewhere), runs none of the steps below (with `--fix-solr` beside
 it the Solr reconcile rides along), and is refused together with `--fix-php`.
 
+A re-created identity also joins the account's own web group `wg-oN` on the
+target when only the account's identities hold it there, and is left out of
+`www-data` once they have all left it.
+
 What it does, in order:
 
 0. **Tool refresh + same-release gate** — forces the migration tool set

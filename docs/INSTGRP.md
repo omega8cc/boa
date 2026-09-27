@@ -229,6 +229,9 @@ and npm trees) is handed to `root:root` first, and the group stays while any
 path still carries it. Removing a single sub-account leaves the group in
 place: it belongs to the account.
 
+The purge removes the account's own web group `wg-oN` the same way, when
+there is one, together with root's record of it.
+
 ## What this does not close
 
 - Within one account, a per-client sub-account can still read the
