@@ -1730,6 +1730,25 @@ _enable_chattr() {
   fi
 }
 #
+# Park a home with no identity.
+# A home parked under /var/backups/zombie/deleted has no identity any more:
+# its numbers are free for (or already given to) another account, so the
+# parked copy keeps none of them: shut to everyone else, and each directory
+# and single-link entry handed to root. An entry with more links may share
+# its inode with a living name outside; it goes too once its numbers name
+# nothing. -execdir: each name is changed inside the directory find entered
+# without following a link, so a process still inside cannot swap a
+# directory between for a link; it wants an absolute PATH.
+_ltd_park_to_root() {
+  [ -d "${1}" ] && [ ! -L "${1}" ] || return 0
+  chattr -i "${1}" &> /dev/null
+  chown -h root:root "${1}" &> /dev/null
+  chmod 0700 "${1}" &> /dev/null
+  env PATH=/usr/local/bin:/usr/bin:/bin find -P "${1}" -xdev \( -type d -o -links 1 \) -execdir chown -h root:root {} + &> /dev/null
+  env PATH=/usr/local/bin:/usr/bin:/bin find -P "${1}" -xdev -nouser -execdir chown -h root {} + &> /dev/null
+  env PATH=/usr/local/bin:/usr/bin:/bin find -P "${1}" -xdev -nogroup -execdir chgrp -h root {} + &> /dev/null
+}
+#
 # Disable chattr.
 _disable_chattr() {
   _isTest="$1"
@@ -2917,6 +2936,7 @@ _kill_zombies() {
             # as what it is rather than as a move.
             [ -d /var/log/boa ] || mkdir -p /var/log/boa
             if mv "/home/${_Existing}" "/var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}"; then
+              _ltd_park_to_root "/var/backups/zombie/deleted/${_NOW}/.leftover-${_Existing}"
               _ltd_in_real_dir "/home/${_usrParent}.ftp/users" \
                 rm -f -- "./${_Existing}"
               rm -f "${_ltd_orphan_seen}"
@@ -3136,7 +3156,9 @@ _ok_create_user() {
     _TMP="/var/tmp"
     if [ ! -L "${_SEC_SYM}" ]; then
       [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
-      mv -f ${_usrLtdRoot} /var/backups/zombie/deleted/${_NOW}/ &> /dev/null
+      # a home with no identity yet (see _ltd_park_to_root)
+      mv -f ${_usrLtdRoot} /var/backups/zombie/deleted/${_NOW}/ &> /dev/null \
+        && _ltd_park_to_root "/var/backups/zombie/deleted/${_NOW}/${_usrLtdRoot##*/}"
     fi
     if [ ! -d "${_usrLtdRoot}" ]; then
       if [ "${_LTD_STANDBY_CREATE_HELD}" = "YES" ]; then
