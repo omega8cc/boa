@@ -189,6 +189,17 @@
       account's alias: a path written through a link in the account's own
       tree could name another account, whose group the files then got.
 
+    * The shared config directory /data/conf, where every site on the box
+      loads its global includes from, stays root's for the whole Octopus
+      upgrade: the upgrade used to hand it to the account being upgraded
+      until the end of its run. The upgrade and the nightly pass take
+      back anything an earlier run left there, a file an account
+      hard-linked there included, and set its modes without following a
+      link. The barracuda upgrade and BOA's scheduled update put the
+      Valkey password, the global includes and the Drupal 10 and 11 core
+      patches there only inside the real directories, never through a
+      link, and xmass's two records there keep the 0600 xmass gives them.
+
     * The shared Backdrop redis module, the Backdrop bundle's webform and
       bee are root's as soon as BOA unpacks them: their archives recorded
       the account that built them, and an unpack as root kept that owner
