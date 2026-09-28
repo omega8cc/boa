@@ -388,8 +388,10 @@ look on any failure.
   and the site then degrades on the agent's next pass, so fix the
   policy, don't race the probe.
 - **Disk headroom**: per site roughly 2× its DB size free under
-  `/var/aegir` on the source for dumps; the whole estate + 500 MB free
-  under `/data/disk` on the target (`transfer` measures and refuses).
+  `/var/aegir` on the source for dumps; on the target the platform
+  trees + 500 MB free under `/data/disk` and the dumps + 500 MB free
+  under `/var/backups` (one budget when both are one filesystem;
+  `transfer` measures and refuses).
 - **A shared target box can have other provisioning actors** (billing
   automation, another operator). The tools' existence gates catch a
   collision, but never pre-assume the next free `oN` account name —
@@ -734,13 +736,16 @@ from).
   aegir2boa-stage2 transfer --target <target-ip> --account o1 --all   # dry, then --live
 ```
 
-Measures total size against the target's free `/data/disk` space
-(refuses without need+500 MB), then rsyncs each platform tree to
-`/data/disk/<oN>/static/a2b/<platform>/` (chowned to the account — a
-source-uid tree is unreadable to the account and breaks every later
-import), each site dump + manifest to `/data/disk/<oN>/src/a2b/`, plus
-the ssl.d trees and the nginx configs as reference copies (never into the
-target's live config — vhosts are regenerated natively by verify tasks).
+Measures the platform trees against the target's free `/data/disk` space
+and the dumps against its free `/var/backups` space (one budget when both
+are one filesystem; refuses without need+500 MB), then rsyncs each
+platform tree to `/data/disk/<oN>/static/a2b/<platform>/` (chowned to the
+account — a source-uid tree is unreadable to the account and breaks every
+later import), each site dump + manifest to `/var/backups/a2b/<oN>/src/`
+(root-only, outside the account's tree, which the account can write),
+plus the ssl.d trees and the nginx configs as reference copies there
+(never into the target's live config — vhosts are regenerated natively by
+verify tasks).
 
 Drush aliases are deliberately NOT transferred on either route: vanilla
 aliases carry `/var/aegir` roots that would poison the target; everything
@@ -799,17 +804,19 @@ The dry run prints the full numbered plan. The live run opens the
 **account freeze window**: the freeze marker (`log/proxied.pid`) makes
 every nightly/periodic BOA agent skip the account, in-flight nightly
 passes are drained, and the account's task dispatcher is **held aside**
+in `/var/backups/a2b/<oN>/`, where the per-minute runner never looks,
 for the duration — a raw DB import must never race task dispatch. If the
 import fails mid-way the dispatcher deliberately STAYS held (a broken
 panel must not dispatch); only success, `--revert-db-import`, or manual
 repair restore it. The steps, each idempotent behind its own marker:
 
-1. **Snapshot**: dump the fresh panel DB to `undo/a2b-pre-import.sql`
-   (the revert point) and capture the enabled-module set into
-   `undo/a2b-enabled-baseline.txt` (the reconciliation source of truth).
-   The import pre-checks roughly 2× the transferred hostmaster dump +
-   200 MB free under the account root for this snapshot — an extra
-   headroom gate on top of the transfer one.
+1. **Snapshot**: dump the fresh panel DB to
+   `/var/backups/a2b/<oN>/undo/a2b-pre-import.sql` (the revert point) and
+   capture the enabled-module set into `undo/a2b-enabled-baseline.txt`
+   beside it (the reconciliation source of truth). The import pre-checks
+   roughly 2× the transferred hostmaster dump + 200 MB free under
+   `/var/backups/a2b/<oN>` for this snapshot — an extra headroom gate on
+   top of the transfer one.
 2. **Drop, then load with sandbox strip**: the target panel DB is dropped
    (an overlay import is BOA-to-BOA-only and would leave orphaned tables)
    and the transferred dump streamed in minus the MariaDB ≥ 10.5.25
@@ -1041,11 +1048,33 @@ a fresh export+transfer.
 ```
 
 Source state lives under `/var/aegir/log/a2b/` (state, manifests, per-site
-markers), target state under `/data/disk/<oN>/log/a2b/`; dumps under
-`src/a2b/` on both sides; the pre-import snapshot under
-`/data/disk/<oN>/undo/`. A crashed run's stale lock
+markers), its dumps under `/var/aegir/src/a2b/`. Target state lives under
+`/var/backups/a2b/<oN>/`, root-only and outside the account's tree:
+`state/` and `markers/`, the held-aside dispatcher, the landed dumps,
+manifests and reference copies in `src/`, and the pre-import snapshot and
+baselines in `undo/`. A crashed run's stale lock
 (`/var/run/aegir2boa-stage2.*.lock`) is taken over automatically once its
 recorded pid is dead.
+
+State an earlier release left in the account's tree on the target
+(`/data/disk/<oN>/log/a2b/`, `src/a2b/`, `undo/a2b-pre-import.sql`) is
+never read, because the account can write that tree: a target verb alerts
+when it finds it and no `/var/backups/a2b/<oN>/` exists yet, and a
+`transfer` re-run from the source lands fresh artifacts.
+
+A dispatcher that release held aside there is never moved back: when a
+db-import or `--revert-db-import` restores dispatch and
+`/var/xdrago/run-<oN>` is missing, the tool rebuilds it from another
+account's dispatcher on the box (the same file with this account's
+`_H_USER` line), or alerts that dispatch for the account stays off until
+its next Octopus upgrade rewrites the dispatcher. `--revert-db-import`
+never loads a snapshot left there: it stops and names
+`/var/backups/a2b/<oN>/undo/a2b-pre-import.sql`, where the operator may
+place that snapshot after checking it.
+
+The site databases that release's import loaded are recorded only in its
+markers there, so a revert or `--reset-sites` does not drop them: it
+alerts, and the operator drops them by hand after checking the list.
 
 ## Stage 3 — DNS cutover and source decommission
 
@@ -1083,8 +1112,8 @@ deliberately:
    step reported as trusted; every other migration's trust stays), drop the
    migration key from
    `/root/.ssh/authorized_keys`, and optionally the tool copy and the
-   landed `src/a2b/` artifacts once the estate has run clean past a
-   backup cycle.
+   landed `/var/backups/a2b/<oN>/src/` artifacts once the estate has
+   run clean past a backup cycle.
 
 ## Troubleshooting quick reference
 

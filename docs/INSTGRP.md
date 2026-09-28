@@ -60,12 +60,13 @@ The order never leaves an identity without access it had:
 3. only then does the primary group move;
 4. the account's roots are walked (`/data/disk/oN`, `/home/oN.ftp`, the
    sub-account homes, `/opt/user/{gems,npm}/oN*`, a static store relocated
-   under `/mnt`) and every path still in group `users` is re-grouped — one
-   `chown -R -h -P --from=:users` per root, group-only, by directory
-   descriptor, so no symlink is ever followed, nothing outside the tree can
-   be reached through a re-pointed component, and the `www-data` paths are
-   never touched; the few `chattr +i` inodes chown reports are re-grouped
-   with the flag dropped and restored around that one change;
+   under `/mnt`) and every path in group `users` that the walk changes (see
+   "The tool") is re-grouped — group-only, through a handle opened inside
+   the directory `find -P` holds, without following a link or blocking on a
+   FIFO, so no symlink is ever followed, nothing outside the tree is reached
+   through a re-pointed component, and the `www-data` paths are never
+   touched; `chattr +i` inodes are re-grouped with the flag dropped and
+   restored around that one change;
 5. the marker is written last.
 
 The hosting queue keeps running during an octopus upgrade and a tenant's
@@ -152,6 +153,22 @@ group, or in a foreign group -- an import, a hand `chown`, a tool predating
 the form; re-run `convert` or `reclaim`, both only touch what drifted) or
 `INCONSISTENT`.
 
+The walk regroups a directory, a regular file with one link, and a regular
+file with more than one link or a FIFO whose owner is one of the account's
+identities (`oN`, `oN.ftp`, a sub-account) that is a member of the target
+group when the walk runs: that owner could make the same change itself with
+`chgrp`, so root making it grants nothing. Any other hard-linked file or
+FIFO, a socket or a device keeps its group: the account can create those,
+and a hard link may share its inode with a file the account does not own.
+
+`status` reports them on an `other:` line with a count and up to three
+examples; they never count as drift, and `convert` and `reclaim` log their
+number. `revert` keeps the group while any of them still carries it
+(exit 2): deleted, the group would leave them in a bare numeric gid that
+the next account created can be handed. A symlink keeps its group too, but
+is never counted and never keeps the group from `revert`: a symlink's group
+is never used for access.
+
 Exit status 0 / 0 / 2 / 3 in that order (4 = skipped, 5 =
 not ready; over `all` the worst class wins: failed, inconsistent, drift, not
 ready, skipped, done). A converted
@@ -160,8 +177,9 @@ copied marker dropped) reads `CONVERTED` with a note; the next `convert`
 rewrites the marker. Every action logs one line to
 `/var/log/boa/instgrp.log`.
 
-`reclaim` is the file half alone: every path under the roots takes the
-account's current group (`users` while unconverted), a marker that does not
+`reclaim` is the file half alone: every path under the roots that the walk
+changes takes the account's current group (`users` while unconverted), a
+marker that does not
 record this box's group is dropped. No identity change and no lock, so it
 is what a root-run restore, a migration destination and the nightly run.
 `convert` and `reclaim` leave the paths of the account's own web group
@@ -182,7 +200,9 @@ honours the migration freeze exactly as `convert` does: an account carrying
 group its files still carry), then the primary groups back to `users`, the
 account members removed from the group, the marker removed, the group
 deleted once no path and no identity carries it (a path written during the
-walk keeps the group in place; re-run). It writes `_INSTANCE_GROUP=NO` into
+walk keeps the group in place, re-run; so does an entry the walk never
+changes other than a symlink, exit 2, see above). It writes
+`_INSTANCE_GROUP=NO` into
 the account's octopus cnf, so the next unattended upgrade does not convert
 the account again (`--keep-enabled` leaves the cnf alone).
 
@@ -319,17 +339,21 @@ account is converted.
   account's group, `users` while unconverted; passed `--force`, because the
   destination's own `log/proxied.pid`, if any, is its demotion artefact
   from an earlier cutover — or, for stage2, a freeze left by a killed
-  import — not an account served from elsewhere; where the tool is not
-  installed, or keeps deferring behind a live BOA run, an inline pass over
-  the same roots runs instead: it regroups only directories and single-link
-  regular files, each through a handle that never follows a link, so a
-  symlink, a hard-linked file or a FIFO keeps the group it landed with and
-  `status` reports it as DRIFT until `instgrp reclaim --force` claims it), the
+  import — not an account served from elsewhere), the
   xmass legs map the source account's group onto the
   destination account's group as they copy (so the 15-minute standby
   autosync never lands a foreign gid), and none of them carry the
   conversion marker -- it recorded the source box's
   conversion.
+
+  Where the tool is not installed, or keeps deferring behind a live BOA
+  run, an inline pass over the same roots runs instead. It regroups only
+  directories and single-link regular files, each through a handle that
+  never follows a link. A hard-linked file or FIFO the walk changes (one
+  owned by an identity of the account, see "The tool") keeps the group it
+  landed with and reads as DRIFT in `status` until
+  `instgrp reclaim --force` claims it; any other one is counted on the
+  `other:` line, and a symlink keeps its group, never counted.
 
   The account's own web group travels too. While `wg-oN` exists on the
   source, every leg (the files store included) maps it onto the group the
@@ -341,4 +365,5 @@ account is converted.
 
   `instgrp` reads a marker whose gid is not the account group's
   gid on this box as STALE (ignored), and `convert`/`reclaim` claim any path
-  of the account's roots that is in no group or in another named group.
+  of the account's roots that the walk changes and that is in no group or in
+  another named group.
