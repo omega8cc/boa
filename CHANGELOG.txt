@@ -626,7 +626,8 @@
       settings stay in /root/.barracuda.cnf but no longer do anything.
       The Redis watchdog, its dispatch, the Redis AppArmor profile and
       the Redis branches in setprio, sqlprobe and the incident harvest
-      are gone too; an upgrade moves the old profile and watchdog aside.
+      are gone too; an upgrade moves the old profile aside and removes
+      the old watchdog.
 
     * DeepSeekBot, DeepSeek's crawler for model training, joins the AI
       training class: it gets 444 by default like GPTBot and ClaudeBot,
