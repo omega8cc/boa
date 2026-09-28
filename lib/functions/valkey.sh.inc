@@ -293,8 +293,8 @@ _valkey_password_update() {
 }
 #
 # Try the prebuilt boa-valkey .deb for the resolved pin; fall back to sources
-# on any failure. Published for Valkey major 9 only -- majors 7/8 and Redis
-# keep the source path by construction (their packages are never published,
+# on any failure. Published for Valkey major 9 only -- majors 7/8 keep the
+# source path by construction (their packages are never published,
 # and the gate below refuses them up front). The payload carries /usr/bin
 # binaries plus the redis-* compat symlinks valkey's make install creates;
 # runtime dirs, init script, config and password stay installer-managed on
@@ -415,12 +415,8 @@ _valkey_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _valkey_install_upgrade"
   fi
-  # A custom config may keep Valkey 7 or 8; any other value (Redis is no
-  # longer installed) builds the default major, the same as without one.
   if [ "${_CUSTOM_CONFIG_VALKEY}" = "NO" ] \
-    || [ -z "${_CUSTOM_CONFIG_VALKEY}" ] \
-    || { [ "${_VALKEY_MAJOR_RELEASE}" != "7" ] \
-      && [ "${_VALKEY_MAJOR_RELEASE}" != "8" ]; }; then
+    || [ -z "${_CUSTOM_CONFIG_VALKEY}" ]; then
     if [ "${_VALKEY_MAJOR_RELEASE}" != "9" ]; then
       export _VALKEY_MAJOR_RELEASE=9
       sed -i "s/^_VALKEY_MAJOR_.*/_VALKEY_MAJOR_RELEASE=9/g" ${_barCnf}

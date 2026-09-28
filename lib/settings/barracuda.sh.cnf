@@ -857,6 +857,8 @@ _EXTRA_PACKAGES=""
 ###
 ### Use YES to avoid overwriting configuration
 ### for listed services on upgrade.
+### (_CUSTOM_CONFIG_REDIS is not used any more:
+### BOA installs Valkey only.)
 ###
 _CUSTOM_CONFIG_CSF=NO
 _CUSTOM_CONFIG_LSHELL=NO

@@ -460,6 +460,12 @@ by the BOA install and upgrade tools exclusively.
   This file, if exists, allows to skip the otherwise default procedure
   designed to generate new Valkey password on every barracuda upgrade.
 
+ @=> /root/.redis.no.new.password.cnf
+
+  RETIRED: BOA installs Valkey only, so there is no Redis password to rotate
+  and no code reads this file. An existing file is harmless and can be
+  deleted at leisure.
+
  @=> /root/.allow.mc.cnf
 
   This file, if exists, allows to open an access for all limited shell users

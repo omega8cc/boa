@@ -555,6 +555,15 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   _nginx_install_upgrade
   _nginx_initd_check
   _nginx_mime_check_fix
+  # Valkey is the only cache server BOA installs: a major it does not build
+  # becomes the default one here, whatever build tree the pass sources.
+  case "${_VALKEY_MAJOR_RELEASE}" in
+    7|8|9) ;;
+    *)
+      export _VALKEY_MAJOR_RELEASE=9
+      sed -i "s/^_VALKEY_MAJOR_.*/_VALKEY_MAJOR_RELEASE=9/g" ${_barCnf}
+      ;;
+  esac
   _valkey_install_upgrade
   _lshell_install_upgrade
   _php_install_deps
