@@ -325,7 +325,15 @@ _reseed_ctrl_ini() {
   _pnt="${_dst%/*}"
   [ -L "${_pnt}" ] && return 1
   [ -d "${_pnt}" ] || return 1
-  _rpn=$(realpath -e -- "${_pnt}" 2>/dev/null) || return 1
+  # Only the directories above the parent are resolved; the parent is taken
+  # as a name in there, so a link swapped in at it after the test above
+  # fails the check once entered instead of being followed.
+  case "${_pnt}" in
+    /?*/?*) : ;;
+    *) return 1 ;;
+  esac
+  _rpn=$(realpath -e -- "${_pnt%/*}" 2>/dev/null) || return 1
+  _rpn="${_rpn%/}/${_pnt##*/}"
   _rus=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 1
   case "${_rpn}/" in
     "${_rus}"/*) : ;;
@@ -632,8 +640,10 @@ _load_control() {
 # named with a trailing slash. Each directory is locked and unlocked only
 # inside the real directory (_acct_in_real_dir): locking takes the
 # directory first, after which no name in it can change; unlocking clears
-# the names while it still holds. chattr refuses a link named by its bare
-# path, so a link among the entries is never followed.
+# the names while it still holds. No entry is locked or unlocked by its
+# name: a directory from inside itself, a regular file through a handle
+# (_night_chattr_entries_here), so a link is never followed and a hard link
+# put there beforehand never passes the flag to the file it names.
 _night_lock_here() {
   chattr +i . &> /dev/null
   return 0
@@ -642,25 +652,58 @@ _night_unlock_here() {
   chattr -i . &> /dev/null
   return 0
 }
+# The immutable flag set (+) or cleared (-) on a directory, or on a regular
+# file with a single link, through a handle opened without following a link
+# or blocking on a FIFO: a hard link, a link, a FIFO or anything else is
+# refused (status 1). Args: + or -, then the names.
+_ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or do { $rc = 1; next }; my @s = stat($h); if (@s && (-d _ || (-f _ && $s[3] == 1))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); $fl = $op eq "+" ? ($fl | 0x10) : ($fl & ~0x10); ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } else { $rc = 1 } close($h); } exit $rc'
+# The real directory ./$2 of the current (pinned) one given (+) or cleared
+# of (-) the immutable flag from inside itself ($1): a directory is never a
+# hard link, and a name swapped for anything else is never entered.
+_night_chattr_sub_here() {
+  local _h
+  _h="$(pwd -P)"
+  ( cd -P -- "./${2}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${2}" ] \
+    && chattr "${1}i" . ) &> /dev/null
+  return 0
+}
+# Every entry of the current (pinned) directory given (+) or cleared of (-)
+# the immutable flag ($1), as chattr ${1}i ./* gave it: each real directory
+# from inside itself, the regular files through _ACCT_CHATTR_PL; a link or
+# anything else is left alone.
+_night_chattr_entries_here() {
+  local _e _chf=()
+  for _e in ./*; do
+    if [ -d "${_e}" ] && [ ! -L "${_e}" ]; then
+      _night_chattr_sub_here "${1}" "${_e#./}"
+    elif [ -f "${_e}" ] && [ ! -L "${_e}" ]; then
+      _chf+=( "${_e}" )
+    fi
+  done
+  [ "${#_chf[@]}" -eq 0 ] \
+    || perl -e "${_ACCT_CHATTR_PL}" "${1}" "${_chf[@]}" &> /dev/null
+  return 0
+}
 _night_lock_all_here() {
   chattr +i . &> /dev/null
-  chattr +i ./* &> /dev/null
+  _night_chattr_entries_here +
   return 0
 }
 _night_unlock_all_here() {
-  chattr -i ./* &> /dev/null
+  _night_chattr_entries_here -
   chattr -i . &> /dev/null
   return 0
 }
 _night_drush_lock_here() {
   chattr +i . &> /dev/null
-  [ -d ./usr ] && [ ! -L ./usr ] && chattr +i ./usr &> /dev/null
+  _night_chattr_sub_here + usr
   return 0
 }
 _night_drush_unlock_here() {
-  [ -d ./usr ] && [ ! -L ./usr ] && chattr -i ./usr &> /dev/null
+  _night_chattr_sub_here - usr
   # a CLI php.ini an earlier release left, for the ltd worker to remove
-  [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr -i ./php.ini &> /dev/null
+  [ -f ./php.ini ] && [ ! -L ./php.ini ] \
+    && perl -e "${_ACCT_CHATTR_PL}" - ./php.ini &> /dev/null
   chattr -i . &> /dev/null
   return 0
 }

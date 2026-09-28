@@ -382,13 +382,16 @@ _ghost_seen_reset_acct() {
 ### (octal), the names.
 # A directory keeps its set-user-ID and set-group-ID bits unless the mode has
 # five digits (02775, 00755), as chmod(1) does with a numeric mode.
+# A regular file is changed only while it has a single link: a hard link put
+# at a name (or anywhere in a walked tree) is left alone, so the mode never
+# reaches the file it names.
 _NIGHT_FCHMOD_PL='use Fcntl;
 my ($t, $ms) = (shift @ARGV, shift @ARGV);
 my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
 for my $f (@ARGV) {
   sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
   my @s = stat($h);
-  if ($t eq "f" && -f _) {
+  if ($t eq "f" && -f _ && $s[3] == 1) {
     chmod($m, $h);
   } elsif ($t eq "d" && -d _) {
     chmod($m | ($s[2] & $k), $h);
@@ -401,6 +404,89 @@ _chmod_nofollow_here() {
   shift 2
   [ "$#" -gt 0 ] || return 0
   perl -e "${_NIGHT_FCHMOD_PL}" "${_t}" "${_m}" "$@" 2> /dev/null
+}
+
+### An owner set on names in a directory the account can write, never by
+### name: each name is opened without following a link and without blocking
+### on a FIFO, and a directory, or a regular file with a single link, is
+### changed through the open handle (fchown). A hard-linked file, a link, a
+### FIFO or a socket is left alone, so a hard link put at a name (or anywhere
+### in a walked tree) never hands over the file it names; nothing checks the
+### owner of a link. Args: uid, gid (numbers; -1 keeps that id), the names.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+### $1 (owner or owner:group, as chown takes it) as the numbers "uid gid",
+### -1 for a group not named; status 1, and nothing, when a name does not
+### resolve to a number.
+_night_ids() {
+  local _u _g=-1
+  _u=$(id -u -- "${1%%:*}" 2> /dev/null)
+  [[ "${_u}" =~ ^[0-9]+$ ]] || return 1
+  if [[ "${1}" == *:* ]]; then
+    _g=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
+    [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
+  fi
+  printf '%s %s\n' "${_u}" "${_g}"
+}
+### The names after $1 in the current (pinned) directory handed to $1
+### (owner or owner:group) through _ACCT_REOWN_PL.
+_reown_here() {
+  local _ids _u _g
+  _ids=$(_night_ids "${1}") || return 0
+  read -r _u _g <<< "${_ids}"
+  shift
+  [ "$#" -gt 0 ] || return 0
+  perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" "$@" 2> /dev/null
+  return 0
+}
+### The trees after $1 (start points in the current, pinned directory)
+### handed to $1 the same way, as chown -R handed them: find walks without
+### following a link, at the top or below, and each entry is changed from
+### inside the directory walked.
+_reown_tree_here() {
+  local _ids _u _g
+  _ids=$(_night_ids "${1}") || return 0
+  read -r _u _g <<< "${_ids}"
+  shift
+  [ "$#" -gt 0 ] || return 0
+  env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \
+    -execdir perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" {} + &> /dev/null
+  return 0
+}
+### The hand-over walks (the lock and unlock.info legs) as _reown_tree_here
+### walks them, logging one line per walked root when a regular file with
+### more than one link kept its old owner (_ACCT_REOWN_PL leaves it alone):
+### the count and the first. The walk's own find writes those names to a
+### temp file in root's /run (-fprint0), so the report adds no second pass
+### over the tree; without that file the walk runs unreported. Only a file
+### not already at the target owner (and group, when one is named) is
+### written: one already there lost nothing to being left alone.
+_handover_tree_here() {
+  local _o="${1}" _ids _u _g _tmp _n _first _here _off
+  _ids=$(_night_ids "${_o}") || return 0
+  read -r _u _g <<< "${_ids}"
+  shift
+  [ "$#" -gt 0 ] || return 0
+  _tmp=$(mktemp /run/.night-links.XXXXXX 2> /dev/null) || _tmp=""
+  if [ -z "${_tmp}" ]; then
+    _reown_tree_here "${_o}" "$@"
+    return 0
+  fi
+  _off=(! -uid "${_u}")
+  if [[ "${_g}" != "-1" ]]; then
+    _off=(\( ! -uid "${_u}" -o ! -gid "${_g}" \))
+  fi
+  env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \
+    \( -type f -links +1 "${_off[@]}" -fprint0 "${_tmp}" -o -true \) \
+    -execdir perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" {} + &> /dev/null
+  _n=$(tr -cd '\0' < "${_tmp}" | wc -c)
+  if [[ "${_n}" =~ ^[0-9]+$ ]] && [ "${_n}" -gt 0 ]; then
+    _here="$(pwd -P)"
+    _first=$(head -z -n 1 -- "${_tmp}" | tr -d '\0')
+    _first="${_here}/${_first#./}"
+    echo "SKIP: ${_n} file(s) with more than one link not handed to ${_o} in ${_here}, first: ${_first//[[:cntrl:]]/?}"
+  fi
+  rm -f -- "${_tmp}"
+  return 0
 }
 
 ### Run "$@" inside the directory $1 as it resolves now, entered for real: $1
@@ -419,11 +505,20 @@ _acct_in_resolved_dir() {
 _site_in_resolved_dir() {
   _in_resolved_dir site "$@"
 }
+### Only the directories above $1 are resolved: $1 itself is taken as a name
+### in its resolved parent, so a link swapped in at $1 after the test above
+### fails the check once entered instead of being resolved to where it
+### leads (a root chown, chmod or rm there).
 _in_resolved_dir() {
   local _k="${1}" _d="${2%/}" _rd _rus
   shift 2
   [ -n "${_d}" ] && [ ! -L "${_d}" ] && [ -d "${_d}" ] || return 1
-  _rd=$(realpath -e -- "${_d}" 2> /dev/null) || return 1
+  case "${_d}" in
+    /?*/?*) ;;
+    *) return 1 ;;
+  esac
+  _rd=$(realpath -e -- "${_d%/*}" 2> /dev/null) || return 1
+  _rd="${_rd%/}/${_d##*/}"
   _rus=$(realpath -e -- "${_usEr}" 2> /dev/null) || return 1
   case "${_rd}/" in
     "${_rus}"/?*) ;;
@@ -452,6 +547,7 @@ _acct_put_same_here() {
     "regular file"|"regular empty file") ;;
     *) return 1 ;;
   esac
+  [[ "${_mod}" =~ ^[0-7]+$ && "${_sz}" =~ ^[0-9]+$ ]] || return 1
   [ "${_sz}" -lt 1048576 ] || return 1
   rm -f -- "${_t}"
   if printf '%s' "${2}" \
@@ -994,7 +1090,10 @@ _rm_glob_here() {
   return 0
 }
 ### The regular files matching the glob $3 in the current (pinned)
-### directory handed to $1 and given the mode $2, never through a link.
+### directory handed to $1 and given the mode $2, never through a link and
+### never by name: each through its own handle, only while it has a single
+### link (_reown_here, _chmod_nofollow_here), so a hard link put or renamed
+### at a matching name is left alone.
 _own_glob_here() {
   local _f _l=()
   # unquoted on purpose: the glob is the point
@@ -1002,7 +1101,7 @@ _own_glob_here() {
     [ -f "${_f}" ] && [ ! -L "${_f}" ] && _l+=("${_f}")
   done
   [ "${#_l[@]}" -gt 0 ] || return 0
-  chown -h "${1}" "${_l[@]}" &> /dev/null
+  _reown_here "${1}" "${_l[@]}"
   _chmod_nofollow_here f "${2}" "${_l[@]}"
 }
 ### The archives a tenant left in the current (pinned) code dir: every
@@ -1012,22 +1111,25 @@ _archive_sweep_here() {
   find ./*.tar ./*.tar.gz ./*.zip -type f -delete &> /dev/null
   return 0
 }
-### Every entry of the current (pinned) directory handed to $1, recursively;
-### chown -R -h follows no link, at the top or below.
+### Every entry of the current (pinned) directory handed to $1, recursively,
+### as chown -h -R handed it: find follows no link, at the top or below, and
+### each directory and single-link regular file is changed through its own
+### handle; a hard-linked file is left alone and logged (_handover_tree_here).
 _chown_all_here() {
-  chown -h -R "${1}" ./* &> /dev/null
+  _handover_tree_here "${1}" ./*
   return 0
 }
-### The same for the entries themselves only (-h, never through a link).
+### The same for the entries themselves only (_reown_here).
 _chown_h_all_here() {
-  chown -h "${1}" ./* &> /dev/null
+  _reown_here "${1}" ./*
   return 0
 }
-### ./$1 handed to $2 (-h, never through a link) and, only if it is a
-### regular file, given the mode $3 through a no-follow handle, so a link
-### swapped in at the name meanwhile is never followed.
+### ./$1 handed to $2 and, only if it is a regular file, given the mode $3,
+### each through a no-follow handle and only while it has a single link, so
+### neither a link nor a hard link swapped in at the name meanwhile (or put
+### there by the account) is ever followed or handed over.
 _own_nolink_here() {
-  chown -h "${2}" "./${1}" &> /dev/null
+  _reown_here "${2}" "./${1}"
   _chmod_nofollow_here f "${3}" "./${1}"
   return 0
 }
@@ -1112,7 +1214,9 @@ _fix_llms_txt() {
   # root-only staging dir and put the copy over the leaf (_store_fetch), so
   # rename() replaces a re-planted link instead of following it; the content
   # is read and hashed bounded and never through a link, and the owner and
-  # mode legs never follow one.
+  # mode legs never follow one nor act by name (_own_nolink_here): every
+  # member of the store's web group can write it, so a hard link put at the
+  # name is left alone, never handed over.
   local _fls _url _wg
   if ! _site_files_store; then
     [ -e "${_Dir}/files" ] \
@@ -1165,8 +1269,9 @@ _fix_llms_txt() {
         | grep -q "^${_LLMS_SUM}$" 2>/dev/null; then
       _site_in_resolved_dir "${_Dir}" rm -f -- ./.llms-fetched.md5
       # The test above is a read and a grep away, and files/ is
-      # tenant-writable: -h and a no-follow mode set, so a link replanted in
-      # that window is never followed.
+      # tenant-writable: owner and mode set through a no-follow handle, only
+      # on a single-link regular file, so neither a link replanted in that
+      # window nor a hard link put there is followed or handed over.
       _in_pinned_dir "${_fls}" _own_nolink_here llms.txt "${_HM_U}${_wg:+:${_wg}}" 0664
       if [ -f "${_Plr}/llms.txt" ] || [ -L "${_Plr}/llms.txt" ]; then
         _site_in_resolved_dir "${_Plr}" rm -f -- ./llms.txt
@@ -1213,7 +1318,7 @@ _fix_robots_txt() {
   # (_site_files_store), entered for real, on ./robots.txt -- strip the leaf,
   # fetch only into the root-only staging dir and put the copy over the leaf
   # (_store_fetch), read it bounded and never through a link, and never
-  # follow one in the owner and mode legs.
+  # follow one nor act by name in the owner and mode legs.
   local _fls _wg
   if ! _site_files_store; then
     [ -e "${_Dir}/files" ] \
@@ -1237,8 +1342,8 @@ _fix_robots_txt() {
     _in_pinned_dir "${_fls}" _rm_nolink_here robots.txt
   else
     # files/ is tenant-writable, so the leaf can be replanted between the
-    # read above and this call: -h and a no-follow mode set, never through
-    # the link.
+    # read above and this call: owner and mode set through a no-follow
+    # handle, only on a single-link regular file (_own_nolink_here).
     _in_pinned_dir "${_fls}" _own_nolink_here robots.txt "${_HM_U}${_wg:+:${_wg}}" 0664
     if [ -f "${_Plr}/robots.txt" ] || [ -L "${_Plr}/robots.txt" ]; then
       _site_in_resolved_dir "${_Plr}" rm -f -- ./robots.txt
@@ -1255,7 +1360,10 @@ _fix_boost_cache() {
   # never legitimately a link: a planted one is stripped, and the cache is
   # made, emptied, handed over and given its mode only inside the real
   # directory (_site_in_resolved_dir), where the glob expands and rm -rf
-  # removes a link itself, never what it points at.
+  # removes a link itself, never what it points at. cache itself is entered
+  # as a name in the resolved docroot, never resolved again: a link swapped
+  # in after the strip is refused, not followed to a directory that would be
+  # emptied and handed over.
   _site_in_resolved_dir "${_Plr}" _desymlink_planted ./cache
   if [ -e "${_Plr}/cache" ] && [ ! -L "${_Plr}/cache" ]; then
     _site_in_resolved_dir "${_Plr}/cache" _boost_cache_clear_here
@@ -1952,32 +2060,41 @@ _fix_seven_core_patch() {
   ### put as a fresh file inside the real profiles/ (_acct_put_here), so a link
   ### replanted after the strip is replaced, never written through; the strip
   ### still lets a planted link read as "no marker yet".
-  _acct_in_resolved_dir "${_Plr}/profiles" \
+  ### Every leg that writes, patches or hands over runs inside the platform
+  ### root _fix_static_permissions resolved and checked (_rPlr), and enters
+  ### profiles/ and includes/database there for real (_in_real_sub): a name
+  ### on the way swapped for a link since is refused, never resolved again
+  ### to another tree of the account.
+  _in_pinned_dir "${_rPlr}" _in_real_sub profiles \
     _desymlink_planted ./SA-CORE-2014-005-D7-fix.info
   if [ ! -f "${_Plr}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
-    ### -D skip: a FIFO put at the name is skipped, never waited on.
-    _PATCH_TEST=$(grep -D skip "foreach (array_values(\$data)" \
-      "${_Plr}/includes/database/database.inc" 2>&1)
+    ### database.inc is the tenant's: read bounded, never through a link at
+    ### its name and never blocked on a FIFO, so a link to a huge or endless
+    ### file cannot hold the pass.
+    _PATCH_TEST=$(_site_in_resolved_dir "${_Plr}/includes/database" \
+      _acct_read_plain_here database.inc \
+      | grep "foreach (array_values(\$data)" 2>&1)
     if [[ "${_PATCH_TEST}" =~ "array_values" ]]; then
-      _acct_in_resolved_dir "${_Plr}/profiles" \
+      _in_pinned_dir "${_rPlr}" _in_real_sub profiles \
         _acct_put_here SA-CORE-2014-005-D7-fix.info fixed
     else
-      ( cd -P -- "${_Plr}" 2> /dev/null \
-        && patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch )
+      _in_pinned_dir "${_rPlr}" \
+        patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch
       ### Every dir in a static platform is 0775 and group-writable, so these
       ### names, and includes/ and database/ on the way, can be swapped for a
       ### link at any moment: the *.inc files are handed over and given their
-      ### mode only inside the real includes/database as it resolves in this
-      ### account, only as regular files, never through a link.
-      _acct_in_resolved_dir "${_Plr}/includes/database" \
+      ### mode only inside the real includes/database, only as regular files
+      ### with a single link, never through a link or by name.
+      _in_pinned_dir "${_rPlr}" _in_real_sub includes/database \
         _own_glob_here "${_HM_U}:${_grp}" 0664 '*.inc'
-      _acct_in_resolved_dir "${_Plr}/profiles" \
+      _in_pinned_dir "${_rPlr}" _in_real_sub profiles \
         _acct_put_here SA-CORE-2014-005-D7-fix.info fixed
     fi
     ### profiles/ is 0775 and group-writable, so *-fix.info matches
     ### tenant-created names: handed over and given their mode only inside
-    ### the real profiles/, only as regular files, never through a link.
-    _acct_in_resolved_dir "${_Plr}/profiles" \
+    ### the real profiles/, only as regular files with a single link, never
+    ### through a link or by name.
+    _in_pinned_dir "${_rPlr}" _in_real_sub profiles \
       _own_glob_here "${_HM_U}:${_grp}" 0664 '*-fix.info'
   fi
 }
@@ -2062,16 +2179,20 @@ _fix_static_permissions() {
         *) _use_Plr="${_rPlr}" ;;
       esac
     fi
+    ### The whole tree is the tenant's to write, so any name in it can be a
+    ### hard link to a file of another owner: the owner is set through each
+    ### entry's own handle, never on a hard-linked file, and one left alone
+    ### is logged (_handover_tree_here).
     if [ ! -e "${_usEr}/static/control/unlock.info" ] \
       && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-lock-${_NOW}.info" ]; then
-        _in_pinned_dir "${_use_Plr}" chown -R "${_HM_U}" . &> /dev/null
+        _in_pinned_dir "${_use_Plr}" _handover_tree_here "${_HM_U}" .
         _log_ctrl_mark "plr.${_PlrID}.ctm-lock-${_NOW}.info"
       fi
     elif [ -e "${_usEr}/static/control/unlock.info" ] \
       && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-unlock-${_NOW}.info" ]; then
-        _in_pinned_dir "${_use_Plr}" chown -R "${_HM_U}.ftp" . &> /dev/null
+        _in_pinned_dir "${_use_Plr}" _handover_tree_here "${_HM_U}.ftp" .
         _log_ctrl_mark "plr.${_PlrID}.ctm-unlock-${_NOW}.info"
       fi
     fi
@@ -2125,7 +2246,8 @@ _fix_expected_symlinks() {
 ### with find from inside it and sets each mode through a no-follow handle
 ### from the directory walked, so no name the tenant can swap -- sites,
 ### sites/all, a code dir under it, anything a walk meets -- ever takes a
-### root chown or chmod elsewhere. $1 = the group. Reads _plrCodeLink.
+### root chown or chmod elsewhere. $1 = the group, $2 = the account's web
+### group (empty: none; the tcpdf cache takes it). Reads _plrCodeLink.
 _plr_perm_here() {
   local _grp="${1}" _d
   if [ -n "${_plrCodeLink}" ]; then
@@ -2149,9 +2271,9 @@ _plr_perm_here() {
     for _d in modules themes libraries drush; do
       _in_real_sub "sites/all/${_d}" _archive_sweep_here
     done
-    ### -h -R inside each real code dir: every entry there is a
-    ### tenant-plantable name, and -h also stops the recursion rewriting
-    ### ownership through a link into the shared distro tree.
+    ### The walk inside each real code dir (_chown_all_here): every entry
+    ### there is a tenant-plantable name, the walk never follows a link into
+    ### the shared distro tree, and a hard-linked file is never handed over.
     if [ ! -e "${_usEr}/static/control/unlock.info" ] \
       && [ ! -e ./skip.info ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.lock-${_NOW}.info" ]; then
@@ -2172,18 +2294,20 @@ _plr_perm_here() {
       fi
     fi
   fi
-  ### -h on every chown and a no-follow mode set on every chmod: the sites/*
-  ### entries are tenant-creatable names once sites/ takes group write below,
-  ### so none of them may be followed. drushrc.php sits BELOW drush, so it
-  ### is withheld with the code-dir legs above.
+  ### A no-follow handle on every chown and chmod: the sites/* entries are
+  ### tenant-creatable names once sites/ takes group write below, so none of
+  ### them may be followed, and none is changed by name (a hard link put or
+  ### renamed at one, sites and the sites/all dirs just made included, is
+  ### left alone: _reown_here). drushrc.php sits BELOW drush, so it is
+  ### withheld with the code-dir legs above.
   if [ -z "${_plrCodeLink}" ]; then
     _in_real_sub sites/all/drush \
-      chown -h "${_HM_U}:${_grp}" ./drushrc.php &> /dev/null
+      _reown_here "${_HM_U}:${_grp}" ./drushrc.php
   fi
-  chown -h "${_HM_U}:${_grp}" ./sites &> /dev/null
+  _reown_here "${_HM_U}:${_grp}" ./sites
   _in_real_sub sites _chown_h_all_here "${_HM_U}:${_grp}"
-  _in_real_sub sites/all chown -h "${_HM_U}:${_grp}" \
-    ./modules ./themes ./libraries ./drush &> /dev/null
+  _in_real_sub sites/all _reown_here "${_HM_U}:${_grp}" \
+    ./modules ./themes ./libraries ./drush
   _chmod_nofollow_here d 0751 ./sites
   _in_real_sub sites find . -mindepth 1 -maxdepth 1 -type d \
     -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0755 {} + &> /dev/null
@@ -2240,8 +2364,8 @@ _plr_perm_here() {
   _fix_expected_symlinks
   ### known exceptions: the tcpdf cache, entered for real (tcpdf and its
   ### cache child are names the tenant can plant in sites/all/libraries);
-  ### every mode below it set through a no-follow handle from the directory
-  ### walked, and chown -R follows no link below it.
+  ### every mode and owner below it set through a no-follow handle from the
+  ### directory walked, never on a hard-linked file.
   if [ "${_FOREIGN_CMS}" != "YES" ] && [ -z "${_plrCodeLink}" ]; then
     _in_real_sub sites/all/libraries/tcpdf/cache _tcpdf_cache_here "${2}"
   fi
@@ -2253,7 +2377,7 @@ _tcpdf_cache_here() {
     -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0775 {} + &> /dev/null
   find . -mindepth 1 -type f \
     -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0775 {} + &> /dev/null
-  chown -R "${_HM_U}${1:+:${1}}" . &> /dev/null
+  _reown_tree_here "${_HM_U}${1:+:${1}}" .
   return 0
 }
 
@@ -2268,16 +2392,17 @@ _site_perm_here() {
   ### directory and settings files - site level
   [ -e ./modules ] || mkdir ./modules &> /dev/null
   [ -e ./aegir.services.yml ] && rm -f -- ./aegir.services.yml
-  ### -h on both: the site dir is owned by the tenant's shell user in
-  ### unlock.info mode, so each of these names can be a link, and a bare
-  ### chown follows a link at the name: each is changed with -h. No-op on
-  ### the regular files they normally are.
+  ### The site dir is owned by the tenant's shell user in unlock.info mode,
+  ### so each of these names can be a link or a hard link, and a bare chown
+  ### follows a link at the name: each is changed through a no-follow handle,
+  ### never on a hard-linked file (_reown_here). No-op on the regular files
+  ### they normally are.
   chown -h "${_HM_U}:${_grp}" . &> /dev/null
-  chown -h "${_HM_U}${_wg:+:${_wg}}" ./local.settings.php ./settings.php \
-    ./civicrm.settings.php &> /dev/null
+  _reown_here "${_HM_U}${_wg:+:${_wg}}" ./local.settings.php ./settings.php \
+    ./civicrm.settings.php
   ### solr.php holds the site's Solr core details for its owner; no web
   ### reader opens it, so it stays in the code group its writer gives it.
-  chown -h "${_HM_U}:${_grp}" ./solr.php &> /dev/null
+  _reown_here "${_HM_U}:${_grp}" ./solr.php
   _chmod_nofollow_here f 0440 ./*.php
   ### The hostmaster site's drushrc.php carries the instance DB user (ALL
   ### PRIVILEGES) and only the backend user, its owner, ever reads it:
@@ -2308,29 +2433,32 @@ _site_perm_here() {
       done
     fi
   fi
-  ### -h: all four are names in a site dir the tenant owns under
-  ### unlock.info; none is ever legitimately a symlink, and find takes the
-  ### three as starting points without following one.
-  chown -h "${_HM_U}:${_grp}" ./drushrc.php \
-    ./modules ./themes ./libraries &> /dev/null
+  ### All four are names in a site dir the tenant owns under unlock.info
+  ### (modules maybe just made above); none is ever legitimately a symlink,
+  ### each is changed through a no-follow handle and never as a hard-linked
+  ### file (_reown_here), and find takes the three as starting points
+  ### without following one.
+  _reown_here "${_HM_U}:${_grp}" ./drushrc.php \
+    ./modules ./themes ./libraries
   find ./modules ./themes ./libraries -type d \
     -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 02775 {} + &> /dev/null
   find ./modules ./themes ./libraries -type f \
     -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0664 {} + &> /dev/null
   ### files and private - site level. Each is legitimately a link into the
-  ### account's static store, handled by its resolved leg below; -h -R here
-  ### changes a link itself and walks only a real child dir, without
+  ### account's static store, handled by its resolved leg below; the walk
+  ### here leaves a link alone and walks only a real child dir, without
   ### following a link planted inside it (a tar archive a tenant unpacked can
-  ### carry one).
-  chown -h -R "${_HM_U}${_wg:+:${_wg}}" ./files ./private &> /dev/null
+  ### carry one), and never hands over a hard-linked file.
+  _reown_tree_here "${_HM_U}${_wg:+:${_wg}}" ./files ./private
   return 0
 }
 ### The site's files store, inside the real directory it resolves to (the
 ### current one): every directory 02775 and regular file 0664, set from
 ### inside the directory walked through a no-follow handle, the store handed
-### to the account and the web group, and its known children with -h (each
-### is a name in a tenant-writable dir), the nested ones only inside their
-### real parent.
+### to the account and the web group, and its known children through their
+### own handles (each is a name in a dir every web-group member can write, so
+### a hard link put there is left alone: _reown_here), the nested ones only
+### inside their real parent.
 _files_store_perm_here() {
   ### $1 = the web group; once the account has its own, a Drupal 7
   ### files/private takes the private store's modes (no world bits).
@@ -2345,12 +2473,12 @@ _files_store_perm_here() {
   fi
   _chmod_nofollow_here d 02775 .
   chown "${_HM_U}${_wg:+:${_wg}}" . &> /dev/null
-  chown -h "${_HM_U}${_wg:+:${_wg}}" ./tmp ./images ./pictures ./css ./js \
+  _reown_here "${_HM_U}${_wg:+:${_wg}}" ./tmp ./images ./pictures ./css ./js \
     ./advagg_css ./advagg_js ./ctools ./imagecache ./locations \
-    ./xmlsitemap ./deployment ./styles ./private ./civicrm &> /dev/null
-  _in_real_sub ctools chown -h "${_HM_U}${_wg:+:${_wg}}" ./css &> /dev/null
-  _in_real_sub civicrm chown -h "${_HM_U}${_wg:+:${_wg}}" ./templates_c \
-    ./upload ./persist ./custom ./dynamic &> /dev/null
+    ./xmlsitemap ./deployment ./styles ./private ./civicrm
+  _in_real_sub ctools _reown_here "${_HM_U}${_wg:+:${_wg}}" ./css
+  _in_real_sub civicrm _reown_here "${_HM_U}${_wg:+:${_wg}}" ./templates_c \
+    ./upload ./persist ./custom ./dynamic
   return 0
 }
 ### Private files' modes in the current (real) directory: every directory
@@ -2369,18 +2497,18 @@ _private_modes_here() {
   _chmod_nofollow_here d "${_d}" .
   return 0
 }
-### The site's private store, the same way.
+### The site's private store, the same way; config/ is walked as chown -h -R
+### walked it, never handing over a hard-linked file (_reown_tree_here).
 _private_store_perm_here() {
   ### $1 = the web group.
   local _wg="${1}"
   _private_modes_here "${_wg}"
   chown "${_HM_U}${_wg:+:${_wg}}" . &> /dev/null
-  chown -h "${_HM_U}${_wg:+:${_wg}}" ./files ./temp &> /dev/null
-  _in_real_sub files chown -h "${_HM_U}${_wg:+:${_wg}}" ./backup_migrate \
-    &> /dev/null
-  _in_real_sub files/backup_migrate chown -h "${_HM_U}${_wg:+:${_wg}}" \
-    ./manual ./scheduled &> /dev/null
-  chown -h -R "${_HM_U}${_wg:+:${_wg}}" ./config &> /dev/null
+  _reown_here "${_HM_U}${_wg:+:${_wg}}" ./files ./temp
+  _in_real_sub files _reown_here "${_HM_U}${_wg:+:${_wg}}" ./backup_migrate
+  _in_real_sub files/backup_migrate _reown_here "${_HM_U}${_wg:+:${_wg}}" \
+    ./manual ./scheduled
+  _reown_tree_here "${_HM_U}${_wg:+:${_wg}}" ./config
   return 0
 }
 
@@ -3163,13 +3291,22 @@ _cleanup_ghost_drushrc() {
   done
 }
 
-### chattr +i on the regular files ./$@ of the current (pinned) directory; a
-### link or anything else at a name is left alone.
+### The immutable flag set (+) or cleared (-) on a directory, or on a regular
+### file with a single link, through a handle opened without following a link
+### or blocking on a FIFO: a hard link, a link, a FIFO or anything else is
+### refused (status 1). Args: + or -, then the names.
+_ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or do { $rc = 1; next }; my @s = stat($h); if (@s && (-d _ || (-f _ && $s[3] == 1))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); $fl = $op eq "+" ? ($fl | 0x10) : ($fl & ~0x10); ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } else { $rc = 1 } close($h); } exit $rc'
+### chattr +i on the regular files ./$@ of the current (pinned) directory,
+### through a handle and never by name (_ACCT_CHATTR_PL); a link, a hard
+### link or anything else at a name is left alone, so the flag, which only
+### root can clear, never lands on a file a link was put there for.
 _chattr_plain_here() {
-  local _f
+  local _f _l=()
   for _f in "$@"; do
-    [ -f "./${_f}" ] && [ ! -L "./${_f}" ] && chattr +i "./${_f}"
+    [ -f "./${_f}" ] && [ ! -L "./${_f}" ] && _l+=( "./${_f}" )
   done
+  [ "${#_l[@]}" -gt 0 ] || return 0
+  perl -e "${_ACCT_CHATTR_PL}" + "${_l[@]}"
   return 0
 }
 ### A Cloudflare DNS hook for dehydrated, cloned by root as tools/le/hooks/$1
@@ -3604,8 +3741,11 @@ _daily_process() {
           && [ -e "${_Plr}/web.config" ] \
           && [ ! -e "${_Plr}/core" ] \
           && [ ! -f "${_Plr}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
-          _PATCH_TEST=$(grep -D skip "foreach (array_values(\$data)" \
-            "${_Plr}/includes/database/database.inc" 2>&1)
+          ### read bounded, never through a link at the name or blocked on a
+          ### FIFO (see _fix_seven_core_patch)
+          _PATCH_TEST=$(_site_in_resolved_dir "${_Plr}/includes/database" \
+            _acct_read_plain_here database.inc \
+            | grep "foreach (array_values(\$data)" 2>&1)
           if [[ "${_PATCH_TEST}" =~ "array_values" ]]; then
             _DONT_TOUCH_PERMISSIONS="${_DONT_TOUCH_PERMISSIONS}"
           else

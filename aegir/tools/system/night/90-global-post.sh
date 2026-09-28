@@ -86,6 +86,7 @@ if ! declare -F _acct_put_same_here > /dev/null 2>&1; then
       "regular file"|"regular empty file") ;;
       *) return 1 ;;
     esac
+    [[ "${_mod}" =~ ^[0-7]+$ && "${_sz}" =~ ^[0-9]+$ ]] || return 1
     [ "${_sz}" -lt 1048576 ] || return 1
     rm -f -- "${_t}"
     if printf '%s' "${2}" \
@@ -126,13 +127,16 @@ fi
 # (octal), the names.
 # A directory keeps its set-user-ID and set-group-ID bits unless the mode has
 # five digits (02775, 00755), as chmod(1) does with a numeric mode.
+# A regular file is changed only while it has a single link: a hard link put
+# at a name (or anywhere in a walked tree) is left alone, so the mode never
+# reaches the file it names.
 _NIGHT_FCHMOD_PL='use Fcntl;
 my ($t, $ms) = (shift @ARGV, shift @ARGV);
 my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
 for my $f (@ARGV) {
   sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
   my @s = stat($h);
-  if ($t eq "f" && -f _) {
+  if ($t eq "f" && -f _ && $s[3] == 1) {
     chmod($m, $h);
   } elsif ($t eq "d" && -d _) {
     chmod($m | ($s[2] & $k), $h);
@@ -631,8 +635,9 @@ _fix_nginx_forward_secrecy() {
 
 # The credential backups (.<name>.pass.{txt,php}-pre-*) in the current
 # (pinned) account home: each made 0600 through a handle that never follows
-# a link, then only the newest 3 per credential file kept, the older ones
-# removed by name here. The globs expand in this directory only.
+# a link, only while it has a single link (a hard link the account names to
+# match is left alone), then only the newest 3 per credential file kept, the
+# older ones removed by name here. The globs expand in this directory only.
 _pass_backups_heal_here() (
   local _live _old
   local -a _baks
@@ -655,6 +660,27 @@ _run_marks_drop_here() {
   rm -f -- ./.cron.*.pid ./.busy.*.pid
 }
 
+# An owner set through the entry's own handle: each name is opened without
+# following a link and without blocking on a FIFO, and a directory, or a
+# regular file with a single link, is changed through the open handle; a
+# hard-linked file, a link, a FIFO or a socket is left alone. Args: uid, gid
+# (numbers; -1 keeps that id), the names.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+# The trees after $1 and $2 handed to uid $1 and gid $2 (numbers) as chown
+# -R handed them: find follows no link, at the top or below, and each entry
+# is changed from inside the directory walked (_ACCT_REOWN_PL). The shared
+# code store's sites/all/{modules,libraries,themes} are group-writable by
+# every account's identities, so a hard link one of them puts there to a file
+# of another account is left alone, never handed to root.
+_global_reown() {
+  local _u="${1}" _g="${2}"
+  shift 2
+  [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] || return 0
+  env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \
+    -execdir perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" {} + &> /dev/null
+  return 0
+}
+
 _global_cleanup() {
   if [ "${_PERMISSIONS_FIX}" = "YES" ] \
     && [ ! -z "${_X_VERSION}" ] \
@@ -672,23 +698,27 @@ _global_cleanup() {
     ### stat and the chmod it execs, and chmod follows a symlink named on its
     ### command line: that race is a root chmod on an arbitrary path. Prune
     ### those leaves; their own modes are asserted right below, where the
-    ### parent (sites/all, 0755 root:users) is not tenant-writable.
+    ### parent (sites/all, 0755 root:users) is not tenant-writable. The
+    ### owner walks do reach those leaves, so each entry is changed through
+    ### its own handle and a hard-linked file never (_global_reown).
+    local _usersGid
+    _usersGid=$(getent group users 2> /dev/null | cut -d: -f3)
     if [ -e "/data/all" ]; then
       find /data/all -path '*/sites/all/*' -prune -o -type d -exec chmod 0755 {} \; &> /dev/null
       find /data/all -path '*/sites/all/*' -prune -o -type f -exec chmod 0644 {} \; &> /dev/null
       chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
       chmod 02775 /data/all/000/core/*/sites/all/{modules,libraries,themes} &> /dev/null
-      chown -R root:root /data/all &> /dev/null
-      chown -R root:users /data/all/*/*/sites &> /dev/null
-      chown -R root:users /data/all/000/core/*/sites &> /dev/null
+      _global_reown 0 0 /data/all
+      _global_reown 0 "${_usersGid}" /data/all/*/*/sites
+      _global_reown 0 "${_usersGid}" /data/all/000/core/*/sites
     elif [ -e "/data/disk/all" ]; then
       find /data/disk/all -path '*/sites/all/*' -prune -o -type d -exec chmod 0755 {} \; &> /dev/null
       find /data/disk/all -path '*/sites/all/*' -prune -o -type f -exec chmod 0644 {} \; &> /dev/null
       chmod 02775 /data/disk/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
       chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes} &> /dev/null
-      chown -R root:root /data/disk/all &> /dev/null
-      chown -R root:users /data/disk/all/*/*/sites &> /dev/null
-      chown -R root:users /data/disk/all/000/core/*/sites &> /dev/null
+      _global_reown 0 0 /data/disk/all
+      _global_reown 0 "${_usersGid}" /data/disk/all/*/*/sites
+      _global_reown 0 "${_usersGid}" /data/disk/all/000/core/*/sites
     fi
     ### distro/NNN and every platform in it belong to the account, so any of
     ### these three names can be a link. Only a real directory is changed,

@@ -242,6 +242,55 @@ if ! declare -F _acct_undo_here > /dev/null 2>&1; then
   }
 fi
 : "${_GH_REFUSED:=the move into undo/ was refused (a link or a path outside this account on the way, or the rename failed)}"
+### A tree handed over through each entry's own handle, never by name, and
+### entries locked or unlocked the same way (the 20-sites.sh and night.inc.sh
+### bodies, for the same skew).
+if ! declare -F _reown_tree_here > /dev/null 2>&1; then
+  _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+  _night_ids() {
+    local _u _g=-1
+    _u=$(id -u -- "${1%%:*}" 2> /dev/null)
+    [[ "${_u}" =~ ^[0-9]+$ ]] || return 1
+    if [[ "${1}" == *:* ]]; then
+      _g=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
+      [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
+    fi
+    printf '%s %s\n' "${_u}" "${_g}"
+  }
+  _reown_tree_here() {
+    local _ids _u _g
+    _ids=$(_night_ids "${1}") || return 0
+    read -r _u _g <<< "${_ids}"
+    shift
+    [ "$#" -gt 0 ] || return 0
+    env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \
+      -execdir perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" {} + &> /dev/null
+    return 0
+  }
+fi
+if ! declare -F _night_chattr_entries_here > /dev/null 2>&1; then
+  _ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or do { $rc = 1; next }; my @s = stat($h); if (@s && (-d _ || (-f _ && $s[3] == 1))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); $fl = $op eq "+" ? ($fl | 0x10) : ($fl & ~0x10); ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } else { $rc = 1 } close($h); } exit $rc'
+  _night_chattr_sub_here() {
+    local _h
+    _h="$(pwd -P)"
+    ( cd -P -- "./${2}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${2}" ] \
+      && chattr "${1}i" . ) &> /dev/null
+    return 0
+  }
+  _night_chattr_entries_here() {
+    local _e _chf=()
+    for _e in ./*; do
+      if [ -d "${_e}" ] && [ ! -L "${_e}" ]; then
+        _night_chattr_sub_here "${1}" "${_e#./}"
+      elif [ -f "${_e}" ] && [ ! -L "${_e}" ]; then
+        _chf+=( "${_e}" )
+      fi
+    done
+    [ "${#_chf[@]}" -eq 0 ] \
+      || perl -e "${_ACCT_CHATTR_PL}" "${1}" "${_chf[@]}" &> /dev/null
+    return 0
+  }
+fi
 
 ### Run "$@" inside the directory $1, a path resolved just before, entered
 ### with cd -P and checked there, so ./name stays in it whatever is swapped.
@@ -577,11 +626,35 @@ _night_bak_move() {
     _night_bak_open "${_src}" "" "${_ug}" "${_md}"
     return 0
   fi
-  # -T: a name put there meanwhile makes ln fail, never takes the link inside it.
-  _acct_in_real_dir "${_usEr}" ln -s -T -- "${_lnk}" "./${_n}" 2>/dev/null \
+  # A name put there meanwhile makes this fail, never takes the link inside
+  # it, and the link is never handed over by its name (_night_bak_link_here).
+  _acct_in_real_dir "${_usEr}" _night_bak_link_here "${_lnk}" "${_n}" "${_ug}" \
     || { echo "backups-on-static: could not symlink ${_src}; data is safe in ${_st}/.${_n}, relink manually"; return 0; }
-  _acct_in_real_dir "${_usEr}" chown -h "${_ug}" "./${_n}" 2>/dev/null
   echo "backups-on-static: relocated ${_src} -> ${_st}/.${_n} (static filesystem)"
+}
+# In the real account root (the current directory): ./$2 made a link to $1
+# owned by $3 (owner:group), only while no name is there, as ln -s -T made
+# it. oN writes this directory, so a hard link it renamed over a new link
+# would be handed over by a chown -h on the name: the link is made by its
+# owner under a fresh name and renamed onto ./$2 without replacing anything
+# found there. A link root makes, when that owner cannot make one here,
+# stays root's: nothing checks the owner of a link.
+_night_bak_link_here() {
+  local _t="./.${2}.lnk.$$.${RANDOM}" _u _g
+  _u=$(id -u -- "${3%%:*}" 2> /dev/null)
+  _g=$(getent group "${3#*:}" 2> /dev/null | cut -d: -f3)
+  rm -f -- "${_t}"
+  if [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] && [ "${_u}" != 0 ]; then
+    setpriv --reuid="${_u}" --regid="${_g}" --clear-groups \
+      ln -s -- "${1}" "${_t}" 2> /dev/null
+  fi
+  if [ ! -L "${_t}" ]; then
+    rm -f -- "${_t}"
+    ln -s -- "${1}" "${_t}" 2> /dev/null || return 1
+  fi
+  mv -n -T -- "${_t}" "./${2}" 2> /dev/null
+  rm -f -- "${_t}"
+  [ -L "./${2}" ] && [ "$(readlink -- "./${2}")" = "${1}" ]
 }
 # Root's record of the owner and mode ${_usEr}/$1 had before a relocation
 # closed it.
@@ -1643,7 +1716,7 @@ _purge_cruft_machine() {
 
   # Both writes below land inside this account's own tree, so the group is
   # derived from the account rather than hardcoded; 'users' on an unconverted box.
-  local _acctGrp _igHit _igPend _igBak _igWg _igX=()
+  local _acctGrp _igHit _igPend _igBak _igId _igUid _igOwn _igSel _igWg _igX=()
   _acctGrp=$(_acct_group "${_HM_U}")
   # A revert (or the rollback of a convert) the limited-shell worker is still
   # finishing leaves the account's own identity on the account's group, which
@@ -1670,6 +1743,25 @@ _purge_cruft_machine() {
     # (_night_in_bak_dir). The static leg is bounded to the depth where a
     # site's drushrc.php lives (<platform>[/web]/sites/<uri>/drushrc.php),
     # so the clean case does not traverse every files/ tree.
+    # Only what the reclaim walk changes is a hit: a directory, a single-link
+    # regular file, or a regular file or FIFO owned by the account or its
+    # .ftp identity (members of the target group, so handing them the group
+    # gives nothing away). A symlink, a foreign hard-linked file or FIFO, a
+    # socket or a device outside the group would otherwise trigger a reclaim
+    # that changes nothing, every night. The uids are numeric and an identity
+    # that does not resolve is left out, so find never aborts on a bad name.
+    _igOwn=()
+    for _igId in "${_HM_U}" "${_HM_U}.ftp"; do
+      _igUid=$(id -u -- "${_igId}" 2>/dev/null)
+      [[ "${_igUid}" =~ ^[0-9]+$ ]] || continue
+      [[ "${#_igOwn[@]}" -gt 0 ]] && _igOwn+=(-o)
+      _igOwn+=(-uid "${_igUid}")
+    done
+    _igSel=(\( -type d -o -type f -links 1)
+    if [[ "${#_igOwn[@]}" -gt 0 ]]; then
+      _igSel+=(-o \( -type f -o -type p \) \( "${_igOwn[@]}" \))
+    fi
+    _igSel+=(\))
     _igBak=$(_night_in_bak_dir backups pwd -P 2>/dev/null)
     # The account's own web group (the hostmaster site's files/, private/
     # and settings.php once converted) is no drift: its gid is exempt from
@@ -1686,11 +1778,11 @@ _purge_cruft_machine() {
       *) _igX=( ! -gid "${_igWg}" ) ;;
     esac
     _igHit=$(find -P ${_usEr}/.drush ${_igBak:+"${_igBak}"} ${_usEr}/config ${_usEr}/tools \
-      ${_usEr}/aegir/distro/*/sites -xdev \
+      ${_usEr}/aegir/distro/*/sites -xdev "${_igSel[@]}" \
       ! -group "${_acctGrp}" ! -group www-data ! -group root "${_igX[@]}" \
       -print -quit 2>/dev/null)
     if [ -z "${_igHit}" ]; then
-      _igHit=$(find -P ${_usEr}/static -xdev -maxdepth 5 -name drushrc.php \
+      _igHit=$(find -P ${_usEr}/static -xdev -maxdepth 5 -name drushrc.php "${_igSel[@]}" \
         ! -group "${_acctGrp}" ! -group www-data ! -group root "${_igX[@]}" \
         -print -quit 2>/dev/null)
     fi
@@ -1706,8 +1798,10 @@ _purge_cruft_machine() {
     fi
   fi
   # tools/ is oN's: tools/le is handed to the account from inside the real
-  # directory, and chown -R follows no link below it.
-  _acct_in_real_dir "${_usEr}/tools/le" chown -R "${_HM_U}:${_acctGrp}" . &> /dev/null
+  # directory, the walk follows no link below it, and each entry is changed
+  # through its own handle, never a hard-linked file (_reown_tree_here): oN
+  # can put a hard link under any name there, a stamp root put included.
+  _acct_in_real_dir "${_usEr}/tools/le" _reown_tree_here "${_HM_U}:${_acctGrp}" .
   # static/ is tenant-writable (02775, no sticky) and trash/ is handed to the
   # tenant, so the tenant can swap the directory for a symlink at any moment:
   # a link put at trash is dropped, and trash is made, handed over and
@@ -1719,21 +1813,33 @@ _purge_cruft_machine() {
   # (_account_process cleared its immutable bit), and distro/ and every name
   # in both are the account's: each is acted on inside its real directory
   # only, an entry is moved by its own name there, and a link is never
-  # followed (chattr refuses one named by its bare name).
+  # followed; the immutable flag is cleared on each entry from inside it or
+  # through its handle, never on a hard-linked file
+  # (_night_chattr_entries_here).
   _acct_in_real_dir "/home/${_HM_U}.ftp/platforms" _night_pl_ghosts_here
   _acct_in_real_dir "${_usEr}/distro" _night_distro_ghosts_here
   _acct_in_real_dir "${_usEr}/distro" _night_distro_links_here
 }
 
 # In the real static/: a link put at trash dropped, trash made when missing,
-# handed to $1 while it is a real directory, and its entries older than $2
-# days removed from inside it.
+# and, inside the real trash/ entered once, the directory handed to $1 and
+# its entries older than $2 days removed. The owner is set on the directory
+# entered, never on the name: static/ is group-writable, so a hard link or
+# another of its directories can be renamed onto trash at any moment. A
+# directory of root's that holds anything is not one this pass made (the
+# files store or the usage reports renamed onto trash), and is left alone.
 _night_trash_here() {
   [ -L ./trash ] && rm -f -- ./trash
   [ -e ./trash ] || mkdir ./trash 2> /dev/null
-  [ -d ./trash ] && [ ! -L ./trash ] || return 0
-  chown -h "${1}" ./trash 2> /dev/null
-  _night_sub trash _night_purge_here "${2}" all
+  _night_sub trash _night_trash_in_here "${1}" "${2}"
+}
+_night_trash_in_here() {
+  if [ "$(stat -c '%u' . 2> /dev/null)" = "0" ] \
+    && [ -n "$(ls -A . 2> /dev/null)" ]; then
+    return 0
+  fi
+  chown -h "${1}" . 2> /dev/null
+  _night_purge_here "${2}" all
 }
 
 # In the real platforms/ of the main login: an entry holding fewer than
@@ -1746,7 +1852,7 @@ _night_pl_ghosts_here() {
     _n=$(ls -- "${_p}" 2> /dev/null | wc -l | tr -d "\n")
     [ -n "${_n}" ] && [ "${_n}" -lt "${_LOW_NR}" ] || continue
     chattr -i . &> /dev/null
-    chattr -i ./* &> /dev/null
+    _night_chattr_entries_here -
     _g="/var/backups/ghost/${_HM_U}/$(date +%y%m%d-%H%M%S)"
     [ -d "${_g}" ] || mkdir -p "${_g}"
     echo "Moving /home/${_HM_U}.ftp/platforms/${_p#./} to ${_g}"
@@ -1844,7 +1950,7 @@ _night_distro_links_here() {
 # ./$1 removed, and ./$1 made where missing.
 _night_pl_rev_here() {
   chattr -i . &> /dev/null
-  chattr -i ./* &> /dev/null
+  _night_chattr_entries_here -
   [ -L "./${1}" ] && rm -f -- "./${1}"
   [ -e "./${1}" ] || mkdir -- "./${1}" 2> /dev/null
   return 0
