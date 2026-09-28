@@ -910,6 +910,24 @@
 
 @=> Important Fixes
 
+    * A Drupal 11 site is installed in the language chosen on the Add site
+      form: the Install ran the platform's Drush without it, so the site
+      came up in English, with no language or locale module and no strings.
+      Core downloads that language's translation during the Install, which
+      now fails with the reason in its log when localize.drupal.org cannot
+      be reached (#1946).
+
+    * The shared Redis integration modules are replaced only by a complete
+      copy: two self-update runs that overlapped (clear.sh runs from two
+      schedules and by hand) unpacked one download while the other was
+      replacing it, and stamped a copy without its code as deployed, so
+      every Drupal 10 and 11 site on the box failed at bootstrap while
+      Valkey was up. The self-update step now runs one at a time, both
+      writers (the self-update and each Octopus pass) swap a module in only
+      once it unpacked whole, keeping the copy in place otherwise, a copy
+      the old code stamped is replaced once, and xmass's forced tool
+      refresh waits for a running self-update instead of being skipped.
+
     * The web IDS's document-harvest detector now reports: every cohort
       member was filed under a wrong key, so no cohort ever reached the
       report or a ban.
