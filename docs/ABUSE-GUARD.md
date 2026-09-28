@@ -531,10 +531,18 @@ line cap, the sample is not representative, and the pass writes a `NOTE` line
 and declares nothing. It runs after the guard-404 pass and before the Tier-B
 i18n pass.
 
-**What a cohort is.** One vhost plus one exact User-Agent, IPv4 clients only.
-Query strings are stripped before documents are counted, so cache-busting
-parameters cannot make a visitor's repeated ajax call look like a run of
-distinct documents.
+**What a cohort is.** One vhost plus one exact User-Agent, public IPv4 clients
+only, the client read as the per-line loop reads it (the last token of the
+client field). Query strings are stripped before documents are counted, so
+cache-busting parameters cannot make a visitor's repeated ajax call look like a
+run of distinct documents.
+
+A request that rides the wildcard SSL front is logged twice: at the front with
+the real visitor, and at the site's port-80 vhost as `127.0.0.1`. The harvest
+pass counts it once, from the front's line, as every other detector does.
+Counting the loopback copy would double every proxied request and halve the
+cohort's distinct-URI share, so a harvest over the front would never pass the
+keystone below.
 
 **Two ways in.**
 

@@ -203,9 +203,8 @@ _force_advanced_nginx_config() {
     rm -f ${_mtrInc}/nginx_octopus_include.conf
     rm -f ${_mtrInc}/nginx_simple_include.conf
   fi
-  # -h: global.inc here is a link into /data/conf, which an Octopus run hands
-  # to the account it upgrades; the link is handed over, never what it leads
-  # to
+  # -h: global.inc here is a link into /data/conf; the link is handed over,
+  # never what it leads to
   chown -h aegir:aegir ${_mtrInc}/*
   chown aegir:aegir /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*
   if [ ! -e "/data/conf/nginx_high_load_off.conf" ]; then
@@ -219,9 +218,9 @@ _force_advanced_nginx_config() {
 # The file $1 (root's own) put as ./$2 in the current (pinned) directory with
 # the owner and group of $1 and the mode $3, as cp -a and a chmod by name put
 # it, but through one handle (_ACCT_PUT_PL, helper.sh.inc) and renamed over
-# the name: /data/conf is the account's while an Octopus run lasts (and after
-# one that stopped early), so a link put at the name is replaced, never
-# written through, and nothing is chmoded by name there.
+# the name: a run of an earlier release handed /data/conf to the account it
+# upgraded, so a link put at the name is replaced, never written through,
+# and nothing is chmoded by name there.
 _nginx_conf_put_here() {
   local _t="./.${2}.put.$$.${RANDOM}" _o
   _o="$(stat -c '%u:%g' -- "${1}" 2> /dev/null)"

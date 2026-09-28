@@ -130,7 +130,6 @@ _XMASS_RSYNC_RC=0
 ### The group maps of the account being synced (_xmass_set_gmap); empty
 ### outside an account.
 _XMASS_GMAP=""
-_XMASS_WGMAP=""
 
 ### The firewall half of the standby web hold (chain BOA_STANDBY_WEB, asserted
 ### by the nginx watchdog and csfpost.sh while the box is not promoted). One
@@ -2199,7 +2198,14 @@ REMOTE
       *XMID-REPAIRED*)
         _fixed="${_fixed} ${_oct}"
         _info "  ${_oct}: identity re-created on ${_t}: $(printf '%s\n' "${_out}" | grep -m1 '^XMID-REPAIRED:' | cut -d: -f2-)"
-        _xmass_sync_shell_credentials "${_oct}" "${_t}" ;;
+        # the account group's map, asked of _tgt: every caller repairs that box
+        if _xmass_set_gmap "${_oct}" acct; then
+          _xmass_sync_shell_credentials "${_oct}" "${_t}"
+        else
+          _alrt "  ${_oct}: its credentials are not carried this run"
+          _left="${_left} ${_oct}"
+        fi
+        _XMASS_GMAP="" ;;
     esac
   done
   if [ -n "${_left}" ]; then
@@ -2362,6 +2368,8 @@ _xmass_seed_account_stamps() {
 ### /home/<acct>.ftp/users (whose carried entries manage_ltd_users honours at
 ### sub-user creation), and each existing sub-user's shadow hash and .ssh
 ### where the target user already exists (repeated syncs converge the rest).
+### Every leg carries the account's group maps the caller set (_XMASS_GMAP):
+### no destination pass follows an autosync or an identity repair.
 ### LIVE only -- callers must never invoke this from a DRY path.
 _xmass_sync_shell_credentials() {
   local _acct="$1" _t="$2"
@@ -2387,6 +2395,7 @@ _xmass_sync_shell_credentials() {
   # only: never read or written through a link the account put on the way.
   if [ "${_set}" = "YES" ] && [ -e "${_u}/log/pass.txt" ]; then
     _xmass_in_real_dir "${_u}/log" rsync -aEAX --no-links ${_ieni} -e ssh \
+      ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} \
       --no-devices --no-specials --rsync-path="$(_xmass_pin_rpath "${_u}/log")" \
       ./pass.txt "root@${_t}:./" 2>/dev/null \
       || _alrt "  ${_acct}: could not carry log/pass.txt (password IS set; re-run to converge)"
@@ -2398,7 +2407,7 @@ _xmass_sync_shell_credentials() {
   # through a link put at the name or on the way.
   if [ -e "/home/${_acct}.ftp/users" ] || [ -L "/home/${_acct}.ftp/users" ]; then
     _xmass_in_real_dir "/home/${_acct}.ftp/users" rsync -aEAX ${_ieni} -e ssh \
-      --no-devices --no-specials \
+      ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} --no-devices --no-specials \
       --rsync-path="$(_xmass_pin_rpath "/home/${_acct}.ftp/users")" \
       ./ "root@${_t}:./" 2>/dev/null \
       || _alrt "  ${_acct}: could not carry the sub-account password store (not a real directory here, or the copy failed)"
@@ -2422,7 +2431,7 @@ _xmass_sync_shell_credentials() {
       fi
       if [ -e "/home/${_acct}.${_n}/.ssh" ] || [ -L "/home/${_acct}.${_n}/.ssh" ]; then
         _xmass_in_real_dir "/home/${_acct}.${_n}/.ssh" rsync -aEAXu ${_ieni} -e ssh \
-          --no-devices --no-specials \
+          ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} --no-devices --no-specials \
           --rsync-path="$(_xmass_pin_rpath "/home/${_acct}.${_n}/.ssh")" \
           ./ "root@${_t}:./" 2>/dev/null \
           || _alrt "  ${_acct}: could not carry .ssh for ${_acct}.${_n} (not a real directory here, or the copy failed)"
@@ -2437,7 +2446,7 @@ _xmass_sync_shell_credentials() {
       if [ -e "/home/${_acct}.${_n}/.ssh" ] || [ -L "/home/${_acct}.${_n}/.ssh" ]; then
         ssh root@"${_t}" "mkdir -p /var/backups/migrate-subuser-ssh/${_acct}.${_n}" &> /dev/null
         if _xmass_in_real_dir "/home/${_acct}.${_n}/.ssh" rsync -aEAXu ${_ieni} -e ssh \
-          --no-devices --no-specials ./ \
+          ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} --no-devices --no-specials ./ \
           "root@${_t}:/var/backups/migrate-subuser-ssh/${_acct}.${_n}/.ssh/" 2>/dev/null; then
           _info "  ${_acct}: sub-account ${_acct}.${_n} not created on ${_t} yet; password converges via the"
           _info "  ${_acct}: carried store, and its keys are staged at /var/backups/migrate-subuser-ssh/${_acct}.${_n}/.ssh"
@@ -4736,11 +4745,11 @@ _xmass_put_on_root() {
   # sync`, files vanishing mid-transfer is normal and must not deny the run.
   local _rc=0 _err
   _err=$(mktemp /tmp/xmass-rsync-err.XXXXXX 2>/dev/null) || _err=""
-  # the account's web group map (_XMASS_WGMAP) rides the store too: files/
-  # and private/ are the web paths, and by name alone a group absent on the
-  # target lands as this box's number
+  # the account's group maps (_XMASS_GMAP) ride the store too: by name alone
+  # a group absent on the target lands as this box's number, and no
+  # destination pass follows an autosync or the cutover's final pass
   _xmass_at_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-    ${_XMASS_WGMAP:+"--groupmap=${_XMASS_WGMAP}"} \
+    ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} \
     "${_rp[@]}" -e ssh ./ root@"${_th}":"${_to}" 2>>"${_err:-/dev/stderr}" || _rc=$?
   [ -s "${_err}" ] && cat "${_err}" >&2
   # 23 with only vanished-file errors is the rc-24 case (see _xmass_rsync_vanished_only)
@@ -4804,7 +4813,7 @@ _xmass_put_on_mount() {
   local _rc=0 _err
   _err=$(mktemp /tmp/xmass-rsync-err.XXXXXX 2>/dev/null) || _err=""
   _xmass_at_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-    ${_XMASS_WGMAP:+"--groupmap=${_XMASS_WGMAP}"} \
+    ${_XMASS_GMAP:+"--groupmap=${_XMASS_GMAP}"} \
     "${_rp[@]}" -e ssh ./ root@"${_th}":"${_to}" 2>>"${_err:-/dev/stderr}" || _rc=$?
   [ -s "${_err}" ] && cat "${_err}" >&2
   if [ "${_rc}" = "23" ] && [ -n "${_err}" ] && _xmass_rsync_vanished_only "${_err}"; then
@@ -5585,40 +5594,43 @@ _xmass_sync_static_symlink_safe() {
     "static/files (${_dst_acct})" "${_src_acct}" tree || _XMASS_STORE_RC=$?
 }
 
-# Set the group maps of one account's legs (LIVE only; empty otherwise).
-# _XMASS_WGMAP maps the account's web group here (wg-<account>, while it
-# exists) onto the one the target's writers give the account there: its own
-# once converted there, www-data until then. By name alone its paths would
-# land in a number that is no group there, or another account's. Every leg of
-# the account carries it. _XMASS_GMAP, which the _xmass_rsync legs carry,
-# puts the account's group first, mapped onto the destination account's
-# group asked of the target (its own once converted there, 'users' until
-# then); with $2 = web it is the web group entry alone. Returns 1, with a
-# DENY, when the account holds a web group here and the target's answer
-# cannot be read: its paths never land in a guessed group, the caller skips
-# the account's legs. $1 = account.
+# Set _XMASS_GMAP, the group maps every leg of one account carries (LIVE
+# only; empty otherwise). The account's group comes first, mapped onto the
+# destination account's group asked of the target (its own once converted
+# there, 'users' until then). The account's web group here (wg-<account>,
+# while it exists) follows, mapped onto the one the target's writers give
+# the account there: its own once converted there, www-data until then. By
+# name alone either would land in a number that is no group there, or
+# another account's. With $2 = acct it is the account group entry alone
+# (the identity repair's credential legs: no web path among them). Returns
+# 1, with a DENY, when a group of the account's here is asked of the target
+# and its answer cannot be read: its paths never land in a guessed group or
+# a number, the caller skips the account's legs. $1 = account.
 _xmass_set_gmap() {
-  local _oct="$1" _dstGrp _dstWg
+  local _oct="$1" _dstGrp _dstWg _wgMap=""
   _XMASS_GMAP=""
-  _XMASS_WGMAP=""
   [ "${_MODE}" = "LIVE" ] || return 0
-  if [ "$(_web_group_state "${_oct}" | cut -d' ' -f1)" != "none" ]; then
+  if [ "${2}" != "acct" ] && [ "$(_web_group_state "${_oct}" | cut -d' ' -f1)" != "none" ]; then
     _dstWg=$(_web_group_on_target "${_oct}" "${_tgt}") || _dstWg=""
     if [ -z "${_dstWg}" ]; then
       _alrt "DENY: could not read the web group of ${_oct} on ${_tgt}; the legs of ${_oct} are skipped this pass"
       return 1
     fi
-    _XMASS_WGMAP="wg-${_oct}:${_dstWg}"
+    _wgMap="wg-${_oct}:${_dstWg}"
   fi
-  if [ "${2}" != "web" ] && getent group "${_oct}" > /dev/null 2>&1; then
+  if getent group "${_oct}" > /dev/null 2>&1; then
     _dstGrp=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_tgt}" \
-      "getent group '${_oct}' > /dev/null 2>&1 && { [ \"\$(id -gn '${_oct}' 2>/dev/null)\" = '${_oct}' ] || [ \"\$(id -gn '${_oct}.ftp' 2>/dev/null)\" = '${_oct}' ]; } && echo '${_oct}' || echo users" 2>/dev/null | tr -d '[:space:]')
+      "getent group '${_oct}' > /dev/null 2>&1 && { [ \"\$(id -gn '${_oct}' 2>/dev/null)\" = '${_oct}' ] || [ \"\$(id -gn '${_oct}.ftp' 2>/dev/null)\" = '${_oct}' ]; } && echo 'XMAG:${_oct}' || echo 'XMAG:users'" \
+      2>/dev/null | grep -m1 -x -E 'XMAG:[a-z0-9-]+' | cut -d: -f2)
     case "${_dstGrp}" in
       "${_oct}"|users) _XMASS_GMAP="${_oct}:${_dstGrp}" ;;
-      *) _alrt "  could not read the group of ${_oct} on ${_tgt}; the legs copy groups by name this pass" ;;
+      *)
+        _alrt "DENY: could not read the group of ${_oct} on ${_tgt}; the legs of ${_oct} are skipped this pass"
+        return 1
+        ;;
     esac
   fi
-  _XMASS_GMAP="${_XMASS_GMAP}${_XMASS_WGMAP:+${_XMASS_GMAP:+,}${_XMASS_WGMAP}}"
+  _XMASS_GMAP="${_XMASS_GMAP}${_wgMap:+${_XMASS_GMAP:+,}${_wgMap}}"
   return 0
 }
 
@@ -5630,7 +5642,6 @@ _xmass_sync_account() {
   if ! _xmass_set_gmap "${_oct}"; then
     _XMASS_RSYNC_RC=23
     _XMASS_GMAP=""
-    _XMASS_WGMAP=""
     return 0
   fi
   # Auto passes re-prove the target's standby role at every leg boundary —
@@ -5921,7 +5932,6 @@ _xmass_sync_account() {
     _acct_regroup_remote "${_oct}" "${_tgt}"
   fi
   _XMASS_GMAP=""
-  _XMASS_WGMAP=""
 }
 
 _xmass_sync_shared() {
@@ -12067,15 +12077,14 @@ _xmass_cmd_cutover() {
   # force, and nothing between here and the write freeze writes to them.
   _info "Final static/files rsync pass (web already blocked; pre-freeze) ..."
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
-    # the account's web group map only (this pass never carried the
-    # account group's); an unreadable answer skips the account and the
-    # re-gate below stops the cutover before the freeze
-    _xmass_set_gmap "${_oct}" web || { _XMASS_RSYNC_RC=23; continue; }
+    # the account's group maps: no destination pass follows this one; an
+    # unreadable web group answer skips the account and the re-gate below
+    # stops the cutover before the freeze
+    _xmass_set_gmap "${_oct}" || { _XMASS_RSYNC_RC=23; continue; }
     _xmass_sync_static_symlink_safe \
       "/data/disk/${_oct}" "/data/disk/${_oct}" "${_TGT_MNT}"
   done
   _XMASS_GMAP=""
-  _XMASS_WGMAP=""
 
   # Re-gate: this pass can set either rc again, and until now nothing re-checked
   # them, so a store that failed placement here proceeded to promote the target.

@@ -862,7 +862,9 @@ _verbose_log() {
 
 # Function to validate IP format
 _validate_ip() {
-  local _IP="$1"
+  # The octets are local: the harvest pass calls this between reading its own
+  # _a/_b and using them.
+  local _IP="$1" _a _b _c _d
   # Remove any trailing punctuation (comma, period)
   _IP="${_IP%,}"
   _IP="${_IP%.}"
@@ -1749,9 +1751,15 @@ while (my $l = <STDIN>) {
   $lo = $e if !$lo || $e < $lo;
   $hi = $e if $e > $hi;
   next if $e < $cut;
-  my ($ip) = split /,/, $ipf, 2;
+  # The client is the last token of the first field and only a public address
+  # counts, the rule of the main loop. A request riding the local 443 front
+  # logs twice, the second copy on the port-80 backend as 127.0.0.1 (three
+  # lines for a refusal the front retries), so counting that copy would double
+  # every proxied request and halve the cohort's distinct-URI share.
+  my $ip = (split /,/, $ipf)[-1] // '';
   $ip =~ s/^\s+|\s+$//g;
   next unless $ip =~ /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+  next if $ip =~ /^(?:10\.|127\.|169\.254\.|192\.168\.|172\.(?:1[6-9]|2[0-9]|3[01])\.)/;
   # Strip the query string: cache-busting parameters would make every human
   # ajax call look like a distinct document and invert the keystone.
   $path =~ s/\?.*$//;

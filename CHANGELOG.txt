@@ -89,6 +89,27 @@
       xcopy and xmass refuse to move a converted account to a box whose
       tools predate it. Account names may not begin with wg- or hold a
       dot.
+
+    * xoct, xcopy and xmass map an account's own group onto the target
+      account's on every leg as they copy, and on a rename xoct and xcopy
+      map each of its identities onto the new name's, so a run that stops
+      before its closing pass, xoct create, the standby autosync and the
+      cutover's last pass no longer leave files in another account's
+      group, or owned by an account the target has under the old name. An
+      answer about the target account's group, or on a rename about its
+      identities, that cannot be read stops the run, as one about its web
+      group does.
+
+    * boa cleanup purge sets the account's task dispatcher aside and ends
+      whatever still runs as its identities before removing them, so none
+      of them survives the purge by being busy, and it reloads the PHP-FPM
+      of every pool it removes. The homes it parks, and those the
+      limited-shell worker parks, are shut to root, and nothing either
+      leaves keeps a uid or gid that no longer names anyone: the next
+      account created could be given it. What its identities left in
+      /tmp, /var/tmp and /dev/shm is removed, and a forced master
+      reinstall hands the master tree it parks to root.
+
     * Root no longer follows a link, or opens a FIFO, that an account
       puts at a name in its own directories: static/control, and the
       log/, .drush/, config/, tools/, .tmp/ and .ftp home names its main
@@ -167,6 +188,17 @@
       from where their paths really lead, never from the text of the
       account's alias: a path written through a link in the account's own
       tree could name another account, whose group the files then got.
+
+    * The shared config directory /data/conf, where every site on the box
+      loads its global includes from, stays root's for the whole Octopus
+      upgrade: the upgrade used to hand it to the account being upgraded
+      until the end of its run. The upgrade and the nightly pass take
+      back anything an earlier run left there, a file an account
+      hard-linked there included, and set its modes without following a
+      link. The barracuda upgrade and BOA's scheduled update put the
+      Valkey password, the global includes and the Drupal 10 and 11 core
+      patches there only inside the real directories, never through a
+      link, and xmass's two records there keep the 0600 xmass gives them.
 
     * The shared Backdrop redis module, the Backdrop bundle's webform and
       bee are root's as soon as BOA unpacks them: their archives recorded
@@ -558,6 +590,18 @@
       and a site's train-allow record admits it with the rest of the
       class.
 
+    * Kimi's three crawlers are classified as Moonshot AI documents them:
+      KimiBot, which gathers content that may train Kimi's models, joins
+      the AI training class and gets 444 by default; Kimi-SearchBot joins
+      the AI search class and Kimi-User the user-triggered class, both
+      served under their own per-vendor budget and exempt from the
+      crawler-fleet refusal like the other allowed AI agents.
+
+    * ExaSearchBot, the crawler of Exa's search API for AI agents, joins
+      the AI search class as Exa documents it: served under its own
+      per-vendor budget and exempt from the crawler-fleet refusal like the
+      other allowed AI agents.
+
     * Cloudflare's address lists are fetched once a day, and at once only
       while the ranges file is missing; every self-update pass (every five
       minutes) used to fetch them again.
@@ -821,6 +865,15 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * The web IDS's document-harvest detector now reports: every cohort
+      member was filed under a wrong key, so no cohort ever reached the
+      report or a ban.
+    * A request served over HTTPS through the wildcard SSL front counts
+      once in the harvest detector, as in every other detector: its
+      loopback copy from the site's port-80 vhost was counted too, which
+      doubled every such request, tripled a refusal the front retries,
+      and hid a harvest over the front.
 
     * The AI training block no longer refuses Claude-User, Claude-SearchBot
       and Amzn-SearchBot. Their user agents name a training crawler in the

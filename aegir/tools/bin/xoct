@@ -2592,6 +2592,83 @@ _xoct_regroup_target_account() {
   _acct_regroup_remote "$1" "$2"
 }
 
+### On a rename the account's identities here map onto the destination's of
+### the same suffix (<src> onto <dst>, <src>.ftp onto <dst>.ftp, a client's
+### <src>.<name> onto <dst>.<name>): by name alone the copy would be owned by
+### the target's own identity of the source's name (another tenant's) or by
+### this box's numbers until the rename's owner pass (which re-owns <src>,
+### <src>.ftp and the web users; a client login's files it leaves), and a
+### run that stops before it leaves them so.
+### An identity whose new name the target does not have (yet: a client's
+### login comes with the limited-shell worker) maps onto <dst> itself, so the
+### target's identities are asked; a list that cannot be read is refused,
+### never guessed (a DENY, the dry run is not clean, a live run stops). The
+### map names every identity: no wildcard, which an older rsync would hand
+### to the receiving shell. Sets _XOCT_UMAP; empty when the names are the same.
+_xoct_acct_umap() {   # 1 account here 2 account on the target 3 target
+  local _n _t _have="" _m=""
+  _XOCT_UMAP=""
+  [ "${1}" != "${2}" ] || return 0
+  if [[ "${1}" =~ ^[a-zA-Z0-9_-]+$ ]] && [[ "${2}" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    _have=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${3}" \
+      "getent passwd | cut -d: -f1 | grep -E '^${2}(\.[a-zA-Z0-9._-]+)?\$' | sed 's/^/XMID:/'" \
+      2>/dev/null | grep -x -E 'XMID:[a-zA-Z0-9._-]+' | cut -d: -f2)
+  fi
+  if ! grep -qxF -- "${2}" <<< "${_have}"; then
+    echo "DENY: could not read the identities of ${2} on ${3}, or ${2} is not installed there yet; the copy of ${1} is never owned by a guessed name"
+    _XOCT_NOT_CLEAN=YES
+    [ "${_MODE}" = "LIVE" ] && exit 1
+    return 1
+  fi
+  for _n in $(getent passwd | cut -d: -f1 | grep -E "^${1}(\.[a-zA-Z0-9._-]+)?$"); do
+    _t="${2}${_n#"${1}"}"
+    grep -qxF -- "${_t}" <<< "${_have}" || _t="${2}"
+    _m="${_m:+${_m},}${_n}:${_t}"
+  done
+  _XOCT_UMAP="${_m}"
+  return 0
+}
+
+### The account's own group here (its per-account group, while it holds
+### one) maps onto the group the target account holds there: its own once
+### converted there, 'users' until then. By name alone the copy lands in a
+### group of that name there (another account's, or one held for a later
+### one) or, where the name is absent, in this box's number, and a run that
+### stops before its destination pass, or has none, leaves it so. Sets
+### _XOCT_AMAP; empty when no group of the account's name exists here (a group
+### that outlives its move back to 'users' is mapped too: its paths land
+### where the destination pass would put them). An answer that cannot be
+### read is refused, never guessed: a DENY, the dry run is not clean, a live
+### run stops.
+_xoct_acct_gmap() {   # 1 account here 2 account on the target 3 target
+  local _g=""
+  _XOCT_AMAP=""
+  getent group "${1}" > /dev/null 2>&1 || return 0
+  case "${2}" in
+    ''|*[!a-z0-9-]*)
+      echo "DENY: ${2} is not an account name; the paths of ${1}'s group never land in a guessed group"
+      _XOCT_NOT_CLEAN=YES
+      [ "${_MODE}" = "LIVE" ] && exit 1
+      return 1
+      ;;
+    *)
+      _g=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${3}" \
+        "getent group '${2}' > /dev/null 2>&1 && { [ \"\$(id -gn '${2}' 2>/dev/null)\" = '${2}' ] || [ \"\$(id -gn '${2}.ftp' 2>/dev/null)\" = '${2}' ]; } && echo 'XMAG:${2}' || echo 'XMAG:users'" \
+        2>/dev/null | grep -m1 -x -E 'XMAG:[a-z0-9-]+' | cut -d: -f2)
+      ;;
+  esac
+  case "${_g}" in
+    "${2}"|users) _XOCT_AMAP="${1}:${_g}" ;;
+    *)
+      echo "DENY: could not read the group of ${2} on ${3}; the paths of ${1}'s group never land in a guessed group"
+      _XOCT_NOT_CLEAN=YES
+      [ "${_MODE}" = "LIVE" ] && exit 1
+      return 1
+      ;;
+  esac
+  return 0
+}
+
 ### An account converted to its own web group here (its web paths in
 ### wg-<account>, private/ 02770/0660) must not land on a target whose tools
 ### predate the web group: their claim passes and nightly would hand those
@@ -4069,6 +4146,17 @@ _migrate_prepare() {
       echo "ALRT: refusing create: invalid account name '${_oct}'/'${_TGT_HM_USER}'"
       exit 1
     fi
+    ### While the account holds its own group here, _xoct_acct_gmap refuses a
+    ### destination name outside [a-z0-9-]: refused here, before anything is
+    ### installed, not after the install.
+    if getent group "${_oct}" > /dev/null 2>&1; then
+      case "${_TGT_HM_USER}" in
+        ''|*[!a-z0-9-]*)
+          echo "ALRT: refusing create: '${_TGT_HM_USER}' is not an account name the group map can carry"
+          exit 1
+          ;;
+      esac
+    fi
     if ! printf '%s' "${_CLIENT_EMAIL}" | grep -qE '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then
       echo "ALRT: refusing create: client email '${_CLIENT_EMAIL//[^[:print:]]/?}' failed validation"
       exit 1
@@ -4185,6 +4273,12 @@ _migrate_prepare() {
       ### so seeding first would race it (the historical fixed wait sat here
       ### for the same reason).
       _xoct_wait_target_install_settled "${_TGT_HM_USER}" "${_tgt}"
+      ### The seeding legs below map the account's group and, on a rename,
+      ### its identities (no destination pass follows create). Asked before
+      ### anything is seeded: a refusal then leaves the whole seed, and the
+      ### witness below, to the re-run.
+      _xoct_acct_gmap "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      _xoct_acct_umap "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
       ### Post-install seeding: merge the portable cnf values, force the
       ### authoritative control-file pins, carry the client credentials.
       ### What the target holds BEFORE the seed rewrites it: the cnf (its
@@ -4205,8 +4299,11 @@ _migrate_prepare() {
       ### Post-install seeding: merge the portable cnf values, force the
       ### authoritative control-file pins, carry the client credentials.
       _xoct_push_target_octopus_cnf "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      _XOCT_GMAP="${_XOCT_AMAP}"
       _xoct_seed_target_control_pins "${_USR}" "/data/disk/${_TGT_HM_USER}" "${_TGT_HM_USER}" "${_tgt}"
       _xoct_sync_shell_credentials "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      _XOCT_GMAP=""
+      _XOCT_UMAP=""
       ### Verify the pins actually took (catches the availability-fallback
       ### downgrade class at the cheapest possible moment).
       for _pinVar in _PHP_FPM_VERSION _PHP_CLI_VERSION; do
@@ -4442,8 +4539,10 @@ _xoct_rsync() {
     # Trailing (after "$@") is deliberate: callers pass -a/-aEAX which implies
     # -D; rsync honours the LAST matching option, so these must follow -a to
     # actually drop device/fifo/socket nodes. Never transfer specials.
-    # _XOCT_GMAP maps the account's web group (see _xoct_webgroup_gate).
-    rsync "$@" ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} --no-devices --no-specials
+    # _XOCT_GMAP maps the account's own group and its web group (see
+    # _xoct_acct_gmap, _xoct_webgroup_gate); _XOCT_UMAP its identities on a
+    # rename (see _xoct_acct_umap).
+    rsync "$@" ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} --no-devices --no-specials
   else
     echo "[DRY-PLAN] would rsync: $*"
   fi
@@ -4492,7 +4591,7 @@ _xoct_put_on_root() {
     fi
     # the store is files/ and private/: the web group map rides it too
     if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-      ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} \
+      ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} \
       --rsync-path="$(_xoct_canon_rpath "${_dreal}")" -e ssh ./ root@"${_th}":./; then
       echo "DENY: rsync to ${_dstRoot} on target root failed"
       return 3
@@ -4502,7 +4601,7 @@ _xoct_put_on_root() {
   _q="$(_shq "${_dstRoot}")"
   ssh root@"${_th}" "if [ -L '${_q}' ]; then rm -f '${_q}'; elif [ -e '${_q}' ] && [ ! -d '${_q}' ]; then rm -f '${_q}'; fi; mkdir -p '${_q}'"
   if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-    ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} -e ssh ./ root@"${_th}":"${_dstRoot}/"; then
+    ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} -e ssh ./ root@"${_th}":"${_dstRoot}/"; then
     echo "DENY: rsync to ${_dstRoot} on target root failed"
     return 3
   fi
@@ -4528,7 +4627,7 @@ _xoct_put_on_mount() {
       return 3
     fi
     if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-      ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} \
+      ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} \
       --rsync-path="$(_xoct_canon_rpath "${_mreal}")" -e ssh ./ root@"${_th}":./; then
       echo "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
       return 3
@@ -4541,7 +4640,7 @@ _xoct_put_on_mount() {
   fi
   ssh root@"${_th}" "mkdir -p '${_qm}'"
   if ! _xoct_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-    ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} -e ssh ./ root@"${_th}":"${_mntDest}/"; then
+    ${_XOCT_GMAP:+"--groupmap=${_XOCT_GMAP}"} ${_XOCT_UMAP:+"--usermap=${_XOCT_UMAP}"} -e ssh ./ root@"${_th}":"${_mntDest}/"; then
     echo "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
     return 3
   fi
@@ -5665,6 +5764,10 @@ _migrate_init() {
         # it, mapped onto the target account's otherwise (before the token
         # below is consumed, so a refusal never costs another dry run).
         _xoct_webgroup_gate "${_oct}" "${_DST##*/}" "${_tgt}"
+        # and its own group, on every leg ahead of the web group's
+        _xoct_acct_gmap "${_oct}" "${_DST##*/}" "${_tgt}"
+        _xoct_acct_umap "${_oct}" "${_DST##*/}" "${_tgt}"
+        _XOCT_GMAP="${_XOCT_AMAP}${_XOCT_AMAP:+${_XOCT_GMAP:+,}}${_XOCT_GMAP}"
         # --live requires a prior CLEAN dry run for this account+target.
         [ "${_MODE}" = "LIVE" ] && _xoct_require_clean_dry "${_oct}" "${_tgt}"
         _XOCT_STORE_RC=0
@@ -6666,6 +6769,8 @@ _check_root() {
 _MODE=LIVE
 _XOCT_NOT_CLEAN=NO
 _XOCT_GMAP=""
+_XOCT_AMAP=""
+_XOCT_UMAP=""
 _XOCT_FORCE=""
 case "$1" in
   transfer|pretransfer)

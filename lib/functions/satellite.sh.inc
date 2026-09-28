@@ -1986,11 +1986,9 @@ _satellite_create_shared_dirs() {
   fi
   ### An earlier pass that stopped before its cleanup leaves these to the
   ### account that ran it, which could have put a link or a hard link at any
-  ### name in them: /data/conf is walked from inside the real directory
-  ### (_satellite_reown_here), and each directory below /data/all is handed
-  ### over and moded on '.' from inside it, never through a link.
-  _acct_in_real_dir /data/conf \
-    _satellite_reown_here "${_USER}:${_USRG}" &> /dev/null
+  ### name in them: each directory below /data/all is handed over and moded
+  ### on '.' from inside it, never through a link. /data/conf is not handed
+  ### over: it stays root's for the whole run (_satellite_add_user_dirs).
   chown ${_USER}:${_USRG} ${_D}              &> /dev/null
   _acct_in_real_dir "${_D}/000" chown -h "${_USER}:${_USRG}" . &> /dev/null
   _acct_in_real_dir "${_D}/000" _acct_in_real_dir ./core \
@@ -2000,8 +1998,9 @@ _satellite_create_shared_dirs() {
   ### store writable by every local user for the whole platform build below
   ### (reverted only in _satellite_batch_cleanup) -- long enough to drop code
   ### into a codebase every legacy site loads, or into the global config tree.
-  ### The build runs as ${_USER}, which the chown above already made the owner,
-  ### so owner-write is all it ever needed. These are the same modes
+  ### The build runs as ${_USER}, which the chown above already made the owner
+  ### of the store, so owner-write is all it ever needed there; it writes
+  ### nothing in /data/conf, which stays root's. These are the same modes
   ### _satellite_batch_cleanup asserts at the end of the run.
   chmod 0755 ${_D} &> /dev/null
   chmod 0711 /data /data/disk /data/conf &> /dev/null
@@ -3240,14 +3239,12 @@ _satellite_add_user_dirs() {
   # every scratch file the next root writer reopens -- while only the top inode
   # was ever handed back, so root was left opening files it did not own inside
   # a sticky directory. The children need nothing outside their own paths.
-  # /data/conf is box-wide: transiently owned by whichever account is running
-  # and handed back to root by _satellite_post_cleanup. It keeps the box-wide
-  # group on purpose -- never the account's own (_ACCG), which would make a
-  # shared path mean "one account" for the length of the run. Walked from
-  # inside the real directory, never handing over a link or a file an
-  # account hard-linked there (_satellite_reown_here).
-  _acct_in_real_dir /data/conf \
-    _satellite_reown_here "${_USER}:${_USRG}" &> /dev/null
+  # /data/conf is box-wide and stays root's for the whole run: every site on
+  # the box loads its global includes from it, and nothing run as the account
+  # writes there. A run of an earlier release handed it to the account, and
+  # one that stopped before its cleanup left it so: it is taken back here,
+  # before anything runs as the account (_satellite_conf_root_here).
+  _acct_in_real_dir /data/conf _satellite_conf_root_here &> /dev/null
   # On a fresh install the per-child includes are materialised before
   # this user exists, so ownership must be re-asserted here or the su'd
   # children cannot read their 0600 copies
@@ -5977,7 +5974,7 @@ _satellite_check_sanitize_user_name() {
   # Group owning this account's tree, derived per run: 'users' until the
   # account carries a private primary group named after itself (see
   # _acct_group in helper.sh.inc). _USRG stays the box-wide group for the
-  # shared paths (/data/conf, /data/u, the cores) and must not be repointed.
+  # shared paths (/data/u, the cores) and must not be repointed.
   _ACCG=$(_acct_group "${_USER}")
   if [ -d "${_ROOT}" ]; then
     _STATUS=UPGRADE
@@ -6194,6 +6191,43 @@ _satellite_modes_walk_here() (
     -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
   find . -mindepth 1 -type f \
     -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
+)
+# Each directory and regular file named (find -execdir, or in a pinned
+# directory) made root's, with the mode $1 for a directory (its set-ID bits
+# kept, as chmod 0755 keeps them) and $2 for a file, except xmass's two
+# records, which xmass writes 0600. An entry is checked by lstat before it is
+# opened, so a FIFO or a device is never opened, and is changed through its
+# own handle, never through a link. A hard-linked file is taken back too:
+# /data/conf is never an account's, so a file an account linked there is
+# made root's, as chown -R root:root made it.
+_CONF_ROOT_PL='use Fcntl;
+my ($dm, $fm) = (oct(shift @ARGV), oct(shift @ARGV));
+for my $f (@ARGV) {
+  my @l = lstat($f);
+  next unless @l && (-d _ || -f _);
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && $s[0] == $l[0] && $s[1] == $l[1]) {
+    if (-d _) {
+      chown(0, 0, $h);
+      chmod($dm | ($s[2] & 06000), $h);
+    } elsif (-f _) {
+      chown(0, 0, $h);
+      chmod($f =~ m{(^|/)xmass_(state|solr_used)\.cnf(\.tmp\.\d+)?$} ? 0600 : $fm, $h);
+    }
+  }
+  close($h);
+}'
+# /data/conf (the current, pinned directory) and everything below it made
+# root's (_CONF_ROOT_PL): directories 0755, files 0644, the top 0711. Every
+# site on the box loads its global includes from here and nothing an account
+# runs writes here, so it is never handed to an account.
+_satellite_conf_root_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  perl -e "${_CONF_ROOT_PL}" 0755 0644 .
+  find . -mindepth 1 \( -type d -o -type f \) \
+    -execdir perl -e "${_CONF_ROOT_PL}" 0755 0644 {} +
+  chmod 0711 .
 )
 # stdin appended to ./$1 in the current (pinned) directory, as >> appends
 # (a missing file created 0644), but only to a regular file: a link or a FIFO
@@ -7550,14 +7584,15 @@ _satellite_normalize_scratch_owner() {
 }
 
 #
-# The shared store $1 (/data/all, or /data/disk/all on an older layout),
-# ${_CORE} and /data/conf handed back to root at the end of the run, with
-# the modes the platform build leaves them in. The run handed them to the
-# account, which could have put a link or a hard link at any name there:
-# every directory is entered as the real directory before anything is done
-# in it, every walk goes through _satellite_reown_here or a handle-based
-# mode setter (never a link, nor a hard-linked file), and the daily sweep
-# hands the whole store back to root first, before any mode is set in it.
+# The shared store $1 (/data/all, or /data/disk/all on an older layout) and
+# ${_CORE} handed back to root at the end of the run, with the modes the
+# platform build leaves them in. The run handed them to the account, which
+# could have put a link or a hard link at any name there: every directory is
+# entered as the real directory before anything is done in it, every walk
+# goes through _satellite_reown_here or a handle-based mode setter (never a
+# link, nor a hard-linked file), and the daily sweep hands the whole store
+# back to root first, before any mode is set in it. /data/conf, never handed
+# over, is asserted root's again the same way (_satellite_conf_root_here).
 _satellite_shared_back() {
   local _b
   _b="$(cd -P -- "${1}" 2> /dev/null && pwd -P)"
@@ -7567,14 +7602,12 @@ _satellite_shared_back() {
   fi
   chown root:root "${1}" &> /dev/null
   _acct_in_real_dir "${_CORE}" chown -h root:root . &> /dev/null
-  _acct_in_real_dir /data/conf _satellite_root_back_here &> /dev/null
   _acct_in_real_dir "${_CORE}" _acct_in_real_dir ./o_contrib \
     _satellite_root_back_here &> /dev/null
   _acct_in_real_dir "${_CORE}" _acct_in_real_dir ./o_contrib_seven \
     _satellite_root_back_here &> /dev/null
   _acct_in_real_dir "${_b}/000" _satellite_root_back_here &> /dev/null
-  _acct_in_real_dir /data/conf \
-    _satellite_modes_walk_here 0755 0644 &> /dev/null
+  _acct_in_real_dir /data/conf _satellite_conf_root_here &> /dev/null
   _satellite_normalize_scratch_owner
   chmod 0711 /data /data/disk /data/conf &> /dev/null
   _acct_in_real_dir "${_b}" _satellite_shared_top_here &> /dev/null
@@ -7639,8 +7672,9 @@ _satellite_shared_top_here() {
 }
 # /data/conf (the current, pinned directory) at the end of the run: arch/log
 # made where missing and set 0755, and the old global include copies moved
-# into arch/, each directory used only as the real one (a link the account
-# put at arch, log or global is never followed).
+# into arch/, each directory used only as the real one (a link an account
+# put at arch, log or global while a run of an earlier release had handed it
+# /data/conf is never followed).
 _satellite_conf_arch_here() {
   mkdir -p ./arch
   _acct_in_real_dir ./arch _satellite_sub_here log chmod 0755 . || return 0
@@ -7703,9 +7737,8 @@ _satellite_batch_cleanup() {
     mv -f \${_b}/mydropwizard-pre* \${_b}/system/" &> /dev/null
   # 0755 (not 0777): the surrounding mv operations target /data/conf/arch/,
   # not /data/conf/arch/log — the log subdirectory is vestigial and has no
-  # current writer. Matches the parallel fix in system.sh.inc. /data/conf
-  # was the account's for this run: arch, log and global are used only as
-  # the real directories (_satellite_conf_arch_here).
+  # current writer. Matches the parallel fix in system.sh.inc. arch, log and
+  # global are used only as the real directories (_satellite_conf_arch_here).
   _acct_in_real_dir /data/conf _satellite_conf_arch_here
   ### module* directories two to five levels below static/ made 0775. static/
   ### is group-writable: walked from the real directory (find does not

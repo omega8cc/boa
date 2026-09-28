@@ -993,6 +993,9 @@ _mode_detection() {
         # only this user's agent: -f matched every gpg-agent on the box
         id -u aegir &> /dev/null && pkill -9 -u aegir gpg-agent &> /dev/null
         deluser aegir &> /dev/null
+        # the parked master keeps no number deluser just freed: the next
+        # account created could be given it
+        chown -R -h -P root:root "${_ZOMBIE_HOME}" &> /dev/null
         rm -f /usr/bin/drush
       else
         ###--------------------###

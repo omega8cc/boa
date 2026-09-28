@@ -270,6 +270,82 @@ REMOTE
   return "${_X_RC}"
 }
 
+# On a rename the account's identities here map onto the destination's of
+# the same suffix (<src> onto <dst>, <src>.ftp onto <dst>.ftp, a client's
+# <src>.<name> onto <dst>.<name>): by name alone the copy would be owned by
+# the target's own identity of the source's name (another tenant's) or by
+# this box's numbers, for good: xcopy has
+# no owner pass after the copy.
+# An identity whose new name the target does not have (yet: a client's
+# login comes with the limited-shell worker) maps onto <dst> itself, so the
+# target's identities are asked; a list that cannot be read is refused,
+# never guessed (a DENY, the dry run is not clean, a live run stops). The
+# map names every identity: no wildcard, which an older rsync would hand
+# to the receiving shell. Sets _XCOPY_UMAP; empty when the names are the same.
+_xcopy_acct_umap() {   # 1 account here 2 account on the target 3 target
+  local _n _t _have="" _m=""
+  _XCOPY_UMAP=""
+  [ "${1}" != "${2}" ] || return 0
+  if [[ "${1}" =~ ^[a-zA-Z0-9_-]+$ ]] && [[ "${2}" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    _have=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${3}" \
+      "getent passwd | cut -d: -f1 | grep -E '^${2}(\.[a-zA-Z0-9._-]+)?\$' | sed 's/^/XMID:/'" \
+      2>/dev/null | grep -x -E 'XMID:[a-zA-Z0-9._-]+' | cut -d: -f2)
+  fi
+  if ! grep -qxF -- "${2}" <<< "${_have}"; then
+    echo "DENY: could not read the identities of ${2} on ${3}, or ${2} is not installed there yet; the copy of ${1} is never owned by a guessed name"
+    _XCOPY_NOT_CLEAN=YES
+    [ "${_MODE}" = "LIVE" ] && exit 1
+    return 1
+  fi
+  for _n in $(getent passwd | cut -d: -f1 | grep -E "^${1}(\.[a-zA-Z0-9._-]+)?$"); do
+    _t="${2}${_n#"${1}"}"
+    grep -qxF -- "${_t}" <<< "${_have}" || _t="${2}"
+    _m="${_m:+${_m},}${_n}:${_t}"
+  done
+  _XCOPY_UMAP="${_m}"
+  return 0
+}
+
+# The account's own group here (its per-account group, while it holds
+# one) maps onto the group the target account holds there: its own once
+# converted there, 'users' until then. By name alone the copy lands in a
+# group of that name there (another account's, or one held for a later
+# one) or, where the name is absent, in this box's number, and a run that
+# stops before its destination pass, or has none, leaves it so. Sets
+# _XCOPY_AMAP; empty when no group of the account's name exists here (a group
+# that outlives its move back to 'users' is mapped too: its paths land
+# where the destination pass would put them). An answer that cannot be
+# read is refused, never guessed: a DENY, the dry run is not clean, a live
+# run stops.
+_xcopy_acct_gmap() {   # 1 account here 2 account on the target 3 target
+  local _g=""
+  _XCOPY_AMAP=""
+  getent group "${1}" > /dev/null 2>&1 || return 0
+  case "${2}" in
+    ''|*[!a-z0-9-]*)
+      echo "DENY: ${2} is not an account name; the paths of ${1}'s group never land in a guessed group"
+      _XCOPY_NOT_CLEAN=YES
+      [ "${_MODE}" = "LIVE" ] && exit 1
+      return 1
+      ;;
+    *)
+      _g=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${3}" \
+        "getent group '${2}' > /dev/null 2>&1 && { [ \"\$(id -gn '${2}' 2>/dev/null)\" = '${2}' ] || [ \"\$(id -gn '${2}.ftp' 2>/dev/null)\" = '${2}' ]; } && echo 'XMAG:${2}' || echo 'XMAG:users'" \
+        2>/dev/null | grep -m1 -x -E 'XMAG:[a-z0-9-]+' | cut -d: -f2)
+      ;;
+  esac
+  case "${_g}" in
+    "${2}"|users) _XCOPY_AMAP="${1}:${_g}" ;;
+    *)
+      echo "DENY: could not read the group of ${2} on ${3}; the paths of ${1}'s group never land in a guessed group"
+      _XCOPY_NOT_CLEAN=YES
+      [ "${_MODE}" = "LIVE" ] && exit 1
+      return 1
+      ;;
+  esac
+  return 0
+}
+
 # An account converted to its own web group here (its web paths in
 # wg-<account>, private/ 02770/0660) must not land on a target whose tools
 # predate the web group: their claim passes and nightly would hand those
@@ -1766,8 +1842,10 @@ _xcopy_rsync() {
     # Trailing (after "$@") is deliberate: callers pass -a/-aEAX which implies
     # -D; rsync honours the LAST matching option, so these must follow -a to
     # actually drop device/fifo/socket nodes. Never transfer specials.
-    # _XCOPY_GMAP maps the account's web group (see _xcopy_webgroup_gate).
-    rsync "$@" ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} --no-devices --no-specials
+    # _XCOPY_GMAP maps the account's own group and its web group (see
+    # _xcopy_acct_gmap, _xcopy_webgroup_gate); _XCOPY_UMAP its identities on a
+    # rename (see _xcopy_acct_umap).
+    rsync "$@" ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} --no-devices --no-specials
   else
     echo "[DRY-PLAN] would rsync: $*"
   fi
@@ -1816,7 +1894,7 @@ _xcopy_put_on_root() {
     fi
     # the store is files/ and private/: the web group map rides it too
     if ! _xcopy_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-      ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} \
+      ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} \
       --rsync-path="$(_xcopy_canon_rpath "${_dreal}")" -e ssh ./ root@"${_th}":./; then
       echo "DENY: rsync to ${_dstRoot} on target root failed"
       return 3
@@ -1826,7 +1904,7 @@ _xcopy_put_on_root() {
   _q="$(_shq "${_dstRoot}")"
   ssh root@"${_th}" "if [ -L '${_q}' ]; then rm -f '${_q}'; elif [ -e '${_q}' ] && [ ! -d '${_q}' ]; then rm -f '${_q}'; fi; mkdir -p '${_q}'"
   if ! _xcopy_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-    ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} -e ssh ./ root@"${_th}":"${_dstRoot}/"; then
+    ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} -e ssh ./ root@"${_th}":"${_dstRoot}/"; then
     echo "DENY: rsync to ${_dstRoot} on target root failed"
     return 3
   fi
@@ -1852,7 +1930,7 @@ _xcopy_put_on_mount() {
       return 3
     fi
     if ! _xcopy_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-      ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} \
+      ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} \
       --rsync-path="$(_xcopy_canon_rpath "${_mreal}")" -e ssh ./ root@"${_th}":./; then
       echo "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
       return 3
@@ -1865,7 +1943,7 @@ _xcopy_put_on_mount() {
   fi
   ssh root@"${_th}" "mkdir -p '${_qm}'"
   if ! _xcopy_in_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
-    ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} -e ssh ./ root@"${_th}":"${_mntDest}/"; then
+    ${_XCOPY_GMAP:+"--groupmap=${_XCOPY_GMAP}"} ${_XCOPY_UMAP:+"--usermap=${_XCOPY_UMAP}"} -e ssh ./ root@"${_th}":"${_mntDest}/"; then
     echo "DENY: ${_lbl}: rsync to target mount ${_mntDest} failed; target link left untouched"
     return 3
   fi
@@ -2248,6 +2326,10 @@ _migrate_init() {
         # it, mapped onto the target account's otherwise (before the token
         # below is consumed, so a refusal never costs another dry run).
         _xcopy_webgroup_gate "${_oct}" "${_DST##*/}" "${_tgt}"
+        # and its own group, on every leg ahead of the web group's
+        _xcopy_acct_gmap "${_oct}" "${_DST##*/}" "${_tgt}"
+        _xcopy_acct_umap "${_oct}" "${_DST##*/}" "${_tgt}"
+        _XCOPY_GMAP="${_XCOPY_AMAP}${_XCOPY_AMAP:+${_XCOPY_GMAP:+,}}${_XCOPY_GMAP}"
         # --live requires a prior CLEAN dry run for this account+target.
         [ "${_MODE}" = "LIVE" ] && _xcopy_require_clean_dry "${_oct}" "${_tgt}"
         _XCOPY_STORE_RC=0
@@ -2958,6 +3040,8 @@ _check_root() {
 _MODE=LIVE
 _XCOPY_NOT_CLEAN=NO
 _XCOPY_GMAP=""
+_XCOPY_AMAP=""
+_XCOPY_UMAP=""
 _XCOPY_FORCE=""
 case "$1" in
   transfer|pretransfer)

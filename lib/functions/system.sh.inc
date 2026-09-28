@@ -922,10 +922,11 @@ _disable_old_purge_cruft_machine() {
 }
 
 #
-# /data/conf is handed to the account an Octopus run upgrades, and a run that
-# stops early leaves it there, so any name in it (or in its global/, arch/
-# and patches/) can be a link or a FIFO the account put there. Files are put
-# there only inside the real directory, through these.
+# /data/conf is root's, but a run of an earlier release handed it to the
+# account an Octopus run upgraded (and one that stopped early left it so), so
+# any name in it (or in its global/, arch/ and patches/) can still be a link
+# or a FIFO that account put there. Files are put there only inside the real
+# directory, through these.
 #
 # The file $1 put as ./$2 in the current (pinned) directory as cp -a put
 # it (the same bytes, owner, mode and times): copied to a fresh name after
