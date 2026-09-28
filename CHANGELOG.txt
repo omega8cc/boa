@@ -811,6 +811,30 @@
 
 @=> Important Fixes
 
+    * Root passes that act on an account's files (the hourly agent
+      refresh, the nightly, the limited-shell worker, the Barracuda and
+      Octopus upgrades, backups and restores, the fix-drupal scripts,
+      instgrp and the migration tools) put, own, mode and flag each file
+      through one handle opened without following a link, and change
+      only directories and single-link regular files. A file with more
+      than one link keeps its owner and mode; the fix-drupal scripts and
+      the nightly hand-overs say how many they left.
+    * The hourly refresh of the Let's Encrypt include and dehydrated
+      replaces what it finds instead of writing through it, and a
+      registration stopped at its time limit is no longer recorded as
+      done.
+    * instgrp changes a hard-linked file or FIFO only when its owner is
+      one of the account's identities in the target group; status lists
+      the rest on an other: line, never as drift, and revert keeps the
+      group while such an entry carries it. The nightly group-drift
+      probe checks only what a reclaim changes, so it no longer reruns a
+      reclaim every night.
+    * aegir2boa keeps the target's migration state in root-only
+      /var/backups/a2b/<oN>; a dispatcher an earlier release parked in
+      the account tree is rebuilt from another account's.
+    * The ~/.drush reset of a sub-account whose directory an earlier
+      release made root-owned, holding only alias copies, runs again.
+
     * migratefs reads a target given through a link under /mnt on the
       device the link leads to, instead of reporting it as the same
       filesystem as /data/disk, and no longer counts such a link as a
