@@ -7839,6 +7839,7 @@ _sync_apparmor_profiles() {
                     tcpdump \
                     totem \
                     traceroute \
+                    usr.bin.redis-server \
                     usr.sbin.sshd"
       for _profArm in ${_profArmList}; do
         mv -f /etc/apparmor.d/*${_profArm}* ${_backArmr} &> /dev/null
@@ -11875,7 +11876,7 @@ _xdrago_install_upgrade() {
     rm -f ${_pthLog}/blackIP.log
     rm -f /var/xdrago/{enableStatus,graceful,move_sql,run_all,second,Minute}
     rm -f /var/xdrago/{firewall.sh,stop-mysql-innodb.sh,firewall_restarter}
-    rm -f /var/xdrago/{FireStart,memcache,redis}
+    rm -f /var/xdrago/{FireStart,memcache,redis} /var/xdrago/monitor/check/redis.sh
     cp -af /var/spool/cron/crontabs/root \
       ${_vBs}/dragon/z/cron-root-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
     if [ "${_CUSTOM_CONFIG_LSHELL}" = "YES" ] \
