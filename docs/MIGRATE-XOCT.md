@@ -63,7 +63,20 @@ For full-server migrations where Percona versions match, consider
 > `DENY` when the target's tools predate the web group, or the target's answer cannot
 > be read; `--live` then stops before it copies anything. While `wg-oN` exists on the
 > source, every leg maps it onto the group the target's writers give the account (its
-> `wg-oN` once converted there, `www-data` until then). `xcopy` does the same.
+> `wg-oN` once converted there, `www-data` until then).
+>
+> Every leg also maps the account's own group (see `INSTGRP.md`) onto the group the
+> target account holds (its own once converted there, `users` until then), so a run that
+> stops before its closing group pass leaves nothing in another account's group; an
+> answer about that group that cannot be read is a `DENY` too (the dry run is `NOT
+> CLEAN`, `--live` and `create` stop).
+>
+> On a rename (`{o2}`) every leg also maps each of the account's identities onto the new
+> name's (`o1.ftp` onto `o2.ftp`, and so on; one the target does not have yet, such as a
+> client's login, onto `o2` itself), so the copy is never owned by an account the target
+> has under the old name. A list of the target's identities that cannot be read, or that
+> has no `o2` yet, is a `DENY` too (the dry run is `NOT CLEAN`, `--live` and `create`
+> stop; re-run `create` once the target answers). `xcopy` does the same for both maps.
 >
 > The `CLEAN` dry token is **single-use** —
 > running `--live` consumes it, so one dry run cannot arm two live runs; re-run the dry

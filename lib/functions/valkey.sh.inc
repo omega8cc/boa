@@ -27,6 +27,35 @@ _disable_redis() {
   _msg "INFO: Redis server has been disabled"
 }
 #
+# /data/conf is root's, but a run of an earlier release handed it to the
+# Octopus account it upgraded, so a name there can still be a link that
+# account put. Nothing below writes there through a name: every file is put
+# or edited inside the real directory (_nginx_conf_put_here, nginx.sh.inc;
+# _sys_conf_cp_here and _sys_conf_sed_here, system.sh.inc).
+#
+# The password put as /data/conf/valkey/pass.inc, root's and 0644 (every
+# site reads it), as cp -af and a chmod 0644 put it.
+_valkey_conf_pass_inc() {
+  mkdir -p /data/conf
+  _acct_in_real_dir /data/conf mkdir -p ./valkey
+  if ! _acct_in_real_dir /data/conf/valkey _nginx_conf_put_here \
+    /root/.valkey.pass.txt pass.inc 644; then
+    _msg "OOPS: /data/conf/valkey/pass.inc was not updated"
+  fi
+}
+# ./$1 in the current (pinned) /data/conf or /data/conf/global, where it is
+# there, put again from its template with the password written in, unless
+# it holds the password already.
+_valkey_conf_pass_here() {
+  [ -e "./${1}" ] || [ -L "./${1}" ] || return 0
+  [ -n "${_RPASS}" ] || return 0
+  if _acct_read_here "${1}" | grep -qF -- "'${_RPASS}'"; then
+    return 0
+  fi
+  _sys_conf_cp_here "${_locCnf}/global/${1}" "${1}" \
+    && _sys_conf_sed_here "${1}" "s/isfoobared/${_RPASS}/g"
+}
+#
 # Forced Valkey password update.
 _forced_valkey_password_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -86,9 +115,7 @@ _forced_valkey_password_update() {
   fi
   echo "${_ESC_RPASS}" > /root/.valkey.pass.txt
   chmod 0600 /root/.valkey.pass.txt
-  [ -d "/data/conf/valkey" ] || mkdir -p /data/conf/valkey
-  cp -af /root/.valkey.pass.txt /data/conf/valkey/pass.inc
-  chmod 0644 /data/conf/valkey/*
+  _valkey_conf_pass_inc
   touch ${_pthLog}/sec-valkey-pass-${_xSrl}-${_X_VERSION}-${_NOW}.log
   if [ -e "/etc/valkey/valkey.conf" ]; then
     _FORCE_VALKEY_RESTART=YES
@@ -122,19 +149,25 @@ _fix_valkey_mode() {
         # to it. D8+ (redis.connection) has NO 'socket' key and connects via
         # $client->connect($host, $port), so it needs host=<path> with port=0.
         # The shared value/port rewrites below satisfy both.
-        sed -i "s/redis_client_host/redis_client_socket/g" /data/conf/global/global-valkey.inc &> /dev/null
+        _acct_in_real_dir /data/conf/global _sys_conf_sed_here global-valkey.inc \
+          "s/redis_client_host/redis_client_socket/g" &> /dev/null
         wait
-        sed -i "s/  = '127.0.0.1';/= '\/var\/run\/valkey\/valkey.sock';/g" /data/conf/global/global-valkey.inc &> /dev/null
+        _acct_in_real_dir /data/conf/global _sys_conf_sed_here global-valkey.inc \
+          "s/  = '127.0.0.1';/= '\/var\/run\/valkey\/valkey.sock';/g" &> /dev/null
         wait
-        sed -i "s/  = '6379';/= 0;/g" /data/conf/global/global-valkey.inc &> /dev/null
+        _acct_in_real_dir /data/conf/global _sys_conf_sed_here global-valkey.inc \
+          "s/  = '6379';/= 0;/g" &> /dev/null
         wait
       fi
       if [ -e "/data/conf/global.inc" ]; then
-        sed -i "s/redis_client_host/redis_client_socket/g" /data/conf/global.inc &> /dev/null
+        _acct_in_real_dir /data/conf _sys_conf_sed_here global.inc \
+          "s/redis_client_host/redis_client_socket/g" &> /dev/null
         wait
-        sed -i "s/  = '127.0.0.1';/= '\/var\/run\/valkey\/valkey.sock';/g" /data/conf/global.inc &> /dev/null
+        _acct_in_real_dir /data/conf _sys_conf_sed_here global.inc \
+          "s/  = '127.0.0.1';/= '\/var\/run\/valkey\/valkey.sock';/g" &> /dev/null
         wait
-        sed -i "s/  = '6379';/= 0;/g" /data/conf/global.inc &> /dev/null
+        _acct_in_real_dir /data/conf _sys_conf_sed_here global.inc \
+          "s/  = '6379';/= 0;/g" &> /dev/null
         wait
       fi
       sed -i "s/^port 0/port 6379/g" /etc/valkey/valkey.conf &> /dev/null
@@ -164,20 +197,24 @@ _fix_valkey_mode() {
             sed -i "s/^bind 127.0.0.1/bind ${_VALKEY_LISTEN_MODE}/g" /etc/valkey/valkey.conf &> /dev/null
             wait
             if [ -e "/data/conf/global/global-valkey.inc" ]; then
-              sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global/global-valkey.inc &> /dev/null
+              _acct_in_real_dir /data/conf/global _sys_conf_sed_here global-valkey.inc \
+                "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" &> /dev/null
               wait
             fi
             if [ -e "/data/conf/global.inc" ]; then
-              sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global.inc &> /dev/null
+              _acct_in_real_dir /data/conf _sys_conf_sed_here global.inc \
+                "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" &> /dev/null
               wait
             fi
           else
             if [ -e "/data/conf/global/global-valkey.inc" ]; then
-              sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global/global-valkey.inc &> /dev/null
+              _acct_in_real_dir /data/conf/global _sys_conf_sed_here global-valkey.inc \
+                "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" &> /dev/null
               wait
             fi
             if [ -e "/data/conf/global.inc" ]; then
-              sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global.inc &> /dev/null
+              _acct_in_real_dir /data/conf _sys_conf_sed_here global.inc \
+                "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" &> /dev/null
               wait
             fi
             _mrun "service valkey-server stop"
@@ -192,11 +229,13 @@ _fix_valkey_mode() {
           fi
         else
           if [ -e "/data/conf/global/global-valkey.inc" ]; then
-            sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global/global-valkey.inc &> /dev/null
+            _acct_in_real_dir /data/conf/global _sys_conf_sed_here global-valkey.inc \
+              "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" &> /dev/null
             wait
           fi
           if [ -e "/data/conf/global.inc" ]; then
-            sed -i "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" /data/conf/global.inc &> /dev/null
+            _acct_in_real_dir /data/conf _sys_conf_sed_here global.inc \
+              "s/'127.0.0.1'/'${_VALKEY_LISTEN_MODE}'/g" &> /dev/null
             wait
           fi
           _mrun "service valkey-server stop"
@@ -236,77 +275,18 @@ _valkey_password_update() {
       _RPASS="${_ESC_RPASS}"
     fi
 
-    [ -d "/data/conf/valkey" ] || mkdir -p /data/conf/valkey
-    cp -af /root/.valkey.pass.txt /data/conf/valkey/pass.inc
-    chmod 0644 /data/conf/valkey/*
+    _valkey_conf_pass_inc
 
-    if [ -e "/data/conf/global/global-if-valkey.inc" ]; then
-      _VALKEY_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global/global-if-valkey.inc 2>&1)
-      if [[ "${_VALKEY_PWD_TEST}" =~ "'${_RPASS}'" ]]; then
-        _DO_NOTHING=YES
-      else
-        if [ ! -z "${_RPASS}" ]; then
-          mkdir -p /data/conf
-          cp -af ${_locCnf}/global/global-if-valkey.inc /data/conf/global/global-if-valkey.inc
-          sed -i "s/isfoobared/${_RPASS}/g" /data/conf/global/global-if-valkey.inc &> /dev/null
-          wait
-        fi
-      fi
-    fi
-    if [ -e "/data/conf/global/global-valkey.inc" ]; then
-      _VALKEY_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global/global-valkey.inc 2>&1)
-      if [[ "${_VALKEY_PWD_TEST}" =~ "'${_RPASS}'" ]]; then
-        _DO_NOTHING=YES
-      else
-        if [ ! -z "${_RPASS}" ]; then
-          mkdir -p /data/conf
-          cp -af ${_locCnf}/global/global-valkey.inc /data/conf/global/global-valkey.inc
-          sed -i "s/isfoobared/${_RPASS}/g" /data/conf/global/global-valkey.inc &> /dev/null
-          wait
-        fi
-      fi
-    fi
-
-    if [ -e "/data/conf/global/global-if-redis.inc" ]; then
-      _VALKEY_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global/global-if-redis.inc 2>&1)
-      if [[ "${_VALKEY_PWD_TEST}" =~ "'${_RPASS}'" ]]; then
-        _DO_NOTHING=YES
-      else
-        if [ ! -z "${_RPASS}" ]; then
-          mkdir -p /data/conf
-          cp -af ${_locCnf}/global/global-if-redis.inc /data/conf/global/global-if-redis.inc
-          sed -i "s/isfoobared/${_RPASS}/g" /data/conf/global/global-if-redis.inc &> /dev/null
-          wait
-        fi
-      fi
-    fi
-    if [ -e "/data/conf/global/global-redis.inc" ]; then
-      _VALKEY_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global/global-redis.inc 2>&1)
-      if [[ "${_VALKEY_PWD_TEST}" =~ "'${_RPASS}'" ]]; then
-        _DO_NOTHING=YES
-      else
-        if [ ! -z "${_RPASS}" ]; then
-          mkdir -p /data/conf
-          cp -af ${_locCnf}/global/global-redis.inc /data/conf/global/global-redis.inc
-          sed -i "s/isfoobared/${_RPASS}/g" /data/conf/global/global-redis.inc &> /dev/null
-          wait
-        fi
-      fi
-    fi
-
-    if [ -e "/data/conf/global.inc" ]; then
-      _VALKEY_PWD_TEST=$(grep "'${_RPASS}'" /data/conf/global.inc 2>&1)
-      if [[ "${_VALKEY_PWD_TEST}" =~ "'${_RPASS}'" ]]; then
-        _DO_NOTHING=YES
-      else
-        if [ ! -z "${_RPASS}" ]; then
-          mkdir -p /data/conf
-          cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
-          sed -i "s/isfoobared/${_RPASS}/g" /data/conf/global.inc &> /dev/null
-          wait
-        fi
-      fi
-    fi
+    _acct_in_real_dir /data/conf/global \
+      _valkey_conf_pass_here global-if-valkey.inc &> /dev/null
+    _acct_in_real_dir /data/conf/global \
+      _valkey_conf_pass_here global-valkey.inc &> /dev/null
+    _acct_in_real_dir /data/conf/global \
+      _valkey_conf_pass_here global-if-redis.inc &> /dev/null
+    _acct_in_real_dir /data/conf/global \
+      _valkey_conf_pass_here global-redis.inc &> /dev/null
+    _acct_in_real_dir /data/conf \
+      _valkey_conf_pass_here global.inc &> /dev/null
     if [ -e "${_mtrInc}" ] \
       && [ ! -L "${_mtrInc}/global.inc" ] \
       && [ -e "/data/conf/global.inc" ]; then

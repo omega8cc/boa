@@ -243,11 +243,28 @@ is persisted per instance (written at install, appended with its default on
 upgrade when absent).
 
 `boa cleanup purge oN` removes the account's group after its identities (the
-platform developer logins included); what
-the purge leaves on disk (a static store relocated under `/mnt`, the gems
-and npm trees) is handed to `root:root` first, and the group stays while any
-path still carries it. Removing a single sub-account leaves the group in
-place: it belongs to the account.
+platform developer logins included). It first sets the account's task
+dispatcher aside and ends whatever still runs as one of its identities (a
+PHP worker, a task, a shell), so no identity survives the purge by being
+busy. Removing a single sub-account leaves the group in place: it belongs to
+the account.
+
+What the purge leaves on disk (a static store relocated under `/mnt`, the
+gems and npm trees) is handed to `root:root` first, and the group stays
+while any path still carries it. A home that survives is parked in the
+purge's zombie directory, shut to root, and its directories and single-link
+files are handed to `root:root`.
+
+Anywhere else the purge leaves something
+of the account (the parked vhost files, its leftovers), a uid or gid that
+no longer names anything goes to root: the next account created could be
+given it. A file with more than one link keeps an owner or group that still
+names someone: it may share its inode with a living name elsewhere.
+
+In `/tmp`, `/var/tmp` and `/dev/shm`, where the kernel trusts what root owns,
+what the account's identities left is removed, before they are and again
+after, and only a directory of theirs that still holds someone else's
+entries goes to root.
 
 The purge removes the account's own web group `wg-oN` the same way, when
 there is one, together with root's record of it.
@@ -339,10 +356,12 @@ account is converted.
   account's group, `users` while unconverted; passed `--force`, because the
   destination's own `log/proxied.pid`, if any, is its demotion artefact
   from an earlier cutover — or, for stage2, a freeze left by a killed
-  import — not an account served from elsewhere), the
-  xmass legs map the source account's group onto the
-  destination account's group as they copy (so the 15-minute standby
-  autosync never lands a foreign gid), and none of them carry the
+  import — not an account served from elsewhere), every leg of
+  `xoct`, `xcopy` and `xmass` maps the source account's group onto the
+  destination account's group as it copies (asked of the destination: its
+  own group once converted there, `users` until then), so a run that stops
+  before its group pass, `xoct create` (which has none) and the 15-minute
+  standby autosync never land a foreign gid, and none of them carry the
   conversion marker -- it recorded the source box's
   conversion.
 
