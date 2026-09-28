@@ -218,6 +218,8 @@
       Valkey password, the global includes and the Drupal 10 and 11 core
       patches there only inside the real directories, never through a
       link, and xmass's two records there keep the 0600 xmass gives them.
+      The nightly pass now leaves the folder itself 0711, as the Octopus
+      upgrade does, instead of 0755.
 
     * The nginx web ban lists, the fleet maps, the Cloudflare and migration
       proxy address lists, the high-load switch, the Solr config copy and
