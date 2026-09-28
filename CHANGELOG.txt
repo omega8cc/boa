@@ -597,6 +597,11 @@
       served under their own per-vendor budget and exempt from the
       crawler-fleet refusal like the other allowed AI agents.
 
+    * ExaSearchBot, the crawler of Exa's search API for AI agents, joins
+      the AI search class as Exa documents it: served under its own
+      per-vendor budget and exempt from the crawler-fleet refusal like the
+      other allowed AI agents.
+
     * Cloudflare's address lists are fetched once a day, and at once only
       while the ranges file is missing; every self-update pass (every five
       minutes) used to fetch them again.
