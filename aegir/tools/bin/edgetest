@@ -130,19 +130,23 @@ _edge_ctrl_dir() {
 # current (pinned) directory, never in place: only a regular file (or, for
 # the append, a missing one) is edited. Its content is read without
 # following a link or blocking on a FIFO, the new content goes to a fresh
-# file created exclusively with the old file's mode (umask) and owner
-# (chown -h), and that file is renamed over the name. A missing file is made
-# as >> made it (root's, by root's umask). $1 = name, $2 = the line to append,
-# empty to remove the test lines.
+# file with the old file's owner, group and read/write bits, and that file
+# is renamed over the name. The fresh file is created, written, owned and
+# moded through one handle opened O_EXCL|O_NOFOLLOW (_ACCT_PUT_PL), never
+# chowned by name: a hard link renamed over the temp name in between would
+# have been handed to that owner. A missing file is made as >> made it
+# (root's, by root's umask), and nothing acts on it by name.
+# $1 = name, $2 = the line to append, empty to remove the test lines.
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
 _edge_ctrl_edit_here() {
   local _n="./${1}" _t="./.${1}.edgetest.$$.${RANDOM}"
-  local _own="" _m="" _sz=0 _um="" _old=""
+  local _own="" _m="" _sz=0 _old=""
   if [ -e "${_n}" ] || [ -L "${_n}" ]; then
     [ -f "${_n}" ] && [ ! -L "${_n}" ] || return 1
     read -r _own _m _sz <<< "$(stat -c '%u:%g %a %s' -- "${_n}" 2> /dev/null)"
-    [[ -n "${_own}" && "${_m}" =~ ^[0-7]+$ && "${_sz}" =~ ^[0-9]+$ ]] || return 1
+    [[ "${_own}" =~ ^[0-9]+:[0-9]+$ && "${_m}" =~ ^[0-7]+$ \
+      && "${_sz}" =~ ^[0-9]+$ ]] || return 1
     [ "${_sz}" -le 1048576 ] || return 1
-    _um="$(printf '%03o' $(( 0777 & ~0${_m} & 0777 )))"
     # the x keeps the trailing newlines a command substitution would drop
     _old="$(timeout 10 dd if="${_n}" iflag=nofollow,nonblock,fullblock \
       bs=1048576 count=1 status=none 2> /dev/null && printf x)" || return 1
@@ -151,13 +155,15 @@ _edge_ctrl_edit_here() {
     return 0
   fi
   rm -f -- "${_t}"
-  if ( [ -z "${_um}" ] || umask "${_um}"
-    if [ -n "${2}" ]; then
+  if { if [ -n "${2}" ]; then
       printf '%s%s\n' "${_old}" "${2}"
     else
       printf '%s' "${_old}" | sed '/# edge-policy-test$/d'
-    fi | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
-    && { [ -z "${_own}" ] || chown -h "${_own}" "${_t}"; } \
+    fi; } | if [ -n "${_own}" ]; then
+      perl -e "${_ACCT_PUT_PL}" "${_t}" "${_own%%:*}" "${_own#*:}" "${_m}"
+    else
+      dd of="${_t}" conv=excl status=none 2> /dev/null
+    fi \
     && mv -f -T -- "${_t}" "${_n}"; then
     return 0
   fi

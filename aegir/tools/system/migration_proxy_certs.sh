@@ -161,30 +161,27 @@ _mpc_cert_attrs_here() {
   _n=$(_mpc_cert_name_here "${1}") || return 1
   _mpc_plain_attrs_here "${_n}"
 }
-### A mode set on names in the current (pinned) directory through a handle
-### opened without following a link or blocking on a FIFO, only on a regular
-### file. Args: the mode (octal), the names.
-_MPC_FCHMOD_PL='use Fcntl;
-my $m = oct(shift @ARGV);
-for my $f (@ARGV) {
-  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
-  stat($h);
-  chmod($m, $h) if -f _;
-  close($h);
-}'
 ### The file $2 (a root-only staged copy) put at ./$1 in the current
-### (pinned) LE store: a fresh file created exclusively, given the owner and
-### mode $3 ("<uid>:<gid> <mode>"; empty leaves it root's, 0600) through
-### names and handles that never follow a link, then renamed over the name,
-### so a link or a FIFO put at the name is replaced, never followed or
-### opened.
+### (pinned) LE store: a fresh file given the owner and mode $3
+### ("<uid>:<gid> <mode>"; empty leaves it as root created it, 0600), then
+### renamed over the name, so a link or a FIFO put at the name is replaced,
+### never followed or opened. The fresh file is created, written, owned and
+### moded through one handle opened O_EXCL|O_NOFOLLOW (_ACCT_PUT_MODE_PL),
+### never by name: the store is the account's, and a hard link renamed over
+### the temp name in between would have been given that owner and mode.
+_ACCT_PUT_MODE_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0777, $h) or exit 1; close($h) or exit 1; exit 0'
 _mpc_put_here() {
-  local _t="./.${1}.put.$$.${RANDOM}" _own="" _mod="600"
+  local _t="./.${1}.put.$$.${RANDOM}" _own="" _mod="600" _uid=-1 _gid=-1
   [ -z "${3}" ] || read -r _own _mod <<< "${3}"
+  if [ -n "${_own}" ]; then
+    _uid="${_own%%:*}"
+    _gid="${_own#*:}"
+  fi
+  [[ "${_uid}" =~ ^(-1|[0-9]+)$ && "${_gid}" =~ ^(-1|[0-9]+)$ \
+    && "${_mod}" =~ ^[0-7]+$ ]] || return 1
   rm -f -- "${_t}"
-  if ( umask 077; dd if="${2}" of="${_t}" conv=excl status=none 2> /dev/null ) \
-    && { [ -z "${_own}" ] || chown -h "${_own}" "${_t}" 2> /dev/null; } \
-    && perl -e "${_MPC_FCHMOD_PL}" "${_mod}" "${_t}" 2> /dev/null \
+  if perl -e "${_ACCT_PUT_MODE_PL}" "${_t}" "${_uid}" "${_gid}" "${_mod}" \
+    2> /dev/null < "${2}" \
     && mv -f -T -- "${_t}" "./${1}"; then
     return 0
   fi
@@ -239,12 +236,13 @@ _mpc_restore_here() {
 ### (it gave each the mode of the dehydrated link it replaced) get the mode
 ### dehydrated writes them with, 0600, through handles that never follow a
 ### link. Any other mode is left as it is, so this changes nothing once
-### healed.
+### healed. A file with a second link is left alone: the store is the
+### account's, and it could put a hard link to another file at a name.
 _MPC_HEAL777_PL='use Fcntl;
 for my $f (@ARGV) {
   sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
   my @s = stat($h);
-  chmod(0600, $h) if @s && -f _ && ($s[2] & 07777) == 0777;
+  chmod(0600, $h) if @s && -f _ && $s[3] == 1 && ($s[2] & 07777) == 0777;
   close($h);
 }'
 _mpc_heal_here() {

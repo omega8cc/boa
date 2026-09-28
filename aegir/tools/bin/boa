@@ -77,6 +77,37 @@ _clean_pid_exit() {
   exit 1
 }
 
+# An account's log/, .tmp/, static/control and tools/le/.ctrl are its own
+# (in-octopus on an existing account upgrades it, tree and all): it can put
+# a link or a FIFO at any name there, or swap a directory on the way for a
+# link. Root acts on those names only inside the real directory: run "$@"
+# in $1 when every name below /data/disk on the path is a real directory;
+# once entered, ./name stays there whatever is swapped.
+_boa_in_real_dir() {
+  local _d="${1}" _want
+  shift
+  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)${_d#/data/disk}"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory with the content $2 (root's, 0644):
+# a fresh file created exclusively, then renamed over the name, so a link or
+# a FIFO put at the name is replaced, never followed or opened.
+_boa_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+# ./$1 in the current (pinned) directory: never through a link, never
+# blocked on a FIFO, at most 1 MiB.
+_boa_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
@@ -1254,7 +1285,7 @@ _octopus_install() {
 
     if [ ! -z "${_pXyc}" ] && [ ! -z "${_pXyi}" ]; then
       if [ -e "/data/disk/${_usEr}/log/octopus_log.txt" ]; then
-        echo "ProxySQL" > /data/disk/${_usEr}/log/use_proxysql.txt
+        _boa_in_real_dir "/data/disk/${_usEr}/log" _boa_put_here use_proxysql.txt ProxySQL
         echo "ProxySQL" > /data/conf/clstr.cnf
       fi
     fi
@@ -1997,7 +2028,7 @@ _init_setup() {
       _send_errors
       _clean_pid_exit _octopus_install
     else
-      rm -rf /data/disk/${_usEr}/.tmp/cache
+      _boa_in_real_dir "/data/disk/${_usEr}/.tmp" rm -rf -- ./cache
     fi
   fi
   if [ "${_outP}" = "logged" ]; then
@@ -2008,13 +2039,14 @@ _init_setup() {
     touch /run/octopus_install_run.pid
     sleep 3
     # Execute post-install octopus upgrade and exit
-    # created exclusively: a link at the name (static/control is the
-    # tenant's) is never followed
+    # created exclusively inside the real static/control: a link at the
+    # name, or on the way (static/control is the tenant's), is never
+    # followed; the other names go only inside their real directories too
     ( umask 022
-      dd of=/data/disk/${_usEr}/static/control/ssl-live-mode.info conv=excl \
-        status=none < /dev/null 2> /dev/null )
-    rm -f /data/disk/${_usEr}/tools/le/.ctrl/ssl-demo-mode.pid
-    rm -rf /data/disk/${_usEr}/.tmp/cache
+      _boa_in_real_dir "/data/disk/${_usEr}/static/control" \
+        dd of=./ssl-live-mode.info conv=excl status=none < /dev/null 2> /dev/null )
+    _boa_in_real_dir "/data/disk/${_usEr}/tools/le/.ctrl" rm -f -- ./ssl-demo-mode.pid
+    _boa_in_real_dir "/data/disk/${_usEr}/.tmp" rm -rf -- ./cache
     echo
     if [ ! -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
       echo "Invoking hosting-dispatch/hosting-tasks to complete the installation"
@@ -2050,7 +2082,7 @@ _init_setup() {
       _NOW=$(date +%y%m%d-%H%M%S)
       _NOW=${_NOW//[^0-9-]/}
       _UP_OCTOPUS_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-octopus-${_NOW}.log"
-      rm -rf /data/disk/${_usEr}/.tmp/cache
+      _boa_in_real_dir "/data/disk/${_usEr}/.tmp" rm -rf -- ./cache
       # Hand-over: this post-install octopus must not refuse on the very
       # marker this chain holds; it re-touches and finally clears it
       export _OCTOPUS_CHAINED=YES
@@ -2076,8 +2108,10 @@ _init_setup() {
         # no-retry path releases it before the final exit below
         touch /run/octopus_install_run.pid
         echo "Checking LE setup status..."
+        # log/ is the account's: read inside the real directory, bounded,
+        # never through a link or from a FIFO
         if [ -e "/data/disk/${_usEr}/log/domain.txt" ]; then
-          _hmFront=$(cat /data/disk/${_usEr}/log/domain.txt 2>&1)
+          _hmFront=$(_boa_in_real_dir "/data/disk/${_usEr}/log" _boa_read_here domain.txt)
           _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
         fi
         _leRoot="/data/disk/${_usEr}/tools/le"
@@ -2103,7 +2137,7 @@ _init_setup() {
           touch /run/octopus_install_run.pid
           echo "Checking LE setup status..."
           if [ -e "/data/disk/${_usEr}/log/domain.txt" ]; then
-            _hmFront=$(cat /data/disk/${_usEr}/log/domain.txt 2>&1)
+            _hmFront=$(_boa_in_real_dir "/data/disk/${_usEr}/log" _boa_read_here domain.txt)
             _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
           fi
           _leRoot="/data/disk/${_usEr}/tools/le"
@@ -3324,9 +3358,14 @@ _octopus_cleanup() {
         # until then. The marker is the operator's order and the account's
         # site data goes below regardless, so park them here: touching
         # log/CANCELLED and running this verb is the whole procedure.
+        # vhost.d is the account's: its names are moved from inside the real
+        # directory only, never through a link the account put on the way
+        # (a glob through one would move another tree's files).
         if [ "${_sites_nr}" != "0" ]; then
           mkdir -p ${_zombie_dir}vhost.d
-          mv -f /data/disk/${_usEr}/config/server_master/nginx/vhost.d/* ${_zombie_dir}vhost.d/ 2>/dev/null
+          ( cd -P -- "/data/disk/${_usEr}/config/server_master/nginx/vhost.d" 2>/dev/null \
+            && [ "$(pwd -P)" = "$(cd -P /data/disk 2>/dev/null && pwd -P)/${_usEr}/config/server_master/nginx/vhost.d" ] \
+            && mv -f -- ./* "${_zombie_dir}vhost.d/" 2>/dev/null )
           echo "parked ${_sites_nr} vhost file(s) of ${_usEr} in ${_zombie_dir}vhost.d/"
         fi
         [ -e "${_nginx_inc}/${_usEr}.conf" ] && mv -f "${_nginx_inc}/${_usEr}.conf" ${_zombie_dir}
@@ -3404,9 +3443,11 @@ _octopus_cleanup() {
             _usr_home=`echo $p | cut -d':' -f2 | awk '{ print $1}'`
             echo disabling chattr for ${_usr_name} in ${_usr_home}..
             chattr -i -R ${_usr_home}/ &> /dev/null
-            if [ -d "${_usr_home}/.drush/" ]; then
-              chattr -i ${_usr_home}/.drush/
-            fi
+            # on '.' inside the real .drush only: the name is the account's,
+            # and a trailing slash would clear the flag of a link's target
+            ( cd -P -- "${_usr_home}/.drush" 2> /dev/null \
+              && [ "$(pwd -P)" = "$(cd -P -- "${_usr_home}" 2> /dev/null && pwd -P)/.drush" ] \
+              && chattr -i . )
             rm -rf ${_usr_home}/.gnupg
             echo purging ${_usr_name}..
             if [ -d "${_usr_home}/static" ]; then
@@ -3565,6 +3606,17 @@ _archived_entries() {
   # $1 = the store; its real directories only, bare paths, NUL-separated
   find "$1" -mindepth 1 -maxdepth 1 -type d -print0 2> /dev/null | sort -z
 }
+_archived_rm_in() {
+  # $1 = the store (a resolved path), $2 = an entry name; the entry cleared
+  # of chattr +i and removed from inside the real store only: the tenant owns
+  # static/, and a name on the way swapped for a link after the listing must
+  # never lead the removal out of the store. rm's status; 1 when the store
+  # is not the directory it was
+  ( cd -P -- "${1}" 2> /dev/null && [ "$(pwd -P)" = "${1}" ] || exit 1
+    [ -d "./${2}" ] && [ ! -L "./${2}" ] || exit 0
+    chattr -R -i -- "./${2}" &> /dev/null
+    rm -rf -- "./${2}" )
+}
 _archived_age_days() {
   # $1 = an entry name, YYYYMMDDTHHMMSSZ-<pid>; prints its age in whole days
   local _s="${1%%-*}" _t
@@ -3630,8 +3682,7 @@ _archived_prune_user() {
     [ -L "${_e}" ] && continue
     _sites=$(find "${_e}" -mindepth 1 -maxdepth 1 -printf '%f ' 2> /dev/null)
     _kb=$(du -sk -- "${_e}" 2> /dev/null | cut -f1)
-    chattr -R -i -- "${_e}" &> /dev/null
-    rm -rf -- "${_e}"; _rc=$?
+    _archived_rm_in "${_d}" "${_n}"; _rc=$?
     if [ ! -e "${_e}" ] && [ ! -L "${_e}" ]; then
       echo "  removed ${_n} (${_age} days, ${_kb:-0} KB): ${_sites}"
       _cnt=$(( _cnt + 1 )); _tot=$(( _tot + ${_kb:-0} ))
@@ -3741,8 +3792,7 @@ _archived_heal() {
     _mark="/run/boa_archived_heal.stuck.${_u}.${_n}"
     _sites=$(find "${_e}" -mindepth 1 -maxdepth 1 -printf '%f ' 2> /dev/null)
     _kb=$(du -sk -- "${_e}" 2> /dev/null | cut -f1)
-    chattr -R -i -- "${_e}" &> /dev/null
-    rm -rf -- "${_e}"; _rc=$?
+    _archived_rm_in "${_e%/*}" "${_n}"; _rc=$?
     if [ ! -e "${_e}" ] && [ ! -L "${_e}" ]; then
       _line="$(date '+%F %T') removed ${_u} ${_n} (${_kb:-0} KB; its filesystem was ${_pct}% used, above ${_t}%): ${_sites}"
       _cnt=$(( _cnt + 1 )); _tot=$(( _tot + ${_kb:-0} ))

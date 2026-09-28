@@ -281,8 +281,15 @@ _frontend_module_status() {
 # hosting_server_services_from_post() + node_save() (hosting_server.module).
 # node_save queues the server verify that rewrites the alias and the config
 # tree. PHP kept 5.3-safe (array(), no short syntax) - source-estate floor.
+# The script is staged in a fresh root-owned directory (0711: aegir can reach
+# the file, nobody else can put or swap a name in it), never at a fixed /tmp
+# name another local user could create first and have handed to aegir.
 _flip_frontend_node() {
-  local _type="$1" _restart="$2" _php=/tmp/.a2b_stage1_flip.php
+  local _type="$1" _restart="$2" _tmp _php
+  _tmp="$(mktemp -d /tmp/.a2b_stage1_flip.XXXXXX)" \
+    || { _alrt "frontend flip failed: no private staging directory"; return 1; }
+  chmod 0711 "${_tmp}"
+  _php="${_tmp}/flip.php"
   cat > "${_php}" <<PHPEOF
 <?php
 \$nid = db_query("SELECT nid FROM {hosting_context} WHERE name = 'server_master'")->fetchField();
@@ -315,7 +322,7 @@ PHPEOF
   chown "${_AEGIR_USER}" "${_php}" 2>/dev/null
   local _out
   _out="$(_as_aegir "drush @hostmaster php-script ${_php}" 2>&1)"
-  rm -f "${_php}"
+  rm -rf "${_tmp}"
   echo "${_out}" >> "${_LOG}"
   case "${_out}" in
     *A2BOK*already*) return 2 ;;
@@ -337,7 +344,11 @@ preflight() {
   fi
   [[ "$(id -u 2>/dev/null)" = "0" ]] || _die "must run as root"
   mkdir -p "$(dirname "${_LOG}")" 2>/dev/null
-  touch "${_LOG}" 2>/dev/null || _LOG=/tmp/aegir2boa-stage1.log
+  # the fallback is a fresh root-only name, never a fixed /tmp one another
+  # local user could create first and have every log line appended to
+  touch "${_LOG}" 2>/dev/null \
+    || _LOG="$(mktemp /tmp/aegir2boa-stage1.log.XXXXXX 2>/dev/null)" \
+    || _LOG=/dev/null
   [[ -d "${_AEGIR_ROOT}/.drush" ]] || _die "no ${_AEGIR_ROOT}/.drush - not a vanilla Aegir box?"
   getent passwd "${_AEGIR_USER}" >/dev/null 2>&1 || _die "no ${_AEGIR_USER} user"
   _have curl || _die "curl required"
@@ -507,10 +518,13 @@ dryrun_flip() {
 # nginx -t only parses syntax, and a wrong/mis-pooled fastcgi target would
 # otherwise surface as fleet-wide 502 AFTER the handover. Probes the exact
 # fastcgi_pass the generated vhosts use, via a scratch-port nginx instance
-# (no :80 contention with the still-running apache).
+# (no :80 contention with the still-running apache). Its files live in a
+# fresh root-owned directory (0711: the pool user reaches the script, nobody
+# else can put or swap a name in it), never at fixed /tmp names another local
+# user could create first: root writes the config, starts nginx on it and
+# reads its pid and error log back.
 _fcgi_probe() {
-  local _pass _php=/tmp/.a2b_fcgi_probe.php _conf=/tmp/.a2b_nginx_probe.conf
-  local _pidf=/tmp/.a2b_nginx_probe.pid _errf=/tmp/.a2b_nginx_probe.err _port _out
+  local _pass _tmp _php _conf _pidf _errf _port _out
   local _got_s _want_s
 
   _pass="$(grep -rho 'fastcgi_pass [^;]*' \
@@ -530,6 +544,13 @@ _fcgi_probe() {
     ss -ltn 2>/dev/null | grep -q ":${_port} " || break
   done
 
+  _tmp="$(mktemp -d /tmp/.a2b_nginx_probe.XXXXXX)" \
+    || { _alrt "probe nginx instance failed to start (no private staging directory)"; return 1; }
+  chmod 0711 "${_tmp}"
+  _php="${_tmp}/fcgi_probe.php"
+  _conf="${_tmp}/nginx_probe.conf"
+  _pidf="${_tmp}/nginx_probe.pid"
+  _errf="${_tmp}/nginx_probe.err"
   # the payload REPORTS its interpreter: a socket name can lie about the
   # binary its pool runs, and only the answer proves which PHP replied
   printf '<?php echo "A2B-FCGI-" . PHP_MAJOR_VERSION . "." . PHP_MINOR_VERSION;\n' \
@@ -560,14 +581,14 @@ http {
 }
 NGEOF
   if ! nginx -c "${_conf}" >>"${_LOG}" 2>&1; then
-    rm -f "${_php}" "${_conf}" "${_errf}"
+    rm -rf "${_tmp}"
     _alrt "probe nginx instance failed to start (see ${_LOG})"
     return 1
   fi
   _out="$(curl -s -m 15 "http://127.0.0.1:${_port}/" 2>/dev/null)"
   nginx -c "${_conf}" -s quit >>"${_LOG}" 2>&1 || { [[ -f "${_pidf}" ]] && kill "$(cat "${_pidf}")" 2>/dev/null; }
   tail -5 "${_errf}" >> "${_LOG}" 2>/dev/null
-  rm -f "${_php}" "${_conf}" "${_errf}"
+  rm -rf "${_tmp}"
   case "${_out}" in
     A2B-FCGI-[0-9]*)
       _got_s="${_out#A2B-FCGI-}"
@@ -985,18 +1006,24 @@ dryrun_revert() {
   # rides in through apache2.conf's directory includes, and doubling it
   # would test a config apache will never run
   if [[ -e "${_aconf}" && -e /etc/apache2/apache2.conf ]]; then
-    local _tc=/tmp/.a2b_revert_configtest.conf
-    printf 'Include /etc/apache2/apache2.conf\n' > "${_tc}"
-    if [[ ! -e /etc/apache2/conf-enabled/aegir.conf && ! -e /etc/apache2/conf.d/aegir.conf ]]; then
-      printf 'Include %s\n' "${_aconf}" >> "${_tc}"
+    # a fresh root-only name (mktemp, 0600), never a fixed /tmp one another
+    # local user could create first and edit before apache2 -t parses it as
+    # root; a wrapper that cannot be made fails the test, as before
+    local _tc
+    if _tc="$(mktemp /tmp/.a2b_revert_configtest.XXXXXX)"; then
+      printf 'Include /etc/apache2/apache2.conf\n' > "${_tc}"
+      if [[ ! -e /etc/apache2/conf-enabled/aegir.conf && ! -e /etc/apache2/conf.d/aegir.conf ]]; then
+        printf 'Include %s\n' "${_aconf}" >> "${_tc}"
+      fi
     fi
     # shellcheck disable=SC1091
-    if ( . /etc/apache2/envvars 2>/dev/null; apache2 -t -f "${_tc}" ) >>"${_LOG}" 2>&1; then
+    if [[ -n "${_tc}" ]] \
+      && ( . /etc/apache2/envvars 2>/dev/null; apache2 -t -f "${_tc}" ) >>"${_LOG}" 2>&1; then
       _info "apache config (with aegir include) parses"
     else
       _alrt "apache configtest with the aegir include FAILED - the tree is damaged; revert would go dark"; _fail=1
     fi
-    rm -f "${_tc}"
+    [[ -n "${_tc}" ]] && rm -f "${_tc}"
   fi
 
   local _name _uri _c _cs

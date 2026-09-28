@@ -103,11 +103,19 @@ _oct_up_mark_here() {
 # account can change under it. The clone runs in that directory with the
 # user's own home (/data/disk/<oN>) and the system PATH, whatever the
 # launcher's environment holds; a clone that did not land is reported, and
-# the pass's own provision fetch (AegirSetupB) tries again.
+# the pass's own provision fetch (AegirSetupB) tries again. The clone is
+# then handed over entry by entry through a handle, never by name: the
+# instance user writes sys/ while it clones, and a hard link it put there
+# would have been handed over by chown -R. Directories and single-link
+# regular files are changed; a hard-linked file, a symlink, a FIFO or a
+# socket is left alone.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
 _oct_drush_reset_here() {
-  local _want _own
+  local _want _own _uid _gid
   _want="$(pwd -P)/sys"
   _own="${_octUsr}:$(_acct_group "${_octUsr}")"
+  _uid=$(id -u -- "${_octUsr}" 2> /dev/null)
+  _gid=$(getent group "${_own#*:}" 2> /dev/null | cut -d: -f3)
   rm -rf -- ./sys ./xts ./usr ./provision ./drush_make
   mkdir -p -- ./sys ./xts ./usr
   ( cd -P -- ./sys 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] || exit 0
@@ -115,7 +123,10 @@ _oct_drush_reset_here() {
     su -s /bin/bash "${_octUsr}" \
       -c "export HOME=/data/disk/${_octUsr} PATH=/usr/local/bin:/usr/bin:/bin \
         && ${_gCb} ${_bRnh} ${_gitHub}/provision.git ./provision" &> /dev/null
-    chown -R "${_own}" .
+    if [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]]; then
+      env PATH=/usr/local/bin:/usr/bin:/bin find . \
+        -execdir perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" {} +
+    fi
     [ -d ./provision ] && [ ! -L ./provision ] \
       || echo "ALRT: provision was not cloned into ${_want} as ${_octUsr}" )
 }

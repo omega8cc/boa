@@ -313,31 +313,37 @@ _read_file() {
   _in_real_dir "${1%/*}" _read_here "${1##*/}"
 }
 
+# stdin as the fresh file $1 (a name that must not exist), handed to the
+# numeric uid $2 and gid $3 with the read/write bits of the mode $4, all
+# through the one handle that created it (O_EXCL|O_NOFOLLOW), so nothing is
+# ever chowned or chmoded by name in a directory an account can write (a
+# hard link renamed over the temp name before a chown by name would hand the
+# linked file to that owner).
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+
 # ./$1 in the current (pinned) directory put at ./$2 through sed "${@:3}":
 # only a regular file under 1 MiB is read, never through a link or into a
-# FIFO; the result is a fresh file with the source's numeric owner (chown
-# -h: an owner with no name on this box still lands, and a failed chown is
-# not fatal) and mode (by umask, never a chmod by name), renamed over ./$2.
-# For a plain file this writes what sed -i wrote, without its reach through
-# a link the account put at the name.
+# FIFO; the result is a fresh file with the source's numeric owner and the
+# read/write bits of its mode, set through its handle (_ACCT_PUT_PL), then
+# renamed over ./$2. For a plain file this writes what sed -i wrote, without
+# its reach through a link the account put at the name.
 _sed_to() {
-  local _s="${1}" _n="${2}" _st _own _m _sz _ft _t
+  local _s="${1}" _n="${2}" _st _uid _gid _m _sz _ft _t
   shift 2
-  _st="$(LC_ALL=C stat -c '%u:%g %a %s %F' -- "./${_s}" 2> /dev/null)" || return 1
+  _st="$(LC_ALL=C stat -c '%u %g %a %s %F' -- "./${_s}" 2> /dev/null)" || return 1
   case "${_st}" in
     *" regular file"|*" regular empty file") ;;
     *) return 1 ;;
   esac
-  read -r _own _m _sz _ft <<< "${_st}"
+  read -r _uid _gid _m _sz _ft <<< "${_st}"
   [ "${_sz}" -lt 1048576 ] || return 1
   _t="./.${_n}.rah.$$.${RANDOM}"
   rm -f -- "${_t}"
   if ( set -o pipefail
-    umask "$(printf '%03o' $(( 0777 & ~0${_m} )))"
     _read_here "${_s}" | sed "$@" \
-      | dd of="${_t}" conv=excl status=none 2> /dev/null ); then
-    chown -h "${_own}" "${_t}" 2> /dev/null
-    mv -f -T -- "${_t}" "./${_n}" && return 0
+      | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" "${_m}" ) \
+    && mv -f -T -- "${_t}" "./${_n}"; then
+    return 0
   fi
   rm -f -- "${_t}"
   return 1
@@ -357,13 +363,24 @@ _sed_here() {
 # static/files, backups onto the files store, a site's files/ and private/,
 # a platform reached through a link. Nothing, rc 1, for anything else.
 _own_real_path() {
-  local _r _o
+  local _r _o _m
   _r="$(readlink -e -- "${1}" 2> /dev/null)" && [ -d "${_r}" ] || return 1
   _o="$(readlink -e -- "${_AEGIR_ROOT}" 2> /dev/null)" || return 1
   case "${_r}/" in
     "${_o}"/*) ;;
     /mnt/?*/files/"${_AEGIR_USER}"/static/files/*)
       [[ "${_AEGIR_ROOT}" == /data/disk/?* ]] || return 1
+      # the store rule the nightly keeps: the mount part holds no files/
+      # or static/ of its own (another account's store is never taken
+      # for this one's), and the path only plain characters
+      case "${_r}" in
+        *[!A-Za-z0-9._/-]*) return 1 ;;
+      esac
+      _m="${_r}/"
+      _m="${_m%%/files/"${_AEGIR_USER}"/static/files/*}"
+      case "${_m}" in
+        */files/*|*/static/*) return 1 ;;
+      esac
     ;;
     *) return 1 ;;
   esac
@@ -427,12 +444,26 @@ _links_here() {
   return 0
 }
 
-# ./$1 in the current (pinned) directory made a link to $2 and handed to the
-# numeric owner $3 when given (chown -h: the link, never what it names).
+# ./$1 in the current (pinned) directory made a link to $2, owned by the
+# numeric owner $3 (uid:gid) when given: the link is made by that owner
+# under a fresh name and renamed over ./$1, so nothing is handed over by
+# name (a hard link renamed over the name before a chown -h would be). A
+# link root makes when that owner cannot write here: nginx never checks a
+# link's owner.
 _relink_here() {
-  ln -sfn -T -- "${2}" "./${1}" || return 1
-  [ -z "${3}" ] || chown -h -- "${3}" "./${1}" 2> /dev/null
-  return 0
+  local _t="./.${1}.rah.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if [[ "${3}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${3%%:*}" != 0 ]; then
+    setpriv --reuid="${3%%:*}" --regid="${3#*:}" --clear-groups \
+      ln -s -- "${2}" "${_t}" 2> /dev/null
+  fi
+  if [ ! -L "${_t}" ]; then
+    rm -f -- "${_t}"
+    ln -s -- "${2}" "${_t}" || return 1
+  fi
+  mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
 }
 
 # ./$1 in the current (pinned) directory, when a regular file under 1 MiB,
