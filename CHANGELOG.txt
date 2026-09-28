@@ -218,12 +218,14 @@
       Valkey password, the global includes and the Drupal 10 and 11 core
       patches there only inside the real directories, never through a
       link, and xmass's two records there keep the 0600 xmass gives them.
+
     * The nginx web ban lists, the fleet maps, the Cloudflare and migration
       proxy address lists, the high-load switch, the Solr config copy and
       edgetest's trust file are read and written in /data/conf only
       inside the real directory, through fresh files renamed into place,
-      never through a link left there; the Solr config copy is made afresh
-      once on every box.
+      never through a link or a directory left there; the Solr config
+      copy is made afresh once on every box. The migration proxy trust
+      tool now fails loudly when it cannot record an address.
 
     * The shared Backdrop redis module, the Backdrop bundle's webform and
       bee are root's as soon as BOA unpacks them: their archives recorded
