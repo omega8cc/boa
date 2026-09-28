@@ -91,8 +91,8 @@
       dot.
 
     * xoct, xcopy and xmass map an account's own group onto the target
-      account's on every leg as they copy, and on a rename xoct and xcopy
-      map each of its identities onto the new name's, so a run that stops
+      account's on every leg as they copy, and on a rename xoct maps each
+      of its identities onto the new name's, so a run that stops
       before its closing pass, xoct create, the standby autosync and the
       cutover's last pass no longer leave files in another account's
       group, or owned by an account the target has under the old name. An
@@ -116,6 +116,13 @@
       writable by all, the next time the cache probe failed. The flag is
       now only read, replaced and removed by name, and root keeps the
       directory its own.
+
+    * xcopy no longer copies an account under a new name: it rewrote no
+      reference to the old name, so the copy's panel configuration kept
+      pointing into the old account's files, which on the target could
+      be another account's. A rename is refused before the account is
+      read or the target contacted; xoct is the tool that moves an account
+      under a new name.
 
     * Root no longer follows a link, or opens a FIFO, that an account
       puts at a name in its own directories: static/control, and the
