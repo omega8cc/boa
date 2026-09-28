@@ -1849,11 +1849,22 @@ _solr_conf_path_real() {
 }
 # /data/conf/solr replaced by a fresh copy of root's own Solr config store,
 # inside the real /data/conf (the current, pinned directory): a link left at
-# solr is removed, never followed, and the new tree is made by root.
+# solr is removed, never followed, and the new tree is made by root. It is
+# built aside and renamed into place, so nothing left at solr can make the
+# copy land inside it, and it is marked only once it is there.
 _solr_conf_refresh_here() {
+  local _n="./.solr.new.$$"
+  rm -rf -- "${_n}"
+  if ! cp -af /var/xdrago/conf/solr "${_n}"; then
+    rm -rf -- "${_n}"
+    return 1
+  fi
+  rm -f -- "${_n}"/.ctrl*
   rm -rf -- ./solr
-  cp -af /var/xdrago/conf/solr ./solr || return 1
-  rm -f -- ./solr/.ctrl*
+  if [ -e ./solr ] || [ -L ./solr ] || ! mv -T -- "${_n}" ./solr; then
+    rm -rf -- "${_n}"
+    return 1
+  fi
   touch "./solr/.ctrl.root.${_tRee}.${_xSrl}.pid"
 }
 

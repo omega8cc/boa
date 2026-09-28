@@ -83,10 +83,14 @@ _ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>;
 # The file $1 (root's own, outside /data/conf) put as ./$2 in the current
 # (pinned) directory, root's and 0644: written under a fresh name through one
 # handle (_ACCT_PUT_PL), then renamed over the name, so a link or a FIFO at
-# the name is replaced, never written through or opened.
+# the name is replaced, never written through or opened; a directory there,
+# which the rename cannot replace, is removed first.
 _conf_put_file_here() {
   local _t="./.${2}.put.$$.${RANDOM}"
   rm -f -- "${_t}"
+  if [ -d "./${2}" ] && [ ! -L "./${2}" ]; then
+    rm -rf -- "./${2}"
+  fi
   if perl -e "${_ACCT_PUT_PL}" "${_t}" 0 0 644 < "${1}" \
     && mv -f -T -- "${_t}" "./${2}"; then
     return 0

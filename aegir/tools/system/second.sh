@@ -405,12 +405,13 @@ _nginx_high_load_on() {
   local _load_period="$3"
   if ! _acct_in_real_dir /data/conf \
     _conf_rename_here nginx_high_load_off.conf nginx_high_load.conf; then
-    # Not a regular file (a link or a FIFO left at the off name) is never the
-    # switch's own: it goes, so the next barracuda pass puts a fresh one.
+    # Not a regular file (a link, a FIFO or a directory left at the off name)
+    # is never the switch's own: it goes, so the next barracuda pass puts a
+    # fresh one.
     if [ -L /data/conf/nginx_high_load_off.conf ] \
       || { [ -e /data/conf/nginx_high_load_off.conf ] \
         && [ ! -f /data/conf/nginx_high_load_off.conf ]; }; then
-      _acct_in_real_dir /data/conf rm -f -- ./nginx_high_load_off.conf
+      _acct_in_real_dir /data/conf rm -rf -- ./nginx_high_load_off.conf
     fi
     return 0
   fi
@@ -426,11 +427,19 @@ _nginx_high_load_on() {
 
 # Function to disable nginx high load configuration
 _nginx_high_load_off() {
+  # A directory at the off name would refuse the rename below; like a link or
+  # a FIFO there, it is never the switch's own and goes first.
+  if [ -L /data/conf/nginx_high_load_off.conf ] \
+    || { [ -e /data/conf/nginx_high_load_off.conf ] \
+      && [ ! -f /data/conf/nginx_high_load_off.conf ]; }; then
+    _acct_in_real_dir /data/conf rm -rf -- ./nginx_high_load_off.conf
+  fi
   if ! _acct_in_real_dir /data/conf \
     _conf_rename_here nginx_high_load.conf nginx_high_load_off.conf; then
-    # Not a regular file (a link left at the live name) is never the switch's
-    # own: it goes, so protection is really off and the check stops firing.
-    _acct_in_real_dir /data/conf rm -f -- ./nginx_high_load.conf || return 0
+    # Not a regular file (a link, a FIFO or a directory left at the live name)
+    # is never the switch's own: it goes, so protection is really off and the
+    # check stops firing.
+    _acct_in_real_dir /data/conf rm -rf -- ./nginx_high_load.conf || return 0
   fi
   service nginx reload &> /dev/null
   local _log_message
