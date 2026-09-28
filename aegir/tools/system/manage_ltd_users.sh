@@ -522,14 +522,23 @@ _desymlink_planted() {
 # link at its own name nor lands in a directory (-T), the old name is removed
 # first, and the mode is set when the file is created, never by name afterwards
 # (umask, no preserved mode). The directory holding the copy is the account's
-# too: callers run both inside _ltd_in_real_dir. $1 = main, $2 = copy.
+# too: callers run both inside _ltd_in_real_dir. The main alias is copied from
+# inside its own real directory (oN owns ~/.drush and can swap it for a link
+# to another account's aliases), and the copy lands in the caller's through
+# this shell's /proc cwd, which stays on that directory whatever is renamed
+# meanwhile. $1 = main, $2 = copy.
 _ltd_alias_same() {
   [ -f "${2}" ] && [ ! -L "${2}" ] \
     && timeout -k 5 10 diff -w -B "${2}" "${1}" > /dev/null 2>&1
 }
 _ltd_alias_put() {
+  local _to="/proc/${BASHPID}/cwd"
+  [ -d "${_to}/" ] || return 1
+  _ltd_in_real_dir "${1%/*}" _ltd_alias_put_from "${1##*/}" "${_to}/${2#./}"
+}
+_ltd_alias_put_from() {
   ( umask 0337
-    cp -aT --no-preserve=mode --remove-destination "${1}" "${2}" ) 2> /dev/null
+    cp -aT --no-preserve=mode --remove-destination "./${1}" "${2}" ) 2> /dev/null
 }
 # Run "$@" inside the real directory $1, never one reached through a link an
 # account planted on the way. Below /home and /data/disk (root's) every name
@@ -560,9 +569,76 @@ _ltd_stamp_put() {
   rm -f -- "./${1}"
   printf '%s\n' "${2}" | dd of="./${1}" conv=excl status=none 2> /dev/null
 }
+# A file root puts for an account in a directory the account can write,
+# created, written, owned and moded through one handle opened
+# O_EXCL|O_NOFOLLOW (a link put at the name is never followed), so nothing
+# is chowned or chmoded by a name the account can swap: a hard link renamed
+# over the name between a create and a chown by name would hand the file it
+# names to the account. _ACCT_PUT_PL keeps the read/write bits only, as dd
+# under a umask gave them; _ACCT_PUT_MODE_PL keeps the execute bits too.
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+_ACCT_PUT_MODE_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0777, $h) or exit 1; close($h) or exit 1; exit 0'
+# stdin as ./$1 in the current (pinned) directory, handed to uid $2 and gid
+# $3 with the mode $4 (octal) under a fresh temp name, then renamed over the
+# name: a link or a FIFO put at the name is replaced, never followed or
+# opened. $5 = x keeps the execute bits of the mode.
+_ltd_put_ids_here() {
+  local _t="./.${1}.put.$$.${RANDOM}" _pl="${_ACCT_PUT_PL}"
+  [ "${5}" = "x" ] && _pl="${_ACCT_PUT_MODE_PL}"
+  [[ "${2}" =~ ^[0-9]+$ && "${3}" =~ ^[0-9]+$ && "${4}" =~ ^[0-7]+$ ]] \
+    || return 1
+  rm -f -- "${_t}"
+  if perl -e "${_pl}" "${_t}" "${2}" "${3}" "${4}" \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# The same, handed to $2 = owner:group, both resolved to numbers first. $3 =
+# mode, $4 = x as above. Where either name does not resolve the file stays
+# root's, as a failed chown by name left it (status 1).
+_ltd_put_own_here() {
+  local _uid _gid
+  _uid=$(id -u -- "${2%%:*}" 2> /dev/null)
+  _gid=$(getent group "${2#*:}" 2> /dev/null | cut -d: -f3)
+  if [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]]; then
+    _ltd_put_ids_here "${1}" "${_uid}" "${_gid}" "${3}" "${4}"
+    return
+  fi
+  _ltd_put_ids_here "${1}" 0 0 "${3}" "${4}"
+  return 1
+}
+# True in a pinned root-owned directory that holds nothing but alias copies,
+# as an earlier release left a sub-user's ~/.drush (made by root, copied into
+# with cp -a, which keeps the owner of the instance's alias: root or the
+# instance user): every entry a regular file with one link, named
+# *.alias.drushrc.php and owned by either. A subdirectory, a link, a hard
+# link, any other name or owner, or a failed walk refuses it. For the
+# ~/.drush reset only. $1 = the instance user.
+_ltd_drush_copies_here() {
+  local _uid="" _bad
+  [[ "$(stat -c %u .)" = "0" ]] || return 1
+  [[ -n "${1}" ]] && _uid=$(id -u -- "${1}" 2> /dev/null)
+  [[ "${_uid}" =~ ^[0-9]+$ ]] || _uid=0
+  _bad=$(find . -mindepth 1 -maxdepth 1 \( ! -type f -o -links +1 \
+    -o ! -name '*.alias.drushrc.php' -o \( ! -uid 0 ! -uid "${_uid}" \) \) \
+    -print -quit 2> /dev/null) || return 1
+  [[ -z "${_bad}" ]]
+}
 # The reset of an account's ~/.drush, run inside the real directory: its
-# globs expand there, and usr/ is entered the same way. $1 = hosted YES|NO.
+# globs expand there, and usr/ is entered the same way. The directory is
+# handed to the account and made 02755 first, from inside itself, and only
+# when it is the account's own, the empty one root has just made
+# (_ltd_mine_here) or an earlier release's root-made one of alias copies
+# (_ltd_drush_copies_here): any other root-owned directory of the home
+# renamed onto the name is neither emptied nor handed over. Done before usr/
+# is made, which would leave a new directory no longer empty. $1 = hosted
+# YES|NO, $2 = owner:group, $3 = the instance user.
 _ltd_drush_strip() {
+  _ltd_mine_here "${2%%:*}" || _ltd_drush_copies_here "${3}" || return 1
+  chown -h "${2}" . || return 1
+  chmod 02755 . || return 1
   if [ "${1}" = "YES" ]; then
     find . -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2> /dev/null
   else
@@ -603,16 +679,18 @@ _ltd_drush_stamp_put() {
 # A mode set on names in a directory an account owns, never through a link:
 # each name is opened without following one and without blocking on a FIFO,
 # checked to be the expected type and changed through the open handle, so a
-# name swapped for a link at any moment is refused, not followed. Run it
-# inside _ltd_in_real_dir or from find -execdir: O_NOFOLLOW covers the last
-# name only. Args: f|d (regular file or directory), the mode (octal, or
-# +octal to add bits), the names.
+# name swapped for a link at any moment is refused, not followed. A regular
+# file is changed only while it has a single link: a hard link the account
+# put there shares its file with a name elsewhere, which would get the mode
+# too. Run it inside _ltd_in_real_dir or from find -execdir: O_NOFOLLOW
+# covers the last name only. Args: f|d (regular file or directory), the mode
+# (octal, or +octal to add bits), the names.
 _LTD_FCHMOD_PL='use Fcntl;
 my ($t, $m) = (shift @ARGV, shift @ARGV);
 for my $f (@ARGV) {
   sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
   my @s = stat($h);
-  if (($t eq "f" && -f _) || ($t eq "d" && -d _)) {
+  if (($t eq "f" && -f _ && $s[3] == 1) || ($t eq "d" && -d _)) {
     chmod($m =~ /^\+/ ? (($s[2] & 07777) | oct(substr($m, 1))) : oct($m), $h);
   }
   close($h);
@@ -630,6 +708,54 @@ _ltd_chmod_nofollow_here() (
   shopt -s dotglob nullglob
   _ltd_chmod_nofollow "${1}" ./*
 )
+# A tree walk that hands names over (find -execdir, inside a pinned
+# directory): each name is opened without following a link or blocking on a
+# FIFO, and only a directory or a single-link regular file is changed,
+# through its handle. A hard link planted in the tree is never handed over,
+# and a link, a FIFO or a socket is left alone (nothing checks who owns a
+# link).
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+# chown -h [-R] <owner:group> <names> the way _ACCT_REOWN_PL hands names
+# over, in the current (pinned) directory: the owner and group taken as
+# numbers or resolved to numbers first (one that does not resolve is
+# refused), then each ./name, or with -R every entry at and below each name,
+# walked by find (any find tests after the names apply first) and handed over
+# from -execdir, one ./name in the directory find holds.
+_ltd_reown_here() {
+  local _r="" _uid _gid
+  if [ "${1}" = "-R" ]; then
+    _r="-R"
+    shift
+  fi
+  _uid="${1%%:*}"
+  _gid="${1#*:}"
+  [[ "${_uid}" =~ ^[0-9]+$ ]] || _uid=$(id -u -- "${_uid}" 2> /dev/null)
+  [[ "${_gid}" =~ ^[0-9]+$ ]] \
+    || _gid=$(getent group "${_gid}" 2> /dev/null | cut -d: -f3)
+  [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]] || return 1
+  shift
+  if [ -n "${_r}" ]; then
+    env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \
+      -execdir perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" {} +
+  else
+    perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" "$@"
+  fi
+}
+# "$@" run in the current (pinned) directory as $1 (owner:group, resolved to
+# numbers first) with the login's own supplementary groups and nothing of
+# root's: what it writes is the account's own from the start, so root never
+# writes through a path the account can change under it. Its own groups,
+# not none: the system binaries are root:users 0750, and a login whose
+# primary group is its instance's reaches them through its 'users'
+# membership only.
+_ltd_as_owner_here() {
+  local _uid _gid
+  _uid=$(id -u -- "${1%%:*}" 2> /dev/null)
+  _gid=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
+  [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]] || return 1
+  shift
+  setpriv --reuid="${_uid}" --regid="${_gid}" --init-groups "$@"
+}
 # The HTTP basic auth password files and their directory, as the Aegir task
 # expects them: passwords.d the account's, in the web server's group, setgid
 # and 02710 (nginx traverses, no other account does), each file 0640 in that
@@ -717,18 +843,27 @@ _ltd_dot_dir() {
   mkdir -p "${1}"
   _ltd_in_real_dir "${1}" _ltd_own_dir_here "${3}" "${2}" NO
 }
-# ~/.lhistory, inside the real home: created exclusively (0644 by umask) and
-# handed over only when it is the empty root file just made. $1 = owner:group.
+# ~/.lhistory, inside the real home: created exclusively at its own name
+# (never replacing one there, a link included), empty and 0644, and handed
+# over through the handle that created it, never by the name afterwards.
+# Where the owner does not resolve it stays root's. $1 = owner:group.
 _ltd_lhistory_put() {
-  ( umask 022; dd of=./.lhistory conv=excl status=none < /dev/null 2> /dev/null ) || return 0
-  [ -f ./.lhistory ] && [ ! -L ./.lhistory ] && [ ! -s ./.lhistory ] \
-    && [ "$(stat -c %u ./.lhistory)" = "0" ] && chown -h "${1}" ./.lhistory
+  local _uid _gid
+  _uid=$(id -u -- "${1%%:*}" 2> /dev/null)
+  _gid=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
+  if [[ ! "${_uid}" =~ ^[0-9]+$ || ! "${_gid}" =~ ^[0-9]+$ ]]; then
+    _uid=0
+    _gid=0
+  fi
+  perl -e "${_ACCT_PUT_PL}" ./.lhistory "${_uid}" "${_gid}" 0644 \
+    < /dev/null 2> /dev/null
   return 0
 }
-# ~/.bazaar's config, inside the real directory. $1 = owner:group.
+# ~/.bazaar's config, inside the real directory, put as the account's own
+# (_ltd_put_own_here, 0644). $1 = owner:group.
 _ltd_bzr_conf() {
-  ( umask 022; _ltd_stamp_put bazaar.conf "ignore_missing_extensions=True" ) \
-    && chown -h "${1}" ./bazaar.conf
+  printf '%s\n' "ignore_missing_extensions=True" \
+    | _ltd_put_own_here bazaar.conf "${1}" 0644
   chmod 700 .
 }
 # An Aegir identity's Drush 8 files inside its real ~/.drush: 0440, the
@@ -947,24 +1082,27 @@ _ltd_rm_in() {
   _ltd_in_real_dir "${_d}" _ltd_rm_here "$@"
 }
 _ltd_unlock_here() {
-  # +i cleared on regular files only (chattr also refuses a link given by
-  # its bare path); names = the args
+  # +i cleared on single-link regular files only, through a handle
+  # (_ACCT_CHATTR_PL): never through a link, and never on the file a hard
+  # link put at the name shares; names = the args
   local _f
   for _f in "$@"; do
-    [ -f "./${_f}" ] && [ ! -L "./${_f}" ] && chattr -i "./${_f}" &> /dev/null
+    [ -f "./${_f}" ] && [ ! -L "./${_f}" ] \
+      && perl -e "${_ACCT_CHATTR_PL}" - "./${_f}" &> /dev/null
   done
   return 0
 }
 # The tenant's static/control: the main login owns it (and any co-tenant can
 # replace the name in 02775 static/). A file root writes for the main login
-# is handed to it by chown -h; root's stamps stay root's.
+# is put as the main login's own through its handle (_ltd_put_own_here),
+# never chowned by name; root's stamps stay root's.
 _ltd_ctrl_read() {
   # $1 = name; prints its content, empty for a link, a FIFO or nothing
   _ltd_read_in "${_dscUsr}/static/control" "${1}"
 }
 _ltd_ctrl_put_here() {
-  ( umask 022; _ltd_stamp_put "${1}" "${2}" ) \
-    && chown -h "${_USER}.ftp:${_usrGroup}" "./${1}"
+  printf '%s\n' "${2}" \
+    | _ltd_put_own_here "${1}" "${_USER}.ftp:${_usrGroup}" 0644
 }
 _ltd_ctrl_put() {
   # $1 = name, $2 = content: a file of the main login's
@@ -980,14 +1118,16 @@ _ltd_ctrl_rm() {
 }
 _ltd_ctrl_info_owner() {
   # a regular file with one link only: a hard link the tenant made to a file
-  # of someone else's is never handed over
-  find . -maxdepth 1 -name '*.info' -type f -links 1 \
-    -exec chown -h "${_USER}.ftp:${_usrGroup}" {} + 2> /dev/null
+  # of someone else's is never handed over; find's test is only a first cut,
+  # the handle is checked again when it is handed over (_ltd_reown_here)
+  _ltd_reown_here -R "${_USER}.ftp:${_usrGroup}" . -maxdepth 1 \
+    -name '*.info' -type f -links 1 2> /dev/null
 }
 # The control directory on the first pass of a serial, inside the real
 # directory: the README put in place as a fresh 0644 file, the tree handed to
-# the main login (chown -R never follows a link), old stamps swept and this
-# serial's written exclusively.
+# the main login by a walk that changes a directory or a single-link regular
+# file through its handle (_ltd_reown_here), never a hard link the main login
+# put in the tree, old stamps swept and this serial's written exclusively.
 _ltd_ctrl_init() {
   chmod 755 .
   if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
@@ -995,7 +1135,7 @@ _ltd_ctrl_init() {
       cp -T --no-preserve=mode --remove-destination \
         /var/xdrago/conf/control-readme.txt ./README.txt ) &> /dev/null
   fi
-  chown -R "${_USER}.ftp:${_usrGroup}" .
+  _ltd_reown_here -R "${_USER}.ftp:${_usrGroup}" .
   rm -f -- ./.ctrl.*
   _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
 }
@@ -1011,29 +1151,63 @@ _ltd_clients_sweep() {
   done
   return 0
 }
+# The immutable flag set (+) or cleared (-) on a directory, or on a regular
+# file with a single link, through a handle opened without following a link
+# or blocking on a FIFO: a hard link, a link, a FIFO or anything else is
+# refused (status 1). Args: + or -, then the names.
+_ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or do { $rc = 1; next }; my @s = stat($h); if (@s && (-d _ || (-f _ && $s[3] == 1))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); $fl = $op eq "+" ? ($fl | 0x10) : ($fl & ~0x10); ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } else { $rc = 1 } close($h); } exit $rc'
+# The real directory ./$2 of the current (pinned) one given (+) or cleared
+# of (-) the immutable flag from inside itself ($1): a directory is never a
+# hard link, and a name swapped for anything else is never entered.
+_ltd_chattr_sub_here() {
+  local _h
+  _h="$(pwd -P)"
+  ( cd -P -- "./${2}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${2}" ] \
+    && chattr "${1}i" . ) &> /dev/null
+  return 0
+}
+# Every entry of the current (pinned) directory given (+) or cleared of (-)
+# the immutable flag ($1), as chattr ${1}i ./* gave it: each real directory
+# from inside itself, the regular files through _ACCT_CHATTR_PL; a link or
+# anything else is left alone.
+_ltd_chattr_entries_here() {
+  local _e _files=()
+  for _e in ./*; do
+    if [ -d "${_e}" ] && [ ! -L "${_e}" ]; then
+      _ltd_chattr_sub_here "${1}" "${_e#./}"
+    elif [ -f "${_e}" ] && [ ! -L "${_e}" ]; then
+      _files+=( "${_e}" )
+    fi
+  done
+  [ "${#_files[@]}" -eq 0 ] \
+    || perl -e "${_ACCT_CHATTR_PL}" "${1}" "${_files[@]}" &> /dev/null
+  return 0
+}
 # ~/.drush locked and unlocked inside the real directory. Locking takes the
 # directory first, after which no name in it can change; unlocking clears
-# the names while it still holds. chattr opens a name without following a
-# link (O_NOFOLLOW), so a link at usr/ or at an ini is refused.
+# the names while it still holds. No entry is locked or unlocked by its
+# name: usr/ from inside itself, an ini through a handle (_ACCT_CHATTR_PL),
+# so a link is never followed and a hard link put there never passes the
+# flag to the file it names.
 _ltd_drush_lock_here() {
   chattr +i . &> /dev/null
-  [ -d ./usr ] && [ ! -L ./usr ] && chattr +i ./usr &> /dev/null
+  [ -d ./usr ] && [ ! -L ./usr ] && _ltd_chattr_sub_here + usr
   return 0
 }
 _ltd_drush_unlock_here() {
-  [ -d ./usr ] && [ ! -L ./usr ] && chattr -i ./usr &> /dev/null
-  chattr -i ./*.ini &> /dev/null
+  [ -d ./usr ] && [ ! -L ./usr ] && _ltd_chattr_sub_here - usr
+  perl -e "${_ACCT_CHATTR_PL}" - ./*.ini &> /dev/null
   chattr -i . &> /dev/null
   return 0
 }
 # The same for a main login's platforms/ and its entries.
 _ltd_lock_all_here() {
   chattr +i . &> /dev/null
-  chattr +i ./* &> /dev/null
+  _ltd_chattr_entries_here +
   return 0
 }
 _ltd_unlock_all_here() {
-  chattr -i ./* &> /dev/null
+  _ltd_chattr_entries_here -
   chattr -i . &> /dev/null
   return 0
 }
@@ -1062,19 +1236,47 @@ _ltd_take_here() {
   [ -d "${_to}/" ] || return 1
   _ltd_in_real_dir "${1}" mv -f -T -- "./${2}" "${_to}/${2}"
 }
-# sed -i on a file of the current (pinned) directory, only when it is a
-# regular file: through a link sed -i puts a copy of the target at the name.
-# $1 = name, $2 = sed script.
+# A file of the current (pinned) directory edited by the sed script $2 as
+# sed -i edited it, only when it is a regular file (through a link sed -i
+# puts a copy of the target at the name, and it opens a FIFO put there and
+# blocks): only a single-link regular file under 1 MiB is read, once,
+# bounded and never through a link or from a FIFO, into a root-only copy; a
+# changed result is put back as a fresh file with the owner, group and mode
+# the file had (_ltd_put_ids_here), renamed over the name. $1 = name.
 _ltd_sed_here() {
+  local LC_ALL=C
+  local _st _typ _uid _gid _mod _sz _nl _w _rc=1
   [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 0
-  sed -i "${2}" "./${1}" &> /dev/null
+  _st=$(stat -c '%F|%u|%g|%a|%s|%h' -- "./${1}" 2> /dev/null) || return 1
+  IFS='|' read -r _typ _uid _gid _mod _sz _nl <<< "${_st}"
+  case "${_typ}" in
+    "regular file"|"regular empty file") ;;
+    *) return 1 ;;
+  esac
+  [[ "${_sz}" =~ ^[0-9]+$ ]] && [ "${_sz}" -lt 1048576 ] \
+    && [ "${_nl}" = "1" ] || return 1
+  _w=$(mktemp -d /run/.ltd-edit.XXXXXX 2> /dev/null) || return 1
+  if timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none > "${_w}/o" 2> /dev/null \
+    && [ "$(stat -c %s -- "${_w}/o" 2> /dev/null)" = "${_sz}" ]; then
+    if sed "${2}" "${_w}/o" > "${_w}/n" 2> /dev/null; then
+      if cmp -s "${_w}/o" "${_w}/n"; then
+        _rc=0
+      else
+        _ltd_put_ids_here "${1}" "${_uid}" "${_gid}" "${_mod}" x \
+          < "${_w}/n" && _rc=0
+      fi
+    fi
+  fi
+  rm -rf -- "${_w}"
+  return "${_rc}"
 }
-# The instance's aegir.sh, inside the real /data/disk/oN: a fresh file, owned
-# by oN and 0700 through a handle that never follows a link. $1 = content.
+# The instance's aegir.sh, inside the real /data/disk/oN: a fresh file put as
+# oN's own, 0700, through the handle that created it (_ltd_put_own_here),
+# never chowned or chmoded by the name afterwards. $1 = content.
 _ltd_aegir_sh_put() {
-  ( umask 077; _ltd_stamp_put aegir.sh "${1}" ) || return 1
-  chown -h "${_USER}:${_usrGroup}" ./aegir.sh &> /dev/null
-  _ltd_chmod_nofollow 0700 ./aegir.sh
+  printf '%s\n' "${1}" \
+    | _ltd_put_own_here aegir.sh "${_USER}:${_usrGroup}" 0700 x
 }
 _crlGet="-L --max-redirs 3 -s --fail --retry 9 --retry-delay 9 -A iCab"
 _wgetGet="--max-redirect=3 -q --tries=9 --wait=9 --user-agent='iCab'"
@@ -1249,7 +1451,9 @@ _drush_ini_retire_here() {
     _imm=YES
     chattr -i . 2> /dev/null
   fi
-  [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr -i ./php.ini 2> /dev/null
+  # through a handle, never on the file a hard link at the name shares
+  [ -f ./php.ini ] && [ ! -L ./php.ini ] \
+    && perl -e "${_ACCT_CHATTR_PL}" - ./php.ini 2> /dev/null
   rm -f -- ./php.ini 2> /dev/null
   if [ -e ./php.ini ] || [ -L ./php.ini ]; then
     :
@@ -1322,7 +1526,7 @@ _enable_chattr() {
   if [ ! -z "${_isTest}" ] && [ -d "/home/$1/" ]; then
     # Group owning this account's tree, derived from the user this call
     # handles -- never the script-scope default, which is box-wide.
-    local _accGrp
+    local _accGrp _hdRefused=NO
     _accGrp=$(_acct_group "$1")
     _U_HD="/home/$1/.drush"
     _U_TP="/home/$1/.tmp"
@@ -1338,7 +1542,9 @@ _enable_chattr() {
       # remove and write inside them happens in the real directory
       # (_ltd_in_real_dir), never by a path through a link put there since.
       mkdir -p ${_U_HD}
-      _ltd_in_real_dir "${_U_HD}" _ltd_drush_strip "${_hostedSys}"
+      # a refused reset writes no stamp, so the next pass tries it again
+      _ltd_in_real_dir "${_U_HD}" _ltd_drush_strip "${_hostedSys}" \
+        "$1:${_accGrp}" "${_USER}" || _hdRefused=YES
       # the main login's ~/.drush held its Drush 9+ yml store: the record of
       # its last finished rebuild goes with it, and once per release serial
       # its try record too, so the release's reset is repaired on the next
@@ -1361,14 +1567,16 @@ _enable_chattr() {
       # when it is the account's own: a root-owned directory of the home
       # renamed onto the name is left alone
       _ltd_in_real_dir "${_U_TP}" _ltd_own_dir_here "$1:${_accGrp}" 02755 YES
-      _ltd_in_real_dir "${_U_HD}" chown "$1:${_accGrp}" .
-      _ltd_in_real_dir "${_U_HD}" chmod 02755 .
-      _ltd_in_real_dir "${_U_HD}" \
-        _ltd_in_real_dir ./usr _ltd_drush_usr_links "${_dscUsr}/.drush/usr"
+      # ~/.drush was handed over and given its mode by the reset above
+      if [ "${_hdRefused}" = "NO" ]; then
+        _ltd_in_real_dir "${_U_HD}" \
+          _ltd_in_real_dir ./usr _ltd_drush_usr_links "${_dscUsr}/.drush/usr"
+      fi
     fi
 
     # the stamp the reset above is keyed on, once per release serial
-    if [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    if [ "${_hdRefused}" = "NO" ] \
+      && [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p ${_U_HD}
       _ltd_in_real_dir "${_U_HD}" _ltd_drush_stamp_put
     fi
@@ -1427,19 +1635,27 @@ _enable_chattr() {
       ###
       [ ! -d "/opt/user/gems/${_UQ}" ] && mkdir -p /opt/user/gems/${_UQ}
       chmod 1777 /opt/user/gems
-      chown -R ${_UQ}:${_accGrp} /opt/user/gems/${_UQ}
+      # any account can make a name in the sticky gems/ first, and the login
+      # owns its entry and every name in it: the tree is handed over from
+      # inside the real directory, never a hard link planted in it
+      _ltd_in_real_dir "/opt/user/gems/${_UQ}" \
+        _ltd_reown_here -R "${_UQ}:${_accGrp}" .
       chown root:root /opt/user/gems
       if [ -d "/opt/user/gems/${_UQ}" ] \
         && [ -e "/usr/local/lib/ruby/gems/3.3.0/gems/oily_png-1.1.1" ] \
         && [ ! -e "/opt/user/gems/${_UQ}/gems/oily_png-1.1.1" ]; then
-        # the account can rename its own entry in the sticky gems/: the trees
-        # are copied into the real directory only
-        _ltd_in_real_dir "/opt/user/gems/${_UQ}" cp -a \
+        # the account can rename its own entry in the sticky gems/, and any
+        # directory in it while the copy runs: the trees are copied into the
+        # real directory only, by the login itself, so the copy never writes
+        # as root through a name the login swapped for a link
+        _ltd_in_real_dir "/opt/user/gems/${_UQ}" \
+          _ltd_as_owner_here "${_UQ}:${_accGrp}" cp -a \
           /usr/local/lib/ruby/gems/3.3.0/gems \
           /usr/local/lib/ruby/gems/3.3.0/specifications \
           /usr/local/lib/ruby/gems/3.3.0/extensions \
           /usr/local/lib/ruby/gems/3.3.0/doc ./
-        chown -R ${_UQ}:${_accGrp} /opt/user/gems/${_UQ}
+        _ltd_in_real_dir "/opt/user/gems/${_UQ}" \
+          _ltd_reown_here -R "${_UQ}:${_accGrp}" .
         _ltd_rm_in "${_dscUsr}/log" '.gems.build*'
         _ltd_put_in "${_dscUsr}/log" ".gems.build.rb.${_UQ}.${_xSrl}.txt" ""
       fi
@@ -1459,9 +1675,12 @@ _enable_chattr() {
           [ ! -d "/opt/user/npm/${_UQ}" ] && mkdir -p /opt/user/npm/${_UQ}
           [ ! -e "/home/${_UQ}/.npmrc" ] && su -s /bin/bash - ${_UQ} -c "echo 'prefix = /opt/user/npm/${_UQ}/.npm-packages' > ~/.npmrc"
           # chattr opens the referent: refuse a link the tenant planted at this
-          # name, or root sets +i on whatever it points at.
+          # name, or root sets +i on whatever it points at. Set through a
+          # handle inside the real home, and only on a single-link regular
+          # file: a hard link put at the name would freeze the file it names.
           [ -e "/home/${_UQ}/.npmrc" ] && [ ! -L "/home/${_UQ}/.npmrc" ] \
-            && chattr +i /home/${_UQ}/.npmrc
+            && _ltd_in_real_dir "/home/${_UQ}" \
+              perl -e "${_ACCT_CHATTR_PL}" + ./.npmrc
           # the login owns its npm tree and every name in it: each level is
           # made inside the real directory above it, never through a link
           _ltd_in_real_dir "/opt/user/npm/${_UQ}" mkdir -p ./.bundle \
@@ -1471,7 +1690,10 @@ _enable_chattr() {
           _ltd_in_real_dir "/opt/user/npm/${_UQ}" \
             _ltd_in_real_dir ./.npm-packages \
             _ltd_in_real_dir ./lib mkdir -p ./node_modules
-          chown -R ${_UQ}:${_accGrp} /opt/user/npm/${_UQ}
+          # handed over from inside the real directory, never a hard link
+          # planted in the tree
+          _ltd_in_real_dir "/opt/user/npm/${_UQ}" \
+            _ltd_reown_here -R "${_UQ}:${_accGrp}" .
           _ltd_rm_in "${_dscUsr}/log" '.npm.build*'
           _ltd_put_in "${_dscUsr}/log" ".npm.build.${_UQ}.${_xSrl}.txt" ""
         fi
@@ -1496,11 +1718,14 @@ _enable_chattr() {
       _ltd_in_real_dir "/home/$1/platforms" _ltd_lock_all_here
     fi
     _ltd_in_real_dir "/home/$1/.drush" _ltd_drush_lock_here
+    # from inside the real directory, never by the name: in a home that is
+    # not immutable the name can be swapped after the test, and a hard link
+    # put there would pass the flag to the file it names
     if [ -d "/home/$1/.bee/" ] && [ ! -L "/home/$1/.bee" ]; then
-      chattr +i /home/$1/.bee
+      _ltd_in_real_dir "/home/$1/.bee" chattr +i .
     fi
     if [ -d "/home/$1/.bazaar/" ] && [ ! -L "/home/$1/.bazaar" ]; then
-      chattr +i /home/$1/.bazaar
+      _ltd_in_real_dir "/home/$1/.bazaar" chattr +i .
     fi
   fi
 }
@@ -1521,10 +1746,10 @@ _disable_chattr() {
     fi
     _ltd_in_real_dir "/home/$1/.drush" _ltd_drush_unlock_here
     if [ -d "/home/$1/.bee/" ] && [ ! -L "/home/$1/.bee" ]; then
-      chattr -i /home/$1/.bee
+      _ltd_in_real_dir "/home/$1/.bee" chattr -i .
     fi
     if [ -d "/home/$1/.bazaar/" ] && [ ! -L "/home/$1/.bazaar" ]; then
-      chattr -i /home/$1/.bazaar
+      _ltd_in_real_dir "/home/$1/.bazaar" chattr -i .
     fi
   fi
 }
@@ -1731,11 +1956,21 @@ _ltd_platform_alias() {
   local _root="${1}"
   local _doc=""
   local _f=""
+  local _a=""
   _doc=$(_ltd_platform_docroot "${_root}") || return 1
   # The alias keeps the path the platform was registered with: the docroot,
   # or for a Composer build possibly its app root. Either names this tree.
-  _f=$(grep -lF -e "'root' => '${_doc}'" -e "'root' => '${_root}'" \
-    /data/disk/${_USER}/.drush/platform_*.alias.drushrc.php 2>/dev/null | head -1)
+  # oN owns its ~/.drush: each alias is read as _ltd_read_in reads it (never
+  # through a link, never blocking on a FIFO put at the name), the first
+  # match in the glob's order winning as before.
+  for _a in "/data/disk/${_USER}/.drush/"platform_*.alias.drushrc.php; do
+    [ -f "${_a}" ] && [ ! -L "${_a}" ] || continue
+    if _ltd_read_in "/data/disk/${_USER}/.drush" "${_a##*/}" \
+      | grep -qF -e "'root' => '${_doc}'" -e "'root' => '${_root}'"; then
+      _f="${_a}"
+      break
+    fi
+  done
   [ -n "${_f}" ] || return 1
   _f=$(basename "${_f}")
   _f=${_f#platform_}
@@ -1744,11 +1979,15 @@ _ltd_platform_alias() {
   printf '%s\n' "${_f}"
 }
 # locked = the console de-typing is in place (the same test provision's
-# provision_check_codebase_status() makes on Output.php)
+# provision_check_codebase_status() makes on Output.php). The platform is
+# oN's code: the file is read as _ltd_read_in reads it, and one that cannot
+# be read that way (a link, a FIFO) is not taken for locked.
 _ltd_platform_locked() {
   local _out="${1}/vendor/symfony/console/Output/Output.php"
+  local _c=""
   [ -f "${_out}" ] || return 1
-  if grep -qF "doWrite(string" "${_out}" || grep -qF ": void;" "${_out}"; then
+  _c=$(_ltd_read_in "${_out%/*}" Output.php) || return 1
+  if grep -qF "doWrite(string" <<< "${_c}" || grep -qF ": void;" <<< "${_c}"; then
     return 1
   fi
   return 0
@@ -1975,19 +2214,24 @@ _ltd_bytes_printable() {
   local LC_ALL=C
   printf '%s' "${1//[^[:print:]]/?}"
 }
-# "Drupal 10.1.8", "Drupal 7.105", "Backdrop 1.34.3" from the codebase itself
+# "Drupal 10.1.8", "Drupal 7.105", "Backdrop 1.34.3" from the codebase itself,
+# oN's code: each file read as _ltd_read_in reads it (never through a link,
+# never blocking on a FIFO put at the name)
 _ltd_platform_label() {
   local _doc=""
   local _v=""
   _doc=$(_ltd_platform_docroot "${1}") || { printf '%s\n' "unknown codebase"; return 0; }
   if [ -f "${_doc}/core/lib/Drupal.php" ]; then
-    _v=$(grep -m1 -oE "const VERSION = '[^']+'" "${_doc}/core/lib/Drupal.php" 2>/dev/null | cut -d"'" -f2)
+    _v=$(_ltd_read_in "${_doc}/core/lib" Drupal.php \
+      | grep -m1 -oE "const VERSION = '[^']+'" 2>/dev/null | cut -d"'" -f2)
     printf 'Drupal %s\n' "$(_ltd_status_safe "${_v:-8+}")"
   elif [ -f "${_doc}/core/includes/bootstrap.inc" ]; then
-    _v=$(grep -m1 -oE "define\('BACKDROP_VERSION', '[^']+'" "${_doc}/core/includes/bootstrap.inc" 2>/dev/null | cut -d"'" -f4)
+    _v=$(_ltd_read_in "${_doc}/core/includes" bootstrap.inc \
+      | grep -m1 -oE "define\('BACKDROP_VERSION', '[^']+'" 2>/dev/null | cut -d"'" -f4)
     printf 'Backdrop %s\n' "$(_ltd_status_safe "${_v:-1}")"
   elif [ -f "${_doc}/includes/bootstrap.inc" ]; then
-    _v=$(grep -m1 -oE "define\('VERSION', '[^']+'" "${_doc}/includes/bootstrap.inc" 2>/dev/null | cut -d"'" -f4)
+    _v=$(_ltd_read_in "${_doc}/includes" bootstrap.inc \
+      | grep -m1 -oE "define\('VERSION', '[^']+'" 2>/dev/null | cut -d"'" -f4)
     printf 'Drupal %s\n' "$(_ltd_status_safe "${_v:-7}")"
   else
     printf '%s\n' "unknown codebase"
@@ -2043,7 +2287,9 @@ _ltd_refused_site_why() {
   [ -L "${_cdir}/${_name}" ] && _mine=YES
   _al="${_pthParentUsr}/.drush/${_name}.alias.drushrc.php"
   if [ -f "${_al}" ]; then
-    _sp=$(grep -m1 -oE "'site_path' => '[^']+'" "${_al}" 2>/dev/null | cut -d"'" -f4)
+    # oN's alias, read as _ltd_read_in reads it
+    _sp=$(_ltd_read_in "${_pthParentUsr}/.drush" "${_al##*/}" \
+      | grep -m1 -oE "'site_path' => '[^']+'" 2>/dev/null | cut -d"'" -f4)
     if [ -n "${_sp}" ] && [ "$(readlink -f "${_sp}")" != "${_real}" ]; then
       _live=$(basename "$(_ltd_platform_approot "$(readlink -f "${_sp}")")")
     fi
@@ -2724,9 +2970,10 @@ _fix_dot_dirs() {
     # sub-user owns and can change while this runs (the home is mutable
     # here), and none is ever legitimately a symlink: a planted link is
     # stripped first, and because one can be planted again in between, owners
-    # are set by name only with chown -h, modes and writes happen only inside
-    # the real directory, and a file is created exclusively, never through a
-    # link at its name.
+    # and modes are set only inside the real directory (a directory from
+    # inside itself, only when it is the sub-user's own), and a file is
+    # created exclusively and handed over through the handle that created it,
+    # never through a link at its name nor by its name afterwards.
     _desymlink_planted "${_usrTmp}" "/home/${_usrLtd}/.lftp" \
       "/home/${_usrLtd}/.lhistory" "/home/${_usrLtd}/.drush" \
       "/home/${_usrLtd}/.bee" "/home/${_usrLtd}/.ssh" \
@@ -2747,8 +2994,9 @@ _fix_dot_dirs() {
     if [ -x "/usr/local/bin/bzr" ]; then
       if [ ! -z "${_usrLtd}" ] && [ ! -e "${_usrBzr}/bazaar.conf" ]; then
         mkdir -p ${_usrBzr}
-        chown -h ${_usrLtd}:${_accGrp} ${_usrBzr}
-        _ltd_in_real_dir "${_usrBzr}" _ltd_bzr_conf "${_usrLtd}:${_accGrp}"
+        _ltd_in_real_dir "${_usrBzr}" \
+          _ltd_own_dir_here "${_usrLtd}:${_accGrp}" 700 NO \
+          && _ltd_in_real_dir "${_usrBzr}" _ltd_bzr_conf "${_usrLtd}:${_accGrp}"
       fi
     else
       if [ ! -z "${_usrLtd}" ] && [ -d "${_usrBzr}" ]; then
@@ -2776,8 +3024,12 @@ _manage_sec_user_drush_aliases() {
   # copy below runs inside the real directory (_ltd_in_real_dir), never through
   # a link into another instance's alias store.
   _desymlink_planted "${_usrLtdRoot}/.drush"
+  # A missing one is made as _fix_dot_dirs makes it, the account's own from
+  # the start: the reset of a new serial hands over a root-made ~/.drush only
+  # while it is empty or holds nothing but alias copies.
   if [ ! -e "${_usrLtdRoot}/.drush" ]; then
-    mkdir -p ${_usrLtdRoot}/.drush
+    _ltd_dot_dir "${_usrLtdRoot}/.drush" 700 \
+      "${_usrLtd}:$(_acct_group "${_usrLtd}")"
   fi
 
   _ALS_TEST=$(ls -la ${_usrLtdRoot}/.drush/*.alias.drushrc.php 2>&1)
@@ -2820,6 +3072,46 @@ _manage_sec_user_drush_aliases() {
     fi
   done
 }
+#
+# Migrated SSH keys adopted into the current (pinned) ~/.ssh, run inside the
+# real directory: it is handed over and made 0700 only when it is the
+# account's own (_ltd_own_dir_here). Each regular file of the staged copy
+# $2 (root's tree, but the carried names keep the source box's owner
+# numbers) is read bounded, never through a link or from a FIFO, and put as
+# a fresh 0600 file of the account's through its handle; then everything in
+# ~/.ssh is handed over and its files set 0600 as before, through handles,
+# never a hard link put there. A carried link or subdirectory is not
+# adopted, and a key keeps no carried timestamp. $1 = owner:group.
+_ltd_ssh_adopt_here() (
+  local LC_ALL=C
+  local _f _n _st _typ _sz _c _bad=0
+  shopt -s dotglob nullglob
+  _ltd_own_dir_here "${1}" 700 NO &> /dev/null || return 1
+  for _f in "${2}"/*; do
+    _n="${_f##*/}"
+    _st=$(stat -c '%F|%s' -- "${_f}" 2> /dev/null) || continue
+    IFS='|' read -r _typ _sz <<< "${_st}"
+    case "${_typ}" in
+      "regular file"|"regular empty file") ;;
+      *) continue ;;
+    esac
+    # a key read short (a name swapped for a FIFO) is never put
+    if [[ ! "${_sz}" =~ ^[0-9]+$ ]] || [ "${_sz}" -ge 1048576 ]; then
+      _bad=1
+      continue
+    fi
+    _c=$(_ltd_read_in "${2}" "${_n}" && echo x) || { _bad=1; continue; }
+    _c="${_c%x}"
+    if [ "${#_c}" != "${_sz}" ]; then
+      _bad=1
+      continue
+    fi
+    printf '%s' "${_c}" | _ltd_put_own_here "${_n}" "${1}" 0600 || _bad=1
+  done
+  _ltd_reown_here -R "${1}" . &> /dev/null
+  _ltd_chmod_nofollow_here 600
+  return "${_bad}"
+)
 #
 # OK, create user.
 _ok_create_user() {
@@ -2984,24 +3276,30 @@ _ok_create_user() {
     # A migration stages a sub-account's SSH keys here because the home did
     # not exist on this box yet; adopt them now that it does, once. Only for an
     # account that exists: a home with no passwd entry (the create path with an
-    # existing home) must not consume the staged copy -- the chown below could
-    # not resolve the owner and the rm -rf would destroy the only copy.
+    # existing home) must not consume the staged copy -- the hand-over below
+    # could not resolve the owner and the rm -rf would destroy the only copy.
     if [ -d "/var/backups/migrate-subuser-ssh/${_usrLtd}/.ssh" ] \
       && [ -d "${_usrLtdRoot}" ] \
       && getent passwd "${_usrLtd}" > /dev/null 2>&1; then
-      # a home that was already there may carry a link at .ssh
-      # copied into the real home, every file put as a fresh one: a link at
-      # .ssh, or at a key name inside it, is replaced, never written through
-      _desymlink_planted "${_usrLtdRoot}/.ssh"
-      _ltd_in_real_dir "${_usrLtdRoot}" \
-        cp -a --remove-destination "/var/backups/migrate-subuser-ssh/${_usrLtd}/.ssh" ./
+      # a home that was already there may carry a link at .ssh; the keys go
+      # into the real ~/.ssh only, each put there as a fresh file of the
+      # account's (_ltd_ssh_adopt_here): a link at .ssh, or at a key name
+      # inside it, is replaced, never written through. The staged copy goes
+      # only once every key is in place, so a refusal never loses it.
       # Group half derived, not the user name: no group named after a
       # sub-user is ever created, so that chgrp half always failed.
-      chown -R ${_usrLtd}:$(_acct_group "${_usrLtd}") "${_usrLtdRoot}/.ssh" &> /dev/null
-      _ltd_in_real_dir "${_usrLtdRoot}/.ssh" chmod 700 . &> /dev/null
-      _ltd_in_real_dir "${_usrLtdRoot}/.ssh" _ltd_chmod_nofollow_here 600
-      rm -rf "/var/backups/migrate-subuser-ssh/${_usrLtd}"
-      echo "Adopted migrated SSH keys for ${_usrLtd}"
+      _desymlink_planted "${_usrLtdRoot}/.ssh"
+      _ltd_in_real_dir "${_usrLtdRoot}" mkdir -p ./.ssh
+      if _ltd_in_real_dir "${_usrLtdRoot}/.ssh" _ltd_ssh_adopt_here \
+        "${_usrLtd}:$(_acct_group "${_usrLtd}")" \
+        "/var/backups/migrate-subuser-ssh/${_usrLtd}/.ssh"; then
+        rm -rf "/var/backups/migrate-subuser-ssh/${_usrLtd}"
+        echo "Adopted migrated SSH keys for ${_usrLtd}"
+      else
+        _ltd_notice "ssh-adopt-${_usrLtd}" \
+          "migrated SSH keys for ${_usrLtd} not adopted" \
+          "${_usrLtdRoot}/.ssh is not the account's own real directory, or a key could not be put; the staged copy is kept in /var/backups/migrate-subuser-ssh/${_usrLtd}"
+      fi
     fi
     _fix_dot_dirs
     rm -f ${_usrLtdRoot}/{.profile,.bash_logout,.bash_profile,.bashrc}
@@ -3271,10 +3569,12 @@ _ltd_drush_store_after_reset() {
   [ -e "/home/${_USER}.ftp/users/${_usrLtd}" ] || return 0
   getent passwd "${_usrLtd}" > /dev/null 2>&1 || return 0
   [ -d "${_hd}" ] && [ ! -L "${_hd}" ] || return 0
+  # the flag from inside the real directory, never by its name (a name the
+  # login can swap for a hard link while its home is open)
   if [ "${_rst}" = "YES" ]; then
-    chattr -i "${_hd}" 2>/dev/null
+    _ltd_in_real_dir "${_hd}" chattr -i . 2>/dev/null
     _manage_sec_user_drush_aliases
-    chattr +i "${_hd}" 2>/dev/null
+    _ltd_in_real_dir "${_hd}" chattr +i . 2>/dev/null
   fi
   if [ "${_LTD_PLATFORM_ACCT}" = "YES" ]; then
     _ltd_platform_alias_store "${_usrLtd}" "${_rst}"
@@ -3307,10 +3607,13 @@ _ltd_platform_alias_store() {
   [ -x "/usr/bin/drush10" ] || return 0
   [ ! -e "/root/.standby.cnf" ] || return 0
   [ -d "${_hd}" ] && [ ! -L "${_hd}" ] || return 0
+  # oN's aliases, each read as _ltd_read_in reads it (a FIFO put at the name
+  # after the test would block cat)
   _sum=$(for _lnk in "${_Client}"/*; do
       [ -L "${_lnk}" ] || continue
       _src="${_pthParentUsr}/.drush/$(basename "${_lnk}").alias.drushrc.php"
-      [ -f "${_src}" ] && [ ! -L "${_src}" ] && { echo "${_src}"; cat "${_src}"; }
+      [ -f "${_src}" ] && [ ! -L "${_src}" ] \
+        && { echo "${_src}"; _ltd_read_in "${_pthParentUsr}/.drush" "${_src##*/}"; }
     done | md5sum | cut -d' ' -f1)
   if [ "${_rst}" = "YES" ] \
     || [ ! -d "${_hd}/sites" ] || [ -L "${_hd}/sites" ] \
@@ -3322,12 +3625,12 @@ _ltd_platform_alias_store() {
   [ -d /var/backups/ltd/.aliases ] || mkdir -p /var/backups/ltd/.aliases
   chmod 0700 /var/backups/ltd/.aliases
   rm -f "${_mark}"
-  chattr -i "${_hd}" 2>/dev/null
+  _ltd_in_real_dir "${_hd}" chattr -i . 2>/dev/null
   chage -M 99999 "${_acct}" &> /dev/null
   _ltd_alias_store_rebuild "${_acct}" own
   _rc=$?
   chage -M 90 "${_acct}" &> /dev/null
-  chattr +i "${_hd}" 2>/dev/null
+  _ltd_in_real_dir "${_hd}" chattr +i . 2>/dev/null
   if [ "${_rc}" -eq 0 ]; then
     echo "${_sum}" > "${_mark}"
     echo "Drush 9+ alias store rebuilt for ${_acct}"
@@ -3867,8 +4170,10 @@ _switch_newrelic() {
 # so it is unlocked first. $1 = the pool's version digits (empty: none).
 _ltd_web_stamp_put() {
   chattr -i . 2> /dev/null
-  # unlocked for the owner change after this; _ltd_web_drush_lock relocks it
-  [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr -i ./php.ini 2> /dev/null
+  # unlocked for the owner change after this; _ltd_web_drush_lock relocks it.
+  # Through a handle, never on the file a hard link at the name shares.
+  [ -f ./php.ini ] && [ ! -L ./php.ini ] \
+    && perl -e "${_ACCT_CHATTR_PL}" - ./php.ini 2> /dev/null
   # the placeholder older releases read as the web user being in place; a
   # link at the name goes first (unlink never follows it)
   [ -L ./php.ini ] && rm -f -- ./php.ini
@@ -3883,11 +4188,13 @@ _ltd_web_stamp_put() {
 }
 # The web user's ~/.drush locked again inside the real directory: the
 # directory first, after which no name in it can change, then a regular
-# placeholder php.ini.
+# placeholder php.ini, through a handle and only while it has a single link
+# (the web user could put a hard link at the name before the lock).
 _ltd_web_drush_lock() {
   chmod 550 .
   chattr +i . 2> /dev/null
-  [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr +i ./php.ini 2> /dev/null
+  [ -f ./php.ini ] && [ ! -L ./php.ini ] \
+    && perl -e "${_ACCT_CHATTR_PL}" + ./php.ini 2> /dev/null
   return 0
 }
 #
@@ -3937,7 +4244,11 @@ _satellite_web_user_update() {
       fi
       _ltd_in_real_dir "${_T_HD}" _ltd_web_stamp_put "${_T_PV}"
       chmod 700 /home/${_WEB}
-      chown -R ${_WEB}:${_WEBG} /home/${_WEB}
+      # handed over from inside the real home by a walk that changes a
+      # directory or a single-link regular file through its handle: a hard
+      # link the web user left in ~/.tmp or ~/.aws (never immutable) or put
+      # at a name root just made is never handed over
+      _ltd_in_real_dir "/home/${_WEB}" _ltd_reown_here -R "${_WEB}:${_WEBG}" .
       _ltd_in_real_dir "${_T_HD}" _ltd_web_drush_lock
       rm -f /home/${_WEB}/.lock
       if [ -d "/home/${_WEB}" ]; then
@@ -3957,8 +4268,10 @@ _satellite_remove_web_user() {
       # per-version pool): nothing to unlock there, and chattr says so on
       # stderr once per installed PHP into this worker's log
       [ -d "/home/${_WEB}/" ] && chattr -i /home/${_WEB}/
+      # the home is open now: from inside the real directory, never by a
+      # name the web user can swap for a hard link after the test
       if [ -d "/home/${_WEB}/.drush/" ]; then
-        chattr -i /home/${_WEB}/.drush
+        _ltd_in_real_dir "/home/${_WEB}/.drush" chattr -i .
       fi
       # only this user's agent (none for a user that never existed): -f
       # matched every gpg-agent on the box
@@ -4442,8 +4755,10 @@ _switch_php() {
         if [ "${_PHP_FPM_MULTI}" = "NO" ]; then
           _ltd_ctrl_put fpm.info "${_T_FPM_VRN}"
         else
+          # the main login's own file, handed over through a handle: never
+          # a hard link it put at the name
           _ltd_in_real_dir "${_dscUsr}/static/control" \
-            chown -h "${_USER}.ftp:${_usrGroup}" ./fpm.info
+            _ltd_reown_here "${_USER}.ftp:${_usrGroup}" ./fpm.info
         fi
 
         _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
@@ -5190,6 +5505,12 @@ _manage_user() {
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
+      # oN owns its alias and could point it anywhere: only one of the
+      # account's own hostmaster platforms is looked at
+      if [[ "${_THIS_HM_PLR}" != "${_dscUsr}/aegir/distro/"* ]] \
+        || [[ ! "${_THIS_HM_PLR#"${_dscUsr}/aegir/distro/"}" =~ ^[0-9]+$ ]]; then
+        _THIS_HM_PLR=""
+      fi
       if [ -e "${_THIS_HM_PLR}/modules/path_alias_cache" ] \
         && [ -x "/opt/tools/drush/8/drush/drush.php" ]; then
         if [ -x "/opt/php56/bin/php" ]; then
@@ -5269,10 +5590,12 @@ _manage_user() {
           _manage_sec
           _manage_sec_platform
           if [ -d "/home/${_USER}.ftp/users" ]; then
-            # the main login owns users/ and every name in it: the modes are
-            # set inside the real directory, each store through a handle that
-            # never follows a link put at its name
-            chown -R ${_USER}.ftp:${_usrGroup} /home/${_USER}.ftp/users
+            # the main login owns users/ and every name in it: the owner and
+            # the modes are set inside the real directory, each store through
+            # a handle that never follows a link put at its name, and a hard
+            # link the main login put there is never handed over or chmoded
+            _ltd_in_real_dir "/home/${_USER}.ftp/users" \
+              _ltd_reown_here -R "${_USER}.ftp:${_usrGroup}" .
             _ltd_in_real_dir "/home/${_USER}.ftp/users" chmod 700 .
             _ltd_in_real_dir "/home/${_USER}.ftp/users" \
               _ltd_chmod_nofollow_here 600
@@ -5289,11 +5612,16 @@ _manage_user() {
             _ltd_in_real_dir "/home/${_USER}.ftp/.drush" rm -rf -- ./cache
             rm -rf /home/${_USER}.ftp/.tmp
             mkdir -p /home/${_USER}.ftp/.tmp
-            _ltd_in_real_dir "/home/${_USER}.ftp/.tmp" \
-              chown "${_USER}.ftp:${_usrGroup}" . &> /dev/null
-            _ltd_in_real_dir "/home/${_USER}.ftp/.tmp" chmod 700 . &> /dev/null
-            _ltd_in_real_dir "/home/${_USER}.ftp/.tmp" \
-              _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
+            # handed over and given its mode only when it is the main login's
+            # own or the empty one just made: a root-owned directory of the
+            # home renamed onto the name is left alone
+            if _ltd_in_real_dir "/home/${_USER}.ftp/.tmp" \
+              _ltd_own_dir_here "${_USER}.ftp:${_usrGroup}" 700 NO &> /dev/null; then
+              _ltd_in_real_dir "/home/${_USER}.ftp/.tmp" \
+                _ltd_stamp_put ".ctrl.${_tRee}.${_xSrl}.pid" "OK"
+            else
+              echo "ALERT: /home/${_USER}.ftp/.tmp is not ${_USER}.ftp's own directory; left as it was"
+            fi
           fi
           _enable_chattr ${_USER}.ftp
           echo Done for ${_pthParentUsr}
@@ -5385,13 +5713,20 @@ if [ ! -e "/home/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
       if [ -d "${_homedir}" ]; then
         chattr -i ${_homedir}
         chown ${_uid}:${_gid} ${_homedir} &> /dev/null
+        # ~/.ssh and ~/.tmp are the login's (web users' included) and it can
+        # swap either name or leave a hard link in either tree: each is
+        # unlocked from inside the real directory and handed over by a walk
+        # that changes a directory or a single-link regular file through its
+        # handle, never a hard link and never through a link
         if [ -d "${_homedir}/.ssh" ]; then
-          chattr -i ${_homedir}/.ssh
-          chown -R ${_uid}:${_gid} ${_homedir}/.ssh &> /dev/null
+          _ltd_in_real_dir "${_homedir}/.ssh" chattr -i .
+          _ltd_in_real_dir "${_homedir}/.ssh" \
+            _ltd_reown_here -R "${_uid}:${_gid}" . &> /dev/null
         fi
         if [ -d "${_homedir}/.tmp" ]; then
-          chattr -i ${_homedir}/.tmp
-          chown -R ${_uid}:${_gid} ${_homedir}/.tmp &> /dev/null
+          _ltd_in_real_dir "${_homedir}/.tmp" chattr -i .
+          _ltd_in_real_dir "${_homedir}/.tmp" \
+            _ltd_reown_here -R "${_uid}:${_gid}" . &> /dev/null
         fi
         if [ -d "${_homedir}/.drush" ]; then
           # a link at ~/.drush (a main login's home is never immutable) must
