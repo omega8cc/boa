@@ -1649,12 +1649,15 @@ request per IP) can amplify load far beyond its request rate. BOA defends the `/
 | Tier | Composed map | Signal |
 |---|---|---|
 | Tier 1 | `$block_search_no_referrer` | fulltext params **and** no Referer |
-| Tier 2 | `$has_excessive_facets` | 6+ facets (`f[5]+`), encoded or literal |
+| Tier 2 | `$has_excessive_facets` | 6+ selected facet values (`f[5]+`), encoded or literal, any visitor (no Referer, session or UA condition) |
 | Tier 2 | `$block_search_root_referer` | fulltext **and** bare-root Referer **and** a facet present |
 | login | `$block_login_search_destination` | search payload in `/user/login?destination=` **and** no Referer |
 
 These apply as `return 444` inside the `/search` block, the language-prefixed `/xx/search`
-block, and the `/user/login` block, alongside `limit_req` search-rate zones.
+block, and the `/user/login` block, and in the subdirectory-site twins of all three
+(`/<subdir>/search`, `/<subdir>/xx/search`, `/<subdir>/user/login`), alongside `limit_req`
+search-rate zones. Drupal's Facets module numbers every selected value on a page in one
+list, so the sixth ticked value of any facet is `f[5]`.
 `$block_login_search_destination` closes a bypass where bots send
 `/user/login?destination=search%2F...` so the path is `/user/login` and the `/search` guards
 never run. The family landed in BOA-5.9.3.
@@ -1822,6 +1825,12 @@ location = /index.php {
   anonymous request.
 - **It counts requests in the location, not FPM occupancy.** Cache hits and slow readers
   occupy a slot too. Size it as a ceiling on concurrency, not on renders.
+- **A new URL's first render.** Requests waiting on the front cache's lock count too
+  (`limit_conn` runs before the cache lookup). The location waits up to 30 s for that render
+  (`fastcgi_cache_lock_timeout 30s`, nginx's default being 5 s), so the waiters get its
+  cached copy instead of each reaching PHP: on a 16-child pool with an 8 s render and 150
+  simultaneous anonymous visitors the shipped cap served 100 from two renders and shed 50
+  (at 24 it shed 126); a warm URL shed none.
 - **Sizing (default 100).** Above the busiest legitimate per-vhost in-flight peak measured
   over a full production day (13-57 across every tenant) and far below an observed flood
   (417). Deliberately loose so it only ever bounds a genuine flood. Tune per instance toward

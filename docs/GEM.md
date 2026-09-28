@@ -25,6 +25,10 @@ If you want to use Ruby Gems or Node/NPM to install Grunt, Gulp, or Bower, and y
 
 **NOTE on Node/NPM:** You must add the non-default NPM keyword to the `_XTRAS_LIST` array in your `/root/.barracuda.cnf` file, create empty `/root/.allow.node.lshell.cnf` file and then run the `barracuda up-lts system` command before initializing NPM support in your limited shell account.
 
+**Which Node release:** every barracuda pass keeps Node on one major release line, Node 24 (LTS) at present, from NodeSource's apt repository. A box with no working `node`, or with an older major, gets that line on the next pass; a newer major installed by hand is left alone; on Debian stretch and jessie Node is left as it is.
+
+BOA writes the NodeSource repository entry itself: the signing key is fetched over HTTPS and must carry NodeSource's known fingerprint, apt checks every package against it, and no downloaded setup script runs as root. A failed install is reported and tried again on the next pass. Without `/root/.allow.node.lshell.cnf` the pass removes the `nodejs` and `npm` packages together with that NodeSource source, key and pin.
+
 Bundler allows you to manage different gem versions per theme, making it a valuable tool for gem installation and management. It's installed for you by default.
 
 When you log into your SSH account, you will be presented with a helpful intro:

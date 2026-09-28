@@ -129,3 +129,7 @@ every pass. A directory that carries `core.properties` but is not listed by Solr
 tree copied in from elsewhere, an archive taken while Solr was down) is reported by the
 health check as `HEALTH-WARN`: move that file aside and the next pass re-registers the
 core, or restart Solr. Solr 4 cores are not covered (their registry is `solr.xml`).
+
+## Faceted search: five selected values under /search
+
+BOA's abuse guard refuses a search request under `/search` (also `/<language>/search` and a subdirectory site's `/<subdir>/search`) that carries six or more selected facet values, because a crawler flooding faceted search sends exactly that shape; the visitor gets no page, logged in or not. Drupal's Facets module numbers every selected value on the page in one list (`f[0]`, `f[1]` and so on) whatever facet it belongs to, so the sixth ticked value anywhere on the page is the one refused. If visitors need to combine more than five, serve that faceted listing on a path other than `/search`.

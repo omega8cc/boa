@@ -423,56 +423,118 @@ _if_install_bind() {
   fi
 }
 
+#
+# Keep the NodeSource apt source and key for one Node major. The key must
+# carry the known NodeSource fingerprint; no downloaded script runs as root.
+_node_source_setup() {
+  local _nMaj="${1}"
+  local _nKey="/etc/apt/keyrings/nodesource.gpg"
+  local _nUrl="https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key"
+  local _nFpr="6F71F525282841EEDAF851B42F59B5F99B1BE0B4"
+  local _nArch _nGpg _tmpRaw _tmpKey _fpAvail
+  _nArch="$(dpkg --print-architecture 2>/dev/null)"
+  if [ "${_nArch}" != "amd64" ] && [ "${_nArch}" != "arm64" ]; then
+    _msg "WARN: NodeSource has no Node packages for ${_nArch}"
+    return 1
+  fi
+  if [ -x "/usr/bin/gpg2" ]; then
+    _nGpg="/usr/bin/gpg2"
+  else
+    _nGpg="$(which gpg 2>/dev/null)"
+  fi
+  if [ ! -x "${_nGpg}" ]; then
+    _msg "WARN: gpg is missing, Node ${_nMaj} can not be installed"
+    return 1
+  fi
+  _tmpRaw=$(mktemp /tmp/nodesource-key-XXXXXX.raw)
+  _tmpKey=$(mktemp /tmp/nodesource-key-XXXXXX.gpg)
+  curl ${_crlGet} "${_nUrl}" -o "${_tmpRaw}"
+  if grep -q "BEGIN PGP PUBLIC KEY BLOCK" "${_tmpRaw}" 2>/dev/null; then
+    ${_nGpg} --yes --dearmor -o "${_tmpKey}" < "${_tmpRaw}" 2>/dev/null
+  fi
+  _fpAvail=$(${_nGpg} --with-colons --import-options show-only \
+    --import "${_tmpKey}" 2>/dev/null | awk -F: '/^fpr/{print $10}')
+  if ! printf "%s\n" "${_fpAvail}" | grep -qx "${_nFpr}"; then
+    _msg "WARN: NodeSource key not fetched or not the known key"
+    rm -f "${_tmpRaw}" "${_tmpKey}"
+    return 1
+  fi
+  mkdir -p /etc/apt/keyrings
+  mv -f "${_tmpKey}" "${_nKey}"
+  chmod 0644 "${_nKey}"
+  rm -f "${_tmpRaw}"
+  rm -f /etc/apt/sources.list.d/nodesource.list
+  rm -f /usr/share/keyrings/nodesource.gpg
+  {
+    echo "Types: deb"
+    echo "URIs: https://deb.nodesource.com/node_${_nMaj}.x"
+    echo "Suites: nodistro"
+    echo "Components: main"
+    echo "Architectures: ${_nArch}"
+    echo "Signed-By: ${_nKey}"
+  } > /etc/apt/sources.list.d/nodesource.sources
+  # Above the 700 every Devuan package gets, so the NodeSource line is the
+  # candidate even where nodejs is not installed yet; below 1000, so apt never
+  # downgrades to it.
+  {
+    echo "Package: nodejs"
+    echo "Pin: origin deb.nodesource.com"
+    echo "Pin-Priority: 990"
+  } > /etc/apt/preferences.d/nodejs
+  return 0
+}
+
+#
+# Print the major version of the installed node, or nothing.
+_node_major_installed() {
+  local _isNode
+  _isNode="$(which node 2>/dev/null)"
+  if [ -x "${_isNode}" ]; then
+    ${_isNode} --version 2>/dev/null | sed -n 's/^v\([0-9][0-9]*\)\..*/\1/p'
+  fi
+}
+
 _if_install_node() {
+  local _nMaj _nHave _isNode
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _if_install_node"
   fi
   if [ -e "/root/.allow.node.lshell.cnf" ]; then
     if [[ "${_XTRAS_LIST}" =~ "NPM" ]]; then
-      _NODE_INSTALL=NO
-      _isNode="$(which node)"
-      if [ -x "${_isNode}" ]; then
-       _NODE_V=$(${_isNode} --version \
-         | cut -d" " -f2 \
-          | awk '{ print $1}' 2>&1)
-        if [ "${_NODE_V}" != "${_NODE_VRN}" ]; then
-          _NODE_INSTALL=YES
-          _L_ST="upgrade"
+      _nMaj="${_NODE_MAJOR}"
+      [ -z "${_nMaj}" ] && _nMaj=24
+      _nHave="$(_node_major_installed)"
+      if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
+        # NodeSource builds need a newer glibc than these systems have.
+        _msg "INFO: Node is not installed or upgraded on ${_OS_CODE}"
+      elif [ -n "${_nHave}" ] && [ "${_nHave}" -ge "${_nMaj}" ]; then
+        if [ "${_DEBUG_MODE}" = "YES" ]; then
+          _msg "INFO: Node ${_nHave} is current"
         fi
       else
-        _NODE_INSTALL=YES
-        _L_ST="install"
-      fi
-      [ ! -d "/opt/user/npm" ] && _NODE_INSTALL=YES
-      [ -d "/opt/user/npm" ] && _NODE_INSTALL=NO
-      if [ "${_NODE_INSTALL}" = "YES" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Node ${_NODE_VRN} ${_L_ST}"
-        fi
-        _nSrc="/etc/apt/sources.list.d/nodesource.list"
-        _nSrg="/usr/share/keyrings/nodesource.gpg"
-        rm -f ${_nSrc}
-        rm -f ${_nSrg}
-        _apt_clean_update
-        if [ "${_OS_CODE}" = "stretch" ] || [ "${_OS_CODE}" = "jessie" ]; then
-          _mrun "curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -"
+        if [ -n "${_nHave}" ]; then
+          _msg "INFO: Upgrading Node ${_nHave} to Node ${_nMaj}..."
         else
-          _mrun "curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash -"
+          _msg "INFO: Installing Node ${_nMaj}..."
         fi
-        if [ -e "${_nSrc}" ]; then
-          if grep -q "nodistro" "${_nSrc}"; then
-            _apt_clean_update
-            for _PKG in nodejs; do
-              if ! _pkg_installed "${_PKG}"; then
-                _mrun "${_INSTAPP} ${_PKG}/nodistro"
-              fi
-            done
-          fi
+        if _node_source_setup "${_nMaj}"; then
+          _apt_clean_update
+          _mrun "${_INSTAPP} nodejs/nodistro"
+        fi
+        _nHave="$(_node_major_installed)"
+        if [ "${_nHave}" = "${_nMaj}" ]; then
+          _msg "INFO: Node ${_nMaj} installed"
+        else
+          _msg "WARN: Node ${_nMaj} not installed, the next barracuda run retries"
         fi
       fi
-      [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
-      chown root:root /opt/user/npm
-      chmod 1777 /opt/user/npm
+      # The folder holds the accounts' npm trees: create it once node works,
+      # never remove it.
+      if [ -n "$(_node_major_installed)" ]; then
+        [ ! -d "/opt/user/npm" ] && mkdir -p /opt/user/npm
+        chown root:root /opt/user/npm
+        chmod 1777 /opt/user/npm
+      fi
     fi
   else
     _isNode="$(which node)"
@@ -480,6 +542,10 @@ _if_install_node() {
       _mrun "apt-get remove nodejs -y --purge --auto-remove -qq"
       _mrun "apt-get remove npm -y --purge --auto-remove -qq"
     fi
+    rm -f /etc/apt/sources.list.d/nodesource.sources
+    rm -f /etc/apt/sources.list.d/nodesource.list
+    rm -f /etc/apt/preferences.d/nodejs
+    rm -f /etc/apt/keyrings/nodesource.gpg
   fi
 }
 

@@ -24,9 +24,13 @@ Three commands, all run from the developer's DDEV project:
 - `ddev boa-aliases` — lists the site's Drush aliases so the developer can set the correct
   one.
 - `ddev boa-config` — reads the site's own reported settings (`drush @alias status`) and
-  writes a local DDEV config matching the site's **PHP version**, **Drupal version** and
-  **docroot**. The database engine is only *reported*, as a commented opt-in line: DDEV's
-  own database imports a BOA dump fine, so it is deliberately left unchanged.
+  the account's PHP-FPM control files, and writes a local DDEV config matching the site's
+  **PHP version**, **Drupal version** and **docroot**. The PHP version is the one that
+  serves the site: its `multi-fpm.info` line unless BOA lists it as waiting in
+  `.multi-fpm-skipped.info`, else `fpm.info`; without either, the command-line PHP Drush
+  reports, which the generated file then names as its source. The database engine is only
+  *reported*, as a commented opt-in line: DDEV's own database imports a BOA dump fine, so
+  it is deliberately left unchanged.
 
 ## How it reaches the site: the limited shell
 
@@ -38,7 +42,8 @@ SSH, and each one is already permitted by the BOA limited shell:
   configuration delegates command execution to `lshell`, so `ssh oN.ftp@server "<command>"`
   reaches the jail.
 - `lshell`'s `overssh` set is what governs non-interactive commands. It permits `drush`
-  (and `drush8`/`drush10`/`drush11`), `mysql`/`mysqldump`/`mydumper`, `rsync` and `scp`,
+  (and `drush8`/`drush10`/`drush11`), `mysql`/`mysqldump`/`mydumper`, `rsync`, `grep`
+  (which `boa-config` uses to read `static/control/fpm.info` and its siblings) and `scp`,
   among others (`scp` only where the Node gate is open: on a default box the gate strips it
   from every list, which is why the add-on moves files with `rsync`). It does **not** permit `tar`, `cat`, `vdrush` or a site-local
   `vendor/drush/drush/drush.php`, so the add-on never relies on those over SSH.
@@ -100,9 +105,10 @@ public `files` directory is pulled, not the separate `private` directory.
   add-on itself only uses allowed commands; a hand-run command outside it may hit this.
 - **No SSH identity.** `ddev pull boa` needs the key in the agent inside the web container:
   the developer runs `ddev auth ssh` first.
-- **PHP version not detected by `ddev boa-config`.** The version is read from the site's
-  active PHP path in `drush @alias status`; if it cannot be parsed the developer sets
-  `php_version` manually and re-runs `ddev restart`.
+- **PHP version not detected by `ddev boa-config`.** The version is read from the
+  account's `fpm.info` and the site's `multi-fpm.info` line, else from the PHP path in
+  `drush @alias status`; if none can be parsed the developer sets `php_version` manually
+  and re-runs `ddev restart`.
 
 ## Scope
 

@@ -1240,6 +1240,12 @@ _nginx_wildcard_ssl_install() {
       fi
       _WILD_SSL_PROXY_UP=YES
     fi
+    if ! grep -qE '^[[:space:]]*send_timeout[[:space:]]+3600s;' ${_WILD_SSL_VHOST} 2> /dev/null; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: nginx_wild_ssl.conf proxy needs media send timeout update..."
+      fi
+      _WILD_SSL_PROXY_UP=YES
+    fi
     ### Keep the crawler-fleet guard in step with the zones file both ways:
     ### redeploy to add it once the maps are declared, and redeploy (the gate
     ### then strips it) when they are not.

@@ -822,6 +822,60 @@
 
 @=> Important Fixes
 
+    * Audio and video files go out with their own types and reach the
+      long-timeout media locations by short URI as well. BOA's mime.types
+      now names opus (audio/ogg, the Ogg Opus type), flac, weba and mkv,
+      which went out as application/octet-stream. Short /files/ and
+      /downloads/ URIs of oga, opus, flac, aac, weba, webm, mkv and m4v,
+      and of vtt captions, were handed to Drupal, which answered 404, on
+      regular and subdirectory sites alike; /downloads/ did the same for
+      mp4, m4a and flv. So an aac by short URI now gets the one-hour send
+      timeout of the entry further down.
+
+    * A crowd arriving at a new page no longer overruns PHP while the
+      page's first copy is built: visitors waiting for that copy now wait
+      up to 30 seconds for it instead of nginx's 5, then get it from the
+      front cache. Tested with 150 visitors on an 8-second render and a
+      pool of 16: two renders instead of 71, and no visitor timed out.
+      The per-site anonymous ceiling still counts the waiting requests.
+
+    * HTTPS to a site without a certificate of its own passes the wildcard
+      SSL front before the site, and the front still cut a stalled reader
+      of audio or video at 180 seconds. It now gives those types the same
+      hour as the site vhosts; the next barracuda pass puts the new front
+      in place.
+
+    * Node.js for the NPM add-on follows one major release line, Node 24
+      (LTS): each barracuda pass moves a box with an older major, or with
+      no working node, onto it, and leaves a newer major alone. Node used
+      to be installed once and never upgraded, the version pin reached no
+      box, and a failed first install or the gate turned off and on left
+      a box without node for good; with NodeSource's current setup script
+      a fresh box got the repository but no node.
+
+    * BOA now writes the NodeSource apt source for the NPM add-on itself,
+      the key checked against its known fingerprint, instead of running
+      the downloaded setup script as root, and closing the gate removes
+      that source again.
+
+    * Drupal 7 sites that store the private download method get it back:
+      the nightly check that turns allow_private_file_downloads on for
+      them read the setting through the public default BOA forces until
+      that switch is on, so it never saw private and wrote FALSE instead.
+      It now reads the value the site stored, and leaves the site INI as
+      it is when that read fails.
+
+    * The disk over-limit mail says that a deleted site's files, kept
+      aside under static/files/.archived, keep counting until that
+      archive is pruned, and to ask support for the prune: deleting a
+      site alone does not lower the figure.
+
+    * The nightly usage count no longer deletes files in the accounts by
+      name (.DS_Store, *~, *#, .#*, *--, ._* and exclude.tag, uploads
+      included): the count reads every name as it is, and nothing in
+      BOA honours an exclude tag. The skip-force-cleanup.txt opt-out has
+      nothing left to skip.
+
     * Root passes that act on an account's files (the hourly agent
       refresh, the nightly, the limited-shell worker, the Barracuda and
       Octopus upgrades, backups and restores, the fix-drupal scripts,

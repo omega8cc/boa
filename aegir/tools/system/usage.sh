@@ -175,21 +175,6 @@ _usage_stores() {
   done
 }
 
-# migratefs relocating the account $1's files store holds it: the hold
-# names a live root process that runs migratefs, matched as executed, never
-# as a word anywhere on a command line (a pid reused after a kill -9, by
-# another user's process or another command, never holds). Root is read as
-# the real uid in /proc/<pid>/status: /proc/<pid> itself shows root as the
-# owner of any process that is not dumpable.
-_usage_mfs_held() {
-  local _p
-  _p=$( { tr -dc '0-9' < "/run/migratefs-account-${1}.pid"; } 2> /dev/null )
-  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
-    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
-    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null \
-    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?migratefs( |$)'
-}
-
 _fix_clear_cache() {
   if [ -e "${_Plr}/profiles/hostmaster" ]; then
     su -s /bin/bash - ${_THIS_U} -c "drush8 @hostmaster cache-clear all" &> /dev/null
@@ -692,6 +677,11 @@ Note that unlike with database space limits, for files related disk space
 we count all your sites, including also all DEV/TEST sites, if they exist,
 even if they are marked as disabled in your Ægir control panel.
 
+The files of a deleted site are kept aside for safety in your account,
+under static/files/.archived, and they keep counting here until that
+archive is pruned. Ask our support team to prune it once you no longer
+need those copies.
+
 --
 This email has been sent by your Ægir resources usage daily monitor.
 
@@ -977,29 +967,6 @@ _usage_action() {
           | awk '{ print $3}' \
           | sed "s/[\,']//g" 2>&1)
         echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
-        # The cleanup walks the store, and a deletion in it while migratefs
-        # relocates it undoes the move or leaves its old copy behind; the
-        # count below only reads.
-        if _usage_mfs_held "${_THIS_U}"; then
-          echo "migratefs is relocating the files store of ${_THIS_U}; tmp/dot file cleanup skipped"
-        elif [ ! -e "${_usEr}/log/skip-force-cleanup.txt" ]; then
-          cd ${_usEr}
-          echo "Remove various tmp/dot files breaking du command"
-          # -delete, never a name list through xargs: the names are the
-          # tenant's, and xargs splits them at blanks and quotes
-          find . -name "exclude.tag" -type f -delete &> /dev/null
-          find . -name ".DS_Store" -type f -delete &> /dev/null
-          find . -name "*~" -type f -delete &> /dev/null
-          find . -name "*#" -type f -delete &> /dev/null
-          find . -name ".#*" -type f -delete &> /dev/null
-          find . -name "*--" -type f -delete &> /dev/null
-          find . -name "._*" -type f -delete &> /dev/null
-          find . -name "*~" -type l -delete &> /dev/null
-          find . -name "*#" -type l -delete &> /dev/null
-          find . -name ".#*" -type l -delete &> /dev/null
-          find . -name "*--" -type l -delete &> /dev/null
-          find . -name "._*" -type l -delete &> /dev/null
-        fi
         echo "Counting User ${_usEr}"
         if [ "${_THIS_MODE}" = "verbose" ]; then
           cat << EOF > "${_uLogFil}"

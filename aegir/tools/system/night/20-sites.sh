@@ -1614,27 +1614,27 @@ _fix_modules() {
 
   if [ -e "${_Plr}/modules/o_contrib_seven" ] \
     && [ ! -e "${_Plr}/core" ]; then
-    _PRIV_TEST=$(_run_drush8_nosilent_cmd "${_vGet} ^file_default_scheme$" 2>&1)
-    if [[ "${_PRIV_TEST}" =~ "No matching variable" ]]; then
-      _PRIV_TEST_RESULT=NONE
-    else
-      _PRIV_TEST_RESULT=OK
+    # The scheme the site stored, read from its database: the global settings
+    # force file_default_scheme to public until this INI switch is on, so a
+    # variable-get reports the force, never the site's own choice. The row:
+    # prefix tells a site with no stored scheme (public) from a failed read,
+    # which leaves the INI as it is.
+    _Pri=
+    _PriRaw=$(_run_drush8_nosilent_cmd "sqlq --db-prefix \"SELECT CONCAT('row:', IFNULL((SELECT value FROM {variable} WHERE name = 'file_default_scheme'), 'none'))\"" 2>/dev/null)
+    _PriRx='row:s:[0-9]+:"(private|public)"'
+    if [[ "${_PriRaw}" =~ ${_PriRx} ]]; then
+      _Pri="${BASH_REMATCH[1]}"
+    elif [[ "${_PriRaw}" =~ row:none ]]; then
+      _Pri=public
     fi
-    _AUTO_CNF_PF_DL=NO
-    if [ "${_PRIV_TEST_RESULT}" = "OK" ]; then
-      _Pri=$(_run_drush8_nosilent_cmd "${_vGet} ^file_default_scheme$" \
-        | grep "^file_default_scheme:" \
-        | cut -d: -f2 \
-        | awk '{ print $1}' \
-        | sed "s/['\"]//g" \
-        | tr -d "\n" 2>&1)
-      _Pri=${_Pri//[^a-z]/}
-      if [ "${_Pri}" = "private" ] || [ "${_Pri}" = "public" ]; then
-        echo _Pri file_default_scheme for ${_Dom} is ${_Pri}
-      fi
-      if [ "${_Pri}" = "private" ]; then
-        _AUTO_CNF_PF_DL=YES
-      fi
+    _AUTO_CNF_PF_DL=
+    if [ "${_Pri}" = "private" ] || [ "${_Pri}" = "public" ]; then
+      echo _Pri file_default_scheme for ${_Dom} is ${_Pri}
+    fi
+    if [ "${_Pri}" = "private" ]; then
+      _AUTO_CNF_PF_DL=YES
+    elif [ "${_Pri}" = "public" ]; then
+      _AUTO_CNF_PF_DL=NO
     fi
     if [ "${_AUTO_CNF_PF_DL}" = "YES" ]; then
       if [ -e "/data/conf/default.boa_site_control.ini" ] \
@@ -1654,7 +1654,7 @@ _fix_modules() {
             "s/.*allow_private_f.*/allow_private_file_downloads = TRUE/g" &> /dev/null
         fi
       fi
-    else
+    elif [ "${_AUTO_CNF_PF_DL}" = "NO" ]; then
       if [ -e "/data/conf/default.boa_site_control.ini" ] \
         && [ ! -e "${_DIR_CTRL_F}" ]; then
         _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
