@@ -60,6 +60,65 @@ if [ "${#_sites[@]}" -eq 0 ]; then
   exit 1
 fi
 
+# Each account owns everything under its /data/disk/<oN>, so any name there
+# (the alias, the vhost, the store, an archive stamp) can be a link or a
+# FIFO, and any directory on the way can itself be a link. This tool reads
+# those names only through the helpers below: never through a link, never
+# blocked on a FIFO, never re-walking a path an account can swap.
+#
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way. Below /home and /data/disk (root's) every name
+# on the path must be a real directory; elsewhere the last name is checked
+# against its resolved parent. Once entered, ./name stays in that directory
+# whatever is swapped.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_acct_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# $2 in the real directory $1, read as _acct_read_here reads it.
+_acct_read_in() {
+  _acct_in_real_dir "${1}" _acct_read_here "${2}"
+}
+# Run "$@" inside the directory $1 as it resolves now, entered for real:
+# static/files may be a link to another disk, and once resolved nothing on
+# the way is walked again as a string.
+_in_resolved_dir() {
+  local _r
+  _r=$(realpath -e -- "${1}" 2> /dev/null) || return 1
+  shift
+  ( cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] && "$@" )
+}
+# The size (du -sh) of ./$2 in the directory $1 as it resolves now.
+_size_in() {
+  _in_resolved_dir "${1}" du -sh -- "./${2}" 2> /dev/null | awk '{print $1}'
+}
+# The archive stamps (one per line) under the current (resolved) .archived/
+# that hold the site $1, the glob expanded here.
+_archived_stamps_here() {
+  local _s
+  for _s in ./*/"${1}"; do
+    [ -e "${_s}" ] || continue
+    _s="${_s#./}"
+    printf '%s\n' "${_s%%/*}"
+  done
+}
+
 # Read one log source, decompressing .gz transparently.
 _read_source() {
   case "$1" in
@@ -192,7 +251,8 @@ _query_one() {
       # <panel-fqdn> symlink to it was a crutch the ltd-users pass purges).
       _hmAlias="${_acct}/.drush/hostmaster.alias.drushrc.php"
       if [ ! -e "${_alias}" ] && [ -f "${_hmAlias}" ] \
-        && [ "$(sed -n "s/.*'uri' *=> *'\([^']*\)'.*/\1/p" "${_hmAlias}" 2>/dev/null | head -n1)" = "${_site}" ]; then
+        && [ "$(_acct_read_in "${_acct}/.drush" hostmaster.alias.drushrc.php \
+          | sed -n "s/.*'uri' *=> *'\([^']*\)'.*/\1/p" 2>/dev/null | head -n1)" = "${_site}" ]; then
         _alias="${_hmAlias}"
       fi
       _vhost="${_acct}/config/server_master/nginx/vhost.d/${_site}"
@@ -201,7 +261,8 @@ _query_one() {
         [ -e "${_alias}" ] && _aliasP="yes"
         if [ -e "${_vhost}" ]; then
           _vhostP="yes"
-          if grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default' "${_vhost}" 2>/dev/null; then
+          if _acct_read_in "${_vhost%/*}" "${_site}" \
+            | grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default' 2>/dev/null; then
             _vhostKind="disabled placeholder"
           else
             _vhostKind="real docroot"
@@ -230,11 +291,12 @@ _query_one() {
       _st="${_acct}/static/files/${_site}"
       if [ -e "${_st}" ] || [ -L "${_st}" ]; then
         _foundStore="YES"
-        _sz=$(du -sh "${_st}" 2>/dev/null | awk '{print $1}')
+        _sz=$(_size_in "${_acct}/static/files" "${_site}")
         # Is the site symlinked live NOW? Verify the in-site 'files' path recorded in the
-        # log is currently a symlink pointing at this store (authoritative, no guessing).
-        if [ -n "${_insiteFiles}" ] && [ -L "${_insiteFiles}" ] \
-          && [ "$(readlink "${_insiteFiles}" 2>/dev/null)" = "${_st}/files" ]; then
+        # log is currently a symlink pointing at this store (authoritative, no guessing),
+        # read inside the real site directory.
+        if [ -n "${_insiteFiles}" ] \
+          && [ "$(_acct_in_real_dir "${_insiteFiles%/*}" readlink ./files 2>/dev/null)" = "${_st}/files" ]; then
           _live="live symlink ${_insiteFiles} -> ${_st}/files"
         elif [ -n "${_insiteFiles}" ]; then
           _live="in-site path ${_insiteFiles} is NOT a live symlink to this store"
@@ -251,13 +313,16 @@ _query_one() {
     _foundArc="NO"
     for _acct in "${_diskRoot}"/*; do
       [ -d "${_acct}/static/files/.archived" ] || continue
-      for _ar in "${_acct}/static/files/.archived/"*/"${_site}"; do
-        [ -e "${_ar}" ] || continue
+      # listed inside the archive directory as it resolves now, and each
+      # copy sized inside its stamp directory, entered for real
+      while IFS= read -r _stamp; do
+        [ -n "${_stamp}" ] || continue
+        _ar="${_acct}/static/files/.archived/${_stamp}/${_site}"
         _foundArc="YES"
-        _stamp=$(basename "$(dirname "${_ar}")")
-        _sz=$(du -sh "${_ar}" 2>/dev/null | awk '{print $1}')
+        _sz=$(_size_in "${_ar%/*}" "${_site}")
         printf "  Archive NOW: %s  (stamp %s, %s)\n" "${_ar}" "${_stamp}" "${_sz:-?}"
-      done
+      done < <(_in_resolved_dir "${_acct}/static/files/.archived" \
+        _archived_stamps_here "${_site}")
     done
     [ "${_foundArc}" = "NO" ] && echo "  Archive NOW: none on disk (never archived, or already purged)"
   fi

@@ -84,10 +84,12 @@ types {
   application/xhtml+xml                 xhtml;
   application/xml                       rdf;
   application/zip                       zip;
+  audio/flac                            flac;
   audio/midi                            mid midi kar;
   audio/mp4                             aac f4a f4b m4a;
   audio/mpeg                            mp3;
-  audio/ogg                             oga ogg;
+  audio/ogg                             oga ogg opus;
+  audio/webm                            weba;
   audio/x-realaudio                     ra;
   audio/x-wav                           wav;
   font/opentype                         otf;
@@ -122,6 +124,7 @@ types {
   video/quicktime                       mov;
   video/webm                            webm;
   video/x-flv                           flv;
+  video/x-matroska                      mkv;
   video/x-mng                           mng;
   video/x-ms-asf                        asx asf;
   video/x-ms-wmv                        wmv;

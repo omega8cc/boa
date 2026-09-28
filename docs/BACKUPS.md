@@ -127,6 +127,9 @@
   $ backboa install
 ```
 
+`backboa install` (and `duobackboa install`) also patch the pinned Duplicity so a
+backup never reads a source file through a link or waits on a FIFO.
+
 ## USAGE
 
 ```sh
@@ -142,6 +145,9 @@
 ## RESTORE EXAMPLES
 
   Note: Be careful while restoring not to prepend a slash to the path!
+  The destination must not contain '..' names. A destination inside an account's
+  tree must not exist yet; it is staged and renamed into place, and refused when a
+  link on the way leads outside that account's own tree or store.
 
   Restoring a single file to `tmp/`
 

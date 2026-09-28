@@ -24,8 +24,6 @@ You need to run the required commands and perform tasks in the order listed belo
 ```sh
 touch /data/disk/o1/static/control/MyClassic.info
 chsh -s /bin/bash o1
-sed -i "s/^max_execution_time =.*/max_execution_time = 7200/g" /opt/php*/lib/php.ini
-sed -i "s/^max_input_time =.*/max_input_time = 7200/g" /opt/php*/lib/php.ini
 ```
 
 ## Commands to Run on the Source Server Only

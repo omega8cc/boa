@@ -96,10 +96,17 @@ find /run/speed_cleanup.pid          -type f -not -newermt "${_ONE_HOUR}" -exec 
 _THR_HOURS=$(date --date '3 hours ago' +"%Y-%m-%d %H:%M:%S")
 # The queue-stop file holds the Ægir task queue during a maintenance move; purge
 # it only when its owner PID is gone (a crashed/leaked hold) so a legitimately long
-# move is never unpaused mid-flight. /run is also cleared on reboot.
+# move is never unpaused mid-flight. Only root writes it, so a pid that another
+# user's process now has is gone too (the real uid in /proc/<pid>/status), and it
+# is removed only while it still names the pid read, so a pause another operation
+# created meanwhile stays. /run is also cleared on reboot.
 if [ -e "/run/boa_queue_stop.pid" ]; then
   _qs_pid=$( { tr -dc '0-9' < /run/boa_queue_stop.pid; } 2>/dev/null )
-  { [ -z "${_qs_pid}" ] || ! kill -0 "${_qs_pid}" 2>/dev/null; } && rm -f /run/boa_queue_stop.pid
+  if { [ -z "${_qs_pid}" ] || ! kill -0 "${_qs_pid}" 2>/dev/null \
+    || [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_qs_pid}/status" 2>/dev/null)" != "0" ]; } \
+    && [ "$( { tr -dc '0-9' < /run/boa_queue_stop.pid; } 2>/dev/null )" = "${_qs_pid}" ]; then
+    rm -f /run/boa_queue_stop.pid
+  fi
 fi
 if ! _installer_alive; then
   find /run/boa_run.pid              -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
@@ -111,8 +118,36 @@ _TWELVE_HOURS=$(date --date '12 hours ago' +"%Y-%m-%d %H:%M:%S")
 find /run/boa_wait.pid               -type f -not -newermt "${_TWELVE_HOURS}" -exec rm -f {} \; 2>/dev/null
 find /run/boa_run.pid                -type f -not -newermt "${_TWELVE_HOURS}" -exec rm -f {} \; 2>/dev/null
 find /run/octopus_install_run.pid    -type f -not -newermt "${_TWELVE_HOURS}" -exec rm -f {} \; 2>/dev/null
+# A migration's runner park (xoct/xcopy pre-mig until post-mig, an xmass
+# cutover until its unpark) holds the five runners out of the tools refresh. Bounded: a migration abandoned
+# without post-mig gets its dispatcher, nightly, usage, graceful and worker
+# back within a day. Re-running pre-mig re-arms the marker.
+_ONE_DAY=$(date --date '24 hours ago' +"%Y-%m-%d %H:%M:%S")
+if [ -n "$(find /run/boa_migration_park.pid -type f -not -newermt "${_ONE_DAY}" 2>/dev/null)" ]; then
+  rm -f /run/boa_migration_park.pid
+  [ -d "/var/log/boa" ] \
+    && echo "$(date) migration runner park expired after 24 hours; the runners are fetched back" \
+    >> /var/log/boa/clear.hold.incident.log
+fi
 find /run/*_backup.pid               -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
 find /run/daily-fix.pid              -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
+# The SQL backups' wait marker, held while a run waits for migratefs to
+# release /data/disk/arch, has no age bound: a run killed in its wait
+# leaves it behind, and a later process given its pid would hold off every
+# SQL backup. Removed once its pid is not a live root process that runs an
+# SQL backup script (the real uid in /proc/<pid>/status: /proc/<pid> itself
+# shows root as the owner of any process that is not dumpable), and only
+# while it still names that pid, so a run writing it afresh keeps it.
+if [ -e "/run/boa_sql_backup_wait.pid" ]; then
+  _sw_pid=$( { tr -dc '0-9' < /run/boa_sql_backup_wait.pid; } 2>/dev/null )
+  if ! { [ -n "${_sw_pid}" ] && kill -0 "${_sw_pid}" 2>/dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_sw_pid}/status" 2>/dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_sw_pid}/cmdline"; } 2>/dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?mysql_(cluster_)?backup\.sh( |$)'; } \
+    && [ "$( { tr -dc '0-9' < /run/boa_sql_backup_wait.pid; } 2>/dev/null )" = "${_sw_pid}" ]; then
+    rm -f /run/boa_sql_backup_wait.pid
+  fi
+fi
 
 # PHP-idle surgery quiesce: barracuda holds this while swapping PHP
 # versions; a marker whose owner PID is gone is stale (crashed run) and
@@ -326,41 +361,21 @@ else
   fi
 fi
 
-_OCT_NR=$(ls /data/disk | wc -l)
-_OCT_NR=$(( _OCT_NR - 1 ))
-for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-  _SITES_NR=0
-  if [ -e "${_OCT}/config/server_master/nginx/vhost.d" ]; then
-    _SITES_NR=$(ls ${_OCT}/config/server_master/nginx/vhost.d | wc -l)
-    if [ "${_SITES_NR}" -gt 0 ]; then
-      if [ -z "${_chckSts}" ]; then
-        _chckSts="SNR ${_OCT} ${_SITES_NR} "
-      else
-        _chckSts="SNR ${_OCT} ${_SITES_NR} ${_chckSts} "
-      fi
-    else
-      _OCT_NR=$(( _OCT_NR - 1 ))
-    fi
+# The box tells the mirror its BOA release and OS release, and nothing else,
+# as the User-Agent of one HEAD request: what decides when a legacy OS can be
+# dropped. It lives only in the mirrors' rotated access logs. Opt out with
+# _VERSION_REPORT=NO in /root/.barracuda.cnf.
+if [ -d "/data/u" ] && [ "${_VERSION_REPORT}" != "NO" ]; then
+  _checkVn=$(/opt/local/bin/boa version 2>/dev/null | grep -o "BOA-[^ ]*" | head -1)
+  if [ -z "${_checkVn}" ] && [ -e "/var/log/barracuda_log.txt" ]; then
+    _checkVn=$(tail --lines=1 /var/log/barracuda_log.txt | grep -o "BOA-[^ ]*" | head -1)
   fi
-done
-if [ -d "/data/u" ]; then
-  _chckSts="OCT ${_OCT_NR} ${_chckSts} "
-  _ALL_SITES_NR=$(ls /data/disk/*/config/server_master/nginx/vhost.d | wc -l)
-  _ALL_SITES_NR=$(( _ALL_SITES_NR - _OCT_NR ))
-  _chckSts="SST ${_ALL_SITES_NR} ${_chckSts}"
-  _chckHst=$(hostname 2>&1)
-  _chckIps=$(hostname -I 2>&1)
-  _checkVn=$(/opt/local/bin/boa version | tr -d "\n" 2>&1)
-  if [[ "${_checkVn}" =~ "===" ]] || [ -z "${_checkVn}" ]; then
-    if [ -e "/var/log/barracuda_log.txt" ]; then
-      _checkVn=$(tail --lines=1 /var/log/barracuda_log.txt | tr -d "\n" 2>&1)
-    else
-      _checkVn="whereis barracuda_log.txt"
-    fi
-  fi
+  [ -z "${_checkVn}" ] && _checkVn="BOA-unknown"
+  _checkOs=$(. /etc/os-release 2>/dev/null; echo "${ID} ${VERSION_ID} ${VERSION_CODENAME}" | xargs)
+  [ -z "${_checkOs}" ] && _checkOs="os-unknown"
   _crlHead="-I -s --retry 3 --retry-delay 3"
   _urlBpth="https://${_USE_MIR}/versions/${_tRee}/boa/aegir/tools/bin"
-  curl ${_crlHead} -A "${_chckHst} ${_chckIps} ${_checkVn} ${_chckSts}" "${_urlBpth}/thinkdifferent" &> /dev/null
+  curl ${_crlHead} -A "${_checkVn} ${_checkOs}" "${_urlBpth}/thinkdifferent" &> /dev/null
   wait
 fi
 

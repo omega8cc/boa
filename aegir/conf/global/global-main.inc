@@ -166,6 +166,33 @@ if ($hidden_uri) {
 
 
 /**
+ * On the command line there is no MAIN_SITE_NAME, and Drush takes
+ * SERVER_NAME from the host of --uri. For a subdirectory site
+ * (--uri=example.com/blog) or a site reached by one of its aliases that is
+ * another name: the cache prefix and the site INI below would be keyed on
+ * it, so the site would read and clear the entries of the domain's site and
+ * of every other subdirectory site under it, not the ones its web requests
+ * use. The site's own name is its directory, which Drupal has resolved by
+ * now: $site_path on Drupal 8+, conf_path() on Drupal 7 and Backdrop.
+ */
+if (!isset($_SERVER['MAIN_SITE_NAME']) && PHP_SAPI === 'cli') {
+  $_boa_cli_site_dir = '';
+  if (isset($site_path) && is_string($site_path)) {
+    $_boa_cli_site_dir = $site_path;
+  }
+  elseif (function_exists('conf_path')) {
+    $_boa_cli_site_dir = conf_path();
+  }
+  if (is_string($_boa_cli_site_dir) &&
+      preg_match('#^(?:\./)?sites/([^/]+)$#', $_boa_cli_site_dir, $_boa_cli_site_m) &&
+      $_boa_cli_site_m[1] !== 'default' &&
+      $_boa_cli_site_m[1] !== 'all') {
+    $_SERVER['SERVER_NAME'] = $_boa_cli_site_m[1];
+  }
+}
+
+
+/**
  * Use Ægir/BOA specific MAIN_SITE_NAME instead of possibly fake SERVER_NAME
  */
 if (isset($_SERVER['MAIN_SITE_NAME'])) {

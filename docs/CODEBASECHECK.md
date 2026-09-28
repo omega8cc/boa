@@ -74,7 +74,9 @@ UNKNOWN one by hand), in:
 An alias root is followed to the web root Ægir serves (`docroot/`, `html/` or
 `web/` when the root itself has no `index.php`), so a Composer platform registered
 with its app root is checked once, at its web root. `codebasecheck <platform-path>`
-takes the app root the same way.
+takes the app root the same way. A `docroot/`, `html/` or `web/` that is itself a
+symlink is passed over, and a codebase reached through a symlink anywhere below
+`/data/disk/<account>`, or whose version file is a symlink, reads as UNKNOWN.
 
 ## Verdicts and exit codes
 

@@ -110,7 +110,10 @@ remote credential file would judge them against the wrong server); and,
 for every CLIENT database
 about to be dropped, the TARGET holding a populated schema of that name
 plus at least one real (non-proxy) vhost — which is what stops a proxy
-chain being mistaken for a target.
+chain being mistaken for a target — and every database about to be dropped
+proven the account's own (the site's `db_user` equals its `db_name` and those
+credentials open it); a site whose database cannot be proven refuses the run,
+and an unproven panel database is kept.
 
 The account's OWN panel and dedicated
 site are the deliberate exception: an xoct target builds those named for
@@ -144,7 +147,8 @@ then drops databases and their
 single-grant users (all three grant hosts), removes `backups/`, `src/`,
 `undo/`, `distro/`, the platform trees named by the `platform_*` aliases,
 and the static trees — resolving every store symlink FIRST and refusing
-any target outside the account or the single `/mnt` store.
+any target outside the account or its own part of the single `/mnt` store
+(`<mount>/files/<account>/`).
 
 The proxy
 keeps serving throughout: nothing in stage B is in its dependency set.
@@ -238,7 +242,9 @@ and the tool prints the Solr restart to run, keeping the quarantine map
 for the unfinished entries; and if the nginx configtest or reload fails,
 the files are back but the running configuration is still the quiesced
 one — the tool says so, returns non-zero, and `nginx -t` plus a manual
-reload are owed before the account counts as live.
+reload are owed before the account counts as live. `restore` also returns
+non-zero whenever a pool, an fpm include or a Solr core is left in quarantine
+(the ALRT lines name each one).
 
 **Stage B is not reversible on this box**: "I need
 this account back here" is a migration back from the live target using

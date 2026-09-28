@@ -20,6 +20,7 @@ _aptYesUnth="-y ${_aptAllow}"
 _filIncB="barracuda.sh.cnf"
 _filIncO="octopus.sh.cnf"
 _gCb="git clone --branch"
+_gitHub="https://github.com/omega8cc"
 _octName="OCTOPUS.sh.txt"
 _pthIncB="lib/settings/${_filIncB}"
 _pthIncO="lib/settings/${_filIncO}"
@@ -61,6 +62,73 @@ _acct_group() {
   _g=$(id -gn "${_a}" 2> /dev/null)
   [ "${_g}" = "${_a}" ] || _g="users"
   echo "${_g}"
+}
+
+# An account's log/, .drush/ and .tmp/ belong to its oN user, which can put a
+# link or a FIFO at any name there or swap the directory itself for a link.
+# Run "$@" inside the real directory $1 only (every name below /data/disk a
+# real directory), so ./name never leads out of the account.
+_oct_in_real_dir() {
+  local _d="${1}" _want
+  shift
+  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)${_d#/data/disk}"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+# The last 1 MiB of ./$1 in the current (pinned) directory, where the newest
+# lines are, as the satellite reads the same log: never through a link, never
+# blocked on a FIFO.
+_oct_read_tail_here() {
+  local _s
+  _s="$(stat -c %s -- "./${1}" 2> /dev/null)"
+  _s="${_s//[^0-9]/}"
+  _s="$(( ${_s:-0} > 1048576 ? ${_s:-0} - 1048576 : 0 ))"
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock,skip_bytes \
+    skip="${_s}" bs=1048576 count=1 status=none 2> /dev/null
+}
+
+# The day's upgrade marker ./$1: an existing name gets a new time (never
+# through a link), a missing one is created exclusively.
+_oct_up_mark_here() {
+  touch -h -c -- "./${1}" 2> /dev/null
+  [ -e "./${1}" ] || [ -L "./${1}" ] \
+    || : | dd of="./${1}" conv=excl status=none 2> /dev/null
+  return 0
+}
+
+# Reset the drush extension dirs in the current (pinned) ~/.drush: rm -rf of
+# a name removes a link itself, never what it points at. The fresh sys/ is
+# entered again and handed to the instance user, which clones provision into
+# it (as the satellite pass does), so root never writes into a directory the
+# account can change under it. The clone runs in that directory with the
+# user's own home (/data/disk/<oN>) and the system PATH, whatever the
+# launcher's environment holds; a clone that did not land is reported, and
+# the pass's own provision fetch (AegirSetupB) tries again. The clone is
+# then handed over entry by entry through a handle, never by name: the
+# instance user writes sys/ while it clones, and a hard link it put there
+# would have been handed over by chown -R. Directories and single-link
+# regular files are changed; a hard-linked file, a symlink, a FIFO or a
+# socket is left alone.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+_oct_drush_reset_here() {
+  local _want _own _uid _gid
+  _want="$(pwd -P)/sys"
+  _own="${_octUsr}:$(_acct_group "${_octUsr}")"
+  _uid=$(id -u -- "${_octUsr}" 2> /dev/null)
+  _gid=$(getent group "${_own#*:}" 2> /dev/null | cut -d: -f3)
+  rm -rf -- ./sys ./xts ./usr ./provision ./drush_make
+  mkdir -p -- ./sys ./xts ./usr
+  ( cd -P -- ./sys 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] || exit 0
+    chown "${_own}" .
+    su -s /bin/bash "${_octUsr}" \
+      -c "export HOME=/data/disk/${_octUsr} PATH=/usr/local/bin:/usr/bin:/bin \
+        && ${_gCb} ${_bRnh} ${_gitHub}/provision.git ./provision" &> /dev/null
+    if [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]]; then
+      env PATH=/usr/local/bin:/usr/bin:/bin find . \
+        -execdir perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" {} +
+    fi
+    [ -d ./provision ] && [ ! -L ./provision ] \
+      || echo "ALRT: provision was not cloned into ${_want} as ${_octUsr}" )
 }
 
 _sanitize_number() {
@@ -453,7 +521,7 @@ _up_mode() {
     wait
     bash  ${_vBs}/${_tocName}
     _passRc=$?
-    touch ${_usEr}/log/up-${_TODAY}
+    _oct_in_real_dir "${_usEr}/log" _oct_up_mark_here "up-${_TODAY}"
   elif [ "${_mCmd}" = "platforms" ]; then
     sed -i "s/^_PLATFORMS_ONLY=NO/_PLATFORMS_ONLY=YES/g"              ${_octCnf}
     wait
@@ -465,7 +533,7 @@ _up_mode() {
     wait
     bash  ${_vBs}/${_tocName}
     _passRc=$?
-    touch ${_usEr}/log/up-${_TODAY}
+    _oct_in_real_dir "${_usEr}/log" _oct_up_mark_here "up-${_TODAY}"
   elif [ "${_mCmd}" = "both" ] || [ "${_mCmd}" = "force" ]; then
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                            ${_octCnf}
     wait
@@ -477,7 +545,7 @@ _up_mode() {
     wait
     bash  ${_vBs}/${_tocName}
     _passRc=$?
-    touch ${_usEr}/log/up-${_TODAY}
+    _oct_in_real_dir "${_usEr}/log" _oct_up_mark_here "up-${_TODAY}"
   else
     sed -i "s/^_HM_ONLY=YES/_HM_ONLY=NO/g"                            ${_octCnf}
     wait
@@ -489,7 +557,7 @@ _up_mode() {
     wait
     bash  ${_vBs}/${_tocName}
     _passRc=$?
-    touch ${_usEr}/log/up-${_TODAY}
+    _oct_in_real_dir "${_usEr}/log" _oct_up_mark_here "up-${_TODAY}"
   fi
 }
 
@@ -498,7 +566,7 @@ _satellite_downgrade_protection() {
   _octUsr="${_sCnd}"
   if [ -e "${_usEr}/log/octopus_log.txt" ] \
     && [ "${_cmNd}" = "up-lts" ]; then
-    _SERIES_TEST=$(cat ${_usEr}/log/octopus_log.txt 2>&1)
+    _SERIES_TEST=$(_oct_in_real_dir "${_usEr}/log" _oct_read_tail_here octopus_log.txt)
     if [[ "${_SERIES_TEST}" =~ "Octopus ${_rLsn}-pro" ]]; then
       echo
       echo "ERROR: Your Octopus has been already upgraded to ${_rLsn}-pro"
@@ -523,7 +591,7 @@ _satellite_downgrade_protection() {
     && [ "${_cmNd}" != "up-lts" ] \
     && [ "${_cmNd}" != "info" ] \
     && [ "${_cmNd}" != "help" ]; then
-    _SERIES_TEST=$(cat ${_usEr}/log/octopus_log.txt 2>&1)
+    _SERIES_TEST=$(_oct_in_real_dir "${_usEr}/log" _oct_read_tail_here octopus_log.txt)
     _BOA_SERIES_TEST=$(cat /var/log/barracuda_log.txt 2>&1)
     if [[ "${_SERIES_TEST}" =~ "Octopus ${_rLsn}" ]] \
       || [[ "${_BOA_SERIES_TEST}" =~ "Barracuda ${_rLsn}" ]]; then
@@ -546,7 +614,7 @@ _satellite_check_if_already_upgraded() {
     _SERIES_TEST=
     _mCmd="${_oMcm}"
     if [ -e "${_usEr}/log/octopus_log.txt" ]; then
-      _SERIES_TEST=$(cat ${_usEr}/log/octopus_log.txt 2>&1)
+      _SERIES_TEST=$(_oct_in_real_dir "${_usEr}/log" _oct_read_tail_here octopus_log.txt)
       if [[ "${_SERIES_TEST}" =~ "${_rlsE}" ]]; then
         if [ "${_oMcm}" != "force" ]; then
           _mCmd=
@@ -612,12 +680,14 @@ _up_one() {
     fi
 
     if [ -e "${_vBs}/${_tocName}" ]; then
+      ### .drush is the instance user's: provision is listed from inside its
+      ### real directory, never through a link put on the way
       if [ -e "${_usEr}/.drush/sys/provision/http" ]; then
-        _IS_OLD=$(find ${_usEr}/.drush/sys/provision/ \
-          -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
+        _IS_OLD=$(_oct_in_real_dir "${_usEr}/.drush/sys/provision" \
+          find . -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
       elif [ -e "${_usEr}/.drush/provision" ]; then
-        _IS_OLD=$(find ${_usEr}/.drush/provision/ \
-          -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
+        _IS_OLD=$(_oct_in_real_dir "${_usEr}/.drush/provision" \
+          find . -maxdepth 1 -mindepth 1 -mtime +0 -type d | grep example)
       fi
       if [ -e "${_usEr}/.drush/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
         _IS_OLD=
@@ -645,12 +715,7 @@ _up_one() {
           _up_mode
         else
           echo "${_usEr}/.drush/sys/provision does not exist!"
-          rm -rf ${_usEr}/.drush/{sys,xts,usr}
-          rm -rf ${_usEr}/.drush/{provision,drush_make}
-          mkdir -p ${_usEr}/.drush/{sys,xts,usr}
-          ${_gCb} ${_bRnh} ${_gitHub}/provision.git \
-            ${_usEr}/.drush/sys/provision &> /dev/null
-          chown -R ${_octUsr}:$(_acct_group "${_octUsr}") ${_usEr}/.drush/sys
+          _oct_in_real_dir "${_usEr}/.drush" _oct_drush_reset_here
           _up_mode
         fi
       fi
@@ -720,6 +785,21 @@ _load_control() {
   _get_load
 }
 
+# migratefs relocating the account $1's files store holds it (a live root
+# process that runs migratefs, matched as executed, never as a word
+# anywhere on a command line; root read as the real uid in
+# /proc/<pid>/status, as /proc/<pid> itself shows root as the owner of any
+# process that is not dumpable): the pass sets modes in the hostmaster
+# site's store and moves that site, inside a store mid-copy or set aside.
+_oct_mfs_held() {
+  local _p
+  _p=$( { tr -dc '0-9' < "/run/migratefs-account-${1}.pid"; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?migratefs( |$)'
+}
+
 _up_action_all() {
   for _usEr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
     _count_cpu
@@ -743,6 +823,15 @@ _up_action_all() {
     if [ -d "${_usEr}/config/server_master/nginx/vhost.d" ] \
       && [ -e "${_usEr}/log/cores.txt" ] \
       && [ ! -e "${_usEr}/log/CANCELLED" ]; then
+      ### Only an account the sweep would upgrade: one it passes over
+      ### anyway is no error. Named on the completion line, as a load skip
+      ### is: each later account's report judges the alert flag afresh, so
+      ### the flag alone would not carry this skip to the verdict.
+      if _oct_mfs_held "${_usEr##*/}"; then
+        echo "ALRT: skipping ${_usEr}: migratefs is relocating its files store - nothing was upgraded"
+        _MFS_SKIPPED="${_MFS_SKIPPED} ${_usEr##*/}"
+        continue
+      fi
       if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
         _octUsr=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}')
         _tocName="${_octName}.${_octUsr}"
@@ -806,7 +895,7 @@ _up_action_all() {
         sleep ${_n}
         rm -f ${_vBs}/${_tocName}
         rm -f ${_vBs}/${_tocIncO}
-        rm -rf ${_usEr}/.tmp/cache
+        _oct_in_real_dir "${_usEr}/.tmp" rm -rf -- ./cache
         echo "Done for ${_usEr}"
       else
         echo "load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}"
@@ -843,6 +932,14 @@ _up_action_one() {
   if [ -d "${_usEr}/config/server_master/nginx/vhost.d" ] \
     && [ -e "${_usEr}/log/cores.txt" ] \
     && [ ! -e "${_usEr}/log/CANCELLED" ]; then
+    ### Inside the eligibility test, as in the sweep: an account that is
+    ### no upgradable instance is reported as that, below.
+    if _oct_mfs_held "${_sCnd}"; then
+      echo "ALRT: skipping ${_usEr}: migratefs is relocating its files store - nothing was upgraded"
+      _MFS_SKIPPED="${_MFS_SKIPPED} ${_sCnd}"
+      _SEND_ALERT=YES
+      return 0
+    fi
     if (( $(echo "${_O_LOAD} < ${_O_LOAD_MAX}" | bc -l) )); then
       _octUsr="${_sCnd}"
       _tocName="${_octName}.${_octUsr}"
@@ -901,7 +998,7 @@ _up_action_one() {
       sleep 3
       rm -f ${_vBs}/${_tocName}
       rm -f ${_vBs}/${_tocIncO}
-      rm -rf ${_usEr}/.tmp/cache
+      _oct_in_real_dir "${_usEr}/.tmp" rm -rf -- ./cache
       echo Done for ${_usEr}
     else
       echo load is ${_O_LOAD} while maxload is ${_O_LOAD_MAX}
@@ -1015,6 +1112,10 @@ _up_finish() {
   if [ -n "${_LOAD_SKIPPED}" ]; then
     [ -n "${_upWhy}" ] && _upWhy="${_upWhy}; "
     _upWhy="${_upWhy}not upgraded under load:${_LOAD_SKIPPED}"
+  fi
+  if [ -n "${_MFS_SKIPPED}" ]; then
+    [ -n "${_upWhy}" ] && _upWhy="${_upWhy}; "
+    _upWhy="${_upWhy}not upgraded while migratefs relocates its files store:${_MFS_SKIPPED}"
   fi
   if [ -n "${_upWhy}" ]; then
     _upDone="OCTOPUS upgrade completed WITH ERRORS -- ${_upWhy}"
@@ -1531,6 +1632,7 @@ _up_proceed() {
 
   _ALERT_LOGS=""
   _LOAD_SKIPPED=""
+  _MFS_SKIPPED=""
   if [ "${_sCnd}" = "all" ]; then
     _up_action_all
   else

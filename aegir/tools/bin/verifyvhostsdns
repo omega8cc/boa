@@ -14,6 +14,40 @@ _REPORT_FILE="/root/dns_check_report.txt"
 # Ensure the report file is empty
 > "${_REPORT_FILE}"
 
+# An account owns /data/disk/<oN>, so its config/ tree can hold a link or a
+# FIFO at any name, and a directory on the way can be one. The vhost files
+# are listed and read only inside the real vhost.d.
+#
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory. A copy of the helper in
+# lib/functions/helper.sh.inc.
+_vvd_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_vvd_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+
+# The file $1, read as _vvd_read_here reads it inside its real directory.
+_vvd_read_file() {
+  _vvd_in_real_dir "${1%/*}" _vvd_read_here "${1##*/}"
+}
+
 # Function to clean domain names (remove trailing semicolons)
 _clean_domain() {
   echo "$1" | sed 's/;$//'
@@ -34,7 +68,7 @@ _check_dns() {
 
   # If no direct match, use curl to verify via access log
   if curl -sI "https://${_domain}" &> /dev/null; then
-    if grep -q "$(_clean_domain "${_domain}")" "${_ACCESS_LOG}"; then
+    if grep -qF -e "$(_clean_domain "${_domain}")" "${_ACCESS_LOG}"; then
       return 0
     fi
   fi
@@ -44,19 +78,32 @@ _check_dns() {
 
 # Scan vhost files
 echo "Scanning vhosts in ${_VHOSTS_DIR}..."
-for _vhost in $(find ${_VHOSTS_DIR} -type f -name "*.com"); do
-  # Extract unique server_name entries
-  _domains=$(grep -E '^\s*server_name' "${_vhost}" | awk '{$1=""; print}' | tr -s ' ' '\n' | sort -u)
+for _dir in ${_VHOSTS_DIR}; do
+  # The names are listed from inside the real vhost.d, as paths below it.
+  mapfile -d '' -t _names < <(_vvd_in_real_dir "${_dir}" \
+    find -P . -type f -name "*.com" -print0 2> /dev/null)
+  for _vhost in "${_names[@]}"; do
+    _vhost="${_dir}/${_vhost#./}"
+    # Extract unique server_name entries
+    _domains=$(_vvd_read_file "${_vhost}" | grep -E '^\s*server_name' | awk '{$1=""; print}' | tr -s ' ' '\n' | sort -u)
 
-  for _domain in ${_domains}; do
-    # Clean and skip empty or invalid domains
-    _cleaned_domain=$(_clean_domain "${_domain}")
-    [[ -z "${_cleaned_domain}" ]] && continue
+    # One token per line, never expanded as a glob.
+    mapfile -t _tokens <<< "${_domains}"
+    for _domain in "${_tokens[@]}"; do
+      # Clean and skip empty or invalid domains
+      _cleaned_domain=$(_clean_domain "${_domain}")
+      [[ -z "${_cleaned_domain}" ]] && continue
+      # A host name only: anything else would reach dig and curl as an option.
+      if [[ ! "${_cleaned_domain}" =~ ^[A-Za-z0-9*._][A-Za-z0-9*._-]*$ ]]; then
+        echo "Skipped: ${_cleaned_domain//[^A-Za-z0-9*._-]/?} is not a host name (vhost: ${_vhost})" >> "${_REPORT_FILE}"
+        continue
+      fi
 
-    echo "Checking domain: ${_cleaned_domain}..."
-    if ! _check_dns "${_cleaned_domain}"; then
-      echo "Unverified: ${_cleaned_domain} (vhost: ${_vhost})" >> "${_REPORT_FILE}"
-    fi
+      echo "Checking domain: ${_cleaned_domain}..."
+      if ! _check_dns "${_cleaned_domain}"; then
+        echo "Unverified: ${_cleaned_domain} (vhost: ${_vhost})" >> "${_REPORT_FILE}"
+      fi
+    done
   done
 done
 

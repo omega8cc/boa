@@ -43,3 +43,5 @@ php_admin_value[default_socket_timeout] = 180
 ```
 
 Note: You can modify this file, but your changes will be overwritten on every barracuda upgrade.
+
+The execution-time limits can be lowered there but not raised past 180 seconds: every tenant pool also carries `request_terminate_timeout = 180s` (`_PHP_FPM_TIMEOUT` in the Octopus cnf can only lower it, 60 to 180), and nginx's `fastcgi_read_timeout` is a fixed 180 s, so a web request ends there whatever `max_execution_time` says. A job that needs longer runs from the shell with Drush, where PHP has no execution time limit.

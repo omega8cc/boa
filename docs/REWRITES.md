@@ -118,3 +118,13 @@ location ^~ /sites/default/files {
   }
 }
 ```
+
+## Built-in audio and video handling, and a custom media location
+
+The shared vhost body of Drupal and Backdrop sites serves audio and video (`mp3`, `ogg`, `oga`, `ogv`, `opus`, `wav`, `flac`, `aac`, `weba`, `webm`, `avi`, `mpeg`, `mpg`, `mov`, `wmv`, `mkv`, `m4v`, plus the `mp4`/`m4a` and `flv` pseudo-streaming locations) with `send_timeout 3600s;`, because a player or a CDN edge reads far ahead of playback and then reads nothing for many minutes, and the http-level 180 seconds would cut the file. Every other file type keeps 180 seconds.
+
+Short `/files/...` and `/downloads/...` URIs of all these types reach the same locations: the static-file list nested in each shortcut location rewrites them to the site's files directory, where the media locations answer. `vtt` caption files load by short URI too. BOA's own `mime.types` names each type, so none goes out as `application/octet-stream`: `opus` as `audio/ogg`, `flac` as `audio/flac`, `weba` as `audio/webm`, `mkv` as `video/x-matroska`.
+
+HTTPS to a site without a certificate of its own passes BOA's wildcard SSL front first, which proxies it to the site over plain HTTP; the front gives the same audio and video types the same hour, so the reader is not cut there either.
+
+A custom media location added through `nginx_vhost_include.conf` or `nginx_force_include.conf` matches ahead of these and inherits the http-level 180 seconds, so give it its own `send_timeout` if it serves long audio or video.

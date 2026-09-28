@@ -24,6 +24,10 @@
 # enough free space, so this is 100% an operator decision + action: run it by hand,
 # in a maintenance window, after checking the DRY plan. It is never scheduled.
 #
+# Each store is held while it is relocated (/run/migratefs-account-<oN>.pid or
+# /run/migratefs-arch.pid, naming this run's pid), and the scheduled passes that
+# change a store leave a held one alone; see _mfs_hold.
+#
 # SINGLE /mnt MOUNT ONLY. This tool AND other BOA scripts (the lshell FTP-jail
 # wiring) assume exactly ONE attached mountpoint under /mnt. Multiple /mnt
 # mountpoints are NOT supported and cannot be disambiguated, so migratefs REFUSES
@@ -31,7 +35,7 @@
 #
 # Usage:
 #   migratefs [--target <mount>] [--account <oN>] [--no-arch] [--apply] [--yes]
-#             [--grace <sec>] [--help]
+#             [--grace <sec>] [--recheck-max <MB>] [--help]
 #
 #   default (no --apply) : DRY plan only — print what WOULD happen, change nothing
 #   --apply              : perform the relocation (pauses the queue, drains tasks)
@@ -46,6 +50,9 @@
 #   --no-arch            : do not relocate /data/disk/arch
 #   --yes                : in --apply, skip the interactive confirmation
 #   --grace <sec>        : queue-pause grace before draining (default 15)
+#   --recheck-max <MB>   : most data copied again with the store closed, when it
+#                          changed during the live copy (default 1024); above it
+#                          the store stays in place for a quieter run
 #
 
 export HOME=/root
@@ -65,6 +72,7 @@ _APPLY="NO"
 _ASSUME_YES="NO"
 _DO_ARCH="YES"
 _GRACE=15
+_RECHECK_MAX_MB=1024
 _stopOwned="NO"
 
 _usage() {
@@ -73,24 +81,41 @@ migratefs — relocate account files stores + shared archive onto attached stora
 
 Usage:
   migratefs [--target <mount>] [--account <oN>] [--no-arch] [--apply] [--yes]
-            [--grace <sec>] [--help]
+            [--grace <sec>] [--recheck-max <MB>] [--help]
 
   (no --apply)       DRY plan only: print what WOULD happen, change nothing
   --apply            perform the relocation (pauses the Aegir queue, drains tasks)
   --target <mount>   attached mount to relocate onto (e.g. /mnt/extra); auto-detected
                      as the single real mountpoint under /mnt. Account stores land at
                      <mount>/files/<oN>/static/files, the archive at
-                     <mount>/files/system/arch
+                     <mount>/files/system/arch. Refused unless it is, as given and
+                     as it resolves, a plain path (letters, digits, . _ - /) under
+                     /mnt with no directory named files or static on the way
   --account <oN>     limit to one account and SKIP arch (default: all accounts + arch)
   --no-arch          do not relocate /data/disk/arch
   --yes              in --apply, skip the interactive confirmation prompt
   --grace <sec>      queue-pause grace before draining tasks (default 15)
+  --recheck-max <MB> most data copied again with the store closed when it changed
+                     during the live copy (default 1024); above it the store stays
+                     in place and the run says to try again in a quieter window
   --help             this help
 
 OPERATOR-ONLY, NEVER AUTOMATED. There is no guarantee the attached storage has
 enough space, so run this by hand in a maintenance window after checking the DRY
 plan. It assumes exactly ONE attached mountpoint under /mnt and REFUSES to run when
-more than one is present (multiple /mnt mounts are unsupported fleet-wide).
+more than one is present (multiple /mnt mounts are unsupported fleet-wide). An
+--apply run does not start while BOA's nightly (owl.sh) or a BOA install or
+upgrade runs, or while another operation holds the Aegir queue pause, and defers
+the remaining stores when the nightly starts during the run.
+
+Each store is held while it is relocated: /run/migratefs-account-<oN>.pid, or
+/run/migratefs-arch.pid, names this run. The nightly account pass, updatesymlinks,
+the octopus upgrade, usage.sh and copydbackup leave a held store alone, and the SQL
+backups wait up to 3 hours for a held arch. A hold counts only while its pid is a
+root process that runs migratefs, and one left by a killed run is removed by the
+next run. A store is deferred while the nightly account pass, a BOA install or
+upgrade, autosymlink/updatesymlinks, the SQL backup run or copydbackup is active,
+and arch also while any backup writer is.
 
 After a successful relocation, run:
   autosymlink --batch-if-clean   (or wait for the nightly run)
@@ -130,6 +155,10 @@ while [ "$#" -gt 0 ]; do
       shift
       _GRACE="$1"
       ;;
+    --recheck-max)
+      shift
+      _RECHECK_MAX_MB="$1"
+      ;;
     --help|-h|help)
       _usage
       exit 0
@@ -145,6 +174,11 @@ done
 case "${_GRACE}" in
   ''|*[!0-9]*) _GRACE=15 ;;
 esac
+case "${_RECHECK_MAX_MB}" in
+  ''|*[!0-9]*) _RECHECK_MAX_MB=1024 ;;
+esac
+# Read as decimal: a leading 0 would make it octal, or stop the arithmetic.
+_RECHECK_MAX_MB=$(( 10#${_RECHECK_MAX_MB} ))
 
 # A single-account run targets one account only, never the shared archive.
 [ -n "${_ONE_ACCOUNT}" ] && _DO_ARCH="NO"
@@ -153,6 +187,144 @@ esac
 
 _log() {
   echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "${_LOG_FILE}"
+}
+
+# An account owns /data/disk/<oN>, so static/ and every name in it can be a
+# link, and a directory in its store can be swapped for one at any time.
+# Root looks at, copies from and changes those names only through these.
+#
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory; elsewhere the last name is checked
+# against its resolved parent. Once entered, ./name stays in that directory
+# whatever is swapped. A copy of the helper in lib/functions/helper.sh.inc,
+# which also anchors /data/disk itself (the shared archive's parent).
+_mfs_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk|/data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+# What ./$1 is in the current (pinned) directory, never following it:
+# link, none, dir or other.
+_mfs_kind_here() {
+  if [ -L "./${1}" ]; then
+    echo link
+  elif [ ! -e "./${1}" ]; then
+    echo none
+  elif [ -d "./${1}" ]; then
+    echo dir
+  else
+    echo other
+  fi
+}
+
+# ./$1 in the current (pinned) directory made a link to $2, owned by $3
+# (user:group) when given: the link is made by that owner itself, so no chown
+# by name follows it (a hard link renamed over the name before a chown -h
+# would be handed over). Where the owner is root, does not resolve or cannot
+# make it, root makes it and it stays root's: nothing checks a link's owner.
+# -T: a name put there meanwhile makes ln fail, never takes the link inside
+# it.
+_mfs_link_here() {
+  local _u="" _g=""
+  if [ -n "${3}" ]; then
+    _u=$(id -u -- "${3%%:*}" 2> /dev/null)
+    _g=$(getent group "${3#*:}" 2> /dev/null | cut -d: -f3)
+  fi
+  if [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] && [ "${_u}" != 0 ] \
+    && setpriv --reuid="${_u}" --regid="${_g}" --clear-groups \
+      ln -s -T -- "${2}" "./${1}" 2> /dev/null; then
+    return 0
+  fi
+  ln -s -T -- "${2}" "./${1}"
+}
+
+# ./$1 a real directory in the current (pinned) directory, made 0755 when
+# missing whatever root's umask is.
+_mfs_mkdir_here() {
+  [ -d "./${1}" ] && [ ! -L "./${1}" ] && return 0
+  mkdir -m 0755 -- "./${1}" 2> /dev/null
+}
+
+# Every directory from the mount $1 down to $2 a real directory that only
+# root can change, the missing ones made: no account can swap a name on
+# that path while root copies below it. With $3 = check nothing is made and
+# the walk ends at the first missing level (it would be made). A refusal
+# names the level, its owner and mode in _MFS_REFUSED.
+_MFS_REFUSED=""
+_mfs_root_path() {
+  local _p="$1" _rest="${2#"$1"}" _how="${3:-}" _n _st
+  _MFS_REFUSED=""
+  while :; do
+    _st=$(_mfs_in_real_dir "${_p}" stat -c '%u %a' . 2> /dev/null)
+    if [ -z "${_st}" ]; then
+      _MFS_REFUSED="${_p} is not a real directory"
+      return 1
+    fi
+    if [ "${_st%% *}" != "0" ] || [ $(( 8#${_st##* } & 8#022 )) -ne 0 ]; then
+      _MFS_REFUSED="${_p} uid=${_st%% *} mode=${_st##* }"
+      return 1
+    fi
+    _rest="${_rest#/}"
+    [ -n "${_rest}" ] || return 0
+    _n="${_rest%%/*}"
+    if [ "${_how}" = "check" ]; then
+      [ "$(_mfs_in_real_dir "${_p}" _mfs_kind_here "${_n}")" = "none" ] && return 0
+    elif ! _mfs_in_real_dir "${_p}" _mfs_mkdir_here "${_n}"; then
+      _MFS_REFUSED="${_p}/${_n} could not be made a real directory"
+      return 1
+    fi
+    _p="${_p}/${_n}"
+    case "${_rest}" in
+      */*) _rest="${_rest#*/}" ;;
+      *) _rest="" ;;
+    esac
+  done
+}
+
+# The store $1 made a real directory below that root-only chain.
+_mfs_make_store() {
+  _mfs_root_path "${_TARGET}" "${1%/*}" || return 1
+  _mfs_in_real_dir "${1%/*}" _mfs_mkdir_here "${1##*/}" && return 0
+  _MFS_REFUSED="${1} could not be made a real directory"
+  return 1
+}
+
+# DRY plan: say so when --apply would refuse the chain down to the store $1
+# ($2 = label).
+_mfs_plan_chain() {
+  _mfs_root_path "${_TARGET}" "${1%/*}" check && return 0
+  _log "PLAN: ${2} would be refused at --apply: ${_MFS_REFUSED} (every directory from ${_TARGET} down to ${1%/*} must be a real directory owned by root and not writable by group or other)"
+}
+
+# The destination's parent is closed to everyone but root while the copies
+# write below it (the copied directories carry the account's owner), and
+# opened again with the mode it had before the link makes the store live.
+# The store itself is made only once the parent is closed: closing it stops
+# no process that already sits inside, so a store left by an earlier run is
+# renamed aside, never copied into.
+_LOCKED_DIR=""
+_LOCKED_MODE=""
+_mfs_unlock() {
+  [ -n "${_LOCKED_DIR}" ] || return 0
+  _mfs_in_real_dir "${_LOCKED_DIR}" chmod "${_LOCKED_MODE}" . 2> /dev/null
+  _LOCKED_DIR=""
+}
+
+# Root-only work directory of one relocation (time marks, lists).
+_MFS_WORK=""
+_mfs_work_drop() {
+  [ -n "${_MFS_WORK}" ] && rm -rf -- "${_MFS_WORK}" 2> /dev/null
+  _MFS_WORK=""
 }
 
 _provision_running() {
@@ -176,15 +348,144 @@ _provision_running() {
   return 1
 }
 
-# A backup writer touching the archive (duplicity/mydumper/cluster/sequential): the
+# A backup writer touching the archive (duplicity/mydumper/SQL/sequential): the
 # archive relocation defers while one runs, so a backup file is never moved mid-write.
 _backup_running() {
+  local _p
   # Genuine executions only (an interpreter carrying the script, or the tool as
   # argv[0]); a command line that merely names one -- csf's hourly md5sum sweep
   # over /usr/local/bin, an editor, a probe -- must not defer the move.
-  pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*(duplicity|sequential_backups|dbackup|mysql_cluster_backup)[^ ]*( |$)' >/dev/null 2>&1 && return 0
-  pgrep -f '^[^ ]*(duplicity|mydumper|sequential_backups|dbackup|mysql_cluster_backup)[^ ]*( |$)' >/dev/null 2>&1 && return 0
+  pgrep -f '^([^ ]*/)?((ba|da)?sh|python[0-9.]*) (-[^ ]+ )*[^ ]*(duplicity|sequential_backups|dbackup|mysql_(cluster_)?backup)[^ ]*( |$)' >/dev/null 2>&1 && return 0
+  pgrep -f '^[^ ]*(duplicity|mydumper|sequential_backups|dbackup|mysql_(cluster_)?backup)[^ ]*( |$)' >/dev/null 2>&1 && return 0
+  # The SQL backups' own markers, whatever form started the run. A run
+  # writes its wait marker before it looks for this tool's arch hold, and
+  # its run marker only once no hold is left, removing the wait marker
+  # after; so one side always sees the other. The basic run marker names
+  # its pid and counts while that pid is a live root process; the cluster
+  # one carries none, and clear.sh ages it out. The wait marker names its
+  # pid and outlives a run killed in its wait until clear.sh removes it, so
+  # it counts only while that pid is a live root process that still runs an
+  # SQL backup script (the real uid in /proc/<pid>/status: /proc/<pid>
+  # itself shows root as the owner of any process that is not dumpable).
+  _p=$( { tr -dc '0-9' < /run/boa_sql_backup.pid; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && return 0
+  [ -e "/run/boa_sql_cluster_backup.pid" ] && return 0
+  _p=$( { tr -dc '0-9' < /run/boa_sql_backup_wait.pid; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?mysql_(cluster_)?backup\.sh( |$)' \
+    && return 0
   return 1
+}
+
+# BOA's nightly (owl.sh) is running: its per-site pass sets the mode of every
+# entry in the site stores, which is no provision task and does not honour
+# the queue pause. Copied during a relocation, all of that would have to be
+# copied again with the store closed. The same test owl.sh makes of its own
+# marker.
+_nightly_running() {
+  local _p
+  _p=$( { tr -dc '0-9' < /run/daily-fix.pid; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && grep -q "owl.sh" "/proc/${_p}/cmdline" 2> /dev/null
+}
+
+# A BOA install or upgrade is in flight: the test the night workers make
+# (night/night.inc.sh _night_boa_pass_active), copied as this tool has no
+# library. The octopus pass drops boa_run.pid after every account, so the
+# process forms cover the rest of its run; it sets modes inside each
+# hostmaster site's store.
+_mfs_boa_pass_active() {
+  [ -e "/run/boa_run.pid" ] && return 0
+  [ -e "/run/boa_wait.pid" ] && return 0
+  [ -e "/run/octopus_install_run.pid" ] && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(var/backups|var/opt/boa-dist)/(BARRACUDA|OCTOPUS)\.sh\.txt" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(barracuda|octopus)( |$)" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/boa in-" > /dev/null 2>&1 && return 0
+  pgrep -f "^(/[^ ]*/)?(bash|sh|su) .*/aegir/scripts/AegirSetup[ABC]\.sh\.txt" > /dev/null 2>&1 && return 0
+  return 1
+}
+
+# Why the store $1 (account-<oN> or arch) cannot be relocated now, printed;
+# nothing when it can. Each pass named here changes a store and ignores the
+# queue pause; those that read the hold check it before they act, so one
+# already acting is caught here.
+_mfs_busy_why() {
+  local _p
+  if _nightly_running; then
+    echo "BOA's nightly (owl.sh) is running"
+    return 0
+  fi
+  case "${1}" in
+    account-?*)
+      _p=$( { tr -dc '0-9' < "/run/night-account-${1#account-}.pid"; } 2> /dev/null )
+      if [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null; then
+        echo "the nightly account pass (pid ${_p}) holds it"
+        return 0
+      fi
+      ;;
+  esac
+  if _mfs_boa_pass_active; then
+    echo "a BOA install or upgrade is running"
+  elif pgrep -f '^(/[^ ]*/)?bash (-c )?/(opt|usr)/local/bin/(autosymlink|updatesymlinks)( |$)' > /dev/null 2>&1; then
+    echo "autosymlink or updatesymlinks is running"
+  elif pgrep -f '(^|(^| )[^ ]*bash )/var/xdrago/mysql_(cluster_)?backup\.sh( |$)' > /dev/null 2>&1; then
+    echo "the SQL backup run (with its usage and copydbackup legs) is running"
+  elif pgrep -f '(^|(^| )[^ ]*bash (-[^ ]+ )*)/(opt|usr)/local/bin/copydbackup( |$)' > /dev/null 2>&1; then
+    # Run on its own, outside the SQL backup run: it judges each account's
+    # hold once per run, so a store it already found free stays out of
+    # reach until it ends.
+    echo "copydbackup is running"
+  elif [ "${1}" = "arch" ] && _backup_running; then
+    echo "a backup writer is active"
+  fi
+  return 0
+}
+
+# One relocation holds its store while it runs: /run/migratefs-$1.pid names
+# this run's pid, and the passes that change a store (the nightly account
+# pass, updatesymlinks, octopus, usage.sh, copydbackup, the SQL backups on
+# arch) leave a held one alone. It counts only while that pid is a live
+# root process that runs migratefs, and readers never remove it: the next
+# run does, once it holds the single-instance lock. Checked once before it
+# is written, so a reason already known publishes nothing (a hold written
+# only to be dropped makes a reader skip the store for its whole run while
+# this run leaves it too); then written and checked again, the order the
+# nightly takes with its own marker, so of two passes starting together one
+# always sees the other. Status 1, the hold dropped and the reason logged,
+# when one of them is already in. $1 = account-<oN> or arch, $2 = label.
+_MFS_HOLD=""
+_mfs_hold() {
+  local _h="/run/migratefs-${1}.pid" _why
+  _why=$(_mfs_busy_why "${1}")
+  if [ -n "${_why}" ]; then
+    _log "DEFER: ${2} ${_why}; left in place, run again after it ends"
+    return 1
+  fi
+  # Written aside and renamed, so a reader never sees it empty.
+  if ! { printf '%s\n' "$$" > "${_h}.$$" && chmod 0644 "${_h}.$$" \
+    && mv -f -T -- "${_h}.$$" "${_h}"; } 2> /dev/null; then
+    rm -f -- "${_h}.$$" 2> /dev/null
+    _log "ERROR: ${2} could not write ${_h}; left in place"
+    return 1
+  fi
+  _MFS_HOLD="${_h}"
+  _why=$(_mfs_busy_why "${1}")
+  [ -z "${_why}" ] && return 0
+  _mfs_hold_drop
+  _log "DEFER: ${2} ${_why}; left in place, run again after it ends"
+  return 1
+}
+# The hold goes only while it still names this run.
+_mfs_hold_drop() {
+  if [ -n "${_MFS_HOLD}" ] \
+    && [ "$( { tr -dc '0-9' < "${_MFS_HOLD}"; } 2> /dev/null )" = "$$" ]; then
+    rm -f -- "${_MFS_HOLD}"
+  fi
+  _MFS_HOLD=""
 }
 
 # Single-instance lock (shared lock.inc if present; sets _LOCK_FD/_LOCK_PATH and
@@ -206,11 +507,15 @@ _manage_single_lock() {
   fi
 }
 
-# Combined EXIT cleanup: release the queue pause only if WE opened it and still
-# own it (verify the recorded PID so we never tear down a concurrent op's pause),
-# then release the single-instance lock with explicit args (an argless unlock
-# would leave the fd empty — the historical lock.inc "ambiguous redirect" trap).
+# Combined EXIT cleanup: drop this run's store hold, release the queue pause only
+# if WE opened it and still own it (verify the recorded PID so we never tear down
+# a concurrent op's pause), then release the single-instance lock with explicit
+# args (an argless unlock would leave the fd empty — the historical lock.inc
+# "ambiguous redirect" trap).
 _cleanup() {
+  _mfs_hold_drop
+  _mfs_unlock
+  _mfs_work_drop
   if [ "${_stopOwned}" = "YES" ] && [ "$(cat "${_queueStop}" 2>/dev/null)" = "$$" ]; then
     rm -f "${_queueStop}" 2>/dev/null
   fi
@@ -223,11 +528,33 @@ _cleanup() {
 # first destructive move. Sets the self-healing stop file (records our PID),
 # holds a fixed grace so a runner already mid-dispatch cannot fire a task after
 # we paused, then bounded-drains pgrep provision. Returns 0 when quiescent, 1 if
-# a task is still active after the grace+drain (caller must NOT apply).
+# a task is still active after the grace+drain, or when the pause is another
+# live operation's (caller must NOT apply): that owner ends its pause when it
+# is done, and the queue would then dispatch tasks mid-relocation.
 _pause_and_drain() {
-  if [ ! -e "${_queueStop}" ]; then
-    echo "$$" > "${_queueStop}" 2>/dev/null && _stopOwned="YES"
+  local _qsPid
+  if [ -e "${_queueStop}" ]; then
+    _qsPid=$( { tr -dc '0-9' < "${_queueStop}"; } 2> /dev/null )
+    if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2> /dev/null \
+      && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_qsPid}/status" 2> /dev/null)" = "0" ]; then
+      _log "WARN: the Aegir queue pause is held by pid ${_qsPid}; its window is not ours to extend, not applying this run"
+      return 1
+    fi
+    # Only root writes the pause, so one whose pid is gone, or is now
+    # another user's process, holds nothing (clear.sh purges it too).
+    # Removed only while it still names that pid: a pause another operation
+    # created meanwhile is never taken from it.
+    if [ "$( { tr -dc '0-9' < "${_queueStop}"; } 2> /dev/null )" = "${_qsPid}" ]; then
+      rm -f "${_queueStop}"
+    fi
   fi
+  # Created only when absent, so a pause another operation took meanwhile
+  # is never overwritten.
+  if ! ( set -C; echo "$$" > "${_queueStop}" ) 2> /dev/null; then
+    _log "WARN: another operation took the Aegir queue pause first; not applying this run"
+    return 1
+  fi
+  _stopOwned="YES"
   _log "INFO: Aegir queue paused (${_queueStop}); grace ${_GRACE}s, then drain"
   sleep "${_GRACE}"
   _drain=0
@@ -243,13 +570,15 @@ _pause_and_drain() {
 }
 
 # Resolve a target filesystem device by walking up to the nearest EXISTING
-# ancestor (the target subtree may not exist yet).
+# ancestor (the target subtree may not exist yet). A target given through a
+# link under /mnt is written where the link leads, so its device is read
+# through the link (-L), as the walk above already follows it.
 _dev_of_nearest_existing() {
   _p="$1"
   while [ -n "${_p}" ] && [ "${_p}" != "/" ] && [ ! -d "${_p}" ]; do
     _p=$(dirname "${_p}")
   done
-  stat -c '%d' "${_p}" 2>/dev/null
+  stat -L -c '%d' "${_p}" 2>/dev/null
 }
 
 # Returns 0 iff the destination is on a DIFFERENT filesystem than the reference
@@ -264,19 +593,73 @@ _target_is_separate_fs() {
   [ -n "${_sd}" ] && [ -n "${_td}" ] && [ "${_sd}" != "${_td}" ]
 }
 
-# Two-pass, non-destructive relocation of a real directory onto the attached FS,
-# replacing it with a symlink. Precondition: caller has confirmed the target is a
-# separate FS. src is a real dir; dst is created (ownership inherited from ownRef).
-# Always returns 0 (logs + leaves the real dir on any failure — data never lost).
-_relocate_dir() {
-  local _src="$1" _dst="$2" _ownRef="$3" _label="$4" _szKB _avKB _ug
+# True when an interrupted relocation left ./.$2.migratefs in the real
+# directory $1 (or $1 cannot be entered as one): that copy may hold the only
+# writes made after its last pass, so nothing replaces it unreviewed.
+_mfs_aside_left() {
+  [ "$(_mfs_in_real_dir "${1}" _mfs_kind_here ".${2}.migratefs")" != "none" ]
+}
 
-  _szKB=$(du -sk "${_src}" 2>/dev/null | awk '{print $1}')
+# A failed swap puts the store back under its name; the data is also in $5.
+_mfs_back() {
+  local _par="$1" _name="$2" _label="$3" _why="$4" _dst="$5"
+  if _mfs_in_real_dir "${_par}" mv -T -- "./.${_name}.migratefs" "./${_name}" 2>/dev/null; then
+    _log "ERROR: ${_label} ${_why}; ${_par}/${_name} left as real dir (data also in ${_dst})"
+  else
+    _log "ERROR: ${_label} ${_why}, and ${_par}/.${_name}.migratefs could not be moved back to ${_name}; the data is there and in ${_dst}, move it back by hand"
+  fi
+}
+
+# Run inside the store set aside and closed ($1 = the "uid:gid mode" it had):
+# it takes that owner and mode back, then its name.
+_mfs_undo_here() {
+  local _top="$1"
+  shift
+  chown -h "${_top%% *}" . 2> /dev/null
+  chmod "${_top##* }" . 2> /dev/null
+  _mfs_back "$@"
+}
+
+# A relocation that did not go live: its copy $3 goes while the parent is
+# still closed, as only root could ever reach it there, so a deferred run
+# leaves no copy behind. It stays when the parent was opened for the link,
+# or when the store ($1/$2) is not back under its name. $4 = label.
+_mfs_drop_copy() {
+  local _par="$1" _name="$2" _dst="$3" _label="$4"
+  [ "$(_mfs_in_real_dir "${_dst%/*}" stat -c '%a' . 2> /dev/null)" = "700" ] || return 0
+  [ "$(_mfs_in_real_dir "${_par}" _mfs_kind_here "${_name}")" = "dir" ] || return 0
+  _mfs_aside_left "${_par}" "${_name}" && return 0
+  if _mfs_in_real_dir "${_dst%/*}" rm -rf -- "./${_dst##*/}" 2> /dev/null; then
+    _log "INFO: ${_label} the copy in ${_dst} never went live and is removed; the next run copies again"
+  else
+    _log "WARN: ${_label} the copy in ${_dst} never went live and could not be removed; the next run renames it aside"
+  fi
+}
+
+# Two-pass, non-destructive relocation of the real directory $1/$2 onto the
+# attached FS at $3, replacing it with a symlink. Precondition: caller has
+# confirmed the target is a separate FS. $4 = the real directory whose owner the
+# link takes (the store takes the owner and mode of the directory it replaces),
+# $5 = label. Always returns 0 (logs + leaves the real dir on any failure — data
+# never lost).
+_relocate_dir() {
+  local _par="$1" _name="$2" _dst="$3" _ownRef="$4" _label="$5"
+  local _src="${_par}/${_name}" _dpar="${_dst%/*}" _dname="${_dst##*/}"
+  local _szKB _avKB _ug _mode _rc _old
+
+  _szKB=$(_mfs_in_real_dir "${_src}" du -sk . 2>/dev/null | awk '{print $1}')
   _avKB=$(df -Pk "$(dirname "${_dst}")" 2>/dev/null | awk 'NR==2 {print $4}')
   [ -z "${_avKB}" ] && _avKB=$(df -Pk "${_TARGET}" 2>/dev/null | awk 'NR==2 {print $4}')
   _log "PLAN: ${_label} move ${_src} (${_szKB:-?}K) -> ${_dst} (target avail ${_avKB:-?}K) and symlink"
+  case "$(_mfs_in_real_dir "${_dpar}" _mfs_kind_here "${_dname}")" in
+    none|'') ;;
+    *) _log "PLAN: ${_label} ${_dst} is left from an earlier run: it is renamed aside and never copied into again, and it holds its space until removed" ;;
+  esac
 
-  [ "${_APPLY}" = "YES" ] || return 0
+  if [ "${_APPLY}" != "YES" ]; then
+    _mfs_plan_chain "${_dst}" "${_label}"
+    return 0
+  fi
 
   # Space guard for the cross-FS copy (a safety net — the operator owns the call).
   if [ -n "${_szKB}" ] && [ -n "${_avKB}" ] && [ "${_avKB}" -lt "${_szKB}" ]; then
@@ -289,37 +672,289 @@ _relocate_dir() {
     _log "DEFER: ${_label} provision task active — left ${_src} as real dir"
     return 0
   fi
+  if _nightly_running; then
+    _log "DEFER: ${_label} BOA's nightly (owl.sh) is running — left ${_src} as real dir; run again after it ends"
+    return 0
+  fi
 
-  _ug=$(stat -c '%U:%G' "${_ownRef}" 2>/dev/null)
-  mkdir -p "${_dst}" 2>/dev/null || { _log "ERROR: ${_label} could not create ${_dst}; skipping"; return 0; }
-  [ -n "${_ug}" ] && chown "${_ug}" "${_dst}" 2>/dev/null
+  if _mfs_aside_left "${_par}" "${_name}"; then
+    _log "ERROR: ${_label} ${_par}/.${_name}.migratefs is left from an interrupted run (or ${_par} is not a real directory); left ${_src} as real dir for review"
+    return 0
+  fi
+
+  _ug=$(_mfs_in_real_dir "${_ownRef}" stat -c '%U:%G' . 2>/dev/null)
+  if ! _mfs_root_path "${_TARGET}" "${_dpar}"; then
+    _log "ERROR: ${_label} could not create ${_dst} below directories only root can change (${_MFS_REFUSED}); skipping"
+    return 0
+  fi
+
+  _MFS_WORK=$(mktemp -d /run/migratefs.XXXXXXXX 2> /dev/null) || _MFS_WORK=""
+  if [ -z "${_MFS_WORK}" ]; then
+    _log "ERROR: ${_label} could not create a work directory in /run; left ${_src} as real dir"
+    return 0
+  fi
+
+  _mode=$(_mfs_in_real_dir "${_dpar}" stat -c '%a' . 2>/dev/null)
+  # A 0700 left by an interrupted run is not the mode to open it with again.
+  case "${_mode}" in
+    ''|700) _mode=755 ;;
+  esac
+  _LOCKED_DIR="${_dpar}"
+  _LOCKED_MODE="${_mode}"
+  if ! _mfs_in_real_dir "${_dpar}" chmod 0700 . 2>/dev/null; then
+    _LOCKED_DIR=""
+    _mfs_work_drop
+    _log "ERROR: ${_label} could not close ${_dpar} for the copy; left ${_src} as real dir"
+    return 0
+  fi
+  # A store left by an earlier run was open to the account after that run
+  # ended, so a process of the account may still sit anywhere in it.
+  if [ "$(_mfs_in_real_dir "${_dpar}" _mfs_kind_here "${_dname}")" != "none" ]; then
+    _old=".${_dname}.stale.$(date +%y%m%d-%H%M%S).$$"
+    if ! _mfs_in_real_dir "${_dpar}" mv -T -- "./${_dname}" "./${_old}" 2>/dev/null; then
+      _mfs_unlock
+      _mfs_work_drop
+      _log "ERROR: ${_label} ${_dst} is left from an earlier run and could not be renamed aside; left ${_src} as real dir for review"
+      return 0
+    fi
+    _log "WARN: ${_label} ${_dst} left from an earlier run renamed to ${_dpar}/${_old}; it is never copied into again, remove it once reviewed"
+  fi
+  if ! _mfs_in_real_dir "${_dpar}" mkdir -m 0700 -- "./${_dname}" 2>/dev/null; then
+    _mfs_unlock
+    _mfs_work_drop
+    _log "ERROR: ${_label} could not create ${_dst}; left ${_src} as real dir"
+    return 0
+  fi
+  _mfs_in_real_dir "${_src}" _relocate_here "${_par}" "${_name}" "${_dst}" "${_mode}" "${_ug}" "${_label}" "${_MFS_WORK}"
+  _rc=$?
+  # 3: interrupted in the final window, the store already put back.
+  case "${_rc}" in
+    0|3) : ;;
+    *) _log "ERROR: ${_label} ${_src} is not a real directory; left for review" ;;
+  esac
+  _mfs_drop_copy "${_par}" "${_name}" "${_dst}" "${_label}"
+  _mfs_unlock
+  _mfs_work_drop
+}
+
+# Runs in the store after the live passes ($1 = destination, $2 = work
+# directory, $3 = non-empty when names directly in the store changed during
+# the live passes, $4 = label, $5 = count: only size it). A name re-pointed
+# while the live passes read the store leaves a status change time after the
+# start mark on the entry it names and on the directory holding it, and that
+# time cannot be set back. So every directory with such a time whose own
+# directory has one too is copied again by content with everything below it,
+# and so is every other file with such a time; run in the closed store after
+# the final pass, the store then holds below them exactly what the closed copy
+# holds, whatever the live passes read. Status 2, with the size in
+# _MFS_RECHECK, when that is more than --recheck-max: it would all be read on
+# both sides while the store is closed and its sites have no files.
+_MFS_RECHECK=""
+_mfs_recheck_here() {
+  local _dst="$1" _wk="$2" _topChg="$3" _label="$4" _how="${5:-}"
+  local _d _p _q _k _here _kb=0 _n=0 _f=0
+  local -A _chg=() _done=()
+  _MFS_RECHECK=""
+  find -P . -mindepth 1 -type d -cnewer "${_wk}/start" -print0 > "${_wk}/dirs" 2> /dev/null || return 1
+  find -P . -type f -cnewer "${_wk}/start" -printf '%k %p\0' > "${_wk}/sized" 2> /dev/null || return 1
+  : > "${_wk}/trees" || return 1
+  while IFS= read -r -u 9 -d '' _d; do
+    _chg["${_d}"]=1
+  done 9< "${_wk}/dirs"
+  while IFS= read -r -u 9 -d '' _d; do
+    _p="${_d%/*}"
+    if [ "${_p}" = "." ]; then
+      [ -n "${_topChg}" ] || continue
+    else
+      [ -n "${_chg[${_p}]:-}" ] || continue
+    fi
+    # find lists a directory before what is below it: one copy per tree.
+    _q="${_p}"
+    while [ "${_q}" != "." ]; do
+      [ -n "${_done[${_q}]:-}" ] && continue 2
+      _q="${_q%/*}"
+    done
+    _done["${_d}"]=1
+    printf '%s\0' "${_d}"
+    _n=$(( _n + 1 ))
+  done 9< "${_wk}/dirs" > "${_wk}/trees"
+  # Sized without leaving the store: a tree from inside it, entered only
+  # while it is still the directory listed (one gone or re-pointed since
+  # counts nothing), a file as find saw it.
+  _here=$(pwd -P) || return 1
+  while IFS= read -r -u 9 -d '' _d; do
+    _k=$(cd -P -- "${_d}" 2> /dev/null \
+      && [ "$(pwd -P)" = "${_here}/${_d#./}" ] && du -s -k . 2> /dev/null)
+    _k="${_k%%[!0-9]*}"
+    _kb=$(( _kb + ${_k:-0} ))
+  done 9< "${_wk}/trees"
+  # A file below a tree copied again is copied with it.
+  while IFS= read -r -u 9 -d '' _d; do
+    _k="${_d%% *}"
+    _d="${_d#* }"
+    _q="${_d%/*}"
+    while [ "${_q}" != "." ]; do
+      [ -n "${_done[${_q}]:-}" ] && continue 2
+      _q="${_q%/*}"
+    done
+    printf '%s\0' "${_d}"
+    _kb=$(( _kb + _k ))
+    _f=$(( _f + 1 ))
+  done 9< "${_wk}/sized" > "${_wk}/files" || return 1
+  [ $(( _n + _f )) -gt 0 ] || return 0
+  _MFS_RECHECK="${_n} directory trees and ${_f} files, ${_kb}K"
+  [ "${_kb}" -le $(( _RECHECK_MAX_MB * 1024 )) ] || return 2
+  [ "${_how}" = "count" ] && return 0
+  while IFS= read -r -u 9 -d '' _d; do
+    rsync -a -c --no-devices --no-specials "${_d}/" "${_dst}/${_d#./}/" 2> /dev/null || return 1
+  done 9< "${_wk}/trees"
+  if [ -s "${_wk}/files" ]; then
+    rsync -a -c --no-devices --no-specials --from0 --files-from="${_wk}/files" ./ "${_dst}/" 2> /dev/null || return 1
+  fi
+  _log "INFO: ${_label} copied again by content what changed during the live passes (${_MFS_RECHECK})"
+  return 0
+}
+
+# Runs inside the real store $1/$2, which stays this process's working
+# directory while the store is renamed aside: every copy and the removal of
+# the old copy run from here, and the rename, the link and the rmdir act on
+# names inside the real $1, never through a path an account can re-point.
+# $3 = destination, $4 = the mode its parent opens with, $5 = owner, $6 =
+# label, $7 = root-only work directory.
+#
+# The live passes read the store by relative paths while its accounts can
+# still re-point names in it. The final pass reads it set aside and closed to
+# them (owner root, mode 0700), what the live passes may have read through a
+# re-pointed name is copied again by content (_mfs_recheck_here), and nothing
+# goes live when the closed copy changed while it was read.
+_relocate_here() {
+  local _par="$1" _name="$2" _dst="$3" _mode="$4" _ug="$5" _label="$6" _wk="$7"
+  local _src="${_par}/${_name}" _aside=".${_name}.migratefs" _top _topChg _chg
+
+  if ! touch -- "${_wk}/start" 2> /dev/null; then
+    _log "ERROR: ${_label} could not mark the start of the copy; left ${_src} as real dir"
+    return 0
+  fi
+  # A change in the same clock tick as a mark does not read as newer than it.
+  sleep 1
 
   # TWO-PASS: pass 1 is a NON-removing copy so the (possibly web-served) source
-  # stays complete during the long cross-FS transfer; pass 2 reconciles + removes
-  # source (fast: mostly already copied), bounding any gap to the final rmdir+ln.
-  # Peak target usage is 1x (space check covers it); the source FS never grows. On
-  # any failure the real dir is left in place (data also safe in dst).
-  if [ -n "$(ls -A "${_src}" 2>/dev/null)" ]; then
-    rsync -a --no-devices --no-specials "${_src}/" "${_dst}/" 2>/dev/null \
+  # stays complete during the long cross-FS transfer; pass 2 reconciles (fast:
+  # mostly already copied). Peak target usage is 1x (space check covers it); the
+  # source FS never grows. On any failure the real dir is left in place (data
+  # also safe in dst).
+  if [ -n "$(ls -A . 2>/dev/null)" ]; then
+    rsync -a --no-devices --no-specials ./ "${_dst}/" 2>/dev/null \
       || { _log "ERROR: ${_label} rsync pre-seed failed ${_src} -> ${_dst}; left as real dir"; return 0; }
     if _provision_running; then
       _log "DEFER: ${_label} provision task active after pre-seed — left ${_src} as real dir (copy also in ${_dst})"
       return 0
     fi
-    rsync -a --no-devices --no-specials --remove-source-files "${_src}/" "${_dst}/" 2>/dev/null \
+    rsync -a --no-devices --no-specials ./ "${_dst}/" 2>/dev/null \
       || { _log "ERROR: ${_label} rsync reconcile failed ${_src} -> ${_dst}; left as real dir (data also in ${_dst})"; return 0; }
-    find "${_src}/" -mindepth 1 -depth -type d -empty -delete 2>/dev/null
   fi
 
-  # Refuse to replace the dir with a symlink unless it emptied cleanly.
-  if [ -n "$(ls -A "${_src}" 2>/dev/null)" ]; then
-    _log "ERROR: ${_label} ${_src} not empty after move; left as real dir for review"
+  # A device, FIFO or socket is never copied: a dir holding one stays.
+  if [ -n "$(find -P . \( -type b -o -type c -o -type p -o -type s \) -print -quit 2>/dev/null)" ]; then
+    _log "ERROR: ${_label} ${_src} holds a device, FIFO or socket that is not copied; left as real dir for review (data also in ${_dst})"
     return 0
   fi
 
-  rmdir "${_src}" 2>/dev/null || { _log "ERROR: ${_label} could not rmdir ${_src}; data is safe in ${_dst}, link manually"; return 0; }
-  ln -s "${_dst}" "${_src}" 2>/dev/null || { _log "ERROR: ${_label} could not symlink ${_src}; data is safe in ${_dst}, link manually"; return 0; }
-  [ -n "${_ug}" ] && chown -h "${_ug}" "${_src}" 2>/dev/null
+  # Read before root renames and closes the store, which changes its own
+  # status time: whether names directly in it changed during the live passes.
+  _topChg=$(find -P . -maxdepth 0 -cnewer "${_wk}/start" -print 2> /dev/null) \
+    || _topChg="."
+  _top=$(stat -c '%u:%g %a' . 2> /dev/null)
+  if [ -z "${_top}" ]; then
+    _log "ERROR: ${_label} could not read the owner and mode of ${_src}; left as real dir (data also in ${_dst})"
+    return 0
+  fi
+  # Sized before the store goes aside, so a run the recheck would keep closed
+  # too long never takes it offline; sized again after the final pass.
+  _mfs_recheck_here "${_dst}" "${_wk}" "${_topChg}" "${_label}" count
+  case "$?" in
+    0) : ;;
+    2)
+      _log "DEFER: ${_label} ${_MFS_RECHECK} changed during the live passes, more than --recheck-max ${_RECHECK_MAX_MB} MB to copy again with the store closed; left ${_src} as real dir, run again when BOA's nightly and other maintenance are idle"
+      return 0
+      ;;
+    *)
+      _log "ERROR: ${_label} could not list what changed during the live passes; left ${_src} as real dir"
+      return 0
+      ;;
+  esac
+
+  # The store moves aside, and the final pass copies what was written since the
+  # reconcile: the name is free only for that pass, and the destination stays
+  # closed until it ends.
+  if ! _mfs_in_real_dir "${_par}" mv -T -- "./${_name}" "./${_aside}" 2>/dev/null; then
+    _log "ERROR: ${_label} could not move ${_src} aside; left as real dir (data also in ${_dst})"
+    return 0
+  fi
+  # A signal in the final window puts the store back before the run ends
+  # (the values are quoted into the handler now, on purpose).
+  # shellcheck disable=SC2064
+  trap "$(printf '_mfs_undo_here %q %q %q %q %q %q; exit 3' "${_top}" "${_par}" "${_name}" "${_label}" "interrupted in the final window" "${_dst}")" INT TERM HUP
+  _log "INFO: ${_label} ${_src} set aside as ${_par}/${_aside} and closed for the final pass (it had owner ${_top%% *}, mode ${_top##* })"
+  if ! chown -h 0:0 . 2> /dev/null || ! chmod 0700 . 2> /dev/null; then
+    _mfs_undo_here "${_top}" "${_par}" "${_name}" "${_label}" "could not close ${_src} for the final pass" "${_dst}"
+    return 0
+  fi
+  if ! touch -- "${_wk}/aside" 2> /dev/null; then
+    _mfs_undo_here "${_top}" "${_par}" "${_name}" "${_label}" "could not mark the final pass" "${_dst}"
+    return 0
+  fi
+  sleep 1
+  if ! rsync -a --delete --no-devices --no-specials ./ "${_dst}/" 2>/dev/null; then
+    _mfs_undo_here "${_top}" "${_par}" "${_name}" "${_label}" "rsync final pass failed ${_src} -> ${_dst}" "${_dst}"
+    return 0
+  fi
+  _mfs_recheck_here "${_dst}" "${_wk}" "${_topChg}" "${_label}"
+  case "$?" in
+    0) : ;;
+    2)
+      _mfs_undo_here "${_top}" "${_par}" "${_name}" "${_label}" "${_MFS_RECHECK} changed during the live passes, more than --recheck-max ${_RECHECK_MAX_MB} MB to copy again with the store closed; run again when BOA's nightly and other maintenance are idle" "${_dst}"
+      return 0
+      ;;
+    *)
+      _mfs_undo_here "${_top}" "${_par}" "${_name}" "${_label}" "could not copy again what changed during the live passes" "${_dst}"
+      return 0
+      ;;
+  esac
+  # A handle still open on the closed copy that changed it while it was read.
+  _chg=$(find -P . -cnewer "${_wk}/aside" -print -quit 2> /dev/null) || _chg="failed"
+  if [ -n "${_chg}" ]; then
+    _mfs_undo_here "${_top}" "${_par}" "${_name}" "${_label}" "${_src} changed while it was set aside, run again" "${_dst}"
+    return 0
+  fi
+  # The store takes the owner and mode it had, not the closed ones.
+  if ! chown -h "${_top%% *}" -- "${_dst}" 2> /dev/null \
+    || ! chmod "${_top##* }" -- "${_dst}" 2> /dev/null; then
+    _mfs_undo_here "${_top}" "${_par}" "${_name}" "${_label}" "could not give ${_dst} the owner and mode of ${_src}" "${_dst}"
+    return 0
+  fi
+  _mfs_in_real_dir "${_dst%/*}" chmod "${_mode}" . 2>/dev/null
+  # -T: a name put there meanwhile makes ln fail, never takes the link inside
+  # it; the link is made by its owner (_mfs_link_here), never chowned by name.
+  if ! _mfs_in_real_dir "${_par}" _mfs_link_here "${_name}" "${_dst}" "${_ug}" 2>/dev/null; then
+    _mfs_undo_here "${_top}" "${_par}" "${_name}" "${_label}" "could not symlink ${_src}" "${_dst}"
+    return 0
+  fi
+  trap - INT TERM HUP
+
+  # The old copy goes unless something in it changed after it was set aside
+  # (a write through a handle still open on it): status change times cannot
+  # be set back. find walks by directory handle and never follows a link.
+  _chg=$(find -P . -cnewer "${_wk}/aside" -print -quit 2> /dev/null) || _chg="failed"
+  if [ -n "${_chg}" ]; then
+    _log "WARN: ${_label} relocated, but ${_par}/${_aside} changed after it was set aside; left for review (owner root, mode 700)"
+  else
+    find -P . -mindepth 1 -depth -delete 2>/dev/null
+    if [ -n "$(ls -A . 2>/dev/null)" ] \
+      || ! _mfs_in_real_dir "${_par}" rmdir -- "./${_aside}" 2>/dev/null; then
+      _log "WARN: ${_label} relocated, but ${_par}/${_aside} could not be removed; left for review"
+    fi
+  fi
   _log "APPLY: ${_label} relocated ${_src} -> ${_dst} (attached filesystem)"
 }
 
@@ -333,10 +968,11 @@ _relocate_static_for_account() {
   # relocated store is navigable by the account's FTP user. Matches the layout the
   # original migratefs.sh used.
   local _dst="${_TARGET}/files/${_acct}/static/files"
+  local _static="${_acctDir}/static"
   local _cur _ug
 
   # Must look like an Octopus account store (static/ is the store parent).
-  if [ ! -d "${_acctDir}/static" ]; then
+  if [ ! -d "${_static}" ]; then
     _log "SKIP: ${_acct} has no static/ dir — not an account store"
     return 0
   fi
@@ -349,42 +985,78 @@ _relocate_static_for_account() {
     return 0
   fi
 
-  # Already a symlink -> idempotent no-op (device gate above guarantees the target
-  # is a real attached FS, so re-creating a missing dst here is safe).
-  if [ -L "${_src}" ]; then
-    _cur=$(readlink "${_src}" 2>/dev/null)
-    if [ "${_cur}" = "${_dst}" ]; then
-      [ -d "${_dst}" ] || { [ "${_APPLY}" = "YES" ] && mkdir -p "${_dst}" 2>/dev/null; }
-      _log "OK: ${_acct} static/files already relocated -> ${_dst}"
-    else
-      _log "WARN: ${_acct} static/files is a symlink to an unexpected target (${_cur}); leaving for review"
-    fi
-    return 0
-  fi
-
-  # Fresh account: no static/files yet -> create the empty store + symlink;
-  # autosymlink will convert sites into it later.
-  if [ ! -e "${_src}" ]; then
-    _log "PLAN: ${_acct} create empty store ${_dst} and symlink ${_src} -> ${_dst}"
-    if [ "${_APPLY}" = "YES" ]; then
-      _ug=$(stat -c '%U:%G' "${_acctDir}/static" 2>/dev/null)
-      mkdir -p "${_dst}" 2>/dev/null || { _log "ERROR: ${_acct} could not create ${_dst}; skipping"; return 0; }
-      [ -n "${_ug}" ] && chown "${_ug}" "${_dst}" 2>/dev/null
-      ln -s "${_dst}" "${_src}" 2>/dev/null || { _log "ERROR: ${_acct} could not symlink ${_src}; store is at ${_dst}, link manually"; return 0; }
-      [ -n "${_ug}" ] && chown -h "${_ug}" "${_src}" 2>/dev/null
-      _log "APPLY: ${_acct} created + symlinked empty store -> ${_dst}"
-    fi
-    return 0
-  fi
-
-  # A pre-existing static/files that is neither a symlink nor a dir: leave it.
-  if [ ! -d "${_src}" ]; then
-    _log "WARN: ${_acct} static/files exists but is not a directory; leaving for review"
-    return 0
-  fi
-
-  # Real dir -> two-pass relocation (ownership from the static/ parent).
-  _relocate_dir "${_src}" "${_dst}" "${_acctDir}/static" "account ${_acct}"
+  # static/files is looked at, and static/ changed, only inside the real
+  # static/: an account can turn either into a link.
+  case "$(_mfs_in_real_dir "${_static}" _mfs_kind_here files)" in
+    link)
+      # Already a symlink -> idempotent no-op (device gate above guarantees the
+      # target is a real attached FS, so re-creating a missing dst here is safe).
+      _cur=$(_mfs_in_real_dir "${_static}" readlink -- ./files 2>/dev/null)
+      if [ "${_cur}" = "${_dst}" ]; then
+        if [ -d "${_dst}" ]; then
+          _log "OK: ${_acct} static/files already relocated -> ${_dst}"
+        elif [ "${_APPLY}" != "YES" ]; then
+          _log "PLAN: ${_acct} static/files already relocated, re-create the missing store ${_dst}"
+          _mfs_plan_chain "${_dst}" "${_acct}"
+        else
+          # A missing store is made again with the owner of the real static/,
+          # as a relocated or fresh one gets.
+          _ug=$(_mfs_in_real_dir "${_static}" stat -c '%U:%G' . 2>/dev/null)
+          if _mfs_make_store "${_dst}"; then
+            [ -n "${_ug}" ] && _mfs_in_real_dir "${_dst%/*}" chown -h "${_ug}" "./${_dst##*/}" 2>/dev/null
+            _log "APPLY: ${_acct} static/files already relocated, re-created the missing store ${_dst}"
+          else
+            _log "ERROR: ${_acct} static/files links to the missing ${_dst}, which could not be re-created below directories only root can change (${_MFS_REFUSED}); leaving for review"
+          fi
+        fi
+      else
+        _log "WARN: ${_acct} static/files is a symlink to an unexpected target (${_cur}); leaving for review"
+      fi
+      ;;
+    none)
+      # Fresh account: no static/files yet -> create the empty store + symlink;
+      # autosymlink will convert sites into it later. An interrupted relocation
+      # also leaves the name free: its copy aside is never replaced unreviewed.
+      if _mfs_aside_left "${_static}" files; then
+        _log "WARN: ${_acct} static/.files.migratefs is left from an interrupted run; leaving for review"
+        return 0
+      fi
+      _log "PLAN: ${_acct} create empty store ${_dst} and symlink ${_src} -> ${_dst}"
+      if [ "${_APPLY}" != "YES" ]; then
+        _mfs_plan_chain "${_dst}" "${_acct}"
+      else
+        _ug=$(_mfs_in_real_dir "${_static}" stat -c '%U:%G' . 2>/dev/null)
+        if ! _mfs_make_store "${_dst}"; then
+          _log "ERROR: ${_acct} could not create ${_dst} below directories only root can change (${_MFS_REFUSED}); skipping"
+          return 0
+        fi
+        [ -n "${_ug}" ] && chown -h "${_ug}" "${_dst}" 2>/dev/null
+        # -T: a name put there meanwhile makes ln fail, never takes the link
+        # inside it; the link is made by its owner (_mfs_link_here), never
+        # chowned by name.
+        _mfs_in_real_dir "${_static}" _mfs_link_here files "${_dst}" "${_ug}" 2>/dev/null \
+          || { _log "ERROR: ${_acct} could not symlink ${_src}; store is at ${_dst}, left for review"; return 0; }
+        _log "APPLY: ${_acct} created + symlinked empty store -> ${_dst}"
+      fi
+      ;;
+    dir)
+      # Real dir -> two-pass relocation (ownership from the static/ parent),
+      # the store held for the whole of it.
+      if [ "${_APPLY}" = "YES" ] && ! _mfs_hold "account-${_acct}" "account ${_acct}"; then
+        return 0
+      fi
+      _relocate_dir "${_static}" files "${_dst}" "${_static}" "account ${_acct}"
+      _mfs_hold_drop
+      ;;
+    other)
+      # A pre-existing static/files that is neither a symlink nor a dir: leave it.
+      _log "WARN: ${_acct} static/files exists but is not a directory; leaving for review"
+      ;;
+    *)
+      _log "WARN: ${_acct} static/ is not a real directory in ${_acctDir}; leaving for review"
+      ;;
+  esac
+  return 0
 }
 
 # Relocate the shared /data/disk/arch archive onto the attached filesystem.
@@ -426,12 +1098,14 @@ _relocate_arch() {
   # migrating this box.
   _log "NOTE: arch will be a symlink; host-migration (xoct/xcopy/xmass, current versions) resolves it and transfers arch CONTENTS -- ensure those tools are up to date before migrating this box."
 
-  if [ "${_APPLY}" = "YES" ] && _backup_running; then
-    _log "DEFER: arch — a backup writer is active; retry when backups are idle"
+  # Held for the whole relocation; the hold's checks defer it while a backup
+  # writer is active.
+  if [ "${_APPLY}" = "YES" ] && ! _mfs_hold arch arch; then
     return 0
   fi
 
-  _relocate_dir "${_src}" "${_dst}" "${_src}" "arch"
+  _relocate_dir /data/disk arch "${_dst}" "${_src}" "arch"
+  _mfs_hold_drop
 }
 
 # List the real mountpoint(s) under /mnt (naming-independent: mountpoint -q, with an
@@ -440,6 +1114,8 @@ _list_mnt_mountpoints() {
   local _mntDev _m
   _mntDev=$(stat -c '%d' /mnt 2>/dev/null)
   for _m in /mnt/*; do
+    # a link under /mnt is an alias of a mount, never a second one
+    [ -L "${_m}" ] && continue
     [ -d "${_m}" ] || continue
     if { command -v mountpoint >/dev/null 2>&1 && mountpoint -q "${_m}"; } \
       || { [ -n "${_mntDev}" ] && [ "$(stat -c '%d' "${_m}" 2>/dev/null)" != "${_mntDev}" ]; }; then
@@ -481,7 +1157,20 @@ _account_list() {
 # ---- main --------------------------------------------------------------------
 
 _manage_single_lock
-trap _cleanup EXIT INT TERM HUP
+# Past the lock no other migratefs is live, so every hold left now is one a
+# killed run left: removed before its pid can be reused by a process that
+# readers would take for a relocation.
+for _h in /run/migratefs-*.pid; do
+  [ -e "${_h}" ] || continue
+  if rm -f -- "${_h}"; then
+    _log "WARN: removed ${_h}, a store hold left by an earlier run that did not end cleanly"
+  fi
+done
+# A signal ends the run (the EXIT cleanup then runs once): a handler that
+# returned would carry on with the next step of a relocation, or the next
+# account, with the queue pause already released.
+trap _cleanup EXIT
+trap 'exit 1' INT TERM HUP
 
 # Enforce the SINGLE-/mnt-mount invariant fleet-wide. More than one attached
 # mountpoint under /mnt is unsupported and cannot be disambiguated (the lshell
@@ -526,6 +1215,39 @@ if [ ! -d "${_TARGET}" ]; then
   echo "ERROR: target ${_TARGET} does not exist or is not a directory"
   exit 1
 fi
+
+# The store readers (the nightly, usage.sh, copydbackup, the satellite
+# tools) take a relocated store only on a plain path whose part before
+# /files/<oN>/static/files holds no directory named files or static, as they
+# resolve it. A target breaking either rule, as given or as it resolves,
+# would build a store the rest of BOA ignores, so it is refused before
+# anything moves.
+_TARGET_R="$(cd -P -- "${_TARGET}" 2>/dev/null && pwd -P)"
+if [ -z "${_TARGET_R}" ]; then
+  echo "ERROR: target ${_TARGET} cannot be resolved"
+  exit 1
+fi
+for _t in "${_TARGET}" "${_TARGET_R}"; do
+  case "${_t}" in
+    *[!A-Za-z0-9._/-]*)
+      echo "ERROR: target ${_TARGET} (resolved: ${_TARGET_R}) is not a plain path: the store readers take a store path of letters, digits, '.', '_', '-' and '/' only"
+      exit 1
+      ;;
+  esac
+  case "${_t}" in
+    /mnt/?*) : ;;
+    *)
+      echo "ERROR: target ${_TARGET} resolves to ${_TARGET_R}, outside /mnt: the store readers take a relocated store only under /mnt"
+      exit 1
+      ;;
+  esac
+  case "${_t}" in
+    */files/*|*/static/*)
+      echo "ERROR: target ${_TARGET} (resolved: ${_TARGET_R}) has a directory named files or static on its path: the store readers refuse a store whose part before /files/<oN>/static/files holds one"
+      exit 1
+      ;;
+  esac
+done
 if command -v mountpoint >/dev/null 2>&1 && ! mountpoint -q "${_TARGET}"; then
   _log "WARN: ${_TARGET} is not a mount point — if the attached disk is not mounted, the per-account same-filesystem guard will skip everything (nothing is moved onto root)"
 fi
@@ -551,6 +1273,14 @@ _log "=================================================================="
 
 # In APPLY mode, confirm (unless --yes) and pause+drain the queue once for the run.
 if [ "${_APPLY}" = "YES" ]; then
+  if _nightly_running; then
+    _log "[DONE] migratefs aborted: BOA's nightly (owl.sh) is running; run again after it ends"
+    exit 0
+  fi
+  if _mfs_boa_pass_active; then
+    _log "[DONE] migratefs aborted: a BOA install or upgrade is running; run again after it ends"
+    exit 0
+  fi
   if [ "${_ASSUME_YES}" != "YES" ]; then
     echo
     echo "About to relocate onto ${_TARGET}: arch=${_DO_ARCH}, accounts: ${_accounts}"
@@ -563,7 +1293,7 @@ if [ "${_APPLY}" = "YES" ]; then
     fi
   fi
   if ! _pause_and_drain; then
-    _log "[DONE] migratefs aborted: queue not quiescent"
+    _log "[DONE] migratefs aborted: the queue pause is not ours, or the queue is not quiescent"
     exit 0
   fi
 fi
