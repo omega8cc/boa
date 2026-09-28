@@ -403,6 +403,13 @@ _nginx_high_load_on() {
   local _current_load="$1"
   local _threshold="$2"
   local _load_period="$3"
+  # A directory at the live name would refuse the rename below; like a link
+  # or a FIFO there, it is never the switch's own and goes first.
+  if [ -L /data/conf/nginx_high_load.conf ] \
+    || { [ -e /data/conf/nginx_high_load.conf ] \
+      && [ ! -f /data/conf/nginx_high_load.conf ]; }; then
+    _acct_in_real_dir /data/conf rm -rf -- ./nginx_high_load.conf
+  fi
   if ! _acct_in_real_dir /data/conf \
     _conf_rename_here nginx_high_load_off.conf nginx_high_load.conf; then
     # Not a regular file (a link, a FIFO or a directory left at the off name)

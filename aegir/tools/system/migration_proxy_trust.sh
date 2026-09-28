@@ -229,12 +229,14 @@ _cmd_teardown() {
     _msg "permanent migration proxy marker present; teardown skipped (use --force)"
     return 0
   fi
-  _conf_drop_file "${_realip_ctrl}"
+  local _dropped=YES
+  _conf_drop_file "${_realip_ctrl}" || _dropped=NO
   rm -f "${_csf_ctrl}" "${_perm_flag}"
   _csf_strip
   _csf_reload
   # Control file now gone -> the tool removes the .cmig include.
   [ -x "${_realip_tool}" ] && "${_realip_tool}"
+  [ "${_dropped}" = "YES" ] || _die "teardown: could not remove ${_realip_ctrl}"
   _msg "migration proxy trust torn down on this host"
 }
 
@@ -353,7 +355,11 @@ _conf_drop_file() (
   _mpt_in_real_dir "${1%/*}" _conf_rm_here "${1##*/}"
 )
 _conf_rm_here() {
-  rm -f -- "./${1}"
+  if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
+    rm -rf -- "./${1}"
+  else
+    rm -f -- "./${1}"
+  fi
 }
 # The regular file $1 in /data/conf printed, read as _conf_get_file_here reads
 # it (a link or a FIFO at the name prints nothing and is never opened).
@@ -522,11 +528,12 @@ _cmd_reconcile() {
     # Records exist, none needs trust, and no pre-record entries survive: the
     # union proves nothing needs the marker either, so clear it even though
     # plain teardown would honour it.
-    _conf_drop_file "${_realip_ctrl}"
+    _conf_drop_file "${_realip_ctrl}" || _fail="${_fail} ${_realip_ctrl}"
     rm -f "${_csf_ctrl}" "${_perm_flag}"
     _csf_strip
     _csf_reload
     [ -x "${_realip_tool}" ] && "${_realip_tool}"
+    [ -z "${_fail}" ] || _die "reconcile: could not remove ${_realip_ctrl}"
     _msg "reconcile: no live permanent/ha-switch peers; migration proxy trust torn down"
     return 0
   fi
@@ -534,7 +541,8 @@ _cmd_reconcile() {
   # Rewrite both control files to exactly keep + legacy; strip every tagged
   # csf entry and re-add that set (no selective strip exists -- strip-all then
   # re-add exploits the existing idempotency).
-  _conf_drop_file "${_realip_ctrl}"
+  _conf_drop_file "${_realip_ctrl}" \
+    || _die "reconcile: could not remove ${_realip_ctrl}; nothing changed"
   rm -f "${_csf_ctrl}"
   _csf_strip
   for _ip in ${_keep} ${_legacy}; do

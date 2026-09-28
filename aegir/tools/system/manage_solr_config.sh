@@ -1854,7 +1854,8 @@ _solr_conf_path_real() {
 # copy land inside it, and it is marked only once it is there.
 _solr_conf_refresh_here() {
   local _n="./.solr.new.$$"
-  rm -rf -- "${_n}"
+  # a copy left by a run that died half way (one instance runs at a time)
+  rm -rf -- ./.solr.new.*
   if ! cp -af /var/xdrago/conf/solr "${_n}"; then
     rm -rf -- "${_n}"
     return 1

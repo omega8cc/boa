@@ -144,9 +144,9 @@ _install_or_remove() {
       fi
       service nginx reload && echo "Migration-proxy realip trust removed; Nginx reloaded."
     elif [[ -L "${_out_file}" || -e "${_out_file}" ]]; then
-      # Not a regular file (a link or a FIFO left at the name): never this
-      # tool's output, so it goes too.
-      if _acct_in_real_dir "${_out_dir}" rm -f -- "./${_out_name}" \
+      # Not a regular file (a link, a FIFO or a directory left at the name):
+      # never this tool's output, so it goes too.
+      if _acct_in_real_dir "${_out_dir}" rm -rf -- "./${_out_name}" \
         && [[ ! -e "${_out_file}" && ! -L "${_out_file}" ]]; then
         service nginx reload && echo "Migration-proxy realip trust removed; Nginx reloaded."
       else
