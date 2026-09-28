@@ -256,11 +256,15 @@ purge's zombie directory, shut to root, and its directories and single-link
 files are handed to `root:root`.
 
 Anywhere else the purge leaves something
-of the account (the parked vhost files, what its identities left in
-`/tmp`, `/var/tmp` and `/dev/shm`), a uid or gid that no longer names
-anything goes to root: the next account created could be given it. A file
-with more than one link keeps an owner or group that still names someone:
-it may share its inode with a living name elsewhere.
+of the account (the parked vhost files, its leftovers), a uid or gid that
+no longer names anything goes to root: the next account created could be
+given it. A file with more than one link keeps an owner or group that still
+names someone: it may share its inode with a living name elsewhere.
+
+In `/tmp`, `/var/tmp` and `/dev/shm`, where the kernel trusts what root owns,
+what the account's identities left is removed, before they are and again
+after, and only a directory of theirs that still holds someone else's
+entries goes to root.
 
 The purge removes the account's own web group `wg-oN` the same way, when
 there is one, together with root's record of it.

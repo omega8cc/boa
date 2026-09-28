@@ -72,8 +72,11 @@ For full-server migrations where Percona versions match, consider
 > CLEAN`, `--live` and `create` stop).
 >
 > On a rename (`{o2}`) every leg also maps each of the account's identities onto the new
-> name's (`o1.ftp` onto `o2.ftp`, and so on), so the copy is never owned by an account
-> the target has under the old name. `xcopy` does the same for both maps.
+> name's (`o1.ftp` onto `o2.ftp`, and so on; one the target does not have yet, such as a
+> client's login, onto `o2` itself), so the copy is never owned by an account the target
+> has under the old name. A list of the target's identities that cannot be read, or that
+> has no `o2` yet, is a `DENY` too (the dry run is `NOT CLEAN`, `--live` and `create`
+> stop; re-run `create` once the target answers). `xcopy` does the same for both maps.
 >
 > The `CLEAN` dry token is **single-use** —
 > running `--live` consumes it, so one dry run cannot arm two live runs; re-run the dry
