@@ -384,8 +384,19 @@ sub load_allow {
   if (defined $csf && length $csf && open my $fh, '<', $csf) {
     while (my $l = <$fh>) {
       next if $l =~ /\A\s*#/;
-      next unless $l =~ /s=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(?:\/([0-9]+))?/;
-      my ($ad, $bits) = ($1, $2);
+      # An address named only in a comment is not an allow.
+      $l =~ s/#.*//s;
+      # s=A.B.C.D[/N] anywhere, else a plain first-field A.B.C.D[/N]: csf's full
+      # allow for every port and direction, trusted as guest-fire trusts it.
+      # Destination-only d= rules name a server this box calls and stay out.
+      my ($ad, $bits);
+      if ($l =~ /s=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(?:\/([0-9]+))?/) {
+        ($ad, $bits) = ($1, $2);
+      } elsif ($l =~ /\A\s*([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(?:\/([0-9]+))?(?:\s|\z)/) {
+        ($ad, $bits) = ($1, $2);
+      } else {
+        next;
+      }
       my @o = split /\./, $ad;
       next if grep { $_ > 255 } @o;
       my $n = ($o[0] << 24) + ($o[1] << 16) + ($o[2] << 8) + $o[3];

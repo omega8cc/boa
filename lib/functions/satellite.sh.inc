@@ -5661,7 +5661,8 @@ _satellite_make() {
   # -- sourcing a cnf slice resets config vars), then 22. Only a validated
   # numeric value is handed off, so the email fails safe to the template's
   # default.
-  _sshPrt=$(/usr/sbin/sshd -T 2>/dev/null | awk '/^port /{print $2; exit}')
+  # The keyword's case varies by build (OpenSSH 10.5 prints "Port 22").
+  _sshPrt=$(/usr/sbin/sshd -T 2>/dev/null | awk 'tolower($1) == "port" {print $2; exit}')
   if [[ ! "${_sshPrt}" =~ ^[0-9]+$ ]]; then
     _sshPrt=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
       | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')

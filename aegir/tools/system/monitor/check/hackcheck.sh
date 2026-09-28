@@ -182,7 +182,7 @@ _csf_file_matches_ip() {
   local _ip="${1}" _file="${2}"
   local _ip_rx; _ip_rx="$(_rx "${_ip}")"
   [[ -f "${_file}" ]] || return 1
-  grep -qE "(^|\|s=|\|d=)${_ip_rx}(/32)?([[:space:]#|]|$)" "${_file}" 2>/dev/null \
+  grep -qE "(^[[:space:]]*|\|s=|\|d=)${_ip_rx}(/32)?([[:space:]#|]|$)" "${_file}" 2>/dev/null \
     && return 0
   cut -d'#' -f1 "${_file}" 2>/dev/null \
     | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' \
