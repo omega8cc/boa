@@ -124,6 +124,11 @@
       read or the target contacted; xoct is the tool that moves an account
       under a new name.
 
+    * PHP-FPM pool sockets, the master pools' included, answer only nginx
+      and root: they were open to the web server group, which holds every
+      account's users and every pool's workers, so any account could have
+      another account's pool, or a master pool, run a script as its user.
+
     * Root no longer follows a link, or opens a FIFO, that an account
       puts at a name in its own directories: static/control, and the
       log/, .drush/, config/, tools/, .tmp/ and .ftp home names its main
