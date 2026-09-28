@@ -773,10 +773,6 @@ _tune_web_server_config() {
   # Valkey config should sync with PHP-CLI
   sed -i "s/^timeout .*/timeout 3600/g" /etc/valkey/valkey.conf                                &> /dev/null
   wait
-
-  # Redis config should sync with PHP-CLI
-  sed -i "s/^timeout .*/timeout 3600/g" /etc/redis/redis.conf                                  &> /dev/null
-  wait
 }
 
 #

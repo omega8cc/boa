@@ -255,7 +255,6 @@
 ;;  below are listed only for cross-reference; creating or removing the flag and
 ;;  reading the log are performed by the server administrator, not from here:
 ;;    Valkey servers: /data/conf/valkey.debug.flag  ->  /var/tmp/fpm/valkey-fallback.log
-;;    Redis  servers: /data/conf/redis.debug.flag   ->  /var/tmp/fpm/redis-fallback.log
 ;;  The administrator removes the flag to stop logging live, with no INI edit
 ;;  or redeploy. Arming redis_debug here simply lets that toggle take effect.
 ```

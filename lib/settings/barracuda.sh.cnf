@@ -411,22 +411,9 @@ _VALKEY_MAJOR_RELEASE=9
 ### REDIS LISTEN MODE                      ###
 ###----------------------------------------###
 ###
-### By default this option is set to SOCKET
-### to improve caching backend performance.
-###
-### If set to PORT (old default) Redis will
-### listen on standard port and 127.0.0.1 IP.
-###
-### When set to any other IP address, it will
-### switch ALL your Ægir Satellite Instances
-### along with your Ægir Master Instance from
-### local Redis server to the remote Redis
-### server you have installed in your network.
-### It will also permanently disable your
-### local Redis server. Make sure to specify
-### correct IP when using this mode and also
-### modify /etc/csf/csf.conf to allow outgoing
-### TCP connections via port 6379.
+### Not used any more: BOA installs Valkey
+### only (see VALKEY LISTEN MODE above). The
+### variable stays for existing config files.
 ###
 _REDIS_LISTEN_MODE=SOCKET
 
@@ -435,7 +422,8 @@ _REDIS_LISTEN_MODE=SOCKET
 ### REDIS MAJOR RELEASE                    ###
 ###----------------------------------------###
 ###
-### Supported values: 5, 6 or 7
+### Not used any more: BOA installs Valkey
+### only (see VALKEY MAJOR RELEASE above).
 ###
 _REDIS_MAJOR_RELEASE=7
 
@@ -1064,8 +1052,7 @@ _DB_BINARY_LOG=NO
 ### deriving from the unpinned base unless pinned too).
 ### _SQL_MAX_CONNECTIONS_FORCE and _SQL_LOG_FILE_SIZE_FORCE
 ### take effect only with a database restart on the next
-### planned maintenance. _VALKEY_MAXMEM_FORCE also covers
-### Redis on legacy systems. _SOLR_HEAP_FORCE caps the JVM
+### planned maintenance. _SOLR_HEAP_FORCE caps the JVM
 ### heap -Xmx for Solr 7 and Solr 9 alike (not jetty/solr4).
 ### Pins have no effect on Galera cluster nodes.
 ###

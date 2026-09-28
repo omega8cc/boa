@@ -281,10 +281,6 @@ _valkey_password_update() {
       _valkey_conf_pass_here global-if-valkey.inc &> /dev/null
     _acct_in_real_dir /data/conf/global \
       _valkey_conf_pass_here global-valkey.inc &> /dev/null
-    _acct_in_real_dir /data/conf/global \
-      _valkey_conf_pass_here global-if-redis.inc &> /dev/null
-    _acct_in_real_dir /data/conf/global \
-      _valkey_conf_pass_here global-redis.inc &> /dev/null
     _acct_in_real_dir /data/conf \
       _valkey_conf_pass_here global.inc &> /dev/null
     if [ -e "${_mtrInc}" ] \
@@ -419,8 +415,12 @@ _valkey_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _valkey_install_upgrade"
   fi
+  # A custom config may keep Valkey 7 or 8; any other value (Redis is no
+  # longer installed) builds the default major, the same as without one.
   if [ "${_CUSTOM_CONFIG_VALKEY}" = "NO" ] \
-    || [ -z "${_CUSTOM_CONFIG_VALKEY}" ]; then
+    || [ -z "${_CUSTOM_CONFIG_VALKEY}" ] \
+    || { [ "${_VALKEY_MAJOR_RELEASE}" != "7" ] \
+      && [ "${_VALKEY_MAJOR_RELEASE}" != "8" ]; }; then
     if [ "${_VALKEY_MAJOR_RELEASE}" != "9" ]; then
       export _VALKEY_MAJOR_RELEASE=9
       sed -i "s/^_VALKEY_MAJOR_.*/_VALKEY_MAJOR_RELEASE=9/g" ${_barCnf}

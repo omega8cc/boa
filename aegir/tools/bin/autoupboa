@@ -659,7 +659,6 @@ _if_disable_not_used_services() {
     [ -e "/run/php83-fpm.pid" ] && killall -9 php-fpm
     [ -e "/run/mysqld/mysqld.pid" ] && service mysql stop
     [ -e "/run/valkey/valkey.pid" ] && service valkey-server stop
-    [ -e "/run/redis/redis.pid" ] && service redis-server stop
     [ -e "/root/.deny.clamav.cnf" ] && touch /root/.deny.clamav.cnf
     [ -e "/root/.deny.java.cnf" ] && touch /root/.deny.java.cnf
     _clearSwap=YES
@@ -1148,10 +1147,9 @@ _status_vm_postinstall() {
       fi
     fi
     if [ ! -e "/var/log/boa/reset_no_new_password.pid" ]; then
-      # Re-enable default MySQL/Valkey/Redis password update logic once
+      # Re-enable default MySQL/Valkey password update logic once
       [ -e "/root/.mysql.no.new.password.cnf" ]  && rm -f /root/.mysql.no.new.password.cnf
       [ -e "/root/.valkey.no.new.password.cnf" ] && rm -f /root/.valkey.no.new.password.cnf
-      [ -e "/root/.redis.no.new.password.cnf" ]  && rm -f /root/.redis.no.new.password.cnf
       touch /var/log/boa/reset_no_new_password.pid
       chattr +i /var/log/boa/reset_no_new_password.pid
     fi
