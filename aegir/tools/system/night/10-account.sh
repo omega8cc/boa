@@ -72,22 +72,479 @@ _acct_group() {
   echo "${_g}"
 }
 fi
+# The web-group helpers, for the same skew: a night.inc.sh older than them
+# leaves them undefined, and the drift probe below reads the account's web
+# group through them.
+if ! declare -F _web_group_state > /dev/null 2>&1; then
+_web_group_state() {
+  # The account's own web group, wg-<account>, derived on the box and never
+  # taken from argv or a cnf: the group its pools, backend user and shell
+  # users share for its web paths once the account is converted to it.
+  # Prints "<state> <gid> <group>", "none - -" when there is no such group
+  # (the record is root's: run as another user, converted reads as held):
+  #   none       no group of that name
+  #   foreign    the group exists, but an identity outside the account holds
+  #              it too: never joined nor written to; claim passes still leave
+  #              its paths alone (taking them would cut the pools off)
+  #   held       the group exists and only this account's identities hold it:
+  #              claim passes leave its paths alone, new identities join it
+  #   converted  and root's record names that gid: writers use the group
+  #   phaseb     and the record says the identities have left www-data
+  # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+  # phase=<A|B> ...", root's own file outside the account tree, so neither
+  # the account nor a copy or restore of its tree can make or move it.
+  # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+  # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+  # gems or npm tree, or its store on attached storage
+  # (/mnt/<m>/files/<oN>/static/files).
+  local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  # a path is read as written (an alias the account wrote can carry "..",
+  # "." or "//"): normalised by text alone, never through a link, first
+  case "${_a}" in
+    */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+  esac
+  case "${_a}" in
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+    /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+    /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+      _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+    */*) echo "none - -"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  case "${_a}" in
+    ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+  esac
+  _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  # every holder of the gid: members of each group entry carrying it (a
+  # second entry can share the number) and every user with it as primary
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+      || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+  done
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-${_a}"
+  else
+    echo "held ${_gid} wg-${_a}"
+  fi
+}
+
+_web_group() {
+  # The group a root writer gives an account's web paths (files/, private/,
+  # settings.php and the like): wg-<account> once the account is converted,
+  # www-data otherwise, as always. Until the record says converted every
+  # identity of the account still holds www-data (a conversion grants the web
+  # group first and a revert gives www-data back before it moves any path),
+  # so www-data is the old state, never an outage. Callers write
+  # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
+  # group and never hands a path to a login group. Run as any user but root,
+  # which cannot read root's record, a held group answers empty: the group
+  # each path has is kept. $1 as _web_group_state.
+  local _s
+  _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted|phaseb) echo "${_s##* }" ;;
+    held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+    *) echo "www-data" ;;
+  esac
+}
+fi
+
+### oN owns its /data/disk/oN (log/, .drush/, config/, tools/, .tmp/, clients/,
+### backups/, distro/, undo/), the main login owns /home/<oN>.ftp, and
+### static/ is group-writable: any name there can be a link or a FIFO, and
+### any directory on the way can be swapped for a link. Root reads, writes,
+### moves and removes those names only through the helpers below. The first
+### ones are the night.inc.sh and 20-sites.sh bodies, carried here for the
+### same fNN skew as above, and defined only when the libraries lack them.
+if ! declare -F _acct_in_real_dir > /dev/null 2>&1; then
+  _acct_in_real_dir() {
+    local _d="${1}" _a="" _want
+    shift
+    case "${_d}" in
+      /home/?*) _a=/home ;;
+      /data/disk/?*) _a=/data/disk ;;
+    esac
+    if [ -n "${_a}" ]; then
+      _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    else
+      _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    fi
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  }
+fi
+if ! declare -F _acct_read_here > /dev/null 2>&1; then
+  _acct_read_here() {
+    timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+      bs=1048576 count=1 status=none 2> /dev/null
+  }
+fi
+if ! declare -F _acct_read_in > /dev/null 2>&1; then
+  _acct_read_in() {
+    _acct_in_real_dir "${1}" _acct_read_here "${2}"
+  }
+fi
+if ! declare -F _acct_read_plain_here > /dev/null 2>&1; then
+  _acct_read_plain_here() {
+    [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+    _acct_read_here "${1}"
+  }
+fi
+if ! declare -F _acct_put_here > /dev/null 2>&1; then
+  _acct_put_here() {
+    local _t="./.${1}.put.$$.${RANDOM}"
+    rm -f -- "${_t}"
+    ( umask 022
+      printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+      && mv -f -T -- "${_t}" "./${1}" && return 0
+    rm -f -- "${_t}"
+    return 1
+  }
+fi
+if ! declare -F _acct_mark_here > /dev/null 2>&1; then
+  _acct_mark_here() {
+    local _t="./.${1}.mark.$$.${RANDOM}"
+    rm -f -- "${_t}"
+    dd if=/dev/null of="${_t}" conv=excl status=none 2> /dev/null \
+      && mv -f -T -- "${_t}" "./${1}" && return 0
+    rm -f -- "${_t}"
+    return 1
+  }
+fi
+if ! declare -F _log_ctrl_mark > /dev/null 2>&1; then
+  _log_ctrl_mark() {
+    _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
+    _acct_in_real_dir "${_usEr}/log/ctrl" _acct_mark_here "${1}"
+  }
+fi
+if ! declare -F _acct_undo_here > /dev/null 2>&1; then
+  _acct_undo_here() {
+    local _u
+    _u="$(cd -P /data/disk 2> /dev/null && pwd -P)${_usEr#/data/disk}/undo"
+    _acct_in_real_dir "${_usEr}" mkdir -p ./undo 2> /dev/null
+    exec 9< "${_u}/." || return 1
+    [ "$(readlink /proc/self/fd/9)" = "${_u}" ] || return 1
+    mv -f -T -- "./${1}" "/proc/self/fd/9/${2:-${1}}"
+  }
+fi
+: "${_GH_REFUSED:=the move into undo/ was refused (a link or a path outside this account on the way, or the rename failed)}"
+### A tree handed over through each entry's own handle, never by name, and
+### entries locked or unlocked the same way (the 20-sites.sh and night.inc.sh
+### bodies, for the same skew).
+if ! declare -F _reown_tree_here > /dev/null 2>&1; then
+  _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+  _night_ids() {
+    local _u _g=-1
+    _u=$(id -u -- "${1%%:*}" 2> /dev/null)
+    [[ "${_u}" =~ ^[0-9]+$ ]] || return 1
+    if [[ "${1}" == *:* ]]; then
+      _g=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
+      [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
+    fi
+    printf '%s %s\n' "${_u}" "${_g}"
+  }
+  _reown_tree_here() {
+    local _ids _u _g
+    _ids=$(_night_ids "${1}") || return 0
+    read -r _u _g <<< "${_ids}"
+    shift
+    [ "$#" -gt 0 ] || return 0
+    env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \
+      -execdir perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" {} + &> /dev/null
+    return 0
+  }
+fi
+if ! declare -F _night_chattr_entries_here > /dev/null 2>&1; then
+  _ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or do { $rc = 1; next }; my @s = stat($h); if (@s && (-d _ || (-f _ && $s[3] == 1))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); $fl = $op eq "+" ? ($fl | 0x10) : ($fl & ~0x10); ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } else { $rc = 1 } close($h); } exit $rc'
+  _night_chattr_sub_here() {
+    local _h
+    _h="$(pwd -P)"
+    ( cd -P -- "./${2}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${2}" ] \
+      && chattr "${1}i" . ) &> /dev/null
+    return 0
+  }
+  _night_chattr_entries_here() {
+    local _e _chf=()
+    for _e in ./*; do
+      if [ -d "${_e}" ] && [ ! -L "${_e}" ]; then
+        _night_chattr_sub_here "${1}" "${_e#./}"
+      elif [ -f "${_e}" ] && [ ! -L "${_e}" ]; then
+        _chf+=( "${_e}" )
+      fi
+    done
+    [ "${#_chf[@]}" -eq 0 ] \
+      || perl -e "${_ACCT_CHATTR_PL}" "${1}" "${_chf[@]}" &> /dev/null
+    return 0
+  }
+fi
+
+### Run "$@" inside the directory $1, a path resolved just before, entered
+### with cd -P and checked there, so ./name stays in it whatever is swapped.
+_night_in_pinned() {
+  local _d="${1}"
+  shift
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+}
+### Run "$@" inside ./$1 of the current (pinned) directory, entered for real.
+_night_sub() {
+  local _h _s="${1}"
+  shift
+  _h="$(pwd -P)"
+  ( cd -P -- "./${_s}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${_s}" ] && "$@" )
+}
+### The account's files store as it resolves now, printed: its own
+### static/files, or migratefs' layout on attached storage
+### (/mnt/.../files/<oN>/static/files). static/ is group-writable, so
+### static/files can be any link: anything else is not the store (status 1),
+### nor is a directory of that name made inside another store or account
+### tree on the mount. Reads _usEr.
+_night_acct_store() {
+  local _a _r _m
+  _a=$(realpath -e -- "${_usEr}" 2> /dev/null) || return 1
+  _r=$(realpath -e -- "${_usEr}/static/files" 2> /dev/null) || return 1
+  case "${_r}" in
+    *[!A-Za-z0-9._/-]*) return 1 ;;
+    "${_a}/static/files") ;;
+    /mnt/?*/files/"${_usEr##*/}"/static/files)
+      _m="${_r%/files/"${_usEr##*/}"/static/files}"
+      case "${_m}" in
+        */files/*|*/static/*) return 1 ;;
+      esac
+      ;;
+    *) return 1 ;;
+  esac
+  [ -d "${_r}" ] || return 1
+  printf '%s\n' "${_r}"
+}
+### migratefs relocating this account's files store holds it:
+### /run/migratefs-account-<oN>.pid names a live root process that runs
+### migratefs, matched as executed, never as a word anywhere on a command
+### line (a pid reused after a kill -9, by another user's process or another
+### command, never holds). Root is read as the real uid in
+### /proc/<pid>/status: /proc/<pid> itself shows root as the owner of any
+### process that is not dumpable. Reads _HM_U.
+_night_mfs_held() {
+  local _p
+  _p=$( { tr -dc '0-9' < "/run/migratefs-account-${_HM_U}.pid"; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?migratefs( |$)'
+}
+### Run "$@" inside ${_usEr}/$1 (backups, backup-exports): the real directory,
+### or, once the backups mover made it a link, the directory that link
+### resolves to, only while that lies inside the account's store; any other
+### link is refused.
+_night_in_bak_dir() {
+  local _n="${1}" _s _r
+  shift
+  if [ ! -L "${_usEr}/${_n}" ]; then
+    _acct_in_real_dir "${_usEr}/${_n}" "$@"
+    return
+  fi
+  _s=$(_night_acct_store) || return 1
+  _r=$(realpath -e -- "${_usEr}/${_n}" 2> /dev/null) || return 1
+  case "${_r}" in
+    "${_s}"/?*) ;;
+    *) return 1 ;;
+  esac
+  _night_in_pinned "${_r}" "$@"
+}
+### One line when ${_usEr}/$1 is a link _night_in_bak_dir refused: nothing
+### below it is purged until it leads into the account's store again.
+_night_bak_unpurged() {
+  [ -L "${_usEr}/${1}" ] || return 0
+  echo "backups-on-static: ${_usEr}/${1} is a link that does not lead into the account's store; not purged"
+}
+### Every entry below the current (pinned) directory older than $1 days
+### removed, the top-level dot names kept as the X/* globs this replaces kept
+### them ($2: all = none kept; files = regular files only). find walks
+### without following a link, and each hit is removed from inside the
+### directory it walked (-execdir), never by a path through a name that can
+### be swapped meanwhile.
+_night_purge_here() {
+  case "${2}" in
+    files)
+      find . -mindepth 1 \( -path './.*' -prune \) -o -type f -mtime "+${1}" \
+        -execdir rm -f -- {} + 2> /dev/null
+      ;;
+    all)
+      find . -mindepth 1 -mtime "+${1}" -execdir rm -rf -- {} + -prune 2> /dev/null
+      ;;
+    *)
+      find . -mindepth 1 \( -path './.*' -prune \) -o -mtime "+${1}" \
+        -execdir rm -rf -- {} + -prune 2> /dev/null
+      ;;
+  esac
+  return 0
+}
+### The regular files of the current (pinned) log/ctrl matching the globs
+### after $1 (never a dot name) removed when older than $1 days.
+_night_ctrl_purge_here() {
+  local _d="${1}" _g
+  shift
+  for _g in "$@"; do
+    find . -mindepth 1 -maxdepth 1 ! -name '.*' -name "${_g}" -type f \
+      -mtime "+${_d}" -delete 2> /dev/null
+  done
+  return 0
+}
+### In the current (pinned) clients/: each real client directory's backups
+### removed ($1 = rm), or its entries older than $2 days (purge).
+_night_clients_bak_here() {
+  local _c
+  for _c in ./*; do
+    [ -d "${_c}" ] && [ ! -L "${_c}" ] || continue
+    if [ "${1}" = "rm" ]; then
+      _night_sub "${_c#./}" rm -rf -- ./backups
+    else
+      _night_sub "${_c#./}" _night_sub backups _night_purge_here "${2}"
+    fi
+  done
+  return 0
+}
+### Every dangling link below the current (pinned) directory removed, as
+### symlinks -dr removed them; find walks without following a link.
+_night_dangling_rm_here() {
+  find . -xdev -mindepth 1 -xtype l -delete 2> /dev/null
+  return 0
+}
+### $1 as its words joined by single spaces, without expanding a glob; text
+### over 4 KiB gives nothing.
+_night_words() (
+  [ "${#1}" -le 4096 ] || exit 0
+  set -f
+  # shellcheck disable=SC2086
+  set -- ${1}
+  printf '%s' "$*"
+)
+### The addresses in $1 (words, as log/email.txt holds them) that have an
+### e-mail address's form, joined by single spaces; text over 4 KiB gives
+### nothing. They are written into root's octopus.cnf, which root sources,
+### and reach s-nail as its recipients. The form the octopus pass and
+### usage.sh take: a local part of letters, digits and . _ % + = ' - (a
+### letter, a digit or _ first), '@' and a host name.
+_night_mail_list() (
+  local _w _o="" _re _q="'"
+  _re="^[A-Za-z0-9_][A-Za-z0-9._%+=${_q}-]*@[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$"
+  [ "${#1}" -le 4096 ] || exit 0
+  set -f
+  # shellcheck disable=SC2086
+  for _w in ${1//\\\@/\@}; do
+    [[ "${_w}" =~ ${_re} ]] || continue
+    _o="${_o}${_o:+ }${_w}"
+  done
+  printf '%s' "${_o}"
+)
+### True when $1 is a host name: letters, digits, dots and hyphens, starting
+### and ending with a letter or a digit. It names root's /etc/ssl/private
+### files and log/ctrl markers.
+_night_host_ok() {
+  [[ "${1}" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]
+}
+### True when $1 names none of the box's own certificates in
+### /etc/ssl/private (a name without a dot, such as nginx-wild-ssl or
+### ssl-cert-snakeoil; every account front is a full domain name), not the
+### master's front and not the front (_DOMAIN) of another account on this
+### box: the account's front names root's /etc/ssl/private/<front>.crt and
+### .key.
+_night_front_free() {
+  local _c _u _d
+  case "${1}" in
+    *.*) ;;
+    *) return 1 ;;
+  esac
+  _d=$(sed -n 's/^_MY_FRONT=//p' /root/.barracuda.cnf 2> /dev/null \
+    | tail -n 1 | tr -d "\"' ")
+  [ "${_d}" = "${1}" ] && return 1
+  _d=$(grep -E "^[[:space:]]*'uri'[[:space:]]*=>" \
+    /var/aegir/.drush/hostmaster.alias.drushrc.php 2> /dev/null \
+    | head -n 1 | cut -d"'" -f4)
+  [ "${_d}" = "${1}" ] && return 1
+  for _c in /root/.*.octopus.cnf; do
+    [ -f "${_c}" ] || continue
+    _u="${_c#/root/.}"
+    _u="${_u%.octopus.cnf}"
+    [ "${_u}" = "${_HM_U}" ] && continue
+    [ -d "/data/disk/${_u}" ] || continue
+    _d=$(sed -n 's/^_DOMAIN=//p' "${_c}" 2> /dev/null \
+      | tail -n 1 | tr -d "\"' ")
+    [ "${_d}" = "${1}" ] && return 1
+  done
+  return 0
+}
+### True when every word of $1 is a host name.
+_night_hosts_ok() (
+  local _w
+  set -f
+  # shellcheck disable=SC2086
+  set -- ${1}
+  [ "$#" -gt 0 ] || exit 1
+  for _w in "$@"; do
+    _night_host_ok "${_w}" || exit 1
+  done
+)
+### The mtime of ./$1 in the current (pinned) directory, only while it is a
+### regular file.
+_night_mtime_here() {
+  local _t
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  _t=$(stat -c %Y -- "./${1}" 2> /dev/null)
+  [[ "${_t}" =~ ^[0-9]+$ ]] || return 1
+  printf '%s\n' "${_t}"
+}
+### ./$2 in the current (pinned) directory made a link to $1 where no name
+### there resolves.
+_night_link_new_here() {
+  [ -e "./${2}" ] || ln -sfn -- "${1}" "./${2}"
+}
 
 _relocate_one_backup_dir() {
-  # Relocate a single per-account backup directory onto the static/files
-  # filesystem and replace it with a symlink, so large (dereferenced) backups
-  # never fill the root partition. Data-safe and never destructive: an EXISTING
-  # real dir is moved INCREMENTALLY (rsync --remove-source-files: peak extra space
-  # on the tight root FS is ~one file, not a full 2x copy, and each file is removed
-  # only after it is copied); on ANY failure the real dir is left in place and no
-  # symlink is created, so a backup is never lost. Idempotent.
-  # $1 current path (e.g. /data/disk/oX/backups); $2 target under static/files.
-  local _src="$1" _dst="$2"
+  # Relocate one per-account backup directory ($1: backups or backup-exports)
+  # onto the account's store ($2, resolved) as .$1 and replace it with the
+  # link $3, so large (dereferenced) backups never fill the root partition.
+  # Data-safe and never destructive: the real dir is copied whole, and only
+  # then emptied; on a failure it is left in place with its owner and mode,
+  # and no link is created. Idempotent.
+  #
+  # The account owns its root, the directory and everything below it, and
+  # the store: while the copy runs the directory and .$1 in the store are
+  # root's and closed (0700), so no name below either changes; the copy
+  # starts inside the real directory and writes into .$1 held open
+  # (/proc/self/fd), the directory is emptied from inside itself by find,
+  # and the rmdir and the link act on names inside the real account root.
+  #
+  # The owner and mode are recorded in root's /var/backups before anything
+  # is closed, and a TERM, INT or HUP to this pass opens both again. A pass
+  # killed outright (KILL, a reboot, OOM) leaves them closed, and Aegir's
+  # backup tasks fail there once the queue runs again; the next pass reads
+  # the record (or, without one, gives the account's own owner and 750, as
+  # the octopus pass does), finishes the relocation and hands both back.
+  local _n="$1" _st="$2" _lnk="$3" _src="${_usEr}/$1" _ug _md _dm _rec
+  _rec="$(_night_bak_rec "${_n}")"
 
-  # Already a symlink to the intended target -> just make sure the store exists.
+  # Already a link to the intended target -> just make sure the store has it
+  # and that it is the account's, not root's.
   if [ -L "${_src}" ]; then
-    if [ "$(readlink "${_src}" 2>/dev/null)" = "${_dst}" ]; then
-      [ -d "${_dst}" ] || mkdir -p "${_dst}" 2>/dev/null
+    if [ "$(readlink -- "${_src}" 2>/dev/null)" = "${_lnk}" ]; then
+      read -r _ug _md <<< "$(_night_bak_recorded "${_n}")"
+      _night_in_pinned "${_st}" _night_bak_store_here ".${_n}" \
+        "${_ug}" "${_md}"
+      rm -f -- "${_rec}"
     else
       echo "backups-on-static: ${_src} is a symlink to an unexpected target; leaving for review"
     fi
@@ -99,44 +556,168 @@ _relocate_one_backup_dir() {
   # later run relocates it).
   [ -d "${_src}" ] || return 0
 
-  local _ug
-  _ug=$(stat -c '%U:%G' "${_src}" 2>/dev/null)
-  [ -n "${_ug}" ] || return 0
-
-  # mkdir -p is a silent no-op on a link to a directory and chown follows it,
-  # so a symlink planted at the destination would take the chown and then the
-  # whole rsync. The store lives under static/, which is group-writable.
-  if [ -L "${_dst}" ]; then
-    echo "backups-on-static: ${_dst} is a symlink; left ${_src} as real dir"
+  _ug=$(_acct_in_real_dir "${_src}" stat -c '%U:%G' . 2>/dev/null)
+  _md=$(_acct_in_real_dir "${_src}" stat -c '%a' . 2>/dev/null)
+  [ -n "${_ug}" ] && [[ "${_md}" =~ ^[0-7]+$ ]] || return 0
+  # Root's: closed by a pass that was killed during the copy.
+  if [ "${_ug}" = "root:root" ]; then
+    read -r _ug _md <<< "$(_night_bak_recorded "${_n}")"
+  fi
+  if ! ( umask 077; printf '%s %s\n' "${_ug}" "${_md}" > "${_rec}" ) 2>/dev/null; then
+    echo "backups-on-static: could not record the owner of ${_src} in ${_rec}; left as real dir"
     return 0
   fi
-  mkdir -p "${_dst}" 2>/dev/null || return 0
-  chown "${_ug}" "${_dst}" 2>/dev/null
+  _dm="${_st}/.${_n}"
+  trap '_night_bak_open "${_src}" "${_dm}" "${_ug}" "${_md}"; rm -f -- "${_rec}"; exit 143' TERM INT HUP
+  _night_bak_move
+  trap - TERM INT HUP
+  rm -f -- "${_rec}"
+  return 0
+}
+# The relocation proper, for _relocate_one_backup_dir: reads its _n, _st,
+# _lnk, _src, _dm, _ug and _md. Every return leaves both directories open
+# with that owner and mode, or never closed them.
+_night_bak_move() {
+  if ! _night_in_pinned "${_st}" _night_bak_dst_here ".${_n}"; then
+    _night_bak_open "" "${_dm}" "${_ug}" "${_md}"
+    echo "backups-on-static: ${_st}/.${_n} is not a real directory; left ${_src} as real dir"
+    return 0
+  fi
 
-  if [ -n "$(ls -A "${_src}" 2>/dev/null)" ]; then
-    # Re-check the task interlock right before the destructive move: skip (leave the
+  if [ -n "$(_acct_in_real_dir "${_src}" ls -A . 2>/dev/null)" ]; then
+    # Re-check the task interlock right before the move: skip (leave the
     # real dir untouched) if a provision task started since the entry check, so a
     # backup being written is never moved mid-write.
-    _provision_running && { echo "backups-on-static: provision task active -- left ${_src} as real dir"; return 0; }
+    if _provision_running; then
+      _night_bak_open "${_src}" "${_dm}" "${_ug}" "${_md}"
+      echo "backups-on-static: provision task active -- left ${_src} as real dir"
+      return 0
+    fi
     # One-time migration de-links any pre-existing backups<->backup-exports hardlink
-    # pairs (the two dirs are moved in separate rsync runs, no -H), so old tarballs
+    # pairs (the two dirs are copied in separate rsync runs, no -H), so old tarballs
     # briefly cost double space -- on the static FS (the target), not the tight root,
     # and it ages out via the -mtime purge. New backups after relocation hardlink
     # fine (both dirs are then co-located on the static FS).
-    rsync -a --no-devices --no-specials --remove-source-files "${_src}/" "${_dst}/" 2>/dev/null \
-      || { echo "backups-on-static: move failed ${_src} -> ${_dst}; left as real dir"; return 0; }
-    find "${_src}/" -mindepth 1 -depth -type d -empty -delete 2>/dev/null
+    if ! _acct_in_real_dir "${_src}" _night_close_here \
+      || ! _acct_in_real_dir "${_src}" _night_bak_copy_here "${_dm}"; then
+      _night_bak_open "${_src}" "${_dm}" "${_ug}" "${_md}"
+      echo "backups-on-static: move failed ${_src} -> ${_st}/.${_n}; left as real dir"
+      return 0
+    fi
+    # A device, FIFO or socket is never copied: a dir holding one stays.
+    if [ -n "$(_acct_in_real_dir "${_src}" find -P . \( -type b -o -type c \
+      -o -type p -o -type s \) -print -quit 2>/dev/null)" ]; then
+      _night_bak_open "${_src}" "${_dm}" "${_ug}" "${_md}"
+      echo "backups-on-static: ${_src} not empty after move; left as real dir for review"
+      return 0
+    fi
+    _acct_in_real_dir "${_src}" find -P . -mindepth 1 -depth -delete 2>/dev/null
   fi
 
   # Refuse to replace the dir with a symlink unless it emptied cleanly.
-  [ -z "$(ls -A "${_src}" 2>/dev/null)" ] \
-    || { echo "backups-on-static: ${_src} not empty after move; left as real dir for review"; return 0; }
+  if [ -n "$(_acct_in_real_dir "${_src}" ls -A . 2>/dev/null)" ]; then
+    _night_bak_open "${_src}" "${_dm}" "${_ug}" "${_md}"
+    echo "backups-on-static: ${_src} not empty after move; left as real dir for review"
+    return 0
+  fi
 
-  rmdir "${_src}" 2>/dev/null || return 0
-  ln -s "${_dst}" "${_src}" 2>/dev/null \
-    || { echo "backups-on-static: could not symlink ${_src}; data is safe in ${_dst}, relink manually"; return 0; }
-  chown -h "${_ug}" "${_src}" 2>/dev/null
-  echo "backups-on-static: relocated ${_src} -> ${_dst} (static filesystem)"
+  _night_bak_open "" "${_dm}" "${_ug}" "${_md}"
+  if ! _acct_in_real_dir "${_usEr}" rmdir -- "./${_n}" 2>/dev/null; then
+    _night_bak_open "${_src}" "" "${_ug}" "${_md}"
+    return 0
+  fi
+  # A name put there meanwhile makes this fail, never takes the link inside
+  # it, and the link is never handed over by its name (_night_bak_link_here).
+  _acct_in_real_dir "${_usEr}" _night_bak_link_here "${_lnk}" "${_n}" "${_ug}" \
+    || { echo "backups-on-static: could not symlink ${_src}; data is safe in ${_st}/.${_n}, relink manually"; return 0; }
+  echo "backups-on-static: relocated ${_src} -> ${_st}/.${_n} (static filesystem)"
+}
+# In the real account root (the current directory): ./$2 made a link to $1
+# owned by $3 (owner:group), only while no name is there, as ln -s -T made
+# it. oN writes this directory, so a hard link it renamed over a new link
+# would be handed over by a chown -h on the name: the link is made by its
+# owner under a fresh name and renamed onto ./$2 without replacing anything
+# found there. A link root makes, when that owner cannot make one here,
+# stays root's: nothing checks the owner of a link.
+_night_bak_link_here() {
+  local _t="./.${2}.lnk.$$.${RANDOM}" _u _g
+  _u=$(id -u -- "${3%%:*}" 2> /dev/null)
+  _g=$(getent group "${3#*:}" 2> /dev/null | cut -d: -f3)
+  rm -f -- "${_t}"
+  if [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] && [ "${_u}" != 0 ]; then
+    setpriv --reuid="${_u}" --regid="${_g}" --clear-groups \
+      ln -s -- "${1}" "${_t}" 2> /dev/null
+  fi
+  if [ ! -L "${_t}" ]; then
+    rm -f -- "${_t}"
+    ln -s -- "${1}" "${_t}" 2> /dev/null || return 1
+  fi
+  mv -n -T -- "${_t}" "./${2}" 2> /dev/null
+  rm -f -- "${_t}"
+  [ -L "./${2}" ] && [ "$(readlink -- "./${2}")" = "${1}" ]
+}
+# Root's record of the owner and mode ${_usEr}/$1 had before a relocation
+# closed it.
+_night_bak_rec() {
+  printf '/var/backups/.backups-on-static.%s.%s\n' "${_usEr##*/}" "${1}"
+}
+# The owner and mode recorded for ${_usEr}/$1 (_night_bak_rec), printed as
+# "owner:group mode"; without a record, the account's own and 750, what the
+# octopus pass gives backups.
+_night_bak_recorded() {
+  local _r _re='^[A-Za-z0-9._-]+:[A-Za-z0-9._-]+ [0-7]{1,4}$'
+  _r=$(head -c 256 -- "$(_night_bak_rec "${1}")" 2> /dev/null)
+  if [[ "${_r}" =~ ${_re} ]] && [ "${_r%% *}" != "root:root" ]; then
+    printf '%s\n' "${_r}"
+  else
+    printf '%s:%s 750\n' "${_usEr##*/}" "$(_acct_group "${_usEr##*/}")"
+  fi
+}
+# In the store (the current, pinned directory): ./$1 made a real directory
+# where missing, and handed to the owner $2 with the mode $3 while it is
+# root's (made here, or left closed by a pass that was killed).
+_night_bak_store_here() {
+  [ -L "./${1}" ] && return 1
+  if [ ! -e "./${1}" ]; then
+    mkdir -m 0700 -- "./${1}" 2>/dev/null || return 1
+  elif [ "$(_night_sub "${1}" stat -c '%U' . 2>/dev/null)" != "root" ]; then
+    return 0
+  fi
+  _night_sub "${1}" chown -h "${2}" . 2>/dev/null
+  _night_sub "${1}" chmod "${3}" . 2>/dev/null
+}
+# In the store (the current, pinned directory): ./$1 a real directory, made
+# when missing, and closed for the copy (root's, 0700).
+_night_bak_dst_here() {
+  [ -L "./${1}" ] && return 1
+  [ -e "./${1}" ] || mkdir -m 0700 -- "./${1}" 2>/dev/null
+  _night_sub "${1}" _night_close_here
+}
+# The current (pinned) directory root's and 0700: nobody else can enter it
+# or change a name in it.
+_night_close_here() {
+  chown root:root . 2>/dev/null && chmod 0700 . 2>/dev/null
+}
+# From inside the real, closed directory being relocated: its whole content
+# copied into the store directory $1, which is opened once and held
+# (/proc/self/fd/9), so no name on its path is looked up again.
+_night_bak_copy_here() {
+  exec 9< "${1}/." || return 1
+  [ "$(readlink /proc/self/fd/9)" = "${1}" ] || return 1
+  rsync -a --no-devices --no-specials ./ /proc/self/fd/9/ 2>/dev/null
+}
+# The directory $1 and the store directory $2 (either may be empty) handed
+# back with the owner $3 and the mode $4, each inside its real directory.
+_night_bak_open() {
+  if [ -n "${1}" ]; then
+    _acct_in_real_dir "${1}" chown -h "${3}" . 2>/dev/null
+    _acct_in_real_dir "${1}" chmod "${4}" . 2>/dev/null
+  fi
+  if [ -n "${2}" ]; then
+    _night_in_pinned "${2}" chown -h "${3}" . 2>/dev/null
+    _night_in_pinned "${2}" chmod "${4}" . 2>/dev/null
+  fi
+  return 0
 }
 
 _relocate_backups_to_static_fs() {
@@ -160,27 +741,22 @@ _relocate_backups_to_static_fs() {
   # protects; on a default single-filesystem box this is a deliberate no-op.
   [ -e "${_static}" ] || return 0
   # ${_acct}/static is 02775 and group-writable by the account's shell
-  # identities, so the tenant can replace static/files
-  # with a symlink of their choosing -- and every path below is derived from it,
-  # with root doing the mkdir, the chown and the rsync at the far end. Both
-  # gates here dereference, and a link to a tmpfs (/run, /dev/shm) even passes
-  # the different-device test. The only supported placements are in-account or
-  # the attached store under /mnt; refuse anything else.
-  local _statR _acctR
-  _statR=$(realpath -e -- "${_static}" 2>/dev/null) || return 0
-  # Resolve BOTH sides: comparing a realpath against a raw prefix silently
-  # refuses a legitimate account whose root is reached through a link.
+  # identities, so static/files can be any link, and root does the mkdir,
+  # the chown and the copy at the far end: only the account's own store
+  # counts (_night_acct_store), resolved once here and used by that path.
+  local _st _acctR _statR
   _acctR=$(realpath -e -- "${_acct}" 2>/dev/null) || return 0
-  case "${_statR}/" in
-    "${_acctR}"/*|/mnt/*) : ;;
-    *)
-      echo "backups-on-static: ${_static} resolves outside the account and /mnt; skipping"
-      return 0
-    ;;
-  esac
+  if ! _st=$(_night_acct_store); then
+    _statR=$(realpath -e -- "${_static}" 2>/dev/null) || return 0
+    case "${_statR}/" in
+      "${_acctR}"/*) ;;
+      *) echo "backups-on-static: ${_static} is not the account's store (static/files or /mnt/.../files/${_acct##*/}/static/files); skipping" ;;
+    esac
+    return 0
+  fi
   local _acctDev _statDev
-  _acctDev=$(stat -c '%d' "${_acct}" 2>/dev/null)
-  _statDev=$(stat -L -c '%d' "${_static}" 2>/dev/null)
+  _acctDev=$(stat -c '%d' "${_acctR}" 2>/dev/null)
+  _statDev=$(stat -c '%d' "${_st}" 2>/dev/null)
   [ -n "${_acctDev}" ] && [ -n "${_statDev}" ] || return 0
   [ "${_acctDev}" != "${_statDev}" ] || return 0
 
@@ -191,8 +767,8 @@ _relocate_backups_to_static_fs() {
   { [ -d "${_acct}/backups" ]        && [ ! -L "${_acct}/backups" ]; }        && _need=YES
   { [ -d "${_acct}/backup-exports" ] && [ ! -L "${_acct}/backup-exports" ]; } && _need=YES
   if [ "${_need}" = "NO" ]; then
-    _relocate_one_backup_dir "${_acct}/backups"        "${_static}/.backups"
-    _relocate_one_backup_dir "${_acct}/backup-exports" "${_static}/.backup-exports"
+    _relocate_one_backup_dir backups        "${_st}" "${_static}/.backups"
+    _relocate_one_backup_dir backup-exports "${_st}" "${_static}/.backup-exports"
     return 0
   fi
 
@@ -200,7 +776,8 @@ _relocate_backups_to_static_fs() {
   # with a real flock (the kernel releases it if this process dies -- no stale-lock
   # guessing), then PAUSE the Ægir task queue with the dedicated, self-healing stop
   # file so no NEW task starts mid-move. runner.sh honours /run/boa_queue_stop.pid
-  # (parent exit + per-child skip); clear.sh purges a leaked one after 3h and /run
+  # (parent exit + per-child skip); it holds for as long as this pass lives,
+  # however long the copy takes: clear.sh purges one whose pid is gone and /run
   # clears on reboot, so it can never freeze the queue. The _provision_running
   # interlock still drains any already-running task first.
   local _lockfd
@@ -210,8 +787,37 @@ _relocate_backups_to_static_fs() {
     return 0
   fi
 
-  local _stop="/run/boa_queue_stop.pid" _madeStop=NO
-  [ -e "${_stop}" ] || { echo "$$" > "${_stop}" 2>/dev/null && _madeStop=YES; }
+  # The pause is taken only as its owner: a pause another live operation
+  # holds ends when that operation is done, and the queue would then
+  # dispatch tasks mid-move. Deferred instead; the move is idempotent and
+  # the next night takes it. The flock above keeps the parallel account
+  # passes from competing for it.
+  local _stop="/run/boa_queue_stop.pid" _madeStop=NO _qsPid
+  if [ -e "${_stop}" ]; then
+    _qsPid=$( { tr -dc '0-9' < "${_stop}"; } 2> /dev/null )
+    if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2> /dev/null \
+      && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_qsPid}/status" 2> /dev/null)" = "0" ]; then
+      echo "backups-on-static: queue pause held by pid ${_qsPid}; relocation for ${_acct} deferred to the next night"
+      flock -u "${_lockfd}"
+      exec {_lockfd}>&-
+      return 0
+    fi
+    # Only root writes the pause, so one whose pid is gone, or is now
+    # another user's process, holds nothing (clear.sh purges it too).
+    # Removed only while it still names that pid: a pause another operation
+    # created meanwhile is never taken from it.
+    if [ "$( { tr -dc '0-9' < "${_stop}"; } 2> /dev/null )" = "${_qsPid}" ]; then
+      rm -f "${_stop}"
+    fi
+  fi
+  if ( set -C; echo "$$" > "${_stop}" ) 2> /dev/null; then
+    _madeStop=YES
+  else
+    echo "backups-on-static: queue pause taken meanwhile; relocation for ${_acct} deferred to the next night"
+    flock -u "${_lockfd}"
+    exec {_lockfd}>&-
+    return 0
+  fi
 
   # Drain any in-flight task (bounded ~60s); with the queue paused none starts anew.
   local _t=0
@@ -220,8 +826,8 @@ _relocate_backups_to_static_fs() {
   if _provision_running; then
     echo "backups-on-static: provision task still active after wait -- deferring relocation for ${_acct}"
   else
-    _relocate_one_backup_dir "${_acct}/backups"        "${_static}/.backups"
-    _relocate_one_backup_dir "${_acct}/backup-exports" "${_static}/.backup-exports"
+    _relocate_one_backup_dir backups        "${_st}" "${_static}/.backups"
+    _relocate_one_backup_dir backup-exports "${_st}" "${_static}/.backup-exports"
   fi
 
   # Release the queue (only if WE set it and still own it -- verify the recorded PID
@@ -233,26 +839,29 @@ _relocate_backups_to_static_fs() {
 
 _account_process() {
   _HM_U=$(echo ${_usEr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-  _THIS_HM_SITE=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
+  # .drush/, log/ and .tmp/ are oN's: the alias is read bounded inside the
+  # real .drush, never through a link or blocked on a FIFO, and log/ctrl is
+  # made and .tmp/cache removed only inside the real directory.
+  _THIS_HM_SITE=$(_acct_read_in "${_usEr}/.drush" hostmaster.alias.drushrc.php \
     | grep "site_path'" \
     | cut -d: -f2 \
     | awk '{ print $3}' \
     | sed "s/[\,']//g" 2>&1)
-  mkdir -p ${_usEr}/log/ctrl
+  _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
   su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
   wait
-  rm -rf ${_usEr}/.tmp/cache
+  _acct_in_real_dir "${_usEr}/.tmp" rm -rf -- ./cache
   chage -M 99999 ${_HM_U}.ftp &> /dev/null
   su -s /bin/bash - ${_HM_U}.ftp -c "drush8 cc drush" &> /dev/null
   wait
   chage -M 90 ${_HM_U}.ftp &> /dev/null
-  # .tmp sits in the tenant's own, never-immutable home; rm -rf refuses to
-  # follow only the FINAL component, so a link planted at .tmp would send this
-  # at <target>/cache instead.
-  [ -L "/home/${_HM_U}.ftp/.tmp" ] \
-    || rm -rf /home/${_HM_U}.ftp/.tmp/cache
+  # .tmp sits in the tenant's own, never-immutable home: cache is removed
+  # only inside the real .tmp.
+  _acct_in_real_dir "/home/${_HM_U}.ftp/.tmp" rm -rf -- ./cache
   _SQL_CONVERT=NO
   _DEL_OLD_EMPTY_PLATFORMS="0"
+  # The account's front as root's octopus.cnf gives it, or none.
+  _DOMAIN=
   if [ -e "/root/.${_HM_U}.octopus.cnf" ]; then
     # The account's Drush 9+ yml alias store is the ltd worker's to rebuild:
     # dropping its record of the last finished rebuild makes its next pass
@@ -300,22 +909,27 @@ _account_process() {
 
     _DEL_OLD_EMPTY_PLATFORMS=${_DEL_OLD_EMPTY_PLATFORMS//[^0-9]/}
 
+    # log/email.txt is oN's and the cnf is sourced by root: the file is
+    # read bounded inside the real log/, never through a link or blocked on
+    # a FIFO, and only its words in an e-mail address's form reach the cnf
+    # (_night_mail_list). That form holds no double quote, $, backquote,
+    # backslash, '/', '&' or newline, so it is literal both inside the
+    # double quotes root sources and in the sed replacement. Nothing in that
+    # form leaves the cnf as it is.
+    _F_CLIENT_EMAIL=
     if [ -e "${_usEr}/log/email.txt" ]; then
-      _F_CLIENT_EMAIL=$(cat ${_usEr}/log/email.txt 2>&1)
-      _F_CLIENT_EMAIL=$(echo -n ${_F_CLIENT_EMAIL} | tr -d "\n" 2>&1)
-      _F_CLIENT_EMAIL=${_F_CLIENT_EMAIL//\\\@/\@}
+      _F_CLIENT_EMAIL=$(_night_mail_list "$(_acct_read_in "${_usEr}/log" email.txt)")
     fi
 
     if [ ! -z "${_F_CLIENT_EMAIL}" ]; then
-      _CLIENT_EMAIL_TEST=$(grep "^_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"" /root/.${_HM_U}.octopus.cnf 2>&1)
-      if [[ "${_CLIENT_EMAIL_TEST}" =~ "${_F_CLIENT_EMAIL}" ]]; then
+      if grep -qxF -- "_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"" /root/.${_HM_U}.octopus.cnf 2>/dev/null; then
         _DO_NOTHING=YES
       elif grep -q "^_CLIENT_EMAIL=" /root/.${_HM_U}.octopus.cnf 2>/dev/null; then
         sed -i "s/^_CLIENT_EMAIL=.*/_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"/g" /root/.${_HM_U}.octopus.cnf
         wait
         _CLIENT_EMAIL=${_F_CLIENT_EMAIL}
       else
-        echo "_CLIENT_EMAIL=\"${_F_CLIENT_EMAIL}\"" >> /root/.${_HM_U}.octopus.cnf
+        printf '_CLIENT_EMAIL="%s"\n' "${_F_CLIENT_EMAIL}" >> /root/.${_HM_U}.octopus.cnf
         _CLIENT_EMAIL=${_F_CLIENT_EMAIL}
       fi
     fi
@@ -325,11 +939,14 @@ _account_process() {
     # forever (a migrated cnf is exactly that state). Same discipline for
     # the plan trio: the log/ stamp is the witness, replace-if-present,
     # append-if-absent.
+    # Each stamp is read as email.txt is; text over 256 bytes is no plan
+    # value and is skipped before the filter below.
     for _idPair in "_CLIENT_OPTION:option" "_CLIENT_SUBSCR:subscr" "_CLIENT_CORES:cores"; do
       _idVar="${_idPair%%:*}"
       _idFile="${_usEr}/log/${_idPair##*:}.txt"
       [ -s "${_idFile}" ] || continue
-      _idVal=$(cat "${_idFile}" 2>/dev/null | tr -d "\n")
+      _idVal=$(_acct_read_in "${_usEr}/log" "${_idPair##*:}.txt" | tr -d "\n")
+      [ "${#_idVal}" -le 256 ] || continue
       _idVal=${_idVal//[^a-zA-Z0-9]/}
       [ -z "${_idVal}" ] && continue
       if grep -q "^${_idVar}=\"${_idVal}\"" /root/.${_HM_U}.octopus.cnf 2>/dev/null; then
@@ -349,6 +966,16 @@ _account_process() {
   # wait only has to cover a worker already inside this account's own span.
   # The marker carries this pid: a killed pass must not hold the account.
   echo $$ > /run/night-account-${_HM_U}.pid
+  # migratefs relocating this account's files store holds it: the store legs
+  # below would act on a store mid-copy or set aside and closed. Checked with
+  # the marker above in place, the order migratefs takes with its hold, so one
+  # of the two always sees the other. Skipped, not waited for: a relocation
+  # can outlast the night, and the next night takes the account as usual.
+  if _night_mfs_held; then
+    echo "${_HM_U}: migratefs is relocating this account's files store; skipped tonight"
+    rm -f "/run/night-account-${_HM_U}.pid"
+    return 0
+  fi
   # The worker's pid file names its pid: a worker killed mid-pass leaves the
   # file behind until clear.sh sweeps it, and the nightly must not stall on a
   # dead one. Bounded on purpose; proceeding after the bound is the old race
@@ -365,10 +992,10 @@ _account_process() {
   _disable_chattr ${_HM_U}.ftp
   rm -rf /home/${_HM_U}.ftp/drush-backups
   if [ -e "${_THIS_HM_SITE}" ]; then
-    cd ${_THIS_HM_SITE}
+    cd -- "${_THIS_HM_SITE}"
     su -s /bin/bash ${_HM_U} -c "drush8 cc drush" &> /dev/null
     wait
-    rm -rf ${_usEr}/.tmp/cache
+    _acct_in_real_dir "${_usEr}/.tmp" rm -rf -- ./cache
     _run_drush8_hmr_cmd "${_vSet} hosting_cron_default_interval 3600"
     _run_drush8_hmr_cmd "${_vSet} hosting_queue_cron_frequency 1"
     _run_drush8_hmr_cmd "${_vSet} hosting_civicrm_cron_queue_frequency 60"
@@ -400,23 +1027,28 @@ _account_process() {
   _run_drush8_hmr_cmd "${_vSet} hosting_delete_force 0"
   _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
     SET status=-2 WHERE publish_path LIKE '%/aegir/distro/%'\""
-  _THIS_HM_PLR=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
+  # The platform root goes into the SQL text: a path only.
+  _THIS_HM_PLR=$(_acct_read_in "${_usEr}/.drush" hostmaster.alias.drushrc.php \
     | grep "root'" \
     | cut -d: -f2 \
     | awk '{ print $3}' \
     | sed "s/[\,']//g" 2>&1)
-  _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
-    SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'\""
-  _purge_cruft_machine
-  if [ "${_hostedSys}" = "YES" ]; then
-    rm -rf ${_usEr}/clients/admin &> /dev/null
-    rm -rf ${_usEr}/clients/omega8ccgmailcom &> /dev/null
-    rm -rf ${_usEr}/clients/nocomega8cc &> /dev/null
+  if [[ "${_THIS_HM_PLR}" =~ ^/[A-Za-z0-9._/-]+$ ]]; then
+    _run_drush8_hmr_cmd "sqlq \"UPDATE hosting_platform \
+      SET status=1 WHERE publish_path LIKE '${_THIS_HM_PLR}'\""
   fi
-  rm -rf ${_usEr}/clients/*/backups &> /dev/null
-  symlinks -dr ${_usEr}/clients &> /dev/null
+  _purge_cruft_machine
+  # clients/ and every client dir in it are oN's, and the main login owns its
+  # home: each removal runs inside the real directory, and a dangling link is
+  # removed by find, which walks without following a link.
+  if [ "${_hostedSys}" = "YES" ]; then
+    _acct_in_real_dir "${_usEr}/clients" \
+      rm -rf -- ./admin ./omega8ccgmailcom ./nocomega8cc &> /dev/null
+  fi
+  _acct_in_real_dir "${_usEr}/clients" _night_clients_bak_here rm
+  _acct_in_real_dir "${_usEr}/clients" _night_dangling_rm_here
   if [ -d "/home/${_HM_U}.ftp" ]; then
-    symlinks -dr /home/${_HM_U}.ftp &> /dev/null
+    _acct_in_real_dir "/home/${_HM_U}.ftp" _night_dangling_rm_here
     rm -f /home/${_HM_U}.ftp/{.profile,.bash_logout,.bash_profile,.bashrc}
   fi
   _le_hm_ssl_check_update ${_HM_U}
@@ -446,30 +1078,27 @@ _if_le_hm_ssl_old() {
   _recent_threshold_days=60  # 60 days to consider for new updates
   _update_check_days=30      # Don't update NEW if it was already set within the last 30 days
 
-  # Check if the path is a symlink
-  if [ -L "${_filePath}" ]; then
-    _target_file="$(readlink -f "${_filePath}")"
-    # Get the file's modification time in seconds since epoch
-    _file_mod_time=$(stat -c %Y "${_target_file}")
-  else
-    # Get the file's modification time in seconds since epoch
-    _file_mod_time=$(stat -c %Y "${_filePath}")
-  fi
+  # certs/<domain> is oN's: the file's modification time is taken inside the
+  # real directory (through a link, as the client links each name), and the
+  # stamp beside it is read bounded, as digits only, and put as a fresh
+  # file, never through a link or a FIFO at its name.
+  _file_mod_time=$(_acct_in_real_dir "${_filePath%/*}" \
+    stat -L -c %Y -- "./${_filePath##*/}" 2> /dev/null)
+  [[ "${_file_mod_time}" =~ ^[0-9]{1,12}$ ]] || _file_mod_time=0
 
   # Calculate the time difference in minutes
-  _time_diff_minutes=$(( (_current_time - _file_mod_time) / 60 ))
+  _time_diff_minutes=$(( (_current_time - 10#${_file_mod_time}) / 60 ))
 
   # Calculate the time difference in days
   _time_diff_days=$(( _time_diff_minutes / 1440 ))
 
   # Calculate the last update check time (from some state file, if exists)
-  if [ -f "${_filePath}.lastupdate" ]; then
-    _last_update_time=$(cat "${_filePath}.lastupdate")
-  else
-    _last_update_time=0
-  fi
+  _last_update_time=$(_acct_in_real_dir "${_filePath%/*}" \
+    _acct_read_plain_here "${_filePath##*/}.lastupdate" | head -c 32)
+  _last_update_time="${_last_update_time//[[:space:]]/}"
+  [[ "${_last_update_time}" =~ ^[0-9]{1,12}$ ]] || _last_update_time=0
 
-  _last_update_diff_days=$(( (_current_time - _last_update_time) / 86400 ))  # 86400 seconds in a day
+  _last_update_diff_days=$(( (_current_time - 10#${_last_update_time}) / 86400 ))  # 86400 seconds in a day
 
   # Check if the file was modified within the last 30 minutes
   if [ "${_time_diff_minutes}" -lt 30 ]; then
@@ -477,64 +1106,103 @@ _if_le_hm_ssl_old() {
   # Check if the file was modified within the last 60 days and not marked NEW in the last 30 days
   elif [ "${_time_diff_days}" -le "${_recent_threshold_days}" ] && [ "${_last_update_diff_days}" -ge "${_update_check_days}" ]; then
     _crtLastMod=NEW
-    echo ${_current_time} > "${_filePath}.lastupdate"
+    _acct_in_real_dir "${_filePath%/*}" \
+      _acct_put_here "${_filePath##*/}.lastupdate" "${_current_time}"
   else
     _crtLastMod=OLD
   fi
 }
 
+# ./$1 in the current (pinned) certs/<domain>/, or the file beside it its
+# link names, read as _acct_read_here reads; nothing for a link that leads
+# anywhere else.
+_night_le_file_here() {
+  local _f="${1}" _t
+  if [ -L "./${_f}" ]; then
+    _t="$(readlink -- "./${_f}")"
+    case "${_t}" in
+      ""|.|..|*/*) return 1 ;;
+    esac
+    _f="${_t}"
+  fi
+  _acct_read_here "${_f}"
+}
+# The file $1 of the account's certs/<domain>/ (_leCrtPath), read as
+# _night_le_file_here reads it, put at root's own $2 (0600) as a fresh file
+# renamed over the name; $2 stays as it is when nothing is read.
+_night_le_copy() {
+  local _c _t="${2}.put.$$.${RANDOM}"
+  _c="$(_acct_in_real_dir "${_leCrtPath}" _night_le_file_here "${1}")"
+  [ -n "${_c}" ] || return 1
+  rm -f -- "${_t}"
+  ( umask 077
+    printf '%s\n' "${_c}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "${2}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+
 _if_le_hm_ssl_crt_key_copy() {
+  _crtPath=
   if [ -e "${_leCrtPath}/fullchain.pem" ]; then
     _crtPath="${_leCrtPath}/fullchain.pem"
   elif [ -e "${_leCrtPath}/cert.pem" ]; then
     _crtPath="${_leCrtPath}/cert.pem"
   fi
-  if [ -e "${_crtPath}" ]; then
-    if [ -L "${_crtPath}" ]; then
-      _crtPathR="$(readlink -n "${_crtPath}")"
-      if [ -f "${_leCrtPath}/${_crtPathR}" ]; then
-        rm -f /etc/ssl/private/${_hmFront}.crt
-        cp -a ${_leCrtPath}/${_crtPathR} /etc/ssl/private/${_hmFront}.crt
-      fi
-    else
-      rm -f /etc/ssl/private/${_hmFront}.crt
-      cp -a ${_crtPath} /etc/ssl/private/${_hmFront}.crt
-    fi
+  # tools/le is oN's: the certificate and the key are read bounded inside the
+  # real certs/<domain>/, through a link only to a file beside it (as the
+  # client links each name to a versioned file), and written as root's own
+  # 0600 files.
+  if [ -n "${_crtPath}" ]; then
+    _night_le_copy "${_crtPath##*/}" "/etc/ssl/private/${_hmFront}.crt"
   fi
   _keyPath="${_leCrtPath}/privkey.pem"
   if [ -e "${_keyPath}" ]; then
-    if [ -L "${_keyPath}" ]; then
-      _keyPathR="$(readlink -n "${_keyPath}")"
-      if [ -f "${_leCrtPath}/${_keyPathR}" ]; then
-        rm -f /etc/ssl/private/${_hmFront}.key
-        cp -a ${_leCrtPath}/${_keyPathR} /etc/ssl/private/${_hmFront}.key
-      fi
-    else
-      rm -f /etc/ssl/private/${_hmFront}.key
-      cp -a ${_keyPath} /etc/ssl/private/${_hmFront}.key
-    fi
+    _night_le_copy privkey.pem "/etc/ssl/private/${_hmFront}.key"
   fi
 }
 
 _le_hm_ssl_check_update() {
   _leCrtPath=
+  _hmFront=
+  _hmFrontExtra=
   _exeLe="${_usEr}/tools/le/dehydrated"
+  # log/ and .drush/ are oN's: each name is read bounded inside the real
+  # directory, never through a link or blocked on a FIFO. The front-end
+  # name names root's /etc/ssl/private files and a log/ctrl marker: it is
+  # used only in a host name's form, only when it is the account's own
+  # front (_DOMAIN in root's octopus.cnf) and only when that front names
+  # nothing the box or another account uses there (_night_front_free).
   if [ -e "${_usEr}/log/domain.txt" ]; then
-    _hmFront=$(cat ${_usEr}/log/domain.txt 2>&1)
-    _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
+    _hmFront=$(_night_words "$(_acct_read_in "${_usEr}/log" domain.txt)")
   fi
   if [ -e "${_usEr}/log/extra_domain.txt" ]; then
-    _hmFrontExtra=$(cat ${_usEr}/log/extra_domain.txt 2>&1)
-    _hmFrontExtra=$(echo -n ${_hmFrontExtra} | tr -d "\n" 2>&1)
+    _hmFrontExtra=$(_night_words "$(_acct_read_in "${_usEr}/log" extra_domain.txt)")
   fi
   if [ -z "${_hmFront}" ]; then
     if [ -e "${_usEr}/.drush/hostmaster.alias.drushrc.php" ]; then
-      _hmFront=$(cat ${_usEr}/.drush/hostmaster.alias.drushrc.php \
+      _hmFront=$(_acct_read_in "${_usEr}/.drush" hostmaster.alias.drushrc.php \
         | grep -E "^[[:space:]]*'uri'[[:space:]]*=>" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
     fi
+  fi
+  if [ -n "${_hmFront}" ] && ! _night_host_ok "${_hmFront}"; then
+    echo "LE: the hostmaster name for ${_HM_U} is not a host name; skipped"
+    _hmFront=
+  fi
+  if [ -n "${_hmFront}" ] && [ "${_hmFront}" != "${_DOMAIN}" ]; then
+    echo "LE: the hostmaster name ${_hmFront} for ${_HM_U} is not the _DOMAIN in /root/.${_HM_U}.octopus.cnf; skipped"
+    _hmFront=
+  fi
+  if [ -n "${_hmFront}" ] && ! _night_front_free "${_hmFront}"; then
+    echo "LE: the hostmaster name ${_hmFront} for ${_HM_U} is one the box or another account uses; skipped"
+    _hmFront=
+  fi
+  if [ -n "${_hmFrontExtra}" ] && ! _night_hosts_ok "${_hmFrontExtra}"; then
+    echo "LE: ${_usEr}/log/extra_domain.txt holds no host names; ignored"
+    _hmFrontExtra=
   fi
   if [ ! -z "${_hmFront}" ]; then
     _leCrtPath="${_usEr}/tools/le/certs/${_hmFront}"
@@ -554,8 +1222,7 @@ _le_hm_ssl_check_update() {
     if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/site.${_hmFront}.cert-x1-rebuilt.info" ]; then
         _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1' --force"
-        mkdir -p ${_usEr}/log/ctrl
-        touch ${_usEr}/log/ctrl/site.${_hmFront}.cert-x1-rebuilt.info
+        _log_ctrl_mark "site.${_hmFront}.cert-x1-rebuilt.info"
       else
         _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
       fi
@@ -573,7 +1240,9 @@ _le_hm_ssl_check_update() {
     fi
   fi
   _crtLastMod=OLD
-  _if_le_hm_ssl_old "${_leCrtPath}/fullchain.pem"
+  if [ -n "${_leCrtPath}" ]; then
+    _if_le_hm_ssl_old "${_leCrtPath}/fullchain.pem"
+  fi
   if [ "${_crtLastMod}" = "NEW" ]; then
     echo "Copying NEW LE cert for hostmaster ${_hmFront} to /etc/ssl/private/"
     _if_le_hm_ssl_crt_key_copy
@@ -604,7 +1273,7 @@ _le_client_notify_on() {
 # account. Operator mail also carries any non-LE backend incident lines so the
 # move to per-account logs does not lose the old _thisLog catch-all.
 _le_account_report() {
-  local _acctLog _fails _nonle _throttle _now _markerDir _marker _fresh
+  local _acctLog _fails _nonle _throttle _now _markerDir _marker _fresh _mTime
   local _site _cdom _calt _ctype _cdetail _reason _opBody _clBody _clList _reply
   _acctLog="$(_acct_night_log "${_usEr}")"
   [ -r "${_acctLog}" ] || return 0
@@ -624,8 +1293,11 @@ _le_account_report() {
   [ -z "${_fails}" ] && [ -z "${_nonle}" ] && return 0
   _throttle=7
   _now=$(date +%s)
+  # log/ctrl is oN's: each notify marker is read and put only inside the
+  # real directory (_night_mtime_here, _log_ctrl_mark), never through a link
+  # or a FIFO at its name.
   _markerDir="${_usEr}/log/ctrl"
-  mkdir -p "${_markerDir}"
+  _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
 
   ###
   ### Operator report -- full per-account detail, every night, unless incident
@@ -667,17 +1339,18 @@ EOF
   _clList=""
   while IFS=$'\x1f' read -r _site _cdom _calt _ctype _cdetail; do
     [ -z "${_cdom}" ] && continue
-    _marker="${_markerDir}/le-notify.$(printf '%s' "${_cdom}" | tr -c 'a-zA-Z0-9._-' '_').info"
+    _marker="le-notify.$(printf '%s' "${_cdom}" | tr -c 'a-zA-Z0-9._-' '_').info"
     _fresh=YES
-    if [ -f "${_marker}" ]; then
-      if [ "$(( (_now - $(stat -c %Y "${_marker}" 2>/dev/null || echo 0)) / 86400 ))" -lt "${_throttle}" ]; then
+    _mTime=$(_acct_in_real_dir "${_markerDir}" _night_mtime_here "${_marker}")
+    if [ -n "${_mTime}" ]; then
+      if [ "$(( (_now - _mTime) / 86400 ))" -lt "${_throttle}" ]; then
         _fresh=NO
       fi
     fi
     [ "${_fresh}" = "NO" ] && continue
     _reason="$(_le_reason "${_ctype}" "${_cdetail}")"
     _clList="${_clList}"$'\n'"  - ${_cdom} -- ${_reason}"$'\n'"      Details: ${_cdetail}"$'\n'
-    touch "${_marker}"
+    _log_ctrl_mark "${_marker}"
   done <<EOF
 ${_fails}
 EOF
@@ -735,7 +1408,7 @@ _ghost_client_notify_on() {
 # discipline as _le_account_report: only THIS account's log and THIS
 # account's _CLIENT_EMAIL, so a notice can never reach the wrong account.
 _ghost_account_report() {
-  local _acctLog _ghosts _throttle _now _markerDir _marker _fresh
+  local _acctLog _ghosts _throttle _now _markerDir _marker _fresh _mTime
   local _site _ghList _clBody _reply
   _acctLog="$(_acct_night_log "${_usEr}")"
   [ -r "${_acctLog}" ] || return 0
@@ -752,8 +1425,11 @@ _ghost_account_report() {
   # throttle is much longer than the 7-day LE one to keep mail volume low.
   _throttle=30
   _now=$(date +%s)
+  # log/ctrl is oN's: each notify marker is read and put only inside the
+  # real directory (_night_mtime_here, _log_ctrl_mark), never through a link
+  # or a FIFO at its name.
   _markerDir="${_usEr}/log/ctrl"
-  mkdir -p "${_markerDir}"
+  _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
   _ghList=""
   # One record per line, read literally: ${_ghosts} comes from the night log
   # and an unquoted expansion here would word-split it and glob it against the
@@ -761,16 +1437,17 @@ _ghost_account_report() {
   # filenames into a customer-facing notice.
   while IFS= read -r _site; do
     [ -n "${_site}" ] || continue
-    _marker="${_markerDir}/ghost-notify.$(printf '%s' "${_site}" | tr -c 'a-zA-Z0-9._-' '_').info"
+    _marker="ghost-notify.$(printf '%s' "${_site}" | tr -c 'a-zA-Z0-9._-' '_').info"
     _fresh=YES
-    if [ -f "${_marker}" ]; then
-      if [ "$(( (_now - $(stat -c %Y "${_marker}" 2>/dev/null || echo 0)) / 86400 ))" -lt "${_throttle}" ]; then
+    _mTime=$(_acct_in_real_dir "${_markerDir}" _night_mtime_here "${_marker}")
+    if [ -n "${_mTime}" ]; then
+      if [ "$(( (_now - _mTime) / 86400 ))" -lt "${_throttle}" ]; then
         _fresh=NO
       fi
     fi
     [ "${_fresh}" = "NO" ] && continue
     _ghList="${_ghList}"$'\n'"  - ${_site}"
-    touch "${_marker}"
+    _log_ctrl_mark "${_marker}"
   done <<EOF
 ${_ghosts}
 EOF
@@ -806,7 +1483,20 @@ _delete_this_platform() {
   echo "Old empty platform_${_T_PFM_NAME} will be deleted"
 }
 
+# In the current (pinned) .drush: the site_path lines of every
+# *.drushrc.php, each read as _acct_read_plain_here reads it and prefixed
+# with its path as grep prints a file's matches.
+_night_site_path_lines_here() {
+  local _f
+  for _f in ./*.drushrc.php; do
+    _acct_read_plain_here "${_f#./}" \
+      | grep -H --label="${_usEr}/.drush/${_f#./}" "site_path"
+  done
+  return 0
+}
+
 _check_old_empty_platforms() {
+  local _drD="${_usEr}/.drush" _pf _siteLines
   _provision_running && { echo "INFO: provision task active -- skipping empty-platform cleanup"; return; }
   if [ "${_hostedSys}" = "YES" ]; then
     if [[ "${_hName}" =~ "demo.aegir.cc" ]] \
@@ -825,12 +1515,18 @@ _check_old_empty_platforms() {
     if [ "${_DEL_OLD_EMPTY_PLATFORMS}" -gt 0 ]; then
       echo "_DEL_OLD_EMPTY_PLATFORMS is set to \
         ${_DEL_OLD_EMPTY_PLATFORMS} days on ${_HM_U} instance"
-      for _Platform in `find ${_usEr}/.drush/platform_* -maxdepth 1 -mtime \
-        +${_DEL_OLD_EMPTY_PLATFORMS} -type f | sort`; do
-        _T_PFM_NAME=$(echo "${_Platform}" \
-          | sed "s/.*platform_//g; s/.alias.drushrc.php//g" \
-          | awk '{ print $1}' 2>&1)
-        _T_PFM_ROOT=$(cat ${_Platform} \
+      # .drush is oN's: the aliases are listed, read and moved only inside
+      # the real directory, each read bounded and never through a link or a
+      # FIFO; the site_path lines are read once for the whole loop. The
+      # list comes on fd 3: the drush calls below read stdin.
+      _siteLines=$(_acct_in_real_dir "${_drD}" _night_site_path_lines_here)
+      while IFS= read -r _pf <&3; do
+        _pf="${_pf#./}"
+        _T_PFM_NAME="${_pf#platform_}"
+        _T_PFM_NAME="${_T_PFM_NAME%.alias.drushrc.php}"
+        # the name reaches a drush command line
+        [[ "${_T_PFM_NAME}" =~ ^[A-Za-z0-9._-]+$ ]] || continue
+        _T_PFM_ROOT=$(_acct_read_in "${_drD}" "${_pf}" \
           | grep "root'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
@@ -839,18 +1535,20 @@ _check_old_empty_platforms() {
         # a Composer build can be its app root; site_path and sites/all live
         # under the docroot Provision serves, so both tests below read that.
         _T_PFM_DOC=$(_detect_real_docroot "${_T_PFM_ROOT}")
-        _T_PFM_SITE=$(grep -e "${_T_PFM_ROOT}/sites/" \
+        _T_PFM_SITE=$(grep -F -e "${_T_PFM_ROOT}/sites/" \
           -e "${_T_PFM_DOC:-${_T_PFM_ROOT}}/sites/" \
-          ${_usEr}/.drush/*.drushrc.php \
-          | grep site_path 2>&1)
+          <<< "${_siteLines}" 2>&1)
         if [ -z "${_T_PFM_DOC}" ]; then
           # Version-agnostic emptiness: no index.php at the alias root nor
           # under web/docroot/html. Do NOT key on sites/all (D8+ dropped it).
           if _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_PLATFORMS_CLEANUP \
             || _cnf_flag_yes /root/.barracuda.cnf _GHOST_PLATFORMS_CLEANUP; then
-            mkdir -p ${_usEr}/undo
-            mv -f ${_usEr}/.drush/platform_${_T_PFM_NAME}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
-            echo "GHOST platform ${_T_PFM_ROOT} detected and moved to ${_usEr}/undo/"
+            if _acct_in_real_dir "${_drD}" \
+              _acct_undo_here "platform_${_T_PFM_NAME}.alias.drushrc.php" &> /dev/null; then
+              echo "GHOST platform ${_T_PFM_ROOT} detected and moved to ${_usEr}/undo/"
+            else
+              echo "GHOST platform ${_T_PFM_ROOT} detected and not moved: ${_GH_REFUSED}"
+            fi
           else
             echo "GHOST platform ${_T_PFM_ROOT} detected (dry-run; set _GHOST_PLATFORMS_CLEANUP=YES in /root/.${_HM_U}.octopus.cnf or /root/.barracuda.cnf to move)"
           fi
@@ -862,7 +1560,9 @@ _check_old_empty_platforms() {
           && [ -e "${_T_PFM_DOC:-${_T_PFM_ROOT}}/sites/all" ]; then
           _delete_this_platform
         fi
-      done
+      done 3< <(_acct_in_real_dir "${_drD}" find . -mindepth 1 -maxdepth 1 \
+        -name 'platform_*' -mtime "+${_DEL_OLD_EMPTY_PLATFORMS}" -type f \
+        2> /dev/null | sort)
     fi
   fi
 }
@@ -879,20 +1579,27 @@ _purge_hits_under_account() {
   # placement. Reads _usEr.
   local _f _r _acct _store
   _acct=$(realpath -e -- "${_usEr}" 2>/dev/null) || return 0
-  # No /mnt restriction: this is the account's OWN static/files, resolved --
-  # a tenant cannot aim it -- and migratefs relocates the store to whatever
-  # --target the operator passed (/mnt is only the auto-detected default), so
-  # an /mnt-only test silently disables the purge on a relocated account.
-  _store=$(realpath -e -- "${_usEr}/static/files" 2>/dev/null) || _store=
+  # static/ is group-writable, so static/files itself can be a planted link:
+  # only the account's own directory, or its store in migratefs' layout on
+  # attached storage (/mnt/<mount>/files/<oN>/static/files), counts as the
+  # store, the rule every nightly store leg uses.
+  _store=$(_night_acct_store) || _store=
+  # the hit is removed from inside its resolved directory, entered for real,
+  # so no name on the way is resolved a second time
   while IFS= read -r -d '' _f; do
     _r=$(realpath -e -- "${_f}" 2>/dev/null) || continue
     case "${_r}/" in
-      "${_acct}"/*) rm -f -- "${_r}" &> /dev/null ; continue ;;
+      "${_acct}"/*) ;;
+      *)
+        [ -n "${_store}" ] || continue
+        case "${_r}/" in
+          "${_store}"/*) ;;
+          *) continue ;;
+        esac
+        ;;
     esac
-    [ -n "${_store}" ] || continue
-    case "${_r}/" in
-      "${_store}"/*) rm -f -- "${_r}" &> /dev/null ;;
-    esac
+    ( cd -P -- "${_r%/*}" 2>/dev/null && [ "$(pwd -P)" = "${_r%/*}" ] \
+      && rm -f -- "./${_r##*/}" ) &> /dev/null
   done
 }
 
@@ -916,29 +1623,29 @@ _purge_cruft_machine() {
   _LOW_NR="2"
   _PURGE_CTRL="14"
 
-  find ${_usEr}/log/ctrl/*cert-x1-rebuilt.info \
-    -mtime +${_PURGE_CTRL} -type f -exec rm -f {} \; &> /dev/null
+  # log/ctrl, backups, backup-exports and clients/ are oN's: each is
+  # purged from inside the real directory (backups and backup-exports also
+  # where the backups mover linked them into the account's store), and every
+  # hit is removed from inside the directory find walked.
+  _acct_in_real_dir "${_usEr}/log/ctrl" _night_ctrl_purge_here \
+    "${_PURGE_CTRL}" '*cert-x1-rebuilt.info' 'le-notify.*.info'
+  _acct_in_real_dir "${_usEr}/log/ctrl" _night_ctrl_purge_here \
+    "${_PURGE_TMP}" 'plr*' '*rom-fix.info'
 
-  find ${_usEr}/log/ctrl/le-notify.*.info \
-    -mtime +${_PURGE_CTRL} -type f -exec rm -f {} \; &> /dev/null
+  _night_in_bak_dir backups _night_purge_here "${_PURGE_BACKUPS}" \
+    || _night_bak_unpurged backups
+  _acct_in_real_dir "${_usEr}/clients" _night_clients_bak_here \
+    purge "${_PURGE_BACKUPS}"
+  _night_in_bak_dir backup-exports _night_purge_here "${_PURGE_TMP}" files \
+    || _night_bak_unpurged backup-exports
 
-  find ${_usEr}/log/ctrl/plr* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
-
-  find ${_usEr}/log/ctrl/*rom-fix.info \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
-
-  find ${_usEr}/backups/* -mtime +${_PURGE_BACKUPS} -exec \
-    rm -rf {} \; &> /dev/null
-  find ${_usEr}/clients/*/backups/* -mtime +${_PURGE_BACKUPS} -exec \
-    rm -rf {} \; &> /dev/null
-  find ${_usEr}/backup-exports/* -mtime +${_PURGE_TMP} -type f -exec \
-    rm -rf {} \; &> /dev/null
-
+  # sites/<uri>/files and private/ are group-writable by the web and shell
+  # identities: every hit below, distro/ and static/ alike, is re-anchored
+  # before it is removed (see _purge_hits_under_account)
   find ${_usEr}/distro/*/*/sites/*/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/distro/*/*/sites/*/private/files/backup_migrate/*/* \
-    -mtime +${_PURGE_BACKUPS} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
 
   # These globs are expanded by the SHELL, which resolves symlinks in every
   # component, and ${_usEr}/static is 02775 and group-writable by the account's
@@ -970,55 +1677,46 @@ _purge_cruft_machine() {
     -mtime +${_PURGE_BACKUPS} -type f -print0 2>/dev/null | _purge_hits_under_account
 
   find ${_usEr}/distro/*/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/distro/*/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/*/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/*/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/sites/*/files/tmp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
   find ${_usEr}/static/*/sites/*/private/temp/* \
-    -mtime +${_PURGE_TMP} -type f -exec rm -f {} \; &> /dev/null
+    -mtime +${_PURGE_TMP} -type f -print0 2>/dev/null | _purge_hits_under_account
 
   # /home/<user>.ftp is the tenant's own (chrooted) home and, unlike a backend
   # account root, is never immutable, so .tmp and tmp can be swapped for
-  # symlinks. The shell expands the /* glob THROUGH such a link, handing find
-  # real starting points inside the target, and rm -rf then reaps an arbitrary
-  # tree. Purge only a real directory. ! -name ".*" keeps the glob's
-  # dotfile-skipping shape, so the .ctrl.<tree>.<serial>.pid marker that
-  # manage_ltd_users.sh keeps in .tmp is left alone.
-  for _tmpDir in "/home/${_HM_U}.ftp/.tmp" "/home/${_HM_U}.ftp/tmp"; do
-    [ -d "${_tmpDir}" ] && [ ! -L "${_tmpDir}" ] || continue
-    # The dotfile skip applies at the top level only, as the glob's did;
-    # aged entries below a recently touched directory are still reaped.
-    # Pruned by path, not by -maxdepth: that is a global option wherever it
-    # stands in the expression, and inside the group it bounded the whole
-    # walk to one level again (caught on the box, 2026-09-11).
-    find "${_tmpDir}" -mindepth 1 \( -path "${_tmpDir}/.*" -prune \) \
-      -o -mtime +${_PURGE_TMP} -exec rm -rf {} \; -prune &> /dev/null
+  # symlinks at any moment, as can oN's own .tmp and tmp. Each is purged from
+  # inside the real directory only (_night_purge_here), so neither the start
+  # nor any name below it leads elsewhere. The top-level dot names are kept,
+  # as the /* glob kept them, so the .ctrl.<tree>.<serial>.pid marker that
+  # manage_ltd_users.sh keeps in .tmp is left alone; aged entries below a
+  # recently touched directory are still reaped.
+  for _tmpDir in "/home/${_HM_U}.ftp/.tmp" "/home/${_HM_U}.ftp/tmp" \
+    "${_usEr}/.tmp" "${_usEr}/tmp"; do
+    _acct_in_real_dir "${_tmpDir}" _night_purge_here "${_PURGE_TMP}"
   done
-  find ${_usEr}/.tmp/* \
-    -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
-  find ${_usEr}/tmp/* \
-    -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
 
   # Both writes below land inside this account's own tree, so the group is
   # derived from the account rather than hardcoded; 'users' on an unconverted box.
-  local _acctGrp _igHit _igPend
+  local _acctGrp _igHit _igPend _igBak _igId _igUid _igOwn _igSel _igWg _igX=()
   _acctGrp=$(_acct_group "${_HM_U}")
   # A revert (or the rollback of a convert) the limited-shell worker is still
   # finishing leaves the account's own identity on the account's group, which
@@ -1041,140 +1739,229 @@ _purge_cruft_machine() {
   # group -- the same exposure class, which the converted-only gate missed.
   if [ "${_igPend}" = "NO" ] && [ -x "/opt/local/bin/instgrp" ]; then
     # backups may be a link into the static store (relocated backups): probe
-    # where the files are. The static leg is bounded to the depth where a
+    # where the files are, only while that is the account's own
+    # (_night_in_bak_dir). The static leg is bounded to the depth where a
     # site's drushrc.php lives (<platform>[/web]/sites/<uri>/drushrc.php),
     # so the clean case does not traverse every files/ tree.
-    _igBak=$(readlink -f -- "${_usEr}/backups" 2>/dev/null)
-    _igHit=$(find -P ${_usEr}/.drush ${_igBak:-${_usEr}/backups} ${_usEr}/config ${_usEr}/tools \
-      ${_usEr}/aegir/distro/*/sites -xdev \
-      ! -group "${_acctGrp}" ! -group www-data ! -group root -print -quit 2>/dev/null)
-    if [ -z "${_igHit}" ]; then
-      _igHit=$(find -P ${_usEr}/static -xdev -maxdepth 5 -name drushrc.php \
-        ! -group "${_acctGrp}" ! -group www-data ! -group root -print -quit 2>/dev/null)
+    # Only what the reclaim walk changes is a hit: a directory, a single-link
+    # regular file, or a regular file or FIFO owned by the account or its
+    # .ftp identity (members of the target group, so handing them the group
+    # gives nothing away). A symlink, a foreign hard-linked file or FIFO, a
+    # socket or a device outside the group would otherwise trigger a reclaim
+    # that changes nothing, every night. The uids are numeric and an identity
+    # that does not resolve is left out, so find never aborts on a bad name.
+    _igOwn=()
+    for _igId in "${_HM_U}" "${_HM_U}.ftp"; do
+      _igUid=$(id -u -- "${_igId}" 2>/dev/null)
+      [[ "${_igUid}" =~ ^[0-9]+$ ]] || continue
+      [[ "${#_igOwn[@]}" -gt 0 ]] && _igOwn+=(-o)
+      _igOwn+=(-uid "${_igUid}")
+    done
+    _igSel=(\( -type d -o -type f -links 1)
+    if [[ "${#_igOwn[@]}" -gt 0 ]]; then
+      _igSel+=(-o \( -type f -o -type p \) \( "${_igOwn[@]}" \))
     fi
-    if [ -n "${_igHit}" ]; then
+    _igSel+=(\))
+    _igBak=$(_night_in_bak_dir backups pwd -P 2>/dev/null)
+    # The account's own web group (the hostmaster site's files/, private/
+    # and settings.php once converted) is no drift: its gid is exempt from
+    # the moment the group exists, since a conversion moves those paths
+    # before it writes its record. Numeric, and only when it resolves: find
+    # refuses an unknown group name, and the probe would then read clean.
+    _igWg=$(_web_group_state "${_HM_U}")
+    if [ "${_igWg%% *}" = "foreign" ]; then
+      echo "NOTE: ${_HM_U}: ${_igWg##* } is held by an identity outside the account [$(getent group "${_igWg##* }" | cut -d: -f4)]; its paths are kept, nothing joins it"
+    fi
+    _igWg=$(cut -d' ' -f2 <<< "${_igWg}")
+    case "${_igWg}" in
+      ""|*[!0-9]*) ;;
+      *) _igX=( ! -gid "${_igWg}" ) ;;
+    esac
+    _igHit=$(find -P ${_usEr}/.drush ${_igBak:+"${_igBak}"} ${_usEr}/config ${_usEr}/tools \
+      ${_usEr}/aegir/distro/*/sites -xdev "${_igSel[@]}" \
+      ! -group "${_acctGrp}" ! -group www-data ! -group root "${_igX[@]}" \
+      -print -quit 2>/dev/null)
+    if [ -z "${_igHit}" ]; then
+      _igHit=$(find -P ${_usEr}/static -xdev -maxdepth 5 -name drushrc.php "${_igSel[@]}" \
+        ! -group "${_acctGrp}" ! -group www-data ! -group root "${_igX[@]}" \
+        -print -quit 2>/dev/null)
+    fi
+    if [ -n "${_igHit}" ] && [ "${#_igX[@]}" -gt 0 ] \
+      && ! grep -qE '^[[:space:]]*_web_group_state\(\) \{' \
+        /opt/local/bin/instgrp 2> /dev/null; then
+      # an instgrp older than the web group would re-group its paths to the
+      # account group, which the account's pools are never in
+      echo "DRIFT: ${_HM_U}: paths outside group ${_acctGrp} (first: ${_igHit}); reclaim withheld: instgrp predates the web group"
+    elif [ -n "${_igHit}" ]; then
       echo "DRIFT: ${_HM_U}: paths outside group ${_acctGrp} (first: ${_igHit}); running instgrp reclaim"
       bash /opt/local/bin/instgrp reclaim ${_HM_U}
     fi
   fi
-  chown -R ${_HM_U}:${_acctGrp} ${_usEr}/tools/le
+  # tools/ is oN's: tools/le is handed to the account from inside the real
+  # directory, the walk follows no link below it, and each entry is changed
+  # through its own handle, never a hard-linked file (_reown_tree_here): oN
+  # can put a hard link under any name there, a stamp root put included.
+  _acct_in_real_dir "${_usEr}/tools/le" _reown_tree_here "${_HM_U}:${_acctGrp}" .
   # static/ is tenant-writable (02775, no sticky) and trash/ is handed to the
-  # tenant, so the tenant can swap the directory for a symlink. mkdir -p then
-  # succeeds silently on the target, a bare chown retargets it, and the glob
-  # trash/* resolves through the link -- which made root chown an arbitrary
-  # directory and rm -rf aged entries inside it. Drop a planted link first, act
-  # only on a real directory, keep the chown off any link, and purge with find
-  # on the bare path (a trailing slash would make find follow a link again).
-  [ -L "${_usEr}/static/trash" ] && rm -f ${_usEr}/static/trash &> /dev/null
-  mkdir -p ${_usEr}/static/trash
-  if [ -d "${_usEr}/static/trash" ] && [ ! -L "${_usEr}/static/trash" ]; then
-    chown -h ${_HM_U}.ftp:${_acctGrp} ${_usEr}/static/trash &> /dev/null
-    find ${_usEr}/static/trash -mindepth 1 \
-      -mtime +${_PURGE_TMP} -exec rm -rf {} \; &> /dev/null
+  # tenant, so the tenant can swap the directory for a symlink at any moment:
+  # a link put at trash is dropped, and trash is made, handed over and
+  # purged only inside the real static/ and the real trash/.
+  _acct_in_real_dir "${_usEr}/static" _night_trash_here \
+    "${_HM_U}.ftp:${_acctGrp}" "${_PURGE_TMP}"
+
+  # platforms/ is in the main login's own home and mutable for the whole run
+  # (_account_process cleared its immutable bit), and distro/ and every name
+  # in both are the account's: each is acted on inside its real directory
+  # only, an entry is moved by its own name there, and a link is never
+  # followed; the immutable flag is cleared on each entry from inside it or
+  # through its handle, never on a hard-linked file
+  # (_night_chattr_entries_here).
+  _acct_in_real_dir "/home/${_HM_U}.ftp/platforms" _night_pl_ghosts_here
+  _acct_in_real_dir "${_usEr}/distro" _night_distro_ghosts_here
+  _acct_in_real_dir "${_usEr}/distro" _night_distro_links_here
+}
+
+# In the real static/: a link put at trash dropped, trash made when missing,
+# and, inside the real trash/ entered once, the directory handed to $1 and
+# its entries older than $2 days removed. The owner is set on the directory
+# entered, never on the name: static/ is group-writable, so a hard link or
+# another of its directories can be renamed onto trash at any moment. A
+# directory of root's that holds anything is not one this pass made (the
+# files store or the usage reports renamed onto trash), and is left alone.
+_night_trash_here() {
+  [ -L ./trash ] && rm -f -- ./trash
+  [ -e ./trash ] || mkdir ./trash 2> /dev/null
+  _night_sub trash _night_trash_in_here "${1}" "${2}"
+}
+_night_trash_in_here() {
+  if [ "$(stat -c '%u' . 2> /dev/null)" = "0" ] \
+    && [ -n "$(ls -A . 2> /dev/null)" ]; then
+    return 0
   fi
+  chown -h "${1}" . 2> /dev/null
+  _night_purge_here "${2}" all
+}
 
-  for i in $(dir -d /home/${_HM_U}.ftp/platforms/* 2>/dev/null); do
-    if [ -e "${i}" ]; then
-      _RevisionTest=$(ls ${i} \
-        | wc -l \
-        | tr -d "\n" 2>&1)
-      if [ "${_RevisionTest}" -lt "${_LOW_NR}" ] \
-        && [ ! -z "${_RevisionTest}" ]; then
-        if [ -d "/home/${_HM_U}.ftp/platforms" ]; then
-          chattr -i /home/${_HM_U}.ftp/platforms
-          chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
-        fi
-        _tStamp=$(date +%y%m%d-%H%M%S)
-        [ -d "/var/backups/ghost/${_HM_U}/${_tStamp}" ] || mkdir -p /var/backups/ghost/${_HM_U}/${_tStamp}
-        echo "Moving ${i} to /var/backups/ghost/${_HM_U}/${_tStamp}"
-        mv -f ${i} /var/backups/ghost/${_HM_U}/${_tStamp}/
+# In the real platforms/ of the main login: an entry holding fewer than
+# _LOW_NR names is moved to /var/backups/ghost by its own name (a link is
+# moved as the link).
+_night_pl_ghosts_here() {
+  local _p _n _g
+  for _p in ./*; do
+    [ -e "${_p}" ] || continue
+    _n=$(ls -- "${_p}" 2> /dev/null | wc -l | tr -d "\n")
+    [ -n "${_n}" ] && [ "${_n}" -lt "${_LOW_NR}" ] || continue
+    chattr -i . &> /dev/null
+    _night_chattr_entries_here -
+    _g="/var/backups/ghost/${_HM_U}/$(date +%y%m%d-%H%M%S)"
+    [ -d "${_g}" ] || mkdir -p "${_g}"
+    echo "Moving /home/${_HM_U}.ftp/platforms/${_p#./} to ${_g}"
+    mv -f -- "${_p}" "${_g}/"
+  done
+  return 0
+}
+
+# In the real distro/: each real revision directory gets its keys/ where
+# missing, and one holding fewer than two names and untouched for an hour
+# is moved to undo/dist/<stamp>.
+_night_distro_ghosts_here() {
+  local i _n _s
+  for i in ./*; do
+    [ -d "${i}" ] && [ ! -L "${i}" ] || continue
+    # The account owns distro/ and its entries: never through a link at
+    # that name (a revision or keys itself), and root's own directory stays
+    # root's (the owner and mode it has always had).
+    if [ ! -L "${i}" ] && [ ! -e "${i}/keys" ] && [ ! -L "${i}/keys" ]; then
+      _acct_in_real_dir "${i}" mkdir -m 0755 ./keys &> /dev/null
+    fi
+    _n=$(ls -- "${i}" 2> /dev/null | wc -l | tr -d "\n")
+    # An installer creates the new distro/NNN empty and fills it over the
+    # following minutes, and the keys/ mkdir above scores it 1 by itself,
+    # so an under-populated revision is NOT evidence of a ghost on its own:
+    # this used to reap the revision a running install was still building
+    # into, leaving the installer cd-ing into a path that no longer existed
+    # and extracting whole platform trees into the account's home instead.
+    # Two independent brakes, because neither alone is sufficient: the mtime
+    # test (a live revision is touched continuously; a real ghost is stale
+    # for hours, and the keys/ mkdir defers its first sighting by one night)
+    # and the in-flight test (owl.sh gates once at entry, while the octopus
+    # pass drops boa_run.pid per account -- so it must be re-checked HERE)
+    if [ -n "${_n}" ] && [ "${_n}" -lt 2 ] \
+      && [ -z "$(find "${i}" -maxdepth 0 -mmin -60 2> /dev/null)" ] \
+      && ! _night_boa_pass_active; then
+      echo "_RevisionTest is ${_n}"
+      _s="$(date +%y%m%d-%H%M%S)"
+      if _night_undo_dist_here "${i#./}" "${_s}"; then
+        echo "GHOST revision ${_usEr}/distro/${i#./} detected and moved to ${_usEr}/undo/dist/${_s}/"
+      else
+        echo "GHOST revision ${_usEr}/distro/${i#./} detected and not moved: ${_GH_REFUSED}"
       fi
     fi
   done
+  return 0
+}
+# In the real distro/: ./$1 moved into the account's real undo/dist/$2 (made
+# first where missing, root's), opened and checked to be that real directory
+# and renamed into it through the open directory (/proc/self/fd), so no name
+# on either path can send the move elsewhere.
+_night_undo_dist_here() {
+  local _u
+  _u="$(cd -P /data/disk 2> /dev/null && pwd -P)${_usEr#/data/disk}/undo/dist/${2}"
+  _acct_in_real_dir "${_usEr}" mkdir -p ./undo 2> /dev/null
+  _acct_in_real_dir "${_usEr}/undo" mkdir -p ./dist 2> /dev/null
+  _acct_in_real_dir "${_usEr}/undo/dist" mkdir -p -- "./${2}" 2> /dev/null
+  ( exec 9< "${_u}/." || exit 1
+    [ "$(readlink /proc/self/fd/9)" = "${_u}" ] || exit 1
+    mv -f -T -- "./${1}" "/proc/self/fd/9/${1}" ) 2> /dev/null
+}
 
-  for i in $(dir -d ${_usEr}/distro/* 2>/dev/null); do
-    if [ -d "${i}" ]; then
-      if [ ! -d "${i}/keys" ]; then
-        mkdir -p ${i}/keys
-      fi
-      _RevisionTest=$(ls ${i} | wc -l 2>&1)
-      # An installer creates the new distro/NNN empty and fills it over the
-      # following minutes, and the keys/ mkdir above scores it 1 by itself,
-      # so an under-populated revision is NOT evidence of a ghost on its own:
-      # this used to reap the revision a running install was still building
-      # into, leaving the installer cd-ing into a path that no longer existed
-      # and extracting whole platform trees into the account's home instead.
-      # Two independent brakes, because neither alone is sufficient: the mtime
-      # test (a live revision is touched continuously; a real ghost is stale
-      # for hours, and the keys/ mkdir defers its first sighting by one night)
-      # and the in-flight test (owl.sh gates once at entry, while the octopus
-      # pass drops boa_run.pid per account -- so it must be re-checked HERE)
-      if [ "${_RevisionTest}" -lt 2 ] && [ ! -z "${_RevisionTest}" ] \
-        && [ -z "$(find ${i} -maxdepth 0 -mmin -60 2>/dev/null)" ] \
-        && ! _night_boa_pass_active; then
-        echo "_RevisionTest is ${_RevisionTest}"
-        _tStamp=$(date +%y%m%d-%H%M%S)
-        mkdir -p ${_usEr}/undo/dist/${_tStamp}
-        mv -f ${i} ${_usEr}/undo/dist/${_tStamp}/ &> /dev/null
-        echo "GHOST revision ${i} detected and moved to ${_usEr}/undo/dist/${_tStamp}/"
-      fi
+# In the real distro/: for each real revision directory, the main login's
+# platforms/<revision> (platforms/ made where missing, a link put at either
+# name never followed) made where missing, and in it the link to the
+# revision's keys/ when that is a real directory and one link per platform
+# to that platform's sites/, each made inside the real directory.
+_night_distro_links_here() {
+  local i _n _p _c _pl="/home/${_HM_U}.ftp/platforms"
+  for i in ./*; do
+    [ -d "${i}" ] && [ ! -L "${i}" ] || continue
+    _n="${i#./}"
+    [ -L "${_pl}" ] && continue
+    [ -e "${_pl}" ] \
+      || _acct_in_real_dir "/home/${_HM_U}.ftp" mkdir -p ./platforms 2> /dev/null
+    _acct_in_real_dir "${_pl}" _night_pl_rev_here "${_n}" || continue
+    if [ -d "${i}/keys" ] && [ ! -L "${i}/keys" ]; then
+      _acct_in_real_dir "${_pl}/${_n}" _night_link_new_here \
+        "${_usEr}/distro/${_n}/keys" keys
     fi
+    _acct_in_real_dir "${_pl}" _night_pl_data_here
+    for _p in "${i}"/*; do
+      [ -d "${_p}" ] && [ ! -L "${_p}" ] || continue
+      [ "${_p##*/}" = "keys" ] && continue
+      _c=$(_detect_real_docroot "${_usEr}/distro/${_n}/${_p##*/}")
+      [ -n "${_c}" ] && [ -d "${_c}/sites" ] || continue
+      _acct_in_real_dir "${_pl}/${_n}" \
+        ln -sfn -- "${_c}/sites" "./${_p##*/}" 2> /dev/null
+      echo "Fixed ${_p##*/} in ${_n} symlink to ${_c}/sites for ${_HM_U}.ftp"
+    done
   done
-
-  for i in $(dir -d ${_usEr}/distro/* 2>/dev/null); do
-    if [ -e "${i}" ]; then
-      _distTrNr=$(echo ${i} \
-        | cut -d'/' -f6 \
-        | awk '{ print $1}' 2> /dev/null)
-      # platforms/ is in the tenant's own home and is mutable for the whole
-      # run (_account_process cleared its immutable bit), so it can be a
-      # planted symlink: the /* glob then names real entries inside the
-      # target and root strips +i off a tree of the tenant's choosing.
-      if [ -d "/home/${_HM_U}.ftp/platforms" ] \
-        && [ ! -L "/home/${_HM_U}.ftp/platforms" ]; then
-        chattr -i /home/${_HM_U}.ftp/platforms
-        chattr -i /home/${_HM_U}.ftp/platforms/* &> /dev/null
-      fi
-      if [ ! -e "${i}/keys" ]; then
-        mkdir -p ${i}/keys
-        chown ${_HM_U}.ftp:${_WEBG} ${i}/keys &> /dev/null
-        chmod 02775 ${i}/keys &> /dev/null
-      fi
-      # platforms/ and its per-revision children are in the tenant's own home
-      # and are mutable for the whole run, so a link planted at either level
-      # makes the mkdir -p a silent no-op on the target and both ln -sfn below
-      # create (or replace) entries inside a directory of the tenant's
-      # choosing. Neither is ever legitimately a symlink; platforms/<rev> is
-      # root-maintained, so drop a planted link there the usual way.
-      [ -L "/home/${_HM_U}.ftp/platforms" ] && continue
-      # Inline rather than _desymlink_planted: that helper lives in night.inc.sh,
-      # which is fetched on its own serial, and this file carries no fallback --
-      # an undefined function returns 127 and the guard would silently no-op.
-      [ -L "/home/${_HM_U}.ftp/platforms/${_distTrNr}" ] \
-        && rm -f "/home/${_HM_U}.ftp/platforms/${_distTrNr}" &> /dev/null
-      if [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}" ]; then
-        mkdir -p /home/${_HM_U}.ftp/platforms/${_distTrNr}
-      fi
-      if [ -e "${i}/keys" ] && [ ! -e "/home/${_HM_U}.ftp/platforms/${_distTrNr}/keys" ]; then
-        ln -sfn ${i}/keys /home/${_HM_U}.ftp/platforms/${_distTrNr}/keys
-      fi
-      if [ -e "/home/${_HM_U}.ftp/platforms/data" ]; then
-        _tStamp=$(date +%y%m%d-%H%M%S)
-        [ -d "/var/backups/ghost/${_HM_U}/${_tStamp}" ] || mkdir -p /var/backups/ghost/${_HM_U}/${_tStamp}
-        mv -f /home/${_HM_U}.ftp/platforms/data /var/backups/ghost/${_HM_U}/${_tStamp}/platforms_data
-      fi
-      for _PlatformDir in `find ${i}/* \
-        -maxdepth 0 \
-        -type d 2>/dev/null`; do
-        _CodebaseName=$(basename "${_PlatformDir}" 2>/dev/null)
-        [ "${_CodebaseName}" = "keys" ] && continue
-        _Codebase=$(_detect_real_docroot "${_PlatformDir}")
-        [ -n "${_Codebase}" ] && [ -d "${_Codebase}/sites" ] || continue
-        ln -sfn ${_Codebase}/sites /home/${_HM_U}.ftp/platforms/${_distTrNr}/${_CodebaseName}
-        echo "Fixed ${_CodebaseName} in ${_distTrNr} symlink to ${_Codebase}/sites for ${_HM_U}.ftp"
-      done
-    fi
-  done
+  return 0
+}
+# In the real platforms/: +i cleared on it and its entries, a link put at
+# ./$1 removed, and ./$1 made where missing.
+_night_pl_rev_here() {
+  chattr -i . &> /dev/null
+  _night_chattr_entries_here -
+  [ -L "./${1}" ] && rm -f -- "./${1}"
+  [ -e "./${1}" ] || mkdir -- "./${1}" 2> /dev/null
+  return 0
+}
+# ./data in the current (pinned) platforms/ moved to /var/backups/ghost.
+_night_pl_data_here() {
+  local _g
+  [ -e ./data ] || return 0
+  _g="/var/backups/ghost/${_HM_U}/$(date +%y%m%d-%H%M%S)"
+  [ -d "${_g}" ] || mkdir -p "${_g}"
+  mv -f -- ./data "${_g}/platforms_data"
 }
 
 ###--------------------###

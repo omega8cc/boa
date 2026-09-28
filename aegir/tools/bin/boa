@@ -77,6 +77,37 @@ _clean_pid_exit() {
   exit 1
 }
 
+# An account's log/, .tmp/, static/control and tools/le/.ctrl are its own
+# (in-octopus on an existing account upgrades it, tree and all): it can put
+# a link or a FIFO at any name there, or swap a directory on the way for a
+# link. Root acts on those names only inside the real directory: run "$@"
+# in $1 when every name below /data/disk on the path is a real directory;
+# once entered, ./name stays there whatever is swapped.
+_boa_in_real_dir() {
+  local _d="${1}" _want
+  shift
+  _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)${_d#/data/disk}"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory with the content $2 (root's, 0644):
+# a fresh file created exclusively, then renamed over the name, so a link or
+# a FIFO put at the name is replaced, never followed or opened.
+_boa_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+# ./$1 in the current (pinned) directory: never through a link, never
+# blocked on a FIFO, at most 1 MiB.
+_boa_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
   _OS_CODE=$(lsb_release -ar 2>/dev/null | grep -i codename | cut -s -f2)
@@ -843,6 +874,15 @@ _satellite_check_id() {
       it should start with a letter, not digit"
     _clean_pid_exit
   fi
+  # wg-<account> is every account's web group: an account of that name would
+  # get its per-instance group under another account's web group name. A
+  # dot would make the account read as the one named before it (an
+  # account's identities are <account>.<name>).
+  if [[ "${_USER}" == wg-* ]] || [[ "${_USER}" == *.* ]]; then
+    echo "ERROR: ${_USER} begins with wg-, or holds a dot; both are reserved, \
+      please choose different _USER"
+    _clean_pid_exit
+  fi
 }
 
 _fix_dns_settings() {
@@ -1245,7 +1285,7 @@ _octopus_install() {
 
     if [ ! -z "${_pXyc}" ] && [ ! -z "${_pXyi}" ]; then
       if [ -e "/data/disk/${_usEr}/log/octopus_log.txt" ]; then
-        echo "ProxySQL" > /data/disk/${_usEr}/log/use_proxysql.txt
+        _boa_in_real_dir "/data/disk/${_usEr}/log" _boa_put_here use_proxysql.txt ProxySQL
         echo "ProxySQL" > /data/conf/clstr.cnf
       fi
     fi
@@ -1988,7 +2028,7 @@ _init_setup() {
       _send_errors
       _clean_pid_exit _octopus_install
     else
-      rm -rf /data/disk/${_usEr}/.tmp/cache
+      _boa_in_real_dir "/data/disk/${_usEr}/.tmp" rm -rf -- ./cache
     fi
   fi
   if [ "${_outP}" = "logged" ]; then
@@ -1999,9 +2039,14 @@ _init_setup() {
     touch /run/octopus_install_run.pid
     sleep 3
     # Execute post-install octopus upgrade and exit
-    touch /data/disk/${_usEr}/static/control/ssl-live-mode.info
-    rm -f /data/disk/${_usEr}/tools/le/.ctrl/ssl-demo-mode.pid
-    rm -rf /data/disk/${_usEr}/.tmp/cache
+    # created exclusively inside the real static/control: a link at the
+    # name, or on the way (static/control is the tenant's), is never
+    # followed; the other names go only inside their real directories too
+    ( umask 022
+      _boa_in_real_dir "/data/disk/${_usEr}/static/control" \
+        dd of=./ssl-live-mode.info conv=excl status=none < /dev/null 2> /dev/null )
+    _boa_in_real_dir "/data/disk/${_usEr}/tools/le/.ctrl" rm -f -- ./ssl-demo-mode.pid
+    _boa_in_real_dir "/data/disk/${_usEr}/.tmp" rm -rf -- ./cache
     echo
     if [ ! -e "/root/.dont.upgrade.octopus.on.install.cnf" ]; then
       echo "Invoking hosting-dispatch/hosting-tasks to complete the installation"
@@ -2037,7 +2082,7 @@ _init_setup() {
       _NOW=$(date +%y%m%d-%H%M%S)
       _NOW=${_NOW//[^0-9-]/}
       _UP_OCTOPUS_LOG="${_LOG_UP_DIR}/$(basename "$0")-up-octopus-${_NOW}.log"
-      rm -rf /data/disk/${_usEr}/.tmp/cache
+      _boa_in_real_dir "/data/disk/${_usEr}/.tmp" rm -rf -- ./cache
       # Hand-over: this post-install octopus must not refuse on the very
       # marker this chain holds; it re-touches and finally clears it
       export _OCTOPUS_CHAINED=YES
@@ -2063,8 +2108,10 @@ _init_setup() {
         # no-retry path releases it before the final exit below
         touch /run/octopus_install_run.pid
         echo "Checking LE setup status..."
+        # log/ is the account's: read inside the real directory, bounded,
+        # never through a link or from a FIFO
         if [ -e "/data/disk/${_usEr}/log/domain.txt" ]; then
-          _hmFront=$(cat /data/disk/${_usEr}/log/domain.txt 2>&1)
+          _hmFront=$(_boa_in_real_dir "/data/disk/${_usEr}/log" _boa_read_here domain.txt)
           _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
         fi
         _leRoot="/data/disk/${_usEr}/tools/le"
@@ -2090,7 +2137,7 @@ _init_setup() {
           touch /run/octopus_install_run.pid
           echo "Checking LE setup status..."
           if [ -e "/data/disk/${_usEr}/log/domain.txt" ]; then
-            _hmFront=$(cat /data/disk/${_usEr}/log/domain.txt 2>&1)
+            _hmFront=$(_boa_in_real_dir "/data/disk/${_usEr}/log" _boa_read_here domain.txt)
             _hmFront=$(echo -n ${_hmFront} | tr -d "\n" 2>&1)
           fi
           _leRoot="/data/disk/${_usEr}/tools/le"
@@ -3311,9 +3358,14 @@ _octopus_cleanup() {
         # until then. The marker is the operator's order and the account's
         # site data goes below regardless, so park them here: touching
         # log/CANCELLED and running this verb is the whole procedure.
+        # vhost.d is the account's: its names are moved from inside the real
+        # directory only, never through a link the account put on the way
+        # (a glob through one would move another tree's files).
         if [ "${_sites_nr}" != "0" ]; then
           mkdir -p ${_zombie_dir}vhost.d
-          mv -f /data/disk/${_usEr}/config/server_master/nginx/vhost.d/* ${_zombie_dir}vhost.d/ 2>/dev/null
+          ( cd -P -- "/data/disk/${_usEr}/config/server_master/nginx/vhost.d" 2>/dev/null \
+            && [ "$(pwd -P)" = "$(cd -P /data/disk 2>/dev/null && pwd -P)/${_usEr}/config/server_master/nginx/vhost.d" ] \
+            && mv -f -- ./* "${_zombie_dir}vhost.d/" 2>/dev/null )
           echo "parked ${_sites_nr} vhost file(s) of ${_usEr} in ${_zombie_dir}vhost.d/"
         fi
         [ -e "${_nginx_inc}/${_usEr}.conf" ] && mv -f "${_nginx_inc}/${_usEr}.conf" ${_zombie_dir}
@@ -3330,10 +3382,19 @@ _octopus_cleanup() {
         for _rootCnf in /root/.${_usEr}.octopus.cnf /root/.${_usEr}.rc; do
           [ -e "${_rootCnf}" ] && mv -f "${_rootCnf}" ${_zombie_dir}root/
         done
+        # So does its task dispatcher (live, or parked by an update pass):
+        # the runner would keep starting tasks as the account's identity
+        # while it is being removed.
+        for _runF in /var/xdrago/run-${_usEr} /var/backups/off-run/run-${_usEr}; do
+          [ -e "${_runF}" ] && mv -f "${_runF}" ${_zombie_dir}root/
+        done
         echo "${_usEr}:/data/disk/${_usEr}" > ${_zombie_dir}.purge.list
         echo "${_usEr}.ftp:/home/${_usEr}.ftp" >> ${_zombie_dir}.purge.list
         echo "${_usEr}.web:/home/${_usEr}.web" >> ${_zombie_dir}.purge.list
         _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+        # the versions whose default pool (<account>.conf) goes: their FPM is
+        # reloaded below with the per-version ones
+        _dfltV=""
         for e in ${_PHP_V}; do
           if [ -e "/opt/php${e}/etc/pool.d/${_usEr}.${e}.conf" ] \
             || [ -e "/home/${_usEr}.${e}.web" ]; then
@@ -3342,16 +3403,19 @@ _octopus_cleanup() {
           fi
           if [ -e "/opt/php${e}/etc/pool.d/${_usEr}.conf" ] \
             || [ -e "/home/${_usEr}.web" ]; then
+            [ -e "/opt/php${e}/etc/pool.d/${_usEr}.conf" ] && _dfltV="${_dfltV} ${e}"
             rm -f /opt/php${e}/etc/pool.d/${_usEr}.conf
             echo "${_usEr}.web:/home/${_usEr}.web" >> ${_zombie_dir}.purge.list
           fi
         done
         # Pool files gone, workers still up: deluser refuses a user with
         # running processes (the home is already removed by then), so the
-        # per-version web users survived every purge. Reload each affected
+        # web users (<account>.web of the default pool, <account>.NN.web of
+        # the per-version ones) survived every purge. Reload each affected
         # FPM first; the loop below then finds nothing holding them.
         for e in ${_PHP_V}; do
-          if grep -q "^${_usEr}\.${e}\.web:" ${_zombie_dir}.purge.list 2>/dev/null \
+          if { grep -q "^${_usEr}\.${e}\.web:" ${_zombie_dir}.purge.list 2>/dev/null \
+            || [[ " ${_dfltV} " == *" ${e} "* ]]; } \
             && [ -e "/etc/init.d/php${e}-fpm" ]; then
             service php${e}-fpm reload &> /dev/null
           fi
@@ -3364,26 +3428,104 @@ _octopus_cleanup() {
           | grep -vE "\.ftp$|\.web$"); do
           echo "${_subUsr}:/home/${_subUsr}" >> ${_zombie_dir}.purge.list
         done
-        # only the purged account's agents (every user on the list): -f
-        # matched every gpg-agent on the box
-        for _gpgUsr in $(cut -d: -f1 ${_zombie_dir}.purge.list 2>/dev/null | sort -u); do
-          id -u "${_gpgUsr}" &> /dev/null && pkill -9 -u "${_gpgUsr}" gpg-agent &> /dev/null
-        done
         sort -u -o ${_zombie_dir}.purge.list ${_zombie_dir}.purge.list
+        # deluser refuses an identity with a live process, and a refused one
+        # outlives the purge with its number. Whatever still runs as one of
+        # the account's identities (an old worker the reload has not ended
+        # yet, a task, a shell, an agent) is asked to end, then made to, and
+        # so is what a dispatcher run already in flight starts next: until
+        # none of them has run for three seconds in a row, bounded. Real uid
+        # as well as effective: userdel refuses either.
+        _pUsrs=""
+        for _pUsr in $(cut -d: -f1 ${_zombie_dir}.purge.list 2>/dev/null); do
+          id -u "${_pUsr}" &> /dev/null && _pUsrs="${_pUsrs:+${_pUsrs},}${_pUsr}"
+        done
+        if [ -n "${_pUsrs}" ]; then
+          _pQuiet=0
+          _pWait=0
+          while [ "${_pQuiet}" -lt 3 ] && [ "${_pWait}" -lt 30 ]; do
+            if pgrep -u "${_pUsrs}" &> /dev/null || pgrep -U "${_pUsrs}" &> /dev/null; then
+              _pQuiet=0
+              _pSig=TERM
+              [ "${_pWait}" -ge 10 ] && _pSig=KILL
+              pkill -${_pSig} -u "${_pUsrs}" &> /dev/null
+              pkill -${_pSig} -U "${_pUsrs}" &> /dev/null
+            else
+              _pQuiet=$(( _pQuiet + 1 ))
+            fi
+            sleep 1
+            _pWait=$(( _pWait + 1 ))
+          done
+          { pgrep -u "${_pUsrs}" || pgrep -U "${_pUsrs}"; } &> /dev/null \
+            && echo "processes of ${_usEr}'s identities still running: deluser may refuse them"
+        fi
+        # What the account's identities left in the shared temporary places
+        # goes now, while their numbers still name them: after deluser a
+        # number is free, and could be another account's before anything
+        # reached it. Those places are sticky and world-writable, and there
+        # the kernel trusts an entry root owns (it follows the link, lets
+        # others open the file), so nothing of theirs is handed to root: it
+        # is removed. Only a directory of theirs that still holds another's
+        # entries goes to root, which a directory may, and only while that
+        # number still owns it. An identity gone before this run counts by
+        # its home's number while that names nobody. The same runs again
+        # after deluser for a number that names nobody then (a login may
+        # have written there in between).
+        # A directory is handed over through a handle opened without following
+        # a link, and only while that handle shows a directory of that number:
+        # a name swapped meanwhile is never followed, nothing looked up again.
+        # It goes to root whole: its group too, without the setgid bit, the
+        # group bits (with an ACL, its mask: every named grant stops there
+        # even where no setfacl is installed) or the ACL itself; the mode is
+        # read once root owns it, so it holds.
+        _tmpRootPl='use Fcntl; my $u = shift(@ARGV); my ($f) = grep { -x } "/usr/bin/setfacl", "/bin/setfacl"; for my $n (@ARGV) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && -d _ && $s[4] == $u && chown(0, -1, $h)) { my @t = stat($h); chmod($t[2] & 05707, $h) if @t; chown(-1, 0, $h); if ($f && fcntl($h, F_SETFD, 0)) { system($f, "-b", "-k", "/proc/self/fd/" . fileno($h)); } } close($h); } exit 0'
+        _tmpX=()
+        _tmpC=()
+        _tmpUs=()
+        while IFS=: read -r _tmpN _tmpH; do
+          if _tmpU=$(id -u "${_tmpN}" 2> /dev/null); then
+            :
+          elif [ -e "${_tmpH}" ] && _tmpU=$(stat -c '%u' -- "${_tmpH}" 2> /dev/null) \
+            && ! getent passwd "${_tmpU}" &> /dev/null; then
+            :
+          else
+            continue
+          fi
+          if [[ "${_tmpU}" =~ ^[0-9]+$ ]] && [ "${_tmpU}" != "0" ]; then
+            _tmpX+=( -o -uid "${_tmpU}" )
+            _tmpC+=( -o \( -uid "${_tmpU}" -type d -execdir perl -e "${_tmpRootPl}" -- "${_tmpU}" {} + \) )
+            _tmpUs+=( "${_tmpU}" )
+          fi
+        done < ${_zombie_dir}.purge.list
+        if [ "${#_tmpX[@]}" -gt 0 ]; then
+          # every place emptied of theirs before any directory is handed over
+          for _tmpD in /tmp /var/tmp /dev/shm; do
+            [ -d "${_tmpD}" ] && [ ! -L "${_tmpD}" ] || continue
+            env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_tmpD}" -xdev \( "${_tmpX[@]:1}" \) ! -type d -delete &> /dev/null
+            env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_tmpD}" -xdev -depth \( "${_tmpX[@]:1}" \) -type d -empty -delete &> /dev/null
+          done
+          for _tmpD in /tmp /var/tmp /dev/shm; do
+            [ -d "${_tmpD}" ] && [ ! -L "${_tmpD}" ] || continue
+            env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_tmpD}" -xdev \( "${_tmpC[@]:1}" \) &> /dev/null
+          done
+        fi
         IFS=$'\12'
-          _purgedUid=$(id -u "${_usEr}" 2>/dev/null)
           # Read before the deluser loop: the last deluser takes the
           # memberless group with it, and the gid sweep below had nothing
           # to sweep with on exactly the converted boxes it is for.
           _grpGid=$(getent group "${_usEr}" 2>/dev/null | cut -d: -f3)
+          # the account's web group, the same way
+          _wgGid=$(getent group "wg-${_usEr}" 2>/dev/null | cut -d: -f3)
           for p in $(cat ${_zombie_dir}.purge.list | grep "${_usEr}" 2>&1);do
             _usr_name=`echo $p | cut -d':' -f1 | awk '{ print $1}'`
             _usr_home=`echo $p | cut -d':' -f2 | awk '{ print $1}'`
             echo disabling chattr for ${_usr_name} in ${_usr_home}..
             chattr -i -R ${_usr_home}/ &> /dev/null
-            if [ -d "${_usr_home}/.drush/" ]; then
-              chattr -i ${_usr_home}/.drush/
-            fi
+            # on '.' inside the real .drush only: the name is the account's,
+            # and a trailing slash would clear the flag of a link's target
+            ( cd -P -- "${_usr_home}/.drush" 2> /dev/null \
+              && [ "$(pwd -P)" = "$(cd -P -- "${_usr_home}" 2> /dev/null && pwd -P)/.drush" ] \
+              && chattr -i . )
             rm -rf ${_usr_home}/.gnupg
             echo purging ${_usr_name}..
             if [ -d "${_usr_home}/static" ]; then
@@ -3401,12 +3543,44 @@ _octopus_cleanup() {
         # refuses (no such user on a half-purged box, a user still held by a
         # process) the tree stayed and a re-run found nothing more to do.
         # Park whatever survived so the purge converges either way.
-        for _lftTree in /data/disk/${_usEr} /home/${_usEr}.ftp /home/${_usEr}.web /home/${_usEr}.*.web; do
+        # Each under its own path and this run's stamp: two trees of one
+        # name (a home and its staged keys, or a later account's) never meet.
+        for _lftTree in /data/disk/${_usEr} /home/${_usEr}.* /var/backups/migrate-subuser-ssh/${_usEr}.*; do
           if [ -d "${_lftTree}" ] && [ ! -L "${_lftTree}" ]; then
-            mkdir -p ${_zombie_dir}left
-            mv -f "${_lftTree}" ${_zombie_dir}left/ && echo "parked surviving tree ${_lftTree} in ${_zombie_dir}left/"
+            _lftTo="${_zombie_dir}left/${_NOW}${_lftTree%/*}"
+            mkdir -p "${_lftTo}"
+            chattr -i "${_lftTree}" &> /dev/null
+            mv -f "${_lftTree}" "${_lftTo}/" && echo "parked surviving tree ${_lftTree} in ${_lftTo}/"
           fi
         done
+        # Keys staged for a sub-account that never came must not wait for a
+        # later account of that name: if they could not be parked, they go.
+        for _lftTree in /var/backups/migrate-subuser-ssh/${_usEr}.*; do
+          [ -e "${_lftTree}" ] || [ -L "${_lftTree}" ] || continue
+          rm -rf -- "${_lftTree}" && echo "removed staged keys ${_lftTree}"
+        done
+        # The limited shell's logs of the account's logins (the commands
+        # they typed) go with its trees.
+        for _lftLog in /var/log/lsh/${_usEr}.*; do
+          [ -f "${_lftLog}" ] && [ ! -L "${_lftLog}" ] || continue
+          mkdir -p "${_zombie_dir}left/${_NOW}/var/log/lsh"
+          mv -f "${_lftLog}" "${_zombie_dir}left/${_NOW}/var/log/lsh/"
+        done
+        # A parked tree is a remnant: none of its numbers is a living
+        # identity's to keep (one freed earlier may be another account's by
+        # now), so it goes to root before the groups below are freed: shut
+        # to everyone else, and each directory and single-link entry handed
+        # over. An entry with more links may share its inode with a living
+        # name outside: the sweep below takes it only once its numbers name
+        # nothing. -execdir: each name is changed inside the directory find
+        # entered without following a link, so a process still inside the
+        # tree cannot swap a directory between for a link; it wants an
+        # absolute PATH.
+        if [ -d "${_zombie_dir}left" ] && [ ! -L "${_zombie_dir}left" ]; then
+          chmod 0700 "${_zombie_dir}left"
+          env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_zombie_dir}left" -xdev \( -type d -o -links 1 \) \
+            -execdir chown -h root:root {} + &> /dev/null
+        fi
         # The account's private group (per-instance group model) outlives
         # every deluser above; drop it once nothing holds it, or the GID is
         # left for a later account to inherit. What the purge leaves on
@@ -3421,7 +3595,6 @@ _octopus_cleanup() {
             /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* /mnt/*/files/${_usEr}; do
             if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
               chown -R -h -P --from=":${_grpGid}" "root:root" "${_lftDir}" &> /dev/null
-              [ -n "${_purgedUid}" ] && chown -R -h -P --from="${_purgedUid}" "root:root" "${_lftDir}" &> /dev/null
             fi
           done
           # -xdev never enters a mounted volume, so each mountpoint under
@@ -3441,6 +3614,86 @@ _octopus_cleanup() {
             groupdel "${_usEr}" &> /dev/null && echo "removed group ${_usEr}"
           fi
         fi
+        # The account's web group (wg-<account>) is no user's name, so no
+        # deluser ever takes it: the same rule, on its own gid, over the
+        # same places and the account's PHP cache dir, which only it uses.
+        if [ -n "${_wgGid}" ]; then
+          for _lftDir in /opt/user/gems/${_usEr} /opt/user/gems/${_usEr}.* \
+            /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* \
+            /mnt/*/files/${_usEr} /var/www/phpcache/${_usEr}; do
+            if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
+              chown -R -h -P --from=":${_wgGid}" "root:root" "${_lftDir}" &> /dev/null
+            fi
+          done
+          _grpLeft=$(find -P /data/disk /home /opt/user /var/www -xdev -gid "${_wgGid}" -print -quit 2>/dev/null)
+          if [ -z "${_grpLeft}" ]; then
+            for _mntDir in /mnt/*; do
+              [ -d "${_mntDir}" ] && mountpoint -q "${_mntDir}" 2>/dev/null || continue
+              _grpLeft=$(find -P "${_mntDir}" -xdev -gid "${_wgGid}" -print -quit 2>/dev/null)
+              [ -n "${_grpLeft}" ] && break
+            done
+          fi
+          if [ -n "${_grpLeft}" ]; then
+            echo "group wg-${_usEr} kept: paths still carry gid ${_wgGid} (${_grpLeft})"
+          elif [ -z "$(getent group "wg-${_usEr}" 2>/dev/null | cut -d: -f4)" ] \
+            && ! getent passwd | awk -F: -v g="${_wgGid}" '$4 == g { f=1 } END { exit !f }'; then
+            groupdel "wg-${_usEr}" &> /dev/null && echo "removed group wg-${_usEr}"
+          fi
+        fi
+        # Nothing the purge leaves on disk keeps a number it freed: an
+        # identity deluser removed, a group removed above, or one already
+        # gone on a half-purged box names nothing now, and the next account
+        # is given it. What was moved here (the vhost files) lies outside
+        # every scan above and the account's leftovers were taken off its
+        # groups only: whatever still carries such a number gives that
+        # number to root, and only that one (the inode's other names, if
+        # any, carry the same dead number).
+        for _lftDir in ${_zombie_dir%/} /opt/user/gems/${_usEr} /opt/user/gems/${_usEr}.* \
+          /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* \
+          /mnt/*/files/${_usEr} /mnt/*/*/files/${_usEr} /var/www/phpcache/${_usEr} \
+          /var/backups/ltd; do
+          if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
+            # -execdir: each name is changed inside the directory find
+            # entered without following a link, so no directory between
+            # is looked up again by path (a tenant could swap one for a
+            # link in a world-writable place); it wants an absolute PATH.
+            env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev -nouser \
+              -execdir chown -h root {} + &> /dev/null
+            env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev -nogroup \
+              -execdir chgrp -h root {} + &> /dev/null
+          fi
+        done
+        # In the shared temporary places what the account's identities
+        # wrote there after the pass before deluser goes too, for a number
+        # that names nobody now; each entry is tested again as it is met
+        # (-nouser), so a number given to a new identity meanwhile is left
+        # alone. A group number that names nothing goes to root: the
+        # kernel's trust there reads the owner only.
+        _tmpY=()
+        _tmpC=()
+        for _tmpU in "${_tmpUs[@]}"; do
+          getent passwd "${_tmpU}" &> /dev/null && continue
+          _tmpY+=( -o -uid "${_tmpU}" )
+          _tmpC+=( -o \( -uid "${_tmpU}" -nouser -type d -execdir perl -e "${_tmpRootPl}" -- "${_tmpU}" {} + \) )
+        done
+        if [ "${#_tmpY[@]}" -gt 0 ]; then
+          for _lftDir in /tmp /var/tmp /dev/shm; do
+            [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ] || continue
+            env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev \( "${_tmpY[@]:1}" \) -nouser ! -type d -delete &> /dev/null
+            env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev -depth \( "${_tmpY[@]:1}" \) -nouser -type d -empty -delete &> /dev/null
+          done
+          for _lftDir in /tmp /var/tmp /dev/shm; do
+            [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ] || continue
+            env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev \( "${_tmpC[@]:1}" \) &> /dev/null
+          done
+        fi
+        for _lftDir in /tmp /var/tmp /dev/shm; do
+          if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
+            env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev -nogroup -execdir chgrp -h root {} + &> /dev/null
+          fi
+        done
+        # root's record of the account's conversion to it goes with the account
+        rm -f -- "/root/.${_usEr}.web-group.txt"
         if nginx -t &> /dev/null; then
           service nginx reload &> /dev/null
           echo "nginx configtest OK, reloaded"
@@ -3469,20 +3722,36 @@ _octopus_cleanup() {
 # entry's own stamp, never from file times (a moved store keeps them).
 # Root runs the removal, so nothing here follows a link: the tenant owns
 # static/ and can put a symlink of their choosing at static/files, so the
-# store is admitted only when it resolves under the account or under /mnt (a
-# relocated store), the gate the nightly's backup relocation applies; entries
+# store is admitted only when it is the account's own real static/files or
+# its relocated store in migratefs' layout (/mnt/<mount>/files/<oN>/static/files,
+# no directory of the mount part itself named files or static), never another
+# account's store or any other directory on the mount; entries
 # are enumerated as real directories, used bare (a trailing slash makes rm
 # and chattr walk INTO a link's target), and a link is left alone -- nothing
 # of BOA's ever makes one there.
 _archived_store() {
   # $1 = oN; prints the admissible store's .archived path; 2 = no store yet
-  local _u="$1" _acct _stat _d
+  local _u="$1" _acct _stat _d _ok _m
   _acct=$(realpath -e -- "/data/disk/${_u}" 2> /dev/null) || return 1
   _stat=$(realpath -e -- "/data/disk/${_u}/static/files" 2> /dev/null) || return 2
-  case "${_stat}/" in
-    "${_acct}"/*|/mnt/*) ;;
-    *) echo "OOPS.. ${_u}'s static/files resolves to ${_stat}, outside the account and /mnt: left alone" >&2; return 1 ;;
+  _ok=NO
+  case "${_stat}" in
+    *[!A-Za-z0-9._/-]*) ;;
+    "${_acct}/static/files") _ok=YES ;;
+    /mnt/?*/files/"${_u}"/static/files)
+      _m="${_stat%/files/"${_u}"/static/files}"
+      case "${_m}" in
+        */files/*|*/static/*) ;;
+        *) _ok=YES ;;
+      esac
+      ;;
   esac
+  if [ "${_ok}" != "YES" ]; then
+    # the path is the account's choice: shown printable and bounded
+    _stat="${_stat//[^[:print:]]/?}"
+    echo "OOPS.. ${_u}'s static/files resolves to ${_stat:0:256}, not the account's own store: left alone" >&2
+    return 1
+  fi
   _d="${_stat}/.archived"
   [ -L "${_d}" ] && { echo "OOPS.. ${_u}'s .archived is a symlink: left alone" >&2; return 1; }
   [ -d "${_d}" ] || return 2
@@ -3491,6 +3760,17 @@ _archived_store() {
 _archived_entries() {
   # $1 = the store; its real directories only, bare paths, NUL-separated
   find "$1" -mindepth 1 -maxdepth 1 -type d -print0 2> /dev/null | sort -z
+}
+_archived_rm_in() {
+  # $1 = the store (a resolved path), $2 = an entry name; the entry cleared
+  # of chattr +i and removed from inside the real store only: the tenant owns
+  # static/, and a name on the way swapped for a link after the listing must
+  # never lead the removal out of the store. rm's status; 1 when the store
+  # is not the directory it was
+  ( cd -P -- "${1}" 2> /dev/null && [ "$(pwd -P)" = "${1}" ] || exit 1
+    [ -d "./${2}" ] && [ ! -L "./${2}" ] || exit 0
+    chattr -R -i -- "./${2}" &> /dev/null
+    rm -rf -- "./${2}" )
 }
 _archived_age_days() {
   # $1 = an entry name, YYYYMMDDTHHMMSSZ-<pid>; prints its age in whole days
@@ -3557,8 +3837,7 @@ _archived_prune_user() {
     [ -L "${_e}" ] && continue
     _sites=$(find "${_e}" -mindepth 1 -maxdepth 1 -printf '%f ' 2> /dev/null)
     _kb=$(du -sk -- "${_e}" 2> /dev/null | cut -f1)
-    chattr -R -i -- "${_e}" &> /dev/null
-    rm -rf -- "${_e}"; _rc=$?
+    _archived_rm_in "${_d}" "${_n}"; _rc=$?
     if [ ! -e "${_e}" ] && [ ! -L "${_e}" ]; then
       echo "  removed ${_n} (${_age} days, ${_kb:-0} KB): ${_sites}"
       _cnt=$(( _cnt + 1 )); _tot=$(( _tot + ${_kb:-0} ))
@@ -3668,8 +3947,7 @@ _archived_heal() {
     _mark="/run/boa_archived_heal.stuck.${_u}.${_n}"
     _sites=$(find "${_e}" -mindepth 1 -maxdepth 1 -printf '%f ' 2> /dev/null)
     _kb=$(du -sk -- "${_e}" 2> /dev/null | cut -f1)
-    chattr -R -i -- "${_e}" &> /dev/null
-    rm -rf -- "${_e}"; _rc=$?
+    _archived_rm_in "${_e%/*}" "${_n}"; _rc=$?
     if [ ! -e "${_e}" ] && [ ! -L "${_e}" ]; then
       _line="$(date '+%F %T') removed ${_u} ${_n} (${_kb:-0} KB; its filesystem was ${_pct}% used, above ${_t}%): ${_sites}"
       _cnt=$(( _cnt + 1 )); _tot=$(( _tot + ${_kb:-0} ))

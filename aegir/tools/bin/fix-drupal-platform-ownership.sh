@@ -9,10 +9,11 @@ provide the following arguments:
   --root: Path to the root of your Drupal installation.
   --script-user: Username of the user to whom you want to give file ownership
                  (defaults to 'aegir').
-  --web-group: Web server group name (defaults to 'www-data').
+  --web-group: accepted and ignored; the web group is derived from the
+               platform's account (www-data until the account has its own).
 
-Usage: (sudo) ${0##*/} --root=PATH --script-user=USER --web_group=GROUP
-Example: (sudo) ${0##*/} --drupal_path=/var/aegir/platforms/drupal-7.50 --script-user=aegir --web-group=www-data
+Usage: (sudo) ${0##*/} --root=PATH --script-user=USER
+Example: (sudo) ${0##*/} --root=/var/aegir/platforms/drupal-7.50 --script-user=aegir
 HELP
 exit 0
 }
@@ -22,16 +23,30 @@ if [ "$(id -u)" != 0 ]; then
   exit 1
 fi
 
+# find -execdir refuses a PATH with a relative entry: the walks below run
+# with the one sudo gives them.
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# The notes on what a walk left as it was (_links_left_note) go to fd 3, a
+# copy of stderr taken here: several legs below discard their own output.
+exec 3>&2
+
 # Reject any caller-supplied path that resolves outside the BOA-managed roots.
-# The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users;
-# a crafted symlink under ${drupal_root}/... would otherwise let chown -R
-# rewrite ownership on arbitrary system paths. Defence is two-layered:
+# The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users,
+# and the account owns the names under ${drupal_root}, so any of them can be
+# a link. Defence:
 #  1. _validate_path_prefix on the caller-supplied root.
-#  2. chown -h on every recursive/non-recursive call below, so symlinks
-#     planted under the validated tree (e.g. via uploaded tar archives) have
-#     their own metadata adjusted but their targets are never dereferenced.
-#     This is compatible with legacy BOA platforms that legitimately use a
-#     root-managed symlink for shared core/ — those are skipped, not broken.
+#  2. Every hand-over below goes through _reown_here: each directory and
+#     single-link regular file is changed through a handle opened without
+#     following a link, so no symlink target is ever reached (legacy BOA
+#     platforms that legitimately use a root-managed symlink for shared
+#     core/ are skipped, not broken), and a hard link planted in the tree is
+#     left alone instead of handing over the file it shares. A find walk
+#     hands over each name from -execdir, one ./name in the directory find
+#     holds open.
+#  3. Every hand-over runs inside a directory entered for real (_in_pinned_dir),
+#     on ./names there, so a name on the way swapped for a link after the
+#     root was resolved is never followed.
 _validate_path_prefix() {
   # Scope the resolved path to the SUDO caller's OWN home tree (aegir ->
   # /var/aegir, Octopus oN -> /data/disk/oN), not merely "some BOA tree": a
@@ -94,9 +109,255 @@ _acct_group() {
   echo "${_g}"
 }
 
+_web_group_state() {
+  # The account's own web group, wg-<account>, derived on the box and never
+  # taken from argv or a cnf: the group its pools, backend user and shell
+  # users share for its web paths once the account is converted to it.
+  # Prints "<state> <gid> <group>", "none - -" when there is no such group
+  # (the record is root's: run as another user, converted reads as held):
+  #   none       no group of that name
+  #   foreign    the group exists, but an identity outside the account holds
+  #              it too: never joined nor written to; claim passes still leave
+  #              its paths alone (taking them would cut the pools off)
+  #   held       the group exists and only this account's identities hold it:
+  #              claim passes leave its paths alone, new identities join it
+  #   converted  and root's record names that gid: writers use the group
+  #   phaseb     and the record says the identities have left www-data
+  # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+  # phase=<A|B> ...", root's own file outside the account tree, so neither
+  # the account nor a copy or restore of its tree can make or move it.
+  # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+  # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+  # gems or npm tree, or its store on attached storage
+  # (/mnt/<m>/files/<oN>/static/files).
+  local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  # a path is read as written (an alias the account wrote can carry "..",
+  # "." or "//"): normalised by text alone, never through a link, first
+  case "${_a}" in
+    */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+  esac
+  case "${_a}" in
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+    /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+    /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+      _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+    */*) echo "none - -"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  case "${_a}" in
+    ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+  esac
+  _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  # every holder of the gid: members of each group entry carrying it (a
+  # second entry can share the number) and every user with it as primary
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+      || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+  done
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-${_a}"
+  else
+    echo "held ${_gid} wg-${_a}"
+  fi
+}
+
+_web_group() {
+  # The group a root writer gives an account's web paths (files/, private/,
+  # settings.php and the like): wg-<account> once the account is converted,
+  # www-data otherwise, as always. Until the record says converted every
+  # identity of the account still holds www-data (a conversion grants the web
+  # group first and a revert gives www-data back before it moves any path),
+  # so www-data is the old state, never an outage. Callers write
+  # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
+  # group and never hands a path to a login group. Run as any user but root,
+  # which cannot read root's record, a held group answers empty: the group
+  # each path has is kept. $1 as _web_group_state.
+  local _s
+  _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted|phaseb) echo "${_s##* }" ;;
+    held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+    *) echo "www-data" ;;
+  esac
+}
+
+# The root is resolved once below, but its account owns every name on the
+# way (~/static and the platform tree), so any of them can be swapped for a
+# link at any time. Every act runs inside a directory entered for real: cd -P,
+# then "$@" only while pwd -P there is still the resolved path, so a link put
+# on the way since is never followed, and ./name then stays in that
+# directory whatever is swapped. $1 = a path resolved once above.
+_in_pinned_dir() {
+  local _d="${1}"
+  shift
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+}
+
+# Each named directory or single-link regular file handed to uid $1 and gid
+# $2 through a handle opened without following a link or blocking on a FIFO.
+# A file with more than one link, a link, a FIFO or a socket is left alone:
+# a hard link planted in a tree the account can write shares its file with a
+# name elsewhere, which a chown by name would hand over too, and nothing
+# checks who owns a link. The names are ./names in the current directory.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+
+# A walk leaves a regular file with more than one link as it was (a hard
+# link planted in a tree the account can write would carry the change to the
+# file it shares), so that file keeps its old owner and mode. Say so once
+# per walk: how many the walk's selection holds and the first, found by the
+# same start points and tests ("$@", run from the directory the walk ran
+# in). Printed on fd 3, which the legs that discard their output leave open;
+# no count is taken when the whole run's output goes to /dev/null (the
+# nightly's foreign-CMS leg), which would only add a traversal nobody reads.
+_links_left_note() {
+  local _f _n=0 _first="" _here
+  [ /dev/fd/3 -ef /dev/null ] && return 0
+  while IFS= read -r -d '' _f; do
+    [ -n "${_first}" ] || _first="${_f}"
+    _n=$(( _n + 1 ))
+  done < <(find "$@" -type f -links +1 -print0 2> /dev/null)
+  [ "${_n}" -gt 0 ] || return 0
+  _here="$(pwd -P)"
+  _first="${_here}/${_first#./}"
+  printf "Notice: %s file(s) with more than one link left unchanged under %s, first: %s\n" \
+    "${_n}" "${_here}" "${_first//[[:cntrl:]]/?}" >&3
+  return 0
+}
+
+# chown -h [-R] <owner[:group]> <names> as _ACCT_REOWN_PL hands them over,
+# in the current (pinned) directory: the owner and group resolved to numbers
+# first (a name that does not resolve is refused; no group named is -1, each
+# entry keeps its own, as chown <owner> keeps it), then each ./name, or with
+# -R every entry at or below each name, walked by find (any find tests after
+# the names apply first) and handed over from -execdir, one ./name in the
+# directory find holds; a walk ends with _links_left_note.
+_reown_here() {
+  local _r="" _uid _gid=-1 _rc
+  if [ "${1}" = "-R" ]; then
+    _r="-R"
+    shift
+  fi
+  _uid=$(id -u -- "${1%%:*}" 2> /dev/null)
+  [[ "${1}" != *:* ]] \
+    || _gid=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
+  if [[ ! "${_uid}" =~ ^[0-9]+$ || ! "${_gid}" =~ ^(-1|[0-9]+)$ ]]; then
+    printf "Error: invalid owner %s\n" "${1}" >&2
+    return 1
+  fi
+  shift
+  if [ -n "${_r}" ]; then
+    env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \
+      -execdir perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" {} +
+    _rc=$?
+    _links_left_note "$@"
+    return "${_rc}"
+  else
+    perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" "$@"
+  fi
+}
+
+# ./$1 in the current (pinned) directory as a fresh empty file, created
+# exclusively and renamed over the name (root's, as touch made it): a link or
+# a FIFO put at the name is replaced, never followed or opened.
+_mark_here() {
+  local _t="./.${1}.mark.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  dd if=/dev/null of="${_t}" conv=excl status=none 2> /dev/null \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+
+# The day marker in the current (pinned) sites/all/libraries: every earlier
+# one removed, today's put as _mark_here puts it.
+_own_marker_here() {
+  rm -f -- ./ownership-fixed*.pid
+  _mark_here "ownership-fixed-${_TODAY}.pid"
+}
+
+# ./$2 of the directory $1 (resolved once above) copied into the current
+# (pinned) directory under the same name while that name is still free, as
+# cp -a copied it: the same bytes, owner, group, read/write bits and mtime.
+# The source is read bounded, never through a link or from a FIFO; the copy
+# lands as a fresh file created exclusively, then renamed over the name, so
+# nothing put at the name is written through. The temp is written, owned,
+# moded (the read/write bits, as dd under a umask gave them) and dated
+# through the one handle that created it (_COPY_PUT_PL), never by name: the
+# directory is the account's, and a hard link renamed over the temp before a
+# chown by name would hand the file it shares over. The write is flushed
+# before the date is set, or the write at close would move it again.
+_COPY_PUT_PL='use Fcntl; use IO::Handle; my ($n, $u, $g, $m, $t) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; $h->flush or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; utime($t, $t, $h); close($h) or exit 1; exit 0'
+_copy_new_here() {
+  local _n="${2}" _t="./.${2}.put.$$.${RANDOM}" _st _typ _uid _gid _mod _sz _mt _c
+  if [ -e "./${_n}" ] || [ -L "./${_n}" ]; then
+    return 0
+  fi
+  _st=$(_in_pinned_dir "${1}" stat -c '%F|%u|%g|%a|%s|%Y' -- "./${_n}") \
+    || return 1
+  IFS='|' read -r _typ _uid _gid _mod _sz _mt <<< "${_st}"
+  case "${_typ}" in
+    "regular file"|"regular empty file") ;;
+    *) return 1 ;;
+  esac
+  [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]] || return 1
+  [[ "${_mod}" =~ ^[0-7]+$ && "${_sz}" =~ ^[0-9]+$ && "${_mt}" =~ ^[0-9]+$ ]] \
+    || return 1
+  [ "${_sz}" -le 1048576 ] || return 1
+  # the x keeps the trailing newlines a command substitution would drop
+  _c=$(_in_pinned_dir "${1}" timeout 10 dd if="./${_n}" \
+    iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none \
+    2> /dev/null && echo x) || return 1
+  rm -f -- "${_t}"
+  if printf '%s' "${_c%x}" \
+    | perl -e "${_COPY_PUT_PL}" "${_t}" "${_uid}" "${_gid}" "${_mod}" "${_mt}" \
+    && mv -f -T -- "${_t}" "./${_n}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+
+# Each Grav capsule in the current (pinned) sites/, entered for real: its
+# writable set and its .env handed to the web group.
+_grav_capsules_own_here() {
+  local _c _here
+  _here="$(pwd -P)"
+  for _c in ./*/; do
+    _c="${_c#./}"
+    _in_pinned_dir "${_here}/${_c%/}" _grav_capsule_own_here
+  done
+}
+_grav_capsule_own_here() {
+  local _wd
+  [ -f ./system/defines.php ] || return 0
+  for _wd in user cache logs tmp backup images assets; do
+    [ -d "./${_wd}" ] || continue
+    _reown_here -R "${script_user}${_wg:+:${_wg}}" "./${_wd}"
+  done
+  # The secret root .env drops its world bit, so FPM's read comes via
+  # the web group -- the code pass above homed it to the account group.
+  if [ -f ./.env ]; then
+    _reown_here "${script_user}${_wg:+:${_wg}}" ./.env
+  fi
+}
+
 drupal_root=${1%/}
 script_user=${2:-aegir}
-web_group="${3:-www-data}"
 
 # Parse Command Line Arguments
 while [ "$#" -gt 0 ]; do
@@ -108,7 +369,8 @@ while [ "$#" -gt 0 ]; do
         script_user="${1#*=}"
         ;;
     --web-group=*)
-        web_group="${1#*=}"
+        # Accepted for the callers that pass it, never used: the web group
+        # is derived from the platform's account below.
         ;;
     --help) print_help;;
     *)
@@ -143,23 +405,16 @@ if [ -n "${drupal_root}" ] \
   fi
   _validate_path_prefix "${drupal_root}"
   _code_group=$(_acct_group "${drupal_root}")
+  _wg=$(_web_group "${drupal_root}")
   # Capsule ownership model (spike-proven): code <user>:<account group>; the
-  # writable set <user>:<web_group> so FPM writes via GROUP (version-flip-immune)
+  # writable set <user>:<web group> so FPM writes via GROUP (version-flip-immune)
   # -- and web-created files are re-homed to the instance user, healing the
   # web-owned residue the lifecycle verbs otherwise have to park.
+  # Each pass runs inside the real root or capsule (_in_pinned_dir), and the
+  # owner and group stay one quoted argument.
   printf "Setting Grav ownership of %s to: user => %s group => %s\n" "${drupal_root}" "${script_user}" "${_code_group}"
-  chown -h -R ${script_user}:${_code_group} ${drupal_root}
-  for _capsule in ${drupal_root}/sites/*/; do
-    [ -f "${_capsule}system/defines.php" ] || continue
-    for _wd in user cache logs tmp backup images assets; do
-      [ -d "${_capsule}${_wd}" ] || continue
-      chown -h -R ${script_user}:${web_group:-www-data} "${_capsule}${_wd}"
-    done
-    # The secret root .env drops its world bit, so FPM's read comes via
-    # the web group -- the code pass above homed it to the account group.
-    [ -f "${_capsule}.env" ] \
-      && chown -h ${script_user}:${web_group:-www-data} "${_capsule}.env"
-  done
+  _in_pinned_dir "${drupal_root}" _reown_here -R "${script_user}:${_code_group}" .
+  _in_pinned_dir "${drupal_root}/sites" _grav_capsules_own_here
   echo "Done setting proper ownership of files and directories (Grav)."
   exit 0
 fi
@@ -186,10 +441,12 @@ if [ -n "${drupal_root}" ] \
   # carry 0440 group-read secrets (config.php, drushrc.php) and web-group
   # writable dirs the site pass owns; a platform-wide chown would re-home
   # their groups and break FPM's group-read path, so sites/* is pruned
-  # outright (only the sites/ directory itself takes core ownership).
+  # outright (only the sites/ directory itself takes core ownership). Each
+  # name is handed over from -execdir (_reown_here), one ./name in the
+  # directory find holds open, so no directory on the way is resolved again.
   printf "Setting Textpattern ownership of %s to: user => %s group => %s\n" "${drupal_root}" "${script_user}" "${_code_group}"
-  find ${drupal_root} -path "${drupal_root}/sites/*" -prune \
-    -o -exec chown -h ${script_user}:${_code_group} {} + 2> /dev/null
+  _in_pinned_dir "${drupal_root}" _reown_here -R \
+    "${script_user}:${_code_group}" . -path "./sites/*" -prune -o 2> /dev/null
   echo "Done setting proper ownership of files and directories (Textpattern platform)."
   exit 0
 fi
@@ -216,6 +473,7 @@ fi
 
 _validate_path_prefix "${drupal_root}"
 _code_group=$(_acct_group "${drupal_root}")
+_wg=$(_web_group "${drupal_root}")
 
 ### sites and sites/all are names a tenant can plant as symlinks (the docroot
 ### is group-writable) and every op below walks THROUGH them; -h protects
@@ -251,50 +509,62 @@ if [ -e "${drupal_root}/sites/all/libraries/ownership-fixed-${_TODAY}.pid" ]; th
   fi
 fi
 
-cd ${drupal_root}
+### Every act below runs inside a directory entered for real
+### (_in_pinned_dir) and names only ./entries there; refuse now when the
+### root itself cannot be entered as resolved.
+if ! _in_pinned_dir "${drupal_root}" true; then
+  printf "Error: %s is not a real directory; refusing.\n" "${drupal_root}" >&2
+  exit 1
+fi
 
-printf "Setting ownership of "${drupal_root}" to: user => "${script_user}" group => "${_code_group}"\n"
-chown -h ${script_user}:${_code_group} ${drupal_root}
+printf 'Setting ownership of %s to: user => %s group => %s\n' "${drupal_root}" "${script_user}" "${_code_group}"
+_in_pinned_dir "${drupal_root}" chown -h "${script_user}:${_code_group}" .
 
 ### Make sure that expected sites/all sub-directories exist
-mkdir -p ${drupal_root}/sites/all/{modules,themes,libraries,drush}
+_in_pinned_dir "${drupal_root}/sites" mkdir -p ./all
+_in_pinned_dir "${drupal_root}/sites/all" \
+  mkdir -p ./modules ./themes ./libraries ./drush
 
 ### Create ctrl pid
-rm -f ${drupal_root}/sites/all/libraries/ownership-fixed*.pid
-touch ${drupal_root}/sites/all/libraries/ownership-fixed-${_TODAY}.pid
+_in_pinned_dir "${drupal_root}/sites/all/libraries" _own_marker_here
 
 ### sites/development.services.yml is a core scaffold file. Deleting it
 ### here (2019) made every later composer run re-scaffold it into the
 ### oN-owned sites/ directory and fail (omega8cc/boa#1936). Put core's own
 ### copy back where an earlier run removed it, so the scaffold plugin finds
-### it unchanged and never has to write there.
+### it unchanged and never has to write there. Read and written only inside
+### the real directories (_copy_new_here).
 _scaffold_yml="${drupal_root}/core/assets/scaffold/files/development.services.yml"
 if [[ "${drupal_root}" =~ "/static/" ]] \
   && [ -f "${_scaffold_yml}" ] && [ ! -L "${_scaffold_yml}" ] \
   && [ ! -e "${drupal_root}/sites/development.services.yml" ] \
   && [ ! -L "${drupal_root}/sites/development.services.yml" ]; then
-  cp -a "${_scaffold_yml}" "${drupal_root}/sites/development.services.yml"
+  _in_pinned_dir "${drupal_root}/sites" \
+    _copy_new_here "${_scaffold_yml%/*}" development.services.yml
 fi
 
-### -h on every chown: never dereference symlinks (legacy BOA-managed
-### shared-core symlinks under /var/aegir/distro/ stay untouched; attacker
-### symlinks planted under /data/disk/<o>/ or /home/<u>/ via uploaded tar
-### archives cannot redirect chown onto system paths).
+### Every hand-over goes through _reown_here: symlinks under the account tree
+### are never dereferenced (legacy BOA-managed shared-core symlinks under
+### /var/aegir/distro/ stay untouched) and hard links are left alone.
 if [ -e "${drupal_root}/vendor" ]; then
-  chown -h -R ${script_user}:${_code_group} ${drupal_root}/vendor
+  _in_pinned_dir "${drupal_root}" \
+    _reown_here -R "${script_user}:${_code_group}" ./vendor
 elif [ -e "${drupal_root}/../vendor" ]; then
-  chown -h -R ${script_user}:${_code_group} ${drupal_root}/../vendor
+  _in_pinned_dir "${drupal_root%/*}" \
+    _reown_here -R "${script_user}:${_code_group}" ./vendor
 fi
 
 ### The lists below span every core generation: a D7 tree has includes/ and
 ### misc/ but no core/ or libraries/, a D8+ tree the reverse, and sites.php
 ### or sites/all/drush/drushrc.php may not exist yet. chown reports each
 ### absent path as an error, which put a dozen "cannot access" lines into
-### every install and upgrade report and trained readers to skip them. Chown
-### what is there; a dangling symlink is still a target, since -h owns the
-### link itself.
+### every install and upgrade report and trained readers to skip them. Hand
+### over what is there (_reown_here, which leaves a link alone). Runs inside
+### a directory entered for real: each argument is a ./name or a pattern,
+### expanded there and nowhere else.
 _own_existing() {
-  local _mode="$1" _pth
+  local _mode="$1" _pat _pth
+  local -a _list=()
   shift
   case "${_mode}" in
     recursive|single) : ;;
@@ -303,37 +573,40 @@ _own_existing() {
       exit 1
       ;;
   esac
-  for _pth in "$@"; do
-    [ -e "${_pth}" ] || [ -L "${_pth}" ] || continue
-    if [ "${_mode}" = "recursive" ]; then
-      chown -h -R "${script_user}:${_code_group}" "${_pth}"
-    else
-      chown -h "${script_user}:${_code_group}" "${_pth}"
-    fi
+  for _pat in "$@"; do
+    for _pth in ${_pat}; do
+      [ -e "${_pth}" ] || [ -L "${_pth}" ] || continue
+      _list+=("${_pth}")
+    done
   done
+  [ "${#_list[@]}" -gt 0 ] || return 0
+  if [ "${_mode}" = "recursive" ]; then
+    _reown_here -R "${script_user}:${_code_group}" "${_list[@]}"
+  else
+    _reown_here "${script_user}:${_code_group}" "${_list[@]}"
+  fi
 }
 
-_own_existing recursive \
-  ${drupal_root}/sites/all/{modules,themes,libraries,drush} \
-  ${drupal_root}/{modules,themes,libraries,includes,misc,profiles,core}
+_in_pinned_dir "${drupal_root}/sites/all" _own_existing recursive \
+  ./modules ./themes ./libraries ./drush
+_in_pinned_dir "${drupal_root}" _own_existing recursive \
+  ./modules ./themes ./libraries ./includes ./misc ./profiles ./core
 
-_own_existing single \
-  ${drupal_root}/sites/all/drush/drushrc.php \
-  ${drupal_root}/sites \
-  ${drupal_root}/sites/* \
-  ${drupal_root}/sites/sites.php \
-  ${drupal_root}/sites/all
+_in_pinned_dir "${drupal_root}/sites/all/drush" _own_existing single \
+  ./drushrc.php
+_in_pinned_dir "${drupal_root}" _own_existing single ./sites
+_in_pinned_dir "${drupal_root}/sites" _own_existing single \
+  './*' ./sites.php ./all
 
 ### known exceptions
 ### libraries/ is tenant-writable, so tcpdf and its cache child are names the
-### tenant can plant. An intermediate symlink in the operand path is resolved
-### by the kernel; -h and the -R default -P govern only the final component
-### and the traversal. Precheck both, as the nightly does; a real directory
-### is treated exactly as before.
+### tenant can plant. Precheck both, as the nightly does, and hand cache over
+### from inside it, entered for real, so no name on the way is resolved
+### again; a real directory is treated exactly as before.
 if [ ! -L "${drupal_root}/sites/all/libraries/tcpdf" ] \
   && [ ! -L "${drupal_root}/sites/all/libraries/tcpdf/cache" ]; then
-  chown -h -R ${script_user}:www-data \
-    ${drupal_root}/sites/all/libraries/tcpdf/cache &> /dev/null
+  _in_pinned_dir "${drupal_root}/sites/all/libraries/tcpdf/cache" \
+    _reown_here -R "${script_user}${_wg:+:${_wg}}" . &> /dev/null
 fi
 
 echo "Done setting proper ownership of platform files and directories."

@@ -37,7 +37,10 @@ tell you which one. Add one line per site: the site name, then the changes you w
 | `user-block` | **Block** AI assistant fetchers for this site |
 | `utility-block` | **Block** AI utility bots for this site |
 
-You can combine flags on one line. A site with no line keeps the defaults above.
+You can combine flags on one line. A site with no line keeps the defaults above. For a
+site in a subdirectory of a domain (`example.com/blog`), write the line for the domain
+(`example.com`), whether or not the domain is a site of its own: that line
+covers every path of the domain, its subdirectory sites included.
 
 ```
 # static/control/ai/policy.txt

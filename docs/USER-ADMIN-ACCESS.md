@@ -18,14 +18,18 @@ includes per site into that Octopus instance's `config/includes/`:
 
 ```
 user_admin_access_map/<site>.conf   (http scope)
-  geo $ua_ip_ok_<hash>  { default 0; 127.0.0.1 1; ::1 1; <allowed…> 1; }
+  geo $ua_ip_ok_<hash>  { proxy 127.0.0.1; proxy ::1; proxy <server IPv4>;
+                          default 0; 127.0.0.1 1; ::1 1; <allowed…> 1; }
   map $uri  $ua_u_<hash>    { default 0; ~*^/+(?:user|admin)(?:/|$) 1; }
   map "$ua_u_<hash>$ua_ip_ok_<hash>" $ua_deny_<hash> {
     default 0; "10" 1;
   }
+  map $ua_ip_ok_<hash> $ua_lk_<hash> { default 1; 1 0; }
 
 user_admin_access/<site>.conf       (server scope)
   if ($ua_deny_<hash>) { return 403; }
+  set $boa_ua_lk_self $ua_lk_<hash>;
+  fastcgi_param BOA_UA_LK_SELF $ua_lk_<hash>;
 ```
 
 `$ua_deny_<hash>` is 1 only when a `/user`-or-`/admin` request (matched on the clean `$uri`)
@@ -34,12 +38,16 @@ paths always arrive in `$uri` — which nginx percent-decodes and normalises (co
 `/./` and, under the default `merge_slashes on`, `//`); the `^/+` anchor also catches a
 multi-slash `//admin` even if a vhost ever disabled `merge_slashes`.
 
-The legacy `?q=admin`
-query form is not a clean path (not served by default on BOA) and is deliberately not
-matched here — `$arg_q` cannot be reliably gated at the nginx layer (nginx neither
-percent-decodes it nor de-duplicates it the way Drupal reads `$_GET['q']`), so a partial
-match there would be a bypassable false control. `<hash>` is a short digest of the site
-name, so each site's variables are unique in the shared `http{}`.
+This nginx layer matches the clean `$uri` only: `$arg_q` cannot be gated reliably here
+(nginx neither percent-decodes it nor de-duplicates it the way Drupal reads `$_GET['q']`),
+so a match on it would be a bypassable false control. `<hash>` is a short digest of the
+site name, so each site's variables are unique in the shared `http{}`.
+
+The legacy query-string route form (`/?q=user/login`, `/index.php?q=admin`), which Drupal
+6/7 and Backdrop still route on and which arrives with `$uri` `/`, is caught in PHP instead.
+This feature passes a per-request lock verdict to the backend, and BOA's global settings
+refuse a `$_GET['q']` (or a trailing-character clean path such as `/user+`) that resolves to
+the user/admin surface from a locked visitor. Drupal 8+ does not route on `q`.
 
 ### Grav 2 and Textpattern sites
 
@@ -173,10 +181,13 @@ staging.example.com    198.51.100.42 2001:db8:1::1
 
 A site without a certificate of its own is served over HTTPS by the wildcard SSL front
 (`nginx_wild_ssl.conf`), which proxies to the site's port-80 vhost. There the peer is always
-`127.0.0.1`, which the anti-lockout admits, so the vhost fragments alone cannot hold on that
-path.
+`127.0.0.1`; a panel's HTTPS proxy likewise connects from the box's own address. The vhost
+`geo` trusts those on-box hops to name the visitor: it judges the last `X-Forwarded-For`
+address, which each of them appends itself. It is not recursive, so an address a client puts
+earlier in the header can never step past it, and a loopback caller that forwards none is
+judged as loopback.
 
-The generator therefore also writes a front copy of every listed site into
+The generator also writes a front copy of every listed site into
 `user_admin_access_front/`. `<site>.http.conf` holds its own `geo`, the same `$uri` map (the
 Grav and Textpattern lines included) and a `$host` map of the site's server names, aliases
 included; `<site>.srv.conf` holds the `403`. The front includes both and judges the real
@@ -250,12 +261,12 @@ difference is scope (whole-site vs the admin surface).
   every site's fragments as they were: a Grav map written before the Grav `/admin` line
   keeps the plain `/user` + `/admin` line, theme assets included, until the control file
   exists again.
-- **Clean URLs only.** BOA enforces Drupal clean URLs, so `/user` and `/admin` arrive as the
-  real `$uri`, which the match is keyed on (nginx decodes/normalises `$uri`, so the match is
-  encoding- and multi-slash-safe). The legacy `?q=admin` query form is not gated at the
-  nginx layer — it is not served by default on BOA, and `$arg_q` cannot be reliably matched
-  there. This matches BOA's existing nginx admin guard (`location ^~ /admin`), which likewise
-  keys on the clean path; Drupal's own authentication remains the control for that vector.
+- **Two layers.** The nginx layer keys on the clean `$uri` (decoded and normalised, so
+  encoding- and multi-slash-safe). The query-string route form and trailing-character path
+  variants that Drupal 6/7 and Backdrop resolve to the same menu item are caught in PHP from
+  the per-request verdict in the emitted config above: the real visitor's, on a direct hit
+  and behind the front and the panel proxy alike, carried with no vhost rebuild. Drupal 8+
+  does not route on `q`.
 - **Defence in depth, not the sole control.** Drupal's own login and permission checks
   still apply; this layer narrows *who can reach* the login/admin surface at the edge.
 - **realip dependency** — as above, allow-lists on CF-proxied sites are only meaningful

@@ -234,23 +234,13 @@ with a fully rebuilt cache, eliminating the conditions that produce a poisoned e
 
 **If wget cron appears to not complete (e.g. Scheduler module not publishing nodes on
 schedule):** do not switch to drush cron as a workaround. The likely cause is the cron run
-exceeding BOA's default PHP execution time limit of 3 minutes (180 seconds). The correct
-fix is to increase the limit via the FPM pool configuration files:
-
-```
-/opt/etc/fpm/fpm-pool-common.conf
-/opt/etc/fpm/fpm-pool-common-legacy.conf
-/opt/etc/fpm/fpm-pool-common-modern.conf
-```
-
-The relevant settings are the `php_admin_value[...]` directives
-`php_admin_value[max_execution_time]`, `php_admin_value[max_input_time]`, and
-`php_admin_value[default_socket_timeout]` (each shipped at `180`) — edit these directives
-directly; the bare, un-prefixed key form is not honoured in these pool files. See the last
-entry in
-https://github.com/omega8cc/boa/blob/5.x-dev/docs/FAQ.md for details. These files are
-overwritten on every barracuda upgrade and must be reapplied after upgrades. Also
-investigate why cron exceeds 3 minutes — this is worth resolving independently.
+exceeding BOA's web request ceiling of 3 minutes (180 seconds). That ceiling cannot be
+raised: the pool's `request_terminate_timeout` is 180 s (`_PHP_FPM_TIMEOUT` can only lower
+it) and nginx's `fastcgi_read_timeout` is a fixed 180 s, so raising
+`php_admin_value[max_execution_time]` in `/opt/etc/fpm/fpm-pool-common*.conf` has no effect
+above it. Shorten the work instead: run a job that needs longer from the shell with the
+site's own Drush (`vdrush`), where PHP has no execution time limit, and investigate why cron
+exceeds 3 minutes.
 
 
 ## Issue 3: Intermittent class-not-found / file-unreadable errors

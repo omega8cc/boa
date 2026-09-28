@@ -84,11 +84,66 @@ _take_sqlclean_lock() {
   fi
 }
 
-### migproxy.cnf is parsed, never sourced (log/ arrives over rsync).
+### The account's static/control is its main login's, and oN owns the rest
+### of /data/disk/oN (log/, .drush): either can put a link or a FIFO at any
+### name there, or at the directory itself. Run "$@" inside the real
+### directory $1: below /data/disk and /home every name on the path must be
+### a real directory; once entered, ./name stays there whatever is swapped.
+_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+### ./$1 in the current (pinned) directory: never through a link, never
+### blocked on a FIFO, at most 1 MiB; empty for anything else.
+_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+
+### The file $1, read as _read_here reads it inside its real directory.
+_read_file() {
+  _in_real_dir "${1%/*}" _read_here "${1##*/}"
+}
+
+### The regular files of the real directory $1 that the find tests after it
+### select, one name per line, listed inside that directory (empty when $1
+### is not a real directory).
+_names_in() {
+  local _d="$1"
+  shift
+  _in_real_dir "${_d}" find . -maxdepth 1 -mindepth 1 -type f "$@" \
+    2> /dev/null | sed 's|^\./||' | sort
+}
+
+### A certificate a vhost names, read only for its dates: an absolute path,
+### at most 1 MiB, never blocked on a FIFO (the Let's Encrypt layout reaches
+### the file through links, so the name is followed).
+_cert_text() {
+  case "$1" in
+    /?*) ;;
+    *) return 1 ;;
+  esac
+  timeout 10 dd if="$1" iflag=nonblock,fullblock bs=1048576 count=1 \
+    status=none 2> /dev/null
+}
+
+### migproxy.cnf is parsed, never sourced (log/ arrives over rsync), and
+### read inside the real log/, never through a link or into a FIFO.
 _mig_get() {
   local _f="$1" _k="$2"
   [ -r "${_f}" ] || return 1
-  grep -m1 "^${_k}=" "${_f}" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'
+  _read_file "${_f}" | grep -m1 "^${_k}=" | cut -d= -f2- | tr -d '\r\n'
 }
 
 _sane_ident() {
@@ -96,9 +151,73 @@ _sane_ident() {
   [ "${_v}" = "$1" ] && [ -n "${_v}" ] && echo "${_v}"
 }
 
+### An alias field; .drush is oN's, so the alias is read inside the real
+### directory, never through a link or into a FIFO put at the name.
 _alias_field() {
-  sed -n "s/.*'$2'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" "$1" \
-    2>/dev/null | head -n1
+  _read_file "$1" \
+    | sed -n "s/.*'$2'[[:space:]]*=>[[:space:]]*'\([^']*\)'.*/\1/p" \
+    | head -n1
+}
+
+### The account proves it owns a database by logging in as its own user and
+### using it: BOA sets db_user == db_name (one user per site DB), so a login
+### as that user with that password can reach only databases the account
+### really owns. $1 = db (== user), $2 = its password. The socket login
+### matches the user at 'localhost'; Provision also grants every site user
+### at '127.0.0.1' (and imported users hold '%'), which a TCP login to this
+### box's own server on 3306 matches whatever _THIS_DB_HOST the box uses.
+_cred_ok() {
+  [ -n "$1" ] && [ -n "$2" ] || return 1
+  mysql -u"$1" -p"$2" -N -B -e "USE \`$1\`" > /dev/null 2>&1 && return 0
+  mysql --protocol=tcp -h127.0.0.1 -P3306 -u"$1" -p"$2" -N -B \
+    -e "USE \`$1\`" > /dev/null 2>&1
+}
+
+### db_name for the site at $1, echoed ONLY when it is the account's own:
+### the site_path must lie under the account, its drushrc is read inside the
+### real directory (never through a link or FIFO), db_user must equal
+### db_name, and the account's own credentials must open it. A database is
+### dumped or dropped only when all of that holds. Returns 1 when the site
+### has no drushrc.php at all; any other refusal prints the step that failed
+### (site-path, read, db_user!=db_name, login) and returns 2.
+_acct_owns_db() {
+  local _sp="$1" _rc _dn _du _dp
+  case "${_sp}/" in
+    "${_USR}"/*) ;;
+    *)
+      [ -e "${_sp}/drushrc.php" ] || [ -L "${_sp}/drushrc.php" ] || return 1
+      echo "site-path"
+      return 2
+      ;;
+  esac
+  [ -e "${_sp}/drushrc.php" ] || [ -L "${_sp}/drushrc.php" ] || return 1
+  _rc="$(_read_file "${_sp}/drushrc.php")"
+  _dn=$(printf '%s\n' "${_rc}" \
+    | sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" | head -n1)
+  _du=$(printf '%s\n' "${_rc}" \
+    | sed -n "s/^\$options\['db_user'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" | head -n1)
+  _dp=$(printf '%s\n' "${_rc}" \
+    | sed -n "s/^\$options\['db_passwd'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" | head -n1)
+  _dn="$(_sane_ident "${_dn}")"
+  [ -n "${_dn}" ] || { echo "read"; return 2; }
+  [ "${_du}" = "${_dn}" ] || { echo "db_user!=db_name"; return 2; }
+  _cred_ok "${_dn}" "${_dp}" || { echo "login"; return 2; }
+  echo "${_dn}"
+}
+
+### _acct_owns_db for the site at $1 in _map_account: sets _db to the proven
+### database, or empty; a site whose drushrc.php exists but whose database
+### cannot be proven is added to _MAP_UNPROVEN as <site_path>:<step>.
+_map_own_db() {
+  local _out _rc
+  _db=""
+  _out="$(_acct_owns_db "$1")"
+  _rc=$?
+  if [ "${_rc}" = "0" ]; then
+    _db="${_out}"
+  elif [ "${_rc}" = "2" ]; then
+    _MAP_UNPROVEN="${_MAP_UNPROVEN} ${1}:${_out}"
+  fi
 }
 
 ### -------------------------------------------------------------- state ---
@@ -168,13 +287,14 @@ _list_accounts() {
 _panel_only() {
   ### $1 acct: true when the account's only live vhost is its own (local,
   ### non-proxy) control panel -- nothing of it was ever proxied.
+  ### vhost.d is the account's: listed and read inside the real directory.
   local _oN="$1" _vhd="/data/disk/$1/config/server_master/nginx/vhost.d" _u _n
   _u="$(_alias_field "/data/disk/${_oN}/.drush/hostmaster.alias.drushrc.php" "uri")"
   [ -n "${_u}" ] || return 1
   [ -e "${_vhd}/${_u}" ] || return 1
-  grep -q "proxy_pass" "${_vhd}/${_u}" 2>/dev/null && return 1
-  _n=$(find "${_vhd}" -maxdepth 1 -mindepth 1 -type f ! -name '.*' ! -name 'https.*' \
-    ! -name "${_u}" ! -name "www.${_u}" 2>/dev/null | wc -l | tr -d ' ')
+  _read_file "${_vhd}/${_u}" | grep -q "proxy_pass" && return 1
+  _n=$(_names_in "${_vhd}" ! -name '.*' ! -name 'https.*' \
+    ! -name "${_u}" ! -name "www.${_u}" | sed '/^$/d' | wc -l | tr -d ' ')
   [ "${_n}" = "0" ]
 }
 
@@ -190,7 +310,10 @@ _resolve_mnt_store() {
 
 _safe_resolved() {
   ### $1 path, $2 acct root: resolved target must live inside the account
-  ### or inside the single /mnt store. Anything else is refused upstream.
+  ### or inside this account's own part of the single /mnt store (the
+  ### store layout <mount>/files/<oN>/...). static/ is group-writable, so a
+  ### link there can name another account's store: anything else is refused
+  ### upstream.
   local _r
   _r=$(readlink -f "$1" 2>/dev/null)
   [ -z "${_r}" ] && return 1
@@ -199,12 +322,52 @@ _safe_resolved() {
   esac
   if [ -n "${_MNT_STORE}" ]; then
     case "${_r}" in
-      "${_MNT_STORE}"/*) echo "${_r}"; return 0 ;;
+      "${_MNT_STORE}/files/${2##*/}"/*) echo "${_r}"; return 0 ;;
     esac
   elif [ "${_MNT_COUNT}" != "0" ]; then
     return 1
   fi
   return 1
+}
+
+### The static/ trees removed, run inside the real static/ ($1 account, $2
+### its root), control kept: a link's store is removed only when it
+### resolves where _safe_resolved allows, and as a name inside its real
+### parent directory; the link itself always goes, never followed by rm.
+_trim_static_here() {
+  local _f _r
+  if [ -L ./files ]; then
+    _r="$(_safe_resolved ./files "${2}")"
+    if [ -n "${_r}" ]; then
+      _in_real_dir "${_r%/*}" rm -rf -- "./${_r##*/}" && rm -f -- ./files \
+        && _info "${1}: removed resolved files store ${_r}"
+    else
+      _alrt "${1}: static/files resolves outside the account/store -- left in place"
+    fi
+  fi
+  for _f in ./*; do
+    [ -e "${_f}" ] || continue
+    case "${_f#./}" in
+      control) continue ;;
+    esac
+    if [ -L "${_f}" ]; then
+      _r="$(_safe_resolved "${_f}" "${2}")"
+      if [ -n "${_r}" ]; then
+        _in_real_dir "${_r%/*}" rm -rf -- "./${_r##*/}"
+        rm -f -- "${_f}"
+        _info "${1}: removed static tree ${2}/static/${_f#./} (store ${_r})"
+      else
+        ### The link resolves outside the account and its own store, so the
+        ### store is not this account's to remove: keep both, name the target,
+        ### and leave the deletion to a deliberate decision.
+        _alrt "${1}: static/${_f#./} resolves to $(readlink -f "${_f}" 2> /dev/null) outside the account/store -- link and data left in place"
+        continue
+      fi
+    else
+      rm -rf -- "${_f}"
+      _info "${1}: removed static tree ${2}/static/${_f#./}"
+    fi
+  done
 }
 
 _map_account() {
@@ -214,7 +377,8 @@ _map_account() {
   _USR="/data/disk/${_oN}"
   _VHD="${_USR}/config/server_master/nginx/vhost.d"
   _MAP_DOMS=""; _MAP_TGT=""; _MAP_TGT_BAD=""; _MAP_REDIR=""; _MAP_TGT_FROM_REC=NO
-  _MAP_SITES=""; _MAP_DBS=""; _MAP_HM_DB=""; _MAP_ALL_DBS=""
+  _MAP_SITES=""; _MAP_DBS=""; _MAP_HM_DB=""; _MAP_ALL_DBS=""; _MAP_UNPROVEN=""
+  _MAP_HM_WHY=""
   _MAP_PLATS=""; _MAP_NOSAVED=""
   ### The account's own control panel is never proxied: the cutover leaves
   ### it LOCAL in maintenance mode on this box (its vhost is a plain PHP
@@ -226,13 +390,15 @@ _map_account() {
   if [ -r "${_USR}/.drush/hostmaster.alias.drushrc.php" ]; then
     _MAP_PANEL_DOM="$(_alias_field "${_USR}/.drush/hostmaster.alias.drushrc.php" "uri")"
   fi
-  ### Live vhosts must all be proxies pointing at ONE target.
-  for _v in $(find "${_VHD}" -maxdepth 1 -mindepth 1 -type f \
-    ! -name '.*' ! -name 'https.*' 2>/dev/null | sort); do
-    _d="$(basename "${_v}")"
+  ### Live vhosts must all be proxies pointing at ONE target. vhost.d is the
+  ### account's: each vhost is listed and read inside the real directory,
+  ### never through a link or into a FIFO put at its name.
+  local _vt
+  for _d in $(_names_in "${_VHD}" ! -name '.*' ! -name 'https.*'); do
+    _vt="$(_read_file "${_VHD}/${_d}")"
     if [ -n "${_MAP_PANEL_DOM}" ] \
       && { [ "${_d}" = "${_MAP_PANEL_DOM}" ] || [ "${_d}" = "www.${_MAP_PANEL_DOM}" ]; } \
-      && ! grep -q "proxy_pass" "${_v}" 2>/dev/null; then
+      && ! printf '%s\n' "${_vt}" | grep -q "proxy_pass"; then
       _MAP_PANEL_LOCAL=YES
       continue
     fi
@@ -248,19 +414,19 @@ _map_account() {
     ### serving after finalize like every other kept vhost under config/.
     ### The reader matches the writer: any other 301-only vhost still fails
     ### the integrity check below.
-    if grep -q "renamed site: redirect to its new name" "${_v}" 2>/dev/null \
-      && ! grep -q "proxy_pass" "${_v}" 2>/dev/null \
-      && ! grep -q "fastcgi_param db_name" "${_v}" 2>/dev/null \
-      && grep -q "^[[:space:]]*return 301 " "${_v}" 2>/dev/null; then
+    if printf '%s\n' "${_vt}" | grep -q "renamed site: redirect to its new name" \
+      && ! printf '%s\n' "${_vt}" | grep -q "proxy_pass" \
+      && ! printf '%s\n' "${_vt}" | grep -q "fastcgi_param db_name" \
+      && printf '%s\n' "${_vt}" | grep -q "^[[:space:]]*return 301 "; then
       _MAP_REDIR="${_MAP_REDIR} ${_d}"
       [ -e "${_VHD}/.${_d}" ] || _MAP_NOSAVED="${_MAP_NOSAVED} ${_d}"
       continue
     fi
-    if ! grep -q "proxy_pass" "${_v}" 2>/dev/null \
-      || grep -q "fastcgi_param db_name" "${_v}" 2>/dev/null; then
+    if ! printf '%s\n' "${_vt}" | grep -q "proxy_pass" \
+      || printf '%s\n' "${_vt}" | grep -q "fastcgi_param db_name"; then
       _MAP_TGT_BAD="${_MAP_TGT_BAD} ${_d}:not-a-proxy-vhost"
     fi
-    _t=$(grep -m1 "proxy_pass" "${_v}" 2>/dev/null \
+    _t=$(printf '%s\n' "${_vt}" | grep -m1 "proxy_pass" \
       | sed "s|.*proxy_pass[[:space:]]*https\{0,1\}://||; s|;.*||" | tr -d ' ')
     if [ -n "${_t}" ]; then
       if [ -z "${_MAP_TGT}" ]; then
@@ -290,12 +456,11 @@ _map_account() {
     _sp="$(_alias_field "${_al}" "site_path")"
     [ -z "${_sp}" ] && continue
     _MAP_SITES="${_MAP_SITES} ${_sp}"
-    if [ -r "${_sp}/drushrc.php" ]; then
-      _db=$(sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
-        "${_sp}/drushrc.php" 2>/dev/null | head -n1)
-      _db="$(_sane_ident "${_db}")"
-      [ -n "${_db}" ] && _MAP_DBS="${_MAP_DBS} ${_db}"
-    fi
+    ### Only a database the account can prove it owns enters the drop list;
+    ### a site whose drushrc names one that cannot be proven fails the
+    ### preflight (see _MAP_UNPROVEN there).
+    _map_own_db "${_sp}"
+    [ -n "${_db}" ] && _MAP_DBS="${_MAP_DBS} ${_db}"
   done
   _MAP_DBS=$(echo "${_MAP_DBS}" | tr ' ' '\n' | sort -u | tr '\n' ' ')
   ### The account's OWN dedicated Aegir site (oN.<this-host-fqdn>) is local
@@ -310,20 +475,20 @@ _map_account() {
   _selfdom="${_oN}.$(hostname -f 2>/dev/null | tr -d '\n')"
   if [ -r "${_USR}/.drush/${_selfdom}.alias.drushrc.php" ]; then
     _sp="$(_alias_field "${_USR}/.drush/${_selfdom}.alias.drushrc.php" "site_path")"
-    if [ -n "${_sp}" ] && [ -r "${_sp}/drushrc.php" ]; then
-      _db=$(sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
-        "${_sp}/drushrc.php" 2>/dev/null | head -n1)
-      _db="$(_sane_ident "${_db}")"
+    if [ -n "${_sp}" ]; then
+      _db="$(_acct_owns_db "${_sp}")" || _db=""
       [ -n "${_db}" ] && _MAP_OWN_DBS="${_MAP_OWN_DBS} ${_db}"
     fi
   fi
-  ### The account panel database.
+  ### The account panel database. Ownership proven like every other; the
+  ### panel is only exempt from the target-NAME proof, never from ownership.
   if [ -r "${_USR}/.drush/hostmaster.alias.drushrc.php" ]; then
     _sp="$(_alias_field "${_USR}/.drush/hostmaster.alias.drushrc.php" "site_path")"
-    if [ -n "${_sp}" ] && [ -r "${_sp}/drushrc.php" ]; then
-      _db=$(sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
-        "${_sp}/drushrc.php" 2>/dev/null | head -n1)
-      _MAP_HM_DB="$(_sane_ident "${_db}")"
+    if [ -n "${_sp}" ]; then
+      _MAP_HM_DB="$(_acct_owns_db "${_sp}")" || {
+        _MAP_HM_WHY="${_MAP_HM_DB}"
+        _MAP_HM_DB=""
+      }
     fi
   fi
   ### Platform roots come from platform_* aliases, never a glob.
@@ -552,26 +717,27 @@ _target_proof_vhosts() {
 _cert_horizon() {
   ### $1 acct: earliest notAfter behind retained https vhosts; refuses on
   ### an already-expired cert. Prints "<days> <domain>" for the earliest.
+  ### The vhosts are read inside the real vhost.d, the certificate each
+  ### names as _cert_text reads it.
   local _oN="$1" _v _crt _end _now _days _min=999999 _mind=""
   _now=$(date +%s)
-  for _v in "${_VHD}"/https.*; do
-    [ -e "${_v}" ] || continue
+  for _v in $(_names_in "${_VHD}" -name 'https.*'); do
     ### A retired (renamed) name's certificate is outside the horizon --
     ### nothing renews it; the preflight reports that class by name.
     case " ${_MAP_REDIR} " in
-      *" $(basename "${_v}" | sed 's/^https\.//') "*) continue ;;
+      *" ${_v#https.} "*) continue ;;
     esac
-    _crt=$(grep -m1 "ssl_certificate " "${_v}" 2>/dev/null \
+    _crt=$(_read_file "${_VHD}/${_v}" | grep -m1 "ssl_certificate " \
       | awk '{ print $2 }' | tr -d ';')
     [ -r "${_crt}" ] || continue
-    _end=$(openssl x509 -noout -enddate -in "${_crt}" 2>/dev/null | cut -d= -f2)
+    _end=$(_cert_text "${_crt}" | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
     [ -z "${_end}" ] && continue
     _end=$(date -d "${_end}" +%s 2>/dev/null)
     [ -z "${_end}" ] && continue
     _days=$(( (_end - _now) / 86400 ))
     if [ "${_days}" -lt "${_min}" ]; then
       _min="${_days}"
-      _mind="$(basename "${_v}" | sed 's/^https\.//')"
+      _mind="${_v#https.}"
     fi
   done
   echo "${_min} ${_mind}"
@@ -699,9 +865,9 @@ _preflight() {
   local _rd _rcrt _rend _rdays
   for _rd in ${_MAP_REDIR}; do
     [ -e "${_VHD}/https.${_rd}" ] || continue
-    _rcrt=$(grep -m1 "ssl_certificate " "${_VHD}/https.${_rd}" 2>/dev/null | awk '{ print $2 }' | tr -d ';')
+    _rcrt=$(_read_file "${_VHD}/https.${_rd}" | grep -m1 "ssl_certificate " | awk '{ print $2 }' | tr -d ';')
     [ -r "${_rcrt}" ] || continue
-    _rend=$(openssl x509 -noout -enddate -in "${_rcrt}" 2>/dev/null | cut -d= -f2)
+    _rend=$(_cert_text "${_rcrt}" | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
     _rend=$(date -d "${_rend}" +%s 2>/dev/null)
     [ -n "${_rend}" ] || continue
     _rdays=$(( (_rend - $(date +%s)) / 86400 ))
@@ -709,6 +875,19 @@ _preflight() {
       _alrt "${_oN}: retired name ${_rd} still answers HTTPS here on a certificate nothing renews ($( [ "${_rdays}" -lt "0" ] && echo "EXPIRED ${_rdays#-}d ago" || echo "${_rdays}d left")) -- reported, not refused"
     fi
   done
+  ### A site whose drushrc.php names a database the account cannot prove
+  ### its own would stay outside the target-side schema proof below, and
+  ### stage B would still remove its platform: nothing goes while one is
+  ### listed. A panel database that cannot be proven is kept, never dropped.
+  local _u
+  for _u in ${_MAP_UNPROVEN}; do
+    _alrt "${_oN}: site ${_u%:*}: its database cannot be proven the account's own (failed at: ${_u##*:})"
+    _fail=1
+  done
+  [ "${_fail}" != "0" ] \
+    && _die "${_oN}: site database ownership not proven -- fix the site or its alias first; nothing will be removed"
+  [ -n "${_MAP_HM_WHY}" ] \
+    && _alrt "${_oN}: panel database cannot be proven the account's own (failed at: ${_MAP_HM_WHY}) -- it is kept, never dumped or dropped"
   ### Target liveness for every server_name, direct AND through the proxy.
   _probe_all_doms "${_oN}" || _die "${_oN}: target liveness probes failed"
   ### Target-side proof, mandatory in v1.
@@ -794,6 +973,27 @@ _nginx_reload_locked() {
   )
 }
 
+### post.d is the account's: its fpm includes are parked as names inside the
+### real directory ($1 the quarantine, $2 YES keeps the default include) and
+### put back the same way, never through a link put at post.d.
+_park_postd_here() {
+  local _p _r=0
+  for _p in ./fpm_include_default.inc ./fpm_include_site_*; do
+    [ -e "${_p}" ] || [ -L "${_p}" ] || continue
+    [ "${2}" = "YES" ] && [ "${_p}" = "./fpm_include_default.inc" ] && continue
+    mv -f -T -- "${_p}" "${1}/${_p#./}" 2> /dev/null || _r=1
+  done
+  return "${_r}"
+}
+_unpark_postd_here() {
+  local _p _r=0
+  for _p in "${1}"/*; do
+    [ -e "${_p}" ] || [ -L "${_p}" ] || continue
+    mv -f -T -- "${_p}" "./${_p##*/}" 2> /dev/null || _r=1
+  done
+  return "${_r}"
+}
+
 _stage_a() {
   ### Two locals: in one statement the RHS expands before _oN is assigned.
   local _oN="$1"
@@ -825,12 +1025,16 @@ _stage_a() {
     _panel_pool=$(grep -m1 '^_PHP_FPM_VERSION=' "/root/.${_oN}.octopus.cnf" 2>/dev/null | cut -d= -f2 | tr -d -c 0-9)
     _info "${_oN}: local panel ${_MAP_PANEL_DOM}: keeping fpm_include_default.inc and pool ${_oN}.${_panel_pool:-?}.conf"
   fi
-  for _p in "${_USR}/config/server_master/nginx/post.d/fpm_include_default.inc" \
-    "${_USR}"/config/server_master/nginx/post.d/fpm_include_site_*; do
-    [ -e "${_p}" ] || continue
-    [ "${_MAP_PANEL_LOCAL}" = "YES" ] && [ "$(basename "${_p}")" = "fpm_include_default.inc" ] && continue
-    mv -f "${_p}" "${_q}/postd/" 2>/dev/null
-  done
+  _p="${_USR}/config/server_master/nginx/post.d"
+  if [ -e "${_p}" ] || [ -L "${_p}" ]; then
+    if ! _in_real_dir "${_p}" true; then
+      _alrt "${_oN}: post.d is not a real directory -- fpm includes not parked"
+      _fail=1
+    elif ! _in_real_dir "${_p}" _park_postd_here "${_q}/postd" "${_MAP_PANEL_LOCAL}"; then
+      _alrt "${_oN}: an fpm include in post.d could not be parked"
+      _fail=1
+    fi
+  fi
   _nginx_reload_locked || { _alrt "${_oN}: nginx reload after include removal FAILED"; _fail=1; }
   _AFFECTED_MASTERS=""
   for _p in /opt/php*/etc/pool.d/"${_oN}".conf /opt/php*/etc/pool.d/"${_oN}".*.conf; do
@@ -875,7 +1079,8 @@ _stage_a() {
   ### Re-probe; any regression auto-restores and aborts.
   if [ "${_fail}" != "0" ] || ! _probe_all_doms "${_oN}"; then
     _alrt "${_oN}: stage A regression detected -- auto-restoring"
-    _restore_stage_a "${_oN}"
+    _restore_stage_a "${_oN}" \
+      || _die "${_oN}: stage A aborted; restore incomplete (see ALRT above); nothing deleted"
     _die "${_oN}: stage A aborted and restored; nothing deleted"
   fi
   _phase_set "${_oN}" "stage-a"
@@ -899,7 +1104,7 @@ _restore_stage_a() {
       _die "${_oN}: stage B already ran (or crashed mid-run) -- restore is a migration back, not an unpark (see the manifest + archived aliases)"
     ;;
   esac
-  local _nn
+  local _nn _left=0
   for _p in "${_q}"/pools/*; do
     [ -e "${_p}" ] || continue
     ### Multi pool oN.NN.conf encodes its tree in the filename; the single
@@ -907,23 +1112,34 @@ _restore_stage_a() {
     ### the box-level _PHP_FPM_VERSION is a different knob and lands the
     ### pool in a tree whose master never serves this account.
     _nn=$(basename "${_p}" | sed -n "s/^${_oN}\.\([0-9]*\)\.conf$/\1/p")
-    if [ -z "${_nn}" ] && [ -r "${_USR}/static/control/fpm.info" ]; then
-      _nn=$(tr -d -c 0-9 < "${_USR}/static/control/fpm.info")
+    ### static/control is the tenant's: read inside the real directory,
+    ### never through a link or into a FIFO put at either name
+    if [ -z "${_nn}" ]; then
+      _nn=$(_in_real_dir "${_USR}/static/control" _read_here fpm.info \
+        | head -c 64 | tr -d -c 0-9)
     fi
     if [ -z "${_nn}" ]; then
       _nn=$(grep -m1 '^_PHP_FPM_VERSION' /root/.barracuda.cnf 2>/dev/null | tr -d -c 0-9)
     fi
     if [ -n "${_nn}" ] && [ -d "/opt/php${_nn}/etc/pool.d" ]; then
-      mv -f "${_p}" "/opt/php${_nn}/etc/pool.d/"
-      service "php${_nn}-fpm" reload &> /dev/null
+      if mv -f "${_p}" "/opt/php${_nn}/etc/pool.d/"; then
+        service "php${_nn}-fpm" reload &> /dev/null
+      else
+        _alrt "${_oN}: could not move pool $(basename "${_p}") into /opt/php${_nn}/etc/pool.d; left in quarantine"
+        _left=1
+      fi
     else
       _alrt "${_oN}: cannot place pool $(basename "${_p}") -- no /opt/php${_nn:-?} tree; left in quarantine"
+      _left=1
     fi
   done
-  for _p in "${_q}"/postd/*; do
-    [ -e "${_p}" ] || continue
-    mv -f "${_p}" "${_USR}/config/server_master/nginx/post.d/" 2>/dev/null
-  done
+  if [ -n "$(ls -A "${_q}/postd" 2> /dev/null)" ] \
+    && ! _in_real_dir "${_USR}/config/server_master/nginx/post.d" \
+      _unpark_postd_here "${_q}/postd"; then
+    _alrt "${_oN}: fpm includes NOT put back: post.d is not a real directory, or a move failed"
+    _alrt "${_oN}:   they are still in ${_q}/postd"
+    _left=1
+  fi
   ### Restore replays the recorded quarantine map -- origin dir + port were
   ### captured at stage A time; a name heuristic would misplace oct.* cores
   ### that live on solr7.
@@ -967,6 +1183,7 @@ _restore_stage_a() {
       rm -f "${_q}/solr/MAP.txt"
     else
       _alrt "${_oN}: solr quarantine map KEPT at ${_q}/solr/MAP.txt (unfinished entries)"
+      _left=1
     fi
   fi
   if [ -e "${_q}/held-run-${_oN}" ]; then
@@ -986,7 +1203,12 @@ _restore_stage_a() {
   fi
   if _nginx_reload_locked; then
     _phase_set "${_oN}" "restored"
-    _info "${_oN}: stage A restored from quarantine"
+    if [ "${_left}" = "0" ]; then
+      _info "${_oN}: stage A restored from quarantine"
+    else
+      _alrt "${_oN}: stage A restored from quarantine EXCEPT what the ALRT lines above name"
+      return 1
+    fi
   else
     ### Do NOT claim success on a failed configtest/reload: the files are
     ### back but nginx is still serving the quiesced configuration.
@@ -1078,37 +1300,32 @@ _stage_b() {
   for _f in "${_USR}/backups" "${_USR}/src" "${_USR}/undo" "${_USR}/distro"; do
     [ -e "${_f}" ] && rm -rf "${_f}" && _info "${_oN}: removed ${_f}"
   done
+  ### A platform root comes from an alias in .drush, which is oN's: it is
+  ### removed only as a name inside its real parent directory in the
+  ### account, so no link or .. on the way can take the removal elsewhere.
   for _f in ${_MAP_PLATS}; do
+    _f="${_f%/}"
     case "${_f}" in
-      "${_USR}"/*) [ -e "${_f}" ] && rm -rf "${_f}" && _info "${_oN}: removed platform ${_f}" ;;
-      *) _alrt "${_oN}: platform root ${_f} lies outside the account -- left in place" ;;
+      "${_USR}"/?*) ;;
+      *) _alrt "${_oN}: platform root ${_f} lies outside the account -- left in place"; continue ;;
     esac
+    [ -e "${_f}" ] || continue
+    if ! _in_real_dir "${_f%/*}" true; then
+      _alrt "${_oN}: platform root ${_f} is not in a real directory of the account -- left in place"
+      continue
+    fi
+    _in_real_dir "${_f%/*}" rm -rf -- "./${_f##*/}" \
+      && _info "${_oN}: removed platform ${_f}"
   done
   ### The files store: resolve FIRST, delete the resolved directory, then
   ### the symlink -- never 'rm -rf static' blind (the known cleanup leak).
-  if [ -L "${_USR}/static/files" ]; then
-    _r="$(_safe_resolved "${_USR}/static/files" "${_USR}")"
-    if [ -n "${_r}" ]; then
-      rm -rf "${_r}" && rm -f "${_USR}/static/files" \
-        && _info "${_oN}: removed resolved files store ${_r}"
-    else
-      _alrt "${_oN}: static/files resolves outside the account/store -- left in place"
-    fi
+  ### static/ is group-writable: its entries are listed and removed from
+  ### inside the real directory, never through a link put in its place.
+  if _in_real_dir "${_USR}/static" true; then
+    _in_real_dir "${_USR}/static" _trim_static_here "${_oN}" "${_USR}"
+  elif [ -e "${_USR}/static" ] || [ -L "${_USR}/static" ]; then
+    _alrt "${_oN}: static/ is not a real directory of the account -- left in place"
   fi
-  for _f in "${_USR}"/static/*; do
-    [ -e "${_f}" ] || continue
-    case "$(basename "${_f}")" in
-      control) continue ;;
-    esac
-    if [ -L "${_f}" ]; then
-      _r="$(_safe_resolved "${_f}" "${_USR}")"
-      [ -n "${_r}" ] && rm -rf "${_r}"
-      rm -f "${_f}"
-    else
-      rm -rf "${_f}"
-    fi
-    _info "${_oN}: removed static tree ${_f}"
-  done
   ### Stamp BEFORE the closing probe: the deletion is already complete, so
   ### a probe wobble must not leave the account stuck at stage-b-started,
   ### where finalize would refuse for ever and restore is meaningless.
@@ -1145,7 +1362,8 @@ _finalize() {
     _u="$(_alias_field "/data/disk/${_n}/.drush/hostmaster.alias.drushrc.php" "uri")"
     [ -n "${_u}" ] || continue
     [ -e "/data/disk/${_n}/config/server_master/nginx/vhost.d/${_u}" ] || continue
-    grep -q "proxy_pass" "/data/disk/${_n}/config/server_master/nginx/vhost.d/${_u}" 2>/dev/null && continue
+    _read_file "/data/disk/${_n}/config/server_master/nginx/vhost.d/${_u}" \
+      | grep -q "proxy_pass" && continue
     _keep_sql="${_keep_sql} ${_n}:${_u}"
     _v=$(grep -m1 '^_PHP_FPM_VERSION=' "/root/.${_n}.octopus.cnf" 2>/dev/null | cut -d= -f2 | tr -d -c 0-9)
     [ -n "${_v}" ] && _keep_masters="${_keep_masters} ${_v}"
@@ -1453,8 +1671,10 @@ case "$1" in
     _take_sqlclean_lock
     _load_cnf_defaults
     _map_account "${_acct}"
-    _restore_stage_a "${_acct}"
+    _rrc=0
+    _restore_stage_a "${_acct}" || _rrc=1
     _probe_all_doms "${_acct}" || _alrt "${_acct}: post-restore probes not clean -- check manually"
+    [ "${_rrc}" = "0" ] || _die "${_acct}: restore incomplete (see ALRT above)"
   ;;
   *)
     echo "Usage: xtrim status"

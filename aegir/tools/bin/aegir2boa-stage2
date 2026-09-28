@@ -259,15 +259,32 @@ _require_source_box() {
   chmod 700 "${_STATE_DIR}" "${_STATE_DIR}/state" "${_STATE_DIR}/manifest" "${_STATE_DIR}/markers"
 }
 
+# The target's state for one account: gates, step markers, the held-aside
+# dispatcher, the landed transfer (src/: dumps, manifests, route, scrub
+# list) and the pre-import snapshot (undo/). Root's, outside the account's
+# tree: the account owns /data/disk/<oN>, so it can swap log/, src/ or
+# undo/ there for a directory of its own or a link, and root writes,
+# chmods, moves back into /var/xdrago and loads as MySQL root what is kept
+# here. The source computes the same path for the transfer (same bytes on
+# both ends). $1 = account.
+_t_base() { echo "/var/backups/a2b/$1"; }
+
 _require_target_box() {
   [[ "$(_box_class)" = "boa" ]] \
     || _die "verb '${_OP}' runs on the BOA TARGET box only (this box: $(_box_class))"
   [[ -n "${_ACCOUNT}" ]] || _die "--account <oN> required"
   _ACCT_ROOT="/data/disk/${_ACCOUNT}"
   [[ -d "${_ACCT_ROOT}" ]] || _die "no such account root ${_ACCT_ROOT}"
-  _STATE_DIR="${_ACCT_ROOT}/log/a2b"
-  mkdir -p "${_STATE_DIR}/state" "${_STATE_DIR}/markers"
-  chmod 700 "${_STATE_DIR}" "${_STATE_DIR}/state" "${_STATE_DIR}/markers"
+  _STATE_DIR="$(_t_base "${_ACCOUNT}")"
+  [[ -L "${_STATE_DIR%/*}" || -L "${_STATE_DIR}" ]] \
+    && _die "${_STATE_DIR} or its parent is a symlink - refusing to keep migration state there"
+  if [[ ! -d "${_STATE_DIR}" ]] \
+    && [[ -e "${_ACCT_ROOT}/log/a2b" || -e "${_ACCT_ROOT}/src/a2b" \
+      || -e "${_ACCT_ROOT}/undo/a2b-pre-import.sql" ]]; then
+    _alrt "${_ACCT_ROOT} holds target state of an earlier release (log/a2b, src/a2b, undo/), which is never read from the account's tree: re-run transfer from the source; a dispatcher held aside there is not restored from it, the dispatcher restore at the end of a db-import or a revert rebuilds it from another account's"
+  fi
+  ( umask 077; mkdir -p "${_STATE_DIR}/state" "${_STATE_DIR}/markers" )
+  chmod 700 "${_STATE_DIR%/*}" "${_STATE_DIR}" "${_STATE_DIR}/state" "${_STATE_DIR}/markers"
 }
 
 # Same bytes on both ends: the target's copy is fetched with the BOA tools
@@ -296,22 +313,24 @@ _marker_has() { [[ -e "$(_marker "$1")" ]]; }
 # so a tenant can pre-plant a symlink there for root's mkdir/chown/
 # chmod (all of which follow links; protected_symlinks only covers sticky
 # world-writable dirs). Stage under a ROOT-OWNED 0755 parent no tenant can
-# write, with a per-account 0700 dir handed to oN so drush can read the
-# O_EXCL mktemp'd script (the parent is world-traversable, so the path
-# stays reachable by oN). Refuse a symlink where the per-account dir should be.
+# write, with a per-account dir that is root's too (0711: oN reaches the
+# O_EXCL mktemp'd script it is handed, but can never put, rename or swap a
+# name in the dir, so the chown, chmod and write by name below always land
+# on root's own fresh file). Refuse a symlink where the per-account dir
+# should be.
 _php_base() { echo "/var/opt/a2b-php"; }
 _php_dir() { echo "$(_php_base)/${_ACCOUNT}"; }
 _php_tmp() {
   local _b _d _f _grp
   _b="$(_php_base)"
   _d="$(_php_dir)"
-  # the per-account staging dir and its files are handed to oN - derive the
-  # account's own group instead of assuming the box-wide one
+  # the staged files are handed to oN - derive the account's own group
+  # instead of assuming the box-wide one
   _grp="$(_acct_group "${_ACCOUNT}")"
   [[ -L "${_b}" ]] && _die "${_b} is a symlink - refusing to stage php scripts"
   mkdir -p "${_b}" && chown root:root "${_b}" && chmod 0755 "${_b}"
   [[ -L "${_d}" ]] && _die "${_d} is a symlink - refusing to stage php scripts"
-  mkdir -p "${_d}" && chown "${_ACCOUNT}:${_grp}" "${_d}" && chmod 700 "${_d}"
+  mkdir -p "${_d}" && chown root:root "${_d}" && chmod 0711 "${_d}"
   _f="$(mktemp "${_d}/php.XXXXXX")" || _die "cannot create php staging file"
   [[ -L "${_f}" ]] && _die "${_f} is a symlink - refusing to stage php scripts"
   chown "${_ACCOUNT}:${_grp}" "${_f}" && chmod 600 "${_f}"
@@ -1119,7 +1138,9 @@ verb_create() {
   ssh "root@${_TARGET}" "test -d /data/disk/${_ACCOUNT}" \
     || { _guard_target_off; \
          _die "in-octopus finished but /data/disk/${_ACCOUNT} does not exist on ${_TARGET}"; }
-  ssh "root@${_TARGET}" "/bin/rm -f /data/disk/${_ACCOUNT}/tools/le/.ctrl/ssl-demo-mode.pid" 2>/dev/null
+  # tools/le is the account's: the name is removed inside the real .ctrl
+  # only, never through a link put on the way
+  ssh "root@${_TARGET}" "cd -P -- /data/disk/${_ACCOUNT}/tools/le/.ctrl 2>/dev/null && test \"\$(pwd -P)\" = \"\$(cd -P /data/disk && pwd -P)/${_ACCOUNT}/tools/le/.ctrl\" && /bin/rm -f ./ssl-demo-mode.pid" 2>/dev/null
 
   # hard quiescence on PROCESSES only: /var/xdrago/run-<oN> is a standing
   # file (persistent dispatcher trigger), so its existence never means busy
@@ -1337,11 +1358,34 @@ verb_export() {
 
 ###-------------VERB: transfer---------###
 
+# The account owns /data/disk/<oN> and static/ on the target, so a path
+# through them is resolved anew by every command that is handed it: a link
+# put at static/a2b would take a root rsync --delete, or a chown, anywhere.
+# The platform trees are landed and handed over only from inside the real
+# static/a2b, a directory of root's that no other identity can write; this
+# is the remote shell text that enters it (the rsync receiver's
+# --rsync-path runs it first, so the relative destination resolves there).
+_a2b_rcd_a2b() {
+  printf 'cd -P -- /data/disk/%s/static/a2b && test "$(pwd -P)" = "$(cd -P /data/disk && pwd -P)/%s/static/a2b" && test "$(stat -c %%u .)" = 0' \
+    "${_ACCOUNT}" "${_ACCOUNT}"
+}
+# A tree walk that hands the landed names over (find -execdir, inside the
+# real directory): each name is opened without following a link or blocking
+# on a FIFO, and only a directory or a single-link regular file is changed,
+# through its handle. A hard link put in the tree is never handed over; a
+# link, a FIFO or a socket keeps its owner (a link's owner is never checked).
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+
 verb_transfer() {
   _require_source_box
   [[ -n "${_TARGET}" && -n "${_ACCOUNT}" ]] || _die "transfer needs --target and --account"
   [[ "${_ALL}" = "YES" || -n "${_SITE}" ]] || _die "transfer needs --site <dom> or --all"
-  local _scope="${_SITE:-all}" _dst="/data/disk/${_ACCOUNT}" _mf _uri _plat _plr _dbn _need=0 _free
+  local _scope="${_SITE:-all}" _dst="/data/disk/${_ACCOUNT}" _tb _tsrc _mf _uri _plat _plr _dbn
+  local _need=0 _needD=0 _free _freeD _mntP _mntD _dfs
+  # everything but the platform trees lands in the target's root-only state
+  # dir for the account (_t_base), never in the account's own tree
+  _tb="$(_t_base "${_ACCOUNT}")"
+  _tsrc="${_tb}/src"
 
   # collect the manifest set in scope
   local _mfl=""
@@ -1354,16 +1398,26 @@ verb_transfer() {
   done
   [[ -n "${_mfl}" ]] || _die "nothing exported in scope '${_scope}' - run export first"
 
-  # disk-space gate on the target
+  # disk-space gate on the target: the platform trees land on /data/disk,
+  # the dumps under /var/backups (one budget when both are one filesystem)
   for _mf in ${_mfl}; do
     _plr="$(_manifest_val "${_mf}" PLATFORM_ROOT)"
     _dbn="$(_manifest_val "${_mf}" DBN)"
     _need=$(( _need + $(_int_only "$(du -smL "${_plr}" 2>/dev/null | cut -f1)") ))
-    _need=$(( _need + $(_int_only "$(du -sm "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql" 2>/dev/null | cut -f1)") ))
+    _needD=$(( _needD + $(_int_only "$(du -sm "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql" 2>/dev/null | cut -f1)") ))
   done
-  _free="$(_int_only "$(ssh -o BatchMode=yes "root@${_TARGET}" "df -Pm /data/disk 2>/dev/null | awk 'NR==2{print \$4}'" 2>/dev/null)")"
-  _info "transfer needs ~${_need}MB; target /data/disk has ${_free:-?}MB free"
-  [[ -n "${_free}" && "${_free}" -gt $(( _need + 500 )) ]] \
+  _dfs="$(ssh -o BatchMode=yes "root@${_TARGET}" "df -Pm /data/disk /var/backups 2>/dev/null | awk 'NR>1{print \$6, \$4}'" 2>/dev/null)"
+  read -r _mntP _free <<< "$(sed -n 1p <<< "${_dfs}")"
+  read -r _mntD _freeD <<< "$(sed -n 2p <<< "${_dfs}")"
+  _free="$(_int_only "${_free}")"
+  _freeD="$(_int_only "${_freeD}")"
+  _info "transfer needs ~${_need}MB on /data/disk and ~${_needD}MB on /var/backups; the target has ${_free:-?}MB and ${_freeD:-?}MB free there"
+  if [[ -n "${_mntP}" && "${_mntP}" = "${_mntD}" ]]; then
+    _need=$(( _need + _needD ))
+    _needD=0
+  fi
+  [[ -n "${_free}" && "${_free}" -gt $(( _need + 500 )) \
+    && -n "${_freeD}" && "${_freeD}" -gt $(( _needD + 500 )) ]] \
     || _die "target free space insufficient (or unreadable) - refusing"
 
   if [[ "${_LIVE}" != "YES" ]]; then
@@ -1371,14 +1425,19 @@ verb_transfer() {
     for _mf in ${_mfl}; do
       _uri="$(_manifest_val "${_mf}" URI)"
       _plat="$(_manifest_val "${_mf}" PLATFORM)"
-      _info "[DRY] would rsync platform ${_plat} + dump + manifest for ${_uri} -> ${_TARGET}:${_dst}"
+      _info "[DRY] would rsync platform ${_plat} + dump + manifest for ${_uri} -> ${_TARGET}:${_dst}/static/a2b + ${_tsrc}"
     done
     _dry_finish "${_scope}"
   fi
   _gate_consume "${_scope}"
 
   _msg "LIVE transfer -> root@${_TARGET}:${_dst}"
-  ssh "root@${_TARGET}" "mkdir -p ${_dst}/static/a2b ${_dst}/src/a2b/manifest ${_dst}/src/a2b/ssl-ref ${_dst}/src/a2b/nginx-ref"
+  ssh "root@${_TARGET}" "umask 077; mkdir -p ${_tsrc}/manifest ${_tsrc}/ssl-ref ${_tsrc}/nginx-ref && chmod 700 ${_tb%/*} ${_tb} ${_tsrc}"
+  # static/a2b made inside the real static/ (root's, as mkdir made it),
+  # never through a link; one that is anyone else's is refused, and nobody
+  # but root may write it
+  ssh "root@${_TARGET}" "cd -P -- ${_dst}/static && test \"\$(pwd -P)\" = \"\$(cd -P /data/disk && pwd -P)/${_ACCOUNT}/static\" && { test ! -L ./a2b || rm -f ./a2b; } && { test -d ./a2b || mkdir ./a2b; } && $(_a2b_rcd_a2b) && chmod go-w ." \
+    || _die "${_dst}/static/a2b on ${_TARGET} is not a real directory of root's - refusing to land platforms there"
   local _done_plat=" " _tgtGrp=""
   for _mf in ${_mfl}; do
     _uri="$(_manifest_val "${_mf}" URI)"
@@ -1394,10 +1453,13 @@ verb_transfer() {
         # namespace exclusive to this migration, so a retry after a
         # reverted attempt lands a CLEAN tree - -u alone would skip
         # target-era files (provision-written settings.php etc.) and leave
-        # a source/target mix (audit M1 residual)
+        # a source/target mix (audit M1 residual). The receiver runs in the
+        # real static/a2b (_a2b_rcd_a2b), so ./<plat> can only be the tree
+        # in it, never a link the account put on the way.
         # shellcheck disable=SC2046
         rsync $(_rsync_flags) --delete --no-devices --no-specials -e ssh \
-          "${_plr}/" "root@${_TARGET}:${_dst}/static/a2b/${_plat}/" \
+          --rsync-path="$(_a2b_rcd_a2b) && rsync" \
+          "${_plr}/" "root@${_TARGET}:./${_plat}/" \
           || _die "platform ${_plat} rsync failed"
         # the tree lands with the SOURCE box's numeric uids (vanilla aegir/
         # www-data mean nothing on the target) - the account user could not
@@ -1408,27 +1470,41 @@ verb_transfer() {
         # box-wide one until then): a staged tree is registered in
         # hostmaster only at import, so nothing re-asserts it before then,
         # and the literal would leave a converted target's adopted
-        # drushrc.php files readable by every other account meanwhile
+        # drushrc.php files readable by every other account meanwhile.
+        # Handed over entry by entry through a handle (_ACCT_REOWN_PL),
+        # inside the real tree, never by name: the landed names are owned by
+        # whatever the source's owners map to here until then, and a hard
+        # link such an owner put in the tree would have been handed over by
+        # chown -R. Owner and group resolve to numbers on the target first.
         _tgtGrp=$(_acct_group_on_target "${_ACCOUNT}") \
           || _die "cannot read the group of ${_ACCOUNT} on ${_TARGET} (ssh or id failed); refusing to guess it"
-        ssh "root@${_TARGET}" "chown -R ${_ACCOUNT}:${_tgtGrp} ${_dst}/static/a2b/${_plat}" \
+        ssh "root@${_TARGET}" "bash -s" <<REOWN \
           || _die "platform ${_plat} chown failed on target"
+_P='${_ACCT_REOWN_PL}'
+_U=\$(id -u -- '${_ACCOUNT}' 2>/dev/null)
+_G=\$(getent group '${_tgtGrp}' 2>/dev/null | cut -d: -f3)
+case "\${_U}:\${_G}" in :*|*:|*[!0-9:]*) exit 1 ;; esac
+$(_a2b_rcd_a2b) || exit 1
+cd -P -- './${_plat}' 2>/dev/null || exit 1
+[ "\$(pwd -P)" = "\$(cd -P /data/disk && pwd -P)/${_ACCOUNT}/static/a2b/${_plat}" ] || exit 1
+env PATH=/usr/local/bin:/usr/bin:/bin find . -execdir perl -e "\${_P}" "\${_U}" "\${_G}" {} +
+REOWN
         _done_plat="${_done_plat}${_plat} "
         ;;
     esac
     rsync -aq --no-devices --no-specials -e ssh \
-      "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql" "root@${_TARGET}:${_dst}/src/a2b/" \
+      "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql" "root@${_TARGET}:${_tsrc}/" \
       || _die "dump for ${_uri} rsync failed"
-    rsync -aq -e ssh "${_mf}" "root@${_TARGET}:${_dst}/src/a2b/manifest/" \
+    rsync -aq -e ssh "${_mf}" "root@${_TARGET}:${_tsrc}/manifest/" \
       || _die "manifest for ${_uri} rsync failed"
-    ssh "root@${_TARGET}" "chmod 600 ${_dst}/src/a2b/${_dbn}.sql ${_dst}/src/a2b/manifest/$(basename "${_mf}")"
+    ssh "root@${_TARGET}" "chmod 600 ${_tsrc}/${_dbn}.sql ${_tsrc}/manifest/$(basename "${_mf}")"
     _marker_set "${_uri}.transferred.pid"
     _info "site ${_uri}: transferred"
   done
   # route artifacts + reference trees
   local _route
   _route="$(_kv_get "${_STATE_DIR}/state/check.env" ROUTE)"
-  echo "${_route}" | ssh "root@${_TARGET}" "cat > ${_dst}/src/a2b/route.txt"
+  echo "${_route}" | ssh "root@${_TARGET}" "cat > ${_tsrc}/route.txt"
   if [[ "${_route}" = "db-import" ]]; then
     # the check-time acknowledged module list must ride along: import's
     # {system} scrub refuses to remove anything the operator never saw
@@ -1437,20 +1513,20 @@ verb_transfer() {
     [[ -s "${_STATE_DIR}/state/enabled-modules.txt" ]] \
       || _die "no enabled-modules list from check - re-run check"
     rsync -aq -e ssh "${_STATE_DIR}/state/enabled-modules.txt" \
-      "root@${_TARGET}:${_dst}/src/a2b/scrub-ack.txt" \
+      "root@${_TARGET}:${_tsrc}/scrub-ack.txt" \
       || _die "scrub-ack transfer failed"
   fi
   if [[ "${_route}" = "db-import" && -e "${_AEGIR_ROOT}/src/a2b/hostmaster.sql" ]]; then
-    rsync -aq -e ssh "${_AEGIR_ROOT}/src/a2b/hostmaster.sql" "root@${_TARGET}:${_dst}/src/a2b/" \
+    rsync -aq -e ssh "${_AEGIR_ROOT}/src/a2b/hostmaster.sql" "root@${_TARGET}:${_tsrc}/" \
       || _die "hostmaster dump rsync failed"
-    ssh "root@${_TARGET}" "chmod 600 ${_dst}/src/a2b/hostmaster.sql"
-    hostname -f | ssh "root@${_TARGET}" "cat > ${_dst}/src/a2b/source-fqdn.txt"
+    ssh "root@${_TARGET}" "chmod 600 ${_tsrc}/hostmaster.sql"
+    hostname -f | ssh "root@${_TARGET}" "cat > ${_tsrc}/source-fqdn.txt"
   fi
   [[ -d "${_AEGIR_ROOT}/config/ssl.d" ]] \
     && rsync -aq --no-devices --no-specials -e ssh "${_AEGIR_ROOT}/config/ssl.d/" \
-         "root@${_TARGET}:${_dst}/src/a2b/ssl-ref/" 2>>"${_LOG}"
+         "root@${_TARGET}:${_tsrc}/ssl-ref/" 2>>"${_LOG}"
   rsync -aq --no-devices --no-specials -e ssh "$(_vhostd)/" \
-    "root@${_TARGET}:${_dst}/src/a2b/nginx-ref/" 2>>"${_LOG}"
+    "root@${_TARGET}:${_tsrc}/nginx-ref/" 2>>"${_LOG}"
   # Everything staged above landed with this box's numeric gids; the
   # target's own tool hands the whole account tree to the account's group
   # there. A live run on the target (its octopus finisher, a tool refresh)
@@ -1493,18 +1569,39 @@ for _M in /mnt/*; do
   [ -d "\${_M}" ] && mountpoint -q "\${_M}" 2>/dev/null && { _MP="\${_M}"; _N=\$((_N + 1)); }
 done
 [ "\${_N}" = "1" ] || _MP=""
+_GI="\$(getent group "\${_G}" 2>/dev/null | cut -d: -f3)"
+_WG="\$(getent group www-data 2>/dev/null | cut -d: -f3)"
+case "\${_GI}" in ''|*[!0-9]*) _GI="" ;; esac
+case "\${_WG}" in ''|*[!0-9]*) _WG=-1 ;; esac
+# the account's own web group there, when it exists: its paths are the
+# pools' and are never claimed (by number: find refuses an unknown name)
+_XW="\$(getent group "wg-\${_A}" 2>/dev/null | cut -d: -f3)"
+_WGX=()
+case "\${_XW}" in ''|*[!0-9]*) _XW=-1 ;; *) _WGX=( ! -gid "\${_XW}" ) ;; esac
 for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gems/\${_A}" /opt/user/gems/"\${_A}".* "/opt/user/npm/\${_A}" /opt/user/npm/"\${_A}".* "\${_MP:+\${_MP}/files/\${_A}/static/files}"; do
   [ -n "\${_R}" ] && [ -d "\${_R}" ] && [ ! -L "\${_R}" ] || continue
   # the FPM pool users' homes (oN.web, oN.NN.web) are www-data's, never the
   # account's: the same root set the tool walks
   case "\${_R}" in /home/*.web) continue ;; esac
-  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root -execdir chgrp -h "\${_G}" {} + 2>/dev/null
+  # regrouped through a no-follow handle on each name inside the directory
+  # find holds, never by name: only a directory, or a regular file with one
+  # link, whose handle is still in none of those groups, so a hard link to
+  # another file renamed in (or put there) is never regrouped; a link's own
+  # group grants nothing and is left
+  [ -n "\${_GI}" ] || continue
+  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root "\${_WGX[@]}" \( -type f -o -type d \) \
+    -execdir perl -e 'use Fcntl; my (\$g, \$w, \$x) = splice(@ARGV, 0, 3); for my \$n (@ARGV) { sysopen(my \$h, \$n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat(\$h); chown(-1, \$g, \$h) if @s && \$s[5] != \$g && \$s[5] != \$w && \$s[5] != \$x && \$s[5] != 0 && (-d _ || (-f _ && \$s[3] == 1)); close(\$h); } exit 0' -- "\${_GI}" "\${_WG}" "\${_XW}" {} + 2>/dev/null
 done
-_M="/data/disk/\${_A}/log/instance-group.txt"
-if [ -f "\${_M}" ]; then
+# log/ is the account's own: the record is read and removed only inside the
+# real directory, never through a link or into a FIFO put there
+_W="\$(cd -P /data/disk 2>/dev/null && pwd -P)/\${_A}/log"
+( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(pwd -P)" = "\${_W}" ] \
+    && [ -f ./instance-group.txt ] || exit 0
   _GID=\$(getent group "\${_A}" 2>/dev/null | cut -d: -f3)
-  { [ "\${_G}" = "\${_A}" ] && grep -q " gid=\${_GID}\$" "\${_M}" 2>/dev/null; } || rm -f "\${_M}"
-fi
+  { [ "\${_G}" = "\${_A}" ] \
+    && timeout 10 dd if=./instance-group.txt iflag=nofollow,nonblock,fullblock \
+      bs=1048576 count=1 status=none 2>/dev/null | grep -q " gid=\${_GID}\$"; } \
+    || rm -f -- ./instance-group.txt )
 if [ "\${_DEFERRED}" = "1" ]; then
   echo "INFO: target group pass for \${_A}: the tool deferred 13 times (a BOA run live there); the inline form ran instead, group \${_G}"
   exit 4
@@ -1563,13 +1660,15 @@ _t_wait_task() {
 
 # account freeze marker + agent drain (validated on disposable VMs): owl.sh skips
 # an account carrying log/proxied.pid; destructive steps additionally wait
-# for any active owl pass to drain
+# for any active owl pass to drain. log/ is the account's: the marker is put
+# (root's, as created) and removed only inside the real log/, never through
+# a link put on the way or at the name.
 _t_freeze_on() {
   [[ -e "${_ACCT_ROOT}/log/proxied.pid" ]] \
     && _die "freeze marker already present on ${_ACCOUNT} - another operation in flight?"
-  echo "A2B-IMPORT-FREEZE" > "${_ACCT_ROOT}/log/proxied.pid"
+  _a2b_in_real_dir "${_ACCT_ROOT}/log" _a2b_put_here proxied.pid "A2B-IMPORT-FREEZE"
 }
-_t_freeze_off() { rm -f "${_ACCT_ROOT}/log/proxied.pid"; }
+_t_freeze_off() { _a2b_in_real_dir "${_ACCT_ROOT}/log" rm -f -- ./proxied.pid; }
 _t_owl_drain() {
   local _waited=0
   while pgrep -f "[o]wl\.sh" >/dev/null 2>&1; do
@@ -1589,7 +1688,9 @@ _t_owl_drain() {
 # dispatchers with `find /var/xdrago -maxdepth 1 -type f | grep run-`
 # (runner.sh:122-125), which still matches ANY off-name retaining the
 # `run-` substring (e.g. .run-oN.a2b-off). Park it under the account's
-# a2b state dir instead, where that find never looks.
+# a2b state dir instead, where that find never looks: root's, outside the
+# account's tree, so what comes back into /var/xdrago is the file root put
+# there, never one the account put in its place.
 _t_held_run() { echo "${_STATE_DIR}/held-run-${_ACCOUNT}"; }
 _t_dispatch_off() {
   if [[ -e "/var/xdrago/run-${_ACCOUNT}" ]]; then
@@ -1605,23 +1706,91 @@ _t_dispatch_off() {
   done
 }
 _t_dispatch_on() {
+  local _old="${_ACCT_ROOT}/log/a2b/held-run-${_ACCOUNT}"
   if [[ -e "$(_t_held_run)" ]]; then
     mv -f "$(_t_held_run)" "/var/xdrago/run-${_ACCOUNT}"
     _info "dispatcher run-${_ACCOUNT} restored"
+  elif [[ ! -e "/var/xdrago/run-${_ACCOUNT}" ]] \
+    && [[ -e "${_old}" || -L "${_old}" ]]; then
+    _t_dispatch_rebuild
   fi
+}
+# An earlier release held the dispatcher aside in the account's own tree
+# (log/a2b/held-run-<oN>). The account can write there, so that file is
+# never read, moved or copied back. Octopus writes every account's
+# dispatcher from one template that differs only in its _H_USER line:
+# rebuild this one from another account's dispatcher on this box, or
+# dispatch stays off until the next Octopus upgrade of the account
+# rewrites it. The copy is made under a name runner.sh never dispatches
+# (no run- in it) and renamed over the target.
+_t_dispatch_rebuild() {
+  local _f _n _src="" _t
+  for _f in /var/xdrago/run-*; do
+    _n="${_f#/var/xdrago/run-}"
+    [[ "${_n}" != "${_ACCOUNT}" && -f "${_f}" && ! -L "${_f}" ]] || continue
+    [[ "$(stat -c '%u %h' -- "${_f}" 2>/dev/null)" = "0 1" ]] || continue
+    [[ "$(grep -c '^_H_USER=' -- "${_f}" 2>/dev/null)" = "1" ]] || continue
+    grep -qxF -- "_H_USER=${_n}" "${_f}" 2>/dev/null || continue
+    _src="${_n}"
+    break
+  done
+  if [[ -z "${_src}" ]]; then
+    _alrt "no dispatcher of another account in /var/xdrago to rebuild run-${_ACCOUNT} from: dispatch for ${_ACCOUNT} stays off until the next Octopus upgrade of ${_ACCOUNT} rewrites its dispatcher"
+    return 1
+  fi
+  _t="$(mktemp /var/xdrago/.a2b-dispatch.XXXXXX 2>/dev/null)" \
+    || { _alrt "cannot create a temp file in /var/xdrago: dispatch for ${_ACCOUNT} stays off until the next Octopus upgrade of ${_ACCOUNT} rewrites its dispatcher"; return 1; }
+  if awk -v u="${_ACCOUNT}" '/^_H_USER=/ { print "_H_USER=" u; next } { print }' \
+      "/var/xdrago/run-${_src}" > "${_t}" \
+    && chown root:root "${_t}" && chmod 0700 "${_t}" \
+    && [[ "$(grep -c '^_H_USER=' -- "${_t}")" = "1" ]] \
+    && grep -qxF -- "_H_USER=${_ACCOUNT}" "${_t}" \
+    && mv -f -T -- "${_t}" "/var/xdrago/run-${_ACCOUNT}"; then
+    _info "dispatcher run-${_ACCOUNT} rebuilt from run-${_src} (the copy an earlier release held aside in ${_ACCT_ROOT}/log/a2b is not used)"
+    return 0
+  fi
+  rm -f -- "${_t}"
+  _alrt "rebuilding run-${_ACCOUNT} from run-${_src} failed: dispatch for ${_ACCOUNT} stays off until the next Octopus upgrade of ${_ACCOUNT} rewrites its dispatcher"
+  return 1
+}
+
+# The account's .drush, log/ and hostmaster site dir are its own: each file
+# there is read inside its real directory, bounded, never through a link or
+# from a FIFO (_a2b_read_here), and a path read from the alias is used only
+# where it lies in the account's own hostmaster tree -- its database is the
+# one the snapshot is taken of and the import and the revert load as MySQL
+# root.
+# $1 = the alias file in .drush.
+_t_alias_read() {
+  _a2b_in_real_dir "${_ACCT_ROOT}/.drush" _a2b_read_here "$1"
+}
+# The hostmaster platform root, only one of the account's own distro
+# platforms (<root>/aegir/distro/<digits>).
+_t_hm_platform_root() {
+  local _r
+  _r="$(_t_alias_read hostmaster.alias.drushrc.php | grep "root'" \
+    | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g" | head -1)"
+  [[ "${_r}" == "${_ACCT_ROOT}/aegir/distro/"* ]] || return 1
+  [[ "${_r#"${_ACCT_ROOT}/aegir/distro/"}" =~ ^[0-9]+$ ]] || return 1
+  echo "${_r}"
+}
+# The hostmaster site dir, only a site of that platform.
+_t_hm_site_path() {
+  local _r _p
+  _r="$(_t_hm_platform_root)" || return 1
+  _p="$(_t_alias_read hostmaster.alias.drushrc.php | grep "site_path'" \
+    | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g" | head -1)"
+  [[ "${_p}" == "${_r}/sites/"* ]] || return 1
+  [[ "${_p#"${_r}/sites/"}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || return 1
+  echo "${_p}"
 }
 
 _t_hm_db() {
   local _hmdir
-  _hmdir="$(grep "site_path'" "${_ACCT_ROOT}/.drush/hostmaster.alias.drushrc.php" 2>/dev/null \
-    | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")"
-  _sane_ident "$(grep "options\['db_name'\] = " "${_hmdir}/drushrc.php" 2>/dev/null \
+  _hmdir="$(_t_hm_site_path)" || return 1
+  _sane_ident "$(_a2b_in_real_dir "${_hmdir}" _a2b_read_here drushrc.php \
+    | grep "options\['db_name'\] = " \
     | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,';]//g")"
-}
-
-_t_hm_platform_root() {
-  grep "root'" "${_ACCT_ROOT}/.drush/hostmaster.alias.drushrc.php" 2>/dev/null \
-    | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g" | head -1
 }
 
 # the account panel domain: log/domain.txt is BOA's authoritative record
@@ -1629,9 +1798,10 @@ _t_hm_platform_root() {
 # the hostmaster alias uri (same fallback order 10-account.sh uses)
 _t_panel_domain() {
   local _d
-  _d="$(tr -d '\n' < "${_ACCT_ROOT}/log/domain.txt" 2>/dev/null)"
+  _d="$(_a2b_in_real_dir "${_ACCT_ROOT}/log" _a2b_read_here domain.txt | tr -d '\n')"
   if [[ -z "${_d}" ]]; then
-    _d="$(grep -E "^[[:space:]]*'uri'[[:space:]]*=>" "${_ACCT_ROOT}/.drush/hostmaster.alias.drushrc.php" 2>/dev/null \
+    _d="$(_t_alias_read hostmaster.alias.drushrc.php \
+      | grep -E "^[[:space:]]*'uri'[[:space:]]*=>" \
       | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g" | head -1)"
   fi
   _sane_domain "${_d}"
@@ -1663,6 +1833,61 @@ _t_verify_inline() {   # 1 context-name 2 label
 # on a fresh account (observed: two 420s dead waits; every pool
 # appeared on the agent's first pass after the freeze lifted). Map early,
 # wait only after the freeze is off.
+# static/control is the account's main login's once the account exists: it
+# can put a link or a FIFO at any name there, or at control itself. Root
+# touches those names only inside the real directory (the ltd worker's rule):
+# run "$@" in the real directory $1, where below /data/disk every name on the
+# path must be a real directory.
+_a2b_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 read without following a link or blocking on a FIFO, at most 1 MiB.
+_a2b_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# ./$1 with the content $2 (0644), handed to $3 (owner:group; empty, or a
+# name that does not resolve, leaves it as created, root's): a fresh file
+# created, written, owned and moded through one handle opened
+# O_EXCL|O_NOFOLLOW (_ACCT_PUT_PL), then renamed over the name. Nothing is
+# chowned by name: the directory is the account's, and a hard link renamed
+# over the name between the rename and a chown would have been handed to
+# the account.
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+_a2b_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}" _uid _gid
+  _uid=$(id -u -- "${3%%:*}" 2> /dev/null)
+  _gid=$(getent group "${3#*:}" 2> /dev/null | cut -d: -f3)
+  if [[ ! "${_uid}" =~ ^[0-9]+$ || ! "${_gid}" =~ ^[0-9]+$ ]]; then
+    _uid=-1
+    _gid=-1
+  fi
+  rm -f -- "${_t}"
+  if printf '%s\n' "${2}" \
+    | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" 644 \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# ./control made a real directory, run inside the real static/.
+_a2b_ctrl_dir_here() {
+  [ -L ./control ] && rm -f ./control
+  [ -d ./control ] || mkdir -p ./control
+}
+
 _FPM_WANT=""
 _t_fpm_map() {   # 1 uri 2 dmajor; sets _FPM_WANT ("" = no mapping wanted)
   local _uri="$1" _dmaj="$2"
@@ -1672,15 +1897,25 @@ _t_fpm_map() {   # 1 uri 2 dmajor; sets _FPM_WANT ("" = no mapping wanted)
     7) [[ -d /opt/php74 ]] && _FPM_WANT="7.4" ;;
   esac
   [[ -n "${_FPM_WANT}" ]] || return 0
-  local _ctl="${_ACCT_ROOT}/static/control/multi-fpm.info"
-  mkdir -p "${_ACCT_ROOT}/static/control"
+  local _ctd="${_ACCT_ROOT}/static/control" _txt
+  _a2b_in_real_dir "${_ACCT_ROOT}/static" _a2b_ctrl_dir_here
+  if ! _a2b_in_real_dir "${_ctd}" true; then
+    # the socket wait then fails a D6 site, which cannot run without its pin
+    _alrt "site ${_uri}: ${_ctd} is not a real directory; its multi-fpm.info line is not written"
+    return 0
+  fi
+  _txt=$(_a2b_in_real_dir "${_ctd}" _a2b_read_here multi-fpm.info)
   # exact field-1 match: a domain's dots are BRE wildcards under grep,
   # so grep "^a.example.com " would false-match "aXexample.com" and
   # silently skip the second site's pool line
-  if ! awk -v u="${_uri}" '$1==u{f=1} END{exit !f}' "${_ctl}" 2>/dev/null; then
-    echo "${_uri} ${_FPM_WANT}" >> "${_ctl}"
-    chown "${_ACCOUNT}:$(_acct_group "${_ACCOUNT}")" "${_ctl}" 2>/dev/null
-    _info "site ${_uri}: multi-fpm.info -> ${_FPM_WANT}"
+  if ! awk -v u="${_uri}" '$1==u{f=1} END{exit !f}' <<< "${_txt}" 2>/dev/null; then
+    if _a2b_in_real_dir "${_ctd}" _a2b_put_here multi-fpm.info \
+      "$(printf '%s\n%s\n' "${_txt}" "${_uri} ${_FPM_WANT}" | sed '/^$/d')" \
+      "${_ACCOUNT}:$(_acct_group "${_ACCOUNT}")"; then
+      _info "site ${_uri}: multi-fpm.info -> ${_FPM_WANT}"
+    else
+      _alrt "site ${_uri}: could not write its multi-fpm.info line"
+    fi
   fi
   return 0
 }
@@ -1713,7 +1948,7 @@ _t_fpm_map_wait() {   # 1 uri 2 dmajor (per-site route: no freeze in play)
 # would cut sites over to first-export (stale) data.
 _t_reset_site_dbs() {
   local _mff _uri _dbn
-  for _mff in "${_ACCT_ROOT}/src/a2b/manifest/"*.info; do
+  for _mff in "${_STATE_DIR}/src/manifest/"*.info; do
     [[ -e "${_mff}" ]] || continue
     _uri="$(_manifest_val "${_mff}" URI)"
     _marker_has "${_uri}.dbloaded.pid" || continue
@@ -1723,6 +1958,11 @@ _t_reset_site_dbs() {
       && _info "site ${_uri}: db ${_dbn} dropped"
     rm -f "$(_marker "${_uri}.dbloaded.pid")" "$(_marker "${_uri}.imported.pid")"
   done
+  # an earlier release kept its dbloaded markers in the account's tree,
+  # which the account can write: only their existence is tested here
+  if [[ -e "${_ACCT_ROOT}/log/a2b/markers" || -L "${_ACCT_ROOT}/log/a2b/markers" ]]; then
+    _alrt "site DBs loaded by an earlier release's import are recorded only in ${_ACCT_ROOT}/log/a2b/markers, which is never read: they are not dropped here - check that list against the transferred manifests and drop them by hand"
+  fi
 }
 
 # db-import revert only: the restored panel no longer knows the estate's
@@ -1730,14 +1970,15 @@ _t_reset_site_dbs() {
 # them - and a later re-adoption of the same names (the documented retry
 # path) then conflicts on server_name, with the DEAD vhost winning by
 # include order. Remove exactly the manifest URIs' vhost files; the
-# account's own panel vhost is not a manifest URI and stays.
+# account's own panel vhost is not a manifest URI and stays. vhost.d is the
+# account's: each name is removed inside the real directory only.
 _t_remove_estate_vhosts() {
   local _vhd="${_ACCT_ROOT}/config/server_master/nginx/vhost.d" _mff _uri _n=0
-  for _mff in "${_ACCT_ROOT}/src/a2b/manifest/"*.info; do
+  for _mff in "${_STATE_DIR}/src/manifest/"*.info; do
     [[ -e "${_mff}" ]] || continue
     _uri="$(_sane_domain "$(_manifest_val "${_mff}" URI)")" || continue
     if [[ -e "${_vhd}/${_uri}" ]]; then
-      rm -f "${_vhd}/${_uri}"
+      _a2b_in_real_dir "${_vhd}" rm -f -- "./${_uri}"
       _info "site ${_uri}: orphaned vhost removed"
       _n=$(( _n + 1 ))
     fi
@@ -1796,7 +2037,7 @@ EOFMYSQL6
 ###-------------VERB: import-----------###
 
 _import_db_route() {
-  local _src="${_ACCT_ROOT}/src/a2b" _hdb _step
+  local _src="${_STATE_DIR}/src" _undo="${_STATE_DIR}/undo" _hdb _step
   _hdb="$(_t_hm_db)"
   [[ -n "${_hdb}" ]] || _die "cannot resolve target hostmaster db"
   [[ -s "${_src}/hostmaster.sql" ]] || _die "no transferred hostmaster.sql"
@@ -1812,8 +2053,7 @@ _import_db_route() {
   # the target panel identity + platform root must be resolvable BEFORE the
   # import replaces the DB, and the hostmaster alias site_path must exist
   local _hmsp _bfree _hsz _tgt_fqdn _panel _hmplat_tgt
-  _hmsp="$(grep "site_path'" "${_ACCT_ROOT}/.drush/hostmaster.alias.drushrc.php" \
-    | cut -d: -f2 | awk '{ print $3}' | sed "s/[\,']//g")"
+  _hmsp="$(_t_hm_site_path)"
   [[ -d "${_hmsp}" ]] || _die "target hostmaster alias site_path ${_hmsp} missing - account panel unhealthy"
   _tgt_fqdn="$(_sane_domain "$(hostname -f 2>/dev/null | tr -d '\n')")" \
     || _die "cannot resolve this box's FQDN (hostname -f)"
@@ -1822,7 +2062,7 @@ _import_db_route() {
   _hmplat_tgt="$(_t_hm_platform_root)"
   [[ -d "${_hmplat_tgt}" ]] || _die "target hostmaster platform root unresolved - cannot re-point the imported panel"
   _hsz="$(_int_only "$(du -sm "${_src}/hostmaster.sql" | cut -f1)")"
-  _bfree="$(_int_only "$(df -Pm "${_ACCT_ROOT}" 2>/dev/null | awk 'NR==2{print $4}')")"
+  _bfree="$(_int_only "$(df -Pm "${_STATE_DIR}" 2>/dev/null | awk 'NR==2{print $4}')")"
   [[ -n "${_bfree}" && "${_bfree}" -gt $(( _hsz * 2 + 200 )) ]] \
     || _die "target headroom insufficient for the pre-import snapshot (~$(( _hsz * 2 ))MB needed)"
 
@@ -1856,16 +2096,16 @@ _import_db_route() {
   # 1. snapshot (revert + reconcile artifacts)
   _step="${_STATE_DIR}/markers/dbimport"
   if [[ ! -e "${_step}.1.done" ]]; then
-    mkdir -p "${_ACCT_ROOT}/undo"
+    ( umask 077; mkdir -p "${_undo}" )
     mysqldump --defaults-file=/root/.my.cnf --single-transaction --quick \
       --no-autocommit --skip-add-locks --no-tablespaces --hex-blob "${_hdb}" \
-      > "${_ACCT_ROOT}/undo/a2b-pre-import.sql" || _die "pre-import snapshot failed"
-    chmod 600 "${_ACCT_ROOT}/undo/a2b-pre-import.sql"
+      > "${_undo}/a2b-pre-import.sql" || _die "pre-import snapshot failed"
+    chmod 600 "${_undo}/a2b-pre-import.sql"
     _tsql "SELECT name FROM \\\`system\\\` WHERE status=1 AND type='module'" \
-      > "${_ACCT_ROOT}/undo/a2b-enabled-baseline.txt"
+      > "${_undo}/a2b-enabled-baseline.txt"
     _tsql "SELECT service, type FROM hosting_service WHERE nid = (SELECT nid FROM hosting_context WHERE name='server_master')" \
-      > "${_ACCT_ROOT}/undo/a2b-server-services-baseline.txt"
-    [[ -s "${_ACCT_ROOT}/undo/a2b-enabled-baseline.txt" ]] || _die "enabled-set baseline empty"
+      > "${_undo}/a2b-server-services-baseline.txt"
+    [[ -s "${_undo}/a2b-enabled-baseline.txt" ]] || _die "enabled-set baseline empty"
     touch "${_step}.1.done"
     _info "step 1: snapshot + baselines recorded"
   fi
@@ -1878,7 +2118,7 @@ _import_db_route() {
     _info "step 2: target hostmaster tables dropped"
     # 3. import with sandbox strip
     sed '1{/^\/\*M!999999/d}' "${_src}/hostmaster.sql" \
-      | mysql --defaults-file=/root/.my.cnf "${_hdb}" || _die "hostmaster import failed - restore from undo/a2b-pre-import.sql"
+      | mysql --defaults-file=/root/.my.cnf "${_hdb}" || _die "hostmaster import failed - restore from ${_undo}/a2b-pre-import.sql"
     touch "${_step}.3.done"
     _info "step 3: vanilla hostmaster db imported"
   fi
@@ -1939,7 +2179,7 @@ _import_db_route() {
       [[ -n "${_m}" ]] || continue
       [[ "$(_tsql "SELECT status FROM \\\`system\\\` WHERE name='${_m}' AND type='module'")" = "1" ]] \
         || _en_list="${_en_list} ${_m}"
-    done < "${_ACCT_ROOT}/undo/a2b-enabled-baseline.txt"
+    done < "${_undo}/a2b-enabled-baseline.txt"
     if [[ -n "${_en_list}" ]]; then
       _as_octo "drush8 @hostmaster pm-enable -y${_en_list}" >>"${_LOG}" 2>&1 \
         || _die "module reconciliation enable failed (list:${_en_list})"
@@ -1991,7 +2231,7 @@ PHPEOF
       _as_octo "drush8 @hostmaster php-script ${_php}" 2>&1 | tee -a "${_LOG}" | grep -q A2BOK \
         || _alrt "service ${_svc}/${_typ} re-attach did not confirm - verify in the frontend"
       rm -f "${_php}"
-    done < "${_ACCT_ROOT}/undo/a2b-server-services-baseline.txt"
+    done < "${_undo}/a2b-server-services-baseline.txt"
     touch "${_step}.9.done"
     _info "step 9: server service rows reconciled against the pre-import baseline"
   fi
@@ -2104,7 +2344,7 @@ PHPEOF
     _dbs_nid="$(_int_only "$(_tsql "SELECT nid FROM hosting_context WHERE name='server_localhost'")")"
     if [[ -n "${_dbs_nid}" ]]; then
       _dbs_row="$(sed -n "s/^INSERT INTO \`hosting_db_server\` VALUES ([0-9]*,[0-9]*,'\([^']*\)','\([^']*\)').*/\1 \2/p" \
-        "${_ACCT_ROOT}/undo/a2b-pre-import.sql" | head -1)"
+        "${_undo}/a2b-pre-import.sql" | head -1)"
       _dbs_u="$(_sane_ident "$(echo "${_dbs_row}" | cut -d' ' -f1)")"
       _dbs_p="$(echo "${_dbs_row}" | cut -d' ' -f2)"
       case "${_dbs_p}" in *[!A-Za-z0-9_.+-]*|"") _dbs_p="" ;; esac
@@ -2130,7 +2370,8 @@ PHPEOF
       _t_verify_inline "server_localhost" "server_localhost verify" \
         || _die "server_localhost verify failed - the db service is dead (new DB creation would fail); dispatcher stays held"
     fi
-    grep -q "remote_host.*'${_tgt_fqdn}'" "${_ACCT_ROOT}/.drush/server_master.alias.drushrc.php" 2>/dev/null \
+    _t_alias_read server_master.alias.drushrc.php \
+      | grep -q "remote_host.*'${_tgt_fqdn}'" 2>/dev/null \
       || _die "server_master alias remote_host did not regenerate to ${_tgt_fqdn} - LOCAL execution not restored"
     touch "${_step}.11b.done"
     _info "step 11b: server verifies done, remote_host=${_tgt_fqdn} confirmed LOCAL"
@@ -2241,7 +2482,7 @@ PHPEOF
 }
 
 _import_per_site() {
-  local _src="${_ACCT_ROOT}/src/a2b" _mff _uri _plat _dmaj _dbn _dbp _ctxp _fails=0
+  local _src="${_STATE_DIR}/src" _mff _uri _plat _dmaj _dbn _dbp _ctxp _fails=0
 
   if [[ "${_LIVE}" != "YES" ]]; then
     for _mff in "${_src}/manifest/"*.info; do
@@ -2414,8 +2655,8 @@ PHPEOF
 
 verb_import() {
   _require_target_box
-  local _scope="${_SITE:-all}" _troute
-  _troute="$(cat "${_ACCT_ROOT}/src/a2b/route.txt" 2>/dev/null | tr -d '\n')"
+  local _scope="${_SITE:-all}" _troute _undo="${_STATE_DIR}/undo" _hdb
+  _troute="$(cat "${_STATE_DIR}/src/route.txt" 2>/dev/null | tr -d '\n')"
   if [[ "${_REVERT_DB_IMPORT}" != "YES" && "${_RESET_SITES}" != "YES" ]]; then
     [[ -n "${_ROUTE}" ]] || _die "import needs --route per-site|db-import"
     [[ -z "${_troute}" || "${_troute}" = "${_ROUTE}" ]] \
@@ -2423,10 +2664,21 @@ verb_import() {
   fi
 
   if [[ "${_REVERT_DB_IMPORT}" = "YES" ]]; then
-    [[ -s "${_ACCT_ROOT}/undo/a2b-pre-import.sql" ]] || _die "no pre-import snapshot to revert to"
+    if [[ ! -s "${_undo}/a2b-pre-import.sql" ]]; then
+      # an earlier release kept the snapshot in the account's tree, which
+      # the account can write: only its existence is tested here
+      [[ -e "${_ACCT_ROOT}/undo/a2b-pre-import.sql" || -L "${_ACCT_ROOT}/undo/a2b-pre-import.sql" ]] \
+        && _die "no pre-import snapshot in ${_undo}: ${_ACCT_ROOT}/undo/a2b-pre-import.sql was left by an earlier release and is never loaded from the account's tree - after checking it, place it as ${_undo}/a2b-pre-import.sql (root's, dir 0700, file 0600) and re-run the revert"
+      _die "no pre-import snapshot to revert to"
+    fi
+    # resolved before anything is dropped: the alias is read only inside the
+    # account's own hostmaster tree, and a database that cannot be named
+    # there must stop the revert, never follow the drop
+    _hdb="$(_t_hm_db)"
+    [[ -n "${_hdb}" ]] || _die "cannot resolve target hostmaster db"
     if [[ "${_LIVE}" != "YES" ]]; then
       _DRY_FAIL=0
-      _info "[DRY] would drop + restore hostmaster db from undo/a2b-pre-import.sql,"
+      _info "[DRY] would drop + restore hostmaster db from ${_undo}/a2b-pre-import.sql,"
       _info "[DRY] drop the a2b-loaded site DBs, remove the estate's now-ownerless vhosts,"
       _info "[DRY] clear target markers, restore the dispatcher"
       _dry_finish "revert-db"
@@ -2434,8 +2686,8 @@ verb_import() {
     _gate_consume "revert-db"
     _t_freeze_on; trap '_t_freeze_off; _cleanup' EXIT; _t_owl_drain; _t_dispatch_off
     _as_octo "drush8 @hostmaster sql-drop -y" >>"${_LOG}" 2>&1
-    mysql --defaults-file=/root/.my.cnf "$(_t_hm_db)" < "${_ACCT_ROOT}/undo/a2b-pre-import.sql" \
-      || _die "restore failed - hostmaster db is EMPTY, re-import undo/a2b-pre-import.sql manually"
+    mysql --defaults-file=/root/.my.cnf "${_hdb}" < "${_undo}/a2b-pre-import.sql" \
+      || _die "restore failed - hostmaster db is EMPTY, re-import ${_undo}/a2b-pre-import.sql manually"
     _t_reset_site_dbs
     _t_remove_estate_vhosts
     rm -f "${_STATE_DIR}/markers/dbimport."*.done "$(_marker import.db-import.done)"
@@ -2918,6 +3170,28 @@ verb_proxy() {
 
 ###-------------VERB: cert-sync--------###
 
+# The target's LE store is the account's: a name there can be a link or a
+# FIFO, and any directory on the way a link. $2 of the store $1 is read on
+# the target inside the real directory, bounded, never through such a link
+# or from a FIFO; dehydrated keeps each name as a link to the dated file
+# beside it, so such a link is followed one step, only to a plain name in
+# the same directory (as the certificate mirror reads it). The helpers are
+# shipped to the target with the read.
+_a2b_cert_here() {
+  local _n="${1}" _l
+  if [ -L "./${_n}" ]; then
+    _l=$(readlink -- "./${_n}" 2> /dev/null)
+    [[ "${_l}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || return 1
+    _n="${_l}"
+  fi
+  _a2b_read_here "${_n}"
+}
+_a2b_remote_cert() {   # 1 store dir on the target 2 name
+  { declare -f _a2b_in_real_dir _a2b_read_here _a2b_cert_here
+    printf '_a2b_in_real_dir %q _a2b_cert_here %q\n' "$1" "$2"
+  } | ssh -o BatchMode=yes "root@${_TARGET}" "bash -s" 2>/dev/null
+}
+
 verb_certsync() {
   _require_source_box
   if [[ "${_FROM_STATE}" = "YES" ]]; then
@@ -2945,10 +3219,10 @@ verb_certsync() {
     [[ -d "${_store}" ]] || continue
     _sslcount=$(( _sslcount + 1 ))
     _tmpd="$(mktemp -d "${_STATE_DIR}/.certs.XXXXXX")"
-    if scp -q -o BatchMode=yes \
-        "root@${_TARGET}:/data/disk/${_ACCOUNT}/tools/le/certs/${_uri}/fullchain.pem" \
-        "root@${_TARGET}:/data/disk/${_ACCOUNT}/tools/le/certs/${_uri}/privkey.pem" \
-        "${_tmpd}/" 2>/dev/null; then
+    if _a2b_remote_cert "/data/disk/${_ACCOUNT}/tools/le/certs/${_uri}" fullchain.pem \
+        > "${_tmpd}/fullchain.pem" && [[ -s "${_tmpd}/fullchain.pem" ]] \
+      && _a2b_remote_cert "/data/disk/${_ACCOUNT}/tools/le/certs/${_uri}" privkey.pem \
+        > "${_tmpd}/privkey.pem" && [[ -s "${_tmpd}/privkey.pem" ]]; then
       if ! cmp -s "${_tmpd}/fullchain.pem" "${_store}/cert.pem" 2>/dev/null; then
         cp -a "${_store}/cert.pem" "${_store}/cert.pem.prev" 2>/dev/null
         cp -a "${_store}/key.pem" "${_store}/key.pem.prev" 2>/dev/null
@@ -3103,7 +3377,7 @@ verb_status() {
 
 verb_target_status() {
   _require_target_box
-  _info "account: ${_ACCOUNT}  route: $(cat "${_ACCT_ROOT}/src/a2b/route.txt" 2>/dev/null || echo unset)"
+  _info "account: ${_ACCOUNT}  route: $(cat "${_STATE_DIR}/src/route.txt" 2>/dev/null || echo unset)"
   _info "freeze marker: $([ -e "${_ACCT_ROOT}/log/proxied.pid" ] && echo PRESENT || echo no)"
   local _m
   for _m in "${_STATE_DIR}/markers/"*; do
@@ -3169,7 +3443,11 @@ done
 
 [[ "$(id -u 2>/dev/null)" = "0" ]] || _die "must run as root"
 mkdir -p "$(dirname "${_LOG}")" 2>/dev/null
-touch "${_LOG}" 2>/dev/null || _LOG=/tmp/aegir2boa-stage2.log
+# the fallback is a fresh root-only name, never a fixed /tmp one another
+# local user could create first and have every log line appended to
+touch "${_LOG}" 2>/dev/null \
+  || _LOG="$(mktemp /tmp/aegir2boa-stage2.log.XXXXXX 2>/dev/null)" \
+  || _LOG=/dev/null
 [[ -n "${_SITE}" && "${_ALL}" = "YES" ]] && _die "--site and --all are mutually exclusive"
 case "${_ROUTE}" in ""|per-site|db-import) : ;; *) _die "--route must be per-site|db-import" ;; esac
 

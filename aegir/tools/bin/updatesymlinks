@@ -175,6 +175,7 @@ _action_email_report() {
 }
 
 _is_protected_run() {
+  local _mfsHold _mfsPid
   _protectedRun=FALSE
   _protectedReason=""
   _optBin="/opt/local/bin"
@@ -216,6 +217,24 @@ _is_protected_run() {
   [ -e "/run/boa_wait.pid" ]            && { _protectedRun=TRUE; _protectedReason="${_protectedReason} boa_wait.pid"; }
   [ -e "/run/max_load.pid" ]            && { _protectedRun=TRUE; _protectedReason="${_protectedReason} max_load.pid"; }
   [ -e "/run/critical_load.pid" ]       && { _protectedRun=TRUE; _protectedReason="${_protectedReason} critical_load.pid"; }
+
+  # migratefs relocating an account's files store holds it (a live root
+  # process that runs migratefs, matched as executed, never as a word
+  # anywhere on a command line; root read as the real uid in
+  # /proc/<pid>/status, as /proc/<pid> itself shows root as the owner of any
+  # process that is not dumpable): a conversion would make static/files
+  # again at the name its final pass set aside, splitting the store.
+  for _mfsHold in /run/migratefs-account-*.pid; do
+    [ -e "${_mfsHold}" ] || continue
+    _mfsPid=$( { tr -dc '0-9' < "${_mfsHold}"; } 2> /dev/null )
+    if [ -n "${_mfsPid}" ] && kill -0 "${_mfsPid}" 2> /dev/null \
+      && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_mfsPid}/status" 2> /dev/null)" = "0" ] \
+      && { tr '\0' ' ' < "/proc/${_mfsPid}/cmdline"; } 2> /dev/null \
+      | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?migratefs( |$)'; then
+      _protectedRun=TRUE
+      _protectedReason="${_protectedReason} migratefs(${_mfsHold##*/})"
+    fi
+  done
 
   if _provision_running; then
     _protectedRun=TRUE
@@ -269,11 +288,36 @@ _night_id() {
 # symlinks. Sets the self-healing stop file (records our PID), holds a fixed grace so a
 # runner already mid-dispatch cannot fire a task after we paused, then bounded-drains
 # pgrep provision. Returns 0 when quiescent (safe to convert), 1 if a task is still
-# active after the grace+drain (caller must NOT apply; the hourly retry tries again).
+# active after the grace+drain, or when the pause is another live operation's (caller
+# must NOT apply; the hourly retry tries again): that owner ends its pause when it is
+# done, and the queue would then dispatch tasks mid-sweep.
 _pause_and_drain() {
-  if [ ! -e "${_queueStop}" ]; then
-    echo "$$" > "${_queueStop}" 2>/dev/null && _stopOwned="YES"
+  local _qsPid
+  if [ -e "${_queueStop}" ]; then
+    _qsPid=$( { tr -dc '0-9' < "${_queueStop}"; } 2> /dev/null )
+    if [ -n "${_qsPid}" ] && [ "${_qsPid}" != "$$" ] \
+      && kill -0 "${_qsPid}" 2> /dev/null \
+      && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_qsPid}/status" 2> /dev/null)" = "0" ]; then
+      _why "the Aegir queue pause is held by pid ${_qsPid}; its window is not ours"
+      _log "INFO: queue pause held by pid ${_qsPid}; not applying this run"
+      return 1
+    fi
+    # Only root writes the pause, so one whose pid is gone, or is now
+    # another user's process, holds nothing (clear.sh purges it too).
+    # Removed only while it still names that pid: a pause another operation
+    # created meanwhile is never taken from it.
+    if [ "$( { tr -dc '0-9' < "${_queueStop}"; } 2> /dev/null )" = "${_qsPid}" ]; then
+      rm -f "${_queueStop}"
+    fi
   fi
+  # Created only when absent, so a pause another operation took meanwhile
+  # is never overwritten.
+  if ! ( set -C; echo "$$" > "${_queueStop}" ) 2> /dev/null; then
+    _why "another operation took the Aegir queue pause first"
+    _log "INFO: another operation took the Aegir queue pause first; not applying this run"
+    return 1
+  fi
+  _stopOwned="YES"
   _dbg "queue paused (${_queueStop}); holding grace ${_AUTOSYMLINK_PAUSE_GRACE}s then draining provision (set _AUTOSYMLINK_PAUSE_GRACE=0 to skip the wait)"
   _log "INFO: Aegir queue paused (${_queueStop}); grace ${_AUTOSYMLINK_PAUSE_GRACE}s, then drain"
   sleep "${_AUTOSYMLINK_PAUSE_GRACE}"

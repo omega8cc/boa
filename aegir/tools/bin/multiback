@@ -382,7 +382,85 @@ _escape_value() {
   printf '%q' "$1"
 }
 
-# Function to sanitize and validate credentials file
+# The names a per-account credentials file may set: the account writes that
+# file, and this runs as root, so any other name (LD_PRELOAD, PATH, BASH_ENV,
+# PYTHONPATH, AWS_CONFIG_FILE and the like) would steer root's own process.
+# Such a line is ignored and logged; the backup runs on without it.
+_CRED_NAMES_ALLOWED="KEEP_WITHIN FULL_BACKUP_FREQUENCY AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_REGION AWS_DEFAULT_REGION AWS_SESSION_TOKEN AZURE_STORAGE_ACCOUNT AZURE_STORAGE_KEY AZURE_STORAGE_CONNECTION_STRING AZURE_CONNECTION_STRING B2_ACCOUNT_ID B2_APPLICATION_KEY DO_SPACES_KEY DO_SPACES_SECRET DO_SPACES_REGION GCS_ACCESS_KEY_ID GCS_SECRET_ACCESS_KEY IBM_ACCESS_KEY_ID IBM_SECRET_ACCESS_KEY IBM_REGION LINODE_ACCESS_KEY LINODE_SECRET_KEY LINODE_REGION R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_ACCOUNT_ID WASABI_ACCESS_KEY WASABI_SECRET_KEY WASABI_REGION"
+_cred_name_allowed() {
+  case " ${_CRED_NAMES_ALLOWED} " in
+    *" ${1} "*) return 0 ;;
+  esac
+  return 1
+}
+# The names whose value goes into the target URL, which reaches the duplicity
+# command line unquoted.
+_cred_name_plain() {
+  case "${1}" in
+    AWS_REGION|DO_SPACES_REGION|IBM_REGION|LINODE_REGION|R2_ACCOUNT_ID|WASABI_REGION) return 0 ;;
+  esac
+  return 1
+}
+
+# An account owns /data/disk/<oN> and, through its .ftp login, static/control,
+# so any name below either can be a link or a FIFO, and a whole directory on
+# the way can be one. Root reads and writes there only inside the real
+# directory. _acct_in_real_dir and _acct_read_here are copies of the helpers
+# in lib/functions/helper.sh.inc.
+#
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory; once entered, ./name stays there
+# whatever is swapped.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_acct_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# ./$1 read as _acct_read_here reads it, only when it is a non-empty regular
+# file (what [ -s ] accepted before); fails otherwise.
+_acct_read_file_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] && [ -s "./${1}" ] || return 1
+  _acct_read_here "${1}"
+}
+# True when $1 is root's and no one else can write it: owned by root, not
+# writable by others, group-writable only for group root.
+_root_only() {
+  local _s _u _g _m
+  _s="$(stat -c '%u %g %a' -- "${1}" 2> /dev/null)" || return 1
+  read -r _u _g _m <<< "${_s}"
+  [ "${_u}" = 0 ] || return 1
+  (( 0${_m} & 2 )) && return 1
+  (( 0${_m} & 16 )) && [ "${_g}" != 0 ] && return 1
+  return 0
+}
+# ./$1 in the current (pinned) directory, read only when this directory and
+# the file are root's alone: an account can swap its own remote_backups for a
+# directory it made, but never make one root owns. Returns 2 when the
+# directory or the file is not root's, 1 when the file is missing.
+_acct_read_root_here() {
+  _root_only . || return 2
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  _root_only "./${1}" || return 2
+  _acct_read_here "${1}"
+}
+
+# Function to sanitize and validate credentials file. $3 is its content, read
+# by the caller.
 _validate_credentials() {
   local _cred_file="$1"
   local _service="$2"
@@ -427,15 +505,37 @@ _validate_credentials() {
       export _varname="${BASH_REMATCH[1]}"
       export _value="${BASH_REMATCH[2]}"
 
+      # a per-account file (the tenant's) sets only the names above
+      case "${_cred_file}" in
+        /data/disk/*)
+          if ! _cred_name_allowed "${_varname}"; then
+            _log_issue "credentials" "${_cred_file}" \
+              "Name not allowed at line ${_line_number}: ${_varname}"
+            continue
+          fi
+          ;;
+      esac
+
       # Remove surrounding quotes if present
       if [[ "${_value}" =~ ^\".*\"$ || "${_value}" =~ ^\'.*\'$ ]]; then
         export _value="${_value:1:-1}"
       fi
 
-      # Check for forbidden characters in value
+      # Check for forbidden characters in value; the value itself is never
+      # logged (a key refused here is still a key)
       if echo "${_value}" | grep -q -E '[$`(){};&|<>]'; then
         _log_issue "credentials" "${_cred_file}" \
-          "Forbidden characters in value at line ${_line_number}: ${_line}"
+          "Forbidden characters in the value of ${_varname} at line ${_line_number}"
+        continue
+      fi
+
+      # A region or an account id goes into the target URL and so onto the
+      # duplicity command line: a plain name only, never a quoted value with
+      # spaces that would add options to it
+      if _cred_name_plain "${_varname}" \
+        && [[ ! "${_value}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+        _log_issue "credentials" "${_cred_file}" \
+          "Not a plain name in the value of ${_varname} at line ${_line_number}"
         continue
       fi
 
@@ -451,9 +551,9 @@ _validate_credentials() {
       fi
     else
       _log_issue "credentials" "${_cred_file}" \
-        "Invalid syntax at line ${_line_number}: ${_line}"
+        "Invalid syntax at line ${_line_number}"
     fi
-  done < "${_cred_file}"
+  done <<< "${3}"
 
   _print_env "multiback_validate_credentials"
 }
@@ -462,32 +562,72 @@ _validate_credentials() {
 _load_credentials() {
   local _service="$1"
   local _user="$2"
+  local _acct=NO _cred_dir _secret_dir _cred_body _secret_body
   if [ "${_user}" != "arch" ] \
     && [ "${_user}" != "data" ] \
     && [ "${_user}" != "global" ] \
     && [ "${_user}" != "static" ] \
     && [ "${_user}" != "custom" ]; then
-    local _cred_file="/data/disk/${_user}/static/control/remote_backups/credentials/${_service}.txt"
-    local _secret_file="/data/disk/${_user}/remote_backups/.secret.txt"
+    _acct=YES
+    _cred_dir="/data/disk/${_user}/static/control/remote_backups/credentials"
+    _secret_dir="/data/disk/${_user}/remote_backups"
+    local _cred_file="${_cred_dir}/${_service}.txt"
+    local _secret_file="${_secret_dir}/.secret.txt"
+    # The credentials hang off static/control, which the tenant owns: refuse
+    # when any name on the way, or the file itself, is a link (a planted one
+    # would hand root another account's credentials), as mybackup does.
+    local _p
+    for _p in "/data/disk/${_user}/static" \
+      "/data/disk/${_user}/static/control" \
+      "/data/disk/${_user}/static/control/remote_backups" \
+      "/data/disk/${_user}/static/control/remote_backups/credentials" \
+      "${_cred_file}"; do
+      if [ -L "${_p}" ]; then
+        echo "[$(date)] REFUSED credentials for ${_user}: ${_p} is a symlink" \
+          >> /var/log/mybackup_invalid_queued.log
+        echo "Error: ${_p} is a symlink. Unable to proceed."
+        exit 1
+      fi
+    done
   fi
   if [ "${_user}" = "global" ] || [ "${_user}" = "data" ] || [ "${_user}" = "custom" ]; then
     local _cred_file="/root/.remote_backups/credentials/${_service}.txt"
     local _secret_file="/root/.remote_backups/.secret.txt"
   fi
 
-  if [ -s "${_secret_file}" ]; then
-    export PASSPHRASE=$(cat "${_secret_file}")
+  if [ "${_acct}" = "YES" ]; then
+    # The check above and a read by path are two steps, and any directory on
+    # the way can be swapped between them: both files are read inside their
+    # real directories, never through a link or from a FIFO.
+    if _secret_body="$(_acct_in_real_dir "${_secret_dir}" \
+      _acct_read_file_here .secret.txt)"; then
+      export PASSPHRASE="${_secret_body}"
+    else
+      echo "Secret file ${_secret_file} not found. Unable to proceed."
+      exit 1
+    fi
+    if ! _cred_body="$(_acct_in_real_dir "${_cred_dir}" \
+      _acct_read_file_here "${_service}.txt")"; then
+      echo "Error: Credentials file '${_cred_file}' not found."
+      exit 1
+    fi
   else
-    echo "Secret file ${_secret_file} not found. Unable to proceed."
-    exit 1
+    if [ -s "${_secret_file}" ]; then
+      export PASSPHRASE=$(cat "${_secret_file}")
+    else
+      echo "Secret file ${_secret_file} not found. Unable to proceed."
+      exit 1
+    fi
+
+    if [ ! -s "${_cred_file}" ]; then
+      echo "Error: Credentials file '${_cred_file}' not found."
+      exit 1
+    fi
+    _cred_body="$(timeout 10 dd if="${_cred_file}" iflag=nofollow,nonblock,fullblock \
+      bs=1048576 count=1 status=none 2>/dev/null)"
   fi
 
-  if [ ! -s "${_cred_file}" ]; then
-    echo "Error: Credentials file '${_cred_file}' not found."
-    exit 1
-  fi
-
-  _validate_credentials "${_cred_file}" "${_service}"
+  _validate_credentials "${_cred_file}" "${_service}" "${_cred_body}"
   _print_env "multiback_load_credentials"
 }
 
@@ -504,6 +644,14 @@ _load_paths() {
     local _paths_file="/root/.remote_backups/paths/${_user}_paths.txt"
   fi
 
+  case "${_paths_file}" in
+    /data/disk/*)
+      _load_account_paths "${_user}" "${_paths_file}"
+      _print_env "multiback_load_paths"
+      return 0
+      ;;
+  esac
+
   if [ ! -f "${_paths_file}" ]; then
     echo "Error: Paths configuration file '${_paths_file}' not found."
     exit 1
@@ -513,6 +661,51 @@ _load_paths() {
     source "${_paths_file}"
   fi
   _print_env "multiback_load_paths"
+}
+
+# An account's paths.txt is root's file in root's remote_backups/paths, but
+# the account owns /data/disk/<oN> and can swap remote_backups itself for a
+# directory it made. The file is sourced by root, so it is read once, inside
+# the real directory, and only when that directory and the file are root's
+# alone; anything else refuses the run. The filelists it names are opened by
+# duplicity by path much later, so duplicity gets root-private copies taken
+# from the same directory now. $1 = account, $2 = its paths.txt.
+_load_account_paths() {
+  local _user="$1" _paths_file="$2" _paths_dir="${2%/*}" _body _rc _v _n
+  _body="$(_acct_in_real_dir "${_paths_dir}" _acct_read_root_here "${_paths_file##*/}")"
+  _rc=$?
+  if [ "${_rc}" != 0 ]; then
+    if [ "${_rc}" = 2 ] || { [ -e "${_paths_dir}" ] \
+      && ! _acct_in_real_dir "${_paths_dir}" true; }; then
+      echo "[$(date)] REFUSED paths for ${_user}: ${_paths_dir} is not root's own directory" \
+        >> /var/log/mybackup_invalid_queued.log
+      echo "Error: ${_paths_dir} is not root's own directory. Unable to proceed."
+      exit 1
+    fi
+    echo "Error: Paths configuration file '${_paths_file}' not found."
+    exit 1
+  fi
+  if [ -z "${_LISTS_TMP}" ] || [ ! -d "${_LISTS_TMP}" ]; then
+    echo "Error: no private directory for the filelists of ${_user}. Unable to proceed."
+    exit 1
+  fi
+  eval "${_body}"
+  for _v in _INCLUDE_LIST _EXCLUDE_LIST; do
+    _n="${!_v}"
+    case "${_n}" in
+      "${_paths_dir}"/*) _n="${_n##*/}" ;;
+      *) continue ;;
+    esac
+    printf -v "${_v}" '%s' "${_LISTS_TMP}/${_n}"
+    _acct_in_real_dir "${_paths_dir}" _acct_copy_root_here "${_n}" "${_LISTS_TMP}/${_n}"
+  done
+}
+# ./$1 in the current (pinned) root-only directory copied to the new file $2
+# when it is root's own regular file; nothing is created otherwise.
+_acct_copy_root_here() {
+  _root_only . && [ -f "./${1}" ] && [ ! -L "./${1}" ] && _root_only "./${1}" || return 1
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock of="${2}" conv=excl \
+    status=none 2> /dev/null
 }
 
 # Function to validate duration format and fallback to default
@@ -565,6 +758,233 @@ _generate_include_directives() {
   echo "${_include}"
 }
 
+# The real path of account $1's files store when static/files is a link to
+# the account's own store in BOA's relocated layout (migratefs, xoct, xcopy
+# and xmass: <mount>/files/<oN>/static/files under /mnt, in a directory only
+# root can write, so no account made it), with a plain path only; nothing
+# else.
+_acct_relocated_store() {
+  local _a="${1}" _sto
+  [ -L "/data/disk/${_a}/static/files" ] || return 0
+  _sto=$(readlink -f "/data/disk/${_a}/static/files" 2> /dev/null)
+  case "${_sto}" in
+    *[!A-Za-z0-9._/-]*) return 0 ;;
+    /mnt/?*/files/"${_a}"/static/files)
+      [ -d "${_sto}" ] && _root_only "${_sto%/files}" && echo "${_sto}"
+      ;;
+  esac
+  return 0
+}
+
+# True when every link on the way to $1 is a link root owns in a directory
+# only root can write, so no account chose where it leads. Sets _RLK_PATH to
+# the path the walk reached: each such link replaced by where it leads, '.'
+# and '..' taken where they stand. A caller pins that path, never another
+# lookup of $1. $2 = depth.
+_root_links_ok() {
+  local _rest="${1#/}" _p="" _c _t _n="${2:-0}"
+  _RLK_PATH=""
+  [ "${_n}" -lt 8 ] || return 1
+  while [ -n "${_rest}" ]; do
+    _c="${_rest%%/*}"
+    if [ "${_c}" = "${_rest}" ]; then
+      _rest=""
+    else
+      _rest="${_rest#*/}"
+    fi
+    case "${_c}" in
+      ""|.) continue ;;
+      ..) _p="${_p%/*}"; continue ;;
+    esac
+    _p="${_p}/${_c}"
+    [ -L "${_p}" ] || continue
+    [ "$(stat -c %u -- "${_p}" 2> /dev/null)" = 0 ] || return 1
+    _root_only "${_p%/*}/" || return 1
+    _t="$(readlink -- "${_p}" 2> /dev/null)" || return 1
+    case "${_t}" in
+      /*) ;;
+      *) _t="${_p%/*}/${_t}" ;;
+    esac
+    _root_links_ok "${_t}" $(( _n + 1 )) || return 1
+    _p="${_RLK_PATH%/}"
+  done
+  _RLK_PATH="${_p:-/}"
+  return 0
+}
+
+# The real path of the shared archive when /data/disk/arch is a link root made
+# (migratefs, xoct, xcopy and xmass: <mount>/files/system/arch), with a plain
+# path only; nothing else.
+_arch_relocated_store() {
+  local _s
+  [ -L /data/disk/arch ] && _root_links_ok /data/disk/arch || return 0
+  _s=$(readlink -f /data/disk/arch 2> /dev/null)
+  case "${_s}" in
+    ""|*[!A-Za-z0-9._/-]*) return 0 ;;
+  esac
+  [ -d "${_s}" ] && echo "${_s}"
+  return 0
+}
+
+# A line for the emailed report and the validation log about content this
+# run does not hold. $1 = the message.
+_store_report() {
+  echo "[$(date)] ${1}" >> "${_LOGFILE}"
+  echo "[$(date)] ${_BUCKET_NAME}: ${1}" >> "${_VALIDATION_LOG_FILE}"
+}
+
+# Account $1's relocated files store, added to the run by its own path when
+# the run includes the account's static/files (that operand or a directory
+# above it): every exclude that covers static/files, or a path below it, is
+# repeated for the store first, and so is every include from the exclude
+# filelist, in their order, since duplicity takes the first match. A
+# static/files link to anything but the store that leads outside the trees
+# the run includes is reported, never followed. $2 = the run's include
+# operands, $3 = its exclude operands (with the filelist's absolute entries).
+_acct_store_add() {
+  local _a="${1}" _d="/data/disk/${1}/static/files" _s _r _w _i _x _in=NO _add=""
+  read -r -a _w <<< "${2}"
+  for (( _i = 0; _i + 1 < ${#_w[@]}; _i++ )); do
+    [ "${_w[_i]}" = "--include" ] || continue
+    _x="${_w[_i+1]%/}"
+    case "${_d}/" in
+      "${_x}/"*) _in=YES ;;
+    esac
+  done
+  [ "${_in}" = YES ] && [ -L "${_d}" ] || return 0
+  _s=$(_acct_relocated_store "${_a}")
+  if [ -z "${_s}" ]; then
+    _r=$(readlink -f -- "${_d}" 2> /dev/null)
+    if [ -n "${_r}" ] && [ -e "${_r}" ]; then
+      for (( _i = 0; _i + 1 < ${#_w[@]}; _i++ )); do
+        [ "${_w[_i]}" = "--include" ] || continue
+        _x="${_w[_i+1]%/}"
+        case "${_r}/" in
+          "${_x}/"*) return 0 ;;
+        esac
+      done
+    fi
+    _store_report "Not in this backup: ${_d} is a link to $(printf '%q' "${_r:-a missing target}"), not the account's store in BOA's layout (<mount>/files/${_a}/static/files); only the link is backed up"
+    return 0
+  fi
+  read -r -a _w <<< "${3}"
+  for (( _i = 0; _i + 1 < ${#_w[@]}; _i++ )); do
+    _x="${_w[_i+1]}"
+    case "${_w[_i]}" in
+      --exclude|--include)
+        _x="${_x%/}"
+        case "${_x}" in
+          "${_d}") _add="${_add} ${_w[_i]} ${_s}" ;;
+          "${_d}/"*) _add="${_add} ${_w[_i]} ${_s}/${_x#"${_d}/"}" ;;
+          *)
+            case "${_d}/" in
+              "${_x}/"*) _add="${_add} ${_w[_i]} ${_s}" ;;
+            esac
+            ;;
+        esac
+        ;;
+      --exclude-regexp)
+        case "${_x}" in
+          "^${_d}"*) _add="${_add} --exclude-regexp ^${_s//./\\.}${_x#"^${_d}"}" ;;
+          "${_d}"*) _add="${_add} --exclude-regexp ${_s//./\\.}${_x#"${_d}"}" ;;
+        esac
+        ;;
+    esac
+  done
+  _BATCH_EXCLUDE="${_BATCH_EXCLUDE}${_add}"
+  _BATCH_INCLUDE="${_BATCH_INCLUDE} --include ${_s}"
+}
+
+# The global and custom runs (root's own lists and buckets): an operand that
+# reaches its content through a link, such as a relocated /data/disk/arch, is
+# included by its resolved path too, only when root made every link on the
+# way; otherwise the operand is reported. Globs, regexps and odd names are
+# left to duplicity.
+_root_link_includes() {
+  local _ops=() _w _i _x _r _l
+  read -r -a _w <<< "${_SOURCE}"
+  _ops+=("${_w[@]}")
+  read -r -a _w <<< "${_INCLUDE_PATHS}"
+  for (( _i = 0; _i + 1 < ${#_w[@]}; _i++ )); do
+    [ "${_w[_i]}" = "--include" ] && _ops+=("${_w[_i+1]}")
+  done
+  if [ -s "${_INCLUDE_LIST}" ]; then
+    while IFS= read -r _l || [ -n "${_l}" ]; do
+      _ops+=("${_l#+ }")
+    done < "${_INCLUDE_LIST}"
+  fi
+  for _x in "${_ops[@]}"; do
+    case "${_x}" in
+      /*) ;;
+      *) continue ;;
+    esac
+    case "${_x}" in
+      *[!A-Za-z0-9._/-]*) continue ;;
+    esac
+    _r=$(readlink -f -- "${_x}" 2> /dev/null)
+    if [ -z "${_r}" ]; then
+      [ -L "${_x}" ] || continue
+    elif [ "${_r}" = "${_x}" ] || [ "${_r}" = "${_x%/}" ]; then
+      continue
+    fi
+    if [ -n "${_r}" ] && [ -e "${_r}" ] && _root_links_ok "${_x}" \
+      && [[ "${_r}" != *[!A-Za-z0-9._/-]* ]]; then
+      _BATCH_INCLUDE="${_BATCH_INCLUDE} --include ${_r}"
+    else
+      _store_report "Not in this backup: ${_x} reaches its content through a link root did not make, or one that leads nowhere; only the link is backed up"
+    fi
+  done
+}
+
+# The absolute entries of the run's exclude filelist (root's own list, or the
+# root-private copy of an account's), in their order, as --exclude operands
+# and, for include lines ('+ '), --include operands, so a store is excluded
+# and included where they name static/files as it is by them. Patterns such
+# as **files/css/** (which match the store as they are) and entries with
+# blanks are left to the filelist alone.
+_lst_exclude_ops() {
+  local _l _o
+  [ -n "${_EXCLUDE_LIST}" ] && [ -f "${_EXCLUDE_LIST}" ] || return 0
+  while IFS= read -r _l || [ -n "${_l}" ]; do
+    _l="${_l%"${_l##*[![:space:]]}"}"
+    _o=--exclude
+    case "${_l}" in
+      "+ "*) _o=--include; _l="${_l#+ }" ;;
+      "- "*) _l="${_l#- }" ;;
+    esac
+    case "${_l}" in
+      *[[:space:]]*) continue ;;
+      /?*) printf ' %s %s' "${_o}" "${_l}" ;;
+    esac
+  done < "${_EXCLUDE_LIST}"
+}
+
+# Backups never follow links, so content held behind one is added to the
+# include set by its own path: an account's relocated files store for a
+# per-account run, every included account's for the data run, and root-made
+# links for the global and custom runs. The rules mapped onto a store are the
+# run's exclude operands and its exclude filelist's absolute entries.
+_acct_store_includes() {
+  local _a _x
+  case "${_USER}" in
+    global|custom)
+      _root_link_includes
+      ;;
+    data)
+      _x="${_EXCLUDE_PATHS}$(_lst_exclude_ops)"
+      for _a in /data/disk/*; do
+        [ -d "${_a}/static" ] || continue
+        _acct_store_add "${_a##*/}" "${_INCLUDE_PATHS}" "${_x}"
+      done
+      ;;
+    *)
+      _acct_store_add "${_USER}" "${_USER_INCLUDE_PATHS}" \
+        "${_USER_EXCLUDE_PATHS}$(_lst_exclude_ops)"
+      ;;
+  esac
+  return 0
+}
+
 # Function to prepare backup directives
 _backup_prepare() {
   if [ -e "/root/.cache/duplicity/${_NAME}" ]; then
@@ -601,6 +1021,7 @@ _backup_prepare() {
   [ -n "${_USER_MERGED_ALL_EXCLUDE}" ] && _BATCH_EXCLUDE="${_USER_MERGED_ALL_EXCLUDE}"
   [ -n "${_LST_EXCLUDE}" ] && _BATCH_EXCLUDE="${_BATCH_EXCLUDE} ${_LST_EXCLUDE}"
   #
+  _acct_store_includes
   export _BATCH_INCLUDE
   export _BATCH_EXCLUDE
 
@@ -648,13 +1069,16 @@ _set_cmd() {
   # Validate or set default for FULL_BACKUP_FREQUENCY
   _validate_or_default_duration "${FULL_BACKUP_FREQUENCY}" "FULL_BACKUP_FREQUENCY" "${_DEFAULT_FULL_BACKUP_FREQUENCY}"
 
+  ### Links are backed up as links, never followed: the trees are the
+  ### accounts' own and a link there may lead anywhere root can read. An
+  ### account's relocated files store is included by its own path instead
+  ### (see _acct_store_includes).
   ### Default backup command with encryption
   export _DCY_BUP_CMD="/usr/local/bin/duplicity ${_MODE} \
     -v ${_AWS_VLV} \
     --name=${_NAME} \
     --allow-source-mismatch \
     --concurrency ${_useCpu} \
-    --copy-links \
     --full-if-older-than ${FULL_BACKUP_FREQUENCY} \
     --volsize 300"
 
@@ -688,7 +1112,6 @@ _set_cmd() {
     --name=${_NAME} \
     --allow-source-mismatch \
     --concurrency ${_useCpu} \
-    --copy-links \
     --volsize 300"
 
   ### Custom backup command without encryption and enforced own FULL_BACKUP_FREQUENCY
@@ -871,11 +1294,43 @@ _check_if_worked_cleanly_or_log_err() {
   else
     _sentinel="${_logs_dir}/ERR-${_BUCKET_NAME}.log"
   fi
+  case "${_logs_dir}" in
+    /data/disk/*)
+      # The loop above and a write by path are two steps: logs/ is made
+      # inside the real remote_backups (mkdir never follows a link at the
+      # name) and the sentinel is put inside the real logs/.
+      _acct_in_real_dir "${_logs_dir%/*}" mkdir -- ./logs 2> /dev/null
+      _acct_in_real_dir "${_logs_dir}" _acct_copy_put_here \
+        "${_sentinel##*/}" "${_LOGFILE}"
+      return 0
+      ;;
+  esac
   [ ! -d "${_logs_dir}" ] && mkdir -p "${_logs_dir}"
   [ -d "${_logs_dir}" ] || return 0
   # rm unlinks a planted leaf link itself, never what it points at.
   [ -L "${_sentinel}" ] && rm -f "${_sentinel}"
   cp -af "${_LOGFILE}" "${_sentinel}"
+}
+
+# The root file $2 copied to ./$1 in the current (pinned) directory with its
+# content, read/write bits and times (root's own file, so root's owner as a
+# fresh file gets it), as a fresh file created exclusively and renamed over
+# the name, so a link or a FIFO put at the name is replaced, never followed
+# or opened. The temp is created, written, moded and timed through one handle
+# opened O_EXCL|O_NOFOLLOW (_ACCT_COPY_PUT_PL, the times of the file as read,
+# in whole seconds): nothing runs by name on it, as the directory is the
+# account's (a hard link renamed over the temp name before a touch by name
+# would take the times).
+_ACCT_COPY_PUT_PL='use Fcntl; use IO::Handle; my ($n) = @ARGV; local $/; my $d = <STDIN>; my @s = stat(STDIN) or exit 1; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; $h->flush or exit 1; chmod($s[2] & 0666, $h) or exit 1; utime($s[8], $s[9], $h) or exit 1; close($h) or exit 1; exit 0'
+_acct_copy_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if perl -e "${_ACCT_COPY_PUT_PL}" "${_t}" 2> /dev/null < "${2}" \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
 }
 
 # Function to wipe the bucket completely. Duplicity 3.2.0.2 has no verb
@@ -1049,9 +1504,13 @@ _run_backup() {
   echo "$(date)" >> ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.${_MODE}.log
   # Stderr is captured too: duplicity routes errors there, so without it
   # the emailed log misses why a run failed and the no-signatures retry
-  # below has nothing to detect.
+  # below has nothing to detect. The operands are word-split but never
+  # globbed by the shell: a pattern there is duplicity's, and an account's
+  # regexp operand must not expand to the names it keeps in its own tree.
+  set -f
   ${_DCY_BUP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE} 2>&1
   _BUP_RC=$?
+  set +f
   wait
   # An explicit incremental against a remote with no signatures is a
   # fatal in duplicity, never a promotion -- only the implied-inc backup
@@ -1067,8 +1526,10 @@ _run_backup() {
     _set_cmd
     echo "Remote has no signatures; retrying in ${_MODE} mode for ${_BUCKET_NAME} on $(date)" >> ${_LOGFILE}
     echo "$(date)" >> ${_LOGPTH}/${_BUCKET_NAME}.${_TODAY}.${_MODE}.log
+    set -f
     ${_DCY_BUP_CMD} ${_BATCH_EXCLUDE} ${_BATCH_INCLUDE} --exclude '**' / ${_BACKUP_TARGET} >> ${_LOGFILE} 2>&1
     _BUP_RC=$?
+    set +f
     wait
   fi
   export _BUP_RC
@@ -1163,7 +1624,587 @@ _backup() {
 #
 ### Restore Command in mybackup for reference
 
-# Function to restore backup
+# Restores through links. Backups keep links as links, so an account's
+# relocated files store (static/files -> <mount>/files/<oN>/static/files)
+# and the relocated archive (/data/disk/arch -> <mount>/files/system/arch)
+# are held under their own paths, and a site's files/ and private/ (and the
+# account's backups/) are links into static/files. A path at or below
+# static/files or the archive is restored from where its content is held:
+# the store first, the path as given only when duplicity reports the store
+# path not found (backups made while links were followed hold the content
+# under the link's own path). A path below any other name the archive holds
+# as a link into the same account's tree is restored from where that link
+# leads. A link in the restored tree that leads to the same account's
+# static/files or store is replaced by that content as of the same time, one
+# restore per site store, up to _RST_LINK_MAX of them and while the target
+# filesystem keeps a tenth of its size free; every other one is reported with
+# the command that restores it. The same helpers are in multiback and
+# mybackup.
+#
+# $1 = the restore verb, $2 = the listing verb (both without time and target),
+# $3 = the time or empty, $4 = scope (acct, data, global or custom), $5 = the
+# account for acct, $6 = the log for the reports (empty: stdout, as it runs),
+# $7 = the command that restores one path to the same place, for the reports.
+# _RST_TMP is a private directory for the run's own files; fails without one.
+_rst_setup() {
+  local _t=""
+  [ -n "${3}" ] && _t=" --time $(printf '%q' "${3}")"
+  _RST_CMD="${1}${_t} ${_BACKUP_TARGET}"
+  _RST_LST="${2}${_t} ${_BACKUP_TARGET}"
+  _RST_TIME="${3}"
+  _RST_SCOPE="${4}"
+  _RST_ACCT="${5}"
+  _RST_LOG="${6}"
+  _RST_AGAIN="${7}"
+  _RST_LINK_MAX=10
+  _RST_LAST=""
+  _RST_GIVEN=""
+  _RST_DONE=""
+  _RST_OUT=""
+  _RST_HOPS=0
+  declare -gA _RST_STO=()
+  [ -n "${_RST_TMP}" ] && [ -d "${_RST_TMP}" ] && [ ! -L "${_RST_TMP}" ]
+}
+_rst_note() {
+  if [ -n "${_RST_LOG}" ]; then
+    printf '%s\n' "$*" >> "${_RST_LOG}"
+  else
+    printf '%s\n' "$*"
+  fi
+}
+# True for a path of plain names only: no empty, '.' or '..' name, and
+# nothing outside [A-Za-z0-9._-] in a name.
+_rst_plain() {
+  [[ "${1}" =~ ^/?[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*$ ]] || return 1
+  case "/${1#/}/" in
+    */./*|*/../*) return 1 ;;
+  esac
+  return 0
+}
+# True when archive path $1 is $2 or below it; an empty $2 is everything.
+_rst_under() {
+  [ -z "${2}" ] && return 0
+  case "${1}" in
+    "${2}"|"${2}/"*) return 0 ;;
+  esac
+  return 1
+}
+# Archive path $1 (empty: everything) restored to $2. duplicity runs in the C
+# locale, so the message matched here is its own English one. With a log,
+# its output goes there once the attempt is final; without one, it goes to
+# stdout as it runs, all but that message. Returns 2 when duplicity reports
+# the path not found in the archive (what was held back is then kept in
+# _RST_OUT for the caller, which may still try another path, and says it
+# only when none is left), 1 on any other failure.
+_rst_one() {
+  local _c="${_RST_CMD}" _o="${_RST_TMP}/rst.out" _m="not found in archive" _rc
+  [ -n "${1}" ] && _c="${_c} --path-to-restore $(printf '%q' "${1}")"
+  _c="${_c} $(printf '%q' "${2}")"
+  echo "Command is ${_c}"
+  _RST_OUT=""
+  if [ -n "${_RST_LOG}" ]; then
+    eval "LANGUAGE= LC_ALL=C ${_c}" > "${_o}" 2>&1
+    _rc=$?
+  else
+    eval "LANGUAGE= LC_ALL=C ${_c}" 2>&1 | tee -- "${_o}" \
+      | LC_ALL=C grep --line-buffered -a -v -F -e "${_m}"
+    _rc="${PIPESTATUS[0]}"
+  fi
+  if [ "${_rc}" != 0 ] && grep -q -F -e "${_m}" -- "${_o}"; then
+    if [ -n "${_RST_LOG}" ]; then
+      _RST_OUT="$(cat -- "${_o}")"
+    else
+      _RST_OUT="$(LC_ALL=C grep -a -F -e "${_m}" -- "${_o}")"
+    fi
+    return 2
+  fi
+  if [ -n "${_RST_LOG}" ]; then
+    cat -- "${_o}" >> "${_RST_LOG}"
+  fi
+  [ "${_rc}" = 0 ] || return 1
+  _RST_LAST="${1}"
+  return 0
+}
+# The owner (account, or arch) of a store that may hold archive path $1 in
+# this scope, and the link its store hangs off; nothing for any other path.
+_rst_owner() {
+  local _a
+  case "${1}" in
+    data/disk/arch|data/disk/arch/*)
+      [ "${_RST_SCOPE}" = global ] && echo "arch data/disk/arch"
+      return 0
+      ;;
+    data/disk/?*/static/files|data/disk/?*/static/files/*)
+      _a="${1#data/disk/}"
+      _a="${_a%%/*}"
+      ;;
+    *) return 0 ;;
+  esac
+  case "${1}" in
+    "data/disk/${_a}/static/files"|"data/disk/${_a}/static/files/"*) ;;
+    *) return 0 ;;
+  esac
+  case "${_RST_SCOPE}:${_a}" in
+    data:arch) return 0 ;;
+    data:*|acct:"${_RST_ACCT}") echo "${_a} data/disk/${_a}/static/files" ;;
+  esac
+  return 0
+}
+# Sets _RST_S to the archive path of $1's store (an account, or arch) read
+# from the live link; empty when there is none.
+_rst_store_live() {
+  local _k="live:${1}"
+  if [ -z "${_RST_STO[${_k}]+x}" ]; then
+    case "${1}" in
+      arch) _RST_STO[${_k}]="$(_arch_relocated_store)" ;;
+      *) _RST_STO[${_k}]="$(_acct_relocated_store "${1}")" ;;
+    esac
+  fi
+  _RST_S="${_RST_STO[${_k}]#/}"
+}
+# The deepest name at or above archive path $1 that the archive lists at the
+# restore time, after 1 when it lists anything below that name and 0 when it
+# does not; nothing when no such name is listed. Read from duplicity's
+# listing as it streams (time columns cut off), so no copy of it is kept.
+_rst_listed() {
+  eval "LANGUAGE= LC_ALL=C ${_RST_LST}" 2> /dev/null \
+    | sed -E 's/^([^ ]+ +){5}//' \
+    | _RST_Q="${1}" awk '
+      BEGIN {
+        n = split(ENVIRON["_RST_Q"], c, "/")
+        for (i = 1; i <= n; i++) q[i] = (i == 1) ? c[1] : q[i - 1] "/" c[i]
+      }
+      {
+        for (i = 1; i <= n; i++) {
+          if (($0 "") == q[i]) s[i] = 1
+          else if (index($0, q[i] "/") == 1) k[i] = 1
+        }
+      }
+      END {
+        for (i = n; i >= 1; i--) if (s[i]) { print (k[i] ? 1 : 0), q[i]; exit }
+      }'
+}
+# Sets _RST_L to the text of the link archive path $1 holds at the restore
+# time, read by restoring that one entry into a private directory; empty when
+# it is not a link there.
+_rst_link_text() {
+  local _tmp
+  _RST_L=""
+  _tmp="$(mktemp -d "${_RST_TMP}/rst.entry.XXXXXX" 2> /dev/null)" || return 0
+  if _rst_one "${1}" "${_tmp}/entry" && [ -L "${_tmp}/entry" ]; then
+    _RST_L="$(readlink -- "${_tmp}/entry" 2> /dev/null)"
+  fi
+  rm -rf -- "${_tmp}"
+  return 0
+}
+# Sets _RST_S to the store behind the link $2 as the archive holds it at the
+# restore time, for a box where the live link is gone: read only when the
+# entry is a link there (restoring that one entry), never by restoring a
+# directory. $1 = the owner (an account, or arch).
+_rst_store_archive() {
+  local _a="${1}" _e="${2}" _k="archive:${1}"
+  if [ -z "${_RST_STO[${_k}]+x}" ]; then
+    _RST_STO[${_k}]=""
+    if [ "$(_rst_listed "${_e}")" = "0 ${_e}" ]; then
+      _rst_link_text "${_e}"
+      if _rst_plain "${_RST_L}"; then
+        case "${_a}:${_RST_L}" in
+          arch:/?*) _RST_STO[${_k}]="${_RST_L#/}" ;;
+          "${_a}:/mnt/"?*"/files/${_a}/static/files") _RST_STO[${_k}]="${_RST_L#/}" ;;
+        esac
+      fi
+    fi
+  fi
+  _RST_S="${_RST_STO[${_k}]}"
+}
+# Archive path $1 restored to $2 when a name above it is held as a link into
+# the same account's tree (a site's files/ or private/, the account's
+# backups/): the deepest name above $1 that the archive lists with nothing
+# below it is read as a link, and the rest of the path is restored from where
+# it leads, below the account's /data/disk/<oN> (through _rst_path, so the
+# store first) or in its store. Returns 2 when there is no such link.
+_rst_via_link() {
+  local _p="${1}" _t="${2}" _k _e _a _c _rc
+  [ "${_RST_HOPS}" -lt 4 ] || return 2
+  read -r _k _e <<< "$(_rst_listed "${_p%/*}")"
+  [ "${_k}" = 0 ] && [ -n "${_e}" ] && [ "${_e}" != "${_p}" ] || return 2
+  case "${_e}" in
+    data/disk/?*/?*) _a="${_e#data/disk/}"; _a="${_a%%/*}" ;;
+    home/?*.ftp/?*) _a="${_e#home/}"; _a="${_a%%/*}"; _a="${_a%.ftp}" ;;
+    *) return 2 ;;
+  esac
+  case "${_RST_SCOPE}:${_a}" in
+    data:arch) return 2 ;;
+    data:*|acct:"${_RST_ACCT}") ;;
+    *) return 2 ;;
+  esac
+  _rst_link_text "${_e}"
+  _rst_plain "${_RST_L}" || return 2
+  _c="${_RST_L#/}${_p#"${_e}"}"
+  [ "${_c}" != "${_p}" ] || return 2
+  case "${_RST_L}" in
+    /data/disk/"${_a}"|/data/disk/"${_a}"/*) ;;
+    /mnt/?*/files/"${_a}"/static/files|/mnt/?*/files/"${_a}"/static/files/*)
+      _rst_store_live "${_a}"
+      [ -z "${_RST_S}" ] || _rst_under "${_c}" "${_RST_S}" || return 2
+      ;;
+    *) return 2 ;;
+  esac
+  _rst_note "$(printf '%q' "${_e}") is a link to ${_RST_L}: restoring $(printf '%q' "${_c}")"
+  _RST_HOPS=$(( _RST_HOPS + 1 ))
+  _rst_path "${_c}" "${_t}"
+  _rc=$?
+  _RST_HOPS=$(( _RST_HOPS - 1 ))
+  return "${_rc}"
+}
+# Archive path $1 restored to $2 from where its content is held.
+_rst_path() {
+  local _p="${1}" _t="${2}" _a="" _e="" _s="" _o _rc
+  _o="$(_rst_owner "${_p}")"
+  [ -n "${_o}" ] && read -r _a _e <<< "${_o}"
+  if [ -n "${_a}" ]; then
+    _rst_store_live "${_a}"
+    _s="${_RST_S}"
+    if [ -n "${_s}" ]; then
+      _rst_one "${_s}${_p#"${_e}"}" "${_t}"
+      _rc=$?
+      [ "${_rc}" = 2 ] || return "${_rc}"
+    fi
+  fi
+  _rst_one "${_p}" "${_t}"
+  _rc=$?
+  if [ "${_rc}" = 2 ] && [ -n "${_a}" ] && [ -z "${_s}" ] && [ "${_p}" != "${_e}" ]; then
+    _rst_store_archive "${_a}" "${_e}"
+    if [ -n "${_RST_S}" ]; then
+      _rst_one "${_RST_S}${_p#"${_e}"}" "${_t}"
+      _rc=$?
+    fi
+  fi
+  if [ "${_rc}" = 2 ] && [ -z "${_a}" ]; then
+    _o="${_RST_OUT}"
+    _rst_via_link "${_p}" "${_t}"
+    _rc=$?
+    [ "${_rc}" = 2 ] && _RST_OUT="${_o}"
+  fi
+  [ "${_rc}" = 2 ] && [ "${_RST_HOPS}" = 0 ] && [ -n "${_RST_OUT}" ] \
+    && _rst_note "${_RST_OUT}"
+  return "${_rc}"
+}
+# The link $1 (archive position $2, leading to $3) replaced by what the rest
+# of the arguments restore to a new name beside it; reported either way.
+_rst_put_link() {
+  local _l="${1}" _pos="${2}" _t="${3}" _tmp="${1}.rst.$$"
+  shift 3
+  if [ ! -e "${_tmp}" ] && [ ! -L "${_tmp}" ] && "$@" "${_tmp}"; then
+    if rm -f -- "${_l}" && mv -T -- "${_tmp}" "${_l}"; then
+      _rst_note "Restored $(printf '%q' "${_pos}"), a link to ${_t}, from ${_RST_LAST}"
+      return 0
+    fi
+    [ -L "${_l}" ] || ln -s -- "${_t}" "${_l}"
+  fi
+  rm -rf -- "${_tmp}"
+  _rst_note "Not restored: $(printf '%q' "${_pos}") is a link to ${_t}; its content was not found at the restore time"
+  return 1
+}
+# The link $1 (archive position $2, leading to $3) replaced by $4, the part of
+# a restored store it leads to, restored from archive path $5; reported
+# either way.
+_rst_put_from() {
+  if [ -e "${4}" ] || [ -L "${4}" ]; then
+    if rm -f -- "${1}" && mv -T -- "${4}" "${1}"; then
+      _rst_note "Restored $(printf '%q' "${2}"), a link to ${3}, from ${5}"
+      return 0
+    fi
+    [ -e "${1}" ] || [ -L "${1}" ] || ln -s -- "${3}" "${1}"
+  fi
+  _rst_note "Not restored: $(printf '%q' "${2}") is a link to ${3}; its content was not found at the restore time"
+  return 1
+}
+# True while the filesystem holding $1 keeps a tenth of its size free, or
+# when df cannot tell.
+_rst_room() {
+  local _s _f
+  read -r _s _f <<< "$(df -P -k -- "${1}" 2> /dev/null | awk 'NR == 2 { print $2, $4 }')"
+  [[ "${_s}" =~ ^[0-9]+$ ]] && [[ "${_f}" =~ ^[0-9]+$ ]] || return 0
+  [ $(( _f * 10 )) -ge "${_s}" ]
+}
+# Links in the restored tree $1 that lead to the same account's static/files
+# or store (or, for the global archive, the relocated arch): each is replaced
+# by that content as of the same time, unless this restore already holds it
+# (_RST_GIVEN is the path asked for, _RST_DONE the path restored). The links
+# into one site store (static/files/<name>) are served by one restore of it.
+# Past _RST_LINK_MAX site stores, or once the filesystem has less than a
+# tenth free, links are kept and reported with the command that restores
+# their store. Any other link is left as it is.
+_rst_links() {
+  local _top="${1}" _l _rel _pos _t _a _c _d _g _k _i _j _src _ok _ps
+  local _kept=0 _stop="" _links=() _keys=() _gl=() _gp=() _gt=() _gc=() _gk=()
+  local -A _how=()
+  mapfile -d '' -t _links < <(find -P "${_top}" -type l -print0 2> /dev/null)
+  for _l in "${_links[@]}"; do
+    _rel="${_l#"${_top}"}"
+    _rel="${_rel#/}"
+    if [ -n "${_RST_GIVEN}" ]; then
+      _pos="${_RST_GIVEN}${_rel:+/${_rel}}"
+    else
+      _pos="${_rel}"
+    fi
+    _t="$(readlink -- "${_l}" 2> /dev/null)"
+    case "${_t}" in
+      /*) _rst_plain "${_t}" || continue ;;
+      *) continue ;;
+    esac
+    _c="${_t#/}"
+    case "${_pos}" in
+      data/disk/arch)
+        [ "${_RST_SCOPE}" = global ] || continue
+        _rst_under "${_c}" "${_RST_DONE}" && continue
+        _rst_put_link "${_l}" "${_pos}" "${_t}" _rst_one "${_c}"
+        continue
+        ;;
+      data/disk/?*/?*) _a="${_pos#data/disk/}"; _a="${_a%%/*}" ;;
+      home/?*.ftp/?*) _a="${_pos#home/}"; _a="${_a%%/*}"; _a="${_a%.ftp}" ;;
+      *) continue ;;
+    esac
+    case "${_RST_SCOPE}:${_a}" in
+      data:arch) continue ;;
+      data:*|acct:"${_RST_ACCT}") ;;
+      *) continue ;;
+    esac
+    _d="/data/disk/${_a}/static/files"
+    case "${_t}" in
+      "${_d}"|"${_d}/"*)
+        if _rst_under "${_c}" "${_RST_GIVEN}"; then
+          _kept=$(( _kept + 1 ))
+          continue
+        fi
+        _g="${_d#/}"
+        ;;
+      /mnt/?*/files/"${_a}"/static/files|/mnt/?*/files/"${_a}"/static/files/*)
+        _rst_store_live "${_a}"
+        if [ -n "${_RST_S}" ] && ! _rst_under "${_c}" "${_RST_S}"; then
+          continue
+        fi
+        _rst_under "${_c}" "${_RST_DONE}" && continue
+        _g="${_c%%"/files/${_a}/static/files"*}/files/${_a}/static/files"
+        ;;
+      *) continue ;;
+    esac
+    _k="${_c#"${_g}"}"
+    _k="${_k#/}"
+    _k="${_g}${_k:+/${_k%%/*}}"
+    _gl+=("${_l}")
+    _gp+=("${_pos}")
+    _gt+=("${_t}")
+    _gc+=("${_c}")
+    _gk+=("${_k}")
+    if [ -z "${_how[${_k}]+x}" ]; then
+      _keys+=("${_k}")
+      _how[${_k}]=_rst_one
+      [ "${_g}" = "${_d#/}" ] && _how[${_k}]=_rst_path
+    fi
+  done
+  _stop="${#_keys[@]}"
+  if [ "${_stop}" -gt "${_RST_LINK_MAX}" ]; then
+    _rst_note "${_stop} site stores are behind links in this restore: the links into the first ${_RST_LINK_MAX} are restored, the others are kept as links"
+    _stop="${_RST_LINK_MAX}"
+  fi
+  for (( _i = 0; _i < _stop; _i++ )); do
+    if ! _rst_room "${_top}"; then
+      _rst_note "Less than a tenth of the restore's filesystem is free: the remaining links are kept as links"
+      _stop="${_i}"
+      break
+    fi
+    _k="${_keys[_i]}"
+    _src="${_top}.rst.${_i}.$$"
+    _ok=NO
+    if [ ! -e "${_src}" ] && [ ! -L "${_src}" ] \
+      && "${_how[${_k}]}" "${_k}" "${_src}"; then
+      _ok=YES
+    fi
+    for (( _j = 0; _j < ${#_gk[@]}; _j++ )); do
+      [ "${_gk[_j]}" = "${_k}" ] || continue
+      if [ "${_ok}" = YES ]; then
+        _rel="${_gc[_j]#"${_k}"}"
+        _rst_put_from "${_gl[_j]}" "${_gp[_j]}" "${_gt[_j]}" "${_src}${_rel}" \
+          "${_RST_LAST}${_rel}"
+      else
+        _rst_note "Not restored: $(printf '%q' "${_gp[_j]}") is a link to ${_gt[_j]}; its content was not found at the restore time"
+      fi
+    done
+    rm -rf -- "${_src}"
+  done
+  for (( _i = _stop; _i < ${#_keys[@]}; _i++ )); do
+    _k="${_keys[_i]}"
+    _ps=""
+    for (( _j = 0; _j < ${#_gk[@]}; _j++ )); do
+      [ "${_gk[_j]}" = "${_k}" ] && _ps="${_ps} $(printf '%q' "${_gp[_j]}")"
+    done
+    _rst_note "Kept as links:${_ps}; to restore their content: ${_RST_AGAIN:+${_RST_AGAIN} }$(printf '%q' "${_k}")${_RST_TIME:+ $(printf '%q' "${_RST_TIME}")}"
+  done
+  if [ "${_kept}" -gt 0 ]; then
+    _rst_note "${_kept} link(s) into static/files kept as links: their content is in this restore under the account's static/files"
+  fi
+  return 0
+}
+
+# In the current (real) target directory: the restore runs inside a fresh
+# directory only root can open, so no one can swap a name below it while
+# root writes there, and the finished tree is renamed to ./$2 in one step.
+# $1 = the archive path, $2 = the name.
+_rst_staged_here() {
+  local _st _stid _want _rc
+  if [ -e "./${2}" ] || [ -L "./${2}" ]; then
+    echo "Error: $(pwd -P)/${2} already exists. Unable to proceed."
+    return 1
+  fi
+  _st="$(mktemp -d ./.multiback-restore.XXXXXX 2> /dev/null)" || return 1
+  _want="$(pwd -P)/${_st#./}"
+  if ! cd -P -- "${_st}" 2> /dev/null || [ "$(pwd -P)" != "${_want}" ] \
+    || [ "$(stat -c '%u %a' .)" != "0 700" ]; then
+    echo "Error: the staging directory ${_want} is not root's own. Unable to proceed."
+    return 1
+  fi
+  _stid="$(stat -c '%d:%i' .)"
+  _rst_path "${1}" "./${2}"
+  _rc=$?
+  if [ "${_rc}" = 0 ]; then
+    _RST_GIVEN="${1}"
+    _RST_DONE="${_RST_LAST}"
+    _rst_links "./${2}"
+    if [ -e "../${2}" ] || [ -L "../${2}" ] || ! mv -T -- "./${2}" "../${2}"; then
+      echo "Error: the restored tree is left in ${_want}/${2}"
+      return 1
+    fi
+  else
+    rm -rf -- "./${2}"
+  fi
+  cd .. || return 1
+  [ "$(stat -c '%d:%i' -- "./${_st#./}" 2> /dev/null)" = "${_stid}" ] \
+    && rmdir -- "./${_st#./}"
+  return "${_rc}"
+}
+
+# Run "$@" inside the directory at the resolved path $1, only when pwd -P
+# there is $1, so no name on it is a link; once entered, ./name stays there
+# whatever is swapped.
+_rst_in_dir() {
+  local _d="${1}"
+  shift
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+}
+# ./$1 made in the current (pinned) directory unless the name is taken.
+_acct_mkdir_here() {
+  [ -e "./${1}" ] || [ -L "./${1}" ] || mkdir -- "./${1}"
+}
+# The resolved path $1 made where missing, one name at a time inside its real
+# parent (mkdir never follows a link at the name); true when all of $1 is
+# then a real directory.
+_rst_mkdir_path() {
+  local _d="${1}" _rest="" _n
+  while [ -n "${_d}" ] && [ ! -e "${_d}" ] && [ ! -L "${_d}" ]; do
+    _rest="${_d##*/}${_rest:+/${_rest}}"
+    _d="${_d%/*}"
+  done
+  [ -n "${_d}" ] || _d=/
+  while [ -n "${_rest}" ]; do
+    _n="${_rest%%/*}"
+    if [ "${_n}" = "${_rest}" ]; then
+      _rest=""
+    else
+      _rest="${_rest#*/}"
+    fi
+    _rst_in_dir "${_d}" _acct_mkdir_here "${_n}" || return 1
+    _d="${_d%/}/${_n}"
+  done
+  _rst_in_dir "${_d}" true
+}
+# The account whose ground the absolute path $1 is in: /data/disk/<oN>/...,
+# /home/<name>/... (<oN> is <name> up to its first dot) or the account's
+# store <mount>/files/<oN>/static/files/... under /mnt; nothing otherwise.
+_rst_ground_acct() {
+  local _a=""
+  case "${1}" in
+    /data/disk/?*)
+      _a="${1#/data/disk/}"
+      _a="${_a%%/*}"
+      ;;
+    /home/?*)
+      _a="${1#/home/}"
+      _a="${_a%%/*}"
+      _a="${_a%%.*}"
+      ;;
+    /mnt/?*/files/?*/static/files|/mnt/?*/files/?*/static/files/*)
+      _a="${1#/mnt/*/files/}"
+      _a="${_a%%/*}"
+      ;;
+  esac
+  echo "${_a}"
+}
+# True when the resolved target $2 is where the target as given, $1 (made
+# absolute, links not resolved), may lead: $1 itself; for a path in an
+# account's ground, below the account's /data/disk/<oN>, the /home directory
+# $1 names, or the account's store in BOA's relocated layout; anywhere when
+# every link on the way to $1 is one root made in a directory only root can
+# write and the link check itself walked them to $2, so a name swapped
+# between the two lookups is refused. BOA's own links (a relocated store, a
+# site's files/ or private/, backups/, the .ftp home links) lead to such
+# places; a link an account put anywhere else is refused.
+_rst_target_ok() {
+  local _a _h _s
+  [ "${2}" = "${1}" ] && return 0
+  _a="$(_rst_ground_acct "${1}")"
+  if [ -n "${_a}" ]; then
+    _rst_under "${2}" "/data/disk/${_a}" && return 0
+    case "${1}" in
+      /home/?*)
+        _h="${1#/home/}"
+        _rst_under "${2}" "/home/${_h%%/*}" && return 0
+        ;;
+    esac
+    _s="$(_acct_relocated_store "${_a}")"
+    [ -n "${_s}" ] && _rst_under "${2}" "${_s}" && return 0
+  fi
+  _root_links_ok "${1}" && [ "${_RLK_PATH}" = "${2}" ]
+}
+# True when the resolved path $1 is in no account's ground, or when the top of
+# its ground already exists as a real directory: an account's /data/disk/<oN>
+# (or the shared /data/disk/arch), the /home/<name> it names, or an account's
+# store <mount>/files/<oN>/static/files. Root makes missing names only below
+# that top, never an account's own directory.
+_rst_ground_made() {
+  local _a _r _top
+  _a="$(_rst_ground_acct "${1}")"
+  [ -n "${_a}" ] || return 0
+  case "${1}" in
+    /data/disk/?*)
+      _r="${1#/data/disk/}"
+      _top="/data/disk/${_r%%/*}"
+      ;;
+    /home/?*)
+      _r="${1#/home/}"
+      _top="/home/${_r%%/*}"
+      ;;
+    *)
+      _r="${1#/mnt/}"
+      _top="/mnt/${_r%%/*}/files/${_a}/static/files"
+      ;;
+  esac
+  [ -d "${_top}" ] && [ ! -L "${_top}" ] || return 1
+  case "${_top}" in
+    /data/disk/arch|/home/*) return 0 ;;
+  esac
+  getent passwd "${_a}" > /dev/null 2>&1
+}
+
+# Function to restore backup. The target is used where it leads only when
+# that is where the target as given may lead (see _rst_target_ok), and only
+# as a real directory: a missing one is made one name at a time inside its
+# real parent, never an account's own directory (see _rst_ground_made), and
+# the restore acts inside it by pwd -P. The tree itself is restored in root's
+# staging directory there (see _rst_staged_here), so on the target's own
+# filesystem. A full restore (no path) goes only to a directory outside the
+# accounts' ground.
 _restore() {
   # Dispatch-level _USER, never the wrapper's exported _user (see
   # _check_if_worked_cleanly_or_log_err)
@@ -1171,49 +2212,86 @@ _restore() {
   local _restore_target=$1
   local _restore_path=$2
   local _restore_time=$3
-  local _restore_command="${_DCY_UTL_CMD} restore"
+  local _clean_restore_path _last_part _final_restore_target _given _real
+  local _scope=acct _rc=0
 
   # Remove any trailing slash from _restore_path for proper basename extraction
   _clean_restore_path="${_restore_path%/}"
 
-  # Extract the last part (basename) of the restore path.
-  _last_part=$(basename "${_clean_restore_path}")
+  # The last part (basename) of the restore path names the restored tree
+  _last_part="${_clean_restore_path##*/}"
+  case "${_last_part}" in
+    .|..)
+      echo "Error: Invalid restore path '${_restore_path}'."
+      exit 1
+      ;;
+  esac
 
-  # Ensure _RESTORE_TARGET exists
-  if [ -n "${_restore_target}" ]; then
-    if [ ! -d "${_restore_target}" ]; then
-      echo "Creating restore target directory: ${_restore_target}"
-      mkdir -p "${_restore_target}"
+  [ -n "${_restore_target}" ] || _restore_target="/data/disk/${_user}/static/restores"
+  # The path judged is the path used: no '..' name folds a link away
+  case "/${_restore_target}/" in
+    */../*)
+      echo "Error: give the restore target without '..' names, not '${_restore_target}'."
+      exit 1
+      ;;
+  esac
+  # The target as given (made absolute, links not resolved) and where it
+  # leads now
+  _given="$(realpath -m -s -- "${_restore_target}" 2> /dev/null)"
+  _real="$(realpath -m -- "${_restore_target}" 2> /dev/null)"
+  if [ -z "${_given}" ] || [ -z "${_real}" ]; then
+    echo "Error: Invalid restore target '${_restore_target}'."
+    exit 1
+  fi
+  if ! _rst_target_ok "${_given}" "${_real}"; then
+    echo "Error: ${_given} leads to ${_real} through a link root did not make in a directory only root can write, outside the account's own tree and files store, or it changed while it was checked. Unable to proceed."
+    exit 1
+  fi
+  if [ -z "${_last_part}" ] && { [ -n "$(_rst_ground_acct "${_given}")" ] \
+    || [ -n "$(_rst_ground_acct "${_real}")" ]; }; then
+    echo "Error: A full restore goes to a directory root owns, not ${_real}."
+    exit 1
+  fi
+  case "${_user}" in
+    global|data|custom) _scope="${_user}" ;;
+  esac
+  if ! _rst_setup "${_DCY_UTL_CMD} restore" "${_DCY_UTL_CMD} list-current-files" \
+    "${_restore_time}" "${_scope}" "${_user}" "" \
+    "multiback restore ${_SERVICE} ${_user} $(printf '%q' "${_given}")"; then
+    echo "Error: no private directory for the restore. Unable to proceed."
+    exit 1
+  fi
+
+  if [ ! -e "${_real}" ] && [ ! -L "${_real}" ]; then
+    if ! _rst_ground_made "${_real}"; then
+      echo "Error: ${_real} is not below an existing account's directory or files store. Unable to proceed."
+      exit 1
     fi
+    echo "Creating restore target directory: ${_real}"
+    if ! _rst_mkdir_path "${_real}"; then
+      echo "Error: ${_real} could not be made: a directory on the way is not a real one. Unable to proceed."
+      exit 1
+    fi
+  fi
+  if ! _rst_in_dir "${_real}" true; then
+    echo "Error: ${_real} is not a real directory. Unable to proceed."
+    exit 1
+  fi
+  if [ -z "${_last_part}" ]; then
+    _final_restore_target="${_real}"
+    _rst_one "" "${_real}" || _rc=1
   else
-    _restore_target="/data/disk/${_user}/static/restores"
-    if [ ! -d "${_restore_target}" ]; then
-      echo "Creating restore target directory: ${_restore_target}"
-      mkdir -p "${_restore_target}"
-    fi
+    _final_restore_target="${_real%/}/${_last_part}"
+    _rst_in_dir "${_real}" _rst_staged_here \
+      "${_clean_restore_path}" "${_last_part}" || _rc=1
   fi
-  # Combine _restore_target with the extracted basename, AFTER the default
-  # target is chosen (composed before it, an empty target restored to
-  # /<basename> at the filesystem root).
-  # Also, remove any trailing slash from _restore_target to avoid double slashes.
-  _final_restore_target="${_restore_target%/}/${_last_part}"
-  if [ -n "${_restore_time}" ]; then
-    _restore_command="${_restore_command} --time ${_restore_time}"
-  fi
-  _restore_command="${_restore_command} ${_BACKUP_TARGET}"
-  if [ -n "${_restore_path}" ]; then
-    _restore_command="${_restore_command} --path-to-restore ${_restore_path}"
-  fi
-  _restore_command="${_restore_command} ${_final_restore_target}"
-
-  echo "Command is ${_restore_command}"
-  # ${_DCY_UTL_CMD} restore --time ${_restore_time} ${_BACKUP_TARGET} --path-to-restore ${_restore_path} ${_restore_target}
-
-  # su -s /bin/bash ${_user} -c "eval \"${_restore_command}\"" &> /dev/null
-  eval "${_restore_command}"
   _acct_reclaim_restored "${_final_restore_target}"
 
   _print_env "multiback_restore"
+  if [ "${_rc}" != 0 ]; then
+    echo "Error: the restore of ${_restore_path:-everything} did not complete."
+    exit 1
+  fi
 }
 
 _acct_group() {
@@ -1238,32 +2316,167 @@ _acct_group() {
   echo "${_g}"
 }
 
+_web_group_state() {
+  # The account's own web group, wg-<account>, derived on the box and never
+  # taken from argv or a cnf: the group its pools, backend user and shell
+  # users share for its web paths once the account is converted to it.
+  # Prints "<state> <gid> <group>", "none - -" when there is no such group
+  # (the record is root's: run as another user, converted reads as held):
+  #   none       no group of that name
+  #   foreign    the group exists, but an identity outside the account holds
+  #              it too: never joined nor written to; claim passes still leave
+  #              its paths alone (taking them would cut the pools off)
+  #   held       the group exists and only this account's identities hold it:
+  #              claim passes leave its paths alone, new identities join it
+  #   converted  and root's record names that gid: writers use the group
+  #   phaseb     and the record says the identities have left www-data
+  # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+  # phase=<A|B> ...", root's own file outside the account tree, so neither
+  # the account nor a copy or restore of its tree can make or move it.
+  # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+  # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+  # gems or npm tree, or its store on attached storage
+  # (/mnt/<m>/files/<oN>/static/files).
+  local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  # a path is read as written (an alias the account wrote can carry "..",
+  # "." or "//"): normalised by text alone, never through a link, first
+  case "${_a}" in
+    */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+  esac
+  case "${_a}" in
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+    /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+    /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+      _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+    */*) echo "none - -"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  case "${_a}" in
+    ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+  esac
+  _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  # every holder of the gid: members of each group entry carrying it (a
+  # second entry can share the number) and every user with it as primary
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+      || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+  done
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-${_a}"
+  else
+    echo "held ${_gid} wg-${_a}"
+  fi
+}
+
+_web_group() {
+  # The group a root writer gives an account's web paths (files/, private/,
+  # settings.php and the like): wg-<account> once the account is converted,
+  # www-data otherwise, as always. Until the record says converted every
+  # identity of the account still holds www-data (a conversion grants the web
+  # group first and a revert gives www-data back before it moves any path),
+  # so www-data is the old state, never an outage. Callers write
+  # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
+  # group and never hands a path to a login group. Run as any user but root,
+  # which cannot read root's record, a held group answers empty: the group
+  # each path has is kept. $1 as _web_group_state.
+  local _s
+  _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted|phaseb) echo "${_s##* }" ;;
+    held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+    *) echo "www-data" ;;
+  esac
+}
+
 # After a root-run restore: duplicity re-applies the archived ownership, so
 # a pre-conversion archive lands files in the box-wide group inside a
 # converted account, and a foreign box's archive lands them in whatever its
 # numbers map to here -- another account's group, readable by its
 # identities. The destination is resolved first (relative paths, and a
 # planted symlink under a tenant-writable directory, resolve to where the
-# files really are) and only a real path inside an account's tree is
-# touched: it is handed to that account's group (the inline form), then
-# instgrp reclaim redoes the whole account where it is installed (every
-# root, the marker rule, the DRIFT verdict). A restore staged anywhere else
-# is the operator's to follow with 'instgrp reclaim oN' once it is in place.
-# Verbatim in backboa, duobackboa, multiback and mybackup. $1 = restored dir.
+# files really are) and only a real path inside an account's tree, or inside
+# its relocated files store (<mount>/files/<oN>/static/files under /mnt,
+# whose static directory only root can write), is touched: it is handed to
+# that account's group (the inline form), then instgrp reclaim redoes the
+# whole account where it is installed (every root, the marker rule, the
+# DRIFT verdict). A restore staged anywhere else is the operator's to follow
+# with 'instgrp reclaim oN' once it is in place.
+# Verbatim in backboa, duobackboa, multiback and mybackup. $1 = the restored
+# directory or file.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
 _acct_reclaim_restored() {
-  local _r _a _g
+  local _r _a _g _gid _m _d _w=() _x=() _wg
   _r=$(realpath -e -- "$1" 2> /dev/null) || return 0
-  [ -d "${_r}" ] || return 0
   case "${_r}" in
     /data/disk/*) _a="${_r#/data/disk/}"; _a="${_a%%/*}" ;;
     /home/*)      _a="${_r#/home/}"; _a="${_a%%/*}"; _a="${_a%%.*}" ;;
+    /mnt/?*/files/?*/static/files/?*)
+      _m="${_r#/mnt/}"
+      _m="${_m%%/*}"
+      _a="${_r#/mnt/"${_m}"/files/}"
+      _a="${_a%%/*}"
+      case "${_r}" in
+        /mnt/"${_m}"/files/"${_a}"/static/files/?*) ;;
+        *) return 0 ;;
+      esac
+      _root_only "/mnt/${_m}/files/${_a}/static" || return 0
+      ;;
     *) return 0 ;;
   esac
   [ -n "${_a}" ] && [ "${_a}" != "all" ] && getent passwd "${_a}" > /dev/null 2>&1 || return 0
   _g=$(_acct_group "${_a}" 2> /dev/null)
   [ -n "${_g}" ] || _g="users"
-  find -P "${_r}" ! -group "${_g}" ! -group www-data ! -group root -execdir chgrp -h "${_g}" {} + 2> /dev/null
-  if [ -x "/opt/local/bin/instgrp" ]; then
+  # The account's own web group is where its web paths belong once it holds
+  # one: its gid stays, numeric and only when it resolves (find refuses an
+  # unknown group name, and this claim discards find's errors).
+  _wg=$(_web_group_state "${_a}" | cut -d' ' -f2)
+  case "${_wg}" in
+    ""|*[!0-9]*) ;;
+    *) _x=( ! -gid "${_wg}" ) ;;
+  esac
+  if [ -d "${_r}" ]; then
+    _d="${_r}"
+    _w=(.)
+  elif [ -f "${_r}" ]; then
+    _d="${_r%/*}"
+    _w=("./${_r##*/}" -maxdepth 0)
+  else
+    return 0
+  fi
+  # The walk starts where cd -P lands exactly on the resolved directory, so
+  # no name on the way is a link then, and a name swapped for a link after
+  # the realpath above never carries it elsewhere. Each directory and
+  # single-link regular file takes the group through a handle opened without
+  # following a link (_ACCT_REOWN_PL, -1 keeps the owner; -- so perl takes
+  # it as an argument, not a switch): the tree is the account's, so a hard
+  # link, a link or a FIFO put in it is left alone, and no file outside it is
+  # regrouped (nothing checks a link's own group).
+  _gid=$(getent group "${_g}" 2> /dev/null | cut -d: -f3)
+  if [[ "${_gid}" =~ ^[0-9]+$ ]]; then
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] \
+      && env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_w[@]}" \
+        ! -group "${_g}" ! -group www-data ! -group root "${_x[@]}" \
+        -execdir perl -e "${_ACCT_REOWN_PL}" -- -1 "${_gid}" {} + 2> /dev/null )
+  fi
+  # an instgrp older than the web group would claim the web paths into the
+  # account group, which the account's pools are never in
+  if [ -x "/opt/local/bin/instgrp" ] && { [ "${#_x[@]}" = "0" ] \
+    || grep -qE '^[[:space:]]*_web_group_state\(\) \{' /opt/local/bin/instgrp; }; then
     bash /opt/local/bin/instgrp reclaim "${_a}" > /dev/null 2>&1
   fi
   return 0
@@ -1291,9 +2504,25 @@ _set_backup_target() {
       export _BACKUP_TARGET="boto3+s3://${_BUCKET_NAME} ${_s3_options}"
       ;;
     azure)
+      # A per-account run always composes the connection string from the
+      # account's own values; one exported by the invoking shell is root's
+      case "${_user}" in
+        global|data|custom) ;;
+        *) unset AZURE_CONNECTION_STRING ;;
+      esac
       _load_credentials "azure" "${_user}"
       _construct_bucket_name "azure" "${_user}"
-      export _BACKUP_TARGET="azure://${AZURE_STORAGE_ACCOUNT}@${_BUCKET_NAME}"
+
+      # Duplicity's azure backend reads one name, AZURE_CONNECTION_STRING,
+      # and takes the container from the URL (azure://<container>); an
+      # account@container URL is refused as an invalid container name. A
+      # connection string carries ';', which no credentials value may, so it
+      # is composed here from the documented account and key names.
+      if [ -z "${AZURE_CONNECTION_STRING}" ] \
+        && [ -n "${AZURE_STORAGE_ACCOUNT}" ] && [ -n "${AZURE_STORAGE_KEY}" ]; then
+        export AZURE_CONNECTION_STRING="DefaultEndpointsProtocol=https;AccountName=${AZURE_STORAGE_ACCOUNT};AccountKey=${AZURE_STORAGE_KEY};EndpointSuffix=core.windows.net"
+      fi
+      export _BACKUP_TARGET="azure://${_BUCKET_NAME}"
       ;;
     b2)
       _load_credentials "b2" "${_user}"
@@ -1423,8 +2652,14 @@ export _DEFAULT_FULL_BACKUP_FREQUENCY="28D" # Default: 28 days
 # Log file for validation issues
 export _VALIDATION_LOG_FILE="/var/log/backup_validation_issues.log"
 export _SANITIZATION_TMP_DIR="/var/tmp/backup_sanitization"
-mkdir -p "${_SANITIZATION_TMP_DIR}"
-chmod 700 "${_SANITIZATION_TMP_DIR}"
+# /var/tmp is open to every user: create the directory only when the name is
+# free, and set its mode only when it is root's own real directory (the
+# sticky bit keeps other users from replacing an entry root owns)
+mkdir -m 700 "${_SANITIZATION_TMP_DIR}" 2> /dev/null
+if [ -d "${_SANITIZATION_TMP_DIR}" ] && [ ! -L "${_SANITIZATION_TMP_DIR}" ] \
+  && [ "$(stat -c %u "${_SANITIZATION_TMP_DIR}" 2> /dev/null)" = "0" ]; then
+  chmod 700 "${_SANITIZATION_TMP_DIR}"
+fi
 
 _print_env "multiback_main"
 
@@ -1432,7 +2667,11 @@ _print_env "multiback_main"
 # lock may belong to a live run, so no trap is set yet -- an exit on a
 # held lock must not remove the owner's file
 _create_pid_file "${_PIDFILE}"
-trap "rm -f '${_PIDFILE}'; exit" EXIT
+# Root-private copies of an account's filelists (see _load_account_paths),
+# and a restore's own files (see _rst_setup), removed with the lock
+_LISTS_TMP="$(mktemp -d 2> /dev/null)"
+_RST_TMP="${_LISTS_TMP}"
+trap "rm -f '${_PIDFILE}'; [ -n '${_LISTS_TMP}' ] && rm -rf -- '${_LISTS_TMP}'; exit" EXIT
 # A signal death used to leave the pid file behind; exit re-enters the
 # EXIT trap above for the cleanup
 trap 'exit 1' INT TERM HUP

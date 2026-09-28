@@ -33,6 +33,135 @@ _acct_group() {
   echo "${_g}"
 }
 
+# An account owns /data/disk/<oN> (and the backend user /var/aegir), so any
+# name there can be a link or a FIFO, and any directory on the way can itself
+# be a link. Root reads and writes the pass files and the server aliases only
+# through the helpers below; the first three are the helper.sh.inc bodies
+# (this tool never sources that file).
+#
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way. Below /home and /data/disk (root's) every name
+# on the path must be a real directory; elsewhere the last name is checked
+# against its resolved parent. Once entered, ./name stays in that directory
+# whatever is swapped.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_acct_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# $2 in the real directory $1, read as _acct_read_here reads it.
+_acct_read_in() {
+  _acct_in_real_dir "${1}" _acct_read_here "${2}"
+}
+# stdin as ./$1 in the current (pinned) directory: a fresh 0600 file handed
+# to $2 (owner:group) and renamed over the name, so a link or a FIFO put at
+# the name is replaced, never followed or opened. The temp is created,
+# written, owned and moded through one handle, as _acct_put_same_here puts
+# a file (_ACCT_PUT_PL), never chowned by name in a directory the account
+# can write.
+_put_secret_here() {
+  local _t="./.${1}.put.$$.${RANDOM}" _uid _gid
+  _uid=$(id -u -- "${2%%:*}" 2> /dev/null)
+  _gid=$(getent group "${2#*:}" 2> /dev/null | cut -d: -f3)
+  [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]] || return 1
+  rm -f -- "${_t}"
+  if perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" 600 \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# The password in _ESC_PASS put as _L_SYS, a fresh 0600 file handed to
+# _L_SYS_OWN (_put_secret_here). The run stops here when it cannot be, before
+# any database account changes.
+_put_pass() {
+  printf '%s\n' "${_ESC_PASS}" \
+    | _acct_in_real_dir "${_L_SYS%/*}" _put_secret_here "${_L_SYS##*/}" \
+      "${_L_SYS_OWN}" && return 0
+  echo "ERROR: Could not write ${_L_SYS}"
+  exit 1
+}
+# The alias ./$2 of the real directory $1 kept as the root copy $3, as cp kept
+# it (the same bytes and read/write bits, root's): read bounded, never through
+# a link or from a FIFO, so only a regular file is copied.
+_keep_alias_copy() {
+  local _st _typ _mod _sz _c
+  _st=$(_acct_in_real_dir "${1}" stat -c '%F|%a|%s' -- "./${2}" 2> /dev/null) \
+    || return 1
+  IFS='|' read -r _typ _mod _sz <<< "${_st}"
+  case "${_typ}" in
+    "regular file"|"regular empty file") ;;
+    *) return 1 ;;
+  esac
+  [[ "${_mod}" =~ ^[0-7]+$ && "${_sz}" =~ ^[0-9]+$ ]] || return 1
+  [ "${_sz}" -le 1048576 ] || return 1
+  # the x keeps the trailing newlines a command substitution would drop
+  _c=$(_acct_read_in "${1}" "${2}" && echo x) || return 1
+  ( umask "$(printf '%03o' "$(( (0777 & ~8#${_mod}) | 8#$(umask) ))")"
+    printf '%s' "${_c%x}" > "${3}" )
+}
+# ./$1 in the current (pinned) directory replaced by the exact bytes $2, only
+# while ./$1 is a regular file below 1 MiB (so a bounded read saw all of it):
+# a fresh file with the owner, group and read/write bits of the file it
+# replaces, then renamed over the name. The temp is created, written, owned
+# and moded through one handle opened O_EXCL|O_NOFOLLOW, so nothing root owns
+# is ever chowned by name in a directory the account can write (a hard link
+# renamed over the temp name before a chown by name would have handed
+# another file to the owner of the file it replaces); a swap before the
+# rename only lands a file the account could have put there itself. The mode
+# keeps only the read/write bits of the file it replaces, as before.
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+_acct_put_same_here() {
+  local _t="./.${1}.put.$$.${RANDOM}" _st _typ _uid _gid _mod _sz
+  _st=$(stat -c '%F|%u|%g|%a|%s' -- "./${1}" 2> /dev/null) || return 1
+  IFS='|' read -r _typ _uid _gid _mod _sz <<< "${_st}"
+  case "${_typ}" in
+    "regular file"|"regular empty file") ;;
+    *) return 1 ;;
+  esac
+  [[ "${_mod}" =~ ^[0-7]+$ && "${_sz}" =~ ^[0-9]+$ ]] || return 1
+  [ "${_sz}" -lt 1048576 ] || return 1
+  rm -f -- "${_t}"
+  if printf '%s' "${2}" \
+    | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" "${_mod}" \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# Every server_*.alias.drushrc.php in the current (pinned) directory edited by
+# the sed script $1 as sed -i edited it (the same bytes: the trailing "x"
+# keeps every newline through the substitution), read bounded and never
+# through a link, and put back as _acct_put_same_here puts it. A name that is
+# not a regular file is left alone.
+_sed_server_aliases_here() {
+  local _f _c
+  for _f in ./server_*.alias.drushrc.php; do
+    _f="${_f#./}"
+    [ -f "./${_f}" ] && [ ! -L "./${_f}" ] || continue
+    _c=$(_acct_read_here "${_f}" && echo x) || continue
+    _c=$(printf '%s' "${_c%x}" | sed "${1}"; echo x)
+    _acct_put_same_here "${_f}" "${_c%x}"
+  done
+}
+
 # Remove dangerous stuff from the string.
 _sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
@@ -55,9 +184,11 @@ _find_correct_ip() {
 }
 
 _check_generate() {
-  rm -f ${_L_SYS}
+  # _L_SYS sits in a directory its account owns: removed, read and written
+  # only inside the real directory (_acct_in_real_dir, _put_pass).
+  _acct_in_real_dir "${_L_SYS%/*}" rm -f -- "./${_L_SYS##*/}"
   if [ -e "${_L_SYS}" ]; then
-    _ESC_PASS=$(cat ${_L_SYS} 2>&1)
+    _ESC_PASS=$(_acct_read_in "${_L_SYS%/*}" "${_L_SYS##*/}")
   else
     echo "INFO: Expected file ${_L_SYS} does not exist"
     if [ "${_STRONG_PASSWORDS}" = "YES" ]; then
@@ -99,16 +230,14 @@ _check_generate() {
       elif [ -x "${_isPythonTwo}" ]; then
         _ENC_PASS=$(python2 -c "import urllib; print urllib.quote('''${_ESC_PASS}''')")
       fi
-      echo "${_ESC_PASS}" > ${_L_SYS}
-      chmod 0600 ${_L_SYS}
+      _put_pass
     else
        echo "INFO: We will generate new random password using shuf tool"
       _ESC_PASS=$(shuf -zer -n64 {A..Z} {a..z} {0..9} % @ | tr -d '\0' 2>&1)
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
       _ENC_PASS="${_ESC_PASS}"
-      echo "${_ESC_PASS}" > ${_L_SYS}
-      chmod 0600 ${_L_SYS}
+      _put_pass
     fi
   fi
   _LEN_PASS=$(echo ${#_ESC_PASS} 2>&1)
@@ -119,8 +248,7 @@ _check_generate() {
     _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
     _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     _ENC_PASS="${_ESC_PASS}"
-    echo "${_ESC_PASS}" > ${_L_SYS}
-    chmod 0600 ${_L_SYS}
+    _put_pass
   fi
 }
 
@@ -130,12 +258,12 @@ _do_syncpass() {
     _prH="/var/aegir/.drush"
     if [ "${_uname}" = "aegir" ] && [ -e "/var/aegir/backups" ]; then
       _L_SYS="/var/aegir/backups/system/.aegir_root.pass.txt"
-      cp ${_prH}/server_localhost.alias.drushrc.php \
-        ${_vBs}/server_localhost.alias.drushrc.php.${_uname}-${_NOW} &> /dev/null
-      cp ${_prH}/server_master.alias.drushrc.php \
-        ${_vBs}/server_master.alias.drushrc.php.${_uname}-${_NOW} &> /dev/null
+      _L_SYS_OWN="${_uname}:${_uname}"
+      _keep_alias_copy "${_prH}" server_localhost.alias.drushrc.php \
+        "${_vBs}/server_localhost.alias.drushrc.php.${_uname}-${_NOW}" &> /dev/null
+      _keep_alias_copy "${_prH}" server_master.alias.drushrc.php \
+        "${_vBs}/server_master.alias.drushrc.php.${_uname}-${_NOW}" &> /dev/null
       _check_generate
-      chown ${_uname}:${_uname} ${_L_SYS} &> /dev/null
       if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
         mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
         su -s /bin/bash - ${_uname} -c "drush8 @hostmaster \
@@ -177,9 +305,9 @@ GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
 ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
-        sed -i \
+        _acct_in_real_dir "${_prH}" _sed_server_aliases_here \
           "s/mysql:\/\/aegir_root:.*/mysql:\/\/aegir_root:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
-          ${_prH}/server_*.alias.drushrc.php &> /dev/null
+          &> /dev/null
         wait
         mysqladmin -u root flush-privileges &> /dev/null
       else
@@ -194,12 +322,12 @@ EOFMYSQL
       if [ -e "/data/disk/${_uname}" ]; then
         _grp=$(_acct_group "${_uname}")
         _L_SYS="/data/disk/${_uname}/.${_uname}.pass.txt"
-        cp /data/disk/${_uname}/.drush/server_localhost.alias.drushrc.php \
-          ${_vBs}/server_localhost.alias.drushrc.php.${_uname}-${_NOW} &> /dev/null
-        cp /data/disk/${_uname}/.drush/server_master.alias.drushrc.php \
-          ${_vBs}/server_master.alias.drushrc.php.${_uname}-${_NOW} &> /dev/null
+        _L_SYS_OWN="${_uname}:${_grp}"
+        _keep_alias_copy "/data/disk/${_uname}/.drush" server_localhost.alias.drushrc.php \
+          "${_vBs}/server_localhost.alias.drushrc.php.${_uname}-${_NOW}" &> /dev/null
+        _keep_alias_copy "/data/disk/${_uname}/.drush" server_master.alias.drushrc.php \
+          "${_vBs}/server_master.alias.drushrc.php.${_uname}-${_NOW}" &> /dev/null
         _check_generate
-        chown ${_uname}:${_grp} ${_L_SYS} &> /dev/null
         if [ ! -z "${_ESC_PASS}" ] && [ ! -z "${_ENC_PASS}" ]; then
           if [ -e "/data/conf/${_uname}_use_proxysql.txt" ]; then
             _SQL_CONNECT=127.0.0.1
@@ -246,9 +374,9 @@ GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
 ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
-          sed -i \
+          _acct_in_real_dir "/data/disk/${_uname}/.drush" _sed_server_aliases_here \
             "s/mysql:\/\/${_uname}:.*/mysql:\/\/${_uname}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
-            /data/disk/${_uname}/.drush/server_*.alias.drushrc.php &> /dev/null
+            &> /dev/null
           wait
           if [ -e "/data/conf/${_uname}_use_proxysql.txt" ]; then
             _SQL_CONNECT=127.0.0.1
@@ -262,18 +390,31 @@ EOFMYSQL
           echo "ERROR: did not work as expected, please try again"
           exit 1
         fi
+        ### The database host as the install path writes it: FQDN becomes
+        ### the box's own name, PROXYSQL the local proxy address; any other
+        ### value is written as it is.
+        _OCT_DB_HOST_W="${_THIS_DB_HOST}"
+        if [ "${_THIS_DB_HOST}" = "FQDN" ]; then
+          _OCT_DB_HOST_W="${_hName}"
+        elif [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
+          _OCT_DB_HOST_W=127.0.0.1
+        fi
+        ### Put in the account root as a fresh 0600 file handed to the
+        ### account, never written, handed over or given a mode through a
+        ### link put at the name.
         _L_SYS_PHP="/data/disk/${_uname}/.${_uname}.pass.php"
-        echo "<?php" > ${_L_SYS_PHP}
-        echo "\$oct_db_user = \"${_uname}\";" >> ${_L_SYS_PHP}
-        echo "\$oct_db_pass = \"${_ESC_PASS}\";" >> ${_L_SYS_PHP}
-        echo "\$oct_db_host = \"${_THIS_DB_HOST}\";" >> ${_L_SYS_PHP}
-        echo "\$oct_db_port = \"${_THIS_DB_PORT}\";" >> ${_L_SYS_PHP}
-        echo "\$oct_db_dirs = \"/data/disk/${_uname}/backups\";" >> ${_L_SYS_PHP}
-        chown ${_uname}:${_grp} ${_L_SYS_PHP}
-        chmod 0600 ${_L_SYS_PHP}
+        { echo "<?php"
+          echo "\$oct_db_user = \"${_uname}\";"
+          echo "\$oct_db_pass = \"${_ESC_PASS}\";"
+          echo "\$oct_db_host = \"${_OCT_DB_HOST_W}\";"
+          echo "\$oct_db_port = \"${_THIS_DB_PORT}\";"
+          echo "\$oct_db_dirs = \"/data/disk/${_uname}/backups\";"
+        } | _acct_in_real_dir "/data/disk/${_uname}" _put_secret_here \
+          ".${_uname}.pass.php" "${_uname}:${_grp}" \
+          || echo "ERROR: Could not write ${_L_SYS_PHP}"
         echo "INFO: Fixed Ægir Satellite Instance system user=${_uname}"
         echo "INFO: New system password=${_ESC_PASS} encoded=${_ENC_PASS}"
-        echo "INFO: With Satellite oct_db_host=${_THIS_DB_HOST}"
+        echo "INFO: With Satellite oct_db_host=${_OCT_DB_HOST_W}"
         echo "INFO: With Satellite oct_db_port=${_THIS_DB_PORT}"
         echo "BYE!"
       else

@@ -18,6 +18,13 @@ if (is_readable('/data/conf/global/global-mode.inc')) {
 }
 
 /**
+ * Include the login/admin lock query-string gate
+ */
+if (is_readable('/data/conf/global/global-ua-qlock.inc')) {
+  include_once('/data/conf/global/global-ua-qlock.inc');
+}
+
+/**
  * Include main
  */
 if (is_readable('/data/conf/global/global-main.inc')) {
