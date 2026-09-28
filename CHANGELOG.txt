@@ -547,6 +547,10 @@
 
 @=> Improvements
 
+    * Cloudflare's address lists are fetched once a day, and at once only
+      while the ranges file is missing; every self-update pass (every five
+      minutes) used to fetch them again.
+
     * The status request every clear.sh run sends to BOA's mirror now
       carries only the box's BOA release and OS release (it used to name
       the hostname, every address, the instance paths and their site
