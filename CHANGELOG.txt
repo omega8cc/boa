@@ -850,6 +850,15 @@
 
 @=> Important Fixes
 
+    * The web IDS's document-harvest detector now reports: every cohort
+      member was filed under a wrong key, so no cohort ever reached the
+      report or a ban.
+    * A request served over HTTPS through the wildcard SSL front counts
+      once in the harvest detector, as in every other detector: its
+      loopback copy from the site's port-80 vhost was counted too, which
+      doubled every such request, tripled a refusal the front retries,
+      and hid a harvest over the front.
+
     * The AI training block no longer refuses Claude-User, Claude-SearchBot
       and Amzn-SearchBot. Their user agents name a training crawler in the
       contact part (claudebot@anthropic.com, .../support/amazonbot), which
