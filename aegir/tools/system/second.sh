@@ -370,12 +370,50 @@ _terminate_processes() {
   echo "Action Taken: Long-running processes terminated due to critical load."
 }
 
+# /data/conf is root's, but an Octopus upgrade of an earlier release handed it
+# to the account it upgraded, so a name there can still be a link that account
+# left: the switch below renames only inside the real directory.
+#
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way (helper.sh.inc).
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 renamed to ./$2 in the current (pinned) directory, only while ./$1 is a
+# regular file: mv -T renames over a link left at ./$2, never into what it
+# names, and a link at ./$1 is never made the live name.
+_conf_rename_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  mv -f -T -- "./${1}" "./${2}"
+}
+
 # Function to enable nginx high load configuration
 _nginx_high_load_on() {
   local _current_load="$1"
   local _threshold="$2"
   local _load_period="$3"
-  mv -f /data/conf/nginx_high_load_off.conf /data/conf/nginx_high_load.conf
+  if ! _acct_in_real_dir /data/conf \
+    _conf_rename_here nginx_high_load_off.conf nginx_high_load.conf; then
+    # Not a regular file (a link or a FIFO left at the off name) is never the
+    # switch's own: it goes, so the next barracuda pass puts a fresh one.
+    if [ -L /data/conf/nginx_high_load_off.conf ] \
+      || { [ -e /data/conf/nginx_high_load_off.conf ] \
+        && [ ! -f /data/conf/nginx_high_load_off.conf ]; }; then
+      _acct_in_real_dir /data/conf rm -f -- ./nginx_high_load_off.conf
+    fi
+    return 0
+  fi
   service nginx reload &> /dev/null
   local _log_message
   _log_message="$(date) Enabled Spider Protection ${_load_period} Load: ${_current_load}%"
@@ -388,7 +426,12 @@ _nginx_high_load_on() {
 
 # Function to disable nginx high load configuration
 _nginx_high_load_off() {
-  mv -f /data/conf/nginx_high_load.conf /data/conf/nginx_high_load_off.conf
+  if ! _acct_in_real_dir /data/conf \
+    _conf_rename_here nginx_high_load.conf nginx_high_load_off.conf; then
+    # Not a regular file (a link left at the live name) is never the switch's
+    # own: it goes, so protection is really off and the check stops firing.
+    _acct_in_real_dir /data/conf rm -f -- ./nginx_high_load.conf || return 0
+  fi
   service nginx reload &> /dev/null
   local _log_message
   _log_message="$(date) Disabled Spider Protection Load: ${_O_LOAD}%"
@@ -720,7 +763,7 @@ _load_control() {
     touch /run/normal_load.pid
     [ -e "/run/spider_load.pid" ] && rm -f /run/spider_load.pid
     # If load is below spider protection threshold, disable spider protection if it's enabled
-    if [ -e "/data/conf/nginx_high_load.conf" ] && \
+    if { [ -e "/data/conf/nginx_high_load.conf" ] || [ -L "/data/conf/nginx_high_load.conf" ]; } && \
        awk "BEGIN {exit !(${_O_LOAD} <= ${_CPU_SPIDER_THRESHOLD} && ${_F_LOAD} <= ${_CPU_SPIDER_THRESHOLD})}"; then
       echo "Load below spider protection threshold."
       _nginx_high_load_off
