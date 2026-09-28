@@ -110,6 +110,13 @@
       /tmp, /var/tmp and /dev/shm is removed, and a forced master
       reinstall hands the master tree it parks to root.
 
+    * The Valkey and Redis backoff flag no longer follows a link: its
+      directory is shared by every account and not sticky, so another
+      account could make a site's PHP create a file of its choosing,
+      writable by all, the next time the cache probe failed. The flag is
+      now only read, replaced and removed by name, and root keeps the
+      directory its own.
+
     * Root no longer follows a link, or opens a FIFO, that an account
       puts at a name in its own directories: static/control, and the
       log/, .drush/, config/, tools/, .tmp/ and .ftp home names its main
