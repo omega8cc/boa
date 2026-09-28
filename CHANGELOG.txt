@@ -547,6 +547,13 @@
 
 @=> Improvements
 
+    * The status request every clear.sh run sends to BOA's mirror now
+      carries only the box's BOA release and OS release (it used to name
+      the hostname, every address, the instance paths and their site
+      counts), and _VERSION_REPORT=NO in /root/.barracuda.cnf switches it
+      off. It is what decides when support for a legacy OS can be
+      dropped, and it lives only in the mirrors' rotated access logs.
+
     * Percona telemetry is off, a custom my.cnf included. The server
       package's one-off report to Percona at install is skipped, and on
       Percona 8.x the telemetry component no longer loads: BOA keeps a
