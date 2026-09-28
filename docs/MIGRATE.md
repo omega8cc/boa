@@ -3,7 +3,8 @@
 BOA provides three purpose-built tools for migrating Octopus instances and full
 server environments between remote hosts. `xoct` and `xmass` are compared below;
 `xcopy` is `xoct`'s proxy-less variant — the same per-account (or shared-platform)
-migration, without the automatic intermediate DNS proxy.
+migration, without the automatic intermediate DNS proxy, and always under the same
+account name (renames are `xoct`'s).
 
 ## Choosing the Right Tool
 

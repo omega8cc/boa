@@ -91,8 +91,8 @@
       dot.
 
     * xoct, xcopy and xmass map an account's own group onto the target
-      account's on every leg as they copy, and on a rename xoct and xcopy
-      map each of its identities onto the new name's, so a run that stops
+      account's on every leg as they copy, and on a rename xoct maps each
+      of its identities onto the new name's, so a run that stops
       before its closing pass, xoct create, the standby autosync and the
       cutover's last pass no longer leave files in another account's
       group, or owned by an account the target has under the old name. An
@@ -109,6 +109,25 @@
       account created could be given it. What its identities left in
       /tmp, /var/tmp and /dev/shm is removed, and a forced master
       reinstall hands the master tree it parks to root.
+
+    * The Valkey and Redis backoff flag no longer follows a link: its
+      directory is shared by every account and not sticky, so another
+      account could make a site's PHP create a file of its choosing,
+      writable by all, the next time the cache probe failed. The flag is
+      now only read, replaced and removed by name, and root keeps the
+      directory its own.
+
+    * xcopy no longer copies an account under a new name: it rewrote no
+      reference to the old name, so the copy's panel configuration kept
+      pointing into the old account's files, which on the target could
+      be another account's. A rename is refused before the account is
+      read or the target contacted; xoct is the tool that moves an account
+      under a new name.
+
+    * PHP-FPM pool sockets, the master pools' included, answer only nginx
+      and root: they were open to the web server group, which holds every
+      account's users and every pool's workers, so any account could have
+      another account's pool, or a master pool, run a script as its user.
 
     * Root no longer follows a link, or opens a FIFO, that an account
       puts at a name in its own directories: static/control, and the
@@ -199,6 +218,16 @@
       Valkey password, the global includes and the Drupal 10 and 11 core
       patches there only inside the real directories, never through a
       link, and xmass's two records there keep the 0600 xmass gives them.
+      The nightly pass now leaves the folder itself 0711, as the Octopus
+      upgrade does, instead of 0755.
+
+    * The nginx web ban lists, the fleet maps, the Cloudflare and migration
+      proxy address lists, the high-load switch, the Solr config copy and
+      edgetest's trust file are read and written in /data/conf only
+      inside the real directory, through fresh files renamed into place,
+      never through a link or a directory left there; the Solr config
+      copy is made afresh once on every box. The migration proxy trust
+      tool now fails loudly when it cannot record an address.
 
     * The shared Backdrop redis module, the Backdrop bundle's webform and
       bee are root's as soon as BOA unpacks them: their archives recorded
@@ -584,6 +613,17 @@
       built without their require-dev packages, like the others.
 
 @=> Improvements
+
+    * Redis server support is retired: the barracuda upgrade installs
+      Valkey only. The Redis server installer, its config templates and
+      its service handling in the upgrade steps are gone, and the
+      Redis-named copies of the Valkey includes in /data/conf/global are
+      no longer deployed or read. A box whose _VALKEY_MAJOR_RELEASE holds
+      a value Valkey does not have now gets the default Valkey major
+      instead of a Redis build. The phpredis
+      extension, the Drupal and Backdrop redis modules and the redis_*
+      INI keys stay, as they are how sites use Valkey; the _REDIS_*
+      settings stay in /root/.barracuda.cnf but no longer do anything.
 
     * DeepSeekBot, DeepSeek's crawler for model training, joins the AI
       training class: it gets 444 by default like GPTBot and ClaudeBot,

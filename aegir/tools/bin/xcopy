@@ -270,6 +270,8 @@ REMOTE
   return "${_X_RC}"
 }
 
+# xcopy refuses a rename (_xcopy_refuse_rename; xoct is the rename tool), so
+# this map stays empty; it is kept as a second line of defence.
 # On a rename the account's identities here map onto the destination's of
 # the same suffix (<src> onto <dst>, <src>.ftp onto <dst>.ftp, a client's
 # <src>.<name> onto <dst>.<name>): by name alone the copy would be owned by
@@ -2132,7 +2134,25 @@ _xcopy_transfer_static_symlink_safe() {
     "static/files (${_X_DST_ACCT})" "${_X_SRC_USR##*/}" || _XCOPY_STORE_RC=$?
 }
 
+# xcopy copies an account under its own name only. A fourth argument naming
+# another account is a rename, which is xoct's: xcopy rewrites no old name in
+# the copied vhosts, aliases or panel database, so a renamed copy would keep
+# pointing into the old account's tree (on the target, another tenant's).
+# Refused before the account is read, the target is asked or anything of
+# the account is changed on either box: a DENY, the dry run is not clean,
+# every verb stops.
+_xcopy_refuse_rename() {   # 1 account here 2 fourth argument 3 target
+  if [ -z "${2}" ] || [ "${2}" = "${1}" ]; then
+    return 0
+  fi
+  echo "DENY: xcopy does not rename: ${1} is copied as ${1} only, never as ${2}; to move it under a new name use xoct"
+  _XCOPY_NOT_CLEAN=YES
+  [ "${_MODE}" = "DRY" ] && _xcopy_finalize_dry "${1}" "${3}"
+  exit 1
+}
+
 _migrate_init() {
+  _xcopy_refuse_rename "${_oct}" "${_dst}" "${_tgt}"
   _USR=/data/disk/${_oct}
   if [ "${_oct}" = "arch" ] \
     || [ "${_oct}" = "all" ] \
@@ -3054,7 +3074,8 @@ case "$1" in
         --force)       _XCOPY_FORCE=YES ;;
         --*)
           ### An unknown --flag must never fall through to the positionals:
-          ### the next free slot is the target-account RENAME.
+          ### the next free slot is the fourth argument (a destination name,
+          ### which xcopy refuses unless it is the account's own).
           echo "ERROR: unknown option '${_a}' for $1"
           exit 1
           ;;
@@ -3320,7 +3341,8 @@ case "$1" in
   *)        echo
             echo "Usage: xcopy {pre-mig} {source-fqdn} (source vms: publishes its key and prints its fingerprint)"
             echo "Usage: xcopy {pre-mig} {source-fqdn} --key-fp=SHA256:... (target vms: the fingerprint the source printed)"
-            echo "Usage: xcopy {export|create|pretransfer|transfer|noproxy} {o1|shared} {target-ip} {o2}"
+            echo "Usage: xcopy {export|create|pretransfer|transfer|noproxy} {o1|shared} {target-ip}"
+            echo "       (the account keeps its name: xoct moves an account under a new one)"
             echo "Usage: xcopy {import} {o1} {target-ip} (target vms)"
             echo "Usage: xcopy {post-mig} {fqdn} (source+target vms)"
             echo
