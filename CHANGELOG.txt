@@ -807,6 +807,11 @@
 
 @=> Important Fixes
 
+    * migratefs reads a target given through a link under /mnt on the
+      device the link leads to, instead of reporting it as the same
+      filesystem as /data/disk, and no longer counts such a link as a
+      second mount that refuses every run.
+
     * An xoct rename transfer hands the account's files to the new
       identities in one walk per owner again, instead of one process per
       directory, which made the owner remap about 80 times slower on a

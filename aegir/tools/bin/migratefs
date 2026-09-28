@@ -549,13 +549,15 @@ _pause_and_drain() {
 }
 
 # Resolve a target filesystem device by walking up to the nearest EXISTING
-# ancestor (the target subtree may not exist yet).
+# ancestor (the target subtree may not exist yet). A target given through a
+# link under /mnt is written where the link leads, so its device is read
+# through the link (-L), as the walk above already follows it.
 _dev_of_nearest_existing() {
   _p="$1"
   while [ -n "${_p}" ] && [ "${_p}" != "/" ] && [ ! -d "${_p}" ]; do
     _p=$(dirname "${_p}")
   done
-  stat -c '%d' "${_p}" 2>/dev/null
+  stat -L -c '%d' "${_p}" 2>/dev/null
 }
 
 # Returns 0 iff the destination is on a DIFFERENT filesystem than the reference
@@ -1090,6 +1092,8 @@ _list_mnt_mountpoints() {
   local _mntDev _m
   _mntDev=$(stat -c '%d' /mnt 2>/dev/null)
   for _m in /mnt/*; do
+    # a link under /mnt is an alias of a mount, never a second one
+    [ -L "${_m}" ] && continue
     [ -d "${_m}" ] || continue
     if { command -v mountpoint >/dev/null 2>&1 && mountpoint -q "${_m}"; } \
       || { [ -n "${_mntDev}" ] && [ "$(stat -c '%d' "${_m}" 2>/dev/null)" != "${_mntDev}" ]; }; then
