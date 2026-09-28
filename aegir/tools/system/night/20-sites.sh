@@ -42,6 +42,96 @@ if ! declare -F _acct_group > /dev/null 2>&1; then
     echo "${_g}"
   }
 fi
+### The web-group helpers, for the same skew: every web-path writer below
+### derives the group through them.
+if ! declare -F _web_group_state > /dev/null 2>&1; then
+  _web_group_state() {
+    # The account's own web group, wg-<account>, derived on the box and never
+    # taken from argv or a cnf: the group its pools, backend user and shell
+    # users share for its web paths once the account is converted to it.
+    # Prints "<state> <gid> <group>", "none - -" when there is no such group
+    # (the record is root's: run as another user, converted reads as held):
+    #   none       no group of that name
+    #   foreign    the group exists, but an identity outside the account holds
+    #              it too: never joined nor written to; claim passes still leave
+    #              its paths alone (taking them would cut the pools off)
+    #   held       the group exists and only this account's identities hold it:
+    #              claim passes leave its paths alone, new identities join it
+    #   converted  and root's record names that gid: writers use the group
+    #   phaseb     and the record says the identities have left www-data
+    # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+    # phase=<A|B> ...", root's own file outside the account tree, so neither
+    # the account nor a copy or restore of its tree can make or move it.
+    # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+    # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+    # gems or npm tree, or its store on attached storage
+    # (/mnt/<m>/files/<oN>/static/files).
+    local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+    # a path is read as written (an alias the account wrote can carry "..",
+    # "." or "//"): normalised by text alone, never through a link, first
+    case "${_a}" in
+      */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+    esac
+    case "${_a}" in
+      /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+      /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+      /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+      /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+        _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+      */*) echo "none - -"; return 0 ;;
+    esac
+    _a="${_a%%.*}"
+    case "${_a}" in
+      ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+    esac
+    _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+    _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+    case "${_gid}" in
+      ""|*[!0-9]*) echo "none - -"; return 0 ;;
+    esac
+    # every holder of the gid: members of each group entry carrying it (a
+    # second entry can share the number) and every user with it as primary
+    for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+      $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+      [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+        || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+    done
+    _r="/root/.${_a}.web-group.txt"
+    if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+      && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+      read -r _rg _rgid _rph _ < "${_r}" || :
+    fi
+    if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+      echo "held ${_gid} wg-${_a}"
+    elif [ "${_rph}" = "phase=B" ]; then
+      echo "phaseb ${_gid} wg-${_a}"
+    elif [ "${_rph}" = "phase=A" ]; then
+      echo "converted ${_gid} wg-${_a}"
+    else
+      echo "held ${_gid} wg-${_a}"
+    fi
+  }
+
+  _web_group() {
+    # The group a root writer gives an account's web paths (files/, private/,
+    # settings.php and the like): wg-<account> once the account is converted,
+    # www-data otherwise, as always. Until the record says converted every
+    # identity of the account still holds www-data (a conversion grants the web
+    # group first and a revert gives www-data back before it moves any path),
+    # so www-data is the old state, never an outage. Callers write
+    # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
+    # group and never hands a path to a login group. Run as any user but root,
+    # which cannot read root's record, a held group answers empty: the group
+    # each path has is kept. $1 as _web_group_state.
+    local _s
+    _s=$(_web_group_state "${1}")
+    case "${_s%% *}" in
+      converted|phaseb) echo "${_s##* }" ;;
+      held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+      *) echo "www-data" ;;
+    esac
+  }
+fi
 
 ### night.inc.sh carries its own fNN serial and is fetched separately, so a box
 ### can briefly hold this file alongside an older library that predates the
@@ -60,6 +150,15 @@ if ! declare -F _desymlink_planted > /dev/null 2>&1; then
     done
   }
 fi
+
+### The path a group derives from: where $1 physically resolves -- the path
+### the checks validated -- never its text. The text comes from an alias the
+### account writes, and ".." after a link in the account's own tree resolves
+### inside the account while the text names another one. Printed as given
+### when it does not resolve (the checks refuse it anyway).
+_night_phys() {
+  realpath -e -- "${1}" 2> /dev/null || printf '%s\n' "${1}"
+}
 
 ### Gate for the alias-derived per-site paths (_Dir, _Plr and their ghost-loop
 ### twins) before any root op walks them: never a symlink, and resolving
@@ -175,6 +274,390 @@ if ! declare -F _provision_running > /dev/null 2>&1; then
     pgrep -f provision > /dev/null 2>&1
   }
 fi
+
+### An account owns its static/control, and oN owns the rest of its
+### /data/disk/oN (log/, .drush/, config/, tools/, .tmp/, undo/), so any name
+### there can be a link or a FIFO, and any directory on the way can itself be
+### a link. Root reads and writes those names only through the helpers below.
+### The first four are the helper.sh.inc bodies (the night family never
+### sources that file), carried unless the library already supplies them.
+if ! declare -F _acct_in_real_dir > /dev/null 2>&1; then
+  # Run "$@" inside the real directory $1, never one reached through a link
+  # an account planted on the way. Below /home and /data/disk (root's) every
+  # name on the path must be a real directory; elsewhere the last name is
+  # checked against its resolved parent. Once entered, ./name stays in that
+  # directory whatever is swapped.
+  _acct_in_real_dir() {
+    local _d="${1}" _a="" _want
+    shift
+    case "${_d}" in
+      /home/?*) _a=/home ;;
+      /data/disk/?*) _a=/data/disk ;;
+    esac
+    if [ -n "${_a}" ]; then
+      _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+    else
+      _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+    fi
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+  }
+fi
+if ! declare -F _acct_read_here > /dev/null 2>&1; then
+  # ./$1 in the current (pinned) directory: never through a link, never
+  # blocked on a FIFO, at most 1 MiB. Empty for anything else.
+  _acct_read_here() {
+    timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+      bs=1048576 count=1 status=none 2> /dev/null
+  }
+fi
+if ! declare -F _acct_read_in > /dev/null 2>&1; then
+  # $2 in the real directory $1, read as _acct_read_here reads it.
+  _acct_read_in() {
+    _acct_in_real_dir "${1}" _acct_read_here "${2}"
+  }
+fi
+if ! declare -F _acct_put_here > /dev/null 2>&1; then
+  # ./$1 in the current (pinned) directory with the content $2 (0644): a
+  # fresh file created exclusively, then renamed over the name, so a link or
+  # a FIFO put at the name is replaced, never followed or opened, and a
+  # reader never finds the name missing.
+  _acct_put_here() {
+    local _t="./.${1}.put.$$.${RANDOM}"
+    rm -f -- "${_t}"
+    ( umask 022
+      printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+      && mv -f -T -- "${_t}" "./${1}" && return 0
+    rm -f -- "${_t}"
+    return 1
+  }
+fi
+### The root-only staging dir under the account root, entered for real and
+### checked root:root 0700 there before "$@" runs inside it (night.inc.sh
+### carries the same bodies; an older library has none).
+if ! declare -F _ctrl_in_stage_dir > /dev/null 2>&1; then
+  _ctrl_in_stage_dir() {
+    [ -n "${_usEr}" ] || return 1
+    _acct_in_real_dir "${_usEr}" _ctrl_stage_here "$@"
+  }
+  _ctrl_stage_here() {
+    local _h _st
+    _h="$(pwd -P)/.boa-ctrl"
+    [ -L ./.boa-ctrl ] && rm -f -- ./.boa-ctrl
+    [ -d ./.boa-ctrl ] || mkdir ./.boa-ctrl 2> /dev/null
+    cd -P -- ./.boa-ctrl 2> /dev/null && [ "$(pwd -P)" = "${_h}" ] || return 1
+    chown root:root . 2> /dev/null && chmod 0700 . 2> /dev/null || return 1
+    # root's, and nobody else's to enter or write
+    _st=$(stat -c '%u %a' . 2> /dev/null)
+    [ "${_st%% *}" = "0" ] && [[ "${_st##* }" =~ ^[0-7]+$ ]] \
+      && (( (8#${_st##* } & 8#077) == 0 )) || return 1
+    "$@"
+  }
+fi
+
+### The consecutive-ghost counters (night.inc.sh documents them), kept by
+### NAME inside the real log/ctrl. Defined here whatever the library holds:
+### an older library's _ghost_seen_enough takes a path and acts on it.
+_ghost_seen_enough_acct() {
+  local _n
+  _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
+  _n=$(_acct_in_real_dir "${_usEr}/log/ctrl" _acct_read_plain_here "${1}" \
+    | head -c 32)
+  _n="${_n//[^0-9]/}"
+  _n="${_n:0:9}"
+  _n=$(( 10#${_n:-0} + 1 ))
+  _acct_in_real_dir "${_usEr}/log/ctrl" _acct_put_here "${1}" "${_n}" \
+    || return 1
+  [ "${_n}" -ge "${2:-2}" ]
+}
+_ghost_seen_reset_acct() {
+  _acct_in_real_dir "${_usEr}/log/ctrl" rm -f -- "./${1}" 2> /dev/null
+  return 0
+}
+
+### A mode set on names in a directory the account can write, never through
+### a link: each name is opened without following one and without blocking
+### on a FIFO, checked to be the expected type and changed through the open
+### handle (fchmod). Run it inside the pinned directory: O_NOFOLLOW covers
+### the last name only. Args: f|d (regular file or directory), the mode
+### (octal), the names.
+# A directory keeps its set-user-ID and set-group-ID bits unless the mode has
+# five digits (02775, 00755), as chmod(1) does with a numeric mode.
+# A regular file is changed only while it has a single link: a hard link put
+# at a name (or anywhere in a walked tree) is left alone, so the mode never
+# reaches the file it names.
+_NIGHT_FCHMOD_PL='use Fcntl;
+my ($t, $ms) = (shift @ARGV, shift @ARGV);
+my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if ($t eq "f" && -f _ && $s[3] == 1) {
+    chmod($m, $h);
+  } elsif ($t eq "d" && -d _) {
+    chmod($m | ($s[2] & $k), $h);
+  }
+  close($h);
+}'
+_chmod_nofollow_here() {
+  # $1 = f|d, $2 = mode, the rest = names in the current (pinned) directory
+  local _t="${1}" _m="${2}"
+  shift 2
+  [ "$#" -gt 0 ] || return 0
+  perl -e "${_NIGHT_FCHMOD_PL}" "${_t}" "${_m}" "$@" 2> /dev/null
+}
+
+### An owner set on names in a directory the account can write, never by
+### name: each name is opened without following a link and without blocking
+### on a FIFO, and a directory, or a regular file with a single link, is
+### changed through the open handle (fchown). A hard-linked file, a link, a
+### FIFO or a socket is left alone, so a hard link put at a name (or anywhere
+### in a walked tree) never hands over the file it names; nothing checks the
+### owner of a link. Args: uid, gid (numbers; -1 keeps that id), the names.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+### $1 (owner or owner:group, as chown takes it) as the numbers "uid gid",
+### -1 for a group not named; status 1, and nothing, when a name does not
+### resolve to a number.
+_night_ids() {
+  local _u _g=-1
+  _u=$(id -u -- "${1%%:*}" 2> /dev/null)
+  [[ "${_u}" =~ ^[0-9]+$ ]] || return 1
+  if [[ "${1}" == *:* ]]; then
+    _g=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
+    [[ "${_g}" =~ ^[0-9]+$ ]] || return 1
+  fi
+  printf '%s %s\n' "${_u}" "${_g}"
+}
+### The names after $1 in the current (pinned) directory handed to $1
+### (owner or owner:group) through _ACCT_REOWN_PL.
+_reown_here() {
+  local _ids _u _g
+  _ids=$(_night_ids "${1}") || return 0
+  read -r _u _g <<< "${_ids}"
+  shift
+  [ "$#" -gt 0 ] || return 0
+  perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" "$@" 2> /dev/null
+  return 0
+}
+### The trees after $1 (start points in the current, pinned directory)
+### handed to $1 the same way, as chown -R handed them: find walks without
+### following a link, at the top or below, and each entry is changed from
+### inside the directory walked.
+_reown_tree_here() {
+  local _ids _u _g
+  _ids=$(_night_ids "${1}") || return 0
+  read -r _u _g <<< "${_ids}"
+  shift
+  [ "$#" -gt 0 ] || return 0
+  env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \
+    -execdir perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" {} + &> /dev/null
+  return 0
+}
+### The hand-over walks (the lock and unlock.info legs) as _reown_tree_here
+### walks them, logging one line per walked root when a regular file with
+### more than one link kept its old owner (_ACCT_REOWN_PL leaves it alone):
+### the count and the first. The walk's own find writes those names to a
+### temp file in root's /run (-fprint0), so the report adds no second pass
+### over the tree; without that file the walk runs unreported. Only a file
+### not already at the target owner (and group, when one is named) is
+### written: one already there lost nothing to being left alone.
+_handover_tree_here() {
+  local _o="${1}" _ids _u _g _tmp _n _first _here _off
+  _ids=$(_night_ids "${_o}") || return 0
+  read -r _u _g <<< "${_ids}"
+  shift
+  [ "$#" -gt 0 ] || return 0
+  _tmp=$(mktemp /run/.night-links.XXXXXX 2> /dev/null) || _tmp=""
+  if [ -z "${_tmp}" ]; then
+    _reown_tree_here "${_o}" "$@"
+    return 0
+  fi
+  _off=(! -uid "${_u}")
+  if [[ "${_g}" != "-1" ]]; then
+    _off=(\( ! -uid "${_u}" -o ! -gid "${_g}" \))
+  fi
+  env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \
+    \( -type f -links +1 "${_off[@]}" -fprint0 "${_tmp}" -o -true \) \
+    -execdir perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" {} + &> /dev/null
+  _n=$(tr -cd '\0' < "${_tmp}" | wc -c)
+  if [[ "${_n}" =~ ^[0-9]+$ ]] && [ "${_n}" -gt 0 ]; then
+    _here="$(pwd -P)"
+    _first=$(head -z -n 1 -- "${_tmp}" | tr -d '\0')
+    _first="${_here}/${_first#./}"
+    echo "SKIP: ${_n} file(s) with more than one link not handed to ${_o} in ${_here}, first: ${_first//[[:cntrl:]]/?}"
+  fi
+  rm -f -- "${_tmp}"
+  return 0
+}
+
+### Run "$@" inside the directory $1 as it resolves now, entered for real: $1
+### is never a link itself and resolves strictly below this account root, and
+### the resolved path is checked again once entered, so a name on the way
+### swapped for a link afterwards is no longer on the path. For the
+### alias-derived platform and site trees, which the per-site gates already
+### accept through a link on the way; the account's own log/, .drush/ and
+### config/ go through _acct_in_real_dir. Reads _usEr.
+_acct_in_resolved_dir() {
+  _in_resolved_dir acct "$@"
+}
+### The same for a site dir, which may also sit on the shared /data/all or
+### /data/disk/all store a legacy instance still hosts sites on (the stores
+### _validate_loop_dir accepts).
+_site_in_resolved_dir() {
+  _in_resolved_dir site "$@"
+}
+### Only the directories above $1 are resolved: $1 itself is taken as a name
+### in its resolved parent, so a link swapped in at $1 after the test above
+### fails the check once entered instead of being resolved to where it
+### leads (a root chown, chmod or rm there).
+_in_resolved_dir() {
+  local _k="${1}" _d="${2%/}" _rd _rus
+  shift 2
+  [ -n "${_d}" ] && [ ! -L "${_d}" ] && [ -d "${_d}" ] || return 1
+  case "${_d}" in
+    /?*/?*) ;;
+    *) return 1 ;;
+  esac
+  _rd=$(realpath -e -- "${_d%/*}" 2> /dev/null) || return 1
+  _rd="${_rd%/}/${_d##*/}"
+  _rus=$(realpath -e -- "${_usEr}" 2> /dev/null) || return 1
+  case "${_rd}/" in
+    "${_rus}"/?*) ;;
+    /data/all/?*|/data/disk/all/?*) [ "${_k}" = "site" ] || return 1 ;;
+    *) return 1 ;;
+  esac
+  ( cd -P -- "${_rd}" 2> /dev/null && [ "$(pwd -P)" = "${_rd}" ] && "$@" )
+}
+
+# ./$1 in the current (pinned) directory replaced by the exact bytes $2, only
+# while ./$1 is a regular file below 1 MiB (so a bounded read saw all of it):
+# a fresh file with the owner, group and read/write bits of the file it
+# replaces, then renamed over the name. The temp is created, written, owned
+# and moded through one handle opened O_EXCL|O_NOFOLLOW, so nothing root owns
+# is ever chowned by name in a directory the account can write (a hard link
+# renamed over the temp name before a chown by name would have handed
+# another file to the owner of the file it replaces); a swap before the
+# rename only lands a file the account could have put there itself. The mode
+# keeps only the read/write bits of the file it replaces, as before.
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+_acct_put_same_here() {
+  local _t="./.${1}.put.$$.${RANDOM}" _st _typ _uid _gid _mod _sz
+  _st=$(stat -c '%F|%u|%g|%a|%s' -- "./${1}" 2> /dev/null) || return 1
+  IFS='|' read -r _typ _uid _gid _mod _sz <<< "${_st}"
+  case "${_typ}" in
+    "regular file"|"regular empty file") ;;
+    *) return 1 ;;
+  esac
+  [[ "${_mod}" =~ ^[0-7]+$ && "${_sz}" =~ ^[0-9]+$ ]] || return 1
+  [ "${_sz}" -lt 1048576 ] || return 1
+  rm -f -- "${_t}"
+  if printf '%s' "${2}" \
+    | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" "${_mod}" \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+### ./$1 of the current (pinned) directory as text: status 1, and nothing,
+### unless it is a regular file; read as _acct_read_here reads it.
+_acct_read_plain_here() {
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  _acct_read_here "${1}"
+}
+### ./$1 edited by the sed arguments after it, as sed -i edited it (the same
+### bytes: the trailing "x" keeps every newline through the substitutions),
+### and put back as _acct_put_same_here puts it.
+_acct_sed_same_here() {
+  local _n="${1}" _c
+  shift
+  _c=$(_acct_read_plain_here "${_n}" && echo x) || return 1
+  _c=$(printf '%s' "${_c%x}" | sed "$@"; echo x)
+  _acct_put_same_here "${_n}" "${_c%x}"
+}
+### The lines $2 appended to ./$1 as ">>" appended them (one newline after
+### the last), and put back as _acct_put_same_here puts it.
+_acct_add_same_here() {
+  local _c
+  _c=$(_acct_read_plain_here "${1}" && echo x) || return 1
+  _acct_put_same_here "${1}" "${_c%x}${2}"$'\n'
+}
+
+### The control INIs sit in tenant-writable setgid modules dirs, so an INI can
+### be swapped for a link or a FIFO between any test and its use, and the dir
+### itself for a link. Each is read and edited only inside its modules dir,
+### entered for real (_acct_in_resolved_dir): a read is bounded and never
+### follows a link or blocks on a FIFO; an edit is made in memory and lands
+### as a fresh file with the INI's own owner and mode. $1 = the INI path.
+_ctrl_ini_read() {
+  _acct_in_resolved_dir "${1%/*}" _acct_read_plain_here "${1##*/}"
+}
+_ctrl_ini_sed() {
+  local _f="${1}"
+  shift
+  _acct_in_resolved_dir "${_f%/*}" _acct_sed_same_here "${_f##*/}" "$@"
+}
+_ctrl_ini_add() {
+  _acct_in_resolved_dir "${1%/*}" _acct_add_same_here "${1##*/}" "${2}"
+}
+### For the "add if missing" legs: the INI text is read once into
+### _CTRL_INI_TXT, and the line $2 is added unless grep finds $1 there (ERE
+### with $3 = -E). The text grows with each added line, so a later test sees
+### it as it saw the appended file; the additions collect in _CTRL_INI_ADD
+### for a single _ctrl_ini_add.
+_ctrl_ini_want() {
+  if ! grep -q ${3:+"${3}"} -- "${1}" <<< "${_CTRL_INI_TXT}" 2> /dev/null; then
+    _CTRL_INI_TXT="${_CTRL_INI_TXT}"$'\n'"${2}"
+    _CTRL_INI_ADD="${_CTRL_INI_ADD}${_CTRL_INI_ADD:+$'\n'}${2}"
+  fi
+}
+
+### A root marker in the account's log/ctrl (made first if missing): a fresh
+### empty file created exclusively inside the real directory and renamed over
+### the name, so a link or a FIFO put at the name is replaced, never followed
+### or opened, and nothing is created through a link at log/ or log/ctrl.
+### $1 = marker name.
+_log_ctrl_mark() {
+  _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
+  _acct_in_real_dir "${_usEr}/log/ctrl" _acct_mark_here "${1}"
+}
+### ./$1 in the current (pinned) directory as a fresh empty file, put as
+### _acct_put_here puts one.
+_acct_mark_here() {
+  local _t="./.${1}.mark.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  dd if=/dev/null of="${_t}" conv=excl status=none 2> /dev/null \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+
+### Move ./$1 of the current directory, entered for real by the caller, into
+### this account's real undo/ as $2 (default: the same name); undo/ is made
+### first if missing. undo/ is opened and checked to be the account's own
+### real directory, and the rename goes through that open directory
+### (/proc/self/fd), so neither end can land anywhere else whatever name on
+### either path is swapped for a link meanwhile; -T never moves into a
+### directory or through a link found at the new name. Reads _usEr.
+_acct_undo_here() {
+  local _u
+  _u="$(cd -P /data/disk 2> /dev/null && pwd -P)${_usEr#/data/disk}/undo"
+  _acct_in_real_dir "${_usEr}" mkdir -p ./undo 2> /dev/null
+  exec 9< "${_u}/." || return 1
+  [ "$(readlink /proc/self/fd/9)" = "${_u}" ] || return 1
+  mv -f -T -- "./${1}" "/proc/self/fd/9/${2:-${1}}"
+}
+### Move the alias-derived platform or site tree $1 into undo/ as
+### _acct_undo_here does, as $2 (default: its own name), from inside its real
+### parent directory (_acct_in_resolved_dir).
+_acct_undo_tree() {
+  local _p="${1%/}"
+  _acct_in_resolved_dir "${_p%/*}" _acct_undo_here "${_p##*/}" "${2:-${_p##*/}}"
+}
+### How a ghost leg reports a move either helper above refused: it moves
+### nothing when a name on either path is a link or lies outside this
+### account (a tree on the shared /data/all store included), or when the
+### rename fails, and the leg keeps its counters for the next run.
+_GH_REFUSED="the move into undo/ was refused (a link or a path outside this account on the way, or the rename failed)"
 
 # Default only: every worker sources /root/.barracuda.cnf after this file
 # (night_load_run_env), so the cnf value wins; the literal keeps the read
@@ -302,10 +785,19 @@ _check_modules_d8plus_policy() {
   # table-name match: BOA provisions one unprefixed DB per site, so a
   # prefixed edge case is simply not detected rather than false-alerted.
   local _m _tbl _dbName _hit _hstN
-  _dbName=$(sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
-    "${_Dir}/drushrc.php" 2>/dev/null | head -n 1)
+  # The site drushrc is read inside the resolved site dir, bounded and never
+  # through a link or a FIFO, and the name reaches root's SQL only when it is
+  # a plain identifier, as mysql_backup.sh requires of every database it
+  # touches.
+  _dbName=$(_site_in_resolved_dir "${_Dir}" _acct_read_plain_here drushrc.php \
+    | sed -n "s/^\$options\['db_name'\][[:space:]]*=[[:space:]]*'\([^']*\)'.*/\1/p" \
+    2>/dev/null | head -n 1)
   if [ -z "${_dbName}" ]; then
     echo "D8PLUS-POLICY: no db_name in ${_Dir}/drushrc.php for ${_Dom} -- probe skipped"
+    return
+  fi
+  if [[ ! "${_dbName}" =~ ^[A-Za-z0-9_]+$ ]]; then
+    echo "D8PLUS-POLICY: db_name in ${_Dir}/drushrc.php for ${_Dom} is not a plain identifier -- probe skipped"
     return
   fi
   _hstN="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)"
@@ -399,61 +891,77 @@ _enable_modules_with_drush8() {
 }
 
 _sync_user_register_protection_ini_vars() {
+  local _iniTxt
   _IGNORE_USER_REGISTER_PROTECTION=NO
   _ENABLE_STRICT_USER_REGISTER_PROTECTION=NO
+  ### Both INI names live in tenant-writable setgid modules dirs, and either
+  ### can be swapped for a link or a FIFO after any test. Each is read once,
+  ### bounded and never through a link (_ctrl_ini_read), and edited only in
+  ### memory, landing as a fresh file with its own owner and mode
+  ### (_ctrl_ini_sed). The strip lets the seed leg recreate a planted name.
+  _desymlink_planted "${_PLR_CTRL_F}" "${_DIR_CTRL_F}"
   if [ -e "/data/conf/default.boa_platform_control.ini" ] \
     && [ ! -e "${_PLR_CTRL_F}" ]; then
     _reseed_ctrl_ini /data/conf/default.boa_platform_control.ini "${_PLR_CTRL_F}"
   fi
-  if [ -e "${_PLR_CTRL_F}" ]; then
+  if _iniTxt=$(_ctrl_ini_read "${_PLR_CTRL_F}"); then
     _EN_URP_T_S=$(grep "^enable_strict_user_register_protection = TRUE" \
-      ${_PLR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     _EN_URP_T=$(grep "^enable_user_register_protection = TRUE" \
-      ${_PLR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_EN_URP_T_S}" =~ "enable_strict_user_register_protection = TRUE" ]] \
       || [[ "${_EN_URP_T}" =~ "enable_user_register_protection = TRUE" ]]; then
       _ENABLE_STRICT_USER_REGISTER_PROTECTION=YES
     fi
     _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
-      ${_PLR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     _DIS_URP_T_I=$(grep "^ignore_user_register_protection = TRUE" \
-      ${_PLR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_DIS_URP_T}" =~ "disable_user_register_protection = TRUE" ]] \
       || [[ "${_DIS_URP_T_I}" =~ "ignore_user_register_protection = TRUE" ]]; then
       _IGNORE_USER_REGISTER_PROTECTION=YES
     fi
   fi
-  if [ -e "${_usEr}/static/control/enable_user_register_protection.info" ]; then
-    mv -f ${_usEr}/static/control/enable_user_register_protection.info \
-      ${_usEr}/static/control/enable_strict_user_register_protection.info
-  fi
-  if [ -e "${_usEr}/static/control/disable_user_register_protection.info" ]; then
-    mv -f ${_usEr}/static/control/disable_user_register_protection.info \
-      ${_usEr}/static/control/ignore_user_register_protection.info
-  fi
+  ### The old names renamed to the new ones inside the real static/control
+  ### (the tenant's): mv -T never moves a file into a directory or through a
+  ### link put at either name.
+  ( _ctl="$(cd -P /data/disk 2> /dev/null && pwd -P)${_usEr#/data/disk}/static/control"
+    cd -P -- "${_usEr}/static/control" 2> /dev/null && [ "$(pwd -P)" = "${_ctl}" ] || exit 0
+    if [ -f ./enable_user_register_protection.info ] \
+      && [ ! -L ./enable_user_register_protection.info ]; then
+      mv -f -T ./enable_user_register_protection.info \
+        ./enable_strict_user_register_protection.info
+    fi
+    if [ -f ./disable_user_register_protection.info ] \
+      && [ ! -L ./disable_user_register_protection.info ]; then
+      mv -f -T ./disable_user_register_protection.info \
+        ./ignore_user_register_protection.info
+    fi )
   if [ "${_ENABLE_STRICT_USER_REGISTER_PROTECTION}" = "NO" ] \
     && [ -e "${_usEr}/static/control/enable_strict_user_register_protection.info" ]; then
-    sed -i "s/.*enable.*user_register_protection.*/enable_strict_user_register_protection = TRUE/g" \
-      ${_PLR_CTRL_F} &> /dev/null
-    wait
+    _desymlink_planted "${_PLR_CTRL_F}"
+    _ctrl_ini_sed "${_PLR_CTRL_F}" \
+      "s/.*enable.*user_register_protection.*/enable_strict_user_register_protection = TRUE/g" \
+      &> /dev/null
     _ENABLE_STRICT_USER_REGISTER_PROTECTION=YES
   fi
   if [ "${_ENABLE_STRICT_USER_REGISTER_PROTECTION}" = "YES" ] \
     && [ -e "${_usEr}/static/control/ignore_user_register_protection.info" ]; then
-    sed -i "s/.*enable.*user_register_protection.*/enable_strict_user_register_protection = FALSE/g" \
-      ${_PLR_CTRL_F} &> /dev/null
-    wait
+    _desymlink_planted "${_PLR_CTRL_F}"
+    _ctrl_ini_sed "${_PLR_CTRL_F}" \
+      "s/.*enable.*user_register_protection.*/enable_strict_user_register_protection = FALSE/g" \
+      &> /dev/null
     _IGNORE_USER_REGISTER_PROTECTION=YES
   fi
   if [ -e "/data/conf/default.boa_site_control.ini" ] \
     && [ ! -e "${_DIR_CTRL_F}" ]; then
     _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
   fi
-  if [ -e "${_DIR_CTRL_F}" ]; then
+  if _iniTxt=$(_ctrl_ini_read "${_DIR_CTRL_F}"); then
     _DIS_URP_T=$(grep "^disable_user_register_protection = TRUE" \
-      ${_DIR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     _DIS_URP_T_I=$(grep "^ignore_user_register_protection = TRUE" \
-      ${_DIR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_DIS_URP_T}" =~ "disable_user_register_protection = TRUE" ]] \
       || [[ "${_DIS_URP_T_I}" =~ "ignore_user_register_protection = TRUE" ]]; then
       _IGNORE_USER_REGISTER_PROTECTION=YES
@@ -493,27 +1001,245 @@ _fix_user_register_protection_with_vSet() {
   fi
 }
 
+### The site's files store as it resolves now, in _R_FLS (status 0): files/ is
+### legitimately a link into a static store (the account's own, its copy on
+### attached storage, or another account's on an intentional share), and the
+### tenant can repoint it. Only a static store or a real child of the site
+### dir counts, the rule the permissions pass applies; status 1 otherwise.
+_site_files_store() {
+  local _rD _rF
+  _R_FLS=
+  _rD=$(realpath -e -- "${_Dir}" 2> /dev/null) || return 1
+  _rF=$(realpath -e -- "${_Dir}/files" 2> /dev/null) || return 1
+  [ -d "${_rF}" ] || return 1
+  case "${_rF}/" in
+    */static/files/*|"${_rD}"/*) _R_FLS="${_rF}"; return 0 ;;
+  esac
+  return 1
+}
+### The web group a site's resolved files or private store takes: the site
+### account's own for a store that is the account's (in its tree, on its
+### attached-storage store, or a real child of the site dir); for another
+### account's store (a share), www-data while neither account has converted,
+### as always, and SKIP otherwise -- the store is then left as it is, owner,
+### group and modes, since handing it to either account's group would take it
+### from the other's pools (the conversion decides such shares). $1 = the
+### resolved store, $2 = the resolved site dir. Reads _HM_U, _Dir.
+_store_web_group() {
+  local _wgS _wgO _m
+  _wgS=$(_web_group "$(_night_phys "${_Dir}")")
+  # a real child of the site dir (only when the site dir resolved)
+  if [ -n "${2}" ]; then
+    case "${1}/" in
+      "${2}"/*) echo "${_wgS}"; return 0 ;;
+    esac
+  fi
+  case "${1}/" in
+    /data/disk/"${_HM_U}"/*)
+      echo "${_wgS}"
+      return 0
+      ;;
+    /mnt/?*/files/"${_HM_U}"/static/files/*)
+      # its store on attached storage: no files/ or static/ in the mount
+      # part (the store rule), so a path in another account's store is not
+      _m="${1%%/files/"${_HM_U}"/static/files*}"
+      case "${_m}" in
+        */files/*|*/static/*) ;;
+        *) echo "${_wgS}"; return 0 ;;
+      esac
+      ;;
+  esac
+  _wgO=$(_web_group "${1}")
+  if [ "${_wgS}" = "www-data" ] && [ "${_wgO}" = "www-data" ]; then
+    echo "www-data"
+  else
+    echo "SKIP"
+  fi
+}
+### Run "$@" inside the directory $1, a path resolved just before: entered
+### with cd -P and checked there, so ./name stays in it whatever is swapped.
+_in_pinned_dir() {
+  local _d="${1}"
+  shift
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+}
+### Run "$@" inside ./$1 of the current (pinned) directory, entered for
+### real: no name on the way may be a link.
+_in_real_sub() {
+  local _h _s="${1}"
+  shift
+  _h="$(pwd -P)"
+  ( cd -P -- "./${_s}" 2> /dev/null && [ "$(pwd -P)" = "${_h}/${_s}" ] && "$@" )
+}
+### ./$1 removed unless it is a link; a link at the name is left alone.
+_rm_nolink_here() {
+  [ -L "./${1}" ] || rm -f -- "./${1}"
+}
+### The names matching the globs "$@" removed in the current (pinned)
+### directory, as rm -f removes them (a link as a link, never a directory);
+### each glob expands here, never in the caller's directory.
+_rm_glob_here() {
+  local _g _f
+  for _g in "$@"; do
+    # unquoted on purpose: the glob is the point
+    for _f in ./${_g}; do
+      [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+      rm -f -- "${_f}" 2> /dev/null
+    done
+  done
+  return 0
+}
+### The regular files matching the glob $3 in the current (pinned)
+### directory handed to $1 and given the mode $2, never through a link and
+### never by name: each through its own handle, only while it has a single
+### link (_reown_here, _chmod_nofollow_here), so a hard link put or renamed
+### at a matching name is left alone.
+_own_glob_here() {
+  local _f _l=()
+  # unquoted on purpose: the glob is the point
+  for _f in ./${3}; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] && _l+=("${_f}")
+  done
+  [ "${#_l[@]}" -gt 0 ] || return 0
+  _reown_here "${1}" "${_l[@]}"
+  _chmod_nofollow_here f "${2}" "${_l[@]}"
+}
+### The archives a tenant left in the current (pinned) code dir: every
+### regular file of *.tar, *.tar.gz and *.zip, removed by find -delete from
+### the directory it walked, never through a link.
+_archive_sweep_here() {
+  find ./*.tar ./*.tar.gz ./*.zip -type f -delete &> /dev/null
+  return 0
+}
+### Every entry of the current (pinned) directory handed to $1, recursively,
+### as chown -h -R handed it: find follows no link, at the top or below, and
+### each directory and single-link regular file is changed through its own
+### handle; a hard-linked file is left alone and logged (_handover_tree_here).
+_chown_all_here() {
+  _handover_tree_here "${1}" ./*
+  return 0
+}
+### The same for the entries themselves only (_reown_here).
+_chown_h_all_here() {
+  _reown_here "${1}" ./*
+  return 0
+}
+### ./$1 handed to $2 and, only if it is a regular file, given the mode $3,
+### each through a no-follow handle and only while it has a single link, so
+### neither a link nor a hard link swapped in at the name meanwhile (or put
+### there by the account) is ever followed or handed over.
+_own_nolink_here() {
+  _reown_here "${2}" "./${1}"
+  _chmod_nofollow_here f "${3}" "./${1}"
+  return 0
+}
+
+### The md5 of the whole regular file ./$1 of the current (pinned)
+### directory, read without following a link or blocking on a FIFO; status
+### 1, and nothing, when it cannot be read.
+_md5_plain_here() {
+  local _s
+  [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  _s=$(set -o pipefail
+    timeout 10 dd if="./${1}" iflag=nofollow,nonblock bs=1048576 \
+      status=none 2> /dev/null | md5sum 2> /dev/null) || return 1
+  printf '%s\n' "${_s%% *}"
+}
+### The page $1 as the site answers it now, fetched into a fresh file in the
+### current directory (the pinned staging dir) with a newline appended; its
+### ./name printed. The site answering may be one of our own 503 stubs
+### (suspended, off-line, mid-migration), which send Retry-After: 3600, and
+### curl sleeps that between retries; --max-time bounds a single transfer
+### only, so --retry-max-time is what keeps one such site from parking this
+### account's whole nightly -- and with it the drift probe that runs after
+### this loop.
+_stage_fetch_here() {
+  local _t
+  _t=$(mktemp ./fetch.XXXXXX 2> /dev/null) || return 1
+  curl -L --max-redirs 10 -k -s --connect-timeout 10 --max-time 20 \
+    --retry 2 --retry-delay 5 --retry-max-time 30 \
+    -A iCab "${1}" -o "${_t}"
+  echo >> "${_t}"
+  printf '%s\n' "${_t}"
+}
+### In the staging dir: status 0 when the page $1, as fetched now, has the
+### md5 $2.
+_stage_fetch_sum_here() {
+  local _t _s
+  _t=$(_stage_fetch_here "${1}") || return 1
+  _s=$(_md5_plain_here "${_t#./}")
+  rm -f -- "${_t}"
+  [ -n "${_s}" ] && [ "${_s}" = "${2}" ]
+}
+### ./$1 of the store $2 (a path resolved just before) replaced by the page
+### $3 as fetched now. curl writes by name, so it writes only into the
+### root-only staging dir (_ctrl_in_stage_dir); the store is then entered
+### for real, the fetched copy read through the staging dir held open
+### (/proc/self/fd), put there as a fresh file and renamed over the name, so
+### no name on either path can redirect a root write, the rename is atomic
+### in the store's own directory whatever filesystem it is on, and a link
+### re-planted at the name is replaced, never followed.
+_store_fetch() {
+  _ctrl_in_stage_dir _store_fetch_here "${1}" "${2}" "${3}"
+}
+_store_fetch_here() {
+  local _t _rc=1
+  _t=$(_stage_fetch_here "${3}") || return 1
+  ( exec 8< . || exit 1
+    cd -P -- "${2}" 2> /dev/null && [ "$(pwd -P)" = "${2}" ] || exit 1
+    _store_put_copy_here "${1}" "/proc/self/fd/8/${_t#./}" ) && _rc=0
+  rm -f -- "${_t}"
+  return "${_rc}"
+}
+### ./$1 of the current (pinned) directory replaced by a copy of the file
+### $2: a fresh name created exclusively, then renamed over the name.
+_store_put_copy_here() {
+  local _p="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_p}"
+  ( umask 022
+    dd if="${2}" of="${_p}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_p}" "./${1}" && return 0
+  rm -f -- "${_p}"
+  return 1
+}
+
 _fix_llms_txt() {
   # The site files/ dir is tenant-writable (oN:www-data 02775; the shell user is
-  # in www-data), so a tenant can plant files/llms.txt as a symlink. curl -o
-  # follows it and creates the target of a dangling link, and the chown/chmod
-  # below would then retarget it -- a root write to a tenant-chosen path. Strip
-  # any planted link first, fetch into a temp in the root-only staging dir under
-  # the account root (_ctrl_stage_dir), then mv -f -T over the leaf so rename()
-  # replaces a re-planted link instead of following it; guard the trailing
-  # metadata legs with [ ! -L ].
-  _desymlink_planted "${_Dir}/files/llms.txt"
+  # in www-data), so a tenant can plant files/llms.txt as a symlink, and
+  # files/ itself is a link the tenant can repoint. curl -o follows a link and
+  # creates the target of a dangling one, and the chown/chmod below would then
+  # retarget it -- a root write to a tenant-chosen path. So every leg acts only
+  # inside the store as it resolves once here (_site_files_store), entered for
+  # real, on ./llms.txt: strip any planted link first, fetch only into the
+  # root-only staging dir and put the copy over the leaf (_store_fetch), so
+  # rename() replaces a re-planted link instead of following it; the content
+  # is read and hashed bounded and never through a link, and the owner and
+  # mode legs never follow one nor act by name (_own_nolink_here): every
+  # member of the store's web group can write it, so a hard link put at the
+  # name is left alone, never handed over.
+  local _fls _url _wg
+  if ! _site_files_store; then
+    [ -e "${_Dir}/files" ] \
+      && echo "SKIP: ${_Dir}/files resolves outside any static store (llms.txt)"
+    return 0
+  fi
+  _fls="${_R_FLS}"
+  _wg=$(_store_web_group "${_fls}" "$(realpath -e -- "${_Dir}" 2> /dev/null)")
+  [ "${_wg}" = "SKIP" ] && _wg=""
+  _url="http://${_Dom}/llms.txt?nocache=1&noredis=1"
+  _in_pinned_dir "${_fls}" _desymlink_planted ./llms.txt
   # A tenant-uploaded policy is durable content, served as-is for as long as
   # the tenant keeps it -- the docs promise exactly that. Only a copy this
   # refresher itself fetched may be expired, re-fetched or content-gated;
-  # provenance is the md5 of the fetched copy, recorded in a marker the tenant
-  # cannot reach (the site dir is not group-writable). No marker, or an md5
-  # mismatch (the tenant replaced or edited the copy): hands off beyond
-  # ownership/mode normalisation.
+  # provenance is the md5 of the whole fetched copy, recorded in a marker the
+  # tenant cannot reach (the site dir is not group-writable). No marker, or
+  # an md5 mismatch (the tenant replaced or edited the copy): hands off
+  # beyond ownership/mode normalisation. The markers are read, put and
+  # removed only inside the resolved site dir (_site_in_resolved_dir).
   _LLMS_MARK="${_Dir}/.llms-fetched.md5"
   _LLMS_SUM=
-  if [ -f "${_Dir}/files/llms.txt" ] && [ ! -L "${_Dir}/files/llms.txt" ]; then
-    _LLMS_SUM=$(md5sum "${_Dir}/files/llms.txt" 2>/dev/null | cut -d' ' -f1)
+  if _in_pinned_dir "${_fls}" test -f ./llms.txt -a ! -L ./llms.txt; then
+    _LLMS_SUM=$(_in_pinned_dir "${_fls}" _md5_plain_here llms.txt)
     # One-time transition for the copies this refresher fetched before the
     # marker existed: they carry none, so they read as tenant content and
     # were never refreshed again anywhere. A marker-less copy is seeded once
@@ -525,148 +1251,102 @@ _fix_llms_txt() {
     if [ ! -f "${_LLMS_MARK}" ] && [ ! -e "${_LLMS_SEEDCHK}" ] \
       && [ ! -e "${_Plr}/profiles/hostmaster" ] && [ -n "${_LLMS_SUM}" ]; then
       _LLMS_SEED=NO
-      if [ -n "$(find "${_Dir}/files/llms.txt" -maxdepth 0 ! -newermt '2026-09-01' 2>/dev/null)" ]; then
+      if [ -n "$(_in_pinned_dir "${_fls}" find ./llms.txt -maxdepth 0 \
+        ! -newermt '2026-09-01' 2>/dev/null)" ]; then
         _LLMS_SEED=YES
-      else
-        _LLMS_STG=$(_ctrl_stage_dir) || _LLMS_STG=
-        _LLMS_TMP=
-        [ -n "${_LLMS_STG}" ] \
-          && _LLMS_TMP=$(mktemp "${_LLMS_STG}/llms.XXXXXX" 2>/dev/null)
-        if [ -n "${_LLMS_TMP}" ]; then
-          curl -L --max-redirs 10 -k -s --connect-timeout 10 --max-time 20 \
-            --retry 2 --retry-delay 5 --retry-max-time 30 \
-            -A iCab "http://${_Dom}/llms.txt?nocache=1&noredis=1" \
-            -o "${_LLMS_TMP}"
-          echo >> "${_LLMS_TMP}"
-          [ "$(md5sum "${_LLMS_TMP}" 2>/dev/null | cut -d' ' -f1)" = "${_LLMS_SUM}" ] \
-            && _LLMS_SEED=YES
-          rm -f "${_LLMS_TMP}"
-        fi
+      elif _ctrl_in_stage_dir _stage_fetch_sum_here "${_url}" "${_LLMS_SUM}"; then
+        _LLMS_SEED=YES
       fi
       if [ "${_LLMS_SEED}" = "YES" ]; then
-        _desymlink_planted "${_LLMS_MARK}"
-        printf '%s\n' "${_LLMS_SUM}" > "${_LLMS_MARK}"
+        _site_in_resolved_dir "${_Dir}" \
+          _acct_put_here .llms-fetched.md5 "${_LLMS_SUM}"
       fi
-      _desymlink_planted "${_LLMS_SEEDCHK}"
-      touch "${_LLMS_SEEDCHK}"
+      _site_in_resolved_dir "${_Dir}" _acct_mark_here .llms-seed.checked
     fi
     if [ ! -f "${_LLMS_MARK}" ] \
       || [ -z "${_LLMS_SUM}" ] \
-      || ! grep -q "^${_LLMS_SUM}$" "${_LLMS_MARK}" 2>/dev/null; then
-      rm -f "${_LLMS_MARK}"
-      # The [ ! -L ] above is a md5sum fork and a grep away, and files/ is
-      # tenant-writable: -h so a link replanted in that window is never
-      # followed, and re-test right before the chmod, which has no -h.
-      chown -h ${_HM_U}:www-data ${_Dir}/files/llms.txt &> /dev/null
-      [ ! -L "${_Dir}/files/llms.txt" ] \
-        && chmod 0664 ${_Dir}/files/llms.txt &> /dev/null
+      || ! _site_in_resolved_dir "${_Dir}" _acct_read_plain_here .llms-fetched.md5 \
+        | grep -q "^${_LLMS_SUM}$" 2>/dev/null; then
+      _site_in_resolved_dir "${_Dir}" rm -f -- ./.llms-fetched.md5
+      # The test above is a read and a grep away, and files/ is
+      # tenant-writable: owner and mode set through a no-follow handle, only
+      # on a single-link regular file, so neither a link replanted in that
+      # window nor a hard link put there is followed or handed over.
+      _in_pinned_dir "${_fls}" _own_nolink_here llms.txt "${_HM_U}${_wg:+:${_wg}}" 0664
       if [ -f "${_Plr}/llms.txt" ] || [ -L "${_Plr}/llms.txt" ]; then
-        rm -f ${_Plr}/llms.txt
+        _site_in_resolved_dir "${_Plr}" rm -f -- ./llms.txt
       fi
       return 0
     fi
-    find ${_Dir}/files/llms.txt -mtime +6 -exec rm -f {} \; &> /dev/null
+    _in_pinned_dir "${_fls}" find ./llms.txt -maxdepth 0 -mtime +6 \
+      -exec rm -f {} \; &> /dev/null
   fi
-  if [ ! -e "${_Dir}/files/llms.txt" ] \
-    && [ ! -e "${_Plr}/profiles/hostmaster" ] \
-    && [ -d "${_Dir}/files" ]; then
-    # curl -o re-opens the temp BY NAME after the fetch, so a temp in the site
-    # dir can be swapped for a symlink during the bounded retry window whenever
-    # _fix_static_permissions has that dir at 0775. Stage in the root-only 0700
-    # dir under the account root instead. NB the mv below is an atomic rename
-    # only while the store shares the account's filesystem: files/ may be a
-    # symlink onto attached storage, or into another account on an intentional
-    # share, and mv then degrades to copy+unlink (correct, not atomic).
-    _LLMS_STG=$(_ctrl_stage_dir) || _LLMS_STG=
-    _LLMS_TMP=
-    [ -n "${_LLMS_STG}" ] \
-      && _LLMS_TMP=$(mktemp "${_LLMS_STG}/llms.XXXXXX" 2>/dev/null)
-    if [ -n "${_LLMS_TMP}" ]; then
-      # The site answering here may be one of our own 503 stubs (suspended,
-      # off-line, mid-migration), which send Retry-After: 3600, and curl sleeps
-      # that between retries; --max-time bounds a single transfer only, so
-      # --retry-max-time is what keeps one such site from parking this account's
-      # whole nightly -- and with it the drift probe that runs after this loop.
-      curl -L --max-redirs 10 -k -s --connect-timeout 10 --max-time 20 \
-        --retry 2 --retry-delay 5 --retry-max-time 30 \
-        -A iCab "http://${_Dom}/llms.txt?nocache=1&noredis=1" \
-        -o "${_LLMS_TMP}"
-      echo >> "${_LLMS_TMP}"
-      mv -f -T "${_LLMS_TMP}" ${_Dir}/files/llms.txt &> /dev/null \
-        || rm -f "${_LLMS_TMP}"
-    fi
+  if ! _in_pinned_dir "${_fls}" test -e ./llms.txt \
+    && [ ! -e "${_Plr}/profiles/hostmaster" ]; then
+    # curl -o re-opens its output BY NAME after the fetch, so it never writes
+    # in the store: the fetch lands in the root-only staging dir and a copy
+    # is put over the leaf from there (_store_fetch).
+    _store_fetch llms.txt "${_fls}" "${_url}"
   fi
-  _VAR_IF_PRESENT=
-  if [ -f "${_Dir}/files/llms.txt" ] && [ ! -L "${_Dir}/files/llms.txt" ]; then
-    _VAR_IF_PRESENT=$(grep "##" ${_Dir}/files/llms.txt 2>&1)
-  fi
+  _VAR_IF_PRESENT=$(_in_pinned_dir "${_fls}" _acct_read_plain_here llms.txt \
+    | grep "##" 2>&1)
   if [[ ! "${_VAR_IF_PRESENT}" =~ "##" ]]; then
-    [ ! -L "${_Dir}/files/llms.txt" ] && rm -f ${_Dir}/files/llms.txt
-    rm -f "${_LLMS_MARK}"
+    _in_pinned_dir "${_fls}" _rm_nolink_here llms.txt
+    _site_in_resolved_dir "${_Dir}" rm -f -- ./.llms-fetched.md5
   else
-    if [ ! -L "${_Dir}/files/llms.txt" ]; then
-      chown -h ${_HM_U}:www-data ${_Dir}/files/llms.txt &> /dev/null
-      chmod 0664 ${_Dir}/files/llms.txt &> /dev/null
+    if _in_pinned_dir "${_fls}" test ! -L ./llms.txt; then
+      _in_pinned_dir "${_fls}" _own_nolink_here llms.txt "${_HM_U}${_wg:+:${_wg}}" 0664
       # The site dir is not group-writable in the steady state, but
       # _fix_static_permissions walks every dir of a ~/static platform through
-      # a 0775 window each night, so the marker IS plantable; ">" would follow
-      # a link and truncate its target as root.
-      _desymlink_planted "${_LLMS_MARK}"
-      md5sum "${_Dir}/files/llms.txt" 2>/dev/null | cut -d' ' -f1 \
-        > "${_LLMS_MARK}"
+      # a 0775 window each night, so the marker IS plantable: it is put as a
+      # fresh file inside the resolved site dir, never through a link there.
+      _LLMS_SUM=$(_in_pinned_dir "${_fls}" _md5_plain_here llms.txt)
+      if [ -n "${_LLMS_SUM}" ]; then
+        _site_in_resolved_dir "${_Dir}" \
+          _acct_put_here .llms-fetched.md5 "${_LLMS_SUM}"
+      fi
     fi
     if [ -f "${_Plr}/llms.txt" ] || [ -L "${_Plr}/llms.txt" ]; then
-      rm -f ${_Plr}/llms.txt
+      _site_in_resolved_dir "${_Plr}" rm -f -- ./llms.txt
     fi
   fi
 }
 
 _fix_robots_txt() {
-  # See _fix_llms_txt: files/ is tenant-writable, so guard the planted-symlink
-  # class -- strip the leaf, fetch into a temp in the root-only staging dir under
-  # the account root, mv -f -T over the leaf, and gate the metadata legs with
-  # [ ! -L ].
-  _desymlink_planted "${_Dir}/files/robots.txt"
-  find ${_Dir}/files/robots.txt -mtime +6 -exec rm -f {} \; &> /dev/null
-  if [ ! -e "${_Dir}/files/robots.txt" ] \
-    && [ ! -e "${_Plr}/profiles/hostmaster" ] \
-    && [ -d "${_Dir}/files" ]; then
-    # curl -o re-opens the temp BY NAME after the fetch, so stage it in the
-    # root-only 0700 dir under the account root instead of the site dir, and
-    # skip the fetch when that dir cannot be had. The mv below is an atomic
-    # rename only while files/ shares the account's filesystem.
-    _ROBOTS_STG=$(_ctrl_stage_dir) || _ROBOTS_STG=
-    _ROBOTS_TMP=
-    [ -n "${_ROBOTS_STG}" ] \
-      && _ROBOTS_TMP=$(mktemp "${_ROBOTS_STG}/robots.XXXXXX" 2>/dev/null)
-    if [ -n "${_ROBOTS_TMP}" ]; then
-      # See _fix_llms_txt: our own 503 stubs send Retry-After: 3600 and curl
-      # sleeps that between retries, so the retry sleep needs --retry-max-time;
-      # --max-time bounds one transfer only.
-      curl -L --max-redirs 10 -k -s --connect-timeout 10 --max-time 20 \
-        --retry 2 --retry-delay 5 --retry-max-time 30 \
-        -A iCab "http://${_Dom}/robots.txt?nocache=1&noredis=1" \
-        -o "${_ROBOTS_TMP}"
-      echo >> "${_ROBOTS_TMP}"
-      mv -f -T "${_ROBOTS_TMP}" ${_Dir}/files/robots.txt &> /dev/null \
-        || rm -f "${_ROBOTS_TMP}"
-    fi
+  # See _fix_llms_txt: files/ is tenant-writable and a link the tenant can
+  # repoint, so every leg acts only inside the store as it resolves once here
+  # (_site_files_store), entered for real, on ./robots.txt -- strip the leaf,
+  # fetch only into the root-only staging dir and put the copy over the leaf
+  # (_store_fetch), read it bounded and never through a link, and never
+  # follow one nor act by name in the owner and mode legs.
+  local _fls _wg
+  if ! _site_files_store; then
+    [ -e "${_Dir}/files" ] \
+      && echo "SKIP: ${_Dir}/files resolves outside any static store (robots.txt)"
+    return 0
   fi
-  _VAR_IF_PRESENT=
-  if [ -f "${_Dir}/files/robots.txt" ] && [ ! -L "${_Dir}/files/robots.txt" ]; then
-    _VAR_IF_PRESENT=$(grep "Disallow:" ${_Dir}/files/robots.txt 2>&1)
+  _wg=$(_store_web_group "${_R_FLS}" "$(realpath -e -- "${_Dir}" 2> /dev/null)")
+  [ "${_wg}" = "SKIP" ] && _wg=""
+  _fls="${_R_FLS}"
+  _in_pinned_dir "${_fls}" _desymlink_planted ./robots.txt
+  _in_pinned_dir "${_fls}" find ./robots.txt -maxdepth 0 -mtime +6 \
+    -exec rm -f {} \; &> /dev/null
+  if ! _in_pinned_dir "${_fls}" test -e ./robots.txt \
+    && [ ! -e "${_Plr}/profiles/hostmaster" ]; then
+    _store_fetch robots.txt "${_fls}" \
+      "http://${_Dom}/robots.txt?nocache=1&noredis=1"
   fi
+  _VAR_IF_PRESENT=$(_in_pinned_dir "${_fls}" _acct_read_plain_here robots.txt \
+    | grep "Disallow:" 2>&1)
   if [[ ! "${_VAR_IF_PRESENT}" =~ "Disallow:" ]]; then
-    [ ! -L "${_Dir}/files/robots.txt" ] && rm -f ${_Dir}/files/robots.txt
+    _in_pinned_dir "${_fls}" _rm_nolink_here robots.txt
   else
-    if [ ! -L "${_Dir}/files/robots.txt" ]; then
-      # -h: files/ is tenant-writable, so the leaf can be replanted between the
-      # [ ! -L ] above and this call; the link must never be dereferenced.
-      chown -h ${_HM_U}:www-data ${_Dir}/files/robots.txt &> /dev/null
-      chmod 0664 ${_Dir}/files/robots.txt &> /dev/null
-    fi
+    # files/ is tenant-writable, so the leaf can be replanted between the
+    # read above and this call: owner and mode set through a no-follow
+    # handle, only on a single-link regular file (_own_nolink_here).
+    _in_pinned_dir "${_fls}" _own_nolink_here robots.txt "${_HM_U}${_wg:+:${_wg}}" 0664
     if [ -f "${_Plr}/robots.txt" ] || [ -L "${_Plr}/robots.txt" ]; then
-      rm -f ${_Plr}/robots.txt
+      _site_in_resolved_dir "${_Plr}" rm -f -- ./robots.txt
     fi
   fi
 }
@@ -674,28 +1354,51 @@ _fix_robots_txt() {
 _fix_boost_cache() {
   # ${_Plr} is the docroot, 02775 and group-writable (by the account's shell
   # identities; by ANY tenant while the instance still carries the box-wide
-  # 'users' group), so cache is a name a tenant can plant as a symlink, and
-  # rm -rf, chown and chmod all
-  # walk through it. The boost cache is created and maintained here, so it is
-  # never legitimately a link: strip a planted one, then act on a real dir only.
-  _desymlink_planted "${_Plr}/cache"
+  # 'users' group), so cache is a name a tenant can plant as a symlink, or
+  # swap for one at any moment, and rm -rf, chown and chmod would all walk
+  # through it. The boost cache is created and maintained here, so it is
+  # never legitimately a link: a planted one is stripped, and the cache is
+  # made, emptied, handed over and given its mode only inside the real
+  # directory (_site_in_resolved_dir), where the glob expands and rm -rf
+  # removes a link itself, never what it points at. cache itself is entered
+  # as a name in the resolved docroot, never resolved again: a link swapped
+  # in after the strip is refused, not followed to a directory that would be
+  # emptied and handed over.
+  _site_in_resolved_dir "${_Plr}" _desymlink_planted ./cache
   if [ -e "${_Plr}/cache" ] && [ ! -L "${_Plr}/cache" ]; then
-    rm -rf ${_Plr}/cache/*
-    rm -f ${_Plr}/cache/{.boost,.htaccess}
-  else
-    if [ -e "${_Plr}/sites/all/drush/drushrc.php" ]; then
-      mkdir -p ${_Plr}/cache
-    fi
+    _site_in_resolved_dir "${_Plr}/cache" _boost_cache_clear_here
+  elif [ -e "${_Plr}/sites/all/drush/drushrc.php" ]; then
+    _site_in_resolved_dir "${_Plr}" mkdir -p ./cache
   fi
-  if [ -e "${_Plr}/cache" ] && [ ! -L "${_Plr}/cache" ]; then
-    chown -h ${_HM_U}:www-data ${_Plr}/cache &> /dev/null
-    chmod 02775 ${_Plr}/cache &> /dev/null
-  fi
+  _site_in_resolved_dir "${_Plr}/cache" _boost_cache_own_here \
+    "$(_web_group "$(_night_phys "${_Plr}")")"
+}
+_boost_cache_clear_here() {
+  rm -rf -- ./*
+  rm -f -- ./.boost ./.htaccess
+}
+_boost_cache_own_here() {
+  chown "${_HM_U}${1:+:${1}}" . &> /dev/null
+  chmod 02775 . &> /dev/null
+}
+
+### The shared-module links in the platform's own modules dir, removed and
+### made only inside the real directory (_site_in_resolved_dir): a name on
+### the way swapped for a link never takes a root rm or ln elsewhere.
+_plr_mod_rm() {
+  local _n _a=()
+  for _n in "$@"; do
+    _a+=("./${_n}")
+  done
+  _site_in_resolved_dir "${_Plr}/modules" rm -f -- "${_a[@]}"
+}
+_plr_mod_ln() {
+  _site_in_resolved_dir "${_Plr}/modules" ln -sfn -- "${1}" "./${2}" &> /dev/null
 }
 
 _fix_o_contrib_symlink() {
   if [ "${_O_CONTRIB_SEVEN}" != "NO" ]; then
-    symlinks -d ${_Plr}/modules &> /dev/null
+    _site_in_resolved_dir "${_Plr}/modules" symlinks -d . &> /dev/null
     if [ -e "${_Plr}/core/misc/backdrop.js" ]; then
       # Backdrop platform: attach the shared Backdrop bundle. Wrong-core Drupal
       # bundles are purged first (the Drupal module sets are not
@@ -704,23 +1407,23 @@ _fix_o_contrib_symlink() {
       # wire o_contrib_eight into a Backdrop tree.
       if [ -e "${_Plr}/modules/o_contrib_eight" ] \
         || [ -e "${_Plr}/modules/.o_contrib_eight_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_eight
-        rm -f ${_Plr}/modules/.o_contrib_eight_dont_use
+        _plr_mod_rm o_contrib_eight
+        _plr_mod_rm .o_contrib_eight_dont_use
       fi
       if [ -e "${_Plr}/modules/o_contrib_nine" ] \
         || [ -e "${_Plr}/modules/.o_contrib_nine_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_nine
-        rm -f ${_Plr}/modules/.o_contrib_nine_dont_use
+        _plr_mod_rm o_contrib_nine
+        _plr_mod_rm .o_contrib_nine_dont_use
       fi
       if [ -e "${_Plr}/modules/o_contrib_ten" ] \
         || [ -e "${_Plr}/modules/.o_contrib_ten_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_ten
-        rm -f ${_Plr}/modules/.o_contrib_ten_dont_use
+        _plr_mod_rm o_contrib_ten
+        _plr_mod_rm .o_contrib_ten_dont_use
       fi
       if [ -e "${_Plr}/modules/o_contrib_eleven" ] \
         || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_eleven
-        rm -f ${_Plr}/modules/.o_contrib_eleven_dont_use
+        _plr_mod_rm o_contrib_eleven
+        _plr_mod_rm .o_contrib_eleven_dont_use
       fi
       # Attach only when the platform has no modules/redis copy: two copies of
       # the module in one scan dir make the winner readdir-order dependent.
@@ -731,13 +1434,13 @@ _fix_o_contrib_symlink() {
         && [ ! -z "${_O_CONTRIB_BACKDROP}" ] \
         && [ "${_O_CONTRIB_BACKDROP}" != "NO" ] \
         && [ -e "${_O_CONTRIB_BACKDROP}" ]; then
-        ln -sfn ${_O_CONTRIB_BACKDROP} ${_Plr}/modules/o_contrib_backdrop &> /dev/null
+        _plr_mod_ln "${_O_CONTRIB_BACKDROP}" o_contrib_backdrop
       fi
     elif [ -e "${_Plr}/web.config" ] \
       && [ -e "${_O_CONTRIB_SEVEN}" ] \
       && [ ! -e "${_Plr}/core" ]; then
       if [ ! -e "${_Plr}/modules/o_contrib_seven" ]; then
-        ln -sfn ${_O_CONTRIB_SEVEN} ${_Plr}/modules/o_contrib_seven &> /dev/null
+        _plr_mod_ln "${_O_CONTRIB_SEVEN}" o_contrib_seven
       fi
     elif [ -e "${_Plr}/core" ] \
       && [ ! -e "${_Plr}/core/themes/olivero" ] \
@@ -746,21 +1449,21 @@ _fix_o_contrib_symlink() {
       && [ -e "${_O_CONTRIB_EIGHT}" ]; then
       if [ -e "${_Plr}/modules/o_contrib_nine" ] \
         || [ -e "${_Plr}/modules/.o_contrib_nine_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_nine
-        rm -f ${_Plr}/modules/.o_contrib_nine_dont_use
+        _plr_mod_rm o_contrib_nine
+        _plr_mod_rm .o_contrib_nine_dont_use
       fi
       if [ -e "${_Plr}/modules/o_contrib_ten" ] \
         || [ -e "${_Plr}/modules/.o_contrib_ten_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_ten
-        rm -f ${_Plr}/modules/.o_contrib_ten_dont_use
+        _plr_mod_rm o_contrib_ten
+        _plr_mod_rm .o_contrib_ten_dont_use
       fi
       if [ -e "${_Plr}/modules/o_contrib_eleven" ] \
         || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_eleven
-        rm -f ${_Plr}/modules/.o_contrib_eleven_dont_use
+        _plr_mod_rm o_contrib_eleven
+        _plr_mod_rm .o_contrib_eleven_dont_use
       fi
       if [ ! -e "${_Plr}/modules/o_contrib_eight" ]; then
-        ln -sfn ${_O_CONTRIB_EIGHT} ${_Plr}/modules/o_contrib_eight &> /dev/null
+        _plr_mod_ln "${_O_CONTRIB_EIGHT}" o_contrib_eight
       fi
     elif [ -e "${_Plr}/core/themes/olivero" ] \
       && [ -e "${_Plr}/core/themes/classy" ] \
@@ -768,21 +1471,21 @@ _fix_o_contrib_symlink() {
       && [ -e "${_O_CONTRIB_NINE}" ]; then
       if [ -e "${_Plr}/modules/o_contrib_eight" ] \
         || [ -e "${_Plr}/modules/.o_contrib_eight_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_eight
-        rm -f ${_Plr}/modules/.o_contrib_eight_dont_use
+        _plr_mod_rm o_contrib_eight
+        _plr_mod_rm .o_contrib_eight_dont_use
       fi
       if [ -e "${_Plr}/modules/o_contrib_ten" ] \
         || [ -e "${_Plr}/modules/.o_contrib_ten_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_ten
-        rm -f ${_Plr}/modules/.o_contrib_ten_dont_use
+        _plr_mod_rm o_contrib_ten
+        _plr_mod_rm .o_contrib_ten_dont_use
       fi
       if [ -e "${_Plr}/modules/o_contrib_eleven" ] \
         || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_eleven
-        rm -f ${_Plr}/modules/.o_contrib_eleven_dont_use
+        _plr_mod_rm o_contrib_eleven
+        _plr_mod_rm .o_contrib_eleven_dont_use
       fi
       if [ ! -e "${_Plr}/modules/o_contrib_nine" ]; then
-        ln -sfn ${_O_CONTRIB_NINE} ${_Plr}/modules/o_contrib_nine &> /dev/null
+        _plr_mod_ln "${_O_CONTRIB_NINE}" o_contrib_nine
       fi
     elif [ -e "${_Plr}/core/themes/olivero" ] \
       && [ ! -e "${_Plr}/core/themes/classy" ] \
@@ -790,21 +1493,21 @@ _fix_o_contrib_symlink() {
       && [ -e "${_O_CONTRIB_TEN}" ]; then
       if [ -e "${_Plr}/modules/o_contrib_eight" ] \
         || [ -e "${_Plr}/modules/.o_contrib_eight_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_eight
-        rm -f ${_Plr}/modules/.o_contrib_eight_dont_use
+        _plr_mod_rm o_contrib_eight
+        _plr_mod_rm .o_contrib_eight_dont_use
       fi
       if [ -e "${_Plr}/modules/o_contrib_nine" ] \
         || [ -e "${_Plr}/modules/.o_contrib_nine_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_nine
-        rm -f ${_Plr}/modules/.o_contrib_nine_dont_use
+        _plr_mod_rm o_contrib_nine
+        _plr_mod_rm .o_contrib_nine_dont_use
       fi
       if [ -e "${_Plr}/modules/o_contrib_eleven" ] \
         || [ -e "${_Plr}/modules/.o_contrib_eleven_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_eleven
-        rm -f ${_Plr}/modules/.o_contrib_eleven_dont_use
+        _plr_mod_rm o_contrib_eleven
+        _plr_mod_rm .o_contrib_eleven_dont_use
       fi
       if [ ! -e "${_Plr}/modules/o_contrib_ten" ]; then
-        ln -sfn ${_O_CONTRIB_TEN} ${_Plr}/modules/o_contrib_ten &> /dev/null
+        _plr_mod_ln "${_O_CONTRIB_TEN}" o_contrib_ten
       fi
     elif [ -e "${_Plr}/core/themes/olivero" ] \
       && [ ! -e "${_Plr}/core/themes/classy" ] \
@@ -812,31 +1515,31 @@ _fix_o_contrib_symlink() {
       && [ -e "${_O_CONTRIB_ELEVEN}" ]; then
       if [ -e "${_Plr}/modules/o_contrib_eight" ] \
         || [ -e "${_Plr}/modules/.o_contrib_eight_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_eight
-        rm -f ${_Plr}/modules/.o_contrib_eight_dont_use
+        _plr_mod_rm o_contrib_eight
+        _plr_mod_rm .o_contrib_eight_dont_use
       fi
       if [ -e "${_Plr}/modules/o_contrib_nine" ] \
         || [ -e "${_Plr}/modules/.o_contrib_nine_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_nine
-        rm -f ${_Plr}/modules/.o_contrib_nine_dont_use
+        _plr_mod_rm o_contrib_nine
+        _plr_mod_rm .o_contrib_nine_dont_use
       fi
       if [ -e "${_Plr}/modules/o_contrib_ten" ] \
         || [ -e "${_Plr}/modules/.o_contrib_ten_dont_use" ]; then
-        rm -f ${_Plr}/modules/o_contrib_ten
-        rm -f ${_Plr}/modules/.o_contrib_ten_dont_use
+        _plr_mod_rm o_contrib_ten
+        _plr_mod_rm .o_contrib_ten_dont_use
       fi
       if [ ! -e "${_Plr}/modules/o_contrib_eleven" ]; then
-        ln -sfn ${_O_CONTRIB_ELEVEN} ${_Plr}/modules/o_contrib_eleven &> /dev/null
+        _plr_mod_ln "${_O_CONTRIB_ELEVEN}" o_contrib_eleven
       fi
     else
       if [ -e "${_Plr}/modules/watchdog" ]; then
         if [ -e "${_Plr}/modules/o_contrib" ]; then
-          rm -f ${_Plr}/modules/o_contrib &> /dev/null
+          _plr_mod_rm o_contrib
         fi
       else
         if [ ! -e "${_Plr}/modules/o_contrib" ] \
           && [ -e "${_O_CONTRIB}" ]; then
-          ln -sfn ${_O_CONTRIB} ${_Plr}/modules/o_contrib &> /dev/null
+          _plr_mod_ln "${_O_CONTRIB}" o_contrib
         fi
       fi
     fi
@@ -848,11 +1551,13 @@ _sql_convert() {
 }
 
 _fix_modules() {
+  local _iniTxt
   # The per-iteration strip in _daily_process is many drush runs and two curl
   # fetches old by the time we get here, and both modules dirs stay
-  # tenant-writable throughout: a link replanted in that window would take the
-  # sed -i and ">>" legs below (">>" follows the final component). Same
-  # reasoning, same helper, as the late re-strip at the tail of _daily_process.
+  # tenant-writable throughout. Every INI leg below reads through
+  # _ctrl_ini_read and edits through _ctrl_ini_sed / _ctrl_ini_add, so a
+  # name swapped for a link or a FIFO since is never followed or opened; the
+  # re-strip lets the seed legs recreate a planted name.
   _desymlink_planted "${_PLR_CTRL_F}" "${_DIR_CTRL_F}"
   _AUTO_CONFIG_ADVAGG=NO
   if [ -e "${_Plr}/modules/o_contrib/advagg" ] \
@@ -868,9 +1573,9 @@ _fix_modules() {
       && [ ! -e "${_DIR_CTRL_F}" ]; then
       _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
     fi
-    if [ -e "${_DIR_CTRL_F}" ]; then
-      _AGG_P=$(grep "advagg_auto_configuration" ${_DIR_CTRL_F} 2>&1)
-      _AGG_T=$(grep "^advagg_auto_configuration = TRUE" ${_DIR_CTRL_F} 2>&1)
+    if _iniTxt=$(_ctrl_ini_read "${_DIR_CTRL_F}"); then
+      _AGG_P=$(grep "advagg_auto_configuration" <<< "${_iniTxt}" 2>&1)
+      _AGG_T=$(grep "^advagg_auto_configuration = TRUE" <<< "${_iniTxt}" 2>&1)
       if [[ "${_AGG_T}" =~ "advagg_auto_configuration = TRUE" ]]; then
         _DO_NOTHING=YES
       else
@@ -878,11 +1583,10 @@ _fix_modules() {
         ### Do this only for the site level ini file.
         ###
         if [[ "${_AGG_P}" =~ "advagg_auto_configuration" ]]; then
-          sed -i "s/.*advagg_auto_c.*/advagg_auto_configuration = TRUE/g" \
-      ${_DIR_CTRL_F} &> /dev/null
-          wait
+          _ctrl_ini_sed "${_DIR_CTRL_F}" \
+            "s/.*advagg_auto_c.*/advagg_auto_configuration = TRUE/g" &> /dev/null
         else
-          echo "advagg_auto_configuration = TRUE" >> ${_DIR_CTRL_F}
+          _ctrl_ini_add "${_DIR_CTRL_F}" "advagg_auto_configuration = TRUE"
         fi
       fi
     fi
@@ -891,19 +1595,18 @@ _fix_modules() {
       && [ ! -e "${_DIR_CTRL_F}" ]; then
       _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
     fi
-    if [ -e "${_DIR_CTRL_F}" ]; then
-      _AGG_P=$(grep "advagg_auto_configuration" ${_DIR_CTRL_F} 2>&1)
+    if _iniTxt=$(_ctrl_ini_read "${_DIR_CTRL_F}"); then
+      _AGG_P=$(grep "advagg_auto_configuration" <<< "${_iniTxt}" 2>&1)
       _AGG_T=$(grep "^advagg_auto_configuration = FALSE" \
-        ${_DIR_CTRL_F} 2>&1)
+        <<< "${_iniTxt}" 2>&1)
       if [[ "${_AGG_T}" =~ "advagg_auto_configuration = FALSE" ]]; then
         _DO_NOTHING=YES
       else
         if [[ "${_AGG_P}" =~ "advagg_auto_configuration" ]]; then
-          sed -i "s/.*advagg_auto_c.*/advagg_auto_configuration = FALSE/g" \
-      ${_DIR_CTRL_F} &> /dev/null
-          wait
+          _ctrl_ini_sed "${_DIR_CTRL_F}" \
+            "s/.*advagg_auto_c.*/advagg_auto_configuration = FALSE/g" &> /dev/null
         else
-          echo ";advagg_auto_configuration = FALSE" >> ${_DIR_CTRL_F}
+          _ctrl_ini_add "${_DIR_CTRL_F}" ";advagg_auto_configuration = FALSE"
         fi
       fi
     fi
@@ -911,61 +1614,59 @@ _fix_modules() {
 
   if [ -e "${_Plr}/modules/o_contrib_seven" ] \
     && [ ! -e "${_Plr}/core" ]; then
-    _PRIV_TEST=$(_run_drush8_nosilent_cmd "${_vGet} ^file_default_scheme$" 2>&1)
-    if [[ "${_PRIV_TEST}" =~ "No matching variable" ]]; then
-      _PRIV_TEST_RESULT=NONE
-    else
-      _PRIV_TEST_RESULT=OK
+    # The scheme the site stored, read from its database: the global settings
+    # force file_default_scheme to public until this INI switch is on, so a
+    # variable-get reports the force, never the site's own choice. The row:
+    # prefix tells a site with no stored scheme (public) from a failed read,
+    # which leaves the INI as it is.
+    _Pri=
+    _PriRaw=$(_run_drush8_nosilent_cmd "sqlq --db-prefix \"SELECT CONCAT('row:', IFNULL((SELECT value FROM {variable} WHERE name = 'file_default_scheme'), 'none'))\"" 2>/dev/null)
+    _PriRx='row:s:[0-9]+:"(private|public)"'
+    if [[ "${_PriRaw}" =~ ${_PriRx} ]]; then
+      _Pri="${BASH_REMATCH[1]}"
+    elif [[ "${_PriRaw}" =~ row:none ]]; then
+      _Pri=public
     fi
-    _AUTO_CNF_PF_DL=NO
-    if [ "${_PRIV_TEST_RESULT}" = "OK" ]; then
-      _Pri=$(_run_drush8_nosilent_cmd "${_vGet} ^file_default_scheme$" \
-        | grep "^file_default_scheme:" \
-        | cut -d: -f2 \
-        | awk '{ print $1}' \
-        | sed "s/['\"]//g" \
-        | tr -d "\n" 2>&1)
-      _Pri=${_Pri//[^a-z]/}
-      if [ "${_Pri}" = "private" ] || [ "${_Pri}" = "public" ]; then
-        echo _Pri file_default_scheme for ${_Dom} is ${_Pri}
-      fi
-      if [ "${_Pri}" = "private" ]; then
-        _AUTO_CNF_PF_DL=YES
-      fi
+    _AUTO_CNF_PF_DL=
+    if [ "${_Pri}" = "private" ] || [ "${_Pri}" = "public" ]; then
+      echo _Pri file_default_scheme for ${_Dom} is ${_Pri}
+    fi
+    if [ "${_Pri}" = "private" ]; then
+      _AUTO_CNF_PF_DL=YES
+    elif [ "${_Pri}" = "public" ]; then
+      _AUTO_CNF_PF_DL=NO
     fi
     if [ "${_AUTO_CNF_PF_DL}" = "YES" ]; then
       if [ -e "/data/conf/default.boa_site_control.ini" ] \
         && [ ! -e "${_DIR_CTRL_F}" ]; then
         _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
       fi
-      if [ -e "${_DIR_CTRL_F}" ]; then
+      if _iniTxt=$(_ctrl_ini_read "${_DIR_CTRL_F}"); then
         _AC_PFD_T=$(grep "^allow_private_file_downloads = TRUE" \
-          ${_DIR_CTRL_F} 2>&1)
+          <<< "${_iniTxt}" 2>&1)
         if [[ "${_AC_PFD_T}" =~ "allow_private_file_downloads = TRUE" ]]; then
           _DO_NOTHING=YES
         else
           ###
           ### Do this only for the site level ini file.
           ###
-          sed -i "s/.*allow_private_f.*/allow_private_file_downloads = TRUE/g" \
-      ${_DIR_CTRL_F} &> /dev/null
-          wait
+          _ctrl_ini_sed "${_DIR_CTRL_F}" \
+            "s/.*allow_private_f.*/allow_private_file_downloads = TRUE/g" &> /dev/null
         fi
       fi
-    else
+    elif [ "${_AUTO_CNF_PF_DL}" = "NO" ]; then
       if [ -e "/data/conf/default.boa_site_control.ini" ] \
         && [ ! -e "${_DIR_CTRL_F}" ]; then
         _reseed_ctrl_ini /data/conf/default.boa_site_control.ini "${_DIR_CTRL_F}"
       fi
-      if [ -e "${_DIR_CTRL_F}" ]; then
+      if _iniTxt=$(_ctrl_ini_read "${_DIR_CTRL_F}"); then
         _AC_PFD_T=$(grep "^allow_private_file_downloads = FALSE" \
-          ${_DIR_CTRL_F} 2>&1)
+          <<< "${_iniTxt}" 2>&1)
         if [[ "${_AC_PFD_T}" =~ "allow_private_file_downloads = FALSE" ]]; then
           _DO_NOTHING=YES
         else
-          sed -i "s/.*allow_private_f.*/allow_private_file_downloads = FALSE/g" \
-      ${_DIR_CTRL_F} &> /dev/null
-          wait
+          _ctrl_ini_sed "${_DIR_CTRL_F}" \
+            "s/.*allow_private_f.*/allow_private_file_downloads = FALSE/g" &> /dev/null
         fi
       fi
     fi
@@ -991,9 +1692,9 @@ _fix_modules() {
       && [ ! -e "${_PLR_CTRL_F}" ]; then
       _reseed_ctrl_ini /data/conf/default.boa_platform_control.ini "${_PLR_CTRL_F}"
     fi
-    if [ -e "${_PLR_CTRL_F}" ]; then
+    if _iniTxt=$(_ctrl_ini_read "${_PLR_CTRL_F}"); then
       _AD_FB_T=$(grep "^auto_detect_facebook_integration = TRUE" \
-        ${_PLR_CTRL_F} 2>&1)
+        <<< "${_iniTxt}" 2>&1)
       if [[ "${_AD_FB_T}" =~ "auto_detect_facebook_integration = TRUE" ]]; then
         _DO_NOTHING=YES
       else
@@ -1002,9 +1703,8 @@ _fix_modules() {
         ### level ini file can disable this check by setting it
         ### explicitly to auto_detect_facebook_integration = FALSE
         ###
-        sed -i "s/.*auto_detect_face.*/auto_detect_facebook_integration = TRUE/g" \
-          ${_PLR_CTRL_F} &> /dev/null
-        wait
+        _ctrl_ini_sed "${_PLR_CTRL_F}" \
+          "s/.*auto_detect_face.*/auto_detect_facebook_integration = TRUE/g" &> /dev/null
       fi
     fi
   else
@@ -1012,15 +1712,14 @@ _fix_modules() {
       && [ ! -e "${_PLR_CTRL_F}" ]; then
       _reseed_ctrl_ini /data/conf/default.boa_platform_control.ini "${_PLR_CTRL_F}"
     fi
-    if [ -e "${_PLR_CTRL_F}" ]; then
+    if _iniTxt=$(_ctrl_ini_read "${_PLR_CTRL_F}"); then
       _AD_FB_T=$(grep "^auto_detect_facebook_integration = FALSE" \
-        ${_PLR_CTRL_F} 2>&1)
+        <<< "${_iniTxt}" 2>&1)
       if [[ "${_AD_FB_T}" =~ "auto_detect_facebook_integration = FALSE" ]]; then
         _DO_NOTHING=YES
       else
-        sed -i "s/.*auto_detect_face.*/auto_detect_facebook_integration = FALSE/g" \
-          ${_PLR_CTRL_F} &> /dev/null
-        wait
+        _ctrl_ini_sed "${_PLR_CTRL_F}" \
+          "s/.*auto_detect_face.*/auto_detect_facebook_integration = FALSE/g" &> /dev/null
       fi
     fi
   fi
@@ -1045,9 +1744,9 @@ _fix_modules() {
       && [ ! -e "${_PLR_CTRL_F}" ]; then
       _reseed_ctrl_ini /data/conf/default.boa_platform_control.ini "${_PLR_CTRL_F}"
     fi
-    if [ -e "${_PLR_CTRL_F}" ]; then
+    if _iniTxt=$(_ctrl_ini_read "${_PLR_CTRL_F}"); then
       _AD_DA_T=$(grep "^auto_detect_domain_access_integration = TRUE" \
-        ${_PLR_CTRL_F} 2>&1)
+        <<< "${_iniTxt}" 2>&1)
       if [[ "${_AD_DA_T}" =~ "auto_detect_domain_access_integration = TRUE" ]]; then
         _DO_NOTHING=YES
       else
@@ -1056,9 +1755,8 @@ _fix_modules() {
         ### level ini file can disable this check by setting it
         ### explicitly to auto_detect_domain_access_integration = FALSE
         ###
-        sed -i "s/.*auto_detect_domain.*/auto_detect_domain_access_integration = TRUE/g" \
-          ${_PLR_CTRL_F} &> /dev/null
-        wait
+        _ctrl_ini_sed "${_PLR_CTRL_F}" \
+          "s/.*auto_detect_domain.*/auto_detect_domain_access_integration = TRUE/g" &> /dev/null
       fi
     fi
   else
@@ -1066,15 +1764,14 @@ _fix_modules() {
       && [ ! -e "${_PLR_CTRL_F}" ]; then
       _reseed_ctrl_ini /data/conf/default.boa_platform_control.ini "${_PLR_CTRL_F}"
     fi
-    if [ -e "${_PLR_CTRL_F}" ]; then
+    if _iniTxt=$(_ctrl_ini_read "${_PLR_CTRL_F}"); then
       _AD_DA_T=$(grep "^auto_detect_domain_access_integration = FALSE" \
-        ${_PLR_CTRL_F} 2>&1)
+        <<< "${_iniTxt}" 2>&1)
       if [[ "${_AD_DA_T}" =~ "auto_detect_domain_access_integration = FALSE" ]]; then
         _DO_NOTHING=YES
       else
-        sed -i "s/.*auto_detect_domain.*/auto_detect_domain_access_integration = FALSE/g" \
-          ${_PLR_CTRL_F} &> /dev/null
-        wait
+        _ctrl_ini_sed "${_PLR_CTRL_F}" \
+          "s/.*auto_detect_domain.*/auto_detect_domain_access_integration = FALSE/g" &> /dev/null
       fi
     fi
   fi
@@ -1082,288 +1779,71 @@ _fix_modules() {
   ###
   ### Add new INI variables if missing
   ###
-  ### The strip at the head of this iteration is many drush runs old by now
-  ### and the INI sits in a 02775 group-writable dir, so re-strip before this
-  ### read/append leg (no-op on a regular file).
+  ### Each INI is read once (_ctrl_ini_read) and whatever is missing is
+  ### appended in one _ctrl_ini_add, never by ">>" on a name the tenant can
+  ### swap. The re-strip lets a later seed leg recreate a planted name.
   _desymlink_planted "${_PLR_CTRL_F}" "${_DIR_CTRL_F}"
-  if [ -e "${_PLR_CTRL_F}" ]; then
-    _VAR_IF_PRESENT=$(grep "session_cookie_ttl" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "session_cookie_ttl" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";session_cookie_ttl = 86400" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "session_gc_eol" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "session_gc_eol" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";session_gc_eol = 86400" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "enable_newrelic_integration" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "enable_newrelic_integration" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";enable_newrelic_integration = FALSE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_old_nine_mode" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_old_nine_mode" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_old_nine_mode = FALSE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_old_eight_mode" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_old_eight_mode" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_old_eight_mode = FALSE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_flush_forced_mode" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_flush_forced_mode = TRUE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_lock_enable" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_lock_enable" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_lock_enable = TRUE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_path_enable" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_path_enable" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_path_enable = TRUE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_scan_enable" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_scan_enable" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_scan_enable = FALSE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_exclude_bins" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_exclude_bins" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_exclude_bins = FALSE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "speed_booster_anon_cache_ttl" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";speed_booster_anon_cache_ttl = 10" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "disable_drupal_page_cache" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";disable_drupal_page_cache = FALSE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "allow_private_file_downloads" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";allow_private_file_downloads = FALSE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "entitycache_dont_enable" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "entitycache_dont_enable" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";entitycache_dont_enable = FALSE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "views_cache_bully_dont_enable" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "views_cache_bully_dont_enable" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";views_cache_bully_dont_enable = FALSE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "views_content_cache_dont_enable" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "views_content_cache_dont_enable" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";views_content_cache_dont_enable = FALSE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "set_composer_manager_vendor_dir" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "set_composer_manager_vendor_dir" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";set_composer_manager_vendor_dir = FALSE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_connect_timeout" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_connect_timeout" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_connect_timeout = 0.7" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_read_timeout" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_read_timeout" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_read_timeout = 0.7" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_backoff_ttl" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_backoff_ttl" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_backoff_ttl = 15" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_probe_retry" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_probe_retry" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_probe_retry = TRUE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_flush_apcu_on_recovery" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_flush_apcu_on_recovery" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_flush_apcu_on_recovery = TRUE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_debug_header" ${_PLR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_debug_header" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_debug_header = FALSE" >> ${_PLR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep -E "^;?redis_debug[ =]" ${_PLR_CTRL_F} 2>&1)
-    if [[ -n "${_VAR_IF_PRESENT}" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_debug = FALSE" >> ${_PLR_CTRL_F}
+  if _CTRL_INI_TXT=$(_ctrl_ini_read "${_PLR_CTRL_F}"); then
+    _CTRL_INI_ADD=
+    _ctrl_ini_want "session_cookie_ttl" ";session_cookie_ttl = 86400"
+    _ctrl_ini_want "session_gc_eol" ";session_gc_eol = 86400"
+    _ctrl_ini_want "enable_newrelic_integration" ";enable_newrelic_integration = FALSE"
+    _ctrl_ini_want "redis_old_nine_mode" ";redis_old_nine_mode = FALSE"
+    _ctrl_ini_want "redis_old_eight_mode" ";redis_old_eight_mode = FALSE"
+    _ctrl_ini_want "redis_flush_forced_mode" ";redis_flush_forced_mode = TRUE"
+    _ctrl_ini_want "redis_lock_enable" ";redis_lock_enable = TRUE"
+    _ctrl_ini_want "redis_path_enable" ";redis_path_enable = TRUE"
+    _ctrl_ini_want "redis_scan_enable" ";redis_scan_enable = FALSE"
+    _ctrl_ini_want "redis_exclude_bins" ";redis_exclude_bins = FALSE"
+    _ctrl_ini_want "speed_booster_anon_cache_ttl" ";speed_booster_anon_cache_ttl = 10"
+    _ctrl_ini_want "disable_drupal_page_cache" ";disable_drupal_page_cache = FALSE"
+    _ctrl_ini_want "allow_private_file_downloads" ";allow_private_file_downloads = FALSE"
+    _ctrl_ini_want "entitycache_dont_enable" ";entitycache_dont_enable = FALSE"
+    _ctrl_ini_want "views_cache_bully_dont_enable" ";views_cache_bully_dont_enable = FALSE"
+    _ctrl_ini_want "views_content_cache_dont_enable" ";views_content_cache_dont_enable = FALSE"
+    _ctrl_ini_want "set_composer_manager_vendor_dir" ";set_composer_manager_vendor_dir = FALSE"
+    _ctrl_ini_want "redis_connect_timeout" ";redis_connect_timeout = 0.7"
+    _ctrl_ini_want "redis_read_timeout" ";redis_read_timeout = 0.7"
+    _ctrl_ini_want "redis_backoff_ttl" ";redis_backoff_ttl = 15"
+    _ctrl_ini_want "redis_probe_retry" ";redis_probe_retry = TRUE"
+    _ctrl_ini_want "redis_flush_apcu_on_recovery" ";redis_flush_apcu_on_recovery = TRUE"
+    _ctrl_ini_want "redis_debug_header" ";redis_debug_header = FALSE"
+    _ctrl_ini_want "^;?redis_debug[ =]" ";redis_debug = FALSE" -E
+    if [ -n "${_CTRL_INI_ADD}" ]; then
+      _ctrl_ini_add "${_PLR_CTRL_F}" "${_CTRL_INI_ADD}"
     fi
   fi
-  if [ -e "${_DIR_CTRL_F}" ]; then
-     _VAR_IF_PRESENT=$(grep "session_cookie_ttl" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "session_cookie_ttl" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";session_cookie_ttl = 86400" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "session_gc_eol" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "session_gc_eol" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";session_gc_eol = 86400" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "enable_newrelic_integration" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "enable_newrelic_integration" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";enable_newrelic_integration = FALSE" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_old_nine_mode" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_old_nine_mode" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_old_nine_mode = FALSE" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_old_eight_mode" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_old_eight_mode" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_old_eight_mode = FALSE" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_flush_forced_mode" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_flush_forced_mode" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_flush_forced_mode = TRUE" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_lock_enable" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_lock_enable" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_lock_enable = TRUE" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_path_enable" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_path_enable" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_path_enable = TRUE" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_scan_enable" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_scan_enable" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_scan_enable = FALSE" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_exclude_bins" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_exclude_bins" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_exclude_bins = FALSE" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "speed_booster_anon_cache_ttl" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "speed_booster_anon_cache_ttl" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";speed_booster_anon_cache_ttl = 10" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "disable_drupal_page_cache" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "disable_drupal_page_cache" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";disable_drupal_page_cache = FALSE" >> ${_DIR_CTRL_F}
-    fi
-     _VAR_IF_PRESENT=$(grep "allow_private_file_downloads" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "allow_private_file_downloads" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";allow_private_file_downloads = FALSE" >> ${_DIR_CTRL_F}
-    fi
-     _VAR_IF_PRESENT=$(grep "set_composer_manager_vendor_dir" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "set_composer_manager_vendor_dir" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";set_composer_manager_vendor_dir = FALSE" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_connect_timeout" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_connect_timeout" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_connect_timeout = 0.7" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_read_timeout" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_read_timeout" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_read_timeout = 0.7" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_backoff_ttl" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_backoff_ttl" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_backoff_ttl = 15" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_probe_retry" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_probe_retry" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_probe_retry = TRUE" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_flush_apcu_on_recovery" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_flush_apcu_on_recovery" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_flush_apcu_on_recovery = TRUE" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep "redis_debug_header" ${_DIR_CTRL_F} 2>&1)
-    if [[ "${_VAR_IF_PRESENT}" =~ "redis_debug_header" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_debug_header = FALSE" >> ${_DIR_CTRL_F}
-    fi
-    _VAR_IF_PRESENT=$(grep -E "^;?redis_debug[ =]" ${_DIR_CTRL_F} 2>&1)
-    if [[ -n "${_VAR_IF_PRESENT}" ]]; then
-      _DO_NOTHING=YES
-    else
-      echo ";redis_debug = FALSE" >> ${_DIR_CTRL_F}
+  if _CTRL_INI_TXT=$(_ctrl_ini_read "${_DIR_CTRL_F}"); then
+    _CTRL_INI_ADD=
+    _ctrl_ini_want "session_cookie_ttl" ";session_cookie_ttl = 86400"
+    _ctrl_ini_want "session_gc_eol" ";session_gc_eol = 86400"
+    _ctrl_ini_want "enable_newrelic_integration" ";enable_newrelic_integration = FALSE"
+    _ctrl_ini_want "redis_old_nine_mode" ";redis_old_nine_mode = FALSE"
+    _ctrl_ini_want "redis_old_eight_mode" ";redis_old_eight_mode = FALSE"
+    _ctrl_ini_want "redis_flush_forced_mode" ";redis_flush_forced_mode = TRUE"
+    _ctrl_ini_want "redis_lock_enable" ";redis_lock_enable = TRUE"
+    _ctrl_ini_want "redis_path_enable" ";redis_path_enable = TRUE"
+    _ctrl_ini_want "redis_scan_enable" ";redis_scan_enable = FALSE"
+    _ctrl_ini_want "redis_exclude_bins" ";redis_exclude_bins = FALSE"
+    _ctrl_ini_want "speed_booster_anon_cache_ttl" ";speed_booster_anon_cache_ttl = 10"
+    _ctrl_ini_want "disable_drupal_page_cache" ";disable_drupal_page_cache = FALSE"
+    _ctrl_ini_want "allow_private_file_downloads" ";allow_private_file_downloads = FALSE"
+    _ctrl_ini_want "set_composer_manager_vendor_dir" ";set_composer_manager_vendor_dir = FALSE"
+    _ctrl_ini_want "redis_connect_timeout" ";redis_connect_timeout = 0.7"
+    _ctrl_ini_want "redis_read_timeout" ";redis_read_timeout = 0.7"
+    _ctrl_ini_want "redis_backoff_ttl" ";redis_backoff_ttl = 15"
+    _ctrl_ini_want "redis_probe_retry" ";redis_probe_retry = TRUE"
+    _ctrl_ini_want "redis_flush_apcu_on_recovery" ";redis_flush_apcu_on_recovery = TRUE"
+    _ctrl_ini_want "redis_debug_header" ";redis_debug_header = FALSE"
+    _ctrl_ini_want "^;?redis_debug[ =]" ";redis_debug = FALSE" -E
+    if [ -n "${_CTRL_INI_ADD}" ]; then
+      _ctrl_ini_add "${_DIR_CTRL_F}" "${_CTRL_INI_ADD}"
     fi
   fi
 
-  if [ -e "${_PLR_CTRL_F}" ]; then
+  if _iniTxt=$(_ctrl_ini_read "${_PLR_CTRL_F}"); then
     _EC_DE_T=$(grep "^entitycache_dont_enable = TRUE" \
-      ${_PLR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_EC_DE_T}" =~ "entitycache_dont_enable = TRUE" ]] \
       || [ -e "${_Plr}/profiles/commons" ]; then
       _ENTITYCACHE_DONT_ENABLE=YES
@@ -1374,9 +1854,9 @@ _fix_modules() {
     _ENTITYCACHE_DONT_ENABLE=NO
   fi
 
-  if [ -e "${_PLR_CTRL_F}" ]; then
+  if _iniTxt=$(_ctrl_ini_read "${_PLR_CTRL_F}"); then
     _VCB_DE_T=$(grep "^views_cache_bully_dont_enable = TRUE" \
-      ${_PLR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_VCB_DE_T}" =~ "views_cache_bully_dont_enable = TRUE" ]]; then
       _VIEWS_CACHE_BULLY_DONT_ENABLE=YES
     else
@@ -1386,9 +1866,9 @@ _fix_modules() {
     _VIEWS_CACHE_BULLY_DONT_ENABLE=NO
   fi
 
-  if [ -e "${_PLR_CTRL_F}" ]; then
+  if _iniTxt=$(_ctrl_ini_read "${_PLR_CTRL_F}"); then
     _VCC_DE_T=$(grep "^views_content_cache_dont_enable = TRUE" \
-      ${_PLR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_VCC_DE_T}" =~ "views_content_cache_dont_enable = TRUE" ]]; then
       _VIEWS_CONTENT_CACHE_DONT_ENABLE=YES
     else
@@ -1451,6 +1931,7 @@ _fix_modules() {
 }
 
 _if_site_db_conversion() {
+  local _iniTxt
   ###
   ### Detect db conversion mode, if set per platform or per site.
   ###
@@ -1469,43 +1950,43 @@ _if_site_db_conversion() {
   case "${_sqlCnvAcct}" in
     YES|innodb) _sqlCnvForced=YES ;;
   esac
-  if [ -e "${_PLR_CTRL_F}" ]; then
+  if _iniTxt=$(_ctrl_ini_read "${_PLR_CTRL_F}"); then
     _SQL_INDB_P=$(grep "sql_conversion_mode" \
-      ${_PLR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_SQL_INDB_P}" =~ "sql_conversion_mode" ]]; then
       _DO_NOTHING=YES
     else
-      echo ";sql_conversion_mode = NO" >> ${_PLR_CTRL_F}
+      _ctrl_ini_add "${_PLR_CTRL_F}" ";sql_conversion_mode = NO"
     fi
     _SQL_INDB_T=$(grep "^sql_conversion_mode = innodb" \
-      ${_PLR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_SQL_INDB_T}" =~ "sql_conversion_mode = innodb" ]] \
       && [ "${_sqlCnvForced}" != "YES" ]; then
       _SQL_CONVERT=innodb
     fi
     _SQL_MYSM_T=$(grep "^sql_conversion_mode = myisam" \
-      ${_PLR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_SQL_MYSM_T}" =~ "sql_conversion_mode = myisam" ]] \
       && [ "${_sqlCnvForced}" != "YES" ]; then
       _SQL_CONVERT=myisam
     fi
   fi
-  if [ -e "${_DIR_CTRL_F}" ]; then
+  if _iniTxt=$(_ctrl_ini_read "${_DIR_CTRL_F}"); then
     _SQL_INDB_P=$(grep "sql_conversion_mode" \
-      ${_DIR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_SQL_INDB_P}" =~ "sql_conversion_mode" ]]; then
       _DO_NOTHING=YES
     else
-      echo ";sql_conversion_mode = NO" >> ${_DIR_CTRL_F}
+      _ctrl_ini_add "${_DIR_CTRL_F}" ";sql_conversion_mode = NO"
     fi
     _SQL_INDB_T=$(grep "^sql_conversion_mode = innodb" \
-      ${_DIR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_SQL_INDB_T}" =~ "sql_conversion_mode = innodb" ]] \
       && [ "${_sqlCnvForced}" != "YES" ]; then
       _SQL_CONVERT=innodb
     fi
     _SQL_MYSM_T=$(grep "^sql_conversion_mode = myisam" \
-      ${_DIR_CTRL_F} 2>&1)
+      <<< "${_iniTxt}" 2>&1)
     if [[ "${_SQL_MYSM_T}" =~ "sql_conversion_mode = myisam" ]] \
       && [ "${_sqlCnvForced}" != "YES" ]; then
       _SQL_CONVERT=myisam
@@ -1539,26 +2020,28 @@ _if_site_db_conversion() {
 _cleanup_ghost_platforms() {
   _provision_running && return
   [ -e "${_Plr}" ] || return
-  local _gh_mark="${_usEr}/log/ctrl/ghost-platform-$(basename "${_Plr}" 2>/dev/null).seen"
+  local _gh_mark="ghost-platform-$(basename "${_Plr}" 2>/dev/null).seen"
   # Version-agnostic validity: a real docroot (index.php at root or under
   # web/docroot/html on the Provision-docroot-corrected _Plr) or a vendor/ tree
   # means a live platform -- never a ghost. Do NOT key on root index.php+profiles
   # (a Composer D8+ docroot without a top-level profiles/ would be mis-flagged).
   if [ -n "$(_detect_real_docroot "${_Plr}")" ] || [ -e "${_Plr}/vendor" ]; then
-    _ghost_seen_reset "${_gh_mark}"
+    _ghost_seen_reset_acct "${_gh_mark}"
     return
   fi
   # Ghost candidate: require it across consecutive nights before acting, then the
   # opt-in flag (per-account octopus.cnf, else system barracuda.cnf).
-  if ! _ghost_seen_enough "${_gh_mark}"; then
+  if ! _ghost_seen_enough_acct "${_gh_mark}"; then
     echo "GHOST platform ${_Plr} detected (grace run, not moved)"
     return
   fi
   if _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_PLATFORMS_CLEANUP \
     || _cnf_flag_yes /root/.barracuda.cnf _GHOST_PLATFORMS_CLEANUP; then
-    mkdir -p ${_usEr}/undo
-    mv -f ${_Plr} ${_usEr}/undo/ &> /dev/null
-    echo "GHOST platform ${_Plr} detected and moved to ${_usEr}/undo/"
+    if _acct_undo_tree "${_Plr}" &> /dev/null; then
+      echo "GHOST platform ${_Plr} detected and moved to ${_usEr}/undo/"
+    else
+      echo "GHOST platform ${_Plr} detected and not moved: ${_GH_REFUSED}"
+    fi
   else
     echo "GHOST platform ${_Plr} detected (dry-run; set _GHOST_PLATFORMS_CLEANUP=YES to move)"
   fi
@@ -1571,53 +2054,98 @@ _fix_seven_core_patch() {
   ### 'users' for those (and on an unconverted box), the account's own group
   ### only for a tree under /data/disk/<account>.
   local _grp
-  _grp=$(_acct_group "${_Plr}")
+  _grp=$(_acct_group "$(_night_phys "${_Plr}")")
   ### profiles/ is 0775 and group-writable on a static platform, so this marker path
-  ### is tenant-plantable, and -f is FALSE for a dangling link -- the two
-  ### "echo fixed >" writes below would then create the link's TARGET as root.
-  ### Strip a planted link first; no-op on the real marker file.
-  _desymlink_planted "${_Plr}/profiles/SA-CORE-2014-005-D7-fix.info"
+  ### is tenant-plantable, and -f is FALSE for a dangling link. The marker is
+  ### put as a fresh file inside the real profiles/ (_acct_put_here), so a link
+  ### replanted after the strip is replaced, never written through; the strip
+  ### still lets a planted link read as "no marker yet".
+  ### Every leg that writes, patches or hands over runs inside the platform
+  ### root _fix_static_permissions resolved and checked (_rPlr), and enters
+  ### profiles/ and includes/database there for real (_in_real_sub): a name
+  ### on the way swapped for a link since is refused, never resolved again
+  ### to another tree of the account.
+  _in_pinned_dir "${_rPlr}" _in_real_sub profiles \
+    _desymlink_planted ./SA-CORE-2014-005-D7-fix.info
   if [ ! -f "${_Plr}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
-    _PATCH_TEST=$(grep "foreach (array_values(\$data)" \
-      ${_Plr}/includes/database/database.inc 2>&1)
+    ### database.inc is the tenant's: read bounded, never through a link at
+    ### its name and never blocked on a FIFO, so a link to a huge or endless
+    ### file cannot hold the pass.
+    _PATCH_TEST=$(_site_in_resolved_dir "${_Plr}/includes/database" \
+      _acct_read_plain_here database.inc \
+      | grep "foreach (array_values(\$data)" 2>&1)
     if [[ "${_PATCH_TEST}" =~ "array_values" ]]; then
-      echo fixed > ${_Plr}/profiles/SA-CORE-2014-005-D7-fix.info
+      _in_pinned_dir "${_rPlr}" _in_real_sub profiles \
+        _acct_put_here SA-CORE-2014-005-D7-fix.info fixed
     else
-      cd ${_Plr}
-      patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch
-      ### Every dir in a static platform is 0775 and group-writable, so these glob
-      ### hits are tenant-plantable names, and chown and chmod both follow a
-      ### symlink named on the command line. -h for the chown; for the chmod,
-      ### which has no -h, hand find the SHELL-expanded leaves: a legitimate
-      ### shared-core includes/ link is resolved as an intermediate either way,
-      ### while a planted leaf is -type l and never matches. No trailing slash
-      ### on a directory -- that would make find resolve a planted database/
-      ### and walk the target. Same shape as the *.php pass in _fix_permissions.
-      chown -h ${_HM_U}:${_grp} ${_Plr}/includes/database/*.inc &> /dev/null
-      find ${_Plr}/includes/database/*.inc -type f \
-        -exec chmod 0664 {} \; &> /dev/null
-      echo fixed > ${_Plr}/profiles/SA-CORE-2014-005-D7-fix.info
+      _in_pinned_dir "${_rPlr}" \
+        patch -p1 < /var/xdrago/conf/SA-CORE-2014-005-D7.patch
+      ### Every dir in a static platform is 0775 and group-writable, so these
+      ### names, and includes/ and database/ on the way, can be swapped for a
+      ### link at any moment: the *.inc files are handed over and given their
+      ### mode only inside the real includes/database, only as regular files
+      ### with a single link, never through a link or by name.
+      _in_pinned_dir "${_rPlr}" _in_real_sub includes/database \
+        _own_glob_here "${_HM_U}:${_grp}" 0664 '*.inc'
+      _in_pinned_dir "${_rPlr}" _in_real_sub profiles \
+        _acct_put_here SA-CORE-2014-005-D7-fix.info fixed
     fi
-    ### profiles/ is 0775 and group-writable, so *-fix.info matches tenant-created
-    ### names; -h for the chown, and for the chmod hand find the shell-expanded
-    ### leaves -- never a directory with a trailing slash, which find would
-    ### resolve through a planted link.
-    chown -h ${_HM_U}:${_grp} ${_Plr}/profiles/*-fix.info &> /dev/null
-    find ${_Plr}/profiles/*-fix.info -type f \
-      -exec chmod 0664 {} \; &> /dev/null
+    ### profiles/ is 0775 and group-writable, so *-fix.info matches
+    ### tenant-created names: handed over and given their mode only inside
+    ### the real profiles/, only as regular files with a single link, never
+    ### through a link or by name.
+    _in_pinned_dir "${_rPlr}" _in_real_sub profiles \
+      _own_glob_here "${_HM_U}:${_grp}" 0664 '*-fix.info'
   fi
+}
+
+### The walk of a static platform tree, inside its real top directory (the
+### current one): every directory 0775 but the three Drush-lock dirs (their
+### contents are still walked), every regular file 0664 but the credential
+### files of each site dir, which _sites_cred_modes_here keeps 0440: widened
+### here and narrowed there, they were readable by every account in between.
+### The top directory is the docroot, or the composer app root one level
+### above it. find walks without following a link, and each mode is set from
+### inside the directory walked through a no-follow handle, so a name swapped
+### for a link at any moment is never followed.
+_static_perm_here() {
+  ### $1 = the platform's web group. Once the account has its own, a site's
+  ### private files keep no world bits (its private store takes them in the
+  ### site leg), so a real sites/<uri>/private or files/private is left out.
+  local _pr=()
+  [[ "${1}" == wg-* ]] && _pr=( -regextype posix-extended \
+    -regex '\./([^/]+/)?sites/[^/]+/(files/)?private' -prune -o )
+  _chmod_nofollow_here d 0775 .
+  find . -mindepth 1 "${_pr[@]}" -type d \
+    ! \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
+    -o -path "*/vendor/symfony/console/Style" \) \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0775 {} + &> /dev/null
+  find . "${_pr[@]}" -type f -regextype posix-extended \
+    ! -regex '\./([^/]+/)?sites/[^/]+/(settings|local\.settings|civicrm\.settings|solr|drushrc)\.php' \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0664 {} + &> /dev/null
+  return 0
+}
+### The credential files of every site dir of the platform (the current,
+### real platform root) narrowed back to 0440, the same way.
+_sites_cred_modes_here() {
+  find ./sites -mindepth 2 -maxdepth 2 -type f \
+    \( -name settings.php -o -name local.settings.php \
+    -o -name civicrm.settings.php -o -name solr.php -o -name drushrc.php \) \
+    ! -path "./sites/all/*" \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0440 {} + &> /dev/null
+  return 0
 }
 
 _fix_static_permissions() {
   _cleanup_ghost_platforms
   ### ~/static is 02775 and every platform dir under it 0775 (the find below),
   ### both group-writable by the account's shell identities, so the platform
-  ### name -- and the docroot name
-  ### under it -- are tenant-plantable, and the chown -R below dereferences a
-  ### symlink given as its starting point (pwd -P then resolves through it
-  ### too). A platform root is never legitimately a symlink and a static
-  ### platform always resolves inside the account, so anchor the resolved root
-  ### once, here, before anything acts on it.
+  ### name -- and the docroot name under it -- are tenant-plantable, and can
+  ### be swapped for a link at any moment. A platform root is never
+  ### legitimately a symlink and a static platform always resolves inside the
+  ### account, so anchor the resolved root once, here, and act only inside
+  ### it, entered for real (_in_pinned_dir): no name above it is on the path
+  ### of any leg below.
   _rPlr=$(realpath -e -- "${_Plr}" 2>/dev/null)
   _rUsr=$(realpath -e -- "${_usEr}" 2>/dev/null)
   case "${_rPlr}/" in
@@ -1633,34 +2161,39 @@ _fix_static_permissions() {
     if [ -e "${_Plr}/web.config" ] && [ ! -e "${_Plr}/core" ]; then
       _fix_seven_core_patch
     fi
+    _use_Plr="${_rPlr}"
+    ### composer.json is the tenant's: read bounded inside the real parent
+    ### of the resolved docroot, never through a link or blocked on a FIFO.
     if [ -e "${_Plr}/core/lib/Drupal.php" ] \
       && [ -e "${_Plr}/../vendor/autoload.php" ] \
-      && grep -qE '"drupal/core(-recommended)?"' "${_Plr}/../composer.json" 2>/dev/null; then
-      _use_Plr="$(cd "${_Plr}/.." && pwd -P)"
-      ### pwd -P walks one level UP: a tenant who seeds ~/static/composer.json
-      ### and ~/static/vendor/autoload.php beside a docroot placed directly
+      && _in_pinned_dir "${_rPlr%/*}" _acct_read_plain_here composer.json \
+        | grep -qE '"drupal/core(-recommended)?"' 2>/dev/null; then
+      _use_Plr="$(cd -P -- "${_rPlr}/.." 2> /dev/null && pwd -P)"
+      ### One level UP: a tenant who seeds ~/static/composer.json and
+      ### ~/static/vendor/autoload.php beside a docroot placed directly
       ### under ~/static would aim the whole-tree chown at ~/static itself
       ### (control/, the files store). An account-level dir is never a
       ### composer app root: fall back to the docroot, as the probe does.
       case "${_use_Plr}/" in
-        "${_rUsr}"/|"${_rUsr}"/static/)
-          _use_Plr="${_Plr}"
-          ;;
+        "${_rUsr}"/static/?*/) ;;
+        *) _use_Plr="${_rPlr}" ;;
       esac
-    else
-      _use_Plr="${_Plr}"
     fi
+    ### The whole tree is the tenant's to write, so any name in it can be a
+    ### hard link to a file of another owner: the owner is set through each
+    ### entry's own handle, never on a hard-linked file, and one left alone
+    ### is logged (_handover_tree_here).
     if [ ! -e "${_usEr}/static/control/unlock.info" ] \
       && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-lock-${_NOW}.info" ]; then
-        chown -R ${_HM_U} ${_use_Plr} &> /dev/null
-        touch ${_usEr}/log/ctrl/plr.${_PlrID}.ctm-lock-${_NOW}.info
+        _in_pinned_dir "${_use_Plr}" _handover_tree_here "${_HM_U}" .
+        _log_ctrl_mark "plr.${_PlrID}.ctm-lock-${_NOW}.info"
       fi
     elif [ -e "${_usEr}/static/control/unlock.info" ] \
       && [ ! -e "${_use_Plr}/skip.info" ]; then
       if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.ctm-unlock-${_NOW}.info" ]; then
-        chown -R ${_HM_U}.ftp ${_use_Plr} &> /dev/null
-        touch ${_usEr}/log/ctrl/plr.${_PlrID}.ctm-unlock-${_NOW}.info
+        _in_pinned_dir "${_use_Plr}" _handover_tree_here "${_HM_U}.ftp" .
+        _log_ctrl_mark "plr.${_PlrID}.ctm-unlock-${_NOW}.info"
       fi
     fi
     if [ ! -f "${_usEr}/log/ctrl/plr.${_PlrID}.perm-fix-${_NOW}.info" ]; then
@@ -1674,11 +2207,7 @@ _fix_static_permissions() {
       ### skipped that rebuild too. Only the three directories themselves are
       ### skipped (their contents are still walked), and nothing here names
       ### them on a command line, so a link planted at one is never followed.
-      find "${_use_Plr}" -type d \
-        ! \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
-        -o -path "*/vendor/symfony/console/Style" \) \
-        -exec chmod 0775 {} \; &> /dev/null
-      find ${_use_Plr} -type f -exec chmod 0664 {} \; &> /dev/null
+      _in_pinned_dir "${_use_Plr}" _static_perm_here "${1}"
       ### The pass above widened every sites/<uri>/*.php to 0664, and only an
       ### ACCEPTED site's arm narrows its own back (the 0440 pass at site
       ### level). A site the per-site loop refuses -- a symlinked modules at
@@ -1690,24 +2219,297 @@ _fix_static_permissions() {
       ### find -P never descends a symlinked sites/ or sites/<uri>, -type f
       ### skips a planted link, so nothing here follows a tenant-plantable
       ### name; the scaffold's default.* copies and sites/all are not named.
-      find ${_rPlr}/sites -mindepth 2 -maxdepth 2 -type f \
-        \( -name settings.php -o -name local.settings.php \
-        -o -name civicrm.settings.php -o -name solr.php -o -name drushrc.php \) \
-        ! -path "${_rPlr}/sites/all/*" -exec chmod 0440 {} \; &> /dev/null
+      _in_pinned_dir "${_rPlr}" _sites_cred_modes_here
     fi
   fi
 }
 
 _fix_expected_symlinks() {
+  ### The docroot is group-writable: the link is made only inside the real
+  ### platform root, never through a name swapped on the way.
   if [ ! -e "${_Plr}/js.php" ] && [ -e "${_Plr}" ]; then
     if [ -e "${_Plr}/modules/o_contrib_seven" ] \
       && [ -e "${_O_CONTRIB_SEVEN}/js/js.php" ]; then
-      ln -sfn ${_O_CONTRIB_SEVEN}/js/js.php ${_Plr}/js.php &> /dev/null
+      _site_in_resolved_dir "${_Plr}" \
+        ln -sfn -- "${_O_CONTRIB_SEVEN}/js/js.php" ./js.php &> /dev/null
     elif [ -e "${_Plr}/modules/o_contrib" ] \
       && [ -e "${_O_CONTRIB}/js/js.php" ]; then
-      ln -sfn ${_O_CONTRIB}/js/js.php ${_Plr}/js.php &> /dev/null
+      _site_in_resolved_dir "${_Plr}" \
+        ln -sfn -- "${_O_CONTRIB}/js/js.php" ./js.php &> /dev/null
     fi
   fi
+}
+
+### The platform level of the permissions pass, inside the real platform
+### root (the current directory; _site_in_resolved_dir): every leg acts on
+### ./names, enters a directory below only for real (_in_real_sub), walks
+### with find from inside it and sets each mode through a no-follow handle
+### from the directory walked, so no name the tenant can swap -- sites,
+### sites/all, a code dir under it, anything a walk meets -- ever takes a
+### root chown or chmod elsewhere. $1 = the group, $2 = the account's web
+### group (empty: none; the tcpdf cache takes it). Reads _plrCodeLink.
+_plr_perm_here() {
+  local _grp="${1}" _d
+  if [ -n "${_plrCodeLink}" ]; then
+    echo "SKIP: symlinked sites/all code dir on ${_Plr}:${_plrCodeLink}"
+  else
+    mkdir -p ./sites 2> /dev/null
+    _in_real_sub sites mkdir -p ./all 2> /dev/null
+    if [ "${_FOREIGN_CMS}" = "YES" ]; then
+      ### A Grav or Textpattern platform has no Drupal sites/all/{modules,
+      ### themes,libraries}; sites/all/drush is where its drushrc renders.
+      _in_real_sub sites/all mkdir -p ./drush 2> /dev/null
+    else
+      _in_real_sub sites/all \
+        mkdir -p ./modules ./themes ./libraries ./drush 2> /dev/null
+    fi
+  fi
+  ### Drupal's sites/all/{modules,themes,libraries} carry nothing on a Grav or
+  ### Textpattern platform, and the recursive chowns below would walk a link
+  ### planted at one of those names: skip the whole leg there.
+  if [ "${_FOREIGN_CMS}" != "YES" ] && [ -z "${_plrCodeLink}" ]; then
+    for _d in modules themes libraries drush; do
+      _in_real_sub "sites/all/${_d}" _archive_sweep_here
+    done
+    ### The walk inside each real code dir (_chown_all_here): every entry
+    ### there is a tenant-plantable name, the walk never follows a link into
+    ### the shared distro tree, and a hard-linked file is never handed over.
+    if [ ! -e "${_usEr}/static/control/unlock.info" ] \
+      && [ ! -e ./skip.info ]; then
+      if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.lock-${_NOW}.info" ]; then
+        for _d in modules themes libraries; do
+          _in_real_sub "sites/all/${_d}" _chown_all_here "${_HM_U}:${_grp}"
+        done
+        _log_ctrl_mark "plr.${_PlrID}.lock-${_NOW}.info"
+      fi
+    elif [ -e "${_usEr}/static/control/unlock.info" ] \
+      && [ ! -e ./skip.info ]; then
+      if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.unlock-${_NOW}.info" ]; then
+        ### here the planted target would be handed straight to the
+        ### tenant's shell user
+        for _d in modules themes libraries; do
+          _in_real_sub "sites/all/${_d}" _chown_all_here "${_HM_U}.ftp:${_grp}"
+        done
+        _log_ctrl_mark "plr.${_PlrID}.unlock-${_NOW}.info"
+      fi
+    fi
+  fi
+  ### A no-follow handle on every chown and chmod: the sites/* entries are
+  ### tenant-creatable names once sites/ takes group write below, so none of
+  ### them may be followed, and none is changed by name (a hard link put or
+  ### renamed at one, sites and the sites/all dirs just made included, is
+  ### left alone: _reown_here). drushrc.php sits BELOW drush, so it is
+  ### withheld with the code-dir legs above.
+  if [ -z "${_plrCodeLink}" ]; then
+    _in_real_sub sites/all/drush \
+      _reown_here "${_HM_U}:${_grp}" ./drushrc.php
+  fi
+  _reown_here "${_HM_U}:${_grp}" ./sites
+  _in_real_sub sites _chown_h_all_here "${_HM_U}:${_grp}"
+  _in_real_sub sites/all _reown_here "${_HM_U}:${_grp}" \
+    ./modules ./themes ./libraries ./drush
+  _chmod_nofollow_here d 0751 ./sites
+  _in_real_sub sites find . -mindepth 1 -maxdepth 1 -type d \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0755 {} + &> /dev/null
+  _in_real_sub sites find . -mindepth 1 -maxdepth 1 -type f \
+    \( -name "*.php" -o -name "*.txt" -o -name "*.yml" \) \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0644 {} + &> /dev/null
+  _chmod_nofollow_here f 0664 ./autoload.php
+  _in_real_sub sites/all _chmod_nofollow_here d 0755 ./drush
+  ### Tenant composer codebases: the two directories core's composer
+  ### scaffold writes into stay group-writable for the shell user
+  ### (omega8cc/boa#1936); mirrors fix-drupal-platform-permissions.sh.
+  if [[ "${_Plr}" =~ "/static/" ]] \
+    && [ -e ./core/lib/Drupal.php ]; then
+    _chmod_nofollow_here d 02771 ./sites
+    _in_real_sub sites _chmod_nofollow_here d 02775 ./default
+  fi
+  ### Group write is the shell pair's free-ride territory under ~/static
+  ### only. A hostmaster tree (aegir/distro) takes none at all; a built-in
+  ### platform keeps its documented tenant-writable sites/all/* but its
+  ### core, profiles, includes, vendor and root take none -- heal the
+  ### code dirs the platform script used to widen (find -P never follows
+  ### the o_contrib* links under sites/all, and vendor/drush keeps its
+  ### own lock from the platform script).
+  if [[ "${_Plr}" =~ /aegir/distro/ ]]; then
+    _pDm=0755
+    _pFm=0644
+  else
+    _pDm=02775
+    _pFm=0664
+  fi
+  ### A Grav or Textpattern root keeps the modes its own platform script
+  ### sets: this Drupal code-dir pass stripped Grav's vendor/bin exec bits.
+  if [[ ! "${_Plr}" =~ /static/ ]] && [ "${_FOREIGN_CMS}" != "YES" ]; then
+    _chmod_nofollow_here d 0755 .
+    ### The three Drush-lock dirs keep whatever mode the lock state gave
+    ### them (0400 locked, 0775 after Unlock Local Drush): prune, never
+    ### widen or narrow them here.
+    find ./modules ./themes ./libraries ./includes ./misc ./profiles ./core \
+      ./vendor ../vendor \
+      \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
+      -o -path "*/vendor/symfony/console/Style" \) -prune \
+      -o -type d -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0755 {} + &> /dev/null
+    find ./modules ./themes ./libraries ./includes ./misc ./profiles ./core \
+      ./vendor ../vendor \
+      \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
+      -o -path "*/vendor/symfony/console/Style" \) -prune \
+      -o -type f -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0644 {} + &> /dev/null
+  fi
+  _in_real_sub sites/all find ./modules ./themes ./libraries -type d \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d "${_pDm}" {} + &> /dev/null
+  _in_real_sub sites/all find ./modules ./themes ./libraries -type f \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f "${_pFm}" {} + &> /dev/null
+  ### expected symlinks
+  _fix_expected_symlinks
+  ### known exceptions: the tcpdf cache, entered for real (tcpdf and its
+  ### cache child are names the tenant can plant in sites/all/libraries);
+  ### every mode and owner below it set through a no-follow handle from the
+  ### directory walked, never on a hard-linked file.
+  if [ "${_FOREIGN_CMS}" != "YES" ] && [ -z "${_plrCodeLink}" ]; then
+    _in_real_sub sites/all/libraries/tcpdf/cache _tcpdf_cache_here "${2}"
+  fi
+  return 0
+}
+_tcpdf_cache_here() {
+  _chmod_nofollow_here d 0775 .
+  find . -mindepth 1 -type d \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0775 {} + &> /dev/null
+  find . -mindepth 1 -type f \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0775 {} + &> /dev/null
+  _reown_tree_here "${_HM_U}${1:+:${1}}" .
+  return 0
+}
+
+### The site level of the permissions pass, inside the real site dir (the
+### current directory; _site_in_resolved_dir), the same way as
+### _plr_perm_here. $1 = the group, $2 = the web group. Reads _siteCodeLink.
+_site_perm_here() {
+  local _grp="${1}" _wg="${2}" _d
+  ### Cleanup
+  _rm_glob_here '*.codebasecheck*.info' '*.hm-fix-*.info' \
+    '*.ctm-lock-*.info' '*.lock-*.info' '*.perm-fix-*.info'
+  ### directory and settings files - site level
+  [ -e ./modules ] || mkdir ./modules &> /dev/null
+  [ -e ./aegir.services.yml ] && rm -f -- ./aegir.services.yml
+  ### The site dir is owned by the tenant's shell user in unlock.info mode,
+  ### so each of these names can be a link or a hard link, and a bare chown
+  ### follows a link at the name: each is changed through a no-follow handle,
+  ### never on a hard-linked file (_reown_here). No-op on the regular files
+  ### they normally are.
+  chown -h "${_HM_U}:${_grp}" . &> /dev/null
+  _reown_here "${_HM_U}${_wg:+:${_wg}}" ./local.settings.php ./settings.php \
+    ./civicrm.settings.php
+  ### solr.php holds the site's Solr core details for its owner; no web
+  ### reader opens it, so it stays in the code group its writer gives it.
+  _reown_here "${_HM_U}:${_grp}" ./solr.php
+  _chmod_nofollow_here f 0440 ./*.php
+  ### The hostmaster site's drushrc.php carries the instance DB user (ALL
+  ### PRIVILEGES) and only the backend user, its owner, ever reads it:
+  ### no group read at all, box-wide 'users' or the account's own group alike.
+  if [[ "${_Dir}" =~ /aegir/(distro|host_master)/ ]]; then
+    _chmod_nofollow_here f 0400 ./drushrc.php
+  fi
+  _chmod_nofollow_here f 0640 ./civicrm.settings.php
+  ### modules,themes,libraries - site level
+  ### A symlink at any of the three would redirect the legs below into
+  ### whatever was planted: withhold exactly these four and nothing else in
+  ### the arm, and enter each dir for real, so one swapped since the check
+  ### is refused as well.
+  if [ -z "${_siteCodeLink}" ]; then
+    for _d in modules themes libraries; do
+      _in_real_sub "${_d}" _archive_sweep_here
+    done
+    _in_real_sub modules rm -f -- ./local-allow.info
+    if [ ! -e "${_usEr}/static/control/unlock.info" ] \
+      && [ ! -e "${_Plr}/skip.info" ]; then
+      for _d in modules themes libraries; do
+        _in_real_sub "${_d}" _chown_all_here "${_HM_U}:${_grp}"
+      done
+    elif [ -e "${_usEr}/static/control/unlock.info" ] \
+      && [ ! -e "${_Plr}/skip.info" ]; then
+      for _d in modules themes libraries; do
+        _in_real_sub "${_d}" _chown_all_here "${_HM_U}.ftp:${_grp}"
+      done
+    fi
+  fi
+  ### All four are names in a site dir the tenant owns under unlock.info
+  ### (modules maybe just made above); none is ever legitimately a symlink,
+  ### each is changed through a no-follow handle and never as a hard-linked
+  ### file (_reown_here), and find takes the three as starting points
+  ### without following one.
+  _reown_here "${_HM_U}:${_grp}" ./drushrc.php \
+    ./modules ./themes ./libraries
+  find ./modules ./themes ./libraries -type d \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 02775 {} + &> /dev/null
+  find ./modules ./themes ./libraries -type f \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0664 {} + &> /dev/null
+  ### files and private - site level. Each is legitimately a link into the
+  ### account's static store, handled by its resolved leg below; the walk
+  ### here leaves a link alone and walks only a real child dir, without
+  ### following a link planted inside it (a tar archive a tenant unpacked can
+  ### carry one), and never hands over a hard-linked file.
+  _reown_tree_here "${_HM_U}${_wg:+:${_wg}}" ./files ./private
+  return 0
+}
+### The site's files store, inside the real directory it resolves to (the
+### current one): every directory 02775 and regular file 0664, set from
+### inside the directory walked through a no-follow handle, the store handed
+### to the account and the web group, and its known children through their
+### own handles (each is a name in a dir every web-group member can write, so
+### a hard link put there is left alone: _reown_here), the nested ones only
+### inside their real parent.
+_files_store_perm_here() {
+  ### $1 = the web group; once the account has its own, a Drupal 7
+  ### files/private takes the private store's modes (no world bits).
+  local _wg="${1}" _pr=()
+  [[ "${_wg}" == wg-* ]] && _pr=( -path ./private -prune -o )
+  find . -mindepth 1 "${_pr[@]}" -type d \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 02775 {} + &> /dev/null
+  find . -mindepth 1 "${_pr[@]}" -type f \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0664 {} + &> /dev/null
+  if [[ "${_wg}" == wg-* ]]; then
+    _in_real_sub private _private_modes_here "${_wg}"
+  fi
+  _chmod_nofollow_here d 02775 .
+  chown "${_HM_U}${_wg:+:${_wg}}" . &> /dev/null
+  _reown_here "${_HM_U}${_wg:+:${_wg}}" ./tmp ./images ./pictures ./css ./js \
+    ./advagg_css ./advagg_js ./ctools ./imagecache ./locations \
+    ./xmlsitemap ./deployment ./styles ./private ./civicrm
+  _in_real_sub ctools _reown_here "${_HM_U}${_wg:+:${_wg}}" ./css
+  _in_real_sub civicrm _reown_here "${_HM_U}${_wg:+:${_wg}}" ./templates_c \
+    ./upload ./persist ./custom ./dynamic
+  return 0
+}
+### Private files' modes in the current (real) directory: every directory
+### 02770 and regular file 0660 once the account has its own web group
+### ($1 wg-*), 02775 and 0664 otherwise, as always.
+_private_modes_here() {
+  local _d=02775 _f=0664
+  if [[ "${1}" == wg-* ]]; then
+    _d=02770
+    _f=0660
+  fi
+  find . -mindepth 1 -type d \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d "${_d}" {} + &> /dev/null
+  find . -mindepth 1 -type f \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f "${_f}" {} + &> /dev/null
+  _chmod_nofollow_here d "${_d}" .
+  return 0
+}
+### The site's private store, the same way; config/ is walked as chown -h -R
+### walked it, never handing over a hard-linked file (_reown_tree_here).
+_private_store_perm_here() {
+  ### $1 = the web group.
+  local _wg="${1}"
+  _private_modes_here "${_wg}"
+  chown "${_HM_U}${_wg:+:${_wg}}" . &> /dev/null
+  _reown_here "${_HM_U}${_wg:+:${_wg}}" ./files ./temp
+  _in_real_sub files _reown_here "${_HM_U}${_wg:+:${_wg}}" ./backup_migrate
+  _in_real_sub files/backup_migrate _reown_here "${_HM_U}${_wg:+:${_wg}}" \
+    ./manual ./scheduled
+  _reown_tree_here "${_HM_U}${_wg:+:${_wg}}" ./config
+  return 0
 }
 
 _fix_permissions() {
@@ -1717,44 +2519,43 @@ _fix_permissions() {
   ### instance still hosts sites on, and the helper answers 'users' there (and
   ### on an unconverted box), the account's own group only for a tree under
   ### /data/disk/<account>. Local, so nothing leaks across the per-site loop.
-  local _grp
-  _grp=$(_acct_group "${_Plr}")
+  local _grp _drTxt _wgP _wgS _wgF
+  _grp=$(_acct_group "$(_night_phys "${_Plr}")")
+  ### The web group the same way: www-data on the shared stores and until
+  ### the account is converted to its own.
+  _wgP=$(_web_group "$(_night_phys "${_Plr}")")
   ### modules,themes,libraries - profile level in ~/static
   searchStringT="/static/"
   case ${_Plr} in
   *"$searchStringT"*)
-  _fix_static_permissions
+  _fix_static_permissions "${_wgP}"
   ;;
   esac
   ### modules,themes,libraries - platform level
   if [ -f "${_Plr}/profiles/core-permissions-update-fix.info" ]; then
-    rm -f ${_Plr}/profiles/*permissions*.info
-    rm -f ${_Plr}/sites/all/permissions-fix*
+    _site_in_resolved_dir "${_Plr}/profiles" _rm_glob_here '*permissions*.info'
+    _site_in_resolved_dir "${_Plr}/sites/all" _rm_glob_here 'permissions-fix*'
   fi
   ### sites and sites/all are names a tenant can plant as symlinks (the
-  ### docroot is group-writable), and every root op below walks THROUGH
-  ### them; -h and find -P protect only the final component. A symlinked
-  ### skeleton is never legitimate, so leave such a platform alone.
-  ### The four names under sites/all -- modules, themes, libraries and
-  ### drush -- are plantable as well: a codebase the tenant built under
-  ### ~/static carries whatever it was unpacked with, and sites/all is
-  ### group-writable for the shell pair between _fix_static_permissions
-  ### widening every dir and the sites/* narrowing below. The archive sweep
-  ### expands a glob THROUGH all four, both chown -R legs through the first
-  ### three and the drushrc.php chown through drush; -h protects only the last
-  ### component of each path (the chmod finds take the names as starting
-  ### points and never follow them). The loop head already refuses a
-  ### symlinked modules; the other three were not covered. None is ever
-  ### legitimately a symlink (the o_contrib* links live under the platform
-  ### root's own modules/, never under sites/all) -- the shape
-  ### fix-drupal-site-ownership.sh refuses outright at site level -- so
+  ### docroot is group-writable), and every root op below would walk THROUGH
+  ### them. A symlinked skeleton is never legitimate, so leave such a
+  ### platform alone. The four names under sites/all -- modules, themes,
+  ### libraries and drush -- are plantable as well: a codebase the tenant
+  ### built under ~/static carries whatever it was unpacked with, and
+  ### sites/all is group-writable for the shell pair between
+  ### _fix_static_permissions widening every dir and the sites/* narrowing
+  ### below. None is ever legitimately a symlink (the o_contrib* links live
+  ### under the platform root's own modules/, never under sites/all) -- the
+  ### shape fix-drupal-site-ownership.sh refuses outright at site level -- so
   ### withhold every leg that walks through them here, but still re-assert
   ### the skeleton modes and stamp the per-pass marker: a withheld platform
   ### must end no wider than an accepted one, and the whole-tree chmod pass
   ### in _fix_static_permissions keys on that marker. A foreign-CMS platform
   ### is different: its sites/all/drush IS created below (its drushrc renders
   ### there) and no SKIP line is printed; only the legs for the three Drupal
-  ### directories it does not carry are withheld.
+  ### directories it does not carry are withheld. The checks here decide;
+  ### the legs themselves run only inside real directories (_plr_perm_here),
+  ### so a name swapped after a check is refused, never followed.
   local _plrCodeLink=""
   local _cd
   for _cd in modules themes libraries drush; do
@@ -1766,145 +2567,22 @@ _fix_permissions() {
     && [ -e "${_Plr}" ] \
     && [ ! -L "${_Plr}/sites" ] \
     && [ ! -L "${_Plr}/sites/all" ]; then
-    if [ -n "${_plrCodeLink}" ]; then
-      echo "SKIP: symlinked sites/all code dir on ${_Plr}:${_plrCodeLink}"
-    elif [ "${_FOREIGN_CMS}" = "YES" ]; then
-      ### A Grav or Textpattern platform has no Drupal sites/all/{modules,
-      ### themes,libraries}; sites/all/drush is where its drushrc renders.
-      mkdir -p ${_Plr}/sites/all/drush
-    else
-      mkdir -p ${_Plr}/sites/all/{modules,themes,libraries,drush}
-    fi
-    ### Drupal's sites/all/{modules,themes,libraries} carry nothing on a Grav or
-    ### Textpattern platform, and the recursive chowns below would walk a link
-    ### planted at one of those names: skip the whole leg there.
-    if [ "${_FOREIGN_CMS}" != "YES" ] && [ -z "${_plrCodeLink}" ]; then
-      find ${_Plr}/sites/all/{modules,themes,libraries,drush}/*{.tar,.tar.gz,.zip} \
-        -type f -exec rm -f {} \; &> /dev/null
-      if [ ! -e "${_usEr}/static/control/unlock.info" ] \
-        && [ ! -e "${_Plr}/skip.info" ]; then
-        if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.lock-${_NOW}.info" ]; then
-          ### -h: those three dirs are 02775 and group-writable (see the find below),
-          ### so every glob hit is a tenant-plantable name and chown -R follows a
-          ### symlink given as its starting point. -h also stops the recursion
-          ### rewriting ownership through the legitimate o_contrib* links into
-          ### the shared distro tree. Same shape as the files leg at 1550.
-          chown -h -R ${_HM_U}:${_grp} \
-            ${_Plr}/sites/all/{modules,themes,libraries}/* &> /dev/null
-          touch ${_usEr}/log/ctrl/plr.${_PlrID}.lock-${_NOW}.info
-        fi
-      elif [ -e "${_usEr}/static/control/unlock.info" ] \
-        && [ ! -e "${_Plr}/skip.info" ]; then
-        if [ ! -e "${_usEr}/log/ctrl/plr.${_PlrID}.unlock-${_NOW}.info" ]; then
-          ### -h for the same reason as the lock branch above; here the planted
-          ### target would be handed straight to the tenant's shell user.
-          chown -h -R ${_HM_U}.ftp:${_grp} \
-            ${_Plr}/sites/all/{modules,themes,libraries}/* &> /dev/null
-          touch ${_usEr}/log/ctrl/plr.${_PlrID}.unlock-${_NOW}.info
-        fi
-      fi
-    fi
-    ### -h on the chown and find -P (never a bare glob) on the chmods: the
-    ### sites/* entries are tenant-creatable names once sites/ takes group
-    ### write below, so none of them may be followed. drushrc.php sits BELOW
-    ### drush, the one path here that resolves through a plantable name, so
-    ### it is withheld with the code-dir legs above.
-    if [ -z "${_plrCodeLink}" ]; then
-      chown -h ${_HM_U}:${_grp} \
-        ${_Plr}/sites/all/drush/drushrc.php &> /dev/null
-    fi
-    chown -h ${_HM_U}:${_grp} \
-      ${_Plr}/sites \
-      ${_Plr}/sites/* \
-      ${_Plr}/sites/sites.php \
-      ${_Plr}/sites/all \
-      ${_Plr}/sites/all/{modules,themes,libraries,drush} &> /dev/null
-    chmod 0751 ${_Plr}/sites &> /dev/null
-    find ${_Plr}/sites -mindepth 1 -maxdepth 1 -type d -exec \
-      chmod 0755 {} \; &> /dev/null
-    find ${_Plr}/sites -mindepth 1 -maxdepth 1 -type f \
-      \( -name "*.php" -o -name "*.txt" -o -name "*.yml" \) -exec \
-      chmod 0644 {} \; &> /dev/null
-    [ -L "${_Plr}/autoload.php" ] || chmod 0664 ${_Plr}/autoload.php &> /dev/null
-    [ -L "${_Plr}/sites/all/drush" ] || chmod 0755 ${_Plr}/sites/all/drush &> /dev/null
-    ### Tenant composer codebases: the two directories core's composer
-    ### scaffold writes into stay group-writable for the shell user
-    ### (omega8cc/boa#1936); mirrors fix-drupal-platform-permissions.sh.
-    if [[ "${_Plr}" =~ "/static/" ]] \
-      && [ -e "${_Plr}/core/lib/Drupal.php" ]; then
-      chmod 02771 ${_Plr}/sites &> /dev/null
-      if [ -d "${_Plr}/sites/default" ] && [ ! -L "${_Plr}/sites/default" ]; then
-        chmod 02775 ${_Plr}/sites/default &> /dev/null
-      fi
-    fi
-    ### Group write is the shell pair's free-ride territory under ~/static
-    ### only. A hostmaster tree (aegir/distro) takes none at all; a built-in
-    ### platform keeps its documented tenant-writable sites/all/* but its
-    ### core, profiles, includes, vendor and root take none -- heal the
-    ### code dirs the platform script used to widen (find -P never follows
-    ### the o_contrib* links under sites/all, and vendor/drush keeps its
-    ### own lock from the platform script).
-    if [[ "${_Plr}" =~ /aegir/distro/ ]]; then
-      _pDm=0755
-      _pFm=0644
-    else
-      _pDm=02775
-      _pFm=0664
-    fi
-    ### A Grav or Textpattern root keeps the modes its own platform script
-    ### sets: this Drupal code-dir pass stripped Grav's vendor/bin exec bits.
-    if [[ ! "${_Plr}" =~ /static/ ]] && [ "${_FOREIGN_CMS}" != "YES" ]; then
-      [ -L "${_Plr}" ] || chmod 0755 ${_Plr} &> /dev/null
-      ### The three Drush-lock dirs keep whatever mode the lock state gave
-      ### them (0400 locked, 0775 after Unlock Local Drush): prune, never
-      ### widen or narrow them here.
-      find ${_Plr}/{modules,themes,libraries,includes,misc,profiles,core} \
-        ${_Plr}/vendor ${_Plr}/../vendor \
-        \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
-        -o -path "*/vendor/symfony/console/Style" \) -prune \
-        -o -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_Plr}/{modules,themes,libraries,includes,misc,profiles,core} \
-        ${_Plr}/vendor ${_Plr}/../vendor \
-        \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
-        -o -path "*/vendor/symfony/console/Style" \) -prune \
-        -o -type f -exec chmod 0644 {} \; &> /dev/null
-    fi
-    find ${_Plr}/sites/all/{modules,themes,libraries} -type d -exec \
-      chmod ${_pDm} {} \; &> /dev/null
-    find ${_Plr}/sites/all/{modules,themes,libraries} -type f -exec \
-      chmod ${_pFm} {} \; &> /dev/null
-    ### expected symlinks
-    _fix_expected_symlinks
-    ### known exceptions
-    ### GNU chmod dereferences a symlink given on the command line and has no
-    ### -h to fall back on, and sites/all/libraries is tenant-writable, so both
-    ### tcpdf and its cache child are names the tenant can plant. A planted
-    ### parent redirects the recursive chown too. Precheck both; a real
-    ### directory is treated exactly as before.
-    if [ "${_FOREIGN_CMS}" != "YES" ] \
-      && [ -z "${_plrCodeLink}" ] \
-      && [ ! -L "${_Plr}/sites/all/libraries/tcpdf" ] \
-      && [ ! -L "${_Plr}/sites/all/libraries/tcpdf/cache" ]; then
-      chmod -R 775 ${_Plr}/sites/all/libraries/tcpdf/cache &> /dev/null
-      chown -R ${_HM_U}:www-data \
-        ${_Plr}/sites/all/libraries/tcpdf/cache &> /dev/null
-    fi
-    touch ${_usEr}/log/ctrl/plr.${_PlrID}.perm-fix-${_NOW}.info
+    _site_in_resolved_dir "${_Plr}" _plr_perm_here "${_grp}" "${_wgP}"
+    _log_ctrl_mark "plr.${_PlrID}.perm-fix-${_NOW}.info"
   fi
   ### sites/ is 02771 and group-writable on tenant composer codebases (the
   ### account's shell identities; any tenant while the instance still carries
   ### the box-wide 'users' group), so sites/<uri> is a name a tenant can unlink
-  ### and re-create: a symlink there redirects
-  ### every rm/mkdir/chown/find in this block through it, and none of them
-  ### re-checks. A site_path is never legitimately a symlink (alias links point
-  ### AT it), so refuse one and leave the site alone.
+  ### and re-create: a symlink there would redirect every rm/mkdir/chown/find
+  ### in this block through it. A site_path is never legitimately a symlink
+  ### (alias links point AT it), so refuse one and leave the site alone, and
+  ### run the legs only inside the real site dir (_site_perm_here).
   ### Same shape one level down: the site's modules, themes and libraries
   ### are 02775 group-writable and the site dir is the tenant's under
-  ### unlock.info; the archive sweep and both chown -R legs below expand a
-  ### glob through them and the local-allow.info rm resolves through
-  ### modules, and only modules is refused by the _validate_ctrl_dir gate
-  ### at the head of the loop. Withhold exactly those four legs and let
-  ### the rest of the arm run: unlike
+  ### unlock.info; the archive sweep, both chown -R legs and the
+  ### local-allow.info rm act inside them, and only modules is refused by
+  ### the _validate_ctrl_dir gate at the head of the loop. Withhold exactly
+  ### those four legs and let the rest of the arm run: unlike
   ### fix-drupal-site-ownership.sh, which refuses the whole site and widens
   ### nothing first, this pass has just run _fix_static_permissions over a
   ### ~/static platform (every file 0664), and the *.php 0440 pass in the
@@ -1927,159 +2605,71 @@ _fix_permissions() {
     && [ -e "${_Dir}/files" ] \
     && [ -e "${_Dir}/private" ] \
     && [ "${_FOREIGN_CMS}" != "YES" ]; then
-    ### Cleanup
-    rm ${_Dir}/*.{codebasecheck*,hm-fix-*,ctm-lock-*,lock-*,perm-fix-*}.info &> /dev/null
-    ### directory and settings files - site level
-    if [ ! -e "${_Dir}/modules" ]; then
-      mkdir ${_Dir}/modules &> /dev/null
-    fi
-    if [ -e "${_Dir}/aegir.services.yml" ]; then
-      rm -f ${_Dir}/aegir.services.yml
-    fi
     ### Site-level writes: re-derive from the SITE path (see the top of this
     ### function) -- a site can sit on the shared store even when its platform
     ### variable does not.
-    _grp=$(_acct_group "${_Dir}")
-    ### -h on both: the site dir is owned by the tenant's shell user in
-    ### unlock.info mode, so each of these names is plantable, and a bare chown
-    ### follows the link (settings.php -> /etc/shadow hands root's shadow file
-    ### to the tenant). No-op on the regular files they normally are.
-    chown -h ${_HM_U}:${_grp} ${_Dir} &> /dev/null
-    chown -h ${_HM_U}:www-data \
-      ${_Dir}/{local.settings.php,settings.php,civicrm.settings.php,solr.php} &> /dev/null
-    find ${_Dir}/*.php -type f -exec chmod 0440 {} \; &> /dev/null
-    ### The hostmaster site's drushrc.php carries the instance DB user (ALL
-    ### PRIVILEGES) and only the backend user, its owner, ever reads it:
-    ### no group read at all, box-wide 'users' or the account's own group alike.
-    if [[ "${_Dir}" =~ /aegir/(distro|host_master)/ ]] && [ -f "${_Dir}/drushrc.php" ] \
-      && [ ! -L "${_Dir}/drushrc.php" ]; then
-      chmod 0400 ${_Dir}/drushrc.php &> /dev/null
-    fi
-    ### chmod follows a symlink named on the command line and has no -h; the
-    ### find above avoids that with -type f, this one did not. Never
-    ### legitimately a symlink -- same shape as the autoload.php guard below.
-    [ -L "${_Dir}/civicrm.settings.php" ] \
-      || chmod 0640 ${_Dir}/civicrm.settings.php &> /dev/null
-    ### modules,themes,libraries - site level
-    ### A symlink at any of the three redirects the legs below into whatever
-    ### was planted -- the glob legs by expansion, the local-allow.info rm
-    ### through modules as a path component (the refusal above names it):
-    ### withhold exactly these four and nothing else in the arm. The
-    ### head-of-loop modules gate is many drush runs old by now, so modules
-    ### is re-checked here as well.
-    if [ -z "${_siteCodeLink}" ]; then
-      find ${_Dir}/{modules,themes,libraries}/*{.tar,.tar.gz,.zip} -type f -exec \
-        rm -f {} \; &> /dev/null
-      rm -f ${_Dir}/modules/local-allow.info
-      if [ ! -e "${_usEr}/static/control/unlock.info" ] \
-        && [ ! -e "${_Plr}/skip.info" ]; then
-        ### -h: these three dirs are 02775 group 'users' (see the find below),
-        ### so every glob hit is a tenant-plantable name and chown -R follows
-        ### a symlink given as its starting point. Same shape as the files leg.
-        chown -h -R ${_HM_U}:${_grp} \
-          ${_Dir}/{modules,themes,libraries}/* &> /dev/null
-      elif [ -e "${_usEr}/static/control/unlock.info" ] \
-        && [ ! -e "${_Plr}/skip.info" ]; then
-        chown -h -R ${_HM_U}.ftp:${_grp} \
-          ${_Dir}/{modules,themes,libraries}/* &> /dev/null
-      fi
-    fi
-    ### -h: all four are names in a site dir the tenant owns under
-    ### unlock.info; the glob legs above are withheld on a symlinked code dir
-    ### and -h keeps these on the names themselves, so nothing here expands
-    ### through a link. None is ever legitimately a symlink.
-    chown -h ${_HM_U}:${_grp} \
-      ${_Dir}/drushrc.php \
-      ${_Dir}/{modules,themes,libraries} &> /dev/null
-    find ${_Dir}/{modules,themes,libraries} -type d -exec \
-      chmod 02775 {} \; &> /dev/null
-    find ${_Dir}/{modules,themes,libraries} -type f -exec \
-      chmod 0664 {} \; &> /dev/null
-    ### files - site level
-    ### -h replaces the prior -L: prevents recursive chown from dereferencing
-    ### attacker-planted symlinks under _Dir/files (the realistic threat is
-    ### a tar archive uploaded by a tenant containing an inner symlink, since
-    ### Adam confirmed in category 1 that PHP cannot create symlinks directly
-    ### but tar extraction can carry them in). Combined with the
-    ### _validate_safe_dir gate above this closes the path-prefix and
-    ### per-child symlink attack surfaces.
-    chown -h -R ${_HM_U}:www-data ${_Dir}/files &> /dev/null
-    ### The trailing slash below is load-bearing -- files/ is legitimately a
-    ### symlink into a per-account static store (a shared store may sit under
-    ### another account), so find MUST resolve it -- but sites/ is 02771 and
-    ### the store 02775, both group 'users', so the link and the name above it
-    ### are plantable and these four ops would otherwise walk root's
-    ### chmod/chown into whatever was planted (files -> /etc hands every
-    ### tenant a writable /etc). Resolve once and act on the canonical path,
-    ### and only while it is still a store or a real child of the site dir.
+    _grp=$(_acct_group "$(_night_phys "${_Dir}")")
+    _wgS=$(_web_group "$(_night_phys "${_Dir}")")
+    _site_in_resolved_dir "${_Dir}" _site_perm_here "${_grp}" "${_wgS}"
+    ### files/ and private/ are legitimately symlinks into a per-account
+    ### static store (a shared store may sit under another account), so each
+    ### is resolved -- but sites/ is 02771 and the store 02775, both
+    ### tenant-writable, so the link and every name above it can be
+    ### repointed, and a walk along the raw path would follow a link at files
+    ### or private: only the resolved store is walked. Resolve once, act only
+    ### while it is still a store or a real child of the site dir, and only
+    ### inside that resolved directory, entered for real (_in_pinned_dir).
     _rDir=$(realpath -e -- "${_Dir}" 2>/dev/null)
     _rFls=$(realpath -e -- "${_Dir}/files" 2>/dev/null)
     if [ -n "${_rDir}" ] && [ -n "${_rFls}" ]; then
       case "${_rFls}/" in
         */static/files/*|"${_rDir}"/*)
-          find "${_rFls}/" -type d -exec chmod 02775 {} \; &> /dev/null
-          find "${_rFls}/" -type f -exec chmod 0664 {} \; &> /dev/null
-          chmod 02775 "${_rFls}" &> /dev/null
-          chown ${_HM_U}:www-data "${_rFls}" &> /dev/null
-          ### These names sit inside the tenant-writable files dir, so any of
-          ### them can be a planted symlink; -h keeps the chown on the link
-          ### instead of its target and is a no-op on the regular directories
-          ### they normally are. Spelled against the resolved store, inside
-          ### this arm only: on the raw path they would still walk root
-          ### through a planted files link the case above just refused.
-          chown -h ${_HM_U}:www-data "${_rFls}"/{tmp,images,pictures,css,js} &> /dev/null
-          chown -h ${_HM_U}:www-data "${_rFls}"/{advagg_css,advagg_js,ctools} &> /dev/null
-          chown -h ${_HM_U}:www-data "${_rFls}"/{ctools/css,imagecache,locations} &> /dev/null
-          chown -h ${_HM_U}:www-data "${_rFls}"/{xmlsitemap,deployment,styles,private} &> /dev/null
-          chown -h ${_HM_U}:www-data "${_rFls}"/{civicrm,civicrm/templates_c} &> /dev/null
-          chown -h ${_HM_U}:www-data "${_rFls}"/{civicrm/upload,civicrm/persist} &> /dev/null
-          chown -h ${_HM_U}:www-data "${_rFls}"/{civicrm/custom,civicrm/dynamic} &> /dev/null
+          _wgF=$(_store_web_group "${_rFls}" "${_rDir}")
+          if [ "${_wgF}" = "SKIP" ]; then
+            echo "NOTE: ${_Dir}/files is another account's store (${_rFls}) and one of the two has its own web group: left as it is"
+          else
+            _in_pinned_dir "${_rFls}" _files_store_perm_here "${_wgF}"
+          fi
           ;;
         *)
           echo "SKIP: ${_Dir}/files resolves outside any static store: ${_rFls}"
           ;;
       esac
     fi
-    ### private - site level
-    chown -h -R ${_HM_U}:www-data ${_Dir}/private &> /dev/null
-    ### Same trailing-slash resolution as the files/ leg above, same reason and
-    ### same guard: private/ is legitimately a store symlink, so resolve it
-    ### once and only walk a canonical target that is still a store or a real
-    ### child of the site dir.
-    _rDir=$(realpath -e -- "${_Dir}" 2>/dev/null)
     _rPrv=$(realpath -e -- "${_Dir}/private" 2>/dev/null)
     if [ -n "${_rDir}" ] && [ -n "${_rPrv}" ]; then
       case "${_rPrv}/" in
         */static/files/*|"${_rDir}"/*)
-          find "${_rPrv}/" -type d -exec chmod 02775 {} \; &> /dev/null
-          find "${_rPrv}/" -type f -exec chmod 0664 {} \; &> /dev/null
-          chown ${_HM_U}:www-data "${_rPrv}" &> /dev/null
-          ### Same as the files leg: the child entries only on the resolved
-          ### store, inside the accepted arm, never on the raw path.
-          chown -h ${_HM_U}:www-data "${_rPrv}"/{files,temp} &> /dev/null
-          chown -h ${_HM_U}:www-data "${_rPrv}"/files/backup_migrate &> /dev/null
-          chown -h ${_HM_U}:www-data "${_rPrv}"/files/backup_migrate/{manual,scheduled} &> /dev/null
-          chown -h -R ${_HM_U}:www-data "${_rPrv}"/config &> /dev/null
+          _wgF=$(_store_web_group "${_rPrv}" "${_rDir}")
+          if [ "${_wgF}" = "SKIP" ]; then
+            echo "NOTE: ${_Dir}/private is another account's store (${_rPrv}) and one of the two has its own web group: left as it is"
+          else
+            _in_pinned_dir "${_rPrv}" _private_store_perm_here "${_wgF}"
+          fi
           ;;
         *)
           echo "SKIP: ${_Dir}/private resolves outside any static store: ${_rPrv}"
           ;;
       esac
     fi
-    _DB_HOST_PRESENT=$(grep "^\$_SERVER\['db_host'\] = \$options\['db_host'\];" \
-      ${_Dir}/drushrc.php 2>&1)
-    if [[ "${_DB_HOST_PRESENT}" =~ "db_host" ]]; then
-      if [ "${_FORCE_SITES_VERIFY}" = "YES" ]; then
+    ### drushrc.php is never legitimately a symlink, and the site dir is the
+    ### tenant's under unlock.info: it is read once inside the resolved site
+    ### dir, bounded and never through a link or a FIFO, and the missing line
+    ### is added as a fresh file with its own owner and mode
+    ### (_acct_add_same_here), never by ">>" on a name that can be swapped.
+    ### Anything but a regular file is left alone, as the link refusal was.
+    if _drTxt=$(_site_in_resolved_dir "${_Dir}" _acct_read_plain_here drushrc.php); then
+      _DB_HOST_PRESENT=$(grep "^\$_SERVER\['db_host'\] = \$options\['db_host'\];" \
+        <<< "${_drTxt}" 2>&1)
+      if [[ "${_DB_HOST_PRESENT}" =~ "db_host" ]]; then
+        if [ "${_FORCE_SITES_VERIFY}" = "YES" ]; then
+          _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force"
+        fi
+      else
+        _site_in_resolved_dir "${_Dir}" _acct_add_same_here drushrc.php \
+          "\$_SERVER['db_host'] = \$options['db_host'];"
         _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force"
       fi
-    elif [ ! -L "${_Dir}/drushrc.php" ]; then
-      ### ">>" resolves the path normally and appends THROUGH a symlink at the
-      ### final component, creating the target if absent -- and it is the grep
-      ### above MISSING the line that gets us here, so any planted target
-      ### guarantees the write. drushrc.php is never legitimately a symlink;
-      ### refuse rather than strip, since removing a real one breaks the site.
-      echo "\$_SERVER['db_host'] = \$options['db_host'];" >> ${_Dir}/drushrc.php
-      _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force"
     fi
   ### Neither a Grav capsule nor a Textpattern site has a site-level files/
   ### store (a TXP site does have private/, its credential store), so the
@@ -2104,7 +2694,7 @@ _fix_permissions() {
       /usr/local/bin/fix-drupal-site-ownership.sh \
         --site-path="${_Dir}" \
         --script-user="${_HM_U}" \
-        --web-group=www-data &> /dev/null
+        --web-group="$(_web_group "$(_night_phys "${_Dir}")")" &> /dev/null
     fi
     if [ -x "/usr/local/bin/fix-drupal-site-permissions.sh" ]; then
       /usr/local/bin/fix-drupal-site-permissions.sh \
@@ -2120,9 +2710,8 @@ _convert_controls_orig() {
     if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F_TPL}" ]; then
       _reseed_ctrl_ini "${_CTRL_F_TPL}" "${_CTRL_F}"
     fi
-    sed -i "s/.*$1.*/$1 = TRUE/g" ${_CTRL_F} &> /dev/null
-    wait
-    rm -f ${_CTRL_DIR}/$1.info
+    _ctrl_ini_sed "${_CTRL_F}" "s/.*$1.*/$1 = TRUE/g" &> /dev/null
+    _acct_in_resolved_dir "${_CTRL_DIR}" rm -f -- "./$1.info"
   fi
 }
 
@@ -2131,9 +2720,8 @@ _convert_controls_orig_no_global() {
     if [ ! -e "${_CTRL_F}" ] && [ -e "${_CTRL_F_TPL}" ]; then
       _reseed_ctrl_ini "${_CTRL_F_TPL}" "${_CTRL_F}"
     fi
-    sed -i "s/.*$1.*/$1 = TRUE/g" ${_CTRL_F} &> /dev/null
-    wait
-    rm -f ${_CTRL_DIR}/$1.info
+    _ctrl_ini_sed "${_CTRL_F}" "s/.*$1.*/$1 = TRUE/g" &> /dev/null
+    _acct_in_resolved_dir "${_CTRL_DIR}" rm -f -- "./$1.info"
   fi
 }
 
@@ -2150,10 +2738,9 @@ _convert_controls_value() {
     elif [ "$1" = "nginx_cache_quarter" ]; then
       _TTL=900
     fi
-    sed -i "s/.*speed_booster_anon.*/speed_booster_anon_cache_ttl = ${_TTL}/g" \
-      ${_CTRL_F} &> /dev/null
-    wait
-    rm -f ${_CTRL_DIR}/$1.info
+    _ctrl_ini_sed "${_CTRL_F}" \
+      "s/.*speed_booster_anon.*/speed_booster_anon_cache_ttl = ${_TTL}/g" &> /dev/null
+    _acct_in_resolved_dir "${_CTRL_DIR}" rm -f -- "./$1.info"
   fi
 }
 
@@ -2163,11 +2750,10 @@ _convert_controls_renamed() {
       _reseed_ctrl_ini "${_CTRL_F_TPL}" "${_CTRL_F}"
     fi
     if [ "$1" = "cookie_domain" ]; then
-      sed -i "s/.*server_name_cookie.*/server_name_cookie_domain = TRUE/g" \
-        ${_CTRL_F} &> /dev/null
-      wait
+      _ctrl_ini_sed "${_CTRL_F}" \
+        "s/.*server_name_cookie.*/server_name_cookie_domain = TRUE/g" &> /dev/null
     fi
-    rm -f ${_CTRL_DIR}/$1.info
+    _acct_in_resolved_dir "${_CTRL_DIR}" rm -f -- "./$1.info"
   fi
 }
 
@@ -2209,63 +2795,66 @@ _fix_site_system_control_settings() {
   done
 }
 
+### The five passes sed -i made, in order, as one in-memory edit of the INI
+### (_ctrl_ini_sed): -e expressions run in sequence on every line, and a line
+### the fourth deletes never reaches the fifth, as with separate passes.
 _cleanup_ini() {
   if [ -e "${_CTRL_F}" ]; then
-    sed -i "s/^;;.*//g"   ${_CTRL_F} &> /dev/null
-    wait
-    sed -i "s/^ .*//g"    ${_CTRL_F} &> /dev/null
-    wait
-    sed -i "s/^#.*//g"    ${_CTRL_F} &> /dev/null
-    wait
-    sed -i "/^$/d"        ${_CTRL_F} &> /dev/null
-    wait
-    sed -i "s/^\[/\n\[/g" ${_CTRL_F} &> /dev/null
-    wait
+    _ctrl_ini_sed "${_CTRL_F}" \
+      -e "s/^;;.*//g" \
+      -e "s/^ .*//g" \
+      -e "s/^#.*//g" \
+      -e "/^$/d" \
+      -e "s/^\[/\n\[/g" &> /dev/null
   fi
 }
 
 _add_note_platform_ini() {
   if [ -e "${_CTRL_F}" ]; then
-    echo "" >> ${_CTRL_F}
-    echo ";;" >> ${_CTRL_F}
-    echo ";;  This is a platform level ACTIVE INI file which can be used to modify"   >> ${_CTRL_F}
-    echo ";;  default BOA system behaviour for all sites hosted on this platform."    >> ${_CTRL_F}
-    echo ";;" >> ${_CTRL_F}
-    echo ";;  Please review complete documentation included in this file TEMPLATE:"   >> ${_CTRL_F}
-    echo ";;  default.boa_platform_control.ini, since this ACTIVE INI file"           >> ${_CTRL_F}
-    echo ";;  may not include all options available after upgrade to BOA-${_xSrl}"    >> ${_CTRL_F}
-    echo ";;" >> ${_CTRL_F}
-    echo ";;  Note that BOA reads this file on every request, so a change applies on" >> ${_CTRL_F}
-    echo ";;  the next one; a page the front cache holds for anonymous visitors can"  >> ${_CTRL_F}
-    echo ";;  hide it for a few seconds. A .dev. alias cuts that cache to 1 second."  >> ${_CTRL_F}
-    echo ";;" >> ${_CTRL_F}
+    ### One in-memory append (_ctrl_ini_add), never ">>" on the INI name.
+    _ctrl_ini_add "${_CTRL_F}" "$(printf '%s\n' \
+      "" \
+      ";;" \
+      ";;  This is a platform level ACTIVE INI file which can be used to modify" \
+      ";;  default BOA system behaviour for all sites hosted on this platform." \
+      ";;" \
+      ";;  Please review complete documentation included in this file TEMPLATE:" \
+      ";;  default.boa_platform_control.ini, since this ACTIVE INI file" \
+      ";;  may not include all options available after upgrade to BOA-${_xSrl}" \
+      ";;" \
+      ";;  Note that BOA reads this file on every request, so a change applies on" \
+      ";;  the next one; a page the front cache holds for anonymous visitors can" \
+      ";;  hide it for a few seconds. A .dev. alias cuts that cache to 1 second." \
+      ";;")"
   fi
 }
 
 _add_note_site_ini() {
   if [ -e "${_CTRL_F}" ]; then
-    echo "" >> ${_CTRL_F}
-    echo ";;" >> ${_CTRL_F}
-    echo ";;  This is a site level ACTIVE INI file which can be used to modify"       >> ${_CTRL_F}
-    echo ";;  default BOA system behaviour for this site only."                       >> ${_CTRL_F}
-    echo ";;" >> ${_CTRL_F}
-    echo ";;  Please review complete documentation included in this file TEMPLATE:"   >> ${_CTRL_F}
-    echo ";;  default.boa_site_control.ini, since this ACTIVE INI file"               >> ${_CTRL_F}
-    echo ";;  may not include all options available after upgrade to BOA-${_xSrl}"    >> ${_CTRL_F}
-    echo ";;" >> ${_CTRL_F}
-    echo ";;  Note that BOA reads this file on every request, so a change applies on" >> ${_CTRL_F}
-    echo ";;  the next one; a page the front cache holds for anonymous visitors can"  >> ${_CTRL_F}
-    echo ";;  hide it for a few seconds. A .dev. alias cuts that cache to 1 second."  >> ${_CTRL_F}
-    echo ";;" >> ${_CTRL_F}
+    ### One in-memory append (_ctrl_ini_add), never ">>" on the INI name.
+    _ctrl_ini_add "${_CTRL_F}" "$(printf '%s\n' \
+      "" \
+      ";;" \
+      ";;  This is a site level ACTIVE INI file which can be used to modify" \
+      ";;  default BOA system behaviour for this site only." \
+      ";;" \
+      ";;  Please review complete documentation included in this file TEMPLATE:" \
+      ";;  default.boa_site_control.ini, since this ACTIVE INI file" \
+      ";;  may not include all options available after upgrade to BOA-${_xSrl}" \
+      ";;" \
+      ";;  Note that BOA reads this file on every request, so a change applies on" \
+      ";;  the next one; a page the front cache holds for anonymous visitors can" \
+      ";;  hide it for a few seconds. A .dev. alias cuts that cache to 1 second." \
+      ";;")"
   fi
 }
 
 _fix_platform_control_files() {
   if [ -e "/data/conf/default.boa_platform_control.ini" ]; then
-    ### Re-strip immediately before the sed -i / ">>" legs below: both names
-    ### live in the tenant-writable setgid sites/all/modules dir, sed -i READS
-    ### through a planted link and ">>" WRITES through it. Mirrors the strip
-    ### the late platform read/append leg already does.
+    ### Both names live in the tenant-writable setgid sites/all/modules dir.
+    ### The legs below edit the INI only through _ctrl_ini_sed/_ctrl_ini_add
+    ### (never through a link or a FIFO at the name); the re-strip lets the
+    ### seed legs recreate a planted name.
     _desymlink_planted \
       "${_Plr}/sites/all/modules/default.boa_platform_control.ini" \
       "${_Plr}/sites/all/modules/boa_platform_control.ini"
@@ -2288,9 +2877,9 @@ _fix_site_control_files() {
   if [ -e "/data/conf/default.boa_site_control.ini" ]; then
     ### The strip at the head of the iteration is a full _fix_modules pass, an
     ### LE renewal (sleep 30) and a goaccess run old by the time this is
-    ### called, and both names live in the tenant-writable setgid modules dir:
-    ### sed -i READS through a planted link and ">>" WRITES through it. Same
-    ### re-strip the late platform read/append leg already does.
+    ### called, and both names live in the tenant-writable setgid modules dir.
+    ### The legs below edit the INI only through _ctrl_ini_sed/_ctrl_ini_add;
+    ### the re-strip lets the seed legs recreate a planted name.
     _desymlink_planted \
       "${_Dir}/modules/default.boa_site_control.ini" \
       "${_Dir}/modules/boa_site_control.ini"
@@ -2309,11 +2898,69 @@ _fix_site_control_files() {
   fi
 }
 
+### The nightly http2/quic fix-up of the vhost ./$1 in the current (pinned)
+### vhost.d: the same tests and the same sed programs sed -i ran, one after
+### another, on a bounded no-follow read of the file, put back as
+### _acct_put_same_here puts it (its owner and mode kept). A link or a FIFO
+### at the name is left alone.
+_vhost_http_fix_here() {
+  local _v _fixHttpReqired=NO
+  _v=$(_acct_read_plain_here "${1}" && echo x) || return 0
+  _v="${_v%x}"
+  if grep -q -e "ssl http2" <<< "${_v}"; then
+    _fixHttpReqired=YES
+  elif grep -q -E '^\s*listen[^;]*443[^;]*ssl' <<< "${_v}" \
+    && ! grep -q -E '^\s*http2\s+on;$' <<< "${_v}"; then
+    # Only a TLS-terminating vhost needs 'http2 on;'. Without this test a
+    # plain :80 vhost never satisfied the check, so it was rewritten (and
+    # its mtime refreshed) every single night for no change at all.
+    _fixHttpReqired=YES
+  elif grep -q -E '^\s+listen.*443\s+quic;$' <<< "${_v}"; then
+    _fixHttpReqired=YES
+  fi
+  [ "${_fixHttpReqired}" = "YES" ] || return 0
+  echo "FIXING vhost for ${_Dom}"
+  # Remove 'http2' from 'listen' directives, existing 'http2 on;' lines,
+  # 'quic' lines and unwanted directives (all with varying spaces), then
+  # update 'ssl_prefer_server_ciphers' and 'http3_hq'
+  _v=$(printf '%s' "${_v}" \
+    | sed -E 's/(listen\s+[^;]*\s+ssl)\s+http2;$/\1;/' \
+    | sed -E '/^\s*http2\s+on;/d' \
+    | sed -E '/^\s+listen.*443\s+quic;/d' \
+    | sed -E \
+      -e '/^\s*ssl_stapling\b/d' \
+      -e '/^\s*ssl_stapling_verify\b/d' \
+      -e '/^\s*resolver\b/d' \
+      -e '/^\s*resolver_timeout\b/d' \
+    | sed -E 's/^\s*ssl_prefer_server_ciphers\s+.*$/ssl_prefer_server_ciphers on;/' \
+    | sed -E 's/http3_hq\s+on;$/http3_hq on;/'; echo x)
+  _v="${_v%x}"
+  if grep -q 'ssl_prefer_server_ciphers' <<< "${_v}"; then
+    # Add 'http2 on;' after 'ssl_prefer_server_ciphers on;', only if not already present
+    if ! grep -q -E '^\s*http2\s+on;$' <<< "${_v}"; then
+      _v=$(printf '%s' "${_v}" | sed '/ssl_prefer_server_ciphers on;/ a\  http2 on;'; echo x)
+      _v="${_v%x}"
+    fi
+  elif grep -q -E '^\s*#?http3_hq\s+on;$' <<< "${_v}"; then
+    # Add 'http2 on;' after 'http3_hq on;', only if not already present
+    if ! grep -q -E '^\s*http2\s+on;$' <<< "${_v}"; then
+      _v=$(printf '%s' "${_v}" | sed '/http3_hq on;/ a\  http2 on;'; echo x)
+      _v="${_v%x}"
+    fi
+  fi
+  _acct_put_same_here "${1}" "${_v}"
+}
+
 _cleanup_ghost_vhosts() {
   _provision_running && return
-  for _Site in `find ${_usEr}/config/server_master/nginx/vhost.d -maxdepth 1 \
+  ### config/ and .drush/ are oN's: the vhost list is taken, each vhost read
+  ### and fixed, and every move into undo/ made only inside the real
+  ### directories (_acct_in_real_dir, _acct_undo_here).
+  local _vhD="${_usEr}/config/server_master/nginx/vhost.d"
+  for _Site in `_acct_in_real_dir "${_vhD}" find . -maxdepth 1 \
     -mindepth 1 -type f | sort`; do
-    _Dom=$(echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
+    _Site="${_vhD}/${_Site#./}"
+    _Dom="${_Site##*/}"
     # Skip leading-dot companion vhosts (.example.com): intentional staged /
     # preserved rollback originals from proxy-conversion (xoct) and export/import
     # (xcopy) that never have a matching .example.com alias -- reaping them would
@@ -2321,8 +2968,8 @@ _cleanup_ghost_vhosts() {
     case "${_Dom}" in .*) continue ;; esac
     # Never reap while a migrate/export of this account is in flight.
     [ -e "${_usEr}/log/exported.pid" ] && continue
-    _gh_vmark="${_usEr}/log/ctrl/ghost-vhost-${_Dom}.seen"
-    _gh_amark="${_usEr}/log/ctrl/ghost-vhost-noalias-${_Dom}.seen"
+    _gh_vmark="ghost-vhost-${_Dom}.seen"
+    _gh_amark="ghost-vhost-noalias-${_Dom}.seen"
     # Freshness is sampled ONCE, here, before this run's own vhost rewrites
     # further down touch the file. BOA rewrites vhosts every night (the http2 /
     # quic fixes below, and the forward-secrecy TLS pass in 90-global-post.sh),
@@ -2330,7 +2977,8 @@ _cleanup_ghost_vhosts() {
     # consecutive-run counters on every run and left the reap permanently
     # unarmed -- while the log blamed the opt-in flag instead.
     _gh_vfresh=NO
-    [ -n "$(find "${_Site}" -mmin -1440 2>/dev/null)" ] && _gh_vfresh=YES
+    [ -n "$(_acct_in_real_dir "${_vhD}" find "./${_Dom}" -maxdepth 0 \
+      -mmin -1440 2>/dev/null)" ] && _gh_vfresh=YES
     # Resolved once per vhost so the reason reported below is the real one.
     _gh_vflag=NO
     if _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_VHOSTS_CLEANUP \
@@ -2340,17 +2988,22 @@ _cleanup_ghost_vhosts() {
     if [[ "${_Dom}" =~ ".restore"($) ]]; then
       if [ "${_gh_vfresh}" = "YES" ]; then
         # Freshly written = a restore still in flight; give it a grace run.
-        _ghost_seen_reset "${_gh_vmark}"
+        _ghost_seen_reset_acct "${_gh_vmark}"
       else
         _gh_vseen=NO
-        _ghost_seen_enough "${_gh_vmark}" && _gh_vseen=YES
+        _ghost_seen_enough_acct "${_gh_vmark}" && _gh_vseen=YES
         if [ "${_gh_vseen}" = "YES" ] && [ "${_gh_vflag}" = "YES" ]; then
-          mkdir -p ${_usEr}/undo
-          mv -f ${_usEr}/.drush/${_Dom}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
-          mv -f ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} ${_usEr}/undo/ &> /dev/null
-          _ghost_seen_reset "${_gh_vmark}"
-          _ghost_seen_reset "${_gh_amark}"
-          echo "GHOST vhost for ${_Dom} detected and moved to ${_usEr}/undo/"
+          # The alias may be gone already; the vhost move decides the outcome,
+          # and a refused move keeps its counters for the next run.
+          _acct_in_real_dir "${_usEr}/.drush" \
+            _acct_undo_here "${_Dom}.alias.drushrc.php" &> /dev/null
+          if _acct_in_real_dir "${_vhD}" _acct_undo_here "${_Dom}" &> /dev/null; then
+            _ghost_seen_reset_acct "${_gh_vmark}"
+            _ghost_seen_reset_acct "${_gh_amark}"
+            echo "GHOST vhost for ${_Dom} detected and moved to ${_usEr}/undo/"
+          else
+            echo "GHOST vhost for ${_Dom} detected and not moved: ${_GH_REFUSED}"
+          fi
         elif [ "${_gh_vflag}" = "YES" ]; then
           echo "GHOST vhost for ${_Dom} detected (grace; moves on the next consecutive run)"
         else
@@ -2358,52 +3011,9 @@ _cleanup_ghost_vhosts() {
         fi
       fi
     fi
-    if [ -e "${_usEr}/config/server_master/nginx/vhost.d/${_Dom}" ]; then
-      local _thisVhost="${_usEr}/config/server_master/nginx/vhost.d/${_Dom}"
-      local _fixHttpReqired=NO
-      if grep -q -e "ssl http2" "${_thisVhost}"; then
-        local _fixHttpReqired=YES
-      elif grep -q -E '^\s*listen[^;]*443[^;]*ssl' "${_thisVhost}" \
-        && ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
-        # Only a TLS-terminating vhost needs 'http2 on;'. Without this test a
-        # plain :80 vhost never satisfied the check, so it was rewritten (and
-        # its mtime refreshed) every single night for no change at all.
-        local _fixHttpReqired=YES
-      elif grep -q -E '^\s+listen.*443\s+quic;$' "${_thisVhost}"; then
-        local _fixHttpReqired=YES
-      fi
-      if [ "${_fixHttpReqired}" = "YES" ]; then
-        echo "FIXING vhost for ${_Dom}"
-        # Remove 'http2' from 'listen' directives with varying spaces
-        sed -i -E 's/(listen\s+[^;]*\s+ssl)\s+http2;$/\1;/' "${_thisVhost}"
-        # Remove existing 'http2 on;' lines with varying spaces
-        sed -i -E '/^\s*http2\s+on;/d' "${_thisVhost}"
-        # Remove existing 'quic' lines with varying spaces
-        sed -i -E '/^\s+listen.*443\s+quic;/d' "${_thisVhost}"
-        # Remove unwanted directives with varying spaces
-        sed -i -E \
-          -e '/^\s*ssl_stapling\b/d' \
-          -e '/^\s*ssl_stapling_verify\b/d' \
-          -e '/^\s*resolver\b/d' \
-          -e '/^\s*resolver_timeout\b/d' \
-          "${_thisVhost}"
-        # Update 'ssl_prefer_server_ciphers' directive, handling spaces
-        sed -i -E 's/^\s*ssl_prefer_server_ciphers\s+.*$/ssl_prefer_server_ciphers on;/' "${_thisVhost}"
-        # Update 'http3_hq' directive, handling spaces
-        sed -i -E 's/http3_hq\s+on;$/http3_hq on;/' "${_thisVhost}"
-        if grep -q 'ssl_prefer_server_ciphers' "${_thisVhost}"; then
-          # Add 'http2 on;' after 'ssl_prefer_server_ciphers on;', only if not already present
-          if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
-            sed -i '/ssl_prefer_server_ciphers on;/ a\  http2 on;' "${_thisVhost}"
-          fi
-        elif grep -q -E '^\s*#?http3_hq\s+on;$' "${_thisVhost}"; then
-          # Add 'http2 on;' after 'http3_hq on;', only if not already present
-          if ! grep -q -E '^\s*http2\s+on;$' "${_thisVhost}"; then
-            sed -i '/http3_hq on;/ a\  http2 on;' "${_thisVhost}"
-          fi
-        fi
-      fi
-      _Plx=$(cat ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} \
+    if [ -e "${_vhD}/${_Dom}" ]; then
+      _acct_in_real_dir "${_vhD}" _vhost_http_fix_here "${_Dom}"
+      _Plx=$(_acct_read_in "${_vhD}" "${_Dom}" \
         | grep "root " \
         | cut -d: -f2 \
         | awk '{ print $2}' \
@@ -2422,15 +3032,17 @@ _cleanup_ghost_vhosts() {
           # this test and the .restore test above never reset or double-count
           # each other through a shared marker.
           if [ "${_gh_vfresh}" = "YES" ]; then
-            _ghost_seen_reset "${_gh_amark}"
+            _ghost_seen_reset_acct "${_gh_amark}"
           else
             _gh_aseen=NO
-            _ghost_seen_enough "${_gh_amark}" && _gh_aseen=YES
+            _ghost_seen_enough_acct "${_gh_amark}" && _gh_aseen=YES
             if [ "${_gh_aseen}" = "YES" ] && [ "${_gh_vflag}" = "YES" ]; then
-              mkdir -p ${_usEr}/undo
-              mv -f ${_Site} ${_usEr}/undo/ &> /dev/null
-              _ghost_seen_reset "${_gh_amark}"
-              echo "GHOST vhost for ${_Dom} with no drushrc detected and moved to ${_usEr}/undo/"
+              if _acct_in_real_dir "${_vhD}" _acct_undo_here "${_Dom}" &> /dev/null; then
+                _ghost_seen_reset_acct "${_gh_amark}"
+                echo "GHOST vhost for ${_Dom} with no drushrc detected and moved to ${_usEr}/undo/"
+              else
+                echo "GHOST vhost for ${_Dom} with no drushrc detected and not moved: ${_GH_REFUSED}"
+              fi
             elif [ "${_gh_vflag}" = "YES" ]; then
               echo "GHOST vhost for ${_Dom} with no drushrc detected (grace; moves on the next consecutive run)"
             else
@@ -2438,7 +3050,7 @@ _cleanup_ghost_vhosts() {
             fi
           fi
         else
-          _ghost_seen_reset "${_gh_amark}"
+          _ghost_seen_reset_acct "${_gh_amark}"
         fi
       fi
     fi
@@ -2447,6 +3059,11 @@ _cleanup_ghost_vhosts() {
 
 _cleanup_ghost_drushrc() {
   _provision_running && return
+  ### .drush/, config/ and log/ are oN's: the alias list is taken, each alias
+  ### read, the arming marker kept, and every move into undo/ made only
+  ### inside the real directories (_acct_in_real_dir, _acct_undo_here); a
+  ### platform or site tree moves from inside its resolved parent.
+  local _drD="${_usEr}/.drush" _alTxt
   # Sites-reap enablement is resolved once per account, and every OFF->ON flip
   # only ARMS on its first enabled run (nothing moved): the consecutive-night
   # ghost counters keep counting during dry-run, so a flip would otherwise
@@ -2457,16 +3074,17 @@ _cleanup_ghost_drushrc() {
     if [ -e "${_usEr}/log/ctrl/ghost-reap-armed.info" ]; then
       _GH_REAP_ON=YES
     else
-      mkdir -p ${_usEr}/log/ctrl
-      touch ${_usEr}/log/ctrl/ghost-reap-armed.info
+      _log_ctrl_mark ghost-reap-armed.info
       echo "GHOST sites cleanup enabled -- arming run for ${_HM_U}, nothing moved tonight"
     fi
   else
-    rm -f ${_usEr}/log/ctrl/ghost-reap-armed.info
+    _acct_in_real_dir "${_usEr}/log/ctrl" rm -f -- ./ghost-reap-armed.info
   fi
-  for _thisAlias in `find ${_usEr}/.drush/*.alias.drushrc.php -maxdepth 1 -type f \
-    | sort`; do
-    _aliasName=$(echo "${_thisAlias}" | cut -d'/' -f6 | awk '{ print $1}' 2>&1)
+  for _thisAlias in `_acct_in_real_dir "${_drD}" find . -maxdepth 1 -mindepth 1 \
+    -type f -name '*.alias.drushrc.php' ! -name '.*' | sort`; do
+    _thisAlias="${_drD}/${_thisAlias#./}"
+    _alTxt=$(_acct_read_in "${_drD}" "${_thisAlias##*/}")
+    _aliasName="${_thisAlias##*/}"
     _aliasName=$(echo "${_aliasName}" \
       | sed "s/.alias.drushrc.php//g" \
       | awk '{ print $1}' 2>&1)
@@ -2474,12 +3092,12 @@ _cleanup_ghost_drushrc() {
       || [[ "${_aliasName}" =~ (^)"hostmaster" ]]; then
       _IS_SITE=NO
     elif [[ "${_aliasName}" =~ (^)"platform_" ]]; then
-      _Plm=$(cat ${_thisAlias} \
+      _Plm=$(printf '%s\n' "${_alTxt}" \
         | grep "root'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
-      _gh_pmark="${_usEr}/log/ctrl/ghost-drushrc-platform-${_aliasName}.seen"
+      _gh_pmark="ghost-drushrc-platform-${_aliasName}.seen"
       # _Plm is parsed from a Drush alias exactly like _Dir/_Plr in the per-site
       # loop, but reaches an unconditional root "mv -f" -- so it needs the same
       # anchor those get: a real dir, not a symlink, resolving under THIS
@@ -2489,45 +3107,55 @@ _cleanup_ghost_drushrc() {
       elif [ -d "${_Plm}" ]; then
         # Version-agnostic: a real docroot or a vendor/ tree = live platform.
         if [ -n "$(_detect_real_docroot "${_Plm}")" ] || [ -e "${_Plm}/vendor" ]; then
-          _ghost_seen_reset "${_gh_pmark}"
-        elif _ghost_seen_enough "${_gh_pmark}" \
+          _ghost_seen_reset_acct "${_gh_pmark}"
+        elif _ghost_seen_enough_acct "${_gh_pmark}" \
           && { _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_PLATFORMS_CLEANUP \
             || _cnf_flag_yes /root/.barracuda.cnf _GHOST_PLATFORMS_CLEANUP; }; then
-          mkdir -p ${_usEr}/undo
-          mv -f ${_Plm} ${_usEr}/undo/ &> /dev/null
-          mv -f ${_thisAlias} ${_usEr}/undo/ &> /dev/null
-          echo "GHOST broken platform ${_Plm} + alias detected and moved to ${_usEr}/undo/"
+          # the alias goes only with its tree: an alias moved alone would
+          # leave the tree untracked and never reported again
+          if ! _acct_undo_tree "${_Plm}" &> /dev/null; then
+            echo "GHOST broken platform ${_Plm} detected and not moved: ${_GH_REFUSED}"
+          elif _acct_in_real_dir "${_drD}" _acct_undo_here "${_thisAlias##*/}" &> /dev/null; then
+            echo "GHOST broken platform ${_Plm} + alias detected and moved to ${_usEr}/undo/"
+          else
+            echo "GHOST broken platform ${_Plm} detected and moved to ${_usEr}/undo/, its alias not moved: ${_GH_REFUSED}"
+          fi
         else
           echo "GHOST broken platform ${_Plm} detected (dry-run/grace; set _GHOST_PLATFORMS_CLEANUP=YES to move)"
         fi
       else
-        if _ghost_seen_enough "${_gh_pmark}" \
+        if _ghost_seen_enough_acct "${_gh_pmark}" \
           && { _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_PLATFORMS_CLEANUP \
             || _cnf_flag_yes /root/.barracuda.cnf _GHOST_PLATFORMS_CLEANUP; }; then
-          mkdir -p ${_usEr}/undo
-          mv -f ${_thisAlias} ${_usEr}/undo/ &> /dev/null
-          echo "GHOST nodir platform alias ${_thisAlias} detected and moved to ${_usEr}/undo/"
+          if _acct_in_real_dir "${_drD}" _acct_undo_here "${_thisAlias##*/}" &> /dev/null; then
+            echo "GHOST nodir platform alias ${_thisAlias} detected and moved to ${_usEr}/undo/"
+          else
+            echo "GHOST nodir platform alias ${_thisAlias} detected and not moved: ${_GH_REFUSED}"
+          fi
         else
           echo "GHOST nodir platform alias ${_thisAlias} detected (dry-run/grace; set _GHOST_PLATFORMS_CLEANUP=YES to move)"
         fi
       fi
     else
       _T_SITE_NAME="${_aliasName}"
-      _gh_smark="${_usEr}/log/ctrl/ghost-site-${_T_SITE_NAME}.seen"
+      _gh_smark="ghost-site-${_T_SITE_NAME}.seen"
       if [[ "${_T_SITE_NAME}" =~ ".restore"($) ]]; then
         _IS_SITE=NO
         # .restore leftover: move only the alias (never the vhost, matching the
         # authoritative ltd-user handling), gated + persisted.
-        if _ghost_seen_enough "${_gh_smark}" \
+        if _ghost_seen_enough_acct "${_gh_smark}" \
           && [ "${_GH_REAP_ON}" = "YES" ]; then
-          mkdir -p ${_usEr}/undo
-          mv -f ${_usEr}/.drush/${_T_SITE_NAME}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
-          echo "GHOST .restore alias ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
+          if _acct_in_real_dir "${_drD}" \
+            _acct_undo_here "${_T_SITE_NAME}.alias.drushrc.php" &> /dev/null; then
+            echo "GHOST .restore alias ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
+          else
+            echo "GHOST .restore alias ${_T_SITE_NAME} detected and not moved: ${_GH_REFUSED}"
+          fi
         else
           echo "GHOST .restore alias ${_T_SITE_NAME} detected (dry-run/grace; set _GHOST_SITES_CLEANUP=YES to move)"
         fi
       else
-        _T_SITE_FDIR=$(cat ${_thisAlias} \
+        _T_SITE_FDIR=$(printf '%s\n' "${_alTxt}" \
           | grep "site_path'" \
           | cut -d: -f2 \
           | awk '{ print $3}' \
@@ -2542,7 +3170,7 @@ _cleanup_ghost_drushrc() {
           || [ "${_T_SITE_FDIR}" = "${_T_SITE_FDIR#/data/disk/}" ] \
           || ! _validate_loop_dir "${_T_SITE_FDIR}"; then
           _IS_SITE=YES
-          _ghost_seen_reset "${_gh_smark}"
+          _ghost_seen_reset_acct "${_gh_smark}"
         elif [ -e "${_T_SITE_FDIR}/drushrc.php" ] \
           || [ -L "${_T_SITE_FDIR}/drushrc.php" ]; then
           # drushrc.php present = a registered, live site. Do NOT also require
@@ -2551,10 +3179,10 @@ _cleanup_ghost_drushrc() {
           # mid-repoint), so a present settings file alone keeps the site.
           if [ ! -e "${_T_SITE_FDIR}/modules" ] \
             && ! _is_foreign_cms_root "${_T_SITE_FDIR%/sites/*}"; then
-            mkdir ${_T_SITE_FDIR}/modules
+            _site_in_resolved_dir "${_T_SITE_FDIR}" mkdir ./modules
           fi
           _IS_SITE=YES
-          _ghost_seen_reset "${_gh_smark}"
+          _ghost_seen_reset_acct "${_gh_smark}"
         else
           # drushrc.php absent = ghost candidate. Require persistence across
           # consecutive nights, then split flags: registration (alias + vhost)
@@ -2577,7 +3205,7 @@ _cleanup_ghost_drushrc() {
           if [[ "${_T_SITE_FDIR}" =~ "aegir/distro" ]]; then
             _GH_CLASS=front-end
           else
-            _T_SITE_ROOT=$(cat ${_thisAlias} \
+            _T_SITE_ROOT=$(printf '%s\n' "${_alTxt}" \
               | grep "'root' =>" \
               | cut -d: -f2 \
               | awk '{ print $3}' \
@@ -2591,9 +3219,9 @@ _cleanup_ghost_drushrc() {
               # docroots, or a site stranded on such a platform reads as a ghost.
               _GH_SDOC=$(_detect_real_docroot "${_T_SITE_ROOT}") \
                 || _GH_SDOC="${_T_SITE_ROOT}"
-              for _GH_PALIAS in ${_usEr}/.drush/platform_*.alias.drushrc.php; do
-                [ -e "${_GH_PALIAS}" ] || continue
-                _GH_PROOT=$(cat ${_GH_PALIAS} \
+              for _GH_PALIAS in `_acct_in_real_dir "${_drD}" \
+                compgen -G './platform_*.alias.drushrc.php'`; do
+                _GH_PROOT=$(_acct_read_in "${_drD}" "${_GH_PALIAS#./}" \
                   | grep "'root' =>" \
                   | cut -d: -f2 \
                   | awk '{ print $3}' \
@@ -2609,7 +3237,7 @@ _cleanup_ghost_drushrc() {
               done
             fi
           fi
-          if ! _ghost_seen_enough "${_gh_smark}"; then
+          if ! _ghost_seen_enough_acct "${_gh_smark}"; then
             echo "GHOST drushrc for ${_T_SITE_NAME} detected (grace run, not moved)"
           elif [ "${_GH_CLASS}" != "ghost" ]; then
             echo "GHOST candidate ${_T_SITE_NAME} SKIPPED (${_GH_CLASS}: operator review needed, nothing moved)"
@@ -2630,18 +3258,28 @@ _cleanup_ghost_drushrc() {
               _GH_LINE="GHOST backend leftover for ${_T_SITE_NAME} (front-end check failed)"
             fi
             if [ "${_GH_REAP_ON}" = "YES" ]; then
-              mkdir -p ${_usEr}/undo
-              mv -f ${_usEr}/.drush/${_T_SITE_NAME}.alias.drushrc.php ${_usEr}/undo/ &> /dev/null
-              echo "${_GH_LINE} detected and moved to ${_usEr}/undo/"
+              if _acct_in_real_dir "${_drD}" \
+                _acct_undo_here "${_T_SITE_NAME}.alias.drushrc.php" &> /dev/null; then
+                echo "${_GH_LINE} detected and moved to ${_usEr}/undo/"
+              else
+                echo "${_GH_LINE} detected and not moved: ${_GH_REFUSED}"
+              fi
               if [[ ! "${_T_SITE_FDIR}" =~ "aegir/distro" ]]; then
-                mv -f ${_usEr}/config/server_master/nginx/vhost.d/${_T_SITE_NAME} ${_usEr}/undo/ghost-vhost-${_T_SITE_NAME} &> /dev/null
-                echo "GHOST vhost for ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
+                if _acct_in_real_dir "${_usEr}/config/server_master/nginx/vhost.d" \
+                  _acct_undo_here "${_T_SITE_NAME}" "ghost-vhost-${_T_SITE_NAME}" &> /dev/null; then
+                  echo "GHOST vhost for ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
+                else
+                  echo "GHOST vhost for ${_T_SITE_NAME} detected and not moved: ${_GH_REFUSED}"
+                fi
               fi
               if [ -d "${_T_SITE_FDIR}" ] \
                 && { _cnf_flag_yes /root/.${_HM_U}.octopus.cnf _GHOST_SITE_FILES_CLEANUP \
                   || _cnf_flag_yes /root/.barracuda.cnf _GHOST_SITE_FILES_CLEANUP; }; then
-                mv -f ${_T_SITE_FDIR} ${_usEr}/undo/ghost-site-${_T_SITE_NAME} &> /dev/null
-                echo "GHOST site dir ${_T_SITE_FDIR} for ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
+                if _acct_undo_tree "${_T_SITE_FDIR}" "ghost-site-${_T_SITE_NAME}" &> /dev/null; then
+                  echo "GHOST site dir ${_T_SITE_FDIR} for ${_T_SITE_NAME} detected and moved to ${_usEr}/undo/"
+                else
+                  echo "GHOST site dir ${_T_SITE_FDIR} for ${_T_SITE_NAME} detected and not moved: ${_GH_REFUSED}"
+                fi
               fi
             else
               echo "${_GH_LINE} detected (dry-run; set _GHOST_SITES_CLEANUP=YES to move)"
@@ -2653,12 +3291,71 @@ _cleanup_ghost_drushrc() {
   done
 }
 
+### The immutable flag set (+) or cleared (-) on a directory, or on a regular
+### file with a single link, through a handle opened without following a link
+### or blocking on a FIFO: a hard link, a link, a FIFO or anything else is
+### refused (status 1). Args: + or -, then the names.
+_ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or do { $rc = 1; next }; my @s = stat($h); if (@s && (-d _ || (-f _ && $s[3] == 1))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); $fl = $op eq "+" ? ($fl | 0x10) : ($fl & ~0x10); ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } else { $rc = 1 } close($h); } exit $rc'
+### chattr +i on the regular files ./$@ of the current (pinned) directory,
+### through a handle and never by name (_ACCT_CHATTR_PL); a link, a hard
+### link or anything else at a name is left alone, so the flag, which only
+### root can clear, never lands on a file a link was put there for.
+_chattr_plain_here() {
+  local _f _l=()
+  for _f in "$@"; do
+    [ -f "./${_f}" ] && [ ! -L "./${_f}" ] && _l+=( "./${_f}" )
+  done
+  [ "${#_l[@]}" -gt 0 ] || return 0
+  perl -e "${_ACCT_CHATTR_PL}" + "${_l[@]}"
+  return 0
+}
+### A Cloudflare DNS hook for dehydrated, cloned by root as tools/le/hooks/$1
+### from the repository $2: only inside the real hooks/ (made first if
+### missing), which is taken back as root:root 0755 first -- the nightly
+### account pass hands tools/le to the account, and the clone must land in
+### a directory the account can swap nothing in -- and only while the clone
+### dir is not there yet. A failed clone is tried again the next night.
+_le_hook_clone() {
+  _acct_in_real_dir "${_usEr}/tools/le" mkdir -p ./hooks 2> /dev/null
+  _acct_in_real_dir "${_usEr}/tools/le/hooks" _le_hook_clone_here "${1}" "${2}"
+}
+_le_hook_clone_here() {
+  local _st
+  chown root:root . 2> /dev/null && chmod 0755 . 2> /dev/null
+  # root's, and nobody else's to write
+  _st=$(stat -c '%u %a' . 2> /dev/null)
+  [ "${_st%% *}" = "0" ] && [[ "${_st##* }" =~ ^[0-7]+$ ]] \
+    && (( (8#${_st##* } & 8#022) == 0 )) || return 1
+  if [ -e "./${1}" ] || [ -L "./${1}" ]; then
+    return 1
+  fi
+  git clone "${2}" "./${1}" 2> /dev/null
+}
+### In a hook clone this pass just made (the current, pinned directory): true
+### only while the directory and ./$1 are root's own regular file, so nothing
+### there can be swapped by the account between this test and root's use.
+_le_hook_root_here() {
+  [ "$(stat -c '%u' . 2> /dev/null)" = "0" ] \
+    && [ -f "./${1}" ] && [ ! -L "./${1}" ] \
+    && [ "$(stat -c '%u' -- "./${1}" 2> /dev/null)" = "0" ]
+}
+_le_hook_exec_here() {
+  _le_hook_root_here "${1}" && _chmod_nofollow_here f 0755 "./${1}"
+}
+### The Python hook made executable, and its requirements installed by root's
+### pip3 only from that root-owned clone.
+_le_hook_py_here() {
+  _le_hook_exec_here hook.py || return 1
+  _le_hook_root_here requirements.txt \
+    && pip3 install -r ./requirements.txt 2> /dev/null
+}
+
 _le_ssl_check_update() {
   ### Work on a local copy: the www strips below (wildcard mode) otherwise
   ### rewrite the caller's per-site loop variable, so every later leg of the
   ### iteration addresses @<stripped> -- an alias that does not exist for a
   ### www-prefixed site -- and _if_gen_goaccess loses its www variant.
-  local _Dom="${_Dom}"
+  local _Dom="${_Dom}" _vhTxt
   _exeLe="${_usEr}/tools/le/dehydrated"
   _Vht="${_usEr}/config/server_master/nginx/vhost.d/${_Dom}"
   ### The immutable marker Provision honours on Verify must also stop this
@@ -2671,12 +3368,14 @@ _le_ssl_check_update() {
     return 0
   fi
   if [ -x "${_exeLe}" ] && [ -e "${_Vht}" ]; then
-    _SSL_ON_TEST=$(cat ${_Vht} | grep "443 ssl" 2>&1)
+    ### The vhost is oN's: read once, bounded and never through a link.
+    _vhTxt=$(_acct_read_in "${_Vht%/*}" "${_Vht##*/}")
+    _SSL_ON_TEST=$(printf '%s\n' "${_vhTxt}" | grep "443 ssl" 2>&1)
     if [[ "${_SSL_ON_TEST}" =~ "443 ssl" ]]; then
       if [ -e "${_usEr}/tools/le/certs/${_Dom}/fullchain.pem" ]; then
         echo "Running LE cert check directly for ${_Dom}"
         _usEaliases=""
-        _siTealiases=`cat ${_Vht} \
+        _siTealiases=`printf '%s\n' "${_vhTxt}" \
           | grep "server_name" \
           | sed "s/server_name//g; s/;//g" \
           | sort | uniq \
@@ -2685,7 +3384,7 @@ _le_ssl_check_update() {
           | sort | uniq`
         for _aliAs in `echo "${_siTealiases}"`; do
           if [ -e "${_usEr}/static/control/wildcard-enable-${_Dom}.info" ]; then
-            _Dom=$(echo ${_Dom} | sed 's/^www.//g' 2>&1)
+            _Dom=$(echo "${_Dom}" | sed 's/^www.//g' 2>&1)
             if [ -z "${_usEaliases}" ] \
               && [ ! -z "${_aliAs}" ] \
               && [[ ! "${_aliAs}" =~ ".nodns." ]] \
@@ -2715,23 +3414,22 @@ _le_ssl_check_update() {
             fi
           fi
         done
-		_DOM=$(date +%e)
-		_DOM=${_DOM//[^0-9]/}
-		_RDM=$((RANDOM%25+6))
-		if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
-		  if [ ! -e "${_usEr}/log/ctrl/site.${_Dom}.cert-x1-rebuilt.info" ]; then
-			_leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1' --force"
-			mkdir -p ${_usEr}/log/ctrl
-			touch ${_usEr}/log/ctrl/site.${_Dom}.cert-x1-rebuilt.info
-		  else
-			_leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
-		  fi
-		else
-		  _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
-		fi
+        _DOM=$(date +%e)
+        _DOM=${_DOM//[^0-9]/}
+        _RDM=$((RANDOM%25+6))
+        if [ "${_DOM}" = "${_RDM}" ] || [ -e "${_usEr}/static/control/force-ssl-certs-rebuild.info" ]; then
+          if [ ! -e "${_usEr}/log/ctrl/site.${_Dom}.cert-x1-rebuilt.info" ]; then
+            _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1' --force"
+            _log_ctrl_mark "site.${_Dom}.cert-x1-rebuilt.info"
+          else
+            _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+          fi
+        else
+          _leParams="--cron --ipv4 --preferred-chain 'ISRG Root X1'"
+        fi
         _dhArgs="--domain ${_Dom} ${_usEaliases}"
         if [ -e "${_usEr}/static/control/wildcard-enable-${_Dom}.info" ]; then
-          _Dom=$(echo ${_Dom} | sed 's/^www.//g' 2>&1)
+          _Dom=$(echo "${_Dom}" | sed 's/^www.//g' 2>&1)
           echo "--domain *.${_Dom}"
           if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ] \
             || [ -e "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ]; then
@@ -2739,50 +3437,39 @@ _le_ssl_check_update() {
             ### group-writable static/, so both the flag file and the control
             ### dir are names a tenant can swap for a symlink. chattr has no -h
             ### and follows, which would pin the immutable bit -- root-only to
-            ### clear -- on an arbitrary target. Skip, never delete: these are
-            ### the tenant's own opt-in flags, not root-maintained INIs.
-            if [ ! -L "${_usEr}/static/control" ]; then
-              [ ! -L "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ] \
-                && [ -f "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ] \
-                && chattr +i "${_usEr}/static/control/cloudflare-dns-ssl-py.info"
-              [ ! -L "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ] \
-                && [ -f "${_usEr}/static/control/cloudflare-dns-ssl-sh.info" ] \
-                && chattr +i "${_usEr}/static/control/cloudflare-dns-ssl-sh.info"
-            fi
+            ### clear -- on an arbitrary target: lock the flags only inside the
+            ### real static/control, and only while each is a regular file.
+            ### Skip, never delete: these are the tenant's own opt-in flags,
+            ### not root-maintained INIs.
+            _acct_in_real_dir "${_usEr}/static/control" _chattr_plain_here \
+              cloudflare-dns-ssl-py.info cloudflare-dns-ssl-sh.info
             export CF_DNS_SERVERS='8.8.8.8 8.8.4.4'
             export CF_SETTLE_TIME='30'
             export CF_DEBUG='true'
-            ### Absolute clone targets and an exit-status gate. The old form
-            ### keyed only on "hook file absent", so a FAILED clone (no network,
-            ### or a hooks dir that already exists) still reached the root pip3
-            ### install -- and that read a RELATIVE path resolved against an
-            ### unchecked cd, i.e. whatever cwd the previous site leg left.
-            ### pip runs packaging code as root; it may only ever see a tree
-            ### this clone just created. chmod has no -h, so precheck the link.
+            ### An exit-status gate on the clone: the old form keyed only on
+            ### "hook file absent", so a FAILED clone (no network, or a hooks
+            ### dir that already exists) still reached the root pip3 install.
+            ### tools/le is oN's, so the clone lands only in the real,
+            ### root-owned hooks/, and the chmod and the pip3 install act only
+            ### inside that root-owned clone (_le_hook_root_here): pip runs
+            ### packaging code as root and may only ever see a tree this clone
+            ### just created, never a name the account swapped in.
             if [ ! -e "${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh" ]; then
               _apt_clean_update
               apt-get install gawk jq publicsuffix ldnsutils ${_aptYesUnth} 2> /dev/null
-              mkdir -p ${_usEr}/tools/le/hooks
-              if git clone https://github.com/omega8cc/dehydrated-hook-cloudflare \
-                "${_usEr}/tools/le/hooks/cloudflare-sh" 2> /dev/null \
-                && [ ! -L "${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh" ] \
-                && [ -f "${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh" ]; then
-                chmod 755 "${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh"
+              if _le_hook_clone cloudflare-sh \
+                https://github.com/omega8cc/dehydrated-hook-cloudflare; then
+                _acct_in_real_dir "${_usEr}/tools/le/hooks/cloudflare-sh" \
+                  _le_hook_exec_here cf-hook.sh
               fi
             fi
             if [ ! -e "${_usEr}/tools/le/hooks/cloudflare-py/hook.py" ]; then
               _apt_clean_update
               apt-get install python3-pip python-is-python3 ${_aptYesUnth} 2> /dev/null
-              mkdir -p ${_usEr}/tools/le/hooks
-              if git clone https://github.com/omega8cc/letsencrypt-cloudflare-hook \
-                "${_usEr}/tools/le/hooks/cloudflare-py" 2> /dev/null \
-                && [ ! -L "${_usEr}/tools/le/hooks/cloudflare-py/hook.py" ] \
-                && [ -f "${_usEr}/tools/le/hooks/cloudflare-py/hook.py" ]; then
-                chmod 755 "${_usEr}/tools/le/hooks/cloudflare-py/hook.py"
-                if [ ! -L "${_usEr}/tools/le/hooks/cloudflare-py/requirements.txt" ] \
-                  && [ -f "${_usEr}/tools/le/hooks/cloudflare-py/requirements.txt" ]; then
-                  pip3 install -r "${_usEr}/tools/le/hooks/cloudflare-py/requirements.txt" 2> /dev/null
-                fi
+              if _le_hook_clone cloudflare-py \
+                https://github.com/omega8cc/letsencrypt-cloudflare-hook; then
+                _acct_in_real_dir "${_usEr}/tools/le/hooks/cloudflare-py" \
+                  _le_hook_py_here
               fi
             fi
             if [ -e "${_usEr}/static/control/cloudflare-dns-ssl-py.info" ]; then
@@ -2791,7 +3478,7 @@ _le_ssl_check_update() {
               _thisHook="${_usEr}/tools/le/hooks/cloudflare-sh/cf-hook.sh"
             fi
             if [ -e "${_thisHook}" ] && [ -e "${_usEr}/tools/le/config" ]; then
-              chattr +i ${_usEr}/tools/le/config
+              _acct_in_real_dir "${_usEr}/tools/le" _chattr_plain_here config
               _dhArgs="--alias ${_Dom} --domain *.${_Dom} --domain ${_Dom} ${_usEaliases}"
               _dhArgs=" ${_dhArgs} --challenge dns-01 --hook '${_thisHook}'"
             fi
@@ -2808,20 +3495,26 @@ _le_ssl_check_update() {
         else
           sleep 3
         fi
-        echo ${_MOMENT} >> /var/log/boa/le/${_Dom}
+        echo "${_MOMENT}" >> "/var/log/boa/le/${_Dom}"
       fi
     fi
   fi
 }
 
 _daily_process() {
+  ### config/, .drush/, log/ and .tmp/ are oN's: the vhost list is taken and
+  ### every vhost and alias read only inside the real directory, bounded and
+  ### never through a link or a FIFO (_acct_in_real_dir, _acct_read_in); the
+  ### log/ctrl markers go through _log_ctrl_mark.
+  local _vhD="${_usEr}/config/server_master/nginx/vhost.d" _vhTxt _alTxt _iniTxt
   _cleanup_ghost_vhosts
   _cleanup_ghost_drushrc
-  for _Site in `find ${_usEr}/config/server_master/nginx/vhost.d \
+  for _Site in `_acct_in_real_dir "${_vhD}" find . \
     -maxdepth 1 -mindepth 1 -type f | sort`; do
+    _Site="${_vhD}/${_Site#./}"
     _MOMENT=$(date +%y%m%d-%H%M%S)
     echo ${_MOMENT} Start Counting Site ${_Site}
-    _Dom=$(echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}' 2>&1)
+    _Dom="${_Site##*/}"
     _Dan=
     _Plx=
     _Plr=
@@ -2830,8 +3523,9 @@ _daily_process() {
     _codeBaseCheckFile=
     _codeBaseCheckCtrl=
     _FOREIGN_CMS=NO
-    if [ -e "${_usEr}/config/server_master/nginx/vhost.d/${_Dom}" ]; then
-      _Plx=$(cat ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} \
+    _vhTxt=$(_acct_read_in "${_vhD}" "${_Dom}")
+    if [ -e "${_vhD}/${_Dom}" ]; then
+      _Plx=$(printf '%s\n' "${_vhTxt}" \
         | grep "root " \
         | cut -d: -f2 \
         | awk '{ print $2}' \
@@ -2844,7 +3538,7 @@ _daily_process() {
     fi
     _STATUS_DISABLED=NO
     _STATUS_TEST=$(grep "Do not reveal Aegir front-end URL here" \
-      ${_usEr}/config/server_master/nginx/vhost.d/${_Dom} 2>&1)
+      <<< "${_vhTxt}" 2>&1)
     if [[ "${_STATUS_TEST}" =~ "Do not reveal Aegir front-end URL here" ]]; then
       _STATUS_DISABLED=YES
       echo "${_Dom} site is DISABLED"
@@ -2852,13 +3546,14 @@ _daily_process() {
     if [ -e "${_usEr}/.drush/${_Dan}.alias.drushrc.php" ] \
       && [ "${_STATUS_DISABLED}" = "NO" ]; then
       echo "Dom is ${_Dom}"
-      _Dir=$(cat ${_usEr}/.drush/${_Dan}.alias.drushrc.php \
+      _alTxt=$(_acct_read_in "${_usEr}/.drush" "${_Dan}.alias.drushrc.php")
+      _Dir=$(printf '%s\n' "${_alTxt}" \
         | grep "site_path'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
         | sed "s/[\,']//g" 2>&1)
       _DIR_CTRL_F="${_Dir}/modules/boa_site_control.ini"
-      _Plr=$(cat ${_usEr}/.drush/${_Dan}.alias.drushrc.php \
+      _Plr=$(printf '%s\n' "${_alTxt}" \
         | grep "root'" \
         | cut -d: -f2 \
         | awk '{ print $3}' \
@@ -2933,13 +3628,13 @@ _daily_process() {
           _codeBaseCheckDir="${_usEr}/log/ctrl"
           _codeBaseCheckFile="plr.${_PlrID}.codebasecheck-${_NOW}.info"
           _codeBaseCheckCtrl="${_codeBaseCheckDir}/${_codeBaseCheckFile}"
-          [ ! -e "${_codeBaseCheckDir}" ] && mkdir "${_codeBaseCheckDir}"
+          _acct_in_real_dir "${_usEr}/log" mkdir -p ./ctrl 2> /dev/null
           if [ -x "/opt/local/bin/codebasecheck" ] \
             && [ -e "${_codeBaseCheckDir}" ] \
             && [ ! -e "${_codeBaseCheckCtrl}" ]; then
             codebasecheck "${_Plr}"
             wait
-            touch "${_codeBaseCheckCtrl}"
+            _log_ctrl_mark "${_codeBaseCheckFile}"
           fi
         fi
         if [ "${_FOREIGN_CMS}" != "YES" ]; then
@@ -2952,13 +3647,13 @@ _daily_process() {
             if [ ! -f "${_usEr}/log/ctrl/plr.${_PlrID}.hm-fix-${_NOW}.info" ]; then
               su -s /bin/bash - ${_HM_U} -c "drush8 cc drush" &> /dev/null
               wait
-              rm -rf ${_usEr}/.tmp/cache
+              _acct_in_real_dir "${_usEr}/.tmp" rm -rf -- ./cache
               _run_drush8_hmr_cmd "dis update syslog dblog -y"
               _run_drush8_hmr_cmd "cron"
               _run_drush8_hmr_cmd "cache-clear all"
               _run_drush8_hmr_cmd "cache-clear all"
               _run_drush8_hmr_cmd "utf8mb4-convert-databases -y"
-              touch ${_usEr}/log/ctrl/plr.${_PlrID}.hm-fix-${_NOW}.info
+              _log_ctrl_mark "plr.${_PlrID}.hm-fix-${_NOW}.info"
             fi
           fi
           if [ ! -z "${_Dan}" ] \
@@ -2992,8 +3687,8 @@ _daily_process() {
               _le_ssl_check_update
               if [ "${_ENABLE_GOACCESS}" = "YES" ] && [ -e "${_usEr}/static/control/goaccess/${_Dom}.info" ]; then
                 _noPrefixDom="${_Dom#www.}"
-                _if_gen_goaccess ${_noPrefixDom}
-                _if_gen_goaccess ${_Dom}
+                _if_gen_goaccess "${_noPrefixDom}"
+                _if_gen_goaccess "${_Dom}"
               fi
               ;;
             esac
@@ -3023,19 +3718,20 @@ _daily_process() {
         ### opt-out from; the box-wide switches below still apply.
         if [ "${_FOREIGN_CMS}" != "YES" ]; then
           ### The strip at the head of this iteration is many drush runs old by
-          ### now, so re-strip before this late read/append leg. No-op on a
-          ### regular file.
+          ### now: this late leg reads the INI once (_ctrl_ini_read) and
+          ### appends through _ctrl_ini_add, never through a name swapped for a
+          ### link or a FIFO since. The re-strip is a no-op on a regular file.
           _desymlink_planted "${_PLR_CTRL_F}"
-          if [ -e "${_PLR_CTRL_F}" ]; then
+          if _iniTxt=$(_ctrl_ini_read "${_PLR_CTRL_F}"); then
             _FIX_PERMISSIONS_PRESENT=$(grep "fix_files_permissions_daily" \
-              ${_PLR_CTRL_F} 2>&1)
+              <<< "${_iniTxt}" 2>&1)
             if [[ "${_FIX_PERMISSIONS_PRESENT}" =~ "fix_files_permissions_daily" ]]; then
               _DO_NOTHING=YES
             else
-              echo ";fix_files_permissions_daily = TRUE" >> ${_PLR_CTRL_F}
+              _ctrl_ini_add "${_PLR_CTRL_F}" ";fix_files_permissions_daily = TRUE"
             fi
             _FIX_PERMISSIONS_TEST=$(grep "^fix_files_permissions_daily = FALSE" \
-              ${_PLR_CTRL_F} 2>&1)
+              <<< "${_iniTxt}" 2>&1)
             if [[ "${_FIX_PERMISSIONS_TEST}" =~ "fix_files_permissions_daily = FALSE" ]]; then
               _DONT_TOUCH_PERMISSIONS=YES
             fi
@@ -3045,8 +3741,11 @@ _daily_process() {
           && [ -e "${_Plr}/web.config" ] \
           && [ ! -e "${_Plr}/core" ] \
           && [ ! -f "${_Plr}/profiles/SA-CORE-2014-005-D7-fix.info" ]; then
-          _PATCH_TEST=$(grep "foreach (array_values(\$data)" \
-            ${_Plr}/includes/database/database.inc 2>&1)
+          ### read bounded, never through a link at the name or blocked on a
+          ### FIFO (see _fix_seven_core_patch)
+          _PATCH_TEST=$(_site_in_resolved_dir "${_Plr}/includes/database" \
+            _acct_read_plain_here database.inc \
+            | grep "foreach (array_values(\$data)" 2>&1)
           if [[ "${_PATCH_TEST}" =~ "array_values" ]]; then
             _DONT_TOUCH_PERMISSIONS="${_DONT_TOUCH_PERMISSIONS}"
           else

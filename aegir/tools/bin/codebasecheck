@@ -64,11 +64,64 @@ varcharacter varying virtual when where while window with write xor
 year_month zerofill
 "
 
+# An account owns /data/disk/<oN>, so any name in its codebases and its
+# .drush can be a link or a FIFO, and a directory on the way can be one.
+# Root reads those names only through these.
+#
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory; once entered, ./name stays there
+# whatever is swapped. A copy of the helper in lib/functions/helper.sh.inc.
+_cbc_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_cbc_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# The file $1, read as _cbc_read_here reads it inside its real directory.
+_cbc_read_file() {
+  _cbc_in_real_dir "${1%/*}" _cbc_read_here "${1##*/}"
+}
+# The 'root' => lines of every ./*.alias.drushrc.php in the current (pinned)
+# directory, each alias read as _cbc_read_here reads it.
+_cbc_alias_roots_here() {
+  local _f
+  for _f in ./*.alias.drushrc.php; do
+    _cbc_read_here "${_f#./}" | grep -hE "'root'[[:space:]]*=>"
+  done
+}
+# grep -r over the real directory $1 from inside it, the grep options and
+# pattern in "$@": links met on the way are not followed and FIFOs are
+# skipped. Prints each hit as a full path under $1.
+_cbc_grep_tree() {
+  local _d="$1" _h
+  shift
+  _cbc_in_real_dir "${_d}" grep -r -D skip "$@" . 2> /dev/null \
+    | while IFS= read -r _h; do
+        printf '%s/%s\n' "${_d}" "${_h#./}"
+      done
+}
+
 # Function to get the core version of a codebase.
 # $1 = codebase path. Prints the version token (e.g. 7.105, 6.60, backdrop-1.35.x-dev) to stdout,
 # or an empty line if it cannot be determined. Diagnostics go to stderr.
+# Every version file is read inside its real directory: a codebase reached
+# through a link on the way reads as not determined.
 get_drupal_version() {
-  local _path="$1"
+  local _path="${1%/}"
   local _version_line
   local _version
 
@@ -77,9 +130,9 @@ get_drupal_version() {
   # Backdrop CMS: unique marker BACKDROP_VERSION in core/includes/bootstrap.inc (has core/ but no
   # core/lib/Drupal.php, so it must be matched before the Drupal 8+ probe below).
   if [ -f "${_path}/core/includes/bootstrap.inc" ] \
-    && grep -q "BACKDROP_VERSION" "${_path}/core/includes/bootstrap.inc"; then
+    && _cbc_read_file "${_path}/core/includes/bootstrap.inc" | grep -q "BACKDROP_VERSION"; then
     echo "Detected Backdrop CMS." >&2
-    _version_line=$(grep -m1 "define('BACKDROP_VERSION'" "${_path}/core/includes/bootstrap.inc")
+    _version_line=$(_cbc_read_file "${_path}/core/includes/bootstrap.inc" | grep -m1 "define('BACKDROP_VERSION'")
     _version=$(echo "${_version_line}" | sed -E "s/.*define\('BACKDROP_VERSION',[[:space:]]*'([^']+)'\).*/\1/")
     echo "Detected Backdrop version: ${_version}" >&2
     echo "backdrop-${_version}"
@@ -93,7 +146,7 @@ get_drupal_version() {
     && [ -f "${_path}/css.php" ] \
     && [ ! -d "${_path}/core" ]; then
     echo "Detected Textpattern." >&2
-    _version_line=$(grep -m1 'thisversion' "${_path}/textpattern/lib/constants.php")
+    _version_line=$(_cbc_read_file "${_path}/textpattern/lib/constants.php" | grep -m1 'thisversion')
     _version=$(echo "${_version_line}" | sed -E "s/.*thisversion[[:space:]]*=[[:space:]]*'([^']+)'.*/\1/")
     echo "Detected Textpattern version: ${_version}" >&2
     echo "textpattern-${_version}"
@@ -106,7 +159,7 @@ get_drupal_version() {
     && [ -f "${_path}/system/defines.php" ] \
     && [ ! -d "${_path}/core" ]; then
     echo "Detected Grav." >&2
-    _version_line=$(grep -m1 "define('GRAV_VERSION'" "${_path}/system/defines.php")
+    _version_line=$(_cbc_read_file "${_path}/system/defines.php" | grep -m1 "define('GRAV_VERSION'")
     _version=$(echo "${_version_line}" | sed -E "s/.*define\('GRAV_VERSION',[[:space:]]*'([^']+)'\).*/\1/")
     echo "Detected Grav version: ${_version}" >&2
     echo "grav-${_version}"
@@ -116,7 +169,7 @@ get_drupal_version() {
   # Drupal 8 and above.
   if [ -f "${_path}/core/lib/Drupal.php" ]; then
     echo "Detected Drupal 8 or higher." >&2
-    _version_line=$(grep -m1 'const VERSION' "${_path}/core/lib/Drupal.php")
+    _version_line=$(_cbc_read_file "${_path}/core/lib/Drupal.php" | grep -m1 'const VERSION')
     _version=$(echo "${_version_line}" | sed -E "s/.*const VERSION[[:space:]]*=[[:space:]]*'([^']+)'.*/\1/")
     echo "Detected Drupal version: ${_version}" >&2
     echo "${_version}"
@@ -125,9 +178,9 @@ get_drupal_version() {
 
   # Drupal 7.
   if [ -f "${_path}/includes/bootstrap.inc" ]; then
-    if grep -q "define('VERSION'," "${_path}/includes/bootstrap.inc"; then
+    if _cbc_read_file "${_path}/includes/bootstrap.inc" | grep -q "define('VERSION',"; then
       echo "Detected Drupal 7." >&2
-      _version_line=$(grep -m1 "define('VERSION'," "${_path}/includes/bootstrap.inc")
+      _version_line=$(_cbc_read_file "${_path}/includes/bootstrap.inc" | grep -m1 "define('VERSION',")
       _version=$(echo "${_version_line}" | sed -E "s/.*define\('VERSION',[[:space:]]*'([^']+)'\);.*/\1/")
       echo "Detected Drupal version: ${_version}" >&2
       echo "${_version}"
@@ -137,9 +190,9 @@ get_drupal_version() {
 
   # Drupal 6.
   if [ -f "${_path}/modules/system/system.module" ]; then
-    if grep -q "define('VERSION'," "${_path}/modules/system/system.module"; then
+    if _cbc_read_file "${_path}/modules/system/system.module" | grep -q "define('VERSION',"; then
       echo "Detected Drupal 6." >&2
-      _version_line=$(grep -m1 "define('VERSION'," "${_path}/modules/system/system.module")
+      _version_line=$(_cbc_read_file "${_path}/modules/system/system.module" | grep -m1 "define('VERSION',")
       _version=$(echo "${_version_line}" | sed -E "s/.*define\('VERSION',[[:space:]]*'([^']+)'\);.*/\1/")
       echo "Detected Drupal version: ${_version}" >&2
       echo "${_version}"
@@ -149,14 +202,14 @@ get_drupal_version() {
 
   # Fallbacks.
   if [ -f "${_path}/core/VERSION.txt" ]; then
-    _version=$(tr -d '[:space:]' < "${_path}/core/VERSION.txt")
+    _version=$(_cbc_read_file "${_path}/core/VERSION.txt" | tr -d '[:space:]')
     echo "Detected Drupal version (core/VERSION.txt): ${_version}" >&2
     echo "${_version}"
     return
   fi
 
   if [ -f "${_path}/VERSION.txt" ]; then
-    _version=$(tr -d '[:space:]' < "${_path}/VERSION.txt")
+    _version=$(_cbc_read_file "${_path}/VERSION.txt" | tr -d '[:space:]')
     echo "Detected Drupal version (VERSION.txt): ${_version}" >&2
     echo "${_version}"
     return
@@ -173,7 +226,9 @@ get_drupal_version() {
 # html/, web/, in that order. Keyed on index.php, the front controller present
 # in every Drupal docroot (D6..D11) regardless of build recipe. -f follows the
 # symlink and is false for a dangling link, so a decoy like web -> /etc cannot
-# register as a docroot. Returns 0 with the path, 1 if no docroot is found.
+# register as a docroot. A subdir that is itself a link is passed over: the
+# version reads stay in real directories, so a docroot -> web build is
+# checked at web/. Returns 0 with the path, 1 if no docroot is found.
 # Embedded here (not sourced from the install-time helper.sh.inc) so this
 # standalone tool carries its own structure-detection logic.
 _detect_real_docroot() {
@@ -185,6 +240,7 @@ _detect_real_docroot() {
     return 0
   fi
   for _sub in docroot html web; do
+    [ -L "${_plat}/${_sub}" ] && continue
     if [ -f "${_plat}/${_sub}/index.php" ]; then
       printf '%s\n' "${_plat}/${_sub}"
       return 0
@@ -199,12 +255,13 @@ _detect_real_docroot() {
 # Composer build can be its app root. Provision finds the web root on the fly and
 # never writes it back, while the aliases of the platform's sites carry the web
 # root. Each root is followed to the docroot Provision serves, so an app root and
-# its web root are one codebase, checked once.
+# its web root are one codebase, checked once. The aliases are read inside the
+# account's real .drush.
 _account_codebases() {
   local _acct_home="$1"
   local _plr
   local _doc
-  grep -hE "'root'[[:space:]]*=>" "${_acct_home}/.drush/"*.alias.drushrc.php 2>/dev/null \
+  _cbc_in_real_dir "${_acct_home}/.drush" _cbc_alias_roots_here 2>/dev/null \
     | sed -E "s/.*'root'[[:space:]]*=>[[:space:]]*'([^']+)'.*/\1/" \
     | while IFS= read -r _plr; do
         [ -z "${_plr}" ] && continue
@@ -305,9 +362,11 @@ classify_codebase() {
 }
 
 # List contributed/custom modules for a codebase, for manual review when it is incompatible.
-# $1 = codebase path, $2 = log file to append to.
+# $1 = codebase path, $2 = log file to append to. Each module directory is
+# walked from inside itself and every .info file read inside its own real
+# directory, never through a link on the way.
 list_contrib_modules() {
-  local _path="$1"
+  local _path="${1%/}"
   local _log="$2"
   local _module_paths=()
   local _module_dir
@@ -318,11 +377,9 @@ list_contrib_modules() {
 
   # Drupal 7 and below.
   [ -d "${_path}/sites/all/modules" ] && _module_paths+=("${_path}/sites/all/modules")
-  if ls -d "${_path}/sites/"*/modules 1> /dev/null 2>&1; then
-    for _module_dir in "${_path}/sites/"*/modules; do
-      _module_paths+=("${_module_dir}")
-    done
-  fi
+  while IFS= read -r _module_dir; do
+    [ -n "${_module_dir}" ] && _module_paths+=("${_path}/sites/${_module_dir}")
+  done < <(_cbc_in_real_dir "${_path}/sites" compgen -G '*/modules')
   # Drupal 8 and above.
   [ -d "${_path}/modules/contrib" ] && _module_paths+=("${_path}/modules/contrib")
   [ -d "${_path}/modules/custom" ] && _module_paths+=("${_path}/modules/custom")
@@ -330,12 +387,15 @@ list_contrib_modules() {
 
   for _module_dir in "${_module_paths[@]}"; do
     echo "Scanning directory: ${_module_dir}" >&2
-    find "${_module_dir}" -type f \( -name "*.info.yml" -o -name "*.info" \) 2>/dev/null | while read -r _file; do
-      _module_name=$(basename "$(dirname "${_file}")")
-      _module_version=$(grep -E '^(version|core)[:=]' "${_file}" 2>/dev/null | head -n1 | awk -F'[:=]' '{print $2}' | tr -d '[:space:]')
-      [ -z "${_module_version}" ] && _module_version="(version not specified)"
-      echo "Module: ${_module_name}, Version: ${_module_version}, Path: $(dirname "${_file}")" | tee -a "${_log}"
-    done
+    _cbc_in_real_dir "${_module_dir}" \
+      find -P . -type f \( -name "*.info.yml" -o -name "*.info" \) -print0 2>/dev/null \
+      | while IFS= read -r -d '' _file; do
+          _file="${_module_dir}/${_file#./}"
+          _module_name=$(basename "$(dirname "${_file}")")
+          _module_version=$(_cbc_read_file "${_file}" | grep -E '^(version|core)[:=]' 2>/dev/null | head -n1 | awk -F'[:=]' '{print $2}' | tr -d '[:space:]')
+          [ -z "${_module_version}" ] && _module_version="(version not specified)"
+          echo "Module: ${_module_name}, Version: ${_module_version}, Path: $(dirname "${_file}")" | tee -a "${_log}"
+        done
   done
 }
 
@@ -379,22 +439,27 @@ run_path_mode() {
 # Static per-platform red-flags in contrib/custom module code. $1 = platform, $2 = log.
 # Flags NO_AUTO_CREATE_USER (a removed sql_mode -> error 1231 on 8.x, cannot be restored) and
 # TYPE=<engine> CREATE-TABLE syntax (removed). Increments _DEEP_REVIEW_COUNT.
+# Each root is searched from inside itself (_cbc_grep_tree).
 _deep_static_scan() {
-  local _plr="$1"
+  local _plr="${1%/}"
   local _log="$2"
   local _roots=()
+  local _r
   local _hits
   local _n
   [ -d "${_plr}/sites/all/modules" ] && _roots+=("${_plr}/sites/all/modules")
-  if ls -d "${_plr}/sites/"*/modules 1> /dev/null 2>&1; then
-    _roots+=("${_plr}/sites/"*/modules)
-  fi
+  while IFS= read -r _r; do
+    [ -n "${_r}" ] && _roots+=("${_plr}/sites/${_r}")
+  done < <(_cbc_in_real_dir "${_plr}/sites" compgen -G '*/modules')
   [ -d "${_plr}/modules/contrib" ] && _roots+=("${_plr}/modules/contrib")
   [ -d "${_plr}/modules/custom" ] && _roots+=("${_plr}/modules/custom")
   [ "${#_roots[@]}" -eq 0 ] && return 0
 
-  _hits=$(grep -rlI "NO_AUTO_CREATE_USER" "${_roots[@]}" \
-    --include=*.php --include=*.inc --include=*.module --include=*.install 2>/dev/null | sort -u)
+  _hits=$(for _r in "${_roots[@]}"; do
+      _cbc_grep_tree "${_r}" -lI \
+        --include='*.php' --include='*.inc' --include='*.module' --include='*.install' \
+        -e "NO_AUTO_CREATE_USER"
+    done | sort -u)
   if [ -n "${_hits}" ]; then
     _n=$(echo "${_hits}" | wc -l | tr -d ' ')
     _DEEP_REVIEW_COUNT=$((_DEEP_REVIEW_COUNT + _n))
@@ -405,8 +470,10 @@ _deep_static_scan() {
     } | tee -a "${_log}"
   fi
 
-  _hits=$(grep -rliE "type=(myisam|innodb|memory|heap)" "${_roots[@]}" \
-    --include=*.install --include=*.sql 2>/dev/null | sort -u)
+  _hits=$(for _r in "${_roots[@]}"; do
+      _cbc_grep_tree "${_r}" -liE --include='*.install' --include='*.sql' \
+        -e "type=(myisam|innodb|memory|heap)"
+    done | sort -u)
   if [ -n "${_hits}" ]; then
     _n=$(echo "${_hits}" | wc -l | tr -d ' ')
     _DEEP_REVIEW_COUNT=$((_DEEP_REVIEW_COUNT + _n))

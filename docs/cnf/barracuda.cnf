@@ -334,6 +334,17 @@ _SYSTEM_AUTO_SECURITY=YES
 _APT_ACQUIRE_POLICY=YES
 
 ###
+### Every clear.sh run tells BOA's mirror this box's BOA release and OS
+### release (for example "BOA-5.88.855 devuan 5 daedalus"), and nothing else,
+### as the User-Agent of one HEAD request. It is what decides when support for
+### a legacy OS can be dropped, and it lives only in the mirrors' rotated
+### access logs. Enabled by default; to stop it:
+###
+###   _VERSION_REPORT=NO
+###
+_VERSION_REPORT=YES
+
+###
 ### NOTE: the group of settings displayed below is never stored
 ### permanently in this config file, since they are intended to be used
 ### only when required/useful for some reason, and while can be added

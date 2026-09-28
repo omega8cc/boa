@@ -203,13 +203,35 @@ _force_advanced_nginx_config() {
     rm -f ${_mtrInc}/nginx_octopus_include.conf
     rm -f ${_mtrInc}/nginx_simple_include.conf
   fi
-  chown aegir:aegir ${_mtrInc}/*
+  # -h: global.inc here is a link into /data/conf; the link is handed over,
+  # never what it leads to
+  chown -h aegir:aegir ${_mtrInc}/*
   chown aegir:aegir /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*
   if [ ! -e "/data/conf/nginx_high_load_off.conf" ]; then
     mkdir -p /data/conf
-    cp -af ${_locCnf}/nginx/nginx_high_load_off.conf /data/conf/nginx_high_load_off.conf
-    chmod 644 /data/conf/nginx_high_load_off.conf &> /dev/null
+    _acct_in_real_dir /data/conf _nginx_conf_put_here \
+      "${_locCnf}/nginx/nginx_high_load_off.conf" nginx_high_load_off.conf 644
   fi
+}
+
+#
+# The file $1 (root's own) put as ./$2 in the current (pinned) directory with
+# the owner and group of $1 and the mode $3, as cp -a and a chmod by name put
+# it, but through one handle (_ACCT_PUT_PL, helper.sh.inc) and renamed over
+# the name: a run of an earlier release handed /data/conf to the account it
+# upgraded, so a link put at the name is replaced, never written through,
+# and nothing is chmoded by name there.
+_nginx_conf_put_here() {
+  local _t="./.${2}.put.$$.${RANDOM}" _o
+  _o="$(stat -c '%u:%g' -- "${1}" 2> /dev/null)"
+  [[ "${_o}" =~ ^[0-9]+:[0-9]+$ ]] || return 1
+  rm -f -- "${_t}"
+  if perl -e "${_ACCT_PUT_PL}" "${_t}" "${_o%%:*}" "${_o#*:}" "${3}" \
+    < "${1}" && mv -f -T -- "${_t}" "./${2}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
 }
 
 #
@@ -244,6 +266,200 @@ _detect_cdorked_malware() {
 }
 
 #
+# An account's config/ and .drush/ belong to its users, so any name there can
+# be a link or a FIFO, and any directory on the way can itself be a link. Root
+# reads, edits and removes those files only through these, inside the real
+# directory (_acct_in_real_dir and _acct_read_here, helper.sh.inc).
+#
+# The real directories /data/disk/<oN>/$1 of every account, one per line. A
+# name in $1 holding a glob (server_*) expands only inside the real directory
+# above it, and only to real directories with plain names; each directory is
+# entered again with _acct_in_real_dir before anything is done there.
+_nginx_acct_dirs() {
+  local _u
+  for _u in /data/disk/*; do
+    [[ "${_u##*/}" =~ ^[A-Za-z0-9._-]+$ ]] || continue
+    [ -d "${_u}" ] && [ ! -L "${_u}" ] || continue
+    _nginx_acct_dirs_below "${_u}" "${1}"
+  done
+}
+# The same below the single directory $1, for the relative path $2.
+_nginx_acct_dirs_below() {
+  local _d="${1}" _n _r="" _m
+  if [ -z "${2}" ]; then
+    echo "${_d}"
+    return 0
+  fi
+  _n="${2%%/*}"
+  [ "${_n}" = "${2}" ] || _r="${2#*/}"
+  case "${_n}" in
+    *'*'*|*'?'*)
+      while IFS= read -r _m; do
+        _nginx_acct_dirs_below "${_d}/${_m}" "${_r}"
+      done < <(_acct_in_real_dir "${_d}" _nginx_dir_names_here "${_n}")
+      ;;
+    *) _nginx_acct_dirs_below "${_d}/${_n}" "${_r}" ;;
+  esac
+}
+# Names of the real directories matching the glob $1 in the current (pinned)
+# directory, plain names only, one per line.
+_nginx_dir_names_here() {
+  local _m
+  # shellcheck disable=SC2086
+  for _m in ./${1}; do
+    _m="${_m#./}"
+    [[ "${_m}" =~ ^[A-Za-z0-9._-]+$ ]] || continue
+    [ -d "./${_m}" ] && [ ! -L "./${_m}" ] && echo "${_m}"
+  done
+}
+# ./$1 in the current (pinned) directory edited by sed "${@:2}", as sed -i
+# edited it: only a regular file under 1 MiB is read, never through a link or
+# into a FIFO; the result is a fresh file with the old file's numeric owner
+# and the read/write bits of its mode, created, handed over and moded
+# through one handle (_ACCT_PUT_PL, helper.sh.inc), renamed over the name:
+# nothing is chowned by name, so a hard link the account renames over the
+# temp name is never handed over.
+_nginx_sed_here() {
+  local _n="${1}" _st _own _m _sz _ft _t
+  shift
+  _st="$(stat -c '%u:%g %a %s %F' -- "./${_n}" 2> /dev/null)" || return 1
+  case "${_st}" in
+    *" regular file"|*" regular empty file") ;;
+    *) return 1 ;;
+  esac
+  read -r _own _m _sz _ft <<< "${_st}"
+  [ "${_sz}" -lt 1048576 ] || return 1
+  [[ "${_own}" =~ ^[0-9]+:[0-9]+$ && "${_m}" =~ ^[0-7]+$ ]] || return 1
+  _t="./.${_n}.sed.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( set -o pipefail
+    _acct_read_here "${_n}" | sed "$@" \
+      | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_own%%:*}" "${_own#*:}" \
+        "${_m}" 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${_n}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# sed "${@:2}" over every regular file matching the glob $1 in the current
+# (pinned) directory, each edited as _nginx_sed_here edits it.
+_nginx_sed_glob_here() {
+  local _p="${1}" _f
+  shift
+  # shellcheck disable=SC2086
+  for _f in ./${_p}; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    _nginx_sed_here "${_f#./}" "$@"
+  done
+}
+# sed -i "${@:3}" over /data/disk/*/$1/$2 of every account ($1 a directory as
+# _nginx_acct_dirs takes it, $2 a file glob), each file edited inside its real
+# directory as _nginx_sed_here edits it.
+_nginx_acct_sed() {
+  local _rel="${1}" _pat="${2}" _d
+  shift 2
+  while IFS= read -r -u 9 _d; do
+    _acct_in_real_dir "${_d}" _nginx_sed_glob_here "${_pat}" "$@"
+  done 9< <(_nginx_acct_dirs "${_rel}")
+}
+# NUL-terminated names directly in the current (pinned) directory that the
+# glob $1 matches (never a dot-name, which the glob skips) and whose text
+# grep "${@:2}" matches. One grep reads only the regular files under 1 MiB
+# there, the ones _nginx_sed_here edits, for at most 60 seconds; -D skip
+# never blocks on a FIFO or a device put at a name since the listing. When
+# the listing or grep cannot tell (an error, a timeout, an option it
+# lacks), every name the glob matches is listed. A record starting with /
+# carries a status: no name listed here holds one.
+_nginx_names_with_here() {
+  local _p="${1}" _f _rc=""
+  local -a _n=() _m=()
+  shift
+  while IFS= read -r -d '' _f; do
+    case "${_f}" in
+      /rc=*) _rc="${_f#/rc=}"; continue ;;
+    esac
+    _f="${_f#./}"
+    case "${_f}" in
+      */*|.*) continue ;;
+    esac
+    # shellcheck disable=SC2254
+    case "${_f}" in
+      ${_p}) _n+=( "${_f}" ) ;;
+    esac
+  done < <(find . -mindepth 1 -maxdepth 1 -type f -size -1048576c -print0 2> /dev/null
+    printf '/rc=%s\0' "$?")
+  if [ "${_rc}" = "0" ]; then
+    [ "${#_n[@]}" -gt 0 ] || return 0
+    _rc=""
+    while IFS= read -r -d '' _f; do
+      case "${_f}" in
+        /rc=*) _rc="${_f#/rc=}" ;;
+        *) _m+=( "${_f}" ) ;;
+      esac
+    done < <(LC_ALL=C timeout 60 grep -lZ -d skip -D skip "$@" -- "${_n[@]}" 2> /dev/null
+      printf '/rc=%s\0' "$?")
+    if [ "${_rc}" = "0" ] || [ "${_rc}" = "1" ]; then
+      [ "${#_m[@]}" -gt 0 ] && printf '%s\0' "${_m[@]}"
+      return 0
+    fi
+  fi
+  # shellcheck disable=SC2086
+  for _f in ./${_p}; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    printf '%s\0' "${_f#./}"
+  done
+}
+# As _nginx_sed_glob_here, but only on the files _nginx_names_with_here
+# lists. Args: the glob, the grep arguments, --, the sed arguments.
+_nginx_sed_if_here() {
+  local _p="${1}" _f
+  local -a _g=()
+  shift
+  while [ "$#" -gt 0 ] && [ "${1}" != "--" ]; do
+    _g+=( "${1}" )
+    shift
+  done
+  shift
+  while IFS= read -r -d '' _f; do
+    _nginx_sed_here "${_f}" "$@"
+  done < <(_nginx_names_with_here "${_p}" "${_g[@]}")
+}
+# As _nginx_acct_sed, but each file is edited only when its text holds a
+# line the sed arguments change, as the grep arguments tell. Args: the
+# directory, the glob, the grep arguments, --, the sed arguments.
+_nginx_acct_sed_if() {
+  local _rel="${1}" _d
+  shift
+  while IFS= read -r -u 9 _d; do
+    _acct_in_real_dir "${_d}" _nginx_sed_if_here "$@"
+  done 9< <(_nginx_acct_dirs "${_rel}")
+}
+# Every regular file below the real directory $1 whose text holds $2, removed:
+# the tree is listed from inside $1, each file's directory is entered again
+# for real, and the file is read as _acct_read_here reads it and removed by
+# its name there, so no link on the way is followed and no FIFO blocks.
+_nginx_drop_marked() {
+  local _top="${1}" _f _sub
+  while IFS= read -r -d '' -u 9 _f; do
+    _f="${_f#./}"
+    _sub=""
+    case "${_f}" in
+      */*) _sub="/${_f%/*}" ;;
+    esac
+    _acct_in_real_dir "${_top}${_sub}" _nginx_drop_if_here "${_f##*/}" "${2}"
+  done 9< <(_acct_in_real_dir "${_top}" find . -type f -print0 2> /dev/null)
+}
+_nginx_drop_if_here() {
+  _acct_read_here "${1}" | grep -q -- "${2}" && rm -f -- "./${1}"
+}
+# Every name directly in the current (pinned) directory removed, as rm -f
+# dir/* removed them; the glob expands here only.
+_nginx_rm_files_here() {
+  rm -f -- ./*
+}
+
+#
 # Purge legacy Nginx config.
 _nginx_clean_legacy_config() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -257,18 +473,21 @@ _nginx_clean_legacy_config() {
     sed -i "s/.*upload_progress.*//g" /var/aegir/config/nginx.conf
   fi
   if [ -d "/data/u" ]; then
-    _R_TEST=$(grep "upload_progress_json_output" /data/disk/*/config/includes/nginx_vhost_common.conf 2>&1)
+    _R_TEST=$(_acct_read_all config/includes nginx_vhost_common.conf \
+      | grep "upload_progress_json_output" 2>&1)
     if [[ "${_R_TEST}" =~ "upload_progress_json_output" ]]; then
-      sed -i "s/.*upload_progress_json_output.*//g" /data/disk/*/config/includes/nginx_vhost_common.conf
-      sed -i "s/.*upload_progress_json_output.*//g" /data/disk/*/config/server_master/nginx/subdir.d/*/*.conf
+      _nginx_acct_sed config/includes nginx_vhost_common.conf \
+        -e "s/.*upload_progress_json_output.*//g" \
+        -e "s/.*report_uploads.*//g" \
+        -e "s/.*track_uploads.*//g"
+      _nginx_acct_sed "config/server_master/nginx/subdir.d/*" "*.conf" \
+        -e "s/.*upload_progress_json_output.*//g" \
+        -e "s/.*report_uploads.*//g" \
+        -e "s/.*track_uploads.*//g"
       sed -i "s/.*upload_progress_json_output.*//g" /var/aegir/config/includes/nginx_vhost_common.conf
       wait
-      sed -i "s/.*report_uploads.*//g" /data/disk/*/config/includes/nginx_vhost_common.conf
-      sed -i "s/.*report_uploads.*//g" /data/disk/*/config/server_master/nginx/subdir.d/*/*.conf
       sed -i "s/.*report_uploads.*//g" /var/aegir/config/includes/nginx_vhost_common.conf
       wait
-      sed -i "s/.*track_uploads.*//g" /data/disk/*/config/includes/nginx_vhost_common.conf
-      sed -i "s/.*track_uploads.*//g" /data/disk/*/config/server_master/nginx/subdir.d/*/*.conf
       sed -i "s/.*track_uploads.*//g" /var/aegir/config/includes/nginx_vhost_common.conf
       wait
     fi
@@ -1020,6 +1239,12 @@ _nginx_wildcard_ssl_install() {
       fi
       _WILD_SSL_PROXY_UP=YES
     fi
+    if ! grep -qE '^[[:space:]]*send_timeout[[:space:]]+3600s;' ${_WILD_SSL_VHOST} 2> /dev/null; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "INFO: nginx_wild_ssl.conf proxy needs media send timeout update..."
+      fi
+      _WILD_SSL_PROXY_UP=YES
+    fi
     ### Keep the crawler-fleet guard in step with the zones file both ways:
     ### redeploy to add it once the maps are declared, and redeploy (the gate
     ### then strips it) when they are not.
@@ -1418,17 +1643,21 @@ _nginx_ssl_proxy_extra_names() {
   ### whose file is not a panel listing them, keeping each file's own name
   ### and its www. alias. Names compare as nginx does, without case; every
   ### change is undone when the config no longer tests clean. edgetest
-  ### reports the same names with the same awk.
+  ### reports the same names with the same awk. Both files sit in the
+  ### account's own log/, so they are read only inside the real directory,
+  ### never through a link or blocked on a FIFO put there.
   local _preD="/var/aegir/config/server_master/nginx/pre.d"
-  local _map="" _x _hm _e _bak _p _n _dom _any=""
+  local _map="" _x _lg _hm _e _bak _p _n _dom _any=""
   for _x in /data/disk/*/log/extra_domain.txt; do
     [ -f "${_x}" ] || continue
-    _hm=$(head -c 256 "${_x%/extra_domain.txt}/domain.txt" 2>/dev/null | tr -d '\r\n' | tr 'A-Z' 'a-z')
+    _lg="${_x%/extra_domain.txt}"
+    _hm=$(_acct_read_in "${_lg}" domain.txt | head -c 256 | tr -d '\r\n' | tr 'A-Z' 'a-z')
     [[ "${_hm}" =~ ^[a-z0-9][a-z0-9.-]*$ ]] && [ "${#_hm}" -le 253 ] || continue
     while IFS= read -r _e || [ -n "${_e}" ]; do
       [[ "${_e}" =~ ^[a-z0-9*][a-z0-9.*-]*$ ]] && [ "${#_e}" -le 253 ] \
         && _map="${_map} ${_e}=${_hm}"
-    done < <(head -c 65536 "${_x}" 2>/dev/null | tr -s ' \t\r' '\n' | tr 'A-Z' 'a-z')
+    done < <(_acct_read_in "${_lg}" extra_domain.txt | head -c 65536 \
+      | tr -s ' \t\r' '\n' | tr 'A-Z' 'a-z')
   done
   [ -n "${_map}" ] || return 0
   _bak=$(mktemp -d /var/backups/.boa-ssl-names.XXXXXX 2>/dev/null) || return 0
@@ -1480,11 +1709,13 @@ _nginx_migration_proxy_client() {
   ### for every HTTPS request that came through the front. It gets the
   ### template's block, taken from this pass's build tree, and its client
   ### headers point at that block's variable. The vhost dirs belong to the
-  ### instance users, so a symlink is skipped, the new text is staged in a
-  ### root-only dir and sed -i replaces the file; every change is undone
-  ### when the config no longer tests clean.
+  ### instance users, so each vhost is read and rewritten only inside its
+  ### real directory: a link or a FIFO at a name is skipped, never followed,
+  ### the text is judged and staged in a root-only dir, and the new file
+  ### lands as _nginx_sed_here puts it; every change is undone when the
+  ### config no longer tests clean.
   local _src="${_bldPth}/aegir/tools/system/conf/proxy.conf"
-  local _d _f _n=0 _i
+  local _d _v _k _p
   grep -q boa_mig_client "${_src}" 2>/dev/null || return 0
   _d=$(mktemp -d /var/backups/.boa-mig-proxy.XXXXXX 2>/dev/null) || return 0
   awk '/### HTTPS for a site without its own certificate reaches this vhost/ { p = 1; print "  ###" }
@@ -1495,32 +1726,50 @@ _nginx_migration_proxy_client() {
     rm -rf "${_d}"
     return 0
   fi
-  for _f in /data/disk/*/config/server_master/nginx/vhost.d/*; do
-    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
-    grep -q "Plain HTTP proxy (START)" "${_f}" || continue
-    grep -q boa_mig_client "${_f}" && continue
-    grep -q 'CF-Connecting-IP  *\$remote_addr;' "${_f}" || continue
-    grep -q "^  log_not_found " "${_f}" || continue
-    _n=$(( _n + 1 ))
-    cat "${_f}" > "${_d}/${_n}.orig"
-    echo "${_f}" > "${_d}/${_n}.path"
-    awk -v blk="${_d}/block" '
-      /proxy_set_header[ \t]+(X-Real-IP|CF-Connecting-IP)[ \t]+\$remote_addr;/ { sub(/\$remote_addr;/, "$boa_mig_client;") }
-      { print }
-      !d && /^  log_not_found / { while ((getline _l < blk) > 0) print _l; d = 1 }' \
-      "${_d}/${_n}.orig" > "${_d}/stage"
-    [ -s "${_d}/stage" ] && sed -i -e "1r ${_d}/stage" -e d "${_f}"
-  done
-  if [ "${_n}" -gt 0 ] && ! nginx -t > /dev/null 2>&1; then
-    for (( _i = 1; _i <= _n; _i++ )); do
-      _f=$(cat "${_d}/${_i}.path")
-      [ -f "${_f}" ] && [ ! -L "${_f}" ] && sed -i -e "1r ${_d}/${_i}.orig" -e d "${_f}"
+  while IFS= read -r -u 9 _v; do
+    _acct_in_real_dir "${_v}" _nginx_migration_proxy_client_here "${_d}" "${_v}"
+  done 9< <(_nginx_acct_dirs config/server_master/nginx/vhost.d)
+  if ls "${_d}"/*.path > /dev/null 2>&1 && ! nginx -t > /dev/null 2>&1; then
+    for _k in "${_d}"/*.path; do
+      _p=$(cat "${_k}")
+      _acct_in_real_dir "${_p%/*}" \
+        _nginx_sed_here "${_p##*/}" -e "1r ${_k%.path}.orig" -e d
     done
   fi
   rm -rf "${_d}"
 }
+# Every plain HTTP proxy vhost of the current (pinned) vhost.d $2 that still
+# lacks the block (one grep lists the proxy vhosts), read as _acct_read_here
+# reads it into the root-only dir $1, rewritten there and put back as
+# _nginx_sed_here puts it; each one changed leaves <n>.orig and <n>.path in
+# $1 for the rollback.
+_nginx_migration_proxy_client_here() {
+  local _d="${1}" _v="${2}" _f _k
+  while IFS= read -r -d '' _f; do
+    [ -f "./${_f}" ] && [ ! -L "./${_f}" ] || continue
+    _k=$(mktemp "${_d}/v.XXXXXX" 2> /dev/null) || continue
+    _acct_read_here "${_f}" > "${_k}.orig"
+    if grep -q "Plain HTTP proxy (START)" "${_k}.orig" \
+      && ! grep -q boa_mig_client "${_k}.orig" \
+      && grep -q 'CF-Connecting-IP  *\$remote_addr;' "${_k}.orig" \
+      && grep -q "^  log_not_found " "${_k}.orig"; then
+      awk -v blk="${_d}/block" '
+        /proxy_set_header[ \t]+(X-Real-IP|CF-Connecting-IP)[ \t]+\$remote_addr;/ { sub(/\$remote_addr;/, "$boa_mig_client;") }
+        { print }
+        !d && /^  log_not_found / { while ((getline _l < blk) > 0) print _l; d = 1 }' \
+        "${_k}.orig" > "${_k}.new"
+      if [ -s "${_k}.new" ] \
+        && _nginx_sed_here "${_f}" -e "1r ${_k}.new" -e d; then
+        printf '%s\n' "${_v}/${_f}" > "${_k}.path"
+        continue
+      fi
+    fi
+    rm -f -- "${_k}" "${_k}.orig" "${_k}.new"
+  done < <(_nginx_names_with_here "*" -F -e "Plain HTTP proxy (START)")
+}
 
 _nginx_config_update_fix() {
+  local _tplDir _tpl _incDir _vhDir
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _nginx_config_update_fix"
   fi
@@ -1558,7 +1807,9 @@ _nginx_config_update_fix() {
       sed -i "s/TLSv1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf &> /dev/null
       wait
       if [ -d "/data/u" ]; then
-        sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /data/disk/*/config/server_*/nginx/vhost.d/*
+        _nginx_acct_sed_if "config/server_*/nginx/vhost.d" "*" \
+          -F -e "TLSv1.1 TLSv1.2 TLSv1.3;" -- \
+          "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g"
       fi
       sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx.conf
       sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
@@ -1737,22 +1988,18 @@ _nginx_config_update_fix() {
       wait
     fi
     if [ -d "/data/u" ]; then
-      sed -i "s/.*listen.*127.0.0.1:80;.*//g" \
-        /data/disk/*/config/server_*/nginx.conf &> /dev/null
-      wait
-      sed -i "s/listen .*\*:80;/listen  \*:80;/g" \
-        /data/disk/*/config/server_*/nginx.conf &> /dev/null
-      wait
-      sed -i "s/.*listen .*\*:80;/  listen  \*:80;/g" \
-        /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
-      wait
-      sed -i "s/.*listen .*\*:443/  listen  \*:443/g" \
-        /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
-      wait
-      sed -i "s/.*ssl .*on;//g" \
-        /data/disk/*/config/server_*/nginx/vhost.d/* &> /dev/null
-      wait
-      sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /data/disk/*/config/server_*/nginx/vhost.d/*
+      _nginx_acct_sed "config/server_*" nginx.conf \
+        -e "s/.*listen.*127.0.0.1:80;.*//g" \
+        -e "s/listen .*\*:80;/listen  \*:80;/g" &> /dev/null
+      ### One grep per vhost.d names the vhosts with a line these change: a
+      ### listen line not yet in the exact form written below, an ssl on
+      ### line, or the TLSv1.1 list; the others are left untouched.
+      _nginx_acct_sed_if "config/server_*/nginx/vhost.d" "*" \
+        -P -e '(?:^(?!  listen  \*:80;(?!.*\*:80;)).*listen .*\*:80;)|(?:^(?!  listen  \*:443(?!.*\*:443)).*listen .*\*:443)|(?:ssl .*on;)|(?:TLSv1\.1 TLSv1\.2 TLSv1\.3;)' -- \
+        -e "s/.*listen .*\*:80;/  listen  \*:80;/g" \
+        -e "s/.*listen .*\*:443/  listen  \*:443/g" \
+        -e "s/.*ssl .*on;//g" \
+        -e "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" &> /dev/null
       sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx.conf
       sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/pre.d/*.conf
       sed -i "s/TLSv1.1 TLSv1.2 TLSv1.3;/TLSv1.2 TLSv1.3;/g" /var/aegir/config/server_*/nginx/vhost.d/*
@@ -1762,27 +2009,17 @@ _nginx_config_update_fix() {
     if [ -d "/data/u" ]; then
       for _OCT in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
         _pthPrN="provision/http/Provision/Config/Nginx"
+        _tplDir=""
         if [ -e "${_OCT}/.drush/sys/drush_make" ]; then
-          sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/sys/${_pthPrN}/server.tpl.php &> /dev/null
-          wait
-          sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/sys/${_pthPrN}/vhost.tpl.php &> /dev/null
-          wait
-          sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/sys/${_pthPrN}/vhost_disabled.tpl.php &> /dev/null
-          wait
+          _tplDir="${_OCT}/.drush/sys/${_pthPrN}"
         elif [ -e "${_OCT}/.drush/drush_make" ]; then
-          sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/${_pthPrN}/server.tpl.php &> /dev/null
-          wait
-          sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/${_pthPrN}/vhost.tpl.php &> /dev/null
-          wait
-          sed -i "s/\!empty.*';/'*';/g" \
-            ${_OCT}/.drush/${_pthPrN}/vhost_disabled.tpl.php &> /dev/null
-          wait
+          _tplDir="${_OCT}/.drush/${_pthPrN}"
         fi
+        [ -n "${_tplDir}" ] || continue
+        for _tpl in server vhost vhost_disabled; do
+          _acct_in_real_dir "${_tplDir}" \
+            _nginx_sed_here "${_tpl}.tpl.php" "s/\!empty.*';/'*';/g" &> /dev/null
+        done
       done
     fi
 
@@ -1791,21 +2028,20 @@ _nginx_config_update_fix() {
     ### in all Octopus instances which could break Nginx restart
     ###
     if [ -d "/data/u" ]; then
-      for _File in $(find /data/disk/*/config/includes/ -type f -exec grep -l will_expire_in {} +); do
-        rm -f "${_File}"
-      done
+      while IFS= read -r -u 8 _incDir; do
+        _nginx_drop_marked "${_incDir}" will_expire_in
+      done 8< <(_nginx_acct_dirs config/includes)
       for Vght in `ls /data/disk/*/log/CANCELLED 2> /dev/null \
         | cut -d"/" -f4 \
         | awk '{ print $1}'`; do
-        rm -f /data/disk/$Vght/config/server_*/nginx/vhost.d/*
+        while IFS= read -r -u 8 _vhDir; do
+          _acct_in_real_dir "${_vhDir}" _nginx_rm_files_here
+        done 8< <(_nginx_acct_dirs_below "/data/disk/${Vght}" "config/server_*/nginx/vhost.d")
       done
-      _wildPth="/data/disk/*/.drush/sys/provision/http/Provision/Service/http/*.conf"
-      sed -i "s/OctopusMicroNoCacheID/NoCacheID/g" ${_wildPth} &> /dev/null
-      wait
-      sed -i "s/OctopusNCookie/AegirCookie/g"      ${_wildPth} &> /dev/null
-      wait
-      sed -i "s/OctopusNoCacheID/NoCacheID/g"      ${_wildPth} &> /dev/null
-      wait
+      _nginx_acct_sed .drush/sys/provision/http/Provision/Service/http "*.conf" \
+        -e "s/OctopusMicroNoCacheID/NoCacheID/g" \
+        -e "s/OctopusNCookie/AegirCookie/g" \
+        -e "s/OctopusNoCacheID/NoCacheID/g" &> /dev/null
     fi
     if [ -e "/var/aegir" ]; then
       _wildPth="/var/aegir/.drush/sys/provision/http/Provision/Service/http/*.conf"

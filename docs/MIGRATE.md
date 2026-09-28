@@ -71,8 +71,10 @@ the `mydestination` entries naming the box (its fqdn, and the
 `localhost.<zone>` token the installer writes beside it, whose zone is
 renamed when it is a former name's), `/etc/mailname`, and BOA's
 self-signed fallback certificate (`/etc/ssl/private/nginx-wild-ssl.crt`,
-re-issued for `*.<new-fqdn>` on its existing key, the old one kept under
-`backups/rename-hostname/`).
+re-issued for `*.<new-fqdn>` on its existing key, the old one kept in
+`/var/backups/renameaegirhost/aegir/`, readable by root only). The run's own dumps
+and copies live in `/var/backups/renameaegirhost/<user>/` and expire after
+`_DEL_OLD_BACKUPS` days (14 by default).
 
 Each is renamed only when it carries one of the
 box's former names — the old hostname, or the name that certificate was
@@ -154,14 +156,14 @@ and the site's per-site PHP pin row in `static/control/multi-fpm.info`.
 On an
 Octopus root the tool also parks the old-name panel SSL proxy include
 (`/var/aegir/config/server_master/nginx/pre.d/z_<account>.<old-hostname>_ssl_proxy.conf`)
-into the rename's backup directory: the account pass regenerates it under the new
+into `/var/backups/renameaegirhost/<account>/`: the account pass regenerates it under the new
 name once the new certificate exists, while the old file would keep naming a
 certificate that is about to go and fail the box-wide configtest.
 
 A
 `sites/<name>` directory under the old hostname that holds no `settings.php`
-is not a site: it is moved into the rename's backup directory under
-`stray-sites/` (nothing is deleted) and the run says so, so the platform
+is not a site: it is moved into `backups/rename-hostname/stray-sites/`
+(nothing is deleted) and the run says so, so the platform
 verify cannot import it as a bogus site. It
 then queues one site verify per renamed site, because the queue's server
 verifies regenerate no per-site artefact at all — none of this is

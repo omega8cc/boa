@@ -265,6 +265,117 @@ B2NOTFOUND
   fi
 }
 
+# duplicity lstat()s each source entry and opens it later by name, and the
+# backup tools run it as root over account trees. The pinned venv copy of
+# path.py gets a Path.open override appended: a read open enters each
+# directory below the walk's base without following a link, opens the file
+# with O_NOFOLLOW and O_NONBLOCK, and reads it only when the handle is a
+# regular file, so an entry swapped for a link, a FIFO, a socket or a
+# directory is skipped, never read through or waited on. Marker-guarded,
+# gated on the exact 3.2.0.2 file and version, compile- and load-checked
+# before an atomic same-directory swap, so a failed patch leaves the stock
+# file untouched. Verbatim in install_dependencies.sh, backboa and
+# duobackboa. Re-check the stock Path.open at the next duplicity pin bump;
+# until then the install paths ($1 = report) say when the venv's path.py is
+# not the file the patch is made for, and the frequent patch-only call stays
+# quiet.
+_patch_duplicity_path_open() {
+  local _pthLive _pthTemp _pthSum
+  _pthLive="${_PIPX_VNV}/duplicity/lib/python${_PTN_MNR}/site-packages/duplicity/path.py"
+  [ -f "${_pthLive}" ] || return 0
+  if grep -q "BOA-path-open-nofollow" "${_pthLive}"; then
+    return 0
+  fi
+  # The stock 3.2.0.2 path.py, byte for byte (sdist and wheels alike)
+  _pthSum="$(sha256sum "${_pthLive}" 2>/dev/null)"
+  if [ "${_pthSum%% *}" != "d8ec60be030314a29d97ae7b47a89967d0f8da07db39172920eb4da0d58f918e" ] \
+    || [[ "$(/usr/local/bin/duplicity --version 2>&1)" != *"duplicity ${_DCY_VRN} "* ]]; then
+    if [ "${1:-}" = "report" ]; then
+      echo "NOTE: duplicity path patch not applied: it is made for the stock 3.2.0.2 path.py, and this venv's duplicity differs"
+    fi
+    return 0
+  fi
+  _pthTemp="${_pthLive%.py}_boapatch$$.py"
+  cp -af "${_pthLive}" "${_pthTemp}" || return 0
+  cat >> "${_pthTemp}" <<'PATHOPEN'
+
+
+# BOA-path-open-nofollow: a read open reaches only the entry the walk
+# listed. The walk lstat()s each entry and opens it later by name; here each
+# directory below the walk's base is entered without following a link, the
+# file is opened with O_NOFOLLOW (unless it was listed as a link, or
+# --copy-links is set) and O_NONBLOCK, and it must be a regular file on the
+# handle. O_NONBLOCK is cleared before the first read. An entry replaced in
+# between by a link, a FIFO, a socket or a directory is skipped like a file
+# that vanished during the run, never read through or waited on. Other
+# modes open as before.
+import fcntl as _boa_fcntl
+
+_BOA_DIR_FLAGS = getattr(os, "O_PATH", os.O_RDONLY) | os.O_DIRECTORY
+
+
+def _boa_path_open(self, mode="rb"):
+    assert not self.opened, "Path is already marked as opened"
+    if self.fileobj:
+        return self.fileobj
+    if mode not in ("rb", "r"):
+        return open(self.name, mode)
+    walk = not config.copy_links and not config.rename
+    flags = os.O_RDONLY | os.O_NONBLOCK
+    if walk and not self.issym():
+        flags |= os.O_NOFOLLOW
+    try:
+        if walk and self.index:
+            dfd = os.open(self.base, _BOA_DIR_FLAGS)
+            try:
+                for part in self.index[:-1]:
+                    nfd = os.open(part, _BOA_DIR_FLAGS | os.O_NOFOLLOW, dir_fd=dfd)
+                    os.close(dfd)
+                    dfd = nfd
+                fd = os.open(self.index[-1], flags, dir_fd=dfd)
+            finally:
+                os.close(dfd)
+        else:
+            fd = os.open(self.name, flags)
+    except OSError as e:
+        if e.errno in (errno.ELOOP, errno.ENOTDIR, errno.ENXIO):
+            raise OSError(errno.ENOENT, "not the regular file listed, skipped", self.uc_name) from None
+        if e.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
+            raise OSError(errno.EBUSY, "held under a lease, skipped", self.uc_name) from None
+        raise
+    try:
+        if not stat.S_ISREG(os.fstat(fd).st_mode):
+            raise OSError(errno.ENOENT, "not the regular file listed, skipped", self.uc_name)
+        _boa_fcntl.fcntl(fd, _boa_fcntl.F_SETFL, _boa_fcntl.fcntl(fd, _boa_fcntl.F_GETFL) & ~os.O_NONBLOCK)
+    except BaseException:
+        os.close(fd)
+        raise
+    return open(self.name, mode, opener=lambda _name, _flags: fd)
+
+
+Path.open = _boa_path_open
+PATHOPEN
+  # Loaded, not only compiled: the appended code runs at import, and every
+  # backup tool imports it
+  if "${_PIPX_VNV}/duplicity/bin/python" -m py_compile "${_pthTemp}" 2>/dev/null \
+    && "${_PIPX_VNV}/duplicity/bin/python" -B -c '
+import importlib.util, sys
+s = importlib.util.spec_from_file_location("duplicity._boa_path_check", sys.argv[1])
+m = importlib.util.module_from_spec(s)
+s.loader.exec_module(m)
+sys.exit(0 if m.Path.open is m._boa_path_open else 1)
+' "${_pthTemp}" > /dev/null 2>&1; then
+    chmod 644 "${_pthTemp}"
+    mv -f "${_pthTemp}" "${_pthLive}"
+    find "${_pthLive%/*}/__pycache__" \( -name "path.*" -o -name "path_boapatch*" \) -delete 2>/dev/null
+    echo "Patched duplicity path: source reads follow no link and never wait on a FIFO"
+  else
+    rm -f "${_pthTemp}"
+    find "${_pthLive%/*}/__pycache__" -name "path_boapatch*" -delete 2>/dev/null
+    echo "NOTE: duplicity path patch did not compile or load; stock file left in place"
+  fi
+}
+
 # Function to install other dependencies
 _install_other_dependencies() {
   echo "Checking and installing other dependencies..."
@@ -485,6 +596,7 @@ if [ "${1:-}" = "--patch-only" ]; then
     exit 1
   fi
   _patch_duplicity_b2backend
+  _patch_duplicity_path_open
   exit 0
 fi
 
@@ -495,4 +607,5 @@ _if_python_install_src
 # Unconditional: the quick no-op path above (python, Duplicity and the tool
 # venvs on the pin) must still converge an unpatched venv
 _patch_duplicity_b2backend
+_patch_duplicity_path_open report
 
