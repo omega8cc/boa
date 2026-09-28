@@ -145,9 +145,10 @@ _dbk_store_dir() {
 # a link put at its name), and the copy is made as a fresh temporary file
 # (cp --remove-destination creates it exclusively) renamed over the name
 # with mv -f -T, so nothing put at either name is ever opened or written
-# through. A dated directory the account owns is used as it is: the chown -R
-# below hands every one to it after its first copy. Status 0 when copied, 2
-# when the name was already taken, 1 on refusal, 3 when the copy failed.
+# through. A dated directory the account owns is used as it is: the owner
+# walk below hands every one to it after its first copy. Status 0 when
+# copied, 2 when the name was already taken, 1 on refusal, 3 when the copy
+# failed.
 _dbk_copy_here() {
   local _here _t
   _here="$(pwd -P)"
@@ -166,6 +167,23 @@ _dbk_copy_here() {
   fi
   rm -f -- "${_t}" 2>/dev/null
   return 3
+}
+
+# Every directory and single-link regular file from the current (pinned)
+# dated directory down handed to the user $1 and the group $2, as chown -R
+# handed them, each through a handle opened without following a link
+# (_ACCT_REOWN_PL): the account owns the dated directories, so a hard link, a
+# link or a FIFO it put there is left alone and no file outside the tree is
+# handed over. Owner names are resolved to numbers first; nothing changes
+# when one does not resolve.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+_dbk_reown_here() {
+  local _uid _gid
+  _uid=$(id -u -- "${1}" 2>/dev/null)
+  _gid=$(getent group "${2}" 2>/dev/null | cut -d: -f3)
+  [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]] || return 1
+  env PATH=/usr/local/bin:/usr/bin:/bin find . \
+    -execdir perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" {} +
 }
 
 # Run "$@" inside the real directory $1 below /data/disk: every name on the
@@ -359,9 +377,10 @@ for _backup_dir in "${_ARCH_SQL_BASE}"/*; do
     _dbk_store_dir "${_user}" || continue
     _target_dir="${_DBK_DIR}/${_datetime}"
     echo "Setting ownership for ${_target_dir} => ${_user}.ftp:${_grp}"
-    # inside the real dated directory: chown -R never follows a link below
+    # inside the real dated directory, never through a name the account put
+    # there (_dbk_reown_here)
     ( cd -P -- "${_target_dir}" 2>/dev/null && [ "$(pwd -P)" = "${_target_dir}" ] \
-      && chown -R "${_user}.ftp:${_grp}" . )
+      && _dbk_reown_here "${_user}.ftp" "${_grp}" )
   done
 done
 

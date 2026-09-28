@@ -634,8 +634,9 @@ _send_restore_confirmation_email() {
 # with 'instgrp reclaim oN' once it is in place.
 # Verbatim in backboa, duobackboa, multiback and mybackup. $1 = the restored
 # directory or file.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
 _acct_reclaim_restored() {
-  local _r _a _g _m _d _w=() _x=() _wg
+  local _r _a _g _gid _m _d _w=() _x=() _wg
   _r=$(realpath -e -- "$1" 2> /dev/null) || return 0
   case "${_r}" in
     /data/disk/*) _a="${_r#/data/disk/}"; _a="${_a%%/*}" ;;
@@ -675,10 +676,19 @@ _acct_reclaim_restored() {
   fi
   # The walk starts where cd -P lands exactly on the resolved directory, so
   # no name on the way is a link then, and a name swapped for a link after
-  # the realpath above never carries it elsewhere
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] \
-    && find -P "${_w[@]}" ! -group "${_g}" ! -group www-data ! -group root \
-      "${_x[@]}" -execdir chgrp -h "${_g}" {} + 2> /dev/null )
+  # the realpath above never carries it elsewhere. Each directory and
+  # single-link regular file takes the group through a handle opened without
+  # following a link (_ACCT_REOWN_PL, -1 keeps the owner; -- so perl takes
+  # it as an argument, not a switch): the tree is the account's, so a hard
+  # link, a link or a FIFO put in it is left alone, and no file outside it is
+  # regrouped (nothing checks a link's own group).
+  _gid=$(getent group "${_g}" 2> /dev/null | cut -d: -f3)
+  if [[ "${_gid}" =~ ^[0-9]+$ ]]; then
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] \
+      && env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_w[@]}" \
+        ! -group "${_g}" ! -group www-data ! -group root "${_x[@]}" \
+        -execdir perl -e "${_ACCT_REOWN_PL}" -- -1 "${_gid}" {} + 2> /dev/null )
+  fi
   # an instgrp older than the web group would claim the web paths into the
   # account group, which the account's pools are never in
   if [ -x "/opt/local/bin/instgrp" ] && { [ "${#_x[@]}" = "0" ] \

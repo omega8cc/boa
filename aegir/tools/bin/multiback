@@ -1313,18 +1313,19 @@ _check_if_worked_cleanly_or_log_err() {
 }
 
 # The root file $2 copied to ./$1 in the current (pinned) directory with its
-# content, mode and times (root's own file, so root's owner as dd creates
-# it), as a fresh file created exclusively and renamed over the name, so a
-# link or a FIFO put at the name is replaced, never followed or opened. No
-# owner change runs by name: the directory is the account's.
+# content, read/write bits and times (root's own file, so root's owner as a
+# fresh file gets it), as a fresh file created exclusively and renamed over
+# the name, so a link or a FIFO put at the name is replaced, never followed
+# or opened. The temp is created, written, moded and timed through one handle
+# opened O_EXCL|O_NOFOLLOW (_ACCT_COPY_PUT_PL, the times of the file as read,
+# in whole seconds): nothing runs by name on it, as the directory is the
+# account's (a hard link renamed over the temp name before a touch by name
+# would take the times).
+_ACCT_COPY_PUT_PL='use Fcntl; use IO::Handle; my ($n) = @ARGV; local $/; my $d = <STDIN>; my @s = stat(STDIN) or exit 1; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; $h->flush or exit 1; chmod($s[2] & 0666, $h) or exit 1; utime($s[8], $s[9], $h) or exit 1; close($h) or exit 1; exit 0'
 _acct_copy_put_here() {
-  local _t="./.${1}.put.$$.${RANDOM}" _m
-  _m="$(stat -c '%a' -- "${2}" 2> /dev/null)"
-  [[ "${_m}" =~ ^[0-7]{3,4}$ ]] || _m=644
+  local _t="./.${1}.put.$$.${RANDOM}"
   rm -f -- "${_t}"
-  if ( umask "$(printf '%03o' $(( 0777 & ~0${_m} & 0777 )))"
-    dd if="${2}" of="${_t}" conv=excl status=none 2> /dev/null ) \
-    && touch -h -r "${2}" -- "${_t}" \
+  if perl -e "${_ACCT_COPY_PUT_PL}" "${_t}" 2> /dev/null < "${2}" \
     && mv -f -T -- "${_t}" "./${1}"; then
     return 0
   fi
@@ -2417,8 +2418,9 @@ _web_group() {
 # with 'instgrp reclaim oN' once it is in place.
 # Verbatim in backboa, duobackboa, multiback and mybackup. $1 = the restored
 # directory or file.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
 _acct_reclaim_restored() {
-  local _r _a _g _m _d _w=() _x=() _wg
+  local _r _a _g _gid _m _d _w=() _x=() _wg
   _r=$(realpath -e -- "$1" 2> /dev/null) || return 0
   case "${_r}" in
     /data/disk/*) _a="${_r#/data/disk/}"; _a="${_a%%/*}" ;;
@@ -2458,10 +2460,19 @@ _acct_reclaim_restored() {
   fi
   # The walk starts where cd -P lands exactly on the resolved directory, so
   # no name on the way is a link then, and a name swapped for a link after
-  # the realpath above never carries it elsewhere
-  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] \
-    && find -P "${_w[@]}" ! -group "${_g}" ! -group www-data ! -group root \
-      "${_x[@]}" -execdir chgrp -h "${_g}" {} + 2> /dev/null )
+  # the realpath above never carries it elsewhere. Each directory and
+  # single-link regular file takes the group through a handle opened without
+  # following a link (_ACCT_REOWN_PL, -1 keeps the owner; -- so perl takes
+  # it as an argument, not a switch): the tree is the account's, so a hard
+  # link, a link or a FIFO put in it is left alone, and no file outside it is
+  # regrouped (nothing checks a link's own group).
+  _gid=$(getent group "${_g}" 2> /dev/null | cut -d: -f3)
+  if [[ "${_gid}" =~ ^[0-9]+$ ]]; then
+    ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] \
+      && env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_w[@]}" \
+        ! -group "${_g}" ! -group www-data ! -group root "${_x[@]}" \
+        -execdir perl -e "${_ACCT_REOWN_PL}" -- -1 "${_gid}" {} + 2> /dev/null )
+  fi
   # an instgrp older than the web group would claim the web paths into the
   # account group, which the account's pools are never in
   if [ -x "/opt/local/bin/instgrp" ] && { [ "${#_x[@]}" = "0" ] \

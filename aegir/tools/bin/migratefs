@@ -227,6 +227,27 @@ _mfs_kind_here() {
   fi
 }
 
+# ./$1 in the current (pinned) directory made a link to $2, owned by $3
+# (user:group) when given: the link is made by that owner itself, so no chown
+# by name follows it (a hard link renamed over the name before a chown -h
+# would be handed over). Where the owner is root, does not resolve or cannot
+# make it, root makes it and it stays root's: nothing checks a link's owner.
+# -T: a name put there meanwhile makes ln fail, never takes the link inside
+# it.
+_mfs_link_here() {
+  local _u="" _g=""
+  if [ -n "${3}" ]; then
+    _u=$(id -u -- "${3%%:*}" 2> /dev/null)
+    _g=$(getent group "${3#*:}" 2> /dev/null | cut -d: -f3)
+  fi
+  if [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] && [ "${_u}" != 0 ] \
+    && setpriv --reuid="${_u}" --regid="${_g}" --clear-groups \
+      ln -s -T -- "${2}" "./${1}" 2> /dev/null; then
+    return 0
+  fi
+  ln -s -T -- "${2}" "./${1}"
+}
+
 # ./$1 a real directory in the current (pinned) directory, made 0755 when
 # missing whatever root's umask is.
 _mfs_mkdir_here() {
@@ -913,13 +934,13 @@ _relocate_here() {
     return 0
   fi
   _mfs_in_real_dir "${_dst%/*}" chmod "${_mode}" . 2>/dev/null
-  # -T: a name put there meanwhile makes ln fail, never takes the link inside it.
-  if ! _mfs_in_real_dir "${_par}" ln -s -T -- "${_dst}" "./${_name}" 2>/dev/null; then
+  # -T: a name put there meanwhile makes ln fail, never takes the link inside
+  # it; the link is made by its owner (_mfs_link_here), never chowned by name.
+  if ! _mfs_in_real_dir "${_par}" _mfs_link_here "${_name}" "${_dst}" "${_ug}" 2>/dev/null; then
     _mfs_undo_here "${_top}" "${_par}" "${_name}" "${_label}" "could not symlink ${_src}" "${_dst}"
     return 0
   fi
   trap - INT TERM HUP
-  [ -n "${_ug}" ] && _mfs_in_real_dir "${_par}" chown -h "${_ug}" "./${_name}" 2>/dev/null
 
   # The old copy goes unless something in it changed after it was set aside
   # (a write through a handle still open on it): status change times cannot
@@ -1010,10 +1031,11 @@ _relocate_static_for_account() {
           return 0
         fi
         [ -n "${_ug}" ] && chown -h "${_ug}" "${_dst}" 2>/dev/null
-        # -T: a name put there meanwhile makes ln fail, never takes the link inside it.
-        _mfs_in_real_dir "${_static}" ln -s -T -- "${_dst}" ./files 2>/dev/null \
+        # -T: a name put there meanwhile makes ln fail, never takes the link
+        # inside it; the link is made by its owner (_mfs_link_here), never
+        # chowned by name.
+        _mfs_in_real_dir "${_static}" _mfs_link_here files "${_dst}" "${_ug}" 2>/dev/null \
           || { _log "ERROR: ${_acct} could not symlink ${_src}; store is at ${_dst}, left for review"; return 0; }
-        [ -n "${_ug}" ] && _mfs_in_real_dir "${_static}" chown -h "${_ug}" ./files 2>/dev/null
         _log "APPLY: ${_acct} created + symlinked empty store -> ${_dst}"
       fi
       ;;

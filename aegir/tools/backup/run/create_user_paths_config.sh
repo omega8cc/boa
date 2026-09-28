@@ -101,13 +101,32 @@ _root_only() {
 # ./$1 in the current (pinned) directory with the content read from stdin,
 # born with the mode $2 and handed to $3 (owner:group) when given: a fresh
 # file created exclusively, then renamed over the name, so a link or a FIFO
-# put at the name is replaced, never followed or opened.
+# put at the name is replaced, never followed or opened. A file handed over
+# is created, written, owned and moded through one handle opened
+# O_EXCL|O_NOFOLLOW (_ACCT_PUT_PL, the read/write bits of $2 as the umask
+# gave them), never chowned by name: the directory is the account's, and a
+# hard link renamed over the temp name before a chown by name would hand the
+# linked file over. Owner names are resolved to numbers first; an owner that
+# does not resolve puts nothing.
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
 _acct_put_stdin_here() {
-  local _t="./.${1}.put.$$.${RANDOM}"
+  local _t="./.${1}.put.$$.${RANDOM}" _uid _gid
+  if [ -n "${3}" ]; then
+    _uid="${3%%:*}"
+    _gid="${3#*:}"
+    [[ "${_uid}" =~ ^[0-9]+$ ]] || _uid=$(id -u -- "${_uid}" 2> /dev/null)
+    [[ "${_gid}" =~ ^[0-9]+$ ]] \
+      || _gid=$(getent group "${_gid}" 2> /dev/null | cut -d: -f3)
+    [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]] || return 1
+  fi
   rm -f -- "${_t}"
-  if ( umask "$(printf '%03o' $(( 0777 & ~0${2} )))"
+  if [ -n "${3}" ]; then
+    if perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" "${2}" \
+      && mv -f -T -- "${_t}" "./${1}"; then
+      return 0
+    fi
+  elif ( umask "$(printf '%03o' $(( 0777 & ~0${2} )))"
     dd of="${_t}" conv=excl status=none 2> /dev/null ); then
-    [ -z "${3}" ] || chown -h -- "${3}" "${_t}"
     mv -f -T -- "${_t}" "./${1}" && return 0
   fi
   rm -f -- "${_t}"
