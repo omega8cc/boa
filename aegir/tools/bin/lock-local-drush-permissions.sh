@@ -94,7 +94,9 @@ _in_pinned_dir() {
 # through that handle, and the last name is opened the same way without
 # blocking on a FIFO, checked to be the expected type and changed through
 # the open handle, so a name swapped for a link at any moment is refused,
-# not followed. Run it on ./names inside a pinned directory, or from
+# not followed. A regular file with more than one link is left alone: a hard
+# link planted in a tree the account can write would carry the mode to the
+# file it shares. Run it on ./names inside a pinned directory, or from
 # find -exec ... {} + there, which hands one perl the paths of the whole
 # walk (find's -type test alone does not stop a later chmod by path from
 # following a link). As chmod does, a directory keeps its setuid and setgid
@@ -129,7 +131,7 @@ for my $p (@ARGV) {
   if (-d _ && $t ne "f") {
     chmod($v | ($s[2] & $k), $h);
   }
-  elsif (-f _ && $t ne "d") {
+  elsif (-f _ && $s[3] == 1 && $t ne "d") {
     chmod($v, $h);
   }
   close($h);

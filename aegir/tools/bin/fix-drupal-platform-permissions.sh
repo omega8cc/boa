@@ -22,6 +22,10 @@ fi
 # The walks below run perl and the tools from this PATH, never the caller's.
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
+# The notes on what a walk left as it was (_links_left_note) go to fd 3, a
+# copy of stderr taken here: several legs below discard their own output.
+exec 3>&2
+
 # The script is invoked via NOPASSWD sudo by aegir and per-Octopus admin users,
 # and the account owns the names under ${drupal_root}, so any of them can be
 # a link. Defence:
@@ -123,7 +127,9 @@ _in_scoped_dir() {
 # through that handle, and the last name is opened the same way without
 # blocking on a FIFO, checked to be the expected type and changed through
 # the open handle, so a name swapped for a link at any moment is refused,
-# not followed. Run it on ./names inside a pinned directory, or from
+# not followed. A regular file with more than one link is left alone: a hard
+# link planted in a tree the account can write would carry the mode to the
+# file it shares. Run it on ./names inside a pinned directory, or from
 # find -exec ... {} + there, which hands one perl the paths of the whole
 # walk (find's -type test alone does not stop a later chmod by path from
 # following a link). As chmod does, a directory keeps its setuid and setgid
@@ -158,7 +164,7 @@ for my $p (@ARGV) {
   if (-d _ && $t ne "f") {
     chmod($v | ($s[2] & $k), $h);
   }
-  elsif (-f _ && $t ne "d") {
+  elsif (-f _ && $s[3] == 1 && $t ne "d") {
     chmod($v, $h);
   }
   close($h);
@@ -185,6 +191,39 @@ _chmod_in() {
   shift
   _in_pinned_dir "${_d}" _chmod_here "$@"
 }
+# A walk leaves a regular file with more than one link as it was (a hard
+# link planted in a tree the account can write would carry the change to the
+# file it shares), so that file keeps its old owner and mode. Say so once
+# per walk: how many the walk's selection holds and the first, found by the
+# same start points and tests ("$@", run from the directory the walk ran
+# in). Printed on fd 3, which the legs that discard their output leave open;
+# no count is taken when the whole run's output goes to /dev/null (the
+# nightly's foreign-CMS leg), which would only add a traversal nobody reads.
+_links_left_note() {
+  local _f _n=0 _first="" _here
+  [ /dev/fd/3 -ef /dev/null ] && return 0
+  while IFS= read -r -d '' _f; do
+    [ -n "${_first}" ] || _first="${_f}"
+    _n=$(( _n + 1 ))
+  done < <(find "$@" -type f -links +1 -print0 2> /dev/null)
+  [ "${_n}" -gt 0 ] || return 0
+  _here="$(pwd -P)"
+  _first="${_here}/${_first#./}"
+  printf "Notice: %s file(s) with more than one link left unchanged under %s, first: %s\n" \
+    "${_n}" "${_here}" "${_first//[[:cntrl:]]/?}" >&3
+  return 0
+}
+# Mode $1 on every regular file the find start points and tests after it
+# select (any tests apply first), walked from the current (pinned) directory
+# through _FCHMOD_PL, then _links_left_note on the same selection.
+_fwalk_here() {
+  local _m="${1}" _rc
+  shift
+  find "$@" -type f -exec perl -e "${_FCHMOD_PL}" f "${_m}" {} +
+  _rc=$?
+  _links_left_note "$@"
+  return "${_rc}"
+}
 # Mode $2 on every entry of type $1 (d or f) below the start points after
 # them, walked from the current (pinned) directory through _FCHMOD_PL. Only
 # start points that are real directories here are walked: a Drupal 7 root
@@ -198,7 +237,11 @@ _walk_here() {
     [ -d "${_d}" ] && [ ! -L "${_d}" ] && _s+=("${_d}")
   done
   [ "${#_s[@]}" -gt 0 ] || return 0
-  find "${_s[@]}" -type "${_t}" -exec perl -e "${_FCHMOD_PL}" "${_t}" "${_m}" {} +
+  if [ "${_t}" = "f" ]; then
+    _fwalk_here "${_m}" "${_s[@]}"
+  else
+    find "${_s[@]}" -type "${_t}" -exec perl -e "${_FCHMOD_PL}" "${_t}" "${_m}" {} +
+  fi
 }
 
 # ./$1 in the current (pinned) directory as a fresh empty file, created
@@ -247,8 +290,7 @@ _grav_capsule_perm_here() {
     [ -d "./${_wd}" ] || continue
     find "./${_wd}" -type d \
       -exec perl -e "${_FCHMOD_PL}" d 02775 {} + 2> /dev/null
-    find "./${_wd}" -type f \
-      -exec perl -e "${_FCHMOD_PL}" f 0664 {} + 2> /dev/null
+    _fwalk_here 0664 "./${_wd}" 2> /dev/null
   done
   # Secret surfaces AFTER the generic pass, which would re-widen them
   # otherwise: group-rw for FPM, owner-rw for the CLI, NO world
@@ -257,8 +299,7 @@ _grav_capsule_perm_here() {
     [ -d "./user/${_sd}" ] || continue
     _in_pinned_dir "${_here}/user" find "./${_sd}" -type d \
       -exec perl -e "${_FCHMOD_PL}" d 02770 {} + 2> /dev/null
-    _in_pinned_dir "${_here}/user" find "./${_sd}" -type f \
-      -exec perl -e "${_FCHMOD_PL}" f 0660 {} + 2> /dev/null
+    _in_pinned_dir "${_here}/user" _fwalk_here 0660 "./${_sd}" 2> /dev/null
   done
   _chmod_here 0640 .env
   _chmod_here 0440 drushrc.php
@@ -313,14 +354,14 @@ if [ -n "${drupal_root}" ] \
     -o -path "./sites/*/images" -prune \
     -o -path "./sites/*/assets" -prune \
     -o -type d -exec perl -e "${_FCHMOD_PL}" d 0755 {} + 2> /dev/null
-  _in_pinned_dir "${drupal_root}" find . -path "./sites/*/user" -prune \
+  _in_pinned_dir "${drupal_root}" _fwalk_here 0644 . -path "./sites/*/user" -prune \
     -o -path "./sites/*/cache" -prune \
     -o -path "./sites/*/logs" -prune \
     -o -path "./sites/*/tmp" -prune \
     -o -path "./sites/*/backup" -prune \
     -o -path "./sites/*/images" -prune \
     -o -path "./sites/*/assets" -prune \
-    -o -type f -exec perl -e "${_FCHMOD_PL}" f 0644 {} + 2> /dev/null
+    -o 2> /dev/null
   _in_pinned_dir "${drupal_root}/sites" _grav_capsules_perm_here
   _chmod_in "${drupal_root}/bin" 0755 '*'
   echo "Done setting proper permissions of files and directories (Grav)."
@@ -345,8 +386,8 @@ if [ -n "${drupal_root}" ] \
   printf "Setting Textpattern permissions of %s\n" "${drupal_root}"
   _in_pinned_dir "${drupal_root}" find . -path "./sites/*" -prune \
     -o -type d -exec perl -e "${_FCHMOD_PL}" d 0755 {} + 2> /dev/null
-  _in_pinned_dir "${drupal_root}" find . -path "./sites/*" -prune \
-    -o -type f -exec perl -e "${_FCHMOD_PL}" f 0644 {} + 2> /dev/null
+  _in_pinned_dir "${drupal_root}" _fwalk_here 0644 . -path "./sites/*" -prune \
+    -o 2> /dev/null
   echo "Done setting proper permissions of files and directories (Textpattern platform)."
   exit 0
 fi
@@ -454,15 +495,13 @@ if [ -e "${drupal_root}/vendor" ]; then
   _in_pinned_dir "${drupal_root}" find ./vendor -type d \
     -exec perl -e "${_FCHMOD_PL}" d "${_MODE_DIR}" {} +
   printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}/vendor"
-  _in_pinned_dir "${drupal_root}" find ./vendor -type f \
-    -exec perl -e "${_FCHMOD_PL}" f "${_MODE_FILE}" {} +
+  _in_pinned_dir "${drupal_root}" _fwalk_here "${_MODE_FILE}" ./vendor
 elif [ -e "${drupal_root}/../vendor" ]; then
   printf 'Setting permissions of all codebase directories inside %s...\n' "${drupal_root}/../vendor"
   _in_pinned_dir "${drupal_root%/*}" find ./vendor -type d \
     -exec perl -e "${_FCHMOD_PL}" d "${_MODE_DIR}" {} +
   printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}/../vendor"
-  _in_pinned_dir "${drupal_root%/*}" find ./vendor -type f \
-    -exec perl -e "${_FCHMOD_PL}" f "${_MODE_FILE}" {} +
+  _in_pinned_dir "${drupal_root%/*}" _fwalk_here "${_MODE_FILE}" ./vendor
 fi
 
 ### vendor is never symlink-prechecked (a link to elsewhere in the caller's
@@ -506,8 +545,7 @@ _in_pinned_dir "${drupal_root}/sites/all" \
 
 printf 'Setting permissions of all codebase files inside %s...\n' "${drupal_root}/sites/all"
 _in_pinned_dir "${drupal_root}/sites/all" \
-  find ./modules ./themes ./libraries -type f \
-  -exec perl -e "${_FCHMOD_PL}" f "${_SA_FILE}" {} +
+  _fwalk_here "${_SA_FILE}" ./modules ./themes ./libraries
 
 _chmod_in "${drupal_root}" 0644 '*.php'
 _chmod_in "${drupal_root}" "${_MODE_FILE}" autoload.php
@@ -557,6 +595,8 @@ if [ ! -L "${drupal_root}/sites/all/libraries/tcpdf" ] \
   && [ ! -L "${drupal_root}/sites/all/libraries/tcpdf/cache" ]; then
   _in_pinned_dir "${drupal_root}/sites/all/libraries/tcpdf/cache" \
     find . -exec perl -e "${_FCHMOD_PL}" a 775 {} + &> /dev/null
+  _in_pinned_dir "${drupal_root}/sites/all/libraries/tcpdf/cache" \
+    _links_left_note .
 fi
 _chmod_in "${drupal_root}" 0644 .htaccess
 

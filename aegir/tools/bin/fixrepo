@@ -105,11 +105,12 @@ _in_pinned_dir() {
 # entered through that handle, and the last name is opened the same way
 # without blocking on a FIFO, checked to be a regular file or a directory
 # and changed through the open handle, so a name swapped for a link at any
-# moment is refused, not followed. Run it from find -exec ... {} + inside
-# the pinned tree, which hands one perl the paths of the whole walk. Status
-# 1 when a mode could not be set. $1 = X: g+rwX (x only on a directory or a
-# file that already has an x bit); s: g+rws on a directory. The rest = the
-# paths.
+# moment is refused, not followed. A regular file with more than one link is
+# left alone: it may share its inode with a file outside the tree. Run it
+# from find -exec ... {} + inside the pinned tree, which hands one perl the
+# paths of the whole walk. Status 1 when a mode could not be set. $1 = X:
+# g+rwX (x only on a directory or a file that already has an x bit); s:
+# g+rws on a directory. The rest = the paths.
 _FIXREPO_FCHMOD_PL='use Fcntl;
 my ($t, $e) = (shift @ARGV, 0);
 sysopen(my $top, ".", O_RDONLY | O_DIRECTORY) or exit 1;
@@ -138,7 +139,7 @@ for my $p (@ARGV) {
   if (-d _) {
     chmod($m | ($t eq "s" ? 02070 : 0070), $h) or $e = 1;
   }
-  elsif (-f _ && $t eq "X") {
+  elsif (-f _ && $s[3] == 1 && $t eq "X") {
     chmod($m | 0060 | ($m & 0111 ? 0010 : 0), $h) or $e = 1;
   }
   close($h);
