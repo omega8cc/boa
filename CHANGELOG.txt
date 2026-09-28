@@ -914,6 +914,20 @@
       loopback copy from the site's port-80 vhost was counted too, which
       doubled every such request, tripled a refusal the front retries,
       and hid a harvest over the front.
+    * The web IDS and the crawler-fleet guard trust a plain csf.allow
+      line, the form csf -a writes, as the firewall's ban step already
+      did: only advanced s= records counted, so an address whitelisted
+      the documented way was still scored and handed to the ban step.
+      An address named only in an entry's comment is no longer trusted,
+      and the web IDS reads a last line that has no trailing newline.
+    * An indented csf.allow line counts as the allow csf makes of it, in
+      the web IDS, the crawler-fleet guard, the web ban step and the
+      hack check.
+    * The SSH port readers (the web IDS logged-in list, the ip_access and
+      user_admin_access SSH peers, edgetest's regression check, the port
+      in the setup email) read sshd -T in either keyword case: OpenSSH
+      10.5 prints "Port", so the live port was missed and the email fell
+      back to the configured value.
 
     * The AI training block no longer refuses Claude-User, Claude-SearchBot
       and Amzn-SearchBot. Their user agents name a training crawler in the
