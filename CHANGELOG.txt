@@ -50,6 +50,12 @@
 
 @=> Security
 
+    * The per-site login and admin IP lock now covers the legacy
+      query-string route form and trailing-character path variants on
+      Drupal 6, Drupal 7 and Backdrop and on the control panel, matching
+      the clean-path coverage; listed addresses and the anti-lockout are
+      unchanged, and the verdict is judged on the real visitor behind the
+      wildcard SSL front and the panel proxy.
     * The migration key exchange is pinned: the target's pre-mig of xoct,
       xcopy and xmass requires --key-fp=SHA256:..., the fingerprint the
       source's pre-mig prints, and adds only the matching key, tagged
