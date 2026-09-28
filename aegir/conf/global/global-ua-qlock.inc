@@ -12,14 +12,14 @@
  * never includes this file; clean-path /user and /admin from a locked visitor
  * were already refused by nginx and never reach here.
  *
- * The lock verdict is passed by nginx: $_SERVER['BOA_UA_LK_SELF'] is the site
- * vhost's own value (correct on a direct hit) and X-BOA-UA-LK carries the
- * verdict judged on the real visitor at the wildcard SSL front or the panel
- * proxy, which the vhost cannot see on the proxied hop. The forwarded header is
- * trusted only from an on-box hop: a loopback peer, or the box talking to
- * itself (REMOTE_ADDR == SERVER_ADDR). A remote client's own header is ignored,
- * so it can never unlock; those tiers overwrite the header, so it cannot be
- * smuggled through them either.
+ * The lock verdict is passed by nginx: $_SERVER['BOA_UA_LK_SELF'] is the site's
+ * own value, judged on the real visitor on a direct hit and behind the wildcard
+ * SSL front and the panel proxy alike (the vhost reads the address those on-box
+ * hops forward). A front or proxy that also forwards its own verdict in
+ * X-BOA-UA-LK can only tighten it: that header is read only from an on-box hop
+ * (a loopback peer, or the box talking to itself, REMOTE_ADDR == SERVER_ADDR),
+ * and a "1" there locks while a "0" never unlocks. A remote client's own header
+ * is never read; those tiers overwrite it, so it cannot be smuggled through.
  *
  * PHP 5.6 safe: this runs under the legacy backend too (Drupal 6 on PHP 5.6).
  */
@@ -27,10 +27,11 @@ if (empty($is_backend) && isset($_SERVER['BOA_UA_LK_SELF'])) {
   $boa_ua_lk = $_SERVER['BOA_UA_LK_SELF'];
   if (isset($_SERVER['HTTP_X_BOA_UA_LK']) && isset($_SERVER['REMOTE_ADDR'])) {
     $boa_ua_self = isset($_SERVER['SERVER_ADDR']) ? $_SERVER['SERVER_ADDR'] : '';
-    if ($_SERVER['REMOTE_ADDR'] === '127.0.0.1'
+    if (($_SERVER['REMOTE_ADDR'] === '127.0.0.1'
       || $_SERVER['REMOTE_ADDR'] === '::1'
-      || ($boa_ua_self !== '' && $_SERVER['REMOTE_ADDR'] === $boa_ua_self)) {
-      $boa_ua_lk = $_SERVER['HTTP_X_BOA_UA_LK'];
+      || ($boa_ua_self !== '' && $_SERVER['REMOTE_ADDR'] === $boa_ua_self))
+      && $_SERVER['HTTP_X_BOA_UA_LK'] === '1') {
+      $boa_ua_lk = '1';
     }
     unset($boa_ua_self);
   }
