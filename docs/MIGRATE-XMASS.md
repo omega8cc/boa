@@ -190,11 +190,13 @@ process does not block.
 - Root SSH key access from source to target (set up via `xmass pre-mig`;
   the source also learns the target's SSH host key automatically). The verb
   is two-sided: run `xmass pre-mig <own-fqdn>` ON the source to publish its
-  key (publish mode fires when the argument equals the box's own hostname),
-  then `xmass pre-mig <source-address>` ON the target to fetch and install
-  it. On a failback chain the roles have swapped — publish on the new
-  source first, or the fetch finds nothing (a proxied box relays its
-  undefined vhost onward instead of serving the key).
+  key and print its fingerprint (publish mode fires when the argument equals
+  the box's own hostname), then
+  `xmass pre-mig <source-address> --key-fp=SHA256:...` ON the target to fetch
+  the key and install it only when its fingerprint matches.
+- On a failback chain the roles have swapped — publish on the new source
+  first, or the fetch finds nothing (a proxied box relays its undefined vhost
+  onward instead of serving the key).
 - BOA installed on target at the **same release** as source. This is an
   enforced gate, not advice: `prep-target` reads the release stamp from
   `boa info` on both ends at first target contact and **refuses with no
@@ -295,12 +297,21 @@ account is a legitimate skip. The check is yours to make.
 Run on **both** hosts (source first, then target). Stops BOA background runners
 and sets up root SSH key exchange between the two servers.
 
-On both hosts `pre-mig` first forces the migration tool set current: it drops
-the per-tool control markers for the six migration tools, runs the 5-minute
+On both hosts `pre-mig` forces the migration tool set current before anything
+is parked (on the target, right after the key check below): it drops the
+per-tool control markers for the six migration tools, runs the 5-minute
 housekeeping script synchronously, then logs each tool's resulting version
 line — so a migration is never run on stale tooling. The tool executing the
 command itself refreshes on the next verb, not mid-run (the fetcher refuses to
 replace a live process), and the log says so.
+
+In source mode `pre-mig` publishes root's public key on the box's undefined
+vhost and prints the key's fingerprint with the exact command to run on the
+target. The target fetches the key over plain HTTP, so it installs it only
+with `--key-fp`: the one served key line whose fingerprint matches is added to
+`authorized_keys`, tagged `# xmass migration source <ip>`. A missing or
+malformed `--key-fp`, or no served key matching it, is refused first, before
+the tool refresh and before anything is parked, and nothing is added.
 
 In target mode `pre-mig` also removes this box's OWN published root public key
 from the nginx web root, not just the fetched copy — a box that was ever a
@@ -330,9 +341,12 @@ defect to a new box.
 xmass pre-mig source-host
 ```
 
+It prints the line to run on the target, for example
+`INFO: On the target run: xmass pre-mig source-host --key-fp=SHA256:...`.
+
 **On target:**
 ```sh
-xmass pre-mig source-host
+xmass pre-mig source-host --key-fp=SHA256:<the fingerprint printed on the source>
 ```
 
 ### Phase 0.5 — Prepare the target (`xmass prep-target`)
@@ -375,6 +389,10 @@ xmass prep-target target-ip [--fix-php] [--fix-solr] [--fix-users]
 either role (nologin and recorded for the promotion's release on a standby, the
 tenant shell elsewhere), runs none of the steps below (with `--fix-solr` beside
 it the Solr reconcile rides along), and is refused together with `--fix-php`.
+
+A re-created identity also joins the account's own web group `wg-oN` on the
+target when only the account's identities hold it there, and is left out of
+`www-data` once they have all left it.
 
 What it does, in order:
 
@@ -437,6 +455,13 @@ What it does, in order:
    driven there to build them (~30 minutes). A `phpNN.info` switch or a
    `cli-per-platform.info` line that names a PHP the source lacks is inert
    there and takes effect on a target that has that PHP.
+
+   Then the **web-group gate**: an account converted to its own web group
+   (`wg-oN`, see `INSTGRP.md`) is refused when the target's `instgrp`
+   predates the web group, or cannot be asked, because its claim passes
+   would hand the account's web paths back. `init`, `sync` and `cutover`
+   re-gate the same way (a DENY in a dry run), and `instgrp` is part of the
+   forced tool refresh in step 0.
 4. **Certificate health sweep** on the source — names every zero-byte,
    unparseable or expired certificate, so a broken renewal is fixed before the
    migration rather than debugged alongside it.
@@ -724,12 +749,18 @@ xmass sync target-ip --live     # perform the sync (after a CLEAN dry run)
 
 > **`xmass sync` and `xmass cutover` default to a read-only DRY run** and require an
 > explicit **`--live`** to make changes — accepted only after a `CLEAN` dry run for that
-> target. The DRY pass resolves the target's storage, prints the plan (`[DRY-PLAN] …`),
+> target.
+>
+> The DRY pass resolves the target's storage, prints the plan (`[DRY-PLAN] …`),
 > pre-checks disk space for every account's files store **and the Solr indices** (which
 > can be large), and records `CLEAN`/`NOT CLEAN`
-> for the whole run — a single `DENY` (a dangling **named store** such as
-> `static/files` or `arch`, more than one `/mnt` mount, or a store that fits nowhere)
-> makes it `NOT CLEAN` and refuses `--live` until resolved.
+> for the whole run.
+>
+> A single `DENY` (a dangling **named store** such as
+> `static/files` or `arch`, more than one `/mnt` mount, a store that fits nowhere, an
+> account leg such as `static/`, `log/` or `.drush/` that is a link or missing, a
+> `static/files` or `backups` that resolves outside the account's own tree and store,
+> or out-of-root links to content that is not the account's own) makes it `NOT CLEAN` and refuses `--live` until resolved.
 >
 > A dangling link found by
 > the out-of-root **sweep** is reported but never a `DENY` by itself. Utility/DB commands (`init`, `status`, `pre-mig`, `post-mig`) are not gated,
@@ -784,7 +815,9 @@ Three things are deliberately **not** pruned:
   `.drush/`, `config/`, the sub-account password store and the whole of
   `static/control` (its own leg, the PHP pin witnesses force-copied on top;
   a `static/control` that is a symlink is never followed — neither leg runs
-  for that account, and the pass says so once a day). They carry
+  for that account, and the pass says so once a day; a `log/` or `.drush/`
+  that is a symlink is never followed either, and fails the pass with a
+  `DENY` naming it). They carry
   target-owned state or are force-copied, and deleting there would fight the
   target's own install.
 - **The cutover legs stay additive**, plan and live alike. That is the one
@@ -792,8 +825,9 @@ Three things are deliberately **not** pruned:
   is unrecoverable; a promoted box resumes its own `owl.sh` cleanup within
   the night and reclaims normally.
 - **Files excluded from a leg are never deletion candidates** (`--delete-excluded`
-  is never passed), so `proxied.pid`, `migproxy.cnf`, `pass.txt` and the
-  target's immutable `php.ini` are safe by construction.
+  is never passed), so `proxied.pid`, `migproxy.cnf`, `pass.txt` and an
+  immutable `php.ini` an earlier release left in `.drush` are safe by
+  construction.
 
 The guards on every pruning leg, none of them optional:
 
@@ -802,7 +836,7 @@ The guards on every pruning leg, none of them optional:
 | `--delete-after` | Nothing is removed until the transfer succeeded, so a failed leg cannot leave the target both pruned and un-copied |
 | `--max-delete` (`_XMASS_MAX_DELETE`, default 5000) | rsync **refuses** (exit 25) rather than carry out a mass deletion — the catastrophe guard: "wiped the mirror" becomes "a loud pass failure a human reads" |
 | Never with `--ignore-errors` | That flag means *delete even though the source had read errors*, which is exactly what must not happen; a leg either prunes or keeps the historical tolerance, never both |
-| Empty-source refusal | An unmounted secondary volume reads as an **empty directory**; a `--delete` against it would erase the mirror's only copy of every client file. An empty source is never a licence to delete — the leg logs it and stays additive (the `static/` leg is covered one step earlier: a `static/` that is a link into an unmounted volume is no directory, and the leg does not run) |
+| Empty-source refusal | An unmounted secondary volume reads as an **empty directory**; a `--delete` against it would erase the mirror's only copy of every client file. An empty source is never a licence to delete — the leg logs it and stays additive (the `static/` leg is covered one step earlier: a `static/` that is a link is never followed, and the pass fails with a `DENY` naming it) |
 
 A tripped delete guard is a refusal to read, not an error to retry: nothing
 beyond the limit was deleted. One removed codebase is enough to trip it — a
@@ -892,7 +926,10 @@ every symlink:
   toolchains (any standard FHS prefix that exists on every BOA box) — and
   relative links resolving inside the tree being copied.
 - **Materialises**: links whose first hop *and* final target live outside
-  those prefixes and exist (the secondary-mount class). Dir links transfer
+  those prefixes and exist (the secondary-mount class). In an account's tree
+  only links whose content is the account's own (its tree, its store under
+  `<mount>/files/<account>/`, or files its identities own) materialise; any
+  other is reported and fails the pass with a `DENY`. Dir links transfer
   one store each; file links ride one batched, space-gated `rsync
   --copy-links` per tree. Nested links inside a materialised tree are handled
   the same way, a few levels deep.
@@ -1136,6 +1173,17 @@ first change to the source):
   reliable. If the cutover aborts after this point but before the write freeze,
   it restores cron, the runners and the 503 gate itself; from the freeze onward
   the printed restore recipe covers it.
+- This park also writes the migration park marker
+  `/run/boa_migration_park.pid`. While it exists BOA's tools refresh does not
+  fetch a parked runner back, so the runners stay parked through the relay
+  window (step 12.94), when cron runs again, and a barracuda `system` pass
+  run meanwhile leaves a parked runner parked instead of deploying it again.
+  Step 18.5 removes it; the housekeeping script drops it after 24 hours at
+  most.
+- Step 18.5 (and the pre-promotion abort, which restores this box as
+  production) also removes a stale parked copy (`.<name>.off`) of any runner a
+  refresh had already brought back, and stops the source serving the root key
+  `pre-mig` published.
 
 **Cutover sequence:**
 
@@ -1167,12 +1215,12 @@ first change to the source):
 | Step 15.1 | Site auto-import back to its default, then one sub-user pass run by the cutover itself on the target and a configtest-gated nginx reload: the per-site PHP-FPM includes are regenerated after the renames (by this pass, or by the box's own three-minute pass when that one already holds the lock). While the promotion window is open the sub-user pass leaves them as found, because the rename rewrites the pin names and would otherwise have every include of an account wiped and rebuilt under live traffic |
 | Step 15.2 | `xoct proxy oN target-ip --repair` per account, handed both hostnames: the deferred sites are converted, their **old names answering a 301 to the renamed sites**; the per-host gate is removed. An account step 12.92 could not convert at all gets its whole conversion here instead (`xoct proxy oN target-ip`, same hostnames). A failure keeps that account's deferred sites on 503 (all its sites, for an account 12.92 could not convert), is named in the closing summary with the re-run, which carries both hostnames because `xoct` has no flag for them, and never parks a cutover whose sites all serve |
 | Step 15.9 | *(rename-first order only)* Wire the migration-proxy trust (nginx realip + csf) for THIS box on the target, before the source starts relaying — the new host recovers the real client address from the first relayed request and never bans the proxy |
-| Step 15.95 | *(rename-first order only; 12.895 otherwise)* Carry the reach of this box's own INBOUND proxies to the promoted target: the root key each of them installed here through `pre-mig` (tagged `# xmass migration source <ip>` in `authorized_keys`) and csf allow + lfd ignore lines for their addresses, read from the target-role records and the trust control file while step 16 has not yet overwritten them. Only the reach travels — the serving trust (realip, the trust file) is wired by `xoct` itself when a proxy is retargeted, so a retired peer never inherits one. Idempotent, never fatal. Without it a proxy box that fronted the demoted box could not retarget onto the promoted one (`could not write the policy record on peer`) |
+| Step 15.95 | *(rename-first order only; 12.895 otherwise)* Carry the reach of this box's own INBOUND proxies to the promoted target: the root key each of them installed here through `pre-mig` (tagged `# xmass migration source <ip>` in `authorized_keys`, or `# xoct` / `# xcopy migration source <ip>` for a key the single-account tools installed) and csf allow + lfd ignore lines for their addresses, read from the target-role records and the trust control file while step 16 has not yet overwritten them. Only the reach travels — the serving trust (realip, the trust file) is wired by `xoct` itself when a proxy is retargeted, so a retired peer never inherits one. Idempotent, never fatal. Without it a proxy box that fronted the demoted box could not retarget onto the promoted one (`could not write the policy record on peer`) |
 | Step 16 | *(rename-first order only; 12.92 and 15.2 otherwise)* `xoct proxy oN target-ip` for each account on source (records + trust + **site** vhost conversion + mode-selected notification); failures collect per account. The account's control panel is skipped by identity (the hostmaster alias `site_path`), never by which alias files exist: it keeps its local vhost and is put into Drupal maintenance mode. First checks that `migration_proxy_certs.sh` exists **and is scheduled** here — from this point the source serves the proxied sites' TLS and only the daily mirror keeps it fresh |
 | Step 16.5 | *(rename-first order only; 12.93 otherwise)* The master panel gets the same treatment on the source: never proxied, Drupal maintenance mode ON, online as the box's monitoring canary |
 | Step 17 | Remove `http-off.pid` and `http-off-host.pid` from source accounts — a failed conversion keeps its 503 gate, a failed second pass keeps the per-host one (its vhosts would otherwise serve the old local copy against a database that now lives on the target) |
 | Step 18 | Write `proxied.pid` for successfully converted accounts only |
-| Step 18.5 | Lift the heavy-tasks pause (only the one this tool planted), start cron and un-park the five runners **on the source**. Without this the source proxy runs nothing again — including its own certificate mirror, which is what keeps a long-lived proxy from serving expired certificates ~90 days later. An account whose conversion failed has its Ægir dispatcher parked (BOA's off-run directory, where `xoct` parks a converted one) and is marked `log/proxy-failed.pid`: its panel database lives on the target now, and its queue would otherwise run against the stale local copy. While the marker exists, BOA's fpm-cli pass (once per release serial it hands parked dispatchers back) keeps it parked, its every-pass sweep moves a stray one back to the off-run directory, and `octopus up-*` skips the account. The repair's successful conversion stamps `proxied.pid`, which keeps both, and removes the marker; so does a later promotion of this box |
+| Step 18.5 | Lift the heavy-tasks pause (only the one this tool planted), start cron, un-park the five runners and remove the park marker **on the source**. Without this the source proxy runs nothing again — including its own certificate mirror, which is what keeps a long-lived proxy from serving expired certificates ~90 days later. An account whose conversion failed has its Ægir dispatcher parked (BOA's off-run directory, where `xoct` parks a converted one) and is marked `log/proxy-failed.pid`: its panel database lives on the target now, and its queue would otherwise run against the stale local copy. While the marker exists, BOA's fpm-cli pass (once per release serial it hands parked dispatchers back) keeps it parked, its every-pass sweep moves a stray one back to the off-run directory, and `octopus up-*` skips the account. The repair's successful conversion stamps `proxied.pid`, which keeps both, and removes the marker; so does a later promotion of this box |
 | Step 18.9 | Probe every control panel on the target by its new name; a dead panel is named and the cutover completes saying so (`xmass verify` re-checks) |
 | Step 18.95 | Re-arm on the target the upgrade `prep-target` seeded while the box was demoted (step 12.7 parked it rather than defusing it), so it runs at the promoted box's first quiet tick |
 | Step 19 | Mark state `complete` |
@@ -1195,7 +1243,7 @@ or a park at `rename-failed` — the source stays on 503 (`http-off.pid` in plac
 and the tool prints the exact commands to restore service, so follow the printed
 recipe rather than reconstructing it: clear the `http-off.pid` files, purge the
 nginx speed cache, reload nginx, remove the Solr deny file if Solr served from
-here, start cron, and un-park the five runners.
+here, start cron, un-park the five runners and remove the park marker.
 
 When the write freeze is still in place as the recipe prints (a post-promotion
 park), the recipe includes the thaw line and says when it is safe to use it:
@@ -1267,6 +1315,9 @@ from the per-account policy records: peers whose accounts resolved
 (restricted to the live peer set), undeclared accounts leave everything as
 found and are reported. With no records at all it behaves exactly as the old
 unconditional teardown (the permanent marker is honoured).
+
+It also removes a stale parked copy (`.<name>.off`) of any runner a refresh
+had already brought back, and stops the box serving a root key it published.
 
 It also **rebuilds the pinned PHP pools**, which is not cosmetic. A
 migrated account arrives carrying the source's per-release FPM markers

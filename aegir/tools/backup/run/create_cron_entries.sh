@@ -311,8 +311,10 @@ while IFS= read -r _line || [ -n "${_line}" ]; do
       continue
     fi
 
-    # Change to the directory where _paths_file and credentials are located
-    cd "/data/disk/${_user}/remote_backups"
+    # multiback resolves and reads every account path inside its real
+    # directory itself, so root's working directory stays in its own tree,
+    # never in one the account can swap
+    cd /root/.remote_backups
     _print_env "sequential_backups_b"
   fi
 
@@ -366,6 +368,46 @@ _validate_cron_file() {
   echo "Cron file validated successfully."
 }
 
+# An account owns static/control through its .ftp login, so any name below
+# it can be a link or a FIFO, and a whole directory on the way can be one.
+# _acct_in_real_dir and _acct_read_here are copies of the helpers in
+# lib/functions/helper.sh.inc.
+#
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory; once entered, ./name stays there
+# whatever is swapped.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_acct_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# A "<service> $1" line for every service whose credentials file in the
+# current (pinned) directory is a regular file with no placeholder left, as
+# the grep over each file decided it before.
+_acct_ready_services_here() {
+  local _service _body
+  for _service in aws aws_one_zone aws_standard_ia azure b2 cloudflare do_spaces gcs ibm linode wasabi; do
+    [ -f "./${_service}.txt" ] && [ ! -L "./${_service}.txt" ] || continue
+    _body="$(_acct_read_here "${_service}.txt" && echo x)" || continue
+    [[ "${_body}" == *your_* ]] || echo "${_service} ${1}"
+  done
+}
+
 # Function to generate the backup schedule
 _generate_backup_schedule() {
   echo "# Backup schedule (service user)" > "${_SCHEDULE_FILE}"
@@ -381,16 +423,15 @@ _generate_backup_schedule() {
     fi
   done
 
-  # Add user-specific backups
+  # Add user-specific backups: the credentials hang off static/control,
+  # which the account owns, so they are read only inside the real directory
   for _user_dir in /data/disk/*; do
     if [ -d "${_user_dir}" ]; then
       _user=$(basename "${_user_dir}")
       _USER_CRED_DIR="/data/disk/${_user}/static/control/remote_backups/credentials"
-      for _service in aws aws_one_zone aws_standard_ia azure b2 cloudflare do_spaces gcs ibm linode wasabi; do
-        if [ -f "${_USER_CRED_DIR}/${_service}.txt" ] && ! grep -q "your_" "${_USER_CRED_DIR}/${_service}.txt"; then
-          echo "${_service} ${_user}" >> "${_SCHEDULE_FILE}"
-        fi
-      done
+      [ -d "${_USER_CRED_DIR}" ] || continue
+      _acct_in_real_dir "${_USER_CRED_DIR}" \
+        _acct_ready_services_here "${_user}" >> "${_SCHEDULE_FILE}"
     fi
   done
 

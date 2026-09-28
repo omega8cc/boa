@@ -8,7 +8,9 @@
 ### migrates ALL Octopus instances and all Solr cores in a single operation.
 ###
 ### Usage:
-###   xmass pre-mig <source-fqdn>                   (run on BOTH source and target)
+###   xmass pre-mig <source-fqdn>                   (run on SOURCE first; prints the
+###                                                  key fingerprint the target needs)
+###   xmass pre-mig <source-fqdn> --key-fp=SHA256:...  (then run on TARGET)
 ###   xmass init    <target-ip> [--proxy-mode=temporary|permanent|ha-switch]
 ###                             [--proxy-deadline=YYYY-MM-DD|+Nd]   (run on SOURCE)
 ###   xmass sync    <target-ip> [--live]             (run on SOURCE, repeat as needed)
@@ -37,6 +39,8 @@
 ### (typically a secondary /mnt volume), excludes those from their tree leg, and
 ### materialises their content on the target as real dirs/files -- mirrored onto
 ### the target's own mount when it has one, space-gated like every other store.
+### In an account tree only content the account owns materialises; any other
+### out-of-root link is reported and fails the pass (DENY).
 ### Links into the normal BOA fabric (/data/all platforms, .drush, etc.) always
 ### stay links; dangling links are reported and skipped, never a DENY by
 ### themselves. pre-mig and init print the full link map (classes + sizes) before
@@ -123,6 +127,11 @@ _XMASS_SYNC_MAX_WAIT="${_XMASS_SYNC_MAX_WAIT:-7200}"
 ### destructive step so a truncated tree can never reach the target promote.
 _XMASS_RSYNC_RC=0
 
+### The group maps of the account being synced (_xmass_set_gmap); empty
+### outside an account.
+_XMASS_GMAP=""
+_XMASS_WGMAP=""
+
 ### The firewall half of the standby web hold (chain BOA_STANDBY_WEB, asserted
 ### by the nginx watchdog and csfpost.sh while the box is not promoted). One
 ### text, used verbatim by every site that removes the "this box was held" web
@@ -177,6 +186,114 @@ _acct_group() {
   echo "${_g}"
 }
 
+_web_group_state() {
+  # The account's own web group, wg-<account>, derived on the box and never
+  # taken from argv or a cnf: the group its pools, backend user and shell
+  # users share for its web paths once the account is converted to it.
+  # Prints "<state> <gid> <group>", "none - -" when there is no such group
+  # (the record is root's: run as another user, converted reads as held):
+  #   none       no group of that name
+  #   foreign    the group exists, but an identity outside the account holds
+  #              it too: never joined nor written to; claim passes still leave
+  #              its paths alone (taking them would cut the pools off)
+  #   held       the group exists and only this account's identities hold it:
+  #              claim passes leave its paths alone, new identities join it
+  #   converted  and root's record names that gid: writers use the group
+  #   phaseb     and the record says the identities have left www-data
+  # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+  # phase=<A|B> ...", root's own file outside the account tree, so neither
+  # the account nor a copy or restore of its tree can make or move it.
+  # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+  # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+  # gems or npm tree, or its store on attached storage
+  # (/mnt/<m>/files/<oN>/static/files).
+  local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  # a path is read as written (an alias the account wrote can carry "..",
+  # "." or "//"): normalised by text alone, never through a link, first
+  case "${_a}" in
+    */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+  esac
+  case "${_a}" in
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+    /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+    /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+      _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+    */*) echo "none - -"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  case "${_a}" in
+    ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+  esac
+  _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  # every holder of the gid: members of each group entry carrying it (a
+  # second entry can share the number) and every user with it as primary
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+      || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+  done
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-${_a}"
+  else
+    echo "held ${_gid} wg-${_a}"
+  fi
+}
+
+_web_group() {
+  # The group a root writer gives an account's web paths (files/, private/,
+  # settings.php and the like): wg-<account> once the account is converted,
+  # www-data otherwise, as always. Until the record says converted every
+  # identity of the account still holds www-data (a conversion grants the web
+  # group first and a revert gives www-data back before it moves any path),
+  # so www-data is the old state, never an outage. Callers write
+  # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
+  # group and never hands a path to a login group. Run as any user but root,
+  # which cannot read root's record, a held group answers empty: the group
+  # each path has is kept. $1 as _web_group_state.
+  local _s
+  _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted|phaseb) echo "${_s##* }" ;;
+    held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+    *) echo "www-data" ;;
+  esac
+}
+
+# The group the target's own writers give an account's web paths there:
+# wg-<account> once the account is converted there, www-data otherwise,
+# derived on the target by the helper above, sent along with the question.
+# Prints nothing and returns 1 when the target cannot be asked. Verbatim in
+# xoct, xcopy and xmass.
+# $1 = account on the target, $2 = target host.
+_web_group_on_target() {
+  local _a="${1}" _h="${2}" _o
+  case "${_a}" in ""|*[!a-z0-9-]*) return 1 ;; esac
+  [ -n "${_h}" ] || return 1
+  _o=$( { declare -f _web_group_state _web_group
+    printf '%s\n' "echo \"XMWG:\$(_web_group '${_a}')\""; } \
+    | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" "bash -s" 2> /dev/null \
+    | grep -m1 -x -E 'XMWG:[a-z0-9-]+')
+  _o="${_o#XMWG:}"
+  case "${_o}" in
+    www-data|"wg-${_a}") echo "${_o}" ;;
+    *) return 1 ;;
+  esac
+}
+
 #
 # Re-group an account's tree ON A REMOTE BOX after a copy landed there
 # (transfer, sync, cutover): the copy carries this box's numeric gids, and
@@ -229,18 +346,39 @@ for _M in /mnt/*; do
   [ -d "\${_M}" ] && mountpoint -q "\${_M}" 2>/dev/null && { _MP="\${_M}"; _N=\$((_N + 1)); }
 done
 [ "\${_N}" = "1" ] || _MP=""
+_GI="\$(getent group "\${_G}" 2>/dev/null | cut -d: -f3)"
+_WG="\$(getent group www-data 2>/dev/null | cut -d: -f3)"
+case "\${_GI}" in ''|*[!0-9]*) _GI="" ;; esac
+case "\${_WG}" in ''|*[!0-9]*) _WG=-1 ;; esac
+# the account's own web group there, when it exists: its paths are the
+# pools' and are never claimed (by number: find refuses an unknown name)
+_XW="\$(getent group "wg-\${_A}" 2>/dev/null | cut -d: -f3)"
+_WGX=()
+case "\${_XW}" in ''|*[!0-9]*) _XW=-1 ;; *) _WGX=( ! -gid "\${_XW}" ) ;; esac
 for _R in "/data/disk/\${_A}" "/home/\${_A}.ftp" /home/"\${_A}".* "/opt/user/gems/\${_A}" /opt/user/gems/"\${_A}".* "/opt/user/npm/\${_A}" /opt/user/npm/"\${_A}".* "\${_MP:+\${_MP}/files/\${_A}/static/files}"; do
   [ -n "\${_R}" ] && [ -d "\${_R}" ] && [ ! -L "\${_R}" ] || continue
   # the FPM pool users' homes (oN.web, oN.NN.web) are www-data's, never the
   # account's: the same root set the tool walks
   case "\${_R}" in /home/*.web) continue ;; esac
-  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root -execdir chgrp -h "\${_G}" {} + 2>/dev/null
+  # regrouped through a no-follow handle on each name inside the directory
+  # find holds, never by name: only a directory, or a regular file with one
+  # link, whose handle is still in none of those groups, so a hard link to
+  # another file renamed in (or put there) is never regrouped; a link's own
+  # group grants nothing and is left
+  [ -n "\${_GI}" ] || continue
+  find -P "\${_R}" ! -group "\${_G}" ! -group www-data ! -group root "\${_WGX[@]}" \( -type f -o -type d \) \
+    -execdir perl -e 'use Fcntl; my (\$g, \$w, \$x) = splice(@ARGV, 0, 3); for my \$n (@ARGV) { sysopen(my \$h, \$n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat(\$h); chown(-1, \$g, \$h) if @s && \$s[5] != \$g && \$s[5] != \$w && \$s[5] != \$x && \$s[5] != 0 && (-d _ || (-f _ && \$s[3] == 1)); close(\$h); } exit 0' -- "\${_GI}" "\${_WG}" "\${_XW}" {} + 2>/dev/null
 done
-_M="/data/disk/\${_A}/log/instance-group.txt"
-if [ -f "\${_M}" ]; then
+# log/ is the account's own: the record is read and removed only inside the
+# real directory, never through a link or into a FIFO put there
+_W="\$(cd -P /data/disk 2>/dev/null && pwd -P)/\${_A}/log"
+( cd -P -- "/data/disk/\${_A}/log" 2>/dev/null && [ "\$(pwd -P)" = "\${_W}" ] \
+    && [ -f ./instance-group.txt ] || exit 0
   _GID=\$(getent group "\${_A}" 2>/dev/null | cut -d: -f3)
-  { [ "\${_G}" = "\${_A}" ] && grep -q " gid=\${_GID}\$" "\${_M}" 2>/dev/null; } || rm -f "\${_M}"
-fi
+  { [ "\${_G}" = "\${_A}" ] \
+    && timeout 10 dd if=./instance-group.txt iflag=nofollow,nonblock,fullblock \
+      bs=1048576 count=1 status=none 2>/dev/null | grep -q " gid=\${_GID}\$"; } \
+    || rm -f -- ./instance-group.txt )
 if [ "\${_DEFERRED}" = "1" ]; then
   echo "INFO: target group pass for \${_A}: the tool deferred 13 times (a BOA run live there); the inline form ran instead, group \${_G}"
   exit 4
@@ -275,7 +413,9 @@ _MIG_LEGACY_ORPHAN="${_PERM_PROXY_FLAG}"
 _mig_get() {
   local _f="$1" _k="$2"
   [ -r "${_f}" ] || return 1
-  grep -m1 "^${_k}=" "${_f}" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'
+  # the record sits in the account's own log/: read inside the real
+  # directory, never through a link or into a FIFO put there
+  _xmass_read_file "${_f}" | grep -m1 "^${_k}=" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'
 }
 
 _mig_valid_mode() {
@@ -549,6 +689,373 @@ _mig_php_norm() {
   esac
 }
 
+### static/control is the account's main login's (and oN owns the rest of
+### /data/disk/oN): it can put a link or a FIFO at any name there, or at
+### control itself. Root reads and writes those names only through these,
+### the ltd worker's rule. Run "$@" inside the real directory $1: below
+### /data/disk and /home every name on the path must be a real directory;
+### once entered, ./name stays there whatever is swapped.
+_xmass_in_real_dir() {
+  local _d="${1}" _want
+  shift
+  _want="$(_xmass_real_want "${_d}")"
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+### Where the directory $1 resolves when every name on its path below
+### /data/disk or /home is a real directory (elsewhere: its last name).
+_xmass_real_want() {
+  local _d="${1}" _a=""
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    printf '%s' "$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    printf '%s' "$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+}
+### _xmass_in_real_dir in the current shell, for a command that must keep
+### what it sets (the _xmass_rsync bookkeeping): "$@" runs inside the real
+### directory $1, then the previous working directory is restored.
+_xmass_at_real_dir() {
+  local _d="${1}" _want _back _rc
+  shift
+  _want="$(_xmass_real_want "${_d}")"
+  _back="$(pwd -P 2> /dev/null)"
+  [ -n "${_back}" ] || _back=/
+  cd -P -- "${_d}" 2> /dev/null || return 1
+  if [ "$(pwd -P)" != "${_want}" ]; then
+    cd -P -- "${_back}" 2> /dev/null || cd / || return 1
+    return 1
+  fi
+  "$@"
+  _rc=$?
+  # never left standing inside the account's directory
+  cd -P -- "${_back}" 2> /dev/null || cd / || return 1
+  return "${_rc}"
+}
+### ./$1 in the current (pinned) directory: never through a link, never
+### blocked on a FIFO, at most 1 MiB; empty for anything else.
+_xmass_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+### $2 in the real directory $1, read as _xmass_read_here reads it.
+_xmass_read_in() {
+  _xmass_in_real_dir "${1}" _xmass_read_here "${2}"
+}
+### The file $1, read as _xmass_read_here reads it inside its real directory.
+_xmass_read_file() {
+  _xmass_in_real_dir "${1%/*}" _xmass_read_here "${1##*/}"
+}
+### ./$1 in the current (pinned) directory with the content $2 (0644), owned
+### by $3 (owner:group; root's when empty or when it does not resolve): a
+### fresh file created, written, owned and moded through one handle opened
+### O_EXCL|O_NOFOLLOW, then renamed over the name, so a link or FIFO put there
+### is replaced, never followed or opened, a reader (the 503 gate) never
+### finds the name missing, and nothing is chowned by name in a directory the
+### account can write (a hard link renamed over the name before a chown by
+### name would hand another file to the account). The perl text stays in the
+### function: _xmass_remote_guards ships it to the other box.
+_xmass_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}" _u=-1 _g=-1
+  local _pl='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+  if [ -n "${3}" ]; then
+    _u="$(id -u -- "${3%%:*}" 2> /dev/null)"
+    _g="$(getent group "${3#*:}" 2> /dev/null | cut -d: -f3)"
+    [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] || { _u=-1; _g=-1; }
+  fi
+  rm -f -- "${_t}"
+  if printf '%s\n' "${2}" | perl -e "${_pl}" "${_t}" "${_u}" "${_g}" 644 \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+### ./control made a real directory, run inside the real static/: a link
+### put at the name is removed, a missing directory created.
+_xmass_ctrl_dir_here() {
+  [ -L ./control ] && rm -f ./control
+  [ -d ./control ] || mkdir -p ./control
+}
+### ./$1 in the current (pinned) directory touched: a plain file keeps its
+### content and only its time moves; anything else put there (a link, a
+### FIFO) is replaced by a fresh empty file, never followed or opened.
+_xmass_touch_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  if [ -f "./${1}" ] && [ ! -L "./${1}" ]; then
+    touch -c -h -- "./${1}" && return 0
+  fi
+  rm -f -- "${_t}"
+  if ( umask 022
+    dd if=/dev/null of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+### ./$1 in the current (pinned) directory put at ./$2 through sed "${@:3}".
+### The source is read through one handle opened O_NOFOLLOW|O_NONBLOCK that
+### must be a regular file with one link under 1 MiB; the owner, group and
+### mode are taken from that same handle (the first line the reader prints),
+### never from a stat by name, so a name swapped between the look and the
+### read never lends its bytes another file's owner. The result is a fresh
+### file with that numeric owner and the read/write bits of that mode,
+### created, written, owned and moded through one handle opened
+### O_EXCL|O_NOFOLLOW, then renamed over ./$2: nothing is chowned or
+### chmodded by name. Both perl texts stay in the function:
+### _xmass_remote_guards ships it. For a plain file this is what sed -i (and
+### cp -a, with an empty program) wrote, without their reach through a link.
+_xmass_sed_to() {
+  local _s="${1}" _n="${2}" _t _u _g _m _h
+  local _rd='use Fcntl; my ($n) = @ARGV; sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $s[7] < 1048576; my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 1 if length($d) >= 1048576; } exit 1 unless defined $r; close($h); binmode(STDOUT); printf("%d %d %o\n", $s[4], $s[5], $s[2] & 07777) or exit 1; (print $d) or exit 1; exit 0'
+  local _pl='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+  shift 2
+  _t="./.${_n}.sed.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if ( set -o pipefail
+    perl -e "${_rd}" "./${_s}" 2> /dev/null | {
+      _h=""
+      IFS=' ' read -r _u _g _m _h || exit 1
+      [[ "${_u}" =~ ^[0-9]+$ ]] && [[ "${_g}" =~ ^[0-9]+$ ]] \
+        && [[ "${_m}" =~ ^[0-7]+$ ]] && [ -z "${_h}" ] || exit 1
+      sed "$@" | perl -e "${_pl}" "${_t}" "${_u}" "${_g}" "${_m}"
+    } ) && mv -f -T -- "${_t}" "./${_n}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+### ./$1 rewritten in place by sed "${@:2}", as _xmass_sed_to does it.
+_xmass_sed_here() {
+  local _n="${1}"
+  shift
+  _xmass_sed_to "${_n}" "${_n}" "$@"
+}
+### The --rsync-path that makes the receiving side work as _xmass_in_real_dir
+### does here, in the directory $1 (below /data/disk, /home or /opt/user,
+### the client toolchain trees) on that box: the parent must be real, a
+### link put at the last name is removed and a missing directory made, and
+### the copy lands in ./ only once pwd -P says where that is. The receiver
+### never writes through a link put on the way.
+_xmass_pin_rpath() {
+  local _d="${1}" _a=/data/disk _p _n
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /opt/user/?*) _a=/opt/user ;;
+  esac
+  _p="${_d%/*}"
+  _n="${_d##*/}"
+  printf '%s' "_a=\"\$(cd -P ${_a} && pwd -P)\"; cd -P -- '${_p}' && [ \"\$(pwd -P)\" = \"\${_a}${_p#"${_a}"}\" ] && { [ -L './${_n}' ] && rm -f './${_n}'; [ -d './${_n}' ] || mkdir './${_n}'; } && cd -P -- './${_n}' && [ \"\$(pwd -P)\" = \"\${_a}${_d#"${_a}"}\" ] && rsync"
+}
+### The helpers above, as shell text for a script run as root on the other
+### box: the same rules hold on both sides of a migration.
+_xmass_remote_guards() {
+  declare -f _xmass_real_want _xmass_in_real_dir _xmass_read_here \
+    _xmass_read_in _xmass_read_file _xmass_put_here _xmass_touch_here \
+    _xmass_sed_to _xmass_sed_here
+}
+### A leg whose source directory is missing or is not a real one (a link
+### on its path): nothing is followed or sent, and the pass fails as a
+### failed transfer does, so a cutover never goes ahead without it.
+### $1 = the directory, $2 = what does not travel.
+_xmass_leg_refused() {
+  _alrt "DENY: ${1} is missing or not a real directory (a link on its path) -- not followed: ${2} does not travel until it is one again"
+  _XMASS_RSYNC_RC=23
+  _XMASS_NOT_CLEAN=YES
+}
+### Whether the resolved (canonical) path $2 belongs to the account $1: its
+### own tree, or its own part of an attached store, <mount>/files/<oN>/, the
+### layout migratefs relocates static/files to. Another account's tree or
+### store, and anything else a link can name, never passes.
+_xmass_own_path() {
+  local _a="${1}" _p="${2}" _t _r
+  case "${_a}" in
+    ''|.|..|*/*) return 1 ;;
+  esac
+  case "${_p}" in
+    /?*) ;;
+    *) return 1 ;;
+  esac
+  case "${_p}/" in
+    *//*|*/./*|*/../*) return 1 ;;
+  esac
+  _t="$(_xmass_real_want "/data/disk/${_a}")"
+  if [ "${_t}" != "/${_a}" ]; then
+    case "${_p}/" in
+      "${_t}"/*) return 0 ;;
+    esac
+  fi
+  case "${_p}" in
+    /mnt/?*/files/?*)
+      _r="${_p#/mnt/}"
+      _r="${_r#*/}"
+      case "${_r}/" in
+        "files/${_a}"/*) return 0 ;;
+      esac
+      ;;
+  esac
+  return 1
+}
+### Whether the resolved path $2 is owned by one of the account $1's
+### identities: <oN>, <oN>.ftp or a sub-user <oN>.<name>.
+_xmass_own_uid() {
+  local _o
+  _o="$(stat -c '%U' -- "${2}" 2> /dev/null)" || return 1
+  case "${_o}" in
+    "${1}"|"${1}".?*) return 0 ;;
+  esac
+  return 1
+}
+### The resolved path $2 is the account $1's own ($3 = tree: its tree or
+### store; uid: also anything its identities own).
+_xmass_store_is_own() {
+  _xmass_own_path "${1}" "${2}" && return 0
+  [ "${3}" = "uid" ] && _xmass_own_uid "${1}" "${2}"
+}
+### _xmass_at_real_dir for a directory already resolved and checked: $1 is
+### its canonical path, and "$@" runs only once pwd -P lands exactly there,
+### then the previous working directory is restored.
+_xmass_at_canon_dir() {
+  local _d="${1}" _back _rc
+  shift
+  case "${_d}" in
+    /*) ;;
+    *) return 1 ;;
+  esac
+  _back="$(pwd -P 2> /dev/null)"
+  [ -n "${_back}" ] || _back=/
+  cd -P -- "${_d}" 2> /dev/null || return 1
+  if [ "$(pwd -P)" != "${_d}" ]; then
+    cd -P -- "${_back}" 2> /dev/null || cd / || return 1
+    return 1
+  fi
+  "$@"
+  _rc=$?
+  cd -P -- "${_back}" 2> /dev/null || cd / || return 1
+  return "${_rc}"
+}
+### The --rsync-path that starts the receiver inside the canonical
+### directory $1 on that box, and only once pwd -P says it is there.
+_xmass_canon_rpath() {
+  local _q
+  _q="$(_shq "${1}")"
+  printf '%s' "cd -P -- '${_q}' && [ \"\$(pwd -P)\" = '${_q}' ] && rsync"
+}
+### Run on the box that receives an account's copy, with the account's name
+### in $1: enter the real parent of $2, made as mkdir -p makes it, once the
+### nearest existing name on the way and then the parent itself resolve into
+### the account's own tree or store. Run in the shell that then acts on
+### ./<last name>, so a link carried there earlier is never walked through.
+_xmass_own_parent_cd() {
+  local _a="${1}" _p="${2%/*}" _e
+  [ -n "${_p}" ] || return 1
+  _e="${_p}"
+  while [ -n "${_e}" ] && [ ! -e "${_e}" ]; do
+    _e="${_e%/*}"
+  done
+  _xmass_own_path "${_a}" "$(cd -P -- "${_e:-/}" 2> /dev/null && pwd -P)" \
+    || return 1
+  mkdir -p -- "${_p}" 2> /dev/null
+  cd -P -- "${_p}" 2> /dev/null || return 1
+  _xmass_own_path "${_a}" "$(pwd -P)"
+}
+### Run there as above: make the directory $3 of the account $2 ready for a
+### copy and print XMREAL with its canonical path. A link at the last name
+### stays when it resolves into the account's own tree or store and $1 is
+### keep (the backups mover's link); otherwise it gives way to a directory.
+_xmass_own_dir_ready() {
+  local _m="${1}" _a="${2}" _n="${3##*/}" _r
+  case "${_n}" in
+    ''|.|..) return 1 ;;
+  esac
+  _xmass_own_parent_cd "${_a}" "${3}" || return 1
+  if [ -L "./${_n}" ]; then
+    _r="$(cd -P -- "./${_n}" 2> /dev/null && pwd -P)"
+    if [ "${_m}" != "keep" ] || ! _xmass_own_path "${_a}" "${_r}"; then
+      rm -f -- "./${_n}" || return 1
+    fi
+  elif [ -e "./${_n}" ] && [ ! -d "./${_n}" ]; then
+    rm -f -- "./${_n}" || return 1
+  fi
+  [ -d "./${_n}" ] || mkdir -- "./${_n}" || return 1
+  cd -P -- "./${_n}" 2> /dev/null || return 1
+  _r="$(pwd -P)"
+  _xmass_own_path "${_a}" "${_r}" || return 1
+  printf 'XMREAL %s\n' "${_r}"
+}
+### Run there as above: print XMREAL with the canonical parent of the path
+### $2 of the account $1, made ready as _xmass_own_parent_cd makes it.
+_xmass_own_parent_ready() {
+  _xmass_own_parent_cd "${1}" "${2}" || return 1
+  printf 'XMREAL %s\n' "$(pwd -P)"
+}
+### Run there as above: put the link $2 -> $3 of the account $1 in place of
+### whatever holds the name, inside its real parent.
+_xmass_own_link_ready() {
+  local _n="${2##*/}"
+  case "${_n}" in
+    ''|.|..) return 1 ;;
+  esac
+  _xmass_own_parent_cd "${1}" "${2}" || return 1
+  if [ -L "./${_n}" ]; then
+    rm -f -- "./${_n}"
+  elif [ -d "./${_n}" ]; then
+    rm -rf -- "./${_n}"
+  elif [ -e "./${_n}" ]; then
+    rm -f -- "./${_n}"
+  fi
+  ln -sfn -- "${3}" "./${_n}" || return 1
+  printf 'XMREAL %s/%s\n' "$(pwd -P)" "${_n}"
+}
+### Run there: make the store copy's directory $1 under the attached mount
+### and print XMREAL with its canonical path, only when no name below /mnt
+### on the way is a link (checked before anything is made, and again after).
+_xmass_real_mnt_dir() {
+  local _d="${1}" _c _e
+  case "${_d}/" in
+    /mnt/?*/?*) ;;
+    *) return 1 ;;
+  esac
+  case "${_d}/" in
+    *//*|*/./*|*/../*) return 1 ;;
+  esac
+  _c="$(cd -P -- /mnt 2> /dev/null && pwd -P)" || return 1
+  [ -n "${_c}" ] || return 1
+  _e="${_d}"
+  while [ -n "${_e}" ] && [ ! -e "${_e}" ]; do
+    _e="${_e%/*}"
+  done
+  [ "$(cd -P -- "${_e:-/}" 2> /dev/null && pwd -P)" = "${_c}${_e#/mnt}" ] || return 1
+  mkdir -p -- "${_d}" 2> /dev/null
+  _c="${_c}${_d#/mnt}"
+  cd -P -- "${_d}" 2> /dev/null || return 1
+  [ "$(pwd -P)" = "${_c}" ] || return 1
+  printf 'XMREAL %s\n' "${_c}"
+}
+### Run one of the placement helpers above as root on the box $1, with the
+### helper's name and arguments after it; prints the canonical path its
+### XMREAL line names and fails when there is none.
+_xmass_tgt_place() {
+  local _h="${1}" _out _x _args=""
+  shift
+  for _x in "$@"; do
+    _args="${_args} '$(_shq "${_x}")'"
+  done
+  _out="$( { declare -f _xmass_real_want _xmass_own_path _xmass_own_parent_cd \
+      _xmass_own_dir_ready _xmass_own_parent_ready _xmass_own_link_ready \
+      _xmass_real_mnt_dir
+    printf '%s\n' '"$@"'; } \
+    | ssh ${_XMASS_SSH_SHARE} -o BatchMode=yes -o ConnectTimeout=30 root@"${_h}" \
+      "bash -s --${_args}" 2> /dev/null)"
+  _out="$(printf '%s\n' "${_out}" | grep -m1 '^XMREAL /')"
+  [ -n "${_out}" ] || return 1
+  printf '%s' "${_out#XMREAL }"
+}
+
 ### Union of PHP versions one account is pinned to: the account-level
 ### static/control/{fpm,cli}.info defaults, the per-site column of
 ### static/control/multi-fpm.info (dotted and shorthand forms both count),
@@ -562,9 +1069,10 @@ _mig_php_norm() {
 ### core cannot run on it.
 _mig_php_versions_needed() {
   local _u="$1" _f _v _dom _rest _line _k _e _mk="" _txt _n _out=""
-  for _f in "${_u}/static/control/fpm.info" "${_u}/static/control/cli.info"; do
-    [ -e "${_f}" ] || continue
-    _v="$(_mig_php_norm "$(tr -d ' \t\r\n' < "${_f}" 2>/dev/null)")"
+  ### read inside the account's real static/control, never through a link
+  ### or into a FIFO put there
+  for _f in fpm.info cli.info; do
+    _v="$(_mig_php_norm "$(_xmass_read_in "${_u}/static/control" "${_f}" | tr -d ' \t\r\n')")"
     [ -n "${_v}" ] && _out="${_out} ${_v}"
   done
   if [ -e "${_u}/static/control/multi-fpm.info" ]; then
@@ -575,11 +1083,11 @@ _mig_php_versions_needed() {
       case "${_dom}" in \#*|""|place.holder.dont.remove) continue ;; esac
       _v="$(_mig_php_norm "${_v}")"
       [ -n "${_v}" ] && _out="${_out} ${_v}"
-    done < "${_u}/static/control/multi-fpm.info"
+    done <<< "$(_xmass_read_in "${_u}/static/control" multi-fpm.info)"
   fi
   if [ -e "${_u}/static/control/cli-per-platform.info" ]; then
     _txt=""; _n=0
-    { IFS= read -r -N 65536 _txt < "${_u}/static/control/cli-per-platform.info"; } 2>/dev/null || true
+    _txt="$(_xmass_read_in "${_u}/static/control" cli-per-platform.info | head -c 65536)"
     while IFS= read -r _line; do
       _n=$(( _n + 1 ))
       [ "${_n}" -gt 200 ] && break
@@ -590,9 +1098,11 @@ _mig_php_versions_needed() {
       [ -n "${_v}" ] && _out="${_out} ${_v}"
     done <<< "${_txt}"
   fi
-  for _e in 56 70 71 72 73 74 80 81 82 83 84 85; do
-    [ -e "${_u}/static/control/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
-  done
+  if _xmass_in_real_dir "${_u}/static/control" true; then
+    for _e in 56 70 71 72 73 74 80 81 82 83 84 85; do
+      [ -e "${_u}/static/control/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
+    done
+  fi
   [ -n "${_mk}" ] && _out="${_out} $(_mig_php_norm "${_mk}")"
   echo "${_out}" | tr ' ' '\n' | sort -u | tr '\n' ' '
 }
@@ -813,18 +1323,22 @@ _xmass_solr_classify_source() {
   ### boa_site_control.ini declares which Solr module family the site uses.
   ### solr4 legacy estates predate the ini scheme and usually carry NO
   ### directive -- for solr4 the STATUS document count is decisive instead.
+  ### The aliases and the ini files are the account's: each is read inside
+  ### its real directory (the ini inside the real modules/), never through a
+  ### link or into a FIFO.
   _bindraw=$(for _alias in /data/disk/*/.drush/*.alias.drushrc.php; do
     [ -f "${_alias}" ] || continue
-    _apath=$(sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" "${_alias}" | head -1)
+    _apath=$(_xmass_read_file "${_alias}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
     [ -n "${_apath}" ] && [ -f "${_apath}/modules/boa_site_control.ini" ] \
-      && grep -h "^solr_integration_module" "${_apath}/modules/boa_site_control.ini"
+      && _xmass_read_file "${_apath}/modules/boa_site_control.ini" \
+        | grep -h "^solr_integration_module"
   done 2>/dev/null | awk -F'= *' '{ print $2 }' | tr -d ' \r')
   ### An empty tally out of a broken alias parse is indistinguishable from
   ### "no site uses Solr" -- spot-verify one alias before believing it.
   if [ -z "${_bindraw}" ]; then
     _alias=$(ls /data/disk/*/.drush/*.alias.drushrc.php 2>/dev/null | head -1)
     if [ -n "${_alias}" ]; then
-      _apath=$(sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" "${_alias}" | head -1)
+      _apath=$(_xmass_read_file "${_alias}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
       [ -z "${_apath}" ] \
         && _alrt "  alias site_path parse failed on $(basename "${_alias}") -- the binding tally is unreliable and read as zero"
     fi
@@ -1580,8 +2094,11 @@ _xmass_repair_target_identities() {
       _left="${_left} ${_oct}"
       continue
     fi
-    _out=$(ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" \
-      "_A='${_oct}' _SRCSH='${_srcsh}' bash -s" <<'REMOTE'
+    # the helper rides ahead of the body: the account's web group is derived
+    # there, by the same rules as every writer
+    _out=$( { declare -f _web_group_state; cat; } <<'REMOTE' \
+      | ssh -o BatchMode=yes -o ConnectTimeout=30 root@"${_t}" \
+      "_A='${_oct}' _SRCSH='${_srcsh}' bash -s"
 [ -e "/root/.${_A}.octopus.cnf" ] \
   && [ -e "/data/disk/${_A}/config/includes/nginx_vhost_common.conf" ] \
   && [ -e "/data/disk/${_A}/log/octopus_log.txt" ] \
@@ -1644,7 +2161,13 @@ for _I in "${_A}" "${_A}.ftp"; do
       || { echo "XMID-FAILED: useradd ${_I}"; continue; }
   fi
   usermod -aG users "${_I}" > /dev/null 2>&1
-  adduser "${_I}" www-data > /dev/null 2>&1
+  # the account's web group: joined once only the account's identities hold
+  # it; www-data left out once the account's identities have left it
+  _WS=$(_web_group_state "${_A}")
+  case "${_WS%% *}" in
+    held|converted|phaseb) usermod -aG "${_WS##* }" "${_I}" > /dev/null 2>&1 ;;
+  esac
+  [ "${_WS%% *}" = "phaseb" ] || adduser "${_I}" www-data > /dev/null 2>&1
   [ "${_I}" = "${_A}.ftp" ] && usermod -aG lshellg "${_I}" > /dev/null 2>&1
   echo "$(date) xmass identity repair: ${_I} re-created (shell ${_S}, standby=${_STANDBY})" \
     >> /var/log/boa/manage_ltd.incident.log
@@ -1693,6 +2216,44 @@ REMOTE
   return 0
 }
 
+### Whether the cnf line $1 is a plain assignment a root shell may source:
+### _KEY= followed by a double-quoted value with nothing the shell expands
+### (an escaped @, as older releases wrote e-mails, is allowed), a
+### single-quoted value, or a bare word.
+_xmass_cnf_line_ok() {
+  local _k="${1%%=*}" _v="${1#*=}"
+  case "${_k}" in
+    _[A-Z]*) ;;
+    *) return 1 ;;
+  esac
+  case "${_k}" in
+    *[!A-Z0-9_]*) return 1 ;;
+  esac
+  case "${_v}" in
+    \"*\")
+      _v="${_v#\"}"
+      _v="${_v%\"}"
+      _v="${_v//\\@/@}"
+      case "${_v}" in
+        *[\"\$\`\\]*) return 1 ;;
+      esac
+      ;;
+    \'*\')
+      _v="${_v#\'}"
+      _v="${_v%\'}"
+      case "${_v}" in
+        *\'*) return 1 ;;
+      esac
+      ;;
+    *)
+      case "${_v}" in
+        *[!A-Za-z0-9._@:,+/%=-]*) return 1 ;;
+      esac
+      ;;
+  esac
+  return 0
+}
+
 ### Merge the account-portable octopus.cnf lines from the source cnf into the
 ### target's copy: replace-or-append per key, whole lines, host axis excluded
 ### (_MY_OWNIP, _LOCAL_NETWORK_IP, _THIS_DB_HOST/_PORT, _DOMAIN are re-derived
@@ -1730,7 +2291,14 @@ _xmass_push_account_cnf() {
   echo "_USER=\"${_acct}\"" > "${_lTmp}"
   for _v in ${_lst}; do
     _l=$(grep "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
-    [ -n "${_l}" ] && printf '%s\n' "${_l}" >> "${_lTmp}"
+    [ -n "${_l}" ] || continue
+    # the target sources this cnf as root, and some values began as the
+    # account's own text: a line travels only as a plain assignment
+    if ! _xmass_cnf_line_ok "${_l}"; then
+      _alrt "  ${_acct}: ${_v} in ${_sCnf} is not a plain value -- not merged, the target keeps its own"
+      continue
+    fi
+    printf '%s\n' "${_l}" >> "${_lTmp}"
   done
   {
     echo '#!/bin/bash'
@@ -1776,12 +2344,15 @@ MERGESH
 _xmass_seed_account_stamps() {
   local _acct="$1" _t="$2" _f
   local _u="/data/disk/${_acct}"
-  for _f in log/fpm.txt log/cli.txt log/email.txt log/option.txt \
-    log/cores.txt log/subscr.txt; do
-    [ -e "${_u}/${_f}" ] || continue
-    _xmass_rsync -aEAX ${_ieni} -e ssh \
-      "${_u}/${_f}" \
-      "root@${_t}:${_u}/${_f}"
+  # log/ is the account's on both boxes: each stamp leaves from inside the
+  # real directory here and lands inside the real one there, a regular file
+  # only, never read or written through a link put on the way
+  for _f in fpm.txt cli.txt email.txt option.txt cores.txt subscr.txt; do
+    [ -e "${_u}/log/${_f}" ] || continue
+    _xmass_at_real_dir "${_u}/log" _xmass_rsync -aEAX --no-links ${_ieni} \
+      --rsync-path="$(_xmass_pin_rpath "${_u}/log")" -e ssh \
+      "./${_f}" "root@${_t}:./" \
+      || _alrt "  ${_acct}: log/ is not a real directory here -- log/${_f} not forced to ${_t}"
   done
   return 0
 }
@@ -1812,23 +2383,34 @@ _xmass_sync_shell_credentials() {
   # pass.txt travels ONLY when the paired hash actually landed: the file is
   # what the client is shown, and shipping it after a failed chpasswd would
   # advertise a password that does not work. A re-run converges both.
+  # From inside the real log/ here into the real one there, a regular file
+  # only: never read or written through a link the account put on the way.
   if [ "${_set}" = "YES" ] && [ -e "${_u}/log/pass.txt" ]; then
-    rsync -aEAX ${_ieni} -e ssh --no-devices --no-specials \
-      "${_u}/log/pass.txt" \
-      "root@${_t}:${_u}/log/pass.txt" 2>/dev/null \
+    _xmass_in_real_dir "${_u}/log" rsync -aEAX --no-links ${_ieni} -e ssh \
+      --no-devices --no-specials --rsync-path="$(_xmass_pin_rpath "${_u}/log")" \
+      ./pass.txt "root@${_t}:./" 2>/dev/null \
       || _alrt "  ${_acct}: could not carry log/pass.txt (password IS set; re-run to converge)"
   elif [ -e "${_u}/log/pass.txt" ]; then
     _alrt "  ${_acct}: NOT carrying log/pass.txt -- the shadow hash was not set on ${_t}"
   fi
-  if [ -d "/home/${_acct}.ftp/users" ]; then
-    rsync -aEAX ${_ieni} -e ssh --no-devices --no-specials \
-      "/home/${_acct}.ftp/users/" \
-      "root@${_t}:/home/${_acct}.ftp/users/" 2>/dev/null \
-      || _alrt "  ${_acct}: could not carry the sub-account password store"
+  # The store and each sub-user's .ssh are the account's own names: sent
+  # from inside the real directory here into the real one there, never
+  # through a link put at the name or on the way.
+  if [ -e "/home/${_acct}.ftp/users" ] || [ -L "/home/${_acct}.ftp/users" ]; then
+    _xmass_in_real_dir "/home/${_acct}.ftp/users" rsync -aEAX ${_ieni} -e ssh \
+      --no-devices --no-specials \
+      --rsync-path="$(_xmass_pin_rpath "/home/${_acct}.ftp/users")" \
+      ./ "root@${_t}:./" 2>/dev/null \
+      || _alrt "  ${_acct}: could not carry the sub-account password store (not a real directory here, or the copy failed)"
   fi
   for _d in "${_u}"/clients/*/; do
     [ -d "${_d}" ] || continue
     _n=$(basename "${_d}")
+    # a client directory name the account chose: only the shape a sub-user
+    # name takes goes on, into a name lookup and a remote shell
+    case "${_n}" in
+      ''|.*|-*|*[!A-Za-z0-9._-]*) continue ;;
+    esac
     getent passwd "${_acct}.${_n}" &> /dev/null || continue
     _hash=$(getent shadow "${_acct}.${_n}" 2>/dev/null | cut -d: -f2)
     [ -n "${_hash}" ] && [ "${_hash}" != "*" ] && [ "${_hash}" != "!" ] || continue
@@ -1838,11 +2420,12 @@ _xmass_sync_shell_credentials() {
       else
         _alrt "  ${_acct}: could not carry the sub-account password for ${_acct}.${_n}"
       fi
-      if [ -d "/home/${_acct}.${_n}/.ssh" ]; then
-        rsync -aEAXu ${_ieni} -e ssh --no-devices --no-specials \
-          "/home/${_acct}.${_n}/.ssh" \
-          "root@${_t}:/home/${_acct}.${_n}/" 2>/dev/null \
-          || _alrt "  ${_acct}: could not carry .ssh for ${_acct}.${_n}"
+      if [ -e "/home/${_acct}.${_n}/.ssh" ] || [ -L "/home/${_acct}.${_n}/.ssh" ]; then
+        _xmass_in_real_dir "/home/${_acct}.${_n}/.ssh" rsync -aEAXu ${_ieni} -e ssh \
+          --no-devices --no-specials \
+          --rsync-path="$(_xmass_pin_rpath "/home/${_acct}.${_n}/.ssh")" \
+          ./ "root@${_t}:./" 2>/dev/null \
+          || _alrt "  ${_acct}: could not carry .ssh for ${_acct}.${_n} (not a real directory here, or the copy failed)"
       fi
     else
       # The sub-user does not exist there yet: manage_ltd_users creates it
@@ -1851,11 +2434,11 @@ _xmass_sync_shell_credentials() {
       # exists -- stage it where that creation pass adopts it. Say so: a
       # silent branch here read as "o2.sub1 was never carried" on a rig,
       # while prep-target's copy of this routine names the staged path.
-      if [ -d "/home/${_acct}.${_n}/.ssh" ]; then
+      if [ -e "/home/${_acct}.${_n}/.ssh" ] || [ -L "/home/${_acct}.${_n}/.ssh" ]; then
         ssh root@"${_t}" "mkdir -p /var/backups/migrate-subuser-ssh/${_acct}.${_n}" &> /dev/null
-        if rsync -aEAXu ${_ieni} -e ssh --no-devices --no-specials \
-          "/home/${_acct}.${_n}/.ssh" \
-          "root@${_t}:/var/backups/migrate-subuser-ssh/${_acct}.${_n}/" 2>/dev/null; then
+        if _xmass_in_real_dir "/home/${_acct}.${_n}/.ssh" rsync -aEAXu ${_ieni} -e ssh \
+          --no-devices --no-specials ./ \
+          "root@${_t}:/var/backups/migrate-subuser-ssh/${_acct}.${_n}/.ssh/" 2>/dev/null; then
           _info "  ${_acct}: sub-account ${_acct}.${_n} not created on ${_t} yet; password converges via the"
           _info "  ${_acct}: carried store, and its keys are staged at /var/backups/migrate-subuser-ssh/${_acct}.${_n}/.ssh"
         else
@@ -1900,16 +2483,30 @@ _xmass_copy_suspended_flag() {
 ### symlink. Migrating a broken renewal means debugging two things at once
 ### inside the cutover window, so name every broken pair now. Advisory.
 _xmass_check_le_health() {
-  local _c _end _bad=0
+  local _c _a _r _pem _end _bad=0
   _info "Checking source certificates for broken renewals ..."
   for _c in /data/disk/*/config/server_master/ssl.d/*/openssl.crt; do
-    [ -e "${_c}" ] || continue
-    if [ ! -s "${_c}" ]; then
-      _alrt "  ZERO-BYTE certificate: ${_c} -- fix the renewal BEFORE migrating"
+    [ -e "${_c}" ] || [ -L "${_c}" ] || continue
+    # The account's name, reached through the links the Let's Encrypt layout
+    # makes (ssl.d/<dom> -> tools/le/certs/<dom>, openssl.crt -> cert.pem):
+    # resolved once, accepted only inside the account's own tree or store,
+    # and read inside that real directory, never into a FIFO (openssl would
+    # block on one).
+    _a="${_c#/data/disk/}"
+    _a="${_a%%/*}"
+    _r="$(readlink -f -- "${_c}" 2>/dev/null)"
+    if [ -z "${_r}" ] || ! _xmass_own_path "${_a}" "${_r%/*}"; then
+      _alrt "  certificate resolves outside ${_a}'s own tree: ${_c} -> ${_r:-nothing} -- not read"
       _bad=$(( _bad + 1 ))
       continue
     fi
-    _end=$(openssl x509 -noout -enddate -in "${_c}" 2>/dev/null | cut -d= -f2)
+    _pem="$(_xmass_at_canon_dir "${_r%/*}" _xmass_read_here "${_r##*/}")"
+    if [ -z "${_pem}" ]; then
+      _alrt "  ZERO-BYTE or unreadable certificate: ${_c} -- fix the renewal BEFORE migrating"
+      _bad=$(( _bad + 1 ))
+      continue
+    fi
+    _end=$(printf '%s\n' "${_pem}" | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
     if [ -z "${_end}" ]; then
       _alrt "  UNPARSEABLE certificate: ${_c} -- fix the renewal BEFORE migrating"
       _bad=$(( _bad + 1 ))
@@ -2024,12 +2621,27 @@ _xmass_solr_core_parity() {
 ### the resume path: the box's own cron restores parked runners within
 ### minutes, so a park done at pre-mig time never survives until cutover --
 ### park HERE, immediately before the destructive sequence, then verify.
+### This park, unlike pre-mig's, writes the migration park marker, so it
+### also holds through the relay window, when cron runs again.
 _xmass_park_runners_and_cron() {
   local _p
   _info "Stopping cron and parking BOA runners for the cutover window ..."
   _XMASS_RUNNERS_PARKED=YES
   /etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null
   pkill -x cron &> /dev/null
+  # The park holds while this marker lives: BOA's tools refresh leaves a
+  # runner parked as .<name>.off alone, so the relay window's cron restart
+  # does not fetch them back. The refresh tests the park before it fetches
+  # a runner and again right before it writes one; both tests need this
+  # marker and the live copy gone, so the marker is written before the
+  # runners move. A refresh already running then drops a runner it fetched
+  # while the park landed; only a write that passed its last test in the
+  # instant before a move can still land. The unpark removes the marker;
+  # clear.sh drops it after 24 hours, and /run does not survive a reboot.
+  if ! printf '%s\n' "xmass cutover ${_tgt:-none} $(date -u '+%F %T') UTC" \
+    > /run/boa_migration_park.pid; then
+    _alrt "could not write /run/boa_migration_park.pid; a cron tick would fetch the parked runners back"
+  fi
   for _p in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ -e "/var/xdrago/${_p}" ]; then
       mv -f "/var/xdrago/${_p}" "/var/xdrago/.${_p}.off"
@@ -2058,12 +2670,22 @@ _xmass_unpark_runners_and_cron() {
   # Only the pause this tool planted: an operator's own hold stays.
   grep -q "^xmass " "${_XMASS_HEAVY_PAUSE}" 2>/dev/null && rm -f "${_XMASS_HEAVY_PAUSE}"
   /etc/init.d/cron start &> /dev/null || service cron start &> /dev/null
+  # A refetch or a system pass that restored a live copy first left the
+  # parked one behind: stale bytes that read as a park again whenever the
+  # live name goes missing. Removed once the live copy is there.
   for _p in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ ! -e "/var/xdrago/${_p}" ] && [ -e "/var/xdrago/.${_p}.off" ]; then
       mv -f "/var/xdrago/.${_p}.off" "/var/xdrago/${_p}"
       _info "  Restored ${_p}"
+    elif [ -e "/var/xdrago/${_p}" ] && [ -e "/var/xdrago/.${_p}.off" ]; then
+      rm -f "/var/xdrago/.${_p}.off"
+      _info "  Removed a stale parked copy of ${_p}"
     fi
   done
+  rm -f /run/boa_migration_park.pid
+  # The move is over, or abandoned with this box staying production: it
+  # stops serving its root key either way.
+  rm -f /var/www/nginx-default/auth_undefined_keys.txt*
   _XMASS_RUNNERS_PARKED=NO
   if ! pgrep -x cron &> /dev/null; then
     _alrt "cron did not start on this box; the daily certificate mirror and"
@@ -2077,12 +2699,13 @@ _xmass_unpark_runners_and_cron() {
 # its IDS, the real-client refresh and the daily certificate mirror for as
 # long as the renames take. The heavy night jobs (backups, the night worker,
 # usage, graceful) stay held by BOA's own heavy-tasks pause, which nothing
-# clears behind our back; the five parked runners stay parked, and the full
-# restore above lifts both at the end of the cutover. The task pause marker
-# is deliberately NOT used: on a hosted box the self-update agent clears it
-# within minutes, and what it would hold here -- the dispatcher and the
-# sub-user pass on a box whose accounts are already stamped proxied -- is the
-# ordinary life of a relay box.
+# clears behind our back; the five parked runners stay parked (the park
+# marker keeps the restarted cron's tools refresh from fetching them back),
+# and the full restore above lifts both at the end of the cutover. The task
+# pause marker is deliberately NOT used: on a hosted box the self-update
+# agent clears it within minutes, and what it would hold here -- the
+# dispatcher and the sub-user pass on a box whose accounts are already
+# stamped proxied -- is the ordinary life of a relay box.
 _XMASS_HEAVY_PAUSE="/root/.pause_heavy_tasks_maint.cnf"
 _xmass_start_cron_relay() {
   [ -e "${_XMASS_HEAVY_PAUSE}" ] \
@@ -3270,9 +3893,14 @@ _xmass_restore_target() {
     [ -e "${_mk}" ] && _die "a migration window is in flight here (${_mk}); wait for it to close, or unwind the init on the source"
   done
   [ -e /run/boa_run.pid ] && _die "a barracuda/octopus run is in flight (/run/boa_run.pid); retry when it ends"
-  if grep -ls '^_MIG_ROLE=target' /data/disk/o*/log/migproxy.cnf >/dev/null 2>&1; then
-    _die "this box carries inbound proxy policy records: a cutover PROMOTED it, there is no pre-init state to return to"
-  fi
+  # each record read inside its account's real log/, never through a link or
+  # into a FIFO put there
+  for _cnf in /data/disk/o*/log/migproxy.cnf; do
+    [ -e "${_cnf}" ] || continue
+    if _xmass_read_file "${_cnf}" | grep -q '^_MIG_ROLE=target'; then
+      _die "this box carries inbound proxy policy records: a cutover PROMOTED it, there is no pre-init state to return to"
+    fi
+  done
   _pre=$(ls -1d /var/lib/mysql.xmass_pre_* 2>/dev/null | sort | tail -1)
   [ -n "${_pre}" ] || _die "no parked data directory (/var/lib/mysql.xmass_pre_<stamp>) on this box"
   _ts="${_pre#/var/lib/mysql.xmass_pre_}"
@@ -4042,9 +4670,11 @@ _xmass_rsync() {
 _xmass_solr_check() {   # 1 src  2 target-dest-dir  3 label
   local _sz
   [ -e "$1" ] || return 0
-  # -L: a symlink operand (e.g. a backups dir relocated into the store)
+  # -H: a symlink operand (e.g. a backups dir relocated into the store)
   # measures 0 with plain du, which waves the fit gate through unmeasured.
-  _sz="$(du -skL "$1" 2>/dev/null | awk '{print $1}')"
+  # Links below it are measured as the links the copy carries, never
+  # followed into whatever tree an account pointed them at.
+  _sz="$(du -skH "$1" 2>/dev/null | awk '{print $1}')"
   _xmass_target_fits "${_tgt}" "$2" "${_sz}" && return 0
   _alrt "DENY: $3: ${_sz:-?}K does not fit at target $2 — free space and retry"
   _XMASS_NOT_CLEAN=YES
@@ -4080,19 +4710,38 @@ _xmass_target_fits() {
 _shq() { printf "%s" "$1" | sed "s/'/'\\\\''/g"; }
 
 # De-reference: real dir at <dstRoot> on the target root; rsync the contents in.
-# Returns non-zero if the copy fails (caller denies).
+# Returns non-zero if the copy fails (caller denies). The copy leaves from
+# inside the resolved source directory ($2, canonical). With an account ($5)
+# the directory there is made ready inside its real parent, which must lie in
+# that account's own tree or store, and the receiver starts inside it: a
+# link the account's content carried to the target is never written through.
 _xmass_put_on_root() {
-  local _th="$1" _real="$2" _dstRoot="$3" _ie="$4" _q
-  _q="$(_shq "${_dstRoot}")"
-  ssh -n root@"${_th}" "if [ -L '${_q}' ]; then rm -f '${_q}'; elif [ -e '${_q}' ] && [ ! -d '${_q}' ]; then rm -f '${_q}'; fi; mkdir -p '${_q}'"
+  local _th="$1" _real="$2" _dstRoot="$3" _ie="$4" _acct="$5" _q _dreal _to _rp=()
+  if [ -n "${_acct}" ]; then
+    _dreal="$(_xmass_tgt_place "${_th}" _xmass_own_dir_ready dir "${_acct}" "${_dstRoot}")"
+    if [ -z "${_dreal}" ]; then
+      _alrt "DENY: ${_dstRoot} on the target does not resolve into ${_acct}'s own tree or store -- nothing copied"
+      return 3
+    fi
+    _rp=(--rsync-path="$(_xmass_canon_rpath "${_dreal}")")
+    _to="./"
+  else
+    _q="$(_shq "${_dstRoot}")"
+    ssh -n root@"${_th}" "if [ -L '${_q}' ]; then rm -f '${_q}'; elif [ -e '${_q}' ] && [ ! -d '${_q}' ]; then rm -f '${_q}'; fi; mkdir -p '${_q}'"
+    _to="${_dstRoot}/"
+  fi
   # Tolerate rc 24 exactly as _xmass_rsync does. This gate was previously inert
   # (_xmass_handle_store returned an assignment's status instead of this one), so
   # making it work exposes it to the benign case: on a live tree during `xmass
   # sync`, files vanishing mid-transfer is normal and must not deny the run.
   local _rc=0 _err
   _err=$(mktemp /tmp/xmass-rsync-err.XXXXXX 2>/dev/null) || _err=""
-  rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh \
-    "${_real}/" root@"${_th}":"${_dstRoot}/" 2>>"${_err:-/dev/stderr}" || _rc=$?
+  # the account's web group map (_XMASS_WGMAP) rides the store too: files/
+  # and private/ are the web paths, and by name alone a group absent on the
+  # target lands as this box's number
+  _xmass_at_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
+    ${_XMASS_WGMAP:+"--groupmap=${_XMASS_WGMAP}"} \
+    "${_rp[@]}" -e ssh ./ root@"${_th}":"${_to}" 2>>"${_err:-/dev/stderr}" || _rc=$?
   [ -s "${_err}" ] && cat "${_err}" >&2
   # 23 with only vanished-file errors is the rc-24 case (see _xmass_rsync_vanished_only)
   if [ "${_rc}" = "23" ] && [ -n "${_err}" ] && _xmass_rsync_vanished_only "${_err}"; then
@@ -4119,10 +4768,26 @@ _xmass_put_on_root() {
 # at <dstRoot> (e.g. an earlier de-reference to root now being moved onto a freshly
 # attached disk) is safe to replace once the mount copy is confirmed. Returns non-zero
 # on any failure (caller denies); the remote replace is fenced to /data/disk.
+# The copy leaves from inside the resolved source directory ($2, canonical).
+# With an account ($7) the mount copy lands only in a directory no link on
+# the way leads to, and the link is placed inside the real parent of
+# <dstRoot>, which must lie in that account's own tree or store.
 _xmass_put_on_mount() {
-  local _th="$1" _real="$2" _mntDest="$3" _dstRoot="$4" _ie="$5" _lbl="$6" _qm _qd
+  local _th="$1" _real="$2" _mntDest="$3" _dstRoot="$4" _ie="$5" _lbl="$6" _acct="$7"
+  local _qm _qd _mreal _to _rp=()
   _qm="$(_shq "${_mntDest}")"; _qd="$(_shq "${_dstRoot}")"
-  ssh -n root@"${_th}" "mkdir -p '${_qm}'"
+  if [ -n "${_acct}" ]; then
+    _mreal="$(_xmass_tgt_place "${_th}" _xmass_real_mnt_dir "${_mntDest}")"
+    if [ -z "${_mreal}" ]; then
+      _alrt "DENY: ${_lbl}: ${_mntDest} on the target is not a real directory under its mount -- nothing copied"
+      return 3
+    fi
+    _rp=(--rsync-path="$(_xmass_canon_rpath "${_mreal}")")
+    _to="./"
+  else
+    ssh -n root@"${_th}" "mkdir -p '${_qm}'"
+    _to="${_mntDest}/"
+  fi
   # A raised delete limit was measured THROUGH ${_dstRoot} before the
   # placement was decided. It is only good here if that path is this mount
   # copy; a root copy beside a stale mount copy (a link step that failed, a
@@ -4138,8 +4803,9 @@ _xmass_put_on_mount() {
   # Same rc-24 tolerance as _xmass_put_on_root; see the note there.
   local _rc=0 _err
   _err=$(mktemp /tmp/xmass-rsync-err.XXXXXX 2>/dev/null) || _err=""
-  rsync -aEAXqu --no-devices --no-specials ${_ie} -e ssh \
-    "${_real}/" root@"${_th}":"${_mntDest}/" 2>>"${_err:-/dev/stderr}" || _rc=$?
+  _xmass_at_canon_dir "${_real}" rsync -aEAXqu --no-devices --no-specials ${_ie} \
+    ${_XMASS_WGMAP:+"--groupmap=${_XMASS_WGMAP}"} \
+    "${_rp[@]}" -e ssh ./ root@"${_th}":"${_to}" 2>>"${_err:-/dev/stderr}" || _rc=$?
   [ -s "${_err}" ] && cat "${_err}" >&2
   if [ "${_rc}" = "23" ] && [ -n "${_err}" ] && _xmass_rsync_vanished_only "${_err}"; then
     _rc=24
@@ -4157,7 +4823,12 @@ _xmass_put_on_mount() {
   if [ "${_rc}" = "24" ]; then
     _info "  ${_lbl}: some source files vanished during transfer (rc=24, benign)"
   fi
-  if ! ssh -n root@"${_th}" "d='${_qd}'; case \"\$d\" in /data/disk/*) : ;; *) echo 'refuse: dstRoot outside /data/disk'; exit 9 ;; esac; if [ -L \"\$d\" ]; then rm -f \"\$d\"; elif [ -d \"\$d\" ]; then rm -rf \"\$d\"; elif [ -e \"\$d\" ]; then rm -f \"\$d\"; fi; mkdir -p \"\$(dirname \"\$d\")\"; ln -sfn '${_qm}' \"\$d\""; then
+  if [ -n "${_acct}" ]; then
+    if [ -z "$(_xmass_tgt_place "${_th}" _xmass_own_link_ready "${_acct}" "${_dstRoot}" "${_mntDest}")" ]; then
+      _alrt "DENY: ${_lbl}: could not place symlink ${_dstRoot} -> ${_mntDest} on target (its parent is not ${_acct}'s own there)"
+      return 3
+    fi
+  elif ! ssh -n root@"${_th}" "d='${_qd}'; case \"\$d\" in /data/disk/*) : ;; *) echo 'refuse: dstRoot outside /data/disk'; exit 9 ;; esac; if [ -L \"\$d\" ]; then rm -f \"\$d\"; elif [ -d \"\$d\" ]; then rm -rf \"\$d\"; elif [ -e \"\$d\" ]; then rm -f \"\$d\"; fi; mkdir -p \"\$(dirname \"\$d\")\"; ln -sfn '${_qm}' \"\$d\""; then
     _alrt "DENY: ${_lbl}: could not place symlink ${_dstRoot} -> ${_mntDest} on target"
     return 3
   fi
@@ -4166,27 +4837,48 @@ _xmass_put_on_mount() {
 # Storage-aware transfer of one store. Args:
 #   1 source path  2 dest path on target root  3 mount-relative dest ("" => derive)
 #   4 target host  5 target mount ("path"|""|"MULTI")  6 ieni  7 label
+#   8 the account whose store this is ("" for a box tree such as arch)
+#   9 what the account's store may resolve to: tree (its own tree or its
+#     store under <mount>/files/<oN>/, the default) or uid (also anything
+#     its identities own)
+# The source is resolved once and copied from inside that real directory;
+# an account's store that resolves anywhere else is refused, never followed.
 _xmass_handle_store() {
   local _src="$1" _dstRoot="$2" _mntRel="$3" _th="$4" _tm="$5" _ie="$6" _lbl="$7"
+  local _acct="$8" _rule="${9:-tree}" _dacct=""
   local _real _link _sz _onMnt=NO _mntDest="" _act="" _reason="" _rc=0
 
   if [ ! -e "${_src}" ] && [ ! -L "${_src}" ]; then
     return 0
   fi
+  if [ -n "${_acct}" ]; then
+    _dacct="${_dstRoot#/data/disk/}"
+    _dacct="${_dacct%%/*}"
+  fi
 
   # --- classify + resolve the source ---
   if [ "${_tm}" = "MULTI" ]; then
     _act=DENY; _reason="target has multiple /mnt mounts; cannot choose one"
+  elif [ -n "${_acct}" ] && { [ "${_dstRoot}" = "/data/disk/${_dacct}" ] \
+    || [ "${_dstRoot#/data/disk/}" = "${_dstRoot}" ]; }; then
+    _act=DENY; _reason="${_dstRoot} is not a path inside an account on the target"
   elif [ -L "${_src}" ]; then
     _link="$(readlink "${_src}" 2>/dev/null)"
     _real="$(readlink -f "${_src}" 2>/dev/null)"
     if [ -z "${_real}" ] || [ ! -d "${_real}" ]; then
       _act=DENY; _reason="${_src} is a dangling symlink (attached disk not mounted?)"
+    elif [ -n "${_acct}" ] && ! _xmass_store_is_own "${_acct}" "${_real}" "${_rule}"; then
+      _act=DENY; _reason="${_src} resolves to ${_real}, outside ${_acct}'s own tree and store -- not followed"
     else
       case "${_link}" in /mnt/*) _onMnt=YES ;; esac
     fi
   elif [ -d "${_src}" ]; then
-    _real="${_src}"
+    _real="$(cd -P -- "${_src}" 2>/dev/null && pwd -P)"
+    if [ -z "${_real}" ]; then
+      _act=DENY; _reason="${_src} cannot be entered"
+    elif [ -n "${_acct}" ] && ! _xmass_store_is_own "${_acct}" "${_real}" "${_rule}"; then
+      _act=DENY; _reason="${_src} resolves to ${_real}, outside ${_acct}'s own tree and store -- not followed"
+    fi
   else
     return 0
   fi
@@ -4232,7 +4924,7 @@ _xmass_handle_store() {
         # Capture rc FIRST: `|| { _XMASS_NOT_CLEAN=YES; return $?; }` returned the
         # assignment's status (always 0), so a failed placement reported success
         # and _XMASS_STORE_RC was never set by the caller.
-        _xmass_put_on_mount "${_th}" "${_real}" "${_mntDest}" "${_dstRoot}" "${_ie}" "${_lbl}" \
+        _xmass_put_on_mount "${_th}" "${_real}" "${_mntDest}" "${_dstRoot}" "${_ie}" "${_lbl}" "${_dacct}" \
           || { _rc=$?; _XMASS_NOT_CLEAN=YES; return "${_rc}"; }
         _info "${_lbl}: mirrored to target mount ${_mntDest}, symlinked ${_dstRoot}"
       else
@@ -4241,7 +4933,7 @@ _xmass_handle_store() {
       ;;
     ROOT)
       if [ "${_MODE}" = "LIVE" ]; then
-        _xmass_put_on_root "${_th}" "${_real}" "${_dstRoot}" "${_ie}" \
+        _xmass_put_on_root "${_th}" "${_real}" "${_dstRoot}" "${_ie}" "${_dacct}" \
           || { _rc=$?; _XMASS_NOT_CLEAN=YES; return "${_rc}"; }
         _info "${_lbl}: real dir on target root ${_dstRoot}"
       else
@@ -4369,6 +5061,9 @@ _xmass_link_class() {
 # $3 (optional) - space-separated top-level subdirs whose own delta legs re-send
 #                 links each sync; out-links under them are reported, NOT
 #                 materialised (the leg would fight the materialised copy)
+# $4 (optional) - the account whose tree this is: an out-link that does not
+#                 resolve to its own (_xmass_store_is_own, uid rule) is
+#                 reported as skipped and never measured or materialised
 # The traversal behind the sweep. On an AUTO pass it PRUNES the covered
 # subtrees ($2, the caller's list of top-level names whose own delta legs
 # re-send their links every pass) instead of descending them.
@@ -4401,7 +5096,7 @@ _xmass_link_find() {
 }
 
 _xmass_scan_out_links() {
-  local _root="$1" _skip="$2" _cov="$3"
+  local _root="$1" _skip="$2" _cov="$3" _acct="$4"
   local _l _rel _top _sz _covered _uNm
   local _nfab=0 _nin=0 _nout=0 _nchain=0 _nind=0 _ndang=0 _nskip=0 _mntdang=0
   _XMASS_OUT_DIRS=""; _XMASS_OUT_FILES=""; _XMASS_OUT_EXCL=""
@@ -4477,6 +5172,15 @@ _xmass_scan_out_links() {
           _alrt "    of '${_top}' or attach the same mount on the target"
           continue
         fi
+        # An account points its links where it likes: only what is its own
+        # is ever measured or copied (see _xmass_materialise_out_links)
+        if [ -n "${_acct}" ] && ! _xmass_store_is_own "${_acct}" "${_LNK_REAL}" uid; then
+          _nskip=$(( _nskip + 1 ))
+          _XMASS_OUT_NOT_OWN=$(( ${_XMASS_OUT_NOT_OWN:-0} + 1 ))
+          _alrt "  out-of-root link is not ${_acct}'s own (its tree, its store under"
+          _alrt "    <mount>/files/${_acct}/, or its files): ${_l} -> ${_LNK_REAL} -- content will NOT travel"
+          continue
+        fi
         # A rel path with whitespace or glob chars cannot ride the unquoted
         # exclude splice or the remote-shell rsync args safely. A DIR link
         # would fail placement and DENY-block the whole run over a link that
@@ -4537,8 +5241,14 @@ EOF
 # must never use -u: a fresher-mtime dangling link on the receiver silently
 # wins over the real file (verified), and the links the tree legs may still
 # deliver are exactly that shape.
+# Under an account's tree ($4 = the account) every link is the account's to
+# point anywhere: its content travels only when it resolves into the
+# account's own tree, its own store under <mount>/files/<oN>/, or to what
+# its identities own; anything else is reported and skipped. What passes is
+# copied from inside the real directory it resolved to, never through the
+# link again, and its file links one by one the same way.
 _xmass_materialise_out_links() {
-  local _root="$1" _dstRoot="$2" _depth="${3:-1}"
+  local _root="$1" _dstRoot="$2" _depth="${3:-1}" _acct="$4"
   local _dirs="${_XMASS_OUT_DIRS}" _files="${_XMASS_OUT_FILES}"
   local _fkb="${_XMASS_OUT_FILE_KB}"
   local _rel _real _key _list _n _tmArg _rcStore _nDirs _nFiles _nFkb _nExcl
@@ -4547,6 +5257,13 @@ _xmass_materialise_out_links() {
   while IFS= read -r _rel <&3; do
     [ -n "${_rel}" ] || continue
     _real="$(readlink -f "${_root}/${_rel}" 2>/dev/null)"
+    if [ -n "${_acct}" ] && [ -n "${_real}" ] \
+      && ! _xmass_store_is_own "${_acct}" "${_real}" uid; then
+      _XMASS_OUT_NOT_OWN=$(( ${_XMASS_OUT_NOT_OWN:-0} + 1 ))
+      _alrt "  out-of-root link ${_root}/${_rel} -> ${_real} is not ${_acct}'s own"
+      _alrt "    (its tree, its store under <mount>/files/${_acct}/, or its files) -- skipped, its content does NOT travel"
+      continue
+    fi
     # Scan the resolved tree BEFORE its store leg runs, so nested out-of-root
     # links ride the same exclude treatment as depth 1 (a source symlink
     # re-sent over the previously materialised copy errors on a dir and
@@ -4554,7 +5271,7 @@ _xmass_materialise_out_links() {
     _nDirs=""; _nFiles=""; _nFkb=0; _nExcl=""
     if [ -n "${_real}" ] && [ -d "${_real}" ]; then
       if [ "${_depth}" -lt "${_XMASS_LINK_DEPTH_MAX}" ]; then
-        _xmass_scan_out_links "${_real}"
+        _xmass_scan_out_links "${_real}" "" "" "${_acct}"
         _nDirs="${_XMASS_OUT_DIRS}"; _nFiles="${_XMASS_OUT_FILES}"
         _nFkb="${_XMASS_OUT_FILE_KB}"; _nExcl="${_XMASS_OUT_EXCL}"
       elif [ -n "$(find "${_real}" -type l -print -quit 2>/dev/null)" ]; then
@@ -4573,7 +5290,7 @@ _xmass_materialise_out_links() {
     _rcStore=0
     _xmass_handle_store "${_root}/${_rel}" "${_dstRoot}/${_rel}" "" \
       "${_tgt}" "${_tmArg}" "${_ieni} ${_nExcl}" "out-of-root link ${_root}/${_rel}" \
-      || _rcStore=$?
+      "${_acct}" uid || _rcStore=$?
     if [ "${_rcStore}" != "0" ]; then
       _XMASS_STORE_RC="${_rcStore}"
       continue
@@ -4581,27 +5298,86 @@ _xmass_materialise_out_links() {
     if [ -n "${_nDirs}${_nFiles}" ]; then
       _XMASS_OUT_DIRS="${_nDirs}"; _XMASS_OUT_FILES="${_nFiles}"
       _XMASS_OUT_FILE_KB="${_nFkb}"
-      _xmass_materialise_out_links "${_real}" "${_dstRoot}/${_rel}" $(( _depth + 1 ))
+      _xmass_materialise_out_links "${_real}" "${_dstRoot}/${_rel}" $(( _depth + 1 )) "${_acct}"
     fi
   done 3<<EOF
 ${_dirs}
 EOF
   if [ -n "${_files}" ]; then
-    _key="$(printf '%s' "${_root}" | tr -c 'A-Za-z0-9._-' '_')"
-    _list="/var/log/boa/xmass.outlinks.${_key}.list"
-    mkdir -p /var/log/boa 2>/dev/null
-    printf '%s' "${_files}" > "${_list}"
-    _n="$(grep -c . "${_list}" 2>/dev/null)"
-    if _xmass_target_fits "${_tgt}" "${_dstRoot}" "${_fkb}"; then
-      _info "  materialising ${_n} out-of-root file link(s) under ${_root} (${_fkb}K; list: ${_list})"
-      _xmass_rsync -aEAXq --copy-links --files-from="${_list}" ${_ieni} -e ssh \
-        "${_root}/" "root@${_tgt}:${_dstRoot}/"
-    else
+    if ! _xmass_target_fits "${_tgt}" "${_dstRoot}" "${_fkb}"; then
       _alrt "DENY: out-of-root file links under ${_root}: ${_fkb}K does not fit at target ${_dstRoot} -- free space and retry"
       _XMASS_NOT_CLEAN=YES
       _XMASS_STORE_RC=3
+    elif [ -n "${_acct}" ]; then
+      _xmass_materialise_own_files "${_root}" "${_dstRoot}" "${_files}" "${_acct}"
+    else
+      _key="$(printf '%s' "${_root}" | tr -c 'A-Za-z0-9._-' '_')"
+      _list="/var/log/boa/xmass.outlinks.${_key}.list"
+      mkdir -p /var/log/boa 2>/dev/null
+      printf '%s' "${_files}" > "${_list}"
+      _n="$(grep -c . "${_list}" 2>/dev/null)"
+      _info "  materialising ${_n} out-of-root file link(s) under ${_root} (${_fkb}K; list: ${_list})"
+      _xmass_rsync -aEAXq --copy-links --files-from="${_list}" ${_ieni} -e ssh \
+        "${_root}/" "root@${_tgt}:${_dstRoot}/"
     fi
   fi
+  return 0
+}
+
+# An account's out-of-root file links ($3, root-relative, one per line)
+# under <root> ($1), materialised at <dstRoot> ($2) for the account $4: each
+# is resolved and checked as the dir links are, then sent from inside the
+# real directory holding its file, as a regular file only, into the real
+# directory its name lands in there. Never -u, as the batch above.
+_xmass_materialise_own_files() {
+  local _root="$1" _dstRoot="$2" _files="$3" _acct="$4"
+  local _rel _real _n _to _pr _qn _rp
+  # Two ssh sessions per file (placement, copy) share one connection for
+  # the whole list, so a long list costs one handshake, not two per file.
+  local _cm="-o ControlMaster=auto -o ControlPath=/root/.ssh/.xmass-cm-%C -o ControlPersist=60"
+  _XMASS_SSH_SHARE="${_cm}"
+  while IFS= read -r _rel <&3; do
+    [ -n "${_rel}" ] || continue
+    _real="$(readlink -f "${_root}/${_rel}" 2>/dev/null)"
+    if [ -z "${_real}" ] || [ ! -f "${_real}" ] \
+      || ! _xmass_store_is_own "${_acct}" "${_real}" uid; then
+      _XMASS_OUT_NOT_OWN=$(( ${_XMASS_OUT_NOT_OWN:-0} + 1 ))
+      _alrt "  out-of-root file link ${_root}/${_rel} -> ${_real:-?} is not ${_acct}'s own file -- skipped, it does NOT travel"
+      continue
+    fi
+    _n="${_rel##*/}"
+    _to="${_dstRoot}/${_rel}"
+    # the name is the receiver's argument, read by a shell there on an
+    # rsync that predates protected arguments
+    case "${_n}" in
+      -*|*[!A-Za-z0-9._@+,=-]*)
+        _alrt "  out-of-root file link name is not shell-safe: ${_root}/${_rel} -- skipped, rename the link on the source"
+        continue
+        ;;
+    esac
+    if [ "${_MODE}" != "LIVE" ]; then
+      _info "[DRY-PLAN] would materialise ${_root}/${_rel} (${_real}) at ${_to}"
+      continue
+    fi
+    _pr="$(_xmass_tgt_place "${_tgt}" _xmass_own_parent_ready "${_acct}" "${_to}")"
+    if [ -z "${_pr}" ]; then
+      _alrt "DENY: ${_to} on the target does not resolve into ${_acct}'s own tree or store -- ${_rel} not copied"
+      _XMASS_RSYNC_RC=23
+      _XMASS_NOT_CLEAN=YES
+      continue
+    fi
+    # the receiver starts in that real parent; a link at the name there
+    # gives way, a directory there fails the leg as the batch did
+    _qn="$(_shq "${_n}")"
+    _rp="$(_xmass_canon_rpath "${_pr}")"
+    _rp="${_rp% && rsync} && { [ ! -L './${_qn}' ] || rm -f -- './${_qn}'; } && [ ! -d './${_qn}' ] && rsync"
+    _xmass_at_canon_dir "${_real%/*}" _xmass_rsync -aEAXq --no-links ${_ieni} \
+      --rsync-path="${_rp}" -e "ssh ${_cm}" "./${_real##*/}" "root@${_tgt}:./${_n}" \
+      || _alrt "  ${_real%/*} is no longer the directory it resolved to -- ${_rel} not copied"
+  done 3<<EOF
+${_files}
+EOF
+  _XMASS_SSH_SHARE=""
   return 0
 }
 
@@ -4648,7 +5424,7 @@ _xmass_report_out_links() {
         continue ;;
     esac
     _xmass_scan_out_links "${_d}" "${_d}/static/files" \
-      "distro static log .drush config clients backups undo tools"
+      "distro static log .drush config clients backups undo tools" "${_d##*/}"
     case "${_XMASS_LNK_RPT}" in
       *"materialise=0 chain=0 indirect=0 dangling=0 skipped=0") : ;;
       *) _info "  ${_d}: ${_XMASS_LNK_RPT}" ;;
@@ -4692,6 +5468,21 @@ _xmass_report_out_links() {
 
 ###-------------SYNC FUNCTIONS-----------###
 
+# One account leg, pinned at its top on both ends: the source directory $1
+# is sent as ./ from inside its real self, and the receiver starts inside
+# the real directory $2 on the target (a link put at that name there gives
+# way to a directory, a missing one is made, its parent must be real). The
+# rsync arguments follow $3, which names what the leg carries: a source that
+# is missing or not a real directory fails the pass instead of being
+# followed (_xmass_leg_refused).
+_xmass_pinned_leg() {
+  local _s="${1}" _d="${2}" _w="${3}"
+  shift 3
+  _xmass_at_real_dir "${_s}" _xmass_rsync "$@" \
+    --rsync-path="$(_xmass_pin_rpath "${_d}")" -e ssh ./ "root@${_tgt}:./" \
+    || _xmass_leg_refused "${_s}" "${_w}"
+}
+
 _xmass_sync_static_symlink_safe() {
   # Mirrors xoct's _xoct_transfer_static_symlink_safe:
   # Preserves site-level symlinks inside static/ while relocating static/files
@@ -4703,10 +5494,18 @@ _xmass_sync_static_symlink_safe() {
   local _src_static="${_src_usr}/static"
   local _dst_static="${_dst_usr}/static"
   local _dst_sf="${_dst_usr}/static/files"
-  local _dst_acct
+  local _dst_acct _src_acct
   _dst_acct="$(basename "${_dst_usr}")"
+  _src_acct="$(basename "${_src_usr}")"
 
-  [ -d "${_src_static}" ] || return 0
+  [ -e "${_src_static}" ] || [ -L "${_src_static}" ] || return 0
+  # static/ is the account's: every pass below reads it only as the real
+  # directory, and one that is a link (or has one on its path) stops them
+  # all, the store included, where a trailing-slash copy used to follow it.
+  if ! _xmass_in_real_dir "${_src_static}" true; then
+    _xmass_leg_refused "${_src_static}" "no static file, codebase or control file of ${_dst_acct}"
+    return 0
+  fi
 
   # Pass 1: sync static/ tree preserving symlinks, skip files/ (the store,
   # pass 2) and control/ (pass 1a). What is left is tenant code -- composer
@@ -4714,10 +5513,14 @@ _xmass_sync_static_symlink_safe() {
   # data the ACTIVE box rotates there itself (trash, goaccess, usage), so
   # this is a DATA leg: on a sync pass it prunes like distro/, under the
   # same three guards, or a codebase the tenant removed stays on the mirror
-  # for good. Excluded paths are never deletion candidates.
-  _xmass_rsync -aEAXqu $(_xmass_leg_args "${_src_static}" "${_dst_static}" "files control" sites "${_src_usr}/backups/rename-hostname") \
+  # for good. Excluded paths are never deletion candidates. Both ends are
+  # pinned as the log/ leg's are: the copy leaves from inside the real
+  # static/ here and lands inside the real one there.
+  _xmass_at_real_dir "${_src_static}" _xmass_rsync -aEAXqu \
+    $(_xmass_leg_args "${_src_static}" "${_dst_static}" "files control" sites "${_src_usr}/backups/rename-hostname") \
     --exclude=/files --exclude=/control \
-    -e ssh "${_src_static}/" "root@${_tgt}:${_dst_static}/"
+    --rsync-path="$(_xmass_pin_rpath "${_dst_static}")" -e ssh ./ "root@${_tgt}:./" \
+    || { _xmass_leg_refused "${_src_static}" "no static file, codebase or control file of ${_dst_acct}"; return 0; }
 
   # Pass 1a: control/ stays ADDITIVE in every mode: the target's own install
   # writes files there the source may never have carried, and the cutover
@@ -4726,15 +5529,23 @@ _xmass_sync_static_symlink_safe() {
   # forced pins below would land whatever it points at), where the single
   # pass used to carry it across as the link it was. Named once a day on
   # the cadence: the account's control files and PHP pins go stale on the
-  # mirror until the link is gone.
-  local _ctl_link=NO
+  # mirror until the link is gone. Both ends are pinned: the copy leaves
+  # from inside the real control directory here and lands inside the real
+  # one there (a link put at that name there gives way to a directory), so
+  # a link swapped in after the test is followed on neither side.
+  local _ctl_link=NO _ctl_rp
+  _ctl_rp="$(_xmass_pin_rpath "${_dst_static}/control")"
   if [ -L "${_src_static}/control" ]; then
     _ctl_link=YES
     _xmass_warn_daily "static_control_link_${_dst_acct}" \
       "  ${_src_static}/control is a SYMLINK -- not followed: no control file and no PHP pin of ${_dst_acct} travels until it is a directory again"
   elif [ -d "${_src_static}/control" ]; then
-    _xmass_rsync -aEAXqu ${_ieni} \
-      -e ssh "${_src_static}/control/" "root@${_tgt}:${_dst_static}/control/"
+    if ! _xmass_at_real_dir "${_src_static}/control" _xmass_rsync -aEAXqu ${_ieni} \
+      --rsync-path="${_ctl_rp}" -e ssh ./ "root@${_tgt}:./"; then
+      _ctl_link=YES
+      _xmass_warn_daily "static_control_link_${_dst_acct}" \
+        "  ${_src_static}/control is not a real directory (a link on its path) -- not followed: no control file and no PHP pin of ${_dst_acct} travels until it is one again"
+    fi
   fi
 
   # Pass 1b: the static sync uses -u (skip-newer), but the target's own fresh
@@ -4753,38 +5564,74 @@ _xmass_sync_static_symlink_safe() {
   local _ctl
   for _ctl in multi-fpm.info fpm.info cli.info; do
     [ "${_ctl_link}" = "YES" ] && break
-    if [ -e "${_src_static}/control/${_ctl}" ]; then
-      _xmass_rsync -aEAX ${_ieni} -e ssh \
-        "${_src_static}/control/${_ctl}" \
-        "root@${_tgt}:${_dst_static}/control/${_ctl}"
+    # a regular file only, pinned on both ends as in pass 1a: a pin the
+    # tenant made a link is never carried, --no-links also after the test
+    if _xmass_in_real_dir "${_src_static}/control" \
+      test -f "./${_ctl}" -a ! -L "./${_ctl}"; then
+      _xmass_at_real_dir "${_src_static}/control" _xmass_rsync -aEAX --no-links \
+        ${_ieni} --rsync-path="${_ctl_rp}" -e ssh "./${_ctl}" "root@${_tgt}:./"
     fi
   done
 
   # Pass 2: relocate static/files per target disk reality. Canonical mount layout
-  # uses the DEST account name, so a rename lands correctly.
+  # uses the DEST account name, so a rename lands correctly. The store is
+  # followed only into the account's own tree or its own part of the
+  # attached store (migratefs), and copied from inside that real directory.
   _xmass_handle_store \
     "${_src_usr}/static/files" \
     "${_dst_sf}" \
     "files/${_dst_acct}/static/files" \
     "${_tgt}" "${_tgt_mnt}" "$(_xmass_leg_args "${_src_usr}/static/files" "${_dst_sf}" "" flat "${_src_usr}/backups/rename-hostname")" \
-    "static/files (${_dst_acct})" || _XMASS_STORE_RC=$?
+    "static/files (${_dst_acct})" "${_src_acct}" tree || _XMASS_STORE_RC=$?
 }
 
-_xmass_sync_account() {
-  local _oct="$1"
-  local _udir="/data/disk/${_oct}"
-  local _dst="/data/disk/${_oct}"
-  # The destination account's group, asked of the target (its own once
-  # converted there, 'users' until then); the legs below map the source
-  # account's group onto it (see _xmass_rsync).
+# Set the group maps of one account's legs (LIVE only; empty otherwise).
+# _XMASS_WGMAP maps the account's web group here (wg-<account>, while it
+# exists) onto the one the target's writers give the account there: its own
+# once converted there, www-data until then. By name alone its paths would
+# land in a number that is no group there, or another account's. Every leg of
+# the account carries it. _XMASS_GMAP, which the _xmass_rsync legs carry,
+# puts the account's group first, mapped onto the destination account's
+# group asked of the target (its own once converted there, 'users' until
+# then); with $2 = web it is the web group entry alone. Returns 1, with a
+# DENY, when the account holds a web group here and the target's answer
+# cannot be read: its paths never land in a guessed group, the caller skips
+# the account's legs. $1 = account.
+_xmass_set_gmap() {
+  local _oct="$1" _dstGrp _dstWg
   _XMASS_GMAP=""
-  if [ "${_MODE}" = "LIVE" ] && getent group "${_oct}" > /dev/null 2>&1; then
+  _XMASS_WGMAP=""
+  [ "${_MODE}" = "LIVE" ] || return 0
+  if [ "$(_web_group_state "${_oct}" | cut -d' ' -f1)" != "none" ]; then
+    _dstWg=$(_web_group_on_target "${_oct}" "${_tgt}") || _dstWg=""
+    if [ -z "${_dstWg}" ]; then
+      _alrt "DENY: could not read the web group of ${_oct} on ${_tgt}; the legs of ${_oct} are skipped this pass"
+      return 1
+    fi
+    _XMASS_WGMAP="wg-${_oct}:${_dstWg}"
+  fi
+  if [ "${2}" != "web" ] && getent group "${_oct}" > /dev/null 2>&1; then
     _dstGrp=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_tgt}" \
       "getent group '${_oct}' > /dev/null 2>&1 && { [ \"\$(id -gn '${_oct}' 2>/dev/null)\" = '${_oct}' ] || [ \"\$(id -gn '${_oct}.ftp' 2>/dev/null)\" = '${_oct}' ]; } && echo '${_oct}' || echo users" 2>/dev/null | tr -d '[:space:]')
     case "${_dstGrp}" in
       "${_oct}"|users) _XMASS_GMAP="${_oct}:${_dstGrp}" ;;
       *) _alrt "  could not read the group of ${_oct} on ${_tgt}; the legs copy groups by name this pass" ;;
     esac
+  fi
+  _XMASS_GMAP="${_XMASS_GMAP}${_XMASS_WGMAP:+${_XMASS_GMAP:+,}${_XMASS_WGMAP}}"
+  return 0
+}
+
+_xmass_sync_account() {
+  local _oct="$1"
+  local _udir="/data/disk/${_oct}"
+  local _dst="/data/disk/${_oct}"
+  # the legs below map the account's groups (see _xmass_set_gmap, _xmass_rsync)
+  if ! _xmass_set_gmap "${_oct}"; then
+    _XMASS_RSYNC_RC=23
+    _XMASS_GMAP=""
+    _XMASS_WGMAP=""
+    return 0
   fi
   # Auto passes re-prove the target's standby role at every leg boundary —
   # a promotion mid-pass must stop the pass here, not hours later.
@@ -4802,8 +5649,11 @@ _xmass_sync_account() {
   local _stg=(--exclude='/*/.boa-refresh/*.new' --exclude='/*/.boa-refresh/*.tar.gz' \
     --exclude='/*/.boa-refresh/*.stale-*')
   _xmass_boa_run_live && _stg+=(--exclude='/*/.boa-refresh/*.old')
-  _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/distro" "${_dst}/distro" "" sites "${_udir}/backups/rename-hostname") \
-    "${_stg[@]}" -e ssh "${_udir}/distro/" "root@${_tgt}:${_dst}/distro/"
+  # Every account leg below is pinned at its top on both ends (see
+  # _xmass_pinned_leg): the account's names are never followed as root.
+  _xmass_pinned_leg "${_udir}/distro" "${_dst}/distro" "the platform codebases of ${_oct}" \
+    -aEAXqu $(_xmass_leg_args "${_udir}/distro" "${_dst}/distro" "" sites "${_udir}/backups/rename-hostname") \
+    "${_stg[@]}"
 
   # User uploaded files (symlink-safe, storage-aware relocation of static/files)
   _xmass_sync_static_symlink_safe "${_udir}" "${_dst}" "${_TGT_MNT}"
@@ -4812,9 +5662,9 @@ _xmass_sync_account() {
   # migration scratch dir -- the old tool, xoct and xcopy all carry it, and
   # xmass alone dropped the leg. Guarded because an account that has never
   # used it legitimately has no src/.
-  if [ -d "${_udir}/src" ]; then
-    _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/src") -e ssh \
-      "${_udir}/src/" "root@${_tgt}:${_dst}/src/"
+  if [ -e "${_udir}/src" ] || [ -L "${_udir}/src" ]; then
+    _xmass_pinned_leg "${_udir}/src" "${_dst}/src" "src/ of ${_oct}" \
+      -aEAXqu $(_xmass_leg_args "${_udir}/src")
   fi
 
   # Log and control files (includes domain.txt, email.txt, etc.).
@@ -4828,11 +5678,13 @@ _xmass_sync_account() {
   # must never travel either: the destination pass below writes its own.
   # proxy-failed.pid is source-role state too: on the target it would park
   # the dispatcher of an account that box serves.
-  _xmass_rsync -aEAXqu ${_ieni} \
+  # log/ and .drush/ (below) are the account user's: both ends are pinned,
+  # the copy leaves from inside the real directory here and lands inside
+  # the real one there, never through a link put at the name or on the way.
+  _xmass_pinned_leg "${_udir}/log" "${_dst}/log" "the log files of ${_oct}" \
+    -aEAXqu ${_ieni} \
     --exclude=proxied.pid --exclude=migproxy.cnf --exclude=pass.txt \
-    --exclude=instance-group.txt --exclude=proxy-failed.pid \
-    -e ssh \
-    "${_udir}/log/" "root@${_tgt}:${_dst}/log/"
+    --exclude=instance-group.txt --exclude=proxy-failed.pid
 
   # Drush aliases are copied WHOLE — including the source's server_master
   # and hostmaster aliases (site aliases get regenerated by renameaegirhost
@@ -4843,15 +5695,16 @@ _xmass_sync_account() {
   # excludes for server_master/hostmaster here: the rename converges either
   # way, and the source platform_* and per-site aliases must always arrive.
   #
-  # php.ini is the ONE exception: BOA generates it per box for the local
-  # drush CLI and hardens it immutable (chattr +i), so the target's copy is
-  # both correct and unreplaceable. Without the exclude, every sync to a
-  # real BOA target fails rc=23 on the rename over the immutable file — a
-  # failure the pre-rc-capture code swallowed silently for years and the
-  # transfer gate now rightly refuses to ignore.
-  _xmass_rsync -aEAXqu ${_ieni} --exclude=php.ini \
-    -e ssh "${_udir}/.drush/" \
-    "root@${_tgt}:${_dst}/.drush/"
+  # php.ini is the ONE exception: earlier releases generated it per box for
+  # the local drush CLI and hardened it immutable (chattr +i). The CLI now
+  # runs on the global ini and the ltd worker removes such a copy, but a
+  # source or target on an earlier release still carries one: the source's
+  # must never land on the target, and a target's immutable copy made every
+  # sync fail rc=23 on the rename over it — a failure the pre-rc-capture
+  # code swallowed silently for years and the transfer gate now rightly
+  # refuses to ignore.
+  _xmass_pinned_leg "${_udir}/.drush" "${_dst}/.drush" "the Drush aliases of ${_oct}" \
+    -aEAXqu ${_ieni} --exclude=php.ini
 
   # Nginx vhost configs. Never from an account this box already relays: its
   # vhost.d holds relay vhosts pointing AT the target, and -u only skips files
@@ -4860,62 +5713,75 @@ _xmass_sync_account() {
   # reasoning as the log/ leg above, applied at the damage site so a hand-run
   # sync is refused too. The saved pre-conversion vhosts (dot-files) never
   # travel: they are this box's revert copies, not configuration.
+  # The account owns config/ down to nginx/ and every directory in it, so any
+  # name there can be a link: root copies only from the real directory. The nginx
+  # legs go only from the real directory, each directory sent by its own name
+  # into the parent, so a link swapped in after the check travels as a link
+  # and is never followed.
+  local _ngxW _ngx
+  _ngxW="$(cd -P -- /data/disk 2>/dev/null && pwd -P)/${_oct}/config/server_master/nginx"
+  _ngx="$(cd -P -- "${_udir}/config/server_master/nginx" 2>/dev/null && pwd -P)"
   if [ -e "${_udir}/log/proxied.pid" ]; then
     _alrt "  ${_udir##*/}: this box relays the account (log/proxied.pid) -- its vhost.d is NOT synced"
+  elif [ "${_ngx}" != "${_ngxW}" ] || [ -L "${_ngxW}/vhost.d" ]; then
+    _xmass_warn_daily "nginx_link_${_oct}_vhost.d" "  ${_oct}: nginx/vhost.d or a directory above it is a link -- not followed, not sent"
   else
     _xmass_rsync -aEAXqu ${_ieni} \
       --exclude=host8.biz --exclude=boa.io --exclude=aegir.cc \
       --exclude='.*' \
-      -e ssh "${_udir}/config/server_master/nginx/vhost.d/" \
-      "root@${_tgt}:${_dst}/config/server_master/nginx/vhost.d/"
+      -e ssh "${_ngxW}/vhost.d" \
+      "root@${_tgt}:${_dst}/config/server_master/nginx/"
   fi
 
-  # These six are OPTIONAL: an account without subdir.d, or without any SSL
+  # These seven are OPTIONAL: an account without subdir.d, or without any SSL
   # material, is perfectly normal. rsync answers a missing source with rc 23,
   # which _xmass_rsync correctly treats as DENY -- and the caller then _die's,
   # aborting a cutover with the SOURCE ALREADY IN 503. The old procedure
   # suppressed errors on exactly these transfers; skipping what does not exist
   # is the same intent stated precisely, and leaves a real rsync failure on a
   # directory that IS there still fatal. Never silent: a skip is logged.
-  for _subdir in pre.d post.d subdir.d platform.d; do
-    if [ ! -d "${_udir}/config/server_master/nginx/${_subdir}" ]; then
+  # passwords.d holds the HTTP basic auth files the carried vhosts name: only a
+  # site Verify writes them, and none runs on the target.
+  for _subdir in pre.d post.d subdir.d platform.d passwords.d; do
+    if [ "${_ngx}" != "${_ngxW}" ] || [ -L "${_ngxW}/${_subdir}" ]; then
+      _xmass_warn_daily "nginx_link_${_oct}_${_subdir}" "  ${_oct}: nginx/${_subdir} or a directory above it is a link -- not followed, not sent"
+      continue
+    fi
+    if [ ! -d "${_ngxW}/${_subdir}" ]; then
       _info "  no ${_subdir} on this account — nothing to send"
       continue
     fi
     _xmass_rsync -aEAXqu ${_ieni} \
-      -e ssh "${_udir}/config/server_master/nginx/${_subdir}/" \
-      "root@${_tgt}:${_dst}/config/server_master/nginx/${_subdir}/" \
-
+      -e ssh "${_ngxW}/${_subdir}" \
+      "root@${_tgt}:${_dst}/config/server_master/nginx/"
   done
 
   # SSL certificates and LE config
-  if [ -d "${_udir}/config/ssl.d" ]; then
-    _xmass_rsync -aEAXqu ${_ieni} \
-      -e ssh "${_udir}/config/ssl.d/" \
-      "root@${_tgt}:${_dst}/config/ssl.d/"
+  if [ -e "${_udir}/config/ssl.d" ] || [ -L "${_udir}/config/ssl.d" ]; then
+    _xmass_pinned_leg "${_udir}/config/ssl.d" "${_dst}/config/ssl.d" \
+      "the config/ssl.d of ${_oct}" -aEAXqu ${_ieni}
   else
     _info "  no config/ssl.d on this account — nothing to send"
   fi
-  if [ -d "${_udir}/config/server_master/ssl.d" ]; then
-    _xmass_rsync -aEAXqu ${_ieni} \
-      -e ssh "${_udir}/config/server_master/ssl.d/" \
-      "root@${_tgt}:${_dst}/config/server_master/ssl.d/"
+  if [ -e "${_udir}/config/server_master/ssl.d" ] \
+    || [ -L "${_udir}/config/server_master/ssl.d" ]; then
+    _xmass_pinned_leg "${_udir}/config/server_master/ssl.d" \
+      "${_dst}/config/server_master/ssl.d" "the server_master/ssl.d of ${_oct}" \
+      -aEAXqu ${_ieni}
   else
     _info "  no server_master/ssl.d on this account — nothing to send"
   fi
-  if [ -d "${_udir}/tools/le" ]; then
-    _xmass_rsync -aEAXqu ${_ieni} \
-      -e ssh "${_udir}/tools/le" \
-      "root@${_tgt}:${_dst}/tools/"
+  if [ -e "${_udir}/tools/le" ] || [ -L "${_udir}/tools/le" ]; then
+    _xmass_pinned_leg "${_udir}/tools/le" "${_dst}/tools/le" \
+      "the tools/le of ${_oct}" -aEAXqu ${_ieni}
   else
     _info "  no tools/le on this account — nothing to send"
   fi
 
   # FTP account SSH keys
-  if [ -d "/home/${_oct}.ftp/.ssh" ]; then
-    _xmass_rsync -aEAXqu ${_ieni} \
-      -e ssh "/home/${_oct}.ftp/.ssh" \
-      "root@${_tgt}:/home/${_oct}.ftp/"
+  if [ -e "/home/${_oct}.ftp/.ssh" ] || [ -L "/home/${_oct}.ftp/.ssh" ]; then
+    _xmass_pinned_leg "/home/${_oct}.ftp/.ssh" "/home/${_oct}.ftp/.ssh" \
+      "the SSH keys of ${_oct}.ftp" -aEAXqu ${_ieni}
   fi
 
   # The sub-account password store must land BEFORE clients/ does:
@@ -4923,10 +5789,9 @@ _xmass_sync_account() {
   # target, and honours a pre-existing store entry (the carried password)
   # only if it is already there. Forced (no -u): the target's fresh install
   # must never shadow the carried credentials.
-  if [ -d "/home/${_oct}.ftp/users" ]; then
-    _xmass_rsync -aEAX ${_ieni} \
-      -e ssh "/home/${_oct}.ftp/users/" \
-      "root@${_tgt}:/home/${_oct}.ftp/users/"
+  if [ -e "/home/${_oct}.ftp/users" ] || [ -L "/home/${_oct}.ftp/users" ]; then
+    _xmass_pinned_leg "/home/${_oct}.ftp/users" "/home/${_oct}.ftp/users" \
+      "the sub-account password store of ${_oct}" -aEAX ${_ieni}
   fi
 
   # Sub-account registry + the two dirs xoct always carried and xmass did
@@ -4935,9 +5800,9 @@ _xmass_sync_account() {
   # validation -- without it the cutover rename dies on every account.
   # backups/ can be large, so it goes through the same space gate the Solr
   # trees use before any bytes move; the dir itself must exist regardless.
-  if [ -d "${_udir}/clients" ]; then
-    _xmass_rsync -aEAXqu ${_ieni} -e ssh \
-      "${_udir}/clients/" "root@${_tgt}:${_dst}/clients/"
+  if [ -e "${_udir}/clients" ] || [ -L "${_udir}/clients" ]; then
+    _xmass_pinned_leg "${_udir}/clients" "${_dst}/clients" \
+      "the sub-account registry of ${_oct}" -aEAXqu ${_ieni}
   fi
   # On a separate-device box night/10-account.sh relocates backups and
   # backup-exports INTO the store (static/files/.backups, .backup-exports)
@@ -4946,47 +5811,72 @@ _xmass_sync_account() {
   # the target root as a real dir -- a full duplicate of the store copy.
   # Reproduce the LINK instead: it resolves against the store the
   # target-side pass has re-created, which satisfies renameaegirhost's
-  # Aegir-root validation exactly as a dir does. A link pointing anywhere
-  # OUTSIDE the store keeps the old follow-and-copy behaviour.
-  local _bkLnk
+  # Aegir-root validation exactly as a dir does. Only a link to one plain
+  # name straight under static/files is reproduced, so the text that
+  # reaches the target's shell is always that fixed shape. Any other
+  # backups/ is copied from inside the real directory it resolves to when
+  # that lies in the account's own tree or store, and refused otherwise;
+  # there it lands in the account's own backups/, the mover's link kept.
+  local _bkLnk _bkName _bkReal _bkTo
   _bkLnk="$(readlink "${_udir}/backups" 2>/dev/null)"
-  if [ -L "${_udir}/backups" ] \
-    && [[ "${_bkLnk}" = "${_udir}/static/files/"* ]]; then
+  _bkName="${_bkLnk#"${_udir}/static/files/"}"
+  if [ -L "${_udir}/backups" ] && [ "${_bkName}" != "${_bkLnk}" ] \
+    && [[ "${_bkName}" =~ ^[A-Za-z0-9._-]+$ ]] \
+    && [ "${_bkName}" != "." ] && [ "${_bkName}" != ".." ]; then
     # Act only once the store content actually exists on the target (the
     # store leg runs first in this same pass): replacing a real dir with
     # a link that dangles would lose the target's only copy.
     [ "${_MODE}" = "LIVE" ] \
-      && ssh root@"${_tgt}" "[ -e '${_bkLnk}' ] || exit 0; if [ -d '${_dst}/backups' ] && [ ! -L '${_dst}/backups' ]; then rm -rf '${_dst}/backups'; fi; ln -sfn '${_bkLnk}' '${_dst}/backups'" 2>/dev/null
-  elif [ -d "${_udir}/backups" ]; then
-    if _xmass_solr_check "${_udir}/backups" "${_dst}/backups" "backups (${_oct})"; then
-      _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/backups") -e ssh \
-        "${_udir}/backups/" "root@${_tgt}:${_dst}/backups/"
+      && ssh root@"${_tgt}" "[ -e '${_dst}/static/files/${_bkName}' ] || exit 0; if [ -d '${_dst}/backups' ] && [ ! -L '${_dst}/backups' ]; then rm -rf '${_dst}/backups'; fi; ln -sfn '${_dst}/static/files/${_bkName}' '${_dst}/backups'" 2>/dev/null
+  elif [ -e "${_udir}/backups" ] || [ -L "${_udir}/backups" ]; then
+    _bkReal="$(cd -P -- "${_udir}/backups" 2>/dev/null && pwd -P)"
+    if [ -z "${_bkReal}" ] || ! _xmass_own_path "${_oct}" "${_bkReal}"; then
+      _xmass_leg_refused "${_udir}/backups" "the backups of ${_oct} (it resolves to ${_bkReal:-nothing}, outside its own tree and store)"
+    elif _xmass_solr_check "${_bkReal}" "${_dst}/backups" "backups (${_oct})"; then
+      _bkTo=""
+      if [ "${_MODE}" = "LIVE" ]; then
+        _bkTo="$(_xmass_tgt_place "${_tgt}" _xmass_own_dir_ready keep "${_oct}" "${_dst}/backups")"
+      fi
+      if [ "${_MODE}" = "LIVE" ] && [ -z "${_bkTo}" ]; then
+        _alrt "DENY: ${_dst}/backups on ${_tgt} does not resolve into ${_oct}'s own tree or store -- the backups of ${_oct} not copied"
+        _XMASS_RSYNC_RC=23
+        _XMASS_NOT_CLEAN=YES
+      else
+        _xmass_at_canon_dir "${_bkReal}" _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/backups") \
+          --rsync-path="$(_xmass_canon_rpath "${_bkTo:-${_dst}/backups}")" -e ssh ./ "root@${_tgt}:./" \
+          || _xmass_leg_refused "${_udir}/backups" "the backups of ${_oct}"
+      fi
     fi
   fi
   # backup-exports shares the relocated shape and never had a leg of its
   # own, so the target used to lack even the symlink.
   _bkLnk="$(readlink "${_udir}/backup-exports" 2>/dev/null)"
-  if [ -L "${_udir}/backup-exports" ] \
-    && [[ "${_bkLnk}" = "${_udir}/static/files/"* ]] \
+  _bkName="${_bkLnk#"${_udir}/static/files/"}"
+  if [ -L "${_udir}/backup-exports" ] && [ "${_bkName}" != "${_bkLnk}" ] \
+    && [[ "${_bkName}" =~ ^[A-Za-z0-9._-]+$ ]] \
+    && [ "${_bkName}" != "." ] && [ "${_bkName}" != ".." ] \
     && [ "${_MODE}" = "LIVE" ]; then
-    ssh root@"${_tgt}" "[ -e '${_bkLnk}' ] || exit 0; if [ -d '${_dst}/backup-exports' ] && [ ! -L '${_dst}/backup-exports' ]; then rm -rf '${_dst}/backup-exports'; fi; ln -sfn '${_bkLnk}' '${_dst}/backup-exports'" 2>/dev/null
+    ssh root@"${_tgt}" "[ -e '${_dst}/static/files/${_bkName}' ] || exit 0; if [ -d '${_dst}/backup-exports' ] && [ ! -L '${_dst}/backup-exports' ]; then rm -rf '${_dst}/backup-exports'; fi; ln -sfn '${_dst}/static/files/${_bkName}' '${_dst}/backup-exports'" 2>/dev/null
   fi
   [ "${_MODE}" = "LIVE" ] \
     && ssh root@"${_tgt}" "mkdir -p ${_dst}/backups ${_dst}/clients" 2>/dev/null
-  if [ -d "${_udir}/undo" ]; then
-    _xmass_rsync -aEAXqu $(_xmass_leg_args "${_udir}/undo") -e ssh \
-      "${_udir}/undo/" "root@${_tgt}:${_dst}/undo/"
+  # undo/ is not made by the installer: the pinned receiver makes it there
+  if [ -e "${_udir}/undo" ] || [ -L "${_udir}/undo" ]; then
+    _xmass_pinned_leg "${_udir}/undo" "${_dst}/undo" "undo/ of ${_oct}" \
+      -aEAXqu $(_xmass_leg_args "${_udir}/undo")
   fi
 
   # Client-installed toolchains live outside /data/disk in the lshell jail's
-  # writable trees and never travelled before -- migrate AS-IS.
-  if [ -d "/opt/user/gems/${_oct}.ftp" ]; then
-    _xmass_rsync -aEAXqu $(_xmass_leg_args "/opt/user/gems/${_oct}.ftp") -e ssh \
-      "/opt/user/gems/${_oct}.ftp/" "root@${_tgt}:/opt/user/gems/${_oct}.ftp/"
+  # writable trees and never travelled before -- migrate AS-IS. The parents
+  # are sticky and world-writable, so each leaf is its owner's to replace:
+  # pinned as the account legs are.
+  if [ -e "/opt/user/gems/${_oct}.ftp" ] || [ -L "/opt/user/gems/${_oct}.ftp" ]; then
+    _xmass_pinned_leg "/opt/user/gems/${_oct}.ftp" "/opt/user/gems/${_oct}.ftp" \
+      "the gems of ${_oct}.ftp" -aEAXqu $(_xmass_leg_args "/opt/user/gems/${_oct}.ftp")
   fi
-  if [ -d "/opt/user/npm/${_oct}.ftp" ]; then
-    _xmass_rsync -aEAXqu $(_xmass_leg_args "/opt/user/npm/${_oct}.ftp") -e ssh \
-      "/opt/user/npm/${_oct}.ftp/" "root@${_tgt}:/opt/user/npm/${_oct}.ftp/"
+  if [ -e "/opt/user/npm/${_oct}.ftp" ] || [ -L "/opt/user/npm/${_oct}.ftp" ]; then
+    _xmass_pinned_leg "/opt/user/npm/${_oct}.ftp" "/opt/user/npm/${_oct}.ftp" \
+      "the npm tree of ${_oct}.ftp" -aEAXqu $(_xmass_leg_args "/opt/user/npm/${_oct}.ftp")
   fi
 
   # Plan/identity stamps forced over the fresh install's newer defaults
@@ -5008,10 +5898,19 @@ _xmass_sync_account() {
   # the source link every sync and would fight a materialised copy (see the
   # sweep header). Root-level legacy links (the historical /mnt case) are not
   # under any leg and materialise cleanly.
+  # A link whose content is not the account's own is skipped, and the pass
+  # fails as a refused leg does: a cutover never goes ahead without that
+  # content until the link is moved or its store relinked.
+  _XMASS_OUT_NOT_OWN=0
   _xmass_scan_out_links "${_udir}" "${_udir}/static/files" \
-    "distro static log .drush config clients backups undo tools"
+    "distro static log .drush config clients backups undo tools" "${_oct}"
   _info "  link sweep ${_oct}: ${_XMASS_LNK_RPT}"
-  _xmass_materialise_out_links "${_udir}" "${_dst}"
+  _xmass_materialise_out_links "${_udir}" "${_dst}" 1 "${_oct}"
+  if [ "${_XMASS_OUT_NOT_OWN}" -gt 0 ]; then
+    _alrt "DENY: ${_oct}: ${_XMASS_OUT_NOT_OWN} out-of-root link(s) resolve to content that is not ${_oct}'s own -- see above; that content does not travel"
+    _XMASS_RSYNC_RC=23
+    _XMASS_NOT_CLEAN=YES
+  fi
 
   # The legs above mapped the group as they copied; a hand-run sync or a
   # cutover also lets the destination's own tool sweep the whole account
@@ -5022,6 +5921,7 @@ _xmass_sync_account() {
     _acct_regroup_remote "${_oct}" "${_tgt}"
   fi
   _XMASS_GMAP=""
+  _XMASS_WGMAP=""
 }
 
 _xmass_sync_shared() {
@@ -5537,6 +6437,7 @@ _xmass_restore_hint() {
     _alrt '    service cron start'
     _alrt '    for s in runner owl usage graceful manage_ltd_users; do \'
     _alrt '      mv -f /var/xdrago/.$s.sh.off /var/xdrago/$s.sh 2>/dev/null; done'
+    _alrt '    rm -f /run/boa_migration_park.pid'
   elif [ "${_XMASS_RUNNERS_PARKED}" = "YES" ]; then
     # Pre-promotion abort: this box REMAINS production and must not sit
     # with cron down (no duplicity, no IDS, no certificate mirror) until
@@ -5607,22 +6508,13 @@ _xmass_block_web_all() {
       _held="${_held} ${_oct}"
       continue
     fi
-    # static/ is tenant-writable, so both the control directory and the pid
-    # name can be planted as symlinks: mkdir -p succeeds silently on a link to
-    # a directory and > follows a live link and creates the target of a
-    # dangling one. Strip a planted link and write only into a real directory.
-    [ -L "/data/disk/${_oct}/static/control" ] \
-      && rm -f "/data/disk/${_oct}/static/control" &>/dev/null
-    mkdir -p "/data/disk/${_oct}/static/control"
-    [ -L "/data/disk/${_oct}/static/control/http-off.pid" ] \
-      && rm -f "/data/disk/${_oct}/static/control/http-off.pid" &>/dev/null
-    if [ -d "/data/disk/${_oct}/static/control" ] \
-      && [ ! -L "/data/disk/${_oct}/static/control" ]; then
-      echo 7200 > "/data/disk/${_oct}/static/control/http-off.pid"
-    fi
-    chown -h "${_oct}:$(_acct_group "${_oct}")" \
-      "/data/disk/${_oct}/static/control/http-off.pid" \
-      &>/dev/null || true
+    # static/ is tenant-writable, so the control directory and the pid name
+    # can be a link or a FIFO put there: the directory is made real and the
+    # gate is put inside it, never through or into either.
+    _xmass_in_real_dir "/data/disk/${_oct}/static" _xmass_ctrl_dir_here
+    _xmass_in_real_dir "/data/disk/${_oct}/static/control" \
+      _xmass_put_here http-off.pid 7200 "${_oct}:$(_acct_group "${_oct}")" \
+      || _alrt "  ${_oct}: could not write the 503 gate"
   done
   # Purge the Nginx speed cache so cached 200s don't mask the 503
   if [ -d "/var/lib/nginx/speed" ]; then
@@ -5656,20 +6548,28 @@ _xmass_src_fqdn() {
 _xmass_plant_host_gate() {
   local _oct="$1"
   local _fqdn="$2"
-  local _hg="/data/disk/${_oct}/static/control/http-off-host.pid"
   [ -n "${_fqdn}" ] || return 1
-  [ -L "/data/disk/${_oct}/static/control" ] \
-    && rm -f "/data/disk/${_oct}/static/control" &>/dev/null
-  mkdir -p "/data/disk/${_oct}/static/control"
-  [ -L "${_hg}" ] && rm -f "${_hg}" &>/dev/null
-  if [ ! -d "/data/disk/${_oct}/static/control" ] \
-    || [ -L "/data/disk/${_oct}/static/control" ]; then
-    return 1
+  _xmass_in_real_dir "/data/disk/${_oct}/static" _xmass_ctrl_dir_here
+  _xmass_in_real_dir "/data/disk/${_oct}/static/control" \
+    _xmass_host_gate_here "${_fqdn}" "${_oct}:$(_acct_group "${_oct}")"
+}
+### The per-host gate in the current (pinned) control directory: the name is
+### read and rewritten, never followed or opened as a FIFO. Its lines are
+### carried only from a regular file with one link that is the account's or
+### its .ftp login's, read through the handle that checked it: another file
+### renamed onto the name (a root-only one included) lends no bytes to the
+### rewrite, which is owned by the account. $1 = hostname, $2 = owner:group.
+_xmass_host_gate_here() {
+  local _t
+  local _rd='use Fcntl; my ($n, $x) = @ARGV; my %ok = map { $_ => 1 } split(/,/, $x); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 0; my @s = stat($h); exit 0 unless @s && -f _ && $s[3] == 1 && $s[7] < 1048576 && $ok{$s[4]}; my ($d, $r) = (""); while ($r = sysread($h, my $c, 65536)) { $d .= $c; exit 0 if length($d) >= 1048576; } exit 0 unless defined $r; binmode(STDOUT); print $d; exit 0'
+  _t="$(perl -e "${_rd}" -- ./http-off-host.pid \
+    "$(id -u -- "${2%%:*}" 2> /dev/null),$(id -u -- "${2%%:*}.ftp" 2> /dev/null)" \
+    2> /dev/null)"
+  if ! grep -q -x -F "${1}" <<< "${_t}"; then
+    _t="$(printf '%s\n%s\n' "${_t}" "${1}" | sed '/^$/d')"
+    _xmass_put_here http-off-host.pid "${_t}" "${2}" || return 1
   fi
-  grep -q -x -F "${_fqdn}" "${_hg}" 2>/dev/null || echo "${_fqdn}" >> "${_hg}"
-  chown -h "${_oct}:$(_acct_group "${_oct}")" "${_hg}" &>/dev/null || true
-  chmod 644 "${_hg}" &>/dev/null
-  grep -q -x -F "${_fqdn}" "${_hg}" 2>/dev/null
+  grep -q -x -F "${1}" <<< "$(_xmass_read_here http-off-host.pid)"
 }
 
 _xmass_remove_http_off_all() {
@@ -5686,7 +6586,7 @@ _xmass_remove_http_off_all() {
         continue
       ;;
     esac
-    rm -f "/data/disk/${_oct}/static/control/http-off.pid"
+    _xmass_in_real_dir "/data/disk/${_oct}/static/control" rm -f -- ./http-off.pid
     # The per-host gate goes with it only once the account's deferred sites
     # were converted too; a failed second pass keeps them held.
     case " ${_XMASS_PROXY_DEFER_FAILED:-} " in
@@ -5694,7 +6594,7 @@ _xmass_remove_http_off_all() {
         _alrt "  ${_oct}: its deferred sites were NOT converted; keeping the per-host gate up"
       ;;
       *)
-        rm -f "/data/disk/${_oct}/static/control/http-off-host.pid"
+        _xmass_in_real_dir "/data/disk/${_oct}/static/control" rm -f -- ./http-off-host.pid
       ;;
     esac
   done
@@ -5714,8 +6614,9 @@ _xmass_remove_http_off_target() {
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     # The per-host twin goes too: one left by an earlier move of this box
     # rides the same sync and would hold the renamed sites on 503 here.
+    # inside the account's real static/control on the target, as here
     ssh root@"${_tgt}" \
-      "rm -f /data/disk/${_oct}/static/control/http-off.pid /data/disk/${_oct}/static/control/http-off-host.pid" 2>/dev/null \
+      "_w=\"\$(cd -P /data/disk 2>/dev/null && pwd -P)/${_oct}/static/control\"; cd -P -- /data/disk/${_oct}/static/control 2>/dev/null && [ \"\$(pwd -P)\" = \"\${_w}\" ] && rm -f -- ./http-off.pid ./http-off-host.pid" 2>/dev/null \
       || _alrt "Could not remove http-off.pid for ${_oct} on target ${_tgt}"
   done
   ssh root@"${_tgt}" \
@@ -6017,7 +6918,8 @@ _xmass_convert_source_to_proxy() {
       fi
       continue
     fi
-    touch "/data/disk/${_oct}/log/exported.pid"
+    # inside the account's real log/, never through a link put there
+    _xmass_in_real_dir "/data/disk/${_oct}/log" _xmass_touch_here exported.pid
     if [ "${_pass}" = "relay" ]; then
       # The per-host gate goes up before xoct lifts the account gate; xoct
       # writes it too, and refuses the account when it cannot.
@@ -6179,6 +7081,22 @@ _xmass_setup_migration_proxy_trust() {
 # demoted box, which already holds root there: continuity within one pair,
 # not a new trust domain. The key travels in the command environment, base64,
 # never on stdin (stdin is the remote script). Idempotent, never fatal.
+### Whether this box keeps a record of its own for the migration peer $1 (a
+### checked dotted quad): the relay list migration_proxy_trust keeps, the
+### address list root keeps beside each peer record it receives (every
+### address the peer relays from, so a record's whole set stays witnessed
+### after the relay list is retired), a root key line tagged for that
+### address by an xmass, xoct or xcopy pre-mig, or the firewall line an xmass
+### run wrote for it. An address named only in an account's log/ is none of
+### these.
+_xmass_peer_witnessed() {
+  local _rx="${1//./\\.}"
+  grep -qxF -- "${1}" /root/.migration.proxy.ips.cnf 2> /dev/null && return 0
+  grep -qxF -- "${1}" /root/.migration.peer.addrs 2> /dev/null && return 0
+  grep -qE -- " # (xmass|xoct|xcopy) migration source ${_rx}[[:space:]]*\$" /root/.ssh/authorized_keys 2> /dev/null && return 0
+  grep -qE -- "^${_rx} # xmass migration " /etc/csf/csf.allow 2> /dev/null
+}
+
 _xmass_carry_inbound_reach() {
   local _cnf _ip _set _key _kb64 _own _sets="" _a
   _own="$(hostname -I 2>/dev/null | tr ' ' '\n')"
@@ -6186,8 +7104,19 @@ _xmass_carry_inbound_reach() {
     [ -e "${_cnf}" ] || continue
     _mig_is_mine "${_cnf}" || continue
     [ "$(_mig_get "${_cnf}" _MIG_ROLE)" = "target" ] || continue
-    _set="$(printf '%s\n' $(_mig_get "${_cnf}" _MIG_PEER_IPS) $(_mig_get "${_cnf}" _MIG_PEER_IP) | sort -u | tr '\n' ',')"
-    _sets="${_sets} ${_set%,}"
+    # The record sits in the account's own log/: a peer address it names
+    # opens the firewall on the target only when this box holds a record of
+    # its own for that peer (see _xmass_peer_witnessed).
+    _set=""
+    for _ip in $(_mig_get "${_cnf}" _MIG_PEER_IPS | tr ',' ' ') $(_mig_get "${_cnf}" _MIG_PEER_IP); do
+      _mig_valid_ip "${_ip}" || continue
+      if ! _xmass_peer_witnessed "${_ip}"; then
+        _alrt "  ${_cnf} names peer ${_ip}, which no record of this box's own confirms -- its reach is NOT carried"
+        continue
+      fi
+      _set="${_set}${_ip},"
+    done
+    [ -n "${_set}" ] && _sets="${_sets} ${_set%,}"
   done
   for _ip in $(cat /root/.migration.proxy.ips.cnf 2>/dev/null); do
     _sets="${_sets} ${_ip}"
@@ -6199,33 +7128,33 @@ _xmass_carry_inbound_reach() {
       [ "${_ip}" = "${_tgt}" ] && continue
       printf '%s\n' "${_own}" | grep -qxF "${_ip}" && continue
       _a="${_a} ${_ip}"
-      [ -n "${_key}" ] || _key="$(grep -hF -- "# xmass migration source ${_ip}" /root/.ssh/authorized_keys 2>/dev/null | head -n1)"
+      # the tag ends the line: one peer's address never picks up the key of
+      # another whose address it is a prefix of; a commented-out line is a
+      # revoked key, never the one that travels
+      [ -n "${_key}" ] || _key="$(grep -vE '^[[:space:]]*#' /root/.ssh/authorized_keys 2>/dev/null \
+        | grep -E -- " # (xmass|xoct|xcopy) migration source ${_ip//./\\.}[[:space:]]*\$" | head -n1)"
     done
     [ -n "${_a}" ] || continue
     _info "Carrying inbound migration-proxy reach to ${_tgt} for peer${_a} (root key + csf allow/ignore; the serving trust follows the retarget) ..."
     if [ -z "${_key}" ]; then
-      _alrt "  peer${_a}: no key line tagged '# xmass migration source <one of its addresses>' here"
+      _alrt "  peer${_a}: no key line tagged '# xmass|xoct|xcopy migration source <one of its addresses>' here"
       _alrt "  (a pre-mig older than the tag installed it), so its root key cannot travel: append"
       _alrt "  that box's /root/.ssh/id_ed25519.pub to /root/.ssh/authorized_keys on ${_tgt} by hand"
     fi
     _kb64="$(printf '%s' "${_key}" | base64 | tr -d '\n')"
-    if ! ssh -o ConnectTimeout=15 root@"${_tgt}" "_IPS='${_a# }' _KB64='${_kb64}' bash -s" <<'CARRY'
+    # The promoted box applies the pre-mig rule (_xmass_key_trust_line,
+    # shipped with the script): the same key already there under another
+    # peer's tag, or under options, must not keep this peer's line out.
+    if ! { declare -f _xmass_key_tagged_in _xmass_key_trust_line; cat <<'CARRY'
 mkdir -p /root/.ssh; chmod 700 /root/.ssh; touch /root/.ssh/authorized_keys
 _l="$(printf '%s' "${_KB64}" | base64 -d 2>/dev/null)"
+_l="${_l%"${_l##*[![:space:]]}"}"
 if [ -n "${_l}" ]; then
   _b="${_l%% # xmass migration source *}"
-  if grep -qF -- "${_b}" /root/.ssh/authorized_keys; then
-    if ! grep -qF -- "${_l}" /root/.ssh/authorized_keys; then
-      _t="/root/.ssh/authorized_keys.xmass.$$"
-      while IFS= read -r _x; do
-        [ "${_x%"${_x##*[![:space:]]}"}" = "${_b}" ] && _x="${_l}"
-        printf '%s\n' "${_x}"
-      done < /root/.ssh/authorized_keys > "${_t}" && cat "${_t}" > /root/.ssh/authorized_keys
-      rm -f "${_t}"
-    fi
-  else
-    echo >> /root/.ssh/authorized_keys; echo "${_l}" >> /root/.ssh/authorized_keys
-  fi
+  _b="${_b%% # xoct migration source *}"
+  _b="${_b%% # xcopy migration source *}"
+  _xmass_key_trust_line /root/.ssh/authorized_keys "${_b}" "${_l#"${_b}"}" \
+    || echo "the carried key line is NOT in /root/.ssh/authorized_keys"
 fi
 chmod 600 /root/.ssh/authorized_keys
 if [ -x /usr/sbin/csf ]; then
@@ -6237,8 +7166,9 @@ if [ -x /usr/sbin/csf ]; then
   done
   csf -q &> /dev/null
 fi
-echo "reach for ${_IPS}: key line(s) $(grep -cF -- '# xmass migration source ' /root/.ssh/authorized_keys), csf allow $(grep -c ' # xmass migration inbound-proxy' /etc/csf/csf.allow 2>/dev/null) ignore $(grep -c ' # xmass migration inbound-proxy' /etc/csf/csf.ignore 2>/dev/null)"
+echo "reach for ${_IPS}: key line(s) $(grep -cE -- '# (xmass|xoct|xcopy) migration source ' /root/.ssh/authorized_keys), csf allow $(grep -c ' # xmass migration inbound-proxy' /etc/csf/csf.allow 2>/dev/null) ignore $(grep -c ' # xmass migration inbound-proxy' /etc/csf/csf.ignore 2>/dev/null)"
 CARRY
+      } | ssh -o ConnectTimeout=15 root@"${_tgt}" "_IPS='${_a# }' _KB64='${_kb64}' bash -s"
     then
       _alrt "  peer${_a}: reach NOT wired on ${_tgt}; its retarget will refuse there (the refusal names the remedy)"
     fi
@@ -6292,7 +7222,10 @@ _xmass_rewire_panel_db_access() {
       continue
     fi
     _info "  Rewiring panel DB access for ${_root} on target ..."
-    ssh root@"${_tgt}" "bash -s -- '${_root}' '${_src_fqdn}'" <<'REMOTE'
+    # The account's .drush, panel site dir and vhosts are read and rewritten
+    # there only through the shipped helpers: inside the real directory,
+    # never through a link or into a FIFO put there, owner and mode kept.
+    { _xmass_remote_guards; cat <<'REMOTE'
 _R="$1"
 _S="$2"
 _R=${_R//[^a-zA-Z0-9\/._-]/}
@@ -6304,9 +7237,33 @@ if [ -z "${_R}" ] || [ -z "${_S}" ] || [ -z "${_NEW}" ]; then
   exit 1
 fi
 _ALS="${_R}/.drush/hostmaster.alias.drushrc.php"
-_SP=$(grep "site_path'" "${_ALS}" 2>/dev/null | head -1 | sed "s/.*=>//; s/[' ,;]//g")
+_SP=$(_xmass_read_file "${_ALS}" | grep "site_path'" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
 if [ -z "${_SP}" ]; then
   echo "PANEL-ERROR: cannot read site_path from ${_ALS}"
+  exit 1
+fi
+# The alias is the account's file: the panel dir it names is used only when
+# it is this root's own, <root>/aegir/distro/<n>/sites/<name> for an Octopus
+# root and <root>/<platform>/sites/<name> for the master, written in the
+# plain characters the rewrites below put into sed programs and SQL.
+_sp_own() {
+  local _t
+  case "${1}" in
+    *[!A-Za-z0-9/._-]*|*/../*|*/..|*/./*|*//*) return 1 ;;
+  esac
+  case "${_R}" in
+    /var/aegir) _t="${1#/var/aegir/}" ;;
+    *) _t="${1#"${_R}"/aegir/distro/}" ;;
+  esac
+  [ "${_t}" != "${1}" ] || return 1
+  case "${_t}" in
+    */sites/*/*|*/*/sites/*|.*) return 1 ;;
+    ?*/sites/?*) return 0 ;;
+  esac
+  return 1
+}
+if ! _sp_own "${_SP}"; then
+  echo "PANEL-ERROR: ${_ALS} names ${_SP}, which is not a panel dir of ${_R} -- refusing to rewire it"
   exit 1
 fi
 # The alias copy that survived the rsync -u mtime race may name either
@@ -6314,7 +7271,7 @@ fi
 # (the source platform tree rsyncs in). The dir the renamed site node will
 # serve is the NEW-host-named one — prefer it whenever it exists.
 _SPN=${_SP//${_S}/${_NEW}}
-if [ -f "${_SPN}/drushrc.php" ]; then
+if _sp_own "${_SPN}" && [ -f "${_SPN}/drushrc.php" ]; then
   _SP="${_SPN}"
 fi
 _OLD_PLAT=""
@@ -6335,6 +7292,7 @@ if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ] \
   _TREE=$(dirname "$(dirname "$(dirname "${_SP}")")")
   _FOUND=""; _N=0
   for _CAND in "${_TREE}"/*/sites/*"${_NEW}"*; do
+    _sp_own "${_CAND}" || continue
     [ -f "${_CAND}/drushrc.php" ] || continue
     [ -f "${_CAND}/settings.php" ] || continue
     # A site dir on a code-less platform is the hollow shape this branch
@@ -6356,8 +7314,9 @@ if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ] \
     # its platform), so a stale one there kills the first pass after the
     # promotion just as surely -- live-observed on a failback target.
     for _F in "${_ALS}" "$(dirname "${_ALS}")/hm.alias.drushrc.php"; do
-      if [ "${_OLD_PLAT}" != "${_NEW_PLAT}" ] && [ -f "${_F}" ] && grep -q "${_OLD_PLAT}" "${_F}"; then
-        sed -i "s|${_OLD_PLAT}|${_NEW_PLAT}|g" "${_F}" \
+      if [ "${_OLD_PLAT}" != "${_NEW_PLAT}" ] && [ -f "${_F}" ] \
+        && _xmass_read_file "${_F}" | grep -q "${_OLD_PLAT}"; then
+        _xmass_in_real_dir "${_F%/*}" _xmass_sed_here "${_F##*/}" "s|${_OLD_PLAT}|${_NEW_PLAT}|g" \
           && echo "PANEL-NOTE: $(basename "${_F}" .alias.drushrc.php) alias platform path corrected ${_OLD_PLAT} -> ${_NEW_PLAT}"
       fi
     done
@@ -6366,6 +7325,10 @@ if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ] \
     echo "PANEL-ERROR: ${_N} candidate panel dirs under ${_TREE} match ${_NEW} — refusing to guess"
     exit 1
   fi
+fi
+if ! _sp_own "${_SP}"; then
+  echo "PANEL-ERROR: the panel dir ${_SP} is not one of ${_R} -- refusing to rewire it"
+  exit 1
 fi
 if [ ! -f "${_SP}/drushrc.php" ] || [ ! -f "${_SP}/settings.php" ]; then
   echo "PANEL-ERROR: no panel settings.php/drushrc.php under ${_R} (looked at ${_SP})"
@@ -6416,12 +7379,12 @@ case "${_PURI}" in
   ;;
 esac
 if [ -z "${_UOWN}" ]; then
-  _AURI=$(sed -n "s/.*'uri' => '\([^']*\)'.*/\1/p" "${_ALS}" | head -1)
+  _AURI=$(_xmass_read_file "${_ALS}" | sed -n "s/.*'uri' => '\([^']*\)'.*/\1/p" | head -1)
   echo "PANEL-NOTE: alias uri left as ${_AURI:-unreadable}: the panel dir in use (${_SP}) is not named after this box (${_NEW})"
 else
   for _UFI in "${_ALS}" "$(dirname "${_ALS}")/hm.alias.drushrc.php"; do
     [ -f "${_UFI}" ] || continue
-    _AURI=$(sed -n "s/.*'uri' => '\([^']*\)'.*/\1/p" "${_UFI}" | head -1)
+    _AURI=$(_xmass_read_file "${_UFI}" | sed -n "s/.*'uri' => '\([^']*\)'.*/\1/p" | head -1)
     # No quoted uri key at all is a shape this correction does not understand;
     # leave it to the rename rather than guess at it.
     [ -n "${_AURI}" ] || continue
@@ -6442,18 +7405,15 @@ else
     esac
     _UGD=""
     case "${_PURI}" in *"${_AURI}"*) _UGD="/${_PURI}/!" ;; esac
-    _UO=$(stat -c '%U:%G' "${_UFI}")
-    _UM=$(stat -c '%a' "${_UFI}")
-    if ! sed -i "${_UGD}s|${_AURI}|${_PURI}|g" "${_UFI}"; then
+    if ! _xmass_in_real_dir "${_UFI%/*}" \
+      _xmass_sed_here "${_UFI##*/}" "${_UGD}s|${_AURI}|${_PURI}|g"; then
       echo "PANEL-ERROR: could not rewrite the uri in ${_UFI}"
       exit 1
     fi
-    [ -n "${_UO}" ] && chown "${_UO}" "${_UFI}"
-    [ -n "${_UM}" ] && chmod "${_UM}" "${_UFI}"
     # The substitution is unanchored, so assert where it landed: the key this
     # correction exists for must now read the panel's own name. Every other
     # rewrite in this body is key-anchored or post-checked; this one was not.
-    if ! grep -qF "'uri' => '${_PURI}'" "${_UFI}"; then
+    if ! _xmass_read_file "${_UFI}" | grep -qF "'uri' => '${_PURI}'"; then
       echo "PANEL-ERROR: the uri in ${_UFI} did not land as '${_PURI}' -- correct it by hand"
       exit 1
     fi
@@ -6497,6 +7457,22 @@ _root_has_code() {
   done
   return 1
 }
+# A plain absolute path, the only alias 'root' value the rewrites below
+# turn into a sed pattern; anything else is reported and left alone.
+_plain_root() {
+  case "${1}" in
+    '') return 1 ;;
+    /*) ;;
+    *) echo "PANEL-NOTE: alias root '${1}' is not an absolute path -- left alone"; return 1 ;;
+  esac
+  case "${1}" in
+    *[!A-Za-z0-9/._-]*)
+      echo "PANEL-NOTE: alias root '${1}' is not a plain path -- left alone"
+      return 1
+      ;;
+  esac
+  return 0
+}
 # True only when the panel DB answers that no context carries the name; a
 # query that fails answers nothing, which never reads as "no such context".
 _no_hosting_context() {
@@ -6522,38 +7498,42 @@ _reconcile_panel_aliases() {
   for _AF in "${_ALS}" "${_DRUSH}/hm.alias.drushrc.php"; do
     [ -f "${_AF}" ] || continue
     _AN=$(basename "${_AF}" .alias.drushrc.php)
-    _REF=$(sed -n "s/.*'platform' => '@\([^']*\)'.*/\1/p" "${_AF}" | head -1)
+    _REF=$(_xmass_read_file "${_AF}" | sed -n "s/.*'platform' => '@\([^']*\)'.*/\1/p" | head -1)
     case "${_REF}" in *[!A-Za-z0-9_.-]*) _REF="" ;; esac
     if [ -n "${_REF}" ] && [ "${_REF}" != "${_CTX}" ]; then
       _OLDPA="${_DRUSH}/${_REF}.alias.drushrc.php"
       if [ ! -f "${_PA}" ] && [ -f "${_OLDPA}" ]; then
-        cp -a "${_OLDPA}" "${_PA}" \
+        _xmass_in_real_dir "${_DRUSH}" _xmass_sed_to "${_OLDPA##*/}" "${_PA##*/}" '' \
           && echo "PANEL-NOTE: platform alias ${_CTX} created from ${_REF}"
       fi
-      sed -i "s|'@${_REF}'|'@${_CTX}'|" "${_AF}" \
+      _xmass_in_real_dir "${_DRUSH}" _xmass_sed_here "${_AF##*/}" "s|'@${_REF}'|'@${_CTX}'|" \
         && echo "PANEL-NOTE: ${_AN} alias platform reference corrected @${_REF} -> @${_CTX}"
       if [ -f "${_OLDPA}" ]; then
-        _OR=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_OLDPA}" | head -1)
+        _OR=$(_xmass_read_file "${_OLDPA}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
         if [ -n "${_OR}" ] && ! _root_has_code "${_OR}" \
           && _no_hosting_context "${_DB}" "${_REF}"; then
-          rm -f "${_OLDPA}" \
+          _xmass_in_real_dir "${_DRUSH}" rm -f -- "./${_OLDPA##*/}" \
             && echo "PANEL-NOTE: stale platform alias ${_REF} removed (root ${_OR} carries no code, no such context in ${_DB})"
         fi
       fi
     fi
   done
+  # The root an alias holds is the account's text and becomes a sed
+  # pattern here: only a plain absolute path is ever replaced.
   if [ -f "${_PA}" ]; then
-    _OLDROOT=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_PA}" | head -1)
+    _OLDROOT=$(_xmass_read_file "${_PA}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
+    _plain_root "${_OLDROOT}" || _OLDROOT=""
     if [ -n "${_OLDROOT}" ] && [ "${_OLDROOT}" != "${_DISK}" ]; then
-      sed -i "s|${_OLDROOT}|${_DISK}|g" "${_PA}" \
+      _xmass_in_real_dir "${_DRUSH}" _xmass_sed_here "${_PA##*/}" "s|${_OLDROOT}|${_DISK}|g" \
         && echo "PANEL-NOTE: platform alias ${_CTX} root corrected ${_OLDROOT} -> ${_DISK}"
     fi
   fi
   for _AF in "${_ALS}" "${_DRUSH}/hm.alias.drushrc.php"; do
     [ -f "${_AF}" ] || continue
-    _OLDROOT=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_AF}" | head -1)
+    _OLDROOT=$(_xmass_read_file "${_AF}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
+    _plain_root "${_OLDROOT}" || _OLDROOT=""
     if [ -n "${_OLDROOT}" ] && [ "${_OLDROOT}" != "${_DISK}" ]; then
-      sed -i "s|${_OLDROOT}|${_DISK}|g" "${_AF}" \
+      _xmass_in_real_dir "${_DRUSH}" _xmass_sed_here "${_AF##*/}" "s|${_OLDROOT}|${_DISK}|g" \
         && echo "PANEL-NOTE: $(basename "${_AF}" .alias.drushrc.php) alias root corrected ${_OLDROOT} -> ${_DISK}"
     fi
   done
@@ -6567,10 +7547,10 @@ _reconcile_panel_aliases() {
     _REF=$(basename "${_OLDPA}" .alias.drushrc.php)
     [ "${_REF}" = "${_CTX}" ] && continue
     case "${_REF}" in *[!A-Za-z0-9_.-]*) continue ;; esac
-    _OR=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_OLDPA}" | head -1)
+    _OR=$(_xmass_read_file "${_OLDPA}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
     [ -n "${_OR}" ] && ! _root_has_code "${_OR}" || continue
     _no_hosting_context "${_DB}" "${_REF}" || continue
-    rm -f "${_OLDPA}" \
+    _xmass_in_real_dir "${_DRUSH}" rm -f -- "./${_OLDPA##*/}" \
       && echo "PANEL-NOTE: stale platform alias ${_REF} removed (root ${_OR} carries no code, no such context in ${_DB})"
   done
   return 0
@@ -6627,7 +7607,7 @@ _repoint_panel_platform() {
   _reconcile_panel_aliases "${_DB}" "${_PN}" "${_DISK}"
   return 0
 }
-_DEAD_DB=$(grep "options\['db_name'\]" "${_SP}/drushrc.php" | head -1 | sed "s/.*=//; s/[' ,;]//g")
+_DEAD_DB=$(_xmass_read_file "${_SP}/drushrc.php" | grep "options\['db_name'\]" | head -1 | sed "s/.*=//; s/[' ,;]//g")
 _DEAD_DB=${_DEAD_DB//[^a-zA-Z0-9_]/}
 if [ -z "${_DEAD_DB}" ]; then
   echo "PANEL-ERROR: cannot read db_name from ${_SP}/drushrc.php"
@@ -6649,9 +7629,9 @@ if [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B \
   # Live-observed on the first failback that completed. Converge on the
   # serving truth (a vhost password MySQL accepts); rotate only when
   # nothing the panel holds authenticates.
-  _DRU=$(sed -n "s/^\$options\['db_user'\] = '\([^']*\)';.*/\1/p" "${_SP}/drushrc.php" | head -1)
-  _DRP=$(sed -n "s/^\$options\['db_passwd'\] = '\([^']*\)';.*/\1/p" "${_SP}/drushrc.php" | head -1)
-  _DRH=$(sed -n "s/^\$options\['db_host'\] = '\([^']*\)';.*/\1/p" "${_SP}/drushrc.php" | head -1)
+  _DRU=$(_xmass_read_file "${_SP}/drushrc.php" | sed -n "s/^\$options\['db_user'\] = '\([^']*\)';.*/\1/p" | head -1)
+  _DRP=$(_xmass_read_file "${_SP}/drushrc.php" | sed -n "s/^\$options\['db_passwd'\] = '\([^']*\)';.*/\1/p" | head -1)
+  _DRH=$(_xmass_read_file "${_SP}/drushrc.php" | sed -n "s/^\$options\['db_host'\] = '\([^']*\)';.*/\1/p" | head -1)
   [ -n "${_DRH}" ] || _DRH=localhost
   case "${_DRU}${_DRH}" in *[!A-Za-z0-9_.:-]*) _DRU="" ;; esac
   _cred_ok() { [ -n "$1" ] && [ -n "$2" ] && mysql -u"$1" -p"$2" -h "${_DRH}" -N -B -e "SELECT 1" >/dev/null 2>&1; }
@@ -6661,12 +7641,13 @@ if [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B \
   fi
   _WPW=""
   _VHD="${_SP%%/aegir/distro/*}"
-  if [ "${_VHD}" != "${_SP}" ]; then
+  # the vhosts rewritten are this root's own only
+  if [ "${_VHD}" != "${_SP}" ] && [ "${_VHD}" = "${_R}" ]; then
     for _VHF in \
       "${_VHD}/config/server_master/nginx/vhost.d/$(basename "${_SP}")" \
       "${_VHD}/config/server_master/nginx/vhost.d/https.$(basename "${_SP}")"; do
       [ -f "${_VHF}" ] || continue
-      _CPW=$(sed -n "s/^ *fastcgi_param  *db_passwd  *\([^;]*\);.*/\1/p" "${_VHF}" | head -1)
+      _CPW=$(_xmass_read_file "${_VHF}" | sed -n "s/^ *fastcgi_param  *db_passwd  *\([^;]*\);.*/\1/p" | head -1)
       case "${_CPW}" in *[!A-Za-z0-9_.@%+=:-]*) continue ;; esac
       if _cred_ok "${_DRU}" "${_CPW}"; then
         _WPW="${_CPW}"
@@ -6677,26 +7658,19 @@ if [ -n "$(mysql --defaults-file=/root/.my.cnf -N -B \
   if [ -n "${_WPW}" ]; then
     for _F in "${_SP}/drushrc.php" "${_SP}/settings.php"; do
       [ -f "${_F}" ] || continue
-      _O=$(stat -c '%U:%G' "${_F}")
-      _M=$(stat -c '%a' "${_F}")
-      sed -i \
+      _xmass_in_real_dir "${_SP}" _xmass_sed_here "${_F##*/}" \
         -e "s#^\( *'password' => \)[\"'][^\"']*[\"'],#\1\"${_WPW}\",#" \
-        -e "s#^\(\$options\['db_passwd'\] = \)'[^']*';#\1'${_WPW}';#" \
-        "${_F}"
-      [ -n "${_O}" ] && chown "${_O}" "${_F}"
-      [ -n "${_M}" ] && chmod "${_M}" "${_F}"
+        -e "s#^\(\$options\['db_passwd'\] = \)'[^']*';#\1'${_WPW}';#"
     done
     for _VHF in \
       "${_VHD}/config/server_master/nginx/vhost.d/$(basename "${_SP}")" \
       "${_VHD}/config/server_master/nginx/vhost.d/https.$(basename "${_SP}")"; do
+      [ "${_VHD}" = "${_R}" ] || continue
       [ -f "${_VHF}" ] || continue
-      _VO=$(stat -c '%U:%G' "${_VHF}")
-      _VM=$(stat -c '%a' "${_VHF}")
-      sed -i -e "s#^\( *fastcgi_param  *db_passwd  *\)[^;]*;#\1${_WPW};#" "${_VHF}"
-      [ -n "${_VO}" ] && chown "${_VO}" "${_VHF}"
-      [ -n "${_VM}" ] && chmod "${_VM}" "${_VHF}"
+      _xmass_in_real_dir "${_VHF%/*}" _xmass_sed_here "${_VHF##*/}" \
+        -e "s#^\( *fastcgi_param  *db_passwd  *\)[^;]*;#\1${_WPW};#"
     done
-    if _cred_ok "${_DRU}" "$(sed -n "s/^\$options\['db_passwd'\] = '\([^']*\)';.*/\1/p" "${_SP}/drushrc.php" | head -1)"; then
+    if _cred_ok "${_DRU}" "$(_xmass_read_file "${_SP}/drushrc.php" | sed -n "s/^\$options\['db_passwd'\] = '\([^']*\)';.*/\1/p" | head -1)"; then
       echo "PANEL-NOTE: ${_R} panel drushrc.php held a DB password MySQL rejects; every credential file converged on the vhost's working one"
       echo "PANEL-OK: ${_R} panel DB ${_DEAD_DB} is live — credentials converged"
       exit 0
@@ -6762,36 +7736,31 @@ if ! mysql --defaults-file=/root/.my.cnf -e "${_SQL}FLUSH PRIVILEGES;"; then
   exit 1
 fi
 # Key-anchored rewrites so a re-entered run converges regardless of what
-# the fields currently hold; root sed -i recreates files, so capture and
-# restore the exact ownership and modes (a root-owned settings.php is
+# the fields currently hold; each file is put back as a fresh file with
+# the exact ownership and mode it had (a root-owned settings.php is
 # silently skipped by drush/PHP). Each file is verified right after its
 # rewrite, settings.php FIRST: drushrc.php is the re-entry skip key, so it
 # must only be written once settings.php verifiably took the rewrite —
 # a silent sed no-op (anchor drift) then parks loudly and re-entry retries
 # instead of skipping past a stranded settings.php.
 for _F in "${_SP}/settings.php" "${_SP}/drushrc.php"; do
-  _O=$(stat -c '%U:%G' "${_F}")
-  _M=$(stat -c '%a' "${_F}")
   # A cloaked settings.php carries no literal credential lines -- it reads them
   # from the vhost or the sibling drushrc.php -- so the rewrite below
   # legitimately matches nothing there and must not be asserted.
   _LIT=YES
-  if ! grep -q "^ *'database' => [\"'][^\"']*[\"']," "${_F}" \
-    && ! grep -q "^\$options\['db_name'\] = '" "${_F}"; then
+  if ! _xmass_read_file "${_F}" | grep -q "^ *'database' => [\"'][^\"']*[\"']," \
+    && ! _xmass_read_file "${_F}" | grep -q "^\$options\['db_name'\] = '"; then
     _LIT=NO
   fi
-  sed -i \
+  _xmass_in_real_dir "${_SP}" _xmass_sed_here "${_F##*/}" \
     -e "s#^\( *'database' => \)[\"'][^\"']*[\"'],#\1\"${_LIVE}\",#" \
     -e "s#^\( *'username' => \)[\"'][^\"']*[\"'],#\1\"${_LIVE}\",#" \
     -e "s#^\( *'password' => \)[\"'][^\"']*[\"'],#\1\"${_PW}\",#" \
     -e "s#^\( *\$db_url\['default'\] = \"mysqli\{0,1\}://\)[^@]*@\([^/]*\)/[A-Za-z0-9_]*\";#\1${_LIVE}:${_PW}@\2/${_LIVE}\";#" \
     -e "s#^\(\$options\['db_name'\] = \)'[^']*';#\1'${_LIVE}';#" \
     -e "s#^\(\$options\['db_user'\] = \)'[^']*';#\1'${_LIVE}';#" \
-    -e "s#^\(\$options\['db_passwd'\] = \)'[^']*';#\1'${_PW}';#" \
-    "${_F}"
-  [ -n "${_O}" ] && chown "${_O}" "${_F}"
-  [ -n "${_M}" ] && chmod "${_M}" "${_F}"
-  if [ "${_LIT}" = "YES" ] && ! grep -q "${_LIVE}" "${_F}"; then
+    -e "s#^\(\$options\['db_passwd'\] = \)'[^']*';#\1'${_PW}';#"
+  if [ "${_LIT}" = "YES" ] && ! _xmass_read_file "${_F}" | grep -q "${_LIVE}"; then
     echo "PANEL-ERROR: rewrite did not land in ${_F} (no ${_LIVE} after sed) — check the credential line format"
     exit 1
   fi
@@ -6800,25 +7769,21 @@ done
 # settings.php, so the rewire has to land there too or the panel keeps
 # authenticating as the dead DB until the next render.
 _VHD="${_SP%%/aegir/distro/*}"
-if [ "${_VHD}" != "${_SP}" ]; then
+if [ "${_VHD}" != "${_SP}" ] && [ "${_VHD}" = "${_R}" ]; then
   for _VHF in \
     "${_VHD}/config/server_master/nginx/vhost.d/$(basename "${_SP}")" \
     "${_VHD}/config/server_master/nginx/vhost.d/https.$(basename "${_SP}")"; do
     [ -f "${_VHF}" ] || continue
-    _VO=$(stat -c '%U:%G' "${_VHF}")
-    _VM=$(stat -c '%a' "${_VHF}")
-    sed -i \
+    _xmass_in_real_dir "${_VHF%/*}" _xmass_sed_here "${_VHF##*/}" \
       -e "s#^\( *fastcgi_param  *db_name  *\)[^;]*;#\1${_LIVE};#" \
       -e "s#^\( *fastcgi_param  *db_user  *\)[^;]*;#\1${_LIVE};#" \
-      -e "s#^\( *fastcgi_param  *db_passwd  *\)[^;]*;#\1${_PW};#" \
-      "${_VHF}"
-    [ -n "${_VO}" ] && chown "${_VO}" "${_VHF}"
-    [ -n "${_VM}" ] && chmod "${_VM}" "${_VHF}"
+      -e "s#^\( *fastcgi_param  *db_passwd  *\)[^;]*;#\1${_PW};#"
   done
 fi
 echo "PANEL-OK: ${_R} panel rewired from dead ${_DEAD_DB} to live DB ${_LIVE}"
 exit 0
 REMOTE
+    } | ssh root@"${_tgt}" "bash -s -- '${_root}' '${_src_fqdn}'"
     _rc=$?
     if [ "${_rc}" -ne 0 ]; then
       _alrt "panel rewire for ${_root} returned rc=${_rc} on target"
@@ -6842,9 +7807,12 @@ _xmass_rearm_deferred_upgrades_target() {
   local _oct
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     ssh root@"${_tgt}" "bash -s" <<REARM
-_d="/data/disk/${_oct}/static/control/run-upgrade.pid.deferred"
-if [ -e "\${_d}" ]; then
-  mv -f "\${_d}" "/data/disk/${_oct}/static/control/run-upgrade.pid"
+# static/control is the account's: the test and the move run on ./names
+# inside the real directory, never through a link swapped in at it
+_w="\$(cd -P /data/disk 2>/dev/null && pwd -P)/${_oct}/static/control"
+if ( cd -P -- "/data/disk/${_oct}/static/control" 2>/dev/null \
+  && [ "\$(pwd -P)" = "\${_w}" ] && [ -e ./run-upgrade.pid.deferred ] \
+  && mv -f -T -- ./run-upgrade.pid.deferred ./run-upgrade.pid ); then
   echo "  ${_oct}: seeded upgrade re-armed; the dispatcher runs it on its next quiet tick"
 fi
 REARM
@@ -6879,34 +7847,46 @@ _xmass_promotion_cleanup_target() {
   local _oct
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     ssh root@"${_tgt}" "bash -s" <<PROMCLEAN
-_cnf="/data/disk/${_oct}/log/migproxy.cnf"
-if [ -r "\${_cnf}" ] \
-  && grep -qx "_MIG_ROLE=source" "\${_cnf}" \
-  && hostname -I 2>/dev/null | tr ' ' '\n' \
-     | grep -qxF "\$(grep -m1 '^_MIG_HOST_IP=' "\${_cnf}" | cut -d= -f2-)"; then
-  mv -f "\${_cnf}" "\${_cnf}.superseded-by-promotion" 2>/dev/null
-  echo "  ${_oct}: retired stale self-authored source-role record"
-fi
-if [ -e "/data/disk/${_oct}/log/proxied.pid" ]; then
-  rm -f "/data/disk/${_oct}/log/proxied.pid"
-  echo "  ${_oct}: removed stale proxied.pid"
-fi
-# A conversion that failed while this box was the source marked the account;
-# promoted now, the account is served here and its dispatcher must stay live.
-if [ -e "/data/disk/${_oct}/log/proxy-failed.pid" ]; then
-  rm -f "/data/disk/${_oct}/log/proxy-failed.pid"
-  echo "  ${_oct}: removed stale proxy-failed.pid"
-fi
-# The demotion machinery stamped these to satisfy the conversion gate
-# (xmass touches exported.pid itself; it never runs a real export). On a
-# promoted box they block create/export exactly like the travelled-latch
-# defect on an imported account -- same family, same remedy.
-for _lch in exported transferred; do
-  if [ -e "/data/disk/${_oct}/log/\${_lch}.pid" ]; then
-    rm -f "/data/disk/${_oct}/log/\${_lch}.pid"
-    echo "  ${_oct}: removed stale \${_lch}.pid"
+# log/, static/control and vhost.d are the account's: every test, read, mv
+# and rm below runs on ./names inside the real directory, entered once and
+# proven by pwd -P, never through a link swapped in at a directory or a name
+_w="\$(cd -P /data/disk 2>/dev/null && pwd -P)/${_oct}"
+_rd() {
+  timeout 10 dd if="./\${1}" iflag=nofollow,nonblock,fullblock bs=1048576 \
+    count=1 status=none 2>/dev/null
+}
+( cd -P -- "/data/disk/${_oct}/log" 2>/dev/null && [ "\$(pwd -P)" = "\${_w}/log" ] \
+    || exit 0
+  # self-authored = its host address is one of this box's; a record without
+  # one never matches (the blank line tr leaves after the last address did)
+  _hip="\$(_rd migproxy.cnf | grep -m1 '^_MIG_HOST_IP=' | cut -d= -f2-)"
+  if [ -r ./migproxy.cnf ] && [ -n "\${_hip}" ] \
+    && _rd migproxy.cnf | grep -qx "_MIG_ROLE=source" \
+    && hostname -I 2>/dev/null | tr ' ' '\n' | grep -qxF "\${_hip}"; then
+    mv -f -T -- ./migproxy.cnf ./migproxy.cnf.superseded-by-promotion 2>/dev/null
+    echo "  ${_oct}: retired stale self-authored source-role record"
   fi
-done
+  if [ -e ./proxied.pid ]; then
+    rm -f -- ./proxied.pid
+    echo "  ${_oct}: removed stale proxied.pid"
+  fi
+  # A conversion that failed while this box was the source marked the
+  # account; promoted now, the account is served here and its dispatcher
+  # must stay live.
+  if [ -e ./proxy-failed.pid ]; then
+    rm -f -- ./proxy-failed.pid
+    echo "  ${_oct}: removed stale proxy-failed.pid"
+  fi
+  # The demotion machinery stamped these to satisfy the conversion gate
+  # (xmass touches exported.pid itself; it never runs a real export). On a
+  # promoted box they block create/export exactly like the travelled-latch
+  # defect on an imported account -- same family, same remedy.
+  for _lch in exported transferred; do
+    if [ -e "./\${_lch}.pid" ]; then
+      rm -f -- "./\${_lch}.pid"
+      echo "  ${_oct}: removed stale \${_lch}.pid"
+    fi
+  done )
 if [ ! -e "/var/xdrago/run-${_oct}" ] \
   && [ -e "/var/backups/off-run/run-${_oct}" ]; then
   mv -f "/var/backups/off-run/run-${_oct}" "/var/xdrago/run-${_oct}"
@@ -6925,53 +7905,58 @@ fi
 # account), so xoct marks it with run-upgrade.xmass. Park that one instead
 # of defusing it; the cutover re-arms it at its end, when the box serves
 # again and a pass is exactly what the seed asked for.
-if [ -e "/data/disk/${_oct}/static/control/run-upgrade.pid" ] \
-  && [ -e "/data/disk/${_oct}/static/control/run-upgrade.xmass" ]; then
-  mv -f "/data/disk/${_oct}/static/control/run-upgrade.pid" \
-    "/data/disk/${_oct}/static/control/run-upgrade.pid.deferred"
-  rm -f "/data/disk/${_oct}/static/control/run-upgrade.xmass"
-  echo "  ${_oct}: deferred the seeded upgrade until the cutover completes (armed by prep-target while this box was demoted)"
-elif [ -e "/data/disk/${_oct}/static/control/run-upgrade.pid" ]; then
-  rm -f "/data/disk/${_oct}/static/control/run-upgrade.pid"
-  echo "  ${_oct}: cleared stale run-upgrade.pid (unattended post-promotion upgrade defused)"
-fi
-if [ "\$(cat "/data/disk/${_oct}/static/control/platforms.info" 2>/dev/null)" = "FOOBAR" ]; then
-  rm -f "/data/disk/${_oct}/static/control/platforms.info"
-  echo "  ${_oct}: removed inert FOOBAR platforms.info seed"
-fi
-_vhd="/data/disk/${_oct}/config/server_master/nginx/vhost.d"
-_restored=0
-for _bak in "\${_vhd}"/.[a-zA-Z0-9]*; do
-  [ -f "\${_bak}" ] || continue
-  _dom="\$(basename "\${_bak}")"
-  _dom="\${_dom#.}"
-  [ -n "\${_dom}" ] || continue
-  ### A saved https vhost is handled with its :80 partner below, never on
-  ### its own -- otherwise it is restored twice and counted twice.
-  case "\${_dom}" in https.*) continue ;; esac
-  if [ -f "\${_vhd}/\${_dom}" ] \
-    && grep -q "proxy_pass" "\${_vhd}/\${_dom}" 2>/dev/null; then
-    mv -f "\${_bak}" "\${_vhd}/\${_dom}"
-    _restored=\$(( _restored + 1 ))
-    echo "  ${_oct}: restored pre-proxy vhost \${_dom}"
-    ### The :443 companion relays to the demoted sibling as well. Restoring
-    ### only :80 leaves the very loop this function exists to break alive on
-    ### TLS -- nginx surfaces it as a 400 header-too-large, which reads like
-    ### anything but a relay loop.
-    if [ -f "\${_vhd}/https.\${_dom}" ] \
-      && grep -q "proxy_pass" "\${_vhd}/https.\${_dom}" 2>/dev/null; then
-      if [ -f "\${_vhd}/.https.\${_dom}" ]; then
-        mv -f "\${_vhd}/.https.\${_dom}" "\${_vhd}/https.\${_dom}"
-        echo "  ${_oct}: restored pre-proxy https vhost \${_dom}"
-      else
-        rm -f "\${_vhd}/https.\${_dom}"
-        echo "  ${_oct}: removed https proxy companion \${_dom} (no saved original)"
-      fi
-      _restored=\$(( _restored + 1 ))
-    fi
+( if ! { cd -P -- "/data/disk/${_oct}/static/control" 2>/dev/null \
+      && [ "\$(pwd -P)" = "\${_w}/static/control" ]; }; then
+    { [ -e "/data/disk/${_oct}/static/control" ] \
+      || [ -L "/data/disk/${_oct}/static/control" ]; } \
+      && echo "  ${_oct}: static/control is not a real directory -- its upgrade trigger is not touched"
+    exit 0
   fi
-done
-if [ "\${_restored}" -gt 0 ]; then
+  if [ -e ./run-upgrade.pid ] && [ -e ./run-upgrade.xmass ]; then
+    mv -f -T -- ./run-upgrade.pid ./run-upgrade.pid.deferred
+    rm -f -- ./run-upgrade.xmass
+    echo "  ${_oct}: deferred the seeded upgrade until the cutover completes (armed by prep-target while this box was demoted)"
+  elif [ -e ./run-upgrade.pid ]; then
+    rm -f -- ./run-upgrade.pid
+    echo "  ${_oct}: cleared stale run-upgrade.pid (unattended post-promotion upgrade defused)"
+  fi
+  if [ "\$(timeout 10 dd if=./platforms.info iflag=nofollow,nonblock bs=64 count=1 status=none 2>/dev/null)" = "FOOBAR" ]; then
+    rm -f -- ./platforms.info
+    echo "  ${_oct}: removed inert FOOBAR platforms.info seed"
+  fi )
+# The subshell's status says whether a vhost was restored.
+if ( cd -P -- "/data/disk/${_oct}/config/server_master/nginx/vhost.d" 2>/dev/null \
+    && [ "\$(pwd -P)" = "\${_w}/config/server_master/nginx/vhost.d" ] || exit 1
+  _restored=0
+  for _bak in ./.[a-zA-Z0-9]*; do
+    [ -f "\${_bak}" ] || continue
+    _dom="\$(basename "\${_bak}")"
+    _dom="\${_dom#.}"
+    [ -n "\${_dom}" ] || continue
+    ### A saved https vhost is handled with its :80 partner below, never on
+    ### its own -- otherwise it is restored twice and counted twice.
+    case "\${_dom}" in https.*) continue ;; esac
+    if [ -f "./\${_dom}" ] && _rd "\${_dom}" | grep -q "proxy_pass"; then
+      mv -f -T -- "\${_bak}" "./\${_dom}"
+      _restored=\$(( _restored + 1 ))
+      echo "  ${_oct}: restored pre-proxy vhost \${_dom}"
+      ### The :443 companion relays to the demoted sibling as well. Restoring
+      ### only :80 leaves the very loop this function exists to break alive
+      ### on TLS -- nginx surfaces it as a 400 header-too-large, which reads
+      ### like anything but a relay loop.
+      if [ -f "./https.\${_dom}" ] && _rd "https.\${_dom}" | grep -q "proxy_pass"; then
+        if [ -f "./.https.\${_dom}" ]; then
+          mv -f -T -- "./.https.\${_dom}" "./https.\${_dom}"
+          echo "  ${_oct}: restored pre-proxy https vhost \${_dom}"
+        else
+          rm -f -- "./https.\${_dom}"
+          echo "  ${_oct}: removed https proxy companion \${_dom} (no saved original)"
+        fi
+        _restored=\$(( _restored + 1 ))
+      fi
+    fi
+  done
+  [ "\${_restored}" -gt 0 ] ); then
   nginx -t &>/dev/null && service nginx reload &>/dev/null \
     && echo "  ${_oct}: nginx reloaded with restored vhosts" \
     || echo "  ALRT: ${_oct}: nginx -t FAILED after vhost restore -- NOT reloaded"
@@ -7391,6 +8376,38 @@ _xmass_assert_same_release() {
   _die "${_why}"
 }
 
+_xmass_webgroup_gate() {
+  ### An account converted to its own web group here (its web paths in
+  ### wg-<account>, private/ 02770/0660) must not land on a target whose
+  ### tools predate the web group: their claim passes and nightly would hand
+  ### those paths back to www-data or the account's group. The target's
+  ### instgrp, which the destination pass runs, is asked whether it knows the
+  ### group; an answer that cannot be read counts as no. 'die' (the default)
+  ### refuses, 'deny' reports and marks the DRY run NOT CLEAN.
+  local _t="$1" _on_old="${2:-die}" _oct _conv="" _ans
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    case "$(_web_group_state "${_oct}" | cut -d' ' -f1)" in
+      converted|phaseb) _conv="${_conv} ${_oct}" ;;
+    esac
+  done
+  [ -n "${_conv}" ] || return 0
+  _ans=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_t}" \
+    "grep -q '^_web_group_state() {' /opt/local/bin/instgrp 2>/dev/null && echo XMWG-READY || echo XMWG-OLD" \
+    2>/dev/null | grep -m1 -x -E 'XMWG-(READY|OLD)')
+  if [ "${_ans}" = "XMWG-READY" ]; then
+    _info "  web group: the target's tools know it (${_conv# })"
+    return 0
+  fi
+  if [ "${_on_old}" = "deny" ]; then
+    _alrt "DENY: account(s)${_conv} use their own web group here, and the tools on ${_t} predate it (or could not be asked)"
+    _alrt "DENY: fix: bring ${_t} to this BOA release (barracuda AND octopus), then re-run this DRY."
+    _XMASS_NOT_CLEAN=YES
+    return 1
+  fi
+  _die "account(s)${_conv} use their own web group here, and the tools on ${_t} predate it (or could not be asked);" \
+       " bring ${_t} to this BOA release (barracuda AND octopus) first, then re-run this step."
+}
+
 _xmass_refuse_role_clash() {
   # A passive mirror and a migration endpoint are contradictory roles
   # (2026-08-25 ruling: hard refusal, not a warning). Two checks:
@@ -7648,22 +8665,31 @@ _xmass_purge_target_only_accounts() {
   local _t="$1" _tgt_accts _a _inv _rmt _out _nA _nR _nD
   _tgt_accts=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
     "for _d in /data/disk/o*; do [ -f \"\${_d}/.drush/hostmaster.alias.drushrc.php\" ] && basename \"\${_d}\"; done" 2>/dev/null)
+  # The aliases are the account's: read inside its real .drush only, never
+  # through a link or into a FIFO. A .drush that is not a real directory, or
+  # an alias that cannot be read as a plain file, never reads as "no sites".
   _rmt=$(cat <<'INVSH'
 _H=/data/disk/__ACCT__
-_P=$(sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" "${_H}/.drush/hostmaster.alias.drushrc.php" 2>/dev/null | head -1)
+_xmass_in_real_dir "${_H}/.drush" true || { echo "SITES=unreadable"; exit 0; }
+_P=$(_xmass_read_file "${_H}/.drush/hostmaster.alias.drushrc.php" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
 _PB=$(basename "${_P}" 2>/dev/null)
 _A=0
 for _f in "${_H}"/.drush/*.alias.drushrc.php; do
-  [ -e "${_f}" ] || continue
-  grep -q "'context_type' => 'site'" "${_f}" || continue
-  _sp=$(sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" "${_f}" | head -1)
+  [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+  _t=$(_xmass_read_file "${_f}")
+  if [ -z "${_t}" ]; then
+    _A=$((_A + 1))
+    continue
+  fi
+  printf '%s\n' "${_t}" | grep -q "'context_type' => 'site'" || continue
+  _sp=$(printf '%s\n' "${_t}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
   [ -n "${_P}" ] && [ "${_sp}" = "${_P}" ] && continue
   _A=$((_A + 1))
 done
 _R=0
 for _f in "${_H}"/.drush/platform_*.alias.drushrc.php; do
   [ -e "${_f}" ] || continue
-  _r=$(sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" "${_f}" | head -1)
+  _r=$(_xmass_read_file "${_f}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
   if [ -n "${_r}" ] && [ ! -f "${_r}/index.php" ]; then
     for _s in docroot html web; do
       if [ -f "${_r}/${_s}/index.php" ]; then _r="${_r}/${_s}"; break; fi
@@ -7678,6 +8704,7 @@ _D=$(find "${_H}/distro" "${_H}/static" "${_H}/platforms" "${_H}/aegir" -maxdept
 echo "SITES=${_A}/${_R}/${_D}"
 INVSH
 )
+  _rmt="$(_xmass_remote_guards)"$'\n'"${_rmt}"
   for _a in ${_tgt_accts}; do
     case " ${_ELIGIBLE_ACCOUNTS} " in
       *" ${_a} "*) continue ;;
@@ -7711,8 +8738,10 @@ INVSH
       ;;
     esac
     _info "  target-only account ${_a} has no sites (clone leftover): purging it with boa cleanup ..."
+    # CANCELLED is made a fresh file inside the account's real log/, never
+    # through a link that would mark another account for the cleanup
     _out=$(ssh -o ConnectTimeout=20 -o BatchMode=yes root@"${_t}" \
-      "touch /data/disk/${_a}/log/CANCELLED && boa cleanup detect noscreen > /dev/null 2>&1; boa cleanup purge ${_a} noscreen 2>&1 | tail -4; [ ! -d /data/disk/${_a} ] && nginx -t > /dev/null 2>&1 && echo PURGE_OK" 2>/dev/null)
+      "_w=\"\$(cd -P /data/disk && pwd -P)/${_a}/log\"; ( cd -P -- /data/disk/${_a}/log && [ \"\$(pwd -P)\" = \"\${_w}\" ] && rm -f -- ./.CANCELLED.put && dd if=/dev/null of=./.CANCELLED.put conv=excl status=none && mv -f -T -- ./.CANCELLED.put ./CANCELLED ) && boa cleanup detect noscreen > /dev/null 2>&1; boa cleanup purge ${_a} noscreen 2>&1 | tail -4; [ ! -d /data/disk/${_a} ] && nginx -t > /dev/null 2>&1 && echo PURGE_OK" 2>/dev/null)
     case "${_out}" in
       *PURGE_OK*)
         _info "  ${_a}: purged on ${_t} (backups, distro, src, static and undo trees removed; the rest of the home parked under /var/backups/zombie/purged/${_a}/), nginx configtest OK"
@@ -7793,7 +8822,8 @@ _xmass_cmd_prep_target() {
     || _die "Cannot SSH to target ${_tgt}. All three causes are common and none" \
             " is fixable from here, because fixing the target needs the ssh this" \
             " check just failed:" \
-            " (1) key exchange — run 'xmass pre-mig <source-fqdn>' on BOTH hosts;" \
+            " (1) key exchange — run 'xmass pre-mig <source-fqdn>' here, then on the" \
+            " target with the --key-fp=SHA256:... it prints;" \
             " (2) the TARGET's firewall is blocking this box — on the target run" \
             " 'csf -g ${_XMASS_SRC_IP:-<source-ip>}' to see it, 'csf -tr" \
             " ${_XMASS_SRC_IP:-<source-ip>}' to clear a temp deny, and 'csf -a" \
@@ -7891,6 +8921,7 @@ _xmass_cmd_prep_target() {
   else
     _xmass_php_coverage_gate "${_tgt}" die
   fi
+  _xmass_webgroup_gate "${_tgt}" die
 
   # Any used Solr version still missing installs on one system pass here --
   # unless the PHP fix above already ran one, which the driver detects and
@@ -7944,9 +8975,11 @@ _xmass_cmd_prep_target() {
   # its database with the standby marker, and the web tier of a locked
   # marker-carrying box is held from that moment.
   # (aegir2boa's import freeze writes the same path with its own body: no relay.)
+  # Each marker is read without following a link or blocking on a FIFO the
+  # account put in its log/.
   local _relay
   _relay=$(ssh -o ConnectTimeout=10 root@"${_tgt}" \
-    "grep -LFx 'A2B-IMPORT-FREEZE' /data/disk/*/log/proxied.pid 2>/dev/null | wc -l" 2> /dev/null | tr -dc '0-9')
+    "for _f in /data/disk/*/log/proxied.pid; do [ -f \"\${_f}\" ] || continue; timeout 10 dd if=\"\${_f}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null | grep -qFx 'A2B-IMPORT-FREEZE' || echo x; done | wc -l" 2> /dev/null | tr -dc '0-9')
   if [ -z "${_relay}" ]; then
     _alrt "could NOT read whether target ${_tgt} is relaying traffic: if it is (a demoted"
     _alrt "failback target), 'xmass init' takes its web tier DOWN at the standby marker"
@@ -7970,10 +9003,11 @@ _xmass_probe_target_panels() {
   # Every Aegir root's control panel by its NEW name, straight at the target:
   # the migrated panels answered 404 (platform-number skew) and the master
   # 500 (dead db_name) after a cutover that reported success, and nobody
-  # would have known without opening them. $2 = die|warn.
+  # would have known without opening them. $2 = die|warn. Each alias is read
+  # without following a link or blocking on a FIFO the account put there.
   local _t="$1" _how="$2" _roots _r _fq _code _bad="" _res=""
   _roots=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
-    "for _d in /var/aegir /data/disk/o*; do _a=\"\${_d}/.drush/hostmaster.alias.drushrc.php\"; [ -f \"\${_a}\" ] || continue; [ -e \"\${_d}/log/CANCELLED\" ] && continue; _s=\$(grep \"site_path'\" \"\${_a}\" | head -1 | sed \"s/.*=>//; s/[' ,;]//g\"); _f=\"\"; [ -e \"/data/conf/suspended/\$(basename \"\${_d}\").pid\" ] && _f=SUSPENDED; echo \"\${_d} \$(basename \"\${_s}\") \${_f}\"; done" 2>/dev/null)
+    "for _d in /var/aegir /data/disk/o*; do _a=\"\${_d}/.drush/hostmaster.alias.drushrc.php\"; [ -f \"\${_a}\" ] || continue; [ -e \"\${_d}/log/CANCELLED\" ] && continue; _s=\$(timeout 10 dd if=\"\${_a}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null | grep \"site_path'\" | head -1 | sed \"s/.*=>//; s/[' ,;]//g\"); _f=\"\"; [ -e \"/data/conf/suspended/\$(basename \"\${_d}\").pid\" ] && _f=SUSPENDED; echo \"\${_d} \$(basename \"\${_s}\") \${_f}\"; done" 2>/dev/null)
   [ -z "${_roots}" ] && { _alrt "could not list the target's Aegir roots for the panel probe (ssh?)"; return 0; }
   case "${_t}" in
     *[!0-9.]*) _res="" ;;
@@ -8144,7 +9178,10 @@ for _o in ${_acc}; do
   _a="${_d}/.drush/hostmaster.alias.drushrc.php"
   _p=""
   if [ -f "${_a}" ]; then
-    _p=$(grep "site_path'" "${_a}" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
+    # never through a link or blocked on a FIFO the account put there
+    _p=$(timeout 10 dd if="${_a}" iflag=nofollow,nonblock,fullblock bs=1048576 \
+      count=1 status=none 2>/dev/null | grep "site_path'" | head -1 \
+      | sed "s/.*=>//; s/[' ,;]//g")
     [ -n "${_p}" ] && _p=$(basename "${_p}")
   fi
   for _f in "${_d}/config/server_master/nginx/vhost.d"/*; do
@@ -8478,7 +9515,8 @@ _xmass_force_tool_update() {
   # $1: empty for this box, or a target IP to force remotely.
   local _where="${1:-}"
   local _t
-  local _tools="xmass xoct xcopy xtrim renameaegirhost ffmirror"
+  # instgrp: the destination pass runs it, and the web-group gate reads it
+  local _tools="xmass xoct xcopy xtrim renameaegirhost ffmirror instgrp"
 
   if [ -n "${_where}" ]; then
     ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_where}" \
@@ -8537,8 +9575,9 @@ _xmass_pre_mig_panel_sanity() {
     [ -f "${_als}" ] || continue
     _usr=$(basename "${_root}")
     [ "${_root}" = "/var/aegir" ] && _usr=aegir
-    _root_disk=$(grep "root'" "${_als}" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
-    _sp=$(grep "site_path'" "${_als}" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
+    # inside the root's real .drush, never through a link or into a FIFO
+    _root_disk=$(_xmass_read_file "${_als}" | grep "root'" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
+    _sp=$(_xmass_read_file "${_als}" | grep "site_path'" | head -1 | sed "s/.*=>//; s/[' ,;]//g")
     _fq=$(basename "${_sp}" 2>/dev/null)
     if [ ! -e "${_root_disk}/index.php" ] || [ ! -f "${_sp}/settings.php" ]; then
       _die "${_root}: the hostmaster alias names ${_root_disk} and ${_sp}, but the code or settings.php" \
@@ -8564,15 +9603,171 @@ _xmass_pre_mig_panel_sanity() {
   return 0
 }
 
+### pre-mig key exchange. The source publishes its root public key on its
+### undefined vhost and the target fetches it over plain HTTP, so the target
+### trusts it only when its fingerprint equals the one the source printed,
+### carried across by the operator as --key-fp. Anything else answering on
+### that name, or a stale key another box still serves there, would
+### otherwise be granted root on the target.
+_XMASS_KEY_LINE_RE='^(ssh-(ed25519|rsa)|ecdsa-sha2-nistp[0-9]+|sk-ssh-ed25519@openssh\.com) [A-Za-z0-9+/]+=*( |$)'
+
+### The form 'ssh-keygen -l -E sha256' prints: SHA256: and 43 base64
+### characters. A pasted '=' pad is accepted and dropped before comparing.
+_xmass_valid_key_fp() {
+  [[ "$1" =~ ^SHA256:[A-Za-z0-9+/]{43}=?$ ]]
+}
+
+### Whether authorized_keys $1 holds the key $2 ('<type> <blob>') under the
+### tag $3: a live line (no comment, no options before the key type) that
+### starts with the key and ends with exactly that tag. xoct and xcopy keep
+### the same test; the carry to a promoted box ships this one.
+_xmass_key_tagged_in() {
+  local _l
+  [ -f "${1}" ] || return 1
+  while IFS= read -r _l || [ -n "${_l}" ]; do
+    _l="${_l%"${_l##*[![:space:]]}"}"
+    case "${_l}" in
+      "${2}${3}"|"${2}"[[:space:]]*"${3}") return 0 ;;
+    esac
+  done < "${1}"
+  return 1
+}
+
+### authorized_keys $1 trusts the key line $2 under the tag $3. Present only
+### as _xmass_key_tagged_in reads it: a substring test counted the key tagged
+### for another peer, or bound by an operator's options, as present, so the
+### new source got no line of its own (no witness, no carried reach) and was
+### held by the old options. Otherwise an exact untagged copy of $2 is tagged
+### in place (exact-line rewrite: a key comment may carry regex
+### metacharacters, and a last line without a newline is kept), else the
+### tagged line is appended; a second line for one key is harmless to sshd
+### and gives this peer its own witness line. A commented-out copy is never
+### present: it would leave the key untrusted. The rewrite replaces the file
+### only when it is whole: a write that failed (a full disk) or a line count
+### that differs from the file's leaves authorized_keys as it was and
+### returns 1, where a cut-short copy would drop every key past the break.
+_xmass_key_trust_line() {
+  local _ak="${1}" _kb="${2}" _tag="${3}" _kt _kx _ktmp _hit=NO _wok=YES _n=0
+  _kx="${_kb#* }"
+  _kt="${_kb%% *} ${_kx%% *}"
+  _xmass_key_tagged_in "${_ak}" "${_kt}" "${_tag}" && return 0
+  if [ -f "${_ak}" ]; then
+    _ktmp="${_ak}.xmass.$$"
+    while IFS= read -r _kx || [ -n "${_kx}" ]; do
+      _n=$((_n + 1))
+      if [ "${_kx%"${_kx##*[![:space:]]}"}" = "${_kb}" ]; then
+        _kx="${_kb}${_tag}"
+        _hit=YES
+      fi
+      printf '%s\n' "${_kx}" || _wok=NO
+    done < "${_ak}" > "${_ktmp}" || _wok=NO
+    [ "${_n}" = "$(grep -ac '' "${_ak}" 2>/dev/null)" ] || _wok=NO
+    if [ "${_wok}" != "YES" ]; then
+      rm -f "${_ktmp}"
+      echo "ERROR: could not rewrite ${_ak} in full; it was left as it was"
+      return 1
+    fi
+    if [ "${_hit}" = "YES" ] && ! cat "${_ktmp}" > "${_ak}"; then
+      echo "ERROR: writing ${_ak} failed; its full rewrite is kept at ${_ktmp}"
+      return 1
+    fi
+    rm -f "${_ktmp}"
+  fi
+  if [ "${_hit}" = "NO" ]; then
+    echo >> "${_ak}"
+    printf '%s\n' "${_kb}${_tag}" >> "${_ak}"
+  fi
+  chmod 600 "${_ak}"
+  _xmass_key_tagged_in "${_ak}" "${_kt}" "${_tag}"
+}
+
+### Target side, run before anything is refreshed or parked: sets
+### _XMASS_SRC_KEY to the one fetched key line whose fingerprint is
+### --key-fp, or refuses with nothing added to authorized_keys.
+_xmass_fetch_source_key() {
+  local _kf="/root/.ssh/auth_undefined_keys.txt" _kc _krc _kl _fp _seen=""
+  _XMASS_SRC_KEY=""
+  case "${_hst}" in
+    ''|*[!a-zA-Z0-9.-]*|.*|*.|*..*)
+      _die "pre-mig on the target needs the source's hostname, got '${_hst}'"
+      ;;
+  esac
+  [ -n "${_XMASS_KEY_FP}" ] \
+    || _die "pre-mig on the target needs --key-fp=SHA256:..., the fingerprint" \
+            "'xmass pre-mig ${_hst}' printed on ${_hst}; nothing was changed here"
+  _xmass_valid_key_fp "${_XMASS_KEY_FP}" \
+    || _die "--key-fp '${_XMASS_KEY_FP}' is not a SHA256 key fingerprint" \
+            "(SHA256: and 43 base64 characters); nothing was changed here"
+  _XMASS_KEY_FP="${_XMASS_KEY_FP%=}"
+  _info "Target mode: fetching the source SSH key and checking its fingerprint ..."
+  mkdir -p /root/.ssh
+  chmod 700 /root/.ssh
+  rm -f /root/.ssh/auth_undefined_keys.txt*
+  ### ...and this box's OWN published copy. A target that was ever a source
+  ### (or had pre-mig run in source mode) goes on serving a root public key
+  ### at http://undefined.<this box>/auth_undefined_keys.txt indefinitely,
+  ### and a later migration can fetch the wrong box's key from it.
+  rm -f /var/www/nginx-default/auth_undefined_keys.txt*
+  ### The fetch must be a real key: curl exits 0 on a 404 (no -f), so a
+  ### source that never published -- or a proxied one relaying its undefined
+  ### vhost onward -- hands back an HTML page, and appending that to
+  ### authorized_keys while reporting OK is a false success on the trust path.
+  ### Bounded: a name that answers and then stalls, or a body no key file
+  ### comes near, is the same refusal rather than a hang; a failed transfer
+  ### counts even when the status line said 200.
+  _kc=$(curl -s -A iCab --connect-timeout 15 --max-time 60 \
+    --max-filesize 65536 -w '%{http_code}' \
+    "http://undefined.${_hst}/auth_undefined_keys.txt" \
+    -o "${_kf}" 2>/dev/null)
+  _krc=$?
+  if [ "${_krc}" != "0" ] || [ "${_kc}" != "200" ] \
+    || ! grep -qE "${_XMASS_KEY_LINE_RE}" "${_kf}" 2>/dev/null; then
+    rm -f "${_kf}"
+    _die "No public key at http://undefined.${_hst}/auth_undefined_keys.txt (HTTP ${_kc:-000}, curl exit ${_krc}) --" \
+         " publish it first: run 'xmass pre-mig <that box's own fqdn>' ON" \
+         " ${_hst} (source/publish mode), then re-run this verb here. A" \
+         " proxied source relays its undefined vhost onward and cannot" \
+         " serve the key until it publishes again."
+  fi
+  ### Only key lines are read, each fingerprinted on its own: a stray header
+  ### or footer, or any key but the named one, never reaches authorized_keys.
+  while IFS= read -r _kl; do
+    printf '%s\n' "${_kl}" > "${_kf}.one"
+    _fp=$(ssh-keygen -l -E sha256 -f "${_kf}.one" 2>/dev/null \
+      | awk '{print $2; exit}')
+    [ -n "${_fp}" ] || continue
+    _seen="${_seen:+${_seen} }${_fp}"
+    if [ "${_fp}" = "${_XMASS_KEY_FP}" ]; then
+      _XMASS_SRC_KEY="${_kl}"
+      break
+    fi
+  done < <(grep -E "${_XMASS_KEY_LINE_RE}" "${_kf}")
+  rm -f "${_kf}.one"
+  if [ -z "${_XMASS_SRC_KEY}" ]; then
+    rm -f "${_kf}"
+    _die "the key ${_hst} serves does not match --key-fp: expected" \
+         "${_XMASS_KEY_FP}, served ${_seen:-none}. Nothing was added to" \
+         "authorized_keys and nothing was parked here."
+  fi
+  _info "The key ${_hst} serves matches --key-fp ${_XMASS_KEY_FP}"
+}
+
 _xmass_pre_mig() {
   # Stop BOA background jobs and exchange SSH keys between source and target.
-  # Run on BOTH hosts: first on source (to publish its pub key),
-  # then on target (to fetch and install that key).
+  # Run on BOTH hosts: first on source (to publish its pub key and print its
+  # fingerprint), then on target (to fetch that key and install it only when
+  # its fingerprint is the --key-fp given).
+  local _src_ip _kb _fp
   if [ -e "/vservers" ]; then
     _die "Cannot run pre-mig on a parent/host system"
   fi
   _info "Running pre-mig on ${_hName} ..."
-  # FIRST, before anything is parked: make sure this box's migration tools are
+  # Target mode checks --key-fp and the key it names before anything else,
+  # so a refusal leaves this box as it was.
+  if [ "${_hName}" != "${_hst}" ]; then
+    _xmass_fetch_source_key
+  fi
+  # Then, before anything is parked: make sure this box's migration tools are
   # the published ones. Done here because pre-mig runs on BOTH hosts.
   _info "Forcing a tool refresh so this migration runs on current code ..."
   _xmass_force_tool_update
@@ -8593,70 +9788,34 @@ _xmass_pre_mig() {
     cp -af /root/.ssh/id_ed25519.pub \
       /var/www/nginx-default/auth_undefined_keys.txt
     _info "Source key published at http://undefined.${_hName}/auth_undefined_keys.txt"
+    # The key travels over plain HTTP; its fingerprint travels by the
+    # operator's hand, and the target installs the key only when they match.
+    _fp=$(ssh-keygen -l -E sha256 -f /root/.ssh/id_ed25519.pub 2>/dev/null \
+      | awk '{print $2; exit}')
+    if _xmass_valid_key_fp "${_fp}"; then
+      _info "Published key fingerprint: ${_fp}"
+      _info "On the target run: xmass pre-mig ${_hName} --key-fp=${_fp}"
+    else
+      _alrt "could not read the fingerprint of /root/.ssh/id_ed25519.pub; the"
+      _alrt "target's pre-mig needs it: ssh-keygen -l -E sha256 -f /root/.ssh/id_ed25519.pub"
+    fi
     # Advisory link map: surface secondary-mount content (and anything that
     # will NOT travel) at the cheapest possible moment. No target yet, so
     # sizes only; init repeats this with the aggregate space probe.
     _xmass_report_out_links
   else
-    _info "Target mode: fetching and installing source SSH key ..."
-    mkdir -p /root/.ssh
-    chmod 700 /root/.ssh
-    rm -f /root/.ssh/auth_undefined_keys.txt*
-    ### ...and this box's OWN published copy, which xoct and xcopy both remove
-    ### and xmass did not. A target that was ever a source (or had pre-mig run
-    ### in source mode) goes on serving a root public key at
-    ### http://undefined.<this box>/auth_undefined_keys.txt indefinitely, and
-    ### a later migration can fetch the wrong box's key from it.
-    rm -f /var/www/nginx-default/auth_undefined_keys.txt*
-    ### The fetch must be a real key: curl exits 0 on a 404 (no -f), so a
-    ### source that never published -- or a proxied one relaying its undefined
-    ### vhost onward -- hands back an HTML page, and appending that to
-    ### authorized_keys while reporting OK is a false success on the trust path.
-    _kf="/root/.ssh/auth_undefined_keys.txt"
-    _kc=$(curl -s -A iCab -w '%{http_code}' \
-      "http://undefined.${_hst}/auth_undefined_keys.txt" \
-      -o "${_kf}" 2>/dev/null)
-    if [ "${_kc}" != "200" ] \
-      || ! grep -qE '^(ssh-(ed25519|rsa)|ecdsa-sha2-nistp[0-9]+|sk-ssh-ed25519@openssh\.com) [A-Za-z0-9+/]+=*( |$)' "${_kf}" 2>/dev/null; then
-      rm -f "${_kf}"
-      _die "No public key at http://undefined.${_hst}/auth_undefined_keys.txt (HTTP ${_kc:-000}) --" \
-           " publish it first: run 'xmass pre-mig <that box's own fqdn>' ON" \
-           " ${_hst} (source/publish mode), then re-run this verb here. A" \
-           " proxied source relays its undefined vhost onward and cannot" \
-           " serve the key until it publishes again."
-    fi
-    ### Only key lines travel: a stray header or footer never reaches
-    ### authorized_keys. Each line is TAGGED with the source's address: after a
-    ### later promotion this box hands its inbound proxies' keys to the box
-    ### that takes over (_xmass_carry_inbound_reach), and an untagged line
-    ### cannot be attributed to a peer. A re-run never appends a duplicate.
+    _info "Target mode: installing the source SSH key checked above ..."
+    ### Only the verified line travels. It is TAGGED with the source's
+    ### address: after a later promotion this box hands its inbound proxies'
+    ### keys to the box that takes over (_xmass_carry_inbound_reach), and an
+    ### untagged line cannot be attributed to a peer. A re-run never appends
+    ### a duplicate (see _xmass_key_trust_line).
     _src_ip=$(getent ahostsv4 "${_hst}" 2>/dev/null | awk '{print $1; exit}')
-    grep -E '^(ssh-(ed25519|rsa)|ecdsa-sha2-nistp[0-9]+|sk-ssh-ed25519@openssh\.com) ' "${_kf}" \
-      | sed -e "s|[[:space:]]*\$| # xmass migration source ${_src_ip:-${_hst}}|" > "${_kf}.keys"
-    while read -r _kl; do
-      [ -n "${_kl}" ] || continue
-      _kb="${_kl%% # xmass migration source *}"
-      if grep -qF -- "${_kb}" /root/.ssh/authorized_keys 2>/dev/null; then
-        # Installed by an older pre-mig without the tag: tag that line in
-        # place rather than appending a twin (exact-line rewrite; a key
-        # comment may carry regex metacharacters, so no sed pattern).
-        if ! grep -qF -- "${_kl}" /root/.ssh/authorized_keys 2>/dev/null; then
-          _ktmp="/root/.ssh/authorized_keys.xmass.$$"
-          while IFS= read -r _kx; do
-            [ "${_kx%"${_kx##*[![:space:]]}"}" = "${_kb}" ] && _kx="${_kl}"
-            printf '%s\n' "${_kx}"
-          done < /root/.ssh/authorized_keys > "${_ktmp}" \
-            && cat "${_ktmp}" > /root/.ssh/authorized_keys
-          rm -f "${_ktmp}"
-        fi
-      else
-        echo >> /root/.ssh/authorized_keys
-        echo "${_kl}" >> /root/.ssh/authorized_keys
-      fi
-    done < "${_kf}.keys"
-    rm -f "${_kf}.keys"
-    chmod 600 /root/.ssh/authorized_keys
-    _info "Source SSH key installed in authorized_keys: OK ($(wc -l < "${_kf}") key line(s) from ${_hst})"
+    _kb="${_XMASS_SRC_KEY%"${_XMASS_SRC_KEY##*[![:space:]]}"}"
+    _xmass_key_trust_line /root/.ssh/authorized_keys "${_kb}" \
+      " # xmass migration source ${_src_ip:-${_hst}}" \
+      || _die "could not add the key from ${_hst} to /root/.ssh/authorized_keys"
+    _info "Source SSH key installed in authorized_keys: OK (${_XMASS_KEY_FP} from ${_hst})"
 
     # Let the source IN. This is the ONE thing the source can never arrange
     # for itself: prep-target's reachability check runs FROM the source, and
@@ -8674,13 +9833,35 @@ _xmass_pre_mig() {
 }
 
 _xmass_drop_target_prepass_backups() {
-  local _t="$1" _oct _n
+  local _t="$1" _oct _out _w _n _rc
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
-    _n=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
-      "find /data/disk/${_oct}/backups/system -maxdepth 1 -mindepth 1 -type d -name '*-pre-*' 2>/dev/null | wc -l" 2>/dev/null | tr -dc '0-9')
-    case "${_n}" in ''|0) continue ;; esac
-    if ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" \
-      "find /data/disk/${_oct}/backups/system -maxdepth 1 -mindepth 1 -type d -name '*-pre-*' -exec rm -rf {} +" 2>/dev/null; then
+    # backups/ is the account's there too (and may be the mover's link into
+    # its store): the snapshots are counted and removed only inside the real
+    # directory backups/system resolves to, and only when that is the
+    # account's own tree or store
+    _out=$( { declare -f _xmass_real_want _xmass_own_path; cat <<'PREPASS'
+_d="/data/disk/${1}/backups/system"
+[ -d "${_d}" ] || { echo "XMPRE 0 0"; exit 0; }
+cd -P -- "${_d}" 2> /dev/null || { echo "XMPRE 0 0"; exit 0; }
+_xmass_own_path "${1}" "$(pwd -P)" || { echo "XMPRE refused $(pwd -P)"; exit 0; }
+_n=$(find . -maxdepth 1 -mindepth 1 -type d -name '*-pre-*' 2> /dev/null | wc -l | tr -dc '0-9')
+_rc=0
+if [ "${_n:-0}" -gt 0 ]; then
+  find . -maxdepth 1 -mindepth 1 -type d -name '*-pre-*' -exec rm -rf {} + 2> /dev/null || _rc=1
+fi
+echo "XMPRE ${_n:-0} ${_rc}"
+PREPASS
+      } | ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "bash -s -- '${_oct}'" 2>/dev/null \
+      | grep -m1 '^XMPRE ')
+    read -r _w _n _rc <<< "${_out}"
+    case "${_n}" in
+      ''|0) continue ;;
+      refused)
+        _alrt "  ${_oct}: backups/system on ${_t} resolves to ${_rc:-?}, outside the account's own tree and store -- pre-pass snapshots left alone"
+        continue
+        ;;
+    esac
+    if [ "${_rc}" = "0" ]; then
       _info "  ${_oct}: dropped ${_n} pre-pass backup snapshot(s) of the target's own install on ${_t}"
     else
       _alrt "  ${_oct}: could not drop the pre-pass backup snapshots on ${_t}; the sync's delete guard may stop on them"
@@ -8721,7 +9902,8 @@ _xmass_cmd_init() {
     || _die "Cannot SSH to target ${_tgt}. All three causes are common and none" \
             " is fixable from here, because fixing the target needs the ssh this" \
             " check just failed:" \
-            " (1) key exchange — run 'xmass pre-mig <source-fqdn>' on BOTH hosts;" \
+            " (1) key exchange — run 'xmass pre-mig <source-fqdn>' here, then on the" \
+            " target with the --key-fp=SHA256:... it prints;" \
             " (2) the TARGET's firewall is blocking this box — on the target run" \
             " 'csf -g ${_XMASS_SRC_IP:-<source-ip>}' to see it, 'csf -tr" \
             " ${_XMASS_SRC_IP:-<source-ip>}' to clear a temp deny, and 'csf -a" \
@@ -8756,6 +9938,7 @@ _xmass_cmd_init() {
   _info "Percona version match (${_XMASS_PERCONA_V}) on both servers: OK"
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
+  _xmass_webgroup_gate "${_tgt}" die
   # Solr's point of no return is HERE, not at cutover: the first sync lands
   # every source Solr tree on the target, and a landed tree suppresses BOA's
   # installer for that version permanently.
@@ -8871,10 +10054,11 @@ REMOTE
   # own body and is no relay; a probe that cannot answer is not a zero. A
   # box that is a standby already relays nothing (its web tier is held, and
   # the stamps of its proxy life are target-role state no sync clears), and
-  # a refusal of this run leaves it held.
+  # a refusal of this run leaves it held. Each marker is read without
+  # following a link or blocking on a FIFO the account put in its log/.
   local _relay
   _relay=$(ssh -o ConnectTimeout=10 root@"${_tgt}" \
-    "grep -LFx 'A2B-IMPORT-FREEZE' /data/disk/*/log/proxied.pid 2>/dev/null | wc -l" 2> /dev/null | tr -dc '0-9')
+    "for _f in /data/disk/*/log/proxied.pid; do [ -f \"\${_f}\" ] || continue; timeout 10 dd if=\"\${_f}\" iflag=nofollow,nonblock,fullblock bs=1048576 count=1 status=none 2>/dev/null | grep -qFx 'A2B-IMPORT-FREEZE' || echo x; done | wc -l" 2> /dev/null | tr -dc '0-9')
   if [ "${_XMASS_TGT_WAS_STANDBY}" = "YES" ]; then
     :
   elif [ -z "${_relay}" ]; then
@@ -9257,10 +10441,12 @@ _xmass_cmd_sync() {
     _xmass_verify_target_accounts "${_tgt}" die
     _xmass_php_coverage_gate "${_tgt}" die
     _xmass_solr_coverage_gate "${_tgt}" die
+    _xmass_webgroup_gate "${_tgt}" die
   else
     _xmass_verify_target_accounts "${_tgt}" deny || true
     _xmass_php_coverage_gate "${_tgt}" deny || true
     _xmass_solr_coverage_gate "${_tgt}" deny || true
+    _xmass_webgroup_gate "${_tgt}" deny || true
   fi
   # --live requires a prior CLEAN dry run for THIS target (mass plan for all
   # accounts). An autosync pass runs without the token: arming already required
@@ -10463,7 +11649,11 @@ REMOTE
       _alrt "  ${_oct}: no vhost.d on this box; NOT stamping proxied.pid"
       continue
     fi
-    echo "COMPLETE" > "/data/disk/${_oct}/log/proxied.pid"
+    # a fresh file inside the account's real log/, never written through a
+    # link or into a FIFO put there
+    _xmass_in_real_dir "/data/disk/${_oct}/log" \
+      _xmass_put_here proxied.pid COMPLETE "" \
+      || _alrt "  ${_oct}: could not write log/proxied.pid"
   done
 
   # Step 18.5: Restore cron and the five runners on the SOURCE. Until now
@@ -10484,13 +11674,13 @@ REMOTE
   # the marker.
   local _pf
   for _oct in ${_XMASS_PROXY_CONV_FAILED}; do
-    # log/ belongs to the account user: whatever sits at the path goes first
-    # (a planted link would be followed, a FIFO would block this write); a
-    # planted directory survives, the write fails and the ALRT says so
+    # log/ belongs to the account user: the marker is a fresh file made
+    # inside the real directory and renamed over the name, never written
+    # through a link or into a FIFO put there; a directory put at the
+    # name survives, the write fails and the ALRT says so
     _pf="/data/disk/${_oct}/log/proxy-failed.pid"
-    rm -f "${_pf}" &>/dev/null
-    if [ ! -d "/data/disk/${_oct}/log" ] || [ -L "/data/disk/${_oct}/log" ] \
-      || ! echo "${_tgt} $(date -u +%FT%TZ)" > "${_pf}" 2>/dev/null; then
+    if ! _xmass_in_real_dir "/data/disk/${_oct}/log" \
+      _xmass_put_here proxy-failed.pid "${_tgt} $(date -u +%FT%TZ)" ""; then
       _alrt "  ${_oct}: could not write ${_pf} -- BOA's next release pass or an octopus run would hand its dispatcher back"
     fi
     if [ -e "/var/xdrago/run-${_oct}" ]; then
@@ -10695,6 +11885,7 @@ _xmass_cmd_cutover() {
     _xmass_verify_target_accounts "${_tgt}" deny || true
     _xmass_php_coverage_gate "${_tgt}" deny || true
     _xmass_solr_coverage_gate "${_tgt}" deny || true
+    _xmass_webgroup_gate "${_tgt}" deny || true
     # A hazardous-vintage java.sh on the target would kill the final Solr
     # rsync's own receiver DURING the cutover window -- with the 503 already
     # up and the source's Solr already deny-filed. The fact is known before
@@ -10772,6 +11963,7 @@ _xmass_cmd_cutover() {
   _xmass_verify_target_accounts "${_tgt}" die
   _xmass_php_coverage_gate "${_tgt}" die
   _xmass_solr_coverage_gate "${_tgt}" die
+  _xmass_webgroup_gate "${_tgt}" die
   # Same consult as the DRY plan, in die mode: the receiver-kill hazard must
   # refuse HERE, at the last free moment, not surface mid-window.
   if ls /opt/solr4 /var/solr7/data /var/solr9/data > /dev/null 2>&1; then
@@ -10875,9 +12067,15 @@ _xmass_cmd_cutover() {
   # force, and nothing between here and the write freeze writes to them.
   _info "Final static/files rsync pass (web already blocked; pre-freeze) ..."
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    # the account's web group map only (this pass never carried the
+    # account group's); an unreadable answer skips the account and the
+    # re-gate below stops the cutover before the freeze
+    _xmass_set_gmap "${_oct}" web || { _XMASS_RSYNC_RC=23; continue; }
     _xmass_sync_static_symlink_safe \
       "/data/disk/${_oct}" "/data/disk/${_oct}" "${_TGT_MNT}"
   done
+  _XMASS_GMAP=""
+  _XMASS_WGMAP=""
 
   # Re-gate: this pass can set either rc again, and until now nothing re-checked
   # them, so a store that failed placement here proceeded to promote the target.
@@ -11066,13 +12264,22 @@ _xmass_post_mig() {
     [ -x "${_fpm}" ] && service "$(basename "${_fpm}")" restart &>/dev/null
   done
   rm -f /run/boa_wait.pid
+  # A refetch or a system pass that restored a live copy first left the
+  # parked one behind: stale bytes that read as a park again whenever the
+  # live name goes missing. Removed once the live copy is there.
   for _script in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     if [ ! -e "/var/xdrago/${_script}" ] \
       && [ -e "/var/xdrago/.${_script}.off" ]; then
       mv -f "/var/xdrago/.${_script}.off" "/var/xdrago/${_script}"
       _info "  Restored ${_script}"
+    elif [ -e "/var/xdrago/${_script}" ] \
+      && [ -e "/var/xdrago/.${_script}.off" ]; then
+      rm -f "/var/xdrago/.${_script}.off"
+      _info "  Removed a stale parked copy of ${_script}"
     fi
   done
+  # The move is over: this box stops serving a root key it published.
+  rm -f /var/www/nginx-default/auth_undefined_keys.txt*
   # Belt-and-braces: a leftover standby marker on a box taking direct
   # traffic holds the task queue and every per-job gate (runner.sh, owl,
   # the backup and cleanup tools all exit on it). Cutover step 15 clears
@@ -11116,6 +12323,11 @@ _xmass_post_mig() {
 ### the sweep re-chowns what it touches, so no root-owned residue.
 ### (.prev-multi-fpm.info is deliberately left alone: the sweep recreates
 ### it from the live file before diffing, so removing it changes nothing.)
+### The carried FPM markers, removed in the current (pinned) control
+### directory: the globs expand here, never in the caller's directory.
+_xmass_rm_fpm_markers_here() {
+  rm -f -- ./.multi-fpm.*.pid ./.single-fpm.*.pid ./.multi-nginx-fpm.pid
+}
 _xmass_heal_fpm_pins() {
   local _root _acct _ctl _dom _ver _missing _healed=0
   for _root in $(find /data/disk/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
@@ -11125,9 +12337,8 @@ _xmass_heal_fpm_pins() {
     esac
     _ctl="${_root}/static/control"
     [ -e "${_ctl}/multi-fpm.info" ] || continue
-    rm -f ${_ctl}/.multi-fpm.*.pid
-    rm -f ${_ctl}/.single-fpm.*.pid
-    rm -f ${_ctl}/.multi-nginx-fpm.pid
+    # inside the account's real control directory, never through a link
+    _xmass_in_real_dir "${_ctl}" _xmass_rm_fpm_markers_here || continue
     _healed=$(( _healed + 1 ))
   done
   [ "${_healed}" = "0" ] && return 0
@@ -11135,7 +12346,7 @@ _xmass_heal_fpm_pins() {
   if [ -e "/var/xdrago/manage_ltd_users.sh" ]; then
     bash /var/xdrago/manage_ltd_users.sh &> /dev/null
     for _root in $(find /data/disk/ -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
-      rm -f ${_root}/static/control/.multi-nginx-fpm.pid
+      _xmass_in_real_dir "${_root}/static/control" rm -f -- ./.multi-nginx-fpm.pid
     done
     bash /var/xdrago/manage_ltd_users.sh &> /dev/null
   fi
@@ -11154,7 +12365,7 @@ _xmass_heal_fpm_pins() {
       [ -z "${_ver}" ] && continue
       [ -S "/run/${_acct}.${_ver}.fpm.socket" ] \
         || _missing="${_missing} ${_dom}:${_ver}"
-    done < ${_ctl}/multi-fpm.info
+    done <<< "$(_xmass_read_in "${_ctl}" multi-fpm.info)"
     if [ ! -z "${_missing}" ]; then
       _alrt "account ${_acct}: pinned PHP pool(s) NOT live:${_missing}"
       _alrt "  those sites are served by the account default pool right now"
@@ -11280,8 +12491,19 @@ esac
 
 case "${_cmd}" in
   pre-mig)
-    _hst="$1"
-    [ -z "${_hst}" ] && _die "Usage: xmass pre-mig <source-fqdn>"
+    _hst=""
+    _XMASS_KEY_FP=""
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --key-fp=*) _XMASS_KEY_FP="${1#*=}"; shift ;;
+        --*) _die "Unknown argument: $1" ;;
+        *)
+          [ -z "${_hst}" ] || _die "Unknown argument: $1"
+          _hst="$1"
+          shift ;;
+      esac
+    done
+    [ -z "${_hst}" ] && _die "Usage: xmass pre-mig <source-fqdn> [--key-fp=SHA256:...]"
     _check_root
     _xmass_pre_mig
   ;;
@@ -11453,7 +12675,10 @@ case "${_cmd}" in
   ;;
   *)
     echo ""
-    echo "Usage: xmass pre-mig <source-fqdn>                    (run on BOTH source and target)"
+    echo "Usage: xmass pre-mig <source-fqdn>                    (run on the source first: publishes"
+    echo "                     its key and prints its fingerprint)"
+    echo "Usage: xmass pre-mig <source-fqdn> --key-fp=SHA256:... (then on the target, with the"
+    echo "                     fingerprint the source printed)"
     echo "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr] [--fix-users]  (run on source AFTER both"
     echo "                     pre-migs: CSF both ways, Solr set, PHP coverage, per-account installs)"
     echo "Usage: xmass init    <target-ip> [--proxy-mode=temporary|permanent|ha-switch]"

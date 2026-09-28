@@ -70,6 +70,10 @@ the file empty.
   their language-prefixed forms such as `/de/user` are not covered. The rest of the site
   stays public. To lock down a **whole** site instead, see the separate whole-site IP
   access feature.
+- A record locks its own domain. A **subdirectory site** served under another domain (for
+  example a site at `example.com/blog`) is not covered by any login-lock record of its own —
+  list the parent domain and use the whole-site IP access feature on it, or rely on your
+  Drupal login and permissions, if you need to limit that site's back office by address.
 - Addresses are listed with spaces between them; each can be a single IPv4/IPv6 address or
   a CIDR range.
 - It is an extra gate at the web-server edge — your normal Drupal login still applies on

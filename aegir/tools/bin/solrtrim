@@ -149,24 +149,73 @@ _port_listening() {
   ss -ltn 2>/dev/null | grep -q ":${1}[[:space:]]"
 }
 
+### An account owns /data/disk/<oN>, so its .drush and site directories can
+### hold a link or a FIFO at any name, and a directory on the way can be one.
+### Root reads the aliases and the site ini files only through these. Run
+### "$@" inside the real directory $1: below /data/disk and /home every name
+### on the path must be a real directory; elsewhere the last name is checked
+### against its resolved parent. A copy of the helper in
+### lib/functions/helper.sh.inc.
+_solr_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+
+### ./$1 in the current (pinned) directory: never through a link, never
+### blocked on a FIFO, at most 1 MiB; empty for anything else.
+_solr_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+
+### The file $1, read as _solr_read_here reads it inside its real directory.
+_solr_read_file() {
+  _solr_in_real_dir "${1%/*}" _solr_read_here "${1##*/}"
+}
+
+### Every account alias, as a full path: the names are listed inside each
+### account's real .drush.
+_solr_aliases() {
+  local _d _n
+  for _d in /data/disk/*/.drush; do
+    _solr_in_real_dir "${_d}" compgen -G '*.alias.drushrc.php' \
+      | while IFS= read -r _n; do
+          printf '%s\n' "${_d}/${_n}"
+        done
+  done
+}
+
 ### Per-site bindings, one pass for all versions: each account alias resolves
 ### its site root, whose boa_site_control.ini declares the Solr module
 ### family. Kept in step with the xmass classifier's read of the same
-### surfaces — mirror fixes there.
+### surfaces — mirror fixes there. The aliases and the ini files are the
+### account's: each is read inside its real directory.
 _collect_bindings() {
-  local _alias _apath
-  _BINDRAW=$(for _alias in /data/disk/*/.drush/*.alias.drushrc.php; do
+  local _alias _apath _aliases
+  mapfile -t _aliases < <(_solr_aliases)
+  _BINDRAW=$(for _alias in "${_aliases[@]}"; do
     [ -f "${_alias}" ] || continue
-    _apath=$(sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" "${_alias}" | head -1)
+    _apath=$(_solr_read_file "${_alias}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
     [ -n "${_apath}" ] && [ -f "${_apath}/modules/boa_site_control.ini" ] \
-      && grep -h "^solr_integration_module" "${_apath}/modules/boa_site_control.ini"
+      && _solr_read_file "${_apath}/modules/boa_site_control.ini" \
+        | grep -h "^solr_integration_module"
   done 2>/dev/null | awk -F'= *' '{ print $2 }' | tr -d ' \r')
   ### An empty tally out of a broken alias parse is indistinguishable from
   ### "no site uses Solr" — spot-verify one alias before believing it.
   if [ -z "${_BINDRAW}" ]; then
-    _alias=$(ls /data/disk/*/.drush/*.alias.drushrc.php 2>/dev/null | head -1)
+    _alias="${_aliases[0]:-}"
     if [ -n "${_alias}" ]; then
-      _apath=$(sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" "${_alias}" | head -1)
+      _apath=$(_solr_read_file "${_alias}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
       [ -z "${_apath}" ] \
         && _alrt "alias site_path parse failed on $(basename "${_alias}") -- binding tally unreliable, read as zero"
     fi

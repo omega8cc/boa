@@ -11,6 +11,21 @@ PHP extensions are still built on the fly on every box (they are cheap and
 bound to the exact PHP build), and every package install is verified against
 a `sha256` sidecar before it is unpacked.
 
+Imagick is always built against the distribution's ImageMagick: version 6 on
+Devuan Daedalus, 7 on Devuan Excalibur. Every barracuda pass first moves
+ImageMagick files that no package owns and that would point the build
+elsewhere -- a `MagickWand-config` in `/usr/bin` or `/usr/local/bin`, or an
+ImageMagick pkg-config file -- to `/var/backups`, named after their path:
+`/usr/lib/pkgconfig/MagickWand.pc` becomes
+`/var/backups/usr-lib-pkgconfig-MagickWand.pc`.
+
+Where the distribution provides `magick` as an alternative (Excalibur), an
+unowned `/usr/bin/magick` or `magick-script` goes the same way and the
+distribution's link takes its place. The pass also rebuilds an `imagick.so`
+that PHP cannot load, or that links an ImageMagick no package owns. A new
+build is kept only when PHP loads it; when it does not, the previous one
+stays and an `OOPS:` line in the pass log raises the pass alert.
+
 ## The Switch
 
 ```sh

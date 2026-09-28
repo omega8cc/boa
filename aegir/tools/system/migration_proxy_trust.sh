@@ -233,10 +233,33 @@ _cmd_teardown() {
 
 # --- per-account policy records (mirrors xoct's _mig_* primitives) -----------
 
+# A record sits in the account's own log/, so its name can be a link or a
+# FIFO and log/ itself a link: it is read only inside the real directory,
+# never through a link, never blocked on a FIFO, at most 1 MiB.
+_mpt_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+_mpt_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+
 _mig_get() {
   local _f="$1" _k="$2"
-  [ -r "${_f}" ] || return 1
-  grep -m1 "^${_k}=" "${_f}" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'
+  [ -e "${_f}" ] || return 1
+  _mpt_in_real_dir "${_f%/*}" _mpt_read_here "${_f##*/}" \
+    | grep -m1 "^${_k}=" 2>/dev/null | cut -d= -f2- | tr -d '\r\n'
 }
 
 _mig_valid_mode() {

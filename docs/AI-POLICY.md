@@ -17,13 +17,19 @@ and `ChatGPT-User` land in different classes, and "ChatGPT" alone matches nothin
 | Class | `$is_ai_*` map | Example tokens | Default action |
 |-------|----------------|----------------|----------------|
 | Scrapers / bad bots | `$is_crawler` (pre-existing) | mass scrapers, download tools | **Hard block (444), always** |
-| AI **training** | `$is_ai_training` | GPTBot, ClaudeBot, Claude-Web, anthropic-ai, CCBot, Bytespider, Amazonbot, AI2Bot, Diffbot, Meta-ExternalAgent, cohere-ai, omgili, md-proxy (RetrievableAIAgentProxy) | **Blocked (444)**; per-site opt-in to **allow** |
+| AI **training** | `$is_ai_training` | GPTBot, ClaudeBot, Claude-Web, anthropic-ai, CCBot, Bytespider, Amazonbot, AI2Bot, Diffbot, Meta-ExternalAgent, cohere-ai, omgili, DeepSeekBot, md-proxy (RetrievableAIAgentProxy) | **Blocked (444)**; per-site opt-in to **allow** |
 | AI **search/index** | `$is_ai_search` | OAI-SearchBot, Claude-SearchBot, PerplexityBot, MistralAI-Index, YouBot, Google-CloudVertexBot | **Allowed + per-vendor aggregate rate-limit (1r/s)**; per-site opt-in to **block** |
 | AI **user** (honest assistant fetch a user asked for) | `$is_ai_user` | ChatGPT-User, Claude-User, MistralAI-User, Meta-ExternalFetcher, Google-Agent | **Allowed + per-vendor aggregate rate-limit (2r/s)**; per-site opt-in to **block** |
 | AI **user — evasive** (user-triggered but ignores robots.txt and evades blocks) | `$is_ai_evasive` | Perplexity-User | **Blocked (444)**; per-site opt-in to **allow** |
 | AI **utility** | `$is_ai_utility` | OAI-AdsBot, DuckAssistBot, Google-Read-Aloud, Google-NotebookLM | **Allowed + per-vendor aggregate rate-limit (1r/s)**; per-site opt-in to **block** |
 | **Forged** opt-out tokens | `$is_ai_forged` | Google-Extended, Applebot-Extended | **Hard block (444), always** |
 | Secret-path probes | `$is_secret_path` | `.env` `.git` `.aws` `.ssh`, `*.json` creds, `settings.py`, … | **Hard block (444), always** |
+
+Some allowed agents name a training crawler in the contact part of their user-agent:
+`Claude-User` and `Claude-SearchBot` (with `+claudebot@anthropic.com`) and `Amzn-SearchBot`
+(with `.../support/amazonbot`). The training map checks those three tokens first and leaves
+them out of the training class, so they stay in their own classes (user fetch, search) or,
+for `Amzn-SearchBot`, unclassified and allowed.
 
 The stance: block the worst offenders unconditionally, separate every real AI agent into
 a class, and make each class flippable per site. Training and the **evasive** user-fetch
@@ -175,6 +181,11 @@ prefix-named site pulling a longer site's fragment).
 `$ai_evasive_allow` are both defaulted to `0` in the vhost template before that include,
 so a site with no record keeps the global defaults. Removing a record prunes its fragment
 on the next run.
+
+A subdirectory site's paths (`example.com/blog`) follow the record for the domain that
+serves them: the domain's own site when it is one, and the bare domain when it is not,
+whose placeholder vhost includes `ai_policy/example.com.conf*` as well, with the same
+defaults. A record for the internal name (`blog.example.com`) governs that name only.
 
 ## Generators, lock and serials
 

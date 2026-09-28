@@ -38,6 +38,47 @@ usage() {
   printf '%s\n' "Usage: fpmreport [--data DIR|FILE...] [--days N] [--json]"
 }
 
+# An account owns /data/disk/<oN>, so its log/cores.txt can be a link or a
+# FIFO, and log/ itself can be one. It is read only inside the real log/.
+# Run "$@" inside the real directory $1: below /data/disk and /home every name
+# on the path must be a real directory. A copy of the helper in
+# lib/functions/helper.sh.inc.
+_fpm_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_fpm_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# "<account>=<engines> ..." for every account whose log/cores.txt carries a
+# number: the digits of its last line that has any, as the sizing path
+# reads it. Pass B takes the engines from here, never from the account path.
+_fpm_cores_map() {
+  local _d _u _c _map=""
+  for _d in /data/disk/*; do
+    _u="${_d##*/}"
+    [[ "${_u}" =~ ^[A-Za-z0-9._-]+$ ]] || continue
+    [[ -d "${_d}/log" ]] || continue
+    _c=$(_fpm_in_real_dir "${_d}/log" _fpm_read_here cores.txt \
+      | awk '{ gsub(/[^0-9]/, ""); if ($0 != "") c = $0 } END { print c }')
+    [[ -n "${_c}" ]] && _map="${_map} ${_u}=${_c}"
+  done
+  printf '%s' "${_map# }"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --data)
@@ -174,8 +215,9 @@ function cfg_pool(ver, pool,   cf, line, val, inc) {
 # instance behind a pool, from its live control files — the same inputs the
 # sizing logic keys on. The instance name is the pool minus any .NN version
 # (e.g. o8.84 -> o8). cores.txt (if present) wins over the .octopus.cnf value,
-# matching the sizing path. Returns via globals CFG_PLAN and CFG_CORES.
-function cfg_plan(pool,   user, cf, line, val, cores_f) {
+# matching the sizing path; its value comes in cores_map, read by the shell.
+# Returns via globals CFG_PLAN and CFG_CORES.
+function cfg_plan(pool,   user, cf, line, val) {
   CFG_PLAN = "-"; CFG_CORES = ""
   user = pool
   sub(/\.[0-9]+$/, "", user)
@@ -190,12 +232,7 @@ function cfg_plan(pool,   user, cf, line, val, cores_f) {
     }
   }
   close(cf)
-  cores_f = "/data/disk/" user "/log/cores.txt"
-  while ((getline line < cores_f) > 0) {
-    gsub(/[^0-9]/, "", line)
-    if (line != "") CFG_CORES = line
-  }
-  close(cores_f)
+  if (user in CORES) CFG_CORES = CORES[user]
   if (CFG_CORES == "") CFG_CORES = "1"
 }
 # p95 over a space-separated numeric list (insertion sort; lists are small)
@@ -221,6 +258,11 @@ function reg_ver(h, v,   vk) {
 }
 BEGIN {
   FS = "|"
+  ncm = split(cores_map, cm, " ")
+  for (i = 1; i <= ncm; i++) {
+    e = index(cm[i], "=")
+    if (e > 1) CORES[substr(cm[i], 1, e - 1)] = substr(cm[i], e + 1)
+  }
   if (idle_tol_pct + 0 <= 0) idle_tol_pct = 3
   if (memlimit_pct + 0 <= 0) memlimit_pct = 80
   if (filecap_pct + 0 <= 0) filecap_pct = 90
@@ -506,10 +548,12 @@ END {
 }'
 
 export _FPMT_IDLE_TOL_PCT _FPMT_MEMLIMIT_PCT _FPMT_FILECAP_PCT _FPMT_SHRINK_PCT
+_CORES_MAP=$(_fpm_cores_map)
 cat "${_FILES[@]}" 2>/dev/null \
   | awk -v cutoff="${_CUTOFF}" "${_PASS_A}" \
   | sort -t '|' -k2,2 -k1,1 -k3,3n -k4,4 -k5,5n \
   | awk -v json="${_JSON}" \
+      -v cores_map="${_CORES_MAP}" \
       -v idle_tol_pct="${_FPMT_IDLE_TOL_PCT:-3}" \
       -v memlimit_pct="${_FPMT_MEMLIMIT_PCT:-80}" \
       -v filecap_pct="${_FPMT_FILECAP_PCT:-90}" \

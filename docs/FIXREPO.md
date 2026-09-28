@@ -18,11 +18,14 @@ a repository whose new objects will keep losing the group bits.
 (installed hardened in `/opt/local/bin`, never exposed via sudo or lshell)
 that performs three actions on a codebase root:
 
-1. `chmod -R g+rwX` over the whole tree — group read/write everywhere,
-   execute only on directories and files that are already executable, so
-   regular files never become executable.
-2. `find <root> -type d -exec chmod g+rws` — setgid on every directory,
-   so files created later inherit the shared group.
+1. Group read/write (`g+rwX`) on every file and directory — execute only
+   on directories and files that are already executable, so regular files
+   never become executable.
+2. Setgid (`g+rws`) on every directory, so files created later inherit the
+   shared group.
+
+Both passes run inside the resolved tree and set each mode without following
+a link; a tree that no longer resolves to the checked path is refused.
 3. When a `.git` directory is present: an explicit permissions pass over
    the git internals, plus `git config core.sharedRepository group` so git
    itself keeps future objects and refs group-accessible. The config step
@@ -116,6 +119,6 @@ the job at hand.
   a directory, the tree-wide permissions pass still runs, the git-specific
   steps are skipped, and the summary says so explicitly.
 - **umask.** The closing `umask 002` advice is belt-and-braces: BOA
-  already pins umask `002` box-wide (login.defs, PAM, profile and SFTP),
-  so files created by either identity normally stay group-writable on
-  their own.
+  already pins umask `002` box-wide (login.defs, PAM, profile, SFTP and
+  the limited shell), so files created by either identity normally stay
+  group-writable on their own.

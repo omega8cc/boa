@@ -174,7 +174,76 @@ _check_disk_space() {
 }
 _check_disk_space
 
+# migratefs relocating /data/disk/arch holds it: /run/migratefs-arch.pid
+# names a live root process that runs migratefs, matched as executed,
+# never as a word anywhere on a command line (a pid reused after a kill -9,
+# by another user's process or another command, never holds). Root is read
+# as the real uid in /proc/<pid>/status: /proc/<pid> itself shows root as
+# the owner of any process that is not dumpable. Prints that pid while the
+# hold stands.
+_arch_mfs_held() {
+  local _p
+  _p=$( { tr -dc '0-9' < /run/migratefs-arch.pid; } 2> /dev/null )
+  [ -n "${_p}" ] && kill -0 "${_p}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2> /dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2> /dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?migratefs( |$)' \
+    && echo "${_p}"
+}
+# The wait for that relocation, on the console and in migratefs's own log,
+# next to the relocation it waits for: cron discards this output, and a
+# wait that ends in a normal run is no incident for the incident log.
+_arch_wait_log() {
+  echo "INFO: $*"
+  mkdir -p /var/log/boa
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $*" >> /var/log/boa/migratefs.log
+}
+# Drops the wait marker while it still names this run.
+_sql_wait_drop() {
+  if [ "$( { tr -dc '0-9' < /run/boa_sql_backup_wait.pid; } 2> /dev/null )" = "$$" ]; then
+    rm -f /run/boa_sql_backup_wait.pid
+  fi
+}
+# A dump into a held archive would make /data/disk/arch again at the name
+# the relocation's final pass set aside, or fail to write. Checked with the
+# wait marker in place (the one the basic backup writes; each script
+# refuses to start while the other runs): migratefs writes its hold before
+# it looks for this run, and defers, dropping the hold, when it sees it; so
+# one of the two always goes ahead, and a hold found here is a relocation
+# already under way or one about to defer. Waited for up to 3 hours,
+# checked every 60 s; a hold that outlives the bound skips this run, with a
+# notice. The run marker, which the watchdogs and the task runner read as a
+# backup in progress, is made only once no hold is left, and before the
+# wait marker goes, so one of the two is always in place: a run that only
+# waits stands none of them down.
+echo $$ > /run/boa_sql_backup_wait.pid
+_mfsPid=$(_arch_mfs_held)
+if [[ -n "${_mfsPid}" ]]; then
+  _mfsWait=0
+  _arch_wait_log "mysql_cluster_backup.sh (pid $$) waits for migratefs (pid ${_mfsPid}) to finish relocating /data/disk/arch, up to 3 hours"
+  while [[ -n "${_mfsPid}" ]] && [[ "${_mfsWait}" -lt 10800 ]]; do
+    sleep 60
+    _mfsWait=$(( _mfsWait + 60 ))
+    _mfsPid=$(_arch_mfs_held)
+  done
+  if [[ -n "${_mfsPid}" ]]; then
+    _arch_wait_log "mysql_cluster_backup.sh (pid $$) waited ${_mfsWait} s and /data/disk/arch is still held by migratefs (pid ${_mfsPid}); this run is skipped"
+    {
+      echo "The cluster database backup run on ${_hName} did not start:"
+      echo "migratefs (pid ${_mfsPid}) was still relocating /data/disk/arch after"
+      echo "this run had waited 3 hours for it. No database was dumped. Once the"
+      echo "relocation has ended, run:"
+      echo
+      echo "  bash /var/xdrago/mysql_cluster_backup.sh"
+      echo
+    } | _backup_notice "Backup SKIPPED on [${_hName}]: /data/disk/arch is being relocated" "migratefs pid ${_mfsPid} still held it after ${_mfsWait} s"
+    _sql_wait_drop
+    exit 0
+  fi
+  _arch_wait_log "mysql_cluster_backup.sh (pid $$) waited ${_mfsWait} s; /data/disk/arch is no longer held, the database backup starts"
+fi
 touch /run/boa_sql_cluster_backup.pid
+_sql_wait_drop
 
 _create_locks() {
   echo "Creating locks for $1"
