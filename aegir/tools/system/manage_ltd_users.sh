@@ -2988,8 +2988,11 @@ _fix_dot_dirs() {
     _ltd_dot_dir "/home/${_usrLtd}/.bee" 700 "${_usrLtd}:${_accGrp}"
     _usrSsh="/home/${_usrLtd}/.ssh"
     _ltd_dot_dir "${_usrSsh}" 700 "${_usrLtd}:${_accGrp}"
+    # authorized_keys too: one written over SFTP (umask 0002) or in the shell
+    # is group-writable, and sshd's StrictModes refuses every key in it
     _ltd_in_real_dir "${_usrSsh}" \
-      _ltd_chmod_nofollow 600 ./id_rsa ./id_dsa ./known_hosts
+      _ltd_chmod_nofollow 600 ./id_rsa ./id_dsa ./known_hosts \
+      ./authorized_keys ./authorized_keys2
     _usrBzr="/home/${_usrLtd}/.bazaar"
     if [ -x "/usr/local/bin/bzr" ]; then
       if [ ! -z "${_usrLtd}" ] && [ ! -e "${_usrBzr}/bazaar.conf" ]; then
@@ -5599,6 +5602,14 @@ _manage_user() {
             _ltd_in_real_dir "/home/${_USER}.ftp/users" chmod 700 .
             _ltd_in_real_dir "/home/${_USER}.ftp/users" \
               _ltd_chmod_nofollow_here 600
+          fi
+          if [ -d "/home/${_USER}.ftp/.ssh" ]; then
+            # an authorized_keys uploaded over SFTP (umask 0002) or written in
+            # a shell session arrives group-writable, and sshd's StrictModes
+            # then refuses every key in it: the key files stay owner-only, set
+            # through handles inside the real directory, like the private keys
+            _ltd_in_real_dir "/home/${_USER}.ftp/.ssh" \
+              _ltd_chmod_nofollow 600 ./authorized_keys ./authorized_keys2
           fi
           if [ ! -L "/home/${_USER}.ftp/static" ]; then
             rm -f /home/${_USER}.ftp/{backups,clients,static}

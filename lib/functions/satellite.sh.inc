@@ -4694,9 +4694,10 @@ _satellite_if_add_update_user_dot_dirs() {
     _acct_in_real_dir "${_USER_SSH}" chmod 700 . &> /dev/null
   fi
   # the main login's own keys: set through a handle inside the real .ssh,
-  # never through a link put at a key name or at .ssh
+  # never through a link put at a key name or at .ssh; authorized_keys too,
+  # which sshd's StrictModes refuses once it is group-writable
   _acct_in_real_dir "${_USER_SSH}" _satellite_chmod_nofollow f 0600 \
-    ./id_rsa ./id_dsa &> /dev/null
+    ./id_rsa ./id_dsa ./authorized_keys ./authorized_keys2 &> /dev/null
 
   ###---### Create .bazaar dir and conf file if not exist.
   #
