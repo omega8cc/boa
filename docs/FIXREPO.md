@@ -119,6 +119,6 @@ the job at hand.
   a directory, the tree-wide permissions pass still runs, the git-specific
   steps are skipped, and the summary says so explicitly.
 - **umask.** The closing `umask 002` advice is belt-and-braces: BOA
-  already pins umask `002` box-wide (login.defs, PAM, profile and SFTP),
-  so files created by either identity normally stay group-writable on
-  their own.
+  already pins umask `002` box-wide (login.defs, PAM, profile, SFTP and
+  the limited shell), so files created by either identity normally stay
+  group-writable on their own.
