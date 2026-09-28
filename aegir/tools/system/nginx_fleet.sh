@@ -115,7 +115,7 @@ _MODE="pass"
 # cnf is sourced so it cannot be clobbered. An operator _NGINX_FLEET_UA_EXEMPT
 # ADDS to it and can never remove a shipped exemption; an invalid addition is
 # dropped and the shipped roster alone applies.
-_FLT_UA_EXEMPT_DEFAULT="Googlebot|Google-|GoogleOther|Google Favicon|Mediapartners-Google|AdsBot|Storebot-Google|bingbot|Applebot|DuckDuckBot|Yandex|Baiduspider|SeznamBot|PetalBot|Qwantbot|coccocbot|Yeti|Sogou|archive\.org_bot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|Pinterest|Site24x7|Pingdom|UptimeRobot|StatusCake|OAI-SearchBot|Claude-SearchBot|PerplexityBot|MistralAI-Index|YouBot|Google-CloudVertexBot|ChatGPT-User|Claude-User|MistralAI-User|Meta-ExternalFetcher|Google-?Agent|OAI-AdsBot|DuckAssistBot|Google-Read-Aloud|Google-NotebookLM|Chrome Privacy Preserving Prefetch Proxy|WhatsApp|SkypeUriPreview|kakaotalk-scrap"
+_FLT_UA_EXEMPT_DEFAULT="Googlebot|Google-|GoogleOther|Google Favicon|Mediapartners-Google|AdsBot|Storebot-Google|bingbot|Applebot|DuckDuckBot|Yandex|Baiduspider|SeznamBot|PetalBot|Qwantbot|coccocbot|Yeti|Sogou|archive\.org_bot|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|TelegramBot|Pinterest|Site24x7|Pingdom|UptimeRobot|StatusCake|OAI-SearchBot|Claude-SearchBot|PerplexityBot|MistralAI-Index|YouBot|Google-CloudVertexBot|Kimi-SearchBot|ChatGPT-User|Claude-User|MistralAI-User|Meta-ExternalFetcher|Google-?Agent|Kimi-User|OAI-AdsBot|DuckAssistBot|Google-Read-Aloud|Google-NotebookLM|Chrome Privacy Preserving Prefetch Proxy|WhatsApp|SkypeUriPreview|kakaotalk-scrap"
 if [[ -n "${_NGINX_FLEET_UA_EXEMPT}" ]]; then
   _NGINX_FLEET_UA_EXEMPT="${_FLT_UA_EXEMPT_DEFAULT}|${_NGINX_FLEET_UA_EXEMPT}"
 else

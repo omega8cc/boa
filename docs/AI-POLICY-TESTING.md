@@ -153,9 +153,9 @@ Tokens per class (any one matches the class):
 
 | Class | Tokens |
 |-------|--------|
-| training | GPTBot, ClaudeBot, Claude-Web, anthropic-ai, CCBot, Bytespider, Amazonbot, AI2Bot, Diffbot, Meta-ExternalAgent, cohere-ai, omgili, DeepSeekBot, md-proxy (RetrievableAIAgentProxy) |
-| search | OAI-SearchBot, Claude-SearchBot, PerplexityBot, MistralAI-Index, YouBot, Google-CloudVertexBot |
-| user | ChatGPT-User, Claude-User, MistralAI-User, Meta-ExternalFetcher, Google-Agent |
+| training | GPTBot, ClaudeBot, Claude-Web, anthropic-ai, CCBot, Bytespider, Amazonbot, AI2Bot, Diffbot, Meta-ExternalAgent, cohere-ai, omgili, DeepSeekBot, KimiBot, md-proxy (RetrievableAIAgentProxy) |
+| search | OAI-SearchBot, Claude-SearchBot, PerplexityBot, MistralAI-Index, YouBot, Google-CloudVertexBot, Kimi-SearchBot |
+| user | ChatGPT-User, Claude-User, MistralAI-User, Meta-ExternalFetcher, Google-Agent, Kimi-User |
 | user (evasive) | Perplexity-User — **blocked by default**; per-site `evasive-allow` to permit it |
 | utility | OAI-AdsBot, DuckAssistBot, Google-Read-Aloud, Google-NotebookLM |
 | forged | Google-Extended, Applebot-Extended |

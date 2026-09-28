@@ -558,6 +558,13 @@
       and a site's train-allow record admits it with the rest of the
       class.
 
+    * Kimi's three crawlers are classified as Moonshot AI documents them:
+      KimiBot, which gathers content that may train Kimi's models, joins
+      the AI training class and gets 444 by default; Kimi-SearchBot joins
+      the AI search class and Kimi-User the user-triggered class, both
+      served under their own per-vendor budget and exempt from the
+      crawler-fleet refusal like the other allowed AI agents.
+
     * Cloudflare's address lists are fetched once a day, and at once only
       while the ranges file is missing; every self-update pass (every five
       minutes) used to fetch them again.
