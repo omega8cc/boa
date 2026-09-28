@@ -751,9 +751,12 @@ _extract_archive() {
       *.zip)       unzip -qq ${1}  ;;
       *.Z)         uncompress ${1} ;;
       *.7z)        7z x ${1}       ;;
-      *)           echo "'${1}' cannot be extracted via >extract<" ;;
+      *)           echo "'${1}' cannot be extracted via >extract<"; false ;;
     esac
+    # The unpacker's own status, so a cut-short archive is not taken as done.
+    local _xRc=$?
     [ -z "${2}" ] && rm -f "${1}"
+    return ${_xRc}
   fi
 }
 
@@ -789,6 +792,50 @@ _get_dev_contrib() {
       return 1  # Exit the function but continue the script
     fi
   fi
+}
+
+#
+# Replace one shared module under ${_Dir} from the dev/contrib mirror. It is
+# fetched and unpacked in a directory of this run's own, stamped there, and
+# swapped in only when the unpack finished: a copy cut short (an archive
+# another run was replacing, a broken download) never replaces the one in
+# place, is reported in the fetch-failure line and is fetched again on the
+# next run, where the old code stamped it as deployed. The swap renames the
+# copy in place aside first and puts it back when the new one cannot go in.
+# Two stamps: the gates read the ".full" one, which only this path writes, so
+# a copy the old code stamped is replaced once; the plain one keeps an
+# Octopus not yet upgraded from fetching it again the old way. Owner "root"
+# re-owns the copy, whatever the archive recorded.
+_shared_module_update() {
+  local _nm="$1" _ver="$2" _own="$3" _tmp _rc _url
+  _url="${_urlDev}/${_tRee}/contrib/${_nm}-${_ver}.tar.gz"
+  mkdir -p "${_Dir}"
+  # a directory a killed run left behind; a live run's is never this old
+  find "${_Dir}" -maxdepth 1 -type d -name ".${_nm}.*" -mmin +60 -exec rm -rf {} + &> /dev/null
+  _tmp="$(mktemp -d "${_Dir}/.${_nm}.XXXXXX")" || return 1
+  cd "${_tmp}" || return 1
+  _get_dev_contrib "${_nm}-${_ver}.tar.gz"
+  _rc=$?
+  cd "${_Dir}" || return 1
+  if [ "${_rc}" -eq 0 ] && [ -d "${_tmp}/${_nm}" ]; then
+    [ "${_own}" = "root" ] && chown -R root:root "${_tmp}/${_nm}" &> /dev/null
+    echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.info"
+    echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.full.info"
+    [ -e "${_Dir}/${_nm}" ] && mv -T "${_Dir}/${_nm}" "${_tmp}/.old" &> /dev/null
+    if mv -T "${_tmp}/${_nm}" "${_Dir}/${_nm}" &> /dev/null; then
+      find "${_Dir}" -type d -exec chmod 0755 {} \; &> /dev/null
+      find "${_Dir}" -type f -exec chmod 0644 {} \; &> /dev/null
+      touch "${_pthLog}/${_nm}.ctrl.${_xSrl}.log"
+    else
+      [ -e "${_tmp}/.old" ] && [ ! -e "${_Dir}/${_nm}" ] \
+        && mv -T "${_tmp}/.old" "${_Dir}/${_nm}" &> /dev/null
+      _fetch_failed_note "${_nm}" "${_url}" "swap"
+    fi
+  else
+    echo "OOPS: ${_nm}-${_ver} was not updated (download or unpack failed); the copy in place is kept"
+    _fetch_failed_note "${_nm}" "${_url}" "unpack"
+  fi
+  rm -rf "${_tmp}"
 }
 
 #
@@ -2225,7 +2272,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f91
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f88
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f69
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f68
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f66
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f47
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f51
@@ -2899,96 +2946,53 @@ _update_agents() {
   _Dir="/data/all/000/modules"
   _REDIS_E_VERSION=8.x-1.11.2
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info" ]; then
-      mkdir -p ${_Dir}
-      cd ${_Dir}
-      rm -rf ${_Dir}/redis_ten_eleven
-      _get_dev_contrib "redis_ten_eleven-${_REDIS_E_VERSION}.tar.gz"
-      echo update > ${_Dir}/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info
-      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${_pthLog}/redis_ten_eleven.ctrl.${_xSrl}.log
+    if [ ! -e "${_Dir}/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.full.info" ]; then
+      _shared_module_update redis_ten_eleven "${_REDIS_E_VERSION}"
     fi
   fi
 
   _Dir="/data/all/000/modules"
   _REDIS_T_VERSION=8.x-1.8.2
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info" ]; then
-      mkdir -p ${_Dir}
-      cd ${_Dir}
-      rm -rf ${_Dir}/redis_nine_ten
-      _get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
-      echo update > ${_Dir}/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info
-      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${_pthLog}/redis_nine_ten.ctrl.${_xSrl}.log
+    if [ ! -e "${_Dir}/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.full.info" ]; then
+      _shared_module_update redis_nine_ten "${_REDIS_T_VERSION}"
     fi
   fi
 
   _Dir="/data/all/000/modules"
   _REDIS_C_VERSION=com-19-04-2021
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.info" ]; then
-      mkdir -p ${_Dir}
-      cd ${_Dir}
-      rm -rf ${_Dir}/redis_compr
-      _get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
-      echo update > ${_Dir}/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.info
-      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${_pthLog}/redis_compr.ctrl.${_xSrl}.log
+    if [ ! -e "${_Dir}/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.full.info" ]; then
+      _shared_module_update redis_compr "${_REDIS_C_VERSION}"
     fi
   fi
 
   _Dir="/data/all/000/modules"
   _REDIS_L_VERSION=7.x-3.19.1
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.info" ]; then
-      mkdir -p ${_Dir}
-      cd ${_Dir}
-      rm -rf ${_Dir}/redis_edge
-      _get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
-      echo update > ${_Dir}/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.info
-      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${_pthLog}/redis_edge.ctrl.${_xSrl}.log
+    if [ ! -e "${_Dir}/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.full.info" ]; then
+      _shared_module_update redis_edge "${_REDIS_L_VERSION}"
     fi
   fi
 
   _Dir="/data/all/000/modules"
   _REDIS_N_VERSION=com-19-04-2021
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_eight/ver-${_REDIS_N_VERSION}.${_xSrl}.info" ]; then
-      mkdir -p ${_Dir}
-      cd ${_Dir}
-      rm -rf ${_Dir}/redis_eight
-      _get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
-      echo update > ${_Dir}/redis_eight/ver-${_REDIS_N_VERSION}.${_xSrl}.info
-      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${_pthLog}/redis_eight.ctrl.${_xSrl}.log
+    if [ ! -e "${_Dir}/redis_eight/ver-${_REDIS_N_VERSION}.${_xSrl}.full.info" ]; then
+      _shared_module_update redis_eight "${_REDIS_N_VERSION}"
     fi
   fi
   # Backdrop shared contrib store: updated (never created) here -- the extra
   # o_contrib_backdrop gate means only boxes where Octopus has established the
   # Backdrop bundle refresh it, so opted-out boxes never fetch the tarball.
+  # Every instance's Backdrop sites run this copy: root's, whatever owner the
+  # archive recorded.
   _Dir="/data/all/000/modules"
   _REDIS_B_VERSION=1.x-3.20.1
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -d "${_Dir}/o_contrib_backdrop" ]; then
-    if [ ! -e "${_Dir}/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info" ]; then
-      mkdir -p ${_Dir}
-      cd ${_Dir}
-      rm -rf ${_Dir}/redis_backdrop
-      _get_dev_contrib "redis_backdrop-${_REDIS_B_VERSION}.tar.gz"
-      # every instance's Backdrop sites run this copy: root's, whatever owner
-      # the archive recorded
-      chown -R root:root ${_Dir}/redis_backdrop &> /dev/null
-      echo update > ${_Dir}/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info
-      find ${_Dir} -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_Dir} -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${_pthLog}/redis_backdrop.ctrl.${_xSrl}.log
+    if [ ! -e "${_Dir}/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.full.info" ]; then
+      _shared_module_update redis_backdrop "${_REDIS_B_VERSION}" root
     fi
   fi
   _fetch_failed_report "the agents pass"
@@ -5106,7 +5110,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f94 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f43 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f28 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f27 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f92 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f70 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f93 --guard /local/bin/solrtrim

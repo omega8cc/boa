@@ -155,6 +155,7 @@ fi
 if [ -e "/run/boa_php_idle_quiesce.pid" ]; then
   _qsPid=$( { tr -dc '0-9' < /run/boa_php_idle_quiesce.pid; } 2>/dev/null )
   if [ -n "${_qsPid}" ] && kill -0 "${_qsPid}" 2>/dev/null; then
+    [ "$1" = "wait" ] && exit 3
     exit 0
   fi
   rm -f /run/boa_php_idle_quiesce.pid
@@ -310,14 +311,99 @@ _check_dns_curl() {
   fi
 }
 
+# One self-update at a time. clear.sh runs from two schedulers on purpose
+# (the root crontab and /etc/crontab, on staggered minutes) and by hand, and
+# everything above is safe to repeat; the BOA.sh.txt run and autoupboa below
+# are not: two runs that overlapped replaced the same shared module from one
+# download, one unpacked it half written, and both stamped it deployed. The
+# lock is a pid file, never flock (BOA.sh.txt restarts daemons, which would
+# inherit the descriptor). Every take goes through a claim directory (mkdir is
+# atomic), so one run at a time looks at the lock and only that run writes it,
+# whole, by a rename. It is trusted only while its pid is a live clear.sh run
+# as root and for 3 hours at most, so the reapers above never need to know it.
+# "clear.sh wait" (a caller that needs the tools current now, such as xmass)
+# waits up to 20 minutes for a running self-update instead of skipping its own.
+_SELF_LOCK=/run/boa_selfupdate.pid
+_self_lock_pid() {
+  { tr -dc '0-9' < "${_SELF_LOCK}"; } 2>/dev/null
+}
+_self_lock_live() {
+  local _p="$1"
+  [ -n "${_p}" ] && [ "${_p}" != "$$" ] && kill -0 "${_p}" 2>/dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_p}/status" 2>/dev/null)" = "0" ] \
+    && { tr '\0' ' ' < "/proc/${_p}/cmdline"; } 2>/dev/null \
+    | grep -qE '^([^ ]*/)?bash (-[^ ]+ )*([^ ]*/)?clear\.sh( |$)'
+}
+# 0: taken, or /run cannot hold a lock (the run then goes ahead without it,
+# flagged: the self-update is what can deliver a fix); 1: held elsewhere.
+_self_lock_take() {
+  local _c="${_SELF_LOCK}.claim" _t="${_SELF_LOCK}.$$"
+  find /run -maxdepth 1 -name 'boa_selfupdate.pid.*' -type f -mmin +60 -delete 2>/dev/null
+  if ! mkdir "${_c}" 2>/dev/null; then
+    if ! { : > "${_t}"; } 2>/dev/null; then
+      _SELF_LOCK_OPEN=YES
+      return 0
+    fi
+    rm -f "${_t}"
+    # another run is taking the lock right now, or a killed run left its claim
+    [ -n "$(find "${_c}" -maxdepth 0 -mmin +2 2>/dev/null)" ] && rmdir "${_c}" 2>/dev/null
+    return 1
+  fi
+  if [ -e "${_SELF_LOCK}" ] && _self_lock_live "$(_self_lock_pid)" \
+    && [ -z "$(find "${_SELF_LOCK}" -not -newermt "${_THR_HOURS}" 2>/dev/null)" ]; then
+    rmdir "${_c}" 2>/dev/null
+    return 1
+  fi
+  if echo "$$" > "${_t}" 2>/dev/null && mv -f "${_t}" "${_SELF_LOCK}" 2>/dev/null; then
+    rmdir "${_c}" 2>/dev/null
+    return 0
+  fi
+  rm -f "${_t}"
+  rmdir "${_c}" 2>/dev/null
+  _SELF_LOCK_OPEN=YES
+  return 0
+}
+_self_lock_release() {
+  local _c="${_SELF_LOCK}.claim" _i=0 _got=NO
+  while [ "${_i}" -lt 20 ]; do
+    mkdir "${_c}" 2>/dev/null && { _got=YES; break; }
+    sleep 0.1
+    _i=$((_i + 1))
+  done
+  [ "$(_self_lock_pid)" = "$$" ] && rm -f "${_SELF_LOCK}"
+  [ "${_got}" = "YES" ] && rmdir "${_c}" 2>/dev/null
+}
+# An install or upgrade in flight holds the self-update too (see below).
+_install_held() {
+  [ -e "/run/boa_run.pid" ] || [ -e "/run/boa_wait.pid" ] \
+    || [ -e "/run/octopus_install_run.pid" ] || _installer_alive
+}
+# A wait-mode run checks the install holds again after every pause: an install
+# can start while it waits, even from the run it waits for.
+_self_lock_gate() {
+  local _i=0
+  _self_lock_take && return 0
+  [ "${_CLEAR_MODE}" = "wait" ] || return 1
+  while [ "${_i}" -lt 120 ]; do
+    sleep 10
+    _install_held && return 1
+    _self_lock_take && return 0
+    _i=$((_i + 1))
+  done
+  return 1
+}
+_CLEAR_MODE="$1"
+_CLEAR_RC=0
+_SELF_LOCK_OPEN=NO
+
 # Hold both the key-tools self-update and autoupboa while ANY install or
 # important task is in flight, not just while boa_run.pid exists -- the
 # chained install's octopus leg holds only octopus_install_run.pid, and a
 # BOA.sh.txt run in that window used to purge the consumed build tree
-if [ ! -e "/run/boa_run.pid" ] \
-  && [ ! -e "/run/boa_wait.pid" ] \
-  && [ ! -e "/run/octopus_install_run.pid" ] \
-  && ! _installer_alive; then
+if ! _install_held && _self_lock_gate; then
+  if [ "${_SELF_LOCK_OPEN}" = "YES" ] && [ -d "/var/log/boa" ]; then
+    echo "$(date) self-update ran without its lock: ${_SELF_LOCK} could not be written" >> /var/log/boa/clear.hold.incident.log
+  fi
   _check_dns_curl
   rm -f /tmp/*error*
   # Piping straight into bash cannot tell "ran the meta-installer" from "the
@@ -344,6 +430,7 @@ if [ ! -e "/run/boa_run.pid" ] \
   fi
   bash /opt/local/bin/autoupboa
   wait
+  _self_lock_release
 else
   # Name what held this tick: with the self-update and autoupboa skipped in
   # silence, a fresh install's reset marker arrived anywhere between 1 and
@@ -354,10 +441,30 @@ else
   for _m in boa_run.pid boa_wait.pid octopus_install_run.pid; do
     [ -e "/run/${_m}" ] && _held="${_held} ${_m}"
   done
-  [ -z "${_held}" ] && _held=" installer-alive"
-  if [ -d "/var/log/boa" ] && [ "${_held}" != "$(cat /run/clear.hold.last 2>/dev/null)" ]; then
+  if [ -z "${_held}" ]; then
+    if _installer_alive; then
+      _held=" installer-alive"
+    else
+      # Another self-update is running: routine when the two schedules
+      # overlap, so it is only said here; the log records a holder only once
+      # it has run for over 30 minutes.
+      echo "clear.sh: self-update skipped, another run holds ${_SELF_LOCK}"
+      _held=""
+      [ -n "$(find "${_SELF_LOCK}" -mmin +30 2>/dev/null)" ] \
+        && _held=" boa_selfupdate.pid (over 30 minutes)"
+    fi
+  fi
+  if [ -n "${_held}" ] && [ -d "/var/log/boa" ] \
+    && [ "${_held}" != "$(cat /run/clear.hold.last 2>/dev/null)" ]; then
     echo "${_held}" > /run/clear.hold.last
     echo "$(date) self-update and autoupboa held by${_held}" >> /var/log/boa/clear.hold.incident.log
+  fi
+  # a caller that asked to wait (xmass) is told the self-update did not run
+  if [ "${_CLEAR_MODE}" = "wait" ]; then
+    _CLEAR_RC=3
+    [ -d "/var/log/boa" ] \
+      && echo "$(date) clear.sh wait: self-update not run (held by${_held:- boa_selfupdate.pid})" \
+        >> /var/log/boa/clear.hold.incident.log
   fi
 fi
 
@@ -416,4 +523,4 @@ if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
 fi
 
 touch /var/log/boa/clear.done.pid
-exit 0
+exit ${_CLEAR_RC}
