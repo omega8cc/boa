@@ -822,6 +822,12 @@
 
 @=> Important Fixes
 
+    * The AI training block no longer refuses Claude-User, Claude-SearchBot
+      and Amzn-SearchBot. Their user agents name a training crawler in the
+      contact part (claudebot@anthropic.com, .../support/amazonbot), which
+      the training map matched, so a user-triggered fetch and two
+      answer-engine indexers that sites allow by default got 444.
+
     * Audio and video files go out with their own types and reach the
       long-timeout media locations by short URI as well. BOA's mime.types
       now names opus (audio/ogg, the Ogg Opus type), flac, weba and mkv,

@@ -25,6 +25,12 @@ and `ChatGPT-User` land in different classes, and "ChatGPT" alone matches nothin
 | **Forged** opt-out tokens | `$is_ai_forged` | Google-Extended, Applebot-Extended | **Hard block (444), always** |
 | Secret-path probes | `$is_secret_path` | `.env` `.git` `.aws` `.ssh`, `*.json` creds, `settings.py`, … | **Hard block (444), always** |
 
+Some allowed agents name a training crawler in the contact part of their user-agent:
+`Claude-User` and `Claude-SearchBot` (with `+claudebot@anthropic.com`) and `Amzn-SearchBot`
+(with `.../support/amazonbot`). The training map checks those three tokens first and leaves
+them out of the training class, so they stay in their own classes (user fetch, search) or,
+for `Amzn-SearchBot`, unclassified and allowed.
+
 The stance: block the worst offenders unconditionally, separate every real AI agent into
 a class, and make each class flippable per site. Training and the **evasive** user-fetch
 class are opt-**in** (off by default); search / user / utility are opt-**out** (on by
