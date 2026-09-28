@@ -247,6 +247,8 @@ measure _O_LOAD (1m) and _F_LOAD (5m), per-CPU %
 ```
 
 - **SPIDER — block crawlers.** When per-CPU load sits above 210% but at or below 610% (checked on both the 1-minute and 5-minute figures), `_nginx_high_load_on` renames `/data/conf/nginx_high_load_off.conf` to `/data/conf/nginx_high_load.conf` and reloads nginx. That file is glob-included by `aegir/conf/nginx/nginx_compact_include.conf` (`include /data/conf/nginx_high_load.c*;`), so swapping the suffix toggles crawler blocking without rewriting any vhost. The web stack stays fully up for real users; only spiders are shed. This is the only tier that does **not** set `_skip_proc_control`, so the heavy fan-out still runs on its normal cadence.
+
+  Both renames happen inside the real `/data/conf` and move only a regular file: a link, a FIFO or a directory left at either name is removed, never followed, and a missing off file comes back with the next barracuda upgrade.
 - **MAX — pause the web stack.** Above 610%, `_hold_services` stops the entire web tier: `service nginx stop`, then `force-quit` on every installed `php<NN>-fpm`, then a belt-and-braces `killall php-fpm` and `killall nginx`. The box stops serving so the run queue can drain. An `ALERT`-level incident is logged and (subject to policy) e-mailed.
 - **CRIT — terminate runaways, then pause.** Above 810%, `_terminate_processes` runs **first** — a stuck PHP request, a Drush job in a loop, a wget/curl pulling something huge — *before* `_hold_services` pauses the web tier. Killing the runaway first is what lets the box recover instead of immediately re-spiking after the pause.
 
