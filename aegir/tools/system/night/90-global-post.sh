@@ -144,6 +144,42 @@ for my $f (@ARGV) {
   close($h);
 }'
 
+# Each directory and regular file named (find -execdir, or in a pinned
+# directory) made root's, with the mode $1 for a directory (its set-ID bits
+# kept, as chmod 0755 keeps them) and $2 for a file, except xmass's two
+# records, which xmass writes 0600. An entry is checked by lstat before it is
+# opened, so a FIFO or a device is never opened, and is changed through its
+# own handle, never through a link. A hard-linked file is taken back too:
+# /data/conf is never an account's, so a file an account linked there is
+# made root's, as chown -R root:root made it.
+_CONF_ROOT_PL='use Fcntl;
+my ($dm, $fm) = (oct(shift @ARGV), oct(shift @ARGV));
+for my $f (@ARGV) {
+  my @l = lstat($f);
+  next unless @l && (-d _ || -f _);
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && $s[0] == $l[0] && $s[1] == $l[1]) {
+    if (-d _) {
+      chown(0, 0, $h);
+      chmod($dm | ($s[2] & 06000), $h);
+    } elsif (-f _) {
+      chown(0, 0, $h);
+      chmod($f =~ m{(^|/)xmass_(state|solr_used)\.cnf(\.tmp\.\d+)?$} ? 0600 : $fm, $h);
+    }
+  }
+  close($h);
+}'
+# The modes of /data/conf (the current, pinned directory) and everything
+# below it, as find -type d|f -exec chmod 0755|0644 set them, each through
+# the entry's own handle (_CONF_ROOT_PL).
+_global_conf_modes_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  perl -e "${_CONF_ROOT_PL}" 0755 0644 .
+  find . -mindepth 1 \( -type d -o -type f \) \
+    -execdir perl -e "${_CONF_ROOT_PL}" 0755 0644 {} +
+)
+
 # The modes of every account platform's sites/all/{libraries,modules,themes}
 # trees: directories 02775, files 0664. The account owns distro/ and every
 # platform in it, so each tree is walked from inside its real directory and
@@ -687,9 +723,12 @@ _global_cleanup() {
     && [ -e "/opt/tmp/barracuda-release.txt" ] \
     && [ ! -e "/var/backups/permissions-fix-${_xSrl}-${_X_VERSION}-fixed-dz.info" ]; then
     echo "INFO: Fixing permissions in the /data/all tree..."
-    find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
-    find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
-    chown -R root:root /data/conf &> /dev/null
+    ### /data/conf is root's: every site loads its global includes from it.
+    ### chown -R first, which follows no link and takes a file an account
+    ### hard-linked there back to root, then the modes through each entry's
+    ### own handle, never through a name swapped for a link.
+    _acct_in_real_dir /data/conf chown -R root:root . &> /dev/null
+    _acct_in_real_dir /data/conf _global_conf_modes_here &> /dev/null
     ### sites/all/{modules,libraries,themes} stay 02775 group 'users', and
     ### every account's identities carry 'users' (primary on an unconverted
     ### instance, supplementary once it has its per-instance group), so this

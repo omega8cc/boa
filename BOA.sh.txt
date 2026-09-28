@@ -2229,7 +2229,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f66
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f47
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f51
-    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f70
+    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f69
     _runner_parked owl.sh \
       || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f75
     ###
@@ -4070,47 +4070,60 @@ _fix_eldir() {
   fi
 }
 
+# /data/conf/patches holds the patches every account's Drupal 10 and 11
+# platforms are patched from. A run of an earlier release handed /data/conf
+# to the Octopus account it upgraded, so a name there can still be a link
+# that account put: the files are written and removed only inside the real
+# patches/, never through a link put there or at patches itself, and a FIFO
+# or a device put at a name is never opened (grep -D skip).
 _if_drupal_patches_update() {
   if [ -e "/var/xdrago" ]; then
-    _BROKEN_UPDATE_TEST_A=$(grep "Under Construction" /data/conf/patches/* 2>&1)
-    _BROKEN_UPDATE_TEST_B=$(grep "404 Not Found" /data/conf/patches/* 2>&1)
+    _BROKEN_UPDATE_TEST_A=$(grep -D skip "Under Construction" /data/conf/patches/* 2>&1)
+    _BROKEN_UPDATE_TEST_B=$(grep -D skip "404 Not Found" /data/conf/patches/* 2>&1)
     if [ ! -z "${_BROKEN_UPDATE_TEST_A}" ] \
       || [ ! -z "${_BROKEN_UPDATE_TEST_B}" ] \
       || [ ! -e "/data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p /data/conf/patches
-      rm -f /data/conf/patches/*
-      touch /data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid
+      _acct_in_real_dir /data/conf/patches _acct_rm_all_here
+      _acct_in_real_dir /data/conf/patches \
+        _acct_touch_here "ctrl.f96.${_tRee}.${_xSrl}.pid"
     fi
   fi
+}
+# Every name directly in the current (pinned) directory removed, as rm -f
+# dir/* removed them (the glob expands here).
+_acct_rm_all_here() {
+  rm -f -- ./*
+}
+# The patch $1 fetched from the mirror and put as /data/conf/patches/$1,
+# root's and 0644 as curl -o wrote it, when it is missing or not a regular
+# file: downloaded into a root-only directory first, then put through one
+# handle inside the real patches/ (_acct_put_mode_here).
+_drupal_patch_get() {
+  local _w
+  [ -f "/data/conf/patches/${1}" ] && [ ! -L "/data/conf/patches/${1}" ] \
+    && return 0
+  mkdir -p /data/conf/patches
+  _w=$(mktemp -d /run/.boa-patch-get.XXXXXX 2> /dev/null) || return 1
+  if curl ${_crlGet} "${_urlHmr}/patches/${1}" -o "${_w}/p"; then
+    _acct_in_real_dir /data/conf/patches \
+      _acct_put_mode_here "${1}" 0 0 644 < "${_w}/p"
+  fi
+  rm -rf -- "${_w}"
 }
 
 _fix_drupal_core_ten() {
   if [ -e "/var/xdrago" ]; then
-    if [ ! -e "${_tenCorePatchPath}" ]; then
-      mkdir -p /data/conf/patches
-      curl ${_crlGet} "${_urlHmr}/patches/${_tenCorePatchFname}" -o ${_tenCorePatchPath}
-    fi
-    if [ ! -e "${_tenConsolePatchPath}" ]; then
-      mkdir -p /data/conf/patches
-      curl ${_crlGet} "${_urlHmr}/patches/${_tenConsolePatchFname}" -o ${_tenConsolePatchPath}
-    fi
+    _drupal_patch_get "${_tenCorePatchFname}"
+    _drupal_patch_get "${_tenConsolePatchFname}"
   fi
 }
 
 _fix_drupal_core_eleven() {
   if [ -e "/var/xdrago" ]; then
-    if [ ! -e "${_elevenCorePatchPath}" ]; then
-      mkdir -p /data/conf/patches
-      curl ${_crlGet} "${_urlHmr}/patches/${_elevenCorePatchFname}" -o ${_elevenCorePatchPath}
-    fi
-    if [ ! -e "${_elevenConsolePatchPath}" ]; then
-      mkdir -p /data/conf/patches
-      curl ${_crlGet} "${_urlHmr}/patches/${_elevenConsolePatchFname}" -o ${_elevenConsolePatchPath}
-    fi
-    if [ ! -e "${_elevenValidatorPatchPath}" ]; then
-      mkdir -p /data/conf/patches
-      curl ${_crlGet} "${_urlHmr}/patches/${_elevenValidatorPatchFname}" -o ${_elevenValidatorPatchPath}
-    fi
+    _drupal_patch_get "${_elevenCorePatchFname}"
+    _drupal_patch_get "${_elevenConsolePatchFname}"
+    _drupal_patch_get "${_elevenValidatorPatchFname}"
   fi
 }
 
