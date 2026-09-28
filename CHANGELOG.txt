@@ -50,6 +50,124 @@
 
 @=> Security
 
+    * The per-site login and admin IP lock now covers the legacy
+      query-string route form and trailing-character path variants on
+      Drupal 6, Drupal 7 and Backdrop and on the control panel, matching
+      the clean-path coverage; listed addresses and the anti-lockout are
+      unchanged, and the verdict is judged on the real visitor behind the
+      wildcard SSL front and the panel proxy.
+    * The migration key exchange is pinned: the target's pre-mig of xoct,
+      xcopy and xmass requires --key-fp=SHA256:..., the fingerprint the
+      source's pre-mig prints, and adds only the matching key, tagged
+      with the tool and the source address. post-mig stops publishing
+      the source's key.
+    * Where the nightly, syncpass and the Solr agent replace a file in a
+      directory the account can write, the new file is created, owned
+      and moded through one handle; nothing is chowned by name there.
+    * The Solr agent reads and writes an account's site files only inside
+      the real directories, bounded and never through a link or from a
+      FIFO; an uploaded Solr config is staged and checked before it is
+      applied, and each site's pass acts only on that site's core.
+    * A migratefs hold, a queue pause and a backup wait marker count only
+      for a live root process of the tool that wrote it; a migration
+      park lasts at most 24 hours.
+    * xoct, xcopy and xmass create, own and mode each file they put in an
+      account directory through one handle, re-assert an existing one
+      only when the expected identity already owns it (never a root-owned
+      file), set and clear the .ftp home's immutable flags inside the
+      real directories, and write their root-only records only through a
+      handle that checks a regular single-link root file. A rename move
+      never makes a link as root for a tenant. aegir2boa-stage2's
+      destination group pass works the same way.
+    * usage.sh, copydbackup, the nightly purge and the Octopus pass take
+      an account's files store only as its own static/files or
+      /mnt/<mount>/files/<oN>/static/files, the nightly's rule.
+    * Every tool that writes, claims, restores or migrates an account's
+      web paths now knows the account's own web group (wg-<account>),
+      the groundwork for taking tenants out of the shared web server
+      group. Nothing changes until an account is converted to it; xoct,
+      xcopy and xmass refuse to move a converted account to a box whose
+      tools predate it. Account names may not begin with wg- or hold a
+      dot.
+    * Root no longer follows a link, or opens a FIFO, that an account
+      puts at a name in its own directories: static/control, and the
+      log/, .drush/, config/, tools/, .tmp/ and .ftp home names its main
+      user owns (or at any of those directories itself). This covers the
+      barracuda, octopus and self-update runs, the nightly, three-minute
+      and global passes, xmass, xoct, xcopy, xtrim, renameaegirhost,
+      aegir2boa-stage2, migratefs, the remote backup setup and backup
+      tools, the permission helpers run through sudo, syncpass, the
+      migration certificate mirror and the operator report tools. Each
+      name is read in the real directory, bounded and without following a
+      link, and written as a fresh file renamed over its name; modes and
+      owners inside a walk are set through handles that never follow a
+      link, and a directory keeps its setgid bit as chmod(1) keeps it.
+      Values read from an account's log/ files are used only in their
+      plain form. Paths the earlier audit fixed are unchanged.
+    * A per-account remote backup credentials file may set only the names
+      the backup tools use; any other line is ignored and logged, and the
+      backup runs on.
+    * The new SFTP password a tenant asks for is delivered readable by
+      that account alone.
+    * The nightly temporary-file purge and copydbackup act only inside
+      the account's own files store, or its copy relocated by migratefs.
+    * The remote backups no longer store the content a link in an
+      account's tree points at: links are backed up as links, and an
+      account's files store relocated by migratefs is included by its own
+      path. Duplicity's source reads open each file without following a
+      link or waiting on a FIFO (a pinned patch of the installed release).
+    * During a queued restore the backup credentials and passphrase are
+      handed to the account's main user, still 0600, instead of being
+      made readable by every account.
+
+    * A site's HTTP basic auth password file is no longer world-readable.
+      The ltd worker used to add read for everyone every few minutes; it
+      now keeps the file 0640 in the web server's group, inside a
+      passwords.d that is setgid in that group and that only its owner
+      and that group can enter (02710). The Aegir task writes it that
+      way. The task hashes the password with SHA-512 and a random salt,
+      where the old hash checked only the first eight characters, and no
+      longer gives the account group write access to the directory that
+      holds vhost.d. Existing files keep their old hash, and keep
+      working, until the site's next Verify rewrites them.
+    * An Octopus upgrade no longer leaves the basic auth password files
+      unreadable to nginx until the ltd worker's next pass, and the
+      worker no longer takes them to 0600 for a moment on every pass.
+    * Nor does the upgrade take them out of the web server's group
+      while it hands the account's config over: for that moment nginx
+      could not read them and answered with an error.
+    * The optional Chive, SQL Buddy and Collectd Graph Panel apps are
+      no longer writable by other accounts: their files were 0664 and
+      their directories 0775 in the web server's group, which every
+      account's users belong to. They are 0644 and 0755 now, as Adminer
+      always was, set without following a link.
+    * The nightly pass over a ~/static platform no longer makes its
+      sites' settings.php, local.settings.php, civicrm.settings.php,
+      solr.php and drushrc.php readable by every account for a moment:
+      they stay 0440 while the rest of the platform gets its modes.
+    * A site's solr.php, which holds its Solr core details, stays in the
+      account's own group: the ownership fix and the nightly pass used to
+      put it in the web server's group, readable by every account.
+    * Root no longer changes the owner or mode of a shared-code
+      revision's keys directory through a link the account put there,
+      in the Octopus upgrade or in the nightly pass: the directory is
+      made only when missing, and never through a link.
+    * xmass sends an account's nginx directories only from the real
+      directory, never through a link planted in or above them.
+    * The ownership and permissions fix for a site takes a linked files
+      or private store only when it resolves below the account's own
+      real static/files, or below the account's store on attached
+      storage: static/files is the account's to change, so where it
+      pointed no longer decided which directory root changed.
+    * boa archived (list, prune and the disk-pressure heal) takes an
+      account's archived store only from its own real static/files or its
+      own store on attached storage, never another account's store or any
+      other directory on the mount.
+    * The nightly pass takes the group of a site's and a platform's files
+      from where their paths really lead, never from the text of the
+      account's alias: a path written through a link in the account's own
+      tree could name another account, whose group the files then got.
+
     * The shared Backdrop redis module, the Backdrop bundle's webform and
       bee are root's as soon as BOA unpacks them: their archives recorded
       the account that built them, and an unpack as root kept that owner
@@ -284,6 +402,28 @@
       group's list now carries the /opt/phpNN/bin/php paths the aliases
       expand to.
 
+    * The far-future path (/cdn/farfuture/...) answers 404 for a site's
+      private files, its backup_migrate and config_ files, settings.php
+      and other PHP and source files, any hidden file and Composer
+      metadata. It used to serve them, settings.php included.
+
+    * A site's backup_migrate and config_ files are refused before the
+      locations that serve webform uploads, weak-module assets and paths
+      holding /external/ or /system/ are tried, and those locations,
+      image styles, imagecache and the responsive and adaptive image
+      locations among them, leave a site's private directories to the
+      private-download handling. A file whose name or path fitted one of
+      them was served from there, private files included. A PHP file
+      under a files directory, a module's own included, answers 404
+      through each of those locations and the advagg ones. Subdirectory
+      sites have the same protection, an encoded line feed after a file
+      name included.
+
+    * Crawlers are refused at the httprl callback and at audio module
+      downloads, as the Drupal vhosts always meant to: the check sat
+      where those requests never met it. Subdirectory sites refuse them
+      there too.
+
 @=> New Features
 
     * New ~/static/control/cli-per-platform.info gives one platform its
@@ -412,6 +552,56 @@
       built without their require-dev packages, like the others.
 
 @=> Improvements
+
+    * DeepSeekBot, DeepSeek's crawler for model training, joins the AI
+      training class: it gets 444 by default like GPTBot and ClaudeBot,
+      and a site's train-allow record admits it with the rest of the
+      class.
+
+    * Cloudflare's address lists are fetched once a day, and at once only
+      while the ranges file is missing; every self-update pass (every five
+      minutes) used to fetch them again.
+
+    * The status request every clear.sh run sends to BOA's mirror now
+      carries only the box's BOA release and OS release (it used to name
+      the hostname, every address, the instance paths and their site
+      counts), and _VERSION_REPORT=NO in /root/.barracuda.cnf switches it
+      off. It is what decides when support for a legacy OS can be
+      dropped, and it lives only in the mirrors' rotated access logs.
+
+    * Percona telemetry is off, a custom my.cnf included. The server
+      package's one-off report to Percona at install is skipped, and on
+      Percona 8.x the telemetry component no longer loads: BOA keeps a
+      file of its own in the dir my.cnf includes (the operator's my.cnf is
+      never edited), unloads the component from a running server on the
+      next barracuda pass without a restart, and removes the usage
+      reports it had written for the telemetry agent. The agent package
+      stays installed, as the server package requires it; it never
+      starts on Devuan.
+
+    * No account keeps a command-line php.ini of its own any more: every
+      PHP runs on the global php.ini of its own version and keeps its
+      temporary files in the calling account's ~/.tmp (the instance's and
+      the master's own .tmp for the Aegir backend), which websh sets as
+      TMPDIR. That now holds for every version cli.info, a phpNN.info
+      switch or a cli-per-platform.info line selects, and for every Drush,
+      Composer (its @php scripts included), bee and PHP by name, where it
+      held for Drush 8 and Composer on the pinned version only. The
+      three-minute pass removes the copies earlier releases kept, and logs
+      each removal; a web user keeps a one-line placeholder in its place,
+      which earlier releases read as the web user being in place.
+
+    * A PHP a command line starts by name or path (a member's php85, a
+      drush8 later in the line) no longer loads another version's php.ini:
+      websh drops a PHPRC it inherits and sets none.
+
+    * A web user without a php.ini is no longer deleted and made anew, home
+      included, at the next PHP-FPM change: the pool version it was set up
+      for is recorded in its version stamp, and only a missing account or
+      home is made anew. Octopus no longer follows a name the web user
+      puts in its own home (a link at .drush, .lock, the stamp or
+      php.ini) while it updates that home, and a .lock the web user plants
+      no longer stops the update for good.
 
     * A Devuan Daedalus system upgraded in place from an older release,
       whose /bin, /sbin and /lib are still apart from /usr, is converted
@@ -632,11 +822,231 @@
 
 @=> Important Fixes
 
+    * The AI training block no longer refuses Claude-User, Claude-SearchBot
+      and Amzn-SearchBot. Their user agents name a training crawler in the
+      contact part (claudebot@anthropic.com, .../support/amazonbot), which
+      the training map matched, so a user-triggered fetch and two
+      answer-engine indexers that sites allow by default got 444.
+
+    * Imagick loads again on boxes that once built ImageMagick from
+      sources, as every box upgraded between January 2022 and April 2023
+      did. That build stayed under /usr when BOA went back to the distro
+      packages, and on a merged /usr the Imagick build took its files
+      over the distro's: after the Daedalus conversion to merged /usr,
+      imagick.so linked that old ImageMagick 7 and PHP could not load it
+      ("libtiff.so.5: cannot open shared object file"), with and without
+      the prebuilt packages. Every barracuda pass now moves the old
+      build's MagickWand-config and pkg-config files, which no package
+      owns, to /var/backups; it rebuilds an imagick.so that PHP cannot
+      load or that still links the old build; a new imagick.so is kept
+      only when PHP loads it, otherwise the previous one stays and the
+      pass reports it (#1945).
+
+    * On Devuan Excalibur the magick command is the distro's ImageMagick
+      7 again, reading /etc/ImageMagick-7/policy.xml: the old build's own
+      magick, left in /usr/bin, kept the distro's alternative link from
+      being made. It is moved to /var/backups on the next barracuda pass.
+      Where the distro has no magick (ImageMagick 6 on Daedalus), the old
+      one stays where it is.
+
+    * Audio and video files go out with their own types and reach the
+      long-timeout media locations by short URI as well. BOA's mime.types
+      now names opus (audio/ogg, the Ogg Opus type), flac, weba and mkv,
+      which went out as application/octet-stream. Short /files/ and
+      /downloads/ URIs of oga, opus, flac, aac, weba, webm, mkv and m4v,
+      and of vtt captions, were handed to Drupal, which answered 404, on
+      regular and subdirectory sites alike; /downloads/ did the same for
+      mp4, m4a and flv. So an aac by short URI now gets the one-hour send
+      timeout of the entry further down.
+
+    * A crowd arriving at a new page no longer overruns PHP while the
+      page's first copy is built: visitors waiting for that copy now wait
+      up to 30 seconds for it instead of nginx's 5, then get it from the
+      front cache. Tested with 150 visitors on an 8-second render and a
+      pool of 16: two renders instead of 71, and no visitor timed out.
+      The per-site anonymous ceiling still counts the waiting requests.
+
+    * HTTPS to a site without a certificate of its own passes the wildcard
+      SSL front before the site, and the front still cut a stalled reader
+      of audio or video at 180 seconds. It now gives those types the same
+      hour as the site vhosts; the next barracuda pass puts the new front
+      in place.
+
+    * Node.js for the NPM add-on follows one major release line, Node 24
+      (LTS): each barracuda pass moves a box with an older major, or with
+      no working node, onto it, and leaves a newer major alone. Node used
+      to be installed once and never upgraded, the version pin reached no
+      box, and a failed first install or the gate turned off and on left
+      a box without node for good; with NodeSource's current setup script
+      a fresh box got the repository but no node.
+
+    * BOA now writes the NodeSource apt source for the NPM add-on itself,
+      the key checked against its known fingerprint, instead of running
+      the downloaded setup script as root, and closing the gate removes
+      that source again.
+
+    * Drupal 7 sites that store the private download method get it back:
+      the nightly check that turns allow_private_file_downloads on for
+      them read the setting through the public default BOA forces until
+      that switch is on, so it never saw private and wrote FALSE instead.
+      It now reads the value the site stored, and leaves the site INI as
+      it is when that read fails.
+
+    * The disk over-limit mail says that a deleted site's files, kept
+      aside under static/files/.archived, keep counting until that
+      archive is pruned, and to ask support for the prune: deleting a
+      site alone does not lower the figure.
+
+    * The nightly usage count no longer deletes files in the accounts by
+      name (.DS_Store, *~, *#, .#*, *--, ._* and exclude.tag, uploads
+      included): the count reads every name as it is, and nothing in
+      BOA honours an exclude tag. The skip-force-cleanup.txt opt-out has
+      nothing left to skip.
+
+    * Root passes that act on an account's files (the hourly agent
+      refresh, the nightly, the limited-shell worker, the Barracuda and
+      Octopus upgrades, backups and restores, the fix-drupal scripts,
+      instgrp and the migration tools) put, own, mode and flag each file
+      through one handle opened without following a link, and change
+      only directories and single-link regular files. A file with more
+      than one link keeps its owner and mode; the fix-drupal scripts and
+      the nightly hand-overs say how many they left.
+    * The hourly refresh of the Let's Encrypt include and dehydrated
+      replaces what it finds instead of writing through it, and a
+      registration stopped at its time limit is no longer recorded as
+      done.
+    * instgrp changes a hard-linked file or FIFO only when its owner is
+      one of the account's identities in the target group; status lists
+      the rest on an other: line, never as drift, and revert keeps the
+      group while such an entry carries it. The nightly group-drift
+      probe checks only what a reclaim changes, so it no longer reruns a
+      reclaim every night.
+    * aegir2boa keeps the target's migration state in root-only
+      /var/backups/a2b/<oN>; a dispatcher an earlier release parked in
+      the account tree is rebuilt from another account's.
+    * The ~/.drush reset of a sub-account whose directory an earlier
+      release made root-owned, holding only alias copies, runs again.
+
+    * migratefs reads a target given through a link under /mnt on the
+      device the link leads to, instead of reporting it as the same
+      filesystem as /data/disk, and no longer counts such a link as a
+      second mount that refuses every run.
+
+    * An xoct rename transfer hands the account's files to the new
+      identities in one walk per owner again, instead of one process per
+      directory, which made the owner remap about 80 times slower on a
+      large account; a directory it cannot open is named.
+    * migratefs refuses a target the store readers would ignore (a path
+      that is not plain, or with a directory named files or static on
+      its way) before it moves anything.
+    * Solr: an upload through a files link into the account's store on a
+      nested /mnt mount is applied; a Drupal 8+ core created while the
+      site sets solr_custom_config = YES takes no upload.
+
+    * Fixing a platform's permissions no longer prints "No such file or
+      directory" into the task log and the Octopus log for the codebase
+      folders the platform does not have (core/ on Drupal 7, includes/
+      and misc/ on Drupal 8 and newer). The modes it sets are unchanged.
+
+    * A fresh Drupal 10.1.8 platform is no longer reported as "the extract
+      came out short" and fetched again on the next Octopus pass: the
+      completeness check now leaves out the three directories the platform
+      lock keeps closed, which that tarball carries closed already.
+
+    * Azure remote backups work again with the Duplicity release BOA
+      installs: the target is azure://<bucket>, and the connection string
+      Duplicity reads is composed from AZURE_STORAGE_ACCOUNT and
+      AZURE_STORAGE_KEY unless the credentials file sets
+      AZURE_CONNECTION_STRING. The old azure://<account>@<bucket> target
+      was refused as an invalid container name.
+    * A tenant restore of a path below static/files, or below a site's
+      files/ or private/ link, is served from the store it resolves to,
+      so it also works for a store relocated by migratefs; a relocated
+      /data/disk/arch is included in the global backup by its own path.
+    * backboa, duobackboa and multiback restore into an account's tree
+      through a root-only stage and a rename, accept the links BOA makes
+      on the way, refuse a destination with '..' names, and multiback no
+      longer creates a missing target under an account directory.
+    * migratefs closes the store's parent before it creates the store,
+      never reuses a store left by an earlier run (it is renamed aside),
+      removes a copy that never went live, waits while the nightly runs,
+      requires a root-owned mount chain that group and others cannot
+      write, and bounds its post-copy recheck with --recheck-max (MB).
+    * renameaegirhost --help prints only its usage header, without the
+      section banners that followed it.
+    * xoct and xcopy pre-mig keep the five runners parked until post-mig
+      (at most 24 hours): the tools refresh and a barracuda system pass no
+      longer bring them back, so create's armed upgrade and the task queue
+      no longer run in the middle of a move.
+    * xoct and xcopy transfers keep the target's own hostmaster, hm and
+      server_master aliases, and import refuses before changing anything
+      when the panel alias names no site or database on the box, instead
+      of skipping the panel import and reporting success.
+    * xcopy uses the account's own e-mail address from log/email.txt, and
+      refuses one xoct would refuse, instead of a fixed address.
+    * migratefs holds each store while it relocates it: the nightly account
+      pass, updatesymlinks, the octopus pass, usage cleanup and copydbackup
+      leave a held store alone, and the SQL backups wait up to 3 hours for
+      a held /data/disk/arch before skipping with a notice.
+    * migratefs, updatesymlinks, the nightly backups mover and the
+      migrate-source sweep never run under another live operation's queue
+      pause, which that operation could lift in the middle of their work.
+    * Solr: an uploaded config set is compared file by file and applied
+      whole, a set the core refuses to load is rolled back, the reload's
+      answer is checked, and a template check no longer depends on the
+      previous site. Drupal 8 and later cores take their config only from
+      the upload; the incomplete D8+ templates are retired.
+    * After an xoct or xcopy import the panel keeps the front page its
+      database carries, instead of answering 403 until the next Octopus
+      upgrade.
+    * A refused or failed xoct or xcopy verb sets the .ftp home's
+      immutable flags again, instead of leaving them cleared until the
+      next limited-shell worker pass.
+    * Solr: solr_update_config works as documented: an apachesolr or
+      Drupal 7 core takes a newer BOA template only with YES. A core
+      whose INI sets solr_custom_config = YES is protected before the
+      pass that first reads it refreshes anything.
+    * The Octopus upgrade sets the hostmaster site's store files to 0664,
+      as the nightly does, not 2775.
+    * The usage figure of an account with a relocated store is measured
+      without following links: the account, plus its own store once.
+    * The fix-drupal-* permission helpers and fixrepo set modes in
+      batches through handles that never follow a link, where one
+      process per directory made them slow; a direct root run acts only
+      in the tree of the account the path lies in. syncpass fix writes
+      the resolved database host.
+
+    * Classic Drush 8.5.10: a Drush 8 run whose home has no ~/.tmp, or
+      that runs as root, finds a temporary directory again (TEMP, TMP,
+      /tmp), where it found none and created its temporary directories
+      at the root of the filesystem.
+
+    * A site-local Drush started by its own path, which is how Drush 12
+      and 13 run their child processes (updatedb, deploy), now runs on
+      the PHP the account chose, where it ran on the server default PHP
+      through the script's own "env php" line.
+    * A shell account's drush line is judged by its command word only:
+      a Drush line piped into a grep for "config", and sql-cli, which
+      stays allowed, are no longer refused by a check of the last word
+      of the whole line.
+    * root's /bin/sh refuses a line that runs Drush, not one that only
+      names it (grep -c drush FILE was refused).
+
     * The install markers of Drush 8, 10 and 11 and bee in /opt/tools no
       longer pile up, one per release: each install keeps only the marker
       of the current tree and release, which is the one the next pass
       reads to skip a needless reinstall. The directory clean before each
       install skipped dotfiles, so a box kept every earlier marker.
+
+    * An Octopus upgrade no longer makes a /keys directory, open to the
+      web group, at the root of the filesystem, nor deletes robots.txt
+      files one level below the root: it removes such a /keys when it
+      holds nothing but its own link, and takes robots.txt out of the
+      new shared-code platforms again.
+    * xmass now carries each account's HTTP basic auth password files
+      with its vhosts. A migrated site with basic auth used to answer
+      every request with an error on the new box until its next Verify,
+      since its vhost named a file that never arrived.
 
     * The barracuda pass that disables unused PHP versions (on a major OS
       upgrade, with /root/.allow-php-multi-install-cleanup.cnf, and on
@@ -997,7 +1407,7 @@
       that merely start with the same name, /blog redirects to /blog/
       without leaving HTTPS, and over HTTPS a subdirectory site's links
       keep the subdirectory. Under a domain that is not a site, PHP pages
-      no longer fail and the same guards apply as under a site.
+      no longer fail.
 
     * Delete and restore take a subdirectory site's configuration along,
       a clone into another subdirectory gets its own, and a moved
@@ -1006,6 +1416,59 @@
       and Grav and Textpattern sites are refused. A subdirectory site's
       one-time login link no longer loads the domain's cached data, and
       Let's Encrypt leaves subdirectory addresses out of certificates.
+
+    * A subdirectory site gets the handling a site of its own gets from
+      the web server. A missing image style derivative is generated,
+      Drupal 10+ builds its aggregated CSS and JS, web cron works on
+      Backdrop and, on Drupal 10+, is refused from any address but the
+      server's own, as for a site of its own, update.php works on
+      Drupal 10+ and Backdrop, and files of every type a site serves
+      (JSON, XML, CSV, calendar and media files among them) come from
+      the site's own files directory. The request guards, rate limits,
+      cache rules and response headers of a site's vhost apply to its
+      paths as well.
+
+    * A subdirectory site runs on the PHP version set for it in
+      multi-fpm.info, and otherwise on the account's default version.
+      Under a domain's site it ran on the version set for that site.
+
+    * Only Drupal and Backdrop sites live in a subdirectory or carry
+      subdirectory sites. The site form refuses a subdirectory address on
+      a Grav or Textpattern platform, and one whose domain is a Grav or
+      Textpattern site; a Verify skips such an address with a warning,
+      and the Grav and Textpattern vhosts include no subdirectory
+      configurations.
+
+    * A domain that is not a site but serves subdirectory sites now
+      applies its ip_access and AI crawler policy records, and the
+      request guards and response headers of a site's vhost, to every
+      path it serves. It already refused banned addresses, crawlers and
+      methods no site accepts.
+
+    * A request to a subdirectory site whose query string holds
+      "/autocomplete/" reaches that site, not the domain's site: the
+      Drupal autocomplete workaround runs in the catch-all location
+      instead of for every path of the server.
+
+    * An imagecache path under another sites directory
+      (sites/default/files/imagecache/...) is served from the site's
+      own copy when there is one, as the location always meant to: that
+      lookup never ran, and every such request went to Drupal.
+
+    * A Drupal site run on the command line as --uri=example.com/blog,
+      or under one of its aliases, keys its cache and finds its site INI
+      under its own name, as its web requests do. Drush takes the name
+      from the host of --uri, so a subdirectory site read and cleared
+      the cache entries of the domain's site and of the other
+      subdirectory sites run the same way: a drush cr left the site's
+      own pages stale, and a command could read another site's cached
+      configuration and state.
+
+    * On nginx 1.30 and newer the far-future and AdvAgg locations send
+      no ETag again once the server is verified: provision's check for
+      the etag directive knew versions up to 1.29 only, so the vhosts
+      fell back to an empty ETag header, which nginx drops, and every
+      such file kept its ETag.
 
     * A Drupal 10+ site no longer fails after its platform is locked again
       following work with the site-local Drush. Re-locking a platform the
@@ -3203,15 +3666,15 @@
 @=> New Documentation
 
     * AI bot control, per site:
-      https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY-USER.md
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-USER.md
     * AI bot policy, per-server overview:
-      https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY.md
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY.md
     * AI bot policy and edge testing (edgetest):
-      https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY-TESTING.md
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-TESTING.md
     * IP access control, per site:
-      https://github.com/omega8cc/boa/blob/5.x-pro/docs/IP-ACCESS-USER.md
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS-USER.md
     * IP access control, per-server overview:
-      https://github.com/omega8cc/boa/blob/5.x-pro/docs/IP-ACCESS.md
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS.md
 
 
 ###
@@ -3853,7 +4316,7 @@
    responsive (and stay that way during spikes), this is genuinely good news.
    Why is this a big deal? What should visitors notice?
 
-   Read the full story: https://github.com/omega8cc/boa/tree/5.x-pro/HTTP3.md
+   Read the full story: https://github.com/omega8cc/boa/tree/5.x-dev/HTTP3.md
 
  * Percona 8.4 comes to Excalibur. We no longer need vanilla MySQL 8.4 now that
    Percona has released its own build for Debian Trixie, which can be used on
