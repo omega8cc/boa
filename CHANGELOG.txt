@@ -547,6 +547,11 @@
 
 @=> Improvements
 
+    * DeepSeekBot, DeepSeek's crawler for model training, joins the AI
+      training class: it gets 444 by default like GPTBot and ClaudeBot,
+      and a site's train-allow record admits it with the rest of the
+      class.
+
     * Cloudflare's address lists are fetched once a day, and at once only
       while the ranges file is missing; every self-update pass (every five
       minutes) used to fetch them again.
