@@ -828,6 +828,27 @@
       the training map matched, so a user-triggered fetch and two
       answer-engine indexers that sites allow by default got 444.
 
+    * Imagick loads again on boxes that once built ImageMagick from
+      sources, as every box upgraded between January 2022 and April 2023
+      did. That build stayed under /usr when BOA went back to the distro
+      packages, and on a merged /usr the Imagick build took its files
+      over the distro's: after the Daedalus conversion to merged /usr,
+      imagick.so linked that old ImageMagick 7 and PHP could not load it
+      ("libtiff.so.5: cannot open shared object file"), with and without
+      the prebuilt packages. Every barracuda pass now moves the old
+      build's MagickWand-config and pkg-config files, which no package
+      owns, to /var/backups; it rebuilds an imagick.so that PHP cannot
+      load or that still links the old build; a new imagick.so is kept
+      only when PHP loads it, otherwise the previous one stays and the
+      pass reports it (#1945).
+
+    * On Devuan Excalibur the magick command is the distro's ImageMagick
+      7 again, reading /etc/ImageMagick-7/policy.xml: the old build's own
+      magick, left in /usr/bin, kept the distro's alternative link from
+      being made. It is moved to /var/backups on the next barracuda pass.
+      Where the distro has no magick (ImageMagick 6 on Daedalus), the old
+      one stays where it is.
+
     * Audio and video files go out with their own types and reach the
       long-timeout media locations by short URI as well. BOA's mime.types
       now names opus (audio/ogg, the Ogg Opus type), flac, weba and mkv,
