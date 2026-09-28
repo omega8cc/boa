@@ -89,6 +89,27 @@
       xcopy and xmass refuse to move a converted account to a box whose
       tools predate it. Account names may not begin with wg- or hold a
       dot.
+
+    * xoct, xcopy and xmass map an account's own group onto the target
+      account's on every leg as they copy, and on a rename xoct and xcopy
+      map each of its identities onto the new name's, so a run that stops
+      before its closing pass, xoct create, the standby autosync and the
+      cutover's last pass no longer leave files in another account's
+      group, or owned by an account the target has under the old name. An
+      answer about the target account's group, or on a rename about its
+      identities, that cannot be read stops the run, as one about its web
+      group does.
+
+    * boa cleanup purge sets the account's task dispatcher aside and ends
+      whatever still runs as its identities before removing them, so none
+      of them survives the purge by being busy, and it reloads the PHP-FPM
+      of every pool it removes. The homes it parks, and those the
+      limited-shell worker parks, are shut to root, and nothing either
+      leaves keeps a uid or gid that no longer names anyone: the next
+      account created could be given it. What its identities left in
+      /tmp, /var/tmp and /dev/shm is removed, and a forced master
+      reinstall hands the master tree it parks to root.
+
     * Root no longer follows a link, or opens a FIFO, that an account
       puts at a name in its own directories: static/control, and the
       log/, .drush/, config/, tools/, .tmp/ and .ftp home names its main
