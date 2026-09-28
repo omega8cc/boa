@@ -76,7 +76,13 @@ For full-server migrations where Percona versions match, consider
 > client's login, onto `o2` itself), so the copy is never owned by an account the target
 > has under the old name. A list of the target's identities that cannot be read, or that
 > has no `o2` yet, is a `DENY` too (the dry run is `NOT CLEAN`, `--live` and `create`
-> stop; re-run `create` once the target answers). `xcopy` does the same for both maps.
+> stop; re-run `create` once the target answers).
+>
+> `xcopy` maps the account's group and its web group the same way. It never renames: a
+> fourth argument naming another account is a `DENY` before the account is read, the
+> target is contacted or anything of the account is changed (the dry run is `NOT CLEAN`,
+> every verb stops), because `xcopy` rewrites no reference to the old name in the copied
+> vhosts, aliases or panel database. Move an account under a new name with `xoct`.
 >
 > The `CLEAN` dry token is **single-use** —
 > running `--live` consumes it, so one dry run cannot arm two live runs; re-run the dry

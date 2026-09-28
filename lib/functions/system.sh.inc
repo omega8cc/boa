@@ -1096,10 +1096,6 @@ _global_inc_conf_update() {
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-valkey.inc" global-valkey.inc
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
-    "${_locCnf}/global/global-if-redis.inc" global-if-redis.inc
-  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
-    "${_locCnf}/global/global-redis.inc" global-redis.inc
-  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-newrelic.inc" global-newrelic.inc
   _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
     "${_locCnf}/global/global-extra.inc" global-extra.inc
@@ -1130,7 +1126,6 @@ _fix_on_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _fix_on_upgrade"
   fi
-  sed -i "s/loglevel.*/loglevel warning/g" /etc/redis/redis.conf &> /dev/null
   sed -i "s/^TLS.*/TLS 2/g" /usr/local/etc/pure-ftpd.conf &> /dev/null
   cp -af ${_locCnf}/var/clean-boa-env /etc/init.d/clean-boa-env
   chmod 755 /etc/init.d/clean-boa-env &> /dev/null
@@ -1144,8 +1139,6 @@ _fix_on_upgrade() {
   _global_inc_conf_update
   if [ -e "/etc/init.d/valkey-server" ]; then
     _valkey_password_update
-  elif [ -e "/etc/init.d/redis-server" ]; then
-    _redis_password_update
   fi
 }
 
@@ -1332,8 +1325,8 @@ _valkey_ceiling_derive() {
   # _RAM/3 on every busy box while hit/miss/eviction behaviour does not;
   # else the legacy measured guard (peak x4, floored _RAM/16 and 512M,
   # only ever below _RAM/3); else the historical _RAM/3. Any read or
-  # parse failure falls through to the next rung, and Redis-legacy boxes
-  # (no valkey.conf) keep _RAM/3 unconditionally.
+  # parse failure falls through to the next rung, and a box with no
+  # valkey.conf yet keeps _RAM/3 unconditionally.
   _VK_PSW=""
   _VK_MEASURED=""
   _VK_LIVE_USED_MB=""
@@ -2027,26 +2020,6 @@ _tune_memory_limits() {
     fi
     if [ -n "${_NEEDS_VALKEY_RESTART}" ]; then
       service valkey-server restart &> /dev/null
-    fi
-  fi
-
-  if [ -e "/etc/redis/redis.conf" ]; then
-    sed -i "s/^maxmemory .*/maxmemory ${_MAX_VALKEY}/g" /etc/redis/redis.conf &> /dev/null
-    _NEEDS_VALKEY_RESTART=
-    if ! grep -qE '^maxmemory-policy[[:space:]]*volatile-lfu' /etc/redis/redis.conf; then
-      sed -i "s/^maxmemory-policy .*/maxmemory-policy volatile-lfu/g" /etc/redis/redis.conf &> /dev/null
-      _NEEDS_VALKEY_RESTART=YES
-    fi
-    if ! grep -qE '^[[:space:]]*save\b' /etc/redis/redis.conf; then
-      sed -i "s/^# save \"\"/save \"\"/g" /etc/redis/redis.conf &> /dev/null
-      _NEEDS_VALKEY_RESTART=YES
-    fi
-    if ! grep -qE '^[[:space:]]*save\b' /etc/redis/redis.conf; then
-      printf '\n# Cache-only instance: disable persistence (no RDB snapshots)\nsave ""\n' >> /etc/redis/redis.conf
-      _NEEDS_VALKEY_RESTART=YES
-    fi
-    if [ -n "${_NEEDS_VALKEY_RESTART}" ]; then
-      service redis-server restart &> /dev/null
     fi
   fi
 
@@ -4804,8 +4777,6 @@ _run_apt_get_dist_upgrade() {
   ### Reload key services if needed early
   if [ -e "/etc/init.d/valkey-server" ]; then
     _mrun "service valkey-server reload"
-  elif [ -e "/etc/init.d/redis-server" ]; then
-    _mrun "service redis-server reload"
   fi
   _mrun "service nginx reload"
   _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
@@ -7824,8 +7795,6 @@ _if_enforce_apparmor_profiles() {
         wait
         if [ -e "/etc/init.d/valkey-server" ]; then
           _mrun "service valkey-server reload"
-        elif [ -e "/etc/init.d/redis-server" ]; then
-          _mrun "service redis-server reload"
         fi
         _mrun "pkill -u unbound -x unbound"
         _mrun "killall pure-ftpd"
@@ -9096,8 +9065,6 @@ _if_post_major_os_upgrade() {
     ### Reload key services if needed early
     if [ -e "/etc/init.d/valkey-server" ]; then
       _mrun "service valkey-server reload"
-    elif [ -e "/etc/init.d/redis-server" ]; then
-      _mrun "service redis-server reload"
     fi
     _mrun "service nginx reload"
     _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
@@ -10177,8 +10144,6 @@ _if_major_os_upgrade() {
     ### Reload key services if needed early
     if [ -e "/etc/init.d/valkey-server" ]; then
       _mrun "service valkey-server reload"
-    elif [ -e "/etc/init.d/redis-server" ]; then
-      _mrun "service redis-server reload"
     fi
     _mrun "service nginx reload"
     _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
@@ -13019,9 +12984,6 @@ _initd_update() {
       if [ -e "/etc/init.d/valkey-server" ]; then
         _msg "INFO: Starting Valkey, PHP-FPM and Nginx"
         _mrun "service valkey-server start"
-      elif [ -e "/etc/init.d/redis-server" ]; then
-        _msg "INFO: Starting Redis, PHP-FPM and Nginx"
-        _mrun "service redis-server start"
       fi
       _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
@@ -13157,11 +13119,6 @@ _initd_update() {
           _msg "INFO: Reloading Valkey, PHP-FPM and Nginx..."
         fi
         _mrun "service valkey-server reload"
-      elif [ -e "/etc/init.d/redis-server" ]; then
-        if [ "${_DEBUG_MODE}" = "YES" ]; then
-          _msg "INFO: Reloading Redis, PHP-FPM and Nginx..."
-        fi
-        _mrun "service redis-server reload"
       fi
       _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
@@ -13388,8 +13345,6 @@ _sysctl_update() {
       echo "sshd hard nofile 999999" >> /etc/security/limits.d/sshd.conf
       echo "valkey soft nofile 65535" > /etc/security/limits.d/valkey.conf
       echo "valkey hard nofile 524288" >> /etc/security/limits.d/valkey.conf
-      echo "redis soft nofile 65535" > /etc/security/limits.d/redis.conf
-      echo "redis hard nofile 524288" >> /etc/security/limits.d/redis.conf
       echo "nginx soft nofile 524288" > /etc/security/limits.d/nginx.conf
       echo "nginx hard nofile 999999" >> /etc/security/limits.d/nginx.conf
       echo "jetty9 soft nofile 65535" > /etc/security/limits.d/jetty9.conf
@@ -13402,8 +13357,6 @@ _sysctl_update() {
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
       if [ -e "/etc/init.d/valkey-server" ]; then
         _mrun "service valkey-server restart"
-      elif [ -e "/etc/init.d/redis-server" ]; then
-        _mrun "service redis-server restart"
       fi
       _mrun "service nginx restart"
       _mrun "service ssh restart"

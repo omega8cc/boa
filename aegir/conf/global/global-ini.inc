@@ -78,7 +78,7 @@ $boa_ini = array(
   'disable_drupal_page_cache' => FALSE,            // FALSE for backward compatibility and max performance
   'set_composer_manager_vendor_dir' => FALSE,      // FALSE by default to not break site installation depending on custom value
   // --- Valkey/Redis probe tuning + cache observability (added 2026-05) -----
-  // See global-if-valkey.inc / global-if-redis.inc and global-valkey.inc.
+  // See global-if-valkey.inc and global-valkey.inc.
   // NOTE: BOA keeps a single, stable "redis_" namespace for ALL cache control
   // INI variables, even when the server runs Valkey (a drop-in Redis fork).
   'redis_connect_timeout' => '0.7',                // probe TCP connect timeout (s); was hardcoded 0.2

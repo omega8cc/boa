@@ -1191,8 +1191,6 @@ _nginx_wildcard_ssl_install() {
     fi
     if [ -e "/etc/init.d/valkey-server" ]; then
       _valkey_password_update
-    elif [ -e "/etc/init.d/redis-server" ]; then
-      _redis_password_update
     fi
     _mrun "service nginx restart"
   else

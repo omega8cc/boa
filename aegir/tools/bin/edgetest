@@ -111,6 +111,23 @@ _edge_in_real_dir() {
   _want="$(cd -P -- /data/disk 2> /dev/null && pwd -P)${_d#/data/disk}"
   ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
 }
+# The line $2 put as the file ./$1 in the real /data/conf, root's and 0644:
+# written under a fresh name through one handle created O_EXCL|O_NOFOLLOW
+# (_ACCT_PUT_PL) and renamed over the name, so a link an account left there
+# (an Octopus upgrade of an earlier release handed it /data/conf) is replaced,
+# never written through.
+_edge_conf_put() {
+  ( cd -P -- /data/conf 2> /dev/null \
+      && [ "$(pwd -P)" = "$(cd -P -- /data 2> /dev/null && pwd -P)/conf" ] || exit 1
+    _t="./.${1}.put.$$.${RANDOM}"
+    rm -f -- "${_t}"
+    if printf '%s\n' "${2}" | perl -e "${_ACCT_PUT_PL}" "${_t}" 0 0 644 \
+      && mv -f -T -- "${_t}" "./${1}"; then
+      exit 0
+    fi
+    rm -f -- "${_t}"
+    exit 1 )
+}
 # ./$2 in the real directory $1: never through a link, never blocked on a
 # FIFO, at most 1 MiB. Empty for anything else.
 _edge_read_in() {
@@ -598,7 +615,7 @@ _phase_realip_ban_proof() {
   if _unreachable "$1" "$2" || _server_error "$1"; then _warn "site not cleanly served (code $1) — cannot run the ban proof"; return; fi
   # 1. trust localhost so a CF-Connecting-IP header rewrites $remote_addr
   local _trust="/data/conf/nginx_cloudflare_real_ip.conf-edgetest"
-  echo "set_real_ip_from 127.0.0.1;" > "${_trust}"
+  _edge_conf_put "${_trust##*/}" "set_real_ip_from 127.0.0.1;"
   if ! service nginx configtest >/dev/null 2>&1; then _fail "configtest failed adding localhost trust"; rm -f "${_trust}"; return; fi
   service nginx reload >/dev/null 2>&1
   # 2. web-ban the sentinel IP via csf, mirror into nginx

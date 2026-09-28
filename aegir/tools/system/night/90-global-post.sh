@@ -171,13 +171,14 @@ for my $f (@ARGV) {
   close($h);
 }'
 # The modes of /data/conf (the current, pinned directory) and everything
-# below it, as find -type d|f -exec chmod 0755|0644 set them, each through
-# the entry's own handle (_CONF_ROOT_PL).
+# below it, as the Octopus upgrade sets them: directories 0755, files 0644,
+# each through the entry's own handle (_CONF_ROOT_PL), and the top 0711.
 _global_conf_modes_here() (
   PATH=/usr/local/bin:/usr/bin:/bin
   perl -e "${_CONF_ROOT_PL}" 0755 0644 .
   find . -mindepth 1 \( -type d -o -type f \) \
     -execdir perl -e "${_CONF_ROOT_PL}" 0755 0644 {} +
+  chmod 0711 .
 )
 
 # The modes of every account platform's sites/all/{libraries,modules,themes}

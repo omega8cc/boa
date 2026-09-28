@@ -1754,6 +1754,7 @@ _load_control() {
 _solr_props_boa_form() {
   local _file="${1}"
   [ -f "${_file}" ] || return 1
+  _solr_conf_path_real "${_file}" || return 1
   case "${2}" in
     solr9)
       if grep -q "solr9" "${_file}" 2> /dev/null \
@@ -1831,6 +1832,51 @@ _fix_solr7_cnf() {
   fi
 }
 
+# True when $1, a file below /data/conf/solr, is reached through real
+# directories only and is not a link itself: /data/conf is root's, but an
+# Octopus upgrade of an earlier release handed it to the account it upgraded,
+# which could have left a link there. Other paths pass as they are.
+_solr_conf_path_real() {
+  local _r _rel
+  case "${1}" in
+    /data/conf/solr/?*) ;;
+    *) return 0 ;;
+  esac
+  [ ! -L "${1}" ] || return 1
+  _r="$(cd -P -- /data/conf 2> /dev/null && pwd -P)" || return 1
+  _rel="${1#/data/conf/}"
+  [ "$(cd -P -- "${1%/*}" 2> /dev/null && pwd -P)" = "${_r}/${_rel%/*}" ]
+}
+# /data/conf/solr replaced by a fresh copy of root's own Solr config store,
+# inside the real /data/conf (the current, pinned directory): a link left at
+# solr is removed, never followed, and the new tree is made by root. It is
+# built aside and renamed into place, so nothing left at solr can make the
+# copy land inside it, and it is marked only once it is there.
+_solr_conf_refresh_here() {
+  local _n="./.solr.new.$$"
+  # a copy left by a run that died half way (one instance runs at a time)
+  rm -rf -- ./.solr.new.*
+  if ! cp -af /var/xdrago/conf/solr "${_n}"; then
+    rm -rf -- "${_n}"
+    return 1
+  fi
+  rm -f -- "${_n}"/.ctrl*
+  rm -rf -- ./solr
+  if [ -e ./solr ] || [ -L ./solr ] || ! mv -T -- "${_n}" ./solr; then
+    rm -rf -- "${_n}"
+    return 1
+  fi
+  touch "./solr/.ctrl.root.${_tRee}.${_xSrl}.pid"
+}
+
+# True when the refresh marker is a regular file in the current (pinned)
+# directory: tested inside the real /data/conf/solr, so a link left at solr or
+# at the marker never counts as a tree root made.
+_solr_conf_marker_here() {
+  [ -f "./.ctrl.root.${_tRee}.${_xSrl}.pid" ] \
+    && [ ! -L "./.ctrl.root.${_tRee}.${_xSrl}.pid" ]
+}
+
 _sync_solr_config() {
   local _rel_dir="$1"
   local _base_dir="/var/xdrago/conf/solr/${_rel_dir}"
@@ -1839,15 +1885,18 @@ _sync_solr_config() {
     local _baseCpy="${_base_dir}/schema.xml"
     local _liveCpy="/data/conf/solr/${_rel_dir}/schema.xml"
 
-    _check_config_diff "${_baseCpy}" "${_liveCpy}"
-
+    # "root" in the marker: a tree made before /data/conf stayed root's
+    # through the Octopus upgrade may hold a link an account left, so each
+    # box makes the tree afresh once under the new name. Only a real tree
+    # with that marker is read (the schema diff) before it is kept.
+    if _acct_in_real_dir /data/conf/solr _solr_conf_marker_here; then
+      _check_config_diff "${_baseCpy}" "${_liveCpy}"
+    else
+      _slrCnfUpdate=YES
+    fi
     if [ ! -e "/data/conf/solr/${_rel_dir}/solrconfig.xml" ] \
-      || [ ! -e "/data/conf/solr/.ctrl.${_tRee}.${_xSrl}.pid" ] \
       || [ ! -z "${_slrCnfUpdate}" ]; then
-      rm -rf /data/conf/solr
-      cp -af /var/xdrago/conf/solr /data/conf/
-      rm -f /data/conf/solr/.ctrl*
-      touch /data/conf/solr/.ctrl.${_tRee}.${_xSrl}.pid
+      _acct_in_real_dir /data/conf _solr_conf_refresh_here
     fi
   fi
 }

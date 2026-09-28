@@ -2079,7 +2079,7 @@ _update_agents() {
     fi
   fi
 
-  _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f87 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
+  _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f86 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
   _fetch_versioned ${_optBin}/clearwebbans "${_urlHmr}/tools/bin/clearwebbans" f95 --symlink ${_usrBin}/clearwebbans --guard /local/bin/clearwebbans
   _fetch_versioned ${_optBin}/defaultkeys "${_urlHmr}/tools/bin/defaultkeys" f99 --symlink ${_usrBin}/defaultkeys --guard /local/bin/defaultkeys
   # PHP-selecting bee launcher (identity verb policy). Deployed unconditionally
@@ -2137,7 +2137,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f60
     _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f73
     _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f93
-    _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f73
+    _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f72
     _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f98
     _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f94
     _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f94
@@ -2175,10 +2175,10 @@ _update_agents() {
     _runner_parked runner.sh \
       || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f62
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f78
-    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f78
+    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f75
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f78
     _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f85
-    _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f98
+    _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f96
     # Activate Cloudflare realip immediately by writing the set_real_ip_from
     # ranges include now, so a fresh/updated box does not wait for the daily
     # cron; the tool no-ops when nginx is absent and is idempotent otherwise.
@@ -2189,9 +2189,9 @@ _update_agents() {
       && [ ! -s "/data/conf/nginx_cloudflare_real_ip.conf" ] \
       && bash /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
     _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f93
-    _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f98
-    _fetch_versioned /var/xdrago/nginx_deny6.sh "${_urlHmr}/tools/system/nginx_deny6.sh" f99
-    _fetch_versioned /var/xdrago/nginx_fleet.sh "${_urlHmr}/tools/system/nginx_fleet.sh" f95
+    _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f96
+    _fetch_versioned /var/xdrago/nginx_deny6.sh "${_urlHmr}/tools/system/nginx_deny6.sh" f97
+    _fetch_versioned /var/xdrago/nginx_fleet.sh "${_urlHmr}/tools/system/nginx_fleet.sh" f93
     # The per-minute line otherwise arrives only with the crontab template on a
     # full up-* run, so a fetched detector would sit idle until then; ensure it
     # whenever the script is present. A line an operator commented out still
@@ -2207,8 +2207,8 @@ _update_agents() {
     # The migration-proxy trio previously reached boxes only inside the full
     # up-* tar, so a source box that had not upgraded since the certificate
     # mirror shipped had NO mirror at all -- the exact box that needs it.
-    _fetch_versioned /var/xdrago/migration_proxy_trust.sh "${_urlHmr}/tools/system/migration_proxy_trust.sh" f97
-    _fetch_versioned /var/xdrago/migration_proxy_realip.sh "${_urlHmr}/tools/system/migration_proxy_realip.sh" f99
+    _fetch_versioned /var/xdrago/migration_proxy_trust.sh "${_urlHmr}/tools/system/migration_proxy_trust.sh" f94
+    _fetch_versioned /var/xdrago/migration_proxy_realip.sh "${_urlHmr}/tools/system/migration_proxy_realip.sh" f96
     _fetch_versioned /var/xdrago/migration_proxy_certs.sh "${_urlHmr}/tools/system/migration_proxy_certs.sh" f95
     # A fetch-delivered mirror without its schedule is a false comfort: the
     # daily line normally arrives only with the crontab template on a full
@@ -2229,7 +2229,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f66
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f47
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f51
-    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f69
+    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f68
     _runner_parked owl.sh \
       || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f75
     ###
@@ -2313,14 +2313,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f62.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f59.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_solr_config.sh /var/xdrago/manage_solr_config.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_solr_config.sh" \
       -o /var/xdrago/manage_solr_config.sh
     if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
       chmod 700 /var/xdrago/manage_solr_config.sh
       chown root:root /var/xdrago/manage_solr_config.sh
-      touch ${_pthLog}/manage_solr_config.sh.ctrl.f62.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_solr_config.sh.ctrl.f59.${_tRee}.${_xSrl}.pid
       rm -f /var/xdrago/manage_solr_config.sh.old
       rm -f /run/manage_solr_config.pid
     else
@@ -5057,12 +5057,12 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f86 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f85 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f66 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f27 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f26 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f72 --guard duplicity
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f48 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f41 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f40 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f92 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f72 --guard duplicity
@@ -5104,8 +5104,8 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_rollback "${_urlHmr}/${_tBn}/synproxy_rollback" f94 --guard /local/bin/synproxy_rollback
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
-    _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f95 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f44 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f94 --guard /local/bin/webserver
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f43 --guard /local/bin/xcopy
     _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f28 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f92 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f70 --guard /local/bin/xtrim
@@ -5685,8 +5685,6 @@ _sysctl_update() {
       && [ ! -e "/etc/security/limits.d/solr9.conf" ]; then
       echo "sshd soft nofile 524288" > /etc/security/limits.d/sshd.conf
       echo "sshd hard nofile 999999" >> /etc/security/limits.d/sshd.conf
-      echo "redis soft nofile 65535" > /etc/security/limits.d/redis.conf
-      echo "redis hard nofile 524288" >> /etc/security/limits.d/redis.conf
       echo "nginx soft nofile 524288" > /etc/security/limits.d/nginx.conf
       echo "nginx hard nofile 999999" >> /etc/security/limits.d/nginx.conf
       echo "jetty9 soft nofile 65535" > /etc/security/limits.d/jetty9.conf
@@ -5699,8 +5697,6 @@ _sysctl_update() {
       echo "@www-data hard nofile 524288" >> /etc/security/limits.d/www.conf
       if [ -e "/etc/init.d/valkey-server" ]; then
         service valkey-server restart &> /dev/null
-      elif [ -e "/etc/init.d/redis-server" ]; then
-        service redis-server restart &> /dev/null
       fi
       service nginx restart &> /dev/null
       service ssh restart &> /dev/null
