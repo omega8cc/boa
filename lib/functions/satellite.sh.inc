@@ -410,30 +410,39 @@ _satellite_web_user_update() {
           fi
         done
       fi
+      # the placeholder and the stamp are put as the web user's from the
+      # start (0444 and 0644, owner and mode set through the handle that
+      # created them, _satellite_put_stdin_here), and the flag on php.ini is
+      # changed through a handle (_ACCT_CHATTR_PL): a hard link the web user
+      # renames over either name is never handed over or locked
       ( cd -P -- "${_T_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_T_HR}/.drush" ] || exit 0
         chattr -i . 2> /dev/null
-        [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr -i ./php.ini 2> /dev/null
+        [ -f ./php.ini ] && [ ! -L ./php.ini ] \
+          && perl -e "${_ACCT_CHATTR_PL}" - ./php.ini 2> /dev/null
         # a link the web user put at the name goes first (unlink never
         # follows it); a released copy of this upkeep wrote through one
         [ -L ./php.ini ] && rm -f -- ./php.ini
         if [ ! -e ./php.ini ] && [ ! -L ./php.ini ]; then
-          ( umask 0333
-            printf '%s\n' "; no per-account php.ini: the CLI runs on the global ini (kept for older releases)" \
-              | dd of=./php.ini conv=excl status=none ) 2> /dev/null
+          printf '%s\n' "; no per-account php.ini: the CLI runs on the global ini (kept for older releases)" \
+            | _satellite_put_stdin_here php.ini 0444 "${_WEB}:www-data"
         fi
         if [ ! -z "${_T_PV}" ]; then
           rm -f -- ./.ctrl.php*
-          echo | dd of="./.ctrl.php${_T_PV}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
+          echo | _satellite_put_stdin_here ".ctrl.php${_T_PV}.${_xSrl}.pid" \
+            0644 "${_WEB}:www-data"
         fi )
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "DEBUG: _T_PV is ${_T_PV} in _satellite_web_user_update D"
       fi
       chmod 700 /home/${_WEB}/
-      chown -R ${_WEB}:www-data /home/${_WEB}/
+      # handed over as chown -R did, from inside the real home, never a
+      # link or a file the web user hard-linked there (_satellite_reown_here)
+      _acct_in_real_dir "/home/${_WEB}" _satellite_reown_here "${_WEB}:www-data"
       ( cd -P -- "${_T_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_T_HR}/.drush" ] || exit 0
         chmod 550 .
         chattr +i . 2> /dev/null
-        [ -f ./php.ini ] && [ ! -L ./php.ini ] && chattr +i ./php.ini 2> /dev/null )
+        [ -f ./php.ini ] && [ ! -L ./php.ini ] \
+          && perl -e "${_ACCT_CHATTR_PL}" + ./php.ini 2> /dev/null )
       ( cd -P -- "/home/${_WEB}" 2> /dev/null && [ "$(pwd -P)" = "${_T_HR}" ] || exit 0
         rm -f -- ./.lock )
       chattr +i /home/${_WEB}/
@@ -449,10 +458,13 @@ _satellite_remove_web_user() {
     _debug_proc
   fi
   if [ -d "/home/${_WEB}/" ] || [ "$1" = "clean" ]; then
-    chattr -i -R /home/${_WEB}/ &> /dev/null
-    # by its bare path: chattr follows a link behind a trailing slash
+    # every name in the home is the web user's: unlocked from inside the
+    # real home as chattr -i -R unlocked it, never through a link, nor on a
+    # file the web user hard-linked there (_satellite_unlock_tree_here)
+    _acct_in_real_dir "/home/${_WEB}" _satellite_unlock_tree_here
+    # .drush on '.' from inside it, so nothing swapped in for it is unlocked
     if [ -d "/home/${_WEB}/.drush/" ] && [ ! -L "/home/${_WEB}/.drush" ]; then
-      chattr -i "/home/${_WEB}/.drush"
+      _acct_in_real_dir "/home/${_WEB}/.drush" chattr -i .
     fi
     mkdir -p ${_vBs}/zombie/deleted
     # only this user's agent (none for a user that never existed): -f
@@ -884,11 +896,12 @@ _enable_chattr() {
     ### A *.ftp home is never immutable, so every name in it is the login's:
     ### each flag is set inside the real directory, on a name that is not a
     ### link (chattr refuses a link named by its bare path, but follows one
-    ### behind a trailing slash or on the way).
+    ### behind a trailing slash or on the way); .bazaar on '.' from inside
+    ### it, so a file swapped in for it after the test is never locked.
     _acct_in_real_dir "/home/$1/platforms" _satellite_chattr_all_here +i
     _acct_in_real_dir "/home/$1/.drush" _satellite_chattr_drush_here +i
     if [ -d "/home/$1/.bazaar/" ] && [ ! -L "/home/$1/.bazaar" ]; then
-      chattr +i "/home/$1/.bazaar"
+      _acct_in_real_dir "/home/$1/.bazaar" chattr +i .
     fi
   fi
 }
@@ -908,7 +921,7 @@ _disable_chattr() {
     _acct_in_real_dir "/home/$1/platforms" _satellite_chattr_all_here -i
     _acct_in_real_dir "/home/$1/.drush" _satellite_chattr_drush_here -i
     if [ -d "/home/$1/.bazaar/" ] && [ ! -L "/home/$1/.bazaar" ]; then
-      chattr -i "/home/$1/.bazaar"
+      _acct_in_real_dir "/home/$1/.bazaar" chattr -i .
     fi
   fi
 }
@@ -1971,11 +1984,18 @@ _satellite_create_shared_dirs() {
   if [ ! -d "${_CORE}" ]; then
     mkdir -p ${_CORE}
   fi
-  chown -R ${_USER}:${_USRG} /data/conf      &> /dev/null
+  ### An earlier pass that stopped before its cleanup leaves these to the
+  ### account that ran it, which could have put a link or a hard link at any
+  ### name in them: /data/conf is walked from inside the real directory
+  ### (_satellite_reown_here), and each directory below /data/all is handed
+  ### over and moded on '.' from inside it, never through a link.
+  _acct_in_real_dir /data/conf \
+    _satellite_reown_here "${_USER}:${_USRG}" &> /dev/null
   chown ${_USER}:${_USRG} ${_D}              &> /dev/null
-  chown ${_USER}:${_USRG} ${_D}/000          &> /dev/null
-  chown ${_USER}:${_USRG} ${_D}/000/core     &> /dev/null
-  chown ${_USER}:${_USRG} ${_CORE}           &> /dev/null
+  _acct_in_real_dir "${_D}/000" chown -h "${_USER}:${_USRG}" . &> /dev/null
+  _acct_in_real_dir "${_D}/000" _acct_in_real_dir ./core \
+    chown -h "${_USER}:${_USRG}" . &> /dev/null
+  _acct_in_real_dir "${_CORE}" chown -h "${_USER}:${_USRG}" . &> /dev/null
   ### 777 here made /data, /data/disk, /data/conf and the shared /data/all
   ### store writable by every local user for the whole platform build below
   ### (reverted only in _satellite_batch_cleanup) -- long enough to drop code
@@ -1984,7 +2004,8 @@ _satellite_create_shared_dirs() {
   ### so owner-write is all it ever needed. These are the same modes
   ### _satellite_batch_cleanup asserts at the end of the run.
   chmod 0755 ${_D} &> /dev/null
-  chmod 0711 ${_CORE} /data /data/disk /data/conf &> /dev/null
+  chmod 0711 /data /data/disk /data/conf &> /dev/null
+  _acct_in_real_dir "${_CORE}" chmod 0711 . &> /dev/null
 }
 
 #
@@ -3222,8 +3243,11 @@ _satellite_add_user_dirs() {
   # /data/conf is box-wide: transiently owned by whichever account is running
   # and handed back to root by _satellite_post_cleanup. It keeps the box-wide
   # group on purpose -- never the account's own (_ACCG), which would make a
-  # shared path mean "one account" for the length of the run.
-  chown -R ${_USER}:${_USRG} /data/conf &> /dev/null
+  # shared path mean "one account" for the length of the run. Walked from
+  # inside the real directory, never handing over a link or a file an
+  # account hard-linked there (_satellite_reown_here).
+  _acct_in_real_dir /data/conf \
+    _satellite_reown_here "${_USER}:${_USRG}" &> /dev/null
   # On a fresh install the per-child includes are materialised before
   # this user exists, so ownership must be re-asserted here or the su'd
   # children cannot read their 0600 copies
@@ -3552,12 +3576,17 @@ _provision_backend_dbpass_sync() {
   _L_SYS="${_ROOT}/.${_USER}.pass.txt"
   ### The account home allows traversal, so a lax mode on these backups is
   ### readable by local users by exact path; never trust the moved file's
-  ### inherited mode -- set 0600 explicitly.
-  mv -f ${_L_SYS} ${_L_SYS}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+  ### inherited mode -- set 0600 explicitly. Moved by name inside the real
+  ### account root (-T: a link put at the backup name is replaced, never
+  ### followed into the directory it leads to), and the mode is set through
+  ### a handle only on a file with a single link (_SAT_NOFOLLOW_CHMOD_PL).
+  _acct_in_real_dir "${_ROOT}" mv -f -T -- "./.${_USER}.pass.txt" \
+    "./.${_USER}.pass.txt-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
   _acct_in_real_dir "${_ROOT}" _satellite_chmod_nofollow f 0600 \
     "./.${_USER}.pass.txt-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
   _L_SYS_PHP="${_ROOT}/.${_USER}.pass.php"
-  mv -f ${_L_SYS_PHP} ${_L_SYS_PHP}-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+  _acct_in_real_dir "${_ROOT}" mv -f -T -- "./.${_USER}.pass.php" \
+    "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
   _acct_in_real_dir "${_ROOT}" _satellite_chmod_nofollow f 0600 \
     "./.${_USER}.pass.php-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
   _provision_backend_dbpass_generate
@@ -3977,41 +4006,49 @@ _satellite_run_child_b() {
       # the ltd worker removes it. Cleared inside the real .drush only.
       _U_HD="${_ROOT}/.drush"
       _acct_in_real_dir "${_U_HD}" _satellite_unlock_here php.ini
-      ### handed over inside each real directory, so chown -R never follows
-      ### a link the account put at .drush, backups, clients, config or tools
-      _acct_in_real_dir "${_ROOT}/.drush" chown -R "${_USER}:${_ACCG:-users}" .
-      _acct_in_real_dir "${_ROOT}/backups" chown -R "${_USER}:${_ACCG:-users}" .
-      _acct_in_real_dir "${_ROOT}/clients" chown -R "${_USER}:${_ACCG:-users}" .
+      ### handed over inside each real directory, so the walk never follows
+      ### a link the account put at .drush, backups, clients, config or
+      ### tools, and never hands over a link, a FIFO or a hard-linked file
+      ### the account left in the tree (_satellite_reown_here)
+      _acct_in_real_dir "${_ROOT}/.drush" \
+        _satellite_reown_here "${_USER}:${_ACCG:-users}"
+      _acct_in_real_dir "${_ROOT}/backups" \
+        _satellite_reown_here "${_USER}:${_ACCG:-users}"
+      _acct_in_real_dir "${_ROOT}/clients" \
+        _satellite_reown_here "${_USER}:${_ACCG:-users}"
       # nginx reads the basic auth password files on every request: their
       # group is the web server's, so the hand-over leaves that subtree to
       # the setter below and never takes them out of it for a moment.
-      # -execdir, never -exec: chown then runs inside each directory find
-      # entered without following a link, on the bare name, so no directory
-      # between is looked up again by path (the account could have swapped
-      # it for a link by then). -execdir wants an absolute PATH.
-      _acct_in_real_dir "${_ROOT}/config" env PATH=/usr/local/bin:/usr/bin:/bin find . \
-        -path ./server_master/nginx/passwords.d -prune \
-        -o -execdir chown -h "${_USER}:${_ACCG:-users}" {} +
+      # -execdir, never -exec: each name is changed inside the directory
+      # find entered without following a link, through a handle, so no
+      # directory between is looked up again by path (the account could
+      # have swapped it for a link by then). -execdir wants an absolute PATH.
+      _acct_in_real_dir "${_ROOT}/config" \
+        _satellite_reown_here "${_USER}:${_ACCG:-users}" \
+        -path ./server_master/nginx/passwords.d -prune -o
       _satellite_server_master_modes basic_auth &> /dev/null
-      _acct_in_real_dir "${_ROOT}/tools" chown -R "${_USER}:${_ACCG:-users}" .
+      _acct_in_real_dir "${_ROOT}/tools" \
+        _satellite_reown_here "${_USER}:${_ACCG:-users}"
       ### The hostmaster root and site come from the account's own alias:
       ### handed over only inside its own real hostmaster tree.
       if _satellite_hm_path_ok "${_THIS_HM_ROOT}"; then
-        _acct_in_real_dir "${_THIS_HM_ROOT}" chown -R "${_USER}" .
+        _acct_in_real_dir "${_THIS_HM_ROOT}" _satellite_reown_here "${_USER}"
       else
         _msg "${_STATUS} A: NOTE: hostmaster root outside ${_ROOT}/aegir/distro left as it is"
       fi
       if _satellite_hm_path_ok "${_THIS_HM_SITE}" site; then
         ### files/ moved into the account's store (autosymlink) is a link:
-        ### the link itself is handed over, and the modes are set in the
-        ### store it leads to when that is the account's own.
+        ### the link is made anew as the account's own under a fresh name
+        ### and renamed over it (never chowned by name, where a file could
+        ### be swapped in), and the modes are set in the store it leads to
+        ### when that is the account's own.
         _T_WG=$(_web_group "${_USER}")
         if [ -L "${_THIS_HM_SITE}/files" ]; then
           _acct_in_real_dir "${_THIS_HM_SITE}" \
-            chown -h "${_USER}${_T_WG:+:${_T_WG}}" ./files
+            _satellite_relink_here files "${_USER}${_T_WG:+:${_T_WG}}"
         else
           _acct_in_real_dir "${_THIS_HM_SITE}/files" \
-            chown -R "${_USER}${_T_WG:+:${_T_WG}}" .
+            _satellite_reown_here "${_USER}${_T_WG:+:${_T_WG}}"
         fi
         _satellite_in_store_dir "${_THIS_HM_SITE}/files" \
           _satellite_tree_mode_all_here 02775 0664
@@ -4023,7 +4060,7 @@ _satellite_run_child_b() {
       su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupB} ${_USER}"
       wait
       _acct_in_real_dir "${_ROOT}/tools/drush" \
-        chown -R "${_USER}:${_ACCG:-users}" .
+        _satellite_reown_here "${_USER}:${_ACCG:-users}"
       _satellite_update_drush_php_cli
       _satellite_update_local_dirs_cli
       if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupB-FAIL" ] \
@@ -4095,10 +4132,15 @@ _satellite_run_post_install() {
       ln -sfn ${_ROOT}/config/${_USER}.nginx.conf \
         /var/aegir/config/server_master/nginx/platform.d/${_USER}.conf
     fi
+    ### the site tree is the instance user's: the group is changed from
+    ### inside the real directories, through a handle, never on a link or a
+    ### file hard-linked there
     _T_WG=$(_web_group "${_USER}")
     if [ -n "${_T_WG}" ]; then
-      chgrp -R "${_T_WG}" ${_HM_ROOT}/sites/${_DOMAIN}/files
-      chgrp "${_T_WG}" ${_HM_ROOT}/sites/${_DOMAIN}/settings.php
+      _acct_in_real_dir "${_HM_ROOT}/sites/${_DOMAIN}/files" \
+        _satellite_reown_here ":${_T_WG}"
+      _acct_in_real_dir "${_HM_ROOT}/sites/${_DOMAIN}" \
+        _satellite_reown_names_here ":${_T_WG}" ./settings.php
     fi
     rm -rf ${_HM_ROOT}/profiles/default
     rm -rf ${_HM_ROOT}/themes/bluemarine
@@ -4109,7 +4151,10 @@ _satellite_run_post_install() {
     rm -f ${_HM_ROOT}/*.txt
     _mrun "service nginx reload"
     cd ${_HM_ROOT}
-    cp -af /opt/tmp/boa/aegir/conf/tpl/robots.txt ${_HM_ROOT}/
+    # a fresh file inside the real directory, never written through a link
+    # put at the name (cp -a sets owner and mode on the file it created)
+    _acct_in_real_dir "${_HM_ROOT}" cp -afT --remove-destination \
+      /opt/tmp/boa/aegir/conf/tpl/robots.txt ./robots.txt
     cd ${_ROOT}
   fi
 }
@@ -4124,7 +4169,8 @@ _satellite_run_post_install() {
 # HTTP basic auth password directory and files as the Aegir task expects
 # them: in the web server's group, the directory setgid and closed to other
 # accounts, changed only when the account owns them (q: root, only for one
-# just made) and a file has a single link.
+# just made) and a file has a single link. A regular file (f) too is changed
+# only while it has a single link.
 _SAT_FCHMOD_PL='use Fcntl;
 my ($t, $m) = (shift @ARGV, oct(shift @ARGV));
 my $uid = (getpwnam(shift @ARGV))[2];
@@ -4133,7 +4179,7 @@ defined $uid && defined $gid or exit 1;
 for my $f (@ARGV) {
   sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
   my @s = stat($h);
-  if (($t eq "d" && -d _) || ($t eq "f" && -f _)) {
+  if (($t eq "d" && -d _) || ($t eq "f" && -f _ && $s[3] == 1)) {
     chmod($m, $h);
   }
   elsif (-d _ && (($t eq "p" && $s[4] == $uid) || ($t eq "q" && $s[4] == 0))) {
@@ -4210,7 +4256,7 @@ _satellite_set_permissions_for_all() {
       _satellite_tree_modes_here 0755 0644 &> /dev/null
   done
   _acct_in_real_dir "${_ROOT}/.drush" \
-    chown -R "${_USER}:${_ACCG:-users}" . &> /dev/null
+    _satellite_reown_here "${_USER}:${_ACCG:-users}" &> /dev/null
   _acct_in_real_dir "${_ROOT}/.drush" _satellite_drush_modes_here &> /dev/null
 }
 
@@ -4219,7 +4265,9 @@ _satellite_set_permissions_for_all() {
 # 0710 (usr and below 0750), files 0640, the top-level PHP files 0440 and the
 # aliases 0400, hm.alias made from the hostmaster alias where missing. Every
 # mode is set through a handle opened without following a link, in the
-# directory find walked (-execdir), so a name swapped for a link is refused.
+# directory find walked (-execdir), so a name swapped for a link is refused,
+# and a file with more than one link (planted or renamed over a name) is
+# left alone (_SAT_NOFOLLOW_CHMOD_PL).
 _satellite_drush_modes_here() (
   PATH=/usr/local/bin:/usr/bin:/bin
   shopt -s nullglob
@@ -4307,7 +4355,11 @@ _satellite_run_child_c() {
     find . -name .git -exec rm -rf {} \; &> /dev/null
     find . -name .DS_Store -type f | xargs rm -f &> /dev/null
     find . -name "._*" -type f | xargs rm -f &> /dev/null
-    touch ${_CORE}/dot-files-ctrl-${_xSrl}-${_X_VERSION}
+    # the core is the account's during the build: the stamp is put as a
+    # fresh empty file (as touch made it) inside the real directory, never
+    # created through a link put at the name
+    _acct_in_real_dir "${_CORE}" _satellite_put_stdin_here \
+      "dot-files-ctrl-${_xSrl}-${_X_VERSION}" 0644 "" < /dev/null
   fi
 }
 
@@ -4638,7 +4690,7 @@ _satellite_if_add_update_user_dot_dirs() {
     [ -L "${_USER_SSH}" ] && rm -f "${_USER_SSH}"
     mkdir -p "${_USER_SSH}"
     _acct_in_real_dir "${_USER_SSH}" \
-      chown -R "${_USERFTP}:${_ACCG:-users}" . &> /dev/null
+      _satellite_reown_here "${_USERFTP}:${_ACCG:-users}" &> /dev/null
     _acct_in_real_dir "${_USER_SSH}" chmod 700 . &> /dev/null
   fi
   # the main login's own keys: set through a handle inside the real .ssh,
@@ -4993,24 +5045,38 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
           && [ "$(pwd -P)" = "${_qW}" ] || exit 0
         find . -mindepth 2 -maxdepth 2 -name robots.txt ! -type d -delete ) &> /dev/null
     fi
+    ### The core and the shared store are the account's during the build:
+    ### the profiles are found from inside the real directory (find never
+    ### follows a link, the globs did) and edited from the directory find
+    ### walked, and each stamp is put as a fresh empty file (as touch made
+    ### it), never created through a link put at the name.
     if [ ! -e "${_CORE}/javascript_aggregator.out.txt" ] \
       && [ -e "${_CORE}" ]; then
-      sed -i "s/, 'javascript_aggregator'//g" \
-        ${_CORE}/*/profiles/*/*.profile &> /dev/null
+      _acct_in_real_dir "${_CORE}" env PATH=/usr/local/bin:/usr/bin:/bin \
+        find . -mindepth 4 -maxdepth 4 -regextype posix-extended \
+        -regex '\./[^/.][^/]*/profiles/[^/.][^/]*/[^/.][^/]*\.profile' \
+        -type f -execdir timeout 60 sed -i \
+        "s/, 'javascript_aggregator'//g" {} + &> /dev/null
       wait
-      touch ${_CORE}/javascript_aggregator.out.txt
+      _acct_in_real_dir "${_CORE}" _satellite_put_stdin_here \
+        javascript_aggregator.out.txt 0644 "" < /dev/null
     fi
   fi
 
   ###---### Remove not used cache module.
   #
   if [ ! -e "${_D}/000/old_cache.out2.txt" ] && [ -e "${_D}/000" ]; then
-    sed -i "s/, 'cache'//g" ${_D}/*/*/profiles/*/*.profile &> /dev/null
+    _acct_in_real_dir "${_D}" env PATH=/usr/local/bin:/usr/bin:/bin \
+      find . -mindepth 5 -maxdepth 5 -regextype posix-extended \
+      -regex '\./[^/.][^/]*/[^/.][^/]*/profiles/[^/.][^/]*/[^/.][^/]*\.profile' \
+      -type f -execdir timeout 60 sed -i \
+      -e "s/, 'cache'//g" -e "s/'cache', //g" {} + &> /dev/null
     wait
-    sed -i "s/'cache', //g" ${_D}/*/*/profiles/*/*.profile &> /dev/null
-    wait
-    rm -rf ${_D}/*/o_contrib/cache
-    touch ${_D}/000/old_cache.out2.txt
+    _acct_in_real_dir "${_D}" env PATH=/usr/local/bin:/usr/bin:/bin \
+      find . -mindepth 3 -maxdepth 3 -regextype posix-extended \
+      -regex '\./[^/.][^/]*/o_contrib/cache' -execdir rm -rf {} + &> /dev/null
+    _acct_in_real_dir "${_D}/000" _satellite_put_stdin_here \
+      old_cache.out2.txt 0644 "" < /dev/null
   fi
 }
 
@@ -5996,7 +6062,8 @@ _satellite_ctrl_dir_here() {
 # The control directory on install and upgrade (run inside it): fpm.info
 # and cli.info where missing (cli.info from a regular fpm.info), the README
 # and this serial's stamp on its first pass, the tree handed to the main
-# login (chown -R never follows a link).
+# login as _satellite_reown_here hands it (never a link, nor a file the
+# login hard-linked there).
 _satellite_ctrl_make_here() {
   local _v
   [ -e ./fpm.info ] || _acct_put_here fpm.info "${_PHP_FPM_VERSION}"
@@ -6015,7 +6082,7 @@ _satellite_ctrl_make_here() {
     rm -f -- ./.ctrl.*
     _acct_put_here ".ctrl.${_tRee}.${_xSrl}.pid" OK
   fi
-  chown -R "${_USER}.ftp:${_ACCG:-users}" .
+  _satellite_reown_here "${_USER}.ftp:${_ACCG:-users}"
 }
 
 #
@@ -6032,14 +6099,16 @@ _satellite_ctrl_make_here() {
 # the last name only. Args: f|d (regular file or directory), the mode
 # (octal), the names.
 # A directory keeps its set-user-ID and set-group-ID bits unless the mode has
-# five digits (02775, 00755), as chmod(1) does with a numeric mode.
+# five digits (02775, 00755), as chmod(1) does with a numeric mode. A regular
+# file is changed only while it has a single link: a hard link the account
+# planted or renamed over a name is never given the mode.
 _SAT_NOFOLLOW_CHMOD_PL='use Fcntl;
 my ($t, $ms) = (shift @ARGV, shift @ARGV);
 my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
 for my $f (@ARGV) {
   sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
   my @s = stat($h);
-  if ($t eq "f" && -f _) {
+  if ($t eq "f" && -f _ && $s[3] == 1) {
     chmod($m, $h);
   } elsif ($t eq "d" && -d _) {
     chmod($m | ($s[2] & $k), $h);
@@ -6053,22 +6122,78 @@ _satellite_chmod_nofollow() {
   perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" "${_t}" "${_m}" "$@" 2> /dev/null
 }
 # ./$1 in the current (pinned) directory made from stdin: a fresh file
-# created exclusively (0600 until it is complete), handed to $3 (owner:group;
-# empty leaves it root's), given the mode $2 through its handle and renamed
-# over the name, so a link or a FIFO put at the name is replaced, never
-# followed or opened.
+# created exclusively (0600 until it is complete), handed to $3 (owner:group,
+# names or numbers; empty leaves it root's) and given the mode $2, both
+# through the handle that created it (_ACCT_PUT_MODE_PL), and renamed over
+# the name, so a link or a FIFO put at the name is replaced, never followed
+# or opened, and nothing is handed over or moded by name.
 _satellite_put_stdin_here() {
-  local _t="./.${1}.put.$$.${RANDOM}"
+  local _t="./.${1}.put.$$.${RANDOM}" _u=-1 _g=-1
+  if [ -n "${3}" ]; then
+    _u="${3%%:*}"
+    _g="${3#*:}"
+    [[ "${_u}" =~ ^[0-9]+$ ]] || _u=$(id -u -- "${_u}" 2> /dev/null)
+    [[ "${_g}" =~ ^[0-9]+$ ]] \
+      || _g=$(getent group "${_g}" 2> /dev/null | cut -d: -f3)
+    [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] || return 1
+  fi
   rm -f -- "${_t}"
-  if ( umask 077; dd of="${_t}" bs=1048576 conv=excl status=none 2> /dev/null ) \
-    && { [ -z "${3}" ] || chown -h "${3}" "${_t}" 2> /dev/null; } \
-    && _satellite_chmod_nofollow f "${2:-0644}" "${_t}" \
-    && mv -f -T -- "${_t}" "./${1}"; then
+  if perl -e "${_ACCT_PUT_MODE_PL}" "${_t}" "${_u}" "${_g}" "${2:-0644}" \
+    2> /dev/null && mv -f -T -- "${_t}" "./${1}"; then
     return 0
   fi
   rm -f -- "${_t}"
   return 1
 }
+# owner[:group] as chown takes it (names; an empty owner or no group keeps
+# that id) printed as the "uid gid" _ACCT_REOWN_PL takes (-1 kept); nothing
+# when a name does not resolve.
+_satellite_ids() {
+  local _u=-1 _g=-1
+  [ -z "${1%%:*}" ] || _u=$(id -u -- "${1%%:*}" 2> /dev/null)
+  if [[ "${1}" == *:* ]]; then
+    _g=$(getent group "${1#*:}" 2> /dev/null | cut -d: -f3)
+  fi
+  [[ "${_u}" =~ ^(-1|[0-9]+)$ && "${_g}" =~ ^(-1|[0-9]+)$ ]] || return 1
+  echo "${_u} ${_g}"
+}
+# The current (pinned) directory and everything below it handed to $1
+# (owner[:group], as chown -R took it) through _ACCT_REOWN_PL, from the
+# directory find walked (-execdir): each directory and each regular file
+# with a single link, never a link, a FIFO, a socket or a hard-linked file,
+# so a hard link the account planted in the tree is never handed over.
+# Further arguments are find tests put in front of the walk (a prune).
+_satellite_reown_here() {
+  local _u _g
+  read -r _u _g <<< "$(_satellite_ids "${1}")"
+  [ -n "${_g}" ] || return 1
+  shift
+  perl -e "${_ACCT_REOWN_PL}" -- "${_u}" "${_g}" . \
+    && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 "$@" \
+      -execdir perl -e "${_ACCT_REOWN_PL}" -- "${_u}" "${_g}" {} +
+}
+# The names given in the current (pinned) directory handed to $1
+# (owner[:group]) through _ACCT_REOWN_PL, as chown or chgrp handed them,
+# except a link, a FIFO, a socket or a hard-linked file.
+_satellite_reown_names_here() {
+  local _u _g
+  read -r _u _g <<< "$(_satellite_ids "${1}")"
+  [ -n "${_g}" ] || return 1
+  shift
+  perl -e "${_ACCT_REOWN_PL}" -- "${_u}" "${_g}" "$@"
+}
+# The current (pinned) directory and every directory below it set to $1,
+# every regular file below it to $2, as find -type d|f -exec chmod set them,
+# each through a handle opened without following a link, from the
+# directory find walked (-execdir); a hard-linked file is left alone.
+_satellite_modes_walk_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  _satellite_chmod_nofollow d "${1}" .
+  find . -mindepth 1 -type d \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
+  find . -mindepth 1 -type f \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
+)
 # stdin appended to ./$1 in the current (pinned) directory, as >> appends
 # (a missing file created 0644), but only to a regular file: a link or a FIFO
 # put at the name is refused, never followed or opened.
@@ -6125,6 +6250,32 @@ _satellite_edit_all_here() (
 # The current (pinned) directory handed to $1 (owner:group) with the mode $2.
 _satellite_own_dir_here() {
   chown -h "${1}" . && chmod "${2}" .
+}
+# The link ./$1 in the current (pinned) directory handed to $2 (owner[:group]
+# names; an owner alone keeps the link's group), as chown -h handed it: made
+# anew by that owner (setpriv) under a fresh name, to the same target, and
+# renamed over the name, so nothing is chowned by name where the account
+# could swap a file in for the link. Left as it is when it already has that
+# owner or cannot be made so. Only the owner is compared: in a setgid
+# directory a new link takes the directory's group whatever the maker's, and
+# a link's group grants nothing, so comparing it would re-make the link on
+# every pass.
+_satellite_relink_here() {
+  local _t="./.${1}.rln.$$.${RANDOM}" _l _u _g
+  read -r _u _g <<< "$(_satellite_ids "${2}")"
+  [ -L "./${1}" ] || return 1
+  [ "${_g}" = "-1" ] && _g="$(stat -c %g -- "./${1}" 2> /dev/null)"
+  [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] || return 1
+  [ "$(stat -c '%u' -- "./${1}" 2> /dev/null)" = "${_u}" ] && return 0
+  _l="$(readlink -- "./${1}")" && [ -n "${_l}" ] || return 1
+  rm -f -- "${_t}"
+  setpriv --reuid="${_u}" --regid="${_g}" --clear-groups \
+    ln -s -- "${_l}" "${_t}" 2> /dev/null
+  if [ -L "${_t}" ] && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
 }
 # One value of the account's hostmaster alias ($1 = the key and its closing
 # quote, as root' or site_path'), parsed as before from a bounded read that
@@ -6198,29 +6349,54 @@ _satellite_as_user() {
   su -s /bin/bash "${_USER}" \
     -c "cd ${_ROOT} && export HOME=${_ROOT} PATH=/usr/local/bin:/usr/bin:/bin && { ${1}; }"
 }
-# +i cleared on each regular file named, in the current (pinned) directory;
-# a link given by its bare name is never passed to chattr.
+# +i cleared on each regular file named, in the current (pinned) directory,
+# through a handle (_ACCT_CHATTR_PL): never through a link, nor on a file
+# the account hard-linked or renamed over the name.
 _satellite_unlock_here() {
   local _f
   for _f in "$@"; do
-    [ -f "./${_f}" ] && [ ! -L "./${_f}" ] && chattr -i "./${_f}" &> /dev/null
+    [ -f "./${_f}" ] && [ ! -L "./${_f}" ] \
+      && perl -e "${_ACCT_CHATTR_PL}" - "./${_f}" &> /dev/null
   done
   return 0
 }
 # The current (pinned) platforms/ of a main login and each entry in it
-# locked ($1 = +i) or unlocked (-i); chattr refuses an entry that is a link.
+# locked ($1 = +i) or unlocked (-i): a directory entry from inside it (on
+# '.', once entered as the real directory), a regular file through a handle
+# (_ACCT_CHATTR_PL, a single link only); a link is left alone.
 _satellite_chattr_all_here() {
+  local _e
   chattr "${1}" . &> /dev/null
-  chattr "${1}" ./* &> /dev/null
+  for _e in ./*; do
+    if [ -d "${_e}" ] && [ ! -L "${_e}" ]; then
+      _acct_in_real_dir "${_e}" chattr "${1}" . &> /dev/null
+    elif [ -f "${_e}" ] && [ ! -L "${_e}" ]; then
+      perl -e "${_ACCT_CHATTR_PL}" "${1%i}" "${_e}" &> /dev/null
+    fi
+  done
   return 0
 }
 # The current (pinned) ~/.drush of a main login locked ($1 = +i) or
-# unlocked (-i) with its usr/ when that is a real directory; unlocking also
-# clears a CLI php.ini an earlier release left, for the ltd worker to remove.
+# unlocked (-i) with its usr/ when that is a real directory (from inside
+# it, on '.'); unlocking also clears a CLI php.ini an earlier release left,
+# for the ltd worker to remove.
 _satellite_chattr_drush_here() {
   chattr "${1}" . &> /dev/null
-  [ -d ./usr ] && [ ! -L ./usr ] && chattr "${1}" ./usr &> /dev/null
+  [ -d ./usr ] && [ ! -L ./usr ] \
+    && _acct_in_real_dir ./usr chattr "${1}" . &> /dev/null
   [ "${1}" = "-i" ] && _satellite_unlock_here php.ini
+  return 0
+}
+# The current (pinned) directory and every directory and single-link
+# regular file below it unlocked (-i), each through a handle opened without
+# following a link or blocking on a FIFO (_ACCT_CHATTR_PL), from the
+# directory find walked (-execdir): a link, a FIFO or a hard-linked file is
+# left alone.
+_satellite_unlock_tree_here() {
+  perl -e "${_ACCT_CHATTR_PL}" - . &> /dev/null
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+    \( -type d -o -type f \) \
+    -execdir perl -e "${_ACCT_CHATTR_PL}" - {} + &> /dev/null
   return 0
 }
 # Every directory set to $1 and every file to $2 below the current (pinned)
@@ -6259,30 +6435,33 @@ _satellite_sys_dir_here() {
 }
 # The main login's new ~/.tmp (the current, pinned directory): anything
 # older than a day removed from inside the directory find walked, the tree
-# handed to the login, the directory 0755.
+# handed to the login (_satellite_reown_here), the directory 0755.
 _satellite_ftp_tmp_here() (
   PATH=/usr/local/bin:/usr/bin:/bin
   touch .
   find . -mindepth 1 -mtime +0 -execdir rm -rf {} \;
-  chown -R "${_USERFTP}:${_ACCG:-users}" .
+  _satellite_reown_here "${_USERFTP}:${_ACCG:-users}"
   chmod 755 .
 )
 # A login's ~/.bazaar (the current, pinned directory) seeded: bazaar.conf
-# put as a fresh file, the tree handed to $1 (owner:group; chown -R never
-# follows a link), the directory 0700.
+# put as a fresh file, the tree handed to $1 (owner:group) as
+# _satellite_reown_here hands it, the directory 0700.
 _satellite_bzr_seed_here() {
   _acct_put_here bazaar.conf ignore_missing_extensions=True
-  chown -R "${1}" .
+  _satellite_reown_here "${1}"
   chmod 700 .
 }
 # The main login's ~/.drush (the current, pinned directory) and its usr/
 # made real directories and handed to the login, ~/.drush 0700, and usr/$1
 # linked to the instance user's own copy of that drush extension: a link
-# put at usr is removed first, and no owner or mode is set through a link.
+# put at usr is removed first, and usr/ is handed over from inside it (on
+# '.', once entered as the real directory), so no owner or mode is set
+# through a link or on a file put at the name.
 _satellite_user_ds_link_here() {
   [ -L ./usr ] && rm -f ./usr
   mkdir -p ./usr
-  chown -h "${_USERFTP}:${_ACCG:-users}" . ./usr
+  chown -h "${_USERFTP}:${_ACCG:-users}" .
+  _acct_in_real_dir ./usr chown -h "${_USERFTP}:${_ACCG:-users}" .
   chmod 700 .
   _acct_in_real_dir ./usr ln -sfn "${_ROOT}/.drush/usr/${1}" "./${1}"
 }
@@ -7369,6 +7548,115 @@ _satellite_normalize_scratch_owner() {
   fi
 }
 
+#
+# The shared store $1 (/data/all, or /data/disk/all on an older layout),
+# ${_CORE} and /data/conf handed back to root at the end of the run, with
+# the modes the platform build leaves them in. The run handed them to the
+# account, which could have put a link or a hard link at any name there:
+# every directory is entered as the real directory before anything is done
+# in it, every walk goes through _satellite_reown_here or a handle-based
+# mode setter (never a link, nor a hard-linked file), and the daily sweep
+# hands the whole store back to root first, before any mode is set in it.
+_satellite_shared_back() {
+  local _b
+  _b="$(cd -P -- "${1}" 2> /dev/null && pwd -P)"
+  [ -n "${_b}" ] || return 0
+  if [ ! -f "${1}/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info" ]; then
+    _acct_in_real_dir "${_b}" _satellite_shared_fix_here &> /dev/null
+  fi
+  chown root:root "${1}" &> /dev/null
+  _acct_in_real_dir "${_CORE}" chown -h root:root . &> /dev/null
+  _acct_in_real_dir /data/conf _satellite_root_back_here &> /dev/null
+  _acct_in_real_dir "${_CORE}" _acct_in_real_dir ./o_contrib \
+    _satellite_root_back_here &> /dev/null
+  _acct_in_real_dir "${_CORE}" _acct_in_real_dir ./o_contrib_seven \
+    _satellite_root_back_here &> /dev/null
+  _acct_in_real_dir "${_b}/000" _satellite_root_back_here &> /dev/null
+  _acct_in_real_dir /data/conf \
+    _satellite_modes_walk_here 0755 0644 &> /dev/null
+  _satellite_normalize_scratch_owner
+  chmod 0711 /data /data/disk /data/conf &> /dev/null
+  _acct_in_real_dir "${_b}" _satellite_shared_top_here &> /dev/null
+}
+# The current (pinned) directory and everything below it handed back to
+# root:root as chown -R root:root handed it (_satellite_reown_here), the
+# walk calling perl only where a name is not root's already.
+_satellite_root_back_here() {
+  _satellite_reown_here root:root \! \( -uid 0 -gid 0 \)
+}
+# The daily sweep of the current (pinned) shared store, as the path globs it
+# replaces set it: the store handed to root, 000/ 0755 directories and 0644
+# files, */*/profiles 0755, the sites/all/{modules,libraries,themes} of
+# */* and 000/core/* 02775, then every */*/sites and
+# */*/{web,docroot,html}/sites tree handed to root:users, and the day's
+# stamp put. find never follows a link, each name is changed from the
+# directory find walked, through a handle, and dot names at the first two
+# levels are left out as the globs left them.
+_satellite_shared_fix_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  local _users
+  _satellite_root_back_here
+  _acct_in_real_dir ./000 _satellite_modes_walk_here 0755 0644
+  find . -mindepth 3 -maxdepth 3 -regextype posix-extended \
+    -regex '\./[^/.][^/]*/[^/.][^/]*/profiles' \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 755 {} + \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f 755 {} +
+  find . -mindepth 5 -maxdepth 5 -regextype posix-extended \
+    -regex '\./[^/.][^/]*/[^/.][^/]*/sites/all/(modules|libraries|themes)' \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 02775 {} + \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f 02775 {} +
+  find . -mindepth 6 -maxdepth 6 -regextype posix-extended \
+    -regex '\./000/core/[^/.][^/]*/sites/all/(modules|libraries|themes)' \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 02775 {} + \
+    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f 02775 {} +
+  _users=$(getent group users 2> /dev/null | cut -d: -f3)
+  if [[ "${_users}" =~ ^[0-9]+$ ]]; then
+    find . -mindepth 1 -regextype posix-extended \
+      \( -regex '\./[^/]+(/[^/]+)?' \) \
+      -o \( -regex '\./[^/.][^/]*/[^/.][^/]*/sites(/.*)?' \
+        -execdir perl -e "${_ACCT_REOWN_PL}" -- 0 "${_users}" {} + \) \
+      -o -prune
+    find . -mindepth 1 -regextype posix-extended \
+      \( -regex '\./[^/]+(/[^/]+)?' \
+        -o -regex '\./[^/.][^/]*/[^/.][^/]*/(web|docroot|html)' \) \
+      -o \( -regex '\./[^/.][^/]*/[^/.][^/]*/(web|docroot|html)/sites(/.*)?' \
+        -execdir perl -e "${_ACCT_REOWN_PL}" -- 0 "${_users}" {} + \) \
+      -o -prune
+  fi
+  _acct_put_here "permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info" fixed
+)
+# The top of the current (pinned) shared store at the end of the run: each
+# name directly in it 0711 (a directory keeping its set-ID bits), the
+# cpuinfo file 0644, the store and its 000/ 0755, as chmod set them by path,
+# never through a link.
+_satellite_shared_top_here() {
+  _satellite_chmod_nofollow d 0711 ./*
+  _satellite_chmod_nofollow f 0711 ./*
+  _satellite_chmod_nofollow f 644 ./cpuinfo
+  chmod 0755 .
+  _acct_in_real_dir ./000 chmod 0755 .
+}
+# /data/conf (the current, pinned directory) at the end of the run: arch/log
+# made where missing and set 0755, and the old global include copies moved
+# into arch/, each directory used only as the real one (a link the account
+# put at arch, log or global is never followed).
+_satellite_conf_arch_here() {
+  mkdir -p ./arch
+  _acct_in_real_dir ./arch _satellite_sub_here log chmod 0755 . || return 0
+  mv -f ./global.inc-pre* ./arch/ &> /dev/null
+  [ -d ./global ] && [ ! -L ./global ] \
+    && _acct_in_real_dir ./global _satellite_conf_pre_here
+  mv -f ./global.inc-before* ./arch/ &> /dev/null
+  mv -f ./global.inc-missing* ./arch/ &> /dev/null
+  return 0
+}
+# The old include copies of the current (pinned) global/ moved into the
+# arch/ beside it (the glob expands here).
+_satellite_conf_pre_here() {
+  mv -f ./*inc-pre* ../arch/ &> /dev/null
+  return 0
+}
+
 _satellite_batch_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _satellite_batch_cleanup"
@@ -7385,53 +7673,9 @@ _satellite_batch_cleanup() {
   chmod 711 opt sbin selinux srv sys usr var share run &> /dev/null
   chmod 700 root &> /dev/null
   if [ -e "${_D}" ]; then
-    if [ ! -f "${_D}/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info" ]; then
-      find ${_D}/000 -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${_D}/000 -type f -exec chmod 0644 {} \; &> /dev/null
-      _mrun "chmod 755 ${_D}/*/*/profiles"
-      _mrun "chmod 02775 ${_D}/*/*/sites/all/{modules,libraries,themes}"
-      _mrun "chmod 02775 ${_D}/000/core/*/sites/all/{modules,libraries,themes}"
-      _mrun "chown -R root:root ${_D}"
-      _mrun "chown -R root:users ${_D}/*/*/sites"
-      _mrun "chown -R root:users ${_D}/*/*/{web,docroot,html}/sites"
-      echo fixed > ${_D}/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info
-    fi
-    chown root:root ${_D} &> /dev/null
-    chown root:root ${_CORE} &> /dev/null
-    _mrun "chown -R root:root /data/conf"
-    _mrun "chown -R root:root ${_CORE}/o_contrib"
-    _mrun "chown -R root:root ${_CORE}/o_contrib_seven"
-    _mrun "chown -R root:root ${_D}/000"
-    find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
-    find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
-    _satellite_normalize_scratch_owner
-    chmod 0711 /data ${_D}/* /data/disk /data/conf &> /dev/null
-    chmod 644 /data/all/cpuinfo &> /dev/null
-    chmod 0755 ${_D} ${_D}/000 &> /dev/null
+    _satellite_shared_back "${_D}"
   elif [ -e "/data/disk/all" ]; then
-    if [ ! -f "/data/disk/all/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info" ]; then
-      find /data/disk/all/000 -type d -exec chmod 0755 {} \; &> /dev/null
-      find /data/disk/all/000 -type f -exec chmod 0644 {} \; &> /dev/null
-      _mrun "chmod 755 /data/disk/all/*/*/profiles"
-      _mrun "chmod 02775 /data/disk/all/*/*/sites/all/{modules,libraries,themes}"
-      _mrun "chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes}"
-      _mrun "chown -R root:root /data/disk/all"
-      _mrun "chown -R root:users /data/disk/all/*/*/sites"
-      _mrun "chown -R root:users /data/disk/all/*/*/{web,docroot,html}/sites"
-      echo fixed > /data/disk/all/permissions-fix-${_xSrl}-${_X_VERSION}-${_TODAY}.info
-    fi
-    chown root:root /data/disk/all &> /dev/null
-    chown root:root ${_CORE} &> /dev/null
-    _mrun "chown -R root:root /data/conf"
-    _mrun "chown -R root:root ${_CORE}/o_contrib"
-    _mrun "chown -R root:root ${_CORE}/o_contrib_seven"
-    _mrun "chown -R root:root /data/disk/all/000"
-    find /data/conf -type d -exec chmod 0755 {} \; &> /dev/null
-    find /data/conf -type f -exec chmod 0644 {} \; &> /dev/null
-    _satellite_normalize_scratch_owner
-    chmod 0711 /data /data/disk/all/* /data/disk /data/conf &> /dev/null
-    chmod 644 /data/disk/all/cpuinfo &> /dev/null
-    chmod 0755 /data/disk/all /data/disk/all/000 &> /dev/null
+    _satellite_shared_back /data/disk/all
   fi
   chmod 0700 /data/u &> /dev/null
   chown root:root /data/u &> /dev/null
@@ -7456,15 +7700,12 @@ _satellite_batch_cleanup() {
     mv -f \${_b}/registry_rebuild-pre* \${_b}/system/; \
     mv -f \${_b}/safe_cache_form_clear-pre* \${_b}/system/; \
     mv -f \${_b}/mydropwizard-pre* \${_b}/system/" &> /dev/null
-  mkdir -p /data/conf/arch/log
   # 0755 (not 0777): the surrounding mv operations target /data/conf/arch/,
   # not /data/conf/arch/log — the log subdirectory is vestigial and has no
-  # current writer. Matches the parallel fix in system.sh.inc.
-  chmod 0755 /data/conf/arch/log
-  mv -f /data/conf/global.inc-pre* /data/conf/arch/ &> /dev/null
-  mv -f /data/conf/global/*inc-pre* /data/conf/arch/ &> /dev/null
-  mv -f /data/conf/global.inc-before* /data/conf/arch/ &> /dev/null
-  mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
+  # current writer. Matches the parallel fix in system.sh.inc. /data/conf
+  # was the account's for this run: arch, log and global are used only as
+  # the real directories (_satellite_conf_arch_here).
+  _acct_in_real_dir /data/conf _satellite_conf_arch_here
   ### module* directories two to five levels below static/ made 0775. static/
   ### is group-writable: walked from the real directory (find does not
   ### follow a link), and each match is entered and checked to be the real

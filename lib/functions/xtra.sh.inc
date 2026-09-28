@@ -113,13 +113,14 @@ _if_install_adminer() {
 # 0664 in group www-data let every account edit PHP the master pool runs).
 # Modes go through a handle that never follows a link, from find -execdir
 # inside the real directory, so a name swapped for a link while the tree was
-# still group-writable is never followed.
+# still group-writable is never followed, and a regular file with more than
+# one link is left alone (it may share its inode with a file elsewhere).
 _XTRA_FCHMOD_PL='use Fcntl;
 for my $f (@ARGV) {
   sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
   my @s = stat($h);
   if (-d _) { chmod(0755, $h); }
-  elsif (-f _) { chmod(0644, $h); }
+  elsif (-f _ && $s[3] == 1) { chmod(0644, $h); }
   close($h);
 }'
 _xtra_app_modes() {

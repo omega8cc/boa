@@ -409,11 +409,51 @@ _acct_put_here() {
 _acct_put_in() {
   _acct_in_real_dir "${1}" _acct_put_here "${2}" "${3}"
 }
+# stdin as the fresh file $1 in the current (pinned) directory, handed to uid
+# $2 and gid $3 (numbers) with the mode $4, all through the one handle that
+# created it (O_EXCL|O_NOFOLLOW, 0600 until it is complete); the caller then
+# renames it over the name. Nothing is chowned or chmoded by name in a
+# directory an account can write: a hard link renamed over a name between
+# its creation and a chown by name would hand the linked file over.
+# _ACCT_PUT_PL keeps the read/write bits of the mode (what dd under a umask
+# gave), _ACCT_PUT_MODE_PL every permission bit.
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+_ACCT_PUT_MODE_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0777, $h) or exit 1; close($h) or exit 1; exit 0'
+# Each name given (from find -execdir, or in a pinned directory) handed to
+# uid $1 and gid $2 (numbers, -1 keeps that id) through a handle opened
+# without following a link or blocking on a FIFO: a directory, or a regular
+# file with a single link. A hard-linked file, a link, a FIFO or a socket is
+# left alone, so a hard link planted in a tree root hands over (what
+# chown -R did) never hands another file over.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+# The immutable flag set ($1 = +) or cleared (-) on each directory, or
+# regular file with a single link, named, through a handle opened without
+# following a link or blocking on a FIFO; non-zero when a name was neither
+# or its flag could not be changed. A directory may also be locked or
+# unlocked with chattr on '.' inside it (it cannot be a hard link).
+_ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or do { $rc = 1; next }; my @s = stat($h); if (@s && (-d _ || (-f _ && $s[3] == 1))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); $fl = $op eq "+" ? ($fl | 0x10) : ($fl & ~0x10); ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } else { $rc = 1 } close($h); } exit $rc'
 # A PHP pin (fpm.info, cli.info) root writes in the current (pinned) control
-# directory: put as _acct_put_here puts it, then handed to the main login.
+# directory, handed to the main login: the content _acct_put_here puts
+# (0644), created, handed over and moded through one handle (_ACCT_PUT_PL),
+# then renamed over the name, so no file is handed over by name. An owner
+# that does not resolve leaves the pin root's, as a failed chown left it.
 # $1 = name, $2 = version, $3 = owner:group.
 _acct_pin_here() {
-  _acct_put_here "${1}" "${2}" && chown -h "${3}" "./${1}"
+  local _t="./.${1}.put.$$.${RANDOM}" _uid _gid
+  _uid=$(id -u -- "${3%%:*}" 2> /dev/null)
+  _gid=$(getent group "${3#*:}" 2> /dev/null | cut -d: -f3)
+  if [[ ! "${_uid}" =~ ^[0-9]+$ || ! "${_gid}" =~ ^[0-9]+$ ]]; then
+    _acct_put_here "${1}" "${2}"
+    return 1
+  fi
+  rm -f -- "${_t}"
+  if printf '%s\n' "${2}" \
+    | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" 644 \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
 }
 # The file $2 of every account (/data/disk/*/$1/$2, $1 = static/control or
 # log), each read as _acct_read_in reads it, one after another: what a grep

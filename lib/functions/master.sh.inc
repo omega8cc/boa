@@ -52,6 +52,60 @@ _php_cli_local_dirs_update() {
   chown -R aegir:aegir ${_U_TP}
 }
 
+#
+# The master's hostmaster tree holds directories every account can write
+# (sites/all/{modules,libraries,themes} in group users, the site's files/
+# in group www-data), so any name there can be a link or a hard link an
+# account planted. The tree is handed to aegir as chown -R did, and files/
+# given its mode as chmod -R did, only inside the real directory $1, from
+# the directory find walked (-execdir) and through a handle opened without
+# following a link or blocking on a FIFO: a directory, or a regular file
+# with a single link, never a link, a FIFO or a hard-linked file.
+#
+# $1 handed to $2 (owner[:group] names, as chown -R took them).
+_master_reown_in() {
+  local _u _g=-1
+  _u=$(id -u -- "${2%%:*}" 2> /dev/null)
+  if [[ "${2}" == *:* ]]; then
+    _g=$(getent group "${2#*:}" 2> /dev/null | cut -d: -f3)
+  fi
+  [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^(-1|[0-9]+)$ ]] || return 1
+  _acct_in_real_dir "${1}" _master_reown_here "${_u}" "${_g}"
+}
+_master_reown_here() {
+  perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" . \
+    && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+      -execdir perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" {} +
+}
+# A mode set through a handle on each name given (d: a directory, f: a
+# regular file with a single link), as chmod(1) sets a numeric one: a
+# directory keeps its set-user-ID and set-group-ID bits unless the mode has
+# five digits (02775).
+_MASTER_NOFOLLOW_CHMOD_PL='use Fcntl;
+my ($t, $ms) = (shift @ARGV, shift @ARGV);
+my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if ($t eq "f" && -f _ && $s[3] == 1) {
+    chmod($m, $h);
+  } elsif ($t eq "d" && -d _) {
+    chmod($m | ($s[2] & $k), $h);
+  }
+  close($h);
+}'
+# $1 and every directory and regular file below it set to $2.
+_master_mode_all_in() {
+  _acct_in_real_dir "${1}" _master_mode_all_here "${2}"
+}
+_master_mode_all_here() {
+  perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" . 2> /dev/null
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -type d \
+    -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -type f \
+    -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f "${1}" {} +
+}
+
 
 #
 # Download and extract from core archive.
@@ -824,7 +878,7 @@ _aegir_master_upgrade() {
       | awk '{ print $3}' \
       | sed "s/[\,']//g" 2>&1)
     mkdir -p ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries}
-    chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all
+    _master_reown_in "${_THIS_HM_ROOT}/sites/all" aegir:aegir
     # a CLI php.ini an earlier release left (+i) would refuse the chown;
     # the ltd worker removes it
     _U_HD="/var/aegir/.drush"
@@ -838,9 +892,13 @@ _aegir_master_upgrade() {
     chown -R aegir:aegir /var/aegir/clients
     chown -R aegir:aegir /var/aegir/config
     chown -R aegir:aegir /var/aegir/drush
-    chown -R aegir ${_THIS_HM_ROOT}
-    chown -R aegir:www-data ${_THIS_HM_SITE}/files
-    chmod -R 02775 ${_THIS_HM_SITE}/files
+    # every account can write sites/all/* (group users) and the site's
+    # files/ (group www-data) of this tree: walked as _master_reown_in and
+    # _master_mode_all_in walk, never handing over or moding a link or a
+    # file another account hard-linked there
+    _master_reown_in "${_THIS_HM_ROOT}" aegir
+    _master_reown_in "${_THIS_HM_SITE}/files" aegir:www-data
+    _master_mode_all_in "${_THIS_HM_SITE}/files" 02775
 
     # Never serialize an empty PHP version: the drush shebang update just
     # below hard-exits on an unresolved value, and the appends further down
@@ -1482,7 +1540,7 @@ EOFMYSQL
           ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries} &> /dev/null
       fi
     fi
-    chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all &> /dev/null
+    _master_reown_in "${_THIS_HM_ROOT}/sites/all" aegir:aegir &> /dev/null
 
   ###--------------------###
     if [ -e "${_mtrInc}/nginx_vhost_common.conf" ]; then

@@ -203,13 +203,36 @@ _force_advanced_nginx_config() {
     rm -f ${_mtrInc}/nginx_octopus_include.conf
     rm -f ${_mtrInc}/nginx_simple_include.conf
   fi
-  chown aegir:aegir ${_mtrInc}/*
+  # -h: global.inc here is a link into /data/conf, which an Octopus run hands
+  # to the account it upgrades; the link is handed over, never what it leads
+  # to
+  chown -h aegir:aegir ${_mtrInc}/*
   chown aegir:aegir /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*
   if [ ! -e "/data/conf/nginx_high_load_off.conf" ]; then
     mkdir -p /data/conf
-    cp -af ${_locCnf}/nginx/nginx_high_load_off.conf /data/conf/nginx_high_load_off.conf
-    chmod 644 /data/conf/nginx_high_load_off.conf &> /dev/null
+    _acct_in_real_dir /data/conf _nginx_conf_put_here \
+      "${_locCnf}/nginx/nginx_high_load_off.conf" nginx_high_load_off.conf 644
   fi
+}
+
+#
+# The file $1 (root's own) put as ./$2 in the current (pinned) directory with
+# the owner and group of $1 and the mode $3, as cp -a and a chmod by name put
+# it, but through one handle (_ACCT_PUT_PL, helper.sh.inc) and renamed over
+# the name: /data/conf is the account's while an Octopus run lasts (and after
+# one that stopped early), so a link put at the name is replaced, never
+# written through, and nothing is chmoded by name there.
+_nginx_conf_put_here() {
+  local _t="./.${2}.put.$$.${RANDOM}" _o
+  _o="$(stat -c '%u:%g' -- "${1}" 2> /dev/null)"
+  [[ "${_o}" =~ ^[0-9]+:[0-9]+$ ]] || return 1
+  rm -f -- "${_t}"
+  if perl -e "${_ACCT_PUT_PL}" "${_t}" "${_o%%:*}" "${_o#*:}" "${3}" \
+    < "${1}" && mv -f -T -- "${_t}" "./${2}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
 }
 
 #
@@ -292,9 +315,11 @@ _nginx_dir_names_here() {
 }
 # ./$1 in the current (pinned) directory edited by sed "${@:2}", as sed -i
 # edited it: only a regular file under 1 MiB is read, never through a link or
-# into a FIFO; the result is a fresh file created exclusively with the old
-# file's numeric owner (chown -h) and mode (by umask, never a chmod by name),
-# renamed over the name.
+# into a FIFO; the result is a fresh file with the old file's numeric owner
+# and the read/write bits of its mode, created, handed over and moded
+# through one handle (_ACCT_PUT_PL, helper.sh.inc), renamed over the name:
+# nothing is chowned by name, so a hard link the account renames over the
+# temp name is never handed over.
 _nginx_sed_here() {
   local _n="${1}" _st _own _m _sz _ft _t
   shift
@@ -305,14 +330,15 @@ _nginx_sed_here() {
   esac
   read -r _own _m _sz _ft <<< "${_st}"
   [ "${_sz}" -lt 1048576 ] || return 1
+  [[ "${_own}" =~ ^[0-9]+:[0-9]+$ && "${_m}" =~ ^[0-7]+$ ]] || return 1
   _t="./.${_n}.sed.$$.${RANDOM}"
   rm -f -- "${_t}"
   if ( set -o pipefail
-    umask "$(printf '%03o' "$(( 0777 & ~8#${_m} ))")"
     _acct_read_here "${_n}" | sed "$@" \
-      | dd of="${_t}" conv=excl status=none 2> /dev/null ); then
-    chown -h "${_own}" "${_t}" 2> /dev/null
-    mv -f -T -- "${_t}" "./${_n}" && return 0
+      | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_own%%:*}" "${_own#*:}" \
+        "${_m}" 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${_n}"; then
+    return 0
   fi
   rm -f -- "${_t}"
   return 1

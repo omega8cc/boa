@@ -127,17 +127,23 @@ _sanitize_string() {
 # name (0600, the main login's), the password is set only once that file
 # exists, and the file is renamed over the name only once the password is
 # set -- never through a link or FIFO put at the name, never readable by
-# another account, and never a password set that cannot be delivered.
-# $1 = the password.
+# another account, and never a password set that cannot be delivered. The
+# fresh file is created, written, handed to the main login and moded
+# through one handle opened O_EXCL|O_NOFOLLOW (_ACCT_PUT_PL), never chowned
+# by name: a hard link renamed over the temp name in between would have
+# been handed to the main login. Its group stays the one it was created
+# with, as before. $1 = the password.
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
 _sftp_password_set_here() {
-  local _t="./.new-${_sftpUser}-password.txt.put.$$.${RANDOM}"
+  local _t="./.new-${_sftpUser}-password.txt.put.$$.${RANDOM}" _uid
+  _uid=$(id -u -- "${_sftpUser}" 2> /dev/null)
+  [[ "${_uid}" =~ ^[0-9]+$ ]] || return 1
   rm -f -- "${_t}"
   # a directory at the name would refuse the rename after the change
   if [ ! -d "./new-${_sftpUser}-password.txt" ] \
     || [ -L "./new-${_sftpUser}-password.txt" ]; then
-    if ( umask 077
-      printf '%s\n' "${1}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
-      && chown -h "${_sftpUser}" "${_t}"; then
+    if printf '%s\n' "${1}" \
+      | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" -1 600; then
       chage -I -1 -m 0 -M 99999 -E -1 "${_sftpUser}"
       if echo "${_sftpUser}:${1}" | chpasswd; then
         chage -M 90 "${_sftpUser}"

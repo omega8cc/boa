@@ -922,6 +922,90 @@ _disable_old_purge_cruft_machine() {
 }
 
 #
+# /data/conf is handed to the account an Octopus run upgrades, and a run that
+# stops early leaves it there, so any name in it (or in its global/, arch/
+# and patches/) can be a link or a FIFO the account put there. Files are put
+# there only inside the real directory, through these.
+#
+# The file $1 put as ./$2 in the current (pinned) directory as cp -a put
+# it (the same bytes, owner, mode and times): copied to a fresh name after
+# removing whatever is there (cp -a sets the attributes on the file it
+# created), then renamed over the name, never written through a link.
+_sys_conf_cp_here() {
+  local _t="./.${2}.put.$$.${RANDOM}"
+  if cp -afT --remove-destination -- "${1}" "${_t}" \
+    && mv -f -T -- "${_t}" "./${2}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# ./$1 in the current (pinned) directory edited by the sed script $2 as sed
+# -i edited it (the owner and mode it has), only while it is a regular file
+# under 1 MiB: read never through a link or into a FIFO (_acct_read_here),
+# put under a fresh name through one handle (_ACCT_PUT_MODE_PL,
+# helper.sh.inc) and renamed over the name.
+_sys_conf_sed_here() {
+  local _t="./.${1}.put.$$.${RANDOM}" _st _o _m _sz
+  _st="$(stat -c '%u:%g %a %s %F' -- "./${1}" 2> /dev/null)" || return 1
+  case "${_st}" in
+    *" regular file"|*" regular empty file") ;;
+    *) return 1 ;;
+  esac
+  read -r _o _m _sz _ <<< "${_st}"
+  [[ "${_o}" =~ ^[0-9]+:[0-9]+$ && "${_m}" =~ ^[0-7]+$ ]] || return 1
+  [ "${_sz}" -lt 1048576 ] || return 1
+  rm -f -- "${_t}"
+  if ( set -o pipefail
+    _acct_read_here "${1}" | sed "${2}" \
+      | perl -e "${_ACCT_PUT_MODE_PL}" "${_t}" "${_o%%:*}" "${_o#*:}" \
+        "${_m}" ) && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# ./$1 in the current (pinned) directory made an empty file, as touch made
+# a missing one (root's, 0644): put under a fresh name through one handle
+# (_ACCT_PUT_PL, helper.sh.inc) and renamed over the name.
+_sys_conf_touch_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  if perl -e "${_ACCT_PUT_PL}" "${_t}" -1 -1 644 < /dev/null \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# /data/conf (the current, pinned directory): arch/log made where missing
+# and set 0755, and the old global include copies moved into arch/, each
+# directory used only as the real one (a link at arch, log or global is
+# never followed).
+_sys_conf_arch_here() {
+  mkdir -p ./arch
+  _acct_in_real_dir ./arch mkdir -p ./log
+  _acct_in_real_dir ./arch _acct_in_real_dir ./log chmod 0755 . || return 0
+  mv -f ./global.inc-pre* ./arch/ &> /dev/null
+  [ -d ./global ] && [ ! -L ./global ] \
+    && _acct_in_real_dir ./global _sys_conf_pre_here
+  mv -f ./global.inc-before* ./arch/ &> /dev/null
+  mv -f ./global.inc-missing* ./arch/ &> /dev/null
+  return 0
+}
+# The old include copies of the current (pinned) global/ moved into the
+# arch/ beside it (the glob expands here).
+_sys_conf_pre_here() {
+  mv -f ./*inc-pre* ../arch/ &> /dev/null
+  return 0
+}
+# Every name directly in the current (pinned) directory removed, as rm -f
+# dir/* removed them (the glob expands here).
+_sys_conf_rm_all_here() {
+  rm -f -- ./*
+}
+
+#
 # Update BOA INI templates.
 _boa_ini_tpl_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -929,11 +1013,13 @@ _boa_ini_tpl_update() {
   fi
   mkdir -p /data/conf
   if [ -e "${_locCnf}/ini/default.boa_platform_control.ini" ]; then
-    cp -af ${_locCnf}/ini/default.boa_platform_control.ini /data/conf/default.boa_platform_control.ini
+    _acct_in_real_dir /data/conf _sys_conf_cp_here \
+      "${_locCnf}/ini/default.boa_platform_control.ini" default.boa_platform_control.ini
     rm -f /var/xdrago/conf/default.boa_platform_control.ini
   fi
   if [ -e "${_locCnf}/ini/default.boa_site_control.ini" ]; then
-    cp -af ${_locCnf}/ini/default.boa_site_control.ini /data/conf/default.boa_site_control.ini
+    _acct_in_real_dir /data/conf _sys_conf_cp_here \
+      "${_locCnf}/ini/default.boa_site_control.ini" default.boa_site_control.ini
     rm -f /var/xdrago/conf/default.boa_site_control.ini
   fi
 }
@@ -966,44 +1052,71 @@ _global_inc_conf_update() {
   fi
   _GL_D=/data/conf/global
   [ ! -d "${_GL_D}" ] && mkdir -p ${_GL_D}
+  ### Every include is put inside the real global/ (_sys_conf_cp_here), so
+  ### none when global/ is not a real directory: the dispatcher below never
+  ### lands without the chain.
+  if ! _acct_in_real_dir "${_GL_D}" true; then
+    _msg "OOPS: ${_GL_D} is not a real directory, the global include set was not deployed"
+    return 1
+  fi
   _DR_V="11 10 9 8 7 6"
   for e in ${_DR_V}; do
     if [ -e "${_GL_D}/global-${e}.inc" ]; then
-      cp -af ${_GL_D}/global-${e}.inc ${_GL_D}/global-${e}.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+      _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here "./global-${e}.inc" \
+        "global-${e}.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
     fi
-    cp -af ${_locCnf}/global/global-${e}.inc ${_GL_D}/global-${e}.inc
+    _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+      "${_locCnf}/global/global-${e}.inc" "global-${e}.inc"
   done
   ### The shared INI parse lands BEFORE global-main.inc, which includes it:
   ### a main without the parse would run every site on the INI defaults.
-  cp -af ${_locCnf}/global/global-ini-parse.inc ${_GL_D}/global-ini-parse.inc
-  cp -af ${_locCnf}/global/global-main.inc ${_GL_D}/global-main.inc
-  cp -af ${_locCnf}/global/global-ini.inc ${_GL_D}/global-ini.inc
-  cp -af ${_locCnf}/global/global-mode.inc ${_GL_D}/global-mode.inc
-  cp -af ${_locCnf}/global/global-settings.inc ${_GL_D}/global-settings.inc
-  cp -af ${_locCnf}/global/global-front-end.inc ${_GL_D}/global-front-end.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-ini-parse.inc" global-ini-parse.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-main.inc" global-main.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-ini.inc" global-ini.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-mode.inc" global-mode.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-settings.inc" global-settings.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-front-end.inc" global-front-end.inc
   if [ ! -z "${_SPEED_VALID_MAX}" ]; then
-    sed -i "s/3600/${_SPEED_VALID_MAX}/g" ${_GL_D}/global-front-end.inc &> /dev/null
+    _acct_in_real_dir "${_GL_D}" _sys_conf_sed_here global-front-end.inc \
+      "s/3600/${_SPEED_VALID_MAX}/g" &> /dev/null
   fi
-  cp -af ${_locCnf}/global/global-if-valkey.inc ${_GL_D}/global-if-valkey.inc
-  cp -af ${_locCnf}/global/global-valkey.inc ${_GL_D}/global-valkey.inc
-  cp -af ${_locCnf}/global/global-if-redis.inc ${_GL_D}/global-if-redis.inc
-  cp -af ${_locCnf}/global/global-redis.inc ${_GL_D}/global-redis.inc
-  cp -af ${_locCnf}/global/global-newrelic.inc ${_GL_D}/global-newrelic.inc
-  cp -af ${_locCnf}/global/global-extra.inc ${_GL_D}/global-extra.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-if-valkey.inc" global-if-valkey.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-valkey.inc" global-valkey.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-if-redis.inc" global-if-redis.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-redis.inc" global-redis.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-newrelic.inc" global-newrelic.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-extra.inc" global-extra.inc
   ### The Backdrop chain: its Valkey wiring partial first, then the chain
   ### head that includes it together with the shared partials above. The
   ### Backdrop settings tpl includes the head only when present, so it ships
   ### inert; it blocks requests, so keep the previous copy like the per-core
   ### chain does.
-  cp -af ${_locCnf}/global/global-bd-valkey.inc ${_GL_D}/global-bd-valkey.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-bd-valkey.inc" global-bd-valkey.inc
   if [ -e "${_GL_D}/global-bd.inc" ]; then
-    cp -af ${_GL_D}/global-bd.inc ${_GL_D}/global-bd.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
+    _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here ./global-bd.inc \
+      "global-bd.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
   fi
-  cp -af ${_locCnf}/global/global-bd.inc ${_GL_D}/global-bd.inc
+  _acct_in_real_dir "${_GL_D}" _sys_conf_cp_here \
+    "${_locCnf}/global/global-bd.inc" global-bd.inc
   ### The legacy-path dispatcher is deployed LAST: it only hands off to the
   ### per-core chain above, so it must never land without the chain present.
-  cp -af /data/conf/global.inc /data/conf/global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
-  cp -af ${_locCnf}/global/global.inc /data/conf/global.inc
+  _acct_in_real_dir /data/conf _sys_conf_cp_here ./global.inc \
+    "global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
+  _acct_in_real_dir /data/conf _sys_conf_cp_here \
+    "${_locCnf}/global/global.inc" global.inc
 }
 
 #
@@ -8040,16 +8153,14 @@ _finale() {
   apt-get autoclean -y &> /dev/null
   apt-get clean -qq 2> /dev/null
   #rm -rf /var/lib/apt/lists/*
-  mkdir -p /data/conf/arch/log
   # 0755 (not 0777): the surrounding mv operations target /data/conf/arch/,
   # not /data/conf/arch/log — the log subdirectory is vestigial and has no
   # current writer. World-writable is wrong on principle, and a future
   # feature that started writing here would inherit the wide-open surface.
-  chmod 0755 /data/conf/arch/log
-  mv -f /data/conf/global.inc-pre* /data/conf/arch/     &> /dev/null
-  mv -f /data/conf/global/*inc-pre* /data/conf/arch/    &> /dev/null
-  mv -f /data/conf/global.inc-before* /data/conf/arch/  &> /dev/null
-  mv -f /data/conf/global.inc-missing* /data/conf/arch/ &> /dev/null
+  # arch, log and global are used only as the real directories
+  # (_sys_conf_arch_here).
+  mkdir -p /data/conf
+  _acct_in_real_dir /data/conf _sys_conf_arch_here
   rm -f /tmp/cache.inc*
   rm -f /var/opt/._zendopcache*
   rm -rf /var/opt/*
@@ -11972,17 +12083,26 @@ _update_patches_drupal_ten() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _update_patches_drupal_ten"
   fi
-  cp -af ${_bldPth}/aegir/patches/${_tenCorePatchFname} ${_tenCorePatchPath}
-  cp -af ${_bldPth}/aegir/patches/${_tenConsolePatchFname} ${_tenConsolePatchPath}
+  # put inside the real /data/conf/patches (_sys_conf_cp_here), at the names
+  # ${_tenCorePatchPath} and ${_tenConsolePatchPath} give
+  _acct_in_real_dir /data/conf/patches _sys_conf_cp_here \
+    "${_bldPth}/aegir/patches/${_tenCorePatchFname}" "${_tenCorePatchFname}"
+  _acct_in_real_dir /data/conf/patches _sys_conf_cp_here \
+    "${_bldPth}/aegir/patches/${_tenConsolePatchFname}" "${_tenConsolePatchFname}"
 }
 
 _update_patches_drupal_eleven() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _update_patches_drupal_eleven"
   fi
-  cp -af ${_bldPth}/aegir/patches/${_elevenCorePatchFname} ${_elevenCorePatchPath}
-  cp -af ${_bldPth}/aegir/patches/${_elevenConsolePatchFname} ${_elevenConsolePatchPath}
-  cp -af ${_bldPth}/aegir/patches/${_elevenValidatorPatchFname} ${_elevenValidatorPatchPath}
+  # put inside the real /data/conf/patches (_sys_conf_cp_here), at the names
+  # the ${_eleven*PatchPath} variables give
+  _acct_in_real_dir /data/conf/patches _sys_conf_cp_here \
+    "${_bldPth}/aegir/patches/${_elevenCorePatchFname}" "${_elevenCorePatchFname}"
+  _acct_in_real_dir /data/conf/patches _sys_conf_cp_here \
+    "${_bldPth}/aegir/patches/${_elevenConsolePatchFname}" "${_elevenConsolePatchFname}"
+  _acct_in_real_dir /data/conf/patches _sys_conf_cp_here \
+    "${_bldPth}/aegir/patches/${_elevenValidatorPatchFname}" "${_elevenValidatorPatchFname}"
 }
 
 _if_drupal_patches_update() {
@@ -11990,17 +12110,21 @@ _if_drupal_patches_update() {
     _msg "PROC: _if_drupal_patches_update"
   fi
   if [ -e "/var/xdrago" ]; then
-    _BROKEN_UPDATE_TEST_A=$(grep "Under Construction" /data/conf/patches/* 2>&1)
-    _BROKEN_UPDATE_TEST_B=$(grep "404 Not Found" /data/conf/patches/* 2>&1)
+    # -D skip: a FIFO or a device put at a name is never opened (the grep
+    # would wait on it); the files are written and removed only inside the
+    # real patches/, never through a link put there or at patches itself
+    _BROKEN_UPDATE_TEST_A=$(grep -D skip "Under Construction" /data/conf/patches/* 2>&1)
+    _BROKEN_UPDATE_TEST_B=$(grep -D skip "404 Not Found" /data/conf/patches/* 2>&1)
     if [ ! -z "${_BROKEN_UPDATE_TEST_A}" ] \
       || [ ! -z "${_BROKEN_UPDATE_TEST_B}" ] \
       || [ ! -e "/data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p /data/conf/patches
-      rm -f /data/conf/patches/*
+      _acct_in_real_dir /data/conf/patches _sys_conf_rm_all_here
       _set_drupal_patches_paths
       _update_patches_drupal_ten
       _update_patches_drupal_eleven
-      touch /data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid
+      _acct_in_real_dir /data/conf/patches \
+        _sys_conf_touch_here "ctrl.f96.${_tRee}.${_xSrl}.pid"
     fi
   fi
 }
