@@ -1000,6 +1000,61 @@ _sql_directives_sync() {
 }
 
 #
+# Percona 8.x loads a telemetry component that writes a daily usage report
+# under /usr/local/percona/telemetry/ps for Percona's telemetry agent. BOA
+# keeps it off on every 8.x box, a custom my.cnf included: a file of its own
+# in the dir my.cnf includes stops the component loading at the next start,
+# and as the variable is read-only, a running server is switched off here by
+# unloading the component; the reports it left are dropped. On 5.7, which has
+# no telemetry, the file is removed: 5.7 logs "unknown variable" for it even
+# in the loose- form, and the launcher reads that line in a down server's log
+# as a half-flipped box. The agent package is a hard dependency of the server
+# package, but ships only a systemd unit and never starts on Devuan.
+#
+_percona_telemetry_off() {
+  local _nme="boa-percona-telemetry.cnf"
+  local _urn="file://component_percona_telemetry"
+  local _rDir="/usr/local/percona/telemetry/ps"
+  local _body _inc _isOn _d
+  _check_mysql_version
+  if [ -z "${_DB_V}" ]; then
+    return 0
+  fi
+  # The dir my.cnf actually reads; none means no file, only the unload below
+  _inc=$(grep -hE '^[[:space:]]*!includedir[[:space:]]' /etc/mysql/my.cnf 2> /dev/null \
+    | head -1 \
+    | sed -E 's/^[[:space:]]*!includedir[[:space:]]+//; s#/[[:space:]]*$##; s/[[:space:]]*$//')
+  if [ "${_DB_V}" = "5.7" ]; then
+    for _d in "${_inc}" /etc/mysql/conf.d /etc/mysql/percona-server.conf.d \
+      /etc/mysql/mysql.conf.d; do
+      [ -n "${_d}" ] && rm -f "${_d}/${_nme}"
+    done
+    return 0
+  fi
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _percona_telemetry_off"
+  fi
+  _body="# Written by BOA: Percona telemetry off (8.x)"$'\n'
+  _body+="[mysqld]"$'\n'
+  _body+="loose-percona_telemetry_disable = 1"
+  if [ -n "${_inc}" ] && [ -d "${_inc}" ] \
+    && [ "$(cat "${_inc}/${_nme}" 2> /dev/null)" != "${_body}" ]; then
+    echo "${_body}" > "${_inc}/${_nme}"
+    chmod 644 "${_inc}/${_nme}"
+  fi
+  if [ -n "$(pgrep -x mysqld)" ]; then
+    _isOn=$(mysql -u root -N -e "SELECT COUNT(*) FROM mysql.component \
+      WHERE component_urn='${_urn}';" 2> /dev/null)
+    if [ "${_isOn}" = "1" ]; then
+      mysql -u root -e "UNINSTALL COMPONENT '${_urn}';" &> /dev/null
+    fi
+  fi
+  if [ -d "${_rDir}" ]; then
+    find "${_rDir}" -maxdepth 1 -type f -name "*.json" -delete &> /dev/null
+  fi
+}
+
+#
 #
 _check_mysqld_running() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then

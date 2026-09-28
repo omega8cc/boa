@@ -547,6 +547,16 @@
 
 @=> Improvements
 
+    * Percona telemetry is off, a custom my.cnf included. The server
+      package's one-off report to Percona at install is skipped, and on
+      Percona 8.x the telemetry component no longer loads: BOA keeps a
+      file of its own in the dir my.cnf includes (the operator's my.cnf is
+      never edited), unloads the component from a running server on the
+      next barracuda pass without a restart, and removes the usage
+      reports it had written for the telemetry agent. The agent package
+      stays installed, as the server package requires it; it never
+      starts on Devuan.
+
     * No account keeps a command-line php.ini of its own any more: every
       PHP runs on the global php.ini of its own version and keeps its
       temporary files in the calling account's ~/.tmp (the instance's and

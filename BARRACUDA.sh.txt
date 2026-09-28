@@ -198,6 +198,9 @@ _saPatch="/var/xdrago/conf/${_saCoreS}.patch"
 ###
 export DEBIAN_FRONTEND=noninteractive
 export APT_LISTCHANGES_FRONTEND=none
+# The Percona server package reports the host to Percona once, from its
+# postinst, unless this is set in the environment apt passes down.
+export PERCONA_TELEMETRY_DISABLE=1
 if [ -z "${TERM+x}" ]; then
   export TERM=vt100
 fi

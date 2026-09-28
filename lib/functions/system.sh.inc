@@ -1869,6 +1869,7 @@ _tune_memory_limits() {
       sed -i "s/utf8mb4_general_ci/${_SYS_COLLATION_SQL}/g"                       /etc/mysql/my.cnf &> /dev/null
     fi
   fi
+  _percona_telemetry_off
 
   _valkey_ceiling_derive
   if [ -n "${_VALKEY_MAXMEM_PIN}" ]; then
