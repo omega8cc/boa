@@ -261,7 +261,7 @@ the dev-extension and contrib shelves. Every copy onto a shelf takes only a plai
 from the day dir (never a symlink or a FIFO), copies it under a temporary name and
 renames it over the destination, so a copy that fails part-way never leaves a truncated
 tarball under the published name and a symlink already there is replaced, never
-written through.
+written through. The published file is `root:root 0644` (its mtime kept).
 
 The Backdrop, Grav and Textpattern stamps go out last, and only when the run put
 everything before them on the shelf, the compat tarball included (the releases that

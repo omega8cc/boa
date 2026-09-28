@@ -985,6 +985,40 @@ _mysql_downgrade_protection() {
   esac
 }
 
+# oN owns /data/disk/oN below it (log/ included): it can put a link or a FIFO
+# at any name there, or turn log/ itself into a link. Root touches those names
+# only through these, the ltd worker's rule. Run "$@" inside the real
+# directory $1: below /data/disk and /home every name on the path must be a
+# real directory; once entered, ./name stays there whatever is swapped.
+_bar_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory rewritten with the content $2 (0644),
+# only when the name is there: a fresh file created exclusively, then renamed
+# over the name, so a link or a FIFO put there is replaced, never followed or
+# opened.
+_bar_reput_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  [ -e "./${1}" ] || [ -L "./${1}" ] || return 0
+  rm -f -- "${_t}"
+  ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+
 _up_action() {
   # The inc file belongs in this gate: every sed below rewrites it, and the
   # launcher gate further down refuses without it. Omitting it here let a
@@ -1104,13 +1138,11 @@ _up_action() {
         ### Debugging
 
         if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
-          for _Ctrl in `find /data/disk/*/log/fpm.txt \
-            -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${_phpS} > ${_Ctrl}
-          done
-          for _Ctrl in `find /data/disk/*/log/cli.txt \
-            -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${_phpS} > ${_Ctrl}
+          # each account's log/: rewritten inside the real directory, never
+          # through a link or into a FIFO put there
+          for _Ctrl in /data/disk/*/log; do
+            _bar_in_real_dir "${_Ctrl}" _bar_reput_here fpm.txt "${_phpS}"
+            _bar_in_real_dir "${_Ctrl}" _bar_reput_here cli.txt "${_phpS}"
           done
         fi
       elif [ "${_phpS}" = "MIN" ] || [ "${_phpS}" = "MAX" ]; then
@@ -1163,13 +1195,11 @@ _up_action() {
         ### Debugging
 
         if [ -d "/data/u" ] && [ -e "/data/conf/global.inc" ]; then
-          for _Ctrl in `find /data/disk/*/log/fpm.txt \
-            -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${_phpS} > ${_Ctrl}
-          done
-          for _Ctrl in `find /data/disk/*/log/cli.txt \
-            -maxdepth 0 -mindepth 0 | sort`; do
-            echo ${_phpS} > ${_Ctrl}
+          # each account's log/: rewritten inside the real directory, never
+          # through a link or into a FIFO put there
+          for _Ctrl in /data/disk/*/log; do
+            _bar_in_real_dir "${_Ctrl}" _bar_reput_here fpm.txt "${_phpS}"
+            _bar_in_real_dir "${_Ctrl}" _bar_reput_here cli.txt "${_phpS}"
           done
         fi
       fi

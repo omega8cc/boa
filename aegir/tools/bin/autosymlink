@@ -338,6 +338,28 @@ _log_reserved_fs_summary() {
   done
 }
 
+_read_account_file() {
+  # An account's own file (a Drush alias or an nginx vhost: the account owns
+  # the directories they sit in) read bounded: inside its real directory,
+  # never through a link, never blocked on a FIFO, at most 1 MiB. A grep by
+  # path would wait forever on a FIFO put at the name, or read a huge file
+  # whole. Empty when a directory on the way is not a real one (below
+  # /data/disk every name must be) or the name is not a regular file.
+  # Args: 1 path.
+  _RAF_DIR="${1%/*}"
+  case "${_RAF_DIR}" in
+    /data/disk/?*)
+      _RAF_WANT="$(cd -P -- /data/disk 2>/dev/null && pwd -P)${_RAF_DIR#/data/disk}"
+      ;;
+    *)
+      _RAF_WANT="$(cd -P -- "${_RAF_DIR%/*}" 2>/dev/null && pwd -P)/${_RAF_DIR##*/}"
+      ;;
+  esac
+  ( cd -P -- "${_RAF_DIR}" 2>/dev/null && [ "$(pwd -P)" = "${_RAF_WANT}" ] \
+    && timeout 10 dd if="./${1##*/}" iflag=nofollow,nonblock,fullblock \
+      bs=1048576 count=1 status=none 2>/dev/null )
+}
+
 _get_site_path() {
   # Extracts site_path from a Drush alias file.
   # Usage: _get_site_path "/path/to/file.alias.drushrc.php"
@@ -350,7 +372,7 @@ _get_site_path() {
 
   # Expect line like:
   # 'site_path' => '/data/disk/oXXX/static/.../sites/example.com',
-  _LINE=$(grep -E "'site_path'\s*=>" "${_ALIAS_FILE}" 2>/dev/null | head -n 1)
+  _LINE=$(_read_account_file "${_ALIAS_FILE}" | grep -E "'site_path'\s*=>" 2>/dev/null | head -n 1)
 
   if [ -z "${_LINE}" ]; then
     echo ""
@@ -435,7 +457,8 @@ _alias_field() {
     return
   fi
 
-  _EXP_AF_LINE=$(grep -E "'${_EXP_AF_KEY}'[[:space:]]*=>" "${_EXP_AF_FILE}" 2>/dev/null | head -n 1)
+  _EXP_AF_LINE=$(_read_account_file "${_EXP_AF_FILE}" \
+    | grep -E "'${_EXP_AF_KEY}'[[:space:]]*=>" 2>/dev/null | head -n 1)
   if [ -z "${_EXP_AF_LINE}" ]; then
     echo ""
     return
@@ -612,7 +635,8 @@ _exp_vhost_kind() {
     echo "absent"
     return
   fi
-  if grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default' "$1" 2>/dev/null; then
+  if _read_account_file "$1" \
+    | grep -qE 'Do not reveal Aegir front-end URL|root[[:space:]]+/var/www/nginx-default' 2>/dev/null; then
     echo "present, disabled placeholder (inert, serves nothing)"
   else
     echo "present, real docroot (nginx still serves this name)"
@@ -798,7 +822,9 @@ _explain_alias_no_site_path() {
   _EXP_NP_CTX=$(_alias_field "${_EXP_NP_ALIAS}" "context_type")
   _EXP_NP_URI=$(_alias_field "${_EXP_NP_ALIAS}" "uri")
   _EXP_NP_ROOT=$(_alias_field "${_EXP_NP_ALIAS}" "root")
-  _EXP_NP_BYTES=$(wc -c < "${_EXP_NP_ALIAS}" 2>/dev/null | tr -d " ")
+  # The size as wc -c counted it, without opening the file (a FIFO put
+  # there would block the open)
+  _EXP_NP_BYTES=$(stat -L -c %s -- "${_EXP_NP_ALIAS}" 2>/dev/null | tr -d " ")
   _EXP_NP_OWNER=$(ls -ld "${_EXP_NP_ALIAS}" 2>/dev/null | awk '{print $3":"$4" "$1}')
 
   _explain_log "  Seen: no 'site_path' could be read from the alias, so the site was skipped"
@@ -1815,25 +1841,32 @@ _check_symlink_sharing() {
 
   _log "[APPLY] Updating symlink: ${_PATH} -> ${_NEW_TARGET}"
   rm -f "${_PATH}"
-  if ! ln -s "${_NEW_TARGET}" "${_PATH}"; then
+  if ! _link_as_store_owner "${_NEW_TARGET}" "${_PATH}"; then
     _log "[ERROR] Failed to create symlink for site ${_SITE_NAME} (${_TYPE}: ${_PATH} -> ${_NEW_TARGET})"
     _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
     return
   fi
-  _match_symlink_owner "${_PATH}" "${_NEW_TARGET}"
   _SITE_SHARED_SYMLINK_FIX_APPLIED="YES"
 }
 
-_match_symlink_owner() {
-  # Set an in-site files/private symlink's OWN owner:group to match its store
-  # target, so the link does not linger root-owned when no later perms-fix
-  # re-chowns it. On install a subsequent fix-drupal-site-ownership run fixes it;
-  # on clone the unshare's rm+ln -s is the LAST step, so without this the clone's
-  # link stays root:root until the next verify. Best-effort (chown -h
-  # --reference is GNU coreutils; a failure is harmless).
-  # Args: 1 in-site symlink path, 2 store target dir (reference for owner:group).
-  [ -L "$1" ] && chown -h --reference="$2" "$1" 2>/dev/null
-  return 0
+_link_as_store_owner() {
+  # Make the in-site files/private symlink $2 pointing at the store $1, owned
+  # by the store's owner:group, so the link does not linger root-owned when no
+  # later perms-fix re-chowns it (on clone the unshare's link is the LAST step,
+  # so a root link would stay root:root until the next verify). The link is
+  # made by that owner itself, never chowned by name afterwards: the site
+  # directory is the account's, and a hard link renamed over the name before a
+  # chown -h would be handed to the store's owner. Where that owner is root or
+  # cannot make it there, root makes it as before and it stays root's (nothing
+  # checks a link's owner). Returns ln's status.
+  # Args: 1 store target dir (reference for owner:group), 2 in-site symlink path.
+  _LSO_OWNER=$(stat -L -c '%u:%g' -- "$1" 2>/dev/null)
+  if [[ "${_LSO_OWNER}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${_LSO_OWNER%%:*}" != 0 ] \
+    && setpriv --reuid="${_LSO_OWNER%%:*}" --regid="${_LSO_OWNER#*:}" \
+      --clear-groups ln -s "$1" "$2" 2>/dev/null; then
+    return 0
+  fi
+  ln -s "$1" "$2"
 }
 
 _self_heal_symlink() {
@@ -1853,8 +1886,7 @@ _self_heal_symlink() {
   fi
   if [ -d "${_STORE_DIR}" ] && [ -n "$(ls -A "${_STORE_DIR}" 2>/dev/null)" ]; then
     _log "[APPLY] Self-heal: in-site path missing, recreating symlink ${_SITE_LINK} -> ${_STORE_DIR}"
-    ln -s "${_STORE_DIR}" "${_SITE_LINK}"
-    _match_symlink_owner "${_SITE_LINK}" "${_STORE_DIR}"
+    _link_as_store_owner "${_STORE_DIR}" "${_SITE_LINK}"
   fi
 }
 
@@ -1938,8 +1970,7 @@ _convert_dir_to_symlink() {
     # Rename aside first (atomic within the parent), so a failed ln -s can be
     # rolled back and never leaves the site with no ${_TYPE} path at all.
     _RES_ASIDE="${_SRC}.autosymlink-residue.$$"
-    if mv "${_SRC}" "${_RES_ASIDE}" && ln -s "${_DST}" "${_SRC}"; then
-      _match_symlink_owner "${_SRC}" "${_DST}"
+    if mv "${_SRC}" "${_RES_ASIDE}" && _link_as_store_owner "${_DST}" "${_SRC}"; then
       rm -rf "${_RES_ASIDE}"
       return 0
     fi
@@ -1963,11 +1994,10 @@ _convert_dir_to_symlink() {
   fi
 
   _log "[APPLY] Creating symlink: ${_SRC} -> ${_DST}"
-  if ! ln -s "${_DST}" "${_SRC}"; then
+  if ! _link_as_store_owner "${_DST}" "${_SRC}"; then
     _log "[ERROR] Failed to create symlink for ${_TYPE} of site ${_SITE}: ${_SRC} -> ${_DST}; data is safe in ${_DST}, self-heal will retry the link"
     return 1
   fi
-  _match_symlink_owner "${_SRC}" "${_DST}"
   return 0
 }
 

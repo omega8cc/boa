@@ -60,12 +60,13 @@ The order never leaves an identity without access it had:
 3. only then does the primary group move;
 4. the account's roots are walked (`/data/disk/oN`, `/home/oN.ftp`, the
    sub-account homes, `/opt/user/{gems,npm}/oN*`, a static store relocated
-   under `/mnt`) and every path still in group `users` is re-grouped — one
-   `chown -R -h -P --from=:users` per root, group-only, by directory
-   descriptor, so no symlink is ever followed, nothing outside the tree can
-   be reached through a re-pointed component, and the `www-data` paths are
-   never touched; the few `chattr +i` inodes chown reports are re-grouped
-   with the flag dropped and restored around that one change;
+   under `/mnt`) and every path in group `users` that the walk changes (see
+   "The tool") is re-grouped — group-only, through a handle opened inside
+   the directory `find -P` holds, without following a link or blocking on a
+   FIFO, so no symlink is ever followed, nothing outside the tree is reached
+   through a re-pointed component, and the `www-data` paths are never
+   touched; `chattr +i` inodes are re-grouped with the flag dropped and
+   restored around that one change;
 5. the marker is written last.
 
 The hosting queue keeps running during an octopus upgrade and a tenant's
@@ -140,8 +141,10 @@ instgrp check
 ```
 
 `status` prints the marker, the group, every identity's group set, the FPM
-pool identities (which must not be in the group), the per-group file counts
-under the account's roots (`users`, the account's, `www-data`, `root`, no
+pool identities (which must not be in the group), a `web:` line naming the
+account's own web group and its state when `wg-oN` exists (see below), the
+per-group file counts under the account's roots (`users`, the account's,
+`www-data`, `wg-oN` when it exists, `root`, no
 group, and any other named group -- a foreign account's after a numeric gid
 collision on a copy or a root-run restore, whose identities can read the
 files), and one verdict line — `CONVERTED`, `UNCONVERTED`, `DRIFT` (paths
@@ -149,6 +152,22 @@ under the roots are not in the account's group: back in `users`, in no
 group, or in a foreign group -- an import, a hand `chown`, a tool predating
 the form; re-run `convert` or `reclaim`, both only touch what drifted) or
 `INCONSISTENT`.
+
+The walk regroups a directory, a regular file with one link, and a regular
+file with more than one link or a FIFO whose owner is one of the account's
+identities (`oN`, `oN.ftp`, a sub-account) that is a member of the target
+group when the walk runs: that owner could make the same change itself with
+`chgrp`, so root making it grants nothing. Any other hard-linked file or
+FIFO, a socket or a device keeps its group: the account can create those,
+and a hard link may share its inode with a file the account does not own.
+
+`status` reports them on an `other:` line with a count and up to three
+examples; they never count as drift, and `convert` and `reclaim` log their
+number. `revert` keeps the group while any of them still carries it
+(exit 2): deleted, the group would leave them in a bare numeric gid that
+the next account created can be handed. A symlink keeps its group too, but
+is never counted and never keeps the group from `revert`: a symlink's group
+is never used for access.
 
 Exit status 0 / 0 / 2 / 3 in that order (4 = skipped, 5 =
 not ready; over `all` the worst class wins: failed, inconsistent, drift, not
@@ -158,10 +177,14 @@ copied marker dropped) reads `CONVERTED` with a note; the next `convert`
 rewrites the marker. Every action logs one line to
 `/var/log/boa/instgrp.log`.
 
-`reclaim` is the file half alone: every path under the roots takes the
-account's current group (`users` while unconverted), a marker that does not
+`reclaim` is the file half alone: every path under the roots that the walk
+changes takes the account's current group (`users` while unconverted), a
+marker that does not
 record this box's group is dropped. No identity change and no lock, so it
 is what a root-run restore, a migration destination and the nightly run.
+`convert` and `reclaim` leave the paths of the account's own web group
+(`wg-oN`, while it exists) alone: those are the account's web paths, which
+its FPM pools reach through that group.
 
 It still
 defers (exit 4) while a BOA install or upgrade run is live (`/run/boa_run.pid`,
@@ -177,9 +200,14 @@ honours the migration freeze exactly as `convert` does: an account carrying
 group its files still carry), then the primary groups back to `users`, the
 account members removed from the group, the marker removed, the group
 deleted once no path and no identity carries it (a path written during the
-walk keeps the group in place; re-run). It writes `_INSTANCE_GROUP=NO` into
+walk keeps the group in place, re-run; so does an entry the walk never
+changes other than a symlink, exit 2, see above). It writes
+`_INSTANCE_GROUP=NO` into
 the account's octopus cnf, so the next unattended upgrade does not convert
 the account again (`--keep-enabled` leaves the cnf alone).
+
+`revert` refuses (exit 1) while a group `wg-oN` exists, in any state: the
+account's web group goes first.
 
 Like `convert`,
 it does not start while an identity it has to move back is in use (exit 4),
@@ -215,11 +243,31 @@ is persisted per instance (written at install, appended with its default on
 upgrade when absent).
 
 `boa cleanup purge oN` removes the account's group after its identities (the
-platform developer logins included); what
-the purge leaves on disk (a static store relocated under `/mnt`, the gems
-and npm trees) is handed to `root:root` first, and the group stays while any
-path still carries it. Removing a single sub-account leaves the group in
-place: it belongs to the account.
+platform developer logins included). It first sets the account's task
+dispatcher aside and ends whatever still runs as one of its identities (a
+PHP worker, a task, a shell), so no identity survives the purge by being
+busy. Removing a single sub-account leaves the group in place: it belongs to
+the account.
+
+What the purge leaves on disk (a static store relocated under `/mnt`, the
+gems and npm trees) is handed to `root:root` first, and the group stays
+while any path still carries it. A home that survives is parked in the
+purge's zombie directory, shut to root, and its directories and single-link
+files are handed to `root:root`.
+
+Anywhere else the purge leaves something
+of the account (the parked vhost files, its leftovers), a uid or gid that
+no longer names anything goes to root: the next account created could be
+given it. A file with more than one link keeps an owner or group that still
+names someone: it may share its inode with a living name elsewhere.
+
+In `/tmp`, `/var/tmp` and `/dev/shm`, where the kernel trusts what root owns,
+what the account's identities left is removed, before they are and again
+after, and only a directory of theirs that still holds someone else's
+entries goes to root.
+
+The purge removes the account's own web group `wg-oN` the same way, when
+there is one, together with root's record of it.
 
 ## What this does not close
 
@@ -233,6 +281,20 @@ place: it belongs to the account.
   Cross-tenant write into a shared codebase is not closed by this change.
 - The master (`/var/aegir`) keeps its own group `aegir` plus `users`, as
   before.
+
+## The account's own web group (`wg-oN`)
+
+`wg-oN` is reserved as each account's own web group: the groundwork for
+taking tenants out of the shared `www-data` group their sites' files and
+FPM pools meet in today. No tool creates it yet, and while it does not
+exist nothing changes. New account names may not begin with `wg-` nor hold
+a dot.
+
+Once an account holds it, `convert`, `reclaim`, the nightly and the
+restore and migration passes leave its paths alone, and the account's
+identities and pools are listed in it. Writers use it for the account's
+web paths only once root's record `/root/.oN.web-group.txt` says the
+account is converted.
 
 ## Operator notes
 
@@ -278,7 +340,8 @@ place: it belongs to the account.
   duplicity re-applies the archived ownership, so `backboa`, `duobackboa`,
   `multiback` and `mybackup` re-group what they restored (and run
   `instgrp reclaim` for the account) after every restore whose destination
-  resolves inside an account's tree; a restore staged anywhere else is the
+  resolves inside an account's tree or its relocated files store (a single
+  restored file included); a restore staged anywhere else is the
   operator's to follow with `instgrp reclaim oN` once the files are in
   place.
 - GIDs are allocated per box from the system range, so the same account
@@ -293,14 +356,33 @@ place: it belongs to the account.
   account's group, `users` while unconverted; passed `--force`, because the
   destination's own `log/proxied.pid`, if any, is its demotion artefact
   from an earlier cutover — or, for stage2, a freeze left by a killed
-  import — not an account served from elsewhere; when the tool keeps
-  deferring behind a live BOA run, the same inline pass runs instead), the
-  xmass legs map the source account's group onto the
-  destination account's group as they copy (so the 15-minute standby
-  autosync never lands a foreign gid), and none of them carry the
+  import — not an account served from elsewhere), every leg of
+  `xoct`, `xcopy` and `xmass` maps the source account's group onto the
+  destination account's group as it copies (asked of the destination: its
+  own group once converted there, `users` until then), so a run that stops
+  before its group pass, `xoct create` (which has none) and the 15-minute
+  standby autosync never land a foreign gid, and none of them carry the
   conversion marker -- it recorded the source box's
   conversion.
 
+  Where the tool is not installed, or keeps deferring behind a live BOA
+  run, an inline pass over the same roots runs instead. It regroups only
+  directories and single-link regular files, each through a handle that
+  never follows a link. A hard-linked file or FIFO the walk changes (one
+  owned by an identity of the account, see "The tool") keeps the group it
+  landed with and reads as DRIFT in `status` until
+  `instgrp reclaim --force` claims it; any other one is counted on the
+  `other:` line, and a symlink keeps its group, never counted.
+
+  The account's own web group travels too. While `wg-oN` exists on the
+  source, every leg (the files store included) maps it onto the group the
+  destination's writers give the account there: its `wg-oN` once converted
+  there, `www-data` until then. The destination's group pass leaves `wg-oN`
+  paths alone. `xoct`, `xcopy` and `xmass` refuse (a DENY in the dry run, a
+  stop with `--live`) to move an account converted to its web group onto a
+  box whose tools predate it, or whose answer cannot be read.
+
   `instgrp` reads a marker whose gid is not the account group's
   gid on this box as STALE (ignored), and `convert`/`reclaim` claim any path
-  of the account's roots that is in no group or in another named group.
+  of the account's roots that the walk changes and that is in no group or in
+  another named group.

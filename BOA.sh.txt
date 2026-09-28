@@ -217,20 +217,6 @@ if [ ! -e "${_pthLog}/ghost-family-yes.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
   fi
   touch "${_pthLog}/ghost-family-yes.ctrl.f99.${_tRee}.${_xSrl}.pid"
 fi
-### One-shot fleet heal: the hostmaster site's drushrc.php carries the
-### instance DB user (ALL PRIVILEGES) and only its owner ever reads it, yet
-### it sat at 0440 with group users, a group every shell account on the box
-### is in. Provision now writes it 0400 and the permission passes keep it
-### there; this closes the gap on every box before those tools arrive.
-### Real files only: never chmod through a planted link. Runs once per box
-### per stamp serial; decrement the serial to re-run fleet-wide.
-if [ ! -e "${_pthLog}/hostmaster-drushrc-0400.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
-  for _hmRc in /var/aegir/host_master/*/sites/*/drushrc.php \
-    /data/disk/*/aegir/distro/*/sites/*/drushrc.php; do
-    [ -f "${_hmRc}" ] && [ ! -L "${_hmRc}" ] && chmod 0400 "${_hmRc}" &> /dev/null
-  done
-  touch "${_pthLog}/hostmaster-drushrc-0400.ctrl.f99.${_tRee}.${_xSrl}.pid"
-fi
 [ ! -d "${_pthLog}/usage" ] && mkdir -p "${_pthLog}/usage"
 [ ! -d "${_pthLog}/daily" ] && mkdir -p "${_pthLog}/daily"
 [ ! -d "${_pthLog}/core" ] && mkdir -p "${_pthLog}/core"
@@ -284,6 +270,256 @@ _acct_group() {
   [ "${_g}" = "${_a}" ] || _g="users"
   echo "${_g}"
 }
+fi
+
+# An account owns its static/control, so it can put a link or a FIFO at any
+# name there. These are helper.sh.inc's, defined here unconditionally: this
+# runs as root from cron, and a guard must never fall back to an older copy.
+# Run "$@" inside the real directory $1 (every name below /data/disk and
+# /home a real directory); ./name then stays there whatever is swapped.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 read without following a link or blocking on a FIFO, at most 1 MiB.
+_acct_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# ./$1 with the content $2 (0644): a fresh file created exclusively, then
+# renamed over the name, so a link or FIFO put there is never followed.
+_acct_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+# stdin as ./$1 in the current (pinned) directory, handed to uid $2 and gid
+# $3 with the mode $4: a fresh file created, written, owned and moded through
+# one handle opened O_EXCL|O_NOFOLLOW, then renamed over the name. A link put
+# at the name is replaced, never followed, and nothing is chowned or chmoded
+# by name in a directory the account can write (a hard link renamed over the
+# temp name before a chown by name would hand the linked file over).
+_ACCT_PUT_MODE_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0777, $h) or exit 1; close($h) or exit 1; exit 0'
+_acct_put_mode_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  [[ "${2}" =~ ^[0-9]+$ && "${3}" =~ ^[0-9]+$ && "${4}" =~ ^[0-7]+$ ]] \
+    || return 1
+  rm -f -- "${_t}"
+  if perl -e "${_ACCT_PUT_MODE_PL}" "${_t}" "${2}" "${3}" "${4}" \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# The same, but only where ./$1 is there already (a link counts: it is
+# replaced), as a refresh of a file the account was given.
+_acct_refresh_mode_here() {
+  [ -e "./${1}" ] || [ -L "./${1}" ] || return 0
+  _acct_put_mode_here "$@"
+}
+# The hostmaster root in the alias of the account $1 (/data/disk/<oN>), read
+# bounded and never through a link, printed only when it is one of the
+# account's own hostmaster platforms (<account>/aegir/distro/<digits>): the
+# account owns its alias and could point it anywhere.
+_acct_hm_root() {
+  local _r
+  _r=$(_acct_in_real_dir "${1}/.drush" _acct_read_here \
+    hostmaster.alias.drushrc.php \
+    | grep "root'" \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,']//g" 2>&1)
+  [[ "${_r}" == "${1}/aegir/distro/"* ]] || return 1
+  [[ "${_r#"${1}/aegir/distro/"}" =~ ^[0-9]+$ ]] || return 1
+  echo "${_r}"
+}
+# ./$1 as an empty file (0644), put the same way.
+_acct_touch_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    dd of="${_t}" conv=excl status=none < /dev/null 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+# stdin as ./$1 with the mode $3, handed to $2 (owner:group, resolved to
+# numbers first) through its handle as _acct_put_mode_here puts it. Where
+# either name does not resolve the file stays root's, as a failed chown by
+# name used to leave it.
+_acct_put_own_here() {
+  local _uid _gid
+  _uid=$(id -u -- "${2%%:*}" 2> /dev/null)
+  _gid=$(getent group "${2#*:}" 2> /dev/null | cut -d: -f3)
+  if [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]]; then
+    _acct_put_mode_here "${1}" "${_uid}" "${_gid}" "${3}"
+  else
+    _acct_put_mode_here "${1}" 0 0 "${3}"
+  fi
+}
+# A tree walk that hands names over (find -execdir, inside a pinned
+# directory): each name is opened without following a link or blocking on a
+# FIFO, and only a directory or a single-link regular file is changed,
+# through its handle. A hard link planted in the tree is never handed over.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+# A mode ($1, octal) set on the names that follow, in the current (pinned)
+# directory, the same way: a single-link regular file only, through its
+# handle, never through a link.
+_BOA_FCHMOD_PL='use Fcntl; my ($m, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chmod(oct($m), $h) if @s && -f _ && $s[3] == 1; close($h); } exit 0'
+# ./$1 in the current (pinned) directory edited by the sed script $2 as
+# sed -i edited it, unless it holds the text $3 (when given): only a
+# single-link regular file under 1 MiB is read, once, bounded and never
+# through a link or from a FIFO, into a root-only copy; a changed result is
+# put back as a fresh file with the owner, group and mode the file had
+# (_acct_put_mode_here), renamed over the name.
+_acct_sed_here() {
+  local _st _typ _uid _gid _mod _sz _nl _w _rc=1
+  _st=$(stat -c '%F|%u|%g|%a|%s|%h' -- "./${1}" 2> /dev/null) || return 1
+  IFS='|' read -r _typ _uid _gid _mod _sz _nl <<< "${_st}"
+  case "${_typ}" in
+    "regular file"|"regular empty file") ;;
+    *) return 1 ;;
+  esac
+  [[ "${_sz}" =~ ^[0-9]+$ ]] && [ "${_sz}" -lt 1048576 ] \
+    && [ "${_nl}" = "1" ] || return 1
+  _w=$(mktemp -d /run/.boa-acct-edit.XXXXXX 2> /dev/null) || return 1
+  if _acct_read_here "${1}" > "${_w}/o" \
+    && [ "$(stat -c %s -- "${_w}/o" 2> /dev/null)" = "${_sz}" ]; then
+    if [ -n "${3}" ] && grep -qF -- "${3}" "${_w}/o"; then
+      _rc=0
+    elif sed "${2}" "${_w}/o" > "${_w}/n"; then
+      if cmp -s "${_w}/o" "${_w}/n"; then
+        _rc=0
+      else
+        _acct_put_mode_here "${1}" "${_uid}" "${_gid}" "${_mod}" \
+          < "${_w}/n" && _rc=0
+      fi
+    fi
+  fi
+  rm -rf -- "${_w}"
+  return "${_rc}"
+}
+# ./control made a real directory, run inside the real static/: a link put
+# at the name is removed, a missing directory created 0755.
+_acct_ctrl_dir_here() {
+  [ -L ./control ] && rm -f ./control
+  [ -d ./control ] || ( umask 022; mkdir -p ./control )
+}
+# The per-serial defaults in an account's control directory (run inside the
+# real directory): each written only where missing, and cli.info taken from
+# fpm.info only when that is a regular file.
+_ctrl_seed_here() {
+  local _v
+  if [ ! -e ./MyQuick.info ] && [ ! -e ./MyClassic.info ]; then
+    _acct_put_here MyQuick.info ON
+  fi
+  if [ ! -e ./.disFastTrack.pid ]; then
+    rm -f -- ./FastTrack.info
+    _acct_touch_here .disFastTrack.pid
+  fi
+  if [ ! -e ./FastTrack.info ] && [ ! -e ./ClassicTrack.info ]; then
+    _acct_put_here ClassicTrack.info ON
+  fi
+  if [ -e ./fpm.info ] && [ ! -e ./cli.info ]; then
+    _v="$(_acct_read_here fpm.info)"
+    [ -n "${_v}" ] && _acct_put_here cli.info "${_v}"
+  fi
+  return 0
+}
+# fpm.info and cli.info of an account that has none (run inside the real
+# control directory), handed to the main login: fpm.info the default
+# version, cli.info the fpm.info version or the default. Each is a fresh
+# 0644 file owned through its handle (_acct_put_own_here): the main login
+# can rename a hard link over a name between a put and a chown by name.
+_ctrl_pins_here() {
+  local _v
+  if [ ! -e ./fpm.info ] && [ -n "${_useFpm}" ]; then
+    printf '%s\n' "${_useFpm}" \
+      | _acct_put_own_here fpm.info "${_tUsr}.ftp:${_usrGroup}" 644
+  fi
+  if [ ! -e ./cli.info ]; then
+    if [ -e ./fpm.info ]; then
+      _v="$(_acct_read_here fpm.info)"
+    else
+      _v="${_useCli}"
+    fi
+    [ -n "${_v}" ] && printf '%s\n' "${_v}" \
+      | _acct_put_own_here cli.info "${_tUsr}.ftp:${_usrGroup}" 644
+  fi
+  return 0
+}
+# The control directory on the first pass of a serial (run inside the real
+# directory), as the ltd worker's _ltd_ctrl_init does it: the README put in
+# place as a fresh 0644 file, the tree handed to the main login, old stamps
+# swept and this serial's written exclusively. The hand-over walks the tree
+# with find -execdir (_ACCT_REOWN_PL): a directory or a single-link regular
+# file is re-owned through its handle, and a hard link the main login put
+# in the tree (to any file it can read and write) is left alone.
+_ctrl_init_here() {
+  local _uid _gid
+  chmod 755 .
+  if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
+    ( umask 022
+      cp -T --no-preserve=mode --remove-destination \
+        /var/xdrago/conf/control-readme.txt ./README.txt ) &> /dev/null
+  fi
+  _uid=$(id -u -- "${_tUsr}.ftp" 2> /dev/null)
+  _gid=$(getent group "${_usrGroup}" 2> /dev/null | cut -d: -f3)
+  if [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]]; then
+    env PATH=/usr/local/bin:/usr/bin:/bin find . \
+      -execdir perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" {} +
+  fi
+  rm -f -- ./.ctrl.*
+  _acct_put_here ".ctrl.${_tRee}.${_xSrl}.pid" OK
+}
+# An octopus upgrade queued from the account's control directory (run inside
+# the real directory): platforms.info seeded when empty and run-upgrade.pid
+# created, both exclusively and handed to the main login through their
+# handles (_acct_put_own_here), never chowned by name. True only when this
+# call queued it. $1 = owner:group.
+_ctrl_upgrade_here() {
+  if [ ! -s ./platforms.info ]; then
+    printf '%s\n' FOOBAR | _acct_put_own_here platforms.info "${1}" 644
+  fi
+  [ -e ./run-upgrade.pid ] && return 1
+  _acct_put_own_here run-upgrade.pid "${1}" 644 < /dev/null || return 1
+  return 0
+}
+### One-shot fleet heal: the hostmaster site's drushrc.php carries the
+### instance DB user (ALL PRIVILEGES) and only its owner ever reads it, yet
+### it sat at 0440 with group users, a group every shell account on the box
+### is in. Provision now writes it 0400 and the permission passes keep it
+### there; this closes the gap on every box before those tools arrive.
+### Real files only: never chmod through a planted link. An account owns
+### every directory on the way to its own drushrc.php, so there the mode is
+### set through a handle inside the pinned real site directory, on a
+### single-link regular file only. Runs once per box per stamp serial;
+### decrement the serial to re-run fleet-wide.
+if [ ! -e "${_pthLog}/hostmaster-drushrc-0400.ctrl.f99.${_tRee}.${_xSrl}.pid" ]; then
+  for _hmRc in /var/aegir/host_master/*/sites/*/drushrc.php; do
+    [ -f "${_hmRc}" ] && [ ! -L "${_hmRc}" ] && chmod 0400 "${_hmRc}" &> /dev/null
+  done
+  for _hmRc in /data/disk/*/aegir/distro/*/sites/*/drushrc.php; do
+    [ -f "${_hmRc}" ] || continue
+    _acct_in_real_dir "${_hmRc%/*}" \
+      perl -e "${_BOA_FCHMOD_PL}" 0400 drushrc.php &> /dev/null
+  done
+  touch "${_pthLog}/hostmaster-drushrc-0400.ctrl.f99.${_tRee}.${_xSrl}.pid"
 fi
 
 _os_detection_minimal() {
@@ -1208,6 +1444,18 @@ _fetch_failed_report() {
   _FETCH_FAIL_CNT=0
 }
 
+# A runner a migration tool parked as /var/xdrago/.<name>.off stays parked
+# while its park marker lives (xoct/xcopy pre-mig until post-mig, an xmass
+# cutover until its unpark; 24 h at most: clear.sh expires the marker).
+# Fetching into the empty name undid the park within one clear.sh tick, so
+# the target ran the queue and the upgrade create had armed in the middle of
+# the move. This test skips the fetch; _fetch_versioned checks the park again
+# right before it writes, for a park that lands while the fetch runs.
+_runner_parked() {
+  [[ -e "/run/boa_migration_park.pid" ]] || return 1
+  [[ ! -e "/var/xdrago/${1}" ]] && [[ -e "/var/xdrago/.${1}.off" ]]
+}
+
 _fetch_versioned() {
   local _dst="$1" _url="$2" _srl="$3"
   shift 3
@@ -1435,6 +1683,15 @@ _fetch_versioned() {
     else
       chmod "${_mode}" "${_new}"
       chown "${_own}" "${_new}"
+      # The park is checked again at the write: a migration tool can park
+      # this name after the caller's _runner_parked test, while the fetch
+      # runs, and the move would then bring the runner back mid-migration.
+      # Dropped unarmed, so the next pass asks again once the park is over.
+      if [[ -e "/run/boa_migration_park.pid" ]] && [[ ! -e "${_dst}" ]] \
+        && [[ -e "${_dst%/*}/.${_dst##*/}.off" ]]; then
+        rm -f "${_new}"
+        return 0
+      fi
       mv -f "${_new}" "${_dst}"             # first install or self-heal (atomic)
     fi
     [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
@@ -1458,6 +1715,48 @@ _fetch_versioned() {
     [ "${_noted}" = "YES" ] || _fetch_failed_note "${_cnm}" "${_url}" "${_cod:-transport}"
   fi
   return 0
+}
+
+# The cron directory of an account's hostmaster platform (run inside the
+# real directory): stale patch leftovers dropped, and hosting_cron.module,
+# when it is a regular file without the queue patch, replaced by the patched
+# template $1 with the box IP $2. The module is read bounded and never
+# through a link, and the template is put as a fresh file with the
+# template's owner, group and mode, as cp -a left it, renamed over the name
+# (the account owns this directory and could put a link there).
+_hm_cron_queue_here() {
+  local _st _uid _gid _mod
+  if [ -e ./hosting_cron.module.orig ]; then
+    rm -f -- ./hosting_cron.module.orig
+  fi
+  if [ -e ./hosting_cron.module.rej ]; then
+    rm -f -- ./hosting_cron.module.rej
+  fi
+  [ -e "${1}" ] || return 0
+  [ -f ./hosting_cron.module ] && [ ! -L ./hosting_cron.module ] || return 0
+  [[ "$(_acct_read_here hosting_cron.module)" == *"core/cron.php"* ]] \
+    && return 0
+  _st=$(stat -c '%u %g %a' -- "${1}" 2> /dev/null) || return 1
+  read -r _uid _gid _mod <<< "${_st}"
+  sed "s/127.0.0.1/${2}/g" "${1}" \
+    | _acct_put_mode_here hosting_cron.module "${_uid}" "${_gid}" "${_mod}"
+}
+# True when the file $2 of any account directory below the account's
+# tools/le/accounts $1 holds the text $3: each read bounded, never through a
+# link or from a FIFO, inside its pinned real directory.
+_le_acct_has() {
+  local _d
+  for _d in "${1}"/*; do
+    [ -d "${_d}" ] && [ ! -L "${_d}" ] || continue
+    _acct_in_real_dir "${_d}" _acct_read_here "${2}" \
+      | grep -q -- "${3}" && return 0
+  done
+  return 1
+}
+# The register markers in the account's tools/le/.ctrl (run inside the real
+# directory) removed.
+_le_ctrl_clear_here() {
+  rm -f -- ./.forced* ./.normal* ./forced* ./normal*
 }
 
 _update_agents() {
@@ -1559,7 +1858,14 @@ _update_agents() {
     [ -e "/root/.my.batch_innodb.cnf" ] && rm -f /root/.my.batch_innodb.cnf
     [ -e "/root/.batch_innodb.cnf" ] && rm -f /root/.batch_innodb.cnf
     [ -e "/root/.force.drupalgeddon.cnf" ] && rm -f /root/.force.drupalgeddon.cnf
-    rm -f /data/disk/*/static/control/drupalgeddon.info
+    ### Removed only from inside each account's pinned real control
+    ### directory: the account can point static or control elsewhere.
+    for _dgdUsr in /data/disk/*; do
+      [ -e "${_dgdUsr}/static/control/drupalgeddon.info" ] \
+        || [ -L "${_dgdUsr}/static/control/drupalgeddon.info" ] || continue
+      _acct_in_real_dir "${_dgdUsr}/static/control" \
+        rm -f -- ./drupalgeddon.info
+    done
     [ -e "/root/.skip_cleanup.cnf" ] && rm -f /root/.skip_cleanup.cnf
     [ -e "/root/.giant_traffic.cnf" ] && rm -f /root/.giant_traffic.cnf
     [ -e "/root/.default.cnf" ] && rm -f /root/.default.cnf
@@ -1773,21 +2079,21 @@ _update_agents() {
     fi
   fi
 
-  _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f90 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
+  _fetch_versioned ${_optBin}/edgetest "${_urlHmr}/tools/bin/edgetest" f87 --symlink ${_usrBin}/edgetest --guard /local/bin/edgetest
   _fetch_versioned ${_optBin}/clearwebbans "${_urlHmr}/tools/bin/clearwebbans" f95 --symlink ${_usrBin}/clearwebbans --guard /local/bin/clearwebbans
   _fetch_versioned ${_optBin}/defaultkeys "${_urlHmr}/tools/bin/defaultkeys" f99 --symlink ${_usrBin}/defaultkeys --guard /local/bin/defaultkeys
   # PHP-selecting bee launcher (identity verb policy). Deployed unconditionally
   # but inert until the gated _get_bee installs /opt/tools/bee; canonical path
   # /opt/local/bin/bee (no /usr/bin symlink, websh's PATH resolves it);
   # clients execute it, so it ships world-executable.
-  _fetch_versioned ${_optBin}/bee "${_urlHmr}/tools/bin/bee" f94 --mode 755 --guard /local/bin/bee
+  _fetch_versioned ${_optBin}/bee "${_urlHmr}/tools/bin/bee" f93 --mode 755 --guard /local/bin/bee
   # PHP-selecting Grav CLI wrapper (identity verb policy + the enforced
   # 8.3 floor). Deployed unconditionally but inert
   # without a Grav install in reach (it resolves the target from CWD and
   # refuses vendor-less trees); the gated surfaces are the platforms and the
   # release staging, not this launcher. Canonical path /opt/local/bin/grav
   # (no /usr/bin symlink; websh's PATH resolves it).
-  _fetch_versioned ${_optBin}/grav "${_urlHmr}/tools/bin/grav" f96 --mode 755 --guard /local/bin/grav
+  _fetch_versioned ${_optBin}/grav "${_urlHmr}/tools/bin/grav" f95 --mode 755 --guard /local/bin/grav
   # Mirror-source build boxes only, marked by /root/.stackbuild.cnf (even an
   # empty file opts a box in): staticbuild (distribution catalogue, core and
   # Backdrop-family builder) and stackbuild (heavy stack-component packager).
@@ -1795,7 +2101,7 @@ _update_agents() {
   # existing build user (o8 unless -u says otherwise) and never guesses one
   # from /data/disk.
   if [ -e "/root/.stackbuild.cnf" ]; then
-    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f56 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
+    _fetch_versioned ${_optBin}/staticbuild "${_urlHmr}/tools/bin/staticbuild" f55 --mode 755 --symlink ${_usrBin}/staticbuild --guard /local/bin/staticbuild
     _fetch_versioned ${_optBin}/stackbuild "${_urlHmr}/tools/bin/stackbuild" f92 --mode 755 --symlink ${_usrBin}/stackbuild --guard /local/bin/stackbuild
   else
     # A box that is not a build box carries no copy of either. Boxes that had
@@ -1826,7 +2132,7 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f39
+    _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f38
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f80
     _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f60
     _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f73
@@ -1835,7 +2141,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/fpm_tune.sh "${_urlHmr}/tools/system/monitor/check/fpm_tune.sh" f98
     _fetch_versioned /var/xdrago/monitor/check/sqlprobe.sh "${_urlHmr}/tools/system/monitor/check/sqlprobe.sh" f94
     _fetch_versioned /var/xdrago/monitor/check/xdr9000.sh "${_urlHmr}/tools/system/monitor/check/xdr9000.sh" f94
-    _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f94
+    _fetch_versioned /var/xdrago/monitor/check/batch_guard.sh "${_urlHmr}/tools/system/monitor/check/batch_guard.sh" f93
     _fetch_versioned /var/xdrago/monitor/check/task_guard.sh "${_urlHmr}/tools/system/monitor/check/task_guard.sh" f00
     _fetch_versioned /var/xdrago/monitor/check/autosync.sh "${_urlHmr}/tools/system/monitor/check/autosync.sh" f01
     _fetch_versioned /var/xdrago/monitor/check/valkey.sh "${_urlHmr}/tools/system/monitor/check/valkey.sh" f77
@@ -1862,24 +2168,30 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/convert_guard.sh "${_urlHmr}/tools/system/monitor/check/convert_guard.sh" f00
     _fetch_versioned /var/xdrago/monitor/check/hostname_sync.sh "${_urlHmr}/tools/system/monitor/check/hostname_sync.sh" f01
     _fetch_versioned /etc/init.d/clean-boa-env "${_urlHmr}/conf/var/clean-boa-env" f94
-    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f78 --guard mysql_backup.sh
+    _fetch_versioned /var/xdrago/mysql_backup.sh "${_urlHmr}/tools/system/mysql_backup.sh" f77 --guard mysql_backup.sh
     _fetch_versioned /usr/libexec/unbound-helper "${_urlHmr}/conf/dns/unbound-helper" f95 --mode 755
     _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f84
-    _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f82 --guard mysql_cluster_backup.sh
-    _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f62
+    _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f81 --guard mysql_cluster_backup.sh
+    _runner_parked runner.sh \
+      || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f62
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f78
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f78
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f78
-    _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f87
+    _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f85
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f98
     # Activate Cloudflare realip immediately by writing the set_real_ip_from
     # ranges include now, so a fresh/updated box does not wait for the daily
     # cron; the tool no-ops when nginx is absent and is idempotent otherwise.
-    [ -e "/var/xdrago/cloudflare_realip.sh" ] && bash /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
+    # Only while the ranges file is missing: this runs on every pass, and the
+    # daily cron keeps an existing file current without fetching Cloudflare's
+    # lists every few minutes.
+    [ -e "/var/xdrago/cloudflare_realip.sh" ] \
+      && [ ! -s "/data/conf/nginx_cloudflare_real_ip.conf" ] \
+      && bash /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
     _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f93
     _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f98
     _fetch_versioned /var/xdrago/nginx_deny6.sh "${_urlHmr}/tools/system/nginx_deny6.sh" f99
-    _fetch_versioned /var/xdrago/nginx_fleet.sh "${_urlHmr}/tools/system/nginx_fleet.sh" f97
+    _fetch_versioned /var/xdrago/nginx_fleet.sh "${_urlHmr}/tools/system/nginx_fleet.sh" f95
     # The per-minute line otherwise arrives only with the crontab template on a
     # full up-* run, so a fetched detector would sit idle until then; ensure it
     # whenever the script is present. A line an operator commented out still
@@ -1895,9 +2207,9 @@ _update_agents() {
     # The migration-proxy trio previously reached boxes only inside the full
     # up-* tar, so a source box that had not upgraded since the certificate
     # mirror shipped had NO mirror at all -- the exact box that needs it.
-    _fetch_versioned /var/xdrago/migration_proxy_trust.sh "${_urlHmr}/tools/system/migration_proxy_trust.sh" f98
+    _fetch_versioned /var/xdrago/migration_proxy_trust.sh "${_urlHmr}/tools/system/migration_proxy_trust.sh" f97
     _fetch_versioned /var/xdrago/migration_proxy_realip.sh "${_urlHmr}/tools/system/migration_proxy_realip.sh" f99
-    _fetch_versioned /var/xdrago/migration_proxy_certs.sh "${_urlHmr}/tools/system/migration_proxy_certs.sh" f98
+    _fetch_versioned /var/xdrago/migration_proxy_certs.sh "${_urlHmr}/tools/system/migration_proxy_certs.sh" f95
     # A fetch-delivered mirror without its schedule is a false comfort: the
     # daily line normally arrives only with the crontab template on a full
     # up-* run, so ensure it whenever the script is present.
@@ -1913,12 +2225,13 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f91
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f88
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f72
-    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f71
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f59
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f61
-    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f77
-    _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f76
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f69
+    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f66
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f47
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f51
+    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f69
+    _runner_parked owl.sh \
+      || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f75
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
     ### state (.daily.sh.off) across to owl so a box that had the nightly run
@@ -1941,8 +2254,10 @@ _update_agents() {
       rm -f /var/xdrago/daily.sh
       rm -f ${_pthLog}/daily.sh.ctrl.*.pid
     fi
-    _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f75
-    _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f67
+    _runner_parked graceful.sh \
+      || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f75
+    _runner_parked usage.sh \
+      || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f59
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
@@ -1984,26 +2299,28 @@ _update_agents() {
     # bytes already deployed as "mirror not caught up" and retries next pass,
     # revalidates within the hour, and never clobbers a running pass; the
     # post-install steps run only when the file actually changed.
-    _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f92 --guard /xdrago/manage_ltd_users.sh
-    if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
-      && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
-      [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
-      [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
-      mkdir -p /var/backups/ltd/{conf,log,old}
+    if ! _runner_parked manage_ltd_users.sh; then
+      _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f82 --guard /xdrago/manage_ltd_users.sh
+      if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
+        && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
+        [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+        [ -d "/var/backups/ltd/log" ] && rm -rf /var/backups/ltd/log
+        mkdir -p /var/backups/ltd/{conf,log,old}
+      fi
     fi
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f65.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f62.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_solr_config.sh /var/xdrago/manage_solr_config.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_solr_config.sh" \
       -o /var/xdrago/manage_solr_config.sh
     if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
       chmod 700 /var/xdrago/manage_solr_config.sh
       chown root:root /var/xdrago/manage_solr_config.sh
-      touch ${_pthLog}/manage_solr_config.sh.ctrl.f65.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_solr_config.sh.ctrl.f62.${_tRee}.${_xSrl}.pid
       rm -f /var/xdrago/manage_solr_config.sh.old
       rm -f /run/manage_solr_config.pid
     else
@@ -2056,7 +2373,7 @@ _update_agents() {
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/lshell.ctrl.f81.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/lshell.ctrl.f80.${_tRee}.${_xSrl}.pid" ]; then
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
       mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
@@ -2065,7 +2382,7 @@ _update_agents() {
       if [ -e "/var/xdrago/conf/lshell.conf" ]; then
         chmod 644 /var/xdrago/conf/lshell.conf
         chown root:root /var/xdrago/conf/lshell.conf
-        touch ${_pthLog}/lshell.ctrl.f81.${_tRee}.${_xSrl}.pid
+        touch ${_pthLog}/lshell.ctrl.f80.${_tRee}.${_xSrl}.pid
       else
         mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
       fi
@@ -2229,7 +2546,14 @@ _update_agents() {
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ -d "/data/u" ] \
     && [ ! -e "${_pthLog}/dispatch.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    sed -i "s/.*cache.*//g; s/.*cc drush.*//g; s/ *$//g; /^$/d" /data/disk/*/aegir.sh
+    ### aegir.sh sits in the account's own home, where the account can put
+    ### a FIFO (a sed -i would hang this pass on it) or a link at the name:
+    ### edit it inside the pinned real home, read bounded (_acct_sed_here).
+    for _pthSysUsr in /data/disk/*; do
+      [ -e "${_pthSysUsr}/aegir.sh" ] || continue
+      _acct_in_real_dir "${_pthSysUsr}" _acct_sed_here aegir.sh \
+        "s/.*cache.*//g; s/.*cc drush.*//g; s/ *$//g; /^$/d"
+    done
     touch ${_pthLog}/dispatch.ctrl.${_tRee}.${_xSrl}.pid
   fi
 
@@ -2260,30 +2584,17 @@ _update_agents() {
       _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
       if [ -n "${_tUsr}" ] && [ "${_tUsr}" != "arch" ]; then
         if [ -e "${_pthSysUsr}/log/hosting_cron_use_backend.txt" ]; then
-          rm -f ${_pthSysUsr}/log/hosting_cron_use_backend.txt
+          _acct_in_real_dir "${_pthSysUsr}/log" \
+            rm -f -- ./hosting_cron_use_backend.txt
         fi
-        _hmPlr=$(cat ${_pthSysUsr}/.drush/hostmaster.alias.drushrc.php \
-          | grep "root'" \
-          | cut -d: -f2 \
-          | awk '{ print $3}' \
-          | sed "s/[\,']//g" 2>&1)
+        ### The account owns its alias and the whole platform it names: the
+        ### root is taken only when it is one of the account's own
+        ### hostmaster platforms (_acct_hm_root), and the module is put
+        ### only from inside the pinned real cron directory.
+        _hmPlr=$(_acct_hm_root "${_pthSysUsr}") || continue
         _hmDir="${_hmPlr}/profiles/hostmaster/modules/aegir/hosting"
-        _hmQmd="${_hmDir}/cron/hosting_cron.module"
-        if [ -e "${_hmDir}/cron/hosting_cron.module.orig" ]; then
-          rm -f ${_hmDir}/cron/hosting_cron.module.orig
-        fi
-        if [ -e "${_hmDir}/cron/hosting_cron.module.rej" ]; then
-          rm -f ${_hmDir}/cron/hosting_cron.module.rej
-        fi
-        if [ -e "${_hmQmd}" ] && [ -e "${_hQueueP}" ]; then
-          _isPatched=$(grep "core/cron.php" "${_hmQmd}")
-          if [[ ! "${_isPatched}" =~ "core/cron.php" ]]; then
-            cp -a ${_hQueueP} ${_hmDir}/cron/
-            if [ -e "${_hmDir}/cron/${_hQueueF}" ]; then
-              sed -i "s/127.0.0.1/${_LOC_IP}/g" "${_hmDir}/cron/${_hQueueF}"
-            fi
-          fi
-        fi
+        _acct_in_real_dir "${_hmDir}/cron" \
+          _hm_cron_queue_here "${_hQueueP}" "${_LOC_IP}"
       fi
     done
     touch ${_pthLog}/hosting.cron.queue.ctrl.f95.${_tRee}.${_xSrl}.pid
@@ -2296,7 +2607,8 @@ _update_agents() {
       _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
       if [ -n "${_tUsr}" ] && [ "${_tUsr}" != "arch" ]; then
         if [ -e "${_pthSysUsr}/log/hosting_cron_use_backend.txt" ]; then
-          rm -f ${_pthSysUsr}/log/hosting_cron_use_backend.txt
+          _acct_in_real_dir "${_pthSysUsr}/log" \
+            rm -f -- ./hosting_cron_use_backend.txt
         fi
       fi
     done
@@ -2313,22 +2625,7 @@ _update_agents() {
       _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
       _usrGroup=$(_acct_group "${_tUsr}")
       if [ "${_tUsr}" != "arch" ]; then
-        if [ ! -e "${_pthSysUsr}/static/control/MyQuick.info" ] \
-          && [ ! -e "${_pthSysUsr}/static/control/MyClassic.info" ]; then
-          echo ON > ${_pthSysUsr}/static/control/MyQuick.info
-        fi
-        if [ ! -e "${_pthSysUsr}/static/control/.disFastTrack.pid" ]; then
-          rm -f ${_pthSysUsr}/static/control/FastTrack.info
-          touch ${_pthSysUsr}/static/control/.disFastTrack.pid
-        fi
-        if [ ! -e "${_pthSysUsr}/static/control/FastTrack.info" ] \
-          && [ ! -e "${_pthSysUsr}/static/control/ClassicTrack.info" ]; then
-          echo ON > ${_pthSysUsr}/static/control/ClassicTrack.info
-        fi
-        if [ -e "${_pthSysUsr}/static/control/fpm.info" ] \
-          && [ ! -e "${_pthSysUsr}/static/control/cli.info" ]; then
-          cp ${_pthSysUsr}/static/control/fpm.info ${_pthSysUsr}/static/control/cli.info
-        fi
+        _acct_in_real_dir "${_pthSysUsr}/static/control" _ctrl_seed_here
         ### proxy-failed.pid: a cutover could not convert the account, and its
         ### panel database lives on the target; its dispatcher would run the
         ### travelled queue against the stale local copy until xoct repairs it
@@ -2358,13 +2655,12 @@ _update_agents() {
             fi
           fi
           _dscUsr="/data/disk/${_tUsr}"
+          ### The account owns config/includes and can put a FIFO or a link
+          ### at this name: read it bounded inside the pinned real directory
+          ### and edit only a copy without the marker (_acct_sed_here).
           _ngxCnf="${_dscUsr}/config/includes/nginx_vhost_common.conf"
-          _NGINX_CNF_TEST=$(grep "foobaroff" ${_ngxCnf} 2>&1)
-          if [[ "${_NGINX_CNF_TEST}" =~ "foobaroff" ]]; then
-            _DO_NOTHING=YES
-          else
-            sed -i "s/args.*q=/args ~* \"foobaroff=/g" ${_ngxCnf}
-          fi
+          _acct_in_real_dir "${_ngxCnf%/*}" _acct_sed_here "${_ngxCnf##*/}" \
+            "s/args.*q=/args ~* \"foobaroff=/g" foobaroff
           for _version in 84 85 83 82 81 74 56; do
             if [ -x "/opt/php${_version}/bin/php" ]; then
               if [ "${_version}" = "74" ]; then
@@ -2380,38 +2676,13 @@ _update_agents() {
               break
             fi
           done
-          if [ ! -e "${_dscUsr}/static/control/fpm.info" ] \
-            && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-            if [ -n "${_useFpm}" ]; then
-              echo ${_useFpm} > ${_dscUsr}/static/control/fpm.info
-              chown ${_tUsr}.ftp:${_usrGroup} ${_dscUsr}/static/control/fpm.info
-              chmod 0644 ${_dscUsr}/static/control/fpm.info
-            fi
-          fi
-          if [ ! -e "${_dscUsr}/static/control/cli.info" ] \
-            && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
-            if [ -e "${_dscUsr}/static/control/fpm.info" ]; then
-              cp -af ${_dscUsr}/static/control/fpm.info ${_dscUsr}/static/control/cli.info
-            else
-              if [ -n "${_useCli}" ]; then
-                echo ${_useCli} > ${_dscUsr}/static/control/cli.info
-                chown ${_tUsr}.ftp:${_usrGroup} ${_dscUsr}/static/control/cli.info
-                chmod 0644 ${_dscUsr}/static/control/cli.info
-              fi
-            fi
+          if [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+            _acct_in_real_dir "${_dscUsr}/static/control" _ctrl_pins_here
           fi
           if [ ! -e "${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid" ] \
             && [ -e "/home/${_tUsr}.ftp/clients" ]; then
-            mkdir -p ${_dscUsr}/static/control
-            chmod 755 ${_dscUsr}/static/control
-            if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
-              cp -af /var/xdrago/conf/control-readme.txt \
-                ${_dscUsr}/static/control/README.txt &> /dev/null
-              chmod 0644 ${_dscUsr}/static/control/README.txt
-            fi
-            chown -R ${_tUsr}.ftp:${_usrGroup} ${_dscUsr}/static/control
-            rm -f ${_dscUsr}/static/control/.ctrl.*
-            echo OK > ${_dscUsr}/static/control/.ctrl.${_tRee}.${_xSrl}.pid
+            _acct_in_real_dir "${_dscUsr}/static" _acct_ctrl_dir_here
+            _acct_in_real_dir "${_dscUsr}/static/control" _ctrl_init_here
           fi
         fi
       fi
@@ -2483,22 +2754,23 @@ _update_agents() {
         ### stamped every tree with the last account's group (or, with that
         ### loop's gate already closed, fell back to the login group).
         _usrGroup=$(_acct_group "${_tUsr}")
-        _hmPf=$(cat ${_dscUsr}/.drush/hostmaster.alias.drushrc.php \
-          | grep "root'" \
-          | cut -d: -f2 \
-          | awk '{ print $3}' \
-          | sed "s/[\,']//g" 2>&1)
-        _locFile="${_hmPf}/${_lePath}"
-        if [ -e "${_locFile}" ] && [ -e "${_provLeIncFull}" ]; then
-          cp -af ${_provLeIncFull} ${_locFile}
-          chown ${_tUsr}:${_usrGroup} ${_locFile}
-          chmod 0644 ${_locFile}
+        ### The account owns its hostmaster platform, its tools/le and the
+        ### alias naming that platform: each copy is put through a pinned
+        ### real directory of the account's own tree, owned and moded through
+        ### its handle, so a link the account put at a name is replaced,
+        ### never written through or handed over.
+        _tUid=$(id -u -- "${_tUsr}" 2> /dev/null)
+        _tGid=$(getent group "${_usrGroup}" 2> /dev/null | cut -d: -f3)
+        _hmPf=$(_acct_hm_root "${_dscUsr}")
+        if [ -n "${_hmPf}" ] && [ -e "${_provLeIncFull}" ]; then
+          _acct_in_real_dir "${_hmPf}/${_lePath%/*}" \
+            _acct_refresh_mode_here "${_lePath##*/}" \
+            "${_tUid}" "${_tGid}" 644 < "${_provLeIncFull}"
         fi
-        _locVhFile="${_hmPf}/${_leVhPath}"
-        if [ -e "${_locVhFile}" ] && [ -e "${_hoLeIncFull}" ]; then
-          cp -af ${_hoLeIncFull} ${_locVhFile}
-          chown ${_tUsr}:${_usrGroup} ${_locVhFile}
-          chmod 0644 ${_locVhFile}
+        if [ -n "${_hmPf}" ] && [ -e "${_hoLeIncFull}" ]; then
+          _acct_in_real_dir "${_hmPf}/${_leVhPath%/*}" \
+            _acct_refresh_mode_here "${_leVhPath##*/}" \
+            "${_tUid}" "${_tGid}" 644 < "${_hoLeIncFull}"
         fi
         _leRoot="${_dscUsr}/tools/le"
         _exeLe="${_leRoot}/dehydrated"
@@ -2512,8 +2784,16 @@ _update_agents() {
         _normalRegPid="${_leRoot}/.ctrl/normal-re6-register.pid"
         _forcedRegPid="${_leRoot}/.ctrl/forced-re6-register.pid"
         _onDemandRegPid="${_leRoot}/.ctrl/onDemand-register.pid"
-        _validIdn=$(grep "letsencrypt" ${_acctsDir}/*/account_id.json 2>&1)
-        _validReg=$(grep "valid" ${_acctsDir}/*/registration_info.json 2>&1)
+        ### Everything below tools/le is the account's: its files are read
+        ### bounded inside their pinned real directories, every name is
+        ### created, removed or moved only from inside its pinned real
+        ### directory, and its dehydrated (run as the account) is bounded in
+        ### time, so no name there can steer or stall this root pass.
+        _validIdn=
+        _le_acct_has "${_acctsDir}" account_id.json letsencrypt \
+          && _validIdn=letsencrypt
+        _le_acct_has "${_acctsDir}" registration_info.json valid \
+          && _validReg=valid
         ### The old registering-IP probe is retired: the ACME account object
         ### has not carried any IP field for years, so a grep for the box IP
         ### could never match -- which made the forced re-register arm below
@@ -2523,26 +2803,35 @@ _update_agents() {
         _HOUR=$(date +%H 2>&1)
         _HOUR=${_HOUR//[^0-9-]/}
         if [ -e "${_dehydSrcPath}" ]; then
-          cp -af ${_dehydSrcPath} ${_dehydFull}
-          chown ${_tUsr}:${_usrGroup} ${_dehydFull}
-          chmod 0700 ${_dehydFull}
+          _acct_in_real_dir "${_leRoot}" _acct_put_mode_here "${_dehydName}" \
+            "${_tUid}" "${_tGid}" 700 < "${_dehydSrcPath}"
         fi
         if [ -e "${_dehydFull}" ] \
           && [ ! -e "${_normalRegPid}" ]; then
           if [ "${_HOUR}" = "5" ] \
             || [ "${_HOUR}" = "17" ] \
             || [ -e "${_onDemandRegPid}" ]; then
-            su -s /bin/bash - ${_tUsr} -c "bash ${_exeLe} --register --accept-terms"
+            local _leRegRc
+            timeout -k 10 300 \
+              su -s /bin/bash - ${_tUsr} -c "bash ${_exeLe} --register --accept-terms"
+            _leRegRc=$?
             wait
-            touch ${_normalRegPid}
+            # 124/137: killed by the timeout, so no marker: the next run of
+            # this block registers again
+            if [[ "${_leRegRc}" != "124" && "${_leRegRc}" != "137" ]]; then
+              _acct_in_real_dir "${_leRoot}/.ctrl" \
+                _acct_touch_here "${_normalRegPid##*/}"
+            else
+              echo "NOTE: Let's Encrypt registration for ${_tUsr} timed out; not recorded as done"
+            fi
           fi
         fi
         if [ -e "${_lockLeFile}" ]; then
-          rm -f ${_lockLeFile}
+          _acct_in_real_dir "${_leRoot}" rm -f -- "./${_lockLeFile##*/}"
           sleep 1
         fi
         if [ -e "${_demoPid}" ]; then
-          rm -f ${_demoPid}
+          _acct_in_real_dir "${_leRoot}/.ctrl" rm -f -- "./${_demoPid##*/}"
         fi
         if [ "${_HOUR}" = "11" ] \
           || [ "${_HOUR}" = "23" ] \
@@ -2552,24 +2841,31 @@ _update_agents() {
             || [[ ! "${_validIdn}" =~ "letsencrypt" ]] \
             || [[ ! "${_validReg}" =~ "valid" ]] \
             || [ ! -e "${_forcedRegPid}" ]; then
-            rm -f ${_legacyLeShFile}
-            rm -rf ${_acctsDemoDir}
+            _acct_in_real_dir "${_leRoot}" rm -f -- "./${_legacyLeShFile##*/}"
+            _acct_in_real_dir "${_leRoot}" rm -rf -- "./${_acctsDemoDir##*/}"
             ### Archive, never destroy: the accounts dir holds the tenant's
             ### only ACME account key. A mis-fired heal that deleted it cost
             ### a fresh registration; an archived copy costs a mv back.
             if [ -d "${_acctsDir}" ]; then
               mkdir -p /var/backups/le-accounts/${_tUsr}
-              mv -f ${_acctsDir} /var/backups/le-accounts/${_tUsr}/accounts-$(date +%Y%m%d%H%M%S 2>/dev/null)
+              _acct_in_real_dir "${_leRoot}" mv -f -- "./${_acctsDir##*/}" \
+                "/var/backups/le-accounts/${_tUsr}/accounts-$(date +%Y%m%d%H%M%S 2>/dev/null)"
             fi
-            rm -f ${_leRoot}/.ctrl/.forced*
-            rm -f ${_leRoot}/.ctrl/.normal*
-            rm -f ${_leRoot}/.ctrl/forced*
-            rm -f ${_leRoot}/.ctrl/normal*
+            _acct_in_real_dir "${_leRoot}/.ctrl" _le_ctrl_clear_here
             if [ -e "${_exeLe}" ]; then
-              su -s /bin/bash - ${_tUsr} -c "bash ${_exeLe} --register --accept-terms"
+              local _leRegRc
+              timeout -k 10 300 \
+                su -s /bin/bash - ${_tUsr} -c "bash ${_exeLe} --register --accept-terms"
+              _leRegRc=$?
               wait
-              touch ${_forcedRegPid}
-              touch ${_normalRegPid}
+              if [[ "${_leRegRc}" != "124" && "${_leRegRc}" != "137" ]]; then
+                _acct_in_real_dir "${_leRoot}/.ctrl" \
+                  _acct_touch_here "${_forcedRegPid##*/}"
+                _acct_in_real_dir "${_leRoot}/.ctrl" \
+                  _acct_touch_here "${_normalRegPid##*/}"
+              else
+                echo "NOTE: Let's Encrypt registration for ${_tUsr} timed out; not recorded as done"
+              fi
             fi
           fi
         fi
@@ -2718,6 +3014,25 @@ _fix_core_dgd() {
   _saBCoreP="${_saCoreN}-provision"
   _saBPatch="/var/xdrago/conf/${_saBCoreP}.patch"
 
+  # static/ and each Octopus hostmaster platform belong to the account's
+  # users, so any name below them can be a link: a platform is patched only
+  # from inside its real directory. The patch $1 is applied unless the
+  # platform is of the other generation (core/ present, or absent when $3 is
+  # d8) or already carries the stamp profiles/$2 (empty: no stamp). The
+  # stamp is a fresh file put inside the real profiles/, never written
+  # through a link the account put on the way.
+  _boa_core_dgd_here() {
+    if [ "${3}" = "d8" ]; then
+      [ -e ./core ] || return 0
+    else
+      [ ! -e ./core ] || return 0
+    fi
+    [ -z "${2}" ] || [ ! -e "./profiles/${2}" ] || return 0
+    patch -p1 < "${1}" &> /dev/null
+    [ -z "${2}" ] \
+      || _acct_in_real_dir "$(pwd -P)/profiles" _acct_put_here "${2}" fixed
+  }
+
   # SA-CORE D8 patch
   if [ -e "/var/xdrago" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
@@ -2749,15 +3064,10 @@ _fix_core_dgd() {
     && [ -e "${_saPatch}" ]; then
     if [ -d "/data/all" ] \
       && [ ! -e "${_pthLog}/hostmaster-octopus-${_saCoreN}-fixed-d7.log" ]; then
-      for _File in `find /data/disk/*/aegir/distro/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] && [ ! -e "${_Core}/core" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-        fi
+      for _File in /data/disk/*/aegir/distro/*/${_saIncDb}; do
+        [ -e "${_File}" ] || continue
+        _acct_in_real_dir "${_File%/"${_saIncDb}"}" \
+          _boa_core_dgd_here "${_saPatch}" "" d7
       done
       touch ${_pthLog}/hostmaster-octopus-${_saCoreN}-fixed-d7.log
     fi
@@ -2859,70 +3169,14 @@ _fix_core_dgd() {
     && [ -e "${_saPatch}" ]; then
     if [ -d "/data/u" ] \
       && [ ! -e "${_pthLog}/batch-custom-${_saCoreN}-fixed-d7.log" ]; then
-      for _File in `find /data/disk/*/static/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/*/*/${_saIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saCoreS}-fix.info
-        fi
+      for _File in /data/disk/*/static/*/${_saIncDb} \
+        /data/disk/*/static/*/*/${_saIncDb} \
+        /data/disk/*/static/*/*/*/${_saIncDb} \
+        /data/disk/*/static/*/*/*/*/${_saIncDb} \
+        /data/disk/*/static/*/*/*/*/*/${_saIncDb}; do
+        [ -e "${_File}" ] || continue
+        _acct_in_real_dir "${_File%/"${_saIncDb}"}" \
+          _boa_core_dgd_here "${_saPatch}" "${_saCoreS}-fix.info" d7
       done
     fi
     cd
@@ -2935,70 +3189,14 @@ _fix_core_dgd() {
     && [ -e "${_saQPatch}" ]; then
     if [ -d "/data/u" ] \
       && [ ! -e "${_pthLog}/batch-custom-${_saQCoreN}-fixed-d8.log" ]; then
-      for _File in `find /data/disk/*/static/*/${_saQIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/core.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saQPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/${_saQIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/core.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saQPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/${_saQIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/core.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saQPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/*/${_saQIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/core.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saQPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/*/*/${_saQIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/core.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saQCoreS}-fix.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saQPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saQCoreS}-fix.info
-        fi
+      for _File in /data/disk/*/static/*/${_saQIncDb} \
+        /data/disk/*/static/*/*/${_saQIncDb} \
+        /data/disk/*/static/*/*/*/${_saQIncDb} \
+        /data/disk/*/static/*/*/*/*/${_saQIncDb} \
+        /data/disk/*/static/*/*/*/*/*/${_saQIncDb}; do
+        [ -e "${_File}" ] || continue
+        _acct_in_real_dir "${_File%/"${_saQIncDb}"}" \
+          _boa_core_dgd_here "${_saQPatch}" "${_saQCoreS}-fix.info" d8
       done
     fi
     cd
@@ -3067,70 +3265,14 @@ _fix_core_dgd() {
     && [ -e "${_saXPatch}" ]; then
     if [ -d "/data/u" ] \
       && [ ! -e "${_pthLog}/batch-custom-${_saXCoreN}-finally-fixed-d6.log" ]; then
-      for _File in `find /data/disk/*/static/*/${_saXIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/${_saXIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/${_saXIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/*/${_saXIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
-        fi
-      done
-      for _File in `find /data/disk/*/static/*/*/*/*/*/${_saXIncDb} \
-        -maxdepth 0 -mindepth 0 | sort`; do
-        _Core=$(echo ${_File} \
-          | sed 's/\/includes.*//g' \
-          | awk '{print $1}' 2> /dev/null)
-        if [ -d "${_Core}" ] \
-          && [ ! -e "${_Core}/core" ] \
-          && [ ! -e "${_Core}/profiles/${_saXCoreS}-fix-finally.info" ]; then
-          cd ${_Core}
-          patch -p1 < ${_saXPatch} &> /dev/null
-          echo fixed > ${_Core}/profiles/${_saXCoreS}-fix-finally.info
-        fi
+      for _File in /data/disk/*/static/*/${_saXIncDb} \
+        /data/disk/*/static/*/*/${_saXIncDb} \
+        /data/disk/*/static/*/*/*/${_saXIncDb} \
+        /data/disk/*/static/*/*/*/*/${_saXIncDb} \
+        /data/disk/*/static/*/*/*/*/*/${_saXIncDb}; do
+        [ -e "${_File}" ] || continue
+        _acct_in_real_dir "${_File%/"${_saXIncDb}"}" \
+          _boa_core_dgd_here "${_saXPatch}" "${_saXCoreS}-fix-finally.info" d6
       done
     fi
     cd
@@ -3617,13 +3759,22 @@ _fix_start_stop_ports_solr() {
   fi
   if [ -x "/etc/init.d/jetty9" ]; then
     _restartSolr4=FALSE
-    _ctrl_jetty_nr=$(ls -la /tmp/jetty-0.0.0.0-8099-solr.war* | wc -l 2>&1)
+    ### Only jetty9's own entries count: any account can create names
+    ### matching this glob in /tmp and would otherwise trip the kill below
+    ### on every pass.
+    _ctrl_jetty_nr=$(find /tmp -mindepth 1 -maxdepth 1 -user jetty9 \
+      -name 'jetty-0.0.0.0-8099-solr.war*' -exec ls -la {} + 2> /dev/null \
+      | wc -l 2>&1)
     if [[ ! "${_ctrl_jetty_nr}" =~ "No such file" ]] && [ "${_ctrl_jetty_nr}" -gt 8 ]; then
       _restartSolr4=TRUE
     fi
     if [ "${_restartSolr4}" = "TRUE" ]; then
       if [ ! -x "/etc/init.d/jenkins" ] && [ ! -e "/var/lib/jenkins" ]; then
-        find /tmp -mindepth 1 -user jetty9 -exec rm -rf {} + 2>/dev/null
+        ### -execdir: removed from inside the directory holding each entry,
+        ### so a directory an account owns on the way cannot be swapped for
+        ### a link that points the removal elsewhere.
+        env PATH=/usr/local/bin:/usr/bin:/bin find /tmp -mindepth 1 \
+          -user jetty9 -execdir rm -rf -- {} + 2>/dev/null
         pkill -9 -f '^[^ ]*java[0-9]* .*jetty9'
         echo "_restartSolr4 at $(date)" >> ${_pthLog}/_fix_start_stop_ports_solr.log
       fi
@@ -3690,10 +3841,21 @@ _fix_log4j_solr7() {
   fi
 }
 
+# Each home belongs to its account, which can put a link at .ssh or at
+# authorized_keys (a chmod by name follows it anywhere on the box): the
+# modes are set only inside the pinned real .ssh, on the directory itself
+# and, through a handle, on a single-link regular authorized_keys.
+_ssh_modes_here() {
+  perl -e "${_BOA_FCHMOD_PL}" 0600 authorized_keys
+  chmod 0700 .
+}
 _fix_authorized_keys() {
+  local _hOme
   if [ ! -e "${_pthLog}/_fix_authorized_keys.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    chmod 0600 /home/*/.ssh/authorized_keys &> /dev/null
-    chmod 0700 /home/*/.ssh &> /dev/null
+    for _hOme in /home/*; do
+      [ -d "${_hOme}/.ssh" ] || continue
+      _acct_in_real_dir "${_hOme}/.ssh" _ssh_modes_here &> /dev/null
+    done
     touch ${_pthLog}/_fix_authorized_keys.ctrl.${_tRee}.${_xSrl}.pid
   fi
 }
@@ -3908,47 +4070,60 @@ _fix_eldir() {
   fi
 }
 
+# /data/conf/patches holds the patches every account's Drupal 10 and 11
+# platforms are patched from. A run of an earlier release handed /data/conf
+# to the Octopus account it upgraded, so a name there can still be a link
+# that account put: the files are written and removed only inside the real
+# patches/, never through a link put there or at patches itself, and a FIFO
+# or a device put at a name is never opened (grep -D skip).
 _if_drupal_patches_update() {
   if [ -e "/var/xdrago" ]; then
-    _BROKEN_UPDATE_TEST_A=$(grep "Under Construction" /data/conf/patches/* 2>&1)
-    _BROKEN_UPDATE_TEST_B=$(grep "404 Not Found" /data/conf/patches/* 2>&1)
+    _BROKEN_UPDATE_TEST_A=$(grep -D skip "Under Construction" /data/conf/patches/* 2>&1)
+    _BROKEN_UPDATE_TEST_B=$(grep -D skip "404 Not Found" /data/conf/patches/* 2>&1)
     if [ ! -z "${_BROKEN_UPDATE_TEST_A}" ] \
       || [ ! -z "${_BROKEN_UPDATE_TEST_B}" ] \
       || [ ! -e "/data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid" ]; then
       mkdir -p /data/conf/patches
-      rm -f /data/conf/patches/*
-      touch /data/conf/patches/ctrl.f96.${_tRee}.${_xSrl}.pid
+      _acct_in_real_dir /data/conf/patches _acct_rm_all_here
+      _acct_in_real_dir /data/conf/patches \
+        _acct_touch_here "ctrl.f96.${_tRee}.${_xSrl}.pid"
     fi
   fi
+}
+# Every name directly in the current (pinned) directory removed, as rm -f
+# dir/* removed them (the glob expands here).
+_acct_rm_all_here() {
+  rm -f -- ./*
+}
+# The patch $1 fetched from the mirror and put as /data/conf/patches/$1,
+# root's and 0644 as curl -o wrote it, when it is missing or not a regular
+# file: downloaded into a root-only directory first, then put through one
+# handle inside the real patches/ (_acct_put_mode_here).
+_drupal_patch_get() {
+  local _w
+  [ -f "/data/conf/patches/${1}" ] && [ ! -L "/data/conf/patches/${1}" ] \
+    && return 0
+  mkdir -p /data/conf/patches
+  _w=$(mktemp -d /run/.boa-patch-get.XXXXXX 2> /dev/null) || return 1
+  if curl ${_crlGet} "${_urlHmr}/patches/${1}" -o "${_w}/p"; then
+    _acct_in_real_dir /data/conf/patches \
+      _acct_put_mode_here "${1}" 0 0 644 < "${_w}/p"
+  fi
+  rm -rf -- "${_w}"
 }
 
 _fix_drupal_core_ten() {
   if [ -e "/var/xdrago" ]; then
-    if [ ! -e "${_tenCorePatchPath}" ]; then
-      mkdir -p /data/conf/patches
-      curl ${_crlGet} "${_urlHmr}/patches/${_tenCorePatchFname}" -o ${_tenCorePatchPath}
-    fi
-    if [ ! -e "${_tenConsolePatchPath}" ]; then
-      mkdir -p /data/conf/patches
-      curl ${_crlGet} "${_urlHmr}/patches/${_tenConsolePatchFname}" -o ${_tenConsolePatchPath}
-    fi
+    _drupal_patch_get "${_tenCorePatchFname}"
+    _drupal_patch_get "${_tenConsolePatchFname}"
   fi
 }
 
 _fix_drupal_core_eleven() {
   if [ -e "/var/xdrago" ]; then
-    if [ ! -e "${_elevenCorePatchPath}" ]; then
-      mkdir -p /data/conf/patches
-      curl ${_crlGet} "${_urlHmr}/patches/${_elevenCorePatchFname}" -o ${_elevenCorePatchPath}
-    fi
-    if [ ! -e "${_elevenConsolePatchPath}" ]; then
-      mkdir -p /data/conf/patches
-      curl ${_crlGet} "${_urlHmr}/patches/${_elevenConsolePatchFname}" -o ${_elevenConsolePatchPath}
-    fi
-    if [ ! -e "${_elevenValidatorPatchPath}" ]; then
-      mkdir -p /data/conf/patches
-      curl ${_crlGet} "${_urlHmr}/patches/${_elevenValidatorPatchFname}" -o ${_elevenValidatorPatchPath}
-    fi
+    _drupal_patch_get "${_elevenCorePatchFname}"
+    _drupal_patch_get "${_elevenConsolePatchFname}"
+    _drupal_patch_get "${_elevenValidatorPatchFname}"
   fi
 }
 
@@ -4049,25 +4224,108 @@ _fix_leftovers() {
 }
 
 #
+# The crawler-access fixes below edit nginx configs and templates that an
+# account owns (the master's too), in directories the account can write, so
+# no name there is trusted: each file is read once into the root-only work
+# directory of this run (_crwWrk, made by the orchestrator), bounded and
+# never through a link or from a FIFO, inside its pinned real directory; the
+# edit is made on that copy and put back as a fresh file with the owner,
+# group and mode the file had, renamed over the name (_acct_put_mode_here).
+# The file as it was is kept for the revert in the root-only _crwPrev,
+# never beside the file, with its owner, group and mode in a .own file.
+#
+_crwPrev="/var/backups/crawler-fix-prev"
+# $1 copied to ${_crwWrk}/src when it is a single-link regular file under
+# 1 MiB; prints its numeric owner, group and mode.
+_crawler_copy() {
+  [ -n "${_crwWrk}" ] && [ -d "${_crwWrk}" ] || return 1
+  rm -f -- "${_crwWrk}/src" "${_crwWrk}/new"
+  _acct_in_real_dir "${1%/*}" _crawler_copy_here "${1##*/}" "${_crwWrk}/src"
+}
+# ./$1 of the current (pinned) directory read into the root-only file $2, as
+# _crawler_copy describes; leftovers of the older in-place writer dropped.
+_crawler_copy_here() {
+  local _st _typ _uid _gid _mod _sz _nl
+  rm -f -- "./${1}".crawler-fix*.tmp 2> /dev/null
+  _st=$(stat -c '%F|%u|%g|%a|%s|%h' -- "./${1}" 2> /dev/null) || return 1
+  IFS='|' read -r _typ _uid _gid _mod _sz _nl <<< "${_st}"
+  case "${_typ}" in
+    "regular file"|"regular empty file") ;;
+    *) return 1 ;;
+  esac
+  [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ \
+    && "${_mod}" =~ ^[0-7]+$ && "${_sz}" =~ ^[0-9]+$ ]] || return 1
+  [ "${_nl}" = "1" ] && [ "${_sz}" -lt 1048576 ] || return 1
+  _acct_read_here "${1}" > "${2}" || return 1
+  [ "$(stat -c %s -- "${2}" 2> /dev/null)" = "${_sz}" ] || return 1
+  echo "${_uid} ${_gid} ${_mod}"
+}
+# ${_crwWrk}/new put as $1 with the owner, group and mode $2 (as
+# _crawler_copy printed them). ${_crwWrk}/src, the file as it was, is kept
+# first in _crwPrev for the revert, unless kept there already (by this run,
+# or by one that stopped before its nginx test). An emptied result is put
+# back from the kept copy, as before.
+_crawler_store() {
+  local _p="${_crwPrev}${1}" _kept=0 _u _g _m
+  read -r _u _g _m <<< "${2}"
+  if [ ! -f "${_p}" ]; then
+    if ! ( umask 077
+      mkdir -p -- "${_p%/*}" && cp -- "${_crwWrk}/src" "${_p}" \
+        && echo "${2}" > "${_p}.own" ); then
+      rm -f -- "${_p}" "${_p}.own"
+      return 1
+    fi
+    _kept=1
+  fi
+  if ! _acct_in_real_dir "${1%/*}" _acct_put_mode_here "${1##*/}" \
+    "${_u}" "${_g}" "${_m}" < "${_crwWrk}/new"; then
+    [ "${_kept}" = "1" ] && rm -f -- "${_p}" "${_p}.own"
+    return 1
+  fi
+  if ! _acct_in_real_dir "${1%/*}" test -s "./${1##*/}"; then
+    read -r _u _g _m < "${_p}.own"
+    _acct_in_real_dir "${1%/*}" _acct_put_mode_here "${1##*/}" \
+      "${_u}" "${_g}" "${_m}" < "${_p}"
+    return 1
+  fi
+  return 0
+}
+# Every file kept in _crwPrev put back as it was, with the owner, group and
+# mode it had, inside its pinned real directory; the kept copies dropped.
+_crawler_revert() {
+  local _p _f _u _g _m
+  [ -d "${_crwPrev}" ] || return 0
+  while IFS= read -r -d '' _p; do
+    _f="${_p#"${_crwPrev}"}"
+    if read -r _u _g _m < "${_p}.own"; then
+      _acct_in_real_dir "${_f%/*}" _acct_put_mode_here "${_f##*/}" \
+        "${_u}" "${_g}" "${_m}" < "${_p}"
+    fi
+    rm -f -- "${_p}" "${_p}.own"
+  done < <(find "${_crwPrev}" -type f ! -name '*.own' -print0 2> /dev/null)
+}
+
+#
 # Strip the $is_bot 444 guard from crawler-essential nginx locations (sitemaps,
 # feeds, css/js/json, images, styles, public files): the $is_bot UA map matches
 # every legitimate search crawler, so the guard made Googlebot receive 444
 # (Cloudflare 520, GSC "Sitemap could not be read") on assets it must fetch.
-# Guards on private/robots-disallowed locations are kept. All edits write via
-# tmp + cat to preserve inode and ownership of files owned by o* users.
-# The tmp name carries $$ because two cron schedules can start clear.sh in
-# the same second (:00): a shared tmp path let one instance validate a tmp
-# the other instance had just truncated, which emptied a live include.
+# Guards on private/robots-disallowed locations are kept. The file is read
+# and put back as _crawler_copy and _crawler_store do it, from a root-only
+# work directory of this run: two cron schedules can start clear.sh in the
+# same second (:00), and a shared tmp path once let one instance validate a
+# tmp the other had just truncated, which emptied a live include.
 #
 _strip_isbot_xml_guards() {
   local _fIle="$1"
-  local _tMp="${_fIle}.crawler-fix.$$.tmp"
+  local _sRc="${_crwWrk}/src"
+  local _tMp="${_crwWrk}/new"
+  local _own=""
   local _cntPre=0
   local _cntPost=0
-  [ -f "${_fIle}" ] || return 1
-  rm -f "${_fIle}".crawler-fix*.tmp 2> /dev/null
-  grep -qF 'if ( $is_bot )' "${_fIle}" || return 1
-  _cntPre=$(grep -cF 'if ( $is_bot )' "${_fIle}")
+  _own=$(_crawler_copy "${_fIle}") || return 1
+  grep -qF 'if ( $is_bot )' "${_sRc}" || return 1
+  _cntPre=$(grep -cF 'if ( $is_bot )' "${_sRc}")
   awk 'BEGIN {
   t["location ^~ /cdn/farfuture/ {"]=1
   t["location ~* \\.r\\.(?:jpe?g|png|gif) {"]=1
@@ -4105,7 +4363,7 @@ w == 1 {
   w = 0
 }
 { print }
-$0 in t { w = 1 }' "${_fIle}" > "${_tMp}"
+$0 in t { w = 1 }' "${_sRc}" > "${_tMp}"
   if [ "$?" -ne 0 ] || [ ! -s "${_tMp}" ]; then
     rm -f "${_tMp}"
     return 1
@@ -4117,14 +4375,7 @@ $0 in t { w = 1 }' "${_fIle}" > "${_tMp}"
     rm -f "${_tMp}"
     return 1
   fi
-  [ -f "${_fIle}.crawler-fix-prev" ] || cp -a "${_fIle}" "${_fIle}.crawler-fix-prev"
-  cat "${_tMp}" > "${_fIle}"
-  rm -f "${_tMp}"
-  if [ ! -s "${_fIle}" ]; then
-    cat "${_fIle}.crawler-fix-prev" > "${_fIle}"
-    return 1
-  fi
-  return 0
+  _crawler_store "${_fIle}" "${_own}"
 }
 
 #
@@ -4135,24 +4386,18 @@ $0 in t { w = 1 }' "${_fIle}" > "${_tMp}"
 #
 _relax_crawler_roster() {
   local _fIle="$1"
-  local _tMp="${_fIle}.crawler-fix.$$.tmp"
-  [ -f "${_fIle}" ] || return 1
-  rm -f "${_fIle}".crawler-fix*.tmp 2> /dev/null
-  grep -qF 'map $http_user_agent $is_crawler {' "${_fIle}" || return 1
+  local _sRc="${_crwWrk}/src"
+  local _tMp="${_crwWrk}/new"
+  local _own=""
+  _own=$(_crawler_copy "${_fIle}") || return 1
+  grep -qF 'map $http_user_agent $is_crawler {' "${_sRc}" || return 1
   sed '/map $http_user_agent $is_crawler {/,/^}/ { s/|TikTok//; s/Go-http-client|//; s/|Pinterest//; s/|Sogou//; }' \
-    "${_fIle}" > "${_tMp}"
-  if [ "$?" -ne 0 ] || [ ! -s "${_tMp}" ] || cmp -s "${_fIle}" "${_tMp}"; then
+    "${_sRc}" > "${_tMp}"
+  if [ "$?" -ne 0 ] || [ ! -s "${_tMp}" ] || cmp -s "${_sRc}" "${_tMp}"; then
     rm -f "${_tMp}"
     return 1
   fi
-  [ -f "${_fIle}.crawler-fix-prev" ] || cp -a "${_fIle}" "${_fIle}.crawler-fix-prev"
-  cat "${_tMp}" > "${_fIle}"
-  rm -f "${_tMp}"
-  if [ ! -s "${_fIle}" ]; then
-    cat "${_fIle}.crawler-fix-prev" > "${_fIle}"
-    return 1
-  fi
-  return 0
+  _crawler_store "${_fIle}" "${_own}"
 }
 
 #
@@ -4163,24 +4408,18 @@ _relax_crawler_roster() {
 #
 _soften_print_guard() {
   local _fIle="$1"
-  local _tMp="${_fIle}.crawler-fix.$$.tmp"
-  [ -f "${_fIle}" ] || return 1
-  rm -f "${_fIle}".crawler-fix*.tmp 2> /dev/null
-  grep -qF 'block_print_no_referer' "${_fIle}" || return 1
+  local _sRc="${_crwWrk}/src"
+  local _tMp="${_crwWrk}/new"
+  local _own=""
+  _own=$(_crawler_copy "${_fIle}") || return 1
+  grep -qF 'block_print_no_referer' "${_sRc}" || return 1
   sed '/^if ($block_print_no_referer) {$/,/^}$/ s/^  return 444;$/  return 404;/' \
-    "${_fIle}" > "${_tMp}"
-  if [ "$?" -ne 0 ] || [ ! -s "${_tMp}" ] || cmp -s "${_fIle}" "${_tMp}"; then
+    "${_sRc}" > "${_tMp}"
+  if [ "$?" -ne 0 ] || [ ! -s "${_tMp}" ] || cmp -s "${_sRc}" "${_tMp}"; then
     rm -f "${_tMp}"
     return 1
   fi
-  [ -f "${_fIle}.crawler-fix-prev" ] || cp -a "${_fIle}" "${_fIle}.crawler-fix-prev"
-  cat "${_tMp}" > "${_fIle}"
-  rm -f "${_tMp}"
-  if [ ! -s "${_fIle}" ]; then
-    cat "${_fIle}.crawler-fix-prev" > "${_fIle}"
-    return 1
-  fi
-  return 0
+  _crawler_store "${_fIle}" "${_own}"
 }
 
 #
@@ -4193,24 +4432,18 @@ _soften_print_guard() {
 #
 _fix_high_load_bot_token() {
   local _fIle="$1"
-  local _tMp="${_fIle}.crawler-fix.$$.tmp"
-  [ -f "${_fIle}" ] || return 1
-  rm -f "${_fIle}".crawler-fix*.tmp 2> /dev/null
-  grep -qF 'map $http_user_agent $deny_on_high_load {' "${_fIle}" || return 1
+  local _sRc="${_crwWrk}/src"
+  local _tMp="${_crwWrk}/new"
+  local _own=""
+  _own=$(_crawler_copy "${_fIle}") || return 1
+  grep -qF 'map $http_user_agent $deny_on_high_load {' "${_sRc}" || return 1
   sed '/map $http_user_agent $deny_on_high_load {/,/^}/ s/~\*crawl|spider|/~*crawl|bot|spider|/' \
-    "${_fIle}" > "${_tMp}"
-  if [ "$?" -ne 0 ] || [ ! -s "${_tMp}" ] || cmp -s "${_fIle}" "${_tMp}"; then
+    "${_sRc}" > "${_tMp}"
+  if [ "$?" -ne 0 ] || [ ! -s "${_tMp}" ] || cmp -s "${_sRc}" "${_tMp}"; then
     rm -f "${_tMp}"
     return 1
   fi
-  [ -f "${_fIle}.crawler-fix-prev" ] || cp -a "${_fIle}" "${_fIle}.crawler-fix-prev"
-  cat "${_tMp}" > "${_fIle}"
-  rm -f "${_tMp}"
-  if [ ! -s "${_fIle}" ]; then
-    cat "${_fIle}.crawler-fix-prev" > "${_fIle}"
-    return 1
-  fi
-  return 0
+  _crawler_store "${_fIle}" "${_own}"
 }
 
 #
@@ -4233,18 +4466,23 @@ _fix_nginx_crawler_access() {
   local _bAse=""
   local _fIle=""
   local _chAnged=0
+  local _crwWrk=""
   local _tPl="/.drush/sys/provision/http/Provision/Config/Nginx/Inc/vhost_include.tpl.php"
   local _sTpl="/.drush/sys/provision/http/Provision/Config/Nginx/server.tpl.php"
   [ -e "/var/aegir/config/includes/nginx_vhost_common.conf" ] || return 0
   (
-  ### Boxes without util-linux flock still run, protected by the per-process
-  ### tmp names and post-write verification in the helpers.
+  ### Boxes without util-linux flock still run, protected by the per-run
+  ### root-only work directory and post-write verification in the helpers.
   exec 9> /run/boa_nginx_config.lock 2> /dev/null
   if command -v flock > /dev/null 2>&1; then
     if ! flock -w 30 9; then
       _log_crawler_fix "NOTE: crawler-access fix: nginx-config lock busy, skipping this run"
       exit 0
     fi
+  fi
+  if ! _crwWrk=$(mktemp -d /run/.crawler-fix.XXXXXX 2> /dev/null); then
+    _log_crawler_fix "ERROR: crawler-access fix: no root-only work directory in /run, skipping this run"
+    exit 0
   fi
   for _bAse in /var/aegir /data/disk/*; do
     [ -d "${_bAse}" ] || continue
@@ -4271,32 +4509,15 @@ _fix_nginx_crawler_access() {
   done
   if [ "${_chAnged}" = "1" ]; then
     if nginx -t &> /dev/null; then
-      rm -f /var/aegir${_tPl}.crawler-fix-prev \
-        /var/aegir${_sTpl}.crawler-fix-prev \
-        /var/aegir/config/includes/nginx_vhost_common.conf.crawler-fix-prev \
-        /var/aegir/config/server_master/nginx.conf.crawler-fix-prev \
-        /data/disk/*${_tPl}.crawler-fix-prev \
-        /data/disk/*${_sTpl}.crawler-fix-prev \
-        /data/disk/*/config/includes/nginx_vhost_common.conf.crawler-fix-prev \
-        /data/disk/*/config/server_master/nginx.conf.crawler-fix-prev 2> /dev/null
+      rm -rf -- "${_crwPrev}"
       service nginx reload &> /dev/null
       _log_crawler_fix "NOTE: crawler-access fix applied, nginx reloaded"
     else
-      for _fIle in /var/aegir${_tPl}.crawler-fix-prev \
-        /var/aegir${_sTpl}.crawler-fix-prev \
-        /var/aegir/config/includes/nginx_vhost_common.conf.crawler-fix-prev \
-        /var/aegir/config/server_master/nginx.conf.crawler-fix-prev \
-        /data/disk/*${_tPl}.crawler-fix-prev \
-        /data/disk/*${_sTpl}.crawler-fix-prev \
-        /data/disk/*/config/includes/nginx_vhost_common.conf.crawler-fix-prev \
-        /data/disk/*/config/server_master/nginx.conf.crawler-fix-prev; do
-        [ -f "${_fIle}" ] || continue
-        cat "${_fIle}" > "${_fIle%.crawler-fix-prev}"
-        rm -f "${_fIle}"
-      done
+      _crawler_revert
       _log_crawler_fix "ERROR: crawler-access fix reverted -- nginx -t failed after patching"
     fi
   fi
+  rm -rf -- "${_crwWrk}"
   )
 }
 
@@ -4436,18 +4657,9 @@ _fix_wiped_nginx_config() {
       continue
     fi
     _uSr=$(basename "${_bAse}")
-    _ctlDir="${_bAse}/static/control"
-    if [ ! -d "${_ctlDir}" ]; then
-      mkdir -p "${_ctlDir}"
-      chmod 755 "${_ctlDir}"
-    fi
-    if [ ! -s "${_ctlDir}/platforms.info" ]; then
-      echo "FOOBAR" > "${_ctlDir}/platforms.info"
-      chown ${_uSr}.ftp:$(_acct_group "${_uSr}") "${_ctlDir}/platforms.info" 2> /dev/null
-    fi
-    if [ ! -e "${_ctlDir}/run-upgrade.pid" ]; then
-      touch "${_ctlDir}/run-upgrade.pid"
-      chown ${_uSr}.ftp:$(_acct_group "${_uSr}") "${_ctlDir}/run-upgrade.pid" 2> /dev/null
+    _acct_in_real_dir "${_bAse}/static" _acct_ctrl_dir_here
+    if _acct_in_real_dir "${_bAse}/static/control" _ctrl_upgrade_here \
+      "${_uSr}.ftp:$(_acct_group "${_uSr}")"; then
       _log_crawler_fix "NOTE: wiped nginx config detected (${_wIped}); octopus upgrade queued for ${_uSr}"
     fi
   done
@@ -4813,12 +5025,12 @@ CSFSTANDBY
   fi
   rm -f ${_pthLog}/vmnetfix.sh.ctrl.*
   if [ -e "${_pthLog}" ]; then
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f88
-    _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f87
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f90
-    _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f92
-    _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f97
-    _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f95
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f81
+    _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f80
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f85
+    _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f85
+    _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f92
+    _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f94
   fi
   mkdir -p ${_optBin}
   # Per-file, serial-gated, retry-on-failure fetch of the core /opt/local/bin
@@ -4838,53 +5050,53 @@ CSFSTANDBY
     # BOA box. stage2 is dual-resident and run by name on the target, so the
     # documented /usr/local/bin path stays a symlink to the fleet copy.
     _fetch_versioned ${_optBin}/aegir2boa-preflight "${_urlHmr}/${_tBn}/aegir2boa-preflight" f97 --guard /local/bin/aegir2boa-preflight
-    _fetch_versioned ${_optBin}/aegir2boa-stage1 "${_urlHmr}/${_tBn}/aegir2boa-stage1" f97 --guard /local/bin/aegir2boa-stage1
-    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f94 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
+    _fetch_versioned ${_optBin}/aegir2boa-stage1 "${_urlHmr}/${_tBn}/aegir2boa-stage1" f96 --guard /local/bin/aegir2boa-stage1
+    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f90 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f96 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f86 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f85 --guard /local/bin/autoexcalibur
-    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f67 --guard /local/bin/autosymlink
+    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f66 --guard /local/bin/autosymlink
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f27 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
-    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f79 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f49 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f46 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f72 --guard duplicity
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f48 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f41 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f92 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
-    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f79 --guard duplicity
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f72 --guard duplicity
     # The remote-backups run scripts ride here with dcysetup, which drives
     # them from clear.sh every few minutes: on a _SKYNET_MODE=OFF box the
     # agents pass never runs, and a refreshed dcysetup calling a stale
     # installer (no --patch-only arm yet) ran the whole dependency install.
     if [ -d "/root/.remote_backups/run" ]; then
-      _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f35
-      _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f47
+      _fetch_versioned /root/.remote_backups/run/install_dependencies.sh "${_urlHmr}/tools/backup/run/install_dependencies.sh" f33
+      _fetch_versioned /root/.remote_backups/run/create_credentials_templates.sh "${_urlHmr}/tools/backup/run/create_credentials_templates.sh" f45
       _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f44
-      _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f46
-      _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f45
-      _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f46
-      _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f46
+      _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f44
+      _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f44
+      _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f44
+      _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f44
     fi
     _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/${_tBn}/ffdevuan" f93 --guard /local/bin/ffdevuan
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f97 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
-    _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f97 --guard /local/bin/fixrepo
-    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f84 --guard /local/bin/instgrp
+    _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f93 --guard /local/bin/fixrepo
+    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f81 --guard /local/bin/instgrp
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
-    _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f99 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
+    _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f98 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f93 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f90 --guard /local/bin/lock.inc
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f18 --guard duplicity
-    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f22 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f71 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f08 --guard duplicity
+    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f12 --mode 755 --guard duplicity
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f66 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f94 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
-    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f73 --guard /local/bin/renameaegirhost
+    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f66 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
-    _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f82 --guard /local/bin/updatesymlinks
-    _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f97 --guard /local/bin/symlinkinfo
-    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f90 --guard /local/bin/migratefs
+    _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f81 --guard /local/bin/updatesymlinks
+    _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f96 --guard /local/bin/symlinkinfo
+    _fetch_versioned ${_optBin}/migratefs "${_urlHmr}/${_tBn}/migratefs" f82 --guard /local/bin/migratefs
     _fetch_versioned ${_optBin}/synproxy "${_urlHmr}/${_tBn}/synproxy" f93 --guard /local/bin/synproxy
     _fetch_versioned ${_optBin}/synproxy_hook_fix "${_urlHmr}/${_tBn}/synproxy_hook_fix" f99 --guard /local/bin/synproxy_hook_fix
     _fetch_versioned ${_optBin}/synproxy_monitor "${_urlHmr}/${_tBn}/synproxy_monitor" f98 --guard /local/bin/synproxy_monitor
@@ -4893,19 +5105,19 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f95 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f55 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f40 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f06 --guard /local/bin/xoct
-    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f76 --guard /local/bin/xtrim
-    _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f94 --guard /local/bin/solrtrim
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f44 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f28 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f92 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f70 --guard /local/bin/xtrim
+    _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f93 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f87 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f87 --guard /local/bin/autodaedalus
     _fetch_versioned ${_optBin}/autoinit "${_urlHmr}/${_tBn}/autoinit" f76 --guard /local/bin/autoinit
     _fetch_versioned ${_optBin}/automini "${_urlHmr}/${_tBn}/automini" f90 --guard /local/bin/automini
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f96 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/checkmyperms "${_urlHmr}/${_tBn}/checkmyperms" f99 --mode 755 --guard /local/bin/checkmyperms
-    _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f92 --guard /local/bin/codebasecheck
-    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f94 --guard /local/bin/copydbackup
+    _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f91 --guard /local/bin/codebasecheck
+    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f88 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
     _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f91 --guard /local/bin/memorytuner
@@ -4917,12 +5129,12 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/randpass "${_urlHmr}/${_tBn}/randpass" f99 --mode 755 --guard /local/bin/randpass
     _fetch_versioned ${_optBin}/setprio "${_urlHmr}/${_tBn}/setprio" f97 --guard /local/bin/setprio
     _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f99 --guard /local/bin/smtpgapps
-    _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f94 --guard /local/bin/sqlclean
+    _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f93 --guard /local/bin/sqlclean
     _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f98 --mode 755 --guard /local/bin/sqlmagic
-    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f96 --guard /local/bin/syncpass
+    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f93 --guard /local/bin/syncpass
     _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --mode 755 --guard /local/bin/thinkdifferent
-    _fetch_versioned ${_optBin}/verifyvhostsdns "${_urlHmr}/${_tBn}/verifyvhostsdns" f99 --guard /local/bin/verifyvhostsdns
-    _fetch_versioned ${_optBin}/vhostcheck "${_urlHmr}/${_tBn}/vhostcheck" f99 --guard /local/bin/vhostcheck
+    _fetch_versioned ${_optBin}/verifyvhostsdns "${_urlHmr}/${_tBn}/verifyvhostsdns" f98 --guard /local/bin/verifyvhostsdns
+    _fetch_versioned ${_optBin}/vhostcheck "${_urlHmr}/${_tBn}/vhostcheck" f98 --guard /local/bin/vhostcheck
     _fetch_versioned ${_optBin}/vmnetfix "${_urlHmr}/${_tBn}/vmnetfix" f99 --guard /local/bin/vmnetfix
     # weblogx: skip while owl.sh runs (preserves the old loop guard)
     _wlOwlCnt=$(pgrep -fc /var/xdrago/owl.sh 2>/dev/null)
@@ -4936,7 +5148,7 @@ CSFSTANDBY
     # tail-anchored sentinel refuses a wrong OR truncated payload before it
     # can reach client shells -- websh invokes its dash forwarder near EOF,
     # so the token must keep living in websh's last 4 KiB.
-    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f75 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
+    _fetch_versioned ${_optBin}/websh "${_urlHmr}/${_tBn}/websh" f73 --mode 755 --require-token _forward_to_dash --guard /local/bin/websh
     _fetch_versioned ${_optBin}/xdr9000 "${_urlHmr}/${_tBn}/xdr9000" f99 --symlink ${_usrBin}/xdr9000 --guard /local/bin/xdr9000
   fi
 

@@ -432,10 +432,13 @@
 ```text
 ;allow_private_file_downloads = FALSE
 ;;
-;;  When set to TRUE allows to use private files mode, so it is useful only
-;;  for commerce sites which sell files for download or for intranet sites
-;;  where you need to enforce strict access control. All other sites should
-;;  never ever use private files mode for obvious performance reasons.
+;;  On Drupal 6, 7 and Backdrop, BOA forces every site's default download
+;;  method to public; TRUE lifts that force. It has no effect on Drupal 8+,
+;;  where the default download method is the site's own setting. On Drupal 7
+;;  the nightly pass writes it into each site's own INI from the default
+;;  download method the site saved: TRUE when that is private, FALSE when it
+;;  is public or unset. A file field or form element can store its uploads
+;;  privately on any core without it.
 ```
 
 ```text
@@ -501,6 +504,10 @@
 ;;  The system will cleanly delete existing Solr core in 15 minutes.
 ```
 
+The config files uploaded to `sites/foo.com/files/solr/` are applied as one set, whole or not at all, and must include `schema.xml`, `solrconfig.xml` and `solrcore.properties`. Each file must be smaller than 8 MiB, with at most 512 names and 32 MiB in all. A hard-linked file, or one that changes while read, refuses the set; symbolic links, FIFOs and subdirectories are skipped.
+
+A symbolic link at `sites`, the site directory or `files/solr`, or at `files` other than BOA's own link into the account's files store, blocks the upload. A complete upload also repairs a core without `solrconfig.xml`. See [SOLR.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/SOLR.md) for details.
+
 ```text
 ;solr_update_config = NO
 ;;
@@ -509,9 +516,11 @@
 ;;    schema.xml
 ;;    solrconfig.xml
 ;;
-;;  If there is new release for either apachesolr or search_api_solr, your
-;;  Solr core will not be automatically upgraded to use newer schema.xml and
-;;  solrconfig.xml, unless allowed by switching solr_update_config to YES.
+;;  If BOA ships a newer schema.xml and solrconfig.xml for apachesolr, or for
+;;  search_api_solr on Drupal 7, your Solr core is not upgraded to them unless
+;;  solr_update_config is set to YES. Drupal 8 and later cores are created on
+;;  Solr's own managed schema and take their configuration only from the files
+;;  you upload to files/solr/; BOA ships no template for them.
 ;;
 ;;  This option will be ignored if you will set solr_custom_config to YES.
 ```

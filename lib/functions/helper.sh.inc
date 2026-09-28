@@ -182,7 +182,9 @@ _debug_proc() {
     _msg "DBLS: `ls -la /usr/bin/sh`"
     _msg "DBLS: `ls -la /bin/sh`"
     _msg "DBLS: `ls -la /run/octopus_install_run.pid`"
-    [ -e "/data/disk/${_USER}/.tmp/cache" ] && _msg "DBLS: `ls -la /data/disk/${_USER}/.tmp/cache`"
+    # the account's own .tmp/cache: listed only inside the real directory
+    [ -e "/data/disk/${_USER}/.tmp/cache" ] \
+      && _msg "DBLS: $(_acct_in_real_dir "/data/disk/${_USER}/.tmp/cache" ls -la .)"
   fi
 }
 
@@ -266,6 +268,204 @@ _acct_group() {
   _g=$(id -gn "${_a}" 2> /dev/null)
   [ "${_g}" = "${_a}" ] || _g="users"
   echo "${_g}"
+}
+
+_web_group_state() {
+  # The account's own web group, wg-<account>, derived on the box and never
+  # taken from argv or a cnf: the group its pools, backend user and shell
+  # users share for its web paths once the account is converted to it.
+  # Prints "<state> <gid> <group>", "none - -" when there is no such group
+  # (the record is root's: run as another user, converted reads as held):
+  #   none       no group of that name
+  #   foreign    the group exists, but an identity outside the account holds
+  #              it too: never joined nor written to; claim passes still leave
+  #              its paths alone (taking them would cut the pools off)
+  #   held       the group exists and only this account's identities hold it:
+  #              claim passes leave its paths alone, new identities join it
+  #   converted  and root's record names that gid: writers use the group
+  #   phaseb     and the record says the identities have left www-data
+  # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+  # phase=<A|B> ...", root's own file outside the account tree, so neither
+  # the account nor a copy or restore of its tree can make or move it.
+  # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+  # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+  # gems or npm tree, or its store on attached storage
+  # (/mnt/<m>/files/<oN>/static/files).
+  local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  # a path is read as written (an alias the account wrote can carry "..",
+  # "." or "//"): normalised by text alone, never through a link, first
+  case "${_a}" in
+    */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+  esac
+  case "${_a}" in
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+    /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+    /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+      _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+    */*) echo "none - -"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  case "${_a}" in
+    ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+  esac
+  _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  # every holder of the gid: members of each group entry carrying it (a
+  # second entry can share the number) and every user with it as primary
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+      || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+  done
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-${_a}"
+  else
+    echo "held ${_gid} wg-${_a}"
+  fi
+}
+
+_web_group() {
+  # The group a root writer gives an account's web paths (files/, private/,
+  # settings.php and the like): wg-<account> once the account is converted,
+  # www-data otherwise, as always. Until the record says converted every
+  # identity of the account still holds www-data (a conversion grants the web
+  # group first and a revert gives www-data back before it moves any path),
+  # so www-data is the old state, never an outage. Callers write
+  # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
+  # group and never hands a path to a login group. Run as any user but root,
+  # which cannot read root's record, a held group answers empty: the group
+  # each path has is kept. $1 as _web_group_state.
+  local _s
+  _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted|phaseb) echo "${_s##* }" ;;
+    held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+    *) echo "www-data" ;;
+  esac
+}
+
+#
+# An account owns its static/control (and oN owns the rest of /data/disk/oN),
+# so it can put a link or a FIFO at any name there, or turn static/control
+# itself into a link. Root touches those names only through these: the ltd
+# worker's rule, one copy here for the barracuda and octopus runs.
+#
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way. Below /home and /data/disk (root's) every name
+# on the path must be a real directory; elsewhere the last name is checked
+# against its resolved parent. Once entered, ./name stays in that directory
+# whatever is swapped.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_acct_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# $2 in the real directory $1, read as _acct_read_here reads it.
+_acct_read_in() {
+  _acct_in_real_dir "${1}" _acct_read_here "${2}"
+}
+# ./$1 in the current (pinned) directory with the content $2 (0644): a
+# fresh file created exclusively, then renamed over the name, so a link or a
+# FIFO put at the name is replaced, never followed or opened, and a reader
+# never finds the name missing.
+_acct_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
+# $2 with the content $3 in the real directory $1, as _acct_put_here puts it.
+_acct_put_in() {
+  _acct_in_real_dir "${1}" _acct_put_here "${2}" "${3}"
+}
+# stdin as the fresh file $1 in the current (pinned) directory, handed to uid
+# $2 and gid $3 (numbers) with the mode $4, all through the one handle that
+# created it (O_EXCL|O_NOFOLLOW, 0600 until it is complete); the caller then
+# renames it over the name. Nothing is chowned or chmoded by name in a
+# directory an account can write: a hard link renamed over a name between
+# its creation and a chown by name would hand the linked file over.
+# _ACCT_PUT_PL keeps the read/write bits of the mode (what dd under a umask
+# gave), _ACCT_PUT_MODE_PL every permission bit.
+_ACCT_PUT_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0666, $h) or exit 1; close($h) or exit 1; exit 0'
+_ACCT_PUT_MODE_PL='use Fcntl; my ($n, $u, $g, $m) = @ARGV; local $/; my $d = <STDIN>; sysopen(my $h, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; (print {$h} $d) or exit 1; chown($u, $g, $h) or exit 1; chmod(oct($m) & 0777, $h) or exit 1; close($h) or exit 1; exit 0'
+# Each name given (from find -execdir, or in a pinned directory) handed to
+# uid $1 and gid $2 (numbers, -1 keeps that id) through a handle opened
+# without following a link or blocking on a FIFO: a directory, or a regular
+# file with a single link. A hard-linked file, a link, a FIFO or a socket is
+# left alone, so a hard link planted in a tree root hands over (what
+# chown -R did) never hands another file over.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+# The immutable flag set ($1 = +) or cleared (-) on each directory, or
+# regular file with a single link, named, through a handle opened without
+# following a link or blocking on a FIFO; non-zero when a name was neither
+# or its flag could not be changed. A directory may also be locked or
+# unlocked with chattr on '.' inside it (it cannot be a hard link).
+_ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or do { $rc = 1; next }; my @s = stat($h); if (@s && (-d _ || (-f _ && $s[3] == 1))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); $fl = $op eq "+" ? ($fl | 0x10) : ($fl & ~0x10); ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } else { $rc = 1 } close($h); } exit $rc'
+# A PHP pin (fpm.info, cli.info) root writes in the current (pinned) control
+# directory, handed to the main login: the content _acct_put_here puts
+# (0644), created, handed over and moded through one handle (_ACCT_PUT_PL),
+# then renamed over the name, so no file is handed over by name. An owner
+# that does not resolve leaves the pin root's, as a failed chown left it.
+# $1 = name, $2 = version, $3 = owner:group.
+_acct_pin_here() {
+  local _t="./.${1}.put.$$.${RANDOM}" _uid _gid
+  _uid=$(id -u -- "${3%%:*}" 2> /dev/null)
+  _gid=$(getent group "${3#*:}" 2> /dev/null | cut -d: -f3)
+  if [[ ! "${_uid}" =~ ^[0-9]+$ || ! "${_gid}" =~ ^[0-9]+$ ]]; then
+    _acct_put_here "${1}" "${2}"
+    return 1
+  fi
+  rm -f -- "${_t}"
+  if printf '%s\n' "${2}" \
+    | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" 644 \
+    && mv -f -T -- "${_t}" "./${1}"; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 1
+}
+# The file $2 of every account (/data/disk/*/$1/$2, $1 = static/control or
+# log), each read as _acct_read_in reads it, one after another: what a grep
+# over /data/disk/*/$1/$2 used to read, without following a link or blocking
+# on a FIFO any account put there.
+_acct_read_all() {
+  local _u
+  for _u in /data/disk/*; do
+    [ -d "${_u}/${1}" ] || continue
+    _acct_read_in "${_u}/${1}" "${2}"
+    echo
+  done
 }
 
 _sanitize_string() {
@@ -793,6 +993,9 @@ _mode_detection() {
         # only this user's agent: -f matched every gpg-agent on the box
         id -u aegir &> /dev/null && pkill -9 -u aegir gpg-agent &> /dev/null
         deluser aegir &> /dev/null
+        # the parked master keeps no number deluser just freed: the next
+        # account created could be given it
+        chown -R -h -P root:root "${_ZOMBIE_HOME}" &> /dev/null
         rm -f /usr/bin/drush
       else
         ###--------------------###

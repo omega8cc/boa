@@ -7,10 +7,12 @@ _hName="$(cat /etc/hostname 2>/dev/null | tr -d '\n' || hostname -f 2>/dev/null)
 
 
 #
-# Update local INI for PHP CLI on the Ægir Master Instance.
-_php_cli_local_ini_update() {
+# The master's own .tmp and .drush: the CLI keeps no php.ini there (its
+# version's global ini applies, the temp paths come from TMPDIR), only the
+# directories and the release serial's stamp.
+_php_cli_local_dirs_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "PROC: _php_cli_local_ini_update"
+    _msg "PROC: _php_cli_local_dirs_update"
   fi
   if [ ! -z "${1}" ]; then
     _DRUSH_FILE="/var/aegir/drush/${1}"
@@ -19,22 +21,10 @@ _php_cli_local_ini_update() {
   fi
   _U_HD="/var/aegir/.drush"
   _U_TP="/var/aegir/.tmp"
-  _U_II="${_U_HD}/php.ini"
-  _PHP_CLI_UPDATE=NO
   if [ ! -e "${_DRUSH_FILE}" ]; then
     return 1  # Exit the function but continue the script
   fi
-  _CHECK_USE_PHP_CLI=$(grep "/opt/php" ${_DRUSH_FILE} 2>&1)
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
-  for e in ${_PHP_V}; do
-    if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]] \
-      && [ ! -e "${_U_HD}/.ctrl.php${e}.${_xSrl}.pid" ]; then
-      _PHP_CLI_UPDATE=YES
-    fi
-  done
-  if [ "${_PHP_CLI_UPDATE}" = "YES" ] \
-    || [ ! -e "${_U_II}" ] \
-    || [ ! -d "${_U_TP}" ] \
+  if [ ! -d "${_U_TP}" ] \
     || [ ! -e "${_U_HD}/.ctrl.${_tRee}.${_xSrl}.pid" ]; then
     # aegir owns /var/aegir and can swap .tmp or .drush for a link: a link
     # there is removed, the age sweep never resolves a path through a name
@@ -52,50 +42,68 @@ _php_cli_local_ini_update() {
         || { [ "$(stat -c %u .)" = "0" ] && [ -z "$(ls -A . 2> /dev/null)" ]; } || exit 0
       touch . && chmod 02755 .
       find . -mindepth 1 -mtime +0 -execdir rm -rf {} \; &> /dev/null )
-    _U_INI=""
-    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
-    for e in ${_PHP_V}; do
-      if [[ "${_CHECK_USE_PHP_CLI}" =~ "php${e}" ]]; then
-        _U_INI=${e}
-      fi
-    done
-    _QTP=${_U_TP//\//\\\/}
+    # the stamp is created exclusively, never through a link at the name
     ( cd -P -- "${_U_HD}" 2> /dev/null && [ "$(pwd -P)" = "${_U_REAL}/.drush" ] || exit 0
-      # the old ini stays until the final copy replaces it
-      rm -f -- ./.ctrl.php*
-      [ -n "${_U_INI}" ] || { rm -f -- ./php.ini; exit 0; }
-      # edited in root's own temp directory and put in place once: no link
-      # or FIFO put at php.ini is ever opened, and the stamps are created
-      # exclusively
-      _U_W=$(mktemp -d 2> /dev/null) && [ -d "${_U_W}" ] || exit 0
-      if cp -a /opt/php${_U_INI}/lib/php.ini "${_U_W}/php.ini" 2> /dev/null; then
-        # open_basedir stays out of the CLI ini: it breaks Drush and turns the
-        # realpath cache off (every file operation checked against every listed
-        # tree, uncached); lshell users are confined by their own measures, and
-        # the FPM ini keeps its own list
-        sed -i "s/.*open_basedir =.*/;open_basedir =/g"                      "${_U_W}/php.ini"
-        wait
-        sed -i "s/.*error_reporting =.*/error_reporting = 1/g"               "${_U_W}/php.ini"
-        wait
-        sed -i "s/.*session.save_path =.*/session.save_path = ${_QTP}/g"     "${_U_W}/php.ini"
-        wait
-        sed -i "s/.*soap.wsdl_cache_dir =.*/soap.wsdl_cache_dir = ${_QTP}/g" "${_U_W}/php.ini"
-        wait
-        sed -i "s/.*sys_temp_dir =.*/sys_temp_dir = ${_QTP}/g"               "${_U_W}/php.ini"
-        wait
-        sed -i "s/.*upload_tmp_dir =.*/upload_tmp_dir = ${_QTP}/g"           "${_U_W}/php.ini"
-        wait
-        if cp -aT --remove-destination "${_U_W}/php.ini" ./php.ini 2> /dev/null; then
-          rm -f -- "./.ctrl.${_tRee}.${_xSrl}.pid"
-          echo | dd of="./.ctrl.php${_U_INI}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
-          echo | dd of="./.ctrl.${_tRee}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
-        fi
-      fi
-      rm -rf -- "${_U_W}"
+      rm -f -- ./.ctrl.php* "./.ctrl.${_tRee}.${_xSrl}.pid"
+      echo | dd of="./.ctrl.${_tRee}.${_xSrl}.pid" conv=excl status=none 2> /dev/null
     )
   fi
   chown -R aegir:aegir ${_U_HD}
   chown -R aegir:aegir ${_U_TP}
+}
+
+#
+# The master's hostmaster tree holds directories every account can write
+# (sites/all/{modules,libraries,themes} in group users, the site's files/
+# in group www-data), so any name there can be a link or a hard link an
+# account planted. The tree is handed to aegir as chown -R did, and files/
+# given its mode as chmod -R did, only inside the real directory $1, from
+# the directory find walked (-execdir) and through a handle opened without
+# following a link or blocking on a FIFO: a directory, or a regular file
+# with a single link, never a link, a FIFO or a hard-linked file.
+#
+# $1 handed to $2 (owner[:group] names, as chown -R took them).
+_master_reown_in() {
+  local _u _g=-1
+  _u=$(id -u -- "${2%%:*}" 2> /dev/null)
+  if [[ "${2}" == *:* ]]; then
+    _g=$(getent group "${2#*:}" 2> /dev/null | cut -d: -f3)
+  fi
+  [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^(-1|[0-9]+)$ ]] || return 1
+  _acct_in_real_dir "${1}" _master_reown_here "${_u}" "${_g}"
+}
+_master_reown_here() {
+  perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" . \
+    && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+      -execdir perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" {} +
+}
+# A mode set through a handle on each name given (d: a directory, f: a
+# regular file with a single link), as chmod(1) sets a numeric one: a
+# directory keeps its set-user-ID and set-group-ID bits unless the mode has
+# five digits (02775).
+_MASTER_NOFOLLOW_CHMOD_PL='use Fcntl;
+my ($t, $ms) = (shift @ARGV, shift @ARGV);
+my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if ($t eq "f" && -f _ && $s[3] == 1) {
+    chmod($m, $h);
+  } elsif ($t eq "d" && -d _) {
+    chmod($m | ($s[2] & $k), $h);
+  }
+  close($h);
+}'
+# $1 and every directory and regular file below it set to $2.
+_master_mode_all_in() {
+  _acct_in_real_dir "${1}" _master_mode_all_here "${2}"
+}
+_master_mode_all_here() {
+  perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" . 2> /dev/null
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -type d \
+    -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -type f \
+    -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f "${1}" {} +
 }
 
 
@@ -870,9 +878,11 @@ _aegir_master_upgrade() {
       | awk '{ print $3}' \
       | sed "s/[\,']//g" 2>&1)
     mkdir -p ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries}
-    chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all
+    _master_reown_in "${_THIS_HM_ROOT}/sites/all" aegir:aegir
+    # a CLI php.ini an earlier release left (+i) would refuse the chown;
+    # the ltd worker removes it
     _U_HD="/var/aegir/.drush"
-    if [ -e "${_U_HD}/php.ini" ]; then
+    if [ -f "${_U_HD}/php.ini" ] && [ ! -L "${_U_HD}/php.ini" ]; then
       chattr -i ${_U_HD}/php.ini
     fi
     mkdir -p /var/aegir/backups/system
@@ -882,9 +892,13 @@ _aegir_master_upgrade() {
     chown -R aegir:aegir /var/aegir/clients
     chown -R aegir:aegir /var/aegir/config
     chown -R aegir:aegir /var/aegir/drush
-    chown -R aegir ${_THIS_HM_ROOT}
-    chown -R aegir:www-data ${_THIS_HM_SITE}/files
-    chmod -R 02775 ${_THIS_HM_SITE}/files
+    # every account can write sites/all/* (group users) and the site's
+    # files/ (group www-data) of this tree: walked as _master_reown_in and
+    # _master_mode_all_in walk, never handing over or moding a link or a
+    # file another account hard-linked there
+    _master_reown_in "${_THIS_HM_ROOT}" aegir
+    _master_reown_in "${_THIS_HM_SITE}/files" aegir:www-data
+    _master_mode_all_in "${_THIS_HM_SITE}/files" 02775
 
     # Never serialize an empty PHP version: the drush shebang update just
     # below hard-exits on an unresolved value, and the appends further down
@@ -1012,9 +1026,6 @@ _aegir_master_upgrade() {
     else
       # Consumed once; kept only on failure for post-mortem reading
       rm -f ${_vBs}/${_hndIncB}
-      if [ -e "${_U_HD}/php.ini" ]; then
-        chattr +i ${_U_HD}/php.ini
-      fi
       _hostmaster_frontend_dbpass_sync
     fi
     if [ ! -L "${_mtrInc}/global.inc" ] && [ -e "${_mtrInc}/global.inc" ]; then
@@ -1472,7 +1483,7 @@ EOFMYSQL
     fi
     wait
 
-    _php_cli_local_ini_update
+    _php_cli_local_dirs_update
 
     if [ -e "/opt/tmp/state/aegir/status-AegirSetupM-FAIL" ] \
       || [ ! -e "/opt/tmp/state/aegir/status-AegirSetupM-OK" ]; then
@@ -1498,10 +1509,6 @@ EOFMYSQL
         mkdir -p \
           ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries} &> /dev/null
       fi
-    fi
-    _U_HD="/var/aegir/.drush"
-    if [ -e "${_U_HD}/php.ini" ]; then
-      chattr +i ${_U_HD}/php.ini
     fi
     su -s /bin/bash - aegir -c "drush8 cc drush" &> /dev/null
     wait
@@ -1533,7 +1540,7 @@ EOFMYSQL
           ${_THIS_HM_ROOT}/sites/all/{modules,themes,libraries} &> /dev/null
       fi
     fi
-    chown -R aegir:aegir ${_THIS_HM_ROOT}/sites/all &> /dev/null
+    _master_reown_in "${_THIS_HM_ROOT}/sites/all" aegir:aegir &> /dev/null
 
   ###--------------------###
     if [ -e "${_mtrInc}/nginx_vhost_common.conf" ]; then

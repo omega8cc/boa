@@ -66,6 +66,13 @@ if (is_readable('/data/conf/global/global-mode.inc')) {
 }
 
 /**
+ * Include the login/admin lock query-string gate (Backdrop routes on q)
+ */
+if (is_readable('/data/conf/global/global-ua-qlock.inc')) {
+  include_once('/data/conf/global/global-ua-qlock.inc');
+}
+
+/**
  * Install detection. The Drupal chain reads it off the Drush command
  * (provision-install); a Backdrop install runs inside core's own installer
  * process, which defines MAINTENANCE_MODE 'install' before it bootstraps.

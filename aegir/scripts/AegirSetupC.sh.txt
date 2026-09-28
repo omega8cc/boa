@@ -518,7 +518,11 @@ _tb_capture() {
   _TB_SHA="$(sha256sum "${2}" 2> /dev/null | cut -d' ' -f1)"
   _TB_BYTES=""
   if [ "${3:-}" = "bytes" ]; then
-    _TB_BYTES="$(tar -tvzf "${2}" 2> /dev/null | awk '{ s += $3 } END { print s + 0 }')"
+    # Not the three Drush-lock dirs: a tarball can carry one closed as the
+    # lock leaves it (core/drupal-10.1.8: vendor/symfony/console/Input), the
+    # instance user cannot enter it, so _tb_record could never count it
+    _TB_BYTES="$(tar -tvzf "${2}" 2> /dev/null \
+      | awk '!/\/vendor\/(drush|symfony\/console\/(Input|Style))\// { s += $3 } END { print s + 0 }')"
   fi
 }
 
@@ -544,7 +548,11 @@ _tb_record() {
   # so the next pass fetches the platform again)
   local _have
   if [ -n "${_TB_SHA}" ] && [ -e "${2}/index.php" ]; then
-    _have="$(find "${1}" -type f -printf '%s\n' 2> /dev/null | awk '{ s += $1 } END { print s + 0 }')"
+    # the Drush-lock dirs keep the mode the lock gave them (pruned, as in
+    # the nightly permission walk): left out on both sides of the compare
+    _have="$(find "${1}" \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
+      -o -path "*/vendor/symfony/console/Style" \) -prune -o -type f -printf '%s\n' 2> /dev/null \
+      | awk '{ s += $1 } END { print s + 0 }')"
     if [[ "${_TB_BYTES}" =~ ^[0-9]+$ ]] && [ "${_have}" -lt "${_TB_BYTES}" ]; then
       # No record at all (an older one could describe an earlier tree), so
       # the next pass refreshes it

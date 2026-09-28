@@ -798,6 +798,156 @@ _if_install_php_ioncube() {
 }
 
 #
+# True when dpkg records the path, under its own name or its merged-/usr alias.
+_dpkg_owns_path() {
+  local _alt
+  if dpkg -S "$1" &> /dev/null; then
+    return 0
+  fi
+  case "$1" in
+    /usr/*) _alt="${1#/usr}" ;;
+    *) _alt="/usr$1" ;;
+  esac
+  dpkg -S "${_alt}" &> /dev/null
+}
+
+#
+# Move aside the ImageMagick files no package owns: what the retired ImageMagick
+# source build (prefix /usr) left behind when BOA went back to the distro
+# packages. Imagick's configure prefers them to the distro's files:
+# MagickWand-config first, then any .pc file under PKG_CONFIG_PATH, which it
+# sets to /lib/pkgconfig itself, and a merged /usr makes that /usr/lib/pkgconfig.
+# Imagick then links the old build, which stops loading once an OS upgrade
+# removes the libraries it was built against. Its magick command also stands
+# where the distro's magick alternative belongs (ImageMagick 7 distros), so
+# there it gives way to that link; where the distro has no magick it stays.
+# Once per run; what changes after the check, such as a magick alternative an
+# OS upgrade adds later in the same run, is handled by the next run.
+_magick_orphans_aside() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _magick_orphans_aside"
+  fi
+  if [ "${_MAGICK_ORPHANS_CHECKED}" = "YES" ]; then
+    return 0
+  fi
+  _MAGICK_ORPHANS_CHECKED=YES
+  local _f _dir
+  for _f in /usr/bin/MagickWand-config /usr/local/bin/MagickWand-config; do
+    if [ -e "${_f}" ] && ! _dpkg_owns_path "${_f}"; then
+      mv -f "${_f}" "/var/backups/$(echo "${_f#/}" | tr '/' '-')"
+      _msg "INFO: ${_f} belongs to no package, moved to /var/backups"
+    fi
+  done
+  for _f in /usr/bin/magick /usr/bin/magick-script; do
+    if { [ -e "${_f}" ] || [ -L "${_f}" ]; } \
+      && [[ "$(readlink "${_f}")" != /etc/alternatives/* ]] \
+      && update-alternatives --query "${_f##*/}" &> /dev/null \
+      && ! _dpkg_owns_path "${_f}"; then
+      mv -f "${_f}" "/var/backups/$(echo "${_f#/}" | tr '/' '-')"
+      _msg "INFO: ${_f} belongs to no package, moved to /var/backups"
+      update-alternatives --auto "${_f##*/}" &> /dev/null
+    fi
+  done
+  for _dir in $(pkg-config --variable pc_path pkg-config 2>/dev/null | tr ':' ' ') /lib/pkgconfig; do
+    [ -d "${_dir}" ] || continue
+    for _f in "${_dir}"/ImageMagick*.pc "${_dir}"/Magick*.pc; do
+      if [ -e "${_f}" ] && ! _dpkg_owns_path "${_f}"; then
+        mv -f "${_f}" "/var/backups/$(echo "${_f#/}" | tr '/' '-')"
+        _msg "INFO: ${_f} belongs to no package, moved to /var/backups"
+      fi
+    done
+  done
+}
+
+#
+# True when PHP $1 loads the imagick.so at $2, with no php.ini read.
+_imagick_loads() {
+  if [ ! -x "/opt/php$1/bin/php" ] || [ ! -e "$2" ]; then
+    return 1
+  fi
+  "/opt/php$1/bin/php" -n -d "extension=$2" \
+    -r 'exit(extension_loaded("imagick") ? 0 : 1);' &> /dev/null
+}
+
+#
+# True when PHP $1 itself runs but cannot load its imagick.so.
+_imagick_broken() {
+  "/opt/php$1/bin/php" -n -r 'exit(0);' &> /dev/null \
+    && ! _imagick_loads "$1" "${_THIS_PHP_EXT_DIR}/imagick.so"
+}
+
+#
+# True when the imagick.so links a MagickWand library no package owns: one
+# built against the old source build still loads wherever that build's own
+# dependencies remain, and never gets the distro's ImageMagick fixes.
+_imagick_links_orphan() {
+  local _lib
+  _lib=$(ldd "${_THIS_PHP_EXT_DIR}/imagick.so" 2>/dev/null \
+    | awk '/libMagickWand/ && $3 ~ /^\// {print $3; exit}')
+  if [ -z "${_lib}" ] || [ ! -e "${_lib}" ]; then
+    return 1
+  fi
+  ! _dpkg_owns_path "$(readlink -f "${_lib}")"
+}
+
+#
+# Build Imagick for PHP $1 against the distro ImageMagick. A build PHP cannot
+# load gives way to the imagick.so it replaced, and the run says so.
+_php_imagick_build() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_imagick_build $1"
+  fi
+  local _so="${_THIS_PHP_EXT_DIR}/imagick.so"
+  local _prev="/var/backups/php$1-imagick-prev.so"
+  if [ ! -e "${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
+    _apt_clean_update
+    for _PKG in libmagickwand-dev; do
+      if ! _pkg_installed "${_PKG}"; then
+        _mrun "${_INSTAPP} ${_PKG}"
+      fi
+    done
+    touch ${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
+  fi
+  _magick_orphans_aside
+  rm -f "${_prev}"
+  if [ -e "${_so}" ]; then
+    cp -af "${_so}" "${_prev}"
+  fi
+  cd /var/opt
+  rm -rf imagick*
+  _get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
+  cd /var/opt/imagick-${_IMAGICK_VRN}
+  _mrun "${_T_PHP_PTH}/phpize"
+  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+  _mrun "make -j $(nproc) --quiet"
+  rm -f "${_so}"
+  _mrun "make --quiet install"
+  ldconfig 2> /dev/null
+  if [ ! -e "${_so}" ]; then
+    if [ -e "${_prev}" ]; then
+      cp -af "${_prev}" "${_so}"
+    fi
+    _msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
+    if _imagick_broken "$1"; then
+      _msg "OOPS: Imagick for PHP ${_T_PHP_VRN} does not load"
+    elif _imagick_links_orphan; then
+      _msg "OOPS: Imagick for PHP ${_T_PHP_VRN} links an ImageMagick no package owns"
+    fi
+  elif _imagick_loads "$1" "${_so}"; then
+    touch ${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
+    if _imagick_links_orphan; then
+      _msg "OOPS: Imagick for PHP ${_T_PHP_VRN} links an ImageMagick no package owns"
+    fi
+  elif [ -e "${_prev}" ] && _imagick_loads "$1" "${_prev}"; then
+    cp -af "${_prev}" "${_so}"
+    _msg "OOPS: Imagick for PHP ${_T_PHP_VRN} does not load, the previous build stays"
+  else
+    _msg "OOPS: Imagick for PHP ${_T_PHP_VRN} does not load"
+  fi
+  rm -f "${_prev}"
+}
+
+#
 # Install PHP extensions.
 _install_php_extensions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -1083,39 +1233,7 @@ _install_php_extensions() {
   ###--------------------###
   if [ "$1" != 86 ]; then
     _msg "INFO: Installing Imagick ${_IMAGICK_VRN} for PHP ${_T_PHP_VRN}..."
-    if [ "${_OS_CODE}" = "excalibur" ] \
-      || [ "${_OS_CODE}" = "daedalus" ] \
-      || [ "${_OS_CODE}" = "chimaera" ]; then
-      if [ -e "/usr/bin/MagickWand-config" ]; then
-        mv -f /usr/bin/MagickWand-config /var/backups/usr-bin-MagickWand-config
-      fi
-      if [ -e "/usr/local/bin/MagickWand-config" ]; then
-        mv -f /usr/local/bin/MagickWand-config /var/backups/usr-local-bin-MagickWand-config
-      fi
-    fi
-    if [ ! -e "${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
-      _apt_clean_update
-      for _PKG in libmagickwand-dev; do
-        if ! _pkg_installed "${_PKG}"; then
-          _mrun "${_INSTAPP} ${_PKG}"
-        fi
-      done
-      touch ${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
-    fi
-    cd /var/opt
-    rm -rf imagick*
-    _get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
-    cd /var/opt/imagick-${_IMAGICK_VRN}
-    _mrun "${_T_PHP_PTH}/phpize"
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-    _mrun "make -j $(nproc) --quiet"
-    _mrun "make --quiet install"
-    ldconfig 2> /dev/null
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ]; then
-      _msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
-    else
-      touch ${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
-    fi
+    _php_imagick_build "$1"
   fi
   ###--------------------###
   if [ "$1" = "56" ]; then
@@ -1526,42 +1644,13 @@ _php_extensions_update() {
   fi
   ###--------------------###
   if [ "$1" != 86 ]; then
+    _magick_orphans_aside
     if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ] \
-      || [ ! -e "${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ]; then
+      || [ ! -e "${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ] \
+      || _imagick_broken "$1" \
+      || _imagick_links_orphan; then
       _msg "INFO: Installing Imagick ${_IMAGICK_VRN} upgrade for PHP ${_T_PHP_VRN}..."
-      if [ "${_OS_CODE}" = "excalibur" ] \
-        || [ "${_OS_CODE}" = "daedalus" ] \
-        || [ "${_OS_CODE}" = "chimaera" ]; then
-        if [ -e "/usr/bin/MagickWand-config" ]; then
-          mv -f /usr/bin/MagickWand-config /var/backups/usr-bin-MagickWand-config
-        fi
-        if [ -e "/usr/local/bin/MagickWand-config" ]; then
-          mv -f /usr/local/bin/MagickWand-config /var/backups/usr-local-bin-MagickWand-config
-        fi
-      fi
-      if [ ! -e "${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
-        _apt_clean_update
-        for _PKG in libmagickwand-dev; do
-          if ! _pkg_installed "${_PKG}"; then
-            _mrun "${_INSTAPP} ${_PKG}"
-          fi
-        done
-        touch ${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log
-      fi
-      cd /var/opt
-      rm -rf imagick*
-      _get_dev_src "imagick-${_IMAGICK_VRN}.tgz"
-      cd /var/opt/imagick-${_IMAGICK_VRN}
-      _mrun "${_T_PHP_PTH}/phpize"
-      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-      _mrun "make -j $(nproc) --quiet"
-      _mrun "make --quiet install"
-      ldconfig 2> /dev/null
-      if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ]; then
-        _msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
-      else
-        touch ${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
-      fi
+      _php_imagick_build "$1"
     fi
   fi
   ###--------------------###

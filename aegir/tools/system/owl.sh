@@ -586,22 +586,22 @@ else
   if [ -z "${_CLEAR_BOOST}" ]; then
     _CLEAR_BOOST=YES
   fi
+  # The account owns distro/ and every platform there, so these trees are
+  # walked only from inside their real directories (_distro_sites_all_modes).
+  # Skew-guarded: the function ships in 90-global-post.sh on its own serial,
+  # so a mixed vintage skips and leaves the stamp for the next run.
   if [ -e "/data/all" ]; then
-    if [ ! -e "/data/all/permissions-fix-post-up-${_xSrl}.info" ]; then
+    if [ ! -e "/data/all/permissions-fix-post-up-${_xSrl}.info" ] \
+      && command -v _distro_sites_all_modes > /dev/null 2>&1; then
       rm -f /data/all/permissions-fix*
-      find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} \
-        -type d -exec chmod 02775 {} \; &> /dev/null
-      find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} \
-        -type f -exec chmod 0664 {} \; &> /dev/null
+      _distro_sites_all_modes
       echo fixed > /data/all/permissions-fix-post-up-${_xSrl}.info
     fi
   elif [ -e "/data/disk/all" ]; then
-    if [ ! -e "/data/disk/all/permissions-fix-post-up-${_xSrl}.info" ]; then
+    if [ ! -e "/data/disk/all/permissions-fix-post-up-${_xSrl}.info" ] \
+      && command -v _distro_sites_all_modes > /dev/null 2>&1; then
       rm -f /data/disk/all/permissions-fix*
-      find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} \
-        -type d -exec chmod 02775 {} \; &> /dev/null
-      find /data/disk/*/distro/*/*/sites/all/{libraries,modules,themes} \
-        -type f -exec chmod 0664 {} \; &> /dev/null
+      _distro_sites_all_modes
       echo fixed > /data/disk/all/permissions-fix-post-up-${_xSrl}.info
     fi
   fi

@@ -30,6 +30,11 @@ The per-site vhost pulls it via `include $server->include_path/ip_access/{uri}.c
 restriction applies to that site only. A site with no record has no fragment and is
 unrestricted.
 
+A subdirectory site's paths (`example.com/blog`) follow the record for the domain that
+serves them: the domain's own site when it is one, and the bare domain when it is not,
+whose placeholder vhost includes `ip_access/example.com.conf*` as well. A record for the
+internal name (`blog.example.com`) restricts that name only.
+
 `/var/xdrago/ip_access.sh` is a **single global generator**. It runs one shared routine
 over two kinds of context:
 

@@ -127,7 +127,15 @@ if [ -n "${_caller}" ]; then
           *) _hm_r="" ;;
         esac
         if [ -n "${_hm_r}" ] && [ -f "${_hm_r}" ]; then
-          _hm_uri=$(sed -n "s/.*'uri' *=> *'\([^']*\)'.*/\1/p" "${_hm_r}" 2>/dev/null | head -1)
+          # Read inside the directory it resolved to, entered for real, at
+          # most 1 MiB and never through a link or from a FIFO put at the
+          # name since.
+          _hm_uri=$(cd -P -- "${_hm_r%/*}" 2>/dev/null \
+            && [ "$(pwd -P)" = "${_hm_r%/*}" ] \
+            && timeout 10 dd if="./${_hm_r##*/}" \
+              iflag=nofollow,nonblock,fullblock bs=1048576 count=1 \
+              status=none 2>/dev/null \
+            | sed -n "s/.*'uri' *=> *'\([^']*\)'.*/\1/p" 2>/dev/null | head -1)
           if [ -n "${_hm_uri}" ] && [ "${_hm_uri}" = "${_site}" ]; then
             _alias_r="${_hm_r}"
           fi

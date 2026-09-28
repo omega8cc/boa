@@ -531,10 +531,18 @@ line cap, the sample is not representative, and the pass writes a `NOTE` line
 and declares nothing. It runs after the guard-404 pass and before the Tier-B
 i18n pass.
 
-**What a cohort is.** One vhost plus one exact User-Agent, IPv4 clients only.
-Query strings are stripped before documents are counted, so cache-busting
-parameters cannot make a visitor's repeated ajax call look like a run of
-distinct documents.
+**What a cohort is.** One vhost plus one exact User-Agent, public IPv4 clients
+only, the client read as the per-line loop reads it (the last token of the
+client field). Query strings are stripped before documents are counted, so
+cache-busting parameters cannot make a visitor's repeated ajax call look like a
+run of distinct documents.
+
+A request that rides the wildcard SSL front is logged twice: at the front with
+the real visitor, and at the site's port-80 vhost as `127.0.0.1`. The harvest
+pass counts it once, from the front's line, as every other detector does.
+Counting the loopback copy would double every proxied request and halve the
+cohort's distinct-URI share, so a harvest over the front would never pass the
+keystone below.
 
 **Two ways in.**
 
@@ -1403,22 +1411,24 @@ content segment (404).
   `/etc/nginx/conf.d/limit-req-zones-boa.conf`, and the consumer renders only when that file
   declares the map, so no delivery order can reference an undefined variable.
 
-The static and content chain guards live in the full-domain vhost include and are **not**
-in `subdir.tpl.php`. A subdirectory site under a domain that is a site still passes through
-them, because its conf is included in that site's server block, where the include runs
-them for every path.
+The static and content chain guards are tested in the full-domain vhost include, not in
+`subdir.tpl.php` itself. A subdirectory site under a domain that is a site passes through
+them because its conf is included in that site's server block, before the shared include
+that tests both for every path. The standalone server of a domain that is not a site
+(`subdir_vhost.tpl.php`) tests both right after its subdirectory confs.
 
-A subdir site legitimately serves `/<subdir>/sites/all/...` assets,
-which `$is_static_chain` would match as buried-under-content, so each subdir conf clears
-that flag at server level for `/<subdir>/` followed by the same root directories the map
-lets through at a domain's root (`sites`, `modules`, `misc`, `themes`, `core` and so on),
-and the site's vhost includes the subdir confs before the shared include. Anything deeper
-under `/<subdir>/` stays guarded.
+A subdirectory site legitimately serves `/<subdir>/sites/all/...` assets, which the
+domain-level `$is_static_chain` map reads as buried-under-content. The map also skips a
+two-letter first segment as a language prefix, and a subdirectory named `/de` is one. So
+each subdirectory conf replaces the map's verdict for its own paths: it clears the flag at
+server level for every `/<subdir>/` path, then sets it again when the map's three rules
+match counted from `/<subdir>/`. A chain buried under the subdirectory site's content is
+still refused; its own asset roots are not.
 
-The standalone server of a domain that is not a site
-carries neither chain guard. The node-chain, lang-chain and amp-chain guards (which match
-on `node/<id>` repetition, language-prefix runs and the query, not asset paths) **do**
-apply on subdir vhosts.
+The node-chain and amp-chain guards (which match on `node/<id>` repetition and the query)
+apply to subdirectory paths as they are. The language-chain map keys on the full URI, so
+each subdirectory conf also refuses four language-like prefixes counted from its own root;
+a two-letter subdirectory name still takes one slot of the domain-level count.
 
 ### Print no-referer gate → 404
 
@@ -1531,6 +1541,16 @@ ever a HEAD.
 target. Works whether or not the module is enabled. Together with the flag and print gates,
 the 404s this gate emits are the tell Detector 6 counts (see Part 1).
 
+### The three Referer gates on subdirectory sites
+
+The print, Flag and HybridAuth maps anchor their path shapes at the domain's root, so they
+never match `/<subdir>/print/1`. Each subdirectory conf therefore tests the same three
+shapes counted from its own root, at server level: it composes the method,
+`$has_no_referrer`, `$has_no_session` and the URI into one variable and tests it at once
+against the three shapes, so no subdirectory conf of the same domain reads another's
+value. The answer is the same static 404, on a subdirectory site under a site parent and
+under a domain that is not a site.
+
 ### TLS-on-plain → 444
 
 ```nginx
@@ -1637,12 +1657,15 @@ request per IP) can amplify load far beyond its request rate. BOA defends the `/
 | Tier | Composed map | Signal |
 |---|---|---|
 | Tier 1 | `$block_search_no_referrer` | fulltext params **and** no Referer |
-| Tier 2 | `$has_excessive_facets` | 6+ facets (`f[5]+`), encoded or literal |
+| Tier 2 | `$has_excessive_facets` | 6+ selected facet values (`f[5]+`), encoded or literal, any visitor (no Referer, session or UA condition) |
 | Tier 2 | `$block_search_root_referer` | fulltext **and** bare-root Referer **and** a facet present |
 | login | `$block_login_search_destination` | search payload in `/user/login?destination=` **and** no Referer |
 
 These apply as `return 444` inside the `/search` block, the language-prefixed `/xx/search`
-block, and the `/user/login` block, alongside `limit_req` search-rate zones.
+block, and the `/user/login` block, and in the subdirectory-site twins of all three
+(`/<subdir>/search`, `/<subdir>/xx/search`, `/<subdir>/user/login`), alongside `limit_req`
+search-rate zones. Drupal's Facets module numbers every selected value on a page in one
+list, so the sixth ticked value of any facet is `f[5]`.
 `$block_login_search_destination` closes a bypass where bots send
 `/user/login?destination=search%2F...` so the path is `/user/login` and the `/search` guards
 never run. The family landed in BOA-5.9.3.
@@ -1810,6 +1833,12 @@ location = /index.php {
   anonymous request.
 - **It counts requests in the location, not FPM occupancy.** Cache hits and slow readers
   occupy a slot too. Size it as a ceiling on concurrency, not on renders.
+- **A new URL's first render.** Requests waiting on the front cache's lock count too
+  (`limit_conn` runs before the cache lookup). The location waits up to 30 s for that render
+  (`fastcgi_cache_lock_timeout 30s`, nginx's default being 5 s), so the waiters get its
+  cached copy instead of each reaching PHP: on a 16-child pool with an 8 s render and 150
+  simultaneous anonymous visitors the shipped cap served 100 from two renders and shed 50
+  (at 24 it shed 126); a warm URL shed none.
 - **Sizing (default 100).** Above the busiest legitimate per-vhost in-flight peak measured
   over a full production day (13-57 across every tenant) and far below an observed flood
   (417). Deliberately loose so it only ever bounds a genuine flood. Tune per instance toward
@@ -1894,7 +1923,7 @@ $tls_on_plain           → 444
 
 The fleet guard fires on every front a fleet can reach, each on the same render gate:
 the Drupal/Backdrop vhost include (above), the Grav location block, the Textpattern plain
-and SSL vhosts, and the subdir location.
+and SSL vhosts, and the standalone subdir server.
 
 It also fires on the **wildcard SSL front**, inside
 marker lines that `_nginx_wild_ssl_fleet_gate` strips whenever the installed zones file does
@@ -1910,9 +1939,15 @@ on the proxied path.
 The Textpattern vhosts and the standalone subdir server carry the ban guard themselves:
 neither pulls in the full-domain vhost include, so each restates the unconditional
 `if ($is_banned) { return 444; }` next to its fleet guard, at server level. For the
-standalone subdir server that is `subdir_vhost.tpl.php`, not the copies inside the subdir
-conf's master location: nginx runs a location's `if` only for requests that end in that
-location, never for the nested ones that serve almost every request.
+standalone subdir server that is `subdir_vhost.tpl.php`: nginx runs a location's `if` only
+for requests that end in that location, never for the nested ones that serve every request
+under a subdirectory, so the subdir conf's master location carries no guard copies.
+
+The standalone server restates, at server level and in a site vhost's order, the whole guard
+set a site gets from the shared include: the subdirectory confs, then the static and
+content chains, the ban and fleet guards, the PHP-version probe, the secret-path, CMS-probe
+and forged-AI denies, the AI training and evasive defaults with that domain's `ai_policy`
+fragment, the crawler, botnet, high-load, method, denied, UA and TLS-on-plain checks.
 
 A banned address is therefore
 dropped at nginx on those vhosts as on every other one — which is what matters on a
