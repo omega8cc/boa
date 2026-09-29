@@ -866,8 +866,9 @@ _satellite_check_id() {
     _msg "ERROR: Please choose a different _USER"
     _clean_pid_exit
   fi
+  # unquoted: a quoted right side of =~ is a literal string, never a regex
   _REGEX="^[[:digit:]]"
-  if [[ "${_USER}" =~ "${_REGEX}" ]]; then
+  if [[ "${_USER}" =~ ${_REGEX} ]]; then
     _msg "ERROR: ${_USER} is a wrong username"
     _msg "ERROR: The correct username should start with a letter, not digit"
     _clean_pid_exit
@@ -3316,10 +3317,15 @@ _provision_backend_dbpass_generate() {
         fi
       fi
     else
+      ### Remote DB mode takes the root password from /root/.my.pass.txt,
+      ### which barracuda writes and octopus refuses to run without. The
+      ### fixed fallback printed in the public code is never an account's
+      ### database password: without the file the password stays empty and
+      ### the sync changes no database user and no alias.
       if [ -e "/root/.my.pass.txt" ]; then
         _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
-        _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+        _ESC_PASS=""
       fi
     fi
     _isPythonTwo="$(which python2)"
@@ -3341,10 +3347,12 @@ _provision_backend_dbpass_generate() {
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     else
+      ### never the published fallback (see above)
       if [ -e "/root/.my.pass.txt" ]; then
         _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
-        _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+        _ESC_PASS=""
+        _msg "ALRT: /root/.my.pass.txt not found; remote DB mode sets no database password for ${_USER}"
       fi
     fi
     _ENC_PASS="${_ESC_PASS}"
@@ -7249,7 +7257,14 @@ _satellite_post_cleanup() {
   rm -f /tmp/pm-updatecode*
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   _acct_in_real_dir "${_ROOT}/.tmp" rm -rf -- ./cache
-  [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+  # only a stale one: a worker pass started since the lock went is still
+  # running, and the next account's instgrp arm waits on its pid
+  local _ltdPid
+  _ltdPid=$(tr -cd '0-9' 2> /dev/null < /run/manage_ltd_users.pid)
+  if [ -e "/run/manage_ltd_users.pid" ] \
+    && { [ -z "${_ltdPid}" ] || ! kill -0 "${_ltdPid}" 2> /dev/null; }; then
+    rm -f /run/manage_ltd_users.pid
+  fi
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
 }
 
