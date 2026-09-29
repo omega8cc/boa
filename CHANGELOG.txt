@@ -50,6 +50,11 @@
 
 @=> Security
 
+    * The master control panel's database user is now granted its own
+      database only, on every Barracuda upgrade, as each account's already
+      is: it held every privilege on every database of the box, and every
+      upgrade left the previous panel user behind with those rights.
+
     * Each account's control panel database user is now granted its own
       database only, on every Octopus upgrade: it held every privilege on
       every database of the box, with the right to grant them on, which the
