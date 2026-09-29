@@ -11,9 +11,11 @@
 # to honour that header it must trust the proxy as a realip source -- i.e. emit
 # `set_real_ip_from <proxy-ip>`.  This tool writes exactly those lines.
 #
-# It deliberately rides the SAME wildcard include the Cloudflare ranges use --
-# `include /data/conf/nginx_cloudflare_real_ip.c*` in Provision server.tpl.php --
-# by writing a sibling `.cmig` member, so no template/fleet re-render is needed.
+# It deliberately rides the includes the Cloudflare ranges use in Provision
+# server.tpl.php -- `include /data/conf/nginx_cloudflare_real_ip.cmi[g]` beside
+# the `.con[f]` one (a server config rendered before these exact-name patterns
+# carries the `.c*` glob, which matches both) -- by writing a sibling `.cmig`
+# member, so no template/fleet re-render is needed.
 # The Cloudflare member (`.conf`) is owned by cloudflare_realip.sh and is never
 # touched here; this tool owns only the `.cmig` member.
 #
