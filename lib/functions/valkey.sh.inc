@@ -281,10 +281,6 @@ _valkey_password_update() {
       _valkey_conf_pass_here global-if-valkey.inc &> /dev/null
     _acct_in_real_dir /data/conf/global \
       _valkey_conf_pass_here global-valkey.inc &> /dev/null
-    _acct_in_real_dir /data/conf/global \
-      _valkey_conf_pass_here global-if-redis.inc &> /dev/null
-    _acct_in_real_dir /data/conf/global \
-      _valkey_conf_pass_here global-redis.inc &> /dev/null
     _acct_in_real_dir /data/conf \
       _valkey_conf_pass_here global.inc &> /dev/null
     if [ -e "${_mtrInc}" ] \
@@ -297,8 +293,8 @@ _valkey_password_update() {
 }
 #
 # Try the prebuilt boa-valkey .deb for the resolved pin; fall back to sources
-# on any failure. Published for Valkey major 9 only -- majors 7/8 and Redis
-# keep the source path by construction (their packages are never published,
+# on any failure. Published for Valkey major 9 only -- majors 7/8 keep the
+# source path by construction (their packages are never published,
 # and the gate below refuses them up front). The payload carries /usr/bin
 # binaries plus the redis-* compat symlinks valkey's make install creates;
 # runtime dirs, init script, config and password stay installer-managed on

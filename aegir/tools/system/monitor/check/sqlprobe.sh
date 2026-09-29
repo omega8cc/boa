@@ -290,8 +290,8 @@ _DATADIR_MB=$(_num "$(cat "${_DATADIR_STORE}" 2>/dev/null)")
 #
 # Valkey fact: seed the measured-ceiling store the tune pass reads. Same ACL
 # scrape, same >= 1h uptime trust gate, same peak-over-used preference and
-# write idiom as the reader in system.sh.inc. Redis-legacy boxes (no
-# valkey.conf) are left alone by design.
+# write idiom as the reader in system.sh.inc. A box with no valkey.conf
+# yet is left alone by design.
 _VK_SEEDED=0
 _VK_MB=0
 if [ -e "/etc/valkey/valkey.conf" ]; then
@@ -527,7 +527,6 @@ _NGX_RSS_MB=$(_rss_sum_mb $(pgrep -x nginx 2>/dev/null))
 # shellcheck disable=SC2046
 _CLAMD_RSS_MB=$(_rss_sum_mb $(pgrep -x clamd 2>/dev/null))
 _VK_RSS_PIDS=$(pgrep -x valkey-server 2>/dev/null)
-[ -n "${_VK_RSS_PIDS}" ] || _VK_RSS_PIDS=$(pgrep -x redis-server 2>/dev/null)
 # shellcheck disable=SC2086
 _VK_RSS_MB=$(_rss_sum_mb ${_VK_RSS_PIDS})
 

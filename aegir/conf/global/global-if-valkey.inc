@@ -54,7 +54,10 @@ $flag_file_fallback = '/data/conf/arch/valkey.disabled.flag'; // fallback
  *      while that flag exists. Toggle live, with no ini edit or redeploy:
  *        touch /data/conf/valkey.debug.flag   (start logging)
  *        rm    /data/conf/valkey.debug.flag   (stop logging)
- * _valkey_dbg_write() is a no-op whenever $redis_debug_on is FALSE. */
+ * _valkey_dbg_write() is a no-op whenever $redis_debug_on is FALSE.
+ * Each writing user logs to a file of this name in its own directory beside
+ * it, named with its uid: valkey-fallback.<uid>/valkey-fallback.log (see
+ * _valkey_dbg_write()). */
 $redis_debug_log = '/var/tmp/fpm/valkey-fallback.log';
 $redis_debug     = isset($all_ini['redis_debug']) ? (bool) $all_ini['redis_debug'] : FALSE;
 $redis_debug_on  = ($redis_debug && is_file('/data/conf/valkey.debug.flag'));
@@ -66,29 +69,42 @@ $redis_debug_on  = ($redis_debug && is_file('/data/conf/valkey.debug.flag'));
  * armed by one pool could then never be consumed by another pool's
  * recovery, so the pool-wide APCu flush and the clear happened only for the
  * pool that armed it. The flag therefore lives in its own, non-sticky, 0777
- * subdirectory, created by whichever process first needs it, and is made
- * 0666 by its creator so every other pool can refresh (touch) it too. */
+ * subdirectory. There the kernel's link protections do not apply, so
+ * nothing here ever follows a link: the directory is root's own (made and
+ * kept by root, used only while it and its sticky parent are real
+ * root-owned directories), the flag is read through lstat(), refreshed by
+ * renaming a freshly created file over it (rename replaces a link and never
+ * follows it) and removed by unlink (which removes a link itself). */
 function _valkey_backoff_flag_path($flag_dir_run, $fallback) {
   $path = $fallback;
-  if (is_dir($flag_dir_run)) {
-    if (is_writable($flag_dir_run)) {
-      $sub = rtrim($flag_dir_run, '/').'/valkey';
-      if (!is_dir($sub)) {
-        @mkdir($sub, 0777);
-        @chmod($sub, 0777);
-      }
-      if (is_dir($sub) && is_writable($sub)) {
-        $path = $sub.'/disabled.flag';
-      }
-    }
+  $dir = rtrim($flag_dir_run, '/');
+  $sub = $dir.'/valkey';
+  $pst = @lstat($dir);
+  $st = @lstat($sub);
+  if (is_array($pst) && ($pst['mode'] & 0170000) === 0040000
+      && $pst['uid'] === 0 && ($pst['mode'] & 01000)
+      && is_array($st) && ($st['mode'] & 0170000) === 0040000
+      && $st['uid'] === 0 && is_writable($sub)) {
+    $path = $sub.'/disabled.flag';
   }
   return $path;
 }
 
+/* The flag's mtime, or FALSE when there is no flag: absent, a link or
+ * anything else that is not a regular file. */
+function _valkey_backoff_mtime($flag_path) {
+  $st = @lstat($flag_path);
+  if (!is_array($st) || ($st['mode'] & 0170000) !== 0100000) {
+    return FALSE;
+  }
+  return $st['mtime'];
+}
+
 function _valkey_backoff_is_active($flag_path, $ttl) {
   $active = FALSE;
-  if (is_file($flag_path)) {
-    $age = time() - @filemtime($flag_path);
+  $mtime = _valkey_backoff_mtime($flag_path);
+  if ($mtime !== FALSE) {
+    $age = time() - $mtime;
     if ($age >= 0 && $age < $ttl) {
       $active = TRUE;
     }
@@ -96,25 +112,64 @@ function _valkey_backoff_is_active($flag_path, $ttl) {
   return $active;
 }
 
+/* A new file is made under a random name, which nobody else can have made
+ * first (fopen 'x' alone would not refuse a link already there: PHP
+ * resolves it before the open), then renamed over the flag: the flag is
+ * fresh, and no pool needs write access to another pool's file. */
 function _valkey_backoff_touch($flag_path) {
-  $existed = is_file($flag_path);
-  @touch($flag_path);
-  if (!$existed) {
-    @chmod($flag_path, 0666);
+  $tmp = $flag_path.'.'.md5(uniqid(mt_rand(), TRUE));
+  $fh = @fopen($tmp, 'x');
+  if ($fh === FALSE) {
+    return;
+  }
+  fclose($fh);
+  if (!@rename($tmp, $flag_path)) {
+    @unlink($tmp);
   }
 }
 
 function _valkey_backoff_clear($flag_path) {
-  if (is_file($flag_path)) {
-    @unlink($flag_path);
-  }
+  @unlink($flag_path);
 }
 
+/* One log per writing user, in a directory of its own. Every pool and the
+ * CLI run as different users, and in the sticky /var/tmp/fpm
+ * (fs.protected_regular=2) one shared log made by one of them refused every
+ * other user's append. No name another user can make is ever opened: PHP
+ * resolves a link in a path itself before the open, so neither fopen 'x'
+ * nor fs.protected_symlinks stops it following a link planted there.
+ * mkdir() never follows a link; in a real, root-owned, sticky parent nobody
+ * else can rename or replace this user's directory, and in the directory
+ * (0700) nobody else can make an entry, so the log is opened only while
+ * lstat() shows the directory as this user's own. The uid comes from
+ * posix_geteuid(): getmyuid() is in the pool disable_functions and names
+ * the script's owner, not the process. */
 function _valkey_dbg_write($enabled, $log_path, $line) {
-  if ($enabled && !empty($log_path)) {
-    $msg = date('c').' '.$line."\n";
-    @file_put_contents($log_path, $msg, FILE_APPEND);
+  if (!$enabled || empty($log_path) || !function_exists('posix_geteuid')) {
+    return;
   }
+  $pst = @lstat(dirname($log_path));
+  if (!is_array($pst) || ($pst['mode'] & 0170000) !== 0040000
+      || $pst['uid'] !== 0 || !($pst['mode'] & 01000)) {
+    return;
+  }
+  $uid = posix_geteuid();
+  $dir = preg_replace('/\.log$/', '', $log_path).'.'.$uid;
+  $st = @lstat($dir);
+  if (!is_array($st)) {
+    @mkdir($dir, 0700);
+    $st = @lstat($dir);
+  }
+  if (!is_array($st) || ($st['mode'] & 0170000) !== 0040000
+      || $st['uid'] !== $uid || ($st['mode'] & 0022)) {
+    return;
+  }
+  $path = $dir.'/'.basename($log_path);
+  $fst = @lstat($path);
+  if (is_array($fst) && ($fst['mode'] & 0170000) !== 0100000) {
+    return;
+  }
+  @file_put_contents($path, date('c').' '.$line."\n", FILE_APPEND);
 }
 
 /* One full connect+auth+ping attempt. Returns TRUE on healthy PONG.
@@ -201,7 +256,7 @@ function _valkey_probe_once($socket_path, $host, $port, $pass, $connect_timeout_
 
 /* ------------------- Probe Valkey once with guard --------------------- */
 $flag_path = _valkey_backoff_flag_path($flag_dir_run, $flag_file_fallback);
-$flag_existed = is_file($flag_path);
+$flag_existed = (_valkey_backoff_mtime($flag_path) !== FALSE);
 $skip_probe = _valkey_backoff_is_active($flag_path, $backoff_ttl_s);
 $last_reason = 'init';
 $valkey_transport = FALSE; // 'socket' or 'tcp' once a probe answered: the wiring must reuse the transport that worked

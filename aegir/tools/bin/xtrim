@@ -1280,8 +1280,10 @@ _stage_b() {
     mysql --silent -u root -e "DROP DATABASE IF EXISTS \`${_db}\`" 2>/dev/null \
       && _info "${_oN}: dropped database ${_db}"
     ### Drop the paired user only when it holds no grant on any OTHER db.
+    ### mysql.db stores a grant's escaped name (a\_b): compared without the
+    ### escapes, or the user's own grant reads as another db's.
     _r=$(mysql --silent -u root -N -B -e \
-      "SELECT COUNT(*) FROM mysql.db WHERE User='${_db}' AND Db<>'${_db}'" 2>/dev/null | tr -d ' \n')
+      "SELECT COUNT(*) FROM mysql.db WHERE User='${_db}' AND REPLACE(Db,'\\\\','')<>'${_db}'" 2>/dev/null | tr -d ' \n')
     if [ "${_r}" = "0" ]; then
       ### Provision always grants an extra 127.0.0.1 account on top of the
       ### requested host -- drop all three or the user survives half-dead.

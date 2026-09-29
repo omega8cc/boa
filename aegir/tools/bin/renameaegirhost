@@ -2893,6 +2893,8 @@ _rename_in_database() {
   _sql_replace_col hosting_platform publish_path
   _sql_replace_col hosting_site_alias alias
   _sql_replace_col hosting_site_alias redirection
+  # the panel's path aliases of site nodes (hosting/c/<site>) name the site
+  _sql_replace_col url_alias alias
   _sql_replace_col users mail
   _sql_replace_col users init
 

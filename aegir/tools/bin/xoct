@@ -1703,6 +1703,29 @@ _xoct_cred_ok() {
       -P"${_THIS_DB_PORT:-3306}" --protocol=tcp -N -B \
       -e "USE \`$1\`" > /dev/null 2>&1
 }
+### A grant ON a database reads _ and % in its name as wildcards: `a_b`.*
+### also covers aXb, with ALL there. A site user is granted its own name
+### escaped, as provisioning grants it (grant_privileges); names reach here
+### as [a-zA-Z0-9_] only, so _ is all there is to escape.
+_xoct_db_grant_name() {
+  printf '%s' "${1//_/\\_}"
+}
+### Once the exact grant is in place, a wildcard grant an earlier run left on
+### the same name ($1, also the user) at the host $2 goes, as provisioning
+### converges it (revoke_wildcard_db_grant): only when SHOW GRANTS lists it,
+### and revoked as it is stored, its grant option too (a db-level REVOKE
+### takes ALL and GRANT OPTION only as two statements; the second fails
+### harmlessly where there was none).
+_xoct_db_revoke_wildcard() {
+  local _g
+  [[ "${1}" == *_* ]] || return 0
+  _g=$(mysql --silent -u root -h"${_SQL_CONNECT}" -P"${_THIS_DB_PORT}" --protocol=tcp \
+    -N -B -e "SHOW GRANTS FOR '${1}'@'${2}'" 2> /dev/null)
+  printf '%s\n' "${_g}" | grep -qF "ON \`${1}\`.* TO " || return 0
+  mysql --silent -u root -h"${_SQL_CONNECT}" -P"${_THIS_DB_PORT}" --protocol=tcp \
+    -e "REVOKE ALL PRIVILEGES ON \`${1}\`.* FROM '${1}'@'${2}'; \
+        REVOKE GRANT OPTION ON \`${1}\`.* FROM '${1}'@'${2}';" &> /dev/null
+}
 ### The real (non-link) subdirectory names of the current (pinned) directory,
 ### one per line: the glob expands here, never in a directory a link put in
 ### its place names.
@@ -1967,15 +1990,18 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
             fi
+            _DBN_ESC=$(_xoct_db_grant_name "${_DBN}")
             mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${_DBN}'@'localhost';
 CREATE USER IF NOT EXISTS '${_DBN}'@'%';
-GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'localhost' WITH GRANT OPTION;
-GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'%' WITH GRANT OPTION;
+GRANT ALL ON \`${_DBN_ESC}\`.* TO '${_DBN}'@'localhost';
+GRANT ALL ON \`${_DBN_ESC}\`.* TO '${_DBN}'@'%';
 ALTER USER '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
 ALTER USER '${_DBN}'@'%' IDENTIFIED BY '${_DBP}';
 EOFMYSQL
+            _xoct_db_revoke_wildcard "${_DBN}" localhost
+            _xoct_db_revoke_wildcard "${_DBN}" %
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
               _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
@@ -2778,11 +2804,12 @@ _xo_rewrite_here() {
     # own \$user_socket "oN.NN" token -- so match that too, else a rename left
     # the source socket name and requests hit the WRONG account's FPM pool
     # (403/permission-denied) on any target that also has an account by the
-    # source name.
+    # source name. The account path ends at a slash or at the end of its
+    # name, so o1 never rewrites a path of o10.
     _xoct_read_here "\${_F}" \
-      | grep -qE "/data/disk/${_X_SRC_OCT}|/home/${_X_SRC_OCT}\.ftp|user_socket \"${_X_SRC_OCT}[.\"]" || continue
-    _xoct_sed_here "\${_F}" \
-      -e 's#/data/disk/${_X_SRC_OCT}#/data/disk/${_X_DST_OCT}#g' \
+      | grep -qE "/data/disk/${_X_SRC_OCT}([^A-Za-z0-9._-]|\\\$)|/home/${_X_SRC_OCT}\.ftp|user_socket \"${_X_SRC_OCT}[.\"]" || continue
+    _xoct_sed_here "\${_F}" -E \
+      -e 's#/data/disk/${_X_SRC_OCT}([^A-Za-z0-9._-]|\$)#/data/disk/${_X_DST_OCT}\1#g' \
       -e 's#/home/${_X_SRC_OCT}\.ftp#/home/${_X_DST_OCT}.ftp#g' \
       -e 's#user_socket "${_X_SRC_OCT}\.#user_socket "${_X_DST_OCT}.#g' \
       -e 's#user_socket "${_X_SRC_OCT}"#user_socket "${_X_DST_OCT}"#g'
@@ -3542,6 +3569,24 @@ _xoct_seed_witness_delta() {   # 1 = was, 2 = now (md5sum output, one line per f
   printf '%s' "${_out:-a witness set of a different shape}"
 }
 
+### The poured panel carries the source's password for its database server row;
+### this box's instance user keeps its own, so every server verify (the rename's
+### queue first) failed until the next Octopus pass re-synced it. The row takes
+### the password this box set for the account (.<account>.pass.txt in the
+### account root, read no-follow), under either the account's name or the
+### source's (the rename maps the latter onto the former). Same text in xoct
+### and xcopy.
+_xoct_sync_panel_db_pass() {   # 1 account root 2 account here 3 source account 4 panel db
+  local _p
+  _p=$(_xoct_read_in "${1}" ".${2}.pass.txt" | head -1 | tr -d '\n')
+  case "${_p}" in
+    ""|*[!A-Za-z0-9+/=%@._-]*) return 1 ;;
+  esac
+  [ "${#_p}" -ge 9 ] || return 1
+  mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp "${4}" \
+    -e "UPDATE hosting_db_server SET db_passwd='${_p}' WHERE db_user IN ('${2}','${3}')" 2> /dev/null
+}
+
 _xoct_reconcile_panel_platform() {
   # Mirror of xmass step 12.5's panel platform drift handling (kept separate
   # by design -- mirror fixes, don't DRY). The imported hostmaster DB names
@@ -3625,8 +3670,13 @@ _xoct_reconcile_panel_platform() {
     mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp \
       -e "CREATE USER IF NOT EXISTS '${_hdb}'@'localhost' IDENTIFIED BY '${_pw}'; \
           ALTER USER '${_hdb}'@'localhost' IDENTIFIED BY '${_pw}'; \
-          GRANT ALL ON \`${_hdb}\`.* TO '${_hdb}'@'localhost'; \
+          GRANT ALL ON \`$(_xoct_db_grant_name "${_hdb}")\`.* TO '${_hdb}'@'localhost'; \
+          CREATE USER IF NOT EXISTS '${_hdb}'@'%' IDENTIFIED BY '${_pw}'; \
+          ALTER USER '${_hdb}'@'%' IDENTIFIED BY '${_pw}'; \
+          GRANT ALL ON \`$(_xoct_db_grant_name "${_hdb}")\`.* TO '${_hdb}'@'%'; \
           FLUSH PRIVILEGES;" 2>/dev/null
+    _xoct_db_revoke_wildcard "${_hdb}" localhost
+    _xoct_db_revoke_wildcard "${_hdb}" %
     for _f in settings.php drushrc.php; do
       _xoct_in_real_dir "${_found}" test -f "./${_f}" || continue
       # A cloaked settings.php carries no literal credential lines -- it reads
@@ -3727,6 +3777,108 @@ _xoct_import_precheck() {
   echo "ERROR: import for ${_oct}: ${_why}"
   echo "ERROR: nothing was imported and nothing on this box was changed; fix the cause and re-run"
   return 1
+}
+
+### A create marks the account it installed on the target: a root-only file
+### naming this box and the source account, put only after the install
+### succeeded. A later create goes on into an account the target already
+### holds (no install, the seed again) only under that marker, so an
+### unrelated account that carries the name is never seeded, and its LE
+### config and control pids are never removed. The marker also records the
+### account's uid there and the inode and birth time of /data/disk/<account>,
+### read on the target when it is put: an account made again under the name
+### usually gets its old uid back (adduser hands out the lowest free one) but
+### a directory born later, so a marker left from the first is not trusted
+### for it; no device number, which can change at a reboot. Same text in
+### xoct and xcopy: a marker either tool put is read by both.
+_xoct_create_marker() {   # 1 = account on the target
+  printf '/root/.%s.migration-create.txt' "${1}"
+}
+### This box as the marker names it: hostname -f, nothing when that is not
+### a hostname.
+_xoct_create_src_host() {
+  local _h
+  _h="$(hostname -f 2> /dev/null | tr -d '\n')"
+  case "${_h}" in
+    ''|*[!a-zA-Z0-9.-]*|.*|*.|*..*) return 1 ;;
+  esac
+  printf '%s' "${_h}"
+}
+### The one line that tells an operator how to adopt $2 on $3 as the
+### account this box created for $1, when it really is.
+_xoct_create_adopt_hint() {   # 1 = account here 2 = account on the target 3 = target 4 = this box
+  echo "INFO: to adopt ${2} on ${3} as this migration's, run there: (umask 077; printf '_MIG_CREATE_SRC_HOST=%s\n_MIG_CREATE_SRC_OCT=%s\n_MIG_CREATE_TGT_UID=%s\n_MIG_CREATE_TGT_INODE=%s\n' ${4} ${1} \"\$(id -u ${2})\" \"\$(stat -c %i:%W /data/disk/${2})\" > $(_xoct_create_marker "${2}"))"
+}
+### Returns when the target $3 holds no account $2 (no passwd entry: what
+### the install itself refuses on), or holds it under a marker naming this
+### box and the source account $1, and the uid and /data/disk/$2 the account
+### has there now; _XOCT_CREATE_HELD is YES in that case.
+### With --adopt a held account is taken without the marker (ADOPT), and
+### the marker is put for it once the create goes on: xmass passes it, since
+### its targets hold accounts no create made (a fresh install's o1, a
+### demoted failback box's own). Anything else refuses the create before it
+### changes anything there: an account held without that marker, a marker
+### that cannot be read, a probe that answers neither way. Read-only on the
+### target.
+_xoct_create_owner_gate() {   # 1 = account here 2 = account on the target 3 = target
+  local _h _f _held _mark _mh _mo _mu _mi _nu _ni
+  _XOCT_CREATE_HELD=""
+  if [[ ! "${1}" =~ ^[a-zA-Z0-9._-]+$ ]] || [[ ! "${2}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+    echo "ALRT: refusing create: invalid account name '${1}'/'${2}'"
+    exit 1
+  fi
+  if ! _h="$(_xoct_create_src_host)"; then
+    echo "ALRT: refusing create: this box's hostname -f is not a hostname the create marker can name"
+    exit 1
+  fi
+  _f="$(_xoct_create_marker "${2}")"
+  _held=$(ssh root@"${3}" "if getent passwd ${2} > /dev/null 2>&1; then echo HELD; else echo FREE; fi" 2> /dev/null)
+  case "${_held}" in
+    FREE) return 0 ;;
+    HELD) : ;;
+    *)
+      echo "ALRT: refusing create: could not read whether ${3} holds an account named ${2}"
+      exit 1
+      ;;
+  esac
+  ### The account's uid and /data/disk/$2 as they are now are printed before
+  ### the marker, so a first match can only take these real values.
+  _mark=$(ssh root@"${3}" "printf '_MIG_CREATE_NOW_UID=%s\n_MIG_CREATE_NOW_INODE=%s\n' \"\$(id -u ${2} 2> /dev/null)\" \"\$(stat -c %i:%W /data/disk/${2} 2> /dev/null)\"; [ -f ${_f} ] && [ ! -L ${_f} ] && [ \"\$(stat -c %u ${_f})\" = 0 ] && timeout 10 dd if=${_f} iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none" 2> /dev/null)
+  _nu=$(printf '%s\n' "${_mark}" | grep -m1 '^_MIG_CREATE_NOW_UID=' | cut -d= -f2-)
+  _ni=$(printf '%s\n' "${_mark}" | grep -m1 '^_MIG_CREATE_NOW_INODE=' | cut -d= -f2-)
+  _mh=$(printf '%s\n' "${_mark}" | grep -m1 '^_MIG_CREATE_SRC_HOST=' | cut -d= -f2-)
+  _mo=$(printf '%s\n' "${_mark}" | grep -m1 '^_MIG_CREATE_SRC_OCT=' | cut -d= -f2-)
+  _mu=$(printf '%s\n' "${_mark}" | grep -m1 '^_MIG_CREATE_TGT_UID=' | cut -d= -f2-)
+  _mi=$(printf '%s\n' "${_mark}" | grep -m1 '^_MIG_CREATE_TGT_INODE=' | cut -d= -f2-)
+  if [ "${_mh}" = "${_h}" ] && [ "${_mo}" = "${1}" ] \
+    && [[ "${_nu}" =~ ^[0-9]+$ ]] && [ "${_mu}" = "${_nu}" ] \
+    && [[ "${_ni}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${_mi}" = "${_ni}" ]; then
+    _XOCT_CREATE_HELD=YES
+    return 0
+  fi
+  if [ "${_XOCT_CREATE_ADOPT}" = "YES" ]; then
+    _XOCT_CREATE_HELD=ADOPT
+    return 0
+  fi
+  echo "DENY: ${3} already holds an account named ${2} that this migration did not create; nothing was changed there"
+  if [ "${_mh}" = "${_h}" ] && [ "${_mo}" = "${1}" ] && [ -n "${_mu}${_mi}" ]; then
+    echo "INFO: the create marker there was put for an earlier ${2}: the uid or /data/disk/${2} it records is not the account's now"
+  fi
+  _xoct_create_adopt_hint "${1}" "${2}" "${3}" "${_h}"
+  exit 1
+}
+### The marker put on the target $3 for its account $2, installed for the
+### source account $1: a fresh root 0600 file written through one no-follow
+### handle (_XOCT_PUT_PL), then renamed over the name. The account's uid and
+### the inode and birth time of /data/disk/$2 are read there in the same
+### command; no
+### marker is put when either cannot be read.
+_xoct_create_mark() {   # 1 = account here 2 = account on the target 3 = target
+  local _h _f _ts
+  _h="$(_xoct_create_src_host)" || return 1
+  _f="$(_xoct_create_marker "${2}")"
+  _ts="$(date -u '+%Y-%m-%d %H:%M:%S UTC' 2> /dev/null)"
+  ssh root@"${3}" "_u=\$(id -u ${2} 2> /dev/null); _i=\$(stat -c %i:%W /data/disk/${2} 2> /dev/null); case \"\${_u}/\${_i}\" in *[!0-9:/]*) exit 1 ;; [0-9]*/[0-9]*:[0-9]*) : ;; *) exit 1 ;; esac; _t=/root/.${2}.migration-create.put.\$\$; rm -f -- \"\${_t}\"; printf '%s\n' '# Put by create: the account this migration installed here.' '_MIG_CREATE_SRC_HOST=${_h}' '_MIG_CREATE_SRC_OCT=${1}' \"_MIG_CREATE_TGT_UID=\${_u}\" \"_MIG_CREATE_TGT_INODE=\${_i}\" '_MIG_CREATE_STAMPED=${_ts}' | perl -e '${_XOCT_PUT_PL}' \"\${_t}\" 0 0 600 && mv -f -T -- \"\${_t}\" ${_f} && exit 0; rm -f -- \"\${_t}\"; exit 1"
 }
 
 _migrate_prepare() {
@@ -4064,6 +4216,10 @@ _migrate_prepare() {
       echo "ERROR:   xoct import ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}"
       exit 1
     fi
+    if ! _xoct_sync_panel_db_pass "${_USR}" "${_THIS_HM_USER}" "${_oct}" "${_HDB}"; then
+      echo "ALRT: the panel's database server password was not synced for ${_THIS_HM_USER}: its server"
+      echo "ALRT: verify fails until the next Octopus pass (check ${_USR}/.${_THIS_HM_USER}.pass.txt)"
+    fi
 
     if [ "${_fix}" = "fix" ]; then
       _DOMAIN=$(_xoct_read_in "${_USR}/log" domain.txt)
@@ -4176,6 +4332,10 @@ _migrate_prepare() {
       && [ ! -z "${_CLIENT_OPTION}" ] \
       && [ ! -z "${_CLIENT_SUBSCR}" ] \
       && [ ! -z "${_CLIENT_CORES}" ]; then
+      ### An account the target already holds is this migration's only
+      ### under its create marker: asked before --fix-php or anything else
+      ### changes the target.
+      _xoct_create_owner_gate "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
       ### The pinned PHP set must exist on the target BEFORE anything is
       ### installed or seeded there; a missing version means silent fallback
       ### to a different PHP on the migrated sites.
@@ -4200,6 +4360,8 @@ _migrate_prepare() {
         _IN_VERB=in-oct
         echo "INFO: source account uses ProxySQL; installing with 'boa in-oct'"
       fi
+      ### Asked again: the PHP pass above can run for half an hour.
+      _xoct_create_owner_gate "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
       ### Existence keyed on what only a real INSTALL produces: log/cores.txt
       ### alone is force-copied by the transfer path, so it would let an
       ### out-of-order run seed config onto a bare rsync tree.
@@ -4207,10 +4369,21 @@ _migrate_prepare() {
         && [ -e /root/.${_TGT_HM_USER}.octopus.cnf ] \
         && [ -e /data/disk/${_TGT_HM_USER}/config/includes/nginx_vhost_common.conf ] \
         && echo PRESENT" 2>/dev/null)
-      if [ "${_TGT_PRESENT}" = "PRESENT" ]; then
+      if [ "${_TGT_PRESENT}" = "PRESENT" ] \
+        && { [ "${_XOCT_CREATE_HELD}" = "YES" ] || [ "${_XOCT_CREATE_HELD}" = "ADOPT" ]; }; then
         ### Idempotent re-run: skip the expensive install, still re-seed the
         ### config and credentials below so a repeated create converges.
+        ### Only under this migration's marker, or adopted (--adopt, which
+        ### puts it); an account that appeared since the gate goes to the
+        ### install, which refuses the name.
         echo "INFO: account ${_TGT_HM_USER} already installed on ${_tgt}; skipping install, re-seeding config"
+        if [ "${_XOCT_CREATE_HELD}" = "ADOPT" ]; then
+          echo "INFO: account ${_TGT_HM_USER} on ${_tgt} adopted for this migration (--adopt)"
+          if ! _xoct_create_mark "${_oct}" "${_TGT_HM_USER}" "${_tgt}"; then
+            echo "ALRT: the create marker for ${_TGT_HM_USER} could not be put on ${_tgt}; a re-run of this create without --adopt will refuse the account"
+            _xoct_create_adopt_hint "${_oct}" "${_TGT_HM_USER}" "${_tgt}" "$(_xoct_create_src_host)"
+          fi
+        fi
       else
         ### The install's welcome mail would hand the client a brand-new
         ### password that the credential carry below immediately replaces
@@ -4245,13 +4418,15 @@ _migrate_prepare() {
           _SILENT_MARKER=NO
         fi
         ### The launcher exits 1 without installing when a run lock is held
-        ### (and the install can die for its own reasons): prove the account
-        ### exists before seeding anything, never report a refusal complete.
+        ### or the name is taken (and the install can die for its own
+        ### reasons): prove the account exists before seeding anything, never
+        ### report a refusal complete. An account refused as taken reads as
+        ### born too, so the launcher's own success counts as well.
         _TGT_BORN=$(ssh root@${_tgt} "getent passwd ${_TGT_HM_USER} >/dev/null 2>&1 \
           && [ -e /root/.${_TGT_HM_USER}.octopus.cnf ] \
           && [ -s /data/disk/${_TGT_HM_USER}/log/octopus_log.txt ] \
           && echo BORN" 2>/dev/null)
-        if [ "${_TGT_BORN}" != "BORN" ]; then
+        if [ "${_INSTALL_RC}" != "0" ] || [ "${_TGT_BORN}" != "BORN" ]; then
           echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} did not happen (launcher rc=${_INSTALL_RC});"
           echo "ALRT: read the launcher output above -- re-run this create once ${_tgt} is quiet"
           exit 1
@@ -4261,6 +4436,10 @@ _migrate_prepare() {
         ### rest of the run.
         trap '_xoct_chattr_back; rm -f "${_XOCT_LOCK_FILE}"' EXIT
         trap 'rm -f "${_XOCT_LOCK_FILE}"; exit 130' INT TERM HUP
+        if ! _xoct_create_mark "${_oct}" "${_TGT_HM_USER}" "${_tgt}"; then
+          echo "ALRT: the create marker for ${_TGT_HM_USER} could not be put on ${_tgt}; a re-run of this create will refuse the account"
+          _xoct_create_adopt_hint "${_oct}" "${_TGT_HM_USER}" "${_tgt}" "$(_xoct_create_src_host)"
+        fi
         ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/.ctrl/ssl-demo-mode.pid"
         ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config"
         ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config.sh"
@@ -6812,11 +6991,15 @@ case "$1" in
     ### --fix-php lets create extend the target's _PHP_MULTI_INSTALL and
     ### drive one barracuda system pass there when a pinned PHP version is
     ### missing; without it the PHP coverage gate refuses with the recipe.
+    ### --adopt takes an account the target already holds as this
+    ### migration's without its create marker, and puts the marker.
     _XOCT_FIX_PHP=""
+    _XOCT_CREATE_ADOPT=""
     _margs=()
     for _a in "$@"; do
       case "${_a}" in
         --fix-php) _XOCT_FIX_PHP=YES ;;
+        --adopt) _XOCT_CREATE_ADOPT=YES ;;
         --*)
           echo "ERROR: unknown option '${_a}' for $1"
           exit 1
@@ -7162,7 +7345,7 @@ case "$1" in
             echo "Usage: xoct {pre-mig} {source-fqdn} (source vms: publishes its key and prints its fingerprint)"
             echo "Usage: xoct {pre-mig} {source-fqdn} --key-fp=SHA256:... (target vms: the fingerprint the source printed)"
             echo "Usage: xoct {export|create|pretransfer|transfer|proxy} {o1|shared} {target-ip} {o2}"
-            echo "Usage: xoct {create} {o1} {target-ip} {o2} [--fix-php] (also seeds octopus.cnf, PHP pins, credentials)"
+            echo "Usage: xoct {create} {o1} {target-ip} {o2} [--fix-php] [--adopt] (also seeds octopus.cnf, PHP pins, credentials)"
             echo "Usage: xoct {import} {o1} {target-ip} {o2} (target vms, optional target account rename)"
             echo "Usage: xoct {reset-state} {o1} (clear migration state for a fresh/chained migration)"
             echo "Usage: xoct {post-mig} {fqdn} (source+target vms)"

@@ -1041,8 +1041,6 @@ _aegir_master_upgrade() {
     fi
     if [ -e "/etc/init.d/valkey-server" ]; then
       _valkey_password_update
-    elif [ -e "/etc/init.d/redis-server" ]; then
-      _redis_password_update
     fi
     _force_advanced_nginx_config
     cd /var/aegir
@@ -1570,8 +1568,6 @@ EOFMYSQL
     fi
     if [ -e "/etc/init.d/valkey-server" ]; then
       _valkey_password_update
-    elif [ -e "/etc/init.d/redis-server" ]; then
-      _redis_password_update
     fi
     _force_advanced_nginx_config
     chmod 0711 ${_mtrInc} &> /dev/null

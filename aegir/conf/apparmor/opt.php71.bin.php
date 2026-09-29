@@ -34,7 +34,6 @@
   signal (send) peer=/usr/sbin/nginx,
   ptrace (read) peer=/opt/php*/sbin/php-fpm,
   ptrace (read) peer=/usr/bin/mysqld_safe,
-  ptrace (read) peer=/usr/bin/redis-server,
   ptrace (read) peer=/usr/local/sbin/pure-ftpd,
   ptrace (read) peer=/usr/sbin/nginx,
   ptrace (read) peer=/usr/sbin/rsyslogd,
