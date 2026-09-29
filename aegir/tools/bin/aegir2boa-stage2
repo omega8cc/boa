@@ -1988,9 +1988,25 @@ _t_remove_estate_vhosts() {
   fi
 }
 
+# once the exact grant is in place, a wildcard grant an earlier import left
+# on the same name (a retry after _t_reset_site_dbs keeps the user) goes, as
+# provisioning converges it (revoke_wildcard_db_grant): only when SHOW
+# GRANTS lists it, and revoked as it is stored, its grant option too (a
+# db-level REVOKE takes ALL and GRANT OPTION only as two statements; the
+# second fails harmlessly where there was none)
+_t_revoke_wildcard_grant() {   # 1 dbn (== user) 2 host
+  local _g
+  [[ "$1" == *_* ]] || return 0
+  _g="$(mysql --silent -u root -N -B -e "SHOW GRANTS FOR '$1'@'$2'" 2>/dev/null)"
+  printf '%s\n' "${_g}" | grep -qF "ON \`$1\`.* TO " || return 0
+  mysql --silent -u root \
+    -e "REVOKE ALL PRIVILEGES ON \`$1\`.* FROM '$1'@'$2'; REVOKE GRANT OPTION ON \`$1\`.* FROM '$1'@'$2';" \
+    >/dev/null 2>&1
+}
+
 # create db+user with the site's own creds (xoct:279-285 model, utf8mb4)
 _t_site_db_create_load() {   # 1 dbn 2 dbp 3 dumpfile 4 dmajor
-  local _dbn="$1" _dbp="$2" _dump="$3" _dmaj="$4"
+  local _dbn="$1" _dbp="$2" _dump="$3" _dmaj="$4" _dbe
   # defence-in-depth: the source gated _dbp, but it reaches a root SQL
   # heredoc here via a 600 manifest - re-gate so a hand-edited manifest or
   # a wider-than-assumed Aegir password charset can't inject
@@ -2000,15 +2016,22 @@ _t_site_db_create_load() {   # 1 dbn 2 dbp 3 dumpfile 4 dmajor
     _alrt "db ${_dbn} already exists on target - NOT overwriting (remove it to re-import)"
     return 1
   fi
+  # a grant ON a database reads _ and % in its name as wildcards: `a_b`.*
+  # also covers aXb, with ALL there; the site user gets its own name
+  # escaped, as provisioning grants it (grant_privileges), and _ is all a
+  # name that passed the gate above can carry
+  _dbe="${_dbn//_/\\_}"
   mysql --silent -u root mysql <<EOFMYSQL
 CREATE DATABASE \`${_dbn}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${_dbn}'@'localhost';
 CREATE USER IF NOT EXISTS '${_dbn}'@'%';
-GRANT ALL ON \`${_dbn}\`.* TO '${_dbn}'@'localhost' WITH GRANT OPTION;
-GRANT ALL ON \`${_dbn}\`.* TO '${_dbn}'@'%' WITH GRANT OPTION;
+GRANT ALL ON \`${_dbe}\`.* TO '${_dbn}'@'localhost';
+GRANT ALL ON \`${_dbe}\`.* TO '${_dbn}'@'%';
 ALTER USER '${_dbn}'@'localhost' IDENTIFIED BY '${_dbp}';
 ALTER USER '${_dbn}'@'%' IDENTIFIED BY '${_dbp}';
 EOFMYSQL
+  _t_revoke_wildcard_grant "${_dbn}" localhost
+  _t_revoke_wildcard_grant "${_dbn}" %
   # a D6 site serves through the php56 pool, and PHP 5.6 mysqli cannot
   # complete the caching_sha2_password handshake 8.0+ targets mint by
   # default - the WEB bootstrap loses the DB and D6 answers its own

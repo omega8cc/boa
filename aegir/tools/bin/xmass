@@ -8952,7 +8952,16 @@ _xmass_cmd_prep_target() {
   # backstop for direct use; here the full gate (locks, armed pids, every
   # root's queue, processes, two consecutive polls) runs first, and a target
   # that never settles fails that account instead of launching into a refusal.
-  local _oct _rc _failed=""
+  # --adopt: an eligible account the target already holds is taken as this
+  # migration's, as before -- a fresh install's own o1 and a demoted failback
+  # box's accounts were never made by a create, so they carry no create
+  # marker, and xoct create refuses such an account without it. Passed only
+  # when the installed xoct's usage lists it: an xoct from before the marker
+  # refuses an option it does not know, and adopts such an account anyway.
+  local _oct _rc _failed="" _adopt=""
+  case "$(xoct 2> /dev/null)" in
+    *'[--adopt]'*) _adopt=--adopt ;;
+  esac
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     if ! _xmass_wait_target_silent "${_tgt}" "creating ${_oct}" warn full; then
       _alrt "not creating ${_oct}: ${_tgt} never went silent"
@@ -8961,9 +8970,9 @@ _xmass_cmd_prep_target() {
     fi
     _info "Preparing account ${_oct} on ${_tgt} ..."
     if [ "${_XMASS_FIX_PHP}" = "YES" ]; then
-      xoct create "${_oct}" "${_tgt}" --fix-php
+      xoct create "${_oct}" "${_tgt}" --fix-php ${_adopt:+"${_adopt}"}
     else
-      xoct create "${_oct}" "${_tgt}"
+      xoct create "${_oct}" "${_tgt}" ${_adopt:+"${_adopt}"}
     fi
     _rc=$?
     if [ "${_rc}" -ne 0 ]; then

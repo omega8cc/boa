@@ -55,7 +55,8 @@ as abandoned, and `/run` is tmpfs, so a reboot clears it.
 - **`xoct`** holds it for `export` (`mydumper` on the source) and `import`
   (`myloader` plus `renameaegirhost`'s dump/reimport on the target).
 - **`xcopy`** holds it the same way for `export` and `import`: the panel
-  database dump and restore and every site's `mydumper` or `myloader` run.
+  database dump and restore, `renameaegirhost`'s database work on the target
+  and every site's `mydumper` or `myloader` run.
 
 `xoct` and `xcopy` write their process ID into the marker and keep it fresh
 for as long as their database work runs, however long one dump or load takes.
