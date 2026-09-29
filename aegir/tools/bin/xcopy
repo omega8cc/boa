@@ -618,7 +618,6 @@ _migrate_sites() {
           echo "ALRT: site ${_Dom} db_passwd carries characters outside the generated-password charset; not re-created here, fix its credentials by hand"
           _DBP=""
         fi
-        echo "site ${_Dom} clean _DBP is ${_DBP}"
         # vhost.d is oN's: the saved dot-file is renamed over the live name
         # inside the real directory, so a link at either name is never followed.
         _xcopy_in_real_dir "${_Vht%/*}" mv -f -T -- "./.${_Dom}" "./${_Dom}" 2> /dev/null
@@ -795,7 +794,7 @@ EOFMYSQL
           _XCOPY_SITE_IMPORT_OK=NO
           _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + 1 ))
           _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_Dom}:empty-db-credentials"
-          echo "ALRT: site ${_Dom} db failure due to empty _DBN/${_DBN} or _DBP/${_DBP}"
+          echo "ALRT: site ${_Dom} db failure due to an empty database name (${_DBN:-empty}) or password ($([ -n "${_DBP}" ] && echo set || echo empty))"
         fi
       elif [ "${_cmd}" = "export" ]; then
         if [ -x "/usr/local/bin/mydumper" ]; then

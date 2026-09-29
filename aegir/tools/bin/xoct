@@ -1993,7 +1993,6 @@ _migrate_sites() {
           echo "ALRT: site ${_Dom} db_passwd carries characters outside the generated-password charset; not re-created here, fix its credentials by hand"
           _DBP=""
         fi
-        echo "site ${_Dom} clean _DBP is ${_DBP}"
         ### vhost.d is oN's: the saved dot-file is renamed over the live name
         ### inside the real directory, so a link at either name is never
         ### followed and the file is never moved into a linked directory.
@@ -2174,7 +2173,7 @@ EOFMYSQL
           _XOCT_SITE_IMPORT_OK=NO
           _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
           _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_Dom}:empty-db-credentials"
-          echo "ALRT: site ${_Dom} db failure due to empty _DBN/${_DBN} or _DBP/${_DBP}"
+          echo "ALRT: site ${_Dom} db failure due to an empty database name (${_DBN:-empty}) or password ($([ -n "${_DBP}" ] && echo set || echo empty))"
         fi
       elif [ "${_cmd}" = "export" ]; then
         ###
