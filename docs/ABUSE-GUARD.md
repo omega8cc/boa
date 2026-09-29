@@ -1132,8 +1132,8 @@ CSF cannot hold an IPv6 ban, so an IPv6 offender never reaches `nginx_deny.sh`. 
 (`*/2` cron, same shared lock) prunes the expired entries, collapses the refreshed
 duplicates to the max expiry, validates each as a strict IPv6 address, and emits the
 survivors as `<ip6> 1;` into `/data/conf/nginx_banned_ips.conf6`. That file is picked up by
-the **same** `geo $remote_addr $is_banned` set — its wildcard `nginx_banned_ips.c*` include
-already covers it — so an IPv6 attacker is dropped with the same `444`, at nginx, exactly
+the **same** `geo $remote_addr $is_banned` set — its `nginx_banned_ips.conf[6]` include names
+it — so an IPv6 attacker is dropped with the same `444`, at nginx, exactly
 like the IPv4 case.
 
 The store is self-expiring (default 900s, `_NGINX_V6_BAN_TTL`), the
@@ -1146,7 +1146,7 @@ The rebuild only disturbs nginx when something actually changed:
   identical, the run exits with no reload.
 - **Atomic install + validate.** The new file is built in a root-only work directory under
   `/run`, written into `/data/conf` under a leading-dot name
-  (`.nginx_banned_ips.conf.put.<pid>.<n>`, so the `.c*` include glob never sees it) through
+  (`.nginx_banned_ips.conf.put.<pid>.<n>`, so no include ever sees it) through
   one handle that never follows a link, and renamed into place inside the real
   `/data/conf`; the current file is backed up to `.nginx_banned_ips.last_good.conf` first,
   the same way. A link, a FIFO or a directory left at either name is replaced, never
@@ -1178,7 +1178,7 @@ fragments from its store and installs them the same careful way the geo sets are
   all — the same order-independence contract the `bgp_flood` and `boa_perhost_anon` zones use,
   so no delivery order can reference an undeclared variable.
 - **Nothing-live short-circuit.** With no live fingerprint and no fragment on disk the pass
-  exits leaving the include globs empty; `$boa_fleet_block` is then `0` for everything.
+  exits leaving the includes with nothing to load; `$boa_fleet_block` is then `0` for everything.
 - **Change gate.** Each freshly built fragment is compared with the live one (`cmp -s`); if
   all three are identical the pass exits with no reload.
 - **Hold-down on member-only changes.** A live fleet adds members on most passes. A new or
@@ -1194,7 +1194,7 @@ fragments from its store and installs them the same careful way the geo sets are
   `.nginx_fleet_<name>.last_good.conf` **before** any is replaced, so a failed copy (a full
   disk) leaves the live set exactly as it was. Each fragment is built in a root-only work
   directory under `/run` and written into `/data/conf` under a leading-dot name, then
-  renamed into place inside the real `/data/conf`, so the `.c*` include globs never see a
+  renamed into place inside the real `/data/conf`, so the includes never see a
   half-written file and a link, a FIFO or a directory left at a name is replaced, never
   written through.
 - **Configtest and revert.** After installing, the pass runs `service nginx configtest`; on
@@ -1281,11 +1281,13 @@ realip module in the shared `http {}` block:
 ```nginx
 real_ip_header    CF-Connecting-IP;
 real_ip_recursive on;
-include /data/conf/nginx_cloudflare_real_ip.c*;
+include /data/conf/nginx_cloudflare_real_ip.cmi[g];
+include /data/conf/nginx_cloudflare_real_ip.con[f];
 ```
 
-The trusted CF source ranges are supplied by the BOA-managed wildcard include (written and
-refreshed by `cloudflare_realip.sh`), so a missing file never breaks `nginx -t`; with no
+The trusted CF source ranges are supplied by the BOA-managed `.con[f]` include (written and
+refreshed by `cloudflare_realip.sh`; the `.cmi[g]` one carries the migration proxy), and each
+matches only its own file, so a missing file never breaks `nginx -t`; with no
 trusted ranges the `CF-Connecting-IP` header is ignored and `$remote_addr` is left unchanged
 (no spoofing risk). After realip runs, `$remote_addr` is the **real visitor** — what the
 `$is_banned` geo and `scan_nginx`'s IP-counting both score.
@@ -1303,7 +1305,8 @@ visitor cannot name the address Drupal sees.
 ```nginx
 geo $remote_addr $is_banned {
   default 0;
-  include /data/conf/nginx_banned_ips.c*;
+  include /data/conf/nginx_banned_ips.con[f];
+  include /data/conf/nginx_banned_ips.conf[6];
 }
 ```
 
@@ -1335,14 +1338,14 @@ strings `/var/xdrago/nginx_fleet.sh` renders into `/data/conf/nginx_fleet_*.conf
 ```nginx
 map $http_user_agent $boa_fleet_uaid {           # "" for every agent not in the set
   default  "";
-  include  /data/conf/nginx_fleet_ua.c*;
+  include  /data/conf/nginx_fleet_ua.con[f];
 }
 map $remote_addr $boa_fleet_net {                # the address collapsed to its /16
   default                           $remote_addr;
   "~^([0-9]{1,3}\.[0-9]{1,3})\."    $1;
 }
-map "$host|$remote_addr|$boa_fleet_uaid" $boa_fleet_addr { … nginx_fleet_addr.c* }
-map "$host|$boa_fleet_net|$boa_fleet_uaid"  $boa_fleet_nt { … nginx_fleet_net.c* }
+map "$host|$remote_addr|$boa_fleet_uaid" $boa_fleet_addr { … nginx_fleet_addr.con[f] }
+map "$host|$boa_fleet_net|$boa_fleet_uaid"  $boa_fleet_nt { … nginx_fleet_net.con[f] }
 map $http_referer $boa_fleet_noref { default 0; "" 1; }
 map $http_cookie  $boa_fleet_anon  { default 1; … session cookies → 0 }
 ### Bits: member network, member address, no Referer, anonymous.
@@ -1369,9 +1372,11 @@ so a banned address still gets its `444` first.
   `$cache_uid`) and the `$boa_grav_admin_cookie` test declared just above it, then adds
   Textpattern's `txp_login` / `txp_login_public` — **keep them in step** when any one of them
   changes.
-- **Absent fragments are safe.** The `.c*` include globs then match nothing, every lookup
-  takes its default, and `$boa_fleet_block` is `0` for every request. The in-flight temp and
-  the last-good backup are leading-dot names, so the glob never picks up a half-written file.
+- **Absent fragments are safe.** Each include is a pattern that matches only its own
+  fragment (`nginx_fleet_ua.con[f]` and so on), so a missing one matches nothing, every lookup
+  takes its default, and `$boa_fleet_block` is `0` for every request; a stray copy with the
+  same prefix is never loaded. The in-flight temp and the last-good backup are leading-dot
+  names, so no include picks up a half-written file.
 - **Self-contained by design.** Every consumer renders its guard **only** when the installed
   zones file contains the exact declaration line `map $boa_fleet_uaid $boa_fleet_block {`, so
   no BOA/provision delivery order can emit a reference to an undeclared variable — which
@@ -1706,7 +1711,7 @@ returns `444` instantly, before php-fpm. The key is non-empty only when three ma
 ```nginx
 # server.tpl.php (http{})
 limit_conn_zone $boa_i18n_anon_key zone=boa_i18n_anon:10m;
-map $host        $boa_i18n_guard { default 1; include /data/conf/boa_i18n_guard.map*; }  # on by default; map file lists hosts to set 0 (opt-out)
+map $host        $boa_i18n_guard { default 1; include /data/conf/boa_i18n_guard.ma[p]; }  # on by default; map file lists hosts to set 0 (opt-out)
 map $request_uri $boa_i18n_path  { default 0; ~*^/[a-z][a-z](-[a-z]+)?/ 1; ~*[?&]q=/?[a-z][a-z](-[a-z]+)?/ 1; }
 map $cache_uid   $boa_is_anon    { default 0; "" 1; }
 map "$boa_i18n_guard$boa_i18n_path$boa_is_anon" $boa_i18n_anon_key { default ""; "111" $host; }
@@ -1719,7 +1724,7 @@ limit_conn_status 444;
 ```
 
 - **On by default, per-host opt-out.** `$boa_i18n_guard` is `1` for every vhost; the
-  wildcard-included `/data/conf/boa_i18n_guard.map` lists hosts to set to `0` to opt them
+  `/data/conf/boa_i18n_guard.map` (included by the exact-name pattern `boa_i18n_guard.ma[p]`) lists hosts to set to `0` to opt them
   out (an absent/empty file leaves every host guarded). Defaulting on is safe because a
   leading two-letter path prefix is Drupal's URL language-negotiation convention, never a
   content subdirectory — the same assumption the `/[a-z][a-z]/search` and
