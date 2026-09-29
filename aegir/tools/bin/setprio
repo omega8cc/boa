@@ -31,7 +31,6 @@ done
 # Format: "service_name:renice_value:ionice_class:ionice_priority"
 declare -A _services_priorities=(
   ["nginx"]="0:2:4"
-  ["redis-server"]="0:2:4"
   ["sshd"]="-5:2:3"
   ["php-fpm"]="0:2:4"
   ["mysqld"]="0:2:4"  # Handle all MySQL processes
@@ -173,10 +172,6 @@ for _service in "${!_services_priorities[@]}"; do
     "nginx")
       # Handle multiple nginx worker processes
       _pids=$(pgrep -f '^nginx: worker process')
-      ;;
-    "redis-server")
-      # Exact match for redis-server processes
-      _pids=$(pgrep -x redis-server)
       ;;
     "mysqld")
       # Handled separately below

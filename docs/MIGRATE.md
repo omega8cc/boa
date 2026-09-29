@@ -3,7 +3,8 @@
 BOA provides three purpose-built tools for migrating Octopus instances and full
 server environments between remote hosts. `xoct` and `xmass` are compared below;
 `xcopy` is `xoct`'s proxy-less variant — the same per-account (or shared-platform)
-migration, without the automatic intermediate DNS proxy.
+migration, without the automatic intermediate DNS proxy, and always under the same
+account name (renames are `xoct`'s).
 
 ## Choosing the Right Tool
 
@@ -55,8 +56,8 @@ indices) where per-account mydumper/myloader cycles would be impractical.
 
 `renameaegirhost` handles in-place Ægir hostname rename on a single Ægir root
 — the BOA master (`--aegir-root /var/aegir`) or an Octopus account
-(`--aegir-root /data/disk/oN`). It is called automatically by xoct (during
-`import`) and by xmass (during `cutover`), which pin the old hostname for it —
+(`--aegir-root /data/disk/oN`). It is called automatically by xoct and xcopy
+(during `import`) and by xmass (during `cutover`), which pin the old hostname for it —
 migrations never need a direct invocation. Run it directly only for an
 in-place identity change (renaming a cloned VM, moving a box to a new FQDN) or
 to resume a partial rename; inline `--help` describes each step.

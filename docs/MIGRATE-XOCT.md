@@ -76,7 +76,14 @@ For full-server migrations where Percona versions match, consider
 > client's login, onto `o2` itself), so the copy is never owned by an account the target
 > has under the old name. A list of the target's identities that cannot be read, or that
 > has no `o2` yet, is a `DENY` too (the dry run is `NOT CLEAN`, `--live` and `create`
-> stop; re-run `create` once the target answers). `xcopy` does the same for both maps.
+> stop; re-run `create` once the target answers).
+>
+> `xcopy` maps the account's group and its web group the same way. It never renames: a
+> fourth argument naming another account is a `DENY` before the account is read, the
+> target is contacted or anything of the account is changed (the dry run is `NOT CLEAN`,
+> every verb stops), because `xcopy` rewrites no reference to the old account name in the
+> copied vhosts, aliases or panel database (its import renames only the source hostname,
+> as `xoct import` does). Move an account under a new name with `xoct`.
 >
 > The `CLEAN` dry token is **single-use** —
 > running `--live` consumes it, so one dry run cannot arm two live runs; re-run the dry
@@ -234,8 +241,33 @@ than discovering an index-less account later.
   account's pinned PHP pools.
 - It then verifies the pins actually took, and reports any that did not.
 
-Re-running `create` on an already-installed account skips the install and
-re-seeds only — so it is safe to use to converge a target prepared by hand.
+After a successful install `create` puts a root-only marker on the target,
+`/root/.<o1>.migration-create.txt`, naming this box (`hostname -f`) and the
+source account. It also records which account of that name it was put for:
+the account's user ID on the target and the inode number and birth time of its
+`/data/disk/<o1>` directory there. A refused install (the name taken, a run
+lock held) stops the create before anything else runs there.
+
+Re-running `create` on an account the target already holds skips the install
+and re-seeds only, and only when that marker names this box and this account
+and the user ID and directory it records are still the account's. An account
+of the same name that this migration did not create is refused (`DENY: ...
+already holds an account named o1 that this migration did not create`) before
+anything is changed on the target, and so is a marker that cannot be read.
+So is a marker left behind by an earlier account of the name: an account
+made again under the name gets a directory born later (and usually its old user
+ID back), and the refusal says
+the marker was put for an earlier one. `boa cleanup purge` moves the marker
+aside with the account's other files in `/root`.
+
+To converge an account that really is this migration's but carries no marker
+(one prepared by hand, or created before the marker existed), put the marker
+on the target by hand: the refusal prints the one-line command, which records
+the account's user ID and directory as they are when it runs. Or re-run with
+`--adopt`, which takes the account the target holds as this migration's and
+puts the marker; `xmass prep-target` passes it, because its targets hold
+accounts no `create` made (a fresh install's own `o1`, a demoted failback
+box's accounts). `xcopy create` writes and reads the same marker.
 
 `pretransfer o1` does a first-pass rsync of large data (platforms, files) while
 the account is still live — reducing the time the account must be offline during

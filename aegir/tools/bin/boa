@@ -868,8 +868,9 @@ _satellite_check_id() {
       please choose different _USER"
     _clean_pid_exit
   fi
+  # unquoted: a quoted right side of =~ is a literal string, never a regex
   _REGEX="^[[:digit:]]"
-  if [[ "${_USER}" =~ "${_REGEX}" ]]; then
+  if [[ "${_USER}" =~ ${_REGEX} ]]; then
     echo "ERROR: ${_USER} is a wrong username, \
       it should start with a letter, not digit"
     _clean_pid_exit
@@ -1808,11 +1809,10 @@ _init_setup() {
     || [ "${_cmNd}" = "in-pro" ] \
     || [ "${_cmNd}" = "in-lts" ]; then
 
-    # Disable forced MySQL/Valkey/Redis password updates during installation
+    # Disable forced MySQL/Valkey password updates during installation
     # Delete any/all of these files to re-enable standard behaviour later
     touch /root/.mysql.no.new.password.cnf
     touch /root/.valkey.no.new.password.cnf
-    touch /root/.redis.no.new.password.cnf
 
     if [ ! -e "/root/.autoinit.log" ] || [ -e "/lib/systemd/systemd" ]; then
       # Write the command to the log file
@@ -3306,6 +3306,168 @@ _display_info() {
   fi
 }
 
+# A purged account's two database users -- its instance user (the backend's
+# master_db, ALL ON *.* WITH GRANT OPTION) and its panel user (the hostmaster
+# site's db_user) -- outlived every purge as superusers no account owned.
+# Its databases stay: the purge is documented to leave them. Both names are
+# proven from the account's own records, read before its tree goes, and a
+# name that is not proven exactly is printed, never dropped or guessed at.
+# A restored account gets both back from those records (syncpass fix, the
+# next octopus pass).
+#
+# $2 in the directory $1, read bounded and never through a link or from a
+# FIFO: an account's inside its real directory, the master's only while $1
+# is its own resolved path.
+_purge_read_in() {
+  case "${1}" in
+    /data/disk/?*) _boa_in_real_dir "${1}" _boa_read_here "${2}" ;;
+    *) ( cd -P -- "${1}" 2> /dev/null && [ "$(pwd -P)" = "${1}" ] \
+      && _boa_read_here "${2}" ) ;;
+  esac
+}
+# The database user(s) the server aliases in the directory $1 name in master_db.
+_purge_master_db_users() {
+  local _f
+  for _f in server_localhost.alias.drushrc.php server_master.alias.drushrc.php; do
+    _purge_read_in "${1}" "${_f}" \
+      | sed -n "s#^ *'master_db' => '[a-z]*://\([^:@']*\):.*#\1#p"
+  done | sort -u
+}
+# The option $2 (db_user, db_name) of the drushrc.php in the directory $1,
+# parsed as the upgrade parses it (_satellite_drc_get).
+_purge_drc_get() {
+  _purge_read_in "${1}" drushrc.php \
+    | grep "options\['${2}'\] = " \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,';]//g" 2>&1
+}
+# The panel site path the hostmaster alias in the tree $1 names.
+_purge_hm_site_path() {
+  _purge_read_in "${1}/.drush" hostmaster.alias.drushrc.php \
+    | grep "site_path'" \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,']//g" 2>&1
+}
+# True when $2 is the server's own, or another backend's or hostmaster's on
+# this box (the master's and every account's but $1's) names it as its
+# database user: such a name is never the purged account's to drop.
+_purge_db_user_taken() {
+  local _o _sp
+  case "${2}" in
+    root|aegir|aegir_root|debian-sys-maint|mysql.*) return 0 ;;
+  esac
+  for _o in /var/aegir /data/disk/*; do
+    [ "${_o}" = "/data/disk/${1}" ] && continue
+    [ -d "${_o}/.drush" ] || continue
+    _purge_master_db_users "${_o}/.drush" | grep -qxF -- "${2}" && return 0
+    _sp=$(_purge_hm_site_path "${_o}")
+    case "${_sp}" in
+      *[!A-Za-z0-9._/-]*|*/../*) continue ;;
+      "${_o}"/aegir/distro/*/sites/?*|/var/aegir/*/sites/?*) ;;
+      *) continue ;;
+    esac
+    [ "$(_purge_drc_get "${_sp}" db_user)" = "${2}" ] && return 0
+  done
+  return 1
+}
+# Sets _PURGE_DBU (the proven names) and _PURGE_DBU_KEPT (each name or gap
+# with why it stays) for the account $1, and the server they live on.
+_purge_db_users_find() {
+  local _u="${1}" _a="/data/disk/${1}" _m _sp _p _du _dn _dbh
+  _PURGE_DBU=()
+  _PURGE_DBU_KEPT=()
+  _PURGE_SQL_C=localhost
+  _PURGE_SQL_P=3306
+  if [ -e "/data/conf/${_u}_use_proxysql.txt" ]; then
+    _PURGE_SQL_C=127.0.0.1
+    _PURGE_SQL_P=6033
+  fi
+  # the instance user is the account's name, and its server alias says so
+  _m=$(_purge_master_db_users "${_a}/.drush")
+  if [[ ! "${_u}" =~ ^[A-Za-z0-9_-]{1,32}$ ]]; then
+    _PURGE_DBU_KEPT+=( "${_u} (not a plain database user name)" )
+  elif [ "${_m}" != "${_u}" ]; then
+    _PURGE_DBU_KEPT+=( "${_u} (not proven: the account's server alias names ${_m:-no master_db user})" )
+  elif _purge_db_user_taken "${_u}" "${_u}"; then
+    _PURGE_DBU_KEPT+=( "${_u} (a server, master or other account's user)" )
+  else
+    _PURGE_DBU+=( "${_u}" )
+  fi
+  # the panel user: the db_user of a site in the account's own hostmaster
+  # tree, held to the rules the upgrade holds it to before re-creating it
+  # (_hostmaster_frontend_dbpass_sync)
+  _sp=$(_purge_hm_site_path "${_a}")
+  _p="${_sp#"${_a}/aegir/distro/"}"
+  _du=""
+  _dn=""
+  if [ -n "${_sp}" ] && [ "${_p}" != "${_sp}" ] \
+    && [[ "${_p}" =~ ^[^/]+/sites/[^/]+$ ]]; then
+    _du=$(_purge_drc_get "${_sp}" db_user)
+    _dn=$(_purge_drc_get "${_sp}" db_name)
+  fi
+  if [ -z "${_du}" ]; then
+    _PURGE_DBU_KEPT+=( "the panel user (not proven: no hostmaster site with a db_user in ${_a})" )
+  elif [[ ! "${_du}" =~ ^[A-Za-z0-9_]{1,32}$ ]] \
+    || [ "${_du}" != "${_dn}" ] \
+    || [ "${_du}" = "${_u}" ] \
+    || [ -e "/data/disk/${_du}" ]; then
+    _PURGE_DBU_KEPT+=( "${_du} (not proven: not in the form of the account's own panel user)" )
+  elif _purge_db_user_taken "${_u}" "${_du}"; then
+    _PURGE_DBU_KEPT+=( "${_du} (a server, master or other account's user)" )
+  else
+    _PURGE_DBU+=( "${_du}" )
+  fi
+  # only this box's own server is ever changed here
+  _dbh=$(grep -s "^_THIS_DB_HOST=" "/root/.${_u}.octopus.cnf" | tail -1 \
+    | cut -d= -f2 | tr -d "\"' ")
+  case "${_dbh}" in
+    ""|localhost|127.0.0.1|PROXYSQL|FQDN) ;;
+    *)
+      for _du in "${_PURGE_DBU[@]}"; do
+        _PURGE_DBU_KEPT+=( "${_du} (on the database server ${_dbh}: drop it there)" )
+      done
+      _PURGE_DBU=()
+      ;;
+  esac
+}
+# Drops every host row of each name in _PURGE_DBU, by exact name only.
+_purge_db_users_drop() {
+  local _dbu _hosts _h _err _left
+  for _dbu in "${_PURGE_DBU[@]}"; do
+    if ! _hosts=$(mysql --silent -u root -h"${_PURGE_SQL_C}" -P"${_PURGE_SQL_P}" \
+      --protocol=tcp -N -B \
+      -e "SELECT Host FROM mysql.user WHERE User='${_dbu}'" 2> /dev/null); then
+      echo "ALRT: database user ${_dbu} kept: mysql.user could not be read"
+      continue
+    fi
+    while IFS= read -r _h; do
+      [ -n "${_h}" ] || continue
+      case "${_h}" in
+        *[!A-Za-z0-9._%:/-]*)
+          echo "ALRT: database user ${_dbu} kept at an unexpected host"
+          continue
+          ;;
+      esac
+      if _err=$(mysql --silent -u root -h"${_PURGE_SQL_C}" -P"${_PURGE_SQL_P}" \
+        --protocol=tcp -e "DROP USER '${_dbu}'@'${_h}'" 2>&1); then
+        echo "dropped database user ${_dbu}@${_h}"
+      else
+        echo "ALRT: database user ${_dbu}@${_h} kept: ${_err%%$'\n'*}"
+      fi
+    done <<< "${_hosts}"
+    _left=$(mysql --silent -u root -h"${_PURGE_SQL_C}" -P"${_PURGE_SQL_P}" \
+      --protocol=tcp -N -B \
+      -e "SELECT COUNT(*) FROM mysql.user WHERE User='${_dbu}'" 2> /dev/null)
+    [ "${_left}" = "0" ] \
+      || echo "ALRT: database user ${_dbu} still has ${_left:-unknown} host row(s)"
+  done
+  for _dbu in "${_PURGE_DBU_KEPT[@]}"; do
+    echo "ALRT: database user kept: ${_dbu}"
+  done
+}
+
 _octopus_cleanup() {
   if [ "$(id -u)" -eq 0 ]; then
     if [ "${_aCtn}" = "detect" ]; then
@@ -3353,6 +3515,9 @@ _octopus_cleanup() {
         echo "Account to purge: ${_usEr}"
         echo
         mkdir -p ${_zombie_dir}
+        # Read while every record is in place: the root cnf is parked and
+        # the alias and panel drushrc go with the tree further down.
+        _purge_db_users_find "${_usEr}"
         # A cancelled account's own vhosts (its panel at least) used to wait
         # for the next barracuda pass to drop them, and this verb refused
         # until then. The marker is the operator's order and the account's
@@ -3377,9 +3542,12 @@ _octopus_cleanup() {
           [ -e "${_nginx_prx}" ] && mv -f "${_nginx_prx}" ${_zombie_dir}
         done
         # The account's own registration goes with it; a stale cnf misleads
-        # every later pass that reads /root/.<oN>.octopus.cnf.
+        # every later pass that reads /root/.<oN>.octopus.cnf. So does its
+        # migration create marker: a later account of the name is not the one
+        # it names, and a retried create must not take it for that one.
         mkdir -p ${_zombie_dir}root
-        for _rootCnf in /root/.${_usEr}.octopus.cnf /root/.${_usEr}.rc; do
+        for _rootCnf in /root/.${_usEr}.octopus.cnf /root/.${_usEr}.rc \
+          /root/.${_usEr}.migration-create.txt; do
           [ -e "${_rootCnf}" ] && mv -f "${_rootCnf}" ${_zombie_dir}root/
         done
         # So does its task dispatcher (live, or parked by an update pass):
@@ -3459,6 +3627,10 @@ _octopus_cleanup() {
           { pgrep -u "${_pUsrs}" || pgrep -U "${_pUsrs}"; } &> /dev/null \
             && echo "processes of ${_usEr}'s identities still running: deluser may refuse them"
         fi
+        # Its identities' processes were ended just above, so no task of
+        # its own opens a session with them again: its two database users
+        # go now.
+        _purge_db_users_drop
         # What the account's identities left in the shared temporary places
         # goes now, while their numbers still name them: after deluser a
         # number is free, and could be another account's before anything
