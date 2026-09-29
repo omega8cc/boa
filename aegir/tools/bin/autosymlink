@@ -1169,6 +1169,8 @@ _ask_confirm_site() {
 _make_unique_target() {
   # Ensure the given path becomes unique by renaming the existing
   # file/dir/symlink to PATH-<timestamp>-<pid>-<random>
+  # Its own name for the renamed path: the un-share holds its copy target in
+  # _NEW_TARGET across calls that can land here.
   _TARGET="$1"
 
   if [ ! -e "${_TARGET}" ] && [ ! -L "${_TARGET}" ]; then
@@ -1176,10 +1178,202 @@ _make_unique_target() {
   fi
 
   _SUFFIX="$(date +%Y%m%d-%H%M%S)-$$-${RANDOM}"
-  _NEW_TARGET="${_TARGET}-${_SUFFIX}"
+  _MUT_ASIDE="${_TARGET}-${_SUFFIX}"
 
-  _log "[APPLY] Target exists, renaming: ${_TARGET} -> ${_NEW_TARGET}"
-  mv "${_TARGET}" "${_NEW_TARGET}"
+  _log "[APPLY] Target exists, renaming: ${_TARGET} -> ${_MUT_ASIDE}"
+  mv "${_TARGET}" "${_MUT_ASIDE}"
+}
+
+# static/ is 02775, group-writable by the account's shell identities, so the
+# name static/files can be swapped for a link at any time and static/files/<site>
+# lives inside whatever it currently resolves to. Root must never move a store
+# by a path through it. These helpers resolve static/files ONCE by identity
+# (the account's own, or migratefs' layout on attached storage -- the exact
+# rule _night_acct_store and _store_dir use), then create and enter every level
+# for real (cd -P + pwd -P equality, one mkdir per component, never mkdir -p),
+# so a name swapped mid-run is refused, never followed.
+_store_files_dir() {
+  # Echo the resolved static/files store of account $1, or nothing (status 1):
+  # only the account's own static/files, or its store on attached storage
+  # (/mnt/<m>/files/<oN>/static/files, no path component named files or static).
+  # The store must also be owned by root or the account itself: static/ is
+  # group-writable (02775), so on a box not yet on the per-instance group a
+  # co-tenant that shares the group can rename static/files aside and put a real
+  # directory of its own at the name -- the identity rule above accepts a real
+  # dir at the account's own path, and this owner check refuses one root did not
+  # make and the account does not own. This check is made once, here; the move
+  # (_store_move_here) and the un-share copy also check the owner of the
+  # directory they write into, right before writing.
+  local _acct="${1}" _a _r _m _o _u
+  _a=$(realpath -e -- "${_acct}" 2>/dev/null) || return 1
+  _r=$(realpath -e -- "${_acct}/static/files" 2>/dev/null) || return 1
+  case "${_r}" in
+    *[!A-Za-z0-9._/-]*) return 1 ;;
+    "${_a}/static/files") ;;
+    /mnt/?*/files/"${_acct##*/}"/static/files)
+      _m="${_r%/files/"${_acct##*/}"/static/files}"
+      case "${_m}" in
+        */files/*|*/static/*) return 1 ;;
+      esac
+      ;;
+    *) return 1 ;;
+  esac
+  [ -d "${_r}" ] || return 1
+  _o=$(stat -c '%u' -- "${_r}" 2>/dev/null) || return 1
+  if [ "${_o}" != "0" ]; then
+    _u=$(id -u -- "${_acct##*/}" 2>/dev/null)
+    { [ -n "${_u}" ] && [ "${_o}" = "${_u}" ]; } || return 1
+  fi
+  printf '%s\n' "${_r}"
+}
+
+_store_in_pinned() {
+  # Run "$@" inside directory $1, resolved just before with cd -P and checked
+  # there, so a ./name stays in it whatever is swapped meanwhile.
+  local _d="${1}"
+  shift
+  ( cd -P -- "${_d}" 2>/dev/null && [ "$(pwd -P)" = "${_d}" ] && "$@" )
+}
+
+_store_real_sub() {
+  # Echo the resolved path of ./$1 in the current (pinned) dir, only when
+  # entering it for real lands there; nothing otherwise.
+  local _h
+  _h="$(pwd -P)"
+  ( cd -P -- "./${1}" 2>/dev/null && [ "$(pwd -P)" = "${_h}/${1}" ] && pwd -P )
+}
+
+_make_unique_target_here() {
+  # Rename ./$1 aside in place to ./$1-<stamp>-<pid>-<random> in the current
+  # (pinned) dir. $2 = the pinned dir, for the log line only.
+  local _suf
+  { [ -e "./${1}" ] || [ -L "./${1}" ]; } || return 0
+  _suf="$(date +%Y%m%d-%H%M%S)-$$-${RANDOM}"
+  _log "[APPLY] Target exists, renaming: ${2}/${1} -> ${2}/${1}-${_suf}"
+  mv -f -T -- "./${1}" "./${1}-${_suf}" 2>/dev/null
+}
+
+_store_mkdir_here() {
+  # ./$1 ensured a real directory in the current (pinned) dir: a real dir is
+  # kept, anything else (a file, a link, a special) is renamed aside first (as
+  # _make_unique_target did) and one mkdir made -- never mkdir -p through a
+  # tenant path. $2 = the pinned dir, for the rename log. rc 1 if it cannot be
+  # made a real directory.
+  if [ -d "./${1}" ] && [ ! -L "./${1}" ]; then
+    return 0
+  fi
+  if [ -e "./${1}" ] || [ -L "./${1}" ]; then
+    _make_unique_target_here "${1}" "${2}"
+  fi
+  mkdir -- "./${1}" 2>/dev/null
+  [ -d "./${1}" ] && [ ! -L "./${1}" ]
+}
+
+# A bare rename(2) of $1 onto $2: never a copy. rc 18 when the two are on
+# different filesystems or mounts (EXDEV), 1 on any other failure.
+_STORE_RENAME_PL='use Errno qw(EXDEV); my ($f, $t) = @ARGV; rename($f, $t) and exit 0; exit($! == EXDEV ? 18 : 1)'
+
+_store_move_here() {
+  # cwd = the pinned source dir. Move ./$1 into the directory whose resolved
+  # path is $2, held open on a fresh fd so no name on the destination path is
+  # looked up again. The move is a bare rename, so it can never fall back to a
+  # copy made as root: rc 18 says the destination is another filesystem or
+  # mount, and the caller decides. $3 is "dir" (the source ./name must still be
+  # a real directory) or "any" (a dir, file or link, as the archive move).
+  # rc 0 when nothing to move.
+  exec 9< "${2}/." 2>/dev/null || return 1
+  [ "$(readlink /proc/self/fd/9 2>/dev/null)" = "${2}" ] || return 1
+  # The destination is always a store subdir root itself makes (the per-site
+  # base, or .archived/<stamp>[/<site>]). Check through the held fd that it is
+  # root-owned right before the move, so a directory another account made at
+  # that path (static/ is group-writable) is never written into.
+  [ "$(stat -L -c '%u' /proc/self/fd/9 2>/dev/null)" = "0" ] || return 1
+  if [ "${3}" = "dir" ]; then
+    { [ -d "./${1}" ] && [ ! -L "./${1}" ]; } || return 1
+  else
+    { [ -e "./${1}" ] || [ -L "./${1}" ]; } || return 0
+  fi
+  perl -e "${_STORE_RENAME_PL}" "./${1}" "/proc/self/fd/9/${1}"
+}
+
+_store_move_in() {
+  # Move ./$2 (a real directory) from the pinned real source parent $1 into
+  # the pinned real base $3 held open, so no tenant-writable name on either
+  # path is resolved during the move.
+  _store_in_pinned "${1}" _store_move_here "${2}" "${3}" dir
+}
+
+_store_arch_dir_here() {
+  # cwd = the pinned store. Build .archived/$1/$2 and echo the innermost real
+  # path, each component made with one mkdir and entered for real. Internal
+  # mkdir logs go to stderr so only the path is captured by the caller.
+  local _p
+  _store_mkdir_here ".archived" "$(pwd -P)" >&2 || return 1
+  _p=$(_store_real_sub ".archived") || return 1
+  _store_in_pinned "${_p}" _store_mkdir_here "${1}" "${_p}" >&2 || return 1
+  _p=$(_store_in_pinned "${_p}" _store_real_sub "${1}") || return 1
+  _store_in_pinned "${_p}" _store_mkdir_here "${2}" "${_p}" >&2 || return 1
+  _store_in_pinned "${_p}" _store_real_sub "${2}"
+}
+
+_store_arch_dir() {
+  # Under the pinned store $1, ensure .archived/$2/$3 as real dirs and echo the
+  # resolved path of the innermost; nothing on any failure. Same store, so the
+  # later move is a same-filesystem rename.
+  _store_in_pinned "${1}" _store_arch_dir_here "${2}" "${3}"
+}
+
+_store_arch_stamp_here() {
+  # cwd = the pinned store. Build .archived/$1 (two levels, the per-run stamp
+  # dir a whole per-site store is moved INTO) and echo its innermost real path,
+  # each component made with one mkdir and entered for real. Internal mkdir logs
+  # go to stderr so only the path is captured by the caller.
+  local _p
+  _store_mkdir_here ".archived" "$(pwd -P)" >&2 || return 1
+  _p=$(_store_real_sub ".archived") || return 1
+  _store_in_pinned "${_p}" _store_mkdir_here "${1}" "${_p}" >&2 || return 1
+  _store_in_pinned "${_p}" _store_real_sub "${1}"
+}
+
+_store_arch_stamp() {
+  # Under the pinned store $1, ensure .archived/$2 as real dirs and echo the
+  # resolved path of the stamp dir; nothing on any failure. Same store, so the
+  # later move is a same-filesystem rename.
+  _store_in_pinned "${1}" _store_arch_stamp_here "${2}"
+}
+
+_store_files_dir_create() {
+  # The account's static/files resolved by identity, created (one pinned mkdir)
+  # when it is missing entirely -- the store the former mkdir -p made for a
+  # brand-new account's first conversion. static/ is the account's own real
+  # directory (satellite makes it, never a link) and is entered for real; when
+  # static/files is neither present nor a link there, one mkdir makes it, so a
+  # link swapped into the race fails EEXIST and _store_files_dir then judges it
+  # by identity. A static/files that is a link (migratefs, or a tenant plant) is
+  # NOT created over: it is left for _store_files_dir to accept or refuse.
+  # Args: 1 account dir. Echoes the resolved store, or nothing (status 1).
+  local _acct="${1}" _a _sdir
+  _a=$(realpath -e -- "${_acct}" 2>/dev/null) || return 1
+  if [ ! -e "${_a}/static/files" ] && [ ! -L "${_a}/static/files" ]; then
+    _sdir=$(_store_in_pinned "${_a}" _store_real_sub "static") || return 1
+    # one bare mkdir, so a link a co-tenant plants in the race fails EEXIST and
+    # is then judged by identity below -- never created over, never renamed aside
+    _store_in_pinned "${_sdir}" mkdir -- "./files" 2>/dev/null
+  fi
+  _store_files_dir "${_acct}"
+}
+
+_open_store_base() {
+  # Resolve the account's static/files ONCE (creating it when a brand-new
+  # account has none yet) and make the per-site base a real directory inside it
+  # (one mkdir, entered for real); echo "<store real>|<base real>". Nothing
+  # (status 1) on a store that is not the account's own or migratefs' layout, or
+  # a base that cannot be made a real directory. Args: 1 account dir, 2 site name.
+  local _acct="${1}" _site="${2}" _store _base
+  _store=$(_store_files_dir_create "${_acct}") || return 1
+  _store_in_pinned "${_store}" _store_mkdir_here "${_site}" "${_store}" >&2 || return 1
+  _base=$(_store_in_pinned "${_store}" _store_real_sub "${_site}") || return 1
+  printf '%s|%s\n' "${_store}" "${_base}"
 }
 
 _archive_existing_store_target() {
@@ -1195,32 +1389,35 @@ _archive_existing_store_target() {
   # site name whose store dir was left behind by a prior lifecycle (site delete
   # does not remove it): a non-destructive self-heal. ALWAYS archives (never
   # skips) and ALWAYS reports the incident with a disk-space snapshot for the
-  # ghost, even when space is ample. Degrades to an in-place rename if the archive
-  # would be a cross-FS move that does not fit, or if the move fails, so it never
-  # blocks the conversion.
-  # Args: 1 store target to move aside (.../static/files/<site>/<type>)
-  #       2 account dir (/data/disk/oX)
-  #       3 site name
-  #       4 type label (files|private)
-  _ARCH_SRC="$1"
-  _ARCH_ACCOUNT_DIR="$2"
-  _ARCH_SITE="$3"
-  _ARCH_TYPE="$4"
+  # ghost, even when space is ample. Every move is pinned: the store is resolved
+  # once by the caller, and the base and the archive dir are entered for real,
+  # so a name swapped under the group-writable static/ cannot send the move
+  # elsewhere. The archive is built UNDER the resolved store, so it is always
+  # the SAME filesystem (a free rename, never a disk-filling cross-FS copy).
+  # Degrades to a pinned in-place rename aside if the archive dir cannot be made
+  # or the move fails, so it never blocks the conversion.
+  # Args: 1 type label (files|private)
+  #       2 store real (resolved static/files of the account)
+  #       3 base real (<store real>/<site>, the live per-site store)
+  #       4 account dir (/data/disk/oX)
+  #       5 site name
+  _ARCH_TYPE="$1"
+  _ARCH_STORE="$2"
+  _ARCH_BASE="$3"
+  _ARCH_ACCOUNT_DIR="$4"
+  _ARCH_SITE="$5"
 
-  if [ ! -e "${_ARCH_SRC}" ] && [ ! -L "${_ARCH_SRC}" ]; then
-    return 0
-  fi
+  { [ -e "${_ARCH_BASE}/${_ARCH_TYPE}" ] || [ -L "${_ARCH_BASE}/${_ARCH_TYPE}" ]; } || return 0
 
   # Run-scoped stamp so a site's files + private land under one archive dir; fall
   # back to a fresh stamp if _process_site did not set it.
   _ARCH_STAMP="${_ARCHIVE_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
-  _ARCH_BASE="${_ARCH_ACCOUNT_DIR}/static/files/.archived/${_ARCH_STAMP}/${_ARCH_SITE}"
 
   # Disk-space snapshot for the archived ghost only, ALWAYS reported (even with
   # ample space): the ghost's own size and the free space where the archive lands.
-  _ARCH_SRC_KB=$(du -sk "${_ARCH_SRC}" 2>/dev/null | awk 'NR==1 {print $1}')
+  _ARCH_SRC_KB=$(du -sk "${_ARCH_BASE}/${_ARCH_TYPE}" 2>/dev/null | awk 'NR==1 {print $1}')
   _ARCH_SRC_KB="${_ARCH_SRC_KB:-?}"
-  _ARCH_AVAIL_KB=$(df -Pk "${_ARCH_ACCOUNT_DIR}/static/files" 2>/dev/null | awk 'NR==2 {print $4}')
+  _ARCH_AVAIL_KB=$(df -Pk "${_ARCH_STORE}" 2>/dev/null | awk 'NR==2 {print $4}')
   _ARCH_AVAIL_KB="${_ARCH_AVAIL_KB:-?}"
   _log "[REPORT] ORPHAN archive incident: ${_ARCH_SITE}/${_ARCH_TYPE} stale store size=${_ARCH_SRC_KB}K -> static/files/.archived/${_ARCH_STAMP}/ (target FS avail=${_ARCH_AVAIL_KB}K)"
 
@@ -1228,44 +1425,35 @@ _archive_existing_store_target() {
   # needs this name. So a stale store some registered site still reads through
   # its own files/private link IS moved from under that reader, and its link
   # dangles until that site's unshare is re-run -- said loudly, per the shared
-  # index (the store dir, so a reader of either type is named).
-  _store_live_readers "${_ARCH_SRC%/*}" "${_ARCH_SITE}" "${_ARCH_ACCOUNT_DIR}"
+  # index (the store dir, so a reader of either type is named). The scan is
+  # given the CANONICAL store name (…/static/files/<site>, the text an in-site
+  # link carries) so a reader is found whether static/files is the account's own
+  # directory or a migratefs link onto attached storage.
+  _ARCH_CANON="${_ARCH_ACCOUNT_DIR}/static/files/${_ARCH_SITE}"
+  _store_live_readers "${_ARCH_CANON}" "${_ARCH_SITE}" "${_ARCH_ACCOUNT_DIR}"
   if [ -n "${_SLR_LIVE}" ]; then
-    _log "[ALERT] Stale store ${_ARCH_SRC} is still read through a live site's link and is being moved from under it (the reused name needs the store; that reader's link dangles until its unshare is re-run): ${_SLR_LIVE}"
+    _log "[ALERT] Stale store ${_ARCH_CANON} is still read through a live site's link and is being moved from under it (the reused name needs the store; that reader's link dangles until its unshare is re-run): ${_SLR_LIVE}"
   elif [ -n "${_SLR_STALE}" ]; then
-    _log "[REPORT] Stale store ${_ARCH_SRC}: link(s) into it belong to no registered site: ${_SLR_STALE}"
+    _log "[REPORT] Stale store ${_ARCH_CANON}: link(s) into it belong to no registered site: ${_SLR_STALE}"
   fi
 
-  if ! mkdir -p "${_ARCH_BASE}"; then
-    _log "[WARN] Could not create archive dir ${_ARCH_BASE}; renaming ${_ARCH_SRC} aside in place instead"
-    _make_unique_target "${_ARCH_SRC}"
+  # Build the archive dir under the pinned store and hand back its real path.
+  _ARCH_DIR_REAL=$(_store_arch_dir "${_ARCH_STORE}" "${_ARCH_STAMP}" "${_ARCH_SITE}")
+  if [ -z "${_ARCH_DIR_REAL}" ]; then
+    _log "[WARN] Could not create archive dir static/files/.archived/${_ARCH_STAMP}/${_ARCH_SITE}; renaming ${_ARCH_BASE}/${_ARCH_TYPE} aside in place instead"
+    _store_in_pinned "${_ARCH_BASE}" _make_unique_target_here "${_ARCH_TYPE}" "${_ARCH_BASE}"
     return 0
   fi
 
-  _ARCH_DST="${_ARCH_BASE}/${_ARCH_TYPE}"
-  if [ -e "${_ARCH_DST}" ] || [ -L "${_ARCH_DST}" ]; then
-    _make_unique_target "${_ARCH_DST}"
-  fi
+  # A collision at the archive <type> (a same stamp+site+type seen twice) is
+  # renamed aside inside the pinned archive dir first, so the move never
+  # overwrites a prior archived copy.
+  _store_in_pinned "${_ARCH_DIR_REAL}" _make_unique_target_here "${_ARCH_TYPE}" "${_ARCH_DIR_REAL}"
 
-  # Secondary space check: .archived under static/files is normally the SAME
-  # device as the ghost (free rename). If it is somehow a different device and the
-  # ghost would not fit in the archive target's free space, do NOT risk a cross-FS
-  # copy that could fill the disk -- keep it in place (a same-device rename aside).
-  _ARCH_SRC_DEV=$(df -P "${_ARCH_SRC}" 2>/dev/null | awk 'NR==2 {print $1}')
-  _ARCH_DST_DEV=$(df -P "${_ARCH_BASE}" 2>/dev/null | awk 'NR==2 {print $1}')
-  if [ -n "${_ARCH_SRC_DEV}" ] && [ -n "${_ARCH_DST_DEV}" ] \
-    && [ "${_ARCH_SRC_DEV}" != "${_ARCH_DST_DEV}" ] \
-    && [ "${_ARCH_SRC_KB}" != "?" ] && [ "${_ARCH_AVAIL_KB}" != "?" ] \
-    && [ "${_ARCH_SRC_KB}" -gt "${_ARCH_AVAIL_KB}" ]; then
-    _log "[WARN] Archive target is a different filesystem (${_ARCH_DST_DEV}) with insufficient space (need ${_ARCH_SRC_KB}K, avail ${_ARCH_AVAIL_KB}K) for ${_ARCH_SITE}/${_ARCH_TYPE}; renaming ${_ARCH_SRC} aside in place instead"
-    _make_unique_target "${_ARCH_SRC}"
-    return 0
-  fi
-
-  _log "[APPLY] Archiving stale store target: ${_ARCH_SRC} -> ${_ARCH_DST}"
-  if ! mv "${_ARCH_SRC}" "${_ARCH_DST}"; then
-    _log "[WARN] Archive move failed for ${_ARCH_TYPE} of site ${_ARCH_SITE}; renaming ${_ARCH_SRC} aside in place instead"
-    _make_unique_target "${_ARCH_SRC}"
+  _log "[APPLY] Archiving stale store target: ${_ARCH_BASE}/${_ARCH_TYPE} -> ${_ARCH_DIR_REAL}/${_ARCH_TYPE}"
+  if ! _store_in_pinned "${_ARCH_BASE}" _store_move_here "${_ARCH_TYPE}" "${_ARCH_DIR_REAL}" any; then
+    _log "[WARN] Archive move failed for ${_ARCH_TYPE} of site ${_ARCH_SITE}; renaming ${_ARCH_BASE}/${_ARCH_TYPE} aside in place instead"
+    _store_in_pinned "${_ARCH_BASE}" _make_unique_target_here "${_ARCH_TYPE}" "${_ARCH_BASE}"
   fi
   return 0
 }
@@ -1280,32 +1468,48 @@ _archive_site_store_now() {
   # store named by a share control file is left in place and reported, because
   # another site reads it and the operator decides; so is a store some live
   # site still reads through its own link (the shared archive path tests it).
-  # Uses _SITE/_ACCOUNT_DIR.
-  _ASN_STORE="${_ACCOUNT_DIR}/static/files/${_SITE}"
-  if [ ! -e "${_ASN_STORE}" ] && [ ! -L "${_ASN_STORE}" ]; then
-    _log "[INFO] Archive-store: no store at ${_ASN_STORE}; nothing to do"
+  # Uses _SITE/_ACCOUNT_DIR. static/ is group-writable, so static/files is
+  # resolved ONCE by identity and every act runs on ./<site> inside the pinned
+  # store, never by a path through the swappable name.
+  _ASN_CANON="${_ACCOUNT_DIR}/static/files/${_SITE}"
+  _ASN_STORE=$(_store_files_dir "${_ACCOUNT_DIR}")
+  if [ -z "${_ASN_STORE}" ]; then
+    if [ -e "${_ACCOUNT_DIR}/static/files" ] || [ -L "${_ACCOUNT_DIR}/static/files" ]; then
+      _log "[ALERT] Archive-store: ${_ACCOUNT_DIR}/static/files is not the account's own store or migratefs layout; ${_ASN_CANON} left in place, manual review required"
+      return 3
+    fi
+    _log "[INFO] Archive-store: no store at ${_ASN_CANON}; nothing to do"
     return 0
   fi
-  if [ -L "${_ASN_STORE}" ]; then
-    _log "[APPLY] Archive-store: ${_ASN_STORE} is a symlink ($(readlink "${_ASN_STORE}" 2>/dev/null)); unlinking, the data stays where it points"
-    rm -f "${_ASN_STORE}"
+  _ASN_SRC="${_ASN_STORE}/${_SITE}"
+  if [ ! -e "${_ASN_SRC}" ] && [ ! -L "${_ASN_SRC}" ]; then
+    _log "[INFO] Archive-store: no store at ${_ASN_CANON}; nothing to do"
     return 0
+  fi
+  if [ -L "${_ASN_SRC}" ]; then
+    _log "[APPLY] Archive-store: ${_ASN_CANON} is a symlink ($(readlink "${_ASN_SRC}" 2>/dev/null)); unlinking, the data stays where it points"
+    if _store_in_pinned "${_ASN_STORE}" rm -f -- "./${_SITE}" \
+      && [ ! -e "${_ASN_SRC}" ] && [ ! -L "${_ASN_SRC}" ]; then
+      return 0
+    fi
+    _log "[ALERT] Archive-store: could not unlink ${_ASN_CANON}; left in place, manual review required"
+    return 3
   fi
   if [ -f /data/conf/disable_orphan_store_archiving.cnf ]; then
-    _log "[INFO] Archive-store: ${_ASN_STORE} left in place (operator switch /data/conf/disable_orphan_store_archiving.cnf: orphan stores are report-only on this box)"
+    _log "[INFO] Archive-store: ${_ASN_CANON} left in place (operator switch /data/conf/disable_orphan_store_archiving.cnf: orphan stores are report-only on this box)"
     return 3
   fi
   for _ASN_SHARE in "${_ACCOUNT_DIR}"/static/control/share.*."${_SITE}".info; do
     if [ -e "${_ASN_SHARE}" ]; then
-      _log "[ALERT] Archive-store: ${_ASN_STORE} is named by share control file ${_ASN_SHARE}; another site reads it - left in place, manual review required"
+      _log "[ALERT] Archive-store: ${_ASN_CANON} is named by share control file ${_ASN_SHARE}; another site reads it - left in place, manual review required"
       return 3
     fi
   done
   _ARCHIVE_STAMP="$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null)-$$"
-  _ASN_KB=$(du -sk "${_ASN_STORE}" 2>/dev/null | awk 'NR==1 {print $1}')
+  _ASN_KB=$(du -sk "${_ASN_SRC}" 2>/dev/null | awk 'NR==1 {print $1}')
   _archive_orphan_store "${_ASN_STORE}" "${_ACCOUNT_DIR}" "${_SITE}" "${_ASN_KB:-?}"
-  if [ -e "${_ASN_STORE}" ] || [ -L "${_ASN_STORE}" ]; then
-    _log "[ALERT] Archive-store: ${_ASN_STORE} is still in place after the archive attempt - manual review required"
+  if [ -e "${_ASN_SRC}" ] || [ -L "${_ASN_SRC}" ]; then
+    _log "[ALERT] Archive-store: ${_ASN_CANON} is still in place after the archive attempt - manual review required"
     return 3
   fi
   _log "[APPLY] Archive-store: ${_SITE} store set aside under static/files/.archived/${_ARCHIVE_STAMP}/"
@@ -1383,16 +1587,22 @@ _archive_orphan_store() {
   # Archive a whole DELETED-site leftover store (static/files/<site>/) ASIDE into
   # static/files/.archived/<stamp>/<site>/ -- the same hidden, same-filesystem archive
   # the reuse self-heal uses, with the same layout (…/<site>/files, …/<site>/private).
-  # NEVER deletes: pruning the .archived pile stays operator-only. Same-device free
-  # rename; if the archive would be a cross-FS move that does not fit, leave the orphan
-  # in place and report, so it can never fill a tiny root fs. The CALLER only invokes
-  # this for a store whose name has NEITHER a drush alias NOR a vhost (a genuinely
-  # deleted site) -- a merely-disabled site keeps its alias and is left untouched.
-  # Args: 1 store dir (…/static/files/<site>), 2 account dir, 3 site name, 4 size KB
-  _ORPH_SRC="$1"
+  # NEVER deletes: pruning the .archived pile stays operator-only. The caller
+  # resolves static/files ONCE by identity and passes the resolved store; the
+  # .archived stamp dir is built UNDER it and the whole per-site entry is moved
+  # from inside the pinned store into that dir held open on a fresh fd, so no
+  # name under the group-writable static/ is resolved twice and the move stays a
+  # same-filesystem rename (never a disk-filling cross-FS copy, never through a
+  # link swapped at the store name). The CALLER only invokes this for a store
+  # whose name has NEITHER a drush alias NOR a vhost (a genuinely deleted site)
+  # -- a merely-disabled site keeps its alias and is left untouched.
+  # Args: 1 store real (resolved static/files), 2 account dir, 3 site name, 4 size KB
+  _ORPH_STORE="$1"
   _ORPH_ACCT="$2"
   _ORPH_SITE="$3"
   _ORPH_KB="$4"
+  _ORPH_SRC="${_ORPH_STORE}/${_ORPH_SITE}"
+  _ORPH_CANON="${_ORPH_ACCT}/static/files/${_ORPH_SITE}"
 
   { [ -e "${_ORPH_SRC}" ] || [ -L "${_ORPH_SRC}" ]; } || return 0
 
@@ -1401,7 +1611,7 @@ _archive_orphan_store() {
   # tests this first with its own line; the nightly sweep honours it here).
   for _ORPH_SHARE in "${_ORPH_ACCT}"/static/control/share.*."${_ORPH_SITE}".info; do
     if [ -e "${_ORPH_SHARE}" ]; then
-      _log "[ALERT] Orphan store ${_ORPH_SRC} is named by share control file ${_ORPH_SHARE}; left in place, NOT archived, manual review required"
+      _log "[ALERT] Orphan store ${_ORPH_CANON} is named by share control file ${_ORPH_SHARE}; left in place, NOT archived, manual review required"
       return 0
     fi
   done
@@ -1410,49 +1620,38 @@ _archive_orphan_store() {
   # disk, a renamed site whose re-home did not complete): left in place,
   # reported for the operator. Re-running the unshare is the fix, never moving
   # the store. A link left by an unregistered leftover directory is reported
-  # and does not hold the archive.
-  _store_live_readers "${_ORPH_SRC}" "${_ORPH_SITE}" "${_ORPH_ACCT}"
+  # and does not hold the archive. The scan is given the CANONICAL store name so
+  # a reader is found on a migratefs box too.
+  _store_live_readers "${_ORPH_CANON}" "${_ORPH_SITE}" "${_ORPH_ACCT}"
   if [ -n "${_SLR_LIVE}" ]; then
-    _log "[ALERT] Orphan store ${_ORPH_SRC} is still read through a live site's link; left in place, NOT archived, manual review required: ${_SLR_LIVE}"
+    _log "[ALERT] Orphan store ${_ORPH_CANON} is still read through a live site's link; left in place, NOT archived, manual review required: ${_SLR_LIVE}"
     return 0
   fi
   if [ -n "${_SLR_STALE}" ]; then
-    _log "[REPORT] Orphan store ${_ORPH_SRC}: link(s) into it belong to no registered site and do not hold the archive: ${_SLR_STALE}"
+    _log "[REPORT] Orphan store ${_ORPH_CANON}: link(s) into it belong to no registered site and do not hold the archive: ${_SLR_STALE}"
   fi
 
   # Run/account-scoped stamp so all orphans of one sweep land under one archive dir.
   _ORPH_STAMP="${_ARCHIVE_STAMP:-$(date -u +%Y%m%dT%H%M%SZ)-$$}"
-  _ORPH_BASE="${_ORPH_ACCT}/static/files/.archived/${_ORPH_STAMP}"
-  _ORPH_DST="${_ORPH_BASE}/${_ORPH_SITE}"
 
-  _ORPH_AVAIL_KB=$(df -Pk "${_ORPH_ACCT}/static/files" 2>/dev/null | awk 'NR==2 {print $4}')
+  _ORPH_AVAIL_KB=$(df -Pk "${_ORPH_STORE}" 2>/dev/null | awk 'NR==2 {print $4}')
   _ORPH_AVAIL_KB="${_ORPH_AVAIL_KB:-?}"
   _log "[REPORT] ORPHAN archive incident: ${_ORPH_SITE} deleted-site leftover size=${_ORPH_KB}K -> static/files/.archived/${_ORPH_STAMP}/ (target FS avail=${_ORPH_AVAIL_KB}K)"
 
-  if ! mkdir -p "${_ORPH_BASE}"; then
-    _log "[WARN] Could not create archive dir ${_ORPH_BASE}; leaving orphan store ${_ORPH_SRC} in place"
+  # Build .archived/<stamp> under the pinned store and hand back its real path.
+  _ORPH_DIR_REAL=$(_store_arch_stamp "${_ORPH_STORE}" "${_ORPH_STAMP}")
+  if [ -z "${_ORPH_DIR_REAL}" ]; then
+    _log "[WARN] Could not create archive dir static/files/.archived/${_ORPH_STAMP}; leaving orphan store ${_ORPH_CANON} in place"
     return 0
   fi
-  if [ -e "${_ORPH_DST}" ] || [ -L "${_ORPH_DST}" ]; then
-    _make_unique_target "${_ORPH_DST}"
-  fi
+  # A collision at the archive <site> (a same stamp+site seen twice) is renamed
+  # aside inside the pinned stamp dir first, so the move never overwrites a prior
+  # archived copy.
+  _store_in_pinned "${_ORPH_DIR_REAL}" _make_unique_target_here "${_ORPH_SITE}" "${_ORPH_DIR_REAL}"
 
-  # Same-device guard: .archived under static/files is normally the SAME device as the
-  # store (free rename). If it is somehow a different device and the orphan would not
-  # fit, do NOT risk a cross-FS copy that could fill the disk -- leave it in place.
-  _ORPH_SRC_DEV=$(df -P "${_ORPH_SRC}" 2>/dev/null | awk 'NR==2 {print $1}')
-  _ORPH_DST_DEV=$(df -P "${_ORPH_BASE}" 2>/dev/null | awk 'NR==2 {print $1}')
-  if [ -n "${_ORPH_SRC_DEV}" ] && [ -n "${_ORPH_DST_DEV}" ] \
-    && [ "${_ORPH_SRC_DEV}" != "${_ORPH_DST_DEV}" ] \
-    && [ "${_ORPH_KB}" != "?" ] && [ "${_ORPH_AVAIL_KB}" != "?" ] \
-    && [ "${_ORPH_KB}" -gt "${_ORPH_AVAIL_KB}" ]; then
-    _log "[WARN] Archive target is a different filesystem (${_ORPH_DST_DEV}) with insufficient space (need ${_ORPH_KB}K, avail ${_ORPH_AVAIL_KB}K) for orphan ${_ORPH_SITE}; leaving in place"
-    return 0
-  fi
-
-  _log "[APPLY] Archiving orphan store (deleted-site leftover): ${_ORPH_SRC} -> ${_ORPH_DST}"
-  if ! mv "${_ORPH_SRC}" "${_ORPH_DST}"; then
-    _log "[WARN] Archive move failed for orphan store ${_ORPH_SITE}; leaving ${_ORPH_SRC} in place"
+  _log "[APPLY] Archiving orphan store (deleted-site leftover): ${_ORPH_CANON} -> ${_ORPH_DIR_REAL}/${_ORPH_SITE}"
+  if ! _store_in_pinned "${_ORPH_STORE}" _store_move_here "${_ORPH_SITE}" "${_ORPH_DIR_REAL}" any; then
+    _log "[WARN] Archive move failed for orphan store ${_ORPH_SITE}; leaving ${_ORPH_CANON} in place"
     return 0
   fi
   return 0
@@ -1813,28 +2012,32 @@ _check_symlink_sharing() {
     return
   fi
 
-  if [ -e "${_NEW_TARGET_BASE}" ] && [ ! -d "${_NEW_TARGET_BASE}" ]; then
-    _make_unique_target "${_NEW_TARGET_BASE}"
+  # static/ is group-writable, so static/files -- and static/files/<site> when
+  # static/files is itself a link -- can be swapped for a link between any check
+  # and any later act by full path. Resolve static/files ONCE by identity and
+  # open the per-site base for real, so the archive move and the copy run inside
+  # a base root still owns and no name on the store path is trusted again.
+  _STORE_PAIR=$(_open_store_base "${_ACCOUNT_DIR}" "${_SITE_NAME}")
+  if [ -z "${_STORE_PAIR}" ]; then
+    _log "[ERROR] Store base ${_NEW_TARGET_BASE} is not a real directory – leaving symlink unchanged."
+    _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
+    return
   fi
+  _STORE_FILES_REAL="${_STORE_PAIR%|*}"
+  _BASE_REAL="${_STORE_PAIR#*|}"
 
-  if [ ! -d "${_NEW_TARGET_BASE}" ]; then
-    _log "[APPLY] Creating directory: ${_NEW_TARGET_BASE}"
-    mkdir -p "${_NEW_TARGET_BASE}"
-  fi
-
-  if [ -e "${_NEW_TARGET}" ] || [ -L "${_NEW_TARGET}" ]; then
+  if [ -e "${_BASE_REAL}/${_TYPE}" ] || [ -L "${_BASE_REAL}/${_TYPE}" ]; then
     # A pre-existing store at this (renamed/migrated) target name is a stale ghost
     # from a prior lifecycle: archive it aside (tracked, into static/files/.archived)
     # rather than renaming it in place, so break-sharing collisions are handled the
     # same way as the local-convert path (_convert_dir_to_symlink) and land in the
     # reported/prunable archive instead of cluttering the live store.
-    _archive_existing_store_target "${_NEW_TARGET}" "${_ACCOUNT_DIR}" "${_SITE_NAME}" "${_TYPE}"
+    _archive_existing_store_target "${_TYPE}" "${_STORE_FILES_REAL}" "${_BASE_REAL}" "${_ACCOUNT_DIR}" "${_SITE_NAME}"
   fi
 
   _log "[APPLY] Copying ${_ORIGINAL_TOP} -> ${_NEW_TARGET}"
-  mkdir -p "${_NEW_TARGET}"
-  if ! rsync -a --no-devices --no-specials "${_ORIGINAL_TOP}/" "${_NEW_TARGET}/"; then
-    _log "[ERROR] rsync failed for site ${_SITE_NAME} (${_TYPE}: ${_ORIGINAL_TOP} -> ${_NEW_TARGET}) – leaving symlink unchanged."
+  if ! _unshare_copy "${_ORIGINAL_TOP}" "${_BASE_REAL}" "${_TYPE}" "${_ACCOUNT_DIR}"; then
+    _log "[ERROR] Copy failed for site ${_SITE_NAME} (${_TYPE}: ${_ORIGINAL_TOP} -> ${_NEW_TARGET}) – leaving symlink unchanged."
     _SITE_SHARED_SYMLINK_FIX_SKIPPED="YES"
     return
   fi
@@ -1849,6 +2052,184 @@ _check_symlink_sharing() {
   _SITE_SHARED_SYMLINK_FIX_APPLIED="YES"
 }
 
+_web_group_state() {
+  # The account's own web group, wg-<account>, derived on the box and never
+  # taken from argv or a cnf: the group its pools, backend user and shell
+  # users share for its web paths once the account is converted to it.
+  # Prints "<state> <gid> <group>", "none - -" when there is no such group
+  # (the record is root's: run as another user, converted reads as held):
+  #   none       no group of that name
+  #   foreign    the group exists, but an identity outside the account holds
+  #              it too: never joined nor written to; claim passes still leave
+  #              its paths alone (taking them would cut the pools off)
+  #   held       the group exists and only this account's identities hold it:
+  #              claim passes leave its paths alone, new identities join it
+  #   converted  and root's record names that gid: writers use the group
+  #   phaseb     and the record says the identities have left www-data
+  # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+  # phase=<A|B> ...", root's own file outside the account tree, so neither
+  # the account nor a copy or restore of its tree can make or move it.
+  # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+  # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+  # gems or npm tree, or its store on attached storage
+  # (/mnt/<m>/files/<oN>/static/files).
+  local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  # a path is read as written (an alias the account wrote can carry "..",
+  # "." or "//"): normalised by text alone, never through a link, first
+  case "${_a}" in
+    */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+  esac
+  case "${_a}" in
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+    /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+    /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+      _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+    */*) echo "none - -"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  case "${_a}" in
+    ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+  esac
+  _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  # every holder of the gid: members of each group entry carrying it (a
+  # second entry can share the number) and every user with it as primary
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+      || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+  done
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-${_a}"
+  else
+    echo "held ${_gid} wg-${_a}"
+  fi
+}
+
+_web_group() {
+  # The group a root writer gives an account's web paths (files/, private/,
+  # settings.php and the like): wg-<account> once the account is converted,
+  # www-data otherwise, as always. Until the record says converted every
+  # identity of the account still holds www-data (a conversion grants the web
+  # group first and a revert gives www-data back before it moves any path),
+  # so www-data is the old state, never an outage. Callers write
+  # "${_owner}${_wg:+:${_wg}}": a missing helper, an empty answer, changes no
+  # group and never hands a path to a login group. Run as any user but root,
+  # which cannot read root's record, a held group answers empty: the group
+  # each path has is kept. $1 as _web_group_state.
+  local _s
+  _s=$(_web_group_state "${1}")
+  case "${_s%% *}" in
+    converted|phaseb) echo "${_s##* }" ;;
+    held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
+    *) echo "www-data" ;;
+  esac
+}
+
+# A directory root has just made, handed to uid $1 and gid $2 through a
+# handle opened without following a link or blocking on a FIFO: only a real
+# directory root still owns, so a name swapped in since the mkdir is refused,
+# never handed over. $3 = ./name in the current (pinned) directory.
+_UNSHARE_GIVE_PL='use Fcntl; my ($u, $g, $f) = @ARGV; sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -d _ && $s[4] == 0; chown($u, $g, $h) or exit 1; exit 0'
+
+_unshare_copy() {
+  # The un-share copy, made by the site's own account in its web group, so
+  # the new store is <account>:<web group> as the ownership pass gives it.
+  # The source can be another account's store: root's copy (rsync -a) kept
+  # that account's owner and web group, and its day stamps
+  # (ownership-/permissions-fixed-<day>.pid), which make that day's
+  # ownership and permissions passes skip the new store. As the account, the
+  # copy holds only what the account itself can read (never another
+  # account's closed private store), every entry is the account's from the
+  # start, and root writes nothing in a tree other tenants' identities can
+  # write. The staging directory stays root's (0711: the account may enter it
+  # to reach its own copy, but cannot create, rename or remove a name in it),
+  # so the account can never swap the staging dir for a link and its .. always
+  # stays this pinned base. Only the inner <type> dir is handed to the account
+  # (through the same no-follow handle), the copy runs there as the account,
+  # then it is renamed onto the store name from INSIDE the staging dir
+  # (mv ./<type> ../<type>): a link or hard link put in the target is never
+  # written through or handed over, and one already at the store name makes the
+  # rename fail. Files lose setuid/setgid: an executable one would now run as
+  # this account. A failure leaves no copy behind and returns 1.
+  # Args: 1 source store dir, 2 store base (static/files/<site>, the caller
+  #       passes the RESOLVED base), 3 type (files|private), 4 account dir
+  #       (/data/disk/oN).
+  local _src="${1}" _base="${2}" _type="${3}" _acct="${4%/}"
+  local _uid _wg _gid _real _w _ino _o
+  _acct="${_acct##*/}"
+  _uid=$(id -u -- "${_acct}" 2>/dev/null)
+  _wg=$(_web_group "${4}")
+  _gid=$(getent group "${_wg}" 2>/dev/null | cut -d: -f3)
+  if [[ ! "${_uid}" =~ ^[1-9][0-9]*$ || ! "${_gid}" =~ ^[0-9]+$ ]]; then
+    _log "[ERROR] No account user or web group for ${_acct} (${_wg:-none}); the un-share copy is never made as root"
+    return 1
+  fi
+  # the caller refused a link at the base; again for the window since, and
+  # the directory is then entered for real (pwd -P) and used by ./names only
+  if [ -L "${_base}" ] || [ ! -d "${_base}" ]; then
+    _log "[ERROR] Store base ${_base} is not a real directory"
+    return 1
+  fi
+  # Trust ONLY the base the caller already resolved (_open_store_base). A
+  # realpath here would re-follow static/files/<site> if the account swapped it
+  # for a link since, and pin to the swap; keeping the resolved string and
+  # letting the cd -P / pwd -P equality below judge it refuses a name swapped in
+  # the meantime instead.
+  _real="${_base}"
+  _w=".unshare.${_type}.$$.${RANDOM}"
+  if (
+    cd -P -- "${_real}" 2>/dev/null && [ "$(pwd -P)" = "${_real}" ] || exit 1
+    # The base is a store subdir root made (_open_store_base). Check it is owned
+    # by root or the account right here, before anything is written into it, so
+    # a directory another account made at that path (static/ is group-writable)
+    # is never copied into.
+    _o=$(stat -c '%u' . 2>/dev/null)
+    { [ "${_o}" = "0" ] || [ "${_o}" = "${_uid}" ]; } || exit 1
+    # root-owned 0711 staging dir the account cannot alter the contents of
+    mkdir -m 0711 -- "./${_w}" 2>/dev/null || exit 1
+    # all the account-side work runs inside the pinned staging dir, so the
+    # final rename's .. is this base and no name in it is looked up again
+    if (
+      cd -P -- "./${_w}" 2>/dev/null && [ "$(pwd -P)" = "${_real}/${_w}" ] || exit 1
+      # root makes the target dir and hands only it to the account
+      mkdir -m 0700 -- "./${_type}" 2>/dev/null || exit 1
+      perl -e "${_UNSHARE_GIVE_PL}" "${_uid}" "${_gid}" "./${_type}" || exit 1
+      _ino=$(setpriv --reuid="${_uid}" --regid="${_gid}" --init-groups \
+          rsync -a --no-owner --no-group --no-devices --no-specials \
+          --chmod=Fug-s --exclude='/ownership-fixed-*.pid' \
+          --exclude='/permissions-fixed-*.pid' \
+          -- "${_src}/" "./${_type}/" >&2 \
+        && [ -d "./${_type}" ] && [ ! -L "./${_type}" ] \
+        && stat -c '%d:%i' -- "./${_type}") || exit 1
+      mv -f -T -- "./${_type}" "../${_type}" 2>/dev/null || exit 1
+      [ "$(stat -c '%d:%i' -- "../${_type}" 2>/dev/null)" = "${_ino}" ] || exit 1
+    ); then
+      rmdir -- "./${_w}" 2>/dev/null
+      exit 0
+    fi
+    rm -rf -- "./${_w}"
+    exit 1
+  ); then
+    return 0
+  fi
+  _log "[ERROR] Un-share copy as ${_acct}:${_wg} not made: an entry that account cannot read, a name already at ${_base}/${_type}, or a write error"
+  return 1
+}
+
 _link_as_store_owner() {
   # Make the in-site files/private symlink $2 pointing at the store $1, owned
   # by the store's owner:group, so the link does not linger root-owned when no
@@ -1858,15 +2239,17 @@ _link_as_store_owner() {
   # directory is the account's, and a hard link renamed over the name before a
   # chown -h would be handed to the store's owner. Where that owner is root or
   # cannot make it there, root makes it as before and it stays root's (nothing
-  # checks a link's owner). Returns ln's status.
+  # checks a link's owner). Returns ln's status. -T so the name is never treated
+  # as a directory: a real dir still at $2 (a move/removal that did not complete)
+  # makes ln fail instead of creating a nested <type>/<type> link inside it.
   # Args: 1 store target dir (reference for owner:group), 2 in-site symlink path.
   _LSO_OWNER=$(stat -L -c '%u:%g' -- "$1" 2>/dev/null)
   if [[ "${_LSO_OWNER}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${_LSO_OWNER%%:*}" != 0 ] \
     && setpriv --reuid="${_LSO_OWNER%%:*}" --regid="${_LSO_OWNER#*:}" \
-      --clear-groups ln -s "$1" "$2" 2>/dev/null; then
+      --clear-groups ln -s -T -- "$1" "$2" 2>/dev/null; then
     return 0
   fi
-  ln -s "$1" "$2"
+  ln -s -T -- "$1" "$2"
 }
 
 _self_heal_symlink() {
@@ -1938,13 +2321,17 @@ _convert_dir_to_symlink() {
   # the per-site store. Replaces the former non-atomic `mv; ln -s` pair.
   #
   # Safety invariants:
-  #   - rc-checked move: `mv` removes the source only after a successful copy
-  #     (same-fs = atomic rename, cross-fs = copy-then-unlink), so the source dir
-  #     survives any move failure; on failure we leave the real dir in place and
-  #     never create a symlink.
-  #   - the only non-atomic window is between a successful move and `ln -s`; it is
+  #   - rc-checked move. On the SAME filesystem the store is reached by a bare
+  #     rename that never copies, so the source survives any failure; on failure
+  #     the real dir is left in place and no symlink is created.
+  #   - CROSS-filesystem (a migratefs store on attached storage): the copy is made
+  #     as the account, then the source is renamed aside, the link made, and the
+  #     aside removed. No data is lost on a crash: with the source still whole a
+  #     re-run archives the copy as a stale store and copies again; once the
+  #     in-site path is gone _self_heal_symlink() relinks the populated store.
+  #   - the same-fs non-atomic window is between a successful rename and `ln -s`,
   #     recovered by _self_heal_symlink() on the next run. Concurrent converters
-  #     are corruption-safe: the losing `mv` fails (source already gone) and
+  #     are corruption-safe: the losing rename fails (source already gone) and
   #     self-heal/idempotency repoint to the winner's store dir.
   # Args: 1 in-site real dir, 2 store target dir, 3 type label, 4 site name.
   # Returns 0 on success, 1 on hard error (real dir left intact).
@@ -1957,9 +2344,24 @@ _convert_dir_to_symlink() {
     return 0
   fi
 
-  if [ -d "${_DST}" ] && [ ! -L "${_DST}" ] \
+  # static/ is group-writable, so static/files -- and static/files/<site> when
+  # static/files is itself a link -- can be swapped for a link between any check
+  # and any later act by full path. Resolve static/files ONCE by identity and
+  # open the per-site base for real: the archive move and the move below run
+  # from inside the pinned source into the pinned base held open, and the link
+  # text stays the canonical account path (_DST).
+  _CONV_PAIR=$(_open_store_base "${_ACCOUNT_DIR}" "${_SITE}")
+  if [ -z "${_CONV_PAIR}" ]; then
+    _log "[ERROR] Store base ${_DST%/*} is not a real directory for ${_TYPE} of site ${_SITE}; leaving real dir in place (no symlink created)"
+    return 1
+  fi
+  _CONV_STORE="${_CONV_PAIR%|*}"
+  _CONV_BASE_REAL="${_CONV_PAIR#*|}"
+  _CONV_DST_REAL="${_CONV_BASE_REAL}/${_TYPE}"
+
+  if [ -d "${_CONV_DST_REAL}" ] && [ ! -L "${_CONV_DST_REAL}" ] \
     && _dir_residue_only "${_SRC}" "${_TYPE}" \
-    && ! _dir_residue_only "${_DST}" "${_TYPE}"; then
+    && ! _dir_residue_only "${_CONV_DST_REAL}" "${_TYPE}"; then
     # The in-site dir holds only regenerated residue while the store target
     # holds real content (a restore from a files-less archive that slipped past
     # the provision-side guard, or any equivalent leftover): archiving the
@@ -1981,14 +2383,52 @@ _convert_dir_to_symlink() {
     return 1
   fi
 
-  if [ -e "${_DST}" ] || [ -L "${_DST}" ]; then
+  if [ -e "${_CONV_DST_REAL}" ] || [ -L "${_CONV_DST_REAL}" ]; then
     # Archive a stale store target aside (non-destructive) rather than renaming it
     # in place, so a reused site name never collides with a prior lifecycle's store.
-    _archive_existing_store_target "${_DST}" "${_ACCOUNT_DIR}" "${_SITE}" "${_TYPE}"
+    _archive_existing_store_target "${_TYPE}" "${_CONV_STORE}" "${_CONV_BASE_REAL}" "${_ACCOUNT_DIR}" "${_SITE}"
   fi
 
+  # Move the in-site real dir into the pinned base held open, from inside the
+  # pinned source parent (sites/ is group-writable on tenant codebases, so the
+  # <type> name there is re-checked a real dir at move time). The move is a
+  # bare rename: it never copies. When the store is on another filesystem or
+  # mount (a migratefs store on attached storage), the copy is made AS THE
+  # ACCOUNT into the pinned base (the un-share copy: it reads only what the
+  # account can read, and lands account:web-group with day stamps excluded, as
+  # the ownership/permissions passes leave it); the source is then renamed
+  # aside inside its pinned parent, the link made, and the aside removed. No
+  # data is lost on a crash: before the aside rename the whole source dir is
+  # intact (a re-run archives the copy as a stale store and copies again,
+  # non-destructive); after it the in-site path is missing and self-heal relinks
+  # the populated store.
   _log "[APPLY] Moving: ${_SRC} -> ${_DST}"
-  if ! mv "${_SRC}" "${_DST}"; then
+  _store_move_in "${_SRC%/*}" "${_TYPE}" "${_CONV_BASE_REAL}"
+  _CONV_MV_RC=$?
+  if [ "${_CONV_MV_RC}" -eq 18 ]; then
+    if ! _unshare_copy "${_SRC}" "${_CONV_BASE_REAL}" "${_TYPE}" "${_ACCOUNT_DIR}"; then
+      _log "[ERROR] Cross-filesystem copy failed for ${_TYPE} of site ${_SITE}: ${_SRC} -> ${_DST}; leaving real dir in place (no symlink created)"
+      return 1
+    fi
+    _CONV_ASIDE=".${_TYPE}.autosymlink-moved.$$.${RANDOM}"
+    if ! _store_in_pinned "${_SRC%/*}" mv -f -T -- "./${_TYPE}" "./${_CONV_ASIDE}"; then
+      _log "[ERROR] Could not set ${_SRC} aside after the copy for ${_TYPE} of site ${_SITE}; the store holds the copy, the real dir is left in place (no symlink created)"
+      return 1
+    fi
+    _log "[APPLY] Creating symlink: ${_SRC} -> ${_DST}"
+    if ! _link_as_store_owner "${_DST}" "${_SRC}"; then
+      if _store_in_pinned "${_SRC%/*}" mv -T -- "./${_CONV_ASIDE}" "./${_TYPE}"; then
+        _log "[ERROR] Failed to create symlink for ${_TYPE} of site ${_SITE}: ${_SRC} -> ${_DST}; the real dir is put back"
+      else
+        _log "[ERROR] Failed to create symlink for ${_TYPE} of site ${_SITE}: ${_SRC} -> ${_DST}; the store holds the copy and the original dir is left aside as ${_CONV_ASIDE} - manual review required"
+      fi
+      return 1
+    fi
+    if ! _store_in_pinned "${_SRC%/*}" rm -rf -- "./${_CONV_ASIDE}"; then
+      _log "[WARN] Left the set-aside source ${_CONV_ASIDE} for ${_TYPE} of site ${_SITE}; the conversion succeeded, remove the stale aside by hand"
+    fi
+    return 0
+  elif [ "${_CONV_MV_RC}" -ne 0 ]; then
     _log "[ERROR] Move failed for ${_TYPE} of site ${_SITE}: ${_SRC} -> ${_DST}; leaving real dir in place (no symlink created)"
     return 1
   fi
@@ -2190,13 +2630,9 @@ _process_site() {
         _LIVE_SITE_APPROVED="YES"
       fi
 
-      if [ -e "${_TARGET_BASE}" ] && [ ! -d "${_TARGET_BASE}" ]; then
-        _make_unique_target "${_TARGET_BASE}"
-      fi
-      if [ ! -d "${_TARGET_BASE}" ]; then
-        _log "[APPLY] Creating directory: ${_TARGET_BASE}"
-        mkdir -p "${_TARGET_BASE}"
-      fi
+      # The per-site store base is created safely inside _convert_dir_to_symlink
+      # (static/files resolved once by identity, the base entered for real):
+      # never mkdir -p here, which would follow a link swapped at static/files.
 
       if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
         if ! _check_space_for_transfer "${_FILES_PATH}" "${_TARGET_BASE}" "move files" "${_SITE_NAME}"; then
@@ -2215,13 +2651,7 @@ _process_site() {
       fi
     else
       # BATCH (no per-site confirmation)
-      if [ -e "${_TARGET_BASE}" ] && [ ! -d "${_TARGET_BASE}" ]; then
-        _make_unique_target "${_TARGET_BASE}"
-      fi
-      if [ ! -d "${_TARGET_BASE}" ]; then
-        _log "[APPLY] Creating directory: ${_TARGET_BASE}"
-        mkdir -p "${_TARGET_BASE}"
-      fi
+      # The store base is created safely inside _convert_dir_to_symlink (see above).
 
       if [ "${_DO_FILES_CONVERT}" = "YES" ]; then
         if ! _check_space_for_transfer "${_FILES_PATH}" "${_TARGET_BASE}" "move files" "${_SITE_NAME}"; then
@@ -2317,8 +2747,17 @@ _process_account() {
   # a later re-enable. The nightly sweep runs with the Aegir task queue paused + drained,
   # so no install/clone is mid-flight to make a live site transiently look deleted.
   if [ "${_MODE}" = "REPORT" ] || [ "${_MODE}" = "LIVE" ] || [ "${_MODE}" = "BATCH" ]; then
-    _STATIC_FILES_DIR="${_ACCOUNT_DIR}/static/files"
-    if [ -d "${_STATIC_FILES_DIR}" ]; then
+    # static/ is group-writable, so static/files is resolved ONCE by identity
+    # and the whole orphan pass enumerates and moves inside the resolved store,
+    # never by a path through the swappable name. A static/files that exists but
+    # is neither the account's own store nor the migratefs layout is refused
+    # here (its entries are not this account's to archive).
+    _ORPH_STORE=$(_store_files_dir "${_ACCOUNT_DIR}")
+    if [ -z "${_ORPH_STORE}" ]; then
+      if [ -e "${_ACCOUNT_DIR}/static/files" ] || [ -L "${_ACCOUNT_DIR}/static/files" ]; then
+        _log "[ALERT] Orphan scan skipped for account ${_ACCOUNT_NAME}: ${_ACCOUNT_DIR}/static/files is not the account's own store or migratefs layout"
+      fi
+    else
       # Archive in the apply modes only, and only if the operator has not disabled it.
       _ORPHAN_ARCHIVE="NO"
       case "${_MODE}" in LIVE|BATCH) _ORPHAN_ARCHIVE="YES" ;; esac
@@ -2327,12 +2766,16 @@ _process_account() {
       _ARCHIVE_STAMP="$(date -u +%Y%m%dT%H%M%SZ 2>/dev/null)-$$"
       _FOUND_ORPHANS="NO"
       _SLR_INDEX=""
-      for _CAND in "${_STATIC_FILES_DIR}"/*; do
+      for _CAND in "${_ORPH_STORE}"/*; do
         if [ ! -e "${_CAND}" ]; then
           continue
         fi
 
-        _CAND_NAME=$(basename "${_CAND}")
+        _CAND_NAME="${_CAND##*/}"
+        # The operator-facing, canonical path for this entry (the resolved store
+        # is …/static/files or the migratefs mount); reported and reader-scanned
+        # by the name an in-site link carries.
+        _CAND_CANON="${_ACCOUNT_DIR}/static/files/${_CAND_NAME}"
 
         # Skip known non-site entries
         if [ "${_CAND_NAME}" = "dbackup" ] || [ "${_CAND_NAME}" = "foo.com" ]; then
@@ -2360,9 +2803,9 @@ _process_account() {
               _CAND_ALIAS=$(_site_alias_file "${_ACCOUNT_DIR}" "${_CAND_NAME}")
               _CAND_VHOST="${_VHOST_DIR}/${_CAND_NAME}"
               if [ -n "${_CAND_ALIAS}" ] || [ -e "${_CAND_VHOST}" ]; then
-                _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND} (size=${_ORPH_KB}K) – a surviving alias/vhost remains (disabled or partial state); left in place, NOT archived"
+                _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND_CANON} (size=${_ORPH_KB}K) – a surviving alias/vhost remains (disabled or partial state); left in place, NOT archived"
               elif [ "${_ORPHAN_ARCHIVE}" = "YES" ]; then
-                _archive_orphan_store "${_CAND}" "${_ACCOUNT_DIR}" "${_CAND_NAME}" "${_ORPH_KB}"
+                _archive_orphan_store "${_ORPH_STORE}" "${_ACCOUNT_DIR}" "${_CAND_NAME}" "${_ORPH_KB}"
               else
                 # The read-only report says what the archive path would decide
                 # with this store (same helper, same per-account index): a share
@@ -2374,14 +2817,14 @@ _process_account() {
                   [ -e "${_ORPH_SHARE}" ] && _ORPH_RD="; named by share control file ${_ORPH_SHARE} (the sweep would leave it)"
                 done
                 if [ -z "${_ORPH_RD}" ]; then
-                  _store_live_readers "${_CAND}" "${_CAND_NAME}" "${_ACCOUNT_DIR}"
+                  _store_live_readers "${_CAND_CANON}" "${_CAND_NAME}" "${_ACCOUNT_DIR}"
                   if [ -n "${_SLR_LIVE}" ]; then
                     _ORPH_RD="; still read through a live site's link (the sweep would leave it): ${_SLR_LIVE}"
                   elif [ -n "${_SLR_STALE}" ]; then
                     _ORPH_RD="; link(s) into it belong to no registered site (they would not hold the archive): ${_SLR_STALE}"
                   fi
                 fi
-                _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND} (size=${_ORPH_KB}K) – no matching active site (vhost+alias) found${_ORPH_RD}"
+                _log "[REPORT] ORPHAN static/files entry in account ${_ACCOUNT_NAME}: ${_CAND_CANON} (size=${_ORPH_KB}K) – no matching active site (vhost+alias) found${_ORPH_RD}"
               fi
             fi
           fi
@@ -2400,7 +2843,7 @@ _process_account() {
       # /data/conf/native_files_archive_alert_kb.cnf (default 1 GiB).
       # The .archived pile-size accounting stays a REPORT-mode diagnostic (read-only).
       if [ "${_MODE}" = "REPORT" ]; then
-        _ARCH_ROOT="${_STATIC_FILES_DIR}/.archived"
+        _ARCH_ROOT="${_ORPH_STORE}/.archived"
         if [ -d "${_ARCH_ROOT}" ]; then
           _ARCH_TOTAL_KB=$(du -sk "${_ARCH_ROOT}" 2>/dev/null | awk 'NR==1 {print $1}')
           _ARCH_TOTAL_KB="${_ARCH_TOTAL_KB:-0}"
