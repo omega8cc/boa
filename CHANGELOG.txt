@@ -919,6 +919,13 @@
 
 @=> Important Fixes
 
+    * instgrp convert and revert wait for a limited-shell worker pass that is
+      already running when they take the run lock, and refuse after three
+      minutes; the upgrade arm waits the same, takes the run lock again when
+      an earlier account's cleanup removed it, and reports a still-busy
+      account as skipped. The worker creates its pid file exclusively and
+      removes only its own.
+
     * The PHP-FPM init scripts are refreshed on every upgrade pass when they
       differ from the shipped ones: only a rebuild of that PHP version
       installed them, so their fixes never reached a box whose PHP was not
