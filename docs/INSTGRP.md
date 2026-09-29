@@ -103,7 +103,10 @@ convert oN` once the session has ended. Before this check a logged-in
 `oN.ftp` failed the move half way and rolled the whole account back.
 
 `convert` refuses while another BOA run holds `/run/boa_run.pid` (the
-upgrade arm holds it itself and says so with `--from-octopus`), waits a
+upgrade arm holds it itself and says so with `--from-octopus`), waits up to
+three minutes for a limited-shell worker pass already running when it takes
+that lock and refuses while one is still running (`revert` too; the
+upgrade arm waits the same and skips the account as busy), waits a
 bounded time for the account's own provision tasks, skips a still-busy
 account and an account frozen for a migration (`log/proxied.pid`, the
 marker every other root writer honours; `--force` overrides), and defers
