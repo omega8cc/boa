@@ -50,6 +50,11 @@
 
 @=> Security
 
+    * The Valkey fallback debug log no longer follows a link and no longer
+      belongs to whichever account wrote it first: each system user now logs
+      to its own directory under /var/tmp/fpm, and a line is written only
+      when that directory is really its own.
+
     * The per-site login and admin IP lock now covers the legacy
       query-string route form and trailing-character path variants on
       Drupal 6, Drupal 7 and Backdrop and on the control panel, matching
