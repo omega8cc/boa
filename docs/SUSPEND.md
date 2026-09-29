@@ -52,8 +52,9 @@ web requests on a flagged account with the 503 short-circuit; backend and CLI
 contexts are exempt.
 
 The flag lives **outside the account tree on purpose**: `/data/conf` is
-root-owned, so the account owner cannot remove the flag through shell or SFTP
-access. `boa unsuspend <user>` removes the flag and purges the speed cache.
+root-owned (`root:root`, the folder itself `0711`; BOA's scheduled update takes
+it back within minutes should an account ever own it or be able to write it),
+so the account owner cannot remove the flag through shell or SFTP access. `boa unsuspend <user>` removes the flag and purges the speed cache.
 
 ## Usage
 

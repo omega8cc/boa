@@ -3757,7 +3757,9 @@ _hostmaster_frontend_dbpass_sync() {
   if [ -e "${_THIS_HM_SPTH}" ] \
     && [ ! -z "${_THIS_HM_DBUR}" ] \
     && [ ! -z "${_THIS_HM_DBPD}" ]; then
-    _ESC="*.*"
+    ### The panel works in its own database only: grant just that one,
+    ### escaped as provisioning writes it (a bare _ matches any character).
+    _ESC="\`${_THIS_HM_DBUR//_/\\_}\`.*"
     _USE_DB_USER="${_THIS_HM_DBUR}"
     _USE_AEGIR_HOST="${_hName}"
     _find_correct_ip
@@ -3787,8 +3789,8 @@ PROXYSQL
     mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost';
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%';
 ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 EOFMYSQL
