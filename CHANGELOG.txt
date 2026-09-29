@@ -919,6 +919,10 @@
 
 @=> Important Fixes
 
+    * xtrim and sqlclean now drop a removed database's user when its only
+      grant is on that database: the escaped grant name read as another
+      database, so such users were always kept.
+
     * instgrp convert and revert wait for a limited-shell worker pass that is
       already running when they take the run lock, and refuse after three
       minutes; the upgrade arm waits the same, takes the run lock again when
