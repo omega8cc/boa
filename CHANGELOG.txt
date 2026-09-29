@@ -915,6 +915,10 @@
 
 @=> Important Fixes
 
+    * service phpNN-fpm configtest now tests the configuration the service
+      starts with: it read the compiled-in default php-fpm.conf, which BOA
+      never installs, and failed on every box.
+
     * A Drupal 11 site is installed in the language chosen on the Add site
       form: the Install ran the platform's Drush without it, so the site
       came up in English, with no language or locale module and no strings.
