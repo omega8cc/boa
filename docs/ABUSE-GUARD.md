@@ -875,6 +875,11 @@ Four layers protect known-good addresses from every detector:
   `_block_ip` — including the bulk DDoS and path-flood passes — so a bulk ban can't drop a
   CDN PoP or a search-engine crawler. The allow is honoured **on every port** regardless of
   the port scope of the `csf.allow` entry (an `s=` record means "trusted source").
+
+  Two entry forms name a trusted source: an advanced `s=` record and a plain first-field
+  address or network (what `csf -a` writes). A `d=`-only rule names a server the box
+  calls, not a client, and an address that appears only in an entry's comment is not an
+  allow. The crawler-fleet guard reads `csf.allow` the same way.
 - **IPv6 allow store.** `csf.allow` cannot hold an IPv6 entry (CSF is IPv4-only), so the
   IPv6 counterpart lives in `/var/xdrago/monitor/log/web6.allow`: `guest-water.sh` mirrors
   the published Googlebot and Google special-case crawler `ipv6Prefix` ranges into it
@@ -2317,7 +2322,8 @@ Three independent mechanisms, by what you are protecting:
 **Whitelist an IP — use the CSF allow list.** `_is_whitelisted_ip` parses
 `/etc/csf/csf.allow` once at startup into an exact-host map plus a CIDR index, and every call
 path into a block checks it first. An allowed IP is never scored or banned, on every port
-regardless of the entry's port scope.
+regardless of the entry's port scope. Both the plain line `csf -a` writes and an advanced
+`s=` record count; a `d=`-only rule and an address named only in a comment do not.
 
 ```bash
 # Permanently trust an IP (or CIDR) fleet-wide

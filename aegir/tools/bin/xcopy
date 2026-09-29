@@ -462,15 +462,50 @@ _run_drush8_nosilent_cmd() {
   wait
 }
 
+_xcopy_flush_caches_target() {
+  # A copied-in site can carry the source box's stale D8+ service container /
+  # opcode caches. Rather than fragile per-site drush rebuilds (which fatal on
+  # the D8+ Symfony/Drush patch state outside provision's context), flush HARD
+  # at the infrastructure level -- the only treatment trusted against cache/
+  # container poisoning: cold-restart Valkey to drop the object cache, and
+  # restart every PHP-FPM master to drop opcache/APCu. Correct per-site PHP
+  # version is preserved separately (multi-fpm.info).
+  echo "INFO: cold cache flush on target (Valkey drop + PHP-FPM restart)"
+  if [ -x "/etc/init.d/valkey-server" ]; then
+    killall -9 valkey-server &> /dev/null
+    rm -f /var/lib/valkey/* &> /dev/null
+    service valkey-server start &> /dev/null
+  fi
+  local _f
+  for _f in /etc/init.d/php*-fpm; do
+    [ -x "${_f}" ] && service "$(basename "${_f}")" restart &> /dev/null
+  done
+}
+
 _migrate_sites() {
   # Account tree group, derived once for this run's account.
   _octGrp=$(_acct_group "${_oct}")
+  # The account's own control panel is never a site of this loop, in any
+  # verb (as in xoct): a <fqdn>.alias the ltd-users pass once planted for it
+  # made the panel look like a site. Identify the panel by what it is (the
+  # hostmaster alias site_path), not by which alias files happen to exist.
+  # .drush is oN's: the alias is read inside the real directory, never
+  # through a link or into a FIFO put there.
+  _HM_PANEL_FQDN=$(_xcopy_read_in "${_USR}/.drush" hostmaster.alias.drushrc.php \
+    | grep "site_path'" \
+    | head -1 \
+    | sed "s/.*=>//; s/[' ,;]//g")
+  _HM_PANEL_FQDN=$(basename "${_HM_PANEL_FQDN}" 2>/dev/null)
+  _HM_PANEL_FQDN=${_HM_PANEL_FQDN//[^a-zA-Z0-9.\-]/}
   for _Site in `find ${_USR}/config/server_master/nginx/vhost.d -maxdepth 1 -mindepth 1 -type f | sort`
   do
     _Dom=`echo ${_Site} | cut -d'/' -f9 | awk '{ print $1}'`
     _Vht="${_USR}/config/server_master/nginx/vhost.d/${_Dom}"
     _Vhd="${_USR}/config/server_master/nginx/vhost.d/.${_Dom}"
     _Vhs="${_USR}/config/server_master/nginx/vhost.d/https.${_Dom}"
+    if [ -n "${_HM_PANEL_FQDN}" ] && [ "${_Dom}" = "${_HM_PANEL_FQDN}" ]; then
+      continue
+    fi
     # vhost.d is under config/, which belongs to oN: the owner and mode are
     # re-asserted inside the real directory, through a no-follow handle on a
     # regular file with one link that is already the account's -- a link, a
@@ -579,15 +614,18 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
             fi
+            _DBN_ESC=$(_xcopy_db_grant_name "${_DBN}")
             mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE DATABASE ${_DBN} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '${_DBN}'@'localhost';
 CREATE USER IF NOT EXISTS '${_DBN}'@'%';
-GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'localhost' WITH GRANT OPTION;
-GRANT ALL ON ${_DBN}.* TO '${_DBN}'@'%' WITH GRANT OPTION;
+GRANT ALL ON \`${_DBN_ESC}\`.* TO '${_DBN}'@'localhost';
+GRANT ALL ON \`${_DBN_ESC}\`.* TO '${_DBN}'@'%';
 ALTER USER '${_DBN}'@'localhost' IDENTIFIED BY '${_DBP}';
 ALTER USER '${_DBN}'@'%' IDENTIFIED BY '${_DBP}';
 EOFMYSQL
+            _xcopy_db_revoke_wildcard "${_DBN}" localhost
+            _xcopy_db_revoke_wildcard "${_DBN}" %
             if [ -e "/data/conf/${_USR}_use_proxysql.txt" ]; then
               _SQL_CONNECT=127.0.0.1
               _THIS_DB_PORT=6033
@@ -823,12 +861,254 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
   done
 }
 
+# A copied account arrives carrying the SOURCE box's per-release FPM markers
+# under static/control. Both boxes run the same release, so the target's
+# manage_ltd_users reads .multi-fpm.<tree>.<xSrl>.pid as "pool set already
+# built for this release" and never creates pools for the versions that
+# exist only HERE. .multi-nginx-fpm.pid gates the per-site $user_socket
+# includes the same way. The result is a pinned site silently served by the
+# account's DEFAULT pool, for good: nothing re-triggers until the release
+# serial moves or the pin file's CONTENT changes. Clearing the markers hands
+# the work back to the normal sweep. Two passes by design -- the include
+# generator refuses to emit a site include until that pool's socket exists,
+# so the pools must be built first. (.prev-multi-fpm.info is deliberately NOT
+# touched: the sweep recreates it from the live file before diffing, so
+# removing it proves nothing and only hides the real lever.)
+# The carried FPM markers, removed in the current (pinned) control
+# directory: the globs expand here, never in the caller's directory.
+_xcopy_rm_fpm_markers_here() {
+  rm -f -- ./.multi-fpm.*.pid ./.single-fpm.*.pid ./.multi-nginx-fpm.pid
+}
+_xcopy_heal_fpm_pins() {
+  local _acct="$1"
+  local _root="/data/disk/${_acct}"
+  local _ctl="${_root}/static/control"
+  local _pin _dom _ver _missing="" _ltd=/var/xdrago/manage_ltd_users.sh
+  # the account's own directory, entered for real: never a link, and the
+  # pin file read without following one or opening a FIFO
+  _xcopy_in_real_dir "${_ctl}" true || return 0
+  [ -e "${_ctl}/multi-fpm.info" ] || return 0
+  # Deletes only; nothing is created here, and the sweep re-chowns the
+  # .info files it touches -- so no root-owned residue is left behind in
+  # the account's control dir.
+  _xcopy_in_real_dir "${_ctl}" _xcopy_rm_fpm_markers_here
+  echo "INFO: cleared carried FPM pool markers for ${_acct}; rebuilding pinned pools"
+  # pre-mig parks the worker as .manage_ltd_users.sh.off until post-mig;
+  # import runs with cron stopped, so the parked copy is run here.
+  [ -e "${_ltd}" ] || _ltd=/var/xdrago/.manage_ltd_users.sh.off
+  if [ -e "${_ltd}" ]; then
+    bash "${_ltd}" &> /dev/null
+    # The sockets exist now; re-arm the include generator for pass two.
+    _xcopy_in_real_dir "${_ctl}" rm -f -- ./.multi-nginx-fpm.pid
+    bash "${_ltd}" &> /dev/null
+  else
+    _ltd=/var/xdrago/manage_ltd_users.sh
+  fi
+  # Verify every pinned version really has a live pool socket, and name the
+  # ones that do not -- a silent wrong-interpreter site is the whole failure
+  # this heal exists to prevent.
+  while read -r _dom _ver; do
+    case "${_dom}" in ''|place.holder*) continue ;; esac
+    [ -z "${_ver}" ] && continue
+    _ver="${_ver//[^0-9]/}"
+    [ -z "${_ver}" ] && continue
+    if [ ! -S "/run/${_acct}.${_ver}.fpm.socket" ]; then
+      _missing="${_missing} ${_dom}:${_ver}"
+    fi
+  done <<< "$(_xcopy_read_in "${_ctl}" multi-fpm.info)"
+  if [ ! -z "${_missing}" ]; then
+    echo "ALRT: account ${_acct}: pinned PHP pool(s) NOT live after heal:${_missing}"
+    echo "ALRT: those sites are being served by the account default pool --"
+    echo "ALRT: check /opt/php<NN>/bin/php exists here and re-run:"
+    echo "ALRT:   bash ${_ltd}"
+  else
+    echo "INFO: account ${_acct}: every pinned PHP pool is live"
+  fi
+}
+
 # One plain address, the test xoct's create applies: create splices the
 # value into a remote root command, so nothing outside this alphabet, and no
 # second address, may pass.
 _xcopy_email_ok() {
   local _re='^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
   [[ "${1}" =~ ${_re} ]]
+}
+
+# Bounded wait until BOA's own heavyweight jobs are quiet on THIS box;
+# replaces the runbook's "wait ~5 minutes" guess before an import.
+_xcopy_wait_boa_quiet() {
+  local _w=0
+  local _max="${_XCOPY_QUIET_MAX_WAIT:-600}"
+  case "${_max}" in ''|*[!0-9]*) _max=600 ;; esac
+  while [ "${_w}" -lt "${_max}" ]; do
+    if ! pgrep -f "[b]arracuda up|[o]ctopus up|[A]egirSetup" &> /dev/null; then
+      return 0
+    fi
+    echo "INFO: waiting for a running barracuda/octopus/AegirSetup job to finish (${_w}s)"
+    sleep 15
+    _w=$(( _w + 15 ))
+  done
+  echo "ALRT: BOA jobs still running after ${_max}s; proceeding -- watch for task collisions"
+  return 0
+}
+
+# The poured panel carries the source's password for its database server row;
+# this box's instance user keeps its own, so every server verify (the rename's
+# queue first) failed until the next Octopus pass re-synced it. The row takes
+# the password this box set for the account (.<account>.pass.txt in the
+# account root, read no-follow), under either the account's name or the
+# source's (the rename maps the latter onto the former). Same text in xoct
+# and xcopy.
+_xcopy_sync_panel_db_pass() {   # 1 account root 2 account here 3 source account 4 panel db
+  local _p
+  _p=$(_xcopy_read_in "${1}" ".${2}.pass.txt" | head -1 | tr -d '\n')
+  case "${_p}" in
+    ""|*[!A-Za-z0-9+/=%@._-]*) return 1 ;;
+  esac
+  [ "${#_p}" -ge 9 ] || return 1
+  mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp "${4}" \
+    -e "UPDATE hosting_db_server SET db_passwd='${_p}' WHERE db_user IN ('${2}','${3}')" 2> /dev/null
+}
+
+_xcopy_reconcile_panel_platform() {
+  # Mirror of xoct's panel platform drift handling (itself xmass step
+  # 12.5's; kept separate by design -- mirror fixes, don't DRY). The
+  # imported hostmaster DB names the SOURCE's panel platform path; an aged
+  # source usually sits on a different distro/NNN than the freshly installed
+  # dest account (the panel platform is rebuilt whenever the PHP pin
+  # changes). Left alone, the rename queue's hostmaster verify regenerates
+  # aliases FROM the DB and the copied panel 404s from a hollow platform
+  # path. Retired platform trees keep their code forever, so code presence
+  # at the imported number proves nothing -- the LIVE panel is found by
+  # scanning for the unique site dir that carries drushrc.php + settings.php
+  # on a code-bearing platform, and the DB row is repointed only when that
+  # platform differs. Runs on the TARGET between the DB import and
+  # renameaegirhost; xcopy never renames the account, so the source account
+  # and this root are the same name and only the platform number is
+  # corrected here. Non-zero return means the panel cannot be resolved and
+  # the import must not ride out as a success.
+  local _dest_root="$1"
+  local _src_acct="$2"
+  local _hdb="$3"
+  local _db_plat _dest_plat _tree _cand _found _n _new_plat _new_src_form
+  local _fqdn _chk _nup _stored_db _pw _f _lit _vhf _vhd_dir
+  _fqdn=$(hostname -f 2>/dev/null | tr -d '\n')
+  _fqdn=${_fqdn//[^a-zA-Z0-9.-]/}
+  if [ -z "${_fqdn}" ]; then
+    echo "ALRT: no system FQDN; cannot resolve the live panel platform"
+    return 1
+  fi
+  _db_plat=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+    --protocol=tcp -N -B ${_hdb} -e "SELECT p.publish_path FROM \
+    hosting_platform p JOIN hosting_site s ON s.platform=p.nid \
+    JOIN hosting_context c ON c.nid=s.nid WHERE c.name='hostmaster' \
+    LIMIT 1" 2>/dev/null)
+  _db_plat=${_db_plat//[^a-zA-Z0-9\/._-]/}
+  if [ -z "${_db_plat}" ]; then
+    echo "ALRT: cannot read the hostmaster platform path from ${_hdb}; cannot reconcile the panel"
+    return 1
+  fi
+  _dest_plat="${_db_plat/#\/data\/disk\/${_src_acct}\//${_dest_root}\/}"
+  _tree="${_dest_root}/aegir/distro"
+  _found=""
+  _n=0
+  for _cand in "${_tree}"/*/sites/*"${_fqdn}"*; do
+    [ -f "${_cand}/drushrc.php" ] || continue
+    [ -f "${_cand}/settings.php" ] || continue
+    [ -e "$(dirname "$(dirname "${_cand}")")/index.php" ] || continue
+    _found="${_cand}"
+    _n=$(( _n + 1 ))
+  done
+  if [ "${_n}" != "1" ]; then
+    echo "ALRT: ${_n} candidate live panels under ${_tree} match ${_fqdn} -- refusing to guess"
+    return 1
+  fi
+  _new_plat=$(dirname "$(dirname "${_found}")")
+  _chk=${_new_plat//[^a-zA-Z0-9\/._-]/}
+  if [ "${_chk}" != "${_new_plat}" ]; then
+    echo "ALRT: live panel platform path carries unexpected characters: ${_new_plat}"
+    return 1
+  fi
+  # The live panel's stored credentials must name the DB the dump actually
+  # landed in: a panel rebuild between create and import replaces the panel
+  # DB, leaving drushrc/settings naming the dropped one -- renameaegirhost
+  # then cannot locate the live DB. Same credential rewire xoct and xmass
+  # 12.5 do, applied only on a mismatch.
+  # The site dir under aegir/distro is oN's: read and rewrite every credential
+  # file inside its real directory, never through a link or into a FIFO the
+  # account put at settings.php, drushrc.php or a vhost name. Each file is put
+  # back as a fresh file with its own owner and mode (a root-owned settings.php
+  # is silently skipped by drush/PHP), never chowned or chmodded by name.
+  _stored_db=$(_xcopy_read_in "${_found}" drushrc.php \
+    | grep "options\['db_name'\]" \
+    | head -1 | sed "s/.*=//; s/[' ,;]//g")
+  _stored_db=${_stored_db//[^a-zA-Z0-9_]/}
+  if [ -n "${_stored_db}" ] && [ "${_stored_db}" != "${_hdb}" ]; then
+    _pw=$(od -An -N8 -tx8 /dev/urandom | tr -d " \n" | cut -c1-14)
+    if [ -z "${_pw}" ]; then
+      echo "ALRT: could not generate a password for the panel credential heal"
+      return 1
+    fi
+    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp \
+      -e "CREATE USER IF NOT EXISTS '${_hdb}'@'localhost' IDENTIFIED BY '${_pw}'; \
+          ALTER USER '${_hdb}'@'localhost' IDENTIFIED BY '${_pw}'; \
+          GRANT ALL ON \`$(_xcopy_db_grant_name "${_hdb}")\`.* TO '${_hdb}'@'localhost'; \
+          CREATE USER IF NOT EXISTS '${_hdb}'@'%' IDENTIFIED BY '${_pw}'; \
+          ALTER USER '${_hdb}'@'%' IDENTIFIED BY '${_pw}'; \
+          GRANT ALL ON \`$(_xcopy_db_grant_name "${_hdb}")\`.* TO '${_hdb}'@'%'; \
+          FLUSH PRIVILEGES;" 2>/dev/null
+    _xcopy_db_revoke_wildcard "${_hdb}" localhost
+    _xcopy_db_revoke_wildcard "${_hdb}" %
+    for _f in settings.php drushrc.php; do
+      _xcopy_in_real_dir "${_found}" test -f "./${_f}" || continue
+      # A cloaked settings.php carries no literal credential lines -- it reads
+      # them from the vhost or the sibling drushrc.php -- so the rewrite below
+      # legitimately matches nothing there and must not be asserted.
+      _lit=YES
+      if ! _xcopy_read_in "${_found}" "${_f}" | grep -q "^ *'database' => [\"'][^\"']*[\"']," \
+        && ! _xcopy_read_in "${_found}" "${_f}" | grep -q "^\$options\['db_name'\] = '"; then
+        _lit=NO
+      fi
+      _xcopy_in_real_dir "${_found}" _xcopy_sed_here "${_f}" \
+        -e "s#^\( *'database' => \)[\"'][^\"']*[\"'],#\1\"${_hdb}\",#" \
+        -e "s#^\( *'username' => \)[\"'][^\"']*[\"'],#\1\"${_hdb}\",#" \
+        -e "s#^\( *'password' => \)[\"'][^\"']*[\"'],#\1\"${_pw}\",#" \
+        -e "s#^\(\$options\['db_name'\] = \)'[^']*';#\1'${_hdb}';#" \
+        -e "s#^\(\$options\['db_user'\] = \)'[^']*';#\1'${_hdb}';#" \
+        -e "s#^\(\$options\['db_passwd'\] = \)'[^']*';#\1'${_pw}';#"
+      if [ "${_lit}" = "YES" ] && ! _xcopy_read_in "${_found}" "${_f}" | grep -q "${_hdb}"; then
+        echo "ALRT: panel credential heal did not land in ${_found}/${_f}"
+        return 1
+      fi
+    done
+    # A cloaked panel reads its web credentials from the vhost, not from
+    # settings.php, so the rewire has to land there too or the panel keeps
+    # authenticating as the dropped DB until the next render.
+    _vhd_dir="${_dest_root}/config/server_master/nginx/vhost.d"
+    for _vhf in "$(basename "${_found}")" "https.$(basename "${_found}")"; do
+      _xcopy_in_real_dir "${_vhd_dir}" test -f "./${_vhf}" || continue
+      _xcopy_in_real_dir "${_vhd_dir}" _xcopy_sed_here "${_vhf}" \
+        -e "s#^\( *fastcgi_param  *db_name  *\)[^;]*;#\1${_hdb};#" \
+        -e "s#^\( *fastcgi_param  *db_user  *\)[^;]*;#\1${_hdb};#" \
+        -e "s#^\( *fastcgi_param  *db_passwd  *\)[^;]*;#\1${_pw};#"
+    done
+    echo "PANEL-NOTE: live panel credentials healed ${_stored_db} -> ${_hdb} in ${_found}"
+  fi
+  if [ "${_new_plat}" = "${_dest_plat}" ]; then
+    return 0
+  fi
+  _new_src_form="${_new_plat/#${_dest_root}\//\/data\/disk\/${_src_acct}\/}"
+  echo "PANEL-NOTE: imported panel platform ${_db_plat} is not the live panel on this box; adopting ${_new_plat} (distro number diverged source vs target)"
+  _nup=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+    --protocol=tcp -N -B ${_hdb} -e "UPDATE hosting_platform SET \
+    publish_path='${_new_src_form}' WHERE publish_path='${_db_plat}'; \
+    SELECT ROW_COUNT();" 2>/dev/null | tail -1)
+  if [ "${_nup}" = "1" ]; then
+    echo "PANEL-NOTE: hostmaster platform row repointed ${_db_plat} -> ${_new_src_form} in ${_hdb} (rows=1)"
+    return 0
+  fi
+  echo "ALRT: panel platform repoint matched ${_nup:-no} row(s) in ${_hdb} -- the panel would 404 after the rename"
+  return 1
 }
 
 # The db_name line of the panel site $1's drushrc.php, as found: read inside
@@ -844,16 +1124,20 @@ _xcopy_panel_db_line() {
 }
 
 # What import needs before it touches anything: the account installed here,
-# the transferred panel dump, and a hostmaster alias naming a panel site this
-# box really has, whose drushrc.php names the panel database. Each gap used
-# to skip the whole panel import silently and still exit 0. Refused here
-# instead, before chattr or any file of the account is changed.
+# the transferred panel dump, the source hostname export recorded (the
+# rename pins OLD from it; this box's own server_master alias names this
+# box), and a hostmaster alias naming a panel site this box really has,
+# whose drushrc.php names the panel database. Each gap used to skip the
+# whole panel import silently and still exit 0. Refused here instead,
+# before cron, chattr or any file of the account is changed.
 _xcopy_import_precheck() {
   local _why="" _hdb=""
   if [ ! -e "${_USR}/config/includes/nginx_vhost_common.conf" ]; then
     _why="${_THIS_HM_USER} is not installed on this box; run 'xcopy create ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}' on the source first"
   elif [ ! -e "${_USR}/src/prev_hostmaster.sql" ]; then
     _why="${_USR}/src/prev_hostmaster.sql is missing; export and transfer have not completed"
+  elif [ -z "$(_xcopy_read_in "${_USR}/log" sourcefqdn.txt | tr -cd 'a-zA-Z0-9.-')" ]; then
+    _why="${_USR}/log/sourcefqdn.txt is missing or empty; on the source remove src/prev_hostmaster.sql, log/exported.pid and log/transferred.pid of ${_oct}, then export and transfer again"
   elif [ -z "${_THIS_HM_SITE}" ] || [ ! -e "${_THIS_HM_SITE}/drushrc.php" ]; then
     _why="the hostmaster alias names ${_THIS_HM_SITE:-no site_path}, which has no drushrc.php on this box"
   else
@@ -867,6 +1151,100 @@ _xcopy_import_precheck() {
   echo "ERROR: import for ${_oct}: ${_why}"
   echo "ERROR: nothing was imported and nothing on this box was changed; fix the cause and re-run"
   return 1
+}
+
+# A create marks the account it installed on the target: a root-only file
+# naming this box and the source account, put only after the install
+# succeeded. A later create goes on into an account the target already
+# holds (no install) only under that marker, so an unrelated account that
+# carries the name never has its LE config and control pids removed. The
+# marker also records the account's uid there and the inode and birth time
+# of /data/disk/<account>, read on the target when it is put: an account
+# made again under the name usually gets its old uid back (adduser hands
+# out the lowest free one) but a directory born later, so a marker left from
+# the first is not trusted for it; no device number, which can change at a
+# reboot. Same text in xoct and xcopy: a marker either tool put is read by
+# both.
+_xcopy_create_marker() {   # 1 = account on the target
+  printf '/root/.%s.migration-create.txt' "${1}"
+}
+# This box as the marker names it: hostname -f, nothing when that is not
+# a hostname.
+_xcopy_create_src_host() {
+  local _h
+  _h="$(hostname -f 2> /dev/null | tr -d '\n')"
+  case "${_h}" in
+    ''|*[!a-zA-Z0-9.-]*|.*|*.|*..*) return 1 ;;
+  esac
+  printf '%s' "${_h}"
+}
+# The one line that tells an operator how to adopt $2 on $3 as the
+# account this box created for $1, when it really is.
+_xcopy_create_adopt_hint() {   # 1 = account here 2 = account on the target 3 = target 4 = this box
+  echo "INFO: to adopt ${2} on ${3} as this migration's, run there: (umask 077; printf '_MIG_CREATE_SRC_HOST=%s\n_MIG_CREATE_SRC_OCT=%s\n_MIG_CREATE_TGT_UID=%s\n_MIG_CREATE_TGT_INODE=%s\n' ${4} ${1} \"\$(id -u ${2})\" \"\$(stat -c %i:%W /data/disk/${2})\" > $(_xcopy_create_marker "${2}"))"
+}
+# Returns when the target $3 holds no account $2 (no passwd entry: what
+# the install itself refuses on), or holds it under a marker naming this
+# box and the source account $1, and the uid and /data/disk/$2 the account
+# has there now; _XCOPY_CREATE_HELD is YES in that case.
+# Anything else refuses the create before it changes anything there: an
+# account held without that marker, a marker that cannot be read, a
+# probe that answers neither way. Read-only on the target.
+_xcopy_create_owner_gate() {   # 1 = account here 2 = account on the target 3 = target
+  local _h _f _held _mark _mh _mo _mu _mi _nu _ni
+  _XCOPY_CREATE_HELD=""
+  if [[ ! "${1}" =~ ^[a-zA-Z0-9._-]+$ ]] || [[ ! "${2}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+    echo "ALRT: refusing create: invalid account name '${1}'/'${2}'"
+    exit 1
+  fi
+  if ! _h="$(_xcopy_create_src_host)"; then
+    echo "ALRT: refusing create: this box's hostname -f is not a hostname the create marker can name"
+    exit 1
+  fi
+  _f="$(_xcopy_create_marker "${2}")"
+  _held=$(ssh root@"${3}" "if getent passwd ${2} > /dev/null 2>&1; then echo HELD; else echo FREE; fi" 2> /dev/null)
+  case "${_held}" in
+    FREE) return 0 ;;
+    HELD) : ;;
+    *)
+      echo "ALRT: refusing create: could not read whether ${3} holds an account named ${2}"
+      exit 1
+      ;;
+  esac
+  # The account's uid and /data/disk/$2 as they are now are printed before
+  # the marker, so a first match can only take these real values.
+  _mark=$(ssh root@"${3}" "printf '_MIG_CREATE_NOW_UID=%s\n_MIG_CREATE_NOW_INODE=%s\n' \"\$(id -u ${2} 2> /dev/null)\" \"\$(stat -c %i:%W /data/disk/${2} 2> /dev/null)\"; [ -f ${_f} ] && [ ! -L ${_f} ] && [ \"\$(stat -c %u ${_f})\" = 0 ] && timeout 10 dd if=${_f} iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none" 2> /dev/null)
+  _nu=$(printf '%s\n' "${_mark}" | grep -m1 '^_MIG_CREATE_NOW_UID=' | cut -d= -f2-)
+  _ni=$(printf '%s\n' "${_mark}" | grep -m1 '^_MIG_CREATE_NOW_INODE=' | cut -d= -f2-)
+  _mh=$(printf '%s\n' "${_mark}" | grep -m1 '^_MIG_CREATE_SRC_HOST=' | cut -d= -f2-)
+  _mo=$(printf '%s\n' "${_mark}" | grep -m1 '^_MIG_CREATE_SRC_OCT=' | cut -d= -f2-)
+  _mu=$(printf '%s\n' "${_mark}" | grep -m1 '^_MIG_CREATE_TGT_UID=' | cut -d= -f2-)
+  _mi=$(printf '%s\n' "${_mark}" | grep -m1 '^_MIG_CREATE_TGT_INODE=' | cut -d= -f2-)
+  if [ "${_mh}" = "${_h}" ] && [ "${_mo}" = "${1}" ] \
+    && [[ "${_nu}" =~ ^[0-9]+$ ]] && [ "${_mu}" = "${_nu}" ] \
+    && [[ "${_ni}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${_mi}" = "${_ni}" ]; then
+    _XCOPY_CREATE_HELD=YES
+    return 0
+  fi
+  echo "DENY: ${3} already holds an account named ${2} that this migration did not create; nothing was changed there"
+  if [ "${_mh}" = "${_h}" ] && [ "${_mo}" = "${1}" ] && [ -n "${_mu}${_mi}" ]; then
+    echo "INFO: the create marker there was put for an earlier ${2}: the uid or /data/disk/${2} it records is not the account's now"
+  fi
+  _xcopy_create_adopt_hint "${1}" "${2}" "${3}" "${_h}"
+  exit 1
+}
+# The marker put on the target $3 for its account $2, installed for the
+# source account $1: a fresh root 0600 file written through one no-follow
+# handle (_XCOPY_PUT_PL), then renamed over the name. The account's uid and
+# the inode and birth time of /data/disk/$2 are read there in the same
+# command; no
+# marker is put when either cannot be read.
+_xcopy_create_mark() {   # 1 = account here 2 = account on the target 3 = target
+  local _h _f _ts
+  _h="$(_xcopy_create_src_host)" || return 1
+  _f="$(_xcopy_create_marker "${2}")"
+  _ts="$(date -u '+%Y-%m-%d %H:%M:%S UTC' 2> /dev/null)"
+  ssh root@"${3}" "_u=\$(id -u ${2} 2> /dev/null); _i=\$(stat -c %i:%W /data/disk/${2} 2> /dev/null); case \"\${_u}/\${_i}\" in *[!0-9:/]*) exit 1 ;; [0-9]*/[0-9]*:[0-9]*) : ;; *) exit 1 ;; esac; _t=/root/.${2}.migration-create.put.\$\$; rm -f -- \"\${_t}\"; printf '%s\n' '# Put by create: the account this migration installed here.' '_MIG_CREATE_SRC_HOST=${_h}' '_MIG_CREATE_SRC_OCT=${1}' \"_MIG_CREATE_TGT_UID=\${_u}\" \"_MIG_CREATE_TGT_INODE=\${_i}\" '_MIG_CREATE_STAMPED=${_ts}' | perl -e '${_XCOPY_PUT_PL}' \"\${_t}\" 0 0 600 && mv -f -T -- \"\${_t}\" ${_f} && exit 0; rm -f -- \"\${_t}\"; exit 1"
 }
 
 _migrate_prepare() {
@@ -1004,6 +1382,23 @@ _migrate_prepare() {
     if [ "${_XCOPY_HM_DUMP_OK}" = "YES" ] \
       && [ -s "${_USR}/src/prev_hostmaster.sql" ]; then
       echo "INFO: hostmaster ${_oct} db export complete"
+      # Record the source FQDN for the import-side rename. The target keeps
+      # its own server_master alias (the transfer never sends this one), so
+      # renameaegirhost's auto-detection there would read OLD==NEW and
+      # silently no-op while the imported DB still holds this FQDN.
+      # Recording it here pins OLD deterministically (and keeps an aborted
+      # rename re-runnable after §3 already rewrote the aliases); import
+      # refuses without it. Travels with the log/ transfer sync.
+      # The alias is read and the record put inside the real .drush and
+      # log/ (both oN's), never through a link put at either name.
+      _SRC_FQDN=$(_xcopy_read_in "${_USR}/.drush" server_master.alias.drushrc.php \
+        | grep "remote_host" \
+        | head -1 \
+        | sed "s/.*remote_host.*=>//; s/[' ,;]//g")
+      _SRC_FQDN=${_SRC_FQDN//[^a-zA-Z0-9.\-]/}
+      [ -z "${_SRC_FQDN}" ] && _SRC_FQDN=$(hostname -f 2>/dev/null | tr -d '\n')
+      printf '%s' "${_SRC_FQDN}" \
+        | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here sourcefqdn.txt
     else
       ### Remove the debris so a re-run redumps from scratch instead of
       ### skipping the hostmaster block on the pre-created file.
@@ -1017,6 +1412,94 @@ _migrate_prepare() {
     && [ ! -z "${_HDB}" ] \
     && [ -e "${_USR}/src/prev_hostmaster.sql" ] \
     && [ ! -e "${_USR}/log/imported.pid" ]; then
+    ### Target-side quiesce, previously a hand-typed runbook step: BOA's own
+    ### background jobs must not fight the hostmaster import and the rename
+    ### queue. Cron comes back via post-mig. Devuan trap: 'service cron stop'
+    ### does not always stop it -- use the init script plus pkill, verified.
+    /etc/init.d/cron stop &> /dev/null || service cron stop &> /dev/null
+    pkill -x cron &> /dev/null
+    if pgrep -x cron &> /dev/null; then
+      echo "ALRT: cron still running after stop attempt; check manually"
+    fi
+    [ -e "/data/all/cpuinfo" ] && chmod 644 /data/all/cpuinfo
+    _xcopy_wait_boa_quiet
+    # The alias-derived _HDB can name a DB an enforced upgrade has already
+    # replaced: a dest panel rebuilt between create and import (new panel DB
+    # created, old one dropped) leaves the on-disk alias stale, and the dump
+    # would then pour into a nonexistent DB. The pre-mig runner park holds
+    # create's armed upgrade until post-mig, so this is the shape of a park
+    # that lapsed (24 h ceiling, reboot) or was never taken on this box, no
+    # longer the norm. Resolution order: the recorded decision from a
+    # previous (possibly partial) import run, then the alias-derived name,
+    # then a dest-form panel scan (the xmass 12.5 way), then the
+    # already-poured shape (a partial run leaves the live DB holding
+    # SOURCE-form rows, invisible to the dest-form scan -- its hostmaster
+    # front names the recorded source FQDN, which nothing else on the box
+    # can carry). The winner is recorded so the printed recovery path stays
+    # deterministic. log/ is oN's: its records are read and put inside the
+    # real directory, never through a link or into a FIFO put at the name.
+    if [ -s "${_USR}/log/panel_db.txt" ]; then
+      _HDB_REC=$(_xcopy_read_in "${_USR}/log" panel_db.txt | tr -d "\n")
+      _HDB_REC=${_HDB_REC//[^a-zA-Z0-9_]/}
+      if [ -n "${_HDB_REC}" ] && [ -n "$(mysql --silent -u root -h${_SQL_CONNECT} \
+          -P${_THIS_DB_PORT} --protocol=tcp -N -B \
+          -e "SHOW DATABASES LIKE '${_HDB_REC}'" 2>/dev/null)" ]; then
+        [ "${_HDB_REC}" != "${_HDB}" ] \
+          && echo "PANEL-NOTE: using the recorded panel DB ${_HDB_REC} (alias-derived ${_HDB} superseded)"
+        _HDB="${_HDB_REC}"
+      fi
+    fi
+    if [ -z "$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+        --protocol=tcp -N -B -e "SHOW DATABASES LIKE '${_HDB}'" 2>/dev/null)" ]; then
+      _SRC_FRONT=""
+      if [ -s "${_USR}/log/sourcefqdn.txt" ]; then
+        _SRC_FRONT="${_oct}.$(_xcopy_read_in "${_USR}/log" sourcefqdn.txt | tr -d "\n")"
+        _SRC_FRONT=${_SRC_FRONT//[^a-zA-Z0-9.-]/}
+      fi
+      _HDB_LIVE=""
+      _HDB_POURED=""
+      for _HC in $(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+          --protocol=tcp -N -B -e "SHOW DATABASES" 2>/dev/null \
+        | grep -vE "^(information_schema|performance_schema|mysql|sys)$"); do
+        case "${_HC}" in *[!A-Za-z0-9_]*) continue ;; esac
+        if [ -n "$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+            --protocol=tcp -N -B "${_HC}" -e "SELECT name FROM hosting_context \
+            WHERE name='server_master' LIMIT 1" 2>/dev/null)" ]; then
+          if [ -n "$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+              --protocol=tcp -N -B "${_HC}" -e "SELECT publish_path FROM \
+              hosting_platform WHERE publish_path LIKE '${_USR}/%' LIMIT 1" 2>/dev/null)" ]; then
+            if [ -n "${_HDB_LIVE}" ]; then
+              echo "ERROR: multiple live panel DBs match ${_USR} (${_HDB_LIVE}, ${_HC}) -- refusing to guess"
+              exit 1
+            fi
+            _HDB_LIVE="${_HC}"
+          elif [ -n "${_SRC_FRONT}" ] && [ -n "$(mysql --silent -u root \
+              -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -N -B "${_HC}" \
+              -e "SELECT n.title FROM node n JOIN hosting_context c ON c.nid=n.nid \
+              WHERE c.name='hostmaster' AND n.title='${_SRC_FRONT}' LIMIT 1" 2>/dev/null)" ]; then
+            if [ -n "${_HDB_POURED}" ]; then
+              echo "ERROR: multiple DBs carry the source panel front ${_SRC_FRONT} (${_HDB_POURED}, ${_HC}) -- refusing to guess"
+              exit 1
+            fi
+            _HDB_POURED="${_HC}"
+          fi
+        fi
+      done
+      if [ -n "${_HDB_LIVE}" ]; then
+        echo "PANEL-NOTE: alias-derived panel DB ${_HDB} is gone (panel rebuilt since create); importing into live panel DB ${_HDB_LIVE}"
+        _HDB="${_HDB_LIVE}"
+      elif [ -n "${_HDB_POURED}" ]; then
+        echo "PANEL-NOTE: alias-derived panel DB ${_HDB} is gone; resuming into ${_HDB_POURED} (already carries the source panel front from a previous run)"
+        _HDB="${_HDB_POURED}"
+      else
+        echo "ERROR: alias-derived panel DB ${_HDB} does not exist and no live panel DB"
+        echo "ERROR: matches ${_USR} -- the dest account has no importable panel; re-run"
+        echo "ERROR: 'xcopy create ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}' first"
+        exit 1
+      fi
+    fi
+    printf '%s' "${_HDB}" \
+      | _xcopy_in_real_dir "${_USR}/log" _xcopy_write_here panel_db.txt
     if [ ! -z "${_dst}" ]; then
       if [ "${_oct}" = "${_dst}" ]; then
         [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL5 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp"
@@ -1063,6 +1546,21 @@ _migrate_prepare() {
         ./export_failed.pid ./proxy-failed.pid
       _xcopy_in_real_dir "${_USR}/log" _xcopy_touch_here imported.pid
     fi
+    ### Both branches above pour the same-name dump (xcopy refuses any other
+    ### name before it gets here), so both reach the steps below.
+    if ! _xcopy_reconcile_panel_platform "${_USR}" "${_oct}" "${_HDB}"; then
+      echo "ERROR: panel platform reconciliation failed for ${_USR} -- this import is INCOMPLETE"
+      echo "ERROR: the imported DB names a hostmaster platform this box cannot serve; continuing"
+      echo "ERROR: would leave the copied control panel dead after the rename queue runs"
+      echo "ERROR: recovery -- fix the cause the ALRT above names, then re-run the FULL import:"
+      echo "ERROR:   rm ${_USR}/log/imported.pid"
+      echo "ERROR:   xcopy import ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}"
+      exit 1
+    fi
+    if ! _xcopy_sync_panel_db_pass "${_USR}" "${_THIS_HM_USER}" "${_oct}" "${_HDB}"; then
+      echo "ALRT: the panel's database server password was not synced for ${_THIS_HM_USER}: its server"
+      echo "ALRT: verify fails until the next Octopus pass (check ${_USR}/.${_THIS_HM_USER}.pass.txt)"
+    fi
 
     if [ "${_fix}" = "fix" ]; then
       _DOMAIN=$(_xcopy_read_in "${_USR}/log" domain.txt)
@@ -1070,6 +1568,57 @@ _migrate_prepare() {
 
       _vSet="variable-set --always-set"
       _run_drush8_hmr_cmd "${_vSet} hosting_client_send_welcome 0" &> /dev/null
+    fi
+
+    ###
+    ### Rename all source-hostname references in this Aegir instance to the
+    ### FQDN of the current (target) server. renameaegirhost:
+    ###   §1  old hostname: pinned via --force-old from log/sourcefqdn.txt
+    ###       (recorded at export; this box keeps its own server_master
+    ###       alias, so auto-detection and a partial-rename re-run would
+    ###       both no-op at OLD==NEW)
+    ###   §2  detects new hostname from system FQDN (hostname -f)
+    ###   §3  rewrites .drush/*.alias.drushrc.php files
+    ###   §4  rewrites + renames nginx vhost files in config/server_master/
+    ###   §5  renames the source FQDN inside the Aegir DB with serialize-safe
+    ###       targeted statements (identity rows by hosting_context nid,
+    ###       varchar REPLACE sweeps, unserialize/replace/re-serialize pass
+    ###       over the variable table); keeps a plain backup dump
+    ###   §6  reloads nginx
+    ###   §7  runs the Aegir task queue 5 times (cc drush + server verify +
+    ###       hosting-dispatch + hosting-tasks) to regenerate all on-disk
+    ###       aliases, vhosts, and db-host entries from the updated DB
+    ### Must run AFTER the panel platform reconciliation above because §7
+    ### regenerates everything from the DB state it shaped, and with cron
+    ### stopped (the tool assumes it). xcopy never renames the account, so
+    ### no --old-account/--new-account axis rides along.
+    ###
+    _RAH_OLD=""
+    if [ -s "${_USR}/log/sourcefqdn.txt" ]; then
+      _RAH_OLD=$(_xcopy_read_in "${_USR}/log" sourcefqdn.txt | tr -d "\n")
+      _RAH_OLD=${_RAH_OLD//[^a-zA-Z0-9.\-]/}
+    fi
+    if [ ! -z "${_RAH_OLD}" ]; then
+      renameaegirhost --aegir-root "${_USR}" --force-old "${_RAH_OLD}"
+      _RAH_RC=$?
+    else
+      # Unreachable past _xcopy_import_precheck. Auto-detection would read
+      # this box's own server_master alias (OLD==NEW) and rename nothing.
+      echo "ERROR: log/sourcefqdn.txt names no source hostname; not renaming"
+      _RAH_RC=1
+    fi
+    if [ "${_RAH_RC}" -ne 0 ]; then
+      echo "ERROR: renameaegirhost failed (rc=${_RAH_RC}) for ${_USR} -- this import is INCOMPLETE"
+      echo "ERROR: every import step after the rename was skipped: the per-site database"
+      echo "ERROR: loads, db_host and vhost fixes and verifies, and the pinned PHP pool rebuild"
+      echo "ERROR: recovery -- fix the cause, then re-run the FULL import:"
+      echo "ERROR:   rm ${_USR}/log/imported.pid"
+      echo "ERROR:   xcopy import ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}"
+      echo "ERROR: (safe: re-imports the same already-transferred dump, redoes rename + tail)"
+      echo "ERROR: to iterate on the rename failure alone first (convergent, safe to re-run):"
+      echo "ERROR:   renameaegirhost --aegir-root ${_USR} --force-old ${_RAH_OLD:-<source-fqdn>}"
+      echo "ERROR: the full import re-run above is still required to finish the skipped tail"
+      exit 1
     fi
 
   fi
@@ -1100,7 +1649,33 @@ _migrate_prepare() {
       && [ ! -z "${_CLIENT_OPTION}" ] \
       && [ ! -z "${_CLIENT_SUBSCR}" ] \
       && [ ! -z "${_CLIENT_CORES}" ]; then
-      ssh root@${_tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_tRee} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
+      ### An account the target already holds is this migration's only
+      ### under its create marker: asked before anything changes there.
+      _xcopy_create_owner_gate "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      ### Skipped only when the marked account is also really installed, on
+      ### what only an install produces (xoct asks the same): one whose cnf or
+      ### vhost include is gone goes to the install, which refuses the name.
+      _TGT_PRESENT=""
+      if [ "${_XCOPY_CREATE_HELD}" = "YES" ]; then
+        _TGT_PRESENT=$(ssh root@${_tgt} "getent passwd ${_TGT_HM_USER} >/dev/null 2>&1 \
+          && [ -e /root/.${_TGT_HM_USER}.octopus.cnf ] \
+          && [ -e /data/disk/${_TGT_HM_USER}/config/includes/nginx_vhost_common.conf ] \
+          && echo PRESENT" 2>/dev/null)
+      fi
+      if [ "${_XCOPY_CREATE_HELD}" = "YES" ] && [ "${_TGT_PRESENT}" = "PRESENT" ]; then
+        echo "INFO: account ${_TGT_HM_USER} already installed on ${_tgt} by this migration; skipping install"
+      else
+        ### The launcher exits 1 without installing when the name is taken
+        ### or a run lock is held: nothing below may run on the target then.
+        if ! ssh root@${_tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_tRee} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"; then
+          echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} failed or was refused (see the launcher output above); nothing further was changed there"
+          exit 1
+        fi
+        if ! _xcopy_create_mark "${_oct}" "${_TGT_HM_USER}" "${_tgt}"; then
+          echo "ALRT: the create marker for ${_TGT_HM_USER} could not be put on ${_tgt}; a re-run of this create will refuse the account"
+          _xcopy_create_adopt_hint "${_oct}" "${_TGT_HM_USER}" "${_tgt}" "$(_xcopy_create_src_host)"
+        fi
+      fi
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/.ctrl/ssl-demo-mode.pid"
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config"
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config.sh"
@@ -1156,6 +1731,11 @@ _migrate_prepare() {
     fi
   fi
   if [ "${_cmd}" = "import" ]; then
+    # Harsh cache flush so any copied D8+ site drops the source box's stale
+    # container and bootstraps clean on this box.
+    _xcopy_flush_caches_target
+    # Carried FPM markers would leave every pinned site on the default pool.
+    _xcopy_heal_fpm_pins "${_THIS_HM_USER}"
     if [ "${_XCOPY_IMPORT_FAIL:-0}" != "0" ]; then
       {
         echo "failed=${_XCOPY_IMPORT_FAIL}"
@@ -1167,6 +1747,7 @@ _migrate_prepare() {
       echo "ERROR: recovery -- fix the cause (re-export/re-transfer the failed dumps if hollow), then:"
       echo "ERROR:   rm ${_USR}/log/imported.pid"
       echo "ERROR:   xcopy import ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}"
+      echo "ERROR: (safe: the full import re-run re-imports from the same transferred dumps)"
       _XCOPY_RUN_FAIL=YES
     else
       _xcopy_in_real_dir "${_USR}/log" rm -f -- ./import_failed.pid
@@ -1790,6 +2371,29 @@ _xcopy_cred_ok() {
       -P"${_THIS_DB_PORT:-3306}" --protocol=tcp -N -B \
       -e "USE \`$1\`" > /dev/null 2>&1
 }
+# A grant ON a database reads _ and % in its name as wildcards: `a_b`.* also
+# covers aXb, with ALL there. A site user is granted its own name escaped,
+# as provisioning grants it (grant_privileges); names reach here as
+# [a-zA-Z0-9_] only, so _ is all there is to escape.
+_xcopy_db_grant_name() {
+  printf '%s' "${1//_/\\_}"
+}
+# Once the exact grant is in place, a wildcard grant an earlier run left on
+# the same name ($1, also the user) at the host $2 goes, as provisioning
+# converges it (revoke_wildcard_db_grant): only when SHOW GRANTS lists it,
+# and revoked as it is stored, its grant option too (a db-level REVOKE takes
+# ALL and GRANT OPTION only as two statements; the second fails harmlessly
+# where there was none).
+_xcopy_db_revoke_wildcard() {
+  local _g
+  [[ "${1}" == *_* ]] || return 0
+  _g=$(mysql --silent -u root -h"${_SQL_CONNECT}" -P"${_THIS_DB_PORT}" --protocol=tcp \
+    -N -B -e "SHOW GRANTS FOR '${1}'@'${2}'" 2> /dev/null)
+  printf '%s\n' "${_g}" | grep -qF "ON \`${1}\`.* TO " || return 0
+  mysql --silent -u root -h"${_SQL_CONNECT}" -P"${_THIS_DB_PORT}" --protocol=tcp \
+    -e "REVOKE ALL PRIVILEGES ON \`${1}\`.* FROM '${1}'@'${2}'; \
+        REVOKE GRANT OPTION ON \`${1}\`.* FROM '${1}'@'${2}';" &> /dev/null
+}
 # The real (non-link) subdirectory names of the current (pinned) directory.
 _xcopy_real_subdirs_here() {
   local _e
@@ -2135,8 +2739,9 @@ _xcopy_transfer_static_symlink_safe() {
 }
 
 # xcopy copies an account under its own name only. A fourth argument naming
-# another account is a rename, which is xoct's: xcopy rewrites no old name in
-# the copied vhosts, aliases or panel database, so a renamed copy would keep
+# another account is a rename, which is xoct's: xcopy rewrites no old account
+# name in the copied vhosts, aliases or panel database (its import renames
+# only the source hostname), so a renamed copy would keep
 # pointing into the old account's tree (on the target, another tenant's).
 # Refused before the account is read, the target is asked or anything of
 # the account is changed on either box: a DENY, the dry run is not clean,
@@ -2747,6 +3352,14 @@ _post_mig() {
     rm -f /run/boa_migration_park.pid
     # The move is over: a source stops serving its root key.
     rm -f /var/www/nginx-default/auth_undefined_keys.txt*
+    # Cron must come back on WHICHEVER box runs post-mig: the import step
+    # stops it on the target (renameaegirhost's queue assumes it is not
+    # running), and a box left without it runs no BOA job at all.
+    /etc/init.d/cron start &> /dev/null || service cron start &> /dev/null
+    if ! pgrep -x cron &> /dev/null; then
+      echo "ALRT: cron did not start; the BOA runners and every scheduled job are DOWN"
+      echo "ALRT: start it manually: /etc/init.d/cron start"
+    fi
     exit 0
   fi
 }

@@ -654,6 +654,20 @@ _php_conf_update() {
     cp -af ${_locCnf}/php/php${e}.ini /opt/php${e}/etc/php${e}.ini
     cp -af ${_locCnf}/php/php${e}-cli.ini /opt/php${e}/lib/php.ini
     cp -af ${_locCnf}/php/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
+    # Only a build installs the init script, so a fix to it never reached a
+    # box until that version was rebuilt. A live one is refreshed here; a
+    # parked copy is refreshed on the pass that enables it again. Put by
+    # rename: a running service call keeps reading the old file.
+    if [ -e "/etc/init.d/php${e}-fpm" ] \
+      && [ -x "/opt/php${e}/sbin/php-fpm" ] \
+      && [ -s "${_locCnf}/php/php${e}-fpm" ] \
+      && ! cmp -s "${_locCnf}/php/php${e}-fpm" "/etc/init.d/php${e}-fpm"; then
+      rm -f "/etc/init.d/.php${e}-fpm.new"
+      cp -f "${_locCnf}/php/php${e}-fpm" "/etc/init.d/.php${e}-fpm.new" \
+        && chmod 755 "/etc/init.d/.php${e}-fpm.new" \
+        && mv -f "/etc/init.d/.php${e}-fpm.new" "/etc/init.d/php${e}-fpm"
+      rm -f "/etc/init.d/.php${e}-fpm.new"
+    fi
 
     _THIS_FILE="/opt/php${e}/etc/php${e}.ini"
     _apply_php_fpm_ini_fixes "${e}"

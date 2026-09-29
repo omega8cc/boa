@@ -1225,7 +1225,10 @@ _fix_llms_txt() {
   fi
   _fls="${_R_FLS}"
   _wg=$(_store_web_group "${_fls}" "$(realpath -e -- "${_Dir}" 2> /dev/null)")
-  [ "${_wg}" = "SKIP" ] && _wg=""
+  # another account's store that one of the two has converted: nothing is
+  # written there (the store legs name it in a NOTE); a copy fetched in would
+  # be the reading account's file in the other account's served files
+  [ "${_wg}" = "SKIP" ] && return 0
   _url="http://${_Dom}/llms.txt?nocache=1&noredis=1"
   _in_pinned_dir "${_fls}" _desymlink_planted ./llms.txt
   # A tenant-uploaded policy is durable content, served as-is for as long as
@@ -1326,7 +1329,8 @@ _fix_robots_txt() {
     return 0
   fi
   _wg=$(_store_web_group "${_R_FLS}" "$(realpath -e -- "${_Dir}" 2> /dev/null)")
-  [ "${_wg}" = "SKIP" ] && _wg=""
+  # as in _fix_llms_txt: nothing is written into a converted share
+  [ "${_wg}" = "SKIP" ] && return 0
   _fls="${_R_FLS}"
   _in_pinned_dir "${_fls}" _desymlink_planted ./robots.txt
   _in_pinned_dir "${_fls}" find ./robots.txt -maxdepth 0 -mtime +6 \

@@ -866,8 +866,9 @@ _satellite_check_id() {
     _msg "ERROR: Please choose a different _USER"
     _clean_pid_exit
   fi
+  # unquoted: a quoted right side of =~ is a literal string, never a regex
   _REGEX="^[[:digit:]]"
-  if [[ "${_USER}" =~ "${_REGEX}" ]]; then
+  if [[ "${_USER}" =~ ${_REGEX} ]]; then
     _msg "ERROR: ${_USER} is a wrong username"
     _msg "ERROR: The correct username should start with a letter, not digit"
     _clean_pid_exit
@@ -2504,6 +2505,48 @@ _satellite_o_contrib_backdrop_update_global() {
 _WEBFORM_B_TAG="1.x-4.26.6"
 
 #
+# Replace one shared module under ${_D}/000/modules from the dev/contrib
+# mirror. It is fetched and unpacked in a directory of this pass's own,
+# compared with its archive, stamped there and swapped in only when every
+# member is in place and whole: a copy cut short never replaces the one
+# in place and is fetched again on the next pass, where the old code stamped
+# it as deployed. The swap renames the copy in place aside first and puts it
+# back when the new one cannot go in. The gates read the ".full" stamp, the
+# pair BOA.sh.txt writes for the same modules; owner "root" re-owns the copy.
+# Like the old blocks, it leaves the pass in ${_D}/000/modules.
+_satellite_shared_module_update() {
+  local _nm="$1" _ver="$2" _own="$3" _dir="${_D}/000/modules" _tmp _arc _ok=NO
+  _arc="${_nm}-${_ver}.tar.gz"
+  mkdir -p "${_dir}"
+  # a directory a killed pass left behind; a live pass's is never this old
+  find "${_dir}" -maxdepth 1 -type d -name ".${_nm}.*" -mmin +60 -exec rm -rf {} + &> /dev/null
+  _tmp="$(mktemp -d "${_dir}/.${_nm}.XXXXXX")" || return 1
+  cd "${_tmp}" || return 1
+  _get_dev_contrib "${_arc}" keep
+  # every member present and whole: tar compares the kept archive with what
+  # it unpacked, and fails on a cut archive and on a missing or short file
+  if [ -e "${_tmp}/${_arc}" ] && [ -d "${_tmp}/${_nm}" ] \
+    && tar -C "${_tmp}" -dzf "${_tmp}/${_arc}" &> /dev/null; then
+    _ok=YES
+  fi
+  cd "${_dir}" || return 1
+  if [ "${_ok}" = "YES" ]; then
+    [ "${_own}" = "root" ] && chown -R root:root "${_tmp}/${_nm}" &> /dev/null
+    echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.info"
+    echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.full.info"
+    [ -e "${_dir}/${_nm}" ] && mv -T "${_dir}/${_nm}" "${_tmp}/.old" &> /dev/null
+    if ! mv -T "${_tmp}/${_nm}" "${_dir}/${_nm}" &> /dev/null; then
+      [ -e "${_tmp}/.old" ] && [ ! -e "${_dir}/${_nm}" ] \
+        && mv -T "${_tmp}/.old" "${_dir}/${_nm}" &> /dev/null
+      _msg "${_STATUS} A: OOPS ${_nm}-${_ver} could not be swapped in; the copy in place is kept"
+    fi
+  else
+    _msg "${_STATUS} A: OOPS ${_nm}-${_ver} was not updated (download or unpack failed); the copy in place is kept"
+  fi
+  rm -rf "${_tmp}"
+}
+
+#
 # Download o_contrib_backdrop. The bundle carries the Backdrop-native contrib
 # BOA maintains for every Backdrop platform; like the D6/D7 bundles the redis
 # integration is a symlink into the single shared /data/all/000/modules copy,
@@ -2529,15 +2572,8 @@ _satellite_download_o_contrib_backdrop() {
   if [ ! -L "./redis_backdrop" ]; then
     ln -sfn ${_D}/000/modules/redis_backdrop redis_backdrop
   fi
-  if [ ! -e "${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_backdrop
-    _get_dev_contrib "redis_backdrop-${_REDIS_B_VERSION}.tar.gz"
-    # every instance's Backdrop sites run this copy: root's, whatever owner
-    # the archive recorded
-    chown -R root:root ${_D}/000/modules/redis_backdrop &> /dev/null
-    echo update > ${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info
+  if [ ! -e "${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.full.info" ]; then
+    _satellite_shared_module_update redis_backdrop "${_REDIS_B_VERSION}" root
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -2634,12 +2670,8 @@ _satellite_download_o_contrib_eleven() {
   fi
   _get_dev_contrib "robotstxt-8.x-1.6.tar.gz"
   _get_dev_contrib "readonlymode-8.x-1.4.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_ten_eleven
-    _get_dev_contrib "redis_ten_eleven-${_REDIS_E_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info
+  if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.full.info" ]; then
+    _satellite_shared_module_update redis_ten_eleven "${_REDIS_E_VERSION}"
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -2659,12 +2691,8 @@ _satellite_download_o_contrib_ten() {
   fi
   _get_dev_contrib "robotstxt-8.x-1.6.tar.gz"
   _get_dev_contrib "readonlymode-8.x-1.4.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_ten_eleven
-    _get_dev_contrib "redis_ten_eleven-${_REDIS_E_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info
+  if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.full.info" ]; then
+    _satellite_shared_module_update redis_ten_eleven "${_REDIS_E_VERSION}"
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -2684,19 +2712,11 @@ _satellite_download_o_contrib_nine() {
   fi
   _get_dev_contrib "robotstxt-8.x-1.5.tar.gz"
   _get_dev_contrib "readonlymode-8.x-1.2.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_nine_ten
-    _get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info
+  if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.full.info" ]; then
+    _satellite_shared_module_update redis_nine_ten "${_REDIS_T_VERSION}"
   fi
-  if [ ! -e "${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_compr
-    _get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.info
+  if [ ! -e "${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.full.info" ]; then
+    _satellite_shared_module_update redis_compr "${_REDIS_C_VERSION}"
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -2716,19 +2736,11 @@ _satellite_download_o_contrib_eight() {
   fi
   _get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
   _get_dev_contrib "readonlymode-8.x-1.2.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_xSrl}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_eight
-    _get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_xSrl}.info
+  if [ ! -e "${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_xSrl}.full.info" ]; then
+    _satellite_shared_module_update redis_eight "${_REDIS_N_VERSION}"
   fi
-  if [ ! -e "${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_compr
-    _get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.info
+  if [ ! -e "${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.full.info" ]; then
+    _satellite_shared_module_update redis_compr "${_REDIS_C_VERSION}"
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -2806,12 +2818,8 @@ _satellite_download_o_contrib_seven() {
   if [ -e "${_D}/000/modules/redis" ]; then
     rm -rf ${_D}/000/modules/redis
   fi
-  if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_edge
-    _get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.info
+  if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.full.info" ]; then
+    _satellite_shared_module_update redis_edge "${_REDIS_L_VERSION}"
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -2882,12 +2890,8 @@ _satellite_download_o_contrib_six() {
   if [ -e "${_D}/000/modules/redis" ]; then
     rm -rf ${_D}/000/modules/redis
   fi
-  if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_edge
-    _get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.info
+  if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.full.info" ]; then
+    _satellite_shared_module_update redis_edge "${_REDIS_L_VERSION}"
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
   find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
@@ -3008,52 +3012,27 @@ _satellite_check_fix_o_contrib() {
   if [ -e "${_D}/000/modules/redis" ]; then
     rm -rf ${_D}/000/modules/redis
   fi
-  if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_edge
-    _get_dev_contrib "redis_edge-${_REDIS_L_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.info
+  if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.full.info" ]; then
+    _satellite_shared_module_update redis_edge "${_REDIS_L_VERSION}"
   fi
-  if [ ! -e "${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_xSrl}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_eight
-    _get_dev_contrib "redis_eight-${_REDIS_N_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_xSrl}.info
+  if [ ! -e "${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_xSrl}.full.info" ]; then
+    _satellite_shared_module_update redis_eight "${_REDIS_N_VERSION}"
   fi
-  if [ ! -e "${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_compr
-    _get_dev_contrib "redis_compr-${_REDIS_C_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.info
+  if [ ! -e "${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.full.info" ]; then
+    _satellite_shared_module_update redis_compr "${_REDIS_C_VERSION}"
   fi
-  if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_nine_ten
-    _get_dev_contrib "redis_nine_ten-${_REDIS_T_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.info
+  if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.full.info" ]; then
+    _satellite_shared_module_update redis_nine_ten "${_REDIS_T_VERSION}"
   fi
-  if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/redis_ten_eleven
-    _get_dev_contrib "redis_ten_eleven-${_REDIS_E_VERSION}.tar.gz"
-    echo update > ${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.info
+  if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.full.info" ]; then
+    _satellite_shared_module_update redis_ten_eleven "${_REDIS_E_VERSION}"
   fi
   ### The Backdrop store is refreshed only where the bundle exists (or the
   ### support gate is on) so opted-out boxes never fetch it.
   if [ "${_BACKDROP_SUPPORT}" = "YES" ] \
     || [ -e "${_D}/000/modules/o_contrib_backdrop" ]; then
-    if [ ! -e "${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info" ]; then
-      mkdir -p ${_D}/000/modules
-      cd ${_D}/000/modules
-      rm -rf ${_D}/000/modules/redis_backdrop
-      _get_dev_contrib "redis_backdrop-${_REDIS_B_VERSION}.tar.gz"
-      chown -R root:root ${_D}/000/modules/redis_backdrop &> /dev/null
-      echo update > ${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.info
+    if [ ! -e "${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.full.info" ]; then
+      _satellite_shared_module_update redis_backdrop "${_REDIS_B_VERSION}" root
     fi
   fi
   find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
@@ -3338,10 +3317,15 @@ _provision_backend_dbpass_generate() {
         fi
       fi
     else
+      ### Remote DB mode takes the root password from /root/.my.pass.txt,
+      ### which barracuda writes and octopus refuses to run without. The
+      ### fixed fallback printed in the public code is never an account's
+      ### database password: without the file the password stays empty and
+      ### the sync changes no database user and no alias.
       if [ -e "/root/.my.pass.txt" ]; then
         _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
-        _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+        _ESC_PASS=""
       fi
     fi
     _isPythonTwo="$(which python2)"
@@ -3363,10 +3347,12 @@ _provision_backend_dbpass_generate() {
       _ESC_PASS=$(echo -n "${_ESC_PASS}" | tr -d "\n" 2>&1)
       _ESC_PASS=$(_sanitize_string "${_ESC_PASS}" 2>&1)
     else
+      ### never the published fallback (see above)
       if [ -e "/root/.my.pass.txt" ]; then
         _ESC_PASS=$(cat /root/.my.pass.txt 2>/dev/null | tr -d '\n')
       else
-        _ESC_PASS=sCWL4tgEpyS5cLZITshxSTWRjhsUOeR6
+        _ESC_PASS=""
+        _msg "ALRT: /root/.my.pass.txt not found; remote DB mode sets no database password for ${_USER}"
       fi
     fi
     _ENC_PASS="${_ESC_PASS}"
@@ -5661,7 +5647,8 @@ _satellite_make() {
   # -- sourcing a cnf slice resets config vars), then 22. Only a validated
   # numeric value is handed off, so the email fails safe to the template's
   # default.
-  _sshPrt=$(/usr/sbin/sshd -T 2>/dev/null | awk '/^port /{print $2; exit}')
+  # The keyword's case varies by build (OpenSSH 10.5 prints "Port 22").
+  _sshPrt=$(/usr/sbin/sshd -T 2>/dev/null | awk 'tolower($1) == "port" {print $2; exit}')
   if [[ ! "${_sshPrt}" =~ ^[0-9]+$ ]]; then
     _sshPrt=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
       | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
@@ -7270,7 +7257,14 @@ _satellite_post_cleanup() {
   rm -f /tmp/pm-updatecode*
   [ -e "/run/boa_run.pid" ] && rm -f /run/boa_run.pid
   _acct_in_real_dir "${_ROOT}/.tmp" rm -rf -- ./cache
-  [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+  # only a stale one: a worker pass started since the lock went is still
+  # running, and the next account's instgrp arm waits on its pid
+  local _ltdPid
+  _ltdPid=$(tr -cd '0-9' 2> /dev/null < /run/manage_ltd_users.pid)
+  if [ -e "/run/manage_ltd_users.pid" ] \
+    && { [ -z "${_ltdPid}" ] || ! kill -0 "${_ltdPid}" 2> /dev/null; }; then
+    rm -f /run/manage_ltd_users.pid
+  fi
   [ -e "/run/manage_ruby_users.pid" ] && rm -f /run/manage_ruby_users.pid
 }
 

@@ -55,6 +55,9 @@
 #            forever. Only a failed identity move rolls the account back.
 #            Refuses while another BOA run holds /run/boa_run.pid (the octopus
 #            arm passes --from-octopus because it holds that lock itself),
+#            waits a bounded time for a limited-shell worker pass already
+#            running when it takes the lock (refuses while one stays; the
+#            arm skips the account as busy),
 #            waits a bounded time for the account's own provision tasks,
 #            waits up to a minute for every identity still to move that
 #            usermod would call in use (a process in this root whose real,
@@ -129,9 +132,14 @@ _WAIT_MAX="${_INSTGRP_WAIT_MAX:-300}"
 # of the account ends by itself, a logged-in shell or SFTP session does not):
 # how long a convert or revert waits for them before skipping.
 _IDS_WAIT_MAX="${_INSTGRP_IDS_WAIT_MAX:-60}"
+# A limited-shell worker pass already running when convert or revert takes
+# the lock: how long they wait for it to end before refusing (the nightly
+# waits the same bound for it).
+_WORKER_WAIT_MAX="${_INSTGRP_WORKER_WAIT_MAX:-180}"
 # A non-numeric override would break the wait loops' tests: take the default.
 [[ "${_WAIT_MAX}" =~ ^[0-9]+$ ]] || _WAIT_MAX=300
 [[ "${_IDS_WAIT_MAX}" =~ ^[0-9]+$ ]] || _IDS_WAIT_MAX=60
+[[ "${_WORKER_WAIT_MAX}" =~ ^[0-9]+$ ]] || _WORKER_WAIT_MAX=180
 _FROM_OCTOPUS=NO
 _FORCE=NO
 _KEEP_ENABLED=NO
@@ -673,7 +681,7 @@ _do_check() {
 _reap_own_stale_lock() {
   local _held
   [ -s "/run/boa_run.pid" ] || return 0
-  _held=$(tr -cd '0-9' < /run/boa_run.pid 2> /dev/null)
+  _held=$(tr -cd '0-9' 2> /dev/null < /run/boa_run.pid)
   [ -n "${_held}" ] || return 0
   kill -0 "${_held}" 2> /dev/null && return 0
   rm -f /run/boa_run.pid
@@ -681,11 +689,55 @@ _reap_own_stale_lock() {
   _log "reaped a stale run lock left by a killed instgrp (pid ${_held})"
 }
 
+# The limited-shell worker tests /run/boa_run.pid only when a pass starts and
+# then moves primary groups and re-groups account paths for the rest of it, so
+# the lock keeps a new pass out but not one already running. Its pid file
+# names its pid and a killed pass leaves it behind until clear.sh sweeps it:
+# only a live pid counts (the nightly's test).
+_worker_live() {
+  local _wp
+  [ -s "/run/manage_ltd_users.pid" ] || return 1
+  _wp=$(tr -cd '0-9' 2> /dev/null < /run/manage_ltd_users.pid)
+  [ -n "${_wp}" ] && kill -0 "${_wp}" 2> /dev/null
+}
+
+# Called with the lock held: the worker re-tests the lock once its pid is
+# written, so of a pass starting now and this wait one always sees the other.
+_wait_worker() {
+  local _w=0
+  while _worker_live; do
+    if [ "${_w}" -ge "${_WORKER_WAIT_MAX}" ]; then
+      return 1
+    fi
+    [ "${_w}" -eq 0 ] && _msg "the limited-shell worker is running, waiting up to ${_WORKER_WAIT_MAX}s..."
+    sleep 5
+    _w=$((_w + 5))
+  done
+  return 0
+}
+
 # Another BOA run must not overlap an identity change: the wrappers refuse to
 # start while /run/boa_run.pid exists, so holding it here gives the same mutual
 # exclusion and makes run-xdrago defer. The octopus arm already holds it.
 _lock_gate() {
   if [ "${_FROM_OCTOPUS}" = "YES" ]; then
+    # the wrapper takes the lock once and each account's post-cleanup
+    # removes it, so from the second account of a sweep on it is gone: taken
+    # again here, as the operator path takes it, and released at exit only
+    # while it still names this run
+    if [ ! -e "/run/boa_run.pid" ] \
+      && ( set -C; echo "$$" > /run/boa_run.pid ) 2> /dev/null; then
+      _HELD_LOCK=YES
+      trap '[ "${_HELD_LOCK}" = "YES" ] && [ "$(tr -cd 0-9 2> /dev/null < /run/boa_run.pid)" = "$$" ] && rm -f /run/boa_run.pid' EXIT
+    fi
+    # the lock keeps a new worker pass out, not one already running: waited
+    # for the same way, and one still running is a busy account the upgrade
+    # report names (the next pass converts it)
+    if ! _wait_worker; then
+      _alrt "${_TARGET}: the limited-shell worker is still running after ${_WORKER_WAIT_MAX}s (/run/manage_ltd_users.pid), skipped this pass"
+      _log "${_TARGET}: SKIP busy worker"
+      exit 4
+    fi
     return 0
   fi
   _reap_own_stale_lock
@@ -696,6 +748,9 @@ _lock_gate() {
   echo "$$" > /run/boa_run.pid
   _HELD_LOCK=YES
   trap '[ "${_HELD_LOCK}" = "YES" ] && rm -f /run/boa_run.pid' EXIT
+  # the EXIT trap releases the lock on this refusal too
+  _wait_worker \
+    || _die "the limited-shell worker is still running after ${_WORKER_WAIT_MAX}s (/run/manage_ltd_users.pid); retry later"
 }
 
 # A backend task already running as the account bootstraps with the old group

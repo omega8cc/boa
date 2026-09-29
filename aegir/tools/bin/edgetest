@@ -581,7 +581,8 @@ _phase_regression() {
     local _p _ports="22" _cnf_port _sshd_ports
     _cnf_port=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
       | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
-    _sshd_ports=$(/usr/sbin/sshd -T 2>/dev/null | awk '/^port /{print $2}')
+    # The keyword's case varies by build (OpenSSH 10.5 prints "Port 22").
+    _sshd_ports=$(/usr/sbin/sshd -T 2>/dev/null | awk 'tolower($1) == "port" {print $2}')
     for _p in ${_cnf_port} ${_sshd_ports}; do
       if [[ "${_p}" =~ ^[0-9]+$ ]] && [[ ! " ${_ports} " =~ " ${_p} " ]]; then
         _ports="${_ports} ${_p}"
