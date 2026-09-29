@@ -50,6 +50,15 @@
 
 @=> Security
 
+    * xmass prep-target no longer takes over an unrelated account of the
+      same name on the target: an account no create of the migration
+      marked is taken only when it carries no site or relays to the source
+      (a failback box), and any other is refused before the target is
+      changed, with the command that marks it by hand.
+
+    * xoct and xcopy import no longer print a site's database password in
+      their output; an empty-credentials alert says only whether it is set.
+
     * autosymlink no longer follows a link an account plants: the nightly
       orphan sweep and the store archive of a deleted or renamed site could
       be pointed at another account's files and move its live stores into
@@ -968,6 +977,41 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * xmass prep-target mirrors an account's suspension flag only after the
+      account's create succeeded, and a flag it cannot mirror or clear fails
+      the account: a failed create set or cleared the flag of the target's
+      account of that name.
+
+    * xoct and xcopy import load the site databases, create their users and
+      build the account's PHP pools before the rename, and xoct lifts its
+      export 503 gate there too: the rename's site verifies failed without
+      the database users, and its serving check waited three minutes on
+      every renamed site, so an import on a test pair took over twice as
+      long. The site verifies after the rename wait for the rename's own
+      tasks, a site the rename loses is counted as failed, and a failed
+      rename puts the 503 gate back.
+
+    * xmass compares the tree serial of both boxes' release stamps as well as
+      the release label, and refuses a box whose label and serial name
+      different releases, whichever way round: such a box read as current to
+      every check. A box last upgraded before BOA-5.8.5 carries no serial and
+      is refused until a full upgrade stamps one.
+
+    * xmass prep-target checks the release before it purges the target's
+      site-less target-only accounts: a target it then refused had already
+      lost them.
+
+    * A server verify that cannot connect to the database server no longer
+      records the server as lacking 4-byte UTF-8 support: every settings.php
+      written after it lost its utf8mb4 charset, and a site or the control
+      panel then failed to store a 4-byte character. Seen after an import
+      whose panel still carried the source's database password.
+
+    * A new account's first control panel import no longer fails when it
+      runs before its platform's first verify: the panel site keeps the
+      install profile it records, where the site record used to be saved
+      without one and the import task failed.
 
     * boa cleanup purge now drops the instance's database users when the
       account's database host is set to this box's own IP, as the Octopus
