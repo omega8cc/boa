@@ -5,10 +5,10 @@
 # scan_nginx instead appends it (with an expiry) to an nginx-native store, and this
 # tool prunes the expired entries and emits the still-active ones as `<ip6> 1;`
 # into /data/conf/nginx_banned_ips.conf6 — picked up by the SAME
-# `geo $remote_addr $is_banned` set (its wildcard `nginx_banned_ips.c*` include
-# already covers this file) that nginx_deny.sh feeds for IPv4, and dropped with a
-# 444 by the guard in the vhost template.  Idempotent: only rewrites + reloads
-# when the set changes.
+# `geo $remote_addr $is_banned` set (its `nginx_banned_ips.conf[6]` include, or
+# the older `.c*` glob, names this file) that nginx_deny.sh feeds for IPv4,
+# and dropped with a 444 by the guard in the vhost template.  Idempotent: only
+# rewrites + reloads when the set changes.
 #
 # IPv6 can only reach $remote_addr via the trusted realip proxy (BOA disables IPv6
 # server-side and pins realip to the Cloudflare ranges), so a banned v6 is always
@@ -22,9 +22,10 @@ _store="/var/xdrago/monitor/log/web6.tempban"
 _out_dir="/data/conf"
 _out_name="nginx_banned_ips.conf6"
 _out_file="${_out_dir}/${_out_name}"
-# Leading-dot backup (and put names) so the `nginx_banned_ips.c*` include glob
-# never picks them up; the install renames inside the directory, so it is
-# atomic.
+# Leading-dot backup (and put names) so no include ever picks them up (a
+# server config rendered before the exact-name patterns still carries the
+# `nginx_banned_ips.c*` glob); the install renames inside the directory, so
+# it is atomic.
 _backup_name=".nginx_banned_ips6.last_good.conf"
 _store_tmp="${_store}.tmp.$$"
 # Shared advisory lock so all BOA nginx-config writers (ip_access /
