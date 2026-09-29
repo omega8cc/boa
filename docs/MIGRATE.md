@@ -49,8 +49,10 @@ indices) where per-account mydumper/myloader cycles would be impractical.
   stale tooling. The tool executing the command refreshes on its next verb,
   not mid-run.
 - **Same release on both ends.** `xmass prep-target` compares both boxes' BOA
-  release stamps and refuses a migration across releases, with no override
-  (see MIGRATE-XMASS.md Prerequisites for the reason and the fix).
+  release stamps, the release label and the tree serial, and refuses a
+  migration across releases, or from or to a box whose label and serial name
+  different releases, with no override (see MIGRATE-XMASS.md Prerequisites
+  for the reason and the fix).
 
 ## Rename helper: renameaegirhost
 
@@ -61,6 +63,11 @@ indices) where per-account mydumper/myloader cycles would be impractical.
 migrations never need a direct invocation. Run it directly only for an
 in-place identity change (renaming a cloned VM, moving a box to a new FQDN) or
 to resume a partial rename; inline `--help` describes each step.
+
+`xoct import` and `xcopy import` load the sites' databases, create their
+database users and build the account's PHP pools before they call it (xoct
+also lifts the account's export 503 gate), so the rename's site verifies and
+its serving gate meet sites that can answer.
 
 Before any in-place rewrite begins, the plain pre-rename database dump is
 verified complete — exit status plus the dumper's closing marker — and the

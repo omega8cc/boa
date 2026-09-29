@@ -284,22 +284,63 @@ _main() {
   # clients likewise, /home/<ltd>/sites -> ~oN/clients/<client>
   # (manage_ltd_users.sh:784) -- and the allowlist below advertises /home/*.
   # So do not refuse a symlinked target outright: always SHOW where it really
-  # went (the summary only says so after the chmod), and refuse only a
-  # resolution that CROSSES accounts or reaches /var/aegir from outside it.
+  # went (the summary only says so after the chmod), and refuse a resolution
+  # that CROSSES accounts, reaches /var/aegir from outside it, or comes
+  # through a link from a path no single account holds.
   _acct_seg() {
     case "$1" in
       /data/disk/*/*) printf '%s' "${1#/data/disk/}" | cut -d/ -f1 ;;
       *)              printf '' ;;
     esac
   }
+  # A /home/<user>/... argument reaches a codebase only through the account's
+  # own BOA-made home link (static -> ~oN/static, sites -> ~oN/clients/<client>).
+  # _acct_seg reads nothing from a /home path, so the account it belongs to is
+  # the home directory's name up to the first dot (oN.ftp, oN.<client>[-dev],
+  # oN[.NN].web -- all the account's own identities): /home is root's and BOA
+  # names each home after its identity, so the tenant cannot change it. A
+  # resolved target must stay inside that account.
+  _home_acct() {
+    local _u
+    case "$1" in
+      /home/*) _u="${1#/home/}"; _u="${_u%%/*}"; printf '%s' "${_u%%.*}" ;;
+      *)       printf '' ;;
+    esac
+  }
   if [ -n "${_GIVEN}" ] && [ "${_GIVEN}" != "${_REPO_ROOT}" ]; then
     printf 'Note: %s resolves to %s\n' "${_GIVEN}" "${_REPO_ROOT}"
     _GIVEN_ACCT="$(_acct_seg "${_GIVEN}")"
     _REAL_ACCT="$(_acct_seg "${_REPO_ROOT}")"
+    case "${_GIVEN}" in
+      /home/*) _GIVEN_ACCT="$(_home_acct "${_GIVEN}")" ;;
+    esac
     if [ "${_ALLOW_SYMLINKED_TARGET:-NO}" != "YES" ]; then
-      if [ -n "${_GIVEN_ACCT}" ] && [ "${_GIVEN_ACCT}" != "${_REAL_ACCT}" ]; then
-        _die "Refusing ${_GIVEN}; it resolves into a different account (${_REPO_ROOT})"
-      fi
+      # A link is followed only from where it stays inside one account: an
+      # argument under /data/disk/<user>/ or /home/<user>/ must resolve inside
+      # that same account, and one under /var/aegir/ inside /var/aegir/ (the
+      # master site's files/ and sites/all/ there are writable by every
+      # account, so a link in them is no proof of aegir's intent). Any
+      # other argument reached through a link (/var/www, /tmp, /opt/user ...)
+      # names no account the link could be held to, so it is refused: the
+      # tenant can put or repoint such a link, and a resolution into another
+      # account hands g+rwX -- and, while the account still carries the
+      # box-wide 'users' group, cross-tenant write -- to a foreign tree.
+      case "${_GIVEN}" in
+        /var/aegir/*)
+          case "${_REPO_ROOT}/" in
+            /var/aegir/*) ;;
+            *) _die "Refusing ${_GIVEN}; it resolves outside /var/aegir (${_REPO_ROOT})" ;;
+          esac
+          ;;
+        /data/disk/?*/*|/home/?*/*)
+          if [ -z "${_GIVEN_ACCT}" ] || [ "${_GIVEN_ACCT}" != "${_REAL_ACCT}" ]; then
+            _die "Refusing ${_GIVEN}; it resolves outside its account (${_REPO_ROOT})"
+          fi
+          ;;
+        *)
+          _die "Refusing ${_GIVEN}; a link from outside /data/disk/<user>, /home/<user> or /var/aegir is not followed (${_REPO_ROOT})"
+          ;;
+      esac
       case "${_GIVEN}" in
         /var/aegir/*) : ;;
         *)

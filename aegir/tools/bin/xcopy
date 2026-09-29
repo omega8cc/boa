@@ -452,6 +452,18 @@ _disable_chattr() {
   fi
 }
 
+### The --runner-wait option of a forced verify in an import's verify stage:
+### what is left of one budget for the whole stage, set where the panel's
+### hosting knows the option; nothing once 30 s or less is left, or without
+### the option (hosting's own 30 s default applies then).
+_xcopy_runner_wait_opt() {
+  local _w
+  [ -n "${_XCOPY_RUNNER_UNTIL}" ] || return 0
+  _w=$(( _XCOPY_RUNNER_UNTIL - $(date +%s) ))
+  [ "${_w}" -gt 30 ] || return 0
+  printf ' --runner-wait=%s' "${_w}"
+}
+
 _run_drush8_hmr_cmd() {
   su -s /bin/bash - ${_THIS_HM_USER} -c "drush8 @hostmaster $1"
   wait
@@ -557,17 +569,55 @@ _migrate_sites() {
           _OWN_DB=YES
         fi
       fi
-      if [ "${_cmd}" = "import" ] && [ "${_DIR_OK}" != "YES" ]; then
+      ### An import loads the sites before the rename (stage load) and
+      ### verifies them after it (stage verify). A site is known across the
+      ### rename by the device and inode of its directory, which the rename
+      ### moves without copying: one the load stage saw only gets its verify
+      ### here, when its load was clean; one it never saw is loaded and
+      ### verified here as a single-stage import does. A site_path the load
+      ### stage cannot enter is judged here, after the rename, which may
+      ### reinstate it.
+      _SIDN=""
+      _SITE_SEEN=NO
+      if [ "${_cmd}" = "import" ] && [ -n "${_XCOPY_SITES_STAGE}" ] \
+        && [ "${_DIR_OK}" = "YES" ]; then
+        _SIDN=$(_xcopy_in_real_dir "${_Dir}" stat -c %d:%i . 2> /dev/null)
+        _SIDN=${_SIDN//[^0-9:]/}
+        if [ "${_XCOPY_SITES_STAGE}" = "verify" ] && [ -n "${_SIDN}" ]; then
+          case " ${_XCOPY_SEEN_DIRS} " in
+            *" ${_SIDN} "*) _SITE_SEEN=YES ;;
+          esac
+        fi
+      fi
+      if [ "${_SITE_SEEN}" = "YES" ]; then
+        _XCOPY_MET_DIRS="${_XCOPY_MET_DIRS} ${_SIDN}"
+        case " ${_XCOPY_LOADED_DIRS} " in
+          *" ${_SIDN} "*)
+            _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force$(_xcopy_runner_wait_opt)"
+            echo "INFO: site ${_Dom} verify on ${_oct} scheduled"
+          ;;
+          *)
+            echo "ALRT: site ${_Dom} verify NOT scheduled on ${_oct}: db import did not complete"
+          ;;
+        esac
+      elif [ "${_cmd}" = "import" ] && [ "${_DIR_OK}" != "YES" ] \
+        && [ "${_XCOPY_SITES_STAGE}" = "load" ]; then
+        _XCOPY_DEFERRED_N=$(( _XCOPY_DEFERRED_N + 1 ))
+        echo "INFO: site ${_Dom} on ${_oct}: site_path not entered before the rename; judged after it"
+      elif [ "${_cmd}" = "import" ] && [ "${_DIR_OK}" != "YES" ]; then
+        [ "${_XCOPY_SITES_STAGE}" = "verify" ] && _XCOPY_DEFER_MET=$(( _XCOPY_DEFER_MET + 1 ))
         _XCOPY_SITE_IMPORT_OK=NO
         _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + 1 ))
         _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_Dom}:site-path-refused"
         echo "ALRT: site ${_Dom} on ${_oct}: NOT imported (site_path refused)"
       elif [ "${_cmd}" = "import" ]; then
+        [ "${_XCOPY_SITES_STAGE}" = "load" ] && [ -n "${_SIDN}" ] \
+          && _XCOPY_SEEN_DIRS="${_XCOPY_SEEN_DIRS} ${_SIDN}"
+        [ "${_XCOPY_SITES_STAGE}" = "verify" ] && _XCOPY_DEFER_MET=$(( _XCOPY_DEFER_MET + 1 ))
         if [ "${_DBP}" != "${_DBP_LIT}" ]; then
           echo "ALRT: site ${_Dom} db_passwd carries characters outside the generated-password charset; not re-created here, fix its credentials by hand"
           _DBP=""
         fi
-        echo "site ${_Dom} clean _DBP is ${_DBP}"
         # vhost.d is oN's: the saved dot-file is renamed over the live name
         # inside the real directory, so a link at either name is never followed.
         _xcopy_in_real_dir "${_Vht%/*}" mv -f -T -- "./.${_Dom}" "./${_Dom}" 2> /dev/null
@@ -722,10 +772,18 @@ EOFMYSQL
           fi
           ### A verify over a failed import regenerates settings/vhost around
           ### a database that is not there -- schedule it only for clean loads.
+          ### Before the rename (stage load) a clean load is only recorded:
+          ### its verify runs after the rename, under the site's name there.
           if [ "${_XCOPY_SITE_IMPORT_OK}" != "YES" ]; then
-            echo "ALRT: site ${_Dom} verify NOT scheduled on ${_oct}: db import did not complete"
+            [ "${_XCOPY_SITES_STAGE}" = "load" ] \
+              || echo "ALRT: site ${_Dom} verify NOT scheduled on ${_oct}: db import did not complete"
+          elif [ "${_XCOPY_SITES_STAGE}" = "load" ]; then
+            if [ -n "${_SIDN}" ]; then
+              _XCOPY_LOADED_DIRS="${_XCOPY_LOADED_DIRS} ${_SIDN}"
+              _XCOPY_LOADED_NAMES="${_XCOPY_LOADED_NAMES} ${_SIDN}=${_Dom}"
+            fi
           elif [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
-            _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force"
+            _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force$(_xcopy_runner_wait_opt)"
             echo "INFO: site ${_Dom} verify on ${_oct} scheduled"
           else
             echo "ALRT: site ${_Dom} verify failure due to missing ${_USR}/.drush/${_Dom}.alias.drushrc.php"
@@ -736,7 +794,7 @@ EOFMYSQL
           _XCOPY_SITE_IMPORT_OK=NO
           _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + 1 ))
           _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_Dom}:empty-db-credentials"
-          echo "ALRT: site ${_Dom} db failure due to empty _DBN/${_DBN} or _DBP/${_DBP}"
+          echo "ALRT: site ${_Dom} db failure due to an empty database name (${_DBN:-empty}) or password ($([ -n "${_DBP}" ] && echo set || echo empty))"
         fi
       elif [ "${_cmd}" = "export" ]; then
         if [ -x "/usr/local/bin/mydumper" ]; then
@@ -1407,6 +1465,14 @@ _migrate_prepare() {
       exit 1
     fi
   fi
+  _XCOPY_SITES_STAGE=""
+  _XCOPY_SEEN_DIRS=""
+  _XCOPY_LOADED_DIRS=""
+  _XCOPY_LOADED_NAMES=""
+  _XCOPY_MET_DIRS=""
+  _XCOPY_RUNNER_UNTIL=""
+  _XCOPY_DEFERRED_N=0
+  _XCOPY_DEFER_MET=0
   if [ "${_cmd}" = "import" ] \
     && [ -e "${_USR}/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -z "${_HDB}" ] \
@@ -1570,6 +1636,17 @@ _migrate_prepare() {
       _run_drush8_hmr_cmd "${_vSet} hosting_client_send_welcome 0" &> /dev/null
     fi
 
+    ### The sites' databases and their users and the account's PHP pools come
+    ### before the rename: its queue verifies every renamed site and its
+    ### serving gate then probes each one, and a site whose database user
+    ### does not exist yet fails that verify, as a site without a live pool
+    ### fails the probe for its whole wait. The verify of each clean load is
+    ### scheduled after the rename, under the site's name there (the second
+    ### _migrate_sites below).
+    _XCOPY_SITES_STAGE=load
+    _migrate_sites
+    _xcopy_heal_fpm_pins "${_THIS_HM_USER}"
+
     ###
     ### Rename all source-hostname references in this Aegir instance to the
     ### FQDN of the current (target) server. renameaegirhost:
@@ -1609,8 +1686,8 @@ _migrate_prepare() {
     fi
     if [ "${_RAH_RC}" -ne 0 ]; then
       echo "ERROR: renameaegirhost failed (rc=${_RAH_RC}) for ${_USR} -- this import is INCOMPLETE"
-      echo "ERROR: every import step after the rename was skipped: the per-site database"
-      echo "ERROR: loads, db_host and vhost fixes and verifies, and the pinned PHP pool rebuild"
+      echo "ERROR: every import step after the rename was skipped: the site verifies, the cache"
+      echo "ERROR: flush and the pinned PHP pool rebuild for the renamed sites"
       echo "ERROR: recovery -- fix the cause, then re-run the FULL import:"
       echo "ERROR:   rm ${_USR}/log/imported.pid"
       echo "ERROR:   xcopy import ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}"
@@ -1703,6 +1780,19 @@ _migrate_prepare() {
       exit 1
     fi
   fi
+  ### An import whose sites were loaded before the rename schedules their
+  ### verifies here; any other import loads and verifies here, as before.
+  if [ "${_cmd}" = "import" ] && [ "${_XCOPY_SITES_STAGE}" = "load" ]; then
+    _XCOPY_SITES_STAGE=verify
+    ### The rename's own queue can still hold the instance's task runner
+    ### when the verifies start; a forced verify waits for it up to this
+    ### long, where the panel's hosting knows the option (30 s by default,
+    ### then the task is left for the next dispatch, after post-mig).
+    _XCOPY_HOST_INC="${_THIS_HM_SITE%/sites/*}/profiles/hostmaster/modules/aegir/hosting"
+    if _xcopy_read_in "${_XCOPY_HOST_INC}" hosting.drush.inc | grep -q "'runner-wait' => array"; then
+      _XCOPY_RUNNER_UNTIL=$(( $(date +%s) + 600 ))
+    fi
+  fi
   if [ "${_cmd}" = "import" ] \
     || [ "${_cmd}" = "export" ] \
     || [ "${_cmd}" = "fooproxy" ]; then
@@ -1731,6 +1821,25 @@ _migrate_prepare() {
     fi
   fi
   if [ "${_cmd}" = "import" ]; then
+    ### Every site loaded before the rename must have been met after it,
+    ### under its name there: one the rename left unreachable (its alias or
+    ### vhost not moved) got no verify, and the import is not complete.
+    for _SIDN in ${_XCOPY_LOADED_DIRS}; do
+      case " ${_XCOPY_MET_DIRS} " in
+        *" ${_SIDN} "*) continue ;;
+      esac
+      _Dom=$(printf '%s\n' ${_XCOPY_LOADED_NAMES} | grep -m1 "^${_SIDN}=" | cut -d= -f2-)
+      _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + 1 ))
+      _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_Dom:-${_SIDN}}:not-found-after-rename"
+      echo "ALRT: site ${_Dom:-${_SIDN}} on ${_oct}: loaded before the rename but not found after it; no verify"
+    done
+    ### and every site whose site_path the load stage could not enter must
+    ### have been judged after it
+    if [ "${_XCOPY_DEFERRED_N}" -gt "${_XCOPY_DEFER_MET}" ]; then
+      _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + _XCOPY_DEFERRED_N - _XCOPY_DEFER_MET ))
+      _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} deferred-not-found-after-rename"
+      echo "ALRT: $(( _XCOPY_DEFERRED_N - _XCOPY_DEFER_MET )) site(s) whose site_path could not be entered before the rename were not found after it"
+    fi
     # Harsh cache flush so any copied D8+ site drops the source box's stale
     # container and bootstraps clean on this box.
     _xcopy_flush_caches_target

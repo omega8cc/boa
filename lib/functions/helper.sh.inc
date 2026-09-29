@@ -978,6 +978,9 @@ _mode_detection() {
         _FULL_FORCE_REINSTALL=YES
         _ZOMBIE_HOME="${_vBs}/zombie/${_X_VERSION}-${_NOW}"
         mkdir -p ${_ZOMBIE_HOME}
+        # root's alone, as every other park: what keeps an old number below
+        # (see the hand-over after deluser) is reachable by nobody else
+        chmod 0700 "${_ZOMBIE_HOME}" &> /dev/null
         mv -f /etc/nginx/conf.d/* ${_ZOMBIE_HOME}/ &> /dev/null
         mv -f /var/aegir ${_ZOMBIE_HOME}/ &> /dev/null
         mv -f /var/xdrago ${_ZOMBIE_HOME}/ &> /dev/null
@@ -993,9 +996,18 @@ _mode_detection() {
         # only this user's agent: -f matched every gpg-agent on the box
         id -u aegir &> /dev/null && pkill -9 -u aegir gpg-agent &> /dev/null
         deluser aegir &> /dev/null
-        # the parked master keeps no number deluser just freed: the next
-        # account created could be given it
-        chown -R -h -P root:root "${_ZOMBIE_HOME}" &> /dev/null
+        # The number deluser just freed could be given to the next account
+        # created, so the moved tree goes to root. It holds directories every
+        # account can write -- sites/all/{modules,libraries,themes} (group
+        # users) and the site's files/ (group www-data) -- so a name there can
+        # be a file an account hard-linked in before the move. Hand it over
+        # through a handle that never follows a link and never hands over a
+        # hard-linked file (a directory, or a regular file with a single link
+        # only), the way _master_reown_in walks the live master, so no
+        # account's file is handed to root. A hard-linked file, a link or a
+        # FIFO keeps its old owner, freed number included, inside the
+        # root-only park.
+        _master_reown_in "${_ZOMBIE_HOME}" root:root &> /dev/null
         rm -f /usr/bin/drush
       else
         ###--------------------###

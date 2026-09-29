@@ -862,6 +862,18 @@ _disable_chattr() {
   fi
 }
 
+### The --runner-wait option of a forced verify in an import's verify stage:
+### what is left of one budget for the whole stage, set where the panel's
+### hosting knows the option; nothing once 30 s or less is left, or without
+### the option (hosting's own 30 s default applies then).
+_xoct_runner_wait_opt() {
+  local _w
+  [ -n "${_XOCT_RUNNER_UNTIL}" ] || return 0
+  _w=$(( _XOCT_RUNNER_UNTIL - $(date +%s) ))
+  [ "${_w}" -gt 30 ] || return 0
+  printf ' --runner-wait=%s' "${_w}"
+}
+
 _run_drush8_hmr_cmd() {
   su -s /bin/bash - ${_THIS_HM_USER} -c "drush8 @hostmaster $1"
   wait
@@ -1932,17 +1944,55 @@ _migrate_sites() {
           _OWN_DB=YES
         fi
       fi
-      if [ "${_cmd}" = "import" ] && [ "${_DIR_OK}" != "YES" ]; then
+      ### An import loads the sites before the rename (stage load) and
+      ### verifies them after it (stage verify). A site is known across the
+      ### rename by the device and inode of its directory, which the rename
+      ### moves without copying: one the load stage saw only gets its verify
+      ### here, when its load was clean; one it never saw is loaded and
+      ### verified here as a single-stage import does. A site_path the load
+      ### stage cannot enter is judged here, after the rename, which may
+      ### reinstate it.
+      _SIDN=""
+      _SITE_SEEN=NO
+      if [ "${_cmd}" = "import" ] && [ -n "${_XOCT_SITES_STAGE}" ] \
+        && [ "${_DIR_OK}" = "YES" ]; then
+        _SIDN=$(_xoct_in_real_dir "${_Dir}" stat -c %d:%i . 2> /dev/null)
+        _SIDN=${_SIDN//[^0-9:]/}
+        if [ "${_XOCT_SITES_STAGE}" = "verify" ] && [ -n "${_SIDN}" ]; then
+          case " ${_XOCT_SEEN_DIRS} " in
+            *" ${_SIDN} "*) _SITE_SEEN=YES ;;
+          esac
+        fi
+      fi
+      if [ "${_SITE_SEEN}" = "YES" ]; then
+        _XOCT_MET_DIRS="${_XOCT_MET_DIRS} ${_SIDN}"
+        case " ${_XOCT_LOADED_DIRS} " in
+          *" ${_SIDN} "*)
+            _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force$(_xoct_runner_wait_opt)"
+            echo "INFO: site ${_Dom} verify on ${_oct} scheduled"
+          ;;
+          *)
+            echo "ALRT: site ${_Dom} verify NOT scheduled on ${_oct}: db import did not complete"
+          ;;
+        esac
+      elif [ "${_cmd}" = "import" ] && [ "${_DIR_OK}" != "YES" ] \
+        && [ "${_XOCT_SITES_STAGE}" = "load" ]; then
+        _XOCT_DEFERRED_N=$(( _XOCT_DEFERRED_N + 1 ))
+        echo "INFO: site ${_Dom} on ${_oct}: site_path not entered before the rename; judged after it"
+      elif [ "${_cmd}" = "import" ] && [ "${_DIR_OK}" != "YES" ]; then
+        [ "${_XOCT_SITES_STAGE}" = "verify" ] && _XOCT_DEFER_MET=$(( _XOCT_DEFER_MET + 1 ))
         _XOCT_SITE_IMPORT_OK=NO
         _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
         _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_Dom}:site-path-refused"
         echo "ALRT: site ${_Dom} on ${_oct}: NOT imported (site_path refused)"
       elif [ "${_cmd}" = "import" ]; then
+        [ "${_XOCT_SITES_STAGE}" = "load" ] && [ -n "${_SIDN}" ] \
+          && _XOCT_SEEN_DIRS="${_XOCT_SEEN_DIRS} ${_SIDN}"
+        [ "${_XOCT_SITES_STAGE}" = "verify" ] && _XOCT_DEFER_MET=$(( _XOCT_DEFER_MET + 1 ))
         if [ "${_DBP}" != "${_DBP_LIT}" ]; then
           echo "ALRT: site ${_Dom} db_passwd carries characters outside the generated-password charset; not re-created here, fix its credentials by hand"
           _DBP=""
         fi
-        echo "site ${_Dom} clean _DBP is ${_DBP}"
         ### vhost.d is oN's: the saved dot-file is renamed over the live name
         ### inside the real directory, so a link at either name is never
         ### followed and the file is never moved into a linked directory.
@@ -2101,10 +2151,18 @@ EOFMYSQL
           fi
           ### A verify over a failed import regenerates settings/vhost around
           ### a database that is not there -- schedule it only for clean loads.
+          ### Before the rename (stage load) a clean load is only recorded:
+          ### its verify runs after the rename, under the site's name there.
           if [ "${_XOCT_SITE_IMPORT_OK}" != "YES" ]; then
-            echo "ALRT: site ${_Dom} verify NOT scheduled on ${_oct}: db import did not complete"
+            [ "${_XOCT_SITES_STAGE}" = "load" ] \
+              || echo "ALRT: site ${_Dom} verify NOT scheduled on ${_oct}: db import did not complete"
+          elif [ "${_XOCT_SITES_STAGE}" = "load" ]; then
+            if [ -n "${_SIDN}" ]; then
+              _XOCT_LOADED_DIRS="${_XOCT_LOADED_DIRS} ${_SIDN}"
+              _XOCT_LOADED_NAMES="${_XOCT_LOADED_NAMES} ${_SIDN}=${_Dom}"
+            fi
           elif [ -e "${_USR}/.drush/${_Dom}.alias.drushrc.php" ]; then
-            _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force"
+            _run_drush8_hmr_cmd "hosting-task @${_Dom} verify --force$(_xoct_runner_wait_opt)"
             echo "INFO: site ${_Dom} verify on ${_oct} scheduled"
           else
             echo "ALRT: site ${_Dom} verify failure due to missing ${_USR}/.drush/${_Dom}.alias.drushrc.php"
@@ -2115,7 +2173,7 @@ EOFMYSQL
           _XOCT_SITE_IMPORT_OK=NO
           _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
           _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_Dom}:empty-db-credentials"
-          echo "ALRT: site ${_Dom} db failure due to empty _DBN/${_DBN} or _DBP/${_DBP}"
+          echo "ALRT: site ${_Dom} db failure due to an empty database name (${_DBN:-empty}) or password ($([ -n "${_DBP}" ] && echo set || echo empty))"
         fi
       elif [ "${_cmd}" = "export" ]; then
         ###
@@ -4082,6 +4140,14 @@ _migrate_prepare() {
       exit 1
     fi
   fi
+  _XOCT_SITES_STAGE=""
+  _XOCT_SEEN_DIRS=""
+  _XOCT_LOADED_DIRS=""
+  _XOCT_LOADED_NAMES=""
+  _XOCT_MET_DIRS=""
+  _XOCT_RUNNER_UNTIL=""
+  _XOCT_DEFERRED_N=0
+  _XOCT_DEFER_MET=0
   if [ "${_cmd}" = "import" ] \
     && [ -e "${_USR}/config/includes/nginx_vhost_common.conf" ] \
     && [ ! -z "${_HDB}" ] \
@@ -4229,6 +4295,28 @@ _migrate_prepare() {
       _run_drush8_hmr_cmd "${_vSet} hosting_client_send_welcome 0" &> /dev/null
     fi
 
+    ### The sites' databases and their users, the account's PHP pools and the
+    ### lifted 503 gate all come before the rename: its queue verifies every
+    ### renamed site and its serving gate then probes each one, and a site
+    ### whose database user does not exist yet fails that verify, as a site
+    ### without a live pool, or behind the gate, fails the probe for its whole
+    ### wait. The verify of each clean load is scheduled after the rename,
+    ### under the site's name there (the second _migrate_sites below). A
+    ### failed rename puts the gate back.
+    _XOCT_SITES_STAGE=load
+    _migrate_sites
+    _xoct_heal_fpm_pins "${_THIS_HM_USER}"
+    _XOCT_GATE_LIFTED=""
+    if _xoct_in_real_dir "${_USR}/static/control" test -f ./http-off.pid; then
+      _XOCT_GATE_TTL=$(_xoct_read_in "${_USR}/static/control" http-off.pid | tr -cd '0-9' | cut -c1-9)
+      _xoct_in_real_dir "${_USR}/static/control" rm -f -- ./http-off.pid
+      _XOCT_GATE_LIFTED=YES
+      if [ -d "/var/lib/nginx/speed" ]; then
+        find /var/lib/nginx/speed -type f -delete &> /dev/null
+      fi
+      echo "INFO: account ${_THIS_HM_USER} 503 gate lifted for the rename's serving check"
+    fi
+
     ###
     ### Rename all source-hostname references in this Aegir instance to the
     ### FQDN of the current (target) server. renameaegirhost:
@@ -4275,10 +4363,28 @@ _migrate_prepare() {
       _RAH_RC=1
     fi
     if [ "${_RAH_RC}" -ne 0 ]; then
+      if [ "${_XOCT_GATE_LIFTED}" = "YES" ]; then
+        ### the put refuses a gate file already there: judged by what is
+        ### there after it
+        _xoct_in_real_dir "${_USR}/static" _xoct_ctrl_dir_here \
+          && _xoct_in_real_dir "${_USR}/static/control" \
+            _xoct_gate_put_here http-off.pid "${_XOCT_GATE_TTL:-3600}" \
+            "${_THIS_HM_USER}:$(_acct_group "${_USR}")"
+        if _xoct_in_real_dir "${_USR}/static/control" test -f ./http-off.pid; then
+          echo "INFO: account ${_THIS_HM_USER} 503 gate put back"
+        else
+          echo "ALRT: account ${_THIS_HM_USER} 503 gate could NOT be put back (static/control/http-off.pid): its sites serve from this box"
+        fi
+        ### what the probes cached while the gate was lifted goes with it
+        if [ -d "/var/lib/nginx/speed" ]; then
+          find /var/lib/nginx/speed -type f -delete &> /dev/null
+        fi
+      fi
       echo "ERROR: renameaegirhost failed (rc=${_RAH_RC}) for ${_USR} — this import is INCOMPLETE"
-      echo "ERROR: every import step after the rename was skipped: the per-site db_host and"
-      echo "ERROR: vhost fixes and the 503-gate removal (static/control/http-off.pid) — the"
-      echo "ERROR: imported panel and sites stay 503-gated until the import tail runs"
+      echo "ERROR: every import step after the rename was skipped: the site verifies, the cache"
+      echo "ERROR: flush, the pinned PHP pool rebuild for the renamed sites and the 503-gate"
+      echo "ERROR: removal (static/control/http-off.pid) — the imported panel and sites stay"
+      echo "ERROR: 503-gated until the import tail runs"
       echo "ERROR: recovery — fix the cause, then re-run the FULL import:"
       echo "ERROR:   rm ${_USR}/log/imported.pid"
       echo "ERROR:   xoct import ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}"
@@ -4561,6 +4667,19 @@ _migrate_prepare() {
       exit 1
     fi
   fi
+  ### An import whose sites were loaded before the rename schedules their
+  ### verifies here; any other import loads and verifies here, as before.
+  if [ "${_cmd}" = "import" ] && [ "${_XOCT_SITES_STAGE}" = "load" ]; then
+    _XOCT_SITES_STAGE=verify
+    ### The rename's own queue can still hold the instance's task runner
+    ### when the verifies start; a forced verify waits for it up to this
+    ### long, where the panel's hosting knows the option (30 s by default,
+    ### then the task is left for the next dispatch, after post-mig).
+    _XOCT_HOST_INC="${_THIS_HM_SITE%/sites/*}/profiles/hostmaster/modules/aegir/hosting"
+    if _xoct_read_in "${_XOCT_HOST_INC}" hosting.drush.inc | grep -q "'runner-wait' => array"; then
+      _XOCT_RUNNER_UNTIL=$(( $(date +%s) + 600 ))
+    fi
+  fi
   if [ "${_cmd}" = "import" ] \
     || [ "${_cmd}" = "export" ] \
     || [ "${_cmd}" = "proxy" ]; then
@@ -4600,6 +4719,25 @@ _migrate_prepare() {
     _xoct_in_real_dir "${_USR}/static/control" rm -f -- ./http-off.pid
     if [ -d "/var/lib/nginx/speed" ]; then
       find /var/lib/nginx/speed -type f -delete &> /dev/null
+    fi
+    ### Every site loaded before the rename must have been met after it,
+    ### under its name there: one the rename left unreachable (its alias or
+    ### vhost not moved) got no verify, and the import is not complete.
+    for _SIDN in ${_XOCT_LOADED_DIRS}; do
+      case " ${_XOCT_MET_DIRS} " in
+        *" ${_SIDN} "*) continue ;;
+      esac
+      _Dom=$(printf '%s\n' ${_XOCT_LOADED_NAMES} | grep -m1 "^${_SIDN}=" | cut -d= -f2-)
+      _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
+      _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_Dom:-${_SIDN}}:not-found-after-rename"
+      echo "ALRT: site ${_Dom:-${_SIDN}} on ${_oct}: loaded before the rename but not found after it; no verify"
+    done
+    ### and every site whose site_path the load stage could not enter must
+    ### have been judged after it
+    if [ "${_XOCT_DEFERRED_N}" -gt "${_XOCT_DEFER_MET}" ]; then
+      _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + _XOCT_DEFERRED_N - _XOCT_DEFER_MET ))
+      _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} deferred-not-found-after-rename"
+      echo "ALRT: $(( _XOCT_DEFERRED_N - _XOCT_DEFER_MET )) site(s) whose site_path could not be entered before the rename were not found after it"
     fi
     # Harsh cache flush so any migrated D8+ site drops the source box's stale
     # container and bootstraps clean on this box.

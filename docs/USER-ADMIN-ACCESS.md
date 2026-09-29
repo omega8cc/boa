@@ -174,6 +174,21 @@ staging.example.com    198.51.100.42 2001:db8:1::1
   markers advance, but the reload and the revert are both skipped until promotion. The whole script holds the shared
   `/run/boa_nginx_config.lock` (`flock -w 30`) so it never overlaps `ip_access` /
   `ai_policy` / `nginx_deny` / `cloudflare_realip`.
+- **Account-owned paths** — the instance owns `config/includes` and `undo/`, so both
+  fragment dirs, the front copies, the markers and the change-gate files are read, written
+  and pruned from inside the pinned real directory through no-follow handles; a link left at
+  any of those names is replaced, never followed.
+- **Control file, aliases and vhosts** — the control file is read only as a copy taken from
+  its own real directory, never through a link and never blocking on a FIFO; one that is
+  not a regular file there is skipped, and its lists are kept as a deleted file's are. The
+  sites' drush aliases and every rendered vhost the front map reads are copied without
+  following a link at their own name or blocking on a FIFO (the instance's `.drush` and
+  `vhost.d` themselves are read where they lead: the instance writes both).
+- **Last-good archive** — `.nginx_user_admin.last_good.bak.tar.gz` stays in the replicated
+  `undo/` (so a promoted standby can restore it) but is never extracted as root: the revert
+  unpacks it into a root-only temporary directory taking no owner and no mode from it,
+  refuses it whole when its files would come to more than 32 MiB written out, and restores
+  only the expected `<site>.conf` fragments, maps first.
 - **Schedule / serial** — `*/2` cron; serial-gated via `_fetch_versioned` in `BOA.sh.txt`
   (decrement its `fNN` on any change).
 
@@ -205,7 +220,8 @@ file.
 
 The copies still follow their sites' names then: a new alias is covered, a name that
 moved to another site is released, and a site with no name of its own left keeps an inert
-copy.
+copy. Only a copy the generator wrote is rewritten; any other file under a copy's name is
+dropped, and the next pass writes the copy again from the frozen map.
 
 They share the instance's
 change-gate and configtest, but are never backed up: a failed configtest or reload drops
