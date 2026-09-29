@@ -50,6 +50,13 @@
 
 @=> Security
 
+    * boa cleanup purge now also drops the purged account's own database
+      users (the instance user and its control panel user, proven from the
+      account's records before anything moves) and moves its migration
+      create marker aside; its databases are kept, as documented.
+    * A remote-database account setup no longer falls back to a fixed
+      password when root's password file is missing.
+
     * xoct and xcopy create no longer take over an unrelated account of the
       same name on the target: create marks the account it installs (bound
       to that account's user ID and home directory), a later create re-seeds
@@ -931,6 +938,11 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * A new account name that starts with a digit is refused at install, as
+      intended: the check never matched.
+    * The Octopus per-account cleanup no longer removes a running limited-
+      shell worker's pid file.
 
     * xcopy import now renames the copied control panel from the source
       host to the target, as xoct import does: the export records the source
