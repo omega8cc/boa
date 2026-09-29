@@ -939,6 +939,10 @@
 
 @=> Important Fixes
 
+    * A server verify's database probes use one name per account: two
+      accounts verifying at the same time no longer remove each other's probe
+      database.
+
     * A new account name that starts with a digit is refused at install, as
       intended: the check never matched.
     * The Octopus per-account cleanup no longer removes a running limited-
