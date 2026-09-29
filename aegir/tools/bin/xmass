@@ -8334,20 +8334,28 @@ _xmass_prepare_target_reach() {
 }
 
 _xmass_boa_release() {
-  ### The release number out of `boa info`'s stamp, e.g. BOA-5.88.855-lts-...
-  ### -> 5.88.844. Empty when it cannot be read, which the caller treats as
-  ### fatal rather than as "probably fine".
+  ### The release number and the release digits of the tree serial out of
+  ### `boa info`'s stamp, e.g. BOA-5.88.855-lts-588855ltsT01 -> "5.88.855
+  ### 588855". The label and the serial come from two sources and can
+  ### disagree. Empty when the stamp cannot be read, which the caller treats
+  ### as fatal rather than as "probably fine".
+  ### The first labelled line is the box's current stamp; an older run's
+  ### stamp further down never stands in for it. A third word carries the
+  ### whole serial for the messages.
   local _where="$1"
-  local _raw
+  local _raw _lbl _srl _full
   if [ "${_where}" = "local" ]; then
-    _raw=$(boa info 2>/dev/null | grep -oE "BOA-[0-9.]+-" | head -1)
+    _raw=$(boa info 2>/dev/null | grep -m1 -E "BOA-[0-9.]+-" | grep -oE "BOA-[0-9.]+-(dev|lts|pro)-[0-9A-Za-z]+" | head -1)
   else
     _raw=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_where}" \
-      "boa info 2>/dev/null | grep -oE 'BOA-[0-9.]+-' | head -1" 2>/dev/null)
+      "boa info 2>/dev/null | grep -m1 -E 'BOA-[0-9.]+-' | grep -oE 'BOA-[0-9.]+-(dev|lts|pro)-[0-9A-Za-z]+' | head -1" 2>/dev/null)
   fi
   _raw="${_raw#BOA-}"
-  _raw="${_raw%-}"
-  echo "${_raw}"
+  _lbl="${_raw%%-*}"
+  _full="${_raw##*-}"
+  _srl="${_full%%[!0-9]*}"
+  [[ "${_lbl}" =~ ^[0-9]+(\.[0-9]+)+$ ]] && [[ "${_srl}" =~ ^[0-9]+$ ]] || return 0
+  echo "${_lbl} ${_srl} ${_full}"
 }
 
 _xmass_assert_same_release() {
@@ -8355,18 +8363,32 @@ _xmass_assert_same_release() {
   ### from every stage that can still refuse for free: 'die' (the default)
   ### refuses, 'deny' reports and marks the DRY run NOT CLEAN so a release
   ### skew shows up in the plan instead of first at --live.
+  ### The tree serial is compared too, by its release digits (the tree word
+  ### and the build suffix after them may differ, as the tree may): a box
+  ### whose release label and tree serial name different releases, in either
+  ### direction, runs another release's tree than its label says. Each box
+  ### must agree with itself, and the two releases must be the same.
   local _t="$1" _on_skew="${2:-die}"
-  local _src _dst _why=""
+  local _src _dst _why="" _sl _ss _sf _dl _ds _df _fix="the OLDER box"
+  local _old="a box last upgraded before BOA-5.8.5 carries no tree serial: a FULL barracuda AND octopus upgrade on it stamps one"
   _src=$(_xmass_boa_release local)
   _dst=$(_xmass_boa_release "${_t}")
+  read -r _sl _ss _sf <<< "${_src}"
+  read -r _dl _ds _df <<< "${_dst}"
   if [ -z "${_src}" ]; then
-    _why="cannot read this box's BOA release from 'boa info' -- refusing to migrate blind"
+    _why="cannot read this box's BOA release and tree serial from 'boa info' -- refusing to migrate blind; ${_old}"
   elif [ -z "${_dst}" ]; then
-    _why="cannot read the target's BOA release from 'boa info' on ${_t} -- refusing to migrate blind"
-  elif [ "${_src}" != "${_dst}" ]; then
-    _why="source runs BOA-${_src}, target ${_t} runs BOA-${_dst}"
+    _why="cannot read the target's BOA release and tree serial from 'boa info' on ${_t} -- refusing to migrate blind; ${_old}"
+  elif [ "${_sl//./}" != "${_ss}" ]; then
+    _why="this box is stamped BOA-${_sl} but its tree serial ${_sf} names another release"
+    _fix="this box"
+  elif [ "${_dl//./}" != "${_ds}" ]; then
+    _why="target ${_t} is stamped BOA-${_dl} but its tree serial ${_df} names another release"
+    _fix="the target"
+  elif [ "${_sl}" != "${_dl}" ]; then
+    _why="source runs BOA-${_sl}, target ${_t} runs BOA-${_dl}"
   else
-    _info "  BOA release matches on both ends: ${_src}"
+    _info "  BOA release and tree serial match on both ends: ${_sl} (${_sf}, ${_df})"
     return 0
   fi
   if [ "${_on_skew}" = "deny" ]; then
@@ -8374,7 +8396,7 @@ _xmass_assert_same_release() {
     _alrt "DENY: both boxes must run the SAME BOA release before any migration --"
     _alrt "DENY: provision gains central-map nginx variables between releases, and"
     _alrt "DENY: a target missing one takes down EVERY migrated site on that box."
-    _alrt "DENY: fix: a FULL run on the OLDER box -- barracuda AND octopus, not"
+    _alrt "DENY: fix: a FULL run on ${_fix} -- barracuda AND octopus, not"
     _alrt "DENY: just one of them -- then re-run this DRY."
     _XMASS_NOT_CLEAN=YES
     return 1
@@ -8384,7 +8406,7 @@ _xmass_assert_same_release() {
     _die "both boxes must run the SAME BOA release before any migration." \
          " provision gains central-map nginx variables between releases, and a" \
          " target missing one takes down EVERY migrated site on that box." \
-         " Bring the OLDER box up first with a FULL run -- barracuda AND" \
+         " Bring ${_fix} up first with a FULL run -- barracuda AND" \
          " octopus, not just one of them -- then re-run this step."
   fi
   _die "${_why}"
@@ -9057,11 +9079,13 @@ _xmass_cmd_prep_target() {
   # on its own in that window.
   #
   # The TREE may differ on purpose (an account can move lts -> pro), so only
-  # the release number is compared. No override: "bring both boxes to the same
-  # release" is always the correct action and is always available, and an
-  # override here buys a box-wide outage.
-  _xmass_purge_target_only_accounts "${_tgt}"
+  # the release number is compared, of the label and of the tree serial. No
+  # override: "bring both boxes to the same release" is always the correct
+  # action and is always available, and an override here buys a box-wide
+  # outage. The check comes before the target-only purge: a target that
+  # cannot take this migration keeps its target-only accounts.
   _xmass_assert_same_release "${_tgt}"
+  _xmass_purge_target_only_accounts "${_tgt}"
 
   # CSF both directions with csf -a (allow): csf.ignore alone does NOT stop
   # guard temp-denies, and the target dials BACK to source:3306 for

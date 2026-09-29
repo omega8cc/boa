@@ -206,6 +206,16 @@ process does not block.
   legitimately differ (lts vs pro); an unreadable stamp on either side is
   fatal too ("refusing to migrate blind").
 
+  The stamp carries two parts that come from different places, the release
+  label (`BOA-5.88.855`) and the tree serial after the tree name
+  (`588855devT01`). Both are compared by their release number: each box's
+  serial must name the release its label names, and the two boxes'
+  releases must be the same. A box stamped with one release while it runs
+  another release's tree is refused whichever way round they differ, so the
+  gate can refuse a box that every earlier check read as current; the fix is
+  a full run on that box. A box last upgraded before BOA-5.8.5 carries no
+  tree serial and is refused as unreadable until a full run stamps one.
+
   The fix is a FULL run — barracuda
   AND octopus — on the older box, then re-run. The same comparison is
   re-asserted at `init` and again in the `cutover --live` pre-flight (and
@@ -358,7 +368,8 @@ source's, where that account's panel database never existed, so it would come
 out of cutover as a broken leftover (panel 500, no sites, no DB user).
 
 A
-site-less one is a leftover by definition and is purged on the spot with BOA's
+site-less one is a leftover by definition and is purged on the spot, once the
+same-release gate has passed, with BOA's
 own verb (`log/CANCELLED` + `boa cleanup purge`: where a `static/` tree exists
 the account's `backups/`, `distro/`, `src/`, `static/` and `undo/` trees are
 removed outright, whatever else the home holds is parked under
@@ -396,10 +407,13 @@ target when only the account's identities hold it there, and is left out of
 
 What it does, in order:
 
-0. **Tool refresh + same-release gate** — forces the migration tool set
-   current on the target (markers dropped, housekeeping run, versions logged),
-   then compares both boxes' BOA release stamps and refuses on a mismatch or
-   an unreadable stamp (see Prerequisites — no override).
+0. **Same-name accounts, tool refresh, same-release gate** — refuses a
+   same-name account this migration may not take (step 5) before anything
+   changes, forces the migration tool set current on the target (markers
+   dropped, housekeeping run, versions logged), then compares both boxes'
+   BOA release stamps, label and tree serial, and refuses on a mismatch or
+   an unreadable stamp (see Prerequisites — no override), before any
+   target-only account is purged.
 1. **CSF both directions** — appends each peer to both `csf.allow` and
    `csf.ignore` here and there (an allow alone still leaves the peer exposed
    to a guard temp-deny mid-migration), reloads CSF, then proves the reverse

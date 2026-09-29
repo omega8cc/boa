@@ -49,8 +49,10 @@ indices) where per-account mydumper/myloader cycles would be impractical.
   stale tooling. The tool executing the command refreshes on its next verb,
   not mid-run.
 - **Same release on both ends.** `xmass prep-target` compares both boxes' BOA
-  release stamps and refuses a migration across releases, with no override
-  (see MIGRATE-XMASS.md Prerequisites for the reason and the fix).
+  release stamps, the release label and the tree serial, and refuses a
+  migration across releases, or from or to a box whose label and serial name
+  different releases, with no override (see MIGRATE-XMASS.md Prerequisites
+  for the reason and the fix).
 
 ## Rename helper: renameaegirhost
 
