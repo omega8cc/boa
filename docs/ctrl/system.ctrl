@@ -190,9 +190,7 @@ by the BOA install and upgrade tools exclusively.
 
   Enables the self-service cache-restart sentinel for every account on the box,
   beside the qualifying-plan gate. One variable covers both this file and the
-  older /etc/boa/.allow.redis.restart.cnf. Note for redis-only boxes: the
-  legacy redis watchdog reads only the redis-named file today, so the variable
-  opens a gate there that the valkey-named file alone did not.
+  older /etc/boa/.allow.redis.restart.cnf.
 
  @=> /etc/boa/.debug.email.txt
 

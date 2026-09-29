@@ -97,8 +97,6 @@ _launch_auto_healing() {
   nohup /var/xdrago/monitor/check/unbound.sh > /dev/null 2>&1 &
   if [ -e "/etc/init.d/valkey-server" ]; then
     nohup /var/xdrago/monitor/check/valkey.sh > /dev/null 2>&1 &
-  elif [ -e "/etc/init.d/redis-server" ]; then
-    nohup /var/xdrago/monitor/check/redis.sh > /dev/null 2>&1 &
   fi
   nohup /var/xdrago/monitor/check/mysql.sh > /dev/null 2>&1 &
   nohup /var/xdrago/monitor/check/php.sh > /dev/null 2>&1 &

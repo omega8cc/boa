@@ -50,6 +50,35 @@
 
 @=> Security
 
+    * boa cleanup purge now also drops the purged account's own database
+      users (the instance user and its control panel user, proven from the
+      account's records before anything moves) and moves its migration
+      create marker aside; its databases are kept, as documented.
+    * A remote-database account setup no longer falls back to a fixed
+      password when root's password file is missing.
+
+    * xoct and xcopy create no longer take over an unrelated account of the
+      same name on the target: create marks the account it installs (bound
+      to that account's user ID and home directory), a later create re-seeds
+      an existing account only under that mark, and anything else is refused
+      before the target is changed. xoct create --adopt takes such an
+      account as the migration's and marks it; xmass prep-target passes it.
+      xcopy create also stops when the install is refused.
+    * The migration tools grant an imported site's database user on the
+      escaped database name, as provision does, and revoke a wildcard grant
+      an earlier run left; site users no longer get WITH GRANT OPTION, and
+      the control panel credential heal resets both of the panel user's
+      rows.
+
+    * The nightly llms.txt and robots.txt refreshers no longer write into
+      another account's files store that either account has converted to its
+      own web group.
+
+    * The Valkey fallback debug log no longer follows a link and no longer
+      belongs to whichever account wrote it first: each system user now logs
+      to its own directory under /var/tmp/fpm, and a line is written only
+      when that directory is really its own.
+
     * The per-site login and admin IP lock now covers the legacy
       query-string route form and trailing-character path variants on
       Drupal 6, Drupal 7 and Backdrop and on the control panel, matching
@@ -624,6 +653,10 @@
       extension, the Drupal and Backdrop redis modules and the redis_*
       INI keys stay, as they are how sites use Valkey; the _REDIS_*
       settings stay in /root/.barracuda.cnf but no longer do anything.
+      The Redis watchdog, its dispatch, the Redis AppArmor profile and
+      the Redis branches in setprio, sqlprobe and the incident harvest
+      are gone too; an upgrade moves the old profile aside and removes
+      the old watchdog.
 
     * DeepSeekBot, DeepSeek's crawler for model training, joins the AI
       training class: it gets 444 by default like GPTBot and ClaudeBot,
@@ -906,6 +939,69 @@
 
 @=> Important Fixes
 
+    * A server verify's database probes use one name per account: two
+      accounts verifying at the same time no longer remove each other's probe
+      database.
+
+    * A new account name that starts with a digit is refused at install, as
+      intended: the check never matched.
+    * The Octopus per-account cleanup no longer removes a running limited-
+      shell worker's pid file.
+
+    * xcopy import now renames the copied control panel from the source
+      host to the target, as xoct import does: the export records the source
+      hostname, the import refuses without it, reconciles the panel
+      platform, runs renameaegirhost, rebuilds the pinned PHP pools and
+      flushes the caches; it stops cron like xoct import, and xcopy
+      post-mig starts it again.
+    * xoct and xcopy import write this box's own instance database password
+      into the imported control panel: it kept the source's, so every
+      server verify failed until the next Octopus upgrade.
+    * An xoct rename no longer rewrites the paths of another account whose
+      name begins with the source's name: renaming o1 also rewrote every
+      /data/disk/o10 path in the moved account's files.
+
+    * renameaegirhost now renames the control panel's path aliases of the
+      renamed sites too; they kept the old hostname.
+
+    * xtrim and sqlclean now drop a removed database's user when its only
+      grant is on that database: the escaped grant name read as another
+      database, so such users were always kept.
+
+    * instgrp convert and revert wait for a limited-shell worker pass that is
+      already running when they take the run lock, and refuse after three
+      minutes; the upgrade arm waits the same, takes the run lock again when
+      an earlier account's cleanup removed it, and reports a still-busy
+      account as skipped. The worker creates its pid file exclusively and
+      removes only its own.
+
+    * The PHP-FPM init scripts are refreshed on every upgrade pass when they
+      differ from the shipped ones: only a rebuild of that PHP version
+      installed them, so their fixes never reached a box whose PHP was not
+      rebuilt.
+
+    * service phpNN-fpm configtest now tests the configuration the service
+      starts with: it read the compiled-in default php-fpm.conf, which BOA
+      never installs, and failed on every box.
+
+    * A Drupal 11 site is installed in the language chosen on the Add site
+      form: the Install ran the platform's Drush without it, so the site
+      came up in English, with no language or locale module and no strings.
+      Core downloads that language's translation during the Install, which
+      now fails with the reason in its log when localize.drupal.org cannot
+      be reached (#1946).
+
+    * The shared Redis integration modules are replaced only by a complete
+      copy: two self-update runs that overlapped (clear.sh runs from two
+      schedules and by hand) unpacked one download while the other was
+      replacing it, and stamped a copy without its code as deployed, so
+      every Drupal 10 and 11 site on the box failed at bootstrap while
+      Valkey was up. The self-update step now runs one at a time, both
+      writers (the self-update and each Octopus pass) swap a module in only
+      once it unpacked whole, keeping the copy in place otherwise, a copy
+      the old code stamped is replaced once, and xmass's forced tool
+      refresh waits for a running self-update instead of being skipped.
+
     * The web IDS's document-harvest detector now reports: every cohort
       member was filed under a wrong key, so no cohort ever reached the
       report or a ban.
@@ -914,6 +1010,20 @@
       loopback copy from the site's port-80 vhost was counted too, which
       doubled every such request, tripled a refusal the front retries,
       and hid a harvest over the front.
+    * The web IDS and the crawler-fleet guard trust a plain csf.allow
+      line, the form csf -a writes, as the firewall's ban step already
+      did: only advanced s= records counted, so an address whitelisted
+      the documented way was still scored and handed to the ban step.
+      An address named only in an entry's comment is no longer trusted,
+      and the web IDS reads a last line that has no trailing newline.
+    * An indented csf.allow line counts as the allow csf makes of it, in
+      the web IDS, the crawler-fleet guard, the web ban step and the
+      hack check.
+    * The SSH port readers (the web IDS logged-in list, the ip_access and
+      user_admin_access SSH peers, edgetest's regression check, the port
+      in the setup email) read sshd -T in either keyword case: OpenSSH
+      10.5 prints "Port", so the live port was missed and the email fell
+      back to the configured value.
 
     * The AI training block no longer refuses Claude-User, Claude-SearchBot
       and Amzn-SearchBot. Their user agents name a training crawler in the

@@ -180,7 +180,7 @@ _csf_file_matches_ip() {
   local _ip="${1}" _file="${2}"
   local _ip_rx; _ip_rx="$(_rx "${_ip}")"
   [[ -f "${_file}" ]] || return 1
-  grep -qE "(^|\|s=|\|d=)${_ip_rx}(/32)?([[:space:]#|]|$)" "${_file}" 2>/dev/null \
+  grep -qE "(^[[:space:]]*|\|s=|\|d=)${_ip_rx}(/32)?([[:space:]#|]|$)" "${_file}" 2>/dev/null \
     && return 0
   cut -d'#' -f1 "${_file}" 2>/dev/null \
     | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' \
@@ -188,15 +188,17 @@ _csf_file_matches_ip() {
     | _cidr_covers_ip "${_ip}"
 }
 
-# First-field entries only — plain IP, IP/32, or a covering plain CIDR: the
+# First-field entries only (csf strips leading whitespace, so an indented
+# line counts) — plain IP, IP/32, or a covering plain CIDR: the
 # forms that apply to every port.
 _csf_plain_covers_ip() {
   local _ip="${1}" _file="${2}"
   local _ip_rx; _ip_rx="$(_rx "${_ip}")"
   [[ -f "${_file}" ]] || return 1
-  grep -qE "^${_ip_rx}(/32)?([[:space:]#]|$)" "${_file}" 2>/dev/null \
+  grep -qE "^[[:space:]]*${_ip_rx}(/32)?([[:space:]#]|$)" "${_file}" 2>/dev/null \
     && return 0
-  grep -oE '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' "${_file}" 2>/dev/null \
+  sed 's/^[[:space:]]*//' "${_file}" 2>/dev/null \
+    | grep -oE '^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}' \
     | sort -u \
     | _cidr_covers_ip "${_ip}"
 }

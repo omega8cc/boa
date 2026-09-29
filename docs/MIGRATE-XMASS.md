@@ -469,7 +469,11 @@ What it does, in order:
    account, which installs from the **target's own tree** with the source's
    plan stamps, then seeds the account's `/root/.<oN>.octopus.cnf` (portable
    values only), force-copies the PHP pin files and carries the client's shell
-   credentials. Already-installed accounts are re-seeded, not re-installed.
+   credentials. Already-installed accounts are re-seeded, not re-installed:
+   `prep-target` drives `xoct create --adopt`, which takes an account of the
+   same name the target already holds (a fresh install's own `o1`, a demoted
+   failback box's accounts) as this migration's and puts the create marker on
+   it (see [MIGRATE-XOCT.md](MIGRATE-XOCT.md)).
 6. **Suspension flags** mirrored (`/data/conf/suspended/<oN>.pid` lives outside
    the account tree, so no file sync can carry it — an unmirrored suspension
    means a non-paying account resumes serving on the target).
