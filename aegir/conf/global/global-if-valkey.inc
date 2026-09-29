@@ -54,7 +54,10 @@ $flag_file_fallback = '/data/conf/arch/valkey.disabled.flag'; // fallback
  *      while that flag exists. Toggle live, with no ini edit or redeploy:
  *        touch /data/conf/valkey.debug.flag   (start logging)
  *        rm    /data/conf/valkey.debug.flag   (stop logging)
- * _valkey_dbg_write() is a no-op whenever $redis_debug_on is FALSE. */
+ * _valkey_dbg_write() is a no-op whenever $redis_debug_on is FALSE.
+ * Each writing user logs to a file of this name in its own directory beside
+ * it, named with its uid: valkey-fallback.<uid>/valkey-fallback.log (see
+ * _valkey_dbg_write()). */
 $redis_debug_log = '/var/tmp/fpm/valkey-fallback.log';
 $redis_debug     = isset($all_ini['redis_debug']) ? (bool) $all_ini['redis_debug'] : FALSE;
 $redis_debug_on  = ($redis_debug && is_file('/data/conf/valkey.debug.flag'));
@@ -109,10 +112,10 @@ function _valkey_backoff_is_active($flag_path, $ttl) {
   return $active;
 }
 
-/* A new file is made under a name nobody else can have made first (fopen
- * 'x' is O_CREAT|O_EXCL and refuses any existing name, a link included),
- * then renamed over the flag: the flag is fresh, and no pool needs write
- * access to another pool's file. */
+/* A new file is made under a random name, which nobody else can have made
+ * first (fopen 'x' alone would not refuse a link already there: PHP
+ * resolves it before the open), then renamed over the flag: the flag is
+ * fresh, and no pool needs write access to another pool's file. */
 function _valkey_backoff_touch($flag_path) {
   $tmp = $flag_path.'.'.md5(uniqid(mt_rand(), TRUE));
   $fh = @fopen($tmp, 'x');
@@ -129,11 +132,44 @@ function _valkey_backoff_clear($flag_path) {
   @unlink($flag_path);
 }
 
+/* One log per writing user, in a directory of its own. Every pool and the
+ * CLI run as different users, and in the sticky /var/tmp/fpm
+ * (fs.protected_regular=2) one shared log made by one of them refused every
+ * other user's append. No name another user can make is ever opened: PHP
+ * resolves a link in a path itself before the open, so neither fopen 'x'
+ * nor fs.protected_symlinks stops it following a link planted there.
+ * mkdir() never follows a link; in a real, root-owned, sticky parent nobody
+ * else can rename or replace this user's directory, and in the directory
+ * (0700) nobody else can make an entry, so the log is opened only while
+ * lstat() shows the directory as this user's own. The uid comes from
+ * posix_geteuid(): getmyuid() is in the pool disable_functions and names
+ * the script's owner, not the process. */
 function _valkey_dbg_write($enabled, $log_path, $line) {
-  if ($enabled && !empty($log_path)) {
-    $msg = date('c').' '.$line."\n";
-    @file_put_contents($log_path, $msg, FILE_APPEND);
+  if (!$enabled || empty($log_path) || !function_exists('posix_geteuid')) {
+    return;
   }
+  $pst = @lstat(dirname($log_path));
+  if (!is_array($pst) || ($pst['mode'] & 0170000) !== 0040000
+      || $pst['uid'] !== 0 || !($pst['mode'] & 01000)) {
+    return;
+  }
+  $uid = posix_geteuid();
+  $dir = preg_replace('/\.log$/', '', $log_path).'.'.$uid;
+  $st = @lstat($dir);
+  if (!is_array($st)) {
+    @mkdir($dir, 0700);
+    $st = @lstat($dir);
+  }
+  if (!is_array($st) || ($st['mode'] & 0170000) !== 0040000
+      || $st['uid'] !== $uid || ($st['mode'] & 0022)) {
+    return;
+  }
+  $path = $dir.'/'.basename($log_path);
+  $fst = @lstat($path);
+  if (is_array($fst) && ($fst['mode'] & 0170000) !== 0100000) {
+    return;
+  }
+  @file_put_contents($path, date('c').' '.$line."\n", FILE_APPEND);
 }
 
 /* One full connect+auth+ping attempt. Returns TRUE on healthy PONG.
