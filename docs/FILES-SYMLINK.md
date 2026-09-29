@@ -112,6 +112,17 @@ autosymlink --site example.com --account o1 --archive-store --apply
 - `--force-unshare` breaks an inherited cross-site/cross-account link even if a
   file-sharing control file exists — used by cloning so a fresh clone (which never
   opted into sharing) always gets its own copy.
+
+  The copy is made by the site's own account in its web group, inside a root-owned
+  staging directory the account cannot alter, then renamed onto the store name: it
+  holds only what that account can read, and never keeps the other store's owner, its
+  day stamps or a setuid bit.
+
+  `static/files` is resolved once and accepted only when it is the account's own store
+  or its relocated store on attached storage (the `migratefs` layout); any other link
+  there is refused. A link found at the store target name (`files`/`private`) is
+  archived aside, never written through; one planted after that step makes the copy
+  fail and leaves the site's existing symlink unchanged.
 - `--archive-store` sets the site's whole store aside into
   `static/files/.archived/<stamp>/<url>/`, never deleting it — the Delete task's
   path, and a rename's for the old-name store.
@@ -605,16 +616,20 @@ Both local and attached/extra filesystems are supported. Before moving or copyin
 data the tools compare the source size against the target's free space (`du`/`df`,
 filesystem-aware for same-FS vs cross-FS), and **skip with a warning** rather than
 fail when space is insufficient. A same-filesystem conversion is a rename (no
-extra space needed); a cross-filesystem one copies, then repoints, then removes
-the source.
+extra space needed); a cross-filesystem one (a store relocated onto attached
+storage) copies **as the site's own account** — root never copies the in-site
+tree by path — then repoints, then removes the source.
 
 Stale-store **archiving** on name reuse is deliberately placed *under*
 `static/files` (`static/files/.archived/`) so it always shares the store's
 filesystem and stays a free rename — a `static/files-*` sibling could land on a
-small root filesystem and turn the move into a space-consuming copy. Each
-archiving still records a `du`/`df` snapshot; a same-FS rename needs no free
-space, and a secondary check falls back to an in-place rename only if the archive
-would (unexpectedly) cross to a different, too-full device.
+small root filesystem and turn the move into a space-consuming copy.
+
+Because the archive is built **under** the resolved store it is always on that
+same filesystem — a free rename that needs no free space. Each archiving still
+records a `du`/`df` snapshot, and if the archive directory cannot be made or the
+move fails it degrades to an in-place rename aside so a conversion is never
+blocked.
 
 ## Backups on the static filesystem
 

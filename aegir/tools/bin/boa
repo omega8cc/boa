@@ -3375,7 +3375,7 @@ _purge_db_user_taken() {
 # Sets _PURGE_DBU (the proven names) and _PURGE_DBU_KEPT (each name or gap
 # with why it stays) for the account $1, and the server they live on.
 _purge_db_users_find() {
-  local _u="${1}" _a="/data/disk/${1}" _m _sp _p _du _dn _dbh
+  local _u="${1}" _a="/data/disk/${1}" _m _sp _p _du _dn _dbh _dbo
   _PURGE_DBU=()
   _PURGE_DBU_KEPT=()
   _PURGE_SQL_C=localhost
@@ -3419,9 +3419,13 @@ _purge_db_users_find() {
   else
     _PURGE_DBU+=( "${_du}" )
   fi
-  # only this box's own server is ever changed here
+  # only this box's own server is ever changed here; a database host equal
+  # to the account's own IP is this box, as the Octopus pass treats it
   _dbh=$(grep -s "^_THIS_DB_HOST=" "/root/.${_u}.octopus.cnf" | tail -1 \
     | cut -d= -f2 | tr -d "\"' ")
+  _dbo=$(grep -s "^_MY_OWNIP=" "/root/.${_u}.octopus.cnf" | tail -1 \
+    | cut -d= -f2 | tr -d "\"' ")
+  [ -n "${_dbo}" ] && [ "${_dbh}" = "${_dbo}" ] && _dbh=localhost
   case "${_dbh}" in
     ""|localhost|127.0.0.1|PROXYSQL|FQDN) ;;
     *)
