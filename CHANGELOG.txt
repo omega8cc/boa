@@ -50,6 +50,27 @@
 
 @=> Security
 
+    * Root's ownership and cleanup walks over account-writable and shared
+      trees no longer follow planted links or hard links: the forced
+      reinstall's master reclaim, the account purge's leftover reowns and
+      the Adminer report tree reown only real directories and single-link
+      files, through a handle that never follows a link; the master pool
+      no longer owns the Adminer log tree root writes, and a report tree
+      left by an earlier build, or an Adminer tree still carrying an ACL,
+      is rebuilt rather than re-owned. Purge and archived-store removals
+      delete first and unlock only what an immutable flag kept, from
+      inside the real directory, never by a recursive walk by path.
+
+    * fixrepo accepts a codebase reached through a link only when the link
+      stays inside one account, or inside /var/aegir for a /var/aegir
+      path; a link from anywhere else is refused.
+
+    * The account purge locks an account's identities before ending its
+      processes.
+
+    * perftest builds, fetches and runs its helpers in a private root-only
+      directory, never a predictable /tmp path.
+
     * ai_policy, ip_access and user_admin_access write, prune and restore
       a site's nginx policy fragments only inside the account's own real
       config, includes and undo directories, through handles that follow
