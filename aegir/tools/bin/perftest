@@ -374,12 +374,17 @@ _ensure_sysbench() {
     _log "Compiling sysbench from source (min ${_SYSBENCH_MIN_VER})..."
   fi
 
-  rm -rf /tmp/sysbench-build >/dev/null 2>&1
-  mkdir -p /tmp/sysbench-build
-  cd /tmp/sysbench-build
+  # A fixed name in world-writable /tmp lets any local identity pre-create it
+  # (perftest ships on every box, so tenant and web identities share /tmp) and
+  # feed root's build from a directory it does not own. Build under the
+  # root-only run dir instead (removed by the script-level EXIT trap).
+  local _sbBuild="${_PT_TMP}/sysbench-build"
+  rm -rf -- "${_sbBuild}" >/dev/null 2>&1
+  mkdir -p "${_sbBuild}" || return 0
+  cd "${_sbBuild}" || return 0
 
   git clone --depth 1 https://github.com/omega8cc/sysbench.git >/dev/null 2>&1
-  cd sysbench
+  cd sysbench || return 0
 
   ./autogen.sh >/dev/null 2>&1
 
@@ -394,7 +399,7 @@ _ensure_sysbench() {
   make install >/dev/null 2>&1
 
   cd /root
-  rm -rf /tmp/sysbench-build >/dev/null 2>&1
+  rm -rf -- "${_sbBuild}" >/dev/null 2>&1
 
   # Ensure shell picks up any newly installed sysbench in PATH
   hash -r >/dev/null 2>&1
@@ -537,9 +542,9 @@ _calc_mem_bench_size_mib() {
 }
 
 _build_membench() {
-  # Builds /tmp/perftest_membench if missing.
+  # Builds the membench binary (root-only path) if missing.
   local _bin _c _cc
-  _bin="/tmp/perftest_membench"
+  _bin="${_PT_MEMBENCH_BIN}"
   [ -x "${_bin}" ] && return 0
 
   _ensure_cc
@@ -550,7 +555,7 @@ _build_membench() {
     _cc="cc"
   fi
 
-  _c="/tmp/perftest_membench.c"
+  _c="${_PT_MEMBENCH_SRC}"
 
   cat > "${_c}" <<'C'
 #include <stdio.h>
@@ -777,7 +782,7 @@ _run_membench() {
   local _threads="$2"
   local _seconds="$3"
   local _lat_mib="$4"
-  local _bin="/tmp/perftest_membench"
+  local _bin="${_PT_MEMBENCH_BIN}"
 
   _build_membench || return 1
 
@@ -1064,8 +1069,9 @@ _ensure_ioping() {
     fi
   fi
 
-  # Fallback: fetch static binary (HTTPS first, then HTTP).
-  local dst="/tmp/ioping.static"
+  # Fallback: fetch static binary (HTTPS first, then HTTP) into the root-only
+  # run dir: a fixed /tmp name could be pre-created by another local identity.
+  local dst="${_PT_TMP}/ioping.static"
   if command -v curl >/dev/null 2>&1; then
     if curl -fsSL --max-time 10 -o "${dst}" https://wget.racing/ioping.static 2>/dev/null || curl -fsSL --max-time 10 -o "${dst}" http://wget.racing/ioping.static 2>/dev/null; then
       chmod +x "${dst}" 2>/dev/null || true
@@ -1856,8 +1862,8 @@ _run_fio_rand_test() {
   local _output_file="$2"
   local _safe_mount_point
   _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
-  local _test_dir="${_mount_point}/.perftest_fio_rand_${_safe_mount_point}_$$"
-  mkdir -p "${_test_dir}" || return 1
+  local _test_dir
+  _test_dir="$(mktemp -d "${_mount_point%/}/.perftest_fio_rand_${_safe_mount_point}.XXXXXX" 2>/dev/null)" || return 1
   fio \
     --name=randreadwrite \
     --directory="${_test_dir}" \
@@ -1885,8 +1891,8 @@ _run_fio_seq_read_test() {
   local _output_file="$2"
   local _safe_mount_point
   _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
-  local _test_dir="${_mount_point}/.perftest_fio_seqread_${_safe_mount_point}_$$"
-  mkdir -p "${_test_dir}" || return 1
+  local _test_dir
+  _test_dir="$(mktemp -d "${_mount_point%/}/.perftest_fio_seqread_${_safe_mount_point}.XXXXXX" 2>/dev/null)" || return 1
   fio \
     --name=seqread \
     --directory="${_test_dir}" \
@@ -1912,8 +1918,8 @@ _run_fio_seq_write_test() {
   local _output_file="$2"
   local _safe_mount_point
   _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
-  local _test_dir="${_mount_point}/.perftest_fio_seqwrite_${_safe_mount_point}_$$"
-  mkdir -p "${_test_dir}" || return 1
+  local _test_dir
+  _test_dir="$(mktemp -d "${_mount_point%/}/.perftest_fio_seqwrite_${_safe_mount_point}.XXXXXX" 2>/dev/null)" || return 1
   fio \
     --name=seqwrite \
     --directory="${_test_dir}" \
@@ -1939,8 +1945,8 @@ _run_fio_qd1_test() {
   local _output_file="$2"
   local _safe_mount_point
   _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
-  local _test_dir="${_mount_point}/.perftest_fio_qd1_${_safe_mount_point}_$$"
-  mkdir -p "${_test_dir}" || return 1
+  local _test_dir
+  _test_dir="$(mktemp -d "${_mount_point%/}/.perftest_fio_qd1_${_safe_mount_point}.XXXXXX" 2>/dev/null)" || return 1
   fio \
     --name=randrw_qd1 \
     --directory="${_test_dir}" \
@@ -1968,8 +1974,8 @@ _run_fio_qd1_fsync_test() {
   local _output_file="$2"
   local _safe_mount_point
   _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
-  local _test_dir="${_mount_point}/.perftest_fio_qd1_fsync_${_safe_mount_point}_$$"
-  mkdir -p "${_test_dir}" || return 1
+  local _test_dir
+  _test_dir="$(mktemp -d "${_mount_point%/}/.perftest_fio_qd1_fsync_${_safe_mount_point}.XXXXXX" 2>/dev/null)" || return 1
   fio \
     --name=randwrite_qd1_fsync \
     --directory="${_test_dir}" \
@@ -2073,8 +2079,9 @@ _run_metadata_test() {
   local _outvar="$2"
   local _safe_mount_point
   _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
-  local _test_dir="${_mount_point}/.perftest_meta_${_safe_mount_point}_$$"
-  mkdir -p "${_test_dir}" || { eval "${_outvar}=\"ERROR\""; return; }
+  local _test_dir
+  _test_dir="$(mktemp -d "${_mount_point%/}/.perftest_meta_${_safe_mount_point}.XXXXXX" 2>/dev/null)" \
+    || { eval "${_outvar}=\"ERROR\""; return; }
 
   local _count="${_METADATA_FILE_COUNT}"
   local _start _end _elapsed _ops _ops_per_sec
@@ -2126,7 +2133,7 @@ _run_php_benchmarks() {
     return
   fi
 
-  local _script="/tmp/phpbench.php"
+  local _script="${_PT_PHPBENCH}"
   cat << 'EOF' > "${_script}"
 <?php
 $iterations = getenv('PHP_BENCH_ITERATIONS') ? intval(getenv('PHP_BENCH_ITERATIONS')) : 50000;
@@ -3954,6 +3961,25 @@ fi
 
 _check_root
 
+# perftest ships on every box, so tenant and web identities share /tmp. A
+# fixed name there lets another local identity pre-create the file: root would
+# then run a planted membench or ioping binary, or a redirect would follow a
+# planted link. Keep the built and fetched binaries, the generated sources and
+# the tool outputs in a fresh root-only dir instead, removed on exit (the disk
+# tests make their own fresh dir on each mount the same way). When /root is
+# full or read-only, a fresh private dir in /tmp (mktemp: a new name, 0700)
+# serves; never a bare /tmp name, and no run without one.
+_PT_TMP="$(mktemp -d /root/.perftest-run.XXXXXX 2>/dev/null)" \
+  || _PT_TMP="$(mktemp -d /tmp/.perftest-run.XXXXXX 2>/dev/null)" || _PT_TMP=""
+if [ -z "${_PT_TMP}" ] || [ ! -d "${_PT_TMP}" ] || [ -L "${_PT_TMP}" ]; then
+  echo "ERROR: Cannot create a private work dir under /root or /tmp"
+  exit 1
+fi
+trap 'rm -rf -- "${_PT_TMP}" >/dev/null 2>&1' EXIT
+_PT_MEMBENCH_BIN="${_PT_TMP}/perftest_membench"
+_PT_MEMBENCH_SRC="${_PT_TMP}/perftest_membench.c"
+_PT_PHPBENCH="${_PT_TMP}/phpbench.php"
+
 echo ""
 echo "Starting Perftest ${_PT_VERSION}, please wait.."
 echo "System Time is [$(date)]"
@@ -4083,7 +4109,7 @@ if [ "${_DO_CPU}" = "YES" ]; then
 
   # Multi-threaded: nproc
   if command -v mpstat >/dev/null 2>&1; then
-    mpstat 1 "${_SYSBENCH_CPU_TIME}" >/tmp/perftest_mpstat_mt.txt 2>/dev/null &
+    mpstat 1 "${_SYSBENCH_CPU_TIME}" >"${_PT_TMP}/perftest_mpstat_mt.txt" 2>/dev/null &
     _mpstat_pid="$!"
   fi
 
@@ -4100,8 +4126,8 @@ if [ "${_DO_CPU}" = "YES" ]; then
 
   if [ -n "${_mpstat_pid:-}" ]; then
     wait "${_mpstat_pid}" >/dev/null 2>&1
-    _cpu_steal_mt="$(_parse_mpstat_steal_avg /tmp/perftest_mpstat_mt.txt)"
-    rm -f /tmp/perftest_mpstat_mt.txt >/dev/null 2>&1
+    _cpu_steal_mt="$(_parse_mpstat_steal_avg "${_PT_TMP}/perftest_mpstat_mt.txt")"
+    rm -f "${_PT_TMP}/perftest_mpstat_mt.txt" >/dev/null 2>&1
   fi
 
   # Single-threaded
@@ -4249,7 +4275,7 @@ for _mount_point in "${_test_mounts[@]}"; do
   _safe_mount_point="$(echo "${_mount_point}" | sed 's#/#_#g')"
 
   # Random 4k read/write
-  _rand_output="/tmp/fio_rand_${_safe_mount_point}_$$.json"
+  _rand_output="${_PT_TMP}/fio_rand_${_safe_mount_point}_$$.json"
   if _run_fio_rand_test "${_mount_point}" "${_rand_output}"; then
     while IFS="=" read -r _k _v; do
       case "${_k}" in
@@ -4272,7 +4298,7 @@ for _mount_point in "${_test_mounts[@]}"; do
   rm -f "${_rand_output}" >/dev/null 2>&1
 
   # Sequential read
-  _seqread_output="/tmp/fio_seqread_${_safe_mount_point}_$$.json"
+  _seqread_output="${_PT_TMP}/fio_seqread_${_safe_mount_point}_$$.json"
   if _run_fio_seq_read_test "${_mount_point}" "${_seqread_output}"; then
     while IFS="=" read -r _k _v; do
       case "${_k}" in
@@ -4287,7 +4313,7 @@ for _mount_point in "${_test_mounts[@]}"; do
   rm -f "${_seqread_output}" >/dev/null 2>&1
 
   # Sequential write
-  _seqwrite_output="/tmp/fio_seqwrite_${_safe_mount_point}_$$.json"
+  _seqwrite_output="${_PT_TMP}/fio_seqwrite_${_safe_mount_point}_$$.json"
   if _run_fio_seq_write_test "${_mount_point}" "${_seqwrite_output}"; then
     while IFS="=" read -r _k _v; do
       case "${_k}" in
@@ -4307,7 +4333,7 @@ for _mount_point in "${_test_mounts[@]}"; do
   _qd1_p95_r_list=() _qd1_p95_w_list=() _qd1_p99_r_list=() _qd1_p99_w_list=()
   _qd1_ok="YES"
   for _qd1_rep in $(seq 1 "${_FIO_QD1_REPEATS}"); do
-    _qd1_output="/tmp/fio_qd1_${_safe_mount_point}_${_qd1_rep}_$$.json"
+    _qd1_output="${_PT_TMP}/fio_qd1_${_safe_mount_point}_${_qd1_rep}_$$.json"
     if _run_fio_qd1_test "${_mount_point}" "${_qd1_output}"; then
       _tmp_r95="" _tmp_w95="" _tmp_r99="" _tmp_w99=""
       while IFS="=" read -r _k _v; do
@@ -4346,7 +4372,7 @@ for _mount_point in "${_test_mounts[@]}"; do
   _fs_p95_list=() _fs_p99_list=()
   _fs_ok="YES"
   for _fs_rep in $(seq 1 "${_FIO_QD1_FSYNC_REPEATS}"); do
-    _qd1_fsync_output="/tmp/fio_qd1_fsync_${_safe_mount_point}_${_fs_rep}_$$.json"
+    _qd1_fsync_output="${_PT_TMP}/fio_qd1_fsync_${_safe_mount_point}_${_fs_rep}_$$.json"
     if _run_fio_qd1_fsync_test "${_mount_point}" "${_qd1_fsync_output}"; then
       _tmp_fs95="" _tmp_fs99=""
       while IFS="=" read -r _k _v; do

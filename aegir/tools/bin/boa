@@ -107,6 +107,47 @@ _boa_read_here() {
   timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
     bs=1048576 count=1 status=none 2> /dev/null
 }
+# Each name given (from find -execdir) handed to uid $1 and gid $2 (numbers,
+# -1 keeps that id) through a handle opened without following a link or
+# blocking on a FIFO: a directory, or a regular file with a single link. A
+# hard-linked file, a link, a FIFO or a socket is left alone, so a hard link
+# planted in a swept tree never hands another file over.
+_ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+# As _ACCT_REOWN_PL, and only while the handle still shows the ids the sweep
+# listed the name for, the way chown --from= checks them: $3 the uid and $4
+# the gid, each a number to match, -1 for any, or x for one that names
+# nobody (-nouser, -nogroup). A name swapped after find listed it, for
+# another file of a living owner or group, is left alone.
+_ACCT_REOWN_FROM_PL='use Fcntl; my ($u, $g, $fu, $fg, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)) && ($fu eq "-1" || ($fu eq "x" ? !defined(getpwuid($s[4])) : $s[4] == $fu)) && ($fg eq "-1" || ($fg eq "x" ? !defined(getgrgid($s[5])) : $s[5] == $fg)); close($h); } exit 0'
+# What _ACCT_REOWN_FROM_PL leaves alone, for the purge's freed uids: each
+# name given that is not a directory (a regular file with more than one
+# link, a link, a FIFO, a socket, a device) whose uid names nobody goes to
+# root:root, with the set-ID bits and group and other write cleared, and is
+# never removed. The owner is read and changed through one handle on the
+# entry itself, so a name swapped in after find listed it is never touched:
+# a regular file opened without following a link or blocking, anything else
+# through a path-only handle (O_PATH, not in Perl's Fcntl: 010000000 on
+# x86_64 and aarch64, elsewhere such an entry is left alone), which opens
+# nothing (no FIFO end, no device) and is changed through its /proc/self/fd
+# name, which never follows a link. A link's mode means nothing: kept.
+_ACCT_ORPHAN_ROOT_PL='use Fcntl qw(:DEFAULT :mode); use POSIX (); my $p = (POSIX::uname())[4] =~ /^(x86_64|aarch64)$/ ? 010000000 : 0; for my $f (@ARGV) { lstat($f) or next; next if -d _; my $h; if (-f _) { sysopen($h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; } else { $p && sysopen($h, $f, $p|O_NOFOLLOW) or next; } my @s = stat($h); if (@s && !S_ISDIR($s[2]) && !defined(getpwuid($s[4]))) { my $n = "/proc/self/fd/" . fileno($h); if (S_ISREG($s[2])) { chown(0, 0, $h) and chmod($s[2] & 01755, $h); } else { chown(0, 0, $n) and (S_ISLNK($s[2]) or chmod($s[2] & 01755, $n)); } } close($h); } exit 0'
+# The immutable flag set ($1 = +) or cleared (-) on each directory, or
+# regular file with a single link, named, through a handle opened without
+# following a link or blocking on a FIFO; non-zero when a name was neither
+# or its flag could not be changed.
+_ACCT_CHATTR_PL='use Fcntl; my ($op, @f) = @ARGV; my $rc = 0; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or do { $rc = 1; next }; my @s = stat($h); if (@s && (-d _ || (-f _ && $s[3] == 1))) { my $b = pack("L", 0); if (ioctl($h, 0x80086601, $b)) { my $fl = unpack("L", $b); $fl = $op eq "+" ? ($fl | 0x10) : ($fl & ~0x10); ioctl($h, 0x40086602, pack("L", $fl)) or $rc = 1; } else { $rc = 1 } } else { $rc = 1 } close($h); } exit $rc'
+# The current (pinned) directory and every directory and single-link regular
+# file below it unlocked (chattr -i), each through a handle (_ACCT_CHATTR_PL)
+# from the directory find walked (-execdir): a directory swapped for a link
+# while the walk runs never leads it out of the tree, as chattr -R's walk by
+# path could.
+_boa_unlock_tree_here() {
+  perl -e "${_ACCT_CHATTR_PL}" - . &> /dev/null
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+    \( -type d -o -type f \) \
+    -execdir perl -e "${_ACCT_CHATTR_PL}" - {} + &> /dev/null
+  return 0
+}
 
 _os_detection_minimal() {
   _APT_UPDATE="apt-get update"
@@ -3613,6 +3654,17 @@ _octopus_cleanup() {
           id -u "${_pUsr}" &> /dev/null && _pUsrs="${_pUsrs:+${_pUsrs},}${_pUsr}"
         done
         if [ -n "${_pUsrs}" ]; then
+          # Stop new logins for the account's identities before ending their
+          # processes (the password locked, the shell nologin), so no ftp,
+          # ssh or sub-user login opens a fresh session that keeps a number
+          # alive into the removal, the home walks and the leftover reown
+          # below. Root's own su -s runs as an identity are not stopped by
+          # this: the parked dispatcher and the quiet window below bound
+          # those. deluser removes the identities anyway.
+          for _pLk in ${_pUsrs//,/ }; do
+            usermod -L "${_pLk}" &> /dev/null
+            usermod -s /usr/sbin/nologin "${_pLk}" &> /dev/null
+          done
           _pQuiet=0
           _pWait=0
           while [ "${_pQuiet}" -lt 3 ] && [ "${_pWait}" -lt 30 ]; do
@@ -3695,22 +3747,37 @@ _octopus_cleanup() {
           for p in $(cat ${_zombie_dir}.purge.list | grep "${_usEr}" 2>&1);do
             _usr_name=`echo $p | cut -d':' -f1 | awk '{ print $1}'`
             _usr_home=`echo $p | cut -d':' -f2 | awk '{ print $1}'`
+            # The trees deluser must not back up go first, by rm (fd-based,
+            # it never follows a link): one process takes the bulk, and what
+            # +i kept is then unlocked and removed again. The home is unlocked
+            # from inside the real home, through a handle per entry
+            # (_boa_unlock_tree_here), which walks only the survivors now (a
+            # perl per directory over a whole account cost minutes): chattr
+            # -i -R walked it by path, so a directory a writer swapped for a
+            # link during the walk led it out of the tree, clearing +i on
+            # files BOA locked anywhere on the box (/etc/resolv.conf, other
+            # accounts' homes). The handle walk never leaves the real home.
+            _rmTrees=( .gnupg )
+            if [ -d "${_usr_home}/static" ]; then
+              _rmTrees+=( backups distro src static undo )
+            fi
+            echo purging ${_usr_name}..
+            # quiet: what +i kept is expected here, and taken below
+            for _rmT in "${_rmTrees[@]}"; do
+              rm -rf "${_usr_home}/${_rmT}" 2> /dev/null
+            done
             echo disabling chattr for ${_usr_name} in ${_usr_home}..
-            chattr -i -R ${_usr_home}/ &> /dev/null
+            ( cd -P -- "${_usr_home}" 2> /dev/null \
+              && [ "$(pwd -P)" = "$(cd -P -- "${_usr_home%/*}" 2> /dev/null && pwd -P)/${_usr_home##*/}" ] \
+              && _boa_unlock_tree_here )
             # on '.' inside the real .drush only: the name is the account's,
             # and a trailing slash would clear the flag of a link's target
             ( cd -P -- "${_usr_home}/.drush" 2> /dev/null \
               && [ "$(pwd -P)" = "$(cd -P -- "${_usr_home}" 2> /dev/null && pwd -P)/.drush" ] \
               && chattr -i . )
-            rm -rf ${_usr_home}/.gnupg
-            echo purging ${_usr_name}..
-            if [ -d "${_usr_home}/static" ]; then
-              rm -rf ${_usr_home}/backups
-              rm -rf ${_usr_home}/distro
-              rm -rf ${_usr_home}/src
-              rm -rf ${_usr_home}/static
-              rm -rf ${_usr_home}/undo
-            fi
+            for _rmT in "${_rmTrees[@]}"; do
+              rm -rf "${_usr_home}/${_rmT}"
+            done
             deluser \
               --remove-home \
               --backup-to /var/backups/zombie/purged/${_usEr}/home/ ${_usr_name} &> /dev/null
@@ -3747,15 +3814,21 @@ _octopus_cleanup() {
         # now), so it goes to root before the groups below are freed: shut
         # to everyone else, and each directory and single-link entry handed
         # over. An entry with more links may share its inode with a living
-        # name outside: the sweep below takes it only once its numbers name
-        # nothing. -execdir: each name is changed inside the directory find
-        # entered without following a link, so a process still inside the
-        # tree cannot swap a directory between for a link; it wants an
-        # absolute PATH.
+        # name outside: it is left alone here, and goes to root below only
+        # when its owner names nobody. -execdir: each name is changed inside
+        # the directory find entered without following a link, so a process
+        # still inside the tree cannot swap a directory between for a link; the
+        # hand-over itself goes through a handle opened without following a
+        # link and only on a directory or a single-link regular file
+        # (_ACCT_REOWN_PL), so a hard link a surviving process planted here is
+        # never handed to root; find lists only directories and regular
+        # files, and a name swapped for a FIFO after the listing is opened
+        # without blocking and left alone. It wants an absolute PATH.
         if [ -d "${_zombie_dir}left" ] && [ ! -L "${_zombie_dir}left" ]; then
           chmod 0700 "${_zombie_dir}left"
-          env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_zombie_dir}left" -xdev \( -type d -o -links 1 \) \
-            -execdir chown -h root:root {} + &> /dev/null
+          env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_zombie_dir}left" -xdev \
+            \( -type d -o -type f \) \
+            -execdir perl -e "${_ACCT_REOWN_PL}" -- 0 0 {} + &> /dev/null
         fi
         # The account's private group (per-instance group model) outlives
         # every deluser above; drop it once nothing holds it, or the GID is
@@ -3764,22 +3837,36 @@ _octopus_cleanup() {
         # would keep the number and addgroup hands it to the next account:
         # those paths go to root first, and the group stays while any path
         # still carries it. _grpGid was read above, before the deluser loop.
+        # The hand-over goes through a handle opened without following a
+        # link, only on a directory or a single-link regular file that
+        # still carries the group (_ACCT_REOWN_FROM_PL, from the directory
+        # find walked, which lists only directories and regular files; a
+        # FIFO swapped in after the listing is opened without blocking and
+        # left alone): chown -R handed a hard link the
+        # account left here (its other name anywhere) to root. A hard-linked
+        # file, a FIFO or a socket keeps the number here, and the group with
+        # it (reported below); a link keeps it too, but a link's group grants
+        # nothing, so the scans below pass over links. The freed-uid sweep
+        # further down hands such an entry to root:root when its owner names
+        # nobody; the group is kept either way.
         if [ -n "${_grpGid}" ]; then
           # The uid is recycled from the same system range as the gid, so
           # the leftovers lose both numbers: root:root.
           for _lftDir in /opt/user/gems/${_usEr} /opt/user/gems/${_usEr}.* \
             /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* /mnt/*/files/${_usEr}; do
             if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
-              chown -R -h -P --from=":${_grpGid}" "root:root" "${_lftDir}" &> /dev/null
+              env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -gid "${_grpGid}" \
+                \( -type d -o -type f \) \
+                -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- 0 0 -1 "${_grpGid}" {} + &> /dev/null
             fi
           done
           # -xdev never enters a mounted volume, so each mountpoint under
           # /mnt is its own start point.
-          _grpLeft=$(find -P /data/disk /home /opt/user -xdev -gid "${_grpGid}" -print -quit 2>/dev/null)
+          _grpLeft=$(find -P /data/disk /home /opt/user -xdev -gid "${_grpGid}" ! -type l -print -quit 2>/dev/null)
           if [ -z "${_grpLeft}" ]; then
             for _mntDir in /mnt/*; do
               [ -d "${_mntDir}" ] && mountpoint -q "${_mntDir}" 2>/dev/null || continue
-              _grpLeft=$(find -P "${_mntDir}" -xdev -gid "${_grpGid}" -print -quit 2>/dev/null)
+              _grpLeft=$(find -P "${_mntDir}" -xdev -gid "${_grpGid}" ! -type l -print -quit 2>/dev/null)
               [ -n "${_grpLeft}" ] && break
             done
           fi
@@ -3798,14 +3885,16 @@ _octopus_cleanup() {
             /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* \
             /mnt/*/files/${_usEr} /var/www/phpcache/${_usEr}; do
             if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
-              chown -R -h -P --from=":${_wgGid}" "root:root" "${_lftDir}" &> /dev/null
+              env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -gid "${_wgGid}" \
+                \( -type d -o -type f \) \
+                -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- 0 0 -1 "${_wgGid}" {} + &> /dev/null
             fi
           done
-          _grpLeft=$(find -P /data/disk /home /opt/user /var/www -xdev -gid "${_wgGid}" -print -quit 2>/dev/null)
+          _grpLeft=$(find -P /data/disk /home /opt/user /var/www -xdev -gid "${_wgGid}" ! -type l -print -quit 2>/dev/null)
           if [ -z "${_grpLeft}" ]; then
             for _mntDir in /mnt/*; do
               [ -d "${_mntDir}" ] && mountpoint -q "${_mntDir}" 2>/dev/null || continue
-              _grpLeft=$(find -P "${_mntDir}" -xdev -gid "${_wgGid}" -print -quit 2>/dev/null)
+              _grpLeft=$(find -P "${_mntDir}" -xdev -gid "${_wgGid}" ! -type l -print -quit 2>/dev/null)
               [ -n "${_grpLeft}" ] && break
             done
           fi
@@ -3816,14 +3905,20 @@ _octopus_cleanup() {
             groupdel "wg-${_usEr}" &> /dev/null && echo "removed group wg-${_usEr}"
           fi
         fi
-        # Nothing the purge leaves on disk keeps a number it freed: an
-        # identity deluser removed, a group removed above, or one already
-        # gone on a half-purged box names nothing now, and the next account
-        # is given it. What was moved here (the vhost files) lies outside
-        # every scan above and the account's leftovers were taken off its
-        # groups only: whatever still carries such a number gives that
-        # number to root, and only that one (the inode's other names, if
-        # any, carry the same dead number).
+        # A number the purge freed (an identity deluser removed, a group
+        # removed above, or one already gone on a half-purged box) names
+        # nothing now, and the next account is given it. What was moved here
+        # (the vhost files) lies outside every scan above and the account's
+        # leftovers were taken off its groups only: each directory and
+        # single-link regular file that still carries such a number gives
+        # that number to root, and only that one. What else still carries a
+        # uid that names nobody (a hard-linked file, a link, a FIFO, a
+        # socket, a device) goes to root:root whole, under the root-only
+        # park and in the unparked trees below alike, and is never removed:
+        # the next account given that uid would own it, and through a hard
+        # link write what its other names (anywhere) share. A gid that names
+        # nobody on such an entry of a living owner stays: the group rule
+        # above keeps a group while any path carries it.
         for _lftDir in ${_zombie_dir%/} /opt/user/gems/${_usEr} /opt/user/gems/${_usEr}.* \
           /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* \
           /mnt/*/files/${_usEr} /mnt/*/*/files/${_usEr} /var/www/phpcache/${_usEr} \
@@ -3832,11 +3927,28 @@ _octopus_cleanup() {
             # -execdir: each name is changed inside the directory find
             # entered without following a link, so no directory between
             # is looked up again by path (a tenant could swap one for a
-            # link in a world-writable place); it wants an absolute PATH.
+            # link in a world-writable place); the hand-over goes through a
+            # handle opened without following a link, only on a directory or
+            # a single-link regular file whose id on that handle still names
+            # nobody (_ACCT_REOWN_FROM_PL, x), so neither a hard link a
+            # surviving process planted here nor a living owner's file moved
+            # onto a listed name is ever handed to root. It wants an absolute
+            # PATH. -1 keeps the other id as it is. What that pass leaves with
+            # a uid that names nobody then goes to root:root through a handle
+            # on the entry itself (_ACCT_ORPHAN_ROOT_PL): a hard-linked file
+            # loses its set-ID bits and group and other write. find lists
+            # only directories and regular files for the handle passes; a
+            # name swapped for a FIFO after the listing is opened without
+            # blocking and left alone.
             env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev -nouser \
-              -execdir chown -h root {} + &> /dev/null
+              \( -type d -o -type f \) \
+              -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- 0 -1 x -1 {} + &> /dev/null
+            env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev -nouser \
+              ! -type d \( ! -type f -o -links +1 \) \
+              -execdir perl -e "${_ACCT_ORPHAN_ROOT_PL}" -- {} + &> /dev/null
             env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev -nogroup \
-              -execdir chgrp -h root {} + &> /dev/null
+              \( -type d -o -type f \) \
+              -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- -1 0 -1 x {} + &> /dev/null
           fi
         done
         # In the shared temporary places what the account's identities
@@ -3938,14 +4050,21 @@ _archived_entries() {
   find "$1" -mindepth 1 -maxdepth 1 -type d -print0 2> /dev/null | sort -z
 }
 _archived_rm_in() {
-  # $1 = the store (a resolved path), $2 = an entry name; the entry cleared
-  # of chattr +i and removed from inside the real store only: the tenant owns
-  # static/, and a name on the way swapped for a link after the listing must
-  # never lead the removal out of the store. rm's status; 1 when the store
-  # is not the directory it was
+  # $1 = the store (a resolved path), $2 = an entry name; the entry removed
+  # from inside the real store only: the tenant owns static/, and a name on
+  # the way swapped for a link after the listing must never lead the removal
+  # out of the store. rm (fd-based, never follows a link) goes first, so the
+  # heal frees space at rm's speed; only what chattr +i kept is then unlocked
+  # entry by entry through a handle from inside the real entry
+  # (_boa_unlock_tree_here) -- chattr -R walked by path, and a directory
+  # swapped for a link during its walk cleared +i on files anywhere -- and
+  # removed again. rm's status; 1 when the store is not the directory it was
   ( cd -P -- "${1}" 2> /dev/null && [ "$(pwd -P)" = "${1}" ] || exit 1
     [ -d "./${2}" ] && [ ! -L "./${2}" ] || exit 0
-    chattr -R -i -- "./${2}" &> /dev/null
+    rm -rf -- "./${2}" &> /dev/null && exit 0
+    [ -d "./${2}" ] && [ ! -L "./${2}" ] || exit 0
+    ( cd -P -- "./${2}" 2> /dev/null && [ "$(pwd -P)" = "${1}/${2}" ] \
+      && _boa_unlock_tree_here )
     rm -rf -- "./${2}" )
 }
 _archived_age_days() {
