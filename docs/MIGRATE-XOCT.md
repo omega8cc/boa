@@ -265,9 +265,12 @@ To converge an account that really is this migration's but carries no marker
 on the target by hand: the refusal prints the one-line command, which records
 the account's user ID and directory as they are when it runs. Or re-run with
 `--adopt`, which takes the account the target holds as this migration's and
-puts the marker; `xmass prep-target` passes it, because its targets hold
-accounts no `create` made (a fresh install's own `o1`, a demoted failback
-box's accounts). `xcopy create` writes and reads the same marker.
+puts the marker.
+
+`xmass prep-target` passes `--adopt` only for the same-name
+accounts its own ownership rule takes (one with no site, or one relaying to
+the source; see [MIGRATE-XMASS.md](MIGRATE-XMASS.md)) and refuses the rest
+before the target changes. `xcopy create` writes and reads the same marker.
 
 `pretransfer o1` does a first-pass rsync of large data (platforms, files) while
 the account is still live — reducing the time the account must be offline during

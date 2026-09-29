@@ -469,14 +469,45 @@ What it does, in order:
    account, which installs from the **target's own tree** with the source's
    plan stamps, then seeds the account's `/root/.<oN>.octopus.cnf` (portable
    values only), force-copies the PHP pin files and carries the client's shell
-   credentials. Already-installed accounts are re-seeded, not re-installed:
-   `prep-target` drives `xoct create --adopt`, which takes an account of the
-   same name the target already holds (a fresh install's own `o1`, a demoted
-   failback box's accounts) as this migration's and puts the create marker on
-   it (see [MIGRATE-XOCT.md](MIGRATE-XOCT.md)).
+   credentials. Already-installed accounts are re-seeded, not re-installed.
+
+   An account of the same name that the target already holds is this
+   migration's only when one of these is true, checked once the target
+   answers and before it changes at all (before its tools are refreshed and
+   before any target-only account is purged):
+   - the create marker there names this box and this account, and the user
+     ID and directory it records are still the account's (a `create` of
+     this migration made it, see [MIGRATE-XOCT.md](MIGRATE-XOCT.md));
+   - it carries no site, only its control panel (a fresh install's own
+     `o1`): no registered site, no site directory on its platforms or on
+     disk, no entry in its `vhost.d` but the panel's own vhost (naming only
+     the panel and its automatic `www.` twin), its `config/<oN>.nginx.conf` the stock include of that
+     directory, and none of its `distro`, `static`, `platforms` or `aegir`
+     trees a link;
+   - it relays to this box: its `log/proxied.pid` reads `COMPLETE` and its
+     own source-role policy record `log/migproxy.cnf` names one of this
+     box's addresses as the peer and this account, with the target's own
+     address as its host; both files are root's, with one link (what
+     `xoct proxy` leaves on a demoted failback box).
+
+   The second and third are adopted: `prep-target` passes
+   `xoct create --adopt` for those accounts only, which puts the create
+   marker on them. Any other same-name account (one that serves sites of
+   its own and does not relay here, or one whose state cannot be read) is
+   refused with a `DENY` line per account and nothing is changed on the
+   target.
+
+   Move such an account out of the way there, or, when it really is this
+   migration's, put the create marker on it by hand with the one-line
+   command the refusal prints, then re-run `prep-target`. A demoted box
+   whose relay has no policy record (its conversion failed, or it predates
+   the record) needs that hand marker for a failback.
 6. **Suspension flags** mirrored (`/data/conf/suspended/<oN>.pid` lives outside
    the account tree, so no file sync can carry it — an unmirrored suspension
-   means a non-paying account resumes serving on the target).
+   means a non-paying account resumes serving on the target). Only after the
+   account's create succeeded: a failed create leaves the target's account of
+   that name as it was, its flag included. A flag that cannot be mirrored
+   fails the account's preparation like a failed create.
 7. **Verification** — refuses to report success unless every eligible account
    is present on the target as a real install.
 
