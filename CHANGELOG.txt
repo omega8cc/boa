@@ -919,6 +919,9 @@
 
 @=> Important Fixes
 
+    * renameaegirhost now renames the control panel's path aliases of the
+      renamed sites too; they kept the old hostname.
+
     * xtrim and sqlclean now drop a removed database's user when its only
       grant is on that database: the escaped grant name read as another
       database, so such users were always kept.
