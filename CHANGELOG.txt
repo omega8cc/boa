@@ -258,6 +258,12 @@
       copy is made afresh once on every box. The migration proxy trust
       tool now fails loudly when it cannot record an address.
 
+    * BOA's scheduled update takes /data/conf back to root:root 0711
+      whenever it finds the folder owned by an account or writable by one,
+      and puts the spider-protection switch back when a removed leftover
+      left neither of its names there; the root tools refuse to read a
+      list file over 32 MiB.
+
     * The shared Backdrop redis module, the Backdrop bundle's webform and
       bee are root's as soon as BOA unpacks them: their archives recorded
       the account that built them, and an unpack as root kept that owner
