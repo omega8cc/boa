@@ -669,7 +669,8 @@
       Valkey only. The Redis server installer, its config templates and
       its service handling in the upgrade steps are gone, and the
       Redis-named copies of the Valkey includes in /data/conf/global are
-      no longer deployed or read. A box whose _VALKEY_MAJOR_RELEASE holds
+      no longer deployed or read, and the upgrade removes the copies an
+      earlier release left there. A box whose _VALKEY_MAJOR_RELEASE holds
       a value Valkey does not have now gets the default Valkey major
       instead of a Redis build. The phpredis
       extension, the Drupal and Backdrop redis modules and the redis_*
