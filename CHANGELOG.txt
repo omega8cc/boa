@@ -50,6 +50,11 @@
 
 @=> Security
 
+    * Each account's control panel database user is now granted its own
+      database only, on every Octopus upgrade: it held every privilege on
+      every database of the box, with the right to grant them on, which the
+      panel never needs.
+
     * boa cleanup purge now also drops the purged account's own database
       users (the instance user and its control panel user, proven from the
       account's records before anything moves) and moves its migration
