@@ -50,6 +50,15 @@
 
 @=> Security
 
+    * ai_policy, ip_access and user_admin_access write, prune and restore
+      a site's nginx policy fragments only inside the account's own real
+      config, includes and undo directories, through handles that follow
+      no link, never block and read a bounded size; the control file,
+      aliases and vhosts are read the same way; a front copy is rewritten
+      only when the tool wrote it; the last-good archive is never unpacked
+      as root with its stored owners and modes, and one that would unpack
+      to more than 32 MiB is refused.
+
     * xmass prep-target no longer takes over an unrelated account of the
       same name on the target: an account no create of the migration
       marked is taken only when it carries no site or relays to the source
