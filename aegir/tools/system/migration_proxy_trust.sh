@@ -292,10 +292,13 @@ _conf_put_file_here() {
   return 1
 }
 # ./$1 in the current (pinned) directory copied into the file $2 (root's own,
-# outside /data/conf) while ./$1 is a regular file: read without following a
-# link or blocking on a FIFO. Status 1 when it is not there or not one.
+# outside /data/conf) while ./$1 is a regular file of at most 32 MiB: read
+# without following a link or blocking on a FIFO. Status 1 when it is not
+# there, not one, or bigger (a file that size is none of these lists, and the
+# copy lands in memory-backed /run).
 _conf_get_file_here() {
   [ -f "./${1}" ] && [ ! -L "./${1}" ] || return 1
+  [ "$(stat -c %s -- "./${1}" 2> /dev/null || echo 0)" -le 33554432 ] || return 1
   dd if="./${1}" of="${2}" iflag=nofollow,nonblock status=none 2> /dev/null
 }
 # Each read-change-put of a /data/conf file below holds this tool's own lock
