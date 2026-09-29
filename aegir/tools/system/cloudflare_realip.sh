@@ -10,15 +10,17 @@
 # is inert unless a request actually arrives from one of them, so realip never
 # triggers for direct traffic.
 #
-# The realip directives and the wildcard `include .../nginx_cloudflare_real_ip.c*`
-# live in the generated nginx server config (Provision server.tpl.php); this tool
-# only maintains the ranges file that include consumes.
+# The realip directives and `include .../nginx_cloudflare_real_ip.con[f]` (a
+# pattern matching only this name, so a missing file is harmless) live in the
+# generated nginx server config (Provision server.tpl.php); this tool only
+# maintains the ranges file that include consumes.
 
 _out_dir="/data/conf"
 _out_name="nginx_cloudflare_real_ip.conf"
 _out_file="${_out_dir}/${_out_name}"
-# Leading-dot backup (and put names) so the `.c*` include glob never picks
-# them up (nginx glob skips dotfiles); the install renames inside the
+# Leading-dot backup (and put names) so no include ever picks them up (a
+# server config rendered before the exact-name pattern still carries the
+# `.c*` glob, and nginx glob skips dotfiles); the install renames inside the
 # directory, so it is atomic.
 _backup_name=".nginx_cloudflare_real_ip.last_good.conf"
 # Shared advisory lock so all BOA nginx-config writers (ip_access /
