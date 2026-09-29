@@ -110,7 +110,8 @@ so nginx is configured to recover the real client:
 ```
 real_ip_header    CF-Connecting-IP;
 real_ip_recursive on;
-include /data/conf/nginx_cloudflare_real_ip.c*;   # set_real_ip_from <CF ranges>
+include /data/conf/nginx_cloudflare_real_ip.cmi[g];   # set_real_ip_from <migration proxy>
+include /data/conf/nginx_cloudflare_real_ip.con[f];   # set_real_ip_from <CF ranges>
 ```
 
 `/var/xdrago/cloudflare_realip.sh` fetches Cloudflare's published IPv4+IPv6 ranges into
@@ -121,7 +122,8 @@ client even for CF-proxied sites. PHP is still fed the peer (`fastcgi_param REMO
 $realip_remote_addr`) plus the realip answer (`BOA_NGINX_CLIENT`), and `global.inc` takes the
 client from that answer, never from a header a remote peer sent.
 
-The empty-glob include (`*.c*`) means the config is valid before the ranges file exists,
+The includes are one-character-class patterns (`.con[f]`, `.cmi[g]`) that match only their
+own file, so the config is valid before the ranges file exists,
 so there is no chicken-and-egg at first boot.
 
 ## Bans (csf → nginx, IPv4 + IPv6)
@@ -140,7 +142,7 @@ and FTP bans are deliberately excluded — those stay purely csf's job.
 offender can't be banned through the firewall. `scan_nginx` writes it to an nginx-native
 store instead, and `nginx_deny6.sh` mirrors that store into
 `/data/conf/nginx_banned_ips.conf6` — the **same** `geo $remote_addr $is_banned` set (its
-wildcard `nginx_banned_ips.c*` include already covers it) — so an IPv6 attacker gets the
+`nginx_banned_ips.conf[6]` include names it) — so an IPv6 attacker gets the
 same realip-keyed 444. IPv6 can only arrive via the trusted realip proxy (BOA disables IPv6
 server-side and pins realip to the CF ranges), so a banned v6 is always the real client.
 The v6 bans self-expire (default 900s) like the csf temp bans.
