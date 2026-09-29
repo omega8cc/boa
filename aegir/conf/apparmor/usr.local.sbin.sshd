@@ -143,7 +143,6 @@
   ptrace read peer=/sbin/dhclient,
   ptrace read peer=/usr/bin/mysqld_safe,
   ptrace read peer=/usr/bin/mysqld,
-  ptrace read peer=/usr/bin/redis-server,
   ptrace read peer=/usr/lib/jvm/java-11-openjdk-amd64/bin/java,
   ptrace read peer=/usr/lib/jvm/java-17-openjdk-amd64/bin/java,
   ptrace read peer=/usr/lib/jvm/java-21-openjdk-amd64/bin/java,

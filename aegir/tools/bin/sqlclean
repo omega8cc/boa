@@ -551,7 +551,9 @@ _drop_mysql_user() {
   case "${_db_user}" in
     root|aegir|debian-sys-maint) return 0 ;;
   esac
-  _other=$(_sql_probe "SELECT DISTINCT Db FROM mysql.db WHERE User='${_db_user}' AND Db != '${_db_user}' LIMIT 1")
+  # mysql.db stores a grant's escaped name (a\_b): compared without the
+  # escapes, or the user's own grant reads as another db's
+  _other=$(_sql_probe "SELECT DISTINCT Db FROM mysql.db WHERE User='${_db_user}' AND REPLACE(Db,'\\\\','') != '${_db_user}' LIMIT 1")
   if [ -n "${_other}" ]; then
     _alrt "User ${_db_user} also holds grants on '${_other}' — user kept"
     return 0

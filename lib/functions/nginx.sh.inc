@@ -207,10 +207,13 @@ _force_advanced_nginx_config() {
   # never what it leads to
   chown -h aegir:aegir ${_mtrInc}/*
   chown aegir:aegir /var/aegir/.drush/sys/provision/http/Provision/Config/Nginx/*
+  # The switch's one template lives in the tools tree (/var/xdrago/conf on a
+  # box), where BOA.sh.txt also puts it back from between upgrades.
   if [ ! -e "/data/conf/nginx_high_load_off.conf" ]; then
     mkdir -p /data/conf
     _acct_in_real_dir /data/conf _nginx_conf_put_here \
-      "${_locCnf}/nginx/nginx_high_load_off.conf" nginx_high_load_off.conf 644
+      "${_bldPth}/aegir/tools/system/conf/nginx_high_load_off.conf" \
+      nginx_high_load_off.conf 644
   fi
 }
 
@@ -1191,8 +1194,6 @@ _nginx_wildcard_ssl_install() {
     fi
     if [ -e "/etc/init.d/valkey-server" ]; then
       _valkey_password_update
-    elif [ -e "/etc/init.d/redis-server" ]; then
-      _redis_password_update
     fi
     _mrun "service nginx restart"
   else

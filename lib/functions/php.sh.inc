@@ -619,8 +619,19 @@ _php_conf_update() {
   cp -af ${_locCnf}/php/fpm-pool-common-modern.conf /opt/etc/fpm/fpm-pool-common-modern.conf
   sed -i "s/127.0.0.1/127.0.0.1,${_THISHTIP}/g" /opt/etc/fpm/fpm-pool-commo*.conf
   wait
-  sed -i "s/mode =.*/mode = 0660/g" /opt/etc/fpm/fpm-pool-commo*.conf
+  # Only nginx (the sockets' owner, www-data) and root speak FastCGI to a
+  # pool: with the group bits every member of www-data -- every account's
+  # users and every pool's workers -- could send requests to any other
+  # account's pool and to the master pools.
+  sed -i "s/mode =.*/mode = 0600/g" /opt/etc/fpm/fpm-pool-commo*.conf
   wait
+  # A reload keeps a running master's sockets as they were bound: the
+  # live ones take the new mode here (/run is root's; a link is skipped).
+  for _fpmSock in /run/*.fpm.socket; do
+    if [ -S "${_fpmSock}" ] && [ ! -L "${_fpmSock}" ]; then
+      chmod 0600 "${_fpmSock}"
+    fi
+  done
   _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "5.7" ]; then
     _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
@@ -643,6 +654,20 @@ _php_conf_update() {
     cp -af ${_locCnf}/php/php${e}.ini /opt/php${e}/etc/php${e}.ini
     cp -af ${_locCnf}/php/php${e}-cli.ini /opt/php${e}/lib/php.ini
     cp -af ${_locCnf}/php/php${e}-fpm.conf /opt/php${e}/etc/php${e}-fpm.conf
+    # Only a build installs the init script, so a fix to it never reached a
+    # box until that version was rebuilt. A live one is refreshed here; a
+    # parked copy is refreshed on the pass that enables it again. Put by
+    # rename: a running service call keeps reading the old file.
+    if [ -e "/etc/init.d/php${e}-fpm" ] \
+      && [ -x "/opt/php${e}/sbin/php-fpm" ] \
+      && [ -s "${_locCnf}/php/php${e}-fpm" ] \
+      && ! cmp -s "${_locCnf}/php/php${e}-fpm" "/etc/init.d/php${e}-fpm"; then
+      rm -f "/etc/init.d/.php${e}-fpm.new"
+      cp -f "${_locCnf}/php/php${e}-fpm" "/etc/init.d/.php${e}-fpm.new" \
+        && chmod 755 "/etc/init.d/.php${e}-fpm.new" \
+        && mv -f "/etc/init.d/.php${e}-fpm.new" "/etc/init.d/php${e}-fpm"
+      rm -f "/etc/init.d/.php${e}-fpm.new"
+    fi
 
     _THIS_FILE="/opt/php${e}/etc/php${e}.ini"
     _apply_php_fpm_ini_fixes "${e}"
@@ -761,10 +786,6 @@ _tune_web_server_config() {
 
   # Valkey config should sync with PHP-CLI
   sed -i "s/^timeout .*/timeout 3600/g" /etc/valkey/valkey.conf                                &> /dev/null
-  wait
-
-  # Redis config should sync with PHP-CLI
-  sed -i "s/^timeout .*/timeout 3600/g" /etc/redis/redis.conf                                  &> /dev/null
   wait
 }
 

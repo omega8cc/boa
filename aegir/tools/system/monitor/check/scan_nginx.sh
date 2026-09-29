@@ -2172,20 +2172,30 @@ fi
 # This loader separates exact hosts (O(1) assoc lookup) from CIDRs (precomputed
 # integer network+mask, bucketed by first octet so _is_whitelisted_ip can do a
 # fork-free containment test with a single array lookup as the common-case
-# early exit). Destination-only rules (DNS/DHCP use d=<ip>, not s=) are
-# excluded naturally since they contain no s= field.
+# early exit). A plain first-field entry (A.B.C.D or A.B.C.D/N, csf's full
+# allow for every port and direction, the form operators write by hand) is
+# trusted too, as guest-fire's ban step trusts it. Destination-only rules
+# (DNS/DHCP use d=<ip>, not s=) stay out: they name a server this box calls.
 declare -A _CSF_ALLOW_IPS            # exact host -> 1
 declare -A _CSF_ALLOW_CIDR_OCTET1    # first octet -> 1  (cheap prescreen)
 _CIDR_NET=()                         # masked network as 32-bit int  (indexed)
 _CIDR_MASK=()                        # 32-bit subnet mask             (indexed)
 _CIDR_O1=()                          # first octet, parallel to above (indexed)
 _CSF_ALLOW_FILE="/etc/csf/csf.allow"
+# A plain entry is the line's first field (csf strips leading whitespace) and
+# ends at whitespace or the line's end (the comment is cut off before the match).
+_CSF_PLAIN_RE='^[[:space:]]*([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(/([0-9]+))?([[:space:]]|$)'
 if [[ -f "${_CSF_ALLOW_FILE}" ]]; then
-  while IFS= read -r _aline; do
-    # Skip full-line comments
+  # The last line counts even without a trailing newline, as csf reads it.
+  while IFS= read -r _aline || [[ -n "${_aline}" ]]; do
+    # Skip full-line comments; an address named only in a comment is not an
+    # allow.
     [[ "${_aline}" =~ ^[[:space:]]*# ]] && continue
-    # Match any s=A.B.C.D or s=A.B.C.D/N (port/direction-agnostic)
-    [[ "${_aline}" =~ s=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(/([0-9]+))? ]] || continue
+    _aline="${_aline%%#*}"
+    # Match any s=A.B.C.D or s=A.B.C.D/N (port/direction-agnostic), else a
+    # plain first-field A.B.C.D or A.B.C.D/N.
+    [[ "${_aline}" =~ s=([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)(/([0-9]+))? ]] \
+      || [[ "${_aline}" =~ ${_CSF_PLAIN_RE} ]] || continue
     _addr="${BASH_REMATCH[1]}"
     _bits="${BASH_REMATCH[3]}"
     IFS=. read -r _a _b _c _d <<< "${_addr}"
@@ -2253,7 +2263,8 @@ _get_ssh_ips() {
   local _p _ports="22" _cnf_port _sshd_ports
   _cnf_port=$(sed -n 's/^_SSH_PORT=//p' /root/.barracuda.cnf 2>/dev/null \
     | tail -n 1 | sed 's/[[:space:]]*#.*$//' | tr -d '" ')
-  _sshd_ports=$(/usr/sbin/sshd -T 2>/dev/null | awk '/^port /{print $2}')
+  # The keyword's case varies by build (OpenSSH 10.5 prints "Port 22").
+  _sshd_ports=$(/usr/sbin/sshd -T 2>/dev/null | awk 'tolower($1) == "port" {print $2}')
   for _p in ${_cnf_port} ${_sshd_ports}; do
     if [[ "${_p}" =~ ^[0-9]+$ ]] && [[ ! " ${_ports} " =~ " ${_p} " ]]; then
       _ports="${_ports} ${_p}"

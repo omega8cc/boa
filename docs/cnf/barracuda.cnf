@@ -51,7 +51,7 @@ _SQL_LOW_MAX_TTL=60 #----------- Max TTL for mysql process per problematic user
 _SQL_MAX_CONNECTIONS_FORCE="" #- Pins max_connections count (restart applies; AUTO when empty)
 _SQL_MAX_TTL=3600 #------------- Max TTL for mysql process per user (seconds); authoritative -- the historical .high_load/.big_db markers are inert
 _SQL_TMP_TABLE_FORCE="" #------- Pins tmp_table_size + max_heap_table_size in MB (AUTO when empty)
-_VALKEY_MAXMEM_FORCE="" #------- Pins Valkey/Redis maxmemory in MB (AUTO when empty)
+_VALKEY_MAXMEM_FORCE="" #------- Pins Valkey maxmemory in MB (AUTO when empty)
 ###
 _DNS_SETUP_TEST=YES #----------- Allows to skip DNS testing when NO
 _EXTRA_PACKAGES="" #------------ Installs listed extra packages with apt
@@ -164,8 +164,8 @@ _PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP versions when YES
 _PHP_MULTI_INSTALL="8.3 8.4 8.5" #--- PHP versions to install 8.5/4/3/2/1/0 7.4/3/2/1/0 5.6
 _PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 8.3
 ###
-_REDIS_LISTEN_MODE=SOCKET #----- Redis listen mode: SOCKET (recommended) or PORT
-_REDIS_MAJOR_RELEASE=7 #-------- Redis major release version: 5, 6 or 7
+_REDIS_LISTEN_MODE=SOCKET #----- Not used any more: BOA installs Valkey only
+_REDIS_MAJOR_RELEASE=7 #-------- Not used any more: BOA installs Valkey only
 _RESERVED_RAM=0 #--------------- Allows to reserve RAM (in MB) for non-BOA apps
 _SPEED_VALID_MAX=3600 #--------- Defines Speed Booster hourly cache TTL in sec
 _SSH_ARMOUR=NO #---------------- Allows to enhance OpenSSH security when YES
@@ -183,7 +183,7 @@ _VALKEY_MAJOR_RELEASE=9 #------- Valkey major release version: 9, 8, 7
 ###
 _CUSTOM_CONFIG_CSF=NO #--------- Protects custom CSF config when YES
 _CUSTOM_CONFIG_LSHELL=NO #------ Protects custom Limited Shell config when YES
-_CUSTOM_CONFIG_REDIS=NO #------- Protects custom Redis config when YES
+_CUSTOM_CONFIG_REDIS=NO #------- Not used any more: BOA installs Valkey only
 _CUSTOM_CONFIG_SQL=NO #--------- Protects custom SQL config when YES
 _CUSTOM_CONFIG_VALKEY=NO #------ Protects custom Valkey config when YES
 ###

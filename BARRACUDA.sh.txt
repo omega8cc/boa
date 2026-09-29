@@ -117,10 +117,6 @@ _PHPREDIS_SIX_MODERN_VRN=6.3.0
 _PHPREDIS_THREE_VRN=3.1.6
 _PURE_FTPD_VRN=1.0.54
 _PXC_VRN=1.4.16
-_REDIS_FIVE_VRN=5.0.9
-_REDIS_FOUR_VRN=4.0.14
-_REDIS_SEVEN_VRN=7.0.15
-_REDIS_SIX_VRN=6.2.7
 _RUBY_VRN=3.3.4
 _SLF4J_VRN=1.7.21
 _SMALLCORE7_V=7.106.1
@@ -152,7 +148,6 @@ export _DB_SRC=repo.percona.com
 export _DRUPAL7="drupal-${_SMALLCORE7_V}"
 export _DRUSH_VERSION_TEST="${_DRUSH_EIGHT_TEST_VRN}"
 export _DRUSH_VERSION="${_DRUSH_EIGHT_VRN}"
-export _FORCE_REDIS_RESTART=NO
 export _LOC_OS_CODE=""
 export _PURGE_ALL_THISHTIP=NO
 export _SPINNER=NO
@@ -283,7 +278,7 @@ fi
 ###
 ### Include shared functions
 ###
-_FL="helper dns system sql valkey redis nginx php solr master xtra firewall hotfix"
+_FL="helper dns system sql valkey nginx php solr master xtra firewall hotfix"
 for f in ${_FL}; do
   [ -r "${_libFnc}/${f}.sh.inc" ] || _panic_exit "${f}"
   source "${_libFnc}/${f}.sh.inc"
@@ -560,13 +555,16 @@ if [ "${_ALLOW_HEAVY_REBUILDS}" = "YES" ]; then
   _nginx_install_upgrade
   _nginx_initd_check
   _nginx_mime_check_fix
-  if [ "${_VALKEY_MAJOR_RELEASE}" = "7" ] \
-    || [ "${_VALKEY_MAJOR_RELEASE}" = "8" ] \
-    || [ "${_VALKEY_MAJOR_RELEASE}" = "9" ]; then
-    _valkey_install_upgrade
-  else
-    _redis_install_upgrade
-  fi
+  # Valkey is the only cache server BOA installs: a major it does not build
+  # becomes the default one here, whatever build tree the pass sources.
+  case "${_VALKEY_MAJOR_RELEASE}" in
+    7|8|9) ;;
+    *)
+      export _VALKEY_MAJOR_RELEASE=9
+      sed -i "s/^_VALKEY_MAJOR_.*/_VALKEY_MAJOR_RELEASE=9/g" ${_barCnf}
+      ;;
+  esac
+  _valkey_install_upgrade
   _lshell_install_upgrade
   _php_install_deps
   _php_libs_fix

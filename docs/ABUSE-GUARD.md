@@ -875,6 +875,11 @@ Four layers protect known-good addresses from every detector:
   `_block_ip` — including the bulk DDoS and path-flood passes — so a bulk ban can't drop a
   CDN PoP or a search-engine crawler. The allow is honoured **on every port** regardless of
   the port scope of the `csf.allow` entry (an `s=` record means "trusted source").
+
+  Two entry forms name a trusted source: an advanced `s=` record and a plain first-field
+  address or network (what `csf -a` writes). A `d=`-only rule names a server the box
+  calls, not a client, and an address that appears only in an entry's comment is not an
+  allow. The crawler-fleet guard reads `csf.allow` the same way.
 - **IPv6 allow store.** `csf.allow` cannot hold an IPv6 entry (CSF is IPv4-only), so the
   IPv6 counterpart lives in `/var/xdrago/monitor/log/web6.allow`: `guest-water.sh` mirrors
   the published Googlebot and Google special-case crawler `ipv6Prefix` ranges into it
@@ -1139,9 +1144,13 @@ The rebuild only disturbs nginx when something actually changed:
 
 - **Change-gate.** The freshly-built file is compared to the live one with `cmp -s`; if
   identical, the run exits with no reload.
-- **Atomic install + validate.** The new file is written to a leading-dot temp in the same
-  directory (so the `.c*` include glob never sees it) and `mv`-d into place; the current
-  file is backed up to `.nginx_banned_ips.last_good.conf` first.
+- **Atomic install + validate.** The new file is built in a root-only work directory under
+  `/run`, written into `/data/conf` under a leading-dot name
+  (`.nginx_banned_ips.conf.put.<pid>.<n>`, so the `.c*` include glob never sees it) through
+  one handle that never follows a link, and renamed into place inside the real
+  `/data/conf`; the current file is backed up to `.nginx_banned_ips.last_good.conf` first,
+  the same way. A link, a FIFO or a directory left at either name is replaced, never
+  written through.
 - **Revert on failure.** After install it runs `service nginx configtest` and
   `service nginx reload`; on any failure it restores the last-good file (and reloads), so a
   bad ban set can never take nginx down.
@@ -1183,8 +1192,11 @@ fragments from its store and installs them the same careful way the geo sets are
   `/run/boa_nginx_fleet.lock` for the whole run, so passes never stack.
 - **Back up all three, then install.** Every live fragment is copied to its
   `.nginx_fleet_<name>.last_good.conf` **before** any is replaced, so a failed copy (a full
-  disk) leaves the live set exactly as it was. Temporary files are leading-dot names in the
-  same directory, so the `.c*` include globs never see a half-written file.
+  disk) leaves the live set exactly as it was. Each fragment is built in a root-only work
+  directory under `/run` and written into `/data/conf` under a leading-dot name, then
+  renamed into place inside the real `/data/conf`, so the `.c*` include globs never see a
+  half-written file and a link, a FIFO or a directory left at a name is replaced, never
+  written through.
 - **Configtest and revert.** After installing, the pass runs `service nginx configtest`; on
   rejection it restores the last-good set and writes an `ALERT` naming the first
   `[emerg]`/`[crit]`/`[error]` line of the output, not whatever warning happened to come
@@ -2310,7 +2322,8 @@ Three independent mechanisms, by what you are protecting:
 **Whitelist an IP — use the CSF allow list.** `_is_whitelisted_ip` parses
 `/etc/csf/csf.allow` once at startup into an exact-host map plus a CIDR index, and every call
 path into a block checks it first. An allowed IP is never scored or banned, on every port
-regardless of the entry's port scope.
+regardless of the entry's port scope. Both the plain line `csf -a` writes and an advanced
+`s=` record count; a `d=`-only rule and an address named only in a comment do not.
 
 ```bash
 # Permanently trust an IP (or CIDR) fleet-wide

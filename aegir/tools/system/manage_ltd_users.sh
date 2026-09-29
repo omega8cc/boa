@@ -5800,6 +5800,29 @@ elif [ ! -e "/var/xdrago/conf/lshell.conf" ]; then
   echo "Missing /var/xdrago/conf/lshell.conf template"
   exit 0
 else
+  # the pid, not a bare touch: the nightly's per-account pass and instgrp wait
+  # only on a LIVE worker (every other reader tests existence and removes it).
+  # Created exclusively: two workers can both pass the test above, and the
+  # second must not write over the first's pid, it defers as above.
+  if ! ( set -C; echo $$ > /run/manage_ltd_users.pid ) 2> /dev/null; then
+    touch /var/log/boa/wait-manage-ltd-users.pid
+    echo "Another BOA task is running, we have to wait"
+    sleep 3
+    exit 0
+  fi
+  # instgrp takes /run/boa_run.pid first and then waits for a live pid here;
+  # testing the lock again with the pid in place is the other half, so a lock
+  # taken since the test above never has a whole pass running under it
+  if [ -e "/run/boa_run.pid" ]; then
+    # only while it is still this pass's own: a sweep may have removed it,
+    # and another worker created its own since
+    [ "$(tr -cd '0-9' 2> /dev/null < /run/manage_ltd_users.pid)" = "$$" ] \
+      && rm -f /run/manage_ltd_users.pid
+    touch /var/log/boa/wait-manage-ltd-users.pid
+    echo "Another BOA task is running, we have to wait"
+    sleep 3
+    exit 0
+  fi
   rm -f /var/log/boa/wait-manage-ltd-users.pid
   # When the PREVIOUS pass ran, read before this one stamps it: a deferral
   # stamp stops advancing either because its episode ended, or because no
@@ -5810,9 +5833,6 @@ else
   _LTD_PREV_PASS=$(stat -c %Y /var/log/boa/manage-ltd-pass.txt 2>/dev/null)
   _LTD_PREV_PASS=${_LTD_PREV_PASS:-$(date +%s)}
   touch /var/log/boa/manage-ltd-pass.txt
-  # the pid, not a bare touch: the nightly's per-account pass waits only on a
-  # LIVE worker (every other reader tests existence and removes the file)
-  echo $$ > /run/manage_ltd_users.pid
   _prune_psr_log_stash "/var/aegir"
   _count_cpu
   _find_fast_mirror_early
@@ -5973,7 +5993,10 @@ else
   _cli_ini_temp_unpin
   _drush_ini_retire_sweep
   _standby_tenant_sweep
-  [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
+  # only this pass's own: a sweep may have removed a stale-looking one and
+  # another worker created its own since
+  [ "$(tr -cd '0-9' 2> /dev/null < /run/manage_ltd_users.pid)" = "$$" ] \
+    && rm -f /run/manage_ltd_users.pid
   exit 0
 fi
 

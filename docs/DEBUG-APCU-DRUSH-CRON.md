@@ -89,7 +89,7 @@ Drupal\Core\Render\Component\Exception\ComponentNotFoundException: Unable to fin
 
 Valkey is hard-capped at its `maxmemory` ceiling. When that ceiling is too low for the
 number of sites hosted, Valkey is permanently full and continuously evicts cache keys using
-the `volatile-lfu` policy (BOA forces this policy in `valkey.conf`/`redis.conf`) to make
+the `volatile-lfu` policy (BOA forces this policy in `valkey.conf`) to make
 room for new entries.
 
 The `discovery` cache bin — which
