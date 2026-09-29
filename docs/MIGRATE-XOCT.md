@@ -359,6 +359,10 @@ the normal sweep rebuild in two passes, and then reports either
 not. Treat such an ALRT as a stop: a site answering 200 with the right
 content can still be running on the wrong interpreter.
 
+The rebuild runs twice: once before the rename, so the rename's serving
+check meets pools that answer, and once after it, so the per-site socket
+includes follow the renamed sites.
+
 > **cron stays stopped until `post-mig`.** The import quiesces the
 > target by stopping cron; only `post-mig` restarts it. A box left
 > without it silently stops receiving fleet updates altogether. Check
@@ -432,7 +436,26 @@ An unresolvable panel (zero or several
 candidates, or a repoint that matches no row) aborts the import with
 recovery steps rather than completing with a dead control panel.
 
-With the panel reconciled, `import` calls
+Before the rename, `import` loads every site's database and creates its
+database user (the per-site checks above), rebuilds the account's pinned
+PHP pools and lifts the export's 503 gate (`static/control/http-off.pid`).
+The rename's task queue verifies every renamed site, which needs the site's
+database user, and its serving check then probes each one, which needs a
+live pool outside the gate.
+
+The verify of each cleanly loaded site is scheduled after the rename, under
+the site's name on this box. Where the panel's hosting module knows how, the
+verifies wait up to ten minutes in all for the rename's own tasks to finish
+first, and each one after that waits 30 seconds; without it each waits 30
+seconds. A verify still waiting then is left queued and runs after `post-mig`.
+
+A site is known across the rename by its directory: one the load did not see
+(or whose site_path it could not enter) is loaded and verified then. A site
+loaded before the rename but not found after it, and a site whose site_path
+could not be entered before the rename and is not found after it, count as a
+failed import. A failed rename puts the 503 gate back.
+
+With the panel reconciled and the sites loaded, `import` calls
 `renameaegirhost --aegir-root /data/disk/o1 --force-old source-fqdn` (the
 source hostname was recorded at export time; the target's own
 `server_master` alias names the target, so the rename never reads OLD from

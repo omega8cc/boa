@@ -62,6 +62,11 @@ migrations never need a direct invocation. Run it directly only for an
 in-place identity change (renaming a cloned VM, moving a box to a new FQDN) or
 to resume a partial rename; inline `--help` describes each step.
 
+`xoct import` and `xcopy import` load the sites' databases, create their
+database users and build the account's PHP pools before they call it (xoct
+also lifts the account's export 503 gate), so the rename's site verifies and
+its serving gate meet sites that can answer.
+
 Before any in-place rewrite begins, the plain pre-rename database dump is
 verified complete — exit status plus the dumper's closing marker — and the
 run aborts rather than rewrite the database without a complete backup.
