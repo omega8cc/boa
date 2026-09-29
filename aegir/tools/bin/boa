@@ -119,6 +119,18 @@ _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my 
 # nobody (-nouser, -nogroup). A name swapped after find listed it, for
 # another file of a living owner or group, is left alone.
 _ACCT_REOWN_FROM_PL='use Fcntl; my ($u, $g, $fu, $fg, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)) && ($fu eq "-1" || ($fu eq "x" ? !defined(getpwuid($s[4])) : $s[4] == $fu)) && ($fg eq "-1" || ($fg eq "x" ? !defined(getgrgid($s[5])) : $s[5] == $fg)); close($h); } exit 0'
+# What _ACCT_REOWN_FROM_PL leaves alone, for the purge's freed uids: each
+# name given that is not a directory (a regular file with more than one
+# link, a link, a FIFO, a socket, a device) whose uid names nobody goes to
+# root:root, with the set-ID bits and group and other write cleared, and is
+# never removed. The owner is read and changed through one handle on the
+# entry itself, so a name swapped in after find listed it is never touched:
+# a regular file opened without following a link or blocking, anything else
+# through a path-only handle (O_PATH, not in Perl's Fcntl: 010000000 on
+# x86_64 and aarch64, elsewhere such an entry is left alone), which opens
+# nothing (no FIFO end, no device) and is changed through its /proc/self/fd
+# name, which never follows a link. A link's mode means nothing: kept.
+_ACCT_ORPHAN_ROOT_PL='use Fcntl qw(:DEFAULT :mode); use POSIX (); my $p = (POSIX::uname())[4] =~ /^(x86_64|aarch64)$/ ? 010000000 : 0; for my $f (@ARGV) { lstat($f) or next; next if -d _; my $h; if (-f _) { sysopen($h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; } else { $p && sysopen($h, $f, $p|O_NOFOLLOW) or next; } my @s = stat($h); if (@s && !S_ISDIR($s[2]) && !defined(getpwuid($s[4]))) { my $n = "/proc/self/fd/" . fileno($h); if (S_ISREG($s[2])) { chown(0, 0, $h) and chmod($s[2] & 01755, $h); } else { chown(0, 0, $n) and (S_ISLNK($s[2]) or chmod($s[2] & 01755, $n)); } } close($h); } exit 0'
 # The immutable flag set ($1 = +) or cleared (-) on each directory, or
 # regular file with a single link, named, through a handle opened without
 # following a link or blocking on a FIFO; non-zero when a name was neither
@@ -3802,16 +3814,20 @@ _octopus_cleanup() {
         # now), so it goes to root before the groups below are freed: shut
         # to everyone else, and each directory and single-link entry handed
         # over. An entry with more links may share its inode with a living
-        # name outside: it is left alone. -execdir: each name is changed inside
+        # name outside: it is left alone here, and goes to root below only
+        # when its owner names nobody. -execdir: each name is changed inside
         # the directory find entered without following a link, so a process
         # still inside the tree cannot swap a directory between for a link; the
         # hand-over itself goes through a handle opened without following a
         # link and only on a directory or a single-link regular file
         # (_ACCT_REOWN_PL), so a hard link a surviving process planted here is
-        # never handed to root. It wants an absolute PATH.
+        # never handed to root; find lists only directories and regular
+        # files, and a name swapped for a FIFO after the listing is opened
+        # without blocking and left alone. It wants an absolute PATH.
         if [ -d "${_zombie_dir}left" ] && [ ! -L "${_zombie_dir}left" ]; then
           chmod 0700 "${_zombie_dir}left"
           env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_zombie_dir}left" -xdev \
+            \( -type d -o -type f \) \
             -execdir perl -e "${_ACCT_REOWN_PL}" -- 0 0 {} + &> /dev/null
         fi
         # The account's private group (per-instance group model) outlives
@@ -3824,11 +3840,15 @@ _octopus_cleanup() {
         # The hand-over goes through a handle opened without following a
         # link, only on a directory or a single-link regular file that
         # still carries the group (_ACCT_REOWN_FROM_PL, from the directory
-        # find walked): chown -R handed a hard link the account left here
-        # (its other name anywhere) to root. A hard-linked file, a FIFO or
-        # a socket keeps the number, and the group with it (reported
-        # below); a link keeps it too, but a link's group grants nothing,
-        # so the scans below pass over links.
+        # find walked, which lists only directories and regular files; a
+        # FIFO swapped in after the listing is opened without blocking and
+        # left alone): chown -R handed a hard link the
+        # account left here (its other name anywhere) to root. A hard-linked
+        # file, a FIFO or a socket keeps the number here, and the group with
+        # it (reported below); a link keeps it too, but a link's group grants
+        # nothing, so the scans below pass over links. The freed-uid sweep
+        # further down hands such an entry to root:root when its owner names
+        # nobody; the group is kept either way.
         if [ -n "${_grpGid}" ]; then
           # The uid is recycled from the same system range as the gid, so
           # the leftovers lose both numbers: root:root.
@@ -3836,6 +3856,7 @@ _octopus_cleanup() {
             /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* /mnt/*/files/${_usEr}; do
             if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
               env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -gid "${_grpGid}" \
+                \( -type d -o -type f \) \
                 -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- 0 0 -1 "${_grpGid}" {} + &> /dev/null
             fi
           done
@@ -3865,6 +3886,7 @@ _octopus_cleanup() {
             /mnt/*/files/${_usEr} /var/www/phpcache/${_usEr}; do
             if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
               env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -gid "${_wgGid}" \
+                \( -type d -o -type f \) \
                 -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- 0 0 -1 "${_wgGid}" {} + &> /dev/null
             fi
           done
@@ -3889,11 +3911,14 @@ _octopus_cleanup() {
         # (the vhost files) lies outside every scan above and the account's
         # leftovers were taken off its groups only: each directory and
         # single-link regular file that still carries such a number gives
-        # that number to root, and only that one. A hard-linked file, a
-        # link, a FIFO or a socket is never handed to root (a hard link's
-        # other name may be anywhere): it keeps the dead number, under the
-        # root-only park and in the unparked trees below alike, where a
-        # later account given that number owns it.
+        # that number to root, and only that one. What else still carries a
+        # uid that names nobody (a hard-linked file, a link, a FIFO, a
+        # socket, a device) goes to root:root whole, under the root-only
+        # park and in the unparked trees below alike, and is never removed:
+        # the next account given that uid would own it, and through a hard
+        # link write what its other names (anywhere) share. A gid that names
+        # nobody on such an entry of a living owner stays: the group rule
+        # above keeps a group while any path carries it.
         for _lftDir in ${_zombie_dir%/} /opt/user/gems/${_usEr} /opt/user/gems/${_usEr}.* \
           /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* \
           /mnt/*/files/${_usEr} /mnt/*/*/files/${_usEr} /var/www/phpcache/${_usEr} \
@@ -3908,10 +3933,21 @@ _octopus_cleanup() {
             # nobody (_ACCT_REOWN_FROM_PL, x), so neither a hard link a
             # surviving process planted here nor a living owner's file moved
             # onto a listed name is ever handed to root. It wants an absolute
-            # PATH. -1 keeps the other id as it is.
+            # PATH. -1 keeps the other id as it is. What that pass leaves with
+            # a uid that names nobody then goes to root:root through a handle
+            # on the entry itself (_ACCT_ORPHAN_ROOT_PL): a hard-linked file
+            # loses its set-ID bits and group and other write. find lists
+            # only directories and regular files for the handle passes; a
+            # name swapped for a FIFO after the listing is opened without
+            # blocking and left alone.
             env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev -nouser \
+              \( -type d -o -type f \) \
               -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- 0 -1 x -1 {} + &> /dev/null
+            env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev -nouser \
+              ! -type d \( ! -type f -o -links +1 \) \
+              -execdir perl -e "${_ACCT_ORPHAN_ROOT_PL}" -- {} + &> /dev/null
             env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev -nogroup \
+              \( -type d -o -type f \) \
               -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- -1 0 -1 x {} + &> /dev/null
           fi
         done

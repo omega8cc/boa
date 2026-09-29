@@ -259,10 +259,18 @@ purge's zombie directory, shut to root, and its directories and single-link
 files are handed to `root:root`.
 
 Anywhere else the purge leaves something
-of the account (the parked vhost files, its leftovers), a uid or gid that
-no longer names anything goes to root: the next account created could be
-given it. A file with more than one link keeps an owner or group that still
-names someone: it may share its inode with a living name elsewhere.
+of the account (the parked vhost files, its leftovers), a uid that no
+longer names anyone goes to root, whatever the entry is: the next account
+created could be given it. A directory or single-link file keeps its group;
+a hard-linked file, a link, a FIFO, a socket or a device goes to
+`root:root` and loses its set-ID bits and group and other write (a link's
+own mode means nothing and stays). Nothing is deleted, and a FIFO or a
+device is changed without being opened.
+
+A gid that no longer names anything goes to root on directories and
+single-link files. A hard-linked file, a link, a FIFO or a socket whose
+owner still names someone keeps its owner and group: it may share its
+inode with a living name elsewhere.
 
 In `/tmp`, `/var/tmp` and `/dev/shm`, where the kernel trusts what root owns,
 what the account's identities left is removed, before they are and again
