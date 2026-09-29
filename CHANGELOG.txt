@@ -50,6 +50,13 @@
 
 @=> Security
 
+    * autosymlink no longer follows a link an account plants: the nightly
+      orphan sweep and the store archive of a deleted or renamed site could
+      be pointed at another account's files and move its live stores into
+      the planting account's archive. Every root path now resolves the
+      account's store once, checks who owns it, and works only inside it; a
+      cross-device convert and the un-share copy run as the account.
+
     * The master control panel's database user is now granted its own
       database only, on every Barracuda upgrade, as each account's already
       is: it held every privilege on every database of the box, and every
