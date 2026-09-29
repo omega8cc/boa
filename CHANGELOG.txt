@@ -50,6 +50,18 @@
 
 @=> Security
 
+    * autosymlink no longer follows a link an account plants: the nightly
+      orphan sweep and the store archive of a deleted or renamed site could
+      be pointed at another account's files and move its live stores into
+      the planting account's archive. Every root path now resolves the
+      account's store once, checks who owns it, and works only inside it; a
+      cross-device convert and the un-share copy run as the account.
+
+    * The master control panel's database user is now granted its own
+      database only, on every Barracuda upgrade, as each account's already
+      is: it held every privilege on every database of the box, and every
+      upgrade left the previous panel user behind with those rights.
+
     * Each account's control panel database user is now granted its own
       database only, on every Octopus upgrade: it held every privilege on
       every database of the box, with the right to grant them on, which the
@@ -664,7 +676,8 @@
       Valkey only. The Redis server installer, its config templates and
       its service handling in the upgrade steps are gone, and the
       Redis-named copies of the Valkey includes in /data/conf/global are
-      no longer deployed or read. A box whose _VALKEY_MAJOR_RELEASE holds
+      no longer deployed or read, and the upgrade removes the copies an
+      earlier release left there. A box whose _VALKEY_MAJOR_RELEASE holds
       a value Valkey does not have now gets the default Valkey major
       instead of a Redis build. The phpredis
       extension, the Drupal and Backdrop redis modules and the redis_*
@@ -955,6 +968,10 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * boa cleanup purge now drops the instance's database users when the
+      account's database host is set to this box's own IP, as the Octopus
+      pass treats it; it kept them as if on a remote server.
 
     * A server verify's database probes use one name per account: two
       accounts verifying at the same time no longer remove each other's probe

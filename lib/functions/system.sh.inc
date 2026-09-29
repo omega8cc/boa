@@ -1118,6 +1118,10 @@ _global_inc_conf_update() {
     "global.inc-pre-${_xSrl}-${_X_VERSION}-${_NOW}" &> /dev/null
   _acct_in_real_dir /data/conf _sys_conf_cp_here \
     "${_locCnf}/global/global.inc" global.inc
+  ### The Redis server is retired and no chain head above names its includes:
+  ### the copies an earlier release left in the real global/ go (a link or a
+  ### directory at either name too, never followed).
+  _acct_in_real_dir "${_GL_D}" rm -rf -- ./global-redis.inc ./global-if-redis.inc
 }
 
 #
