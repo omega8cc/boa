@@ -520,6 +520,11 @@ _hostmaster_frontend_dbpass_sync() {
     | cut -d: -f2 \
     | awk '{ print $3}' \
     | sed "s/[\,';]//g" 2>&1)
+  _THIS_HM_DBNM=$(cat ${_THIS_HM_SPTH}/drushrc.php \
+    | grep "options\['db_name'\] = " \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,';]//g" 2>&1)
   if [ -e "${_THIS_HM_SPTH}" ] \
     && [ ! -z "${_THIS_HM_DBUR}" ] \
     && [ ! -z "${_THIS_HM_DBPD}" ]; then
@@ -528,7 +533,18 @@ _hostmaster_frontend_dbpass_sync() {
       || [ "${_THIS_DB_HOST}" = "PROXYSQL" ]; then
       _SQL_CONNECT=127.0.0.1
     fi
-    _ESC="*.*"
+    ### The panel works in its own database only: grant just that one,
+    ### escaped as provisioning writes it (a bare _ matches any character).
+    ### An unreadable name keeps the old grant rather than locking the panel
+    ### out mid-upgrade.
+    if [[ "${_THIS_HM_DBNM}" =~ ^[A-Za-z0-9_]{1,64}$ ]]; then
+      _ESC="\`${_THIS_HM_DBNM//_/\\_}\`.*"
+      _GOPT=""
+    else
+      _ESC="*.*"
+      _GOPT="WITH GRANT OPTION"
+      _msg "ALRT: master hostmaster db_name not readable, its panel user keeps rights on all databases"
+    fi
     _USE_DB_USER="${_THIS_HM_DBUR}"
     _USE_AEGIR_HOST="${_hName}"
     [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL11 -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
@@ -556,8 +572,8 @@ PROXYSQL
     mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
-GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' ${_GOPT};
+GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' ${_GOPT};
 ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 EOFMYSQL
