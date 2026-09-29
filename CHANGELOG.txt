@@ -269,6 +269,12 @@
       left neither of its names there; the root tools refuse to read a
       list file over 32 MiB.
 
+    * The nginx includes of BOA's files in /data/conf load only those
+      files: a stray copy with the same name prefix, such as a leftover
+      nginx_high_load.conf.bak, is no longer loaded, and a missing file
+      stays harmless. The box-wide config takes the new includes at the
+      next barracuda upgrade, each instance's at its next Octopus upgrade.
+
     * The shared Backdrop redis module, the Backdrop bundle's webform and
       bee are root's as soon as BOA unpacks them: their archives recorded
       the account that built them, and an unpack as root kept that owner
