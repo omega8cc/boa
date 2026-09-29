@@ -50,6 +50,17 @@
 
 @=> Security
 
+    * Account purge: what an account leaves in the trees the purge keeps
+      (its gems and npm trees, the attached store, the PHP cache, the
+      purge's own park) no longer keeps a user number the next account
+      could be given: a hard-linked file, a link, a FIFO, a socket or a
+      device that still carries a freed one goes to root, without set-ID
+      bits or group and other write, through a handle that never follows
+      a link and never opens a FIFO or a device. Nothing is deleted.
+
+    * The purge's ownership sweeps list only directories and regular
+      files, so they no longer open the FIFOs and device nodes they find.
+
     * Root's ownership and cleanup walks over account-writable and shared
       trees no longer follow planted links or hard links: the forced
       reinstall's master reclaim, the account purge's leftover reowns and
