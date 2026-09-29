@@ -50,6 +50,19 @@
 
 @=> Security
 
+    * xoct and xcopy create no longer take over an unrelated account of the
+      same name on the target: create marks the account it installs (bound
+      to that account's user ID and home directory), a later create re-seeds
+      an existing account only under that mark, and anything else is refused
+      before the target is changed. xoct create --adopt takes such an
+      account as the migration's and marks it; xmass prep-target passes it.
+      xcopy create also stops when the install is refused.
+    * The migration tools grant an imported site's database user on the
+      escaped database name, as provision does, and revoke a wildcard grant
+      an earlier run left; site users no longer get WITH GRANT OPTION, and
+      the control panel credential heal resets both of the panel user's
+      rows.
+
     * The nightly llms.txt and robots.txt refreshers no longer write into
       another account's files store that either account has converted to its
       own web group.
@@ -918,6 +931,19 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * xcopy import now renames the copied control panel from the source
+      host to the target, as xoct import does: the export records the source
+      hostname, the import refuses without it, reconciles the panel
+      platform, runs renameaegirhost, rebuilds the pinned PHP pools and
+      flushes the caches; it stops cron like xoct import, and xcopy
+      post-mig starts it again.
+    * xoct and xcopy import write this box's own instance database password
+      into the imported control panel: it kept the source's, so every
+      server verify failed until the next Octopus upgrade.
+    * An xoct rename no longer rewrites the paths of another account whose
+      name begins with the source's name: renaming o1 also rewrote every
+      /data/disk/o10 path in the moved account's files.
 
     * renameaegirhost now renames the control panel's path aliases of the
       renamed sites too; they kept the old hostname.
