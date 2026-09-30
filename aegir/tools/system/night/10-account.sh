@@ -263,7 +263,7 @@ if ! declare -F _reown_tree_here > /dev/null 2>&1; then
     read -r _u _g <<< "${_ids}"
     shift
     [ "$#" -gt 0 ] || return 0
-    env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \
+    env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
       -execdir perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" {} + &> /dev/null
     return 0
   }

@@ -75,6 +75,7 @@ _master_reown_in() {
 _master_reown_here() {
   perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" . \
     && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+      \( -type d -o -type f \) \
       -execdir perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" {} +
 }
 # A mode set through a handle on each name given (d: a directory, f: a

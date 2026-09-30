@@ -124,7 +124,7 @@ _oct_drush_reset_here() {
       -c "export HOME=/data/disk/${_octUsr} PATH=/usr/local/bin:/usr/bin:/bin \
         && ${_gCb} ${_bRnh} ${_gitHub}/provision.git ./provision" &> /dev/null
     if [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]]; then
-      env PATH=/usr/local/bin:/usr/bin:/bin find . \
+      env PATH=/usr/local/bin:/usr/bin:/bin find . \( -type d -o -type f \) \
         -execdir perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" {} +
     fi
     [ -d ./provision ] && [ ! -L ./provision ] \

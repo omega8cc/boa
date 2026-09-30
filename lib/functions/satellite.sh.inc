@@ -363,12 +363,13 @@ _satellite_web_user_update() {
     # moment): past the link strip, root works on .lock, .drush and the stamp
     # only inside the real directories, creating files exclusively
     _T_HR="$(cd -P -- /home 2> /dev/null && pwd -P)/${_WEB}"
-    # held off only by a lock an update wrote: a regular root file at .lock
-    # younger than an hour; a name the web user planted there, or a lock an
-    # interrupted pass left, is replaced by this update's own
+    # held off only by a lock an update wrote: a regular root file with one
+    # link at .lock younger than an hour; a name the web user planted there
+    # (a hard link to a file root owns included), or a lock an interrupted
+    # pass left, is replaced by this update's own
     _T_LK=NO
     if [ -f "/home/${_WEB}/.lock" ] && [ ! -L "/home/${_WEB}/.lock" ] \
-      && [ "$(stat -c %u "/home/${_WEB}/.lock" 2> /dev/null)" = "0" ] \
+      && [ "$(stat -c '%u %h' -- "/home/${_WEB}/.lock" 2> /dev/null)" = "0 1" ] \
       && [ -n "$(find "/home/${_WEB}/.lock" -maxdepth 0 -mmin -60 2> /dev/null)" ]; then
       _T_LK=YES
     fi
@@ -6451,6 +6452,7 @@ _satellite_reown_here() {
   shift
   perl -e "${_ACCT_REOWN_PL}" -- "${_u}" "${_g}" . \
     && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 "$@" \
+      \( -type d -o -type f \) \
       -execdir perl -e "${_ACCT_REOWN_PL}" -- "${_u}" "${_g}" {} +
 }
 # The names given in the current (pinned) directory handed to $1
@@ -7922,28 +7924,31 @@ _satellite_shared_fix_here() (
   _satellite_root_back_here
   _acct_in_real_dir ./000 _satellite_modes_walk_here 0755 0644
   find . -mindepth 3 -maxdepth 3 -regextype posix-extended \
-    -regex '\./[^/.][^/]*/[^/.][^/]*/profiles' \
+    -regex '\./[^/.][^/]*/[^/.][^/]*/profiles' \( -type d -o -type f \) \
     -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 755 {} + \
     -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f 755 {} +
   find . -mindepth 5 -maxdepth 5 -regextype posix-extended \
     -regex '\./[^/.][^/]*/[^/.][^/]*/sites/all/(modules|libraries|themes)' \
+    \( -type d -o -type f \) \
     -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 02775 {} + \
     -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f 02775 {} +
   find . -mindepth 6 -maxdepth 6 -regextype posix-extended \
     -regex '\./000/core/[^/.][^/]*/sites/all/(modules|libraries|themes)' \
+    \( -type d -o -type f \) \
     -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 02775 {} + \
     -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f 02775 {} +
   _users=$(getent group users 2> /dev/null | cut -d: -f3)
   if [[ "${_users}" =~ ^[0-9]+$ ]]; then
     find . -mindepth 1 -regextype posix-extended \
       \( -regex '\./[^/]+(/[^/]+)?' \) \
-      -o \( -regex '\./[^/.][^/]*/[^/.][^/]*/sites(/.*)?' \
+      -o \( -regex '\./[^/.][^/]*/[^/.][^/]*/sites(/.*)?' \( -type d -o -type f \) \
         -execdir perl -e "${_ACCT_REOWN_PL}" -- 0 "${_users}" {} + \) \
       -o -prune
     find . -mindepth 1 -regextype posix-extended \
       \( -regex '\./[^/]+(/[^/]+)?' \
         -o -regex '\./[^/.][^/]*/[^/.][^/]*/(web|docroot|html)' \) \
       -o \( -regex '\./[^/.][^/]*/[^/.][^/]*/(web|docroot|html)/sites(/.*)?' \
+        \( -type d -o -type f \) \
         -execdir perl -e "${_ACCT_REOWN_PL}" -- 0 "${_users}" {} + \) \
       -o -prune
   fi

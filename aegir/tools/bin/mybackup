@@ -687,6 +687,7 @@ _acct_reclaim_restored() {
     ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_d}" ] \
       && env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_w[@]}" \
         ! -group "${_g}" ! -group www-data ! -group root "${_x[@]}" \
+        \( -type d -o -type f \) \
         -execdir perl -e "${_ACCT_REOWN_PL}" -- -1 "${_gid}" {} + 2> /dev/null )
   fi
   # an instgrp older than the web group would claim the web paths into the
