@@ -117,6 +117,26 @@
       every database of the box, with the right to grant them on, which the
       panel never needs.
 
+    * A control panel database user an earlier release left with every
+      privilege on every database, under a panel name no longer in use
+      (the name from the box's host before a rename, or the name the
+      panel used before its last upgrade), is now dropped by the next
+      upgrade: Octopus for an account's panel, Barracuda for the master's.
+      A candidate has the panel database shape (16 characters, or 14 and
+      _0 to _9, or 13 and _10 to _99), starts with the account's name (the
+      master: the first label of its address) followed by anything but a
+      digit, holds SUPER on a host row with plain host names, and is no
+      account's name, no server alias's database user and no panel's
+      database user. It is dropped when it holds SUPER on every host row,
+      no database of its name exists and nothing on the box names it; if
+      a site on the box names it, it keeps its database grants and loses
+      all its global rights; any other candidate is left as it is. An
+      operator's own user of exactly that shape and prefix is treated the
+      same. This runs only where the box's own database server answers
+      locally on port 3306 (not a remote database, ProxySQL or a
+      cluster), and any file that cannot be read keeps every user, with
+      an alert naming that file.
+
     * The nightly migration-source sweep now reads the database grant
       tables and revokes stale read grants as the account's instance
       user: since the control panel's database user holds its own
