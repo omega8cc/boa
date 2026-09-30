@@ -1249,6 +1249,14 @@
       minutes, and each reload reset the HTTP/3 transfers in flight, so
       an upload or a form post over HTTP/3 could fail on a busy box.
 
+    * The kernel now keeps UDP flows tracked for longer than an idle HTTP/3
+      connection lives on the server (sysctl.conf: 180 seconds for a young
+      flow, 300 for a stream, against 30 and 120 before, and Nginx closes
+      an idle HTTP/3 connection at 70). The close notice Nginx sends to an
+      idle browser connection at a reload used to find no tracking entry
+      and was rejected by the firewall, so the browser kept a dead
+      connection and its next request waited for its own timeout.
+
     * ai_policy keeps a site's AI policy fragments on disk when its
       last-good archive cannot be restored after a failed configtest or
       reload, and prints ALRT lines instead (after a failed configtest
