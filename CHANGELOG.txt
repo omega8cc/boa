@@ -50,6 +50,19 @@
 
 @=> Security
 
+    * copydbackup hands an account only a dated backup directory it made
+      itself or the account already owns, and the dumps it copies there,
+      each dump owned by the account through the handle that creates it;
+      a dated directory another user owns is neither copied into nor
+      handed over, and the issue log records it. Anything else in the
+      directory keeps its owner.
+
+    * The Solr config upload publishes and clears only the files owned by
+      the instance's own users in files/solr (oN, oN.ftp, its client
+      sub-accounts and its PHP-FPM users), each read through a handle that
+      checks the owner; anything else stays in place, and the pass log
+      records SOLR-UPLOAD-SKIPPED.
+
     * A new site's database name now also skips names held by an existing
       database login, so an account whose name has 16 characters installs
       and a new site never takes over another login's name; a forced
