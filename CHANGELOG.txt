@@ -50,6 +50,36 @@
 
 @=> Security
 
+    * Account purge: what the purge leaves goes to root before it decides
+      which of the account's groups to keep, so a group kept only for the
+      account's own leftovers is removed. An entry a living account keeps
+      in the trees the purge keeps (its park and /var/backups/ltd
+      included) no longer carries a group number that names nobody: it
+      goes to group root, its owner kept, losing its set-ID bits and group
+      write (with an ACL, its mask), through a handle that opens nothing.
+      This pass, and the one in the shared temporary places, now also
+      runs before the groups are decided, and a group the purge removes
+      keeps its number until both have run again.
+
+    * Account purge: a group of the account that a path still carries,
+      or that only the account's own identities still hold (one deluser
+      refused), keeps its number under the name <gid>-purged instead of
+      the account's name, so a later account of the same name is given a
+      group of its own and the number is never handed to the next group.
+      On a converted account, whose group would go with its own identity,
+      the purge renames the group first. An ALRT says when the number
+      cannot be kept, and names identities that survived the purge.
+
+    * Root trusts a root-owned file in an account's space (the web home's
+      update lock, the migration preflight report) only when it has a
+      single link.
+
+    * Root's ownership and mode walks over account and shared trees (the
+      nightly, the Octopus upgrade, the Adminer and web app trees, fixrepo,
+      the fix-drupal helpers, the backup restores and the migration target
+      stage) list only directories and regular files, so they no longer
+      open a FIFO left in the tree.
+
     * autosymlink acts only on what it checked: the account's store stays
       the very directory it resolved for the whole run, and a conversion
       sets aside and removes only the site's own files or private
