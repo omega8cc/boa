@@ -261,7 +261,7 @@ _reown_here() {
   fi
   shift
   if [ -n "${_r}" ]; then
-    env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \
+    env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
       -execdir perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" {} +
     _rc=$?
     _links_left_note "$@"

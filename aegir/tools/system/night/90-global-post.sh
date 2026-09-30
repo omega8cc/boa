@@ -713,7 +713,7 @@ _global_reown() {
   local _u="${1}" _g="${2}"
   shift 2
   [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] || return 0
-  env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \
+  env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
     -execdir perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" {} + &> /dev/null
   return 0
 }

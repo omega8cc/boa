@@ -100,7 +100,7 @@ _acct_reown_here() {
   _uid=$(id -u -- "${1}" 2> /dev/null)
   _gid=$(getent group "${2}" 2> /dev/null | cut -d: -f3)
   [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]] || return 1
-  env PATH=/usr/local/bin:/usr/bin:/bin find . \
+  env PATH=/usr/local/bin:/usr/bin:/bin find . \( -type d -o -type f \) \
     -execdir perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" {} +
 }
 # ./$1 made in the current (pinned) directory unless the name is taken.

@@ -49,8 +49,65 @@ indices) where per-account mydumper/myloader cycles would be impractical.
   stale tooling. The tool executing the command refreshes on its next verb,
   not mid-run.
 - **Same release on both ends.** `xmass prep-target` compares both boxes' BOA
-  release stamps and refuses a migration across releases, with no override
-  (see MIGRATE-XMASS.md Prerequisites for the reason and the fix).
+  release stamps, the release label and the tree serial, and refuses a
+  migration across releases, or from or to a box whose label and serial name
+  different releases, with no override (see MIGRATE-XMASS.md Prerequisites
+  for the reason and the fix).
+
+## Holding client mail on a test box
+
+A test or canary migration puts copies of real accounts on a box that runs
+the same Octopus, nightly and usage passes as any other box, and those passes
+mail each account's client on their own. While
+`/data/conf/client_mail_hold.txt` exists, BOA holds that mail itself: each
+notice listed below goes to the one address the file holds instead, and to no
+client address.
+
+- **What it holds:** the welcome mail of a new account and the upgrade notice
+  of an Octopus pass, the usage notices (database and disk over the plan, PHP
+  version, Drupal core), the nightly notices about a failed HTTPS certificate
+  renewal and about leftover site records, the `mybackup` restore notice, the
+  PHP segfault alert, and the install report of `boa in-octopus` and
+  `boa in-oct`.
+- **The subject says who would have been mailed**, for example
+  `NOTICE: Your Disk Usage on [o1] is too high [held for client@example.com]`.
+- **Operator copies are unchanged:** the Bcc a notice already sends to the
+  instance or box admin address still goes there, and the reports mailed to
+  the box admin (`_MY_EMAIL`) are not client mail. The instance admin address
+  (`_MY_OCTO_EMAIL`) belongs to the account and moves with it; where it is
+  also one of the client's addresses, the welcome and upgrade mail go without
+  that copy while the hold is on.
+- **The file must be root's and hold exactly one plain address:** a regular
+  file owned by root, not writable by group or others, with a single link,
+  1 KiB at most; blanks around the address and a final newline are fine. When
+  the file exists but holds anything else (two addresses, a `Name <address>`
+  form, nothing), or is a link, a directory, not root's or writable by group
+  or others, none of the notices listed above is sent, not even its operator
+  copy, and each sender logs one line saying why.
+- **Only root writes it:** an Octopus pass, and the nightly permissions fix
+  once after each BOA upgrade, make every file in `/data/conf` root's with
+  mode `0644`. After either one, a file that was not root's is read like any
+  other, so never hand it to anyone but root.
+- **A stopped nightly notice goes out later:** the HTTPS renewal and
+  leftover-record notices mark a site as notified only when the notice is
+  sent (to the client, or to the held address), so a notice a bad file stopped
+  is sent on a later night.
+- **What it does not hold:** the notices `xoct` sends a client about a
+  migration (started, completed, forwarding changed or withdrawn), which do
+  not read this file; mail the hosted sites send themselves (their own cron,
+  forms, Drupal's update notices); and account mail the Ægir control panel
+  sends through Drupal. On a test box that holds copies of real sites, keep
+  the box's outbound mail from leaving as well.
+
+Set it by hand, and remove it when the box goes live:
+
+```sh
+printf '%s\n' tester@example.com > /data/conf/client_mail_hold.txt
+chown root:root /data/conf/client_mail_hold.txt
+chmod 0644 /data/conf/client_mail_hold.txt
+
+rm -f /data/conf/client_mail_hold.txt   # the clients are mailed again
+```
 
 ## Rename helper: renameaegirhost
 
@@ -61,6 +118,11 @@ indices) where per-account mydumper/myloader cycles would be impractical.
 migrations never need a direct invocation. Run it directly only for an
 in-place identity change (renaming a cloned VM, moving a box to a new FQDN) or
 to resume a partial rename; inline `--help` describes each step.
+
+`xoct import` and `xcopy import` load the sites' databases, create their
+database users and build the account's PHP pools before they call it (xoct
+also lifts the account's export 503 gate), so the rename's site verifies and
+its serving gate meet sites that can answer.
 
 Before any in-place rewrite begins, the plain pre-rename database dump is
 verified complete — exit status plus the dumper's closing marker — and the

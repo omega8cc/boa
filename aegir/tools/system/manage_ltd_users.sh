@@ -735,7 +735,7 @@ _ltd_reown_here() {
   [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]] || return 1
   shift
   if [ -n "${_r}" ]; then
-    env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \
+    env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
       -execdir perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" {} +
   else
     perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" "$@"
@@ -4224,14 +4224,15 @@ _ltd_web_drush_lock() {
 }
 #
 # A web user's update is held off only by a lock an update wrote: a regular
-# root file at .lock younger than an hour. Anything else at the name -- one
-# the web user planted (the home is its own) or a lock an interrupted pass
-# left -- is replaced by the update's own, so no planted name stops the
-# upkeep for good. $1 = the web user's home.
+# root file with one link at .lock younger than an hour. Anything else at
+# the name -- one the web user planted (the home is its own), a hard link
+# to a file root owns included, or a lock an interrupted pass left -- is
+# replaced by the update's own, so no planted name stops the upkeep for
+# good. $1 = the web user's home.
 _ltd_web_lock_held() {
   local _l="${1}/.lock"
   [ -f "${_l}" ] && [ ! -L "${_l}" ] \
-    && [ "$(stat -c %u "${_l}" 2> /dev/null)" = "0" ] \
+    && [ "$(stat -c '%u %h' -- "${_l}" 2> /dev/null)" = "0 1" ] \
     && [ -n "$(find "${_l}" -maxdepth 0 -mmin -60 2> /dev/null)" ]
 }
 #
