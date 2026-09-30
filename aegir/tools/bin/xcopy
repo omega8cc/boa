@@ -1487,7 +1487,11 @@ _migrate_prepare() {
     if pgrep -x cron &> /dev/null; then
       echo "ALRT: cron still running after stop attempt; check manually"
     fi
-    [ -e "/data/all/cpuinfo" ] && chmod 644 /data/all/cpuinfo
+    [ -e "/data/all/cpuinfo" ] && _xcopy_in_real_dir \
+      "$(_s="$(perl -e "${_ROOT_REAL_PATH_PL}" -- /data/all 2> /dev/null)" \
+        && perl -e "${_SAT_STORE_TARGET_PL}" -- "${_s}" > /dev/null 2>&1 \
+        && echo "${_s}" || echo /data/all)" \
+      _xcopy_fchmod_here 644 ./cpuinfo
     _xcopy_wait_boa_quiet
     # The alias-derived _HDB can name a DB an enforced upgrade has already
     # replaced: a dest panel rebuilt between create and import (new panel DB
@@ -2419,6 +2423,26 @@ _xcopy_tpl_to_here() {
   rm -f -- "${_t}"
   return 1
 }
+# $1 as the directory root works in: itself when it is a real directory;
+# when it is a link, the real directory it leads to, only when every link
+# on the way is root's and every directory on the way, the last one
+# included, is root's and writable by no one else, so no one but root can
+# change where it leads or what is in it; nothing otherwise (exit 1). The
+# shared store /data/all may be such a link. With a second argument "last"
+# the last directory may be anyone's and open to others (the Octopus store
+# check takes /data/disk/all back); none is given here.
+_ROOT_REAL_PATH_PL='my ($p, $k) = @ARGV; if (!-l $p) { print $p if -d _; exit(-d _ ? 0 : 1); } my ($c, $n, @s) = ("", 0, stat("/")); exit 1 unless $p =~ m{^/} && @s && $s[4] == 0 && !($s[2] & 022); my @w = grep { length && $_ ne "." } split(m{/}, $p); while (@w) { my $e = shift(@w); if ($e eq "..") { $c =~ s{/[^/]*$}{}; next; } my @l = lstat("$c/$e") or exit 1; if (-l _) { exit 1 if $l[4] != 0 || ++$n > 40; my $t = readlink("$c/$e"); exit 1 unless defined $t; $c = "" if $t =~ m{^/}; unshift(@w, grep { length && $_ ne "." } split(m{/}, $t)); next; } exit 1 unless -d _ && (($l[4] == 0 && !($l[2] & 022)) || (defined $k && $k eq "last" && !@w)); $c .= "/$e"; } print($c eq "" ? "/" : $c); exit 0'
+# $1, the real directory a link of root's at /data/all leads to
+# (_ROOT_REAL_PATH_PL's answer), is the one the store may be kept in
+# behind that link (exit 0) only when it is /data/disk/all, the directory
+# named all directly in the real /data/disk, compared by device and inode
+# with that name not followed, so a link put at it does not count; any
+# other directory, or none, exit 1. Besides a real /data/all it is the
+# one layout of the store BOA knows, and the one other store directory
+# every PHP-FPM pool's open_basedir names. One text wherever it is defined
+# (satellite.sh.inc, BOA.sh.txt, xoct, xcopy, manage_solr_config.sh,
+# night.inc.sh).
+_SAT_STORE_TARGET_PL='my @t = lstat(defined $ARGV[0] ? $ARGV[0] : ""); my @a = lstat("/data/disk/all"); exit((@t && @a && -d _ && $t[0] == $a[0] && $t[1] == $a[1]) ? 0 : 1)'
 # chmod $1 on the regular files ./$2 ... of the current (pinned) directory
 # WITHOUT following a link, and only on a file with one link, so a hard link
 # to another file put at a name is skipped too.

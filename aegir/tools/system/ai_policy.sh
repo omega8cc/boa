@@ -278,6 +278,47 @@ _lg_fetch() {
     && _lg_unpack "${3}.tgz" "${3}"
 }
 
+# An ALRT for the operator: each line $3... printed, and once a day for the
+# condition $1 a dated line with the subject $2 in
+# /var/log/boa/nginx.incident.log and a mail to _MY_EMAIL unless
+# _INCIDENT_REPORT is OFF. Cron discards this tool's output, so the printed
+# lines alone reach nobody. The box config is read with grep: sourcing it
+# would set its variables in this run. Each value is taken as sourcing sets
+# it: the last definition, without the trailing " #..." comment the
+# documented template puts after each setting.
+_policy_alert() {
+  local _stamp="/run/nginx_policy_alert.${1//[^a-zA-Z0-9._-]/_}" _sub="${2}"
+  local _log="/var/log/boa/nginx.incident.log" _l _lvl _mail _host
+  shift 2
+  for _l in "$@"; do
+    echo "ALRT: ${_l}"
+  done
+  [[ -z "$(find "${_stamp}" -mmin -1440 2> /dev/null)" ]] || return 0
+  # a stamp that cannot be written fails open: the alert matters more
+  touch "${_stamp}" 2> /dev/null
+  mkdir -p "${_log%/*}" 2> /dev/null
+  echo "$(date) ${_sub}: $*" >> "${_log}"
+  _lvl="$(grep -E '^[[:space:]]*(export[[:space:]]+)?_INCIDENT_REPORT=' \
+    /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+    | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -cd 'A-Za-z')"
+  _lvl="${_lvl^^}"
+  [[ "${_lvl}" != "OFF" && "${_lvl}" != "NO" ]] || return 0
+  _mail="$(grep -E '^[[:space:]]*(export[[:space:]]+)?_MY_EMAIL=' \
+    /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+    | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -d "\"' \\\\")"
+  if [[ -z "${_mail}" ]] || ! command -v s-nail > /dev/null 2>&1; then
+    return 0
+  fi
+  _host="$(tr -d '\n' < /etc/hostname 2> /dev/null)"
+  [[ -n "${_host}" ]] || _host="$(hostname -f 2> /dev/null)"
+  # the mailer, and a delivery it may leave running, never holds the shared
+  # nginx-config lock (fd 9)
+  printf '%s\n' "${_sub} on ${_host}" "" "$@" "" "Logged to ${_log}" "" "--" \
+    "This email has been sent by a BOA nginx policy tool" \
+    | s-nail -s "ALERT [${_host}]: ${_sub}" "${_mail}" > /dev/null 2>&1 9>&-
+  return 0
+}
+
 _work="$(mktemp -d /run/.ai_policy.XXXXXX 2> /dev/null)" \
   || { echo "Cannot create a work directory in /run; skipping this run."; exit 1; }
 trap 'rm -rf -- "${_work}"' EXIT
@@ -389,8 +430,15 @@ _process_instance() {
     echo "Nginx configtest failed after AI policy update (${_root}): ${_ct}"
     if [[ -f "${_last_good_backup}" ]]; then
       echo "Reverting ${_root} AI policy to last known good."
-      _ai_revert "${_backup_dir}" "${_last_good_name}" "${_ai_path}"
-      service nginx reload
+      if _ai_revert "${_backup_dir}" "${_last_good_name}" "${_ai_path}"; then
+        service nginx reload
+      else
+        _policy_alert "ai_policy.refused.${_root}" \
+          "ai_policy: last-good backup unreadable, fragments kept (${_root})" \
+          "last-good backup ${_last_good_backup} is unreadable -- keeping the" \
+          "fragments now on disk rather than deleting them for an archive" \
+          "that cannot be restored. Fix ${_input_file} and re-run."
+      fi
     fi
     return 1
   fi
@@ -398,8 +446,13 @@ _process_instance() {
   if ! service nginx reload; then
     echo "Nginx reload failed after AI policy update (${_root}); reverting."
     if [[ -f "${_last_good_backup}" ]]; then
-      _ai_revert "${_backup_dir}" "${_last_good_name}" "${_ai_path}"
-      service nginx reload
+      if _ai_revert "${_backup_dir}" "${_last_good_name}" "${_ai_path}"; then
+        service nginx reload
+      else
+        _policy_alert "ai_policy.refused.${_root}" \
+          "ai_policy: last-good backup unreadable, fragments kept (${_root})" \
+          "last-good backup ${_last_good_backup} is unreadable -- fragments left in place."
+      fi
     fi
     return 1
   fi
@@ -413,13 +466,19 @@ _process_instance() {
 }
 
 # The fragments in the real directory $3 replaced by those of the last-good
-# archive $2 in the real directory $1; an archive that does not unpack whole
-# leaves none.
+# archive $2 in the real directory $1. The archive is proved whole before
+# anything on disk is deleted: one that does not unpack whole leaves the
+# fragments as they are, status 1. A put that fails after the drop alerts
+# for the running _process_instance's root.
 _ai_revert() {
-  local _ok=""
-  _lg_fetch "${1}" "${2}" "${_work}/lg" && _ok="yes"
+  _lg_fetch "${1}" "${2}" "${_work}/lg" || return 1
   _acct_in_real_dir "${3}" _confs_drop_here > /dev/null
-  [[ -z "${_ok}" ]] || _acct_in_real_dir "${3}" _confs_put_here "${_work}/lg"
+  if ! _acct_in_real_dir "${3}" _confs_put_here "${_work}/lg"; then
+    _policy_alert "ai_policy.restore.${_root}" \
+      "ai_policy: restoring the last-good backup FAILED (${_root})" \
+      "restoring ${1}/${2} FAILED after the fragments were removed."
+  fi
+  return 0
 }
 
 # Loop over every Octopus instance. Real instances carry tools/drush; the

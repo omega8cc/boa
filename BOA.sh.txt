@@ -381,6 +381,44 @@ _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my 
 # directory, the same way: a single-link regular file only, through its
 # handle, never through a link.
 _BOA_FCHMOD_PL='use Fcntl; my ($m, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chmod(oct($m), $h) if @s && -f _ && $s[3] == 1; close($h); } exit 0'
+# A mode set on names in the current (pinned) directory the same way,
+# one text wherever it is defined (satellite.sh.inc): args f|d, the mode
+# (octal), the names; a directory keeps its set-ID bits unless the mode has
+# five digits, a regular file is changed only while it has a single link.
+_SAT_NOFOLLOW_CHMOD_PL='use Fcntl;
+my ($t, $ms) = (shift @ARGV, shift @ARGV);
+my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if ($t eq "f" && -f _ && $s[3] == 1) {
+    chmod($m, $h);
+  } elsif ($t eq "d" && -d _) {
+    chmod($m | ($s[2] & $k), $h);
+  }
+  close($h);
+}'
+# $1 as the directory root works in: itself when it is a real directory;
+# when it is a link, the real directory it leads to, only when every link
+# on the way is root's and every directory on the way, the last one
+# included, is root's and writable by no one else, so no one but root can
+# change where it leads or what is in it; nothing otherwise (exit 1). With
+# a second argument "last" the last directory may be anyone's and open to
+# others (the Octopus store check takes /data/disk/all back); none is given
+# here. One text wherever it is defined (satellite.sh.inc, xoct, xcopy,
+# manage_solr_config.sh, night.inc.sh).
+_ROOT_REAL_PATH_PL='my ($p, $k) = @ARGV; if (!-l $p) { print $p if -d _; exit(-d _ ? 0 : 1); } my ($c, $n, @s) = ("", 0, stat("/")); exit 1 unless $p =~ m{^/} && @s && $s[4] == 0 && !($s[2] & 022); my @w = grep { length && $_ ne "." } split(m{/}, $p); while (@w) { my $e = shift(@w); if ($e eq "..") { $c =~ s{/[^/]*$}{}; next; } my @l = lstat("$c/$e") or exit 1; if (-l _) { exit 1 if $l[4] != 0 || ++$n > 40; my $t = readlink("$c/$e"); exit 1 unless defined $t; $c = "" if $t =~ m{^/}; unshift(@w, grep { length && $_ ne "." } split(m{/}, $t)); next; } exit 1 unless -d _ && (($l[4] == 0 && !($l[2] & 022)) || (defined $k && $k eq "last" && !@w)); $c .= "/$e"; } print($c eq "" ? "/" : $c); exit 0'
+# $1, the real directory a link of root's at /data/all leads to
+# (_ROOT_REAL_PATH_PL's answer), is the one the store may be kept in
+# behind that link (exit 0) only when it is /data/disk/all, the directory
+# named all directly in the real /data/disk, compared by device and inode
+# with that name not followed, so a link put at it does not count; any
+# other directory, or none, exit 1. Besides a real /data/all it is the
+# one layout of the store BOA knows, and the one other store directory
+# every PHP-FPM pool's open_basedir names. One text wherever it is defined
+# (satellite.sh.inc, BOA.sh.txt, xoct, xcopy, manage_solr_config.sh,
+# night.inc.sh).
+_SAT_STORE_TARGET_PL='my @t = lstat(defined $ARGV[0] ? $ARGV[0] : ""); my @a = lstat("/data/disk/all"); exit((@t && @a && -d _ && $t[0] == $a[0] && $t[1] == $a[1]) ? 0 : 1)'
 # ./$1 in the current (pinned) directory edited by the sed script $2 as
 # sed -i edited it, unless it holds the text $3 (when given): only a
 # single-link regular file under 1 MiB is read, once, bounded and never
@@ -805,37 +843,90 @@ _get_dev_contrib() {
 # Two stamps: the gates read the ".full" one, which only this path writes, so
 # a copy the old code stamped is replaced once; the plain one keeps an
 # Octopus not yet upgraded from fetching it again the old way. Owner "root"
-# re-owns the copy, whatever the archive recorded.
+# re-owns the copy, whatever the archive recorded. Every step runs from
+# inside the real ${_Dir}, each of its last three names entered as the real
+# directory (outside /home and /data/disk _acct_in_real_dir checks only the
+# last name, and a link an earlier release let an account leave at
+# /data/all/000 must never be followed), and names the unpack directory
+# relative to it, never by the store's path; that directory is this run's
+# own (mktemp, root's, 0700), so chown -R there hands over only what the
+# archive holds. The store's modes are then set through handles opened
+# without following a link, a regular file only while it has a single link,
+# so a link or a hard link left in the store is never followed or re-moded.
 _shared_module_update() {
-  local _nm="$1" _ver="$2" _own="$3" _tmp _rc _url
-  _url="${_urlDev}/${_tRee}/contrib/${_nm}-${_ver}.tar.gz"
-  mkdir -p "${_Dir}"
+  local _url="${_urlDev}/${_tRee}/contrib/${1}-${2}.tar.gz" _up="${_Dir%/*}"
+  local _st
+  # made where missing, each name from inside its real parent (the store
+  # in root's /data, or /data/disk/all when a link of root's there leads
+  # to it through root's own directories only, _ROOT_REAL_PATH_PL and
+  # _SAT_STORE_TARGET_PL; any other link the pin refuses), so a link at
+  # the last two names is never followed
+  mkdir -p "${_up%/*}" &> /dev/null
+  _st="$(perl -e "${_ROOT_REAL_PATH_PL}" -- "${_up%/*}" 2> /dev/null)"
+  perl -e "${_SAT_STORE_TARGET_PL}" -- "${_st}" &> /dev/null || _st=""
+  _st="${_st:-${_up%/*}}"
+  _acct_in_real_dir "${_st}" mkdir -p -m 0755 -- "./${_up##*/}" &> /dev/null
+  _acct_in_real_dir "${_st}" _acct_in_real_dir "./${_up##*/}" \
+    mkdir -p -m 0755 -- "./${_Dir##*/}" &> /dev/null
+  _acct_in_real_dir "${_st}" _acct_in_real_dir "./${_up##*/}" \
+    _acct_in_real_dir "./${_Dir##*/}" _shared_module_update_here "$@"
+  case $? in
+    0) ;;
+    2) _fetch_failed_note "${1}" "${_url}" "swap" ;;
+    3)
+      echo "OOPS: ${1}-${2} was not updated (download or unpack failed); the copy in place is kept"
+      _fetch_failed_note "${1}" "${_url}" "unpack"
+      ;;
+    *)
+      echo "OOPS: ${1}-${2} was not updated (no unpack directory in the real ${_Dir}); the copy in place is kept"
+      _fetch_failed_note "${1}" "${_url}" "store"
+      ;;
+  esac
+}
+# A fetch of the shared module ${_Dir}/$1 is due: its stamp $2 is not
+# there, or an entry of the module, the name itself included, is a link, is
+# not root's or is writable by its group or others, found without following
+# a link (an earlier release let an account own the store, and its
+# recursive chown made what the account left there root's). Nothing is
+# trusted through a link. The fetch swaps the module out without following
+# a link; when the fetch fails, what is there stays until one succeeds.
+_shared_module_stale() {
+  [ -n "$(find -P "${_Dir}/${1}" \( -type l -o \! -user 0 -o -perm /022 \) \
+    -print -quit 2> /dev/null)" ] || [ ! -e "${_Dir}/${1}/${2}" ]
+}
+# The fetch, unpack and swap in the current (pinned) ${_Dir}, run in a
+# subshell: 0 done, 2 not swapped in, 3 not fetched or unpacked, 1 no unpack
+# directory; _shared_module_update reports it.
+_shared_module_update_here() {
+  local _nm="$1" _ver="$2" _own="$3" _tmp _rc=3
   # a directory a killed run left behind; a live run's is never this old
-  find "${_Dir}" -maxdepth 1 -type d -name ".${_nm}.*" -mmin +60 -exec rm -rf {} + &> /dev/null
-  _tmp="$(mktemp -d "${_Dir}/.${_nm}.XXXXXX")" || return 1
-  cd "${_tmp}" || return 1
-  _get_dev_contrib "${_nm}-${_ver}.tar.gz"
-  _rc=$?
-  cd "${_Dir}" || return 1
-  if [ "${_rc}" -eq 0 ] && [ -d "${_tmp}/${_nm}" ]; then
+  find . -maxdepth 1 -type d -name ".${_nm}.*" -mmin +60 -exec rm -rf -- {} + &> /dev/null
+  _tmp="$(mktemp -d "./.${_nm}.XXXXXX")" || return 1
+  if ( cd -P -- "${_tmp}" && _get_dev_contrib "${_nm}-${_ver}.tar.gz" ) \
+    && [ -d "${_tmp}/${_nm}" ]; then
     [ "${_own}" = "root" ] && chown -R root:root "${_tmp}/${_nm}" &> /dev/null
     echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.info"
     echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.full.info"
-    [ -e "${_Dir}/${_nm}" ] && mv -T "${_Dir}/${_nm}" "${_tmp}/.old" &> /dev/null
-    if mv -T "${_tmp}/${_nm}" "${_Dir}/${_nm}" &> /dev/null; then
-      find "${_Dir}" -type d -exec chmod 0755 {} \; &> /dev/null
-      find "${_Dir}" -type f -exec chmod 0644 {} \; &> /dev/null
-      touch "${_pthLog}/${_nm}.ctrl.${_xSrl}.log"
-    else
-      [ -e "${_tmp}/.old" ] && [ ! -e "${_Dir}/${_nm}" ] \
-        && mv -T "${_tmp}/.old" "${_Dir}/${_nm}" &> /dev/null
-      _fetch_failed_note "${_nm}" "${_url}" "swap"
+    if [ -e "./${_nm}" ] || [ -L "./${_nm}" ]; then
+      mv -T -- "./${_nm}" "${_tmp}/.old" &> /dev/null
     fi
-  else
-    echo "OOPS: ${_nm}-${_ver} was not updated (download or unpack failed); the copy in place is kept"
-    _fetch_failed_note "${_nm}" "${_url}" "unpack"
+    if mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
+      perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 0755 . &> /dev/null
+      find . -mindepth 1 -type d \
+        -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 0755 {} + &> /dev/null
+      find . -mindepth 1 -type f -execdir perl -e "${_BOA_FCHMOD_PL}" 0644 {} + &> /dev/null
+      touch "${_pthLog}/${_nm}.ctrl.${_xSrl}.log"
+      _rc=0
+    else
+      if [ -e "${_tmp}/.old" ] || [ -L "${_tmp}/.old" ]; then
+        [ -e "./${_nm}" ] || [ -L "./${_nm}" ] \
+          || mv -T -- "${_tmp}/.old" "./${_nm}" &> /dev/null
+      fi
+      _rc=2
+    fi
   fi
-  rm -rf "${_tmp}"
+  rm -rf -- "${_tmp}"
+  return "${_rc}"
 }
 
 #
@@ -2223,8 +2314,8 @@ _update_agents() {
       || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f62
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f77
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f75
-    _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f76
-    _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f83
+    _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f75
+    _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f82
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f94
     # Activate Cloudflare realip immediately by writing the set_real_ip_from
     # ranges include now, so a fresh/updated box does not wait for the daily
@@ -2235,7 +2326,7 @@ _update_agents() {
     [ -e "/var/xdrago/cloudflare_realip.sh" ] \
       && [ ! -s "/data/conf/nginx_cloudflare_real_ip.conf" ] \
       && bash /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
-    _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f92
+    _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f91
     _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f95
     _fetch_versioned /var/xdrago/nginx_deny6.sh "${_urlHmr}/tools/system/nginx_deny6.sh" f95
     _fetch_versioned /var/xdrago/nginx_fleet.sh "${_urlHmr}/tools/system/nginx_fleet.sh" f91
@@ -2273,12 +2364,12 @@ _update_agents() {
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f88
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f68
-    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f66
+    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f65
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f45
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f49
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f67
     _runner_parked owl.sh \
-      || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f75
+      || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f74
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
     ### state (.daily.sh.off) across to owl so a box that had the nightly run
@@ -2348,7 +2439,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f80 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f78 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -2360,14 +2451,14 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] \
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f59.${_tRee}.${_xSrl}.pid" ]; then
+    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f57.${_tRee}.${_xSrl}.pid" ]; then
     mv -f /var/xdrago/manage_solr_config.sh /var/xdrago/manage_solr_config.sh.old
     curl ${_crlGet} "${_urlHmr}/tools/system/manage_solr_config.sh" \
       -o /var/xdrago/manage_solr_config.sh
     if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
       chmod 700 /var/xdrago/manage_solr_config.sh
       chown root:root /var/xdrago/manage_solr_config.sh
-      touch ${_pthLog}/manage_solr_config.sh.ctrl.f59.${_tRee}.${_xSrl}.pid
+      touch ${_pthLog}/manage_solr_config.sh.ctrl.f57.${_tRee}.${_xSrl}.pid
       rm -f /var/xdrago/manage_solr_config.sh.old
       rm -f /run/manage_solr_config.pid
     else
@@ -2946,7 +3037,7 @@ _update_agents() {
   _Dir="/data/all/000/modules"
   _REDIS_E_VERSION=8.x-1.11.2
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.full.info" ]; then
+    if _shared_module_stale redis_ten_eleven "ver-${_REDIS_E_VERSION}.${_xSrl}.full.info"; then
       _shared_module_update redis_ten_eleven "${_REDIS_E_VERSION}"
     fi
   fi
@@ -2954,7 +3045,7 @@ _update_agents() {
   _Dir="/data/all/000/modules"
   _REDIS_T_VERSION=8.x-1.8.2
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.full.info" ]; then
+    if _shared_module_stale redis_nine_ten "ver-${_REDIS_T_VERSION}.${_xSrl}.full.info"; then
       _shared_module_update redis_nine_ten "${_REDIS_T_VERSION}"
     fi
   fi
@@ -2962,7 +3053,7 @@ _update_agents() {
   _Dir="/data/all/000/modules"
   _REDIS_C_VERSION=com-19-04-2021
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.full.info" ]; then
+    if _shared_module_stale redis_compr "ver-${_REDIS_C_VERSION}.${_xSrl}.full.info"; then
       _shared_module_update redis_compr "${_REDIS_C_VERSION}"
     fi
   fi
@@ -2970,7 +3061,7 @@ _update_agents() {
   _Dir="/data/all/000/modules"
   _REDIS_L_VERSION=7.x-3.19.1
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.full.info" ]; then
+    if _shared_module_stale redis_edge "ver-${_REDIS_L_VERSION}.${_xSrl}.full.info"; then
       _shared_module_update redis_edge "${_REDIS_L_VERSION}"
     fi
   fi
@@ -2978,7 +3069,7 @@ _update_agents() {
   _Dir="/data/all/000/modules"
   _REDIS_N_VERSION=com-19-04-2021
   if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-    if [ ! -e "${_Dir}/redis_eight/ver-${_REDIS_N_VERSION}.${_xSrl}.full.info" ]; then
+    if _shared_module_stale redis_eight "ver-${_REDIS_N_VERSION}.${_xSrl}.full.info"; then
       _shared_module_update redis_eight "${_REDIS_N_VERSION}"
     fi
   fi
@@ -2991,7 +3082,7 @@ _update_agents() {
   _REDIS_B_VERSION=1.x-3.20.1
   if [ -e "/var/xdrago/manage_solr_config.sh" ] \
     && [ -d "${_Dir}/o_contrib_backdrop" ]; then
-    if [ ! -e "${_Dir}/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.full.info" ]; then
+    if _shared_module_stale redis_backdrop "ver-${_REDIS_B_VERSION}.${_xSrl}.full.info"; then
       _shared_module_update redis_backdrop "${_REDIS_B_VERSION}" root
     fi
   fi
@@ -5135,9 +5226,9 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f94 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f40 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f39 --guard /local/bin/xcopy
     _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f24 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f89 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f88 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f69 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f93 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f87 --guard /local/bin/autochimaera
@@ -5147,7 +5238,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f96 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/checkmyperms "${_urlHmr}/${_tBn}/checkmyperms" f99 --mode 755 --guard /local/bin/checkmyperms
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f91 --guard /local/bin/codebasecheck
-    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f87 --guard /local/bin/copydbackup
+    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f86 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
     _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f91 --guard /local/bin/memorytuner
@@ -5656,9 +5747,16 @@ _count_cpu() {
     _CPU_NR=1
   fi
   mkdir -p /data/all
-  chmod 755 /data/all
-  echo ${_CPU_NR} > /data/all/cpuinfo
-  chmod 644 /data/all/cpuinfo
+  # the store as root works in it (a link of root's there leads through
+  # root's own directories only to /data/disk/all, _ROOT_REAL_PATH_PL and
+  # _SAT_STORE_TARGET_PL; a pin refuses any other link), set 0755 and
+  # given a fresh cpuinfo (0644) renamed over the name, so a link or a
+  # hard link left at the name is replaced, never written through
+  local _st
+  _st="$(perl -e "${_ROOT_REAL_PATH_PL}" -- /data/all 2> /dev/null)"
+  perl -e "${_SAT_STORE_TARGET_PL}" -- "${_st}" &> /dev/null || _st=""
+  _acct_in_real_dir "${_st:-/data/all}" chmod 755 .
+  _acct_in_real_dir "${_st:-/data/all}" _acct_put_here cpuinfo "${_CPU_NR}"
 }
 
 _sysctl_update() {
