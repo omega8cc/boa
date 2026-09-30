@@ -40,6 +40,7 @@ This section covers a quick-start approach, focusing on minimal setup.
    - Retained for 14 days by default (modifiable via `/data/disk/your_username/static/control/dBackupCycle.info`).
    - Local database backups count toward your file-space quota.
    - If `dbackup/` (or `static/files` itself) is replaced with a symbolic link, the nightly copy of new dumps and the clean-up follow it only while it resolves inside your own files store (`static/files`, or its relocated copy `<mount>/files/your_username/static/files`). A link pointing anywhere else makes both skip your account with a logged warning: no new dumps arrive there and old ones are not removed.
+   - Each night's dumps go into a dated directory under `dbackup/`. The nightly copy writes into, and hands you, only a dated directory it created for you or one you already own. If a directory another user owns has been placed at that dated name, it is left untouched: no dumps are copied into it, it is not handed to you, and the skip is noted in the host's backup log.
 
 2. **Enable or Verify That Backups Are Enabled**
    - By default, backups for your account are typically enabled. If in doubt, contact support to confirm that scheduled backups are running.
