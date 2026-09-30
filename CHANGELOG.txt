@@ -1094,6 +1094,26 @@
 
 @=> Important Fixes
 
+    * ai_policy keeps a site's AI policy fragments on disk when its
+      last-good archive cannot be restored after a failed configtest or
+      reload, and prints ALRT lines instead (after a failed configtest
+      they name the control file to fix), as ip_access and
+      user_admin_access do; it used to remove them and restore nothing.
+      A restore that fails after the fragments were removed now alerts
+      too.
+
+    * ai_policy, ip_access and user_admin_access now send each ALRT line
+      on, once a day per condition: a dated line in
+      /var/log/boa/nginx.incident.log and, unless _INCIDENT_REPORT is
+      OFF, a mail to _MY_EMAIL. Cron discards their output, so these
+      lines used to reach nobody.
+
+    * The ltd worker (manage_ltd_users) reads _INCIDENT_REPORT and
+      _MY_EMAIL from /root/.barracuda.cnf as the shell does: the last
+      definition, without a trailing comment. With the file in the
+      documented template's layout, its alerts were mailed despite
+      _INCIDENT_REPORT=OFF, to an address that could not be delivered.
+
     * A files or private directory converted onto a store on another
       filesystem (migratefs) no longer loses what the site wrote while it
       was being copied: that is copied in after the link is made, and the
