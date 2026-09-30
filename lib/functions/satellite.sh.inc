@@ -3794,6 +3794,7 @@ GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%';
 ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 EOFMYSQL
+    _hostmaster_oldhost_dbuser_drop
   fi
   if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
     _SQL_CONNECT=127.0.0.1
@@ -3802,6 +3803,299 @@ EOFMYSQL
   else
     mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
   fi
+}
+
+#
+# Where the files of this box name each of the database users given, one
+# line per mention:
+#   db <user> <alias>         the master_db of a server alias: an instance's
+#                             own backend user
+#   panel <user> <site path>  the drushrc.php of a control panel: the site of
+#                             a hostmaster or hm alias, in its root's
+#                             hostmaster tree
+#   site <user> <site path>   the drushrc.php of any other site
+# Every alias in /var/aegir/.drush and each /data/disk/*/.drush is read, and
+# each site path an alias names inside its own root has its drushrc.php
+# read, both as _acct_read_whole_in reads them; a site path outside that
+# root is no site of that root. Non-zero, the last line "unread <path>",
+# when a file cannot be read whole, or an alias name or a site path inside
+# the root is not a plain one: an unread file never counts as naming
+# nothing. One text in master.sh.inc and satellite.sh.inc.
+_hostmaster_db_users_named() {
+  local _a _f _t _p _s _k _u _e=()
+  for _u in "$@"; do
+    _e+=( -e "${_u}" )
+  done
+  for _a in /var/aegir /data/disk/*; do
+    [ -d "${_a}/.drush" ] || continue
+    for _f in "${_a}"/.drush/*.alias.drushrc.php; do
+      [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+      case "${_f##*/}" in
+        *[!A-Za-z0-9._-]*)
+          echo "unread ${_f}"
+          return 1
+          ;;
+      esac
+      if ! _t=$(_acct_read_whole_in "${_a}/.drush" "${_f##*/}"); then
+        echo "unread ${_f}"
+        return 1
+      fi
+      case "${_f##*/}" in
+        server_*)
+          while IFS= read -r _u; do
+            echo "db ${_u} ${_f}"
+          done < <(printf '%s\n' "${_t}" \
+            | sed -n "s#^ *'master_db' => '[a-z]*://\([^:@']*\):.*#\1#p" \
+            | grep -xF "${_e[@]}")
+          ;;
+      esac
+      while IFS= read -r _p; do
+        case "${_p}" in
+          "${_a}"/*) ;;
+          *) continue ;;
+        esac
+        case "${_p}" in
+          *[!A-Za-z0-9._/-]*|*//*|*/|*/./*|*/../*|*/.|*/..)
+            echo "unread ${_p}"
+            return 1
+            ;;
+        esac
+        [ -e "${_p}/drushrc.php" ] || [ -L "${_p}/drushrc.php" ] || continue
+        if ! _s=$(_acct_read_whole_in "${_p}" drushrc.php); then
+          echo "unread ${_p}/drushrc.php"
+          return 1
+        fi
+        _k=site
+        case "${_f##*/}" in
+          hostmaster.alias.drushrc.php|hm.alias.drushrc.php)
+            case "${_p}" in
+              "${_a}"/aegir/distro/*/sites/?*|/var/aegir/*/sites/?*) _k=panel ;;
+            esac
+            ;;
+        esac
+        while IFS= read -r _u; do
+          echo "${_k} ${_u} ${_p}"
+        done < <(printf '%s\n' "${_s}" | grep -owF "${_e[@]}" | sort -u)
+      done < <(printf '%s\n' "${_t}" \
+        | sed -n "s/^ *'site_path' => '\([^']*\)',.*/\1/p")
+    done
+  done
+  return 0
+}
+# How the log names the database user $1: after the longest of this box's
+# account names, or the first label of the master's uri, that it begins
+# with and then a non-digit, else after $2 (an account's name, or master).
+# One text in master.sh.inc and satellite.sh.inc.
+_hostmaster_db_user_label() {
+  local _a _n _uri _o="${2}" _l=0
+  for _a in /data/disk/*; do
+    [ -d "${_a}/.drush" ] || continue
+    _n="${_a##*/}"
+    [[ "${1}" == "${_n}"[!0-9]* ]] && [ "${#_n}" -gt "${_l}" ] || continue
+    _o="${_n}"
+    _l="${#_n}"
+  done
+  _uri=$(sed -n "s/^ *'uri' => '\([^']*\)',.*/\1/p" \
+    /var/aegir/.drush/hm.alias.drushrc.php 2> /dev/null | head -n 1)
+  _n="${_uri%%.*}"
+  if [ "${_n}" != "${_uri}" ] && [[ "${1}" == "${_n}"[!0-9]* ]] \
+    && [ "${#_n}" -gt "${_l}" ]; then
+    _o=master
+  fi
+  if [ "${_o}" = "master" ]; then
+    echo "earlier master panel database user"
+  else
+    echo "${_o} earlier panel database user"
+  fi
+}
+# The candidates given after $1 (the pass's own: an account's name, or
+# master) are users of this box's own plain server with the shape and
+# prefix of an earlier panel's, none the live panel's user or an account's
+# name, each with SUPER on a host row. One whose host names are not all
+# plain ones is left alone. Then one that the master_db of a server alias
+# or a panel's drushrc.php names stays as it is (an instance's own user, or
+# a panel's that its own pass converges); one that another site's
+# drushrc.php names keeps its database grants and loses its global rights
+# on every row (a site that took over a leftover's name gets a row of its
+# own without them); one with a database of its name, or without SUPER on
+# every row, stays as it is (the files read are this box's only, and a
+# server other boxes keep their databases on holds their panels' users);
+# any other is dropped, the rows a read right before the drop finds, and
+# only while that read still finds SUPER on every row and no database of
+# its name. A read that fails leaves that user alone, and a file that
+# cannot be read leaves every one. One text in master.sh.inc and
+# satellite.sh.inc.
+_hostmaster_db_users_settle() {
+  local _own="${1}" _u _h _s _c _rows _named _ok _all _w _l _list=() _schema=" " _part=" "
+  local _C=(mysql --silent --skip-column-names -u root -h"${_SQL_CONNECT}"
+    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  shift
+  for _u in "$@"; do
+    _rows=$("${_C[@]}" "SELECT Host, Super_priv FROM mysql.user WHERE User='${_u}'" \
+      2> /dev/null) || continue
+    _c=$("${_C[@]}" "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='${_u}'" \
+      2> /dev/null) || continue
+    [[ "${_c}" =~ ^[0-9]+$ ]] && [ -n "${_rows}" ] || continue
+    _ok=YES
+    _all=YES
+    while IFS=$'\t' read -r _h _s; do
+      [ "${_s}" = "Y" ] || _all=NO
+      case "${_h}" in
+        ""|*[!A-Za-z0-9._%:-]*) _ok=NO ;;
+      esac
+    done <<< "${_rows}"
+    [ "${_ok}" = "YES" ] || continue
+    _list+=( "${_u}" )
+    [ "${_c}" = "0" ] || _schema+="${_u} "
+    [ "${_all}" = "YES" ] || _part+="${_u} "
+  done
+  [ "${#_list[@]}" -gt 0 ] || return 0
+  if ! _named=$(_hostmaster_db_users_named "${_list[@]}"); then
+    _w=$(printf '%s\n' "${_named}" | sed -n 's/^unread //p' | tail -n 1 \
+      | tr -d '\n' | tr -c 'A-Za-z0-9._/-' '?' | cut -c1-200)
+    case "${_w}" in
+      /data/disk/?*) _l="${_w#/data/disk/}"; _l="account ${_l%%/*}" ;;
+      *) _l="master" ;;
+    esac
+    if [ "${_own}" = "master" ]; then
+      _msg "ALRT: earlier master panel database users kept: ${_w} (${_l}) could not be read"
+    else
+      _msg "ALRT: ${_own} earlier panel database users kept: ${_w} (${_l}) could not be read"
+    fi
+    return 0
+  fi
+  for _u in "${_list[@]}"; do
+    printf '%s\n' "${_named}" | grep -qE "^(db|panel) ${_u} " && continue
+    _l=$(_hostmaster_db_user_label "${_u}" "${_own}")
+    _w=$(printf '%s\n' "${_named}" | sed -n "s#^site ${_u} ##p" | head -n 1)
+    if [ -n "${_w}" ]; then
+      _rows=$("${_C[@]}" "SELECT Host FROM mysql.user WHERE User='${_u}'" \
+        2> /dev/null) || continue
+      [ -n "${_rows}" ] || continue
+      if _hostmaster_db_user_global_revoke "${_u}" "${_rows}"; then
+        _msg "INFO: ${_l} ${_u} kept with its database grants only, global rights revoked (site ${_w} names it)"
+      else
+        _msg "ALRT: ${_l} ${_u} global rights not revoked, or a database grant lost (site ${_w} names it)"
+      fi
+      continue
+    fi
+    [[ "${_schema}${_part}" == *" ${_u} "* ]] && continue
+    # the walk takes seconds, and a site created meanwhile brings a
+    # database of this name and a row without SUPER: read both again
+    _rows=$("${_C[@]}" "SELECT Host, Super_priv FROM mysql.user WHERE User='${_u}'" \
+      2> /dev/null) || continue
+    _c=$("${_C[@]}" "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='${_u}'" \
+      2> /dev/null) || continue
+    [ "${_c}" = "0" ] && [ -n "${_rows}" ] || continue
+    _all=YES
+    while IFS=$'\t' read -r _h _s; do
+      [ "${_s}" = "Y" ] || _all=NO
+      case "${_h}" in
+        ""|*[!A-Za-z0-9._%:-]*) _all=NO ;;
+      esac
+    done <<< "${_rows}"
+    [ "${_all}" = "YES" ] || continue
+    while IFS=$'\t' read -r _h _s; do
+      "${_C[@]}" "DROP USER '${_u}'@'${_h}'" &> /dev/null
+    done <<< "${_rows}"
+    _c=$("${_C[@]}" "SELECT COUNT(*) FROM mysql.user WHERE User='${_u}'" 2> /dev/null)
+    if [ "${_c}" = "0" ]; then
+      _msg "INFO: ${_l} ${_u} dropped (every global right, no database, no drushrc.php names it)"
+    else
+      _msg "ALRT: ${_l} ${_u} could not be dropped"
+    fi
+  done
+}
+# Takes from the user $1, on each host row given in $2 (one per line), the
+# global privileges SHOW GRANTS lists for that row, each by name, and its
+# global grant option: a REVOKE ALL on *.* takes the database grants too
+# (measured on Percona 8.4). A database grant that goes all the same is
+# granted back as it read before. Zero when no row keeps a global right and
+# every row has the database grants it had. One text in master.sh.inc and
+# satellite.sh.inc.
+_hostmaster_db_user_global_revoke() {
+  local _u="${1}" _h _g _d _p _n=0 _b=0 _a=0
+  local _C=(mysql --silent --skip-column-names --raw -u root -h"${_SQL_CONNECT}"
+    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql -e)
+  while IFS= read -r _h; do
+    case "${_h}" in
+      ""|*[!A-Za-z0-9._%:-]*) return 1 ;;
+    esac
+    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
+    _d=$(printf '%s\n' "${_g}" | grep '^GRANT .* ON .* TO ' | grep -v ' ON \*\.\* TO ')
+    _b=$((_b + $(printf '%s\n' "${_d}" | grep -c .)))
+    while IFS= read -r _p; do
+      _p="${_p#GRANT }"
+      _p="${_p%% ON \*.\* TO *}"
+      [[ "${_p}" =~ ^[A-Z_][A-Z_\ ,]*$ ]] && [ "${_p}" != "USAGE" ] || continue
+      "${_C[@]}" "REVOKE ${_p} ON *.* FROM '${_u}'@'${_h}'" &> /dev/null
+    done < <(printf '%s\n' "${_g}" | grep '^GRANT .* ON \*\.\* TO ')
+    "${_C[@]}" "REVOKE GRANT OPTION ON *.* FROM '${_u}'@'${_h}'" &> /dev/null
+    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
+    while IFS= read -r _p; do
+      [ -n "${_p}" ] || continue
+      printf '%s\n' "${_g}" | grep -qxF -- "${_p}" && continue
+      case "${_p}" in
+        *";"*) continue ;;
+      esac
+      "${_C[@]}" "${_p}" &> /dev/null
+    done <<< "${_d}"
+    _g=$("${_C[@]}" "SHOW GRANTS FOR '${_u}'@'${_h}'" 2> /dev/null) || return 1
+    _a=$((_a + $(printf '%s\n' "${_g}" | grep '^GRANT .* ON .* TO ' | grep -vc ' ON \*\.\* TO ')))
+    _n=$((_n + $(printf '%s\n' "${_g}" | grep ' ON \*\.\* TO ' | grep -vc '^GRANT USAGE ON ')))
+  done <<< "${2}"
+  [ "${_n}" = "0" ] && [ "${_a}" = "${_b}" ]
+}
+
+#  A panel database user an earlier release left with every global right
+# under a name no upgrade reuses: named from the hostmaster uri before the
+# host was renamed, provisioning never re-grants, re-creates or drops it,
+# and it still answers to the password its old drushrc.php held. A
+# candidate has the shape provisioning gives a panel database (16
+# characters of the uri without dots and dashes, or 14 of them and _0 to
+# _9, or 13 and _10 to _99), begins with this account's name and then a
+# non-digit, so o1 never takes o10's, and has SUPER on a host row; this
+# panel's own user and an account's own user (named as the account) never
+# are. _hostmaster_db_users_settle leaves alone one that a server alias
+# names as its master_db or a panel's drushrc.php names; takes every
+# global right, and nothing else, from one that another site's drushrc.php
+# names, whether or not a database of its name exists; leaves alone any
+# other with a database of its name or without SUPER on every host row;
+# and drops the rest. No box keeps a record of a former panel name for
+# good, so an operator's own user of exactly that shape under that prefix
+# is treated the same: dropped when it holds SUPER on every host row,
+# nothing names it and no database of its name exists, stripped of its
+# global rights when a site names it. Only on the box's own plain server.
+# The files read are this box's only, so a database of its name keeps a
+# user: a server other boxes keep their databases on also holds their
+# panels' users, which no file here names.
+_hostmaster_oldhost_dbuser_drop() {
+  local _u _rows _cand=()
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _hostmaster_oldhost_dbuser_drop"
+    _debug_proc
+  fi
+  case "${_SQL_CONNECT}" in
+    localhost|127.0.0.1) ;;
+    *) return 0 ;;
+  esac
+  [ "${_THIS_DB_PORT}" = "3306" ] || return 0
+  [ -e "/root/.my.cluster_root_pwd.txt" ] && return 0
+  [[ "${_USER}" =~ ^[a-z][a-z0-9]{0,14}$ ]] || return 0
+  _rows=$(mysql --silent --skip-column-names -u root -h"${_SQL_CONNECT}" \
+    -P"${_THIS_DB_PORT}" --protocol=tcp --database=mysql \
+    -e "SELECT DISTINCT User FROM mysql.user WHERE Super_priv='Y'" 2> /dev/null) \
+    || return 0
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^([a-z0-9]{16}|[a-z0-9]{14}_[0-9]|[a-z0-9]{13}_[1-9][0-9])$ ]] \
+      || continue
+    [[ "${_u}" == "${_USER}"[!0-9]* ]] || continue
+    [ "${_u}" = "${_THIS_HM_DBUR}" ] && continue
+    [ -e "/data/disk/${_u}" ] && continue
+    _cand+=( "${_u}" )
+  done <<< "${_rows}"
+  [ "${#_cand[@]}" -gt 0 ] || return 0
+  _hostmaster_db_users_settle "${_USER}" "${_cand[@]}"
 }
 
 _satellite_run_pre_install() {

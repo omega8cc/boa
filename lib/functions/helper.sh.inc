@@ -467,6 +467,17 @@ _acct_read_all() {
     echo
   done
 }
+# $2 in the real directory $1, read as _acct_read_in reads it, whole: every
+# byte kept (a NUL as a space). Non-zero when nothing was read or the read
+# stopped at its 1 MiB bound, so a file cut short never passes for whole.
+_acct_read_whole_in() {
+  local _s _n
+  _s=$(_acct_read_in "${1}" "${2}" | tr '\000' ' '; echo .)
+  _s="${_s%.}"
+  _n=$(printf '%s' "${_s}" | wc -c)
+  [ "${_n}" -gt 0 ] && [ "${_n}" -lt 1048576 ] || return 1
+  printf '%s\n' "${_s}"
+}
 
 _sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
