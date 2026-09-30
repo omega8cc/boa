@@ -50,6 +50,44 @@
 
 @=> Security
 
+    * Account purge: what the purge leaves goes to root before it decides
+      which of the account's groups to keep, so a group kept only for the
+      account's own leftovers is removed. An entry a living account keeps
+      in the trees the purge keeps (its park and /var/backups/ltd
+      included) no longer carries a group number that names nobody: it
+      goes to group root, its owner kept, losing its set-ID bits and group
+      write (with an ACL, its mask), through a handle that opens nothing.
+      This pass, and the one in the shared temporary places, now also
+      runs before the groups are decided, and a group the purge removes
+      keeps its number until both have run again.
+
+    * Account purge: a group of the account that a path still carries,
+      or that only the account's own identities still hold (one deluser
+      refused), keeps its number under the name <gid>-purged instead of
+      the account's name, so a later account of the same name is given a
+      group of its own and the number is never handed to the next group.
+      On a converted account, whose group would go with its own identity,
+      the purge renames the group first. An ALRT says when the number
+      cannot be kept, and names identities that survived the purge.
+
+    * Root trusts a root-owned file in an account's space (the web home's
+      update lock, the migration preflight report) only when it has a
+      single link.
+
+    * Root's ownership and mode walks over account and shared trees (the
+      nightly, the Octopus upgrade, the Adminer and web app trees, fixrepo,
+      the fix-drupal helpers, the backup restores and the migration target
+      stage) list only directories and regular files, so they no longer
+      open a FIFO left in the tree.
+
+    * autosymlink acts only on what it checked: the account's store stays
+      the very directory it resolved for the whole run, and a conversion
+      sets aside and removes only the site's own files or private
+      directory it checked or copied, emptied as the site's account, so
+      root never deletes what that account could not. A copy into a
+      per-site store directory that is not root's, or that its group or
+      others can write, is refused.
+
     * Account purge: what an account leaves in the trees the purge keeps
       (its gems and npm trees, the attached store, the PHP cache, the
       purge's own park) no longer keeps a user number the next account
@@ -116,6 +154,32 @@
       database only, on every Octopus upgrade: it held every privilege on
       every database of the box, with the right to grant them on, which the
       panel never needs.
+
+    * A control panel database user an earlier release left with every
+      privilege on every database, under a panel name no longer in use
+      (the name from the box's host before a rename, or the name the
+      panel used before its last upgrade), is now dropped by the next
+      upgrade: Octopus for an account's panel, Barracuda for the master's.
+      A candidate has the panel database shape (16 characters, or 14 and
+      _0 to _9, or 13 and _10 to _99), starts with the account's name (the
+      master: the first label of its address) followed by anything but a
+      digit, holds SUPER on a host row with plain host names, and is no
+      account's name, no server alias's database user and no panel's
+      database user. It is dropped when it holds SUPER on every host row,
+      no database of its name exists and nothing on the box names it; if
+      a site on the box names it, it keeps its database grants and loses
+      all its global rights; any other candidate is left as it is. An
+      operator's own user of exactly that shape and prefix is treated the
+      same. This runs only where the box's own database server answers
+      locally on port 3306 (not a remote database, ProxySQL or a
+      cluster), and any file that cannot be read keeps every user, with
+      an alert naming that file.
+
+    * The nightly migration-source sweep now reads the database grant
+      tables and revokes stale read grants as the account's instance
+      user: since the control panel's database user holds its own
+      database only, the sweep failed on its first query and left the
+      grants it exists to remove in place.
 
     * boa cleanup purge now also drops the purged account's own database
       users (the instance user and its control panel user, proven from the
@@ -595,6 +659,17 @@
 
 @=> New Features
 
+    * A test box can hold the mail BOA sends its clients: while
+      /data/conf/client_mail_hold.txt holds one address, the welcome and
+      upgrade mail, the usage notices, the nightly certificate and
+      leftover-record notices, the mybackup restore notice, the PHP
+      segfault alert and the boa in-octopus install report go to that
+      address instead, the subject noting who would have been mailed.
+      Copies to the operator are unchanged, except an instance admin
+      copy that is the client's own address. A file that holds anything
+      else, or that anyone but root can write, stops those notices with
+      one logged line.
+
     * New ~/static/control/cli-per-platform.info gives one platform its
       own command-line PHP, one "<platform folder> <X.Y>" line each, the
       folder written under ~/static (or pasted as its Publish path,
@@ -1018,6 +1093,40 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * A files or private directory converted onto a store on another
+      filesystem (migratefs) no longer loses what the site wrote while it
+      was being copied: that is copied in after the link is made, and the
+      old directory is kept and reported when that copy fails, when it
+      still holds a file that differs from the store's copy, or when that
+      could not be checked.
+
+    * A files or private directory holding only regenerated residue is
+      checked again before it is removed after its re-link, so a file the
+      site wrote into it meanwhile is kept and reported.
+
+    * A directory an interrupted conversion left beside the site is
+      reported on every run until it is removed by hand, with the store
+      directory to copy it into first: a cross-filesystem one may hold
+      files the store lacks, and a residue one a file written after its
+      check.
+
+    * A staging directory left by a killed un-share copy is removed by the
+      next copy into that store once root's marker proves the tool made
+      it; a read-only directory in it no longer blocks the clean-up. A new
+      account's first run no longer logs an error before its static/ exists.
+
+    * A Barracuda upgrade of a web head in the remote DB server mode no
+      longer resets aegir_root on the remote DB server. The master's
+      password sync (syncpass fix aegir) now acts on the master's own
+      local DB server, as the upgrade does, instead of dropping and
+      re-creating aegir_root on the DB head with a new random password,
+      which denied every Octopus instance still using the shared
+      aegir_root credential there: Backup and other tasks that use that
+      server failed while sites kept serving. A DB head already reset by
+      an earlier upgrade keeps that state until the web head's aegir_root
+      grant is re-created there once, with root's password, as the remote
+      DB server setup describes. Local DB modes are unchanged.
 
     * xmass prep-target mirrors an account's suspension flag only after the
       account's create succeeded, and a flag it cannot mirror or clear fails

@@ -750,6 +750,11 @@ Replace `/data/disk/o1` with `/data/disk/o2` if rename mode was used.
 
 ## Notes
 
+- **Client mail on a test target:** the target's own Octopus, nightly and
+  usage passes mail the account's client. While
+  `/data/conf/client_mail_hold.txt` holds one address, BOA sends that mail to
+  it instead; see "Holding client mail on a test box" in
+  [MIGRATE.md](MIGRATE.md).
 - **Chained migrations (a former target becomes a source):** a completed
   `xoct import` starts a fresh migration lifecycle on the new box — the
   source-role latches that travelled inside the account's `log/` tree

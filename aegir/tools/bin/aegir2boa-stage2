@@ -773,9 +773,9 @@ verb_check() {
   [[ -n "${_REPORT}" && -f "${_REPORT}" ]] \
     || _die "no preflight report found - run aegir2boa-preflight first (or pass --report <env>)"
   local _owner _perm
-  _owner="$(stat -c %u "${_REPORT}" 2>/dev/null)"
-  _perm="$(stat -c %a "${_REPORT}" 2>/dev/null)"
-  [[ "${_owner}" = "0" ]] || _die "preflight report ${_REPORT} not owned by root - refusing"
+  _owner="$(stat -c '%u %h' -- "${_REPORT}" 2>/dev/null)"
+  _perm="$(stat -c %a -- "${_REPORT}" 2>/dev/null)"
+  [[ "${_owner}" = "0 1" ]] || _die "preflight report ${_REPORT} not owned by root with a single link - refusing"
   case "${_perm}" in *[2367]) _die "preflight report ${_REPORT} is world-writable - refusing" ;; esac
   _info "preflight report: ${_REPORT}"
   [[ "$(_report_scalar A2B_HOST)" = "$(hostname -f 2>/dev/null)" ]] \
@@ -1487,7 +1487,7 @@ case "\${_U}:\${_G}" in :*|*:|*[!0-9:]*) exit 1 ;; esac
 $(_a2b_rcd_a2b) || exit 1
 cd -P -- './${_plat}' 2>/dev/null || exit 1
 [ "\$(pwd -P)" = "\$(cd -P /data/disk && pwd -P)/${_ACCOUNT}/static/a2b/${_plat}" ] || exit 1
-env PATH=/usr/local/bin:/usr/bin:/bin find . -execdir perl -e "\${_P}" "\${_U}" "\${_G}" {} +
+env PATH=/usr/local/bin:/usr/bin:/bin find . \( -type d -o -type f \) -execdir perl -e "\${_P}" "\${_U}" "\${_G}" {} +
 REOWN
         _done_plat="${_done_plat}${_plat} "
         ;;

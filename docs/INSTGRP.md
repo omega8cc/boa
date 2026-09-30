@@ -253,10 +253,9 @@ busy. Removing a single sub-account leaves the group in place: it belongs to
 the account.
 
 What the purge leaves on disk (a static store relocated under `/mnt`, the
-gems and npm trees) is handed to `root:root` first, and the group stays
-while any path still carries it. A home that survives is parked in the
-purge's zombie directory, shut to root, and its directories and single-link
-files are handed to `root:root`.
+gems and npm trees) is handed to `root:root` first. A home that survives
+is parked in the purge's zombie directory, shut to root, and its
+directories and single-link files are handed to `root:root`.
 
 Anywhere else the purge leaves something
 of the account (the parked vhost files, its leftovers), a uid that no
@@ -264,21 +263,59 @@ longer names anyone goes to root, whatever the entry is: the next account
 created could be given it. A directory or single-link file keeps its group;
 a hard-linked file, a link, a FIFO, a socket or a device goes to
 `root:root` and loses its set-ID bits and group and other write (a link's
-own mode means nothing and stays). Nothing is deleted, and a FIFO or a
-device is changed without being opened.
+own mode means nothing and stays).
 
-A gid that no longer names anything goes to root on directories and
-single-link files. A hard-linked file, a link, a FIFO or a socket whose
-owner still names someone keeps its owner and group: it may share its
-inode with a living name elsewhere.
+This comes before the groups are decided, so such an entry no longer keeps
+one. Nothing is deleted, and a FIFO or a device is changed without being
+opened.
+
+A gid that no longer names anything goes to root on every entry there, its
+owner kept, once before the groups are decided and again after. So does
+the gid of a group the purge removes, before the group goes: that gid is
+never free while an entry there still carries it.
+
+A hard-linked file, a link, a FIFO, a socket or a device also loses its
+set-ID bits and group write (with an ACL, its mask), and a single-link
+file its set-uid bit, which the kernel drops on any change of group. The
+next group given that number gains nothing through them.
 
 In `/tmp`, `/var/tmp` and `/dev/shm`, where the kernel trusts what root owns,
 what the account's identities left is removed, before they are and again
 after, and only a directory of theirs that still holds someone else's
-entries goes to root.
+entries goes to root. A gid that names nothing, or that of a group the
+purge removes, goes to group root there, before the groups are decided and
+again after.
+
+The account's group then goes when no path still carries its gid and no
+identity still holds it. While a path does, the gid stays taken: the group
+is renamed `<gid>-purged` (for example `1002-purged`) and has no members
+unless identities of the account survived the purge (see below).
+No account name begins with a digit, so a later account named `oN` is given
+a new group and gains nothing through those paths.
+
+The purge names such a path. The scan covers `/data/disk`, `/home` and `/opt/user`, so a living
+account's entry in the gems or npm tree keeps the gid too, unless the
+account was converted.
+
+On a converted account the group is the primary group of its identities,
+and removing the account's own identity would remove the group with it.
+The purge renames it `<gid>-purged` first, so the gid stays taken, and
+before the decision gives group root to what carries it in the places
+above, as for a gid that names nothing: only a path outside them keeps it.
+When the gid cannot be held and another group takes it, or a rename fails,
+the purge says so with an ALRT.
+
+A group of the account's name that someone outside the account still holds
+(a member, or a user whose primary group it is) keeps its name: that holder
+already keeps a later account from taking it. One that only the account's
+own identities still hold (deluser refused one) is renamed all the same,
+with an ALRT naming them: BOA adopts a group of an account's name that only
+that account's identities hold.
 
 The purge removes the account's own web group `wg-oN` the same way, when
-there is one, together with root's record of it.
+there is one, together with root's record of it. That group is still there
+at the decision on every account, so a living account's entry the scan
+meets (it covers `/var/www` too) keeps its gid, as `<gid>-purged`.
 
 ## What this does not close
 
