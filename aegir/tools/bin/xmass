@@ -2481,8 +2481,12 @@ _xmass_copy_suspended_flag() {
       _XMASS_NOT_CLEAN=YES
       return 1
     fi
-  else
-    ssh root@"${_t}" "rm -f /data/conf/suspended/${_acct}.pid" 2>/dev/null
+  elif ! ssh root@"${_t}" "rm -f /data/conf/suspended/${_acct}.pid" 2>/dev/null; then
+    # an un-suspension that cannot converge is as blocking as the flag
+    _alrt "DENY: ${_acct}: could not clear the SUSPENDED flag on ${_t} --"
+    _alrt "DENY: the account would stay suspended there after cutover"
+    _XMASS_NOT_CLEAN=YES
+    return 1
   fi
   return 0
 }
@@ -8330,20 +8334,28 @@ _xmass_prepare_target_reach() {
 }
 
 _xmass_boa_release() {
-  ### The release number out of `boa info`'s stamp, e.g. BOA-5.88.855-lts-...
-  ### -> 5.88.844. Empty when it cannot be read, which the caller treats as
-  ### fatal rather than as "probably fine".
+  ### The release number and the release digits of the tree serial out of
+  ### `boa info`'s stamp, e.g. BOA-5.88.855-lts-588855ltsT01 -> "5.88.855
+  ### 588855". The label and the serial come from two sources and can
+  ### disagree. Empty when the stamp cannot be read, which the caller treats
+  ### as fatal rather than as "probably fine".
+  ### The first labelled line is the box's current stamp; an older run's
+  ### stamp further down never stands in for it. A third word carries the
+  ### whole serial for the messages.
   local _where="$1"
-  local _raw
+  local _raw _lbl _srl _full
   if [ "${_where}" = "local" ]; then
-    _raw=$(boa info 2>/dev/null | grep -oE "BOA-[0-9.]+-" | head -1)
+    _raw=$(boa info 2>/dev/null | grep -m1 -E "BOA-[0-9.]+-" | grep -oE "BOA-[0-9.]+-(dev|lts|pro)-[0-9A-Za-z]+" | head -1)
   else
     _raw=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_where}" \
-      "boa info 2>/dev/null | grep -oE 'BOA-[0-9.]+-' | head -1" 2>/dev/null)
+      "boa info 2>/dev/null | grep -m1 -E 'BOA-[0-9.]+-' | grep -oE 'BOA-[0-9.]+-(dev|lts|pro)-[0-9A-Za-z]+' | head -1" 2>/dev/null)
   fi
   _raw="${_raw#BOA-}"
-  _raw="${_raw%-}"
-  echo "${_raw}"
+  _lbl="${_raw%%-*}"
+  _full="${_raw##*-}"
+  _srl="${_full%%[!0-9]*}"
+  [[ "${_lbl}" =~ ^[0-9]+(\.[0-9]+)+$ ]] && [[ "${_srl}" =~ ^[0-9]+$ ]] || return 0
+  echo "${_lbl} ${_srl} ${_full}"
 }
 
 _xmass_assert_same_release() {
@@ -8351,18 +8363,32 @@ _xmass_assert_same_release() {
   ### from every stage that can still refuse for free: 'die' (the default)
   ### refuses, 'deny' reports and marks the DRY run NOT CLEAN so a release
   ### skew shows up in the plan instead of first at --live.
+  ### The tree serial is compared too, by its release digits (the tree word
+  ### and the build suffix after them may differ, as the tree may): a box
+  ### whose release label and tree serial name different releases, in either
+  ### direction, runs another release's tree than its label says. Each box
+  ### must agree with itself, and the two releases must be the same.
   local _t="$1" _on_skew="${2:-die}"
-  local _src _dst _why=""
+  local _src _dst _why="" _sl _ss _sf _dl _ds _df _fix="the OLDER box"
+  local _old="a box last upgraded before BOA-5.8.5 carries no tree serial: a FULL barracuda AND octopus upgrade on it stamps one"
   _src=$(_xmass_boa_release local)
   _dst=$(_xmass_boa_release "${_t}")
+  read -r _sl _ss _sf <<< "${_src}"
+  read -r _dl _ds _df <<< "${_dst}"
   if [ -z "${_src}" ]; then
-    _why="cannot read this box's BOA release from 'boa info' -- refusing to migrate blind"
+    _why="cannot read this box's BOA release and tree serial from 'boa info' -- refusing to migrate blind; ${_old}"
   elif [ -z "${_dst}" ]; then
-    _why="cannot read the target's BOA release from 'boa info' on ${_t} -- refusing to migrate blind"
-  elif [ "${_src}" != "${_dst}" ]; then
-    _why="source runs BOA-${_src}, target ${_t} runs BOA-${_dst}"
+    _why="cannot read the target's BOA release and tree serial from 'boa info' on ${_t} -- refusing to migrate blind; ${_old}"
+  elif [ "${_sl//./}" != "${_ss}" ]; then
+    _why="this box is stamped BOA-${_sl} but its tree serial ${_sf} names another release"
+    _fix="this box"
+  elif [ "${_dl//./}" != "${_ds}" ]; then
+    _why="target ${_t} is stamped BOA-${_dl} but its tree serial ${_df} names another release"
+    _fix="the target"
+  elif [ "${_sl}" != "${_dl}" ]; then
+    _why="source runs BOA-${_sl}, target ${_t} runs BOA-${_dl}"
   else
-    _info "  BOA release matches on both ends: ${_src}"
+    _info "  BOA release and tree serial match on both ends: ${_sl} (${_sf}, ${_df})"
     return 0
   fi
   if [ "${_on_skew}" = "deny" ]; then
@@ -8370,7 +8396,7 @@ _xmass_assert_same_release() {
     _alrt "DENY: both boxes must run the SAME BOA release before any migration --"
     _alrt "DENY: provision gains central-map nginx variables between releases, and"
     _alrt "DENY: a target missing one takes down EVERY migrated site on that box."
-    _alrt "DENY: fix: a FULL run on the OLDER box -- barracuda AND octopus, not"
+    _alrt "DENY: fix: a FULL run on ${_fix} -- barracuda AND octopus, not"
     _alrt "DENY: just one of them -- then re-run this DRY."
     _XMASS_NOT_CLEAN=YES
     return 1
@@ -8380,7 +8406,7 @@ _xmass_assert_same_release() {
     _die "both boxes must run the SAME BOA release before any migration." \
          " provision gains central-map nginx variables between releases, and a" \
          " target missing one takes down EVERY migrated site on that box." \
-         " Bring the OLDER box up first with a FULL run -- barracuda AND" \
+         " Bring ${_fix} up first with a FULL run -- barracuda AND" \
          " octopus, not just one of them -- then re-run this step."
   fi
   _die "${_why}"
@@ -8675,46 +8701,7 @@ _xmass_purge_target_only_accounts() {
   local _t="$1" _tgt_accts _a _inv _rmt _out _nA _nR _nD
   _tgt_accts=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" \
     "for _d in /data/disk/o*; do [ -f \"\${_d}/.drush/hostmaster.alias.drushrc.php\" ] && basename \"\${_d}\"; done" 2>/dev/null)
-  # The aliases are the account's: read inside its real .drush only, never
-  # through a link or into a FIFO. A .drush that is not a real directory, or
-  # an alias that cannot be read as a plain file, never reads as "no sites".
-  _rmt=$(cat <<'INVSH'
-_H=/data/disk/__ACCT__
-_xmass_in_real_dir "${_H}/.drush" true || { echo "SITES=unreadable"; exit 0; }
-_P=$(_xmass_read_file "${_H}/.drush/hostmaster.alias.drushrc.php" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
-_PB=$(basename "${_P}" 2>/dev/null)
-_A=0
-for _f in "${_H}"/.drush/*.alias.drushrc.php; do
-  [ -e "${_f}" ] || [ -L "${_f}" ] || continue
-  _t=$(_xmass_read_file "${_f}")
-  if [ -z "${_t}" ]; then
-    _A=$((_A + 1))
-    continue
-  fi
-  printf '%s\n' "${_t}" | grep -q "'context_type' => 'site'" || continue
-  _sp=$(printf '%s\n' "${_t}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
-  [ -n "${_P}" ] && [ "${_sp}" = "${_P}" ] && continue
-  _A=$((_A + 1))
-done
-_R=0
-for _f in "${_H}"/.drush/platform_*.alias.drushrc.php; do
-  [ -e "${_f}" ] || continue
-  _r=$(_xmass_read_file "${_f}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
-  if [ -n "${_r}" ] && [ ! -f "${_r}/index.php" ]; then
-    for _s in docroot html web; do
-      if [ -f "${_r}/${_s}/index.php" ]; then _r="${_r}/${_s}"; break; fi
-    done
-  fi
-  [ -n "${_r}" ] && [ -d "${_r}/sites" ] || continue
-  _n=$(find "${_r}/sites" -mindepth 1 -maxdepth 1 -xtype d -name '*.*' ! -name "${_PB:-/}" 2>/dev/null | wc -l | tr -d ' ')
-  _R=$((_R + ${_n:-0}))
-done
-_D=$(find "${_H}/distro" "${_H}/static" "${_H}/platforms" "${_H}/aegir" -maxdepth 8 -xtype d \
-  -regextype posix-egrep -regex '.*/sites/[^/]+\.[^/]+' ! -name "${_PB:-/}" 2>/dev/null | wc -l | tr -d ' ')
-echo "SITES=${_A}/${_R}/${_D}"
-INVSH
-)
-  _rmt="$(_xmass_remote_guards)"$'\n'"${_rmt}"
+  _rmt="$(_xmass_remote_guards)"$'\n'"$(_xmass_site_inventory_sh)"
   for _a in ${_tgt_accts}; do
     case " ${_ELIGIBLE_ACCOUNTS} " in
       *" ${_a} "*) continue ;;
@@ -8763,6 +8750,242 @@ INVSH
       ;;
     esac
   done
+  return 0
+}
+
+### The site inventory of the target account __ACCT__, as shell text for a
+### root script run there after _xmass_remote_guards: one line
+### SITES=<registered>/<on registered platforms>/<on disk>, or
+### SITES=unreadable, printed last. The account's own control panel is never
+### counted. The aliases are the account's: read inside its real .drush only,
+### never through a link or into a FIFO. A .drush that is not a real
+### directory, or an alias that cannot be read as a plain file, never reads as
+### "no sites".
+_xmass_site_inventory_sh() {
+  cat <<'INVSH'
+_H=/data/disk/__ACCT__
+_xmass_in_real_dir "${_H}/.drush" true || { echo "SITES=unreadable"; exit 0; }
+_P=$(_xmass_read_file "${_H}/.drush/hostmaster.alias.drushrc.php" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
+_PB=$(basename "${_P}" 2>/dev/null)
+_A=0
+for _f in "${_H}"/.drush/*.alias.drushrc.php; do
+  [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+  _t=$(_xmass_read_file "${_f}")
+  if [ -z "${_t}" ]; then
+    _A=$((_A + 1))
+    continue
+  fi
+  printf '%s\n' "${_t}" | grep -q "'context_type' => 'site'" || continue
+  _sp=$(printf '%s\n' "${_t}" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
+  [ -n "${_P}" ] && [ "${_sp}" = "${_P}" ] && continue
+  _A=$((_A + 1))
+done
+_R=0
+for _f in "${_H}"/.drush/platform_*.alias.drushrc.php; do
+  [ -e "${_f}" ] || continue
+  _r=$(_xmass_read_file "${_f}" | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
+  if [ -n "${_r}" ] && [ ! -f "${_r}/index.php" ]; then
+    for _s in docroot html web; do
+      if [ -f "${_r}/${_s}/index.php" ]; then _r="${_r}/${_s}"; break; fi
+    done
+  fi
+  [ -n "${_r}" ] && [ -d "${_r}/sites" ] || continue
+  _n=$(find "${_r}/sites" -mindepth 1 -maxdepth 1 -xtype d -name '*.*' ! -name "${_PB:-/}" 2>/dev/null | wc -l | tr -d ' ')
+  _R=$((_R + ${_n:-0}))
+done
+_D=$(find "${_H}/distro" "${_H}/static" "${_H}/platforms" "${_H}/aegir" -maxdepth 8 -xtype d \
+  -regextype posix-egrep -regex '.*/sites/[^/]+\.[^/]+' ! -name "${_PB:-/}" 2>/dev/null | wc -l | tr -d ' ')
+echo "SITES=${_A}/${_R}/${_D}"
+INVSH
+}
+
+### This box as the create marker names it (xoct and xcopy put and read the
+### same marker): hostname -f, nothing when that is not a hostname.
+_xmass_create_src_host() {
+  local _h
+  _h="$(hostname -f 2> /dev/null | tr -d '\n')"
+  case "${_h}" in
+    ''|*[!a-zA-Z0-9.-]*|.*|*.|*..*) return 1 ;;
+  esac
+  printf '%s' "${_h}"
+}
+
+### Which eligible accounts the target $1 already holds, and whether each is
+### this migration's to take. A held account goes on only when:
+###   - a create marker there names this box and the account, and the uid and
+###     /data/disk/<oN> it records are the account's now (xoct create then
+###     re-seeds it: this migration made it);
+###   - it carries no site: no registered site, no site on its platforms or
+###     on disk, no vhost but the panel's in its vhost.d and the stock include
+###     of that directory as its nginx config, and none of its trees swapped
+###     for a link (the panel alone: a fresh install's own o1);
+###   - or it relays to this box: its proxied.pid reads COMPLETE and its own
+###     source-role policy record names this box and this account as the
+###     peer, both written by root (a demoted failback box, whose migration
+###     proxied it here).
+### Anything else is refused here, before anything on the target changes: a
+### create would re-seed config and credentials into an account that serves
+### sites of its own. A probe that cannot be read refuses too. The accounts
+### taken without a marker are left in _XMASS_ADOPT_ACCOUNTS; xoct create
+### --adopt puts the marker for each. Read-only on the target.
+_xmass_target_owner_gate() {
+  local _t="$1" _h _a _rmt _out _nu _ni _mh _mo _mu _mi _held _inv _vh _lnk
+  local _rel _rrole _rself _rpeer _roct _mine _deny=""
+  _XMASS_ADOPT_ACCOUNTS=""
+  if ! _h="$(_xmass_create_src_host)"; then
+    _die "this box's hostname -f is not a hostname the create marker can name;" \
+         " fix it before preparing a target"
+  fi
+  _mine="$(hostname -I 2> /dev/null) ${_MY_OWNIP} ${_XMASS_SRC_IP}"
+  # log/ and config/ are the account's. The relay's two files count only when
+  # each, opened once without following a link or blocking on a FIFO, is a
+  # regular file of root's with one link: the owner and the bytes come from
+  # the same handle, so a file renamed in between cannot pass for another.
+  # The vhosts are read inside the real vhost.d. The inventory comes last: it
+  # ends the script on an unreadable .drush.
+  _rmt=$(cat <<'OWNSH'
+_A=__ACCT__
+if getent passwd "${_A}" > /dev/null 2>&1; then echo "HELD=YES"; else echo "HELD=NO"; exit 0; fi
+printf '_MIG_CREATE_NOW_UID=%s\n_MIG_CREATE_NOW_INODE=%s\n' "$(id -u "${_A}" 2> /dev/null)" "$(stat -c %i:%W "/data/disk/${_A}" 2> /dev/null)"
+_F="/root/.${_A}.migration-create.txt"
+if [ -f "${_F}" ] && [ ! -L "${_F}" ] && [ "$(stat -c %u "${_F}")" = 0 ]; then
+  timeout 10 dd if="${_F}" iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none 2> /dev/null | grep '^_MIG_CREATE_'
+fi
+_rootread() {
+  perl -e 'use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $s[4] == 0 && $s[7] <= 65536; local $/; my $d = <$h>; print $d if defined $d; exit 0' "./${1}"
+}
+_L="/data/disk/${_A}/log"
+if _p=$(_xmass_in_real_dir "${_L}" _rootread proxied.pid) \
+  && _c=$(_xmass_in_real_dir "${_L}" _rootread migproxy.cnf) \
+  && [ "${_p}" = "COMPLETE" ]; then
+  echo "RELAY=YES"
+  printf '%s\n' "${_c}" | grep -E '^_MIG_(ROLE|HOST_IP|PEER_IP|PEER_OCT)=' | sed 's/^/RELAY/'
+  _hip=$(printf '%s\n' "${_c}" | grep -m1 '^_MIG_HOST_IP=' | cut -d= -f2-)
+  if [ -n "${_hip}" ] && hostname -I 2> /dev/null | tr ' ' '\n' | grep -qxF -- "${_hip}"; then
+    echo "RELAY_SELF=YES"
+  fi
+fi
+for _r in distro static platforms aegir; do
+  [ -L "/data/disk/${_A}/${_r}" ] && echo "LINKED=${_r}"
+done
+_hp=$(_xmass_read_file "/data/disk/${_A}/.drush/hostmaster.alias.drushrc.php" | sed -n "s/.*'site_path' => '\([^']*\)'.*/\1/p" | head -1)
+_hpb=$(basename "${_hp:-/}")
+# every entry nginx's vhost.d/* include loads counts, a link or an https.*
+# name included, except the panel's own vhost: a regular file whose every
+# server_name directive, wherever it stands on a line, ends on that line and
+# names only the panel or its automatic www twin (the bare name for a www.
+# panel), and one at least names the panel
+_vhl() {
+  local _n _k=0 _v _all _one _sn _alt
+  _alt="www.${_hpb}"
+  case "${_hpb}" in
+    www.?*) _alt="${_hpb#www.}" ;;
+  esac
+  for _n in ./*; do
+    [ -e "${_n}" ] || [ -L "${_n}" ] || continue
+    _n="${_n#./}"
+    if [ "${_n}" = "${_hpb}" ] && [ -f "./${_n}" ] && [ ! -L "./${_n}" ]; then
+      _v=$(_xmass_read_here "${_n}")
+      _all=$(printf '%s\n' "${_v}" | grep -o '\(^\|[;{}[:space:]]\)server_name\([[:space:]]\|$\)' | wc -l)
+      _one=$(printf '%s\n' "${_v}" | grep -o '\(^\|[;{}[:space:]]\)server_name[[:space:]][^;]*;' | wc -l)
+      _sn=$(printf '%s\n' "${_v}" \
+        | grep -o '\(^\|[;{}[:space:]]\)server_name[[:space:]][^;]*;' \
+        | sed 's/^[;{}[:space:]]*server_name[[:space:]]*//; s/;$//' \
+        | tr -s ' \t\r' '\n' | grep -v '^$')
+      if [ "${_all}" -gt 0 ] && [ "${_all}" = "${_one}" ] \
+        && printf '%s\n' "${_sn}" | grep -qxF -e "${_hpb}" \
+        && ! printf '%s\n' "${_sn}" | grep -qvxF -e "${_hpb}" -e "${_alt}"; then
+        continue
+      fi
+    fi
+    _k=$((_k + 1))
+  done
+  echo "${_k}"
+}
+_inc() {
+  _xmass_read_here "${_A}.nginx.conf" | tr -s ' \t' ' ' | sed 's/^ //; s/ $//' | grep -v '^$'
+}
+_vc=""
+if [ "$(_xmass_in_real_dir "/data/disk/${_A}/config" _inc)" = "include /data/disk/${_A}/config/server_master/nginx/vhost.d/*;" ]; then
+  _vc=$(_xmass_in_real_dir "/data/disk/${_A}/config/server_master/nginx/vhost.d" _vhl)
+fi
+echo "VHOSTS=${_vc:-unreadable}"
+OWNSH
+)
+  _rmt="$(_xmass_remote_guards)"$'\n'"${_rmt}"$'\n'"$(_xmass_site_inventory_sh)"
+  for _a in ${_ELIGIBLE_ACCOUNTS}; do
+    if [[ ! "${_a}" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*$ ]]; then
+      _deny="${_deny} ${_a}"
+      _alrt "DENY: ${_a}: not an account name this gate can ask the target about"
+      continue
+    fi
+    _out=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" "${_rmt//__ACCT__/${_a}}" 2> /dev/null)
+    _held=$(printf '%s\n' "${_out}" | grep -m1 '^HELD=' | cut -d= -f2-)
+    case "${_held}" in
+      NO) continue ;;
+      YES) : ;;
+      *)
+        _deny="${_deny} ${_a}"
+        _alrt "DENY: ${_a}: could not read whether ${_t} holds an account of that name"
+        continue
+      ;;
+    esac
+    # The account's uid and directory as they are now come first in the
+    # output, so a first match can only take these real values.
+    _nu=$(printf '%s\n' "${_out}" | grep -m1 '^_MIG_CREATE_NOW_UID=' | cut -d= -f2-)
+    _ni=$(printf '%s\n' "${_out}" | grep -m1 '^_MIG_CREATE_NOW_INODE=' | cut -d= -f2-)
+    _mh=$(printf '%s\n' "${_out}" | grep -m1 '^_MIG_CREATE_SRC_HOST=' | cut -d= -f2-)
+    _mo=$(printf '%s\n' "${_out}" | grep -m1 '^_MIG_CREATE_SRC_OCT=' | cut -d= -f2-)
+    _mu=$(printf '%s\n' "${_out}" | grep -m1 '^_MIG_CREATE_TGT_UID=' | cut -d= -f2-)
+    _mi=$(printf '%s\n' "${_out}" | grep -m1 '^_MIG_CREATE_TGT_INODE=' | cut -d= -f2-)
+    if [ "${_mh}" = "${_h}" ] && [ "${_mo}" = "${_a}" ] \
+      && [[ "${_nu}" =~ ^[0-9]+$ ]] && [ "${_mu}" = "${_nu}" ] \
+      && [[ "${_ni}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${_mi}" = "${_ni}" ]; then
+      _info "  ${_a}: held on ${_t} under this migration's create marker"
+      continue
+    fi
+    _inv=$(printf '%s\n' "${_out}" | grep '^SITES=' | tail -1)
+    _vh=$(printf '%s\n' "${_out}" | grep -m1 '^VHOSTS=' | cut -d= -f2-)
+    _lnk=$(printf '%s\n' "${_out}" | grep '^LINKED=' | cut -d= -f2- | tr '\n' ' ')
+    if [ "${_inv}" = "SITES=0/0/0" ] && [ "${_vh}" = "0" ] && [ -z "${_lnk}" ]; then
+      _info "  ${_a}: held on ${_t} with no site (the panel alone): adopted for this migration"
+      _XMASS_ADOPT_ACCOUNTS="${_XMASS_ADOPT_ACCOUNTS} ${_a}"
+      continue
+    fi
+    # Only the record's own peer counts: a source-role record names the one
+    # address its conversion dialed, never a list.
+    _rel=$(printf '%s\n' "${_out}" | grep -m1 -x 'RELAY=YES')
+    _rself=$(printf '%s\n' "${_out}" | grep -m1 -x 'RELAY_SELF=YES')
+    _rrole=$(printf '%s\n' "${_out}" | grep -m1 '^RELAY_MIG_ROLE=' | cut -d= -f2-)
+    _rpeer=$(printf '%s\n' "${_out}" | grep -m1 '^RELAY_MIG_PEER_IP=' | cut -d= -f2-)
+    _roct=$(printf '%s\n' "${_out}" | grep -m1 '^RELAY_MIG_PEER_OCT=' | cut -d= -f2-)
+    if [ -n "${_rel}" ] && [ -n "${_rself}" ] && [ "${_rrole}" = "source" ] \
+      && [ "${_roct}" = "${_a}" ] \
+      && [[ "${_rpeer}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] \
+      && printf '%s\n' ${_mine} | grep -qxF -- "${_rpeer}"; then
+      _info "  ${_a}: held on ${_t} and relaying to this box (a demoted failback account): adopted for this migration"
+      _XMASS_ADOPT_ACCOUNTS="${_XMASS_ADOPT_ACCOUNTS} ${_a}"
+      continue
+    fi
+    _deny="${_deny} ${_a}"
+    _alrt "DENY: ${_a}: ${_t} already holds an account of that name which no create of this migration marked"
+    case "${_inv}" in
+      SITES=*/*/*)
+        _alrt "DENY: and which does not relay to this box; its sites (registered/on registered platforms/on disk):"
+        _alrt "DENY: ${_inv#SITES=}, site vhosts: ${_vh:-unreadable}${_lnk:+, linked trees: ${_lnk% }}"
+      ;;
+      *)
+        _alrt "DENY: and its site inventory could not be read (got '${_inv:-nothing}')"
+      ;;
+    esac
+    _alrt "  if it really is this migration's, mark it on ${_t} by hand, then re-run prep-target:"
+    _alrt "  (umask 077; printf '_MIG_CREATE_SRC_HOST=%s\n_MIG_CREATE_SRC_OCT=%s\n_MIG_CREATE_TGT_UID=%s\n_MIG_CREATE_TGT_INODE=%s\n' ${_h} ${_a} \"\$(id -u ${_a})\" \"\$(stat -c %i:%W /data/disk/${_a})\" > /root/.${_a}.migration-create.txt)"
+  done
+  if [ -n "${_deny}" ]; then
+    _die "prep-target refused for account(s)${_deny} on ${_t} (the lines above);" \
+         " nothing was changed there. Move such an account out of the way on ${_t}," \
+         " or mark the ones that really are this migration's, then re-run prep-target"
+  fi
   return 0
 }
 
@@ -8823,9 +9046,6 @@ _xmass_cmd_prep_target() {
     return 0
   fi
   _xmass_enumerate_accounts
-  # The target may have been prepared days ago, or by an operator who never ran
-  # pre-mig there. Force its tools current before it is measured or written to.
-  _xmass_force_tool_update "${_tgt}"
   _xmass_prepare_target_reach "${_tgt}"
   ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
     | grep -q "SSH_OK" \
@@ -8840,6 +9060,12 @@ _xmass_cmd_prep_target() {
             " ${_XMASS_SRC_IP:-<source-ip>}' so it cannot come back;" \
             " (3) first contact needs the target's host key here —" \
             " 'ssh-keyscan -H ${_tgt} >> /root/.ssh/known_hosts'."
+  # Accounts of the same name the target already holds: refused before the
+  # target changes at all when this migration may not take them.
+  _xmass_target_owner_gate "${_tgt}"
+  # The target may have been prepared days ago, or by an operator who never ran
+  # pre-mig there. Force its tools current before it is measured or written to.
+  _xmass_force_tool_update "${_tgt}"
 
   # B4: the same BOA RELEASE on both ends, which the old runbook stated as its
   # one hard requirement and the rewrite never checked -- while this file's own
@@ -8853,11 +9079,13 @@ _xmass_cmd_prep_target() {
   # on its own in that window.
   #
   # The TREE may differ on purpose (an account can move lts -> pro), so only
-  # the release number is compared. No override: "bring both boxes to the same
-  # release" is always the correct action and is always available, and an
-  # override here buys a box-wide outage.
-  _xmass_purge_target_only_accounts "${_tgt}"
+  # the release number is compared, of the label and of the tree serial. No
+  # override: "bring both boxes to the same release" is always the correct
+  # action and is always available, and an override here buys a box-wide
+  # outage. The check comes before the target-only purge: a target that
+  # cannot take this migration keeps its target-only accounts.
   _xmass_assert_same_release "${_tgt}"
+  _xmass_purge_target_only_accounts "${_tgt}"
 
   # CSF both directions with csf -a (allow): csf.ignore alone does NOT stop
   # guard temp-denies, and the target dials BACK to source:3306 for
@@ -8952,21 +9180,27 @@ _xmass_cmd_prep_target() {
   # backstop for direct use; here the full gate (locks, armed pids, every
   # root's queue, processes, two consecutive polls) runs first, and a target
   # that never settles fails that account instead of launching into a refusal.
-  # --adopt: an eligible account the target already holds is taken as this
-  # migration's, as before -- a fresh install's own o1 and a demoted failback
-  # box's accounts were never made by a create, so they carry no create
-  # marker, and xoct create refuses such an account without it. Passed only
-  # when the installed xoct's usage lists it: an xoct from before the marker
-  # refuses an option it does not know, and adopts such an account anyway.
-  local _oct _rc _failed="" _adopt=""
+  # --adopt: only for the accounts the owner gate took without a create
+  # marker (a fresh install's own site-less o1, a demoted failback box's
+  # accounts relaying here): xoct create refuses a held account without the
+  # marker, and puts it for an adopted one. Passed only when the installed
+  # xoct's usage lists it: an xoct from before the marker refuses an option
+  # it does not know, and adopts such an account anyway.
+  local _oct _rc _failed="" _adopt="" _adopt_ok=""
   case "$(xoct 2> /dev/null)" in
-    *'[--adopt]'*) _adopt=--adopt ;;
+    *'[--adopt]'*) _adopt_ok=YES ;;
   esac
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     if ! _xmass_wait_target_silent "${_tgt}" "creating ${_oct}" warn full; then
       _alrt "not creating ${_oct}: ${_tgt} never went silent"
       _failed="${_failed} ${_oct}"
       continue
+    fi
+    _adopt=""
+    if [ "${_adopt_ok}" = "YES" ]; then
+      case " ${_XMASS_ADOPT_ACCOUNTS} " in
+        *" ${_oct} "*) _adopt=--adopt ;;
+      esac
     fi
     _info "Preparing account ${_oct} on ${_tgt} ..."
     if [ "${_XMASS_FIX_PHP}" = "YES" ]; then
@@ -8976,10 +9210,15 @@ _xmass_cmd_prep_target() {
     fi
     _rc=$?
     if [ "${_rc}" -ne 0 ]; then
-      _alrt "xoct create returned rc=${_rc} for ${_oct}"
+      # A failed or refused create may leave the target's account of that
+      # name as it was: its suspension flag is not this migration's to set
+      # or clear.
+      _alrt "xoct create returned rc=${_rc} for ${_oct}; its suspension flag is not mirrored"
       _failed="${_failed} ${_oct}"
+      continue
     fi
-    _xmass_copy_suspended_flag "${_oct}" "${_tgt}"
+    _xmass_copy_suspended_flag "${_oct}" "${_tgt}" \
+      || _failed="${_failed} ${_oct}"
   done
   [ -n "${_failed}" ] \
     && _die "account preparation failed for:${_failed} -- fix the cause and re-run prep-target"
