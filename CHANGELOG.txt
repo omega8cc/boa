@@ -50,6 +50,37 @@
 
 @=> Security
 
+    * Octopus: the shared code store under /data/all stays root-owned through
+      an install or upgrade; the platform build may write only to the
+      directories it builds, only while it runs, and root takes them back
+      when it returns, restoring anything already there that was renamed or
+      replaced, and leaving no ACL and nothing writable by all users.
+
+    * Octopus, xoct, xcopy, the agents pass, the Solr and nightly cron
+      tools: root's passes over the shared store set modes, make
+      directories and write the cpuinfo, version and nightly markers
+      through link-safe handles. A root-owned /data/all link is used only
+      when it leads to /data/disk/all through directories only root
+      controls; /data/disk/all is taken back when an earlier release left
+      it owned by an account or open to all. A link that leads anywhere
+      else stops the Octopus pass, which says how to repair it by who put
+      the store there, known from the admin's own records, since earlier
+      releases re-owned what such a link led to: a store an admin moved
+      elsewhere is moved to /data/disk/all and the link pointed there,
+      never just re-pointed or removed, since sites on older shared code
+      would lose their trees; anything else may be an account's work and
+      is never moved into the store, which is restored from a backup
+      instead. When /data/disk/all is itself a link or not a directory,
+      the pass says to remove it first. The other tools write nothing
+      there and say why. Anything else of root's at a store directory
+      stops the pass too, with the same two repairs; a link an account
+      left there is removed on every pass, never followed. A store
+      directory an earlier release handed over gets its owner, mode and
+      ACLs back; a shared module or the D6->D7 kit that holds a link or
+      anything not root's alone is fetched again, such a kit removed
+      before the fetch, so a failed fetch never leaves it, and a current
+      shared core found behind a link is removed and built again.
+
     * Account purge: what the purge leaves goes to root before it decides
       which of the account's groups to keep, so a group kept only for the
       account's own leftovers is removed. An entry a living account keeps
