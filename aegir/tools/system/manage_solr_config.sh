@@ -516,28 +516,55 @@ _solr_in_files_here() {
 # so any name in it can be a link, a hard link or a FIFO, and files/solr or
 # any directory above it can be swapped for a link. It is used only inside
 # that directory, entered for real (_solr_in_upload_dir). Every regular file
-# directly in it, the set find -maxdepth 1 -type f copied, is read bounded,
-# never through a link and never blocked on a FIFO, into the root-only
-# directory $1, and only those copies are diffed and published: no tenant
-# path is ever diffed or copied by name. A hard link (another file's bytes),
-# a file of 8 MiB or more, one that changed while read, more than 512 names
-# or more than 32 MiB in all refuse the whole set, so a core never gets part
-# of one. Status 1 on a refusal. Reads _Plr, _Dom and _usEr. $1 = the
-# root-only staging dir.
+# directly in it, the set find -maxdepth 1 -type f copied, that one of the
+# account's own identities owns (_solr_own_uids), is read bounded, through a
+# handle that checks the owner, never through a link and never blocked on a
+# FIFO, into the root-only directory $1, and only those copies are diffed
+# and published: no tenant path is ever diffed or copied by name. A hard
+# link (another file's bytes), a file of 8 MiB or more, one that changed
+# while read, more than 512 names or more than 32 MiB in all refuse the
+# whole set, so a core never gets part of one. Status 1 on a refusal. Reads
+# _Plr, _Dom and _usEr. $1 = the root-only staging dir.
 _solr_upload_stage() {
   [ -d "${1}" ] || return 1
   _solr_in_upload_dir _solr_upload_stage_here "${1}"
 }
-# ./$1 in the current (pinned) directory, read as _acct_read_here reads it,
-# up to 8 MiB: an uploaded synonyms or stopwords list can be large.
+# The uids of the account's own identities, comma-separated, the owners of
+# what the account puts in its upload itself, named as the web-group checks
+# name them: the account oN and oN.<name>, that is its .ftp login, its
+# client sub-accounts oN.<client> and oN.<client>-dev and its PHP-FPM users
+# oN.web and oN.<ver>.web. An account name holds no dot, so the match is
+# exact: o1 never takes o10's. Never uid 0. Reads _usEr.
+_solr_own_uids() {
+  local _a="${_usEr##*/}" _n _p _u _r _x=""
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 0 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && _x="${_x:+${_x},}${_u}"
+  done < <(getent passwd 2> /dev/null)
+  echo "${_x}"
+}
+# ./$1 in the current (pinned) directory, up to 8 MiB (an uploaded synonyms
+# or stopwords list can be large), read through one handle opened without
+# following a link or blocking on a FIFO, and only while that handle is a
+# regular file with a single link owned by one of the uids $2
+# (comma-separated, _solr_own_uids): a name swapped after the stage checked
+# it, for a hard link or another owner's file, lends it no bytes (status 1).
+_SOLR_READ_OWN_PL='use Fcntl; my ($n, $x) = @ARGV; my %ok = map { $_ => 1 } split(/,/, $x); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $ok{$s[4]}; my ($t, $r) = (0); binmode(STDOUT); while ($t < 8388608 && ($r = sysread($h, my $c, 8388608 - $t))) { (print $c) or exit 1; $t += $r; } exit(defined $r ? 0 : 1)'
 _solr_upload_read_here() {
-  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
-    bs=8388608 count=1 status=none 2> /dev/null
+  timeout 10 perl -e "${_SOLR_READ_OWN_PL}" -- "./${1}" "${2}" 2> /dev/null
 }
 # In the upload dir (the current one, entered for real): each regular file
-# copied into the root-only directory $1 as root's own file.
+# the account's own identities own copied into the root-only directory $1
+# as root's own file. Anything else there, such as a file another account
+# owns (a group two accounts share lets one move the other's file in), is
+# neither read nor published, and stays where it is, as the clear leaves
+# it: one SOLR-UPLOAD-SKIPPED line each, once a pass.
 _solr_upload_stage_here() {
-  local _to="${1}" _n _q _st _typ _nl _sz _cnt=0 _tot=0
+  local _to="${1}" _n _q _st _typ _nl _sz _uid _own _cnt=0 _tot=0
+  _own=$(_solr_own_uids)
   shopt -s nullglob dotglob
   for _n in *; do
     _q="${_n//[^[:alnum:]._-]/?}"
@@ -546,8 +573,15 @@ _solr_upload_stage_here() {
       echo "SOLR-UPLOAD-REFUSED: ${_Dom} more than 512 names in files/solr"
       return 1
     fi
-    _st=$(stat -c '%F|%h|%s' -- "./${_n}" 2> /dev/null) || continue
-    IFS='|' read -r _typ _nl _sz <<< "${_st}"
+    _st=$(stat -c '%F|%h|%s|%u' -- "./${_n}" 2> /dev/null) || continue
+    IFS='|' read -r _typ _nl _sz _uid <<< "${_st}"
+    case ",${_own}," in
+      *",${_uid},"*) ;;
+      *)
+        echo "SOLR-UPLOAD-SKIPPED: ${_Dom} ${_q} in files/solr is not the account's own, left in place"
+        continue
+        ;;
+    esac
     # A link, a FIFO or a directory is not published, as find -type f
     # never listed one.
     case "${_typ}" in
@@ -567,7 +601,7 @@ _solr_upload_stage_here() {
       echo "SOLR-UPLOAD-REFUSED: ${_Dom} more than 32 MiB in files/solr"
       return 1
     fi
-    if ! _solr_upload_read_here "${_n}" > "${_to}/${_n}"; then
+    if ! _solr_upload_read_here "${_n}" "${_own}" > "${_to}/${_n}"; then
       echo "SOLR-UPLOAD-REFUSED: ${_Dom} ${_q} could not be read"
       return 1
     fi
@@ -580,16 +614,24 @@ _solr_upload_stage_here() {
   return 0
 }
 # The upload, emptied once published as before (rm -f files/solr/*), but
-# only inside the real files/solr, entered as _solr_upload_stage enters it:
-# rm unlinks a link found there and never follows one.
+# only inside the real files/solr, entered as _solr_upload_stage enters it,
+# and only of the names the account's own identities own (_solr_own_uids):
+# anything else stays, as the stage of the same pass left it and said so.
+# rm unlinks a link found there and never follows one; a name swapped
+# between the owner test and rm loses only what the account can remove from
+# its own files/solr itself.
 _solr_upload_clear() {
   _solr_in_upload_dir _solr_upload_clear_here
 }
 _solr_upload_clear_here() {
-  local _n
+  local _n _u _own
+  _own=$(_solr_own_uids)
   shopt -s nullglob
   for _n in *; do
-    rm -f -- "./${_n}" 2> /dev/null
+    _u=$(stat -c '%u' -- "./${_n}" 2> /dev/null) || continue
+    case ",${_own}," in
+      *",${_u},"*) rm -f -- "./${_n}" 2> /dev/null ;;
+    esac
   done
   return 0
 }

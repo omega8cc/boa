@@ -140,15 +140,66 @@ _dbk_store_dir() {
   return 0
 }
 
+# The uid of the user $1 and the gid of the group $2 as numbers ("uid gid"),
+# or "-1 -1" when either does not resolve.
+_dbk_ids() {
+  local _uid _gid
+  _uid=$(id -u -- "${1}" 2>/dev/null)
+  _gid=$(getent group "${2}" 2>/dev/null | cut -d: -f3)
+  if [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]]; then
+    echo "${_uid} ${_gid}"
+  else
+    echo "-1 -1"
+  fi
+}
+
+# The uids of the account $1's identities, comma-separated, named as the
+# web-group checks name them: the account oN and oN.<name>, that is its
+# .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev and
+# its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no dot,
+# so the match is exact: o1 never takes o10's. Never uid 0.
+_dbk_own_uids() {
+  local _a="${1}" _n _p _u _r _x=""
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 0 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && _x="${_x:+${_x},}${_u}"
+  done < <(getent passwd 2>/dev/null)
+  echo "${_x}"
+}
+
+# Status 0 when the current (pinned) directory is this tool's own, owned by
+# the uid it runs as (root: its own mkdir), or already owned by one of the
+# uids $1 (comma-separated, _dbk_own_uids). Only root changes the owner of
+# the directory held, so the answer holds for what follows in it.
+_dbk_here_ours() {
+  local _o
+  _o=$(stat -c '%u' . 2>/dev/null) || return 1
+  [ "${_o}" = "$(id -u)" ] && return 0
+  case ",${1}," in
+    *",${_o},"*) return 0 ;;
+  esac
+  return 1
+}
+
 # Copy the dump $2 as $3 into the dated directory $1 of the current, pinned
-# dbackup directory: the dated directory is entered for real (never through
-# a link put at its name), and the copy is made as a fresh temporary file
-# (cp --remove-destination creates it exclusively) renamed over the name
-# with mv -f -T, so nothing put at either name is ever opened or written
-# through. A dated directory the account owns is used as it is: the owner
-# walk below hands every one to it after its first copy. Status 0 when
-# copied, 2 when the name was already taken, 1 on refusal, 3 when the copy
-# failed.
+# dbackup directory, handed to the uid $4 and the gid $5 (numbers, -1 keeps
+# root's): the dated directory is entered for real (never through a link put
+# at its name), and the copy is made as a fresh temporary file renamed over
+# the name with mv -f -T, so nothing put at either name is ever opened or
+# written through. A dated directory that exists is used only while it is
+# this tool's own or the account's ($6, _dbk_here_ours): the account can
+# put another account's directory at that name. The temp is created
+# exclusively, written, handed over, moded and dated through the one handle
+# that made it (_DBK_COPY_PL: the dump's read/write bits and times, as cp -a
+# kept them), never by name: the account owns a dated directory after its
+# first copy, so it can rename any file of its own or one it moved in from
+# elsewhere over the temp or the name, and an owner change by name would
+# hand that file over. Status 0 when copied, 2 when the name was already
+# taken, 1 on refusal, 3 when the copy failed.
+_DBK_COPY_PL='use Fcntl; my ($s, $n, $u, $g) = @ARGV; sysopen(my $i, $s, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @t = stat($i); exit 1 unless @t && -f _; sysopen(my $o, $n, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1; my ($r, $w, $p); while ($r = sysread($i, my $b, 1048576)) { for ($p = 0; $p < $r; $p += $w) { $w = syswrite($o, $b, $r - $p, $p) or exit 1; } } defined $r or exit 1; chown($u, $g, $o) or exit 1; chmod($t[2] & 0666, $o) or exit 1; utime($t[8], $t[9], $o) or exit 1; close($o) or exit 1; exit 0'
 _dbk_copy_here() {
   local _here _t
   _here="$(pwd -P)"
@@ -157,11 +208,13 @@ _dbk_copy_here() {
     mkdir "./${1}" 2>/dev/null || return 1
   fi
   cd -P -- "./${1}" 2>/dev/null && [ "$(pwd -P)" = "${_here}/${1}" ] || return 1
+  _dbk_here_ours "${6}" || return 1
   if [ -e "./${3}" ] || [ -L "./${3}" ]; then
     return 2
   fi
   _t="./.${3}.part.$$.${RANDOM}"
-  if cp -a --remove-destination -- "${2}" "${_t}" 2>/dev/null \
+  rm -f -- "${_t}" 2>/dev/null
+  if perl -e "${_DBK_COPY_PL}" -- "${2}" "${_t}" "${4}" "${5}" 2>/dev/null \
     && mv -f -T -- "${_t}" "./${3}" 2>/dev/null; then
     return 0
   fi
@@ -169,21 +222,24 @@ _dbk_copy_here() {
   return 3
 }
 
-# Every directory and single-link regular file from the current (pinned)
-# dated directory down handed to the user $1 and the group $2, as chown -R
-# handed them, each through a handle opened without following a link
-# (_ACCT_REOWN_PL): the account owns the dated directories, so a hard link, a
-# link or a FIFO it put there is left alone and no file outside the tree is
-# handed over. Owner names are resolved to numbers first; nothing changes
-# when one does not resolve.
+# The current (pinned) dated directory itself handed to the user $1 and the
+# group $2 through a handle opened without following a link
+# (_ACCT_REOWN_PL), so the account can remove the dumps in it, and only
+# while it is this tool's own or already the account's ($3, _dbk_here_ours):
+# a directory of another account's put at the dated name keeps its owner
+# (status 2). Nothing below it is walked: every dump this tool copies there
+# was handed over by the handle that made it (_dbk_copy_here), and any
+# other name there, one the account moved in from its own tree or from
+# another account's it can write through a shared group, keeps its owner.
+# Owner names are resolved to numbers first; nothing changes when one does
+# not resolve.
 _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
 _dbk_reown_here() {
   local _uid _gid
-  _uid=$(id -u -- "${1}" 2>/dev/null)
-  _gid=$(getent group "${2}" 2>/dev/null | cut -d: -f3)
-  [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]] || return 1
-  env PATH=/usr/local/bin:/usr/bin:/bin find . \( -type d -o -type f \) \
-    -execdir perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" {} +
+  read -r _uid _gid <<< "$(_dbk_ids "${1}" "${2}")"
+  [ "${_uid}" != "-1" ] || return 1
+  _dbk_here_ours "${3}" || return 2
+  perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" .
 }
 
 # Run "$@" inside the real directory $1 below /data/disk: every name on the
@@ -306,7 +362,7 @@ for _backup_dir in "${_ARCH_SQL_BASE}"/*; do
   _datetime="${_dir_name#*-}"  # e.g. host-DATESTAMP => just the DATETIME part
 
   # We'll track users who received new files in this directory,
-  # then do a single chown -R for each user at the end.
+  # then hand the dated directory itself to each user at the end.
   declare -A _touched_users=()
 
   for _backup_file in "${_backup_dir}"/*; do
@@ -347,8 +403,12 @@ for _backup_dir in "${_ARCH_SQL_BASE}"/*; do
           continue
         fi
         _target_file="${_DBK_DIR}/${_datetime}/${_base_file}"
+        # The copy goes to the account's .ftp login and group, as the dated
+        # directory does below, handed over by the handle that makes it
+        read -r _cp_uid _cp_gid <<< "$(_dbk_ids "${_user}.ftp" "$(_acct_group "${_user}")")"
         ( cd -P -- "${_DBK_DIR}" 2>/dev/null && [ "$(pwd -P)" = "${_DBK_DIR}" ] \
-          && _dbk_copy_here "${_datetime}" "${_backup_file}" "${_base_file}" )
+          && _dbk_copy_here "${_datetime}" "${_backup_file}" "${_base_file}" \
+            "${_cp_uid}" "${_cp_gid}" "$(_dbk_own_uids "${_user}")" )
         case $? in
           0)
             echo "Copied ${_backup_file} => ${_target_file}"
@@ -362,14 +422,14 @@ for _backup_dir in "${_ARCH_SQL_BASE}"/*; do
             ;;
           *)
             echo "Warning: could not copy into ${_DBK_DIR}/${_datetime}. Skipping ${_user}."
-            _log_issue "${_user}" "${_DBK_DIR}/${_datetime}" "Dated directory is not a real directory"
+            _log_issue "${_user}" "${_DBK_DIR}/${_datetime}" "Dated directory is not a real directory, or is another user's"
             ;;
         esac
       done
     fi
   done
 
-  # Now batch-fix ownership for each user who got new files
+  # Now hand the dated directory to each user who got new files there
   for _user in "${!_touched_users[@]}"; do
     # Per iteration: the store is inside this account's own tree, so the
     # group is derived from the account, not the box-wide literal
@@ -380,7 +440,11 @@ for _backup_dir in "${_ARCH_SQL_BASE}"/*; do
     # inside the real dated directory, never through a name the account put
     # there (_dbk_reown_here)
     ( cd -P -- "${_target_dir}" 2>/dev/null && [ "$(pwd -P)" = "${_target_dir}" ] \
-      && _dbk_reown_here "${_user}.ftp" "${_grp}" )
+      && _dbk_reown_here "${_user}.ftp" "${_grp}" "$(_dbk_own_uids "${_user}")" )
+    if [ "$?" = "2" ]; then
+      echo "Warning: ${_target_dir} is another user's. Not handed to ${_user}.ftp."
+      _log_issue "${_user}" "${_target_dir}" "Dated directory is another user's"
+    fi
   done
 done
 
