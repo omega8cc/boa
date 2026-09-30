@@ -206,6 +206,21 @@ All of these — plus the migration-time realip tool `/var/xdrago/migration_prox
 change-gate → atomic write → `configtest` → `reload`, with rollback to the last-good copy
 if `configtest` fails.
 
+The instance owns `config/includes` and `undo/`, so every fragment, marker and change-gate
+file is read, written and pruned from **inside the pinned real directory** through
+no-follow handles: a link or a FIFO left at any of those names is replaced, never followed.
+The control file itself is read only as a copy taken from its own real directory, never
+through a link and never blocking on a FIFO; one that is not a regular file there is skipped.
+
+The per-instance `.nginx_ai_policy.last_good.bak.tar.gz` stays in `undo/` on purpose — that
+tree is replicated to the mirror, so a promoted standby has the last-good copy to restore.
+
+It is never trusted as an archive to extract as root, though: the revert copies it out
+without following a link, unpacks it into a root-only temporary directory taking **no owner
+and no mode** from it (an archive whose files would come to more than 32 MiB written out is
+refused whole), and restores only regular files whose names match the expected
+`<site>.conf` fragments, each put back through the same no-follow handle.
+
 On a passive replication standby whose web tier is held
 (`/root/.standby.cnf` present, no `/root/.standby.serve.cnf`, no promoted latch
 `/var/log/boa/.standby_promoted.pid`) the AI

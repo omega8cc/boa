@@ -62,6 +62,22 @@ allowlist: it must sit at least one level inside `/data/disk/<user>/`,
 `/var/aegir/`, `/var/www/` or `/home/<user>/`. Anything else — `/`, `/etc`,
 `/data/disk`, a bare account home — is refused before any change is made.
 
+An argument reached through a link is followed only where the link stays
+inside one account. A `/home/<user>/…` argument (the BOA-made home links:
+`/home/<oN>.ftp/static` → `~oN/static`, `/home/<oN>.<client>/sites` → the
+client's codebase) is accepted only when it resolves inside the account
+named by that home directory, up to its first dot (`oN.ftp`,
+`oN.<client>` → `oN`); a `/data/disk/<user>/…` argument only when it
+resolves inside that same account; a `/var/aegir/…` argument only when it
+resolves inside `/var/aegir/` (the master site's `files/` and `sites/all/`
+there are writable by every account, so a link in them may point anywhere).
+
+Any other argument reached through a link — `/var/www/…`, `/tmp/…`,
+`/opt/user/…` and the like — is refused, as is a resolution into a different
+account or into `/var/aegir` from outside it. Set
+`_ALLOW_SYMLINKED_TARGET=YES` to override when the cross-boundary target is
+intended.
+
 ## What survives contact with the rest of BOA
 
 **Codebases without a registered Ægir site are left alone.** Nothing in BOA

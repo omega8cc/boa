@@ -91,19 +91,70 @@ _if_install_adminer() {
       fi
     fi
   fi
+  # What an earlier top rebuild left beside the tree (an old top a pool
+  # process kept alive, an interrupted run's copy) is never served or
+  # written: removed on every run (_xtra_adminer_top_renew).
+  find /var/www -mindepth 1 -maxdepth 1 \
+    \( -name '.adminer.new.*' -o -name '.adminer.old.*' \) \
+    -exec rm -rf -- {} + &> /dev/null
   if [ -d "/var/www/adminer" ]; then
+    local _admOwn="www-data:www-data" _admU _admG _acc="/var/www/adminer/access" _ret
     if [ ! -z "${_PHP_CN}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _PHP_CN set to ${_PHP_CN} for Adminer Manager"
       fi
-      chown -R ${_PHP_CN}:www-data /var/www/adminer
+      _admOwn="${_PHP_CN}:www-data"
     else
       _msg "NOTE: _PHP_CN not set for Adminer Manager"
-      chown -R www-data:www-data /var/www/adminer
     fi
-    find /var/www/adminer -type d -exec chmod 0755 {} \; &> /dev/null
-    find /var/www/adminer -type f -exec chmod 0644 {} \; &> /dev/null
-    chmod 0440 /var/www/adminer/index.php
+    # The Adminer app files are the master pool's to serve (its owner), like
+    # the sibling web apps. access/ is NOT the app -- goaccess writes it as
+    # root every night -- so access/, and the tree top, stay root's: the pool
+    # must never own a name root writes through, or it could leave a link there
+    # for the nightly write to follow out of the tree. The top goes to root
+    # FIRST, so from here on the pool can add, rename or remove no name in it.
+    chown root:www-data /var/www/adminer &> /dev/null
+    chmod 0755 /var/www/adminer &> /dev/null
+    # chown and chmod never touch a default ACL, and the pool, owning the top
+    # for years, could set one: root's nightly mkdir of access/ and of each
+    # report directory would inherit it, writable by the pool again. No ACL
+    # tool is sure to be there, so a top that still carries an ACL (ls marks
+    # it) is rebuilt: a fresh root directory takes the app names and the name
+    # (_xtra_adminer_top_renew), and the old top goes, access/ with it.
+    if _xtra_has_acl /var/www/adminer; then
+      _xtra_adminer_top_renew
+    fi
+    # Earlier builds handed access/ to the pool, so it may hold a link, a FIFO,
+    # a hard link or a directory the pool still writes, anywhere. It is a cache
+    # weblogx rebuilds (and removes whole when goaccess is off), so one that is
+    # not wholly root's real directories and single-link files, with no ACL, is
+    # retired whole: moved into a fresh directory root makes in the root-owned
+    # top, where the name access can come back only as weblogx makes it (as
+    # root), then removed (rm never follows a link); removed in place if it
+    # could not be moved. A non-directory at the name goes the same way.
+    if [ -L "${_acc}" ] || { [ -e "${_acc}" ] && ! _xtra_adminer_access_clean "${_acc}"; }; then
+      _ret=$(mktemp -d /var/www/adminer/.access.retired.XXXXXX 2> /dev/null)
+      if [ -z "${_ret}" ] || ! mv -f -T -- "${_acc}" "${_ret}/access" &> /dev/null; then
+        rm -rf -- "${_acc}" &> /dev/null
+      fi
+    fi
+    find /var/www/adminer -mindepth 1 -maxdepth 1 -name '.access.retired.*' \
+      -exec rm -rf -- {} + &> /dev/null
+    # The app handed to the pool through a handle (_ACCT_REOWN_PL): a link or
+    # a hard link the pool left at a name it owned is never followed or handed
+    # over.
+    _admU=$(id -u -- "${_admOwn%%:*}" 2> /dev/null)
+    _admG=$(getent group www-data 2> /dev/null | cut -d: -f3)
+    if [[ "${_admU}" =~ ^[0-9]+$ && "${_admG}" =~ ^[0-9]+$ ]]; then
+      _acct_in_real_dir /var/www/adminer \
+        _xtra_adminer_app_reown_here "${_admU}" "${_admG}"
+    fi
+    # 0755 dirs / 0644 files across the tree, set through a handle that never
+    # follows a link (as the sibling apps do); index.php stays read-only, set
+    # the same way.
+    _xtra_app_modes /var/www/adminer
+    _acct_in_real_dir /var/www/adminer \
+      perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f 0440 ./index.php &> /dev/null
   fi
 }
 
@@ -126,7 +177,84 @@ for my $f (@ARGV) {
 _xtra_app_modes() {
   ( PATH=/usr/local/bin:/usr/bin:/bin
     cd -P -- "${1}" 2> /dev/null && [ "$(pwd -P)" = "${1}" ] || exit 1
-    find . -execdir perl -e "${_XTRA_FCHMOD_PL}" {} + ) &> /dev/null
+    find . \( -type d -o -type f \) \
+      -execdir perl -e "${_XTRA_FCHMOD_PL}" {} + ) &> /dev/null
+}
+
+# True when the Adminer access/ tree $1 is a real directory holding nothing
+# the pool could have left for root's nightly writes: every entry root's, a
+# directory or a single-link regular file, none writable by anyone else
+# (group root aside), and none carrying an ACL (root made it under a top
+# the pool had given a default ACL). Its top sits in the root-owned
+# /var/www/adminer.
+_xtra_adminer_access_clean() {
+  [ -d "${1}" ] && [ ! -L "${1}" ] || return 1
+  [ -z "$(env PATH=/usr/local/bin:/usr/bin:/bin find -P "${1}" \
+    \( ! -uid 0 -o ! \( -type d -o -type f \) -o \( -type f -links +1 \) \
+    -o -perm /002 -o \( -perm /020 ! -gid 0 \) \) -print -quit 2> /dev/null)" ] \
+    || return 1
+  ! env LC_ALL=C PATH=/usr/local/bin:/usr/bin:/bin find -P "${1}" \
+    -exec ls -ld -- {} + 2> /dev/null | grep -q '^.\{10\}+'
+}
+# True when $1 itself (a link is not followed) carries an ACL, access or
+# default: ls marks either with a '+' after the mode, no ACL tool needed.
+_xtra_has_acl() {
+  case "$(env LC_ALL=C PATH=/usr/local/bin:/usr/bin:/bin ls -ld -- "${1}" 2> /dev/null)" in
+    ??????????+*) return 0 ;;
+  esac
+  return 1
+}
+# Every name in the real directory $1 but access/ and a retired copy of it
+# moved into $2: renamed, never followed.
+_xtra_adminer_names_move() {
+  ( PATH=/usr/local/bin:/usr/bin:/bin
+    cd -P -- "${1}" 2> /dev/null && [ "$(pwd -P)" = "${1}" ] || exit 1
+    find . -mindepth 1 -maxdepth 1 ! -name access ! -name '.access.retired.*' \
+      -exec mv -f -t "${2}" -- {} + ) &> /dev/null
+}
+# The Adminer top rebuilt without its ACL: a fresh root directory beside it
+# takes every app name (the pool can add, rename or remove no name in the
+# root-owned top, so the set holds), the old top is renamed into a fresh
+# root-only directory, and the fresh one takes the name. The old top need
+# not be empty: a pool process still writing in its access/ cannot stop a
+# rename, where it could stop an rm. The old top is then removed as far as
+# that goes; what such a process keeps alive there is off every path root
+# writes or nginx serves, and the next run sweeps it. A step that fails puts
+# the old top and the app names back, and the next run rebuilds.
+_xtra_adminer_top_renew() {
+  local _new _old _left
+  _new=$(mktemp -d /var/www/.adminer.new.XXXXXX 2> /dev/null) || return 1
+  chown root:www-data "${_new}" &> /dev/null
+  chmod 0755 "${_new}" &> /dev/null
+  _xtra_adminer_names_move /var/www/adminer "${_new}"
+  _left=$(find /var/www/adminer -mindepth 1 -maxdepth 1 ! -name access \
+    ! -name '.access.retired.*' -print -quit 2> /dev/null)
+  if [ -z "${_left}" ]; then
+    _old=$(mktemp -d /var/www/.adminer.old.XXXXXX 2> /dev/null)
+    if [ -n "${_old}" ] \
+      && mv -f -T -- /var/www/adminer "${_old}/adminer" &> /dev/null; then
+      if mv -f -T -- "${_new}" /var/www/adminer &> /dev/null; then
+        rm -rf -- "${_old}" &> /dev/null
+        return 0
+      fi
+      mv -f -T -- "${_old}/adminer" /var/www/adminer &> /dev/null
+    fi
+    [ -n "${_old}" ] && rmdir -- "${_old}" &> /dev/null
+  fi
+  _xtra_adminer_names_move "${_new}" /var/www/adminer
+  rmdir -- "${_new}" &> /dev/null
+  _msg "NOTE: Adminer tree top carries an ACL, rebuild deferred"
+  return 1
+}
+# In the pinned Adminer top: every app name (all but access/ and a retired
+# copy of it) handed to uid $1 and gid $2 through a handle opened without
+# following a link, as _master_reown_here hands a tree: a directory or a
+# single-link regular file only.
+_xtra_adminer_app_reown_here() {
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
+    \( -path ./access -o -path './.access.retired.*' \) -prune \
+    -o \( -type d -o -type f \) \
+    -execdir perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" {} + 2> /dev/null
 }
 
 _if_install_chive() {

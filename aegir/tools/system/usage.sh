@@ -211,6 +211,55 @@ _usage_mail_list() (
   printf '%s' "${_o}"
 )
 
+# Client mail on a test box. While /data/conf/client_mail_hold.txt exists,
+# mail BOA would send an account's client goes to the one address it holds
+# instead, its subject noting who would have been mailed; a file that anyone
+# but root can write, or that does not hold exactly one plain address, stops
+# that mail (fail closed) with one line saying why. Read through one handle
+# opened without following a link or blocking on a FIFO, and only while it
+# is a regular file of root's, not writable by group or others, with a
+# single link, 1 KiB at most (_MAIL_HOLD_PL: status 2 gone, 3 not root's or
+# writable by others, 4 any other shape, 5 not one plain address). $1 = the
+# client recipients (words). Sets _MAIL_HOLD_RCPT, the recipients to use, and
+# _MAIL_HOLD_SFX, the note for the subject; status 1: send none. Without the
+# file they are $1 and empty. One copy in each tool that mails a client.
+# shellcheck disable=SC2016
+_MAIL_HOLD_PL='use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($!{ENOENT} ? 2 : 4); my @s = stat($h); exit 4 unless @s; exit 3 unless $s[4] == 0 && !($s[2] & 022); exit 4 unless -f _ && $s[3] == 1 && $s[7] <= 1024; my ($d, $r) = (""); while ($r = sysread($h, my $c, 1025)) { $d .= $c; exit 4 if length($d) > 1024; } exit 4 unless defined $r; $d =~ /\A\s*([A-Za-z0-9_][A-Za-z0-9._%+=\x27-]*\@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)\s*\z/ or exit 5; print $1; exit 0'
+_client_mail_hold() {
+  local _f="/data/conf/client_mail_hold.txt" _a _rc _to _q="'"
+  _MAIL_HOLD_RCPT="${1}"
+  _MAIL_HOLD_SFX=""
+  [ -e "${_f}" ] || [ -L "${_f}" ] || return 0
+  [ -n "${1//[[:space:]]/}" ] || return 0
+  _to="$(printf '%s' "${1//\\\@/@}" | tr -s '[:space:]' ' ' \
+    | LC_ALL=C tr -cd "A-Za-z0-9._%+=@${_q} -" | cut -c1-200)"
+  _to="${_to# }"
+  _to="${_to% }"
+  _to="${_to:-?}"
+  _a="$(perl -e "${_MAIL_HOLD_PL}" "${_f}" 2> /dev/null)"
+  _rc=$?
+  case "${_rc}" in
+    0)
+      _MAIL_HOLD_RCPT="${_a}"
+      _MAIL_HOLD_SFX=" [held for ${_to}]"
+      return 0
+      ;;
+    2)
+      return 0
+      ;;
+    3)
+      echo "ALRT: ${_f} is not root's, or group or others can write it, and cannot be trusted: client mail for ${_to} not sent"
+      ;;
+    5)
+      echo "ALRT: ${_f} does not hold exactly one plain address: client mail for ${_to} not sent"
+      ;;
+    *)
+      echo "ALRT: ${_f} is not a regular file of one link, 1 KiB at most, that this run can read: client mail for ${_to} not sent"
+      ;;
+  esac
+  _MAIL_HOLD_RCPT=""
+  return 1
+}
 _check_account_exceptions() {
   _DEV_EXC=NO
   chckStringA="omega8.cc"
@@ -310,10 +359,11 @@ _send_notice_php() {
   fi
   _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _client_mail_hold "${_CLIENT_EMAIL}" || return 1
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "URGENT: Please switch your Ægir instance to PHP 8.1 [${_THIS_U}]" ${_CLIENT_EMAIL}
+    -s "URGENT: Please switch your Ægir instance to PHP 8.1 [${_THIS_U}]${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
 Hello,
 
 Our monitoring detected that you are still using deprecated
@@ -347,7 +397,7 @@ This email has been sent by your Ægir system monitor
 
 EOF
   fi
-  echo "INFO: PHP notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
+  echo "INFO: PHP notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
 }
 
 _detect_deprecated_php() {
@@ -380,10 +430,11 @@ _send_notice_core() {
   fi
   _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _client_mail_hold "${_CLIENT_EMAIL}" || return 1
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "URGENT: Please migrate ${_Dom} site to Pressflow (LTS)" ${_CLIENT_EMAIL}
+    -s "URGENT: Please migrate ${_Dom} site to Pressflow (LTS)${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
 Hello,
 
 Our system detected that you are using vanilla Drupal core
@@ -410,7 +461,7 @@ This email has been sent by your Ægir platform core monitor.
 
 EOF
   fi
-  echo "INFO: Pressflow notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
+  echo "INFO: Pressflow notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
 }
 
 _detect_vanilla_core() {
@@ -598,10 +649,11 @@ _send_notice_sql() {
   fi
   _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _client_mail_hold "${_CLIENT_EMAIL}" || return 1
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB" ${_CLIENT_EMAIL}
+    -s "NOTICE: Your ${_MODE} DB Usage on [${_THIS_U}] is too high: ${_SQL_NOW} MB${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
 Hello,
 
 You are using more resources than allocated in your subscription.
@@ -643,8 +695,8 @@ This email has been sent by your Ægir resources usage daily monitor.
 
 EOF
   fi
-  echo "INFO: Notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
-  [ "${_THIS_MODE}" = "verbose" ] && echo "INFO: Notice Your DB Usage sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK" >> "${_uLogFil}"
+  echo "INFO: Notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
+  [ "${_THIS_MODE}" = "verbose" ] && echo "INFO: Notice Your DB Usage sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK" >> "${_uLogFil}"
 }
 
 _send_notice_disk() {
@@ -653,10 +705,11 @@ _send_notice_disk() {
   fi
   _BCC_EMAIL="inbox@boa.io"
   _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  _client_mail_hold "${_CLIENT_EMAIL}" || return 1
   _MAILX_TEST=$(s-nail -V 2>&1)
   if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
   cat <<EOF | s-nail -b ${_BCC_EMAIL} \
-    -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high" ${_CLIENT_EMAIL}
+    -s "NOTICE: Your Disk Usage on [${_THIS_U}] is too high${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
 Hello,
 
 You are using more resources than allocated in your subscription.
@@ -687,8 +740,8 @@ This email has been sent by your Ægir resources usage daily monitor.
 
 EOF
   fi
-  echo "INFO: Notice sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK"
-  [ "${_THIS_MODE}" = "verbose" ] && echo "INFO: Notice Your Disk Usage sent to ${_CLIENT_EMAIL} [${_THIS_U}]: OK" >> "${_uLogFil}"
+  echo "INFO: Notice sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK"
+  [ "${_THIS_MODE}" = "verbose" ] && echo "INFO: Notice Your Disk Usage sent to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} [${_THIS_U}]: OK" >> "${_uLogFil}"
 }
 
 

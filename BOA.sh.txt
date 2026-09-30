@@ -481,7 +481,7 @@ _ctrl_init_here() {
   _uid=$(id -u -- "${_tUsr}.ftp" 2> /dev/null)
   _gid=$(getent group "${_usrGroup}" 2> /dev/null | cut -d: -f3)
   if [[ "${_uid}" =~ ^[0-9]+$ && "${_gid}" =~ ^[0-9]+$ ]]; then
-    env PATH=/usr/local/bin:/usr/bin:/bin find . \
+    env PATH=/usr/local/bin:/usr/bin:/bin find . \( -type d -o -type f \) \
       -execdir perl -e "${_ACCT_REOWN_PL}" "${_uid}" "${_gid}" {} +
   fi
   rm -f -- ./.ctrl.*
@@ -2180,7 +2180,7 @@ _update_agents() {
 
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f37
-    _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f80
+    _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f79
     _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f60
     _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f73
     _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f93
@@ -2197,7 +2197,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/monitor/check/escapecheck.sh "${_urlHmr}/tools/system/monitor/check/escapecheck.sh" f97
     _fetch_versioned /var/xdrago/monitor/check/hackcheck.sh "${_urlHmr}/tools/system/monitor/check/hackcheck.sh" f89
     _fetch_versioned /var/xdrago/monitor/check/hackftp.sh "${_urlHmr}/tools/system/monitor/check/hackftp.sh" f94
-    _fetch_versioned /var/xdrago/monitor/check/segfault_alert.pl "${_urlHmr}/tools/system/monitor/check/segfault_alert.pl" f93
+    _fetch_versioned /var/xdrago/monitor/check/segfault_alert.pl "${_urlHmr}/tools/system/monitor/check/segfault_alert.pl" f92
     _fetch_versioned /var/xdrago/monitor/check/sqlcheck.sh "${_urlHmr}/tools/system/monitor/check/sqlcheck.sh" f97
     _fetch_versioned /var/xdrago/monitor/check/bind9.sh "${_urlHmr}/tools/system/monitor/check/bind9.sh" f99
     _fetch_versioned /var/xdrago/monitor/check/proxysql.sh "${_urlHmr}/tools/system/monitor/check/proxysql.sh" f99
@@ -2223,8 +2223,8 @@ _update_agents() {
       || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f62
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f77
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f75
-    _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f77
-    _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f84
+    _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f76
+    _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f83
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f94
     # Activate Cloudflare realip immediately by writing the set_real_ip_from
     # ranges include now, so a fresh/updated box does not wait for the daily
@@ -2235,7 +2235,7 @@ _update_agents() {
     [ -e "/var/xdrago/cloudflare_realip.sh" ] \
       && [ ! -s "/data/conf/nginx_cloudflare_real_ip.conf" ] \
       && bash /var/xdrago/cloudflare_realip.sh >/dev/null 2>&1
-    _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f93
+    _fetch_versioned /var/xdrago/ai_policy.sh "${_urlHmr}/tools/system/ai_policy.sh" f92
     _fetch_versioned /var/xdrago/nginx_deny.sh "${_urlHmr}/tools/system/nginx_deny.sh" f95
     _fetch_versioned /var/xdrago/nginx_deny6.sh "${_urlHmr}/tools/system/nginx_deny6.sh" f95
     _fetch_versioned /var/xdrago/nginx_fleet.sh "${_urlHmr}/tools/system/nginx_fleet.sh" f91
@@ -2274,9 +2274,9 @@ _update_agents() {
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f68
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f66
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f46
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f51
-    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f68
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f45
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f49
+    _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f67
     _runner_parked owl.sh \
       || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f75
     ###
@@ -2304,7 +2304,7 @@ _update_agents() {
     _runner_parked graceful.sh \
       || _fetch_versioned /var/xdrago/graceful.sh "${_urlHmr}/tools/system/graceful.sh" f75
     _runner_parked usage.sh \
-      || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f59
+      || _fetch_versioned /var/xdrago/usage.sh "${_urlHmr}/tools/system/usage.sh" f58
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
@@ -2348,7 +2348,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f81 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f80 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -5055,10 +5055,10 @@ CSFSTANDBY
   fi
   rm -f ${_pthLog}/vmnetfix.sh.ctrl.*
   if [ -e "${_pthLog}" ]; then
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f81
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f80
     _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f80
-    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f85
-    _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f85
+    _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f84
+    _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f84
     _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f92
     _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f94
   fi
@@ -5081,21 +5081,21 @@ CSFSTANDBY
     # documented /usr/local/bin path stays a symlink to the fleet copy.
     _fetch_versioned ${_optBin}/aegir2boa-preflight "${_urlHmr}/${_tBn}/aegir2boa-preflight" f97 --guard /local/bin/aegir2boa-preflight
     _fetch_versioned ${_optBin}/aegir2boa-stage1 "${_urlHmr}/${_tBn}/aegir2boa-stage1" f96 --guard /local/bin/aegir2boa-stage1
-    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f89 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
+    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f88 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f96 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f86 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f85 --guard /local/bin/autoexcalibur
-    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f65 --guard /local/bin/autosymlink
+    _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f64 --guard /local/bin/autosymlink
     _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f26 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
-    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f72 --guard duplicity
+    _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f71 --guard duplicity
     _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f48 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f38 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f34 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f92 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
-    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f72 --guard duplicity
+    _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f71 --guard duplicity
     # The remote-backups run scripts ride here with dcysetup, which drives
     # them from clear.sh every few minutes: on a _SKYNET_MODE=OFF box the
     # agents pass never runs, and a refreshed dcysetup calling a stale
@@ -5106,22 +5106,22 @@ CSFSTANDBY
       _fetch_versioned /root/.remote_backups/run/create_global_paths_config.sh "${_urlHmr}/tools/backup/run/create_global_paths_config.sh" f44
       _fetch_versioned /root/.remote_backups/run/create_user_paths_config.sh "${_urlHmr}/tools/backup/run/create_user_paths_config.sh" f44
       _fetch_versioned /root/.remote_backups/run/create_cron_entries.sh "${_urlHmr}/tools/backup/run/create_cron_entries.sh" f44
-      _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f44
-      _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f44
+      _fetch_versioned /root/.remote_backups/run/create_readme.sh "${_urlHmr}/tools/backup/run/create_readme.sh" f43
+      _fetch_versioned /root/.remote_backups/run/create_config_readme.sh "${_urlHmr}/tools/backup/run/create_config_readme.sh" f43
     fi
     _fetch_versioned ${_optBin}/ffdevuan "${_urlHmr}/${_tBn}/ffdevuan" f93 --guard /local/bin/ffdevuan
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f97 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
-    _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f93 --guard /local/bin/fixrepo
+    _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f91 --guard /local/bin/fixrepo
     _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f80 --guard /local/bin/instgrp
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f98 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f93 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
     _fetch_versioned ${_optBin}/lock.inc "${_urlHmr}/${_tBn}/lock.inc" f90 --guard /local/bin/lock.inc
-    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f08 --guard duplicity
-    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f12 --mode 755 --guard duplicity
-    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f66 --guard /local/bin/octopus
-    _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f94 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
+    _fetch_versioned ${_optBin}/multiback "${_urlHmr}/${_tBn}/multiback" f07 --guard duplicity
+    _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f10 --mode 755 --guard duplicity
+    _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f65 --guard /local/bin/octopus
+    _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f93 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
     _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f65 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f81 --guard /local/bin/updatesymlinks
@@ -5135,9 +5135,9 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f94 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f42 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f26 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f91 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f40 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f24 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f89 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f69 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f93 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f87 --guard /local/bin/autochimaera
@@ -5147,7 +5147,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/backchain "${_urlHmr}/${_tBn}/backchain" f96 --mode 755 --guard /local/bin/backchain
     _fetch_versioned ${_optBin}/checkmyperms "${_urlHmr}/${_tBn}/checkmyperms" f99 --mode 755 --guard /local/bin/checkmyperms
     _fetch_versioned ${_optBin}/codebasecheck "${_urlHmr}/${_tBn}/codebasecheck" f91 --guard /local/bin/codebasecheck
-    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f88 --guard /local/bin/copydbackup
+    _fetch_versioned ${_optBin}/copydbackup "${_urlHmr}/${_tBn}/copydbackup" f87 --guard /local/bin/copydbackup
     _fetch_versioned ${_optBin}/fancynow "${_urlHmr}/${_tBn}/fancynow" f99 --guard /local/bin/fancynow
     _fetch_versioned ${_optBin}/killer "${_urlHmr}/${_tBn}/killer" f99 --guard /local/bin/killer
     _fetch_versioned ${_optBin}/memorytuner "${_urlHmr}/${_tBn}/memorytuner" f91 --guard /local/bin/memorytuner
@@ -5161,7 +5161,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f99 --guard /local/bin/smtpgapps
     _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f92 --guard /local/bin/sqlclean
     _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f98 --mode 755 --guard /local/bin/sqlmagic
-    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f93 --guard /local/bin/syncpass
+    _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f92 --guard /local/bin/syncpass
     _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --mode 755 --guard /local/bin/thinkdifferent
     _fetch_versioned ${_optBin}/verifyvhostsdns "${_urlHmr}/${_tBn}/verifyvhostsdns" f98 --guard /local/bin/verifyvhostsdns
     _fetch_versioned ${_optBin}/vhostcheck "${_urlHmr}/${_tBn}/vhostcheck" f98 --guard /local/bin/vhostcheck
