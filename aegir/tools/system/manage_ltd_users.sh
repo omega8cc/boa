@@ -142,7 +142,9 @@ _ltd_wg_grant() {
 # day per condition unless _INCIDENT_REPORT is OFF. The box config is read
 # with grep, never sourced: this pass carries live loop state (_USER, _usrLtd,
 # _ALLD_DIR, _ESC_LUPASS) that sourcing the config would silently overwrite
-# mid-iteration.
+# mid-iteration. Each value is taken as sourcing sets it: the last
+# definition, without the trailing " #..." comment the documented template
+# puts after each setting.
 # $1 = rate-limit key ("" mails every pass), $2 = subject, $3 = detail
 _ltd_notice() {
   local _key="${1}"
@@ -166,13 +168,15 @@ _ltd_notice() {
     fi
     touch "${_stamp}"
   fi
-  _rprt=$(grep -m1 -iE "^[[:space:]]*(export[[:space:]]+)?_INCIDENT_REPORT=" \
-    /root/.barracuda.cnf 2>/dev/null | cut -d= -f2- | tr -cd 'A-Za-z')
+  _rprt=$(grep -iE "^[[:space:]]*(export[[:space:]]+)?_INCIDENT_REPORT=" \
+    /root/.barracuda.cnf 2>/dev/null | tail -n 1 \
+    | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -cd 'A-Za-z')
   _rprt="${_rprt^^}"
   [ "${_rprt}" = "NO" ] && _rprt="OFF"
   [ "${_rprt}" = "OFF" ] && return 0
-  _mail=$(grep -m1 -iE "^[[:space:]]*(export[[:space:]]+)?_MY_EMAIL=" \
-    /root/.barracuda.cnf 2>/dev/null | cut -d= -f2- | tr -d "\"' \\\\" | tr -d '\n')
+  _mail=$(grep -iE "^[[:space:]]*(export[[:space:]]+)?_MY_EMAIL=" \
+    /root/.barracuda.cnf 2>/dev/null | tail -n 1 \
+    | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -d "\"' \\\\" | tr -d '\n')
   [ -n "${_mail}" ] || return 0
   [[ "$(s-nail -V 2>&1)" =~ "built for Linux" ]] || return 0
   {
