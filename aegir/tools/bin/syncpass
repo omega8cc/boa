@@ -443,6 +443,19 @@ _check_root() {
       _SQL_CONNECT=127.0.0.1
     else
       _SQL_CONNECT="${_THIS_DB_HOST}"
+      ### Remote DB server mode: the master instance still uses the local
+      ### DB server, as the upgrade sets it up, while aegir_root on the DB
+      ### head is the credential the instances there share, so it is never
+      ### dropped, re-created or given a new password from here. Host and
+      ### port as the upgrade uses them for the master.
+      if [ "${_uname}" = "aegir" ] \
+        && [ "${_THIS_DB_HOST}" != "${_MY_OWNIP}" ]; then
+        _SQL_CONNECT=localhost
+        _THIS_DB_PORT=3306
+        if [ -e "/var/aegir/use_proxysql.txt" ]; then
+          _THIS_DB_PORT=6033
+        fi
+      fi
     fi
     if [ "${_THIS_DB_HOST}" = "${_MY_OWNIP}" ]; then
       _SQL_CONNECT=localhost
