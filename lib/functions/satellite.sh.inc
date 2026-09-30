@@ -45,19 +45,42 @@ _get_core_ext() {
 # on-box cache and never downloads anything itself; without the staged kit
 # the task fails closed in validate. One pinned tarball on the /core/ shelf
 # (the pressflow-6.60.1 pattern), stamp-gated for idempotency, re-checked on
-# every up-* run. A kit version bump means editing _D6D7_KIT_V here.
+# every up-* run. A kit version bump means editing _D6D7_KIT_V here. It
+# works by path in /data/all/000: this pass's AegirSetupA checked the store
+# and 000 before (_satellite_store_dirs_back, run whatever _HM_ONLY says):
+# the store is root's real directory or a link of root's to one through
+# root's own directories only, and 000 is a real directory of root's in it,
+# so no account can change a name in 000 while this runs. What an earlier
+# release let an account leave inside 000 is not covered by that check: the
+# kit counts as current only when its stamp is a regular file of root's and
+# no entry of the kit, the kit itself included, is a link, is not root's or
+# is writable by others (_satellite_not_root_alone). Otherwise what failed
+# is removed before the fetch, never followed (rm removes a link, never
+# what it points to), so a failed fetch never leaves such a kit behind: the
+# task fails closed, or uses a kit of root's alone that was kept.
 _stage_d6d7_kit() {
   local _D6D7_KIT_V="1.0.0"
   local _kitTar="d6-d7-contrib-kit-${_D6D7_KIT_V}.tar.gz"
+  local _kitDir="/data/all/000/d6d7kit"
   local _kitStamp="/data/all/000/kit-v-${_D6D7_KIT_V}.txt"
   local _kitProbe="/data/all/000/d6d7kit/cck/modules/content_migrate/content_migrate.module"
   if [ "${_BACKDROP_SUPPORT}" != "YES" ] || [ ! -d "/data/all/000" ]; then
     return 0
   fi
-  if [ -e "${_kitStamp}" ] && [ -e "${_kitProbe}" ]; then
+  if [ -f "${_kitStamp}" ] && [ ! -L "${_kitStamp}" ] \
+    && [ "$(stat -c %u -- "${_kitStamp}" 2> /dev/null)" = "0" ] \
+    && [ -z "$(_satellite_not_root_alone "${_kitDir}")" ] \
+    && [ -e "${_kitProbe}" ]; then
     return 0
   fi
   _msg "INFO: Staging the pinned D6->D7 contrib kit ${_D6D7_KIT_V}"
+  if [ -n "$(_satellite_not_root_alone "${_kitDir}")" ]; then
+    rm -rf -- "${_kitDir}"
+  fi
+  if [ -L "${_kitStamp}" ] || { [ -e "${_kitStamp}" ] \
+    && [ "$(stat -c %u -- "${_kitStamp}" 2> /dev/null)" != "0" ]; }; then
+    rm -f -- "${_kitStamp}"
+  fi
   rm -rf /opt/tmp/d6d7kit-stage
   mkdir -p /opt/tmp/d6d7kit-stage
   ### Subshell keeps the caller's working directory untouched.
@@ -76,6 +99,8 @@ _stage_d6d7_kit() {
     else
       _msg "OOPS: D6->D7 contrib kit ${_D6D7_KIT_V} move into /data/all/000 failed; will retry on the next run"
     fi
+  elif [ -d "${_kitDir}" ] && [ ! -L "${_kitDir}" ]; then
+    _msg "OOPS: D6->D7 contrib kit ${_D6D7_KIT_V} download or extract failed; the kit in place, root's alone, is kept until it is staged"
   else
     _msg "OOPS: D6->D7 contrib kit ${_D6D7_KIT_V} download or extract failed; D6 upgrade tasks fail closed until it is staged"
   fi
@@ -1981,32 +2006,637 @@ _satellite_create_shared_dirs() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Creating shared directories..."
   fi
-  mkdir -p ${_D}/000/{core,modules}
   rm -rf /data/src
-  if [ ! -d "${_CORE}" ]; then
-    mkdir -p ${_CORE}
+  ### The store, 000/, 000/core, 000/modules and ${_CORE} stay root's for
+  ### the whole run: the build is given only ${_CORE} (and 000/core while a
+  ### shared core is missing), and only while it runs
+  ### (_satellite_lend_shared_dirs). The first four were checked at the
+  ### start of this pass (_satellite_store_dirs_back) and are checked again
+  ### here, then ${_CORE} the same way. /data/conf is never handed over: it
+  ### stays root's for the whole run (_satellite_add_user_dirs).
+  _satellite_store_dirs_back
+  _acct_in_real_dir "${_D_REAL}" _satellite_store_sub_here "${_CORE##*/}"
+  if [ "$?" -eq 3 ]; then
+    _satellite_store_stop
   fi
-  ### An earlier pass that stopped before its cleanup leaves these to the
-  ### account that ran it, which could have put a link or a hard link at any
-  ### name in them: each directory below /data/all is handed over and moded
-  ### on '.' from inside it, never through a link. /data/conf is not handed
-  ### over: it stays root's for the whole run (_satellite_add_user_dirs).
-  chown ${_USER}:${_USRG} ${_D}              &> /dev/null
-  _acct_in_real_dir "${_D}/000" chown -h "${_USER}:${_USRG}" . &> /dev/null
-  _acct_in_real_dir "${_D}/000" _acct_in_real_dir ./core \
-    chown -h "${_USER}:${_USRG}" . &> /dev/null
-  _acct_in_real_dir "${_CORE}" chown -h "${_USER}:${_USRG}" . &> /dev/null
   ### 777 here made /data, /data/disk, /data/conf and the shared /data/all
   ### store writable by every local user for the whole platform build below
   ### (reverted only in _satellite_batch_cleanup) -- long enough to drop code
   ### into a codebase every legacy site loads, or into the global config tree.
-  ### The build runs as ${_USER}, which the chown above already made the owner
-  ### of the store, so owner-write is all it ever needed there; it writes
-  ### nothing in /data/conf, which stays root's. These are the same modes
+  ### The build runs as ${_USER}, owner of ${_CORE} while it runs, so
+  ### owner-write is all it ever needed there; it writes nothing in
+  ### /data/conf, which stays root's. These are the same modes
   ### _satellite_batch_cleanup asserts at the end of the run.
   chmod 0755 ${_D} &> /dev/null
   chmod 0711 /data /data/disk /data/conf &> /dev/null
   _acct_in_real_dir "${_CORE}" chmod 0711 . &> /dev/null
+}
+
+#
+# The store, 000/, 000/core and 000/modules made root's real directories.
+# An earlier release handed the store, 000/, 000/core and ${_CORE} to the
+# account until its cleanup, for good when the pass stopped before it, so a
+# link or anything but a directory can sit at any of these names. Each is
+# checked from inside its real parent, top down, the store itself first
+# (_satellite_store_sub_here): one that is not root's is removed with an
+# alert, never followed (no account can make a name root owns); one that is
+# missing is made; '.' of each is taken back from inside it (owner, ACLs,
+# mode: _satellite_dot_back_here) before the one below it is looked at.
+# What root owns there is never removed. A name of root's there is not
+# always root's work: an earlier release's recursive chown to root also
+# re-owned a link an account had left in the store, which is why a link of
+# root's at 000, 000/core, 000/modules or ${_CORE} stops the pass instead of
+# being used. A link of root's at the store is used only when it leads to
+# /data/disk/all, the directory named all directly in the real /data/disk
+# (_SAT_STORE_TARGET_PL), and every link on the way and every directory
+# above it is root's and writable by no one else (_ROOT_REAL_PATH_PL with
+# "last"): an earlier release's chown and chmod of the store by path went
+# through that link, so /data/disk/all is taken back when it is not root's
+# alone (_satellite_store_link_back), and every pin on the store then
+# enters it (_D_REAL). A link of root's that leads anywhere else can be
+# what an earlier release's recursive chown to root made of a link an
+# account had left at the store: the pass stops, says why and how to
+# repair it, and leaves the link and where it leads as they are, as it does
+# for anything else of root's that is not a directory at these names.
+# /data, and /data/disk when it is root's real directory, are closed to
+# others first (0711), as the end of a pass leaves them. Run on every pass
+# (_satellite_add_user_dirs), not only when platforms are built: an 'aegir'
+# mode pass (_HM_ONLY=YES) never reaches _satellite_create_shared_dirs, and
+# the parent then stages the D6->D7 kit and the version stamps in 000 by
+# path.
+_satellite_store_dirs_back() {
+  local _n _rc _gone=NO
+  chmod 0711 /data &> /dev/null
+  if [ -d /data/disk ] && [ ! -L /data/disk ] \
+    && [ "$(stat -c %u -- /data/disk 2> /dev/null)" = "0" ]; then
+    chmod 0711 /data/disk &> /dev/null
+  fi
+  _D_REAL=""
+  if [ -L "${_D}" ] || { [ -e "${_D}" ] && [ ! -d "${_D}" ]; }; then
+    if [ "$(stat -c %u -- "${_D}" 2> /dev/null)" != "0" ]; then
+      _msg "${_STATUS} A: ALRT ${_D} was $(_satellite_what_is "${_D}"), not root's: removed"
+      rm -f -- "${_D}"
+      _gone=YES
+    elif [ -L "${_D}" ]; then
+      _D_REAL="$(perl -e "${_ROOT_REAL_PATH_PL}" -- "${_D}" last 2> /dev/null)"
+      if [ -z "${_D_REAL}" ]; then
+        _satellite_store_link_stop "a link on the way to where it leads, or a directory above that, is not there, not root's or open to others, or it leads to no directory"
+      fi
+      if ! perl -e "${_SAT_STORE_TARGET_PL}" -- "${_D_REAL}" &> /dev/null; then
+        _satellite_store_link_stop "it leads to ${_D_REAL}, $(stat -c 'uid %u mode %a' -- "${_D_REAL}" 2> /dev/null), which is not /data/disk/all"
+      fi
+      _satellite_store_link_back
+    else
+      _satellite_store_stop "${_D} is $(_satellite_what_is "${_D}"), not a directory: left in place" \
+        "$(_satellite_store_name_why)"
+    fi
+  fi
+  if [ -z "${_D_REAL}" ]; then
+    mkdir -p "${_D}"
+    _D_REAL="${_D}"
+  fi
+  _acct_in_real_dir "${_D_REAL}" _satellite_dot_back_here 00755 &> /dev/null
+  for _n in 000 core modules; do
+    if [ "${_n}" = "000" ]; then
+      _acct_in_real_dir "${_D_REAL}" _satellite_store_sub_here 000
+    else
+      _acct_in_real_dir "${_D_REAL}" _acct_in_real_dir ./000 \
+        _satellite_store_sub_here "${_n}"
+    fi
+    _rc=$?
+    if [ "${_rc}" -eq 3 ]; then
+      _satellite_store_stop
+    elif [ "${_rc}" -eq 2 ] && [ "${_n}" != "modules" ]; then
+      _gone=YES
+    fi
+  done
+  if [ "${_gone}" = "YES" ]; then
+    _satellite_cores_gone_alert
+  fi
+}
+
+#
+# ./$1 in the current (pinned) directory of the store used only as a real
+# directory of root's. A link, or anything but a directory, at the name:
+# not root's, it is removed with an alert, never followed (return 2);
+# root's, it is left as it is and reported with why and how to repair it
+# (return 3: the caller stops the pass). The directory is then made when
+# missing and handed back to root on
+# '.' from inside it, as a take-back closes a lent one
+# (_satellite_dot_back_here: owner, no ACLs, 00755), since the account an
+# earlier release handed it to could have widened its mode or set an ACL.
+_satellite_store_sub_here() {
+  local _rc=0
+  if [ -L "./${1}" ] || { [ -e "./${1}" ] && [ ! -d "./${1}" ]; }; then
+    if [ "$(stat -c %u -- "./${1}" 2> /dev/null)" = "0" ]; then
+      _msg "${_STATUS} A: FATAL ERROR: ${PWD}/${1} is $(_satellite_what_is "./${1}"), not a directory this store uses: left in place"
+      _msg "${_STATUS} A: FATAL ERROR: $(_satellite_store_name_why)"
+      return 3
+    fi
+    _msg "${_STATUS} A: ALRT ${PWD}/${1} was $(_satellite_what_is "./${1}"), not root's: removed"
+    rm -f -- "./${1}"
+    _rc=2
+  fi
+  [ -d "./${1}" ] || mkdir -m 0755 -- "./${1}" &> /dev/null
+  _acct_in_real_dir "./${1}" _satellite_dot_back_here 00755 &> /dev/null
+  return "${_rc}"
+}
+# What $1 is, for an alert: a link with its owner and where it points, or
+# the file type and owner.
+_satellite_what_is() {
+  if [ -L "${1}" ]; then
+    echo "a link of uid $(stat -c %u -- "${1}" 2> /dev/null) to $(readlink -- "${1}")"
+  else
+    echo "a $(stat -c '%F of uid %u' -- "${1}" 2> /dev/null)"
+  fi
+}
+# The pass stopped at the store, each argument said first as a line of its
+# own: a name of root's there that this store does not use is left for the
+# admin as it is, never removed, followed or built around.
+_satellite_store_stop() {
+  local _l
+  for _l in "$@"; do
+    _msg "${_STATUS} A: FATAL ERROR: ${_l}"
+  done
+  _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+  touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
+  exit 1
+}
+# Why a name of root's in the store can be one this store does not use,
+# and how to repair it, by who put it there: the second line of the FATAL
+# that names it. Root's passes re-own what is in the store, so no owner
+# there or behind a link tells who made it; only the admin's own records
+# do. The platforms built on shared code link into the store by these
+# names, so a directory an admin moved elsewhere behind the link is moved
+# back into place, never left behind; anything else is never moved into
+# the store, which is restored from a backup.
+_satellite_store_name_why() {
+  echo "an earlier release's recursive chown to root also re-owned what an account had left in the store, and root's passes re-own what is in the store, so a link or file of root's at this name can be the account's work, and neither its owner nor the owner of what it leads to tells who made them. To repair, check what it is (a link: where it leads). A link to a directory an admin moved elsewhere (known from your own records, never from an owner): remove the link (rm removes a link itself, never what it leads to), move that directory to this name (or mount it here) and run the upgrade again; never just remove the link: the platforms built on shared code link into the store by this name, and an empty directory here gets back only what this release builds (${_DRUPAL6}, ${_DRUPAL7} and its own shared code), so every site on an older shared core or an older release's shared code stays down until its trees are back. Anything else (a file, or a link not known to be an admin's, whoever owns it or what it leads to): what it holds or leads to can be an account's work, so never move it into the store; remove it, restore this directory from a backup (or let the pass make it an empty directory of root's and the next upgrade that builds platforms make what this release builds, with every site on an older shared core or an older release's shared code down until its trees are back) and run the upgrade again"
+}
+# The pass stopped at a link of root's at the store that is not used ($1:
+# why), with the rule the link is used by, what can leave such a link
+# there, and how to repair it by who put the store where it leads, or
+# with $2 as that second line when there is one; the link and where it
+# leads are left as they are. Earlier releases' chowns by path went
+# through the link, so no owner tells who made the link or the directory
+# it leads to; only the admin's own records do. The platforms built on
+# shared code link into the store, so a store an admin moved elsewhere is
+# moved to /data/disk/all before the link is pointed there: an empty store
+# gets back only what the current release builds. Anything else is never
+# moved into the store, which is restored from a backup instead. The
+# store is kept behind a link only in the real directory /data/disk/all,
+# so when that name holds a link or anything but a directory, the first
+# line says so and to remove it first: no repair can put the store there
+# while it does.
+_satellite_store_link_stop() {
+  local _w=""
+  if [ -z "${2:-}" ] && { [ -L /data/disk/all ] \
+    || { [ -e /data/disk/all ] && [ ! -d /data/disk/all ]; }; }; then
+    _w="; /data/disk/all is $(_satellite_what_is /data/disk/all), not the real directory the store has to be: remove it first (rm removes a link itself, never what it leads to), make /data/disk/all a directory of root's and repair as below"
+  fi
+  _msg "${_STATUS} A: FATAL ERROR: ${_D} is $(_satellite_what_is "${_D}"), not used, left in place: ${1}${_w}"
+  if [ -n "${2:-}" ]; then
+    _msg "${_STATUS} A: FATAL ERROR: ${2}"
+  else
+    _msg "${_STATUS} A: FATAL ERROR: a link of root's at ${_D} is used only when it leads to /data/disk/all, the directory named all directly in the real /data/disk, and every link on the way and every directory above it is root's and closed to others. An earlier release's recursive chown to root also re-owned a link an account had left at ${_D}, and earlier releases' chowns to root by path went through such a link into the directory it led to, so this link can be the account's work, and neither its owner nor the owner of what it leads to tells who made them. To repair, check where it points (readlink ${_D}). A store an admin moved there (known from your own records, never from an owner): move its content to /data/disk/all (or mount it there), point ${_D} at /data/disk/all and run the upgrade again; never just re-point or remove the link: the platforms built on shared code link into the store, and an empty store gets back only what this release builds (${_DRUPAL6}, ${_DRUPAL7} and its own shared code), so every site on an older shared core or an older release's shared code stays down until its trees are back. Anything else, whoever owns it: its content can be an account's work, so never move it into the store; restore the store into /data/disk/all from a backup (or make /data/disk/all an empty directory of root's and let the next upgrade that builds platforms make what this release builds, with every site on an older shared core or an older release's shared code down until its trees are back), then point ${_D} at /data/disk/all and run the upgrade again"
+  fi
+  _satellite_store_stop
+}
+# /data/disk/all where the link of root's at the store leads (_D_REAL,
+# _SAT_STORE_TARGET_PL; every link and directory above it checked)
+# handed back to root when it is not root's alone, from inside it as a
+# real store is (_satellite_dot_back_here: owner, ACLs, 0755), with an
+# alert naming the owner and mode it had; one still not root's 0755 after
+# that stops the pass, which then names what can refuse the take-back,
+# since the link already leads where it should.
+_satellite_store_link_back() {
+  local _was _u _m
+  _was="$(stat -c '%u %a' -- "${_D_REAL}" 2> /dev/null)"
+  _u="${_was%% *}"
+  _m="${_was##* }"
+  if [ "${_u}" = "0" ] && [[ "${_m}" =~ ^[0-7]+$ ]] \
+    && [ "$(( 8#${_m} & 8#022 ))" = "0" ]; then
+    return 0
+  fi
+  _acct_in_real_dir "${_D_REAL}" _satellite_dot_back_here 00755 &> /dev/null
+  if [ "$(stat -c '%u %a' -- "${_D_REAL}" 2> /dev/null)" != "0 755" ]; then
+    _satellite_store_link_stop "it leads to ${_D_REAL}, uid ${_u} mode ${_m}, which could not be taken back" \
+      "the link leads where it should, to ${_D_REAL}, but that directory could not be handed back to root 0755 (an immutable attribute, or a read-only or root-squashed mount, refuses it). To repair, fix that (lsattr -d ${_D_REAL}, the mount's options) and run the upgrade again; the link and the store's content stay as they are"
+  fi
+  _msg "${_STATUS} A: ALRT ${_D_REAL}, where the link of root's at ${_D} leads, was uid ${_u} mode ${_m} (an earlier release's chown or chmod of the store through the link): taken back, root's 0755"
+}
+# $1 as the directory root works in: itself when it is a real directory;
+# when it is a link, the real directory it leads to, only when every link
+# on the way is root's and every directory on the way, the last one
+# included, is root's and writable by no one else, so no one but root can
+# change where it leads or what is in it; nothing otherwise (exit 1). With
+# a second argument "last", the last directory may be anyone's and open to
+# others; every link and every directory above it is checked as before
+# (the store check uses no other directory than /data/disk/all, which it
+# takes back). One text wherever it is defined.
+_ROOT_REAL_PATH_PL='my ($p, $k) = @ARGV; if (!-l $p) { print $p if -d _; exit(-d _ ? 0 : 1); } my ($c, $n, @s) = ("", 0, stat("/")); exit 1 unless $p =~ m{^/} && @s && $s[4] == 0 && !($s[2] & 022); my @w = grep { length && $_ ne "." } split(m{/}, $p); while (@w) { my $e = shift(@w); if ($e eq "..") { $c =~ s{/[^/]*$}{}; next; } my @l = lstat("$c/$e") or exit 1; if (-l _) { exit 1 if $l[4] != 0 || ++$n > 40; my $t = readlink("$c/$e"); exit 1 unless defined $t; $c = "" if $t =~ m{^/}; unshift(@w, grep { length && $_ ne "." } split(m{/}, $t)); next; } exit 1 unless -d _ && (($l[4] == 0 && !($l[2] & 022)) || (defined $k && $k eq "last" && !@w)); $c .= "/$e"; } print($c eq "" ? "/" : $c); exit 0'
+# $1, the real directory a link of root's at /data/all leads to
+# (_ROOT_REAL_PATH_PL's answer), is the one the store may be kept in
+# behind that link (exit 0) only when it is /data/disk/all, the directory
+# named all directly in the real /data/disk, compared by device and inode
+# with that name not followed, so a link put at it does not count; any
+# other directory, or none, exit 1. Besides a real /data/all it is the
+# one layout of the store BOA knows, and the one other store directory
+# every PHP-FPM pool's open_basedir names. One text wherever it is defined
+# (satellite.sh.inc, BOA.sh.txt, xoct, xcopy, manage_solr_config.sh,
+# night.inc.sh).
+_SAT_STORE_TARGET_PL='my @t = lstat(defined $ARGV[0] ? $ARGV[0] : ""); my @a = lstat("/data/disk/all"); exit((@t && @a && -d _ && $t[0] == $a[0] && $t[1] == $a[1]) ? 0 : 1)'
+# After a store, 000 or 000/core that was not root's was replaced by an
+# empty one: the shared cores the account platforms link to (each
+# platform's index.php link, read by find without following it) that
+# 000/core no longer holds are named, since their sites stay down until
+# they are back; a pass that builds platforms makes only ${_DRUPAL6} and
+# ${_DRUPAL7} again.
+_satellite_cores_gone_alert() {
+  local _c _gone=""
+  for _c in $(env PATH=/usr/local/bin:/usr/bin:/bin find /data/disk/*/distro \
+    -mindepth 3 -maxdepth 3 -name index.php -type l \
+    -lname "${_D}/000/core/*/index.php" -printf '%l\n' 2> /dev/null \
+    | sed -n "s|^${_D}/000/core/\([A-Za-z0-9._-]*\)/index.php$|\1|p" \
+    | sort -u); do
+    [ -d "${_D_REAL}/000/core/${_c}" ] || _gone="${_gone:+${_gone} }${_c}"
+  done
+  if [ -n "${_gone}" ]; then
+    _msg "${_STATUS} A: ALRT shared cores the platforms link to are gone from ${_D}/000/core: ${_gone}; sites on them stay down until the admin puts them back (a pass that builds platforms makes ${_DRUPAL6} and ${_DRUPAL7} again, not older ones)"
+  fi
+}
+
+#
+# "$@" run inside the real ${_D}/000/modules (_satellite_in_modules) or
+# ${_D}/000/core (_satellite_in_dcore), the store as this pass checked it
+# (_D_REAL) and every directory below it entered as the real one: outside
+# /home and /data/disk _acct_in_real_dir checks only the last name, so a
+# link an earlier release let an account leave at 000 would be followed by
+# a pin on the whole path.
+_satellite_in_modules() {
+  _acct_in_real_dir "${_D_REAL:-${_D}}" _acct_in_real_dir ./000 \
+    _acct_in_real_dir ./modules "$@"
+}
+_satellite_in_dcore() {
+  _acct_in_real_dir "${_D_REAL:-${_D}}" _acct_in_real_dir ./000 \
+    _acct_in_real_dir ./core "$@"
+}
+# ${_D}/000/modules made where missing, each name from inside its real
+# parent (the store as this pass checked it), so a link at 000 or modules
+# is never followed to make a directory where it points;
+# _satellite_in_modules then refuses the link.
+_satellite_mk_modules() {
+  mkdir -p "${_D}" &> /dev/null
+  _acct_in_real_dir "${_D_REAL:-${_D}}" mkdir -p -m 0755 -- ./000 &> /dev/null
+  _acct_in_real_dir "${_D_REAL:-${_D}}" _acct_in_real_dir ./000 \
+    mkdir -p -m 0755 -- ./modules &> /dev/null
+}
+# A fetch of the shared module ${_D}/000/modules/$1 is due: its stamp $2 is
+# not there, or an entry of the module, the name itself included, is a
+# link, is not root's or is writable by others (_satellite_not_root_alone:
+# an earlier release let an account own 000/modules, and its recursive
+# chown made what the account left there root's). Nothing is trusted
+# through a link. The fetch swaps the module out without following a link;
+# when the fetch fails, what is there stays until one succeeds.
+_satellite_module_stale() {
+  [ -n "$(_satellite_not_root_alone "${_D}/000/modules/${1}")" ] \
+    || [ ! -e "${_D}/000/modules/${1}/${2}" ]
+}
+# The first entry of the tree $1, $1 itself included, that is a link, is
+# not root's or is writable by its group or others, found without following
+# a link; nothing when every entry is root's alone or $1 is not there. The
+# kit and the shared modules root stages hold no link, and only root can
+# write any entry in them.
+_satellite_not_root_alone() {
+  find -P "${1}" \( -type l -o \! -user 0 -o -perm /022 \) -print -quit \
+    2> /dev/null
+}
+
+#
+# The platform build (AegirSetupC) runs as the account and makes its shared
+# platforms in ${_CORE} and, while one is missing, the shared D6/D7 cores in
+# 000/core: those two directories, '.' only, are handed to it just for that
+# run and taken back by _satellite_take_back_shared_dirs the moment it
+# returns. The store, 000/ and the bundles root fetches into ${_CORE} before
+# the build stay root's throughout. Before '.' is handed over, what is at
+# its top (name and device:inode of each entry) is recorded in a root-only
+# directory (_SAT_LENT_INV), so the take-back can tell an entry the build
+# renamed, replaced or swapped from the one root had there, whoever owns it
+# by then. A directory whose top could not be recorded is not lent (the
+# build then fails where it had to write, and says so).
+_satellite_lend_shared_dirs() {
+  _LENT_CORE_DIR=NO
+  [ -n "${_SAT_LENT_INV}" ] && rm -rf -- "${_SAT_LENT_INV}"
+  _SAT_LENT_INV="$(mktemp -d /tmp/.boa-lent.XXXXXX 2> /dev/null)"
+  if [ -z "${_SAT_LENT_INV}" ] \
+    || ! _acct_in_real_dir "${_CORE}" _satellite_top_ids_here \
+      > "${_SAT_LENT_INV}/core"; then
+    _msg "${_STATUS} A: ALRT ${_CORE} not lent to the build: its top could not be recorded"
+    [ -n "${_SAT_LENT_INV}" ] && rm -rf -- "${_SAT_LENT_INV}"
+    _SAT_LENT_INV=""
+    return 1
+  fi
+  _acct_in_real_dir "${_CORE}" chown -h "${_USER}:${_USRG}" . &> /dev/null
+  _satellite_in_dcore _satellite_core_links_here "${_DRUPAL6}" "${_DRUPAL7}"
+  if [ ! -e "${_D}/000/core/${_DRUPAL6}" ] \
+    || [ ! -e "${_D}/000/core/${_DRUPAL7}" ]; then
+    if _satellite_in_dcore _satellite_top_ids_here \
+      > "${_SAT_LENT_INV}/dcore"; then
+      _LENT_CORE_DIR=YES
+      _satellite_in_dcore chown -h "${_USER}:${_USRG}" . &> /dev/null
+    else
+      _msg "${_STATUS} A: ALRT ${_D}/000/core not lent to the build: its top could not be recorded"
+    fi
+  fi
+}
+# A link at a current shared core's name in the current (pinned) 000/core
+# (an earlier release lent 000/core to the account) is removed, never taken
+# for the core, so the build makes that core again.
+_satellite_core_links_here() {
+  local _c
+  for _c in "$@"; do
+    if [ -L "./${_c}" ]; then
+      _msg "${_STATUS} A: ALRT ${PWD}/${_c} was $(_satellite_what_is "./${_c}"): removed, the build makes this core again"
+      rm -f -- "./${_c}"
+    fi
+  done
+  return 0
+}
+
+#
+# Each entry at the top of the current (pinned) directory, dot names
+# included, as one NUL-ended "device:inode type name" record (find -printf
+# %D:%i %y %P): the identity a name is checked against after the lend.
+_satellite_top_ids_here() {
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -maxdepth 1 \
+    -printf '%D:%i %y %P\0'
+}
+
+#
+# ${_CORE} (and 000/core when it was lent) back to root as soon as the build
+# returns, whatever it returned, before root does anything else in them:
+# both are closed first (_satellite_dot_back_here: owner, ACLs, mode), so
+# the account can no longer add, rename or remove a name there nor keep a
+# mode or an ACL it set; then what it left at the top is put back as it was
+# lent (_satellite_lent_top_here, against the record taken at the lend) and
+# below it (_satellite_lent_back_here). A bundle that is gone is fetched
+# again (_satellite_manage_o_contrib, told through _SAT_BUNDLES_GONE).
+# 000/core is walked only when it was lent: otherwise it stayed root's the
+# whole run and the account never had write there.
+_satellite_take_back_shared_dirs() {
+  local _inv="${_SAT_LENT_INV}" _out _l _gone=""
+  # ACLs go only through perl's syscall.ph or setfacl (_SAT_ROOT_NO_ACL_PL):
+  # with neither on the box any the build set would stay, so it is said
+  if [ -z "$(_satellite_xattr_nr)" ] && [ ! -x /usr/bin/setfacl ] \
+    && [ ! -x /bin/setfacl ]; then
+    _msg "${_STATUS} A: ALRT POSIX ACLs cannot be removed here (no syscall.ph for perl, no setfacl): any the build set in ${_CORE} stay"
+  fi
+  _acct_in_real_dir "${_CORE}" _satellite_dot_back_here 00711 &> /dev/null
+  if [ "${_LENT_CORE_DIR:-NO}" = "YES" ]; then
+    _satellite_in_dcore _satellite_dot_back_here 00755 &> /dev/null
+  fi
+  _out="$(_acct_in_real_dir "${_CORE}" \
+    _satellite_lent_top_here "${_inv:+${_inv}/core}")"
+  _acct_in_real_dir "${_CORE}" _satellite_lent_back_here &> /dev/null
+  if [ "${_LENT_CORE_DIR:-NO}" = "YES" ]; then
+    _out="${_out}"$'\n'"$(_satellite_in_dcore \
+      _satellite_lent_top_here "${_inv:+${_inv}/dcore}")"
+    _satellite_in_dcore _satellite_lent_back_here &> /dev/null
+  fi
+  [ -n "${_inv}" ] && rm -rf -- "${_inv}"
+  _SAT_LENT_INV=""
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "A "*) _msg "${_STATUS} A: ALRT ${_l#A }" ;;
+      "B "*) _gone="${_gone:+${_gone} }${_l#B }" ;;
+    esac
+  done <<< "${_out}"
+  if [ -n "${_gone}" ]; then
+    _msg "${_STATUS} A: ALRT shared bundles gone after the build, fetched again: ${_gone}"
+    _SAT_BUNDLES_GONE="${_gone}"
+    _satellite_manage_o_contrib
+    _SAT_BUNDLES_GONE=""
+  fi
+}
+
+#
+# '.' of the current (pinned) directory handed back to root:root and
+# cleared of POSIX ACLs (_SAT_ROOT_NO_ACL_PL), then given the mode $1 (five
+# digits, so set-ID bits the account set go too). An ACL the account set
+# while it owned the directory outlasts the new owner and mode: a named
+# entry keeps its grant, and a default ACL is copied onto every entry made
+# in it later, root's too.
+_satellite_dot_back_here() {
+  chown -h root:root . || return 1
+  perl -e "${_SAT_ROOT_NO_ACL_PL}" -- "$(_satellite_xattr_nr)" .
+  chmod "${1}" .
+}
+# fremovexattr's system call number, read once per walk from perl's own
+# syscall.ph (every Debian and Devuan perl carries it) and handed to
+# _SAT_ROOT_NO_ACL_PL, so the perl find starts in each directory does not
+# load it again; nothing when it cannot be read.
+_satellite_xattr_nr() {
+  perl -e 'my $n = eval { require "syscall.ph"; &SYS_fremovexattr }; print $n if defined $n && $n =~ /^[0-9]+$/' 2> /dev/null
+}
+
+#
+# The top of the current (pinned) directory put back as root had it. With
+# $1, the record _satellite_top_ids_here took when the directory was lent:
+# every recorded name whose identity changed (the account renamed, replaced
+# or swapped it, whoever owns what is there now) has what is there set
+# aside, and the entry root had is renamed back from wherever it is at this
+# level (a directory can only be renamed within its parent by someone who
+# cannot write in it); what was set aside and is not a recorded entry is
+# removed. A recorded directory that is gone is reported. Then each
+# o_contrib* bundle name (root makes every bundle before the build) that is
+# not a real directory of root's or, with a record, is not the very entry
+# recorded at that name (device:inode: a put-back that failed leaves
+# whatever was there, root's or not) is renamed aside and removed, or
+# removed where it is when it cannot be renamed; a bundle root had is
+# printed to be fetched again. Last, any other name that is neither a
+# directory nor a regular file and is not root's (a link, a FIFO) is
+# removed, never followed. Output: "A <alert>" and "B <bundle>" lines.
+_satellite_lent_top_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  local _inv="${1:-}" _r _i _j _n _c _t _b _had
+  local -a _rn=() _ri=() _rt=() _cn=() _ci=() _chg=() _aside=()
+  # a record that cannot be read is no record: only the ownership checks
+  # run, never "nothing was here" (which would remove every bundle)
+  if [ -n "${_inv}" ] && { [ ! -f "${_inv}" ] || [ ! -r "${_inv}" ]; }; then
+    echo "A ${PWD}: the record taken at the lend is missing, identities not checked"
+    _inv=""
+  fi
+  if [ -n "${_inv}" ]; then
+    while IFS= read -r -d '' _r; do
+      _ri+=("${_r%% *}")
+      _r="${_r#* }"
+      _rt+=("${_r%% *}")
+      _rn+=("${_r#* }")
+    done < "${_inv}"
+  fi
+  _cur() {
+    _cn=()
+    _ci=()
+    while IFS= read -r -d '' _r; do
+      _ci+=("${_r%% *}")
+      _r="${_r#* }"
+      _cn+=("${_r#* }")
+    done < <(_satellite_top_ids_here)
+  }
+  _cur
+  for _i in "${!_rn[@]}"; do
+    _c=""
+    for _j in "${!_cn[@]}"; do
+      [ "${_cn[${_j}]}" = "${_rn[${_i}]}" ] && _c="${_ci[${_j}]}" && break
+    done
+    [ "${_c}" = "${_ri[${_i}]}" ] && continue
+    _chg+=("${_i}")
+    if [ -n "${_c}" ]; then
+      _t="./.lent-aside.$$.${RANDOM}.${_i}"
+      mv -f -T -- "./${_rn[${_i}]}" "${_t}" && _aside+=("${_t}")
+    fi
+  done
+  _cur
+  for _i in "${_chg[@]}"; do
+    _n=""
+    for _j in "${!_ci[@]}"; do
+      [ "${_ci[${_j}]}" = "${_ri[${_i}]}" ] && _n="${_cn[${_j}]}" && break
+    done
+    if [ -n "${_n}" ] \
+      && mv -T -- "./${_n}" "./${_rn[${_i}]}" 2> /dev/null; then
+      echo "A ${PWD}/${_rn[${_i}]} was renamed or replaced during the build, put back"
+    elif [ "${_rt[${_i}]}" = "d" ]; then
+      echo "A ${PWD}/${_rn[${_i}]} is gone after the build"
+    fi
+  done
+  for _t in "${_aside[@]}"; do
+    if [ -e "${_t}" ] || [ -L "${_t}" ]; then
+      rm -rf -- "${_t}"
+    fi
+  done
+  _cur
+  for _b in o_contrib o_contrib_seven o_contrib_eight o_contrib_nine \
+    o_contrib_ten o_contrib_eleven o_contrib_backdrop; do
+    _had=""
+    for _i in "${!_rn[@]}"; do
+      [ "${_rn[${_i}]}" = "${_b}" ] && _had="${_ri[${_i}]}" && break
+    done
+    _c=""
+    for _j in "${!_cn[@]}"; do
+      [ "${_cn[${_j}]}" = "${_b}" ] && _c="${_ci[${_j}]}" && break
+    done
+    if [ ! -e "./${_b}" ] && [ ! -L "./${_b}" ]; then
+      [ -n "${_inv}" ] && [ -n "${_had}" ] && echo "B ${_b}"
+      continue
+    fi
+    if [ -d "./${_b}" ] && [ ! -L "./${_b}" ] \
+      && [ "$(stat -c %u -- "./${_b}" 2> /dev/null)" = "0" ] \
+      && { [ -z "${_inv}" ] || [ "${_c}" = "${_had}" ]; }; then
+      continue
+    fi
+    _t="./.${_b}.gone.$$.${RANDOM}"
+    mv -f -T -- "./${_b}" "${_t}" 2> /dev/null || _t="./${_b}"
+    rm -rf -- "${_t}"
+    if [ -e "./${_b}" ] || [ -L "./${_b}" ]; then
+      echo "A ${PWD}/${_b} is not the bundle root had there and could not be removed"
+    fi
+    if [ -z "${_inv}" ] || [ -n "${_had}" ]; then
+      echo "B ${_b}"
+    else
+      echo "A ${PWD}/${_b} was made during the build, removed"
+    fi
+  done
+  find . -mindepth 1 -maxdepth 1 \
+    \! -type d \! -type f \! -uid 0 -exec rm -f -- {} +
+)
+
+#
+# Everything below the current (pinned) directory the account left there
+# handed to root:root and cleared of POSIX ACLs (directories and
+# single-link regular files, through their handles: _SAT_ROOT_NO_ACL_PL;
+# only an entry's owner can set its ACLs, so every ACL the account set is
+# on an entry it still owns here); then no directory or single-link
+# regular file below it is left writable by others
+# (_SAT_NO_OTHER_WRITE_PL: a re-owned entry keeps the mode it had, and a
+# build that left one 0777 would have left the shared code writable by
+# every local user), and what was made in such a directory while the
+# walks ran is handed over and cleared too; then what could still reach
+# outside the tree is removed from the directory find walked: a regular
+# file with more than one link (no build makes one: the account linked in a
+# file it can write), a FIFO or a socket, when not root's, and a name that
+# removal left with one link is handed over and closed too. Links stay (the
+# build makes them and root's walks never follow one) and are handed to
+# root last, without being followed (chown -h), once only root can rename a
+# name in the directory that holds them: a directory another group may
+# write (the shared sites/all trees are root:users) is left out, as the
+# account could swap a name there between the walk and the chown.
+_satellite_lent_back_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  local _x
+  _x="$(_satellite_xattr_nr)"
+  find . -mindepth 1 \! -uid 0 \
+    -execdir perl -e "${_SAT_ROOT_NO_ACL_PL}" -- "${_x}" {} +
+  find . -mindepth 1 \( -type d -o -type f \) -perm -0002 \
+    -execdir perl -e "${_SAT_NO_OTHER_WRITE_PL}" {} +
+  # what was made in a directory still open to it while the walks ran
+  find . -mindepth 1 \! -uid 0 \
+    -execdir perl -e "${_SAT_ROOT_NO_ACL_PL}" -- "${_x}" {} +
+  find . -mindepth 1 \! -uid 0 \
+    \( -type p -o -type s -o \( -type f -links +1 \) \) \
+    -execdir rm -f -- {} +
+  # the last name of a file linked into two directories has one link once
+  # the others went (find runs each directory's batch as it leaves it), so
+  # the owner and mode walks above skipped it: handed over and closed now,
+  # the owner first, when no directory below is the account's any more
+  find . -mindepth 1 \! -uid 0 -type f \
+    -execdir perl -e "${_SAT_ROOT_NO_ACL_PL}" -- "${_x}" {} +
+  find . -mindepth 1 -type f -perm -0002 \
+    -execdir perl -e "${_SAT_NO_OTHER_WRITE_PL}" {} +
+  find . -mindepth 1 -type d -perm -g+w \! -gid 0 -prune \
+    -o -type l \! -uid 0 -execdir chown -h root:root -- {} +
+)
+# Each directory, or regular file with a single link, named (find -execdir)
+# made not writable by others through a handle opened without following a
+# link or blocking on a FIFO; every other mode bit kept.
+_SAT_NO_OTHER_WRITE_PL='use Fcntl; for my $f (@ARGV) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chmod($s[2] & 07775, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
+# Each directory, or regular file with a single link, named after the first
+# argument (find -execdir, or '.') handed to root:root and its POSIX ACLs
+# removed (the access one, and the default one of a directory), all through
+# a handle opened without following a link or blocking on a FIFO; the mode
+# is left as it is. The first argument is fremovexattr's system call number
+# (_satellite_xattr_nr): the ACLs go with that call on the handle (the
+# attribute names held in variables: perl's syscall refuses a string
+# literal), or, when it is empty, with setfacl on the handle's
+# /proc/self/fd name, never by path, and the mode read after the chown put
+# back (setfacl -b sets the group bits from the ACL's group entry, where
+# the call leaves the mode as it was).
+_SAT_ROOT_NO_ACL_PL='use Fcntl; my $x = shift(@ARGV); my ($c) = grep { -x } "/usr/bin/setfacl", "/bin/setfacl"; my ($pa, $pd) = ("system.posix_acl_access", "system.posix_acl_default"); for my $f (@ARGV) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); my $d = -d _; if (@s && ($d || (-f _ && $s[3] == 1)) && chown(0, 0, $h)) { my @t = stat($h); if ($x =~ /^[0-9]+$/) { syscall($x + 0, fileno($h), $pa); syscall($x + 0, fileno($h), $pd) if $d; } elsif (@t && $c && fcntl($h, F_SETFD, 0)) { system($c, "-b", ($d ? "-k" : ()), "/proc/self/fd/" . fileno($h)); chmod($t[2] & 07777, $h); } } close($h); } exit 0'
+
+#
+# $2 (a bundle in the store directory $1) is a real directory of root's and
+# so are $1 and the store above it: the update passes below act on names in
+# a bundle by path, so they go on only while no directory on the way can be
+# an account's or a link. A bundle name that is there but is not, or sits
+# in such a directory, is reported and left alone; $1 that is not a
+# numbered serial directory (the only place root puts bundles) or a missing
+# bundle is skipped quietly.
+_satellite_store_dir_ok() {
+  local _d
+  [[ "${1##*/}" =~ ^[0-9]+$ ]] && [ -d "${1}" ] || return 1
+  [ -e "${2}" ] || [ -L "${2}" ] || return 1
+  for _d in "${1%/*}" "${1}" "${2}"; do
+    # the store as this pass checked it: a link of root's there stands for
+    # the real directory it leads to (_satellite_store_dirs_back)
+    if [ "${_d}" = "${_D}" ]; then
+      _d="${_D_REAL:-${_D}}"
+    fi
+    if [ ! -d "${_d}" ] || [ -L "${_d}" ] \
+      || [ "$(stat -c %u -- "${_d}" 2> /dev/null)" != "0" ]; then
+      _msg "${_STATUS} A: ALRT ${2} left alone: ${_d} is not a real directory of root's"
+      return 1
+    fi
+  done
+  return 0
 }
 
 #
@@ -2020,7 +2650,8 @@ _satellite_o_contrib_update_global() {
   _RMMODULES="drupal-nginx-fast-x-accel-redirect varnish bakery session443 \
     cookie_cache_bypass_adv module_supports imageinfo_cache redis"
 
-  for i in `dir -d ${_D}/*`; do
+  for i in "${_D}"/*; do
+    _satellite_store_dir_ok "${i}" "${i}/o_contrib" || continue
     if [ -e "${i}/o_contrib" ] \
       && [ ! -e "${i}/o_contrib/update-${_xSrl}-${_X_VERSION}.info" ]; then
       _FORCE_UP_SIX=YES
@@ -2105,9 +2736,10 @@ _satellite_o_contrib_update_global() {
         && [ ! -L "${i}/o_contrib/redis_edge" ]; then
         ln -sfn ${_D}/000/modules/redis_edge ${i}/o_contrib/redis_edge
       fi
-      touch ${i}/o_contrib/update-${_xSrl}-${_X_VERSION}.info
-      find ${i}/o_contrib -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${i}/o_contrib -type f -exec chmod 0644 {} \; &> /dev/null
+      _acct_in_real_dir "${i}/o_contrib" _satellite_put_stdin_here \
+        "update-${_xSrl}-${_X_VERSION}.info" 0644 "" < /dev/null
+      _acct_in_real_dir "${i}/o_contrib" \
+        _satellite_modes_walk_here 0755 0644 &> /dev/null
     fi
     if [ -d "${_D}/$i" ]; then
       for p in `find ${i}/ -maxdepth 1 -mindepth 1 -type d | sort`; do
@@ -2130,7 +2762,8 @@ _satellite_o_contrib_seven_update_global() {
 
   _RMMODULES="session443 cookie_cache_bypass_adv agrcache speedy redis"
 
-  for i in `dir -d ${_D}/*`; do
+  for i in "${_D}"/*; do
+    _satellite_store_dir_ok "${i}" "${i}/o_contrib_seven" || continue
     if [ -e "${i}/o_contrib_seven" ] \
       && [ ! -e "${i}/o_contrib_seven/update-${_xSrl}-${_X_VERSION}.info" ]; then
       _FORCE_UP_SEVEN=YES
@@ -2243,9 +2876,10 @@ _satellite_o_contrib_seven_update_global() {
         && [ ! -L "${i}/o_contrib_seven/redis_edge" ]; then
         ln -sfn ${_D}/000/modules/redis_edge ${i}/o_contrib_seven/redis_edge
       fi
-      find ${i}/o_contrib_seven -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${i}/o_contrib_seven -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${i}/o_contrib_seven/update-${_xSrl}-${_X_VERSION}.info
+      _acct_in_real_dir "${i}/o_contrib_seven" \
+        _satellite_modes_walk_here 0755 0644 &> /dev/null
+      _acct_in_real_dir "${i}/o_contrib_seven" _satellite_put_stdin_here \
+        "update-${_xSrl}-${_X_VERSION}.info" 0644 "" < /dev/null
     fi
   done
   cd
@@ -2261,7 +2895,8 @@ _satellite_o_contrib_eight_update_global() {
 
   _RMMODULES="some_foo_bar"
 
-  for i in `dir -d ${_D}/*`; do
+  for i in "${_D}"/*; do
+    _satellite_store_dir_ok "${i}" "${i}/o_contrib_eight" || continue
     if [ -e "${i}/o_contrib_eight" ] \
       && [ ! -e "${i}/o_contrib_eight/update-${_xSrl}-${_X_VERSION}.info" ]; then
       _FORCE_UP_EIGHT=YES
@@ -2296,9 +2931,10 @@ _satellite_o_contrib_eight_update_global() {
         && [ ! -L "${i}/o_contrib_eight/redis_compr" ]; then
         ln -sfn ${_D}/000/modules/redis_compr ${i}/o_contrib_eight/redis_compr
       fi
-      find ${i}/o_contrib_eight -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${i}/o_contrib_eight -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${i}/o_contrib_eight/update-${_xSrl}-${_X_VERSION}.info
+      _acct_in_real_dir "${i}/o_contrib_eight" \
+        _satellite_modes_walk_here 0755 0644 &> /dev/null
+      _acct_in_real_dir "${i}/o_contrib_eight" _satellite_put_stdin_here \
+        "update-${_xSrl}-${_X_VERSION}.info" 0644 "" < /dev/null
     fi
   done
   cd
@@ -2315,7 +2951,8 @@ _satellite_o_contrib_nine_update_global() {
 
   _RMMODULES="some_foo_bar"
 
-  for i in `dir -d ${_D}/*`; do
+  for i in "${_D}"/*; do
+    _satellite_store_dir_ok "${i}" "${i}/o_contrib_nine" || continue
     if [ -e "${i}/o_contrib_nine" ] \
       && [ ! -e "${i}/o_contrib_nine/update-${_xSrl}-${_X_VERSION}.info" ]; then
       _FORCE_UP_NINE=YES
@@ -2344,9 +2981,10 @@ _satellite_o_contrib_nine_update_global() {
         && [ ! -L "${i}/o_contrib_nine/redis_compr" ]; then
         ln -sfn ${_D}/000/modules/redis_compr ${i}/o_contrib_nine/redis_compr
       fi
-      find ${i}/o_contrib_nine -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${i}/o_contrib_nine -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${i}/o_contrib_nine/update-${_xSrl}-${_X_VERSION}.info
+      _acct_in_real_dir "${i}/o_contrib_nine" \
+        _satellite_modes_walk_here 0755 0644 &> /dev/null
+      _acct_in_real_dir "${i}/o_contrib_nine" _satellite_put_stdin_here \
+        "update-${_xSrl}-${_X_VERSION}.info" 0644 "" < /dev/null
     fi
   done
   cd
@@ -2363,7 +3001,8 @@ _satellite_o_contrib_ten_update_global() {
 
   _RMMODULES="some_foo_bar"
 
-  for i in `dir -d ${_D}/*`; do
+  for i in "${_D}"/*; do
+    _satellite_store_dir_ok "${i}" "${i}/o_contrib_ten" || continue
     if [ -e "${i}/o_contrib_ten" ] \
       && [ ! -e "${i}/o_contrib_ten/update-${_xSrl}-${_X_VERSION}.info" ]; then
       _FORCE_UP_TEN=YES
@@ -2394,9 +3033,10 @@ _satellite_o_contrib_ten_update_global() {
         && [ ! -L "${i}/o_contrib_ten/redis_ten_eleven" ]; then
         ln -sfn ${_D}/000/modules/redis_ten_eleven ${i}/o_contrib_ten/redis_ten_eleven
       fi
-      find ${i}/o_contrib_ten -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${i}/o_contrib_ten -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${i}/o_contrib_ten/update-${_xSrl}-${_X_VERSION}.info
+      _acct_in_real_dir "${i}/o_contrib_ten" \
+        _satellite_modes_walk_here 0755 0644 &> /dev/null
+      _acct_in_real_dir "${i}/o_contrib_ten" _satellite_put_stdin_here \
+        "update-${_xSrl}-${_X_VERSION}.info" 0644 "" < /dev/null
     fi
   done
   cd
@@ -2413,7 +3053,8 @@ _satellite_o_contrib_eleven_update_global() {
 
   _RMMODULES="some_foo_bar"
 
-  for i in `dir -d ${_D}/*`; do
+  for i in "${_D}"/*; do
+    _satellite_store_dir_ok "${i}" "${i}/o_contrib_eleven" || continue
     if [ -e "${i}/o_contrib_eleven" ] \
       && [ ! -e "${i}/o_contrib_eleven/update-${_xSrl}-${_X_VERSION}.info" ]; then
       _FORCE_UP_TEN=YES
@@ -2444,9 +3085,10 @@ _satellite_o_contrib_eleven_update_global() {
         && [ ! -L "${i}/o_contrib_eleven/redis_ten_eleven" ]; then
         ln -sfn ${_D}/000/modules/redis_ten_eleven ${i}/o_contrib_eleven/redis_ten_eleven
       fi
-      find ${i}/o_contrib_eleven -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${i}/o_contrib_eleven -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${i}/o_contrib_eleven/update-${_xSrl}-${_X_VERSION}.info
+      _acct_in_real_dir "${i}/o_contrib_eleven" \
+        _satellite_modes_walk_here 0755 0644 &> /dev/null
+      _acct_in_real_dir "${i}/o_contrib_eleven" _satellite_put_stdin_here \
+        "update-${_xSrl}-${_X_VERSION}.info" 0644 "" < /dev/null
     fi
   done
   cd
@@ -2460,7 +3102,8 @@ _satellite_o_contrib_backdrop_update_global() {
 
   _RMMODULES="some_foo_bar"
 
-  for i in `dir -d ${_D}/*`; do
+  for i in "${_D}"/*; do
+    _satellite_store_dir_ok "${i}" "${i}/o_contrib_backdrop" || continue
     if [ -e "${i}/o_contrib_backdrop" ]; then
       _satellite_restore_o_contrib_backdrop_webform "${i}/o_contrib_backdrop" "${i##*/}"
     fi
@@ -2489,9 +3132,10 @@ _satellite_o_contrib_backdrop_update_global() {
         && [ ! -L "${i}/o_contrib_backdrop/redis_backdrop" ]; then
         ln -sfn ${_D}/000/modules/redis_backdrop ${i}/o_contrib_backdrop/redis_backdrop
       fi
-      find ${i}/o_contrib_backdrop -type d -exec chmod 0755 {} \; &> /dev/null
-      find ${i}/o_contrib_backdrop -type f -exec chmod 0644 {} \; &> /dev/null
-      touch ${i}/o_contrib_backdrop/update-${_xSrl}-${_X_VERSION}.info
+      _acct_in_real_dir "${i}/o_contrib_backdrop" \
+        _satellite_modes_walk_here 0755 0644 &> /dev/null
+      _acct_in_real_dir "${i}/o_contrib_backdrop" _satellite_put_stdin_here \
+        "update-${_xSrl}-${_X_VERSION}.info" 0644 "" < /dev/null
     fi
   done
   cd
@@ -2514,37 +3158,50 @@ _WEBFORM_B_TAG="1.x-4.26.6"
 # it as deployed. The swap renames the copy in place aside first and puts it
 # back when the new one cannot go in. The gates read the ".full" stamp, the
 # pair BOA.sh.txt writes for the same modules; owner "root" re-owns the copy.
-# Like the old blocks, it leaves the pass in ${_D}/000/modules.
+# Every step runs from inside the real 000/modules (each directory on the
+# way entered as the real one, _satellite_in_modules) and names the unpack
+# directory relative to it, never by the store's path; that directory is
+# this pass's own (mktemp, root's, 0700), so nothing else can put a name in
+# it and chown -R there hands over only what the archive holds. No real
+# 000/modules to work in (a link on the way) or no unpack directory is
+# reported, and the copy in place is kept.
 _satellite_shared_module_update() {
-  local _nm="$1" _ver="$2" _own="$3" _dir="${_D}/000/modules" _tmp _arc _ok=NO
+  _satellite_mk_modules
+  if ! _satellite_in_modules _satellite_shared_module_here "$@"; then
+    _msg "${_STATUS} A: OOPS ${1}-${2} was not updated (no unpack directory in the real ${_D}/000/modules); the copy in place is kept"
+  fi
+}
+_satellite_shared_module_here() {
+  local _nm="$1" _ver="$2" _own="$3" _tmp _arc _ok=NO
   _arc="${_nm}-${_ver}.tar.gz"
-  mkdir -p "${_dir}"
   # a directory a killed pass left behind; a live pass's is never this old
-  find "${_dir}" -maxdepth 1 -type d -name ".${_nm}.*" -mmin +60 -exec rm -rf {} + &> /dev/null
-  _tmp="$(mktemp -d "${_dir}/.${_nm}.XXXXXX")" || return 1
-  cd "${_tmp}" || return 1
-  _get_dev_contrib "${_arc}" keep
+  find . -maxdepth 1 -type d -name ".${_nm}.*" -mmin +60 \
+    -exec rm -rf -- {} + &> /dev/null
+  _tmp="$(mktemp -d "./.${_nm}.XXXXXX")" || return 1
+  ( cd -P -- "${_tmp}" && _get_dev_contrib "${_arc}" keep )
   # every member present and whole: tar compares the kept archive with what
   # it unpacked, and fails on a cut archive and on a missing or short file
   if [ -e "${_tmp}/${_arc}" ] && [ -d "${_tmp}/${_nm}" ] \
     && tar -C "${_tmp}" -dzf "${_tmp}/${_arc}" &> /dev/null; then
     _ok=YES
   fi
-  cd "${_dir}" || return 1
   if [ "${_ok}" = "YES" ]; then
     [ "${_own}" = "root" ] && chown -R root:root "${_tmp}/${_nm}" &> /dev/null
     echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.info"
     echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.full.info"
-    [ -e "${_dir}/${_nm}" ] && mv -T "${_dir}/${_nm}" "${_tmp}/.old" &> /dev/null
-    if ! mv -T "${_tmp}/${_nm}" "${_dir}/${_nm}" &> /dev/null; then
-      [ -e "${_tmp}/.old" ] && [ ! -e "${_dir}/${_nm}" ] \
-        && mv -T "${_tmp}/.old" "${_dir}/${_nm}" &> /dev/null
+    if [ -e "./${_nm}" ] || [ -L "./${_nm}" ]; then
+      mv -T -- "./${_nm}" "${_tmp}/.old" &> /dev/null
+    fi
+    if ! mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
+      [ -e "${_tmp}/.old" ] && [ ! -e "./${_nm}" ] \
+        && mv -T -- "${_tmp}/.old" "./${_nm}" &> /dev/null
       _msg "${_STATUS} A: OOPS ${_nm}-${_ver} could not be swapped in; the copy in place is kept"
     fi
   else
     _msg "${_STATUS} A: OOPS ${_nm}-${_ver} was not updated (download or unpack failed); the copy in place is kept"
   fi
-  rm -rf "${_tmp}"
+  rm -rf -- "${_tmp}"
+  return 0
 }
 
 #
@@ -2562,10 +3219,10 @@ _satellite_download_o_contrib_backdrop() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "${_STATUS} A: Downloading o_contrib_backdrop modules..."
   fi
-  ### Plain bundle members extract into the bundle dir itself, so they MUST
-  ### run before the redis block below, whose fetch-needed branch cd's into
-  ### the shared store and never returns (same ordering as o_contrib_eleven).
-  if _o_contrib_backdrop_webform_get "${PWD}"; then
+  ### Plain bundle members extract into the bundle dir itself (the current,
+  ### pinned directory, named '.', never by its path), before the redis
+  ### block below (same ordering as o_contrib_eleven).
+  if _o_contrib_backdrop_webform_get .; then
     echo update > ./webform/ver-${_WEBFORM_B_TAG}.info
   else
     _msg "${_STATUS} A: webform-${_WEBFORM_B_TAG} not fetched into o_contrib_backdrop"
@@ -2573,19 +3230,19 @@ _satellite_download_o_contrib_backdrop() {
   if [ ! -L "./redis_backdrop" ]; then
     ln -sfn ${_D}/000/modules/redis_backdrop redis_backdrop
   fi
-  if [ ! -e "${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.full.info" ]; then
+  if _satellite_module_stale redis_backdrop "ver-${_REDIS_B_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_backdrop "${_REDIS_B_VERSION}" root
   fi
-  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+  _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
 }
 
 #
 # Fetch the _WEBFORM_B_TAG release into directory $1 and unpack it there as
 # webform/. Returns 0 only when the archive tests whole, unpacks cleanly and
 # holds the module's .info and .module files; the tree is root's whatever owner
-# the archive recorded, since every instance's Backdrop sites run it. A failed
-# attempt leaves no webform/ behind.
+# the archive recorded, since every instance's Backdrop sites run it, handed
+# over and moded from inside the real webform/ (never a link, nor a
+# hard-linked file). A failed attempt leaves no webform/ behind.
 _o_contrib_backdrop_webform_get() {
   local _dst="$1" _tgz="webform-${_WEBFORM_B_TAG}.tar.gz" _try
   for _try in 1 2 3; do
@@ -2596,9 +3253,10 @@ _o_contrib_backdrop_webform_get() {
       && [ -e "${_dst}/webform/webform.info" ] \
       && [ -e "${_dst}/webform/webform.module" ]; then
       rm -f "${_dst}/${_tgz}"
-      chown -R root:root "${_dst}/webform" &> /dev/null
-      find "${_dst}/webform" -type d -exec chmod 0755 {} \; &> /dev/null
-      find "${_dst}/webform" -type f -exec chmod 0644 {} \; &> /dev/null
+      _acct_in_real_dir "${_dst}/webform" \
+        _satellite_reown_here root:root &> /dev/null
+      _acct_in_real_dir "${_dst}/webform" \
+        _satellite_modes_walk_here 0755 0644 &> /dev/null
       return 0
     fi
     [ "${_try}" -lt 3 ] && sleep 9
@@ -2644,11 +3302,14 @@ _satellite_refresh_o_contrib_backdrop_webform() {
 #
 # A pass stopped between the two renames of a refresh leaves the bundle ($1,
 # generation $2) without webform/ and the old tree in the generation's stage:
-# put it back. Stages of a bundle that has its webform/ are leftovers.
+# put it back. Stages of a bundle that has its webform/ are leftovers. Only a
+# stage root made (a real directory of root's) is used: a name an account
+# put in the store under an earlier release is never moved into a bundle.
 _satellite_restore_o_contrib_backdrop_webform() {
   local _bnd="$1" _gen="$2" _s
   for _s in ${_D}/.webform-stage.${_gen}.*; do
-    [ -d "${_s}" ] || continue
+    [ -d "${_s}" ] && [ ! -L "${_s}" ] \
+      && [ "$(stat -c %u -- "${_s}" 2> /dev/null)" = "0" ] || continue
     if [ ! -e "${_bnd}/webform" ] && [ -e "${_s}/prev/webform.info" ] \
       && mv "${_s}/prev" "${_bnd}/webform"; then
       _msg "${_STATUS} A: o_contrib_backdrop webform put back in ${_bnd}"
@@ -2671,11 +3332,10 @@ _satellite_download_o_contrib_eleven() {
   fi
   _get_dev_contrib "robotstxt-8.x-1.6.tar.gz"
   _get_dev_contrib "readonlymode-8.x-1.4.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.full.info" ]; then
+  if _satellite_module_stale redis_ten_eleven "ver-${_REDIS_E_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_ten_eleven "${_REDIS_E_VERSION}"
   fi
-  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+  _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
 }
 
 
@@ -2692,11 +3352,10 @@ _satellite_download_o_contrib_ten() {
   fi
   _get_dev_contrib "robotstxt-8.x-1.6.tar.gz"
   _get_dev_contrib "readonlymode-8.x-1.4.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.full.info" ]; then
+  if _satellite_module_stale redis_ten_eleven "ver-${_REDIS_E_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_ten_eleven "${_REDIS_E_VERSION}"
   fi
-  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+  _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
 }
 
 
@@ -2713,14 +3372,13 @@ _satellite_download_o_contrib_nine() {
   fi
   _get_dev_contrib "robotstxt-8.x-1.5.tar.gz"
   _get_dev_contrib "readonlymode-8.x-1.2.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.full.info" ]; then
+  if _satellite_module_stale redis_nine_ten "ver-${_REDIS_T_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_nine_ten "${_REDIS_T_VERSION}"
   fi
-  if [ ! -e "${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.full.info" ]; then
+  if _satellite_module_stale redis_compr "ver-${_REDIS_C_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_compr "${_REDIS_C_VERSION}"
   fi
-  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+  _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
 }
 
 
@@ -2737,14 +3395,13 @@ _satellite_download_o_contrib_eight() {
   fi
   _get_dev_contrib "robotstxt-8.x-1.4.tar.gz"
   _get_dev_contrib "readonlymode-8.x-1.2.tar.gz"
-  if [ ! -e "${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_xSrl}.full.info" ]; then
+  if _satellite_module_stale redis_eight "ver-${_REDIS_N_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_eight "${_REDIS_N_VERSION}"
   fi
-  if [ ! -e "${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.full.info" ]; then
+  if _satellite_module_stale redis_compr "ver-${_REDIS_C_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_compr "${_REDIS_C_VERSION}"
   fi
-  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+  _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
 }
 
 
@@ -2807,8 +3464,7 @@ _satellite_download_o_contrib_seven() {
   rm -rf nginx_accel_redirect*
   rm -rf purge*
   rm -rf expire*
-  find ./ -type d -exec chmod 0755 {} \; &> /dev/null
-  find ./ -type f -exec chmod 0644 {} \; &> /dev/null
+  _satellite_modes_walk_here 0755 0644 &> /dev/null
   touch ctrl-${_xSrl}-${_X_VERSION}
   if [ -L "./redis" ]; then
     rm -f redis
@@ -2816,14 +3472,13 @@ _satellite_download_o_contrib_seven() {
   if [ ! -L "./redis_edge" ]; then
     ln -sfn ${_D}/000/modules/redis_edge redis_edge
   fi
-  if [ -e "${_D}/000/modules/redis" ]; then
-    rm -rf ${_D}/000/modules/redis
+  if [ -e "${_D}/000/modules/redis" ] || [ -L "${_D}/000/modules/redis" ]; then
+    _satellite_in_modules rm -rf -- ./redis
   fi
-  if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.full.info" ]; then
+  if _satellite_module_stale redis_edge "ver-${_REDIS_L_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_edge "${_REDIS_L_VERSION}"
   fi
-  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+  _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
 }
 
 #
@@ -2869,8 +3524,7 @@ _satellite_download_o_contrib_six() {
   rm -rf nginx_accel_redirect*
   rm -rf purge*
   rm -rf expire*
-  find ./ -type d -exec chmod 0755 {} \; &> /dev/null
-  find ./ -type f -exec chmod 0644 {} \; &> /dev/null
+  _satellite_modes_walk_here 0755 0644 &> /dev/null
   touch ctrl-${_xSrl}-${_X_VERSION}
   if [ -L "./redis" ]; then
     rm -f redis
@@ -2881,21 +3535,17 @@ _satellite_download_o_contrib_six() {
   if [ ! -L "./cache_backport" ]; then
     ln -sfn ${_D}/000/modules/cache_backport cache_backport
   fi
-  if [ ! -e "${_D}/000/modules/cache_backport/update-${_xSrl}-${_X_VERSION}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/cache_backport
-    _get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
-    echo update > cache_backport/update-${_xSrl}-${_X_VERSION}.info
+  if _satellite_module_stale cache_backport "update-${_xSrl}-${_X_VERSION}.info"; then
+    _satellite_mk_modules
+    _satellite_in_modules _satellite_cache_backport_here
   fi
-  if [ -e "${_D}/000/modules/redis" ]; then
-    rm -rf ${_D}/000/modules/redis
+  if [ -e "${_D}/000/modules/redis" ] || [ -L "${_D}/000/modules/redis" ]; then
+    _satellite_in_modules rm -rf -- ./redis
   fi
-  if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.full.info" ]; then
+  if _satellite_module_stale redis_edge "ver-${_REDIS_L_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_edge "${_REDIS_L_VERSION}"
   fi
-  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+  _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
 }
 
 #
@@ -2910,10 +3560,8 @@ _satellite_check_fix_o_contrib() {
       || [ -e "${_CORE}/o_contrib_eleven/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_eleven forced upgrade..."
-      cd ${_CORE}/o_contrib_eleven
-      rm -rf ${_CORE}/o_contrib_eleven/*
-      _satellite_download_o_contrib_eleven
-      cd ${_CORE}/o_contrib_eleven
+      _acct_in_real_dir "${_CORE}/o_contrib_eleven" \
+        _satellite_bundle_redo_here _satellite_download_o_contrib_eleven
     fi
   fi
   if [ -e "${_CORE}/o_contrib_ten" ]; then
@@ -2921,10 +3569,8 @@ _satellite_check_fix_o_contrib() {
       || [ -e "${_CORE}/o_contrib_ten/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_ten forced upgrade..."
-      cd ${_CORE}/o_contrib_ten
-      rm -rf ${_CORE}/o_contrib_ten/*
-      _satellite_download_o_contrib_ten
-      cd ${_CORE}/o_contrib_ten
+      _acct_in_real_dir "${_CORE}/o_contrib_ten" \
+        _satellite_bundle_redo_here _satellite_download_o_contrib_ten
     fi
   fi
   if [ -e "${_CORE}/o_contrib_nine" ]; then
@@ -2933,10 +3579,8 @@ _satellite_check_fix_o_contrib() {
       || [ -e "${_CORE}/o_contrib_nine/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_nine forced upgrade..."
-      cd ${_CORE}/o_contrib_nine
-      rm -rf ${_CORE}/o_contrib_nine/*
-      _satellite_download_o_contrib_nine
-      cd ${_CORE}/o_contrib_nine
+      _acct_in_real_dir "${_CORE}/o_contrib_nine" \
+        _satellite_bundle_redo_here _satellite_download_o_contrib_nine
     fi
   fi
   if [ -e "${_CORE}/o_contrib_eight" ]; then
@@ -2944,10 +3588,8 @@ _satellite_check_fix_o_contrib() {
       || [ ! -e "${_CORE}/o_contrib_eight/redis_eight" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_eight forced upgrade..."
-      cd ${_CORE}/o_contrib_eight
-      rm -rf ${_CORE}/o_contrib_eight/*
-      _satellite_download_o_contrib_eight
-      cd ${_CORE}/o_contrib_eight
+      _acct_in_real_dir "${_CORE}/o_contrib_eight" \
+        _satellite_bundle_redo_here _satellite_download_o_contrib_eight
     fi
   fi
   if [ -e "${_CORE}/o_contrib_seven" ]; then
@@ -2955,10 +3597,8 @@ _satellite_check_fix_o_contrib() {
       || [ ! -e "${_CORE}/o_contrib_seven/redis_edge" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_seven forced upgrade..."
-      cd ${_CORE}/o_contrib_seven
-      rm -rf ${_CORE}/o_contrib_seven/*
-      _satellite_download_o_contrib_seven
-      cd ${_CORE}/o_contrib_seven
+      _acct_in_real_dir "${_CORE}/o_contrib_seven" \
+        _satellite_bundle_redo_here _satellite_download_o_contrib_seven
     fi
   fi
   if [ -e "${_CORE}/o_contrib" ]; then
@@ -2966,10 +3606,8 @@ _satellite_check_fix_o_contrib() {
       || [ ! -e "${_CORE}/o_contrib/redis_edge" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib forced upgrade..."
-      cd ${_CORE}/o_contrib
-      rm -rf ${_CORE}/o_contrib/*
-      _satellite_download_o_contrib_six
-      cd ${_CORE}/o_contrib
+      _acct_in_real_dir "${_CORE}/o_contrib" \
+        _satellite_bundle_redo_here _satellite_download_o_contrib_six
     fi
   fi
   if [ -e "${_CORE}/o_contrib_backdrop" ]; then
@@ -2987,10 +3625,8 @@ _satellite_check_fix_o_contrib() {
           && mv "${_CORE}/o_contrib_backdrop/webform" "${_bdKeep}/prev" \
           || _bdKeep=""
       fi
-      cd ${_CORE}/o_contrib_backdrop
-      rm -rf ${_CORE}/o_contrib_backdrop/*
-      _satellite_download_o_contrib_backdrop
-      cd ${_CORE}/o_contrib_backdrop
+      _acct_in_real_dir "${_CORE}/o_contrib_backdrop" \
+        _satellite_bundle_redo_here _satellite_download_o_contrib_backdrop
       if [ -n "${_bdKeep}" ]; then
         if [ ! -e "${_CORE}/o_contrib_backdrop/webform" ] && [ -d "${_bdKeep}/prev" ] \
           && mv "${_bdKeep}/prev" "${_CORE}/o_contrib_backdrop/webform"; then
@@ -3003,41 +3639,37 @@ _satellite_check_fix_o_contrib() {
       fi
     fi
   fi
-  if [ ! -e "${_D}/000/modules/cache_backport/update-${_xSrl}-${_X_VERSION}.info" ]; then
-    mkdir -p ${_D}/000/modules
-    cd ${_D}/000/modules
-    rm -rf ${_D}/000/modules/cache_backport
-    _get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
-    echo update > cache_backport/update-${_xSrl}-${_X_VERSION}.info
+  if _satellite_module_stale cache_backport "update-${_xSrl}-${_X_VERSION}.info"; then
+    _satellite_mk_modules
+    _satellite_in_modules _satellite_cache_backport_here
   fi
-  if [ -e "${_D}/000/modules/redis" ]; then
-    rm -rf ${_D}/000/modules/redis
+  if [ -e "${_D}/000/modules/redis" ] || [ -L "${_D}/000/modules/redis" ]; then
+    _satellite_in_modules rm -rf -- ./redis
   fi
-  if [ ! -e "${_D}/000/modules/redis_edge/ver-${_REDIS_L_VERSION}.${_xSrl}.full.info" ]; then
+  if _satellite_module_stale redis_edge "ver-${_REDIS_L_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_edge "${_REDIS_L_VERSION}"
   fi
-  if [ ! -e "${_D}/000/modules/redis_eight/ver-${_REDIS_N_VERSION}.${_xSrl}.full.info" ]; then
+  if _satellite_module_stale redis_eight "ver-${_REDIS_N_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_eight "${_REDIS_N_VERSION}"
   fi
-  if [ ! -e "${_D}/000/modules/redis_compr/ver-${_REDIS_C_VERSION}.${_xSrl}.full.info" ]; then
+  if _satellite_module_stale redis_compr "ver-${_REDIS_C_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_compr "${_REDIS_C_VERSION}"
   fi
-  if [ ! -e "${_D}/000/modules/redis_nine_ten/ver-${_REDIS_T_VERSION}.${_xSrl}.full.info" ]; then
+  if _satellite_module_stale redis_nine_ten "ver-${_REDIS_T_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_nine_ten "${_REDIS_T_VERSION}"
   fi
-  if [ ! -e "${_D}/000/modules/redis_ten_eleven/ver-${_REDIS_E_VERSION}.${_xSrl}.full.info" ]; then
+  if _satellite_module_stale redis_ten_eleven "ver-${_REDIS_E_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_ten_eleven "${_REDIS_E_VERSION}"
   fi
   ### The Backdrop store is refreshed only where the bundle exists (or the
   ### support gate is on) so opted-out boxes never fetch it.
   if [ "${_BACKDROP_SUPPORT}" = "YES" ] \
     || [ -e "${_D}/000/modules/o_contrib_backdrop" ]; then
-    if [ ! -e "${_D}/000/modules/redis_backdrop/ver-${_REDIS_B_VERSION}.${_xSrl}.full.info" ]; then
+    if _satellite_module_stale redis_backdrop "ver-${_REDIS_B_VERSION}.${_xSrl}.full.info"; then
       _satellite_shared_module_update redis_backdrop "${_REDIS_B_VERSION}" root
     fi
   fi
-  find ${_D}/000/modules -type d -exec chmod 0755 {} \; &> /dev/null
-  find ${_D}/000/modules -type f -exec chmod 0644 {} \; &> /dev/null
+  _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
 }
 
 #
@@ -3047,52 +3679,52 @@ _satellite_manage_o_contrib() {
     _msg "PROC: _satellite_manage_o_contrib"
     _debug_proc
   fi
+  ### The bundles are root's real directories in ${_CORE}, made and filled
+  ### from inside them: what an earlier release's pass let the account leave
+  ### at a bundle name (a link, a directory of its own) is removed first, so
+  ### the bundle is made again below. _SAT_BUNDLES_GONE names the bundles a
+  ### take-back found gone (_satellite_take_back_shared_dirs).
+  local _out _l _mine="" _gone="${_SAT_BUNDLES_GONE}"
+  _out="$(_acct_in_real_dir "${_CORE}" _satellite_lent_top_here)"
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "A "*) _msg "${_STATUS} A: ALRT ${_l#A }" ;;
+      "B "*) _mine="${_mine:+${_mine} }${_l#B }" ;;
+    esac
+  done <<< "${_out}"
+  if [ -n "${_mine}" ]; then
+    _msg "${_STATUS} A: ALRT shared bundles not root's, fetched again: ${_mine}"
+    _gone="${_gone:+${_gone} }${_mine}"
+  fi
   if [ ! -e "${_CORE}/o_contrib_eleven" ]; then
-    mkdir -p ${_CORE}/o_contrib_eleven
-    cd ${_CORE}/o_contrib_eleven
-    _satellite_download_o_contrib_eleven
-    cd ${_CORE}/o_contrib_eleven
+    _satellite_bundle_new o_contrib_eleven _satellite_download_o_contrib_eleven
   fi
   if [ ! -e "${_CORE}/o_contrib_ten" ]; then
-    mkdir -p ${_CORE}/o_contrib_ten
-    cd ${_CORE}/o_contrib_ten
-    _satellite_download_o_contrib_ten
-    cd ${_CORE}/o_contrib_ten
+    _satellite_bundle_new o_contrib_ten _satellite_download_o_contrib_ten
   fi
   if [ ! -e "${_CORE}/o_contrib_nine" ]; then
-    mkdir -p ${_CORE}/o_contrib_nine
-    cd ${_CORE}/o_contrib_nine
-    _satellite_download_o_contrib_nine
-    cd ${_CORE}/o_contrib_nine
+    _satellite_bundle_new o_contrib_nine _satellite_download_o_contrib_nine
   fi
   if [ ! -e "${_CORE}/o_contrib_eight" ]; then
-    mkdir -p ${_CORE}/o_contrib_eight
-    cd ${_CORE}/o_contrib_eight
-    _satellite_download_o_contrib_eight
-    cd ${_CORE}/o_contrib_eight
+    _satellite_bundle_new o_contrib_eight _satellite_download_o_contrib_eight
   fi
   if [ ! -e "${_CORE}/o_contrib_seven" ]; then
-    mkdir -p ${_CORE}/o_contrib_seven
-    cd ${_CORE}/o_contrib_seven
-    _satellite_download_o_contrib_seven
-    cd ${_CORE}/o_contrib_seven
+    _satellite_bundle_new o_contrib_seven _satellite_download_o_contrib_seven
   fi
   if [ ! -e "${_CORE}/o_contrib" ]; then
-    mkdir -p ${_CORE}/o_contrib
-    cd ${_CORE}/o_contrib
-    _satellite_download_o_contrib_six
-    cd ${_CORE}/o_contrib
+    _satellite_bundle_new o_contrib _satellite_download_o_contrib_six
   fi
   ### Backdrop bundle creation is support-gated; an already existing bundle
-  ### is kept fresh below regardless (opt-out is never a teardown).
-  if [ "${_BACKDROP_SUPPORT}" = "YES" ] \
+  ### is kept fresh below regardless (opt-out is never a teardown), so one
+  ### removed above or gone after a build is made again whatever the gate
+  ### says: other instances' Backdrop platforms link to it.
+  if { [ "${_BACKDROP_SUPPORT}" = "YES" ] \
+    || [[ " ${_gone} " == *" o_contrib_backdrop "* ]]; } \
     && [ ! -e "${_CORE}/o_contrib_backdrop" ]; then
-    mkdir -p ${_CORE}/o_contrib_backdrop
-    cd ${_CORE}/o_contrib_backdrop
-    _satellite_download_o_contrib_backdrop
-    cd ${_CORE}/o_contrib_backdrop
+    _satellite_bundle_new o_contrib_backdrop \
+      _satellite_download_o_contrib_backdrop
   fi
-  mkdir -p ${_D}/000/modules
+  _satellite_mk_modules
   rm -f ${_D}/000/modules/o_contrib_eleven
   ln -sfn ${_CORE}/o_contrib_eleven ${_D}/000/modules/o_contrib_eleven
   rm -f ${_D}/000/modules/o_contrib_ten
@@ -3112,6 +3744,37 @@ _satellite_manage_o_contrib() {
   if [ "${_STATUS}" != "INIT" ]; then
     _satellite_check_fix_o_contrib
   fi
+}
+
+#
+# The missing bundle $1 made in ${_CORE} as a fresh directory (never through a
+# link put at the name) and filled by $2 from inside it, only when this mkdir
+# made it: a name that is taken by then is not root's to fill.
+_satellite_bundle_new() {
+  if ! _acct_in_real_dir "${_CORE}" mkdir -m 0755 -- "./${1}" &> /dev/null; then
+    _msg "${_STATUS} A: ALRT ${_CORE}/${1} not made (the name is taken), not fetched"
+    return 1
+  fi
+  _acct_in_real_dir "${_CORE}/${1}" "${2}"
+}
+
+#
+# The current (pinned) bundle emptied (dot names kept, as rm -rf ./* kept
+# them) and filled again by $1.
+_satellite_bundle_redo_here() {
+  rm -rf -- ./*
+  "${1}"
+}
+
+#
+# cache_backport fetched again in the current (pinned) 000/modules, and its
+# stamp put as a fresh file inside the real directory the archive unpacked
+# to, never written through a name.
+_satellite_cache_backport_here() {
+  rm -rf -- ./cache_backport
+  _get_dev_contrib "cache_backport-6.x-1.0-rc4.tar.gz"
+  _acct_in_real_dir ./cache_backport _satellite_put_stdin_here \
+    "update-${_xSrl}-${_X_VERSION}.info" 0644 "" <<< "update"
 }
 
 _satellite_hot_sauce_check() {
@@ -3225,6 +3888,14 @@ _satellite_add_user_dirs() {
   # one that stopped before its cleanup left it so: it is taken back here,
   # before anything runs as the account (_satellite_conf_root_here).
   _acct_in_real_dir /data/conf _satellite_conf_root_here &> /dev/null
+  # The shared store the same way, whatever _HM_ONLY says, before anything
+  # in this pass uses it: a link an earlier release let the account leave at
+  # the store or 000 is removed; a link of root's at the store is used only
+  # when it leads to /data/disk/all through root's own links and
+  # directories, and /data/disk/all is taken back when it is not root's
+  # alone; any other link of root's there stops the pass
+  # (_satellite_store_dirs_back).
+  _satellite_store_dirs_back
   # On a fresh install the per-child includes are materialised before
   # this user exists, so ownership must be re-asserted here or the su'd
   # children cannot read their 0600 copies
@@ -4585,8 +5256,10 @@ _satellite_run_child_c() {
     fi
     cd ${_ROOT}
     _AegirSetupC="${_bldPth}/aegir/scripts/AegirSetupC.sh.txt"
+    _satellite_lend_shared_dirs
     su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupC} ${_USER}"
     wait
+    _satellite_take_back_shared_dirs
     if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupC-FAIL" ] \
       || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupC-OK" ]; then
       _msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
@@ -4610,8 +5283,10 @@ _satellite_run_child_c() {
         fi
         cd ${_ROOT}
         _AegirSetupC="${_bldPth}/aegir/scripts/AegirSetupC.sh.txt"
+        _satellite_lend_shared_dirs
         su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupC} ${_USER}"
         wait
+        _satellite_take_back_shared_dirs
         if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupC-FAIL" ] \
           || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupC-OK" ]; then
           _msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
@@ -4629,19 +5304,26 @@ _satellite_run_child_c() {
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} A: Cleaning up various dot files, please wait..."
     fi
-    cd ${_CORE}
-    find . -name .svn -exec rm -rf {} \; &> /dev/null
-    find . -name .bzr -exec rm -rf {} \; &> /dev/null
-    find . -name .git -exec rm -rf {} \; &> /dev/null
-    find . -name .DS_Store -type f | xargs rm -f &> /dev/null
-    find . -name "._*" -type f | xargs rm -f &> /dev/null
-    # the core is the account's during the build: the stamp is put as a
+    _acct_in_real_dir "${_CORE}" _satellite_dot_files_here &> /dev/null
+    # the core was the account's during the build: the stamp is put as a
     # fresh empty file (as touch made it) inside the real directory, never
     # created through a link put at the name
     _acct_in_real_dir "${_CORE}" _satellite_put_stdin_here \
       "dot-files-ctrl-${_xSrl}-${_X_VERSION}" 0644 "" < /dev/null
   fi
 }
+
+#
+# VCS metadata and macOS litter removed below the current (pinned) core, each
+# name from the directory find walked (-execdir), never through a path it
+# could be led along.
+_satellite_dot_files_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  find . -mindepth 1 \( -name .svn -o -name .bzr -o -name .git \) -prune \
+    -execdir rm -rf -- {} +
+  find . -mindepth 1 -type f \( -name .DS_Store -o -name '._*' \) \
+    -execdir rm -f -- {} +
+)
 
 _satellite_child_scripts_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -5347,13 +6029,15 @@ _satellite_if_add_update_backend_user_dirs_files_clean() {
   ###---### Remove not used cache module.
   #
   if [ ! -e "${_D}/000/old_cache.out2.txt" ] && [ -e "${_D}/000" ]; then
-    _acct_in_real_dir "${_D}" env PATH=/usr/local/bin:/usr/bin:/bin \
+    _acct_in_real_dir "${_D_REAL:-${_D}}" \
+      env PATH=/usr/local/bin:/usr/bin:/bin \
       find . -mindepth 5 -maxdepth 5 -regextype posix-extended \
       -regex '\./[^/.][^/]*/[^/.][^/]*/profiles/[^/.][^/]*/[^/.][^/]*\.profile' \
       -type f -execdir timeout 60 sed -i \
       -e "s/, 'cache'//g" -e "s/'cache', //g" {} + &> /dev/null
     wait
-    _acct_in_real_dir "${_D}" env PATH=/usr/local/bin:/usr/bin:/bin \
+    _acct_in_real_dir "${_D_REAL:-${_D}}" \
+      env PATH=/usr/local/bin:/usr/bin:/bin \
       find . -mindepth 3 -maxdepth 3 -regextype posix-extended \
       -regex '\./[^/.][^/]*/o_contrib/cache' -execdir rm -rf {} + &> /dev/null
     _acct_in_real_dir "${_D}/000" _satellite_put_stdin_here \
@@ -6125,11 +6809,13 @@ _satellite_make() {
   _acct_in_real_dir "${_ROOT}/static" _satellite_ctrl_dir_here
   _acct_in_real_dir "${_ROOT}/static/control" _satellite_ctrl_make_here
 
+  ### Each stamp is put as a fresh file inside the real 000/, so a link
+  ### left at either name is replaced, never written through.
   if [ -d "/data/all/000" ]; then
     if [ ! -e "/data/all/000/core-v-${_SMALLCORE6_V}.txt" ] \
       || [ ! -e "/data/all/000/core-v-${_SMALLCORE7_V}.txt" ]; then
-      echo "${_SMALLCORE6_V}" > /data/all/000/core-v-${_SMALLCORE6_V}.txt
-      echo "${_SMALLCORE7_V}" > /data/all/000/core-v-${_SMALLCORE7_V}.txt
+      _acct_put_in /data/all/000 "core-v-${_SMALLCORE6_V}.txt" "${_SMALLCORE6_V}"
+      _acct_put_in /data/all/000 "core-v-${_SMALLCORE7_V}.txt" "${_SMALLCORE7_V}"
     fi
   fi
 
@@ -7881,10 +8567,13 @@ _satellite_normalize_scratch_owner() {
 
 #
 # The shared store $1 (/data/all, or /data/disk/all on an older layout) and
-# ${_CORE} handed back to root at the end of the run, with the modes the
-# platform build leaves them in. The run handed them to the account, which
-# could have put a link or a hard link at any name there: every directory is
-# entered as the real directory before anything is done in it, every walk
+# ${_CORE} asserted root's at the end of the run, with the modes the
+# platform build leaves them in. The build had only ${_CORE} (and 000/core)
+# and gave them back when it returned (_satellite_take_back_shared_dirs); an
+# earlier release handed the whole store to the account until this point,
+# and it could have put a link or a hard link at any name there: every
+# directory is entered as the real directory before anything is done in it,
+# every walk
 # goes through _satellite_reown_here or a handle-based mode setter (never a
 # link, nor a hard-linked file), and the daily sweep hands the whole store
 # back to root first, before any mode is set in it. /data/conf, never handed
@@ -7961,8 +8650,19 @@ _satellite_shared_fix_here() (
 # The top of the current (pinned) shared store at the end of the run: each
 # name directly in it 0711 (a directory keeping its set-ID bits), the
 # cpuinfo file 0644, the store and its 000/ 0755, as chmod set them by path,
-# never through a link.
+# never through a link. A cpuinfo that is not a single-link regular file,
+# empty or not (a link or a hard link an account put there under an earlier
+# release), is removed, so the next writer puts a fresh one instead of
+# writing through it; one a writer holds truncated for a moment is kept.
 _satellite_shared_top_here() {
+  if [ -L ./cpuinfo ]; then
+    rm -f -- ./cpuinfo
+  elif [ -e ./cpuinfo ]; then
+    case "$(stat -c '%F:%h' -- ./cpuinfo 2> /dev/null)" in
+      "regular file:1"|"regular empty file:1") ;;
+      *) rm -f -- ./cpuinfo ;;
+    esac
+  fi
   _satellite_chmod_nofollow d 0711 ./*
   _satellite_chmod_nofollow f 0711 ./*
   _satellite_chmod_nofollow f 644 ./cpuinfo
