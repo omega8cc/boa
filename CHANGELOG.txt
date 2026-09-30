@@ -50,6 +50,11 @@
 
 @=> Security
 
+    * A new site's database name now also skips names held by an existing
+      database login, so an account whose name has 16 characters installs
+      and a new site never takes over another login's name; a forced
+      reinstall now also removes the old site's database login.
+
     * Octopus: the shared code store under /data/all stays root-owned through
       an install or upgrade; the platform build may write only to the
       directories it builds, only while it runs, and root takes them back
