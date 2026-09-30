@@ -117,6 +117,12 @@
       every database of the box, with the right to grant them on, which the
       panel never needs.
 
+    * The nightly migration-source sweep now reads the database grant
+      tables and revokes stale read grants as the account's instance
+      user: since the control panel's database user holds its own
+      database only, the sweep failed on its first query and left the
+      grants it exists to remove in place.
+
     * boa cleanup purge now also drops the purged account's own database
       users (the instance user and its control panel user, proven from the
       account's records before anything moves) and moves its migration
@@ -1018,6 +1024,18 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * A Barracuda upgrade of a web head in the remote DB server mode no
+      longer resets aegir_root on the remote DB server. The master's
+      password sync (syncpass fix aegir) now acts on the master's own
+      local DB server, as the upgrade does, instead of dropping and
+      re-creating aegir_root on the DB head with a new random password,
+      which denied every Octopus instance still using the shared
+      aegir_root credential there: Backup and other tasks that use that
+      server failed while sites kept serving. A DB head already reset by
+      an earlier upgrade keeps that state until the web head's aegir_root
+      grant is re-created there once, with root's password, as the remote
+      DB server setup describes. Local DB modes are unchanged.
 
     * xmass prep-target mirrors an account's suspension flag only after the
       account's create succeeded, and a flag it cannot mirror or clear fails
