@@ -221,6 +221,13 @@ and no mode** from it (an archive whose files would come to more than 32 MiB wri
 refused whole), and restores only regular files whose names match the expected
 `<site>.conf` fragments, each put back through the same no-follow handle.
 
+The archive is proved whole before the live fragments are deleted: one that cannot be
+restored leaves the fragments on disk and prints `ALRT:` lines instead (after a failed
+`configtest` they name the control file to fix), as `ip_access` and `user_admin_access` do.
+Cron discards the tools' output, so every `ALRT:` line of the three tools also goes, once a
+day per condition, to `/var/log/boa/nginx.incident.log` as a dated line and, unless
+`_INCIDENT_REPORT` is `OFF`, by mail to `_MY_EMAIL`.
+
 On a passive replication standby whose web tier is held
 (`/root/.standby.cnf` present, no `/root/.standby.serve.cnf`, no promoted latch
 `/var/log/boa/.standby_promoted.pid`) the AI

@@ -50,6 +50,55 @@
 
 @=> Security
 
+    * copydbackup hands an account only a dated backup directory it made
+      itself or the account already owns, and the dumps it copies there,
+      each dump owned by the account through the handle that creates it;
+      a dated directory another user owns is neither copied into nor
+      handed over, and the issue log records it. Anything else in the
+      directory keeps its owner.
+
+    * The Solr config upload publishes and clears only the files owned by
+      the instance's own users in files/solr (oN, oN.ftp, its client
+      sub-accounts and its PHP-FPM users), each read through a handle that
+      checks the owner; anything else stays in place, and the pass log
+      records SOLR-UPLOAD-SKIPPED.
+
+    * A new site's database name now also skips names held by an existing
+      database login, so an account whose name has 16 characters installs
+      and a new site never takes over another login's name; a forced
+      reinstall now also removes the old site's database login.
+
+    * Octopus: the shared code store under /data/all stays root-owned through
+      an install or upgrade; the platform build may write only to the
+      directories it builds, only while it runs, and root takes them back
+      when it returns, restoring anything already there that was renamed or
+      replaced, and leaving no ACL and nothing writable by all users.
+
+    * Octopus, xoct, xcopy, the agents pass, the Solr and nightly cron
+      tools: root's passes over the shared store set modes, make
+      directories and write the cpuinfo, version and nightly markers
+      through link-safe handles. A root-owned /data/all link is used only
+      when it leads to /data/disk/all through directories only root
+      controls; /data/disk/all is taken back when an earlier release left
+      it owned by an account or open to all. A link that leads anywhere
+      else stops the Octopus pass, which says how to repair it by who put
+      the store there, known from the admin's own records, since earlier
+      releases re-owned what such a link led to: a store an admin moved
+      elsewhere is moved to /data/disk/all and the link pointed there,
+      never just re-pointed or removed, since sites on older shared code
+      would lose their trees; anything else may be an account's work and
+      is never moved into the store, which is restored from a backup
+      instead. When /data/disk/all is itself a link or not a directory,
+      the pass says to remove it first. The other tools write nothing
+      there and say why. Anything else of root's at a store directory
+      stops the pass too, with the same two repairs; a link an account
+      left there is removed on every pass, never followed. A store
+      directory an earlier release handed over gets its owner, mode and
+      ACLs back; a shared module or the D6->D7 kit that holds a link or
+      anything not root's alone is fetched again, such a kit removed
+      before the fetch, so a failed fetch never leaves it, and a current
+      shared core found behind a link is removed and built again.
+
     * Account purge: what the purge leaves goes to root before it decides
       which of the account's groups to keep, so a group kept only for the
       account's own leftovers is removed. An entry a living account keeps
@@ -1093,6 +1142,32 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * The shell-accounts worker reloads Nginx only when a pass changed an
+      account's FPM includes, and once per pass. It used to reload after
+      every pass for every account with custom PHP settings, every three
+      minutes, and each reload reset the HTTP/3 transfers in flight, so
+      an upload or a form post over HTTP/3 could fail on a busy box.
+
+    * ai_policy keeps a site's AI policy fragments on disk when its
+      last-good archive cannot be restored after a failed configtest or
+      reload, and prints ALRT lines instead (after a failed configtest
+      they name the control file to fix), as ip_access and
+      user_admin_access do; it used to remove them and restore nothing.
+      A restore that fails after the fragments were removed now alerts
+      too.
+
+    * ai_policy, ip_access and user_admin_access now send each ALRT line
+      on, once a day per condition: a dated line in
+      /var/log/boa/nginx.incident.log and, unless _INCIDENT_REPORT is
+      OFF, a mail to _MY_EMAIL. Cron discards their output, so these
+      lines used to reach nobody.
+
+    * The ltd worker (manage_ltd_users) reads _INCIDENT_REPORT and
+      _MY_EMAIL from /root/.barracuda.cnf as the shell does: the last
+      definition, without a trailing comment. With the file in the
+      documented template's layout, its alerts were mailed despite
+      _INCIDENT_REPORT=OFF, to an address that could not be delivered.
 
     * A files or private directory converted onto a store on another
       filesystem (migratefs) no longer loses what the site wrote while it

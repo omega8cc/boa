@@ -597,6 +597,55 @@ _ghost_seen_reset() {
 
 ###-------------LOAD-----------------###
 
+# $1 as the directory root works in: itself when it is a real directory;
+# when it is a link, the real directory it leads to, only when every link
+# on the way is root's and every directory on the way, the last one
+# included, is root's and writable by no one else, so no one but root can
+# change where it leads or what is in it; nothing otherwise (exit 1). The
+# shared store /data/all may be such a link. With a second argument "last"
+# the last directory may be anyone's and open to others (the Octopus store
+# check takes /data/disk/all back); none is given here.
+_ROOT_REAL_PATH_PL='my ($p, $k) = @ARGV; if (!-l $p) { print $p if -d _; exit(-d _ ? 0 : 1); } my ($c, $n, @s) = ("", 0, stat("/")); exit 1 unless $p =~ m{^/} && @s && $s[4] == 0 && !($s[2] & 022); my @w = grep { length && $_ ne "." } split(m{/}, $p); while (@w) { my $e = shift(@w); if ($e eq "..") { $c =~ s{/[^/]*$}{}; next; } my @l = lstat("$c/$e") or exit 1; if (-l _) { exit 1 if $l[4] != 0 || ++$n > 40; my $t = readlink("$c/$e"); exit 1 unless defined $t; $c = "" if $t =~ m{^/}; unshift(@w, grep { length && $_ ne "." } split(m{/}, $t)); next; } exit 1 unless -d _ && (($l[4] == 0 && !($l[2] & 022)) || (defined $k && $k eq "last" && !@w)); $c .= "/$e"; } print($c eq "" ? "/" : $c); exit 0'
+# $1, the real directory a link of root's at /data/all leads to
+# (_ROOT_REAL_PATH_PL's answer), is the one the store may be kept in
+# behind that link (exit 0) only when it is /data/disk/all, the directory
+# named all directly in the real /data/disk, compared by device and inode
+# with that name not followed, so a link put at it does not count; any
+# other directory, or none, exit 1. Besides a real /data/all it is the
+# one layout of the store BOA knows, and the one other store directory
+# every PHP-FPM pool's open_basedir names. One text wherever it is defined
+# (satellite.sh.inc, BOA.sh.txt, xoct, xcopy, manage_solr_config.sh,
+# night.inc.sh).
+_SAT_STORE_TARGET_PL='my @t = lstat(defined $ARGV[0] ? $ARGV[0] : ""); my @a = lstat("/data/disk/all"); exit((@t && @a && -d _ && $t[0] == $a[0] && $t[1] == $a[1]) ? 0 : 1)'
+# Why root leaves the shared store alone when /data/all is a link the two
+# checks above refuse, for a caller's one line: it leads to /data/disk/all,
+# but not through root's own links and directories only (an earlier
+# release's leftover the next Octopus upgrade takes back, or a link or
+# directory on the way that upgrade names); /data/disk/all is not a real
+# directory (a link, which no store is used behind, or a file); it leads
+# to nothing that is there; or it leads anywhere else. The Octopus upgrade
+# stops on each of the last three and says how to repair it.
+_store_link_why() {
+  local _t _e _w
+  _t="$(readlink -- /data/all)"
+  _e="$(readlink -e -- /data/all)"
+  if perl -e "${_SAT_STORE_TARGET_PL}" -- "${_e}" &> /dev/null; then
+    echo "/data/all leads to /data/disk/all, but /data/disk/all, or a link or directory on the way to it, is not root's alone; the next Octopus upgrade takes /data/disk/all back, or stops and says what to repair"
+  elif [ -L /data/disk/all ] \
+    || { [ -e /data/disk/all ] && [ ! -d /data/disk/all ]; }; then
+    if [ -L /data/disk/all ]; then
+      _w="itself a link, to $(readlink -- /data/disk/all)"
+    else
+      _w="$(stat -c 'a %F of uid %u' -- /data/disk/all 2> /dev/null), not a directory"
+    fi
+    echo "/data/all is a link to ${_t}, and /data/disk/all is ${_w}, while a link at /data/all is used only when it leads to the real directory /data/disk/all; the Octopus upgrade stops on it and says how to repair it"
+  elif [ -z "${_e}" ]; then
+    echo "/data/all is a link to ${_t}, which leads to nothing that is there (a name on the way is missing, e.g. an unmounted disk, or the links loop); the Octopus upgrade stops on it and says how to repair it"
+  else
+    echo "/data/all is a link to ${_t}, which does not lead to /data/disk/all; the Octopus upgrade stops on it and says how to repair it"
+  fi
+}
+
 _count_cpu() {
   _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -616,8 +665,25 @@ _count_cpu() {
   if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
-  echo ${_CPU_NR} > /data/all/cpuinfo
-  chmod 644 /data/all/cpuinfo &> /dev/null
+  # cpuinfo in the store as root writes it (_acct_put_here: a fresh file
+  # renamed over the name, 0644, so a link or a hard link left at the name
+  # is replaced, never written through): in /data/all when it is a real
+  # directory, or in /data/disk/all when a link of root's at /data/all
+  # leads there through root's own links and directories only
+  # (_ROOT_REAL_PATH_PL, _SAT_STORE_TARGET_PL). Any other link is left
+  # alone, never followed, and said once a run with why (_store_link_why).
+  local _st=/data/all
+  if [ -L /data/all ]; then
+    _st="$(perl -e "${_ROOT_REAL_PATH_PL}" -- /data/all 2> /dev/null)"
+    if ! perl -e "${_SAT_STORE_TARGET_PL}" -- "${_st}" &> /dev/null; then
+      if [ -z "${_CPUINFO_SKIP_SAID:-}" ]; then
+        echo "ALRT: cpuinfo not written: $(_store_link_why)"
+        _CPUINFO_SKIP_SAID=YES
+      fi
+      return 0
+    fi
+  fi
+  _acct_in_real_dir "${_st}" _acct_put_here cpuinfo "${_CPU_NR}"
 }
 
 _get_load() {
