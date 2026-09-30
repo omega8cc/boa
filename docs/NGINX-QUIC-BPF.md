@@ -10,7 +10,7 @@ new worker that holds no state for it, and the transfer is reset within
 seconds of the reload.
 
 A BOA system reloads Nginx routinely — after Ægir tasks and whenever a ban
-list changes — often every few minutes. A page load fits between two reloads
+list changes — sometimes several times an hour. A page load fits between two reloads
 and never notices; a long transfer over HTTP/3 (a large download, a media
 stream) does not.
 

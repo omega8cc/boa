@@ -1143,6 +1143,12 @@
 
 @=> Important Fixes
 
+    * The shell-accounts worker reloads Nginx only when a pass changed an
+      account's FPM includes, and once per pass. It used to reload after
+      every pass for every account with custom PHP settings, every three
+      minutes, and each reload reset the HTTP/3 transfers in flight, so
+      an upload or a form post over HTTP/3 could fail on a busy box.
+
     * ai_policy keeps a site's AI policy fragments on disk when its
       last-good archive cannot be restored after a failed configtest or
       reload, and prints ALRT lines instead (after a failed configtest

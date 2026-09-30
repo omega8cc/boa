@@ -4344,6 +4344,16 @@ _satellite_create_web_user() {
   fi
 }
 #
+# Fingerprint of the account's nginx FPM includes: names, sizes and mtimes,
+# listed inside the real directory (never through a planted link). A pass
+# that leaves it unchanged has given nginx nothing to reload for.
+_ltd_ngx_fpm_fp() {
+  local _d="${_dscUsr}/config/server_master/nginx/post.d"
+  [ -d "${_d}" ] || { echo none; return 0; }
+  _ltd_in_real_dir "${_d}" find . -maxdepth 1 -type f -name '*.inc' \
+    -printf '%f %s %T@\n' 2> /dev/null | sort | md5sum | cut -d' ' -f1
+}
+#
 # Add site specific socket config include.
 _site_socket_inc_gen() {
   _unlAeg="${_dscUsr}/static/control/unlock-aegir-php.info"
@@ -4537,6 +4547,7 @@ _site_socket_inc_gen() {
       ### turns the next unrelated restart into a box-wide outage
       if nginx -t &> /dev/null; then
         service nginx reload &> /dev/null
+        _ltdNgxReloaded=YES
       else
         _ltd_notice "nginx-configtest-${_USER}" \
           "nginx -t FAILED after the per-site FPM includes of ${_USER} were rebuilt -- NOT reloaded" \
@@ -4687,6 +4698,7 @@ _switch_php() {
           _ltd_rm_in "${_dscUsr}/config/server_master/nginx/post.d" 'fpm_include_*'
           _ltd_ctrl_rm '.multi-fpm*.pid'
           service nginx reload &> /dev/null
+          _ltdNgxReloaded=YES
         fi
       fi
 
@@ -5548,9 +5560,9 @@ _manage_user() {
         fi
       fi
       _nrCheck=
+      _ltdNgxReloaded=
+      _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
       _switch_php
-      ### reload nginx
-      service nginx reload &> /dev/null
       if [ -z ${_nrCheck} ]; then
         if [ -z ${_PHP_SV} ]; then
           _PHP_SV=${_PHP_FPM_VERSION//[^0-9]/}
@@ -5574,6 +5586,19 @@ _manage_user() {
         fi
       fi
       _site_socket_inc_gen
+      ### reload nginx once per pass, and only when this pass changed the
+      ### account's FPM includes: nginx reads them on reload alone, and a
+      ### reload on every pass reset every HTTP/3 transfer in flight
+      if [ "${_ltdNgxReloaded}" != "YES" ] \
+        && [ "$(_ltd_ngx_fpm_fp)" != "${_ltdNgxFpBefore}" ]; then
+        if nginx -t &> /dev/null; then
+          service nginx reload &> /dev/null
+        else
+          _ltd_notice "nginx-configtest-${_USER}" \
+            "nginx -t FAILED after the FPM includes of ${_USER} changed -- NOT reloaded" \
+            "$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
+        fi
+      fi
       if [ -e "${_pthParentUsr}/clients" ] && [ ! -z ${_USER} ]; then
         echo Managing Users for ${_pthParentUsr} Instance
         # clients/ is oN's: a client name there can be a link to anywhere,
