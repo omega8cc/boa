@@ -50,6 +50,14 @@
 
 @=> Security
 
+    * autosymlink acts only on what it checked: the account's store stays
+      the very directory it resolved for the whole run, and a conversion
+      sets aside and removes only the site's own files or private
+      directory it checked or copied, emptied as the site's account, so
+      root never deletes what that account could not. A copy into a
+      per-site store directory that is not root's, or that its group or
+      others can write, is refused.
+
     * Account purge: what an account leaves in the trees the purge keeps
       (its gems and npm trees, the attached store, the PHP cache, the
       purge's own park) no longer keeps a user number the next account
@@ -1044,6 +1052,28 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * A files or private directory converted onto a store on another
+      filesystem (migratefs) no longer loses what the site wrote while it
+      was being copied: that is copied in after the link is made, and the
+      old directory is kept and reported when that copy fails, when it
+      still holds a file that differs from the store's copy, or when that
+      could not be checked.
+
+    * A files or private directory holding only regenerated residue is
+      checked again before it is removed after its re-link, so a file the
+      site wrote into it meanwhile is kept and reported.
+
+    * A directory an interrupted conversion left beside the site is
+      reported on every run until it is removed by hand, with the store
+      directory to copy it into first: a cross-filesystem one may hold
+      files the store lacks, and a residue one a file written after its
+      check.
+
+    * A staging directory left by a killed un-share copy is removed by the
+      next copy into that store once root's marker proves the tool made
+      it; a read-only directory in it no longer blocks the clean-up. A new
+      account's first run no longer logs an error before its static/ exists.
 
     * A Barracuda upgrade of a web head in the remote DB server mode no
       longer resets aegir_root on the remote DB server. The master's
