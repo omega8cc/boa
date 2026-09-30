@@ -177,7 +177,8 @@ for my $f (@ARGV) {
 _xtra_app_modes() {
   ( PATH=/usr/local/bin:/usr/bin:/bin
     cd -P -- "${1}" 2> /dev/null && [ "$(pwd -P)" = "${1}" ] || exit 1
-    find . -execdir perl -e "${_XTRA_FCHMOD_PL}" {} + ) &> /dev/null
+    find . \( -type d -o -type f \) \
+      -execdir perl -e "${_XTRA_FCHMOD_PL}" {} + ) &> /dev/null
 }
 
 # True when the Adminer access/ tree $1 is a real directory holding nothing
@@ -252,7 +253,8 @@ _xtra_adminer_top_renew() {
 _xtra_adminer_app_reown_here() {
   env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 \
     \( -path ./access -o -path './.access.retired.*' \) -prune \
-    -o -execdir perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" {} + 2> /dev/null
+    -o \( -type d -o -type f \) \
+    -execdir perl -e "${_ACCT_REOWN_PL}" -- "${1}" "${2}" {} + 2> /dev/null
 }
 
 _if_install_chive() {

@@ -10,6 +10,81 @@ _if_hosted_sys() {
   fi
 }
 
+#
+# Client mail on a test box. While /data/conf/client_mail_hold.txt exists,
+# mail BOA would send an account's client goes to the one address it holds
+# instead, its subject noting who would have been mailed; a file that anyone
+# but root can write, or that does not hold exactly one plain address, stops
+# that mail (fail closed) with one line saying why. Read through one handle
+# opened without following a link or blocking on a FIFO, and only while it
+# is a regular file of root's, not writable by group or others, with a
+# single link, 1 KiB at most (_MAIL_HOLD_PL: status 2 gone, 3 not root's or
+# writable by others, 4 any other shape, 5 not one plain address). $1 = the
+# client recipients (words). Sets _MAIL_HOLD_RCPT, the recipients to use, and
+# _MAIL_HOLD_SFX, the note for the subject; status 1: send none. Without the
+# file they are $1 and empty. One copy in each tool that mails a client.
+# shellcheck disable=SC2016
+_MAIL_HOLD_PL='use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($!{ENOENT} ? 2 : 4); my @s = stat($h); exit 4 unless @s; exit 3 unless $s[4] == 0 && !($s[2] & 022); exit 4 unless -f _ && $s[3] == 1 && $s[7] <= 1024; my ($d, $r) = (""); while ($r = sysread($h, my $c, 1025)) { $d .= $c; exit 4 if length($d) > 1024; } exit 4 unless defined $r; $d =~ /\A\s*([A-Za-z0-9_][A-Za-z0-9._%+=\x27-]*\@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)\s*\z/ or exit 5; print $1; exit 0'
+_client_mail_hold() {
+  local _f="/data/conf/client_mail_hold.txt" _a _rc _to _q="'"
+  _MAIL_HOLD_RCPT="${1}"
+  _MAIL_HOLD_SFX=""
+  [ -e "${_f}" ] || [ -L "${_f}" ] || return 0
+  [ -n "${1//[[:space:]]/}" ] || return 0
+  _to="$(printf '%s' "${1//\\\@/@}" | tr -s '[:space:]' ' ' \
+    | LC_ALL=C tr -cd "A-Za-z0-9._%+=@${_q} -" | cut -c1-200)"
+  _to="${_to# }"
+  _to="${_to% }"
+  _to="${_to:-?}"
+  _a="$(perl -e "${_MAIL_HOLD_PL}" "${_f}" 2> /dev/null)"
+  _rc=$?
+  case "${_rc}" in
+    0)
+      _MAIL_HOLD_RCPT="${_a}"
+      _MAIL_HOLD_SFX=" [held for ${_to}]"
+      return 0
+      ;;
+    2)
+      return 0
+      ;;
+    3)
+      echo "ALRT: ${_f} is not root's, or group or others can write it, and cannot be trusted: client mail for ${_to} not sent"
+      ;;
+    5)
+      echo "ALRT: ${_f} does not hold exactly one plain address: client mail for ${_to} not sent"
+      ;;
+    *)
+      echo "ALRT: ${_f} is not a regular file of one link, 1 KiB at most, that this run can read: client mail for ${_to} not sent"
+      ;;
+  esac
+  _MAIL_HOLD_RCPT=""
+  return 1
+}
+#
+# The operator copy (Bcc) of a client mail _client_mail_hold let through.
+# $1 = the copy address, $2 = the client recipients given to the hold. Sets
+# _MAIL_HOLD_COPY to $1, or to nothing while the hold is on and a word of $1
+# names one of those client addresses: an instance's admin address travels
+# with the account and can be its client's own. Words split at blanks and
+# commas, compared without backslashes and case.
+_client_mail_copy() {
+  local _c _w IFS=$' \t\n'
+  local -a _ws
+  _MAIL_HOLD_COPY="${1}"
+  [ -n "${_MAIL_HOLD_SFX}" ] || return 0
+  _c=" $(printf '%s' "${2//\\/}" | tr -s ',[:space:]' ' ' \
+    | LC_ALL=C tr 'A-Z' 'a-z') "
+  read -r -a _ws <<< "$(printf '%s' "${1//\\/}" | tr -s ',[:space:]' ' ' \
+    | LC_ALL=C tr 'A-Z' 'a-z')"
+  for _w in "${_ws[@]}"; do
+    if [[ "${_c}" == *" ${_w} "* ]]; then
+      _MAIL_HOLD_COPY=""
+      return 0
+    fi
+  done
+  return 0
+}
+
 ###
 ### Noticeable messages
 ###
@@ -466,6 +541,17 @@ _acct_read_all() {
     _acct_read_in "${_u}/${1}" "${2}"
     echo
   done
+}
+# $2 in the real directory $1, read as _acct_read_in reads it, whole: every
+# byte kept (a NUL as a space). Non-zero when nothing was read or the read
+# stopped at its 1 MiB bound, so a file cut short never passes for whole.
+_acct_read_whole_in() {
+  local _s _n
+  _s=$(_acct_read_in "${1}" "${2}" | tr '\000' ' '; echo .)
+  _s="${_s%.}"
+  _n=$(printf '%s' "${_s}" | wc -c)
+  [ "${_n}" -gt 0 ] && [ "${_n}" -lt 1048576 ] || return 1
+  printf '%s\n' "${_s}"
 }
 
 _sanitize_string() {

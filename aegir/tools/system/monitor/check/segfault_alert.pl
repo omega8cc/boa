@@ -11,6 +11,7 @@ $ENV{'PATH'} = '/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin
 
 use warnings;
 use File::Spec;
+use Fcntl;
 
 if (!-e "/data/u/") {
   exit;
@@ -194,6 +195,71 @@ sub _alias_site_path
 }
 
 #############################################################################
+# Client mail on a test box, as the shell tools' _client_mail_hold: while
+# /data/conf/client_mail_hold.txt exists, the client address gets the one
+# address it holds instead, the subject noting who would have been mailed;
+# a file that anyone but root can write, or that does not hold exactly one
+# plain address, stops the client mail (fail closed) with one line saying
+# why. Read through one handle opened without following a link or blocking
+# on a FIFO, and only while it is a regular file of root's, not writable by
+# group or others, with a single link, 1 KiB at most.
+# Returns the recipients to use and the note for the subject; an empty
+# recipient means send none. Without the file: the recipient given and no
+# note, as before.
+sub _client_mail_hold
+{
+  my ($to) = @_;
+  my $f = "/data/conf/client_mail_hold.txt";
+  return ($to, "") unless (-e $f || -l $f);
+  return ($to, "") unless (defined($to) && $to =~ /\S/);
+  my $shown = $to;
+  $shown =~ s/\\+\@/\@/g;
+  $shown =~ s/\s+/ /g;
+  $shown =~ s/[^A-Za-z0-9._%+=\@\x27 -]//g;
+  $shown = substr($shown, 0, 200);
+  $shown =~ s/^ +| +$//g;
+  $shown = "?" if ($shown eq "");
+  my ($h, $d, $r, $why);
+  if (!sysopen($h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK)) {
+    return ($to, "") if ($!{ENOENT});
+    $why = "is not a regular file of one link, 1 KiB at most, that this run can read";
+  }
+  else {
+    my @s = stat($h);
+    if (!@s) {
+      $why = "is not a regular file of one link, 1 KiB at most, that this run can read";
+    }
+    elsif ($s[4] != 0 || ($s[2] & 022)) {
+      $why = "is not root's, or group or others can write it, and cannot be trusted";
+    }
+    elsif (!(-f _ && $s[3] == 1 && $s[7] <= 1024)) {
+      $why = "is not a regular file of one link, 1 KiB at most, that this run can read";
+    }
+    else {
+      $d = "";
+      while ($r = sysread($h, my $c, 1025)) {
+        $d .= $c;
+        last if (length($d) > 1024);
+      }
+      if (!defined($r) || length($d) > 1024) {
+        $why = "is not a regular file of one link, 1 KiB at most, that this run can read";
+      }
+      elsif ($d =~ /\A\s*([A-Za-z0-9_][A-Za-z0-9._%+=\x27-]*\@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)\s*\z/) {
+        my $addr = $1;
+        close($h);
+        return ($addr, " [held for $shown]");
+      }
+      else {
+        $why = "does not hold exactly one plain address";
+      }
+    }
+    close($h);
+  }
+  print "ALRT: $f $why: client mail for $shown not sent\n";
+  return ("", "");
+}
+
+#############################################################################
 sub _send_alert
 {
   my $email;
@@ -223,7 +289,15 @@ sub _send_alert
   $t=`date +%y%m%d-%H%M`;
   chomp($t);
   if ($email && $cmail && $mailx_test =~ /(built for Linux)/i) {
-    `cat $this_path | s-nail -b $email -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
+    my ($hold_to, $hold_sfx) = _client_mail_hold($cmail);
+    if ($hold_to ne "" && $hold_sfx eq "") {
+      `cat $this_path | s-nail -b $email -s "PHP Segfault Alert for [$dx] at [$s] on $t" $cmail`;
+    }
+    elsif ($hold_to ne "") {
+      # the held address in single quotes: a plain address may carry one
+      (my $q = $hold_to) =~ s/\x27/\x27\\\x27\x27/g;
+      `cat $this_path | s-nail -b $email -s "PHP Segfault Alert for [$dx] at [$s] on $t$hold_sfx" \x27$q\x27`;
+    }
   }
   `cat /var/xdrago/monitor/log/$this_filename.log >> /var/xdrago/monitor/log/$this_filename.archive.log`;
   `rm -f /var/xdrago/monitor/log/$this_filename.log`;

@@ -164,7 +164,7 @@ _fix_permissions_tree() {
   # Add group read/write to all files and dirs; add execute only to dirs and already executable files.
   _run_cmd "chmod -R g+rwX on ${_TARGET_DIR}" \
     _in_pinned_dir "${_TARGET_DIR}" \
-    find . -exec perl -e "${_FIXREPO_FCHMOD_PL}" X {} +
+    find . \( -type d -o -type f \) -exec perl -e "${_FIXREPO_FCHMOD_PL}" X {} +
 
   # Ensure all directories are group-traversable, writable, and setgid so new files inherit group.
   _run_cmd "setgid on directories in ${_TARGET_DIR}" \

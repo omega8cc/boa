@@ -594,7 +594,8 @@ fi
 if [ ! -L "${drupal_root}/sites/all/libraries/tcpdf" ] \
   && [ ! -L "${drupal_root}/sites/all/libraries/tcpdf/cache" ]; then
   _in_pinned_dir "${drupal_root}/sites/all/libraries/tcpdf/cache" \
-    find . -exec perl -e "${_FCHMOD_PL}" a 775 {} + &> /dev/null
+    find . \( -type d -o -type f \) \
+      -exec perl -e "${_FCHMOD_PL}" a 775 {} + &> /dev/null
   _in_pinned_dir "${drupal_root}/sites/all/libraries/tcpdf/cache" \
     _links_left_note .
 fi

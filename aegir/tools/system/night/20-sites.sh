@@ -448,7 +448,7 @@ _reown_tree_here() {
   read -r _u _g <<< "${_ids}"
   shift
   [ "$#" -gt 0 ] || return 0
-  env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \
+  env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
     -execdir perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" {} + &> /dev/null
   return 0
 }
@@ -475,7 +475,7 @@ _handover_tree_here() {
   if [[ "${_g}" != "-1" ]]; then
     _off=(\( ! -uid "${_u}" -o ! -gid "${_g}" \))
   fi
-  env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \
+  env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
     \( -type f -links +1 "${_off[@]}" -fprint0 "${_tmp}" -o -true \) \
     -execdir perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" {} + &> /dev/null
   _n=$(tr -cd '\0' < "${_tmp}" | wc -c)

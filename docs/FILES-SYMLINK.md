@@ -109,6 +109,10 @@ autosymlink --site example.com --account o1 --archive-store --apply
 - `--apply` performs the change; without it the narrow run is a read-only DRY for
   that one site. The narrow apply runs its own per-site clean dry-run first and
   only proceeds if it is clean.
+- A new account's install runs the narrow apply before the account's `static/`
+  exists. The site's `files`/`private` then stay real directories, with an
+  `[INFO]` line, until a later run (the install's own) links them. A `static/`
+  that exists but is not a real directory is still an `[ERROR]`.
 - `--force-unshare` breaks an inherited cross-site/cross-account link even if a
   file-sharing control file exists — used by cloning so a fresh clone (which never
   opted into sharing) always gets its own copy.
@@ -118,11 +122,26 @@ autosymlink --site example.com --account o1 --archive-store --apply
   holds only what that account can read, and never keeps the other store's owner, its
   day stamps or a setuid bit.
 
+  The copy is made only into a per-site store directory (`static/files/<url>`)
+  that root owns and that neither its group nor others can write; any other is
+  refused with an `Un-share copy refused` line, nothing is copied, and the site
+  keeps its current link (it goes on sharing the other store). A site whose
+  name starts with `module` can meet this: the Octopus install and upgrade set 775
+  on every `module*` directory two levels below `static/`, its per-site store
+  directory included.
+
   `static/files` is resolved once and accepted only when it is the account's own store
   or its relocated store on attached storage (the `migratefs` layout); any other link
-  there is refused. A link found at the store target name (`files`/`private`) is
-  archived aside, never written through; one planted after that step makes the copy
-  fail and leaves the site's existing symlink unchanged.
+  there is refused. The account's own `static/files` must be root's (this tool makes
+  it); a relocated one may also be the account's (`migratefs` gives a fresh store the
+  owner of `static/`).
+
+  The directory found is remembered by its identity (device and inode), and every
+  later step checks that it acts inside that very directory, so a directory put at
+  `static/files` meanwhile — a link, or another real one — is refused, never
+  written into. A link found at the store target name (`files`/`private`) is
+  archived aside, never written through; one planted after that step makes the
+  copy fail and leaves the site's existing symlink unchanged.
 - `--archive-store` sets the site's whole store aside into
   `static/files/.archived/<stamp>/<url>/`, never deleting it — the Delete task's
   path, and a rename's for the old-name store.
@@ -615,10 +634,45 @@ adjust this:
 Both local and attached/extra filesystems are supported. Before moving or copying
 data the tools compare the source size against the target's free space (`du`/`df`,
 filesystem-aware for same-FS vs cross-FS), and **skip with a warning** rather than
-fail when space is insufficient. A same-filesystem conversion is a rename (no
-extra space needed); a cross-filesystem one (a store relocated onto attached
-storage) copies **as the site's own account** — root never copies the in-site
-tree by path — then repoints, then removes the source.
+fail when space is insufficient.
+
+A same-filesystem conversion is a rename (no extra space needed). A
+cross-filesystem one (a store relocated onto attached storage) copies **as the
+site's own account** — root never copies the in-site tree by path — then sets the
+source aside, repoints, copies in what was written into the source during the
+copy, and removes the source as the account. The copy and the removal act on the
+very directory the tool entered and recorded first; a directory put at the
+site's `files`/`private` name meanwhile is never set aside or removed.
+
+A cross-filesystem conversion killed after it set the site's directory aside
+leaves that aside (`.files.autosymlink-moved.*` or `.private.autosymlink-moved.*`
+in the site directory). So does a conversion whose catch-up copy failed or found
+a file the store's copy differs from, or whose aside holds an entry the account
+cannot remove. Every run reports it with a `[WARN]` until it is removed by hand.
+
+Such an aside may hold files the store lacks: what the site wrote during the
+copy, if the conversion was killed after the aside rename and before the
+catch-up. Copy it into the store as the site's account (`rsync -a --update`),
+then run the same without `--update` as a dry run (`rsync -ain`), and remove the
+aside only when that lists no file.
+
+A residue aside (`files.autosymlink-residue.*` or `private.autosymlink-residue.*`)
+holds what the site regenerates by itself (the residue the conversion checked
+for), plus any file written into the site directory after that check. Look
+through it, copy any such written file into the store as the site's account, and
+then remove the aside; a dry run against the store lists the regenerated files
+too, so it never comes back empty here.
+
+An un-share copy killed outright leaves a root-owned `.unshare.*` staging
+directory in the site's store. The next un-share into that store removes it when
+root's own marker in it proves this tool made it. A failed un-share copy is
+cleaned up the same way.
+
+What the copy left in a staging directory is removed as the site's account
+(which first makes its own read-only directories writable), so root never
+deletes anything that account could not. Whatever is left, and any other
+directory at such a name, is reported with a `[WARN]` and left for a check by
+hand.
 
 Stale-store **archiving** on name reuse is deliberately placed *under*
 `static/files` (`static/files/.archived/`) so it always shares the store's
@@ -791,6 +845,42 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   data and the missing in-site link is recreated (self-heal). The move is
   rc-checked, so a symlink is never created over a failed/partial move, and the
   source directory survives any move failure.
+- **Root acts only in the directories it resolved.** `static/` and the site
+  directory belong to the account, so any name on a path through them can be
+  swapped at any time. The account's `static/files` is resolved once per run by
+  identity, and every mkdir, move and copy in it checks that it acts inside that
+  very directory: a link or another directory put on its path meanwhile is
+  refused. In-site links and renames are made by name from inside the site
+  directory entered for real, so a link put on the site's path is never followed.
+- **Root removes only the directory it checked or copied.** A conversion enters
+  the site's `files`/`private` directory for real and records its identity
+  (device and inode) before anything else. The residue-only check, and the
+  cross-filesystem copy made as the account, run inside that very directory. It
+  is renamed aside only while the name still holds that directory, so one put
+  there since is never set aside or removed. The aside is removed only while it
+  is still that directory.
+- **A residue-only aside is checked again before it is removed.** One the site
+  wrote into after the first check is kept and reported with a `[WARN]`.
+- **An aside is emptied as the account.** Its contents are removed as the site's
+  account, which first makes its own read-only directories writable; root then
+  removes the emptied directory. So root never deletes anything the account
+  could not delete itself. What the account cannot remove, and any other
+  directory at the aside name, is left and reported with a `[WARN]`.
+- **Writes made during a cross-filesystem copy are carried over.** After the
+  aside rename and the link, a catch-up copy (`rsync -a --update`, as the
+  account) brings into the store what was written into the site's directory
+  while it was being copied. A file changed through the new link since is newer
+  in the store and is kept.
+- **A cross-filesystem aside is removed only when the store matches it.** After
+  the catch-up, a dry pass without `--update` compares the aside with the store. If it lists any file (one replaced during the copy by an
+  older-dated version, say), or the catch-up fails, the aside is kept and
+  reported with a `[WARN]`.
+  Killed after the aside rename, before the catch-up: late writes stay in the
+  aside. A write that reaches the aside after the catch-up (through a file held
+  open since before the rename) is not carried over.
+- **An un-share staging directory is removed only when root's own marker proves
+  this tool made it.** What the copy left in it is removed as the site's account,
+  in the same way.
 - **Clean dry-run before any change.** Both the global batch and the narrow apply
   run a dry pass first and only apply when it is clean.
 - **Idempotent.** A site that is already correctly symlinked is a no-op on every

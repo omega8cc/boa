@@ -119,18 +119,24 @@ _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my 
 # nobody (-nouser, -nogroup). A name swapped after find listed it, for
 # another file of a living owner or group, is left alone.
 _ACCT_REOWN_FROM_PL='use Fcntl; my ($u, $g, $fu, $fg, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)) && ($fu eq "-1" || ($fu eq "x" ? !defined(getpwuid($s[4])) : $s[4] == $fu)) && ($fg eq "-1" || ($fg eq "x" ? !defined(getgrgid($s[5])) : $s[5] == $fg)); close($h); } exit 0'
-# What _ACCT_REOWN_FROM_PL leaves alone, for the purge's freed uids: each
-# name given that is not a directory (a regular file with more than one
-# link, a link, a FIFO, a socket, a device) whose uid names nobody goes to
-# root:root, with the set-ID bits and group and other write cleared, and is
-# never removed. The owner is read and changed through one handle on the
-# entry itself, so a name swapped in after find listed it is never touched:
-# a regular file opened without following a link or blocking, anything else
-# through a path-only handle (O_PATH, not in Perl's Fcntl: 010000000 on
-# x86_64 and aarch64, elsewhere such an entry is left alone), which opens
-# nothing (no FIFO end, no device) and is changed through its /proc/self/fd
-# name, which never follows a link. A link's mode means nothing: kept.
-_ACCT_ORPHAN_ROOT_PL='use Fcntl qw(:DEFAULT :mode); use POSIX (); my $p = (POSIX::uname())[4] =~ /^(x86_64|aarch64)$/ ? 010000000 : 0; for my $f (@ARGV) { lstat($f) or next; next if -d _; my $h; if (-f _) { sysopen($h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; } else { $p && sysopen($h, $f, $p|O_NOFOLLOW) or next; } my @s = stat($h); if (@s && !S_ISDIR($s[2]) && !defined(getpwuid($s[4]))) { my $n = "/proc/self/fd/" . fileno($h); if (S_ISREG($s[2])) { chown(0, 0, $h) and chmod($s[2] & 01755, $h); } else { chown(0, 0, $n) and (S_ISLNK($s[2]) or chmod($s[2] & 01755, $n)); } } close($h); } exit 0'
+# What _ACCT_REOWN_FROM_PL leaves alone, for the purge's freed numbers:
+# each name given that is not a directory (a regular file with more than one
+# link, a link, a FIFO, a socket, a device) whose uid ($1 = u) or gid
+# ($1 = g) names nobody goes to root, and is never removed. $1 may also be
+# g followed by the comma-separated gids the purge holds and hands over as
+# if they named nobody (a group it removes, or a converted account's group
+# held under <gid>-purged). For u to root:root, losing its set-ID bits and
+# group and other write; for g to group root, its owner kept, losing its
+# set-ID bits and group write. With an ACL, the group bits are its mask. The ids are read and changed through
+# one handle on the entry itself, so a name swapped in after find listed it
+# is never touched: a path-only handle (O_PATH, not in Perl's Fcntl:
+# 010000000 on x86_64 and aarch64), which opens nothing (no FIFO end, no
+# device, no file) and is changed through its /proc/self/fd name, which
+# never follows a link; elsewhere only a regular file is taken, opened
+# without following a link or blocking. The mode is read again once root
+# holds the id, so a bit the change dropped stays dropped; a link's mode
+# means nothing: kept.
+_ACCT_ORPHAN_ROOT_PL='use Fcntl qw(:DEFAULT :mode); use POSIX (); my ($k, @x) = split(/,/, shift(@ARGV)); my $p = (POSIX::uname())[4] =~ /^(x86_64|aarch64)$/ ? 010000000 : 0; for my $f (@ARGV) { my $h; if ($p) { sysopen($h, $f, $p|O_NOFOLLOW) or next; } else { lstat($f) or next; -f _ or next; sysopen($h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; } my @s = stat($h); if (@s && !S_ISDIR($s[2]) && ($k eq "g" ? (!defined(getgrgid($s[5])) || grep { $_ eq $s[5] } @x) : $k eq "u" && !defined(getpwuid($s[4])))) { my $n = $p ? "/proc/self/fd/" . fileno($h) : $h; if (chown($k eq "g" ? -1 : 0, 0, $n)) { my @t = stat($h); chmod($t[2] & ($k eq "g" ? 05757 : 01755), $n) if @t && !S_ISLNK($t[2]); } } close($h); } exit 0'
 # The immutable flag set ($1 = +) or cleared (-) on each directory, or
 # regular file with a single link, named, through a handle opened without
 # following a link or blocking on a FIFO; non-zero when a name was neither
@@ -1032,6 +1038,55 @@ _if_extended_report() {
   fi
 }
 
+# Client mail on a test box. While /data/conf/client_mail_hold.txt exists,
+# mail BOA would send an account's client goes to the one address it holds
+# instead, its subject noting who would have been mailed; a file that anyone
+# but root can write, or that does not hold exactly one plain address, stops
+# that mail (fail closed) with one line saying why. Read through one handle
+# opened without following a link or blocking on a FIFO, and only while it
+# is a regular file of root's, not writable by group or others, with a
+# single link, 1 KiB at most (_MAIL_HOLD_PL: status 2 gone, 3 not root's or
+# writable by others, 4 any other shape, 5 not one plain address). $1 = the
+# client recipients (words). Sets _MAIL_HOLD_RCPT, the recipients to use, and
+# _MAIL_HOLD_SFX, the note for the subject; status 1: send none. Without the
+# file they are $1 and empty. One copy in each tool that mails a client.
+# shellcheck disable=SC2016
+_MAIL_HOLD_PL='use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($!{ENOENT} ? 2 : 4); my @s = stat($h); exit 4 unless @s; exit 3 unless $s[4] == 0 && !($s[2] & 022); exit 4 unless -f _ && $s[3] == 1 && $s[7] <= 1024; my ($d, $r) = (""); while ($r = sysread($h, my $c, 1025)) { $d .= $c; exit 4 if length($d) > 1024; } exit 4 unless defined $r; $d =~ /\A\s*([A-Za-z0-9_][A-Za-z0-9._%+=\x27-]*\@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)\s*\z/ or exit 5; print $1; exit 0'
+_client_mail_hold() {
+  local _f="/data/conf/client_mail_hold.txt" _a _rc _to _q="'"
+  _MAIL_HOLD_RCPT="${1}"
+  _MAIL_HOLD_SFX=""
+  [ -e "${_f}" ] || [ -L "${_f}" ] || return 0
+  [ -n "${1//[[:space:]]/}" ] || return 0
+  _to="$(printf '%s' "${1//\\\@/@}" | tr -s '[:space:]' ' ' \
+    | LC_ALL=C tr -cd "A-Za-z0-9._%+=@${_q} -" | cut -c1-200)"
+  _to="${_to# }"
+  _to="${_to% }"
+  _to="${_to:-?}"
+  _a="$(perl -e "${_MAIL_HOLD_PL}" "${_f}" 2> /dev/null)"
+  _rc=$?
+  case "${_rc}" in
+    0)
+      _MAIL_HOLD_RCPT="${_a}"
+      _MAIL_HOLD_SFX=" [held for ${_to}]"
+      return 0
+      ;;
+    2)
+      return 0
+      ;;
+    3)
+      echo "ALRT: ${_f} is not root's, or group or others can write it, and cannot be trusted: client mail for ${_to} not sent"
+      ;;
+    5)
+      echo "ALRT: ${_f} does not hold exactly one plain address: client mail for ${_to} not sent"
+      ;;
+    *)
+      echo "ALRT: ${_f} is not a regular file of one link, 1 KiB at most, that this run can read: client mail for ${_to} not sent"
+      ;;
+  esac
+  _MAIL_HOLD_RCPT=""
+  return 1
+}
 _send_report() {
   if [ -e "${_IN_BARRACUDA_LOG}" ]; then
     _THIS_LOG="${_IN_BARRACUDA_LOG}"
@@ -1045,13 +1100,19 @@ _send_report() {
   if [ "${_hostedSys}" = "YES" ]; then
     _MY_EMAIL="$(basename "$0")@omega8.cc"
   fi
+  # in-octopus and in-oct take the new account's client address
+  _MAIL_HOLD_RCPT="${_MY_EMAIL}"
+  _MAIL_HOLD_SFX=""
+  if [ "${_OCTOPUS_ONLY}" = "YES" ] && [ "${_hostedSys}" != "YES" ]; then
+    _client_mail_hold "${_MY_EMAIL}" || return 1
+  fi
   if [ ! -z "${_MY_EMAIL}" ]; then
     _repSub="Successful ${_RS} installation"
     _repSub="REPORT: ${_repSub} on ${_hName}"
     _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
     _if_extended_report
-    cat ${_THIS_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
-    echo "${_repSub} sent to ${_MY_EMAIL}"
+    cat ${_THIS_LOG} | s-nail -s "${_repSub} at ${_NOW}${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
+    echo "${_repSub} sent to ${_MAIL_HOLD_RCPT}"
   fi
 }
 
@@ -1089,13 +1150,19 @@ _send_errors() {
   if [ "${_hostedSys}" = "YES" ]; then
     _MY_EMAIL="$(basename "$0")@omega8.cc"
   fi
+  # in-octopus and in-oct take the new account's client address
+  _MAIL_HOLD_RCPT="${_MY_EMAIL}"
+  _MAIL_HOLD_SFX=""
+  if [ "${_OCTOPUS_ONLY}" = "YES" ] && [ "${_hostedSys}" != "YES" ]; then
+    _client_mail_hold "${_MY_EMAIL}" || return 1
+  fi
   if [ ! -z "${_MY_EMAIL}" ]; then
     _repSub="FAILED ${_RS} installation"
     _repSub="REPORT: ${_repSub} on ${_hName}"
     _repSub=$(echo -n ${_repSub} | fmt -su -w 2500 2>&1)
     _if_extended_report
-    cat ${_THIS_LOG} | s-nail -s "${_repSub} at ${_NOW}" ${_MY_EMAIL}
-    echo "${_repSub} sent to ${_MY_EMAIL}"
+    cat ${_THIS_LOG} | s-nail -s "${_repSub} at ${_NOW}${_MAIL_HOLD_SFX}" ${_MAIL_HOLD_RCPT}
+    echo "${_repSub} sent to ${_MAIL_HOLD_RCPT}"
   fi
 }
 
@@ -3513,6 +3580,240 @@ _purge_db_users_drop() {
   done
 }
 
+# The first path in the trees given ($2 on), or on a volume mounted under
+# /mnt, that carries the gid $1. A link is never counted: its group grants
+# nothing. -xdev never enters a mounted volume, so each mountpoint under
+# /mnt is its own start point.
+_purge_gid_carrier() {
+  local _gid="${1}" _mnt _left
+  shift
+  _left=$(find -P "$@" -xdev -gid "${_gid}" ! -type l -print -quit 2> /dev/null)
+  if [ -z "${_left}" ]; then
+    for _mnt in /mnt/*; do
+      [ -d "${_mnt}" ] && mountpoint -q "${_mnt}" 2> /dev/null || continue
+      _left=$(find -P "${_mnt}" -xdev -gid "${_gid}" ! -type l -print -quit 2> /dev/null)
+      [ -n "${_left}" ] && break
+    done
+  fi
+  printf '%s' "${_left}"
+}
+# The name the purge gives a group of the account that it keeps, for the
+# gid $1: the gid, then "-purged". An account name never begins with a
+# digit (the install refuses one), and every name BOA gives an account's
+# identities and groups begins with the account's own name or with wg-, so
+# no later account, identity or group ever has this name, and no tool
+# looks a group up by it.
+_purge_group_kept_name() {
+  printf '%s-purged' "${1}"
+}
+# The identities that hold the group $1 of gid $2 (listed in it, or with
+# that gid as their primary group), comma-separated: with $4 = own those of
+# the account $3 (named $3 or $3.<name>), with $4 = other everyone else's,
+# with $4 = all both. satellite and instgrp adopt a group of an account's
+# name that only the account's own identities hold, so only the others
+# keep a later account of that name from taking it.
+_purge_group_holders() {
+  { getent group "${1}" 2> /dev/null | cut -d: -f4 | tr ',' '\n'
+    getent passwd | awk -F: -v g="${2}" '$4 == g { print $1 }'
+  } | awk -v a="${3}" -v w="${4}" 'NF && !s[$0]++ { o = ($0 == a || index($0, a ".") == 1);
+    if (w == "all" || (w == "own") == o) { printf "%s%s", c, $0; c = "," } }'
+}
+# 0 when the gid $2 still names the group $1, or the name the purge keeps a
+# group by: the purge holds it, and no group made meanwhile is given it.
+_purge_group_ours() {
+  local _gAt
+  _gAt=$(getent group "${2}" 2> /dev/null | cut -d: -f1)
+  [ -n "${_gAt}" ] \
+    && { [ "${_gAt}" = "${1}" ] || [ "${_gAt}" = "$(_purge_group_kept_name "${2}")" ]; }
+}
+# On a converted account the account's group is its identities' primary
+# group, and userdel removes a user's primary group of the user's own name
+# with the user (USERGROUPS_ENAB): its gid would name nothing from then on,
+# and addgroup gives the lowest free gid to the next group made, while what
+# still carries this one is not handed over yet. So the gid $1 is held
+# under the name the purge keeps a group by, and decided on below. Called
+# before each deluser with the account $2 and the identity $3 it removes:
+# before the account's own identity goes, its group, while that identity's
+# primary group and held by no one outside the account, is renamed, so
+# userdel keeps it. Called after each deluser with the gid alone: a gid that
+# names nothing by then (the rename could not be made) is given to a group
+# of that name. A group made before that takes the gid, and
+# _purge_group_said says so.
+_purge_group_hold() {
+  local _hG="${1}" _hA="${2:-}" _hU="${3:-}" _hR
+  [ -n "${_hG}" ] || return 0
+  _hR=$(_purge_group_kept_name "${_hG}")
+  if [ -n "${_hU}" ]; then
+    if [ "${_hU}" = "${_hA}" ] \
+      && [ "$(getent group "${_hG}" 2> /dev/null | cut -d: -f1)" = "${_hA}" ] \
+      && [ "$(id -g -- "${_hU}" 2> /dev/null)" = "${_hG}" ] \
+      && [ -z "$(_purge_group_holders "${_hA}" "${_hG}" "${_hA}" other)" ]; then
+      groupmod -n "${_hR}" "${_hA}" > /dev/null 2>&1
+    fi
+    return 0
+  fi
+  getent group "${_hG}" > /dev/null 2>&1 && return 0
+  groupadd -g "${_hG}" "${_hR}" > /dev/null 2>&1
+}
+# The purge's decision on a group $1 of the account $3, whose gid $2 was
+# read before any identity was removed, over the trees given ($4 on). While
+# a path there still carries the gid, or identities of the account that
+# survived the purge (deluser refused them) still hold the group, the gid
+# stays taken, so the next group made is never given it, and not under the
+# account's name, which a later account of that name adopts with what those
+# paths grant: the group is renamed (_purge_group_kept_name), or, when no
+# group holds the gid, a group of that name is made with it. A group someone
+# outside the account holds keeps its name: that holder keeps a later
+# account from adopting it. Returns 0 when the group is kept, or its gid is
+# another group's by now (_purge_group_said reports either once the purge's
+# later passes are done), 1 when it goes (_purge_group_drop, once those
+# passes have given group root to what in the purge's reach still carries
+# the gid).
+_purge_group_decide() {
+  local _gN="${1}" _gG="${2}" _gA="${3}" _gAt _gR
+  shift 3
+  _gR=$(_purge_group_kept_name "${_gG}")
+  _gAt=$(getent group "${_gG}" 2> /dev/null | cut -d: -f1)
+  if [ -n "${_gAt}" ]; then
+    [ "${_gAt}" = "${_gN}" ] || [ "${_gAt}" = "${_gR}" ] || return 0
+    [ -z "$(_purge_group_holders "${_gAt}" "${_gG}" "${_gA}" other)" ] || return 0
+  fi
+  if [ -z "$(_purge_gid_carrier "${_gG}" "$@")" ] \
+    && { [ -z "${_gAt}" ] || [ -z "$(_purge_group_holders "${_gAt}" "${_gG}" "${_gA}" own)" ]; }; then
+    return 1
+  fi
+  if [ -z "${_gAt}" ]; then
+    groupadd -g "${_gG}" "${_gR}" > /dev/null 2>&1
+  elif [ "${_gAt}" = "${_gN}" ]; then
+    groupmod -n "${_gR}" "${_gN}" > /dev/null 2>&1
+  fi
+  return 0
+}
+# For a group _purge_group_decide kept, once every pass over the trees
+# scanned for it is done: the name that holds its gid now, and a path that
+# carries it. An ALRT when the gid is still under the group's own name and
+# nobody outside the account holds it (the rename failed: a later account of
+# the account's name would take its group, or join its web group), when the
+# gid names no group or another group (it could not be kept), and when
+# identities of the account that survived the purge still hold it.
+_purge_group_said() {
+  local _gN="${1}" _gG="${2}" _gA="${3}" _gL _gAt _gR _gRNow _gH _gO="" _gT _gW
+  shift 3
+  _gL=$(_purge_gid_carrier "${_gG}" "$@")
+  _gR=$(_purge_group_kept_name "${_gG}")
+  _gRNow=$(getent group "${_gR}" 2> /dev/null | cut -d: -f3)
+  _gAt=$(getent group "${_gG}" 2> /dev/null | cut -d: -f1)
+  if [ -n "${_gAt}" ]; then
+    _gO=$(_purge_group_holders "${_gAt}" "${_gG}" "${_gA}" own)
+  fi
+  if [ -n "${_gL}" ]; then
+    _gW="which paths still carry (${_gL})"
+  else
+    _gW="which identities of ${_gA} that survived the purge still hold (${_gO})"
+  fi
+  if [ "${_gN}" = "${_gA}" ]; then
+    _gT="a later account ${_gA} would take it"
+  else
+    _gT="a later account ${_gA}'s identities would join it"
+  fi
+  if [ -z "${_gAt}" ]; then
+    if [ -n "${_gL}" ]; then
+      echo "ALRT: group ${_gN} could not keep gid ${_gG}, ${_gW}: the gid names no group${_gRNow:+, and ${_gR} is gid ${_gRNow}}"
+    fi
+  elif [ "${_gAt}" = "${_gR}" ]; then
+    if [ -n "${_gL}" ]; then
+      echo "group ${_gN} kept as ${_gR}: paths still carry gid ${_gG} (${_gL})"
+    fi
+    if [ -n "${_gO}" ]; then
+      echo "ALRT: group ${_gN} kept as ${_gR}: identities of ${_gA} survived the purge and still hold it (${_gO})"
+    fi
+  elif [ "${_gAt}" != "${_gN}" ]; then
+    if [ -n "${_gL}" ]; then
+      echo "ALRT: group ${_gN} could not keep gid ${_gG}, ${_gW}: the gid now names group ${_gAt}"
+    else
+      echo "ALRT: group ${_gN} is gone, and its gid ${_gG} now names group ${_gAt}: what still carries ${_gG} grants ${_gAt}"
+    fi
+  else
+    _gH=$(_purge_group_holders "${_gN}" "${_gG}" "${_gA}" other)
+    if [ -z "${_gH}" ]; then
+      echo "ALRT: group ${_gN} keeps gid ${_gG}, ${_gW}, and could not be renamed ${_gR}${_gRNow:+ (${_gR} is gid ${_gRNow})}: ${_gT}"
+    elif [ -n "${_gL}" ]; then
+      echo "group ${_gN} kept, held by ${_gH}: paths still carry gid ${_gG} (${_gL})"
+    fi
+  fi
+}
+# For a group _purge_group_decide let go, once the passes after it have
+# given group root to what in the purge's reach still carries its gid:
+# removed while nobody holds it. Until then the gid names the group, so a
+# group made meanwhile is never given it with what those entries grant. An
+# ALRT when the gid, free already at the decision, is another group's by
+# now.
+_purge_group_drop() {
+  local _gN="${1}" _gG="${2}" _gAt
+  _gAt=$(getent group "${_gG}" 2> /dev/null | cut -d: -f1)
+  if [ -z "${_gAt}" ]; then
+    echo "removed group ${_gN}"
+  elif _purge_group_ours "${_gN}" "${_gG}"; then
+    if [ -z "$(_purge_group_holders "${_gAt}" "${_gG}" "" all)" ]; then
+      groupdel "${_gAt}" > /dev/null 2>&1 && echo "removed group ${_gN}"
+    fi
+  else
+    echo "ALRT: group ${_gN} is gone, and its gid ${_gG} now names group ${_gAt}: what still carries ${_gG} grants ${_gAt}"
+  fi
+}
+# Each entry in the trees given ($2 on) whose gid names nobody (a group the
+# purge removed, or one already gone), or is one of the gids $1 lists
+# (comma-separated: groups the purge still holds so that no group made
+# meanwhile is given their gid, until what carries it here is handed over),
+# gives that gid to root, its owner kept: a directory or single-link regular
+# file through a handle opened without following a link, while the gid on
+# that handle is still that one (_ACCT_REOWN_FROM_PL; a regular file loses
+# its set-uid bit, which the kernel drops on any change of group); anything
+# else (a living owner's hard-linked file, link, FIFO, socket or device)
+# through a path-only handle (_ACCT_ORPHAN_ROOT_PL, g), losing its set-ID
+# bits and group write (with an ACL, its mask). The next group given that
+# number gains nothing through them. -execdir: each name is changed inside
+# the directory find entered without following a link; it wants an
+# absolute PATH. find lists only directories and regular files for the
+# first passes; a name swapped for a FIFO after the listing is opened
+# without blocking and left alone.
+_purge_nogroup_root() {
+  local _x="${1}" _d _g _f IFS=$' \t\n'
+  shift
+  _f=( -nogroup )
+  for _g in ${_x//,/ }; do
+    _f+=( -o -gid "${_g}" )
+  done
+  for _d in "$@"; do
+    [ -d "${_d}" ] && [ ! -L "${_d}" ] || continue
+    env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_d}" -xdev -nogroup \
+      \( -type d -o -type f \) \
+      -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- -1 0 -1 x {} + &> /dev/null
+    for _g in ${_x//,/ }; do
+      env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_d}" -xdev -gid "${_g}" \
+        \( -type d -o -type f \) \
+        -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- -1 0 -1 "${_g}" {} + &> /dev/null
+    done
+    env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_d}" -xdev \( "${_f[@]}" \) \
+      ! -type d \( ! -type f -o -links +1 \) \
+      -execdir perl -e "${_ACCT_ORPHAN_ROOT_PL}" -- "g${_x:+,${_x}}" {} + &> /dev/null
+  done
+}
+# The same in the shared temporary places, where the kernel's trust reads
+# the owner only: a group number that names nothing, or one of the gids $1
+# lists, goes to root.
+_purge_nogroup_tmp() {
+  local _x="${1}" _d _g _f IFS=$' \t\n'
+  _f=( -nogroup )
+  for _g in ${_x//,/ }; do
+    _f+=( -o -gid "${_g}" )
+  done
+  for _d in /tmp /var/tmp /dev/shm; do
+    [ -d "${_d}" ] && [ ! -L "${_d}" ] || continue
+    env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_d}" -xdev \( "${_f[@]}" \) -execdir chgrp -h root {} + &> /dev/null
+  done
+}
+
 _octopus_cleanup() {
   if [ "$(id -u)" -eq 0 ]; then
     if [ "${_aCtn}" = "detect" ]; then
@@ -3738,9 +4039,10 @@ _octopus_cleanup() {
           done
         fi
         IFS=$'\12'
-          # Read before the deluser loop: the last deluser takes the
-          # memberless group with it, and the gid sweep below had nothing
-          # to sweep with on exactly the converted boxes it is for.
+          # Read before the deluser loop: on a converted account the group
+          # is the identities' primary one, so the last deluser takes the
+          # memberless group with it, and the gid sweep and the decision
+          # below had nothing to go by on exactly the boxes they are for.
           _grpGid=$(getent group "${_usEr}" 2>/dev/null | cut -d: -f3)
           # the account's web group, the same way
           _wgGid=$(getent group "wg-${_usEr}" 2>/dev/null | cut -d: -f3)
@@ -3778,9 +4080,13 @@ _octopus_cleanup() {
             for _rmT in "${_rmTrees[@]}"; do
               rm -rf "${_usr_home}/${_rmT}"
             done
+            # the account's group is held through the deluser that would
+            # take it with its own identity (_purge_group_hold)
+            _purge_group_hold "${_grpGid}" "${_usEr}" "${_usr_name}"
             deluser \
               --remove-home \
               --backup-to /var/backups/zombie/purged/${_usEr}/home/ ${_usr_name} &> /dev/null
+            _purge_group_hold "${_grpGid}"
           done;
         # deluser --remove-home is what takes the account tree away; when it
         # refuses (no such user on a half-purged box, a user still held by a
@@ -3830,99 +4136,22 @@ _octopus_cleanup() {
             \( -type d -o -type f \) \
             -execdir perl -e "${_ACCT_REOWN_PL}" -- 0 0 {} + &> /dev/null
         fi
-        # The account's private group (per-instance group model) outlives
-        # every deluser above; drop it once nothing holds it, or the GID is
-        # left for a later account to inherit. What the purge leaves on
-        # disk (a static store relocated under /mnt, the gems/npm trees)
-        # would keep the number and addgroup hands it to the next account:
-        # those paths go to root first, and the group stays while any path
-        # still carries it. _grpGid was read above, before the deluser loop.
-        # The hand-over goes through a handle opened without following a
-        # link, only on a directory or a single-link regular file that
-        # still carries the group (_ACCT_REOWN_FROM_PL, from the directory
-        # find walked, which lists only directories and regular files; a
-        # FIFO swapped in after the listing is opened without blocking and
-        # left alone): chown -R handed a hard link the
-        # account left here (its other name anywhere) to root. A hard-linked
-        # file, a FIFO or a socket keeps the number here, and the group with
-        # it (reported below); a link keeps it too, but a link's group grants
-        # nothing, so the scans below pass over links. The freed-uid sweep
-        # further down hands such an entry to root:root when its owner names
-        # nobody; the group is kept either way.
-        if [ -n "${_grpGid}" ]; then
-          # The uid is recycled from the same system range as the gid, so
-          # the leftovers lose both numbers: root:root.
-          for _lftDir in /opt/user/gems/${_usEr} /opt/user/gems/${_usEr}.* \
-            /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* /mnt/*/files/${_usEr}; do
-            if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
-              env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -gid "${_grpGid}" \
-                \( -type d -o -type f \) \
-                -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- 0 0 -1 "${_grpGid}" {} + &> /dev/null
-            fi
-          done
-          # -xdev never enters a mounted volume, so each mountpoint under
-          # /mnt is its own start point.
-          _grpLeft=$(find -P /data/disk /home /opt/user -xdev -gid "${_grpGid}" ! -type l -print -quit 2>/dev/null)
-          if [ -z "${_grpLeft}" ]; then
-            for _mntDir in /mnt/*; do
-              [ -d "${_mntDir}" ] && mountpoint -q "${_mntDir}" 2>/dev/null || continue
-              _grpLeft=$(find -P "${_mntDir}" -xdev -gid "${_grpGid}" ! -type l -print -quit 2>/dev/null)
-              [ -n "${_grpLeft}" ] && break
-            done
-          fi
-          if [ -n "${_grpLeft}" ]; then
-            echo "group ${_usEr} kept: paths still carry gid ${_grpGid} (${_grpLeft})"
-          elif [ -z "$(getent group "${_usEr}" 2>/dev/null | cut -d: -f4)" ] \
-            && ! getent passwd | awk -F: -v g="${_grpGid}" '$4 == g { f=1 } END { exit !f }'; then
-            groupdel "${_usEr}" &> /dev/null && echo "removed group ${_usEr}"
-          fi
-        fi
-        # The account's web group (wg-<account>) is no user's name, so no
-        # deluser ever takes it: the same rule, on its own gid, over the
-        # same places and the account's PHP cache dir, which only it uses.
-        if [ -n "${_wgGid}" ]; then
-          for _lftDir in /opt/user/gems/${_usEr} /opt/user/gems/${_usEr}.* \
-            /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* \
-            /mnt/*/files/${_usEr} /var/www/phpcache/${_usEr}; do
-            if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
-              env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -gid "${_wgGid}" \
-                \( -type d -o -type f \) \
-                -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- 0 0 -1 "${_wgGid}" {} + &> /dev/null
-            fi
-          done
-          _grpLeft=$(find -P /data/disk /home /opt/user /var/www -xdev -gid "${_wgGid}" ! -type l -print -quit 2>/dev/null)
-          if [ -z "${_grpLeft}" ]; then
-            for _mntDir in /mnt/*; do
-              [ -d "${_mntDir}" ] && mountpoint -q "${_mntDir}" 2>/dev/null || continue
-              _grpLeft=$(find -P "${_mntDir}" -xdev -gid "${_wgGid}" ! -type l -print -quit 2>/dev/null)
-              [ -n "${_grpLeft}" ] && break
-            done
-          fi
-          if [ -n "${_grpLeft}" ]; then
-            echo "group wg-${_usEr} kept: paths still carry gid ${_wgGid} (${_grpLeft})"
-          elif [ -z "$(getent group "wg-${_usEr}" 2>/dev/null | cut -d: -f4)" ] \
-            && ! getent passwd | awk -F: -v g="${_wgGid}" '$4 == g { f=1 } END { exit !f }'; then
-            groupdel "wg-${_usEr}" &> /dev/null && echo "removed group wg-${_usEr}"
-          fi
-        fi
-        # A number the purge freed (an identity deluser removed, a group
-        # removed above, or one already gone on a half-purged box) names
-        # nothing now, and the next account is given it. What was moved here
-        # (the vhost files) lies outside every scan above and the account's
-        # leftovers were taken off its groups only: each directory and
-        # single-link regular file that still carries such a number gives
-        # that number to root, and only that one. What else still carries a
-        # uid that names nobody (a hard-linked file, a link, a FIFO, a
-        # socket, a device) goes to root:root whole, under the root-only
-        # park and in the unparked trees below alike, and is never removed:
-        # the next account given that uid would own it, and through a hard
-        # link write what its other names (anywhere) share. A gid that names
-        # nobody on such an entry of a living owner stays: the group rule
-        # above keeps a group while any path carries it.
-        for _lftDir in ${_zombie_dir%/} /opt/user/gems/${_usEr} /opt/user/gems/${_usEr}.* \
-          /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* \
-          /mnt/*/files/${_usEr} /mnt/*/*/files/${_usEr} /var/www/phpcache/${_usEr} \
-          /var/backups/ltd; do
+        # A number the purge freed (an identity deluser removed above, or one
+        # already gone on a half-purged box) names nothing now, and the next
+        # account is given it. Before any group below is decided, in the
+        # purge's park (the vhost files moved here included) and in the
+        # unparked trees the account left: each directory and single-link
+        # regular file that still carries a uid that names nobody gives that
+        # uid to root, and only that one; what else still carries one (a
+        # hard-linked file, a link, a FIFO, a socket, a device) goes to
+        # root:root whole, and is never removed: the next account given that
+        # uid would own it, and through a hard link write what its other
+        # names (anywhere) share. Such an entry then holds no group below.
+        _orphDirs=( "${_zombie_dir%/}" /opt/user/gems/"${_usEr}" /opt/user/gems/"${_usEr}".* \
+          /opt/user/npm/"${_usEr}" /opt/user/npm/"${_usEr}".* \
+          /mnt/*/files/"${_usEr}" /mnt/*/*/files/"${_usEr}" /var/www/phpcache/"${_usEr}" \
+          /var/backups/ltd )
+        for _lftDir in "${_orphDirs[@]}"; do
           if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
             # -execdir: each name is changed inside the directory find
             # entered without following a link, so no directory between
@@ -3934,29 +4163,123 @@ _octopus_cleanup() {
             # surviving process planted here nor a living owner's file moved
             # onto a listed name is ever handed to root. It wants an absolute
             # PATH. -1 keeps the other id as it is. What that pass leaves with
-            # a uid that names nobody then goes to root:root through a handle
-            # on the entry itself (_ACCT_ORPHAN_ROOT_PL): a hard-linked file
-            # loses its set-ID bits and group and other write. find lists
-            # only directories and regular files for the handle passes; a
-            # name swapped for a FIFO after the listing is opened without
-            # blocking and left alone.
+            # a uid that names nobody then goes to root:root through a
+            # path-only handle on the entry itself (_ACCT_ORPHAN_ROOT_PL, u),
+            # which opens nothing: a hard-linked file loses its set-ID bits
+            # and group and other write. find lists only directories and
+            # regular files for the first pass; a name swapped for a FIFO
+            # after the listing is opened without blocking and left alone.
             env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev -nouser \
               \( -type d -o -type f \) \
               -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- 0 -1 x -1 {} + &> /dev/null
             env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev -nouser \
               ! -type d \( ! -type f -o -links +1 \) \
-              -execdir perl -e "${_ACCT_ORPHAN_ROOT_PL}" -- {} + &> /dev/null
-            env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev -nogroup \
-              \( -type d -o -type f \) \
-              -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- -1 0 -1 x {} + &> /dev/null
+              -execdir perl -e "${_ACCT_ORPHAN_ROOT_PL}" -- u {} + &> /dev/null
           fi
         done
+        # The account's private group (per-instance group model) is dropped
+        # once nothing holds it, or the GID is left for a later account to
+        # inherit. What the purge leaves on disk (a static store relocated
+        # under /mnt, the gems/npm trees) would keep the number and addgroup
+        # hands it to the next account: those paths go to root first. The
+        # hand-over goes through a handle opened without following a link,
+        # only on a directory or a single-link regular file that still
+        # carries the group (_ACCT_REOWN_FROM_PL, from the directory find
+        # walked, which lists only directories and regular files; a FIFO
+        # swapped in after the listing is opened without blocking and left
+        # alone): chown -R handed a hard link the account left here (its
+        # other name anywhere) to root. _grpGid was read above, before the
+        # deluser loop.
+        if [ -n "${_grpGid}" ]; then
+          # The uid is recycled from the same system range as the gid, so
+          # the leftovers lose both numbers: root:root.
+          for _lftDir in /opt/user/gems/${_usEr} /opt/user/gems/${_usEr}.* \
+            /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* /mnt/*/files/${_usEr}; do
+            if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
+              env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -gid "${_grpGid}" \
+                \( -type d -o -type f \) \
+                -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- 0 0 -1 "${_grpGid}" {} + &> /dev/null
+            fi
+          done
+        fi
+        # The account's web group (wg-<account>) is no user's name, so no
+        # deluser takes it: the same, on its own gid, over the same places
+        # and the account's PHP cache dir, which only it uses.
+        if [ -n "${_wgGid}" ]; then
+          for _lftDir in /opt/user/gems/${_usEr} /opt/user/gems/${_usEr}.* \
+            /opt/user/npm/${_usEr} /opt/user/npm/${_usEr}.* \
+            /mnt/*/files/${_usEr} /var/www/phpcache/${_usEr}; do
+            if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
+              env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -gid "${_wgGid}" \
+                \( -type d -o -type f \) \
+                -execdir perl -e "${_ACCT_REOWN_FROM_PL}" -- 0 0 -1 "${_wgGid}" {} + &> /dev/null
+            fi
+          done
+        fi
+        # A gid that names nothing is given to the next group made. Before
+        # any group is decided, in the trees the purge keeps (the park and
+        # /var/backups/ltd included) and in the shared temporary places, what
+        # still carries a gid that names nobody goes to group root
+        # (_purge_nogroup_root, _purge_nogroup_tmp), and so does what carries
+        # the gid of a converted account's group, which the purge holds under
+        # another name through the deluser that would have removed it
+        # (_purge_group_hold): only what lies outside those places keeps that
+        # group below. The web group, and the account's group before its
+        # conversion, are still there here, so a living owner's entry the
+        # decision's scan meets keeps them too. A hard-linked file, a FIFO or
+        # a socket whose owner named nobody went to root:root in the pass
+        # above; a link keeps its gid, but a link's group grants nothing, so
+        # the scans pass over links.
+        _grpFree=""
+        if [ -n "${_grpGid}" ] \
+          && [ "$(getent group "${_grpGid}" 2> /dev/null | cut -d: -f1)" = "$(_purge_group_kept_name "${_grpGid}")" ]; then
+          _grpFree="${_grpGid}"
+        fi
+        _purge_nogroup_root "${_grpFree}" "${_orphDirs[@]}"
+        _purge_nogroup_tmp "${_grpFree}"
+        # Each group is decided on what still carries its gid (a living
+        # owner's entry anywhere the scan reaches) and on who still holds it:
+        # it goes when nothing and nobody does, and is otherwise kept under a
+        # name no later account takes (_purge_group_decide), reported once
+        # the passes below are done.
+        _grpDo=""
+        _wgDo=""
+        if [ -n "${_grpGid}" ]; then
+          _purge_group_decide "${_usEr}" "${_grpGid}" "${_usEr}" /data/disk /home /opt/user
+          _grpDo=$?
+        fi
+        if [ -n "${_wgGid}" ]; then
+          _purge_group_decide "wg-${_usEr}" "${_wgGid}" "${_usEr}" /data/disk /home /opt/user /var/www
+          _wgDo=$?
+        fi
+        # A group that goes keeps its gid until what carries it in the trees
+        # the purge keeps and in the shared temporary places is in group
+        # root, so a group made meanwhile is never given the gid while those
+        # entries grant it (_purge_group_drop, below). A group kept above
+        # names its gid, so nothing that carries it is changed here.
+        _grpFree=""
+        if [ "${_grpDo}" = "1" ] && _purge_group_ours "${_usEr}" "${_grpGid}"; then
+          _grpFree="${_grpGid}"
+        fi
+        if [ "${_wgDo}" = "1" ] && _purge_group_ours "wg-${_usEr}" "${_wgGid}"; then
+          _grpFree="${_grpFree:+${_grpFree},}${_wgGid}"
+        fi
+        _purge_nogroup_root "${_grpFree}" "${_orphDirs[@]}"
+        # Why a group stays, named by a path that carries its gid once every
+        # pass over the trees scanned for it is done.
+        if [ "${_grpDo}" = "0" ]; then
+          _purge_group_said "${_usEr}" "${_grpGid}" "${_usEr}" /data/disk /home /opt/user
+        fi
+        if [ "${_wgDo}" = "0" ]; then
+          _purge_group_said "wg-${_usEr}" "${_wgGid}" "${_usEr}" /data/disk /home /opt/user /var/www
+        fi
         # In the shared temporary places what the account's identities
         # wrote there after the pass before deluser goes too, for a number
         # that names nobody now; each entry is tested again as it is met
         # (-nouser), so a number given to a new identity meanwhile is left
-        # alone. A group number that names nothing goes to root: the
-        # kernel's trust there reads the owner only.
+        # alone. A group number that names nothing, or a group's that goes,
+        # then goes to root again (_purge_nogroup_tmp), and the groups that
+        # go are removed.
         _tmpY=()
         _tmpC=()
         for _tmpU in "${_tmpUs[@]}"; do
@@ -3975,11 +4298,13 @@ _octopus_cleanup() {
             env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev \( "${_tmpC[@]:1}" \) &> /dev/null
           done
         fi
-        for _lftDir in /tmp /var/tmp /dev/shm; do
-          if [ -d "${_lftDir}" ] && [ ! -L "${_lftDir}" ]; then
-            env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_lftDir}" -xdev -nogroup -execdir chgrp -h root {} + &> /dev/null
-          fi
-        done
+        _purge_nogroup_tmp "${_grpFree}"
+        if [ "${_grpDo}" = "1" ]; then
+          _purge_group_drop "${_usEr}" "${_grpGid}"
+        fi
+        if [ "${_wgDo}" = "1" ]; then
+          _purge_group_drop "wg-${_usEr}" "${_wgGid}"
+        fi
         # root's record of the account's conversion to it goes with the account
         rm -f -- "/root/.${_usEr}.web-group.txt"
         if nginx -t &> /dev/null; then
