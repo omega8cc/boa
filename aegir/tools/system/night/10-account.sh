@@ -450,6 +450,55 @@ _night_mail_list() (
   done
   printf '%s' "${_o}"
 )
+### Client mail on a test box. While /data/conf/client_mail_hold.txt exists,
+### mail BOA would send an account's client goes to the one address it holds
+### instead, its subject noting who would have been mailed; a file that anyone
+### but root can write, or that does not hold exactly one plain address, stops
+### that mail (fail closed) with one line saying why. Read through one handle
+### opened without following a link or blocking on a FIFO, and only while it
+### is a regular file of root's, not writable by group or others, with a
+### single link, 1 KiB at most (_MAIL_HOLD_PL: status 2 gone, 3 not root's or
+### writable by others, 4 any other shape, 5 not one plain address). $1 = the
+### client recipients (words). Sets _MAIL_HOLD_RCPT, the recipients to use, and
+### _MAIL_HOLD_SFX, the note for the subject; status 1: send none. Without the
+### file they are $1 and empty. One copy in each tool that mails a client.
+# shellcheck disable=SC2016
+_MAIL_HOLD_PL='use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit($!{ENOENT} ? 2 : 4); my @s = stat($h); exit 4 unless @s; exit 3 unless $s[4] == 0 && !($s[2] & 022); exit 4 unless -f _ && $s[3] == 1 && $s[7] <= 1024; my ($d, $r) = (""); while ($r = sysread($h, my $c, 1025)) { $d .= $c; exit 4 if length($d) > 1024; } exit 4 unless defined $r; $d =~ /\A\s*([A-Za-z0-9_][A-Za-z0-9._%+=\x27-]*\@[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)\s*\z/ or exit 5; print $1; exit 0'
+_client_mail_hold() {
+  local _f="/data/conf/client_mail_hold.txt" _a _rc _to _q="'"
+  _MAIL_HOLD_RCPT="${1}"
+  _MAIL_HOLD_SFX=""
+  [ -e "${_f}" ] || [ -L "${_f}" ] || return 0
+  [ -n "${1//[[:space:]]/}" ] || return 0
+  _to="$(printf '%s' "${1//\\\@/@}" | tr -s '[:space:]' ' ' \
+    | LC_ALL=C tr -cd "A-Za-z0-9._%+=@${_q} -" | cut -c1-200)"
+  _to="${_to# }"
+  _to="${_to% }"
+  _to="${_to:-?}"
+  _a="$(perl -e "${_MAIL_HOLD_PL}" "${_f}" 2> /dev/null)"
+  _rc=$?
+  case "${_rc}" in
+    0)
+      _MAIL_HOLD_RCPT="${_a}"
+      _MAIL_HOLD_SFX=" [held for ${_to}]"
+      return 0
+      ;;
+    2)
+      return 0
+      ;;
+    3)
+      echo "ALRT: ${_f} is not root's, or group or others can write it, and cannot be trusted: client mail for ${_to} not sent"
+      ;;
+    5)
+      echo "ALRT: ${_f} does not hold exactly one plain address: client mail for ${_to} not sent"
+      ;;
+    *)
+      echo "ALRT: ${_f} is not a regular file of one link, 1 KiB at most, that this run can read: client mail for ${_to} not sent"
+      ;;
+  esac
+  _MAIL_HOLD_RCPT=""
+  return 1
+}
 ### True when $1 is a host name: letters, digits, dots and hyphens, starting
 ### and ending with a letter or a digit. It names root's /etc/ssl/private
 ### files and log/ctrl markers.
@@ -1336,6 +1385,8 @@ EOF
   if [ -z "${_CLIENT_EMAIL}" ] || [ "${_CLIENT_EMAIL}" = "root" ]; then
     return 0
   fi
+  # before any site is marked notified: a notice the hold stops goes out later
+  _client_mail_hold "${_CLIENT_EMAIL}" || return 0
   _clList=""
   while IFS=$'\x1f' read -r _site _cdom _calt _ctype _cdetail; do
     [ -z "${_cdom}" ] && continue
@@ -1371,14 +1422,14 @@ EOF
     # local-only mailboxes -- as undeliverable for a client reply as bare root.
     _reply="${_ADMIN_EMAIL}"
   fi
-  echo "Sending LE client notice for ${_HM_U} to ${_CLIENT_EMAIL} on $(date)"
+  echo "Sending LE client notice for ${_HM_U} to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} on $(date)"
   if [ -n "${_reply}" ] && [ "${_reply}" != "root" ] \
     && ! [[ "${_reply}" =~ ^root@ ]] && [[ "${_reply}" =~ @ ]]; then
     echo "${_clBody}" \
-      | s-nail -S replyto="${_reply}" -s "Action needed: HTTPS certificate renewal failed for one or more of your sites" "${_CLIENT_EMAIL}"
+      | s-nail -S replyto="${_reply}" -s "Action needed: HTTPS certificate renewal failed for one or more of your sites${_MAIL_HOLD_SFX}" "${_MAIL_HOLD_RCPT}"
   else
     echo "${_clBody}" \
-      | s-nail -s "Action needed: HTTPS certificate renewal failed for one or more of your sites" "${_CLIENT_EMAIL}"
+      | s-nail -s "Action needed: HTTPS certificate renewal failed for one or more of your sites${_MAIL_HOLD_SFX}" "${_MAIL_HOLD_RCPT}"
   fi
 }
 
@@ -1421,6 +1472,8 @@ _ghost_account_report() {
   if [ -z "${_CLIENT_EMAIL}" ] || [ "${_CLIENT_EMAIL}" = "root" ]; then
     return 0
   fi
+  # before any site is marked notified: a notice the hold stops goes out later
+  _client_mail_hold "${_CLIENT_EMAIL}" || return 0
   # Ghosts are not urgent (the dead record is the only thing left), so the
   # throttle is much longer than the 7-day LE one to keep mail volume low.
   _throttle=30
@@ -1467,14 +1520,14 @@ EOF
     # local-only mailboxes -- as undeliverable for a client reply as bare root.
     _reply="${_ADMIN_EMAIL}"
   fi
-  echo "Sending ghost-site client notice for ${_HM_U} to ${_CLIENT_EMAIL} on $(date)"
+  echo "Sending ghost-site client notice for ${_HM_U} to ${_MAIL_HOLD_RCPT}${_MAIL_HOLD_SFX} on $(date)"
   if [ -n "${_reply}" ] && [ "${_reply}" != "root" ] \
     && ! [[ "${_reply}" =~ ^root@ ]] && [[ "${_reply}" =~ @ ]]; then
     echo "${_clBody}" \
-      | s-nail -S replyto="${_reply}" -s "Action suggested: broken leftover site record(s) in your control panel" "${_CLIENT_EMAIL}"
+      | s-nail -S replyto="${_reply}" -s "Action suggested: broken leftover site record(s) in your control panel${_MAIL_HOLD_SFX}" "${_MAIL_HOLD_RCPT}"
   else
     echo "${_clBody}" \
-      | s-nail -s "Action suggested: broken leftover site record(s) in your control panel" "${_CLIENT_EMAIL}"
+      | s-nail -s "Action suggested: broken leftover site record(s) in your control panel${_MAIL_HOLD_SFX}" "${_MAIL_HOLD_RCPT}"
   fi
 }
 

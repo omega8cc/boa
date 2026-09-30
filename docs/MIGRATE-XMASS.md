@@ -1645,6 +1645,11 @@ so the remaining cutover steps complete.
 
 ## Notes
 
+- **Client mail on a test target:** the target's own Octopus, nightly and
+  usage passes mail each account's client. While
+  `/data/conf/client_mail_hold.txt` holds one address, BOA sends that mail to
+  it instead; see "Holding client mail on a test box" in
+  [MIGRATE.md](MIGRATE.md).
 - `xmass sync` is idempotent — run it as often as you like. Each run is a
   delta rsync; subsequent runs after the first are fast. For a standing
   mirror, `xmass autosync` runs exactly these passes on a fixed cadence so

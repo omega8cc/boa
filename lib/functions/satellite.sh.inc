@@ -5590,16 +5590,18 @@ _satellite_send_welcome_email() {
       ### the on-disk copy the operator is told to fall back to.
       _MAIL_SENT=NO
       if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
-        && [ -n "${_CLIENT_EMAIL}" ]; then
-        if [ -n "${_MY_OCTO_EMAIL}" ]; then
+        && [ -n "${_CLIENT_EMAIL}" ] \
+        && _client_mail_hold "${_CLIENT_EMAIL}"; then
+        _client_mail_copy "${_MY_OCTO_EMAIL}" "${_CLIENT_EMAIL}"
+        if [ -n "${_MAIL_HOLD_COPY}" ]; then
           _acct_read_in "${_ROOT}/log" "${_mailSrc##*/}" \
             | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
-            -b "${_MY_OCTO_EMAIL}" -s "${_Q}" "${_CLIENT_EMAIL}" \
+            -b "${_MAIL_HOLD_COPY}" -s "${_Q}${_MAIL_HOLD_SFX}" "${_MAIL_HOLD_RCPT}" \
             && _MAIL_SENT=YES
         else
           _acct_read_in "${_ROOT}/log" "${_mailSrc##*/}" \
             | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
-            -s "${_Q}" "${_CLIENT_EMAIL}" \
+            -s "${_Q}${_MAIL_HOLD_SFX}" "${_MAIL_HOLD_RCPT}" \
             && _MAIL_SENT=YES
         fi
       fi
@@ -5627,16 +5629,18 @@ _satellite_send_welcome_email() {
       _MAIL_SENT=NO
       if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] \
         && [ -e "${_mailBody}" ] \
-        && [ -n "${_CLIENT_EMAIL}" ]; then
-        if [ -n "${_MY_OCTO_EMAIL}" ]; then
+        && [ -n "${_CLIENT_EMAIL}" ] \
+        && _client_mail_hold "${_CLIENT_EMAIL}"; then
+        _client_mail_copy "${_MY_OCTO_EMAIL}" "${_CLIENT_EMAIL}"
+        if [ -n "${_MAIL_HOLD_COPY}" ]; then
           _acct_read_in "${_ROOT}/log" upgrademail.txt \
             | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
-            -b "${_MY_OCTO_EMAIL}" -s "${_Q}" "${_CLIENT_EMAIL}" \
+            -b "${_MAIL_HOLD_COPY}" -s "${_Q}${_MAIL_HOLD_SFX}" "${_MAIL_HOLD_RCPT}" \
             && _MAIL_SENT=YES
         else
           _acct_read_in "${_ROOT}/log" upgrademail.txt \
             | s-nail -S ttycharset=utf-8 -S sendcharsets=utf-8 \
-            -s "${_Q}" "${_CLIENT_EMAIL}" \
+            -s "${_Q}${_MAIL_HOLD_SFX}" "${_MAIL_HOLD_RCPT}" \
             && _MAIL_SENT=YES
         fi
       fi
