@@ -659,6 +659,17 @@
 
 @=> New Features
 
+    * A test box can hold the mail BOA sends its clients: while
+      /data/conf/client_mail_hold.txt holds one address, the welcome and
+      upgrade mail, the usage notices, the nightly certificate and
+      leftover-record notices, the mybackup restore notice, the PHP
+      segfault alert and the boa in-octopus install report go to that
+      address instead, the subject noting who would have been mailed.
+      Copies to the operator are unchanged, except an instance admin
+      copy that is the client's own address. A file that holds anything
+      else, or that anyone but root can write, stops those notices with
+      one logged line.
+
     * New ~/static/control/cli-per-platform.info gives one platform its
       own command-line PHP, one "<platform folder> <X.Y>" line each, the
       folder written under ~/static (or pasted as its Publish path,
