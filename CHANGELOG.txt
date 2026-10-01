@@ -1243,6 +1243,10 @@
 
 @=> Important Fixes
 
+    * An upgrade that built something from source no longer ends with
+      getcwd errors in its errors log: the final cleanup steps out of the
+      build directory before it removes it.
+
     * MySecureShell master-01-10-2026 is built with its install paths
       and its C dialect named. Its sources now default to /usr/local, so
       the build landed beside the binary the accounts use and /usr/bin
