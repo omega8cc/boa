@@ -1594,6 +1594,19 @@ _runner_parked() {
   [[ ! -e "/var/xdrago/${1}" ]] && [[ -e "/var/xdrago/.${1}.off" ]]
 }
 
+# A copy fetched by _fetch_versioned ($1) whose bytes a later step puts or
+# edits elsewhere. The step is due once the copy carries a marker of this
+# tree and release (none yet while the fetcher holds a serial move for a
+# mirror that has not caught up, or cannot reach the mirror), and either the
+# copy changed in this pass ($2, its md5 before the fetch) or the step's own
+# once-per-release stamp $3 is not there yet. The stamp alone was written
+# on whatever bytes a bare fetch got, and nothing fetched them again.
+_source_due() {
+  [ -s "${1}" ] || return 1
+  ls "${_pthLog}/${1##*/}.ctrl."*".${_tRee}.${_xSrl}.pid" &> /dev/null || return 1
+  [ ! -e "${3}" ] || [ "$(md5sum "${1}" 2> /dev/null | cut -d' ' -f1)" != "${2}" ]
+}
+
 _fetch_versioned() {
   local _dst="$1" _url="$2" _srl="$3"
   shift 3
@@ -1752,9 +1765,11 @@ _fetch_versioned() {
   # scripts start with #!, PHP with <?php -- so a leading HTML tag means the file
   # is absent on this mirror right now: discard it and keep the working copy,
   # exactly as for an empty fetch. This also matters more now that the block
-  # above revalidates on a cadence, not only on a serial change.
+  # above revalidates on a cadence, not only on a serial change. Only an html
+  # doctype counts: an XML file declares its own root on its second line (the
+  # ImageMagick policy's <!DOCTYPE policymap>), and was refused as a stub.
   local _noted=NO
-  if [[ -s "${_new}" ]] && head -c 64 "${_new}" | grep -qiE '^[[:space:]]*<(html|!doctype|head)'; then
+  if [[ -s "${_new}" ]] && head -c 64 "${_new}" | grep -qiE '^[[:space:]]*<(html|!doctype[[:space:]]+html|head)'; then
     rm -f "${_new}"
     _fetch_failed_note "${_cnm}" "${_url}" "soft-404 (HTML stub)"
     _noted=YES
@@ -2049,9 +2064,20 @@ _update_agents() {
     # those too would force one full redundant refetch round per release.
     # (Functionally the sweep is hygiene only: every stamp name embeds
     # ${_xSrl}, so a release re-fetches everything regardless.)
+    # A name _fetch_versioned compares (its .compared.pid is there) keeps its
+    # marker: the fetcher clears it itself, and reads it to tell a serial
+    # moved with the release, which the mirror may not serve yet, from a
+    # release that left the file as it was. Swept, the fetches below armed
+    # the new serial on the previous bytes. Dot-named stamps are swept too.
     if [ ! -e "${_pthLog}/.force.f89.${_tRee}.${_xSrl}.ctrl" ]; then
-      find ${_pthLog} -maxdepth 1 -name "*.ctrl.*.pid" \
-        ! -name "*.${_tRee}.${_xSrl}.pid" -delete 2>/dev/null
+      for _ctlOld in "${_pthLog}"/*.ctrl.*.pid "${_pthLog}"/.*.ctrl.*.pid; do
+        [ -e "${_ctlOld}" ] || continue
+        case "${_ctlOld}" in
+          *".${_tRee}.${_xSrl}.pid") continue ;;
+        esac
+        [ -e "${_ctlOld%%.ctrl.*}.compared.pid" ] && continue
+        rm -f "${_ctlOld}"
+      done
       touch ${_pthLog}/.force.f89.${_tRee}.${_xSrl}.ctrl
     fi
 
@@ -2488,38 +2514,45 @@ _update_agents() {
   [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/xdrago" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] && [ -x "/usr/sbin/csf" ] && [ -e "/etc/csf/csf.deny" ] \
     && _fetch_versioned /var/xdrago/guest-water.sh "${_urlHmr}/tools/system/guest-water.sh" f69
 
-  # Re-fetch trigger for the current lshell.conf. The sentinel MUST be a
+  # Re-put trigger for the current lshell.conf. The sentinel MUST be a
   # literal that exists in the shipped file (here the comment that opens the
   # ltd-shell-more section, which no pass edits), and should be one the
-  # previous template lacks, so a box that stamped the new serial on stale
-  # bytes fetches again.
-  # A sentinel that can never match would drop the ctrl and re-fetch this
-  # security-critical file on EVERY pass, on every box, forever -- the ctrl
-  # mechanism exists to prevent exactly that (as-shipped E2E catch).
+  # previous template lacks, so a template put from older bytes is put again.
+  # A sentinel that can never match would drop the stamp and put this
+  # security-critical file again on EVERY pass, on every box, forever -- the
+  # stamp exists to prevent exactly that (as-shipped E2E catch).
   if ! grep -q "^##  the only group that runs PHP by name" /var/xdrago/conf/lshell.conf; then
     rm -f ${_pthLog}/lshell.ctrl.*
     # The template that arrives carries node, npm, npx and scp; the plan check
     # below strips them again, but only once per release serial. Dropping its
-    # marker with the fetch ctrl keeps a mid-serial re-fetch from re-granting
+    # marker with the stamp keeps a mid-serial re-put from re-granting
     # those commands to every tenant until the next release.
     rm -f ${_pthLog}/node.lshell-fix-npx.ctrl.*
     rm -f ${_pthLog}/node.manage.lshell.ctrl.*
   fi
+  # The shipped template is fetched as lshell.conf.dist through
+  # _fetch_versioned, which holds a new serial while the mirror still serves
+  # the bytes already there and revalidates within the hour. The plan checks
+  # edit the template in place, so the copy they edit is put from the fetched
+  # one once per release and whenever that changes.
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/lshell.ctrl.f80.${_tRee}.${_xSrl}.pid" ]; then
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     if [ -z "${_CUSTOM_CONFIG_LSHELL}" ] \
       || [ "${_CUSTOM_CONFIG_LSHELL}" = "NO" ]; then
-      mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
-      curl ${_crlGet} "${_urlHmr}/tools/system/conf/lshell.conf" \
-        -o /var/xdrago/conf/lshell.conf
-      if [ -e "/var/xdrago/conf/lshell.conf" ]; then
-        chmod 644 /var/xdrago/conf/lshell.conf
-        chown root:root /var/xdrago/conf/lshell.conf
-        touch ${_pthLog}/lshell.ctrl.f80.${_tRee}.${_xSrl}.pid
-      else
-        mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
+      _lshSum="$(md5sum /var/xdrago/conf/lshell.conf.dist 2>/dev/null | cut -d' ' -f1)"
+      _fetch_versioned /var/xdrago/conf/lshell.conf.dist "${_urlHmr}/tools/system/conf/lshell.conf" f80 --mode 644
+      if _source_due /var/xdrago/conf/lshell.conf.dist "${_lshSum}" \
+        "${_pthLog}/lshell.ctrl.${_tRee}.${_xSrl}.pid"; then
+        mv -f /var/xdrago/conf/lshell.conf /var/xdrago/conf/lshell.conf.old
+        cp -f /var/xdrago/conf/lshell.conf.dist /var/xdrago/conf/lshell.conf
+        if [ -e "/var/xdrago/conf/lshell.conf" ]; then
+          chmod 644 /var/xdrago/conf/lshell.conf
+          chown root:root /var/xdrago/conf/lshell.conf
+          touch ${_pthLog}/lshell.ctrl.${_tRee}.${_xSrl}.pid
+        else
+          mv -f /var/xdrago/conf/lshell.conf.old /var/xdrago/conf/lshell.conf
+        fi
       fi
     fi
   fi
@@ -2565,100 +2598,99 @@ _update_agents() {
     fi
   fi
 
+  # Each pool template is fetched as <name>.dist through _fetch_versioned,
+  # which holds a new serial while the mirror still serves the bytes already
+  # there and revalidates within the hour. The copy below is edited (the
+  # box IP added), so it is put from the fetched one once per release and
+  # whenever that changes.
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/common.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/conf/fpm-pool-common.conf /var/xdrago/conf/fpm-pool-common.conf.old
-    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-common.conf" \
-      -o /var/xdrago/conf/fpm-pool-common.conf
-    if [ -e "/var/xdrago/conf/fpm-pool-common.conf" ]; then
-      sed -i "s/127.0.0.1/127.0.0.1,${_LOC_IP}/g" /var/xdrago/conf/fpm-pool-common.conf
-      chmod 644 /var/xdrago/conf/fpm-pool-common.conf
-      chown root:root /var/xdrago/conf/fpm-pool-common.conf
-      touch ${_pthLog}/common.ctrl.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/conf/fpm-pool-common.conf.old /var/xdrago/conf/fpm-pool-common.conf
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+    _poolSum="$(md5sum /var/xdrago/conf/fpm-pool-common.conf.dist 2>/dev/null | cut -d' ' -f1)"
+    _fetch_versioned /var/xdrago/conf/fpm-pool-common.conf.dist "${_urlHmr}/conf/php/fpm-pool-common.conf" f99 --mode 644
+    if _source_due /var/xdrago/conf/fpm-pool-common.conf.dist "${_poolSum}" \
+      "${_pthLog}/common.ctrl.${_tRee}.${_xSrl}.pid"; then
+      mv -f /var/xdrago/conf/fpm-pool-common.conf /var/xdrago/conf/fpm-pool-common.conf.old
+      cp -f /var/xdrago/conf/fpm-pool-common.conf.dist /var/xdrago/conf/fpm-pool-common.conf
+      if [ -e "/var/xdrago/conf/fpm-pool-common.conf" ]; then
+        sed -i "s/127.0.0.1/127.0.0.1,${_LOC_IP}/g" /var/xdrago/conf/fpm-pool-common.conf
+        chmod 644 /var/xdrago/conf/fpm-pool-common.conf
+        chown root:root /var/xdrago/conf/fpm-pool-common.conf
+        touch ${_pthLog}/common.ctrl.${_tRee}.${_xSrl}.pid
+      else
+        mv -f /var/xdrago/conf/fpm-pool-common.conf.old /var/xdrago/conf/fpm-pool-common.conf
+      fi
     fi
   fi
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/conf/fpm-pool-common-legacy.conf /var/xdrago/conf/fpm-pool-common-legacy.conf.old
-    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-common-legacy.conf" \
-      -o /var/xdrago/conf/fpm-pool-common-legacy.conf
-    if [ -e "/var/xdrago/conf/fpm-pool-common-legacy.conf" ]; then
-      sed -i "s/127.0.0.1/127.0.0.1,${_LOC_IP}/g" /var/xdrago/conf/fpm-pool-common-legacy.conf
-      chmod 644 /var/xdrago/conf/fpm-pool-common-legacy.conf
-      chown root:root /var/xdrago/conf/fpm-pool-common-legacy.conf
-      touch ${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/conf/fpm-pool-common-legacy.conf.old /var/xdrago/conf/fpm-pool-common-legacy.conf
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+    _poolSum="$(md5sum /var/xdrago/conf/fpm-pool-common-legacy.conf.dist 2>/dev/null | cut -d' ' -f1)"
+    _fetch_versioned /var/xdrago/conf/fpm-pool-common-legacy.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-legacy.conf" f99 --mode 644
+    if _source_due /var/xdrago/conf/fpm-pool-common-legacy.conf.dist "${_poolSum}" \
+      "${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid"; then
+      mv -f /var/xdrago/conf/fpm-pool-common-legacy.conf /var/xdrago/conf/fpm-pool-common-legacy.conf.old
+      cp -f /var/xdrago/conf/fpm-pool-common-legacy.conf.dist /var/xdrago/conf/fpm-pool-common-legacy.conf
+      if [ -e "/var/xdrago/conf/fpm-pool-common-legacy.conf" ]; then
+        sed -i "s/127.0.0.1/127.0.0.1,${_LOC_IP}/g" /var/xdrago/conf/fpm-pool-common-legacy.conf
+        chmod 644 /var/xdrago/conf/fpm-pool-common-legacy.conf
+        chown root:root /var/xdrago/conf/fpm-pool-common-legacy.conf
+        touch ${_pthLog}/legacy.ctrl.${_tRee}.${_xSrl}.pid
+      else
+        mv -f /var/xdrago/conf/fpm-pool-common-legacy.conf.old /var/xdrago/conf/fpm-pool-common-legacy.conf
+      fi
     fi
   fi
 
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/conf/fpm-pool-common-modern.conf /var/xdrago/conf/fpm-pool-common-modern.conf.old
-    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-common-modern.conf" \
-      -o /var/xdrago/conf/fpm-pool-common-modern.conf
-    if [ -e "/var/xdrago/conf/fpm-pool-common-modern.conf" ]; then
-      sed -i "s/127.0.0.1/127.0.0.1,${_LOC_IP}/g" /var/xdrago/conf/fpm-pool-common-modern.conf
-      chmod 644 /var/xdrago/conf/fpm-pool-common-modern.conf
-      chown root:root /var/xdrago/conf/fpm-pool-common-modern.conf
-      touch ${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/conf/fpm-pool-common-modern.conf.old /var/xdrago/conf/fpm-pool-common-modern.conf
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+    _poolSum="$(md5sum /var/xdrago/conf/fpm-pool-common-modern.conf.dist 2>/dev/null | cut -d' ' -f1)"
+    _fetch_versioned /var/xdrago/conf/fpm-pool-common-modern.conf.dist "${_urlHmr}/conf/php/fpm-pool-common-modern.conf" f99 --mode 644
+    if _source_due /var/xdrago/conf/fpm-pool-common-modern.conf.dist "${_poolSum}" \
+      "${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid"; then
+      mv -f /var/xdrago/conf/fpm-pool-common-modern.conf /var/xdrago/conf/fpm-pool-common-modern.conf.old
+      cp -f /var/xdrago/conf/fpm-pool-common-modern.conf.dist /var/xdrago/conf/fpm-pool-common-modern.conf
+      if [ -e "/var/xdrago/conf/fpm-pool-common-modern.conf" ]; then
+        sed -i "s/127.0.0.1/127.0.0.1,${_LOC_IP}/g" /var/xdrago/conf/fpm-pool-common-modern.conf
+        chmod 644 /var/xdrago/conf/fpm-pool-common-modern.conf
+        chown root:root /var/xdrago/conf/fpm-pool-common-modern.conf
+        touch ${_pthLog}/modern.ctrl.${_tRee}.${_xSrl}.pid
+      else
+        mv -f /var/xdrago/conf/fpm-pool-common-modern.conf.old /var/xdrago/conf/fpm-pool-common-modern.conf
+      fi
     fi
   fi
 
+  # The two pool templates the workers copy as they are: through
+  # _fetch_versioned like every other fetched file.
   if [ -x "/opt/tools/drush/8/drush/drush.php" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/multi.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf /var/xdrago/conf/fpm-pool-foo-multi.conf.old
-    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo-multi.conf" \
-      -o /var/xdrago/conf/fpm-pool-foo-multi.conf
-    if [ -e "/var/xdrago/conf/fpm-pool-foo-multi.conf" ]; then
-      chmod 644 /var/xdrago/conf/fpm-pool-foo-multi.conf
-      chown root:root /var/xdrago/conf/fpm-pool-foo-multi.conf
-      touch ${_pthLog}/multi.ctrl.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/conf/fpm-pool-foo-multi.conf.old /var/xdrago/conf/fpm-pool-foo-multi.conf
-    fi
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+    _fetch_versioned /var/xdrago/conf/fpm-pool-foo-multi.conf "${_urlHmr}/conf/php/fpm-pool-foo-multi.conf" f99 --mode 644
   fi
 
   if [ -e "/opt/tools/drush" ] \
     && [ -e "/var/xdrago" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/single.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/conf/fpm-pool-foo.conf /var/xdrago/conf/fpm-pool-foo.conf.old
-    curl ${_crlGet} "${_urlHmr}/conf/php/fpm-pool-foo.conf" \
-      -o /var/xdrago/conf/fpm-pool-foo.conf
-    if [ -e "/var/xdrago/conf/fpm-pool-foo.conf" ]; then
-      chmod 644 /var/xdrago/conf/fpm-pool-foo.conf
-      chown root:root /var/xdrago/conf/fpm-pool-foo.conf
-      touch ${_pthLog}/single.ctrl.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/conf/fpm-pool-foo.conf.old /var/xdrago/conf/fpm-pool-foo.conf
-    fi
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+    _fetch_versioned /var/xdrago/conf/fpm-pool-foo.conf "${_urlHmr}/conf/php/fpm-pool-foo.conf" f99 --mode 644
   fi
 
+  # The policy is fetched through _fetch_versioned, which holds a new serial
+  # while the mirror still serves the bytes already there and revalidates
+  # within the hour, and put in place once per release and whenever it
+  # changes.
   if [ -e "/etc/ImageMagick-6/policy.xml" ] \
-    && [ -e "/var/xdrago" ] \
-    && [ ! -e "${_pthLog}/policymap-hf-06.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    _isCurlBin="$(which curl)"
-    chmod 755 ${_isCurlBin} &> /dev/null
-    chgrp root ${_isCurlBin} &> /dev/null
-    cp -af /etc/ImageMagick-6/policy.xml /var/xdrago/conf/etc-ImageMagick-6-policy.xml.hf-06.old
-    rm -f /var/xdrago/conf/etc-ImageMagick-6-policy.xml
-    curl ${_crlGet} "${_urlHmr}/conf/etc/etc-ImageMagick-6-policy.xml" \
-      -o /var/xdrago/conf/etc-ImageMagick-6-policy.xml
-    if [ -e "/var/xdrago/conf/etc-ImageMagick-6-policy.xml" ]; then
+    && [ -e "/var/xdrago" ]; then
+    _imgSum="$(md5sum /var/xdrago/conf/etc-ImageMagick-6-policy.xml 2>/dev/null | cut -d' ' -f1)"
+    _fetch_versioned /var/xdrago/conf/etc-ImageMagick-6-policy.xml "${_urlHmr}/conf/etc/etc-ImageMagick-6-policy.xml" f99 --mode 644
+    if _source_due /var/xdrago/conf/etc-ImageMagick-6-policy.xml "${_imgSum}" \
+      "${_pthLog}/policymap-hf-06.ctrl.${_tRee}.${_xSrl}.pid"; then
+      _isCurlBin="$(which curl)"
+      chmod 755 ${_isCurlBin} &> /dev/null
+      chgrp root ${_isCurlBin} &> /dev/null
+      cp -af /etc/ImageMagick-6/policy.xml /var/xdrago/conf/etc-ImageMagick-6-policy.xml.hf-06.old
       cp -af /var/xdrago/conf/etc-ImageMagick-6-policy.xml /etc/ImageMagick-6/policy.xml
       chmod 644 /etc/ImageMagick-6/policy.xml
       chown root:root /etc/ImageMagick-6/policy.xml
@@ -2669,10 +2701,6 @@ _update_agents() {
           service "php${e}-fpm" reload &> /dev/null
         fi
       done
-    else
-      if [ -e "/var/xdrago/conf/etc-ImageMagick-6-policy.xml.hf-06.old" ]; then
-        cp -af /var/xdrago/conf/etc-ImageMagick-6-policy.xml.hf-06.old /etc/ImageMagick-6/policy.xml
-      fi
     fi
   fi
 
@@ -2693,17 +2721,12 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/xdrago/conf/control-readme.txt" ] \
-    && [ ! -e "${_pthLog}/control-readme.txt.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/conf/control-readme.txt /var/xdrago/conf/control-readme.txt.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/conf/control-readme.txt" -o /var/xdrago/conf/control-readme.txt
-    if [ -e "/var/xdrago/conf/control-readme.txt" ]; then
-      chmod 644 /var/xdrago/conf/control-readme.txt
-      chown root:root /var/xdrago/conf/control-readme.txt
-      touch ${_pthLog}/control-readme.txt.ctrl.${_tRee}.${_xSrl}.pid
-    else
-      mv -f /var/xdrago/conf/control-readme.txt.old /var/xdrago/conf/control-readme.txt
-    fi
+    && [ -e "/var/xdrago/conf/control-readme.txt" ]; then
+    # The bare fetch's release stamp (control-readme.txt.ctrl.<tree>.<rel>)
+    # is named like this file's fetch marker: the fetcher takes it for
+    # another serial's marker and would hold the unchanged readme an hour.
+    rm -f "${_pthLog}/control-readme.txt.ctrl.${_tRee}."*".pid"
+    _fetch_versioned /var/xdrago/conf/control-readme.txt "${_urlHmr}/tools/system/conf/control-readme.txt" f99 --mode 644
   fi
 
   if [ -d "/data/u" ] \
@@ -2714,25 +2737,30 @@ _update_agents() {
     if [ ! -e "${_hQueueP}" ] || [[ ! "${_isPatchedTpl}" =~ "core/cron.php" ]]; then
       curl ${_crlGet} "${_urlHmr}/patches/${_hQueueF}" -o ${_hQueueP}
     fi
-    for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
-      _tUsr=
-      _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
-      if [ -n "${_tUsr}" ] && [ "${_tUsr}" != "arch" ]; then
-        if [ -e "${_pthSysUsr}/log/hosting_cron_use_backend.txt" ]; then
-          _acct_in_real_dir "${_pthSysUsr}/log" \
-            rm -f -- ./hosting_cron_use_backend.txt
+    # Put and stamped only from a template that carries the patch: what a
+    # mirror that has not caught up hands over (or a failed fetch) is asked
+    # for again on the next pass, not stamped until the next serial.
+    if grep -q "core/cron.php" "${_hQueueP}" 2> /dev/null; then
+      for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
+        _tUsr=
+        _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
+        if [ -n "${_tUsr}" ] && [ "${_tUsr}" != "arch" ]; then
+          if [ -e "${_pthSysUsr}/log/hosting_cron_use_backend.txt" ]; then
+            _acct_in_real_dir "${_pthSysUsr}/log" \
+              rm -f -- ./hosting_cron_use_backend.txt
+          fi
+          ### The account owns its alias and the whole platform it names: the
+          ### root is taken only when it is one of the account's own
+          ### hostmaster platforms (_acct_hm_root), and the module is put
+          ### only from inside the pinned real cron directory.
+          _hmPlr=$(_acct_hm_root "${_pthSysUsr}") || continue
+          _hmDir="${_hmPlr}/profiles/hostmaster/modules/aegir/hosting"
+          _acct_in_real_dir "${_hmDir}/cron" \
+            _hm_cron_queue_here "${_hQueueP}" "${_LOC_IP}"
         fi
-        ### The account owns its alias and the whole platform it names: the
-        ### root is taken only when it is one of the account's own
-        ### hostmaster platforms (_acct_hm_root), and the module is put
-        ### only from inside the pinned real cron directory.
-        _hmPlr=$(_acct_hm_root "${_pthSysUsr}") || continue
-        _hmDir="${_hmPlr}/profiles/hostmaster/modules/aegir/hosting"
-        _acct_in_real_dir "${_hmDir}/cron" \
-          _hm_cron_queue_here "${_hQueueP}" "${_LOC_IP}"
-      fi
-    done
-    touch ${_pthLog}/hosting.cron.queue.ctrl.f95.${_tRee}.${_xSrl}.pid
+      done
+      touch ${_pthLog}/hosting.cron.queue.ctrl.f95.${_tRee}.${_xSrl}.pid
+    fi
   fi
 
   if [ -d "/data/u" ] \
@@ -4213,35 +4241,41 @@ _if_drupal_patches_update() {
 _acct_rm_all_here() {
   rm -f -- ./*
 }
-# The patch $1 fetched from the mirror and put as /data/conf/patches/$1,
-# root's and 0644 as curl -o wrote it, when it is missing or not a regular
-# file: downloaded into a root-only directory first, then put through one
-# handle inside the real patches/ (_acct_put_mode_here).
+# The patch $1 fetched as /var/xdrago/conf/$1 (root's tree) through
+# _fetch_versioned with the serial $2, which holds a new serial while the
+# mirror still serves the bytes already there and revalidates within the
+# hour, and put as /data/conf/patches/$1, root's and 0644, when that is
+# missing or not a regular file, or when the fetched copy changed: through
+# one handle inside the real patches/ (_acct_put_mode_here). A patch fetched
+# only when missing kept, until the next release, whatever a mirror that
+# had not caught up handed over.
 _drupal_patch_get() {
-  local _w
-  [ -f "/data/conf/patches/${1}" ] && [ ! -L "/data/conf/patches/${1}" ] \
-    && return 0
-  mkdir -p /data/conf/patches
-  _w=$(mktemp -d /run/.boa-patch-get.XXXXXX 2> /dev/null) || return 1
-  if curl ${_crlGet} "${_urlHmr}/patches/${1}" -o "${_w}/p"; then
-    _acct_in_real_dir /data/conf/patches \
-      _acct_put_mode_here "${1}" 0 0 644 < "${_w}/p"
+  local _p="/var/xdrago/conf/${1}" _sum
+  [ -d /var/xdrago/conf ] || mkdir -p /var/xdrago/conf
+  _sum="$(md5sum "${_p}" 2> /dev/null | cut -d' ' -f1)"
+  _fetch_versioned "${_p}" "${_urlHmr}/patches/${1}" "${2}" --mode 644
+  [ -s "${_p}" ] || return 0
+  if [ -f "/data/conf/patches/${1}" ] && [ ! -L "/data/conf/patches/${1}" ] \
+    && [ "$(md5sum "${_p}" 2> /dev/null | cut -d' ' -f1)" = "${_sum}" ]; then
+    return 0
   fi
-  rm -rf -- "${_w}"
+  mkdir -p /data/conf/patches
+  _acct_in_real_dir /data/conf/patches \
+    _acct_put_mode_here "${1}" 0 0 644 < "${_p}"
 }
 
 _fix_drupal_core_ten() {
   if [ -e "/var/xdrago" ]; then
-    _drupal_patch_get "${_tenCorePatchFname}"
-    _drupal_patch_get "${_tenConsolePatchFname}"
+    _drupal_patch_get "${_tenCorePatchFname}" f99
+    _drupal_patch_get "${_tenConsolePatchFname}" f99
   fi
 }
 
 _fix_drupal_core_eleven() {
   if [ -e "/var/xdrago" ]; then
-    _drupal_patch_get "${_elevenCorePatchFname}"
-    _drupal_patch_get "${_elevenConsolePatchFname}"
-    _drupal_patch_get "${_elevenValidatorPatchFname}"
+    _drupal_patch_get "${_elevenCorePatchFname}" f99
+    _drupal_patch_get "${_elevenConsolePatchFname}" f99
+    _drupal_patch_get "${_elevenValidatorPatchFname}" f99
   fi
 }
 
@@ -4255,35 +4289,40 @@ _fix_pure_ftpd() {
   fi
 }
 
+# The Let's Encrypt helper and the two drush includes come through
+# _fetch_versioned like every other fetched file; the leftovers of earlier
+# layouts are cleared once per release and whenever one is back. The
+# accounts get their copies from the le_renewal_days_69 block of
+# _update_agents, later in the same pass, once per release: a copy that
+# changes here drops that block's stamp, so the accounts get the new bytes
+# in this pass, not a release later.
 _fix_hosting_le() {
+  local _dhySum _hleSum _pleSum
   if [ -d "/var/xdrago/conf" ]; then
-    if [ ! -e "${_hoLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid" ] \
-      || [ ! -e "${_pthLog}/dehydrated-up01.ctrl.${_tRee}.${_xSrl}.pid" ] \
+    if [ ! -e "${_pthLog}/dehydrated-up01.ctrl.${_tRee}.${_xSrl}.pid" ] \
       || [ -e "/var/xdrago/${_provLeInc}" ] \
       || [ -e "/var/xdrago/${_hoLeInc}" ] \
       || [ -e "/var/xdrago/${_dehydName}" ] \
       || [ -e "/root/${_provLeInc}" ] \
       || [ -e "/root/hosting_le_vhost.drush.inc.ctrl.${_tRee}.${_xSrl}.pid" ] \
       || [ -e "/root/${_hoLeInc}" ] \
-      || [ -e "${_legacyLeSh}" ] \
-      || [ ! -e "${_dehydSrcPath}" ] \
-      || [ ! -e "${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+      || [ -e "${_legacyLeSh}" ]; then
       mkdir -p /var/xdrago/conf
       rm -f /var/xdrago/*.drush.inc*
       rm -f /root/*.drush.inc*
       rm -f ${_legacyLeSh}
-      rm -f ${_dehydSrcPath}.ctrl.${_tRee}.${_xSrl}.pid
-      rm -f ${_hoLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
-      rm -f ${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
-      curl ${_crlGet} "${_urlHmr}/helpers/${_dehydName}" -o ${_dehydSrcPath}.ctrl.${_tRee}.${_xSrl}.pid
-      cp -af ${_dehydSrcPath}.ctrl.${_tRee}.${_xSrl}.pid ${_dehydSrcPath}
-      curl ${_crlGet} "${_urlHmr}/patches/${_hoLeInc}" -o ${_hoLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
-      cp -af ${_hoLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid ${_hoLeIncFull}
-      curl ${_crlGet} "${_urlHmr}/patches/${_provLeInc}" -o ${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid
-      if [ -e "${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid" ]; then
-        cp -af ${_provLeIncFull}.ctrl.${_tRee}.${_xSrl}.pid ${_provLeIncFull}
-        [ -e "${_provLeIncFull}" ] && touch ${_pthLog}/dehydrated-up01.ctrl.${_tRee}.${_xSrl}.pid
-      fi
+      touch ${_pthLog}/dehydrated-up01.ctrl.${_tRee}.${_xSrl}.pid
+    fi
+    _dhySum="$(md5sum "${_dehydSrcPath}" 2>/dev/null | cut -d' ' -f1)"
+    _fetch_versioned "${_dehydSrcPath}" "${_urlHmr}/helpers/dehydrated" f99 --mode 644
+    _hleSum="$(md5sum "${_hoLeIncFull}" 2>/dev/null | cut -d' ' -f1)"
+    _fetch_versioned "${_hoLeIncFull}" "${_urlHmr}/patches/hosting_le_vhost.drush.inc" f99 --mode 644
+    _pleSum="$(md5sum "${_provLeIncFull}" 2>/dev/null | cut -d' ' -f1)"
+    _fetch_versioned "${_provLeIncFull}" "${_urlHmr}/patches/provision_hosting_le.drush.inc" f99 --mode 644
+    if [ "$(md5sum "${_dehydSrcPath}" 2>/dev/null | cut -d' ' -f1)" != "${_dhySum}" ] \
+      || [ "$(md5sum "${_hoLeIncFull}" 2>/dev/null | cut -d' ' -f1)" != "${_hleSum}" ] \
+      || [ "$(md5sum "${_provLeIncFull}" 2>/dev/null | cut -d' ' -f1)" != "${_pleSum}" ]; then
+      rm -f "${_pthLog}/le_renewal_days_69.ctrl.${_tRee}.${_xSrl}.pid"
     fi
   fi
 }
@@ -5756,14 +5795,23 @@ _count_cpu() {
   _acct_in_real_dir "${_st:-/data/all}" _acct_put_here cpuinfo "${_CPU_NR}"
 }
 
+# sysctl.conf is fetched as /var/backups/sysctl.conf through
+# _fetch_versioned, which holds a new serial while the mirror still serves
+# the bytes already there and revalidates within the hour; the refresh below
+# runs once per release and whenever that copy changes. A bare fetch stamped
+# the release even when it failed.
 _sysctl_update() {
+  local _sysSum _sysDue=NO
   if [ "${_NO_SYSCTL_UPDATE}" != "YES" ] \
-    && [ ! -e "/root/.no.sysctl.update.cnf" ] \
-    && [ ! -e "/var/backups/.sysctl.conf.mod-disable-ipv6-${_xSrl}.log" ]; then
+    && [ ! -e "/root/.no.sysctl.update.cnf" ]; then
     [ -d "/var/backups" ] || mkdir -p /var/backups
+    _sysSum="$(md5sum /var/backups/sysctl.conf 2>/dev/null | cut -d' ' -f1)"
+    _fetch_versioned /var/backups/sysctl.conf "${_urlHmr}/conf/var/sysctl.conf" f99 --mode 644
+    _source_due /var/backups/sysctl.conf "${_sysSum}" \
+      "/var/backups/.sysctl.conf.mod-disable-ipv6-${_xSrl}.log" && _sysDue=YES
+  fi
+  if [ "${_sysDue}" = "YES" ]; then
     cd /var/backups
-    rm -f /var/backups/sysctl.conf
-    curl ${_crlGet} "${_urlHmr}/conf/var/sysctl.conf" -o sysctl.conf
     if [ -e "/var/backups/sysctl.conf" ]; then
       cp -af /var/backups/sysctl.conf /etc/sysctl.conf
     fi
