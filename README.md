@@ -81,7 +81,7 @@ Follow the guidelines in [**docs/CONTRIBUTING.md**](https://github.com/omega8cc/
 - SSH (ed25519) keys for root are required by newer OpenSSH versions used in BOA.
 - Wget must be installed.
 - Open outgoing TCP ports: 25, 53, 80, 443.
-- Open incoming TCP ports 22, 80, 443 and UDP port 443 (HTTP/3) in the provider's firewall, if any: [docs/NGINX-QUIC-BPF.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NGINX-QUIC-BPF.md).
+- Open incoming TCP ports 22, 80, 443 and UDP port 443 (HTTP/3): [docs/NGINX-QUIC-BPF.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/NGINX-QUIC-BPF.md).
 - Locales with UTF-8 support, otherwise en_US.UTF-8 (default) is forced.
 
 ## Provided Services and Features
