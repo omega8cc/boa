@@ -50,6 +50,10 @@
 
 @=> Security
 
+    * The Solr config upload and the Octopus upgrade's pass over the
+      hostmaster site's files/ leave BOA's own folders at the top of an
+      account's files store (.backups, .backup-exports, .archived) alone.
+
     * A file in the master hostmaster site's files/ is set to 0664 by
       the barracuda upgrade, as the site scripts set it, never 02775: a
       file any account had put there no longer comes out executable and
