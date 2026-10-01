@@ -816,7 +816,10 @@ repair restore it. The steps, each idempotent behind its own marker:
    beside it (the reconciliation source of truth). The import pre-checks
    roughly 2× the transferred hostmaster dump + 200 MB free under
    `/var/backups/a2b/<oN>` for this snapshot — an extra headroom gate on
-   top of the transfer one.
+   top of the transfer one. The snapshot is taken with
+   `--set-gtid-purged=OFF` when the local `mysqldump` takes that option,
+   so it carries no GTID state and `--revert-db-import` loads it back on a
+   box with GTID on (every box an `xmass` run touched).
 2. **Drop, then load with sandbox strip**: the target panel DB is dropped
    (an overlay import is BOA-to-BOA-only and would leave orphaned tables)
    and the transferred dump streamed in minus the MariaDB ≥ 10.5.25
@@ -1140,7 +1143,9 @@ deliberately:
 
 - The stage-2 tool takes nothing for granted about the source: per-site
   dumps use each site's own DB credentials, `mysqldump` not mydumper, and
-  every remote action is plain root ssh + rsync.
+  every remote action is plain root ssh + rsync. Those dumps and the panel
+  dump take `--set-gtid-purged=OFF` when the source's `mysqldump` takes that
+  option, so none carries the source's GTID state to the target.
 - Idempotency and resume: every verb re-run skips what its markers say is
   done; `status`/`target-status` show exactly where a migration stands.
 - Parallel estates: locks and markers are scoped per account and site, so

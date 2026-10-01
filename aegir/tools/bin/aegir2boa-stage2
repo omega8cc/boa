@@ -704,9 +704,31 @@ _mysql_defaults() {   # 1 user 2 pass -> prints path
   echo "${_f}"
 }
 
+# No dump this tool takes carries the dumping server's GTID state. By
+# default (--set-gtid-purged=AUTO) a dump taken while GTID is on (a source
+# whose MySQL runs with it; a BOA target an xmass run touched) opens with
+# SET @@SESSION.SQL_LOG_BIN=0 and sets @@GLOBAL.GTID_PURGED. The target's
+# pre-import snapshot then fails to load back on the same box after the
+# revert has dropped the panel tables (ERROR 3546 on 8.x, 1840 on 5.7), and
+# on an 8.x target the first source dump loads unbinlogged (its replica
+# never gets the site) and takes the source's GTID history there, so every
+# later one fails. OFF writes neither. Sets _MYSQLDUMP_GTID to the option
+# when the local mysqldump takes it: one that does not (MariaDB's, most
+# sources) would refuse it and writes neither anyway, so it is asked, never
+# assumed.
+_mysqldump_gtid_opts() {
+  _MYSQLDUMP_GTID=()
+  if mysqldump --help 2> /dev/null | grep -q -- '--set-gtid-purged'; then
+    _MYSQLDUMP_GTID=(--set-gtid-purged=OFF)
+  fi
+  return 0
+}
+
 _mysqldump_flags() {
   local _fl="--single-transaction --quick --no-autocommit --skip-add-locks --hex-blob"
   mysqldump --help 2>/dev/null | grep -q 'no-tablespaces' && _fl="${_fl} --no-tablespaces"
+  _mysqldump_gtid_opts
+  [[ "${#_MYSQLDUMP_GTID[@]}" -eq 0 ]] || _fl="${_fl} ${_MYSQLDUMP_GTID[*]}"
   echo "${_fl}"
 }
 
@@ -2120,7 +2142,8 @@ _import_db_route() {
   _step="${_STATE_DIR}/markers/dbimport"
   if [[ ! -e "${_step}.1.done" ]]; then
     ( umask 077; mkdir -p "${_undo}" )
-    mysqldump --defaults-file=/root/.my.cnf --single-transaction --quick \
+    _mysqldump_gtid_opts
+    mysqldump --defaults-file=/root/.my.cnf "${_MYSQLDUMP_GTID[@]}" --single-transaction --quick \
       --no-autocommit --skip-add-locks --no-tablespaces --hex-blob "${_hdb}" \
       > "${_undo}/a2b-pre-import.sql" || _die "pre-import snapshot failed"
     chmod 600 "${_undo}/a2b-pre-import.sql"
