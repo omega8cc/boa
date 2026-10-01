@@ -102,11 +102,27 @@
       and a new site never takes over another login's name; a forced
       reinstall now also removes the old site's database login.
 
-    * Octopus: the shared code store under /data/all stays root-owned through
-      an install or upgrade; the platform build may write only to the
-      directories it builds, only while it runs, and root takes them back
-      when it returns, restoring anything already there that was renamed or
-      replaced, and leaving no ACL and nothing writable by all users.
+    * Octopus: root builds the shared Drupal 6 and 7 cores and the shared
+      platform trees in /data/all, and the platform build that runs as the
+      instance user only reads the store: nothing in it is handed to an
+      account any more. Each core and tree is built in a stage directory
+      and moved into place only when every download for it succeeded and
+      it is complete, so a stopped pass or a mirror outage never leaves a
+      part-built one or replaces a whole one, and one built again replaces
+      the old in a single rename.
+
+    * Octopus: the first upgrade that builds platforms fetches the current
+      contrib bundles again, and the bundle a current core links from an
+      earlier serial, builds the current shared cores and trees again and
+      removes every POSIX ACL in /data/all. What it cannot fetch or build
+      stays as it was and is retried, alone, by the next upgrade, until all
+      of it is done once.
+
+    * Octopus: a forced refresh of a contrib bundle fetches it into a stage
+      directory, with its links to the shared Valkey integration, and swaps
+      it in, so sites never find the bundle empty or without that
+      integration, and keeps the bundle as it was when any download fails;
+      root's bundle fetches unpack owned by root.
 
     * Octopus, xoct, xcopy, the agents pass, the Solr and nightly cron
       tools: root's passes over the shared store set modes, make
