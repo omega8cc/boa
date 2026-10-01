@@ -5252,7 +5252,7 @@ _php_install_deps() {
   ###--------------------###
   _apt_clean_update
 
-  for _PKG in cmake lbzip2 zstd libavif-dev libgd-dev libgd3 libjpeg-dev libjpeg62 libkrb5-dev; do
+  for _PKG in cmake lbzip2 zstd libavif-dev libgd-dev libgd3 libjpeg-dev libjpeg62 libkrb5-dev libacl1-dev; do
     if ! _pkg_installed "${_PKG}"; then
       _mrun "${_INSTAPP} ${_PKG}"
     fi
