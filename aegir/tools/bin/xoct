@@ -888,6 +888,20 @@ _xoct_admail_gate() {
   fi
   _xoct_xmass_rec_gate
 }
+### Whether this run is xmass installing $1, a canary this box sends away in
+### a test run still open, on its own target: an xmass run (_XOCT_XMASS_RUN)
+### whose admail= is the address the canary's own record here holds, with
+### the source line. The canary's export latch (exported.pid) belongs to its
+### own move to its canary target; it does not stop the whole box from
+### preparing a standing mirror around it.
+_xoct_canary_carried() {
+  local _f
+  [ "${_XOCT_XMASS_RUN}" = "YES" ] && [ -n "${_XOCT_ADMAIL}" ] || return 1
+  _f="$(_xoct_admail_rec "$1")"
+  [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 1
+  grep -qxF "${_XOCT_ADMAIL_SRC_LINE}" "${_f}" 2> /dev/null || return 1
+  [ "$(_xoct_first_line "${_f}")" = "${_XOCT_ADMAIL}" ]
+}
 ### The box-wide half of it: without admail=, refuses (status 1, the way out
 ### named) while xmass's record of a test run of the whole box is here, or
 ### its mark of one that moves a box here (_XOCT_XMASS_MARKS). The sweep
@@ -7013,7 +7027,8 @@ _migrate_init() {
     elif [ -e "${_USR}/log/proxied.pid" ] && [ "${_cmd}" != "proxy" ]; then
       echo "_USR ${_oct} is not eligible for migration: already migrated"
       exit 1
-    elif [ "${_cmd}" = "create" ] && [ -e "${_USR}/log/exported.pid" ]; then
+    elif [ "${_cmd}" = "create" ] && [ -e "${_USR}/log/exported.pid" ] \
+      && ! _xoct_canary_carried "${_RUNTIME_OCT}"; then
       echo "_USR ${_oct} is not eligible for migration: already created"
       exit 1
     elif [ "${_cmd}" = "export" ] && [ -e "${_USR}/log/exported.pid" ]; then

@@ -440,14 +440,26 @@ The identity repair (`--fix-users`) and a standing mirror's reduced lane
 install nothing and leave all three as they are. The `xoct create` runs it
 drives keep no record of their own.
 
-Without `admail=`, `prep-target` and `cutover` also refuse while an `xoct`
-canary is still in its test run on the source
-(`/data/conf/xoct_admail.<oN>.txt`, for an account the run moves): `xoct`
-would refuse those accounts one by one, and at `cutover` only after the
-sites went down. Records of accounts the run leaves alone (not eligible, or
-proxied before it) do not count.
+Without `admail=`, an `xoct` canary still in its test run on the source
+(`/data/conf/xoct_admail.<oN>.txt`, for an account the run moves) is
+handled by its kind. Records of accounts the run leaves alone (not
+eligible, or proxied before it) do not count.
 
-`admail=` is no way out of that refusal for a real move: it makes the whole
+- A canary the source sends away (its record carries the source line):
+  every `xoct` call for that account carries its own recorded address.
+  `prep-target` installs it that way, which moves nothing. A `cutover`
+  under `--proxy-mode=ha-switch` (the flag, else the mode `init`
+  recorded), a switch to the standing mirror or a failback, converts it
+  the same way: its sites keep serving and its client is not told of the
+  switch; its test run, `xoct go-live` included, is then redone from the
+  new active. Any other `cutover` is a real move of the account and
+  refuses until the canary goes live.
+- A canary the source received: its test run holds the source's clients'
+  mail and `xoct` refuses every account there without the token, so
+  `prep-target` and `cutover` both refuse until that test run goes live on
+  the box that sent it.
+
+`admail=` is no way out of the refusal for a real move: it makes the whole
 run a test for every account, and no client is told of the move. A real
 move first ends each canary's test run with `xoct go-live <oN> target-ip`
 (see [MIGRATE-XOCT.md](MIGRATE-XOCT.md#test-and-canary-runs-admail)).
@@ -561,6 +573,14 @@ What it does, in order:
      box's addresses as the peer and this account, with the target's own
      address as its host; both files are root's, with one link (what
      `xoct proxy` leaves on a demoted failback box);
+   - it is this pair's own, the old active after a promotion by hand, where
+     nothing relays: this box's create marker of the account names the
+     target (its `hostname -f`) and the account, and still names this
+     box's account user ID and directory; or the target's own
+     `/data/conf/xmass_state.cnf` (root's, one link) names one of this
+     box's addresses as its target, in a phase past `init`. Either way the
+     account on the target must predate the marker or that `init` (a
+     filesystem that keeps no birth time is not compared);
    - it carries no site, only its control panel (a fresh install's own
      `o1`, for one), and you named it with `--adopt-siteless`: no registered
      site, no site directory on its platforms or on disk, no entry in its
@@ -569,9 +589,10 @@ What it does, in order:
      of that directory, and none of its `distro`, `static`, `platforms` or
      `aegir` trees a link.
 
-   The second and third are adopted: `prep-target` passes
+   The last three are adopted: `prep-target` passes
    `xoct create --adopt` for those accounts only, which puts the create
-   marker on them. A relay is adopted by itself: root's own files prove it.
+   marker on them. A relay and this pair's own are adopted by themselves:
+   root's own files prove them.
    Nothing on the target proves whose a site-less account is (a fresh
    install's own panel, or another client's account with no site yet), so
    one you did not name is refused, and the refusal prints the line that
@@ -587,7 +608,8 @@ What it does, in order:
    migration's, put the create marker on it by hand with the one-line
    command the refusal prints, then re-run `prep-target`. A demoted box
    whose relay has no policy record (its conversion failed, or it predates
-   the record) needs that hand marker for a failback.
+   the record) and no proof of this pair's lineage needs that hand marker
+   for a failback.
 6. **Suspension flags** mirrored (`/data/conf/suspended/<oN>.pid` lives outside
    the account tree, so no file sync can carry it — an unmirrored suspension
    means a non-paying account resumes serving on the target). Only after the
@@ -1251,6 +1273,11 @@ the mirror's files stay minutes behind its database instead of days. It is
 one-way and driven from the **active** side only, by design: nothing moves a
 mirror out of sync except the active server.
 
+A mirror is built with the same verbs as a move. A fresh box carries the
+site-less `o1` its own install made: check it there by hand, then name it
+to `prep-target` with `--adopt-siteless=o1`; `init` takes
+`--proxy-mode=ha-switch`.
+
 No daemon and no inotify
 machinery is involved — the driver is the standard per-minute monitor fan-out
 (`monitor/check/autosync.sh` via `minute.sh`), and each pass is the same
@@ -1417,9 +1444,12 @@ the clients. Before the cutover, a real move of those accounts starts again
 with `prep-target` without `admail=`, which removes the record, the mark
 and the target's hold.
 
-It refuses the same way while an `xoct` canary is still in its test run on
-the source, and while the target holds its clients' mail (see
-`prep-target`); a canary proxied before the cutover is left as it is. The
+An `xoct` canary still in its test run on the source is handled as under
+`prep-target`: one the source sends away is converted with its own
+recorded address under `--proxy-mode=ha-switch`, and refuses any other
+cutover; one the source received refuses every cutover. A real cutover
+also refuses while the target holds its clients' mail (see `prep-target`);
+a canary proxied to its own target before the cutover is left as it is. The
 installed `xoct` must take the token, or the run refuses. `admail=` is
 refused on the other verbs.
 

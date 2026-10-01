@@ -7543,7 +7543,7 @@ _xmass_convert_source_to_proxy() {
   #   whole  the single pass of the rename-first order: everything at once,
   #          redirects included.
   local _pass="${1:-whole}"
-  local _oct _rc _tgt_fqdn="" _my_fqdn="" _defer_fqdn=""
+  local _oct _rc _tok _tgt_fqdn="" _my_fqdn="" _defer_fqdn=""
   if [ "${_pass}" = "relay" ]; then
     _info "Converting the source accounts to relay the client-domain sites via xoct ..."
     _XMASS_PROXY_CONV_FAILED=""
@@ -7565,14 +7565,20 @@ _xmass_convert_source_to_proxy() {
     fi
   fi
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    # A canary this box sends away in a test run of its own carries its own
+    # token (_xmass_xoct_token; the gate let it through only for a switch).
+    _tok="$(_xmass_xoct_token "${_oct}")"
     if [ -e "/data/disk/${_oct}/log/proxied.pid" ]; then
       if [ "${_pass}" != "final" ]; then
         _info "  ${_oct}: already proxied earlier; leaving as is"
         continue
       fi
-      # An xoct canary still in its test run (its record here) was proxied
-      # before this cutover, which left it alone: its own go-live ends it.
-      if [ -z "${_XMASS_ADMAIL}" ] && [ -e "/data/conf/xoct_admail.${_oct}.txt" ]; then
+      # An xoct canary still in its test run (its record here) proxied
+      # before this cutover, to its own target, was left alone by it: its
+      # own go-live ends it. One this cutover's relay pass converted (its
+      # policy record names this target) takes its repair pass.
+      if [ -z "${_XMASS_ADMAIL}" ] && [ -e "/data/conf/xoct_admail.${_oct}.txt" ] \
+        && [ "$(_mig_get "/data/disk/${_oct}/${_MIG_CNF_NAME}" _MIG_PEER_IP)" != "${_tgt}" ]; then
         _info "  ${_oct}: an xoct canary still in its test run; leaving as is"
         continue
       fi
@@ -7580,7 +7586,7 @@ _xmass_convert_source_to_proxy() {
       # keeps quiet towards the client unless the promise changed.
       _info "  xoct proxy ${_oct} ${_tgt} --repair ..."
       _XOCT_TARGET_FQDN="${_tgt_fqdn}" _XOCT_MY_FQDN="${_my_fqdn}" xoct proxy "${_oct}" "${_tgt}" --repair \
-        ${_XMASS_ADMAIL:+"admail=${_XMASS_ADMAIL}"}
+        ${_tok:+"admail=${_tok}"}
       _rc=$?
       if [ "${_rc}" -ne 0 ]; then
         _alrt "xoct proxy --repair returned rc=${_rc} for account ${_oct} -- its deferred sites stay held on 503"
@@ -7597,11 +7603,11 @@ _xmass_convert_source_to_proxy() {
         || _alrt "  ${_oct}: could not write the per-host gate here; xoct will retry and refuse without it"
       _info "  xoct proxy ${_oct} ${_tgt} --defer-host-named=${_defer_fqdn} ..."
       xoct proxy "${_oct}" "${_tgt}" --defer-host-named="${_defer_fqdn}" \
-        ${_XMASS_ADMAIL:+"admail=${_XMASS_ADMAIL}"}
+        ${_tok:+"admail=${_tok}"}
     else
       _info "  xoct proxy ${_oct} ${_tgt} ..."
       _XOCT_TARGET_FQDN="${_tgt_fqdn}" _XOCT_MY_FQDN="${_my_fqdn}" xoct proxy "${_oct}" "${_tgt}" \
-        ${_XMASS_ADMAIL:+"admail=${_XMASS_ADMAIL}"}
+        ${_tok:+"admail=${_tok}"}
     fi
     _rc=$?
     if [ "${_rc}" -ne 0 ]; then
@@ -9485,6 +9491,9 @@ _xmass_create_src_host() {
 ###     source-role policy record names this box and this account as the
 ###     peer, both written by root (a demoted failback box, whose migration
 ###     proxied it here);
+###   - it is this pair's own (_xmass_pair_lineage): this box's account was
+###     made from it, or the target's migration state names this box as its
+###     target (a box promoted by hand, whose old active never relayed);
 ###   - or it carries no site (no registered site, no site on its platforms
 ###     or on disk, no vhost but the panel's in its vhost.d and the stock
 ###     include of that directory as its nginx config, and none of its trees
@@ -9515,13 +9524,25 @@ _xmass_target_owner_gate() {
 _A=__ACCT__
 if getent passwd "${_A}" > /dev/null 2>&1; then echo "HELD=YES"; else echo "HELD=NO"; exit 0; fi
 printf '_MIG_CREATE_NOW_UID=%s\n_MIG_CREATE_NOW_INODE=%s\n' "$(id -u "${_A}" 2> /dev/null)" "$(stat -c %i:%W "/data/disk/${_A}" 2> /dev/null)"
+_rootread() {
+  perl -e 'use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $s[4] == 0 && $s[7] <= 65536; local $/; my $d = <$h>; print $d if defined $d; exit 0' "./${1}"
+}
+# The box's own name and the pair it sourced, if any (root's state file:
+# the target, the phase and the init time only, the latter as seconds; the
+# replication password stays here). Every key is printed, empty when
+# unknown, before anything the account can write.
+printf 'TGT_HOST=%s\n' "$(hostname -f 2> /dev/null | tr -cd 'a-zA-Z0-9.-')"
+_st=$(_xmass_in_real_dir /data/conf _rootread xmass_state.cnf)
+_pt=$(printf '%s\n' "${_st}" | grep -m1 '^_XMASS_TARGET_IP=' | cut -d= -f2- | tr -cd '0-9.')
+_pp=$(printf '%s\n' "${_st}" | grep -m1 '^_XMASS_PHASE=' | cut -d= -f2- | tr -cd 'a-z-')
+_pi=$(printf '%s\n' "${_st}" | grep -m1 '^_XMASS_INIT_TIME=' | cut -d= -f2- \
+  | sed -n 's/^\([0-9]\{4\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)-\([0-9]\{2\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)$/\1-\2-\3 \4:\5:\6/p')
+[ -n "${_pi}" ] && _pi=$(date -d "${_pi}" +%s 2> /dev/null)
+printf 'PAIR_TARGET_IP=%s\nPAIR_PHASE=%s\nPAIR_INIT_EPOCH=%s\n' "${_pt}" "${_pp}" "${_pi}"
 _F="/root/.${_A}.migration-create.txt"
 if [ -f "${_F}" ] && [ ! -L "${_F}" ] && [ "$(stat -c %u "${_F}")" = 0 ]; then
   timeout 10 dd if="${_F}" iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none 2> /dev/null | grep '^_MIG_CREATE_'
 fi
-_rootread() {
-  perl -e 'use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $s[4] == 0 && $s[7] <= 65536; local $/; my $d = <$h>; print $d if defined $d; exit 0' "./${1}"
-}
 _L="/data/disk/${_A}/log"
 if _p=$(_xmass_in_real_dir "${_L}" _rootread proxied.pid) \
   && _c=$(_xmass_in_real_dir "${_L}" _rootread migproxy.cnf) \
@@ -9627,6 +9648,10 @@ OWNSH
       && [[ "${_rpeer}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] \
       && printf '%s\n' ${_mine} | grep -qxF -- "${_rpeer}"; then
       _info "  ${_a}: held on ${_t} and relaying to this box (a demoted failback account): adopted for this migration"
+      _XMASS_ADOPT_ACCOUNTS="${_XMASS_ADOPT_ACCOUNTS} ${_a}"
+      continue
+    fi
+    if _xmass_pair_lineage "${_a}" "${_t}" "${_mine}" "${_out}"; then
       _XMASS_ADOPT_ACCOUNTS="${_XMASS_ADOPT_ACCOUNTS} ${_a}"
       continue
     fi
@@ -9797,6 +9822,79 @@ WGREV
          " their own web group (see above); run 'instgrp webrevert <account> --keep-enabled'" \
          " there (and 'instgrp webstatus <account>'), then re-run init"
   fi
+  return 0
+}
+
+### This box's create marker of account $1 (put here when a create made the
+### account from another box), the account's uid and /data/disk/$1 as they
+### are now first, as the target's probe prints them. Root's regular file
+### only, read without following a link.
+_xmass_create_marker_here() {
+  local _f="/root/.${1}.migration-create.txt"
+  printf '_MIG_CREATE_NOW_UID=%s\n_MIG_CREATE_NOW_INODE=%s\n' \
+    "$(id -u "${1}" 2> /dev/null)" "$(stat -c %i:%W "/data/disk/${1}" 2> /dev/null)"
+  if [ -f "${_f}" ] && [ ! -L "${_f}" ] && [ "$(stat -c %u "${_f}" 2> /dev/null)" = 0 ]; then
+    timeout 10 dd if="${_f}" iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none 2> /dev/null \
+      | grep '^_MIG_CREATE_'
+  fi
+}
+
+### Whether the target's account $1 is this pair's own, from the target's
+### probe output $4 ($2 = the target, $3 = this box's addresses): a box
+### promoted by hand has no relay on its old active, and its create markers
+### sit here, naming the old active. Either:
+###   - this box's create marker names the target (hostname -f) and the
+###     account, records this box's account uid and directory as they are
+###     now, and the target's account directory was born before the marker
+###     was put (this box's account was made from that one); or
+###   - the target's own migration state names one of this box's addresses
+###     as its target, in a phase past init, and the target's account
+###     directory was born before that init (the target was this pair's
+###     active, and this box holds its copy).
+### A birth time the filesystem does not keep (0) is not compared. Prints
+### the line that says which; status 1 otherwise. Read-only.
+_xmass_pair_lineage() {
+  local _a="$1" _t="$2" _mine="$3" _out="$4" _ni _tb _th _m _mh _mo _mu _mi _ms _se
+  local _nu _nl _pt _pp _pe
+  _ni=$(printf '%s\n' "${_out}" | grep -m1 '^_MIG_CREATE_NOW_INODE=' | cut -d= -f2-)
+  [[ "${_ni}" =~ ^[0-9]+:[0-9]+$ ]] || return 1
+  _tb="${_ni#*:}"
+  _th=$(printf '%s\n' "${_out}" | grep -m1 '^TGT_HOST=' | cut -d= -f2-)
+  case "${_th}" in
+    ''|*[!a-zA-Z0-9.-]*|.*|*.|*..*) _th="" ;;
+  esac
+  if [ -n "${_th}" ]; then
+    _m=$(_xmass_create_marker_here "${_a}")
+    _nu=$(printf '%s\n' "${_m}" | grep -m1 '^_MIG_CREATE_NOW_UID=' | cut -d= -f2-)
+    _nl=$(printf '%s\n' "${_m}" | grep -m1 '^_MIG_CREATE_NOW_INODE=' | cut -d= -f2-)
+    _mh=$(printf '%s\n' "${_m}" | grep -m1 '^_MIG_CREATE_SRC_HOST=' | cut -d= -f2-)
+    _mo=$(printf '%s\n' "${_m}" | grep -m1 '^_MIG_CREATE_SRC_OCT=' | cut -d= -f2-)
+    _mu=$(printf '%s\n' "${_m}" | grep -m1 '^_MIG_CREATE_TGT_UID=' | cut -d= -f2-)
+    _mi=$(printf '%s\n' "${_m}" | grep -m1 '^_MIG_CREATE_TGT_INODE=' | cut -d= -f2-)
+    _ms=$(printf '%s\n' "${_m}" | grep -m1 '^_MIG_CREATE_STAMPED=' | cut -d= -f2-)
+    _se=""
+    [ -n "${_ms}" ] && _se=$(date -u -d "${_ms% UTC}" +%s 2> /dev/null)
+    if [ "${_mh}" = "${_th}" ] && [ "${_mo}" = "${_a}" ] \
+      && [[ "${_nu}" =~ ^[0-9]+$ ]] && [ "${_mu}" = "${_nu}" ] \
+      && [[ "${_nl}" =~ ^[0-9]+:[0-9]+$ ]] && [ "${_mi}" = "${_nl}" ] \
+      && { [ "${_tb}" = 0 ] || [ -z "${_ms}" ] \
+        || { [[ "${_se}" =~ ^[0-9]+$ ]] && [ "${_tb}" -lt "${_se}" ]; }; }; then
+      _info "  ${_a}: held on ${_t}, the box this box's ${_a} was made from (its create marker here): adopted for this migration"
+      return 0
+    fi
+  fi
+  _pt=$(printf '%s\n' "${_out}" | grep -m1 '^PAIR_TARGET_IP=' | cut -d= -f2-)
+  _pp=$(printf '%s\n' "${_out}" | grep -m1 '^PAIR_PHASE=' | cut -d= -f2-)
+  _pe=$(printf '%s\n' "${_out}" | grep -m1 '^PAIR_INIT_EPOCH=' | cut -d= -f2-)
+  case "${_pp}" in
+    syncing|cutover|rename-failed|complete) : ;;
+    *) return 1 ;;
+  esac
+  [[ "${_pt}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || return 1
+  printf '%s\n' ${_mine} | grep -qxF -- "${_pt}" || return 1
+  [[ "${_pe}" =~ ^[0-9]+$ ]] || return 1
+  [ "${_tb}" = 0 ] || [ "${_tb}" -lt "${_pe}" ] || return 1
+  _info "  ${_a}: held on ${_t}, whose migration state names this box as its target (phase ${_pp}): adopted for this migration"
   return 0
 }
 
@@ -10009,11 +10107,12 @@ _xmass_cmd_prep_target() {
   # that never settles fails that account instead of launching into a refusal.
   # --adopt: only for the accounts the owner gate took without a create
   # marker (a fresh install's own site-less o1, a demoted failback box's
-  # accounts relaying here): xoct create refuses a held account without the
+  # accounts relaying here, the accounts of this pair's old active after a
+  # promotion by hand): xoct create refuses a held account without the
   # marker, and puts it for an adopted one. Passed only when the installed
   # xoct's usage lists it: an xoct from before the marker refuses an option
   # it does not know, and adopts such an account anyway.
-  local _oct _rc _failed="" _adopt="" _adopt_ok=""
+  local _oct _rc _failed="" _adopt="" _adopt_ok="" _tok=""
   case "$(xoct 2> /dev/null)" in
     *'[--adopt]'*) _adopt_ok=YES ;;
   esac
@@ -10037,13 +10136,15 @@ _xmass_cmd_prep_target() {
     # A whole-box move carries every account: xoct's refusal of an internal
     # one (our own address in log/email.txt) is for a move of one account.
     # Under admail= this run's record is xmass's own (_XMASS_ADMAIL_FILE,
-    # which holds the cutover): the create puts none of xoct's.
+    # which holds the cutover): the create puts none of xoct's. A canary
+    # this box sends away in a test run of its own carries its own token.
+    _tok="$(_xmass_xoct_token "${_oct}")"
     if [ "${_XMASS_FIX_PHP}" = "YES" ]; then
       _XOCT_BOX_MOVE=YES _XOCT_XMASS_RUN=YES xoct create "${_oct}" "${_tgt}" --fix-php ${_adopt:+"${_adopt}"} \
-        ${_XMASS_ADMAIL:+"admail=${_XMASS_ADMAIL}"}
+        ${_tok:+"admail=${_tok}"}
     else
       _XOCT_BOX_MOVE=YES _XOCT_XMASS_RUN=YES xoct create "${_oct}" "${_tgt}" ${_adopt:+"${_adopt}"} \
-        ${_XMASS_ADMAIL:+"admail=${_XMASS_ADMAIL}"}
+        ${_tok:+"admail=${_tok}"}
     fi
     _rc=$?
     if [ "${_rc}" -ne 0 ]; then
@@ -12913,6 +13014,14 @@ REMOTE
     _alrt "  Those sites stay held on 503 here (per-host gate); fix the cause and re-run for each:"
     _alrt "    ${_rpx}xoct proxy <oN> ${_tgt} --repair${_XMASS_ADMAIL:+ admail=${_XMASS_ADMAIL}}"
   fi
+  # An xoct canary still in its test run re-runs with its own token.
+  local _cf _ct
+  if [ -z "${_XMASS_ADMAIL}" ]; then
+    for _cf in ${_XMASS_PROXY_CONV_FAILED} ${_XMASS_PROXY_DEFER_FAILED}; do
+      _ct="$(_xmass_xoct_token "${_cf}")"
+      [ -n "${_ct}" ] && _alrt "    (${_cf} is an xoct canary still in its test run: add admail=${_ct})"
+    done
+  fi
   _info "  Proxy modes are per account: see 'xoct proxy-mode --all' on this box"
   _info "  Next: run 'xmass post-mig' on the TARGET after DNS is updated"
   if [ -n "${_XMASS_ADMAIL}" ]; then
@@ -13732,16 +13841,54 @@ _xmass_hold_gate() {
        "${_tgt} by hand once no test run needs it"
 }
 
+# The admail= an xoct call for account $1 carries in this run: the run's own
+# under admail=; otherwise, for a canary this box sends away in an xoct test
+# run still open (its record here carries the source line), that canary's
+# own recorded address, so the account keeps to its test run while the box
+# is prepared or switched around it; nothing for any other account. An
+# address that is not one plain address gives nothing: xoct then refuses
+# the account by itself.
+_xmass_xoct_token() {
+  local _f="/data/conf/xoct_admail.${1}.txt" _r
+  if [ -n "${_XMASS_ADMAIL}" ]; then
+    printf '%s' "${_XMASS_ADMAIL}"
+    return 0
+  fi
+  [ -f "${_f}" ] || return 0
+  grep -qxF "${_XMASS_XOCT_SRC_LINE}" "${_f}" 2> /dev/null || return 0
+  _r="$(head -n 1 "${_f}" 2> /dev/null | tr -cd '[:print:]' | cut -c1-200)"
+  [[ "${_r}" =~ ^[A-Za-z0-9_][A-Za-z0-9._%+-]*@[A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,}$ ]] || return 0
+  printf '%s' "${_r}"
+}
+
+# The proxy mode a cutover runs under: its --proxy-mode=, else the one init
+# recorded in the state file.
+_xmass_switch_mode() {
+  if [ -n "${_proxy_mode}" ]; then
+    printf '%s' "${_proxy_mode}"
+    return 0
+  fi
+  grep -m1 '^_XMASS_PROXY_MODE=' "${_XMASS_STATE_FILE}" 2> /dev/null | cut -d= -f2- | tr -cd 'a-z-'
+}
+
 # An account an earlier xoct test run recorded here (xoct's
 # /data/conf/xoct_admail.<oN>.txt) makes every xoct verb for it refuse
-# without its admail=: a prep-target without admail= would fail it account
-# by account, and a cutover would leave it unconverted after the source's
-# sites went down. Refused up front instead. The records of accounts the
-# run leaves alone anyway (not eligible, or proxied before it) do not count.
+# without its admail=. The records of accounts the run leaves alone anyway
+# (not eligible, or proxied before it) do not count.
+#   - A canary this box received (no source line): its test run holds this
+#     box's clients' mail, and xoct refuses every account here without
+#     admail= while it does. Refused on both verbs until that run ends.
+#   - A canary this box sends away (the source line): prep-target installs
+#     it with its own admail= (_xmass_xoct_token), which moves nothing. A
+#     cutover under --proxy-mode=ha-switch (a switch to this box's mirror,
+#     or a failback) converts it the same way, so it stays served and its
+#     client is not told while every other account switches; its test run
+#     is then redone from the new active. Any other cutover is a real move
+#     of the account and refuses until the canary goes live.
 # admail= is no way out for a real move: it makes the whole run a test for
 # every account, and no client is told of the move. $1 = the verb.
 _xmass_xoct_admail_gate() {
-  local _f _a _l=""
+  local _f _a _recv="" _sent="" _l=""
   [ -n "${_XMASS_ADMAIL}" ] && return 0
   for _f in /data/conf/xoct_admail.*.txt; do
     [ -e "${_f}" ] || continue
@@ -13750,13 +13897,47 @@ _xmass_xoct_admail_gate() {
     [ -d "/data/disk/${_a}" ] || continue
     [ -z "$(_xmass_account_missing "/data/disk/${_a}")" ] || continue
     [ -e "/data/disk/${_a}/log/proxied.pid" ] && continue
+    if grep -qxF "${_XMASS_XOCT_SRC_LINE}" "${_f}" 2> /dev/null; then
+      _sent="${_sent} ${_a}"
+    else
+      _recv="${_recv} ${_f}"
+    fi
     _l="${_l} ${_f}"
   done
   [ -z "${_l}" ] && return 0
-  _die "an xoct canary is still in its test run here:${_l} -- xoct refuses those accounts without" \
-       "their admail=. admail= on $1 would make the whole run a test for every account, and no" \
-       "client would be told of the move. For a real move, first end each canary's test run with" \
-       "'xoct go-live <oN> <target-ip>', which removes its records and mails its client"
+  if [ -n "${_recv}" ]; then
+    _die "an xoct canary is still in its test run here:${_recv} -- it came to this box under" \
+         "admail=, whose test run holds this box's clients' mail, and xoct refuses every account" \
+         "here without admail= while it does. admail= on $1 would make the whole run a test for" \
+         "every account, and no client would be told of the move. End that test run first with" \
+         "'xoct go-live <oN> <target-ip>' on the box that sent the canary"
+  fi
+  if [ "$1" = "cutover" ] && [ "$(_xmass_switch_mode)" != "ha-switch" ]; then
+    _die "an xoct canary is still in its test run here:${_l} -- xoct refuses those accounts without" \
+         "their admail=. admail= on $1 would make the whole run a test for every account, and no" \
+         "client would be told of the move. For a real move, first end each canary's test run with" \
+         "'xoct go-live <oN> <target-ip>', which removes its records and mails its client. A switch" \
+         "to this box's mirror (--proxy-mode=ha-switch) carries each canary with its own admail="
+  fi
+  case "$(xoct 2> /dev/null)" in
+    *'admail=<address>'*) : ;;
+    *) _die "an xoct canary is still in its test run here:${_l}, and the installed xoct does not" \
+            "take admail=: refresh the migration tools first" ;;
+  esac
+  for _a in ${_sent}; do
+    if [ -z "$(_xmass_xoct_token "${_a}")" ]; then
+      _die "an xoct canary is still in its test run here (/data/conf/xoct_admail.${_a}.txt), and" \
+           "its first line is not one plain address: xoct would refuse ${_a}. Fix the record first"
+    fi
+    if [ "$1" = "cutover" ]; then
+      _info "  ${_a}: an xoct canary still in its test run: converted with its own admail=$(_xmass_xoct_token "${_a}"),"
+      _info "  so its client is not told of the switch; redo its test run and its go-live from ${_tgt}"
+    else
+      _info "  ${_a}: an xoct canary still in its test run: installed with its own admail=$(_xmass_xoct_token "${_a}");"
+      _info "  a cutover that moves it refuses until it goes live, one under --proxy-mode=ha-switch carries it"
+    fi
+  done
+  return 0
 }
 
 # A cutover of accounts prepared under admail= refuses to run without it.
@@ -14290,7 +14471,8 @@ case "${_cmd}" in
     echo "    notice it never had, the upgrade notices come back on, and the record,"
     echo "    the target's mark and its hold go. A real run refuses while an xoct"
     echo "    canary is still in its test run here ('xoct go-live' ends it) or the"
-    echo "    target holds its mail."
+    echo "    target holds its mail; a canary this box sends away is installed, and"
+    echo "    converted by a cutover under --proxy-mode=ha-switch, with its own admail=."
     echo "  - State is kept in ${_XMASS_STATE_FILE}"
     echo "  - reset-phase is a recovery verb: a cutover that fails between the lag"
     echo "    wait and the panel rewire leaves phase=cutover, which every other"
