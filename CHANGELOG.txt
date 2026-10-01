@@ -50,6 +50,9 @@
 
 @=> Security
 
+    * The limited shell template and the ImageMagick policy no longer
+      stay a release behind on a box whose mirror lagged at the publish.
+
     * The per-account runner clears the export metadata only in the
       account's own tree or in its files store on attached storage.
 
@@ -1231,6 +1234,24 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * The configuration files the agent pass keeps current between
+      upgrades (the PHP-FPM pool templates, the limited shell template,
+      the ImageMagick policy, the control readme, sysctl.conf, the Let's
+      Encrypt helper and includes, the Drupal 10 and 11 core patches) are
+      installed through the versioned fetcher: a box that runs a new
+      release before its mirror serves the new file asks again instead
+      of keeping the previous file until the next release. The steps
+      after the fetch run once per release and whenever the file
+      changes, as before.
+
+    * The hosting cron queue template is put into the accounts and
+      stamped only once it carries the queue patch.
+
+    * The versioned fetcher holds a serial moved together with a release
+      while the mirror still serves the previous bytes, as it already
+      did for a serial moved on its own, and no longer refuses the
+      ImageMagick policy as a mirror's error page.
 
     * The Solr agent (manage_solr_config.sh) is installed through the
       versioned fetcher, as every other tool is: a box that sees its new
