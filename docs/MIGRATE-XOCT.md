@@ -343,7 +343,10 @@ hostmaster database via mysqldump, and marks `exported.pid` — but ONLY when
 every dump completed truthfully. A database carrying any non-transactional
 table is dumped with mydumper's transactional-only mode turned off, selected
 automatically per database, so a stray MyISAM table neither fails the export
-nor withholds the account's export stamp.
+nor withholds the account's export stamp. Each site dump carries the
+database's triggers, stored routines and events, and the import keeps their
+definer, the site's database user it creates first (see
+[MYQUICK.md](MYQUICK.md#triggers-stored-routines-and-events)).
 
 The hostmaster dump carries no GTID state of the source: it is taken with
 `--set-gtid-purged=OFF` when the local `mysqldump` takes that option (a

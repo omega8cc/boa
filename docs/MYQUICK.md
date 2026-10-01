@@ -65,5 +65,17 @@ myloader --defaults-file=/root/.my.cnf --database=<dbname> \
   --directory=<dump-dir> --threads=4 --drop-table=DROP --ignore-set=SQL_LOG_BIN
 ```
 
+## Triggers, Stored Routines and Events
+
+Every mydumper dump BOA takes carries the database's triggers, stored procedures and functions, and scheduled events along with its tables and views: the nightly and cluster backups, the per-site exports of `xoct` and `xcopy`, and the dump Ægir takes for a Migrate task or for a Restore whose archive carries no database dump. Each of the three options is passed when the installed `mydumper` lists it.
+
+`xoct` and `xcopy` load them as root and keep each object's definer, the site's database user, which the import creates on the target under the same name before the load.
+
+The fast import of a Migrate or of a dump-less Restore gives every view, trigger, routine and event to the site's new database user (`--replace-definer`), as the classic dump path does by loading as that user. Kept as they were, they would name the source database's user, which the task drops when it finishes, and fail from then on. A `myloader` without `--replace-definer` (the 0.19.3 line) loads the tables and views and leaves the triggers, routines and events out; the task log says so.
+
+A nightly dump restored as root brings them back with their own definers, and the site's own database user can restore its dump into its own database too.
+
+On a box running with the binary log on (every box an `xmass` run touched), MySQL refuses a stored function declared without `DETERMINISTIC`, `NO SQL` or `READS SQL DATA` (`ERROR 1418`), and a database user without SUPER may create neither triggers nor stored functions there (`ERROR 1419`). A load that meets such an object fails and says so: `xoct` and `xcopy` count the site's import as failed, and a Migrate rolls back with the site left as it was. Declare such a function with one of those characteristics, and on such a box restore a dump that carries triggers or functions as root.
+
 For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs).
 

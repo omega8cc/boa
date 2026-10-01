@@ -403,6 +403,27 @@ EOFMYSQL
   done
 }
 
+### A database's triggers, stored routines and events are dumped with its
+### tables. mydumper writes none of them unless asked, so a site that kept
+### them (a logging trigger, a function its queries call, a scheduled event)
+### found its nightly dumps without them. Each keeps its DEFINER, the site's
+### own database user: a restore as root brings them back as that user, and
+### the user restoring into its own database needs no extra privilege for
+### objects it defines itself. Sets _MYDUMPER_OBJECTS to those of the three
+### options the local mydumper lists, so a build without one gets its
+### arguments as before.
+_mydumper_objects_opts() {
+  local _h _o
+  _MYDUMPER_OBJECTS=()
+  _h=$(mydumper --help 2>&1)
+  for _o in --triggers --routines --events; do
+    if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+(-[[:alpha:]],[[:space:]]+)?${_o}([[:space:]]|=|$)"; then
+      _MYDUMPER_OBJECTS+=("${_o}")
+    fi
+  done
+  return 0
+}
+
 _backup_this_database_with_mydumper() {
   _check_running
   if [ ! -d "${_SAVELOCATION}/${_DB}" ]; then
@@ -436,6 +457,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
   case "${_MYDUMPER_MAJOR}" in
     [1-9]*) _MYDUMPER_ROWS_OPT="" ;;
   esac
+  _mydumper_objects_opts
   ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
   mydumper \
     --defaults-file=/root/.my.cluster_root.cnf \
@@ -444,6 +466,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
     --port=3306 \
     --outputdir=${_SAVELOCATION}/${_DB}/ \
     ${_MYDUMPER_ROWS_OPT} \
+    "${_MYDUMPER_OBJECTS[@]}" \
     --build-empty-files \
     --threads=4 \
     --long-query-guard=900 \
