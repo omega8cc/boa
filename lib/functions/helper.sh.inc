@@ -862,7 +862,9 @@ _get_dev_stc() {
 }
 
 #
-# Download and extract from dev/contrib mirror.
+# Download and extract from dev/contrib mirror. A fetch that fails is
+# counted in _GET_FAILS, so a caller filling a stage can refuse to use it
+# (the shared trees and the forced bundle refresh in satellite.sh.inc).
 _get_dev_contrib() {
   if [ ! -z "${1}" ]; then
     _max_attempts=10
@@ -890,6 +892,7 @@ _get_dev_contrib() {
       fi
     else
       _msg "OOPS: Failed to download ${_urlDev}/${_tRee}/contrib/$1 after ${_max_attempts} attempts"
+      _GET_FAILS=$(( ${_GET_FAILS:-0} + 1 ))
       return 1  # Exit the function but continue the script
     fi
   fi
