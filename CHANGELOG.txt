@@ -50,6 +50,9 @@
 
 @=> Security
 
+    * The per-account runner clears the export metadata only in the
+      account's own tree or in its files store on attached storage.
+
     * The Solr config upload and the Octopus upgrade's pass over the
       hostmaster site's files/ leave BOA's own folders at the top of an
       account's files store (.backups, .backup-exports, .archived) alone.
@@ -1203,6 +1206,11 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * The Solr agent (manage_solr_config.sh) is installed through the
+      versioned fetcher, as every other tool is: a box that sees its new
+      version before the mirror serves the new file asks again on the
+      next pass instead of keeping the previous agent.
 
     * The pass summary line records the full Nginx version string,
       including a fourth component such as 1.31.6.1; the previous
