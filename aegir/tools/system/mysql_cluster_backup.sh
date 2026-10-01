@@ -467,10 +467,30 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
   rm -f "${_SAVELOCATION}/${_DB}.mydumper.log"
 }
 
+### The dumps never carry the server's GTID state. By default
+### (--set-gtid-purged=AUTO) a dump taken while GTID is on opens with
+### SET @@SESSION.SQL_LOG_BIN=0 and sets @@GLOBAL.GTID_PURGED. A database
+### user without SUPER cannot load such a dump at all (ERROR 1227), loading
+### it back on a server that shares that history fails (ERROR 3546 on 8.x,
+### 1840 on 5.7), and where it passes it stays out of the binary log, so the
+### other nodes and replicas never get the restored rows. OFF writes
+### neither. Sets _MYSQLDUMP_GTID to the option when the local mysqldump
+### takes it: one that does not (MariaDB's) would refuse it and writes
+### neither anyway, so it is asked, never assumed.
+_mysqldump_gtid_opts() {
+  _MYSQLDUMP_GTID=()
+  if mysqldump --help 2> /dev/null | grep -q -- '--set-gtid-purged'; then
+    _MYSQLDUMP_GTID=(--set-gtid-purged=OFF)
+  fi
+  return 0
+}
+
 _backup_this_database_with_mysqldump() {
   _check_running
+  ### --defaults-extra-file must stay the first option.
   mysqldump \
     --defaults-extra-file=/root/.my.cluster_root.cnf \
+    "${_MYSQLDUMP_GTID[@]}" \
     --single-transaction \
     --quick \
     --no-autocommit \
@@ -588,6 +608,11 @@ if [ -x "/usr/local/bin/mydumper" ]; then
     _MYQUICK_USE=YES
     echo "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V})"
   fi
+fi
+if [ "${_MYQUICK_USE}" != "YES" ]; then
+  _mysqldump_gtid_opts
+  [ "${#_MYSQLDUMP_GTID[@]}" -eq 0 ] \
+    && echo "INFO: this mysqldump takes no --set-gtid-purged: its dumps carry no GTID state"
 fi
 
 

@@ -619,9 +619,29 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
   rm -f "${_SAVELOCATION}/${_DB}.mydumper.log"
 }
 
+### The dumps never carry the server's GTID state. By default
+### (--set-gtid-purged=AUTO) a dump taken while GTID is on (every box an
+### xmass run touched: BOA's my.cnf leaves it off, xmass_gtid.cnf turns it
+### on) opens with SET @@SESSION.SQL_LOG_BIN=0 and sets
+### @@GLOBAL.GTID_PURGED. The account's own database user cannot load such a
+### dump at all (ERROR 1227), root cannot load it back on this box (ERROR
+### 3546 on 8.x, 1840 on 5.7), and on another 8.x box the first load passes
+### unbinlogged and takes this box's GTID history there, so every later one
+### fails. OFF writes neither. Sets _MYSQLDUMP_GTID to the option when the
+### local mysqldump takes it: one that does not (MariaDB's) would refuse it
+### and writes neither anyway, so it is asked, never assumed.
+_mysqldump_gtid_opts() {
+  _MYSQLDUMP_GTID=()
+  if mysqldump --help 2> /dev/null | grep -q -- '--set-gtid-purged'; then
+    _MYSQLDUMP_GTID=(--set-gtid-purged=OFF)
+  fi
+  return 0
+}
+
 _backup_this_database_with_mysqldump() {
   _check_running
   mysqldump \
+    "${_MYSQLDUMP_GTID[@]}" \
     --single-transaction \
     --quick \
     --no-autocommit \
@@ -656,6 +676,7 @@ _backup_mysql_schema() {
   # --single-transaction is a no-op for MyISAM tables but harmless and
   # ensures InnoDB system tables (8.x) are captured consistently.
   mysqldump \
+    "${_MYSQLDUMP_GTID[@]}" \
     --single-transaction \
     --quick \
     --no-autocommit \
@@ -781,6 +802,10 @@ if [ -x "/usr/local/bin/mydumper" ]; then
     echo "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V})"
   fi
 fi
+### Once per run: the mysql schema always goes through mysqldump.
+_mysqldump_gtid_opts
+[ "${#_MYSQLDUMP_GTID[@]}" -eq 0 ] \
+  && echo "INFO: this mysqldump takes no --set-gtid-purged: its dumps carry no GTID state"
 
 
 # A dump that failed must never disappear quietly: cron discards this

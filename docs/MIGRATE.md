@@ -126,7 +126,10 @@ its serving gate meet sites that can answer.
 
 Before any in-place rewrite begins, the plain pre-rename database dump is
 verified complete — exit status plus the dumper's closing marker — and the
-run aborts rather than rewrite the database without a complete backup.
+run aborts rather than rewrite the database without a complete backup. The
+dump is taken with `--set-gtid-purged=OFF` when the local `mysqldump` takes
+that option, so it carries no GTID state and loads back on a box with GTID
+on.
 
 The master root's run (`--aegir-root /var/aegir`) also renames the names the
 box was given at install and nothing else rewrites: postfix `myhostname` and

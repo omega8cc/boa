@@ -1235,6 +1235,22 @@
       log. The dump takes --set-gtid-purged=OFF when the box's mysqldump
       offers it.
 
+    * BOA's other database dumps no longer carry the server's GTID
+      state either: the nightly SQL backup (its mysqldump mode and the
+      mysql schema), the cluster backup, xtrim's dumps before a drop,
+      renameaegirhost's pre-rename backup, and aegir2boa-stage2's
+      source dumps and pre-import snapshot. Taken on a box an xmass run
+      touched, such a dump could not be restored there: the account's
+      own database user was refused outright ("ERROR 1227 ... SUPER,
+      SYSTEM_VARIABLES_ADMIN or SESSION_VARIABLES_ADMIN"), root got
+      "ERROR 3546" on 8.4 and "ERROR 1840" on 5.7 (after loading the
+      tables unbinlogged), and on another box the first restore took the
+      source's GTID history with it, unbinlogged, so every later one
+      failed; aegir2boa-stage2's --revert-db-import, which drops the
+      panel tables first, could not load its own snapshot. Every dump
+      takes --set-gtid-purged=OFF when the box's mysqldump offers it;
+      dumps taken before still carry it.
+
     * xcopy's create waits for a quiet target before it holds back the
       welcome mail, and xoct and xcopy say so when the hold was lifted
       during the install. A real xcopy refuses a target that holds its
