@@ -50,6 +50,11 @@
 
 @=> Security
 
+    * Nightly maintenance keeps the shared code store's permissions,
+      moves unused shared codebases and prunes the codebases backup only
+      inside the real store, never through a link planted at a store
+      name, and waits while /data/all is a link the store rule refuses.
+
     * The site ownership and permissions fixers leave BOA's own folders at
       the top of an account's files store (.backups, .backup-exports,
       .archived) as they are; only a site's own store is walked.
