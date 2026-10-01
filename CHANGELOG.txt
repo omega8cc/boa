@@ -1186,6 +1186,11 @@
 
 @=> Important Fixes
 
+    * The pass summary line records the full Nginx version string,
+      including a fourth component such as 1.31.6.1; the previous
+      pattern cut it to three components and misreported the
+      installed build.
+
     * A move no longer mails the client an "Ægir Upgrade" notice of its
       own: the first Octopus pass on the new box that would send it
       sends none, and later passes mail as the account's switch says.
