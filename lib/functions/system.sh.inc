@@ -6758,7 +6758,10 @@ _if_ssl_install_src() {
     if grep -i 'OPENSSL_NO_DEPRECATED_3_4' ${_sslMacros} &> /dev/null; then
       _sslIncludesA=YES
     fi
-    if grep -i '2019-2026' ${_sslMacros} &> /dev/null; then
+    # The installed headers must be the pinned release's own: opensslv.h
+    # names its version, so this follows the pin with nothing to edit.
+    if grep -qF "OPENSSL_FULL_VERSION_STR \"${_OPENSSL_NEW_VRN}\"" \
+      /usr/local/ssl3/include/openssl/opensslv.h &> /dev/null; then
       _sslIncludesB=YES
     fi
     if [ "${_sslIncludesA}" = "NO" ] || [ "${_sslIncludesB}" = "NO" ]; then
