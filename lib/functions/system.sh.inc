@@ -6676,7 +6676,7 @@ _ssl_install_src() {
     _ssl_paths_update "${_THIS_SSL_BINARY}"
     _ssl_apt_locks_update
   else
-    _msg "OOPS: OpenSSL version ${_OPENSSL_NEW_VRN} was not installed!"
+    _msg "OOPS: OpenSSL version ${_OPENSSL_BUILD_VRN} was not installed!"
     _SSH_FORCE_REINSTALL=
     _NGX_FORCE_REINSTALL=
     _PHP_FORCE_REINSTALL=
