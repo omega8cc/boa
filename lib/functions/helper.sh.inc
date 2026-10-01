@@ -1798,7 +1798,7 @@ _barracuda_log_update() {
   # The stamp names what runs, not what was wanted: a build that produced
   # nothing leaves the previous binary in place.
   _LOG_NGX_V=$(/usr/sbin/nginx -v 2>&1 \
-    | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' \
+    | grep -oE '[0-9]+(\.[0-9]+)+' \
     | head -1)
   _BARRACUDA_VERSION_INFO="$(date) / \
     ${_OS_DIST}.${_OS_CODE} / \
