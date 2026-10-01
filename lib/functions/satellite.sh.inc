@@ -4983,6 +4983,10 @@ _satellite_run_pre_install() {
       _sudoers_safe_append /etc/sudoers.d/${_SCRIPT} \
         "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh"
     done
+    # The database broker: it serves an account only while the account's
+    # root-owned /data/conf/<oN>_db_broker.txt exists.
+    _sudoers_safe_append /etc/sudoers.d/boa-dbctl \
+      "${_USER} ALL=NOPASSWD: /usr/local/bin/boa-dbctl"
   else
     _sudoers_safe_append /etc/sudoers \
       "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" "${_USER} ALL=NOPASSWD"
@@ -4991,6 +4995,8 @@ _satellite_run_pre_install() {
       _sudoers_safe_append /etc/sudoers.d/${_SCRIPT} \
         "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh"
     done
+    _sudoers_safe_append /etc/sudoers.d/boa-dbctl \
+      "${_USER} ALL=NOPASSWD: /usr/local/bin/boa-dbctl"
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
       _THIS_DB_PORT=6033

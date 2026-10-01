@@ -1,0 +1,1961 @@
+#!/bin/bash
+#
+# boa-dbctl -- the root database broker for Octopus accounts.
+#
+# Once an account is flipped on a box (the root-owned control file
+# /data/conf/<oN>_db_broker.txt exists), its instance database user holds
+# rights on its own databases only. Everything that needs more comes here
+# through sudo -n: creating, dropping and reserving its databases, granting
+# and revoking its site users, the verify probes, the fast (mydumper) dumps
+# and loads, and the migration-source read grants. Each database is owned
+# through the root registry /var/lib/boa/dbowners/, one file per database,
+# created exclusively: the first caller wins.
+#
+# No verb takes free SQL. A password comes on stdin, one line, never on the
+# command line. Output: "OK <verb> <fields>" on stdout and exit 0, or
+# "ERR <code> <reason>" on stderr and the code as the exit status:
+#   2 usage, 3 not-yours, 4 taken, 6 refused-user, 7 sql-failed,
+#   8 not-in-broker-mode, 9 busy.
+# One line per call goes to /var/log/boa/dbctl.log, never a password.
+
+# The *_here helpers run through _acct_in_real_dir, _on_exit as the EXIT trap.
+# shellcheck disable=SC2329
+umask 077
+cd / || exit 7
+_STD_PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+export PATH="${_STD_PATH}"
+export LC_ALL=C
+unset CDPATH ENV BASH_ENV GLOBIGNORE
+IFS=$' \t\n'
+
+# Root paths, in one place.
+_DISK="/data/disk"
+_CONF="/data/conf"
+_LIBD="/var/lib/boa"
+_REG="/var/lib/boa/dbowners"
+_RUNP="/run/boa-dbctl"
+_LOGD="/var/log/boa"
+_LOGF="/var/log/boa/dbctl.log"
+_RHOME="/root"
+_MYCNF="/root/.my.cnf"
+_BCNF="/root/.barracuda.cnf"
+_AEGIR="/var/aegir"
+_STAGE="/data/disk/.boa-dbstage"
+_ROOT_UID="0"
+
+# A dump or load waits for the account's I/O lock, then for one of the
+# box-wide slots, up to _WAIT_TRIES x _WAIT_SEC each, as provision's own dump
+# waits for a previous one; a registry change waits up to _REG_WAIT seconds.
+# A child past the wall-clock limit (_DB_BROKER_IO_LIMIT in barracuda.cnf)
+# gets TERM, then KILL after _KILL_GRACE seconds, as a whole process group.
+_WAIT_TRIES=6
+_WAIT_SEC=10
+_REG_WAIT=60
+_SLOTS=2
+_KILL_GRACE=30
+
+# Lock descriptors on fixed numbers (7 registry, 8 I/O, 9 slot), closed in
+# every child that connects to the server or runs a dump or load, so only
+# this process ever holds them. 5 carries a load's client credentials.
+
+_VERB=""
+_CALLER=""
+_ACCT=""
+_ACCT_UID=""
+_ROOT_RUN="NO"
+_RESULT=""
+_LOG_DB=""
+_LOG_UH=""
+_TMPD=""
+_STG=""
+_SERVER=""
+_ROWS=()
+_ARGS=()
+_OPT_ACCOUNT=""
+_OPT_VIA=""
+_OPT_USER=""
+_OPT_DB=""
+_HAS_USER="NO"
+_HAS_DB="NO"
+_USER_PRIVS=""
+_DB_PRIVS=""
+_MASTER_DB=""
+
+_usage() {
+  cat <<'EOF' >&2
+Usage: sudo -n boa-dbctl <verb> [arguments]      (an Octopus account)
+       boa-dbctl <verb> [arguments] --account <oN> (root)
+
+  exists <db>                        yes when the schema or an entry holds it
+  reserve <db>                       reserve a free name for the account
+  create <db>                        create an own reserved or a free name
+  drop <db>                          drop an own database and its entry
+  grant <db> <user> <host>           site user grant, the password on stdin
+  revoke <db> <user> [<host>]        site user revoke, as provision revokes
+  grants <user> <host>               SHOW GRANTS of a user the account may name
+  grant-select <src> <user> <host>   migration-source read grant
+  revoke-select <db> <user> <host>   migration-source read revoke
+  grants-scan --user <u> | --db <d> | --user <u> --db <src>
+  selftest                           the verify probes
+  dump <db>                          mydumper into backups/tmp_expim
+  load <db>                          myloader from backups/tmp_expim as the
+                                     site's own database user (the user, then
+                                     the password, one line each on stdin)
+  list                               the account's registry entries
+  register <db> --account <oN> --via <tool>  (root)
+  regrant --account <oN>                     (root)
+EOF
+}
+
+_msg() {
+  printf '%s\n' "$*" >&2
+}
+
+_info() {
+  _RESULT="OK"
+  printf 'OK %s\n' "$*"
+}
+
+_alrt() {
+  printf 'ALRT: %s\n' "$*" >&2
+}
+
+_die() {
+  local _c="${1}"
+  shift
+  _RESULT="ERR ${_c} $*"
+  printf 'ERR %s %s\n' "${_c}" "$*" >&2
+  exit "${_c}"
+}
+
+# A value fit for the log line: the characters names and hosts may carry,
+# anything else as ?, bounded.
+_log_safe() {
+  printf '%s' "${1}" | tr -c 'A-Za-z0-9._%:@=+/-' '?' | head -c 160
+}
+
+_log_line() {
+  if [[ ! -e "${_LOGD}" ]]; then
+    mkdir -p -- "${_LOGD}" 2> /dev/null
+  fi
+  [[ -d "${_LOGD}" && ! -L "${_LOGD}" && ! -L "${_LOGF}" ]] || return 0
+  printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${1}" >> "${_LOGF}" 2> /dev/null
+  chmod 0600 "${_LOGF}" 2> /dev/null
+  return 0
+}
+
+# A line of its own for each grant row a call takes from someone else (the
+# rows left on a dropped name that create revokes), by hex of user and host.
+_log_note() {
+  _log_line "caller=$(_log_safe "${_CALLER}") account=$(_log_safe "${_ACCT}") verb=$(_log_safe "${_VERB}") db=$(_log_safe "${_LOG_DB}") note=$(_log_safe "${1}")"
+}
+
+_on_exit() {
+  local _rc=$? _n="-"
+  if [[ -n "${_STG}" && -d "${_STG}" && ! -L "${_STG}" ]]; then
+    rm -rf -- "${_STG}"
+  fi
+  if [[ -n "${_TMPD}" && -d "${_TMPD}" && ! -L "${_TMPD}" ]]; then
+    rm -rf -- "${_TMPD}"
+  fi
+  if [[ -n "${_ACCT}" && -d "${_REG}" && ! -L "${_REG}" ]]; then
+    _n=$(_reg_count "${_ACCT}")
+  fi
+  [[ -n "${_RESULT}" ]] || _RESULT="exit ${_rc}"
+  if [[ -n "${_VERB}" ]]; then
+    _log_line "caller=$(_log_safe "${_CALLER}") account=$(_log_safe "${_ACCT}") verb=$(_log_safe "${_VERB}") db=$(_log_safe "${_LOG_DB}") user=$(_log_safe "${_LOG_UH}") result=$(_log_safe "${_RESULT// /_}") count=${_n}"
+  fi
+  return 0
+}
+
+# An account owns /data/disk/<oN>, so any name there can be a link or a FIFO,
+# and any directory on the way can itself be a link. Root reads there only
+# through the helpers below, the helper.sh.inc bodies (this tool never
+# sources that file).
+#
+# Run "$@" inside the real directory $1, never one reached through a link an
+# account planted on the way. Below /home and /data/disk (root's) every name
+# on the path must be a real directory; elsewhere the last name is checked
+# against its resolved parent. Once entered, ./name stays in that directory
+# whatever is swapped.
+_acct_in_real_dir() {
+  local _d="${1}" _a="" _want
+  shift
+  case "${_d}" in
+    /home/?*) _a=/home ;;
+    /data/disk/?*) _a=/data/disk ;;
+  esac
+  if [ -n "${_a}" ]; then
+    _want="$(cd -P -- "${_a}" 2> /dev/null && pwd -P)${_d#"${_a}"}"
+  else
+    _want="$(cd -P -- "${_d%/*}" 2> /dev/null && pwd -P)/${_d##*/}"
+  fi
+  ( cd -P -- "${_d}" 2> /dev/null && [ "$(pwd -P)" = "${_want}" ] && "$@" )
+}
+# ./$1 in the current (pinned) directory: never through a link, never blocked
+# on a FIFO, at most 1 MiB. Empty for anything else.
+_acct_read_here() {
+  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
+    bs=1048576 count=1 status=none 2> /dev/null
+}
+# $2 in the real directory $1, read as _acct_read_here reads it.
+_acct_read_in() {
+  _acct_in_real_dir "${1}" _acct_read_here "${2}"
+}
+
+# A database's triggers, stored routines and events travel with its tables:
+# _MYDUMPER_OBJECTS holds those of the three options the local mydumper
+# lists (xoct's probe, one text wherever it is copied).
+_mydumper_objects_opts() {
+  local _h _o
+  _MYDUMPER_OBJECTS=()
+  _h=$(mydumper --help 2>&1)
+  for _o in --triggers --routines --events; do
+    if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+(-[[:alpha:]],[[:space:]]+)?${_o}([[:space:]]|=|$)"; then
+      _MYDUMPER_OBJECTS+=("${_o}")
+    fi
+  done
+  return 0
+}
+
+# A load is written to the binary log, so a replica of this box gets it:
+# _MYLOADER_BINLOG holds --ignore-set=SQL_LOG_BIN when the local myloader
+# lists it (xoct's probe, one text wherever it is copied). It drops that
+# session variable whether it comes from myloader's own default or the
+# packaged /etc/mydumper.cnf; --enable-binlog is no substitute.
+_myloader_binlog_opts() {
+  _MYLOADER_BINLOG=()
+  if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--ignore-set([[:space:]]|=)'; then
+    _MYLOADER_BINLOG=(--ignore-set=SQL_LOG_BIN)
+  fi
+  return 0
+}
+
+# The options that give a load's views, triggers, routines and events to the
+# login the load runs as, the row its credential proof landed on, as
+# provision's own fast import does (myloader_definer_option); a myloader
+# without --replace-definer leaves the triggers and post objects out.
+_myloader_definer_opts() {
+  local _h _o
+  _MYLOADER_DEFINER=()
+  _h=$(myloader --help 2>&1 7>&- 8>&- 9>&-)
+  if printf '%s\n' "${_h}" | grep -qE -- '^[[:space:]]+--replace-definer([[:space:]]|=)'; then
+    _MYLOADER_DEFINER=("--replace-definer=\`${1}\`@\`${2}\`")
+    return 0
+  fi
+  for _o in --skip-triggers --skip-post; do
+    if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+${_o}([[:space:]]|=)"; then
+      _MYLOADER_DEFINER+=("${_o}")
+    fi
+  done
+  return 0
+}
+
+# Hex and back, so a value read from a grant table travels as [0-9A-F] only.
+_hex() {
+  printf '%s' "${1}" | od -An -v -tx1 | tr -d ' \n' | tr 'a-f' 'A-F'
+}
+
+_unhex() {
+  [[ "${1}" =~ ^([0-9A-Fa-f][0-9A-Fa-f])*$ ]] || return 1
+  printf '%b' "$(printf '%s' "${1}" | sed 's/../\\x&/g')"
+}
+
+# $1 as an SQL string literal for this server's sql_mode: ' doubled, and \
+# doubled too unless NO_BACKSLASH_ESCAPES is on (read once per call).
+_sql_str() {
+  if [[ "${_NBE}" == "YES" ]]; then
+    printf "'%s'" "$(printf '%s' "${1}" | sed -e "s/'/''/g")"
+  else
+    printf "'%s'" "$(printf '%s' "${1}" | sed -e 's/\\/\\\\/g' -e "s/'/''/g")"
+  fi
+}
+
+# An SQL expression quoting the hex-encoded value $1 as an identifier, built
+# by the server, so nothing in a row's own value is ever read as syntax.
+_sql_qid() {
+  printf "CONCAT('\`', REPLACE(CONVERT(UNHEX('%s') USING utf8mb4), '\`', '\`\`'), '\`')" "${1}"
+}
+
+# The escaped spelling of a database name in a grant: _ and % match any
+# character there unless escaped.
+_db_esc() {
+  printf '%s' "${1}" | sed 's/[_%]/\\&/g'
+}
+
+# One root session on the local socket, its statements on stdin (never on
+# the command line, where a password would show), the lock descriptors
+# closed. Rows come back as the server stores them in _SQL_OUT; a query that
+# returns several fields joins them with | (CONCAT_WS), so an empty field
+# never shifts the others. _SQL_ERRNO holds the server's error number, never
+# its text, which can quote a statement and with it a password.
+_sql() {
+  local _rc
+  _SQL_OUT=$(printf '%s\n' "${1}" \
+    | mysql --defaults-file="${_MYCNF}" --protocol=SOCKET -N -B -r \
+      2> "${_TMPD}/sql.err" 7>&- 8>&- 9>&-)
+  _rc=$?
+  _SQL_ERRNO=$(grep -o -m 1 '^ERROR [0-9]*' "${_TMPD}/sql.err" 2> /dev/null | tr -dc '0-9')
+  : > "${_TMPD}/sql.err"
+  return "${_rc}"
+}
+
+# The same, with a header line and the batch escaping of mysql -B (a tab,
+# newline, NUL or backslash in a value as \t, \n, \0, \\): one row per line.
+_sql_table() {
+  local _rc
+  _SQL_OUT=$(printf '%s\n' "${1}" \
+    | mysql --defaults-file="${_MYCNF}" --protocol=SOCKET -B \
+      2> "${_TMPD}/sql.err" 7>&- 8>&- 9>&-)
+  _rc=$?
+  _SQL_ERRNO=$(grep -o -m 1 '^ERROR [0-9]*' "${_TMPD}/sql.err" 2> /dev/null | tr -dc '0-9')
+  : > "${_TMPD}/sql.err"
+  return "${_rc}"
+}
+
+_sql_or_die() {
+  _sql "${1}" || _die 7 "sql-failed ${2} ${_SQL_ERRNO}"
+}
+
+# A statement built by the server from CONCAT() arguments $1 (literals and
+# _sql_qid expressions), then run: the way a row's own user, host or object
+# name reaches a GRANT, REVOKE or DROP USER.
+_sql_prepared() {
+  _sql "/*q:dcl*/ SET @dbctl_s = CONCAT(${1});
+PREPARE dbctl_s FROM @dbctl_s;
+EXECUTE dbctl_s;
+DEALLOCATE PREPARE dbctl_s;"
+}
+
+# The server facts each call reads once: sql_mode (for string literals), the
+# table-name case rule (for registry keys), the version (8.x has the role and
+# dynamic-privilege tables to check, 5.7 has not), port and socket.
+_srv_init() {
+  local _mode _ver
+  _sql "SELECT /*q:init*/ CONCAT_WS('|', @@SESSION.sql_mode, @@lower_case_table_names, VERSION(), @@port, IFNULL(@@socket, ''))" \
+    || _die 7 "sql-failed init ${_SQL_ERRNO}"
+  IFS='|' read -r _mode _LCTN _ver _SRV_PORT _SRV_SOCKET <<< "${_SQL_OUT}"
+  case ",${_mode}," in
+    *,NO_BACKSLASH_ESCAPES,*) _NBE="YES" ;;
+    *) _NBE="NO" ;;
+  esac
+  [[ "${_LCTN}" =~ ^[0-2]$ ]] || _die 7 "sql-failed init lower_case_table_names"
+  case "${_ver}" in
+    5.7.*) _SRV_8="NO" ;;
+    8.*) _SRV_8="YES" ;;
+    *) _die 7 "unsupported-server" ;;
+  esac
+  [[ "${_SRV_PORT}" =~ ^[0-9]{1,5}$ ]] || _SRV_PORT="3306"
+  [[ "${_SRV_SOCKET}" =~ ^/[A-Za-z0-9._/-]{1,200}$ ]] || _SRV_SOCKET=""
+  _BS=$(_sql_str "\\")
+}
+
+# Input rules. Each refusal names its reason.
+_db_ok() {
+  local _l
+  [[ "${1}" =~ ^[A-Za-z0-9_]{1,64}$ ]] || return 1
+  _l=$(printf '%s' "${1}" | tr '[:upper:]' '[:lower:]')
+  case "${_l}" in
+    mysql|sys|information_schema|performance_schema) return 1 ;;
+  esac
+  [[ "$(_reg_key "${1}")" != "$(_reg_key "${_MASTER_DB}")" ]] || return 1
+  return 0
+}
+
+_need_db() {
+  _db_ok "${1}" || _die 2 "bad-database"
+}
+
+# The verify probes' names (site_tmp_test_<oN>, as provision names them) are
+# never a site's database: never reserved, created or registered.
+_need_assignable() {
+  case "$(printf '%s' "${1}" | tr '[:upper:]' '[:lower:]')" in
+    site_tmp_test*) _die 2 "bad-database never-assignable" ;;
+  esac
+}
+
+_user_syntax_ok() {
+  [[ "${1}" =~ ^[A-Za-z0-9_]{1,32}$ ]]
+}
+
+_need_user() {
+  _user_syntax_ok "${1}" || _die 2 "bad-user"
+}
+
+_host_ok() {
+  [[ "${1}" =~ ^[A-Za-z0-9._%:-]{1,255}$ ]]
+}
+
+_need_host() {
+  _host_ok "${1}" || _die 2 "bad-host"
+}
+
+# Up to $1 bytes of stdin as lower-case hex: a NUL is seen, never dropped.
+_stdin_hex() {
+  head -c "${1}" | od -An -v -tx1 | tr -d ' \n'
+}
+
+# $1 hex: one line of 1-1024 bytes with no NUL, CR or LF in it.
+_pw_hex_ok() {
+  local _i
+  [[ -n "${1}" && "$(( ${#1} / 2 ))" -le 1024 ]] || return 1
+  for (( _i = 0; _i < ${#1}; _i += 2 )); do
+    case "${1:_i:2}" in
+      00|0a|0d) return 1 ;;
+    esac
+  done
+  return 0
+}
+
+# The password: stdin only, one line (one trailing newline allowed), 1-1024
+# bytes, no NUL or CR. Sets _PW.
+_read_pw() {
+  local _x
+  _x=$(_stdin_hex 1026)
+  _x="${_x%0a}"
+  _pw_hex_ok "${_x}" || _die 2 "bad-password"
+  _PW=$(_unhex "${_x}")
+}
+
+# A load's stdin: the site's database user on the first line, its password
+# on the second. Sets _LD_USER and _PW.
+_read_user_pw() {
+  local _x _i _u="" _p=""
+  _x=$(_stdin_hex 1060)
+  for (( _i = 0; _i < ${#_x}; _i += 2 )); do
+    if [[ "${_x:_i:2}" == "0a" ]]; then
+      _u="${_x:0:_i}"
+      _p="${_x:_i+2}"
+      break
+    fi
+  done
+  _p="${_p%0a}"
+  [[ -n "${_u}" ]] || _die 2 "bad-user"
+  _LD_USER=$(_unhex "${_u}")
+  _need_user "${_LD_USER}"
+  _pw_hex_ok "${_p}" || _die 2 "bad-password"
+  _PW=$(_unhex "${_p}")
+}
+
+# $1 names a live account: the name rule, a passwd entry whose home is
+# /data/disk/<a>, that home a real directory owned by the account's uid,
+# and root's /root/.<a>.octopus.cnf. Sets _ACCT_UID.
+_acct_ok() {
+  local _a="${1}" _pw _n _x _uid _gid _gecos _home _shell _real
+  [[ "${_a}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || return 1
+  _pw=$(getent passwd "${_a}" 2> /dev/null | head -n 1)
+  IFS=: read -r _n _x _uid _gid _gecos _home _shell <<< "${_pw}"
+  [[ "${_n}" == "${_a}" && "${_uid}" =~ ^[0-9]+$ ]] || return 1
+  [[ "${_home%/}" == "${_DISK}/${_a}" ]] || return 1
+  [[ -d "${_DISK}/${_a}" && ! -L "${_DISK}/${_a}" ]] || return 1
+  _real="$(cd -P -- "${_DISK}" 2> /dev/null && pwd -P)/${_a}"
+  [[ "$(cd -P -- "${_DISK}/${_a}" 2> /dev/null && pwd -P)" == "${_real}" ]] || return 1
+  [[ "$(stat -c %u -- "${_real}" 2> /dev/null)" == "${_uid}" ]] || return 1
+  [[ -f "${_RHOME}/.${_a}.octopus.cnf" ]] || return 1
+  _ACCT_UID="${_uid}"
+  return 0
+}
+
+# The caller: an Octopus account through sudo (SUDO_USER and SUDO_UID, its
+# home checked as the fix-drupal scripts check theirs), or root naming one
+# with --account. Only root may name an account.
+_identity() {
+  [[ "$(id -u)" == "0" ]] || _die 2 "not-root"
+  if [[ -n "${SUDO_USER+x}" ]]; then
+    _CALLER="${SUDO_USER}"
+    [[ -z "${_OPT_ACCOUNT}" ]] || _die 2 "account-option-root-only"
+    _acct_ok "${SUDO_USER}" || _die 3 "caller-not-an-account"
+    [[ "${SUDO_UID:-}" == "${_ACCT_UID}" ]] || _die 3 "caller-not-an-account"
+    _ACCT="${SUDO_USER}"
+  else
+    _ROOT_RUN="YES"
+    _CALLER="root"
+    [[ -n "${_OPT_ACCOUNT}" ]] || _die 2 "account-option-required"
+    _acct_ok "${_OPT_ACCOUNT}" || _die 3 "not-an-account"
+    _ACCT="${_OPT_ACCOUNT}"
+  fi
+}
+
+# Broker mode: /data/conf/<oN>_db_broker.txt, a regular root-owned file no
+# one else can write, naming the one server context it covers (server=) and
+# the instance user's host rows in use (rows=, comma or space separated).
+# Sets _SERVER and _ROWS. 0 on, 1 absent, 2 not valid.
+_broker_mode() {
+  local _f="${_CONF}/${_ACCT}_db_broker.txt" _txt _k _v _rows="" _r _m
+  local -a _parts
+  _SERVER=""
+  _ROWS=()
+  [[ -e "${_f}" || -L "${_f}" ]] || return 1
+  [[ -f "${_f}" && ! -L "${_f}" ]] || return 2
+  [[ "$(stat -c %u -- "${_f}" 2> /dev/null)" == "${_ROOT_UID}" ]] || return 2
+  _m=$(stat -c %a -- "${_f}" 2> /dev/null)
+  [[ "${_m}" =~ ^[0-7]{3,4}$ ]] || return 2
+  [[ "$(( 8#${_m} & 8#022 ))" -eq 0 ]] || return 2
+  _txt=$(head -c 4096 -- "${_f}" 2> /dev/null)
+  while IFS='=' read -r _k _v; do
+    case "${_k}" in
+      server) _SERVER="${_v}" ;;
+      rows) _rows="${_v}" ;;
+    esac
+  done <<< "${_txt}"
+  [[ "${_SERVER}" =~ ^@[A-Za-z0-9_.-]{1,128}$ ]] || return 2
+  IFS=', ' read -r -a _parts <<< "${_rows}"
+  for _r in "${_parts[@]}"; do
+    [[ -n "${_r}" ]] || continue
+    _host_ok "${_r}" || return 2
+    _ROWS+=("${_r}")
+  done
+  [[ "${#_ROWS[@]}" -gt 0 ]] || return 2
+  return 0
+}
+
+_need_broker() {
+  _broker_mode
+  case "$?" in
+    0) return 0 ;;
+    1) _die 8 "not-in-broker-mode" ;;
+    *) _die 8 "not-in-broker-mode control-file-invalid" ;;
+  esac
+}
+
+# The hostmaster site path of the instance in home $1, read as the Octopus
+# pass reads it (bounded, never through a link), and only inside that
+# instance's own hostmaster tree: <home>/aegir/distro/*/sites/<site> for an
+# account, /var/aegir/*/sites/<site> for the master.
+_hm_site_path() {
+  local _a="${1}" _p
+  [[ -d "${_a}/.drush" ]] || return 1
+  _p=$(_acct_read_in "${_a}/.drush" hostmaster.alias.drushrc.php \
+    | grep "site_path'" \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,']//g" 2>&1)
+  case "${_p}" in
+    *[!A-Za-z0-9._/-]*|*/../*|*/./*) return 1 ;;
+  esac
+  if [[ "${_a}" == "${_AEGIR}" ]]; then
+    case "${_p}" in
+      "${_AEGIR}"/*/sites/?*) ;;
+      *) return 1 ;;
+    esac
+  else
+    case "${_p}" in
+      "${_a}"/aegir/distro/*/sites/?*) ;;
+      *) return 1 ;;
+    esac
+  fi
+  printf '%s' "${_p}"
+}
+
+# The option $2 (db_user, db_name) of the drushrc.php in the real directory
+# $1, parsed as the Octopus pass parses it. A value that is not a literal
+# never passes the name rules it is checked against.
+_drc_get() {
+  _acct_read_in "${1}" drushrc.php \
+    | grep "options\['${2}'\] = " \
+    | cut -d: -f2 \
+    | awk '{ print $3}' \
+    | sed "s/[\,';]//g" 2>&1
+}
+
+# The master's panel database: never assignable. Read from /var/aegir's
+# hostmaster; a box where it cannot be read refuses every call.
+_master_db_init() {
+  local _p
+  _p=$(_hm_site_path "${_AEGIR}") || _die 7 "master-database-unknown"
+  _MASTER_DB=$(_drc_get "${_p}" db_name)
+  [[ "${_MASTER_DB}" =~ ^[A-Za-z0-9_]{1,64}$ ]] || _die 7 "master-database-unknown"
+}
+
+# True when an instance other than this account's (another account, the
+# master) names $1 as its panel's database user.
+_panel_named_elsewhere() {
+  local _h _p _d
+  for _h in "${_AEGIR}" "${_DISK}"/*; do
+    [[ -d "${_h}" && ! -L "${_h}" ]] || continue
+    [[ "${_h}" != "${_DISK}/${_ACCT}" ]] || continue
+    _p=$(_hm_site_path "${_h}") || continue
+    _d=$(_drc_get "${_p}" db_user)
+    [[ -n "${_d}" && "${_d}" == "${1}" ]] && return 0
+  done
+  return 1
+}
+
+# Registry. One root file per database under /var/lib/boa/dbowners, named
+# as the database (lower-cased where the server folds table names).
+_reg_key() {
+  if [[ "${_LCTN}" == "0" ]]; then
+    printf '%s' "${1}"
+  else
+    printf '%s' "${1}" | tr '[:upper:]' '[:lower:]'
+  fi
+}
+
+_reg_ready() {
+  if [[ ! -e "${_REG}" && ! -L "${_REG}" ]]; then
+    mkdir -p -- "${_REG}" 2> /dev/null
+  fi
+  [[ -d "${_LIBD}" && ! -L "${_LIBD}" && -d "${_REG}" && ! -L "${_REG}" ]] \
+    || _die 7 "registry-unusable"
+  [[ "$(stat -c %u -- "${_LIBD}" 2> /dev/null)" == "${_ROOT_UID}" ]] \
+    || _die 7 "registry-unusable"
+  [[ "$(stat -c '%u %a' -- "${_REG}" 2> /dev/null)" == "${_ROOT_UID} 700" ]] \
+    || _die 7 "registry-unusable"
+}
+
+_reg_file() {
+  printf '%s/%s' "${_REG}" "$(_reg_key "${1}")"
+}
+
+# The entry of database $1 into _E_ACCOUNT, _E_STATE, _E_SINCE, _E_VIA.
+# 1 when there is none. An entry that is not a plain file, or names no
+# account, is held by an unknown owner (?), so it is no one's own.
+_reg_get() {
+  local _f _k _v
+  _f=$(_reg_file "${1}")
+  _E_ACCOUNT=""
+  _E_STATE=""
+  _E_SINCE=""
+  _E_VIA=""
+  [[ -e "${_f}" || -L "${_f}" ]] || return 1
+  if [[ -f "${_f}" && ! -L "${_f}" ]]; then
+    while IFS='=' read -r _k _v; do
+      case "${_k}" in
+        account) _E_ACCOUNT="${_v}" ;;
+        state) _E_STATE="${_v}" ;;
+        since) _E_SINCE="${_v}" ;;
+        via) _E_VIA="${_v}" ;;
+      esac
+    done < "${_f}"
+  fi
+  [[ -n "${_E_ACCOUNT}" ]] || _E_ACCOUNT="?"
+  return 0
+}
+
+_reg_content() {
+  printf 'account=%s\nstate=%s\nserver=%s\nsince=%s\nvia=%s\n' \
+    "${1}" "${2}" "${_SERVER}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${3}"
+}
+
+# A new entry for this account ($1 database, $2 state, $3 via), created
+# exclusively: written whole under a temporary name, then hard-linked to the
+# database's name, which fails when the name exists as O_EXCL does, so the
+# first caller wins and no reader sees half an entry. 0 made, 1 taken,
+# 2 error.
+_reg_new() {
+  local _f _t
+  _f=$(_reg_file "${1}")
+  _t=$(mktemp "${_REG}/.new.XXXXXXXX" 2> /dev/null) || return 2
+  if ! _reg_content "${_ACCT}" "${2}" "${3}" > "${_t}"; then
+    rm -f -- "${_t}"
+    return 2
+  fi
+  if ln -T -- "${_t}" "${_f}" 2> /dev/null; then
+    rm -f -- "${_t}"
+    return 0
+  fi
+  rm -f -- "${_t}"
+  [[ -e "${_f}" || -L "${_f}" ]] && return 1
+  return 2
+}
+
+# This account's own entry of $1 rewritten ($2 state, $3 via): a temporary
+# file renamed over it.
+_reg_set() {
+  local _f _t
+  _f=$(_reg_file "${1}")
+  _t=$(mktemp "${_REG}/.set.XXXXXXXX" 2> /dev/null) || return 2
+  if _reg_content "${_ACCT}" "${2}" "${3}" > "${_t}" \
+    && mv -f -T -- "${_t}" "${_f}" 2> /dev/null; then
+    return 0
+  fi
+  rm -f -- "${_t}"
+  return 2
+}
+
+_reg_del() {
+  rm -f -- "$(_reg_file "${1}")"
+}
+
+# How many entries account $1 holds, reserved or created.
+_reg_count() {
+  local _f _n=0
+  for _f in "${_REG}"/*; do
+    [[ -f "${_f}" && ! -L "${_f}" ]] || continue
+    grep -qx "account=${1}" "${_f}" 2> /dev/null || continue
+    grep -qxE 'state=(reserved|created)' "${_f}" 2> /dev/null && _n=$(( _n + 1 ))
+  done
+  printf '%s' "${_n}"
+}
+
+# $1 is this account's: its entry, reserved or created.
+_own_db() {
+  _db_ok "${1}" || return 1
+  _reg_get "${1}" || return 1
+  [[ "${_E_ACCOUNT}" == "${_ACCT}" ]] || return 1
+  [[ "${_E_STATE}" == "reserved" || "${_E_STATE}" == "created" ]]
+}
+
+_need_own() {
+  _own_db "${1}" || _die 3 "not-yours"
+}
+
+_need_own_created() {
+  _own_db "${1}" && [[ "${_E_STATE}" == "created" ]] || _die 3 "not-yours"
+}
+
+# Locks. The registry lock serializes this account's registry and grant
+# changes; the I/O lock holds one dump or load per account; the slots hold
+# the box to _SLOTS dumps and loads at once. Order: owner check under the
+# registry lock, released; I/O lock; slot; owner re-check under the registry
+# lock. A registry-lock holder never asks for the others.
+_reg_lock() {
+  exec 7>> "${_RUNP}.${_ACCT}.lock" || _die 7 "lock-failed"
+  flock -w "${_REG_WAIT}" 7 || _die 9 "busy registry"
+}
+
+_reg_unlock() {
+  flock -u 7 2> /dev/null
+  exec 7>&-
+}
+
+_io_lock() {
+  local _i
+  exec 8>> "${_RUNP}.${_ACCT}.io.lock" || _die 7 "lock-failed"
+  for (( _i = 0; _i <= _WAIT_TRIES; _i++ )); do
+    flock -n 8 && return 0
+    [[ "${_i}" -lt "${_WAIT_TRIES}" ]] && sleep "${_WAIT_SEC}"
+  done
+  _die 9 "busy io"
+}
+
+_slot_take() {
+  local _i _n
+  for (( _i = 0; _i <= _WAIT_TRIES; _i++ )); do
+    for (( _n = 1; _n <= _SLOTS; _n++ )); do
+      exec 9>> "${_RUNP}.slot.${_n}.lock" || _die 7 "lock-failed"
+      flock -n 9 && return 0
+      exec 9>&-
+    done
+    [[ "${_i}" -lt "${_WAIT_TRIES}" ]] && sleep "${_WAIT_SEC}"
+  done
+  _die 9 "busy slot"
+}
+
+# The wall-clock limit of a dump or load child, from barracuda.cnf (read,
+# never sourced). There is no built-in default: without the setting a dump
+# or load is refused.
+_io_limit() {
+  local _v
+  _v=$(grep -E '^_DB_BROKER_IO_LIMIT=' "${_BCNF}" 2> /dev/null \
+    | tail -n 1 | cut -d= -f2- | tr -d "\"' ")
+  [[ "${_v}" =~ ^[0-9]{1,7}$ && "${_v}" -ge 1 ]] || _die 7 "no-io-limit _DB_BROKER_IO_LIMIT"
+  _IO_LIMIT="${_v}"
+}
+
+_threads() {
+  local _n
+  _n=$(nproc 2> /dev/null)
+  [[ "${_n}" =~ ^[0-9]+$ ]] || _n=1
+  _n=$(( _n / 4 + 1 ))
+  [[ "${_n}" -ge 2 ]] || _n=2
+  printf '%s' "${_n}"
+}
+
+# Server reads. A failed query ends the call (ERR 7), never reads as none.
+_schema_exists() {
+  local _s _k
+  _sql_or_die "SELECT /*q:schema*/ SCHEMA_NAME FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = $(_sql_str "${1}")" schema
+  _k=$(_reg_key "${1}")
+  while IFS= read -r _s; do
+    [[ -n "${_s}" ]] || continue
+    [[ "$(_reg_key "${_s}")" == "${_k}" ]] && return 0
+  done <<< "${_SQL_OUT}"
+  return 1
+}
+
+_login_exists() {
+  _sql_or_die "SELECT /*q:login*/ COUNT(*) FROM mysql.user WHERE User = $(_sql_str "${1}")" login
+  [[ "${_SQL_OUT}" =~ ^[0-9]+$ ]] || _die 7 "sql-failed login"
+  [[ "${_SQL_OUT}" -gt 0 ]]
+}
+
+# The name a mysql.db Db value reads literally, and whether it is a pattern
+# (an unescaped % or _). Sets _LIT and _PAT.
+_db_literal() {
+  local _s="${1}" _o="" _c _i
+  _PAT="NO"
+  for (( _i = 0; _i < ${#_s}; _i++ )); do
+    _c="${_s:_i:1}"
+    if [[ "${_c}" == "\\" && $(( _i + 1 )) -lt ${#_s} ]]; then
+      _i=$(( _i + 1 ))
+      _o="${_o}${_s:_i:1}"
+      continue
+    fi
+    case "${_c}" in
+      %|_) _PAT="YES" ;;
+    esac
+    _o="${_o}${_c}"
+  done
+  _LIT="${_o}"
+}
+
+# True when a mysql.db row of a user other than this account's instance user
+# matches $1 as a pattern (a % or a bare _), not as one of its two exact
+# spellings: that user would hold rights on the new database.
+_wild_match() {
+  local _x _d _e
+  _e=$(_db_esc "${1}")
+  _sql_or_die "SELECT /*q:wild*/ HEX(Db) FROM mysql.db WHERE $(_sql_str "${1}") LIKE Db ESCAPE ${_BS} AND User <> $(_sql_str "${_ACCT}")" wild
+  while IFS= read -r _x; do
+    [[ -n "${_x}" ]] || continue
+    _d=$(_unhex "${_x}") || _die 7 "sql-failed wild"
+    [[ "${_d}" == "${1}" || "${_d}" == "${_e}" ]] && continue
+    return 0
+  done <<< "${_SQL_OUT}"
+  return 1
+}
+
+# The *_priv columns of mysql.$1 as a comma list, as this server has them.
+_priv_cols() {
+  local _c _l=""
+  _sql_or_die "SELECT /*q:privcols*/ COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = 'mysql' AND TABLE_NAME = $(_sql_str "${1}") AND RIGHT(COLUMN_NAME, 5) = '_priv' ORDER BY ORDINAL_POSITION" privcols
+  while IFS= read -r _c; do
+    [[ -n "${_c}" ]] || continue
+    [[ "${_c}" =~ ^[A-Za-z_]{1,64}$ ]] || _die 7 "sql-failed privcols"
+    _l="${_l:+${_l}, }${_c}"
+  done <<< "${_SQL_OUT}"
+  [[ -n "${_l}" ]] || _die 7 "sql-failed privcols"
+  _PRIVCOLS="${_l}"
+}
+
+_need_priv_cols() {
+  if [[ -z "${_USER_PRIVS}" ]]; then
+    _priv_cols user
+    _USER_PRIVS="${_PRIVCOLS}"
+  fi
+  if [[ -z "${_DB_PRIVS}" ]]; then
+    _priv_cols db
+    _DB_PRIVS="${_PRIVCOLS}"
+  fi
+}
+
+# " AND HEX(<column $1>) = '<hex $2>'" when a host's hex is given, else "".
+# Callers pass hex they made or checked; anything else matches no row.
+_hcond() {
+  [[ -n "${2}" ]] || return 0
+  if [[ "${2}" =~ ^[0-9A-F]+$ ]]; then
+    printf " AND HEX(%s) = '%s'" "${1}" "${2}"
+  else
+    printf ' AND 1 = 0'
+  fi
+}
+
+# True when user $1 (every host row, or the one whose hex is $2) holds a
+# global privilege: a *_priv column of mysql.user, a proxy grant, and on 8.x
+# a dynamic privilege, a role edge or a default role. 5.7 has no such tables
+# by version, never because a query failed.
+_global_privs() {
+  local _u _q
+  _u=$(_sql_str "${1}")
+  _need_priv_cols
+  _q="SELECT /*q:glob*/ (SELECT COUNT(*) FROM mysql.user WHERE User = ${_u}$(_hcond Host "${2}") AND 'Y' IN (${_USER_PRIVS}))"
+  _q="${_q} + (SELECT COUNT(*) FROM mysql.proxies_priv WHERE User = ${_u}$(_hcond Host "${2}"))"
+  if [[ "${_SRV_8}" == "YES" ]]; then
+    _q="${_q} + (SELECT COUNT(*) FROM mysql.global_grants WHERE USER = ${_u}$(_hcond HOST "${2}"))"
+    _q="${_q} + (SELECT COUNT(*) FROM mysql.role_edges WHERE TO_USER = ${_u}$(_hcond TO_HOST "${2}"))"
+    _q="${_q} + (SELECT COUNT(*) FROM mysql.default_roles WHERE USER = ${_u}$(_hcond HOST "${2}"))"
+  fi
+  _sql_or_die "${_q}" glob
+  [[ "${_SQL_OUT}" =~ ^[0-9]+$ ]] || _die 7 "sql-failed glob"
+  [[ "${_SQL_OUT}" -gt 0 ]]
+}
+
+# True when user $1 (every host row, or the one whose hex is $2) holds a
+# database- or object-level grant this account may not keep for it: one on a
+# live database not registered to it (for a pattern, on any live database it
+# matches), a pattern whose literal reading is not this account's, one on a
+# name another account's entry holds, and with $3 = strict, one on a dead
+# name (no schema, no entry) too. A dead name passes otherwise: MySQL keeps
+# grant rows after DROP DATABASE. Sets _GF_WHY.
+_grants_foreign() {
+  local _u _k _dx _sx _s _d _q
+  _GF_WHY=""
+  _u=$(_sql_str "${1}")
+  _q="SELECT /*q:grantrows*/ CONCAT_WS('|', x.k, HEX(x.Db), IFNULL(HEX(s.SCHEMA_NAME), '')) FROM ("
+  _q="${_q} SELECT 'w' AS k, Db FROM mysql.db WHERE User = ${_u}$(_hcond Host "${2}")"
+  _q="${_q} UNION ALL SELECT 'o', Db FROM mysql.tables_priv WHERE User = ${_u}$(_hcond Host "${2}")"
+  _q="${_q} UNION ALL SELECT 'o', Db FROM mysql.procs_priv WHERE User = ${_u}$(_hcond Host "${2}")"
+  _q="${_q} UNION ALL SELECT 'o', Db FROM mysql.columns_priv WHERE User = ${_u}$(_hcond Host "${2}")"
+  _q="${_q}) x LEFT JOIN information_schema.SCHEMATA s"
+  _q="${_q} ON (x.k = 'w' AND CAST(s.SCHEMA_NAME AS BINARY) LIKE CAST(x.Db AS BINARY) ESCAPE ${_BS})"
+  _q="${_q} OR (x.k = 'o' AND CAST(s.SCHEMA_NAME AS BINARY) = CAST(x.Db AS BINARY))"
+  _sql_or_die "${_q}" grantrows
+  while IFS='|' read -r _k _dx _sx; do
+    [[ -n "${_k}" ]] || continue
+    [[ "${_dx}" =~ ^[0-9A-F]+$ && "${_sx}" =~ ^[0-9A-F]*$ ]] || _die 7 "sql-failed grantrows"
+    _d=$(_unhex "${_dx}")
+    if [[ "${_k}" == "w" ]]; then
+      _db_literal "${_d}"
+    else
+      _LIT="${_d}"
+      _PAT="NO"
+    fi
+    if [[ -n "${_sx}" ]]; then
+      _s=$(_unhex "${_sx}")
+      if ! _own_db "${_s}"; then
+        _GF_WHY="foreign-database"
+        return 0
+      fi
+    fi
+    _own_db "${_LIT}" && continue
+    if [[ "${_PAT}" == "YES" ]]; then
+      _GF_WHY="pattern-grant"
+      return 0
+    fi
+    [[ -n "${_sx}" ]] && continue
+    if _db_ok "${_LIT}" && _reg_get "${_LIT}"; then
+      _GF_WHY="foreign-entry"
+      return 0
+    fi
+    if [[ "${3}" == "strict" ]]; then
+      _GF_WHY="grant-not-yours"
+      return 0
+    fi
+  done <<< "${_SQL_OUT}"
+  return 1
+}
+
+# The user rule (grant, revoke, grants, the select verbs, a load's user).
+# The named user must not be a system or BOA identity, this account's own
+# instance user (re-passwording it would lock the account out), another
+# account's instance user, a panel user another instance names, a user with
+# a global privilege, or one holding a grant _grants_foreign refuses. $2 =
+# rule or strict (_grants_foreign); $3 = a host's hex to judge that one row,
+# else every host row of the user is judged. Sets _URULE_WHY.
+_user_rule() {
+  local _u="${1}"
+  _URULE_WHY=""
+  if [[ -n "${3:-}" && ! "${3}" =~ ^[0-9A-F]+$ ]]; then
+    _URULE_WHY="bad-host"
+    return 1
+  fi
+  case "${_u}" in
+    root|aegir|aegir_root)
+      _URULE_WHY="system-user"
+      return 1
+      ;;
+  esac
+  if [[ "${_u}" == "${_ACCT}" ]]; then
+    _URULE_WHY="own-instance-user"
+    return 1
+  fi
+  if [[ -e "${_DISK}/${_u}" || -L "${_DISK}/${_u}" \
+    || -e "${_RHOME}/.${_u}.octopus.cnf" ]]; then
+    _URULE_WHY="instance-user"
+    return 1
+  fi
+  if _panel_named_elsewhere "${_u}"; then
+    _URULE_WHY="panel-user"
+    return 1
+  fi
+  if _global_privs "${_u}" "${3:-}"; then
+    _URULE_WHY="global-privilege"
+    return 1
+  fi
+  if _grants_foreign "${_u}" "${3:-}" "${2}"; then
+    _URULE_WHY="${_GF_WHY}"
+    return 1
+  fi
+  return 0
+}
+
+_need_user_rule() {
+  _user_rule "${1}" "${2}" "${3:-}" || _die 6 "refused-user ${_URULE_WHY}"
+}
+
+# One of this account's own users: its instance user, its current panel
+# user, or a user named as one of its databases (a site's user is named as
+# its database); never a name another instance claims.
+_own_user() {
+  local _u="${1}" _p _d
+  _user_syntax_ok "${_u}" || return 1
+  [[ "${_u}" == "${_ACCT}" ]] && return 0
+  case "${_u}" in
+    root|aegir|aegir_root) return 1 ;;
+  esac
+  if [[ -e "${_DISK}/${_u}" || -L "${_DISK}/${_u}" \
+    || -e "${_RHOME}/.${_u}.octopus.cnf" ]]; then
+    return 1
+  fi
+  _panel_named_elsewhere "${_u}" && return 1
+  if _p=$(_hm_site_path "${_DISK}/${_ACCT}"); then
+    _d=$(_drc_get "${_p}" db_user)
+    [[ -n "${_d}" && "${_d}" == "${_u}" ]] && return 0
+  fi
+  _own_db "${_u}"
+}
+
+# The host rows of user $1 as hex, one per line, into _HOSTS_HEX.
+_user_hosts_hex() {
+  local _x
+  _HOSTS_HEX=""
+  _sql_or_die "SELECT /*q:hosts*/ HEX(Host) FROM mysql.user WHERE User = $(_sql_str "${1}") ORDER BY Host" hosts
+  while IFS= read -r _x; do
+    [[ -n "${_x}" ]] || continue
+    [[ "${_x}" =~ ^[0-9A-F]+$ ]] || _die 7 "sql-failed hosts"
+    _HOSTS_HEX="${_HOSTS_HEX}${_x}"$'\n'
+  done <<< "${_SQL_OUT}"
+}
+
+# Revoke, exactly as stored, every grant row of user $1 at the host whose
+# hex is $2 (every host when empty) on database $3: the database-level rows
+# in both spellings, and the table, column and routine rows on the name as
+# given (stored literally one level down). $4 = all: the rows of every user
+# (what a dropped database left on its name, before create). A grant option
+# goes first, alone: at these levels the ALL PRIVILEGES, GRANT OPTION pair
+# is a parse error. Counts _RV_DONE and _RV_FAIL.
+_revoke_rows() {
+  local _db="${3}" _who _q _t _ux _h _dx _g _ox _rt _on
+  if [[ "${4:-}" == "all" ]]; then
+    _who="1 = 1"
+  else
+    _who="User = $(_sql_str "${1}")$(_hcond Host "${2}")"
+  fi
+  _q="SELECT /*q:rows*/ CONCAT_WS('|', 'db', HEX(User), HEX(Host), HEX(Db), Grant_priv, '', '') FROM mysql.db"
+  _q="${_q} WHERE ${_who} AND Db IN ($(_sql_str "${_db}"), $(_sql_str "$(_db_esc "${_db}")"))"
+  _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'tb', HEX(User), HEX(Host), HEX(Db), IF(FIND_IN_SET('Grant', Table_priv) > 0, 'Y', 'N'), HEX(Table_name), '') FROM mysql.tables_priv"
+  _q="${_q} WHERE ${_who} AND Db = $(_sql_str "${_db}")"
+  _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'pr', HEX(User), HEX(Host), HEX(Db), IF(FIND_IN_SET('Grant', Proc_priv) > 0, 'Y', 'N'), HEX(Routine_name), Routine_type) FROM mysql.procs_priv"
+  _q="${_q} WHERE ${_who} AND Db = $(_sql_str "${_db}")"
+  _q="${_q} UNION ALL SELECT CONCAT_WS('|', 'cl', HEX(User), HEX(Host), HEX(Db), 'N', HEX(Table_name), '') FROM mysql.columns_priv"
+  _q="${_q} WHERE ${_who} AND Db = $(_sql_str "${_db}")"
+  _sql_or_die "${_q}" rows
+  while IFS='|' read -r _t _ux _h _dx _g _ox _rt; do
+    [[ -n "${_t}" ]] || continue
+    if [[ ! "${_ux}" =~ ^[0-9A-F]*$ || ! "${_h}" =~ ^[0-9A-F]*$ \
+      || ! "${_dx}" =~ ^[0-9A-F]+$ || ! "${_ox}" =~ ^[0-9A-F]*$ ]]; then
+      _RV_FAIL=$(( _RV_FAIL + 1 ))
+      continue
+    fi
+    case "${_t}" in
+      db) _on="$(_sql_qid "${_dx}"), '.*'" ;;
+      tb|cl) _on="$(_sql_qid "${_dx}"), '.', $(_sql_qid "${_ox}")" ;;
+      pr)
+        case "${_rt}" in
+          PROCEDURE|FUNCTION) _on="'${_rt} ', $(_sql_qid "${_dx}"), '.', $(_sql_qid "${_ox}")" ;;
+          *)
+            _RV_FAIL=$(( _RV_FAIL + 1 ))
+            continue
+            ;;
+        esac
+        ;;
+      *) continue ;;
+    esac
+    if [[ "${_g}" == "Y" ]] \
+      && ! _sql_prepared "'REVOKE GRANT OPTION ON ', ${_on}, ' FROM ', $(_sql_qid "${_ux}"), '@', $(_sql_qid "${_h}")"; then
+      _RV_FAIL=$(( _RV_FAIL + 1 ))
+      continue
+    fi
+    if _sql_prepared "'REVOKE ALL PRIVILEGES ON ', ${_on}, ' FROM ', $(_sql_qid "${_ux}"), '@', $(_sql_qid "${_h}")"; then
+      _RV_DONE=$(( _RV_DONE + 1 ))
+      [[ "${4:-}" == "all" ]] && _log_note "revoked-${_t}-row ${_ux}@${_h}"
+    else
+      _RV_FAIL=$(( _RV_FAIL + 1 ))
+    fi
+  done <<< "${_SQL_OUT}"
+  return 0
+}
+
+# How many grant rows are left on database $1 (both spellings at the
+# database level, the name as given below it); $2 narrows it to a user.
+_rows_left() {
+  local _n _e _w="${2:-}"
+  _n=$(_sql_str "${1}")
+  _e=$(_sql_str "$(_db_esc "${1}")")
+  _sql_or_die "SELECT /*q:left*/ (SELECT COUNT(*) FROM mysql.db WHERE Db IN (${_n}, ${_e})${_w}) + (SELECT COUNT(*) FROM mysql.tables_priv WHERE Db = ${_n}${_w}) + (SELECT COUNT(*) FROM mysql.procs_priv WHERE Db = ${_n}${_w}) + (SELECT COUNT(*) FROM mysql.columns_priv WHERE Db = ${_n}${_w})" left
+  [[ "${_SQL_OUT}" =~ ^[0-9]+$ ]] || _die 7 "sql-failed left"
+  _LEFT="${_SQL_OUT}"
+}
+
+# True when user $1 at the host whose hex is $2 still exists and holds
+# nothing at all: no global, database, object or proxy privilege, and on 8.x
+# no dynamic privilege or role. Only such a row is dropped.
+_row_bare() {
+  local _u _q
+  _u=$(_sql_str "${1}")
+  _need_priv_cols
+  _q="SELECT /*q:bare*/ CONCAT_WS('|', (SELECT COUNT(*) FROM mysql.user WHERE User = ${_u}$(_hcond Host "${2}")),"
+  _q="${_q} (SELECT COUNT(*) FROM mysql.user WHERE User = ${_u}$(_hcond Host "${2}") AND 'Y' IN (${_USER_PRIVS}))"
+  _q="${_q} + (SELECT COUNT(*) FROM mysql.db WHERE User = ${_u}$(_hcond Host "${2}"))"
+  _q="${_q} + (SELECT COUNT(*) FROM mysql.tables_priv WHERE User = ${_u}$(_hcond Host "${2}"))"
+  _q="${_q} + (SELECT COUNT(*) FROM mysql.procs_priv WHERE User = ${_u}$(_hcond Host "${2}"))"
+  _q="${_q} + (SELECT COUNT(*) FROM mysql.columns_priv WHERE User = ${_u}$(_hcond Host "${2}"))"
+  _q="${_q} + (SELECT COUNT(*) FROM mysql.proxies_priv WHERE User = ${_u}$(_hcond Host "${2}"))"
+  if [[ "${_SRV_8}" == "YES" ]]; then
+    _q="${_q} + (SELECT COUNT(*) FROM mysql.global_grants WHERE USER = ${_u}$(_hcond HOST "${2}"))"
+    _q="${_q} + (SELECT COUNT(*) FROM mysql.role_edges WHERE TO_USER = ${_u}$(_hcond TO_HOST "${2}"))"
+    _q="${_q} + (SELECT COUNT(*) FROM mysql.default_roles WHERE USER = ${_u}$(_hcond HOST "${2}"))"
+  fi
+  _q="${_q})"
+  _sql_or_die "${_q}" bare
+  [[ "${_SQL_OUT}" == "1|0" ]]
+}
+
+# The instance user's grant on database $1 for each row in use (rows=).
+_grant_instance() {
+  local _r _q="" _e
+  _e=$(_db_esc "${1}")
+  for _r in "${_ROWS[@]}"; do
+    _q="${_q}GRANT ALL PRIVILEGES ON \`${_e}\`.* TO \`${_ACCT}\`@\`${_r}\`;"$'\n'
+  done
+  _sql "/*q:dcl*/ ${_q}"
+}
+
+# Verbs.
+
+_v_exists() {
+  local _db
+  [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage exists <db>"
+  _db="${_ARGS[0]}"
+  _LOG_DB="${_db}"
+  _need_db "${_db}"
+  if _reg_get "${_db}" || _schema_exists "${_db}"; then
+    _info "exists ${_db} yes"
+  else
+    _info "exists ${_db} no"
+  fi
+}
+
+# Free for this account: no schema, no login of the name (the name becomes
+# the site's database user), and no other user's pattern row matching it.
+_need_free() {
+  _schema_exists "${1}" && _die 4 "taken schema"
+  _login_exists "${1}" && _die 4 "taken login"
+  _wild_match "${1}" && _die 4 "taken pattern-grant"
+  return 0
+}
+
+_v_reserve() {
+  local _db _rc
+  [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage reserve <db>"
+  _db="${_ARGS[0]}"
+  _LOG_DB="${_db}"
+  _need_db "${_db}"
+  _need_assignable "${_db}"
+  _reg_lock
+  if _reg_get "${_db}"; then
+    [[ "${_E_ACCOUNT}" == "${_ACCT}" && "${_E_STATE}" == "reserved" ]] || _die 4 "taken entry"
+    _need_free "${_db}"
+  else
+    _need_free "${_db}"
+    _reg_new "${_db}" reserved reserve
+    _rc=$?
+    [[ "${_rc}" -eq 1 ]] && _die 4 "taken entry"
+    [[ "${_rc}" -eq 0 ]] || _die 7 "registry-write-failed"
+  fi
+  _reg_unlock
+  _info "reserve ${_db}"
+}
+
+# create: an own reserved entry (or an own created one whose schema is
+# gone), or a free unregistered name, reserved here first. Every grant still
+# left on the name from a dropped database is revoked first, whoever holds
+# it: the next database of that name would hand it to them.
+_v_create() {
+  local _db _rc _made="NO"
+  [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage create <db>"
+  _db="${_ARGS[0]}"
+  _LOG_DB="${_db}"
+  _need_db "${_db}"
+  _need_assignable "${_db}"
+  _reg_lock
+  if _reg_get "${_db}"; then
+    [[ "${_E_ACCOUNT}" == "${_ACCT}" ]] || _die 4 "taken entry"
+    [[ "${_E_STATE}" == "reserved" || "${_E_STATE}" == "created" ]] || _die 4 "taken entry"
+    _schema_exists "${_db}" && _die 4 "taken schema"
+    _wild_match "${_db}" && _die 4 "taken pattern-grant"
+  else
+    _need_free "${_db}"
+    _reg_new "${_db}" reserved create
+    _rc=$?
+    [[ "${_rc}" -eq 1 ]] && _die 4 "taken entry"
+    [[ "${_rc}" -eq 0 ]] || _die 7 "registry-write-failed"
+    _made="YES"
+  fi
+  _RV_FAIL=0
+  _RV_DONE=0
+  _revoke_rows "" "" "${_db}" all
+  _rows_left "${_db}"
+  if [[ "${_RV_FAIL}" -gt 0 || "${_LEFT}" -gt 0 ]]; then
+    [[ "${_made}" == "YES" ]] && _reg_del "${_db}"
+    _die 7 "sql-failed dead-name-grants-left ${_LEFT}"
+  fi
+  if [[ "${_RV_DONE}" -gt 0 ]]; then
+    _msg "INFO: revoked ${_RV_DONE} grant rows a dropped database left on ${_db}"
+  fi
+  if ! _sql "/*q:dcl*/ CREATE DATABASE \`${_db}\`;"; then
+    [[ "${_made}" == "YES" ]] && _reg_del "${_db}"
+    _die 7 "sql-failed create ${_SQL_ERRNO}"
+  fi
+  if ! _grant_instance "${_db}"; then
+    _reg_set "${_db}" created create
+    _die 7 "sql-failed instance-grant ${_SQL_ERRNO}"
+  fi
+  _reg_set "${_db}" created create || _die 7 "registry-write-failed"
+  _reg_unlock
+  _info "create ${_db}"
+}
+
+# drop: the database, the instance user's grant rows on it (as stored),
+# then the entry. A revoke that fails keeps the entry, so the name stays
+# this account's until a retry clears the grant.
+_v_drop() {
+  local _db
+  [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage drop <db>"
+  _db="${_ARGS[0]}"
+  _LOG_DB="${_db}"
+  _need_db "${_db}"
+  _reg_lock
+  _need_own "${_db}"
+  _sql "/*q:dcl*/ DROP DATABASE IF EXISTS \`${_db}\`;" || _die 7 "sql-failed drop ${_SQL_ERRNO}"
+  _schema_exists "${_db}" && _die 7 "sql-failed drop schema-left"
+  _RV_FAIL=0
+  _RV_DONE=0
+  _revoke_rows "${_ACCT}" "" "${_db}"
+  _rows_left "${_db}" " AND User = $(_sql_str "${_ACCT}")"
+  [[ "${_RV_FAIL}" -eq 0 && "${_LEFT}" -eq 0 ]] || _die 7 "sql-failed instance-grant-left"
+  _reg_del "${_db}"
+  _reg_unlock
+  _info "drop ${_db}"
+}
+
+# grant: provision's grant(): the user at the host and at 127.0.0.1, created
+# when missing, its password set, ALL PRIVILEGES on the escaped name, and a
+# pre-escaping pattern grant on the plain name taken away once the exact one
+# is in place.
+_v_grant() {
+  local _db _u _h _e _q="" _hh _x _g _who
+  local -a _hosts
+  [[ "${#_ARGS[@]}" -eq 3 ]] || _die 2 "usage grant <db> <user> <host>"
+  _db="${_ARGS[0]}"
+  _u="${_ARGS[1]}"
+  _h="${_ARGS[2]}"
+  _LOG_DB="${_db}"
+  _LOG_UH="${_u}@${_h}"
+  _need_db "${_db}"
+  _need_user "${_u}"
+  _need_host "${_h}"
+  _read_pw
+  _reg_lock
+  _need_own "${_db}"
+  _need_user_rule "${_u}" rule
+  _e=$(_db_esc "${_db}")
+  _hosts=("${_h}")
+  [[ "${_h}" == "127.0.0.1" ]] || _hosts+=(127.0.0.1)
+  for _hh in "${_hosts[@]}"; do
+    _q="${_q}CREATE USER IF NOT EXISTS \`${_u}\`@\`${_hh}\` IDENTIFIED BY $(_sql_str "${_PW}");"$'\n'
+    _q="${_q}ALTER USER \`${_u}\`@\`${_hh}\` IDENTIFIED BY $(_sql_str "${_PW}");"$'\n'
+    _q="${_q}GRANT ALL PRIVILEGES ON \`${_e}\`.* TO \`${_u}\`@\`${_hh}\`;"$'\n'
+  done
+  _PW=""
+  _sql "/*q:dcl*/ ${_q}" || _die 7 "sql-failed grant ${_SQL_ERRNO}"
+  _q=""
+  if [[ "${_e}" != "${_db}" ]]; then
+    _sql_or_die "SELECT /*q:plain*/ CONCAT_WS('|', HEX(Host), Grant_priv) FROM mysql.db WHERE User = $(_sql_str "${_u}") AND Db = $(_sql_str "${_db}") AND Host IN ($(_sql_str "${_h}"), '127.0.0.1')" plain
+    while IFS='|' read -r _x _g; do
+      [[ "${_x}" =~ ^[0-9A-F]+$ ]] || continue
+      _who="'\`${_u}\`@', $(_sql_qid "${_x}")"
+      if [[ "${_g}" == "Y" ]]; then
+        _sql_prepared "'REVOKE GRANT OPTION ON \`${_db}\`.* FROM ', ${_who}" \
+          || _alrt "could not take the grant option of the pattern grant on ${_db} from ${_u}"
+      fi
+      _sql_prepared "'REVOKE ALL PRIVILEGES ON \`${_db}\`.* FROM ', ${_who}" \
+        || _alrt "could not drop the pattern grant on ${_db} for ${_u}; the exact grant is in place beside it"
+    done <<< "${_SQL_OUT}"
+  fi
+  _reg_unlock
+  _info "grant ${_db} ${_u}@${_h}"
+}
+
+# revoke: provision's revoke() on every host row of the user (or the one
+# given): its grants on the database revoked exactly as stored, both
+# spellings, table, column and routine rows per object, and a row dropped
+# only when nothing is left on it. The database is this account's, or a dead
+# name (no schema, no entry): a site's delete revokes after its drop.
+_v_revoke() {
+  local _db _u _h="" _hx _rows=0 _dropped=0 _fail=0
+  [[ "${#_ARGS[@]}" -eq 2 || "${#_ARGS[@]}" -eq 3 ]] || _die 2 "usage revoke <db> <user> [<host>]"
+  _db="${_ARGS[0]}"
+  _u="${_ARGS[1]}"
+  [[ "${#_ARGS[@]}" -eq 3 ]] && _h="${_ARGS[2]}"
+  _LOG_DB="${_db}"
+  _LOG_UH="${_u}@${_h:-*}"
+  _need_db "${_db}"
+  _need_user "${_u}"
+  [[ -z "${_h}" ]] || _need_host "${_h}"
+  _reg_lock
+  if ! _own_db "${_db}"; then
+    if _reg_get "${_db}" || _schema_exists "${_db}"; then
+      _die 3 "not-yours"
+    fi
+  fi
+  _need_user_rule "${_u}" rule
+  _user_hosts_hex "${_u}"
+  while IFS= read -r _hx; do
+    [[ -n "${_hx}" ]] || continue
+    [[ -z "${_h}" || "${_hx}" == "$(_hex "${_h}")" ]] || continue
+    _rows=$(( _rows + 1 ))
+    _RV_FAIL=0
+    _RV_DONE=0
+    _revoke_rows "${_u}" "${_hx}" "${_db}"
+    if [[ "${_RV_FAIL}" -gt 0 ]]; then
+      _fail=$(( _fail + _RV_FAIL ))
+      continue
+    fi
+    if _row_bare "${_u}" "${_hx}"; then
+      if _sql_prepared "'DROP USER \`${_u}\`@', $(_sql_qid "${_hx}")"; then
+        _dropped=$(( _dropped + 1 ))
+      else
+        _fail=$(( _fail + 1 ))
+      fi
+    fi
+  done <<< "${_HOSTS_HEX}"
+  _reg_unlock
+  [[ "${_fail}" -eq 0 ]] || _die 7 "sql-failed revoke-incomplete ${_fail}"
+  _info "revoke ${_db} ${_u} rows=${_rows} dropped=${_dropped}"
+}
+
+_v_grants() {
+  local _u _h _n=0 _l
+  [[ "${#_ARGS[@]}" -eq 2 ]] || _die 2 "usage grants <user> <host>"
+  _u="${_ARGS[0]}"
+  _h="${_ARGS[1]}"
+  _LOG_UH="${_u}@${_h}"
+  _need_user "${_u}"
+  _need_host "${_h}"
+  _need_user_rule "${_u}" rule
+  _sql_or_die "SELECT /*q:userrow*/ COUNT(*) FROM mysql.user WHERE User = $(_sql_str "${_u}") AND Host = $(_sql_str "${_h}")" userrow
+  if [[ "${_SQL_OUT}" == "0" ]]; then
+    _info "grants 0"
+    return 0
+  fi
+  _sql_or_die "/*q:showgrants*/ SHOW GRANTS FOR \`${_u}\`@\`${_h}\`" showgrants
+  while IFS= read -r _l; do
+    [[ -n "${_l}" ]] || continue
+    printf '%s\n' "${_l}"
+    _n=$(( _n + 1 ))
+  done <<< "${_SQL_OUT}"
+  _info "grants ${_n}"
+}
+
+# The migration-source verbs take loopback rows only: the only hosts that
+# feature grants at, and the only rows the panel's sweep reads back.
+_need_loopback() {
+  case "${1}" in
+    localhost|127.0.0.1) return 0 ;;
+  esac
+  _die 2 "bad-host loopback-only"
+}
+
+_v_grant_select() {
+  local _src _u _h
+  [[ "${#_ARGS[@]}" -eq 3 ]] || _die 2 "usage grant-select <src> <user> <host>"
+  _src="${_ARGS[0]}"
+  _u="${_ARGS[1]}"
+  _h="${_ARGS[2]}"
+  _LOG_DB="${_src}"
+  _LOG_UH="${_u}@${_h}"
+  _need_db "${_src}"
+  _need_user "${_u}"
+  _need_host "${_h}"
+  _need_loopback "${_h}"
+  _reg_lock
+  _need_own_created "${_src}"
+  _need_user_rule "${_u}" strict
+  _sql_or_die "SELECT /*q:userrow*/ COUNT(*) FROM mysql.user WHERE User = $(_sql_str "${_u}") AND Host = $(_sql_str "${_h}")" userrow
+  [[ "${_SQL_OUT}" == "1" ]] || _die 6 "refused-user no-such-user"
+  _sql "/*q:dcl*/ GRANT SELECT ON \`$(_db_esc "${_src}")\`.* TO \`${_u}\`@\`${_h}\`;" \
+    || _die 7 "sql-failed grant-select ${_SQL_ERRNO}"
+  _reg_unlock
+  _info "grant-select ${_src} ${_u}@${_h}"
+}
+
+# revoke-select: a SELECT-only loopback row, both spellings as stored, for
+# this account's own user on any name, or any grantee on its own database.
+_v_revoke_select() {
+  local _db _u _h _n=0 _x _sel _sum _hx
+  [[ "${#_ARGS[@]}" -eq 3 ]] || _die 2 "usage revoke-select <db> <user> <host>"
+  _db="${_ARGS[0]}"
+  _u="${_ARGS[1]}"
+  _h="${_ARGS[2]}"
+  _LOG_DB="${_db}"
+  _LOG_UH="${_u}@${_h}"
+  _need_db "${_db}"
+  _need_user "${_u}"
+  _need_host "${_h}"
+  _need_loopback "${_h}"
+  _reg_lock
+  if ! _own_user "${_u}" && ! _own_db "${_db}"; then
+    _die 3 "not-yours"
+  fi
+  _need_user_rule "${_u}" rule
+  _need_priv_cols
+  _sum=$(printf '%s' "${_DB_PRIVS}" | sed -e "s/, /='Y') + (/g" -e 's/^/(/' -e "s/\$/='Y')/")
+  _sql_or_die "SELECT /*q:selrows*/ CONCAT_WS('|', HEX(Db), Select_priv, ${_sum}) FROM mysql.db WHERE User = $(_sql_str "${_u}") AND Host = $(_sql_str "${_h}") AND Db IN ($(_sql_str "${_db}"), $(_sql_str "$(_db_esc "${_db}")"))" selrows
+  while IFS='|' read -r _x _sel _sum; do
+    [[ -n "${_x}" ]] || continue
+    [[ "${_x}" =~ ^[0-9A-F]+$ ]] || _die 7 "sql-failed selrows"
+    [[ "${_sel}" == "Y" && "${_sum}" == "1" ]] || _die 6 "refused-user more-than-select"
+  done <<< "${_SQL_OUT}"
+  _hx=$(_hex "${_h}")
+  while IFS='|' read -r _x _sel _sum; do
+    [[ -n "${_x}" ]] || continue
+    _sql_prepared "'REVOKE SELECT ON ', $(_sql_qid "${_x}"), '.* FROM \`${_u}\`@', $(_sql_qid "${_hx}")" \
+      || _die 7 "sql-failed revoke-select ${_SQL_ERRNO}"
+    _n=$(( _n + 1 ))
+  done <<< "${_SQL_OUT}"
+  _reg_unlock
+  _info "revoke-select ${_db} ${_u}@${_h} revoked=${_n}"
+}
+
+# grants-scan: the panel's migration-source sweep reads, scoped to this
+# account. Rows in mysql -B form with a header (every *_priv column, so the
+# sweep keeps its SELECT-only test), or, for --user with --db, a count only.
+_v_grants_scan() {
+  local _u="${_OPT_USER}" _d="${_OPT_DB}"
+  [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage grants-scan --user <u> | --db <d> | --user <u> --db <src>"
+  if [[ "${_HAS_USER}" == "YES" ]]; then
+    _LOG_UH="${_u}"
+    _need_user "${_u}"
+    _own_user "${_u}" || _die 3 "not-yours"
+  fi
+  if [[ "${_HAS_DB}" == "YES" ]]; then
+    _LOG_DB="${_d}"
+    _need_db "${_d}"
+  fi
+  if [[ "${_HAS_USER}" == "YES" && "${_HAS_DB}" == "YES" ]]; then
+    _sql_or_die "SELECT /*q:scancount*/ COUNT(*) FROM mysql.db WHERE Db IN ($(_sql_str "${_d}"), $(_sql_str "$(_db_esc "${_d}")")) AND User = $(_sql_str "${_u}") AND Select_priv = 'Y'" scancount
+    [[ "${_SQL_OUT}" =~ ^[0-9]+$ ]] || _die 7 "sql-failed scancount"
+    _info "grants-scan count=${_SQL_OUT}"
+  elif [[ "${_HAS_USER}" == "YES" ]]; then
+    _sql_table "SELECT /*q:scanuser*/ * FROM mysql.db WHERE User = $(_sql_str "${_u}") AND Host IN ('localhost', '127.0.0.1') AND Select_priv = 'Y'" \
+      || _die 7 "sql-failed scanuser ${_SQL_ERRNO}"
+    _scan_out
+  elif [[ "${_HAS_DB}" == "YES" ]]; then
+    _own_db "${_d}" || _die 3 "not-yours"
+    _sql_table "SELECT /*q:scandb*/ * FROM mysql.db WHERE Db IN ($(_sql_str "${_d}"), $(_sql_str "$(_db_esc "${_d}")")) AND User <> '' AND Host IN ('localhost', '127.0.0.1') AND Select_priv = 'Y'" \
+      || _die 7 "sql-failed scandb ${_SQL_ERRNO}"
+    _scan_out
+  else
+    _die 2 "usage grants-scan --user <u> | --db <d> | --user <u> --db <src>"
+  fi
+}
+
+_scan_out() {
+  local _n=0 _l
+  while IFS= read -r _l; do
+    [[ -n "${_l}" ]] || continue
+    printf '%s\n' "${_l}"
+    _n=$(( _n + 1 ))
+  done <<< "${_SQL_OUT}"
+  [[ "${_n}" -gt 0 ]] && _n=$(( _n - 1 ))
+  _info "grants-scan rows=${_n}"
+}
+
+# The verify probes' database name, as provision's verify_probe_db_name()
+# builds it: site_tmp_test_<oN>, or a short hash of the account name where
+# the probe user's name would pass MySQL's 32 characters.
+_probe_name() {
+  local _s="${_ACCT}"
+  if [[ "$(( 13 + 1 + ${#_s} + 5 ))" -gt 32 ]]; then
+    _s=$(printf '%s' "${_ACCT}" | md5sum | cut -c1-8)
+  fi
+  printf 'site_tmp_test_%s' "${_s}"
+}
+
+# selftest: create and drop the account's probe database, grant, revoke and
+# drop its probe user, create the utf8mb4 test table.
+_v_selftest() {
+  local _pdb _pu _pe _pw _c="fail" _g="fail" _u="no"
+  [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage selftest"
+  _pdb=$(_probe_name)
+  _pu="${_pdb}_user"
+  _pe=$(_db_esc "${_pdb}")
+  _LOG_DB="${_pdb}"
+  _reg_lock
+  if _sql "/*q:probe*/ DROP DATABASE IF EXISTS \`${_pdb}\`; CREATE DATABASE \`${_pdb}\`;" \
+    && _schema_exists "${_pdb}"; then
+    _c="ok"
+  fi
+  if [[ "${_c}" == "ok" ]]; then
+    _pw=$(head -c 24 /dev/urandom | od -An -v -tx1 | tr -d ' \n')
+    if _sql "/*q:probe*/ DROP USER IF EXISTS \`${_pu}\`@\`localhost\`;
+CREATE USER \`${_pu}\`@\`localhost\` IDENTIFIED BY '${_pw}';
+GRANT ALL PRIVILEGES ON \`${_pe}\`.* TO \`${_pu}\`@\`localhost\`;" \
+      && _sql "SELECT /*q:probegrant*/ COUNT(*) FROM mysql.db WHERE User = '${_pu}' AND Host = 'localhost' AND Db = $(_sql_str "${_pe}")" \
+      && [[ "${_SQL_OUT}" == "1" ]] \
+      && _sql "/*q:probe*/ REVOKE ALL PRIVILEGES ON \`${_pe}\`.* FROM \`${_pu}\`@\`localhost\`;"; then
+      _g="ok"
+    fi
+    if ! _sql "/*q:probe*/ DROP USER IF EXISTS \`${_pu}\`@\`localhost\`;"; then
+      _g="fail"
+      _alrt "probe user ${_pu} left behind"
+    fi
+    if _sql "/*q:probe*/ CREATE TABLE \`${_pdb}\`.\`drupal_utf8mb4_test\` (id VARCHAR(255), PRIMARY KEY(id(255))) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC;"; then
+      _u="ok"
+    fi
+  fi
+  if ! _sql "/*q:probe*/ DROP DATABASE IF EXISTS \`${_pdb}\`;"; then
+    _c="fail"
+    _alrt "probe database ${_pdb} left behind"
+  fi
+  _reg_unlock
+  _info "selftest create=${_c} grant=${_g} utf8mb4=${_u}"
+}
+
+# The root staging directory, on /data/disk so a finished dump is moved
+# into the account's backups/ by a rename: root's own, 0700.
+_stage_ready() {
+  if [[ ! -e "${_STAGE}" && ! -L "${_STAGE}" ]]; then
+    mkdir -- "${_STAGE}" 2> /dev/null
+  fi
+  [[ -d "${_STAGE}" && ! -L "${_STAGE}" ]] || _die 7 "stage-unusable"
+  [[ "$(stat -c '%u %a' -- "${_STAGE}" 2> /dev/null)" == "${_ROOT_UID} 700" ]] \
+    || _die 7 "stage-unusable"
+}
+
+# In the account's (pinned) backups/: the dump in root staging $1 put at
+# ./tmp_expim. provision leaves an empty tmp_expim there for it; rmdir takes
+# only that (never a link, a file or anything with content), and the move,
+# root's last act, replaces nothing else.
+_deliver_here() {
+  if [[ -e ./tmp_expim || -L ./tmp_expim ]]; then
+    rmdir -- ./tmp_expim 2> /dev/null || return 1
+  fi
+  mv -T -- "${1}" ./tmp_expim 2> /dev/null
+}
+
+_dev_here() {
+  stat -c %d . 2> /dev/null
+}
+
+# dump: mydumper as root (its SQL is not the tenant's) into root staging,
+# with the options provision's fast dump passes, owned and moded for the
+# account while still in staging, and moved into backups/tmp_expim last.
+_v_dump() {
+  local _db _rc _mj _thr _bdev
+  local -a _rowsopt _trx _sock
+  [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage dump <db>"
+  _db="${_ARGS[0]}"
+  _LOG_DB="${_db}"
+  _need_db "${_db}"
+  _io_limit
+  _reg_lock
+  _need_own_created "${_db}"
+  _reg_unlock
+  _io_lock
+  _slot_take
+  _reg_lock
+  _need_own_created "${_db}"
+  _reg_unlock
+  _stage_ready
+  _bdev=$(_acct_in_real_dir "${_DISK}/${_ACCT}/backups" _dev_here) \
+    || _die 7 "backups-not-a-real-directory"
+  [[ -n "${_bdev}" && "${_bdev}" == "$(stat -c %d -- "${_STAGE}" 2> /dev/null)" ]] \
+    || _die 7 "backups-on-another-filesystem"
+  _STG=$(mktemp -d "${_STAGE}/${_ACCT}.XXXXXXXX" 2> /dev/null) || _die 7 "stage-unusable"
+  _sql_or_die "SELECT /*q:trx*/ COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = $(_sql_str "${_db}") AND TABLE_TYPE = 'BASE TABLE' AND ENGINE IS NOT NULL AND ENGINE NOT IN ('InnoDB')" trx
+  _trx=()
+  [[ "${_SQL_OUT}" =~ ^[0-9]+$ && "${_SQL_OUT}" -gt 0 ]] && _trx=(--trx-tables=0)
+  _rowsopt=(--rows=-1)
+  _mj=$(mydumper -V 2>&1 7>&- 8>&- 9>&- | grep -m1 "^mydumper v" | cut -d" " -f2 | tr -d "v" | cut -d"." -f1)
+  case "${_mj}" in
+    [1-9]*) _rowsopt=() ;;
+  esac
+  _sock=()
+  [[ -n "${_SRV_SOCKET}" ]] && _sock=(--socket="${_SRV_SOCKET}")
+  _mydumper_objects_opts
+  _thr=$(_threads)
+  timeout -k "${_KILL_GRACE}" "${_IO_LIMIT}" mydumper \
+    --defaults-file="${_MYCNF}" \
+    --database="${_db}" \
+    --host=localhost \
+    --port="${_SRV_PORT}" \
+    "${_sock[@]}" \
+    --outputdir="${_STG}" \
+    "${_rowsopt[@]}" \
+    "${_MYDUMPER_OBJECTS[@]}" \
+    --build-empty-files \
+    --threads="${_thr}" \
+    --long-query-guard=900 \
+    --clear \
+    "${_trx[@]}" \
+    --verbose=2 < /dev/null >&2 7>&- 8>&- 9>&-
+  _rc=$?
+  case "${_rc}" in
+    0) ;;
+    124|137)
+      _alrt "dump of ${_db} for ${_ACCT} passed the ${_IO_LIMIT}s limit; its process group was stopped"
+      _die 7 "time-limit"
+      ;;
+    *) _die 7 "dump-failed ${_rc}" ;;
+  esac
+  [[ -f "${_STG}/metadata" && ! -L "${_STG}/metadata" ]] || _die 7 "dump-incomplete"
+  chown -R -- "${_ACCT}:" "${_STG}" 2> /dev/null || _die 7 "stage-owner-failed"
+  find "${_STG}" -type d -exec chmod 0700 {} + 2> /dev/null || _die 7 "stage-mode-failed"
+  find "${_STG}" -type f -exec chmod 0600 {} + 2> /dev/null || _die 7 "stage-mode-failed"
+  _acct_in_real_dir "${_DISK}/${_ACCT}/backups" _deliver_here "${_STG}" \
+    || _die 7 "tmp_expim-refused"
+  _STG=""
+  _info "dump ${_db}"
+}
+
+# In the account's (pinned) tmp_expim: a finished dump (./metadata a plain
+# file) of exactly one database, whose name is printed. 1 when unfinished,
+# 2 when it holds no dump or more than one database's.
+_store_here() {
+  local _f _n _one=""
+  [[ -f ./metadata && ! -L ./metadata ]] || return 1
+  for _f in ./*-schema-create.sql*; do
+    [[ -e "${_f}" || -L "${_f}" ]] || continue
+    _n="${_f#./}"
+    _n="${_n%%-schema-create.sql*}"
+    if [[ -z "${_one}" ]]; then
+      _one="${_n}"
+    elif [[ "${_n}" != "${_one}" ]]; then
+      return 2
+    fi
+  done
+  [[ -n "${_one}" ]] || return 2
+  printf '%s' "${_one}"
+}
+
+_store_objects_here() {
+  local _f
+  for _f in ./*-schema-triggers.sql* ./*-schema-post.sql*; do
+    [[ -e "${_f}" ]] && return 0
+  done
+  return 1
+}
+
+# The load's [client] file: the site user's name and password, read by the
+# account's own myloader through an inherited descriptor. It is the
+# account's (so that reading works) inside root's private directory, which
+# no one else can enter, and goes with it.
+_write_cnf() {
+  local _e
+  _CNF="${_TMPD}/client.cnf"
+  _e=$(printf '%s' "${_PW}" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
+  printf '[client]\nuser=%s\npassword="%s"\n' "${1}" "${_e}" > "${_CNF}" \
+    || _die 7 "credentials-file-failed"
+  _e=""
+  chown -- "${_ACCT}" "${_CNF}" 2> /dev/null || _die 7 "credentials-file-failed"
+  chmod 0600 "${_CNF}" 2> /dev/null
+}
+
+_box_name() {
+  local _n
+  _n=$(hostname -f 2> /dev/null)
+  [[ "${_n}" =~ ^[A-Za-z0-9.-]{1,253}$ ]] || _n=$(uname -n 2> /dev/null)
+  [[ "${_n}" =~ ^[A-Za-z0-9.-]{1,253}$ ]] || _n=""
+  printf '%s' "${_n}"
+}
+
+# Whether user rows (decoded in _HOSTS) admit transport $1: the socket for a
+# localhost row, TCP to 127.0.0.1 for that row, TCP to the box's own name
+# for that row, and any of them for a pattern row.
+_admits() {
+  local _h
+  while IFS= read -r _h; do
+    [[ -n "${_h}" ]] || continue
+    case "${1}" in
+      socket) [[ "${_h}" == "localhost" ]] && return 0 ;;
+      tcp) [[ "${_h}" == "127.0.0.1" ]] && return 0 ;;
+      name) [[ -n "${_BOX}" && "${_h}" == "${_BOX}" ]] && return 0 ;;
+    esac
+    case "${_h}" in
+      *%*|*_*) return 0 ;;
+    esac
+  done <<< "${_HOSTS}"
+  return 1
+}
+
+# The transport arguments of $1 for mysql ($2 = client) or myloader.
+_transport_args() {
+  _TARGS=()
+  case "${1}" in
+    socket)
+      if [[ "${2}" == "client" ]]; then
+        _TARGS=(--protocol=SOCKET)
+      else
+        _TARGS=(--host=localhost)
+      fi
+      [[ -n "${_SRV_SOCKET}" ]] && _TARGS+=(--socket="${_SRV_SOCKET}")
+      ;;
+    tcp)
+      [[ "${2}" == "client" ]] && _TARGS=(--protocol=TCP)
+      _TARGS+=(--host=127.0.0.1 --port="${_SRV_PORT}")
+      ;;
+    name)
+      [[ "${2}" == "client" ]] && _TARGS=(--protocol=TCP)
+      _TARGS+=(--host="${_BOX}" --port="${_SRV_PORT}")
+      ;;
+  esac
+}
+
+# The proof of a load's credential: it logs in over a transport its rows
+# admit (socket, 127.0.0.1, the box's name, in that order, the first that
+# authenticates), CURRENT_USER() names it, and USE <db> works. Sets
+# _PROOF_T and _PROOF_HOST, the row the load then runs as.
+_prove() {
+  local _u="${1}" _db="${2}" _x _t _out _cu
+  _user_hosts_hex "${_u}"
+  _HOSTS=""
+  while IFS= read -r _x; do
+    [[ -n "${_x}" ]] || continue
+    _HOSTS="${_HOSTS}$(_unhex "${_x}")"$'\n'
+  done <<< "${_HOSTS_HEX}"
+  _BOX=$(_box_name)
+  for _t in socket tcp name; do
+    _admits "${_t}" || continue
+    [[ "${_t}" != "name" || -n "${_BOX}" ]] || continue
+    _transport_args "${_t}" client
+    _out=$(printf '%s\n' "SELECT /*q:proof*/ CURRENT_USER(); USE \`${_db}\`; SELECT 1;" \
+      | mysql --defaults-file=/dev/fd/5 "${_TARGS[@]}" -N -B -r \
+        5< "${_CNF}" 2> /dev/null 7>&- 8>&- 9>&-) || continue
+    _cu=$(printf '%s\n' "${_out}" | head -n 1)
+    [[ "${_cu%%@*}" == "${_u}" ]] || continue
+    _PROOF_HOST="${_cu#*@}"
+    _host_ok "${_PROOF_HOST}" || continue
+    _PROOF_T="${_t}"
+    return 0
+  done
+  return 1
+}
+
+# load: the dump store is the tenant's, so it is never read with a root
+# credential: myloader runs as the account (runuser, no login shell, a
+# fixed environment) in its own pinned tmp_expim, as the site's own database
+# user, proven first, and that user may hold rights on this account's
+# databases only. It loads into <db> whatever database the store names (a
+# migrate from another server names the source's).
+_v_load() {
+  local _db _rc _st _thr _store
+  [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage load <db>"
+  _db="${_ARGS[0]}"
+  _LOG_DB="${_db}"
+  _need_db "${_db}"
+  _read_user_pw
+  _LOG_UH="${_LD_USER}"
+  _io_limit
+  _reg_lock
+  _need_own_created "${_db}"
+  _reg_unlock
+  _io_lock
+  _slot_take
+  _reg_lock
+  _need_own_created "${_db}"
+  _reg_unlock
+  _store=$(_acct_in_real_dir "${_DISK}/${_ACCT}/backups/tmp_expim" _store_here)
+  _st=$?
+  case "${_st}" in
+    0) ;;
+    1) _die 7 "store-incomplete" ;;
+    *) _die 7 "store-not-one-database" ;;
+  esac
+  _write_cnf "${_LD_USER}"
+  _PW=""
+  _prove "${_LD_USER}" "${_db}" || _die 6 "refused-user credential-proof-failed"
+  _LOG_UH="${_LD_USER}@${_PROOF_HOST}"
+  _need_user_rule "${_LD_USER}" rule "$(_hex "${_PROOF_HOST}")"
+  _myloader_binlog_opts
+  _myloader_definer_opts "${_LD_USER}" "${_PROOF_HOST}"
+  if [[ "${#_MYLOADER_DEFINER[@]}" -gt 0 && "${_MYLOADER_DEFINER[0]}" != --replace-definer=* ]] \
+    && _acct_in_real_dir "${_DISK}/${_ACCT}/backups/tmp_expim" _store_objects_here; then
+    _alrt "the dump carries triggers, routines or events, and this myloader cannot hand them to ${_LD_USER}: they are left out of the load"
+  fi
+  _transport_args "${_PROOF_T}" loader
+  _thr=$(_threads)
+  _acct_in_real_dir "${_DISK}/${_ACCT}/backups/tmp_expim" \
+    timeout -k "${_KILL_GRACE}" "${_IO_LIMIT}" \
+    runuser -u "${_ACCT}" -- \
+    env -i HOME="${_DISK}/${_ACCT}" PATH="${_STD_PATH}" LC_ALL=C \
+    myloader \
+    --defaults-file=/dev/fd/5 \
+    --database="${_db}" \
+    "${_TARGS[@]}" \
+    --directory=. \
+    --threads="${_thr}" \
+    --drop-table=DROP \
+    "${_MYLOADER_BINLOG[@]}" \
+    "${_MYLOADER_DEFINER[@]}" \
+    --verbose=2 < /dev/null 5< "${_CNF}" >&2 7>&- 8>&- 9>&-
+  _rc=$?
+  case "${_rc}" in
+    0) ;;
+    124|137)
+      _alrt "load of ${_db} for ${_ACCT} passed the ${_IO_LIMIT}s limit; its process group was stopped"
+      _die 7 "time-limit"
+      ;;
+    *) _die 7 "load-failed ${_rc}" ;;
+  esac
+  _info "load ${_db} store=${_store} as=${_LD_USER}@${_PROOF_HOST} via=${_PROOF_T}"
+}
+
+_v_list() {
+  local _f _n=0
+  [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage list"
+  for _f in "${_REG}"/*; do
+    [[ -f "${_f}" && ! -L "${_f}" ]] || continue
+    _reg_get "${_f##*/}" || continue
+    [[ "${_E_ACCOUNT}" == "${_ACCT}" ]] || continue
+    printf '%s %s %s %s\n' "${_f##*/}" "${_E_STATE}" "${_E_SINCE}" "${_E_VIA}"
+    _n=$(( _n + 1 ))
+  done
+  _info "list ${_n}"
+}
+
+# register (root): an entry, created, for a database a root tool made for
+# the account. Another account's entry refuses it.
+_v_register() {
+  local _db _rc
+  [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
+  [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage register <db> --account <oN> --via <tool>"
+  _db="${_ARGS[0]}"
+  _LOG_DB="${_db}"
+  _need_db "${_db}"
+  _need_assignable "${_db}"
+  [[ "${_OPT_VIA}" =~ ^[A-Za-z0-9_.-]{1,32}$ ]] || _die 2 "bad-via"
+  _broker_mode
+  _schema_exists "${_db}" || _die 2 "no-such-database"
+  _reg_lock
+  if _reg_get "${_db}"; then
+    [[ "${_E_ACCOUNT}" == "${_ACCT}" ]] || _die 4 "taken entry"
+    if [[ "${_E_STATE}" != "created" ]]; then
+      _reg_set "${_db}" created "register:${_OPT_VIA}" || _die 7 "registry-write-failed"
+    fi
+  else
+    _reg_new "${_db}" created "register:${_OPT_VIA}"
+    _rc=$?
+    if [[ "${_rc}" -eq 1 ]]; then
+      _reg_get "${_db}" && [[ "${_E_ACCOUNT}" == "${_ACCT}" ]] || _die 4 "taken entry"
+    elif [[ "${_rc}" -ne 0 ]]; then
+      _die 7 "registry-write-failed"
+    fi
+  fi
+  _reg_unlock
+  _info "register ${_db}"
+}
+
+# regrant (root): the instance user's grant on every created database of the
+# account, for each row in use, after a pass re-created the user.
+_v_regrant() {
+  local _f _n=0 _fail=0
+  [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
+  [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage regrant --account <oN>"
+  _need_broker
+  _reg_lock
+  for _f in "${_REG}"/*; do
+    [[ -f "${_f}" && ! -L "${_f}" ]] || continue
+    _reg_get "${_f##*/}" || continue
+    [[ "${_E_ACCOUNT}" == "${_ACCT}" && "${_E_STATE}" == "created" ]] || continue
+    _db_ok "${_f##*/}" || continue
+    if _grant_instance "${_f##*/}"; then
+      _n=$(( _n + 1 ))
+    else
+      _fail=$(( _fail + 1 ))
+    fi
+  done
+  _reg_unlock
+  [[ "${_fail}" -eq 0 ]] || _die 7 "sql-failed regrant ${_fail}"
+  _info "regrant ${_n}"
+}
+
+_parse_args() {
+  _ARGS=()
+  while [[ "$#" -gt 0 ]]; do
+    case "${1}" in
+      --account|--via|--user|--db)
+        [[ "$#" -ge 2 ]] || _die 2 "usage ${1} needs a value"
+        case "${1}" in
+          --account) _OPT_ACCOUNT="${2}" ;;
+          --via) _OPT_VIA="${2}" ;;
+          --user)
+            _OPT_USER="${2}"
+            _HAS_USER="YES"
+            ;;
+          --db)
+            _OPT_DB="${2}"
+            _HAS_DB="YES"
+            ;;
+        esac
+        shift 2
+        ;;
+      --)
+        shift
+        _ARGS+=("$@")
+        break
+        ;;
+      -*) _die 2 "usage unknown-option" ;;
+      *)
+        _ARGS+=("${1}")
+        shift
+        ;;
+    esac
+  done
+}
+
+_main() {
+  _VERB="${1:-}"
+  case "${_VERB}" in
+    ""|-h|--help|help)
+      _VERB=""
+      _usage
+      exit 2
+      ;;
+  esac
+  shift
+  _parse_args "$@"
+  case "${_VERB}" in
+    exists|reserve|create|drop|grant|revoke|grants|grant-select|revoke-select|grants-scan|selftest|dump|load|list|register|regrant) ;;
+    *) _die 2 "usage unknown-verb" ;;
+  esac
+  if [[ "${_VERB}" != "grants-scan" && ( "${_HAS_USER}" == "YES" || "${_HAS_DB}" == "YES" ) ]]; then
+    _die 2 "usage unknown-option"
+  fi
+  if [[ "${_VERB}" != "register" && -n "${_OPT_VIA}" ]]; then
+    _die 2 "usage unknown-option"
+  fi
+  _identity
+  case "${_VERB}" in
+    register|regrant) ;;
+    *) _need_broker ;;
+  esac
+  _TMPD=$(mktemp -d "${_RUNP}.tmp.XXXXXXXX" 2> /dev/null) || _die 7 "tmp-failed"
+  _srv_init
+  _master_db_init
+  _reg_ready
+  case "${_VERB}" in
+    exists) _v_exists ;;
+    reserve) _v_reserve ;;
+    create) _v_create ;;
+    drop) _v_drop ;;
+    grant) _v_grant ;;
+    revoke) _v_revoke ;;
+    grants) _v_grants ;;
+    grant-select) _v_grant_select ;;
+    revoke-select) _v_revoke_select ;;
+    grants-scan) _v_grants_scan ;;
+    selftest) _v_selftest ;;
+    dump) _v_dump ;;
+    load) _v_load ;;
+    list) _v_list ;;
+    register) _v_register ;;
+    regrant) _v_regrant ;;
+  esac
+  exit 0
+}
+
+trap _on_exit EXIT
+_main "$@"

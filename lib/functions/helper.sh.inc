@@ -2034,6 +2034,10 @@ _check_prepare_dirs_permissions() {
   # /var/log/php85 — apply the tighter mode to all of them.
   chown root:adm /var/log/php* &> /dev/null
   chmod 0755 /var/log/php* &> /dev/null
+  # The database broker's root state (boa-dbctl): the database ownership
+  # registry and the box baseline. Root only.
+  install -d -o root -g root -m 0700 /var/lib/boa /var/lib/boa/dbowners \
+    /var/lib/boa/dbctl &> /dev/null
   mkdir -p ${_vBs}/dragon/{x,z,t}
   if [ -e "/etc/init.d/buagent" ]; then
     mv -f /etc/init.d/buagent \
