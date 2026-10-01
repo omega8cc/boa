@@ -12,7 +12,7 @@ This file is created automatically for every account by a periodic system agent,
 
 It's faster than you would expect! We have observed it speeding up clone and migration tasks that normally take 1-2 hours to just 3-6 minutes. Yes, that's how fast it is!
 
-This file, while present, enables a super fast per-table and parallel database dump and import. However, it will not leave a conventional complete database dump file in the internal safety copies Ægir makes for itself during clone, migrate and delete tasks, so a Restore from one of those archives brings back the files only and keeps the site's current database (the task log says so). A Backup task is different: it always carries a Backup Mode, and when none is chosen it defaults to the restorable one.
+This file, while present, enables a super fast per-table and parallel database dump and import. However, it will not leave a conventional complete database dump file in the internal safety copies Ægir makes for itself during migrate and delete tasks, so a Restore from one of those archives brings back the files only and keeps the site's current database (the task log says so). A Clone is not affected: its safety copy always carries a classic dump, and the new site's database is loaded from it. A Backup task is different: it always carries a Backup Mode, and when none is chosen it defaults to the restorable one.
 
 We need to emphasize this again: with this control file present, all normally slow tasks will become blazing fast, but at the cost of not keeping an archived complete database dump file in the site directory archive where it would otherwise be included.
 
@@ -51,6 +51,19 @@ The replacement does not wait for a full upgrade: the Skynet agent pass (`BOA.sh
 A dump written by one mydumper line and loaded by the other logs schema and structure checksum mismatch warnings; the data checksums match and the restore is complete. The same applies to the cluster variant, the `xoct`/`xcopy` exports and the per-site MyQuick dump provision takes where no backup mode is set (the hostmaster site's own backups, the safety copies ahead of Migrate and Delete, and a backend `provision-backup` run outside the task queue).
 
 The `/root/.my.cnf` credentials file is written with exactly five groups — `[client]`, `[mysql]`, `[mysqldump]`, `[mydumper]` and `[myloader]` — separated by empty lines. mydumper and myloader parse this file with a strict key-file parser, so the separator lines must be genuinely empty, and only groups with real consumers are written.
+
+## Imports Are Written to the Binary Log
+
+Every `myloader` load BOA runs passes `--ignore-set=SQL_LOG_BIN` when the installed `myloader` lists that option: the fast import of an Ægir Migrate task (and of a Restore whose archive carries no database dump), and the per-site imports of `xoct` and `xcopy`. Without it `myloader` opens every session with `SET SQL_LOG_BIN=0` (its own default, and the packaged `/etc/mydumper.cnf` sets it again for a call without an option file of its own), so on a box running with the binary log on (every box an `xmass` run touched, the active of a standing mirror among them) the loaded tables never reached the replica, and the replica's applier stopped with error 1146 at the first write the site made to them. With the binary log off, BOA's default, the option changes nothing. `--enable-binlog` is no substitute: the packaged file turns the binary log off again, and the 0.19.3 line refuses the option.
+
+The option also lets a database user without SUPER run `myloader`: the `SET` it removes is refused for such a user (`ERROR 1227`), and `myloader` then exits non-zero although the tables loaded.
+
+A restore you run by hand on such a box takes the same option, with root's option file:
+
+```sh
+myloader --defaults-file=/root/.my.cnf --database=<dbname> \
+  --directory=<dump-dir> --threads=4 --drop-table=DROP --ignore-set=SQL_LOG_BIN
+```
 
 For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs).
 

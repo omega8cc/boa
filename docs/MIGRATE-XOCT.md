@@ -438,7 +438,10 @@ loads are truthful: a transferred dump directory without mydumper's final
 `metadata` marker is SKIPPED (a partial dump silently restoring an
 incomplete database is the failure being guarded against), a failed
 myloader run is counted, and a site whose db credentials cannot be parsed
-is counted too.
+is counted too. Each load passes `--ignore-set=SQL_LOG_BIN` when the
+installed `myloader` lists it, so it is written to the binary log and
+reaches a replica of the target (see
+[MYQUICK.md](MYQUICK.md#imports-are-written-to-the-binary-log)).
 
 One exception keeps mixed accounts importable: a site with
 no transferred dump whose database on this box is **already populated** is

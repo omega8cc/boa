@@ -1601,6 +1601,25 @@ _mysqldump_gtid_opts() {
   fi
   return 0
 }
+### A site's database load is written to the binary log. myloader opens
+### every session with SET SQL_LOG_BIN=0 unless told otherwise, so on a box
+### running with the binary log on (every box an xmass run touched: BOA's
+### my.cnf leaves it off, xmass_gtid.cnf turns it on) the load never
+### reached a replica of the box, whose applier then stopped at the first
+### replicated write to the tables it never got. --ignore-set=SQL_LOG_BIN
+### drops that one session variable wherever it comes from (myloader's own
+### default, or the packaged /etc/mydumper.cnf for a call without an option
+### file); --enable-binlog is no substitute: that file sets it again, and
+### the 0.19.3 line refuses the option. With the binary log off it changes
+### nothing. Sets _MYLOADER_BINLOG to the option when the local myloader
+### lists it, so a build without it gets its arguments as before.
+_myloader_binlog_opts() {
+  _MYLOADER_BINLOG=()
+  if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--ignore-set([[:space:]]|=)'; then
+    _MYLOADER_BINLOG=(--ignore-set=SQL_LOG_BIN)
+  fi
+  return 0
+}
 ### The regular file ./$1 of the current (pinned) directory copied, forced
 ### (no -u), to the same name in the real directory $3 on the target $2, $4
 ### the caller's rsync error option. A link is never carried and neither end
@@ -2498,6 +2517,8 @@ EOFMYSQL
             ### mydumper writes metadata into the outputdir as its LAST act;
             ### a transferred dir without it is a partial/hollow dump and
             ### loading it would silently restore an incomplete database.
+            ### The load is binlogged, so a replica of this box gets it too.
+            _myloader_binlog_opts
             if ! _xoct_in_real_dir "${_USR}/src/${_DBN}" test -e ./metadata; then
               _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
               _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_DBN}"
@@ -2510,6 +2531,7 @@ EOFMYSQL
               --directory=. \
               --threads=4 \
               --drop-table=DROP \
+              "${_MYLOADER_BINLOG[@]}" \
               --verbose=2; then
               _XOCT_SITE_IMPORT_OK=YES
               echo "INFO: site ${_Dom} db import on ${_oct} complete"
