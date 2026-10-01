@@ -57,7 +57,8 @@ _php_cli_local_dirs_update() {
 # (sites/all/{modules,libraries,themes} in group users, the site's files/
 # in group www-data), so any name there can be a link or a hard link an
 # account planted. The tree is handed to aegir as chown -R did, and files/
-# given its mode as chmod -R did, only inside the real directory $1, from
+# given its modes (its directories 02775, its files 0664, so never
+# set-ID), only inside the real directory $1, from
 # the directory find walked (-execdir) and through a handle opened without
 # following a link or blocking on a FIFO: a directory, or a regular file
 # with a single link, never a link, a FIFO or a hard-linked file.
@@ -95,16 +96,19 @@ for my $f (@ARGV) {
   }
   close($h);
 }'
-# $1 and every directory and regular file below it set to $2.
+# $1 and every directory below it set to $2, every regular file below it
+# to $3. Files take their own mode, never the directories' set-group-ID one:
+# any account can write a file there, and a setgid executable would run
+# with the store's group.
 _master_mode_all_in() {
-  _acct_in_real_dir "${1}" _master_mode_all_here "${2}"
+  _acct_in_real_dir "${1}" _master_mode_all_here "${2}" "${3}"
 }
 _master_mode_all_here() {
   perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" . 2> /dev/null
   env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -type d \
     -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
   env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -type f \
-    -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f "${1}" {} +
+    -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
 }
 
 
@@ -1209,10 +1213,11 @@ _aegir_master_upgrade() {
     # every account can write sites/all/* (group users) and the site's
     # files/ (group www-data) of this tree: walked as _master_reown_in and
     # _master_mode_all_in walk, never handing over or moding a link or a
-    # file another account hard-linked there
+    # file another account hard-linked there; a single-link file there
+    # never keeps an execute or set-group-ID bit
     _master_reown_in "${_THIS_HM_ROOT}" aegir
     _master_reown_in "${_THIS_HM_SITE}/files" aegir:www-data
-    _master_mode_all_in "${_THIS_HM_SITE}/files" 02775
+    _master_mode_all_in "${_THIS_HM_SITE}/files" 02775 0664
 
     # Never serialize an empty PHP version: the drush shebang update just
     # below hard-exits on an unresolved value, and the appends further down
