@@ -50,6 +50,39 @@
 
 @=> Security
 
+    * The limited shell template and the ImageMagick policy no longer
+      stay a release behind on a box whose mirror lagged at the publish.
+
+    * The per-account runner clears the export metadata only in the
+      account's own tree or in its files store on attached storage.
+
+    * The Solr config upload and the Octopus upgrade's pass over the
+      hostmaster site's files/ leave BOA's own folders at the top of an
+      account's files store (.backups, .backup-exports, .archived) alone.
+
+    * A file in the master hostmaster site's files/ is set to 0664 by
+      the barracuda upgrade, as the site scripts set it, never 02775: a
+      file any account had put there no longer comes out executable and
+      set-group-ID.
+
+    * The barracuda upgrade also clears the set-ID bits of a file
+      hard-linked into the master hostmaster site's files/, which it
+      otherwise leaves as it is.
+
+    * Nightly maintenance keeps the shared code store's permissions,
+      moves unused shared codebases and prunes the codebases backup only
+      inside the real store, never through a link planted at a store
+      name, and waits while /data/all is a link the store rule refuses.
+
+    * The site ownership and permissions fixers leave BOA's own folders at
+      the top of an account's files store (.backups, .backup-exports,
+      .archived) as they are; only a site's own store is walked.
+
+    * The nightly permissions pass also leaves BOA's own folders at the
+      top of an account's files store, the store itself, and any place
+      outside an account's files store, the master's included, as they
+      are when a site's files or private link leads there.
+
     * xmass prep-target no longer takes a same-name account on the
       target that carries no site by itself: it is refused before the
       target changes, and taken only when the operator names it.
@@ -72,11 +105,27 @@
       and a new site never takes over another login's name; a forced
       reinstall now also removes the old site's database login.
 
-    * Octopus: the shared code store under /data/all stays root-owned through
-      an install or upgrade; the platform build may write only to the
-      directories it builds, only while it runs, and root takes them back
-      when it returns, restoring anything already there that was renamed or
-      replaced, and leaving no ACL and nothing writable by all users.
+    * Octopus: root builds the shared Drupal 6 and 7 cores and the shared
+      platform trees in /data/all, and the platform build that runs as the
+      instance user only reads the store: nothing in it is handed to an
+      account any more. Each core and tree is built in a stage directory
+      and moved into place only when every download for it succeeded and
+      it is complete, so a stopped pass or a mirror outage never leaves a
+      part-built one or replaces a whole one, and one built again replaces
+      the old in a single rename.
+
+    * Octopus: the first upgrade that builds platforms fetches the current
+      contrib bundles again, and the bundle a current core links from an
+      earlier serial, builds the current shared cores and trees again and
+      removes every POSIX ACL in /data/all. What it cannot fetch or build
+      stays as it was and is retried, alone, by the next upgrade, until all
+      of it is done once.
+
+    * Octopus: a forced refresh of a contrib bundle fetches it into a stage
+      directory, with its links to the shared Valkey integration, and swaps
+      it in, so sites never find the bundle empty or without that
+      integration, and keeps the bundle as it was when any download fails;
+      root's bundle fetches unpack owned by root.
 
     * Octopus, xoct, xcopy, the agents pass, the Solr and nightly cron
       tools: root's passes over the shared store set modes, make
@@ -1186,6 +1235,34 @@
 
 @=> Important Fixes
 
+    * The configuration files the agent pass keeps current between
+      upgrades (the PHP-FPM pool templates, the limited shell template,
+      the ImageMagick policy, the control readme, sysctl.conf, the Let's
+      Encrypt helper and includes, the Drupal 10 and 11 core patches) are
+      installed through the versioned fetcher: a box that runs a new
+      release before its mirror serves the new file asks again instead
+      of keeping the previous file until the next release. The steps
+      after the fetch run once per release and whenever the file
+      changes, as before.
+
+    * The hosting cron queue template is put into the accounts and
+      stamped only once it carries the queue patch.
+
+    * The versioned fetcher holds a serial moved together with a release
+      while the mirror still serves the previous bytes, as it already
+      did for a serial moved on its own, and no longer refuses the
+      ImageMagick policy as a mirror's error page.
+
+    * The Solr agent (manage_solr_config.sh) is installed through the
+      versioned fetcher, as every other tool is: a box that sees its new
+      version before the mirror serves the new file asks again on the
+      next pass instead of keeping the previous agent.
+
+    * The pass summary line records the full Nginx version string,
+      including a fourth component such as 1.31.6.1; the previous
+      pattern cut it to three components and misreported the
+      installed build.
+
     * A move no longer mails the client an "Ægir Upgrade" notice of its
       own: the first Octopus pass on the new box that would send it
       sends none, and later passes mail as the account's switch says.
@@ -1250,6 +1327,35 @@
       panel tables first, could not load its own snapshot. Every dump
       takes --set-gtid-purged=OFF when the box's mysqldump offers it;
       dumps taken before still carry it.
+
+    * BOA's myloader loads are written to the binary log: xoct and xcopy
+      imports, and the fast database import of an Aegir Migrate task and
+      of a Restore whose archive carries no database dump. myloader
+      opened every session with SQL_LOG_BIN=0, so on a box an xmass run
+      touched (the active of a standing mirror, a source mid-migration)
+      the loaded database never reached the replica, and the replica
+      stopped at the site's first write to it ("ERROR 1146 ... doesn't
+      exist"). Every load takes --ignore-set=SQL_LOG_BIN when the box's
+      myloader offers it. --enable-binlog would not do: the packaged
+      /etc/mydumper.cnf turns the binary log off again, and the 0.19.3
+      line refuses the option.
+
+    * Triggers, stored procedures and functions, and scheduled events
+      travel with a site's database: the nightly and cluster MyQuick
+      dumps, the xoct and xcopy exports, and the fast dump and import of
+      an Aegir Migrate task and of a Restore whose archive carries no
+      database dump. mydumper writes none of them unless asked, so they
+      were lost. xoct and xcopy keep their definer, the site's database
+      user; the fast import gives them, and the views, to the site's new
+      database user: a carried view named the old user, which the task
+      drops, and failed from then on. With the binary log on, a function
+      declared without DETERMINISTIC, NO SQL or READS SQL DATA now fails
+      the load instead of vanishing.
+
+    * The nightly copy of database dumps into each account's dbackup/
+      takes the date from the end of the archive folder name: on a box
+      whose hostname holds a dash, MyQuick dumps were never copied and
+      legacy dumps landed in a misnamed folder.
 
     * xcopy's create waits for a quiet target before it holds back the
       welcome mail, and xoct and xcopy say so when the hold was lifted

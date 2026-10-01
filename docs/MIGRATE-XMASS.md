@@ -912,6 +912,14 @@ Syncs the following to the target on each run:
 
 MySQL data is **not** rsynced — replication keeps it current continuously.
 
+That covers what the active writes to its binary log. BOA's own database loads
+there are written to it: the per-site `myloader` imports of `xoct` and `xcopy`
+and the fast imports of Ægir Migrate tasks pass `--ignore-set=SQL_LOG_BIN`
+(see [MYQUICK.md](MYQUICK.md#imports-are-written-to-the-binary-log)), and a
+restore by hand on the active must stay binlogged as well. A load kept out of
+the binary log leaves the mirror with an empty database, and its replication
+stops (error 1146) at the first write the site makes to it.
+
 ### Deletions: what a sync removes on the target, and what it never does
 
 Source-side deletions **propagate on the data trees** during `sync` (manual

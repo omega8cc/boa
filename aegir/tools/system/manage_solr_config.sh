@@ -485,11 +485,13 @@ _solr_in_upload_dir() {
 # into the account's own static/files or that store moved onto attached
 # storage (/mnt/<mount>/files/<oN>/static/files, the mount itself possibly
 # nested, with no directory named files or static between /mnt and the
-# mount, as the nightly decides it), and checked again once entered. Any
-# other link on the way refuses. Changes the directory: run it only inside
+# mount, as the nightly decides it), and checked again once entered. A
+# dot-name right below either store root is BOA's own (.backups,
+# .backup-exports, .archived), never a site's store, so it refuses too, as
+# any other link on the way does. Changes the directory: run it only inside
 # a subshell. Reads _usEr.
 _solr_in_files_here() {
-  local _r _rus _a _m
+  local _r _rus _a _m _top
   if [ ! -L ./files ]; then
     _acct_down_real_here files/solr "$@"
     return
@@ -499,14 +501,20 @@ _solr_in_files_here() {
   _a="${_usEr##*/}"
   case "${_r}" in
     ""|*[!A-Za-z0-9._/-]*) return 1 ;;
-    "${_rus}/static/files/"?*) ;;
+    "${_rus}/static/files/"?*)
+      _top="${_r#"${_rus}"/static/files/}"
+      ;;
     /mnt/?*/files/"${_a}"/static/files/?*)
       _m="${_r%%/files/"${_a}"/static/files/*}"
       case "${_m}" in
         */files/*|*/static/*) return 1 ;;
       esac
+      _top="${_r#"${_m}"/files/"${_a}"/static/files/}"
       ;;
     *) return 1 ;;
+  esac
+  case "${_top}" in
+    .*) return 1 ;;
   esac
   cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] || return 1
   _acct_down_real_here solr "$@"

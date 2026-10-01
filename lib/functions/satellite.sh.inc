@@ -2008,12 +2008,11 @@ _satellite_create_shared_dirs() {
   fi
   rm -rf /data/src
   ### The store, 000/, 000/core, 000/modules and ${_CORE} stay root's for
-  ### the whole run: the build is given only ${_CORE} (and 000/core while a
-  ### shared core is missing), and only while it runs
-  ### (_satellite_lend_shared_dirs). The first four were checked at the
-  ### start of this pass (_satellite_store_dirs_back) and are checked again
-  ### here, then ${_CORE} the same way. /data/conf is never handed over: it
-  ### stays root's for the whole run (_satellite_add_user_dirs).
+  ### the whole run and nothing in them is handed over: root builds the
+  ### shared trees (_satellite_build_shared). The first four were checked
+  ### at the start of this pass (_satellite_store_dirs_back) and are checked
+  ### again here, then ${_CORE} the same way. /data/conf is never handed
+  ### over: it stays root's for the whole run (_satellite_add_user_dirs).
   _satellite_store_dirs_back
   _acct_in_real_dir "${_D_REAL}" _satellite_store_sub_here "${_CORE##*/}"
   if [ "$?" -eq 3 ]; then
@@ -2023,13 +2022,32 @@ _satellite_create_shared_dirs() {
   ### store writable by every local user for the whole platform build below
   ### (reverted only in _satellite_batch_cleanup) -- long enough to drop code
   ### into a codebase every legacy site loads, or into the global config tree.
-  ### The build runs as ${_USER}, owner of ${_CORE} while it runs, so
-  ### owner-write is all it ever needed there; it writes nothing in
-  ### /data/conf, which stays root's. These are the same modes
-  ### _satellite_batch_cleanup asserts at the end of the run.
+  ### Root builds the shared trees and the account's build only reads them;
+  ### nothing writes in /data/conf, which stays root's. These are the same
+  ### modes _satellite_batch_cleanup asserts at the end of the run.
   chmod 0755 ${_D} &> /dev/null
   chmod 0711 /data /data/disk /data/conf &> /dev/null
   _acct_in_real_dir "${_CORE}" chmod 0711 . &> /dev/null
+  ### The store's one-time pass (_satellite_build_shared) is due while 000
+  ### holds no record of it. The first such pass does all of it: the
+  ### bundles already in ${_CORE} are then fetched again on the forced
+  ### check_fix path. A pass that could not do all of it named what is
+  ### left in 000 (${_SAT_REBUILD_LEFT}), and the next pass does only that.
+  _SAT_REBUILD=NO
+  _SAT_LEFT_ITEMS=""
+  _SAT_REDO_DONE=""
+  _SAT_REDO_LEFT=""
+  if [ ! -e "${_D_REAL}/000/${_SAT_REBUILT}" ]; then
+    _SAT_LEFT_ITEMS="$(_acct_read_in "${_D_REAL}/000" "${_SAT_REBUILD_LEFT}")"
+    if [ -n "${_SAT_LEFT_ITEMS}" ]; then
+      _SAT_REBUILD=LEFT
+    else
+      _SAT_REBUILD=YES
+      if [ -e "${_CORE}/o_contrib_seven" ] || [ -e "${_CORE}/o_contrib" ]; then
+        _O_CONTRIB_FORCED_UP=YES
+      fi
+    fi
+  fi
 }
 
 #
@@ -2313,45 +2331,194 @@ _satellite_not_root_alone() {
 }
 
 #
-# The platform build (AegirSetupC) runs as the account and makes its shared
-# platforms in ${_CORE} and, while one is missing, the shared D6/D7 cores in
-# 000/core: those two directories, '.' only, are handed to it just for that
-# run and taken back by _satellite_take_back_shared_dirs the moment it
-# returns. The store, 000/ and the bundles root fetches into ${_CORE} before
-# the build stay root's throughout. Before '.' is handed over, what is at
-# its top (name and device:inode of each entry) is recorded in a root-only
-# directory (_SAT_LENT_INV), so the take-back can tell an entry the build
-# renamed, replaced or swapped from the one root had there, whoever owns it
-# by then. A directory whose top could not be recorded is not lent (the
-# build then fails where it had to write, and says so).
-_satellite_lend_shared_dirs() {
-  _LENT_CORE_DIR=NO
-  [ -n "${_SAT_LENT_INV}" ] && rm -rf -- "${_SAT_LENT_INV}"
-  _SAT_LENT_INV="$(mktemp -d /tmp/.boa-lent.XXXXXX 2> /dev/null)"
-  if [ -z "${_SAT_LENT_INV}" ] \
-    || ! _acct_in_real_dir "${_CORE}" _satellite_top_ids_here \
-      > "${_SAT_LENT_INV}/core"; then
-    _msg "${_STATUS} A: ALRT ${_CORE} not lent to the build: its top could not be recorded"
-    [ -n "${_SAT_LENT_INV}" ] && rm -rf -- "${_SAT_LENT_INV}"
-    _SAT_LENT_INV=""
-    return 1
-  fi
-  _acct_in_real_dir "${_CORE}" chown -h "${_USER}:${_USRG}" . &> /dev/null
+# The shared trees this pass needs, built by root before the platform build
+# runs as the account: AegirSetupC's shared phase (the same catalogue,
+# platform list and download mode the account's phase reads) makes the
+# D6/D7 cores in 000/core and the shared platforms in ${_CORE}, each in a
+# stage directory beside its name, moved into place when it is complete
+# (every fetch for it succeeded and what the build makes is in it).
+# The account's phase only reads the store: nothing in it is handed over.
+# Archives are unpacked as the account's build unpacked them (owned by the
+# one who unpacks, modes under the umask), and the modes the build sets (a
+# cache or files directory open to all, a settings.php writable by all) are
+# closed to others in the stage before it is placed, and again over what
+# the phase made (_satellite_lent_back_here).
+#
+# The store's one-time pass (_SAT_REBUILD, decided in
+# _satellite_create_shared_dirs while 000 holds no ${_SAT_REBUILT}): earlier
+# releases let the account build these trees and own the store while it
+# did, so what an account wrote there then is root's now and cannot be told
+# apart by owner or mode. On the first pass that builds platforms
+# (_SAT_REBUILD=YES), the bundles already in ${_CORE} are fetched again (the
+# forced check_fix path), so is the bundle a current core links from an
+# earlier serial (_satellite_core_bundles_redo), every tree the shared phase
+# makes that is already there is built again and swapped in, and every
+# POSIX ACL in the store is removed (_satellite_store_no_acl_here; the daily
+# sweep then puts back the owners and modes the store keeps). Nothing is
+# replaced by what a failed fetch left: what could not be fetched or built
+# again stays as it was and is named in 000 (${_SAT_REBUILD_LEFT}), and the
+# next pass (_SAT_REBUILD=LEFT) does only that, so an archive the mirror
+# keeps failing costs that one item on each pass, never the whole pass
+# again. The record in 000 is written only when nothing is left, and keeps
+# the pass from running again (_satellite_rebuild_record).
+_SAT_REBUILT="rebuilt-by-root.info"
+_SAT_REBUILD_LEFT="rebuilt-by-root.left"
+_satellite_build_shared() {
+  local _st="/opt/tmp/state/.root/${_USER}/status-AegirSetupC-shared"
+  local _dc=NO _acl=NO _k _p _trees="" _gone=""
+  local -a _rb=()
+  case "${_SAT_REBUILD}" in
+    YES)
+      _rb=(rebuild)
+      _acl=YES
+      if [ "${_STATUS}" = "INIT" ] && [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
+        _satellite_check_fix_o_contrib
+      fi
+      _satellite_core_bundles_redo
+      ;;
+    LEFT)
+      while read -r _k _p; do
+        case "${_k}" in
+          tree)
+            [ -n "${_p}" ] && _trees="${_trees} ${_p}"
+            ;;
+          bundle)
+            if [[ ! "${_p}" =~ ^/data/all/[0-9]+/o_contrib(_seven|_eight|_nine|_ten|_eleven|_backdrop)?$ ]] \
+              || [ ! -d "${_p}" ]; then
+              _gone="${_gone} ${_p}"
+            elif [[ " ${_SAT_REDO_DONE} ${_SAT_REDO_LEFT} " != *" ${_p} "* ]]; then
+              _msg "${_STATUS} A: Running ${_p} forced upgrade..."
+              _satellite_bundle_redo_at "${_p%/*}" "${_p##*/}"
+            fi
+            ;;
+          acl)
+            _acl=YES
+            ;;
+        esac
+      done <<< "${_SAT_LEFT_ITEMS}"
+      # shellcheck disable=SC2206 # _trees: one store path per word
+      [ -n "${_trees}" ] && _rb=(rebuild ${_trees})
+      ;;
+  esac
+  [ "${#_rb[@]}" -gt 0 ] && _dc=YES
   _satellite_in_dcore _satellite_core_links_here "${_DRUPAL6}" "${_DRUPAL7}"
   if [ ! -e "${_D}/000/core/${_DRUPAL6}" ] \
     || [ ! -e "${_D}/000/core/${_DRUPAL7}" ]; then
-    if _satellite_in_dcore _satellite_top_ids_here \
-      > "${_SAT_LENT_INV}/dcore"; then
-      _LENT_CORE_DIR=YES
-      _satellite_in_dcore chown -h "${_USER}:${_USRG}" . &> /dev/null
+    _dc=YES
+  fi
+  rm -f -- "${_st}-OK" "${_st}-FAIL" "${_st}-MISSED" "${_st}-DONE"
+  # _SHRD_STALE: the bundles not fetched again, which no core copies from
+  ( cd / && umask 022 \
+    && TAR_OPTIONS="--no-same-owner --no-same-permissions" \
+      _SHRD_STALE="${_SAT_REDO_LEFT}" \
+      bash "${_AegirSetupC}" "${_USER}" shared "${_rb[@]}" )
+  _acct_in_real_dir "${_CORE}" _satellite_lent_back_here &> /dev/null
+  if [ "${_dc}" = "YES" ]; then
+    _satellite_in_dcore _satellite_lent_back_here &> /dev/null
+  fi
+  if [ -e "${_st}-FAIL" ] || [ ! -e "${_st}-OK" ]; then
+    _msg "${_STATUS} A: FATAL ERROR: AegirSetupC shared phase failed"
+    _msg "${_STATUS} A: FATAL ERROR: Aborting AegirSetupA installer NOW!"
+    touch "/opt/tmp/state/.root/${_USER}/status-AegirSetupA-FAIL"
+    exit 1
+  fi
+  [ "${_SAT_REBUILD}" = "YES" ] || [ "${_SAT_REBUILD}" = "LEFT" ] || return 0
+  _satellite_rebuild_record "${_st}" "${_acl}" "${_trees}" "${_gone}"
+}
+#
+# The store's one-time pass, closed: $1 the shared phase's signal prefix
+# (its -DONE and -MISSED lists), $2 YES when the ACLs are to be removed in
+# this pass, $3 the trees and cores this pass was asked to build again (a
+# LEFT pass), $4 what was left that is no longer there to do. A tree asked
+# for that the shared phase neither built again nor missed is not one it
+# makes any more (another catalogue, or gone): dropped with an alert, as an
+# older serial's trees are left. What is still left (the trees and cores
+# missed, the bundles not fetched again, the ACLs when neither perl's
+# syscall.ph nor setfacl is there) is named in 000 for the next pass, and
+# the record is written only when nothing is; the last line says which.
+_satellite_rebuild_record() {
+  local _st="${1}" _acl="${2}" _asked="${3}" _gone="${4}" _p _done _missed
+  local _left="" _what _nt=0 _nb=0
+  _done="$(cat -- "${_st}-DONE" 2> /dev/null)"
+  _missed="$(cat -- "${_st}-MISSED" 2> /dev/null)"
+  for _p in ${_asked}; do
+    printf '%s\n%s\n' "${_done}" "${_missed}" | grep -qxF -- "${_p}" \
+      || _gone="${_gone} ${_p}"
+  done
+  [ -n "${_done}" ] && _nt="$(printf '%s\n' "${_done}" | grep -c .)"
+  for _p in ${_SAT_REDO_DONE}; do
+    _nb=$((_nb + 1))
+  done
+  while IFS= read -r _p; do
+    [ -n "${_p}" ] && _left="${_left}tree ${_p}"$'\n'
+  done <<< "${_missed}"
+  for _p in ${_SAT_REDO_LEFT}; do
+    _left="${_left}bundle ${_p}"$'\n'
+  done
+  _what="${_nb} bundle(s) fetched again, ${_nt} shared core(s) and tree(s) built again"
+  if [ "${_acl}" = "YES" ]; then
+    # ACLs go only through perl's syscall.ph or setfacl (_SAT_ROOT_NO_ACL_PL)
+    if [ -z "$(_satellite_xattr_nr)" ] && [ ! -x /usr/bin/setfacl ] \
+      && [ ! -x /bin/setfacl ]; then
+      _msg "${_STATUS} A: ALRT POSIX ACLs cannot be removed here (no syscall.ph for perl, no setfacl): the store keeps any it has"
+      _left="${_left}acl"$'\n'
     else
-      _msg "${_STATUS} A: ALRT ${_D}/000/core not lent to the build: its top could not be recorded"
+      _acct_in_real_dir "${_D_REAL:-${_D}}" _satellite_store_no_acl_here &> /dev/null
+      _acct_in_real_dir "${_D_REAL:-${_D}}" _satellite_shared_fix_here &> /dev/null
+      _what="${_what}, ACLs removed"
     fi
   fi
+  if [ -n "${_gone// /}" ]; then
+    _msg "${_STATUS} A: ALRT left out of the shared store's one-time pass, no longer built here:${_gone}"
+  fi
+  if [ -z "${_left}" ]; then
+    _acct_in_real_dir "${_D_REAL:-${_D}}" _acct_in_real_dir ./000 \
+      _acct_put_here "${_SAT_REBUILT}" "${_xSrl}-${_X_VERSION} $(date +%F)"
+    _acct_in_real_dir "${_D_REAL:-${_D}}" _acct_in_real_dir ./000 \
+      rm -f -- "./${_SAT_REBUILD_LEFT}"
+    _msg "${_STATUS} A: Shared store rebuilt by root once: ${_what}"
+  else
+    _acct_in_real_dir "${_D_REAL:-${_D}}" _acct_in_real_dir ./000 \
+      _acct_put_here "${_SAT_REBUILD_LEFT}" "${_left%$'\n'}"
+    _msg "${_STATUS} A: ALRT shared store's one-time pass not complete (${_what}), left for the next pass: $(printf '%s' "${_left}" | tr '\n' ';' | sed 's/;$//; s/;/; /g')"
+  fi
 }
+#
+# The bundle a current shared core links from a serial other than ${_CORE}
+# fetched again on the forced path (_satellite_bundle_redo_at), on the
+# store's first one-time pass: a core built under an earlier serial keeps
+# linking that serial's bundle when it is built again (_shared_core in
+# AegirSetupC), and copies files from it, and its sites load it.
+_satellite_core_bundles_redo() {
+  local _c _b _l
+  for _c in "${_DRUPAL6}:o_contrib" "${_DRUPAL7}:o_contrib_seven"; do
+    _b="${_c#*:}"
+    _l="$(readlink "${_D}/000/core/${_c%%:*}/modules/${_b}" 2> /dev/null)"
+    [[ "${_l}" =~ ^/data/all/[0-9]+/${_b}$ ]] || continue
+    [ "${_l%/*}" != "${_CORE}" ] && [ -d "${_l}" ] && [ ! -L "${_l%/*}" ] \
+      || continue
+    [[ " ${_SAT_REDO_DONE} ${_SAT_REDO_LEFT} " == *" ${_l} "* ]] && continue
+    _msg "${_STATUS} A: Running ${_l} forced upgrade..."
+    _satellite_bundle_redo_at "${_l%/*}" "${_b}"
+  done
+}
+#
+# Every directory and single-link regular file in the current (pinned)
+# store, '.' included, handed to root:root with its POSIX ACLs removed
+# through its own handle (_SAT_ROOT_NO_ACL_PL), never through a link: the
+# store's one-time pass. The daily sweep run right after it puts back the
+# owners and modes the store keeps (_satellite_shared_fix_here).
+_satellite_store_no_acl_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  local _x
+  _x="$(_satellite_xattr_nr)"
+  perl -e "${_SAT_ROOT_NO_ACL_PL}" -- "${_x}" .
+  find . -mindepth 1 \( -type d -o -type f \) \
+    -execdir perl -e "${_SAT_ROOT_NO_ACL_PL}" -- "${_x}" {} +
+)
 # A link at a current shared core's name in the current (pinned) 000/core
 # (an earlier release lent 000/core to the account) is removed, never taken
-# for the core, so the build makes that core again.
+# for the core, so root's build makes that core again.
 _satellite_core_links_here() {
   local _c
   for _c in "$@"; do
@@ -2366,57 +2533,10 @@ _satellite_core_links_here() {
 #
 # Each entry at the top of the current (pinned) directory, dot names
 # included, as one NUL-ended "device:inode type name" record (find -printf
-# %D:%i %y %P): the identity a name is checked against after the lend.
+# %D:%i %y %P): the identity a name is checked against.
 _satellite_top_ids_here() {
   env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -maxdepth 1 \
     -printf '%D:%i %y %P\0'
-}
-
-#
-# ${_CORE} (and 000/core when it was lent) back to root as soon as the build
-# returns, whatever it returned, before root does anything else in them:
-# both are closed first (_satellite_dot_back_here: owner, ACLs, mode), so
-# the account can no longer add, rename or remove a name there nor keep a
-# mode or an ACL it set; then what it left at the top is put back as it was
-# lent (_satellite_lent_top_here, against the record taken at the lend) and
-# below it (_satellite_lent_back_here). A bundle that is gone is fetched
-# again (_satellite_manage_o_contrib, told through _SAT_BUNDLES_GONE).
-# 000/core is walked only when it was lent: otherwise it stayed root's the
-# whole run and the account never had write there.
-_satellite_take_back_shared_dirs() {
-  local _inv="${_SAT_LENT_INV}" _out _l _gone=""
-  # ACLs go only through perl's syscall.ph or setfacl (_SAT_ROOT_NO_ACL_PL):
-  # with neither on the box any the build set would stay, so it is said
-  if [ -z "$(_satellite_xattr_nr)" ] && [ ! -x /usr/bin/setfacl ] \
-    && [ ! -x /bin/setfacl ]; then
-    _msg "${_STATUS} A: ALRT POSIX ACLs cannot be removed here (no syscall.ph for perl, no setfacl): any the build set in ${_CORE} stay"
-  fi
-  _acct_in_real_dir "${_CORE}" _satellite_dot_back_here 00711 &> /dev/null
-  if [ "${_LENT_CORE_DIR:-NO}" = "YES" ]; then
-    _satellite_in_dcore _satellite_dot_back_here 00755 &> /dev/null
-  fi
-  _out="$(_acct_in_real_dir "${_CORE}" \
-    _satellite_lent_top_here "${_inv:+${_inv}/core}")"
-  _acct_in_real_dir "${_CORE}" _satellite_lent_back_here &> /dev/null
-  if [ "${_LENT_CORE_DIR:-NO}" = "YES" ]; then
-    _out="${_out}"$'\n'"$(_satellite_in_dcore \
-      _satellite_lent_top_here "${_inv:+${_inv}/dcore}")"
-    _satellite_in_dcore _satellite_lent_back_here &> /dev/null
-  fi
-  [ -n "${_inv}" ] && rm -rf -- "${_inv}"
-  _SAT_LENT_INV=""
-  while IFS= read -r _l; do
-    case "${_l}" in
-      "A "*) _msg "${_STATUS} A: ALRT ${_l#A }" ;;
-      "B "*) _gone="${_gone:+${_gone} }${_l#B }" ;;
-    esac
-  done <<< "${_out}"
-  if [ -n "${_gone}" ]; then
-    _msg "${_STATUS} A: ALRT shared bundles gone after the build, fetched again: ${_gone}"
-    _SAT_BUNDLES_GONE="${_gone}"
-    _satellite_manage_o_contrib
-    _SAT_BUNDLES_GONE=""
-  fi
 }
 
 #
@@ -3226,6 +3346,7 @@ _satellite_download_o_contrib_backdrop() {
     echo update > ./webform/ver-${_WEBFORM_B_TAG}.info
   else
     _msg "${_STATUS} A: webform-${_WEBFORM_B_TAG} not fetched into o_contrib_backdrop"
+    _GET_FAILS=$(( ${_GET_FAILS:-0} + 1 ))
   fi
   if [ ! -L "./redis_backdrop" ]; then
     ln -sfn ${_D}/000/modules/redis_backdrop redis_backdrop
@@ -3320,6 +3441,21 @@ _satellite_restore_o_contrib_backdrop_webform() {
 
 
 #
+# The links into ${_D}/000/modules a D8 to D11 bundle carries (the redis_*
+# names its _update_global loop links), made in the directory the download
+# function fills, as the D6, D7 and Backdrop functions make theirs: a bundle
+# fetched again into a stage carries them when it is swapped in, so its
+# sites never find the bundle without its Valkey integration.
+_satellite_bundle_links_here() {
+  local _m
+  for _m in "$@"; do
+    if [ -e "${_D}/000/modules/${_m}" ] && [ ! -L "./${_m}" ]; then
+      ln -sfn "${_D}/000/modules/${_m}" "./${_m}"
+    fi
+  done
+}
+
+#
 # Download o_contrib_eleven.
 _satellite_download_o_contrib_eleven() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -3335,6 +3471,7 @@ _satellite_download_o_contrib_eleven() {
   if _satellite_module_stale redis_ten_eleven "ver-${_REDIS_E_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_ten_eleven "${_REDIS_E_VERSION}"
   fi
+  _satellite_bundle_links_here redis_ten_eleven
   _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
 }
 
@@ -3355,6 +3492,7 @@ _satellite_download_o_contrib_ten() {
   if _satellite_module_stale redis_ten_eleven "ver-${_REDIS_E_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_ten_eleven "${_REDIS_E_VERSION}"
   fi
+  _satellite_bundle_links_here redis_ten_eleven
   _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
 }
 
@@ -3378,6 +3516,7 @@ _satellite_download_o_contrib_nine() {
   if _satellite_module_stale redis_compr "ver-${_REDIS_C_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_compr "${_REDIS_C_VERSION}"
   fi
+  _satellite_bundle_links_here redis_nine_ten redis_compr
   _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
 }
 
@@ -3401,6 +3540,7 @@ _satellite_download_o_contrib_eight() {
   if _satellite_module_stale redis_compr "ver-${_REDIS_C_VERSION}.${_xSrl}.full.info"; then
     _satellite_shared_module_update redis_compr "${_REDIS_C_VERSION}"
   fi
+  _satellite_bundle_links_here redis_eight redis_compr
   _satellite_in_modules _satellite_modes_walk_here 0755 0644 &> /dev/null
 }
 
@@ -3560,8 +3700,7 @@ _satellite_check_fix_o_contrib() {
       || [ -e "${_CORE}/o_contrib_eleven/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_eleven forced upgrade..."
-      _acct_in_real_dir "${_CORE}/o_contrib_eleven" \
-        _satellite_bundle_redo_here _satellite_download_o_contrib_eleven
+      _satellite_bundle_redo_at "${_CORE}" o_contrib_eleven
     fi
   fi
   if [ -e "${_CORE}/o_contrib_ten" ]; then
@@ -3569,8 +3708,7 @@ _satellite_check_fix_o_contrib() {
       || [ -e "${_CORE}/o_contrib_ten/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_ten forced upgrade..."
-      _acct_in_real_dir "${_CORE}/o_contrib_ten" \
-        _satellite_bundle_redo_here _satellite_download_o_contrib_ten
+      _satellite_bundle_redo_at "${_CORE}" o_contrib_ten
     fi
   fi
   if [ -e "${_CORE}/o_contrib_nine" ]; then
@@ -3579,8 +3717,7 @@ _satellite_check_fix_o_contrib() {
       || [ -e "${_CORE}/o_contrib_nine/advagg" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_nine forced upgrade..."
-      _acct_in_real_dir "${_CORE}/o_contrib_nine" \
-        _satellite_bundle_redo_here _satellite_download_o_contrib_nine
+      _satellite_bundle_redo_at "${_CORE}" o_contrib_nine
     fi
   fi
   if [ -e "${_CORE}/o_contrib_eight" ]; then
@@ -3588,8 +3725,7 @@ _satellite_check_fix_o_contrib() {
       || [ ! -e "${_CORE}/o_contrib_eight/redis_eight" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_eight forced upgrade..."
-      _acct_in_real_dir "${_CORE}/o_contrib_eight" \
-        _satellite_bundle_redo_here _satellite_download_o_contrib_eight
+      _satellite_bundle_redo_at "${_CORE}" o_contrib_eight
     fi
   fi
   if [ -e "${_CORE}/o_contrib_seven" ]; then
@@ -3597,17 +3733,17 @@ _satellite_check_fix_o_contrib() {
       || [ ! -e "${_CORE}/o_contrib_seven/redis_edge" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_seven forced upgrade..."
-      _acct_in_real_dir "${_CORE}/o_contrib_seven" \
-        _satellite_bundle_redo_here _satellite_download_o_contrib_seven
+      _satellite_bundle_redo_at "${_CORE}" o_contrib_seven
     fi
   fi
+  # image: a new D6 core copies its toolkit from the bundle (_shared_core)
   if [ -e "${_CORE}/o_contrib" ]; then
     if [ ! -d "${_CORE}/o_contrib/robotstxt" ] \
+      || [ ! -d "${_CORE}/o_contrib/image" ] \
       || [ ! -e "${_CORE}/o_contrib/redis_edge" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib forced upgrade..."
-      _acct_in_real_dir "${_CORE}/o_contrib" \
-        _satellite_bundle_redo_here _satellite_download_o_contrib_six
+      _satellite_bundle_redo_at "${_CORE}" o_contrib
     fi
   fi
   if [ -e "${_CORE}/o_contrib_backdrop" ]; then
@@ -3615,28 +3751,7 @@ _satellite_check_fix_o_contrib() {
       || [ ! -d "${_CORE}/o_contrib_backdrop/webform" ] \
       || [ "${_O_CONTRIB_FORCED_UP}" = "YES" ]; then
       _msg "${_STATUS} A: Running o_contrib_backdrop forced upgrade..."
-      # The webform the sites run waits in a stage of this generation while
-      # the bundle is rebuilt, and comes back if the new one was not fetched
-      # (_satellite_restore_o_contrib_backdrop_webform on an interrupted pass).
-      _bdKeep=""
-      if [ -d "${_CORE}/o_contrib_backdrop/webform" ] \
-        && [ ! -L "${_CORE}/o_contrib_backdrop/webform" ]; then
-        _bdKeep=$(mktemp -d "${_D}/.webform-stage.${_CORE##*/}.XXXXXX") \
-          && mv "${_CORE}/o_contrib_backdrop/webform" "${_bdKeep}/prev" \
-          || _bdKeep=""
-      fi
-      _acct_in_real_dir "${_CORE}/o_contrib_backdrop" \
-        _satellite_bundle_redo_here _satellite_download_o_contrib_backdrop
-      if [ -n "${_bdKeep}" ]; then
-        if [ ! -e "${_CORE}/o_contrib_backdrop/webform" ] && [ -d "${_bdKeep}/prev" ] \
-          && mv "${_bdKeep}/prev" "${_CORE}/o_contrib_backdrop/webform"; then
-          _msg "${_STATUS} A: o_contrib_backdrop keeps its previous webform"
-        fi
-        # a stage still holding the only copy waits for the restore step
-        if [ -e "${_CORE}/o_contrib_backdrop/webform" ] || [ ! -d "${_bdKeep}/prev" ]; then
-          rm -rf "${_bdKeep}"
-        fi
-      fi
+      _satellite_bundle_redo_at "${_CORE}" o_contrib_backdrop
     fi
   fi
   if _satellite_module_stale cache_backport "update-${_xSrl}-${_X_VERSION}.info"; then
@@ -3682,9 +3797,8 @@ _satellite_manage_o_contrib() {
   ### The bundles are root's real directories in ${_CORE}, made and filled
   ### from inside them: what an earlier release's pass let the account leave
   ### at a bundle name (a link, a directory of its own) is removed first, so
-  ### the bundle is made again below. _SAT_BUNDLES_GONE names the bundles a
-  ### take-back found gone (_satellite_take_back_shared_dirs).
-  local _out _l _mine="" _gone="${_SAT_BUNDLES_GONE}"
+  ### the bundle is made again below.
+  local _out _l _mine="" _gone=""
   _out="$(_acct_in_real_dir "${_CORE}" _satellite_lent_top_here)"
   while IFS= read -r _l; do
     case "${_l}" in
@@ -3749,22 +3863,81 @@ _satellite_manage_o_contrib() {
 #
 # The missing bundle $1 made in ${_CORE} as a fresh directory (never through a
 # link put at the name) and filled by $2 from inside it, only when this mkdir
-# made it: a name that is taken by then is not root's to fill.
+# made it: a name that is taken by then is not root's to fill. Archives
+# unpack owned by root, whatever owner they recorded.
 _satellite_bundle_new() {
   if ! _acct_in_real_dir "${_CORE}" mkdir -m 0755 -- "./${1}" &> /dev/null; then
     _msg "${_STATUS} A: ALRT ${_CORE}/${1} not made (the name is taken), not fetched"
     return 1
   fi
-  _acct_in_real_dir "${_CORE}/${1}" "${2}"
+  TAR_OPTIONS="--no-same-owner" _acct_in_real_dir "${_CORE}/${1}" "${2}"
 }
 
 #
-# The current (pinned) bundle emptied (dot names kept, as rm -rf ./* kept
-# them) and filled again by $1.
-_satellite_bundle_redo_here() {
-  rm -rf -- ./*
-  "${1}"
+# The bundle $2 of the serial directory $1 fetched again on the forced path
+# by its own download function (_satellite_bundle_redo_in), the outcome kept
+# for the store's one-time pass (_satellite_rebuild_record): _SAT_REDO_DONE,
+# or _SAT_REDO_LEFT when it was not fetched again.
+_satellite_bundle_redo_at() {
+  local _fn="_satellite_download_${2}"
+  [ "${2}" = "o_contrib" ] && _fn=_satellite_download_o_contrib_six
+  if _acct_in_real_dir "${1}" _satellite_bundle_redo_in "${2}" "${_fn}"; then
+    _SAT_REDO_DONE="${_SAT_REDO_DONE} ${1}/${2}"
+    return 0
+  fi
+  _SAT_REDO_LEFT="${_SAT_REDO_LEFT} ${1}/${2}"
+  return 1
 }
+
+#
+# The bundle ./$1 in the current (pinned) serial directory fetched again by
+# $2 (a download function that fills the directory it runs in, the bundle's
+# links into ${_D}/000/modules included): $2 fills a fresh stage beside the
+# bundle (stages a stopped pass left are removed first), and the stage,
+# once every fetch $2 made succeeded
+# (_satellite_all_fetched_here) and it holds a module, is swapped in for the
+# bundle in one rename (_SAT_SWAP_PL), so a site loading the bundle never
+# finds it emptied or part-fetched while it is fetched; where one rename
+# cannot do it, the bundle is moved aside first and the stage moved in. The
+# old bundle is removed with the stage. A stage a fetch failed for is
+# dropped and the bundle kept whole (status 1). Archives unpack owned by
+# root, whatever owner they recorded.
+_satellite_bundle_redo_in() {
+  local _s="./.${1}.redo.$$"
+  find . -mindepth 1 -maxdepth 1 -name ".${1}.redo.*" \
+    -exec rm -rf -- {} + &> /dev/null
+  mkdir -m 0755 -- "${_s}" || return 1
+  if ! TAR_OPTIONS="--no-same-owner" \
+    _acct_in_real_dir "${_s}" _satellite_all_fetched_here "${2}" \
+    || [ -z "$(find "${_s}" -mindepth 1 -maxdepth 1 -type d -print -quit)" ]; then
+    _msg "${_STATUS} A: ALRT ${PWD}/${1} not fetched again (a fetch failed), kept as it was"
+    rm -rf -- "${_s}"
+    return 1
+  fi
+  if ! perl -e "${_SAT_SWAP_PL}" -- "${_s}" "./${1}" 2> /dev/null; then
+    mv -T -- "./${1}" "${_s}.old" || { rm -rf -- "${_s}"; return 1; }
+    if ! mv -T -- "${_s}" "./${1}"; then
+      mv -T -- "${_s}.old" "./${1}"
+      rm -rf -- "${_s}"
+      return 1
+    fi
+  fi
+  rm -rf -- "${_s}" "${_s}.old"
+}
+# $1, a download function, run in the current directory: status 0 only when
+# every fetch it made succeeded (_GET_FAILS, counted by _get_dev_contrib and
+# by the Backdrop webform fetch).
+_satellite_all_fetched_here() {
+  _GET_FAILS=0
+  "${1}"
+  [ "${_GET_FAILS}" -eq 0 ]
+}
+# The two names given swapped in one rename (renameat2 with
+# RENAME_EXCHANGE, its number read from perl's syscall.ph): exit 0 only
+# when they were. One text wherever it is used (satellite.sh.inc, which
+# AegirSetupC.sh.txt sources).
+# shellcheck disable=SC2016
+_SAT_SWAP_PL='my ($a, $b) = @ARGV; my $n = eval { require "syscall.ph"; &SYS_renameat2 }; exit 1 unless defined $n && $n =~ /^[0-9]+$/; exit(syscall($n + 0, -100, $a, -100, $b, 2) == 0 ? 0 : 1)'
 
 #
 # cache_backport fetched again in the current (pinned) 000/modules, and its
@@ -5001,7 +5174,7 @@ _satellite_run_child_b() {
           _acct_in_real_dir "${_THIS_HM_SITE}/files" \
             _satellite_reown_here "${_USER}${_T_WG:+:${_T_WG}}"
         fi
-        _satellite_in_store_dir "${_THIS_HM_SITE}/files" \
+        _satellite_in_site_store_dir "${_THIS_HM_SITE}/files" \
           _satellite_tree_mode_all_here 02775 0664
       else
         _msg "${_STATUS} A: NOTE: hostmaster site outside ${_ROOT}/aegir/distro left as it is"
@@ -5256,10 +5429,9 @@ _satellite_run_child_c() {
     fi
     cd ${_ROOT}
     _AegirSetupC="${_bldPth}/aegir/scripts/AegirSetupC.sh.txt"
-    _satellite_lend_shared_dirs
+    _satellite_build_shared
     su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupC} ${_USER}"
     wait
-    _satellite_take_back_shared_dirs
     if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupC-FAIL" ] \
       || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupC-OK" ]; then
       _msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
@@ -5283,10 +5455,9 @@ _satellite_run_child_c() {
         fi
         cd ${_ROOT}
         _AegirSetupC="${_bldPth}/aegir/scripts/AegirSetupC.sh.txt"
-        _satellite_lend_shared_dirs
+        _satellite_build_shared
         su -s /bin/bash - ${_USER} -c "/bin/bash ${_AegirSetupC} ${_USER}"
         wait
-        _satellite_take_back_shared_dirs
         if [ -e "/opt/tmp/state/${_USER}/status-AegirSetupC-FAIL" ] \
           || [ ! -e "/opt/tmp/state/${_USER}/status-AegirSetupC-OK" ]; then
           _msg "${_STATUS} A: FATAL ERROR: AegirSetupC installer failed"
@@ -5305,9 +5476,8 @@ _satellite_run_child_c() {
       _msg "${_STATUS} A: Cleaning up various dot files, please wait..."
     fi
     _acct_in_real_dir "${_CORE}" _satellite_dot_files_here &> /dev/null
-    # the core was the account's during the build: the stamp is put as a
-    # fresh empty file (as touch made it) inside the real directory, never
-    # created through a link put at the name
+    # the stamp is put as a fresh empty file (as touch made it) inside the
+    # real directory, never created through a link put at the name
     _acct_in_real_dir "${_CORE}" _satellite_put_stdin_here \
       "dot-files-ctrl-${_xSrl}-${_X_VERSION}" 0644 "" < /dev/null
   fi
@@ -7334,10 +7504,19 @@ _satellite_hm_path_ok() {
 # the store, a site's files/ or private/ moved into it), inside the
 # directory the link resolves to: only one in the account's own
 # static/files, or in the store moved onto attached storage
-# (/mnt/<mount>/files/<oN>/static/files). Any other link is refused.
+# (/mnt/<mount>/files/<oN>/static/files). Any other link is refused. The
+# backups link leads to the store's .backups by design; a site's store is
+# never a dot-name right below the store root (BOA's own .backups,
+# .backup-exports, .archived), so _satellite_in_site_store_dir refuses one.
 _satellite_in_store_dir() {
-  local _d="${1}" _r _s _m
-  shift
+  _satellite_in_store any "$@"
+}
+_satellite_in_site_store_dir() {
+  _satellite_in_store site "$@"
+}
+_satellite_in_store() {
+  local _k="${1}" _d="${2}" _r _s _m _top
+  shift 2
   if [ ! -L "${_d}" ]; then
     _acct_in_real_dir "${_d}" "$@"
     return
@@ -7349,14 +7528,20 @@ _satellite_in_store_dir() {
   # as the nightly decides it.
   case "${_r}" in
     ""|*[!A-Za-z0-9._/-]*) return 1 ;;
-    "${_s}"?*) ;;
+    "${_s}"?*)
+      _top="${_r#"${_s}"}"
+      ;;
     /mnt/?*/files/"${_USER}"/static/files/?*)
       _m="${_r%%/files/"${_USER}"/static/files/*}"
       case "${_m}" in
         */files/*|*/static/*) return 1 ;;
       esac
+      _top="${_r#"${_m}"/files/"${_USER}"/static/files/}"
       ;;
     *) return 1 ;;
+  esac
+  case "${_k}:${_top}" in
+    site:.*) return 1 ;;
   esac
   ( cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] && "$@" )
 }
@@ -8586,9 +8771,9 @@ _satellite_normalize_scratch_owner() {
 #
 # The shared store $1 (/data/all, or /data/disk/all on an older layout) and
 # ${_CORE} asserted root's at the end of the run, with the modes the
-# platform build leaves them in. The build had only ${_CORE} (and 000/core)
-# and gave them back when it returned (_satellite_take_back_shared_dirs); an
-# earlier release handed the whole store to the account until this point,
+# platform build leaves them in. Root builds the shared trees and nothing
+# is handed over (_satellite_build_shared); an earlier release handed the
+# whole store to the account until this point,
 # and it could have put a link or a hard link at any name there: every
 # directory is entered as the real directory before anything is done in it,
 # every walk

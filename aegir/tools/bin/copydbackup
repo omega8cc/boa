@@ -373,7 +373,13 @@ echo "Copying relevant DB backups into user spaces..."
 for _backup_dir in "${_ARCH_SQL_BASE}"/*; do
   [ -d "${_backup_dir}" ] || continue
   _dir_name=$(basename "${_backup_dir}")
-  _datetime="${_dir_name#*-}"  # e.g. host-DATESTAMP => just the DATETIME part
+  # The nightly names it <hostname>-<YYMMDD-HHMMSS> (date +%y%m%d-%H%M%S),
+  # and a hostname may hold dashes, so the stamp is taken from the end; a
+  # name in any other shape keeps the first-dash split
+  _datetime="${_dir_name#*-}"
+  if [[ "${_dir_name}" =~ -([0-9]{6}-[0-9]{6})$ ]]; then
+    _datetime="${BASH_REMATCH[1]}"
+  fi
 
   # We'll track users who received new files in this directory,
   # then hand the dated directory itself to each user at the end.

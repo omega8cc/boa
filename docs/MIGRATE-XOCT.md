@@ -343,7 +343,10 @@ hostmaster database via mysqldump, and marks `exported.pid` — but ONLY when
 every dump completed truthfully. A database carrying any non-transactional
 table is dumped with mydumper's transactional-only mode turned off, selected
 automatically per database, so a stray MyISAM table neither fails the export
-nor withholds the account's export stamp.
+nor withholds the account's export stamp. Each site dump carries the
+database's triggers, stored routines and events, and the import keeps their
+definer, the site's database user it creates first (see
+[MYQUICK.md](MYQUICK.md#triggers-stored-routines-and-events)).
 
 The hostmaster dump carries no GTID state of the source: it is taken with
 `--set-gtid-purged=OFF` when the local `mysqldump` takes that option (a
@@ -438,7 +441,10 @@ loads are truthful: a transferred dump directory without mydumper's final
 `metadata` marker is SKIPPED (a partial dump silently restoring an
 incomplete database is the failure being guarded against), a failed
 myloader run is counted, and a site whose db credentials cannot be parsed
-is counted too.
+is counted too. Each load passes `--ignore-set=SQL_LOG_BIN` when the
+installed `myloader` lists it, so it is written to the binary log and
+reaches a replica of the target (see
+[MYQUICK.md](MYQUICK.md#imports-are-written-to-the-binary-log)).
 
 One exception keeps mixed accounts importable: a site with
 no transferred dump whose database on this box is **already populated** is
