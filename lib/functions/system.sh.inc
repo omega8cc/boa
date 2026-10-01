@@ -862,20 +862,44 @@ _sftp_ftps_modern_fix() {
   if [[ ! "${_LSHELL_PATH_TEST}" =~ "/usr/bin/lshell" ]]; then
     echo "/usr/bin/lshell" >> /etc/shells
   fi
-  if [ ! -e "${_pthLog}/mss-build-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log" ] \
+  # The -ok- marker stands for a build found in /usr/bin; the markers
+  # without it were written whether the build got there or not.
+  if [ ! -e "${_pthLog}/mss-build-ok-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log" ] \
     || [ ! -e "/etc/ssh/sftp_config" ] \
     || [ ! -e "/usr/bin/mysecureshell" ] \
     || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
     if [ "${_MSS_BUILD}" != "YES" ]; then
+      local _mss_bin
       _msg "INFO: Installing MySecureShell ${_MSS_VRN}..."
       cd /var/opt
       rm -rf mysecureshell*
       _get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
       cd /var/opt/mysecureshell
-      _mrun "bash ./configure"
+      # The paths are named because newer sources default to /usr/local
+      # (and older ones, given a prefix, move /etc under it), while the
+      # accounts' login shell and every binary path used here is under
+      # /usr/bin. The dialect is named because a configure that picks C23
+      # where the compiler offers it gets a build that stops on the
+      # sources' old-style declarations.
+      _mrun "bash ./configure --prefix=/usr --sysconfdir=/etc CFLAGS='-g -O2 -std=gnu11'"
       _mrun "make -j $(nproc) --quiet"
       _mrun "sh ./install.sh yesall"
-      touch ${_pthLog}/mss-build-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
+      if cmp -s /var/opt/mysecureshell/mysecureshell /usr/bin/mysecureshell; then
+        # A build made without the prefix left its copies in /usr/local,
+        # ahead of /usr in PATH, and its own line in /etc/shells.
+        if [ -e "/usr/local/bin/mysecureshell" ]; then
+          for _mss_bin in mysecureshell sftp-admin sftp-kill sftp-state \
+            sftp-user sftp-verif sftp-who; do
+            rm -f "/usr/local/bin/${_mss_bin}"
+            rm -f "/usr/local/share/man/man8/${_mss_bin}.8"
+          done
+          rm -f /usr/local/share/man/man8/MySecureShell.8
+          sed -i "\|^/usr/local/bin/mysecureshell$|d" /etc/shells
+        fi
+        touch ${_pthLog}/mss-build-ok-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
+      else
+        _msg "OOPS: MySecureShell ${_MSS_VRN} build did not reach /usr/bin/mysecureshell"
+      fi
       cp -af ${_locCnf}/var/sftp_config /etc/ssh/sftp_config
       _mrun "service ssh restart"
       _MSS_BUILD=YES
@@ -6760,7 +6784,7 @@ _if_ssl_install_src() {
     _NGX_FORCE_REINSTALL=YES
     _PHP_FORCE_REINSTALL=YES
     rm -f ${_pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_xSrl}-${_X_VERSION}.log
-    rm -f ${_pthLog}/mss-build-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
+    rm -f ${_pthLog}/mss-build-ok-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: OpenSSL rebuild forced"
     fi

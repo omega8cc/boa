@@ -1243,6 +1243,16 @@
 
 @=> Important Fixes
 
+    * MySecureShell master-01-10-2026 is built with its install paths
+      and its C dialect named. Its sources now default to /usr/local, so
+      the build landed beside the binary the accounts use and /usr/bin
+      kept the previous one; with GCC 14 its configure chose C23 and the
+      build stopped. The build is recorded as done only once
+      /usr/bin/mysecureshell holds it, a failed one is reported and
+      tried again on the next upgrade, and a system that took the
+      misplaced build drops its copies from /usr/local and the extra
+      line in /etc/shells.
+
     * The configuration files the agent pass keeps current between
       upgrades (the PHP-FPM pool templates, the limited shell template,
       the ImageMagick policy, the control readme, sysctl.conf, the Let's
