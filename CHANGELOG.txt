@@ -1367,6 +1367,16 @@
       takes --set-gtid-purged=OFF when the box's mysqldump offers it;
       dumps taken before still carry it.
 
+    * Classic Drush 8.5.11: drush sql-dump, and so sql-sync, no longer
+      writes the server's GTID state into the dump. Taken on a box an
+      xmass run touched, a site's dump could not be loaded back with the
+      site's own database user: drush sqlc < dump.sql, and a sql-sync
+      between two sites, stopped at once with "ERROR 1227 ... SUPER",
+      and loaded as root on the same box it failed with "ERROR 3546" on
+      8.4 and "ERROR 1840" on 5.7, the latter after loading the tables
+      outside the binary log. The dump takes --set-gtid-purged=OFF when
+      the box's mysqldump offers it; dumps taken before still carry it.
+
     * BOA's myloader loads are written to the binary log: xoct and xcopy
       imports, and the fast database import of an Aegir Migrate task and
       of a Restore whose archive carries no database dump. myloader
