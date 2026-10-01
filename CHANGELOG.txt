@@ -50,6 +50,11 @@
 
 @=> Security
 
+    * A file in the master hostmaster site's files/ is set to 0664 by
+      the barracuda upgrade, as the site scripts set it, never 02775: a
+      file any account had put there no longer comes out executable and
+      set-group-ID.
+
     * Nightly maintenance keeps the shared code store's permissions,
       moves unused shared codebases and prunes the codebases backup only
       inside the real store, never through a link planted at a store
