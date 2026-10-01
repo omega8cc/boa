@@ -8,8 +8,13 @@
 # through sudo -n: creating, dropping and reserving its databases, granting
 # and revoking its site users, the verify probes, the fast (mydumper) dumps
 # and loads, and the migration-source read grants. Each database is owned
-# through the root registry /var/lib/boa/dbowners/, one file per database,
-# created exclusively: the first caller wins.
+# through the registry, the root-only table boa_dbreg.owners (one row per
+# database, its name the primary key, so the first caller wins), which this
+# tool alone writes. It replicates with every other schema, so a standing
+# replica holds the same entries the moment it is promoted.
+#
+# On a replication standby, or while one is being seeded, every verb that
+# writes is refused (ERR 9 busy standby); the reads stay open.
 #
 # No verb takes free SQL. A password comes on stdin, one line, never on the
 # command line. Output: "OK <verb> <fields>" on stdout and exit 0, or
@@ -31,8 +36,7 @@ IFS=$' \t\n'
 # Root paths, in one place.
 _DISK="/data/disk"
 _CONF="/data/conf"
-_LIBD="/var/lib/boa"
-_REG="/var/lib/boa/dbowners"
+_MNT="/mnt"
 _RUNP="/run/boa-dbctl"
 _LOGD="/var/log/boa"
 _LOGF="/var/log/boa/dbctl.log"
@@ -41,18 +45,34 @@ _MYCNF="/root/.my.cnf"
 _BCNF="/root/.barracuda.cnf"
 _AEGIR="/var/aegir"
 _STAGE="/data/disk/.boa-dbstage"
+_FSROOT="/"
 _ROOT_UID="0"
+
+# The replication standby marker, and the seeding window's two signals (a
+# standby being built or re-seeded): xmass writes them on the replica.
+_STANDBY="/root/.standby.cnf"
+_STANDBY_INIT="/root/.standby.init.pid"
+_XMASS_INIT="/run/boa_xmass_init.pid"
+
+# The registry: database and table. Root's only; no instance or site login
+# is ever granted anything on it.
+_REG_DB="boa_dbreg"
+_REG_TBL="\`boa_dbreg\`.\`owners\`"
 
 # A dump or load waits for the account's I/O lock, then for one of the
 # box-wide slots, up to _WAIT_TRIES x _WAIT_SEC each, as provision's own dump
 # waits for a previous one; a registry change waits up to _REG_WAIT seconds.
-# A child past the wall-clock limit (_DB_BROKER_IO_LIMIT in barracuda.cnf)
-# gets TERM, then KILL after _KILL_GRACE seconds, as a whole process group.
+# A child past the wall-clock limit (_DB_BROKER_IO_LIMIT in barracuda.cnf,
+# else _IO_LIMIT_DEFAULT) gets TERM, then KILL after _KILL_GRACE seconds, as
+# a whole process group. The limit only frees a slot a hung child holds:
+# no other dump or load path has one, so its default sits far above any
+# single database's dump or load.
 _WAIT_TRIES=6
 _WAIT_SEC=10
 _REG_WAIT=60
 _SLOTS=2
 _KILL_GRACE=30
+_IO_LIMIT_DEFAULT=86400
 
 # Lock descriptors on fixed numbers (7 registry, 8 I/O, 9 slot), closed in
 # every child that connects to the server or runs a dump or load, so only
@@ -85,6 +105,9 @@ _RSV_SEEN=" "
 _OPT_SERVER=""
 _PANEL_READ="NO"
 _PANEL_CLAIMS=""
+_REG_OPEN="NO"
+_REG_HAS="NO"
+_STAGE_DIR=""
 
 _usage() {
   cat <<'EOF' >&2
@@ -160,11 +183,13 @@ _on_exit() {
   if [[ -n "${_STG}" && -d "${_STG}" && ! -L "${_STG}" ]]; then
     rm -rf -- "${_STG}"
   fi
+  # The account's count is read while the call's private directory (the
+  # server client's error file) still exists.
+  if [[ -n "${_ACCT}" && "${_REG_OPEN}" == "YES" ]]; then
+    _n=$(_reg_count "${_ACCT}")
+  fi
   if [[ -n "${_TMPD}" && -d "${_TMPD}" && ! -L "${_TMPD}" ]]; then
     rm -rf -- "${_TMPD}"
-  fi
-  if [[ -n "${_ACCT}" && -d "${_REG}" && ! -L "${_REG}" ]]; then
-    _n=$(_reg_count "${_ACCT}")
   fi
   [[ -n "${_RESULT}" ]] || _RESULT="exit ${_rc}"
   if [[ -n "${_VERB}" ]]; then
@@ -296,6 +321,9 @@ _db_esc() {
 # its text, which can quote a statement and with it a password.
 _sql() {
   local _rc
+  _SQL_OUT=""
+  _SQL_ERRNO=""
+  [[ -n "${_TMPD}" && -d "${_TMPD}" && ! -L "${_TMPD}" ]] || return 1
   _SQL_OUT=$(printf '%s\n' "${1}" \
     | mysql --defaults-file="${_MYCNF}" --protocol=SOCKET -N -B -r \
       2> "${_TMPD}/sql.err" 7>&- 8>&- 9>&-)
@@ -309,6 +337,9 @@ _sql() {
 # newline, NUL or backslash in a value as \t, \n, \0, \\): one row per line.
 _sql_table() {
   local _rc
+  _SQL_OUT=""
+  _SQL_ERRNO=""
+  [[ -n "${_TMPD}" && -d "${_TMPD}" && ! -L "${_TMPD}" ]] || return 1
   _SQL_OUT=$(printf '%s\n' "${1}" \
     | mysql --defaults-file="${_MYCNF}" --protocol=SOCKET -B \
       2> "${_TMPD}/sql.err" 7>&- 8>&- 9>&-)
@@ -361,7 +392,7 @@ _db_ok() {
   [[ "${1}" =~ ^[A-Za-z0-9_]{1,64}$ ]] || return 1
   _l=$(printf '%s' "${1}" | tr '[:upper:]' '[:lower:]')
   case "${_l}" in
-    mysql|sys|information_schema|performance_schema) return 1 ;;
+    mysql|sys|information_schema|performance_schema|"${_REG_DB}") return 1 ;;
   esac
   [[ "$(_reg_key "${1}")" != "$(_reg_key "${_MASTER_DB}")" ]] || return 1
   return 0
@@ -533,6 +564,26 @@ _need_broker() {
   esac
 }
 
+# A replication standby takes its databases, the registry and the grants
+# included, from its source only: nothing here may write on one, nor while
+# one is being seeded (the window's two signals), or its registry and grants
+# would differ from the source's at promotion. Every verb that writes the
+# server, the registry or an account's backups/ is refused; the reads
+# (exists, grants, grants-scan, list) stay open.
+_need_not_standby() {
+  case "${_VERB}" in
+    exists|grants|grants-scan|list) return 0 ;;
+  esac
+  if [[ -e "${_STANDBY}" || -L "${_STANDBY}" ]]; then
+    _die 9 "busy standby"
+  fi
+  if [[ -e "${_XMASS_INIT}" || -L "${_XMASS_INIT}" \
+    || -e "${_STANDBY_INIT}" || -L "${_STANDBY_INIT}" ]]; then
+    _die 9 "busy standby-init"
+  fi
+  return 0
+}
+
 # The hostmaster site path of the instance in home $1, read as the Octopus
 # pass reads it (bounded, never through a link), and only inside that
 # instance's own hostmaster tree: <home>/aegir/distro/*/sites/<site> for an
@@ -621,8 +672,10 @@ _panel_named_elsewhere() {
   return 1
 }
 
-# Registry. One root file per database under /var/lib/boa/dbowners, named
-# as the database (lower-cased where the server folds table names).
+# Registry: the root-only table boa_dbreg.owners, one row per database, its
+# key the database name (lower-cased where the server folds table names).
+# Every write is an ordinary binlogged statement, so a replica of this box
+# gets it as it gets the grants it goes with.
 _reg_key() {
   if [[ "${_LCTN}" == "0" ]]; then
     printf '%s' "${1}"
@@ -631,106 +684,128 @@ _reg_key() {
   fi
 }
 
-_reg_ready() {
-  if [[ ! -e "${_REG}" && ! -L "${_REG}" ]]; then
-    mkdir -p -- "${_REG}" 2> /dev/null
-  fi
-  [[ -d "${_LIBD}" && ! -L "${_LIBD}" && -d "${_REG}" && ! -L "${_REG}" ]] \
-    || _die 7 "registry-unusable"
-  [[ "$(stat -c %u -- "${_LIBD}" 2> /dev/null)" == "${_ROOT_UID}" ]] \
-    || _die 7 "registry-unusable"
-  [[ "$(stat -c '%u %a' -- "${_REG}" 2> /dev/null)" == "${_ROOT_UID} 700" ]] \
-    || _die 7 "registry-unusable"
+_now() {
+  date -u +%Y-%m-%dT%H:%M:%SZ
 }
 
-_reg_file() {
-  printf '%s/%s' "${_REG}" "$(_reg_key "${1}")"
+# Whether the table is there (_REG_HAS): all seven columns, or none of
+# them; anything between is not a table this tool made, and every call is
+# refused rather than read it.
+_reg_ready() {
+  _sql_or_die "SELECT /*q:regready*/ COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = '${_REG_DB}' AND TABLE_NAME = 'owners' AND COLUMN_NAME IN ('name_key', 'db_name', 'account', 'state', 'server', 'since', 'via')" regready
+  case "${_SQL_OUT}" in
+    7) _REG_HAS="YES" ;;
+    0) _REG_HAS="NO" ;;
+    *) _die 7 "registry-unusable" ;;
+  esac
+  _REG_OPEN="YES"
+}
+
+# The table made where it is missing, by the first call that writes an
+# entry: a box no switched account uses never gets it. ASCII with binary
+# collation, so names differing only in case stay two keys where the server
+# keeps them apart.
+_reg_ensure() {
+  [[ "${_REG_HAS}" == "YES" ]] && return 0
+  _sql "/*q:regmake*/ CREATE DATABASE IF NOT EXISTS \`${_REG_DB}\` CHARACTER SET ascii COLLATE ascii_bin;
+CREATE TABLE IF NOT EXISTS ${_REG_TBL} (
+  \`name_key\` VARCHAR(64) NOT NULL,
+  \`db_name\` VARCHAR(64) NOT NULL,
+  \`account\` VARCHAR(32) NOT NULL,
+  \`state\` VARCHAR(16) NOT NULL,
+  \`server\` VARCHAR(160) NOT NULL,
+  \`since\` VARCHAR(20) NOT NULL,
+  \`via\` VARCHAR(64) NOT NULL,
+  PRIMARY KEY (\`name_key\`),
+  KEY \`account\` (\`account\`)
+) ENGINE=InnoDB DEFAULT CHARSET=ascii COLLATE=ascii_bin;" || return 1
+  _reg_ready
+  [[ "${_REG_HAS}" == "YES" ]]
 }
 
 # The entry of database $1 into _E_ACCOUNT, _E_STATE, _E_SINCE, _E_VIA.
-# 1 when there is none. An entry that is not a plain file, or names no
-# account, is held by an unknown owner (?), so it is no one's own.
+# 1 when there is none. A row whose account or state is not one this tool
+# writes is held by an unknown owner (?), so it is no one's own. A failed
+# read ends the call.
 _reg_get() {
-  local _f _k _v
-  _f=$(_reg_file "${1}")
+  local _a _s _t _v
   _E_ACCOUNT=""
   _E_STATE=""
   _E_SINCE=""
   _E_VIA=""
-  [[ -e "${_f}" || -L "${_f}" ]] || return 1
-  if [[ -f "${_f}" && ! -L "${_f}" ]]; then
-    while IFS='=' read -r _k _v; do
-      case "${_k}" in
-        account) _E_ACCOUNT="${_v}" ;;
-        state) _E_STATE="${_v}" ;;
-        since) _E_SINCE="${_v}" ;;
-        via) _E_VIA="${_v}" ;;
-      esac
-    done < "${_f}"
-  fi
-  [[ -n "${_E_ACCOUNT}" ]] || _E_ACCOUNT="?"
+  [[ "${_REG_HAS}" == "YES" ]] || return 1
+  _sql_or_die "SELECT /*q:regget*/ CONCAT_WS('|', HEX(account), HEX(state), HEX(since), HEX(via)) FROM ${_REG_TBL} WHERE name_key = $(_sql_str "$(_reg_key "${1}")")" regget
+  [[ -n "${_SQL_OUT}" ]] || return 1
+  IFS='|' read -r _a _s _t _v <<< "${_SQL_OUT%%$'\n'*}"
+  _E_ACCOUNT=$(_unhex "${_a}") || _E_ACCOUNT=""
+  _E_STATE=$(_unhex "${_s}") || _E_STATE=""
+  _E_SINCE=$(_unhex "${_t}") || _E_SINCE=""
+  _E_VIA=$(_unhex "${_v}") || _E_VIA=""
+  [[ "${_E_ACCOUNT}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || _E_ACCOUNT="?"
+  case "${_E_STATE}" in
+    reserved|created|purged) ;;
+    *) _E_STATE="?" ;;
+  esac
+  [[ "${_E_SINCE}" =~ ^[0-9TZ:-]{1,20}$ ]] || _E_SINCE="?"
+  [[ "${_E_VIA}" =~ ^[A-Za-z0-9_.:-]{1,64}$ ]] || _E_VIA="?"
   return 0
 }
 
-_reg_content() {
-  printf 'account=%s\nstate=%s\nserver=%s\nsince=%s\nvia=%s\n' \
-    "${1}" "${2}" "${_SERVER}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${3}"
-}
-
-# A new entry for this account ($1 database, $2 state, $3 via), created
-# exclusively: written whole under a temporary name, then hard-linked to the
-# database's name, which fails when the name exists as O_EXCL does, so the
-# first caller wins and no reader sees half an entry. 0 made, 1 taken,
-# 2 error.
+# A new entry for this account ($1 database, $2 state, $3 via). The key is
+# the primary key, so the insert is exclusive: the first caller wins across
+# all accounts. 0 made, 1 taken, 2 error.
 _reg_new() {
-  local _f _t
-  _f=$(_reg_file "${1}")
-  _t=$(mktemp "${_REG}/.new.XXXXXXXX" 2> /dev/null) || return 2
-  if ! _reg_content "${_ACCT}" "${2}" "${3}" > "${_t}"; then
-    rm -f -- "${_t}"
-    return 2
-  fi
-  if ln -T -- "${_t}" "${_f}" 2> /dev/null; then
-    rm -f -- "${_t}"
+  _reg_ensure || return 2
+  if _sql "/*q:regnew*/ INSERT INTO ${_REG_TBL} (name_key, db_name, account, state, server, since, via) VALUES ($(_sql_str "$(_reg_key "${1}")"), $(_sql_str "${1}"), $(_sql_str "${_ACCT}"), $(_sql_str "${2}"), $(_sql_str "${_SERVER}"), $(_sql_str "$(_now)"), $(_sql_str "${3}"));"; then
     return 0
   fi
-  rm -f -- "${_t}"
-  [[ -e "${_f}" || -L "${_f}" ]] && return 1
+  [[ "${_SQL_ERRNO}" == "1062" ]] && return 1
   return 2
 }
 
-# This account's own entry of $1 rewritten ($2 state, $3 via): a temporary
-# file renamed over it.
+# This account's own entry of $1 rewritten ($2 state, $3 via), then read
+# back: 0 only when the row now says so.
 _reg_set() {
-  local _f _t
-  _f=$(_reg_file "${1}")
-  _t=$(mktemp "${_REG}/.set.XXXXXXXX" 2> /dev/null) || return 2
-  if _reg_content "${_ACCT}" "${2}" "${3}" > "${_t}" \
-    && mv -f -T -- "${_t}" "${_f}" 2> /dev/null; then
-    return 0
-  fi
-  rm -f -- "${_t}"
-  return 2
+  local _k _a
+  _k=$(_sql_str "$(_reg_key "${1}")")
+  _a=$(_sql_str "${_ACCT}")
+  _sql "/*q:regset*/ UPDATE ${_REG_TBL} SET state = $(_sql_str "${2}"), server = $(_sql_str "${_SERVER}"), since = $(_sql_str "$(_now)"), via = $(_sql_str "${3}") WHERE name_key = ${_k} AND account = ${_a};
+SELECT COUNT(*) FROM ${_REG_TBL} WHERE name_key = ${_k} AND account = ${_a} AND state = $(_sql_str "${2}");" \
+    || return 2
+  [[ "${_SQL_OUT}" == "1" ]] || return 2
 }
 
+# This account's own entry of $1 removed, then read back: 0 only when it
+# is gone.
 _reg_del() {
-  rm -f -- "$(_reg_file "${1}")"
+  local _k _a
+  _k=$(_sql_str "$(_reg_key "${1}")")
+  _a=$(_sql_str "${_ACCT}")
+  _sql "/*q:regdel*/ DELETE FROM ${_REG_TBL} WHERE name_key = ${_k} AND account = ${_a};
+SELECT COUNT(*) FROM ${_REG_TBL} WHERE name_key = ${_k} AND account = ${_a};" \
+    || return 1
+  [[ "${_SQL_OUT}" == "0" ]]
 }
 
-# How many entries account $1 holds, reserved or created: plain files
-# only (find -type f never follows a link), in one pass over the directory,
-# since it runs on every call.
+# This account's entries, "<hex name>|<hex state>|<hex since>|<hex via>"
+# lines in _SQL_OUT; $1 = created narrows them to created ones.
+_reg_list() {
+  local _w=""
+  _SQL_OUT=""
+  [[ "${_REG_HAS}" == "YES" ]] || return 0
+  [[ "${1:-}" == "created" ]] && _w=" AND state = 'created'"
+  _sql_or_die "SELECT /*q:reglist*/ CONCAT_WS('|', HEX(db_name), HEX(state), HEX(since), HEX(via)) FROM ${_REG_TBL} WHERE account = $(_sql_str "${_ACCT}")${_w} ORDER BY name_key" reglist
+}
+
+# How many entries account $1 holds, reserved or created, for the log line.
 _reg_count() {
-  local _n
-  _n=$(find "${_REG}" -mindepth 1 -maxdepth 1 -type f ! -name '.*' \
-      -exec awk -v a="account=${1}" '
-        FNR == 1 { if (sa && ss) n++; sa = 0; ss = 0 }
-        $0 == a { sa = 1 }
-        /^state=(reserved|created)$/ { ss = 1 }
-        END { if (sa && ss) n++; print n + 0 }' {} + 2> /dev/null \
-    | awk '{ s += $1 } END { print s + 0 }')
-  [[ "${_n}" =~ ^[0-9]+$ ]] || _n="?"
-  printf '%s' "${_n}"
+  [[ "${_REG_HAS}" == "YES" ]] || { printf '0'; return 0; }
+  if _sql "SELECT /*q:regcount*/ COUNT(*) FROM ${_REG_TBL} WHERE account = $(_sql_str "${1}") AND state IN ('reserved', 'created')" \
+    && [[ "${_SQL_OUT}" =~ ^[0-9]+$ ]]; then
+    printf '%s' "${_SQL_OUT}"
+  else
+    printf '?'
+  fi
 }
 
 # $1 is this account's: its entry, created, or reserved while no schema of
@@ -808,15 +883,23 @@ _slot_take() {
   _die 9 "busy slot"
 }
 
-# The wall-clock limit of a dump or load child, from barracuda.cnf (read,
-# never sourced). There is no built-in default: without the setting a dump
-# or load is refused.
+# The wall-clock limit of a dump or load child in seconds, from
+# _DB_BROKER_IO_LIMIT in barracuda.cnf (read, never sourced), else the
+# built-in default: barracuda.cnf is each box's own, and a promoted replica
+# must serve at once. A value that is not a whole number of seconds is
+# named in an ALRT line and the default applies.
 _io_limit() {
   local _v
+  _IO_LIMIT="${_IO_LIMIT_DEFAULT}"
+  grep -qE '^_DB_BROKER_IO_LIMIT=' "${_BCNF}" 2> /dev/null || return 0
   _v=$(grep -E '^_DB_BROKER_IO_LIMIT=' "${_BCNF}" 2> /dev/null \
     | tail -n 1 | cut -d= -f2- | tr -d "\"' ")
-  [[ "${_v}" =~ ^[0-9]{1,7}$ && "${_v}" -ge 1 ]] || _die 7 "no-io-limit _DB_BROKER_IO_LIMIT"
-  _IO_LIMIT="${_v}"
+  if [[ "${_v}" =~ ^[0-9]{1,7}$ ]] && [[ "$(( 10#${_v} ))" -ge 1 ]]; then
+    _IO_LIMIT="$(( 10#${_v} ))"
+  else
+    _alrt "_DB_BROKER_IO_LIMIT in ${_BCNF} is not a number of seconds: the default ${_IO_LIMIT_DEFAULT} applies"
+  fi
+  return 0
 }
 
 _threads() {
@@ -1306,13 +1389,17 @@ _v_reserve() {
 # left on the name from a dropped database is revoked first, whoever holds
 # it: the next database of that name would hand it to them.
 _v_create() {
-  local _db _rc _made="NO"
+  local _db _rc _made="NO" _errno
   [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage create <db>"
   _db="${_ARGS[0]}"
   _LOG_DB="${_db}"
   _need_db "${_db}"
   _need_assignable "${_db}"
   _reg_lock
+  # Every row in use must be there before anything is written.
+  if ! _instance_rows_ok; then
+    _die 7 "instance-row-missing ${_ROW_MISSING}"
+  fi
   if _reg_get "${_db}"; then
     [[ "${_E_STATE}" == "reserved" && "${_E_ACCOUNT}" == "${_ACCT}" ]] || _die 4 "taken entry"
     _need_free "${_db}"
@@ -1323,10 +1410,6 @@ _v_create() {
     [[ "${_rc}" -eq 1 ]] && _die 4 "taken entry"
     [[ "${_rc}" -eq 0 ]] || _die 7 "registry-write-failed"
     _made="YES"
-  fi
-  if ! _instance_rows_ok; then
-    [[ "${_made}" == "YES" ]] && _reg_del "${_db}"
-    _die 7 "instance-row-missing ${_ROW_MISSING}"
   fi
   _RV_FAIL=0
   _RV_DONE=0
@@ -1340,8 +1423,9 @@ _v_create() {
     _msg "INFO: revoked ${_RV_DONE} grant rows a dropped database left on ${_db}"
   fi
   if ! _sql "/*q:dcl*/ CREATE DATABASE \`${_db}\`;"; then
+    _errno="${_SQL_ERRNO}"
     [[ "${_made}" == "YES" ]] && _reg_del "${_db}"
-    _die 7 "sql-failed create ${_SQL_ERRNO}"
+    _die 7 "sql-failed create ${_errno}"
   fi
   # The entry turns created before anything else can fail: a schema under a
   # reservation is no one's, so one this call cannot record goes again (it
@@ -1378,7 +1462,9 @@ _v_drop() {
   _revoke_rows "${_ACCT}" "" "${_db}"
   _rows_left "${_db}" " AND User = $(_sql_str "${_ACCT}")"
   [[ "${_RV_FAIL}" -eq 0 && "${_LEFT}" -eq 0 ]] || _die 7 "sql-failed instance-grant-left"
-  _reg_del "${_db}"
+  # An entry that cannot be removed keeps the name this account's: a retry
+  # of the drop clears it.
+  _reg_del "${_db}" || _die 7 "registry-write-failed"
   _reg_unlock
   _info "drop ${_db}"
 }
@@ -1542,7 +1628,14 @@ _v_grant_select() {
 }
 
 # revoke-select: a SELECT-only loopback row, both spellings as stored, for
-# this account's own user on any name, or any grantee on its own database.
+# this account's own user on any name, or any grantee on its own database:
+# the two kinds of read grant the migration-source sweep takes back. It
+# only removes a read grant, and only one the account answers for (its own
+# user's, or one on its own data), so the user rule, which keeps a foreign
+# user from being granted and then re-passworded, is not asked: it would
+# keep the sweep from taking back its own user's read of another account's
+# database, or another account's user's read of its own. A row holding
+# anything beyond SELECT is never touched, and no system identity is.
 _v_revoke_select() {
   local _db _u _h _n=0 _x _sel _sum _hx
   [[ "${#_ARGS[@]}" -eq 3 ]] || _die 2 "usage revoke-select <db> <user> <host>"
@@ -1555,11 +1648,13 @@ _v_revoke_select() {
   _need_user "${_u}"
   _need_host "${_h}"
   _need_loopback "${_h}"
+  case "${_u}" in
+    root|aegir|aegir_root) _die 6 "refused-user system-user" ;;
+  esac
   _reg_lock
   if ! _own_user "${_u}" && ! _own_db "${_db}"; then
     _die 3 "not-yours"
   fi
-  _need_user_rule "${_u}" rule
   _need_priv_cols
   _sum=$(printf '%s' "${_DB_PRIVS}" | sed -e "s/, /='Y') + (/g" -e 's/^/(/' -e "s/\$/='Y')/")
   _sql_or_die "SELECT /*q:selrows*/ CONCAT_WS('|', HEX(Db), Select_priv, ${_sum}) FROM mysql.db WHERE User = $(_sql_str "${_u}") AND Host = $(_sql_str "${_h}") AND Db IN ($(_sql_str "${_db}"), $(_sql_str "$(_db_esc "${_db}")"))" selrows
@@ -1674,40 +1769,110 @@ GRANT ALL PRIVILEGES ON \`${_pe}\`.* TO \`${_pu}\`@\`localhost\`;" \
   _info "selftest create=${_c} grant=${_g} utf8mb4=${_u}"
 }
 
-# The root staging directory, on /data/disk so a finished dump is moved
-# into the account's backups/ by a rename: root's own, 0700.
-_stage_ready() {
-  if [[ ! -e "${_STAGE}" && ! -L "${_STAGE}" ]]; then
-    mkdir -- "${_STAGE}" 2> /dev/null
+# Run "$@" inside the account's backups/: the real directory, or, where
+# backups/ is a link (BOA relocates it into the account's files store), the
+# directory it resolves to, but only one in the account's own static/files
+# or in its store moved onto attached storage
+# (/mnt/<mount>/files/<oN>/static/files), the rule the Octopus pass applies
+# to the same link. Any other link is refused. The resolved directory is
+# entered by its path and must still be that real directory once there, so
+# ./name stays inside it whatever is swapped.
+_in_backups() {
+  local _d="${_DISK}/${_ACCT}/backups" _r _s _m
+  if [[ ! -L "${_d}" ]]; then
+    _acct_in_real_dir "${_d}" "$@"
+    return
   fi
-  [[ -d "${_STAGE}" && ! -L "${_STAGE}" ]] || _die 7 "stage-unusable"
-  [[ "$(stat -c '%u %a' -- "${_STAGE}" 2> /dev/null)" == "${_ROOT_UID} 700" ]] \
-    || _die 7 "stage-unusable"
+  _r="$(readlink -f -- "${_d}" 2> /dev/null)"
+  _s="$(cd -P -- "${_DISK}" 2> /dev/null && pwd -P)/${_ACCT}/static/files/"
+  case "${_r}" in
+    ""|*[!A-Za-z0-9._/-]*) return 1 ;;
+    "${_s}"?*) ;;
+    "${_MNT}"/?*/files/"${_ACCT}"/static/files/?*)
+      _m="${_r%%/files/"${_ACCT}"/static/files/*}"
+      case "${_m}" in
+        */files/*|*/static/*) return 1 ;;
+      esac
+      ;;
+    *) return 1 ;;
+  esac
+  ( cd -P -- "${_r}" 2> /dev/null && [[ "$(pwd -P)" == "${_r}" ]] && "$@" )
+}
+
+# "<device> <mount point>" of the current (pinned) directory, or of $1.
+_mount_here() {
+  stat -c '%d %m' -- "${1:-.}" 2> /dev/null
+}
+
+# True when $1 and every directory above it up to the filesystem root are
+# real directories, root's, and writable by no one else: a place where only
+# root can put or swap a name.
+_root_path() {
+  local _p="${1%/}" _r="${_FSROOT%/}" _c _m _x
+  local -a _parts
+  [[ "${_p}" =~ ^/[A-Za-z0-9._/-]*$ ]] || return 1
+  [[ "$(cd -P -- "${_p}" 2> /dev/null && pwd -P)" == "${_p}" ]] || return 1
+  [[ -z "${_r}" || "${_p}" == "${_r}" || "${_p}" == "${_r}"/* ]] || return 1
+  _c="${_r:-/}"
+  _x="${_p#"${_r}"}"
+  IFS=/ read -r -a _parts <<< "${_x#/}"
+  while :; do
+    [[ -d "${_c}" && ! -L "${_c}" ]] || return 1
+    _m=$(stat -c '%u %a' -- "${_c}" 2> /dev/null) || return 1
+    [[ "${_m%% *}" == "${_ROOT_UID}" && "${_m#* }" =~ ^[0-7]{3,4}$ ]] || return 1
+    [[ "$(( 8#${_m#* } & 8#022 ))" -eq 0 ]] || return 1
+    [[ "${#_parts[@]}" -gt 0 ]] || return 0
+    _c="${_c%/}/${_parts[0]}"
+    _parts=("${_parts[@]:1}")
+  done
+}
+
+# A root staging directory $1: made where missing, then root's own, 0700,
+# never a link.
+_stage_mk() {
+  if [[ ! -e "${1}" && ! -L "${1}" ]]; then
+    mkdir -- "${1}" 2> /dev/null
+  fi
+  [[ -d "${1}" && ! -L "${1}" ]] || return 1
+  [[ "$(stat -c '%u %a' -- "${1}" 2> /dev/null)" == "${_ROOT_UID} 700" ]]
+}
+
+# The root staging directory for a dump delivered into a backups/ whose
+# "<device> <mount point>" is $1, on that same mount so the delivery is a
+# rename: /data/disk/.boa-dbstage when that is on it, else .boa-dbstage at
+# the top of that mount (attached storage), where every directory down to
+# the mount point is root's. Sets _STAGE_DIR.
+_stage_for() {
+  local _want="${1}" _mp
+  _STAGE_DIR=""
+  [[ "${_want}" =~ ^[0-9]+\ /[A-Za-z0-9._/-]*$ ]] || return 1
+  _stage_mk "${_STAGE}" || return 1
+  if [[ "$(_mount_here "${_STAGE}")" == "${_want}" ]]; then
+    _STAGE_DIR="${_STAGE}"
+    return 0
+  fi
+  _mp="${_want#* }"
+  _root_path "${_mp}" || return 1
+  _stage_mk "${_mp%/}/.boa-dbstage" || return 1
+  [[ "$(_mount_here "${_mp%/}/.boa-dbstage")" == "${_want}" ]] || return 1
+  _STAGE_DIR="${_mp%/}/.boa-dbstage"
 }
 
 # In the account's (pinned) backups/: the dump in root staging $1 put at
-# ./tmp_expim. provision leaves an empty tmp_expim there for it; rmdir takes
-# only that (never a link, a file or anything with content), and the move,
-# root's last act, replaces nothing else. It is a rename only: the pinned
-# directory must still be on staging's filesystem ($2), or mv would copy as
-# root into the account's tree.
+# ./tmp_expim by one rename(2), root's last act. It replaces only what
+# provision leaves there, an empty directory; a link, a file or a
+# directory with content makes it fail and stays. A rename never copies:
+# the pinned directory must be on the mount $2 the dump was staged on.
 _deliver_here() {
-  [[ -n "${2}" && "$(stat -c %d . 2> /dev/null)" == "${2}" ]] || return 1
-  if [[ -e ./tmp_expim || -L ./tmp_expim ]]; then
-    rmdir -- ./tmp_expim 2> /dev/null || return 1
-  fi
-  mv -T -- "${1}" ./tmp_expim 2> /dev/null
-}
-
-_dev_here() {
-  stat -c %d . 2> /dev/null
+  [[ -n "${2}" && "$(_mount_here)" == "${2}" ]] || return 1
+  perl -e 'rename($ARGV[0], $ARGV[1]) or exit 1' -- "${1}" ./tmp_expim 2> /dev/null
 }
 
 # dump: mydumper as root (its SQL is not the tenant's) into root staging,
 # with the options provision's fast dump passes, owned and moded for the
 # account while still in staging, and moved into backups/tmp_expim last.
 _v_dump() {
-  local _db _rc _mj _thr _bdev _sdev
+  local _db _rc _mj _thr _bmnt
   local -a _rowsopt _trx _sock
   [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage dump <db>"
   _db="${_ARGS[0]}"
@@ -1722,13 +1887,9 @@ _v_dump() {
   _reg_lock
   _need_own_created "${_db}"
   _reg_unlock
-  _stage_ready
-  _bdev=$(_acct_in_real_dir "${_DISK}/${_ACCT}/backups" _dev_here) \
-    || _die 7 "backups-not-a-real-directory"
-  _sdev=$(stat -c %d -- "${_STAGE}" 2> /dev/null)
-  [[ -n "${_bdev}" && "${_bdev}" == "${_sdev}" ]] \
-    || _die 7 "backups-on-another-filesystem"
-  _STG=$(mktemp -d "${_STAGE}/${_ACCT}.XXXXXXXX" 2> /dev/null) || _die 7 "stage-unusable"
+  _bmnt=$(_in_backups _mount_here) || _die 7 "backups-refused"
+  _stage_for "${_bmnt}" || _die 7 "stage-unusable"
+  _STG=$(mktemp -d "${_STAGE_DIR}/${_ACCT}.XXXXXXXX" 2> /dev/null) || _die 7 "stage-unusable"
   _sql_or_die "SELECT /*q:trx*/ COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = $(_sql_str "${_db}") AND TABLE_TYPE = 'BASE TABLE' AND ENGINE IS NOT NULL AND ENGINE NOT IN ('InnoDB')" trx
   _trx=()
   [[ "${_SQL_OUT}" =~ ^[0-9]+$ && "${_SQL_OUT}" -gt 0 ]] && _trx=(--trx-tables=0)
@@ -1769,7 +1930,7 @@ _v_dump() {
   chown -R -- "${_ACCT}:" "${_STG}" 2> /dev/null || _die 7 "stage-owner-failed"
   find "${_STG}" -type d -exec chmod 0700 {} + 2> /dev/null || _die 7 "stage-mode-failed"
   find "${_STG}" -type f -exec chmod 0600 {} + 2> /dev/null || _die 7 "stage-mode-failed"
-  _acct_in_real_dir "${_DISK}/${_ACCT}/backups" _deliver_here "${_STG}" "${_sdev}" \
+  _in_backups _deliver_here "${_STG}" "${_bmnt}" \
     || _die 7 "tmp_expim-refused"
   _STG=""
   _info "dump ${_db}"
@@ -1921,7 +2082,8 @@ _v_load() {
   _reg_lock
   _need_own_created "${_db}"
   _reg_unlock
-  _store=$(_acct_in_real_dir "${_DISK}/${_ACCT}/backups/tmp_expim" _store_here)
+  _in_backups true || _die 7 "backups-refused"
+  _store=$(_in_backups _acct_in_real_dir ./tmp_expim _store_here)
   _st=$?
   case "${_st}" in
     0) ;;
@@ -1936,12 +2098,12 @@ _v_load() {
   _myloader_binlog_opts 7>&- 8>&- 9>&-
   _myloader_definer_opts "${_LD_USER}" "${_PROOF_HOST}"
   if [[ "${#_MYLOADER_DEFINER[@]}" -gt 0 && "${_MYLOADER_DEFINER[0]}" != --replace-definer=* ]] \
-    && _acct_in_real_dir "${_DISK}/${_ACCT}/backups/tmp_expim" _store_objects_here; then
+    && _in_backups _acct_in_real_dir ./tmp_expim _store_objects_here; then
     _alrt "the dump carries triggers, routines or events, and this myloader cannot hand them to ${_LD_USER}: they are left out of the load"
   fi
   _transport_args "${_PROOF_T}" loader
   _thr=$(_threads)
-  _acct_in_real_dir "${_DISK}/${_ACCT}/backups/tmp_expim" \
+  _in_backups _acct_in_real_dir ./tmp_expim \
     timeout -k "${_KILL_GRACE}" "${_IO_LIMIT}" \
     runuser -u "${_ACCT}" -- \
     env -i HOME="${_DISK}/${_ACCT}" PATH="${_STD_PATH}" LC_ALL=C \
@@ -1968,15 +2130,25 @@ _v_load() {
 }
 
 _v_list() {
-  local _f _n=0
+  local _x _s _t _v _d _st _si _vi _n=0
   [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage list"
-  for _f in "${_REG}"/*; do
-    [[ -f "${_f}" && ! -L "${_f}" ]] || continue
-    _reg_get "${_f##*/}" || continue
-    [[ "${_E_ACCOUNT}" == "${_ACCT}" ]] || continue
-    printf '%s %s %s %s\n' "${_f##*/}" "${_E_STATE}" "${_E_SINCE}" "${_E_VIA}"
+  _reg_list
+  while IFS='|' read -r _x _s _t _v; do
+    [[ -n "${_x}" ]] || continue
+    _d=$(_unhex "${_x}") || continue
+    [[ "${_d}" =~ ^[A-Za-z0-9_]{1,64}$ ]] || continue
+    _st=$(_unhex "${_s}") || _st="?"
+    _si=$(_unhex "${_t}") || _si="?"
+    _vi=$(_unhex "${_v}") || _vi="?"
+    case "${_st}" in
+      reserved|created|purged) ;;
+      *) _st="?" ;;
+    esac
+    [[ "${_si}" =~ ^[0-9TZ:-]{1,20}$ ]] || _si="?"
+    [[ "${_vi}" =~ ^[A-Za-z0-9_.:-]{1,64}$ ]] || _vi="?"
+    printf '%s %s %s %s\n' "${_d}" "${_st}" "${_si}" "${_vi}"
     _n=$(( _n + 1 ))
-  done
+  done <<< "${_SQL_OUT}"
   _info "list ${_n}"
 }
 
@@ -2028,23 +2200,24 @@ _v_register() {
 # regrant (root): the instance user's grant on every created database of the
 # account, for each row in use, after a pass re-created the user.
 _v_regrant() {
-  local _f _n=0 _fail=0
+  local _x _s _t _v _d _n=0 _fail=0 _list
   [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
   [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage regrant --account <oN>"
   _need_broker
   _reg_lock
   _instance_rows_ok || _die 7 "instance-row-missing ${_ROW_MISSING}"
-  for _f in "${_REG}"/*; do
-    [[ -f "${_f}" && ! -L "${_f}" ]] || continue
-    _reg_get "${_f##*/}" || continue
-    [[ "${_E_ACCOUNT}" == "${_ACCT}" && "${_E_STATE}" == "created" ]] || continue
-    _db_ok "${_f##*/}" || continue
-    if _grant_instance "${_f##*/}"; then
+  _reg_list created
+  _list="${_SQL_OUT}"
+  while IFS='|' read -r _x _s _t _v; do
+    [[ -n "${_x}" ]] || continue
+    _d=$(_unhex "${_x}") || continue
+    _db_ok "${_d}" || continue
+    if _grant_instance "${_d}"; then
       _n=$(( _n + 1 ))
     else
       _fail=$(( _fail + 1 ))
     fi
-  done
+  done <<< "${_list}"
   _reg_unlock
   [[ "${_fail}" -eq 0 ]] || _die 7 "sql-failed regrant ${_fail}"
   _info "regrant ${_n}"
@@ -2114,6 +2287,7 @@ _main() {
     register|regrant) ;;
     *) _need_broker ;;
   esac
+  _need_not_standby
   _TMPD=$(mktemp -d "${_RUNP}.tmp.XXXXXXXX" 2> /dev/null) || _die 7 "tmp-failed"
   _srv_init
   _master_db_init

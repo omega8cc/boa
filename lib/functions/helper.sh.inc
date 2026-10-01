@@ -2013,6 +2013,54 @@ _sudoers_safe_append() {
   _sudoers_commit "${_file}" "${_tmp}"
 }
 
+# The database broker's (boa-dbctl) sudo line for account $1 in
+# /etc/sudoers.d/boa-dbctl, validated as _sudoers_safe_append validates, but
+# matched as a whole line: a substring test takes another account's line
+# ("xo1 ALL=...") for this one's ("o1 ALL=..."). The line alone changes
+# nothing: the broker serves an account only while its root-owned
+# /data/conf/<oN>_db_broker.txt exists.
+_dbctl_sudo_line() {
+  local _u="${1}"
+  local _file="/etc/sudoers.d/boa-dbctl"
+  local _line _tmp
+  [[ "${_u}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || return 1
+  _line="${_u} ALL=NOPASSWD: /usr/local/bin/boa-dbctl"
+  if [[ -e "${_file}" ]] && grep -qxF -- "${_line}" "${_file}" 2> /dev/null; then
+    return 0
+  fi
+  if ! command -v visudo > /dev/null 2>&1; then
+    echo "${_line}" >> "${_file}"
+    chmod 0440 "${_file}" 2> /dev/null
+    return 0
+  fi
+  _tmp=$(mktemp "/etc/sudoers.d/.sudoers.boa.XXXXXX" 2> /dev/null)
+  if [[ -z "${_tmp}" || ! -e "${_tmp}" ]]; then
+    return 1
+  fi
+  [[ -e "${_file}" ]] && cat "${_file}" > "${_tmp}" 2> /dev/null
+  echo "${_line}" >> "${_tmp}"
+  _sudoers_commit "${_file}" "${_tmp}"
+}
+
+# The broker's sudo line for every Octopus account, on every barracuda pass:
+# the system-only pass a replication standby runs included. A standby never
+# runs the Octopus pass that also writes it, and once promoted it serves the
+# switched accounts it took over at once.
+_dbctl_sudo_lines() {
+  local _cnf _u _home
+  for _cnf in /root/.*.octopus.cnf; do
+    [[ -f "${_cnf}" && ! -L "${_cnf}" ]] || continue
+    _u="${_cnf#/root/.}"
+    _u="${_u%.octopus.cnf}"
+    [[ "${_u}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || continue
+    _home=$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)
+    [[ "${_home%/}" == "/data/disk/${_u}" ]] || continue
+    [[ -d "/data/disk/${_u}" && ! -L "/data/disk/${_u}" ]] || continue
+    _dbctl_sudo_line "${_u}"
+  done
+  return 0
+}
+
 _check_prepare_dirs_permissions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_prepare_dirs_permissions"
@@ -2034,10 +2082,7 @@ _check_prepare_dirs_permissions() {
   # /var/log/php85 — apply the tighter mode to all of them.
   chown root:adm /var/log/php* &> /dev/null
   chmod 0755 /var/log/php* &> /dev/null
-  # The database broker's root state (boa-dbctl): the database ownership
-  # registry and the box baseline. Root only.
-  install -d -o root -g root -m 0700 /var/lib/boa /var/lib/boa/dbowners \
-    /var/lib/boa/dbctl &> /dev/null
+  _dbctl_sudo_lines
   mkdir -p ${_vBs}/dragon/{x,z,t}
   if [ -e "/etc/init.d/buagent" ]; then
     mv -f /etc/init.d/buagent \
