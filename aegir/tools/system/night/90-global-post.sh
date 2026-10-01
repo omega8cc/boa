@@ -312,45 +312,123 @@ _check_old_empty_hostmaster_platforms() {
   fi
 }
 
+# The shared store as root works in it at night, in _gSt: /data/all when it
+# is a real directory; /data/disk/all when a link of root's at /data/all
+# leads there through root's own links and directories only, each closed to
+# others (_ROOT_REAL_PATH_PL, _SAT_STORE_TARGET_PL), or when there is no
+# /data/all. Status 2 for any other link at /data/all, which is never
+# followed (a night.inc.sh without the store rule leaves every link
+# alone): the work waits for the Octopus upgrade that takes the store back,
+# or stops and says how to repair it. Status 1 when there is no store. The
+# rule the cron writers and the post-upgrade modes fix use.
+_global_store_pick() {
+  _gSt=""
+  if [ -L "/data/all" ]; then
+    if [ -n "${_SAT_STORE_TARGET_PL:-}" ] && [ -n "${_ROOT_REAL_PATH_PL:-}" ]; then
+      _gSt="$(perl -e "${_ROOT_REAL_PATH_PL}" -- /data/all 2> /dev/null)"
+      perl -e "${_SAT_STORE_TARGET_PL}" -- "${_gSt}" &> /dev/null && return 0
+    fi
+    _gSt=""
+    return 2
+  elif [ -d "/data/all" ]; then
+    _gSt=/data/all
+  elif [ ! -e "/data/all" ] && [ -d "/data/disk/all" ]; then
+    _gSt=/data/disk/all
+  else
+    return 1
+  fi
+  return 0
+}
+# Why the store is left alone (status 2 above), for a caller's one line.
+_global_store_why() {
+  if declare -F _store_link_why > /dev/null 2>&1; then
+    _store_link_why
+  else
+    echo "/data/all is a link, and this night.inc.sh cannot check where it leads"
+  fi
+}
+# True when the current (pinned) directory is root's and no one else can
+# write in it.
+_global_root_only_here() {
+  local _m
+  _m=$(stat -c '%u %a' . 2> /dev/null) || return 1
+  [ "${_m%% *}" = "0" ] && [[ "${_m##* }" =~ ^[0-7]+$ ]] \
+    && [ "$(( 8#${_m##* } & 8#022 ))" = "0" ]
+}
+
+# A shared codebase no account platform links to is moved out of the store
+# (or only named, the default dry run). The store is used only as the rule
+# above allows, and each serial and codebase only as the real directory
+# found inside it, never through a link; a codebase is moved by its name in
+# its serial, into a directory of root's that no one else can write.
 _shared_codebases_cleanup() {
   _provision_running && { echo "INFO: provision task active -- skipping shared-codebases cleanup"; return; }
+  local _gSt _sRc
+  [ -L "/data/all" ] || [ -d "/data/all" ] || return 0
+  _global_store_pick
+  _sRc=$?
+  if [ "${_sRc}" = "2" ]; then
+    echo "ALRT: the shared codebases cleanup waits: $(_global_store_why)"
+    return 0
+  fi
+  [ "${_sRc}" = "0" ] || return 0
   if [ -L "/data/all" ]; then
     _CLD="/data/disk/codebases-cleanup"
   else
     _CLD="/var/backups/codebases-cleanup"
   fi
-  for i in `dir -d /data/all/*/`; do
-    if [ -d "${i}o_contrib" ]; then
-      for _Codebase in `find ${i}* -maxdepth 1 -mindepth 1 -type d \
-        | grep "/profiles$" 2>&1`; do
-        _CodebaseDir=$(echo ${_Codebase} \
-          | sed 's/\/profiles//g' \
-          | awk '{print $1}' 2> /dev/null)
-        # Defensive: a tree with a detectable docroot is a real codebase of any
-        # version -- never reap it. This loop targets the legacy D6/D7 shared
-        # /data/all store (anchored on a root-level profiles/); D8+ codebases are
-        # self-contained under distro/ and are not managed here.
-        [ -n "$(_detect_real_docroot "${_CodebaseDir}")" ] && continue
-        # 2>&1 belongs to find, not to sort: bound to sort, find's own error
-        # never reached the variable and any failed enumeration read as "no
-        # references". A failed find (glob unexpanded, unreadable tree) is
-        # not evidence the codebase is unused, so it is skipped, not moved.
-        _CodebaseTest=$(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 \
-          -type l -lname ${_Codebase} 2>&1 | sort)
-        if [[ "${_CodebaseTest}" =~ "No such file or directory" ]]; then
-          echo "Skipping ${_CodebaseDir}: could not enumerate platform symlinks (${_CodebaseTest})"
-          continue
+  _acct_in_real_dir "${_gSt}" _shared_codebases_here
+}
+# Each serial of the current (pinned) store that is a real directory.
+_shared_codebases_here() {
+  local _s
+  for _s in ./*; do
+    _s="${_s#./}"
+    [ -d "./${_s}" ] && [ ! -L "./${_s}" ] || continue
+    _acct_in_real_dir "./${_s}" _shared_codebases_serial_here "${_s}"
+  done
+}
+# The codebases of the current (pinned) serial $1, when it holds o_contrib:
+# each real directory holding a real profiles/ directory.
+_shared_codebases_serial_here() {
+  local _p _Codebase _CodebaseDir _CodebaseTest _to
+  [ -d "./o_contrib" ] || return 0
+  for _p in ./*; do
+    _p="${_p#./}"
+    [ -d "./${_p}" ] && [ ! -L "./${_p}" ] \
+      && [ -d "./${_p}/profiles" ] && [ ! -L "./${_p}/profiles" ] || continue
+    # The names platforms link to: the store by its /data/all name.
+    _CodebaseDir="/data/all/${1}/${_p}"
+    _Codebase="${_CodebaseDir}/profiles"
+    # Defensive: a tree with a detectable docroot is a real codebase of any
+    # version -- never reap it. This loop targets the legacy D6/D7 shared
+    # /data/all store (anchored on a root-level profiles/); D8+ codebases are
+    # self-contained under distro/ and are not managed here.
+    [ -n "$(_detect_real_docroot "./${_p}")" ] && continue
+    # 2>&1 belongs to find, not to sort: bound to sort, find's own error
+    # never reached the variable and any failed enumeration read as "no
+    # references". A failed find (glob unexpanded, unreadable tree) is
+    # not evidence the codebase is unused, so it is skipped, not moved.
+    _CodebaseTest=$(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 \
+      -type l -lname "${_Codebase}" 2>&1 | sort)
+    if [[ "${_CodebaseTest}" =~ "No such file or directory" ]]; then
+      echo "Skipping ${_CodebaseDir}: could not enumerate platform symlinks (${_CodebaseTest})"
+      continue
+    fi
+    if [ -z "${_CodebaseTest}" ]; then
+      if _cnf_flag_yes /root/.barracuda.cnf _SHARED_CODEBASES_CLEANUP; then
+        _to="${_CLD}/data/all/${1}/"
+        if ( umask 022; mkdir -p "${_CLD}" ) \
+          && _acct_in_real_dir "${_CLD}" _global_root_only_here \
+          && ( umask 022; mkdir -p "${_to}" ); then
+          echo "Moving no longer used ${_CodebaseDir} to ${_to}"
+          mv -f -- "./${_p}" "${_to}"
+        else
+          echo "Unused ${_CodebaseDir} not moved: ${_CLD} is not a real directory of root's closed to others"
         fi
-        if [ -z "${_CodebaseTest}" ]; then
-          if _cnf_flag_yes /root/.barracuda.cnf _SHARED_CODEBASES_CLEANUP; then
-            mkdir -p ${_CLD}${i}
-            echo "Moving no longer used ${_CodebaseDir} to ${_CLD}${i}"
-            mv -f ${_CodebaseDir} ${_CLD}${i}
-          else
-            echo "Unused ${_CodebaseDir} detected (dry-run; set _SHARED_CODEBASES_CLEANUP=YES in /root/.barracuda.cnf to move)"
-          fi
-        fi
-      done
+      else
+        echo "Unused ${_CodebaseDir} detected (dry-run; set _SHARED_CODEBASES_CLEANUP=YES in /root/.barracuda.cnf to move)"
+      fi
     fi
   done
 }
@@ -703,20 +781,58 @@ _run_marks_drop_here() {
 # hard-linked file, a link, a FIFO or a socket is left alone. Args: uid, gid
 # (numbers; -1 keeps that id), the names.
 _ACCT_REOWN_PL='use Fcntl; my ($u, $g, @f) = @ARGV; for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown($u, $g, $h) if @s && (-d _ || (-f _ && $s[3] == 1)); close($h); } exit 0'
-# The trees after $1 and $2 handed to uid $1 and gid $2 (numbers) as chown
-# -R handed them: find follows no link, at the top or below, and each entry
-# is changed from inside the directory walked (_ACCT_REOWN_PL). The shared
-# code store's sites/all/{modules,libraries,themes} are group-writable by
-# every account's identities, so a hard link one of them puts there to a file
-# of another account is left alone, never handed to root.
-_global_reown() {
-  local _u="${1}" _g="${2}"
-  shift 2
-  [[ "${_u}" =~ ^[0-9]+$ && "${_g}" =~ ^[0-9]+$ ]] || return 0
-  env PATH=/usr/local/bin:/usr/bin:/bin find "$@" \( -type d -o -type f \) \
-    -execdir perl -e "${_ACCT_REOWN_PL}" "${_u}" "${_g}" {} + &> /dev/null
-  return 0
-}
+# The modes and owners of the shared store (the current, pinned directory)
+# as the path globs this replaces set them: every directory 0755 and every
+# regular file 0644 except what is below a sites/all (pruned), the
+# sites/all/{modules,libraries,themes} of */* and 000/core/* 02775,
+# everything handed to root:root, then every */*/sites,
+# */*/{web,docroot,html}/sites and 000/core/*/sites tree to root and the
+# group $1 (a number; when it is not one, no tree is), as the Octopus pass
+# hands them (_satellite_shared_fix_here), so the D8+ sites tree under the
+# docroot stays the group's, as the plain sites tree does.
+# find follows no link, at the top or below, each entry is changed from the
+# directory find walked, through its own handle (_NIGHT_FCHMOD_PL,
+# _ACCT_REOWN_PL), and dot names at the levels the globs matched are left
+# out as the globs left them. The sites/all/{modules,libraries,themes} trees
+# are group-writable by every account's identities, so a hard link one of
+# them puts there to a file of another account is left alone, never handed
+# to root. Exit 0 once the walk has run.
+_global_store_fix_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  perl -e "${_NIGHT_FCHMOD_PL}" d 0755 .
+  find . -mindepth 1 -path '*/sites/all/*' -prune -o -type d \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 0755 {} +
+  find . -mindepth 1 -path '*/sites/all/*' -prune -o -type f \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0644 {} +
+  find . -mindepth 5 -maxdepth 6 -regextype posix-extended \
+    \( -regex '\./[^/.][^/]*/[^/.][^/]*/sites/all/(modules|libraries|themes)' \
+      -o -regex '\./000/core/[^/.][^/]*/sites/all/(modules|libraries|themes)' \) \
+    \( -type d -o -type f \) \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 02775 {} + \
+    -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 02775 {} +
+  perl -e "${_ACCT_REOWN_PL}" 0 0 .
+  find . -mindepth 1 \( -type d -o -type f \) \
+    -execdir perl -e "${_ACCT_REOWN_PL}" 0 0 {} +
+  [[ "${1}" =~ ^[0-9]+$ ]] || exit 0
+  find . -mindepth 1 -regextype posix-extended \
+    \( \( -regex '\./[^/.][^/]*/[^/.][^/]*/sites(/.*)?' \
+        -o -regex '\./[^/.][^/]*/[^/.][^/]*/(web|docroot|html)/sites(/.*)?' \
+        -o -regex '\./000/core/[^/.][^/]*/sites(/.*)?' \) \
+      \( -type d -o -type f \) \
+      -execdir perl -e "${_ACCT_REOWN_PL}" 0 "${1}" {} + \) \
+    -o -regex '\./[^/]+(/[^/]+)?' \
+    -o -regex '\./[^/.][^/]*/[^/.][^/]*/(web|docroot|html)' \
+    -o -regex '\./000/core/[^/]+' -o -prune
+  exit 0
+)
+# The entries of the current (pinned) directory older than a week removed,
+# at any depth, as find -exec rm -rf removed them, each from the directory
+# find walked, so a directory on the way swapped for a link is never
+# followed; nothing is descended once it is removed.
+_global_cld_prune_here() (
+  PATH=/usr/local/bin:/usr/bin:/bin
+  find ./* -mtime +7 -prune -execdir rm -rf -- {} +
+)
 
 _global_cleanup() {
   if [ "${_PERMISSIONS_FIX}" = "YES" ] \
@@ -740,25 +856,21 @@ _global_cleanup() {
     ### those leaves; their own modes are asserted right below, where the
     ### parent (sites/all, 0755 root:users) is not tenant-writable. The
     ### owner walks do reach those leaves, so each entry is changed through
-    ### its own handle and a hard-linked file never (_global_reown).
-    local _usersGid
+    ### its own handle and a hard-linked file never. The whole store is
+    ### walked only from inside its real directory, as the store rule
+    ### allows (_global_store_pick), and never through a link at a name in
+    ### it (_global_store_fix_here); while /data/all is a link the rule
+    ### refuses, the fix waits and the stamp below is not written, so the
+    ### first night after the store passes runs it.
+    local _usersGid _gSt _sRc
     _usersGid=$(getent group users 2> /dev/null | cut -d: -f3)
-    if [ -e "/data/all" ]; then
-      find /data/all -path '*/sites/all/*' -prune -o -type d -exec chmod 0755 {} \; &> /dev/null
-      find /data/all -path '*/sites/all/*' -prune -o -type f -exec chmod 0644 {} \; &> /dev/null
-      chmod 02775 /data/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
-      chmod 02775 /data/all/000/core/*/sites/all/{modules,libraries,themes} &> /dev/null
-      _global_reown 0 0 /data/all
-      _global_reown 0 "${_usersGid}" /data/all/*/*/sites
-      _global_reown 0 "${_usersGid}" /data/all/000/core/*/sites
-    elif [ -e "/data/disk/all" ]; then
-      find /data/disk/all -path '*/sites/all/*' -prune -o -type d -exec chmod 0755 {} \; &> /dev/null
-      find /data/disk/all -path '*/sites/all/*' -prune -o -type f -exec chmod 0644 {} \; &> /dev/null
-      chmod 02775 /data/disk/all/*/*/sites/all/{modules,libraries,themes} &> /dev/null
-      chmod 02775 /data/disk/all/000/core/*/sites/all/{modules,libraries,themes} &> /dev/null
-      _global_reown 0 0 /data/disk/all
-      _global_reown 0 "${_usersGid}" /data/disk/all/*/*/sites
-      _global_reown 0 "${_usersGid}" /data/disk/all/000/core/*/sites
+    _global_store_pick
+    _sRc=$?
+    if [ "${_sRc}" = "2" ]; then
+      echo "ALRT: the /data/all permissions fix waits: $(_global_store_why)"
+    elif [ "${_sRc}" = "0" ] \
+      && ! _acct_in_real_dir "${_gSt}" _global_store_fix_here "${_usersGid}" &> /dev/null; then
+      _sRc=2
     fi
     ### distro/NNN and every platform in it belong to the account, so any of
     ### these three names can be a link. Only a real directory is changed,
@@ -771,7 +883,9 @@ _global_cleanup() {
     done
     ### Stamp in /var/backups: the gate above reads it there, and /data/all
     ### does not exist on /data/disk/all boxes (the sweep re-ran every night).
-    echo fixed > /var/backups/permissions-fix-${_xSrl}-${_X_VERSION}-fixed-dz.info
+    if [ "${_sRc}" != "2" ]; then
+      echo fixed > /var/backups/permissions-fix-${_xSrl}-${_X_VERSION}-fixed-dz.info
+    fi
   fi
   if [ ! -e "/var/backups/fix-sites-all-permsissions-${_xSrl}.txt" ]; then
     ### distro/NNN belongs to the account (every Ægir task and site-local
@@ -822,11 +936,16 @@ _global_cleanup() {
     [ -e "${_P_LIVE}" ] || continue
     ls -t ${_P_LIVE}-pre-* 2>/dev/null | tail -n +4 | xargs -r rm -f
   done
+  ### The shared codebases moved out of the store keep their group-writable
+  ### sites/all trees, and /data/disk was once open to every account, so
+  ### each is pruned only from inside its real directory.
   if [ "${_hostedSys}" = "YES" ]; then
     if [ -d "/var/backups/codebases-cleanup" ]; then
-      find /var/backups/codebases-cleanup/* -mtime +7 -exec rm -rf {} \; &> /dev/null
+      _acct_in_real_dir /var/backups/codebases-cleanup \
+        _global_cld_prune_here &> /dev/null
     elif [ -d "/data/disk/codebases-cleanup" ]; then
-      find /data/disk/codebases-cleanup/* -mtime +7 -exec rm -rf {} \; &> /dev/null
+      _acct_in_real_dir /data/disk/codebases-cleanup \
+        _global_cld_prune_here &> /dev/null
     fi
   fi
   rm -f /tmp/.cron.*.pid
