@@ -1280,6 +1280,22 @@
 
 @=> Important Fixes
 
+    * After a mirror was promoted by hand, xmass prep-target on the
+      promoted box takes the returning old active's accounts as the
+      pair's own, so failing back and rebuilding the old active as the
+      new mirror go on: its create marker of the account names the old
+      active, or the old active's migration state names the promoted box
+      as its target. The account there must predate either. Both routes
+      stopped at prep-target on every account.
+
+    * An xoct canary still in its test run no longer blocks a standing
+      mirror: xmass prep-target installs a canary the box sends away
+      with its own admail=, and a cutover under --proxy-mode=ha-switch
+      converts it the same way, so its client is not told of the switch;
+      its test run is then redone from the new active. A move of the box
+      still waits for the canary's go-live, and a canary the box received
+      still refuses both.
+
     * A run lock left by an instgrp run killed outright (out of memory, a
       stray kill -9) no longer keeps the limited-shell worker, the task
       queue runner and the nightly waiting for up to three hours: the
