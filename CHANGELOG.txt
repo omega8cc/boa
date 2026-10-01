@@ -1265,6 +1265,18 @@
       takes --set-gtid-purged=OFF when the box's mysqldump offers it;
       dumps taken before still carry it.
 
+    * BOA's myloader loads are written to the binary log: xoct and xcopy
+      imports, and the fast database import of an Aegir Migrate task and
+      of a Restore whose archive carries no database dump. myloader
+      opened every session with SQL_LOG_BIN=0, so on a box an xmass run
+      touched (the active of a standing mirror, a source mid-migration)
+      the loaded database never reached the replica, and the replica
+      stopped at the site's first write to it ("ERROR 1146 ... doesn't
+      exist"). Every load takes --ignore-set=SQL_LOG_BIN when the box's
+      myloader offers it. --enable-binlog would not do: the packaged
+      /etc/mydumper.cnf turns the binary log off again, and the 0.19.3
+      line refuses the option.
+
     * xcopy's create waits for a quiet target before it holds back the
       welcome mail, and xoct and xcopy say so when the hold was lifted
       during the install. A real xcopy refuses a target that holds its
