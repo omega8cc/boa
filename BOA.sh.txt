@@ -1894,13 +1894,15 @@ _fetch_versioned() {
 
 # The cron directory of an account's hostmaster platform (run inside the
 # real directory): stale patch leftovers dropped, and hosting_cron.module,
-# when it is a regular file without the queue patch, replaced by the patched
-# template $1 with the box IP $2. The module is read bounded and never
-# through a link, and the template is put as a fresh file with the
-# template's owner, group and mode, as cp -a left it, renamed over the name
-# (the account owns this directory and could put a link there).
+# when it is a regular file without the queue patch, or the one this step
+# put from the previous template (its md5 $3: those bytes with the box IP),
+# replaced by the patched template $1 with the box IP $2. Any other module
+# with the patch (the hosting module's own) is kept. The module is read
+# bounded and never through a link, and the template is put as a fresh file
+# with the template's owner, group and mode, as cp -a left it, renamed over
+# the name (the account owns this directory and could put a link there).
 _hm_cron_queue_here() {
-  local _st _uid _gid _mod
+  local _st _uid _gid _mod _sum
   if [ -e ./hosting_cron.module.orig ]; then
     rm -f -- ./hosting_cron.module.orig
   fi
@@ -1909,8 +1911,13 @@ _hm_cron_queue_here() {
   fi
   [ -e "${1}" ] || return 0
   [ -f ./hosting_cron.module ] && [ ! -L ./hosting_cron.module ] || return 0
-  [[ "$(_acct_read_here hosting_cron.module)" == *"core/cron.php"* ]] \
-    && return 0
+  if [[ "$(_acct_read_here hosting_cron.module)" == *"core/cron.php"* ]]; then
+    [ -n "${3}" ] || return 0
+    _sum=$(_acct_read_here hosting_cron.module | md5sum | cut -d' ' -f1)
+    [ "${_sum}" = "${3}" ] || return 0
+    [ "${_sum}" != "$(sed "s/127.0.0.1/${2}/g" "${1}" | md5sum | cut -d' ' -f1)" ] \
+      || return 0
+  fi
   _st=$(stat -c '%u %g %a' -- "${1}" 2> /dev/null) || return 1
   read -r _uid _gid _mod <<< "${_st}"
   sed "s/127.0.0.1/${2}/g" "${1}" \
@@ -2751,18 +2758,27 @@ _update_agents() {
     _fetch_versioned /var/xdrago/conf/control-readme.txt "${_urlHmr}/tools/system/conf/control-readme.txt" f99 --mode 644
   fi
 
-  if [ -d "/data/u" ] \
-    && [ ! -e "${_pthLog}/hosting.cron.queue.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+  # The queue template is fetched through _fetch_versioned, which holds a
+  # new serial while the mirror still serves the bytes already there and
+  # revalidates within the hour, so a changed template reaches the box
+  # whatever text it keeps. The accounts' copies are put from it once per
+  # release and in the pass in which it changes (_hm_cron_queue_here), and
+  # only from a template that carries the patch: a file without it is
+  # neither put nor stamped, and the next fetch asks again.
+  if [ -d "/data/u" ]; then
     _hQueueF="hosting_cron.module"
     _hQueueP="/var/xdrago/conf/${_hQueueF}"
-    [ -e "${_hQueueP}" ] && _isPatchedTpl=$(grep "core/cron.php" "${_hQueueP}")
-    if [ ! -e "${_hQueueP}" ] || [[ ! "${_isPatchedTpl}" =~ "core/cron.php" ]]; then
-      curl ${_crlGet} "${_urlHmr}/patches/${_hQueueF}" -o ${_hQueueP}
+    _hQueueS=""
+    _hQueueO=""
+    if [ -s "${_hQueueP}" ]; then
+      _hQueueS="$(md5sum "${_hQueueP}" 2> /dev/null | cut -d' ' -f1)"
+      _hQueueO="$(sed "s/127.0.0.1/${_LOC_IP}/g" "${_hQueueP}" 2> /dev/null \
+        | md5sum | cut -d' ' -f1)"
     fi
-    # Put and stamped only from a template that carries the patch: what a
-    # mirror that has not caught up hands over (or a failed fetch) is asked
-    # for again on the next pass, not stamped until the next serial.
-    if grep -q "core/cron.php" "${_hQueueP}" 2> /dev/null; then
+    _fetch_versioned "${_hQueueP}" "${_urlHmr}/patches/${_hQueueF}" f99 --mode 644
+    if grep -q "core/cron.php" "${_hQueueP}" 2> /dev/null \
+      && _source_due "${_hQueueP}" "${_hQueueS}" \
+        "${_pthLog}/hosting.cron.queue.ctrl.f95.${_tRee}.${_xSrl}.pid"; then
       for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
         _tUsr=
         _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
@@ -2778,7 +2794,7 @@ _update_agents() {
           _hmPlr=$(_acct_hm_root "${_pthSysUsr}") || continue
           _hmDir="${_hmPlr}/profiles/hostmaster/modules/aegir/hosting"
           _acct_in_real_dir "${_hmDir}/cron" \
-            _hm_cron_queue_here "${_hQueueP}" "${_LOC_IP}"
+            _hm_cron_queue_here "${_hQueueP}" "${_LOC_IP}" "${_hQueueO}"
         fi
       done
       touch ${_pthLog}/hosting.cron.queue.ctrl.f95.${_tRee}.${_xSrl}.pid
