@@ -61,7 +61,8 @@ _php_cli_local_dirs_update() {
 # set-ID), only inside the real directory $1, from
 # the directory find walked (-execdir) and through a handle opened without
 # following a link or blocking on a FIFO: a directory, or a regular file
-# with a single link, never a link, a FIFO or a hard-linked file.
+# with a single link, never a link, a FIFO or a hard-linked file (one root
+# does not own only loses its set-ID bits).
 #
 # $1 handed to $2 (owner[:group] names, as chown -R took them).
 _master_reown_in() {
@@ -82,7 +83,8 @@ _master_reown_here() {
 # A mode set through a handle on each name given (d: a directory, f: a
 # regular file with a single link), as chmod(1) sets a numeric one: a
 # directory keeps its set-user-ID and set-group-ID bits unless the mode has
-# five digits (02775).
+# five digits (02775). A hard-linked regular file root does not own only
+# loses those two bits, which never widens it.
 _MASTER_NOFOLLOW_CHMOD_PL='use Fcntl;
 my ($t, $ms) = (shift @ARGV, shift @ARGV);
 my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
@@ -91,6 +93,8 @@ for my $f (@ARGV) {
   my @s = stat($h);
   if ($t eq "f" && -f _ && $s[3] == 1) {
     chmod($m, $h);
+  } elsif ($t eq "f" && -f _ && $s[4] != 0 && ($s[2] & 06000)) {
+    chmod($s[2] & 01777, $h);
   } elsif ($t eq "d" && -d _) {
     chmod($m | ($s[2] & $k), $h);
   }
@@ -1212,9 +1216,9 @@ _aegir_master_upgrade() {
     chown -R aegir:aegir /var/aegir/drush
     # every account can write sites/all/* (group users) and the site's
     # files/ (group www-data) of this tree: walked as _master_reown_in and
-    # _master_mode_all_in walk, never handing over or moding a link or a
-    # file another account hard-linked there; a single-link file there
-    # never keeps an execute or set-group-ID bit
+    # _master_mode_all_in walk, never handing over or widening a link or a
+    # file another account hard-linked there; a file there never keeps a
+    # set-ID bit, nor a single-link one an execute bit
     _master_reown_in "${_THIS_HM_ROOT}" aegir
     _master_reown_in "${_THIS_HM_SITE}/files" aegir:www-data
     _master_mode_all_in "${_THIS_HM_SITE}/files" 02775 0664
