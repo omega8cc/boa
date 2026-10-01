@@ -1296,6 +1296,28 @@
       still waits for the canary's go-live, and a canary the box received
       still refuses both.
 
+    * A promoted mirror no longer mails clients its active was holding
+      mail for: every xmass sync pass carries the active's client mail
+      hold, other boxes' test-run marks and the xoct test-run records of
+      its accounts to the mirror, presence and absence. A box that holds
+      its clients' mail refuses a real prep-target or cutover up front,
+      where xoct used to refuse every account after the sites went down.
+
+    * A mirror built as an xmass test run (admail=) now has its own way
+      out: xmass go-live, while the pair stands at phase syncing, makes it
+      a real pair without mailing anyone. post-mig names a mail hold and
+      the test runs it finds on a promoted box, with the lines that remove
+      them.
+
+    * A test run's record now names its target, and xmass prep-target
+      toward another target refuses while it stands, instead of leaving
+      that target holding its clients' mail with nothing to end it.
+
+    * After a failback, xoct no longer sends a follow-up or a withdrawal
+      notice about a move back the client was never told of: a notice
+      sent as the target is logged apart and does not count on that box
+      as a source.
+
     * A run lock left by an instgrp run killed outright (out of memory, a
       stray kill -9) no longer keeps the limited-shell worker, the task
       queue runner and the nightly waiting for up to three hours: the
