@@ -2,22 +2,6 @@
 
 BOA stands for Barracuda, Octopus, and Ægir—a high-performance LEMP stack supporting Drupal from Pressflow 6 to the latest Drupal 11 (which needs Percona 8.4, see [docs/INSTALL.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/INSTALL.md)), as well as **Backdrop CMS**, **Grav CMS** and **Textpattern CMS**.
 
-## BOA-5.88.855: The Kraken Edition
-
-The biggest release since BOA-5.88.8 — **294 commits across seven repositories**, with every headline feature shipping for **both PRO and LTS** (the extended backup sub-system stays the sole PRO extra). The theme is safekeeping: a replication standby now holds a faithful copy whose database refuses every local write and whose files follow minutes behind on an armed cadence, your encrypted off-site backups open on your own workstation with the new boa-restore tool, and a new Migration source task wires site-to-site Drupal migrations in one click while the task queue learns to heal itself. Underneath, a class-wide hardening sweep ensures root never follows a tenant-planted symlink, a destroyed database name keeps zero residual access, and OpenSSL 3.5.8 LTS rebuilds every bundled PHP from 7.4 to 8.5. Four distributions return rebuilt on current cores — Varbase, OpenFed, Opigno LMS and Open Social — and Ægir adoption now covers Ubuntu and Drupal 6 estates end to end. The whole picture lives at [**docs.boa.io**](https://docs.boa.io). [**Read the full story!**](https://docs.boa.io/releases)
-
-## BOA-5.88.811: The Cadence Edition
-
-BOA-5.88.811 opens a new release cadence — **40 commits across four repositories**, with every headline feature shipping for **both PRO and LTS**. The centrepiece is estate-wide leftover management: an interrupted migrate, clone or restore no longer leaves invisible orphan sites and databases behind — the control panel now surfaces each one as a clearly-marked placeholder and purges it, including any orphaned copy database, on Drupal and Backdrop alike. Prebuilt stack packages reach Devuan Excalibur, extending the fast-install story BOA-5.88.8 opened on Daedalus — a timed fresh install now reaches a serving Ægir in **about 25 minutes** on a modest 4-core VM — while Backdrop support gains its first real-world polish: smoother conversions, a dependable admin bar, and a tidier control panel. Modern systems now keep their own OS security updates applied automatically between releases, activated only through BOA’s graceful reboot flow. Why 811? BOA now moves in small, frequent steps — a three-digit patch read as 8XY, the last digit tracking fixes and the middle one new features, both advancing here — so progress shows in the release stream itself. The whole picture lives at [**docs.boa.io**](https://docs.boa.io). [**Read the full story!**](https://docs.boa.io/releases)
-
-## BOA-5.88.8: The Continuity Edition
-
-A milestone for the 5.x tree — **422 commits across six repositories**, with every headline feature shipping for **both PRO and LTS**. Backdrop CMS becomes a first-class citizen, enabled by default, complete with a Drupal 6 → 7 → Backdrop upgrade chain running as ordinary control-panel tasks. Classic Ægir estates get a supported road into BOA, the rebuilt migration suite moves whole servers across Percona generations, and years of documentation come together on the new unified docs site: [**docs.boa.io**](https://docs.boa.io). Why the eights? Turn one on its side — continuity is the point. [**Read the full story!**](https://github.com/omega8cc/boa/blob/5.x-dev/releases/BOA-5.88.8-PRO.md)
-
-## Strap in, your sites are getting an F1 engine
-
-We’re rolling out a meaningful upgrade across BOA/Omega8.cc nodes: HTTP/3 and KTLS support. If you run Drupal sites that should feel fast and responsive (and stay that way during spikes), this is genuinely good news. Why this is a big deal? What visitors should notice? Why it matters for *your server* too [**Read the full story!**](https://github.com/omega8cc/boa/tree/5.x-dev/HTTP3.md)
-
 ## 30 Years of Heritage
 
 We are unique within the hosting industry for many important reasons. Our 15 years of Ægir-based hosting, plus earlier experience with Adgrafix (the first company to offer a control panel for website management in 1995), have helped shape what makes us different today. We take **Open Source seriously** — it’s not a buzzword for us. It’s about freedom from corporate control. Here's a short look back at our 15-year Ægir journey and 19 years with Drupal. [**Read the full story!**](https://github.com/omega8cc/boa/tree/5.x-dev/DIFFERENT30Y.md)
