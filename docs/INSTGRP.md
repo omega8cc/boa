@@ -328,21 +328,200 @@ meets (it covers `/var/www` too) keeps its gid, as `<gid>-purged`.
   stay `root:users` and group-writable by every account, by design.
   Cross-tenant write into a shared codebase is not closed by this change.
 - The master (`/var/aegir`) keeps its own group `aegir` plus `users`, as
-  before.
+  before; its web paths have a web group of their own, `wg-aegir`, once an
+  operator converts it (below).
+- The web group (below) does not close what another account's code can
+  reach through nginx (a request for a file a site of this account serves)
+  or through its own database user's grants; both need code running as that
+  account's backend user. Within one account, every site and sub-account
+  still shares the one web group.
+- Processes already running with `www-data` when an account enters phase B
+  (a shell session, a long Drush run) keep it until they end: the run counts
+  them and tells the account to reconnect, and never kills them.
 
 ## The account's own web group (`wg-oN`)
 
-`wg-oN` is reserved as each account's own web group: the groundwork for
-taking tenants out of the shared `www-data` group their sites' files and
-FPM pools meet in today. No tool creates it yet, and while it does not
-exist nothing changes. New account names may not begin with `wg-` nor hold
+The per-instance group closes one account's code and credentials to the
+others. The web group closes the rest: a site's files, private files and
+settings. Until an account is converted to its own web group they are in
+the box-wide group `www-data`, which every account's PHP pools and shell
+users are members of, so any of them can read another account's uploads and
+private files. The web group `wg-oN` takes that role for one account only:
+the account's identities and its pool users are listed in it, and its web
+paths are handed to it. New account names may not begin with `wg-` nor hold
 a dot.
 
-Once an account holds it, `convert`, `reclaim`, the nightly and the
-restore and migration passes leave its paths alone, and the account's
-identities and pools are listed in it. Writers use it for the account's
-web paths only once root's record `/root/.oN.web-group.txt` says the
-account is converted.
+### Arming
+
+Nothing converts until the box is armed: `_WEB_GROUP_ARM=YES` in
+`/root/.barracuda.cnf`. Every barracuda pass then writes the stamp
+`/var/log/boa/instgrp-web-arm.ready.txt`, and removes it while the setting
+is NO. `_WEB_GROUP_PHASE_B=YES` beside it lets the Octopus arm go on to
+phase B (below). Both are NO by default. Before arming a box, run
+`instgrp webcheck --report`: it lists the writers that must be current on
+the box, the stamp, and for each account whether it is ready and which of
+its sites share a files store with another account.
+
+A box is ready for a first conversion when the stamp exists, every fetched
+writer the conversion relies on carries its web-group form (`instgrp`, the
+limited-shell worker, the nightly, both site scripts, `xtrim`, `xoct`,
+`xcopy`, `xmass`, `aegir2boa-stage2`), and the account's own provision copy
+carries the web-group branch that keeps its private files closed. A box
+that is not ready refuses with exit 5 and changes nothing.
+
+### Phase A and phase B
+
+- **Phase A**: `wg-oN` is made, every identity of the account and every pool
+  user is listed in it, the web paths (settings files, the files and
+  private stores) are handed to it, the private files take `02770`/`0660`
+  (the subtrees nginx never serves, `civicrm/{ConfigAndLog,custom,upload,templates_c}`,
+  `backup_migrate` and `config_*`, count as private), the secret files
+  (settings, Grav's and Textpattern's credential stores, `.env`) are
+  narrowed to their owner and group, and the account's Drush alias
+  `web_group` names `wg-oN`. The account's identities are still in
+  `www-data` in phase A: nothing a site reads stops being readable.
+- **Phase B**: the account's pools run in `wg-oN` (a `group =` line in each
+  of its pool files), and its tenant identities (`oN`, `oN.ftp` and the
+  sub-accounts) leave `www-data`. From then on no pool and no shell user of
+  another account can read the account's web paths.
+
+The Octopus upgrade runs the conversion for every account (the arm, after
+the per-instance group's own step): phase A on an armed box, and phase B
+where `_WEB_GROUP_PHASE_B=YES`. A new account is converted right after its
+install.
+
+### What refuses a conversion
+
+A first conversion, and every step up to phase B, is gated; a refusal
+changes nothing and names its reason:
+
+- the account's opt-out, `_WEB_GROUP=NO` in `/root/.oN.octopus.cnf` (the arm
+  and `webconvert all` honour it; a per-account operator `webconvert`
+  overrides and removes it);
+- an account not yet on its per-instance group;
+- the box not ready (above);
+- a site of the account reading another account's files store (an outbound
+  share), a site on the shared `/data/all` stores or any other site whose
+  directory lies outside the account's tree, or a site's `files` or
+  `private` store outside the account's own places: converting would cut
+  those sites off from the files they read, or point root's walks where no
+  store belongs. A store is the account's own only as a real directory of
+  the site, or as a link into the account's own `static/files/` (or its
+  store on attached storage), as the site scripts take it, never into
+  BOA's own folders there (`.backups`, `.backup-exports`, `.archived`); a
+  store link anywhere else, even inside the account's tree, refuses the
+  conversion.
+  A share INTO the account's store never stops anything; both accounts are
+  told (see `FILES-SYMLINK.md`);
+- www-data left in the account's settings files, store tops or private set
+  before phase B.
+
+A frozen account (`log/proxied.pid`, a migration in flight) is skipped,
+exit 4, unless an operator passes `--force`. A standby box (xmass's
+`/root/.standby.cnf`, or `/root/.standby.prep.cnf` while a box is being
+prepared as one) refuses every verb but `webrevert`.
+
+### The verbs
+
+    instgrp webconvert <oN> [--phase-a|--phase-b] [--force]
+    instgrp webconvert all [--phase-b]
+    instgrp webrevert  <oN> [--keep-enabled] [--force]
+    instgrp webstatus  <oN>|aegir|all
+    instgrp webcheck   [--report]
+    instgrp webdrift   <oN>|aegir [--report [--deep]] | --box
+
+- `webconvert <oN>` takes the account as far as it already goes or to
+  phase A, whichever is higher; `--phase-b` takes it to phase B; `--phase-a`
+  stops at A and pins it there (the arm and `all --phase-b` leave a pinned
+  account at A; only a per-account `--phase-b` unpins).
+- `webconvert all` converts every account, in three rounds so each PHP
+  version is reloaded once.
+- `webrevert <oN>` goes back the whole way: phase B undone first, then A,
+  then the group removed. It writes the opt-out first, so the arm does not
+  convert the account again; `--keep-enabled` writes none.
+- `webstatus` prints what the account carries (group, members, `www-data`
+  listings, pool lines, the pools' groups, the alias, the tops), the intent
+  and the record, and a verdict: `NONE`, `A`, `B`, `BETWEEN(...)` naming
+  what differs, or `FOREIGN` (someone outside the account holds `wg-oN`).
+- `webcheck` is the readiness report above.
+- `webdrift` is what the watchers read (below).
+
+Exit codes: 0 done, 1 failed, 2 residue or a group kept, 4 busy or frozen,
+5 not ready, 6 refused or deferred (opted out, a share, a standby, a revert
+in progress, a pin, the task queue not drained). Only `webrevert` and
+`--phase-a` ever lower an account; nothing else does, whatever it finds.
+
+### Intent and record
+
+Two root-only files per account say where it stands:
+
+- the intent, `/var/log/boa/instgrp-web.oN.txt`: the level the last run
+  aimed at, the `--phase-a` pin, and that run's exit code;
+- the record, `/root/.oN.web-group.txt` (`wg-oN gid=<n> phase=<A|B>`): the
+  level reached. The writers (the site scripts, the nightly, the pool
+  writers) read only the record, and only while `wg-oN` exists under the
+  gid it names.
+
+Both stay on the box: a migration carries neither (below), and a backup of
+`/root` or `/var/log` restored later can bring back a stale one, which the
+watchers then report. A phase B whose final check fails is rolled back;
+when that rollback cannot finish, the record keeps phase B with a mark
+(`rb=1`), and the next run checks the account's shares again before it
+completes phase B, so a share made in between is refused rather than cut
+off.
+
+### Watching for drift
+
+The 3-minute limited-shell worker and the nightly read each converted
+account's state against its intent and record (`instgrp webdrift`) and
+raise what differs through their incident channels (the worker's
+`/var/log/boa/manage_ltd.incident.log` and one mail a day per condition,
+the nightly's incident mail to the box's operator address, never the
+account owner). A
+run killed half way, a lost intent or record, a pool line or a `www-data`
+listing changed by hand, or a stale record restored all show there. The
+nightly also reads the account's private set in depth (`--deep`) and runs
+`instgrp reclaim` when `www-data` is back in it.
+
+A file uploaded into a public directory with no world read (a `0640`
+upload) would be refused by nginx in phase B. The worker opens such files
+on its next pass (world read and directory search added, only to a file
+with one link, never in the private set). When its walk of an account runs
+out of time three passes in a row it says so, and the nightly then walks
+the account's public set whole (`instgrp reclaim`, after the site loop),
+which also moves the worker's starting point forward. When the worker
+still finishes no pass after that (a store too large for its time bound),
+the nightly repeats the walk once a week; the site loop's permissions
+pass keeps each site's files store public in between.
+
+### The master (`wg-aegir`)
+
+The same verbs take `aegir` for the master instance: `wg-aegir`, whose
+members are `aegir` and every master pool user `wwwNN`. Phase B takes the
+`wwwNN` users out of `www-data` (the backend user `aegir` stays in it) and
+runs the master's pools in their own groups. `webconvert aegir` holds the
+master's task queue and parks the aegir crontab for its whole run. The
+master is converted by an operator only; the Octopus arm never touches it.
+Once converted, hostmaster's own `files/`, the site scripts and the
+`/var/www` tools (Adminer, Chive, SQL Buddy, CGP) take `wg-aegir` or the
+serving pool's group.
+
+### Migrations and standby boxes
+
+`xoct`, `xcopy` and `xmass` carry the opt-out: `_WEB_GROUP=NO` is written
+into the new account's cnf on the target before its install (so the
+install's own arm leaves it alone), and `xoct` and `xmass` mirror it at
+every later cnf merge, its removal included. They carry neither the intent
+nor the record, so a `--phase-a` pin and a revert in progress stay behind:
+the account converts on the target by that box's own settings, and the
+tools print a NOTE naming the command to run there. See `MIGRATE-XOCT.md`
+and `MIGRATE-XMASS.md`.
+
+A box being prepared as an xmass standby carries `/root/.standby.prep.cnf`
+from `xmass prep-target` on: its accounts stay unconverted until the
+promotion, and convert, gated, on the first Octopus pass after it. A
+preparation given up leaves the mark, and every conversion refused, until
+it is removed by hand.
 
 ## Operator notes
 

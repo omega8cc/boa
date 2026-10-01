@@ -4305,8 +4305,18 @@ _octopus_cleanup() {
         if [ "${_wgDo}" = "1" ]; then
           _purge_group_drop "wg-${_usEr}" "${_wgGid}"
         fi
-        # root's record of the account's conversion to it goes with the account
+        # root's record of the account's conversion to it goes with the account,
+        # with the conversion's intent, its notes and the D9 stamp
         rm -f -- "/root/.${_usEr}.web-group.txt"
+        rm -f -- "/var/log/boa/instgrp-web.${_usEr}.txt" \
+          "/var/log/boa/instgrp-web.${_usEr}.notes.txt" \
+          "/var/log/boa/instgrp-web.${_usEr}.procs.txt" \
+          "/var/log/boa/instgrp-web.${_usEr}.dr1.txt" \
+          "/var/log/boa/manage-ltd-d9.${_usEr}.txt" \
+          "/var/log/boa/manage-ltd-d9.${_usEr}.txt.next" \
+          "/var/log/boa/manage-ltd-d9.${_usEr}.txt.wg-next" \
+          "/var/log/boa/manage-ltd-d9.${_usEr}.txt.rebase" \
+          "/var/log/boa/manage-ltd-d9.${_usEr}.txt.slow"
         if nginx -t &> /dev/null; then
           service nginx reload &> /dev/null
           echo "nginx configtest OK, reloaded"

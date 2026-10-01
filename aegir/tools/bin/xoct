@@ -164,6 +164,90 @@ _web_group_on_target() {
   esac
 }
 
+# The web-group facts of the account $1 on this box, one line for the
+# helper below: "XMWF:<state>:<phase B>:<opt-out>", the state as
+# _web_group_state prints it, YES when /root/.barracuda.cnf sets
+# _WEB_GROUP_PHASE_B=YES (NO otherwise), NO when the account's cnf carries
+# _WEB_GROUP=NO (- otherwise). Sent to the target, never run here.
+# shellcheck disable=SC2329
+_web_group_facts_here() {
+  local _s _b=NO _n=-
+  _s=$(_web_group_state "${1}")
+  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=[\"']?YES" /root/.barracuda.cnf 2> /dev/null && _b=YES
+  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=[\"']?NO" "/root/.${1}.octopus.cnf" 2> /dev/null && _n=NO
+  echo "XMWF:${_s%% *}:${_b}:${_n}"
+}
+
+# The facts above for the account $1 on the target $2, asked of the target
+# itself: "<state>:<phase B>:<opt-out>". Prints nothing and returns 1 when
+# the target cannot be asked. Verbatim in xoct, xcopy and xmass.
+_web_group_facts_on_target() {
+  local _a="${1}" _h="${2}" _o
+  case "${_a}" in ""|*[!a-z0-9-]*) return 1 ;; esac
+  [ -n "${_h}" ] || return 1
+  _o=$( { declare -f _web_group_state _web_group_facts_here
+    printf '%s\n' "_web_group_facts_here '${_a}'"; } \
+    | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" "bash -s" 2> /dev/null \
+    | grep -m1 -x -E 'XMWF:(none|foreign|held|converted|phaseb):(YES|NO):(NO|-)')
+  [ -n "${_o}" ] || return 1
+  echo "${_o#XMWF:}"
+}
+
+# What a migration does not carry of the account's web-group state, told
+# when the move takes effect: a NOTE each, never a refusal. $1 the account
+# here, $2 the account on the target $3; $4 "cnf" for a tool with no cnf
+# merge (xcopy), whose opt-out is named whenever the target's cnf lacks it,
+# otherwise it is named once the account there already carries its web
+# group. Read here: the account's web-group state, its intent (a --phase-a
+# pin, a revert in progress) and its opt-out; asked of the target: the facts
+# above. Verbatim in xoct, xcopy and xmass.
+_wg_migration_notes() {
+  local _a="${1}" _d="${2}" _h="${3}" _how="${4:-state}" _s _i="" _no=NO _f _t _ts _tb _tn
+  _s=$(_web_group_state "${_a}" | cut -d' ' -f1)
+  _f="/var/log/boa/instgrp-web.${_a}.txt"
+  if [ -f "${_f}" ] && [ ! -L "${_f}" ] && [ "$(stat -c %u -- "${_f}" 2> /dev/null)" = "0" ]; then
+    _i=$(timeout 10 dd if="${_f}" iflag=nofollow,nonblock bs=4096 count=1 status=none 2> /dev/null | head -n 1)
+  fi
+  case "${_i}" in
+    target=*) ;;
+    *) _i="" ;;
+  esac
+  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=[\"']?NO" "/root/.${_a}.octopus.cnf" 2> /dev/null && _no=YES
+  [ "${_s}" = "none" ] && [ -z "${_i}" ] && [ "${_no}" = "NO" ] && return 0
+  if ! _t=$(_web_group_facts_on_target "${_d}" "${_h}"); then
+    echo "NOTE: the web-group state of ${_d} on ${_h} could not be read; run 'instgrp webstatus ${_d}' there"
+    return 0
+  fi
+  IFS=: read -r _ts _tb _tn <<< "${_t}"
+  case "${_s}:${_ts}" in
+    converted:none|converted:held|converted:foreign|phaseb:none|phaseb:held|phaseb:foreign)
+      echo "NOTE: ${_a} uses its own web group here and ${_d} on ${_h} does not: its web paths are in www-data there until that box converts it, by its own policy"
+      ;;
+  esac
+  case " ${_i} " in
+    *" pin=phase-a "*)
+      echo "NOTE: ${_a} is pinned at phase A here; the pin does not travel: run 'instgrp webconvert ${_d} --phase-a' on ${_h} to pin it there"
+      ;;
+  esac
+  case "${_i}" in
+    "target=none "*)
+      echo "NOTE: a web-group revert of ${_a} is in progress here and does not travel: ${_d} converts on ${_h} by that box's policy unless its opt-out went with it; run 'instgrp webrevert ${_d}' on ${_h} to revert it there"
+      ;;
+  esac
+  if [ "${_s}" = "phaseb" ] && [ "${_tb}" != "YES" ] && [ "${_ts}" != "phaseb" ]; then
+    echo "NOTE: ${_a} is at phase B here and ${_h} has _WEB_GROUP_PHASE_B off: ${_d} converts there to phase A only; run 'instgrp webconvert ${_d} --phase-b' on ${_h}"
+  fi
+  if [ "${_no}" = "YES" ]; then
+    if [ "${_how}" = "cnf" ]; then
+      [ "${_tn}" = "NO" ] \
+        || echo "NOTE: ${_a} is opted out here (_WEB_GROUP=NO) and /root/.${_d}.octopus.cnf on ${_h} does not say so: run 'instgrp webrevert ${_d}' on ${_h}, which writes the opt-out there"
+    elif [ "${_ts}" != "none" ]; then
+      echo "NOTE: ${_a} is opted out here (_WEB_GROUP=NO), and ${_d} on ${_h} took its web group before the opt-out reached it: run 'instgrp webrevert ${_d}' on ${_h}"
+    fi
+  fi
+  return 0
+}
+
 ###
 ### Avoid too many questions
 ###
@@ -3733,6 +3817,14 @@ _xoct_push_target_octopus_cnf() {
       && mv -f "${_lTmp}.admail" "${_lTmp}" \
       && echo '_SEND_UPGRADE_EMAIL=NO' >> "${_lTmp}"
   fi
+  # The web-group opt-out mirrors the source both ways: _WEB_GROUP=NO
+  # travels, and a source without it removes a stale one on the target (the
+  # merge otherwise keeps every line the source lacks).
+  if grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=[\"']?NO" "${_sCnf}" 2>/dev/null; then
+    printf '%s\n' "_WEB_GROUP=NO" >> "${_lTmp}"
+  else
+    printf '%s\n' "-_WEB_GROUP" >> "${_lTmp}"
+  fi
   {
     echo '#!/bin/bash'
     echo "_cnf=\"${_dCnf}\""
@@ -3743,6 +3835,11 @@ _xoct_push_target_octopus_cnf() {
 [ -e "${_mrg}" ] || exit 1
 while IFS= read -r _l; do
   case "${_l}" in
+    -_WEB_GROUP)
+      grep -v "^_WEB_GROUP=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+      mv -f "${_cnf}.mrgnew" "${_cnf}"
+      continue
+      ;;
     _*=*) : ;;
     *) continue ;;
   esac
@@ -4285,6 +4382,54 @@ _xoct_import_precheck() {
   echo "ERROR: import for ${_oct}: ${_why}"
   echo "ERROR: nothing was imported and nothing on this box was changed; fix the cause and re-run"
   return 1
+}
+
+# The source's web-group opt-out, seeded into the new account's cnf on the
+# target before its install, so the arm that install runs (INIT) leaves the
+# account alone there: _WEB_GROUP=NO when the source's cnf says NO (the file
+# made, root 0600, when absent), a _WEB_GROUP line removed when it does not.
+# Only while the name is free there: otherwise the install refuses it, and
+# the line would land in another account's cnf. What was written is taken
+# back when the install does not happen.
+# 1 = account here 2 = account on the target 3 = target
+_XOCT_WG_SEED=""
+_xoct_wg_seed() {
+  local _no=NO
+  _XOCT_WG_SEED=""
+  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=[\"']?NO" "/root/.${1}.octopus.cnf" 2> /dev/null && _no=YES
+  # the names expand here on purpose: the remote side gets them as text
+  # shellcheck disable=SC2029
+  _XOCT_WG_SEED=$(ssh root@"${3}" "getent passwd ${2} > /dev/null 2>&1 && exit 0
+    _c=/root/.${2}.octopus.cnf
+    if [ ${_no} = YES ]; then
+      if [ ! -e \${_c} ]; then
+        ( umask 077; printf '_WEB_GROUP=NO\\n' > \${_c} ) && echo made
+      elif ! grep -q '^_WEB_GROUP=NO\$' \${_c}; then
+        grep -v '^_WEB_GROUP=' \${_c} > \${_c}.wgseed
+        printf '_WEB_GROUP=NO\\n' >> \${_c}.wgseed && mv -f \${_c}.wgseed \${_c} && echo line
+      fi
+    elif [ -e \${_c} ] && grep -q '^_WEB_GROUP=' \${_c}; then
+      grep -v '^_WEB_GROUP=' \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}
+    fi" 2> /dev/null)
+  case "${_XOCT_WG_SEED}" in
+    made|line) echo "INFO: the source's _WEB_GROUP=NO put into /root/.${2}.octopus.cnf on ${3} before its install" ;;
+  esac
+  return 0
+}
+# 1 = account on the target 2 = target
+_xoct_wg_unseed() {
+  case "${_XOCT_WG_SEED}" in
+    made)
+      # shellcheck disable=SC2029
+      ssh root@"${2}" "rm -f /root/.${1}.octopus.cnf" 2> /dev/null
+      ;;
+    line)
+      # shellcheck disable=SC2029
+      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -v '^_WEB_GROUP=NO\$' \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}" 2> /dev/null
+      ;;
+  esac
+  _XOCT_WG_SEED=""
+  return 0
 }
 
 ### A create marks the account it installed on the target: a root-only file
@@ -5025,6 +5170,7 @@ _migrate_prepare() {
         ### the EXIT handler, which does the removals.
         trap '_xoct_chattr_back; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
         trap 'exit 130' INT TERM HUP
+        _xoct_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         ssh root@${_tgt} "/opt/local/bin/boa ${_IN_VERB} ${_XOCT_INSTALL_EMAIL} ${_TGT_HM_USER} ${_TGT_TREE} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
         _INSTALL_RC=$?
         if [ "${_SILENT_MARKER}" = "YES" ]; then
@@ -5048,6 +5194,7 @@ _migrate_prepare() {
           && [ -s /data/disk/${_TGT_HM_USER}/log/octopus_log.txt ] \
           && echo BORN" 2>/dev/null)
         if [ "${_INSTALL_RC}" != "0" ] || [ "${_TGT_BORN}" != "BORN" ]; then
+          _xoct_wg_unseed "${_TGT_HM_USER}" "${_tgt}"
           echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} did not happen (launcher rc=${_INSTALL_RC});"
           echo "ALRT: read the launcher output above -- re-run this create once ${_tgt} is quiet"
           exit 1
@@ -6917,7 +7064,8 @@ _migrate_init() {
             && _xoct_in_real_dir "${_USR}/clients" _xoct_copy_mk_here "${_tgt}" \
               "${_DST}/clients" '*' -aEAXqu ${_ieni} &> /dev/null
           # instance-group.txt records the SOURCE box's conversion (its gid);
-          # it must never travel, the destination pass writes its own.
+          # it must never travel, the destination pass writes its own, and
+          # web-group-notes.txt names the source box's web-group state.
           ### log/ is oN's on both boxes: copied from inside the real
           ### directory into the real directory, the glob expanded there.
           ### The account's own log/email.txt goes over the install's copy
@@ -6925,7 +7073,8 @@ _migrate_init() {
           ### target keeps the client's address, or list, exactly as it is.
           if _xoct_leg_ok "${_USR}/log"; then
             _xoct_in_real_dir "${_USR}/log" _xoct_copy_here "${_tgt}" "${_DST}/log" '*' \
-              -aEAXqu ${_ieni} --exclude=instance-group.txt --exclude=proxy-failed.pid
+              -aEAXqu ${_ieni} --exclude=instance-group.txt --exclude=proxy-failed.pid \
+              --exclude=web-group-notes.txt
             _xoct_in_real_dir "${_USR}/log" _xoct_put_file_remote_here \
               email.txt "${_tgt}" "${_DST}/log" "${_ieni}"
           fi
@@ -7055,6 +7204,12 @@ _migrate_init() {
             echo "ERROR: ${_cmd} for ${_oct}: a store/symlink could not be placed on the target (see DENY above); NOT marking transfer complete"
             exit 1
           fi
+
+          # What the move does not carry of the web-group state (a pin, a
+          # revert in progress, phase B onto a box with it off, an opt-out
+          # that arrived after the target converted): named once the copy is
+          # there, never a refusal.
+          [ "${_cmd}" = "transfer" ] && _wg_migration_notes "${_oct}" "${_DST##*/}" "${_tgt}" state
 
           if [ "${_MODE}" = "LIVE" ]; then
             if [ ! -z "${_dst}" ] && [ "${_dst}" != "${_oct}" ]; then

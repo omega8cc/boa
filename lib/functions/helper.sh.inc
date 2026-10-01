@@ -432,6 +432,79 @@ _web_group() {
   esac
 }
 
+_web_group_rb() {
+  # "rb" when the account's record says phase B (_web_group_state phaseb)
+  # and carries the fourth field rb=1: a rollback of phase B was cut short,
+  # so the record says B only because the pools may still lack www-data, and
+  # no share check has passed since. Empty otherwise. The pool line is left
+  # out while it stands and the account's shell user is still listed in
+  # www-data. $1 as _web_group_state.
+  local _s _a _r _rg="" _rgid="" _rph="" _rtk="" IFS=$' \t\n'
+  _s=$(_web_group_state "${1}")
+  [ "${_s%% *}" = "phaseb" ] || return 0
+  _a="${_s##* }"
+  _a="${_a#wg-}"
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _rtk _ < "${_r}" || :
+  fi
+  if [ "${_rg}" = "${_s##* }" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ] \
+    && [ "${_rph}" = "phase=B" ] && [ "${_rtk}" = "rb=1" ]; then
+    echo "rb"
+  fi
+  return 0
+}
+_master_web_group() {
+  # The master's own web group, wg-aegir, the way _web_group_state reads an
+  # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its
+  # holders are aegir and the master pool users wwwNN; anyone else holding
+  # it makes it foreign. The record is /root/.aegir.web-group.txt, root's
+  # own file, "wg-aegir gid=<n> phase=<A|B> ...".
+  local _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  _e=$(getent group wg-aegir 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^(aegir|www[0-9][0-9])$ ]] \
+      || { echo "foreign ${_gid} wg-aegir"; return 0; }
+  done
+  _r="/root/.aegir.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-aegir" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-aegir"
+  else
+    echo "held ${_gid} wg-aegir"
+  fi
+}
+_master_web_group_rb() {
+  # "rb" when the master's record says phase B and carries the fourth field
+  # rb=1 (a rollback of its phase B cut short), empty otherwise: the master
+  # pool line group = wwwNN is then left out, whatever W says.
+  local _s _rg="" _rgid="" _rph="" _rtk="" IFS=$' \t\n'
+  _s=$(_master_web_group)
+  [ "${_s%% *}" = "phaseb" ] || return 0
+  if [ -f /root/.aegir.web-group.txt ] && [ ! -L /root/.aegir.web-group.txt ] \
+    && [ "$(stat -c %u -- /root/.aegir.web-group.txt 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _rtk _ < /root/.aegir.web-group.txt || :
+  fi
+  if [ "${_rg}" = "wg-aegir" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ] \
+    && [ "${_rph}" = "phase=B" ] && [ "${_rtk}" = "rb=1" ]; then
+    echo "rb"
+  fi
+  return 0
+}
+
 #
 # An account owns its static/control (and oN owns the rest of /data/disk/oN),
 # so it can put a link or a FIFO at any name there, or turn static/control

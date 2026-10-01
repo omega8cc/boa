@@ -109,8 +109,9 @@ if [ -e "/root/.standby.cnf" ]; then
         # No replica config AND the DB unlocked: only a cutover does that
         # (its step 11.5 clears super_read_only on the promoted box before
         # step 15 removes the marker), so a marker still here is the
-        # leftover of a step 15 that could not confirm its removal. Drop it.
-        rm -f /root/.standby.cnf /root/.standby.init.pid /run/boa_standby_lost_logged.pid \
+        # leftover of a step 15 that could not confirm its removal. Drop it,
+        # with the standby preparation mark that goes with it.
+        rm -f /root/.standby.cnf /root/.standby.prep.cnf /root/.standby.init.pid /run/boa_standby_lost_logged.pid \
           /run/boa_standby_stall_logged.pid
         echo "Removed STALE /root/.standby.cnf: probe ran clean, box has NO replica config and its DB is unlocked (promoted) on $(date)" \
           >> /var/log/boa/standby.quiesce.log

@@ -831,10 +831,15 @@ _satellite_tune_fpm_config() {
     # Once the account's identities have left www-data, its pool runs in the
     # account's own web group (after the include, which sets www-data). A
     # group that does not resolve would fail this whole PHP version on
-    # reload, so it is written only when it does.
+    # reload, so it is written only when it does. A record of B left by a
+    # phase-B rollback that was cut short (rb=1) does not count while the
+    # account's own user is still listed in www-data: the pool keeps
+    # www-data until the next conversion run has re-checked shares.
     _T_WGS=$(_web_group_state "${_USER}")
     if [ "${_T_WGS%% *}" = "phaseb" ] && [ "${_T_WGS##* }" = "wg-${_USER}" ] \
-      && getent group "${_T_WGS##* }" > /dev/null 2>&1; then
+      && getent group "${_T_WGS##* }" > /dev/null 2>&1 \
+      && ! { [ "$(_web_group_rb "${_USER}")" = "rb" ] \
+        && [[ ",$(getent group www-data | cut -d: -f4)," == *",${_USER},"* ]]; }; then
       echo "group = ${_T_WGS##* }" >> /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
     fi
     mkdir -p /var/www/phpcache/${_USER}/${_USER}.{85,84,83,82,81,80,74,73,72,71,70,56}
@@ -5617,6 +5622,47 @@ _satellite_if_instance_group() {
   esac
   # The rest of this run writes with whatever group the account carries now.
   _ACCG=$(_acct_group "${_USER}")
+}
+
+# The account's own web group, wg-<account> (instgrp webconvert, delivered by
+# BOA.sh.txt), right after the per-instance group on every INIT and UPGRADE
+# pass. The tool decides what this pass does: a first conversion only past
+# the opt-out (_WEB_GROUP=NO in the octopus cnf), the per-instance group, the
+# box's readiness stamp (written while _WEB_GROUP_ARM=YES) and the share
+# scan; phase B only on a box with _WEB_GROUP_PHASE_B=YES; nothing on a
+# standby. It resumes or verifies what the account already carries.
+_satellite_if_web_group() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_if_web_group $1"
+    _debug_proc
+  fi
+  [ "$1" = "post" ] || return 0
+  case "${_STATUS}" in
+    INIT|UPGRADE) ;;
+    *) return 0 ;;
+  esac
+  if [ ! -e "/opt/local/bin/instgrp" ] \
+    || ! grep -q "^_wg_table() {" /opt/local/bin/instgrp 2> /dev/null; then
+    return 0
+  fi
+  bash /opt/local/bin/instgrp webconvert "${_USER}" --from-octopus
+  _wGrc=$?
+  # ALRT: is what the octopus report classifier reads; a deferral or a
+  # refusal the tool explains is a note
+  case "${_wGrc}" in
+    0) ;;
+    2) _msg "NOTE: instgrp webconvert ${_USER} left web paths to re-group (written during the walk); the next pass finishes them, see /var/log/boa/instgrp.log" ;;
+    5) _msg "NOTE: instgrp webconvert ${_USER} deferred: this box is not ready for the web group (instgrp webcheck)" ;;
+    6) _msg "NOTE: instgrp webconvert ${_USER} refused or deferred (opted out, a share, a standby, a revert in progress, or the task queue busy), see /var/log/boa/instgrp.log" ;;
+    *)
+      case "${_wGrc}" in
+        1) _wGwhy="failed" ;;
+        3) _wGwhy="inconsistent" ;;
+        4) _wGwhy="skipped: busy or frozen" ;;
+        *) _wGwhy="unexpected exit code" ;;
+      esac
+      _msg "ALRT: instgrp webconvert ${_USER} returned ${_wGrc} (${_wGwhy}), see /var/log/boa/instgrp.log" ;;
+  esac
 }
 
 _satellite_if_add_ftps_lshell_access() {

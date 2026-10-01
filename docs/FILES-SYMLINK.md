@@ -525,6 +525,28 @@ link when it was taken, so the restored real directory is converted into the
 site's own store. Only a symlink-preserving or DB-only archive leaves a share
 intact — see *Restore behaviour*.
 
+**Shares and the account web group.** A share between two sites of one
+account is untouched by the account's conversion to its own web group
+(`wg-oN`, see `INSTGRP.md`). A share across accounts is not:
+
+- **Outbound** (a site of this account reads another account's store): the
+  account's conversion is refused, and so is its step into phase B, until
+  the share is gone; the account is told which site reads which store. A
+  site on the shared `/data/all` stores refuses it the same way, and so
+  does a site's `files` or `private` link that leads anywhere but the
+  account's own `static/files/` (or its store on attached storage), or
+  into BOA's own folders there (`.backups`, `.backup-exports`,
+  `.archived`).
+- **Inbound** (another account's site reads this account's store): never
+  refused, and both accounts are told. Once this account is converted, the
+  reading site loses write to the store and, for a private store, read too:
+  the store's files are in this account's web group, which the other
+  account's pools are not in.
+
+Give each account's site its own copy before converting either account. A
+later change is planned to make nginx refuse a site's links into another
+account's store outright.
+
 ## Cloning behaviour in detail
 
 A clone is built from a backup of the source site. Implicit backups preserve
@@ -708,7 +730,10 @@ The Ægir paths are unchanged (the symlinks are transparent), so `backup_path` a
 `aegir_backup_export_path` keep working. Both targets live **under** `static/files`
 so they share one filesystem — the backup-download **hardlinks** between `backups`
 and `backup-exports` keep working (hardlinks cannot cross filesystems) — and the
-leading-dot names are skipped by the site/orphan scan, like `.archived`.
+leading-dot names are skipped by the site/orphan scan, like `.archived`. A site's
+`files` or `private` link into one of these folders, or to `static/files` itself,
+is never taken as the site's store: the nightly permissions pass leaves it as it
+is, and so do the account web group's walks (see `INSTGRP.md`).
 
 - **Gated on a separate filesystem.** On a default single-filesystem box
   `static/files` is on the root device, so there is nowhere better to put backups
@@ -908,7 +933,8 @@ ls -l  /data/disk/o1/.../sites/example.com/{files,private}
 readlink /data/disk/o1/.../sites/example.com/files
 #   -> /data/disk/o1/static/files/example.com/files
 
-# The store dir itself must be writable by the web group (account user:www-data):
+# The store dir itself must be writable by the web group (account user and
+# www-data, or wg-<account> once the account is converted to its own):
 ls -ld /data/disk/o1/static/files/example.com/files
 #   -> drwxrwsr-x o1 www-data
 

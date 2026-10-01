@@ -294,6 +294,90 @@ _web_group_on_target() {
   esac
 }
 
+# The web-group facts of the account $1 on this box, one line for the
+# helper below: "XMWF:<state>:<phase B>:<opt-out>", the state as
+# _web_group_state prints it, YES when /root/.barracuda.cnf sets
+# _WEB_GROUP_PHASE_B=YES (NO otherwise), NO when the account's cnf carries
+# _WEB_GROUP=NO (- otherwise). Sent to the target, never run here.
+# shellcheck disable=SC2329
+_web_group_facts_here() {
+  local _s _b=NO _n=-
+  _s=$(_web_group_state "${1}")
+  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=[\"']?YES" /root/.barracuda.cnf 2> /dev/null && _b=YES
+  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=[\"']?NO" "/root/.${1}.octopus.cnf" 2> /dev/null && _n=NO
+  echo "XMWF:${_s%% *}:${_b}:${_n}"
+}
+
+# The facts above for the account $1 on the target $2, asked of the target
+# itself: "<state>:<phase B>:<opt-out>". Prints nothing and returns 1 when
+# the target cannot be asked. Verbatim in xoct, xcopy and xmass.
+_web_group_facts_on_target() {
+  local _a="${1}" _h="${2}" _o
+  case "${_a}" in ""|*[!a-z0-9-]*) return 1 ;; esac
+  [ -n "${_h}" ] || return 1
+  _o=$( { declare -f _web_group_state _web_group_facts_here
+    printf '%s\n' "_web_group_facts_here '${_a}'"; } \
+    | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" "bash -s" 2> /dev/null \
+    | grep -m1 -x -E 'XMWF:(none|foreign|held|converted|phaseb):(YES|NO):(NO|-)')
+  [ -n "${_o}" ] || return 1
+  echo "${_o#XMWF:}"
+}
+
+# What a migration does not carry of the account's web-group state, told
+# when the move takes effect: a NOTE each, never a refusal. $1 the account
+# here, $2 the account on the target $3; $4 "cnf" for a tool with no cnf
+# merge (xcopy), whose opt-out is named whenever the target's cnf lacks it,
+# otherwise it is named once the account there already carries its web
+# group. Read here: the account's web-group state, its intent (a --phase-a
+# pin, a revert in progress) and its opt-out; asked of the target: the facts
+# above. Verbatim in xoct, xcopy and xmass.
+_wg_migration_notes() {
+  local _a="${1}" _d="${2}" _h="${3}" _how="${4:-state}" _s _i="" _no=NO _f _t _ts _tb _tn
+  _s=$(_web_group_state "${_a}" | cut -d' ' -f1)
+  _f="/var/log/boa/instgrp-web.${_a}.txt"
+  if [ -f "${_f}" ] && [ ! -L "${_f}" ] && [ "$(stat -c %u -- "${_f}" 2> /dev/null)" = "0" ]; then
+    _i=$(timeout 10 dd if="${_f}" iflag=nofollow,nonblock bs=4096 count=1 status=none 2> /dev/null | head -n 1)
+  fi
+  case "${_i}" in
+    target=*) ;;
+    *) _i="" ;;
+  esac
+  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=[\"']?NO" "/root/.${_a}.octopus.cnf" 2> /dev/null && _no=YES
+  [ "${_s}" = "none" ] && [ -z "${_i}" ] && [ "${_no}" = "NO" ] && return 0
+  if ! _t=$(_web_group_facts_on_target "${_d}" "${_h}"); then
+    echo "NOTE: the web-group state of ${_d} on ${_h} could not be read; run 'instgrp webstatus ${_d}' there"
+    return 0
+  fi
+  IFS=: read -r _ts _tb _tn <<< "${_t}"
+  case "${_s}:${_ts}" in
+    converted:none|converted:held|converted:foreign|phaseb:none|phaseb:held|phaseb:foreign)
+      echo "NOTE: ${_a} uses its own web group here and ${_d} on ${_h} does not: its web paths are in www-data there until that box converts it, by its own policy"
+      ;;
+  esac
+  case " ${_i} " in
+    *" pin=phase-a "*)
+      echo "NOTE: ${_a} is pinned at phase A here; the pin does not travel: run 'instgrp webconvert ${_d} --phase-a' on ${_h} to pin it there"
+      ;;
+  esac
+  case "${_i}" in
+    "target=none "*)
+      echo "NOTE: a web-group revert of ${_a} is in progress here and does not travel: ${_d} converts on ${_h} by that box's policy unless its opt-out went with it; run 'instgrp webrevert ${_d}' on ${_h} to revert it there"
+      ;;
+  esac
+  if [ "${_s}" = "phaseb" ] && [ "${_tb}" != "YES" ] && [ "${_ts}" != "phaseb" ]; then
+    echo "NOTE: ${_a} is at phase B here and ${_h} has _WEB_GROUP_PHASE_B off: ${_d} converts there to phase A only; run 'instgrp webconvert ${_d} --phase-b' on ${_h}"
+  fi
+  if [ "${_no}" = "YES" ]; then
+    if [ "${_how}" = "cnf" ]; then
+      [ "${_tn}" = "NO" ] \
+        || echo "NOTE: ${_a} is opted out here (_WEB_GROUP=NO) and /root/.${_d}.octopus.cnf on ${_h} does not say so: run 'instgrp webrevert ${_d}' on ${_h}, which writes the opt-out there"
+    elif [ "${_ts}" != "none" ]; then
+      echo "NOTE: ${_a} is opted out here (_WEB_GROUP=NO), and ${_d} on ${_h} took its web group before the opt-out reached it: run 'instgrp webrevert ${_d}' on ${_h}"
+    fi
+  fi
+  return 0
+}
+
 #
 # Re-group an account's tree ON A REMOTE BOX after a copy landed there
 # (transfer, sync, cutover): the copy carries this box's numeric gids, and
@@ -2315,6 +2399,14 @@ _xmass_push_account_cnf() {
       && mv -f "${_lTmp}.admail" "${_lTmp}" \
       && echo '_SEND_UPGRADE_EMAIL=NO' >> "${_lTmp}"
   fi
+  # The web-group opt-out mirrors the source both ways: _WEB_GROUP=NO
+  # travels, and a source without it removes a stale one on the target (the
+  # merge otherwise keeps every line the source lacks).
+  if grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=[\"']?NO" "${_sCnf}" 2>/dev/null; then
+    printf '%s\n' "_WEB_GROUP=NO" >> "${_lTmp}"
+  else
+    printf '%s\n' "-_WEB_GROUP" >> "${_lTmp}"
+  fi
   {
     echo '#!/bin/bash'
     echo "_cnf=\"${_dCnf}\""
@@ -2324,6 +2416,11 @@ _xmass_push_account_cnf() {
 [ -e "${_mrg}" ] || exit 1
 while IFS= read -r _l; do
   case "${_l}" in
+    -_WEB_GROUP)
+      grep -v "^_WEB_GROUP=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+      mv -f "${_cnf}.mrgnew" "${_cnf}"
+      continue
+      ;;
     _*=*) : ;;
     *) continue ;;
   esac
@@ -3979,7 +4076,7 @@ _xmass_restore_target() {
   # and removing both without flushing the chain would leave this "plain BOA
   # box" dropping all inbound 80/443 with nothing able to open it again.
   bash -c "${_XMASS_FW_WEB_RELEASE}"
-  rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid \
+  rm -f /root/.standby.cnf /root/.standby.prep.cnf /run/boa_xmass_init.pid /root/.standby.init.pid \
     /var/log/boa/.xmass_solr_hold.pid /run/boa_standby_lost_logged.pid \
     /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid \
     /var/log/boa/.standby_web_held.pid /var/log/boa/.standby_ftps_held.pid
@@ -5658,6 +5755,68 @@ _xmass_set_gmap() {
   return 0
 }
 
+### Run there, inside the account's real .drush: the web_group of its
+### server_master alias set to $1 when it names another group, rewritten as
+### _xmass_sed_here rewrites a file. Prints XMWA:<old> when it changed,
+### XMWA:= when it already said $1, XMWA:- when the alias carries none.
+# shellcheck disable=SC2329
+_xmass_wg_alias_here() {
+  local _n=server_master.alias.drushrc.php _was
+  _was=$(_xmass_read_here "${_n}" | sed -n "s/^[[:space:]]*'web_group' => '\([^']*\)',.*/\1/p" | head -n 1)
+  if [ -z "${_was}" ]; then
+    echo "XMWA:-"
+    return 0
+  fi
+  if [ "${_was}" = "${1}" ]; then
+    echo "XMWA:="
+    return 0
+  fi
+  _xmass_sed_here "${_n}" "s/^\([[:space:]]*'web_group' => '\)[^']*\(',.*\)/\1${1}\2/" || return 1
+  echo "XMWA:${_was}"
+}
+### After every .drush leg: the leg copies the account's aliases whole, so
+### the web_group of its server_master alias there is the source box's. It
+### is set to what the target's own writers give the account there
+### (wg-<account> once converted there, www-data otherwise, asked of the
+### target), only when it differs. A failure is told, never fatal: the
+### target's drift witness names a wrong value too.
+_xmass_wg_alias_reset() {
+  local _oct="${1}" _want _out
+  if ! _want=$(_web_group_on_target "${_oct}" "${_tgt}"); then
+    _alrt "  ${_oct}: its web group on ${_tgt} could not be read: the alias web_group there is left as the leg copied it"
+    return 0
+  fi
+  if [ "${_MODE}" != "LIVE" ]; then
+    _info "  ${_oct}: [DRY] the alias web_group on ${_tgt} would be set to ${_want} where it differs"
+    return 0
+  fi
+  _out=$( { _xmass_remote_guards
+      declare -f _xmass_wg_alias_here
+      printf '%s\n' "_xmass_in_real_dir '/data/disk/${_oct}/.drush' _xmass_wg_alias_here '${_want}'"; } \
+    | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_tgt}" "bash -s" 2> /dev/null \
+    | grep -m1 -E '^XMWA:')
+  case "${_out}" in
+    XMWA:=|XMWA:-) : ;;
+    XMWA:?*) _info "  ${_oct}: alias web_group on ${_tgt}: ${_out#XMWA:} -> ${_want}" ;;
+    *) _alrt "  ${_oct}: the alias web_group on ${_tgt} could not be set to ${_want}" ;;
+  esac
+  return 0
+}
+### The web-group NOTEs of the account (_wg_migration_notes) at every sync
+### and at the cutover's final one; an autosync pass tells them once a day.
+_xmass_wg_notes() {
+  local _oct="${1}" _d="/var/log/boa/xmass_autosync" _out
+  _out=$(_wg_migration_notes "${_oct}" "${_oct}" "${_tgt}" state)
+  [ -n "${_out}" ] || return 0
+  if [ "${_XMASS_AUTO}" = "YES" ]; then
+    mkdir -p "${_d}" 2> /dev/null
+    [ -z "$(find "${_d}/.wgnotes_${_oct}" -mmin -1440 2> /dev/null)" ] || return 0
+    touch "${_d}/.wgnotes_${_oct}" 2> /dev/null
+  fi
+  printf '%s\n' "${_out}" | sed 's/^/  /'
+  return 0
+}
+
 _xmass_sync_account() {
   local _oct="$1"
   local _udir="/data/disk/${_oct}"
@@ -5710,7 +5869,8 @@ _xmass_sync_account() {
   # record. pass.txt rides the credential carry below instead, paired with
   # the shadow hash so the two can never disagree.
   # instance-group.txt records the SOURCE box's conversion (its gid) and
-  # must never travel either: the destination pass below writes its own.
+  # must never travel either: the destination pass below writes its own;
+  # nor web-group-notes.txt, which names the source box's web-group state.
   # proxy-failed.pid is source-role state too: on the target it would park
   # the dispatcher of an account that box serves.
   # log/ and .drush/ (below) are the account user's: both ends are pinned,
@@ -5719,7 +5879,8 @@ _xmass_sync_account() {
   _xmass_pinned_leg "${_udir}/log" "${_dst}/log" "the log files of ${_oct}" \
     -aEAXqu ${_ieni} \
     --exclude=proxied.pid --exclude=migproxy.cnf --exclude=pass.txt \
-    --exclude=instance-group.txt --exclude=proxy-failed.pid
+    --exclude=instance-group.txt --exclude=proxy-failed.pid \
+    --exclude=web-group-notes.txt
 
   # Drush aliases are copied WHOLE — including the source's server_master
   # and hostmaster aliases (site aliases get regenerated by renameaegirhost
@@ -5740,6 +5901,8 @@ _xmass_sync_account() {
   # refuses to ignore.
   _xmass_pinned_leg "${_udir}/.drush" "${_dst}/.drush" "the Drush aliases of ${_oct}" \
     -aEAXqu ${_ieni} --exclude=php.ini
+  # the alias web_group the leg just copied is the source box's
+  _xmass_wg_alias_reset "${_oct}"
 
   # Nginx vhost configs. Never from an account this box already relays: its
   # vhost.d holds relay vhosts pointing AT the target, and -u only skips files
@@ -5955,6 +6118,9 @@ _xmass_sync_account() {
   if [ "${_MODE}" = "LIVE" ] && [ "${_XMASS_AUTO}" != "YES" ]; then
     _acct_regroup_remote "${_oct}" "${_tgt}"
   fi
+  # what the move does not carry of the web-group state, told at every
+  # sync and again at the cutover's final one, the moment it takes effect
+  _xmass_wg_notes "${_oct}"
   _XMASS_GMAP=""
 }
 
@@ -9256,6 +9422,103 @@ OWNSH
   return 0
 }
 
+### A box being prepared as a standby carries /root/.standby.prep.cnf from
+### prep-target's first create until the promotion: instgrp reads it as a
+### standby (nothing but webrevert runs there), so an armed target leaves
+### the accounts this migration creates or takes at no web group, and they
+### convert after the promotion, gated, by that box's own policy. It goes
+### with /root/.standby.cnf (cutover step 15, post-mig, restore-target, and a
+### promoted box's second.sh); a refused init leaves it, the box still being
+### prepared. Written on the target $1, verified, or the run stops here.
+_XMASS_PREP_MARK=/root/.standby.prep.cnf
+_xmass_prep_mark_put() {
+  ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${1}" \
+    "[ -e ${_XMASS_PREP_MARK} ] || ( umask 077; echo 'xmass standby preparation for ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > ${_XMASS_PREP_MARK} )" &> /dev/null
+  if ! ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${1}" "test -e ${_XMASS_PREP_MARK}" 2> /dev/null; then
+    _die "could NOT write ${_XMASS_PREP_MARK} on ${1} -- without it an armed target converts" \
+         " the accounts this migration prepares there; fix target access and re-run"
+  fi
+  _info "Standby preparation mark on ${1}: no web-group conversion there until the promotion"
+}
+### Every account on the target $1 that carries its own web group (one
+### converted there before the mark: a hand-made 'xoct create' on an armed
+### box, a failback's demoted account) brought back to none, before the
+### datadir swap: webrevert --keep-enabled writes no opt-out, so the account
+### converts again after the promotion. --force only where the account's
+### log/proxied.pid is the relay record prep-target adopts (root's COMPLETE
+### record with root's migproxy.cnf: role source, this account, a peer that
+### is this box, the record's own host that box); any other freeze keeps its
+### refusal. A revert that does not finish refuses the init here.
+_xmass_wg_revert_target() {
+  local _t="${1}" _mine _out _l _a _rc _how _bad="" _end=NO
+  _mine="$(hostname -I 2> /dev/null) ${_MY_OWNIP} ${_XMASS_SRC_IP}"
+  _out=$( { _xmass_remote_guards
+    cat <<'WGREV'
+_MINE="${1}"
+_rootread() { perl -e 'use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $s[4] == 0 && $s[7] <= 65536; local $/; my $d = <$h>; print $d if defined $d; exit 0' "./${1}"; }
+_ready=NO
+[ -f /opt/local/bin/instgrp ] && grep -q '^_wg_table() {' /opt/local/bin/instgrp 2> /dev/null && _ready=YES
+for _g in $(getent group | cut -d: -f1 | grep -E '^wg-[a-z0-9-]+$'); do
+  _a="${_g#wg-}"
+  [ "${_a}" = "aegir" ] && continue
+  getent passwd "${_a}" > /dev/null 2>&1 || continue
+  if [ "${_ready}" != "YES" ]; then
+    echo "XMWR:${_a}:tool:-"
+    continue
+  fi
+  _f=""
+  _L="/data/disk/${_a}/log"
+  if _p=$(_xmass_in_real_dir "${_L}" _rootread proxied.pid) \
+    && _c=$(_xmass_in_real_dir "${_L}" _rootread migproxy.cnf) \
+    && [ "${_p}" = "COMPLETE" ]; then
+    _role=$(printf '%s\n' "${_c}" | grep -m1 '^_MIG_ROLE=' | cut -d= -f2-)
+    _poct=$(printf '%s\n' "${_c}" | grep -m1 '^_MIG_PEER_OCT=' | cut -d= -f2-)
+    _pip=$(printf '%s\n' "${_c}" | grep -m1 '^_MIG_PEER_IP=' | cut -d= -f2-)
+    _hip=$(printf '%s\n' "${_c}" | grep -m1 '^_MIG_HOST_IP=' | cut -d= -f2-)
+    if [ "${_role}" = "source" ] && [ "${_poct}" = "${_a}" ] \
+      && [[ "${_pip}" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] \
+      && printf '%s\n' ${_MINE} | grep -qxF -- "${_pip}" \
+      && [ -n "${_hip}" ] && hostname -I 2> /dev/null | tr ' ' '\n' | grep -qxF -- "${_hip}"; then
+      _f=--force
+    fi
+  fi
+  bash /opt/local/bin/instgrp webrevert "${_a}" --keep-enabled ${_f} 2>&1 | sed 's/^/XMWO: /'
+  echo "XMWR:${_a}:${PIPESTATUS[0]}:${_f:--}"
+done
+echo "XMWR-END"
+WGREV
+    } | ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_t}" "bash -s -- '$(_shq "${_mine}")'" 2> /dev/null)
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "XMWO: "*) _info "  [${_t}] ${_l#XMWO: }" ;;
+      XMWR-END) _end=YES ;;
+      XMWR:*)
+        IFS=: read -r _ _a _rc _how <<< "${_l}"
+        if [ "${_how}" = "--force" ]; then _how=" --force"; else _how=""; fi
+        if [ "${_rc}" = "0" ]; then
+          _info "  ${_a}: its web group on ${_t} reverted (webrevert --keep-enabled${_how}); it converts after the promotion"
+        elif [ "${_rc}" = "tool" ]; then
+          _alrt "  ${_a}: carries its own web group on ${_t}, whose instgrp cannot revert it"
+          _bad="${_bad} ${_a}"
+        else
+          _alrt "  ${_a}: webrevert --keep-enabled${_how} on ${_t} returned ${_rc}"
+          _bad="${_bad} ${_a}"
+        fi
+        ;;
+    esac
+  done <<< "${_out}"
+  if [ "${_end}" != "YES" ]; then
+    _die "init refused before the datadir swap: the web groups of the accounts on ${_t}" \
+         " could not be read or reverted (the ssh ended early); fix target access and re-run init"
+  fi
+  if [ -n "${_bad}" ]; then
+    _die "init refused before the datadir swap: account(s)${_bad} on ${_t} still carry" \
+         " their own web group (see above); run 'instgrp webrevert <account> --keep-enabled'" \
+         " there (and 'instgrp webstatus <account>'), then re-run init"
+  fi
+  return 0
+}
+
 _xmass_cmd_prep_target() {
   # Phase 0.5 -- everything the target must have BEFORE its Octopus installs
   # and BEFORE init's datadir swap, automated end-to-end: CSF allowed in both
@@ -9447,6 +9710,11 @@ _xmass_cmd_prep_target() {
   # Advisory sweeps while acting on them is still cheap.
   _xmass_check_le_health
   _xmass_decide_transfer_method
+
+  # The standby preparation mark before the first create: the INIT arm of
+  # an armed target then leaves every account this run creates at no web
+  # group, and so does every later pass there until the promotion.
+  _xmass_prep_mark_put "${_tgt}"
 
   # Every create leaves the target mid-motion (the in-flow post-install pass,
   # the pass its seed arms, the verifies each pass queues), and 'boa in-octopus'
@@ -10638,6 +10906,13 @@ REMOTE
     _alrt "dark until the failback cutover promotes this box; a refused init restores"
     _alrt "it on unwind. Visitors must already reach the active box directly."
   fi
+  # The standby preparation mark, after every gate above (a refusal there
+  # leaves none behind), then every target account that carries its own web
+  # group brought back to none: all of it before the datadir swap, and a
+  # revert that does not finish refuses here. The unwind below leaves the
+  # mark: the box is still being prepared.
+  _xmass_prep_mark_put "${_tgt}"
+  _xmass_wg_revert_target "${_tgt}"
   # From here every refusal unwinds the target back to a normal box; the
   # trap reaps the lockfile too. Armed BEFORE the marker write: that command
   # also locks the database, and a refusal between the lock and the trap
@@ -12103,8 +12378,9 @@ _xmass_cutover_finish() {
 # quiesced by pre-gate BOA bytes still has its cron stopped. The promoted
 # latch only ever qualified the marker, so it goes with it. The web and FTPS
 # "was held" breadcrumbs go too: the watchdog reads them on a marker gap, and
-# on a promoted box they describe a state that has ended.
-rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid \
+# on a promoted box they describe a state that has ended. The standby
+# preparation mark goes with the marker: the accounts convert from here.
+rm -f /root/.standby.cnf /root/.standby.prep.cnf /run/boa_xmass_init.pid /root/.standby.init.pid \
   /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid \
   /var/log/boa/.standby_web_held.pid /var/log/boa/.standby_ftps_held.pid
 service cron start &>/dev/null
@@ -12121,10 +12397,10 @@ REMOTE
   # with cron stopped besides (no backups, renewals or watchdogs). init
   # verifies its marker write; the removal deserves the same weight.
   if ! ssh -o ConnectTimeout=15 root@"${_tgt}" \
-    "test ! -e /root/.standby.cnf && pgrep -x cron > /dev/null" 2> /dev/null; then
+    "test ! -e /root/.standby.cnf && test ! -e /root/.standby.prep.cnf && pgrep -x cron > /dev/null" 2> /dev/null; then
     _alrt "could NOT confirm standby-marker removal + cron start on ${_tgt} --"
     _alrt "run there NOW, by hand:"
-    _alrt "    rm -f /root/.standby.cnf; service cron start"
+    _alrt "    rm -f /root/.standby.cnf /root/.standby.prep.cnf; service cron start"
     _alrt "(the second.sh watchdog also self-removes the marker once it sees"
     _alrt " the box is definitively no replica AND its DB unlocked -- step 11.5"
     _alrt " did that here -- but only while cron runs)"
@@ -12870,6 +13146,13 @@ _xmass_post_mig() {
       /var/log/boa/.standby_web_held.pid /var/log/boa/.standby_ftps_held.pid
     _alrt "  Removed a LEFTOVER /root/.standby.cnf -- cutover step 15 should have"
     _alrt "  cleared it; verify cron and the task queue are actually running here"
+  fi
+  # The standby preparation mark the same way: left here it keeps every
+  # account of this box from converting to its own web group.
+  if [ -e "/root/.standby.prep.cnf" ]; then
+    rm -f /root/.standby.prep.cnf
+    _alrt "  Removed a LEFTOVER /root/.standby.prep.cnf -- cutover step 15 should have"
+    _alrt "  cleared it; the accounts here convert on the next arm pass, by this box's policy"
   fi
   # Traffic now flows directly to this host. Reconcile the migration-proxy
   # trust from the per-account policy records: temporary peers are dropped,

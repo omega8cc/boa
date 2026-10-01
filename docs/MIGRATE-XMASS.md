@@ -599,6 +599,49 @@ What it does, in order:
 
 The verb is idempotent: re-run it after fixing anything it refused on.
 
+### The account web group on a standby target
+
+A box being prepared as a standby must not convert the accounts it receives
+to their own web groups (`wg-oN`, see `INSTGRP.md`): the source's tree lands
+there by sync, with no conversion pass of its own, and a promoted box would
+then carry conversions the source never made (or had refused, for an account
+whose sites share another account's files). So:
+
+- `prep-target` writes `/root/.standby.prep.cnf` on the target before its
+  first account create. `instgrp` reads it as a standby: the install's own
+  conversion, and every later Octopus pass there, leave the accounts
+  unconverted.
+- `init` writes it too, after its gates, then brings back to none every
+  target account that carries its own web group (one an operator created
+  there by hand with `xoct create` on an armed box, or a failback box's
+  demoted account), with `instgrp webrevert <oN> --keep-enabled`, which
+  writes no opt-out; `--force` only for an account whose freeze is the relay
+  record `prep-target` adopts. All of it happens before the datadir swap, and
+  a revert that does not finish refuses the `init` there, naming the
+  account. A refused `init` leaves the mark: the box is still being prepared.
+- The mark goes with `/root/.standby.cnf`: at cutover step 15, in
+  `post-mig` (a leftover is removed with an `ALRT`), in `restore-target`, and
+  by a promoted box's own standby watchdog. The accounts then convert on the
+  first Octopus pass after the promotion, by the promoted box's own
+  `_WEB_GROUP_ARM` and `_WEB_GROUP_PHASE_B`, gated as any first conversion.
+- A preparation given up leaves the mark, and every conversion there
+  refused (`webrevert` excepted), until it is removed by hand.
+
+Every sync (and the cutover's final one) also:
+
+- sets the `web_group` of each account's `server_master` alias on the
+  target, which the `.drush` leg copies from the source, to what the
+  target's writers give the account there (`www-data` while unconverted);
+- mirrors the account's opt-out `_WEB_GROUP=NO` in its cnf merge, a removal
+  on the source included;
+- prints a `NOTE` for what does not travel, as `xoct transfer` does (see
+  [MIGRATE-XOCT.md](MIGRATE-XOCT.md)): a `--phase-a` pin, a revert in
+  progress, phase B onto a box with `_WEB_GROUP_PHASE_B` off, an opt-out that
+  reached an account already converted there by hand. The cutover's final
+  sync prints them again, the moment the loss takes effect; an autosync pass
+  prints them once a day. A promotion made without a cutover from the source
+  prints nothing.
+
 ### The target-silence gate (prep-target, init, cutover)
 
 Every account install and every re-seed on the target leaves a background

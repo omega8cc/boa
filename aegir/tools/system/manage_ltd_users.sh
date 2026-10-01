@@ -127,6 +127,211 @@ _web_group() {
   esac
 }
 
+_web_group_rb() {
+  # "rb" when the account's record says phase B (_web_group_state phaseb)
+  # and carries the fourth field rb=1: a rollback of phase B was cut short,
+  # so the record says B only because the pools may still lack www-data, and
+  # no share check has passed since. Empty otherwise. The pool line is left
+  # out while it stands and the account's shell user is still listed in
+  # www-data. $1 as _web_group_state.
+  local _s _a _r _rg="" _rgid="" _rph="" _rtk="" IFS=$' \t\n'
+  _s=$(_web_group_state "${1}")
+  [ "${_s%% *}" = "phaseb" ] || return 0
+  _a="${_s##* }"
+  _a="${_a#wg-}"
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _rtk _ < "${_r}" || :
+  fi
+  if [ "${_rg}" = "${_s##* }" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ] \
+    && [ "${_rph}" = "phase=B" ] && [ "${_rtk}" = "rb=1" ]; then
+    echo "rb"
+  fi
+  return 0
+}
+
+# The web group's drift witnesses of account $1, or of the master (aegir),
+# or of the box (--box), as instgrp webdrift reads them: an alarm goes to the
+# incident log and the operator once a day per profile, a note to this
+# pass's log only. An instgrp without the web group reads nothing.
+_ltd_wg_witness() {
+  local _l _alarm=""
+  [ -e "/opt/local/bin/instgrp" ] || return 0
+  grep -q "^_wg_drift() {" /opt/local/bin/instgrp 2> /dev/null || return 0
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "ALRT "*) _alarm="${_alarm:+${_alarm}; }${_l#ALRT }" ;;
+      "NOTE "*) echo "NOTE: ${1}: web group: ${_l#NOTE }" ;;
+    esac
+  done < <(bash /opt/local/bin/instgrp webdrift "${1}" 2> /dev/null)
+  [ -n "${_alarm}" ] && _ltd_notice "wg-drift-${1#--}" "web group drift (${1#--})" "${_alarm}"
+  return 0
+}
+
+# D9: o+r on the public files of an account that holds its own web group
+# (nginx is in none of them and reads public files through the other bits),
+# limited to what changed since this account's last pass here: a root stamp
+# per account, read with -cnewer (a ctime no tenant can set). No stamp yet:
+# one full walk. The stamp moves only when every walk finished in time;
+# three passes in a row that did not are an alarm. The public set only: the
+# account's own resolved files stores, never ./private or the nginx-denied
+# subtrees (the private set); a Textpattern site's public/{files,images,
+# themes}, a Grav capsule's images, assets and user/pages (never a Grav
+# secret), the Boost cache of a site's platform. Only bits added, only on a
+# directory or a single-link regular file one of the account's identities
+# owns. Not on a standby, nor on a box being prepared as one.
+# shellcheck disable=SC2016
+_LTD_D9_PL='use Fcntl; my ($t, $b, $ok, @f) = @ARGV; my %o = map { $_ => 1 } grep { length } split(/,/, $ok); my $m = oct($b); for my $f (@f) { sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && $o{$s[4]} && (($t eq "d" && -d _) || ($t eq "f" && -f _ && $s[3] == 1))) { chmod(($s[2] & 07777) | $m, $h); } close($h); }'
+# POSIX extended: read after -regextype posix-extended (GNU find's default
+# syntax takes the parentheses and bars as plain characters)
+_LTD_D9_DENIED='\./(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*|.*/files/(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*'
+# The current (real) directory walked; $1 = the stamp (empty: every
+# entry), $2 = the owners' uids, $3 = store (a files store: ./private and
+# the nginx-denied subtrees pruned) or public (the rest of the public set:
+# a Grav secret pruned). 124 when the walk ran out of time.
+_ltd_d9_walk_here() {
+  local _c=() _pr=( -path ./private -o -iregex "${_LTD_D9_DENIED}" )
+  [ -n "${1}" ] && _c=( -cnewer "${1}" )
+  [ "${3}" = "public" ] && _pr=( -name '*-private.php' -o -name .env )
+  timeout "${_LTD_D9_MAX:-120}" find . -mindepth 1 -xdev -regextype posix-extended \
+    \( "${_pr[@]}" \) -prune -o \
+    \( -type d ! -perm -0005 "${_c[@]}" -execdir perl -e "${_LTD_D9_PL}" d 0005 "${2}" {} + \) -o \
+    \( -type f ! -perm -0004 "${_c[@]}" -execdir perl -e "${_LTD_D9_PL}" f 0004 "${2}" {} + \) 2> /dev/null
+}
+# 0 when the files store $3 (resolved) of the site dir $2 (resolved) is
+# account $1's own, as the site scripts take a store: a real child of the
+# site dir, or a link resolving strictly below the account's own real
+# static/files/ or its store on attached storage (/mnt/<m>/files/<a>/
+# static/files/, no files/ or static/ in the mount part). The account can
+# own a site dir and plant the link, so a link anywhere else in its tree is
+# not a store, nor is a dot-name right below either store root, BOA's own
+# (.backups, .backup-exports, .archived); that and a share are left alone
+# with a notice.
+_ltd_d9_own_store() {
+  local _a="${1}" _m _top=""
+  [ "${3}" = "${2}/files" ] && [ ! -L "${2}/files" ] && return 0
+  case "${3}" in
+    *[!A-Za-z0-9._/-]*) ;;
+    /data/disk/"${_a}"/static/files/?*)
+      _top="${3#/data/disk/"${_a}"/static/files/}"
+      ;;
+    /mnt/?*/files/"${_a}"/static/files/?*)
+      _m="${3%%/files/"${_a}"/static/files/*}"
+      case "${_m}" in
+        */files/*|*/static/*) ;;
+        *) _top="${3#"${_m}"/files/"${_a}"/static/files/}" ;;
+      esac
+      ;;
+  esac
+  case "${_top}" in
+    ""|.*) ;;
+    *) return 0 ;;
+  esac
+  _ltd_notice "d9-share-${_a}" "D9 on ${_a}" "a site's files store is neither a real dir of the site nor a link into the account's own static/files (outside BOA's dot-named folders there); left alone"
+  return 1
+}
+# The rest of the public set of the site dir $1 (resolved, inside account
+# $2's tree), one resolved directory per line: a Textpattern site's
+# public/{files,images,themes}, a Grav capsule's images, assets and
+# user/pages (real children of the site dir), and the Boost cache of its
+# platform, cache/normal (inside the account's tree). The site classes are
+# told apart as the site ownership scripts tell them.
+_ltd_d9_public() {
+  local _s="${1}" _a="${2}" _p _r _l=""
+  if [ -f "${_s}/public/index.php" ] && [ -f "${_s}/public/css.php" ] \
+    && [ -d "${_s}/admin" ] && [ ! -f "${_s}/settings.php" ]; then
+    _l="public/files public/images public/themes"
+  elif [ -f "${_s}/bin/grav" ] && [ -f "${_s}/system/defines.php" ] \
+    && [ ! -f "${_s}/settings.php" ]; then
+    _l="images assets user/pages"
+  fi
+  for _p in ${_l}; do
+    [ -d "${_s}/${_p}" ] && [ ! -L "${_s}/${_p}" ] || continue
+    _r=$(realpath -e -- "${_s}/${_p}" 2> /dev/null) || continue
+    case "${_r}/" in
+      *[[:cntrl:]]*) ;;
+      "${_s}"/?*) printf '%s\n' "${_r}" ;;
+    esac
+  done
+  case "${_s}" in
+    */sites/?*) _p="${_s%/sites/*}/cache/normal" ;;
+    *) return 0 ;;
+  esac
+  [ -d "${_p}" ] && [ ! -L "${_p}" ] || return 0
+  _r=$(realpath -e -- "${_p}" 2> /dev/null) || return 0
+  case "${_r}/" in
+    *[[:cntrl:]]*) ;;
+    /data/disk/"${_a}"/?*) printf '%s\n' "${_r}" ;;
+  esac
+  return 0
+}
+_ltd_d9_files_here() {
+  local _a="${1}" _s _st="/var/log/boa/manage-ltd-d9.${1}.txt" _f _t _sp _rs _rf _rp
+  local _uids="" _u _uid _ok=YES _ref="" _n _pp _done="|"
+  [ -e "/root/.standby.cnf" ] && return 0
+  [ -e "/root/.standby.prep.cnf" ] && return 0
+  _s=$(_web_group_state "${_a}")
+  case "${_s%% *}" in
+    converted|phaseb) ;;
+    *) return 0 ;;
+  esac
+  [ "${_s##* }" = "wg-${_a}" ] || return 0
+  for _u in $(getent passwd | cut -d: -f1 | grep -E "^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web|\.web)?$"); do
+    _uid=$(id -u "${_u}" 2> /dev/null) || continue
+    [[ "${_uid}" =~ ^[1-9][0-9]*$ ]] && _uids="${_uids:+${_uids},}${_uid}"
+  done
+  [ -n "${_uids}" ] || return 0
+  [ -e "${_st}" ] && _ref="${_st}"
+  ( umask 077; : > "${_st}.next" ) 2> /dev/null || return 0
+  for _f in "/data/disk/${_a}"/.drush/*.alias.drushrc.php; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    case "${_f##*/}" in
+      server_*|platform_*) continue ;;
+    esac
+    _t=$(_ltd_read_in "/data/disk/${_a}/.drush" "${_f##*/}")
+    _sp=$(printf '%s\n' "${_t}" | sed -n "s/^[[:space:]]*'site_path' => '\([^']*\)',.*/\1/p" | head -n 1)
+    [ -n "${_sp}" ] || continue
+    _rs=$(realpath -e -- "${_sp}" 2> /dev/null) || continue
+    case "${_rs}/" in
+      *[[:cntrl:]]*) continue ;;
+      /data/disk/"${_a}"/*) ;;
+      *) continue ;;
+    esac
+    [ -e "${_rs}/drushrc.php" ] || continue
+    _rf=$(realpath -e -- "${_rs}/files" 2> /dev/null)
+    _rp=$(realpath -e -- "${_rs}/private" 2> /dev/null)
+    if [ -n "${_rf}" ] && [ -d "${_rf}" ] && [ "${_rf##*/}" = "files" ] \
+      && [ "${_rf}" != "${_rp}" ] && _ltd_d9_own_store "${_a}" "${_rs}" "${_rf}"; then
+      ( cd -P -- "${_rf}" 2> /dev/null && [ "$(pwd -P)" = "${_rf}" ] \
+        && _ltd_d9_walk_here "${_ref}" "${_uids}" store )
+      [ "$?" = "124" ] && _ok=NO
+    fi
+    # the rest of the public set, each directory once a pass (a platform's
+    # Boost cache is every site's there)
+    while IFS= read -r _pp; do
+      [ -n "${_pp}" ] || continue
+      case "${_done}" in
+        *"|${_pp}|"*) continue ;;
+      esac
+      _done="${_done}${_pp}|"
+      ( cd -P -- "${_pp}" 2> /dev/null && [ "$(pwd -P)" = "${_pp}" ] \
+        && _ltd_d9_walk_here "${_ref}" "${_uids}" public )
+      [ "$?" = "124" ] && _ok=NO
+    done < <(_ltd_d9_public "${_rs}" "${_a}")
+  done
+  if [ "${_ok}" = "YES" ]; then
+    mv -f -- "${_st}.next" "${_st}" 2> /dev/null
+    rm -f -- "${_st}.slow"
+    return 0
+  fi
+  rm -f -- "${_st}.next"
+  _n=$(( $(head -c 8 "${_st}.slow" 2> /dev/null | tr -cd '0-9') + 1 ))
+  echo "${_n}" > "${_st}.slow"
+  [ "${_n}" -ge 3 ] && _ltd_notice "d9-slow-${_a}" "D9 on ${_a}" "the public files walk ran out of time ${_n} passes in a row; the nightly walks the public set whole and moves its stamp after its site loop, once a week while that lets no walk here finish (instgrp reclaim ${_a} does the same now)"
+  return 0
+}
+
 # An identity of an account that holds its own web group is listed in that
 # group (supplementary, verified in the group database, never by id -nG);
 # nothing to do while the account has none. $1 = the identity, $2 = the
@@ -4915,9 +5120,15 @@ _switch_php() {
             # in the account's own web group (after the include, which sets
             # www-data). A group that does not resolve would fail this whole
             # PHP version on reload, so it is written only when it does.
+            # A record of B left by a phase-B rollback that was cut short
+            # (rb=1) does not count while the account's own user is still
+            # listed in www-data: the pools keep www-data until the next
+            # conversion run has re-checked shares.
             _T_WGS=$(_web_group_state "${_USER}")
             if [ "${_T_WGS%% *}" = "phaseb" ] && [ "${_T_WGS##* }" = "wg-${_USER}" ] \
-              && getent group "${_T_WGS##* }" > /dev/null 2>&1; then
+              && getent group "${_T_WGS##* }" > /dev/null 2>&1 \
+              && ! { [ "$(_web_group_rb "${_USER}")" = "rb" ] \
+                && [[ ",$(getent group www-data | cut -d: -f4)," == *",${_USER},"* ]]; }; then
               echo "group = ${_T_WGS##* }" >> /opt/php${m}/etc/pool.d/${_POOL}.conf
             fi
 
@@ -5414,6 +5625,7 @@ _manage_user() {
             || echo "ALERT: ${_igU} could not be listed in ${_T_WGS##* }"
         done
       fi
+      _ltd_wg_witness "${_USER}"
       echo "_USER is == ${_USER} == at _manage_user"
       if getent group allow-snail >/dev/null 2>&1 && \
         ! id -nG "${_USER}" 2>/dev/null | tr ' ' '\n' | grep -qxF "allow-snail"; then
@@ -5696,6 +5908,7 @@ _manage_user() {
         echo Directory ${_pthParentUsr}/clients not available
       fi
       echo
+      _ltd_d9_files_here "${_USER}"
     fi
   done
 }
@@ -6014,6 +6227,8 @@ else
   # "cannot access").
   find /var/log/lsh -maxdepth 1 -type f \
     -execdir perl -e "${_LTD_FCHMOD_PL}" f 0600 {} + 2>/dev/null
+  _ltd_wg_witness aegir
+  _ltd_wg_witness --box
   _ltd_in_real_dir /var/aegir/.drush _ltd_drush_alias_modes &> /dev/null
   _ltd_in_real_dir /var/aegir/config/server_master \
     find . -type d -execdir perl -e "${_LTD_FCHMOD_PL}" d 0700 {} + &> /dev/null
