@@ -1318,6 +1318,19 @@
       sent as the target is logged apart and does not count on that box
       as a source.
 
+    * A site's scheduled MySQL events keep running after an xmass switch
+      to the mirror, a failback or an emergency promotion: the promoted
+      box enables, each with its own definer, the events its replica kept
+      disabled (cutover and post-mig), and the old box's event scheduler
+      is held through the write freeze, so no event writes rows the new
+      box never sees. Every way back before the promotion starts it again.
+
+    * Both ends of an xmass pair now carry log_bin_trust_function_creators=1
+      next to the binary log, so a site's own database login can create
+      its triggers and functions there. The mirror takes it first: init,
+      every sync pass and the SQL watchdog set a pair in service in that
+      order, since a mirror behind its active would stop replicating.
+
     * A run lock left by an instgrp run killed outright (out of memory, a
       stray kill -9) no longer keeps the limited-shell worker, the task
       queue runner and the nightly waiting for up to three hours: the
