@@ -748,10 +748,17 @@ What `init` does:
    live — and passivity comes from per-job gates on the marker in every
    local writer: the task queue and the Aegir dispatch it parks, the
    night work, cache TRUNCATEs, Solr core management, the agent pass's
-   refresh of the shared modules in `/data/all/000/modules`, binlog purge,
+   refresh of the shared modules in `/data/all/000/modules`, its Let's
+   Encrypt work in each account, binlog purge,
    mysqlcheck repairs, cluster dumps, and the whole duplicity backup
    chain (`mybackup`, `multiback`, `backboa`, `duobackboa` exit quietly —
    the active owns the backup lineage).
+
+   The agents pass records its Let's Encrypt work for the release as done
+   only when the box was no standby before its account loop and after it,
+   so the first agents pass after promotion puts the release's Let's
+   Encrypt includes into the accounts' hostmaster platforms, which no sync
+   leg carries.
 
    On top of the gates, init locks
    the replica's database outright: the `xmass-standby-hold` block

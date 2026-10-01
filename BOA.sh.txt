@@ -2936,6 +2936,8 @@ _update_agents() {
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ -d "/data/u" ] \
     && [ ! -e "${_pthLog}/le_renewal_days_69.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    local _leHeld=NO
+    [ -e "/root/.standby.cnf" ] && _leHeld=YES
     _leBasePath="profiles/hostmaster/modules/aegir/hosting_le"
     _lePath="${_leBasePath}/drush/${_provLeInc}"
     _leVhPath="${_leBasePath}/hosting_le_vhost/drush/${_hoLeInc}"
@@ -3072,7 +3074,15 @@ _update_agents() {
         fi
       fi
     done
-    touch ${_pthLog}/le_renewal_days_69.ctrl.${_tRee}.${_xSrl}.pid
+    ### A standby skips every account above, and the accounts' hostmaster
+    ### platforms are no sync leg: stamped there, the promoted box would
+    ### never put this serial's copies. Stamped only when the marker was
+    ### absent before the loop and after it (a promotion during the loop
+    ### leaves the accounts before it unput), so the first agents pass after
+    ### promotion puts them.
+    if [ "${_leHeld}" = "NO" ] && [ ! -e "/root/.standby.cnf" ]; then
+      touch ${_pthLog}/le_renewal_days_69.ctrl.${_tRee}.${_xSrl}.pid
+    fi
   fi
 
   # websh the FILE is fetched by _update_boa_tools (atomic replace + a
