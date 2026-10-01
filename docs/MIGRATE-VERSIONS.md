@@ -29,6 +29,11 @@ run `xmass`, or move
 account by account with `xoct`. Neither migration tool upgrades anything; a box
 changes Percona series only through `barracuda`.
 
+Moving a whole box account by account, put `_XOCT_BOX_MOVE=YES` before
+`xoct create`, `export` and `pretransfer` for the hosted service's own
+(internal) accounts: a move of one account refuses them otherwise, and the
+refusal prints that line (see [MIGRATE-XOCT.md](MIGRATE-XOCT.md), step 5).
+
 ## The MySQL watchdog during a migration
 
 BOA's MySQL watchdog (`/var/xdrago/monitor/check/mysql.sh`) restarts a down

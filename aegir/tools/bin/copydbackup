@@ -170,14 +170,25 @@ _dbk_own_uids() {
   echo "${_x}"
 }
 
-# Status 0 when the current (pinned) directory is this tool's own, owned by
-# the uid it runs as (root: its own mkdir), or already owned by one of the
-# uids $1 (comma-separated, _dbk_own_uids). Only root changes the owner of
-# the directory held, so the answer holds for what follows in it.
+# Status 0 when the current (pinned) directory is this tool's own -- root's
+# own mkdir, which this tool makes 0755, writable by root only -- or already
+# owned by one of the uids $1 (comma-separated, _dbk_own_uids). A directory
+# root owns but that group or other can write is NOT this tool's own: the
+# account can put a root-owned directory at the pinned name only by renaming
+# one from its own tree, which the kernel allows only when the account can
+# write that directory (its '..' is rewritten), so any root-owned directory
+# an account could move here carries group or other write and is refused;
+# only a directory this tool created this run is root-owned and unwritable
+# by anyone but root. Only root changes the owner of the directory held, so
+# the answer holds for what follows in it.
 _dbk_here_ours() {
-  local _o
+  local _o _m
   _o=$(stat -c '%u' . 2>/dev/null) || return 1
-  [ "${_o}" = "$(id -u)" ] && return 0
+  if [ "${_o}" = "$(id -u)" ]; then
+    _m=$(stat -c '%a' . 2>/dev/null) || return 1
+    [ $(( 8#${_m} & 022 )) -eq 0 ] && return 0
+    return 1
+  fi
   case ",${1}," in
     *",${_o},"*) return 0 ;;
   esac
@@ -205,7 +216,10 @@ _dbk_copy_here() {
   _here="$(pwd -P)"
   if [ ! -d "./${1}" ] || [ -L "./${1}" ]; then
     rm -f -- "./${1}" 2>/dev/null
-    mkdir "./${1}" 2>/dev/null || return 1
+    # explicit mode, not the run's umask: the dated directory must be
+    # root-owned and unwritable by group and other so _dbk_here_ours can
+    # tell this tool's own mkdir from a directory an account moved here
+    mkdir -m 0755 "./${1}" 2>/dev/null || return 1
   fi
   cd -P -- "./${1}" 2>/dev/null && [ "$(pwd -P)" = "${_here}/${1}" ] || return 1
   _dbk_here_ours "${6}" || return 1

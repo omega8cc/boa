@@ -305,9 +305,30 @@ The former `xboa` per-account migration tool was renamed to `xoct`
 (Octopus-scoped) and `xboa` has been removed — BOA no longer ships or fetches an
 `xboa` binary. `xoct` is functionally equivalent plus two improvements: the
 Ægir DB hostname replacement and post-import task queue are now delegated to
-`renameaegirhost` (more thorough, 5-pass queue), and the hardcoded
-internal-account email exclusion has been removed so `xoct` works correctly when
-invoked by `xmass`.
+`renameaegirhost` (more thorough, 5-pass queue). Like `xboa` and `xcopy`, a
+move of one account refuses an internal account (the hosted service's own
+address in `log/email.txt`) before the target is contacted; `xmass` carries
+every account of the box, internal ones included, and tells `xoct` so.
+
+A test or canary run of a real account passes `admail=<address>` to `xoct`,
+`xcopy` or `xmass`: every client notice of the run then goes to that address
+alone, the accounts' upgrade notices are switched off on the target, and the
+accounts keep their own addresses. `xoct` and `xmass` record the test run, on
+the source and (`xoct`) on the target, and hold the target's client mail for
+that address (`/data/conf/client_mail_hold.txt`).
+
+Every `xoct` verb that can mail a client refuses without the token while a
+record of its account, or `xmass`'s record of a test run of the whole box,
+is there. `proxy-retire` on the source and `proxy-mode` also send a notice
+only to a client the box's migration log shows was really told of the move.
+A canary becomes the real move with `xoct go-live` (see
+[MIGRATE-XOCT.md](MIGRATE-XOCT.md#test-and-canary-runs-admail)), and a test
+run of a whole box, once its cutover is complete, with `xmass go-live` (see
+[MIGRATE-XMASS.md](MIGRATE-XMASS.md)).
+
+A real move mails no upgrade notice of its own either: the first Octopus
+pass on the new box after it sends none (the client has what it says from
+the move), and later passes mail as the account's switch says.
 
 If you still have scripts referencing `xboa`, update them to call `xoct`
 directly. The tool is installed at `/opt/local/bin/xoct`; if you need a

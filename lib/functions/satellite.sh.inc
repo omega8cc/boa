@@ -7204,6 +7204,24 @@ _satellite_conf_root_here() (
     -execdir perl -e "${_CONF_ROOT_PL}" 0755 0644 {} +
   chmod 0711 .
 )
+# The first pass after a move to this box that would mail the account's
+# upgrade notice sends none: the move carries the account's setup mail
+# along, and the client has everything the notice says from the move
+# itself. The migration tools put the account's one-pass marker, root's
+# /data/conf/<account>_skip_upgrade_email.txt, where they install or import
+# it; the pass that would send the notice takes it away, and every later
+# pass mails as the account's switch says. Run in stage A, before the send.
+_satellite_upgrade_email_skip_once() {
+  local _f="/data/conf/${_USER}_skip_upgrade_email.txt"
+  [ -e "${_f}" ] || return 0
+  [ "${_STATUS}" != "INIT" ] || return 0
+  [ "${_DIST_INSTALL}" = "YES" ] && [ "${_PLATFORMS_ONLY}" = "NO" ] || return 0
+  [ "${_SEND_UPGRADE_EMAIL}" != "NO" ] || return 0
+  [ -e "${_ROOT}/log/upgrademail.txt" ] || return 0
+  rm -f "${_f}"
+  _SEND_UPGRADE_EMAIL=NO
+  _msg "NOTE: No upgrade email for ${_USER}: its first pass since the move to this box"
+}
 # stdin appended to ./$1 in the current (pinned) directory, as >> appends
 # (a missing file created 0644), but only to a regular file: a link or a FIFO
 # put at the name is refused, never followed or opened.

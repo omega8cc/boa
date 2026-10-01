@@ -50,6 +50,10 @@
 
 @=> Security
 
+    * xmass prep-target no longer takes a same-name account on the
+      target that carries no site by itself: it is refused before the
+      target changes, and taken only when the operator names it.
+
     * copydbackup hands an account only a dated backup directory it made
       itself or the account already owns, and the dumps it copies there,
       each dump owned by the account through the handle that creates it;
@@ -708,6 +712,45 @@
 
 @=> New Features
 
+    * xoct, xcopy and xmass take admail=<address>, the token boa
+      in-octopus takes, for test and canary runs of real accounts: every
+      client notice of the run (start, completion, forwarding change,
+      withdrawal) goes to that address alone, with no copy to the client
+      or the operator, and is logged as a test send that no later notice
+      takes for what the client was told. The accounts keep their own
+      addresses.
+
+    * Under admail= a create installs only with the install's welcome
+      mail held back, and create, transfer and import switch the
+      account's upgrade notice off on the target. xoct records the test
+      run on both boxes (/data/conf/xoct_admail.<account>.txt) and holds
+      the target's client mail for that address
+      (/data/conf/client_mail_hold.txt): every later xoct verb for the
+      account refuses without the token, and a real run refuses while a
+      hold is on its box or its target.
+
+    * xmass takes the admail= token on prep-target and cutover, hands it
+      to every xoct it runs, records it, holds the target's mail and
+      marks the target with the run, keeps the notices off on each sync,
+      and refuses a cutover of accounts prepared under it without it. A
+      hold shared by several test runs stays until the last one ends.
+
+    * xoct go-live <account> <target-ip>: a canary moved under admail=
+      becomes the real move in one step. The test run's records go on
+      both boxes, and the mail hold where no other test run of a
+      received account needs it, the target's upgrade notice switch
+      takes the source's value again, and the client gets the completion
+      notice it never had. A re-run changes nothing.
+
+    * xmass go-live <target-ip>: a whole-box test run whose cutover is
+      complete becomes the real move in one step. Every client gets the
+      completion notice it never had, the upgrade notices come back on,
+      and the test run's record, mark and mail hold go.
+
+    * xmass prep-target --adopt-siteless=<account>[,<account>...] takes
+      a same-name account on the target that carries no site, once the
+      operator has checked it by hand.
+
     * A test box can hold the mail BOA sends its clients: while
       /data/conf/client_mail_hold.txt holds one address, the welcome and
       upgrade mail, the usage notices, the nightly certificate and
@@ -1143,11 +1186,76 @@
 
 @=> Important Fixes
 
+    * A move no longer mails the client an "Ægir Upgrade" notice of its
+      own: the first Octopus pass on the new box that would send it
+      sends none, and later passes mail as the account's switch says.
+      xmass's cutover puts that one-pass marker back where the target's
+      own pass took it before any data moved. xcopy's create no longer
+      lets its install mail a welcome.
+
+    * An account whose address is a list of several addresses can be
+      moved: create installs it with the first address and the transfer
+      carries the account's own address file, so xmass prep-target no
+      longer stops on one.
+
+    * xoct proxy-retire on the source mails a client only when the box's
+      migration log shows the client was really told of a move from that
+      box, a retarget's earlier target included, and refuses without
+      admail= on a box in an xmass test run: after a test run no client
+      is told of a withdrawal. On the target it mails the client, as
+      before.
+
+    * xoct refuses to start moving one internal account (create, export,
+      pretransfer) before the target is contacted, as xcopy does, and
+      prints the override: a move of every account of a box carries them
+      (xmass, or _XOCT_BOX_MOVE=YES by hand). transfer, import and proxy
+      never refuse, so a move under way is never stopped half way.
+
+    * xoct and xcopy take an account's address as its own Octopus pass
+      does: log/email.txt, or root's _CLIENT_EMAIL when the file holds
+      no plain address. An account with no plain address in either place
+      is refused at create, export and pretransfer before the target is
+      contacted; it used to be installed and mailed under a stand-in
+      address.
+
+    * A re-notify of a proxied account whose client never received the
+      completion notice (a test run, a failed or suppressed first
+      notice) sends the completion notice, not the follow-up that refers
+      to it. A migration log carried from the move that brought an
+      account to a box no longer counts as what its client was told of a
+      move from there, nor does a notice that box sent about that move
+      as its target, unless the box later moves the account back to the
+      box it came from.
+
+    * xoct's and xcopy's hostmaster dump no longer carries the source's
+      GTID state: its import failed on a box sharing that history (a
+      move back, a failback, a second move between the same pair of
+      boxes an xmass run touched: "ERROR 3546 ... GTID_PURGED cannot be
+      changed"), and where it passed it stayed out of that box's binary
+      log. The dump takes --set-gtid-purged=OFF when the box's mysqldump
+      offers it.
+
+    * xcopy's create waits for a quiet target before it holds back the
+      welcome mail, and xoct and xcopy say so when the hold was lifted
+      during the install. A real xcopy refuses a target that holds its
+      clients' mail for a test run.
+
+    * xoct's client notices no longer pass an empty copy address to
+      s-nail on a box without _MY_EMAIL.
+
     * The shell-accounts worker reloads Nginx only when a pass changed an
       account's FPM includes, and once per pass. It used to reload after
       every pass for every account with custom PHP settings, every three
       minutes, and each reload reset the HTTP/3 transfers in flight, so
       an upload or a form post over HTTP/3 could fail on a busy box.
+
+    * The kernel now keeps UDP flows tracked for longer than an idle HTTP/3
+      connection lives on the server (sysctl.conf: 180 seconds for a young
+      flow, 300 for a stream, against 30 and 120 before, and Nginx closes
+      an idle HTTP/3 connection at 70). The close notice Nginx sends to an
+      idle browser connection at a reload used to find no tracking entry
+      and was rejected by the firewall, so the browser kept a dead
+      connection and its next request waited for its own timeout.
 
     * ai_policy keeps a site's AI policy fragments on disk when its
       last-good archive cannot be restored after a failed configtest or

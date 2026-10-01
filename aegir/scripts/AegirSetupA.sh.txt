@@ -293,6 +293,7 @@ _satellite_set_client_login
 _satellite_if_add_update_user_platforms_symlinks
 _satellite_if_add_update_backend_user_dirs_files_clean
 [ ! -e "/root/.silent.update.cnf" ] && _satellite_prepare_setup_email_tpl
+[ ! -e "/root/.silent.update.cnf" ] && _satellite_upgrade_email_skip_once
 [ ! -e "/root/.silent.update.cnf" ] && _satellite_send_welcome_email
 _satellite_letsencrypt_vhost_setup
 _satellite_log_update
