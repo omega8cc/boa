@@ -1222,11 +1222,32 @@ _restore_stage_a() {
 
 ### ------------------------------------------------------------ stage B ---
 
+### The safety dumps never carry this box's GTID state. By default
+### (--set-gtid-purged=AUTO) a dump taken while GTID is on (every box an
+### xmass run touched: BOA's my.cnf leaves it off, xmass_gtid.cnf turns it
+### on) opens with SET @@SESSION.SQL_LOG_BIN=0 and sets
+### @@GLOBAL.GTID_PURGED. Loading it back then fails on this box and on any
+### box sharing that history, the xmass target that replicated from it
+### included (ERROR 3546 on 8.x, 1840 on 5.7). OFF writes neither. Sets
+### _MYSQLDUMP_GTID to the
+### option when the local mysqldump takes it: one that does not (MariaDB's)
+### would refuse it and writes neither anyway, so it is asked, never assumed.
+_mysqldump_gtid_opts() {
+  _MYSQLDUMP_GTID=()
+  if mysqldump --help 2> /dev/null | grep -q -- '--set-gtid-purged'; then
+    _MYSQLDUMP_GTID=(--set-gtid-purged=OFF)
+  fi
+  return 0
+}
+
 _stage_b() {
   local _oN="$1"
   local _db _f _r _dumps="${_XTRIM_BASE}/${_oN}/dbdumps"
   mkdir -p "${_dumps}"
   _info "${_oN}: stage B -- data removal (ONE-WAY on this box)"
+  _mysqldump_gtid_opts
+  [ "${#_MYSQLDUMP_GTID[@]}" -eq 0 ] \
+    && _info "${_oN}: this mysqldump takes no --set-gtid-purged: its dumps carry no GTID state"
   ### Databases: dump + verify EVERY database first, then drop, deriving
   ### from the map (saved vhosts + aliases) -- never from sqlclean.
   for _db in ${_MAP_ALL_DBS}; do
@@ -1239,7 +1260,7 @@ _stage_b() {
     ### purpose: globally it would change the meaning of the ssh/pgrep
     ### pipelines used as boolean tests elsewhere in this file.
     if ( set -o pipefail
-         mysqldump --single-transaction --quick --no-autocommit \
+         mysqldump "${_MYSQLDUMP_GTID[@]}" --single-transaction --quick --no-autocommit \
            --skip-add-locks --no-tablespaces --hex-blob "${_db}" 2>/dev/null \
            | gzip > "${_dumps}/${_db}.sql.gz" ); then
       ### Two different faults, two different tests: gzip -t catches a

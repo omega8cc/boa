@@ -252,5 +252,10 @@ the manifest's map and the archived aliases; "the target died" is a
 restore from the remote backup history. The safety dumps under
 `/var/backups/xtrim/<oN>/dbdumps/` cover only the drop step itself.
 
+The safety dumps are taken with `--set-gtid-purged=OFF` when the local
+`mysqldump` takes that option, so they carry no GTID state of this box and
+load back here or on the target that replicated from it (a dump carrying
+that state fails there: "ERROR 3546" on 8.x, "ERROR 1840" on 5.7).
+
 Retiring the proxy entirely is out of scope — that is the `boa cleanup`
 sequence, and mixing the two machineries is how customer data is lost.
