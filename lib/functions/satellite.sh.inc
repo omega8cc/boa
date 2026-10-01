@@ -5001,7 +5001,7 @@ _satellite_run_child_b() {
           _acct_in_real_dir "${_THIS_HM_SITE}/files" \
             _satellite_reown_here "${_USER}${_T_WG:+:${_T_WG}}"
         fi
-        _satellite_in_store_dir "${_THIS_HM_SITE}/files" \
+        _satellite_in_site_store_dir "${_THIS_HM_SITE}/files" \
           _satellite_tree_mode_all_here 02775 0664
       else
         _msg "${_STATUS} A: NOTE: hostmaster site outside ${_ROOT}/aegir/distro left as it is"
@@ -7334,10 +7334,19 @@ _satellite_hm_path_ok() {
 # the store, a site's files/ or private/ moved into it), inside the
 # directory the link resolves to: only one in the account's own
 # static/files, or in the store moved onto attached storage
-# (/mnt/<mount>/files/<oN>/static/files). Any other link is refused.
+# (/mnt/<mount>/files/<oN>/static/files). Any other link is refused. The
+# backups link leads to the store's .backups by design; a site's store is
+# never a dot-name right below the store root (BOA's own .backups,
+# .backup-exports, .archived), so _satellite_in_site_store_dir refuses one.
 _satellite_in_store_dir() {
-  local _d="${1}" _r _s _m
-  shift
+  _satellite_in_store any "$@"
+}
+_satellite_in_site_store_dir() {
+  _satellite_in_store site "$@"
+}
+_satellite_in_store() {
+  local _k="${1}" _d="${2}" _r _s _m _top
+  shift 2
   if [ ! -L "${_d}" ]; then
     _acct_in_real_dir "${_d}" "$@"
     return
@@ -7349,14 +7358,20 @@ _satellite_in_store_dir() {
   # as the nightly decides it.
   case "${_r}" in
     ""|*[!A-Za-z0-9._/-]*) return 1 ;;
-    "${_s}"?*) ;;
+    "${_s}"?*)
+      _top="${_r#"${_s}"}"
+      ;;
     /mnt/?*/files/"${_USER}"/static/files/?*)
       _m="${_r%%/files/"${_USER}"/static/files/*}"
       case "${_m}" in
         */files/*|*/static/*) return 1 ;;
       esac
+      _top="${_r#"${_m}"/files/"${_USER}"/static/files/}"
       ;;
     *) return 1 ;;
+  esac
+  case "${_k}:${_top}" in
+    site:.*) return 1 ;;
   esac
   ( cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] && "$@" )
 }
