@@ -50,6 +50,10 @@
 
 @=> Security
 
+    * The site ownership and permissions fixers leave BOA's own folders at
+      the top of an account's files store (.backups, .backup-exports,
+      .archived) as they are; only a site's own store is walked.
+
     * xmass prep-target no longer takes a same-name account on the
       target that carries no site by itself: it is refused before the
       target changes, and taken only when the operator names it.
