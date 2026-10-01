@@ -87,7 +87,9 @@ _store_dir() {
   # below THIS account's own real static/files, or below migratefs' layout
   # for this account on attached storage (/mnt/<mount>/files/<acct>/static/files,
   # where no directory of the mount part is itself named files or static).
-  local _p _acct="" _res _own _m
+  # A dot-name right below either store root is BOA's own (.backups,
+  # .backup-exports, .archived), never a site's store, so it is left alone.
+  local _p _acct="" _res _own _m _top
   _p="$1"
   [ -d "${_p}" ] || return 1
   if [ ! -L "${_p}" ]; then
@@ -113,15 +115,21 @@ _store_dir() {
   _res=$(realpath -e -- "${_p}" 2>/dev/null) || return 1
   case "${_res}" in
     *[!A-Za-z0-9._/-]*) return 1 ;;
-    "${_own}"?*) ;;
+    "${_own}"?*)
+      _top="${_res#"${_own}"}"
+      ;;
     /mnt/?*/files/"${_acct}"/static/files/?*)
       [ -n "${_acct}" ] || return 1
       _m="${_res%%/files/"${_acct}"/static/files/*}"
       case "${_m}" in
         */files/*|*/static/*) return 1 ;;
       esac
+      _top="${_res#"${_m}"/files/"${_acct}"/static/files/}"
       ;;
     *) return 1 ;;
+  esac
+  case "${_top}" in
+    .*) return 1 ;;
   esac
   printf '%s' "${_res}"
 }
