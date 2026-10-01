@@ -1294,6 +1294,18 @@
       /etc/mydumper.cnf turns the binary log off again, and the 0.19.3
       line refuses the option.
 
+    * Triggers, stored procedures and functions, and scheduled events
+      travel with a site's database: the nightly and cluster MyQuick
+      dumps, the xoct and xcopy exports, and the fast dump and import of
+      an Aegir Migrate task and of a Restore whose archive carries no
+      database dump. mydumper writes none of them unless asked, so they
+      were lost. xoct and xcopy keep their definer, the site's database
+      user; the fast import gives them, and the views, to the site's new
+      database user: a carried view named the old user, which the task
+      drops, and failed from then on. With the binary log on, a function
+      declared without DETERMINISTIC, NO SQL or READS SQL DATA now fails
+      the load instead of vanishing.
+
     * The nightly copy of database dumps into each account's dbackup/
       takes the date from the end of the archive folder name: on a box
       whose hostname holds a dash, MyQuick dumps were never copied and
