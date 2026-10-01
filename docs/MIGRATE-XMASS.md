@@ -747,7 +747,8 @@ What `init` does:
    window — a standby is a working BOA box, with IDS and every watchdog
    live — and passivity comes from per-job gates on the marker in every
    local writer: the task queue and the Aegir dispatch it parks, the
-   night work, cache TRUNCATEs, Solr core management, binlog purge,
+   night work, cache TRUNCATEs, Solr core management, the agent pass's
+   refresh of the shared modules in `/data/all/000/modules`, binlog purge,
    mysqlcheck repairs, cluster dumps, and the whole duplicity backup
    chain (`mybackup`, `multiback`, `backboa`, `duobackboa` exit quietly —
    the active owns the backup lineage).

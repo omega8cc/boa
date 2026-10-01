@@ -3275,9 +3275,13 @@ _WEBFORM_B_TAG="1.x-4.26.6"
 # compared with its archive, stamped there and swapped in only when every
 # member is in place and whole: a copy cut short never replaces the one
 # in place and is fetched again on the next pass, where the old code stamped
-# it as deployed. The swap renames the copy in place aside first and puts it
-# back when the new one cannot go in. The gates read the ".full" stamp, the
-# pair BOA.sh.txt writes for the same modules; owner "root" re-owns the copy.
+# it as deployed. The new copy and the one in place swap names in one rename
+# (_SAT_SWAP_PL), so a site loading the module through a bundle's link finds
+# the old copy or the new one, never none; where one rename cannot do it
+# (nothing in place yet, or no renameat2 on the box), the copy in place is
+# moved aside first and put back when the new one cannot go in. The gates
+# read the ".full" stamp, the pair BOA.sh.txt writes for the same modules;
+# owner "root" re-owns the copy.
 # Every step runs from inside the real 000/modules (each directory on the
 # way entered as the real one, _satellite_in_modules) and names the unpack
 # directory relative to it, never by the store's path; that directory is
@@ -3292,7 +3296,7 @@ _satellite_shared_module_update() {
   fi
 }
 _satellite_shared_module_here() {
-  local _nm="$1" _ver="$2" _own="$3" _tmp _arc _ok=NO
+  local _nm="$1" _ver="$2" _own="$3" _tmp _arc _ok=NO _swp=NO
   _arc="${_nm}-${_ver}.tar.gz"
   # a directory a killed pass left behind; a live pass's is never this old
   find . -maxdepth 1 -type d -name ".${_nm}.*" -mmin +60 \
@@ -3309,10 +3313,16 @@ _satellite_shared_module_here() {
     [ "${_own}" = "root" ] && chown -R root:root "${_tmp}/${_nm}" &> /dev/null
     echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.info"
     echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.full.info"
+    # swapped, the copy that was in place is left at ${_tmp}/${_nm}
     if [ -e "./${_nm}" ] || [ -L "./${_nm}" ]; then
-      mv -T -- "./${_nm}" "${_tmp}/.old" &> /dev/null
+      if perl -e "${_SAT_SWAP_PL}" -- "${_tmp}/${_nm}" "./${_nm}" 2> /dev/null; then
+        _swp=YES
+      else
+        mv -T -- "./${_nm}" "${_tmp}/.old" &> /dev/null
+      fi
     fi
-    if ! mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
+    if [ "${_swp}" != "YES" ] \
+      && ! mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
       [ -e "${_tmp}/.old" ] && [ ! -e "./${_nm}" ] \
         && mv -T -- "${_tmp}/.old" "./${_nm}" &> /dev/null
       _msg "${_STATUS} A: OOPS ${_nm}-${_ver} could not be swapped in; the copy in place is kept"
@@ -3934,8 +3944,8 @@ _satellite_all_fetched_here() {
 }
 # The two names given swapped in one rename (renameat2 with
 # RENAME_EXCHANGE, its number read from perl's syscall.ph): exit 0 only
-# when they were. One text wherever it is used (satellite.sh.inc, which
-# AegirSetupC.sh.txt sources).
+# when they were. One text wherever it is defined (satellite.sh.inc, which
+# AegirSetupC.sh.txt sources, and BOA.sh.txt).
 # shellcheck disable=SC2016
 _SAT_SWAP_PL='my ($a, $b) = @ARGV; my $n = eval { require "syscall.ph"; &SYS_renameat2 }; exit 1 unless defined $n && $n =~ /^[0-9]+$/; exit(syscall($n + 0, -100, $a, -100, $b, 2) == 0 ? 0 : 1)'
 
