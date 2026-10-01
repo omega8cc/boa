@@ -3418,10 +3418,18 @@ _wg_rollback() {
 # then the account's processes still holding www-data are counted (reported,
 # never killed).
 _wg_u13() {
-  local _u _rc=0 _uids _n
+  local _u _rc=0 _uids _n _sw=NO _owed
+  _owed="/var/log/boa/instgrp-web.${_WP_A}.sgid.txt"
   if [ "${_WP_M}" != "YES" ]; then
     for _u in "${_WP_A}" $(_wg_w_ids | grep -vxF -- "${_WP_A}"); do
       _in_grp_sup "${_u}" "${_WEBG}" || continue
+      # the sweep below is owed from before the first identity leaves, so a
+      # run killed in between is finished by the next run at B
+      if [ "${_sw}" = "NO" ] && [ ! -e "${_owed}" ]; then
+        _wg_put_root "${_owed}" "owed $(date '+%Y-%m-%d_%H:%M:%S')" \
+          || _alrt "${_WP_A}: ${_owed} could not be written; this run sweeps all the same"
+      fi
+      _sw=YES
       gpasswd -d "${_u}" "${_WEBG}" > /dev/null 2>&1
       if _in_grp_sup "${_u}" "${_WEBG}"; then
         _alrt "${_u}: could not take it out of ${_WEBG}"
@@ -3431,27 +3439,96 @@ _wg_u13() {
   fi
   # aegir keeps www-data by design: the master has no such count
   [ "${_WP_M}" = "YES" ] && return "${_rc}"
+  # an identity still listed could make another file at once: swept by
+  # the run that takes it out
+  if [ "${_rc}" = "0" ] && { [ "${_sw}" = "YES" ] || [ -e "${_owed}" ]; }; then
+    _sw=YES
+    _wg_sgid_sweep || _rc=1
+  fi
   _uids=$(_wg_own_uids)
   _n=$(_wg_procs_www "${_uids}")
   if [ "${_n:-0}" -gt 0 ]; then
     _msg "NOTE: ${_WP_A}: ${_n} processes still hold ${_WEBG} (sessions started before phase B); they keep it until they end"
     _wg_note "phase B: ${_n} processes still hold www-data until they end (reconnect shell and SFTP sessions)"
     printf '%s\n' "${_n}" > "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" 2> /dev/null
+    # one of them could still make such a file: every run at B sweeps
+    # again until none is left
+    [ -e "${_owed}" ] || _wg_put_root "${_owed}" "owed $(date '+%Y-%m-%d_%H:%M:%S')" \
+      || _alrt "${_WP_A}: ${_owed} could not be written; the next run at B does not sweep again"
   else
     rm -f "/var/log/boa/instgrp-web.${_WP_A}.procs.txt"
+    [ "${_sw}" = "YES" ] && [ "${_rc}" = "0" ] && rm -f -- "${_owed}"
   fi
   return "${_rc}"
 }
 
-# How many processes of the uids $1 (comma list) hold www-data.
+# How many processes of the uids $1 (comma list) hold www-data: in their
+# groups, or as their real, effective, saved or file-system group (a
+# set-group-ID file run before its bit was cleared).
 _wg_procs_www() {
   [ -n "${1}" ] || { echo 0; return 0; }
   _wg_proc_status | awk -v ul=",${1}," -v w="${_WG_WWWGID}" '
-    function out() { if (u != "" && index(ul, "," u ",") && index(g, " " w " ")) n++; u = ""; g = "" }
+    function out() { if (u != "" && index(ul, "," u ",") && index(g " " gi, " " w " ")) n++; u = ""; g = ""; gi = "" }
     /^Name:/ { out() }
     /^Uid:/ { u = $2 }
+    /^Gid:/ { gi = " " $2 " " $3 " " $4 " " $5 " " }
     /^Groups:/ { $1 = ""; g = " " $0 " " }
     END { out(); print n + 0 }'
+}
+
+# Clears the set-group-ID bit of each regular file named on stdin (NUL
+# separated) through a no-follow handle, only when one of the uids $2 owns
+# it and its group is still $1; prints each one cleared, unprintable bytes
+# shown as "?". 1 when a clear failed.
+# shellcheck disable=SC2016
+_WG_SGID_PL='use Fcntl; my ($g, $ok) = @ARGV; my %o = map { $_ => 1 } grep { length } split(/,/, $ok); my $rc = 0; local $/ = "\0"; while (my $f = <STDIN>) { chomp($f); my @l = lstat($f); next unless @l && -f _; sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && -f _ && $o{$s[4]} && $s[5] == $g && ($s[2] & 02000)) { if (chmod($s[2] & 05777, $h)) { $f =~ s/[^[:print:]]/?/g; print "$f\n"; } else { $rc = 1; } } close($h); } exit $rc'
+
+# The mount points a file of the account's may sit on and run from with its
+# set-group-ID bit honoured: every mount of a disk or memory file system that
+# is not nosuid (pseudo, network and FUSE mounts left out), decoded as the
+# kernel escapes them. A file on a nosuid mount keeps the bit honoured only
+# through another mount of the same file system, which is walked.
+_wg_sweep_roots() {
+  perl -ne 'my @f = split(/ /); next unless defined($f[3]) && $f[2] =~ /^(ext[234]|xfs|btrfs|zfs|tmpfs|f2fs|jfs|reiserfs|overlay)$/; next if ",$f[3]," =~ /,nosuid,/; my $m = $f[1]; $m =~ s/\\([0-7]{3})/chr(oct($1))/ge; print "$m\n" if $m =~ m{^/} && $m !~ /\n/' \
+    /proc/self/mounts 2> /dev/null | sort -u
+}
+
+# Phase B leaves no set-group-ID www-data file of the account's own. While
+# its identities and pool users held www-data, any of them could give a
+# file of its own group www-data and the set-group-ID bit wherever it could
+# write, and run it as www-data's group after phase B. Every local file
+# system is walked; the bit is cleared on each such regular file one of the
+# account's uids owns. 1 when one could not be cleared, or when no file
+# system was read to walk.
+_wg_sgid_sweep() {
+  local _uids _r _out _rc=0 _n=0 _u _w=() _l _roots=0
+  _uids=$(_wg_own_uids)
+  [ -n "${_uids}" ] && [[ "${_WG_WWWGID}" =~ ^[0-9]+$ ]] || return 0
+  for _u in ${_uids//,/ }; do
+    _w+=(-o -uid "${_u}")
+  done
+  while IFS= read -r _r; do
+    [ -d "${_r}" ] || continue
+    _roots=$((_roots + 1))
+    _out=$(env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" -xdev -type f -perm -2000 \
+      -gid "${_WG_WWWGID}" \( "${_w[@]:1}" \) -print0 2> /dev/null \
+      | perl -e "${_WG_SGID_PL}" "${_WG_WWWGID}" "${_uids}") || _rc=1
+    [ -n "${_out}" ] || continue
+    while IFS= read -r _l; do
+      _n=$((_n + 1))
+      _log "${_WP_A}: set-group-ID bit cleared: ${_l}"
+    done <<< "${_out}"
+  done < <(_wg_sweep_roots)
+  if [ "${_roots}" = "0" ]; then
+    _alrt "${_WP_A}: no file system to walk was read from /proc/self/mounts; the set-group-ID sweep of phase B stays owed"
+    return 1
+  fi
+  if [ "${_n}" -gt 0 ]; then
+    _msg "NOTE: ${_WP_A}: the set-group-ID bit cleared on ${_n} www-data file(s) of the account (${_LOG})"
+    _wg_note "phase B: the set-group-ID bit cleared on ${_n} www-data file(s) of the account"
+  fi
+  [ "${_rc}" = "0" ] || _alrt "${_WP_A}: a set-group-ID www-data file of the account could not be cleared (${_LOG}); the next run at B tries again"
+  return "${_rc}"
 }
 
 # The up leg, rows A0r A0 A1 B0r B0 B1. rc as the table's exit column.
@@ -3569,7 +3646,7 @@ _wg_leg_down() {
   fi
   # d7
   _wg_i_remove
-  rm -f "/var/log/boa/instgrp-web.${_WP_A}.procs.txt"
+  rm -f "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" "/var/log/boa/instgrp-web.${_WP_A}.sgid.txt"
   return 0
 }
 
@@ -4342,6 +4419,23 @@ _wg_g_v1() {
     && _ids_converted "${_WP_A}" "${_WP_A}" "${_WP_A}.ftp" ${_subs}
 }
 
+# An inventory path as the box will run it. A migration's runner park
+# (xoct's and xcopy's pre-mig until post-mig, an xmass cutover until its
+# unpark) moves runner.sh, owl.sh, usage.sh, graceful.sh and the worker to
+# /var/xdrago/.<name>.off and holds the tools refresh off them; the parked
+# copy is the one the park's end puts back, so it is the one read. The park
+# is BOA.sh.txt's own test: the marker, the live name gone, the parked one
+# there. A live copy beside a parked one is the live one.
+_wg_inv_path() {
+  local _d="${1%/*}" _b="${1##*/}"
+  if [ "${_d}" = "/var/xdrago" ] && [ -e "/run/boa_migration_park.pid" ] \
+    && [ ! -e "${1}" ] && [ -f "${_d}/.${_b}.off" ]; then
+    printf '%s\n' "${_d}/.${_b}.off"
+    return 0
+  fi
+  printf '%s\n' "${1}"
+}
+
 # G3: the box is ready: the release stamp, every web-group writer, and (for an
 # account) its provision copy's token; for the master, runner.sh's token.
 _wg_g_ready() {
@@ -4352,7 +4446,7 @@ _wg_g_ready() {
   fi
   [ "${_WP_M}" = "YES" ] && _inv="${_WG_MINVENTORY}"
   for _t in ${_inv}; do
-    _p="${_t%%:*}"
+    _p=$(_wg_inv_path "${_t%%:*}")
     _tok="${_t##*:}"
     if [ ! -f "${_p}" ] || ! grep -q -- "${_tok}" "${_p}" 2> /dev/null; then
       _msg "${_WP_A}: ${_p} does not carry ${_tok} yet; not ready"
@@ -4805,6 +4899,8 @@ _wg_status() {
   _msg "tops:     $( [ "${_WM_T}" = "YES" ] && echo "in ${_WP_G}" || echo "not all in ${_WP_G}" )$( [ "${_WM_RT}" = "YES" ] && echo ", www-data residue" )"
   [ -s "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" ] \
     && _msg "procs:    B, $(head -c 16 "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" | tr -cd '0-9') processes still hold www-data"
+  [ -e "/var/log/boa/instgrp-web.${_WP_A}.sgid.txt" ] \
+    && _msg "sgid:     the set-group-ID sweep of phase B is owed: the next run at B walks the box again"
   # lambda, the measured class, and sigma, what the account carries (the
   # intent while the group is ours, a valid record, the traits' evidence)
   _D_LAM="${_WM_LAM}"
@@ -5002,7 +5098,7 @@ _wg_drift_box() {
   done
   if [ "${_any}" = "YES" ]; then
     for _t in ${_WG_INVENTORY}; do
-      _p="${_t%%:*}"
+      _p=$(_wg_inv_path "${_t%%:*}")
       _tok="${_t##*:}"
       if [ -f "${_p}" ] && ! grep -q -- "${_tok}" "${_p}" 2> /dev/null; then
         echo "ALRT DR6 box: ${_p} is stale (no ${_tok}) while an account holds its web-group record"
@@ -5011,7 +5107,7 @@ _wg_drift_box() {
   fi
   [ -f /root/.aegir.web-group.txt ] || return 0
   for _t in ${_WG_MINVENTORY}; do
-    _p="${_t%%:*}"
+    _p=$(_wg_inv_path "${_t%%:*}")
     _tok="${_t##*:}"
     if [ -f "${_p}" ] && ! grep -q -- "${_tok}" "${_p}" 2> /dev/null; then
       echo "ALRT DR6 box: ${_p} is stale (no ${_tok}) while the master holds its web-group record"
@@ -5025,7 +5121,7 @@ _wg_drift_box() {
 _wg_check() {
   local _t _p _tok _rc=0 _a
   for _t in ${_WG_INVENTORY} ${_WG_MINVENTORY}; do
-    _p="${_t%%:*}"
+    _p=$(_wg_inv_path "${_t%%:*}")
     _tok="${_t##*:}"
     if [ ! -f "${_p}" ]; then
       _msg "absent:  ${_p}"

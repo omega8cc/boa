@@ -6031,6 +6031,27 @@ _NOW=${_NOW//[^0-9-]/}
 [ -d "/var/backups/ltd/old" ] || mkdir -p /var/backups/ltd/{conf,log,old}
 [ -d "/var/backups/zombie/deleted" ] || mkdir -p /var/backups/zombie/deleted
 _THIS_LTD_CONF="/var/backups/ltd/conf/lshell.conf.${_NOW}"
+# Only instgrp writes its pid into /run/boa_run.pid; the barracuda, octopus
+# and boa wrappers create it empty and refuse to start while it exists. A
+# pid-carrying lock whose process is gone (or is not root's) is therefore a
+# killed instgrp's leftover (its EXIT trap never ran), and it would keep this
+# worker, and with it the web-group witnesses, off until clear.sh's next
+# tick. Removed only while it still names the pid read, so a lock taken
+# meanwhile stays.
+_ltd_reap_stale_run_lock() {
+  local _held
+  [ -s "/run/boa_run.pid" ] || return 0
+  _held=$( { tr -cd '0-9' < /run/boa_run.pid; } 2> /dev/null )
+  [ -n "${_held}" ] || return 0
+  if kill -0 "${_held}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_held}/status" 2> /dev/null)" = "0" ]; then
+    return 0
+  fi
+  [ "$( { tr -cd '0-9' < /run/boa_run.pid; } 2> /dev/null )" = "${_held}" ] || return 0
+  rm -f /run/boa_run.pid
+  echo "$(date) reaped /run/boa_run.pid left by a killed run (pid ${_held})" >> /var/log/boa/manage_ltd.incident.log
+}
+_ltd_reap_stale_run_lock
 if [ -e "/run/manage_ruby_users.pid" ] \
   || [ -e "/run/manage_ltd_users.pid" ] \
   || [ -e "/run/boa_run.pid" ] \

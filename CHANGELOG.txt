@@ -108,6 +108,10 @@
       progress, phase B onto a box with it off, an opt-out that arrived
       late); an xmass standby keeps its accounts unconverted until the
       promotion.
+    * Phase B also clears the set-group-ID bit of every www-data file the
+      account's identities own, on every local file system that honours
+      the bit: a file made while they were in www-data no longer gives
+      its group to whoever runs it afterwards.
 
     * copydbackup hands an account only a dated backup directory it made
       itself or the account already owns, and the dumps it copies there,
@@ -1264,6 +1268,12 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * A run lock left by an instgrp run killed outright (out of memory, a
+      stray kill -9) no longer keeps the limited-shell worker, the task
+      queue runner and the nightly waiting for up to three hours: the
+      worker and the 5-minute clear.sh take it away once the process it
+      names is gone.
 
     * xmass init and prep-target no longer wait out their whole bound
       when /data/disk holds a directory that is not an Octopus account,

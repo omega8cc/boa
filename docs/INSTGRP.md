@@ -103,7 +103,10 @@ convert oN` once the session has ended. Before this check a logged-in
 `oN.ftp` failed the move half way and rolled the whole account back.
 
 `convert` refuses while another BOA run holds `/run/boa_run.pid` (the
-upgrade arm holds it itself and says so with `--from-octopus`), waits up to
+upgrade arm holds it itself and says so with `--from-octopus`; a lock that
+names the pid of an `instgrp` run killed outright is taken away by the next
+`instgrp` run, the next limited-shell worker pass or the next `clear.sh`
+tick, so the worker's checks never stay off for hours), waits up to
 three minutes for a limited-shell worker pass already running when it takes
 that lock and refuses while one is still running (`revert` too; the
 upgrade arm waits the same and skips the account as busy), waits a
@@ -338,6 +341,16 @@ meets (it covers `/var/www` too) keeps its gid, as `<gid>-purged`.
 - Processes already running with `www-data` when an account enters phase B
   (a shell session, a long Drush run) keep it until they end: the run counts
   them and tells the account to reconnect, and never kills them.
+- While its identities were in `www-data`, the account could give a file of
+  its own that group and the set-group-ID bit anywhere it could write, and
+  run it with `www-data`'s group after phase B. Phase B walks every local
+  file system that honours the bit (not `nosuid`; network and FUSE mounts
+  are not walked) and clears it on each such file one of the account's
+  identities or pool users owns, wherever it is; the account's notes name
+  the count and `/var/log/boa/instgrp.log` each path. A run killed before the
+  walk, a walk that could not clear a file, or a process still holding
+  `www-data` leaves it owed (`webstatus` says so), and the next run at phase
+  B walks again.
 
 ## The account's own web group (`wg-oN`)
 
@@ -367,7 +380,11 @@ writer the conversion relies on carries its web-group form (`instgrp`, the
 limited-shell worker, the nightly, both site scripts, `xtrim`, `xoct`,
 `xcopy`, `xmass`, `aegir2boa-stage2`), and the account's own provision copy
 carries the web-group branch that keeps its private files closed. A box
-that is not ready refuses with exit 5 and changes nothing.
+that is not ready refuses with exit 5 and changes nothing. While a
+migration has the box's runners parked (`xoct` and `xcopy` from `pre-mig`
+to `post-mig`, an `xmass` cutover until it unparks them), the parked copy
+of each is the one read, as it is the copy the park puts back; a live copy
+beside a parked one is the one read.
 
 ### Phase A and phase B
 
