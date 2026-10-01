@@ -4772,7 +4772,7 @@ _mytop_install() {
         _mrun "cpanm Term::ReadKey --force"
       fi
       cd /var/opt
-      rm -rf git*
+      rm -rf mytop*
       _get_dev_src "mytop-1.6.tar.gz"
       cd /var/opt/mytop-1.6
       _mrun "perl Makefile.PL"
