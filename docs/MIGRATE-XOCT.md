@@ -830,11 +830,19 @@ so a box that was the target of an earlier move holds that move's notices,
 which name it.
 
 Nor does the line a `proxy-mode` run here writes while this box is the
-target (`set-inbound`), which names the box the account came from. A
-notice that run sent names that box too: it does not count when this box
-moves the account on elsewhere, but it still counts if this box later
-moves the account back there, since that box is then one this box moved
-it to.
+target (`set-inbound`), which names the box the account came from, nor a
+notice sent from here as the target: `proxy-mode` logs it `change-inbound`
+and `proxy-retire` logs it `retire-inbound`. Neither counts when this box
+moves the account on, back to that box included (a failback). A notice an
+older `xoct` sent there was logged `change`, and that one still counts if
+this box later moves the account back to that box.
+
+On a standing `xmass` pair the account's `log/` rides every sync pass from
+the active to the mirror (a copy newer on the mirror is kept), and
+`log/migproxy.log` with it. After a switch the promoted box holds the log as
+it stood at the last pass; the lines the cutover writes on the old active
+after that pass (the `set` line naming the promoted box, the switch's own
+notice) stay on the old active.
 
 `proxy-retire` on the target mails the client: the source sends the
 notices, so the target's log never shows one, and a retire there is the

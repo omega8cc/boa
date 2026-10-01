@@ -2672,6 +2672,118 @@ _xmass_copy_suspended_flag() {
   return 0
 }
 
+### The client mail hold (_XMASS_HOLD_FILE), the marks of other boxes' whole-
+### box test runs here (xmass_test_run.*.txt) and xoct's test-run records of
+### the accounts this run carries (xoct_admail.<oN>.txt) live in /data/conf,
+### which no leg sends. Each live pass mirrors them onto the target, presence
+### and absence, as the suspension flags travel: a box promoted from it, by a
+### cutover or by hand, holds exactly the client mail this box holds, and its
+### xoct verbs keep to the same test runs. Two things there stay its own:
+###   - this box's own test-run mark, while the record here names that target
+###     (a mirror built under admail=, ended by 'xmass go-live');
+###   - the record of the same account received there, where this box's
+###     record is of a canary it sends away (the target is that canary's).
+### With no hold here, the target keeps its hold only while a test run is
+### still recorded there after the carry, and loses it otherwise. A file here
+### that is not a regular file fails the pass, as an unmirrored suspension
+### does. DRY says what would travel and touches nothing. $1 = the target.
+_xmass_copy_mail_state() {
+  local _t="$1" _mk="" _own=NO _rt _oct _f _n _b _recs="" _marks="" _hold="-"
+  local _bad="" _out _l _shown=""
+  _mk="$(_xmass_test_run_mark)" || _mk=""
+  if [ -n "${_mk}" ] && [ -f "${_XMASS_ADMAIL_FILE}" ]; then
+    _rt="$(_xmass_admail_rec_target)"
+    { [ -z "${_rt}" ] || [ "${_rt}" = "${_t//[^0-9A-Za-z.:-]/}" ]; } && _own=YES
+  fi
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    [[ "${_oct}" =~ ^[A-Za-z0-9._-]+$ ]] || continue
+    _f="/data/conf/xoct_admail.${_oct}.txt"
+    if [ -L "${_f}" ] || { [ -e "${_f}" ] && [ ! -f "${_f}" ]; }; then
+      _bad="${_bad} ${_f}"
+    elif [ -f "${_f}" ]; then
+      _recs="${_recs} ${_oct}=$(head -c 1024 "${_f}" | base64 -w0)"
+      _shown="${_shown} ${_f##*/}"
+    else
+      _recs="${_recs} ${_oct}=-"
+    fi
+  done
+  for _f in /data/conf/xmass_test_run.*.txt; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    _n="${_f##*/}"
+    if [[ ! "${_n}" =~ ^xmass_test_run\.[A-Za-z0-9.-]+\.txt$ ]] || [ -L "${_f}" ] || [ ! -f "${_f}" ]; then
+      _bad="${_bad} ${_f}"
+      continue
+    fi
+    _marks="${_marks} ${_n}=$(head -c 1024 "${_f}" | base64 -w0)"
+    _shown="${_shown} ${_n}"
+  done
+  if [ -L "${_XMASS_HOLD_FILE}" ] || { [ -e "${_XMASS_HOLD_FILE}" ] && [ ! -f "${_XMASS_HOLD_FILE}" ]; }; then
+    _bad="${_bad} ${_XMASS_HOLD_FILE}"
+  elif [ -f "${_XMASS_HOLD_FILE}" ]; then
+    _hold="$(head -c 1024 "${_XMASS_HOLD_FILE}" | base64 -w0)"
+    _shown="${_shown} ${_XMASS_HOLD_FILE##*/}"
+  fi
+  if [ -n "${_bad}" ]; then
+    _alrt "DENY: not a regular file here, so not mirrored to ${_t}:${_bad} -- after a"
+    _alrt "DENY: promotion that box would not hold the client mail this box holds; fix it here"
+    _XMASS_NOT_CLEAN=YES
+    _XMASS_RSYNC_RC=1
+    return 1
+  fi
+  if [ "${_MODE}" != "LIVE" ]; then
+    [ -n "${_shown}" ] && _info "  [DRY-PLAN] mail hold and test-run records mirrored to ${_t}:${_shown}"
+    return 0
+  fi
+  # A promoted box is never written to: an automated pass re-proves the
+  # marker here, and the remote half writes nothing on a box without one.
+  _xmass_auto_assert_standby
+  # base64 words, checked account names and file names, YES or NO: each goes
+  # into the remote line as is.
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "[ -e /root/.standby.cnf ] || { echo MS-NOT-STANDBY; exit 1; }; _MK='${_mk}'; _OWN=${_own}; _HOLD='${_hold}'; _RECS='${_recs}'; _MARKS='${_marks}'; _src='${_XMASS_XOCT_SRC_LINE}'; _h=${_XMASS_HOLD_FILE}
+_put() { [ -f \"\$1\" ] && [ ! -L \"\$1\" ] && [ \"\$(head -c 1024 \"\$1\" | base64 -w0)\" = \"\$2\" ] && return 0; mkdir -p /data/conf && ( umask 022; printf '%s' \"\$2\" | base64 -d > \"\$1.tmp\" ) && chown root:root \"\$1.tmp\" && chmod 644 \"\$1.tmp\" && mv -f \"\$1.tmp\" \"\$1\" || return 1; echo \"MS-PUT \${1##*/}\"; }
+_gone() { [ -e \"\$1\" ] || [ -L \"\$1\" ] || return 0; rm -f \"\$1\" || return 1; echo \"MS-GONE \${1##*/}\"; }
+for _e in \${_RECS}; do _a=\${_e%%=*}; _b=\${_e#*=}; _f=/data/conf/xoct_admail.\${_a}.txt
+  if [ \"\${_b}\" = - ]; then _gone \"\${_f}\" || exit 1; continue; fi
+  if printf '%s' \"\${_b}\" | base64 -d | grep -qxF \"\${_src}\" && [ -f \"\${_f}\" ] && ! grep -qxF \"\${_src}\" \"\${_f}\"; then echo \"MS-KEEP \${_f##*/}\"; continue; fi
+  _put \"\${_f}\" \"\${_b}\" || exit 1
+done
+for _f in /data/conf/xmass_test_run.*.txt; do [ -e \"\${_f}\" ] || [ -L \"\${_f}\" ] || continue
+  if [ \"\${_f}\" = \"\${_MK}\" ]; then [ \"\${_OWN}\" = YES ] && continue; _gone \"\${_f}\" || exit 1; continue; fi
+  case \" \${_MARKS} \" in *\" \${_f##*/}=\"*) continue ;; esac
+  _gone \"\${_f}\" || exit 1
+done
+for _e in \${_MARKS}; do _put \"/data/conf/\${_e%%=*}\" \"\${_e#*=}\" || exit 1; done
+if [ \"\${_HOLD}\" != - ]; then _put \"\${_h}\" \"\${_HOLD}\" || exit 1
+elif [ -e \"\${_h}\" ] || [ -L \"\${_h}\" ]; then _u=''
+  for _f in /data/conf/xoct_admail.*.txt /data/conf/xmass_test_run.*.txt; do [ -e \"\${_f}\" ] || continue; grep -qxF \"\${_src}\" \"\${_f}\" 2> /dev/null && continue; _u=\"\${_u} \${_f##*/}\"; done
+  if [ -n \"\${_u}\" ]; then echo \"MS-HOLD-KEPT\${_u}\"; else _gone \"\${_h}\" || exit 1; fi
+fi
+echo MS-OK" 2> /dev/null)
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "MS-PUT "*) _info "  ${_l#MS-PUT } mirrored to ${_t} (/data/conf)" ;;
+      "MS-GONE "*) _info "  ${_l#MS-GONE } removed on ${_t}: not on this box" ;;
+      "MS-KEEP "*) _info "  ${_l#MS-KEEP } kept on ${_t}: the canary this box sent there" ;;
+      "MS-HOLD-KEPT "*) _info "  ${_XMASS_HOLD_FILE##*/} kept on ${_t}: a test run is recorded there (${_l#MS-HOLD-KEPT })" ;;
+    esac
+  done <<< "${_out}"
+  case "${_out}" in
+    *MS-OK*) return 0 ;;
+    *MS-NOT-STANDBY*)
+      _alrt "DENY: ${_t} holds no /root/.standby.cnf: the mail hold and the test-run records are"
+      _alrt "DENY: mirrored only onto this box's standby, never onto a promoted box"
+      _XMASS_NOT_CLEAN=YES
+      _XMASS_RSYNC_RC=1
+      return 1
+    ;;
+  esac
+  _alrt "DENY: could not mirror the mail hold and the test-run records to ${_t} -- after a"
+  _alrt "DENY: promotion that box could mail the clients this box holds, or miss a test run"
+  _XMASS_NOT_CLEAN=YES
+  _XMASS_RSYNC_RC=1
+  return 1
+}
+
 ### Source-side LE health sweep: dehydrated's broken-renewal shape writes a
 ### fresh key and a ZERO-BYTE certificate nightly and never advances the
 ### symlink. Migrating a broken renewal means debugging two things at once
@@ -6645,6 +6757,9 @@ _xmass_sync_shared() {
   [ -d "/var/log/boa/usage" ] && \
     _xmass_rsync -aEAXq ${_ieni} -e ssh \
       /var/log/boa/usage "root@${_tgt}:/var/log/boa/"
+  # The mail hold and the test-run records, which no leg sends, travel with
+  # every pass (the accounts this run carries are enumerated by now).
+  _xmass_copy_mail_state "${_tgt}"
   _info "Shared data sync complete"
 }
 
@@ -8522,7 +8637,7 @@ _xmass_promotion_cleanup_target() {
   # lets the failback complete. Idempotent; a first-migration target has
   # none of these and every branch is a no-op.
   _info "Clearing stale demotion artefacts on promoted target ${_tgt} ..."
-  local _oct
+  local _oct _mine _o
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     ssh root@"${_tgt}" "bash -s" <<PROMCLEAN
 # log/, static/control and vhost.d are the account's: every test, read, mv
@@ -8641,6 +8756,17 @@ if ( cd -P -- "/data/disk/${_oct}/config/server_master/nginx/vhost.d" 2>/dev/nul
 fi
 PROMCLEAN
   done
+  # The target's own record of a test run toward this box (its xmass_admail
+  # record naming one of this box's addresses: a mirror built under admail=
+  # and promoted by hand, the returning box now promoted back) ended when this
+  # box took over. Left in place, every xoct verb there would refuse without
+  # its token; it is set aside like the source-role record above.
+  _mine="$(hostname -I 2> /dev/null | tr ' ' '\n' | grep -E '^[0-9A-Fa-f.:]+$' | tr '\n' ' ')"
+  [ -n "${_mine}" ] || return 0
+  _o=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "_f=${_XMASS_ADMAIL_FILE}; [ -f \"\${_f}\" ] || exit 0; _r=\$(grep -m1 '^${_XMASS_ADMAIL_TARGET_LINE}' \"\${_f}\" | cut -d= -f2- | tr -cd '0-9A-Za-z.:-'); [ -n \"\${_r}\" ] || exit 0; for _ip in ${_mine}; do [ \"\${_r}\" = \"\${_ip}\" ] || continue; mv -f \"\${_f}\" \"\${_f}.superseded-by-promotion\" && echo XMREC-RETIRED; exit 0; done" 2> /dev/null)
+  [ "${_o}" = "XMREC-RETIRED" ] \
+    && _info "  ${_XMASS_ADMAIL_FILE} on ${_tgt}: its test run toward this box ended with this promotion; set aside"
+  return 0
 }
 
 # Between roots, once visitors are already relayed to the target: a rename
@@ -9956,8 +10082,12 @@ _xmass_cmd_prep_target() {
   fi
   # The full lane installs every account through xoct, which refuses one an
   # earlier xoct test run recorded here unless admail= is given: asked now,
-  # before any pass is driven.
+  # before any pass is driven. So are this box's own mail hold (xoct refuses
+  # every account here without the token while it is on) and a test run
+  # recorded here for another target.
   _xmass_xoct_admail_gate prep-target
+  _xmass_source_hold_gate prep-target
+  _xmass_admail_target_gate
   _xmass_enumerate_accounts
   _xmass_prepare_target_reach "${_tgt}"
   ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
@@ -13601,11 +13731,66 @@ _xmass_post_mig() {
       || _alrt "migration_proxy_trust reconcile returned non-zero"
   fi
   _xmass_heal_fpm_pins
+  _xmass_report_mail_state_here
   # The web groups of a promoted box (the cutover's last step did this for a
   # planned switch; an emergency promotion by hand has only this run): its
   # accounts by this box's policy, gated, on an armed box; its master told.
   _xmass_wg_promoted here - quiet
   _info "post-mig complete on ${_hName}"
+}
+
+# post-mig names what holds this box's client mail and which test runs are
+# recorded here: the sync passes mirror the active's hold and records, and a
+# mirror built under admail= also carries its active's mark of that run,
+# which no go-live can end once that box is gone (a promotion by hand). Said,
+# never removed: on a test box the hold is wanted.
+_xmass_report_mail_state_here() {
+  local _f _a _v _n=0 _rm="" _recv=NO
+  if [ -e "${_XMASS_ADMAIL_FILE}" ]; then
+    _v="$(head -n 1 "${_XMASS_ADMAIL_FILE}" 2> /dev/null | tr -cd '[:print:]' | cut -c1-200)"
+    _a="$(_xmass_admail_rec_target)"
+    _alrt "this box's own record of a whole-box test run is here (${_XMASS_ADMAIL_FILE}, admail=${_v},"
+    _alrt "  to ${_a:-a target it does not name}): every xoct verb here refuses without that admail="
+    _alrt "  until 'xmass go-live' ends the run, or the record is removed by hand once it is over"
+  fi
+  if [ -e "${_XMASS_HOLD_FILE}" ] || [ -L "${_XMASS_HOLD_FILE}" ]; then
+    _v="$(head -n 1 "${_XMASS_HOLD_FILE}" 2> /dev/null | tr -cd '[:print:]' | cut -c1-200)"
+    _alrt "this box holds its clients' mail for ${_v:-an address that cannot be read} (${_XMASS_HOLD_FILE}):"
+    _alrt "  BOA's notices to every client here go to that address alone"
+    _n=1
+  fi
+  for _f in /data/conf/xmass_test_run.*.txt; do
+    [ -e "${_f}" ] || continue
+    _a="${_f#/data/conf/xmass_test_run.}"
+    _a="${_a%.txt}"
+    _v="$(head -n 1 "${_f}" 2> /dev/null | tr -cd '[:print:]' | cut -c1-200)"
+    _alrt "  ${_f}: a whole-box test run of ${_a} (admail=${_v}) is recorded here; once this box"
+    _alrt "  serves its clients for real (a mirror ${_a} built under admail=, promoted by hand)"
+    _alrt "  no go-live can end it: remove this mark"
+    _rm="${_rm} ${_f}"
+    _n=1
+  done
+  for _f in /data/conf/xoct_admail.*.txt; do
+    [ -e "${_f}" ] || continue
+    _a="${_f#/data/conf/xoct_admail.}"
+    _a="${_a%.txt}"
+    if grep -qxF "${_XMASS_XOCT_SRC_LINE}" "${_f}" 2> /dev/null; then
+      _alrt "  ${_f}: ${_a} is an xoct canary this box sends away in a test run: it goes on from here"
+      _alrt "  ('xoct go-live ${_a} <its canary target-ip>' ends it)"
+    else
+      _alrt "  ${_f}: ${_a} came here as an xoct canary in a test run still open: it ends with"
+      _alrt "  'xoct go-live' on the box that sent it, or by removing this record by hand"
+      _recv=YES
+    fi
+    _n=1
+  done
+  [ "${_n}" = "1" ] || return 0
+  [ -n "${_rm}" ] && _alrt "  each mark: rm -f${_rm}"
+  if [ "${_recv}" = "YES" ]; then
+    _alrt "  ${_XMASS_HOLD_FILE} stays while a canary that came here is in its test run"
+  elif [ -e "${_XMASS_HOLD_FILE}" ] || [ -L "${_XMASS_HOLD_FILE}" ]; then
+    _alrt "  then the hold, once this box may mail its clients: rm -f ${_XMASS_HOLD_FILE}"
+  fi
 }
 
 ### Migrated accounts arrive carrying the SOURCE box's per-release FPM
@@ -13729,6 +13914,62 @@ _xmass_test_run_mark() {
   printf '/data/conf/xmass_test_run.%s.txt' "${_h}"
 }
 
+# The record of a test run names, on its second line, the target it runs to:
+# a prep-target toward another target would otherwise drop the record and
+# leave that target's mark and hold tied to nothing. Prints that target, or
+# nothing for a record written before it named one (it counts for any).
+_XMASS_ADMAIL_TARGET_LINE='_XMASS_ADMAIL_TARGET='
+_xmass_admail_rec_target() {
+  [ -f "${_XMASS_ADMAIL_FILE}" ] || return 0
+  grep -m1 "^${_XMASS_ADMAIL_TARGET_LINE}" "${_XMASS_ADMAIL_FILE}" 2> /dev/null \
+    | cut -d= -f2- | tr -cd '0-9A-Za-z.:-' | cut -c1-200
+}
+
+# A test run recorded for one target refuses a prep-target toward another,
+# with the token or without it: either drops the record, and the first
+# target's mark and hold would hold its clients' mail for good with nothing
+# left to end them. Asked before any target contact, naming them.
+_xmass_admail_target_gate() {
+  local _rt _rec _mk
+  _rt="$(_xmass_admail_rec_target)"
+  { [ -n "${_rt}" ] && [ "${_rt}" != "${_tgt//[^0-9A-Za-z.:-]/}" ]; } || return 0
+  _rec="$(head -n 1 "${_XMASS_ADMAIL_FILE}" 2> /dev/null | tr -cd '[:print:]' | cut -c1-200)"
+  _mk="$(_xmass_test_run_mark)" || _mk="/data/conf/xmass_test_run.<this-hostname>.txt"
+  _die "this box has a test run open to ${_rt} (admail=${_rec}, ${_XMASS_ADMAIL_FILE}): the mark" \
+       "${_mk} and the mail hold ${_XMASS_HOLD_FILE} on ${_rt} are that run's, and a" \
+       "prep-target toward ${_tgt} would leave them tied to nothing. End that run first with" \
+       "'xmass go-live ${_rt}', once its cutover is complete or while ${_rt} stands as this" \
+       "box's mirror. To drop it instead: on ${_rt} remove ${_mk}, and the hold once no other" \
+       "test run is recorded there and its accounts may mail their clients; then remove" \
+       "${_XMASS_ADMAIL_FILE} here"
+}
+
+# A box that holds its clients' mail (_XMASS_HOLD_FILE), or that carries the
+# mark of another box's test run, takes no real xoct verb: xoct refuses every
+# account here without admail= while it does. A real prep-target would fail
+# at every install, and a real cutover at every conversion after the sites
+# went down: both refuse up front instead, naming what holds the mail.
+# $1 = the verb.
+_xmass_source_hold_gate() {
+  local _f _l="" _h=""
+  [ -n "${_XMASS_ADMAIL}" ] && return 0
+  if [ -e "${_XMASS_HOLD_FILE}" ] || [ -L "${_XMASS_HOLD_FILE}" ]; then
+    _h="$(head -n 1 "${_XMASS_HOLD_FILE}" 2> /dev/null | tr -cd '[:print:]' | cut -c1-200)"
+    _l=" ${_XMASS_HOLD_FILE} (${_h:-no address read})"
+  fi
+  for _f in /data/conf/xmass_test_run.*.txt; do
+    [ -e "${_f}" ] || continue
+    _l="${_l} ${_f}"
+  done
+  [ -z "${_l}" ] && return 0
+  _die "this box holds its clients' mail for a test run:${_l}. xoct refuses every account here" \
+       "without admail= while it does, so a real $1 would fail at every account. Run it as a" \
+       "test with admail=<address> (no client is told; a mirror built so becomes a real pair" \
+       "with 'xmass go-live <target-ip>'), or end that test run first ('xoct go-live' on the box" \
+       "that sent a canary here, 'xmass go-live' on the box of a whole-box test run here), or" \
+       "remove the hold by hand once this box may mail its clients"
+}
+
 # xoct's record of a canary a box moves away (on its source) carries this
 # line after the address: that canary's client mail is held on its target,
 # so a hold on the box it leaves never counts it as a user (xoct's
@@ -13749,19 +13990,20 @@ _xmass_hold_others() {
 }
 
 # prep-target records its admail= (root's file, 0644 as every Octopus pass
-# leaves a file in /data/conf: it holds a test address, nothing secret),
-# holds the target's client mail for it when no hold is there, and marks the
-# target with this run (_xmass_test_run_mark); run without it, removes the
-# record an earlier test run left, its mark, and the target's hold when it
-# holds that run's address and no other test run is recorded there. A
-# target that cannot be read keeps the record: the prep-target stops there.
+# leaves a file in /data/conf: it holds a test address, nothing secret) and
+# the target it runs to (_XMASS_ADMAIL_TARGET_LINE), holds the target's
+# client mail for it when no hold is there, and marks the target with this
+# run (_xmass_test_run_mark); run without it, removes the record an earlier
+# test run left, its mark, and the target's hold when it holds that run's
+# address and no other test run is recorded there. A target that cannot be
+# read keeps the record: the prep-target stops there.
 _xmass_admail_record() {
   local _rec _h _mk _o
   _mk="$(_xmass_test_run_mark)" \
     || _die "this box's hostname -f is not a hostname the target's test-run mark can name"
   if [ -n "${_XMASS_ADMAIL}" ]; then
     mkdir -p "$(dirname "${_XMASS_ADMAIL_FILE}")"
-    ( umask 022; printf '%s\n' "${_XMASS_ADMAIL}" > "${_XMASS_ADMAIL_FILE}" ) \
+    ( umask 022; printf '%s\n' "${_XMASS_ADMAIL}" "${_XMASS_ADMAIL_TARGET_LINE}${_tgt//[^0-9A-Za-z.:-]/}" > "${_XMASS_ADMAIL_FILE}" ) \
       || _die "could not record admail= in ${_XMASS_ADMAIL_FILE}"
     _info "admail=${_XMASS_ADMAIL}: every client notice of this migration goes there alone;" \
           "pass the same admail= to cutover"
@@ -13837,8 +14079,9 @@ _xmass_hold_gate() {
   _die "${_tgt} holds its clients' mail for ${_h} (${_XMASS_HOLD_FILE}, put by a test run):" \
        "a real $1 would leave the moved clients' mail held there. End that test run first" \
        "('xoct go-live' for a canary; on the box that ran a whole-box test, 'xmass go-live'" \
-       "after its cutover or prep-target without admail= before it), or remove the file on" \
-       "${_tgt} by hand once no test run needs it"
+       "after its cutover or while the target stands as its mirror, prep-target without" \
+       "admail= before its init), or remove the file on ${_tgt} by hand once no test run" \
+       "needs it"
 }
 
 # The admail= an xoct call for account $1 carries in this run: the run's own
@@ -13888,7 +14131,7 @@ _xmass_switch_mode() {
 # admail= is no way out for a real move: it makes the whole run a test for
 # every account, and no client is told of the move. $1 = the verb.
 _xmass_xoct_admail_gate() {
-  local _f _a _recv="" _sent="" _l=""
+  local _f _a _recv="" _sent="" _l="" _x=""
   [ -n "${_XMASS_ADMAIL}" ] && return 0
   for _f in /data/conf/xoct_admail.*.txt; do
     [ -e "${_f}" ] || continue
@@ -13905,12 +14148,21 @@ _xmass_xoct_admail_gate() {
     _l="${_l} ${_f}"
   done
   [ -z "${_l}" ] && return 0
+  # A received canary's go-live runs on the box that sent it, toward this
+  # box: after a switch it would end the test run here, on the old active,
+  # and leave the promoted box holding its clients' mail. A standing mirror
+  # can still be built around it as a test run (admail=), then made a real
+  # pair by 'xmass go-live': the hold and the canary's record travel to it.
   if [ -n "${_recv}" ]; then
+    if [ "$1" = "prep-target" ]; then
+      _x=" A standing mirror can be built around it under admail= and made a real pair with"
+      _x="${_x} 'xmass go-live <target-ip>' once it syncs: the hold and the canary's record travel to it."
+    fi
     _die "an xoct canary is still in its test run here:${_recv} -- it came to this box under" \
          "admail=, whose test run holds this box's clients' mail, and xoct refuses every account" \
          "here without admail= while it does. admail= on $1 would make the whole run a test for" \
          "every account, and no client would be told of the move. End that test run first with" \
-         "'xoct go-live <oN> <target-ip>' on the box that sent the canary"
+         "'xoct go-live <oN> <target-ip>' on the box that sent the canary.${_x}"
   fi
   if [ "$1" = "cutover" ] && [ "$(_xmass_switch_mode)" != "ha-switch" ]; then
     _die "an xoct canary is still in its test run here:${_l} -- xoct refuses those accounts without" \
@@ -13940,16 +14192,20 @@ _xmass_xoct_admail_gate() {
   return 0
 }
 
-# A cutover of accounts prepared under admail= refuses to run without it.
+# A cutover of accounts prepared under admail= refuses to run without it, and
+# so does one from a box that holds its clients' mail (_xmass_source_hold_gate).
 _xmass_admail_gate() {
   local _rec
   [ -n "${_XMASS_ADMAIL}" ] && return 0
   _xmass_xoct_admail_gate cutover
+  _xmass_source_hold_gate cutover
   [ -e "${_XMASS_ADMAIL_FILE}" ] || return 0
   _rec="$(head -n1 "${_XMASS_ADMAIL_FILE}" 2> /dev/null | tr -cd '[:print:]')"
   _die "the accounts were prepared under admail=${_rec} (a test run): pass admail=${_rec} to run" \
        "this cutover as that test. For a real move, run prep-target without admail= first (it" \
-       "removes the record and the target's mail hold), then cutover without it"
+       "removes the record and the target's mail hold), then cutover without it. A mirror built" \
+       "under it that stands at phase syncing (prep-target refuses a standby) becomes a real pair" \
+       "with 'xmass go-live <target-ip>' instead"
 }
 
 # Every account the cutover moves gets its one-pass marker on the promoted
@@ -13977,6 +14233,96 @@ _xmass_upgrade_skip_put_target() {
   fi
 }
 
+# The remote half of both go-live lanes, run on the target: this run's mark
+# $1 goes, then the hold when it holds the run's address $2 and no other
+# test run is recorded there (an xoct record without the source line,
+# another box's mark). The address and the path are checked (admail='s
+# pattern, a hostname), so each goes into the line as is. Ends with '; '.
+_xmass_golive_hold_sh() {
+  printf '%s' "_mk='$1'; _rec='$2'; _h=${_XMASS_HOLD_FILE}; if [ -e \"\${_mk}\" ]; then rm -f \"\${_mk}\" || { echo MARK-STUCK; exit 1; }; echo MARK-GONE; fi; if [ -e \"\${_h}\" ]; then _hv=\$(head -n 1 \"\${_h}\" | tr -cd '[:print:]' | cut -c1-200); _more=''; for _o in /data/conf/xoct_admail.*.txt /data/conf/xmass_test_run.*.txt; do [ -e \"\${_o}\" ] || continue; grep -qxF '${_XMASS_XOCT_SRC_LINE}' \"\${_o}\" 2> /dev/null && continue; _more=\"\${_more} \${_o##*/}\"; done; if [ -n \"\${_more}\" ]; then echo \"HOLD-KEPT \${_hv}\${_more}\"; elif [ -n \"\${_rec}\" ] && [ \"\${_hv}\" = \"\${_rec}\" ]; then rm -f \"\${_h}\" || { echo HOLD-STUCK; exit 1; }; echo HOLD-GONE; else echo \"HOLD-OTHER \${_hv}\"; fi; fi; "
+}
+# What that half did, read from its output $1 (the mark $2).
+_xmass_golive_hold_report() {
+  local _l
+  while IFS= read -r _l; do
+    case "${_l}" in
+      MARK-GONE) _info "${_tgt}: removed $2" ;;
+      HOLD-GONE) _info "${_tgt}: removed ${_XMASS_HOLD_FILE}: the box mails its clients again" ;;
+      "HOLD-KEPT "*)
+        _l="${_l#HOLD-KEPT }"
+        _alrt "${_tgt}: ${_XMASS_HOLD_FILE} (${_l%% *}) kept: another test run is recorded there (${_l#* })"
+      ;;
+      "HOLD-OTHER "*) _alrt "${_tgt}: ${_XMASS_HOLD_FILE} holds client mail for ${_l#HOLD-OTHER }, which this test run did not put; left as it is" ;;
+    esac
+  done <<< "$1"
+}
+
+# True when the target $1 carries this box's standby marker now: its
+# /root/.standby.cnf names one of this box's addresses, as the role-clash
+# walk reads it. A target that cannot be read does not.
+_xmass_target_is_my_standby() {
+  local _src _one
+  _src=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"$1" "head -n 1 /root/.standby.cnf 2> /dev/null" 2> /dev/null \
+    | awk 'NR == 1 {print $5}')
+  [ -n "${_src}" ] || return 1
+  for _one in $(hostname -I 2> /dev/null); do
+    [ "${_one}" = "${_src}" ] && return 0
+  done
+  return 1
+}
+
+# go-live <target-ip> on a standing mirror built as a test run (admail= on
+# prep-target; phase syncing, the target this box's standby): nothing has
+# moved and no client is told anything. The target's mark of the run goes,
+# its hold when it holds the run's address and no other test run is
+# recorded there, and each carried account's upgrade switch there takes this
+# box's value again (the test run kept it NO; a NO also takes the one-pass
+# marker, which no pass would take). Last this box's record goes: the pair is
+# a real one, every xoct verb here mails the clients again, and a later
+# switch mails them. A target that cannot finish keeps the record; a re-run
+# is a no-op.
+_xmass_go_live_standing() {
+  local _rec _mk _oct _sw _acc="" _out _l _a
+  if [ ! -e "${_XMASS_ADMAIL_FILE}" ]; then
+    _info "no test run is recorded here (${_XMASS_ADMAIL_FILE}): the pair to ${_tgt} is a real one already"
+    return 0
+  fi
+  _rec="$(head -n1 "${_XMASS_ADMAIL_FILE}" 2> /dev/null | tr -cd '[:print:]')"
+  _mk="$(_xmass_test_run_mark)" \
+    || _die "this box's hostname -f is not a hostname the target's test-run mark can name"
+  _xmass_enumerate_accounts
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    [[ "${_oct}" =~ ^[A-Za-z0-9._-]+$ ]] || continue
+    _sw="$(grep -a '^_SEND_UPGRADE_EMAIL=' "/root/.${_oct}.octopus.cnf" 2> /dev/null \
+      | tail -n 1 | cut -d= -f2- | tr -d '"')"
+    [ "${_sw}" = "NO" ] || _sw=YES
+    _acc="${_acc} ${_oct}:${_sw}"
+  done
+  _info "go-live of the test run${_rec:+ under admail=${_rec}} on ${_tgt}, this box's standing mirror:"
+  _info "  nothing has moved, so no client is mailed; the pair becomes a real one"
+  # The account names are checked above and each switch is YES or NO.
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "$(_xmass_golive_hold_sh "${_mk}" "${_rec}") for _e in${_acc}; do _a=\${_e%%:*}; _sw=\${_e#*:}; _c=/root/.\${_a}.octopus.cnf; _k=/data/conf/\${_a}_skip_upgrade_email.txt; if [ -f \"\${_c}\" ]; then _cur=\$(grep -a '^_SEND_UPGRADE_EMAIL=' \"\${_c}\" | tail -n 1 | cut -d= -f2- | tr -d '\"'); if [ \"\${_cur}\" != \"\${_sw}\" ]; then { grep -v '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo \"_SEND_UPGRADE_EMAIL=\${_sw}\"; } > \"\${_c}.golive\" && chmod 644 \"\${_c}.golive\" && mv -f \"\${_c}.golive\" \"\${_c}\" || { echo \"SW-STUCK \${_a}\"; exit 1; }; echo \"SW-SET \${_a} \${_sw} \${_cur:-unset}\"; fi; else echo \"SW-NOCNF \${_a}\"; fi; if [ \"\${_sw}\" = NO ] && [ -e \"\${_k}\" ]; then rm -f \"\${_k}\" || { echo \"SKIP-STUCK \${_a}\"; exit 1; }; echo \"SKIP-GONE \${_a}\"; fi; done; echo GOLIVE-TARGET-OK" 2> /dev/null)
+  _xmass_golive_hold_report "${_out}" "${_mk}"
+  while IFS= read -r _l; do
+    _a="$(printf '%s' "${_l}" | cut -d' ' -f2)"
+    case "${_l}" in
+      "SW-SET "*)
+        _info "${_tgt}: ${_a}'s upgrade switch set to this box's $(printf '%s' "${_l}" | cut -d' ' -f3) (was $(printf '%s' "${_l}" | cut -d' ' -f4))"
+      ;;
+      "SW-NOCNF "*) _alrt "${_tgt}: no /root/.${_a}.octopus.cnf there; its upgrade switch was not set" ;;
+      "SKIP-GONE "*) _info "${_tgt}: removed ${_a}'s one-pass upgrade-notice marker: with the switch NO no pass would take it" ;;
+    esac
+  done <<< "${_out}"
+  case "${_out}" in
+    *GOLIVE-TARGET-OK*) : ;;
+    *) _die "go-live could not finish on ${_tgt} (unreachable, or a file there could not be changed);" \
+            "the record of the test run is kept: re-run 'xmass go-live ${_tgt}' once it answers" ;;
+  esac
+  rm -f "${_XMASS_ADMAIL_FILE}" || _die "could not remove ${_XMASS_ADMAIL_FILE}"
+  _info "removed ${_XMASS_ADMAIL_FILE}: every xoct verb here mails the clients again"
+  _info "go-live COMPLETE: the pair to ${_tgt} is a real one; a switch to it mails the clients"
+}
+
 # go-live <target-ip>, on the source, once the cutover of a test run
 # (admail= on prep-target and cutover) to that target is complete: the test
 # run becomes the real move. Each account the cutover moved (proxied to that
@@ -13989,12 +14335,25 @@ _xmass_upgrade_skip_put_target() {
 # go live keeps the record, so every xoct verb here stays held to the token
 # until a re-run finishes. A re-run is a no-op.
 _xmass_cmd_go_live() {
-  local _rec="" _mk _oct _p _failed="" _out _l _tf _mf
+  local _rec="" _mk _oct _p _failed="" _out _l _tf _mf _rt
   _xmass_load_state
+  # The record names the target its test run went to (one written before it
+  # named a target counts for any): go-live toward another ends none of it.
+  _rt="$(_xmass_admail_rec_target)"
+  if [ -n "${_rt}" ] && [ "${_rt}" != "${_tgt//[^0-9A-Za-z.:-]/}" ]; then
+    _die "the test run recorded here (${_XMASS_ADMAIL_FILE}) runs to ${_rt}, not to ${_tgt}:" \
+         "'xmass go-live ${_rt}' ends it"
+  fi
+  if [ "${_XMASS_PHASE}" = "syncing" ] && [ "${_XMASS_TARGET_IP}" = "${_tgt}" ] \
+    && _xmass_target_is_my_standby "${_tgt}"; then
+    _xmass_go_live_standing
+    return 0
+  fi
   if [ "${_XMASS_PHASE}" != "complete" ] || [ "${_XMASS_TARGET_IP}" != "${_tgt}" ]; then
     _die "go-live ends a test run whose cutover to ${_tgt} is complete (phase ${_XMASS_PHASE:-none}," \
-         "target ${_XMASS_TARGET_IP:-none}). Before the cutover a real move starts again with" \
-         "'xmass prep-target ${_tgt}' without admail="
+         "target ${_XMASS_TARGET_IP:-none}), or one whose target stands at phase syncing as this" \
+         "box's mirror (its standby marker naming this box). Before the cutover a real move" \
+         "starts again with 'xmass prep-target ${_tgt}' without admail="
   fi
   _mk="$(_xmass_test_run_mark)" \
     || _die "this box's hostname -f is not a hostname the target's test-run mark can name"
@@ -14042,20 +14401,8 @@ _xmass_cmd_go_live() {
     _die "go-live did not finish for:${_failed} (above); the record of the test run is kept." \
          "Fix the cause, then re-run 'xmass go-live ${_tgt}'"
   fi
-  # The address and the path are checked (admail='s pattern, a hostname), so
-  # each goes into the remote line as is.
-  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "_mk='${_mk}'; _rec='${_rec}'; _h=${_XMASS_HOLD_FILE}; if [ -e \"\${_mk}\" ]; then rm -f \"\${_mk}\" || { echo MARK-STUCK; exit 1; }; echo MARK-GONE; fi; if [ -e \"\${_h}\" ]; then _hv=\$(head -n 1 \"\${_h}\" | tr -cd '[:print:]' | cut -c1-200); _more=''; for _o in /data/conf/xoct_admail.*.txt /data/conf/xmass_test_run.*.txt; do [ -e \"\${_o}\" ] || continue; grep -qxF '${_XMASS_XOCT_SRC_LINE}' \"\${_o}\" 2> /dev/null && continue; _more=\"\${_more} \${_o##*/}\"; done; if [ -n \"\${_more}\" ]; then echo \"HOLD-KEPT \${_hv}\${_more}\"; elif [ -n \"\${_rec}\" ] && [ \"\${_hv}\" = \"\${_rec}\" ]; then rm -f \"\${_h}\" || { echo HOLD-STUCK; exit 1; }; echo HOLD-GONE; else echo \"HOLD-OTHER \${_hv}\"; fi; fi; echo GOLIVE-TARGET-OK" 2> /dev/null)
-  while IFS= read -r _l; do
-    case "${_l}" in
-      MARK-GONE) _info "${_tgt}: removed ${_mk}" ;;
-      HOLD-GONE) _info "${_tgt}: removed ${_XMASS_HOLD_FILE}: the box mails its clients again" ;;
-      "HOLD-KEPT "*)
-        _l="${_l#HOLD-KEPT }"
-        _alrt "${_tgt}: ${_XMASS_HOLD_FILE} (${_l%% *}) kept: another test run is recorded there (${_l#* })"
-      ;;
-      "HOLD-OTHER "*) _alrt "${_tgt}: ${_XMASS_HOLD_FILE} holds client mail for ${_l#HOLD-OTHER }, which this test run did not put; left as it is" ;;
-    esac
-  done <<< "${_out}"
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "$(_xmass_golive_hold_sh "${_mk}" "${_rec}") echo GOLIVE-TARGET-OK" 2> /dev/null)
+  _xmass_golive_hold_report "${_out}" "${_mk}"
   case "${_out}" in
     *GOLIVE-TARGET-OK*) : ;;
     *) _die "go-live could not finish on ${_tgt} (unreachable, or a file there could not be removed);" \
@@ -14085,7 +14432,8 @@ shift 2>/dev/null || true
 # _XMASS_ADMAIL_FILE (and removes the record when run without it), and a
 # cutover of accounts prepared under it refuses to run without it, so a test
 # migration cannot mail its clients at the conversion by one forgotten token.
-# go-live ends the test run once its cutover is complete.
+# go-live ends the test run once its cutover is complete, or while the
+# mirror it built stands at phase syncing.
 _XMASS_ADMAIL=""
 _XMASS_ADMAIL_SET=NO
 _margs=()
@@ -14440,7 +14788,8 @@ case "${_cmd}" in
     echo "Usage: xmass cutover <target-ip> [--proxy-mode=...] [--proxy-deadline=...] [--live]"
     echo "                     [admail=<address>]  (a test run: see the notes)"
     echo "Usage: xmass go-live <target-ip>                      (run on source after a test run's cutover:"
-    echo "                     it becomes the real move)"
+    echo "                     it becomes the real move; on a mirror built as a test run and"
+    echo "                     standing at syncing: the pair becomes a real one, nothing mailed)"
     echo "Usage: xmass verify  [target-ip]                      (run on source after cutover; read-only)"
     echo "Usage: xmass post-mig                                 (run on target after DNS)"
     echo "Usage: xmass reset-phase <phase>                      (run on source; recovery)"
@@ -14473,6 +14822,12 @@ case "${_cmd}" in
     echo "    canary is still in its test run here ('xoct go-live' ends it) or the"
     echo "    target holds its mail; a canary this box sends away is installed, and"
     echo "    converted by a cutover under --proxy-mode=ha-switch, with its own admail=."
+    echo "    A test run's record names its target: a prep-target toward another"
+    echo "    refuses until that run ends."
+    echo "  - The client mail hold, other boxes' test-run marks and xoct's test-run"
+    echo "    records travel with every live sync pass, presence and absence, so a"
+    echo "    promoted mirror holds what its active held; post-mig names them. A box"
+    echo "    that holds its clients' mail takes no real prep-target or cutover."
     echo "  - State is kept in ${_XMASS_STATE_FILE}"
     echo "  - reset-phase is a recovery verb: a cutover that fails between the lag"
     echo "    wait and the panel rewire leaves phase=cutover, which every other"

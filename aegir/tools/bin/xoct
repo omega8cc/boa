@@ -562,13 +562,16 @@ _mig_log() {
 ### The uniform re-notify rule keys on this, which is why mail lines are only
 ### ever written after a confirmed send. With peers after $1 (the source
 ### role), only a line naming a peer of this box's moves counts
-### (_xoct_source_peers); without them (the target role) every line.
+### (_xoct_source_peers), and never a notice this box sent as the target of
+### the move that brought the account here (change-inbound, retire-inbound:
+### it names the box the account came from, which a move back to that box
+### makes a peer again); without them (the target role) every line.
 _mig_last_mail() {
   local _l _r="$1" _p=""
   shift
   [ "$#" -gt 0 ] && _p=" $(_xoct_source_peers "${_r}" "$@") "
   _l="$(_xoct_read_in "${_r}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
-    | grep '|mail|' | awk -F'|' -v n="$#" -v p="${_p}" 'n == 0 || index(p, " " $7 " ")' | tail -1)"
+    | grep '|mail|' | awk -F'|' -v n="$#" -v p="${_p}" 'n == 0 || ($4 !~ /-inbound$/ && index(p, " " $7 " "))' | tail -1)"
   [ -n "${_l}" ] || return 0
   printf '%s' "${_l}" | awk -F'|' '{ print $5 "|" $6 }'
 }
@@ -610,7 +613,8 @@ _xoct_proxied_before_log() {
 ### completion: a real (mail, never testmail) completion line in its log
 ### naming a peer of this box's moves when peers follow $1
 ### (_xoct_source_peers; any line without them), or a conversion from before
-### the log recorded one.
+### the log recorded one. A notice sent as the target is never such a line:
+### it is logged change-inbound or retire-inbound.
 _xoct_told_complete() {
   local _n _r="$1" _p=""
   shift
@@ -917,8 +921,9 @@ _xoct_xmass_rec_gate() {
     _rec="$(_xoct_first_line "${_XOCT_XMASS_REC}")"
     echo "ERROR: this box is in an xmass test run: admail=${_rec} is recorded in ${_XOCT_XMASS_REC}"
     echo "ERROR: pass admail=${_rec} to this verb; the test run ends with 'xmass go-live <target-ip>'"
-    echo "ERROR: once its cutover is done, or before it with 'xmass prep-target <target-ip>' without"
-    echo "ERROR: admail= (a real move of the box; it removes the record)"
+    echo "ERROR: once its cutover is done or while that target stands as this box's mirror (a pair"
+    echo "ERROR: built as a test run); before its init a real move of the box starts again with"
+    echo "ERROR: 'xmass prep-target <target-ip>' without admail= (it removes the record)"
     return 1
   fi
   [ "${_XOCT_GO_LIVE}" = "YES" ] && return 0
@@ -927,7 +932,8 @@ _xoct_xmass_rec_gate() {
     _rec="$(_xoct_first_line "${_m}")"
     echo "ERROR: this box is the target of an xmass test run: admail=${_rec} is recorded in ${_m}"
     echo "ERROR: pass admail=${_rec} to this verb, or end that test run on its source box ('xmass"
-    echo "ERROR: go-live <this-box-ip>' once its cutover is done, 'xmass prep-target' without admail= before)"
+    echo "ERROR: go-live <this-box-ip>' once its cutover is done or while this box stands as its"
+    echo "ERROR: mirror, 'xmass prep-target' without admail= before its init)"
     return 1
   done
   return 0
@@ -1005,8 +1011,8 @@ _xoct_hold_gate() {
   echo "ERROR: ${_h:-this box} holds its clients' mail for ${_v} (${_XOCT_HOLD_FILE}, put by a test run):"
   echo "ERROR: a real run (no admail=) would leave the moved client's mail held there. End the"
   echo "ERROR: test run first ('xoct go-live' after a canary; for a whole box 'xmass go-live' after"
-  echo "ERROR: its cutover, 'xmass prep-target' without admail= before it), or remove the file by"
-  echo "ERROR: hand once no test run needs it"
+  echo "ERROR: its cutover or on the mirror it built, 'xmass prep-target' without admail= before its"
+  echo "ERROR: init), or remove the file by hand once no test run needs it"
   return 1
 }
 ### The first Octopus pass after a move that would mail the account's
@@ -6314,7 +6320,7 @@ _xoct_proxy_preflight() {
 ### is the peer.
 _xoct_policy_notify() {
   local _a="$1" _mode="$2" _dl="$3" _peer="$4" _role="$5"
-  local _root="/data/disk/${_a}" _last _new_ip _old_ip
+  local _root="/data/disk/${_a}" _last _new_ip _old_ip _kind=change
   ### On the source only the notices of this box's moves count (a log carried
   ### from the move that brought the account here holds that move's); the
   ### target reads its log as it is.
@@ -6349,8 +6355,12 @@ _xoct_policy_notify() {
     echo "ALRT: ${_a}: no peer recorded; cannot compose the change notice (it names the new address)"
     return 0
   fi
+  ### A notice sent here as the target names the box the account came from:
+  ### logged change-inbound, which the source-side readers never count, so it
+  ### is no notice of a later move of the account back to that box.
   if [ "${_role}" = "target" ]; then
     _new_ip="$(_mig_my_ip)"; _old_ip="${_peer}"
+    _kind=change-inbound
   else
     _new_ip="${_peer}"; _old_ip="$(_mig_my_ip)"
   fi
@@ -6359,7 +6369,7 @@ _xoct_policy_notify() {
   _mig_build_mail_blocks change "${_new_ip}" "${_old_ip}" || return 0
   _send_notice_migration_change
   if [ "${_MAIL_SENT}" = "YES" ]; then
-    _mig_log "${_root}" xoct "${_XOCT_MAIL_ACT}" change "${_mode}" "${_dl}" "${_peer}"
+    _mig_log "${_root}" xoct "${_XOCT_MAIL_ACT}" "${_kind}" "${_mode}" "${_dl}" "${_peer}"
   else
     echo "ALRT: ${_a}: change notice NOT sent; re-run with --renotify when mail works"
   fi
@@ -6548,7 +6558,7 @@ _xoct_proxy_mode() {
 _xoct_retire_one() {
   local _a="$1" _wdl="$2"
   local _root="/data/disk/${_a}" _cnf _role _peer _peer_oct _scope _mode _peer_ips
-  local _new_ip _old_ip
+  local _new_ip _old_ip _kind=retire
   ### An account in a test run is not retired without its admail=: the
   ### withdrawal notice would reach the client.
   _xoct_admail_gate "${_a}" || return 1
@@ -6626,9 +6636,11 @@ _xoct_retire_one() {
     return 0
   fi
   ### On a target-role record the customer's NEW system is THIS box and the
-  ### old address is the peer.
+  ### old address is the peer; the notice is logged retire-inbound (see
+  ### _xoct_policy_notify).
   if [ "${_role}" = "target" ]; then
     _new_ip="$(_mig_my_ip)"; _old_ip="${_peer}"
+    _kind=retire-inbound
   else
     _new_ip="${_peer}"; _old_ip="$(_mig_my_ip)"
   fi
@@ -6638,7 +6650,7 @@ _xoct_retire_one() {
   _mig_build_mail_blocks retire "${_new_ip}" "${_old_ip}"
   _send_notice_migration_retire
   if [ "${_MAIL_SENT}" = "YES" ]; then
-    _mig_log "${_root}" xoct "${_XOCT_MAIL_ACT}" retire retired "${_wdl}" "${_peer}"
+    _mig_log "${_root}" xoct "${_XOCT_MAIL_ACT}" "${_kind}" retired "${_wdl}" "${_peer}"
   else
     echo "ALRT: ${_a}: retirement notice NOT sent (mail unavailable); the client was NOT told"
   fi
@@ -6725,8 +6737,9 @@ _xoct_go_live() {
   if [ -e "${_XOCT_XMASS_REC}" ] && [ "${_XOCT_XMASS_GOLIVE}" != "YES" ]; then
     echo "ERROR: this box is in an xmass test run (${_XOCT_XMASS_REC}); go-live ends a canary"
     echo "ERROR: moved with xoct. 'xmass go-live <target-ip>' ends the whole-box test run once"
-    echo "ERROR: its cutover is done; before it, a real move of the box starts again with"
-    echo "ERROR: 'xmass prep-target <target-ip>' without admail=, which removes the record"
+    echo "ERROR: its cutover is done, or while that target stands as this box's mirror; before its"
+    echo "ERROR: init, a real move of the box starts again with 'xmass prep-target <target-ip>'"
+    echo "ERROR: without admail=, which removes the record"
     exit 1
   fi
   _USR="/data/disk/${_oct}"

@@ -417,6 +417,18 @@ installs begin, and holds the target's client mail for that address
 (`/data/conf/client_mail_hold.txt`, as `xoct create` does) unless a hold is
 already there.
 
+The record names the target it runs to, on its second line. While it
+stands, a `prep-target` toward another target refuses, with the token or
+without it, naming that target, its mark and its hold: a new run would drop
+the record and leave them holding that box's client mail with nothing left
+to end them. A record written before it named a target counts for any
+target.
+
+End that run first with `xmass go-live` (below), or drop it by hand: on
+that target remove the mark, then the hold once no other test run is
+recorded there and its accounts may mail their clients, then remove the
+record here.
+
 It also marks the target with this test run,
 `/data/conf/xmass_test_run.<source-hostname>.txt`: while the mark is there
 the hold is this run's too, so a canary's `xoct go-live` on that target or a
@@ -457,7 +469,11 @@ eligible, or proxied before it) do not count.
 - A canary the source received: its test run holds the source's clients'
   mail and `xoct` refuses every account there without the token, so
   `prep-target` and `cutover` both refuse until that test run goes live on
-  the box that sent it.
+  the box that sent it. Its `go-live` runs on that box, toward this one, so
+  after a switch it would end the run on the old active and leave the
+  promoted box holding the clients' mail. A standing mirror can still be
+  built around it under `admail=` and made a real pair with
+  `xmass go-live` (below): the hold and the canary's record travel to it.
 
 `admail=` is no way out of the refusal for a real move: it makes the whole
 run a test for every account, and no client is told of the move. A real
@@ -470,6 +486,13 @@ naming it. `prep-target` passes the hold this box's own earlier test run
 put, which it removes with the record, when no other test run is recorded
 on the target (an `xoct` canary's record, another box's mark); otherwise it
 refuses and names them: end those first.
+
+It refuses as well while this box itself holds its clients' mail, or
+carries the mark of another box's test run: `xoct` refuses every account
+here without the token then, so a real `prep-target` would fail at every
+install and a real `cutover` at every conversion after the sites went
+down. Run it under `admail=` instead (a mirror built so becomes a real
+pair with `xmass go-live`), or end that test run first.
 
 `--fix-users` runs a lane of its own: it re-creates a lost system user
 (`<acct>`, `<acct>.ftp`) of an account that IS installed on the target, in
@@ -1016,7 +1039,22 @@ Syncs the following to the target on each run:
 | Shell credentials | `<oN>.ftp` shadow hash + `log/pass.txt` as a pair, the sub-account password store `/home/oN.ftp/users/`, and each sub-user's hash and `.ssh` (a sub-user absent on the target gets its `.ssh` staged at `/var/backups/migrate-subuser-ssh/<oN>.<name>/`, adopted and removed by `manage_ltd_users.sh` when it creates the user from `clients/`) |
 | Per-account config | `/root/.<oN>.octopus.cnf` (portable values merged into the target's copy), `static/control/{fpm,cli,multi-fpm}.info` and `log/{fpm,cli,email,option,cores,subscr}.txt` (forced, no `-u`) |
 | Suspension flag | `/data/conf/suspended/<oN>.pid` (mirrored, presence and absence) |
+| Mail hold and test-run records | `/data/conf/client_mail_hold.txt`, other boxes' test-run marks `/data/conf/xmass_test_run.*.txt`, and the `xoct` test-run records `/data/conf/xoct_admail.<oN>.txt` of the accounts the run carries (mirrored, presence and absence; see below the table) |
 | Out-of-root symlink content | Every synced tree is swept for symlinks whose target lives **outside** the synced trees (typically a secondary `/mnt` volume — per-account backup stores under `/data/disk/arch/sql` are the canonical case). Their content **materialises** on the target as real dirs/files: mirrored onto the target's own single mount when it has one and the store lands under `/data/disk`, de-referenced to a real dir/file on the target root otherwise. Space-gated per store/batch like everything else |
+
+**The mail hold and the test-run records travel with every live pass**
+(each `sync --live`, each `autosync` pass and the cutover's final pass), so
+a box promoted from the active, by a cutover or by hand, holds exactly the
+client mail the active held, and its `xoct` verbs keep to the same test
+runs. They are written only onto a box that carries the standby marker, and
+`post-mig` names what it finds on the promoted box.
+
+Two things on the target stay its own: this box's mark of its own test run
+there while this box's record names that target (a mirror built under
+`admail=`), and an account's received record where this box's record of
+the same account is a canary it sends away (the target is that canary's
+own). With no hold on the active, the target keeps its hold only while a
+test run is still recorded there after the pass.
 
 MySQL data is **not** rsynced — replication keeps it current continuously.
 
@@ -1437,12 +1475,15 @@ xmass cutover target-ip --live admail=you@example.com                      # a t
 With `admail=<address>` every `xoct proxy` the cutover runs takes the same
 token: each account's completion notice goes to that address alone, not to the
 client and with no operator copy, and is logged as a test send (see
-[Test and canary runs](MIGRATE-XOCT.md#test-and-canary-runs-admail)). A
-cutover of accounts `prep-target` prepared under `admail=` refuses to start
+[Test and canary runs](MIGRATE-XOCT.md#test-and-canary-runs-admail)).
+
+A cutover of accounts `prep-target` prepared under `admail=` refuses to start
 without it, naming the recorded address, so one forgotten token cannot mail
 the clients. Before the cutover, a real move of those accounts starts again
 with `prep-target` without `admail=`, which removes the record, the mark
-and the target's hold.
+and the target's hold; a standing mirror built so becomes a real pair with
+`xmass go-live` (below). A cutover from a box that holds its own clients'
+mail refuses without `admail=` as `prep-target` does.
 
 An `xoct` canary still in its test run on the source is handled as under
 `prep-target`: one the source sends away is converted with its own
@@ -1482,6 +1523,24 @@ finishes. A re-run is a no-op. An `xoct` canary in a test run of its own is
 left to its own `xoct go-live`, and an account that came to this box after
 the cutover is no part of the run. Before the cutover is complete, `go-live`
 refuses and names `prep-target` without `admail=` instead.
+
+**A mirror built as a test run** (`admail=` on `prep-target`, the pair
+standing at phase `syncing`, the target carrying this box's standby marker)
+becomes a real pair with the same verb; `prep-target` without the token
+cannot do it, since it refuses a standby target. Nothing has moved, so no
+client is mailed. The target's mark goes, its hold when it holds the run's
+address and no other test run is recorded there, and each account's
+`_SEND_UPGRADE_EMAIL` there takes this box's value again (a `NO` also
+takes its one-pass marker). Last the record here goes.
+
+From then on every `xoct` verb here mails the clients again, and a later
+switch mails them. A target that no longer carries this box's standby
+marker (promoted by hand) refuses; `post-mig` there names the mark and the
+hold to remove. `go-live` toward a target the record does not name
+refuses too. When the old active of such a pair comes back and a failback
+promotes it again, that cutover sets its own record of the run aside
+(`xmass_admail.txt.superseded-by-promotion`): the run ended when the mirror
+took over.
 
 Without `--live`, `cutover` does a plan-only pass over every account's files store and
 stops **before** any destructive step (no MySQL read-lock, no downtime). Run it once to
@@ -1664,6 +1723,14 @@ unconditional teardown (the permanent marker is honoured).
 
 It also removes a stale parked copy (`.<name>.off`) of any runner a refresh
 had already brought back, and stops the box serving a root key it published.
+
+It **names what holds the client mail here**: the mail hold, other boxes'
+test-run marks, the `xoct` test-run records (a canary received, or one this
+box sends away) and this box's own record of a test run. A mirror built
+under `admail=` and promoted by hand keeps its old active's mark and the
+hold, and no `go-live` can end that run any more: `post-mig` prints the
+lines that remove them. It never removes them itself, since on a test box
+the hold is wanted.
 
 It also **rebuilds the pinned PHP pools**, which is not cosmetic. A
 migrated account arrives carrying the source's per-release FPM markers
