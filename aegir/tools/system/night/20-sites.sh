@@ -1001,21 +1001,78 @@ _fix_user_register_protection_with_vSet() {
   fi
 }
 
+### 0 when the resolved store $1 of the resolved site dir $2 is a place the
+### store legs act in: inside the site dir, or strictly below an account's
+### store root, /data/disk/<account>/static/files/ or its copy on attached
+### storage, /mnt/<mount>/files/<account>/static/files/ at its first match,
+### as migratefs builds it: the mount may be nested and may itself be named
+### files or static, but no directory between /mnt and the mount is. The
+### account is the site's own or another one on an intentional share. Never
+### the master's store under /var/aegir, never a static/files/ elsewhere in a
+### tree, never the store root itself, nor a dot-name right below it: BOA
+### keeps its own folders there (.backups, .backup-exports, .archived), never
+### a site's store.
+_night_store_place() {
+  local _t _a _m
+  if [ -n "${2}" ]; then
+    case "${1}/" in
+      "${2}"/*) return 0 ;;
+    esac
+  fi
+  case "${1}/" in
+    /data/disk/*)
+      _t="${1#/data/disk/}/"
+      ;;
+    /mnt/?*/files/*)
+      # the mount part ends where files/<account>/static/files/ first follows
+      _m=
+      _t="${1#/mnt/}/"
+      while :; do
+        _m="${_m}/${_t%%/*}"
+        _t="${_t#*/}"
+        _a="${_t#files/}"
+        _a="${_a%%/*}"
+        case "${_t}" in
+          "") return 1 ;;
+          files/"${_a}"/static/files/*) break ;;
+        esac
+      done
+      case "${_m}" in
+        */files/*|*/static/*) return 1 ;;
+      esac
+      _t="${_t#files/}"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+  _a="${_t%%/*}"
+  [ -n "${_a}" ] || return 1
+  case "${_t}" in
+    "${_a}"/static/files/?*) ;;
+    *) return 1 ;;
+  esac
+  _t="${_t#"${_a}"/static/files/}"
+  case "${_t}" in
+    .*) return 1 ;;
+  esac
+  return 0
+}
 ### The site's files store as it resolves now, in _R_FLS (status 0): files/ is
 ### legitimately a link into a static store (the account's own, its copy on
 ### attached storage, or another account's on an intentional share), and the
 ### tenant can repoint it. Only a static store or a real child of the site
-### dir counts, the rule the permissions pass applies; status 1 otherwise.
+### dir counts (_night_store_place), the rule the permissions pass applies;
+### status 1 otherwise.
 _site_files_store() {
   local _rD _rF
   _R_FLS=
   _rD=$(realpath -e -- "${_Dir}" 2> /dev/null) || return 1
   _rF=$(realpath -e -- "${_Dir}/files" 2> /dev/null) || return 1
   [ -d "${_rF}" ] || return 1
-  case "${_rF}/" in
-    */static/files/*|"${_rD}"/*) _R_FLS="${_rF}"; return 0 ;;
-  esac
-  return 1
+  _night_store_place "${_rF}" "${_rD}" || return 1
+  _R_FLS="${_rF}"
+  return 0
 }
 ### The web group a site's resolved files or private store takes: the site
 ### account's own for a store that is the account's (in its tree, on its
@@ -1220,7 +1277,7 @@ _fix_llms_txt() {
   local _fls _url _wg
   if ! _site_files_store; then
     [ -e "${_Dir}/files" ] \
-      && echo "SKIP: ${_Dir}/files resolves outside any static store (llms.txt)"
+      && echo "SKIP: ${_Dir}/files resolves outside any static store, or into BOA's own folders there (llms.txt)"
     return 0
   fi
   _fls="${_R_FLS}"
@@ -1325,7 +1382,7 @@ _fix_robots_txt() {
   local _fls _wg
   if ! _site_files_store; then
     [ -e "${_Dir}/files" ] \
-      && echo "SKIP: ${_Dir}/files resolves outside any static store (robots.txt)"
+      && echo "SKIP: ${_Dir}/files resolves outside any static store, or into BOA's own folders there (robots.txt)"
     return 0
   fi
   _wg=$(_store_web_group "${_R_FLS}" "$(realpath -e -- "${_Dir}" 2> /dev/null)")
@@ -2626,35 +2683,29 @@ _fix_permissions() {
     _rDir=$(realpath -e -- "${_Dir}" 2>/dev/null)
     _rFls=$(realpath -e -- "${_Dir}/files" 2>/dev/null)
     if [ -n "${_rDir}" ] && [ -n "${_rFls}" ]; then
-      case "${_rFls}/" in
-        */static/files/*|"${_rDir}"/*)
-          _wgF=$(_store_web_group "${_rFls}" "${_rDir}")
-          if [ "${_wgF}" = "SKIP" ]; then
-            echo "NOTE: ${_Dir}/files is another account's store (${_rFls}) and one of the two has its own web group: left as it is"
-          else
-            _in_pinned_dir "${_rFls}" _files_store_perm_here "${_wgF}"
-          fi
-          ;;
-        *)
-          echo "SKIP: ${_Dir}/files resolves outside any static store: ${_rFls}"
-          ;;
-      esac
+      if _night_store_place "${_rFls}" "${_rDir}"; then
+        _wgF=$(_store_web_group "${_rFls}" "${_rDir}")
+        if [ "${_wgF}" = "SKIP" ]; then
+          echo "NOTE: ${_Dir}/files is another account's store (${_rFls}) and one of the two has its own web group: left as it is"
+        else
+          _in_pinned_dir "${_rFls}" _files_store_perm_here "${_wgF}"
+        fi
+      else
+        echo "SKIP: ${_Dir}/files resolves outside any static store, or into BOA's own folders there: ${_rFls}"
+      fi
     fi
     _rPrv=$(realpath -e -- "${_Dir}/private" 2>/dev/null)
     if [ -n "${_rDir}" ] && [ -n "${_rPrv}" ]; then
-      case "${_rPrv}/" in
-        */static/files/*|"${_rDir}"/*)
-          _wgF=$(_store_web_group "${_rPrv}" "${_rDir}")
-          if [ "${_wgF}" = "SKIP" ]; then
-            echo "NOTE: ${_Dir}/private is another account's store (${_rPrv}) and one of the two has its own web group: left as it is"
-          else
-            _in_pinned_dir "${_rPrv}" _private_store_perm_here "${_wgF}"
-          fi
-          ;;
-        *)
-          echo "SKIP: ${_Dir}/private resolves outside any static store: ${_rPrv}"
-          ;;
-      esac
+      if _night_store_place "${_rPrv}" "${_rDir}"; then
+        _wgF=$(_store_web_group "${_rPrv}" "${_rDir}")
+        if [ "${_wgF}" = "SKIP" ]; then
+          echo "NOTE: ${_Dir}/private is another account's store (${_rPrv}) and one of the two has its own web group: left as it is"
+        else
+          _in_pinned_dir "${_rPrv}" _private_store_perm_here "${_wgF}"
+        fi
+      else
+        echo "SKIP: ${_Dir}/private resolves outside any static store, or into BOA's own folders there: ${_rPrv}"
+      fi
     fi
     ### drushrc.php is never legitimately a symlink, and the site dir is the
     ### tenant's under unlock.info: it is read once inside the resolved site

@@ -733,6 +733,8 @@ EOFMYSQL
             ### mydumper writes metadata into the outputdir as its LAST act;
             ### a transferred dir without it is a partial/hollow dump and
             ### loading it would silently restore an incomplete database.
+            ### The load is binlogged, so a replica of this box gets it too.
+            _myloader_binlog_opts
             if ! _xcopy_in_real_dir "${_USR}/src/${_DBN}" test -e ./metadata; then
               _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + 1 ))
               _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_DBN}"
@@ -745,6 +747,7 @@ EOFMYSQL
               --directory=. \
               --threads=4 \
               --drop-table=DROP \
+              "${_MYLOADER_BINLOG[@]}" \
               --verbose=2; then
               _XCOPY_SITE_IMPORT_OK=YES
               echo "INFO: site ${_Dom} db import on ${_oct} complete"
@@ -855,6 +858,8 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
         case "${_MYDUMPER_MAJOR}" in
           [1-9]*) _MYDUMPER_ROWS_OPT="" ;;
         esac
+        ### The site's triggers, routines and events go with its tables.
+        _mydumper_objects_opts
         ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
         if _xcopy_in_real_dir "${_USR}/src/${_DBN}" mydumper ${_MYDUMPER_TRX_OPT} \
           --database=${_DBN} \
@@ -863,6 +868,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           --port=3306 \
           --outputdir=. \
           ${_MYDUMPER_ROWS_OPT} \
+          "${_MYDUMPER_OBJECTS[@]}" \
           --build-empty-files \
           --threads=4 \
           --long-query-guard=900 \
@@ -2839,6 +2845,44 @@ _mysqldump_gtid_opts() {
   if mysqldump --help 2> /dev/null | grep -q -- '--set-gtid-purged'; then
     _MYSQLDUMP_GTID=(--set-gtid-purged=OFF)
   fi
+  return 0
+}
+### A site's database load is written to the binary log. myloader opens
+### every session with SET SQL_LOG_BIN=0 unless told otherwise, so on a box
+### running with the binary log on (every box an xmass run touched: BOA's
+### my.cnf leaves it off, xmass_gtid.cnf turns it on) the load never
+### reached a replica of the box, whose applier then stopped at the first
+### replicated write to the tables it never got. --ignore-set=SQL_LOG_BIN
+### drops that one session variable wherever it comes from (myloader's own
+### default, or the packaged /etc/mydumper.cnf for a call without an option
+### file); --enable-binlog is no substitute: that file sets it again, and
+### the 0.19.3 line refuses the option. With the binary log off it changes
+### nothing. Sets _MYLOADER_BINLOG to the option when the local myloader
+### lists it, so a build without it gets its arguments as before.
+_myloader_binlog_opts() {
+  _MYLOADER_BINLOG=()
+  if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--ignore-set([[:space:]]|=)'; then
+    _MYLOADER_BINLOG=(--ignore-set=SQL_LOG_BIN)
+  fi
+  return 0
+}
+### A site's triggers, stored routines and events travel with its tables.
+### mydumper writes none of them unless asked, so a site that kept them (a
+### logging trigger, a function its queries call, a scheduled event) lost
+### them on every copy. Each keeps its DEFINER, the site's own database
+### user: the import loads as root, and the target has that user under the
+### same name before the load, so they run there with the site's rights, as
+### here. Sets _MYDUMPER_OBJECTS to those of the three options the local
+### mydumper lists, so a build without one gets its arguments as before.
+_mydumper_objects_opts() {
+  local _h _o
+  _MYDUMPER_OBJECTS=()
+  _h=$(mydumper --help 2>&1)
+  for _o in --triggers --routines --events; do
+    if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+(-[[:alpha:]],[[:space:]]+)?${_o}([[:space:]]|=|$)"; then
+      _MYDUMPER_OBJECTS+=("${_o}")
+    fi
+  done
   return 0
 }
 
