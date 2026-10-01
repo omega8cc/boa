@@ -899,7 +899,7 @@ Syncs the following to the target on each run:
 
 | Data | Path(s) |
 |---|---|
-| Shared BOA data | `/data/all`, `/data/disk/all`, `/data/disk/arch`, `/data/disk/legacy` |
+| Shared BOA data | the shared store, `/data/disk/arch`, `/data/disk/legacy` (the store goes from where this box keeps it to where the target keeps it: see [The shared store](#the-shared-store-between-two-boxes)) |
 | Static web root | `/var/www/static` |
 | DNS zone data | `/etc/bind` |
 | Usage logs | `/var/log/boa/usage` |
@@ -935,9 +935,8 @@ and automated alike): `distro/`, `src/`, `static/` (everything under it but
 `static/control`: tenants build codebases anywhere there, and a removed one
 used to stay on the mirror for good; `static/files` is the store and prunes
 as its own leg), `arch`, `backups/`,
-`undo/`, the client toolchains, the Solr data trees and the shared
-`/data/all`, `/data/disk/all`, `/data/disk/legacy` and `/var/www/static`
-trees.
+`undo/`, the client toolchains, the Solr data trees, the shared store and
+the `/data/disk/legacy` and `/var/www/static` trees.
 
 Without this a standing mirror grows without bound, and it grows
 *nightly*: the per-account SQL dump stores under `arch`, each account's
@@ -1014,6 +1013,21 @@ The raise is leg-wide,
 because `--max-delete` is one counter per leg: a genuine loss elsewhere in
 the same leg, in the same pass, rides under it up to the budgeted amount.
 
+The nightly shared codebases cleanup (`_SHARED_CODEBASES_CLEANUP=YES`, see
+[CLEANUP.md](CLEANUP.md)) is budgeted the same way on the shared store leg.
+One night can move a codebase of more entries than the limit out of the store,
+whole, into the cleanup directory (`/var/backups/codebases-cleanup`, or
+`/data/disk/codebases-cleanup` when `/data/all` is root's link), under
+`data/all/<serial>/<codebase>`.
+
+That directory is the record the leg reads: a
+codebase there that the store no longer holds and that the target's store
+still holds as a real directory is budgeted for its entries on the target,
+never more than the moved copy holds (`prune: … was moved out of this box's
+store by the nightly cleanup`). A codebase the store lost with no such copy is
+not budgeted, nor is a copy that was put back into the store. The recovery
+copy is no leg: it stays on the box that moved it.
+
 A target that holds the sites under a **third**
 box name — a standing mirror re-pointed at the box its active was moved to —
 is deliberately not covered, because the sending side cannot tell a former
@@ -1033,9 +1047,12 @@ after an interrupted run it can be the only copy. A tree the refresh kept
 because it held tenant files, and the tarball records in `.boa-tarball/`,
 travel like any other file.
 
-A mirror-side *rewrite* of a file that still exists on the source is still
-never undone — `-u` keeps the newer copy, and only the accretion of files the
-source no longer has is what deletion addresses.
+On the other data legs a mirror-side *rewrite* of a file that still exists
+on the source is still never undone — `-u` keeps the newer copy, and only the
+accretion of files the source no longer has is what deletion addresses. The
+shared store's leg carries no `-u`: the active is the only writer of the
+store (a standby fetches no shared module and refuses any Octopus run), so its
+bytes win whatever the mtimes.
 
 Optional per-account config directories (`pre.d`, `post.d`, `subdir.d`,
 `platform.d`, `config/ssl.d`, `config/server_master/ssl.d`, `tools/le`) are
@@ -1050,6 +1067,42 @@ record on the documented `reset-phase syncing` recovery path), and `pass.txt`
 rides the credential carry instead so it can never advertise a password the
 target's `/etc/shadow` does not hold. `log/domain.txt` is synced with `-u` on
 purpose: the target's own FQDN stamp is what `renameaegirhost` wants.
+
+### The shared store between two boxes
+
+The platforms built on shared code link into `/data/all/<serial>/…`. BOA keeps
+that store in one of two ways, and a pair's two boxes need not agree: a real
+`/data/all`, or a link of root's at `/data/all` that leads to `/data/disk/all`
+(the layout the Octopus store check's own repair produces).
+
+Each pass reads where each box keeps it, by the rule the Octopus store check
+uses, and sends the store from where this box keeps it to where the target
+keeps it, so the platform links resolve on either layout. A target with
+nothing at `/data/all` gets the store there, where the platforms link.
+
+- A `/data/all` that is any other link, or not a directory, on either box: a
+  `DENY`, and the store is not sent. Octopus stops on such a link too and
+  names its repair.
+- A target whose layout cannot be read (the connection failed): a `DENY`.
+- A real `/data/disk/all` that is not the sending box's store goes to the
+  target's `/data/disk/all` by that name, as before, unless the target keeps
+  its store there. Then it is not sent: with an alert when no platform on the
+  sending box resolves through it, with a `DENY` when one does.
+- A target that keeps its store in a real `/data/all` and also holds a real
+  `/data/disk/all` from an earlier sync is named in the pass log and left as
+  it is: remove it on the target to free its space.
+- `verify` names as a `DENY` the platform links into the store that dangle on
+  the target and not on the source: sites whose shared code is not there.
+
+The sync's `DENY`s above make a dry run NOT CLEAN, and stop a live `sync`
+after its legs and a `cutover` before the write freeze, as a store that
+cannot be placed on the target does.
+
+With no `-u` on the store leg, a store file whose mtime differs between the
+two boxes is sent. A file an account changed under an earlier release, which
+stayed on the mirror while the active's Octopus pass rebuilt its own store
+from the archives, takes the active's bytes on the next pass: no separate
+re-seed is needed.
 
 ### Out-of-root symlinks — what materialises and what stays a link
 

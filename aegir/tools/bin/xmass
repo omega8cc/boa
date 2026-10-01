@@ -4426,7 +4426,7 @@ _xmass_deny_maxdelete() {   # 1 = label  2 = the limit the leg ran with
   _alrt "DENY: here); if it is genuine, re-run once with a raised _XMASS_MAX_DELETE."
   if [[ "${_lim}" =~ ^[0-9]+$ ]] && [[ "${_XMASS_MAX_DELETE}" =~ ^[0-9]+$ ]] \
     && [ "${_lim}" -gt "${_XMASS_MAX_DELETE}" ]; then
-    _alrt "DENY: (${_lim} = _XMASS_MAX_DELETE ${_XMASS_MAX_DELETE} + $(( 10#${_lim} - 10#${_XMASS_MAX_DELETE} )) already budgeted for dirs the target holds under its own hostname; the limit is leg-wide)"
+    _alrt "DENY: (${_lim} = _XMASS_MAX_DELETE ${_XMASS_MAX_DELETE} + $(( 10#${_lim} - 10#${_XMASS_MAX_DELETE} )) already budgeted for the tools' own deletions named in the prune: lines above; the limit is leg-wide)"
   fi
 }
 
@@ -5418,7 +5418,11 @@ _xmass_report_out_links() {
   local _r _d _tot=0 _totMnt=0 _tm=""
   _info "Scanning synced trees for out-of-root symlinks (secondary mounts) ..."
   for _r in /data/all /data/disk/all /data/disk/legacy /var/www/static; do
-    if [ -L "${_r}" ]; then
+    if [ -L "${_r}" ] && [ "${_r}" = "/data/all" ]; then
+      _info "  ${_r} is a symlink -> $(readlink "${_r}" 2>/dev/null): the store travels"
+      _info "  from where it leads when that is /data/disk/all (scanned below), else not at all"
+      continue
+    elif [ -L "${_r}" ]; then
       _alrt "  ${_r} is itself a symlink -> $(readlink "${_r}" 2>/dev/null) (not"
       _alrt "  transferred; the target's own install provides it)"
       continue
@@ -5954,18 +5958,232 @@ _xmass_sync_account() {
   _XMASS_GMAP=""
 }
 
+### $1 as the directory root works in: itself when it is a real directory;
+### when it is a link, the real directory it leads to, only when every link
+### on the way is root's and every directory on the way, the last one
+### included, is root's and writable by no one else, so no one but root can
+### change where it leads or what is in it; nothing otherwise (exit 1). The
+### shared store /data/all may be such a link. With a second argument "last"
+### the last directory may be anyone's and open to others (the Octopus store
+### check takes /data/disk/all back); the store probe below gives it.
+_ROOT_REAL_PATH_PL='my ($p, $k) = @ARGV; if (!-l $p) { print $p if -d _; exit(-d _ ? 0 : 1); } my ($c, $n, @s) = ("", 0, stat("/")); exit 1 unless $p =~ m{^/} && @s && $s[4] == 0 && !($s[2] & 022); my @w = grep { length && $_ ne "." } split(m{/}, $p); while (@w) { my $e = shift(@w); if ($e eq "..") { $c =~ s{/[^/]*$}{}; next; } my @l = lstat("$c/$e") or exit 1; if (-l _) { exit 1 if $l[4] != 0 || ++$n > 40; my $t = readlink("$c/$e"); exit 1 unless defined $t; $c = "" if $t =~ m{^/}; unshift(@w, grep { length && $_ ne "." } split(m{/}, $t)); next; } exit 1 unless -d _ && (($l[4] == 0 && !($l[2] & 022)) || (defined $k && $k eq "last" && !@w)); $c .= "/$e"; } print($c eq "" ? "/" : $c); exit 0'
+### $1, the real directory a link of root's at /data/all leads to
+### (_ROOT_REAL_PATH_PL's answer), is the one the store may be kept in
+### behind that link (exit 0) only when it is /data/disk/all, the directory
+### named all directly in the real /data/disk, compared by device and inode
+### with that name not followed, so a link put at it does not count; any
+### other directory, or none, exit 1. One text wherever it is defined
+### (satellite.sh.inc, BOA.sh.txt, xoct, xcopy, xmass,
+### manage_solr_config.sh, night.inc.sh).
+_SAT_STORE_TARGET_PL='my @t = lstat(defined $ARGV[0] ? $ARGV[0] : ""); my @a = lstat("/data/disk/all"); exit((@t && @a && -d _ && $t[0] == $a[0] && $t[1] == $a[1]) ? 0 : 1)'
+
+# Where a box keeps the shared store, by the rule the Octopus store check
+# uses, as a shell text run here and on the target alike. One line
+# "XMSTORE <kind>":
+#   R  /data/all is a real directory: the store is /data/all
+#   L  /data/all is a link of root's that leads to /data/disk/all
+#      (_ROOT_REAL_PATH_PL with "last", _SAT_STORE_TARGET_PL): the store
+#      is /data/disk/all
+#   N  nothing at /data/all
+#   X  any other link, or anything but a directory, at /data/all: BOA's
+#      writers leave it alone, and Octopus stops on it and names its repair
+# and "XMSTORE D" as well when /data/disk/all is a real directory.
+_xmass_store_probe_sh() {
+  case "${_ROOT_REAL_PATH_PL}${_SAT_STORE_TARGET_PL}" in
+    *\'*) printf '%s' "echo XMSTORE X; exit 0"; return 0 ;;
+  esac
+  printf '%s' "if [ -L /data/all ]; then _r=\$(perl -e '${_ROOT_REAL_PATH_PL}' -- /data/all last 2>/dev/null) && perl -e '${_SAT_STORE_TARGET_PL}' -- \"\${_r}\" 2>/dev/null && echo 'XMSTORE L' || echo 'XMSTORE X'; elif [ -d /data/all ]; then echo 'XMSTORE R'; elif [ -e /data/all ]; then echo 'XMSTORE X'; else echo 'XMSTORE N'; fi; if [ -d /data/disk/all ] && [ ! -L /data/disk/all ]; then echo 'XMSTORE D'; fi; exit 0"
+}
+
+# Codebases the nightly cleanup moved out of the store
+# (_shared_codebases_cleanup in 90-global-post.sh, with
+# _SHARED_CODEBASES_CLEANUP=YES), budgeted out of the delete guard on the
+# store leg: one night can move a codebase of more entries than the guard
+# allows, and the next prune pass then has to delete all of it on the
+# mirror. Each move keeps the codebase whole in the cleanup directory
+# (/var/backups/codebases-cleanup, or /data/disk/codebases-cleanup when
+# /data/all is root's link), under data/all/<serial>/<codebase>, and that
+# directory is the record read here: a codebase there that this box's store
+# no longer holds, and that the target's store still holds as a real
+# directory, is budgeted for its entries on the target, never more than the
+# moved copy holds. A codebase the store lost with no such copy, an emptied
+# or unmounted store, and a copy put back into the store budget nothing,
+# and the limit stays leg-wide as for _xmass_rename_churn. The recovery copy
+# itself is no leg: it stays on the box that moved it.
+# stdout is the count alone (the caller splices it); the record goes to stderr.
+_xmass_cleanup_churn() {   # 1 = this box's store  2 = the target's store
+  local _src="${1%/}" _dst="${2%/}" _cld _d _rel _i=0 _max=1000 _ask="" _ans _c _k _n _m _q
+  local _sum=0 _nb=0
+  local -A _ac=() _ar=() _cbSeen=()
+  [ "${_XMASS_PRUNE}" = "YES" ] && [ -d "${_src}" ] || { printf '0'; return 0; }
+  for _cld in /var/backups/codebases-cleanup /data/disk/codebases-cleanup; do
+    [ -d "${_cld}/data/all" ] && [ ! -L "${_cld}" ] && [ ! -L "${_cld}/data" ] \
+      && [ ! -L "${_cld}/data/all" ] || continue
+    while IFS= read -r _d; do
+      _rel="${_d#"${_cld}/data/all/"}"
+      case "${_rel}" in ''|*[!A-Za-z0-9._/-]*|*..*|/*|*/*/*|.*|*/.*) continue ;; esac
+      [[ "${_rel}" = */* ]] || continue
+      [ -n "${_cbSeen[${_rel}]:-}" ] && continue
+      _cbSeen[${_rel}]=1
+      # back in the store: no deletion
+      { [ -e "${_src}/${_rel}" ] || [ -L "${_src}/${_rel}" ]; } && continue
+      if [ "${_i}" -ge "${_max}" ]; then
+        _alrt "  prune: more than ${_max} codebases in ${_cld} -- the rest are not budgeted" >&2
+        break 2
+      fi
+      _i=$(( _i + 1 ))
+      _ac[${_i}]="${_d}"
+      _ar[${_i}]="${_rel}"
+      _ask="${_ask}${_i}|${_rel}"$'\n'
+    done < <(find "${_cld}/data/all" -mindepth 2 -maxdepth 2 -type d 2>/dev/null | sort)
+  done
+  [ -n "${_ask}" ] || { printf '0'; return 0; }
+  _q="$(_shq "${_dst}")"
+  _ans=$(printf '%s' "${_ask}" | ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" \
+    "_r='${_q}'; _rp=\$(cd \"\${_r}\" 2>/dev/null && pwd -P) || exit 0; while IFS='|' read -r _i _p; do [ -n \"\${_p}\" ] || continue; _s=\"\${_p%%/*}\"; [ \"\$(cd \"\${_r}/\${_s}\" 2>/dev/null && pwd -P)\" = \"\${_rp}/\${_s}\" ] || continue; _c=\"\${_r}/\${_p}\"; [ -d \"\${_c}\" ] && [ ! -L \"\${_c}\" ] || continue; echo \"XMCLEAN C|\${_i}|\$(find \"\${_c}\" -print0 2>/dev/null | tr -dc '\0' | wc -c | tr -d '[:space:]')\"; done" 2>/dev/null \
+    | grep '^XMCLEAN C|' | cut -d' ' -f2-)
+  while IFS='|' read -r _c _k _n; do
+    [ "${_c}" = "C" ] || continue
+    [[ "${_k}" =~ ^[0-9]+$ ]] && [[ "${_n}" =~ ^[0-9]+$ ]] || continue
+    # only what this pass asked, and once: the answer is a remote shell's output
+    _d="${_ac[${_k}]:-}"
+    _rel="${_ar[${_k}]:-}"
+    [ -n "${_d}" ] && [ -n "${_rel}" ] || continue
+    unset "_ac[${_k}]"
+    [ -d "${_d}" ] && [ ! -L "${_d}" ] || continue
+    _m=$(find "${_d}" -print0 2>/dev/null | tr -dc '\0' | wc -c | tr -d '[:space:]')
+    [[ "${_m}" =~ ^[0-9]+$ ]] || continue
+    if [ "${_n}" -gt "${_m}" ]; then
+      _info "  prune: ${_dst}/${_rel} holds $(( _n - _m )) more entries than the copy the nightly cleanup moved -- those stay against the guard" >&2
+      _n="${_m}"
+    fi
+    [ "${_n}" -gt 0 ] || continue
+    _sum=$(( _sum + _n ))
+    _nb=$(( _nb + 1 ))
+    _info "  prune: ${_dst}/${_rel} was moved out of this box's store by the nightly cleanup (${_d}) -- ${_n} deletion(s) budgeted" >&2
+  done <<< "${_ans}"
+  [ "${_nb}" -gt 0 ] \
+    && _info "  prune: ${_sum} deletion(s) under ${_nb} codebase(s) the nightly cleanup moved budgeted out of the delete guard for ${_dst} (leg-wide)" >&2
+  printf '%s' "${_sum}"
+}
+
+# The shared store's leg. The platforms built on shared code link into
+# /data/all/<serial>/..., which reaches the store on either layout the
+# Octopus store check accepts (a real /data/all, or root's link to
+# /data/disk/all), so the store travels from where this box keeps it to
+# where the target keeps it, each read by _xmass_store_probe_sh; a target
+# with nothing at /data/all gets one there, where the platforms link.
+# Before, a link at /data/all was skipped and /data/disk/all sent under its
+# own name, so on a pair whose boxes keep the store differently the store
+# landed where nothing on the target reads it, or went through the
+# target's link while a second leg sent another tree to where it leads.
+# No -u: the active is the only writer of its store (a standby fetches no
+# shared module and refuses any Octopus run), so its bytes win whatever the
+# mtimes. Under -u a file changed on the mirror stayed there for good, and
+# so did one an account had changed before Octopus's one-time pass rebuilt
+# the active's store from its archives (older archive mtimes), while both
+# boxes recorded the store clean; the first pass without -u sends every
+# such file, since its mtime differs.
+# A real /data/disk/all that is not this box's store goes under its own
+# name as before, unless the target keeps its store there: then it is not
+# sent, with an alert when no platform here resolves through that name and
+# a DENY when one does.
+_xmass_sync_store() {
+  local _out _sk _tk _sd="" _td="" _sp="" _tp="" _la _cb _lim _used
+  _out="$(bash -c "$(_xmass_store_probe_sh)" 2>/dev/null)"
+  _sk="$(printf '%s\n' "${_out}" | grep -m1 '^XMSTORE [RLNX]$' | cut -d' ' -f2)"
+  printf '%s\n' "${_out}" | grep -qx 'XMSTORE D' && _sd=YES
+  _out="$(ssh -n -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "$(_xmass_store_probe_sh)" 2>/dev/null)"
+  _tk="$(printf '%s\n' "${_out}" | grep -m1 '^XMSTORE [RLNX]$' | cut -d' ' -f2)"
+  printf '%s\n' "${_out}" | grep -qx 'XMSTORE D' && _td=YES
+  case "${_sk}" in
+    R) _sp=/data/all ;;
+    L) _sp=/data/disk/all ;;
+    N) _info "  nothing at /data/all on this box: no shared store to send" ;;
+    *)
+      _alrt "DENY: /data/all on this box is a link that does not lead to /data/disk/all through root's own links and directories, or not a directory: the shared store is NOT sent. Octopus stops on it too and names the repair."
+      _XMASS_NOT_CLEAN=YES
+      _XMASS_STORE_RC=3
+      return 0
+      ;;
+  esac
+  case "${_tk}" in
+    R|N) _tp=/data/all ;;
+    L) _tp=/data/disk/all ;;
+    X)
+      _alrt "DENY: /data/all on ${_tgt} is a link that does not lead to /data/disk/all through root's own links and directories, or not a directory: the shared store is NOT sent there. Point it at /data/disk/all (or make it a real directory) on the target and sync again."
+      _XMASS_NOT_CLEAN=YES
+      _XMASS_STORE_RC=3
+      return 0
+      ;;
+    *)
+      _alrt "DENY: could not read where ${_tgt} keeps the shared store (ssh failed?) -- the store is NOT sent; re-run"
+      _XMASS_NOT_CLEAN=YES
+      _XMASS_STORE_RC=3
+      return 0
+      ;;
+  esac
+  if [ -n "${_sp}" ]; then
+    [ "${_sp}" = "${_tp}" ] \
+      || _info "  the shared store: ${_sp} here, ${_tp} on ${_tgt} (the two boxes keep it differently)"
+    # Sweep FIRST: the leg must exclude every out-of-root link, because a
+    # source symlink re-sent over an already-materialised copy fails on a dir
+    # and silently reverts a file. Trailing-slash form so the excludes anchor
+    # at the transfer root.
+    _xmass_scan_out_links "${_sp}"
+    _info "  link sweep ${_sp}: ${_XMASS_LNK_RPT}"
+    _la="$(_xmass_leg_args "${_sp}")"
+    _cb="$(_xmass_cleanup_churn "${_sp}" "${_tp}")"
+    if [[ "${_cb}" =~ ^[0-9]+$ ]] && [ "${_cb}" -gt 0 ] \
+      && [[ "${_la}" =~ --max-delete=([0-9]+) ]]; then
+      _lim="${BASH_REMATCH[1]}"
+      _la="${_la/--max-delete=${_lim}/--max-delete=$(( 10#${_lim} + 10#${_cb} ))}"
+    fi
+    _xmass_rsync -aEAXq ${_la} ${_XMASS_OUT_EXCL} -e ssh \
+      "${_sp}/" "root@${_tgt}:${_tp}/"
+    _xmass_materialise_out_links "${_sp}" "${_tp}"
+  fi
+  if [ "${_sd}" = "YES" ] && [ "${_sp}" != "/data/disk/all" ]; then
+    if [ "${_tp}" != "/data/disk/all" ]; then
+      _xmass_scan_out_links /data/disk/all
+      _info "  link sweep /data/disk/all: ${_XMASS_LNK_RPT}"
+      _xmass_rsync -aEAXqu $(_xmass_leg_args /data/disk/all) ${_XMASS_OUT_EXCL} -e ssh \
+        /data/disk/all/ "root@${_tgt}:/data/disk/all/"
+      _xmass_materialise_out_links /data/disk/all /data/disk/all
+    else
+      # a failed walk is no evidence that nothing resolves through it; a
+      # link that dangles here already serves nothing
+      _used=""
+      if compgen -G '/data/disk/*/distro/*/*/' > /dev/null; then
+        _used=$(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 -type l \
+          -lname '/data/disk/all/*' ! -xtype l -print -quit 2>/dev/null) \
+          || _used="the platforms could not all be read"
+      fi
+      if [ -n "${_used}" ]; then
+        _alrt "DENY: /data/disk/all here is a real directory that is not this box's store, and a platform here resolves through it (${_used}); ${_tgt} keeps its store under that name, so it cannot hold both: NOT sent"
+        _XMASS_NOT_CLEAN=YES
+        _XMASS_STORE_RC=3
+      else
+        _alrt "  /data/disk/all here is a real directory that is not this box's store, and no platform here resolves through it (a copy an earlier sync sent here?); ${_tgt} keeps its store under that name: not sent"
+      fi
+    fi
+  elif [ "${_sp}" = "/data/disk/all" ] && [ "${_tp}" = "/data/all" ] && [ "${_td}" = "YES" ]; then
+    _alrt "  ${_tgt} holds a real /data/disk/all that is not its store, and nothing is sent there any more (an earlier sync sent this box's store there by name): not touched; remove it on ${_tgt} to free its space"
+  fi
+}
+
 _xmass_sync_shared() {
   _xmass_auto_assert_standby
   _info "Syncing shared data (/data/all, arch, legacy, bind, static) ..."
   local _item _archReal
-  for _item in /data/all /data/disk/all /data/disk/legacy; do
-    if [ -L "${_item}" ]; then
-      # Deliberately not transferred (pre-existing rule, now said out loud):
-      # the target's own install provides this tree.
-      _alrt "  ${_item} is itself a symlink -> $(readlink "${_item}" 2>/dev/null); not transferred"
-      continue
-    fi
-    [ -d "${_item}" ] || continue
+  _xmass_sync_store
+  # /data/disk/legacy goes under its own name, as before
+  _item=/data/disk/legacy
+  if [ -L "${_item}" ]; then
+    # Deliberately not transferred (pre-existing rule, now said out loud):
+    # the target's own install provides this tree.
+    _alrt "  ${_item} is itself a symlink -> $(readlink "${_item}" 2>/dev/null); not transferred"
+  elif [ -d "${_item}" ]; then
     # Sweep FIRST: the leg must exclude every out-of-root link, because a
     # source symlink re-sent over an already-materialised copy fails on a dir
     # and silently reverts a file. Trailing-slash form so the excludes anchor
@@ -5975,7 +6193,7 @@ _xmass_sync_shared() {
     _xmass_rsync -aEAXqu $(_xmass_leg_args "${_item}") ${_XMASS_OUT_EXCL} -e ssh \
       "${_item}/" "root@${_tgt}:${_item}/"
     _xmass_materialise_out_links "${_item}" "${_item}"
-  done
+  fi
   # arch: storage-aware -- mirror onto the target mount, or de-reference to root,
   # per the target's disk reality (canonical layout <mount>/files/system/arch).
   # Its own sweep runs against the resolved tree so per-account symlink stores
@@ -9808,6 +10026,20 @@ _xmass_cmd_verify() {
     done
   else
     _info "No dangling symlinks under the synced roots (and mount) on ${_tgt}: OK"
+  fi
+  # A platform's link into the shared store that dangles on the target is a
+  # site with no code there: the store did not travel, or went where nothing
+  # reads it. Unlike the sweep above it is a DENY, counted beside the same
+  # links here, since one already dangling on this box is not the move's.
+  local _pdS _pdT
+  _pdS=$(find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 -lname '/data/all/*' \
+    -xtype l 2>/dev/null | wc -l | tr -d ' ')
+  _pdT=$(ssh -n root@"${_tgt}" \
+    "find /data/disk/*/distro/*/*/ -maxdepth 1 -mindepth 1 -lname '/data/all/*' -xtype l 2>/dev/null | wc -l" \
+    2>/dev/null | tr -d ' ')
+  if [[ "${_pdT}" =~ ^[0-9]+$ ]] && [[ "${_pdS}" =~ ^[0-9]+$ ]] \
+    && [ "${_pdT}" -gt "${_pdS}" ]; then
+    _alrt "DENY: ${_pdT} platform link(s) into the shared store dangle on ${_tgt} (${_pdS} here): the sites on that shared code have none there, the store leg did not bring it"
   fi
   if ! pgrep -x cron &> /dev/null; then
     _alrt "cron is NOT running on this source -- the daily certificate mirror is DOWN"
