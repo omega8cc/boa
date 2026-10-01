@@ -74,6 +74,16 @@ database). At cutover:
    continues**. A session-scoped read lock is not used at all: it cannot hold
    anything once its client disconnects; the surviving `FLUSH TABLES` only
    pushes buffers. The lag is then re-confirmed three times.
+
+   The one writer neither of those stops is MySQL's **event scheduler**: an
+   `EVERY`-N event would keep writing between the lag checks and the
+   promotion, rows that then stay on the old box alone. So step 6 also turns
+   the scheduler off on the source when it runs, before the lag checks, and
+   records that in `/run/boa_xmass_events_off.pid`. Every way back to the
+   source as production (an abort before the promotion, a re-run that
+   unwinds, `reset-phase syncing` or `init`) starts it again from that
+   record. After a promotion it stays off on the old box, whose database is
+   then the frozen copy.
 7. Target MySQL is promoted (slave decoupled, `RESET SLAVE ALL`); the freeze
    flag is removed on the **target** later in the sequence. On the source it
    stays for the life of the proxy — the old box serves through the proxy
@@ -1601,13 +1611,13 @@ first change to the source):
 | Step 4 | Wait for replica lag = 0 (polls every 15 s; ceiling `_XMASS_SYNC_MAX_WAIT`, default 7200 s; on timeout reports whether the lag is closing or growing), then confirm it three times 10 s apart: a returning lag re-enters the wait and spends the same budget, so only a spent budget or an unreadable lag ends the verb here; the post-freeze triple check is strict and aborts on any non-zero reading |
 | Step 5 | Final rsync pass of `static/files` only, **before** the write freeze (the web block already stopped file writes) |
 | Step 5.5 | **Gate:** re-check both of the above, then persist `phase=cutover` |
-| Step 6 | Append the **advisory** read-only flag to `/data/conf/global/global-extra.inc` (previous file kept as `.bak`), then `FLUSH TABLES` to push buffers. The flag is belt-and-braces only (box-wide, ignored by most site shapes, dropped by the next BOA system pass) and the cutover **continues with a warning if it cannot be written**: the write barrier is the step-1 503 gate plus the parked cron and runners. A session read lock is not relied on — it cannot survive a disconnect |
+| Step 6 | Append the **advisory** read-only flag to `/data/conf/global/global-extra.inc` (previous file kept as `.bak`), then `FLUSH TABLES` to push buffers. The flag is belt-and-braces only (box-wide, ignored by most site shapes, dropped by the next BOA system pass) and the cutover **continues with a warning if it cannot be written**: the write barrier is the step-1 503 gate plus the parked cron and runners. A session read lock is not relied on — it cannot survive a disconnect. Before the lag checks the **event scheduler** is turned off on the source when it runs (recorded in `/run/boa_xmass_events_off.pid`; every abort before the promotion, the pre-freeze unwind and `reset-phase syncing` start it again; a resumed tail turns it off again after a reboot) |
 | Step 7 | Triple-check lag = 0 at 10 s intervals. On any failed check: **thaw the write freeze** and abort — the target is not promoted at this point, so the source is handed back writable |
 | Step 8 | `STOP SLAVE; RESET SLAVE ALL` on target → target MySQL is now standalone. On failure the exit code alone cannot say whether the promotion committed (transport can fail after mysql ran), so the tool **reads the target's replica state back** and picks one of three exits: still a replica → **thaw**, abort (the source is the only production box); replica config gone → the promotion committed → **park resumably** at `phase=rename-failed`; state unreadable → the source stays 503-gated with the flag in place (lifting either could silently lose writes) and the message spells out how to determine the state and which recovery to run |
 | Step 9 | Vacant: no lock is held on the source, so nothing is released. The write freeze stays — the source serves through the proxy from here |
 | Step 10 | Re-transfer `/root/.my.pass.txt` and `/root/.my.cnf` to target (belt-and-braces) |
 | Step 11 | Drop replication user `xmass_repl` from source. Runs at the head of the cutover tail (idempotent), so a park upstream of it — the step-8 committed-promotion park — still gets the grant dropped when the resumed run completes |
-| Step 11.5 | Unlock the promoted target's database — on EVERY entry into the cutover tail, resumes included, since every step after it writes the target DB. `SET GLOBAL super_read_only=OFF` plus `read_only=OFF`, with the runtime readback verified (both variables) BEFORE the `xmass-standby-hold` block is stripped from `xmass_gtid.cnf`; a failed unlock **parks resumably at `phase=rename-failed`** rather than marching the renames into a read-only DB, and with mysql unreachable the cnf block deliberately survives as the watchdog's retry key. With the unlock proven and no replica config left, the step writes the promoted latch (`/var/log/boa/.standby_promoted.pid`) itself: the target's web hold follows its database, and step 12 must not wait for a watchdog pass to read the same thing. Step 15 removes the latch with the marker |
+| Step 11.5 | Unlock the promoted target's database — on EVERY entry into the cutover tail, resumes included, since every step after it writes the target DB. `SET GLOBAL super_read_only=OFF` plus `read_only=OFF`, with the runtime readback verified (both variables) BEFORE the `xmass-standby-hold` block is stripped from `xmass_gtid.cnf`; a failed unlock **parks resumably at `phase=rename-failed`** rather than marching the renames into a read-only DB, and with mysql unreachable the cnf block deliberately survives as the watchdog's retry key. With the unlock proven and no replica config left, the step writes the promoted latch (`/var/log/boa/.standby_promoted.pid`) itself: the target's web hold follows its database, and step 12 must not wait for a watchdog pass to read the same thing. Step 15 removes the latch with the marker. Then the **events**: every event the active created after the mirror's snapshot arrived replica-side disabled (`REPLICA_SIDE_DISABLED`, `SLAVESIDE_DISABLED` on older servers), and a promotion leaves it so; MySQL runs it again only after `ALTER EVENT ... ENABLE`, which without a `DEFINER` would make root its definer. The step enables each with its own definer; the statement is binlogged, so the next mirror records the event as disabled again. One that cannot be enabled is named with the hand repair, and the sites serve on |
 | Step 12 | Prove the target's web layer, then start nginx there: the `BOA_STANDBY_WEB` firewall hold is removed first (both address families), then `nginx -t` on the target (an invalid config **refuses the conversion**, printing the tail of the test output), then require a real HTTP answer on the target's port 80 — on loopback AND externally from the source (the path client traffic takes after the DNS flip; a browser UA, because curl's default lands in BOA's own crawler map, and HTTPS too when the target has a public 443 listener), since the loopback curl cannot see an INPUT-chain firewall drop. This proof runs at the **head of the cutover tail**, so every entry re-runs it — the normal flow and each resume of a parked cutover (nothing later in the tail gates on the web layer: the step-13 serve-wait measures and reports, and nothing else can *start* a stopped nginx). Either refusal **parks resumably at `phase=rename-failed`** and prints the full source-restore recipe (write-freeze guidance included): the target stays promoted, the source stays 503-gated and frozen, and the SQL watchdogs stay paused. Fix nginx on the target, then re-run `xmass cutover target-ip --live` — the resume re-runs this proof and starts nginx itself |
 | Step 12.5 | Rewire panel DB access on target per Ægir root (rediscover live hostmaster DB, reset its user's password, rewrite the panel dir's credentials — the datadir swap killed the fresh-install panel DBs). When the source's panel platform number diverges from the target's (an aged source vs a fresh target — the normal production shape), the step adopts the target's code-bearing panel platform and repoints the hostmaster platform row in the live DB; the DB persist is load-bearing because the rename queue's hostmaster verify regenerates the alias FROM the DB, so an alias-only correction is undone and the panel 404s from a hollow platform path |
 | Steps 12.85–12.94 | **The relay starts here, BEFORE the renames.** The promoted target already serves every client-domain site (nothing on their request path carries the box hostname), while the renames cost minutes per Ægir root, in series; relaying first takes them out of the visitors' window, which therefore no longer grows with the number of accounts. In order: clear the advisory read-only flag on the target (12.85); re-arm the target's SQL watchdog, the source's stays paused to the end (12.86); **prove the standby marker is still on the target and its master dispatch crontab parked** (12.87) — the marker is the one thing keeping the task queue from running under the old server identity until step 15, and it is proven again before every Ægir root in step 13; wire the migration-proxy trust on the target, **fail-closed and proven** (the persisted peer list, both `csf.allow` lines, `csf.ignore`, and a real fetch of the target on port 80) (12.89); carry the inbound proxies' reach (12.895, the old step 15.95); **fail out every task row that travelled with the panels**, by current revision, and re-count with the same predicate — queued rows and the rows the source was running when its panel stopped alike (those travel as processing, and nothing runs them on the target; a resume after a step-13 park that meets a task the rename started on the target leaves it to finish and refuses, naming the runner, until it has) — because the rename forces the queue several times per root and must never run a replicated verify, migrate, clone or restore against sites already serving visitors; site auto-import stays off for the window (12.90); save `_XMASS_SOURCE_PROXIED=YES` with the time to the state file **before** the first account is converted, so a killed run cannot hide that the target has taken live writes (12.91); `xoct proxy oN target-ip --defer-host-named=old-box-hostname` per account (12.92, **end of the client-domain outage**): the client-domain sites are relayed, while the sites named under the old box hostname are *deferred* — they stay local, held on 503 by the per-host gate `static/control/http-off-host.pid`, because the new box has not renamed them yet; the completion mail goes out here; master panel into maintenance mode (12.93); **cron back on the source** under BOA's heavy-tasks pause, because this box is now the only front door and must not sit without its web watchdog, IDS, real-client refresh and certificate mirror while the renames run (12.94). Any refusal up to 12.90 parks at `phase=rename-failed`: with the source still gated on a pass that has not yet recorded the relay (12.91), and saying the source relays on a resume after one that has — the marker, trust and fail-out checks run again on every pass until step 15. Skipped only on an estate where `_THIS_DB_HOST` is not local on either box: there every site's settings name the old box as database host until the rename's verifies regenerate them, so the rename-first order (steps 15.9–16.5 below) still applies, and the DRY plan says so |
@@ -1732,6 +1742,13 @@ hold, and no `go-live` can end that run any more: `post-mig` prints the
 lines that remove them. It never removes them itself, since on a test box
 the hold is wanted.
 
+It **enables the events a replica kept disabled**, each with its own
+definer, as cutover step 11.5 does: after a promotion by hand this is the
+step that does it. A database still read-only is waited for up to 75
+seconds (the SQL watchdog unlocks a promoted box within about a minute of
+the marker going); after that `post-mig` says to re-run it. It also says
+when the box holds enabled events but its `event_scheduler` is not `ON`.
+
 It also **rebuilds the pinned PHP pools**, which is not cosmetic. A
 migrated account arrives carrying the source's per-release FPM markers
 (`static/control/.multi-fpm.<tree>.<xSrl>.pid` and
@@ -1822,6 +1839,7 @@ gtid_mode                = ON
 enforce_gtid_consistency = ON
 log_slave_updates        = ON
 binlog_format            = ROW
+log_bin_trust_function_creators = 1
 expire_logs_days         = 7          # 5.7 only; 8.0+ uses binlog_expire_logs_seconds = 604800 (expire_logs_days was removed in 8.4)
 log_bin                  = /var/lib/mysql/mysql-bin  # only if binlog not already on
 ```
@@ -1831,6 +1849,30 @@ nginx and PHP-FPM gracefully before stopping MySQL, then starts them again).
 
 If GTID is already enabled by BOA default configuration the existing settings
 are left untouched.
+
+**`log_bin_trust_function_creators = 1`** goes wherever xmass writes
+`binlog_format = ROW`, in both servers' `xmass_gtid.cnf`, above the
+target's hold block (every promotion strips that block by position). With
+the binary log on, a site's own database login can create its triggers and
+functions only with this setting (MySQL refuses with ERROR 1419), and a
+replica's applier stops on a function its source accepted under it (ERROR
+1418). The side effect is accepted: on these boxes a non-deterministic
+function loads instead of failing.
+
+The two ends of a pair take the setting in one order, the mirror first: a
+mirror at 0 behind an active at 1 stops replicating on the first such
+function a site creates. `init` writes the line into both files and then
+sets the running value on the target before the source. Every live sync
+pass (`sync --live`, each `autosync` pass, the cutover's final pass) does
+the same for a pair built before the line existed: it adds the line and
+sets the value on the mirror, and on this box only once the mirror reads
+1, and only while no replica but the mirror reads this box's binary log
+(an old mirror still replicating during a rebuild keeps it as it is). A pass
+that cannot set the mirror says so and leaves this box as it is; DRY
+reports. The SQL watchdog (`mysql.sh`) adds the line and the value by
+itself on a standby, and on a box no replica reads that is not the active
+of a pair in progress; a conf that already carries the setting is left as
+it is, whatever its value.
 
 Right before the snapshot, `xmass init` also makes sure the source has executed
 at least one GTID transaction. On an idle source whose GTID and binary log the

@@ -3428,7 +3428,8 @@ _xmass_write_gtid_conf_local() {
   _logbin=$(mysql --defaults-file=/root/.my.cnf \
     -sNe "SHOW VARIABLES LIKE 'log_bin'" 2>/dev/null | awk '{print $2}')
   [ "${_logbin}" != "ON" ] && _keep_logbin=YES
-  [ -r "${_cnf}" ] && grep -q "^log_bin" "${_cnf}" && _keep_logbin=YES
+  # Our own log_bin line only: log_bin_trust_function_creators shares the prefix.
+  [ -r "${_cnf}" ] && grep -qE "^log_bin[[:space:]]*=" "${_cnf}" && _keep_logbin=YES
   _info "Writing GTID config to ${_cnf} (server_id=${_sid}) ..."
   {
     echo "[mysqld]"
@@ -3437,6 +3438,12 @@ _xmass_write_gtid_conf_local() {
     echo "enforce_gtid_consistency = ON"
     echo "log_slave_updates        = ON"
     echo "binlog_format            = ROW"
+    # With the binary log on, a site's own login creates its triggers and
+    # functions only with this (ERROR 1419), and a replica's applier stops on
+    # a function its source took under it (ERROR 1418): both ends carry it,
+    # above the target's hold block. The runtime half is _xmass_trust_pair's,
+    # the mirror first.
+    echo "log_bin_trust_function_creators = 1"
     # expire_logs_days was REMOVED in MySQL/Percona 8.4 (deprecated in 8.0);
     # its presence aborts mysqld at startup ("unknown variable"). Use the
     # replacement binlog_expire_logs_seconds on 8.0+; keep the old name on 5.7
@@ -3534,7 +3541,7 @@ _logbin=\$(mysql --defaults-file=/root/.my.cnf \
   -sNe "SHOW VARIABLES LIKE 'log_bin'" 2>/dev/null | awk '{print \$2}')
 _keep_logbin=NO
 [ "\${_logbin}" != "ON" ] && _keep_logbin=YES
-[ -r "\${_cnf}" ] && grep -q "^log_bin" "\${_cnf}" && _keep_logbin=YES
+[ -r "\${_cnf}" ] && grep -qE "^log_bin[[:space:]]*=" "\${_cnf}" && _keep_logbin=YES
 {
   echo "[mysqld]"
   echo "server_id                = ${_tgt_id}"
@@ -3542,6 +3549,8 @@ _keep_logbin=NO
   echo "enforce_gtid_consistency = ON"
   echo "log_slave_updates        = ON"
   echo "binlog_format            = ROW"
+  # Above the hold block, which every strip removes by position.
+  echo "log_bin_trust_function_creators = 1"
   if [ "${_XMASS_PERCONA_V}" = "5.7" ]; then
     echo "expire_logs_days             = 7"
     echo "slave_parallel_type          = LOGICAL_CLOCK"
@@ -3584,6 +3593,155 @@ REMOTEBASH
     _die "GTID still not ON after restart on target ${_tgt} (mode=${_tmode})"
   fi
   _info "GTID configured on target ${_tgt}: OK"
+}
+
+###-------------TRUST-CREATORS-----------###
+
+# Both writers above put log_bin_trust_function_creators = 1 next to
+# binlog_format=ROW. A pair takes the runtime value, and a conf written
+# before the line, in one order: the mirror first, the active only once its
+# mirror reads 1. A mirror at 0 behind an active at 1 stops its applier on
+# the first non-deterministic function a site creates (ERROR 1418), and an
+# emergency promotion of it then loses every write since. The mysql watchdog
+# adds the line by itself on a standby and on a box no replica reads.
+
+# The half that runs on one box through bash -s, after _NEED_SB (YES: the box
+# must be a standby) and _DRY (YES: report, change nothing). It finds the
+# xmass_gtid.cnf my.cnf reads, adds the line above the hold block (every
+# strip removes that block by position) when no spelling of it is there, and
+# sets the runtime value. A conf line with another value is left as it is.
+# Prints what it did, then TRUST=<the runtime value> last.
+_xmass_trust_sh() {
+  cat <<'TRUSTSH'
+if [ "${_NEED_SB}" = "YES" ] && [ ! -e /root/.standby.cnf ]; then
+  echo "TRUST-NOT-STANDBY"
+  exit 0
+fi
+_inc=$(grep -hE '^[[:space:]]*!includedir[[:space:]]' /etc/mysql/my.cnf 2>/dev/null \
+  | head -1 \
+  | sed -E 's/^[[:space:]]*!includedir[[:space:]]+//; s#/[[:space:]]*$##; s/[[:space:]]*$//')
+_c=""
+for _d in "${_inc}" /etc/mysql/conf.d /etc/mysql/percona-server.conf.d \
+  /etc/mysql/mysql.conf.d /etc/mysql; do
+  [ -n "${_d}" ] || continue
+  if [ -r "${_d}/xmass_gtid.cnf" ]; then
+    _c="${_d}/xmass_gtid.cnf"
+    break
+  fi
+done
+if [ -z "${_c}" ]; then
+  echo "TRUST-NOCNF"
+  exit 0
+fi
+_re='^[[:space:]]*(loose[-_])?log[-_]bin[-_]trust[-_]function[-_]creators[[:space:]]*='
+if grep -qE "${_re}" "${_c}"; then
+  _cv=$(grep -E "${_re}" "${_c}" | tail -n 1 \
+    | sed -E 's/^[^=]*=[[:space:]]*//; s/[[:space:]]*(#.*)?$//' | tr -cd '[:alnum:]')
+  case "${_cv}" in
+    1|ON|On|on|TRUE|True|true) ;;
+    *) echo "TRUST-CONF-OTHER ${_cv:-empty}"; exit 0 ;;
+  esac
+elif [ "${_DRY}" = "YES" ]; then
+  echo "TRUST-CONF-MISSING"
+elif awk -v l='log_bin_trust_function_creators = 1' \
+    '!d && /xmass-standby-hold/ {print l; d=1} {print} END {if (!d) print l}' \
+    "${_c}" > "${_c}.trust" \
+  && chmod 644 "${_c}.trust" && mv -f "${_c}.trust" "${_c}" \
+  && grep -qE "${_re}" "${_c}"; then
+  echo "TRUST-CONF-ADDED ${_c}"
+else
+  rm -f "${_c}.trust"
+  echo "TRUST-CONF-FAILED ${_c}"
+  exit 0
+fi
+_v=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=10 -BNe \
+  "SELECT @@GLOBAL.log_bin_trust_function_creators" 2>/dev/null)
+if [ "${_v}" = "0" ] && [ "${_DRY}" != "YES" ]; then
+  mysql --defaults-file=/root/.my.cnf --connect-timeout=10 \
+    -e "SET GLOBAL log_bin_trust_function_creators=1" 2>/dev/null
+  _v=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=10 -BNe \
+    "SELECT @@GLOBAL.log_bin_trust_function_creators" 2>/dev/null)
+  [ "${_v}" = "1" ] && echo "TRUST-RUNTIME-SET"
+fi
+echo "TRUST=${_v}"
+TRUSTSH
+}
+
+# What the half said ($2) on $1 (the box, as named in the output).
+_xmass_trust_report() {
+  local _l
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "TRUST-CONF-ADDED "*)
+        _info "  trust-creators: log_bin_trust_function_creators = 1 added to ${_l#TRUST-CONF-ADDED } on $1"
+      ;;
+      TRUST-RUNTIME-SET)
+        _info "  trust-creators: log_bin_trust_function_creators=1 set at runtime on $1"
+      ;;
+      TRUST-CONF-MISSING)
+        _info "  [DRY-PLAN] trust-creators: $1's xmass_gtid.cnf takes log_bin_trust_function_creators = 1"
+      ;;
+      TRUST-NOCNF)
+        _alrt "trust-creators: $1 has no xmass_gtid.cnf where its my.cnf reads: not set there"
+      ;;
+      "TRUST-CONF-OTHER "*)
+        _alrt "trust-creators: $1's xmass_gtid.cnf sets log_bin_trust_function_creators to ${_l#TRUST-CONF-OTHER }: left as it is"
+      ;;
+      "TRUST-CONF-FAILED "*)
+        _alrt "trust-creators: could not add log_bin_trust_function_creators = 1 to ${_l#TRUST-CONF-FAILED } on $1"
+      ;;
+      TRUST-NOT-STANDBY)
+        _alrt "trust-creators: $1 holds no /root/.standby.cnf: the value is set first only on this box's standby"
+      ;;
+    esac
+  done <<< "$2"
+}
+
+# The pair's order: the half on the target $1 (it must be a standby), then
+# here only once the target reads 1 and no replica but the target reads this
+# box's binary log (another's value is not known here: an init toward a new
+# mirror while the old one still replicates). Quiet when both read 1 already.
+# Never fails a pass: a box left at 0 is the state before the line existed,
+# and is said; the next pass retries. $2 = dry: report only.
+_xmass_trust_pair() {
+  local _t="$1" _dry=NO _out _tv _sv _n _pl
+  [ "${2:-}" = "dry" ] && _dry=YES
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "bash -s" 2> /dev/null \
+    <<< "_NEED_SB=YES; _DRY=${_dry}"$'\n'"$(_xmass_trust_sh)")
+  _xmass_trust_report "${_t}" "${_out}"
+  _tv=$(sed -n 's/^TRUST=//p' <<< "${_out}" | tail -n 1)
+  if [ "${_tv}" != "1" ]; then
+    if [ "${_dry}" = "YES" ]; then
+      _info "  [DRY-PLAN] trust-creators: ${_t} reads ${_tv:-no value}: set there first, then here"
+    else
+      _alrt "trust-creators: ${_t} reads log_bin_trust_function_creators=${_tv:-no value}, so this box"
+      _alrt "  keeps its own value: an active at 1 ahead of its mirror stops the mirror's applier"
+      _alrt "  on the first function a site creates (the next live pass tries again)"
+    fi
+    return 0
+  fi
+  if ! _pl=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=10 -BNe "SHOW PROCESSLIST" 2> /dev/null) \
+    || [ -z "${_pl}" ]; then
+    _alrt "trust-creators: this box's processlist cannot be read: not set on this box"
+    return 0
+  fi
+  _n=$(awk -F '\t' -v t="${_t}" '$5 ~ /^Binlog Dump/ {h = $3; sub(/:[0-9]+$/, "", h); sub(/^::ffff:/, "", h); if (h != t) n++} END {print n + 0}' <<< "${_pl}")
+  if [ "${_n}" != "0" ]; then
+    _alrt "trust-creators: ${_n} replica(s) other than ${_t} read this box's binary log and their value"
+    _alrt "  is not known here: not set on this box (set it by hand once every replica reads 1)"
+    return 0
+  fi
+  _out=$(bash -s 2> /dev/null <<< "_NEED_SB=NO; _DRY=${_dry}"$'\n'"$(_xmass_trust_sh)")
+  _xmass_trust_report "this box" "${_out}"
+  _sv=$(sed -n 's/^TRUST=//p' <<< "${_out}" | tail -n 1)
+  if [ "${_sv}" != "1" ] && grep -q '^TRUST=' <<< "${_out}"; then
+    if [ "${_dry}" = "YES" ]; then
+      _info "  [DRY-PLAN] trust-creators: then this box (reads ${_sv:-nothing readable})"
+    else
+      _alrt "trust-creators: this box reads log_bin_trust_function_creators=${_sv:-nothing readable}"
+    fi
+  fi
+  return 0
 }
 
 ###-------------REPLICATION USER---------###
@@ -6760,6 +6918,13 @@ _xmass_sync_shared() {
   # The mail hold and the test-run records, which no leg sends, travel with
   # every pass (the accounts this run carries are enumerated by now).
   _xmass_copy_mail_state "${_tgt}"
+  # trust-creators for a pair built before the line: the mirror, then here.
+  if [ "${_MODE}" = "LIVE" ]; then
+    _xmass_auto_assert_standby
+    _xmass_trust_pair "${_tgt}"
+  else
+    _xmass_trust_pair "${_tgt}" dry
+  fi
   _info "Shared data sync complete"
 }
 
@@ -7121,10 +7286,11 @@ _xmass_cutover_unwind() {
   service nginx reload &> /dev/null
   _XMASS_WEB_BLOCKED=NO
   # Nothing is normally frozen this early; a re-run can inherit a flag from
-  # an attempt that died past step 6.
+  # an attempt that died past step 6, and the stopped event scheduler with it.
   if grep -q "xmass migration freeze" "${_XMASS_GLOBAL_INC}" 2>/dev/null; then
     _xmass_thaw_writes
   fi
+  _xmass_release_source_events
 }
 # The Solr half runs LAST and in a subshell: _xmass_restore_solr_source dies
 # on an unwritable barracuda.cnf, and _die is exit 1 -- inline it would take
@@ -7260,6 +7426,13 @@ _xmass_restore_hint() {
     fi
     _alrt "    mv -f ${_XMASS_GLOBAL_INC}.bak ${_XMASS_GLOBAL_INC}"
     _alrt "    (no .bak? delete the '# xmass migration freeze' block instead)"
+  fi
+  # The unwind below starts it itself.
+  if [ -e "${_XMASS_EVENTS_OFF_PID}" ] && [ "${_XMASS_CUT_UNWIND_DUE}" != "YES" ]; then
+    _alrt "The event scheduler was stopped on this source at the write freeze (step 6). Start it"
+    _alrt "again only when the flag above may be cleared, for the same reason:"
+    _alrt "    mysql --defaults-file=/root/.my.cnf -e 'SET GLOBAL event_scheduler=ON'"
+    _alrt "    rm -f ${_XMASS_EVENTS_OFF_PID}"
   fi
   if [ "${_XMASS_CUT_UNWIND_DUE}" = "YES" ]; then
     _xmass_cutover_unwind_solr
@@ -8944,6 +9117,214 @@ _xmass_thaw_writes() {
     sed -i '/xmass migration freeze/,+3d' "${_XMASS_GLOBAL_INC}" 2> /dev/null
     _info "Advisory read-only flag cleared on the source"
   fi
+}
+
+# The event scheduler is a writer neither the 503 gate nor the parked cron
+# and runners stop: an EVERY-N event keeps writing between the step-7 lag
+# checks and the promotion, and those rows stay on this box alone. Step 6
+# stops it when it runs and leaves this record; every way back to this box as
+# production starts it again from the record. After a promotion it stays
+# off: this box's database is the frozen copy, and the init that re-seeds it
+# restarts mysqld from its own config. In /run on purpose: a reboot restarts
+# the scheduler from the config too. $1 = resume: the parked run's record
+# stays while the scheduler is still off.
+_XMASS_EVENTS_OFF_PID="/run/boa_xmass_events_off.pid"
+_xmass_events_scheduler() {
+  mysql --defaults-file=/root/.my.cnf --connect-timeout=10 -BNe \
+    "SELECT @@GLOBAL.event_scheduler" 2> /dev/null
+}
+_xmass_hold_source_events() {
+  local _ev
+  _ev="$(_xmass_events_scheduler)"
+  if [ "${_ev}" != "ON" ]; then
+    if [ "${1:-}" = "resume" ] && [ "${_ev}" = "OFF" ] && [ -e "${_XMASS_EVENTS_OFF_PID}" ]; then
+      _info "Event scheduler on the source: still stopped by this cutover"
+      return 0
+    fi
+    rm -f "${_XMASS_EVENTS_OFF_PID}"
+    _info "Event scheduler on the source reads ${_ev:-nothing readable}: nothing to stop"
+    return 0
+  fi
+  mysql --defaults-file=/root/.my.cnf --connect-timeout=10 \
+    -e "SET GLOBAL event_scheduler=OFF" &> /dev/null
+  _ev="$(_xmass_events_scheduler)"
+  if [ "${_ev}" = "OFF" ] && echo "ON" > "${_XMASS_EVENTS_OFF_PID}"; then
+    _info "Event scheduler stopped on the source: no scheduled event writes past the lag checks"
+  else
+    _alrt "Could not stop the event scheduler on the source (it reads ${_ev:-nothing readable}): an"
+    _alrt "  event firing between the lag checks and the promotion writes rows only this box keeps"
+  fi
+}
+_xmass_release_source_events() {
+  [ -e "${_XMASS_EVENTS_OFF_PID}" ] || return 0
+  local _ev
+  mysql --defaults-file=/root/.my.cnf --connect-timeout=10 \
+    -e "SET GLOBAL event_scheduler=ON" &> /dev/null
+  _ev="$(_xmass_events_scheduler)"
+  if [ "${_ev}" = "ON" ]; then
+    rm -f "${_XMASS_EVENTS_OFF_PID}"
+    _info "Event scheduler started again on the source"
+  else
+    _alrt "Could not start the event scheduler again on the source (it reads ${_ev:-nothing readable}):"
+    _alrt "    mysql --defaults-file=/root/.my.cnf -e 'SET GLOBAL event_scheduler=ON'; rm -f ${_XMASS_EVENTS_OFF_PID}"
+  fi
+}
+
+# A promoted box's events: each one its active created after the snapshot
+# arrived replica-side disabled, and a promotion leaves it so; MySQL runs it
+# again only after ALTER EVENT ... ENABLE, which without DEFINER makes root
+# its definer. This half, run on the promoted box through bash -s, enables
+# each with its own definer once the database takes writes and holds no
+# replica config. The ALTER is binlogged, so the next mirror records the
+# event as disabled again. Names travel as hex and go into the statement
+# quoted (backticks doubled, quotes doubled); a definer with a backslash is
+# left for a hand repair, as is anything the ALTER refuses. Prints EV-* lines,
+# EV-DONE with the counts last.
+_xmass_events_enable_sh() {
+  cat <<'EVENTSSH'
+_q() {
+  mysql --defaults-file=/root/.my.cnf --connect-timeout=10 \
+    --default-character-set=utf8mb4 -BN "$@"
+}
+_ro=$(_q -e "SELECT @@GLOBAL.super_read_only + @@GLOBAL.read_only" 2> /dev/null)
+case "${_ro}" in
+  0) ;;
+  [12]) echo "EV-READONLY"; exit 0 ;;
+  *) echo "EV-UNREADABLE"; exit 0 ;;
+esac
+_rpl=$(_q -e "SHOW REPLICA STATUS" 2> /dev/null)
+_rrc=$?
+if [ "${_rrc}" -ne 0 ]; then
+  _rpl=$(_q -e "SHOW SLAVE STATUS" 2> /dev/null)
+  _rrc=$?
+fi
+if [ "${_rrc}" -ne 0 ]; then
+  echo "EV-UNREADABLE"
+  exit 0
+fi
+if [ -n "${_rpl}" ]; then
+  echo "EV-REPLICA"
+  exit 0
+fi
+_w="FROM information_schema.EVENTS WHERE STATUS IN ('SLAVESIDE_DISABLED', 'REPLICA_SIDE_DISABLED')"
+if ! _rows=$(_q -e "SELECT HEX(EVENT_SCHEMA), HEX(EVENT_NAME), HEX(DEFINER) ${_w}" 2> /dev/null); then
+  echo "EV-UNREADABLE"
+  exit 0
+fi
+_un() { printf '%b' "$(printf '%s' "$1" | sed 's/../\\x&/g')"; }
+_sq="'"
+_bt='`'
+_ok=0
+_bad=0
+while read -r _s _n _d; do
+  [ -n "${_d}" ] || continue
+  case "${_s}${_n}${_d}" in
+    *[!0123456789ABCDEF]*) continue ;;
+  esac
+  _s=$(_un "${_s}")
+  _n=$(_un "${_n}")
+  _d=$(_un "${_d}")
+  _u="${_d%@*}"
+  _h="${_d##*@}"
+  _st=""
+  case "${_d}" in
+    *\\*) ;;
+    *@*) _st="ALTER DEFINER=${_sq}${_u//${_sq}/${_sq}${_sq}}${_sq}@${_sq}${_h//${_sq}/${_sq}${_sq}}${_sq} EVENT ${_bt}${_s//${_bt}/${_bt}${_bt}}${_bt}.${_bt}${_n//${_bt}/${_bt}${_bt}}${_bt} ENABLE" ;;
+  esac
+  if [ -n "${_st}" ] && _q -e "${_st}" 2> /dev/null; then
+    _ok=$((_ok + 1))
+  else
+    _bad=$((_bad + 1))
+    echo "EV-FAIL $(printf '%s.%s' "${_s}" "${_n}" | tr -cd '[:print:]' | cut -c1-160)"
+  fi
+done <<< "${_rows}"
+_left=$(_q -e "SELECT COUNT(*) ${_w}" 2> /dev/null)
+_on=$(_q -e "SELECT COUNT(*) FROM information_schema.EVENTS WHERE STATUS = 'ENABLED'" 2> /dev/null)
+_sch=$(_q -e "SELECT @@GLOBAL.event_scheduler" 2> /dev/null)
+echo "EV-DONE ok=${_ok} failed=${_bad} left=${_left:-unknown} enabled=${_on:-unknown} scheduler=${_sch:-unknown}"
+EVENTSSH
+}
+
+# What the half said ($2) on the box named $1. $3 = YES: the source ran its
+# event scheduler, so one that does not run there is a loss and an alarm.
+# Returns 0 when nothing is left disabled, 1 while the database is still
+# read-only, 2 otherwise.
+_xmass_events_report() {
+  local _w="$1" _l _kv _ok=0 _bad=0 _left="" _on=0 _sch="" _done=NO
+  while IFS= read -r _l; do
+    case "${_l}" in
+      EV-READONLY) return 1 ;;
+      EV-REPLICA)
+        _alrt "${_w}: still configured as a replica: its events are left as they are"
+        return 2
+      ;;
+      "EV-FAIL "*) _alrt "${_w}: event ${_l#EV-FAIL } could not be enabled" ;;
+      "EV-DONE "*)
+        _done=YES
+        for _kv in ${_l#EV-DONE }; do
+          case "${_kv}" in
+            ok=*) _ok="${_kv#ok=}" ;;
+            failed=*) _bad="${_kv#failed=}" ;;
+            left=*) _left="${_kv#left=}" ;;
+            enabled=*) _on="${_kv#enabled=}" ;;
+            scheduler=*) _sch="${_kv#scheduler=}" ;;
+          esac
+        done
+      ;;
+    esac
+  done <<< "$2"
+  if [ "${_done}" != "YES" ]; then
+    _alrt "${_w}: its events could not be read: those its active created after the snapshot may"
+    _alrt "  still be replica-side disabled there, and never run until enabled"
+    return 2
+  fi
+  [ "${_ok}" != "0" ] && _info "${_w}: ${_ok} replica-side disabled event(s) enabled, each with its own definer"
+  if [ "${_on}" != "0" ] && [ "${_sch}" != "ON" ]; then
+    if [ "${3:-NO}" = "YES" ]; then
+      _alrt "${_w}: event_scheduler reads ${_sch}, so its ${_on} enabled event(s) do not run there; the"
+      _alrt "  source ran them: set event_scheduler=ON in that box's MySQL config, then restart MySQL"
+    else
+      _info "${_w}: event_scheduler reads ${_sch}: its ${_on} enabled event(s) run only once it is ON"
+    fi
+  fi
+  if [ "${_left}" != "0" ]; then
+    _alrt "${_w}: ${_left} event(s) still replica-side disabled (failed ${_bad}): they never run there until"
+    _alrt "  enabled, each with its definer: mysql -e \"SELECT EVENT_SCHEMA, EVENT_NAME, DEFINER"
+    _alrt "  FROM information_schema.EVENTS WHERE STATUS LIKE '%SIDE_DISABLED'\" lists them, then"
+    _alrt "  ALTER DEFINER='<user>'@'<host>' EVENT \`<db>\`.\`<name>\` ENABLE for each"
+    return 2
+  fi
+  return 0
+}
+
+# Cutover step 11.5, once the unlock is proven: the promoted target's events.
+_xmass_enable_events_target() {
+  local _out _src=NO
+  [ -e "${_XMASS_EVENTS_OFF_PID}" ] && _src=YES
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "bash -s" 2> /dev/null \
+    <<< "$(_xmass_events_enable_sh)")
+  if ! _xmass_events_report "${_tgt}" "${_out}" "${_src}"; then
+    _alrt "  the sites serve without them; 'xmass post-mig' on ${_tgt} enables them once the cause is fixed"
+  fi
+}
+
+# post-mig: this box's own events. After a promotion by hand the SQL
+# watchdog unlocks the database within about a minute of the marker going,
+# so a database still read-only is waited for that long.
+_xmass_enable_events_here() {
+  local _out _i _rc=0
+  for _i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
+    _out=$(bash -s 2> /dev/null <<< "$(_xmass_events_enable_sh)")
+    [ "${_out}" = "EV-READONLY" ] || break
+    [ "${_i}" = "1" ] && _info "  the database here is still read-only: waiting up to 75 s for the SQL watchdog's release ..."
+    [ "${_i}" = "16" ] || sleep 5
+  done
+  _xmass_events_report "${_hName}" "${_out}" NO || _rc=$?
+  if [ "${_rc}" = "1" ]; then
+    _alrt "${_hName}: the database is still read-only, so the events its active created after"
+    _alrt "  the snapshot stay disabled: re-run 'xmass post-mig' once it takes writes"
+  fi
+  return 0
 }
 
 # The two guards that keep an unfinished 'delete' task from travelling to the
@@ -11575,6 +11956,8 @@ REMOTE
   _xmass_install_xtrabackup_target
   _xmass_configure_gtid_local
   _xmass_configure_gtid_target
+  # Both confs carry the line now; the runtime value, the target first.
+  _xmass_trust_pair "${_tgt}"
 
   # Generate a random replication password and save state
   _XMASS_REPL_PSWD=$(head -c 48 /dev/urandom \
@@ -11957,6 +12340,11 @@ _xmass_cmd_reset_phase() {
     _alrt "itself did not complete."
     _alrt "Also confirm the advisory read-only flag is gone from this source and"
     _alrt "that its cron and runners are back before you resume."
+  fi
+  # Back to syncing or init, this box serves as production again: the event
+  # scheduler a frozen cutover stopped here starts again.
+  if [ "${_new}" = "syncing" ] || [ "${_new}" = "init" ]; then
+    _xmass_release_source_events
   fi
   _XMASS_PHASE="${_new}"
   # phase=complete also disarms a still-armed autosync cadence, at the
@@ -12654,6 +13042,9 @@ UNLOCKDB
          "re-run 'xmass cutover ${_tgt} --live' — the resume re-runs this unlock."
   fi
   _info "Promoted target DB unlocked: super_read_only=OFF"
+  # From here the target is the master: the events its replica kept
+  # disabled run there again (a resume finds none left).
+  _xmass_enable_events_target
 }
 
 # Which order the cutover tail takes. Relay-first needs every site to reach
@@ -13094,6 +13485,9 @@ REMOTE
   # cadence: the mirror is promoted, nothing passive remains to feed, and the
   # next cadence pass would otherwise refuse loudly on the missing marker.
   _xmass_save_state
+  # The event scheduler stays off on this frozen copy; its record goes, so
+  # no later way back can start it against this box's own config.
+  rm -f "${_XMASS_EVENTS_OFF_PID}"
 
   # Step 19: the web groups on the promoted box. Its accounts stood at no
   # web group while it was a standby (its marks refuse every conversion,
@@ -13234,6 +13628,8 @@ _xmass_cmd_cutover() {
     # is what the resumed tail depends on.
     _xmass_freeze_source_writes \
       || _alrt "Advisory read-only flag not re-asserted -- resuming anyway; the 503 gate above holds the source"
+    # And the event scheduler, which a reboot during the park started again.
+    _xmass_hold_source_events resume
     if [ "${_XMASS_SOURCE_PROXIED}" = "YES" ]; then
       # Relaying: cron runs here by design, and the target serves visitors,
       # so only THIS box's SQL watchdog stays paused.
@@ -13523,6 +13919,9 @@ _xmass_cmd_cutover() {
   _info "Writing the advisory read-only flag on the source ..."
   _xmass_freeze_source_writes \
     || _alrt "Advisory read-only flag not written -- continuing; the 503 gate and the parked runners hold the source"
+  # The scheduled events are the writers neither of those stops: before the
+  # lag checks, so whatever they wrote already is counted there.
+  _xmass_hold_source_events
   mysql --defaults-file=/root/.my.cnf -e "FLUSH TABLES;" &> /dev/null
 
   # Step 7: Triple-check lag is still zero after the write freeze
@@ -13534,6 +13933,7 @@ _xmass_cmd_cutover() {
       # The target is NOT promoted yet, so this box is still production: a
       # refused cutover must hand it back writable, not read-only.
       _xmass_thaw_writes
+      _xmass_release_source_events
       _xmass_restore_hint
       _die "Replica lag not zero after the write freeze on check ${_pass}/3" \
            " (lag=${_lag}s) — cutover aborted; writes thawed"
@@ -13575,6 +13975,7 @@ _xmass_cmd_cutover() {
       ssh -o ConnectTimeout=10 root@"${_tgt}" \
         "rm -f /run/boa_xmass_init.pid /root/.standby.init.pid" &> /dev/null
       _xmass_thaw_writes
+      _xmass_release_source_events
       _xmass_restore_hint
       _die "Failed to stop/decouple slave on target ${_tgt} (still a replica)" \
            "— cutover aborted; writes thawed"
@@ -13731,6 +14132,9 @@ _xmass_post_mig() {
       || _alrt "migration_proxy_trust reconcile returned non-zero"
   fi
   _xmass_heal_fpm_pins
+  # The events a replica keeps disabled: the cutover enabled them already;
+  # after a promotion by hand this is the step that does.
+  _xmass_enable_events_here
   _xmass_report_mail_state_here
   # The web groups of a promoted box (the cutover's last step did this for a
   # planned switch; an emergency promotion by hand has only this run): its
