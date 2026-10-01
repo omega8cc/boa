@@ -555,6 +555,27 @@ EOFMYSQL
   done
 }
 
+### A database's triggers, stored routines and events are dumped with its
+### tables. mydumper writes none of them unless asked, so a site that kept
+### them (a logging trigger, a function its queries call, a scheduled event)
+### found its nightly dumps without them. Each keeps its DEFINER, the site's
+### own database user: a restore as root brings them back as that user, and
+### the user restoring into its own database needs no extra privilege for
+### objects it defines itself. Sets _MYDUMPER_OBJECTS to those of the three
+### options the local mydumper lists, so a build without one gets its
+### arguments as before.
+_mydumper_objects_opts() {
+  local _h _o
+  _MYDUMPER_OBJECTS=()
+  _h=$(mydumper --help 2>&1)
+  for _o in --triggers --routines --events; do
+    if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+(-[[:alpha:]],[[:space:]]+)?${_o}([[:space:]]|=|$)"; then
+      _MYDUMPER_OBJECTS+=("${_o}")
+    fi
+  done
+  return 0
+}
+
 _backup_this_database_with_mydumper() {
   _check_running
   if [ ! -d "${_SAVELOCATION}/${_DB}" ]; then
@@ -588,6 +609,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
   case "${_MYDUMPER_MAJOR}" in
     [1-9]*) _MYDUMPER_ROWS_OPT="" ;;
   esac
+  _mydumper_objects_opts
   ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
   mydumper \
     --defaults-file=/root/.my.cnf \
@@ -596,6 +618,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
     --port=3306 \
     --outputdir=${_SAVELOCATION}/${_DB}/ \
     ${_MYDUMPER_ROWS_OPT} \
+    "${_MYDUMPER_OBJECTS[@]}" \
     --build-empty-files \
     --threads=4 \
     --long-query-guard=900 \
@@ -619,9 +642,29 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
   rm -f "${_SAVELOCATION}/${_DB}.mydumper.log"
 }
 
+### The dumps never carry the server's GTID state. By default
+### (--set-gtid-purged=AUTO) a dump taken while GTID is on (every box an
+### xmass run touched: BOA's my.cnf leaves it off, xmass_gtid.cnf turns it
+### on) opens with SET @@SESSION.SQL_LOG_BIN=0 and sets
+### @@GLOBAL.GTID_PURGED. The account's own database user cannot load such a
+### dump at all (ERROR 1227), root cannot load it back on this box (ERROR
+### 3546 on 8.x, 1840 on 5.7), and on another 8.x box the first load passes
+### unbinlogged and takes this box's GTID history there, so every later one
+### fails. OFF writes neither. Sets _MYSQLDUMP_GTID to the option when the
+### local mysqldump takes it: one that does not (MariaDB's) would refuse it
+### and writes neither anyway, so it is asked, never assumed.
+_mysqldump_gtid_opts() {
+  _MYSQLDUMP_GTID=()
+  if mysqldump --help 2> /dev/null | grep -q -- '--set-gtid-purged'; then
+    _MYSQLDUMP_GTID=(--set-gtid-purged=OFF)
+  fi
+  return 0
+}
+
 _backup_this_database_with_mysqldump() {
   _check_running
   mysqldump \
+    "${_MYSQLDUMP_GTID[@]}" \
     --single-transaction \
     --quick \
     --no-autocommit \
@@ -651,11 +694,12 @@ _backup_mysql_schema() {
   _check_running
   # The mysql system schema uses MyISAM on Percona 5.7 and a mix on 8.x,
   # so mydumper is never appropriate here. mysqldump handles mixed-engine
-  # system schemas correctly. --routines and --events are required to
-  # capture stored procedures and scheduled events which mydumper would miss.
+  # system schemas correctly. --routines and --events dump the schema with
+  # its stored routines and scheduled events.
   # --single-transaction is a no-op for MyISAM tables but harmless and
   # ensures InnoDB system tables (8.x) are captured consistently.
   mysqldump \
+    "${_MYSQLDUMP_GTID[@]}" \
     --single-transaction \
     --quick \
     --no-autocommit \
@@ -781,6 +825,10 @@ if [ -x "/usr/local/bin/mydumper" ]; then
     echo "INFO: Installed MyQuick ${_MYQUICK_ITD} for ${_MD_V} (${_DB_V})"
   fi
 fi
+### Once per run: the mysql schema always goes through mysqldump.
+_mysqldump_gtid_opts
+[ "${#_MYSQLDUMP_GTID[@]}" -eq 0 ] \
+  && echo "INFO: this mysqldump takes no --set-gtid-purged: its dumps carry no GTID state"
 
 
 # A dump that failed must never disappear quietly: cron discards this

@@ -91,8 +91,13 @@ staging.example.com    198.51.100.42 2001:db8:1::1
 - **Safety** — per context: back up the current fragments, regenerate atomically,
   `service nginx configtest`, then `reload`; on a failed configtest or reload, restore
   the last-good backup and reload. The last-good archive is proved readable before the live fragments are deleted: an
-  unreadable one leaves the fragments on disk alone and prints an `ALRT:` line naming the
-  control file to fix, and a freshly written last-good that does not verify is removed.
+  unreadable one leaves the fragments on disk alone and prints `ALRT:` lines (after a failed
+  configtest they name the control file to fix), and a freshly written last-good that does
+  not verify is removed.
+
+  Cron discards the tool's output, so every `ALRT:` line also goes, once a day per
+  condition, to `/var/log/boa/nginx.incident.log` as a dated line and, unless
+  `_INCIDENT_REPORT` is `OFF`, by mail to `_MY_EMAIL`.
 
   On a
   replication standby whose web tier is held, the fragments are written and the change-gate

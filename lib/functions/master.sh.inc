@@ -57,10 +57,12 @@ _php_cli_local_dirs_update() {
 # (sites/all/{modules,libraries,themes} in group users, the site's files/
 # in group www-data), so any name there can be a link or a hard link an
 # account planted. The tree is handed to aegir as chown -R did, and files/
-# given its mode as chmod -R did, only inside the real directory $1, from
+# given its modes (its directories 02775, its files 0664, so never
+# set-ID), only inside the real directory $1, from
 # the directory find walked (-execdir) and through a handle opened without
 # following a link or blocking on a FIFO: a directory, or a regular file
-# with a single link, never a link, a FIFO or a hard-linked file.
+# with a single link, never a link, a FIFO or a hard-linked file (one root
+# does not own only loses its set-ID bits).
 #
 # $1 handed to $2 (owner[:group] names, as chown -R took them).
 _master_reown_in() {
@@ -81,7 +83,8 @@ _master_reown_here() {
 # A mode set through a handle on each name given (d: a directory, f: a
 # regular file with a single link), as chmod(1) sets a numeric one: a
 # directory keeps its set-user-ID and set-group-ID bits unless the mode has
-# five digits (02775).
+# five digits (02775). A hard-linked regular file root does not own only
+# loses those two bits, which never widens it.
 _MASTER_NOFOLLOW_CHMOD_PL='use Fcntl;
 my ($t, $ms) = (shift @ARGV, shift @ARGV);
 my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
@@ -90,21 +93,26 @@ for my $f (@ARGV) {
   my @s = stat($h);
   if ($t eq "f" && -f _ && $s[3] == 1) {
     chmod($m, $h);
+  } elsif ($t eq "f" && -f _ && $s[4] != 0 && ($s[2] & 06000)) {
+    chmod($s[2] & 01777, $h);
   } elsif ($t eq "d" && -d _) {
     chmod($m | ($s[2] & $k), $h);
   }
   close($h);
 }'
-# $1 and every directory and regular file below it set to $2.
+# $1 and every directory below it set to $2, every regular file below it
+# to $3. Files take their own mode, never the directories' set-group-ID one:
+# any account can write a file there, and a setgid executable would run
+# with the store's group.
 _master_mode_all_in() {
-  _acct_in_real_dir "${1}" _master_mode_all_here "${2}"
+  _acct_in_real_dir "${1}" _master_mode_all_here "${2}" "${3}"
 }
 _master_mode_all_here() {
   perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" . 2> /dev/null
   env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -type d \
     -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
   env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -type f \
-    -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f "${1}" {} +
+    -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
 }
 
 
@@ -1208,11 +1216,12 @@ _aegir_master_upgrade() {
     chown -R aegir:aegir /var/aegir/drush
     # every account can write sites/all/* (group users) and the site's
     # files/ (group www-data) of this tree: walked as _master_reown_in and
-    # _master_mode_all_in walk, never handing over or moding a link or a
-    # file another account hard-linked there
+    # _master_mode_all_in walk, never handing over or widening a link or a
+    # file another account hard-linked there; a file there never keeps a
+    # set-ID bit, nor a single-link one an execute bit
     _master_reown_in "${_THIS_HM_ROOT}" aegir
     _master_reown_in "${_THIS_HM_SITE}/files" aegir:www-data
-    _master_mode_all_in "${_THIS_HM_SITE}/files" 02775
+    _master_mode_all_in "${_THIS_HM_SITE}/files" 02775 0664
 
     # Never serialize an empty PHP version: the drush shebang update just
     # below hard-exits on an unresolved value, and the appends further down

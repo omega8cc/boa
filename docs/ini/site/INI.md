@@ -507,7 +507,7 @@
 ;;  The system will cleanly delete existing Solr core in 15 minutes.
 ```
 
-The config files uploaded to `sites/foo.com/files/solr/` are applied as one set, whole or not at all, and must include `schema.xml`, `solrconfig.xml` and `solrcore.properties`. Each file must be smaller than 8 MiB, with at most 512 names and 32 MiB in all. A hard-linked file, or one that changes while read, refuses the set; symbolic links, FIFOs and subdirectories are skipped.
+The config files uploaded to `sites/foo.com/files/solr/` are applied as one set, whole or not at all, and must include `schema.xml`, `solrconfig.xml` and `solrcore.properties`. Each file must be smaller than 8 MiB, with at most 512 names and 32 MiB in all. A hard-linked file, or one that changes while read, refuses the set; symbolic links, FIFOs and subdirectories are skipped, and so is a file that none of the instance's own users (`oN`, `oN.ftp`, its client sub-accounts, its PHP-FPM users) owns, which also stays in place.
 
 A symbolic link at `sites`, the site directory or `files/solr`, or at `files` other than BOA's own link into the account's files store, blocks the upload. A complete upload also repairs a core without `solrconfig.xml`. See [SOLR.md](https://github.com/omega8cc/boa/blob/5.x-dev/docs/SOLR.md) for details.
 

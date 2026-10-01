@@ -36,6 +36,21 @@
 
 
 ###
+### Which phase runs. The platform build is two runs of this script: root
+### runs the shared phase ("shared", from AegirSetupA), which builds the
+### D6/D7 cores and the shared platform trees in the store; then the
+### instance user runs the account phase (no second argument), which builds
+### and registers the account's own platforms and only reads the store. A
+### third argument "rebuild" makes the shared phase build again every shared
+### tree it makes that is already there (the store's one-time pass), or,
+### with paths after it, only the trees and cores so named (those an earlier
+### one-time pass could not build again).
+###
+_PHASE="account"
+[ "${2:-}" = "shared" ] && _PHASE="shared"
+
+
+###
 ### Helper variables
 ###
 export _bldPth="/opt/tmp/boa"
@@ -47,7 +62,14 @@ export _gitHub="https://github.com/omega8cc"
 export _gitLab="https://gitlab.com/omega8cc"
 export _libFnc="${_bldPth}/lib/functions"
 export _tocIncO="${_filIncO}.$1"
-export _hndIncO="${_tocIncO}.AegirSetupC"
+# The shared phase sources root's own sealed include, the one AegirSetupA
+# sources: the account phase's copy belongs to the instance user
+if [ "${_PHASE}" = "shared" ]; then
+  export _hndSeal="AegirSetupA"
+else
+  export _hndSeal="AegirSetupC"
+fi
+export _hndIncO="${_tocIncO}.${_hndSeal}"
 export _vBs="/var/backups"
 export _vSet="variable-set --always-set"
 export _tRee=pro
@@ -58,9 +80,16 @@ export _tRee=pro
 ###
 ### Root creates this directory and hands it to whoever runs this
 ### script, so the child writes only inside its own state dir and
-### never into the shared scratch root.
+### never into the shared scratch root. The shared phase runs as root and
+### signals in root's own tree, never inside the instance user's dir.
 ###
-_stateDir="/opt/tmp/state/${1}"
+if [ "${_PHASE}" = "shared" ]; then
+  _stateDir="/opt/tmp/state/.root/${1}"
+  _sigF="${_stateDir}/status-AegirSetupC-shared"
+else
+  _stateDir="/opt/tmp/state/${1}"
+  _sigF="${_stateDir}/status-AegirSetupC"
+fi
 mkdir -p "${_stateDir}" 2> /dev/null
 
 ###
@@ -73,7 +102,7 @@ _panic_exit() {
   echo " EXIT: Cannot continue"
   echo " EXIT: Bye (0)"
   echo
-  touch "${_stateDir}/status-AegirSetupC-FAIL"
+  touch "${_sigF}-FAIL"
   exit 1
 }
 
@@ -84,6 +113,9 @@ _panic_exit() {
 # Only the sealed per-spawn include materialised by the octopus producer
 # for this child is accepted; a silent fallback to the shared bootstrap
 # would run the child on non-instance values
+if [ "${_PHASE}" = "shared" ] && [ ! -O "${_vBs}/${_hndIncO}" ]; then
+  _panic_exit "${_vBs}/${_hndIncO} is not root's"
+fi
 if [ -r "${_vBs}/${_hndIncO}" ]; then
   source "${_vBs}/${_hndIncO}"
   _tInc="${_vBs}/${_hndIncO}"
@@ -92,7 +124,7 @@ else
 fi
 # The producer writes the seal as the LAST line; a missing or foreign
 # seal means a truncated or stale include -- never run on such values
-if [ "${_HANDOFF_SEAL}" != "AegirSetupC" ]; then
+if [ "${_HANDOFF_SEAL}" != "${_hndSeal}" ]; then
   _panic_exit "Truncated or foreign hand-off include ${_vBs}/${_hndIncO}"
 fi
 
@@ -232,10 +264,15 @@ fi
 if [ "${_DEBUG_MODE}" = "YES" ]; then
   _msg "${_STATUS} C: Ægir automated install script part C"
 fi
-if [ "$(id -u)" -eq 0 ]; then
+if [ "${_PHASE}" = "shared" ] && [ "$(id -u)" -ne 0 ]; then
+  _msg "${_STATUS} C: FATAL ERROR: The shared phase must be run by root"
+  _msg "${_STATUS} C: FATAL ERROR: Aborting AegirSetupC installer NOW!"
+  touch "${_sigF}-FAIL"
+  exit 1
+elif [ "${_PHASE}" != "shared" ] && [ "$(id -u)" -eq 0 ]; then
   _msg "${_STATUS} C: FATAL ERROR: This script should be run as a non-root user"
   _msg "${_STATUS} C: FATAL ERROR: Aborting AegirSetupC installer NOW!"
-  touch "${_stateDir}/status-AegirSetupC-FAIL"
+  touch "${_sigF}-FAIL"
   exit 1
 fi
 
@@ -256,7 +293,8 @@ if [ "${_HOT_SAUCE}" = "NO" ]; then
     || [ ! -e "/data/all/000/core-v-${_SMALLCORE7_V}.txt" ]; then
     export _CORE="/data/all/${_ALL_DISTRO}"
     export _THIS_CORE="${_ALL_DISTRO}"
-    _msg "${_STATUS} C: Shared platforms code v.${_ALL_DISTRO} (new) will be created"
+    [ "${_PHASE}" = "shared" ] \
+      || _msg "${_STATUS} C: Shared platforms code v.${_ALL_DISTRO} (new) will be created"
   else
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "${_STATUS} C: Shared platforms code v.${_LAST_ALL} will be used"
@@ -265,22 +303,38 @@ if [ "${_HOT_SAUCE}" = "NO" ]; then
 else
   export _CORE="/data/all/${_ALL_DISTRO}"
   export _THIS_CORE="${_ALL_DISTRO}"
-  _msg "${_STATUS} C: Shared platforms code v.${_ALL_DISTRO} (new) will be created"
+  [ "${_PHASE}" = "shared" ] \
+    || _msg "${_STATUS} C: Shared platforms code v.${_ALL_DISTRO} (new) will be created"
 fi
 export _D6_CORE_DIR="/data/all/000/core/${_DRUPAL6}"
 export _D7_CORE_DIR="/data/all/000/core/${_DRUPAL7}"
 
 export _pthDst="${_ROOT}/distro/${_THIS_CORE}"
 
-mkdir -p ${_pthDst}
-chmod 0711 ${_ROOT}/distro &> /dev/null
-chmod 0711 ${_pthDst} &> /dev/null
+# The account's own distro root, made by the account phase only: root never
+# creates anything in the account's home
+if [ "${_PHASE}" != "shared" ]; then
+  mkdir -p ${_pthDst}
+  chmod 0711 ${_ROOT}/distro &> /dev/null
+  chmod 0711 ${_pthDst} &> /dev/null
+fi
 
 ###---###
 export _ALLOW_ALL=YES
 if [ "${_CLIENT_CORES}" -lt 1 ]; then
   _ALLOW_ALL=NO
   _D_8_ALLOW=NO
+fi
+# The shared phase never prompts: it builds the shared trees of the list
+# (the account phase still asks whether the account gets each platform)
+_SHRD_REBUILD=NO
+_SHRD_ONLY=""
+if [ "${_PHASE}" = "shared" ]; then
+  _AUTOPILOT=YES
+  if [ "${3:-}" = "rebuild" ]; then
+    _SHRD_REBUILD=YES
+    [ "$#" -gt 3 ] && _SHRD_ONLY=" ${*:4} "
+  fi
 fi
 
 
@@ -392,7 +446,9 @@ _save_verify_this_platform() {
 }
 
 #
-# Download and extract from core archive.
+# Download and extract from core archive. A fetch that fails is counted in
+# _GET_FAILS, as _get_dev_contrib counts its own: the shared phase never
+# places a tree a fetch failed for (_shared_place).
 _get_core_ext() {
   if [ ! -z "${1}" ]; then
     _max_attempts=10
@@ -410,6 +466,7 @@ _get_core_ext() {
         # tries cannot change that answer. A retired catalogue entry used to
         # burn 10 x 9s of sleep per run on a tarball that no longer exists
         _msg "OOPS: https://${_USE_MIR}/core/$1 is not published, not retrying"
+        _GET_FAILS=$(( ${_GET_FAILS:-0} + 1 ))
         return 1
       else
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
@@ -433,13 +490,15 @@ _get_core_ext() {
       return 0
     else
       _msg "OOPS: Failed to download https://${_USE_MIR}/core/$1 after ${_max_attempts} attempts"
+      _GET_FAILS=$(( ${_GET_FAILS:-0} + 1 ))
       return 1  # Exit the function but continue the script
     fi
   fi
 }
 
 #
-# Download and extract from distro archive.
+# Download and extract from distro archive (a failed fetch counted in
+# _GET_FAILS, as in _get_core_ext).
 _get_distro_ext() {
   if [ ! -z "${1}" ]; then
     _max_attempts=10
@@ -455,6 +514,7 @@ _get_distro_ext() {
       elif [ "${_crlRc}" = "22" ]; then
         # Not published -- see the note in _get_core_ext
         _msg "OOPS: https://${_USE_MIR}/distro/$1 is not published, not retrying"
+        _GET_FAILS=$(( ${_GET_FAILS:-0} + 1 ))
         return 1
       else
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DNLD: Attempt ${_attempt_num} failed."
@@ -478,6 +538,7 @@ _get_distro_ext() {
       return 0
     else
       _msg "OOPS: Failed to download https://${_USE_MIR}/distro/$1 after ${_max_attempts} attempts"
+      _GET_FAILS=$(( ${_GET_FAILS:-0} + 1 ))
       return 1  # Exit the function but continue the script
     fi
   fi
@@ -1117,7 +1178,7 @@ _prepare_drupal6_core() {
     if [ -L "${_D6_CORE_DIR}" ]; then
       unlink ${_D6_CORE_DIR}
     fi
-    cd /data/all/000/core
+    cd "${_D6_CORE_DIR%/*}" || return 1
     [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_core_ext '${_DRUPAL6}.tar.gz'"
     _get_core_ext "${_DRUPAL6}.tar.gz"
     find ${_D6_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
@@ -1147,7 +1208,7 @@ _prepare_drupal7_core() {
     if [ -L "${_D7_CORE_DIR}" ]; then
       unlink ${_D7_CORE_DIR}
     fi
-    cd /data/all/000/core
+    cd "${_D7_CORE_DIR%/*}" || return 1
     [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_core_ext '${_DRUPAL7}.tar.gz'"
     _get_core_ext "${_DRUPAL7}.tar.gz"
     find ${_D7_CORE_DIR} -type d -exec chmod 0755 {} \; &> /dev/null
@@ -1166,6 +1227,247 @@ _prepare_drupal7_core() {
     _get_dev_contrib "tao-7.x-3.1.tar.gz"
     cd ${_CORE}
   fi
+}
+
+#
+# The shared trees, built in the shared phase only (root). Each is built in
+# a fresh stage directory beside its name and moved into place only when it
+# is complete: every fetch made for it succeeded (_GET_FAILS, counted by
+# _get_dev_contrib, _get_core_ext and _get_distro_ext; set to 0 when the
+# stage opens) and what the build makes is in it. So a run that stops
+# midway, or a mirror that cannot be reached or does not publish an archive,
+# never leaves a part-built tree at the name, and never replaces one that
+# is there; a tree built again replaces the old one in a rename.
+#
+# $1, a tree just built, moved to its name $2 once each file named after
+# them is in it and no fetch for it failed, with nothing in it writable by
+# others (the build opens cache and files directories and settings.php to
+# all; _SAT_NO_OTHER_WRITE_PL, satellite.sh.inc). A tree already at the
+# name is swapped with it in one rename (_SAT_SWAP_PL), so a site on it
+# never finds the name missing, or in two in a row where the kernel or perl
+# cannot; the old tree is left at $1 (or $1.old) for the caller to remove
+# with the stage, and the name is noted as built again (${_sigF}-DONE). A
+# name that holds anything but a directory is never replaced.
+_shared_place() {
+  local _s="${1}" _r="${2}" _f
+  shift 2
+  if [ "${_GET_FAILS:-0}" -gt 0 ]; then
+    _msg "OOPS: ${_r} not built (${_GET_FAILS} fetch(es) failed), left as it was"
+    return 1
+  fi
+  for _f in "$@"; do
+    if [ ! -e "${_s}/${_f}" ]; then
+      _msg "OOPS: ${_r} not built (no ${_f}), left as it was"
+      return 1
+    fi
+  done
+  env PATH=/usr/local/bin:/usr/bin:/bin find "${_s}" \
+    \( -type d -o -type f \) -perm -0002 \
+    -execdir perl -e "${_SAT_NO_OTHER_WRITE_PL}" {} + 2> /dev/null
+  if [ ! -e "${_r}" ] && [ ! -L "${_r}" ]; then
+    mv -T -- "${_s}" "${_r}" || return 1
+  elif [ -d "${_r}" ] && [ ! -L "${_r}" ]; then
+    if ! perl -e "${_SAT_SWAP_PL}" -- "${_s}" "${_r}" 2> /dev/null; then
+      mv -T -- "${_r}" "${_s}.old" || return 1
+      if ! mv -T -- "${_s}" "${_r}"; then
+        mv -T -- "${_s}.old" "${_r}"
+        return 1
+      fi
+    fi
+    _msg "SHARED: ${_r} built again"
+    echo "${_r}" >> "${_sigF}-DONE"
+  else
+    _msg "OOPS: ${_r} is not a directory, left as it was"
+    return 1
+  fi
+}
+
+#
+# Whether the tree or core $1, which is there, is built again in this run:
+# every one when it rebuilds (_SHRD_REBUILD), or only those named after
+# "rebuild" (_SHRD_ONLY: what an earlier one-time pass could not build).
+_shared_redo_due() {
+  [ "${_SHRD_REBUILD}" = "YES" ] && [ -d "${1}" ] && [ ! -L "${1}" ] \
+    || return 1
+  [ -z "${_SHRD_ONLY}" ] || [[ "${_SHRD_ONLY}" == *" ${1} "* ]]
+}
+
+#
+# The shared core $1 (6 or 7) at its name in 000/core: built when it is
+# missing, built again when this run rebuilds it (_shared_redo_due), in a
+# stage directory beside it (_D6_CORE_DIR or _D7_CORE_DIR points there while
+# the core is prepared), placed with its admin themes and, for D6, the
+# toolkit it copies from its bundle. A core built again links the same
+# serial's bundle as the one it replaces (the serial its sites load
+# o_contrib from), when that is a serial directory of the store; a new core
+# links ${_CORE}'s. A core due to be built again and not placed (no stage
+# for it included) is noted (${_sigF}-MISSED, _SHRD_CORE_LEFT): its trees
+# wait for it.
+_shared_core() {
+  local _v="_D${1}_CORE_DIR" _real _stg _bnd _l _srl="${_CORE}" _need
+  _real="${!_v}"
+  if [ -e "${_real}" ] || [ -L "${_real}" ]; then
+    _shared_redo_due "${_real}" || return 0
+    _bnd="o_contrib"
+    [ "${1}" = "7" ] && _bnd="o_contrib_seven"
+    _l="$(readlink "${_real}/modules/${_bnd}")"
+    if [[ "${_l}" =~ ^/data/all/[0-9]+/${_bnd}$ ]] \
+      && [ -d "${_l}" ] && [ ! -L "${_l%/*}" ]; then
+      _srl="${_l%/*}"
+    fi
+  fi
+  # the D6 core copies files from its bundle: never from one whose forced
+  # refetch failed in this pass (_SHRD_STALE, set by satellite.sh.inc)
+  if [ "${1}" = "6" ] \
+    && [[ " ${_SHRD_STALE:-} " == *" ${_srl}/o_contrib "* ]]; then
+    _msg "OOPS: ${_real} not built: its bundle ${_srl}/o_contrib was not fetched again"
+    if [ -d "${_real}" ]; then
+      echo "${_real}" >> "${_sigF}-MISSED"
+      _SHRD_CORE_LEFT="${_SHRD_CORE_LEFT} ${_real}"
+    fi
+    return 0
+  fi
+  _need="index.php includes/bootstrap.inc themes/rubik themes/tao"
+  [ "${1}" = "6" ] && _need="${_need} includes/image.imagemagick.inc"
+  if ! _stg="$(mktemp -d "${_real%/*}/.boa-build.XXXXXX")"; then
+    _msg "OOPS: ${_real} not built: no stage directory could be made beside it"
+    if [ -d "${_real}" ]; then
+      echo "${_real}" >> "${_sigF}-MISSED"
+      _SHRD_CORE_LEFT="${_SHRD_CORE_LEFT} ${_real}"
+    fi
+    return 1
+  fi
+  printf -v "${_v}" '%s' "${_stg}/${_real##*/}"
+  _GET_FAILS=0
+  _CORE="${_srl}" "_prepare_drupal${1}_core"
+  printf -v "${_v}" '%s' "${_real}"
+  cd "${_CORE}" || return 1
+  # shellcheck disable=SC2086 # _need: one word per file
+  if ! _shared_place "${_stg}/${_real##*/}" "${_real}" ${_need}; then
+    if [ -d "${_real}" ]; then
+      echo "${_real}" >> "${_sigF}-MISSED"
+      _SHRD_CORE_LEFT="${_SHRD_CORE_LEFT} ${_real}"
+    fi
+  fi
+  rm -rf -- "${_stg}"
+}
+
+#
+# Whether the shared platform tree at ${_SHRD_PLPATH} is built in this run
+# (shared phase only): a missing one when the account asked for it
+# (_SHRD_REQ), one that is there when this run rebuilds it
+# (_shared_redo_due). Never while its core (_SHRD_CORE_OF) was due to be
+# built again and was not: a tree copies its profiles from the core, so one
+# that is there waits for the core (${_sigF}-MISSED), as one does when no
+# stage can be made beside it. When it is,
+# _SHRD_PLPATH and _SHRD_PRPATH point into a fresh stage directory beside
+# the name until _shared_done. The account phase builds nothing in the
+# store.
+_shared_due() {
+  [ "${_PHASE}" = "shared" ] || return 1
+  _SHRD_REAL="${_SHRD_PLPATH}"
+  if [ -e "${_SHRD_REAL}" ] || [ -L "${_SHRD_REAL}" ]; then
+    _shared_redo_due "${_SHRD_REAL}" || return 1
+  elif [ "${_SHRD_REQ}" != "YES" ]; then
+    return 1
+  fi
+  if [ -n "${_SHRD_CORE_LEFT}" ] \
+    && [[ " ${_SHRD_CORE_LEFT} " == *" ${_SHRD_CORE_OF} "* ]]; then
+    _msg "OOPS: ${_SHRD_REAL} not built: its shared core ${_SHRD_CORE_OF} was not built again"
+    [ -d "${_SHRD_REAL}" ] && echo "${_SHRD_REAL}" >> "${_sigF}-MISSED"
+    return 1
+  fi
+  if ! _SHRD_STG="$(mktemp -d "${_SHRD_REAL%/*}/.boa-build.XXXXXX")"; then
+    _msg "OOPS: ${_SHRD_REAL} not built: no stage directory could be made beside it"
+    [ -d "${_SHRD_REAL}" ] && echo "${_SHRD_REAL}" >> "${_sigF}-MISSED"
+    return 1
+  fi
+  _SHRD_PLPATH="${_SHRD_STG}/${_SHRD_REAL##*/}"
+  _SHRD_PRPATH="${_SHRD_PLPATH}${_SHRD_PRPATH#"${_SHRD_REAL}"}"
+  _GET_FAILS=0
+  return 0
+}
+
+#
+# The tree _shared_due staged, without scripts/ (the build's cleanup always
+# removed it), moved into place when its profile file and each path named
+# (relative to the profile directory: the modules the build fetches for it)
+# are there and no fetch for it failed; the stage removed and both paths
+# pointed back at the name. A tree there that is not built again is noted
+# (${_sigF}-MISSED).
+_shared_done() {
+  local _p="${_SHRD_PRPATH#"${_SHRD_PLPATH}/"}" _f
+  local -a _need=("${_p}/${_REAL_PRNAME}.profile")
+  for _f in "$@"; do
+    _need+=("${_p}/${_f}")
+  done
+  cd "${_CORE}" || return 1
+  rm -rf -- "${_SHRD_PLPATH}/scripts"
+  if ! _shared_place "${_SHRD_PLPATH}" "${_SHRD_REAL}" "${_need[@]}"; then
+    [ -d "${_SHRD_REAL}" ] && echo "${_SHRD_REAL}" >> "${_sigF}-MISSED"
+  fi
+  rm -rf -- "${_SHRD_STG}"
+  _SHRD_PLPATH="${_SHRD_REAL}"
+  _SHRD_PRPATH="${_SHRD_REAL}/${_p}"
+}
+
+#
+# The shared phase's catalogue loop: the codes whose platforms are built on
+# a tree in the store (DL6 and DL7 on their dev, stage and prod trees, CK1,
+# UC6, UC7), each asked for by the same list and core-count rules as the
+# account phase. A code not asked for is still visited when this run
+# rebuilds, so every such tree already there is built again whichever
+# account asked for it first. A code whose shared core is missing builds
+# nothing: its trees copy from the core.
+_shared_dist_loop() {
+  local _dist _req _core _v _n
+  local _list="${_PLATFORMS_LIST}" _all="${_ALLOW_ALL}"
+  for _dist in DL6 UC6 DL7 CK1 UC7; do
+    _req=NO
+    if [[ "${_list}" =~ ALL ]] || [[ "${_list}" =~ ${_dist} ]]; then
+      case "${_dist}" in
+        CK1|UC7) [ "${_all}" = "YES" ] && _req=YES ;;
+        *) _req=YES ;;
+      esac
+    fi
+    [ "${_req}" = "YES" ] || [ "${_SHRD_REBUILD}" = "YES" ] || continue
+    case "${_dist}" in
+      DL6|UC6) _core="${_D6_CORE_DIR}" ;;
+      *) _core="${_D7_CORE_DIR}" ;;
+    esac
+    if [ ! -d "${_core}" ]; then
+      [ "${_req}" = "YES" ] \
+        && _msg "OOPS: ${_dist}: the shared core ${_core} is missing, its shared trees not built"
+      continue
+    fi
+    _SHRD_REQ="${_req}"
+    _SHRD_CORE_OF="${_core}"
+    _REAL_PRNAME="${_distros_profiles_names[${_dist}]}"
+    case "${_dist}" in
+      DL6|DL7)
+        _v="_DRUPAL${_dist:2}"
+        for _n in "${_v}_D" "${_v}_S" "${_v}_P"; do
+          _SHRD_PLNAME="${!_n}"
+          _SHRD_PLPATH="${_CORE}/${_SHRD_PLNAME}"
+          _SHRD_PRPATH="${_SHRD_PLPATH}/profiles/${_REAL_PRNAME}"
+          _create_drupal6_or_7_basic "${_dist:2}"
+        done
+        ;;
+      *)
+        _PLATFORMS_LIST=ALL
+        _ALLOW_ALL=YES
+        _d_dist_custom_platform_install "${_dist}" \
+          "${_distros_versions[${_dist}]}" \
+          "${_distros_drupal_cores[${_dist}]}" \
+          "${_distros_names[${_dist}]} ${_distros_versions[${_dist}]} ${_distros_drupal_cores[${_dist}]} [${_THIS_CORE}]" \
+          "${_distros_profiles_paths[${_dist}]}" "${_REAL_PRNAME}" \
+          "${_distros_web_dirs[${_dist}]}" \
+          "${_distros_php_versions[${_dist}]}" "${_distros_urls[${_dist}]}"
+        _PLATFORMS_LIST="${_list}"
+        _ALLOW_ALL="${_all}"
+        ;;
+    esac
+  done
 }
 
 #
@@ -1328,7 +1630,7 @@ _upgrade_contrib_less() {
 # Create Drupal basic platform for versions 6 and 7.
 _create_drupal6_or_7_basic() {
   local version="$1"  # Accepts "6" or "7"
-  if [ ! -d "${_SHRD_PLPATH}" ]; then
+  if _shared_due; then
     mkdir -p "${_SHRD_PLPATH}"
     local core_dir_var="_D${version}_CORE_DIR"
     local core_dir="${!core_dir_var}"
@@ -1347,8 +1649,14 @@ _create_drupal6_or_7_basic() {
     elif [ "$version" = "7" ]; then
       _nocore_d7_dist_clean
     fi
+    _shared_done
   fi
-  _init_this_distro_root
+  [ "${_PHASE}" = "shared" ] && return 0
+  if [ -d "${_SHRD_PLPATH}" ]; then
+    _init_this_distro_root
+  else
+    _msg "OOPS: the shared tree ${_SHRD_PLPATH} is not there, ${_SHRD_PLNAME} not added"
+  fi
 }
 
 # Create Drupal basic platform for versions 9 and 10.x.
@@ -1833,8 +2141,8 @@ _commerce_7_2_install() {
         if _prompt_yes_no "${params[description]} - ${params[url]}" ; then
           true
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
-          if [ ! -d "${_SHRD_PLPATH}" ]; then
-            cd ${_CORE}
+          if _shared_due; then
+            cd "${_SHRD_PLPATH%/*}"
             if [ "${_DL_MODE}" = "BATCH" ] \
               && [ "${_T_BUILD}" = "SRC" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
@@ -1842,9 +2150,9 @@ _commerce_7_2_install() {
               fi
               [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_distro_ext '${params[profile_name]}-7.x-${params[version]}-core.tar.gz'"
               _get_distro_ext "${params[profile_name]}-7.x-${params[version]}-core.tar.gz"
-              if [ -d "${_CORE}/commerce-7.x-${params[version]}" ]; then
+              if [ -d "./commerce-7.x-${params[version]}" ]; then
                 mv -f commerce-7.x-${params[version]} ${_SHRD_PLNAME}
-              elif [ -d "${_CORE}/${_REAL_PRNAME}-7.x-${params[version]}" ]; then
+              elif [ -d "./${_REAL_PRNAME}-7.x-${params[version]}" ]; then
                 mv -f ${_REAL_PRNAME}-7.x-${params[version]} ${_SHRD_PLNAME}
               fi
               _nocore_d7_dist_clean
@@ -1854,6 +2162,12 @@ _commerce_7_2_install() {
               [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_distro_ext '${_SHRD_PLNAME}.tar.gz'"
               _get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
+            _shared_done modules/contrib/commerce
+          fi
+          [ "${_PHASE}" = "shared" ] && return 0
+          if [ ! -d "${_SHRD_PLPATH}" ]; then
+            _msg "OOPS: the shared tree ${_SHRD_PLPATH} is not there, ${params[description]} not added"
+            return 0
           fi
           _init_this_distro_root
           _msg "DISTRO: ${params[description]} installed"
@@ -1910,7 +2224,7 @@ _ubercart6_install() {
       if _prompt_yes_no "${params[description]} - ${params[url]}" ; then
         true
         [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
-        if [ ! -d "${_SHRD_PLPATH}" ]; then
+        if _shared_due; then
           if [ "${_DL_MODE}" = "BATCH" ] \
             && [ "${_T_BUILD}" = "SRC" ]; then
             cd ${_CORE}
@@ -1955,10 +2269,16 @@ _ubercart6_install() {
             _get_dev_contrib "fusion-6.x-1.x-dev.tar.gz"
             _get_dev_contrib "acquia_prosper-6.x-1.1.tar.gz"
           else
-            cd ${_CORE}
+            cd "${_SHRD_PLPATH%/*}"
             [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_distro_ext '${_SHRD_PLNAME}.tar.gz'"
             _get_distro_ext "${_SHRD_PLNAME}.tar.gz"
           fi
+          _shared_done modules/ubercart modules/views
+        fi
+        [ "${_PHASE}" = "shared" ] && return 0
+        if [ ! -d "${_SHRD_PLPATH}" ]; then
+          _msg "OOPS: the shared tree ${_SHRD_PLPATH} is not there, ${params[description]} not added"
+          return 0
         fi
         _init_this_distro_root
         _msg "DISTRO: ${params[description]} installed"
@@ -2015,8 +2335,8 @@ _ubercart7_install() {
         if _prompt_yes_no "${params[description]} - ${params[url]}" ; then
           true
           [ "${_DEBUG_MODE}" = "YES" ] && _msg "DISTRO: ${params[description]} ${_yOk}"
-          if [ ! -d "${_SHRD_PLPATH}" ]; then
-            cd ${_CORE}
+          if _shared_due; then
+            cd "${_SHRD_PLPATH%/*}"
             if [ "${_DL_MODE}" = "BATCH" ] \
               && [ "${_T_BUILD}" = "SRC" ]; then
               if [ ! -e "${_D7_CORE_DIR}" ]; then
@@ -2057,6 +2377,12 @@ _ubercart7_install() {
               [ "${_DEBUG_MODE}" = "YES" ] && _msg "DEBUG: _get_distro_ext '${_SHRD_PLNAME}.tar.gz'"
               _get_distro_ext "${_SHRD_PLNAME}.tar.gz"
             fi
+            _shared_done modules/ubercart modules/views
+          fi
+          [ "${_PHASE}" = "shared" ] && return 0
+          if [ ! -d "${_SHRD_PLPATH}" ]; then
+            _msg "OOPS: the shared tree ${_SHRD_PLPATH} is not there, ${params[description]} not added"
+            return 0
           fi
           _init_this_distro_root
           _msg "DISTRO: ${params[description]} installed"
@@ -2400,10 +2726,20 @@ _d_dist_loop() {
 ###
 
 
-###---### Prepare D6 and D7 shared core
+###---### The shared phase: the D6 and D7 shared cores, then the shared
+### platform trees, built by root; stages a stopped run left are removed
+### first, as are archives an earlier build left in ${_CORE}.
 #
-_prepare_drupal6_core
-_prepare_drupal7_core
+if [ "${_PHASE}" = "shared" ]; then
+  cd "${_CORE}" || _panic_exit "${_CORE}"
+  rm -rf -- "${_CORE}"/.boa-build.* "${_D6_CORE_DIR%/*}"/.boa-build.*
+  _shared_core 6
+  _shared_core 7
+  _shared_dist_loop
+  rm -f ${_CORE}/*{.make,.tar,.tar.gz,.zip}
+  touch "${_sigF}-OK"
+  exit 0
+fi
 
 # Prepare
 _prepare_for_save_verify_platforms
@@ -2415,16 +2751,8 @@ _tb_rollback
 _d_dist_loop
 
 
-###---### Remove some unused core files.
+###---### Remove the platform helpers.
 #
-if [ "${_DEBUG_MODE}" = "YES" ]; then
-  echo " "
-  _msg "${_STATUS} C: Removing some unused core files..."
-fi
-if [[ "${_CORE}" =~ "/data/all/" ]]; then
-  rm -rf ${_CORE}/*/scripts
-  rm -f ${_CORE}/*{.make,.tar,.tar.gz,.zip}
-fi
 [ -e "${_THIS_HM}/make_platform.php" ] && rm -f ${_THIS_HM}/make_platform.php
 [ -e "${_THIS_HM}/make_client.php" ] && rm -f ${_THIS_HM}/make_client.php
 [ -e "${_THIS_HM}/make_home.php" ] && rm -f ${_THIS_HM}/make_home.php
