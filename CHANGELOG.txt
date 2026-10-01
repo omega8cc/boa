@@ -1243,16 +1243,33 @@
 
 @=> Important Fixes
 
+    * A MySecureShell rebuild no longer takes the accounts' file-transfer
+      logins down for the rest of the upgrade: the installed shell gets
+      its setuid bit back at once, not at the end of the pass, and the
+      end of every pass no longer drops the bit for a moment. The pages
+      older sources left in /share/man at the filesystem root are
+      removed, and a /usr/bin name linked to a /usr/local copy keeps the
+      file it resolves to.
+
     * An upgrade that built something from source no longer ends with
       getcwd errors in its errors log: the final cleanup steps out of the
-      build directory before it removes it.
+      build directory before it removes it, and the barracuda launcher
+      returns to /var/backups after its own source repair of curl.
 
-    * MySecureShell master-01-10-2026 is built with its install paths
-      and its C dialect named. Its sources now default to /usr/local, so
-      the build landed beside the binary the accounts use and /usr/bin
-      kept the previous one; with GCC 14 its configure chose C23 and the
-      build stopped. The build is recorded as done only once
-      /usr/bin/mysecureshell holds it, a failed one is reported and
+    * The modern OpenSSL check reads the version the installed headers
+      name, so no yearly string has to follow a pin and a release with
+      another copyright range no longer rebuilds OpenSSL on every pass.
+      A failed OpenSSL build is reported with the version that failed.
+
+    * mytop's build clears its own source tree, not the git one.
+
+    * MySecureShell moves to master-02-10-2026 and is built with its
+      install paths and its C dialect named. The newer sources default
+      to /usr/local, so a build landed beside the binary the accounts
+      use and /usr/bin kept the previous one; with GCC 14 their configure
+      chose C23, where the build stopped until the sources got their
+      prototypes (in this snapshot). The build is recorded as done only
+      once /usr/bin/mysecureshell holds it, a failed one is reported and
       tried again on the next upgrade, and a system that took the
       misplaced build drops its copies from /usr/local and the extra
       line in /etc/shells.
