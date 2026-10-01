@@ -206,6 +206,35 @@ before its rsync and a failure refuses the run non-zero ("refusing to migrate
 without its search indices") — free space on the target and re-run, rather
 than discovering an index-less account later.
 
+`create`, `export` and `pretransfer` read the account's client address
+first, before the target is contacted: the words of `log/email.txt`, or,
+when the file holds no plain address, `_CLIENT_EMAIL` in root's
+`/root/.<o1>.octopus.cnf`, which is what the account's own Octopus pass
+falls back to. They refuse two kinds of account:
+
+- an **internal** account, whose address is one of the hosted service's own:
+  `_USR o1 is not eligible for migration: internal only`. `xcopy` refuses it
+  too, on every verb. A move of every account of the box carries internal
+  ones too: `xmass` says so to the `create` it runs, and when you move a
+  whole box account by account with `xoct` (where `xmass` cannot run, for
+  example across Percona series), put `_XOCT_BOX_MOVE=YES` before those three
+  verbs for such an account, as the refusal prints:
+  `_XOCT_BOX_MOVE=YES xoct create o1 target-ip`.
+- an account with **no plain address** in either place:
+  `_USR o1 is not eligible for migration: no plain address in log/email.txt
+  ('...') or in _CLIENT_EMAIL of /root/.o1.octopus.cnf`. Set the client's
+  address as `_CLIENT_EMAIL` in that root file and re-run; the account's own
+  file is left as it is. No stand-in address is ever put in its place.
+
+`transfer`, `import` and `proxy` refuse neither, so a move already under way
+is never stopped half way; a notice to an account with no plain address is
+not sent, and the run says so (`no notice is sent`).
+
+An account whose address is a list of several addresses is installed with
+the first one (the install takes one), and `transfer` carries the account's
+own `log/email.txt` over the install's copy, so the target keeps the list as
+it is. The notices go to the whole list, as the account's own mail does.
+
 `create o1` provisions the target Octopus instance **and seeds its identity**:
 
 - **Before installing** it verifies the target has every PHP version this
@@ -227,6 +256,12 @@ than discovering an index-less account later.
   ProxySQL-wired (carrying the marker across).
 - The install's welcome email is suppressed for this run, because the
   credential carry below immediately replaces the password it would announce.
+  Under `admail=` (see [Test and canary runs](#test-and-canary-runs-admail))
+  a create that cannot put the target's mail-suppression marker refuses
+  before it installs. The runner takes that marker off when it starts a
+  queued upgrade, so the install waits for a quiet target first, and says so
+  if the marker was gone when the install ended (the welcome may then have
+  gone out).
 - **After the install settles** it merges the portable values of
   `/root/.<o1>.octopus.cnf` into the target's copy (FPM tuning knobs,
   `_CLIENT_*` plan identity, ghost-cleanup flags, `_RESERVED_RAM` — never the
@@ -240,6 +275,16 @@ than discovering an index-less account later.
   that happens after `post-mig`, or during `import` when it rebuilds the
   account's pinned PHP pools.
 - It then verifies the pins actually took, and reports any that did not.
+- It puts the account's one-pass marker on the target,
+  `/data/conf/<o1>_skip_upgrade_email.txt` (root's), and `import` puts it
+  again when a pass took it since. The first Octopus pass there that would
+  mail the account's "Ægir Upgrade" notice sends none and takes the marker
+  away: the move carries the account's setup mail along, and the client has
+  what that notice says from the move. Every later pass mails as the
+  account's `_SEND_UPGRADE_EMAIL` says.
+- An account whose `_SEND_UPGRADE_EMAIL` is `NO` on the source gets no
+  marker: no pass of it would take the marker, which would then swallow the
+  first notice after the switch is turned on.
 
 After a successful install `create` puts a root-only marker on the target,
 `/root/.<o1>.migration-create.txt`, naming this box (`hostname -f`) and the
@@ -298,7 +343,19 @@ hostmaster database via mysqldump, and marks `exported.pid` — but ONLY when
 every dump completed truthfully. A database carrying any non-transactional
 table is dumped with mydumper's transactional-only mode turned off, selected
 automatically per database, so a stray MyISAM table neither fails the export
-nor withholds the account's export stamp.
+nor withholds the account's export stamp. Each site dump carries the
+database's triggers, stored routines and events, and the import keeps their
+definer, the site's database user it creates first (see
+[MYQUICK.md](MYQUICK.md#triggers-stored-routines-and-events)).
+
+The hostmaster dump carries no GTID state of the source: it is taken with
+`--set-gtid-purged=OFF` when the local `mysqldump` takes that option (a
+MariaDB client, which does not, writes no GTID state anyway). A box with GTID
+on (every box an `xmass` run touched) would otherwise write
+`SET @@GLOBAL.GTID_PURGED` into it: the import then fails on a box that
+shares that history (a move back, a failback, a second move between the same
+pair, "ERROR 3546" on 8.x), and where it passes it stays out of that box's
+binary log. `xcopy` dumps the same way.
 
 The hostmaster dump must exit clean and be
 non-empty, and every per-site mydumper run must exit clean AND leave its
@@ -384,7 +441,10 @@ loads are truthful: a transferred dump directory without mydumper's final
 `metadata` marker is SKIPPED (a partial dump silently restoring an
 incomplete database is the failure being guarded against), a failed
 myloader run is counted, and a site whose db credentials cannot be parsed
-is counted too.
+is counted too. Each load passes `--ignore-set=SQL_LOG_BIN` when the
+installed `myloader` lists it, so it is written to the binary log and
+reaches a replica of the target (see
+[MYQUICK.md](MYQUICK.md#imports-are-written-to-the-binary-log)).
 
 One exception keeps mixed accounts importable: a site with
 no transferred dump whose database on this box is **already populated** is
@@ -644,6 +704,176 @@ longer needed; the target side is handled by `xmass post-mig` /
 
 ---
 
+## Test and canary runs (`admail=`)
+
+A migration mails the account's client: the start notice at `export`, the
+completion notice at `proxy`, a follow-up when the proxy arrangement changes
+and the withdrawal notice at `proxy-retire`. The target's Octopus passes
+after the move can mail the client too (the upgrade notice, the usage
+reports). A test or canary run of a real account must not. Add
+`admail=<address>` to every verb of that run, anywhere on the line (the
+token `boa in-octopus` takes):
+
+```sh
+# on the source
+xoct create o1 target-ip admail=you@example.com
+xoct export o1 target-ip admail=you@example.com
+xoct transfer o1 target-ip admail=you@example.com          # the dry run
+xoct transfer o1 target-ip --live admail=you@example.com
+# on the target
+xoct import o1 target-ip admail=you@example.com
+# on the source
+xoct proxy o1 target-ip admail=you@example.com
+```
+
+`pretransfer` takes it the same way. The other steps of the procedure
+(`pre-mig`, `transfer shared`, `post-mig`) are box-wide and take no token.
+
+- Every client notice of the run goes to that address alone: no copy to the
+  client and no operator copy. The notice line ends with `(admail=; the
+  account's own address was not mailed)`.
+- The send is logged in `log/migproxy.log` as `testmail`, never as `mail`: a
+  later real run still sends its own start notice, and the policy table's
+  "last told" column and the follow-up rule read only what the client was
+  really told. A policy follow-up under `admail=` therefore goes out only
+  with `--renotify`, unless the client really was told something before.
+- `create` installs only with the install's own welcome mail held back, and
+  refuses before installing when it cannot hold it back.
+- `create` and `import` switch the account's upgrade notice off on the target
+  (`_SEND_UPGRADE_EMAIL=NO` in `/root/.<o1>.octopus.cnf` there): the move
+  brings the account's setup mail along, and every Octopus pass there after
+  the first would mail the notice to the client. A `create` that cannot
+  switch it off refuses.
+- `create` holds the target's client mail for that address, before it
+  installs: `/data/conf/client_mail_hold.txt` (root's, one plain address)
+  makes BOA's own senders on that box deliver every mail addressed to a
+  client there instead, the usage reports and the pass reports included.
+  `import` under `admail=` holds its own box's the same way. A hold already
+  there for another address is left as it is. The hold is box-wide: every
+  account the target serves is held while it is there.
+- The accounts keep their own addresses.
+
+`admail=` must hold one plain address, or the run refuses and names what it
+got: a letter, digit or underscore first, and a domain that starts with a
+letter or digit, the form the reader of the mail hold below takes too.
+`--no-notify` is different: it sends nothing (logged as `skip`).
+
+**The run is recorded, so a forgotten token cannot mail the client.**
+`create` under `admail=` writes the address to
+`/data/conf/xoct_admail.<o1>.txt` (root's) on the source, with a second line
+marking it as the source's, and to the same file for the installed account on
+the target; `import` under it writes the target's too. While the record exists on a box, every `xoct` verb for that
+account there refuses to run without `admail=`, naming the recorded address:
+`create`, `export`, `pretransfer`, `transfer`, `proxy`, `proxy-mode` and
+`proxy-retire`. The re-run lines `xoct` prints after a failure carry the
+token.
+
+A record already on the source is left as it is: an account that came to
+this box in a test run still open keeps that run's record when this box
+moves it on, so the box's mail hold still counts it until that run goes
+live.
+
+`xmass`'s record of a test run of the whole box
+(`/data/conf/xmass_admail.txt`) holds every `xoct` verb on the source the
+same way, for every account, and so does its mark on the target
+(`/data/conf/xmass_test_run.<source-hostname>.txt`) there.
+
+`import` is the one verb that does not refuse: on an account the record
+names, it switches the upgrade notice off by itself. On the target, every
+cnf merge (`create`, each `transfer --live`) keeps the upgrade notice off
+while the record is there, token or not.
+
+`proxy-retire` on the source, and `proxy-mode` on either box, mail a client
+only when the box's migration log shows it was really told of the move (a
+`mail` line, never `testmail`). `proxy-retire` also counts an account
+converted before the log recorded its notices as told. After a test run no
+withdrawal or follow-up reaches the client, whatever the token.
+
+On the source only a line naming a box this box moved the account to
+counts: this move's target, and every target a `proxy` of it from this box
+named, so after a retarget the notices naming the target before it still
+count.
+
+A line naming this box never does: `log/` travels with the account,
+so a box that was the target of an earlier move holds that move's notices,
+which name it.
+
+Nor does the line a `proxy-mode` run here writes while this box is the
+target (`set-inbound`), which names the box the account came from. A
+notice that run sent names that box too: it does not count when this box
+moves the account on elsewhere, but it still counts if this box later
+moves the account back there, since that box is then one this box moved
+it to.
+
+`proxy-retire` on the target mails the client: the source sends the
+notices, so the target's log never shows one, and a retire there is the
+route when the source is gone for good. A test run is refused there by its
+record, by `xmass`'s mark and by the box's mail hold.
+
+A box that holds its clients' mail takes no real run: without `admail=`,
+every verb but `import` refuses while `/data/conf/client_mail_hold.txt` is
+on this box, and `create`, `pretransfer`, `transfer` and `proxy` also while
+it is on the target, naming it. `import` says so and goes on.
+
+**A canary goes live** with one verb on the source:
+
+```sh
+xoct go-live o1 target-ip [o2]
+```
+
+It removes the records on both boxes, and the hold on each box where it
+holds the canary's address and no other test run is recorded there (the
+record of another canary that came to that box, an `xmass` test run's mark).
+A hold go-live keeps is named with the test runs it counted.
+
+The record of a canary that box moves away does not count: that client's
+mail is held on its own target. One that came to that box in a test run
+still open counts until that run goes live, also while the box moves it on.
+
+It sets `_SEND_UPGRADE_EMAIL` on the target back to the source's value (with
+`NO` it also removes the one-pass marker there), and, once the account is
+proxied, sends the client the completion notice it never received (the
+`proxy --repair --renotify` path).
+
+Several canaries on one target share its hold: the go-live of each sends
+its completion notice, and the hold stays until the last test run recorded
+there ends, so the moved client's mail from that box stays held until then.
+
+Without `o2` the target account is the one this move's proxy policy record
+names (written by `proxy`), else `o1` when the target holds a create marker
+naming this box and `o1`. Otherwise go-live refuses before anything changes
+and asks for `o2`: before `proxy` a renamed canary has no policy record of
+this move, the target's own `o1` is another account, and a test-run record of
+`o1` there can be another box's canary.
+
+The target goes first; a run that cannot reach it changes nothing on the
+source. A re-run is a no-op: it sends nothing more and names a hold kept for
+another test run again. It refuses `admail=`, and refuses while `xmass`'s
+record of a whole-box test run is on the source (`xmass go-live` ends that
+one, see [MIGRATE-XMASS.md](MIGRATE-XMASS.md)). `reset-state` keeps the
+records.
+
+`xcopy` takes the same token; it sends no notices of its own, so it acts on
+`create` (the upgrade notice, and a refusal when the welcome mail cannot be
+held back) and `import` (the upgrade notice). Every `xcopy create`, test or
+real, installs with the welcome mail held back and puts the one-pass marker,
+as `xoct create` does.
+
+`xcopy` keeps no record and puts no hold: nothing could tell when a hold it
+put may go. A real `xcopy` (no `admail=`) refuses `create`, `pretransfer`
+and `transfer` while the target holds its clients' mail, as `xoct` does, and
+`import` says so. A test copy whose target must not mail the client needs
+the hold put there by hand, and removed when the test ends (see "Holding
+client mail on a test box" in [MIGRATE.md](MIGRATE.md)).
+
+A copy made under `admail=` keeps `_SEND_UPGRADE_EMAIL=NO` in
+`/root/.<o1>.octopus.cnf` on the target until you set it back there, once
+the copy serves for real; the first pass after that sends no upgrade notice
+(the one-pass marker). `xmass` takes the token on `prep-target` and
+`cutover` and keeps a record of its own, see
+[MIGRATE-XMASS.md](MIGRATE-XMASS.md): the `xoct create` runs it drives put
+none of these.
+
 ## Optional: Account Rename Mode (o2)
 
 Pass a fourth argument to migrate from account `o1` on source to account `o2`
@@ -784,9 +1014,14 @@ Replace `/data/disk/o1` with `/data/disk/o2` if rename mode was used.
 - **Idempotency:** most pid-gated steps are safe to repeat after a failed run;
   remove the relevant `*.pid` file under `/data/disk/o1/log/` to force a step
   to re-run.
-- **Internal accounts:** xoct no longer hard-excludes accounts by email domain.
-  Account eligibility is determined solely by the presence of required log files
-  and the absence of `CANCELLED` / already-done pid files.
+- **Internal accounts:** a move of one account refuses an internal account (the
+  hosted service's own address) and one with no plain address in
+  `log/email.txt` or in root's `_CLIENT_EMAIL`, at `create`, `export` and
+  `pretransfer`, before the target is contacted (see step 5). Otherwise
+  eligibility is the presence of the required log files and the absence of
+  `CANCELLED` and of the already-done pid files. `xmass` carries internal
+  accounts with the rest of the box, and `_XOCT_BOX_MOVE=YES` does the same
+  for a whole box moved account by account with `xoct`.
 - **xmass calls xoct:** when `xmass cutover` converts source accounts to proxy
   vhosts, it calls `xoct proxy` internally. No manual invocation is needed in
   that flow.

@@ -289,6 +289,18 @@ is a silent, total failure for those sites.
 A skip does **not** mark the DRY run NOT CLEAN, because a genuinely cancelled
 account is a legitimate skip. The check is yours to make.
 
+An internal account (the hosted service's own address in `log/email.txt`) is
+migrated like any other: a whole-server move carries every account, and
+`prep-target` tells the `xoct create` it runs so (a move of one account with
+`xoct` refuses it). An account whose `log/email.txt` holds no plain address is
+installed under the `_CLIENT_EMAIL` of root's `/root/.<oN>.octopus.cnf`, as
+its own Octopus pass takes it. Only an account with no plain address in
+either place is refused by that `create`, which fails `prep-target` for it:
+set `_CLIENT_EMAIL` in that root file and re-run `prep-target`.
+
+An account whose address is a list of several addresses is installed with
+the first one, and its own `log/email.txt` travels as it is.
+
 ## Terminology
 
 | Placeholder | Meaning |
@@ -392,8 +404,60 @@ Run on the **source**, after `pre-mig` has completed on both hosts and before
 accounts exist and before `init` replaces its datadir:
 
 ```sh
-xmass prep-target target-ip [--fix-php] [--fix-solr] [--fix-users]
+xmass prep-target target-ip [--fix-php] [--fix-solr] [--fix-users] [--adopt-siteless=<oN>[,<oN>...]] [admail=<address>]
 ```
+
+`admail=<address>` makes the whole run a test for every account: every
+`xoct create` it runs takes the same token, so each install runs with its
+welcome mail held back and each account's upgrade notice is switched off on
+the target (see
+[Test and canary runs](MIGRATE-XOCT.md#test-and-canary-runs-admail)).
+`prep-target` records it in `/data/conf/xmass_admail.txt` when the account
+installs begin, and holds the target's client mail for that address
+(`/data/conf/client_mail_hold.txt`, as `xoct create` does) unless a hold is
+already there.
+
+It also marks the target with this test run,
+`/data/conf/xmass_test_run.<source-hostname>.txt`: while the mark is there
+the hold is this run's too, so a canary's `xoct go-live` on that target or a
+real run of another box keeps it, and every `xoct` verb there refuses
+without the token.
+
+While that record exists, `sync` keeps the upgrade notices off when it
+merges the account settings, a `cutover` of the accounts refuses to run
+without `admail=` (below), and every `xoct` verb on the source refuses
+without it.
+
+A `prep-target` that reaches the installs without it removes the record and
+the mark, and the target's hold when it holds the recorded address and no
+other test run is recorded there; a target it cannot read keeps the record,
+and the run stops. The other test runs are an `xoct` canary that came to the
+target and another box's mark; a canary the target moves away does not
+count (its record there carries the source line) unless it came to the
+target in a test run still open.
+
+The identity repair (`--fix-users`) and a standing mirror's reduced lane
+install nothing and leave all three as they are. The `xoct create` runs it
+drives keep no record of their own.
+
+Without `admail=`, `prep-target` and `cutover` also refuse while an `xoct`
+canary is still in its test run on the source
+(`/data/conf/xoct_admail.<oN>.txt`, for an account the run moves): `xoct`
+would refuse those accounts one by one, and at `cutover` only after the
+sites went down. Records of accounts the run leaves alone (not eligible, or
+proxied before it) do not count.
+
+`admail=` is no way out of that refusal for a real move: it makes the whole
+run a test for every account, and no client is told of the move. A real
+move first ends each canary's test run with `xoct go-live <oN> target-ip`
+(see [MIGRATE-XOCT.md](MIGRATE-XOCT.md#test-and-canary-runs-admail)).
+
+A real run (no `admail=`) also refuses, before the target changes, while
+the target holds its clients' mail (`/data/conf/client_mail_hold.txt`),
+naming it. `prep-target` passes the hold this box's own earlier test run
+put, which it removes with the record, when no other test run is recorded
+on the target (an `xoct` canary's record, another box's mark); otherwise it
+refuses and names them: end those first.
 
 `--fix-users` runs a lane of its own: it re-creates a lost system user
 (`<acct>`, `<acct>.ftp`) of an account that IS installed on the target, in
@@ -492,24 +556,32 @@ What it does, in order:
    - the create marker there names this box and this account, and the user
      ID and directory it records are still the account's (a `create` of
      this migration made it, see [MIGRATE-XOCT.md](MIGRATE-XOCT.md));
-   - it carries no site, only its control panel (a fresh install's own
-     `o1`): no registered site, no site directory on its platforms or on
-     disk, no entry in its `vhost.d` but the panel's own vhost (naming only
-     the panel and its automatic `www.` twin), its `config/<oN>.nginx.conf` the stock include of that
-     directory, and none of its `distro`, `static`, `platforms` or `aegir`
-     trees a link;
    - it relays to this box: its `log/proxied.pid` reads `COMPLETE` and its
      own source-role policy record `log/migproxy.cnf` names one of this
      box's addresses as the peer and this account, with the target's own
      address as its host; both files are root's, with one link (what
-     `xoct proxy` leaves on a demoted failback box).
+     `xoct proxy` leaves on a demoted failback box);
+   - it carries no site, only its control panel (a fresh install's own
+     `o1`, for one), and you named it with `--adopt-siteless`: no registered
+     site, no site directory on its platforms or on disk, no entry in its
+     `vhost.d` but the panel's own vhost (naming only the panel and its
+     automatic `www.` twin), its `config/<oN>.nginx.conf` the stock include
+     of that directory, and none of its `distro`, `static`, `platforms` or
+     `aegir` trees a link.
 
    The second and third are adopted: `prep-target` passes
    `xoct create --adopt` for those accounts only, which puts the create
-   marker on them. Any other same-name account (one that serves sites of
-   its own and does not relay here, or one whose state cannot be read) is
-   refused with a `DENY` line per account and nothing is changed on the
-   target.
+   marker on them. A relay is adopted by itself: root's own files prove it.
+   Nothing on the target proves whose a site-less account is (a fresh
+   install's own panel, or another client's account with no site yet), so
+   one you did not name is refused, and the refusal prints the line that
+   adopts it, `xmass prep-target target-ip --adopt-siteless=o1`. Check each
+   named account on the target by hand first (whose panel it is, whose
+   address its `log/email.txt` holds).
+
+   Any other same-name account (one that serves sites of its own and does
+   not relay here, or one whose state cannot be read) is refused with a
+   `DENY` line per account and nothing is changed on the target.
 
    Move such an account out of the way there, or, when it really is this
    migration's, put the create marker on it by hand with the one-line
@@ -839,6 +911,14 @@ Syncs the following to the target on each run:
 | Out-of-root symlink content | Every synced tree is swept for symlinks whose target lives **outside** the synced trees (typically a secondary `/mnt` volume — per-account backup stores under `/data/disk/arch/sql` are the canonical case). Their content **materialises** on the target as real dirs/files: mirrored onto the target's own single mount when it has one and the store lands under `/data/disk`, de-referenced to a real dir/file on the target root otherwise. Space-gated per store/batch like everything else |
 
 MySQL data is **not** rsynced — replication keeps it current continuously.
+
+That covers what the active writes to its binary log. BOA's own database loads
+there are written to it: the per-site `myloader` imports of `xoct` and `xcopy`
+and the fast imports of Ægir Migrate tasks pass `--ignore-set=SQL_LOG_BIN`
+(see [MYQUICK.md](MYQUICK.md#imports-are-written-to-the-binary-log)), and a
+restore by hand on the active must stay binlogged as well. A load kept out of
+the binary log leaves the mirror with an empty database, and its replication
+stops (error 1146) at the first write the site makes to it.
 
 ### Deletions: what a sync removes on the target, and what it never does
 
@@ -1185,7 +1265,54 @@ Run on the **source**. This is the only step with user-visible downtime.
 ```sh
 xmass cutover target-ip [--proxy-mode=...] [--proxy-deadline=...]          # DRY: plan only
 xmass cutover target-ip --live [--proxy-mode=...] [--proxy-deadline=...]   # perform the cutover
+xmass cutover target-ip --live admail=you@example.com                      # a test or canary run
 ```
+
+With `admail=<address>` every `xoct proxy` the cutover runs takes the same
+token: each account's completion notice goes to that address alone, not to the
+client and with no operator copy, and is logged as a test send (see
+[Test and canary runs](MIGRATE-XOCT.md#test-and-canary-runs-admail)). A
+cutover of accounts `prep-target` prepared under `admail=` refuses to start
+without it, naming the recorded address, so one forgotten token cannot mail
+the clients. Before the cutover, a real move of those accounts starts again
+with `prep-target` without `admail=`, which removes the record, the mark
+and the target's hold.
+
+It refuses the same way while an `xoct` canary is still in its test run on
+the source, and while the target holds its clients' mail (see
+`prep-target`); a canary proxied before the cutover is left as it is. The
+installed `xoct` must take the token, or the run refuses. `admail=` is
+refused on the other verbs.
+
+Before the target's runners come back (step 15), the cutover puts each
+moved account's one-pass marker there when it is absent
+(`/data/conf/<oN>_skip_upgrade_email.txt`, see
+[MIGRATE-XOCT.md](MIGRATE-XOCT.md)): the pass `prep-target` armed may have
+taken the one its `create` put, before any data moved. The first pass after
+the move that would mail an account's upgrade notice sends none. An account
+whose `_SEND_UPGRADE_EMAIL` is `NO` here gets none.
+
+**A test run whose cutover is complete goes live** with one verb on the
+source:
+
+```sh
+xmass go-live target-ip
+```
+
+Each account the cutover moved (proxied to that target, with no `xoct` test
+run of its own) goes live with `xoct go-live`: its `_SEND_UPGRADE_EMAIL` on
+the target takes this box's value again, and its client gets the completion
+notice it never received. Then the target's mark goes, the target's hold
+when it holds the run's address and no other test run is recorded there,
+and last the record here.
+
+An account that cannot go live (one the cutover could not convert, which it
+marked `log/proxy-failed.pid`, or a target that cannot be reached) keeps the
+record, so every `xoct` verb here stays held to the token until a re-run
+finishes. A re-run is a no-op. An `xoct` canary in a test run of its own is
+left to its own `xoct go-live`, and an account that came to this box after
+the cutover is no part of the run. Before the cutover is complete, `go-live`
+refuses and names `prep-target` without `admail=` instead.
 
 Without `--live`, `cutover` does a plan-only pass over every account's files store and
 stops **before** any destructive step (no MySQL read-lock, no downtime). Run it once to
@@ -1260,6 +1387,7 @@ first change to the source):
 | Step 13 | `renameaegirhost --aegir-root /data/disk/oN --force-old source-fqdn` on target (each Octopus account). The rename moves host-derived tenant site directories onto the new hostname together with every URI-keyed surface (per-site Drush alias file, static files store, per-site PHP pins), and **aborts before the Ægir task queue** if any site dir still carries the old hostname — the queue would import those as brand-new sites with duplicate panel nodes. Inside a cutover that refusal parks at `phase=rename-failed`. After the renames it waits for each renamed site to actually serve (up to 180 s per site, `_RENAME_SERVE_WAIT`; the box's catch-all page is discriminated so an unknown-host 200 never passes) — minutes per site here are the wait, not a hang; a site named as never serving with a 400 usually means its trusted-host settings |
 | Step 14 | Clear Solr transaction logs on target; start Solr; HTTP health check |
 | Step 14.5 | Compare the source's Solr core set against what the target actually registered, and name every core present as data but unregistered (registration is core-shape-specific and stays manual). Scoped to the real, dotted cores of the versions expected to **serve** on the target (used + ambiguous): a version this run deliberately denied has no service there by design, and its data trees travel with the sync regardless, so its cores are not reported |
+| Step 14.9 | Put each moved account's one-pass upgrade-notice marker on the target when absent (`/data/conf/<oN>_skip_upgrade_email.txt`; not for an account whose `_SEND_UPGRADE_EMAIL` is `NO` here): the first pass after the move sends no upgrade notice, even where the pass `prep-target` armed took the one `create` put |
 | Step 15 | Start cron on target; restore BOA runner scripts on target; record `_XMASS_TARGET_ARMED=YES` (a resumed tail then neither expects the marker nor fails out real client tasks) |
 | Step 15.1 | Site auto-import back to its default, then one sub-user pass run by the cutover itself on the target and a configtest-gated nginx reload: the per-site PHP-FPM includes are regenerated after the renames (by this pass, or by the box's own three-minute pass when that one already holds the lock). While the promotion window is open the sub-user pass leaves them as found, because the rename rewrites the pin names and would otherwise have every include of an account wiped and rebuilt under live traffic |
 | Step 15.2 | `xoct proxy oN target-ip --repair` per account, handed both hostnames: the deferred sites are converted, their **old names answering a 301 to the renamed sites**; the per-host gate is removed. An account step 12.92 could not convert at all gets its whole conversion here instead (`xoct proxy oN target-ip`, same hostnames). A failure keeps that account's deferred sites on 503 (all its sites, for an account 12.92 could not convert), is named in the closing summary with the re-run, which carries both hostnames because `xoct` has no flag for them, and never parks a cutover whose sites all serve |

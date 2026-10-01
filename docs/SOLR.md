@@ -87,6 +87,8 @@ After an upload is applied the core is reloaded. If Solr refuses the reload, the
 
 Each file must be smaller than 8 MiB, and the upload may hold at most 512 names and 32 MiB in all. Breaking a limit, a file with more than one hard link, or a file that changes while it is read refuses the whole set: nothing reaches the core, and the pass log under `/var/backups/solr/log/` records `SOLR-UPLOAD-REFUSED` with the reason. Symbolic links, FIFOs and subdirectories in `files/solr/` are skipped and never published.
 
+Only files owned by one of the instance's own users are published or removed: its backend user `oN`, its main SSH/SFTP user `oN.ftp`, its client sub-accounts `oN.<client>`, and its PHP-FPM users `oN.web` and `oN.<ver>.web`. A file any other user owns, such as one moved in from another instance, stays in place and is never published, and each pass log records `SOLR-UPLOAD-SKIPPED` for it.
+
 `sites`, the site directory and `files/solr` must be real directories, and `files` a real directory or the link BOA puts there into the account's own files store. Any other symbolic link on the way blocks the upload until it is replaced by a real directory.
 
 ## Handling Errors
