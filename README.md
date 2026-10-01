@@ -31,6 +31,19 @@ Barracuda is a specially tuned hosting environment for Ægir, designed to be lig
 
 Octopus is a smart system designed to manage multiple Ægir instances within Barracuda. Just like the sea creature with eight limbs, Octopus allows you to create and manage many separate but connected Ægir instances, showcasing its intelligence and adaptability in efficiently handling complex hosting environments.
 
+## Brand New Documentation
+
+BOA has a brand new documentation site: [**docs.boa.io**](https://docs.boa.io). It is now the primary source of information about BOA, split into four guides, one per kind of reader:
+
+- [**Using BOA**](https://docs.boa.io/using): for site owners on a hosted account.
+- [**Self-Hosting BOA**](https://docs.boa.io/self-hosting): for running BOA on your own server.
+- [**Operating BOA**](https://docs.boa.io/operating): the advanced root reference.
+- [**Developing BOA**](https://docs.boa.io/developing): for BOA maintainers.
+
+It also carries [cheat sheets](https://docs.boa.io/cheat-sheets), [release notes](https://docs.boa.io/releases) and a searchable [reference](https://docs.boa.io/reference) of every control variable, control file and command.
+
+The built-in docs shipped in this repository will be deprecated soon. Until then they are still linked below: [Documentation and Templates](#documentation-and-templates), [Documentation for BOA PRO](#documentation-for-boa-pro) and [Additional Documentation](#additional-documentation).
+
 ## Dual License
 
 **BOA** remains a **Free/Libre Open Source Project**. While all of **BOA** code is **Free/Libre Open Source**, only the **BOA LTS** branch and **Ægir** are available without any cost or restrictions.
@@ -147,6 +160,7 @@ Check out the details in [**ROADMAP.md**](https://github.com/omega8cc/boa/tree/5
 - Files Directories Symlinking, per-server overview + testing: [docs/FILES-SYMLINK.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/FILES-SYMLINK.md)
 - Files Directories Symlinking, per-site how-to: [docs/FILES-SYMLINK-USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/FILES-SYMLINK-USER.md)
 - Relocating Files Stores to Attached Storage (`migratefs`): [docs/MIGRATEFS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/MIGRATEFS.md)
+- HTTP/3 and KTLS Support: [docs/HTTP3.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/HTTP3.md)
 - Included Platforms: [docs/PLATFORMS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/PLATFORMS.md)
 - IP Access Control, per-server overview: [docs/IP-ACCESS.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/IP-ACCESS.md)
 - IP Access Control, per-site how-to: [docs/IP-ACCESS-USER.md](https://github.com/omega8cc/boa/tree/5.x-dev/docs/IP-ACCESS-USER.md)
