@@ -78,29 +78,36 @@ For full-server migrations where Percona versions match, consider
 > has no `o2` yet, is a `DENY` too (the dry run is `NOT CLEAN`, `--live` and `create`
 > stop; re-run `create` once the target answers).
 >
-> **What travels of the web group, and what does not.** The account's opt-out,
-> `_WEB_GROUP=NO`, travels: `create` writes it into the new account's cnf on the target
-> before the install (so the install's own conversion leaves the account alone there), and
-> every later cnf merge mirrors it, a removal on the source included. Nothing else of the
-> account's web-group state does: its intent (a `--phase-a` pin, a revert in progress) and
-> its record stay on the source, and the account converts on the target by that box's own
-> `_WEB_GROUP_ARM` and `_WEB_GROUP_PHASE_B`. `transfer` prints a `NOTE`, never a refusal,
-> naming the command to run on the target (`<dst>` is the account there, the new name on a
-> rename) when:
+> **What travels of the web group, and what does not.** The account's policy travels: the
+> opt-out `_WEB_GROUP=NO` and the `--phase-a` pin `_WEB_GROUP=A`, read as bash reads the
+> cnf (`export`, quotes and a trailing comment are fine). `create` writes it into the new
+> account's cnf on the target before the install (so the install's own conversion leaves
+> the account alone there, or stops it at A), and every later cnf merge mirrors it, a
+> removal on the source in any form included.
 >
-> - the account uses its own web group here and not yet there;
-> - it is pinned at phase A here: `instgrp webconvert <dst> --phase-a`;
+> Nothing else of the account's web-group state travels: its intent (a revert in
+> progress, a pin made without its cnf line) and its record stay on the source, and the
+> account converts on the target by that box's own `_WEB_GROUP_ARM` and
+> `_WEB_GROUP_PHASE_B`. `transfer` prints a `NOTE`, never a refusal, naming the command to
+> run on the target (`<dst>` is the account there, the new name on a rename) when:
+>
+> - the account uses its own web group here and not yet there (a target that is not armed
+>   is named as one where it never converts);
+> - it is pinned at phase A here without `_WEB_GROUP=A` in its cnf:
+>   `instgrp webconvert <account> --phase-a` here, which writes the line;
+> - it is pinned here and already at phase B there: `instgrp webconvert <dst> --phase-a`;
 > - a web-group revert of it is in progress here: `instgrp webrevert <dst>`;
 > - it is at phase B here and the target has `_WEB_GROUP_PHASE_B` off, so it converts
 >   there to phase A only: `instgrp webconvert <dst> --phase-b`;
 > - it is opted out here and the target already converted it before the opt-out reached
 >   it: `instgrp webrevert <dst>` (which also writes the opt-out there).
 >
-> `xcopy`, which has no cnf merge, carries the opt-out at `create` only; its `transfer`
+> `xcopy`, which has no cnf merge, carries the policy at `create` only; its `transfer`
 > names `instgrp webrevert <dst>` whenever the source is opted out and the target's cnf
-> does not say so, whether or not the target converted the account yet. The account's
-> `log/web-group-notes.txt` (what the conversion told the account on this box) never
-> travels.
+> does not say so, and `instgrp webconvert <dst> --phase-a` whenever it is pinned and the
+> target's cnf does not say so, whether or not the target converted the account yet. The
+> account's `log/web-group-notes.txt` (what the conversion told the account on this box)
+> never travels.
 >
 > `xcopy` maps the account's group and its web group the same way. It never renames: a
 > fourth argument naming another account is a `DENY` before the account is read, the

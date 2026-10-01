@@ -412,9 +412,10 @@ install.
 A first conversion, and every step up to phase B, is gated; a refusal
 changes nothing and names its reason:
 
-- the account's opt-out, `_WEB_GROUP=NO` in `/root/.oN.octopus.cnf` (the arm
-  and `webconvert all` honour it; a per-account operator `webconvert`
-  overrides and removes it);
+- the account's opt-out, `_WEB_GROUP=NO` in `/root/.oN.octopus.cnf`, read
+  as bash reads the file (the last assignment counts; `export`, quotes and
+  a trailing comment are fine): the arm and `webconvert all` honour it; a
+  per-account operator `webconvert` overrides and removes it;
 - an account not yet on its per-instance group;
 - the box not ready (above);
 - a site of the account reading another account's files store (an outbound
@@ -449,13 +450,19 @@ prepared as one) refuses every verb but `webrevert`.
 
 - `webconvert <oN>` takes the account as far as it already goes or to
   phase A, whichever is higher; `--phase-b` takes it to phase B; `--phase-a`
-  stops at A and pins it there (the arm and `all --phase-b` leave a pinned
-  account at A; only a per-account `--phase-b` unpins).
+  stops at A and pins it there. The pin is `_WEB_GROUP=A` in the account's
+  cnf: the arm, `webconvert all` and `all --phase-b` take a pinned account
+  to A at most, a plain `webconvert` keeps the pin, and only a per-account
+  `--phase-b` or `webrevert` lifts it. The migration tools carry it with the
+  cnf (below), so a box the account moves to keeps it at A too.
 - `webconvert all` converts every account, in three rounds so each PHP
-  version is reloaded once.
+  version is reloaded once. On a standby, and for an opted-out account
+  that has no web group yet, it refuses at once, without waiting for the
+  account's nightly pass.
 - `webrevert <oN>` goes back the whole way: phase B undone first, then A,
-  then the group removed. It writes the opt-out first, so the arm does not
-  convert the account again; `--keep-enabled` writes none.
+  then the group removed. It writes the opt-out first (over a pin), so the
+  arm does not convert the account again; `--keep-enabled` writes none and
+  keeps a pin.
 - `webstatus` prints what the account carries (group, members, `www-data`
   listings, pool lines, the pools' groups, the alias, the tops), the intent
   and the record, and a verdict: `NONE`, `A`, `B`, `BETWEEN(...)` naming
@@ -500,6 +507,15 @@ listing changed by hand, or a stale record restored all show there. The
 nightly also reads the account's private set in depth (`--deep`) and runs
 `instgrp reclaim` when `www-data` is back in it.
 
+Two more conditions are raised the same way. On an armed box that is no
+standby, an account that has had no web group, no intent and no record
+for over a day (not opted out, not frozen for a migration) is reported
+with what holds it back: nothing has converted it, for instance a box
+promoted by hand from a mirror. `_WEB_GROUP=NO` in its cnf leaves such an
+account alone for good. On any box, `/root/.standby.prep.cnf` standing
+for over three days without `/root/.standby.cnf` is reported too: while
+it stands, no account there converts.
+
 A file uploaded into a public directory with no world read (a `0640`
 upload) would be refused by nginx in phase B. The worker opens such files
 on its next pass (world read and directory search added, only to a file
@@ -525,20 +541,55 @@ serving pool's group.
 
 ### Migrations and standby boxes
 
-`xoct`, `xcopy` and `xmass` carry the opt-out: `_WEB_GROUP=NO` is written
-into the new account's cnf on the target before its install (so the
-install's own arm leaves it alone), and `xoct` and `xmass` mirror it at
-every later cnf merge, its removal included. They carry neither the intent
-nor the record, so a `--phase-a` pin and a revert in progress stay behind:
-the account converts on the target by that box's own settings, and the
-tools print a NOTE naming the command to run there. See `MIGRATE-XOCT.md`
+`xoct`, `xcopy` and `xmass` carry the account's policy, the opt-out
+(`_WEB_GROUP=NO`) and the pin (`_WEB_GROUP=A`), read as bash reads the
+cnf. It is written into the new account's cnf on the target before its
+install, so the install's own arm leaves the account alone, or stops it
+at A. `xoct` and `xmass` mirror it at every later cnf merge, its removal
+in any form included.
+
+They carry neither the intent nor the record, so a revert in progress, and
+a pin that is only in the intent (no `_WEB_GROUP=A` in the cnf), stay
+behind. The account converts on the target by that box's own settings, and
+the tools print a NOTE naming the command to run there: "after its
+promotion" when the target is a standby, and a plain warning when the
+target is not armed, where nothing ever converts. See `MIGRATE-XOCT.md`
 and `MIGRATE-XMASS.md`.
 
 A box being prepared as an xmass standby carries `/root/.standby.prep.cnf`
 from `xmass prep-target` on: its accounts stay unconverted until the
-promotion, and convert, gated, on the first Octopus pass after it. A
-preparation given up leaves the mark, and every conversion refused, until
-it is removed by hand.
+promotion. `xmass init` first reverts, with `--keep-enabled`, every account
+on the target that carries its own web group, or only its record or
+intent, once its read-only gates have passed and before the datadir swap.
+A pin's `_WEB_GROUP=A` stays.
+
+The cutover's last step runs `instgrp webconvert all` on the promoted box
+(`--phase-b` where it sets `_WEB_GROUP_PHASE_B=YES`), each account gated
+as any first conversion, and converts the master as the box it was
+promoted from ran it. `xmass post-mig` runs the same for the accounts,
+which covers a promotion by hand. Both do nothing on a box that is not
+armed.
+
+`xmass init` marks the preparation mark committed once the box is a
+running replica. From then on the box's own watchdog removes it as soon
+as the box reads as promoted (no standby marker, no replica, the database
+unlocked), so a promotion by hand without `post-mig`, or a mirror retired
+by removing its marker, does not keep its accounts unconverted. A
+preparation given up before that leaves the mark until it is removed by
+hand, and the watchers report it after three days.
+
+At every sync, and at `prep-target`, `verify` and `status`, `xmass` also
+compares what converts on the two boxes: whether each is armed, whether
+each has `_WEB_GROUP_PHASE_B=YES`, and the master's own web group. A
+switch onto a box that is not armed leaves every account unconverted for
+good, so a standing mirror is set as its active is.
+
+Files a conversion on the active hands to `wg-oN` while a sync is copying
+the account land in `www-data` on the standby (the group its accounts have
+there), never under the active's numeric gid; the next pass maps them as
+asked of the standby. A rewrite of the account's Drush alias `web_group`
+keeps the file's time, so it never decides which box's copy a later sync
+keeps.
 
 ## Operator notes
 

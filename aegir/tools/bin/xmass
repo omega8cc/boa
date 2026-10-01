@@ -273,6 +273,39 @@ _web_group() {
   esac
 }
 
+_master_web_group() {
+  # The master's own web group, wg-aegir, the way _web_group_state reads an
+  # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its
+  # holders are aegir and the master pool users wwwNN; anyone else holding
+  # it makes it foreign. The record is /root/.aegir.web-group.txt, root's
+  # own file, "wg-aegir gid=<n> phase=<A|B> ...".
+  local _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  _e=$(getent group wg-aegir 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^(aegir|www[0-9][0-9])$ ]] \
+      || { echo "foreign ${_gid} wg-aegir"; return 0; }
+  done
+  _r="/root/.aegir.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-aegir" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-aegir"
+  else
+    echo "held ${_gid} wg-aegir"
+  fi
+}
+
 # The group the target's own writers give an account's web paths there:
 # wg-<account> once the account is converted there, www-data otherwise,
 # derived on the target by the helper above, sent along with the question.
@@ -294,31 +327,55 @@ _web_group_on_target() {
   esac
 }
 
+_web_group_policy() {
+  # The account's web-group policy as bash reads its cnf, the file $1
+  # (/root/.<account>.octopus.cnf): the last _WEB_GROUP assignment, with
+  # export, quotes or a trailing comment. NO (opted out of the conversion)
+  # or A (pinned at phase A) is printed; any other value, or none, prints
+  # nothing. Verbatim in instgrp, xoct, xcopy and xmass: the gates, the
+  # notes and the carry read the line the same way.
+  local _l
+  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
+    | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=(NO|\"NO\"|'NO'|A|\"A\"|'A')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
+    | tr -d "\"'")
+  case "${_l}" in
+    NO|A) printf '%s\n' "${_l}" ;;
+  esac
+  return 0
+}
+
 # The web-group facts of the account $1 on this box, one line for the
-# helper below: "XMWF:<state>:<phase B>:<opt-out>", the state as
-# _web_group_state prints it, YES when /root/.barracuda.cnf sets
-# _WEB_GROUP_PHASE_B=YES (NO otherwise), NO when the account's cnf carries
-# _WEB_GROUP=NO (- otherwise). Sent to the target, never run here.
+# helper below: "XMWF:<state>:<phase B>:<policy>:<armed>:<standby>", the
+# state as _web_group_state prints it; YES when /root/.barracuda.cnf sets
+# _WEB_GROUP_PHASE_B=YES (NO otherwise); the account's _WEB_GROUP policy
+# (NO, A, or - for none); YES when the box carries the arm stamp a
+# barracuda pass writes while _WEB_GROUP_ARM=YES (NO otherwise: nothing
+# ever converts there); YES on a standby or a box being prepared as one
+# (nothing converts there until its promotion). Sent to the target, never
+# run here.
 # shellcheck disable=SC2329
 _web_group_facts_here() {
-  local _s _b=NO _n=-
+  local _s _b=NO _p _r=NO _sb=NO
   _s=$(_web_group_state "${1}")
   grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=[\"']?YES" /root/.barracuda.cnf 2> /dev/null && _b=YES
-  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=[\"']?NO" "/root/.${1}.octopus.cnf" 2> /dev/null && _n=NO
-  echo "XMWF:${_s%% *}:${_b}:${_n}"
+  _p=$(_web_group_policy "/root/.${1}.octopus.cnf")
+  [ -s /var/log/boa/instgrp-web-arm.ready.txt ] && _r=YES
+  { [ -e /root/.standby.cnf ] || [ -e /root/.standby.prep.cnf ]; } && _sb=YES
+  echo "XMWF:${_s%% *}:${_b}:${_p:--}:${_r}:${_sb}"
 }
 
 # The facts above for the account $1 on the target $2, asked of the target
-# itself: "<state>:<phase B>:<opt-out>". Prints nothing and returns 1 when
-# the target cannot be asked. Verbatim in xoct, xcopy and xmass.
+# itself: "<state>:<phase B>:<policy>:<armed>:<standby>". Prints nothing and
+# returns 1 when the target cannot be asked. Verbatim in xoct, xcopy and
+# xmass.
 _web_group_facts_on_target() {
   local _a="${1}" _h="${2}" _o
   case "${_a}" in ""|*[!a-z0-9-]*) return 1 ;; esac
   [ -n "${_h}" ] || return 1
-  _o=$( { declare -f _web_group_state _web_group_facts_here
+  _o=$( { declare -f _web_group_state _web_group_policy _web_group_facts_here
     printf '%s\n' "_web_group_facts_here '${_a}'"; } \
     | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" "bash -s" 2> /dev/null \
-    | grep -m1 -x -E 'XMWF:(none|foreign|held|converted|phaseb):(YES|NO):(NO|-)')
+    | grep -m1 -x -E 'XMWF:(none|foreign|held|converted|phaseb):(YES|NO):(NO|A|-):(YES|NO):(YES|NO)')
   [ -n "${_o}" ] || return 1
   echo "${_o#XMWF:}"
 }
@@ -326,13 +383,15 @@ _web_group_facts_on_target() {
 # What a migration does not carry of the account's web-group state, told
 # when the move takes effect: a NOTE each, never a refusal. $1 the account
 # here, $2 the account on the target $3; $4 "cnf" for a tool with no cnf
-# merge (xcopy), whose opt-out is named whenever the target's cnf lacks it,
-# otherwise it is named once the account there already carries its web
-# group. Read here: the account's web-group state, its intent (a --phase-a
-# pin, a revert in progress) and its opt-out; asked of the target: the facts
-# above. Verbatim in xoct, xcopy and xmass.
+# merge (xcopy), whose policy (_WEB_GROUP=NO or A) is named whenever the
+# target's cnf lacks it; xoct's and xmass's merges carry it. Read here: the
+# account's web-group state, its intent (a --phase-a pin, a revert in
+# progress) and its policy; asked of the target: the facts above. A target
+# that is not armed never converts; a standby converts only after its
+# promotion. Verbatim in xoct, xcopy and xmass.
 _wg_migration_notes() {
-  local _a="${1}" _d="${2}" _h="${3}" _how="${4:-state}" _s _i="" _no=NO _f _t _ts _tb _tn
+  local _a="${1}" _d="${2}" _h="${3}" _how="${4:-state}" _s _i="" _p _f _t _ts _tb _tp _ta _tsb
+  local _when="" _ipin=NO
   _s=$(_web_group_state "${_a}" | cut -d' ' -f1)
   _f="/var/log/boa/instgrp-web.${_a}.txt"
   if [ -f "${_f}" ] && [ ! -L "${_f}" ] && [ "$(stat -c %u -- "${_f}" 2> /dev/null)" = "0" ]; then
@@ -342,34 +401,46 @@ _wg_migration_notes() {
     target=*) ;;
     *) _i="" ;;
   esac
-  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=[\"']?NO" "/root/.${_a}.octopus.cnf" 2> /dev/null && _no=YES
-  [ "${_s}" = "none" ] && [ -z "${_i}" ] && [ "${_no}" = "NO" ] && return 0
+  _p=$(_web_group_policy "/root/.${_a}.octopus.cnf")
+  [ "${_s}" = "none" ] && [ -z "${_i}" ] && [ -z "${_p}" ] && return 0
   if ! _t=$(_web_group_facts_on_target "${_d}" "${_h}"); then
     echo "NOTE: the web-group state of ${_d} on ${_h} could not be read; run 'instgrp webstatus ${_d}' there"
     return 0
   fi
-  IFS=: read -r _ts _tb _tn <<< "${_t}"
+  IFS=: read -r _ts _tb _tp _ta _tsb <<< "${_t}"
+  [ "${_tsb}" = "YES" ] && _when=" after its promotion"
   case "${_s}:${_ts}" in
     converted:none|converted:held|converted:foreign|phaseb:none|phaseb:held|phaseb:foreign)
-      echo "NOTE: ${_a} uses its own web group here and ${_d} on ${_h} does not: its web paths are in www-data there until that box converts it, by its own policy"
+      if [ "${_ta}" != "YES" ]; then
+        echo "NOTE: ${_a} uses its own web group here and ${_d} on ${_h} does not, and ${_h} is not armed for the web group (no _WEB_GROUP_ARM=YES stamp): it never converts there, its web paths stay in www-data until that box is armed"
+      else
+        echo "NOTE: ${_a} uses its own web group here and ${_d} on ${_h} does not: its web paths are in www-data there until that box converts it${_when}, by its own policy"
+      fi
       ;;
   esac
   case " ${_i} " in
-    *" pin=phase-a "*)
-      echo "NOTE: ${_a} is pinned at phase A here; the pin does not travel: run 'instgrp webconvert ${_d} --phase-a' on ${_h} to pin it there"
-      ;;
+    *" pin=phase-a "*) _ipin=YES ;;
   esac
+  if [ "${_ipin}" = "YES" ] && [ "${_p}" != "A" ]; then
+    echo "NOTE: ${_a} is pinned at phase A here without _WEB_GROUP=A in /root/.${_a}.octopus.cnf, so the pin does not travel: run 'instgrp webconvert ${_a} --phase-a' here, which writes it"
+  elif [ "${_p}" = "A" ] && [ "${_how}" = "cnf" ] && [ "${_tp}" != "A" ]; then
+    echo "NOTE: ${_a} is pinned at phase A here (_WEB_GROUP=A) and /root/.${_d}.octopus.cnf on ${_h} does not say so: run 'instgrp webconvert ${_d} --phase-a' on ${_h}${_when}"
+  fi
+  if [ "${_p}" = "A" ] && [ "${_ts}" = "phaseb" ]; then
+    echo "NOTE: ${_a} is pinned at phase A here and ${_d} on ${_h} is at phase B: run 'instgrp webconvert ${_d} --phase-a' on ${_h}${_when}"
+  fi
   case "${_i}" in
     "target=none "*)
-      echo "NOTE: a web-group revert of ${_a} is in progress here and does not travel: ${_d} converts on ${_h} by that box's policy unless its opt-out went with it; run 'instgrp webrevert ${_d}' on ${_h} to revert it there"
+      echo "NOTE: a web-group revert of ${_a} is in progress here and does not travel: ${_d} converts on ${_h}${_when} by that box's policy unless its opt-out went with it; run 'instgrp webrevert ${_d}' on ${_h}${_when} to revert it there"
       ;;
   esac
-  if [ "${_s}" = "phaseb" ] && [ "${_tb}" != "YES" ] && [ "${_ts}" != "phaseb" ]; then
-    echo "NOTE: ${_a} is at phase B here and ${_h} has _WEB_GROUP_PHASE_B off: ${_d} converts there to phase A only; run 'instgrp webconvert ${_d} --phase-b' on ${_h}"
+  if [ "${_s}" = "phaseb" ] && [ "${_ta}" = "YES" ] && [ "${_tb}" != "YES" ] && [ "${_ts}" != "phaseb" ] \
+    && [ "${_p}" != "A" ]; then
+    echo "NOTE: ${_a} is at phase B here and ${_h} has _WEB_GROUP_PHASE_B off: ${_d} converts there to phase A only; run 'instgrp webconvert ${_d} --phase-b' on ${_h}${_when}"
   fi
-  if [ "${_no}" = "YES" ]; then
+  if [ "${_p}" = "NO" ]; then
     if [ "${_how}" = "cnf" ]; then
-      [ "${_tn}" = "NO" ] \
+      [ "${_tp}" = "NO" ] \
         || echo "NOTE: ${_a} is opted out here (_WEB_GROUP=NO) and /root/.${_d}.octopus.cnf on ${_h} does not say so: run 'instgrp webrevert ${_d}' on ${_h}, which writes the opt-out there"
     elif [ "${_ts}" != "none" ]; then
       echo "NOTE: ${_a} is opted out here (_WEB_GROUP=NO), and ${_d} on ${_h} took its web group before the opt-out reached it: run 'instgrp webrevert ${_d}' on ${_h}"
@@ -2399,11 +2470,14 @@ _xmass_push_account_cnf() {
       && mv -f "${_lTmp}.admail" "${_lTmp}" \
       && echo '_SEND_UPGRADE_EMAIL=NO' >> "${_lTmp}"
   fi
-  # The web-group opt-out mirrors the source both ways: _WEB_GROUP=NO
-  # travels, and a source without it removes a stale one on the target (the
-  # merge otherwise keeps every line the source lacks).
-  if grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=[\"']?NO" "${_sCnf}" 2>/dev/null; then
-    printf '%s\n' "_WEB_GROUP=NO" >> "${_lTmp}"
+  # The web-group policy mirrors the source both ways, read as bash reads
+  # it: _WEB_GROUP=NO (the opt-out) or _WEB_GROUP=A (the --phase-a pin)
+  # travels as a plain line, and a source with neither removes a stale one
+  # on the target, in any form (the merge otherwise keeps every line the
+  # source lacks).
+  _v=$(_web_group_policy "${_sCnf}")
+  if [ -n "${_v}" ]; then
+    printf '%s\n' "_WEB_GROUP=${_v}" >> "${_lTmp}"
   else
     printf '%s\n' "-_WEB_GROUP" >> "${_lTmp}"
   fi
@@ -2416,8 +2490,9 @@ _xmass_push_account_cnf() {
 [ -e "${_mrg}" ] || exit 1
 while IFS= read -r _l; do
   case "${_l}" in
-    -_WEB_GROUP)
-      grep -v "^_WEB_GROUP=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+    -_WEB_GROUP|_WEB_GROUP=*)
+      grep -vE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+      [ "${_l}" = "-_WEB_GROUP" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
       mv -f "${_cnf}.mrgnew" "${_cnf}"
       continue
       ;;
@@ -5718,11 +5793,13 @@ _xmass_sync_static_symlink_safe() {
 # Set _XMASS_GMAP, the group maps every leg of one account carries (LIVE
 # only; empty otherwise). The account's group comes first, mapped onto the
 # destination account's group asked of the target (its own once converted
-# there, 'users' until then). The account's web group here (wg-<account>,
-# while it exists) follows, mapped onto the one the target's writers give
-# the account there: its own once converted there, www-data until then. By
-# name alone either would land in a number that is no group there, or
-# another account's. With $2 = acct it is the account group entry alone
+# there, 'users' until then). The account's web group (wg-<account>)
+# follows on every pass: while the account here has it, an intent of it or
+# a run of it, mapped onto the one the target's writers give the account
+# there, its own once converted there, www-data until then; otherwise onto
+# www-data, for a conversion that starts while the legs run. By name alone
+# either would land in a number that is no group there, or another
+# account's. With $2 = acct it is the account group entry alone
 # (the identity repair's credential legs: no web path among them). Returns
 # 1, with a DENY, when a group of the account's here is asked of the target
 # and its answer cannot be read: its paths never land in a guessed group or
@@ -5731,11 +5808,23 @@ _xmass_set_gmap() {
   local _oct="$1" _dstGrp _dstWg _wgMap=""
   _XMASS_GMAP=""
   [ "${_MODE}" = "LIVE" ] || return 0
-  if [ "${2}" != "acct" ] && [ "$(_web_group_state "${_oct}" | cut -d' ' -f1)" != "none" ]; then
-    _dstWg=$(_web_group_on_target "${_oct}" "${_tgt}") || _dstWg=""
-    if [ -z "${_dstWg}" ]; then
-      _alrt "DENY: could not read the web group of ${_oct} on ${_tgt}; the legs of ${_oct} are skipped this pass"
-      return 1
+  if [ "${2:-}" != "acct" ]; then
+    if [ "$(_web_group_state "${_oct}" | cut -d' ' -f1)" != "none" ] \
+      || [ -e "/var/log/boa/instgrp-web.${_oct}.txt" ] || [ -e "/run/instgrp-web-${_oct}.pid" ]; then
+      _dstWg=$(_web_group_on_target "${_oct}" "${_tgt}") || _dstWg=""
+      if [ -z "${_dstWg}" ]; then
+        _alrt "DENY: could not read the web group of ${_oct} on ${_tgt}; the legs of ${_oct} are skipped this pass"
+        return 1
+      fi
+    else
+      # No web group, intent or run of it here as the legs begin, but a
+      # conversion can start while they run: files it gives wg-<account>
+      # would land under this box's numeric gid there (another account's
+      # group, or none). They go to www-data, the group every account of a
+      # target has while it stands (its marks refuse any conversion there)
+      # and what its own writers give an unconverted one; the next pass maps
+      # them as asked of the target.
+      _dstWg=www-data
     fi
     _wgMap="wg-${_oct}:${_dstWg}"
   fi
@@ -5761,7 +5850,7 @@ _xmass_set_gmap() {
 ### XMWA:= when it already said $1, XMWA:- when the alias carries none.
 # shellcheck disable=SC2329
 _xmass_wg_alias_here() {
-  local _n=server_master.alias.drushrc.php _was
+  local _n=server_master.alias.drushrc.php _was _mt
   _was=$(_xmass_read_here "${_n}" | sed -n "s/^[[:space:]]*'web_group' => '\([^']*\)',.*/\1/p" | head -n 1)
   if [ -z "${_was}" ]; then
     echo "XMWA:-"
@@ -5771,7 +5860,11 @@ _xmass_wg_alias_here() {
     echo "XMWA:="
     return 0
   fi
+  # the file keeps the mtime the leg gave it: the .drush leg is rsync -u,
+  # and a web_group rewrite must never make this copy the newer one
+  _mt=$(LC_ALL=C stat -c %Y -- "./${_n}" 2> /dev/null)
   _xmass_sed_here "${_n}" "s/^\([[:space:]]*'web_group' => '\)[^']*\(',.*\)/\1${1}\2/" || return 1
+  [[ "${_mt}" =~ ^[0-9]+$ ]] && touch -h -d "@${_mt}" -- "./${_n}" 2> /dev/null
   echo "XMWA:${_was}"
 }
 ### After every .drush leg: the leg copies the account's aliases whole, so
@@ -5814,6 +5907,162 @@ _xmass_wg_notes() {
     touch "${_d}/.wgnotes_${_oct}" 2> /dev/null
   fi
   printf '%s\n' "${_out}" | sed 's/^/  /'
+  return 0
+}
+### The box's web-group facts, one line: "XMWB:<armed>:<phase B>:<master>":
+### YES when the box carries the arm stamp a barracuda pass writes while
+### _WEB_GROUP_ARM=YES, YES when /root/.barracuda.cnf sets
+### _WEB_GROUP_PHASE_B=YES, and the master's own web group as
+### _master_web_group reads it. Run here, or sent to the other box.
+# shellcheck disable=SC2329
+_web_group_box_facts_here() {
+  local _r=NO _b=NO _m
+  [ -s /var/log/boa/instgrp-web-arm.ready.txt ] && _r=YES
+  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=[\"']?YES" /root/.barracuda.cnf 2> /dev/null && _b=YES
+  _m=$(_master_web_group 2> /dev/null)
+  echo "XMWB:${_r}:${_b}:${_m%% *}"
+}
+### The facts above asked of the box $1: "<armed>:<phase B>:<master>";
+### nothing and 1 when it cannot be asked.
+_xmass_wg_box_facts_on() {
+  local _o
+  _o=$( { declare -f _master_web_group _web_group_box_facts_here
+    printf '%s\n' "_web_group_box_facts_here"; } \
+    | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${1}" "bash -s" 2> /dev/null \
+    | grep -m1 -x -E 'XMWB:(YES|NO):(YES|NO):(none|foreign|held|converted|phaseb)')
+  [ -n "${_o}" ] || return 1
+  echo "${_o#XMWB:}"
+}
+### A pair whose boxes differ in what converts: the arm, phase B, or the
+### master's own web group (which no arm converts). A NOTE each, never a
+### refusal; $1 the other box. A switch onto a box that is not armed leaves
+### every account at no web group for good, and one with phase B off stops
+### them at A.
+_xmass_wg_box_notes() {
+  local _h="${1}" _here _there _ra _ba _ma _rb _bb _mb
+  _here=$(_web_group_box_facts_here)
+  _here="${_here#XMWB:}"
+  if ! _there=$(_xmass_wg_box_facts_on "${_h}"); then
+    echo "NOTE: the web-group settings of ${_h} could not be read; run 'instgrp webcheck' there"
+    return 0
+  fi
+  IFS=: read -r _ra _ba _ma <<< "${_here}"
+  IFS=: read -r _rb _bb _mb <<< "${_there}"
+  if [ "${_ra}" = "YES" ] && [ "${_rb}" != "YES" ]; then
+    echo "NOTE: this box is armed for the web group and ${_h} is not: after a switch no account converts there, ever (set _WEB_GROUP_ARM=YES in its /root/.barracuda.cnf; its next barracuda pass stamps it)"
+  elif [ "${_rb}" = "YES" ] && [ "${_ra}" != "YES" ]; then
+    echo "NOTE: ${_h} is armed for the web group and this box is not: after a failback no account converts here (set _WEB_GROUP_ARM=YES in /root/.barracuda.cnf here)"
+  fi
+  if [ "${_ba}" != "${_bb}" ]; then
+    echo "NOTE: _WEB_GROUP_PHASE_B is ${_ba} here and ${_bb} on ${_h}: each box takes its accounts to a different phase (set it alike on both boxes of a standing mirror)"
+  fi
+  case "${_ma}:${_mb}" in
+    converted:none|converted:held)
+      echo "NOTE: the master uses its own web group here (wg-aegir, phase A) and not on ${_h} (${_mb}): the cutover runs 'instgrp webconvert aegir' there after the promotion"
+      ;;
+    phaseb:none|phaseb:held|phaseb:converted)
+      echo "NOTE: the master uses its own web group here (wg-aegir, phase B) and ${_h} does not hold it at B (${_mb}): the cutover runs 'instgrp webconvert aegir --phase-b' there after the promotion"
+      ;;
+  esac
+  return 0
+}
+### The pair's NOTEs above, told at every sync and at the cutover's final
+### one; an autosync pass tells them once a day.
+_xmass_wg_box_tell() {
+  local _d="/var/log/boa/xmass_autosync" _out
+  _out=$(_xmass_wg_box_notes "${_tgt}")
+  [ -n "${_out}" ] || return 0
+  if [ "${_XMASS_AUTO}" = "YES" ]; then
+    mkdir -p "${_d}" 2> /dev/null
+    [ -z "$(find "${_d}/.wgnotes_box" -mmin -1440 2> /dev/null)" ] || return 0
+    touch "${_d}/.wgnotes_box" 2> /dev/null
+  fi
+  printf '%s\n' "${_out}" | sed 's/^/  /'
+  return 0
+}
+
+### Run on a box just promoted (the cutover's target, or post-mig there):
+### the accounts converted by this box's own policy, now that no standby
+### mark holds them, as the arm would on their next Octopus pass:
+### 'instgrp webconvert all', with --phase-b where _WEB_GROUP_PHASE_B=YES,
+### each account gated as any first conversion (its opt-out, its pin, the
+### share scan); only on an armed box. Then the master, which no arm
+### converts, when the box it was promoted from ran it at A or B ($1; -
+### when that is not known: told only). $2 loud names a box that is not
+### armed (the box it was promoted from uses the web group); quiet says
+### nothing there. One line per outcome, XMWP prefixed; instgrp's own lines
+### XMWO prefixed.
+# shellcheck disable=SC2329
+_xmass_wg_promoted_here() {
+  local _m="${1:--}" _how="${2:-quiet}" _b="" _ms
+  if [ ! -f /opt/local/bin/instgrp ] || ! grep -q '^_wg_table() {' /opt/local/bin/instgrp 2> /dev/null; then
+    [ "${_how}" = "loud" ] && echo "XMWP:NOTE:the instgrp here predates the web group: no account converts"
+    return 0
+  fi
+  if [ -e /root/.standby.cnf ] || [ -e /root/.standby.prep.cnf ]; then
+    echo "XMWP:ALRT:a standby mark is still here (/root/.standby.cnf or /root/.standby.prep.cnf): no account converts to its own web group until it goes"
+    return 0
+  fi
+  if [ ! -s /var/log/boa/instgrp-web-arm.ready.txt ]; then
+    [ "${_how}" = "loud" ] && echo "XMWP:NOTE:this box is not armed for the web group (no _WEB_GROUP_ARM=YES stamp): no account converts here"
+    return 0
+  fi
+  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=[\"']?YES" /root/.barracuda.cnf 2> /dev/null && _b=--phase-b
+  bash /opt/local/bin/instgrp webconvert all ${_b} 2>&1 | sed 's/^/XMWO: /'
+  echo "XMWP:RC:all:${PIPESTATUS[0]}:${_b}"
+  _ms=$(_master_web_group 2> /dev/null)
+  _ms="${_ms%% *}"
+  case "${_m}:${_ms}" in
+    A:none|A:held|B:none|B:held|B:converted)
+      _b=""
+      [ "${_m}" = "B" ] && _b=--phase-b
+      bash /opt/local/bin/instgrp webconvert aegir ${_b} 2>&1 | sed 's/^/XMWO: /'
+      echo "XMWP:RC:aegir:${PIPESTATUS[0]}:${_b}"
+      ;;
+    -:none|-:held)
+      echo "XMWP:NOTE:the master has no web group here: if the box this one was promoted from had converted it, run 'instgrp webconvert aegir' here (with --phase-b for phase B)"
+      ;;
+  esac
+  return 0
+}
+### The promotion's web groups: $1 the promoted box (here: post-mig on it),
+### $2 the master's level on the box it was promoted from (A, B, none, or -
+### when not known), $3 loud or quiet (see above). Never fatal: the arm's
+### Octopus passes and the drift witness (DR8) take what this leaves.
+_xmass_wg_promoted() {
+  local _h="${1}" _m="${2:--}" _how="${3:-quiet}" _out _l _k _rc _b
+  if [ "${_h}" = "here" ]; then
+    _out=$(_xmass_wg_promoted_here "${_m}" "${_how}")
+  else
+    _out=$( { declare -f _master_web_group _xmass_wg_promoted_here
+      printf '%s\n' "_xmass_wg_promoted_here '${_m}' '${_how}'"; } \
+      | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" "bash -s" 2> /dev/null \
+      || echo "XMWP:NONE")
+  fi
+  # an unarmed box asked quietly answers nothing; a transport failure is told
+  [ -n "${_out}" ] || return 0
+  if [ "${_out}" = "XMWP:NONE" ]; then
+    [ "${_how}" = "loud" ] \
+      && _alrt "  the web groups on ${_h} could not be converted (no answer): run 'instgrp webconvert all' there"
+    return 0
+  fi
+  _info "Web groups on the promoted box (instgrp webconvert all; a large account takes a while, its sites already serve) ..."
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "XMWO: "*) _info "    ${_l#XMWO: }" ;;
+      XMWP:NOTE:*) _info "  NOTE: ${_l#XMWP:NOTE:}" ;;
+      XMWP:ALRT:*) _alrt "  ${_l#XMWP:ALRT:}" ;;
+      XMWP:RC:*)
+        IFS=: read -r _ _ _k _rc _b <<< "${_l}"
+        case "${_rc}" in
+          0) _info "  instgrp webconvert ${_k}${_b:+ ${_b}}: done" ;;
+          2|5|6) _info "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc ${_rc} (some deferred, refused or left to finish, see above); the arm's next Octopus pass and the drift witness take it from here" ;;
+          4) _alrt "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc 4 (a BOA run or another web-group run is live there); run it there once it ends" ;;
+          *) _alrt "  instgrp webconvert ${_k}${_b:+ ${_b}}: rc ${_rc}; see /var/log/boa/instgrp.log there" ;;
+        esac
+        ;;
+    esac
+  done <<< "${_out}"
   return 0
 }
 
@@ -8867,7 +9116,8 @@ _xmass_refuse_role_clash() {
     _die "this box is a passive replication standby (/root/.standby.cnf) --" \
          " its web tier is held and its DB is read-only, so it cannot source" \
          " a migration; if this mirror is being retired, remove the marker" \
-         " deliberately first"
+         " deliberately first, with /root/.standby.prep.cnf (while it stands" \
+         " no account here converts to its own web group)"
   fi
   # Fail CLOSED on transport: an unreachable target is not a clean target,
   # and a refusal gate that shrugs off its own probe refuses nothing. rc 1
@@ -8903,7 +9153,8 @@ _xmass_refuse_role_clash() {
            " -- prep-target builds fresh targets only; on a standing mirror only" \
            " '--fix-solr' (the held Solr set) and '--fix-users' (a lost system user" \
            " of an account installed there) are accepted, alone or together;" \
-           " remove the marker deliberately only if the mirror is being retired"
+           " remove the marker deliberately only if the mirror is being retired," \
+           " with /root/.standby.prep.cnf"
     fi
   fi
   _mrk=$(ssh -o ConnectTimeout=10 -o BatchMode=yes \
@@ -8923,7 +9174,7 @@ _xmass_refuse_role_clash() {
   _die "target ${_tgt} is already a passive standby of '${_mrk_src:-unknown}'" \
        " (its /root/.standby.cnf) -- refusing to overlay a second role; if" \
        " that mirror is retired, remove the marker on the target" \
-       " deliberately first"
+       " deliberately first, with /root/.standby.prep.cnf"
 }
 
 ### The target must be COMPLETELY silent before anything lands on it that an
@@ -9440,11 +9691,30 @@ _xmass_prep_mark_put() {
   fi
   _info "Standby preparation mark on ${1}: no web-group conversion there until the promotion"
 }
+### Once init has made the target $1 a running replica, the mark says so:
+### a "committed" line. second.sh then removes the mark by itself once the
+### box reads as promoted (no /root/.standby.cnf, no replica config, the
+### database unlocked), as it removes a leftover standby marker, so a hand
+### promotion without post-mig, or a mirror retired by removing its marker,
+### keeps no mark for good. Before that line the box is still being
+### prepared, and it reads exactly as a promoted one: second.sh leaves it.
+### A failure is told; an old mark alarms on the box (instgrp's DR9).
+_xmass_prep_mark_commit() {
+  if ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${1}" \
+    "[ -e ${_XMASS_PREP_MARK} ] || exit 0; grep -q '^committed' ${_XMASS_PREP_MARK} || echo 'committed $(date '+%Y-%m-%d')' >> ${_XMASS_PREP_MARK}" &> /dev/null; then
+    return 0
+  fi
+  _alrt "could not mark ${_XMASS_PREP_MARK} on ${1} committed: a promotion by hand"
+  _alrt "must remove it there with /root/.standby.cnf (post-mig does)"
+  return 0
+}
 ### Every account on the target $1 that carries its own web group (one
 ### converted there before the mark: a hand-made 'xoct create' on an armed
-### box, a failback's demoted account) brought back to none, before the
-### datadir swap: webrevert --keep-enabled writes no opt-out, so the account
-### converts again after the promotion. --force only where the account's
+### box, a failback's demoted account), or only its record or intent (a
+### conversion killed before it made the group), brought back to none,
+### before the datadir swap: webrevert --keep-enabled writes no opt-out and
+### keeps a pin's _WEB_GROUP=A, so the account converts again after the
+### promotion, by that policy. --force only where the account's
 ### log/proxied.pid is the relay record prep-target adopts (root's COMPLETE
 ### record with root's migproxy.cnf: role source, this account, a peer that
 ### is this box, the record's own host that box); any other freeze keeps its
@@ -9458,8 +9728,19 @@ _MINE="${1}"
 _rootread() { perl -e 'use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $s[4] == 0 && $s[7] <= 65536; local $/; my $d = <$h>; print $d if defined $d; exit 0' "./${1}"; }
 _ready=NO
 [ -f /opt/local/bin/instgrp ] && grep -q '^_wg_table() {' /opt/local/bin/instgrp 2> /dev/null && _ready=YES
-for _g in $(getent group | cut -d: -f1 | grep -E '^wg-[a-z0-9-]+$'); do
-  _a="${_g#wg-}"
+# every account with a web group here, or a record or an intent of one: a
+# conversion that died between its intent and its group leaves only those
+_names=$( { getent group | cut -d: -f1 | sed -n 's/^wg-\([a-z0-9-]*\)$/\1/p'
+  for _f in /var/log/boa/instgrp-web.*.txt /root/.*.web-group.txt; do
+    [ -f "${_f}" ] || continue
+    _f="${_f##*/}"
+    case "${_f}" in
+      instgrp-web.*.txt) _f="${_f#instgrp-web.}"; _f="${_f%.txt}" ;;
+      .*.web-group.txt) _f="${_f#.}"; _f="${_f%.web-group.txt}" ;;
+    esac
+    printf '%s\n' "${_f}"
+  done; } | grep -E '^[a-z0-9-]+$' | sort -u)
+for _a in ${_names}; do
   [ "${_a}" = "aegir" ] && continue
   getent passwd "${_a}" > /dev/null 2>&1 || continue
   if [ "${_ready}" != "YES" ]; then
@@ -9698,6 +9979,9 @@ _xmass_cmd_prep_target() {
     _xmass_php_coverage_gate "${_tgt}" die
   fi
   _xmass_webgroup_gate "${_tgt}" die
+  # what converts on each box once the pair switches (the arm, phase B, the
+  # master), told while both are still being set up
+  _xmass_wg_box_notes "${_tgt}" | sed 's/^/  /'
 
   # Any used Solr version still missing installs on one system pass here --
   # unless the PHP fix above already ran one, which the driver detects and
@@ -10325,6 +10609,9 @@ _xmass_cmd_verify() {
   fi
   _info "Control panels on the target, by their new names ..."
   _xmass_probe_target_panels "${_tgt}" warn
+  # what converts on each box of the pair: the arm, phase B and the master's
+  # own web group, which no arm converts (read only; told when they differ)
+  _xmass_wg_box_notes "${_tgt}" | sed 's/^/  /'
   _info "verify sweep complete (read-only)"
 }
 
@@ -10906,13 +11193,6 @@ REMOTE
     _alrt "dark until the failback cutover promotes this box; a refused init restores"
     _alrt "it on unwind. Visitors must already reach the active box directly."
   fi
-  # The standby preparation mark, after every gate above (a refusal there
-  # leaves none behind), then every target account that carries its own web
-  # group brought back to none: all of it before the datadir swap, and a
-  # revert that does not finish refuses here. The unwind below leaves the
-  # mark: the box is still being prepared.
-  _xmass_prep_mark_put "${_tgt}"
-  _xmass_wg_revert_target "${_tgt}"
   # From here every refusal unwinds the target back to a normal box; the
   # trap reaps the lockfile too. Armed BEFORE the marker write: that command
   # also locks the database, and a refusal between the lock and the trap
@@ -11042,6 +11322,19 @@ REMOTE
     _info "Target datadir space check: OK (free=${_tgt_free_kb}K need~${_need_kb}K)"
   fi
 
+  # The standby preparation mark, after every read-only gate above (the
+  # server_id, patch and space gates among them: a failback refused there
+  # leaves the returning box's conversions as they were), then every target
+  # account that carries its own web group, or a record or an intent of
+  # one, brought back to none: all of it before the datadir swap, and a
+  # revert that does not finish refuses here. webrevert runs under the
+  # standby marker (nothing else does). The unwind leaves the mark: the box
+  # is still being prepared.
+  _xmass_prep_mark_put "${_tgt}"
+  _xmass_init_inflight_touch
+  _xmass_wg_revert_target "${_tgt}"
+  _xmass_init_inflight_touch
+
   # Pause the mysql.sh watchdog on BOTH hosts for the whole init critical
   # section: it must not restart the LIVE source mid xtrabackup snapshot
   # (corrupt backup) nor the target during restore/replica setup.
@@ -11123,6 +11416,9 @@ REMOTE
 
   _XMASS_PHASE="syncing"
   _xmass_save_state
+  # The box is a committed standby: its preparation mark may now go by
+  # itself at a promotion (second.sh), whoever promotes it.
+  _xmass_prep_mark_commit "${_tgt}"
   # A stale autosync marker for a DIFFERENT target must not survive a fresh
   # init: the pair it described is gone, and every later cadence pass would
   # refuse loudly on the mismatch. A SAME-target re-init is the documented
@@ -11357,6 +11653,8 @@ _xmass_cmd_sync() {
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _xmass_sync_account "${_oct}"
   done
+  # what converts on each box of the pair (the arm, phase B, the master)
+  _xmass_wg_box_tell
 
   if [ "${_MODE}" = "LIVE" ]; then
     if [ "${_XMASS_STORE_RC:-0}" != "0" ]; then
@@ -11541,6 +11839,10 @@ _xmass_cmd_status() {
     echo "  File autosync    : ARMED — target ${_AS_TGT:-?}, every ${_AS_EVERY}m$(grep '^_LAST_OK=' "${_XMASS_AUTOSYNC_STATUS}" 2>/dev/null | head -n1 | sed 's/^_LAST_OK=/; last OK pass /')"
   else
     echo "  File autosync    : off (arm with 'xmass autosync <target-ip>' after the first live sync)"
+  fi
+  # a standing pair: what converts on each box after a switch
+  if [ "${_XMASS_PHASE}" = "syncing" ] && [ -n "${_XMASS_TARGET_IP}" ]; then
+    _xmass_wg_box_notes "${_XMASS_TARGET_IP}" | sed 's/^/  /'
   fi
   echo ""
 }
@@ -12562,6 +12864,29 @@ REMOTE
   # next cadence pass would otherwise refuse loudly on the missing marker.
   _xmass_save_state
 
+  # Step 19: the web groups on the promoted box. Its accounts stood at no
+  # web group while it was a standby (its marks refuse every conversion,
+  # and the Octopus pass that built them ran under them), and nothing else
+  # converts them before their next Octopus pass: converted now by that
+  # box's own policy, the master as it ran here. After phase=complete: a
+  # failure here never parks the cutover.
+  # Told loud (a promoted box that is not armed named as one where nothing
+  # converts) when this box is armed or carries a conversion of its own.
+  local _wgm _wgl=quiet _wga
+  _wgm=$(_master_web_group | cut -d' ' -f1)
+  case "${_wgm}" in
+    converted) _wgm=A; _wgl=loud ;;
+    phaseb) _wgm=B; _wgl=loud ;;
+    *) _wgm=none ;;
+  esac
+  [ -s /var/log/boa/instgrp-web-arm.ready.txt ] && _wgl=loud
+  for _wga in ${_ELIGIBLE_ACCOUNTS}; do
+    case "$(_web_group_state "${_wga}" | cut -d' ' -f1)" in
+      converted|phaseb) _wgl=loud ;;
+    esac
+  done
+  _xmass_wg_promoted "${_tgt}" "${_wgm}" "${_wgl}"
+
   _info ""
   _info "======================================================"
   _info "  xmass cutover COMPLETE"
@@ -12786,6 +13111,7 @@ _xmass_cmd_cutover() {
     for _oct in ${_ELIGIBLE_ACCOUNTS}; do
       _xmass_sync_account "${_oct}"
     done
+    _xmass_wg_box_tell
     _xmass_finalize_dry "${_tgt}"
     return 0
   fi
@@ -12893,6 +13219,7 @@ _xmass_cmd_cutover() {
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     _xmass_sync_account "${_oct}"
   done
+  _xmass_wg_box_tell
 
   # A store/symlink that could not be placed on the target, or a failed transfer, is
   # a hard stop BEFORE any destructive step (write freeze, target promotion) — abort
@@ -13152,7 +13479,7 @@ _xmass_post_mig() {
   if [ -e "/root/.standby.prep.cnf" ]; then
     rm -f /root/.standby.prep.cnf
     _alrt "  Removed a LEFTOVER /root/.standby.prep.cnf -- cutover step 15 should have"
-    _alrt "  cleared it; the accounts here convert on the next arm pass, by this box's policy"
+    _alrt "  cleared it; the accounts here convert below, by this box's policy"
   fi
   # Traffic now flows directly to this host. Reconcile the migration-proxy
   # trust from the per-account policy records: temporary peers are dropped,
@@ -13165,6 +13492,10 @@ _xmass_post_mig() {
       || _alrt "migration_proxy_trust reconcile returned non-zero"
   fi
   _xmass_heal_fpm_pins
+  # The web groups of a promoted box (the cutover's last step did this for a
+  # planned switch; an emergency promotion by hand has only this run): its
+  # accounts by this box's policy, gated, on an armed box; its master told.
+  _xmass_wg_promoted here - quiet
   _info "post-mig complete on ${_hName}"
 }
 

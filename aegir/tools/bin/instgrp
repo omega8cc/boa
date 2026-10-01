@@ -115,16 +115,19 @@
 #               (--phase-b, or the Octopus arm on a box with
 #               _WEB_GROUP_PHASE_B=YES): the pools run in the group and the
 #               tenant identities leave www-data. --phase-a stops at A and
-#               pins the account there. Refused for an outbound share, a
-#               site on the shared stores, or a site or a files or private
+#               pins the account there: _WEB_GROUP=A in its cnf, which the
+#               migration tools carry as they carry _WEB_GROUP=NO (only
+#               --phase-b and webrevert lift it). Refused for an outbound
+#               share, a site on the shared stores, or a site or a files or private
 #               store outside the account's own places (a store is a real
 #               dir of the site or a link into the account's own
 #               static/files, never into BOA's dot-named folders there).
 #               Never lowers what the account carries; nothing converts
 #               until _WEB_GROUP_ARM=YES has stamped the box.
 #   webrevert   back to www-data, B first, then A, then the group; writes
-#               _WEB_GROUP=NO into the account's cnf first (--keep-enabled
-#               writes none). The only verb besides --phase-a that lowers.
+#               _WEB_GROUP=NO into the account's cnf first, over a pin
+#               (--keep-enabled writes none and keeps the pin). The only
+#               verb besides --phase-a that lowers.
 #   webstatus   every trait, the intent and the record, the verdict.
 #   webcheck    the web-group writers, the stamp; --report adds each account's
 #               readiness and its shares (read only: no notes written).
@@ -276,7 +279,8 @@ Usage:
   check    are the fetched root-run writers on this box group-aware?
   webconvert  the account's own web group, wg-<account>: phase A, or B with
            --phase-b (or the arm on a _WEB_GROUP_PHASE_B=YES box); --phase-a
-           pins it at A. all: every account (phase B with --phase-b).
+           pins it at A (_WEB_GROUP=A in its cnf; --phase-b unpins). all:
+           every account (phase B with --phase-b, a pinned one to A).
   webrevert   back to www-data; writes _WEB_GROUP=NO first unless
            --keep-enabled.
   webstatus   traits, intent, record and verdict of the web group.
@@ -448,6 +452,23 @@ _master_web_group() {
   else
     echo "held ${_gid} wg-aegir"
   fi
+}
+
+_web_group_policy() {
+  # The account's web-group policy as bash reads its cnf, the file $1
+  # (/root/.<account>.octopus.cnf): the last _WEB_GROUP assignment, with
+  # export, quotes or a trailing comment. NO (opted out of the conversion)
+  # or A (pinned at phase A) is printed; any other value, or none, prints
+  # nothing. Verbatim in instgrp, xoct, xcopy and xmass: the gates, the
+  # notes and the carry read the line the same way.
+  local _l
+  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
+    | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=(NO|\"NO\"|'NO'|A|\"A\"|'A')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
+    | tr -d "\"'")
+  case "${_l}" in
+    NO|A) printf '%s\n' "${_l}" ;;
+  esac
+  return 0
 }
 
 # The account's own web group, as the claim passes below keep it: its gid when
@@ -1995,9 +2016,9 @@ _WG_INVENTORY="\
 /var/xdrago/night/20-sites.sh:_NIGHT_DENIED_RE \
 /usr/local/bin/fix-drupal-site-permissions.sh:_SITE_DENIED_RE \
 /opt/local/bin/xtrim:_web_group_rb \
-/opt/local/bin/xoct:_wg_migration_notes \
-/opt/local/bin/xcopy:_wg_migration_notes \
-/opt/local/bin/xmass:_xmass_wg_revert_target \
+/opt/local/bin/xoct:_web_group_policy \
+/opt/local/bin/xcopy:_web_group_policy \
+/opt/local/bin/xmass:_xmass_wg_promoted \
 /opt/local/bin/aegir2boa-stage2:_a2b_web_group_report"
 # The master's: its queue marker must stop runner.sh, and the site scripts
 # a hostmaster task runs must give its files the master's web group and
@@ -3050,11 +3071,13 @@ _wg_row_rc() {
   esac
 }
 
-# The intent the leg's first step writes: "<target> <pin>".
+# The intent the leg's first step writes: "<target> <pin>". A pin the
+# account's cnf carries (_D_CPIN) is written by a run whose target is A.
 _wg_plan() {
-  local _t _pin=-
+  local _t _pin=- _cp=NO
+  [ "${_D_CPIN:-NO}" = "YES" ] && [ "${_D_T}" = "A" ] && _cp=YES
   if [ "$(_wg_leg_of "${_D_ROW}")" = "down" ]; then
-    if [ "${_D_T}" = "A" ] && { [ "${_D_CALLER}" = "conv_a" ] || [ "${_D_PIN}" = "YES" ]; }; then
+    if [ "${_D_T}" = "A" ] && { [ "${_D_CALLER}" = "conv_a" ] || [ "${_D_PIN}" = "YES" ] || [ "${_cp}" = "YES" ]; }; then
       _pin=phase-a
     fi
     echo "${_D_T} ${_pin}"
@@ -3063,8 +3086,11 @@ _wg_plan() {
   case "${_D_CALLER}" in
     conv_a) _pin=phase-a ;;
     conv_b) _pin=- ;;
-    conv) [ "${_D_LN}" = "YES" ] || { [ "${_D_PIN}" = "YES" ] && _pin=phase-a; } ;;
-    *) [ "${_D_PIN}" = "YES" ] && _pin=phase-a ;;
+    conv)
+      { [ "${_D_LN}" != "YES" ] && [ "${_D_PIN}" = "YES" ]; } && _pin=phase-a
+      [ "${_cp}" = "YES" ] && _pin=phase-a
+      ;;
+    *) { [ "${_D_PIN}" = "YES" ] || [ "${_cp}" = "YES" ]; } && _pin=phase-a ;;
   esac
   # max(A, min(T, max(rho, sigma))): never below what the account carries,
   # and on a raise to B from A or none only A until u9
@@ -3195,7 +3221,7 @@ _wg_u1() {
   read -r _t _pin <<< "$(_wg_plan)"
   _wg_i_write "${_t}" "${_pin}" - || return 1
   case "${_WG_CALLER}" in
-    conv|conv_a|conv_b) _wg_optout_remove ;;
+    conv|conv_a|conv_b) _wg_policy_set "${_pin}" ;;
   esac
   return 0
 }
@@ -3351,11 +3377,19 @@ _wg_u12() {
 # back, and only then R back, as the last write. A failure or a kill before
 # that last write leaves R at B with rb=1.
 _wg_rollback() {
-  local _e _f _ef _cut=NO _changed="" _u _q
+  local _e _f _ef _cut=NO _changed="" _u _q _left
   _log "${_WP_A}: u12 failed, rolling phase B back"
+  # what the record says when the rollback stops short: a plain B it found
+  # (no token is written over a committed B), or the token step 0 wrote
+  _left="its record stays B with rb=1"
   # step 0: no queue hold, so a busy queue cannot keep the token from R
   if [ "${_WG_RSAVE}" != "B" ]; then
-    _wg_r_write B rb || _alrt "${_WP_A}: the rollback token could not be written; rolling back regardless"
+    if ! _wg_r_write B rb; then
+      _alrt "${_WP_A}: the rollback token could not be written; rolling back regardless"
+      _left="its record stays as u10 left it (phase=B, no token)"
+    fi
+  else
+    _left="its record stays the plain B it was before this run (no token is written over a committed B)"
   fi
   # step 1: a raise that started with B not committed strips every line,
   # one it found included; any other run puts the pool files back to the
@@ -3394,15 +3428,20 @@ _wg_rollback() {
     _wg_k_check "${_e}" back || _cut=YES
   done
   if [ "${_cut}" = "YES" ]; then
-    _alrt "${_WP_A}: the rollback was cut short; its record stays B with rb=1 (the next run re-checks shares first)"
-    _wg_note "phase B rollback cut short: the record stays B (rb=1); the next run strips the pool lines and re-checks shares"
+    if [ "${_WG_RSAVE}" = "B" ]; then
+      _alrt "${_WP_A}: the rollback was cut short; ${_left}"
+      _wg_note "phase B rollback cut short: the record stays the plain B it was before the run; the next run converges B"
+    else
+      _alrt "${_WP_A}: the rollback was cut short; ${_left} (the next run re-checks shares first)"
+      _wg_note "phase B rollback cut short: the record stays B (rb=1); the next run strips the pool lines and re-checks shares"
+    fi
     return 1
   fi
   # step 5: R back to its value before u10, under the queue hold
   _wg_qhold
   _q=$?
   if [ "${_q}" != "0" ]; then
-    _alrt "${_WP_A}: the rollback was cut short at its last write (the queue did not drain); the record stays B with rb=1"
+    _alrt "${_WP_A}: the rollback was cut short at its last write (the queue did not drain); ${_left}"
     return 1
   fi
   case "${_WG_RSAVE}" in
@@ -3598,7 +3637,7 @@ _wg_leg_down() {
   read -r _t _pin <<< "$(_wg_plan)"
   _wg_i_write "${_t}" "${_pin}" - || return 1
   case "${_WG_CALLER}" in
-    conv|conv_a|conv_b) _wg_optout_remove ;;
+    conv|conv_a|conv_b) _wg_policy_set "${_pin}" ;;
   esac
   # d2
   _wg_d2 "${_D_T}" || return $?
@@ -4332,22 +4371,25 @@ _wg_xtrim_scrub() {
 
 # ./server_master.alias.drushrc.php rewritten through sed, as renameaegirhost
 # does: a fresh file with the old owner and the read/write bits of its mode,
-# created through its handle, then renamed over the name.
+# created through its handle, then renamed over the name. The old file's
+# mtime is kept: xmass's .drush leg copies this file by rsync -u, so a
+# web_group rewrite must never make one box's copy the newer one.
 # shellcheck disable=SC2329
 _wg_alias_here() {
-  local _n=server_master.alias.drushrc.php _st _uid _gid _m _sz _ft _t
-  _st="$(LC_ALL=C stat -c '%u %g %a %s %F' -- "./${_n}" 2> /dev/null)" || return 1
+  local _n=server_master.alias.drushrc.php _st _uid _gid _m _sz _ft _t _mt
+  _st="$(LC_ALL=C stat -c '%u %g %a %s %Y %F' -- "./${_n}" 2> /dev/null)" || return 1
   case "${_st}" in
     *" regular file"|*" regular empty file") ;;
     *) return 1 ;;
   esac
-  read -r _uid _gid _m _sz _ft <<< "${_st}"
+  read -r _uid _gid _m _sz _mt _ft <<< "${_st}"
   [ "${_sz}" -lt 1048576 ] || return 1
   _t="./.${_n}.wg.$$.${RANDOM}"
   rm -f -- "${_t}"
   if ( set -o pipefail
     _ig_read_here "${_n}" | sed "s/^\([[:space:]]*'web_group' => '\)[^']*\(',.*\)/\1${1}\2/" \
       | perl -e "${_ACCT_PUT_PL}" "${_t}" "${_uid}" "${_gid}" "${_m}" ) \
+    && touch -h -d "@${_mt}" -- "${_t}" 2> /dev/null \
     && mv -f -T -- "${_t}" "./${_n}"; then
     return 0
   fi
@@ -4374,39 +4416,60 @@ _wg_alias_set() {
 
 # ---- the raise gates -----------------------------------------------------------
 
-# G1: _WEB_GROUP=NO in the account's cnf.
+# G1: _WEB_GROUP=NO in the account's cnf, as bash reads it.
 _wg_g_optout() {
   [ "${_WP_M}" = "YES" ] && return 1
-  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=[\"']?NO[\"']?[[:space:]]*$" \
-    "/root/.${_WP_A}.octopus.cnf" 2> /dev/null
+  [ "$(_web_group_policy "/root/.${_WP_A}.octopus.cnf")" = "NO" ]
+}
+
+# The pin as the account's policy: _WEB_GROUP=A in its cnf, which xoct's and
+# xmass's cnf merges carry as they carry the opt-out, so a box the account
+# lands on (a promoted mirror among them) keeps it at A too.
+_wg_g_pinned() {
+  [ "${_WP_M}" = "YES" ] && return 1
+  [ "$(_web_group_policy "/root/.${_WP_A}.octopus.cnf")" = "A" ]
 }
 
 # The account's cnf (root's) rewritten without any _WEB_GROUP line, and
-# with _WEB_GROUP=NO when $1 = NO: a new file renamed over it.
-_wg_optout_put() {
+# with _WEB_GROUP=$1 when $1 is NO or A: a new file renamed over it.
+_wg_policy_put() {
   local _cnf="/root/.${_WP_A}.octopus.cnf" _t
   [ -f "${_cnf}" ] && [ ! -L "${_cnf}" ] || return 1
   _t="/root/.${_WP_A}.octopus.cnf.wg.$$"
   rm -f -- "${_t}"
   { grep -vE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}"
-    [ "${1}" = "NO" ] && printf '_WEB_GROUP=NO\n'
+    case "${1}" in
+      NO|A) printf '_WEB_GROUP=%s\n' "${1}" ;;
+    esac
   } > "${_t}" 2> /dev/null
   chmod --reference="${_cnf}" -- "${_t}" 2> /dev/null
   mv -f -- "${_t}" "${_cnf}" 2> /dev/null || { rm -f -- "${_t}"; return 1; }
 }
 
-# d0: the opt-out, written first; a per-account verb removes it (L1a).
+# d0: the opt-out, written first (over a pin's line); a per-account verb
+# removes it (L1a).
 _wg_optout_write() {
   _wg_g_optout && return 0
-  _wg_optout_put NO && _wg_g_optout || return 1
+  _wg_policy_put NO && _wg_g_optout || return 1
   _msg "NOTE: _WEB_GROUP=NO written to /root/.${_WP_A}.octopus.cnf: the arm and webconvert all leave ${_WP_A} alone until a per-account webconvert"
   return 0
 }
-_wg_optout_remove() {
+
+# A per-account webconvert's policy, written with its intent ($1 the pin
+# the intent carries): pinned, _WEB_GROUP=A (--phase-a, or a plain
+# webconvert keeping the pin); otherwise no _WEB_GROUP line, the opt-out
+# lifted (L1a) and --phase-b unpinning.
+_wg_policy_set() {
   [ "${_WP_M}" = "YES" ] && return 0
+  if [ "${1}" = "phase-a" ]; then
+    _wg_g_pinned && return 0
+    _wg_policy_put A && _wg_g_pinned || return 1
+    _msg "NOTE: _WEB_GROUP=A written to /root/.${_WP_A}.octopus.cnf: ${_WP_A} stays at phase A here and on every box its cnf travels to (xoct, xmass) until webconvert ${_WP_A} --phase-b or webrevert"
+    return 0
+  fi
   grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "/root/.${_WP_A}.octopus.cnf" 2> /dev/null || return 0
-  _wg_optout_put REMOVE || return 1
-  _msg "NOTE: _WEB_GROUP removed from /root/.${_WP_A}.octopus.cnf (a per-account verb lifts the opt-out)"
+  _wg_policy_put REMOVE || return 1
+  _msg "NOTE: _WEB_GROUP removed from /root/.${_WP_A}.octopus.cnf (a per-account verb lifts the opt-out; only --phase-a pins)"
 }
 
 # G2: the account is converted to its own group by instgrp convert.
@@ -4541,6 +4604,7 @@ _wg_reset() {
   _D_STANDBY=NO
   _D_I=""
   _D_IPIN=NO
+  _D_CPIN=NO
   _D_R=""
   _D_RB=NO
   _D_LAM=none
@@ -4574,16 +4638,23 @@ _wg_reset() {
   _WG_VERS=""
 }
 
-# The arm and both forms of all on a box never armed, for an account with
-# no web group, no intent and no record: every row they can reach refuses
-# (the readiness gate at the latest) and writes nothing.
+# The arm and both forms of all where every row they can reach refuses and
+# writes nothing, so they take no hold and wait for no nightly pass: on a
+# standby or a box being prepared as one (E4, whatever the account
+# carries); and for an account with no web group, no intent and no record,
+# on a box never armed (the readiness gate at the latest) or when the
+# account is opted out (G1, the first gate a raise from none reads).
 _wg_inert() {
   case "${_WG_CALLER}" in
     arm|all|all_b) ;;
     *) return 1 ;;
   esac
-  [ "${_WG_NOINERT}" != "YES" ] && [ "${_WP_M}" != "YES" ] && [ ! -s "${_WG_STAMP}" ] \
-    && [ "${_WM_G}" = "none" ] && [ ! -e "${_WP_I}" ] && [ ! -e "${_WP_R}" ] && [ ! -L "${_WP_R}" ]
+  [ "${_WG_NOINERT}" != "YES" ] || return 1
+  { [ -e "${_WG_STANDBY}" ] || [ -e "${_WG_PREP}" ]; } && return 0
+  [ "${_WP_M}" != "YES" ] && [ "${_WM_G}" = "none" ] && [ ! -e "${_WP_I}" ] \
+    && [ ! -e "${_WP_R}" ] && [ ! -L "${_WP_R}" ] || return 1
+  [ ! -s "${_WG_STAMP}" ] && return 0
+  _wg_g_optout
 }
 
 # The every-run gates and the table's inputs for the current profile, and
@@ -4648,6 +4719,20 @@ _wg_decide() {
   if [ "${_WG_CALLER}" = "arm" ] \
     && grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=[\"']?YES" /root/.barracuda.cnf 2> /dev/null; then
     _D_FLAGB=YES
+  fi
+  # The pin as policy (_WEB_GROUP=A, carried with the cnf): the intent's own
+  # pin where the intent is A, never a raise past A by the arm or by all
+  # (--phase-b runs as all for the account, in each of its phases), and the
+  # pin written by the conversion that takes the account to A (_wg_plan).
+  # Only --phase-b and webrevert lift it.
+  _D_CPIN=NO
+  case "${_WG_CALLER}" in
+    conv|conv_a|arm|all|all_b) _wg_g_pinned && _D_CPIN=YES ;;
+  esac
+  if [ "${_D_CPIN}" = "YES" ]; then
+    [ "${_D_I}" = "A" ] && _D_IPIN=YES
+    _D_FLAGB=NO
+    [ "${_D_CALLER}" = "all_b" ] && _D_CALLER=all
   fi
   _wg_table
 }
@@ -4868,9 +4953,20 @@ _wg_status() {
     return 3
   fi
   _msg "intent:   ${_WI_T:-absent}${_WI_T:+ pin=${_WI_PIN} by=${_WI_BY} run=${_WI_RUN} rc=${_WI_RC}}"
+  if _wg_g_optout; then
+    _msg "policy:   _WEB_GROUP=NO (opted out: the arm and webconvert all leave it alone)"
+  elif _wg_g_pinned; then
+    _msg "policy:   _WEB_GROUP=A (pinned at phase A, here and wherever its cnf travels)"
+  fi
   if [ "${_WR_RB}" = "YES" ]; then
     case "${_WM_LAM}" in
-      betwB|B) _rb="the traits prove B (the account's own user is out of www-data): the next run completes B and drops the token" ;;
+      betwB|B)
+        if [ "${_WP_M}" = "YES" ]; then
+          _rb="the traits prove B (every installed version's wwwNN tool users are out of www-data and their workers without it): the next webconvert aegir completes B and drops the token"
+        else
+          _rb="the traits prove B (the account's own user is out of www-data): the next run completes B and drops the token"
+        fi
+        ;;
       betwK)
         if [ "${_WP_M}" = "YES" ]; then
           _rb="the traits prove B (every installed version's wwwNN workers without www-data): the next webconvert aegir completes B and drops the token; the next full barracuda pass gives www-data back first, and the run after it re-checks shares"
@@ -4982,7 +5078,7 @@ _wg_held_live() {
 }
 
 _wg_drift() {
-  local _a="${1}" _dr1="" _cls=ALRT _st _now _first _lv _rl _held=NO
+  local _a="${1}" _dr1="" _dr8="" _cls=ALRT _st _now _first _kind _lv _rl _held=NO
   _wg_profile "${_a}"
   _wg_reset
   _WG_WWWGID=$(_gid_of "${_WEBG}")
@@ -5014,11 +5110,43 @@ _wg_drift() {
       _dr1="it holds ${_WP_G} and has no intent (a lost pin or revert shows here)"
     fi
   fi
+  # DR8, on an armed box that is no standby: an account with no web group,
+  # no intent and no record, not opted out and not frozen for a migration,
+  # for over a day (nothing has converted it: a promoted mirror whose
+  # Octopus pass ran under its standby marks, a refusal no one read). Its
+  # first-seen stamp is DR1's file, marked dr8: the two never hold at once.
+  if [ "${_held}" = "NO" ] && [ "${_WP_M}" != "YES" ] && [ "${_WM_G}" = "none" ] \
+    && [ -z "${_WI_T}" ] && [ "${_WR_ANY}" = "NO" ] && [ -s "${_WG_STAMP}" ] \
+    && [ ! -e "${_WG_STANDBY}" ] && [ ! -e "${_WG_PREP}" ] \
+    && [ ! -e "/data/disk/${_a}/log/proxied.pid" ] && ! _wg_g_optout; then
+    _dr8="the box is armed and ${_a} has had no web group for over a day"
+  fi
   _st="/var/log/boa/instgrp-web.${_a}.dr1.txt"
-  if [ -n "${_dr1}" ]; then
+  if [ -n "${_dr8}" ]; then
     _now=$(date +%s)
-    _first=$(head -c 32 "${_st}" 2> /dev/null | tr -cd '0-9')
-    if [ -z "${_first}" ]; then
+    _first=""
+    _kind=""
+    read -r _first _kind _ 2> /dev/null < "${_st}" || :
+    _first=$(printf '%s' "${_first}" | tr -cd '0-9')
+    if [ -z "${_first}" ] || [ "${_kind}" != "dr8" ]; then
+      ( umask 077; echo "${_now} dr8" > "${_st}" ) 2> /dev/null
+    elif [ $((_now - _first)) -ge 86400 ]; then
+      if ! _wg_g_v1; then
+        _dr8="${_dr8}: not converted to its own group yet (instgrp convert ${_a})"
+      elif ! _wg_g_ready > /dev/null 2>&1; then
+        _dr8="${_dr8}: this box is not ready for the web group (instgrp webcheck)"
+      else
+        _dr8="${_dr8}: run 'instgrp webconvert ${_a}' (or webconvert all); it names what refuses it"
+      fi
+      echo "ALRT DR8 ${_a}: ${_dr8}; _WEB_GROUP=NO in /root/.${_a}.octopus.cnf leaves it alone for good"
+    fi
+  elif [ -n "${_dr1}" ]; then
+    _now=$(date +%s)
+    _first=""
+    _kind=""
+    read -r _first _kind _ 2> /dev/null < "${_st}" || :
+    _first=$(printf '%s' "${_first}" | tr -cd '0-9')
+    if [ -z "${_first}" ] || [ "${_kind}" = "dr8" ]; then
       ( umask 077; echo "${_now}" > "${_st}" ) 2> /dev/null
     elif [ $((_now - _first)) -ge 3600 ]; then
       case "${_WI_RC}" in
@@ -5105,6 +5233,15 @@ _wg_drift_box() {
       fi
     done
   fi
+  # DR9: the standby preparation mark on a box with no standby marker for
+  # over three days: E4 keeps every account from converting. prep-target
+  # writes it ahead of init, the promotion removes it (cutover step 15,
+  # post-mig, second.sh once init committed the box), a retirement or a
+  # hand promotion without post-mig can leave it.
+  if [ -e "${_WG_PREP}" ] && [ ! -e "${_WG_STANDBY}" ] \
+    && [ -n "$(find "${_WG_PREP}" -maxdepth 0 -mmin +4320 2> /dev/null)" ]; then
+    echo "ALRT DR9 box: ${_WG_PREP} has stood for over three days with no ${_WG_STANDBY}: no account converts here; remove it unless this box is being prepared as a standby"
+  fi
   [ -f /root/.aegir.web-group.txt ] || return 0
   for _t in ${_WG_MINVENTORY}; do
     _p=$(_wg_inv_path "${_t%%:*}")
@@ -5150,6 +5287,7 @@ _wg_check() {
     _msg "== ${_a}"
     if _wg_g_v1; then _msg "v1:      converted"; else _msg "v1:      NOT converted (instgrp convert ${_a})"; fi
     if _wg_g_optout; then _msg "opt-out: _WEB_GROUP=NO"; fi
+    if _wg_g_pinned; then _msg "pin:     _WEB_GROUP=A (phase A only)"; fi
     if _WG_SHARE_MODE=silent _wg_g_share; then
       _msg "shares:  REFUSED (an outbound share, a store outside the account's own places, a legacy site or a site outside the account; a conversion run names them in ${_WP_NOTES})"
     else

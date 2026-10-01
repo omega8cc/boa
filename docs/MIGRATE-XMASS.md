@@ -611,36 +611,71 @@ whose sites share another account's files). So:
   first account create. `instgrp` reads it as a standby: the install's own
   conversion, and every later Octopus pass there, leave the accounts
   unconverted.
-- `init` writes it too, after its gates, then brings back to none every
-  target account that carries its own web group (one an operator created
-  there by hand with `xoct create` on an armed box, or a failback box's
-  demoted account), with `instgrp webrevert <oN> --keep-enabled`, which
-  writes no opt-out; `--force` only for an account whose freeze is the relay
-  record `prep-target` adopts. All of it happens before the datadir swap, and
-  a revert that does not finish refuses the `init` there, naming the
-  account. A refused `init` leaves the mark: the box is still being prepared.
-- The mark goes with `/root/.standby.cnf`: at cutover step 15, in
-  `post-mig` (a leftover is removed with an `ALRT`), in `restore-target`, and
-  by a promoted box's own standby watchdog. The accounts then convert on the
-  first Octopus pass after the promotion, by the promoted box's own
-  `_WEB_GROUP_ARM` and `_WEB_GROUP_PHASE_B`, gated as any first conversion.
-- A preparation given up leaves the mark, and every conversion there
-  refused (`webrevert` excepted), until it is removed by hand.
+- `init` writes it too, once its read-only gates have passed (the
+  `server_id`, patch-level and space gates among them, so a failback refused
+  there leaves the returning box's conversions as they were). It then brings
+  back to none every target account that carries its own web group (one an
+  operator created there by hand with `xoct create` on an armed box, or a
+  failback box's demoted account), or only a record or an intent of one (a
+  conversion killed before it made the group).
+- That revert is `instgrp webrevert <oN> --keep-enabled`, which writes no
+  opt-out and keeps a pin's `_WEB_GROUP=A`; `--force` only for an account
+  whose freeze is the relay record `prep-target` adopts. All of it happens
+  before the datadir swap, and a revert that does not finish refuses the
+  `init` there, naming the account. A refused `init` leaves the mark: the
+  box is still being prepared.
+- A successful `init` marks it committed. The mark goes with
+  `/root/.standby.cnf`: at cutover step 15, in `post-mig` (a leftover is
+  removed with an `ALRT`), in `restore-target`, and by the box's own standby
+  watchdog once a committed mark stands on a box that reads as promoted (no
+  marker, no replica, the database unlocked): a promotion by hand that skips
+  `post-mig`, or a mirror retired by removing its marker.
+- A preparation given up before `init` commits leaves the mark, and every
+  conversion there refused (`webrevert` excepted), until it is removed by
+  hand; the box's watchers report a mark that has stood for over three days
+  with no standby marker.
+
+At the promotion the accounts convert by the promoted box's own
+`_WEB_GROUP_ARM` and `_WEB_GROUP_PHASE_B`, gated as any first conversion:
+
+- the cutover's last step, after `phase=complete`, runs
+  `instgrp webconvert all` on the promoted box (`--phase-b` where it sets
+  `_WEB_GROUP_PHASE_B=YES`), and converts its master (`webconvert aegir`,
+  `--phase-b` for phase B) when this box's master runs its own web group;
+- `post-mig` runs `webconvert all` again on the box it runs on, which is the
+  only run after a promotion by hand, and names an unconverted master;
+- on a box that is not armed both print a NOTE and convert nothing. A
+  failure never parks the cutover: the next Octopus pass and the box's
+  watchers take what is left.
 
 Every sync (and the cutover's final one) also:
 
 - sets the `web_group` of each account's `server_master` alias on the
   target, which the `.drush` leg copies from the source, to what the
-  target's writers give the account there (`www-data` while unconverted);
-- mirrors the account's opt-out `_WEB_GROUP=NO` in its cnf merge, a removal
-  on the source included;
+  target's writers give the account there (`www-data` while unconverted),
+  keeping the file's time, so the rewrite never decides which copy a later
+  `-u` leg keeps;
+- maps `wg-oN` on every leg: onto `www-data` when the source holds no web
+  group, intent or run of it as the legs begin, so files a conversion
+  starting meanwhile hands to `wg-oN` never land under the source's numeric
+  gid there;
+- mirrors the account's policy in its cnf merge, the opt-out
+  `_WEB_GROUP=NO` and the pin `_WEB_GROUP=A`, read as bash reads the line
+  (`export`, quotes, a trailing comment), a removal on the source in any
+  form included;
 - prints a `NOTE` for what does not travel, as `xoct transfer` does (see
-  [MIGRATE-XOCT.md](MIGRATE-XOCT.md)): a `--phase-a` pin, a revert in
-  progress, phase B onto a box with `_WEB_GROUP_PHASE_B` off, an opt-out that
-  reached an account already converted there by hand. The cutover's final
-  sync prints them again, the moment the loss takes effect; an autosync pass
-  prints them once a day. A promotion made without a cutover from the source
-  prints nothing.
+  [MIGRATE-XOCT.md](MIGRATE-XOCT.md)): a pin made without its cnf line, a
+  revert in progress, phase B onto a box with `_WEB_GROUP_PHASE_B` off, an
+  opt-out that reached an account already converted there by hand. On a
+  standby the command named runs "after its promotion"; a target that is not
+  armed is named as one where nothing ever converts.
+- compares the two boxes once per pass: the arm, `_WEB_GROUP_PHASE_B` and
+  the master's own web group, a `NOTE` for each that differs (a switch onto
+  a box that is not armed leaves every account unconverted for good).
+  `prep-target`, `verify` and `status` print the same comparison.
+
+The cutover's final sync prints the notes again, the moment a loss takes
+effect; an autosync pass prints them once a day.
 
 ### The target-silence gate (prep-target, init, cutover)
 

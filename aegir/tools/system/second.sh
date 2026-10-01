@@ -155,6 +155,29 @@ fi
 [ -e "/root/.standby.cnf" ] || rm -f /root/.standby.init.pid \
   /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid \
   /run/boa_standby_stall_logged.pid /run/boa_standby_noretrofit_logged.pid
+# The standby preparation mark that xmass init marked committed goes once
+# the box reads as promoted, as a leftover standby marker does above: no
+# marker, NO replica config, the DB unlocked. A promotion by hand without
+# post-mig, or a mirror retired by removing its marker, would otherwise
+# keep every account here from converting to its own web group for good.
+# A mark not yet committed is a box still being prepared, which reads the
+# same: it is kept.
+if [ -e "/root/.standby.prep.cnf" ] && [ ! -e "/root/.standby.cnf" ] \
+  && grep -q '^committed' /root/.standby.prep.cnf 2>/dev/null \
+  && mysqladmin ping &> /dev/null; then
+  _rplState=$(mysql -e "SHOW REPLICA STATUS\G" 2>/dev/null)
+  _rplRc=$?
+  if [ "${_rplRc}" -ne "0" ]; then
+    _rplState=$(mysql -e "SHOW SLAVE STATUS\G" 2>/dev/null)
+    _rplRc=$?
+  fi
+  if [ "${_rplRc}" -eq "0" ] && [ -z "${_rplState}" ] \
+    && [ "$(mysql -N -e 'SELECT @@super_read_only' 2>/dev/null | tr -dc '0-9')" = "0" ]; then
+    rm -f /root/.standby.prep.cnf
+    echo "Removed the committed /root/.standby.prep.cnf: no standby marker, NO replica config and the DB unlocked (promoted or retired) on $(date)" \
+      >> /var/log/boa/standby.quiesce.log
+  fi
+fi
 # Reap the defer-log stamp whenever the deferral condition no longer
 # holds (mysqld back, or the marker itself gone) -- a leaked stamp would
 # silently swallow the log line for the NEXT genuine outage.

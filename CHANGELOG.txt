@@ -103,11 +103,16 @@
       webconvert aegir), by hand only. instgrp webstatus, webcheck
       --report and the limited-shell worker's and the nightly's drift
       alarms show where each account stands; see docs/INSTGRP.md.
-    * xoct, xcopy and xmass carry the web-group opt-out to the target and
-      print a NOTE for what does not travel (a phase A pin, a revert in
-      progress, phase B onto a box with it off, an opt-out that arrived
-      late); an xmass standby keeps its accounts unconverted until the
-      promotion.
+    * xoct, xcopy and xmass carry the web-group policy to the target, the
+      opt-out _WEB_GROUP=NO and the phase A pin _WEB_GROUP=A (written by
+      instgrp webconvert --phase-a), and print a NOTE for what does not
+      travel (a revert in progress, phase B onto a box with it off, a
+      target that is not armed); an xmass standby keeps its accounts
+      unconverted until the promotion.
+    * An xmass promotion converts the promoted box's accounts by that
+      box's own settings at the end of the cutover and again in post-mig,
+      the master as the old box ran it; xmass compares the two boxes' arm,
+      phase B and master at every sync, prep-target, verify and status.
     * Phase B also clears the set-group-ID bit of every www-data file the
       account's identities own, on every local file system that honours
       the bit: a file made while they were in www-data no longer gives
