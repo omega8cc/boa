@@ -2450,19 +2450,16 @@ _update_agents() {
   fi
 
   if [ -e "/var/xdrago/monitor/check" ] \
-    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
-    && [ ! -e "${_pthLog}/manage_solr_config.sh.ctrl.f56.${_tRee}.${_xSrl}.pid" ]; then
-    mv -f /var/xdrago/manage_solr_config.sh /var/xdrago/manage_solr_config.sh.old
-    curl ${_crlGet} "${_urlHmr}/tools/system/manage_solr_config.sh" \
-      -o /var/xdrago/manage_solr_config.sh
-    if [ -e "/var/xdrago/manage_solr_config.sh" ]; then
-      chmod 700 /var/xdrago/manage_solr_config.sh
-      chown root:root /var/xdrago/manage_solr_config.sh
-      touch ${_pthLog}/manage_solr_config.sh.ctrl.f56.${_tRee}.${_xSrl}.pid
-      rm -f /var/xdrago/manage_solr_config.sh.old
+    && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
+    # Through _fetch_versioned, as the ltd worker above: a bare curl stamped
+    # the serial marker on whatever bytes it got, so a box whose mirror had
+    # not caught up kept the previous tool under the new marker for good.
+    # The post-install step runs only when the file actually changed.
+    _slrSum="$(md5sum /var/xdrago/manage_solr_config.sh 2>/dev/null | cut -d' ' -f1)"
+    _fetch_versioned /var/xdrago/manage_solr_config.sh "${_urlHmr}/tools/system/manage_solr_config.sh" f56
+    if [ -s "/var/xdrago/manage_solr_config.sh" ] \
+      && [ "$(md5sum /var/xdrago/manage_solr_config.sh 2>/dev/null | cut -d' ' -f1)" != "${_slrSum}" ]; then
       rm -f /run/manage_solr_config.pid
-    else
-      mv -f /var/xdrago/manage_solr_config.sh.old /var/xdrago/manage_solr_config.sh
     fi
   fi
 
