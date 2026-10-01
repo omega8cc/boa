@@ -109,7 +109,7 @@ Check out the details in [**docs/PROVIDES.md**](https://github.com/omega8cc/boa/
 
 ### Devuan (recommended)
 
-- Daedalus (default; installs Percona 5.7 unless you pass `percona-8.0` or `percona-8.4` - Drupal 11 needs Percona 8.4)
+- Daedalus (Percona 5.7 or 8.4 for Drupal 11)
 - Excalibur (supported, but only with Percona 8.4)
 - Chimaera (deprecated, not tested in any context - upgrade to Daedalus)
 - Beowulf (deprecated, not tested in any context - a hop on the way up only)
