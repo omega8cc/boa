@@ -62,6 +62,10 @@
       file any account had put there no longer comes out executable and
       set-group-ID.
 
+    * The barracuda upgrade also clears the set-ID bits of a file
+      hard-linked into the master hostmaster site's files/, which it
+      otherwise leaves as it is.
+
     * Nightly maintenance keeps the shared code store's permissions,
       moves unused shared codebases and prunes the codebases backup only
       inside the real store, never through a link planted at a store
@@ -70,6 +74,11 @@
     * The site ownership and permissions fixers leave BOA's own folders at
       the top of an account's files store (.backups, .backup-exports,
       .archived) as they are; only a site's own store is walked.
+
+    * The nightly permissions pass also leaves BOA's own folders at the
+      top of an account's files store, the store itself, and any place
+      outside an account's files store, the master's included, as they
+      are when a site's files or private link leads there.
 
     * xmass prep-target no longer takes a same-name account on the
       target that carries no site by itself: it is refused before the
