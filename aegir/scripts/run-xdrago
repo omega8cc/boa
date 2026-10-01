@@ -57,14 +57,24 @@ _run_in_real_dir() {
 # backups is oN's too, and a link by design once the backups mover has put
 # it on the files store (static/files/.backups). Run "$@" inside the
 # directory $1 resolves to, only when that lies in the account's own tree or
-# its own files store (migratefs' <target>/files/<oN>/static/files).
+# its own files store moved onto attached storage
+# (/mnt/<mount>/files/<oN>/static/files, the mount itself possibly nested,
+# with no directory named files or static between /mnt and the mount, as
+# migratefs makes it and the nightly decides it).
 _run_in_own_store() {
-  local _a _r
+  local _a _r _m
   _a=$(realpath -e -- "/data/disk/${_H_USER}" 2> /dev/null) || return 1
   _r=$(realpath -e -- "${1}" 2> /dev/null) || return 1
   shift
-  case "${_r}/" in
-    "${_a}"/?*|*"/files/${_H_USER}/static/files/"?*) ;;
+  case "${_r}" in
+    ""|*[!A-Za-z0-9._/-]*) return 1 ;;
+    "${_a}"/?*) ;;
+    /mnt/?*/files/"${_H_USER}"/static/files/?*)
+      _m="${_r%%/files/"${_H_USER}"/static/files/*}"
+      case "${_m}" in
+        */files/*|*/static/*) return 1 ;;
+      esac
+      ;;
     *) return 1 ;;
   esac
   ( cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] && "$@" )

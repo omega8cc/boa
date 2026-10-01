@@ -94,6 +94,7 @@ fi
 ###-------------CONSTANTS------------------###
 
 _XMASS_STATE_FILE="/data/conf/xmass_state.cnf"
+_XMASS_ADMAIL_FILE="/data/conf/xmass_admail.txt"
 _REPL_USER="xmass_repl"
 _XTRA_STAGE_SRC="/var/backups/xmass_stage"
 _XTRA_STAGE_TGT="/var/backups/xmass_restore"
@@ -1218,7 +1219,7 @@ _xmass_php_coverage_gate() {
     deny)
       _alrt "DENY: target ${_t} lacks pinned PHP version(s): ${_miss} -- every affected"
       _alrt "DENY: site would silently serve on a different PHP after cutover."
-      _alrt "DENY: fix: 'xmass prep-target ${_t} --fix-php', or add '${_miss}' to"
+      _alrt "DENY: fix: 'xmass prep-target ${_t} --fix-php$(_xmass_admail_hint)', or add '${_miss}' to"
       _alrt "DENY: _PHP_MULTI_INSTALL in /root/.barracuda.cnf on the target and run"
       _alrt "DENY: 'barracuda up-<tree> system noscreen' there"
       _XMASS_NOT_CLEAN=YES
@@ -1985,12 +1986,12 @@ _xmass_solr_coverage_gate() {
         _alrt "DENY: blanket java deny [${_blanketclear}] -- a landed data tree suppresses"
         _alrt "DENY: BOA's installer for that version permanently, and the first tool-side"
         _alrt "DENY: signal after promotion is silently broken search."
-        _alrt "DENY: fix: 'xmass prep-target ${_t} --fix-solr', then re-run the DRY"
+        _alrt "DENY: fix: 'xmass prep-target ${_t} --fix-solr$(_xmass_admail_hint)', then re-run the DRY"
         _XMASS_NOT_CLEAN=YES
         return 1
       fi
       _alrt "repairable Solr coverage defects on ${_t} (see above) -- fix with"
-      _alrt "'xmass prep-target ${_t} --fix-solr' any time before promotion"
+      _alrt "'xmass prep-target ${_t} --fix-solr$(_xmass_admail_hint)' any time before promotion"
       return 0
     ;;
     strict)
@@ -2010,7 +2011,7 @@ _xmass_solr_coverage_gate() {
              " Fix: 'xmass prep-target ${_t} --fix-solr', then re-run."
       fi
       _alrt "repairable Solr coverage defects on ${_t} (see above) -- fix with"
-      _alrt "'xmass prep-target ${_t} --fix-solr' any time before promotion"
+      _alrt "'xmass prep-target ${_t} --fix-solr$(_xmass_admail_hint)' any time before promotion"
       return 0
     ;;
   esac
@@ -2049,9 +2050,9 @@ _xmass_verify_target_accounts() {
   if [ "${_on_missing}" = "deny" ]; then
     _alrt "DENY: account(s) missing or incomplete on target ${_t}: ${_bad}"
     _alrt "DENY: rsync into a never-installed account creates a root-owned tree with no"
-    _alrt "DENY: system user, no FPM pool and no vhost include -- run 'xmass prep-target ${_t}'"
+    _alrt "DENY: system user, no FPM pool and no vhost include -- run 'xmass prep-target ${_t}$(_xmass_admail_hint)'"
     [ -n "${_idonly}" ] \
-      && _alrt "DENY: installed but missing a system user (${_idonly}): 'xmass prep-target ${_t} --fix-users'"
+      && _alrt "DENY: installed but missing a system user (${_idonly}): 'xmass prep-target ${_t} --fix-users$(_xmass_admail_hint)'"
     _XMASS_NOT_CLEAN=YES
     return 1
   fi
@@ -2060,7 +2061,7 @@ _xmass_verify_target_accounts() {
          " Re-create it with 'xmass prep-target ${_t} --fix-users' (no install, no re-seed)."
   fi
   _die "account(s) missing or incomplete on target ${_t}: ${_bad}." \
-       " Run 'xmass prep-target ${_t}' to install and seed them first${_idonly:+ (installed but missing only a system user: ${_idonly} -- 'xmass prep-target ${_t} --fix-users')}."
+       " Run 'xmass prep-target ${_t}$(_xmass_admail_hint)' to install and seed them first${_idonly:+ (installed but missing only a system user: ${_idonly} -- 'xmass prep-target ${_t} --fix-users$(_xmass_admail_hint)')}."
 }
 
 ### Re-create a MISSING system identity (<acct>, <acct>.ftp) of an account that
@@ -2306,6 +2307,14 @@ _xmass_push_account_cnf() {
     fi
     printf '%s\n' "${_l}" >> "${_lTmp}"
   done
+  # A test migration (prep-target ran under admail=) keeps the account's
+  # upgrade notice off on the target, as its xoct create left it: the first
+  # Octopus pass there after the move would mail it to the client.
+  if [ -e "${_XMASS_ADMAIL_FILE}" ]; then
+    grep -v '^_SEND_UPGRADE_EMAIL=' "${_lTmp}" > "${_lTmp}.admail" \
+      && mv -f "${_lTmp}.admail" "${_lTmp}" \
+      && echo '_SEND_UPGRADE_EMAIL=NO' >> "${_lTmp}"
+  fi
   {
     echo '#!/bin/bash'
     echo "_cnf=\"${_dCnf}\""
@@ -4236,6 +4245,18 @@ _xmass_solr_check_target() {
 
 ###-------------ACCOUNT ENUMERATION------###
 
+# What keeps the account at $1 (/data/disk/<oN>) out of a migration, each
+# reason after a space; empty when it is eligible.
+_xmass_account_missing() {
+  local _udir="$1" _miss=""
+  [ -e "${_udir}/log/cores.txt" ]       || _miss="${_miss} log/cores.txt"
+  [ -e "${_udir}/log/option.txt" ]      || _miss="${_miss} log/option.txt"
+  [ -e "${_udir}/log/email.txt" ]       || _miss="${_miss} log/email.txt"
+  [ -e "${_udir}/tools/le/dehydrated" ] || _miss="${_miss} tools/le/dehydrated"
+  [ -e "${_udir}/log/CANCELLED" ]       && _miss="${_miss} log/CANCELLED(present)"
+  printf '%s' "${_miss}"
+}
+
 _xmass_enumerate_accounts() {
   _ELIGIBLE_ACCOUNTS=""
   local _oct _udir _miss _skipped="" _line
@@ -4250,12 +4271,7 @@ _xmass_enumerate_accounts() {
     # transferred and its vhosts are never converted, while the cutover reports
     # success. On a multi-account box the dropped account can be the one carrying
     # most of the traffic, so this must be visible BEFORE the operator commits.
-    _miss=""
-    [ -e "${_udir}/log/cores.txt" ]       || _miss="${_miss} log/cores.txt"
-    [ -e "${_udir}/log/option.txt" ]      || _miss="${_miss} log/option.txt"
-    [ -e "${_udir}/log/email.txt" ]       || _miss="${_miss} log/email.txt"
-    [ -e "${_udir}/tools/le/dehydrated" ] || _miss="${_miss} tools/le/dehydrated"
-    [ -e "${_udir}/log/CANCELLED" ]       && _miss="${_miss} log/CANCELLED(present)"
+    _miss="$(_xmass_account_missing "${_udir}")"
     if [ -z "${_miss}" ]; then
       _ELIGIBLE_ACCOUNTS="${_ELIGIBLE_ACCOUNTS} ${_oct}"
     else
@@ -6402,7 +6418,7 @@ _xmass_restore_hint() {
     _alrt "Still held on 503 here: the sites named under this box's hostname, and any"
     _alrt "account whose conversion failed. To RESUME, fix the cause reported with the"
     _alrt "final error, then re-run:"
-    _alrt "    xmass cutover ${_XMASS_TARGET_IP} --live"
+    _alrt "    xmass cutover ${_XMASS_TARGET_IP} --live$(_xmass_admail_hint)"
     _alrt "There is NO way back to this box as production: the target has taken live"
     _alrt "writes since the relay started, and abandoning it loses them."
     _xmass_start_cron_relay
@@ -6420,7 +6436,7 @@ _xmass_restore_hint() {
   if [ "${_XMASS_PHASE}" = "rename-failed" ]; then
     _alrt "This cutover is PARKED with the target already PROMOTED. To RESUME,"
     _alrt "fix the cause reported with the final error, then re-run:"
-    _alrt "    xmass cutover ${_XMASS_TARGET_IP} --live"
+    _alrt "    xmass cutover ${_XMASS_TARGET_IP} --live$(_xmass_admail_hint)"
     _alrt "EVERYTHING below is for ABANDONING the cutover and keeping THIS box"
     _alrt "as production instead -- do NOT follow it if you intend to resume."
   fi
@@ -6500,7 +6516,7 @@ _xmass_restore_hint() {
   if [ "${_XMASS_CUT_UNWIND_DUE}" = "YES" ]; then
     _xmass_cutover_unwind_solr
     _alrt "Source handed back (503 gate lifted). Confirm a site returns 200, then retry"
-    _alrt "with a fresh DRY run and 'xmass cutover ${_XMASS_TARGET_IP} --live'."
+    _alrt "with a fresh DRY run and 'xmass cutover ${_XMASS_TARGET_IP} --live$(_xmass_admail_hint)'."
   else
     _alrt "Then confirm a site returns 200 before deciding what to do next."
   fi
@@ -6921,10 +6937,17 @@ _xmass_convert_source_to_proxy() {
         _info "  ${_oct}: already proxied earlier; leaving as is"
         continue
       fi
+      # An xoct canary still in its test run (its record here) was proxied
+      # before this cutover, which left it alone: its own go-live ends it.
+      if [ -z "${_XMASS_ADMAIL}" ] && [ -e "/data/conf/xoct_admail.${_oct}.txt" ]; then
+        _info "  ${_oct}: an xoct canary still in its test run; leaving as is"
+        continue
+      fi
       # Already relaying: the repair pass converts what was deferred and
       # keeps quiet towards the client unless the promise changed.
       _info "  xoct proxy ${_oct} ${_tgt} --repair ..."
-      _XOCT_TARGET_FQDN="${_tgt_fqdn}" _XOCT_MY_FQDN="${_my_fqdn}" xoct proxy "${_oct}" "${_tgt}" --repair
+      _XOCT_TARGET_FQDN="${_tgt_fqdn}" _XOCT_MY_FQDN="${_my_fqdn}" xoct proxy "${_oct}" "${_tgt}" --repair \
+        ${_XMASS_ADMAIL:+"admail=${_XMASS_ADMAIL}"}
       _rc=$?
       if [ "${_rc}" -ne 0 ]; then
         _alrt "xoct proxy --repair returned rc=${_rc} for account ${_oct} -- its deferred sites stay held on 503"
@@ -6940,10 +6963,12 @@ _xmass_convert_source_to_proxy() {
       _xmass_plant_host_gate "${_oct}" "${_defer_fqdn}" \
         || _alrt "  ${_oct}: could not write the per-host gate here; xoct will retry and refuse without it"
       _info "  xoct proxy ${_oct} ${_tgt} --defer-host-named=${_defer_fqdn} ..."
-      xoct proxy "${_oct}" "${_tgt}" --defer-host-named="${_defer_fqdn}"
+      xoct proxy "${_oct}" "${_tgt}" --defer-host-named="${_defer_fqdn}" \
+        ${_XMASS_ADMAIL:+"admail=${_XMASS_ADMAIL}"}
     else
       _info "  xoct proxy ${_oct} ${_tgt} ..."
-      _XOCT_TARGET_FQDN="${_tgt_fqdn}" _XOCT_MY_FQDN="${_my_fqdn}" xoct proxy "${_oct}" "${_tgt}"
+      _XOCT_TARGET_FQDN="${_tgt_fqdn}" _XOCT_MY_FQDN="${_my_fqdn}" xoct proxy "${_oct}" "${_tgt}" \
+        ${_XMASS_ADMAIL:+"admail=${_XMASS_ADMAIL}"}
     fi
     _rc=$?
     if [ "${_rc}" -ne 0 ]; then
@@ -8815,14 +8840,16 @@ _xmass_create_src_host() {
 ###   - a create marker there names this box and the account, and the uid and
 ###     /data/disk/<oN> it records are the account's now (xoct create then
 ###     re-seeds it: this migration made it);
-###   - it carries no site: no registered site, no site on its platforms or
-###     on disk, no vhost but the panel's in its vhost.d and the stock include
-###     of that directory as its nginx config, and none of its trees swapped
-###     for a link (the panel alone: a fresh install's own o1);
-###   - or it relays to this box: its proxied.pid reads COMPLETE and its own
+###   - it relays to this box: its proxied.pid reads COMPLETE and its own
 ###     source-role policy record names this box and this account as the
 ###     peer, both written by root (a demoted failback box, whose migration
-###     proxied it here).
+###     proxied it here);
+###   - or it carries no site (no registered site, no site on its platforms
+###     or on disk, no vhost but the panel's in its vhost.d and the stock
+###     include of that directory as its nginx config, and none of its trees
+###     swapped for a link: the panel alone, such as a fresh install's own
+###     o1) and the operator named it with --adopt-siteless after checking
+###     it by hand; unnamed, it is refused with that flag spelled out.
 ### Anything else is refused here, before anything on the target changes: a
 ### create would re-seed config and credentials into an account that serves
 ### sites of its own. A probe that cannot be read refuses too. The accounts
@@ -8830,7 +8857,7 @@ _xmass_create_src_host() {
 ### --adopt puts the marker for each. Read-only on the target.
 _xmass_target_owner_gate() {
   local _t="$1" _h _a _rmt _out _nu _ni _mh _mo _mu _mi _held _inv _vh _lnk
-  local _rel _rrole _rself _rpeer _roct _mine _deny=""
+  local _rel _rrole _rself _rpeer _roct _mine _deny="" _siteless=""
   _XMASS_ADOPT_ACCOUNTS=""
   if ! _h="$(_xmass_create_src_host)"; then
     _die "this box's hostname -f is not a hostname the create marker can name;" \
@@ -8947,11 +8974,6 @@ OWNSH
     _inv=$(printf '%s\n' "${_out}" | grep '^SITES=' | tail -1)
     _vh=$(printf '%s\n' "${_out}" | grep -m1 '^VHOSTS=' | cut -d= -f2-)
     _lnk=$(printf '%s\n' "${_out}" | grep '^LINKED=' | cut -d= -f2- | tr '\n' ' ')
-    if [ "${_inv}" = "SITES=0/0/0" ] && [ "${_vh}" = "0" ] && [ -z "${_lnk}" ]; then
-      _info "  ${_a}: held on ${_t} with no site (the panel alone): adopted for this migration"
-      _XMASS_ADOPT_ACCOUNTS="${_XMASS_ADOPT_ACCOUNTS} ${_a}"
-      continue
-    fi
     # Only the record's own peer counts: a source-role record names the one
     # address its conversion dialed, never a list.
     _rel=$(printf '%s\n' "${_out}" | grep -m1 -x 'RELAY=YES')
@@ -8965,6 +8987,23 @@ OWNSH
       && printf '%s\n' ${_mine} | grep -qxF -- "${_rpeer}"; then
       _info "  ${_a}: held on ${_t} and relaying to this box (a demoted failback account): adopted for this migration"
       _XMASS_ADOPT_ACCOUNTS="${_XMASS_ADOPT_ACCOUNTS} ${_a}"
+      continue
+    fi
+    # One with no site is taken only when the operator names it: nothing on
+    # the target proves whose it is (a fresh install's own panel, or another
+    # client's account that has no site yet), so only a look there can tell.
+    if [ "${_inv}" = "SITES=0/0/0" ] && [ "${_vh}" = "0" ] && [ -z "${_lnk}" ]; then
+      case ",${_XMASS_ADOPT_SITELESS}," in
+        *",${_a},"*)
+          _info "  ${_a}: held on ${_t} with no site (the panel alone): adopted for this migration (--adopt-siteless)"
+          _XMASS_ADOPT_ACCOUNTS="${_XMASS_ADOPT_ACCOUNTS} ${_a}"
+          continue
+        ;;
+      esac
+      _deny="${_deny} ${_a}"
+      _siteless="${_siteless}${_siteless:+,}${_a}"
+      _alrt "DENY: ${_a}: ${_t} already holds an account of that name which no create of this migration marked;"
+      _alrt "DENY: it carries no site (the panel alone) and does not relay to this box: check on ${_t} by hand whose it is"
       continue
     fi
     _deny="${_deny} ${_a}"
@@ -8981,6 +9020,10 @@ OWNSH
     _alrt "  if it really is this migration's, mark it on ${_t} by hand, then re-run prep-target:"
     _alrt "  (umask 077; printf '_MIG_CREATE_SRC_HOST=%s\n_MIG_CREATE_SRC_OCT=%s\n_MIG_CREATE_TGT_UID=%s\n_MIG_CREATE_TGT_INODE=%s\n' ${_h} ${_a} \"\$(id -u ${_a})\" \"\$(stat -c %i:%W /data/disk/${_a})\" > /root/.${_a}.migration-create.txt)"
   done
+  if [ -n "${_siteless}" ]; then
+    _alrt "  a site-less account checked by hand as this migration's to take is adopted with:"
+    _alrt "    xmass prep-target ${_t} --adopt-siteless=${_siteless}$(_xmass_admail_hint)"
+  fi
   if [ -n "${_deny}" ]; then
     _die "prep-target refused for account(s)${_deny} on ${_t} (the lines above);" \
          " nothing was changed there. Move such an account out of the way on ${_t}," \
@@ -9045,6 +9088,10 @@ _xmass_cmd_prep_target() {
     fi
     return 0
   fi
+  # The full lane installs every account through xoct, which refuses one an
+  # earlier xoct test run recorded here unless admail= is given: asked now,
+  # before any pass is driven.
+  _xmass_xoct_admail_gate prep-target
   _xmass_enumerate_accounts
   _xmass_prepare_target_reach "${_tgt}"
   ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "echo SSH_OK" \
@@ -9060,6 +9107,10 @@ _xmass_cmd_prep_target() {
             " ${_XMASS_SRC_IP:-<source-ip>}' so it cannot come back;" \
             " (3) first contact needs the target's host key here —" \
             " 'ssh-keyscan -H ${_tgt} >> /root/.ssh/known_hosts'."
+  # A target that holds its clients' mail for a test run takes no real
+  # prep-target (the earlier test run of this box's own excepted: its hold
+  # goes with its record where the installs begin).
+  _xmass_hold_gate prep-target
   # Accounts of the same name the target already holds: refused before the
   # target changes at all when this migration may not take them.
   _xmass_target_owner_gate "${_tgt}"
@@ -9190,6 +9241,10 @@ _xmass_cmd_prep_target() {
   case "$(xoct 2> /dev/null)" in
     *'[--adopt]'*) _adopt_ok=YES ;;
   esac
+  # A test run is recorded (or an earlier one's record dropped) here, where
+  # the installs begin: a prep-target stopped by a precondition above leaves
+  # the record as it was.
+  _xmass_admail_record
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     if ! _xmass_wait_target_silent "${_tgt}" "creating ${_oct}" warn full; then
       _alrt "not creating ${_oct}: ${_tgt} never went silent"
@@ -9203,10 +9258,16 @@ _xmass_cmd_prep_target() {
       esac
     fi
     _info "Preparing account ${_oct} on ${_tgt} ..."
+    # A whole-box move carries every account: xoct's refusal of an internal
+    # one (our own address in log/email.txt) is for a move of one account.
+    # Under admail= this run's record is xmass's own (_XMASS_ADMAIL_FILE,
+    # which holds the cutover): the create puts none of xoct's.
     if [ "${_XMASS_FIX_PHP}" = "YES" ]; then
-      xoct create "${_oct}" "${_tgt}" --fix-php ${_adopt:+"${_adopt}"}
+      _XOCT_BOX_MOVE=YES _XOCT_XMASS_RUN=YES xoct create "${_oct}" "${_tgt}" --fix-php ${_adopt:+"${_adopt}"} \
+        ${_XMASS_ADMAIL:+"admail=${_XMASS_ADMAIL}"}
     else
-      xoct create "${_oct}" "${_tgt}" ${_adopt:+"${_adopt}"}
+      _XOCT_BOX_MOVE=YES _XOCT_XMASS_RUN=YES xoct create "${_oct}" "${_tgt}" ${_adopt:+"${_adopt}"} \
+        ${_XMASS_ADMAIL:+"admail=${_XMASS_ADMAIL}"}
     fi
     _rc=$?
     if [ "${_rc}" -ne 0 ]; then
@@ -10583,7 +10644,7 @@ REMOTE
   _info "  Replication from ${_XMASS_SRC_IP} to ${_tgt} is running."
   _info "  Run 'xmass sync ${_tgt}' to sync files (repeat as often as needed)."
   _info "  Run 'xmass status ${_tgt}' to check replication lag."
-  _info "  When ready: 'xmass cutover ${_tgt} [--proxy-mode=...] [--proxy-deadline=...]'"
+  _info "  When ready: 'xmass cutover ${_tgt} [--proxy-mode=...] [--proxy-deadline=...]$(_xmass_admail_hint)'"
   if [ -n "${_XMASS_MODE_UNDECLARED}" ]; then
     _info "  NB: undeclared proxy modes above must be resolved before cutover --live."
   fi
@@ -11789,6 +11850,12 @@ _xmass_cutover_finish() {
   # wrong search results on a cutover this tool then calls successful.
   _xmass_solr_core_parity "${_tgt}"
 
+  # Step 14.9: each moved account's one-pass upgrade-notice marker on the
+  # target, before its runners and cron return (the first pass after the
+  # move sends no upgrade notice; prep-target's own pass may have taken the
+  # marker its create put).
+  _xmass_upgrade_skip_put_target "${_tgt}"
+
   # Step 15: Start cron and restore BOA runners on target
   _info "Starting cron and restoring BOA runners on target ${_tgt} ..."
   ssh root@"${_tgt}" bash <<'REMOTE'
@@ -12000,15 +12067,19 @@ REMOTE
     _alrt "  Accounts NOT converted to proxy:${_XMASS_PROXY_CONV_FAILED}"
     _alrt "  They stay 503-gated on this source, their dispatchers parked; fix the"
     _alrt "  cause and re-run for each (a successful run lifts the gate itself):"
-    _alrt "    ${_rpx}xoct proxy <oN> ${_tgt}"
+    _alrt "    ${_rpx}xoct proxy <oN> ${_tgt}${_XMASS_ADMAIL:+ admail=${_XMASS_ADMAIL}}"
   fi
   if [ -n "${_XMASS_PROXY_DEFER_FAILED}" ]; then
     _alrt "  Accounts whose sites named under the old box hostname were NOT converted:${_XMASS_PROXY_DEFER_FAILED}"
     _alrt "  Those sites stay held on 503 here (per-host gate); fix the cause and re-run for each:"
-    _alrt "    ${_rpx}xoct proxy <oN> ${_tgt} --repair"
+    _alrt "    ${_rpx}xoct proxy <oN> ${_tgt} --repair${_XMASS_ADMAIL:+ admail=${_XMASS_ADMAIL}}"
   fi
   _info "  Proxy modes are per account: see 'xoct proxy-mode --all' on this box"
   _info "  Next: run 'xmass post-mig' on the TARGET after DNS is updated"
+  if [ -n "${_XMASS_ADMAIL}" ]; then
+    _info "  A test run (admail=${_XMASS_ADMAIL}): no client was told of the move and the"
+    _info "  target holds its clients' mail; 'xmass go-live ${_tgt}' makes it the real move"
+  fi
   _info "======================================================"
 }
 
@@ -12031,7 +12102,7 @@ _xmass_cmd_cutover() {
     # everything up to and including the target promotion already happened and
     # cannot re-run. Resume the cutover tail from step 11.
     [ "${_MODE}" = "LIVE" ] \
-      || _die "cutover is parked at phase 'rename-failed' — re-run 'xmass cutover ${_XMASS_TARGET_IP} --live' to resume the parked cutover tail"
+      || _die "cutover is parked at phase 'rename-failed' — re-run 'xmass cutover ${_XMASS_TARGET_IP} --live$(_xmass_admail_hint)' to resume the parked cutover tail"
     _tgt="${_XMASS_TARGET_IP}"
     [ -z "${_tgt}" ] && _die "No target IP in state file — cannot resume"
     # A park only exists past the step-8 promotion, so any hint printed from
@@ -12215,7 +12286,7 @@ _xmass_cmd_cutover() {
   # mandated screen for years); make the discipline a refusal instead of lore.
   if [ -z "${STY}" ] && [ -z "${TMUX}" ] && [ "${_XMASS_NO_SCREEN}" != "YES" ]; then
     _die "cutover --live outside screen/tmux: a dropped session strands the source on 503." \
-         " Run: screen -dmS xmass xmass cutover ${_tgt} --live" \
+         " Run: screen -dmS xmass xmass cutover ${_tgt} --live$(_xmass_admail_hint)" \
          " (or export _XMASS_NO_SCREEN=YES to override deliberately)"
   fi
 
@@ -12643,10 +12714,365 @@ _xmass_heal_fpm_pins() {
   done
 }
 
+###-------------TEST RUNS (admail=)-------###
+
+# The installed xoct must take admail=: an older one reads the token as the
+# target account's rename, and mails the clients.
+_xmass_xoct_admail_ok() {
+  [ -n "${_XMASS_ADMAIL}" ] || return 0
+  case "$(xoct 2> /dev/null)" in
+    *'admail=<address>'*) return 0 ;;
+  esac
+  _die "the installed xoct does not take admail=: refusing a test run that would mail the clients" \
+       "(refresh the migration tools first)"
+}
+
+# The admail= a printed prep-target or cutover line carries: this run's,
+# else the one a test run recorded here, so a line copied from a sync's
+# refusal keeps the test run (a prep-target without it removes the record
+# and the hold). A prep-target run without it is the start of a real move,
+# so the lines it prints carry none: run as printed, they finish that move.
+_xmass_admail_hint() {
+  local _r="${_XMASS_ADMAIL}"
+  if [ -z "${_r}" ] && [ "${_cmd}" != "prep-target" ] && [ -e "${_XMASS_ADMAIL_FILE}" ]; then
+    _r="$(head -n1 "${_XMASS_ADMAIL_FILE}" 2> /dev/null | tr -cd '[:print:]')"
+  fi
+  [ -n "${_r}" ] && printf ' admail=%s' "${_r}"
+  return 0
+}
+
+# The target's box-level mail hold, as xoct keeps it: root's
+# /data/conf/client_mail_hold.txt, 0644, holding one plain address, makes
+# BOA's own senders on that box deliver every mail addressed to a client to
+# that address alone. Prints the address it holds, NONE, or nothing when
+# the target cannot be read. $1 = the target.
+_XMASS_HOLD_FILE="/data/conf/client_mail_hold.txt"
+_xmass_hold_read() {
+  local _o
+  _o=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"$1" "if [ -e ${_XMASS_HOLD_FILE} ]; then head -n 1 ${_XMASS_HOLD_FILE} | tr -cd '[:print:]' | cut -c1-200; echo; echo HOLD-HAD; else echo HOLD-NONE; fi" 2> /dev/null)
+  case "${_o}" in
+    *HOLD-HAD*) printf '%s\n' "${_o}" | head -n 1 ;;
+    *HOLD-NONE*) echo NONE ;;
+  esac
+}
+
+# The mark a test run of this box leaves on its target: root's
+# /data/conf/xmass_test_run.<this box's hostname>.txt, 0644, holding the
+# run's admail=. The target's hold is this run's too while it is there, so
+# a canary's go-live on that box and a real run of another box keep the
+# hold, and xoct refuses a token-less verb there. Prints the path; status 1
+# when this box's hostname -f is not one a file name can carry.
+_xmass_test_run_mark() {
+  local _h
+  _h="$(_xmass_create_src_host)" || return 1
+  printf '/data/conf/xmass_test_run.%s.txt' "${_h}"
+}
+
+# xoct's record of a canary a box moves away (on its source) carries this
+# line after the address: that canary's client mail is held on its target,
+# so a hold on the box it leaves never counts it as a user (xoct's
+# _XOCT_ADMAIL_SRC_LINE, the same text).
+_XMASS_XOCT_SRC_LINE='_XOCT_ADMAIL_ROLE=source'
+
+# The test runs recorded on the target $1 besides this box's own (its mark
+# $2) whose client mail the target's hold holds: the names of xoct's records
+# of the accounts that box received and of the other boxes' marks there,
+# space separated; NONE when there are none, nothing when the target cannot
+# be read.
+_xmass_hold_others() {
+  local _o
+  _o=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"$1" "_l=''; for _f in /data/conf/xoct_admail.*.txt /data/conf/xmass_test_run.*.txt; do [ -e \"\${_f}\" ] || continue; [ \"\${_f}\" = '$2' ] && continue; grep -qxF '${_XMASS_XOCT_SRC_LINE}' \"\${_f}\" 2> /dev/null && continue; _l=\"\${_l} \${_f##*/}\"; done; echo \"OTHERS\${_l:- NONE}\"" 2> /dev/null)
+  case "${_o}" in
+    "OTHERS "*) printf '%s' "${_o#OTHERS }" ;;
+  esac
+}
+
+# prep-target records its admail= (root's file, 0644 as every Octopus pass
+# leaves a file in /data/conf: it holds a test address, nothing secret),
+# holds the target's client mail for it when no hold is there, and marks the
+# target with this run (_xmass_test_run_mark); run without it, removes the
+# record an earlier test run left, its mark, and the target's hold when it
+# holds that run's address and no other test run is recorded there. A
+# target that cannot be read keeps the record: the prep-target stops there.
+_xmass_admail_record() {
+  local _rec _h _mk _o
+  _mk="$(_xmass_test_run_mark)" \
+    || _die "this box's hostname -f is not a hostname the target's test-run mark can name"
+  if [ -n "${_XMASS_ADMAIL}" ]; then
+    mkdir -p "$(dirname "${_XMASS_ADMAIL_FILE}")"
+    ( umask 022; printf '%s\n' "${_XMASS_ADMAIL}" > "${_XMASS_ADMAIL_FILE}" ) \
+      || _die "could not record admail= in ${_XMASS_ADMAIL_FILE}"
+    _info "admail=${_XMASS_ADMAIL}: every client notice of this migration goes there alone;" \
+          "pass the same admail= to cutover"
+    _h="$(_xmass_hold_read "${_tgt}")"
+    case "${_h}" in
+      NONE)
+        ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "mkdir -p /data/conf && ( umask 022; printf '%s\n' '${_XMASS_ADMAIL}' > ${_XMASS_HOLD_FILE}.tmp ) && chown root:root ${_XMASS_HOLD_FILE}.tmp && mv -f ${_XMASS_HOLD_FILE}.tmp ${_XMASS_HOLD_FILE}" 2> /dev/null \
+          || _die "could not put ${_XMASS_HOLD_FILE} on ${_tgt}: nothing was installed"
+        _info "admail=${_XMASS_ADMAIL}: ${_XMASS_HOLD_FILE} on ${_tgt} holds every client mail of that box for it"
+      ;;
+      "${_XMASS_ADMAIL}")
+        _info "admail=${_XMASS_ADMAIL}: ${_XMASS_HOLD_FILE} on ${_tgt} already holds client mail for it"
+      ;;
+      "")
+        _die "could not read ${_XMASS_HOLD_FILE} on ${_tgt}: nothing was installed"
+      ;;
+      *)
+        _alrt "${_XMASS_HOLD_FILE} on ${_tgt} holds client mail for another address (${_h}); left as it is"
+      ;;
+    esac
+    ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "mkdir -p /data/conf && ( umask 022; printf '%s\n' '${_XMASS_ADMAIL}' > ${_mk}.tmp ) && chown root:root ${_mk}.tmp && mv -f ${_mk}.tmp ${_mk}" 2> /dev/null \
+      || _die "could not put ${_mk} on ${_tgt}: nothing was installed"
+    _info "admail=${_XMASS_ADMAIL}: ${_mk} on ${_tgt} marks this test run there"
+  elif [ -e "${_XMASS_ADMAIL_FILE}" ]; then
+    _rec="$(head -n1 "${_XMASS_ADMAIL_FILE}" 2> /dev/null | tr -cd '[:print:]')"
+    _h="$(_xmass_hold_read "${_tgt}")"
+    [ -n "${_h}" ] \
+      || _die "could not read ${_XMASS_HOLD_FILE} on ${_tgt}; the record of the earlier test run is kept"
+    _o="$(_xmass_hold_others "${_tgt}" "${_mk}")"
+    [ -n "${_o}" ] \
+      || _die "could not read the test runs recorded on ${_tgt}; the record of the earlier test run is kept"
+    ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "rm -f ${_mk}" 2> /dev/null \
+      || _die "could not remove ${_mk} on ${_tgt}; the record of the earlier test run is kept"
+    if [ -n "${_rec}" ] && [ "${_h}" = "${_rec}" ]; then
+      if [ "${_o}" = "NONE" ]; then
+        ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "rm -f ${_XMASS_HOLD_FILE}" 2> /dev/null \
+          || _die "could not remove ${_XMASS_HOLD_FILE} on ${_tgt}; the record of the earlier test run is kept"
+        _alrt "prepared without admail=: ${_XMASS_HOLD_FILE} on ${_tgt} (the earlier test run's) is removed"
+      else
+        _alrt "prepared without admail=: ${_XMASS_HOLD_FILE} on ${_tgt} is kept for the other test runs recorded there: ${_o}"
+      fi
+    fi
+    rm -f "${_XMASS_ADMAIL_FILE}"
+    _alrt "prepared without admail=: the record of an earlier test run is removed; the clients will be mailed"
+  fi
+}
+
+# A real run (no admail=) refuses while the target holds its clients' mail
+# (_XMASS_HOLD_FILE), before anything changes there: the moved clients
+# would never be mailed. prep-target passes the hold this box's own earlier
+# test run put (the address of its record) when no other test run is
+# recorded there: it removes the two together. A target that cannot be read
+# passes: the run's own contact reports it. $1 = the verb.
+_xmass_hold_gate() {
+  local _h _rec="" _mk _o
+  [ -n "${_XMASS_ADMAIL}" ] && return 0
+  _h="$(_xmass_hold_read "${_tgt}")"
+  case "${_h}" in
+    NONE|"") return 0 ;;
+  esac
+  if [ "$1" = "prep-target" ] && [ -e "${_XMASS_ADMAIL_FILE}" ]; then
+    _rec="$(head -n1 "${_XMASS_ADMAIL_FILE}" 2> /dev/null | tr -cd '[:print:]')"
+    if [ "${_h}" = "${_rec}" ]; then
+      _mk="$(_xmass_test_run_mark)" || _mk=""
+      _o="$(_xmass_hold_others "${_tgt}" "${_mk}")"
+      [ "${_o}" = "NONE" ] && return 0
+      _die "${_tgt} holds its clients' mail for ${_h} for this box's earlier test run and for other" \
+           "test runs recorded there (${_o:-that could not be read}): a real prep-target would leave" \
+           "the moved clients' mail held there. End those first ('xoct go-live' for each canary moved" \
+           "there, 'xmass go-live' on the box of each whole-box test), then re-run prep-target"
+    fi
+  fi
+  _die "${_tgt} holds its clients' mail for ${_h} (${_XMASS_HOLD_FILE}, put by a test run):" \
+       "a real $1 would leave the moved clients' mail held there. End that test run first" \
+       "('xoct go-live' for a canary; on the box that ran a whole-box test, 'xmass go-live'" \
+       "after its cutover or prep-target without admail= before it), or remove the file on" \
+       "${_tgt} by hand once no test run needs it"
+}
+
+# An account an earlier xoct test run recorded here (xoct's
+# /data/conf/xoct_admail.<oN>.txt) makes every xoct verb for it refuse
+# without its admail=: a prep-target without admail= would fail it account
+# by account, and a cutover would leave it unconverted after the source's
+# sites went down. Refused up front instead. The records of accounts the
+# run leaves alone anyway (not eligible, or proxied before it) do not count.
+# admail= is no way out for a real move: it makes the whole run a test for
+# every account, and no client is told of the move. $1 = the verb.
+_xmass_xoct_admail_gate() {
+  local _f _a _l=""
+  [ -n "${_XMASS_ADMAIL}" ] && return 0
+  for _f in /data/conf/xoct_admail.*.txt; do
+    [ -e "${_f}" ] || continue
+    _a="${_f#/data/conf/xoct_admail.}"
+    _a="${_a%.txt}"
+    [ -d "/data/disk/${_a}" ] || continue
+    [ -z "$(_xmass_account_missing "/data/disk/${_a}")" ] || continue
+    [ -e "/data/disk/${_a}/log/proxied.pid" ] && continue
+    _l="${_l} ${_f}"
+  done
+  [ -z "${_l}" ] && return 0
+  _die "an xoct canary is still in its test run here:${_l} -- xoct refuses those accounts without" \
+       "their admail=. admail= on $1 would make the whole run a test for every account, and no" \
+       "client would be told of the move. For a real move, first end each canary's test run with" \
+       "'xoct go-live <oN> <target-ip>', which removes its records and mails its client"
+}
+
+# A cutover of accounts prepared under admail= refuses to run without it.
+_xmass_admail_gate() {
+  local _rec
+  [ -n "${_XMASS_ADMAIL}" ] && return 0
+  _xmass_xoct_admail_gate cutover
+  [ -e "${_XMASS_ADMAIL_FILE}" ] || return 0
+  _rec="$(head -n1 "${_XMASS_ADMAIL_FILE}" 2> /dev/null | tr -cd '[:print:]')"
+  _die "the accounts were prepared under admail=${_rec} (a test run): pass admail=${_rec} to run" \
+       "this cutover as that test. For a real move, run prep-target without admail= first (it" \
+       "removes the record and the target's mail hold), then cutover without it"
+}
+
+# Every account the cutover moves gets its one-pass marker on the promoted
+# target when it is absent (xoct's /data/conf/<oN>_skip_upgrade_email.txt):
+# the pass prep-target armed there may have taken the one its create put
+# before any data moved (an adopted account installed with its own setup
+# mail), and xmass runs no import to put it again. The first pass after the
+# move that would mail the account's upgrade notice sends none. Not for an
+# account whose switch here is NO: no pass of it would take the marker.
+# $1 = the target.
+_xmass_upgrade_skip_put_target() {
+  local _t="$1" _oct _s _l=""
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _s="$(grep -a '^_SEND_UPGRADE_EMAIL=' "/root/.${_oct}.octopus.cnf" 2> /dev/null \
+      | tail -n 1 | cut -d= -f2- | tr -d '"')"
+    [ "${_s}" = "NO" ] && continue
+    _l="${_l} ${_oct}"
+  done
+  [ -n "${_l}" ] || return 0
+  if ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "mkdir -p /data/conf || exit 1; for _a in${_l}; do _f=/data/conf/\${_a}_skip_upgrade_email.txt; [ -e \"\${_f}\" ] && continue; ( umask 022; printf '%s\n' 'xmass cutover $(date -u '+%F %T') UTC' > \"\${_f}.tmp\" ) && mv -f \"\${_f}.tmp\" \"\${_f}\" || exit 1; done" 2> /dev/null; then
+    _info "  the first Octopus pass on ${_t} that would mail an upgrade notice sends none for:${_l}"
+  else
+    _alrt "  could not put the one-pass upgrade-notice markers on ${_t} (${_l# }): the first pass"
+    _alrt "  there may mail an account's upgrade notice"
+  fi
+}
+
+# go-live <target-ip>, on the source, once the cutover of a test run
+# (admail= on prep-target and cutover) to that target is complete: the test
+# run becomes the real move. Each account the cutover moved (proxied to that
+# target, no xoct test run of its own; one it could not convert holds the
+# run until it is converted) goes live with 'xoct go-live': its
+# upgrade switch there takes this box's value again, and its client gets
+# the completion notice it never had. Then the target's mark of this run
+# goes, the target's hold when it holds the run's address and no other test
+# run is recorded there, and last this box's record. An account that cannot
+# go live keeps the record, so every xoct verb here stays held to the token
+# until a re-run finishes. A re-run is a no-op.
+_xmass_cmd_go_live() {
+  local _rec="" _mk _oct _p _failed="" _out _l _tf _mf
+  _xmass_load_state
+  if [ "${_XMASS_PHASE}" != "complete" ] || [ "${_XMASS_TARGET_IP}" != "${_tgt}" ]; then
+    _die "go-live ends a test run whose cutover to ${_tgt} is complete (phase ${_XMASS_PHASE:-none}," \
+         "target ${_XMASS_TARGET_IP:-none}). Before the cutover a real move starts again with" \
+         "'xmass prep-target ${_tgt}' without admail="
+  fi
+  _mk="$(_xmass_test_run_mark)" \
+    || _die "this box's hostname -f is not a hostname the target's test-run mark can name"
+  case "$(xoct 2> /dev/null)" in
+    *'{go-live}'*) : ;;
+    *) _die "the installed xoct has no go-live: refresh the migration tools first" ;;
+  esac
+  [ -e "${_XMASS_ADMAIL_FILE}" ] && _rec="$(head -n1 "${_XMASS_ADMAIL_FILE}" 2> /dev/null | tr -cd '[:print:]')"
+  _xmass_enumerate_accounts
+  _info "go-live of the test run${_rec:+ under admail=${_rec}} to ${_tgt} ..."
+  # Read once, as the cutover's final pass hands them to xoct's repair.
+  _tf=$(ssh -o ConnectTimeout=10 -o BatchMode=yes root@"${_tgt}" "hostname -f" 2> /dev/null)
+  _mf=$(_xmass_src_fqdn)
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    if [ -e "/data/conf/xoct_admail.${_oct}.txt" ]; then
+      _alrt "  ${_oct}: an xoct canary in a test run of its own: 'xoct go-live ${_oct} <its target-ip>' ends it"
+      continue
+    fi
+    # Not proxied: the cutover's failed conversion (it marked the account
+    # log/proxy-failed.pid) holds the run until it is converted; any other
+    # account came or was made here after the cutover, and is no part of it.
+    if [ ! -e "/data/disk/${_oct}/log/proxied.pid" ]; then
+      if [ -e "/data/disk/${_oct}/log/proxy-failed.pid" ]; then
+        _alrt "  ${_oct}: the cutover could not convert it: 'xoct proxy ${_oct} ${_tgt}${_rec:+ admail=${_rec}}'"
+        _alrt "  converts it, then re-run go-live"
+        _failed="${_failed} ${_oct}"
+      else
+        _info "  ${_oct}: not proxied and no failed conversion recorded (log/proxy-failed.pid); not part of this run"
+      fi
+      continue
+    fi
+    _p="$(_mig_get "/data/disk/${_oct}/${_MIG_CNF_NAME}" _MIG_PEER_IP)"
+    if [ "${_p}" != "${_tgt}" ]; then
+      _info "  ${_oct}: proxied to ${_p:-another box} before this run; not part of it"
+      continue
+    fi
+    _info "  xoct go-live ${_oct} ${_tgt} ..."
+    if ! _XOCT_XMASS_GOLIVE=YES _XOCT_TARGET_FQDN="${_tf}" _XOCT_MY_FQDN="${_mf}" \
+      xoct go-live "${_oct}" "${_tgt}"; then
+      _alrt "  ${_oct}: xoct go-live did not finish (above)"
+      _failed="${_failed} ${_oct}"
+    fi
+  done
+  if [ -n "${_failed}" ]; then
+    _die "go-live did not finish for:${_failed} (above); the record of the test run is kept." \
+         "Fix the cause, then re-run 'xmass go-live ${_tgt}'"
+  fi
+  # The address and the path are checked (admail='s pattern, a hostname), so
+  # each goes into the remote line as is.
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_tgt}" "_mk='${_mk}'; _rec='${_rec}'; _h=${_XMASS_HOLD_FILE}; if [ -e \"\${_mk}\" ]; then rm -f \"\${_mk}\" || { echo MARK-STUCK; exit 1; }; echo MARK-GONE; fi; if [ -e \"\${_h}\" ]; then _hv=\$(head -n 1 \"\${_h}\" | tr -cd '[:print:]' | cut -c1-200); _more=''; for _o in /data/conf/xoct_admail.*.txt /data/conf/xmass_test_run.*.txt; do [ -e \"\${_o}\" ] || continue; grep -qxF '${_XMASS_XOCT_SRC_LINE}' \"\${_o}\" 2> /dev/null && continue; _more=\"\${_more} \${_o##*/}\"; done; if [ -n \"\${_more}\" ]; then echo \"HOLD-KEPT \${_hv}\${_more}\"; elif [ -n \"\${_rec}\" ] && [ \"\${_hv}\" = \"\${_rec}\" ]; then rm -f \"\${_h}\" || { echo HOLD-STUCK; exit 1; }; echo HOLD-GONE; else echo \"HOLD-OTHER \${_hv}\"; fi; fi; echo GOLIVE-TARGET-OK" 2> /dev/null)
+  while IFS= read -r _l; do
+    case "${_l}" in
+      MARK-GONE) _info "${_tgt}: removed ${_mk}" ;;
+      HOLD-GONE) _info "${_tgt}: removed ${_XMASS_HOLD_FILE}: the box mails its clients again" ;;
+      "HOLD-KEPT "*)
+        _l="${_l#HOLD-KEPT }"
+        _alrt "${_tgt}: ${_XMASS_HOLD_FILE} (${_l%% *}) kept: another test run is recorded there (${_l#* })"
+      ;;
+      "HOLD-OTHER "*) _alrt "${_tgt}: ${_XMASS_HOLD_FILE} holds client mail for ${_l#HOLD-OTHER }, which this test run did not put; left as it is" ;;
+    esac
+  done <<< "${_out}"
+  case "${_out}" in
+    *GOLIVE-TARGET-OK*) : ;;
+    *) _die "go-live could not finish on ${_tgt} (unreachable, or a file there could not be removed);" \
+            "the record of the test run is kept: re-run 'xmass go-live ${_tgt}' once it answers" ;;
+  esac
+  if [ -e "${_XMASS_ADMAIL_FILE}" ]; then
+    rm -f "${_XMASS_ADMAIL_FILE}" || _die "could not remove ${_XMASS_ADMAIL_FILE}"
+    _info "removed ${_XMASS_ADMAIL_FILE}: every xoct verb here mails the clients again"
+  fi
+  _info "go-live COMPLETE: the test run to ${_tgt} is the real move"
+}
+
 ###=============ARGUMENT PARSING==========###
 
 _cmd="$1"
 shift 2>/dev/null || true
+
+# admail=<address>, for prep-target and cutover: a test or canary run that
+# must never mail a client. Handed to every xoct create and proxy this run
+# makes, so each client notice goes to that address alone, each install
+# runs with its welcome mail held back and each account's upgrade notice is
+# off on the target (the syncs keep it off while the record below exists);
+# the accounts keep their own addresses. The token 'boa in-octopus' takes,
+# handled the same way: taken out before the positionals are read, and
+# refused unless it holds one plain address in the form the reader of the
+# target's mail hold takes too (as in xoct). prep-target records it in
+# _XMASS_ADMAIL_FILE (and removes the record when run without it), and a
+# cutover of accounts prepared under it refuses to run without it, so a test
+# migration cannot mail its clients at the conversion by one forgotten token.
+# go-live ends the test run once its cutover is complete.
+_XMASS_ADMAIL=""
+_XMASS_ADMAIL_SET=NO
+_margs=()
+for _a in "$@"; do
+  case "${_a}" in
+    admail=*) _XMASS_ADMAIL="${_a#admail=}"; _XMASS_ADMAIL_SET=YES ;;
+    *) _margs+=("${_a}") ;;
+  esac
+done
+set -- "${_margs[@]}"
+if [ "${_XMASS_ADMAIL_SET}" = "YES" ]; then
+  case "${_cmd}" in
+    prep-target|cutover) : ;;
+    *) _die "admail= applies to prep-target and cutover only (the verbs that reach the clients' mail)" ;;
+  esac
+  if ! [[ "${_XMASS_ADMAIL}" =~ ^[A-Za-z0-9_][A-Za-z0-9._%+-]*@[A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,}$ ]] \
+    || [[ "${_XMASS_ADMAIL}" == -* ]]; then
+    _die "admail= must carry one plain address, got: '${_XMASS_ADMAIL//[^[:print:]]/?}'"
+  fi
+fi
 
 # The DRY/live gate applies ONLY to the mass-cutover transfer commands — `sync` and
 # `cutover`. Utility commands (pre-mig, post-mig, init, status) run unaffected (LIVE)
@@ -12781,15 +13207,23 @@ case "${_cmd}" in
     _XMASS_FIX_SOLR=""
     _XMASS_FIX_USERS=""
     _XMASS_PREP_UNDER_HOLD=""
+    _XMASS_ADOPT_SITELESS=""
     while [ $# -gt 0 ]; do
       case "$1" in
         --fix-php) _XMASS_FIX_PHP=YES; shift ;;
         --fix-solr) _XMASS_FIX_SOLR=YES; shift ;;
         --fix-users) _XMASS_FIX_USERS=YES; shift ;;
+        --adopt-siteless=*)
+          # the site-less same-name accounts on the target the operator
+          # checked by hand, comma-separated account names
+          _XMASS_ADOPT_SITELESS="${1#*=}"
+          [[ "${_XMASS_ADOPT_SITELESS}" =~ ^[a-zA-Z0-9][a-zA-Z0-9._-]*(,[a-zA-Z0-9][a-zA-Z0-9._-]*)*$ ]] \
+            || _die "--adopt-siteless needs account names separated by commas, got '${_XMASS_ADOPT_SITELESS//[^[:print:]]/?}'"
+          shift ;;
         *) _die "Unknown argument: $1" ;;
       esac
     done
-    [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr] [--fix-users]"
+    [ -z "${_tgt}" ] && _die "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr] [--fix-users] [--adopt-siteless=<oN>[,<oN>...]] [admail=<address>]"
     # --fix-users is a repair of installed accounts, never a re-seed: it does
     # not ride the full lane, so it cannot mean "run Phase 0.5" on a box that
     # is carrying traffic (a demoted failback target).
@@ -12797,6 +13231,7 @@ case "${_cmd}" in
       && _die "--fix-users cannot be combined with --fix-php: the identity repair never installs"
     _check_root
     _xmass_refuse_role_clash prep
+    _xmass_xoct_admail_ok
     _xmass_cmd_prep_target
   ;;
   verify)
@@ -12873,9 +13308,19 @@ case "${_cmd}" in
         *) _die "Unknown argument: $1" ;;
       esac
     done
-    [ -z "${_tgt}" ] && _die "Usage: xmass cutover <target-ip> [--proxy-mode=...] [--proxy-deadline=...] [--live]"
+    [ -z "${_tgt}" ] && _die "Usage: xmass cutover <target-ip> [--proxy-mode=...] [--proxy-deadline=...] [--live] [admail=<address>]"
     _check_root
+    _xmass_admail_gate
+    _xmass_hold_gate cutover
+    _xmass_xoct_admail_ok
     _xmass_cmd_cutover
+  ;;
+  go-live)
+    _tgt="${1:-}"
+    [ -z "${_tgt}" ] && _die "Usage: xmass go-live <target-ip>"
+    [ $# -le 1 ] || _die "Unknown argument: $2"
+    _check_root
+    _xmass_cmd_go_live
   ;;
   reset-phase)
     _new="$1"
@@ -12948,6 +13393,9 @@ case "${_cmd}" in
     echo "                     fingerprint the source printed)"
     echo "Usage: xmass prep-target <target-ip> [--fix-php] [--fix-solr] [--fix-users]  (run on source AFTER both"
     echo "                     pre-migs: CSF both ways, Solr set, PHP coverage, per-account installs)"
+    echo "                     [--adopt-siteless=<oN>[,<oN>...]]  (site-less same-name accounts on the"
+    echo "                     target, checked by hand, taken for this migration)"
+    echo "                     [admail=<address>]  (a test run: see the notes)"
     echo "Usage: xmass init    <target-ip> [--proxy-mode=temporary|permanent|ha-switch]"
     echo "                     [--proxy-deadline=YYYY-MM-DD|+Nd]  (run on source)"
     echo "Usage: xmass sync    <target-ip> [--live]             (run on source, repeat)"
@@ -12957,6 +13405,9 @@ case "${_cmd}" in
     echo "                      sync every N minutes, default 15, until cutover/--off)"
     echo "Usage: xmass status  [target-ip]                      (run on source)"
     echo "Usage: xmass cutover <target-ip> [--proxy-mode=...] [--proxy-deadline=...] [--live]"
+    echo "                     [admail=<address>]  (a test run: see the notes)"
+    echo "Usage: xmass go-live <target-ip>                      (run on source after a test run's cutover:"
+    echo "                     it becomes the real move)"
     echo "Usage: xmass verify  [target-ip]                      (run on source after cutover; read-only)"
     echo "Usage: xmass post-mig                                 (run on target after DNS)"
     echo "Usage: xmass reset-phase <phase>                      (run on source; recovery)"
@@ -12975,6 +13426,19 @@ case "${_cmd}" in
     echo "  - Proxy modes are per ACCOUNT: --proxy-mode writes only the box DEFAULT;"
     echo "    a pin set with 'xoct proxy-mode <oN> <mode>' always wins over it."
     echo "    --permanent-proxy is a deprecated alias for --proxy-mode=permanent."
+    echo "  - admail=<address> on prep-target and cutover makes the whole run a test for"
+    echo "    every account: every client notice goes to that address alone, every"
+    echo "    install runs with its welcome mail held back, the accounts' upgrade"
+    echo "    notices stay off and the target holds its clients' mail for it"
+    echo "    (/data/conf/client_mail_hold.txt); the accounts keep their own addresses."
+    echo "    A cutover of accounts prepared under it refuses to run without it; a real"
+    echo "    move starts again with prep-target without it, which removes the record"
+    echo "    and the hold. Once the test run's cutover is complete, 'xmass go-live"
+    echo "    <target-ip>' makes it the real move: each client gets the completion"
+    echo "    notice it never had, the upgrade notices come back on, and the record,"
+    echo "    the target's mark and its hold go. A real run refuses while an xoct"
+    echo "    canary is still in its test run here ('xoct go-live' ends it) or the"
+    echo "    target holds its mail."
     echo "  - State is kept in ${_XMASS_STATE_FILE}"
     echo "  - reset-phase is a recovery verb: a cutover that fails between the lag"
     echo "    wait and the panel rewire leaves phase=cutover, which every other"

@@ -167,6 +167,19 @@ _acct_mark_here() {
   rm -f -- "${_t}"
   return 1
 }
+# ./$1 in the current (pinned) directory with the content $2 (0644): a
+# fresh file created exclusively, then renamed over the name, so a link or a
+# FIFO put at the name is replaced, never followed or opened, and a reader
+# never finds the name missing.
+_acct_put_here() {
+  local _t="./.${1}.put.$$.${RANDOM}"
+  rm -f -- "${_t}"
+  ( umask 022
+    printf '%s\n' "${2}" | dd of="${_t}" conv=excl status=none 2> /dev/null ) \
+    && mv -f -T -- "${_t}" "./${1}" && return 0
+  rm -f -- "${_t}"
+  return 1
+}
 
 # Run "$@" inside the directory $1 as it resolves now, entered for real: $1
 # is never a link itself and resolves strictly below this account root, and
@@ -472,11 +485,13 @@ _solr_in_upload_dir() {
 # into the account's own static/files or that store moved onto attached
 # storage (/mnt/<mount>/files/<oN>/static/files, the mount itself possibly
 # nested, with no directory named files or static between /mnt and the
-# mount, as the nightly decides it), and checked again once entered. Any
-# other link on the way refuses. Changes the directory: run it only inside
+# mount, as the nightly decides it), and checked again once entered. A
+# dot-name right below either store root is BOA's own (.backups,
+# .backup-exports, .archived), never a site's store, so it refuses too, as
+# any other link on the way does. Changes the directory: run it only inside
 # a subshell. Reads _usEr.
 _solr_in_files_here() {
-  local _r _rus _a _m
+  local _r _rus _a _m _top
   if [ ! -L ./files ]; then
     _acct_down_real_here files/solr "$@"
     return
@@ -486,14 +501,20 @@ _solr_in_files_here() {
   _a="${_usEr##*/}"
   case "${_r}" in
     ""|*[!A-Za-z0-9._/-]*) return 1 ;;
-    "${_rus}/static/files/"?*) ;;
+    "${_rus}/static/files/"?*)
+      _top="${_r#"${_rus}"/static/files/}"
+      ;;
     /mnt/?*/files/"${_a}"/static/files/?*)
       _m="${_r%%/files/"${_a}"/static/files/*}"
       case "${_m}" in
         */files/*|*/static/*) return 1 ;;
       esac
+      _top="${_r#"${_m}"/files/"${_a}"/static/files/}"
       ;;
     *) return 1 ;;
+  esac
+  case "${_top}" in
+    .*) return 1 ;;
   esac
   cd -P -- "${_r}" 2> /dev/null && [ "$(pwd -P)" = "${_r}" ] || return 1
   _acct_down_real_here solr "$@"
@@ -503,28 +524,55 @@ _solr_in_files_here() {
 # so any name in it can be a link, a hard link or a FIFO, and files/solr or
 # any directory above it can be swapped for a link. It is used only inside
 # that directory, entered for real (_solr_in_upload_dir). Every regular file
-# directly in it, the set find -maxdepth 1 -type f copied, is read bounded,
-# never through a link and never blocked on a FIFO, into the root-only
-# directory $1, and only those copies are diffed and published: no tenant
-# path is ever diffed or copied by name. A hard link (another file's bytes),
-# a file of 8 MiB or more, one that changed while read, more than 512 names
-# or more than 32 MiB in all refuse the whole set, so a core never gets part
-# of one. Status 1 on a refusal. Reads _Plr, _Dom and _usEr. $1 = the
-# root-only staging dir.
+# directly in it, the set find -maxdepth 1 -type f copied, that one of the
+# account's own identities owns (_solr_own_uids), is read bounded, through a
+# handle that checks the owner, never through a link and never blocked on a
+# FIFO, into the root-only directory $1, and only those copies are diffed
+# and published: no tenant path is ever diffed or copied by name. A hard
+# link (another file's bytes), a file of 8 MiB or more, one that changed
+# while read, more than 512 names or more than 32 MiB in all refuse the
+# whole set, so a core never gets part of one. Status 1 on a refusal. Reads
+# _Plr, _Dom and _usEr. $1 = the root-only staging dir.
 _solr_upload_stage() {
   [ -d "${1}" ] || return 1
   _solr_in_upload_dir _solr_upload_stage_here "${1}"
 }
-# ./$1 in the current (pinned) directory, read as _acct_read_here reads it,
-# up to 8 MiB: an uploaded synonyms or stopwords list can be large.
+# The uids of the account's own identities, comma-separated, the owners of
+# what the account puts in its upload itself, named as the web-group checks
+# name them: the account oN and oN.<name>, that is its .ftp login, its
+# client sub-accounts oN.<client> and oN.<client>-dev and its PHP-FPM users
+# oN.web and oN.<ver>.web. An account name holds no dot, so the match is
+# exact: o1 never takes o10's. Never uid 0. Reads _usEr.
+_solr_own_uids() {
+  local _a="${_usEr##*/}" _n _p _u _r _x=""
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 0 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] && _x="${_x:+${_x},}${_u}"
+  done < <(getent passwd 2> /dev/null)
+  echo "${_x}"
+}
+# ./$1 in the current (pinned) directory, up to 8 MiB (an uploaded synonyms
+# or stopwords list can be large), read through one handle opened without
+# following a link or blocking on a FIFO, and only while that handle is a
+# regular file with a single link owned by one of the uids $2
+# (comma-separated, _solr_own_uids): a name swapped after the stage checked
+# it, for a hard link or another owner's file, lends it no bytes (status 1).
+_SOLR_READ_OWN_PL='use Fcntl; my ($n, $x) = @ARGV; my %ok = map { $_ => 1 } split(/,/, $x); sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $ok{$s[4]}; my ($t, $r) = (0); binmode(STDOUT); while ($t < 8388608 && ($r = sysread($h, my $c, 8388608 - $t))) { (print $c) or exit 1; $t += $r; } exit(defined $r ? 0 : 1)'
 _solr_upload_read_here() {
-  timeout 10 dd if="./${1}" iflag=nofollow,nonblock,fullblock \
-    bs=8388608 count=1 status=none 2> /dev/null
+  timeout 10 perl -e "${_SOLR_READ_OWN_PL}" -- "./${1}" "${2}" 2> /dev/null
 }
 # In the upload dir (the current one, entered for real): each regular file
-# copied into the root-only directory $1 as root's own file.
+# the account's own identities own copied into the root-only directory $1
+# as root's own file. Anything else there, such as a file another account
+# owns (a group two accounts share lets one move the other's file in), is
+# neither read nor published, and stays where it is, as the clear leaves
+# it: one SOLR-UPLOAD-SKIPPED line each, once a pass.
 _solr_upload_stage_here() {
-  local _to="${1}" _n _q _st _typ _nl _sz _cnt=0 _tot=0
+  local _to="${1}" _n _q _st _typ _nl _sz _uid _own _cnt=0 _tot=0
+  _own=$(_solr_own_uids)
   shopt -s nullglob dotglob
   for _n in *; do
     _q="${_n//[^[:alnum:]._-]/?}"
@@ -533,8 +581,15 @@ _solr_upload_stage_here() {
       echo "SOLR-UPLOAD-REFUSED: ${_Dom} more than 512 names in files/solr"
       return 1
     fi
-    _st=$(stat -c '%F|%h|%s' -- "./${_n}" 2> /dev/null) || continue
-    IFS='|' read -r _typ _nl _sz <<< "${_st}"
+    _st=$(stat -c '%F|%h|%s|%u' -- "./${_n}" 2> /dev/null) || continue
+    IFS='|' read -r _typ _nl _sz _uid <<< "${_st}"
+    case ",${_own}," in
+      *",${_uid},"*) ;;
+      *)
+        echo "SOLR-UPLOAD-SKIPPED: ${_Dom} ${_q} in files/solr is not the account's own, left in place"
+        continue
+        ;;
+    esac
     # A link, a FIFO or a directory is not published, as find -type f
     # never listed one.
     case "${_typ}" in
@@ -554,7 +609,7 @@ _solr_upload_stage_here() {
       echo "SOLR-UPLOAD-REFUSED: ${_Dom} more than 32 MiB in files/solr"
       return 1
     fi
-    if ! _solr_upload_read_here "${_n}" > "${_to}/${_n}"; then
+    if ! _solr_upload_read_here "${_n}" "${_own}" > "${_to}/${_n}"; then
       echo "SOLR-UPLOAD-REFUSED: ${_Dom} ${_q} could not be read"
       return 1
     fi
@@ -567,16 +622,24 @@ _solr_upload_stage_here() {
   return 0
 }
 # The upload, emptied once published as before (rm -f files/solr/*), but
-# only inside the real files/solr, entered as _solr_upload_stage enters it:
-# rm unlinks a link found there and never follows one.
+# only inside the real files/solr, entered as _solr_upload_stage enters it,
+# and only of the names the account's own identities own (_solr_own_uids):
+# anything else stays, as the stage of the same pass left it and said so.
+# rm unlinks a link found there and never follows one; a name swapped
+# between the owner test and rm loses only what the account can remove from
+# its own files/solr itself.
 _solr_upload_clear() {
   _solr_in_upload_dir _solr_upload_clear_here
 }
 _solr_upload_clear_here() {
-  local _n
+  local _n _u _own
+  _own=$(_solr_own_uids)
   shopt -s nullglob
   for _n in *; do
-    rm -f -- "./${_n}" 2> /dev/null
+    _u=$(stat -c '%u' -- "./${_n}" 2> /dev/null) || continue
+    case ",${_own}," in
+      *",${_u},"*) rm -f -- "./${_n}" 2> /dev/null ;;
+    esac
   done
   return 0
 }
@@ -1707,6 +1770,55 @@ _check_sites_list() {
   done
 }
 
+# $1 as the directory root works in: itself when it is a real directory;
+# when it is a link, the real directory it leads to, only when every link
+# on the way is root's and every directory on the way, the last one
+# included, is root's and writable by no one else, so no one but root can
+# change where it leads or what is in it; nothing otherwise (exit 1). The
+# shared store /data/all may be such a link. With a second argument "last"
+# the last directory may be anyone's and open to others (the Octopus store
+# check takes /data/disk/all back); none is given here.
+_ROOT_REAL_PATH_PL='my ($p, $k) = @ARGV; if (!-l $p) { print $p if -d _; exit(-d _ ? 0 : 1); } my ($c, $n, @s) = ("", 0, stat("/")); exit 1 unless $p =~ m{^/} && @s && $s[4] == 0 && !($s[2] & 022); my @w = grep { length && $_ ne "." } split(m{/}, $p); while (@w) { my $e = shift(@w); if ($e eq "..") { $c =~ s{/[^/]*$}{}; next; } my @l = lstat("$c/$e") or exit 1; if (-l _) { exit 1 if $l[4] != 0 || ++$n > 40; my $t = readlink("$c/$e"); exit 1 unless defined $t; $c = "" if $t =~ m{^/}; unshift(@w, grep { length && $_ ne "." } split(m{/}, $t)); next; } exit 1 unless -d _ && (($l[4] == 0 && !($l[2] & 022)) || (defined $k && $k eq "last" && !@w)); $c .= "/$e"; } print($c eq "" ? "/" : $c); exit 0'
+# $1, the real directory a link of root's at /data/all leads to
+# (_ROOT_REAL_PATH_PL's answer), is the one the store may be kept in
+# behind that link (exit 0) only when it is /data/disk/all, the directory
+# named all directly in the real /data/disk, compared by device and inode
+# with that name not followed, so a link put at it does not count; any
+# other directory, or none, exit 1. Besides a real /data/all it is the
+# one layout of the store BOA knows, and the one other store directory
+# every PHP-FPM pool's open_basedir names. One text wherever it is defined
+# (satellite.sh.inc, BOA.sh.txt, xoct, xcopy, manage_solr_config.sh,
+# night.inc.sh).
+_SAT_STORE_TARGET_PL='my @t = lstat(defined $ARGV[0] ? $ARGV[0] : ""); my @a = lstat("/data/disk/all"); exit((@t && @a && -d _ && $t[0] == $a[0] && $t[1] == $a[1]) ? 0 : 1)'
+# Why root leaves the shared store alone when /data/all is a link the two
+# checks above refuse, for a caller's one line: it leads to /data/disk/all,
+# but not through root's own links and directories only (an earlier
+# release's leftover the next Octopus upgrade takes back, or a link or
+# directory on the way that upgrade names); /data/disk/all is not a real
+# directory (a link, which no store is used behind, or a file); it leads
+# to nothing that is there; or it leads anywhere else. The Octopus upgrade
+# stops on each of the last three and says how to repair it.
+_store_link_why() {
+  local _t _e _w
+  _t="$(readlink -- /data/all)"
+  _e="$(readlink -e -- /data/all)"
+  if perl -e "${_SAT_STORE_TARGET_PL}" -- "${_e}" &> /dev/null; then
+    echo "/data/all leads to /data/disk/all, but /data/disk/all, or a link or directory on the way to it, is not root's alone; the next Octopus upgrade takes /data/disk/all back, or stops and says what to repair"
+  elif [ -L /data/disk/all ] \
+    || { [ -e /data/disk/all ] && [ ! -d /data/disk/all ]; }; then
+    if [ -L /data/disk/all ]; then
+      _w="itself a link, to $(readlink -- /data/disk/all)"
+    else
+      _w="$(stat -c 'a %F of uid %u' -- /data/disk/all 2> /dev/null), not a directory"
+    fi
+    echo "/data/all is a link to ${_t}, and /data/disk/all is ${_w}, while a link at /data/all is used only when it leads to the real directory /data/disk/all; the Octopus upgrade stops on it and says how to repair it"
+  elif [ -z "${_e}" ]; then
+    echo "/data/all is a link to ${_t}, which leads to nothing that is there (a name on the way is missing, e.g. an unmounted disk, or the links loop); the Octopus upgrade stops on it and says how to repair it"
+  else
+    echo "/data/all is a link to ${_t}, which does not lead to /data/disk/all; the Octopus upgrade stops on it and says how to repair it"
+  fi
+}
+
 _count_cpu() {
   _CPU_INFO="$(grep -c processor /proc/cpuinfo)"
   _CPU_INFO=${_CPU_INFO//[^0-9]/}
@@ -1726,8 +1838,25 @@ _count_cpu() {
   if [ -z "${_CPU_NR}" ] || [ "${_CPU_NR}" -lt 1 ]; then
     _CPU_NR=1
   fi
-  echo ${_CPU_NR} > /data/all/cpuinfo
-  chmod 644 /data/all/cpuinfo &> /dev/null
+  # cpuinfo in the store as root writes it (_acct_put_here: a fresh file
+  # renamed over the name, 0644, so a link or a hard link left at the name
+  # is replaced, never written through): in /data/all when it is a real
+  # directory, or in /data/disk/all when a link of root's at /data/all
+  # leads there through root's own links and directories only
+  # (_ROOT_REAL_PATH_PL, _SAT_STORE_TARGET_PL). Any other link is left
+  # alone, never followed, and said once a run with why (_store_link_why).
+  local _st=/data/all
+  if [ -L /data/all ]; then
+    _st="$(perl -e "${_ROOT_REAL_PATH_PL}" -- /data/all 2> /dev/null)"
+    if ! perl -e "${_SAT_STORE_TARGET_PL}" -- "${_st}" &> /dev/null; then
+      if [ -z "${_CPUINFO_SKIP_SAID:-}" ]; then
+        echo "ALRT: cpuinfo not written: $(_store_link_why)"
+        _CPUINFO_SKIP_SAID=YES
+      fi
+      return 0
+    fi
+  fi
+  _acct_in_real_dir "${_st}" _acct_put_here cpuinfo "${_CPU_NR}"
 }
 
 _get_load() {

@@ -351,7 +351,7 @@ _mig_resolve() {
     _MIG_MODE=temporary
     _MIG_SOURCE=default
     echo "ALRT: ${_root}: no proxy mode declared; falling back to '${_MIG_MODE}'."
-    echo "ALRT:   Declare it with: xoct proxy-mode $(basename "${_root}") <temporary|permanent|ha-switch>"
+    echo "ALRT:   Declare it with: xoct proxy-mode $(basename "${_root}") <temporary|permanent|ha-switch>${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
   fi
 
   ### A date by which the customer must leave the switch point contradicts
@@ -438,13 +438,65 @@ _mig_log() {
 ### Last promise actually mailed, as "mode|deadline" from the newest mail line
 ### in the account's migproxy.log; empty output if the client was never mailed.
 ### The uniform re-notify rule keys on this, which is why mail lines are only
-### ever written after a confirmed send.
+### ever written after a confirmed send. With peers after $1 (the source
+### role), only a line naming a peer of this box's moves counts
+### (_xoct_source_peers); without them (the target role) every line.
 _mig_last_mail() {
-  local _l
-  _l="$(_xoct_read_in "${1}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
-    | grep '|mail|' | tail -1)"
+  local _l _r="$1" _p=""
+  shift
+  [ "$#" -gt 0 ] && _p=" $(_xoct_source_peers "${_r}" "$@") "
+  _l="$(_xoct_read_in "${_r}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+    | grep '|mail|' | awk -F'|' -v n="$#" -v p="${_p}" 'n == 0 || index(p, " " $7 " ")' | tail -1)"
   [ -n "${_l}" ] || return 0
   printf '%s' "${_l}" | awk -F'|' '{ print $5 "|" $6 }'
+}
+### The peers whose notices count on the source for the account at $1: the
+### ones after $1 (this move's target; the old one while a retarget is in
+### flight) and every peer a set line of its log names (each target this box
+### proxied the account to: after a retarget the client's real notices name
+### the target before it), never one of this box's own addresses. log/
+### travels with the account, and the notices of the move that brought it
+### here name this box: they told the client nothing of a move from here.
+### A policy change made here while this box was that move's target logs
+### set-inbound, naming the box the account came from, which counts for
+### nothing. Space separated.
+_xoct_source_peers() {
+  local _r="$1" _me
+  shift
+  _me=" $(_mig_my_ips) $(_mig_my_ip) "
+  {
+    printf '%s\n' "$@"
+    _xoct_read_in "${_r}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+      | awk -F'|' '$3 == "set" { print $7 }'
+  } | awk -v me="${_me}" 'NF && $0 != "-" && !index(me, " " $0 " ") && !s[$0]++ { printf "%s ", $0 }'
+}
+### True when the account at $1 was converted before its migration log
+### recorded the notices: its log/proxied.pid is older than the log's first
+### line, or there is no log. Its client was mailed then, unrecorded.
+_xoct_proxied_before_log() {
+  local _pt _first _ft
+  _pt="$(_xoct_in_real_dir "${1}/log" stat -c %Y -- ./proxied.pid 2> /dev/null)"
+  [[ "${_pt}" =~ ^[0-9]+$ ]] || return 1
+  _first="$(_xoct_read_in "${1}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+    | head -n 1 | cut -d'|' -f1)"
+  [ -n "${_first}" ] || return 0
+  _ft="$(date -u -d "${_first}" +%s 2> /dev/null)"
+  [[ "${_ft}" =~ ^[0-9]+$ ]] || return 1
+  [ "${_pt}" -lt "${_ft}" ]
+}
+### True when the client of the account at $1 was really told of the
+### completion: a real (mail, never testmail) completion line in its log
+### naming a peer of this box's moves when peers follow $1
+### (_xoct_source_peers; any line without them), or a conversion from before
+### the log recorded one.
+_xoct_told_complete() {
+  local _n _r="$1" _p=""
+  shift
+  [ "$#" -gt 0 ] && _p=" $(_xoct_source_peers "${_r}" "$@") "
+  _n="$(_xoct_read_in "${_r}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
+    | awk -F'|' -v n="$#" -v p="${_p}" '$3=="mail" && $4=="complete" && (n == 0 || index(p, " " $7 " ")) { c++ } END { print c+0 }')"
+  [ "${_n:-0}" != "0" ] && return 0
+  _xoct_proxied_before_log "${_r}"
 }
 
 ### Per-account facts the policy mails are built from, for verbs that never
@@ -456,12 +508,9 @@ _mig_load_account_mail_facts() {
   ### into a FIFO put at the name
   _DOMAIN=""
   [ -e "${_root}/log/domain.txt" ] && _DOMAIN="$(_xoct_read_in "${_root}/log" domain.txt | tr -d '\n')"
-  _CLIENT_EMAIL=""
-  [ -e "${_root}/log/email.txt" ] && _CLIENT_EMAIL="$(_xoct_read_in "${_root}/log" email.txt | tr -s '[:space:]' ' ')"
-  _CLIENT_EMAIL="${_CLIENT_EMAIL# }"
-  _CLIENT_EMAIL="${_CLIENT_EMAIL% }"
-  [[ "${_CLIENT_EMAIL}" =~ "@" ]] || _CLIENT_EMAIL="inbox@boa.io"
-  _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  ### No stand-in for an account without an address: _xoct_mail_rcpt
+  ### refuses the notice and names the cause.
+  _xoct_client_address "${_root}" "${_a}"
 }
 
 ### Compose the mode-selected client-mail blocks from the resolved policy
@@ -480,7 +529,7 @@ _mig_build_mail_blocks() {
   if [ -n "${_MIG_DEADLINE}" ] \
     && [[ "${_MIG_DEADLINE}" < "$(date -u '+%Y-%m-%d')" ]]; then
     echo "ALRT: stored deadline ${_MIG_DEADLINE} has already passed; composing the"
-    echo "ALRT: no-deadline variant -- set a new date (xoct proxy-mode ... --deadline=+Nd)"
+    echo "ALRT: no-deadline variant -- set a new date (xoct proxy-mode ... --deadline=+Nd${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}})"
     _MIG_DEADLINE=""
   fi
   [ -n "${_MIG_DEADLINE}" ] && _pd="$(_mig_pretty_date "${_MIG_DEADLINE}")"
@@ -581,19 +630,325 @@ _xoct_email_ok() {
   _re="^${_w}( ${_w})*$"
   [[ "${1}" =~ ${_re} ]]
 }
-### Sets _MAIL_RCPT, the recipients of a client notice: the account's
-### address when _xoct_email_ok takes it, otherwise the default address a
-### log/email.txt without '@' already gets, with a line naming the cause.
-### The -b copy reaches the operator either way.
-_xoct_mail_rcpt() {
-  local _s
-  if _xoct_email_ok "${_CLIENT_EMAIL}"; then
-    _MAIL_RCPT="${_CLIENT_EMAIL}"
-  else
-    _MAIL_RCPT="inbox@boa.io"
-    _s="${_CLIENT_EMAIL:0:200}"
-    echo "ALRT: ${_THIS_HM_USER}: log/email.txt holds '${_s//[^[:print:]]/?}', not a plain address; the notice goes to ${_MAIL_RCPT}"
+### $1 as a log line shows it: at most 120 bytes, non-printables as '?'.
+_xoct_shown() {
+  printf '%s' "${1:0:120}" | tr -c '[:print:]' '?'
+}
+### The account's client address as its own Octopus pass takes it: the words
+### of log/email.txt when _xoct_email_ok takes them, otherwise the
+### _CLIENT_EMAIL of root's cnf, which the pass keeps when the file holds no
+### plain address and the nightly rewrites only from a file that does. Sets
+### _CLIENT_EMAIL (empty when neither holds one), _XOCT_EMAIL_TXT (the file's
+### text, one space between words) and _XOCT_EMAIL_SRC (log, cnf or none).
+### $1 = the account's root, $2 = its name on this box.
+_xoct_client_address() {
+  local _root="$1" _acct="$2" _c=""
+  _CLIENT_EMAIL=""
+  _XOCT_EMAIL_TXT=""
+  _XOCT_EMAIL_SRC=none
+  if [ -e "${_root}/log/email.txt" ]; then
+    _XOCT_EMAIL_TXT="$(_xoct_read_in "${_root}/log" email.txt | tr -s '[:space:]' ' ')"
+    _XOCT_EMAIL_TXT="${_XOCT_EMAIL_TXT# }"
+    _XOCT_EMAIL_TXT="${_XOCT_EMAIL_TXT% }"
+    _XOCT_EMAIL_TXT=${_XOCT_EMAIL_TXT//\\\@/\@}
   fi
+  if _xoct_email_ok "${_XOCT_EMAIL_TXT}"; then
+    _CLIENT_EMAIL="${_XOCT_EMAIL_TXT}"
+    _XOCT_EMAIL_SRC=log
+    return 0
+  fi
+  if _mig_valid_acct "${_acct}" && [ -f "/root/.${_acct}.octopus.cnf" ]; then
+    _c="$(grep -a '^_CLIENT_EMAIL=' "/root/.${_acct}.octopus.cnf" 2> /dev/null \
+      | tail -n 1 | cut -c1-1024)"
+    _c="${_c#_CLIENT_EMAIL=}"
+    _c="${_c#\"}"
+    _c="${_c%\"}"
+    _c="$(printf '%s' "${_c}" | tr -s '[:space:]' ' ')"
+    _c="${_c# }"
+    _c="${_c% }"
+    _c=${_c//\\\@/\@}
+  fi
+  if _xoct_email_ok "${_c}"; then
+    _CLIENT_EMAIL="${_c}"
+    _XOCT_EMAIL_SRC=cnf
+  fi
+  return 0
+}
+### Sets _MAIL_RCPT and _MAIL_BCC (the -b words, or none), the recipients of
+### a client notice. With admail= that address alone, no copy to anyone: a
+### test or canary run never mails a client. Otherwise the account's address
+### (_xoct_client_address) with the operator's -b copy. An account with no
+### plain address in either place gets no notice (status 1, a line naming
+### the cause): a stand-in address used to take it unread.
+_xoct_mail_rcpt() {
+  _MAIL_RCPT=""
+  _MAIL_BCC=()
+  if [ -n "${_XOCT_ADMAIL}" ]; then
+    _MAIL_RCPT="${_XOCT_ADMAIL}"
+  elif _xoct_email_ok "${_CLIENT_EMAIL}"; then
+    _MAIL_RCPT="${_CLIENT_EMAIL}"
+    [ -n "${_BCC_EMAIL}" ] && _MAIL_BCC=(-b "${_BCC_EMAIL}")
+  else
+    echo "ALRT: ${_THIS_HM_USER}: no plain address in log/email.txt ('$(_xoct_shown "${_XOCT_EMAIL_TXT}")') or in _CLIENT_EMAIL of its cnf; no notice is sent"
+    return 1
+  fi
+  return 0
+}
+### A test run's record (admail=), root's, in /data/conf: the address, in
+### xoct_admail.<account>.txt. create under admail= puts it on the source for
+### the account it moves and on the target for the account it installs;
+### import under admail= puts it on its own box. While it exists, every verb
+### for that account on that box except import refuses to run without
+### admail= (_xoct_admail_gate), so one forgotten token cannot mail the
+### client, and the cnf merge (create, every live transfer) and import keep
+### the account's upgrade notice off there, token or not. go-live removes it
+### on both boxes: that is how a canary goes live. The record create puts on
+### the source carries a second line, _XOCT_ADMAIL_SRC_LINE: that canary's
+### client mail is held on its target, so a hold on the source box never
+### counts it as a user (_xoct_hold_users_here). A record already there is
+### left as it is (one of a canary this box received stays a user of its
+### hold until that test run goes live). The creates xmass runs put none
+### (_XOCT_XMASS_RUN=YES): xmass keeps its own record of a test run of the
+### whole box (_XOCT_XMASS_REC) and gates its cutover on it, and marks its
+### target with one per source box (_XOCT_XMASS_MARKS), which a hold there
+### counts as a user. Written 0644, the mode every Octopus pass gives each
+### file in /data/conf (it holds a test address, nothing secret).
+_XOCT_XMASS_REC=/data/conf/xmass_admail.txt
+_XOCT_XMASS_MARKS='/data/conf/xmass_test_run.*.txt'
+_XOCT_ADMAIL_SRC_LINE='_XOCT_ADMAIL_ROLE=source'
+_xoct_admail_rec() {
+  printf '/data/conf/xoct_admail.%s.txt' "$1"
+}
+### The first line of root's file $1, printable, at most 200 bytes.
+_xoct_first_line() {
+  head -n 1 "$1" 2> /dev/null | tr -cd '[:print:]' | cut -c1-200
+}
+### Puts the record of $1 on this box, the source of its move, when there is
+### none. One already there is left as it is: without the source line the
+### account came here in a test run that is still open, and it stays a user
+### of this box's hold until that run's go-live removes it; with it, an
+### earlier create of this canary put it. Status 1 when it cannot be put.
+_xoct_admail_record_here() {
+  local _f
+  _f="$(_xoct_admail_rec "$1")"
+  if [ -e "${_f}" ]; then
+    if grep -qxF "${_XOCT_ADMAIL_SRC_LINE}" "${_f}" 2> /dev/null; then
+      echo "INFO: admail=$(_xoct_first_line "${_f}") is recorded for $1 in ${_f}; kept: every later verb for $1 here refuses without admail="
+    else
+      echo "INFO: $1 came here in a test run still open (admail=$(_xoct_first_line "${_f}") in ${_f}): the record is kept, every later verb for $1 here refuses without admail=, and this box's mail hold counts it until that run's go-live"
+    fi
+    return 0
+  fi
+  if mkdir -p /data/conf \
+    && ( umask 022; printf '%s\n' "${_XOCT_ADMAIL}" "${_XOCT_ADMAIL_SRC_LINE}" > "${_f}.tmp" ) \
+    && mv -f "${_f}.tmp" "${_f}"; then
+    echo "INFO: admail=${_XOCT_ADMAIL} recorded for $1 in ${_f}: every later verb for $1 here refuses without it"
+    return 0
+  fi
+  echo "ALRT: admail= could not be recorded for $1 in ${_f}"
+  return 1
+}
+### Without admail=, refuses (status 1, the way out named) an account whose
+### record exists on this box, and every account while xmass's record of a
+### test run of the whole box exists here: its own xoct calls carry the
+### token, and a proxy-mode or proxy-retire without it would mail the clients
+### of that run. With admail= it passes.
+_xoct_admail_gate() {
+  local _f _rec
+  [ -n "${_XOCT_ADMAIL}" ] && return 0
+  _f="$(_xoct_admail_rec "$1")"
+  if [ -e "${_f}" ]; then
+    _rec="$(_xoct_first_line "${_f}")"
+    echo "ERROR: $1 is in a test run: admail=${_rec} is recorded in ${_f}"
+    echo "ERROR: pass admail=${_rec} to this verb, or end the test run with"
+    echo "ERROR: 'xoct go-live <account> <target-ip>' on the source box (it mails the client)"
+    return 1
+  fi
+  _xoct_xmass_rec_gate
+}
+### The box-wide half of it: without admail=, refuses (status 1, the way out
+### named) while xmass's record of a test run of the whole box is here, or
+### its mark of one that moves a box here (_XOCT_XMASS_MARKS). The sweep
+### verbs ask it once, before their per-account loop. The completion notice
+### go-live sends passes a mark (the account it ends left this box, the
+### accounts that test run moves came to it) and, for an account xmass
+### go-live ends, the record.
+_xoct_xmass_rec_gate() {
+  local _rec _m
+  [ -n "${_XOCT_ADMAIL}" ] && return 0
+  if [ -e "${_XOCT_XMASS_REC}" ]; then
+    [ "${_XOCT_GO_LIVE}" = "YES" ] && [ "${_XOCT_XMASS_GOLIVE}" = "YES" ] && return 0
+    _rec="$(_xoct_first_line "${_XOCT_XMASS_REC}")"
+    echo "ERROR: this box is in an xmass test run: admail=${_rec} is recorded in ${_XOCT_XMASS_REC}"
+    echo "ERROR: pass admail=${_rec} to this verb; the test run ends with 'xmass go-live <target-ip>'"
+    echo "ERROR: once its cutover is done, or before it with 'xmass prep-target <target-ip>' without"
+    echo "ERROR: admail= (a real move of the box; it removes the record)"
+    return 1
+  fi
+  [ "${_XOCT_GO_LIVE}" = "YES" ] && return 0
+  for _m in ${_XOCT_XMASS_MARKS}; do
+    [ -e "${_m}" ] || continue
+    _rec="$(_xoct_first_line "${_m}")"
+    echo "ERROR: this box is the target of an xmass test run: admail=${_rec} is recorded in ${_m}"
+    echo "ERROR: pass admail=${_rec} to this verb, or end that test run on its source box ('xmass"
+    echo "ERROR: go-live <this-box-ip>' once its cutover is done, 'xmass prep-target' without admail= before)"
+    return 1
+  done
+  return 0
+}
+### A box that holds its clients' mail: /data/conf/client_mail_hold.txt,
+### root's and 0644, holding one plain address, makes BOA's own senders on
+### the box deliver every mail addressed to a client to that address alone.
+### A test run under admail= puts it, holding that address, on the box its
+### installs land on (the target of create, the box of import) when it is
+### absent there; one holding another address is left as it is. go-live
+### removes it where it holds the run's address and no other test run is
+### recorded there (an xoct record, an xmass mark), and a real run (no
+### admail=) refuses while it is there (_xoct_hold_gate), so a real move
+### never leaves its client's mail held.
+_XOCT_HOLD_FILE=/data/conf/client_mail_hold.txt
+### The test runs recorded on this box whose client mail its hold holds,
+### space separated (none: empty): xoct's records of the accounts this box
+### received, and xmass's marks. A record carrying _XOCT_ADMAIL_SRC_LINE is
+### a canary this box moves away: its mail is held on its target, not here.
+### The go-live script run on the target counts the same way.
+_xoct_hold_users_here() {
+  local _f _l=""
+  for _f in /data/conf/xoct_admail.*.txt ${_XOCT_XMASS_MARKS}; do
+    [ -e "${_f}" ] || continue
+    grep -qxF "${_XOCT_ADMAIL_SRC_LINE}" "${_f}" 2> /dev/null && continue
+    _l="${_l} ${_f##*/}"
+  done
+  printf '%s' "${_l# }"
+}
+### Puts the hold on $1 (none: this box) for this run's admail=. Status 1
+### when it cannot be read or put.
+_xoct_hold_put() {
+  local _h="$1" _sh _out _v
+  _sh="_f=${_XOCT_HOLD_FILE}; if [ -e \"\${_f}\" ]; then head -n 1 \"\${_f}\" | tr -cd '[:print:]' | cut -c1-200; echo; echo HOLD-HAD; else mkdir -p /data/conf && ( umask 022; printf '%s\n' '${_XOCT_ADMAIL}' > \"\${_f}.tmp\" ) && chown root:root \"\${_f}.tmp\" && mv -f \"\${_f}.tmp\" \"\${_f}\" && echo HOLD-PUT; fi"
+  if [ -n "${_h}" ]; then
+    _out="$(ssh root@"${_h}" "${_sh}" 2> /dev/null)"
+  else
+    _out="$(bash -c "${_sh}" 2> /dev/null)"
+  fi
+  case "${_out}" in
+    *HOLD-PUT*)
+      echo "INFO: admail=: ${_XOCT_HOLD_FILE}${_h:+ on ${_h}} holds every client mail of that box for ${_XOCT_ADMAIL}"
+      return 0
+    ;;
+    *HOLD-HAD*)
+      _v="$(printf '%s\n' "${_out}" | head -n 1)"
+      if [ "${_v}" = "${_XOCT_ADMAIL}" ]; then
+        echo "INFO: admail=: ${_XOCT_HOLD_FILE}${_h:+ on ${_h}} already holds client mail for ${_XOCT_ADMAIL}"
+      else
+        echo "ALRT: ${_XOCT_HOLD_FILE}${_h:+ on ${_h}} holds client mail for another address (${_v}); left as it is"
+      fi
+      return 0
+    ;;
+  esac
+  echo "ALRT: admail=: ${_XOCT_HOLD_FILE}${_h:+ on ${_h}} could not be read or put"
+  return 1
+}
+### Without admail=, refuses (status 1, naming it) while the hold is on $1
+### (none: this box): a real run would leave the moved client's mail held
+### there. A probe of another box that cannot be read passes: the verb's own
+### contact there reports it.
+_xoct_hold_gate() {
+  local _h="$1" _v
+  [ -n "${_XOCT_ADMAIL}" ] && return 0
+  if [ -n "${_h}" ]; then
+    _v="$(ssh root@"${_h}" "if [ -e ${_XOCT_HOLD_FILE} ]; then head -n 1 ${_XOCT_HOLD_FILE} | tr -cd '[:print:]' | cut -c1-200; echo; echo HOLD-HAD; else echo HOLD-NONE; fi" 2> /dev/null)"
+    case "${_v}" in
+      *HOLD-HAD*) _v="$(printf '%s\n' "${_v}" | head -n 1)" ;;
+      *) return 0 ;;
+    esac
+  else
+    [ -e "${_XOCT_HOLD_FILE}" ] || return 0
+    _v="$(_xoct_first_line "${_XOCT_HOLD_FILE}")"
+  fi
+  echo "ERROR: ${_h:-this box} holds its clients' mail for ${_v} (${_XOCT_HOLD_FILE}, put by a test run):"
+  echo "ERROR: a real run (no admail=) would leave the moved client's mail held there. End the"
+  echo "ERROR: test run first ('xoct go-live' after a canary; for a whole box 'xmass go-live' after"
+  echo "ERROR: its cutover, 'xmass prep-target' without admail= before it), or remove the file by"
+  echo "ERROR: hand once no test run needs it"
+  return 1
+}
+### The first Octopus pass after a move that would mail the account's
+### upgrade notice sends none: the move carries the setup mail along, and the
+### client has everything that notice says from the move itself. The
+### account's one-pass marker, /data/conf/<account>_skip_upgrade_email.txt,
+### root's, is put where the account is installed (create) and again where
+### it is imported, when absent; that pass takes it away, and every later
+### pass mails as the account's switch says. An account whose switch is NO
+### gets none: no pass of it would send the notice, so the marker would stay
+### and swallow the first notice after the switch is turned on, months later.
+_xoct_upgrade_skip_file() {
+  printf '/data/conf/%s_skip_upgrade_email.txt' "$1"
+}
+### The upgrade notice switch as the cnf $1 sets it, the way the Octopus pass
+### reads it: NO only when the file says NO, otherwise YES (its default).
+_xoct_upgrade_switch() {
+  local _s
+  _s="$(grep -a '^_SEND_UPGRADE_EMAIL=' "$1" 2> /dev/null | tail -n 1 | cut -d= -f2- | tr -d '"')"
+  if [ "${_s}" = "NO" ]; then
+    echo NO
+  else
+    echo YES
+  fi
+}
+### Puts the marker of $1 on $2 (none: this box), naming the step $3.
+_xoct_upgrade_skip_put() {
+  local _a="$1" _h="$2" _f _sh _rc
+  _f="$(_xoct_upgrade_skip_file "${_a}")"
+  _sh="[ -e '${_f}' ] && exit 0; mkdir -p /data/conf && ( umask 022; printf '%s\n' 'xoct ${3} $(date -u '+%F %T') UTC' > '${_f}.tmp' ) && mv -f '${_f}.tmp' '${_f}'"
+  if [ -n "${_h}" ]; then
+    ssh root@"${_h}" "${_sh}" 2> /dev/null
+    _rc=$?
+  else
+    bash -c "${_sh}" 2> /dev/null
+    _rc=$?
+  fi
+  if [ "${_rc}" -ne 0 ]; then
+    echo "ALRT: ${_f}${_h:+ on ${_h}} could not be put: the first Octopus pass there may mail ${_a}'s upgrade notice"
+    return 1
+  fi
+  echo "INFO: ${_a}'s first Octopus pass${_h:+ on ${_h}} that would mail its upgrade notice sends none (${_f})"
+  return 0
+}
+### Under admail= the account's upgrade notice is switched off where it is
+### installed (_SEND_UPGRADE_EMAIL=NO, the operator's off-switch, in its cnf):
+### the move brings the account's setup mail along, and the first Octopus pass
+### there after it mails the notice to the account's own address. With $3 =
+### record the same step puts the account's record there, which keeps it off
+### (_xoct_admail_rec). $1 = the account there, $2 = the target (none: this
+### box). Status 1 when the cnf is missing or cannot be rewritten.
+_xoct_admail_upgrade_mail_off() {
+  local _a="$1" _h="$2" _sh _rc _f
+  _f="$(_xoct_admail_rec "${_a}")"
+  _sh="_c=/root/.${_a}.octopus.cnf; [ -f \"\${_c}\" ] || exit 1; { grep -v '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo _SEND_UPGRADE_EMAIL=NO; } > \"\${_c}.admail\" && chmod 644 \"\${_c}.admail\" && mv -f \"\${_c}.admail\" \"\${_c}\""
+  if [ "$3" = "record" ]; then
+    _sh="${_sh} && mkdir -p /data/conf && ( umask 022; printf '%s\n' '${_XOCT_ADMAIL}' > '${_f}.tmp' ) && mv -f '${_f}.tmp' '${_f}'"
+  fi
+  if [ -n "${_h}" ]; then
+    ssh root@"${_h}" "${_sh}" 2> /dev/null
+    _rc=$?
+  else
+    bash -c "${_sh}" 2> /dev/null
+    _rc=$?
+  fi
+  if [ "${_rc}" -ne 0 ]; then
+    echo "ALRT: admail=: the upgrade notice of ${_a}${_h:+ on ${_h}} could not be switched off${3:+ and recorded}; its next Octopus pass there may mail the account's own address"
+    return 1
+  fi
+  echo "INFO: admail=: the upgrade notice of ${_a}${_h:+ on ${_h}} is off (_SEND_UPGRADE_EMAIL=NO in /root/.${_a}.octopus.cnf)${3:+, kept off while ${_f} exists there}"
+  return 0
+}
+### The tail of a sent notice's line: under admail= the account's own
+### address was not mailed, and the migration log records the send as a
+### test (testmail), which no later notice reads as what the client was told.
+_xoct_mail_said() {
+  [ -n "${_XOCT_ADMAIL}" ] && printf '%s' " (admail=; the account's own address was not mailed)"
+  return 0
 }
 ### Every sender sets _MAIL_SENT and only reports success when s-nail actually
 ### accepted the message: the mail log is the record of what the customer was
@@ -602,9 +957,8 @@ _xoct_mail_rcpt() {
 _send_notice_migration_complete() {
   _MAIL_SENT=NO
   _MAILX_TEST=$(s-nail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
-  _xoct_mail_rcpt
-  cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "IMPORTANT: Completed migration to ${_tgt} for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] && _xoct_mail_rcpt; then
+  cat <<EOF | s-nail "${_MAIL_BCC[@]}" -s "IMPORTANT: Completed migration to ${_tgt} for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
 Hello,
 
 This is a notification to inform you that the migration of your Ægir hosting system has been successfully completed. Below are important details and instructions regarding the changes.
@@ -654,18 +1008,17 @@ The BOA Dev Team
 EOF
   fi
   if [ "${_MAIL_SENT}" = "YES" ]; then
-    echo "INFO: Migration complete notice sent to ${_MAIL_RCPT} [${_THIS_HM_USER}]: OK"
+    echo "INFO: Migration complete notice sent to ${_MAIL_RCPT} [${_THIS_HM_USER}]: OK$(_xoct_mail_said)"
   else
-    echo "ALRT: Migration complete notice NOT sent for ${_THIS_HM_USER} (s-nail unavailable or send failed)"
+    echo "ALRT: Migration complete notice NOT sent for ${_THIS_HM_USER} (no plain address, s-nail unavailable or send failed)"
   fi
 }
 
 _send_notice_migration_start() {
   _MAIL_SENT=NO
   _MAILX_TEST=$(s-nail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
-  _xoct_mail_rcpt
-  cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "STATUS: Running migration to ${_tgt} for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] && _xoct_mail_rcpt; then
+  cat <<EOF | s-nail "${_MAIL_BCC[@]}" -s "STATUS: Running migration to ${_tgt} for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
 Hello,
 
 This notification is to inform you that the migration of your Ægir hosting system to the new platform has started.
@@ -719,9 +1072,9 @@ The BOA Dev Team
 EOF
   fi
   if [ "${_MAIL_SENT}" = "YES" ]; then
-    echo "INFO: Migration start notice sent to ${_MAIL_RCPT} [${_THIS_HM_USER}]: OK"
+    echo "INFO: Migration start notice sent to ${_MAIL_RCPT} [${_THIS_HM_USER}]: OK$(_xoct_mail_said)"
   else
-    echo "ALRT: Migration start notice NOT sent for ${_THIS_HM_USER} (s-nail unavailable or send failed)"
+    echo "ALRT: Migration start notice NOT sent for ${_THIS_HM_USER} (no plain address, s-nail unavailable or send failed)"
   fi
 }
 
@@ -730,9 +1083,8 @@ EOF
 _send_notice_migration_change() {
   _MAIL_SENT=NO
   _MAILX_TEST=$(s-nail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
-  _xoct_mail_rcpt
-  cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "IMPORTANT: Update to the forwarding arrangement for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] && _xoct_mail_rcpt; then
+  cat <<EOF | s-nail "${_MAIL_BCC[@]}" -s "IMPORTANT: Update to the forwarding arrangement for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
 Hello,
 
 This is a short follow-up to the migration message you received earlier. The forwarding arrangement for your old address has changed.
@@ -751,9 +1103,9 @@ The BOA Dev Team
 EOF
   fi
   if [ "${_MAIL_SENT}" = "YES" ]; then
-    echo "INFO: Forwarding change notice sent to ${_MAIL_RCPT} [${_THIS_HM_USER}]: OK"
+    echo "INFO: Forwarding change notice sent to ${_MAIL_RCPT} [${_THIS_HM_USER}]: OK$(_xoct_mail_said)"
   else
-    echo "ALRT: Forwarding change notice NOT sent for ${_THIS_HM_USER} (s-nail unavailable or send failed)"
+    echo "ALRT: Forwarding change notice NOT sent for ${_THIS_HM_USER} (no plain address, s-nail unavailable or send failed)"
   fi
 }
 
@@ -772,9 +1124,8 @@ _send_notice_migration_retire() {
     _para2="From now on every domain must resolve to the new address below. If any of your domains still point at the old address, please update them now."
   fi
   _MAILX_TEST=$(s-nail -V 2>&1)
-  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]]; then
-  _xoct_mail_rcpt
-  cat <<EOF | s-nail -b ${_BCC_EMAIL} -s "NOTICE: forwarding from your old address is being withdrawn for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
+  if [[ "${_MAILX_TEST}" =~ "built for Linux" ]] && _xoct_mail_rcpt; then
+  cat <<EOF | s-nail "${_MAIL_BCC[@]}" -s "NOTICE: forwarding from your old address is being withdrawn for ${_DOMAIN}" ${_MAIL_RCPT} && _MAIL_SENT=YES
 Hello,
 
 ${_para1}
@@ -791,9 +1142,9 @@ The BOA Dev Team
 EOF
   fi
   if [ "${_MAIL_SENT}" = "YES" ]; then
-    echo "INFO: Retirement notice sent to ${_MAIL_RCPT} [${_THIS_HM_USER}]: OK"
+    echo "INFO: Retirement notice sent to ${_MAIL_RCPT} [${_THIS_HM_USER}]: OK$(_xoct_mail_said)"
   else
-    echo "ALRT: Retirement notice NOT sent for ${_THIS_HM_USER} (s-nail unavailable or send failed)"
+    echo "ALRT: Retirement notice NOT sent for ${_THIS_HM_USER} (no plain address, s-nail unavailable or send failed)"
   fi
 }
 
@@ -1004,7 +1355,7 @@ _xoct_keep_renamed_redirects() {
     echo "ERROR: ${_oct}: ${_why}, and the hostnames that keep its renamed sites"
     echo "ERROR: answering a 301 could not be read (target '${_tf}', this box '${_mf}')."
     echo "ERROR: Re-run the command exactly as typed, with both set in front of it:"
-    echo "ERROR:   _XOCT_TARGET_FQDN=<hostname -f of ${_tgt}> _XOCT_MY_FQDN=<this box's hostname> xoct proxy ..."
+    echo "ERROR:   _XOCT_TARGET_FQDN=<hostname -f of ${_tgt}> _XOCT_MY_FQDN=<this box's hostname> xoct proxy ...${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
     exit 1
   fi
   _XOCT_TARGET_FQDN="${_tf}"
@@ -1231,6 +1582,62 @@ _xoct_dump_hm_here() {
   fi
   rm -f -- "${_t}"
   return 1
+}
+### The hostmaster dump never carries the dumping server's GTID state. By
+### default (--set-gtid-purged=AUTO) a dump taken while GTID is on (every
+### box an xmass run touched: BOA's my.cnf leaves it off, xmass_gtid.cnf
+### turns it on) opens with SET @@SESSION.SQL_LOG_BIN=0 and sets
+### @@GLOBAL.GTID_PURGED. Its import then fails on a box that shares that
+### history (a move back, a failback, a chained move: ERROR 3546 on 8.x),
+### and where it passes it stays out of that box's binary log, so a replica
+### of the box never gets the panel. OFF writes neither. Sets _MYSQLDUMP_GTID
+### to the option when the local mysqldump takes it: one that does not
+### (MariaDB's) would refuse it and writes neither anyway, so it is asked,
+### never assumed.
+_mysqldump_gtid_opts() {
+  _MYSQLDUMP_GTID=()
+  if mysqldump --help 2> /dev/null | grep -q -- '--set-gtid-purged'; then
+    _MYSQLDUMP_GTID=(--set-gtid-purged=OFF)
+  fi
+  return 0
+}
+### A site's database load is written to the binary log. myloader opens
+### every session with SET SQL_LOG_BIN=0 unless told otherwise, so on a box
+### running with the binary log on (every box an xmass run touched: BOA's
+### my.cnf leaves it off, xmass_gtid.cnf turns it on) the load never
+### reached a replica of the box, whose applier then stopped at the first
+### replicated write to the tables it never got. --ignore-set=SQL_LOG_BIN
+### drops that one session variable wherever it comes from (myloader's own
+### default, or the packaged /etc/mydumper.cnf for a call without an option
+### file); --enable-binlog is no substitute: that file sets it again, and
+### the 0.19.3 line refuses the option. With the binary log off it changes
+### nothing. Sets _MYLOADER_BINLOG to the option when the local myloader
+### lists it, so a build without it gets its arguments as before.
+_myloader_binlog_opts() {
+  _MYLOADER_BINLOG=()
+  if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--ignore-set([[:space:]]|=)'; then
+    _MYLOADER_BINLOG=(--ignore-set=SQL_LOG_BIN)
+  fi
+  return 0
+}
+### A site's triggers, stored routines and events travel with its tables.
+### mydumper writes none of them unless asked, so a site that kept them (a
+### logging trigger, a function its queries call, a scheduled event) lost
+### them on every move. Each keeps its DEFINER, the site's own database
+### user: the import loads as root, and the target has that user under the
+### same name before the load, so they run there with the site's rights, as
+### here. Sets _MYDUMPER_OBJECTS to those of the three options the local
+### mydumper lists, so a build without one gets its arguments as before.
+_mydumper_objects_opts() {
+  local _h _o
+  _MYDUMPER_OBJECTS=()
+  _h=$(mydumper --help 2>&1)
+  for _o in --triggers --routines --events; do
+    if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+(-[[:alpha:]],[[:space:]]+)?${_o}([[:space:]]|=|$)"; then
+      _MYDUMPER_OBJECTS+=("${_o}")
+    fi
+  done
+  return 0
 }
 ### The regular file ./$1 of the current (pinned) directory copied, forced
 ### (no -u), to the same name in the real directory $3 on the target $2, $4
@@ -1660,6 +2067,26 @@ _xoct_tpl_to_here() {
   rm -f -- "${_t}"
   return 1
 }
+### $1 as the directory root works in: itself when it is a real directory;
+### when it is a link, the real directory it leads to, only when every link
+### on the way is root's and every directory on the way, the last one
+### included, is root's and writable by no one else, so no one but root can
+### change where it leads or what is in it; nothing otherwise (exit 1). The
+### shared store /data/all may be such a link. With a second argument "last"
+### the last directory may be anyone's and open to others (the Octopus store
+### check takes /data/disk/all back); none is given here.
+_ROOT_REAL_PATH_PL='my ($p, $k) = @ARGV; if (!-l $p) { print $p if -d _; exit(-d _ ? 0 : 1); } my ($c, $n, @s) = ("", 0, stat("/")); exit 1 unless $p =~ m{^/} && @s && $s[4] == 0 && !($s[2] & 022); my @w = grep { length && $_ ne "." } split(m{/}, $p); while (@w) { my $e = shift(@w); if ($e eq "..") { $c =~ s{/[^/]*$}{}; next; } my @l = lstat("$c/$e") or exit 1; if (-l _) { exit 1 if $l[4] != 0 || ++$n > 40; my $t = readlink("$c/$e"); exit 1 unless defined $t; $c = "" if $t =~ m{^/}; unshift(@w, grep { length && $_ ne "." } split(m{/}, $t)); next; } exit 1 unless -d _ && (($l[4] == 0 && !($l[2] & 022)) || (defined $k && $k eq "last" && !@w)); $c .= "/$e"; } print($c eq "" ? "/" : $c); exit 0'
+### $1, the real directory a link of root's at /data/all leads to
+### (_ROOT_REAL_PATH_PL's answer), is the one the store may be kept in
+### behind that link (exit 0) only when it is /data/disk/all, the directory
+### named all directly in the real /data/disk, compared by device and inode
+### with that name not followed, so a link put at it does not count; any
+### other directory, or none, exit 1. Besides a real /data/all it is the
+### one layout of the store BOA knows, and the one other store directory
+### every PHP-FPM pool's open_basedir names. One text wherever it is defined
+### (satellite.sh.inc, BOA.sh.txt, xoct, xcopy, manage_solr_config.sh,
+### night.inc.sh).
+_SAT_STORE_TARGET_PL='my @t = lstat(defined $ARGV[0] ? $ARGV[0] : ""); my @a = lstat("/data/disk/all"); exit((@t && @a && -d _ && $t[0] == $a[0] && $t[1] == $a[1]) ? 0 : 1)'
 ### chmod $1 on the regular files ./$2 ... of the current (pinned) directory
 ### WITHOUT following a link: a name swapped for a link is opened O_NOFOLLOW
 ### and skipped, so the mode is never applied to a link's target, and only a
@@ -2109,6 +2536,8 @@ EOFMYSQL
             ### mydumper writes metadata into the outputdir as its LAST act;
             ### a transferred dir without it is a partial/hollow dump and
             ### loading it would silently restore an incomplete database.
+            ### The load is binlogged, so a replica of this box gets it too.
+            _myloader_binlog_opts
             if ! _xoct_in_real_dir "${_USR}/src/${_DBN}" test -e ./metadata; then
               _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
               _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_DBN}"
@@ -2121,6 +2550,7 @@ EOFMYSQL
               --directory=. \
               --threads=4 \
               --drop-table=DROP \
+              "${_MYLOADER_BINLOG[@]}" \
               --verbose=2; then
               _XOCT_SITE_IMPORT_OK=YES
               echo "INFO: site ${_Dom} db import on ${_oct} complete"
@@ -2262,6 +2692,8 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
         case "${_MYDUMPER_MAJOR}" in
           [1-9]*) _MYDUMPER_ROWS_OPT="" ;;
         esac
+        ### The site's triggers, routines and events go with its tables.
+        _mydumper_objects_opts
         ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
         if _xoct_in_real_dir "${_USR}/src/${_DBN}" mydumper ${_MYDUMPER_TRX_OPT} \
           --database=${_DBN} \
@@ -2270,6 +2702,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           --port=3306 \
           --outputdir=. \
           ${_MYDUMPER_ROWS_OPT} \
+          "${_MYDUMPER_OBJECTS[@]}" \
           --build-empty-files \
           --threads=4 \
           --long-query-guard=900 \
@@ -2475,8 +2908,8 @@ REDIR
           _XOCT_PROXY_FAIL=$(( ${_XOCT_PROXY_FAIL:-0} + 1 ))
           echo "ALRT: site ${_Dom} proxy conversion on ${_oct} failed: missing log/exported.pid or empty tgt/${_tgt}"
           if [ -e "${_USR}/log/export_failed.pid" ]; then
-            echo "ALRT: export_failed.pid is present -- re-run a clean 'xoct export', or convert"
-            echo "ALRT: anyway with 'xoct proxy ${_oct} ${_tgt} --force' (accepts the partial export)"
+            echo "ALRT: export_failed.pid is present -- re-run a clean 'xoct export${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}', or convert"
+            echo "ALRT: anyway with 'xoct proxy ${_oct} ${_tgt} --force${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}' (accepts the partial export)"
           fi
         fi
       fi
@@ -3273,7 +3706,7 @@ _xoct_push_target_octopus_cnf() {
   fi
   if ! ssh root@"${_t}" "[ -e ${_dCnf} ]" 2>/dev/null; then
     echo "ALRT: no ${_dCnf} on ${_t} (account not installed there yet?);"
-    echo "ALRT: skipping the cnf merge -- run 'xoct create' first, then re-run this step"
+    echo "ALRT: skipping the cnf merge -- run 'xoct create${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}' first, then re-run this step"
     return 1
   fi
   _lst="_PHP_FPM_VERSION _PHP_CLI_VERSION _PHP_FPM_WORKERS _PHP_FPM_TIMEOUT \
@@ -3291,10 +3724,20 @@ _xoct_push_target_octopus_cnf() {
     _l=$(grep "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
     [ -n "${_l}" ] && printf '%s\n' "${_l}" >> "${_lTmp}"
   done
+  ### Under admail= every merge (create, each live transfer) keeps the
+  ### account's upgrade notice off there (_xoct_admail_upgrade_mail_off);
+  ### so does the target itself while a test run's record names the account
+  ### there (_xoct_admail_rec), token or not.
+  if [ -n "${_XOCT_ADMAIL}" ]; then
+    grep -v '^_SEND_UPGRADE_EMAIL=' "${_lTmp}" > "${_lTmp}.admail" \
+      && mv -f "${_lTmp}.admail" "${_lTmp}" \
+      && echo '_SEND_UPGRADE_EMAIL=NO' >> "${_lTmp}"
+  fi
   {
     echo '#!/bin/bash'
     echo "_cnf=\"${_dCnf}\""
     echo "_mrg=\"${_rTmp}\""
+    echo "_adm=\"$(_xoct_admail_rec "${_dst}")\""
     cat <<'MERGESH'
 [ -e "${_cnf}" ] || exit 1
 [ -e "${_mrg}" ] || exit 1
@@ -3308,6 +3751,12 @@ while IFS= read -r _l; do
   printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
   mv -f "${_cnf}.mrgnew" "${_cnf}"
 done < "${_mrg}"
+if [ -e "${_adm}" ]; then
+  grep -v '^_SEND_UPGRADE_EMAIL=' "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+  echo '_SEND_UPGRADE_EMAIL=NO' >> "${_cnf}.mrgnew"
+  mv -f "${_cnf}.mrgnew" "${_cnf}"
+  echo "INFO: the upgrade notice stays off in ${_cnf}: a test run's record (${_adm})"
+fi
 chmod 644 "${_cnf}"
 rm -f "${_mrg}"
 MERGESH
@@ -3546,7 +3995,8 @@ _xoct_wait_target_install_settled() {
 ### refused seconds later by the pass the second account's seed had armed).
 ### Chained passes also leave lock-free gaps of a few seconds between them,
 ### so quiet must hold on two consecutive polls. Bounded; the caller fails
-### when the box never goes quiet.
+### when the box never goes quiet. Kept in step with xcopy's
+### _xcopy_wait_target_quiet -- mirror any fix there.
 _xoct_wait_target_quiet() {
   local _t="$1" _w=0 _busy _ok=0
   local _max="${_XOCT_TARGET_QUIET_MAX_WAIT:-1800}"
@@ -3976,25 +4426,22 @@ _migrate_prepare() {
     _CLIENT_SUBSCR=$(_xoct_read_in "${_USR}/log" subscr.txt)
     _CLIENT_SUBSCR=`echo -n ${_CLIENT_SUBSCR} | tr -d "\n"`
   fi
-  if [ -e "${_USR}/log/email.txt" ]; then
-    _CLIENT_EMAIL=$(_xoct_read_in "${_USR}/log" email.txt | tr -s '[:space:]' ' ')
-    _CLIENT_EMAIL="${_CLIENT_EMAIL# }"
-    _CLIENT_EMAIL="${_CLIENT_EMAIL% }"
-    if [[ "${_CLIENT_EMAIL}" =~ "@" ]]; then
-      _DO_NOTHING=YES
-    else
-      _CLIENT_EMAIL="inbox@boa.io"
-    fi
-    _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
+  ### No stand-in address: the eligibility gate has refused create, export
+  ### and pretransfer of an account with no plain address in log/email.txt
+  ### or its cnf, and a notice to one is refused by _xoct_mail_rcpt.
+  _xoct_client_address "${_USR}" "${_THIS_HM_USER}"
+  if [ "${_XOCT_EMAIL_SRC}" = "cnf" ]; then
+    echo "INFO: log/email.txt holds '$(_xoct_shown "${_XOCT_EMAIL_TXT}")', not a plain address: the client address is _CLIENT_EMAIL of /root/.${_THIS_HM_USER}.octopus.cnf, as the account's Octopus pass takes it"
   fi
 
   [ -z "${_THIS_DB_PORT}" ] && _THIS_DB_PORT=3306
   [ -z "${_CLIENT_OPTION}" ] && _CLIENT_OPTION=EDGE
   [ -z "${_CLIENT_SUBSCR}" ] && _CLIENT_SUBSCR=M
   [ -z "${_CLIENT_CORES}" ]  && _CLIENT_CORES=1
-  [ -z "${_CLIENT_EMAIL}" ]  && _CLIENT_EMAIL="inbox@boa.io"
 
   echo "_CLIENT_EMAIL is ${_CLIENT_EMAIL//[^[:print:]]/?}"
+  [ -n "${_XOCT_ADMAIL}" ] \
+    && echo "INFO: admail=${_XOCT_ADMAIL}: every client notice of this run goes there alone; the account keeps its own address"
   echo "_THIS_HM_USER is ${_THIS_HM_USER}"
   echo "_CLIENT_OPTION is ${_CLIENT_OPTION}"
   echo "_CLIENT_SUBSCR is ${_CLIENT_SUBSCR}"
@@ -4025,7 +4472,7 @@ _migrate_prepare() {
         if [ "${_MAIL_SENT}" = "YES" ]; then
           _XOCT_START_MODE="${_MIG_MODE}"
           [ "${_MIG_SOURCE}" = "default" ] && _XOCT_START_MODE="-"
-          _mig_log "${_USR}" xoct mail start "${_XOCT_START_MODE}" "${_MIG_DEADLINE}" "${_tgt}"
+          _mig_log "${_USR}" xoct "${_XOCT_MAIL_ACT}" start "${_XOCT_START_MODE}" "${_MIG_DEADLINE}" "${_tgt}"
         fi
       else
         echo "ALRT: start notice NOT sent: mail blocks refused to compose (see above)"
@@ -4055,6 +4502,31 @@ _migrate_prepare() {
     echo "ERROR: import for ${_oct}: ${_THIS_HM_SITE}/drushrc.php names no panel database"
     echo "ERROR: nothing was imported and nothing on this box was changed; fix the cause and re-run"
     exit 1
+  fi
+  ### The account's upgrade notice goes off on this box, before the first
+  ### pass that follows the import, under admail= (recorded here too) or
+  ### while a test run's record names the account here, token or not: the
+  ### transfer brought the setup mail that pass would send.
+  if [ "${_cmd}" = "import" ]; then
+    if [ -n "${_XOCT_ADMAIL}" ]; then
+      _xoct_admail_upgrade_mail_off "${_THIS_HM_USER}" "" record
+      _xoct_hold_put ""
+    elif [ -e "$(_xoct_admail_rec "${_THIS_HM_USER}")" ]; then
+      echo "INFO: ${_THIS_HM_USER} came in a test run ($(_xoct_admail_rec "${_THIS_HM_USER}")): its upgrade notice stays off"
+      _xoct_admail_upgrade_mail_off "${_THIS_HM_USER}"
+    fi
+    if [ -z "${_XOCT_ADMAIL}" ] && [ -e "${_XOCT_HOLD_FILE}" ]; then
+      echo "ALRT: this box holds its clients' mail for $(_xoct_first_line "${_XOCT_HOLD_FILE}") (${_XOCT_HOLD_FILE}, put by a"
+      echo "ALRT: test run): ${_THIS_HM_USER}'s client is not mailed from here while it is there"
+    fi
+    ### A move's first pass here that would mail the upgrade notice sends
+    ### none (create put the marker; put again when a pass took it since),
+    ### unless the account's switch here is NO and no test run's record
+    ### names it (a canary's NO is the test's: go-live sets the source's).
+    if [ "$(_xoct_upgrade_switch "/root/.${_THIS_HM_USER}.octopus.cnf")" != "NO" ] \
+      || [ -e "$(_xoct_admail_rec "${_THIS_HM_USER}")" ]; then
+      _xoct_upgrade_skip_put "${_THIS_HM_USER}" "" import
+    fi
   fi
 
   su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush" &> /dev/null
@@ -4089,8 +4561,12 @@ _migrate_prepare() {
       # Written into the real src/ as a fresh file renamed over the name, so a
       # link the account put at prev_hostmaster.sql (even a dangling one, past
       # the -e guard above) is replaced, never followed to create its target.
+      _mysqldump_gtid_opts
+      [ "${#_MYSQLDUMP_GTID[@]}" -eq 0 ] \
+        && echo "INFO: this mysqldump takes no --set-gtid-purged: its dump carries no GTID state"
       if _xoct_in_real_dir "${_USR}/src" _xoct_dump_hm_here \
         mysqldump -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp \
+        "${_MYSQLDUMP_GTID[@]}" \
         --single-transaction \
         --quick \
         --no-autocommit \
@@ -4162,7 +4638,11 @@ _migrate_prepare() {
     if pgrep -x cron &> /dev/null; then
       echo "ALRT: cron still running after stop attempt; check manually"
     fi
-    [ -e "/data/all/cpuinfo" ] && chmod 644 /data/all/cpuinfo
+    [ -e "/data/all/cpuinfo" ] && _xoct_in_real_dir \
+      "$(_s="$(perl -e "${_ROOT_REAL_PATH_PL}" -- /data/all 2> /dev/null)" \
+        && perl -e "${_SAT_STORE_TARGET_PL}" -- "${_s}" > /dev/null 2>&1 \
+        && echo "${_s}" || echo /data/all)" \
+      _xoct_fchmod_here 644 ./cpuinfo
     _xoct_wait_boa_quiet
     if [ ! -z "${_dst}" ] && [ "${_oct}" != "${_dst}" ]; then
       echo "INFO: rename mode import for source ${_oct} into target account ${_dst}"
@@ -4242,7 +4722,7 @@ _migrate_prepare() {
       else
         echo "ERROR: alias-derived panel DB ${_HDB} does not exist and no live panel DB"
         echo "ERROR: matches ${_USR} — the dest account has no importable panel; re-run"
-        echo "ERROR: 'xoct create ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}' first"
+        echo "ERROR: 'xoct create ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}' first"
         exit 1
       fi
     fi
@@ -4279,7 +4759,7 @@ _migrate_prepare() {
       echo "ERROR: would leave the migrated control panel dead after the rename queue runs"
       echo "ERROR: recovery — fix the cause the ALRT above names, then re-run the FULL import:"
       echo "ERROR:   rm ${_USR}/log/imported.pid"
-      echo "ERROR:   xoct import ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}"
+      echo "ERROR:   xoct import ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
       exit 1
     fi
     if ! _xoct_sync_panel_db_pass "${_USR}" "${_THIS_HM_USER}" "${_oct}" "${_HDB}"; then
@@ -4387,7 +4867,7 @@ _migrate_prepare() {
       echo "ERROR: 503-gated until the import tail runs"
       echo "ERROR: recovery — fix the cause, then re-run the FULL import:"
       echo "ERROR:   rm ${_USR}/log/imported.pid"
-      echo "ERROR:   xoct import ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}"
+      echo "ERROR:   xoct import ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
       echo "ERROR: (safe: re-imports the same already-transferred dump, redoes rename + tail)"
       echo "ERROR: to iterate on the rename failure alone first (convergent, safe to re-run):"
       echo "ERROR:   renameaegirhost --aegir-root ${_USR} --force-old ${_RAH_OLD:-<source-fqdn>}${_RAH_ACCT}"
@@ -4419,9 +4899,17 @@ _migrate_prepare() {
           ;;
       esac
     fi
-    if ! printf '%s' "${_CLIENT_EMAIL}" | grep -qE '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then
-      echo "ALRT: refusing create: client email '${_CLIENT_EMAIL//[^[:print:]]/?}' failed validation"
+    ### The install takes one address: an account whose address is a list
+    ### is installed with the first, and the transfer carries the account's
+    ### own log/email.txt over the install's copy, so the target keeps the
+    ### list as it is.
+    _XOCT_INSTALL_EMAIL="${_CLIENT_EMAIL%% *}"
+    if ! printf '%s' "${_XOCT_INSTALL_EMAIL}" | grep -qE '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'; then
+      echo "ALRT: refusing create: client email '${_XOCT_INSTALL_EMAIL//[^[:print:]]/?}' failed validation"
       exit 1
+    fi
+    if [ "${_XOCT_INSTALL_EMAIL}" != "${_CLIENT_EMAIL}" ]; then
+      echo "INFO: the account's address is a list: installed with its first address, the transfer carries the list in log/email.txt as it is"
     fi
     ### The plan stamps come from log/ files that arrive over the network on
     ### a chained migration and are spliced into a remote root command --
@@ -4432,6 +4920,12 @@ _migrate_prepare() {
     if [ -z "${_CLIENT_OPTION}" ] || [ -z "${_CLIENT_SUBSCR}" ] || [ -z "${_CLIENT_CORES}" ]; then
       echo "ALRT: refusing create: plan stamps failed validation (option/subscr/cores)"
       exit 1
+    fi
+    ### A test run is recorded here before the target is touched, so a create
+    ### that stops half way still holds every later verb to the token. Not in
+    ### the creates xmass runs: its own record holds its cutover.
+    if [ -n "${_XOCT_ADMAIL}" ] && [ "${_XOCT_XMASS_RUN}" != "YES" ]; then
+      _xoct_admail_record_here "${_oct}" || exit 1
     fi
     if [ ! -z "${_CLIENT_EMAIL}" ] \
       && [ ! -z "${_TGT_HM_USER}" ] \
@@ -4468,6 +4962,12 @@ _migrate_prepare() {
       fi
       ### Asked again: the PHP pass above can run for half an hour.
       _xoct_create_owner_gate "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      ### Under admail= the target holds its clients' mail for that address
+      ### before anything is installed there (xmass puts it for its own
+      ### creates); a create that cannot put it, refuses.
+      if [ -n "${_XOCT_ADMAIL}" ] && [ "${_XOCT_XMASS_RUN}" != "YES" ]; then
+        _xoct_hold_put "${_tgt}" || exit 1
+      fi
       ### Existence keyed on what only a real INSTALL produces: log/cores.txt
       ### alone is force-copied by the transfer path, so it would let an
       ### out-of-order run seed config onto a bare rsync tree.
@@ -4507,6 +5007,14 @@ _migrate_prepare() {
           echo "ALRT: could not probe the mail-suppression marker on ${_tgt};"
           echo "ALRT: the install may mail a welcome password that the credential carry replaces"
         fi
+        ### Under admail= the install must not mail the client at all: with
+        ### no marker held there, nothing is installed.
+        if [ -n "${_XOCT_ADMAIL}" ] && [ "${_SILENT_MARKER}" != "YES" ] \
+          && [ "${_SILENT_PROBE}" != "YES" ]; then
+          echo "ALRT: refusing create under admail=: the mail-suppression marker could not be put on ${_tgt},"
+          echo "ALRT: so the install would mail its welcome to the account's own address; nothing was installed"
+          exit 1
+        fi
         ### The marker must come off even if the install dies, or the target
         ### stays silent for every later BOA mail on the box. This handler
         ### REPLACES the single-flight lock's own cleanup for the install
@@ -4517,9 +5025,16 @@ _migrate_prepare() {
         ### the EXIT handler, which does the removals.
         trap '_xoct_chattr_back; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
         trap 'exit 130' INT TERM HUP
-        ssh root@${_tgt} "/opt/local/bin/boa ${_IN_VERB} ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_TGT_TREE} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
+        ssh root@${_tgt} "/opt/local/bin/boa ${_IN_VERB} ${_XOCT_INSTALL_EMAIL} ${_TGT_HM_USER} ${_TGT_TREE} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
         _INSTALL_RC=$?
         if [ "${_SILENT_MARKER}" = "YES" ]; then
+          ### The runner takes the marker off when it starts a queued
+          ### upgrade: one that did so during the install let the welcome go.
+          _SILENT_AFTER=$(ssh root@${_tgt} "[ -e /root/.silent.update.cnf ] && echo YES || echo NO" 2>/dev/null)
+          if [ "${_SILENT_AFTER}" = "NO" ]; then
+            echo "ALRT: the mail-suppression marker was gone from ${_tgt} when the install ended (a queued"
+            echo "ALRT: upgrade run takes it off): the install's welcome may have reached the account's own address"
+          fi
           ssh root@${_tgt} "rm -f /root/.silent.update.cnf"
           _SILENT_MARKER=NO
         fi
@@ -4584,6 +5099,25 @@ _migrate_prepare() {
       ### Post-install seeding: merge the portable cnf values, force the
       ### authoritative control-file pins, carry the client credentials.
       _xoct_push_target_octopus_cnf "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      ### After the merge, which carries the source's switch: under admail=
+      ### a target that keeps the notice on refuses the create, before the
+      ### transfer can bring the setup mail it would send. The record put
+      ### there with it keeps it off through every later merge and import.
+      if [ -n "${_XOCT_ADMAIL}" ]; then
+        if [ "${_XOCT_XMASS_RUN}" = "YES" ]; then
+          _xoct_admail_upgrade_mail_off "${_TGT_HM_USER}" "${_tgt}" || exit 1
+        else
+          _xoct_admail_upgrade_mail_off "${_TGT_HM_USER}" "${_tgt}" record || exit 1
+        fi
+      fi
+      ### Every move, test or real: the account's first pass there that would
+      ### mail its upgrade notice sends none (_xoct_upgrade_skip_file), unless
+      ### the account's switch here is NO, which the merge carries there.
+      if [ "$(_xoct_upgrade_switch "/root/.${_oct}.octopus.cnf")" = "NO" ]; then
+        echo "INFO: ${_oct}'s upgrade notice is off here (_SEND_UPGRADE_EMAIL=NO): no one-pass marker is put on ${_tgt}"
+      else
+        _xoct_upgrade_skip_put "${_TGT_HM_USER}" "${_tgt}" create
+      fi
       _XOCT_GMAP="${_XOCT_AMAP}"
       _xoct_seed_target_control_pins "${_USR}" "/data/disk/${_TGT_HM_USER}" "${_TGT_HM_USER}" "${_tgt}"
       _xoct_sync_shell_credentials "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
@@ -4698,7 +5232,7 @@ _migrate_prepare() {
       } | _xoct_in_real_dir "${_USR}/log" _xoct_write_here export_failed.pid 022
       echo "ALRT: export for ${_oct}: ${_XOCT_EXPORT_FAIL} site database export(s) FAILED:${_XOCT_EXPORT_FAILED_DBS}"
       echo "ERROR: NOT stamping exported.pid; transfer and import will refuse this account"
-      echo "ERROR: fix the cause, then re-run 'xoct export ${_oct} ${_tgt}${_dst:+ ${_dst}}'"
+      echo "ERROR: fix the cause, then re-run 'xoct export ${_oct} ${_tgt}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}'"
       echo "ERROR: (site dumps are redone in place; the hostmaster dump is kept)"
       _XOCT_RUN_FAIL=YES
     elif [ -s "${_USR}/src/prev_hostmaster.sql" ]; then
@@ -4754,7 +5288,7 @@ _migrate_prepare() {
       echo "ERROR: their verifies were NOT scheduled; sites with clean loads were imported normally"
       echo "ERROR: recovery -- fix the cause (re-export/re-transfer the failed dumps if hollow), then:"
       echo "ERROR:   rm ${_USR}/log/imported.pid"
-      echo "ERROR:   xoct import ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}"
+      echo "ERROR:   xoct import ${_oct} ${_tgt:-<target-ip>}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
       echo "ERROR: (safe: the full import re-run re-imports from the same transferred dumps)"
       _XOCT_RUN_FAIL=YES
     else
@@ -5465,7 +5999,7 @@ _xoct_proxy_preflight() {
         if [ "${_XOCT_PROXY_RETARGET}" != "YES" ]; then
           echo "ERROR: this account's proxy record points at ${_old_peer}, not ${_tgt}"
           echo "ERROR: a changed target IP must be explicit; if the repoint is intended, re-run:"
-          echo "ERROR:   xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair --retarget"
+          echo "ERROR:   xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair --retarget${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
           exit 1
         fi
         _XOCT_OLD_PEER="${_old_peer}"
@@ -5485,7 +6019,7 @@ _xoct_proxy_preflight() {
   _mig_resolve "${_USR}"
   if [ "${_MIG_MODE}" = "retired" ]; then
     echo "ERROR: ${_oct}: proxy policy is retired; declare a mode first:"
-    echo "ERROR:   xoct proxy-mode ${_oct} <temporary|permanent|ha-switch>"
+    echo "ERROR:   xoct proxy-mode ${_oct} <temporary|permanent|ha-switch>${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
     exit 1
   fi
   ### Scope records HOW the mode was chosen: an explicit flag on this
@@ -5568,7 +6102,14 @@ _xoct_proxy_preflight() {
 _xoct_policy_notify() {
   local _a="$1" _mode="$2" _dl="$3" _peer="$4" _role="$5"
   local _root="/data/disk/${_a}" _last _new_ip _old_ip
-  _last="$(_mig_last_mail "${_root}")"
+  ### On the source only the notices of this box's moves count (a log carried
+  ### from the move that brought the account here holds that move's); the
+  ### target reads its log as it is.
+  if [ "${_role}" = "target" ]; then
+    _last="$(_mig_last_mail "${_root}")"
+  else
+    _last="$(_mig_last_mail "${_root}" "${_peer}")"
+  fi
   if [ "${_XOCT_NO_NOTIFY}" = "YES" ]; then
     if [ -n "${_last}" ] && [ "${_last}" != "${_mode}|${_dl:--}" ]; then
       _mig_log "${_root}" xoct skip change-suppressed "${_mode}" "${_dl}" "${_peer}"
@@ -5605,7 +6146,7 @@ _xoct_policy_notify() {
   _mig_build_mail_blocks change "${_new_ip}" "${_old_ip}" || return 0
   _send_notice_migration_change
   if [ "${_MAIL_SENT}" = "YES" ]; then
-    _mig_log "${_root}" xoct mail change "${_mode}" "${_dl}" "${_peer}"
+    _mig_log "${_root}" xoct "${_XOCT_MAIL_ACT}" change "${_mode}" "${_dl}" "${_peer}"
   else
     echo "ALRT: ${_a}: change notice NOT sent; re-run with --renotify when mail works"
   fi
@@ -5620,6 +6161,9 @@ _xoct_apply_policy() {
   local _a="$1" _mode="$2" _scope="$3"
   local _root="/data/disk/${_a}" _cnf _role=source _peer="" _peer_oct="" _dl="" _oldscope="" _oldmode="" _peer_ips=""
   local _dl_none="" _rec_dl
+  ### An account in a test run changes nothing without its admail=: the
+  ### change notice below would reach the client.
+  _xoct_admail_gate "${_a}" || return 1
   _cnf="${_root}/${_MIG_CNF_NAME}"
   if [ -r "${_cnf}" ] && _mig_is_mine "${_cnf}"; then
     _role="$(_mig_get "${_cnf}" _MIG_ROLE)"
@@ -5703,7 +6247,14 @@ _xoct_apply_policy() {
   ### the source's full address set and reconcile trusts from it.
   _mig_write_record "${_root}" "${_role}" "${_peer}" "${_peer_oct:-${_a}}" \
     "${_mode}" "${_scope}" "${_rec_dl}" "${_peer_ips}" || return 1
-  _mig_log "${_root}" xoct set "${_scope}" "${_mode}" "${_dl}" "${_peer}"
+  ### A set line names a box this box moved the account to, whose notices
+  ### count on the source (_xoct_source_peers); on a target-role record the
+  ### peer is the box the account came from, so the line is set-inbound.
+  if [ "${_role}" = "target" ]; then
+    _mig_log "${_root}" xoct set-inbound "${_scope}" "${_mode}" "${_dl}" "${_peer}"
+  else
+    _mig_log "${_root}" xoct set "${_scope}" "${_mode}" "${_dl}" "${_peer}"
+  fi
   echo "INFO: ${_a}: proxy mode set to ${_mode}${_dl:+ (deadline ${_dl})}${_dl_none:+ (no deadline)} [${_scope}]"
   ### On a TARGET record the change affects THIS box's own trust set.
   if [ "${_role}" = "target" ] && [ -x "${_MIG_TRUST_TOOL}" ]; then
@@ -5742,7 +6293,7 @@ _xoct_proxy_mode() {
   if [ -z "${_mode}" ]; then
     if [ -n "${_XOCT_DEADLINE_FLAG}${_XOCT_NO_DEADLINE}" ]; then
       echo "ERROR: a deadline change must restate the mode, e.g.:"
-      echo "ERROR:   xoct proxy-mode ${_sel} temporary --deadline=+30d"
+      echo "ERROR:   xoct proxy-mode ${_sel} temporary --deadline=+30d${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
       exit 1
     fi
     ### Unquoted on purpose: _accts is a space/newline-separated account list.
@@ -5752,12 +6303,17 @@ _xoct_proxy_mode() {
   fi
   if ! _mig_valid_mode "${_mode}" || [ "${_mode}" = "retired" ]; then
     if [ "${_mode}" = "retired" ]; then
-      echo "ERROR: use: xoct proxy-retire ${_sel}"
+      echo "ERROR: use: xoct proxy-retire ${_sel}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
     else
       echo "ERROR: invalid mode '${_mode}' (temporary|permanent|ha-switch)"
     fi
     exit 1
   fi
+  ### A box that holds its clients' mail for a test run takes no real
+  ### policy change: the change notices would be held too; nor does one in
+  ### xmass's test run (asked once here, not per account).
+  _xoct_hold_gate "" || exit 1
+  _xoct_xmass_rec_gate || exit 1
   _mig_sweep_legacy
   ### A single-account set is a per-account operator instruction (a pin); the
   ### --all form is a box-wide statement that never overwrites a pin. Per-
@@ -5770,7 +6326,7 @@ _xoct_proxy_mode() {
   done
   if [ -n "${_failed}" ]; then
     echo "ALRT: policy NOT changed for:${_failed}"
-    echo "ALRT: fix the cause (peer reachability) and re-run for those accounts"
+    echo "ALRT: fix the cause above (peer reachability, a test run's admail=) and re-run for those accounts"
     exit 1
   fi
   exit 0
@@ -5780,6 +6336,9 @@ _xoct_retire_one() {
   local _a="$1" _wdl="$2"
   local _root="/data/disk/${_a}" _cnf _role _peer _peer_oct _scope _mode _peer_ips
   local _new_ip _old_ip
+  ### An account in a test run is not retired without its admail=: the
+  ### withdrawal notice would reach the client.
+  _xoct_admail_gate "${_a}" || return 1
   _cnf="${_root}/${_MIG_CNF_NAME}"
   if [ ! -r "${_cnf}" ] || ! _mig_is_mine "${_cnf}"; then
     echo "INFO: ${_a}: no local proxy policy record; nothing to retire"
@@ -5839,6 +6398,20 @@ _xoct_retire_one() {
     echo "ALRT: ${_a}: no peer recorded; cannot compose the retirement notice"
     return 0
   fi
+  ### On the source, only a client its log shows as really told of a move
+  ### from this box (a real notice naming a peer of its moves, this one's or
+  ### the one before a retarget; never a test run's) is told of
+  ### the withdrawal: after a test run the client was never told. One
+  ### converted before the log recorded the notices was told then. The
+  ### target's log never holds that notice (the source sends it, and xmass
+  ### none at the start), so a retire there, the failover route when the
+  ### source is gone, mails the client; a test run there is refused above
+  ### (its record, xmass's mark) and by the box's mail hold.
+  if [ "${_role}" = "source" ] && [ -z "$(_mig_last_mail "${_root}" "${_peer}")" ] \
+    && ! _xoct_proxied_before_log "${_root}"; then
+    echo "INFO: ${_a}: this box's migration log holds no notice the client received; no withdrawal notice is sent"
+    return 0
+  fi
   ### On a target-role record the customer's NEW system is THIS box and the
   ### old address is the peer.
   if [ "${_role}" = "target" ]; then
@@ -5852,7 +6425,7 @@ _xoct_retire_one() {
   _mig_build_mail_blocks retire "${_new_ip}" "${_old_ip}"
   _send_notice_migration_retire
   if [ "${_MAIL_SENT}" = "YES" ]; then
-    _mig_log "${_root}" xoct mail retire retired "${_wdl}" "${_peer}"
+    _mig_log "${_root}" xoct "${_XOCT_MAIL_ACT}" retire retired "${_wdl}" "${_peer}"
   else
     echo "ALRT: ${_a}: retirement notice NOT sent (mail unavailable); the client was NOT told"
   fi
@@ -5884,6 +6457,11 @@ _xoct_proxy_retire() {
       exit 1
     fi
   fi
+  ### A box that holds its clients' mail for a test run takes no real
+  ### retirement: the withdrawal notices would be held too; nor does one in
+  ### xmass's test run (asked once here, not per account).
+  _xoct_hold_gate "" || exit 1
+  _xoct_xmass_rec_gate || exit 1
   local _failed=""
   for _a in ${_accts}; do
     _xoct_retire_one "${_a}" "${_wdl}" || _failed="${_failed} ${_a}"
@@ -5891,10 +6469,163 @@ _xoct_proxy_retire() {
   echo "INFO: records marked retired; the nginx proxy vhosts are left in place -- withdraw"
   echo "INFO: service by decommissioning this box (or removing the vhosts) once DNS is confirmed moved"
   if [ -n "${_failed}" ]; then
-    echo "ALRT: NOT retired:${_failed} -- fix the cause (peer reachability) and re-run"
+    echo "ALRT: NOT retired:${_failed} -- fix the cause above (peer reachability, a test run's admail=) and re-run"
     exit 1
   fi
   exit 0
+}
+
+### go-live {o1} {target-ip} [{o2}], on the source: a canary moved under
+### admail= becomes the real move. The test run's records go on both boxes
+### (_xoct_admail_rec), and the box-level mail hold (_XOCT_HOLD_FILE) where
+### it holds the run's address and no other test run is recorded (an xoct
+### record, an xmass mark); the target account's upgrade switch takes the
+### source's value again (its one-pass marker goes with a NO); and a proxied
+### account whose client was never really told of the completion gets the
+### completion notice now (the --repair --renotify path of proxy), also
+### while a hold kept for another test run is there. The target goes first:
+### a step that cannot reach it leaves the source's record, so the account
+### stays held to its test until a re-run finishes. Each step reads before
+### it changes anything, so a re-run is a no-op. Without {o2} the target
+### account is the one this move's policy record names (source role, this
+### target its peer), else {o1} when the target holds a create marker naming
+### this box and {o1}; otherwise it refuses before anything changes (a
+### renamed canary before proxy: the target's own {o1} is another account,
+### and a test-run record of {o1} there can be another box's canary).
+### Refused while xmass's record of a test run of the whole box is here,
+### unless xmass go-live runs it.
+_xoct_go_live() {
+  local _dA _rec="" _sw _sh _out _l _left _chk="" _src=""
+  if [ -n "${_XOCT_ADMAIL}" ]; then
+    echo "ERROR: go-live takes no admail=: it ends the test run and mails the client"
+    exit 1
+  fi
+  if [ -z "${_oct}" ] || [ -z "${_tgt}" ] || ! _mig_valid_acct "${_oct}" \
+    || [ ! -d "/data/disk/${_oct}" ] || ! _mig_valid_ip "${_tgt}"; then
+    echo "Usage: xoct {go-live} {o1} {target-ip} {o2} (source vms, ends a canary run under admail=)"
+    exit 1
+  fi
+  if [ -n "${_dst}" ] && ! _mig_valid_acct "${_dst}"; then
+    echo "ERROR: invalid target account name '${_dst}'"
+    exit 1
+  fi
+  if [ -e "${_XOCT_XMASS_REC}" ] && [ "${_XOCT_XMASS_GOLIVE}" != "YES" ]; then
+    echo "ERROR: this box is in an xmass test run (${_XOCT_XMASS_REC}); go-live ends a canary"
+    echo "ERROR: moved with xoct. 'xmass go-live <target-ip>' ends the whole-box test run once"
+    echo "ERROR: its cutover is done; before it, a real move of the box starts again with"
+    echo "ERROR: 'xmass prep-target <target-ip>' without admail=, which removes the record"
+    exit 1
+  fi
+  _USR="/data/disk/${_oct}"
+  _THIS_HM_USER="${_oct}"
+  _dA="${_dst}"
+  ### Only this move's record names the account there: a source-role record
+  ### whose peer is this target (a target-role one is the record of an
+  ### earlier move that brought the account here).
+  if [ -z "${_dA}" ] && [ -r "${_USR}/${_MIG_CNF_NAME}" ] \
+    && _mig_is_mine "${_USR}/${_MIG_CNF_NAME}" \
+    && [ "$(_mig_get "${_USR}/${_MIG_CNF_NAME}" _MIG_ROLE)" != "target" ] \
+    && [ "$(_mig_get "${_USR}/${_MIG_CNF_NAME}" _MIG_PEER_IP)" = "${_tgt}" ]; then
+    _dA="$(_mig_get "${_USR}/${_MIG_CNF_NAME}" _MIG_PEER_OCT)"
+    _mig_valid_acct "${_dA}" || _dA=""
+  fi
+  if [ -z "${_dA}" ]; then
+    _dA="${_oct}"
+    _chk=YES
+    _src="$(_xoct_create_src_host)" || _src=""
+  fi
+  [ -z "${_dst}" ] && [ "${_dA}" != "${_oct}" ] && _dst="${_dA}"
+  [ -e "$(_xoct_admail_rec "${_oct}")" ] && _rec="$(_xoct_first_line "$(_xoct_admail_rec "${_oct}")")"
+  _sw="$(_xoct_upgrade_switch "/root/.${_oct}.octopus.cnf")"
+  echo "INFO: go-live for ${_oct} (${_dA} on ${_tgt})${_rec:+: ending the test run under admail=${_rec}}"
+  ### The account names and the host name are checked above and the address
+  ### is one plain address (it was admail='s), so each goes into the remote
+  ### line as is.
+  _sh="_a='${_dA}'; _o1='${_oct}'; _sw='${_sw}'; _rec='${_rec}'; _chk='${_chk}'; _src='${_src}'; _r=/data/conf/xoct_admail.\${_a}.txt; _h=${_XOCT_HOLD_FILE}; _c=/root/.\${_a}.octopus.cnf; _k=/data/conf/\${_a}_skip_upgrade_email.txt; _tr=''
+if [ -n \"\${_chk}\" ]; then
+  _m=/root/.\${_a}.migration-create.txt
+  if ! { [ -n \"\${_src}\" ] && [ -f \"\${_m}\" ] && [ ! -L \"\${_m}\" ] && grep -qxF \"_MIG_CREATE_SRC_HOST=\${_src}\" \"\${_m}\" && grep -qxF \"_MIG_CREATE_SRC_OCT=\${_o1}\" \"\${_m}\"; }; then echo NAME-UNKNOWN; exit 0; fi
+fi
+if [ -e \"\${_r}\" ]; then _tr=\$(head -n 1 \"\${_r}\" | tr -cd '[:print:]' | cut -c1-200); rm -f \"\${_r}\" || { echo REC-STUCK; exit 1; }; echo \"REC-GONE \${_tr}\"; else echo REC-NONE; fi
+if [ -e \"\${_h}\" ]; then
+  _hv=\$(head -n 1 \"\${_h}\" | tr -cd '[:print:]' | cut -c1-200)
+  _more=''; for _o in /data/conf/xoct_admail.*.txt ${_XOCT_XMASS_MARKS}; do [ -e \"\${_o}\" ] || continue; grep -qxF '${_XOCT_ADMAIL_SRC_LINE}' \"\${_o}\" 2> /dev/null && continue; _more=\"\${_more} \${_o##*/}\"; done
+  if [ -n \"\${_more}\" ]; then echo \"HOLD-KEPT \${_hv}\${_more}\"
+  elif [ -n \"\${_hv}\" ] && { [ \"\${_hv}\" = \"\${_rec}\" ] || [ \"\${_hv}\" = \"\${_tr}\" ]; }; then rm -f \"\${_h}\" || { echo HOLD-STUCK; exit 1; }; echo HOLD-GONE
+  else echo \"HOLD-OTHER \${_hv}\"; fi
+else echo HOLD-NONE; fi
+if [ -f \"\${_c}\" ]; then
+  _cur=\$(grep -a '^_SEND_UPGRADE_EMAIL=' \"\${_c}\" | tail -n 1 | cut -d= -f2- | tr -d '\"')
+  if [ \"\${_cur}\" = \"\${_sw}\" ]; then echo \"SW-SAME \${_cur}\"
+  else { grep -v '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo \"_SEND_UPGRADE_EMAIL=\${_sw}\"; } > \"\${_c}.golive\" && chmod 644 \"\${_c}.golive\" && mv -f \"\${_c}.golive\" \"\${_c}\" || { echo SW-STUCK; exit 1; }; echo \"SW-SET \${_cur:-unset}\"; fi
+else echo SW-NOCNF; fi
+if [ \"\${_sw}\" = NO ] && [ -e \"\${_k}\" ]; then rm -f \"\${_k}\" || { echo SKIP-STUCK; exit 1; }; echo SKIP-GONE; fi
+echo GOLIVE-TARGET-OK"
+  _out="$(ssh root@"${_tgt}" "${_sh}" 2> /dev/null)"
+  if [ "${_out}" = "NAME-UNKNOWN" ]; then
+    echo "ERROR: ${_tgt} holds no create marker naming this box and ${_oct}, and no policy record here"
+    echo "ERROR: names the account there: its ${_oct} may be another account (a renamed canary before"
+    echo "ERROR: proxy; a test run record of ${_oct} there can be another box's canary). Nothing was"
+    echo "ERROR: changed. Name the target account:"
+    echo "ERROR:   xoct go-live ${_oct} ${_tgt} <o2>"
+    exit 1
+  fi
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "REC-GONE "*) echo "INFO: ${_tgt}: removed $(_xoct_admail_rec "${_dA}") (admail=${_l#REC-GONE })" ;;
+      REC-NONE) echo "INFO: ${_tgt}: no test run recorded for ${_dA}" ;;
+      HOLD-GONE) echo "INFO: ${_tgt}: removed ${_XOCT_HOLD_FILE}: the box mails its clients again" ;;
+      "HOLD-KEPT "*)
+        _left="${_l#HOLD-KEPT }"
+        echo "INFO: ${_tgt}: ${_XOCT_HOLD_FILE} (${_left%% *}) kept: another test run is recorded there (${_left#* }); ${_dA}'s client mail from there stays held until the last one ends"
+      ;;
+      "HOLD-OTHER "*) echo "ALRT: ${_tgt}: ${_XOCT_HOLD_FILE} holds client mail for ${_l#HOLD-OTHER }, which no test run of ${_dA} recorded; left as it is" ;;
+      HOLD-NONE) : ;;
+      "SW-SAME "*) echo "INFO: ${_tgt}: ${_dA}'s upgrade switch is already the source's (${_l#SW-SAME })" ;;
+      "SW-SET "*) echo "INFO: ${_tgt}: ${_dA}'s upgrade switch set to the source's ${_sw} (was ${_l#SW-SET })" ;;
+      SW-NOCNF) echo "ALRT: ${_tgt}: no /root/.${_dA}.octopus.cnf there; its upgrade switch was not set" ;;
+      SKIP-GONE) echo "INFO: ${_tgt}: removed $(_xoct_upgrade_skip_file "${_dA}"): with the switch NO no pass would take it" ;;
+    esac
+  done <<< "${_out}"
+  case "${_out}" in
+    *GOLIVE-TARGET-OK*) : ;;
+    *)
+      echo "ERROR: go-live could not finish on ${_tgt} (unreachable, or a file there could not be changed);"
+      echo "ERROR: nothing here was changed: re-run 'xoct go-live ${_oct} ${_tgt}${_dst:+ ${_dst}}' once it answers"
+      exit 1
+    ;;
+  esac
+  if [ -e "$(_xoct_admail_rec "${_oct}")" ]; then
+    if ! rm -f "$(_xoct_admail_rec "${_oct}")"; then
+      echo "ERROR: could not remove $(_xoct_admail_rec "${_oct}")"
+      exit 1
+    fi
+    echo "INFO: removed $(_xoct_admail_rec "${_oct}"): every verb for ${_oct} here mails the client again"
+  fi
+  if [ -e "${_XOCT_HOLD_FILE}" ] && [ -n "${_rec}" ] \
+    && [ "$(_xoct_first_line "${_XOCT_HOLD_FILE}")" = "${_rec}" ]; then
+    _left="$(_xoct_hold_users_here)"
+    if [ -n "${_left}" ]; then
+      echo "INFO: ${_XOCT_HOLD_FILE} kept here: another test run is recorded on this box (${_left})"
+    elif rm -f "${_XOCT_HOLD_FILE}"; then
+      echo "INFO: removed ${_XOCT_HOLD_FILE} here: this box mails its clients again"
+    fi
+  fi
+  if [ ! -e "${_USR}/log/proxied.pid" ]; then
+    echo "INFO: ${_oct} is not proxied yet: 'xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}}' converts it and sends the completion notice"
+    exit 0
+  fi
+  if _xoct_told_complete "${_USR}" "${_tgt}"; then
+    echo "INFO: ${_oct}: its client was told of the completion; nothing to send"
+    exit 0
+  fi
+  echo "INFO: ${_oct}: its client never had the completion notice: sending it (xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair --renotify)"
+  _cmd=proxy
+  _XOCT_PROXY_REPAIR=YES
+  _XOCT_RENOTIFY=YES
+  _XOCT_NO_NOTIFY=""
+  _XOCT_GO_LIVE=YES
+  _migrate_init
 }
 
 _migrate_init() {
@@ -6011,6 +6742,59 @@ _migrate_init() {
   else
     _RUNTIME_OCT=$(_xoct_runtime_oct)
     _USR=/data/disk/${_RUNTIME_OCT}
+    ### Who the account belongs to, read before the target is contacted: its
+    ### client address as its own Octopus pass takes it (_xoct_client_address).
+    ### One of the hosted service's own addresses, in log/email.txt or as that
+    ### address, marks an internal account, which a move of one account
+    ### refuses at its start (create, export, pretransfer), as xcopy does. A
+    ### move of every account of the box carries them all and says so with
+    ### _XOCT_BOX_MOVE=YES: xmass sets it for its creates, and an operator
+    ### moving a whole box account by account with xoct sets it on those three
+    ### verbs. An account with no plain address in either place is refused at
+    ### the same verbs: it would be installed and mailed under an address
+    ### nobody reads, where a stand-in used to be put. transfer, import and
+    ### proxy refuse neither, so a move under way is never stopped half way.
+    _xoct_client_address "${_USR}" "${_RUNTIME_OCT}"
+    _XOCT_EMAIL_CLASS=OK
+    for _xe in "${_XOCT_EMAIL_TXT}" "${_CLIENT_EMAIL}"; do
+      if [ "${_xe}" = "inbox@boa.io" ] \
+        || [[ "${_xe}" == *"emaylx@"* ]] \
+        || [[ "${_xe}" == *"mixomax@"* ]] \
+        || [[ "${_xe}" == *"@omega8.cc"* ]]; then
+        _XOCT_EMAIL_CLASS=OUR
+      fi
+    done
+    if [ "${_XOCT_EMAIL_CLASS}" = "OK" ] && [ -z "${_CLIENT_EMAIL}" ]; then
+      _XOCT_EMAIL_CLASS=BAD
+    fi
+    _XOCT_START_VERB=NO
+    case "${_cmd}" in
+      create|export|pretransfer) _XOCT_START_VERB=YES ;;
+    esac
+    ### A test run's record (_xoct_admail_rec) holds every verb for the
+    ### account here to its admail=, before anything else is asked; import
+    ### keeps to it by itself (the upgrade notice stays off).
+    if [ "${_cmd}" != "import" ] && ! _xoct_admail_gate "${_RUNTIME_OCT}"; then
+      exit 1
+    fi
+    ### So does a box that holds its clients' mail for a test run
+    ### (_XOCT_HOLD_FILE): this one for every verb but import (which says
+    ### so), and the target of a verb that writes there or moves the
+    ### account's service to it. Not the completion notice go-live sends: a
+    ### hold go-live keeps is there for another test run still recorded on
+    ### that box, and refusing the notice would release none of it.
+    if [ "${_cmd}" != "import" ] && [ "${_XOCT_GO_LIVE}" != "YES" ] \
+      && ! _xoct_hold_gate ""; then
+      exit 1
+    fi
+    case "${_cmd}" in
+      create|pretransfer|transfer|proxy)
+        if [ "${_XOCT_GO_LIVE}" != "YES" ] && _mig_valid_ip "${_tgt}" \
+          && ! _xoct_hold_gate "${_tgt}"; then
+          exit 1
+        fi
+      ;;
+    esac
     if [ "${_oct}" = "arch" ] \
       || [ "${_oct}" = "all" ] \
       || [ "${_oct}" = "lost+found" ] \
@@ -6044,7 +6828,7 @@ _migrate_init() {
       echo "_USR ${_oct} is not eligible for migration: export incomplete"
       echo "ALRT: log/export_failed.pid is present -- the last export left FAILED site dumps:"
       _xoct_read_in "${_USR}/log" export_failed.pid | sed "s/^/ALRT:   /"
-      echo "INFO: re-run 'xoct export' after fixing the cause, or pass --force to transfer anyway"
+      echo "INFO: re-run 'xoct export${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}' after fixing the cause, or pass --force to transfer anyway"
       exit 1
     elif [ "${_cmd}" = "import" ] && [ -e "${_USR}/log/export_failed.pid" ] \
       && [ "${_XOCT_FORCE}" != "YES" ]; then
@@ -6061,6 +6845,18 @@ _migrate_init() {
       && [ "${_XOCT_PROXY_REPAIR}" != "YES" ]; then
       echo "_USR ${_oct} is not eligible for migration: already proxied"
       echo "INFO: to repoint or repair this account's proxy, re-run with --repair"
+      exit 1
+    elif [ "${_XOCT_START_VERB}" = "YES" ] && [ "${_XOCT_EMAIL_CLASS}" = "OUR" ] \
+      && [ "${_XOCT_BOX_MOVE}" != "YES" ]; then
+      echo "_USR ${_oct} is not eligible for migration: internal only"
+      echo "INFO: a move of one account leaves the hosted service's own accounts where they are;"
+      echo "INFO: when every account of this box moves with xoct, carry this one too with:"
+      echo "INFO:   _XOCT_BOX_MOVE=YES xoct ${_cmd} ${_oct} ${_tgt}${_dst:+ ${_dst}}${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
+      echo "INFO: (on create, export and pretransfer; transfer, import and proxy need no flag)"
+      exit 1
+    elif [ "${_XOCT_START_VERB}" = "YES" ] && [ "${_XOCT_EMAIL_CLASS}" = "BAD" ]; then
+      echo "_USR ${_oct} is not eligible for migration: no plain address in log/email.txt ('$(_xoct_shown "${_XOCT_EMAIL_TXT}")') or in _CLIENT_EMAIL of /root/.${_RUNTIME_OCT}.octopus.cnf"
+      echo "INFO: set the client's address as _CLIENT_EMAIL in /root/.${_RUNTIME_OCT}.octopus.cnf and re-run"
       exit 1
     else
       echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} start"
@@ -6124,9 +6920,15 @@ _migrate_init() {
           # it must never travel, the destination pass writes its own.
           ### log/ is oN's on both boxes: copied from inside the real
           ### directory into the real directory, the glob expanded there.
-          _xoct_leg_ok "${_USR}/log" \
-            && _xoct_in_real_dir "${_USR}/log" _xoct_copy_here "${_tgt}" "${_DST}/log" '*' \
+          ### The account's own log/email.txt goes over the install's copy
+          ### after it (one address, newer, so the -u leg keeps it): the
+          ### target keeps the client's address, or list, exactly as it is.
+          if _xoct_leg_ok "${_USR}/log"; then
+            _xoct_in_real_dir "${_USR}/log" _xoct_copy_here "${_tgt}" "${_DST}/log" '*' \
               -aEAXqu ${_ieni} --exclude=instance-group.txt --exclude=proxy-failed.pid
+            _xoct_in_real_dir "${_USR}/log" _xoct_put_file_remote_here \
+              email.txt "${_tgt}" "${_DST}/log" "${_ieni}"
+          fi
           ### static/control is the tenant's on both boxes: a control that is
           ### a link is never followed (the glob this replaces expanded
           ### through it); a real one travels by its top-level entries, from
@@ -6394,18 +7196,18 @@ _migrate_init() {
               fi
             fi
             echo "ERROR: ${_oct} was NOT converted. Fix the reported error, then re-run:"
-            echo "ERROR:   $(_xoct_repair_env)xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair"
+            echo "ERROR:   $(_xoct_repair_env)xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
             exit 1
           fi
           if [ -n "${_XOCT_PROXY_NOSSL}" ]; then
             echo "ALRT: converted WITHOUT an HTTPS proxy vhost (certificate material missing):${_XOCT_PROXY_NOSSL}"
             echo "ALRT: HTTPS via the old address will fail for those sites; once the keys exist,"
-            echo "ALRT: re-run: $(_xoct_repair_env)xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair"
+            echo "ALRT: re-run: $(_xoct_repair_env)xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
           fi
           if [ -n "${_XOCT_PROXY_DEFERRED}" ]; then
             echo "INFO: deferred, still local and held on 503 by the per-host gate:${_XOCT_PROXY_DEFERRED}"
             echo "INFO: once they are renamed on the new box, convert them with:"
-            echo "INFO:   xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair"
+            echo "INFO:   xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
           fi
           ###
           ### Every site on this account now answers from a proxy or redirect
@@ -6443,8 +7245,16 @@ _migrate_init() {
           _XOCT_DO_MAIL=NO
           _XOCT_MAIL_KIND=complete
           if [ "${_XOCT_WAS_PROXIED}" = "YES" ]; then
+            ### The follow-up opens "a short follow-up to the migration
+            ### message you received earlier": a client never really told of
+            ### the completion (a test run's notice went to admail=, the
+            ### first one failed or was suppressed) gets the completion
+            ### notice instead. One converted before the log recorded the
+            ### notices was told then (_xoct_told_complete).
             _XOCT_MAIL_KIND=change
-            _XOCT_LAST_MAIL="$(_mig_last_mail "${_USR}")"
+            _xoct_told_complete "${_USR}" "${_tgt}" ${_XOCT_OLD_PEER:+"${_XOCT_OLD_PEER}"} \
+              || _XOCT_MAIL_KIND=complete
+            _XOCT_LAST_MAIL="$(_mig_last_mail "${_USR}" "${_tgt}" ${_XOCT_OLD_PEER:+"${_XOCT_OLD_PEER}"})"
             if [ "${_XOCT_RENOTIFY}" = "YES" ]; then
               _XOCT_DO_MAIL=YES
             elif [ -n "${_XOCT_LAST_MAIL}" ] \
@@ -6466,9 +7276,9 @@ _migrate_init() {
               _send_notice_migration_change
             fi
             if [ "${_MAIL_SENT}" = "YES" ]; then
-              _mig_log "${_USR}" xoct mail "${_XOCT_MAIL_KIND}" "${_MIG_MODE}" "${_MIG_DEADLINE}" "${_tgt}"
+              _mig_log "${_USR}" xoct "${_XOCT_MAIL_ACT}" "${_XOCT_MAIL_KIND}" "${_MIG_MODE}" "${_MIG_DEADLINE}" "${_tgt}"
             else
-              echo "ALRT: resend later with: $(_xoct_repair_env)xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair --renotify"
+              echo "ALRT: resend later with: $(_xoct_repair_env)xoct proxy ${_oct} ${_tgt}${_dst:+ ${_dst}} --repair --renotify${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}"
             fi
           fi
           ### A repair never re-stamps; the stamp is migration STATE owned by
@@ -7089,6 +7899,42 @@ _XOCT_GMAP=""
 _XOCT_AMAP=""
 _XOCT_UMAP=""
 _XOCT_FORCE=""
+### admail=<address>, any verb, any position: the one address every client
+### notice of this run goes to, with no copy to anyone else, for test and
+### canary runs that must never mail a client; a create also refuses to
+### install unless the install's own welcome mail is held back, and create
+### and import switch the account's upgrade notice off on the target. The
+### token 'boa in-octopus' takes, handled the same way: taken out before the
+### positionals are read, so it can never become an account or a rename,
+### and refused unless it holds one plain address, in the form the reader
+### of the box's mail hold takes too (_XOCT_HOLD_FILE: a letter, digit or
+### underscore first, a domain that starts with a letter or digit), or the
+### held mail would be dropped instead of reaching it. The accounts keep
+### their own addresses. Sends under it are logged as testmail, never as
+### mail. create records it on both boxes (_xoct_admail_rec), so a later
+### verb that forgets it refuses instead of mailing the client.
+_XOCT_ADMAIL=""
+_XOCT_ADMAIL_SET=NO
+### Set by go-live alone, for the completion notice it sends (never from
+### the environment).
+_XOCT_GO_LIVE=""
+_margs=()
+for _a in "$@"; do
+  case "${_a}" in
+    admail=*) _XOCT_ADMAIL="${_a#admail=}"; _XOCT_ADMAIL_SET=YES ;;
+    *) _margs+=("${_a}") ;;
+  esac
+done
+set -- "${_margs[@]}"
+if [ "${_XOCT_ADMAIL_SET}" = "YES" ]; then
+  if ! [[ "${_XOCT_ADMAIL}" =~ ^[A-Za-z0-9_][A-Za-z0-9._%+-]*@[A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,}$ ]] \
+    || [[ "${_XOCT_ADMAIL}" == -* ]]; then
+    echo "ERROR: admail= must carry one plain address, got: '${_XOCT_ADMAIL//[^[:print:]]/?}'"
+    exit 1
+  fi
+fi
+_XOCT_MAIL_ACT=mail
+[ -n "${_XOCT_ADMAIL}" ] && _XOCT_MAIL_ACT=testmail
 case "$1" in
   transfer|pretransfer)
     _MODE=DRY
@@ -7371,7 +8217,7 @@ _xoct_sql_maint_release() {
 }
 
 case "$1" in
-  export|create|import|pretransfer|transfer|proxy|proxy-retire|reset-state|pre-mig|post-mig|ssl-gen)
+  export|create|import|pretransfer|transfer|proxy|proxy-retire|go-live|reset-state|pre-mig|post-mig|ssl-gen)
     _take_verb_lock "$1"
   ;;
 esac
@@ -7428,6 +8274,13 @@ case "$1" in
             _check_root
             _xoct_proxy_retire "$2"
   ;;
+  go-live)  _cmd="$1"
+            _oct="$2"
+            _tgt="$3"
+            _dst="$4"
+            _check_root
+            _xoct_go_live
+  ;;
   reset-state) _cmd="$1"
             _oct="$2"
             _check_root
@@ -7463,6 +8316,9 @@ case "$1" in
             ### over the correct alias-derived one.
             _xoct_in_real_dir "/data/disk/${_oct}/log" rm -f -- ./panel_db.txt
             echo "INFO: migration state cleared for ${_oct}"
+            if [ -e "$(_xoct_admail_rec "${_oct}")" ]; then
+              echo "INFO: $(_xoct_admail_rec "${_oct}") (a test run's admail=) is kept: 'xoct go-live' ends the test run"
+            fi
   ;;
   pre-mig)  _cmd="$1"
             _hst="$2"
@@ -7494,8 +8350,18 @@ case "$1" in
             echo "            [--deadline=YYYY-MM-DD|+Nd|--no-deadline] [--force-pinned] [--renotify|--no-notify]"
             echo "            (no mode = print the per-account proxy policy table)"
             echo "Usage: xoct {proxy-retire} {o1|--all} [--deadline=YYYY-MM-DD|+Nd] [--no-notify]"
+            echo "Usage: xoct {go-live} {o1} {target-ip} {o2} (source vms, ends a canary run under admail=)"
             echo
             echo "Usage: xoct {ssl-gen}"
+            echo
+            echo "Any verb takes admail=<address> (test and canary runs): every client notice"
+            echo "of the run goes to that address alone, create installs only with the"
+            echo "install's own welcome mail held back, and create and import switch the"
+            echo "account's upgrade notice off on the target. Accounts keep their own addresses."
+            echo "create records it on both boxes (/data/conf/xoct_admail.<o1>.txt) and holds"
+            echo "the target's client mail for it (/data/conf/client_mail_hold.txt): until"
+            echo "go-live, every later verb for the account refuses without it (import"
+            echo "excepted) and its upgrade notice stays off on the target."
             echo
             exit 1
   ;;

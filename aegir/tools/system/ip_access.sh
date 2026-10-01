@@ -324,6 +324,47 @@ _lg_fetch() {
     && _lg_unpack "${3}.tgz" "${3}"
 }
 
+# An ALRT for the operator: each line $3... printed, and once a day for the
+# condition $1 a dated line with the subject $2 in
+# /var/log/boa/nginx.incident.log and a mail to _MY_EMAIL unless
+# _INCIDENT_REPORT is OFF. Cron discards this tool's output, so the printed
+# lines alone reach nobody. The box config is read with grep: sourcing it
+# would set its variables in this run. Each value is taken as sourcing sets
+# it: the last definition, without the trailing " #..." comment the
+# documented template puts after each setting.
+_policy_alert() {
+  local _stamp="/run/nginx_policy_alert.${1//[^a-zA-Z0-9._-]/_}" _sub="${2}"
+  local _log="/var/log/boa/nginx.incident.log" _l _lvl _mail _host
+  shift 2
+  for _l in "$@"; do
+    echo "ALRT: ${_l}"
+  done
+  [[ -z "$(find "${_stamp}" -mmin -1440 2> /dev/null)" ]] || return 0
+  # a stamp that cannot be written fails open: the alert matters more
+  touch "${_stamp}" 2> /dev/null
+  mkdir -p "${_log%/*}" 2> /dev/null
+  echo "$(date) ${_sub}: $*" >> "${_log}"
+  _lvl="$(grep -E '^[[:space:]]*(export[[:space:]]+)?_INCIDENT_REPORT=' \
+    /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+    | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -cd 'A-Za-z')"
+  _lvl="${_lvl^^}"
+  [[ "${_lvl}" != "OFF" && "${_lvl}" != "NO" ]] || return 0
+  _mail="$(grep -E '^[[:space:]]*(export[[:space:]]+)?_MY_EMAIL=' \
+    /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+    | sed -E 's/^[^=]*=//; s/[[:space:]]+#.*$//' | tr -d "\"' \\\\")"
+  if [[ -z "${_mail}" ]] || ! command -v s-nail > /dev/null 2>&1; then
+    return 0
+  fi
+  _host="$(tr -d '\n' < /etc/hostname 2> /dev/null)"
+  [[ -n "${_host}" ]] || _host="$(hostname -f 2> /dev/null)"
+  # the mailer, and a delivery it may leave running, never holds the shared
+  # nginx-config lock (fd 9)
+  printf '%s\n' "${_sub} on ${_host}" "" "$@" "" "Logged to ${_log}" "" "--" \
+    "This email has been sent by a BOA nginx policy tool" \
+    | s-nail -s "ALERT [${_host}]: ${_sub}" "${_mail}" > /dev/null 2>&1 9>&-
+  return 0
+}
+
 
 _valid_ip() {
   local _ip="$1"
@@ -865,13 +906,17 @@ _process_context() {
       if _lg_fetch "${_backup_dir}" "${_last_good_name}" "${_work}/lg"; then
         _acct_in_real_dir "${_nginx_path}" _confs_drop_here > /dev/null
         if ! _acct_in_real_dir "${_nginx_path}" _confs_put_here "${_work}/lg"; then
-          echo "ALRT: restoring ${_last_good_backup} FAILED after the fragments were removed."
+          _policy_alert "ip_access.restore.${_input_file}" \
+            "ip_access: restoring the last-good backup FAILED (${_input_file})" \
+            "restoring ${_last_good_backup} FAILED after the fragments were removed."
         fi
         service nginx reload
       else
-        echo "ALRT: last-good backup ${_last_good_backup} is unreadable -- keeping the"
-        echo "ALRT: fragments now on disk rather than deleting them for an archive"
-        echo "ALRT: that cannot be restored. Fix ${_input_file} and re-run."
+        _policy_alert "ip_access.refused.${_input_file}" \
+          "ip_access: last-good backup unreadable, fragments kept (${_input_file})" \
+          "last-good backup ${_last_good_backup} is unreadable -- keeping the" \
+          "fragments now on disk rather than deleting them for an archive" \
+          "that cannot be restored. Fix ${_input_file} and re-run."
         # With the front copies gone the rest may pass again.
         service nginx configtest &> /dev/null && service nginx reload
       fi
@@ -896,11 +941,15 @@ _process_context() {
       if _lg_fetch "${_backup_dir}" "${_last_good_name}" "${_work}/lg"; then
         _acct_in_real_dir "${_nginx_path}" _confs_drop_here > /dev/null
         if ! _acct_in_real_dir "${_nginx_path}" _confs_put_here "${_work}/lg"; then
-          echo "ALRT: restoring ${_last_good_backup} FAILED after the fragments were removed."
+          _policy_alert "ip_access.restore.${_input_file}" \
+            "ip_access: restoring the last-good backup FAILED (${_input_file})" \
+            "restoring ${_last_good_backup} FAILED after the fragments were removed."
         fi
         service nginx reload
       else
-        echo "ALRT: last-good backup ${_last_good_backup} is unreadable -- fragments left in place."
+        _policy_alert "ip_access.refused.${_input_file}" \
+          "ip_access: last-good backup unreadable, fragments kept (${_input_file})" \
+          "last-good backup ${_last_good_backup} is unreadable -- fragments left in place."
       fi
     fi
     _acct_in_real_dir "${_nginx_path}" rm -f -- ./.access_front_hash
@@ -911,7 +960,9 @@ _process_context() {
   ### above trusts it enough to delete the live fragments. It holds what
   ### this run put, packed from the work dir.
   if ! _lg_store "${_new}" "${_backup_dir}" "${_last_good_name}" .; then
-    echo "ALRT: could not write a verifiable last-good ip_access backup; removing it"
+    _policy_alert "ip_access.lgstore.${_input_file}" \
+      "ip_access: last-good backup not written (${_input_file})" \
+      "could not write a verifiable last-good ip_access backup; removing it"
     _acct_in_real_dir "${_backup_dir}" rm -f -- "./${_last_good_name}"
   fi
   _acct_in_real_dir "${_nginx_path}" _acct_put_pairs_here \

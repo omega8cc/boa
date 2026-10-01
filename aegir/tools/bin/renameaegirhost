@@ -2806,6 +2806,24 @@ PHPEOF
   return 0
 }
 
+# The pre-rename backup never carries this box's GTID state. By default
+# (--set-gtid-purged=AUTO) a dump taken while GTID is on (every box an xmass
+# run touched, the import target of a migration among them: BOA's my.cnf
+# leaves it off, xmass_gtid.cnf turns it on) opens with
+# SET @@SESSION.SQL_LOG_BIN=0 and sets @@GLOBAL.GTID_PURGED, so loading the
+# backup back on this box fails (ERROR 3546 on 8.x, 1840 on 5.7), and where
+# it passes it stays out of the binary log, so a replica of the box never
+# gets the restored panel. OFF writes neither. Sets _MYSQLDUMP_GTID to the
+# option when the local mysqldump takes it: one that does not (MariaDB's)
+# would refuse it and writes neither anyway, so it is asked, never assumed.
+_mysqldump_gtid_opts() {
+  _MYSQLDUMP_GTID=()
+  if mysqldump --help 2> /dev/null | grep -q -- '--set-gtid-purged'; then
+    _MYSQLDUMP_GTID=(--set-gtid-purged=OFF)
+  fi
+  return 0
+}
+
 _rename_in_database() {
   _info "§5 Renaming hostname in Aegir database (${_AEGIR_DB}) ..."
 
@@ -2823,8 +2841,13 @@ _rename_in_database() {
   # root can reach it (see _backup_files), never through a name the account
   # can put a link at.
   _info "  Dumping ${_AEGIR_DB} (pre-rename backup) ..."
+  _mysqldump_gtid_opts
+  [ "${#_MYSQLDUMP_GTID[@]}" -eq 0 ] \
+    && _info "  this mysqldump takes no --set-gtid-purged: the backup carries no GTID state"
+  # --defaults-file must stay the first option.
   mysqldump \
     --defaults-file=/root/.my.cnf \
+    "${_MYSQLDUMP_GTID[@]}" \
     --single-transaction \
     --quick \
     --no-autocommit \

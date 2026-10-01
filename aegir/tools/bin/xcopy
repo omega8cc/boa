@@ -733,6 +733,8 @@ EOFMYSQL
             ### mydumper writes metadata into the outputdir as its LAST act;
             ### a transferred dir without it is a partial/hollow dump and
             ### loading it would silently restore an incomplete database.
+            ### The load is binlogged, so a replica of this box gets it too.
+            _myloader_binlog_opts
             if ! _xcopy_in_real_dir "${_USR}/src/${_DBN}" test -e ./metadata; then
               _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + 1 ))
               _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_DBN}"
@@ -745,6 +747,7 @@ EOFMYSQL
               --directory=. \
               --threads=4 \
               --drop-table=DROP \
+              "${_MYLOADER_BINLOG[@]}" \
               --verbose=2; then
               _XCOPY_SITE_IMPORT_OK=YES
               echo "INFO: site ${_Dom} db import on ${_oct} complete"
@@ -855,6 +858,8 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
         case "${_MYDUMPER_MAJOR}" in
           [1-9]*) _MYDUMPER_ROWS_OPT="" ;;
         esac
+        ### The site's triggers, routines and events go with its tables.
+        _mydumper_objects_opts
         ### _MYDUMPER_TRX_OPT and _MYDUMPER_ROWS_OPT unquoted by design: empty must expand to no argument.
         if _xcopy_in_real_dir "${_USR}/src/${_DBN}" mydumper ${_MYDUMPER_TRX_OPT} \
           --database=${_DBN} \
@@ -863,6 +868,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           --port=3306 \
           --outputdir=. \
           ${_MYDUMPER_ROWS_OPT} \
+          "${_MYDUMPER_OBJECTS[@]}" \
           --build-empty-files \
           --threads=4 \
           --long-query-guard=900 \
@@ -984,12 +990,192 @@ _xcopy_heal_fpm_pins() {
   fi
 }
 
+# Under admail= the account's upgrade notice is switched off where it is
+# installed (_SEND_UPGRADE_EMAIL=NO, the operator's off-switch, in its cnf):
+# the copy brings the account's setup mail along, and the first Octopus pass
+# there after it mails the notice to the account's own address. It stays off
+# until set back by hand. $1 = the account there, $2 = the target (none: this
+# box). Status 1 when the cnf is missing or cannot be rewritten. As in xoct.
+_xcopy_admail_upgrade_mail_off() {
+  local _a="$1" _h="$2" _sh _rc
+  _sh="_c=/root/.${_a}.octopus.cnf; [ -f \"\${_c}\" ] || exit 1; { grep -v '^_SEND_UPGRADE_EMAIL=' \"\${_c}\"; echo _SEND_UPGRADE_EMAIL=NO; } > \"\${_c}.admail\" && chmod 644 \"\${_c}.admail\" && mv -f \"\${_c}.admail\" \"\${_c}\""
+  if [ -n "${_h}" ]; then
+    ssh root@"${_h}" "${_sh}" 2> /dev/null
+    _rc=$?
+  else
+    bash -c "${_sh}" 2> /dev/null
+    _rc=$?
+  fi
+  if [ "${_rc}" -ne 0 ]; then
+    echo "ALRT: admail=: the upgrade notice of ${_a}${_h:+ on ${_h}} could not be switched off; its next Octopus pass there may mail the account's own address"
+    return 1
+  fi
+  echo "INFO: admail=: the upgrade notice of ${_a}${_h:+ on ${_h}} is off (_SEND_UPGRADE_EMAIL=NO in /root/.${_a}.octopus.cnf); set it back once the account serves for real"
+  return 0
+}
+
+# The first Octopus pass after a copy that would mail the account's upgrade
+# notice sends none: the copy carries the setup mail along, and the client
+# has everything that notice says from the move itself. The account's
+# one-pass marker, /data/conf/<account>_skip_upgrade_email.txt, root's, is
+# put where the account is installed (create) and again where it is
+# imported, when absent; that pass takes it away, and every later pass mails
+# as the account's switch says. An account whose switch there is NO gets
+# none, unless a test copy (admail=) put that NO: no pass of it would take
+# the marker, which would then swallow the first notice after the switch is
+# turned on. As in xoct. $1 = the account there, $2 = the target (none: this
+# box), $3 = the step.
+_xcopy_upgrade_skip_put() {
+  local _a="$1" _h="$2" _f _sh _out
+  _f="/data/conf/${_a}_skip_upgrade_email.txt"
+  _sh="[ -e '${_f}' ] && { echo SKIP-HAD; exit 0; }; if [ -z '${_XCOPY_ADMAIL}' ] && [ \"\$(grep -a '^_SEND_UPGRADE_EMAIL=' /root/.${_a}.octopus.cnf 2> /dev/null | tail -n 1 | cut -d= -f2- | tr -d '\"')\" = NO ]; then echo SKIP-OFF; exit 0; fi; mkdir -p /data/conf && ( umask 022; printf '%s\n' 'xcopy ${3} $(date -u '+%F %T') UTC' > '${_f}.tmp' ) && mv -f '${_f}.tmp' '${_f}' && echo SKIP-PUT"
+  if [ -n "${_h}" ]; then
+    _out="$(ssh root@"${_h}" "${_sh}" 2> /dev/null)"
+  else
+    _out="$(bash -c "${_sh}" 2> /dev/null)"
+  fi
+  case "${_out}" in
+    SKIP-PUT|SKIP-HAD)
+      echo "INFO: ${_a}'s first Octopus pass${_h:+ on ${_h}} that would mail its upgrade notice sends none (${_f})"
+      return 0
+    ;;
+    SKIP-OFF)
+      echo "INFO: ${_a}'s upgrade notice is off${_h:+ on ${_h}} (_SEND_UPGRADE_EMAIL=NO): no one-pass marker is put"
+      return 0
+    ;;
+  esac
+  echo "ALRT: ${_f}${_h:+ on ${_h}} could not be put: the first Octopus pass there may mail ${_a}'s upgrade notice"
+  return 1
+}
+
+# A box that holds its clients' mail for a test run: root's
+# /data/conf/client_mail_hold.txt, holding one plain address, which xoct and
+# xmass put under admail= and remove when the test run ends. Without
+# admail=, refuses (status 1, naming it) while the hold is on the target $1
+# of a copy: the copied client's mail there would stay held. A target that
+# cannot be read passes: the verb's own contact reports it. As xoct's
+# _xoct_hold_gate. xcopy puts no hold of its own: it keeps no test-run
+# record, so nothing could tell when a hold it put may go.
+_XCOPY_HOLD_FILE=/data/conf/client_mail_hold.txt
+_xcopy_hold_gate() {
+  local _h="$1" _v
+  [ -n "${_XCOPY_ADMAIL}" ] && return 0
+  [[ "${_h}" =~ ^[A-Za-z0-9.:-]+$ ]] || return 0
+  _v="$(ssh root@"${_h}" "if [ -e ${_XCOPY_HOLD_FILE} ]; then head -n 1 ${_XCOPY_HOLD_FILE} | tr -cd '[:print:]' | cut -c1-200; echo; echo HOLD-HAD; else echo HOLD-NONE; fi" 2> /dev/null)"
+  case "${_v}" in
+    *HOLD-HAD*) _v="$(printf '%s\n' "${_v}" | head -n 1)" ;;
+    *) return 0 ;;
+  esac
+  echo "ERROR: ${_h} holds its clients' mail for ${_v} (${_XCOPY_HOLD_FILE}, put by a test run):"
+  echo "ERROR: a real copy (no admail=) would leave the copied client's mail held there. End that"
+  echo "ERROR: test run first ('xoct go-live' after a canary, 'xmass go-live' after a whole-box"
+  echo "ERROR: test), or remove the file by hand once no test run needs it"
+  return 1
+}
+
 # One plain address, the test xoct's create applies: create splices the
 # value into a remote root command, so nothing outside this alphabet, and no
 # second address, may pass.
 _xcopy_email_ok() {
   local _re='^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
   [[ "${1}" =~ ${_re} ]]
+}
+
+# One address or several separated by single spaces, the form the nightly
+# and usage.sh mail and xoct's notices take (xoct's _xoct_email_ok): what
+# an account's address may be, where create needs exactly one.
+_xcopy_email_list_ok() {
+  local _w _re _q="'"
+  _w="[A-Za-z0-9_][A-Za-z0-9._%+=${_q}-]*@[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?"
+  _re="^${_w}( ${_w})*$"
+  [[ "${1}" =~ ${_re} ]]
+}
+
+# The account's client address as its own Octopus pass takes it, as xoct
+# reads it: the words of log/email.txt when they are plain addresses,
+# otherwise the _CLIENT_EMAIL of root's cnf, which the pass keeps when the
+# file holds none and the nightly rewrites only from a file that does. Sets
+# _XCOPY_EMAIL (empty when neither holds one), _XCOPY_EMAIL_TXT (the file's
+# text, one space between words) and _XCOPY_EMAIL_SRC (log, cnf or none).
+# $1 = the account's root, $2 = its name on this box.
+_xcopy_client_address() {
+  local _root="$1" _acct="$2" _c=""
+  _XCOPY_EMAIL=""
+  _XCOPY_EMAIL_TXT=""
+  _XCOPY_EMAIL_SRC=none
+  if [ -e "${_root}/log/email.txt" ]; then
+    _XCOPY_EMAIL_TXT="$(_xcopy_read_in "${_root}/log" email.txt | tr -s '[:space:]' ' ')"
+    _XCOPY_EMAIL_TXT="${_XCOPY_EMAIL_TXT# }"
+    _XCOPY_EMAIL_TXT="${_XCOPY_EMAIL_TXT% }"
+    _XCOPY_EMAIL_TXT=${_XCOPY_EMAIL_TXT//\\\@/\@}
+  fi
+  if _xcopy_email_list_ok "${_XCOPY_EMAIL_TXT}"; then
+    _XCOPY_EMAIL="${_XCOPY_EMAIL_TXT}"
+    _XCOPY_EMAIL_SRC=log
+    return 0
+  fi
+  if [[ "${_acct}" =~ ^[a-zA-Z0-9._-]+$ ]] && [ -f "/root/.${_acct}.octopus.cnf" ]; then
+    _c="$(grep -a '^_CLIENT_EMAIL=' "/root/.${_acct}.octopus.cnf" 2> /dev/null \
+      | tail -n 1 | cut -c1-1024)"
+    _c="${_c#_CLIENT_EMAIL=}"
+    _c="${_c#\"}"
+    _c="${_c%\"}"
+    _c="$(printf '%s' "${_c}" | tr -s '[:space:]' ' ')"
+    _c="${_c# }"
+    _c="${_c% }"
+    _c=${_c//\\\@/\@}
+  fi
+  if _xcopy_email_list_ok "${_c}"; then
+    _XCOPY_EMAIL="${_c}"
+    _XCOPY_EMAIL_SRC=cnf
+  fi
+  return 0
+}
+
+# $1 as a log line shows it: at most 120 bytes, non-printables as '?'.
+_xcopy_shown() {
+  printf '%s' "${1:0:120}" | tr -c '[:print:]' '?'
+}
+
+# Bounded wait until the TARGET is quiet: no BOA run and no armed upgrade
+# there, on two consecutive polls (chained passes leave lock-free gaps of a
+# few seconds). An ARMED pid counts as busy: the runner consumes it on its
+# next tick, and a run it starts takes the mail-suppression marker off. The
+# caller fails when the box never goes quiet. Kept in step with xoct's
+# _xoct_wait_target_quiet -- mirror any fix there.
+_xcopy_wait_target_quiet() {
+  local _t="$1" _w=0 _busy _ok=0
+  local _max="${_XCOPY_TARGET_QUIET_MAX_WAIT:-1800}"
+  case "${_max}" in ''|*[!0-9]*) _max=1800 ;; esac
+  while [ "${_w}" -lt "${_max}" ]; do
+    # An armed run-upgrade.pid whose dispatcher is parked (a demoted
+    # target keeps every /var/xdrago/run-<acct> under /var/backups/off-run)
+    # is inert and not busy, as xmass's silence probe already reads it;
+    # counting it burnt the whole bound and refused the create. The same
+    # holds for every armed pid while the box's runner itself is parked
+    # (pre-mig's .runner.sh.off, held by the park marker until post-mig):
+    # nothing consumes them before post-mig, so a second account's create
+    # would wait out the bound on the first one's armed upgrade. Without
+    # the marker the next tools refresh brings the runner back, so the
+    # pid still counts.
+    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; { [ -e /run/boa_migration_park.pid ] && [ ! -e /var/xdrago/runner.sh ] && [ -e /var/xdrago/.runner.sh.off ]; } || for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e \"\${_f}\" ] || continue; _n=\${_f#/data/disk/}; _n=\${_n%%/*}; [ ! -e \"/var/xdrago/run-\${_n}\" ] && [ -e \"/var/backups/off-run/run-\${_n}\" ] && continue; printf '%s:armed ' \"\${_n}\"; done" 2>/dev/null)
+    if [ -z "${_busy// /}" ]; then
+      _ok=$(( _ok + 1 ))
+      if [ "${_ok}" -ge 2 ]; then
+        [ "${_w}" -gt 0 ] && echo "INFO: target ${_t} quiet after ${_w}s (two consecutive polls)"
+        return 0
+      fi
+      sleep 15
+      _w=$(( _w + 15 ))
+      continue
+    fi
+    _ok=0
+    [ "${_w}" -eq 0 ] && echo "INFO: a BOA run holds or is armed on ${_t} (${_busy}); waiting up to ${_max}s before the install"
+    sleep 30
+    _w=$(( _w + 30 ))
+  done
+  echo "ALRT: target ${_t} still busy after ${_max}s (${_busy}); not launching the install into a refusal"
+  return 1
 }
 
 # Bounded wait until BOA's own heavyweight jobs are quiet on THIS box;
@@ -1336,30 +1522,38 @@ _migrate_prepare() {
     _CLIENT_SUBSCR=`echo -n ${_CLIENT_SUBSCR} | tr -d "\n"`
   fi
   ### log/ is oN's: read inside the real directory, never through a link or
-  ### into a FIFO put at the name, as xoct reads it. A value with an '@'
-  ### that is not one plain address is dropped here, so it is never echoed,
-  ### and create refuses on it (xoct's create test).
+  ### into a FIFO put at the name, as xoct reads it, with root's cnf as the
+  ### account's Octopus pass takes it when the file holds no plain address
+  ### (_xcopy_client_address). The install takes one address: a list is
+  ### installed with its first, and the transfer carries the account's own
+  ### log/email.txt over the install's copy, so the target keeps the list as
+  ### it is (as xoct does). What holds no plain address is dropped here, so
+  ### it is never echoed, and create refuses on it: no stand-in address
+  ### takes its place.
   _XCOPY_EMAIL_BAD=NO
-  if [ -e "${_USR}/log/email.txt" ]; then
-    _CLIENT_EMAIL="$(_xcopy_read_in "${_USR}/log" email.txt | tr -s '[:space:]' ' ')"
-    _CLIENT_EMAIL="${_CLIENT_EMAIL# }"
-    _CLIENT_EMAIL="${_CLIENT_EMAIL% }"
-    [[ "${_CLIENT_EMAIL}" =~ "@" ]] || _CLIENT_EMAIL=""
-    _CLIENT_EMAIL=${_CLIENT_EMAIL//\\\@/\@}
-    if [ -n "${_CLIENT_EMAIL}" ] && ! _xcopy_email_ok "${_CLIENT_EMAIL}"; then
-      _CLIENT_EMAIL=""
-      _XCOPY_EMAIL_BAD=YES
-      echo "ALRT: ${_USR}/log/email.txt is not one plain address; create refuses on it"
+  _CLIENT_EMAIL=""
+  _xcopy_client_address "${_USR}" "${_THIS_HM_USER}"
+  if [ "${_XCOPY_EMAIL_SRC}" = "cnf" ]; then
+    echo "INFO: log/email.txt holds '$(_xcopy_shown "${_XCOPY_EMAIL_TXT}")', not a plain address: the client address is _CLIENT_EMAIL of /root/.${_THIS_HM_USER}.octopus.cnf, as the account's Octopus pass takes it"
+  fi
+  if _xcopy_email_ok "${_XCOPY_EMAIL%% *}"; then
+    _CLIENT_EMAIL="${_XCOPY_EMAIL%% *}"
+    if [ "${_CLIENT_EMAIL}" != "${_XCOPY_EMAIL}" ]; then
+      echo "INFO: the account's address is a list: create installs with its first address, the transfer carries the list in log/email.txt as it is"
     fi
+  else
+    _XCOPY_EMAIL_BAD=YES
+    echo "ALRT: the account's client address holds no plain address; create refuses on it (the install takes one)"
   fi
 
   [ -z "${_THIS_DB_PORT}" ] && _THIS_DB_PORT=3306
   [ -z "${_CLIENT_OPTION}" ] && _CLIENT_OPTION=EDGE
   [ -z "${_CLIENT_SUBSCR}" ] && _CLIENT_SUBSCR=M
   [ -z "${_CLIENT_CORES}" ]  && _CLIENT_CORES=1
-  [ -z "${_CLIENT_EMAIL}" ]  && _CLIENT_EMAIL="inbox@boa.io"
 
   echo "_CLIENT_EMAIL is ${_CLIENT_EMAIL}"
+  [ -n "${_XCOPY_ADMAIL}" ] \
+    && echo "INFO: admail=${_XCOPY_ADMAIL}: a create installs only with its welcome mail held back; the account keeps its own address"
   echo "_THIS_HM_USER is ${_THIS_HM_USER}"
   echo "_CLIENT_OPTION is ${_CLIENT_OPTION}"
   echo "_CLIENT_SUBSCR is ${_CLIENT_SUBSCR}"
@@ -1387,6 +1581,19 @@ _migrate_prepare() {
     echo "ERROR: import for ${_oct}: ${_THIS_HM_SITE}/drushrc.php names no panel database"
     echo "ERROR: nothing was imported and nothing on this box was changed; fix the cause and re-run"
     exit 1
+  fi
+  # The create switched the upgrade notice off already under admail=; asked
+  # again here, on the box the copy now lives on, after the refusal above
+  # (which leaves the box as it was): the account's first pass follows.
+  if [ "${_cmd}" = "import" ] && [ -n "${_XCOPY_ADMAIL}" ]; then
+    _xcopy_admail_upgrade_mail_off "${_THIS_HM_USER}"
+  fi
+  if [ "${_cmd}" = "import" ]; then
+    _xcopy_upgrade_skip_put "${_THIS_HM_USER}" "" import
+    if [ -z "${_XCOPY_ADMAIL}" ] && [ -e "${_XCOPY_HOLD_FILE}" ]; then
+      echo "ALRT: this box holds its clients' mail for $(head -n 1 "${_XCOPY_HOLD_FILE}" 2> /dev/null | tr -cd '[:print:]' | cut -c1-200) (${_XCOPY_HOLD_FILE}, put"
+      echo "ALRT: by a test run): ${_THIS_HM_USER}'s client is not mailed from here while it is there"
+    fi
   fi
 
   su -s /bin/bash ${_THIS_HM_USER} -c "drush8 cc drush"
@@ -1421,8 +1628,12 @@ _migrate_prepare() {
       # Written into the real src/ as a fresh file renamed over the name, so a
       # link the account put at prev_hostmaster.sql (even a dangling one, past
       # the -e guard above) is replaced, never followed to create its target.
+      _mysqldump_gtid_opts
+      [ "${#_MYSQLDUMP_GTID[@]}" -eq 0 ] \
+        && echo "INFO: this mysqldump takes no --set-gtid-purged: its dump carries no GTID state"
       if _xcopy_in_real_dir "${_USR}/src" _xcopy_dump_hm_here \
         mysqldump -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp \
+        "${_MYSQLDUMP_GTID[@]}" \
         --single-transaction \
         --quick \
         --no-autocommit \
@@ -1487,7 +1698,11 @@ _migrate_prepare() {
     if pgrep -x cron &> /dev/null; then
       echo "ALRT: cron still running after stop attempt; check manually"
     fi
-    [ -e "/data/all/cpuinfo" ] && chmod 644 /data/all/cpuinfo
+    [ -e "/data/all/cpuinfo" ] && _xcopy_in_real_dir \
+      "$(_s="$(perl -e "${_ROOT_REAL_PATH_PL}" -- /data/all 2> /dev/null)" \
+        && perl -e "${_SAT_STORE_TARGET_PL}" -- "${_s}" > /dev/null 2>&1 \
+        && echo "${_s}" || echo /data/all)" \
+      _xcopy_fchmod_here 644 ./cpuinfo
     _xcopy_wait_boa_quiet
     # The alias-derived _HDB can name a DB an enforced upgrade has already
     # replaced: a dest panel rebuilt between create and import (new panel DB
@@ -1718,7 +1933,7 @@ _migrate_prepare() {
     ### The address goes into the same remote root command: one plain
     ### address or nothing reaches the target (as xoct refuses it).
     if [ "${_XCOPY_EMAIL_BAD}" != "NO" ] || ! _xcopy_email_ok "${_CLIENT_EMAIL}"; then
-      echo "ALRT: refusing create: client email failed validation (${_USR}/log/email.txt must hold one plain address)"
+      echo "ALRT: refusing create: client email failed validation (the install takes one plain address, from ${_USR}/log/email.txt or _CLIENT_EMAIL of /root/.${_oct}.octopus.cnf)"
       exit 1
     fi
     if [ ! -z "${_CLIENT_EMAIL}" ] \
@@ -1742,11 +1957,46 @@ _migrate_prepare() {
       if [ "${_XCOPY_CREATE_HELD}" = "YES" ] && [ "${_TGT_PRESENT}" = "PRESENT" ]; then
         echo "INFO: account ${_TGT_HM_USER} already installed on ${_tgt} by this migration; skipping install"
       else
+        ### The install's own welcome mail would hand the client a new
+        ### password for an account whose own one the move carries: the
+        ### install runs under the target's mail-suppression marker, as xoct
+        ### runs every install, put for it alone and taken off after it (by
+        ### the EXIT trap on any exit), an operator-set one kept. Under
+        ### admail=, with no marker held there, nothing is installed.
+        _SILENT_MARKER=NO
+        ### The runner takes the marker off when it starts a queued upgrade
+        ### (an earlier create arms one): the marker goes on a quiet target.
+        _xcopy_wait_target_quiet "${_tgt}" || exit 1
+        _SILENT_PROBE=$(ssh root@"${_tgt}" "[ -e /root/.silent.update.cnf ] && echo YES || echo NO" 2>/dev/null)
+        if [ "${_SILENT_PROBE}" = "NO" ] && ssh root@"${_tgt}" "touch /root/.silent.update.cnf"; then
+          _SILENT_MARKER=YES
+          trap '_xcopy_chattr_back; ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+          trap 'exit 130' INT TERM HUP
+        elif [ "${_SILENT_PROBE}" != "YES" ]; then
+          if [ -n "${_XCOPY_ADMAIL}" ]; then
+            echo "ALRT: refusing create under admail=: the mail-suppression marker could not be put on ${_tgt},"
+            echo "ALRT: so the install would mail its welcome to the account's own address; nothing was installed"
+            exit 1
+          fi
+          echo "ALRT: the mail-suppression marker could not be put on ${_tgt}: the install may mail"
+          echo "ALRT: its welcome, with a password the carried credentials replace, to the account's own address"
+        fi
         ### The launcher exits 1 without installing when the name is taken
         ### or a run lock is held: nothing below may run on the target then.
         if ! ssh root@${_tgt} "/opt/local/bin/boa in-octopus ${_CLIENT_EMAIL} ${_TGT_HM_USER} ${_tRee} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"; then
           echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} failed or was refused (see the launcher output above); nothing further was changed there"
           exit 1
+        fi
+        if [ "${_SILENT_MARKER}" = "YES" ]; then
+          _SILENT_AFTER=$(ssh root@"${_tgt}" "[ -e /root/.silent.update.cnf ] && echo YES || echo NO" 2>/dev/null)
+          if [ "${_SILENT_AFTER}" = "NO" ]; then
+            echo "ALRT: the mail-suppression marker was gone from ${_tgt} when the install ended (a queued"
+            echo "ALRT: upgrade run takes it off): the install's welcome may have reached the account's own address"
+          fi
+          ssh root@"${_tgt}" "rm -f /root/.silent.update.cnf"
+          _SILENT_MARKER=NO
+          trap '_xcopy_chattr_back; rm -f "${_XCOPY_LOCK_FILE}"' EXIT
+          trap 'rm -f "${_XCOPY_LOCK_FILE}"; exit 130' INT TERM HUP
         fi
         if ! _xcopy_create_mark "${_oct}" "${_TGT_HM_USER}" "${_tgt}"; then
           echo "ALRT: the create marker for ${_TGT_HM_USER} could not be put on ${_tgt}; a re-run of this create will refuse the account"
@@ -1756,6 +2006,15 @@ _migrate_prepare() {
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/.ctrl/ssl-demo-mode.pid"
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config"
       ssh root@${_tgt} "/bin/rm -f /data/disk/${_TGT_HM_USER}/tools/le/config.sh"
+      ### Under admail= a target that keeps the account's upgrade notice on
+      ### refuses the create, before the transfer can bring the setup mail it
+      ### would send.
+      if [ -n "${_XCOPY_ADMAIL}" ]; then
+        _xcopy_admail_upgrade_mail_off "${_TGT_HM_USER}" "${_tgt}" || exit 1
+      fi
+      ### Every copy, test or real: the account's first pass there that would
+      ### mail its upgrade notice sends none (_xcopy_upgrade_skip_put).
+      _xcopy_upgrade_skip_put "${_TGT_HM_USER}" "${_tgt}" create
       echo "Waiting 8 minutes before attempting to run enforced post-install upgrade..."
       sleep 500
       ### Arm the enforced post-install upgrade only when the install's own
@@ -2419,6 +2678,26 @@ _xcopy_tpl_to_here() {
   rm -f -- "${_t}"
   return 1
 }
+# $1 as the directory root works in: itself when it is a real directory;
+# when it is a link, the real directory it leads to, only when every link
+# on the way is root's and every directory on the way, the last one
+# included, is root's and writable by no one else, so no one but root can
+# change where it leads or what is in it; nothing otherwise (exit 1). The
+# shared store /data/all may be such a link. With a second argument "last"
+# the last directory may be anyone's and open to others (the Octopus store
+# check takes /data/disk/all back); none is given here.
+_ROOT_REAL_PATH_PL='my ($p, $k) = @ARGV; if (!-l $p) { print $p if -d _; exit(-d _ ? 0 : 1); } my ($c, $n, @s) = ("", 0, stat("/")); exit 1 unless $p =~ m{^/} && @s && $s[4] == 0 && !($s[2] & 022); my @w = grep { length && $_ ne "." } split(m{/}, $p); while (@w) { my $e = shift(@w); if ($e eq "..") { $c =~ s{/[^/]*$}{}; next; } my @l = lstat("$c/$e") or exit 1; if (-l _) { exit 1 if $l[4] != 0 || ++$n > 40; my $t = readlink("$c/$e"); exit 1 unless defined $t; $c = "" if $t =~ m{^/}; unshift(@w, grep { length && $_ ne "." } split(m{/}, $t)); next; } exit 1 unless -d _ && (($l[4] == 0 && !($l[2] & 022)) || (defined $k && $k eq "last" && !@w)); $c .= "/$e"; } print($c eq "" ? "/" : $c); exit 0'
+# $1, the real directory a link of root's at /data/all leads to
+# (_ROOT_REAL_PATH_PL's answer), is the one the store may be kept in
+# behind that link (exit 0) only when it is /data/disk/all, the directory
+# named all directly in the real /data/disk, compared by device and inode
+# with that name not followed, so a link put at it does not count; any
+# other directory, or none, exit 1. Besides a real /data/all it is the
+# one layout of the store BOA knows, and the one other store directory
+# every PHP-FPM pool's open_basedir names. One text wherever it is defined
+# (satellite.sh.inc, BOA.sh.txt, xoct, xcopy, manage_solr_config.sh,
+# night.inc.sh).
+_SAT_STORE_TARGET_PL='my @t = lstat(defined $ARGV[0] ? $ARGV[0] : ""); my @a = lstat("/data/disk/all"); exit((@t && @a && -d _ && $t[0] == $a[0] && $t[1] == $a[1]) ? 0 : 1)'
 # chmod $1 on the regular files ./$2 ... of the current (pinned) directory
 # WITHOUT following a link, and only on a file with one link, so a hard link
 # to another file put at a name is skipped too.
@@ -2549,6 +2828,62 @@ _xcopy_dump_hm_here() {
   fi
   rm -f -- "${_t}"
   return 1
+}
+# The hostmaster dump never carries the dumping server's GTID state. By
+# default (--set-gtid-purged=AUTO) a dump taken while GTID is on (every
+# box an xmass run touched: BOA's my.cnf leaves it off, xmass_gtid.cnf
+# turns it on) opens with SET @@SESSION.SQL_LOG_BIN=0 and sets
+# @@GLOBAL.GTID_PURGED. Its import then fails on a box that shares that
+# history (a move back, a failback, a chained move: ERROR 3546 on 8.x),
+# and where it passes it stays out of that box's binary log, so a replica
+# of the box never gets the panel. OFF writes neither. Sets _MYSQLDUMP_GTID
+# to the option when the local mysqldump takes it: one that does not
+# (MariaDB's) would refuse it and writes neither anyway, so it is asked,
+# never assumed.
+_mysqldump_gtid_opts() {
+  _MYSQLDUMP_GTID=()
+  if mysqldump --help 2> /dev/null | grep -q -- '--set-gtid-purged'; then
+    _MYSQLDUMP_GTID=(--set-gtid-purged=OFF)
+  fi
+  return 0
+}
+### A site's database load is written to the binary log. myloader opens
+### every session with SET SQL_LOG_BIN=0 unless told otherwise, so on a box
+### running with the binary log on (every box an xmass run touched: BOA's
+### my.cnf leaves it off, xmass_gtid.cnf turns it on) the load never
+### reached a replica of the box, whose applier then stopped at the first
+### replicated write to the tables it never got. --ignore-set=SQL_LOG_BIN
+### drops that one session variable wherever it comes from (myloader's own
+### default, or the packaged /etc/mydumper.cnf for a call without an option
+### file); --enable-binlog is no substitute: that file sets it again, and
+### the 0.19.3 line refuses the option. With the binary log off it changes
+### nothing. Sets _MYLOADER_BINLOG to the option when the local myloader
+### lists it, so a build without it gets its arguments as before.
+_myloader_binlog_opts() {
+  _MYLOADER_BINLOG=()
+  if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--ignore-set([[:space:]]|=)'; then
+    _MYLOADER_BINLOG=(--ignore-set=SQL_LOG_BIN)
+  fi
+  return 0
+}
+### A site's triggers, stored routines and events travel with its tables.
+### mydumper writes none of them unless asked, so a site that kept them (a
+### logging trigger, a function its queries call, a scheduled event) lost
+### them on every copy. Each keeps its DEFINER, the site's own database
+### user: the import loads as root, and the target has that user under the
+### same name before the load, so they run there with the site's rights, as
+### here. Sets _MYDUMPER_OBJECTS to those of the three options the local
+### mydumper lists, so a build without one gets its arguments as before.
+_mydumper_objects_opts() {
+  local _h _o
+  _MYDUMPER_OBJECTS=()
+  _h=$(mydumper --help 2>&1)
+  for _o in --triggers --routines --events; do
+    if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+(-[[:alpha:]],[[:space:]]+)?${_o}([[:space:]]|=|$)"; then
+      _MYDUMPER_OBJECTS+=("${_o}")
+    fi
+  done
+  return 0
 }
 
 # Mode-aware rsync: performs the transfer in LIVE, only reports it in DRY.
@@ -2977,19 +3312,37 @@ _migrate_init() {
     fi
   else
     _USR=/data/disk/${_oct}
-    if [ -e "${_USR}/log/email.txt" ]; then
-      _CHECK_EMAIL=$(_xcopy_read_in "${_USR}/log" email.txt)
-      _CHECK_EMAIL=`echo -n ${_CHECK_EMAIL} | tr -d "\n"`
-      _CHECK_EMAIL=${_CHECK_EMAIL//\\\@/\@}
-      if [ "${_CHECK_EMAIL}" = "inbox@boa.io" ] \
-        || [[ "${_CHECK_EMAIL}" =~ "emaylx@" ]] \
-        || [[ "${_CHECK_EMAIL}" =~ "mixomax@" ]] \
-        || [[ "${_CHECK_EMAIL}" =~ "@omega8.cc" ]]; then
+    ### Who the account belongs to, read before the target is contacted, as
+    ### xoct reads it (_xcopy_client_address: one space between words, an
+    ### escaped @ plain, never through the shell's word or glob expansion):
+    ### one of the hosted service's own addresses marks an internal account,
+    ### refused on every verb; an account with no plain address in
+    ### log/email.txt or its cnf is refused at the start of a copy (create,
+    ### export, pretransfer), as in xoct.
+    _xcopy_client_address "${_USR}" "${_oct}"
+    _RESULT_EMAIL=OK
+    for _xe in "${_XCOPY_EMAIL_TXT}" "${_XCOPY_EMAIL}"; do
+      if [ "${_xe}" = "inbox@boa.io" ] \
+        || [[ "${_xe}" == *"emaylx@"* ]] \
+        || [[ "${_xe}" == *"mixomax@"* ]] \
+        || [[ "${_xe}" == *"@omega8.cc"* ]]; then
         _RESULT_EMAIL=OUR
-      else
-        _RESULT_EMAIL=OK
       fi
+    done
+    if [ "${_RESULT_EMAIL}" = "OK" ] && [ -z "${_XCOPY_EMAIL}" ]; then
+      _RESULT_EMAIL=BAD
     fi
+    _XCOPY_START_VERB=NO
+    case "${_cmd}" in
+      create|export|pretransfer) _XCOPY_START_VERB=YES ;;
+    esac
+    ### A target that holds its clients' mail for a test run takes no real
+    ### copy (_xcopy_hold_gate), before anything is written there.
+    case "${_cmd}" in
+      create|pretransfer|transfer)
+        _xcopy_hold_gate "${_tgt}" || exit 1
+      ;;
+    esac
     if [ "${_oct}" = "arch" ] \
       || [ "${_oct}" = "all" ] \
       || [ "${_oct}" = "lost+found" ] \
@@ -3041,6 +3394,10 @@ _migrate_init() {
     elif [ "${_RESULT_EMAIL}" = "OUR" ]; then
       echo "_USR ${_oct} is not eligible for migration: internal only"
       exit 1
+    elif [ "${_XCOPY_START_VERB}" = "YES" ] && [ "${_RESULT_EMAIL}" = "BAD" ]; then
+      echo "_USR ${_oct} is not eligible for migration: no plain address in log/email.txt ('$(_xcopy_shown "${_XCOPY_EMAIL_TXT}")') or in _CLIENT_EMAIL of /root/.${_oct}.octopus.cnf"
+      echo "INFO: set the client's address as _CLIENT_EMAIL in /root/.${_oct}.octopus.cnf and re-run"
+      exit 1
     else
       echo "INFO: ${_cmd} for ${_oct} to ${_tgt} ${_dst} start"
       if [ "${_XCOPY_FORCE}" = "YES" ] && [ -e "${_USR}/log/export_failed.pid" ]; then
@@ -3089,10 +3446,16 @@ _migrate_init() {
           # instance-group.txt records the SOURCE box's conversion (its gid);
           # it must never travel, the destination pass writes its own.
           # log/ is oN's on both boxes: copied from inside the real directory
-          # into the real directory, the glob expanded there.
-          _xcopy_leg_ok "${_USR}/log" \
-            && _xcopy_in_real_dir "${_USR}/log" _xcopy_copy_here "${_tgt}" "${_DST}/log" '*' \
+          # into the real directory, the glob expanded there. The account's
+          # own log/email.txt then goes over the install's copy (one address,
+          # newer, so the -u leg keeps it), forced and never as a link: the
+          # target keeps the client's address, or list, exactly as it is.
+          if _xcopy_leg_ok "${_USR}/log"; then
+            _xcopy_in_real_dir "${_USR}/log" _xcopy_copy_here "${_tgt}" "${_DST}/log" '*' \
               -aEAXqu ${_ieni} --exclude=instance-group.txt --exclude=proxy-failed.pid
+            _xcopy_in_real_dir "${_USR}/log" _xcopy_copy_here "${_tgt}" "${_DST}/log" 'email.txt' \
+              -aEAXq --no-links ${_ieni}
+          fi
           # static/control is the tenant's on both boxes: a control that is a
           # link is never followed (the glob this replaces expanded through
           # it); a real one travels by its top-level entries, from inside it
@@ -3785,6 +4148,31 @@ _XCOPY_GMAP=""
 _XCOPY_AMAP=""
 _XCOPY_UMAP=""
 _XCOPY_FORCE=""
+### admail=<address>, any verb, any position, as xoct takes it: a test or
+### canary run that must never mail a client. xcopy sends no notices of its
+### own; under admail= its create installs only with the install's welcome
+### mail held back, create and import switch the account's upgrade notice
+### off on the target, and the account keeps its own address. The token 'boa
+### in-octopus' takes, handled the same way: taken out before the
+### positionals are read, and refused unless it holds one plain address in
+### the form the reader of a box's mail hold takes too (as in xoct).
+_XCOPY_ADMAIL=""
+_XCOPY_ADMAIL_SET=NO
+_margs=()
+for _a in "$@"; do
+  case "${_a}" in
+    admail=*) _XCOPY_ADMAIL="${_a#admail=}"; _XCOPY_ADMAIL_SET=YES ;;
+    *) _margs+=("${_a}") ;;
+  esac
+done
+set -- "${_margs[@]}"
+if [ "${_XCOPY_ADMAIL_SET}" = "YES" ]; then
+  if ! [[ "${_XCOPY_ADMAIL}" =~ ^[A-Za-z0-9_][A-Za-z0-9._%+-]*@[A-Za-z0-9][A-Za-z0-9.-]*\.[A-Za-z]{2,}$ ]] \
+    || [[ "${_XCOPY_ADMAIL}" == -* ]]; then
+    echo "ERROR: admail= must carry one plain address, got: '${_XCOPY_ADMAIL//[^[:print:]]/?}'"
+    exit 1
+  fi
+fi
 case "$1" in
   transfer|pretransfer)
     _MODE=DRY
@@ -4069,6 +4457,11 @@ case "$1" in
             echo "Usage: xcopy {post-mig} {fqdn} (source+target vms)"
             echo
             echo "Usage: xcopy {ssl-gen}"
+            echo
+            echo "Any verb takes admail=<address> (test and canary runs): create installs"
+            echo "only with the install's own welcome mail held back, and create and import"
+            echo "switch the account's upgrade notice off on the target. Accounts keep their"
+            echo "own addresses."
             echo
             exit 1
   ;;
