@@ -882,18 +882,36 @@ _sftp_ftps_modern_fix() {
       # sources' old-style declarations.
       _mrun "bash ./configure --prefix=/usr --sysconfdir=/etc CFLAGS='-g -O2 -std=gnu11'"
       _mrun "make -j $(nproc) --quiet"
-      _mrun "sh ./install.sh yesall"
+      # install.sh clears the screen, which complains when TERM is unset
+      _mrun "TERM=dumb sh ./install.sh yesall"
       if cmp -s /var/opt/mysecureshell/mysecureshell /usr/bin/mysecureshell; then
+        # install.sh leaves the shell 755, and a session without the setuid
+        # bit cannot join the root-owned session table: set it now, as the
+        # end of the pass does.
+        chown root:root /usr/bin/mysecureshell
+        chmod 4755 /usr/bin/mysecureshell
         # A build made without the prefix left its copies in /usr/local,
         # ahead of /usr in PATH, and its own line in /etc/shells.
         if [ -e "/usr/local/bin/mysecureshell" ]; then
           for _mss_bin in mysecureshell sftp-admin sftp-kill sftp-state \
             sftp-user sftp-verif sftp-who; do
-            rm -f "/usr/local/bin/${_mss_bin}"
+            # never the file a /usr/bin name resolves to
+            if [ ! "/usr/bin/${_mss_bin}" -ef "/usr/local/bin/${_mss_bin}" ]; then
+              rm -f "/usr/local/bin/${_mss_bin}"
+            fi
             rm -f "/usr/local/share/man/man8/${_mss_bin}.8"
           done
           rm -f /usr/local/share/man/man8/MySecureShell.8
           sed -i "\|^/usr/local/bin/mysecureshell$|d" /etc/shells
+        fi
+        # Older sources, configured without a prefix, put their pages in
+        # /share/man; this build puts them in /usr/share/man.
+        if [ -d "/share/man/man8" ]; then
+          for _mss_bin in sftp-admin sftp-kill sftp-state sftp-user \
+            sftp-verif sftp-who; do
+            rm -f "/share/man/man8/${_mss_bin}.8"
+          done
+          rmdir /share/man/man8 /share/man /share &> /dev/null
         fi
         touch ${_pthLog}/mss-build-ok-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
       else
@@ -7739,8 +7757,12 @@ _strict_bin_permissions() {
         done
   done
 
-  chown root:root /usr/bin/mysecureshell
-  chmod 4755 /usr/bin/mysecureshell
+  # chown clears the setuid bit, and no session starts without it: touch
+  # the shell only when it is not already as wanted.
+  if [ "$(stat -L -c '%a %U:%G' /usr/bin/mysecureshell 2> /dev/null)" != "4755 root:root" ]; then
+    chown root:root /usr/bin/mysecureshell
+    chmod 4755 /usr/bin/mysecureshell
+  fi
 
   chown root:root /usr/bin/redis-server
   chmod 755 /usr/bin/redis-server
