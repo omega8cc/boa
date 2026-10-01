@@ -1282,6 +1282,11 @@
       /etc/mydumper.cnf turns the binary log off again, and the 0.19.3
       line refuses the option.
 
+    * The nightly copy of database dumps into each account's dbackup/
+      takes the date from the end of the archive folder name: on a box
+      whose hostname holds a dash, MyQuick dumps were never copied and
+      legacy dumps landed in a misnamed folder.
+
     * xcopy's create waits for a quiet target before it holds back the
       welcome mail, and xoct and xcopy say so when the hold was lifted
       during the install. A real xcopy refuses a target that holds its
