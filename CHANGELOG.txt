@@ -938,6 +938,13 @@
 
 @=> Improvements
 
+    * The shipped csf.conf template and docs/NGINX-QUIC-BPF.md now say why
+      inbound UDP 443 is open (HTTP/3 for the hosted sites) and that a
+      firewall the hosting provider keeps in front of the box must allow
+      it as well: with it blocked there, browsers wait on a failed HTTP/3
+      attempt before every HTTP/2 load while the box itself shows nothing
+      wrong, since CSF accepts the port and Nginx listens.
+
     * Redis server support is retired: the barracuda upgrade installs
       Valkey only. The Redis server installer, its config templates and
       its service handling in the upgrade steps are gone, and the
