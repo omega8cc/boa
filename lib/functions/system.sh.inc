@@ -866,8 +866,7 @@ _sftp_ftps_modern_fix() {
   # without it were written whether the build got there or not.
   if [ ! -e "${_pthLog}/mss-build-ok-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log" ] \
     || [ ! -e "/etc/ssh/sftp_config" ] \
-    || [ ! -e "/usr/bin/mysecureshell" ] \
-    || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
+    || [ ! -e "/usr/bin/mysecureshell" ]; then
     if [ "${_MSS_BUILD}" != "YES" ]; then
       local _mss_bin
       _msg "INFO: Installing MySecureShell ${_MSS_VRN}..."
@@ -6660,7 +6659,6 @@ _ssl_install_src() {
     _ssl_apt_locks_update
   else
     _msg "OOPS: OpenSSL version ${_OPENSSL_NEW_VRN} was not installed!"
-    _SSL_INSTALL_REQUIRED=
     _SSH_FORCE_REINSTALL=
     _NGX_FORCE_REINSTALL=
     _PHP_FORCE_REINSTALL=
@@ -8165,6 +8163,10 @@ _finale() {
   mkdir -p /data/conf
   _acct_in_real_dir /data/conf _sys_conf_arch_here
   rm -f /tmp/cache.inc*
+  # A build earlier in the pass may have left the shell in its source
+  # directory under /var/opt: step out before that goes, or every child
+  # started afterwards complains about its missing working directory.
+  cd /var/opt
   rm -f /var/opt/._zendopcache*
   rm -rf /var/opt/*
   rm -f /var/xdrago/monitor/acrashsql.sh
@@ -12282,8 +12284,7 @@ _lshell_install_upgrade() {
     _LSHELL_FORCE_REINSTALL=YES
   fi
   if [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ] \
-    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-    || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
+    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     if [ "${_STATUS}" = "UPGRADE" ]; then
       _msg "INFO: Upgrading Limited Shell to version ${_LSHELL_VRN}..."
       [ -f "/etc/lshell.conf" ] && cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_NOW} &> /dev/null
@@ -12432,8 +12433,7 @@ _if_install_ftpd() {
       || [ ! -e "/usr/local/sbin/pure-ftpd" ] \
       || [ ! -e "${_pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_xSrl}-${_X_VERSION}.log" ] \
       || [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ] \
-      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-      || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
       if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then

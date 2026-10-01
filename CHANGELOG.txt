@@ -1243,6 +1243,10 @@
 
 @=> Important Fixes
 
+    * An upgrade that built something from source no longer ends with
+      getcwd errors in its errors log: the final cleanup steps out of the
+      build directory before it removes it.
+
     * MySecureShell master-01-10-2026 is built with its install paths
       and its C dialect named. Its sources now default to /usr/local, so
       the build landed beside the binary the accounts use and /usr/bin
@@ -4420,15 +4424,15 @@
 @=> New Documentation
 
     * AI bot control, per site:
-      https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY-USER.md
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-USER.md
     * AI bot policy, per-server overview:
-      https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY.md
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY.md
     * AI bot policy and edge testing (edgetest):
-      https://github.com/omega8cc/boa/blob/5.x-pro/docs/AI-POLICY-TESTING.md
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-TESTING.md
     * IP access control, per site:
-      https://github.com/omega8cc/boa/blob/5.x-pro/docs/IP-ACCESS-USER.md
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS-USER.md
     * IP access control, per-server overview:
-      https://github.com/omega8cc/boa/blob/5.x-pro/docs/IP-ACCESS.md
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS.md
 
 
 ###
@@ -5070,7 +5074,7 @@
    responsive (and stay that way during spikes), this is genuinely good news.
    Why is this a big deal? What should visitors notice?
 
-   Read the full story: https://github.com/omega8cc/boa/tree/5.x-pro/HTTP3.md
+   Read the full story: https://github.com/omega8cc/boa/tree/5.x-dev/docs/HTTP3.md
 
  * Percona 8.4 comes to Excalibur. We no longer need vanilla MySQL 8.4 now that
    Percona has released its own build for Debian Trixie, which can be used on
