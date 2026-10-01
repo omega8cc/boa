@@ -8165,6 +8165,10 @@ _finale() {
   mkdir -p /data/conf
   _acct_in_real_dir /data/conf _sys_conf_arch_here
   rm -f /tmp/cache.inc*
+  # A build earlier in the pass may have left the shell in its source
+  # directory under /var/opt: step out before that goes, or every child
+  # started afterwards complains about its missing working directory.
+  cd /var/opt
   rm -f /var/opt/._zendopcache*
   rm -rf /var/opt/*
   rm -f /var/xdrago/monitor/acrashsql.sh
