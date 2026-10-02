@@ -1292,7 +1292,7 @@
       the lines missing that way.
 
     * A fast (MyQuick) database backup that waits for a previous dump to
-      be cleaned up no longer logs a PHP undefined-variable warning.
+      be cleaned up no longer raises a PHP undefined-variable warning.
 
     * After a mirror was promoted by hand, xmass prep-target on the
       promoted box takes the returning old active's accounts as the
