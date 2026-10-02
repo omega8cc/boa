@@ -50,6 +50,12 @@
 
 @=> Security
 
+    * A site Verify, install or deploy no longer makes directories,
+      changes modes, or removes or writes .htaccess files through a
+      files or private link that leads out of the account's own files
+      store; such a link is left as it is, with a STORE/SKIP warning
+      in the task log.
+
     * Each Octopus account gets a sudo line for a new root database
       helper, boa-dbctl. It ships switched off: no account uses it and
       no database work changes until an account is switched on.

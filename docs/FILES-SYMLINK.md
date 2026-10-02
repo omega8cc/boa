@@ -568,6 +568,14 @@ Such a clone is left usable; resolve it later with a manual
 `fix-drupal-site-symlinks.sh --site=<clone> --force-unshare` run once space is
 available.
 
+In a clone into a different account, the deploy and the clone's verify run
+while the deployed copy's links still lead into the source account's store.
+Provision leaves them alone there (`STORE/SKIP` in the task log, see *Safety
+properties*), so those steps end with status Warning; the clone still
+succeeds, and the re-home then gives the copy its own store. A copy whose
+re-home was refused keeps that warning on every Verify until the manual
+`--force-unshare` run.
+
 If the clone reuses a name whose store was left behind by an earlier site of the
 same name, that stale store is archived aside first (see *Orphan / ghost detection
 and stale-store archiving*), so the clone never collides with it.
@@ -877,6 +885,14 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   very directory: a link or another directory put on its path meanwhile is
   refused. In-site links and renames are made by name from inside the site
   directory entered for real, so a link put on the site's path is never followed.
+- **A site task acts only inside the account's own store.** Verify, install
+  and deploy make directories, set modes and write `.htaccess` files in a
+  site's `files` and `private` trees only where a path is the site's own: a
+  real directory in the site directory, or a link resolving below the
+  account's own `static/files/` (or its store on attached storage), never into
+  BOA's own folders there. A link leading anywhere else is left as it is, with
+  everything below it: the task logs `STORE/SKIP` with where it leads, and
+  ends with status Warning.
 - **Root removes only the directory it checked or copied.** A conversion enters
   the site's `files`/`private` directory for real and records its identity
   (device and inode) before anything else. The residue-only check, and the
