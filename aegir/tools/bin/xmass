@@ -2463,7 +2463,7 @@ _xmass_push_account_cnf() {
     _DEL_OLD_BACKUPS _DEL_OLD_TMP _DEL_OLD_EMPTY_PLATFORMS \
     _SQL_CONVERT _STRONG_PASSWORDS _BACKDROP_SUPPORT _GRAV_SUPPORT _TXP_SUPPORT _HOT_SAUCE \
     _USE_CURRENT _DL_MODE _FORCE_GIT_MIRROR _PLATFORMS_LIST \
-    _AUTOPILOT _DNS_SETUP_TEST"
+    _AUTOPILOT _DNS_SETUP_TEST _DB_COUNT_MAX"
   echo "_USER=\"${_acct}\"" > "${_lTmp}"
   for _v in ${_lst}; do
     _l=$(grep "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
@@ -2686,7 +2686,7 @@ _xmass_carry_db_broker() {
   if [ "${_MODE}" != "LIVE" ]; then
     [ "${_b}" = "-" ] && return 0
     _info "  [DRY-PLAN] ${_acct}: its database broker switch mirrored to ${_t} (/data/conf)"
-    _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "grep -qxF '${_acct} ALL=NOPASSWD: /usr/local/bin/boa-dbctl' /etc/sudoers.d/boa-dbctl 2> /dev/null && echo DB-SUDO; grep -E '^_DB_BROKER_IO_LIMIT=' /root/.barracuda.cnf 2> /dev/null | tail -n 1 | sed 's/^/DB-LIMIT /'; echo DB-READ" 2> /dev/null)
+    _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "grep -qxF '${_acct} ALL=NOPASSWD: /usr/local/bin/boa-dbctl' /etc/sudoers.d/boa-dbctl 2> /dev/null && echo DB-SUDO; grep -E '^_DB_BROKER_IO_LIMIT=' /root/.barracuda.cnf 2> /dev/null | tail -n 1 | sed 's/^/DB-LIMIT /'; grep -E '^_DB_COUNT_ENFORCE=' /root/.barracuda.cnf 2> /dev/null | tail -n 1 | sed 's/^/DB-ENFORCE /'; echo DB-READ" 2> /dev/null)
     case "${_out}" in
       *DB-READ*) ;;
       *)
@@ -2713,6 +2713,14 @@ _xmass_carry_db_broker() {
       if [ "${_lim}" != "${_l}" ]; then
         _alrt "  _DB_BROKER_IO_LIMIT is '${_lim:-unset}' here and '${_l:-unset}' on ${_t}: a switched"
         _alrt "  account's dumps and loads run under the other limit there"
+      fi
+      _lim=$(grep -E '^_DB_COUNT_ENFORCE=' /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+        | cut -d= -f2- | tr -d "\"' ")
+      _l=$(printf '%s\n' "${_out}" | sed -n 's/^DB-ENFORCE //p' | tail -n 1 \
+        | cut -d= -f2- | tr -d "\"' ")
+      if [ "${_lim}" != "${_l}" ]; then
+        _alrt "  _DB_COUNT_ENFORCE is '${_lim:-unset}' here and '${_l:-unset}' on ${_t}: a switched"
+        _alrt "  account's database count limit is enforced on one box of the pair only"
       fi
     fi
     return 0

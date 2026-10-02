@@ -30,8 +30,8 @@
 # No verb takes free SQL. A password comes on stdin, one line, never on the
 # command line. Output: "OK <verb> <fields>" on stdout and exit 0, or
 # "ERR <code> <reason>" on stderr and the code as the exit status:
-#   2 usage, 3 not-yours, 4 taken, 6 refused-user, 7 sql-failed,
-#   8 not-in-broker-mode, 9 busy.
+#   2 usage, 3 not-yours, 4 taken, 5 at the account's database count
+#   limit, 6 refused-user, 7 sql-failed, 8 not-in-broker-mode, 9 busy.
 # One line per call goes to /var/log/boa/dbctl/dbctl.log, never a password.
 
 # The *_here helpers run through _acct_in_real_dir, _on_exit as the EXIT trap.
@@ -103,6 +103,14 @@ _REG_WAIT=60
 _SLOTS=2
 _KILL_GRACE=30
 _IO_LIMIT_DEFAULT=86400
+
+# The per-account database count limit: _DB_COUNT_MAX in the account's root
+# cnf, a number, or AUTO or nothing for the built-in default, read and never
+# sourced. It is enforced only where /root/.barracuda.cnf says
+# _DB_COUNT_ENFORCE=YES; elsewhere a call past it is only noted in the log,
+# which census --peak reads. No default is built in until one is set from
+# what accounts really hold: AUTO is no limit.
+_CAP_DEFAULT=""
 
 # A switch waits _TASK_TRIES times _WAIT_SEC seconds for the account's
 # running tasks to end, and gives its proof, a server verify run as the
@@ -1508,6 +1516,60 @@ _need_free() {
   return 0
 }
 
+# The limit of account $1 into _CAP (empty for none), and whether it is
+# enforced into _CAP_ON.
+_cap_read() {
+  local _f="${_RHOME}/.${1}.octopus.cnf" _v
+  _CAP="${_CAP_DEFAULT}"
+  _CAP_ON="NO"
+  _v=$(grep -E '^_DB_COUNT_MAX=' "${_f}" 2> /dev/null | tail -n 1 | cut -d= -f2- | tr -d "\"' ")
+  case "${_v}" in
+    ""|AUTO) ;;
+    *)
+      if [[ "${_v}" =~ ^[0-9]{1,6}$ ]] && [[ "$(( 10#${_v} ))" -ge 1 ]]; then
+        _CAP="$(( 10#${_v} ))"
+      else
+        _alrt "_DB_COUNT_MAX in ${_f} is not a number: the default applies"
+      fi
+      ;;
+  esac
+  _cap_enforced && _CAP_ON="YES"
+  return 0
+}
+
+# Whether this box enforces the limit.
+_cap_enforced() {
+  grep -qE "^_DB_COUNT_ENFORCE=[\"']?YES[\"']?[[:space:]]*$" "${_BCNF}" 2> /dev/null
+}
+
+# Before a new name is taken for the account, under the registry lock so
+# the count is exact: at its limit the call is refused where the limit is
+# enforced, and only noted in the log where it is not.
+_cap_check() {
+  local _n
+  _cap_read "${_ACCT}"
+  [[ -n "${_CAP}" ]] || return 0
+  _n=$(_reg_count "${_ACCT}")
+  [[ "${_n}" =~ ^[0-9]+$ ]] || _die 7 "sql-failed regcount"
+  [[ "${_n}" -lt "${_CAP}" ]] && return 0
+  [[ "${_CAP_ON}" == "YES" ]] && _die 5 "cap ${_n}/${_CAP}"
+  _log_note "over-cap=$(( _n + 1 ))/${_CAP}"
+  return 0
+}
+
+# A root tool or a switch enters databases that already exist: never
+# refused, and past the limit only noted.
+_cap_note() {
+  local _n
+  _cap_read "${_ACCT}"
+  [[ -n "${_CAP}" ]] || return 0
+  _n=$(_reg_count "${_ACCT}")
+  if [[ "${_n}" =~ ^[0-9]+$ ]] && [[ "${_n}" -gt "${_CAP}" ]]; then
+    _log_note "over-cap=${_n}/${_CAP}"
+  fi
+  return 0
+}
+
 _v_reserve() {
   local _db _rc
   [[ "${#_ARGS[@]}" -eq 1 ]] || _die 2 "usage reserve <db>"
@@ -1521,6 +1583,7 @@ _v_reserve() {
     _need_free "${_db}"
   else
     _need_free "${_db}"
+    _cap_check
     _reg_new "${_db}" reserved reserve
     _rc=$?
     [[ "${_rc}" -eq 1 ]] && _die 4 "taken entry"
@@ -1552,6 +1615,7 @@ _v_create() {
     _need_free "${_db}"
   else
     _need_free "${_db}"
+    _cap_check
     _reg_new "${_db}" reserved create
     _rc=$?
     [[ "${_rc}" -eq 1 ]] && _die 4 "taken entry"
@@ -2359,6 +2423,7 @@ _v_register() {
     elif [[ "${_rc}" -ne 0 ]]; then
       _die 7 "registry-write-failed"
     fi
+    _cap_note
   fi
   _reg_unlock
   _info "register ${_db}"
@@ -4856,6 +4921,7 @@ _v_scope_on() {
       [[ "${_rc}" -eq 0 ]] || _die 7 "registry-write-failed"
     fi
   done
+  _cap_note
   _regrant_all
   # Nothing of the account's rights has been taken yet. From here a
   # failure puts it back on the direct path.
@@ -5094,9 +5160,9 @@ _v_leftovers() {
 
 # census: what each account holds, for the database count limit's
 # measure: the distinct live databases its site records name, its registry
-# entries, and with --peak <days> the highest count the log shows for it
-# in that time. The server's exact version is the one a reference is
-# recorded for.
+# entries, its limit, and with --peak <days> the highest count the log
+# shows for it in that time. The server's exact version is the one a
+# reference is recorded for.
 _v_census() {
   local _a _sp _ds _dn _du _seen _n _c _r _p _st _peaks="" _cut _sw _f _k _all
   [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
@@ -5154,11 +5220,14 @@ _v_census() {
         _f=" peak=${_f%%$'\n'*}"
       fi
     fi
-    printf '%s switched=%s records=%s created=%s reserved=%s purged=%s%s\n' \
-      "${_a}" "${_sw}" "${_n}" "${_c}" "${_r}" "${_p}" "${_f}"
+    _cap_read "${_a}"
+    printf '%s switched=%s records=%s created=%s reserved=%s purged=%s cap=%s%s\n' \
+      "${_a}" "${_sw}" "${_n}" "${_c}" "${_r}" "${_p}" "${_CAP:-none}" "${_f}"
     _all=$(( _all + 1 ))
   done
-  _info "census accounts=${_all} version=${_SRV_VER}"
+  _f="no"
+  _cap_enforced && _f="yes"
+  _info "census accounts=${_all} version=${_SRV_VER} cap-enforced=${_f}"
 }
 
 _parse_args() {

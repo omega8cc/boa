@@ -3887,11 +3887,18 @@ _xoct_push_target_octopus_cnf() {
     _DEL_OLD_BACKUPS _DEL_OLD_TMP _DEL_OLD_EMPTY_PLATFORMS \
     _SQL_CONVERT _STRONG_PASSWORDS _BACKDROP_SUPPORT _GRAV_SUPPORT _TXP_SUPPORT _HOT_SAUCE \
     _USE_CURRENT _DL_MODE _FORCE_GIT_MIRROR _PLATFORMS_LIST \
-    _AUTOPILOT _DNS_SETUP_TEST"
+    _AUTOPILOT _DNS_SETUP_TEST _DB_COUNT_MAX"
   echo "_USER=\"${_dst}\"" > "${_lTmp}"
   for _v in ${_lst}; do
     _l=$(grep "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
-    [ -n "${_l}" ] && printf '%s\n' "${_l}" >> "${_lTmp}"
+    [ -n "${_l}" ] || continue
+    # the database count limit travels only as a plain value
+    if [ "${_v}" = "_DB_COUNT_MAX" ] \
+      && ! [[ "${_l}" =~ ^_DB_COUNT_MAX=(AUTO|[0-9]{1,6}|\"(AUTO|[0-9]{1,6})\"|\'(AUTO|[0-9]{1,6})\')$ ]]; then
+      echo "ALRT: _DB_COUNT_MAX in ${_sCnf} is not a plain value -- not merged, the target keeps its own"
+      continue
+    fi
+    printf '%s\n' "${_l}" >> "${_lTmp}"
   done
   ### Under admail= every merge (create, each live transfer) keeps the
   ### account's upgrade notice off there (_xoct_admail_upgrade_mail_off);
