@@ -225,6 +225,33 @@ _night_notice() {
   fi
 }
 
+### The web group's witnesses of the master (its own web group, wg-aegir)
+### and of the box (a pool file naming a group that does not resolve; a
+### stale web-group writer while a record exists), once a night after the
+### account passes: an alarm goes to the incident log and, once a day, to
+### the operator, as the account passes send theirs. An instgrp without the
+### web group reads nothing.
+_night_web_box() {
+  local _t _l _alarm
+  [ -e "/opt/local/bin/instgrp" ] || return 0
+  grep -q "^_wg_drift_box() {" /opt/local/bin/instgrp 2> /dev/null || return 0
+  for _t in aegir --box; do
+    _alarm=""
+    while IFS= read -r _l; do
+      case "${_l}" in
+        "ALRT "*) _alarm="${_alarm:+${_alarm}; }${_l#ALRT }" ;;
+        "NOTE "*) echo "web group (${_t#--}): ${_l#NOTE }" ;;
+      esac
+    done < <(bash /opt/local/bin/instgrp webdrift "${_t}" 2> /dev/null)
+    [ -n "${_alarm}" ] || continue
+    echo "ALRT: web group drift (${_t#--}): ${_alarm}"
+    ( unset _MY_OCTO_EMAIL
+      _night_notice "wg-drift-${_t#--}" \
+        "BOA nightly on $(hostname -f): web group drift (${_t#--})" "${_alarm}" )
+  done
+  return 0
+}
+
 ### An account pass that never ends would hold its fan-out slot (or the
 ### serial loop) into the next night. Bound it, say so, move on: the whole
 ### process group gets the signal, the account's night marker is released
@@ -326,6 +353,7 @@ _daily_action() {
     fi
   done
   [ "${_NIGHT_PARALLEL}" = "YES" ] && wait
+  _night_web_box
   _shared_codebases_cleanup
   _ghost_codebases_cleanup
   _check_old_empty_hostmaster_platforms

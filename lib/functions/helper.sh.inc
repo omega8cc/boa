@@ -432,6 +432,79 @@ _web_group() {
   esac
 }
 
+_web_group_rb() {
+  # "rb" when the account's record says phase B (_web_group_state phaseb)
+  # and carries the fourth field rb=1: a rollback of phase B was cut short,
+  # so the record says B only because the pools may still lack www-data, and
+  # no share check has passed since. Empty otherwise. The pool line is left
+  # out while it stands and the account's shell user is still listed in
+  # www-data. $1 as _web_group_state.
+  local _s _a _r _rg="" _rgid="" _rph="" _rtk="" IFS=$' \t\n'
+  _s=$(_web_group_state "${1}")
+  [ "${_s%% *}" = "phaseb" ] || return 0
+  _a="${_s##* }"
+  _a="${_a#wg-}"
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _rtk _ < "${_r}" || :
+  fi
+  if [ "${_rg}" = "${_s##* }" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ] \
+    && [ "${_rph}" = "phase=B" ] && [ "${_rtk}" = "rb=1" ]; then
+    echo "rb"
+  fi
+  return 0
+}
+_master_web_group() {
+  # The master's own web group, wg-aegir, the way _web_group_state reads an
+  # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its
+  # holders are aegir and the master pool users wwwNN; anyone else holding
+  # it makes it foreign. The record is /root/.aegir.web-group.txt, root's
+  # own file, "wg-aegir gid=<n> phase=<A|B> ...".
+  local _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  _e=$(getent group wg-aegir 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^(aegir|www[0-9][0-9])$ ]] \
+      || { echo "foreign ${_gid} wg-aegir"; return 0; }
+  done
+  _r="/root/.aegir.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-aegir" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-aegir"
+  else
+    echo "held ${_gid} wg-aegir"
+  fi
+}
+_master_web_group_rb() {
+  # "rb" when the master's record says phase B and carries the fourth field
+  # rb=1 (a rollback of its phase B cut short), empty otherwise: the master
+  # pool line group = wwwNN is then left out, whatever W says.
+  local _s _rg="" _rgid="" _rph="" _rtk="" IFS=$' \t\n'
+  _s=$(_master_web_group)
+  [ "${_s%% *}" = "phaseb" ] || return 0
+  if [ -f /root/.aegir.web-group.txt ] && [ ! -L /root/.aegir.web-group.txt ] \
+    && [ "$(stat -c %u -- /root/.aegir.web-group.txt 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _rtk _ < /root/.aegir.web-group.txt || :
+  fi
+  if [ "${_rg}" = "wg-aegir" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ] \
+    && [ "${_rph}" = "phase=B" ] && [ "${_rtk}" = "rb=1" ]; then
+    echo "rb"
+  fi
+  return 0
+}
+
 #
 # An account owns its static/control (and oN owns the rest of /data/disk/oN),
 # so it can put a link or a FIFO at any name there, or turn static/control
@@ -1987,17 +2060,27 @@ _sudoers_commit() {
 #   match defaults to <line>; pass a shorter prefix (e.g. "<user> ALL=NOPASSWD")
 #   to treat any existing line starting with it as already present, which
 #   preserves the prior per-user grep semantics for /etc/sudoers.
+# A line counts only as a whole line, or with a match as a line starting
+# with it: a substring test took another account's line ("xo1 ALL=...") for
+# this one's ("o1 ALL=..."), so the shorter name never got its lines; the
+# next pass adds them.
 # Returns 0 on append or no-op, 1 on error.
 _sudoers_safe_append() {
   local _file="${1}"
   local _line="${2}"
   local _match="${3:-${2}}"
-  local _tmp
+  local _tmp _have
   if [ -z "${_file}" ] || [ -z "${_line}" ]; then
     return 1
   fi
-  if [ -e "${_file}" ] && grep -qF "${_match}" "${_file}" 2>/dev/null; then
-    return 0
+  if [ -e "${_file}" ]; then
+    if [ "${_match}" = "${_line}" ]; then
+      grep -qxF -- "${_line}" "${_file}" 2>/dev/null && return 0
+    else
+      while IFS= read -r _have || [ -n "${_have}" ]; do
+        [[ "${_have}" == "${_match}"* ]] && return 0
+      done 2>/dev/null < "${_file}"
+    fi
   fi
   if ! command -v visudo >/dev/null 2>&1; then
     echo "${_line}" >> "${_file}"
@@ -2011,6 +2094,53 @@ _sudoers_safe_append() {
   [ -e "${_file}" ] && cat "${_file}" > "${_tmp}" 2>/dev/null
   echo "${_line}" >> "${_tmp}"
   _sudoers_commit "${_file}" "${_tmp}"
+}
+
+# The database broker's (boa-dbctl) sudo line for account $1 in
+# /etc/sudoers.d/boa-dbctl, validated and matched as a whole line as
+# _sudoers_safe_append does. The line alone changes nothing: the broker
+# serves an account only while its root-owned /data/conf/<oN>_db_broker.txt
+# exists.
+_dbctl_sudo_line() {
+  local _u="${1}"
+  local _file="/etc/sudoers.d/boa-dbctl"
+  local _line _tmp
+  [[ "${_u}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || return 1
+  _line="${_u} ALL=NOPASSWD: /usr/local/bin/boa-dbctl"
+  if [[ -e "${_file}" ]] && grep -qxF -- "${_line}" "${_file}" 2> /dev/null; then
+    return 0
+  fi
+  if ! command -v visudo > /dev/null 2>&1; then
+    echo "${_line}" >> "${_file}"
+    chmod 0440 "${_file}" 2> /dev/null
+    return 0
+  fi
+  _tmp=$(mktemp "/etc/sudoers.d/.sudoers.boa.XXXXXX" 2> /dev/null)
+  if [[ -z "${_tmp}" || ! -e "${_tmp}" ]]; then
+    return 1
+  fi
+  [[ -e "${_file}" ]] && cat "${_file}" > "${_tmp}" 2> /dev/null
+  echo "${_line}" >> "${_tmp}"
+  _sudoers_commit "${_file}" "${_tmp}"
+}
+
+# The broker's sudo line for every Octopus account, on every barracuda pass:
+# the system-only pass a replication standby runs included. A standby never
+# runs the Octopus pass that also writes it, and once promoted it serves the
+# switched accounts it took over at once.
+_dbctl_sudo_lines() {
+  local _cnf _u _home
+  for _cnf in /root/.*.octopus.cnf; do
+    [[ -f "${_cnf}" && ! -L "${_cnf}" ]] || continue
+    _u="${_cnf#/root/.}"
+    _u="${_u%.octopus.cnf}"
+    [[ "${_u}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || continue
+    _home=$(getent passwd "${_u}" 2> /dev/null | cut -d: -f6)
+    [[ "${_home%/}" == "/data/disk/${_u}" ]] || continue
+    [[ -d "/data/disk/${_u}" && ! -L "/data/disk/${_u}" ]] || continue
+    _dbctl_sudo_line "${_u}"
+  done
+  return 0
 }
 
 _check_prepare_dirs_permissions() {
@@ -2034,6 +2164,7 @@ _check_prepare_dirs_permissions() {
   # /var/log/php85 — apply the tighter mode to all of them.
   chown root:adm /var/log/php* &> /dev/null
   chmod 0755 /var/log/php* &> /dev/null
+  _dbctl_sudo_lines
   mkdir -p ${_vBs}/dragon/{x,z,t}
   if [ -e "/etc/init.d/buagent" ]; then
     mv -f /etc/init.d/buagent \

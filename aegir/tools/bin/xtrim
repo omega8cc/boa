@@ -116,6 +116,118 @@ _read_file() {
   _in_real_dir "${1%/*}" _read_here "${1##*/}"
 }
 
+_web_group_state() {
+  # The account's own web group, wg-<account>, derived on the box and never
+  # taken from argv or a cnf: the group its pools, backend user and shell
+  # users share for its web paths once the account is converted to it.
+  # Prints "<state> <gid> <group>", "none - -" when there is no such group
+  # (the record is root's: run as another user, converted reads as held):
+  #   none       no group of that name
+  #   foreign    the group exists, but an identity outside the account holds
+  #              it too: never joined nor written to; claim passes still leave
+  #              its paths alone (taking them would cut the pools off)
+  #   held       the group exists and only this account's identities hold it:
+  #              claim passes leave its paths alone, new identities join it
+  #   converted  and root's record names that gid: writers use the group
+  #   phaseb     and the record says the identities have left www-data
+  # The record is /root/.<account>.web-group.txt, "wg-<account> gid=<n>
+  # phase=<A|B> ...", root's own file outside the account tree, so neither
+  # the account nor a copy or restore of its tree can make or move it.
+  # $1 = account name, one of its identities (oN.ftp, oN.<sub>, oN.web,
+  # oN.NN.web), or a path under /data/disk/<oN>, /home/<oN>.*, the account's
+  # gems or npm tree, or its store on attached storage
+  # (/mnt/<m>/files/<oN>/static/files).
+  local _a="${1}" _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  # a path is read as written (an alias the account wrote can carry "..",
+  # "." or "//"): normalised by text alone, never through a link, first
+  case "${_a}" in
+    */*) _a=$(realpath -m -s -- "${_a}" 2> /dev/null) || { echo "none - -"; return 0; } ;;
+  esac
+  case "${_a}" in
+    /data/disk/*) _a="${_a#/data/disk/}"; _a="${_a%%/*}" ;;
+    /home/*) _a="${_a#/home/}"; _a="${_a%%/*}" ;;
+    /opt/user/gems/*|/opt/user/npm/*) _a="${_a#/opt/user/*/}"; _a="${_a%%/*}" ;;
+    /mnt/*/files/*/static/files|/mnt/*/files/*/static/files/*)
+      _a="${_a#/mnt/}"; _a="${_a#*/files/}"; _a="${_a%%/*}" ;;
+    */*) echo "none - -"; return 0 ;;
+  esac
+  _a="${_a%%.*}"
+  case "${_a}" in
+    ""|all|aegir|root|www-data|wg-*|*[!a-z0-9-]*) echo "none - -"; return 0 ;;
+  esac
+  _e=$(getent group "wg-${_a}" 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  # every holder of the gid: members of each group entry carrying it (a
+  # second entry can share the number) and every user with it as primary
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] \
+      || { echo "foreign ${_gid} wg-${_a}"; return 0; }
+  done
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-${_a}" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-${_a}"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-${_a}"
+  else
+    echo "held ${_gid} wg-${_a}"
+  fi
+}
+_web_group_rb() {
+  # "rb" when the account's record says phase B (_web_group_state phaseb)
+  # and carries the fourth field rb=1: a rollback of phase B was cut short,
+  # so the record says B only because the pools may still lack www-data, and
+  # no share check has passed since. Empty otherwise. The pool line is left
+  # out while it stands and the account's shell user is still listed in
+  # www-data. $1 as _web_group_state.
+  local _s _a _r _rg="" _rgid="" _rph="" _rtk="" IFS=$' \t\n'
+  _s=$(_web_group_state "${1}")
+  [ "${_s%% *}" = "phaseb" ] || return 0
+  _a="${_s##* }"
+  _a="${_a#wg-}"
+  _r="/root/.${_a}.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _rtk _ < "${_r}" || :
+  fi
+  if [ "${_rg}" = "${_s##* }" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ] \
+    && [ "${_rph}" = "phase=B" ] && [ "${_rtk}" = "rb=1" ]; then
+    echo "rb"
+  fi
+  return 0
+}
+
+### A quarantined pool file of account $1 put in the state the account's
+### pool writers would write it before it goes back: exactly one line
+### group = wg-<account> while its record says phase B (the group resolving,
+### and no rollback token left while its own user is still in www-data),
+### none otherwise. $2 = the file, root's, in the quarantine.
+_pool_line_fix() {
+  local _oN="${1}" _f="${2}" _s _l _t
+  _l="group = wg-${_oN}"
+  _s=$(_web_group_state "${_oN}")
+  _t="${_f}.wg.$$"
+  rm -f -- "${_t}"
+  grep -vxF -- "${_l}" "${_f}" > "${_t}" 2> /dev/null
+  if [ "${_s%% *}" = "phaseb" ] && [ "${_s##* }" = "wg-${_oN}" ] \
+    && getent group "wg-${_oN}" > /dev/null 2>&1 \
+    && ! { [ "$(_web_group_rb "${_oN}")" = "rb" ] \
+      && [[ ",$(getent group www-data | cut -d: -f4)," == *",${_oN},"* ]]; }; then
+    printf '%s\n' "${_l}" >> "${_t}"
+  fi
+  chmod --reference="${_f}" -- "${_t}" 2> /dev/null
+  mv -f -- "${_t}" "${_f}" || { rm -f -- "${_t}"; return 1; }
+}
+
 ### The regular files of the real directory $1 that the find tests after it
 ### select, one name per line, listed inside that directory (empty when $1
 ### is not a real directory).
@@ -1122,6 +1234,8 @@ _restore_stage_a() {
       _nn=$(grep -m1 '^_PHP_FPM_VERSION' /root/.barracuda.cnf 2>/dev/null | tr -d -c 0-9)
     fi
     if [ -n "${_nn}" ] && [ -d "/opt/php${_nn}/etc/pool.d" ]; then
+      _pool_line_fix "${_oN}" "${_p}" \
+        || _alrt "${_oN}: the web group line of $(basename "${_p}") could not be set; restored as it was saved"
       if mv -f "${_p}" "/opt/php${_nn}/etc/pool.d/"; then
         service "php${_nn}-fpm" reload &> /dev/null
       else

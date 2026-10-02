@@ -50,6 +50,16 @@
 
 @=> Security
 
+    * A site Verify, install or deploy no longer makes directories,
+      changes modes, or removes or writes .htaccess files through a
+      files or private link that leads out of the account's own files
+      store; such a link is left as it is, with a STORE/SKIP warning
+      in the task log.
+
+    * Each Octopus account gets a sudo line for a new root database
+      helper, boa-dbctl. It ships switched off: no account uses it and
+      no database work changes until an account is switched on.
+
     * The limited shell template and the ImageMagick policy no longer
       stay a release behind on a box whose mirror lagged at the publish.
 
@@ -86,6 +96,33 @@
     * xmass prep-target no longer takes a same-name account on the
       target that carries no site by itself: it is refused before the
       target changes, and taken only when the operator names it.
+
+    * Each Octopus account can now move out of the shared web server
+      group into its own, wg-<account> (instgrp webconvert): its sites'
+      files, private files and settings, its PHP pools and its shell users
+      no longer reach another account's, nor are reached by them. Inert
+      until _WEB_GROUP_ARM=YES in /root/.barracuda.cnf; phase B, which
+      takes the account's identities out of www-data, needs
+      _WEB_GROUP_PHASE_B=YES as well. _WEB_GROUP=NO in an account's octopus
+      cnf opts it out, and a site reading another account's files store
+      refuses the conversion. The master converts the same way (instgrp
+      webconvert aegir), by hand only. instgrp webstatus, webcheck
+      --report and the limited-shell worker's and the nightly's drift
+      alarms show where each account stands; see docs/INSTGRP.md.
+    * xoct, xcopy and xmass carry the web-group policy to the target, the
+      opt-out _WEB_GROUP=NO and the phase A pin _WEB_GROUP=A (written by
+      instgrp webconvert --phase-a), and print a NOTE for what does not
+      travel (a revert in progress, phase B onto a box with it off, a
+      target that is not armed); an xmass standby keeps its accounts
+      unconverted until the promotion.
+    * An xmass promotion converts the promoted box's accounts by that
+      box's own settings at the end of the cutover and again in post-mig,
+      the master as the old box ran it; xmass compares the two boxes' arm,
+      phase B and master at every sync, prep-target, verify and status.
+    * Phase B also clears the set-group-ID bit of every www-data file the
+      account's identities own, on every local file system that honours
+      the bit: a file made while they were in www-data no longer gives
+      its group to whoever runs it afterwards.
 
     * copydbackup hands an account only a dated backup directory it made
       itself or the account already owns, and the dumps it copies there,
@@ -938,6 +975,14 @@
 
 @=> Improvements
 
+    * The README requirements, the shipped csf.conf template and
+      docs/NGINX-QUIC-BPF.md now say why inbound UDP 443 is open (HTTP/3
+      for the hosted sites) and that a firewall the hosting provider keeps
+      in front of the box must allow it, with incoming TCP 22, 80 and 443:
+      with UDP 443 blocked there, browsers wait on a failed HTTP/3 attempt
+      before every HTTP/2 load while the box itself shows nothing wrong,
+      since CSF accepts the port and Nginx listens.
+
     * Redis server support is retired: the barracuda upgrade installs
       Valkey only. The Redis server installer, its config templates and
       its service handling in the upgrade steps are gone, and the
@@ -1235,6 +1280,194 @@
 
 @=> Important Fixes
 
+    * The nightly migration-source sweep no longer leaves a stale read
+      grant to a human when a site restored that day still carries its
+      former database name in the control panel: every site of the
+      account proves its database before any grant is judged.
+
+    * An Octopus account whose name ends another account's name, such as
+      o1 beside xo1, now gets its sudo lines for nginx and the fix-drupal
+      and Drush lock scripts: the test for an existing line took the
+      other account's line for its own. The next Octopus upgrade adds
+      the lines missing that way.
+
+    * A fast (MyQuick) database backup that waits for a previous dump to
+      be cleaned up no longer raises a PHP undefined-variable warning.
+
+    * After a mirror was promoted by hand, xmass prep-target on the
+      promoted box takes the returning old active's accounts as the
+      pair's own, so failing back and rebuilding the old active as the
+      new mirror go on: its create marker of the account names the old
+      active, or the old active's migration state names the promoted box
+      as its target. The account there must predate either. Both routes
+      stopped at prep-target on every account.
+
+    * An xoct canary still in its test run no longer blocks a standing
+      mirror: xmass prep-target installs a canary the box sends away
+      with its own admail=, and a cutover under --proxy-mode=ha-switch
+      converts it the same way, so its client is not told of the switch;
+      its test run is then redone from the new active. A move of the box
+      still waits for the canary's go-live, and a canary the box received
+      still refuses both.
+
+    * A promoted mirror no longer mails clients its active was holding
+      mail for: every xmass sync pass carries the active's client mail
+      hold, other boxes' test-run marks and the xoct test-run records of
+      its accounts to the mirror, presence and absence. A box that holds
+      its clients' mail refuses a real prep-target or cutover up front,
+      where xoct used to refuse every account after the sites went down.
+
+    * A mirror built as an xmass test run (admail=) now has its own way
+      out: xmass go-live, while the pair stands at phase syncing, makes it
+      a real pair without mailing anyone. post-mig names a mail hold and
+      the test runs it finds on a promoted box, with the lines that remove
+      them.
+
+    * A test run's record now names its target, and xmass prep-target
+      toward another target refuses while it stands, instead of leaving
+      that target holding its clients' mail with nothing to end it.
+
+    * After a failback, xoct no longer sends a follow-up or a withdrawal
+      notice about a move back the client was never told of: a notice
+      sent as the target is logged apart and does not count on that box
+      as a source.
+
+    * A site's scheduled MySQL events keep running after an xmass switch
+      to the mirror, a failback or an emergency promotion: the promoted
+      box enables, each with its own definer, the events its replica kept
+      disabled (cutover and post-mig), and the old box's event scheduler
+      is held through the write freeze, so no event writes rows the new
+      box never sees. Every way back before the promotion starts it again.
+
+    * Both ends of an xmass pair now carry log_bin_trust_function_creators=1
+      next to the binary log, so a site's own database login can create
+      its triggers and functions there. The mirror takes it first: init,
+      every sync pass and the SQL watchdog set a pair in service in that
+      order, since a mirror behind its active would stop replicating.
+
+    * An emergency promotion of a mirror by hand now leaves a box that
+      serves and can fail back. renameaegirhost waits for the database
+      the standby hold keeps read-only for about a minute: run in that
+      minute its database rename failed silently, and the regenerated
+      nginx configuration no longer loaded.
+
+    * xmass post-mig after a promotion by hand runs the promotion steps
+      the planned switch runs: it clears what an earlier demotion of the
+      box left and rewires each control panel to its live database. The
+      panels answered 500, pre-mig refused them, and an account the box
+      had relayed refused every create, so failing back stopped there. It
+      runs right after the replica reset and again after the renames.
+
+    * Those steps run only on that path, told by the standby marker still
+      present when post-mig starts, and only on the pair's own accounts.
+      After a planned switch or a failback post-mig leaves the upgrades
+      the cutover armed again, an account the box relays to another box
+      keeps its relay, and every armed upgrade is held until the renames
+      are done, never removed.
+
+    * xmass prep-target starts the cron of a returning old active that
+      was fenced with its cron stopped: the upgrade passes it arms there
+      never ran, and it waited for them until it gave up. It stops that
+      cron again when it ends, and init starts it once the box is the
+      pair's standby, so the box's own jobs never run on its stale copy.
+
+    * xoct create no longer lifts an account's 503 gate on the target: a
+      returning old active fenced after an emergency promotion served its
+      stale copy again once xmass prep-target had run there.
+
+    * xmass prep-target no longer takes an account on the old active's
+      migration state alone when that box relays it, or moved it on, to
+      another box: a same-name account made on the promoted box since is
+      another client's.
+
+    * The demotion cleanup no longer reports nginx -t as failed when nginx
+      is down by design (a promotion by hand, the standby hold still on):
+      the restored vhosts load when it starts.
+
+    * A run lock left by an instgrp run killed outright (out of memory, a
+      stray kill -9) no longer keeps the limited-shell worker, the task
+      queue runner and the nightly waiting for up to three hours: the
+      worker and the 5-minute clear.sh take it away once the process it
+      names is gone.
+
+    * xmass init and prep-target no longer wait out their whole bound
+      when /data/disk holds a directory that is not an Octopus account,
+      such as a hand-made copy: the quiet check passes over it.
+
+    * A shared Valkey integration module in /data/all/000/modules is
+      replaced in one rename, so a site that loads it through its bundle
+      never finds it missing while an upgrade or the agent pass swaps
+      it; the gap was about 20 ms per module, once per release, and a
+      site loading in it fell back to the database cache.
+
+    * The cron queue template is kept current like the other
+      configuration files: a changed template reaches the box even when
+      it keeps the queue patch, and the accounts' copies put from an
+      earlier template take it. A pass stopped among the accounts is
+      taken up by the next pass, and an account skipped once, as on a
+      replication standby, by the next release. The hosting module's
+      own copy is kept.
+
+    * A replication standby no longer fetches the shared modules in
+      /data/all/000/modules itself: they arrive from the active with
+      each sync, and the first agent pass after a promotion refreshes
+      any that is stale.
+
+    * xmass sends the shared store from where the active keeps it to
+      where the mirror keeps it, a real /data/all or root's link to
+      /data/disk/all on either box. On a pair whose two boxes kept it
+      differently the store landed where nothing on the mirror reads it,
+      so the sites on older shared code had none after a switch, and a
+      failback could prune the old box's store. Any other link at
+      /data/all, or a target whose layout cannot be read, is a DENY
+      that stops a live sync and a cutover.
+
+    * xmass no longer keeps a shared store file that is newer on the
+      mirror: the active is the store's only writer, so its bytes win on
+      every pass, and a file an account had changed under an earlier
+      release, rebuilt on the active by Octopus's one-time pass, takes
+      the rebuilt bytes on the mirror too.
+
+    * A shared codebase the nightly cleanup moved out of the store no
+      longer trips xmass's delete guard on the next sync: its entries
+      are budgeted out of the guard while the mirror still holds it.
+
+    * After a promotion within a release, the first agent pass puts
+      that release's Let's Encrypt includes into the accounts'
+      hostmaster platforms: a replication standby no longer records
+      them as done.
+
+    * A MySecureShell rebuild no longer takes the accounts' file-transfer
+      logins down for the rest of the upgrade: the installed shell gets
+      its setuid bit back at once, not at the end of the pass, and the
+      end of every pass no longer drops the bit for a moment. The pages
+      older sources left in /share/man at the filesystem root are
+      removed, and a /usr/bin name linked to a /usr/local copy keeps the
+      file it resolves to.
+
+    * An upgrade that built something from source no longer ends with
+      getcwd errors in its errors log: the final cleanup steps out of the
+      build directory before it removes it, and the barracuda launcher
+      returns to /var/backups after its own source repair of curl.
+
+    * The modern OpenSSL check reads the version the installed headers
+      name, so no yearly string has to follow a pin and a release with
+      another copyright range no longer rebuilds OpenSSL on every pass.
+      A failed OpenSSL build is reported with the version that failed.
+
+    * mytop's build clears its own source tree, not the git one.
+
+    * MySecureShell moves to master-02-10-2026 and is built with its
+      install paths and its C dialect named. The newer sources default
+      to /usr/local, so a build landed beside the binary the accounts
+      use and /usr/bin kept the previous one; with GCC 14 their configure
+      chose C23, where the build stopped until the sources got their
+      prototypes (in this snapshot). The build is recorded as done only
+      once /usr/bin/mysecureshell holds it, a failed one is reported and
+      tried again on the next upgrade, and a system that took the
+      misplaced build drops its copies from /usr/local and the extra
+      line in /etc/shells.
+
     * The configuration files the agent pass keeps current between
       upgrades (the PHP-FPM pool templates, the limited shell template,
       the ImageMagick policy, the control readme, sysctl.conf, the Let's
@@ -1327,6 +1560,16 @@
       panel tables first, could not load its own snapshot. Every dump
       takes --set-gtid-purged=OFF when the box's mysqldump offers it;
       dumps taken before still carry it.
+
+    * Classic Drush 8.5.11: drush sql-dump, and so sql-sync, no longer
+      writes the server's GTID state into the dump. Taken on a box an
+      xmass run touched, a site's dump could not be loaded back with the
+      site's own database user: drush sqlc < dump.sql, and a sql-sync
+      between two sites, stopped at once with "ERROR 1227 ... SUPER",
+      and loaded as root on the same box it failed with "ERROR 3546" on
+      8.4 and "ERROR 1840" on 5.7, the latter after loading the tables
+      outside the binary log. The dump takes --set-gtid-purged=OFF when
+      the box's mysqldump offers it; dumps taken before still carry it.
 
     * BOA's myloader loads are written to the binary log: xoct and xcopy
       imports, and the fast database import of an Aegir Migrate task and
@@ -4402,15 +4645,15 @@
 @=> New Documentation
 
     * AI bot control, per site:
-      https://github.com/omega8cc/boa/blob/5.x-lts/docs/AI-POLICY-USER.md
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-USER.md
     * AI bot policy, per-server overview:
-      https://github.com/omega8cc/boa/blob/5.x-lts/docs/AI-POLICY.md
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY.md
     * AI bot policy and edge testing (edgetest):
-      https://github.com/omega8cc/boa/blob/5.x-lts/docs/AI-POLICY-TESTING.md
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/AI-POLICY-TESTING.md
     * IP access control, per site:
-      https://github.com/omega8cc/boa/blob/5.x-lts/docs/IP-ACCESS-USER.md
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS-USER.md
     * IP access control, per-server overview:
-      https://github.com/omega8cc/boa/blob/5.x-lts/docs/IP-ACCESS.md
+      https://github.com/omega8cc/boa/blob/5.x-dev/docs/IP-ACCESS.md
 
 
 ###
@@ -5052,7 +5295,7 @@
    responsive (and stay that way during spikes), this is genuinely good news.
    Why is this a big deal? What should visitors notice?
 
-   Read the full story: https://github.com/omega8cc/boa/tree/5.x-lts/HTTP3.md
+   Read the full story: https://github.com/omega8cc/boa/tree/5.x-dev/docs/HTTP3.md
 
  * Percona 8.4 comes to Excalibur. We no longer need vanilla MySQL 8.4 now that
    Percona has released its own build for Debian Trixie, which can be used on
