@@ -1360,6 +1360,18 @@
       alone, and writes one line to mysql.incident.log each time it
       starts the scheduler again.
 
+    * After a mirror is promoted by hand, an upgrade that xmass post-mig
+      holds until the renames keeps the platform list beside its trigger,
+      so the runner takes it once it is armed again. A list holding only
+      BOA's inert seed used to be removed, and the trigger then stayed for
+      good and made a later xmass init wait out its whole bound and
+      refuse. A trigger with no platform list beside it, which the runner
+      never takes, no longer counts as pending work for xmass init and
+      prep-target or for xoct create and xcopy, and both re-arms say when
+      a trigger waits for its list. On a mirror built as a test run and
+      promoted by hand, post-mig also names the accounts whose upgrade
+      notice the test run left off.
+
     * A client's own database export works again on Drupal 8 and newer
       sites: the tenant shell's Drush 8 guard on those codebases lets
       sql-dump through beside uli and status, so the documented one-line
