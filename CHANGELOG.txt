@@ -1492,6 +1492,14 @@
       keeps its relay, and every armed upgrade is held until the renames
       are done, never removed.
 
+    * A promotion by hand no longer stays read-only when more than a
+      minute passes between the operator's replica reset and the first
+      xmass post-mig run. The minute monitor marks such a box a lost
+      replica, and the SQL watchdog kept it locked after the standby
+      marker was gone: the panels were not rewired and the renames
+      refused. Running post-mig answers that question, so on this path
+      it clears the mark.
+
     * xmass prep-target starts the cron of a returning old active that
       was fenced with its cron stopped: the upgrade passes it arms there
       never ran, and it waited for them until it gave up. It stops that
