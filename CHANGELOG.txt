@@ -50,6 +50,13 @@
 
 @=> Security
 
+    * A site Verify, install or deploy no longer makes directories or
+      changes modes or groups through a link at the site dir, at sites/,
+      or at the site's modules, themes, libraries or vendor, nor through
+      a private link in a deployed backup, and acts only in the directory
+      it checked; such a link is left as it is, with a STORE/SKIP warning
+      in the task log.
+
     * A site Verify, install or deploy no longer makes directories,
       changes modes, or removes or writes .htaccess files through a
       files or private link that leads out of the account's own files
@@ -103,8 +110,9 @@
       no longer reach another account's, nor are reached by them. Inert
       until _WEB_GROUP_ARM=YES in /root/.barracuda.cnf; phase B, which
       takes the account's identities out of www-data, needs
-      _WEB_GROUP_PHASE_B=YES as well. _WEB_GROUP=NO in an account's octopus
-      cnf opts it out, and a site reading another account's files store
+      _WEB_GROUP_PHASE_B=YES as well.
+    * _WEB_GROUP=NO in an account's octopus cnf opts it out, as does
+      _INSTANCE_GROUP=NO, and a site reading another account's files store
       refuses the conversion. The master converts the same way (instgrp
       webconvert aegir), by hand only. instgrp webstatus, webcheck
       --report and the limited-shell worker's and the nightly's drift
@@ -122,7 +130,8 @@
     * Phase B also clears the set-group-ID bit of every www-data file the
       account's identities own, on every local file system that honours
       the bit: a file made while they were in www-data no longer gives
-      its group to whoever runs it afterwards.
+      its group to whoever runs it afterwards. A network or FUSE mount
+      without nosuid is named in the account's notes instead.
 
     * copydbackup hands an account only a dated backup directory it made
       itself or the account already owns, and the dumps it copies there,
@@ -932,7 +941,11 @@
     * Every distribution and vanilla core staticbuild builds is
       audited against the published security advisories: the advisory
       ids are recorded beside the tarball, the counts left and fixed
-      in the run summary, and the build is never blocked by them.
+      in the run summary, and the build is never blocked by them. The
+      same record lists every locked package drupal.org publishes no
+      advisories for (alpha, beta, RC and dev releases, projects not
+      opted in, Drupal modules hosted elsewhere), which no advisory
+      count can speak for.
     * New staticbuild advisories re-checks every published catalogue
       platform, distributions and Drupal 9 to 11 cores, against
       today's advisories, one row per tarball with the trees that list
@@ -974,6 +987,11 @@
       built without their require-dev packages, like the others.
 
 @=> Improvements
+
+    * A Drupal 11 site Install finishes about ten seconds sooner: it no
+      longer pauses for five seconds after preparing the platform's own
+      Drush for the installer and again after restoring it. The update
+      and deploy tasks always ran the same step without a pause.
 
     * The README requirements, the shipped csf.conf template and
       docs/NGINX-QUIC-BPF.md now say why inbound UDP 443 is open (HTTP/3
@@ -1279,6 +1297,25 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * A client's own database export works again on Drupal 8 and newer
+      sites: the tenant shell's Drush 8 guard on those codebases lets
+      sql-dump through beside uli and status, so the documented one-line
+      export over the account's shell and the ddev-boa pull no longer
+      stop with a refusal.
+
+    * A 405 that Drupal answers itself, for a method its route does not
+      take (a REST or JSON:API request, a client probing GET on a
+      POST-only endpoint), reaches the client as Drupal sent it, with its
+      Allow header. The vhost sent it back through the front controller,
+      which gave a GET the site's index.php as a file and ended any other
+      method in a 500.
+
+    * Scheduled site cron is no longer held to the 30-second web query
+      cap. The control panel runs a site's cron as a web request, and
+      the cap meant for visitor pages killed any longer query in it
+      while the run still reported success; the cap now skips the
+      three cron addresses, as its documentation always said.
 
     * The nightly migration-source sweep no longer leaves a stale read
       grant to a human when a site restored that day still carries its
@@ -1594,6 +1631,17 @@
       drops, and failed from then on. With the binary log on, a function
       declared without DETERMINISTIC, NO SQL or READS SQL DATA now fails
       the load instead of vanishing.
+
+    * Stored procedures and functions, and scheduled events, travel
+      with a site's database through the classic dumps too: Clone, a
+      Migrate or Restore without MyQuick, the Backup mode with a
+      classic dump, and the nightly and cluster backups in legacy mode.
+      The dump asks first whether its database user may read them and
+      leaves them out with a warning when not, so such a dump still
+      completes. A trigger made under ANSI_QUOTES no longer stops a
+      Clone or Restore on Percona 5.7, and a trigger, routine or
+      event made before its database's default collation changed no
+      longer stops a Clone, Migrate or Restore.
 
     * The nightly copy of database dumps into each account's dbackup/
       takes the date from the end of the archive folder name: on a box

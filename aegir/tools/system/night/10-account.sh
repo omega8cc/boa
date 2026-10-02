@@ -1027,8 +1027,12 @@ _account_process() {
   fi
   # A web-group conversion run holds the account the same way (it waits for
   # this marker, so of the two one always sees the other): skipped tonight.
-  if [ -e "/run/instgrp-web-${_HM_U}.pid" ] \
-    && kill -0 "$( { tr -dc '0-9' < "/run/instgrp-web-${_HM_U}.pid"; } 2> /dev/null )" 2> /dev/null; then
+  # The hold names a root run; a pid that is gone, or that another user's
+  # process now has, is a killed run's leftover (clear.sh reaps it).
+  local _wgHold
+  _wgHold=$( { tr -dc '0-9' < "/run/instgrp-web-${_HM_U}.pid"; } 2> /dev/null )
+  if [ -n "${_wgHold}" ] && kill -0 "${_wgHold}" 2> /dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_wgHold}/status" 2> /dev/null)" = "0" ]; then
     echo "${_HM_U}: a web-group conversion run holds this account; skipped tonight"
     rm -f "/run/night-account-${_HM_U}.pid"
     return 0

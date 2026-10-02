@@ -344,6 +344,20 @@ _web_group_policy() {
   return 0
 }
 
+_web_group_phase_b() {
+  # YES when /root/.barracuda.cnf turns phase B on as bash reads it: the last
+  # _WEB_GROUP_PHASE_B assignment, with export, quotes or a trailing comment,
+  # is YES. Prints nothing otherwise. Verbatim in instgrp, xoct, xcopy and
+  # xmass: the arm, the notes and the pair comparison read the line the same
+  # way.
+  local _l
+  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=" /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+    | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=(YES|\"YES\"|'YES')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
+    | tr -d "\"'")
+  [ "${_l}" = "YES" ] && printf '%s\n' YES
+  return 0
+}
+
 # The web-group facts of the account $1 on this box, one line for the
 # helper below: "XMWF:<state>:<phase B>:<policy>:<armed>:<standby>", the
 # state as _web_group_state prints it; YES when /root/.barracuda.cnf sets
@@ -357,7 +371,7 @@ _web_group_policy() {
 _web_group_facts_here() {
   local _s _b=NO _p _r=NO _sb=NO
   _s=$(_web_group_state "${1}")
-  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=[\"']?YES" /root/.barracuda.cnf 2> /dev/null && _b=YES
+  [ "$(_web_group_phase_b)" = "YES" ] && _b=YES
   _p=$(_web_group_policy "/root/.${1}.octopus.cnf")
   [ -s /var/log/boa/instgrp-web-arm.ready.txt ] && _r=YES
   { [ -e /root/.standby.cnf ] || [ -e /root/.standby.prep.cnf ]; } && _sb=YES
@@ -372,7 +386,7 @@ _web_group_facts_on_target() {
   local _a="${1}" _h="${2}" _o
   case "${_a}" in ""|*[!a-z0-9-]*) return 1 ;; esac
   [ -n "${_h}" ] || return 1
-  _o=$( { declare -f _web_group_state _web_group_policy _web_group_facts_here
+  _o=$( { declare -f _web_group_state _web_group_policy _web_group_phase_b _web_group_facts_here
     printf '%s\n' "_web_group_facts_here '${_a}'"; } \
     | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" "bash -s" 2> /dev/null \
     | grep -m1 -x -E 'XMWF:(none|foreign|held|converted|phaseb):(YES|NO):(NO|A|-):(YES|NO):(YES|NO)')
@@ -6188,7 +6202,7 @@ _xmass_wg_notes() {
 _web_group_box_facts_here() {
   local _r=NO _b=NO _m
   [ -s /var/log/boa/instgrp-web-arm.ready.txt ] && _r=YES
-  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=[\"']?YES" /root/.barracuda.cnf 2> /dev/null && _b=YES
+  [ "$(_web_group_phase_b)" = "YES" ] && _b=YES
   _m=$(_master_web_group 2> /dev/null)
   echo "XMWB:${_r}:${_b}:${_m%% *}"
 }
@@ -6196,7 +6210,7 @@ _web_group_box_facts_here() {
 ### nothing and 1 when it cannot be asked.
 _xmass_wg_box_facts_on() {
   local _o
-  _o=$( { declare -f _master_web_group _web_group_box_facts_here
+  _o=$( { declare -f _master_web_group _web_group_phase_b _web_group_box_facts_here
     printf '%s\n' "_web_group_box_facts_here"; } \
     | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${1}" "bash -s" 2> /dev/null \
     | grep -m1 -x -E 'XMWB:(YES|NO):(YES|NO):(none|foreign|held|converted|phaseb)')
@@ -6277,7 +6291,7 @@ _xmass_wg_promoted_here() {
     [ "${_how}" = "loud" ] && echo "XMWP:NOTE:this box is not armed for the web group (no _WEB_GROUP_ARM=YES stamp): no account converts here"
     return 0
   fi
-  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=[\"']?YES" /root/.barracuda.cnf 2> /dev/null && _b=--phase-b
+  [ "$(_web_group_phase_b)" = "YES" ] && _b=--phase-b
   bash /opt/local/bin/instgrp webconvert all ${_b} 2>&1 | sed 's/^/XMWO: /'
   echo "XMWP:RC:all:${PIPESTATUS[0]}:${_b}"
   _ms=$(_master_web_group 2> /dev/null)
@@ -6304,7 +6318,7 @@ _xmass_wg_promoted() {
   if [ "${_h}" = "here" ]; then
     _out=$(_xmass_wg_promoted_here "${_m}" "${_how}")
   else
-    _out=$( { declare -f _master_web_group _xmass_wg_promoted_here
+    _out=$( { declare -f _master_web_group _web_group_phase_b _xmass_wg_promoted_here
       printf '%s\n' "_xmass_wg_promoted_here '${_m}' '${_how}'"; } \
       | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" "bash -s" 2> /dev/null \
       || echo "XMWP:NONE")

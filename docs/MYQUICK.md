@@ -75,6 +75,14 @@ The fast import of a Migrate or of a dump-less Restore gives every view, trigger
 
 A nightly dump restored as root brings them back with their own definers, and the site's own database user can restore its dump into its own database too.
 
+The classic `mysqldump` dumps carry them as well: the dump of a Clone, of a Migrate or a Restore on an account without `MyQuick.info`, of the Backup mode with a classic dump, and the nightly and cluster backups in legacy mode. Triggers they always carried; stored routines and events are asked for with `--routines` and `--events`. Ægir's classic dump strips every definer and is loaded as the site's database user, so that user owns each view, trigger, routine and event afterwards; the nightly dumps keep their definers.
+
+An object made while its database had another default collation comes wrapped in `ALTER DATABASE` lines that name the dumped database; Ægir's classic dump drops that name, so the lines apply to the database being loaded.
+
+`mysqldump` stops the whole dump on a routine the dumping user may not read (one another user defines) and on events it may not list, so each option is asked first. When one is refused, the dump is taken without those objects, the task log carries a warning, and the nightly names the database in its backup notice.
+
+A classic load as the site's database user on a box with the binary log on creates triggers and stored functions only while `log_bin_trust_function_creators` is on. `xmass` sets it on both ends of a pair. With the binary log turned on by `_DB_BINARY_LOG=YES`, or by a custom `my.cnf` under `_CUSTOM_CONFIG_SQL=YES`, BOA leaves it at the server's default (off) unless that `my.cnf` sets it, and the load fails with `ERROR 1419` and says so.
+
 On a box running with the binary log on (every box an `xmass` run touched), MySQL refuses a stored function declared without `DETERMINISTIC`, `NO SQL` or `READS SQL DATA` (`ERROR 1418`), and a database user without SUPER may create neither triggers nor stored functions there (`ERROR 1419`). A load that meets such an object fails and says so: `xoct` and `xcopy` count the site's import as failed, and a Migrate rolls back with the site left as it was. Declare such a function with one of those characteristics, and on such a box restore a dump that carries triggers or functions as root.
 
 For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs).
