@@ -989,6 +989,24 @@ _SYSTEM_AUTO_SECURITY=YES
 _APT_ACQUIRE_POLICY=YES
 
 ###
+### The account web group (instgrp webconvert): each Octopus account moves
+### from the shared www-data group to its own web group, wg-<account>, so no
+### account's PHP and shell users can read another account's files and
+### settings. It is inert until armed: with _WEB_GROUP_ARM=YES every
+### barracuda pass stamps the box (/var/log/boa/instgrp-web-arm.ready.txt),
+### and only then does the Octopus arm convert an account (phase A, then
+### phase B with _WEB_GROUP_PHASE_B=YES). A per-account opt-out is
+### _WEB_GROUP=NO in /root/.<account>.octopus.cnf, a phase A pin
+### _WEB_GROUP=A. Set both boxes of a standing xmass mirror alike: a box
+### promoted without the stamp converts nothing. See docs/INSTGRP.md.
+###
+###   _WEB_GROUP_ARM=YES
+###   _WEB_GROUP_PHASE_B=YES
+###
+_WEB_GROUP_ARM=NO
+_WEB_GROUP_PHASE_B=NO
+
+###
 ### Every clear.sh run tells BOA's mirror the
 ### BOA release and the OS release of this box,
 ### and nothing else, as the User-Agent of one

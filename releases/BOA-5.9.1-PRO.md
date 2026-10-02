@@ -35,7 +35,7 @@
 
  * HTTP/3 and KTLS support. If you run Drupal sites that should feel fast and
    responsive (and stay that way during spikes), this is genuinely good news.
-   Why is this a big deal? What should visitors notice? [**Read the full story!**](https://github.com/omega8cc/boa/tree/5.x-pro/HTTP3.md)
+   Why is this a big deal? What should visitors notice? [**Read the full story!**](https://github.com/omega8cc/boa/tree/5.x-dev/docs/HTTP3.md)
 
  * Percona 8.4 comes to Excalibur. We no longer need vanilla MySQL 8.4 now that
    Percona has released its own build for Debian Trixie, which can be used on
@@ -98,7 +98,7 @@
 
   [**Take a look if you are interested**](https://omega8.cc/hosted)
 
-For the full scoop, check out the [changelog](https://github.com/omega8cc/boa/blob/5.x-pro/CHANGELOG.txt).
+For the full scoop, check out the [changelog](https://github.com/omega8cc/boa/blob/5.x-dev/CHANGELOG.txt).
 
 Thank you!
 

@@ -1877,6 +1877,8 @@ _if_reinstall_curl() {
         make --quiet install &> /dev/null
         ldconfig 2> /dev/null
       fi
+      # The pass starts in this shell's directory and empties /var/opt
+      cd "${_vBs}"
     fi
     if [ -f "/usr/local/bin/curl" ]; then
       _isCurl=$(/usr/local/bin/curl --version 2>&1)

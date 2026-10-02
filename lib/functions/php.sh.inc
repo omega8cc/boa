@@ -599,6 +599,56 @@ _apply_php_fpm_ini_fixes() {
 }
 
 
+_master_web_group() {
+  # The master's own web group, wg-aegir, the way _web_group_state reads an
+  # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its
+  # holders are aegir and the master pool users wwwNN; anyone else holding
+  # it makes it foreign. The record is /root/.aegir.web-group.txt, root's
+  # own file, "wg-aegir gid=<n> phase=<A|B> ...".
+  local _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  _e=$(getent group wg-aegir 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^(aegir|www[0-9][0-9])$ ]] \
+      || { echo "foreign ${_gid} wg-aegir"; return 0; }
+  done
+  _r="/root/.aegir.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-aegir" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-aegir"
+  else
+    echo "held ${_gid} wg-aegir"
+  fi
+}
+_master_web_group_rb() {
+  # "rb" when the master's record says phase B and carries the fourth field
+  # rb=1 (a rollback of its phase B cut short), empty otherwise: the master
+  # pool line group = wwwNN is then left out, whatever W says.
+  local _s _rg="" _rgid="" _rph="" _rtk="" IFS=$' \t\n'
+  _s=$(_master_web_group)
+  [ "${_s%% *}" = "phaseb" ] || return 0
+  if [ -f /root/.aegir.web-group.txt ] && [ ! -L /root/.aegir.web-group.txt ] \
+    && [ "$(stat -c %u -- /root/.aegir.web-group.txt 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _rtk _ < /root/.aegir.web-group.txt || :
+  fi
+  if [ "${_rg}" = "wg-aegir" ] && [ "${_rgid}" = "gid=$(printf '%s' "${_s}" | cut -d' ' -f2)" ] \
+    && [ "${_rph}" = "phase=B" ] && [ "${_rtk}" = "rb=1" ]; then
+    echo "rb"
+  fi
+  return 0
+}
+
 #
 # Update PHP Config.
 _php_conf_update() {
@@ -636,17 +686,36 @@ _php_conf_update() {
   if [ "${_DB_SERIES}" = "5.7" ]; then
     _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   fi
+  # The master's own web group (wg-aegir): once its record says phase B the
+  # master pools run in their per-version group (the listing gives them
+  # wg-aegir) and have left www-data. A record of B left by a phase-B
+  # rollback that was cut short (rb=1) writes no line, whatever the
+  # listings say: the reload below then gives the pools www-data back until
+  # the next webconvert aegir has re-checked the master's shares.
+  _T_MWGS=$(_master_web_group)
+  _T_MWRB=$(_master_web_group_rb)
   for e in ${_PHP_V}; do
     if [ ! -e "/var/www/www${e}" ]; then
       adduser --system --group --home /var/www/www${e} www${e} &> /dev/null
-      usermod -aG www-data www${e}
+      # a master whose pools have left www-data keeps a new one out of it
+      [ "${_T_MWGS%% *}" = "phaseb" ] || usermod -aG www-data www${e}
     fi
+    case "${_T_MWGS%% *}" in
+      held|converted|phaseb)
+        getent group wg-aegir | cut -d: -f4 | tr ',' '\n' | grep -qxF "www${e}" \
+          || usermod -aG wg-aegir "www${e}" &> /dev/null
+        ;;
+    esac
     if [ ! -e "/opt/php${e}/etc/php${e}.ini" ] \
       || [ ! -e "/opt/php${e}/etc/pool.d/www${e}.conf" ]; then
       mkdir -p /opt/php${e}/etc/pool.d
       cp -af ${_locCnf}/php/php${e}.ini /opt/php${e}/etc/php${e}.ini
     fi
     cp -af ${_locCnf}/php/fpm${e}-pool-www.conf /opt/php${e}/etc/pool.d/www${e}.conf
+    if [ "${_T_MWGS%% *}" = "phaseb" ] && [ "${_T_MWRB}" != "rb" ] \
+      && getent group "www${e}" > /dev/null 2>&1; then
+      echo "group = www${e}" >> "/opt/php${e}/etc/pool.d/www${e}.conf"
+    fi
     if [ ! -e "/opt/php${e}/lib/php.ini" ]; then
       mkdir -p /opt/php${e}/lib
       cp -af ${_locCnf}/php/php${e}-cli.ini /opt/php${e}/lib/php.ini

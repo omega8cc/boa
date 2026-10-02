@@ -898,6 +898,67 @@ _standby_sql_hold() {
   fi
 }
 
+_trust_creators_retrofit() {
+  # Wherever xmass writes binlog_format=ROW its conf also carries
+  # log_bin_trust_function_creators=1: with the binary log on, a site's own
+  # login creates its triggers and functions only with it (ERROR 1419). xmass
+  # init writes the line; a conf written before gets it here, never ahead of
+  # a replica: a replica at 0 behind a source at 1 stops its applier on the
+  # first non-deterministic function a site creates (ERROR 1418). So a
+  # standby takes it at once (nothing replicates from it), the active of an
+  # xmass pair leaves it to xmass's own sync pass, which sets its mirror
+  # first, and any other box takes it only while no replica reads its binary
+  # log. Above the hold block, which every strip removes by position. A conf
+  # carrying any spelling of the line, any value, costs one grep.
+  [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2890 2>/dev/null)" ] && return 0
+  local _cnf="" _d _inc_dir _pl _v
+  local _re='^[[:space:]]*(loose[-_])?log[-_]bin[-_]trust[-_]function[-_]creators[[:space:]]*='
+  _inc_dir=$(grep -hE '^[[:space:]]*!includedir[[:space:]]' /etc/mysql/my.cnf 2>/dev/null \
+    | head -1 \
+    | sed -E 's/^[[:space:]]*!includedir[[:space:]]+//; s#/[[:space:]]*$##; s/[[:space:]]*$//')
+  for _d in "${_inc_dir}" /etc/mysql/conf.d /etc/mysql/percona-server.conf.d \
+    /etc/mysql/mysql.conf.d /etc/mysql; do
+    [ -n "${_d}" ] || continue
+    if [ -r "${_d}/xmass_gtid.cnf" ]; then
+      _cnf="${_d}/xmass_gtid.cnf"
+      break
+    fi
+  done
+  [ -z "${_cnf}" ] && return 0
+  grep -qE "${_re}" "${_cnf}" 2>/dev/null && return 0
+  if [ ! -e "/root/.standby.cnf" ]; then
+    grep -qE '^_XMASS_PHASE="?(init|syncing|cutover|rename-failed)"?[[:space:]]*$' \
+      /data/conf/xmass_state.cnf 2>/dev/null && return 0
+    _mysql_is_answering || return 0
+    _pl=$(mysql --defaults-file=/root/.my.cnf -BNe "SHOW PROCESSLIST" 2>/dev/null) || return 0
+    [ -n "${_pl}" ] || return 0
+    grep -q 'Binlog Dump' <<< "${_pl}" && return 0
+  else
+    _mysql_is_answering || return 0
+  fi
+  # The runtime first: the conf line is this healer's only retry key, so it
+  # goes on only once the server reads 1.
+  mysql --defaults-file=/root/.my.cnf \
+    -e "SET GLOBAL log_bin_trust_function_creators=1" 2>/dev/null
+  _v=$(mysql --defaults-file=/root/.my.cnf \
+    -BNe "SELECT @@GLOBAL.log_bin_trust_function_creators" 2>/dev/null)
+  if [ "${_v}" = "1" ] \
+    && awk -v l='log_bin_trust_function_creators = 1' \
+      '!d && /xmass-standby-hold/ {print l; d=1} {print} END {if (!d) print l}' \
+      "${_cnf}" > "${_cnf}.trust" \
+    && chmod 644 "${_cnf}.trust" && mv -f "${_cnf}.trust" "${_cnf}" \
+    && grep -qE "${_re}" "${_cnf}"; then
+    rm -f /run/boa_trust_creators_failed_logged.pid
+    echo "$(date) trust-creators: log_bin_trust_function_creators=1 set and added to ${_cnf}" >> ${_pthOml}
+  else
+    rm -f "${_cnf}.trust"
+    if [ ! -e "/run/boa_trust_creators_failed_logged.pid" ]; then
+      touch /run/boa_trust_creators_failed_logged.pid
+      echo "$(date) trust-creators: could not set log_bin_trust_function_creators=1 (runtime reads '${_v:-empty}') or add it to ${_cnf} -- retrying each pass" >> ${_pthOml}
+    fi
+  fi
+}
+
 ### Main start here
 
 if [ -x "/etc/init.d/mysql" ] \
@@ -914,6 +975,7 @@ if [ -x "/etc/init.d/mysql" ] \
   && [ ! -e "/run/boa_mysql_auto_healing.pid" ] \
   && [ ! -e "/run/mysql_restart_running.pid" ]; then
   _standby_sql_hold
+  _trust_creators_retrofit
   _mysql_high_load
   _sql_busy_detection
   _mysql_flush_hosts
