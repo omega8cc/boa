@@ -2060,17 +2060,27 @@ _sudoers_commit() {
 #   match defaults to <line>; pass a shorter prefix (e.g. "<user> ALL=NOPASSWD")
 #   to treat any existing line starting with it as already present, which
 #   preserves the prior per-user grep semantics for /etc/sudoers.
+# A line counts only as a whole line, or with a match as a line starting
+# with it: a substring test took another account's line ("xo1 ALL=...") for
+# this one's ("o1 ALL=..."), so the shorter name never got its lines; the
+# next pass adds them.
 # Returns 0 on append or no-op, 1 on error.
 _sudoers_safe_append() {
   local _file="${1}"
   local _line="${2}"
   local _match="${3:-${2}}"
-  local _tmp
+  local _tmp _have
   if [ -z "${_file}" ] || [ -z "${_line}" ]; then
     return 1
   fi
-  if [ -e "${_file}" ] && grep -qF "${_match}" "${_file}" 2>/dev/null; then
-    return 0
+  if [ -e "${_file}" ]; then
+    if [ "${_match}" = "${_line}" ]; then
+      grep -qxF -- "${_line}" "${_file}" 2>/dev/null && return 0
+    else
+      while IFS= read -r _have || [ -n "${_have}" ]; do
+        [[ "${_have}" == "${_match}"* ]] && return 0
+      done 2>/dev/null < "${_file}"
+    fi
   fi
   if ! command -v visudo >/dev/null 2>&1; then
     echo "${_line}" >> "${_file}"
@@ -2087,11 +2097,10 @@ _sudoers_safe_append() {
 }
 
 # The database broker's (boa-dbctl) sudo line for account $1 in
-# /etc/sudoers.d/boa-dbctl, validated as _sudoers_safe_append validates, but
-# matched as a whole line: a substring test takes another account's line
-# ("xo1 ALL=...") for this one's ("o1 ALL=..."). The line alone changes
-# nothing: the broker serves an account only while its root-owned
-# /data/conf/<oN>_db_broker.txt exists.
+# /etc/sudoers.d/boa-dbctl, validated and matched as a whole line as
+# _sudoers_safe_append does. The line alone changes nothing: the broker
+# serves an account only while its root-owned /data/conf/<oN>_db_broker.txt
+# exists.
 _dbctl_sudo_line() {
   local _u="${1}"
   local _file="/etc/sudoers.d/boa-dbctl"
