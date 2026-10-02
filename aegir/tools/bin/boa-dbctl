@@ -21,7 +21,7 @@
 # "ERR <code> <reason>" on stderr and the code as the exit status:
 #   2 usage, 3 not-yours, 4 taken, 6 refused-user, 7 sql-failed,
 #   8 not-in-broker-mode, 9 busy.
-# One line per call goes to /var/log/boa/dbctl.log, never a password.
+# One line per call goes to /var/log/boa/dbctl/dbctl.log, never a password.
 
 # The *_here helpers run through _acct_in_real_dir, _on_exit as the EXIT trap.
 # shellcheck disable=SC2329
@@ -38,8 +38,10 @@ _DISK="/data/disk"
 _CONF="/data/conf"
 _MNT="/mnt"
 _RUNP="/run/boa-dbctl"
-_LOGD="/var/log/boa"
-_LOGF="/var/log/boa/dbctl.log"
+# The log has a directory of its own: the upgrade wipes of /var/log/boa/*.log
+# never reach it, and /etc/logrotate.d/boa rotates it.
+_LOGD="/var/log/boa/dbctl"
+_LOGF="/var/log/boa/dbctl/dbctl.log"
 _RHOME="/root"
 _MYCNF="/root/.my.cnf"
 _BCNF="/root/.barracuda.cnf"
@@ -59,14 +61,15 @@ _REG_DB="boa_dbreg"
 _REG_TBL="\`boa_dbreg\`.\`owners\`"
 
 # A dump or load waits for the account's I/O lock, then for one of the
-# box-wide slots, up to _WAIT_TRIES x _WAIT_SEC each, as provision's own dump
-# waits for a previous one; a registry change waits up to _REG_WAIT seconds.
+# box-wide slots, trying every _WAIT_SEC seconds for as long as one child
+# may run (the wall-clock limit and its grace), so a busy box only delays a
+# call: it fails only when a lock stays taken for longer than a whole dump or
+# load may run. A registry change waits up to _REG_WAIT seconds.
 # A child past the wall-clock limit (_DB_BROKER_IO_LIMIT in barracuda.cnf,
 # else _IO_LIMIT_DEFAULT) gets TERM, then KILL after _KILL_GRACE seconds, as
 # a whole process group. The limit only frees a slot a hung child holds:
 # no other dump or load path has one, so its default sits far above any
 # single database's dump or load.
-_WAIT_TRIES=6
 _WAIT_SEC=10
 _REG_WAIT=60
 _SLOTS=2
@@ -861,27 +864,44 @@ _reg_unlock() {
   exec 7>&-
 }
 
-_io_lock() {
-  local _i
-  exec 8>> "${_RUNP}.${_ACCT}.io.lock" || _die 7 "lock-failed"
-  for (( _i = 0; _i <= _WAIT_TRIES; _i++ )); do
-    flock -n 8 && return 0
-    [[ "${_i}" -lt "${_WAIT_TRIES}" ]] && sleep "${_WAIT_SEC}"
+# Calls $1 until it takes its lock, every _WAIT_SEC seconds for as long as
+# one dump or load may hold it (the wall-clock limit and _KILL_GRACE); past
+# that, ERR 9 busy $2. A call that had to wait logs how long.
+_lock_wait() {
+  local _t0="${SECONDS}" _end
+  "${1}" && return 0
+  _end=$(( SECONDS + ${_IO_LIMIT:-${_IO_LIMIT_DEFAULT}} + _KILL_GRACE ))
+  while [[ "${SECONDS}" -lt "${_end}" ]]; do
+    sleep "${_WAIT_SEC}" 7>&- 8>&- 9>&-
+    if "${1}"; then
+      _log_note "waited-${2}=$(( SECONDS - _t0 ))s"
+      return 0
+    fi
   done
-  _die 9 "busy io"
+  _die 9 "busy ${2}"
+}
+
+_io_try() {
+  flock -n 8
+}
+
+_io_lock() {
+  exec 8>> "${_RUNP}.${_ACCT}.io.lock" || _die 7 "lock-failed"
+  _lock_wait _io_try io
+}
+
+_slot_try() {
+  local _n
+  for (( _n = 1; _n <= _SLOTS; _n++ )); do
+    exec 9>> "${_RUNP}.slot.${_n}.lock" || _die 7 "lock-failed"
+    flock -n 9 && return 0
+    exec 9>&-
+  done
+  return 1
 }
 
 _slot_take() {
-  local _i _n
-  for (( _i = 0; _i <= _WAIT_TRIES; _i++ )); do
-    for (( _n = 1; _n <= _SLOTS; _n++ )); do
-      exec 9>> "${_RUNP}.slot.${_n}.lock" || _die 7 "lock-failed"
-      flock -n 9 && return 0
-      exec 9>&-
-    done
-    [[ "${_i}" -lt "${_WAIT_TRIES}" ]] && sleep "${_WAIT_SEC}"
-  done
-  _die 9 "busy slot"
+  _lock_wait _slot_try slot
 }
 
 # The wall-clock limit of a dump or load child in seconds, from
@@ -1857,6 +1877,21 @@ _stage_for() {
   _STAGE_DIR="${_mp%/}/.boa-dbstage"
 }
 
+# The account's staging a dump killed outright (SIGKILL, a power loss) left
+# in _STAGE_DIR: the exit trap never ran for it. Called under the account's
+# I/O lock, which every dump holds for its whole run, so no dump of the
+# account is in flight; account names carry no dot.
+_stage_reap() {
+  local _d _n=0
+  for _d in "${_STAGE_DIR}/${_ACCT}".*; do
+    [[ -e "${_d}" || -L "${_d}" ]] || continue
+    rm -rf -- "${_d}"
+    _n=$(( _n + 1 ))
+  done
+  [[ "${_n}" -eq 0 ]] || _log_note "stale-stage-removed=${_n}"
+  return 0
+}
+
 # In the account's (pinned) backups/: the dump in root staging $1 put at
 # ./tmp_expim by one rename(2), root's last act. It replaces only what
 # provision leaves there, an empty directory; a link, a file or a
@@ -1888,6 +1923,7 @@ _v_dump() {
   _reg_unlock
   _bmnt=$(_in_backups _mount_here) || _die 7 "backups-refused"
   _stage_for "${_bmnt}" || _die 7 "stage-unusable"
+  _stage_reap
   _STG=$(mktemp -d "${_STAGE_DIR}/${_ACCT}.XXXXXXXX" 2> /dev/null) || _die 7 "stage-unusable"
   _sql_or_die "SELECT /*q:trx*/ COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = $(_sql_str "${_db}") AND TABLE_TYPE = 'BASE TABLE' AND ENGINE IS NOT NULL AND ENGINE NOT IN ('InnoDB')" trx
   _trx=()
@@ -2282,8 +2318,10 @@ _main() {
     _die 2 "usage unknown-option"
   fi
   _identity
+  # The root-only verbs refuse an account's call here, before anything
+  # touches the server; every other verb needs broker mode first.
   case "${_VERB}" in
-    register|regrant) ;;
+    register|regrant) [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only" ;;
     *) _need_broker ;;
   esac
   _need_not_standby
