@@ -16,6 +16,12 @@
 # On a replication standby, or while one is being seeded, every verb that
 # writes is refused (ERR 9 busy standby); the reads stay open.
 #
+# Root's own verbs keep a switched account switched: register and regrant
+# for the databases a root tool makes for it, rekey when a pass rotates its
+# instance password (the user made again on its rows in use only), purge
+# when the account is purged (its databases stay, so their names stay held),
+# and witness, the nightly check of what a switched account holds.
+#
 # No verb takes free SQL. A password comes on stdin, one line, never on the
 # command line. Output: "OK <verb> <fields>" on stdout and exit 0, or
 # "ERR <code> <reason>" on stderr and the code as the exit status:
@@ -134,6 +140,9 @@ Usage: sudo -n boa-dbctl <verb> [arguments]      (an Octopus account)
   list                               the account's registry entries
   register <db> --account <oN> --via <tool> [--server <@context>]  (root)
   regrant --account <oN>                     (root)
+  rekey --account <oN>                       (root, the new password on stdin)
+  purge --account <oN>                       (root, a cancelled or purged account)
+  witness                                    (root, every switched account)
 EOF
 }
 
@@ -154,6 +163,11 @@ _die() {
   local _c="${1}"
   shift
   _RESULT="ERR ${_c} $*"
+  # A witness that stops part way (a query failed, a lock stayed taken) has
+  # checked nothing it can call clean.
+  if [[ "${_VERB}" == "witness" && ( "${_c}" == "7" || "${_c}" == "9" ) ]]; then
+    printf 'ALRT: witness incomplete\n' >&2
+  fi
   printf 'ERR %s %s\n' "${_c}" "$*" >&2
   exit "${_c}"
 }
@@ -518,6 +532,20 @@ _identity() {
     _ROOT_RUN="YES"
     _CALLER="root"
     [[ -n "${SUDO_USER+x}" ]] && _CALLER="root:${SUDO_USER}"
+    case "${_VERB}" in
+      witness)
+        # box-wide: it names no account
+        [[ -z "${_OPT_ACCOUNT}" ]] || _die 2 "usage witness takes no account"
+        return 0
+        ;;
+      purge)
+        # the account is on its way out: its home or root's cnf may be gone
+        [[ -n "${_OPT_ACCOUNT}" ]] || _die 2 "account-option-required"
+        [[ "${_OPT_ACCOUNT}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || _die 3 "not-an-account"
+        _ACCT="${_OPT_ACCOUNT}"
+        return 0
+        ;;
+    esac
     [[ -n "${_OPT_ACCOUNT}" ]] || _die 2 "account-option-required"
     _acct_ok "${_OPT_ACCOUNT}" || _die 3 "not-an-account"
     _ACCT="${_OPT_ACCOUNT}"
@@ -573,10 +601,20 @@ _need_broker() {
 # one is being seeded (the window's two signals), or its registry and grants
 # would differ from the source's at promotion. Every verb that writes the
 # server, the registry or an account's backups/ is refused; the reads
-# (exists, grants, grants-scan, list) stay open.
+# (exists, grants, grants-scan, list) stay open. The witness reads nothing
+# there: what a standby holds arrives from its source, whose own witness
+# reads it.
 _need_not_standby() {
   case "${_VERB}" in
     exists|grants|grants-scan|list) return 0 ;;
+    witness)
+      if [[ -e "${_STANDBY}" || -L "${_STANDBY}" || -e "${_XMASS_INIT}" || -L "${_XMASS_INIT}" \
+        || -e "${_STANDBY_INIT}" || -L "${_STANDBY_INIT}" ]]; then
+        _info "witness standby"
+        exit 0
+      fi
+      return 0
+      ;;
   esac
   if [[ -e "${_STANDBY}" || -L "${_STANDBY}" ]]; then
     _die 9 "busy standby"
@@ -1343,17 +1381,20 @@ _instance_rows_ok() {
   return 0
 }
 
-# The instance user's grant on database $1 for each row in use (rows=), to
-# rows that exist only; on 5.7 the session also refuses to make one.
+# The instance user's grant on each database named ($@) for each row in use
+# (rows=), to rows that exist only, in one session; on 5.7 the session also
+# refuses to make a row.
 _grant_instance() {
-  local _r _q="" _e
+  local _r _q="" _e _d
   _instance_rows_ok || return 1
-  _e=$(_db_esc "${1}")
   if [[ "${_SRV_8}" != "YES" ]]; then
     _q="SET SESSION sql_mode = CONCAT_WS(',', NULLIF(@@SESSION.sql_mode, ''), 'NO_AUTO_CREATE_USER');"$'\n'
   fi
-  for _r in "${_ROWS[@]}"; do
-    _q="${_q}GRANT ALL PRIVILEGES ON \`${_e}\`.* TO \`${_ACCT}\`@\`${_r}\`;"$'\n'
+  for _d in "$@"; do
+    _e=$(_db_esc "${_d}")
+    for _r in "${_ROWS[@]}"; do
+      _q="${_q}GRANT ALL PRIVILEGES ON \`${_e}\`.* TO \`${_ACCT}\`@\`${_r}\`;"$'\n'
+    done
   done
   _sql "/*q:dcl*/ ${_q}"
 }
@@ -2191,9 +2232,11 @@ _v_list() {
 
 # register (root): an entry, created, for a database a root tool made for
 # the account. Another account's entry refuses it. Its server= is the
-# control file's, or --server's outside broker mode (C6's registry build
-# runs before the control file exists); with neither it is refused, and a
-# --server that is not the control file's is refused too.
+# control file's, or --server's outside broker mode (an account's databases
+# are registered before its control file is written); with neither it is
+# refused as not in broker mode (ERR 8, which a root tool reads as an
+# account not switched), and a --server that is not the control file's is
+# refused too.
 _v_register() {
   local _db _rc _bm
   [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
@@ -2211,8 +2254,10 @@ _v_register() {
       _die 2 "bad-server not-the-control-file-server"
     fi
     _SERVER="${_OPT_SERVER}"
+  elif [[ "${_bm}" -eq 1 ]]; then
+    _die 8 "not-in-broker-mode"
   elif [[ "${_bm}" -ne 0 ]]; then
-    _die 2 "usage register needs --server <@context> outside broker mode"
+    _die 8 "not-in-broker-mode control-file-invalid"
   fi
   _schema_exists "${_db}" || _die 2 "no-such-database"
   _reg_lock
@@ -2237,11 +2282,23 @@ _v_register() {
 # regrant (root): the instance user's grant on every created database of the
 # account, for each row in use, after a pass re-created the user.
 _v_regrant() {
-  local _x _s _t _v _d _n=0 _fail=0 _list
   [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
   [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage regrant --account <oN>"
   _need_broker
   _reg_lock
+  _regrant_all
+  _reg_unlock
+  _info "regrant ${_RG_N}"
+}
+
+# The instance user's grant on every created database of the account, on
+# each row in use, under the registry lock the caller holds: one session for
+# all of them, and when that fails, one database at a time, so every grant
+# that can be made is made and the rest are counted. Sets _RG_N.
+_regrant_all() {
+  local _x _s _t _v _d _fail=0 _list
+  local -a _dbs=()
+  _RG_N=0
   _instance_rows_ok || _die 7 "instance-row-missing ${_ROW_MISSING}"
   _reg_list created
   _list="${_SQL_OUT}"
@@ -2249,15 +2306,315 @@ _v_regrant() {
     [[ -n "${_x}" ]] || continue
     _d=$(_unhex "${_x}") || continue
     _db_ok "${_d}" || continue
+    _dbs+=("${_d}")
+  done <<< "${_list}"
+  [[ "${#_dbs[@]}" -gt 0 ]] || return 0
+  if _grant_instance "${_dbs[@]}"; then
+    _RG_N="${#_dbs[@]}"
+    return 0
+  fi
+  for _d in "${_dbs[@]}"; do
     if _grant_instance "${_d}"; then
-      _n=$(( _n + 1 ))
+      _RG_N=$(( _RG_N + 1 ))
     else
       _fail=$(( _fail + 1 ))
     fi
-  done <<< "${_list}"
-  _reg_unlock
+  done
   [[ "${_fail}" -eq 0 ]] || _die 7 "sql-failed regrant ${_fail}"
-  _info "regrant ${_n}"
+}
+
+# rekey (root): a pass rotated the instance password of a switched account.
+# Each row in use (rows=) is made again with the new password (stdin), so it
+# keeps nothing a hand or an older pass gave it. A row the server will not
+# drop (8.x refuses to drop the definer of a stored object) keeps its
+# grants and takes the new password instead, and must then hold no global
+# privilege. The instance user's grant on each created database comes back,
+# and every other host row of it goes: a switched account keeps only the
+# rows its connections use. Nothing is granted on all databases.
+_v_rekey() {
+  local _r _x _keep _pw _alt _errno _drop=0 _kept=0 _left=0
+  [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
+  [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage rekey --account <oN>"
+  _need_broker
+  _read_pw
+  _pw=$(_sql_str "${_PW}")
+  _PW=""
+  _reg_lock
+  _keep=$'\n'
+  for _r in "${_ROWS[@]}"; do
+    _keep="${_keep}$(_hex "$(printf '%s' "${_r}" | tr '[:upper:]' '[:lower:]')")"$'\n'
+    _sql "/*q:dcl*/ DROP USER IF EXISTS \`${_ACCT}\`@\`${_r}\`;
+CREATE USER \`${_ACCT}\`@\`${_r}\` IDENTIFIED BY ${_pw};" && continue
+    _errno="${_SQL_ERRNO}"
+    # The row is never left missing: kept, or made again, with the new
+    # password and no retained old one.
+    _alt="CREATE USER IF NOT EXISTS \`${_ACCT}\`@\`${_r}\` IDENTIFIED BY ${_pw};"$'\n'
+    _alt="${_alt}ALTER USER \`${_ACCT}\`@\`${_r}\` IDENTIFIED BY ${_pw};"
+    if [[ "${_SRV_8}" == "YES" ]]; then
+      _alt="${_alt}"$'\n'"ALTER USER \`${_ACCT}\`@\`${_r}\` DISCARD OLD PASSWORD;"
+    fi
+    if ! _sql "/*q:dcl*/ ${_alt}"; then
+      _pw=""
+      _die 7 "sql-failed rekey ${_errno:-${_SQL_ERRNO}}"
+    fi
+    _log_note "rekey-kept ${_r} ${_errno}"
+    if _global_privs "${_ACCT}" "$(_hex "${_r}")"; then
+      _pw=""
+      _die 7 "rekey-global-kept ${_r}"
+    fi
+    _kept=$(( _kept + 1 ))
+  done
+  _pw=""
+  _alt=""
+  _regrant_all
+  # Read after the rows in use are made, and compared without case (the
+  # server may store a host name in another case), so none of them goes. A
+  # row that cannot go is counted and the call fails once the grants are
+  # back.
+  _user_hosts_hex "${_ACCT}"
+  while IFS= read -r _x; do
+    [[ -n "${_x}" ]] || continue
+    [[ "${_keep}" == *$'\n'"$(_hex "$(_unhex "${_x}" | tr '[:upper:]' '[:lower:]')")"$'\n'* ]] && continue
+    if _sql_prepared "'DROP USER IF EXISTS \`${_ACCT}\`@', $(_sql_qid "${_x}")"; then
+      _drop=$(( _drop + 1 ))
+    else
+      _log_note "rekey-drop-failed ${_x} ${_SQL_ERRNO}"
+      _left=$(( _left + 1 ))
+    fi
+  done <<< "${_HOSTS_HEX}"
+  _reg_unlock
+  [[ "${_left}" -eq 0 ]] || _die 7 "sql-failed rekey-drop ${_left}"
+  _info "rekey ${_ACCT} rows=${#_ROWS[@]} kept=${_kept} dropped=${_drop} regrant=${_RG_N}"
+}
+
+# purge (root): the account is purged. Its databases stay (the purge keeps
+# them), so their names stay held: every entry of it turns purged, which
+# no account owns, but a reservation with no database of its name is let
+# go. Only for an account on its way out: cancelled (its log/CANCELLED) or
+# gone (no root cnf).
+_v_purge() {
+  local _x _s _t _v _d _st _rel=0 _a
+  [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
+  [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage purge --account <oN>"
+  if [[ -e "${_RHOME}/.${_ACCT}.octopus.cnf" ]] \
+    && ! _acct_in_real_dir "${_DISK}/${_ACCT}/log" test -e ./CANCELLED; then
+    _die 3 "not-cancelled"
+  fi
+  if [[ "${_REG_HAS}" != "YES" ]]; then
+    _info "purge ${_ACCT} purged=0 released=0"
+    return 0
+  fi
+  _reg_lock
+  _reg_list
+  while IFS='|' read -r _x _s _t _v; do
+    [[ -n "${_x}" ]] || continue
+    _d=$(_unhex "${_x}") || continue
+    _st=$(_unhex "${_s}") || _st=""
+    [[ "${_st}" == "reserved" ]] || continue
+    _db_ok "${_d}" || continue
+    _schema_exists "${_d}" && continue
+    _reg_del "${_d}" || _die 7 "registry-write-failed"
+    _log_note "released ${_d}"
+    _rel=$(( _rel + 1 ))
+  done <<< "${_SQL_OUT}"
+  _a=$(_sql_str "${_ACCT}")
+  _sql "/*q:regpurge*/ UPDATE ${_REG_TBL} SET state = 'purged', since = $(_sql_str "$(_now)"), via = 'purge' WHERE account = ${_a} AND state <> 'purged';
+SELECT COUNT(*) FROM ${_REG_TBL} WHERE account = ${_a} AND state <> 'purged';" \
+    || _die 7 "registry-write-failed"
+  [[ "${_SQL_OUT}" == "0" ]] || _die 7 "registry-write-failed"
+  _sql_or_die "SELECT /*q:regpurged*/ COUNT(*) FROM ${_REG_TBL} WHERE account = ${_a}" regpurged
+  [[ "${_SQL_OUT}" =~ ^[0-9]+$ ]] || _die 7 "sql-failed regpurged"
+  _reg_unlock
+  _info "purge ${_ACCT} purged=${_SQL_OUT} released=${_rel}"
+}
+
+# witness (root, every night): what each switched account holds, reported
+# in ALRT lines and never changed, except a reservation a day old with no
+# database of its name, which nothing used and which goes. A query that
+# fails ends the run as incomplete: nothing it did not read is called
+# clean. On a standby it has already answered (_need_not_standby).
+_v_witness() {
+  local _f _a _n=0
+  [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
+  [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage witness"
+  _WIT_N=0
+  _WIT_REL=0
+  _WIT_OLD=$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ 2> /dev/null)
+  _need_priv_cols
+  for _f in "${_CONF}"/*_db_broker.txt; do
+    [[ -e "${_f}" || -L "${_f}" ]] || continue
+    _a="${_f##*/}"
+    _a="${_a%_db_broker.txt}"
+    _n=$(( _n + 1 ))
+    _wit_account "${_a}"
+  done
+  _ACCT=""
+  _wit_registry
+  _info "witness accounts=${_n} alerts=${_WIT_N} released=${_WIT_REL}"
+}
+
+_wit() {
+  _WIT_N=$(( _WIT_N + 1 ))
+  _alrt "$*"
+}
+
+# One switched account: its control file, its instance user and panel
+# users (no global privilege), its databases' grants, its provision copy
+# and its stale reservations.
+_wit_account() {
+  local _a="${1}" _rc
+  if [[ ! "${_a}" =~ ^[a-z][a-z0-9_]{0,31}$ ]]; then
+    _wit "a control file in ${_CONF} names no account: $(_log_safe "${_a}")"
+    return 0
+  fi
+  if ! _acct_ok "${_a}"; then
+    _wit "${_a}: a control file for an account that is not on this box"
+    return 0
+  fi
+  _ACCT="${_a}"
+  _broker_mode
+  _rc=$?
+  if [[ "${_rc}" -ne 0 ]]; then
+    _wit "${_a}: its control file is not valid, so its tasks take the direct path"
+    return 0
+  fi
+  _instance_rows_ok \
+    || _wit "${_a}: the instance row ${_ROW_MISSING} its control file names is missing"
+  if _global_privs "${_a}" ""; then
+    _wit "${_a}: the instance user holds a global privilege"
+  fi
+  _wit_panel_users
+  _wit_created_grants
+  if _grants_foreign "${_a}" "" rule; then
+    _wit "${_a}: the instance user holds a grant on a database not its own (${_GF_WHY})"
+  fi
+  if ! _acct_read_in "${_DISK}/${_a}/.drush/sys/provision/db/Provision/Service/db" mysql.php \
+    | grep -q 'function broker_mode('; then
+    _wit "${_a}: its provision copy has no database broker client, so every database task of it fails"
+  fi
+  _wit_stale
+}
+
+# The account's panel users: the current one and every earlier generation,
+# the names provision's suggest_db_name() gives the panel's address (its
+# 16-character base, then base_0 to base_99). None keeps a global privilege
+# once the account is switched.
+_wit_panel_users() {
+  local _p _cur _uri _base _i _names="" _q _x _l
+  if ! _p=$(_hm_site_path "${_DISK}/${_ACCT}"); then
+    _wit "${_ACCT}: its panel cannot be read"
+    return 0
+  fi
+  _cur=$(_drc_get "${_p}" db_user)
+  _uri="${_p##*/}"
+  _uri="${_uri#www.}"
+  _base="${_uri//./}"
+  _base="${_base//-/}"
+  _base="${_base:0:16}"
+  # Every name passed the user rule's characters, so it is quoted as is.
+  if _user_syntax_ok "${_base}"; then
+    _names="'${_base}'"
+    for (( _i = 0; _i < 100; _i++ )); do
+      _l=$(( 15 - ${#_i} ))
+      _names="${_names}, '${_base:0:${_l}}_${_i}'"
+    done
+  fi
+  if _user_syntax_ok "${_cur}"; then
+    _names="${_names:+${_names}, }'${_cur}'"
+  fi
+  [[ -n "${_names}" ]] || return 0
+  _q="SELECT /*q:panelglob*/ DISTINCT HEX(g.u) FROM (SELECT User AS u FROM mysql.user WHERE User IN (${_names}) AND 'Y' IN (${_USER_PRIVS})"
+  _q="${_q} UNION ALL SELECT User FROM mysql.proxies_priv WHERE User IN (${_names})"
+  if [[ "${_SRV_8}" == "YES" ]]; then
+    _q="${_q} UNION ALL SELECT USER FROM mysql.global_grants WHERE USER IN (${_names})"
+    _q="${_q} UNION ALL SELECT TO_USER FROM mysql.role_edges WHERE TO_USER IN (${_names})"
+    _q="${_q} UNION ALL SELECT USER FROM mysql.default_roles WHERE USER IN (${_names})"
+  fi
+  _q="${_q}) g"
+  _sql_or_die "${_q}" panelglob
+  while IFS= read -r _x; do
+    [[ -n "${_x}" ]] || continue
+    _wit "${_ACCT}: its panel user $(_log_safe "$(_unhex "${_x}")") holds a global privilege"
+  done <<< "${_SQL_OUT}"
+}
+
+# Each created database of the account carries the instance user's grant on
+# every row in use, as create and regrant give it.
+_wit_created_grants() {
+  local _c _cols="" _x _h _have=$'\n' _list _s _t _v _d _r
+  for _c in ${_DB_PRIVS//,/ }; do
+    [[ "${_c}" == "Grant_priv" ]] && continue
+    _cols="${_cols:+${_cols}, }${_c}"
+  done
+  _sql_or_die "SELECT /*q:fullrows*/ CONCAT_WS('|', HEX(Db), HEX(Host)) FROM mysql.db WHERE User = $(_sql_str "${_ACCT}") AND 'N' NOT IN (${_cols})" fullrows
+  while IFS='|' read -r _x _h; do
+    [[ "${_x}" =~ ^[0-9A-F]+$ && "${_h}" =~ ^[0-9A-F]+$ ]] || continue
+    _have="${_have}$(_reg_key "$(_unhex "${_x}")")|${_h}"$'\n'
+  done <<< "${_SQL_OUT}"
+  _reg_list created
+  _list="${_SQL_OUT}"
+  while IFS='|' read -r _x _s _t _v; do
+    [[ -n "${_x}" ]] || continue
+    _d=$(_unhex "${_x}") || continue
+    _db_ok "${_d}" || continue
+    for _r in "${_ROWS[@]}"; do
+      if [[ "${_have}" != *$'\n'"$(_reg_key "$(_db_esc "${_d}")")|$(_hex "${_r}")"$'\n'* ]]; then
+        _wit "${_ACCT}: its database ${_d} lacks the instance user's grant at ${_r}"
+      fi
+    done
+  done <<< "${_list}"
+}
+
+# A reservation a day old with no database of its name was never used: it
+# goes, under the account's registry lock, which a create holds too.
+_wit_stale() {
+  local _x _s _t _v _d _st _si _list
+  [[ "${_WIT_OLD}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || return 0
+  _reg_list
+  _list="${_SQL_OUT}"
+  while IFS='|' read -r _x _s _t _v; do
+    [[ -n "${_x}" ]] || continue
+    _st=$(_unhex "${_s}") || continue
+    [[ "${_st}" == "reserved" ]] || continue
+    _si=$(_unhex "${_t}") || continue
+    [[ "${_si}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]] || continue
+    [[ "${_si}" < "${_WIT_OLD}" ]] || continue
+    _d=$(_unhex "${_x}") || continue
+    _db_ok "${_d}" || continue
+    _reg_lock
+    if _reg_get "${_d}" && [[ "${_E_ACCOUNT}" == "${_ACCT}" \
+      && "${_E_STATE}" == "reserved" && "${_E_SINCE}" == "${_si}" ]] \
+      && ! _schema_exists "${_d}"; then
+      if _reg_del "${_d}"; then
+        _WIT_REL=$(( _WIT_REL + 1 ))
+        _log_note "released ${_d}"
+      else
+        _wit "${_ACCT}: its unused reservation of ${_d} could not be let go"
+      fi
+    fi
+    _reg_unlock
+  done <<< "${_list}"
+}
+
+# The registry is root's alone: no grant row may name its schema, by its
+# name, in either spelling, or by a pattern that matches it (a row planted
+# before the schema exists hands it over the moment it is made).
+_wit_registry() {
+  local _m _q _t _u _h _dx
+  if [[ "${_LCTN}" == "0" ]]; then
+    _m="Db"
+  else
+    _m="LOWER(Db)"
+  fi
+  _q="SELECT /*q:regrows*/ CONCAT_WS('|', 'db', HEX(User), HEX(Host), HEX(Db)) FROM mysql.db WHERE '${_REG_DB}' LIKE ${_m} ESCAPE ${_BS}"
+  for _t in tables_priv procs_priv columns_priv; do
+    _q="${_q} UNION ALL SELECT CONCAT_WS('|', '${_t%_priv}', HEX(User), HEX(Host), HEX(Db)) FROM mysql.${_t} WHERE ${_m} = '${_REG_DB}'"
+  done
+  _sql_or_die "${_q}" regrows
+  while IFS='|' read -r _t _u _h _dx; do
+    [[ -n "${_t}" ]] || continue
+    _wit "a grant row on the registry schema ${_REG_DB}: $(_log_safe "$(_unhex "${_u}")")@$(_log_safe "$(_unhex "${_h}")") on $(_log_safe "$(_unhex "${_dx}")") (${_t})"
+  done <<< "${_SQL_OUT}"
 }
 
 _parse_args() {
@@ -2310,7 +2667,7 @@ _main() {
   shift
   _parse_args "$@"
   case "${_VERB}" in
-    exists|reserve|create|drop|grant|revoke|grants|grant-select|revoke-select|grants-scan|selftest|dump|load|list|register|regrant) ;;
+    exists|reserve|create|drop|grant|revoke|grants|grant-select|revoke-select|grants-scan|selftest|dump|load|list|register|regrant|rekey|purge|witness) ;;
     *) _die 2 "usage unknown-verb" ;;
   esac
   if [[ "${_VERB}" != "grants-scan" && ( "${_HAS_USER}" == "YES" || "${_HAS_DB}" == "YES" ) ]]; then
@@ -2323,7 +2680,7 @@ _main() {
   # The root-only verbs refuse an account's call here, before anything
   # touches the server; every other verb needs broker mode first.
   case "${_VERB}" in
-    register|regrant) [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only" ;;
+    register|regrant|rekey|purge|witness) [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only" ;;
     *) _need_broker ;;
   esac
   _need_not_standby
@@ -2348,6 +2705,9 @@ _main() {
     list) _v_list ;;
     register) _v_register ;;
     regrant) _v_regrant ;;
+    rekey) _v_rekey ;;
+    purge) _v_purge ;;
+    witness) _v_witness ;;
   esac
   exit 0
 }
