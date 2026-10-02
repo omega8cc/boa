@@ -164,8 +164,10 @@ file with more than one link or a FIFO whose owner is one of the account's
 identities (`oN`, `oN.ftp`, a sub-account) that is a member of the target
 group when the walk runs: that owner could make the same change itself with
 `chgrp`, so root making it grants nothing. Any other hard-linked file or
-FIFO, a socket or a device keeps its group: the account can create those,
-and a hard link may share its inode with a file the account does not own.
+FIFO, a socket or a device keeps its group: the account can create the
+first three (a device node only root can make: `mknod` needs
+`CAP_MKNOD`), and a hard link may share its inode with a file the account
+does not own.
 
 `status` reports them on an `other:` line with a count and up to three
 examples; they never count as drift, and `convert` and `reclaim` log their
