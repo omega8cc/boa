@@ -4472,8 +4472,11 @@ _wg_g_optout() {
 # The account's opt-out of its per-instance group, _INSTANCE_GROUP=NO in its
 # cnf, as the Octopus pass reads it before instgrp convert: the last
 # assignment as bash reads it, or any line that starts _INSTANCE_GROUP=NO.
-# Such an account never passes G2, so the arm, webconvert all and DR8 read
-# it as the web group's opt-out too; a per-account webconvert does not.
+# The arm, webconvert all and DR8 read it as the web group's opt-out too,
+# also on an account already on its own group (a line added after its
+# convert: the Octopus pass then skips the convert and does not revert
+# it), so the arm and webconvert all raise such an account no further. A
+# per-account webconvert does not read it.
 _wg_g_v1_optout() {
   local _c="/root/.${_WP_A}.octopus.cnf" _l
   [ "${_WP_M}" = "YES" ] && return 1
