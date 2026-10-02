@@ -941,7 +941,11 @@
     * Every distribution and vanilla core staticbuild builds is
       audited against the published security advisories: the advisory
       ids are recorded beside the tarball, the counts left and fixed
-      in the run summary, and the build is never blocked by them.
+      in the run summary, and the build is never blocked by them. The
+      same record lists every locked package drupal.org publishes no
+      advisories for (alpha, beta, RC and dev releases, projects not
+      opted in, Drupal modules hosted elsewhere), which no advisory
+      count can speak for.
     * New staticbuild advisories re-checks every published catalogue
       platform, distributions and Drupal 9 to 11 cores, against
       today's advisories, one row per tarball with the trees that list
@@ -1288,6 +1292,13 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * A 405 that Drupal answers itself, for a method its route does not
+      take (a REST or JSON:API request, a client probing GET on a
+      POST-only endpoint), reaches the client as Drupal sent it, with its
+      Allow header. The vhost sent it back through the front controller,
+      which gave a GET the site's index.php as a file and ended any other
+      method in a 500.
 
     * Scheduled site cron is no longer held to the 30-second web query
       cap. The control panel runs a site's cron as a web request, and
