@@ -1289,6 +1289,12 @@
 
 @=> Important Fixes
 
+    * Scheduled site cron is no longer held to the 30-second web query
+      cap. The control panel runs a site's cron as a web request, and
+      the cap meant for visitor pages killed any longer query in it
+      while the run still reported success; the cap now skips the
+      three cron addresses, as its documentation always said.
+
     * The nightly migration-source sweep no longer leaves a stale read
       grant to a human when a site restored that day still carries its
       former database name in the control panel: every site of the
