@@ -1331,6 +1331,23 @@
       every sync pass and the SQL watchdog set a pair in service in that
       order, since a mirror behind its active would stop replicating.
 
+    * An emergency promotion of a mirror by hand now leaves a box that
+      serves and can fail back. renameaegirhost waits for the database
+      the standby hold keeps read-only for about a minute: run in that
+      minute its database rename failed silently, and the regenerated
+      nginx configuration no longer loaded.
+
+    * xmass post-mig after a promotion by hand runs the promotion steps
+      the planned switch runs: it clears what an earlier demotion of the
+      box left and rewires each control panel to its live database. The
+      panels answered 500, pre-mig refused them, and an account the box
+      had relayed refused every create, so failing back stopped there. It
+      runs right after the replica reset and again after the renames.
+
+    * xmass prep-target starts the cron of a returning old active that
+      was fenced with its cron stopped: the upgrade passes it arms there
+      never ran, and it waited for them until it gave up.
+
     * A run lock left by an instgrp run killed outright (out of memory, a
       stray kill -9) no longer keeps the limited-shell worker, the task
       queue runner and the nightly waiting for up to three hours: the
