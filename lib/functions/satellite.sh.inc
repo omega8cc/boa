@@ -831,10 +831,15 @@ _satellite_tune_fpm_config() {
     # Once the account's identities have left www-data, its pool runs in the
     # account's own web group (after the include, which sets www-data). A
     # group that does not resolve would fail this whole PHP version on
-    # reload, so it is written only when it does.
+    # reload, so it is written only when it does. A record of B left by a
+    # phase-B rollback that was cut short (rb=1) does not count while the
+    # account's own user is still listed in www-data: the pool keeps
+    # www-data until the next conversion run has re-checked shares.
     _T_WGS=$(_web_group_state "${_USER}")
     if [ "${_T_WGS%% *}" = "phaseb" ] && [ "${_T_WGS##* }" = "wg-${_USER}" ] \
-      && getent group "${_T_WGS##* }" > /dev/null 2>&1; then
+      && getent group "${_T_WGS##* }" > /dev/null 2>&1 \
+      && ! { [ "$(_web_group_rb "${_USER}")" = "rb" ] \
+        && [[ ",$(getent group www-data | cut -d: -f4)," == *",${_USER},"* ]]; }; then
       echo "group = ${_T_WGS##* }" >> /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
     fi
     mkdir -p /var/www/phpcache/${_USER}/${_USER}.{85,84,83,82,81,80,74,73,72,71,70,56}
@@ -3275,9 +3280,13 @@ _WEBFORM_B_TAG="1.x-4.26.6"
 # compared with its archive, stamped there and swapped in only when every
 # member is in place and whole: a copy cut short never replaces the one
 # in place and is fetched again on the next pass, where the old code stamped
-# it as deployed. The swap renames the copy in place aside first and puts it
-# back when the new one cannot go in. The gates read the ".full" stamp, the
-# pair BOA.sh.txt writes for the same modules; owner "root" re-owns the copy.
+# it as deployed. The new copy and the one in place swap names in one rename
+# (_SAT_SWAP_PL), so a site loading the module through a bundle's link finds
+# the old copy or the new one, never none; where one rename cannot do it
+# (nothing in place yet, or no renameat2 on the box), the copy in place is
+# moved aside first and put back when the new one cannot go in. The gates
+# read the ".full" stamp, the pair BOA.sh.txt writes for the same modules;
+# owner "root" re-owns the copy.
 # Every step runs from inside the real 000/modules (each directory on the
 # way entered as the real one, _satellite_in_modules) and names the unpack
 # directory relative to it, never by the store's path; that directory is
@@ -3292,7 +3301,7 @@ _satellite_shared_module_update() {
   fi
 }
 _satellite_shared_module_here() {
-  local _nm="$1" _ver="$2" _own="$3" _tmp _arc _ok=NO
+  local _nm="$1" _ver="$2" _own="$3" _tmp _arc _ok=NO _swp=NO
   _arc="${_nm}-${_ver}.tar.gz"
   # a directory a killed pass left behind; a live pass's is never this old
   find . -maxdepth 1 -type d -name ".${_nm}.*" -mmin +60 \
@@ -3309,10 +3318,16 @@ _satellite_shared_module_here() {
     [ "${_own}" = "root" ] && chown -R root:root "${_tmp}/${_nm}" &> /dev/null
     echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.info"
     echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.full.info"
+    # swapped, the copy that was in place is left at ${_tmp}/${_nm}
     if [ -e "./${_nm}" ] || [ -L "./${_nm}" ]; then
-      mv -T -- "./${_nm}" "${_tmp}/.old" &> /dev/null
+      if perl -e "${_SAT_SWAP_PL}" -- "${_tmp}/${_nm}" "./${_nm}" 2> /dev/null; then
+        _swp=YES
+      else
+        mv -T -- "./${_nm}" "${_tmp}/.old" &> /dev/null
+      fi
     fi
-    if ! mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
+    if [ "${_swp}" != "YES" ] \
+      && ! mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
       [ -e "${_tmp}/.old" ] && [ ! -e "./${_nm}" ] \
         && mv -T -- "${_tmp}/.old" "./${_nm}" &> /dev/null
       _msg "${_STATUS} A: OOPS ${_nm}-${_ver} could not be swapped in; the copy in place is kept"
@@ -3934,8 +3949,8 @@ _satellite_all_fetched_here() {
 }
 # The two names given swapped in one rename (renameat2 with
 # RENAME_EXCHANGE, its number read from perl's syscall.ph): exit 0 only
-# when they were. One text wherever it is used (satellite.sh.inc, which
-# AegirSetupC.sh.txt sources).
+# when they were. One text wherever it is defined (satellite.sh.inc, which
+# AegirSetupC.sh.txt sources, and BOA.sh.txt).
 # shellcheck disable=SC2016
 _SAT_SWAP_PL='my ($a, $b) = @ARGV; my $n = eval { require "syscall.ph"; &SYS_renameat2 }; exit 1 unless defined $n && $n =~ /^[0-9]+$/; exit(syscall($n + 0, -100, $a, -100, $b, 2) == 0 ? 0 : 1)'
 
@@ -4973,6 +4988,9 @@ _satellite_run_pre_install() {
       _sudoers_safe_append /etc/sudoers.d/${_SCRIPT} \
         "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh"
     done
+    # The database broker: it serves an account only while the account's
+    # root-owned /data/conf/<oN>_db_broker.txt exists.
+    _dbctl_sudo_line "${_USER}"
   else
     _sudoers_safe_append /etc/sudoers \
       "${_USER} ALL=NOPASSWD: /etc/init.d/nginx" "${_USER} ALL=NOPASSWD"
@@ -4981,6 +4999,7 @@ _satellite_run_pre_install() {
       _sudoers_safe_append /etc/sudoers.d/${_SCRIPT} \
         "${_USER} ALL=NOPASSWD: /usr/local/bin/${_SCRIPT}.sh"
     done
+    _dbctl_sudo_line "${_USER}"
     if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
       _SQL_CONNECT=127.0.0.1
       _THIS_DB_PORT=6033
@@ -5603,6 +5622,47 @@ _satellite_if_instance_group() {
   esac
   # The rest of this run writes with whatever group the account carries now.
   _ACCG=$(_acct_group "${_USER}")
+}
+
+# The account's own web group, wg-<account> (instgrp webconvert, delivered by
+# BOA.sh.txt), right after the per-instance group on every INIT and UPGRADE
+# pass. The tool decides what this pass does: a first conversion only past
+# the opt-out (_WEB_GROUP=NO in the octopus cnf), the per-instance group, the
+# box's readiness stamp (written while _WEB_GROUP_ARM=YES) and the share
+# scan; phase B only on a box with _WEB_GROUP_PHASE_B=YES; nothing on a
+# standby. It resumes or verifies what the account already carries.
+_satellite_if_web_group() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _satellite_if_web_group $1"
+    _debug_proc
+  fi
+  [ "$1" = "post" ] || return 0
+  case "${_STATUS}" in
+    INIT|UPGRADE) ;;
+    *) return 0 ;;
+  esac
+  if [ ! -e "/opt/local/bin/instgrp" ] \
+    || ! grep -q "^_wg_table() {" /opt/local/bin/instgrp 2> /dev/null; then
+    return 0
+  fi
+  bash /opt/local/bin/instgrp webconvert "${_USER}" --from-octopus
+  _wGrc=$?
+  # ALRT: is what the octopus report classifier reads; a deferral or a
+  # refusal the tool explains is a note
+  case "${_wGrc}" in
+    0) ;;
+    2) _msg "NOTE: instgrp webconvert ${_USER} left web paths to re-group (written during the walk); the next pass finishes them, see /var/log/boa/instgrp.log" ;;
+    5) _msg "NOTE: instgrp webconvert ${_USER} deferred: this box is not ready for the web group (instgrp webcheck)" ;;
+    6) _msg "NOTE: instgrp webconvert ${_USER} refused or deferred (opted out, a share, a standby, a revert in progress, or the task queue busy), see /var/log/boa/instgrp.log" ;;
+    *)
+      case "${_wGrc}" in
+        1) _wGwhy="failed" ;;
+        3) _wGwhy="inconsistent" ;;
+        4) _wGwhy="skipped: busy or frozen" ;;
+        *) _wGwhy="unexpected exit code" ;;
+      esac
+      _msg "ALRT: instgrp webconvert ${_USER} returned ${_wGrc} (${_wGwhy}), see /var/log/boa/instgrp.log" ;;
+  esac
 }
 
 _satellite_if_add_ftps_lshell_access() {

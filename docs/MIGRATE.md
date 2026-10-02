@@ -92,6 +92,12 @@ client address.
   leftover-record notices mark a site as notified only when the notice is
   sent (to the client, or to the held address), so a notice a bad file stopped
   is sent on a later night.
+- **On a standing `xmass` pair the file travels:** every live sync pass
+  mirrors it onto the mirror, presence and absence, with the test-run
+  records, so a promoted mirror holds what its active held, and
+  `xmass post-mig` names it there. A box that holds its clients' mail
+  takes no real `xmass prep-target` or `cutover` (see
+  [MIGRATE-XMASS.md](MIGRATE-XMASS.md)).
 - **What it does not hold:** the notices `xoct` sends a client about a
   migration (started, completed, forwarding changed or withdrawn), which do
   not read this file; mail the hosted sites send themselves (their own cron,

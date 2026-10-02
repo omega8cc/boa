@@ -221,6 +221,54 @@ _web_group() {
   esac
 }
 
+_master_web_group() {
+  # The master's own web group, wg-aegir, the way _web_group_state reads an
+  # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its
+  # holders are aegir and the master pool users wwwNN; anyone else holding
+  # it makes it foreign. The record is /root/.aegir.web-group.txt, root's
+  # own file, "wg-aegir gid=<n> phase=<A|B> ...".
+  local _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  _e=$(getent group wg-aegir 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^(aegir|www[0-9][0-9])$ ]] \
+      || { echo "foreign ${_gid} wg-aegir"; return 0; }
+  done
+  _r="/root/.aegir.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-aegir" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-aegir"
+  else
+    echo "held ${_gid} wg-aegir"
+  fi
+}
+_site_web_group() {
+  # The web group a root writer gives the site at $1 (resolved): the
+  # account's own, as _web_group derives it, or, for a site of the master
+  # (/var/aegir), the master's own web group, wg-aegir, once the master's
+  # record says it is converted to it; www-data otherwise, as always.
+  case "${1}/" in
+    /var/aegir/*)
+      case "$(_master_web_group)" in
+        converted\ *|phaseb\ *) echo "wg-aegir" ;;
+        *) echo "www-data" ;;
+      esac
+      ;;
+    *) _web_group "${1}" ;;
+  esac
+}
+
 # The site path and each store are resolved once below, but the account owns
 # every name on the way (the platform tree, sites/, static/files), so any of
 # them can be swapped for a link at any time. Every act runs inside a
@@ -432,6 +480,13 @@ _site_php_here() {
   _fwalk_here 0440 ./*.php
 }
 
+# The subtrees of a files store nginx never serves (a case-insensitive
+# prefix after any files/), as find -iregex patterns relative to the store,
+# POSIX extended: every find that reads them sets -regextype posix-extended
+# first (GNU find's default syntax reads the parentheses and bars as plain
+# characters, and would match nothing).
+_SITE_DENIED_RE='\./(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*|.*/files/(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*'
+
 # The files store, run inside it (entered for real): the day marker, then the
 # whole store.
 _files_perm_here() {
@@ -439,18 +494,26 @@ _files_perm_here() {
   rm -f -- ./permissions-fixed*.pid
   _mark_here "permissions-fixed-${_TODAY}.pid"
   ### files - site level; a Drupal 7 files/private is private data like the
-  ### private store and takes its modes once they drop the world bits
+  ### private store and takes its modes once they drop the world bits, and
+  ### so do the subtrees nginx denies (_SITE_DENIED_RE): a store walk must
+  ### never open them again
   if [ "${_priv_d}" = "02775" ]; then
     find . -type d -exec perl -e "${_FCHMOD_PL}" d 02775 {} +
     _fwalk_here 0664 .
   else
-    find . -path ./private -prune -o -type d \
-      -exec perl -e "${_FCHMOD_PL}" d 02775 {} +
-    _fwalk_here 0664 . -path ./private -prune -o
+    find . -regextype posix-extended \( -path ./private -o -iregex "${_SITE_DENIED_RE}" \) \
+      -prune -o -type d -exec perl -e "${_FCHMOD_PL}" d 02775 {} +
+    _fwalk_here 0664 . -regextype posix-extended \
+      \( -path ./private -o -iregex "${_SITE_DENIED_RE}" \) -prune -o
     if [ -d ./private ] && [ ! -L ./private ]; then
       find ./private -type d -exec perl -e "${_FCHMOD_PL}" d "${_priv_d}" {} +
       _fwalk_here "${_priv_f}" ./private
     fi
+    find . -regextype posix-extended -path ./private -prune -o \
+      -iregex "(${_SITE_DENIED_RE})(/.*)?" -type d \
+      -exec perl -e "${_FCHMOD_PL}" d "${_priv_d}" {} +
+    _fwalk_here "${_priv_f}" . -regextype posix-extended -path ./private -prune -o \
+      -iregex "(${_SITE_DENIED_RE})(/.*)?"
   fi
   chmod 02775 .
 }
@@ -536,12 +599,13 @@ _validate_path_prefix "${site_path}"
 _TODAY=$(date +%y%m%d)
 _TODAY=${_TODAY//[^0-9]/}
 
-### Private files keep no world bits once the account has its own web group:
-### its pools, backend user and shell users reach them through that group,
-### and nginx never serves them directly. Until then, as always.
+### Private files keep no world bits once the account (for a site of the
+### master, the master) has its own web group: its pools, backend user and
+### shell users reach them through that group, and nginx never serves them
+### directly. Until then, as always.
 _priv_d=02775
 _priv_f=0664
-case "$(_web_group "${site_path}")" in
+case "$(_site_web_group "${site_path}")" in
   wg-*) _priv_d=02770; _priv_f=0660 ;;
 esac
 
