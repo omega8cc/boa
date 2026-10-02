@@ -166,7 +166,9 @@ _log_line() {
     mkdir -p -- "${_LOGD}" 2> /dev/null
   fi
   [[ -d "${_LOGD}" && ! -L "${_LOGD}" && ! -L "${_LOGF}" ]] || return 0
-  printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${1}" >> "${_LOGF}" 2> /dev/null
+  # A caller that is not root cannot open the log: the shell's own error is
+  # muted with it, so the refusal stays the only line it prints.
+  { printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${1}" >> "${_LOGF}"; } 2> /dev/null
   chmod 0600 "${_LOGF}" 2> /dev/null
   return 0
 }
