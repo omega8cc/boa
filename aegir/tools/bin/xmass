@@ -9436,23 +9436,35 @@ _xmass_promote_panels_here() {
 }
 
 # The upgrade the cleanup held back is armed again once this box's renames
-# are done, as the planned switch arms it at its end: the account's identity
-# stamp (log/domain.txt, which the upgrade's own guard reads and only
-# renameaegirhost rewrites; the panel rewire already corrects the alias)
-# names this box. Before that it stays held, and the run says so.
+# are done, as the planned switch arms it at its end: the account's panel
+# database names this box as its server (renameaegirhost renames that row;
+# the panel rewire leaves it, and the files a mirror keeps of its own may
+# name it already). Before that it stays held, and the run says so.
 _xmass_promote_rearm_here() {
-  local _root _oct _me _dom _w
+  local _root _oct _me _sp _db _srv _w
   _me=$(hostname -f 2> /dev/null | tr -cd 'a-zA-Z0-9.-')
   _w="$(cd -P /data/disk 2> /dev/null && pwd -P)"
   for _root in /data/disk/o*; do
     _oct="${_root##*/}"
     [[ "${_oct}" =~ ^o[0-9]+$ ]] || continue
     [ -e "${_root}/static/control/run-upgrade.pid.deferred" ] || continue
-    _dom=$(_xmass_read_file "${_root}/log/domain.txt" | head -n 1 | tr -cd 'a-zA-Z0-9.-')
-    if [ -z "${_me}" ] || [ "${_dom}" != "${_oct}.${_me}" ]; then
-      _alrt "  ${_oct}: its seeded upgrade stays held: its identity stamp names ${_dom:-nothing readable},"
-      _alrt "  not ${_oct}.${_me}: run renameaegirhost for ${_root}, then 'xmass post-mig' again"
-      _alrt "  (a custom front: mv ${_root}/static/control/run-upgrade.pid.deferred to run-upgrade.pid)"
+    _sp=$(_xmass_read_file "${_root}/.drush/hostmaster.alias.drushrc.php" \
+      | grep "site_path'" | head -n 1 | sed "s/.*=>//; s/[' ,;]//g")
+    _db=""
+    case "${_sp}" in
+      *[!A-Za-z0-9/._-]*|*/../*|*/./*|*//*) ;;
+      "${_root}"/aegir/distro/*/sites/?*)
+        _db=$(_xmass_read_file "${_sp}/drushrc.php" | grep "options\['db_name'\]" | head -n 1 \
+          | sed "s/.*=//; s/[' ,;]//g" | tr -cd 'a-zA-Z0-9_')
+      ;;
+    esac
+    _srv=""
+    [ -n "${_db}" ] && _srv=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=10 -BN "${_db}" \
+      -e "SELECT n.title FROM hosting_context c JOIN node n ON n.nid = c.nid WHERE c.name = 'server_master'" \
+      2> /dev/null | head -n 1 | tr -cd 'a-zA-Z0-9.-')
+    if [ -z "${_me}" ] || [ "${_srv}" != "${_me}" ]; then
+      _alrt "  ${_oct}: its seeded upgrade stays held: its panel database names ${_srv:-no readable server}"
+      _alrt "  as its server, not ${_me}: run renameaegirhost for ${_root}, then 'xmass post-mig' again"
       continue
     fi
     if ( cd -P -- "${_root}/static/control" 2> /dev/null \
