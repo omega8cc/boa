@@ -344,13 +344,17 @@ meets (it covers `/var/www` too) keeps its gid, as `<gid>-purged`.
 - While its identities were in `www-data`, the account could give a file of
   its own that group and the set-group-ID bit anywhere it could write, and
   run it with `www-data`'s group after phase B. Phase B walks every local
-  file system that honours the bit (not `nosuid`; network and FUSE mounts
-  are not walked) and clears it on each such file one of the account's
-  identities or pool users owns, wherever it is; the account's notes name
-  the count and `/var/log/boa/instgrp.log` each path. A run killed before the
-  walk, a walk that could not clear a file, or a process still holding
-  `www-data` leaves it owed (`webstatus` says so), and the next run at phase
-  B walks again.
+  file system that honours the bit (not `nosuid`) and clears it on each such
+  file one of the account's identities or pool users owns, wherever it is,
+  by name inside the directory the walk holds open: a directory renamed or
+  replaced by a link meanwhile cannot lead the walk elsewhere. The notes
+  give the count, `/var/log/boa/instgrp.log` each path.
+- Network and FUSE mounts are not walked (a server that stops answering
+  would hang the walk); the account's notes name each one not mounted
+  `nosuid`, where such a file keeps its bit, so mount those `nosuid`. A
+  run killed before the walk, a walk that could not clear a file, or a
+  process still holding `www-data` leaves the walk owed (`webstatus` says
+  so), and the next run at phase B walks again.
 
 ## The account's own web group (`wg-oN`)
 
@@ -370,10 +374,15 @@ Nothing converts until the box is armed: `_WEB_GROUP_ARM=YES` in
 `/root/.barracuda.cnf`. Every barracuda pass then writes the stamp
 `/var/log/boa/instgrp-web-arm.ready.txt`, and removes it while the setting
 is NO. `_WEB_GROUP_PHASE_B=YES` beside it lets the Octopus arm go on to
-phase B (below). Both are NO by default. Before arming a box, run
-`instgrp webcheck --report`: it lists the writers that must be current on
-the box, the stamp, and for each account whether it is ready and which of
-its sites share a files store with another account.
+phase B (below), read as bash reads the file (the last assignment counts;
+`export`, quotes and a trailing comment are fine). Both are NO by default.
+
+On a box that is not armed, the arm prints nothing for an account with no
+web group, intent or record: its line in `/var/log/boa/instgrp.log` is all
+it leaves. Before arming a box, run `instgrp webcheck --report`: it lists
+the writers that must be current on the box, the stamp, and for each
+account whether it is ready and which of its sites share a files store
+with another account.
 
 A box is ready for a first conversion when the stamp exists, every fetched
 writer the conversion relies on carries its web-group form (`instgrp`, the
@@ -416,6 +425,8 @@ changes nothing and names its reason:
   as bash reads the file (the last assignment counts; `export`, quotes and
   a trailing comment are fine): the arm and `webconvert all` honour it; a
   per-account operator `webconvert` overrides and removes it;
+- the account's opt-out of its per-instance group, `_INSTANCE_GROUP=NO`,
+  which the arm and `webconvert all` honour as the web group's opt-out too;
 - an account not yet on its per-instance group;
 - the box not ready (above);
 - a site of the account reading another account's files store (an outbound
@@ -512,9 +523,12 @@ standby, an account that has had no web group, no intent and no record
 for over a day (not opted out, not frozen for a migration) is reported
 with what holds it back: nothing has converted it, for instance a box
 promoted by hand from a mirror. `_WEB_GROUP=NO` in its cnf leaves such an
-account alone for good. On any box, `/root/.standby.prep.cnf` standing
-for over three days without `/root/.standby.cnf` is reported too: while
-it stands, no account there converts.
+account alone for good; an account opted out of its per-instance group
+(`_INSTANCE_GROUP=NO`) is named once in the pass's log, never reported.
+
+On any box, `/root/.standby.prep.cnf` standing for over three days
+without `/root/.standby.cnf` is reported too: while it stands, no account
+there converts.
 
 A file uploaded into a public directory with no world read (a `0640`
 upload) would be refused by nginx in phase B. The worker opens such files
@@ -538,6 +552,10 @@ master is converted by an operator only; the Octopus arm never touches it.
 Once converted, hostmaster's own `files/`, the site scripts and the
 `/var/www` tools (Adminer, Chive, SQL Buddy, CGP) take `wg-aegir` or the
 serving pool's group.
+
+A hold left by a run killed outright, the master's or an account's, is
+obeyed only while its pid is a live root process: `clear.sh` removes it
+otherwise, and the queue runner then brings the aegir crontab back.
 
 ### Migrations and standby boxes
 

@@ -886,13 +886,20 @@ age cannot be guaranteed safe. Review the alert and prune by hand.
   refused. In-site links and renames are made by name from inside the site
   directory entered for real, so a link put on the site's path is never followed.
 - **A site task acts only inside the account's own store.** Verify, install
-  and deploy make directories, set modes and write `.htaccess` files in a
-  site's `files` and `private` trees only where a path is the site's own: a
-  real directory in the site directory, or a link resolving below the
-  account's own `static/files/` (or its store on attached storage), never into
-  BOA's own folders there. A link leading anywhere else is left as it is, with
-  everything below it: the task logs `STORE/SKIP` with where it leads, and
-  ends with status Warning.
+  and deploy make directories, set modes and groups and write `.htaccess`
+  files in a site's directory only where a path is the site's own: a real
+  directory below the platform's `sites/` with no link on the way, or a link
+  resolving below the account's own `static/files/` (or its store on attached
+  storage), never into BOA's own folders there. A link leading anywhere else
+  is left as it is, with everything below it: the task logs `STORE/SKIP` with
+  where it leads, and ends with status Warning.
+- **The rule covers the whole site directory.** It applies to the site
+  directory itself and the platform's `sites/` above it, to the site's `files`
+  and `private` trees, to its `modules`, `themes`, `libraries` and `vendor`,
+  and to the group change a Clone, Migrate or Restore makes in the deployed
+  `files` and `private` trees. Each act runs inside the directory judged,
+  entered for real, and new directories are made there by name, so a
+  directory swapped for a link after the check is never followed.
 - **Root removes only the directory it checked or copied.** A conversion enters
   the site's `files`/`private` directory for real and records its identity
   (device and inode) before anything else. The residue-only check, and the

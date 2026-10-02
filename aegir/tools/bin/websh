@@ -355,7 +355,7 @@ _drush_cmd_word() {
 # boot: --root, else the @alias's root, else the Drupal root above the
 # working directory (a "cd DIR &&" earlier in the line moves it). "help
 # COMMAND" runs Drush 8 again through /bin/sh as "helpsingle COMMAND".
-_D8_READONLY_CMDS="uli user-login status st core-status version help helpsingle sa site-alias aliases"
+_D8_READONLY_CMDS="uli user-login status st core-status version help helpsingle sa site-alias aliases sql-dump"
 _GD_CWD=""
 _GD_DOC=""
 _d8plus_root() {
@@ -556,7 +556,7 @@ _drush_refused_say() {
   local _lc="" _app="" _doc="" _vnd=""
   echo
   if [ "${_DR_WHY}" = "G" ]; then
-    echo " Drush 8 runs only read-only commands (uli, status) on a Drupal 8+ site."
+    echo " Drush 8 runs only read-only commands (uli, status, sql-dump) on a Drupal 8+ site."
     # vdrush runs vendor/drush from the working directory, or ../vendor/drush
     # from a web/html/docroot directory whose parent has one. From the
     # docroot it therefore reaches: under a web/html/docroot name the
@@ -610,7 +610,7 @@ _drush_refused_say() {
       fi
     else
       echo " This platform has no site-local Drush: Drush 8 read-only commands"
-      echo " (uli, status) only; the Drush window does not apply to it."
+      echo " (uli, status, sql-dump) only; the Drush window does not apply to it."
     fi
     # named only where this box's shell policy already offers it (a box
     # can carry this websh before the template that allows checkmyperms)

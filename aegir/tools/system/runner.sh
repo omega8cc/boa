@@ -150,10 +150,12 @@ _ci_master_cron_control() {
 # A web-group conversion of the master holds the master's task queue
 # (instgrp webconvert aegir): while its holder lives, no pass here brings the
 # parked aegir crontab back or dispatches anything; a marker whose holder is
-# gone is cleared, never obeyed.
+# gone is cleared, never obeyed. Only root writes it, so a pid that another
+# user's process now has is gone too (the real uid in /proc/<pid>/status).
 if [ -e "/run/boa_master_queue_stop.pid" ]; then
   _mqPid=$( { tr -dc '0-9' < /run/boa_master_queue_stop.pid; } 2>/dev/null )
-  if [ -n "${_mqPid}" ] && kill -0 "${_mqPid}" 2>/dev/null; then
+  if [ -n "${_mqPid}" ] && kill -0 "${_mqPid}" 2>/dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_mqPid}/status" 2>/dev/null)" = "0" ]; then
     exit 0
   fi
   [ "$( { tr -dc '0-9' < /run/boa_master_queue_stop.pid; } 2>/dev/null )" = "${_mqPid}" ] \

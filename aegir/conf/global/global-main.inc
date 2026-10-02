@@ -391,8 +391,10 @@ if (is_array($all_ini) && $is_dev && !$is_backend) {
  * distributed scraper hitting one uncached expensive view took a 64-core
  * server to load 264.
  *
- * Web only: drush, cron, migrations and mydumper backups all run long queries
- * legitimately, so CLI keeps the unlimited default. This mirrors the split BOA
+ * Web only, and never on scheduled site cron: drush, migrations and mydumper
+ * backups run on the CLI, and Ægir's scheduled cron is a web request to the
+ * cron routes ($boa_web_cron below). All of them run long queries
+ * legitimately, so they keep the unlimited default. This mirrors the split BOA
  * already applies to PHP's own max_execution_time (180 for the FPM inis, 3600
  * for the CLI ini).
  *
@@ -451,7 +453,28 @@ if (isset($drupal_core) && $drupal_core == '7'
   $drupal_hash_salt = hash('sha256', serialize($databases));
 }
 
-if (PHP_SAPI !== 'cli' && isset($databases['default']['default'])) {
+/**
+ * Scheduled site cron keeps the unlimited default.
+ *
+ * Ægir runs a site's scheduled cron as a web request unless the instance has
+ * log/hosting_cron_use_backend.txt: curl to /cron.php?cron_key= (D6, D7),
+ * /cron/<key> (D8+) or /core/cron.php?cron_key= (Backdrop). nginx admits only
+ * the box itself to those locations, on port 80 and on the wildcard SSL
+ * front, and the hosting queue sends them one site after another, so they
+ * cannot pile up the way visitor traffic does.
+ *
+ * The path is matched exactly, unlike the cron gate at the top of this file:
+ * /cron.php/x or /cron/../node reach index.php through the page locations,
+ * where Drupal 7 still routes ?q=node, so a prefix match would give any
+ * visitor an uncapped page. A path that matches the pattern below is one
+ * nginx cannot normalise into another location, so it arrives only through
+ * the cron locations. Cron of a subdirectory site (/<subdir>/cron...) is not
+ * recognised here, as it is not by the gate above, and stays capped.
+ */
+$boa_web_cron = (isset($_SERVER['REQUEST_URI']) && is_string($_SERVER['REQUEST_URI'])
+  && preg_match('#^/(?:cron\.php|core/cron\.php|cron/[A-Za-z0-9_-]+)(?:\?|$)#', $_SERVER['REQUEST_URI']));
+
+if (PHP_SAPI !== 'cli' && !$boa_web_cron && isset($databases['default']['default'])) {
   $boa_max_exec_ms = 30000;
   if (isset($all_ini['sql_web_max_exec_ms'])) {
     $boa_max_exec_ms = (int) $all_ini['sql_web_max_exec_ms'];
@@ -479,7 +502,7 @@ if (PHP_SAPI !== 'cli' && isset($databases['default']['default'])) {
  * the $databases form above is never seen there. The mysql driver merges
  * and executes init_commands the same way, so only the target array differs.
  */
-if (PHP_SAPI !== 'cli' && !empty($backdropcms) && isset($database) && is_array($database)) {
+if (PHP_SAPI !== 'cli' && !$boa_web_cron && !empty($backdropcms) && isset($database) && is_array($database)) {
   $boa_max_exec_ms = 30000;
   if (isset($all_ini['sql_web_max_exec_ms'])) {
     $boa_max_exec_ms = (int) $all_ini['sql_web_max_exec_ms'];
@@ -493,3 +516,4 @@ if (PHP_SAPI !== 'cli' && !empty($backdropcms) && isset($database) && is_array($
   }
   unset($boa_max_exec_ms);
 }
+unset($boa_web_cron);
