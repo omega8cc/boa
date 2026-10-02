@@ -21,20 +21,19 @@ Note: build a redirect back to the site with `$boa_visitor_scheme`, not `$scheme
 ## Custom rewrites to map legacy content to the Drupal multisite.
 
 ```nginx
-location ~* ^.+\.(?:jpe?g|gif|png|ico|swf|pdf|ttf|html?)$ {
+location ~* ^/(?:download|docs|documents|legacy)/.+\.(?:jpe?g|gif|png|ico|swf|pdf|ttf|html?)$ {
   access_log off;
   log_not_found off;
   expires 30d;
-  rewrite ^/files/(.*)$     /sites/$server_name/files/$1 last;
-  rewrite ^/images/(.*)$    /sites/$server_name/files/images/$1 last;
-  rewrite ^/downloads/(.*)$ /sites/$server_name/files/downloads/$1 last;
-  rewrite ^/download/(.*)$  /sites/$server_name/files/download/$1 last;
-  rewrite ^/docs/(.*)$      /sites/$server_name/files/docs/$1 last;
-  rewrite ^/documents/(.*)$ /sites/$server_name/files/documents/$1 last;
-  rewrite ^/legacy/(.*)$    /sites/$server_name/files/legacy/$1 last;
+  rewrite ^/download/(.*)$  /sites/$main_site_name/files/download/$1 last;
+  rewrite ^/docs/(.*)$      /sites/$main_site_name/files/docs/$1 last;
+  rewrite ^/documents/(.*)$ /sites/$main_site_name/files/documents/$1 last;
+  rewrite ^/legacy/(.*)$    /sites/$main_site_name/files/legacy/$1 last;
   try_files $uri =404;
 }
 ```
+
+BOA already maps `/files/...` and `/downloads/...` to the site's own files directory. Keep the pattern anchored to the legacy directories: `nginx_vhost_include.conf` is included before the private download locations, so a location matching on the file extension alone would also serve the private files of every site on the instance.
 
 ## Site specific 301 redirect with parent literal location to stop searching for (and using) other regex based locations.
 
