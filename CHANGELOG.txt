@@ -50,6 +50,13 @@
 
 @=> Security
 
+    * A site Verify, install or deploy no longer makes directories or
+      changes modes or groups through a link at the site dir, at sites/,
+      or at the site's modules, themes, libraries or vendor, nor through
+      a private link in a deployed backup, and acts only in the directory
+      it checked; such a link is left as it is, with a STORE/SKIP warning
+      in the task log.
+
     * A site Verify, install or deploy no longer makes directories,
       changes modes, or removes or writes .htaccess files through a
       files or private link that leads out of the account's own files
