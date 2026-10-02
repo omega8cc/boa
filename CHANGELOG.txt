@@ -1309,10 +1309,11 @@
       scheduler on an error it meets while scheduling an event, such as
       a deadlock with a backup dump's locks, and every scheduled event
       on the box then stopped with one error line as the only trace.
-      The watchdog checks once a minute, waits until a running backup
-      dump ends, leaves a standby and a box whose scheduler is switched
-      off alone, and writes one line to mysql.incident.log each time
-      it starts the scheduler again.
+      The watchdog checks at most once a minute, waits until a running
+      backup dump ends, leaves a standby, a database held read-only
+      (super_read_only on) and a box whose scheduler is switched off
+      alone, and writes one line to mysql.incident.log each time it
+      starts the scheduler again.
 
     * A client's own database export works again on Drupal 8 and newer
       sites: the tenant shell's Drush 8 guard on those codebases lets
