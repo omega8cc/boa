@@ -471,6 +471,20 @@ _web_group_policy() {
   return 0
 }
 
+_web_group_phase_b() {
+  # YES when /root/.barracuda.cnf turns phase B on as bash reads it: the last
+  # _WEB_GROUP_PHASE_B assignment, with export, quotes or a trailing comment,
+  # is YES. Prints nothing otherwise. Verbatim in instgrp, xoct, xcopy and
+  # xmass: the arm, the notes and the pair comparison read the line the same
+  # way.
+  local _l
+  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=" /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+    | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=(YES|\"YES\"|'YES')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
+    | tr -d "\"'")
+  [ "${_l}" = "YES" ] && printf '%s\n' YES
+  return 0
+}
+
 # The account's own web group, as the claim passes below keep it: its gid when
 # the group exists and only the account's identities hold it, nothing
 # otherwise. $1 = one of the account's roots (/data/disk/<oN>, /home/<oN>.*,
@@ -2974,7 +2988,7 @@ _wg_gate() {
   local _v="${1}"
   [ -n "${!_v}" ] && return 0
   case "${_v}" in
-    _D_OPTOUT) _wg_g_optout && _D_OPTOUT=YES || _D_OPTOUT=NO ;;
+    _D_OPTOUT) { _wg_g_optout || _wg_g_v1_optout; } && _D_OPTOUT=YES || _D_OPTOUT=NO ;;
     _D_V1) _wg_g_v1 && _D_V1=YES || _D_V1=NO ;;
     _D_READY) _wg_g_ready && _D_READY=YES || _D_READY=NO ;;
     _D_SHARE) _wg_g_share && _D_SHARE=YES || _D_SHARE=NO ;;
@@ -3050,7 +3064,7 @@ _wg_table() {
 _wg_leg_of() {
   case "${1}" in
     E1|E2|E3|E4|G1|G2|G3|G4) echo refuse ;;
-    S1|S3|RC1|RC0) echo skip ;;
+    S1|S3|RC1|RC0|OFF) echo skip ;;
     S2) echo finish ;;
     N0|N1|N2|A2) echo down ;;
     RC2) echo reclaim-up ;;
@@ -3515,12 +3529,15 @@ _wg_procs_www() {
     END { out(); print n + 0 }'
 }
 
-# Clears the set-group-ID bit of each regular file named on stdin (NUL
-# separated) through a no-follow handle, only when one of the uids $2 owns
-# it and its group is still $1; prints each one cleared, unprintable bytes
-# shown as "?". 1 when a clear failed.
+# Clears the set-group-ID bit of each regular file named as ./<name> (or a
+# bare <name>) in the current directory (find's -execdir, which runs it
+# inside the directory it walked, so no path is resolved again) through a
+# no-follow handle, only when one of the uids $2 owns it and its group is
+# still $1. One line per such file, "C <dir>/<name>" cleared or
+# "E <dir>/<name>" not cleared (also for an argument that names more than
+# one path component), unprintable bytes shown as "?".
 # shellcheck disable=SC2016
-_WG_SGID_PL='use Fcntl; my ($g, $ok) = @ARGV; my %o = map { $_ => 1 } grep { length } split(/,/, $ok); my $rc = 0; local $/ = "\0"; while (my $f = <STDIN>) { chomp($f); my @l = lstat($f); next unless @l && -f _; sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && -f _ && $o{$s[4]} && $s[5] == $g && ($s[2] & 02000)) { if (chmod($s[2] & 05777, $h)) { $f =~ s/[^[:print:]]/?/g; print "$f\n"; } else { $rc = 1; } } close($h); } exit $rc'
+_WG_SGID_PL='use Fcntl; use Cwd; my ($g, $ok, @f) = @ARGV; my %o = map { $_ => 1 } grep { length } split(/,/, $ok); my $d = getcwd(); $d = "?" unless defined($d); for my $x (@f) { my $n = $x; $n =~ s{^\./}{}; my $p = "$d/$n"; $p =~ s/[^[:print:]]/?/g; if ($n !~ m{^[^/]+\z} || $n eq "." || $n eq "..") { print "E $p\n"; next; } my $f = "./$n"; my @l = lstat($f); next unless @l && -f _; sysopen(my $h, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && -f _ && $o{$s[4]} && $s[5] == $g && ($s[2] & 02000)) { print((chmod($s[2] & 05777, $h) ? "C " : "E ") . "$p\n"); } close($h); } exit 0'
 
 # The mount points a file of the account's may sit on and run from with its
 # set-group-ID bit honoured: every mount of a disk or memory file system that
@@ -3532,15 +3549,29 @@ _wg_sweep_roots() {
     /proc/self/mounts 2> /dev/null | sort -u
 }
 
+# The network and FUSE mounts not mounted nosuid, where the kernel honours
+# the bit too and the sweep does not walk: a server that stops answering
+# would hang root's walk there (with the run lock and the account's hold
+# taken), and NFS squashes root by default, so a clear would fail on every
+# run at B. One line per mount, "<type> <mount point>", decoded and with
+# unprintable bytes shown as "?"; named in the account's notes instead.
+_wg_sweep_unwalked() {
+  perl -ne 'my @f = split(/ /); next unless defined($f[3]) && $f[2] =~ /^(nfs4?|cifs|smb3|smbfs|ceph|glusterfs|9p|afs|lustre|fuse|fuseblk|fuse\..+)$/; next if ",$f[3]," =~ /,nosuid,/; my $m = $f[1]; $m =~ s/\\([0-7]{3})/chr(oct($1))/ge; next unless $m =~ m{^/} && $m !~ m{^/(proc|sys|dev)(/|\z)}; $m =~ s/[^[:print:]]/?/g; print "$f[2] $m\n"' \
+    /proc/self/mounts 2> /dev/null | sort -u
+}
+
 # Phase B leaves no set-group-ID www-data file of the account's own. While
 # its identities and pool users held www-data, any of them could give a
 # file of its own group www-data and the set-group-ID bit wherever it could
 # write, and run it as www-data's group after phase B. Every local file
 # system is walked; the bit is cleared on each such regular file one of the
-# account's uids owns. 1 when one could not be cleared, or when no file
-# system was read to walk.
+# account's uids owns, by name inside the directory find holds open, so a
+# directory the account renames or swaps for a link meanwhile cannot lead
+# root outside the walked tree. The network and FUSE mounts without nosuid
+# are named in the notes, not walked. 1 when one could not be cleared, or
+# when no file system was read to walk.
 _wg_sgid_sweep() {
-  local _uids _r _out _rc=0 _n=0 _u _w=() _l _roots=0
+  local _uids _r _out _rc=0 _n=0 _u _w=() _l _roots=0 _t _m _un=""
   _uids=$(_wg_own_uids)
   [ -n "${_uids}" ] && [[ "${_WG_WWWGID}" =~ ^[0-9]+$ ]] || return 0
   for _u in ${_uids//,/ }; do
@@ -3549,19 +3580,35 @@ _wg_sgid_sweep() {
   while IFS= read -r _r; do
     [ -d "${_r}" ] || continue
     _roots=$((_roots + 1))
+    # find's own exit is not read: a file gone during the walk is no failure
     _out=$(env PATH=/usr/local/bin:/usr/bin:/bin find -P "${_r}" -xdev -type f -perm -2000 \
-      -gid "${_WG_WWWGID}" \( "${_w[@]:1}" \) -print0 2> /dev/null \
-      | perl -e "${_WG_SGID_PL}" "${_WG_WWWGID}" "${_uids}") || _rc=1
+      -gid "${_WG_WWWGID}" \( "${_w[@]:1}" \) \
+      -execdir perl -e "${_WG_SGID_PL}" "${_WG_WWWGID}" "${_uids}" {} + 2> /dev/null < /dev/null)
     [ -n "${_out}" ] || continue
     while IFS= read -r _l; do
-      _n=$((_n + 1))
-      _log "${_WP_A}: set-group-ID bit cleared: ${_l}"
+      case "${_l}" in
+        "C "*)
+          _n=$((_n + 1))
+          _log "${_WP_A}: set-group-ID bit cleared: ${_l#C }"
+          ;;
+        "E "*)
+          _rc=1
+          _log "${_WP_A}: set-group-ID bit not cleared: ${_l#E }"
+          ;;
+      esac
     done <<< "${_out}"
   done < <(_wg_sweep_roots)
   if [ "${_roots}" = "0" ]; then
     _alrt "${_WP_A}: no file system to walk was read from /proc/self/mounts; the set-group-ID sweep of phase B stays owed"
     return 1
   fi
+  while read -r _t _m; do
+    [ -n "${_m}" ] || continue
+    _un="${_un} ${_m}"
+    _log "${_WP_A}: set-group-ID sweep: ${_m} (${_t}, no nosuid) not walked"
+    _wg_note "phase B: the set-group-ID sweep does not walk ${_m} (${_t}, a network or FUSE mount without nosuid): a set-group-ID www-data file of the account there keeps its bit; mount it nosuid"
+  done < <(_wg_sweep_unwalked)
+  [ -n "${_un}" ] && _msg "NOTE: ${_WP_A}: network or FUSE mounts without nosuid are not swept for set-group-ID files:${_un} (see ${_WP_NOTES})"
   if [ "${_n}" -gt 0 ]; then
     _msg "NOTE: ${_WP_A}: the set-group-ID bit cleared on ${_n} www-data file(s) of the account (${_LOG})"
     _wg_note "phase B: the set-group-ID bit cleared on ${_n} www-data file(s) of the account"
@@ -4422,6 +4469,21 @@ _wg_g_optout() {
   [ "$(_web_group_policy "/root/.${_WP_A}.octopus.cnf")" = "NO" ]
 }
 
+# The account's opt-out of its per-instance group, _INSTANCE_GROUP=NO in its
+# cnf, as the Octopus pass reads it before instgrp convert: the last
+# assignment as bash reads it, or any line that starts _INSTANCE_GROUP=NO.
+# Such an account never passes G2, so the arm, webconvert all and DR8 read
+# it as the web group's opt-out too; a per-account webconvert does not.
+_wg_g_v1_optout() {
+  local _c="/root/.${_WP_A}.octopus.cnf" _l
+  [ "${_WP_M}" = "YES" ] && return 1
+  grep -q "^_INSTANCE_GROUP=NO" "${_c}" 2> /dev/null && return 0
+  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_INSTANCE_GROUP=" "${_c}" 2> /dev/null | tail -n 1 \
+    | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_INSTANCE_GROUP=(NO|\"NO\"|'NO')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
+    | tr -d "\"'")
+  [ "${_l}" = "NO" ]
+}
+
 # The pin as the account's policy: _WEB_GROUP=A in its cnf, which xoct's and
 # xmass's cnf merges carry as they carry the opt-out, so a box the account
 # lands on (a promoted mirror among them) keeps it at A too.
@@ -4654,7 +4716,7 @@ _wg_inert() {
   [ "${_WP_M}" != "YES" ] && [ "${_WM_G}" = "none" ] && [ ! -e "${_WP_I}" ] \
     && [ ! -e "${_WP_R}" ] && [ ! -L "${_WP_R}" ] || return 1
   [ ! -s "${_WG_STAMP}" ] && return 0
-  _wg_g_optout
+  _wg_g_optout || _wg_g_v1_optout
 }
 
 # The every-run gates and the table's inputs for the current profile, and
@@ -4717,7 +4779,7 @@ _wg_decide() {
   _D_R="${_WR_PH}"
   _D_RB="${_WR_RB}"
   if [ "${_WG_CALLER}" = "arm" ] \
-    && grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=[\"']?YES" /root/.barracuda.cnf 2> /dev/null; then
+    && [ "$(_web_group_phase_b)" = "YES" ]; then
     _D_FLAGB=YES
   fi
   # The pin as policy (_WEB_GROUP=A, carried with the cnf): the intent's own
@@ -4780,8 +4842,25 @@ _wg_run() {
   return "${_rc}"
 }
 
+# The arm on a switched-off box (no arm stamp: _WEB_GROUP_ARM is not YES)
+# for an account with no web group, intent or record: every row it could
+# reach refuses, and it has nothing to report on every Octopus pass of every
+# account. An armed box whose inventory is stale still says why at G3.
+_wg_off_quiet() {
+  [ "${_WG_CALLER}" = "arm" ] && [ "${_WP_M}" != "YES" ] && [ ! -s "${_WG_STAMP}" ] \
+    && [ ! -e "${_WP_I}" ] && [ ! -e "${_WP_R}" ] && [ ! -L "${_WP_R}" ] || return 1
+  _wg_m_g
+  [ "${_WM_G}" = "none" ]
+}
+
 _wg_run_row() {
   local _leg _rc
+  # no row read, nothing printed, rc 0: the run's instgrp.log line (row
+  # OFF) is its whole trace
+  if _wg_off_quiet; then
+    _D_ROW=OFF
+    return 0
+  fi
   _wg_decide
   _leg=$(_wg_leg_of "${_D_ROW}")
   # an inert run whose row would write after all (the stamp written
@@ -4822,7 +4901,13 @@ _wg_run_row() {
       case "${_D_ROW}" in
         S1) _msg "NOTE: ${_WP_A}: a revert is in progress (webrevert ${_WP_A} finishes it); skipped" ;;
         S3) _msg "NOTE: ${_WP_A}: pinned at A (only webconvert ${_WP_A} --phase-b unpins); skipped" ;;
-        G1) _msg "NOTE: ${_WP_A}: opted out (_WEB_GROUP=NO); a per-account webconvert lifts it" ;;
+        G1)
+          if _wg_g_optout; then
+            _msg "NOTE: ${_WP_A}: opted out (_WEB_GROUP=NO); a per-account webconvert lifts it"
+          else
+            _msg "NOTE: ${_WP_A}: opted out of the per-instance group (_INSTANCE_GROUP=NO), so of the web group too"
+          fi
+          ;;
         G2) _msg "NOTE: ${_WP_A}: not converted to its own group yet (instgrp convert ${_WP_A} first)" ;;
         G3) _msg "NOTE: ${_WP_A}: this box is not ready for the web group (instgrp webcheck)" ;;
         G4) _msg "NOTE: ${_WP_A}: an outbound share, a legacy site or a site or store outside the account refuses the conversion (see ${_WP_NOTES})" ;;
@@ -4955,6 +5040,8 @@ _wg_status() {
   _msg "intent:   ${_WI_T:-absent}${_WI_T:+ pin=${_WI_PIN} by=${_WI_BY} run=${_WI_RUN} rc=${_WI_RC}}"
   if _wg_g_optout; then
     _msg "policy:   _WEB_GROUP=NO (opted out: the arm and webconvert all leave it alone)"
+  elif _wg_g_v1_optout; then
+    _msg "policy:   _INSTANCE_GROUP=NO (opted out of the per-instance group: the arm and webconvert all leave it alone)"
   elif _wg_g_pinned; then
     _msg "policy:   _WEB_GROUP=A (pinned at phase A, here and wherever its cnf travels)"
   fi
@@ -5078,7 +5165,7 @@ _wg_held_live() {
 }
 
 _wg_drift() {
-  local _a="${1}" _dr1="" _dr8="" _cls=ALRT _st _now _first _kind _lv _rl _held=NO
+  local _a="${1}" _dr1="" _dr8="" _dr8v1=NO _cls=ALRT _st _now _first _kind _lv _rl _held=NO
   _wg_profile "${_a}"
   _wg_reset
   _WG_WWWGID=$(_gid_of "${_WEBG}")
@@ -5115,14 +5202,27 @@ _wg_drift() {
   # for over a day (nothing has converted it: a promoted mirror whose
   # Octopus pass ran under its standby marks, a refusal no one read). Its
   # first-seen stamp is DR1's file, marked dr8: the two never hold at once.
+  # An account opted out of its per-instance group is opted out of the web
+  # group too: named once, its stamp marked optout, never an alarm.
   if [ "${_held}" = "NO" ] && [ "${_WP_M}" != "YES" ] && [ "${_WM_G}" = "none" ] \
     && [ -z "${_WI_T}" ] && [ "${_WR_ANY}" = "NO" ] && [ -s "${_WG_STAMP}" ] \
     && [ ! -e "${_WG_STANDBY}" ] && [ ! -e "${_WG_PREP}" ] \
     && [ ! -e "/data/disk/${_a}/log/proxied.pid" ] && ! _wg_g_optout; then
-    _dr8="the box is armed and ${_a} has had no web group for over a day"
+    if _wg_g_v1_optout; then
+      _dr8v1=YES
+    else
+      _dr8="the box is armed and ${_a} has had no web group for over a day"
+    fi
   fi
   _st="/var/log/boa/instgrp-web.${_a}.dr1.txt"
-  if [ -n "${_dr8}" ]; then
+  if [ "${_dr8v1}" = "YES" ]; then
+    _kind=""
+    read -r _ _kind _ 2> /dev/null < "${_st}" || :
+    if [ "${_kind}" != "optout" ]; then
+      ( umask 077; echo "$(date +%s) optout" > "${_st}" ) 2> /dev/null
+      echo "NOTE DR8 ${_a}: opted out of the per-instance group (_INSTANCE_GROUP=NO in /root/.${_a}.octopus.cnf), so no web group either"
+    fi
+  elif [ -n "${_dr8}" ]; then
     _now=$(date +%s)
     _first=""
     _kind=""
@@ -5146,7 +5246,7 @@ _wg_drift() {
     _kind=""
     read -r _first _kind _ 2> /dev/null < "${_st}" || :
     _first=$(printf '%s' "${_first}" | tr -cd '0-9')
-    if [ -z "${_first}" ] || [ "${_kind}" = "dr8" ]; then
+    if [ -z "${_first}" ] || [ -n "${_kind}" ]; then
       ( umask 077; echo "${_now}" > "${_st}" ) 2> /dev/null
     elif [ $((_now - _first)) -ge 3600 ]; then
       case "${_WI_RC}" in
@@ -5276,7 +5376,7 @@ _wg_check() {
     _msg "arm:     ABSENT (${_WG_STAMP}): _WEB_GROUP_ARM is not YES here; nothing converts"
     _rc=5
   fi
-  if grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=[\"']?YES" /root/.barracuda.cnf 2> /dev/null; then
+  if [ "$(_web_group_phase_b)" = "YES" ]; then
     _msg "phase B: the arm starts phase B (_WEB_GROUP_PHASE_B=YES)"
   else
     _msg "phase B: the arm stops at A (_WEB_GROUP_PHASE_B is not YES)"
@@ -5287,6 +5387,7 @@ _wg_check() {
     _msg "== ${_a}"
     if _wg_g_v1; then _msg "v1:      converted"; else _msg "v1:      NOT converted (instgrp convert ${_a})"; fi
     if _wg_g_optout; then _msg "opt-out: _WEB_GROUP=NO"; fi
+    if _wg_g_v1_optout; then _msg "opt-out: _INSTANCE_GROUP=NO"; fi
     if _wg_g_pinned; then _msg "pin:     _WEB_GROUP=A (phase A only)"; fi
     if _WG_SHARE_MODE=silent _wg_g_share; then
       _msg "shares:  REFUSED (an outbound share, a store outside the account's own places, a legacy site or a site outside the account; a conversion run names them in ${_WP_NOTES})"
