@@ -98,12 +98,14 @@ _if_install_adminer() {
     \( -name '.adminer.new.*' -o -name '.adminer.old.*' \) \
     -exec rm -rf -- {} + &> /dev/null
   if [ -d "/var/www/adminer" ]; then
-    local _admOwn="www-data:www-data" _admU _admG _acc="/var/www/adminer/access" _ret
+    local _admGrp _admOwn _admU _admG _acc="/var/www/adminer/access" _ret
+    _admGrp=$(_xtra_tool_group)
+    _admOwn="www-data:${_admGrp}"
     if [ ! -z "${_PHP_CN}" ]; then
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _PHP_CN set to ${_PHP_CN} for Adminer Manager"
       fi
-      _admOwn="${_PHP_CN}:www-data"
+      _admOwn="${_PHP_CN}:${_admGrp}"
     else
       _msg "NOTE: _PHP_CN not set for Adminer Manager"
     fi
@@ -144,7 +146,7 @@ _if_install_adminer() {
     # a hard link the pool left at a name it owned is never followed or handed
     # over.
     _admU=$(id -u -- "${_admOwn%%:*}" 2> /dev/null)
-    _admG=$(getent group www-data 2> /dev/null | cut -d: -f3)
+    _admG=$(getent group "${_admGrp}" 2> /dev/null | cut -d: -f3)
     if [[ "${_admU}" =~ ^[0-9]+$ && "${_admG}" =~ ^[0-9]+$ ]]; then
       _acct_in_real_dir /var/www/adminer \
         _xtra_adminer_app_reown_here "${_admU}" "${_admG}"
@@ -155,6 +157,56 @@ _if_install_adminer() {
     _xtra_app_modes /var/www/adminer
     _acct_in_real_dir /var/www/adminer \
       perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f 0440 ./index.php &> /dev/null
+  fi
+}
+
+_master_web_group() {
+  # The master's own web group, wg-aegir, the way _web_group_state reads an
+  # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its
+  # holders are aegir and the master pool users wwwNN; anyone else holding
+  # it makes it foreign. The record is /root/.aegir.web-group.txt, root's
+  # own file, "wg-aegir gid=<n> phase=<A|B> ...".
+  local _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  _e=$(getent group wg-aegir 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^(aegir|www[0-9][0-9])$ ]] \
+      || { echo "foreign ${_gid} wg-aegir"; return 0; }
+  done
+  _r="/root/.aegir.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-aegir" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-aegir"
+  else
+    echo "held ${_gid} wg-aegir"
+  fi
+}
+# The group of the web tools under /var/www (Adminer, Chive, SQL Buddy,
+# Collectd Graph Panel): www-data, as always, until the master is converted
+# to its own web group (wg-aegir). Then the per-version group of the master
+# pool that owns and serves them (_PHP_CN), or, when that is not known,
+# wg-aegir, which every master pool holds: a master pool that has left
+# www-data still reads Adminer's index.php (0440) through its group.
+_xtra_tool_group() {
+  case "$(_master_web_group)" in
+    converted\ *|phaseb\ *) ;;
+    *) echo "www-data"; return 0 ;;
+  esac
+  if [ -n "${_PHP_CN}" ] && getent group "${_PHP_CN}" > /dev/null 2>&1; then
+    echo "${_PHP_CN}"
+  else
+    echo "wg-aegir"
   fi
 }
 
@@ -294,10 +346,10 @@ _if_install_chive() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _PHP_CN set to ${_PHP_CN} for Chive Manager"
       fi
-      chown -R ${_PHP_CN}:www-data /var/www/chive
+      chown -R ${_PHP_CN}:"$(_xtra_tool_group)" /var/www/chive
     else
       _msg "NOTE: _PHP_CN not set for Chive Manager"
-      chown -R www-data:www-data /var/www/chive
+      chown -R www-data:"$(_xtra_tool_group)" /var/www/chive
     fi
     _xtra_app_modes /var/www/chive
   fi
@@ -340,10 +392,10 @@ _if_install_sqlbuddy() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _PHP_CN set to ${_PHP_CN} for SQL Buddy Manager"
       fi
-      chown -R ${_PHP_CN}:www-data /var/www/sqlbuddy
+      chown -R ${_PHP_CN}:"$(_xtra_tool_group)" /var/www/sqlbuddy
     else
       _msg "NOTE: _PHP_CN not set for SQL Buddy Manager"
-      chown -R www-data:www-data /var/www/sqlbuddy
+      chown -R www-data:"$(_xtra_tool_group)" /var/www/sqlbuddy
     fi
     _xtra_app_modes /var/www/sqlbuddy
   fi
@@ -451,10 +503,10 @@ _if_install_collectd() {
       if [ "${_DEBUG_MODE}" = "YES" ]; then
         _msg "INFO: _PHP_CN set to ${_PHP_CN} for Collectd Graph Panel"
       fi
-      chown -R ${_PHP_CN}:www-data /var/www/cgp
+      chown -R ${_PHP_CN}:"$(_xtra_tool_group)" /var/www/cgp
     else
       _msg "NOTE: _PHP_CN not set for Collectd Graph Panel"
-      chown -R www-data:www-data /var/www/cgp
+      chown -R www-data:"$(_xtra_tool_group)" /var/www/cgp
     fi
     _xtra_app_modes /var/www/cgp
     _fix_collectd_rrd_syslog_flood

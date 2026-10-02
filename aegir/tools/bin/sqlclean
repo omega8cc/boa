@@ -27,7 +27,8 @@
 ### together with the database. No alias, no database.
 ###
 ### Classification, in order:
-###   preserved   system schemas; every alias-resolved site db across
+###   preserved   system schemas and boa_dbreg (the database broker's
+###               ownership registry); every alias-resolved site db across
 ###               /var/aegir and all /data/disk/* instances; every instance's
 ###               own hostmaster db; names listed in /root/.sqlclean.protect.cnf
 ###   held        never deleted: panel drift (the panel claims a live site the
@@ -272,9 +273,10 @@ _interlock_check_full
 ###-------------ENUMERATION---------------###
 
 # Real schemas from the server, never datadir directories: Percona 8.x keeps
-# non-schema entries (#innodb_redo, #innodb_temp) in the datadir.
+# non-schema entries (#innodb_redo, #innodb_temp) in the datadir. boa_dbreg
+# is root's own: the database broker's (boa-dbctl) ownership registry.
 mapfile -t _all_databases < <(_sql_must "SHOW DATABASES" \
-  | grep -vE "^(information_schema|performance_schema|mysql|sys|test)$" \
+  | grep -vE "^(information_schema|performance_schema|mysql|sys|test|boa_dbreg)$" \
   | grep -v "^#" | grep -v "^lost+found$")
 if [ "${#_all_databases[@]}" -eq 0 ]; then
   _die "Schema enumeration returned nothing — refusing to classify"

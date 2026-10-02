@@ -147,6 +147,18 @@ _ci_master_cron_control() {
 # sits ABOVE the proxy and pause gates on purpose: an ha-switch failback
 # target carries BOTH markers, and the dispatch park must still happen --
 # hosting-dispatch is the one writer no proxy gate reaches.
+# A web-group conversion of the master holds the master's task queue
+# (instgrp webconvert aegir): while its holder lives, no pass here brings the
+# parked aegir crontab back or dispatches anything; a marker whose holder is
+# gone is cleared, never obeyed.
+if [ -e "/run/boa_master_queue_stop.pid" ]; then
+  _mqPid=$( { tr -dc '0-9' < /run/boa_master_queue_stop.pid; } 2>/dev/null )
+  if [ -n "${_mqPid}" ] && kill -0 "${_mqPid}" 2>/dev/null; then
+    exit 0
+  fi
+  [ "$( { tr -dc '0-9' < /run/boa_master_queue_stop.pid; } 2>/dev/null )" = "${_mqPid}" ] \
+    && rm -f /run/boa_master_queue_stop.pid
+fi
 if [ -e "/root/.standby.cnf" ]; then
   _disable_master_cron
   exit 0

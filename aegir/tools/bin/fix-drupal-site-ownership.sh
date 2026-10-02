@@ -10,7 +10,8 @@ provide the following arguments:
   --script-user: Username of the user to whom you want to give file ownership
                  (defaults to 'aegir').
   --web-group: accepted and ignored; the web group is derived from the
-               site's account (www-data until the account has its own).
+               site's account, or the master for a site under /var/aegir
+               (www-data until it has its own).
 
 Usage: (sudo) ${0##*/} --site-path=PATH --script-user=USER
 Example: (sudo) ${0##*/} --site-path=/var/aegir/platforms/drupal-7.50/sites/example.com --script-user=aegir
@@ -247,6 +248,54 @@ _web_group() {
     converted|phaseb) echo "${_s##* }" ;;
     held) [ "$(id -u)" = "0" ] && echo "www-data" || echo "" ;;
     *) echo "www-data" ;;
+  esac
+}
+
+_master_web_group() {
+  # The master's own web group, wg-aegir, the way _web_group_state reads an
+  # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its
+  # holders are aegir and the master pool users wwwNN; anyone else holding
+  # it makes it foreign. The record is /root/.aegir.web-group.txt, root's
+  # own file, "wg-aegir gid=<n> phase=<A|B> ...".
+  local _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  _e=$(getent group wg-aegir 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^(aegir|www[0-9][0-9])$ ]] \
+      || { echo "foreign ${_gid} wg-aegir"; return 0; }
+  done
+  _r="/root/.aegir.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-aegir" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-aegir"
+  else
+    echo "held ${_gid} wg-aegir"
+  fi
+}
+_site_web_group() {
+  # The web group a root writer gives the site at $1 (resolved): the
+  # account's own, as _web_group derives it, or, for a site of the master
+  # (/var/aegir), the master's own web group, wg-aegir, once the master's
+  # record says it is converted to it; www-data otherwise, as always.
+  case "${1}/" in
+    /var/aegir/*)
+      case "$(_master_web_group)" in
+        converted\ *|phaseb\ *) echo "wg-aegir" ;;
+        *) echo "www-data" ;;
+      esac
+      ;;
+    *) _web_group "${1}" ;;
   esac
 }
 
@@ -540,7 +589,7 @@ if [ -n "${site_path}" ] \
   fi
   _validate_path_prefix "${site_path}"
   _code_group=$(_acct_group "${site_path}")
-  _wg=$(_web_group "${site_path}")
+  _wg=$(_site_web_group "${site_path}")
   # Capsule ownership model (spike-proven): code <user>:<account group>; the
   # writable set <user>:<web group> so FPM writes via GROUP (version-flip-immune).
   # Runs inside the real site directory (_in_pinned_dir), and the owner and
@@ -567,7 +616,7 @@ if [ -n "${site_path}" ] \
   fi
   _validate_path_prefix "${site_path}"
   _code_group=$(_acct_group "${site_path}")
-  _wg=$(_web_group "${site_path}")
+  _wg=$(_site_web_group "${site_path}")
   # Code <user>:<account group>; the writable set and the credential store
   # <user>:<web group> so FPM reaches them via GROUP (version-flip-immune: a
   # box-default PHP bump changes the pool USER, never its group).
@@ -594,7 +643,7 @@ fi
 
 _validate_path_prefix "${site_path}"
 _code_group=$(_acct_group "${site_path}")
-_wg=$(_web_group "${site_path}")
+_wg=$(_site_web_group "${site_path}")
 
 ### modules, themes and libraries are names the tenant can plant: it can create
 ### the site dir itself under the group-writable sites/ (02771), and the

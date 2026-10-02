@@ -74,6 +74,16 @@ database). At cutover:
    continues**. A session-scoped read lock is not used at all: it cannot hold
    anything once its client disconnects; the surviving `FLUSH TABLES` only
    pushes buffers. The lag is then re-confirmed three times.
+
+   The one writer neither of those stops is MySQL's **event scheduler**: an
+   `EVERY`-N event would keep writing between the lag checks and the
+   promotion, rows that then stay on the old box alone. So step 6 also turns
+   the scheduler off on the source when it runs, before the lag checks, and
+   records that in `/run/boa_xmass_events_off.pid`. Every way back to the
+   source as production (an abort before the promotion, a re-run that
+   unwinds, `reset-phase syncing` or `init`) starts it again from that
+   record. After a promotion it stays off on the old box, whose database is
+   then the frozen copy.
 7. Target MySQL is promoted (slave decoupled, `RESET SLAVE ALL`); the freeze
    flag is removed on the **target** later in the sequence. On the source it
    stays for the life of the proxy — the old box serves through the proxy
@@ -417,6 +427,18 @@ installs begin, and holds the target's client mail for that address
 (`/data/conf/client_mail_hold.txt`, as `xoct create` does) unless a hold is
 already there.
 
+The record names the target it runs to, on its second line. While it
+stands, a `prep-target` toward another target refuses, with the token or
+without it, naming that target, its mark and its hold: a new run would drop
+the record and leave them holding that box's client mail with nothing left
+to end them. A record written before it named a target counts for any
+target.
+
+End that run first with `xmass go-live` (below), or drop it by hand: on
+that target remove the mark, then the hold once no other test run is
+recorded there and its accounts may mail their clients, then remove the
+record here.
+
 It also marks the target with this test run,
 `/data/conf/xmass_test_run.<source-hostname>.txt`: while the mark is there
 the hold is this run's too, so a canary's `xoct go-live` on that target or a
@@ -440,14 +462,30 @@ The identity repair (`--fix-users`) and a standing mirror's reduced lane
 install nothing and leave all three as they are. The `xoct create` runs it
 drives keep no record of their own.
 
-Without `admail=`, `prep-target` and `cutover` also refuse while an `xoct`
-canary is still in its test run on the source
-(`/data/conf/xoct_admail.<oN>.txt`, for an account the run moves): `xoct`
-would refuse those accounts one by one, and at `cutover` only after the
-sites went down. Records of accounts the run leaves alone (not eligible, or
-proxied before it) do not count.
+Without `admail=`, an `xoct` canary still in its test run on the source
+(`/data/conf/xoct_admail.<oN>.txt`, for an account the run moves) is
+handled by its kind. Records of accounts the run leaves alone (not
+eligible, or proxied before it) do not count.
 
-`admail=` is no way out of that refusal for a real move: it makes the whole
+- A canary the source sends away (its record carries the source line):
+  every `xoct` call for that account carries its own recorded address.
+  `prep-target` installs it that way, which moves nothing. A `cutover`
+  under `--proxy-mode=ha-switch` (the flag, else the mode `init`
+  recorded), a switch to the standing mirror or a failback, converts it
+  the same way: its sites keep serving and its client is not told of the
+  switch; its test run, `xoct go-live` included, is then redone from the
+  new active. Any other `cutover` is a real move of the account and
+  refuses until the canary goes live.
+- A canary the source received: its test run holds the source's clients'
+  mail and `xoct` refuses every account there without the token, so
+  `prep-target` and `cutover` both refuse until that test run goes live on
+  the box that sent it. Its `go-live` runs on that box, toward this one, so
+  after a switch it would end the run on the old active and leave the
+  promoted box holding the clients' mail. A standing mirror can still be
+  built around it under `admail=` and made a real pair with
+  `xmass go-live` (below): the hold and the canary's record travel to it.
+
+`admail=` is no way out of the refusal for a real move: it makes the whole
 run a test for every account, and no client is told of the move. A real
 move first ends each canary's test run with `xoct go-live <oN> target-ip`
 (see [MIGRATE-XOCT.md](MIGRATE-XOCT.md#test-and-canary-runs-admail)).
@@ -458,6 +496,13 @@ naming it. `prep-target` passes the hold this box's own earlier test run
 put, which it removes with the record, when no other test run is recorded
 on the target (an `xoct` canary's record, another box's mark); otherwise it
 refuses and names them: end those first.
+
+It refuses as well while this box itself holds its clients' mail, or
+carries the mark of another box's test run: `xoct` refuses every account
+here without the token then, so a real `prep-target` would fail at every
+install and a real `cutover` at every conversion after the sites went
+down. Run it under `admail=` instead (a mirror built so becomes a real
+pair with `xmass go-live`), or end that test run first.
 
 `--fix-users` runs a lane of its own: it re-creates a lost system user
 (`<acct>`, `<acct>.ftp`) of an account that IS installed on the target, in
@@ -561,6 +606,15 @@ What it does, in order:
      box's addresses as the peer and this account, with the target's own
      address as its host; both files are root's, with one link (what
      `xoct proxy` leaves on a demoted failback box);
+   - it is this pair's own, the old active after a promotion by hand, where
+     nothing relays: this box's create marker of the account names the
+     target (its `hostname -f`) and the account, and still names this
+     box's account user ID and directory; or the target's own
+     `/data/conf/xmass_state.cnf` (root's, one link) names one of this
+     box's addresses as its target, in a phase past `init`. Either way the
+     account on the target must predate the marker or that `init` (no
+     birth time kept: not compared), and the state file's proof takes no
+     account that relays, or moved on, to another box;
    - it carries no site, only its control panel (a fresh install's own
      `o1`, for one), and you named it with `--adopt-siteless`: no registered
      site, no site directory on its platforms or on disk, no entry in its
@@ -569,9 +623,10 @@ What it does, in order:
      of that directory, and none of its `distro`, `static`, `platforms` or
      `aegir` trees a link.
 
-   The second and third are adopted: `prep-target` passes
+   The last three are adopted: `prep-target` passes
    `xoct create --adopt` for those accounts only, which puts the create
-   marker on them. A relay is adopted by itself: root's own files prove it.
+   marker on them. A relay and this pair's own are adopted by themselves:
+   root's own files prove them.
    Nothing on the target proves whose a site-less account is (a fresh
    install's own panel, or another client's account with no site yet), so
    one you did not name is refused, and the refusal prints the line that
@@ -587,7 +642,8 @@ What it does, in order:
    migration's, put the create marker on it by hand with the one-line
    command the refusal prints, then re-run `prep-target`. A demoted box
    whose relay has no policy record (its conversion failed, or it predates
-   the record) needs that hand marker for a failback.
+   the record) and no proof of this pair's lineage needs that hand marker
+   for a failback.
 6. **Suspension flags** mirrored (`/data/conf/suspended/<oN>.pid` lives outside
    the account tree, so no file sync can carry it — an unmirrored suspension
    means a non-paying account resumes serving on the target). Only after the
@@ -598,6 +654,84 @@ What it does, in order:
    is present on the target as a real install.
 
 The verb is idempotent: re-run it after fixing anything it refused on.
+
+### The account web group on a standby target
+
+A box being prepared as a standby must not convert the accounts it receives
+to their own web groups (`wg-oN`, see `INSTGRP.md`): the source's tree lands
+there by sync, with no conversion pass of its own, and a promoted box would
+then carry conversions the source never made (or had refused, for an account
+whose sites share another account's files). So:
+
+- `prep-target` writes `/root/.standby.prep.cnf` on the target before its
+  first account create. `instgrp` reads it as a standby: the install's own
+  conversion, and every later Octopus pass there, leave the accounts
+  unconverted.
+- `init` writes it too, once its read-only gates have passed (the
+  `server_id`, patch-level and space gates among them, so a failback refused
+  there leaves the returning box's conversions as they were). It then brings
+  back to none every target account that carries its own web group (one an
+  operator created there by hand with `xoct create` on an armed box, or a
+  failback box's demoted account), or only a record or an intent of one (a
+  conversion killed before it made the group).
+- That revert is `instgrp webrevert <oN> --keep-enabled`, which writes no
+  opt-out and keeps a pin's `_WEB_GROUP=A`; `--force` only for an account
+  whose freeze is the relay record `prep-target` adopts. All of it happens
+  before the datadir swap, and a revert that does not finish refuses the
+  `init` there, naming the account. A refused `init` leaves the mark: the
+  box is still being prepared.
+- A successful `init` marks it committed. The mark goes with
+  `/root/.standby.cnf`: at cutover step 15, in `post-mig` (a leftover is
+  removed with an `ALRT`), in `restore-target`, and by the box's own standby
+  watchdog once a committed mark stands on a box that reads as promoted (no
+  marker, no replica, the database unlocked): a promotion by hand that skips
+  `post-mig`, or a mirror retired by removing its marker.
+- A preparation given up before `init` commits leaves the mark, and every
+  conversion there refused (`webrevert` excepted), until it is removed by
+  hand; the box's watchers report a mark that has stood for over three days
+  with no standby marker.
+
+At the promotion the accounts convert by the promoted box's own
+`_WEB_GROUP_ARM` and `_WEB_GROUP_PHASE_B`, gated as any first conversion:
+
+- the cutover's last step, after `phase=complete`, runs
+  `instgrp webconvert all` on the promoted box (`--phase-b` where it sets
+  `_WEB_GROUP_PHASE_B=YES`), and converts its master (`webconvert aegir`,
+  `--phase-b` for phase B) when this box's master runs its own web group;
+- `post-mig` runs `webconvert all` again on the box it runs on, which is the
+  only run after a promotion by hand, and names an unconverted master;
+- on a box that is not armed both print a NOTE and convert nothing. A
+  failure never parks the cutover: the next Octopus pass and the box's
+  watchers take what is left.
+
+Every sync (and the cutover's final one) also:
+
+- sets the `web_group` of each account's `server_master` alias on the
+  target, which the `.drush` leg copies from the source, to what the
+  target's writers give the account there (`www-data` while unconverted),
+  keeping the file's time, so the rewrite never decides which copy a later
+  `-u` leg keeps;
+- maps `wg-oN` on every leg: onto `www-data` when the source holds no web
+  group, intent or run of it as the legs begin, so files a conversion
+  starting meanwhile hands to `wg-oN` never land under the source's numeric
+  gid there;
+- mirrors the account's policy in its cnf merge, the opt-out
+  `_WEB_GROUP=NO` and the pin `_WEB_GROUP=A`, read as bash reads the line
+  (`export`, quotes, a trailing comment), a removal on the source in any
+  form included;
+- prints a `NOTE` for what does not travel, as `xoct transfer` does (see
+  [MIGRATE-XOCT.md](MIGRATE-XOCT.md)): a pin made without its cnf line, a
+  revert in progress, phase B onto a box with `_WEB_GROUP_PHASE_B` off, an
+  opt-out that reached an account already converted there by hand. On a
+  standby the command named runs "after its promotion"; a target that is not
+  armed is named as one where nothing ever converts.
+- compares the two boxes once per pass: the arm, `_WEB_GROUP_PHASE_B` and
+  the master's own web group, a `NOTE` for each that differs (a switch onto
+  a box that is not armed leaves every account unconverted for good).
+  `prep-target`, `verify` and `status` print the same comparison.
+
+The cutover's final sync prints the notes again, the moment a loss takes
+effect; an autosync pass prints them once a day.
 
 ### The target-silence gate (prep-target, init, cutover)
 
@@ -747,10 +881,18 @@ What `init` does:
    window — a standby is a working BOA box, with IDS and every watchdog
    live — and passivity comes from per-job gates on the marker in every
    local writer: the task queue and the Aegir dispatch it parks, the
-   night work, cache TRUNCATEs, Solr core management, binlog purge,
+   night work, cache TRUNCATEs, Solr core management, the agent pass's
+   refresh of the shared modules in `/data/all/000/modules`, its Let's
+   Encrypt work in each account, binlog purge,
    mysqlcheck repairs, cluster dumps, and the whole duplicity backup
    chain (`mybackup`, `multiback`, `backboa`, `duobackboa` exit quietly —
    the active owns the backup lineage).
+
+   The agents pass records its Let's Encrypt work for the release as done
+   only when the box was no standby before its account loop and after it,
+   so the first agents pass after promotion puts the release's Let's
+   Encrypt includes into the accounts' hostmaster platforms, which no sync
+   leg carries.
 
    On top of the gates, init locks
    the replica's database outright: the `xmass-standby-hold` block
@@ -891,7 +1033,7 @@ Syncs the following to the target on each run:
 
 | Data | Path(s) |
 |---|---|
-| Shared BOA data | `/data/all`, `/data/disk/all`, `/data/disk/arch`, `/data/disk/legacy` |
+| Shared BOA data | the shared store, `/data/disk/arch`, `/data/disk/legacy` (the store goes from where this box keeps it to where the target keeps it: see [The shared store](#the-shared-store-between-two-boxes)) |
 | Static web root | `/var/www/static` |
 | DNS zone data | `/etc/bind` |
 | Usage logs | `/var/log/boa/usage` |
@@ -908,7 +1050,22 @@ Syncs the following to the target on each run:
 | Shell credentials | `<oN>.ftp` shadow hash + `log/pass.txt` as a pair, the sub-account password store `/home/oN.ftp/users/`, and each sub-user's hash and `.ssh` (a sub-user absent on the target gets its `.ssh` staged at `/var/backups/migrate-subuser-ssh/<oN>.<name>/`, adopted and removed by `manage_ltd_users.sh` when it creates the user from `clients/`) |
 | Per-account config | `/root/.<oN>.octopus.cnf` (portable values merged into the target's copy), `static/control/{fpm,cli,multi-fpm}.info` and `log/{fpm,cli,email,option,cores,subscr}.txt` (forced, no `-u`) |
 | Suspension flag | `/data/conf/suspended/<oN>.pid` (mirrored, presence and absence) |
+| Mail hold and test-run records | `/data/conf/client_mail_hold.txt`, other boxes' test-run marks `/data/conf/xmass_test_run.*.txt`, and the `xoct` test-run records `/data/conf/xoct_admail.<oN>.txt` of the accounts the run carries (mirrored, presence and absence; see below the table) |
 | Out-of-root symlink content | Every synced tree is swept for symlinks whose target lives **outside** the synced trees (typically a secondary `/mnt` volume — per-account backup stores under `/data/disk/arch/sql` are the canonical case). Their content **materialises** on the target as real dirs/files: mirrored onto the target's own single mount when it has one and the store lands under `/data/disk`, de-referenced to a real dir/file on the target root otherwise. Space-gated per store/batch like everything else |
+
+**The mail hold and the test-run records travel with every live pass**
+(each `sync --live`, each `autosync` pass and the cutover's final pass), so
+a box promoted from the active, by a cutover or by hand, holds exactly the
+client mail the active held, and its `xoct` verbs keep to the same test
+runs. They are written only onto a box that carries the standby marker, and
+`post-mig` names what it finds on the promoted box.
+
+Two things on the target stay its own: this box's mark of its own test run
+there while this box's record names that target (a mirror built under
+`admail=`), and an account's received record where this box's record of
+the same account is a canary it sends away (the target is that canary's
+own). With no hold on the active, the target keeps its hold only while a
+test run is still recorded there after the pass.
 
 MySQL data is **not** rsynced — replication keeps it current continuously.
 
@@ -927,9 +1084,8 @@ and automated alike): `distro/`, `src/`, `static/` (everything under it but
 `static/control`: tenants build codebases anywhere there, and a removed one
 used to stay on the mirror for good; `static/files` is the store and prunes
 as its own leg), `arch`, `backups/`,
-`undo/`, the client toolchains, the Solr data trees and the shared
-`/data/all`, `/data/disk/all`, `/data/disk/legacy` and `/var/www/static`
-trees.
+`undo/`, the client toolchains, the Solr data trees, the shared store and
+the `/data/disk/legacy` and `/var/www/static` trees.
 
 Without this a standing mirror grows without bound, and it grows
 *nightly*: the per-account SQL dump stores under `arch`, each account's
@@ -1006,6 +1162,21 @@ The raise is leg-wide,
 because `--max-delete` is one counter per leg: a genuine loss elsewhere in
 the same leg, in the same pass, rides under it up to the budgeted amount.
 
+The nightly shared codebases cleanup (`_SHARED_CODEBASES_CLEANUP=YES`, see
+[CLEANUP.md](CLEANUP.md)) is budgeted the same way on the shared store leg.
+One night can move a codebase of more entries than the limit out of the store,
+whole, into the cleanup directory (`/var/backups/codebases-cleanup`, or
+`/data/disk/codebases-cleanup` when `/data/all` is root's link), under
+`data/all/<serial>/<codebase>`.
+
+That directory is the record the leg reads: a
+codebase there that the store no longer holds and that the target's store
+still holds as a real directory is budgeted for its entries on the target,
+never more than the moved copy holds (`prune: … was moved out of this box's
+store by the nightly cleanup`). A codebase the store lost with no such copy is
+not budgeted, nor is a copy that was put back into the store. The recovery
+copy is no leg: it stays on the box that moved it.
+
 A target that holds the sites under a **third**
 box name — a standing mirror re-pointed at the box its active was moved to —
 is deliberately not covered, because the sending side cannot tell a former
@@ -1025,9 +1196,12 @@ after an interrupted run it can be the only copy. A tree the refresh kept
 because it held tenant files, and the tarball records in `.boa-tarball/`,
 travel like any other file.
 
-A mirror-side *rewrite* of a file that still exists on the source is still
-never undone — `-u` keeps the newer copy, and only the accretion of files the
-source no longer has is what deletion addresses.
+On the other data legs a mirror-side *rewrite* of a file that still exists
+on the source is still never undone — `-u` keeps the newer copy, and only the
+accretion of files the source no longer has is what deletion addresses. The
+shared store's leg carries no `-u`: the active is the only writer of the
+store (a standby fetches no shared module and refuses any Octopus run), so its
+bytes win whatever the mtimes.
 
 Optional per-account config directories (`pre.d`, `post.d`, `subdir.d`,
 `platform.d`, `config/ssl.d`, `config/server_master/ssl.d`, `tools/le`) are
@@ -1042,6 +1216,42 @@ record on the documented `reset-phase syncing` recovery path), and `pass.txt`
 rides the credential carry instead so it can never advertise a password the
 target's `/etc/shadow` does not hold. `log/domain.txt` is synced with `-u` on
 purpose: the target's own FQDN stamp is what `renameaegirhost` wants.
+
+### The shared store between two boxes
+
+The platforms built on shared code link into `/data/all/<serial>/…`. BOA keeps
+that store in one of two ways, and a pair's two boxes need not agree: a real
+`/data/all`, or a link of root's at `/data/all` that leads to `/data/disk/all`
+(the layout the Octopus store check's own repair produces).
+
+Each pass reads where each box keeps it, by the rule the Octopus store check
+uses, and sends the store from where this box keeps it to where the target
+keeps it, so the platform links resolve on either layout. A target with
+nothing at `/data/all` gets the store there, where the platforms link.
+
+- A `/data/all` that is any other link, or not a directory, on either box: a
+  `DENY`, and the store is not sent. Octopus stops on such a link too and
+  names its repair.
+- A target whose layout cannot be read (the connection failed): a `DENY`.
+- A real `/data/disk/all` that is not the sending box's store goes to the
+  target's `/data/disk/all` by that name, as before, unless the target keeps
+  its store there. Then it is not sent: with an alert when no platform on the
+  sending box resolves through it, with a `DENY` when one does.
+- A target that keeps its store in a real `/data/all` and also holds a real
+  `/data/disk/all` from an earlier sync is named in the pass log and left as
+  it is: remove it on the target to free its space.
+- `verify` names as a `DENY` the platform links into the store that dangle on
+  the target and not on the source: sites whose shared code is not there.
+
+The sync's `DENY`s above make a dry run NOT CLEAN, and stop a live `sync`
+after its legs and a `cutover` before the write freeze, as a store that
+cannot be placed on the target does.
+
+With no `-u` on the store leg, a store file whose mtime differs between the
+two boxes is sent. A file an account changed under an earlier release, which
+stayed on the mirror while the active's Octopus pass rebuilt its own store
+from the archives, takes the active's bytes on the next pass: no separate
+re-seed is needed.
 
 ### Out-of-root symlinks — what materialises and what stays a link
 
@@ -1111,6 +1321,13 @@ arms a cadence that repeats the exact `sync --live` leg set unattended, so
 the mirror's files stay minutes behind its database instead of days. It is
 one-way and driven from the **active** side only, by design: nothing moves a
 mirror out of sync except the active server.
+
+A mirror is built with the same verbs as a move. A fresh box carries the
+site-less `o1` its own install made: check it there by hand, then name it
+to `prep-target` with `--adopt-siteless=o1`, beside `--fix-solr` (a stock
+install often runs a Solr version the active does not use, which
+`prep-target` refuses until the target mirrors the active's used set);
+`init` takes `--proxy-mode=ha-switch`.
 
 No daemon and no inotify
 machinery is involved — the driver is the standard per-minute monitor fan-out
@@ -1271,16 +1488,22 @@ xmass cutover target-ip --live admail=you@example.com                      # a t
 With `admail=<address>` every `xoct proxy` the cutover runs takes the same
 token: each account's completion notice goes to that address alone, not to the
 client and with no operator copy, and is logged as a test send (see
-[Test and canary runs](MIGRATE-XOCT.md#test-and-canary-runs-admail)). A
-cutover of accounts `prep-target` prepared under `admail=` refuses to start
+[Test and canary runs](MIGRATE-XOCT.md#test-and-canary-runs-admail)).
+
+A cutover of accounts `prep-target` prepared under `admail=` refuses to start
 without it, naming the recorded address, so one forgotten token cannot mail
 the clients. Before the cutover, a real move of those accounts starts again
 with `prep-target` without `admail=`, which removes the record, the mark
-and the target's hold.
+and the target's hold; a standing mirror built so becomes a real pair with
+`xmass go-live` (below). A cutover from a box that holds its own clients'
+mail refuses without `admail=` as `prep-target` does.
 
-It refuses the same way while an `xoct` canary is still in its test run on
-the source, and while the target holds its clients' mail (see
-`prep-target`); a canary proxied before the cutover is left as it is. The
+An `xoct` canary still in its test run on the source is handled as under
+`prep-target`: one the source sends away is converted with its own
+recorded address under `--proxy-mode=ha-switch`, and refuses any other
+cutover; one the source received refuses every cutover. A real cutover
+also refuses while the target holds its clients' mail (see `prep-target`);
+a canary proxied to its own target before the cutover is left as it is. The
 installed `xoct` must take the token, or the run refuses. `admail=` is
 refused on the other verbs.
 
@@ -1313,6 +1536,24 @@ finishes. A re-run is a no-op. An `xoct` canary in a test run of its own is
 left to its own `xoct go-live`, and an account that came to this box after
 the cutover is no part of the run. Before the cutover is complete, `go-live`
 refuses and names `prep-target` without `admail=` instead.
+
+**A mirror built as a test run** (`admail=` on `prep-target`, the pair
+standing at phase `syncing`, the target carrying this box's standby marker)
+becomes a real pair with the same verb; `prep-target` without the token
+cannot do it, since it refuses a standby target. Nothing has moved, so no
+client is mailed. The target's mark goes, its hold when it holds the run's
+address and no other test run is recorded there, and each account's
+`_SEND_UPGRADE_EMAIL` there takes this box's value again (a `NO` also
+takes its one-pass marker). Last the record here goes.
+
+From then on every `xoct` verb here mails the clients again, and a later
+switch mails them. A target that no longer carries this box's standby
+marker (promoted by hand) refuses; `post-mig` there names the mark and the
+hold to remove. `go-live` toward a target the record does not name
+refuses too. When the old active of such a pair comes back and a failback
+promotes it again, that cutover sets its own record of the run aside
+(`xmass_admail.txt.superseded-by-promotion`): the run ended when the mirror
+took over.
 
 Without `--live`, `cutover` does a plan-only pass over every account's files store and
 stops **before** any destructive step (no MySQL read-lock, no downtime). Run it once to
@@ -1373,13 +1614,13 @@ first change to the source):
 | Step 4 | Wait for replica lag = 0 (polls every 15 s; ceiling `_XMASS_SYNC_MAX_WAIT`, default 7200 s; on timeout reports whether the lag is closing or growing), then confirm it three times 10 s apart: a returning lag re-enters the wait and spends the same budget, so only a spent budget or an unreadable lag ends the verb here; the post-freeze triple check is strict and aborts on any non-zero reading |
 | Step 5 | Final rsync pass of `static/files` only, **before** the write freeze (the web block already stopped file writes) |
 | Step 5.5 | **Gate:** re-check both of the above, then persist `phase=cutover` |
-| Step 6 | Append the **advisory** read-only flag to `/data/conf/global/global-extra.inc` (previous file kept as `.bak`), then `FLUSH TABLES` to push buffers. The flag is belt-and-braces only (box-wide, ignored by most site shapes, dropped by the next BOA system pass) and the cutover **continues with a warning if it cannot be written**: the write barrier is the step-1 503 gate plus the parked cron and runners. A session read lock is not relied on — it cannot survive a disconnect |
+| Step 6 | Append the **advisory** read-only flag to `/data/conf/global/global-extra.inc` (previous file kept as `.bak`), then `FLUSH TABLES` to push buffers. The flag is belt-and-braces only (box-wide, ignored by most site shapes, dropped by the next BOA system pass) and the cutover **continues with a warning if it cannot be written**: the write barrier is the step-1 503 gate plus the parked cron and runners. A session read lock is not relied on — it cannot survive a disconnect. Before the lag checks the **event scheduler** is turned off on the source when it runs (recorded in `/run/boa_xmass_events_off.pid`; every abort before the promotion, the pre-freeze unwind and `reset-phase syncing` start it again; a resumed tail turns it off again after a reboot) |
 | Step 7 | Triple-check lag = 0 at 10 s intervals. On any failed check: **thaw the write freeze** and abort — the target is not promoted at this point, so the source is handed back writable |
 | Step 8 | `STOP SLAVE; RESET SLAVE ALL` on target → target MySQL is now standalone. On failure the exit code alone cannot say whether the promotion committed (transport can fail after mysql ran), so the tool **reads the target's replica state back** and picks one of three exits: still a replica → **thaw**, abort (the source is the only production box); replica config gone → the promotion committed → **park resumably** at `phase=rename-failed`; state unreadable → the source stays 503-gated with the flag in place (lifting either could silently lose writes) and the message spells out how to determine the state and which recovery to run |
 | Step 9 | Vacant: no lock is held on the source, so nothing is released. The write freeze stays — the source serves through the proxy from here |
 | Step 10 | Re-transfer `/root/.my.pass.txt` and `/root/.my.cnf` to target (belt-and-braces) |
 | Step 11 | Drop replication user `xmass_repl` from source. Runs at the head of the cutover tail (idempotent), so a park upstream of it — the step-8 committed-promotion park — still gets the grant dropped when the resumed run completes |
-| Step 11.5 | Unlock the promoted target's database — on EVERY entry into the cutover tail, resumes included, since every step after it writes the target DB. `SET GLOBAL super_read_only=OFF` plus `read_only=OFF`, with the runtime readback verified (both variables) BEFORE the `xmass-standby-hold` block is stripped from `xmass_gtid.cnf`; a failed unlock **parks resumably at `phase=rename-failed`** rather than marching the renames into a read-only DB, and with mysql unreachable the cnf block deliberately survives as the watchdog's retry key. With the unlock proven and no replica config left, the step writes the promoted latch (`/var/log/boa/.standby_promoted.pid`) itself: the target's web hold follows its database, and step 12 must not wait for a watchdog pass to read the same thing. Step 15 removes the latch with the marker |
+| Step 11.5 | Unlock the promoted target's database — on EVERY entry into the cutover tail, resumes included, since every step after it writes the target DB. `SET GLOBAL super_read_only=OFF` plus `read_only=OFF`, with the runtime readback verified (both variables) BEFORE the `xmass-standby-hold` block is stripped from `xmass_gtid.cnf`; a failed unlock **parks resumably at `phase=rename-failed`** rather than marching the renames into a read-only DB, and with mysql unreachable the cnf block deliberately survives as the watchdog's retry key. With the unlock proven and no replica config left, the step writes the promoted latch (`/var/log/boa/.standby_promoted.pid`) itself: the target's web hold follows its database, and step 12 must not wait for a watchdog pass to read the same thing. Step 15 removes the latch with the marker. Then the **events**: every event the active created after the mirror's snapshot arrived replica-side disabled (`REPLICA_SIDE_DISABLED`, `SLAVESIDE_DISABLED` on older servers), and a promotion leaves it so; MySQL runs it again only after `ALTER EVENT ... ENABLE`, which without a `DEFINER` would make root its definer. The step enables each with its own definer; the statement is binlogged, so the next mirror records the event as disabled again. One that cannot be enabled is named with the hand repair, and the sites serve on |
 | Step 12 | Prove the target's web layer, then start nginx there: the `BOA_STANDBY_WEB` firewall hold is removed first (both address families), then `nginx -t` on the target (an invalid config **refuses the conversion**, printing the tail of the test output), then require a real HTTP answer on the target's port 80 — on loopback AND externally from the source (the path client traffic takes after the DNS flip; a browser UA, because curl's default lands in BOA's own crawler map, and HTTPS too when the target has a public 443 listener), since the loopback curl cannot see an INPUT-chain firewall drop. This proof runs at the **head of the cutover tail**, so every entry re-runs it — the normal flow and each resume of a parked cutover (nothing later in the tail gates on the web layer: the step-13 serve-wait measures and reports, and nothing else can *start* a stopped nginx). Either refusal **parks resumably at `phase=rename-failed`** and prints the full source-restore recipe (write-freeze guidance included): the target stays promoted, the source stays 503-gated and frozen, and the SQL watchdogs stay paused. Fix nginx on the target, then re-run `xmass cutover target-ip --live` — the resume re-runs this proof and starts nginx itself |
 | Step 12.5 | Rewire panel DB access on target per Ægir root (rediscover live hostmaster DB, reset its user's password, rewrite the panel dir's credentials — the datadir swap killed the fresh-install panel DBs). When the source's panel platform number diverges from the target's (an aged source vs a fresh target — the normal production shape), the step adopts the target's code-bearing panel platform and repoints the hostmaster platform row in the live DB; the DB persist is load-bearing because the rename queue's hostmaster verify regenerates the alias FROM the DB, so an alias-only correction is undone and the panel 404s from a hollow platform path |
 | Steps 12.85–12.94 | **The relay starts here, BEFORE the renames.** The promoted target already serves every client-domain site (nothing on their request path carries the box hostname), while the renames cost minutes per Ægir root, in series; relaying first takes them out of the visitors' window, which therefore no longer grows with the number of accounts. In order: clear the advisory read-only flag on the target (12.85); re-arm the target's SQL watchdog, the source's stays paused to the end (12.86); **prove the standby marker is still on the target and its master dispatch crontab parked** (12.87) — the marker is the one thing keeping the task queue from running under the old server identity until step 15, and it is proven again before every Ægir root in step 13; wire the migration-proxy trust on the target, **fail-closed and proven** (the persisted peer list, both `csf.allow` lines, `csf.ignore`, and a real fetch of the target on port 80) (12.89); carry the inbound proxies' reach (12.895, the old step 15.95); **fail out every task row that travelled with the panels**, by current revision, and re-count with the same predicate — queued rows and the rows the source was running when its panel stopped alike (those travel as processing, and nothing runs them on the target; a resume after a step-13 park that meets a task the rename started on the target leaves it to finish and refuses, naming the runner, until it has) — because the rename forces the queue several times per root and must never run a replicated verify, migrate, clone or restore against sites already serving visitors; site auto-import stays off for the window (12.90); save `_XMASS_SOURCE_PROXIED=YES` with the time to the state file **before** the first account is converted, so a killed run cannot hide that the target has taken live writes (12.91); `xoct proxy oN target-ip --defer-host-named=old-box-hostname` per account (12.92, **end of the client-domain outage**): the client-domain sites are relayed, while the sites named under the old box hostname are *deferred* — they stay local, held on 503 by the per-host gate `static/control/http-off-host.pid`, because the new box has not renamed them yet; the completion mail goes out here; master panel into maintenance mode (12.93); **cron back on the source** under BOA's heavy-tasks pause, because this box is now the only front door and must not sit without its web watchdog, IDS, real-client refresh and certificate mirror while the renames run (12.94). Any refusal up to 12.90 parks at `phase=rename-failed`: with the source still gated on a pass that has not yet recorded the relay (12.91), and saying the source relays on a resume after one that has — the marker, trust and fail-out checks run again on every pass until step 15. Skipped only on an estate where `_THIS_DB_HOST` is not local on either box: there every site's settings name the old box as database host until the rename's verifies regenerate them, so the rename-first order (steps 15.9–16.5 below) still applies, and the DRY plan says so |
@@ -1496,6 +1737,46 @@ unconditional teardown (the permanent marker is honoured).
 It also removes a stale parked copy (`.<name>.off`) of any runner a refresh
 had already brought back, and stops the box serving a root key it published.
 
+It **names what holds the client mail here**: the mail hold, other boxes'
+test-run marks, the `xoct` test-run records (a canary received, or one this
+box sends away) and this box's own record of a test run. A mirror built
+under `admail=` and promoted by hand keeps its old active's mark and the
+hold, and no `go-live` can end that run any more: `post-mig` prints the
+lines that remove them. It never removes them itself, since on a test box
+the hold is wanted.
+
+After a **promotion by hand** it also runs the promotion steps the cutover
+runs on its target. It knows that path by the standby marker still there
+when it starts (the checklist runs it right after `RESET REPLICA ALL`; a
+planned switch removes the marker itself), and keeps a record of it in
+`/var/log/boa/.xmass_hand_promoted.pid` until a later run finds nothing
+left to do.
+
+First, before the standby marker goes, it clears what an earlier demotion
+of this box toward the active it mirrored (the marker's first line names
+it) left in that pair's accounts: its own relay records, `proxied.pid` and
+the export latches, a parked dispatcher, proxy vhosts. It holds back every
+upgrade armed in an account it serves, removing none. An account it
+relays, or is moving, to another box is left as it is. Then, once the
+database takes writes, it rewires each control panel to its live panel
+database.
+
+Without these the panels answer 500, `pre-mig` refuses them, and an account
+the box relayed earlier refuses every `xoct create`. Run it right after
+`RESET REPLICA ALL` and again once `renameaegirhost` has run for every root:
+the second run arms the held-back upgrades, which would otherwise move a
+panel under the old hostname. After a planned switch or a failback none of
+this runs: the cutover did it, and the upgrades it armed again at its end
+stay queued behind the BOA run lock. On a finalized proxy or a box still
+configured as a replica nothing runs.
+
+It **enables the events a replica kept disabled**, each with its own
+definer, as cutover step 11.5 does: after a promotion by hand this is the
+step that does it. A database still read-only is waited for up to 75
+seconds (the SQL watchdog unlocks a promoted box within about a minute of
+the marker going); after that `post-mig` says to re-run it. It also says
+when the box holds enabled events but its `event_scheduler` is not `ON`.
+
 It also **rebuilds the pinned PHP pools**, which is not cosmetic. A
 migrated account arrives carrying the source's per-release FPM markers
 (`static/control/.multi-fpm.<tree>.<xSrl>.pid` and
@@ -1586,6 +1867,7 @@ gtid_mode                = ON
 enforce_gtid_consistency = ON
 log_slave_updates        = ON
 binlog_format            = ROW
+log_bin_trust_function_creators = 1
 expire_logs_days         = 7          # 5.7 only; 8.0+ uses binlog_expire_logs_seconds = 604800 (expire_logs_days was removed in 8.4)
 log_bin                  = /var/lib/mysql/mysql-bin  # only if binlog not already on
 ```
@@ -1595,6 +1877,30 @@ nginx and PHP-FPM gracefully before stopping MySQL, then starts them again).
 
 If GTID is already enabled by BOA default configuration the existing settings
 are left untouched.
+
+**`log_bin_trust_function_creators = 1`** goes wherever xmass writes
+`binlog_format = ROW`, in both servers' `xmass_gtid.cnf`, above the
+target's hold block (every promotion strips that block by position). With
+the binary log on, a site's own database login can create its triggers and
+functions only with this setting (MySQL refuses with ERROR 1419), and a
+replica's applier stops on a function its source accepted under it (ERROR
+1418). The side effect is accepted: on these boxes a non-deterministic
+function loads instead of failing.
+
+The two ends of a pair take the setting in one order, the mirror first: a
+mirror at 0 behind an active at 1 stops replicating on the first such
+function a site creates. `init` writes the line into both files and then
+sets the running value on the target before the source. Every live sync
+pass (`sync --live`, each `autosync` pass, the cutover's final pass) does
+the same for a pair built before the line existed: it adds the line and
+sets the value on the mirror, and on this box only once the mirror reads
+1, and only while no replica but the mirror reads this box's binary log
+(an old mirror still replicating during a rebuild keeps it as it is). A pass
+that cannot set the mirror says so and leaves this box as it is; DRY
+reports. The SQL watchdog (`mysql.sh`) adds the line and the value by
+itself on a standby, and on a box no replica reads that is not the active
+of a pair in progress; a conf that already carries the setting is left as
+it is, whatever its value.
 
 Right before the snapshot, `xmass init` also makes sure the source has executed
 at least one GTID transaction. On an idle source whose GTID and binary log the

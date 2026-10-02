@@ -173,6 +173,17 @@ Nothing is deleted, so recovery is just moving the item back from its backup or
 - shared codebases — `/var/backups/codebases-cleanup/…` (or `/data/disk/codebases-cleanup/…` when `/data/all` is a symlink to attached storage)
 - platform aliases — the account's `undo/` dir, or `/var/aegir/undo/` for the Hostmaster instance
 
+On a standing `xmass` pair the nightly runs on the active only, and its
+recovery copies stay on the box that moved them: no sync leg carries the
+cleanup directories, so after a switch a codebase moved before it is
+recovered from the old active.
+
+The mirror's copy of a moved shared codebase goes with the next sync, which
+budgets those deletions out of its delete guard by the moved copy's entries
+while that copy is still in the cleanup directory (see
+[MIGRATE-XMASS.md](MIGRATE-XMASS.md)), so a large codebase does not stop the
+pass.
+
 See also [PLATFORMS.md](PLATFORMS.md) for the Octopus platform layout,
 [MIGRATE-XOCT.md](MIGRATE-XOCT.md) for account migration,
 [SQLCLEAN.md](SQLCLEAN.md) for the database-side orphan cleanup counterpart, and

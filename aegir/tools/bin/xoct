@@ -164,6 +164,128 @@ _web_group_on_target() {
   esac
 }
 
+_web_group_policy() {
+  # The account's web-group policy as bash reads its cnf, the file $1
+  # (/root/.<account>.octopus.cnf): the last _WEB_GROUP assignment, with
+  # export, quotes or a trailing comment. NO (opted out of the conversion)
+  # or A (pinned at phase A) is printed; any other value, or none, prints
+  # nothing. Verbatim in instgrp, xoct, xcopy and xmass: the gates, the
+  # notes and the carry read the line the same way.
+  local _l
+  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${1}" 2> /dev/null | tail -n 1 \
+    | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=(NO|\"NO\"|'NO'|A|\"A\"|'A')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
+    | tr -d "\"'")
+  case "${_l}" in
+    NO|A) printf '%s\n' "${_l}" ;;
+  esac
+  return 0
+}
+
+# The web-group facts of the account $1 on this box, one line for the
+# helper below: "XMWF:<state>:<phase B>:<policy>:<armed>:<standby>", the
+# state as _web_group_state prints it; YES when /root/.barracuda.cnf sets
+# _WEB_GROUP_PHASE_B=YES (NO otherwise); the account's _WEB_GROUP policy
+# (NO, A, or - for none); YES when the box carries the arm stamp a
+# barracuda pass writes while _WEB_GROUP_ARM=YES (NO otherwise: nothing
+# ever converts there); YES on a standby or a box being prepared as one
+# (nothing converts there until its promotion). Sent to the target, never
+# run here.
+# shellcheck disable=SC2329
+_web_group_facts_here() {
+  local _s _b=NO _p _r=NO _sb=NO
+  _s=$(_web_group_state "${1}")
+  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=[\"']?YES" /root/.barracuda.cnf 2> /dev/null && _b=YES
+  _p=$(_web_group_policy "/root/.${1}.octopus.cnf")
+  [ -s /var/log/boa/instgrp-web-arm.ready.txt ] && _r=YES
+  { [ -e /root/.standby.cnf ] || [ -e /root/.standby.prep.cnf ]; } && _sb=YES
+  echo "XMWF:${_s%% *}:${_b}:${_p:--}:${_r}:${_sb}"
+}
+
+# The facts above for the account $1 on the target $2, asked of the target
+# itself: "<state>:<phase B>:<policy>:<armed>:<standby>". Prints nothing and
+# returns 1 when the target cannot be asked. Verbatim in xoct, xcopy and
+# xmass.
+_web_group_facts_on_target() {
+  local _a="${1}" _h="${2}" _o
+  case "${_a}" in ""|*[!a-z0-9-]*) return 1 ;; esac
+  [ -n "${_h}" ] || return 1
+  _o=$( { declare -f _web_group_state _web_group_policy _web_group_facts_here
+    printf '%s\n' "_web_group_facts_here '${_a}'"; } \
+    | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" "bash -s" 2> /dev/null \
+    | grep -m1 -x -E 'XMWF:(none|foreign|held|converted|phaseb):(YES|NO):(NO|A|-):(YES|NO):(YES|NO)')
+  [ -n "${_o}" ] || return 1
+  echo "${_o#XMWF:}"
+}
+
+# What a migration does not carry of the account's web-group state, told
+# when the move takes effect: a NOTE each, never a refusal. $1 the account
+# here, $2 the account on the target $3; $4 "cnf" for a tool with no cnf
+# merge (xcopy), whose policy (_WEB_GROUP=NO or A) is named whenever the
+# target's cnf lacks it; xoct's and xmass's merges carry it. Read here: the
+# account's web-group state, its intent (a --phase-a pin, a revert in
+# progress) and its policy; asked of the target: the facts above. A target
+# that is not armed never converts; a standby converts only after its
+# promotion. Verbatim in xoct, xcopy and xmass.
+_wg_migration_notes() {
+  local _a="${1}" _d="${2}" _h="${3}" _how="${4:-state}" _s _i="" _p _f _t _ts _tb _tp _ta _tsb
+  local _when="" _ipin=NO
+  _s=$(_web_group_state "${_a}" | cut -d' ' -f1)
+  _f="/var/log/boa/instgrp-web.${_a}.txt"
+  if [ -f "${_f}" ] && [ ! -L "${_f}" ] && [ "$(stat -c %u -- "${_f}" 2> /dev/null)" = "0" ]; then
+    _i=$(timeout 10 dd if="${_f}" iflag=nofollow,nonblock bs=4096 count=1 status=none 2> /dev/null | head -n 1)
+  fi
+  case "${_i}" in
+    target=*) ;;
+    *) _i="" ;;
+  esac
+  _p=$(_web_group_policy "/root/.${_a}.octopus.cnf")
+  [ "${_s}" = "none" ] && [ -z "${_i}" ] && [ -z "${_p}" ] && return 0
+  if ! _t=$(_web_group_facts_on_target "${_d}" "${_h}"); then
+    echo "NOTE: the web-group state of ${_d} on ${_h} could not be read; run 'instgrp webstatus ${_d}' there"
+    return 0
+  fi
+  IFS=: read -r _ts _tb _tp _ta _tsb <<< "${_t}"
+  [ "${_tsb}" = "YES" ] && _when=" after its promotion"
+  case "${_s}:${_ts}" in
+    converted:none|converted:held|converted:foreign|phaseb:none|phaseb:held|phaseb:foreign)
+      if [ "${_ta}" != "YES" ]; then
+        echo "NOTE: ${_a} uses its own web group here and ${_d} on ${_h} does not, and ${_h} is not armed for the web group (no _WEB_GROUP_ARM=YES stamp): it never converts there, its web paths stay in www-data until that box is armed"
+      else
+        echo "NOTE: ${_a} uses its own web group here and ${_d} on ${_h} does not: its web paths are in www-data there until that box converts it${_when}, by its own policy"
+      fi
+      ;;
+  esac
+  case " ${_i} " in
+    *" pin=phase-a "*) _ipin=YES ;;
+  esac
+  if [ "${_ipin}" = "YES" ] && [ "${_p}" != "A" ]; then
+    echo "NOTE: ${_a} is pinned at phase A here without _WEB_GROUP=A in /root/.${_a}.octopus.cnf, so the pin does not travel: run 'instgrp webconvert ${_a} --phase-a' here, which writes it"
+  elif [ "${_p}" = "A" ] && [ "${_how}" = "cnf" ] && [ "${_tp}" != "A" ]; then
+    echo "NOTE: ${_a} is pinned at phase A here (_WEB_GROUP=A) and /root/.${_d}.octopus.cnf on ${_h} does not say so: run 'instgrp webconvert ${_d} --phase-a' on ${_h}${_when}"
+  fi
+  if [ "${_p}" = "A" ] && [ "${_ts}" = "phaseb" ]; then
+    echo "NOTE: ${_a} is pinned at phase A here and ${_d} on ${_h} is at phase B: run 'instgrp webconvert ${_d} --phase-a' on ${_h}${_when}"
+  fi
+  case "${_i}" in
+    "target=none "*)
+      echo "NOTE: a web-group revert of ${_a} is in progress here and does not travel: ${_d} converts on ${_h}${_when} by that box's policy unless its opt-out went with it; run 'instgrp webrevert ${_d}' on ${_h}${_when} to revert it there"
+      ;;
+  esac
+  if [ "${_s}" = "phaseb" ] && [ "${_ta}" = "YES" ] && [ "${_tb}" != "YES" ] && [ "${_ts}" != "phaseb" ] \
+    && [ "${_p}" != "A" ]; then
+    echo "NOTE: ${_a} is at phase B here and ${_h} has _WEB_GROUP_PHASE_B off: ${_d} converts there to phase A only; run 'instgrp webconvert ${_d} --phase-b' on ${_h}${_when}"
+  fi
+  if [ "${_p}" = "NO" ]; then
+    if [ "${_how}" = "cnf" ]; then
+      [ "${_tp}" = "NO" ] \
+        || echo "NOTE: ${_a} is opted out here (_WEB_GROUP=NO) and /root/.${_d}.octopus.cnf on ${_h} does not say so: run 'instgrp webrevert ${_d}' on ${_h}, which writes the opt-out there"
+    elif [ "${_ts}" != "none" ]; then
+      echo "NOTE: ${_a} is opted out here (_WEB_GROUP=NO), and ${_d} on ${_h} took its web group before the opt-out reached it: run 'instgrp webrevert ${_d}' on ${_h}"
+    fi
+  fi
+  return 0
+}
+
 ###
 ### Avoid too many questions
 ###
@@ -440,13 +562,16 @@ _mig_log() {
 ### The uniform re-notify rule keys on this, which is why mail lines are only
 ### ever written after a confirmed send. With peers after $1 (the source
 ### role), only a line naming a peer of this box's moves counts
-### (_xoct_source_peers); without them (the target role) every line.
+### (_xoct_source_peers), and never a notice this box sent as the target of
+### the move that brought the account here (change-inbound, retire-inbound:
+### it names the box the account came from, which a move back to that box
+### makes a peer again); without them (the target role) every line.
 _mig_last_mail() {
   local _l _r="$1" _p=""
   shift
   [ "$#" -gt 0 ] && _p=" $(_xoct_source_peers "${_r}" "$@") "
   _l="$(_xoct_read_in "${_r}/${_MIG_LOG_NAME%/*}" "${_MIG_LOG_NAME##*/}" \
-    | grep '|mail|' | awk -F'|' -v n="$#" -v p="${_p}" 'n == 0 || index(p, " " $7 " ")' | tail -1)"
+    | grep '|mail|' | awk -F'|' -v n="$#" -v p="${_p}" 'n == 0 || ($4 !~ /-inbound$/ && index(p, " " $7 " "))' | tail -1)"
   [ -n "${_l}" ] || return 0
   printf '%s' "${_l}" | awk -F'|' '{ print $5 "|" $6 }'
 }
@@ -488,7 +613,8 @@ _xoct_proxied_before_log() {
 ### completion: a real (mail, never testmail) completion line in its log
 ### naming a peer of this box's moves when peers follow $1
 ### (_xoct_source_peers; any line without them), or a conversion from before
-### the log recorded one.
+### the log recorded one. A notice sent as the target is never such a line:
+### it is logged change-inbound or retire-inbound.
 _xoct_told_complete() {
   local _n _r="$1" _p=""
   shift
@@ -766,6 +892,20 @@ _xoct_admail_gate() {
   fi
   _xoct_xmass_rec_gate
 }
+### Whether this run is xmass installing $1, a canary this box sends away in
+### a test run still open, on its own target: an xmass run (_XOCT_XMASS_RUN)
+### whose admail= is the address the canary's own record here holds, with
+### the source line. The canary's export latch (exported.pid) belongs to its
+### own move to its canary target; it does not stop the whole box from
+### preparing a standing mirror around it.
+_xoct_canary_carried() {
+  local _f
+  [ "${_XOCT_XMASS_RUN}" = "YES" ] && [ -n "${_XOCT_ADMAIL}" ] || return 1
+  _f="$(_xoct_admail_rec "$1")"
+  [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 1
+  grep -qxF "${_XOCT_ADMAIL_SRC_LINE}" "${_f}" 2> /dev/null || return 1
+  [ "$(_xoct_first_line "${_f}")" = "${_XOCT_ADMAIL}" ]
+}
 ### The box-wide half of it: without admail=, refuses (status 1, the way out
 ### named) while xmass's record of a test run of the whole box is here, or
 ### its mark of one that moves a box here (_XOCT_XMASS_MARKS). The sweep
@@ -781,8 +921,9 @@ _xoct_xmass_rec_gate() {
     _rec="$(_xoct_first_line "${_XOCT_XMASS_REC}")"
     echo "ERROR: this box is in an xmass test run: admail=${_rec} is recorded in ${_XOCT_XMASS_REC}"
     echo "ERROR: pass admail=${_rec} to this verb; the test run ends with 'xmass go-live <target-ip>'"
-    echo "ERROR: once its cutover is done, or before it with 'xmass prep-target <target-ip>' without"
-    echo "ERROR: admail= (a real move of the box; it removes the record)"
+    echo "ERROR: once its cutover is done or while that target stands as this box's mirror (a pair"
+    echo "ERROR: built as a test run); before its init a real move of the box starts again with"
+    echo "ERROR: 'xmass prep-target <target-ip>' without admail= (it removes the record)"
     return 1
   fi
   [ "${_XOCT_GO_LIVE}" = "YES" ] && return 0
@@ -791,7 +932,8 @@ _xoct_xmass_rec_gate() {
     _rec="$(_xoct_first_line "${_m}")"
     echo "ERROR: this box is the target of an xmass test run: admail=${_rec} is recorded in ${_m}"
     echo "ERROR: pass admail=${_rec} to this verb, or end that test run on its source box ('xmass"
-    echo "ERROR: go-live <this-box-ip>' once its cutover is done, 'xmass prep-target' without admail= before)"
+    echo "ERROR: go-live <this-box-ip>' once its cutover is done or while this box stands as its"
+    echo "ERROR: mirror, 'xmass prep-target' without admail= before its init)"
     return 1
   done
   return 0
@@ -869,8 +1011,8 @@ _xoct_hold_gate() {
   echo "ERROR: ${_h:-this box} holds its clients' mail for ${_v} (${_XOCT_HOLD_FILE}, put by a test run):"
   echo "ERROR: a real run (no admail=) would leave the moved client's mail held there. End the"
   echo "ERROR: test run first ('xoct go-live' after a canary; for a whole box 'xmass go-live' after"
-  echo "ERROR: its cutover, 'xmass prep-target' without admail= before it), or remove the file by"
-  echo "ERROR: hand once no test run needs it"
+  echo "ERROR: its cutover or on the mirror it built, 'xmass prep-target' without admail= before its"
+  echo "ERROR: init), or remove the file by hand once no test run needs it"
   return 1
 }
 ### The first Octopus pass after a move that would mail the account's
@@ -3733,6 +3875,17 @@ _xoct_push_target_octopus_cnf() {
       && mv -f "${_lTmp}.admail" "${_lTmp}" \
       && echo '_SEND_UPGRADE_EMAIL=NO' >> "${_lTmp}"
   fi
+  # The web-group policy mirrors the source both ways, read as bash reads
+  # it: _WEB_GROUP=NO (the opt-out) or _WEB_GROUP=A (the --phase-a pin)
+  # travels as a plain line, and a source with neither removes a stale one
+  # on the target, in any form (the merge otherwise keeps every line the
+  # source lacks).
+  _v=$(_web_group_policy "${_sCnf}")
+  if [ -n "${_v}" ]; then
+    printf '%s\n' "_WEB_GROUP=${_v}" >> "${_lTmp}"
+  else
+    printf '%s\n' "-_WEB_GROUP" >> "${_lTmp}"
+  fi
   {
     echo '#!/bin/bash'
     echo "_cnf=\"${_dCnf}\""
@@ -3743,6 +3896,12 @@ _xoct_push_target_octopus_cnf() {
 [ -e "${_mrg}" ] || exit 1
 while IFS= read -r _l; do
   case "${_l}" in
+    -_WEB_GROUP|_WEB_GROUP=*)
+      grep -vE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=" "${_cnf}" > "${_cnf}.mrgnew" 2>/dev/null
+      [ "${_l}" = "-_WEB_GROUP" ] || printf '%s\n' "${_l}" >> "${_cnf}.mrgnew"
+      mv -f "${_cnf}.mrgnew" "${_cnf}"
+      continue
+      ;;
     _*=*) : ;;
     *) continue ;;
   esac
@@ -4285,6 +4444,64 @@ _xoct_import_precheck() {
   echo "ERROR: import for ${_oct}: ${_why}"
   echo "ERROR: nothing was imported and nothing on this box was changed; fix the cause and re-run"
   return 1
+}
+
+# The source's web-group policy, seeded into the new account's cnf on the
+# target before its install, so the arm that install runs (INIT) leaves the
+# account alone there (_WEB_GROUP=NO, the opt-out) or takes it to phase A
+# only (_WEB_GROUP=A, the --phase-a pin): the source's value as a plain
+# line (the file made, root 0600, when absent), a _WEB_GROUP line in any
+# form removed when the source has neither. Only while the name is free
+# there: otherwise the install refuses it, and the line would land in
+# another account's cnf. What was written is taken back when the install
+# does not happen.
+# 1 = account here 2 = account on the target 3 = target
+_XOCT_WG_SEED=""
+_XOCT_WG_SEEDV=""
+_xoct_wg_seed() {
+  local _v
+  _XOCT_WG_SEED=""
+  _v=$(_web_group_policy "/root/.${1}.octopus.cnf")
+  case "${_v}" in
+    NO|A) ;;
+    *) _v=- ;;
+  esac
+  _XOCT_WG_SEEDV="${_v}"
+  # the names expand here on purpose: the remote side gets them as text
+  # shellcheck disable=SC2029
+  _XOCT_WG_SEED=$(ssh root@"${3}" "getent passwd ${2} > /dev/null 2>&1 && exit 0
+    _c=/root/.${2}.octopus.cnf
+    _re='^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP='
+    if [ ${_v} != - ]; then
+      if [ ! -e \${_c} ]; then
+        ( umask 077; printf '_WEB_GROUP=${_v}\\n' > \${_c} ) && echo made
+      elif [ \"\$(grep -E \"\${_re}\" \${_c} | tail -n 1)\" != '_WEB_GROUP=${_v}' ]; then
+        grep -vE \"\${_re}\" \${_c} > \${_c}.wgseed
+        printf '_WEB_GROUP=${_v}\\n' >> \${_c}.wgseed && mv -f \${_c}.wgseed \${_c} && echo line
+      fi
+    elif [ -e \${_c} ] && grep -qE \"\${_re}\" \${_c}; then
+      grep -vE \"\${_re}\" \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}
+    fi" 2> /dev/null)
+  case "${_XOCT_WG_SEED}" in
+    made|line) echo "INFO: the source's _WEB_GROUP=${_v} put into /root/.${2}.octopus.cnf on ${3} before its install" ;;
+  esac
+  return 0
+}
+# 1 = account on the target 2 = target
+_xoct_wg_unseed() {
+  case "${_XOCT_WG_SEED}:${_XOCT_WG_SEEDV}" in
+    made:*)
+      # shellcheck disable=SC2029
+      ssh root@"${2}" "rm -f /root/.${1}.octopus.cnf" 2> /dev/null
+      ;;
+    line:NO|line:A)
+      # the seed left its own line as the only _WEB_GROUP one
+      # shellcheck disable=SC2029
+      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -vE '^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP=' \${_c} > \${_c}.wgseed && mv -f \${_c}.wgseed \${_c}" 2> /dev/null
+      ;;
+  esac
+  _XOCT_WG_SEED=""
+  return 0
 }
 
 ### A create marks the account it installed on the target: a root-only file
@@ -5025,6 +5242,7 @@ _migrate_prepare() {
         ### the EXIT handler, which does the removals.
         trap '_xoct_chattr_back; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
         trap 'exit 130' INT TERM HUP
+        _xoct_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
         ssh root@${_tgt} "/opt/local/bin/boa ${_IN_VERB} ${_XOCT_INSTALL_EMAIL} ${_TGT_HM_USER} ${_TGT_TREE} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
         _INSTALL_RC=$?
         if [ "${_SILENT_MARKER}" = "YES" ]; then
@@ -5048,6 +5266,7 @@ _migrate_prepare() {
           && [ -s /data/disk/${_TGT_HM_USER}/log/octopus_log.txt ] \
           && echo BORN" 2>/dev/null)
         if [ "${_INSTALL_RC}" != "0" ] || [ "${_TGT_BORN}" != "BORN" ]; then
+          _xoct_wg_unseed "${_TGT_HM_USER}" "${_tgt}"
           echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} did not happen (launcher rc=${_INSTALL_RC});"
           echo "ALRT: read the launcher output above -- re-run this create once ${_tgt} is quiet"
           exit 1
@@ -5170,7 +5389,12 @@ _migrate_prepare() {
       fi
       ### Stale-pid cleanup FIRST, then the enforced-upgrade trigger: the
       ### historical order deleted the run-upgrade.pid it had just created.
-      _xoct_remote_ctrl "${_tgt}" "${_TGT_HM_USER}" 'rm -f -- ./*.pid'
+      ### The account's 503 gate is no stale pid: a fresh install has none,
+      ### and an account that has one (a returning old active fenced after a
+      ### promotion by hand, an import that failed and put its gate back) is
+      ### held on purpose -- the import's own tail and the cutover's
+      ### promotion lift it, never a create.
+      _xoct_remote_ctrl "${_tgt}" "${_TGT_HM_USER}" 'for _p in ./*.pid; do [ "${_p}" = ./http-off.pid ] || rm -f -- "${_p}"; done'
       if [ "${_ARM_UPGRADE}" = "YES" ]; then
         ### Both put fresh, owned by the main login from the start as the
         ### queue's own writer leaves them (the group asked of the target
@@ -6101,7 +6325,7 @@ _xoct_proxy_preflight() {
 ### is the peer.
 _xoct_policy_notify() {
   local _a="$1" _mode="$2" _dl="$3" _peer="$4" _role="$5"
-  local _root="/data/disk/${_a}" _last _new_ip _old_ip
+  local _root="/data/disk/${_a}" _last _new_ip _old_ip _kind=change
   ### On the source only the notices of this box's moves count (a log carried
   ### from the move that brought the account here holds that move's); the
   ### target reads its log as it is.
@@ -6136,8 +6360,12 @@ _xoct_policy_notify() {
     echo "ALRT: ${_a}: no peer recorded; cannot compose the change notice (it names the new address)"
     return 0
   fi
+  ### A notice sent here as the target names the box the account came from:
+  ### logged change-inbound, which the source-side readers never count, so it
+  ### is no notice of a later move of the account back to that box.
   if [ "${_role}" = "target" ]; then
     _new_ip="$(_mig_my_ip)"; _old_ip="${_peer}"
+    _kind=change-inbound
   else
     _new_ip="${_peer}"; _old_ip="$(_mig_my_ip)"
   fi
@@ -6146,7 +6374,7 @@ _xoct_policy_notify() {
   _mig_build_mail_blocks change "${_new_ip}" "${_old_ip}" || return 0
   _send_notice_migration_change
   if [ "${_MAIL_SENT}" = "YES" ]; then
-    _mig_log "${_root}" xoct "${_XOCT_MAIL_ACT}" change "${_mode}" "${_dl}" "${_peer}"
+    _mig_log "${_root}" xoct "${_XOCT_MAIL_ACT}" "${_kind}" "${_mode}" "${_dl}" "${_peer}"
   else
     echo "ALRT: ${_a}: change notice NOT sent; re-run with --renotify when mail works"
   fi
@@ -6335,7 +6563,7 @@ _xoct_proxy_mode() {
 _xoct_retire_one() {
   local _a="$1" _wdl="$2"
   local _root="/data/disk/${_a}" _cnf _role _peer _peer_oct _scope _mode _peer_ips
-  local _new_ip _old_ip
+  local _new_ip _old_ip _kind=retire
   ### An account in a test run is not retired without its admail=: the
   ### withdrawal notice would reach the client.
   _xoct_admail_gate "${_a}" || return 1
@@ -6413,9 +6641,11 @@ _xoct_retire_one() {
     return 0
   fi
   ### On a target-role record the customer's NEW system is THIS box and the
-  ### old address is the peer.
+  ### old address is the peer; the notice is logged retire-inbound (see
+  ### _xoct_policy_notify).
   if [ "${_role}" = "target" ]; then
     _new_ip="$(_mig_my_ip)"; _old_ip="${_peer}"
+    _kind=retire-inbound
   else
     _new_ip="${_peer}"; _old_ip="$(_mig_my_ip)"
   fi
@@ -6425,7 +6655,7 @@ _xoct_retire_one() {
   _mig_build_mail_blocks retire "${_new_ip}" "${_old_ip}"
   _send_notice_migration_retire
   if [ "${_MAIL_SENT}" = "YES" ]; then
-    _mig_log "${_root}" xoct "${_XOCT_MAIL_ACT}" retire retired "${_wdl}" "${_peer}"
+    _mig_log "${_root}" xoct "${_XOCT_MAIL_ACT}" "${_kind}" retired "${_wdl}" "${_peer}"
   else
     echo "ALRT: ${_a}: retirement notice NOT sent (mail unavailable); the client was NOT told"
   fi
@@ -6512,8 +6742,9 @@ _xoct_go_live() {
   if [ -e "${_XOCT_XMASS_REC}" ] && [ "${_XOCT_XMASS_GOLIVE}" != "YES" ]; then
     echo "ERROR: this box is in an xmass test run (${_XOCT_XMASS_REC}); go-live ends a canary"
     echo "ERROR: moved with xoct. 'xmass go-live <target-ip>' ends the whole-box test run once"
-    echo "ERROR: its cutover is done; before it, a real move of the box starts again with"
-    echo "ERROR: 'xmass prep-target <target-ip>' without admail=, which removes the record"
+    echo "ERROR: its cutover is done, or while that target stands as this box's mirror; before its"
+    echo "ERROR: init, a real move of the box starts again with 'xmass prep-target <target-ip>'"
+    echo "ERROR: without admail=, which removes the record"
     exit 1
   fi
   _USR="/data/disk/${_oct}"
@@ -6814,7 +7045,8 @@ _migrate_init() {
     elif [ -e "${_USR}/log/proxied.pid" ] && [ "${_cmd}" != "proxy" ]; then
       echo "_USR ${_oct} is not eligible for migration: already migrated"
       exit 1
-    elif [ "${_cmd}" = "create" ] && [ -e "${_USR}/log/exported.pid" ]; then
+    elif [ "${_cmd}" = "create" ] && [ -e "${_USR}/log/exported.pid" ] \
+      && ! _xoct_canary_carried "${_RUNTIME_OCT}"; then
       echo "_USR ${_oct} is not eligible for migration: already created"
       exit 1
     elif [ "${_cmd}" = "export" ] && [ -e "${_USR}/log/exported.pid" ]; then
@@ -6917,7 +7149,8 @@ _migrate_init() {
             && _xoct_in_real_dir "${_USR}/clients" _xoct_copy_mk_here "${_tgt}" \
               "${_DST}/clients" '*' -aEAXqu ${_ieni} &> /dev/null
           # instance-group.txt records the SOURCE box's conversion (its gid);
-          # it must never travel, the destination pass writes its own.
+          # it must never travel, the destination pass writes its own, and
+          # web-group-notes.txt names the source box's web-group state.
           ### log/ is oN's on both boxes: copied from inside the real
           ### directory into the real directory, the glob expanded there.
           ### The account's own log/email.txt goes over the install's copy
@@ -6925,7 +7158,8 @@ _migrate_init() {
           ### target keeps the client's address, or list, exactly as it is.
           if _xoct_leg_ok "${_USR}/log"; then
             _xoct_in_real_dir "${_USR}/log" _xoct_copy_here "${_tgt}" "${_DST}/log" '*' \
-              -aEAXqu ${_ieni} --exclude=instance-group.txt --exclude=proxy-failed.pid
+              -aEAXqu ${_ieni} --exclude=instance-group.txt --exclude=proxy-failed.pid \
+              --exclude=web-group-notes.txt
             _xoct_in_real_dir "${_USR}/log" _xoct_put_file_remote_here \
               email.txt "${_tgt}" "${_DST}/log" "${_ieni}"
           fi
@@ -7055,6 +7289,12 @@ _migrate_init() {
             echo "ERROR: ${_cmd} for ${_oct}: a store/symlink could not be placed on the target (see DENY above); NOT marking transfer complete"
             exit 1
           fi
+
+          # What the move does not carry of the web-group state (a pin, a
+          # revert in progress, phase B onto a box with it off, an opt-out
+          # that arrived after the target converted): named once the copy is
+          # there, never a refusal.
+          [ "${_cmd}" = "transfer" ] && _wg_migration_notes "${_oct}" "${_DST##*/}" "${_tgt}" state
 
           if [ "${_MODE}" = "LIVE" ]; then
             if [ ! -z "${_dst}" ] && [ "${_dst}" != "${_oct}" ]; then

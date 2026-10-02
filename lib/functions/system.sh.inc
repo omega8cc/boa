@@ -12281,6 +12281,23 @@ _instgrp_arm_stamp() {
   echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > /var/log/boa/instgrp-arm.ready.txt
 }
 
+# The web group's arm (instgrp webconvert) takes no account's first
+# conversion without this stamp. Written at the tail of every barracuda pass
+# while _WEB_GROUP_ARM=YES, removed otherwise, so the setting alone arms and
+# disarms the box; a conversion already under way resumes either way.
+_instgrp_web_arm_stamp() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _instgrp_web_arm_stamp"
+    _debug_proc
+  fi
+  mkdir -p /var/log/boa &> /dev/null
+  if [ "${_WEB_GROUP_ARM}" = "YES" ]; then
+    echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > /var/log/boa/instgrp-web-arm.ready.txt
+  else
+    rm -f /var/log/boa/instgrp-web-arm.ready.txt
+  fi
+}
+
 _lshell_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _lshell_install_upgrade"

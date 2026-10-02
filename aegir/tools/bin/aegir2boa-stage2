@@ -1634,7 +1634,26 @@ REMOTE
   _rrc=$?
   [[ "${_rrc}" = "0" ]] \
     || _alrt "target group pass for ${_ACCOUNT} returned ${_rrc} (2 drift left, 3 identities disagree, 4 deferred (the inline form ran)); run 'instgrp status ${_ACCOUNT}' on the target"
+  _a2b_web_group_report
   _msg "transfer complete - next: run 'import --account ${_ACCOUNT} --route ${_route}' ON THE TARGET"
+}
+
+# The account's web group on the target, as that box's own instgrp reads
+# it (webstatus, read only): an armed target converts a new account at its
+# INIT, and the web paths this run landed there take that group at the
+# import's Verify. Nothing is changed here; a verdict other than NONE, A or
+# B is an alert naming the command that shows it in full there.
+_a2b_web_group_report() {
+  local _st
+  _st=$(ssh -o BatchMode=yes -o ConnectTimeout=15 "root@${_TARGET}" \
+    "grep -q '^_wg_table() {' /opt/local/bin/instgrp 2> /dev/null && bash /opt/local/bin/instgrp webstatus '${_ACCOUNT}' 2> /dev/null" 2> /dev/null \
+    | sed -n 's/^STATUS:[[:space:]]*//p' | head -n 1 | tr -cd '[:print:]')
+  case "${_st}" in
+    "") _info "web group of ${_ACCOUNT} on ${_TARGET}: not read (its instgrp has no web-group verbs)" ;;
+    NONE|A|B) _info "web group of ${_ACCOUNT} on ${_TARGET}: ${_st}" ;;
+    *) _alrt "web group of ${_ACCOUNT} on ${_TARGET}: ${_st}; run 'instgrp webstatus ${_ACCOUNT}' there" ;;
+  esac
+  return 0
 }
 
 ###-------------TARGET HELPERS---------###

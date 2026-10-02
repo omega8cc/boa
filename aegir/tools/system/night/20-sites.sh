@@ -385,6 +385,16 @@ _ghost_seen_reset_acct() {
 # A regular file is changed only while it has a single link: a hard link put
 # at a name (or anywhere in a walked tree) is left alone, so the mode never
 # reaches the file it names.
+### The subtrees of a files store nginx never serves (a case-insensitive
+### prefix after any files/), as find -iregex patterns relative to the walk's
+### start, POSIX extended: every find that reads them sets -regextype
+### posix-extended first (GNU find's default syntax reads the parentheses
+### and bars as plain characters, and would match nothing).
+_NIGHT_DENIED_RE='\./(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*|.*/files/(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*'
+### The same subtrees for a walk that starts above the stores (a platform
+### root): only below a files/ there, never a ./config_* or ./backup_migrate
+### of the platform itself. The second alternative of the pattern above.
+_NIGHT_DENIED_SUB_RE='.*/files/(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*'
 _NIGHT_FCHMOD_PL='use Fcntl;
 my ($t, $ms) = (shift @ARGV, shift @ARGV);
 my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
@@ -2172,10 +2182,13 @@ _fix_seven_core_patch() {
 _static_perm_here() {
   ### $1 = the platform's web group. Once the account has its own, a site's
   ### private files keep no world bits (its private store takes them in the
-  ### site leg), so a real sites/<uri>/private or files/private is left out.
+  ### site leg), so a real sites/<uri>/private or files/private is left out,
+  ### and so are the subtrees nginx denies in a real files/ (only there: a
+  ### config_* directory of the platform itself is walked).
   local _pr=()
   [[ "${1}" == wg-* ]] && _pr=( -regextype posix-extended \
-    -regex '\./([^/]+/)?sites/[^/]+/(files/)?private' -prune -o )
+    \( -regex '\./([^/]+/)?sites/[^/]+/(files/)?private' -o -iregex "${_NIGHT_DENIED_SUB_RE}" \) \
+    -prune -o )
   _chmod_nofollow_here d 0775 .
   find . -mindepth 1 "${_pr[@]}" -type d \
     ! \( -path "*/vendor/drush" -o -path "*/vendor/symfony/console/Input" \
@@ -2522,15 +2535,22 @@ _site_perm_here() {
 ### inside their real parent.
 _files_store_perm_here() {
   ### $1 = the web group; once the account has its own, a Drupal 7
-  ### files/private takes the private store's modes (no world bits).
-  local _wg="${1}" _pr=()
-  [[ "${_wg}" == wg-* ]] && _pr=( -path ./private -prune -o )
+  ### files/private takes the private store's modes (no world bits), and so
+  ### does each subtree nginx denies (_NIGHT_DENIED_RE), inside its own real
+  ### directory.
+  local _wg="${1}" _pr=() _dn
+  [[ "${_wg}" == wg-* ]] && _pr=( -regextype posix-extended \
+    \( -path ./private -o -iregex "${_NIGHT_DENIED_RE}" \) -prune -o )
   find . -mindepth 1 "${_pr[@]}" -type d \
     -execdir perl -e "${_NIGHT_FCHMOD_PL}" d 02775 {} + &> /dev/null
   find . -mindepth 1 "${_pr[@]}" -type f \
     -execdir perl -e "${_NIGHT_FCHMOD_PL}" f 0664 {} + &> /dev/null
   if [[ "${_wg}" == wg-* ]]; then
     _in_real_sub private _private_modes_here "${_wg}"
+    while IFS= read -r -d '' _dn; do
+      _in_real_sub "${_dn#./}" _private_modes_here "${_wg}"
+    done < <(find . -mindepth 1 -regextype posix-extended -path ./private -prune \
+      -o -type d -iregex "${_NIGHT_DENIED_RE}" -prune -print0 2> /dev/null)
   fi
   _chmod_nofollow_here d 02775 .
   chown "${_HM_U}${_wg:+:${_wg}}" . &> /dev/null

@@ -147,6 +147,29 @@ _web_group() {
   esac
 }
 
+### A fail-safe that only writes a log line is silence. Say it where the
+### operator looks: one dated line in /var/log/boa/nightly.incident.log and,
+### unless _INCIDENT_REPORT is OFF, one mail per subject per day to the
+### operator address the release notice below uses.
+_night_notice() {
+  local _key="$1" _subject="$2" _body="$3" _to _stamp
+  mkdir -p /var/log/boa
+  echo "$(date) NOTE: ${_body}" >> /var/log/boa/nightly.incident.log
+  case "${_INCIDENT_REPORT^^}" in
+    OFF|NO) return 0 ;;
+  esac
+  _stamp="/var/log/boa/nightly.notice.${_key}.$(date +%Y%m%d)"
+  [ -e "${_stamp}" ] && return 0
+  touch "${_stamp}"
+  find /var/log/boa -maxdepth 1 -name 'nightly.notice.*' -mtime +7 -delete 2>/dev/null
+  _to="${_MY_OCTO_EMAIL:-${_MY_EMAIL:-root}}"
+  _to="${_to//\\\@/@}"
+  if command -v s-nail > /dev/null 2>&1; then
+    printf ' %s\n\n ---\n This email has been sent by your BOA nightly maintenance (owl.sh)\n' "${_body}" \
+      | s-nail -s "${_subject}" "${_to}" > /dev/null 2>&1
+  fi
+}
+
 # An account owns its static/control, and oN owns the rest of its
 # /data/disk/oN (log/, .drush/, config/, tools/, .tmp/, undo/), and a login
 # owns its /home/<login>, so any name there can be a link or a FIFO, and any
