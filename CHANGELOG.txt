@@ -1280,6 +1280,20 @@
 
 @=> Important Fixes
 
+    * The nightly migration-source sweep no longer leaves a stale read
+      grant to a human when a site restored that day still carries its
+      former database name in the control panel: every site of the
+      account proves its database before any grant is judged.
+
+    * An Octopus account whose name ends another account's name, such as
+      o1 beside xo1, now gets its sudo lines for nginx and the fix-drupal
+      and Drush lock scripts: the test for an existing line took the
+      other account's line for its own. The next Octopus upgrade adds
+      the lines missing that way.
+
+    * A fast (MyQuick) database backup that waits for a previous dump to
+      be cleaned up no longer logs a PHP undefined-variable warning.
+
     * After a mirror was promoted by hand, xmass prep-target on the
       promoted box takes the returning old active's accounts as the
       pair's own, so failing back and rebuilding the old active as the
