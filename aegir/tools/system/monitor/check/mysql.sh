@@ -959,6 +959,73 @@ _trust_creators_retrofit() {
   fi
 }
 
+_event_scheduler_state() {
+  # Prints "<@@event_scheduler> <scheduler threads>"; returns 1 and prints
+  # nothing when the read fails, so a refused connection never reads as a
+  # missing thread. The thread is the event_scheduler Daemon row; -B escapes
+  # newlines inside a query's text, so every row is one line.
+  local _out
+  _out=$(timeout 15 mysql --defaults-file=/root/.my.cnf --connect-timeout=5 \
+    -BNe "SELECT @@GLOBAL.event_scheduler; SHOW PROCESSLIST" 2>/dev/null) || return 1
+  [ -n "${_out}" ] || return 1
+  awk -F'\t' 'NR == 1 {s = $1; next}
+    $2 == "event_scheduler" && $5 == "Daemon" {n++}
+    END {print s, n + 0}' <<< "${_out}"
+}
+
+_event_scheduler_rearm() {
+  # MySQL ends its event scheduler thread on an error met while scheduling
+  # an event (one seen: "Unable to schedule event: Deadlock found when trying
+  # to get lock", during a nightly dump) and leaves @@event_scheduler reading
+  # ON, so every event on the box stops and nothing says so. ON with no
+  # scheduler thread, read twice a few seconds apart, is that state; OFF then
+  # ON starts the thread again. SET GLOBAL is not binlogged: a replica sees
+  # nothing of it. OFF and DISABLED are how the box is meant to run and are
+  # left alone. Stands down on a standby, inside an init or promotion window,
+  # while a cutover holds the scheduler off (its record), and while a backup
+  # dump runs: a thread started under the dump's locks can meet them again,
+  # and the first pass after the dump re-arms it. One probe a minute.
+  [ -e "/root/.standby.cnf" ] && return 0
+  [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2890 2>/dev/null)" ] && return 0
+  [ -e "/run/boa_xmass_events_off.pid" ] && return 0
+  [ -n "$(find /run/boa_sql_backup.pid /run/boa_sql_cluster_backup.pid -mmin -1440 2>/dev/null)" ] && return 0
+  local _stm="/run/boa_event_scheduler_probed.pid"
+  local _flg="/run/boa_event_scheduler_failed_logged.pid"
+  local _st
+  [ -n "$(find "${_stm}" -mmin -1 2>/dev/null)" ] && return 0
+  touch "${_stm}" 2>/dev/null
+  _st=$(_event_scheduler_state) || return 0
+  if [ "${_st}" != "ON 0" ]; then
+    # The thread is back, or the scheduler is not meant to run: an earlier
+    # failed re-arm's episode is over.
+    rm -f "${_flg}"
+    return 0
+  fi
+  sleep 3
+  _st=$(_event_scheduler_state) || return 0
+  [ "${_st}" = "ON 0" ] || return 0
+  timeout 30 mysql --defaults-file=/root/.my.cnf --connect-timeout=5 \
+    -e "SET GLOBAL event_scheduler=OFF; SET GLOBAL event_scheduler=ON" &> /dev/null
+  sleep 1
+  _st=$(_event_scheduler_state)
+  if [ "${_st%% *}" = "OFF" ]; then
+    # The OFF landed and the ON did not: ask once more rather than leave
+    # the scheduler off.
+    timeout 30 mysql --defaults-file=/root/.my.cnf --connect-timeout=5 \
+      -e "SET GLOBAL event_scheduler=ON" &> /dev/null
+    sleep 1
+    _st=$(_event_scheduler_state)
+  fi
+  if [ "${_st%% *}" = "ON" ] && [ "${_st##* }" != "0" ]; then
+    rm -f "${_flg}"
+    echo "$(date) event scheduler: read ON with no scheduler thread, so no event ran; re-armed (OFF, then ON), the thread is back" >> ${_pthOml}
+  elif [ ! -e "${_flg}" ]; then
+    touch "${_flg}"
+    echo "$(date) event scheduler: read ON with no scheduler thread, so no event ran; OFF then ON did not bring it back (reads '${_st:-nothing}'; if OFF, set it ON by hand) -- retrying each minute while it reads ON" >> ${_pthOml}
+    _incident_email_report "event scheduler stopped and could not be re-armed" "mysql-events"
+  fi
+}
+
 ### Main start here
 
 if [ -x "/etc/init.d/mysql" ] \
@@ -976,6 +1043,7 @@ if [ -x "/etc/init.d/mysql" ] \
   && [ ! -e "/run/mysql_restart_running.pid" ]; then
   _standby_sql_hold
   _trust_creators_retrofit
+  _event_scheduler_rearm
   _mysql_high_load
   _sql_busy_detection
   _mysql_flush_hosts
