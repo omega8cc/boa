@@ -4128,6 +4128,60 @@ _satellite_prepare_child_scripts() {
 }
 
 #
+# The instance user of an account switched to the database broker (root's
+# control file /data/conf/<oN>_db_broker.txt): 0 when handled here, 1 when
+# the account is not switched and the pass grants as before. Only an account
+# on this box's own database server, not through ProxySQL, can be switched:
+# a control file of any other is named and left alone. The broker makes the
+# user again on the rows the control file lists, with the password in
+# _ESC_PASS, and gives back its grant on each of the account's databases;
+# nothing is granted on all databases. A control file the broker finds not
+# valid leaves the account on the direct path, as provision reads it, so the
+# pass grants as before. Any other failure grants nothing: the new password
+# goes on the user's rows as they are, so the logins the aliases are about
+# to name keep working, and the failure is named.
+_satellite_db_broker_rekey() {
+  local _f="/data/conf/${_USER}_db_broker.txt" _out _rc
+  [ -e "${_f}" ] || [ -L "${_f}" ] || return 1
+  case "${_THIS_DB_HOST}" in
+    localhost|127.0.0.1|FQDN) ;;
+    *)
+      _msg "ALRT: ${_f} ignored: the database broker does not serve ${_USER}'s database host mode ${_THIS_DB_HOST}"
+      return 1
+      ;;
+  esac
+  if [ -e "/data/conf/${_USER}_use_proxysql.txt" ]; then
+    _msg "ALRT: ${_f} ignored: ${_USER} goes through ProxySQL"
+    return 1
+  fi
+  if [ -x "/usr/local/bin/boa-dbctl" ]; then
+    _out=$(printf '%s\n' "${_ESC_PASS}" \
+      | /usr/local/bin/boa-dbctl rekey --account "${_USER}" 2>&1)
+    _rc=$?
+    if [ "${_rc}" = "0" ]; then
+      [ "${_DEBUG_MODE}" = "YES" ] && _msg "INFO: ${_out##*$'\n'}"
+      return 0
+    fi
+    if [ "${_rc}" = "8" ]; then
+      _msg "ALRT: ${_f} is not valid: ${_USER}'s tasks take the direct path, granted as before"
+      return 1
+    fi
+    _msg "ALRT: the database broker did not renew ${_USER}'s instance user: ${_out##*$'\n'}"
+  else
+    _msg "ALRT: ${_USER} is switched to the database broker, which is not installed here"
+  fi
+  _msg "ALRT: ${_USER}'s instance user keeps its rights and takes the new password only"
+  mysql --force --silent -u root -h"${_SQL_CONNECT}" -P"${_THIS_DB_PORT}" --protocol=tcp -u root mysql<<EOFMYSQL &> /dev/null
+ALTER USER IF EXISTS '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER IF EXISTS '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER IF EXISTS '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER IF EXISTS '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER IF EXISTS '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}';
+EOFMYSQL
+  return 0
+}
+
+#
 # Generate provision backend db_passwd.
 _provision_backend_dbpass_generate() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -4319,7 +4373,8 @@ PROXYSQL
       ### [ -e "/root/.my.cluster_root_pwd.txt" ] && echo "SQL14CR -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -uroot"
       ###
       ###
-      mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+      if ! _satellite_db_broker_rekey; then
+        mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
@@ -4327,6 +4382,7 @@ GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
 ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
+      fi
     else
       if [ "${_THIS_DB_HOST}" = "localhost" ] \
         || [ "${_THIS_DB_HOST}" = "127.0.0.1" ] \
@@ -4348,13 +4404,14 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
         fi
-        _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
-        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
-        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
-        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
-        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
-        ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
-        mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+        if ! _satellite_db_broker_rekey; then
+          _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
+          ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+          ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+          ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+          ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+          ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
+          mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
@@ -4362,6 +4419,7 @@ GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
 ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
+        fi
       fi
     fi
   fi
@@ -4459,13 +4517,14 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
     fi
-    _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
-    ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
-    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+    if ! _satellite_db_broker_rekey; then
+      _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
+      ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+      ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+      ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+      ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+      ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
+      mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
@@ -4473,6 +4532,7 @@ GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
 ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
+    fi
     ### The aliases are the instance user's: edited inside the real .drush,
     ### never through a link put at an alias or at .drush.
     _acct_in_real_dir "${_ROOT}/.drush" _satellite_edit_all_here \
