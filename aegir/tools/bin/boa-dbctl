@@ -44,7 +44,6 @@ _RHOME="/root"
 _MYCNF="/root/.my.cnf"
 _BCNF="/root/.barracuda.cnf"
 _AEGIR="/var/aegir"
-_STAGE="/data/disk/.boa-dbstage"
 _FSROOT="/"
 _ROOT_UID="0"
 
@@ -1810,6 +1809,7 @@ _mount_here() {
 _root_path() {
   local _p="${1%/}" _r="${_FSROOT%/}" _c _m _x
   local -a _parts
+  [[ -n "${_p}" ]] || _p="/"
   [[ "${_p}" =~ ^/[A-Za-z0-9._/-]*$ ]] || return 1
   [[ "$(cd -P -- "${_p}" 2> /dev/null && pwd -P)" == "${_p}" ]] || return 1
   [[ -z "${_r}" || "${_p}" == "${_r}" || "${_p}" == "${_r}"/* ]] || return 1
@@ -1839,18 +1839,15 @@ _stage_mk() {
 
 # The root staging directory for a dump delivered into a backups/ whose
 # "<device> <mount point>" is $1, on that same mount so the delivery is a
-# rename: /data/disk/.boa-dbstage when that is on it, else .boa-dbstage at
-# the top of that mount (attached storage), where every directory down to
-# the mount point is root's. Sets _STAGE_DIR.
+# rename: .boa-dbstage at the top of that mount (/.boa-dbstage on a box with
+# one filesystem), where every directory down to the mount point is root's.
+# Never an entry of /data/disk: BOA's loops read every directory there as an
+# account home, and xmass init waited on one as an account whose queue it
+# could not read. Sets _STAGE_DIR.
 _stage_for() {
   local _want="${1}" _mp
   _STAGE_DIR=""
   [[ "${_want}" =~ ^[0-9]+\ /[A-Za-z0-9._/-]*$ ]] || return 1
-  _stage_mk "${_STAGE}" || return 1
-  if [[ "$(_mount_here "${_STAGE}")" == "${_want}" ]]; then
-    _STAGE_DIR="${_STAGE}"
-    return 0
-  fi
   _mp="${_want#* }"
   _root_path "${_mp}" || return 1
   _stage_mk "${_mp%/}/.boa-dbstage" || return 1
