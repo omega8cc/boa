@@ -50,6 +50,10 @@
 
 @=> Security
 
+    * Each Octopus account gets a sudo line for a new root database
+      helper, boa-dbctl. It ships switched off: no account uses it and
+      no database work changes until an account is switched on.
+
     * The limited shell template and the ImageMagick policy no longer
       stay a release behind on a box whose mirror lagged at the publish.
 
@@ -1242,6 +1246,10 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * xmass init and prep-target no longer wait out their whole bound
+      when /data/disk holds a directory that is not an Octopus account,
+      such as a hand-made copy: the quiet check passes over it.
 
     * A shared Valkey integration module in /data/all/000/modules is
       replaced in one rename, so a site that loads it through its bundle
