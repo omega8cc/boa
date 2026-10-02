@@ -83,7 +83,9 @@ An object made while its database had another default collation comes wrapped in
 
 A classic load as the site's database user on a box with the binary log on creates triggers and stored functions only while `log_bin_trust_function_creators` is on. `xmass` sets it on both ends of a pair. With the binary log turned on by `_DB_BINARY_LOG=YES`, or by a custom `my.cnf` under `_CUSTOM_CONFIG_SQL=YES`, BOA leaves it at the server's default (off) unless that `my.cnf` sets it, and the load fails with `ERROR 1419` and says so.
 
-On a box running with the binary log on (every box an `xmass` run touched), MySQL refuses a stored function declared without `DETERMINISTIC`, `NO SQL` or `READS SQL DATA` (`ERROR 1418`), and a database user without SUPER may create neither triggers nor stored functions there (`ERROR 1419`). A load that meets such an object fails and says so: `xoct` and `xcopy` count the site's import as failed, and a Migrate rolls back with the site left as it was. Declare such a function with one of those characteristics, and on such a box restore a dump that carries triggers or functions as root.
+With the binary log on and `log_bin_trust_function_creators` off, MySQL refuses a stored function declared without `DETERMINISTIC`, `NO SQL` or `READS SQL DATA` (`ERROR 1418`), and a database user without SUPER may create neither triggers nor stored functions (`ERROR 1419`). A load that meets such an object fails and says so: `xoct` and `xcopy` count the site's import as failed, and a Migrate rolls back with the site left as it was.
+
+`xmass` turns that setting on wherever it turns the binary log on, and the SQL watchdog adds it to an `xmass` configuration written before it did, so neither refusal arises on a box an `xmass` run touched, unless its configuration sets the value itself. Where the setting stays off, declare such a function with one of those characteristics, and restore a dump that carries triggers or functions as root.
 
 For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs).
 
