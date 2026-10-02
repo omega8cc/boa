@@ -963,14 +963,18 @@ _event_scheduler_state() {
   # Prints "<@@event_scheduler> <scheduler threads>"; returns 1 and prints
   # nothing when the read fails, so a refused connection never reads as a
   # missing thread. The thread is the event_scheduler Daemon row; -B escapes
-  # newlines inside a query's text, so every row is one line.
+  # newlines inside a query's text, so every row is one line. With
+  # super_read_only on, MySQL stops the scheduler thread by design and starts
+  # it again when the lock lifts, so the state reads LOCKED, never ON.
   local _out
   _out=$(timeout 15 mysql --defaults-file=/root/.my.cnf --connect-timeout=5 \
-    -BNe "SELECT @@GLOBAL.event_scheduler; SHOW PROCESSLIST" 2>/dev/null) || return 1
+    -BNe "SELECT @@GLOBAL.event_scheduler; SELECT @@GLOBAL.super_read_only; SHOW PROCESSLIST" \
+    2>/dev/null) || return 1
   [ -n "${_out}" ] || return 1
   awk -F'\t' 'NR == 1 {s = $1; next}
+    NR == 2 {ro = $1; next}
     $2 == "event_scheduler" && $5 == "Daemon" {n++}
-    END {print s, n + 0}' <<< "${_out}"
+    END {if (ro == 1) s = "LOCKED"; print s, n + 0}' <<< "${_out}"
 }
 
 _event_scheduler_rearm() {
@@ -981,10 +985,11 @@ _event_scheduler_rearm() {
   # scheduler thread, read twice a few seconds apart, is that state; OFF then
   # ON starts the thread again. SET GLOBAL is not binlogged: a replica sees
   # nothing of it. OFF and DISABLED are how the box is meant to run and are
-  # left alone. Stands down on a standby, inside an init or promotion window,
-  # while a cutover holds the scheduler off (its record), and while a backup
-  # dump runs: a thread started under the dump's locks can meet them again,
-  # and the first pass after the dump re-arms it. One probe a minute.
+  # left alone, as is a box held read-only (state LOCKED). Stands down on a
+  # standby, inside an init or promotion window, while a cutover holds the
+  # scheduler off (its record), and while a backup dump runs: a thread
+  # started under the dump's locks can meet them again, and the first pass
+  # after the dump re-arms it. One probe a minute.
   [ -e "/root/.standby.cnf" ] && return 0
   [ -n "$(find /run/boa_xmass_init.pid /root/.standby.init.pid -mmin -2890 2>/dev/null)" ] && return 0
   [ -e "/run/boa_xmass_events_off.pid" ] && return 0
