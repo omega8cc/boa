@@ -9,6 +9,9 @@ This file, if it exists, will drastically reduce the number of tasks otherwise l
 1. Both source and target platforms will no longer be verified.
 2. The site will no longer be verified before running clone or migrate.
 3. The imported site will no longer be re-verified automatically after a platform import completes.
+4. The source site will no longer be re-verified after a clone.
+5. A migrate of an HTTPS site will no longer switch encryption off (a save of the site without its key) before the move and back on after it, with the verify that follows.
+6. The fixed five-second pause the task takes around each of those steps goes with them: two to four on a clone, four to seven on a migrate, one on a platform import.
 
 Please carefully consider the implications, though, because there are very good reasons for these extra tasks to be launched before running clone or migrate to make sure that any issues are detected and fixed for you early and not during migration or clone, which could otherwise break the site and leave it in a state not easy to fix, especially without root access to the system.
 
