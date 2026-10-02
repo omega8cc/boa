@@ -1298,6 +1298,12 @@
 
 @=> Important Fixes
 
+    * A client's own database export works again on Drupal 8 and newer
+      sites: the tenant shell's Drush 8 guard on those codebases lets
+      sql-dump through beside uli and status, so the documented one-line
+      export over the account's shell and the ddev-boa pull no longer
+      stop with a refusal.
+
     * A 405 that Drupal answers itself, for a method its route does not
       take (a REST or JSON:API request, a client probing GET on a
       POST-only endpoint), reaches the client as Drupal sent it, with its
