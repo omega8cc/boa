@@ -67,6 +67,13 @@
       helper, boa-dbctl. It ships switched off: no account uses it and
       no database work changes until an account is switched on.
 
+    * The root database helper gains what keeps an account on it: the
+      Octopus pass and syncpass renew such an account's database user
+      through the helper, the migration tools enter the databases they
+      make for it, xmass carries the switch to its standby, the purge
+      keeps the names of its kept databases held, and a nightly check
+      reports any drift. Still switched off: no account uses it.
+
     * The limited shell template and the ImageMagick policy no longer
       stay a release behind on a box whose mirror lagged at the publish.
 
