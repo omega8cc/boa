@@ -108,6 +108,24 @@ if [ -e "/run/boa_queue_stop.pid" ]; then
     rm -f /run/boa_queue_stop.pid
   fi
 fi
+# The web group's holds: the master's task-queue hold (runner.sh stops on it)
+# and each account's hold (the nightly skips the account on it) carry the pid
+# of the root instgrp run that took them, and a run killed outright leaves
+# them behind until that account's next web-group run. Removed here as the
+# queue-stop file above: when the pid is gone or is not root's, and only
+# while the file still names the pid read; an empty one only once it is a
+# minute old (a run writes its pid just after it creates the file).
+for _wgHold in /run/boa_master_queue_stop.pid /run/instgrp-web-*.pid; do
+  [ -f "${_wgHold}" ] || continue
+  _wgPid=$( { tr -dc '0-9' < "${_wgHold}"; } 2>/dev/null )
+  if [ -z "${_wgPid}" ]; then
+    [ -n "$(find "${_wgHold}" -maxdepth 0 -type f -mmin +1 2>/dev/null)" ] || continue
+  elif kill -0 "${_wgPid}" 2>/dev/null \
+    && [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_wgPid}/status" 2>/dev/null)" = "0" ]; then
+    continue
+  fi
+  [ "$( { tr -dc '0-9' < "${_wgHold}"; } 2>/dev/null )" = "${_wgPid}" ] && rm -f -- "${_wgHold}"
+done
 # The run lock carries a pid only when instgrp wrote it; the barracuda,
 # octopus and boa wrappers create it empty and refuse to start while it
 # exists. A pid there whose process is gone (or is not root's) is a killed

@@ -2368,7 +2368,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f84
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f79 --guard mysql_cluster_backup.sh
     _runner_parked runner.sh \
-      || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f61
+      || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f60
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f77
     _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f73
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f75
@@ -2420,10 +2420,10 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f91
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f88
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f67
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f66
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f64
     _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f43
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f48
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f47
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f66
     _runner_parked owl.sh \
       || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f73

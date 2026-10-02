@@ -539,6 +539,10 @@ Once converted, hostmaster's own `files/`, the site scripts and the
 `/var/www` tools (Adminer, Chive, SQL Buddy, CGP) take `wg-aegir` or the
 serving pool's group.
 
+A hold left by a run killed outright, the master's or an account's, is
+obeyed only while its pid is a live root process: `clear.sh` removes it
+otherwise, and the queue runner then brings the aegir crontab back.
+
 ### Migrations and standby boxes
 
 `xoct`, `xcopy` and `xmass` carry the account's policy, the opt-out
