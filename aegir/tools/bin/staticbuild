@@ -912,11 +912,40 @@ _audit_report_php() {
   # the list name. Exits 1 unless the document is a finished audit that reached
   # every advisory source. Fields are stripped to printable non-space ASCII: they
   # come from remote feeds. PHP 5.6-safe.
+  # Then "# not covered: N" and one "# not covered: <package> <version> (<why>)"
+  # line per locked package no drupal.org advisory reaches composer audit for: its
+  # lock entry carries drupal.org's per-release coverage (extra.drupal.security-
+  # coverage) with any status but "covered" (alpha, beta, RC, dev, not opted in), or
+  # it is a Drupal module, theme or profile whose lock entry has no such record (it
+  # came from Packagist or a VCS repository, under a name drupal.org's advisories do
+  # not use). An advisory count of 0 says nothing about these. Report only: the
+  # lines start with "#", so the advisory count, the fix step and the respin
+  # comparison never read them. $3 = --no-dev leaves packages-dev out, as the audit.
   cat <<'EOF'
 <?php
 function _f($s) {
   $s = preg_replace('/[^\x21-\x7e]/', '', (string) $s);
   return $s === '' ? '-' : $s;
+}
+function _t($s) {
+  $s = trim(preg_replace('/[^\x20-\x7e]+/', ' ', (string) $s));
+  return $s === '' ? '-' : substr($s, 0, 160);
+}
+function _uncovered($p) {
+  $d = isset($p['extra']['drupal']) && is_array($p['extra']['drupal']) ? $p['extra']['drupal'] : array();
+  if (isset($d['security-coverage']) && is_array($d['security-coverage'])) {
+    $c = $d['security-coverage'];
+    $st = isset($c['status']) ? (string) $c['status'] : '';
+    if ($st === 'covered') {
+      return '';
+    }
+    return _t(isset($c['message']) && is_string($c['message']) && $c['message'] !== '' ? $c['message'] : 'coverage status: ' . $st);
+  }
+  $t = isset($p['type']) ? (string) $p['type'] : '';
+  if (in_array($t, array('drupal-module', 'drupal-theme', 'drupal-profile'), true)) {
+    return 'no drupal.org coverage record in the lock: ' . $t;
+  }
+  return '';
 }
 function _rows($list, $ver, $prefix, &$rows) {
   if (!is_array($list)) {
@@ -962,12 +991,19 @@ if (!empty($a['unreachable-repositories'])) {
   exit(1);
 }
 $ver = array();
+$nc = array();
 $lock = json_decode((string) @file_get_contents($argv[2]), true);
 foreach (array('packages', 'packages-dev') as $s) {
   if (is_array($lock) && isset($lock[$s]) && is_array($lock[$s])) {
     foreach ($lock[$s] as $p) {
       if (isset($p['name'], $p['version'])) {
         $ver[$p['name']] = $p['version'];
+        if ($s === 'packages' || !isset($argv[3]) || $argv[3] !== '--no-dev') {
+          $why = _uncovered($p);
+          if ($why !== '') {
+            $nc[] = '# not covered: ' . _f($p['name']) . ' ' . _f($p['version']) . ' (' . $why . ')';
+          }
+        }
       }
     }
   }
@@ -980,6 +1016,16 @@ sort($rows);
 echo 'advisories: ', count($rows), "\n";
 foreach ($rows as $r) {
   echo $r, "\n";
+}
+if (!is_array($lock)) {
+  echo "# not covered: unknown (the lock does not parse)\n";
+}
+else {
+  sort($nc);
+  echo '# not covered: ', count($nc), "\n";
+  foreach ($nc as $r) {
+    echo $r, "\n";
+  }
 }
 EOF
 }
@@ -1007,7 +1053,7 @@ _audit_dir() {
   # non-zero for findings and for abandoned packages alike, so only a finished JSON
   # document counts.
   "${_run}" "cd '${_dir}' && export COMPOSER_HOME='${_dir}/.home' COMPOSER_CACHE_DIR='${_dir}/.cache' && composer audit --locked --format=json --no-plugins --no-scripts ${_dev} > .audit.json 2> .audit.err" >/dev/null 2>&1
-  if _rep="$("${_run}" "php '${_dir}/.audit-report.php' '${_dir}/.audit.json' '${_dir}/composer.lock'" 2>/dev/null)" \
+  if _rep="$("${_run}" "php '${_dir}/.audit-report.php' '${_dir}/.audit.json' '${_dir}/composer.lock' '${_dev}'" 2>/dev/null)" \
     && [[ "${_rep}" == "advisories: "* ]]; then
     printf '%s\n' "${_rep}"
     if [[ -n "${_dev}" ]]; then
