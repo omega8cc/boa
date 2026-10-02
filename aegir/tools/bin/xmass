@@ -9365,6 +9365,7 @@ _xmass_enable_events_target() {
 _xmass_enable_events_here() {
   local _out _i _rc=0
   for _i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
+    _xmass_hand_lost_clear again
     _out=$(bash -s 2> /dev/null <<< "$(_xmass_events_enable_sh)")
     [ "${_out}" = "EV-READONLY" ] || break
     [ "${_i}" = "1" ] && _info "  the database here is still read-only: waiting up to 75 s for the SQL watchdog's release ..."
@@ -9602,12 +9603,29 @@ _xmass_hand_path_end() {
   return 0
 }
 
+# A promotion by hand answers the question second.sh asks of a box with no
+# replica config whose database is still read-only: once a minute has passed
+# since the operator's reset it reads as a LOST replica, and that breadcrumb
+# keeps the SQL watchdog's lock on for good. It goes with the watchdog's
+# cached answer. The waits for writes call this on every round: a second.sh
+# pass that read the marker before it went can still write it once. $1 =
+# again: only a breadcrumb found again takes the cached answer with it.
+_xmass_hand_lost_clear() {
+  [ "${_XMASS_PROMOTED_HERE}" = "YES" ] || return 0
+  if [ "${1:-}" = "again" ]; then
+    [ -e /run/boa_standby_lost_logged.pid ] || return 0
+  fi
+  rm -f /run/boa_standby_lost_logged.pid /run/boa_standby_sql_answer \
+    /run/boa_standby_role_probed.pid
+}
+
 # The panel rewire of the planned switch, here, once the database takes
 # writes (the SQL watchdog releases a box promoted by hand within about a
 # minute of its standby marker going: waited for up to 75 s).
 _xmass_promote_panels_here() {
   local _i _ro _root _out _l _bad="" _me
   for _i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
+    _xmass_hand_lost_clear again
     _ro=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=10 -BNe \
       "SELECT @@GLOBAL.super_read_only + @@GLOBAL.read_only" 2> /dev/null)
     [ "${_ro}" = "1" ] || [ "${_ro}" = "2" ] || break
@@ -14621,7 +14639,10 @@ _xmass_post_mig() {
   # A promotion by hand: the panel rewire the planned switch runs on its
   # target (a no-op after one), once the marker is gone and the database
   # takes writes.
-  [ "${_XMASS_PROMOTED_HERE}" = "YES" ] && _xmass_promote_panels_here
+  if [ "${_XMASS_PROMOTED_HERE}" = "YES" ]; then
+    _xmass_hand_lost_clear
+    _xmass_promote_panels_here
+  fi
   # Traffic now flows directly to this host. Reconcile the migration-proxy
   # trust from the per-account policy records: temporary peers are dropped,
   # permanent/ha-switch peers stay trusted (restricted to the live peer set),
