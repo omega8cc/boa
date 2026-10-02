@@ -8144,54 +8144,14 @@ CARRY
 
 ###-------------PANEL DB REWIRE ON TARGET---###
 
-_xmass_rewire_panel_db_access() {
-  # The init-time datadir swap replaced the target's MySQL wholesale with
-  # the source's: the fresh-install panel DBs that the surviving
-  # NEW-host-named panel site dirs point at died with it, and the live
-  # (source-named) panel DB users' passwords exist only as hashes inside
-  # the replicated mysql.user — nothing on the target can rewire the panel
-  # without resetting them. Rewire every Aegir root's control panel BEFORE
-  # the step-13 rename so its queue passes (§5 cc, §7, §8) run against a
-  # bootstrappable hostmaster: discover the live hostmaster DB per root
-  # (same publish-path discriminator as renameaegirhost §5, refusing to
-  # guess on zero or several matches), reset that DB user's password across
-  # its enumerated host variants, and rewrite the panel dir's credential
-  # fields in place, preserving exact ownership and modes. Idempotent: a
-  # root whose panel drushrc already names a live DB is skipped, so resumed
-  # runs and any flow without a datadir swap no-op here. Per-root failures
-  # collect like the rename step's so the caller parks the cutover
-  # resumably.
-  local _rc _src_fqdn
-  _src_fqdn=$(_xmass_src_fqdn)
-  if [ -z "${_src_fqdn}" ]; then
-    _alrt "Cannot determine the source FQDN for the panel rewire step"
-    _XMASS_PANEL_FAILED=" fqdn-detection"
-    return 1
-  fi
-
-  _XMASS_PANEL_FAILED=""
-  _info "Rewiring panel DB access on target ${_tgt} for all Aegir roots ..."
-
-  local _probe_rc _root
-  for _root in /var/aegir $(printf '/data/disk/%s ' ${_ELIGIBLE_ACCOUNTS}); do
-    # Same 0/1-vs-ssh-failure split as the rename step: 255 (and anything
-    # else) is an ssh-layer failure and must park, not silently skip.
-    ssh root@"${_tgt}" \
-      "[ -f '${_root}/.drush/hostmaster.alias.drushrc.php' ]" 2>/dev/null
-    _probe_rc=$?
-    if [ "${_probe_rc}" -eq 1 ]; then
-      _alrt "Skipping panel rewire for ${_root} — hostmaster alias not found on target"
-      continue
-    elif [ "${_probe_rc}" -ne 0 ]; then
-      _alrt "Cannot check ${_root} on target (ssh rc=${_probe_rc})"
-      _XMASS_PANEL_FAILED="${_XMASS_PANEL_FAILED} ${_root}"
-      continue
-    fi
-    _info "  Rewiring panel DB access for ${_root} on target ..."
-    # The account's .drush, panel site dir and vhosts are read and rewritten
-    # there only through the shipped helpers: inside the real directory,
-    # never through a link or into a FIFO put there, owner and mode kept.
-    { _xmass_remote_guards; cat <<'REMOTE'
+# The script the panel rewire runs as root on the promoted box through
+# bash -s, with the shell guards it needs: $1 = the Aegir root, $2 = the
+# old active's hostname (a panel dir named after it is looked for under
+# this box's own name first). The cutover pipes it to its target; post-mig
+# runs it here after a promotion by hand.
+_xmass_panel_rewire_sh() {
+  _xmass_remote_guards
+  cat <<'REMOTE'
 _R="$1"
 _S="$2"
 _R=${_R//[^a-zA-Z0-9\/._-]/}
@@ -8749,7 +8709,56 @@ fi
 echo "PANEL-OK: ${_R} panel rewired from dead ${_DEAD_DB} to live DB ${_LIVE}"
 exit 0
 REMOTE
-    } | ssh root@"${_tgt}" "bash -s -- '${_root}' '${_src_fqdn}'"
+}
+
+_xmass_rewire_panel_db_access() {
+  # The init-time datadir swap replaced the target's MySQL wholesale with
+  # the source's: the fresh-install panel DBs that the surviving
+  # NEW-host-named panel site dirs point at died with it, and the live
+  # (source-named) panel DB users' passwords exist only as hashes inside
+  # the replicated mysql.user — nothing on the target can rewire the panel
+  # without resetting them. Rewire every Aegir root's control panel BEFORE
+  # the step-13 rename so its queue passes (§5 cc, §7, §8) run against a
+  # bootstrappable hostmaster: discover the live hostmaster DB per root
+  # (same publish-path discriminator as renameaegirhost §5, refusing to
+  # guess on zero or several matches), reset that DB user's password across
+  # its enumerated host variants, and rewrite the panel dir's credential
+  # fields in place, preserving exact ownership and modes. Idempotent: a
+  # root whose panel drushrc already names a live DB is skipped, so resumed
+  # runs and any flow without a datadir swap no-op here. Per-root failures
+  # collect like the rename step's so the caller parks the cutover
+  # resumably.
+  local _rc _src_fqdn
+  _src_fqdn=$(_xmass_src_fqdn)
+  if [ -z "${_src_fqdn}" ]; then
+    _alrt "Cannot determine the source FQDN for the panel rewire step"
+    _XMASS_PANEL_FAILED=" fqdn-detection"
+    return 1
+  fi
+
+  _XMASS_PANEL_FAILED=""
+  _info "Rewiring panel DB access on target ${_tgt} for all Aegir roots ..."
+
+  local _probe_rc _root
+  for _root in /var/aegir $(printf '/data/disk/%s ' ${_ELIGIBLE_ACCOUNTS}); do
+    # Same 0/1-vs-ssh-failure split as the rename step: 255 (and anything
+    # else) is an ssh-layer failure and must park, not silently skip.
+    ssh root@"${_tgt}" \
+      "[ -f '${_root}/.drush/hostmaster.alias.drushrc.php' ]" 2>/dev/null
+    _probe_rc=$?
+    if [ "${_probe_rc}" -eq 1 ]; then
+      _alrt "Skipping panel rewire for ${_root} — hostmaster alias not found on target"
+      continue
+    elif [ "${_probe_rc}" -ne 0 ]; then
+      _alrt "Cannot check ${_root} on target (ssh rc=${_probe_rc})"
+      _XMASS_PANEL_FAILED="${_XMASS_PANEL_FAILED} ${_root}"
+      continue
+    fi
+    _info "  Rewiring panel DB access for ${_root} on target ..."
+    # The account's .drush, panel site dir and vhosts are read and rewritten
+    # there only through the shipped helpers: inside the real directory,
+    # never through a link or into a FIFO put there, owner and mode kept.
+    _xmass_panel_rewire_sh | ssh root@"${_tgt}" "bash -s -- '${_root}' '${_src_fqdn}'"
     _rc=$?
     if [ "${_rc}" -ne 0 ]; then
       _alrt "panel rewire for ${_root} returned rc=${_rc} on target"
@@ -8786,33 +8795,13 @@ REARM
   return 0
 }
 
-_xmass_promotion_cleanup_target() {
-  # A cutover TARGET that was itself demoted earlier (failback: the pair
-  # switched, now switches back) still carries the artefacts of its OWN
-  # demotion, and every one of them bites after promotion -- found live on
-  # the first failback drill:
-  #   - its self-authored SOURCE-role migproxy.cnf makes the peer-record
-  #     gate refuse EVERY inbound proxy push (rc 7): the demoted sibling's
-  #     own conversion fails (leaving its sites 503-gated) and a PX0 proxy
-  #     can never be retargeted back to this box;
-  #   - its stale proxied.pid makes create/export refuse this box as a
-  #     future source ("already migrated");
-  #   - its parked dispatcher leaves the promoted account's queue dead, so
-  #     tasks and certificate renewals silently stop;
-  #   - its PROXY vhosts survive promotion for every site whose name the
-  #     rename does not touch (only renamed sites get verify tasks), so the
-  #     promoted box relays to its demoted sibling, which now relays back:
-  #     a loop nginx surfaces as 400 header-too-large. The dot-prefixed
-  #     pre-proxy backups the conversion kept are restored over any live
-  #     vhost still carrying proxy_pass.
-  # The promotion ends the demotion those artefacts belonged to. Clearing
-  # them here -- BEFORE step 16 pushes fresh records at this box -- is what
-  # lets the failback complete. Idempotent; a first-migration target has
-  # none of these and every branch is a no-op.
-  _info "Clearing stale demotion artefacts on promoted target ${_tgt} ..."
-  local _oct _mine _o
-  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
-    ssh root@"${_tgt}" "bash -s" <<PROMCLEAN
+# The script the promotion cleanup runs as root on the promoted box through
+# bash -s, for the account $1: what an earlier demotion of that box left.
+# The cutover pipes it to its target; post-mig runs it here after a
+# promotion by hand.
+_xmass_promotion_cleanup_sh() {
+  local _oct="$1"
+  cat <<PROMCLEAN
 # log/, static/control and vhost.d are the account's: every test, read, mv
 # and rm below runs on ./names inside the real directory, entered once and
 # proven by pwd -P, never through a link swapped in at a directory or a name
@@ -8928,6 +8917,35 @@ if ( cd -P -- "/data/disk/${_oct}/config/server_master/nginx/vhost.d" 2>/dev/nul
     || echo "  ALRT: ${_oct}: nginx -t FAILED after vhost restore -- NOT reloaded"
 fi
 PROMCLEAN
+}
+
+_xmass_promotion_cleanup_target() {
+  # A cutover TARGET that was itself demoted earlier (failback: the pair
+  # switched, now switches back) still carries the artefacts of its OWN
+  # demotion, and every one of them bites after promotion -- found live on
+  # the first failback drill:
+  #   - its self-authored SOURCE-role migproxy.cnf makes the peer-record
+  #     gate refuse EVERY inbound proxy push (rc 7): the demoted sibling's
+  #     own conversion fails (leaving its sites 503-gated) and a PX0 proxy
+  #     can never be retargeted back to this box;
+  #   - its stale proxied.pid makes create/export refuse this box as a
+  #     future source ("already migrated");
+  #   - its parked dispatcher leaves the promoted account's queue dead, so
+  #     tasks and certificate renewals silently stop;
+  #   - its PROXY vhosts survive promotion for every site whose name the
+  #     rename does not touch (only renamed sites get verify tasks), so the
+  #     promoted box relays to its demoted sibling, which now relays back:
+  #     a loop nginx surfaces as 400 header-too-large. The dot-prefixed
+  #     pre-proxy backups the conversion kept are restored over any live
+  #     vhost still carrying proxy_pass.
+  # The promotion ends the demotion those artefacts belonged to. Clearing
+  # them here -- BEFORE step 16 pushes fresh records at this box -- is what
+  # lets the failback complete. Idempotent; a first-migration target has
+  # none of these and every branch is a no-op.
+  _info "Clearing stale demotion artefacts on promoted target ${_tgt} ..."
+  local _oct _mine _o
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    _xmass_promotion_cleanup_sh "${_oct}" | ssh root@"${_tgt}" "bash -s"
   done
   # The target's own record of a test run toward this box (its xmass_admail
   # record naming one of this box's addresses: a mirror built under admail=
@@ -9324,6 +9342,125 @@ _xmass_enable_events_here() {
     _alrt "${_hName}: the database is still read-only, so the events its active created after"
     _alrt "  the snapshot stay disabled: re-run 'xmass post-mig' once it takes writes"
   fi
+  return 0
+}
+
+# post-mig: the promotion steps a planned switch runs on its target and a
+# promotion by hand never did. The switch clears what an earlier demotion of
+# the box left (step 12.7: its own source-role records, proxied.pid and the
+# export latches, a parked dispatcher, proxy vhosts, an armed upgrade it
+# holds back until its renames are done), and rewires each control panel to
+# its live panel database before its renames (the mirror's own panel
+# databases died in its datadir swap, and the replicated panel logins'
+# passwords exist only as hashes). Without them, after a promotion by hand,
+# the panels answer 500, pre-mig refuses them, an account the box relayed
+# before refuses every create as "already migrated", a rename meets a panel
+# path that is not on this box, and an upgrade armed before the promotion
+# runs before the renames are done -- the failback and the rebuild of the
+# old active both start from here. Each step is idempotent: after a planned
+# switch, and on a box nothing moved to, it finds nothing to do. Only on a
+# box that serves its accounts itself: no finalized proxy and no replica
+# config. So the hand path runs post-mig twice: once right after the replica
+# is reset, while the standby marker still keeps this box's runner from an
+# armed upgrade, and once after the renames, which arms it again.
+
+# Whether this box holds no finalized proxy marker and no replica config.
+_xmass_promoted_here() {
+  local _rpl
+  [ -e /root/.proxy.cnf ] && return 1
+  _rpl=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=10 -BNe "SHOW REPLICA STATUS" 2> /dev/null) \
+    || _rpl=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=10 -BNe "SHOW SLAVE STATUS" 2> /dev/null) \
+    || return 1
+  [ -z "${_rpl}" ]
+}
+
+# The demotion cleanup of step 12.7, here: files only, so it runs first,
+# before the standby marker goes and the runner may act on an armed upgrade.
+_xmass_promote_cleanup_here() {
+  local _root _oct _out _l
+  if ! _xmass_promoted_here; then
+    [ -e /root/.proxy.cnf ] \
+      && _info "  a finalized proxy (/root/.proxy.cnf): no demotion cleanup or panel rewire here" \
+      || _alrt "${_hName}: still configured as a replica (or its replica state cannot be read): no demotion cleanup or panel rewire here"
+    return 1
+  fi
+  _info "Clearing what an earlier demotion of this box left ..."
+  for _root in /data/disk/o*; do
+    _oct="${_root##*/}"
+    [[ "${_oct}" =~ ^o[0-9]+$ ]] || continue
+    [ -f "${_root}/log/cores.txt" ] || continue
+    # The script speaks of the cutover that arms a held upgrade at its end;
+    # here the second post-mig run, after the renames, does.
+    _out=$(_xmass_promotion_cleanup_sh "${_oct}" | bash -s 2>&1 \
+      | sed 's/until the cutover completes/until the renames are done/')
+    [ -n "${_out}" ] && printf '%s\n' "${_out}" | while IFS= read -r _l; do _info "${_l}"; done
+  done
+  return 0
+}
+
+# The panel rewire of the planned switch, here, once the database takes
+# writes (the SQL watchdog releases a box promoted by hand within about a
+# minute of its standby marker going: waited for up to 75 s).
+_xmass_promote_panels_here() {
+  local _i _ro _root _out _l _bad="" _me
+  for _i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
+    _ro=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=10 -BNe \
+      "SELECT @@GLOBAL.super_read_only + @@GLOBAL.read_only" 2> /dev/null)
+    [ "${_ro}" = "1" ] || [ "${_ro}" = "2" ] || break
+    [ "${_i}" = "1" ] && _info "  the database here is still read-only: waiting up to 75 s for the SQL watchdog's release ..."
+    [ "${_i}" = "16" ] || sleep 5
+  done
+  if [ "${_ro}" != "0" ]; then
+    _alrt "${_hName}: the database reads read-only (${_ro:-unreadable}): the control panels are not"
+    _alrt "  rewired; re-run 'xmass post-mig' once it takes writes"
+    return 0
+  fi
+  _me=$(hostname -f 2> /dev/null | tr -cd 'a-zA-Z0-9.-')
+  _info "Control panels: rewired to their live panel databases where a promotion left them dead ..."
+  for _root in /var/aegir /data/disk/o*; do
+    [ -f "${_root}/.drush/hostmaster.alias.drushrc.php" ] || continue
+    _out=$(_xmass_panel_rewire_sh | bash -s -- "${_root}" "${_me}" 2>&1)
+    [ $? -eq 0 ] || _bad="${_bad} ${_root}"
+    while IFS= read -r _l; do
+      case "${_l}" in
+        PANEL-ERROR*) _alrt "  ${_l}" ;;
+        PANEL-*) _info "  ${_l}" ;;
+      esac
+    done <<< "${_out}"
+  done
+  if [ -n "${_bad}" ]; then
+    _alrt "${_hName}: the control panel of${_bad} could not be rewired (above): repair it before any"
+    _alrt "  xmass or xoct run from this box (pre-mig refuses an incoherent panel)"
+  fi
+  return 0
+}
+
+# The upgrade the cleanup held back is armed again once this box's renames
+# are done, as the planned switch arms it at its end: the account's identity
+# stamp (log/domain.txt, which the upgrade's own guard reads and only
+# renameaegirhost rewrites; the panel rewire already corrects the alias)
+# names this box. Before that it stays held, and the run says so.
+_xmass_promote_rearm_here() {
+  local _root _oct _me _dom _w
+  _me=$(hostname -f 2> /dev/null | tr -cd 'a-zA-Z0-9.-')
+  _w="$(cd -P /data/disk 2> /dev/null && pwd -P)"
+  for _root in /data/disk/o*; do
+    _oct="${_root##*/}"
+    [[ "${_oct}" =~ ^o[0-9]+$ ]] || continue
+    [ -e "${_root}/static/control/run-upgrade.pid.deferred" ] || continue
+    _dom=$(_xmass_read_file "${_root}/log/domain.txt" | head -n 1 | tr -cd 'a-zA-Z0-9.-')
+    if [ -z "${_me}" ] || [ "${_dom}" != "${_oct}.${_me}" ]; then
+      _alrt "  ${_oct}: its seeded upgrade stays held: its identity stamp names ${_dom:-nothing readable},"
+      _alrt "  not ${_oct}.${_me}: run renameaegirhost for ${_root}, then 'xmass post-mig' again"
+      _alrt "  (a custom front: mv ${_root}/static/control/run-upgrade.pid.deferred to run-upgrade.pid)"
+      continue
+    fi
+    if ( cd -P -- "${_root}/static/control" 2> /dev/null \
+      && [ "$(pwd -P)" = "${_w}/${_oct}/static/control" ] \
+      && mv -f -T -- ./run-upgrade.pid.deferred ./run-upgrade.pid ); then
+      _info "  ${_oct}: seeded upgrade re-armed; the dispatcher runs it on its next quiet tick"
+    fi
+  done
   return 0
 }
 
@@ -10405,6 +10542,26 @@ _xmass_pair_lineage() {
   return 0
 }
 
+# cron on the target $1 runs, or is started: it drives the runner that runs
+# the passes prep-target arms there. A target where it cannot be started is
+# refused before any install.
+_xmass_target_cron_up() {
+  local _o
+  _o=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"$1" "pgrep -x cron > /dev/null && { echo CRON-UP; exit 0; }; service cron start > /dev/null 2>&1; sleep 2; pgrep -x cron > /dev/null && echo CRON-STARTED || echo CRON-DOWN" 2> /dev/null)
+  case "${_o}" in
+    CRON-UP) : ;;
+    CRON-STARTED)
+      _info "  cron was stopped on $1 (a fenced box): started, so its runner runs the passes"
+      _info "  this prep-target arms there"
+    ;;
+    *)
+      _die "cron is not running on $1 and could not be started (${_o:-no answer}): the passes" \
+           "prep-target arms there would never run, and it would wait for them -- start it" \
+           "there ('service cron start'), then re-run"
+    ;;
+  esac
+}
+
 _xmass_cmd_prep_target() {
   # Phase 0.5 -- everything the target must have BEFORE its Octopus installs
   # and BEFORE init's datadir swap, automated end-to-end: CSF allowed in both
@@ -10608,6 +10765,13 @@ _xmass_cmd_prep_target() {
   # an armed target then leaves every account this run creates at no web
   # group, and so does every later pass there until the promotion.
   _xmass_prep_mark_put "${_tgt}"
+
+  # The passes each create arms on the target run only through its runner,
+  # which cron drives, and the silence gate below waits for every one. A
+  # returning old active comes back fenced with its cron stopped (the
+  # failover page): here it becomes this migration's target, and its cron
+  # runs again.
+  _xmass_target_cron_up "${_tgt}"
 
   # Every create leaves the target mid-motion (the in-flow post-install pass,
   # the pass its seed arms, the verifies each pass queues), and 'boa in-octopus'
@@ -14030,6 +14194,11 @@ _xmass_post_mig() {
     _die "Cannot run post-mig on a parent/host system"
   fi
   _info "Running post-mig on ${_hName} ..."
+  # A promotion by hand: what an earlier demotion of this box left goes
+  # first, while the standby marker still keeps its runner from an upgrade
+  # armed before the promotion (a no-op after a planned switch).
+  _XMASS_PROMOTED_HERE=NO
+  _xmass_promote_cleanup_here && _XMASS_PROMOTED_HERE=YES
   # Remove the Solr hold if still present, and re-arm what it disarmed:
   # the hold drops exec bits and rc links, and the start loop below
   # requires -x. Deny-parked services have no init script here and stay
@@ -14111,8 +14280,8 @@ _xmass_post_mig() {
     rm -f /root/.standby.cnf /run/boa_xmass_init.pid /root/.standby.init.pid \
       /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid \
       /var/log/boa/.standby_web_held.pid /var/log/boa/.standby_ftps_held.pid
-    _alrt "  Removed a LEFTOVER /root/.standby.cnf -- cutover step 15 should have"
-    _alrt "  cleared it; verify cron and the task queue are actually running here"
+    _alrt "  Removed /root/.standby.cnf (a promotion by hand, or a marker cutover step 15"
+    _alrt "  should have cleared); verify cron and the task queue are actually running here"
   fi
   # The standby preparation mark the same way: left here it keeps every
   # account of this box from converting to its own web group.
@@ -14121,6 +14290,10 @@ _xmass_post_mig() {
     _alrt "  Removed a LEFTOVER /root/.standby.prep.cnf -- cutover step 15 should have"
     _alrt "  cleared it; the accounts here convert below, by this box's policy"
   fi
+  # A promotion by hand: the panel rewire the planned switch runs on its
+  # target (a no-op after one), once the marker is gone and the database
+  # takes writes.
+  [ "${_XMASS_PROMOTED_HERE}" = "YES" ] && _xmass_promote_panels_here
   # Traffic now flows directly to this host. Reconcile the migration-proxy
   # trust from the per-account policy records: temporary peers are dropped,
   # permanent/ha-switch peers stay trusted (restricted to the live peer set),
@@ -14136,6 +14309,8 @@ _xmass_post_mig() {
   # after a promotion by hand this is the step that does.
   _xmass_enable_events_here
   _xmass_report_mail_state_here
+  # The upgrade the cleanup held back, armed again once the renames are done.
+  [ "${_XMASS_PROMOTED_HERE}" = "YES" ] && _xmass_promote_rearm_here
   # The web groups of a promoted box (the cutover's last step did this for a
   # planned switch; an emergency promotion by hand has only this run): its
   # accounts by this box's policy, gated, on an armed box; its master told.

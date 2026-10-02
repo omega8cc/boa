@@ -639,6 +639,51 @@ _detect_new_hostname() {
   fi
 }
 
+###-------------WRITABLE DATABASE--------###
+
+# Every rename writes the Aegir database (§5 and the queue passes after it).
+# A mirror promoted by hand keeps its database read-only (super_read_only)
+# until the SQL watchdog releases its standby hold, within about a minute of
+# /root/.standby.cnf going. A rename in that minute lands its file rewrites
+# while every database write fails (ERROR 1290): server_master keeps the old
+# hostname, the server verify then probes nginx on the old box, and the
+# regenerated nginx.conf no longer loads. So the release is waited for, up
+# to 90 s, before anything changes; a standby, or a hold that stays, is
+# refused with nothing changed.
+_db_read_only() {
+  mysql --defaults-file=/root/.my.cnf --connect-timeout=10 -BNe \
+    "SELECT @@GLOBAL.super_read_only + @@GLOBAL.read_only" 2>/dev/null
+}
+_wait_db_writable() {
+  local _ro _i=0
+  _ro=$(_db_read_only)
+  [ "${_ro}" = "0" ] && return 0
+  [ -n "${_ro}" ] \
+    || _die "Cannot read whether the database takes writes (is MySQL up?) -- nothing was changed"
+  if [ -e "/root/.standby.cnf" ]; then
+    _die "This box is a standby (/root/.standby.cnf) and its database is read-only:" \
+         "promote it first -- nothing was changed"
+  fi
+  if [ "${_DRY_RUN}" = "YES" ]; then
+    _alrt "(dry-run) the database is read-only now; a real run waits up to 90 s for its release"
+    return 0
+  fi
+  _info "The database is still read-only (the standby hold of a box promoted by hand):"
+  _info "  waiting up to 90 s for the SQL watchdog to release it ..."
+  while [ "${_i}" -lt 18 ]; do
+    sleep 5
+    _i=$(( _i + 1 ))
+    _ro=$(_db_read_only)
+    if [ "${_ro}" = "0" ]; then
+      _info "  the database takes writes (after $(( _i * 5 )) s)"
+      return 0
+    fi
+  done
+  _die "The database is still read-only after 90 s -- nothing was changed. On a box" \
+       "promoted by hand the SQL watchdog releases it once /root/.standby.cnf is gone" \
+       "and the box holds no replica config; re-run once it reads 0"
+}
+
 ###-------------BACKUP--------------------###
 
 # Root's copies of earlier runs for this root expire by the stamp in their
@@ -3794,6 +3839,7 @@ _print_summary() {
 _check_root
 _detect_old_hostname
 _detect_new_hostname
+_wait_db_writable
 _backup_files
 _rename_hostmaster_site_dir
 _rename_tenant_site_dirs

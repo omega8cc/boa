@@ -1323,8 +1323,10 @@ mirror out of sync except the active server.
 
 A mirror is built with the same verbs as a move. A fresh box carries the
 site-less `o1` its own install made: check it there by hand, then name it
-to `prep-target` with `--adopt-siteless=o1`; `init` takes
-`--proxy-mode=ha-switch`.
+to `prep-target` with `--adopt-siteless=o1`, beside `--fix-solr` (a stock
+install often runs a Solr version the active does not use, which
+`prep-target` refuses until the target mirrors the active's used set);
+`init` takes `--proxy-mode=ha-switch`.
 
 No daemon and no inotify
 machinery is involved — the driver is the standard per-minute monitor fan-out
@@ -1741,6 +1743,21 @@ under `admail=` and promoted by hand keeps its old active's mark and the
 hold, and no `go-live` can end that run any more: `post-mig` prints the
 lines that remove them. It never removes them itself, since on a test box
 the hold is wanted.
+
+After a **promotion by hand** it also runs the promotion steps the cutover
+runs on its target. First, before the standby marker goes, it clears what
+an earlier demotion of this box left (its own relay records,
+`proxied.pid` and the export latches, a parked dispatcher, proxy vhosts),
+holding back an upgrade armed before the promotion. Then, once the database
+takes writes, it rewires each control panel to its live panel database.
+Without these the panels answer 500, `pre-mig` refuses them, and an account
+the box relayed earlier refuses every `xoct create`.
+
+Run it right after
+`RESET REPLICA ALL` and again once `renameaegirhost` has run for every root:
+the second run arms the held-back upgrade, which would otherwise move a
+panel under the old hostname. Both are no-ops after a planned switch, and on
+a finalized proxy or a box still configured as a replica nothing runs.
 
 It **enables the events a replica kept disabled**, each with its own
 definer, as cutover step 11.5 does: after a promotion by hand this is the
