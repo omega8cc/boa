@@ -8771,9 +8771,11 @@ _xmass_refuse_role_clash() {
 ### frozen creation revisions of finished tasks keep status 0 forever, and a
 ### queued row carries executed=NULL, never 0) and no dispatch/verify/installer
 ### process. Every leg fails CLOSED: an unreadable root or an unreadable probe
-### counts as busy. Accounts are enumerated exactly as _xmass_enumerate_accounts
-### does (every /data/disk directory minus the blocklist -- names are not
-### assumed to match o*), plus the master root.
+### counts as busy. Accounts are enumerated as _xmass_enumerate_accounts does
+### (every /data/disk directory minus the blocklist -- names are not assumed
+### to match o*), plus the master root; a directory without a panel alias is
+### no Aegir root and has no queue to read, so it is passed over, as the master
+### root is without its alias.
 ###
 ### Two scopes: 'full' (all four legs) for prep-target and init, where the
 ### target is a working box whose runner consumes armed pids and whose panels
@@ -8805,6 +8807,10 @@ _xmass_target_silence_probe() {
         case "${_n}" in
           arch|all|lost+found|lostfound|backups|codebases-cleanup|legacy|xusage) continue ;;
         esac
+        ### Any other directory here (a hand-made copy, a work directory)
+        ### never answers the queue read, and counting it held every wait
+        ### to its whole bound.
+        [ -e "${_d}/.drush/hostmaster.alias.drushrc.php" ] || continue
         _roots="${_roots} ${_n}"
       done
       for _r in ${_roots}; do
