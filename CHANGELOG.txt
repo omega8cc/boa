@@ -1243,6 +1243,49 @@
 
 @=> Important Fixes
 
+    * A shared Valkey integration module in /data/all/000/modules is
+      replaced in one rename, so a site that loads it through its bundle
+      never finds it missing while an upgrade or the agent pass swaps
+      it; the gap was about 20 ms per module, once per release, and a
+      site loading in it fell back to the database cache.
+
+    * The cron queue template is kept current like the other
+      configuration files: a changed template reaches the box even when
+      it keeps the queue patch, and the accounts' copies put from an
+      earlier template take it. A pass stopped among the accounts is
+      taken up by the next pass, and an account skipped once, as on a
+      replication standby, by the next release. The hosting module's
+      own copy is kept.
+
+    * A replication standby no longer fetches the shared modules in
+      /data/all/000/modules itself: they arrive from the active with
+      each sync, and the first agent pass after a promotion refreshes
+      any that is stale.
+
+    * xmass sends the shared store from where the active keeps it to
+      where the mirror keeps it, a real /data/all or root's link to
+      /data/disk/all on either box. On a pair whose two boxes kept it
+      differently the store landed where nothing on the mirror reads it,
+      so the sites on older shared code had none after a switch, and a
+      failback could prune the old box's store. Any other link at
+      /data/all, or a target whose layout cannot be read, is a DENY
+      that stops a live sync and a cutover.
+
+    * xmass no longer keeps a shared store file that is newer on the
+      mirror: the active is the store's only writer, so its bytes win on
+      every pass, and a file an account had changed under an earlier
+      release, rebuilt on the active by Octopus's one-time pass, takes
+      the rebuilt bytes on the mirror too.
+
+    * A shared codebase the nightly cleanup moved out of the store no
+      longer trips xmass's delete guard on the next sync: its entries
+      are budgeted out of the guard while the mirror still holds it.
+
+    * After a promotion within a release, the first agent pass puts
+      that release's Let's Encrypt includes into the accounts'
+      hostmaster platforms: a replication standby no longer records
+      them as done.
+
     * A MySecureShell rebuild no longer takes the accounts' file-transfer
       logins down for the rest of the upgrade: the installed shell gets
       its setuid bit back at once, not at the end of the pass, and the
