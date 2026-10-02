@@ -1621,6 +1621,17 @@
       declared without DETERMINISTIC, NO SQL or READS SQL DATA now fails
       the load instead of vanishing.
 
+    * Stored procedures and functions, and scheduled events, travel
+      with a site's database through the classic dumps too: Clone, a
+      Migrate or Restore without MyQuick, the Backup mode with a
+      classic dump, and the nightly and cluster backups in legacy mode.
+      The dump asks first whether its database user may read them and
+      leaves them out with a warning when not, so such a dump still
+      completes. A trigger made under ANSI_QUOTES no longer stops a
+      Clone or Restore on Percona 5.7, and a trigger, routine or
+      event made before its database's default collation changed no
+      longer stops a Clone, Migrate or Restore.
+
     * The nightly copy of database dumps into each account's dbackup/
       takes the date from the end of the archive folder name: on a box
       whose hostname holds a dash, MyQuick dumps were never copied and
