@@ -587,7 +587,8 @@ A symbolic link at `sites`, the site directory or `files/solr`, or at `files` ot
 ;;  defined here will override the value of sql_web_max_exec_ms set in the
 ;;  platform level boa_platform_control.ini file located in the sites/all/modules
 ;;  directory. It is applied as a per-connection SET SESSION max_execution_time
-;;  statement on every web request; CLI (Drush, cron, migrations, backups) is
+;;  statement on every web request except the scheduled site cron; CLI (Drush,
+;;  migrations, backups) and the scheduled cron the control panel runs are
 ;;  never capped.
 ;;
 ;;  Set 0 to disable the cap for this site. The statement is sent in a form
