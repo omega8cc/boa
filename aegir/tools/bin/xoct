@@ -5389,7 +5389,12 @@ _migrate_prepare() {
       fi
       ### Stale-pid cleanup FIRST, then the enforced-upgrade trigger: the
       ### historical order deleted the run-upgrade.pid it had just created.
-      _xoct_remote_ctrl "${_tgt}" "${_TGT_HM_USER}" 'rm -f -- ./*.pid'
+      ### The account's 503 gate is no stale pid: a fresh install has none,
+      ### and an account that has one (a returning old active fenced after a
+      ### promotion by hand, an import that failed and put its gate back) is
+      ### held on purpose -- the import's own tail and the cutover's
+      ### promotion lift it, never a create.
+      _xoct_remote_ctrl "${_tgt}" "${_TGT_HM_USER}" 'for _p in ./*.pid; do [ "${_p}" = ./http-off.pid ] || rm -f -- "${_p}"; done'
       if [ "${_ARM_UPGRADE}" = "YES" ]; then
         ### Both put fresh, owned by the main login from the start as the
         ### queue's own writer leaves them (the group asked of the target

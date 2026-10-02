@@ -336,6 +336,12 @@ ID back), and the refusal says
 the marker was put for an earlier one. `boa cleanup purge` moves the marker
 aside with the account's other files in `/root`.
 
+Every `create` clears the stale control pids of the account on the target
+before it arms the upgrade, but never its 503 gate
+(`static/control/http-off.pid`): an account held behind one (an old active
+fenced after an emergency promotion, an import that failed and put its gate
+back) stays held until the import's tail or a cutover's promotion lifts it.
+
 To converge an account that really is this migration's but carries no marker
 (one prepared by hand, or created before the marker existed), put the marker
 on the target by hand: the refusal prints the one-line command, which records

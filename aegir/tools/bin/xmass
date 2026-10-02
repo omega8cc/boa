@@ -8912,9 +8912,18 @@ if ( cd -P -- "/data/disk/${_oct}/config/server_master/nginx/vhost.d" 2>/dev/nul
     fi
   done
   [ "\${_restored}" -gt 0 ] ); then
-  nginx -t &>/dev/null && service nginx reload &>/dev/null \
-    && echo "  ${_oct}: nginx reloaded with restored vhosts" \
-    || echo "  ALRT: ${_oct}: nginx -t FAILED after vhost restore -- NOT reloaded"
+  # nginx may be down here by design (a promotion by hand runs this while
+  # the standby web hold still keeps it down): it loads the restored vhosts
+  # when it starts, and a failed reload of a stopped server is no failed test.
+  if ! nginx -t &>/dev/null; then
+    echo "  ALRT: ${_oct}: nginx -t FAILED after vhost restore -- NOT reloaded"
+  elif ! pgrep -x nginx &>/dev/null; then
+    echo "  ${_oct}: nginx is not running here: it loads the restored vhosts when it starts"
+  elif service nginx reload &>/dev/null; then
+    echo "  ${_oct}: nginx reloaded with restored vhosts"
+  else
+    echo "  ALRT: ${_oct}: nginx reload FAILED after vhost restore (nginx -t passed)"
+  fi
 fi
 PROMCLEAN
 }
@@ -9357,12 +9366,54 @@ _xmass_enable_events_here() {
 # before refuses every create as "already migrated", a rename meets a panel
 # path that is not on this box, and an upgrade armed before the promotion
 # runs before the renames are done -- the failback and the rebuild of the
-# old active both start from here. Each step is idempotent: after a planned
-# switch, and on a box nothing moved to, it finds nothing to do. Only on a
-# box that serves its accounts itself: no finalized proxy and no replica
-# config. So the hand path runs post-mig twice: once right after the replica
-# is reset, while the standby marker still keeps this box's runner from an
-# armed upgrade, and once after the renames, which arms it again.
+# old active both start from here. Only on a box that serves its accounts
+# itself (no finalized proxy, no replica config), and only on the hand path:
+# post-mig runs after every planned switch and failback too, where the
+# cutover did all of this and the upgrades it armed again at its end wait
+# behind the BOA run lock -- run again there, the cleanup would delete them,
+# and it would take apart a relay to a third box. So the hand path runs
+# post-mig twice: once right after the replica is reset, while the standby
+# marker still keeps this box's runner from an armed upgrade, and once after
+# the renames, which arms it again.
+
+# The promotion by hand, from post-mig's first run until a run finds nothing
+# owed: the address of the active this box mirrored (the standby marker's
+# first line names it, and the marker is gone after the first run) and
+# whether the demotion cleanup ran. Not in /run: a reboot between the two
+# runs must not lose it. init removes it when it makes the box a standby
+# again.
+_XMASS_HAND_PROMO_FILE="/var/log/boa/.xmass_hand_promoted.pid"
+
+# Whether this run belongs to a promotion by hand: the standby marker is
+# still here when post-mig starts (the checklist runs it right after the
+# replica reset, while a planned switch removes the marker at its step 15),
+# or an earlier run of that promotion left its record. Sets
+# _XMASS_HAND_PEER and _XMASS_HAND_CLEANED; status 1 on any other box.
+_xmass_hand_path_start() {
+  local _f="${_XMASS_HAND_PROMO_FILE}" _rec=""
+  _XMASS_HAND_PEER=""
+  _XMASS_HAND_CLEANED=NO
+  if [ -e /root/.standby.cnf ]; then
+    # A marker init wrote names the active it was the target of; an older
+    # or a hand-made one may name none, and then no account is this pair's.
+    _XMASS_HAND_PEER=$(head -n 1 /root/.standby.cnf 2> /dev/null \
+      | sed -n 's/^xmass replication target of \([0-9A-Fa-f.:]*\) since .*/\1/p')
+    mkdir -p "${_f%/*}"
+    rm -f "${_f}"
+    ( umask 077
+      printf '_XMASS_HAND_PEER=%s\n_XMASS_HAND_STAMPED=%s\n' "${_XMASS_HAND_PEER}" \
+        "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" > "${_f}" ) \
+      || _alrt "could not write ${_f}: a later post-mig run will not finish this promotion by hand"
+    _info "A promotion by hand: the standby marker is still here (the active it mirrored: ${_XMASS_HAND_PEER:-not named})"
+    return 0
+  fi
+  [ -f "${_f}" ] && [ ! -L "${_f}" ] || return 1
+  _rec=$(cat "${_f}" 2> /dev/null)
+  _XMASS_HAND_PEER=$(printf '%s\n' "${_rec}" | grep -m1 '^_XMASS_HAND_PEER=' | cut -d= -f2- | tr -cd '0-9A-Fa-f.:')
+  printf '%s\n' "${_rec}" | grep -q '^_XMASS_HAND_CLEANED=' && _XMASS_HAND_CLEANED=YES
+  _info "A promotion by hand, continued (${_f}; the active it mirrored: ${_XMASS_HAND_PEER:-not named})"
+  return 0
+}
 
 # Whether this box holds no finalized proxy marker and no replica config.
 _xmass_promoted_here() {
@@ -9374,27 +9425,156 @@ _xmass_promoted_here() {
   [ -z "${_rpl}" ]
 }
 
+# _xmass_promoted_here, saying why not.
+_xmass_promoted_here_said() {
+  _xmass_promoted_here && return 0
+  [ -e /root/.proxy.cnf ] \
+    && _info "  a finalized proxy (/root/.proxy.cnf): no demotion cleanup or panel rewire here" \
+    || _alrt "${_hName}: still configured as a replica (or its replica state cannot be read): no demotion cleanup or panel rewire here"
+  return 1
+}
+
+# ./$1 in the current (pinned) directory when it is root's regular file with
+# one link, opened once without following a link or blocking on a FIFO, at
+# most 64 KiB; nothing otherwise. log/ is the account's.
+_xmass_rootread_here() {
+  perl -e 'use Fcntl; sysopen(my $h, $ARGV[0], O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1; my @s = stat($h); exit 1 unless @s && -f _ && $s[3] == 1 && $s[4] == 0 && $s[7] <= 65536; local $/; my $d = <$h>; print $d if defined $d; exit 0' "./${1}"
+}
+
+# Which part of the hand path's cleanup the account $1 takes, from root's
+# files in its log/ and the pair's peer $2 (the active this box mirrored):
+#   pair  -- its own source-role record (this box's address as the host) names
+#            the peer, or, with no live record, the one an earlier run set
+#            aside does, or its failed conversion was toward the peer: what
+#            this box's demotion toward that active left;
+#   moved -- it relays, or is moving, to another box (its record names
+#            another peer, a conversion failed toward another, or it is
+#            proxied with no record that says where): printed with that peer;
+#   serve -- none of these: an account this box serves.
+_xmass_hand_scope() {
+  local _oct="$1" _peer="$2" _l="/data/disk/$1/log" _rec _hip _rp _mine _pf
+  _mine=$(hostname -I 2> /dev/null | tr ' ' '\n' | grep -v '^$')
+  _rec=$(_xmass_in_real_dir "${_l}" _xmass_rootread_here migproxy.cnf)
+  if [ -n "${_rec}" ]; then
+    if printf '%s\n' "${_rec}" | grep -qx '_MIG_ROLE=source'; then
+      _hip=$(printf '%s\n' "${_rec}" | grep -m1 '^_MIG_HOST_IP=' | cut -d= -f2-)
+      _rp=$(printf '%s\n' "${_rec}" | grep -m1 '^_MIG_PEER_IP=' | cut -d= -f2- | tr -cd '0-9A-Fa-f.:')
+      if [ -n "${_hip}" ] && printf '%s\n' "${_mine}" | grep -qxF -- "${_hip}"; then
+        if [ -n "${_peer}" ] && [ "${_rp}" = "${_peer}" ]; then
+          echo pair
+        else
+          echo "moved ${_rp:-?}"
+        fi
+        return 0
+      fi
+    fi
+  else
+    _rec=$(_xmass_in_real_dir "${_l}" _xmass_rootread_here migproxy.cnf.superseded-by-promotion)
+    if [ -n "${_peer}" ] && printf '%s\n' "${_rec}" | grep -qx '_MIG_ROLE=source'; then
+      _hip=$(printf '%s\n' "${_rec}" | grep -m1 '^_MIG_HOST_IP=' | cut -d= -f2-)
+      _rp=$(printf '%s\n' "${_rec}" | grep -m1 '^_MIG_PEER_IP=' | cut -d= -f2- | tr -cd '0-9A-Fa-f.:')
+      if [ "${_rp}" = "${_peer}" ] && [ -n "${_hip}" ] \
+        && printf '%s\n' "${_mine}" | grep -qxF -- "${_hip}"; then
+        echo pair
+        return 0
+      fi
+    fi
+  fi
+  _pf=$(_xmass_in_real_dir "${_l}" _xmass_rootread_here proxy-failed.pid \
+    | head -n 1 | awk '{print $1}' | tr -cd '0-9A-Fa-f.:')
+  if [ -n "${_pf}" ]; then
+    if [ -n "${_peer}" ] && [ "${_pf}" = "${_peer}" ]; then
+      echo pair
+    else
+      echo "moved ${_pf}"
+    fi
+    return 0
+  fi
+  if [ -e "${_l}/proxy-failed.pid" ] || [ -L "${_l}/proxy-failed.pid" ] \
+    || [ -e "${_l}/proxied.pid" ] || [ -L "${_l}/proxied.pid" ]; then
+    echo "moved ?"
+    return 0
+  fi
+  echo serve
+}
+
+# An armed upgrade of the account $1, held back until the renames are done
+# (the second post-mig run arms it again): run before them, it would move a
+# panel under the old hostname. Every one is held, none removed -- on this
+# path nothing else would ever arm it again. Inside the real static/control
+# only, as the cutover's cleanup does.
+_xmass_hand_hold_here() {
+  [ -e ./run-upgrade.pid ] || [ -L ./run-upgrade.pid ] || return 1
+  mv -f -T -- ./run-upgrade.pid ./run-upgrade.pid.deferred || return 1
+  rm -f -- ./run-upgrade.xmass
+}
+_xmass_hand_hold_upgrade() {
+  local _c="/data/disk/$1/static/control"
+  if _xmass_in_real_dir "${_c}" true; then
+    _xmass_in_real_dir "${_c}" _xmass_hand_hold_here \
+      && _info "  $1: its armed upgrade held until the renames are done"
+  elif [ -e "${_c}" ] || [ -L "${_c}" ]; then
+    _alrt "  $1: static/control is not a real directory -- its upgrade trigger is not touched"
+  fi
+  return 0
+}
+
 # The demotion cleanup of step 12.7, here: files only, so it runs first,
 # before the standby marker goes and the runner may act on an armed upgrade.
+# The cutover runs it on the accounts it moves; here it takes this pair's
+# accounts (_xmass_hand_scope) and holds the armed upgrade of every account
+# this box serves; an account it relays, or is moving, to another box is
+# left as it is. Once per promotion by hand: its record notes the run.
 _xmass_promote_cleanup_here() {
-  local _root _oct _out _l
-  if ! _xmass_promoted_here; then
-    [ -e /root/.proxy.cnf ] \
-      && _info "  a finalized proxy (/root/.proxy.cnf): no demotion cleanup or panel rewire here" \
-      || _alrt "${_hName}: still configured as a replica (or its replica state cannot be read): no demotion cleanup or panel rewire here"
-    return 1
+  local _root _oct _out _l _sc
+  _info "Clearing what an earlier demotion of this box left (this pair's accounts) ..."
+  if [ -z "${_XMASS_HAND_PEER}" ]; then
+    _alrt "the standby marker names no active: no account here can be told to be this pair's, so"
+    _alrt "  the relay files of every account are left as they are (armed upgrades are still held)"
   fi
-  _info "Clearing what an earlier demotion of this box left ..."
   for _root in /data/disk/o*; do
     _oct="${_root##*/}"
     [[ "${_oct}" =~ ^o[0-9]+$ ]] || continue
     [ -f "${_root}/log/cores.txt" ] || continue
+    _sc=$(_xmass_hand_scope "${_oct}" "${_XMASS_HAND_PEER}")
+    case "${_sc}" in
+      moved*)
+        _info "  ${_oct}: relays, or is moving, to ${_sc#moved } -- not this pair's: left as it is"
+        continue
+      ;;
+    esac
+    _xmass_hand_hold_upgrade "${_oct}"
+    [ "${_sc}" = "pair" ] || continue
     # The script speaks of the cutover that arms a held upgrade at its end;
     # here the second post-mig run, after the renames, does.
     _out=$(_xmass_promotion_cleanup_sh "${_oct}" | bash -s 2>&1 \
       | sed 's/until the cutover completes/until the renames are done/')
     [ -n "${_out}" ] && printf '%s\n' "${_out}" | while IFS= read -r _l; do _info "${_l}"; done
   done
+  _XMASS_HAND_CLEANED=YES
+  if [ -f "${_XMASS_HAND_PROMO_FILE}" ] && [ ! -L "${_XMASS_HAND_PROMO_FILE}" ]; then
+    printf '_XMASS_HAND_CLEANED=%s\n' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" >> "${_XMASS_HAND_PROMO_FILE}"
+  fi
+  return 0
+}
+
+# The promotion by hand is over here once its cleanup ran, the panels were
+# rewired and no upgrade stays held: its record goes. Otherwise it stays, and
+# the run says what a later post-mig run still owes.
+_xmass_hand_path_end() {
+  local _f _held=""
+  for _f in /data/disk/o*/static/control/run-upgrade.pid.deferred; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    _f="${_f#/data/disk/}"
+    _held="${_held} ${_f%%/*}"
+  done
+  if [ "${_XMASS_HAND_CLEANED}" = "YES" ] && [ "${_XMASS_HAND_OWED}" != "YES" ] && [ -z "${_held}" ]; then
+    rm -f "${_XMASS_HAND_PROMO_FILE}"
+    _info "The promotion by hand is complete here: nothing is left for a later post-mig run"
+    return 0
+  fi
+  _info "The promotion by hand is not complete here yet${_held:+ (upgrades held:${_held})}: run 'xmass post-mig'"
+  _info "  again once the renames are done and the database takes writes (${_XMASS_HAND_PROMO_FILE} keeps its state)"
   return 0
 }
 
@@ -9411,6 +9591,7 @@ _xmass_promote_panels_here() {
     [ "${_i}" = "16" ] || sleep 5
   done
   if [ "${_ro}" != "0" ]; then
+    _XMASS_HAND_OWED=YES
     _alrt "${_hName}: the database reads read-only (${_ro:-unreadable}): the control panels are not"
     _alrt "  rewired; re-run 'xmass post-mig' once it takes writes"
     return 0
@@ -9429,6 +9610,7 @@ _xmass_promote_panels_here() {
     done <<< "${_out}"
   done
   if [ -n "${_bad}" ]; then
+    _XMASS_HAND_OWED=YES
     _alrt "${_hName}: the control panel of${_bad} could not be rewired (above): repair it before any"
     _alrt "  xmass or xoct run from this box (pre-mig refuses an incoherent panel)"
   fi
@@ -9463,14 +9645,14 @@ _xmass_promote_rearm_here() {
       -e "SELECT n.title FROM hosting_context c JOIN node n ON n.nid = c.nid WHERE c.name = 'server_master'" \
       2> /dev/null | head -n 1 | tr -cd 'a-zA-Z0-9.-')
     if [ -z "${_me}" ] || [ "${_srv}" != "${_me}" ]; then
-      _alrt "  ${_oct}: its seeded upgrade stays held: its panel database names ${_srv:-no readable server}"
+      _alrt "  ${_oct}: its upgrade stays held: its panel database names ${_srv:-no readable server}"
       _alrt "  as its server, not ${_me}: run renameaegirhost for ${_root}, then 'xmass post-mig' again"
       continue
     fi
     if ( cd -P -- "${_root}/static/control" 2> /dev/null \
       && [ "$(pwd -P)" = "${_w}/${_oct}/static/control" ] \
       && mv -f -T -- ./run-upgrade.pid.deferred ./run-upgrade.pid ); then
-      _info "  ${_oct}: seeded upgrade re-armed; the dispatcher runs it on its next quiet tick"
+      _info "  ${_oct}: held upgrade re-armed; the dispatcher runs it on its next quiet tick"
     fi
   done
   return 0
@@ -9630,6 +9812,8 @@ _xmass_verb_unwind() {
   local _rc="${1:-0}"
   rm -f "${_XMASS_LOCK_FILE}"
   [ "${_rc}" != "0" ] && [ "${_XMASS_CSF_KEEP}" != "YES" ] && _xmass_csf_undo_peers
+  # a fenced target's cron, started by a prep-target that did not finish
+  _xmass_target_cron_refence
   return 0
 }
 
@@ -10195,6 +10379,30 @@ _pi=$(printf '%s\n' "${_st}" | grep -m1 '^_XMASS_INIT_TIME=' | cut -d= -f2- \
   | sed -n 's/^\([0-9]\{4\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)-\([0-9]\{2\}\)\([0-9]\{2\}\)\([0-9]\{2\}\)$/\1-\2-\3 \4:\5:\6/p')
 [ -n "${_pi}" ] && _pi=$(date -d "${_pi}" +%s 2> /dev/null)
 printf 'PAIR_TARGET_IP=%s\nPAIR_PHASE=%s\nPAIR_INIT_EPOCH=%s\n' "${_pt}" "${_pp}" "${_pi}"
+# Whether the account there relays, or is moving, elsewhere: a proxied.pid
+# in any form (? when its log/ is not a real directory), and the peer of its
+# source-role record of root's (? when a record is there that cannot be read
+# so). The pair's state names the box, not each account: an account that
+# box moved on is no copy of this one. Both keys, even when empty.
+_L="/data/disk/${_A}/log"
+_isthere() { [ -e "./${1}" ] || [ -L "./${1}" ]; }
+_rpid=NO
+if ! _xmass_in_real_dir "${_L}" true; then
+  _rpid='?'
+elif _xmass_in_real_dir "${_L}" _isthere proxied.pid; then
+  _rpid=YES
+fi
+_rpeer=""
+if _xmass_in_real_dir "${_L}" _isthere migproxy.cnf; then
+  _rrec=$(_xmass_in_real_dir "${_L}" _rootread migproxy.cnf)
+  if [ -z "${_rrec}" ]; then
+    _rpeer='?'
+  elif printf '%s\n' "${_rrec}" | grep -qx '_MIG_ROLE=source'; then
+    _rpeer=$(printf '%s\n' "${_rrec}" | grep -m1 '^_MIG_PEER_IP=' | cut -d= -f2- | tr -cd '0-9A-Fa-f.:')
+    [ -n "${_rpeer}" ] || _rpeer='?'
+  fi
+fi
+printf 'PAIR_RELAY_PID=%s\nPAIR_RELAY_PEER=%s\n' "${_rpid}" "${_rpeer}"
 _F="/root/.${_A}.migration-create.txt"
 if [ -f "${_F}" ] && [ ! -L "${_F}" ] && [ "$(stat -c %u "${_F}")" = 0 ]; then
   timeout 10 dd if="${_F}" iflag=nofollow,nonblock,fullblock bs=65536 count=1 status=none 2> /dev/null | grep '^_MIG_CREATE_'
@@ -10504,14 +10712,15 @@ _xmass_create_marker_here() {
 ###     now, and the target's account directory was born before the marker
 ###     was put (this box's account was made from that one); or
 ###   - the target's own migration state names one of this box's addresses
-###     as its target, in a phase past init, and the target's account
-###     directory was born before that init (the target was this pair's
-###     active, and this box holds its copy).
+###     as its target, in a phase past init, the target's account directory
+###     was born before that init, and the account there neither relays nor
+###     moved on to another box (the target was this pair's active, and this
+###     box holds its copy).
 ### A birth time the filesystem does not keep (0) is not compared. Prints
 ### the line that says which; status 1 otherwise. Read-only.
 _xmass_pair_lineage() {
   local _a="$1" _t="$2" _mine="$3" _out="$4" _ni _tb _th _m _mh _mo _mu _mi _ms _se
-  local _nu _nl _pt _pp _pe
+  local _nu _nl _pt _pp _pe _rp _rr
   _ni=$(printf '%s\n' "${_out}" | grep -m1 '^_MIG_CREATE_NOW_INODE=' | cut -d= -f2-)
   [[ "${_ni}" =~ ^[0-9]+:[0-9]+$ ]] || return 1
   _tb="${_ni#*:}"
@@ -10550,21 +10759,46 @@ _xmass_pair_lineage() {
   printf '%s\n' ${_mine} | grep -qxF -- "${_pt}" || return 1
   [[ "${_pe}" =~ ^[0-9]+$ ]] || return 1
   [ "${_tb}" = 0 ] || [ "${_tb}" -lt "${_pe}" ] || return 1
+  # The state names the box, not the account: one that box relays, or moved
+  # on, to another (a proxied.pid, a source-role record naming another peer)
+  # was never this pair's copy, and a same-name account made here since is
+  # another client's. A relay to this box is the relay proof's, not this one.
+  _rp=$(printf '%s\n' "${_out}" | grep -m1 '^PAIR_RELAY_PID=' | cut -d= -f2-)
+  _rr=$(printf '%s\n' "${_out}" | grep -m1 '^PAIR_RELAY_PEER=' | cut -d= -f2-)
+  if [ "${_rp}" != "NO" ] \
+    || { [ -n "${_rr}" ] && ! printf '%s\n' ${_mine} | grep -qxF -- "${_rr}"; }; then
+    _alrt "  ${_a}: ${_t}'s migration state names this box, but its ${_a} relays or moved on to ${_rr:-another box}"
+    _alrt "  (log/proxied.pid ${_rp:-unreadable}, its source-role record): not this pair's own"
+    return 1
+  fi
   _info "  ${_a}: held on ${_t}, whose migration state names this box as its target (phase ${_pp}): adopted for this migration"
   return 0
 }
 
+# cron on the target $1: CRON-UP when it runs, CRON-STARTED when it was
+# stopped and runs now, CRON-DOWN when it could not be started.
+_xmass_target_cron_start() {
+  ssh -o ConnectTimeout=15 -o BatchMode=yes root@"$1" "pgrep -x cron > /dev/null && { echo CRON-UP; exit 0; }; service cron start > /dev/null 2>&1; sleep 2; pgrep -x cron > /dev/null && echo CRON-STARTED || echo CRON-DOWN" 2> /dev/null
+}
+
 # cron on the target $1 runs, or is started: it drives the runner that runs
 # the passes prep-target arms there. A target where it cannot be started is
-# refused before any install.
+# refused before any install. A returning old active comes back fenced, its
+# cron stopped so that its own jobs (its task queue, its sites' crons, the
+# nightly work) never run against data that stopped being the live copy at
+# the promotion: a cron started here is stopped again when prep-target ends
+# (_xmass_target_cron_refence), and init starts it once the box is this
+# pair's standby, whose marker holds those jobs.
+_XMASS_TGT_CRON_STARTED=""
 _xmass_target_cron_up() {
   local _o
-  _o=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"$1" "pgrep -x cron > /dev/null && { echo CRON-UP; exit 0; }; service cron start > /dev/null 2>&1; sleep 2; pgrep -x cron > /dev/null && echo CRON-STARTED || echo CRON-DOWN" 2> /dev/null)
+  _o=$(_xmass_target_cron_start "$1")
   case "${_o}" in
     CRON-UP) : ;;
     CRON-STARTED)
-      _info "  cron was stopped on $1 (a fenced box): started, so its runner runs the passes"
-      _info "  this prep-target arms there"
+      _XMASS_TGT_CRON_STARTED="$1"
+      _info "  cron was stopped on $1 (a fenced box): started for the passes this prep-target"
+      _info "  arms there, and stopped again when it ends: the fence holds until init"
     ;;
     *)
       _die "cron is not running on $1 and could not be started (${_o:-no answer}): the passes" \
@@ -10572,6 +10806,22 @@ _xmass_target_cron_up() {
            "there ('service cron start'), then re-run"
     ;;
   esac
+}
+
+# The fence again on a target whose cron prep-target started: called when
+# prep-target ends, done or refused (the verb unwind). A no-op otherwise.
+_xmass_target_cron_refence() {
+  local _t="${_XMASS_TGT_CRON_STARTED}" _o
+  [ -n "${_t}" ] || return 0
+  _XMASS_TGT_CRON_STARTED=""
+  _o=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "/etc/init.d/cron stop > /dev/null 2>&1 || service cron stop > /dev/null 2>&1; pkill -x cron > /dev/null 2>&1; sleep 2; pgrep -x cron > /dev/null && echo CRON-UP || echo CRON-DOWN" 2> /dev/null)
+  if [ "${_o}" = "CRON-DOWN" ]; then
+    _info "cron stopped again on ${_t}, as its fence had it: init starts it once the box is this pair's standby"
+  else
+    _alrt "could NOT stop cron again on ${_t} (${_o:-no answer}): its own jobs run against data that is"
+    _alrt "  no longer the live copy -- stop it there by hand: /etc/init.d/cron stop; pkill -x cron"
+  fi
+  return 0
 }
 
 _xmass_cmd_prep_target() {
@@ -10852,8 +11102,17 @@ _xmass_cmd_prep_target() {
   # Every seeded account runs a background octopus pass now, and each pass
   # queues verifies: report the target silent before declaring COMPLETE. A
   # timeout here is not a failure -- nothing destructive follows, and init
-  # waits for silence again -- so it warns and completes.
-  _xmass_wait_target_silent "${_tgt}" "prep-target completes" warn full || true
+  # waits for silence again -- so it warns and completes. A fenced target's
+  # cron goes back off once its passes are done; while they are not, only
+  # its runner can finish them, and init's own wait needs them finished.
+  if _xmass_wait_target_silent "${_tgt}" "prep-target completes" warn full; then
+    _xmass_target_cron_refence
+  elif [ -n "${_XMASS_TGT_CRON_STARTED}" ]; then
+    _alrt "cron stays running on ${_tgt}, a fenced box: its passes are not done, and only its"
+    _alrt "  runner finishes them; stop it there once they are (/etc/init.d/cron stop; pkill -x cron),"
+    _alrt "  or run init, which waits for them and leaves the box this pair's standby"
+    _XMASS_TGT_CRON_STARTED=""
+  fi
   # The planning verb is where a relaying target must be named: init locks
   # its database with the standby marker, and the web tier of a locked
   # marker-carrying box is held from that moment.
@@ -12001,7 +12260,10 @@ REMOTE
   # gtid_mode is already ON -- a box promoted once and now seeded again --
   # that function does not restart mysqld, so without this the whole pre-swap
   # leg would run unlocked. The promoted latch of an earlier life goes in the
-  # same command. The unwind clears both halves. The marker of a box that
+  # same command, and so does the record of an earlier promotion by hand
+  # (post-mig's): once this box is a standby again, that promotion is over,
+  # and a later post-mig after a planned switch must not read it as its own.
+  # The unwind clears both halves. The marker of a box that
   # was a standby already is the earlier init's and stays as written (its
   # age is one of the witnesses above); it only gains the witness line.
   local _mrk_write
@@ -12011,7 +12273,7 @@ REMOTE
     _mrk_write="echo 'xmass replication target of ${_XMASS_SRC_IP:-unknown} since $(date '+%Y-%m-%d')' > /root/.standby.cnf"
   fi
   ssh -o ConnectTimeout=10 root@"${_tgt}" \
-    "mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e 'SET SESSION lock_wait_timeout=10; SET GLOBAL read_only=ON; SET GLOBAL super_read_only=ON;' 2>/dev/null; ${_mrk_write}; : > /run/boa_xmass_init.pid; rm -f /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid; true" &> /dev/null
+    "mysql --defaults-file=/root/.my.cnf --connect-timeout=5 -e 'SET SESSION lock_wait_timeout=10; SET GLOBAL read_only=ON; SET GLOBAL super_read_only=ON;' 2>/dev/null; ${_mrk_write}; : > /run/boa_xmass_init.pid; rm -f /var/log/boa/.standby_promoted.pid /run/boa_standby_role_probed.pid /var/log/boa/.xmass_hand_promoted.pid; true" &> /dev/null
   if ssh -o ConnectTimeout=10 root@"${_tgt}" "test -e /root/.standby.cnf" 2> /dev/null; then
     _info "Standby marker set on the target (per-job write gates armed)"
   else
@@ -12203,6 +12465,20 @@ REMOTE
     _alrt "replica takes local writes (cache TRUNCATEs, task queue);"
     _alrt "set the marker there manually before leaving the window unattended"
   fi
+  # A standby keeps cron armed: its SQL watchdog, the holds' re-assert and
+  # the per-job gates all run from it. A returning old active still has the
+  # cron its fence stopped (prep-target stops it again when it ends), and
+  # only now, as this pair's standby, are its own jobs held by the marker.
+  case "$(_xmass_target_cron_start "${_tgt}")" in
+    CRON-UP) : ;;
+    CRON-STARTED)
+      _info "cron started on the target (its fence had stopped it): a standby keeps cron armed"
+    ;;
+    *)
+      _alrt "cron is not running on the target and could not be started: a standby keeps it"
+      _alrt "  armed (its SQL watchdog and the holds run from it) -- start it there: service cron start"
+    ;;
+  esac
 
   _XMASS_PHASE="syncing"
   _xmass_save_state
@@ -14208,9 +14484,14 @@ _xmass_post_mig() {
   _info "Running post-mig on ${_hName} ..."
   # A promotion by hand: what an earlier demotion of this box left goes
   # first, while the standby marker still keeps its runner from an upgrade
-  # armed before the promotion (a no-op after a planned switch).
+  # armed before the promotion. None of the hand path's steps runs after a
+  # planned switch or failback (no marker and no record of one here).
   _XMASS_PROMOTED_HERE=NO
-  _xmass_promote_cleanup_here && _XMASS_PROMOTED_HERE=YES
+  _XMASS_HAND_OWED=NO
+  if _xmass_hand_path_start && _xmass_promoted_here_said; then
+    _XMASS_PROMOTED_HERE=YES
+    [ "${_XMASS_HAND_CLEANED}" = "YES" ] || _xmass_promote_cleanup_here
+  fi
   # Remove the Solr hold if still present, and re-arm what it disarmed:
   # the hold drops exec bits and rc links, and the start loop below
   # requires -x. Deny-parked services have no init script here and stay
@@ -14321,8 +14602,12 @@ _xmass_post_mig() {
   # after a promotion by hand this is the step that does.
   _xmass_enable_events_here
   _xmass_report_mail_state_here
-  # The upgrade the cleanup held back, armed again once the renames are done.
-  [ "${_XMASS_PROMOTED_HERE}" = "YES" ] && _xmass_promote_rearm_here
+  # The upgrade the cleanup held back, armed again once the renames are done;
+  # the record of the promotion by hand goes once nothing is owed.
+  if [ "${_XMASS_PROMOTED_HERE}" = "YES" ]; then
+    _xmass_promote_rearm_here
+    _xmass_hand_path_end
+  fi
   # The web groups of a promoted box (the cutover's last step did this for a
   # planned switch; an emergency promotion by hand has only this run): its
   # accounts by this box's policy, gated, on an armed box; its master told.

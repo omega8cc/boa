@@ -612,8 +612,9 @@ What it does, in order:
      box's account user ID and directory; or the target's own
      `/data/conf/xmass_state.cnf` (root's, one link) names one of this
      box's addresses as its target, in a phase past `init`. Either way the
-     account on the target must predate the marker or that `init` (a
-     filesystem that keeps no birth time is not compared);
+     account on the target must predate the marker or that `init` (no
+     birth time kept: not compared), and the state file's proof takes no
+     account that relays, or moved on, to another box;
    - it carries no site, only its control panel (a fresh install's own
      `o1`, for one), and you named it with `--adopt-siteless`: no registered
      site, no site directory on its platforms or on disk, no entry in its
@@ -1745,19 +1746,29 @@ lines that remove them. It never removes them itself, since on a test box
 the hold is wanted.
 
 After a **promotion by hand** it also runs the promotion steps the cutover
-runs on its target. First, before the standby marker goes, it clears what
-an earlier demotion of this box left (its own relay records,
-`proxied.pid` and the export latches, a parked dispatcher, proxy vhosts),
-holding back an upgrade armed before the promotion. Then, once the database
-takes writes, it rewires each control panel to its live panel database.
-Without these the panels answer 500, `pre-mig` refuses them, and an account
-the box relayed earlier refuses every `xoct create`.
+runs on its target. It knows that path by the standby marker still there
+when it starts (the checklist runs it right after `RESET REPLICA ALL`; a
+planned switch removes the marker itself), and keeps a record of it in
+`/var/log/boa/.xmass_hand_promoted.pid` until a later run finds nothing
+left to do.
 
-Run it right after
+First, before the standby marker goes, it clears what an earlier demotion
+of this box toward the active it mirrored (the marker's first line names
+it) left in that pair's accounts: its own relay records, `proxied.pid` and
+the export latches, a parked dispatcher, proxy vhosts. It holds back every
+upgrade armed in an account it serves, removing none. An account it
+relays, or is moving, to another box is left as it is. Then, once the
+database takes writes, it rewires each control panel to its live panel
+database.
+
+Without these the panels answer 500, `pre-mig` refuses them, and an account
+the box relayed earlier refuses every `xoct create`. Run it right after
 `RESET REPLICA ALL` and again once `renameaegirhost` has run for every root:
-the second run arms the held-back upgrade, which would otherwise move a
-panel under the old hostname. Both are no-ops after a planned switch, and on
-a finalized proxy or a box still configured as a replica nothing runs.
+the second run arms the held-back upgrades, which would otherwise move a
+panel under the old hostname. After a planned switch or a failback none of
+this runs: the cutover did it, and the upgrades it armed again at its end
+stay queued behind the BOA run lock. On a finalized proxy or a box still
+configured as a replica nothing runs.
 
 It **enables the events a replica kept disabled**, each with its own
 definer, as cutover step 11.5 does: after a promotion by hand this is the
