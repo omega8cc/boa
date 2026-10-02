@@ -2657,6 +2657,124 @@ _xmass_sync_shell_credentials() {
   return 0
 }
 
+### The database broker's switch for an account is root's control file
+### /data/conf/<oN>_db_broker.txt, which no leg sends, while the scoped grants
+### and the broker's registry it goes with replicate. Each live pass mirrors
+### it onto the target, presence and absence, as the suspension flag
+### travels: a box promoted from it, by a cutover or by hand, keeps the same
+### accounts switched, and a returning box holds none this box switched off.
+### Written only onto a standby, and only its first 4096 bytes (all the
+### broker reads). A file the broker and provision do not read as one (a
+### link, not root's, or writable by others) leaves the account not switched
+### here, so the target is made the same: named, and its file removed. DRY
+### names what would travel and what the target lacks to serve a switched
+### account: the broker's sudo line (a cutover is not clean without it) and
+### the same dump and load time limit.
+_xmass_carry_db_broker() {
+  local _acct="$1" _t="$2" _f="/data/conf/${1}_db_broker.txt" _b="-" _out _l _lim _st
+  [[ "${_acct}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || return 0
+  if [ -e "${_f}" ] || [ -L "${_f}" ]; then
+    _st=$(stat -c '%u %a' -- "${_f}" 2> /dev/null)
+    if [ -L "${_f}" ] || [ ! -f "${_f}" ] || [ "${_st%% *}" != "0" ] \
+      || [[ ! "${_st#* }" =~ ^[0-7]{3,4}$ ]] || [ "$(( 8#${_st#* } & 8#022 ))" -ne 0 ]; then
+      _alrt "  ${_acct}: ${_f} is not a regular root file only root can write, so the database"
+      _alrt "  broker reads ${_acct} as not switched here, and ${_t} is kept the same"
+    else
+      _b="$(head -c 4096 -- "${_f}" | base64 -w0)"
+    fi
+  fi
+  if [ "${_MODE}" != "LIVE" ]; then
+    [ "${_b}" = "-" ] && return 0
+    _info "  [DRY-PLAN] ${_acct}: its database broker switch mirrored to ${_t} (/data/conf)"
+    _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "grep -qxF '${_acct} ALL=NOPASSWD: /usr/local/bin/boa-dbctl' /etc/sudoers.d/boa-dbctl 2> /dev/null && echo DB-SUDO; grep -E '^_DB_BROKER_IO_LIMIT=' /root/.barracuda.cnf 2> /dev/null | tail -n 1 | sed 's/^/DB-LIMIT /'; echo DB-READ" 2> /dev/null)
+    case "${_out}" in
+      *DB-READ*) ;;
+      *)
+        _alrt "  ${_acct}: could not read the database broker's sudo line on ${_t}"
+        [ "${_cmd}" = "cutover" ] && _XMASS_NOT_CLEAN=YES
+        return 0
+        ;;
+    esac
+    if [[ "${_out}" != *DB-SUDO* ]]; then
+      if [ "${_cmd}" = "cutover" ]; then
+        _alrt "DENY: ${_acct} is switched to the database broker, and ${_t} has no broker sudo line for it:"
+        _alrt "DENY: every database task of it would fail there; run its barracuda pass first"
+        _XMASS_NOT_CLEAN=YES
+      else
+        _alrt "  ${_acct} is switched to the database broker, and ${_t} has no broker sudo line for it yet"
+      fi
+    fi
+    if [ "${_XMASS_DB_LIMIT_SAID}" != "YES" ]; then
+      _XMASS_DB_LIMIT_SAID=YES
+      _lim=$(grep -E '^_DB_BROKER_IO_LIMIT=' /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+        | cut -d= -f2- | tr -d "\"' ")
+      _l=$(printf '%s\n' "${_out}" | sed -n 's/^DB-LIMIT //p' | tail -n 1 \
+        | cut -d= -f2- | tr -d "\"' ")
+      if [ "${_lim}" != "${_l}" ]; then
+        _alrt "  _DB_BROKER_IO_LIMIT is '${_lim:-unset}' here and '${_l:-unset}' on ${_t}: a switched"
+        _alrt "  account's dumps and loads run under the other limit there"
+      fi
+    fi
+    return 0
+  fi
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "[ -e /root/.standby.cnf ] || { echo DB-NOT-STANDBY; exit 1; }; _f=/data/conf/${_acct}_db_broker.txt; _b='${_b}'
+if [ \"\${_b}\" = - ]; then
+  if [ -e \"\${_f}\" ] || [ -L \"\${_f}\" ]; then rm -f \"\${_f}\" || exit 1; echo DB-GONE; fi
+elif ! { [ -f \"\${_f}\" ] && [ ! -L \"\${_f}\" ] && [ \"\$(stat -c '%u %a' \"\${_f}\")\" = '0 644' ] && [ \"\$(head -c 4096 \"\${_f}\" | base64 -w0)\" = \"\${_b}\" ]; }; then
+  mkdir -p /data/conf && rm -f \"\${_f}.tmp\" && ( umask 022; printf '%s' \"\${_b}\" | base64 -d > \"\${_f}.tmp\" ) && chown root:root \"\${_f}.tmp\" && chmod 644 \"\${_f}.tmp\" && mv -f -T \"\${_f}.tmp\" \"\${_f}\" || exit 1
+  echo DB-PUT
+fi
+echo DB-OK" 2> /dev/null)
+  case "${_out}" in
+    *DB-PUT*) _info "  ${_acct}: database broker switch mirrored to ${_t}" ;;
+    *DB-GONE*) _info "  ${_acct}: database broker switch removed on ${_t}: not on this box" ;;
+  esac
+  case "${_out}" in
+    *DB-OK*) return 0 ;;
+    *DB-NOT-STANDBY*)
+      _alrt "DENY: ${_t} holds no /root/.standby.cnf: a database broker switch is mirrored only onto"
+      _alrt "DENY: this box's standby, never onto a promoted box"
+      ;;
+    *)
+      _alrt "DENY: ${_acct}: could not mirror its database broker switch to ${_t} -- after a promotion"
+      _alrt "DENY: that box would not hold it switched as this box does"
+      ;;
+  esac
+  _XMASS_NOT_CLEAN=YES
+  return 1
+}
+
+### Each live pass also removes from the standby the database broker switch
+### of every account this run does not carry (purged or cancelled here, so
+### not eligible): an account of that name made there later, or after a
+### promotion, must not start switched with none of its databases its own.
+### The carry above keeps the eligible accounts' switches; init parked the
+### target's own, so every switch on the standby is one a pass carried.
+_xmass_sweep_db_broker() {
+  local _t="$1" _keep=" " _oct _out _a
+  [ "${_MODE}" = "LIVE" ] || return 0
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    [[ "${_oct}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] && _keep="${_keep}${_oct} "
+  done
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "[ -e /root/.standby.cnf ] || { echo DB-OK; exit 0; }; _k='${_keep}'
+for _f in /data/conf/*_db_broker.txt; do
+  [ -e \"\${_f}\" ] || [ -L \"\${_f}\" ] || continue
+  _a=\"\${_f##*/}\"; _a=\"\${_a%_db_broker.txt}\"
+  case \"\${_k}\" in *\" \${_a} \"*) continue ;; esac
+  rm -f \"\${_f}\" && echo \"DB-SWEPT \${_a}\"
+done
+echo DB-OK" 2> /dev/null)
+  while read -r _a; do
+    [[ "${_a}" == "DB-SWEPT "* ]] || continue
+    _info "  ${_a#DB-SWEPT }: database broker switch removed on ${_t}: not an account this run carries"
+  done <<< "${_out}"
+  if [[ "${_out}" != *DB-OK* ]]; then
+    _alrt "  could not clear on ${_t} the database broker switches of accounts this run does not carry"
+    return 1
+  fi
+  return 0
+}
+
 ### Mirror the billing-suspension flag: it lives OUTSIDE the account tree on
 ### purpose (the owner must not be able to delete it), so no account sync can
 ### carry it -- a suspended account must never come back up serving 200s on
@@ -4058,6 +4176,14 @@ mv -f /var/lib/mysql /var/lib/mysql.xmass_pre_${_ts} &>/dev/null || true
 for _f in /root/.my.cnf /root/.my.pass.txt; do
   [ -e "${_f}" ] && cp -a "${_f}" "${_f}.xmass_pre_${_ts}" && chmod 600 "${_f}.xmass_pre_${_ts}"
 done
+# The database broker switches here belong to the parked data directory:
+# parked beside it, same stamp, and the live passes then carry the source's.
+for _f in /data/conf/*_db_broker.txt; do
+  [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+  mkdir -p "/data/conf/.xmass_pre_${_ts}.db_broker" \
+    && chmod 700 "/data/conf/.xmass_pre_${_ts}.db_broker" \
+    && mv -f "${_f}" "/data/conf/.xmass_pre_${_ts}.db_broker/"
+done
 mkdir -p /var/lib/mysql
 REMOTE
 
@@ -4338,6 +4464,25 @@ _xmass_regen_solr_initd() {
   return 0
 }
 
+### The database broker switches go back with the data directory parked at
+### stamp $1: the ones the live passes carried leave (they name the source's
+### accounts against a data directory that never had them), and the ones
+### init parked there return. An init by older bytes parked none.
+_xmass_unpark_db_broker() {
+  local _ts="$1" _f _p="/data/conf/.xmass_pre_${1}.db_broker"
+  for _f in /data/conf/*_db_broker.txt; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    rm -f "${_f}" || _alrt "  could not remove ${_f}: remove it by hand"
+  done
+  [ -d "${_p}" ] && [ ! -L "${_p}" ] || return 0
+  for _f in "${_p}"/*_db_broker.txt; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    mv -f "${_f}" /data/conf/ || _alrt "  could not put ${_f} back in /data/conf: move it by hand"
+  done
+  rmdir "${_p}" 2> /dev/null
+  return 0
+}
+
 ### Undo _xmass_stop_solr_source -- the recovery verb for a cutover that was
 ### rolled back with the source kept in service.
 ###
@@ -4397,6 +4542,7 @@ _xmass_restore_target() {
   _info "restore-target on $(hostname -f): $(head -1 /root/.standby.cnf 2>/dev/null)"
   _info "  parked data directory: ${_pre} (credentials parked at the same stamp)"
   _info "  the current replica data directory is kept aside as /var/lib/mysql.xmass_standby_${_stamp}"
+  _info "  the database broker switches the passes carried go; the ones parked with it come back"
   _info "  replication stopped and forgotten (${_stop}; ${_reset}); the standby hold, its cnf block and"
   _info "  every marker removed; Solr init scripts the init disarmed re-armed; cron started"
   if [ "${_live}" != "YES" ]; then
@@ -4415,6 +4561,7 @@ _xmass_restore_target() {
   for _cnf in /root/.my.cnf /root/.my.pass.txt; do
     cp -a "${_cnf}.xmass_pre_${_ts}" "${_cnf}" && chmod 600 "${_cnf}"
   done
+  _xmass_unpark_db_broker "${_ts}"
   # The standby hold: the cnf block init wrote (super_read_only at every
   # start) goes before the restart, exactly as the init unwind strips it.
   _inc_dir=$(grep -hE '^[[:space:]]*!includedir[[:space:]]' /etc/mysql/my.cnf 2>/dev/null \
@@ -6622,6 +6769,9 @@ _xmass_sync_account() {
     _xmass_sync_shell_credentials "${_oct}" "${_tgt}"
     _xmass_copy_suspended_flag "${_oct}" "${_tgt}" || _XMASS_STORE_RC=1
   fi
+  # The database broker switch travels the same way (DRY: its plan line and
+  # what the target lacks to serve it).
+  _xmass_carry_db_broker "${_oct}" "${_tgt}" || _XMASS_STORE_RC=1
 
   # Catch-all sweep: discover + materialise out-of-root symlinks (secondary-
   # mount content) so no link in the account tree arrives dangling. Links under
@@ -6932,6 +7082,8 @@ _xmass_sync_shared() {
   # The mail hold and the test-run records, which no leg sends, travel with
   # every pass (the accounts this run carries are enumerated by now).
   _xmass_copy_mail_state "${_tgt}"
+  # So do the database broker switches of the accounts it does not carry.
+  _xmass_sweep_db_broker "${_tgt}"
   # trust-creators for a pair built before the line: the mirror, then here.
   if [ "${_MODE}" = "LIVE" ]; then
     _xmass_auto_assert_standby
