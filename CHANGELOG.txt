@@ -329,6 +329,12 @@
       database only, the sweep failed on its first query and left the
       grants it exists to remove in place.
 
+    * The nightly migration-source sweep now finds the sites of a platform
+      registered at its Composer project folder: it looked for each site
+      under the registered path and not under docroot/, html/ or web/, so
+      the database grants of those sites were never examined, and a read
+      grant on such a site's database could be taken away every night.
+
     * boa cleanup purge now also drops the purged account's own database
       users (the instance user and its control panel user, proven from the
       account's records before anything moves) and moves its migration
