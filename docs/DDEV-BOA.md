@@ -73,6 +73,12 @@ Locally, in DDEV, the developer uses **site-local** Drush with `--root`/`--uri` 
 `ddev drush`), with no alias — the add-on's README shows this. Aliases are a server-side
 Ægir concept and are not needed on the developer's machine.
 
+The local copy is also where a slow page is profiled: BOA installs no PHP profiler on the
+server (New Relic is the server-side instrument), while DDEV ships XHProf with the XHGui
+viewer (`ddev xhgui on`, load the page twice, `ddev xhgui launch`, `ddev xhgui off`), on a
+PHP 5.6 project as on a current one. The client page "Local development with DDEV" has
+the walkthrough.
+
 ## Files are pulled dereferenced
 
 BOA's native files-symlinking makes a site's `files` directory a symlink into the

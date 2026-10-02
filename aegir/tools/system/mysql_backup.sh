@@ -661,8 +661,39 @@ _mysqldump_gtid_opts() {
   return 0
 }
 
+### A database's stored routines and events are dumped with its tables,
+### views and triggers. mysqldump writes neither unless asked, so a site
+### that kept them (a function its queries call, a scheduled event) found
+### its nightly dumps without them. Each keeps its DEFINER, as the views and
+### triggers always have: a restore as root brings them back as they were.
+### mysqldump stops the whole dump on a routine whose body the dumping login
+### may not read and on events it may not list, so each option is asked
+### first, as that login (the client command given after the database
+### name), and left out when refused or when the question fails: the
+### tables are then dumped as before, and _MYSQLDUMP_LEFT_OUT names what
+### the dump lacks for the run's notice. Sets _MYSQLDUMP_OBJECTS.
+_mysqldump_objects_opts() {
+  local _db="$1" _n
+  shift
+  _MYSQLDUMP_OBJECTS=()
+  _MYSQLDUMP_LEFT_OUT=""
+  _n=$("$@" -B -N -e "SELECT COUNT(*) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_DEFINITION IS NULL" "${_db}" 2> /dev/null)
+  if [ "${_n}" = "0" ]; then
+    _MYSQLDUMP_OBJECTS+=(--routines)
+  else
+    _MYSQLDUMP_LEFT_OUT="routines"
+  fi
+  if "$@" -B -N -e "SHOW EVENTS" "${_db}" > /dev/null 2>&1; then
+    _MYSQLDUMP_OBJECTS+=(--events)
+  else
+    _MYSQLDUMP_LEFT_OUT="${_MYSQLDUMP_LEFT_OUT:+${_MYSQLDUMP_LEFT_OUT} and }events"
+  fi
+  return 0
+}
+
 _backup_this_database_with_mysqldump() {
   _check_running
+  _mysqldump_objects_opts "${_DB}" mysql
   mysqldump \
     "${_MYSQLDUMP_GTID[@]}" \
     --single-transaction \
@@ -670,6 +701,7 @@ _backup_this_database_with_mysqldump() {
     --no-autocommit \
     --skip-add-locks \
     --no-tablespaces \
+    "${_MYSQLDUMP_OBJECTS[@]}" \
     --hex-blob ${_DB} \
     > ${_SAVELOCATION}/${_DB}.sql 2> "${_SAVELOCATION}/${_DB}.mysqldump.log"
   _MYSQLDUMP_RC=$?
@@ -879,8 +911,30 @@ _notify_dump_failures() {
   } | _backup_notice "${_sub}" "in ${_SAVELOCATION}:${_DUMP_FAILED_DBS}${_COMPRESS_FAILED_DBS:+ uncompressed:${_COMPRESS_FAILED_DBS}}"
 }
 
+# A dump the probe had to take without the stored routines or events is
+# archived, but must not pass for a complete one: reported once per run on
+# the same channel.
+_notify_objects_left_out() {
+  [ -z "${_OBJECTS_LEFT_DBS}" ] && return 0
+  local _d
+  {
+    echo "The database backup run on ${_hName} dumped these database(s) without"
+    echo "their stored routines or events (database:left out):"
+    echo
+    for _d in ${_OBJECTS_LEFT_DBS}; do
+      echo "  ${_d}"
+    done
+    echo
+    echo "The dumping login could not read them, and mysqldump would have"
+    echo "stopped the whole dump, so the tables were dumped without them."
+    echo "Check the rights of the login in the option file the run uses."
+    echo
+  } | _backup_notice "Backup without stored routines or events on [${_hName}]" "in ${_SAVELOCATION}:${_OBJECTS_LEFT_DBS}"
+}
+
 _DUMP_FAILED_N=0
 _DUMP_FAILED_DBS=""
+_OBJECTS_LEFT_DBS=""
 for _DB in `mysql -e "show databases" -s | uniq | sort`; do
   if [ "${_DB}" != "Database" ] \
     && [ "${_DB}" != "information_schema" ] \
@@ -959,6 +1013,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       fi
     fi
     _DUMP_RC=0
+    _MYSQLDUMP_LEFT_OUT=""
     if [ "${_DB}" = "mysql" ]; then
       _backup_mysql_schema &> /dev/null || _DUMP_RC=1
     elif [ "${_MYQUICK_USE}" = "YES" ]; then
@@ -969,6 +1024,10 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     _remove_locks ${_DB}
     if [ "${_DUMP_RC}" = "0" ]; then
       echo "INFO: Backup completed for ${_DB}"
+      if [ -n "${_MYSQLDUMP_LEFT_OUT}" ]; then
+        echo "WARN: ${_DB} was dumped without its ${_MYSQLDUMP_LEFT_OUT}: the dumping login could not read them"
+        _OBJECTS_LEFT_DBS="${_OBJECTS_LEFT_DBS} ${_DB}:${_MYSQLDUMP_LEFT_OUT// and /+}"
+      fi
     else
       _DUMP_FAILED_N=$(( ${_DUMP_FAILED_N:-0} + 1 ))
       _DUMP_FAILED_DBS="${_DUMP_FAILED_DBS} ${_DB}"
@@ -1029,6 +1088,7 @@ echo "INFO: Starting dbs backup compress on $(date)"
 _compress_backup &> /dev/null
 echo "INFO: Completing dbs backup compress on $(date)"
 _notify_dump_failures
+_notify_objects_left_out
 
 echo "INFO: Starting dbs backup cleanup on $(date)"
 _DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}

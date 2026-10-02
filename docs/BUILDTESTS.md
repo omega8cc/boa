@@ -165,8 +165,16 @@ Instead each build applies what fixes it can, and what shipped is recorded, twic
 - Every finished distribution and vanilla core is then audited (`composer audit
   --locked`, never fatal) and the report is written beside its tarball as
   `~/static/MONTH-DAY/<platform>.advisories`: the count, one line per finding (id,
-  package, locked version, CVE, link), a closing line on require-dev, and what the fix
-  step moved and could not move, with the reason. The summary row shows the count left
+  package, locked version, CVE, link), then `# not covered: N` and one `# not
+  covered:` line per locked package no drupal.org advisory reaches `composer audit`
+  for: an alpha, beta, RC or dev release, or a project that has not opted in, as
+  drupal.org records it in the lock (`extra.drupal.security-coverage`), and a Drupal
+  module, theme or profile whose lock entry has no such record (it came from
+  Packagist or a VCS repository, under a name drupal.org's advisories do not use).
+  Then a closing line on require-dev, and what the fix step moved and could not move,
+  with the reason. An advisory count of 0 says nothing about the `not covered`
+  packages; the fix step never touches them, and they never fail a build or refuse a
+  respin. The summary row shows the count left
   and how many the build fixed. An audit that cannot run (no lock, an advisory source
   unreachable) marks the row `audit failed`, and the build still succeeds.
 - **On the published set.** `staticbuild advisories [tree ...]` reads every catalogue

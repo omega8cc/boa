@@ -181,6 +181,20 @@ _web_group_policy() {
   return 0
 }
 
+_web_group_phase_b() {
+  # YES when /root/.barracuda.cnf turns phase B on as bash reads it: the last
+  # _WEB_GROUP_PHASE_B assignment, with export, quotes or a trailing comment,
+  # is YES. Prints nothing otherwise. Verbatim in instgrp, xoct, xcopy and
+  # xmass: the arm, the notes and the pair comparison read the line the same
+  # way.
+  local _l
+  _l=$(grep -E "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=" /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+    | sed -n -E "s/^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=(YES|\"YES\"|'YES')([[:space:]]+#.*)?[[:space:]]*\$/\\2/p" \
+    | tr -d "\"'")
+  [ "${_l}" = "YES" ] && printf '%s\n' YES
+  return 0
+}
+
 # The web-group facts of the account $1 on this box, one line for the
 # helper below: "XMWF:<state>:<phase B>:<policy>:<armed>:<standby>", the
 # state as _web_group_state prints it; YES when /root/.barracuda.cnf sets
@@ -194,7 +208,7 @@ _web_group_policy() {
 _web_group_facts_here() {
   local _s _b=NO _p _r=NO _sb=NO
   _s=$(_web_group_state "${1}")
-  grep -qE "^[[:space:]]*(export[[:space:]]+)?_WEB_GROUP_PHASE_B=[\"']?YES" /root/.barracuda.cnf 2> /dev/null && _b=YES
+  [ "$(_web_group_phase_b)" = "YES" ] && _b=YES
   _p=$(_web_group_policy "/root/.${1}.octopus.cnf")
   [ -s /var/log/boa/instgrp-web-arm.ready.txt ] && _r=YES
   { [ -e /root/.standby.cnf ] || [ -e /root/.standby.prep.cnf ]; } && _sb=YES
@@ -209,7 +223,7 @@ _web_group_facts_on_target() {
   local _a="${1}" _h="${2}" _o
   case "${_a}" in ""|*[!a-z0-9-]*) return 1 ;; esac
   [ -n "${_h}" ] || return 1
-  _o=$( { declare -f _web_group_state _web_group_policy _web_group_facts_here
+  _o=$( { declare -f _web_group_state _web_group_policy _web_group_phase_b _web_group_facts_here
     printf '%s\n' "_web_group_facts_here '${_a}'"; } \
     | ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" "bash -s" 2> /dev/null \
     | grep -m1 -x -E 'XMWF:(none|foreign|held|converted|phaseb):(YES|NO):(NO|A|-):(YES|NO):(YES|NO)')
