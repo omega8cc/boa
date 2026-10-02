@@ -77,8 +77,14 @@ platform, tracked by marker files under `~/log/ctrl/`):
 - **Site level**: each site's `{modules,themes,libraries}/*` chowned to
   `oN` and the account's group with directories `02775` and files `0664`; settings-class
   files (`settings.php`, `local.settings.php`, `civicrm.settings.php`)
-  kept at `oN:www-data`, mode `0440`/`0640`; the site's `files/` tree
-  chowned to `oN:www-data` (symlink-safe, `chown -h`).
+  kept at `oN` and the account's web group, mode `0440`/`0640`; the site's
+  `files/` tree chowned to `oN` and the web group (symlink-safe,
+  `chown -h`). The web group is `www-data` until the account is converted
+  to its own, `wg-oN` after (see `INSTGRP.md`). On a converted account the
+  private files keep `02770`/`0660` through every pass: the private store,
+  a Drupal 7 `files/private`, and the subtrees of `files/` nginx never
+  serves (`civicrm/{ConfigAndLog,custom,upload,templates_c}`,
+  `backup_migrate`, `config_*`); the rest of `files/` stays world-readable.
 
   A site whose
   `modules`, `themes` or `libraries` is a symlink has only the legs that
@@ -105,7 +111,8 @@ platform, tracked by marker files under `~/log/ctrl/`):
 Group-write for the shell pair survives all of this — the lock manages the
 **ownership axis**, and with it the owner-only rights: chmod, git's
 repository-ownership trust, and replacing read-only paths. The web identity
-(the per-account `.web` FPM user, a member of `www-data` only) can write
+(the per-account `.web` FPM user, in `www-data` and, once the account is
+converted, in its own web group) can write
 code in neither state.
 
 ## The two tenant switches

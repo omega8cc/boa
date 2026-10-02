@@ -1025,6 +1025,14 @@ _account_process() {
     rm -f "/run/night-account-${_HM_U}.pid"
     return 0
   fi
+  # A web-group conversion run holds the account the same way (it waits for
+  # this marker, so of the two one always sees the other): skipped tonight.
+  if [ -e "/run/instgrp-web-${_HM_U}.pid" ] \
+    && kill -0 "$( { tr -dc '0-9' < "/run/instgrp-web-${_HM_U}.pid"; } 2> /dev/null )" 2> /dev/null; then
+    echo "${_HM_U}: a web-group conversion run holds this account; skipped tonight"
+    rm -f "/run/night-account-${_HM_U}.pid"
+    return 0
+  fi
   # The worker's pid file names its pid: a worker killed mid-pass leaves the
   # file behind until clear.sh sweeps it, and the nightly must not stall on a
   # dead one. Bounded on purpose; proceeding after the bound is the old race
@@ -1064,7 +1072,9 @@ _account_process() {
     _run_drush8_hmr_cmd "cache-clear all"
     _run_drush8_hmr_cmd "cache-clear all"
   fi
+  _night_web_hit
   _daily_process
+  _night_web_d9
   _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task \
     WHERE task_type='delete' AND task_status='-1'\""
   _run_drush8_hmr_cmd "sqlq \"DELETE FROM hosting_task \
@@ -1654,6 +1664,73 @@ _purge_hits_under_account() {
     ( cd -P -- "${_r%/*}" 2>/dev/null && [ "$(pwd -P)" = "${_r%/*}" ] \
       && rm -f -- "./${_r##*/}" ) &> /dev/null
   done
+}
+
+### The account's own web group, before the site loop: its drift witnesses
+### (instgrp webdrift; an alarm goes to the nightly's incident log and, once
+### a day, to the operator's address, never to the account's own), and a
+### reclaim when the account carries a web-group record and www-data is back
+### in its settings files or store tops (instgrp reclaim runs the web leg
+### first). An instgrp without the web group does nothing here.
+_night_web_hit() {
+  local _l _alarm="" _res=NO _deep=( --deep )
+  [ -e "/opt/local/bin/instgrp" ] || return 0
+  grep -q "^_wg_drift() {" /opt/local/bin/instgrp 2> /dev/null || return 0
+  grep -q "^_WG_DEEP=" /opt/local/bin/instgrp 2> /dev/null || _deep=()
+  # --own night: this pass holds the account itself (its night marker), which
+  # the witnesses must not read as a conversion run holding it; --deep: the
+  # residue rule in full, the private set read in depth
+  while IFS= read -r _l; do
+    case "${_l}" in
+      "ALRT "*) _alarm="${_alarm:+${_alarm}; }${_l#ALRT }" ;;
+      "NOTE "*) echo "${_HM_U}: web group: ${_l#NOTE }" ;;
+      RESIDUE) _res=YES ;;
+    esac
+  done < <(bash /opt/local/bin/instgrp webdrift "${_HM_U}" --report --own night "${_deep[@]}" 2> /dev/null)
+  if [ -n "${_alarm}" ]; then
+    echo "ALRT: ${_HM_U}: web group drift: ${_alarm}"
+    if declare -F _night_notice > /dev/null 2>&1; then
+      # the operator's address as this run froze it (_ADMIN_EMAIL, the box's
+      # _MY_EMAIL), root when there is none: this pass has replaced
+      # _MY_EMAIL and _MY_OCTO_EMAIL with what the account's cnf carries
+      ( _MY_OCTO_EMAIL=""
+        _MY_EMAIL="${_ADMIN_EMAIL:-}"
+        _night_notice "wg-drift-${_HM_U}" \
+          "BOA nightly on $(hostname -f): web group drift on ${_HM_U}" "${_alarm}" )
+    fi
+  fi
+  if [ "${_res}" = "YES" ]; then
+    echo "DRIFT: ${_HM_U}: www-data in the web group's settings files, store tops or private set; running instgrp reclaim"
+    bash /opt/local/bin/instgrp reclaim "${_HM_U}"
+  fi
+  return 0
+}
+
+### The limited-shell worker's walk of the public files (D9) that ran out of
+### time three passes in a row, after the site loop (whose permissions pass
+### gives each site's files store its public modes too), so it never delays
+### site maintenance: instgrp reclaim walks the public set whole, with no time
+### bound, and moves the worker's stamp to the walk's start (the rebase,
+### marked .rebase when it moved). A store whose walk alone outgrows the
+### worker's bound times out again at once: while the worker has finished
+### no pass since the last rebase (its stamp no newer than the mark), the
+### next one waits a week from it.
+_night_web_d9() {
+  local _st="/var/log/boa/manage-ltd-d9.${_HM_U}.txt" _slow
+  [ -e "/opt/local/bin/instgrp" ] || return 0
+  grep -q "^_wg_drift() {" /opt/local/bin/instgrp 2> /dev/null || return 0
+  _slow=$(head -c 8 "${_st}.slow" 2> /dev/null | tr -cd '0-9')
+  [ -n "${_slow}" ] && [ "${_slow}" -ge 3 ] || return 0
+  if [ -f "${_st}.rebase" ] && [ ! "${_st}" -nt "${_st}.rebase" ] \
+    && [ -z "$(find "${_st}.rebase" -maxdepth 0 -mtime +6 2> /dev/null)" ]; then
+    echo "${_HM_U}: the public files walk still runs out of time since the last rebase; the next one waits a week from it"
+    return 0
+  fi
+  echo "${_HM_U}: the public files walk ran out of time ${_slow} passes in a row; running instgrp reclaim to walk it whole"
+  bash /opt/local/bin/instgrp reclaim "${_HM_U}"
+  # the reclaim moved the stamp when the run of timeouts it ends is gone
+  [ -e "${_st}.slow" ] || touch "${_st}.rebase" 2> /dev/null
+  return 0
 }
 
 _purge_cruft_machine() {

@@ -108,6 +108,23 @@ if [ -e "/run/boa_queue_stop.pid" ]; then
     rm -f /run/boa_queue_stop.pid
   fi
 fi
+# The run lock carries a pid only when instgrp wrote it; the barracuda,
+# octopus and boa wrappers create it empty and refuse to start while it
+# exists. A pid there whose process is gone (or is not root's) is a killed
+# instgrp's leftover, and every reader of the lock (the queue runner, the
+# nightly, the limited-shell worker and the web-group witnesses it runs)
+# would wait for it until the sweep below, hours later. Removed only while
+# it still names the pid read.
+if [ -s "/run/boa_run.pid" ]; then
+  _rl_pid=$( { tr -dc '0-9' < /run/boa_run.pid; } 2>/dev/null )
+  if [ -n "${_rl_pid}" ] \
+    && { ! kill -0 "${_rl_pid}" 2>/dev/null \
+      || [ "$(awk '/^Uid:/ { print $2; exit }' "/proc/${_rl_pid}/status" 2>/dev/null)" != "0" ]; } \
+    && [ "$( { tr -dc '0-9' < /run/boa_run.pid; } 2>/dev/null )" = "${_rl_pid}" ]; then
+    rm -f /run/boa_run.pid
+    [ -d "/var/log/boa" ] && echo "$(date) reaped /run/boa_run.pid left by a killed run (pid ${_rl_pid})" >> /var/log/boa/clear.hold.incident.log
+  fi
+fi
 if ! _installer_alive; then
   find /run/boa_run.pid              -type f -not -newermt "${_THR_HOURS}" -exec rm -f {} \; 2>/dev/null
 fi

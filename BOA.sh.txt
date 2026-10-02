@@ -419,6 +419,12 @@ _ROOT_REAL_PATH_PL='my ($p, $k) = @ARGV; if (!-l $p) { print $p if -d _; exit(-d
 # (satellite.sh.inc, BOA.sh.txt, xoct, xcopy, manage_solr_config.sh,
 # night.inc.sh).
 _SAT_STORE_TARGET_PL='my @t = lstat(defined $ARGV[0] ? $ARGV[0] : ""); my @a = lstat("/data/disk/all"); exit((@t && @a && -d _ && $t[0] == $a[0] && $t[1] == $a[1]) ? 0 : 1)'
+# The two names given swapped in one rename (renameat2 with
+# RENAME_EXCHANGE, its number read from perl's syscall.ph): exit 0 only
+# when they were. One text wherever it is defined (satellite.sh.inc,
+# BOA.sh.txt).
+# shellcheck disable=SC2016
+_SAT_SWAP_PL='my ($a, $b) = @ARGV; my $n = eval { require "syscall.ph"; &SYS_renameat2 }; exit 1 unless defined $n && $n =~ /^[0-9]+$/; exit(syscall($n + 0, -100, $a, -100, $b, 2) == 0 ? 0 : 1)'
 # ./$1 in the current (pinned) directory edited by the sed script $2 as
 # sed -i edited it, unless it holds the text $3 (when given): only a
 # single-link regular file under 1 MiB is read, once, bounded and never
@@ -838,8 +844,12 @@ _get_dev_contrib() {
 # swapped in only when the unpack finished: a copy cut short (an archive
 # another run was replacing, a broken download) never replaces the one in
 # place, is reported in the fetch-failure line and is fetched again on the
-# next run, where the old code stamped it as deployed. The swap renames the
-# copy in place aside first and puts it back when the new one cannot go in.
+# next run, where the old code stamped it as deployed. The new copy and the
+# one in place swap names in one rename (_SAT_SWAP_PL), so a site loading the
+# module through a bundle's link finds the old copy or the new one, never
+# none; where one rename cannot do it (nothing in place yet, or no renameat2
+# on the box), the copy in place is moved aside first and put back when the
+# new one cannot go in.
 # Two stamps: the gates read the ".full" one, which only this path writes, so
 # a copy the old code stamped is replaced once; the plain one keeps an
 # Octopus not yet upgraded from fetching it again the old way. Owner "root"
@@ -853,9 +863,15 @@ _get_dev_contrib() {
 # archive holds. The store's modes are then set through handles opened
 # without following a link, a regular file only while it has a single link,
 # so a link or a hard link left in the store is never followed or re-moded.
+# Nothing is fetched on a replication standby: its store comes from the
+# active with every sync, so a copy put here would be a local write into a
+# synced tree, and two boxes on different trees would replace each other's
+# modules every few minutes. The first agents pass after the promotion
+# fetches whatever is stale then.
 _shared_module_update() {
   local _url="${_urlDev}/${_tRee}/contrib/${1}-${2}.tar.gz" _up="${_Dir%/*}"
   local _st
+  [ -e "/root/.standby.cnf" ] && return 0
   # made where missing, each name from inside its real parent (the store
   # in root's /data, or /data/disk/all when a link of root's there leads
   # to it through root's own directories only, _ROOT_REAL_PATH_PL and
@@ -898,7 +914,7 @@ _shared_module_stale() {
 # subshell: 0 done, 2 not swapped in, 3 not fetched or unpacked, 1 no unpack
 # directory; _shared_module_update reports it.
 _shared_module_update_here() {
-  local _nm="$1" _ver="$2" _own="$3" _tmp _rc=3
+  local _nm="$1" _ver="$2" _own="$3" _tmp _rc=3 _swp=NO
   # a directory a killed run left behind; a live run's is never this old
   find . -maxdepth 1 -type d -name ".${_nm}.*" -mmin +60 -exec rm -rf -- {} + &> /dev/null
   _tmp="$(mktemp -d "./.${_nm}.XXXXXX")" || return 1
@@ -907,10 +923,16 @@ _shared_module_update_here() {
     [ "${_own}" = "root" ] && chown -R root:root "${_tmp}/${_nm}" &> /dev/null
     echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.info"
     echo update > "${_tmp}/${_nm}/ver-${_ver}.${_xSrl}.full.info"
+    # swapped, the copy that was in place is left at ${_tmp}/${_nm}
     if [ -e "./${_nm}" ] || [ -L "./${_nm}" ]; then
-      mv -T -- "./${_nm}" "${_tmp}/.old" &> /dev/null
+      if perl -e "${_SAT_SWAP_PL}" -- "${_tmp}/${_nm}" "./${_nm}" 2> /dev/null; then
+        _swp=YES
+      else
+        mv -T -- "./${_nm}" "${_tmp}/.old" &> /dev/null
+      fi
     fi
-    if mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
+    if [ "${_swp}" = "YES" ] \
+      || mv -T -- "${_tmp}/${_nm}" "./${_nm}" &> /dev/null; then
       perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 0755 . &> /dev/null
       find . -mindepth 1 -type d \
         -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d 0755 {} + &> /dev/null
@@ -1872,13 +1894,16 @@ _fetch_versioned() {
 
 # The cron directory of an account's hostmaster platform (run inside the
 # real directory): stale patch leftovers dropped, and hosting_cron.module,
-# when it is a regular file without the queue patch, replaced by the patched
-# template $1 with the box IP $2. The module is read bounded and never
-# through a link, and the template is put as a fresh file with the
-# template's owner, group and mode, as cp -a left it, renamed over the name
-# (the account owns this directory and could put a link there).
+# when it is a regular file without the queue patch, or one this step put
+# from an earlier template (its md5 among $3, the puts of the completed
+# loops, space separated), replaced by the patched template $1 with the box
+# IP $2. Any other module with the patch (the hosting module's own) is
+# kept. The module is read bounded and never through a link, and the
+# template is put as a fresh file with the template's owner, group and
+# mode, as cp -a left it, renamed over the name (the account owns this
+# directory and could put a link there).
 _hm_cron_queue_here() {
-  local _st _uid _gid _mod
+  local _st _uid _gid _mod _sum
   if [ -e ./hosting_cron.module.orig ]; then
     rm -f -- ./hosting_cron.module.orig
   fi
@@ -1887,8 +1912,14 @@ _hm_cron_queue_here() {
   fi
   [ -e "${1}" ] || return 0
   [ -f ./hosting_cron.module ] && [ ! -L ./hosting_cron.module ] || return 0
-  [[ "$(_acct_read_here hosting_cron.module)" == *"core/cron.php"* ]] \
-    && return 0
+  if [[ "$(_acct_read_here hosting_cron.module)" == *"core/cron.php"* ]]; then
+    [ -n "${3}" ] || return 0
+    _sum=$(_acct_read_here hosting_cron.module | md5sum | cut -d' ' -f1)
+    [[ "${_sum}" =~ ^[0-9a-f]{32}$ ]] || return 0
+    [[ " ${3} " == *" ${_sum} "* ]] || return 0
+    [ "${_sum}" != "$(sed "s/127.0.0.1/${2}/g" "${1}" | md5sum | cut -d' ' -f1)" ] \
+      || return 0
+  fi
   _st=$(stat -c '%u %g %a' -- "${1}" 2> /dev/null) || return 1
   read -r _uid _gid _mod <<< "${_st}"
   sed "s/127.0.0.1/${2}/g" "${1}" \
@@ -2298,7 +2329,7 @@ _update_agents() {
   if [ -e "/var/xdrago/monitor/check" ] && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ]; then
     _fetch_versioned /var/xdrago/monitor/check/scan_nginx.sh "${_urlHmr}/tools/system/monitor/check/scan_nginx.sh" f37
     _fetch_versioned /var/xdrago/monitor/check/java.sh "${_urlHmr}/tools/system/monitor/check/java.sh" f79
-    _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f60
+    _fetch_versioned /var/xdrago/monitor/check/mysql.sh "${_urlHmr}/tools/system/monitor/check/mysql.sh" f59
     _fetch_versioned /var/xdrago/monitor/check/nginx.sh "${_urlHmr}/tools/system/monitor/check/nginx.sh" f73
     _fetch_versioned /var/xdrago/monitor/check/nginx_guard.sh "${_urlHmr}/tools/system/monitor/check/nginx_guard.sh" f93
     _fetch_versioned /var/xdrago/monitor/check/php.sh "${_urlHmr}/tools/system/monitor/check/php.sh" f72
@@ -2337,9 +2368,9 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_cleanup.sh "${_urlHmr}/tools/system/mysql_cleanup.sh" f84
     _fetch_versioned /var/xdrago/mysql_cluster_backup.sh "${_urlHmr}/tools/system/mysql_cluster_backup.sh" f79 --guard mysql_cluster_backup.sh
     _runner_parked runner.sh \
-      || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f62
+      || _fetch_versioned /var/xdrago/runner.sh "${_urlHmr}/tools/system/runner.sh" f61
     _fetch_versioned /var/xdrago/minute.sh "${_urlHmr}/tools/system/minute.sh" f77
-    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f75
+    _fetch_versioned /var/xdrago/second.sh "${_urlHmr}/tools/system/second.sh" f73
     _fetch_versioned /var/xdrago/ip_access.sh "${_urlHmr}/tools/system/ip_access.sh" f75
     _fetch_versioned /var/xdrago/user_admin_access.sh "${_urlHmr}/tools/system/user_admin_access.sh" f82
     _fetch_versioned /var/xdrago/cloudflare_realip.sh "${_urlHmr}/tools/system/cloudflare_realip.sh" f94
@@ -2389,13 +2420,13 @@ _update_agents() {
     _fetch_versioned /var/xdrago/mysql_repair.sh "${_urlHmr}/tools/system/mysql_repair.sh" f91
     _fetch_versioned /var/xdrago/purge_binlogs.sh "${_urlHmr}/tools/system/purge_binlogs.sh" f88
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
-    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f68
-    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f65
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f44
-    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f49
+    _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f67
+    _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f64
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f43
+    _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f48
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f66
     _runner_parked owl.sh \
-      || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f74
+      || _fetch_versioned /var/xdrago/owl.sh "${_urlHmr}/tools/system/owl.sh" f73
     ###
     ### Migration: daily.sh was renamed to owl.sh. Carry an xoct/xcopy-disabled
     ### state (.daily.sh.off) across to owl so a box that had the nightly run
@@ -2465,7 +2496,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f78 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f76 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -2729,18 +2760,52 @@ _update_agents() {
     _fetch_versioned /var/xdrago/conf/control-readme.txt "${_urlHmr}/tools/system/conf/control-readme.txt" f99 --mode 644
   fi
 
-  if [ -d "/data/u" ] \
-    && [ ! -e "${_pthLog}/hosting.cron.queue.ctrl.f95.${_tRee}.${_xSrl}.pid" ]; then
+  # The queue template is fetched through _fetch_versioned, which holds a
+  # new serial while the mirror still serves the bytes already there and
+  # revalidates within the hour, so a changed template reaches the box
+  # whatever text it keeps. The accounts' copies are put from it
+  # (_hm_cron_queue_here) once per release and whenever its put, the
+  # template with the box address, is not the one the last completed loop
+  # used, and only from a template that carries the patch: a file without
+  # it is neither put nor stamped, and the next fetch asks again. The puts
+  # of the completed loops are kept in hosting.cron.queue.puts (md5s, the
+  # last 20, newest last), and a module that is one of them takes the
+  # current template: a pass stopped in the loop leaves the record as it
+  # was, so the next pass runs the loop again, and an account the loop
+  # skipped once (its alias naming a platform not here, as on a standby)
+  # is put by the next release's loop. With no box address nothing is
+  # recorded and only a module without the patch is put.
+  if [ -d "/data/u" ]; then
     _hQueueF="hosting_cron.module"
     _hQueueP="/var/xdrago/conf/${_hQueueF}"
-    [ -e "${_hQueueP}" ] && _isPatchedTpl=$(grep "core/cron.php" "${_hQueueP}")
-    if [ ! -e "${_hQueueP}" ] || [[ ! "${_isPatchedTpl}" =~ "core/cron.php" ]]; then
-      curl ${_crlGet} "${_urlHmr}/patches/${_hQueueF}" -o ${_hQueueP}
+    _hQueueR="${_pthLog}/hosting.cron.queue.puts"
+    _hQueueS=""
+    _hQueueN=""
+    _hQueueL=""
+    _hQueueA=NO
+    [[ "${_LOC_IP}" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] && _hQueueA=YES
+    if [ -s "${_hQueueP}" ]; then
+      _hQueueS="$(md5sum "${_hQueueP}" 2> /dev/null | cut -d' ' -f1)"
+      # No record yet: the loops so far put the template already here.
+      if [ "${_hQueueA}" = "YES" ] && [ ! -s "${_hQueueR}" ] \
+        && grep -q "core/cron.php" "${_hQueueP}" 2> /dev/null; then
+        sed "s/127.0.0.1/${_LOC_IP}/g" "${_hQueueP}" 2> /dev/null \
+          | md5sum | cut -d' ' -f1 > "${_hQueueR}"
+      fi
     fi
-    # Put and stamped only from a template that carries the patch: what a
-    # mirror that has not caught up hands over (or a failed fetch) is asked
-    # for again on the next pass, not stamped until the next serial.
-    if grep -q "core/cron.php" "${_hQueueP}" 2> /dev/null; then
+    _fetch_versioned "${_hQueueP}" "${_urlHmr}/patches/${_hQueueF}" f99 --mode 644
+    if [ "${_hQueueA}" = "YES" ] && [ -s "${_hQueueP}" ]; then
+      _hQueueL="$(grep -xE '[0-9a-f]{32}' "${_hQueueR}" 2> /dev/null | tail -n 20)"
+      _hQueueN="$(sed "s/127.0.0.1/${_LOC_IP}/g" "${_hQueueP}" 2> /dev/null \
+        | md5sum | cut -d' ' -f1)"
+      # A put the last completed loop did not use counts as a change.
+      if [ "${_hQueueN}" != "$(printf '%s\n' "${_hQueueL}" | tail -n 1)" ]; then
+        _hQueueS=""
+      fi
+    fi
+    if grep -q "core/cron.php" "${_hQueueP}" 2> /dev/null \
+      && _source_due "${_hQueueP}" "${_hQueueS}" \
+        "${_pthLog}/hosting.cron.queue.ctrl.f95.${_tRee}.${_xSrl}.pid"; then
       for _pthSysUsr in `find /data/disk/ -maxdepth 1 -mindepth 1 | sort`; do
         _tUsr=
         _tUsr=$(echo ${_pthSysUsr} | cut -d'/' -f4 | awk '{ print $1}' 2>&1)
@@ -2756,10 +2821,15 @@ _update_agents() {
           _hmPlr=$(_acct_hm_root "${_pthSysUsr}") || continue
           _hmDir="${_hmPlr}/profiles/hostmaster/modules/aegir/hosting"
           _acct_in_real_dir "${_hmDir}/cron" \
-            _hm_cron_queue_here "${_hQueueP}" "${_LOC_IP}"
+            _hm_cron_queue_here "${_hQueueP}" "${_LOC_IP}" "${_hQueueL//$'\n'/ }"
         fi
       done
       touch ${_pthLog}/hosting.cron.queue.ctrl.f95.${_tRee}.${_xSrl}.pid
+      if [ -n "${_hQueueN}" ]; then
+        { printf '%s\n' "${_hQueueL}" | grep -vxF -e "${_hQueueN}" -e '' | tail -n 19
+          echo "${_hQueueN}"; } > "${_hQueueR}.tmp" \
+          && mv -f "${_hQueueR}.tmp" "${_hQueueR}"
+      fi
     fi
   fi
 
@@ -2898,6 +2968,8 @@ _update_agents() {
     && [ -e "/var/aegir/.drush/hm.alias.drushrc.php" ] \
     && [ -d "/data/u" ] \
     && [ ! -e "${_pthLog}/le_renewal_days_69.ctrl.${_tRee}.${_xSrl}.pid" ]; then
+    local _leHeld=NO
+    [ -e "/root/.standby.cnf" ] && _leHeld=YES
     _leBasePath="profiles/hostmaster/modules/aegir/hosting_le"
     _lePath="${_leBasePath}/drush/${_provLeInc}"
     _leVhPath="${_leBasePath}/hosting_le_vhost/drush/${_hoLeInc}"
@@ -3034,7 +3106,15 @@ _update_agents() {
         fi
       fi
     done
-    touch ${_pthLog}/le_renewal_days_69.ctrl.${_tRee}.${_xSrl}.pid
+    ### A standby skips every account above, and the accounts' hostmaster
+    ### platforms are no sync leg: stamped there, the promoted box would
+    ### never put this serial's copies. Stamped only when the marker was
+    ### absent before the loop and after it (a promotion during the loop
+    ### leaves the accounts before it unput), so the first agents pass after
+    ### promotion puts them.
+    if [ "${_leHeld}" = "NO" ] && [ ! -e "/root/.standby.cnf" ]; then
+      touch ${_pthLog}/le_renewal_days_69.ctrl.${_tRee}.${_xSrl}.pid
+    fi
   fi
 
   # websh the FILE is fetched by _update_boa_tools (atomic replace + a
@@ -5183,11 +5263,12 @@ CSFSTANDBY
   rm -f ${_pthLog}/vmnetfix.sh.ctrl.*
   if [ -e "${_pthLog}" ]; then
     _fetch_versioned ${_usrBin}/fix-drupal-platform-permissions.sh "${_urlHmr}/${_tBn}/fix-drupal-platform-permissions.sh" f80
-    _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f79
+    _fetch_versioned ${_usrBin}/fix-drupal-site-permissions.sh     "${_urlHmr}/${_tBn}/fix-drupal-site-permissions.sh"     f78
     _fetch_versioned ${_usrBin}/fix-drupal-platform-ownership.sh   "${_urlHmr}/${_tBn}/fix-drupal-platform-ownership.sh"   f84
-    _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f83
+    _fetch_versioned ${_usrBin}/fix-drupal-site-ownership.sh       "${_urlHmr}/${_tBn}/fix-drupal-site-ownership.sh"       f82
     _fetch_versioned ${_usrBin}/lock-local-drush-permissions.sh    "${_urlHmr}/${_tBn}/lock-local-drush-permissions.sh"    f92
     _fetch_versioned ${_usrBin}/fix-drupal-site-symlinks.sh        "${_urlHmr}/${_tBn}/fix-drupal-site-symlinks.sh"        f94
+    _fetch_versioned ${_usrBin}/boa-dbctl                          "${_urlHmr}/${_tBn}/boa-dbctl"                          f93
   fi
   mkdir -p ${_optBin}
   # Per-file, serial-gated, retry-on-failure fetch of the core /opt/local/bin
@@ -5208,7 +5289,7 @@ CSFSTANDBY
     # documented /usr/local/bin path stays a symlink to the fleet copy.
     _fetch_versioned ${_optBin}/aegir2boa-preflight "${_urlHmr}/${_tBn}/aegir2boa-preflight" f97 --guard /local/bin/aegir2boa-preflight
     _fetch_versioned ${_optBin}/aegir2boa-stage1 "${_urlHmr}/${_tBn}/aegir2boa-stage1" f96 --guard /local/bin/aegir2boa-stage1
-    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f87 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
+    _fetch_versioned ${_optBin}/aegir2boa-stage2 "${_urlHmr}/${_tBn}/aegir2boa-stage2" f86 --symlink ${_usrBin}/aegir2boa-stage2 --guard /local/bin/aegir2boa-stage2
     _fetch_versioned ${_optBin}/aptcleanup "${_urlHmr}/${_tBn}/aptcleanup" f96 --guard /local/bin/aptcleanup
     _fetch_versioned ${_optBin}/aptfast "${_urlHmr}/${_tBn}/aptfast" f95 --guard /local/bin/aptfast
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f86 --guard /local/bin/autobeowulf
@@ -5218,8 +5299,8 @@ CSFSTANDBY
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f71 --guard duplicity
-    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f48 --guard /local/bin/barracuda
-    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f34 --guard /local/bin/boa
+    _fetch_versioned ${_optBin}/barracuda "${_urlHmr}/${_tBn}/barracuda" f47 --guard /local/bin/barracuda
+    _fetch_versioned ${_optBin}/boa "${_urlHmr}/${_tBn}/boa" f32 --guard /local/bin/boa
     _fetch_versioned ${_optBin}/dcysetup "${_urlHmr}/${_tBn}/dcysetup" f92 --guard duplicity
     _fetch_versioned ${_optBin}/dhcpfix "${_urlHmr}/${_tBn}/dhcpfix" f98 --guard /local/bin/dhcpfix
     _fetch_versioned ${_optBin}/duobackboa "${_urlHmr}/${_tBn}/duobackboa" f71 --guard duplicity
@@ -5240,7 +5321,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/ffmirror "${_urlHmr}/${_tBn}/ffmirror" f97 --guard /local/bin/ffmirror
     _fetch_versioned ${_optBin}/fixmounts "${_urlHmr}/${_tBn}/fixmounts" f98 --guard /local/bin/fixmounts
     _fetch_versioned ${_optBin}/fixrepo "${_urlHmr}/${_tBn}/fixrepo" f91 --guard /local/bin/fixrepo
-    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f80 --guard /local/bin/instgrp
+    _fetch_versioned ${_optBin}/instgrp "${_urlHmr}/${_tBn}/instgrp" f77 --guard /local/bin/instgrp
     _fetch_versioned ${_optBin}/floodreport "${_urlHmr}/${_tBn}/floodreport" f99 --symlink ${_usrBin}/floodreport --guard /local/bin/floodreport
     _fetch_versioned ${_optBin}/fpmreport "${_urlHmr}/${_tBn}/fpmreport" f98 --symlink ${_usrBin}/fpmreport --guard /local/bin/fpmreport
     _fetch_versioned ${_optBin}/loadreport "${_urlHmr}/${_tBn}/loadreport" f93 --symlink ${_usrBin}/loadreport --guard /local/bin/loadreport
@@ -5249,7 +5330,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f10 --mode 755 --guard duplicity
     _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f65 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f93 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
-    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f64 --guard /local/bin/renameaegirhost
+    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f63 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f81 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f96 --guard /local/bin/symlinkinfo
@@ -5262,10 +5343,10 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_snapshot "${_urlHmr}/${_tBn}/synproxy_snapshot" f99 --guard /local/bin/synproxy_snapshot
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f94 --guard /local/bin/webserver
-    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f36 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f23 --guard /local/bin/xmass
-    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f85 --guard /local/bin/xoct
-    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f68 --guard /local/bin/xtrim
+    _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f34 --guard /local/bin/xcopy
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f09 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f77 --guard /local/bin/xoct
+    _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f67 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f93 --guard /local/bin/solrtrim
     _fetch_versioned ${_optBin}/autochimaera "${_urlHmr}/${_tBn}/autochimaera" f87 --guard /local/bin/autochimaera
     _fetch_versioned ${_optBin}/autodaedalus "${_urlHmr}/${_tBn}/autodaedalus" f87 --guard /local/bin/autodaedalus
@@ -5286,7 +5367,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/randpass "${_urlHmr}/${_tBn}/randpass" f99 --mode 755 --guard /local/bin/randpass
     _fetch_versioned ${_optBin}/setprio "${_urlHmr}/${_tBn}/setprio" f96 --guard /local/bin/setprio
     _fetch_versioned ${_optBin}/smtpgapps "${_urlHmr}/${_tBn}/smtpgapps" f99 --guard /local/bin/smtpgapps
-    _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f92 --guard /local/bin/sqlclean
+    _fetch_versioned ${_optBin}/sqlclean "${_urlHmr}/${_tBn}/sqlclean" f91 --guard /local/bin/sqlclean
     _fetch_versioned ${_optBin}/sqlmagic "${_urlHmr}/${_tBn}/sqlmagic" f98 --mode 755 --guard /local/bin/sqlmagic
     _fetch_versioned ${_optBin}/syncpass "${_urlHmr}/${_tBn}/syncpass" f92 --guard /local/bin/syncpass
     _fetch_versioned ${_optBin}/thinkdifferent "${_urlHmr}/${_tBn}/thinkdifferent" f99 --mode 755 --guard /local/bin/thinkdifferent

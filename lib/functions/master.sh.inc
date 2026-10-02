@@ -114,6 +114,66 @@ _master_mode_all_here() {
   env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -type f \
     -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
 }
+# As _master_mode_all_in, for a files store of a master converted to its own
+# web group: its private set (./private, and the subtrees nginx denies, a
+# case-insensitive prefix after any files/) keeps the modes the conversion
+# gave it, with no world bits. POSIX extended, read after -regextype
+# posix-extended.
+_MASTER_DENIED_RE='\./(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*|.*/files/(civicrm/(configandlog|custom|upload|templates_c)|backup_migrate|config_)[^/]*'
+_master_mode_pub_in() {
+  _acct_in_real_dir "${1}" _master_mode_pub_here "${2}" "${3}"
+}
+_master_mode_pub_here() {
+  perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" . 2> /dev/null
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -regextype posix-extended \
+    \( -path ./private -o -iregex "${_MASTER_DENIED_RE}" \) -prune -o -type d \
+    -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
+  env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 -regextype posix-extended \
+    \( -path ./private -o -iregex "${_MASTER_DENIED_RE}" \) -prune -o -type f \
+    -execdir perl -e "${_MASTER_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
+}
+
+_master_web_group() {
+  # The master's own web group, wg-aegir, the way _web_group_state reads an
+  # account's: "<state> <gid> wg-aegir", "none - -" when there is none. Its
+  # holders are aegir and the master pool users wwwNN; anyone else holding
+  # it makes it foreign. The record is /root/.aegir.web-group.txt, root's
+  # own file, "wg-aegir gid=<n> phase=<A|B> ...".
+  local _e _gid _u _r _rg="" _rgid="" _rph="" IFS=$' \t\n'
+  _e=$(getent group wg-aegir 2> /dev/null) || { echo "none - -"; return 0; }
+  _gid=$(printf '%s' "${_e}" | cut -d: -f3)
+  case "${_gid}" in
+    ""|*[!0-9]*) echo "none - -"; return 0 ;;
+  esac
+  for _u in $(getent group | awk -F: -v g="${_gid}" '$3 == g { print $4 }' | tr ',' ' ') \
+    $(getent passwd | awk -F: -v g="${_gid}" '$4 == g { print $1 }'); do
+    [[ "${_u}" =~ ^(aegir|www[0-9][0-9])$ ]] \
+      || { echo "foreign ${_gid} wg-aegir"; return 0; }
+  done
+  _r="/root/.aegir.web-group.txt"
+  if [ -f "${_r}" ] && [ ! -L "${_r}" ] \
+    && [ "$(stat -c %u -- "${_r}" 2> /dev/null)" = "0" ]; then
+    read -r _rg _rgid _rph _ < "${_r}" || :
+  fi
+  if [ "${_rg}" != "wg-aegir" ] || [ "${_rgid}" != "gid=${_gid}" ]; then
+    echo "held ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=B" ]; then
+    echo "phaseb ${_gid} wg-aegir"
+  elif [ "${_rph}" = "phase=A" ]; then
+    echo "converted ${_gid} wg-aegir"
+  else
+    echo "held ${_gid} wg-aegir"
+  fi
+}
+# The group the hostmaster site's files/ take: the master's own web group,
+# wg-aegir, once its record says the master is converted to it; www-data
+# otherwise, as always.
+_master_files_group() {
+  case "$(_master_web_group)" in
+    converted\ *|phaseb\ *) echo "wg-aegir" ;;
+    *) echo "www-data" ;;
+  esac
+}
 
 
 #
@@ -1218,10 +1278,17 @@ _aegir_master_upgrade() {
     # files/ (group www-data) of this tree: walked as _master_reown_in and
     # _master_mode_all_in walk, never handing over or widening a link or a
     # file another account hard-linked there; a file there never keeps a
-    # set-ID bit, nor a single-link one an execute bit
+    # set-ID bit, nor a single-link one an execute bit. Once the master is
+    # converted to its own web group, files/ take that group (wg-aegir) and
+    # keep their private set's modes.
     _master_reown_in "${_THIS_HM_ROOT}" aegir
-    _master_reown_in "${_THIS_HM_SITE}/files" aegir:www-data
-    _master_mode_all_in "${_THIS_HM_SITE}/files" 02775 0664
+    _MWG_FILES=$(_master_files_group)
+    _master_reown_in "${_THIS_HM_SITE}/files" "aegir:${_MWG_FILES}"
+    if [ "${_MWG_FILES}" = "wg-aegir" ]; then
+      _master_mode_pub_in "${_THIS_HM_SITE}/files" 02775 0664
+    else
+      _master_mode_all_in "${_THIS_HM_SITE}/files" 02775 0664
+    fi
 
     # Never serialize an empty PHP version: the drush shebang update just
     # below hard-exits on an unresolved value, and the appends further down

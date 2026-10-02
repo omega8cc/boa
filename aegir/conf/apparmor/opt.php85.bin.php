@@ -138,6 +138,7 @@
   /usr/bin/wget mrix,
   /usr/bin/which mrix,
   /usr/bin/which.debianutils mrix,
+  /usr/local/bin/boa-dbctl mrix,
   /usr/local/bin/composer mrix,
   /usr/local/bin/curl mrix,
   /usr/local/bin/fix-drupal-platform-ownership.sh mrix,

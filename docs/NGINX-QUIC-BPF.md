@@ -147,3 +147,21 @@ The Ægir control panel does not offer HTTP/3 at all: its per-instance HTTPS
 front carries no QUIC listener and answers `Alt-Svc: clear`. Hosted sites keep
 HTTP/3, and this setting is what keeps their HTTP/3 transfers alive across
 reloads.
+
+## The provider firewall must pass UDP 443
+
+HTTP/3 runs over UDP, so the shipped `csf.conf` opens inbound UDP 443 next to
+TCP 443 (`UDP_IN`). CSF governs the box only: a firewall the hosting provider
+keeps in front of the server (a provider firewall policy, a cloud firewall, a
+security group) has its own rule set, and such default policies usually allow
+TCP 22, 80 and 443 and nothing over UDP.
+
+With UDP 443 blocked there, browsers still load every site over HTTP/2, but each
+one first tries the advertised HTTP/3 and waits for that attempt to fail, and
+nothing on the box explains it: CSF accepts the port, Nginx listens, and a
+capture on the interface never sees the packets.
+
+Allow inbound UDP 443 in the provider firewall for every BOA box, and check it
+from another machine: a request from the box to its own address answers over
+loopback and proves nothing. A request that arrived over HTTP/3 is logged as
+`HTTP/3.0` in the site's access log.

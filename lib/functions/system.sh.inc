@@ -862,20 +862,61 @@ _sftp_ftps_modern_fix() {
   if [[ ! "${_LSHELL_PATH_TEST}" =~ "/usr/bin/lshell" ]]; then
     echo "/usr/bin/lshell" >> /etc/shells
   fi
-  if [ ! -e "${_pthLog}/mss-build-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log" ] \
+  # The -ok- marker stands for a build found in /usr/bin; the markers
+  # without it were written whether the build got there or not.
+  if [ ! -e "${_pthLog}/mss-build-ok-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log" ] \
     || [ ! -e "/etc/ssh/sftp_config" ] \
-    || [ ! -e "/usr/bin/mysecureshell" ] \
-    || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
+    || [ ! -e "/usr/bin/mysecureshell" ]; then
     if [ "${_MSS_BUILD}" != "YES" ]; then
+      local _mss_bin
       _msg "INFO: Installing MySecureShell ${_MSS_VRN}..."
       cd /var/opt
       rm -rf mysecureshell*
       _get_dev_src "mysecureshell-${_MSS_VRN}.tar.gz"
       cd /var/opt/mysecureshell
-      _mrun "bash ./configure"
+      # The paths are named because newer sources default to /usr/local
+      # (and older ones, given a prefix, move /etc under it), while the
+      # accounts' login shell and every binary path used here is under
+      # /usr/bin. The dialect is named because a configure that picks C23
+      # where the compiler offers it gets a build that stops on the
+      # sources' old-style declarations.
+      _mrun "bash ./configure --prefix=/usr --sysconfdir=/etc CFLAGS='-g -O2 -std=gnu11'"
       _mrun "make -j $(nproc) --quiet"
-      _mrun "sh ./install.sh yesall"
-      touch ${_pthLog}/mss-build-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
+      # install.sh clears the screen, which complains when TERM is unset
+      _mrun "TERM=dumb sh ./install.sh yesall"
+      if cmp -s /var/opt/mysecureshell/mysecureshell /usr/bin/mysecureshell; then
+        # install.sh leaves the shell 755, and a session without the setuid
+        # bit cannot join the root-owned session table: set it now, as the
+        # end of the pass does.
+        chown root:root /usr/bin/mysecureshell
+        chmod 4755 /usr/bin/mysecureshell
+        # A build made without the prefix left its copies in /usr/local,
+        # ahead of /usr in PATH, and its own line in /etc/shells.
+        if [ -e "/usr/local/bin/mysecureshell" ]; then
+          for _mss_bin in mysecureshell sftp-admin sftp-kill sftp-state \
+            sftp-user sftp-verif sftp-who; do
+            # never the file a /usr/bin name resolves to
+            if [ ! "/usr/bin/${_mss_bin}" -ef "/usr/local/bin/${_mss_bin}" ]; then
+              rm -f "/usr/local/bin/${_mss_bin}"
+            fi
+            rm -f "/usr/local/share/man/man8/${_mss_bin}.8"
+          done
+          rm -f /usr/local/share/man/man8/MySecureShell.8
+          sed -i "\|^/usr/local/bin/mysecureshell$|d" /etc/shells
+        fi
+        # Older sources, configured without a prefix, put their pages in
+        # /share/man; this build puts them in /usr/share/man.
+        if [ -d "/share/man/man8" ]; then
+          for _mss_bin in sftp-admin sftp-kill sftp-state sftp-user \
+            sftp-verif sftp-who; do
+            rm -f "/share/man/man8/${_mss_bin}.8"
+          done
+          rmdir /share/man/man8 /share/man /share &> /dev/null
+        fi
+        touch ${_pthLog}/mss-build-ok-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
+      else
+        _msg "OOPS: MySecureShell ${_MSS_VRN} build did not reach /usr/bin/mysecureshell"
+      fi
       cp -af ${_locCnf}/var/sftp_config /etc/ssh/sftp_config
       _mrun "service ssh restart"
       _MSS_BUILD=YES
@@ -4731,7 +4772,7 @@ _mytop_install() {
         _mrun "cpanm Term::ReadKey --force"
       fi
       cd /var/opt
-      rm -rf git*
+      rm -rf mytop*
       _get_dev_src "mytop-1.6.tar.gz"
       cd /var/opt/mytop-1.6
       _mrun "perl Makefile.PL"
@@ -5252,7 +5293,7 @@ _php_install_deps() {
   ###--------------------###
   _apt_clean_update
 
-  for _PKG in cmake lbzip2 zstd libavif-dev libgd-dev libgd3 libjpeg-dev libjpeg62 libkrb5-dev; do
+  for _PKG in cmake lbzip2 zstd libavif-dev libgd-dev libgd3 libjpeg-dev libjpeg62 libkrb5-dev libacl1-dev; do
     if ! _pkg_installed "${_PKG}"; then
       _mrun "${_INSTAPP} ${_PKG}"
     fi
@@ -6635,8 +6676,7 @@ _ssl_install_src() {
     _ssl_paths_update "${_THIS_SSL_BINARY}"
     _ssl_apt_locks_update
   else
-    _msg "OOPS: OpenSSL version ${_OPENSSL_NEW_VRN} was not installed!"
-    _SSL_INSTALL_REQUIRED=
+    _msg "OOPS: OpenSSL version ${_OPENSSL_BUILD_VRN} was not installed!"
     _SSH_FORCE_REINSTALL=
     _NGX_FORCE_REINSTALL=
     _PHP_FORCE_REINSTALL=
@@ -6718,7 +6758,10 @@ _if_ssl_install_src() {
     if grep -i 'OPENSSL_NO_DEPRECATED_3_4' ${_sslMacros} &> /dev/null; then
       _sslIncludesA=YES
     fi
-    if grep -i '2019-2026' ${_sslMacros} &> /dev/null; then
+    # The installed headers must be the pinned release's own: opensslv.h
+    # names its version, so this follows the pin with nothing to edit.
+    if grep -qF "OPENSSL_FULL_VERSION_STR \"${_OPENSSL_NEW_VRN}\"" \
+      /usr/local/ssl3/include/openssl/opensslv.h &> /dev/null; then
       _sslIncludesB=YES
     fi
     if [ "${_sslIncludesA}" = "NO" ] || [ "${_sslIncludesB}" = "NO" ]; then
@@ -6760,7 +6803,7 @@ _if_ssl_install_src() {
     _NGX_FORCE_REINSTALL=YES
     _PHP_FORCE_REINSTALL=YES
     rm -f ${_pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_xSrl}-${_X_VERSION}.log
-    rm -f ${_pthLog}/mss-build-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
+    rm -f ${_pthLog}/mss-build-ok-${_MSS_VRN}-${_xSrl}-${_X_VERSION}.log
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "INFO: OpenSSL rebuild forced"
     fi
@@ -7717,8 +7760,12 @@ _strict_bin_permissions() {
         done
   done
 
-  chown root:root /usr/bin/mysecureshell
-  chmod 4755 /usr/bin/mysecureshell
+  # chown clears the setuid bit, and no session starts without it: touch
+  # the shell only when it is not already as wanted.
+  if [ "$(stat -L -c '%a %U:%G' /usr/bin/mysecureshell 2> /dev/null)" != "4755 root:root" ]; then
+    chown root:root /usr/bin/mysecureshell
+    chmod 4755 /usr/bin/mysecureshell
+  fi
 
   chown root:root /usr/bin/redis-server
   chmod 755 /usr/bin/redis-server
@@ -8141,6 +8188,10 @@ _finale() {
   mkdir -p /data/conf
   _acct_in_real_dir /data/conf _sys_conf_arch_here
   rm -f /tmp/cache.inc*
+  # A build earlier in the pass may have left the shell in its source
+  # directory under /var/opt: step out before that goes, or every child
+  # started afterwards complains about its missing working directory.
+  cd /var/opt
   rm -f /var/opt/._zendopcache*
   rm -rf /var/opt/*
   rm -f /var/xdrago/monitor/acrashsql.sh
@@ -12230,6 +12281,23 @@ _instgrp_arm_stamp() {
   echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > /var/log/boa/instgrp-arm.ready.txt
 }
 
+# The web group's arm (instgrp webconvert) takes no account's first
+# conversion without this stamp. Written at the tail of every barracuda pass
+# while _WEB_GROUP_ARM=YES, removed otherwise, so the setting alone arms and
+# disarms the box; a conversion already under way resumes either way.
+_instgrp_web_arm_stamp() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _instgrp_web_arm_stamp"
+    _debug_proc
+  fi
+  mkdir -p /var/log/boa &> /dev/null
+  if [ "${_WEB_GROUP_ARM}" = "YES" ]; then
+    echo "${_X_VERSION:-unknown} ${_xSrl:-unknown} $(date +%Y-%m-%d)" > /var/log/boa/instgrp-web-arm.ready.txt
+  else
+    rm -f /var/log/boa/instgrp-web-arm.ready.txt
+  fi
+}
+
 _lshell_install_upgrade() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _lshell_install_upgrade"
@@ -12258,8 +12326,7 @@ _lshell_install_upgrade() {
     _LSHELL_FORCE_REINSTALL=YES
   fi
   if [ "${_LSHELL_FORCE_REINSTALL}" = "YES" ] \
-    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-    || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
+    || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
     if [ "${_STATUS}" = "UPGRADE" ]; then
       _msg "INFO: Upgrading Limited Shell to version ${_LSHELL_VRN}..."
       [ -f "/etc/lshell.conf" ] && cp -af /etc/lshell.conf /etc/lshell.conf-bak-${_NOW} &> /dev/null
@@ -12408,8 +12475,7 @@ _if_install_ftpd() {
       || [ ! -e "/usr/local/sbin/pure-ftpd" ] \
       || [ ! -e "${_pthLog}/pure-ftpd-build-${_PURE_FTPD_VRN}-${_xSrl}-${_X_VERSION}.log" ] \
       || [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ] \
-      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ] \
-      || [ "${_SSL_INSTALL_REQUIRED}" = "YES" ]; then
+      || [ "${_FULL_FORCE_REINSTALL}" = "YES" ]; then
       sed -i "/^$/d" /etc/ld.so.conf.d/libc.conf &> /dev/null
       if [ ! -e "/etc/ssl/private/pure-ftpd-dhparams.pem" ]; then
         if [ "${_DEBUG_MODE}" = "YES" ]; then

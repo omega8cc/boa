@@ -53,7 +53,7 @@ export _USER="${_USER}"
 ### Drush and Redis Variables
 ###
 
-export _DRUSH_VERSION=8.5.10
+export _DRUSH_VERSION=8.5.11
 export _REDIS_C_VERSION=com-19-04-2021
 export _REDIS_L_VERSION=7.x-3.19.1
 export _REDIS_N_VERSION=com-19-04-2021
@@ -391,6 +391,61 @@ if ! declare -F _satellite_if_instance_group > /dev/null 2>&1 \
     fi
   fi
 fi
+# The web-group conversion's own marks: its Octopus arm and the reader of a
+# phase-B rollback's cut-short token, which the pool writer honours. A tree
+# without them is fetched fresh once per release; still stale, the arm is
+# skipped with a note, and the run aborts while any account holds a record
+# (its pool writer would load a cut-short account's line before that
+# account's next conversion run re-checked shares).
+if ! declare -F _satellite_if_web_group > /dev/null 2>&1 \
+  || ! declare -F _web_group_rb > /dev/null 2>&1; then
+  _libRefetchMark="/opt/tmp/.libtree-refetch-wg3.${_X_VERSION:-unknown}"
+  if [ ! -e "${_libRefetchMark}" ]; then
+    echo "NOTE: the lib tree predates this launcher (_satellite_if_web_group missing); fetching a fresh tree"
+    touch "${_libRefetchMark}"
+    rm -rf /opt/tmp/boa-refetch
+    mkdir -p /opt/tmp/boa-refetch
+    # shellcheck disable=SC2086
+    ( cd /opt/tmp/boa-refetch \
+      && curl ${_crlGet} "https://files.boa.io/dev/${_tRee}/boa.tar.gz?r=$(date +%s)" -o boa.tar.gz \
+      && tar -xzf boa.tar.gz ) > /dev/null 2>&1
+    if [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.nrml" ] \
+      && [ -e "/opt/tmp/boa-refetch/boa/aegir/helpers/apt.conf.noi.dist" ] \
+      && grep -q "^_satellite_if_web_group() {" /opt/tmp/boa-refetch/boa/lib/functions/satellite.sh.inc 2> /dev/null \
+      && grep -q "^_web_group_rb() {" /opt/tmp/boa-refetch/boa/lib/functions/helper.sh.inc 2> /dev/null; then
+      rm -rf /opt/tmp/boa
+      mv -f /opt/tmp/boa-refetch/boa /opt/tmp/boa
+      chown -R root:root /opt/tmp/boa &> /dev/null
+      for f in ${_FL}; do
+        [ -r "${_libFnc}/${f}.sh.inc" ] || _panic_exit "${f}"
+        # shellcheck disable=SC1090
+        source "${_libFnc}/${f}.sh.inc"
+      done
+      echo "NOTE: fresh lib tree in place"
+    else
+      echo "NOTE: the fresh tree could not be fetched or verified; keeping the current one"
+    fi
+    rm -rf /opt/tmp/boa-refetch
+  fi
+  if ! declare -F _satellite_if_web_group > /dev/null 2>&1 \
+    || ! declare -F _web_group_rb > /dev/null 2>&1; then
+    _libRec2=NO
+    for _libRec in /root/.*.web-group.txt; do
+      [ -f "${_libRec}" ] && [ ! -L "${_libRec}" ] || continue
+      [ "$(stat -c %u -- "${_libRec}" 2> /dev/null)" = "0" ] || continue
+      read -r _libRg _libRgid _ < "${_libRec}"
+      [ "gid=$(getent group "${_libRg}" 2> /dev/null | cut -d: -f3)" = "${_libRgid}" ] || continue
+      _libRec2=YES
+    done
+    if [ "${_libRec2}" = "YES" ]; then
+      echo "ALRT: the lib tree predates the web-group conversion while an account holds its web-group record; aborting"
+      _clean_pid_exit _stale_lib_tree
+    else
+      echo "NOTE: the lib tree still predates the web-group conversion (a cached boa.tar.gz on the mirror edge?); no account holds a web-group record, so its arm is skipped this pass"
+      declare -F _satellite_if_web_group > /dev/null 2>&1 || _satellite_if_web_group() { return 0; }
+    fi
+  fi
+fi
 
 
 ###
@@ -475,6 +530,7 @@ _satellite_pre_cleanup
 _satellite_if_instance_group pre
 _satellite_make
 _satellite_if_instance_group post
+_satellite_if_web_group post
 _satellite_queue_dbvars_site_verifies
 _satellite_post_cleanup
 
