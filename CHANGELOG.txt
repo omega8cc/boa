@@ -988,6 +988,11 @@
 
 @=> Improvements
 
+    * A Drupal 11 site Install finishes about ten seconds sooner: it no
+      longer pauses for five seconds after preparing the platform's own
+      Drush for the installer and again after restoring it. The update
+      and deploy tasks always ran the same step without a pause.
+
     * The README requirements, the shipped csf.conf template and
       docs/NGINX-QUIC-BPF.md now say why inbound UDP 443 is open (HTTP/3
       for the hosted sites) and that a firewall the hosting provider keeps
