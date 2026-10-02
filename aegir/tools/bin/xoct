@@ -2646,6 +2646,14 @@ EOFMYSQL
           else
             echo "ALRT: site ${_Dom} db ${_DBN} already exists!"
           fi
+          ### The database this run made, or the site's own one it loads over,
+          ### is the account's in the database broker's registry once the
+          ### account is switched (_xoct_dbreg); a site whose database cannot
+          ### be entered there is not imported.
+          _DB_REG=""
+          if [ "${_DB_FRESH}" = "YES" ] || [ "${_OWN_DB}" = "YES" ]; then
+            _xoct_dbreg "${_USR##*/}" "${_DBN}" || _DB_REG=FAIL
+          fi
           ### A dump is loaded over a database this run did NOT just create
           ### only when the site proved it its own (_OWN_DB). A site with no
           ### dump (target-native) writes nothing, so it is left to the branch
@@ -2734,6 +2742,11 @@ EOFMYSQL
               _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_DBN}"
               echo "ALRT: site ${_Dom} db failure: no dump in ${_USR}/src/${_DBN} AND local db ${_DBN} is empty/absent"
             fi
+          fi
+          if [ "${_DB_REG}" = "FAIL" ] && [ "${_XOCT_SITE_IMPORT_OK}" = "YES" ]; then
+            _XOCT_SITE_IMPORT_OK=NO
+            _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
+            _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_DBN}:not-registered"
           fi
           ### A verify over a failed import regenerates settings/vhost around
           ### a database that is not there -- schedule it only for clean loads.
@@ -4251,6 +4264,43 @@ _xoct_seed_witness_delta() {   # 1 = was, 2 = now (md5sum output, one line per f
   printf '%s' "${_out:-a witness set of a different shape}"
 }
 
+### A database this tool makes, or a site's own one it loads over, for an
+### account switched to the database broker (root's
+### /data/conf/<account>_db_broker.txt) is entered in the broker's registry
+### as that account's, and the account's own grant on it given, as the
+### broker's own create does: otherwise every later task of the site is
+### refused as not the account's. An account not switched, or one whose
+### control file the broker finds not valid (its tasks take the direct
+### path), is left as it was. Same text in xoct and xcopy.
+_xoct_dbreg() {   # 1 account here 2 database
+  local _f="/data/conf/${1}_db_broker.txt" _out _rc
+  [ -e "${_f}" ] || [ -L "${_f}" ] || return 0
+  if [ ! -x /usr/local/bin/boa-dbctl ]; then
+    echo "ALRT: ${1} is switched to the database broker, which is not installed here:"
+    echo "ALRT: database ${2} is not entered as ${1}'s in its registry"
+    return 1
+  fi
+  _out=$(/usr/local/bin/boa-dbctl register "${2}" --account "${1}" --via xoct 2>&1)
+  _rc=$?
+  if [ "${_rc}" = "8" ]; then
+    echo "ALRT: ${_f} is not valid: database ${2} is left out of the broker's registry,"
+    echo "ALRT: and ${1}'s tasks take the direct path"
+    return 0
+  fi
+  if [ "${_rc}" = "0" ]; then
+    if _out=$(/usr/local/bin/boa-dbctl regrant --account "${1}" 2>&1); then
+      echo "INFO: database ${2} entered as ${1}'s in the database broker's registry"
+      return 0
+    fi
+    echo "ALRT: database ${2} is ${1}'s in the database broker's registry, but its grant failed: ${_out##*$'\n'}"
+    echo "ALRT: run: boa-dbctl regrant --account ${1}"
+    return 1
+  fi
+  echo "ALRT: database ${2} is not entered as ${1}'s in the database broker's registry: ${_out##*$'\n'}"
+  echo "ALRT: its site's tasks are refused until: boa-dbctl register ${2} --account ${1} --via xoct; boa-dbctl regrant --account ${1}"
+  return 1
+}
+
 ### The poured panel carries the source's password for its database server row;
 ### this box's instance user keeps its own, so every server verify (the rename's
 ### queue first) failed until the next Octopus pass re-synced it. The row takes
@@ -4985,6 +5035,10 @@ _migrate_prepare() {
     _xoct_in_real_dir "${_USR}/log" rm -f -- ./exported.pid ./transferred.pid \
       ./export_failed.pid ./proxy-failed.pid
     _xoct_in_real_dir "${_USR}/log" _xoct_touch_here imported.pid
+    ### The panel database the dump went into is the account's in the
+    ### database broker's registry once the account is switched: its next
+    ### upgrade dumps it through the broker.
+    _xoct_dbreg "${_THIS_HM_USER}" "${_HDB}"
     if ! _xoct_reconcile_panel_platform "${_USR}" "${_oct}" "${_HDB}"; then
       echo "ERROR: panel platform reconciliation failed for ${_USR} — this import is INCOMPLETE"
       echo "ERROR: the imported DB names a hostmaster platform this box cannot serve; continuing"
