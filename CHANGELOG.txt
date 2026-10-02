@@ -326,9 +326,10 @@
     * That alert no longer fires for the link earlier releases left
       under a control panel's name beside its hostmaster alias, which a
       renamed host keeps until the limited-shell pass removes it: an
-      upgrade of such an account, and a Barracuda upgrade of the master
-      on that host, reported "earlier panel database users kept" and
-      completed with errors on every run until then. The link
+      upgrade of such an account reported "earlier panel database users
+      kept", a Barracuda upgrade of the master on that host "earlier
+      master panel database users kept", and each completed with errors
+      on every run until then. The link
       names nothing of its own (the alias it leads to is read under its
       own name), so it is passed over. Any other link among the aliases
       still keeps every user, with the alert naming it.
