@@ -1344,9 +1344,31 @@
       had relayed refused every create, so failing back stopped there. It
       runs right after the replica reset and again after the renames.
 
+    * Those steps run only on that path, told by the standby marker still
+      present when post-mig starts, and only on the pair's own accounts.
+      After a planned switch or a failback post-mig leaves the upgrades
+      the cutover armed again, an account the box relays to another box
+      keeps its relay, and every armed upgrade is held until the renames
+      are done, never removed.
+
     * xmass prep-target starts the cron of a returning old active that
       was fenced with its cron stopped: the upgrade passes it arms there
-      never ran, and it waited for them until it gave up.
+      never ran, and it waited for them until it gave up. It stops that
+      cron again when it ends, and init starts it once the box is the
+      pair's standby, so the box's own jobs never run on its stale copy.
+
+    * xoct create no longer lifts an account's 503 gate on the target: a
+      returning old active fenced after an emergency promotion served its
+      stale copy again once xmass prep-target had run there.
+
+    * xmass prep-target no longer takes an account on the old active's
+      migration state alone when that box relays it, or moved it on, to
+      another box: a same-name account made on the promoted box since is
+      another client's.
+
+    * The demotion cleanup no longer reports nginx -t as failed when nginx
+      is down by design (a promotion by hand, the standby hold still on):
+      the restored vhosts load when it starts.
 
     * A run lock left by an instgrp run killed outright (out of memory, a
       stray kill -9) no longer keeps the limited-shell worker, the task
