@@ -1879,8 +1879,10 @@ _stage_for() {
 
 # The account's staging a dump killed outright (SIGKILL, a power loss) left
 # in _STAGE_DIR: the exit trap never ran for it. Called under the account's
-# I/O lock, which every dump holds for its whole run, so no dump of the
-# account is in flight; account names carry no dot.
+# I/O lock, which every dump holds for its whole run, so no other dump of
+# the account is running; a mydumper left running by a kill of the broker
+# alone holds no lock (it starts with fds 7-9 closed) and may lose its
+# directory here. Account names carry no dot.
 _stage_reap() {
   local _d _n=0
   for _d in "${_STAGE_DIR}/${_ACCT}".*; do
