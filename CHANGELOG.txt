@@ -1804,6 +1804,11 @@
       loaded into it or dropped. The site logins it uses on the source no
       longer give way to a login root keeps in ~/.my.cnf.
 
+    * aegir2boa-stage2 drops the database a failed land made through the
+      database broker first where it is installed, so for an account
+      switched to the broker its registry entry and its grant rows go with
+      it; the plain drop takes it where the broker is missing or refuses.
+
     * The nightly copy of database dumps into each account's dbackup/
       takes the date from the end of the archive folder name: on a box
       whose hostname holds a dash, MyQuick dumps were never copied and
