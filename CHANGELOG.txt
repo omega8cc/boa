@@ -1517,6 +1517,16 @@
       worker and the 5-minute clear.sh take it away once the process it
       names is gone.
 
+    * The task queue pause and the account hold left by an instgrp
+      revert killed outright no longer stop every instance's task queue
+      until the next clear.sh tick when an Octopus upgrade comes first:
+      every web-group run of an account removes them once the process
+      they name is gone, also a run that skips or refuses the account.
+
+    * instgrp webstatus reads the alias's web group on an account that
+      has no web group of its own: the line read unknown although the
+      alias names www-data.
+
     * xmass init and prep-target no longer wait out their whole bound
       when /data/disk holds a directory that is not an Octopus account,
       such as a hand-made copy: the quiet check passes over it.
