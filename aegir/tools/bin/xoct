@@ -3488,8 +3488,11 @@ _xo_in config/server_master/nginx/subdir.d _xo_subdirs_here | while IFS= read -r
   case "\${_S}" in ''|*/*) continue ;; esac
   _xo_in "config/server_master/nginx/subdir.d/\${_S}" _xo_rewrite_here
 done
-# A static/ link naming the source tree is repointed as ./name inside the
-# directory find holds, made by the link's own owner (setpriv), so root never
+# A link under static/ or distro/ naming the source tree (a site's files and
+# private links into the store sit in its platform's sites/<name>/, on a
+# BOA-built platform under distro/; left so, they dangle or name another
+# account's store) is repointed as ./name inside the directory find holds,
+# made by the link's own owner (setpriv), so root never
 # changes an owner by name there (a hard link to another file renamed over
 # the name between a new link and a chown by name would hand that file over)
 # and never makes a link for the account: a root link is made again by root,
@@ -3512,17 +3515,19 @@ _xo_relink_here() {
       [1-9]*:[1-9]*)
         setpriv --reuid="\${_O%%:*}" --regid="\${_O#*:}" --clear-groups \
           ln -sfn -T -- "\${_N}" "\${_L}" < /dev/null > /dev/null 2>&1 \
-          || echo "ALRT: static link \${PWD}/\${_L#./} (owner \${_O}) not repointed: its owner cannot make it there"
+          || echo "ALRT: link \${PWD}/\${_L#./} (owner \${_O}) not repointed: its owner cannot make it there"
         ;;
       *)
-        echo "ALRT: static link \${PWD}/\${_L#./} (owner \${_O}) not repointed: no root link is made for another owner"
+        echo "ALRT: link \${PWD}/\${_L#./} (owner \${_O}) not repointed: no root link is made for another owner"
         ;;
     esac
   done
 }
 export _SRC _DST
 export -f _xo_relink_here
-find "/data/disk/\${_DST}/static" -type l -execdir bash -c '_xo_relink_here "\$@"' _ {} + 2>/dev/null
+for _TR in static distro; do
+  find "/data/disk/\${_DST}/\${_TR}" -type l -execdir bash -c '_xo_relink_here "\$@"' _ {} + 2>/dev/null
+done
 # Ownership: the copy maps owners by name, so what the source identities
 # owned landed on their namesakes here, or on their bare source uids where
 # this box has no such name; left so, the renamed account's files, quota and
