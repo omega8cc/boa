@@ -4308,22 +4308,29 @@ _xoct_dbreg() {   # 1 account here 2 database
   return 1
 }
 
-### The poured panel carries the source's password for its database server row;
-### this box's instance user keeps its own, so every server verify (the rename's
-### queue first) failed until the next Octopus pass re-synced it. The row takes
-### the password this box set for the account (.<account>.pass.txt in the
-### account root, read no-follow), under either the account's name or the
-### source's (the rename maps the latter onto the former). Same text in xoct
-### and xcopy.
+### The poured panel carries the source's login for its database server row;
+### this box's instance user keeps its own password, so every server verify
+### (the rename's queue first) failed until the next Octopus pass re-synced it.
+### The row takes the account's own name and the password this box set for it
+### (.<account>.pass.txt in the account root, read no-follow). After a rename
+### the row named the source account, here no user or another account's, and
+### neither the rename nor the Octopus pass (which finds the row by the
+### account's name) mapped it, so every server verify failed for good: the
+### name is mapped even when the password cannot be read, which the caller
+### reports (non-zero) and the next Octopus pass then fixes. Same text in
+### xoct and xcopy.
 _xoct_sync_panel_db_pass() {   # 1 account root 2 account here 3 source account 4 panel db
-  local _p
+  local _p _set
   _p=$(_xoct_read_in "${1}" ".${2}.pass.txt" | head -1 | tr -d '\n')
   case "${_p}" in
-    ""|*[!A-Za-z0-9+/=%@._-]*) return 1 ;;
+    *[!A-Za-z0-9+/=%@._-]*) _p="" ;;
   esac
-  [ "${#_p}" -ge 9 ] || return 1
+  [ "${#_p}" -ge 9 ] || _p=""
+  _set="db_user='${2}'"
+  [ -n "${_p}" ] && _set="${_set}, db_passwd='${_p}'"
   mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp "${4}" \
-    -e "UPDATE hosting_db_server SET db_passwd='${_p}' WHERE db_user IN ('${2}','${3}')" 2> /dev/null
+    -e "UPDATE hosting_db_server SET ${_set} WHERE db_user IN ('${2}','${3}')" 2> /dev/null \
+    && [ -n "${_p}" ]
 }
 
 _xoct_reconcile_panel_platform() {
