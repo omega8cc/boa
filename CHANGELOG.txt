@@ -1347,6 +1347,12 @@
 
 @=> Important Fixes
 
+    * After an xoct move that renames the account, a site on a BOA-built
+      platform kept its files and private links naming the source
+      account's store, so every verify of the site failed and it answered
+      500. The transfer now re-points those links as it does the ones
+      under static/.
+
     * A Restore, Clone or Migrate no longer unpacks a site archive
       outside the directory it made. A link left at the unpack target,
       dangling or not, is refused before anything is written, and the
