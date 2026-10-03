@@ -74,6 +74,14 @@
       keeps the names of its kept databases held, and a nightly check
       reports any drift. Still switched off: no account uses it.
 
+    * The root database helper gains the switch itself: an account can
+      be planned, switched on and back off, a box's own logins recorded
+      and checked, old leftovers listed and dropped, and each account's
+      database count reported against an optional limit that is only
+      enforced when asked. New accounts can start switched on where the
+      box asks for it, and moved accounts keep their state. Still
+      switched off: no account uses it until an operator switches it.
+
     * The limited shell template and the ImageMagick policy no longer
       stay a release behind on a box whose mirror lagged at the publish.
 
