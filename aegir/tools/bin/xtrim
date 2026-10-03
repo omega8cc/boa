@@ -1373,9 +1373,12 @@ _stage_b() {
     ### dump containing nothing. pipefail is scoped to this subshell on
     ### purpose: globally it would change the meaning of the ssh/pgrep
     ### pipelines used as boolean tests elsewhere in this file.
+    ### The safety dump is the only copy this box keeps once the database
+    ### is dropped, so it carries the stored routines and events as well
+    ### (mysqldump writes neither unless asked; triggers it always writes).
     if ( set -o pipefail
          mysqldump "${_MYSQLDUMP_GTID[@]}" --single-transaction --quick --no-autocommit \
-           --skip-add-locks --no-tablespaces --hex-blob "${_db}" 2>/dev/null \
+           --skip-add-locks --no-tablespaces --hex-blob --routines --events "${_db}" 2>/dev/null \
            | gzip > "${_dumps}/${_db}.sql.gz" ); then
       ### Two different faults, two different tests: gzip -t catches a
       ### corrupt archive, the trailer catches a well-formed archive of an

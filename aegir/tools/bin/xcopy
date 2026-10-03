@@ -823,6 +823,14 @@ EOFMYSQL
           else
             echo "ALRT: site ${_Dom} db ${_DBN} already exists!"
           fi
+          # The database this run made, or the site's own one it loads over,
+          # is the account's in the database broker's registry once the
+          # account is switched (_xcopy_dbreg); a site whose database cannot
+          # be entered there is not imported.
+          _DB_REG=""
+          if [ "${_DB_FRESH}" = "YES" ] || [ "${_OWN_DB}" = "YES" ]; then
+            _xcopy_dbreg "${_USR##*/}" "${_DBN}" || _DB_REG=FAIL
+          fi
           # A dump is loaded over a database this run did NOT just create only
           # when the site proved it its own (_OWN_DB). A site with no dump
           # (target-native) writes nothing, so it is left to the branch below
@@ -908,6 +916,11 @@ EOFMYSQL
               _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_DBN}"
               echo "ALRT: site ${_Dom} db failure: no dump in ${_USR}/src/${_DBN} AND local db ${_DBN} is empty/absent"
             fi
+          fi
+          if [ "${_DB_REG}" = "FAIL" ] && [ "${_XCOPY_SITE_IMPORT_OK}" = "YES" ]; then
+            _XCOPY_SITE_IMPORT_OK=NO
+            _XCOPY_IMPORT_FAIL=$(( ${_XCOPY_IMPORT_FAIL:-0} + 1 ))
+            _XCOPY_IMPORT_FAILED_DBS="${_XCOPY_IMPORT_FAILED_DBS} ${_DBN}:not-registered"
           fi
           ### A verify over a failed import regenerates settings/vhost around
           ### a database that is not there -- schedule it only for clean loads.
@@ -1293,8 +1306,9 @@ _xcopy_wait_target_quiet() {
     # nothing consumes them before post-mig, so a second account's create
     # would wait out the bound on the first one's armed upgrade. Without
     # the marker the next tools refresh brings the runner back, so the
-    # pid still counts.
-    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; { [ -e /run/boa_migration_park.pid ] && [ ! -e /var/xdrago/runner.sh ] && [ -e /var/xdrago/.runner.sh.off ]; } || for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e \"\${_f}\" ] || continue; _n=\${_f#/data/disk/}; _n=\${_n%%/*}; [ ! -e \"/var/xdrago/run-\${_n}\" ] && [ -e \"/var/backups/off-run/run-\${_n}\" ] && continue; printf '%s:armed ' \"\${_n}\"; done" 2>/dev/null)
+    # pid still counts. One with no platforms.info beside it never does:
+    # the runner takes no trigger without it.
+    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; { [ -e /run/boa_migration_park.pid ] && [ ! -e /var/xdrago/runner.sh ] && [ -e /var/xdrago/.runner.sh.off ]; } || for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e \"\${_f}\" ] || continue; [ -e \"\${_f%/*}/platforms.info\" ] || continue; _n=\${_f#/data/disk/}; _n=\${_n%%/*}; [ ! -e \"/var/xdrago/run-\${_n}\" ] && [ -e \"/var/backups/off-run/run-\${_n}\" ] && continue; printf '%s:armed ' \"\${_n}\"; done" 2>/dev/null)
     if [ -z "${_busy// /}" ]; then
       _ok=$(( _ok + 1 ))
       if [ "${_ok}" -ge 2 ]; then
@@ -1330,6 +1344,43 @@ _xcopy_wait_boa_quiet() {
   done
   echo "ALRT: BOA jobs still running after ${_max}s; proceeding -- watch for task collisions"
   return 0
+}
+
+# A database this tool makes, or a site's own one it loads over, for an
+# account switched to the database broker (root's
+# /data/conf/<account>_db_broker.txt) is entered in the broker's registry
+# as that account's, and the account's own grant on it given, as the
+# broker's own create does: otherwise every later task of the site is
+# refused as not the account's. An account not switched, or one whose
+# control file the broker finds not valid (its tasks take the direct
+# path), is left as it was. Same text in xoct and xcopy.
+_xcopy_dbreg() {   # 1 account here 2 database
+  local _f="/data/conf/${1}_db_broker.txt" _out _rc
+  [ -e "${_f}" ] || [ -L "${_f}" ] || return 0
+  if [ ! -x /usr/local/bin/boa-dbctl ]; then
+    echo "ALRT: ${1} is switched to the database broker, which is not installed here:"
+    echo "ALRT: database ${2} is not entered as ${1}'s in its registry"
+    return 1
+  fi
+  _out=$(/usr/local/bin/boa-dbctl register "${2}" --account "${1}" --via xcopy 2>&1)
+  _rc=$?
+  if [ "${_rc}" = "8" ]; then
+    echo "ALRT: ${_f} is not valid: database ${2} is left out of the broker's registry,"
+    echo "ALRT: and ${1}'s tasks take the direct path"
+    return 0
+  fi
+  if [ "${_rc}" = "0" ]; then
+    if _out=$(/usr/local/bin/boa-dbctl regrant --account "${1}" 2>&1); then
+      echo "INFO: database ${2} entered as ${1}'s in the database broker's registry"
+      return 0
+    fi
+    echo "ALRT: database ${2} is ${1}'s in the database broker's registry, but its grant failed: ${_out##*$'\n'}"
+    echo "ALRT: run: boa-dbctl regrant --account ${1}"
+    return 1
+  fi
+  echo "ALRT: database ${2} is not entered as ${1}'s in the database broker's registry: ${_out##*$'\n'}"
+  echo "ALRT: its site's tasks are refused until: boa-dbctl register ${2} --account ${1} --via xcopy; boa-dbctl regrant --account ${1}"
+  return 1
 }
 
 # The poured panel carries the source's password for its database server row;
@@ -2023,6 +2074,10 @@ _migrate_prepare() {
     fi
     ### Both branches above pour the same-name dump (xcopy refuses any other
     ### name before it gets here), so both reach the steps below.
+    ### The panel database the dump went into is the account's in the
+    ### database broker's registry once the account is switched: its next
+    ### upgrade dumps it through the broker.
+    _xcopy_dbreg "${_THIS_HM_USER}" "${_HDB}"
     if ! _xcopy_reconcile_panel_platform "${_USR}" "${_oct}" "${_HDB}"; then
       echo "ERROR: panel platform reconciliation failed for ${_USR} -- this import is INCOMPLETE"
       echo "ERROR: the imported DB names a hostmaster platform this box cannot serve; continuing"

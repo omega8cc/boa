@@ -325,7 +325,9 @@ When you are done, re-lock the platform with the new 'Lock Local Drush' task —
 
 Re-locking a platform unlocked earlier, by that task or by a Verify, also rebuilds every Drupal 8+ site on it with Drupal core's own rebuild. A site whose service container the local Drush compiled (a module installed or removed, a recipe applied) could not run on that container once the local Drush is locked away, so the rebuild replaces it. In the task log, `REBUILD/RELOCK` lines open and close the run, with one `REBUILD/CORE` rebuild per site between them.
 
-The nightly maintenance never locks or unlocks a platform: one you unlocked stays unlocked, overnight included, until you run 'Lock Local Drush' or a Verify locks it, and that lock then runs the rebuild above.
+The nightly maintenance never locks or unlocks a platform: one you unlocked stays unlocked, overnight included, until you run 'Lock Local Drush' or an Ægir task locks it, and that lock then runs the rebuild above.
+
+Every task that bootstraps a site on the platform reads the lock from the files themselves before it does (Verify, Clone, Backup, Restore, Migrate, Import, Delete, Enable and Install alike) and locks a tree whose psr/log is genuine again or that still owes the web its stock copies. A platform you unlocked yourself is locked again by a Verify or the 'Lock Local Drush' task; a Clone, Backup or Restore queued on it while unlocked fails before it can lock, so run the Verify first.
 
 ---
 

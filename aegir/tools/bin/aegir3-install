@@ -180,12 +180,17 @@ install_base() {
   # regular and provider mirrors: the indexes still list packages whose
   # files 404 (security builds first, then dependencies of the base suite).
   # archive.debian.org carries the complete frozen suite; a throwaway
-  # vanilla box installs from it alone (no fresh Valid-Until there).
+  # vanilla box installs from it (no fresh Valid-Until there). An image
+  # can already carry security builds newer than that suite (perl-base,
+  # whose perl packages must match it exactly), and archive.debian.org has
+  # no bullseye-security yet: the security suite comes from a snapshot
+  # taken just before LTS ended.
   if grep -qs '^VERSION_CODENAME=bullseye' /etc/os-release; then
     _info "Debian 11 is past LTS - installing from archive.debian.org"
     rm -f /etc/apt/sources.list.d/hetzner-*.list
     cat > /etc/apt/sources.list <<'EOF'
 deb http://archive.debian.org/debian bullseye main contrib non-free
+deb http://snapshot.debian.org/archive/debian-security/20260830T000000Z bullseye-security main contrib non-free
 EOF
     echo 'Acquire::Check-Valid-Until "false";' > /etc/apt/apt.conf.d/99archive
   fi

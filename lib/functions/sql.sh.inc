@@ -1688,6 +1688,7 @@ _forced_mysql_root_password_update() {
     fi
     mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
     mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG HOSTS" &> /dev/null
+    _dbctl_rerecord root
     if [ "${_DEBUG_MODE}" = "YES" ]; then
       _msg "DAFT: ${_DB_SERVER} _ESC_PASS ${_ESC_PASS}"
       mysql -u root -e "SHOW GRANTS FOR 'root'@'localhost';"
