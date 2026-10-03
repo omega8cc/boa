@@ -93,8 +93,8 @@ databases, and its grant rows. A change to any of them stops a switch, with
 one exception: a new password on a login the box's own credential still opens.
 The root tools that legitimately rewrite these logins record them again right
 after their own change: the root password rotation, `syncpass fix aegir`, the
-master pass and the panel rewire at a promotion. Nothing records the whole set
-again on its own.
+master pass (once the master's server alias holds the new password) and the
+panel rewire at a promotion. Nothing records the whole set again on its own.
 
 ```
 boa-dbctl baseline plan                         every login with its proof and

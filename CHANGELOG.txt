@@ -89,6 +89,11 @@
       box asks for it, and moved accounts keep their state. Still
       switched off: no account uses it until an operator switches it.
 
+    * The master pass has the root database helper record aegir_root
+      again only once the master's server alias holds the new password:
+      a box that keeps a baseline no longer reports that record as not
+      renewed after every barracuda pass.
+
     * The limited shell template and the ImageMagick policy no longer
       stay a release behind on a box whose mirror lagged at the publish.
 
