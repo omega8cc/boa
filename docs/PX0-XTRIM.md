@@ -257,5 +257,9 @@ The safety dumps are taken with `--set-gtid-purged=OFF` when the local
 load back here or on the target that replicated from it (a dump carrying
 that state fails there: "ERROR 3546" on 8.x, "ERROR 1840" on 5.7).
 
+They carry each database's stored routines and events with its tables and
+triggers: once stage B drops a database, its dump is the only copy this box
+keeps.
+
 Retiring the proxy entirely is out of scope — that is the `boa cleanup`
 sequence, and mixing the two machineries is how customer data is lost.
