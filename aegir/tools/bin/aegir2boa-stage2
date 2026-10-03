@@ -2166,16 +2166,26 @@ EOFMYSQL6
   # stream-strip the first line only, artifact stays pristine. The load
   # runs as root, so every view, trigger, routine and event would keep the
   # source's definer, an account the target may not have: each definer is
-  # the site's own user instead, as after a clone. Only the lines mysqldump
-  # starts with a definer are read, never a row of data.
-  sed -E -e '1{/^\/\*M!999999/d;}' \
+  # the site's own user instead, as after a clone. A MariaDB or MySQL 5.7
+  # source made its triggers, routines and events under a sql_mode holding
+  # NO_AUTO_CREATE_USER, which MySQL 8 refuses to set (ERROR 1231): the
+  # mode is left out of those lines. Only the lines mysqldump starts with a
+  # definer or a sql_mode are read, never a row of data. A load that fails
+  # drops the database made above, so a re-run lands it fresh.
+  if ! sed -E -e '1{/^\/\*M!999999/d;}' \
     -e "s#^(/\\*!50013 DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")#\\1\`${_dbn}\`@\`localhost\`#" \
     -e "s#^(/\\*!50003 CREATE\\*/ /\\*!50017 DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")#\\1\`${_dbn}\`@\`localhost\`#" \
     -e "s#^(/\\*!50106 CREATE\\*/ /\\*!50117 DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")#\\1\`${_dbn}\`@\`localhost\`#" \
     -e "s#^(/\\*!50003 CREATE\\*/ /\\*!50020 DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")#\\1\`${_dbn}\`@\`localhost\`#" \
     -e "s#^(CREATE DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")( (PROCEDURE|FUNCTION|AGGREGATE FUNCTION) )#\\1\`${_dbn}\`@\`localhost\`\\4#" \
-    "${_dump}" | mysql --silent -u root "${_dbn}" \
-    || return 1
+    -e "/^\\/\\*!50003 SET sql_mode/s/NO_AUTO_CREATE_USER,//" \
+    -e "/^\\/\\*!50003 SET sql_mode/s/,NO_AUTO_CREATE_USER//" \
+    -e "/^\\/\\*!50003 SET sql_mode/s/'NO_AUTO_CREATE_USER'/''/" \
+    "${_dump}" | mysql --silent -u root "${_dbn}"; then
+    mysql --silent -u root -e "DROP DATABASE IF EXISTS \`${_dbn}\`" >/dev/null 2>&1
+    _alrt "db ${_dbn}: the load failed; the partly loaded database was dropped, a re-run imports it again"
+    return 1
+  fi
   return 0
 }
 
