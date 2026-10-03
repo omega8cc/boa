@@ -732,6 +732,34 @@ _mysqldump_flags() {
   echo "${_fl}"
 }
 
+# A site database's stored routines and events, asked with the site's own
+# login before they are added, as the panel's classic dump does: --routines
+# only when no routine of the database hides its body from that login (one
+# another user defines, on which mysqldump would stop), --events only when
+# SHOW EVENTS answers, each only when the local mysqldump knows it. What is
+# left out is said, and the dump goes on without it. Sets _MYSQLDUMP_OBJ.
+_mysqldump_objects_opts() {   # 1 defaults-file 2 dbn 3 uri
+  local _n _h
+  _MYSQLDUMP_OBJ=""
+  _h="$(mysqldump --help 2>/dev/null)"
+  if grep -q -- '--routines' <<< "${_h}"; then
+    _n="$(mysql --defaults-extra-file="$1" -N -B -e "SELECT COUNT(*) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_DEFINITION IS NULL" "$2" 2>>"${_LOG}")"
+    if [[ "${_n}" = "0" ]]; then
+      _MYSQLDUMP_OBJ="--routines"
+    else
+      _alrt "site $3: its stored routines are left out of the dump: its database user cannot read every one of them (one another user defines), or could not be asked"
+    fi
+  fi
+  if grep -q -- '--events' <<< "${_h}"; then
+    if mysql --defaults-extra-file="$1" -N -B -e "SHOW EVENTS" "$2" >/dev/null 2>>"${_LOG}"; then
+      _MYSQLDUMP_OBJ="${_MYSQLDUMP_OBJ:+${_MYSQLDUMP_OBJ} }--events"
+    else
+      _alrt "site $3: its events are left out of the dump: its database user may not list them, or could not be asked"
+    fi
+  fi
+  return 0
+}
+
 # -E/-A/-X (executability/ACLs/xattrs) need rsync >= 3.0; a Debian-6-era
 # source may ship 2.x - degrade to plain -aq there (platform trees carry
 # no ACLs/xattrs a D6/D7 site depends on). NB no -u: the platform tree is
@@ -1281,8 +1309,9 @@ _export_one() {   # 1 ctx 2 uri  (returns non-zero on per-site failure)
   mkdir -p "${_AEGIR_ROOT}/src/a2b"
   chmod 700 "${_AEGIR_ROOT}/src" "${_AEGIR_ROOT}/src/a2b" 2>/dev/null
   _myd="$(_mysql_defaults "${_dbn}" "${_dbp}")"
-  # shellcheck disable=SC2046
-  if ! mysqldump --defaults-extra-file="${_myd}" $(_mysqldump_flags) "${_dbn}" \
+  _mysqldump_objects_opts "${_myd}" "${_dbn}" "${_uri}"
+  # shellcheck disable=SC2046,SC2086
+  if ! mysqldump --defaults-extra-file="${_myd}" $(_mysqldump_flags) ${_MYSQLDUMP_OBJ} "${_dbn}" \
       > "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql" 2>>"${_LOG}"; then
     rm -f "${_myd}" "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql"
     _alrt "site ${_uri}: mysqldump FAILED - stub stays up (data-consistency over uptime); revert --site ${_uri} to unpause"
@@ -2134,8 +2163,18 @@ EOFMYSQL6
     return 1
   fi
   # MariaDB >=10.5.25 dumps open with a sandbox directive Percona rejects -
-  # stream-strip the first line only, artifact stays pristine
-  sed '1{/^\/\*M!999999/d}' "${_dump}" | mysql --silent -u root "${_dbn}" \
+  # stream-strip the first line only, artifact stays pristine. The load
+  # runs as root, so every view, trigger, routine and event would keep the
+  # source's definer, an account the target may not have: each definer is
+  # the site's own user instead, as after a clone. Only the lines mysqldump
+  # starts with a definer are read, never a row of data.
+  sed -E -e '1{/^\/\*M!999999/d;}' \
+    -e "s#^(/\\*!50013 DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")#\\1\`${_dbn}\`@\`localhost\`#" \
+    -e "s#^(/\\*!50003 CREATE\\*/ /\\*!50017 DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")#\\1\`${_dbn}\`@\`localhost\`#" \
+    -e "s#^(/\\*!50106 CREATE\\*/ /\\*!50117 DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")#\\1\`${_dbn}\`@\`localhost\`#" \
+    -e "s#^(/\\*!50003 CREATE\\*/ /\\*!50020 DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")#\\1\`${_dbn}\`@\`localhost\`#" \
+    -e "s#^(CREATE DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")( (PROCEDURE|FUNCTION|AGGREGATE FUNCTION) )#\\1\`${_dbn}\`@\`localhost\`\\4#" \
+    "${_dump}" | mysql --silent -u root "${_dbn}" \
     || return 1
   return 0
 }
