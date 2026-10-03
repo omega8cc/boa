@@ -1347,6 +1347,16 @@
 
 @=> Important Fixes
 
+    * A Drupal 10 or 11 platform whose core came with some of its four
+      core logger files already de-typed by an older patch (the Drupal
+      10.0.11 catalogue build ships three of them so) can be unlocked
+      again. The lock read one file to decide the whole patch was on and
+      never applied the fourth change, and the unlock refused to reverse
+      a partly applied patch, so every Restore of a site there failed in
+      its update window. The lock and unlock now read and change each of
+      the four files on its own, and the next Verify finishes such a
+      platform and keeps its stock logger copies for the web.
+
     * A move given up before its proxy step no longer leaves the
       account's sites on the source behind export's 503 until someone
       removes the gate file by hand: 'xoct abandon o1' lifts it there
