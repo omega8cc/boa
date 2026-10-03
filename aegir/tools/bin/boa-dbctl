@@ -2473,16 +2473,73 @@ _regrant_all() {
   [[ "${_fail}" -eq 0 ]] || _die 7 "sql-failed regrant ${_fail}"
 }
 
+# The stored objects the account's instance user defines: every view,
+# trigger, routine and event whose definer names that user, read once per
+# call into _DEFS, one line per object, the definer in lower case as hex.
+# Root holds the privileges that let a definer be dropped (8.x), and 5.7
+# never refuses it, so the server's answer to a drop says nothing: the
+# broker looks first. 1 when the answer cannot be read (_DEFS_OK=NO): every
+# row then counts as one that defines something, and none is dropped on a
+# guess.
+_defs_read() {
+  local _k _x _q _u
+  _DEFS=$'\n'
+  _DEFS_OK="NO"
+  _u=$(_hex "$(printf '%s' "${_ACCT}" | tr '[:upper:]' '[:lower:]')")
+  _q="SELECT /*q:defines*/ CONCAT_WS('|', d.k, HEX(LOWER(d.def))) FROM ("
+  _q="${_q}SELECT 'view' AS k, DEFINER AS def FROM information_schema.VIEWS"
+  _q="${_q} UNION ALL SELECT 'trigger', DEFINER FROM information_schema.TRIGGERS"
+  _q="${_q} UNION ALL SELECT 'routine', DEFINER FROM information_schema.ROUTINES"
+  _q="${_q} UNION ALL SELECT 'event', DEFINER FROM information_schema.EVENTS) d"
+  _q="${_q} WHERE HEX(LOWER(SUBSTRING_INDEX(d.def, '@', 1))) = '${_u}'"
+  _sql "${_q}" || return 1
+  while IFS='|' read -r _k _x; do
+    [[ -n "${_k}${_x}" ]] || continue
+    case "${_k}" in
+      view|trigger|routine|event) ;;
+      *)
+        _DEFS=$'\n'
+        return 1
+        ;;
+    esac
+    if [[ ! "${_x}" =~ ^[0-9A-F]+$ ]]; then
+      _DEFS=$'\n'
+      return 1
+    fi
+    _DEFS="${_DEFS}${_x}"$'\n'
+  done <<< "${_SQL_OUT}"
+  _DEFS_OK="YES"
+  return 0
+}
+
+# True when the instance user's row at host $1 defines a stored object, as
+# the server keeps a definer (user@host, the host compared without case, as
+# the server compares host names), or when what it defines could not be
+# read. _ROW_DEF says which (definer, unread), empty when it defines nothing.
+_defines_row() {
+  local _x
+  _ROW_DEF=""
+  if [[ "${_DEFS_OK}" != "YES" ]]; then
+    _ROW_DEF="unread"
+    return 0
+  fi
+  _x=$(_hex "$(printf '%s@%s' "${_ACCT}" "${1}" | tr '[:upper:]' '[:lower:]')")
+  [[ "${_DEFS}" == *$'\n'"${_x}"$'\n'* ]] || return 1
+  _ROW_DEF="definer"
+  return 0
+}
+
 # rekey (root): a pass rotated the instance password of a switched account.
 # Each row in use (rows=) is made again with the new password (stdin), so it
-# keeps nothing a hand or an older pass gave it. A row the server will not
-# drop (8.x refuses to drop the definer of a stored object) keeps its
-# grants and takes the new password instead, and must then hold no global
-# privilege. The instance user's grant on each created database comes back,
-# and every other host row of it goes: a switched account keeps only the
-# rows its connections use. Nothing is granted on all databases.
+# keeps nothing a hand or an older pass gave it. A row that defines a stored
+# object (a view, trigger, routine or event), one whose objects cannot be
+# read, and one the server will not drop keep their grants and take the new
+# password instead, and must then hold no global privilege. The instance
+# user's grant on each created database comes back, and every other host
+# row of it goes: a switched account keeps only the rows its connections
+# use. Nothing is granted on all databases.
 _v_rekey() {
-  local _r _x _keep _pw _alt _errno _drop=0 _kept=0 _left=0
+  local _r _x _keep _pw _alt _why _drop=0 _kept=0 _left=0 _dkept=0
   [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
   [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage rekey --account <oN>"
   _need_broker
@@ -2490,12 +2547,22 @@ _v_rekey() {
   _pw=$(_sql_str "${_PW}")
   _PW=""
   _reg_lock
+  if ! _defs_read; then
+    _alrt "${_ACCT}: the stored objects its rows define could not be read: none of its rows is dropped"
+  fi
   _keep=$'\n'
   for _r in "${_ROWS[@]}"; do
     _keep="${_keep}$(_hex "$(printf '%s' "${_r}" | tr '[:upper:]' '[:lower:]')")"$'\n'
-    _sql "/*q:dcl*/ DROP USER IF EXISTS \`${_ACCT}\`@\`${_r}\`;
-CREATE USER \`${_ACCT}\`@\`${_r}\` IDENTIFIED BY ${_pw};" && continue
-    _errno="${_SQL_ERRNO}"
+    # Dropped and made again, a definer would leave its objects without one
+    # in between: such a row is kept.
+    if _defines_row "${_r}"; then
+      _why="${_ROW_DEF}"
+    elif _sql "/*q:dcl*/ DROP USER IF EXISTS \`${_ACCT}\`@\`${_r}\`;
+CREATE USER \`${_ACCT}\`@\`${_r}\` IDENTIFIED BY ${_pw};"; then
+      continue
+    else
+      _why="${_SQL_ERRNO}"
+    fi
     # The row is never left missing: kept, or made again, with the new
     # password and no retained old one.
     _alt="CREATE USER IF NOT EXISTS \`${_ACCT}\`@\`${_r}\` IDENTIFIED BY ${_pw};"$'\n'
@@ -2505,9 +2572,10 @@ CREATE USER \`${_ACCT}\`@\`${_r}\` IDENTIFIED BY ${_pw};" && continue
     fi
     if ! _sql "/*q:dcl*/ ${_alt}"; then
       _pw=""
-      _die 7 "sql-failed rekey ${_errno:-${_SQL_ERRNO}}"
+      [[ "${_why}" =~ ^[0-9]+$ ]] || _why=""
+      _die 7 "sql-failed rekey ${_why:-${_SQL_ERRNO}}"
     fi
-    _log_note "rekey-kept ${_r} ${_errno}"
+    _log_note "rekey-kept ${_r} ${_why}"
     if _global_privs "${_ACCT}" "$(_hex "${_r}")"; then
       _pw=""
       _die 7 "rekey-global-kept ${_r}"
@@ -2519,12 +2587,18 @@ CREATE USER \`${_ACCT}\`@\`${_r}\` IDENTIFIED BY ${_pw};" && continue
   _regrant_all
   # Read after the rows in use are made, and compared without case (the
   # server may store a host name in another case), so none of them goes. A
-  # row that cannot go is counted and the call fails once the grants are
-  # back.
+  # row that defines a stored object, or whose objects cannot be read, is
+  # not dropped either. Each row that cannot go is named in the log and the
+  # call fails once the grants are back.
   _user_hosts_hex "${_ACCT}"
   while IFS= read -r _x; do
     [[ -n "${_x}" ]] || continue
     [[ "${_keep}" == *$'\n'"$(_hex "$(_unhex "${_x}" | tr '[:upper:]' '[:lower:]')")"$'\n'* ]] && continue
+    if _defines_row "$(_unhex "${_x}")"; then
+      _log_note "rekey-kept-other ${_x} ${_ROW_DEF}"
+      _dkept=$(( _dkept + 1 ))
+      continue
+    fi
     if _sql_prepared "'DROP USER IF EXISTS \`${_ACCT}\`@', $(_sql_qid "${_x}")"; then
       _drop=$(( _drop + 1 ))
     else
@@ -2534,6 +2608,7 @@ CREATE USER \`${_ACCT}\`@\`${_r}\` IDENTIFIED BY ${_pw};" && continue
   done <<< "${_HOSTS_HEX}"
   _reg_unlock
   [[ "${_left}" -eq 0 ]] || _die 7 "sql-failed rekey-drop ${_left}"
+  [[ "${_dkept}" -eq 0 ]] || _die 7 "rekey-definer-kept ${_dkept}"
   _info "rekey ${_ACCT} rows=${#_ROWS[@]} kept=${_kept} dropped=${_drop} regrant=${_RG_N}"
 }
 
@@ -3463,6 +3538,70 @@ SELECT /*q:alroles*/ CONCAT_WS('|', IF(@@GLOBAL.mandatory_roles = '', 0, 1), (SE
     _AL_R4="${_SQL_OUT}"
     [[ "${_AL_R4}" =~ ^[01]\|[0-9]+\|[0-9a-f]{64}$ ]] || _die 7 "sql-failed alroles"
   fi
+  _al_psites
+  return 0
+}
+
+# A purged account's site users. Its databases stay, and so do their users
+# and grants; the site records that named those users went with its home
+# (a site's drushrc.php is not in what the purge parks), but the registry
+# keeps its entries, and provision names a site's database user as its
+# database. A login named as a database of a purged account's entries is
+# that account's when no record of a live account, of the master or of
+# another purged account names it, it is none of the server's own names, and
+# every grant row it holds is on that account's databases (or on a name with
+# no schema, which MySQL keeps after a drop), judged as the box-wide check
+# judges a grant row. It is then that account's user (PURGED): its grant
+# rows and objects there belong to it, the login itself waits for a ruling,
+# and leftovers lists it in section A. Never by the shape of a name.
+_al_psites() {
+  local _ux _hx _u _h _g _lk _sec _a _st _rest _seen=$'\n' _save _ok _n
+  local _t _gu _gh _up _hp _d _dp _f _go
+  [[ "${_AL_REG}" != $'\n' ]] || return 0
+  while IFS='|' read -r _ux _hx _u _h _g _lk _sec; do
+    [[ -n "${_g}" && "${_u}" != "?" ]] || continue
+    [[ "${_seen}" == *$'\n'"${_u}"$'\n'* ]] && continue
+    _seen="${_seen}${_u}"$'\n'
+    case "${_u}" in
+      root|aegir|aegir_root|xmass_repl|debian-sys-maint|mysql.*|percona.*) continue ;;
+    esac
+    _rk "${_u}"
+    [[ "${_AL_REG}" == *$'\n'"${_RK} "* ]] || continue
+    _rest="${_AL_REG#*$'\n'"${_RK} "}"
+    _rest="${_rest%%$'\n'*}"
+    _a="${_rest%% *}"
+    _st="${_rest#* }"
+    [[ "${_AL_PURGED}" == *" ${_a} "* ]] || continue
+    case "${_st}" in
+      created|purged) ;;
+      *) continue ;;
+    esac
+    _u_claim "${_u}"
+    case "${_UC_K}:${_UC_O}" in
+      :|PURGEDGEN:"${_a}") ;;
+      *) continue ;;
+    esac
+    # the account's for a moment: kept only when each grant row of the
+    # login (any host) then belongs to that account
+    _save="${_AL_URAW}"
+    _AL_URAW="${_AL_URAW}${_u} 1 PURGED:${_a}"$'\n'
+    _PO_FOR=""
+    _ok="YES"
+    _n=0
+    while IFS='|' read -r _t _gu _gh _up _hp _d _dp _f _go; do
+      [[ -n "${_t}" && "${_up}" == "${_u}" ]] || continue
+      _n=$(( _n + 1 ))
+      _grant_verdict "${_t}" "${_up}" "${_hp}" "${_gu}@${_gh}" "${_dp}" "${_f}" "${_go}"
+      if [[ "${_GV}" != "ok" ]]; then
+        _ok="NO"
+        break
+      fi
+    done <<< "${_AL_GR}"
+    if [[ "${_ok}" != "YES" || "${_n}" -eq 0 ]]; then
+      _AL_URAW="${_save}"
+    fi
+    _PO_FOR=""
+  done <<< "${_AL_PAIRS}"
   return 0
 }
 
@@ -4869,7 +5008,8 @@ _scope_back() {
 # databases: the registry entries; the instance user's grant on each of
 # them on every row in use; the control file, from which its tasks take
 # the broker; only then every global privilege taken from its instance
-# rows and from every panel user it has had; the rows not in use dropped;
+# rows and from every panel user it has had; the rows not in use dropped,
+# but for one that defines a stored object, which stays as a row in use;
 # and a server verify of the account as its proof.
 _v_scope_on() {
   local _d _rc _x _h _l _ux _hx _u _k _t _dp _dx _keep _n=0 _drop=0 _who _lit
@@ -4948,6 +5088,9 @@ _v_scope_on() {
     fi
   done <<< "${_AL_CONV}"
   _ctl_write || _scope_back control-file
+  if ! _defs_read; then
+    _alrt "${_ACCT}: the stored objects its rows define could not be read: every row of it stays"
+  fi
   _keep=$'\n'
   for _h in "${_SP_ROWS[@]}"; do
     _keep="${_keep}$(printf '%s' "${_h}" | tr '[:upper:]' '[:lower:]')"$'\n'
@@ -4960,14 +5103,17 @@ _v_scope_on() {
       _n=$(( _n + 1 ))
       continue
     fi
-    if _sql_prepared "'DROP USER \`${_ACCT}\`@', $(_sql_qid "${_x}")"; then
+    if ! _defines_row "${_h}" \
+      && _sql_prepared "'DROP USER \`${_ACCT}\`@', $(_sql_qid "${_x}")"; then
       _drop=$(( _drop + 1 ))
       continue
     fi
-    # A row the server will not drop (it defines a stored object) stays as
-    # a row in use: no global privilege, its grant on each database.
+    # A row that defines a stored object (a view, trigger, routine or
+    # event), one whose objects cannot be read, and one the server will not
+    # drop stay as rows in use: no global privilege, their grant on each
+    # database.
     _host_ok "${_h}" || _scope_back instance-row
-    _log_note "scope-kept ${_h} ${_SQL_ERRNO}"
+    _log_note "scope-kept ${_h} ${_ROW_DEF:-${_SQL_ERRNO}}"
     _revoke_global "$(_hex "${_ACCT}")" "${_x}" || _scope_back revoke-global
     _SP_ROWS+=("${_h}")
     _ROWS=("${_SP_ROWS[@]}")
@@ -5019,8 +5165,9 @@ _v_scope() {
 
 # leftovers: the database users purged accounts left behind.
 #   A  proven from root's records, droppable: a purged account's instance
-#      user (the account's own name), and its last panel user as its
-#      parked home names it
+#      user (the account's own name), its last panel user as its parked
+#      home names it, and its site users as its registry entries name
+#      their databases (_al_psites)
 #   B  never dropped here: a name that only has the shape of a purged
 #      account's panel user, and a purged account the pair's standby still
 #      carries
@@ -5069,6 +5216,7 @@ _leftovers_build() {
     _zombie_panel "${_p}" || continue
     _u_claim "${_ZP}"
     case "${_UC_K}:${_UC_O}" in
+      PURGED:"${_p}") _zp="${_zp}${_ZP} ${_p}"$'\n' ;;
       :|PURGEDGEN:"${_p}") _zp="${_zp}${_ZP} ${_p}"$'\n' ;;
     esac
   done
@@ -5085,9 +5233,18 @@ _leftovers_build() {
       _o="${_o%%$'\n'*}"
     else
       _u_claim "${_u}"
-      [[ "${_UC_K}" == "PURGEDGEN" ]] || continue
-      _LO_B="${_LO_B}B ${_u}@${_h} account=${_UC_O} global=${_g} only the shape of its panel user's name"$'\n'
-      continue
+      case "${_UC_K}" in
+        PURGED)
+          # a site user its account's registry entries prove (_al_psites)
+          _k="site"
+          _o="${_UC_O}"
+          ;;
+        PURGEDGEN)
+          _LO_B="${_LO_B}B ${_u}@${_h} account=${_UC_O} global=${_g} only the shape of its panel user's name"$'\n'
+          continue
+          ;;
+        *) continue ;;
+      esac
     fi
     if [[ "${_peerok}" != "YES" ]]; then
       _LO_B="${_LO_B}B ${_u}@${_h} account=${_o} global=${_g} the standby ${_PAIR_IP} could not be read"$'\n'
