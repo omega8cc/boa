@@ -1777,6 +1777,13 @@
       the stored routines and events as well: that dump is the only
       copy the box keeps afterwards.
 
+    * aegir2boa-stage2's site dumps carry the database's stored routines
+      and events, asked first with the site's own login as the panel's
+      classic dump asks, and left out with a warning where that login
+      cannot read them. On the target each view, trigger, routine and
+      event is loaded with the site's own user as its definer, so none
+      names an account the target lacks.
+
     * The nightly copy of database dumps into each account's dbackup/
       takes the date from the end of the archive folder name: on a box
       whose hostname holds a dash, MyQuick dumps were never copied and
