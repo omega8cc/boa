@@ -2555,6 +2555,25 @@ _wg_pid_reap() {
   return 0
 }
 
+# A run killed outright leaves the account's hold and its task queue pause
+# naming its dead pid. runner.sh stops every instance's queue on the box-wide
+# pause whatever its pid, and clear.sh removes both only on its next tick.
+# Every run of an account removes them first, as a run that takes them
+# would, so a pass that skips, refuses or takes no hold leaves none behind.
+# An empty file is left alone: its holder may not have written its pid yet.
+_wg_reap_left() {
+  local _f _p _stop="${_WG_QSTOP}"
+  [ "${_WP_M}" = "YES" ] && _stop="${_WG_MQSTOP}"
+  for _f in "/run/instgrp-web-${_WP_A}.pid" "${_stop}"; do
+    [ -f "${_f}" ] || continue
+    _p=$( { tr -dc '0-9' < "${_f}"; } 2> /dev/null )
+    [ -n "${_p}" ] && [ "${_p}" != "$$" ] || continue
+    _wg_pid_reap "${_f}" || continue
+    [ -e "${_f}" ] || _log "${_WP_A}: ${_f} removed, left by a killed run (pid ${_p})"
+  done
+  return 0
+}
+
 # The account hold /run/instgrp-web-<a>.pid, then a bounded wait for a live
 # nightly or migratefs pass of the account. 0 held, 4 busy, 6 the wait
 # ended. The hold is this run's own when it already names this pid.
@@ -4832,6 +4851,7 @@ _wg_run() {
     _fail "${1} is not an Octopus account on this box"
     return 1
   fi
+  _wg_reap_left
   _wg_run_row
   _rc=$?
   _wg_qhold_release
@@ -5013,7 +5033,7 @@ _wg_all() {
 # ---- webstatus ------------------------------------------------------------------
 
 _wg_status() {
-  local _v _rc=0 _d="" _e _k _rb=""
+  local _v _rc=0 _d="" _e _k _rb="" _s=""
   _ACCT="${1}"
   _wg_profile "${1}"
   _wg_reset
@@ -5081,7 +5101,15 @@ _wg_status() {
       M) _msg "workers:  php${_e} mixed, web group=${_v#*:}" ;;
     esac
   done
-  _msg "alias:    ${_WM_S:-unknown}"
+  # The measurement stops before the alias on an account with no web group;
+  # the line reads it all the same and leaves the measured value as it was.
+  _s="${_WM_S}"
+  if [ -z "${_s}" ]; then
+    _wg_m_s
+    _s="${_WM_S}"
+    _WM_S=""
+  fi
+  _msg "alias:    ${_s:-unknown}"
   _msg "tops:     $( [ "${_WM_T}" = "YES" ] && echo "in ${_WP_G}" || echo "not all in ${_WP_G}" )$( [ "${_WM_RT}" = "YES" ] && echo ", www-data residue" )"
   [ -s "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" ] \
     && _msg "procs:    B, $(head -c 16 "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" | tr -cd '0-9') processes still hold www-data"

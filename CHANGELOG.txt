@@ -67,6 +67,21 @@
       helper, boa-dbctl. It ships switched off: no account uses it and
       no database work changes until an account is switched on.
 
+    * The root database helper gains what keeps an account on it: the
+      Octopus pass and syncpass renew such an account's database user
+      through the helper, the migration tools enter the databases they
+      make for it, xmass carries the switch to its standby, the purge
+      keeps the names of its kept databases held, and a nightly check
+      reports any drift. Still switched off: no account uses it.
+
+    * The root database helper gains the switch itself: an account can
+      be planned, switched on and back off, a box's own logins recorded
+      and checked, old leftovers listed and dropped, and each account's
+      database count reported against an optional limit that is only
+      enforced when asked. New accounts can start switched on where the
+      box asks for it, and moved accounts keep their state. Still
+      switched off: no account uses it until an operator switches it.
+
     * The limited shell template and the ImageMagick policy no longer
       stay a release behind on a box whose mirror lagged at the publish.
 
@@ -1005,6 +1020,16 @@
 
 @=> Improvements
 
+    * The per-vhost cap on in-flight anonymous page renders no longer
+      counts a request that carries an Authorization header, so a
+      decoupled front end, a mobile app or an API consumer that signs in
+      with a token is not shed with the visitors during a flood, the same
+      exemption Grav sites already had. The cap's zone keeps its name and
+      its key variable, which is now composed from two new maps in the
+      same http-scope file, the cookie test and the header test; nginx
+      refuses to reload a live zone bound to a different key variable, so
+      the key itself never changes.
+
     * A Drupal 11 site Install finishes about ten seconds sooner: it no
       longer pauses for five seconds after preparing the platform's own
       Drush for the installer and again after restoring it. The update
@@ -1315,6 +1340,22 @@
 
 @=> Important Fixes
 
+    * A Clone, Backup, Restore, Import, Delete, Enable, Deploy or Install
+      on a Drupal 8 or newer platform now locks the platform's own Drush
+      by the same test Verify uses, the lock state read from the files,
+      not the patch marks alone: a platform with the patches on but the
+      genuine psr/log back in place, or one still owing the web its stock
+      logger copies, made those tasks bootstrap the site on a tree Drush 8
+      cannot run. A platform whose lock directories are open still fails
+      those tasks before any of this runs (Verify alone locks it first).
+
+    * A request for an existing static file with a method other than GET
+      or HEAD on a Drupal 8 or newer site got a 500: the modern location
+      tried the file first, the static handler's 405 came back through
+      error_page into the same chain, and nginx ended the loop. Such a
+      request now goes to Drupal before the file is tried, the way the
+      Drupal 6 and 7 locations always did, and gets Drupal's own answer.
+
     * A Drupal 8 or newer site keeps its hash salt. Every Verify, Backup,
       Restore, Clone and Migrate rewrites settings.php, and each write
       drew a new salt, which voided the site's outstanding one-time
@@ -1349,6 +1390,18 @@
       (super_read_only on) and a box whose scheduler is switched off
       alone, and writes one line to mysql.incident.log each time it
       starts the scheduler again.
+
+    * After a mirror is promoted by hand, an upgrade that xmass post-mig
+      holds until the renames keeps the platform list beside its trigger,
+      so the runner takes it once it is armed again. A list holding only
+      BOA's inert seed used to be removed, and the trigger then stayed for
+      good and made a later xmass init wait out its whole bound and
+      refuse. A trigger with no platform list beside it, which the runner
+      never takes, no longer counts as pending work for xmass init and
+      prep-target or for xoct create and xcopy, and both re-arms say when
+      a trigger waits for its list. On a mirror built as a test run and
+      promoted by hand, post-mig also names the accounts whose upgrade
+      notice the test run left off.
 
     * A client's own database export works again on Drupal 8 and newer
       sites: the tenant shell's Drush 8 guard on those codebases lets
@@ -1454,6 +1507,14 @@
       keeps its relay, and every armed upgrade is held until the renames
       are done, never removed.
 
+    * A promotion by hand no longer stays read-only when the minute
+      monitor runs between the operator's replica reset and the first
+      xmass post-mig run. That pass marks the box a lost replica, and the
+      SQL watchdog kept it locked after the standby marker was gone: the
+      panels were not rewired and the renames refused. post-mig is the
+      promotion, so on this path it clears the mark, and the watchdog
+      then releases the box.
+
     * xmass prep-target starts the cron of a returning old active that
       was fenced with its cron stopped: the upgrade passes it arms there
       never ran, and it waited for them until it gave up. It stops that
@@ -1478,6 +1539,16 @@
       queue runner and the nightly waiting for up to three hours: the
       worker and the 5-minute clear.sh take it away once the process it
       names is gone.
+
+    * The task queue pause and the account hold left by an instgrp
+      revert killed outright no longer stop every instance's task queue
+      until the next clear.sh tick when an Octopus upgrade comes first:
+      every web-group run of an account removes them once the process
+      they name is gone, also a run that skips or refuses the account.
+
+    * instgrp webstatus reads the alias's web group on an account that
+      has no web group of its own: the line read unknown although the
+      alias names www-data.
 
     * xmass init and prep-target no longer wait out their whole bound
       when /data/disk holds a directory that is not an Octopus account,
@@ -1694,6 +1765,10 @@
       Clone or Restore on Percona 5.7, and a trigger, routine or
       event made before its database's default collation changed no
       longer stops a Clone, Migrate or Restore.
+
+    * xtrim's safety dump of each database before it drops it carries
+      the stored routines and events as well: that dump is the only
+      copy the box keeps afterwards.
 
     * The nightly copy of database dumps into each account's dbackup/
       takes the date from the end of the archive folder name: on a box

@@ -2045,6 +2045,38 @@ _t_revoke_wildcard_grant() {   # 1 dbn (== user) 2 host
     >/dev/null 2>&1
 }
 
+# a site database made for an account switched to the database broker
+# (root's /data/conf/<account>_db_broker.txt) is entered in the broker's
+# registry as that account's, and the account's own grant on it given, as
+# the broker's own create does: otherwise every later task of the site is
+# refused as not the account's. An account not switched, or one whose
+# control file the broker finds not valid (its tasks take the direct path),
+# is left as it was.
+_t_dbreg() {   # 1 dbn
+  local _f="/data/conf/${_ACCOUNT}_db_broker.txt" _out _rc
+  [[ -e "${_f}" || -L "${_f}" ]] || return 0
+  if [[ ! -x /usr/local/bin/boa-dbctl ]]; then
+    _alrt "db $1: ${_ACCOUNT} is switched to the database broker, which is not installed here"
+    return 1
+  fi
+  _out="$(/usr/local/bin/boa-dbctl register "$1" --account "${_ACCOUNT}" --via aegir2boa 2>&1)"
+  _rc=$?
+  if [[ "${_rc}" == "8" ]]; then
+    _alrt "db $1: ${_f} is not valid: left out of the broker's registry, ${_ACCOUNT}'s tasks take the direct path"
+    return 0
+  fi
+  if [[ "${_rc}" == "0" ]]; then
+    if _out="$(/usr/local/bin/boa-dbctl regrant --account "${_ACCOUNT}" 2>&1)"; then
+      _info "db $1: entered as ${_ACCOUNT}'s in the database broker's registry"
+      return 0
+    fi
+    _alrt "db $1: ${_ACCOUNT}'s grant on it failed: ${_out##*$'\n'}"
+    return 1
+  fi
+  _alrt "db $1: not entered as ${_ACCOUNT}'s in the database broker's registry: ${_out##*$'\n'}"
+  return 1
+}
+
 # create db+user with the site's own creds (xoct:279-285 model, utf8mb4)
 _t_site_db_create_load() {   # 1 dbn 2 dbp 3 dumpfile 4 dmajor
   local _dbn="$1" _dbp="$2" _dump="$3" _dmaj="$4" _dbe
@@ -2091,6 +2123,16 @@ EOFMYSQL6
     fi
   fi
   mysqladmin -u root flush-privileges >/dev/null 2>&1
+  # a database the registry does not take goes again before anything is
+  # loaded (made a moment ago, empty), so a re-run lands it fresh: through
+  # the broker when its entry was made (the entry goes with it), else as made
+  if ! _t_dbreg "${_dbn}"; then
+    if [[ ! -x /usr/local/bin/boa-dbctl ]] \
+      || ! /usr/local/bin/boa-dbctl drop "${_dbn}" --account "${_ACCOUNT}" >/dev/null 2>&1; then
+      mysql --silent -u root -e "DROP DATABASE IF EXISTS \`${_dbn}\`" >/dev/null 2>&1
+    fi
+    return 1
+  fi
   # MariaDB >=10.5.25 dumps open with a sandbox directive Percona rejects -
   # stream-strip the first line only, artifact stays pristine
   sed '1{/^\/\*M!999999/d}' "${_dump}" | mysql --silent -u root "${_dbn}" \
