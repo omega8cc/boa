@@ -8622,7 +8622,7 @@ _xoct_abandon() {
     if [ -e "${_U}/log/${_p}.pid" ] || [ -L "${_U}/log/${_p}.pid" ]; then
       echo "ERROR: ${_oct} carries log/${_p}.pid: its sites answer, or may answer, from the"
       echo "ERROR: target through the proxy vhosts, which lifting the 503 gate here would not"
-      echo "ERROR: undo; repair or finish the proxy step instead (xoct proxy ... --repair)"
+      echo "ERROR: undo; repair or finish the proxy step instead (xoct proxy ... --repair${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}})"
       exit 1
     fi
   done
