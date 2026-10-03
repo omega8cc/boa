@@ -207,10 +207,13 @@ writes for the export window; the proxy step lifts it.
 A move given up before the proxy step leaves the account on that 503. Lift it
 on the source with `xoct abandon o1`: the sites serve from the source again,
 the speed cache is purged of the 503 answers, and what export left goes with
-the gate. The export latch (`log/exported.pid`) is cleared, so `proxy` refuses
-the account until a fresh export. The panel dump (`src/*.sql`) is cleared, so
-that export takes a new one. The control panel leaves the maintenance mode
-export put it in.
+the gate. A run that finds no gate (a second one, or after the gate was removed
+by hand) clears what export left all the same and says there is nothing to lift.
+
+The export latch (`log/exported.pid`) is cleared, so `proxy` refuses the
+account until a fresh export. The panel dump (`src/*.sql`) is cleared, so that
+export takes a new one. The control panel leaves the maintenance mode export
+put it in.
 
 It is refused while the sites answer, or may answer, from the target through
 proxy vhosts: once the account is proxied (`log/proxied.pid`), after a
