@@ -1325,6 +1325,22 @@
 
 @=> Important Fixes
 
+    * A Clone, Backup, Restore, Import, Delete, Enable, Deploy or Install
+      on a Drupal 8 or newer platform now locks the platform's own Drush
+      by the same test Verify uses, the lock state read from the files,
+      not the patch marks alone: a platform with the patches on but the
+      genuine psr/log back in place, or one still owing the web its stock
+      logger copies, made those tasks bootstrap the site on a tree Drush 8
+      cannot run. A platform whose lock directories are open still fails
+      those tasks before any of this runs (Verify alone locks it first).
+
+    * A request for an existing static file with a method other than GET
+      or HEAD on a Drupal 8 or newer site got a 500: the modern location
+      tried the file first, the static handler's 405 came back through
+      error_page into the same chain, and nginx ended the loop. Such a
+      request now goes to Drupal before the file is tried, the way the
+      Drupal 6 and 7 locations always did, and gets Drupal's own answer.
+
     * A Drupal 8 or newer site keeps its hash salt. Every Verify, Backup,
       Restore, Clone and Migrate rewrites settings.php, and each write
       drew a new salt, which voided the site's outstanding one-time
