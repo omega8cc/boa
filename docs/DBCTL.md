@@ -93,8 +93,8 @@ databases, and its grant rows. A change to any of them stops a switch, with
 one exception: a new password on a login the box's own credential still opens.
 The root tools that legitimately rewrite these logins record them again right
 after their own change: the root password rotation, `syncpass fix aegir`, the
-master pass and the panel rewire at a promotion. Nothing records the whole set
-again on its own.
+master pass (once the master's server alias holds the new password) and the
+panel rewire at a promotion. Nothing records the whole set again on its own.
 
 ```
 boa-dbctl baseline plan                         every login with its proof and
@@ -137,7 +137,10 @@ boa-dbctl leftovers drop --sha <the list's hash>
 
 - A: the database users a purged account left that its records prove (the
   account's own name; its last panel user, as the home its purge parked names
-  it);
+  it; its site users, as its registry entries name their databases, since a
+  site's user is named as its database: a user that no other account's record
+  names, that is none of the server's own logins, and whose every grant is on
+  that account's databases or on a name no database has);
 - B: the ones that only have the shape of a purged account's name;
 - C: the stored objects in kept databases that a user of A defines (a drop
   leaves them without a definer).
@@ -146,6 +149,10 @@ boa-dbctl leftovers drop --sha <the list's hash>
 the one whose hash it is given. Databases are never touched. On the active box
 of a standing pair, an account the standby still carries is never in section
 A.
+
+The box-wide check reads a purged account's site user the same way: its grants
+and stored objects in that account's databases belong to it, and the login
+itself waits for a ruling (drop it here, or accept it into the baseline).
 
 ## `scope`: switching an account
 
@@ -197,12 +204,17 @@ the account without a way to its databases:
 4. the control file: from here the account's tasks take the broker;
 5. every global privilege taken from its rows in use and from every panel user
    it has had (by name, its database grants kept);
-6. its other rows dropped (a row the server will not drop, as it defines a
-   stored object, stays as a row in use, without a global privilege);
+6. its other rows dropped: a row that defines a view, trigger, routine or
+   event (looked up before the drop, since the server lets root drop a
+   definer), one whose objects cannot be read, and one the server will not
+   drop stay as rows in use, without a global privilege;
 7. a server verify run as the account, its proof.
 
 A failure after step 2 puts the account back on the direct path and says at
-which step. `on` again on a switched account changes nothing.
+which step. `on` again on a switched account makes the same switch again: it
+changes nothing unless the instance user's rows did (a row that has come to
+define a stored object joins `rows=`; a row no login of the account uses that
+defines nothing is dropped and leaves `rows=`).
 
 `off` removes the control file first, then gives every row of the instance user
 its rights on all databases back, as an account not switched holds them. The
@@ -219,11 +231,21 @@ privilege.
 - The Octopus pass and `syncpass fix oN` rotate a switched account's password
   through the broker: its rows in use are made again with the new password and
   get back their grants on its databases, never rights on all databases.
+- A row in use that defines a view, trigger, routine or event is not made
+  again: it keeps its grants and takes the new password. Any other row of the
+  instance user that defines one is not dropped: the rotation fails, and the
+  broker's log names the row, until an operator settles it. When the stored
+  objects cannot be read, no row is dropped.
+- To settle such a row, re-point or drop its objects, drop the row, and run
+  `scope oN on` again. `scope oN on` alone keeps it as a row in use without a
+  global privilege, but the box-wide check still names a row at a host the
+  account's logins do not use, as it did before the switch, and every rotation
+  makes again each row `rows=` names.
 - `xoct`, `xcopy` and `aegir2boa` enter the databases they make for a switched
   account in the registry.
 - `boa cleanup purge` parks the account's control file and marks its registry
   entries purged: no other account can take a name whose database is still
-  there.
+  there. Its site users stay with its databases; `leftovers` lists them.
 - The nightly run calls `boa-dbctl witness` where an account is switched or the
   registry is in use. It raises an `ALRT` line for a switched account whose
   instance or panel users hold a global privilege, a database of it without its
