@@ -50,6 +50,13 @@
 
 @=> Security
 
+    * Classic Drush 8.5.12: Ægir's backend tasks no longer load the
+      command classes a platform carries in its own drush/Commands
+      directories (beside the docroot, in it, or under sites/all/drush);
+      the extension filter that keeps a platform's command files out of
+      backend tasks now covers that location too. Drush run by the
+      account's own shell users still loads them.
+
     * A site Verify, install or deploy no longer makes directories or
       changes modes or groups through a link at the site dir, at sites/,
       or at the site's modules, themes, libraries or vendor, nor through
@@ -1340,6 +1347,43 @@
 
 @=> Important Fixes
 
+    * A Drupal 10 or 11 platform whose core came with some of its four
+      core logger files already de-typed by an older patch (the Drupal
+      10.0.11 catalogue build ships three of them so) can be unlocked
+      again. The lock read one file to decide the whole patch was on and
+      never applied the fourth change, and the unlock refused to reverse
+      a partly applied patch, so every Restore of a site there failed in
+      its update window. The lock and unlock now read and change each of
+      the four files on its own, and the next Verify finishes such a
+      platform and keeps its stock logger copies for the web.
+
+    * A move given up before its proxy step no longer leaves the
+      account's sites on the source behind export's 503 until someone
+      removes the gate file by hand: 'xoct abandon o1' lifts it there
+      and purges the cached 503 answers. It refuses once the account is
+      proxied, or after a proxy that failed part way.
+
+    * After an xoct move that renames the account, a site on a BOA-built
+      platform kept its files and private links naming the source
+      account's store, so every verify of the site failed and it answered
+      500. The transfer now re-points those links as it does the ones
+      under static/.
+
+    * A Restore, Clone or Migrate no longer unpacks a site archive
+      outside the directory it made. A link left at the unpack target,
+      dangling or not, is refused before anything is written, and the
+      archive is unpacked only once the task has made that directory
+      and entered it: a dangling link there used to send the site's
+      files into the platform root. The task's messages name the
+      directory again instead of printing a placeholder.
+
+    * After an xoct move that renames the account, every server verify of
+      the account on the target failed for good: the imported panel still
+      named the source account as its database user, which on the target
+      is no user or another account's, and no later pass mapped it. The
+      import now gives that row the account's own name along with the
+      target's password.
+
     * A Clone, Backup, Restore, Import, Delete, Enable, Deploy or Install
       on a Drupal 8 or newer platform now locks the platform's own Drush
       by the same test Verify uses, the lock state read from the files,
@@ -1769,6 +1813,38 @@
     * xtrim's safety dump of each database before it drops it carries
       the stored routines and events as well: that dump is the only
       copy the box keeps afterwards.
+
+    * aegir2boa-stage2's site dumps carry the database's stored routines
+      and events, asked first with the site's own login as the panel's
+      classic dump asks, and left out with a warning where that login
+      cannot read them. On the target each view, trigger, routine and
+      event is loaded with the site's own user as its definer, so none
+      names an account the target lacks.
+
+    * aegir2boa-stage2 imports a site whose database holds triggers,
+      routines or events from a MariaDB or MySQL 5.7 source: those are
+      made under a sql_mode holding NO_AUTO_CREATE_USER, which MySQL 8
+      refuses to set, so the load stopped there. The load now leaves that
+      mode out, and a load that fails drops the database it had just
+      made, so a re-run of the import lands the site again instead of
+      refusing the half-loaded database.
+
+    * aegir2boa-stage2 leaves a site's enabled events out of its dump,
+      named, when the source does not run them (its event scheduler off,
+      the MariaDB and MySQL 5.7 default), so a target that runs its own
+      does not start them; a target whose scheduler is off names each
+      database whose enabled events it loaded. A dump that cannot be read,
+      a refused user statement and a failed D6 password pin now end a
+      site's land as a failed load does, dropping the database made for it,
+      and the alert says whether it was dropped; a database that cannot be
+      created (its name taken after all) ends the land before anything is
+      loaded into it or dropped. The site logins it uses on the source no
+      longer give way to a login root keeps in ~/.my.cnf.
+
+    * aegir2boa-stage2 drops the database a failed land made through the
+      database broker first where it is installed, so for an account
+      switched to the broker its registry entry and its grant rows go with
+      it; the plain drop takes it where the broker is missing or refuses.
 
     * The nightly copy of database dumps into each account's dbackup/
       takes the date from the end of the archive folder name: on a box

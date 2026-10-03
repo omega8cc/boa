@@ -204,10 +204,51 @@ shell, `cc drush` included, ends at command discovery with the file's own
 exception. That is expected and is why clients use the site-local `vdrush` on
 Drupal 8+.
 
+## Test 5 — a platform's own command class never loads for the backend
+
+Drush 8 also discovers annotated command classes (`*Commands.php`) in a `Commands/`
+directory under the platform's own `drush/` directories: beside the docroot
+(`$ROOT/../drush`, on a composer platform), inside it (`$ROOT/drush`) and under
+`$ROOT/sites/all/drush`. From Drush 8.5.12 the backend never loads them. The probe's
+constructor writes the marker, so it marks only when Drush instantiates the class.
+
+```bash
+APP=$ROOT; [ -d "$ROOT/vendor" ] || APP=$(dirname "$ROOT")
+mkdir -p "$APP/drush/Commands"
+cat > "$APP/drush/Commands/BprobeCommands.php" <<'PHP'
+<?php
+// Harmless BOA filter probe — remove after testing.
+namespace Drush\Commands;
+class BprobeCommands {
+  public function __construct() {
+    @file_put_contents('/tmp/boa_probe_uid_' . posix_geteuid() . '.marker', date('c')."\n", FILE_APPEND);
+  }
+  /**
+   * @command bprobe:class
+   */
+  public function run() { return 'BOA-CLASS-PROBE-RAN uid=' . posix_geteuid(); }
+}
+PHP
+chown -R <OCT>:$(id -gn <OCT>) "$APP/drush"
+
+rm -f /tmp/boa_probe_uid_*.marker
+# Queue a Backup and a Verify of the site from the Ægir control panel, then:
+ls /tmp/boa_probe_uid_$(id -u <OCT>).marker 2>/dev/null && echo "BACKEND LOADED IT (BAD)" || echo "backend did not load it (GOOD)"
+su -s /bin/bash - <OCT>.ftp -c "drush <SITE> cc drush >/dev/null 2>&1; drush <SITE> bprobe:class"
+ls /tmp/boa_probe_uid_$(id -u <OCT>.ftp).marker 2>/dev/null && echo "MARKER PRESENT (GOOD)" || echo "no marker (BAD)"
+```
+
+- [ ] Both tasks complete normally and `backend did not load it (GOOD)`
+- [ ] The limited shell prints `BOA-CLASS-PROBE-RAN` and `MARKER PRESENT (GOOD)`
+
+A Drush older than 8.5.12 fails the first check: the backend instantiates the class
+once per task.
+
 ## Cleanup
 
 ```bash
 rm -f "$ROOT/sites/all/drush/bprobe.drush.inc"
+rm -f "$APP/drush/Commands/BprobeCommands.php"; rmdir "$APP/drush/Commands" "$APP/drush" 2>/dev/null   # Test 5 probe
 rm -f "$ROOT/modules/contrib/token/cprobe.drush.inc"   # Test 4 probe, if planted
 rmdir "$ROOT/sites/all/drush" 2>/dev/null   # removes it only if we created it and it is now empty
 rm -f /tmp/boa_probe_uid_*.marker /tmp/boa_check.php
@@ -221,4 +262,5 @@ su -s /bin/bash - <OCT> -c "drush <SITE> cc drush >/dev/null 2>&1"
 | 1 | Protection still works | Test 1 as `<OCT>`: `allowed(tenant)=false`; Test 2a: `bprobe` not found and no marker; Test 3: no backend marker |
 | 2 | Limited-shell CLI unaffected | Test 1 as `<OCT>.ftp`: `allowed(tenant)=true`; Test 2b: `BOA-PROBE-RAN` and marker present |
 | 3 | Files stay on disk, never load for the backend | Test 4a: `0` and no backend marker; Test 4b: lock cycle and helper exit `0`, probe still present, no backend marker |
+| 4 | A platform's own command class stays out of backend tasks | Test 5: both tasks complete with no backend marker; the limited shell runs `bprobe:class` and marks |
 | — | No over-block / patch active | Both identities: `patched=yes` and `allowed(BOA-tool)=true` |
