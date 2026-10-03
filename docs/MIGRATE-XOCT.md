@@ -206,20 +206,29 @@ writes for the export window; the proxy step lifts it.
 
 A move given up before the proxy step leaves the account on that 503. Lift it
 on the source with `xoct abandon o1`: the sites serve from the source again,
-the speed cache is purged of the 503 answers, and the export latch
-(`log/exported.pid`) goes with the gate, so `proxy` refuses the account until a
-fresh export.
+the speed cache is purged of the 503 answers, and what export left goes with
+the gate. The export latch (`log/exported.pid`) is cleared, so `proxy` refuses
+the account until a fresh export. The panel dump (`src/*.sql`) is cleared, so
+that export takes a new one. The control panel leaves the maintenance mode
+export put it in.
 
 It is refused while the sites answer, or may answer, from the target through
 proxy vhosts: once the account is proxied (`log/proxied.pid`), after a
 conversion xmass marked failed (`log/proxy-failed.pid`), and whenever a vhost of
-the account carries the proxy template, since an xoct `proxy` that fails or is
-killed part way stamps nothing. Finish the proxy step instead
-(`xoct proxy ... --repair`), or put each saved `.<site>` (and `.https.<site>`)
-back in `vhost.d`, check `nginx -t`, reload nginx, and abandon then.
+the account carries either proxy template (the plain HTTP `<site>`, or the
+HTTPS `https.<site>` that proxy writes beside it), since an xoct `proxy` that
+fails or is killed part way stamps nothing.
+
+Finish the proxy step instead (`xoct proxy ... --repair`), or undo it as
+proxy's own revert does: put each saved `.<site>` back, remove each
+`https.<site>` the proxy wrote and put a saved `.https.<site>` back in its
+place, check `nginx -t`, reload nginx, and abandon then.
 
 It is refused too while an xmass cutover holds the box, running or parked past
-its freeze: resume the cutover, or follow the restore it printed.
+its freeze: resume the cutover, or follow the restore it printed. A cutover
+given up before its target was promoted (its log never printed `Target MySQL
+is now standalone: OK`) is closed with `xmass reset-phase syncing` once that
+restore is followed.
 
 The account a target already imported stays live there, with its sites, cron
 and backups, and its client mail unless a test run holds it. Retire it there
@@ -441,6 +450,10 @@ partial export too; a later transfer that passed the gate cleanly clears
 the travelled latch on the target. After a fully forced-through partial
 migration, `xoct proxy` also needs `--force` (exported.pid was truthfully
 withheld), which accepts the partial export on the same explicit axis.
+
+An account not proxied yet, with no `log/exported.pid` and no `--force` over
+a `log/export_failed.pid`, is refused by `proxy` ("not exported") before it
+writes anything, an account whose only site is its panel included.
 
 `transfer o1` rsyncs platforms, files, drush aliases, nginx vhosts, SSL certs,
 and Let's Encrypt config to the target. The platform and per-site drush
