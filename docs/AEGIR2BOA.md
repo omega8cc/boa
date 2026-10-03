@@ -1166,6 +1166,11 @@ deliberately:
   (`'<db>'@'localhost'`), so each runs as the site, as after a clone. A
   definer naming an account the target lacks would load, then fail when
   it runs.
+- A MariaDB or MySQL 5.7 source makes its triggers, routines and events
+  under a `sql_mode` holding `NO_AUTO_CREATE_USER` (both servers' default),
+  which MySQL 8 refuses to set (ERROR 1231): the load leaves that mode out
+  of the dump's `sql_mode` lines. A load that fails drops the database it
+  had just made, so a re-run of the import lands that site again.
 - Idempotency and resume: every verb re-run skips what its markers say is
   done; `status`/`target-status` show exactly where a migration stands.
 - Parallel estates: locks and markers are scoped per account and site, so
