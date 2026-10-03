@@ -3488,8 +3488,11 @@ _xo_in config/server_master/nginx/subdir.d _xo_subdirs_here | while IFS= read -r
   case "\${_S}" in ''|*/*) continue ;; esac
   _xo_in "config/server_master/nginx/subdir.d/\${_S}" _xo_rewrite_here
 done
-# A static/ link naming the source tree is repointed as ./name inside the
-# directory find holds, made by the link's own owner (setpriv), so root never
+# A link under static/ or distro/ naming the source tree (a site's files and
+# private links into the store sit in its platform's sites/<name>/, on a
+# BOA-built platform under distro/; left so, they dangle or name another
+# account's store) is repointed as ./name inside the directory find holds,
+# made by the link's own owner (setpriv), so root never
 # changes an owner by name there (a hard link to another file renamed over
 # the name between a new link and a chown by name would hand that file over)
 # and never makes a link for the account: a root link is made again by root,
@@ -3512,17 +3515,19 @@ _xo_relink_here() {
       [1-9]*:[1-9]*)
         setpriv --reuid="\${_O%%:*}" --regid="\${_O#*:}" --clear-groups \
           ln -sfn -T -- "\${_N}" "\${_L}" < /dev/null > /dev/null 2>&1 \
-          || echo "ALRT: static link \${PWD}/\${_L#./} (owner \${_O}) not repointed: its owner cannot make it there"
+          || echo "ALRT: link \${PWD}/\${_L#./} (owner \${_O}) not repointed: its owner cannot make it there"
         ;;
       *)
-        echo "ALRT: static link \${PWD}/\${_L#./} (owner \${_O}) not repointed: no root link is made for another owner"
+        echo "ALRT: link \${PWD}/\${_L#./} (owner \${_O}) not repointed: no root link is made for another owner"
         ;;
     esac
   done
 }
 export _SRC _DST
 export -f _xo_relink_here
-find "/data/disk/\${_DST}/static" -type l -execdir bash -c '_xo_relink_here "\$@"' _ {} + 2>/dev/null
+for _TR in static distro; do
+  find "/data/disk/\${_DST}/\${_TR}" -type l -execdir bash -c '_xo_relink_here "\$@"' _ {} + 2>/dev/null
+done
 # Ownership: the copy maps owners by name, so what the source identities
 # owned landed on their namesakes here, or on their bare source uids where
 # this box has no such name; left so, the renamed account's files, quota and
@@ -4308,22 +4313,29 @@ _xoct_dbreg() {   # 1 account here 2 database
   return 1
 }
 
-### The poured panel carries the source's password for its database server row;
-### this box's instance user keeps its own, so every server verify (the rename's
-### queue first) failed until the next Octopus pass re-synced it. The row takes
-### the password this box set for the account (.<account>.pass.txt in the
-### account root, read no-follow), under either the account's name or the
-### source's (the rename maps the latter onto the former). Same text in xoct
-### and xcopy.
+### The poured panel carries the source's login for its database server row;
+### this box's instance user keeps its own password, so every server verify
+### (the rename's queue first) failed until the next Octopus pass re-synced it.
+### The row takes the account's own name and the password this box set for it
+### (.<account>.pass.txt in the account root, read no-follow). After a rename
+### the row named the source account, here no user or another account's, and
+### neither the rename nor the Octopus pass (which finds the row by the
+### account's name) mapped it, so every server verify failed for good: the
+### name is mapped even when the password cannot be read, which the caller
+### reports (non-zero) and the next Octopus pass then fixes. Same text in
+### xoct and xcopy.
 _xoct_sync_panel_db_pass() {   # 1 account root 2 account here 3 source account 4 panel db
-  local _p
+  local _p _set
   _p=$(_xoct_read_in "${1}" ".${2}.pass.txt" | head -1 | tr -d '\n')
   case "${_p}" in
-    ""|*[!A-Za-z0-9+/=%@._-]*) return 1 ;;
+    *[!A-Za-z0-9+/=%@._-]*) _p="" ;;
   esac
-  [ "${#_p}" -ge 9 ] || return 1
+  [ "${#_p}" -ge 9 ] || _p=""
+  _set="db_user='${2}'"
+  [ -n "${_p}" ] && _set="${_set}, db_passwd='${_p}'"
   mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp "${4}" \
-    -e "UPDATE hosting_db_server SET db_passwd='${_p}' WHERE db_user IN ('${2}','${3}')" 2> /dev/null
+    -e "UPDATE hosting_db_server SET ${_set} WHERE db_user IN ('${2}','${3}')" 2> /dev/null \
+    && [ -n "${_p}" ]
 }
 
 _xoct_reconcile_panel_platform() {
@@ -8596,8 +8608,47 @@ _xoct_sql_maint_release() {
   return 0
 }
 
+### A move given up before its proxy step: export's 503 gate is lifted on
+### this box, so the account serves from here again. Otherwise only the
+### target's import (its own copy) and proxy lift it, and reset-state keeps
+### serving state by design. Refused once the account is proxied, or after a
+### proxy that failed part way: its sites answer, or may answer, from the
+### target through the converted vhosts, which lifting the gate would not
+### undo. static/control is oN's: the gate is removed inside the real
+### directory, never through a link put there.
+_xoct_abandon() {
+  local _U="/data/disk/${_oct}" _p _had=NO
+  for _p in proxied proxy-failed; do
+    if [ -e "${_U}/log/${_p}.pid" ] || [ -L "${_U}/log/${_p}.pid" ]; then
+      echo "ERROR: ${_oct} carries log/${_p}.pid: its sites answer, or may answer, from the"
+      echo "ERROR: target through the proxy vhosts, which lifting the 503 gate here would not"
+      echo "ERROR: undo; repair or finish the proxy step instead (xoct proxy ... --repair${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}})"
+      exit 1
+    fi
+  done
+  _xoct_in_real_dir "${_U}/static/control" test -f ./http-off.pid && _had=YES
+  if ! _xoct_in_real_dir "${_U}/static/control" rm -f -- ./http-off.pid; then
+    if [ -e "${_U}/static/control" ] || [ -L "${_U}/static/control" ]; then
+      echo "ERROR: ${_U}/static/control is not this account's own directory: nothing lifted"
+      exit 1
+    fi
+    echo "INFO: no 503 gate on ${_oct} here (no static/control): nothing to lift"
+    return 0
+  fi
+  if [ "${_had}" != "YES" ]; then
+    echo "INFO: no 503 gate on ${_oct} here (static/control/http-off.pid): nothing to lift"
+    return 0
+  fi
+  if [ -d "/var/lib/nginx/speed" ]; then
+    find /var/lib/nginx/speed -type f -delete &> /dev/null
+  fi
+  echo "INFO: 503 gate lifted for ${_oct}: its sites serve from this box again"
+  echo "INFO: a copy a target already imported does not follow this box; before a"
+  echo "INFO: fresh move, clear the migration state: xoct reset-state ${_oct}"
+}
+
 case "$1" in
-  export|create|import|pretransfer|transfer|proxy|proxy-retire|go-live|reset-state|pre-mig|post-mig|ssl-gen)
+  export|create|import|pretransfer|transfer|proxy|proxy-retire|go-live|reset-state|abandon|pre-mig|post-mig|ssl-gen)
     _take_verb_lock "$1"
   ;;
 esac
@@ -8700,6 +8751,19 @@ case "$1" in
               echo "INFO: $(_xoct_admail_rec "${_oct}") (a test run's admail=) is kept: 'xoct go-live' ends the test run"
             fi
   ;;
+  abandon)  _cmd="$1"
+            _oct="$2"
+            _check_root
+            if [ -z "${_oct}" ] || [ ! -d "/data/disk/${_oct}" ]; then
+              echo "Usage: xoct abandon {o1}"
+              exit 1
+            fi
+            if ! _mig_valid_acct "${_oct}"; then
+              echo "ERROR: invalid account name '${_oct}'"
+              exit 1
+            fi
+            _xoct_abandon
+  ;;
   pre-mig)  _cmd="$1"
             _hst="$2"
             _check_root
@@ -8722,6 +8786,7 @@ case "$1" in
             echo "Usage: xoct {create} {o1} {target-ip} {o2} [--fix-php] [--adopt] (also seeds octopus.cnf, PHP pins, credentials)"
             echo "Usage: xoct {import} {o1} {target-ip} {o2} (target vms, optional target account rename)"
             echo "Usage: xoct {reset-state} {o1} (clear migration state for a fresh/chained migration)"
+            echo "Usage: xoct {abandon} {o1} (source vms: lift export's 503 gate on a move given up before proxy)"
             echo "Usage: xoct {post-mig} {fqdn} (source+target vms)"
             echo
             echo "Usage: xoct {proxy} {o1} {target-ip} {o2} [--proxy-mode=temporary|permanent|ha-switch]"
