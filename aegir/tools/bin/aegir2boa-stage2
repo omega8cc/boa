@@ -2128,8 +2128,17 @@ _t_dbreg() {   # 1 dbn
 }
 
 # a land that fails after its CREATE DATABASE drops the database it made,
-# so a re-run lands it fresh instead of refusing it as already there
+# so a re-run lands it fresh instead of refusing it as already there:
+# through the broker first where it is installed (a switched account's
+# registry entry and its instance user's grant rows on the database go
+# with it), the plain drop where the broker is missing or refuses (an
+# account not switched, or no entry of the account's: both refused before
+# the broker writes anything). True when either took the database.
 _t_drop_made_db() {   # 1 dbn
+  if [[ -x /usr/local/bin/boa-dbctl ]] \
+    && /usr/local/bin/boa-dbctl drop "$1" --account "${_ACCOUNT}" >/dev/null 2>&1; then
+    return 0
+  fi
   mysql --silent -u root -e "DROP DATABASE IF EXISTS \`$1\`" >/dev/null 2>&1
 }
 
@@ -2195,13 +2204,10 @@ EOFMYSQL6
   fi
   mysqladmin -u root flush-privileges >/dev/null 2>&1
   # a database the registry does not take goes again before anything is
-  # loaded (made a moment ago, empty), so a re-run lands it fresh: through
-  # the broker when its entry was made (the entry goes with it), else as made
+  # loaded (made a moment ago, empty), so a re-run lands it fresh
   if ! _t_dbreg "${_dbn}"; then
-    if [[ ! -x /usr/local/bin/boa-dbctl ]] \
-      || ! /usr/local/bin/boa-dbctl drop "${_dbn}" --account "${_ACCOUNT}" >/dev/null 2>&1; then
-      mysql --silent -u root -e "DROP DATABASE IF EXISTS \`${_dbn}\`" >/dev/null 2>&1
-    fi
+    _t_drop_made_db "${_dbn}" \
+      || _alrt "db ${_dbn}: the database made for it could not be dropped - drop it by hand before the re-run"
     return 1
   fi
   # MariaDB >=10.5.25 dumps open with a sandbox directive Percona rejects -
