@@ -704,6 +704,15 @@ _mysql_defaults() {   # 1 user 2 pass -> prints path
   echo "${_f}"
 }
 
+# A client given the login of such a file: it reads root's ~/.my.cnf and
+# ~/.mylogin.cnf after the file --defaults-extra-file names, so a login root
+# keeps there would win over the one named (and mysql and mysqldump read
+# different groups, so the probe and the dump could even differ). HOME
+# pointed at no directory leaves the box's own option files and that one.
+_login_only() {
+  HOME=/nonexistent "$@"
+}
+
 # No dump this tool takes carries the dumping server's GTID state. By
 # default (--set-gtid-purged=AUTO) a dump taken while GTID is on (a source
 # whose MySQL runs with it; a BOA target an xmass run touched) opens with
@@ -736,14 +745,18 @@ _mysqldump_flags() {
 # login before they are added, as the panel's classic dump does: --routines
 # only when no routine of the database hides its body from that login (one
 # another user defines, on which mysqldump would stop), --events only when
-# SHOW EVENTS answers, each only when the local mysqldump knows it. What is
-# left out is said, and the dump goes on without it. Sets _MYSQLDUMP_OBJ.
+# SHOW EVENTS answers and, when one of the events is enabled, this server
+# runs its event scheduler (MariaDB's and MySQL 5.7's default is off, so an
+# enabled event may never have run here, and a target that runs its own
+# scheduler, as MySQL 8 does by default, would start it on load); each only
+# when the local mysqldump knows it. What is left out is said, and the dump
+# goes on without it. Sets _MYSQLDUMP_OBJ.
 _mysqldump_objects_opts() {   # 1 defaults-file 2 dbn 3 uri
-  local _n _h
+  local _n _h _s
   _MYSQLDUMP_OBJ=""
   _h="$(mysqldump --help 2>/dev/null)"
   if grep -q -- '--routines' <<< "${_h}"; then
-    _n="$(mysql --defaults-extra-file="$1" -N -B -e "SELECT COUNT(*) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_DEFINITION IS NULL" "$2" 2>>"${_LOG}")"
+    _n="$(_login_only mysql --defaults-extra-file="$1" -N -B -e "SELECT COUNT(*) FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = DATABASE() AND ROUTINE_DEFINITION IS NULL" "$2" 2>>"${_LOG}")"
     if [[ "${_n}" = "0" ]]; then
       _MYSQLDUMP_OBJ="--routines"
     else
@@ -751,8 +764,16 @@ _mysqldump_objects_opts() {   # 1 defaults-file 2 dbn 3 uri
     fi
   fi
   if grep -q -- '--events' <<< "${_h}"; then
-    if mysql --defaults-extra-file="$1" -N -B -e "SHOW EVENTS" "$2" >/dev/null 2>>"${_LOG}"; then
-      _MYSQLDUMP_OBJ="${_MYSQLDUMP_OBJ:+${_MYSQLDUMP_OBJ} }--events"
+    if _login_only mysql --defaults-extra-file="$1" -N -B -e "SHOW EVENTS" "$2" >/dev/null 2>>"${_LOG}"; then
+      _n="$(_login_only mysql --defaults-extra-file="$1" -N -B -e "SELECT COUNT(*) FROM information_schema.EVENTS WHERE EVENT_SCHEMA = DATABASE() AND STATUS = 'ENABLED'" "$2" 2>>"${_LOG}")"
+      _s="$(_login_only mysql --defaults-extra-file="$1" -N -B -e "SELECT @@GLOBAL.event_scheduler" "$2" 2>>"${_LOG}")"
+      if [[ "${_n}" = "0" || "${_s}" = "ON" ]]; then
+        _MYSQLDUMP_OBJ="${_MYSQLDUMP_OBJ:+${_MYSQLDUMP_OBJ} }--events"
+      elif [[ "${_n}" =~ ^[0-9]+$ && -n "${_s}" ]]; then
+        _alrt "site $3: its events are left out of the dump: ${_n} enabled event(s) do not run here (event_scheduler ${_s}), and a target that runs its scheduler would start them"
+      else
+        _alrt "site $3: its events are left out of the dump: whether they run here could not be asked"
+      fi
     else
       _alrt "site $3: its events are left out of the dump: its database user may not list them, or could not be asked"
     fi
@@ -779,7 +800,7 @@ _rsync_flags() {
 
 _site_db_size_mb() {   # 1 defaults-file 2 dbn
   local _b
-  _b="$(mysql --defaults-extra-file="$1" -N -B -e \
+  _b="$(_login_only mysql --defaults-extra-file="$1" -N -B -e \
     "SELECT COALESCE(ROUND(SUM(data_length+index_length)/1048576),0) FROM information_schema.tables WHERE table_schema='$2'" 2>/dev/null)"
   _int_only "${_b:-0}"
 }
@@ -1311,7 +1332,7 @@ _export_one() {   # 1 ctx 2 uri  (returns non-zero on per-site failure)
   _myd="$(_mysql_defaults "${_dbn}" "${_dbp}")"
   _mysqldump_objects_opts "${_myd}" "${_dbn}" "${_uri}"
   # shellcheck disable=SC2046,SC2086
-  if ! mysqldump --defaults-extra-file="${_myd}" $(_mysqldump_flags) ${_MYSQLDUMP_OBJ} "${_dbn}" \
+  if ! _login_only mysqldump --defaults-extra-file="${_myd}" $(_mysqldump_flags) ${_MYSQLDUMP_OBJ} "${_dbn}" \
       > "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql" 2>>"${_LOG}"; then
     rm -f "${_myd}" "${_AEGIR_ROOT}/src/a2b/${_dbn}.sql"
     _alrt "site ${_uri}: mysqldump FAILED - stub stays up (data-consistency over uptime); revert --site ${_uri} to unpause"
@@ -1349,7 +1370,7 @@ _export_hostmaster() {   # db-import route only
   fi
   _myd="$(_mysql_defaults "${_hdb}" "${_hdp}")"
   # shellcheck disable=SC2046
-  mysqldump --defaults-extra-file="${_myd}" $(_mysqldump_flags) "${_hdb}" \
+  _login_only mysqldump --defaults-extra-file="${_myd}" $(_mysqldump_flags) "${_hdb}" \
     > "${_AEGIR_ROOT}/src/a2b/hostmaster.sql" 2>>"${_LOG}"
   _a2b_dump_rc=$?
   rm -f "${_myd}"
@@ -2106,9 +2127,15 @@ _t_dbreg() {   # 1 dbn
   return 1
 }
 
+# a land that fails after its CREATE DATABASE drops the database it made,
+# so a re-run lands it fresh instead of refusing it as already there
+_t_drop_made_db() {   # 1 dbn
+  mysql --silent -u root -e "DROP DATABASE IF EXISTS \`$1\`" >/dev/null 2>&1
+}
+
 # create db+user with the site's own creds (xoct:279-285 model, utf8mb4)
 _t_site_db_create_load() {   # 1 dbn 2 dbp 3 dumpfile 4 dmajor
-  local _dbn="$1" _dbp="$2" _dump="$3" _dmaj="$4" _dbe
+  local _dbn="$1" _dbp="$2" _dump="$3" _dmaj="$4" _dbe _st _ev _sch
   # defence-in-depth: the source gated _dbp, but it reaches a root SQL
   # heredoc here via a 600 manifest - re-gate so a hand-edited manifest or
   # a wider-than-assumed Aegir password charset can't inject
@@ -2118,13 +2145,20 @@ _t_site_db_create_load() {   # 1 dbn 2 dbp 3 dumpfile 4 dmajor
     _alrt "db ${_dbn} already exists on target - NOT overwriting (remove it to re-import)"
     return 1
   fi
+  # made on its own and checked: one that fails (the name taken after all,
+  # by another run of this site) is never loaded into, nor dropped
+  if ! mysql --silent -u root \
+      -e "CREATE DATABASE \`${_dbn}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci" \
+      >/dev/null 2>>"${_LOG}"; then
+    _alrt "db ${_dbn}: cannot be created on target - SKIP"
+    return 1
+  fi
   # a grant ON a database reads _ and % in its name as wildcards: `a_b`.*
   # also covers aXb, with ALL there; the site user gets its own name
   # escaped, as provisioning grants it (grant_privileges), and _ is all a
   # name that passed the gate above can carry
   _dbe="${_dbn//_/\\_}"
-  mysql --silent -u root mysql <<EOFMYSQL
-CREATE DATABASE \`${_dbn}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+  if ! mysql --silent -u root mysql <<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_dbn}'@'localhost';
 CREATE USER IF NOT EXISTS '${_dbn}'@'%';
 GRANT ALL ON \`${_dbe}\`.* TO '${_dbn}'@'localhost';
@@ -2132,6 +2166,12 @@ GRANT ALL ON \`${_dbe}\`.* TO '${_dbn}'@'%';
 ALTER USER '${_dbn}'@'localhost' IDENTIFIED BY '${_dbp}';
 ALTER USER '${_dbn}'@'%' IDENTIFIED BY '${_dbp}';
 EOFMYSQL
+  then
+    _alrt "db ${_dbn}: its user and grants could not be set on target - SKIP"
+    _t_drop_made_db "${_dbn}" \
+      || _alrt "db ${_dbn}: the database made for it could not be dropped - drop it by hand before the re-run"
+    return 1
+  fi
   _t_revoke_wildcard_grant "${_dbn}" localhost
   _t_revoke_wildcard_grant "${_dbn}" %
   # a D6 site serves through the php56 pool, and PHP 5.6 mysqli cannot
@@ -2148,6 +2188,8 @@ ALTER USER '${_dbn}'@'%' IDENTIFIED WITH mysql_native_password BY '${_dbp}';
 EOFMYSQL6
     then
       _alrt "db ${_dbn}: cannot pin mysql_native_password for the php56 pool (plugin disabled on this target?) - enable mysql_native_password in my.cnf, restart mysql, re-run"
+      _t_drop_made_db "${_dbn}" \
+        || _alrt "db ${_dbn}: the database made for it could not be dropped - drop it by hand before the re-run"
       return 1
     fi
   fi
@@ -2170,9 +2212,11 @@ EOFMYSQL6
   # source made its triggers, routines and events under a sql_mode holding
   # NO_AUTO_CREATE_USER, which MySQL 8 refuses to set (ERROR 1231): the
   # mode is left out of those lines. Only the lines mysqldump starts with a
-  # definer or a sql_mode are read, never a row of data. A load that fails
-  # drops the database made above, so a re-run lands it fresh.
-  if ! sed -E -e '1{/^\/\*M!999999/d;}' \
+  # definer or a sql_mode are changed, never a row of data. The load is
+  # judged on both sides of the pipe (a dump sed cannot read hands mysql
+  # nothing, which it takes as done), and one that fails drops the database
+  # made above, so a re-run lands it fresh.
+  sed -E -e '1{/^\/\*M!999999/d;}' \
     -e "s#^(/\\*!50013 DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")#\\1\`${_dbn}\`@\`localhost\`#" \
     -e "s#^(/\\*!50003 CREATE\\*/ /\\*!50017 DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")#\\1\`${_dbn}\`@\`localhost\`#" \
     -e "s#^(/\\*!50106 CREATE\\*/ /\\*!50117 DEFINER=)(\`[^\`]*\`|\"[^\"]*\")@(\`[^\`]*\`|\"[^\"]*\")#\\1\`${_dbn}\`@\`localhost\`#" \
@@ -2181,10 +2225,24 @@ EOFMYSQL6
     -e "/^\\/\\*!50003 SET sql_mode/s/NO_AUTO_CREATE_USER,//" \
     -e "/^\\/\\*!50003 SET sql_mode/s/,NO_AUTO_CREATE_USER//" \
     -e "/^\\/\\*!50003 SET sql_mode/s/'NO_AUTO_CREATE_USER'/''/" \
-    "${_dump}" | mysql --silent -u root "${_dbn}"; then
-    mysql --silent -u root -e "DROP DATABASE IF EXISTS \`${_dbn}\`" >/dev/null 2>&1
-    _alrt "db ${_dbn}: the load failed; the partly loaded database was dropped, a re-run imports it again"
+    "${_dump}" | mysql --silent -u root "${_dbn}"
+  _st="${PIPESTATUS[*]}"
+  if [[ "${_st}" != "0 0" ]]; then
+    if _t_drop_made_db "${_dbn}"; then
+      _alrt "db ${_dbn}: the load failed; the partly loaded database was dropped, a re-run imports it again"
+    else
+      _alrt "db ${_dbn}: the load failed and the partly loaded database could not be dropped - drop it by hand, then re-run the import"
+    fi
     return 1
+  fi
+  # the export carries an enabled event only from a source that runs its
+  # scheduler; here it stays still, without a word, unless this box runs
+  # its own (a Percona 5.7 default is off)
+  _ev="$(mysql --silent -u root -N -B -e "SELECT COUNT(*) FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_dbn}' AND STATUS = 'ENABLED'" 2>/dev/null)"
+  if [[ "${_ev}" =~ ^[0-9]+$ ]] && [[ "${_ev}" -gt 0 ]]; then
+    _sch="$(mysql --silent -u root -N -B -e "SELECT @@GLOBAL.event_scheduler" 2>/dev/null)"
+    [[ "${_sch}" = "ON" ]] \
+      || _alrt "db ${_dbn}: its ${_ev} enabled event(s) do not run here: event_scheduler reads ${_sch:-unknown}; the source runs them"
   fi
   return 0
 }
