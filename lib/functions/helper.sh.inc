@@ -2124,6 +2124,23 @@ _dbctl_sudo_line() {
   _sudoers_commit "${_file}" "${_tmp}"
 }
 
+# A root tool has just made root's, aegir_root's or the master panel's
+# database login again (a password rotation, a grant an upgrade gives it):
+# where the database broker keeps a baseline of the server's own logins (in
+# its registry's schema), the rows are proven and recorded again as they are
+# now, so the nightly check does not read the tool's own change as one made
+# behind it. A box with no baseline keeps none; a standby takes the rows
+# from its source.
+_dbctl_rerecord() {
+  local _out
+  [[ -x "/usr/local/bin/boa-dbctl" && -d "/var/lib/mysql/boa_dbreg" ]] || return 0
+  [[ -e "/root/.standby.cnf" ]] && return 0
+  if ! _out=$(/usr/local/bin/boa-dbctl baseline rerecord "$@" 2>&1 < /dev/null); then
+    _msg "ALRT: the database broker's record of $* was not renewed: ${_out##*$'\n'}"
+  fi
+  return 0
+}
+
 # The broker's sudo line for every Octopus account, on every barracuda pass:
 # the system-only pass a replication standby runs included. A standby never
 # runs the Octopus pass that also writes it, and once promoted it serves the

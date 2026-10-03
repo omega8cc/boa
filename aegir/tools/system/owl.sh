@@ -372,6 +372,10 @@ _daily_action() {
   if command -v _migrate_source_sweep_all > /dev/null 2>&1; then
     _migrate_source_sweep_all
   fi
+  # Skew-guarded as the sweep is.
+  if command -v _dbctl_witness > /dev/null 2>&1; then
+    _dbctl_witness
+  fi
 }
 
 ###--------------------###

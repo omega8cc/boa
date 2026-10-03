@@ -1145,3 +1145,24 @@ _migrate_source_sweep_all() {
   flock -u "${_lockfd}"
   exec {_lockfd}>&-
 }
+
+# The database broker's nightly check, on a box where an account is switched
+# to it or its registry is in use: what a switched account or its panel
+# users hold beyond their own databases, a database of one without the
+# account's grant, a grant on the registry itself, and reservations nothing
+# used (let go). Its ALRT lines go into this night's log. A box with
+# neither runs nothing here, so the broker writes no log line there.
+_dbctl_witness() {
+  local _f _on=NO
+  [ -x "/usr/local/bin/boa-dbctl" ] || return 0
+  for _f in /data/conf/*_db_broker.txt; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    _on=YES
+    break
+  done
+  [ -d "/var/lib/mysql/boa_dbreg" ] && _on=YES
+  [ "${_on}" = "YES" ] || return 0
+  echo "dbctl-witness: start"
+  /usr/local/bin/boa-dbctl witness 2>&1
+  echo "dbctl-witness: done rc=$?"
+}
