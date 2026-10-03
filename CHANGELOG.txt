@@ -1423,7 +1423,9 @@
       site's certificate links (in config/ssl.d, config/server_master/
       ssl.d and tools/le) and the client site links still named the
       source account's tree, and a verify keeps a certificate link that
-      is already there. The transfer now re-points them too.
+      is already there: the site's verify failed, it lost its HTTPS,
+      and nginx -t failed for the whole target box, so no reload there
+      took effect. The transfer now re-points them too.
 
     * A Restore, Clone or Migrate no longer unpacks a site archive
       outside the directory it made. A link left at the unpack target,
