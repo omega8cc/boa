@@ -140,7 +140,7 @@ boa-dbctl leftovers drop --sha <the list's hash>
   it; its site users, as its registry entries name their databases, since a
   site's user is named as its database: a user that no other account's record
   names, that is none of the server's own logins, and whose every grant is on
-  that account's databases);
+  that account's databases or on a name no database has);
 - B: the ones that only have the shape of a purged account's name;
 - C: the stored objects in kept databases that a user of A defines (a drop
   leaves them without a definer).
@@ -211,7 +211,10 @@ the account without a way to its databases:
 7. a server verify run as the account, its proof.
 
 A failure after step 2 puts the account back on the direct path and says at
-which step. `on` again on a switched account changes nothing.
+which step. `on` again on a switched account makes the same switch again: it
+changes nothing unless the instance user's rows did (a row that has come to
+define a stored object joins `rows=`; a row no login of the account uses that
+defines nothing is dropped and leaves `rows=`).
 
 `off` removes the control file first, then gives every row of the instance user
 its rights on all databases back, as an account not switched holds them. The
@@ -230,10 +233,14 @@ privilege.
   get back their grants on its databases, never rights on all databases.
 - A row in use that defines a view, trigger, routine or event is not made
   again: it keeps its grants and takes the new password. Any other row of the
-  instance user that defines one is not dropped: the rotation fails and the
-  broker's log names the row until an operator settles it (`scope oN on`
-  again keeps it as a row in use, without a global privilege). When the
-  stored objects cannot be read, no row is dropped.
+  instance user that defines one is not dropped: the rotation fails, and the
+  broker's log names the row, until an operator settles it. When the stored
+  objects cannot be read, no row is dropped.
+- To settle such a row, re-point or drop its objects, drop the row, and run
+  `scope oN on` again. `scope oN on` alone keeps it as a row in use without a
+  global privilege, but the box-wide check still names a row at a host the
+  account's logins do not use, as it did before the switch, and every rotation
+  makes again each row `rows=` names.
 - `xoct`, `xcopy` and `aegir2boa` enter the databases they make for a switched
   account in the registry.
 - `boa cleanup purge` parks the account's control file and marks its registry
