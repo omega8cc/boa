@@ -327,7 +327,7 @@ Re-locking a platform unlocked earlier, by that task or by a Verify, also rebuil
 
 The nightly maintenance never locks or unlocks a platform: one you unlocked stays unlocked, overnight included, until you run 'Lock Local Drush' or an Ægir task locks it, and that lock then runs the rebuild above.
 
-Every task that bootstraps a site on the platform reads the lock from the files themselves before it does (Verify, Clone, Backup, Restore, Migrate, Import, Delete, Enable and Install alike) and locks a tree whose psr/log is genuine again or that still owes the web its stock copies. A platform you unlocked yourself is locked again by a Verify or the 'Lock Local Drush' task; a Clone, Backup or Restore queued on it while unlocked fails before it can lock, so run the Verify first.
+Every task that bootstraps a site on the platform reads the lock from the files themselves before it does (Verify, Clone, Backup, Restore, Migrate, Deploy, Import, Delete, Enable, Login reset and Install alike), and locks the platform first when you left it unlocked, when its psr/log is genuine again, or when it still owes the web its stock copies. Disable and the platform's own Lock and Unlock tasks run on an unlocked platform and leave its local Drush as it is.
 
 ---
 
