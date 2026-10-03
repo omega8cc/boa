@@ -8611,13 +8611,28 @@ _xoct_sql_maint_release() {
 ### A move given up before its proxy step: export's 503 gate is lifted on
 ### this box, so the account serves from here again. Otherwise only the
 ### target's import (its own copy) and proxy lift it, and reset-state keeps
-### serving state by design. Refused once the account is proxied, or after a
-### proxy that failed part way: its sites answer, or may answer, from the
-### target through the converted vhosts, which lifting the gate would not
-### undo. static/control is oN's: the gate is removed inside the real
-### directory, never through a link put there.
+### serving state by design. Refused while the account's sites answer, or may
+### answer, from the target through proxy vhosts, which lifting the gate
+### would not undo: once it is proxied (log/proxied.pid), after a conversion
+### xmass marked failed (log/proxy-failed.pid), and whenever a vhost of the
+### account carries the proxy template on disk, since an xoct proxy that
+### fails or is killed part way stamps nothing. Refused too while an xmass
+### cutover holds the box, running or parked past its freeze: its gate is on
+### every account, and a lifted one takes writes the promoted target never
+### gets. The export latch (log/exported.pid) goes with the gate: proxy asks
+### for nothing else, and a proxy after an abandon would point the account at
+### the target's stale copy. static/control, vhost.d and log are oN's: each
+### is read and changed inside the real directory, never through a link put
+### there.
 _xoct_abandon() {
-  local _U="/data/disk/${_oct}" _p _had=NO
+  local _U="/data/disk/${_oct}" _p _had=NO _held _conv
+  if _held="$(_xoct_xmass_cutover_holds)"; then
+    echo "ERROR: ${_held} holds this box: its 503 gate is on every account, and"
+    echo "ERROR: lifting ${_oct}'s would let this box take writes the promoted target never"
+    echo "ERROR: gets; resume the cutover, or follow the restore it printed ('xmass status"
+    echo "ERROR: <target-ip>' shows the phase)"
+    exit 1
+  fi
   for _p in proxied proxy-failed; do
     if [ -e "${_U}/log/${_p}.pid" ] || [ -L "${_U}/log/${_p}.pid" ]; then
       echo "ERROR: ${_oct} carries log/${_p}.pid: its sites answer, or may answer, from the"
@@ -8626,25 +8641,93 @@ _xoct_abandon() {
       exit 1
     fi
   done
+  _conv="$(_xoct_in_real_dir "${_U}/config/server_master/nginx/vhost.d" _xoct_proxy_vhosts_here)"
+  if [ -n "${_conv}" ]; then
+    echo "ERROR: ${_oct} has sites converted to the proxy on this box:${_conv}"
+    echo "ERROR: they answer from the target at the next nginx reload; finish the proxy step"
+    echo "ERROR: (xoct proxy ${_oct} <target-ip> [<o2>] --repair${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}), or put each saved"
+    echo "ERROR: .<site> (and .https.<site>) back in vhost.d, check nginx -t, reload nginx,"
+    echo "ERROR: then run abandon again"
+    exit 1
+  fi
   _xoct_in_real_dir "${_U}/static/control" test -f ./http-off.pid && _had=YES
   if ! _xoct_in_real_dir "${_U}/static/control" rm -f -- ./http-off.pid; then
     if [ -e "${_U}/static/control" ] || [ -L "${_U}/static/control" ]; then
       echo "ERROR: ${_U}/static/control is not this account's own directory: nothing lifted"
       exit 1
     fi
+    _xoct_abandon_latch
     echo "INFO: no 503 gate on ${_oct} here (no static/control): nothing to lift"
     return 0
   fi
   if [ "${_had}" != "YES" ]; then
+    _xoct_abandon_latch
     echo "INFO: no 503 gate on ${_oct} here (static/control/http-off.pid): nothing to lift"
     return 0
   fi
   if [ -d "/var/lib/nginx/speed" ]; then
     find /var/lib/nginx/speed -type f -delete &> /dev/null
   fi
+  _xoct_abandon_latch
   echo "INFO: 503 gate lifted for ${_oct}: its sites serve from this box again"
-  echo "INFO: a copy a target already imported does not follow this box; before a"
-  echo "INFO: fresh move, clear the migration state: xoct reset-state ${_oct}"
+  echo "INFO: an account a target already imported stays live there (its sites, cron and"
+  echo "INFO: backups, and its client mail unless a test run holds it): retire it there"
+  echo "INFO: (its log/CANCELLED, then boa cleanup purge <its name>) before a fresh move to"
+  echo "INFO: that box, or the import there refuses it"
+  echo "INFO: before a fresh move, clear the migration state here: xoct reset-state ${_oct}"
+  if [ -e /run/boa_migration_park.pid ]; then
+    echo "INFO: this box's runners stay parked until 'xoct post-mig <fqdn>' ends the park"
+  fi
+}
+### The export latch of an abandoned move: with no gate and no proxy vhost
+### left, a latch still there means the export no longer describes this
+### box's data, so proxy must refuse until a fresh export. Said once, when
+### there was one to clear.
+_xoct_abandon_latch() {
+  [ -e "/data/disk/${_oct}/log/exported.pid" ] || [ -L "/data/disk/${_oct}/log/exported.pid" ] \
+    || return 0
+  if _xoct_in_real_dir "/data/disk/${_oct}/log" rm -f -- ./exported.pid; then
+    echo "INFO: export latch cleared (log/exported.pid): proxy refuses ${_oct} until a fresh export"
+  else
+    echo "ALRT: ${_oct}'s log/exported.pid could not be cleared: proxy would still accept it"
+  fi
+}
+### The names of the vhosts in the current (real) directory that carry the
+### proxy template's mark (the one proxy reads itself): the sites an xoct
+### proxy converted, whatever became of its run. The saved .<site> copies are
+### dot files and never listed; a link is never read.
+_xoct_proxy_vhosts_here() {
+  local _f
+  for _f in ./*; do
+    [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
+    _xoct_read_here "${_f#./}" | grep -q -- "Plain HTTP proxy (START)" || continue
+    printf ' %s' "${_f#./}"
+  done
+}
+### What holds this box for an xmass cutover, said in a few words: a running
+### 'xmass cutover' (its verb lock, its owner read as xmass reads it), or a
+### cutover parked past its freeze (its state file's phase). Nothing when
+### neither.
+_xoct_xmass_cutover_holds() {
+  local _o _c _ph
+  _o="$(tr -dc '0-9' < /run/xmass.verb.pid 2> /dev/null | head -c 12)"
+  if [ -n "${_o}" ] && [ -d "/proc/${_o}" ]; then
+    _c="$(tr '\0' ' ' < "/proc/${_o}/cmdline" 2> /dev/null)"
+    case "${_c}" in
+      *xmass\ cutover*)
+        echo "a running 'xmass cutover' (pid ${_o})"
+        return 0
+        ;;
+    esac
+  fi
+  _ph="$(grep -m1 '^_XMASS_PHASE=' /data/conf/xmass_state.cnf 2> /dev/null | cut -d= -f2- | tr -cd 'a-z-')"
+  case "${_ph}" in
+    cutover|rename-failed)
+      echo "an xmass cutover parked at phase ${_ph}"
+      return 0
+      ;;
+  esac
+  return 1
 }
 
 case "$1" in
