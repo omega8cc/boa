@@ -1784,6 +1784,14 @@
       event is loaded with the site's own user as its definer, so none
       names an account the target lacks.
 
+    * aegir2boa-stage2 imports a site whose database holds triggers,
+      routines or events from a MariaDB or MySQL 5.7 source: those are
+      made under a sql_mode holding NO_AUTO_CREATE_USER, which MySQL 8
+      refuses to set, so the load stopped there. The load now leaves that
+      mode out, and a load that fails drops the database it had just
+      made, so a re-run of the import lands the site again instead of
+      refusing the half-loaded database.
+
     * The nightly copy of database dumps into each account's dbackup/
       takes the date from the end of the archive folder name: on a box
       whose hostname holds a dash, MyQuick dumps were never copied and
