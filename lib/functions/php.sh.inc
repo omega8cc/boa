@@ -1855,6 +1855,65 @@ _php_extensions_update() {
 }
 
 #
+# Keep the PHP $1 build that runs now aside before a prebuilt package goes
+# over it. A package that fails its check is purged with every file it took
+# over, bin/php and sbin/php-fpm included, and the source build that follows
+# can fail silently (_mrun): the FPM reload after it would then leave that
+# version down. Hard links where /var/opt shares the file system: dpkg writes
+# each file new and renames it into place, and the purge only unlinks, so the
+# links keep the previous build whole. etc and lib/php.ini are never in the
+# package and stay out. The copy never outlives _install_php_deb; one left by
+# an interrupted run goes with the next call or the source build's sweep of
+# /var/opt/php*. Returns 1 when the copy could not be made.
+_php_pre_deb_keep() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_pre_deb_keep $1"
+  fi
+  local _pre="/var/opt/php${1}-pre-deb"
+  local _lnk=""
+  rm -rf "${_pre}"
+  if [ ! -x "/opt/php${1}/bin/php" ]; then
+    return 0
+  fi
+  mkdir -p "${_pre}" || return 1
+  if [ "$(stat -c %d "${_pre}")" = "$(stat -c %d "/opt/php${1}/bin/php")" ]; then
+    _lnk="l"
+  fi
+  if ! cp -a${_lnk} "/opt/php${1}/." "${_pre}/"; then
+    rm -rf "${_pre}"
+    return 1
+  fi
+  rm -rf "/var/opt/php${1}-pre-deb/etc" "/var/opt/php${1}-pre-deb/lib/php.ini"
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: PHP $1 build kept aside in ${_pre} (cp -a${_lnk})"
+  fi
+  return 0
+}
+
+#
+# Put the build _php_pre_deb_keep kept aside back into /opt/phpNN and drop
+# the copy. A file in the way is replaced, never written into: a running
+# FPM may still map it.
+_php_pre_deb_back() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_pre_deb_back $1"
+  fi
+  local _pre="/var/opt/php${1}-pre-deb"
+  local _lnk=""
+  if [ -x "${_pre}/bin/php" ]; then
+    mkdir -p "/opt/php${1}"
+    if [ "$(stat -c %d "${_pre}")" = "$(stat -c %d "/opt/php${1}")" ]; then
+      _lnk="l"
+    fi
+    cp -a${_lnk} --remove-destination "${_pre}/." "/opt/php${1}/"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: PHP $1 build put back from ${_pre} (cp -a${_lnk})"
+    fi
+  fi
+  rm -rf "${_pre}"
+}
+
+#
 # Install modern PHP version
 #
 # Install PHP /opt/phpNN from a prebuilt boa-phpNN package (_USE_PREBUILT_PKGS).
@@ -1890,7 +1949,17 @@ _install_php_deb() {
     _msg "NOTE: BOA ICU missing; building PHP ${_PHP_VERSION} from sources"
     return 1
   fi
+  if ! _php_pre_deb_keep "${1}"; then
+    _msg "NOTE: PHP ${_PHP_VERSION} could not be kept aside; building from sources"
+    return 1
+  fi
   if ! _install_boa_deb "boa-php${1}" "${_PHP_VERSION}"; then
+    # A failed dpkg run purges what it unpacked; a package that is not
+    # published leaves the build in place.
+    if [ ! -x "/opt/php${1}/bin/php" ] || [ ! -x "/opt/php${1}/sbin/php-fpm" ]; then
+      _php_pre_deb_back "${1}"
+    fi
+    rm -rf "/var/opt/php${1}-pre-deb"
     return 1
   fi
   # dpkg unpacks the boa-phpNN payload as group root with the hardened 0750
@@ -1935,12 +2004,16 @@ _install_php_deb() {
       _PHP_DEB_TOKENS_OK=NO
     fi
     if [ "${_PHP_DEB_TOKENS_OK}" = "YES" ]; then
+      rm -rf "/var/opt/php${1}-pre-deb"
       _PHP_DEB_INSTALLED=YES
       _msg "INFO: PHP ${_PHP_VERSION} installed from prebuilt package"
       return 0
     fi
   fi
+  # The purge removes bin/php and sbin/php-fpm with the rest of the package;
+  # the previous build goes back and serves until the source build replaces it.
   dpkg --purge "boa-php${1}" &> /dev/null
+  _php_pre_deb_back "${1}"
   _msg "NOTE: Prebuilt boa-php${1} failed health check; building from sources"
   return 1
 }
@@ -2307,8 +2380,9 @@ _install_php_multi() {
     _install_php_deb "$1"
   fi
   if [ "${_PHP_DEB_INSTALLED}" = "NO" ]; then
-    # A prebuilt package that failed its check is purged with its binary;
-    # measure what the source build will replace, not what was there before.
+    # A prebuilt package that failed its check was purged and the previous
+    # build put back, as the same files or as a copy with new inodes; measure
+    # what the source build will replace, not what was there before.
     _binIno=$(stat -c %i "/opt/php$1/bin/php" 2>/dev/null)
     _install_php_multi_src "$1"
   fi
