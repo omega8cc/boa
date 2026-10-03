@@ -533,6 +533,15 @@ An unresolvable panel (zero or several
 candidates, or a repoint that matches no row) aborts the import with
 recovery steps rather than completing with a dead control panel.
 
+The imported panel names the source's login for its database server. Before
+the rename, `import` gives that row the account's own name on this box (the
+new name on a rename) and the password this box set for it
+(`.<o1>.pass.txt` in the account root, `.<o2>.pass.txt` on a rename), so
+every server verify, the rename's first, connects. When that file cannot be
+read, or its first line is not nine or more of `A-Za-z0-9+/=%@._-`, the row
+still takes the account's name, an `ALRT` says so, and the server verifies
+fail until the account's next Octopus pass sets the password.
+
 Before the rename, `import` loads every site's database and creates its
 database user (the per-site checks above), rebuilds the account's pinned
 PHP pools and lifts the export's 503 gate (`static/control/http-off.pid`).
