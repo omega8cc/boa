@@ -197,8 +197,10 @@ the account without a way to its databases:
 4. the control file: from here the account's tasks take the broker;
 5. every global privilege taken from its rows in use and from every panel user
    it has had (by name, its database grants kept);
-6. its other rows dropped (a row the server will not drop, as it defines a
-   stored object, stays as a row in use, without a global privilege);
+6. its other rows dropped: a row that defines a view, trigger, routine or
+   event (looked up before the drop, since the server lets root drop a
+   definer), one whose objects cannot be read, and one the server will not
+   drop stay as rows in use, without a global privilege;
 7. a server verify run as the account, its proof.
 
 A failure after step 2 puts the account back on the direct path and says at
@@ -219,6 +221,12 @@ privilege.
 - The Octopus pass and `syncpass fix oN` rotate a switched account's password
   through the broker: its rows in use are made again with the new password and
   get back their grants on its databases, never rights on all databases.
+- A row in use that defines a view, trigger, routine or event is not made
+  again: it keeps its grants and takes the new password. Any other row of the
+  instance user that defines one is not dropped: the rotation fails and the
+  broker's log names the row until an operator settles it (`scope oN on`
+  again keeps it as a row in use, without a global privilege). When the
+  stored objects cannot be read, no row is dropped.
 - `xoct`, `xcopy` and `aegir2boa` enter the databases they make for a switched
   account in the registry.
 - `boa cleanup purge` parks the account's control file and marks its registry
