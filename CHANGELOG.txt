@@ -1349,9 +1349,10 @@
 
     * After an xoct move that renames the account, every server verify of
       the account on the target failed for good: the imported panel still
-      named the source account as its database user, a user the target
-      does not have, and no later pass mapped it. The import now gives
-      that row the account's own name along with the target's password.
+      named the source account as its database user, which on the target
+      is no user or another account's, and no later pass mapped it. The
+      import now gives that row the account's own name along with the
+      target's password.
 
     * A Clone, Backup, Restore, Import, Delete, Enable, Deploy or Install
       on a Drupal 8 or newer platform now locks the platform's own Drush
