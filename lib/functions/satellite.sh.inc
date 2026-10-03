@@ -4680,9 +4680,13 @@ EOFMYSQL
 # root is no site of that root. Non-zero, the last line "unread <path>",
 # when a file cannot be read whole, or an alias name or a site path inside
 # the root is not a plain one: an unread file never counts as naming
-# nothing. One text in master.sh.inc and satellite.sh.inc.
+# nothing. One link is passed over, since it names nothing of its own: an
+# alias name, no server alias's, that is a link whose text is exactly
+# hostmaster.alias.drushrc.php or that file's full path in the same .drush,
+# while that file is there as a regular file. Every other link is unread.
+# One text in master.sh.inc and satellite.sh.inc.
 _hostmaster_db_users_named() {
-  local _a _f _t _p _s _k _u _e=()
+  local _a _f _h _t _p _s _k _u _e=()
   for _u in "$@"; do
     _e+=( -e "${_u}" )
   done
@@ -4696,6 +4700,16 @@ _hostmaster_db_users_named() {
           return 1
           ;;
       esac
+      # the link earlier releases left under the panel's name: what it
+      # leads to is read in this loop under its own name, as a panel's
+      _h="${_a}/.drush/hostmaster.alias.drushrc.php"
+      if [ -L "${_f}" ] && [[ "${_f##*/}" != server_* ]] \
+        && [ -f "${_h}" ] && [ ! -L "${_h}" ]; then
+        _t=$(readlink -n "${_f}" 2> /dev/null; echo .)
+        case "${_t%.}" in
+          hostmaster.alias.drushrc.php|"${_h}") continue ;;
+        esac
+      fi
       if ! _t=$(_acct_read_whole_in "${_a}/.drush" "${_f##*/}"); then
         echo "unread ${_f}"
         return 1

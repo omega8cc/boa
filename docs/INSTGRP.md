@@ -163,9 +163,12 @@ The walk regroups a directory, a regular file with one link, and a regular
 file with more than one link or a FIFO whose owner is one of the account's
 identities (`oN`, `oN.ftp`, a sub-account) that is a member of the target
 group when the walk runs: that owner could make the same change itself with
-`chgrp`, so root making it grants nothing. Any other hard-linked file or
-FIFO, a socket or a device keeps its group: the account can create those,
-and a hard link may share its inode with a file the account does not own.
+`chgrp`, so root making it grants nothing.
+
+Any other hard-linked file or FIFO, a socket or a device keeps its group:
+the account can create the first three (a device node only root can make:
+`mknod` needs `CAP_MKNOD`), and a hard link may share its inode with a file
+the account does not own.
 
 `status` reports them on an `other:` line with a count and up to three
 examples; they never count as drift, and `convert` and `reclaim` log their
@@ -363,7 +366,9 @@ others. The web group closes the rest: a site's files, private files and
 settings. Until an account is converted to its own web group they are in
 the box-wide group `www-data`, which every account's PHP pools and shell
 users are members of, so any of them can read another account's uploads and
-private files. The web group `wg-oN` takes that role for one account only:
+private files.
+
+The web group `wg-oN` takes that role for one account only:
 the account's identities and its pool users are listed in it, and its web
 paths are handed to it. New account names may not begin with `wg-` nor hold
 a dot.
@@ -389,7 +394,9 @@ writer the conversion relies on carries its web-group form (`instgrp`, the
 limited-shell worker, the nightly, both site scripts, `xtrim`, `xoct`,
 `xcopy`, `xmass`, `aegir2boa-stage2`), and the account's own provision copy
 carries the web-group branch that keeps its private files closed. A box
-that is not ready refuses with exit 5 and changes nothing. While a
+that is not ready refuses with exit 5 and changes nothing.
+
+While a
 migration has the box's runners parked (`xoct` and `xcopy` from `pre-mig`
 to `post-mig`, an `xmass` cutover until it unparks them), the parked copy
 of each is the one read, as it is the copy the park puts back; a live copy
@@ -434,7 +441,9 @@ changes nothing and names its reason:
   directory lies outside the account's tree, or a site's `files` or
   `private` store outside the account's own places: converting would cut
   those sites off from the files they read, or point root's walks where no
-  store belongs. A store is the account's own only as a real directory of
+  store belongs.
+
+  A store is the account's own only as a real directory of
   the site, or as a link into the account's own `static/files/` (or its
   store on attached storage), as the site scripts take it, never into
   BOA's own folders there (`.backups`, `.backup-exports`, `.archived`); a
@@ -536,7 +545,9 @@ on its next pass (world read and directory search added, only to a file
 with one link, never in the private set). When its walk of an account runs
 out of time three passes in a row it says so, and the nightly then walks
 the account's public set whole (`instgrp reclaim`, after the site loop),
-which also moves the worker's starting point forward. When the worker
+which also moves the worker's starting point forward.
+
+When the worker
 still finishes no pass after that (a store too large for its time bound),
 the nightly repeats the walk once a week; the site loop's permissions
 pass keeps each site's files store public in between.

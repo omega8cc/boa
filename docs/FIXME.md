@@ -25,3 +25,15 @@ This full cycle is necessary because certain tasks in Ægir may patch or unpatch
 
 By following this process, you ensure that the platform and site are properly aligned, allowing future Ægir tasks to succeed.
 
+**What the web reads while a platform is locked.** The lock keeps the codebase's psr/log package and four core logger files (`RfcLoggerTrait`, `LoggerChannel`, `DbLog`, `SysLog`) in the untyped form Ægir's own Drush needs. Web requests and the cache rebuild do not read those: the lock keeps stock copies at `vendor/psr/._orig_core`, beside the genuine psr/log at `vendor/psr/._orig_log`, and each Drupal 10 or 11 site's `settings.php` loads the stock classes from them.
+
+So a module's own logger written for the typed psr/log works on a locked platform. A platform locked earlier gets the copies at its next Verify (`CORE/STOCK stock copies of the core logger files kept at ...` in the task log), and a site uses them once its `settings.php` is next written.
+
+A custom logger written against the untyped core, with a `log()` that has no `: void`, needs that return type from then on; it already failed whenever the platform was unlocked.
+
+### 2. **A site's hash salt**
+
+A Drupal 8 or newer site, and a Backdrop site, keeps its `hash_salt` across Verify, Backup, Restore, Migrate and Rename, so one-time login links, open forms and tokens encrypted with the salt survive those tasks. A clone gets a salt of its own.
+
+To give a site a new salt on purpose, delete the `$settings['hash_salt']` line from its `settings.php` and run Verify. Every outstanding link, form and token of that site is void from then on.
+
