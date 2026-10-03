@@ -1347,6 +1347,14 @@
 
 @=> Important Fixes
 
+    * A Restore, Clone or Migrate no longer unpacks a site archive
+      outside the directory it made. A link left at the unpack target,
+      dangling or not, is refused before anything is written, and the
+      archive is unpacked only once the task has made that directory
+      and entered it: a dangling link there used to send the site's
+      files into the platform root. The task's messages name the
+      directory again instead of printing a placeholder.
+
     * After an xoct move that renames the account, every server verify of
       the account on the target failed for good: the imported panel still
       named the source account as its database user, which on the target
