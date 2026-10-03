@@ -162,6 +162,62 @@ _sed_server_aliases_here() {
   done
 }
 
+# The instance user of an account $1 switched to the database broker
+# (root's control file /data/conf/<oN>_db_broker.txt): 0 when handled here,
+# 1 when the account is not switched and the user is made as before. Only
+# an account on this box's own database server, not through ProxySQL, can
+# be switched: a control file of any other is named and left alone. The
+# broker makes the user again on the rows the control file lists, with the
+# password in _ESC_PASS, and gives back its grant on each of the account's
+# databases; nothing is granted on all databases. A control file the broker
+# finds not valid leaves the account on the direct path, as provision reads
+# it, so the user is made as before. Any other failure grants nothing: the
+# new password goes on the user's rows as they are, so the logins the
+# aliases are about to name keep working, and the failure is named.
+_db_broker_rekey() {
+  local _f="/data/conf/${1}_db_broker.txt" _h _out _rc
+  [ -e "${_f}" ] || [ -L "${_f}" ] || return 1
+  _h=$(grep -s "^_THIS_DB_HOST=" "/root/.${1}.octopus.cnf" | tail -n 1 \
+    | cut -d= -f2 | tr -d "\"' ")
+  [ -n "${_h}" ] || _h="${_THIS_DB_HOST}"
+  case "${_h}" in
+    localhost|127.0.0.1|FQDN) ;;
+    *)
+      echo "ALRT: ${_f} ignored: the database broker does not serve ${1}'s database host mode ${_h}"
+      return 1
+      ;;
+  esac
+  if [ -e "/data/conf/${1}_use_proxysql.txt" ]; then
+    echo "ALRT: ${_f} ignored: ${1} goes through ProxySQL"
+    return 1
+  fi
+  if [ -x "/usr/local/bin/boa-dbctl" ]; then
+    _out=$(printf '%s\n' "${_ESC_PASS}" \
+      | /usr/local/bin/boa-dbctl rekey --account "${1}" 2>&1)
+    _rc=$?
+    if [ "${_rc}" = "0" ]; then
+      echo "INFO: ${_out##*$'\n'}"
+      return 0
+    fi
+    if [ "${_rc}" = "8" ]; then
+      echo "ALRT: ${_f} is not valid: ${1}'s tasks take the direct path, made as before"
+      return 1
+    fi
+    echo "ALRT: the database broker did not renew ${1}'s instance user: ${_out##*$'\n'}"
+  else
+    echo "ALRT: ${1} is switched to the database broker, which is not installed here"
+  fi
+  echo "ALRT: ${1}'s instance user keeps its rights and takes the new password only"
+  mysql --force --silent -u root -h"${_SQL_CONNECT}" -P"${_THIS_DB_PORT}" --protocol=tcp -u root mysql<<EOFMYSQL &> /dev/null
+ALTER USER IF EXISTS '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER IF EXISTS '${_USE_DB_USER}'@'127.0.0.1' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER IF EXISTS '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER IF EXISTS '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}' IDENTIFIED BY '${_ESC_PASS}';
+ALTER USER IF EXISTS '${_USE_DB_USER}'@'${_USE_RESOLVEIP}' IDENTIFIED BY '${_ESC_PASS}';
+EOFMYSQL
+  return 0
+}
+
 # Remove dangerous stuff from the string.
 _sanitize_string() {
   echo "$1" | sed 's/[\\\/\^\?\>\`\#\"\{\(\&\|\*]//g; s/\(['"'"'\]\)//g'
@@ -310,6 +366,18 @@ EOFMYSQL
           &> /dev/null
         wait
         mysqladmin -u root flush-privileges &> /dev/null
+        # Where the database broker keeps a baseline of the server's own
+        # logins, aegir_root on this box's own server is recorded again as
+        # it is now.
+        case "${_SQL_CONNECT}" in
+          localhost|127.0.0.1)
+            if [ -x /usr/local/bin/boa-dbctl ] && [ -d /var/lib/mysql/boa_dbreg ] \
+              && [ ! -e /root/.standby.cnf ] \
+              && ! /usr/local/bin/boa-dbctl baseline rerecord aegir_root > /dev/null 2>&1 < /dev/null; then
+              echo "ALRT: the database broker's record of aegir_root was not renewed: see boa-dbctl baseline plan"
+            fi
+            ;;
+        esac
       else
         echo "ERROR: Auto-generated password for aegir_root system user"
         echo "ERROR: did not work as expected, please try again"
@@ -360,13 +428,14 @@ LOAD MYSQL QUERY RULES TO RUNTIME;
 SAVE MYSQL QUERY RULES TO DISK;
 PROXYSQL
           fi
-          _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
-          ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
-          ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
-          ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
-          ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
-          ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
-          mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
+          if ! _db_broker_rekey "${_uname}"; then
+            _C_SQL="mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp --database=mysql -e"
+            ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_AEGIR_HOST}';" &> /dev/null
+            ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'${_USE_RESOLVEIP}';" &> /dev/null
+            ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'localhost';" &> /dev/null
+            ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'127.0.0.1';" &> /dev/null
+            ${_C_SQL} "DROP USER '${_USE_DB_USER}'@'%';" &> /dev/null
+            mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} --protocol=tcp -u root mysql<<EOFMYSQL
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'localhost';
 CREATE USER IF NOT EXISTS '${_USE_DB_USER}'@'%';
 GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'localhost' WITH GRANT OPTION;
@@ -374,6 +443,7 @@ GRANT ALL ON ${_ESC} TO '${_USE_DB_USER}'@'%' WITH GRANT OPTION;
 ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_ESC_PASS}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
+          fi
           _acct_in_real_dir "/data/disk/${_uname}/.drush" _sed_server_aliases_here \
             "s/mysql:\/\/${_uname}:.*/mysql:\/\/${_uname}:${_ENC_PASS}@${_SQL_CONNECT}',/g" \
             &> /dev/null

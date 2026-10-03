@@ -298,6 +298,7 @@ _satellite_if_add_update_backend_user_dirs_files_clean
 _satellite_letsencrypt_vhost_setup
 _satellite_log_update
 _satellite_batch_cleanup
+_satellite_db_broker_born
 _satellite_display_url_finalize
 
 

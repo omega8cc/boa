@@ -242,7 +242,9 @@ and the tool prints the Solr restart to run, keeping the quarantine map
 for the unfinished entries; and if the nginx configtest or reload fails,
 the files are back but the running configuration is still the quiesced
 one — the tool says so, returns non-zero, and `nginx -t` plus a manual
-reload are owed before the account counts as live. `restore` also returns
+reload are owed before the account counts as live.
+
+`restore` also returns
 non-zero whenever a pool, an fpm include or a Solr core is left in quarantine
 (the ALRT lines name each one).
 
@@ -256,6 +258,10 @@ The safety dumps are taken with `--set-gtid-purged=OFF` when the local
 `mysqldump` takes that option, so they carry no GTID state of this box and
 load back here or on the target that replicated from it (a dump carrying
 that state fails there: "ERROR 3546" on 8.x, "ERROR 1840" on 5.7).
+
+They carry each database's stored routines and events with its tables and
+triggers: once stage B drops a database, its dump is the only copy this box
+keeps.
 
 Retiring the proxy entirely is out of scope — that is the `boa cleanup`
 sequence, and mixing the two machineries is how customer data is lost.
