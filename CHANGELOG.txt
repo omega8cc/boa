@@ -1347,6 +1347,19 @@
 
 @=> Important Fixes
 
+    * Backup, Restore, Clone, Migrate, Import, Enable, Disable, Login
+      reset and the platform Lock and Unlock no longer fail at once on a
+      Drupal 10 or newer platform whose local Drush was left unlocked:
+      Ægir's Drush loaded the platform's own console classes before its
+      own and stopped with "getFirstArgument() must be compatible" before
+      any step of the task ran, so the lock they all ask for was never
+      reached. They now start the way Install and Verify do and load the
+      platform afterwards, and each one that runs the site locks the
+      platform first, Login reset included. A Clone or Migrate with
+      FastTrack.info onto an unlocked platform no longer fails in its
+      Deploy, and a Delete on an unlocked platform locks it before the
+      site's database goes, so it no longer ends with a warning.
+
     * A Drupal 10 or 11 platform whose core came with some of its four
       core logger files already de-typed by an older patch (the Drupal
       10.0.11 catalogue build ships three of them so) can be unlocked
@@ -1390,8 +1403,7 @@
       not the patch marks alone: a platform with the patches on but the
       genuine psr/log back in place, or one still owing the web its stock
       logger copies, made those tasks bootstrap the site on a tree Drush 8
-      cannot run. A platform whose lock directories are open still fails
-      those tasks before any of this runs (Verify alone locks it first).
+      cannot run.
 
     * A request for an existing static file with a method other than GET
       or HEAD on a Drupal 8 or newer site got a 500: the modern location
