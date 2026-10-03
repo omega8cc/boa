@@ -1347,6 +1347,36 @@
 
 @=> Important Fixes
 
+    * A Drupal 10 or 11 platform whose core came with some of its four
+      core logger files already de-typed by an older patch (the Drupal
+      10.0.11 catalogue build ships three of them so) can be unlocked
+      again. The lock read one file to decide the whole patch was on and
+      never applied the fourth change, and the unlock refused to reverse
+      a partly applied patch, so every Restore of a site there failed in
+      its update window. The lock and unlock now read and change each of
+      the four files on its own, and the next Verify finishes such a
+      platform and keeps its stock logger copies for the web.
+
+    * A move given up before its proxy step no longer leaves the
+      account's sites on the source behind export's 503 until someone
+      removes the gate file by hand: 'xoct abandon o1' lifts it there
+      and purges the cached 503 answers. It refuses once the account is
+      proxied, or after a proxy that failed part way.
+
+    * After an xoct move that renames the account, a site on a BOA-built
+      platform kept its files and private links naming the source
+      account's store, so every verify of the site failed and it answered
+      500. The transfer now re-points those links as it does the ones
+      under static/.
+
+    * A Restore, Clone or Migrate no longer unpacks a site archive
+      outside the directory it made. A link left at the unpack target,
+      dangling or not, is refused before anything is written, and the
+      archive is unpacked only once the task has made that directory
+      and entered it: a dangling link there used to send the site's
+      files into the platform root. The task's messages name the
+      directory again instead of printing a placeholder.
+
     * After an xoct move that renames the account, every server verify of
       the account on the target failed for good: the imported panel still
       named the source account as its database user, which on the target
