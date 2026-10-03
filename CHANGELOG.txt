@@ -1419,6 +1419,12 @@
       500. The transfer now re-points those links as it does the ones
       under static/.
 
+    * After an xoct move that renames the account, a Let's Encrypt
+      site's certificate links (in config/ssl.d, config/server_master/
+      ssl.d and tools/le) and the client site links still named the
+      source account's tree, and a verify keeps a certificate link that
+      is already there. The transfer now re-points them too.
+
     * A Restore, Clone or Migrate no longer unpacks a site archive
       outside the directory it made. A link left at the unpack target,
       dangling or not, is refused before anything is written, and the
