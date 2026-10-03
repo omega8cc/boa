@@ -1010,8 +1010,10 @@
       decoupled front end, a mobile app or an API consumer that signs in
       with a token is not shed with the visitors during a flood, the same
       exemption Grav sites already had. The cap's zone keeps its name and
-      the cookie-test map stays declared; the header test is two new maps
-      in the same http-scope file.
+      its key variable, which is now composed from two new maps in the
+      same http-scope file, the cookie test and the header test; nginx
+      refuses to reload a live zone bound to a different key variable, so
+      the key itself never changes.
 
     * A Drupal 11 site Install finishes about ten seconds sooner: it no
       longer pauses for five seconds after preparing the platform's own

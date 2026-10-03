@@ -1825,7 +1825,7 @@ count keeps render time inside that horizon, which is what keeps the front cache
 
 ```nginx
 # /etc/nginx/conf.d/limit-req-zones-boa.conf — BOA-written, http scope
-map $http_cookie $boa_perhost_anon_key {
+map $http_cookie $boa_perhost_cookie_key {
   default                          $host;
   ~SESS[[:alnum:]]+=[[:graph:]]    "";
 }
@@ -1833,11 +1833,11 @@ map $http_authorization $boa_perhost_has_auth {
   default  1;
   ""       0;
 }
-map $boa_perhost_has_auth $boa_perhost_token_key {
+map $boa_perhost_has_auth $boa_perhost_anon_key {
   default  "";
-  0        $boa_perhost_anon_key;
+  0        $boa_perhost_cookie_key;
 }
-limit_conn_zone $boa_perhost_token_key zone=boa_perhost_anon:10m;
+limit_conn_zone $boa_perhost_anon_key zone=boa_perhost_anon:10m;
 
 # Inc/vhost_include.tpl.php — rendered ONLY when that file declares the zone
 location = /index.php {
@@ -1858,13 +1858,18 @@ location = /index.php {
   anonymous request.
 - **Token clients are exempt too.** A client that authenticates per request — a decoupled
   front end, a mobile app, an API consumer — carries no session cookie, so the cookie test
-  alone would shed it with the visitors. `$boa_perhost_token_key` is the cookie-derived key
-  for a request without an `Authorization` header and EMPTY for one that carries it, the
-  same exemption the Grav zone has had from the start.
+  alone would shed it with the visitors. The zone key `$boa_perhost_anon_key` is composed: the
+  cookie test's result (`$boa_perhost_cookie_key`) for a request without an `Authorization`
+  header and EMPTY for one that carries it, the same exemption the Grav zone has had from the
+  start.
 - **A faked header buys nothing new.** A flood that adds one gains only what a fake session
   cookie already gave it: a pass on this one cap, and nothing from the per-address and
-  crawler controls. `$boa_perhost_anon_key` stays declared and the zone keeps its name, so
-  vhosts rendered either way keep loading across a staggered upgrade.
+  crawler controls.
+- **The zone's key variable never changes.** nginx refuses to reload a configuration that
+  binds a live zone to a different key variable, keeps the old configuration running, and
+  every later reload fails the same way until a full restart, while `nginx -t` passes
+  because the test never sees the running zone. New tests go into new variables the key is
+  composed from, never into a new key for the zone.
 - **It counts requests in the location, not FPM occupancy.** Cache hits and slow readers
   occupy a slot too. Size it as a ceiling on concurrency, not on renders.
 - **A new URL's first render.** Requests waiting on the front cache's lock count too
