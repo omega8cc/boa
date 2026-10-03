@@ -1376,10 +1376,20 @@
       purges the cached 503 answers, takes the control panel out of
       maintenance mode, and clears the export latch and the panel dump,
       so proxy refuses the account until a fresh export takes a new
-      one. It refuses while any of the account's sites answer, or may
+      one.
+
+      It refuses while any of the account's sites answer, or may
       answer, from the target: once it is proxied, after a conversion
       xmass marked failed, or while a vhost of it carries a proxy
       template, HTTPS included; and while an xmass cutover holds the box.
+
+    * xoct proxy refuses an account that is not proxied yet and has no
+      export latch (log/exported.pid, or --force over a
+      log/export_failed.pid) before it writes anything. One whose only
+      site is its control panel was stamped proxied, its gate released
+      and its client told the panel moved, without any export; one with
+      sites had its policy records and the target's trust written before
+      every site refused.
 
     * After an xoct move that renames the account, a site on a BOA-built
       platform kept its files and private links naming the source
