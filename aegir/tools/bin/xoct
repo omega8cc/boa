@@ -1381,9 +1381,14 @@ _xoct_runner_wait_opt() {
   printf ' --runner-wait=%s' "${_w}"
 }
 
+### Ends with drush's own status (the wait after it used to end every call
+### 0), so a caller can tell a panel command that failed.
 _run_drush8_hmr_cmd() {
+  local _rc
   su -s /bin/bash - ${_THIS_HM_USER} -c "drush8 @hostmaster $1"
+  _rc=$?
   wait
+  return ${_rc}
 }
 
 _run_drush8_nosilent_cmd() {
@@ -7230,6 +7235,18 @@ _migrate_init() {
       echo "_USR ${_oct} is not eligible for migration: already proxied"
       echo "INFO: to repoint or repair this account's proxy, re-run with --repair"
       exit 1
+    elif [ "${_cmd}" = "proxy" ] \
+      && [ ! -e "${_USR}/log/proxied.pid" ] \
+      && [ ! -e "${_USR}/log/exported.pid" ] \
+      && { [ "${_XOCT_FORCE}" != "YES" ] || [ ! -e "${_USR}/log/export_failed.pid" ]; }; then
+      ### The test each site makes before its conversion, made here, before
+      ### the preflight writes anything: an account whose only site is its
+      ### panel has no site to fail it, and was stamped proxied without any
+      ### export (after an abandon cleared the latch, for one).
+      echo "_USR ${_oct} is not eligible for migration: not exported"
+      echo "INFO: proxy follows this account's export (log/exported.pid, or --force after one that"
+      echo "INFO: left log/export_failed.pid): run 'xoct export${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}' first"
+      exit 1
     elif [ "${_XOCT_START_VERB}" = "YES" ] && [ "${_XOCT_EMAIL_CLASS}" = "OUR" ] \
       && [ "${_XOCT_BOX_MOVE}" != "YES" ]; then
       echo "_USR ${_oct} is not eligible for migration: internal only"
@@ -8615,22 +8632,27 @@ _xoct_sql_maint_release() {
 ### answer, from the target through proxy vhosts, which lifting the gate
 ### would not undo: once it is proxied (log/proxied.pid), after a conversion
 ### xmass marked failed (log/proxy-failed.pid), and whenever a vhost of the
-### account carries the proxy template on disk, since an xoct proxy that
-### fails or is killed part way stamps nothing. Refused too while an xmass
-### cutover holds the box, running or parked past its freeze: its gate is on
-### every account, and a lifted one takes writes the promoted target never
-### gets. The export latch (log/exported.pid) goes with the gate: proxy asks
-### for nothing else, and a proxy after an abandon would point the account at
-### the target's stale copy. static/control, vhost.d and log are oN's: each
-### is read and changed inside the real directory, never through a link put
-### there.
+### account carries either proxy template on disk (the plain HTTP one, or the
+### HTTPS one proxy writes beside it as https.<site>), since an xoct proxy
+### that fails or is killed part way stamps nothing. Refused too while an
+### xmass cutover holds the box, running or parked past its freeze: its gate
+### is, or is about to be, on every account, and a lifted one takes writes the
+### promoted target never gets. What export left goes with the gate: the
+### export latch (log/exported.pid; proxy asks for nothing else, and a proxy
+### after an abandon would point the account at the target's stale copy), the
+### panel dump a fresh export would otherwise reuse (src/*.sql), and the
+### panel's maintenance mode. static/control, vhost.d, log and src are oN's:
+### each is read and changed inside the real directory, never through a link
+### put there.
 _xoct_abandon() {
   local _U="/data/disk/${_oct}" _p _had=NO _held _conv
   if _held="$(_xoct_xmass_cutover_holds)"; then
-    echo "ERROR: ${_held} holds this box: its 503 gate is on every account, and"
-    echo "ERROR: lifting ${_oct}'s would let this box take writes the promoted target never"
-    echo "ERROR: gets; resume the cutover, or follow the restore it printed ('xmass status"
-    echo "ERROR: <target-ip>' shows the phase)"
+    echo "ERROR: ${_held} holds this box: its 503 gate is, or is about to be, on every"
+    echo "ERROR: account, and lifting ${_oct}'s would let this box take writes the promoted"
+    echo "ERROR: target never gets; resume the cutover, or follow the restore it printed"
+    echo "ERROR: ('xmass status <target-ip>' shows the phase); a cutover given up before its"
+    echo "ERROR: target was promoted (its log never printed 'Target MySQL is now standalone:"
+    echo "ERROR: OK') is closed with 'xmass reset-phase syncing' once that restore is followed"
     exit 1
   fi
   for _p in proxied proxy-failed; do
@@ -8643,11 +8665,12 @@ _xoct_abandon() {
   done
   _conv="$(_xoct_in_real_dir "${_U}/config/server_master/nginx/vhost.d" _xoct_proxy_vhosts_here)"
   if [ -n "${_conv}" ]; then
-    echo "ERROR: ${_oct} has sites converted to the proxy on this box:${_conv}"
-    echo "ERROR: they answer from the target at the next nginx reload; finish the proxy step"
-    echo "ERROR: (xoct proxy ${_oct} <target-ip> [<o2>] --repair${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}), or put each saved"
-    echo "ERROR: .<site> (and .https.<site>) back in vhost.d, check nginx -t, reload nginx,"
-    echo "ERROR: then run abandon again"
+    echo "ERROR: ${_oct} has proxy vhosts in vhost.d on this box:${_conv}"
+    echo "ERROR: their sites answer, or will at the next nginx reload, from the target;"
+    echo "ERROR: finish the proxy step (xoct proxy ${_oct} <target-ip> [<o2>] --repair${_XOCT_ADMAIL:+ admail=${_XOCT_ADMAIL}}),"
+    echo "ERROR: or undo it as proxy's own revert does: put each saved .<site> back, remove"
+    echo "ERROR: each https.<site> the proxy wrote and put a saved .https.<site> back in its"
+    echo "ERROR: place, check nginx -t, reload nginx, then run abandon again"
     exit 1
   fi
   _xoct_in_real_dir "${_U}/static/control" test -f ./http-off.pid && _had=YES
@@ -8656,19 +8679,19 @@ _xoct_abandon() {
       echo "ERROR: ${_U}/static/control is not this account's own directory: nothing lifted"
       exit 1
     fi
-    _xoct_abandon_latch
+    _xoct_abandon_leftovers
     echo "INFO: no 503 gate on ${_oct} here (no static/control): nothing to lift"
     return 0
   fi
   if [ "${_had}" != "YES" ]; then
-    _xoct_abandon_latch
+    _xoct_abandon_leftovers
     echo "INFO: no 503 gate on ${_oct} here (static/control/http-off.pid): nothing to lift"
     return 0
   fi
   if [ -d "/var/lib/nginx/speed" ]; then
     find /var/lib/nginx/speed -type f -delete &> /dev/null
   fi
-  _xoct_abandon_latch
+  _xoct_abandon_leftovers
   echo "INFO: 503 gate lifted for ${_oct}: its sites serve from this box again"
   echo "INFO: an account a target already imported stays live there (its sites, cron and"
   echo "INFO: backups, and its client mail unless a test run holds it): retire it there"
@@ -8678,6 +8701,14 @@ _xoct_abandon() {
   if [ -e /run/boa_migration_park.pid ]; then
     echo "INFO: this box's runners stay parked until 'xoct post-mig <fqdn>' ends the park"
   fi
+}
+### What a move given up leaves behind on this box, cleared on a lift and on
+### the nothing-to-lift paths alike: the export latch, the panel dump and the
+### panel's maintenance mode.
+_xoct_abandon_leftovers() {
+  _xoct_abandon_latch
+  _xoct_abandon_dumps
+  _xoct_abandon_panel
 }
 ### The export latch of an abandoned move: with no gate and no proxy vhost
 ### left, a latch still there means the export no longer describes this
@@ -8692,15 +8723,60 @@ _xoct_abandon_latch() {
     echo "ALRT: ${_oct}'s log/exported.pid could not be cleared: proxy would still accept it"
   fi
 }
-### The names of the vhosts in the current (real) directory that carry the
-### proxy template's mark (the one proxy reads itself): the sites an xoct
-### proxy converted, whatever became of its run. The saved .<site> copies are
-### dot files and never listed; a link is never read.
+### The panel dump of an abandoned move (src/*.sql; prev_hostmaster.sql is
+### the only dump export writes there). Export takes a new one only when none
+### is there, so a fresh export would otherwise ship the panel as it was at
+### the given-up one. Removed inside the real src/, as reset-state does; said
+### once, when there was one.
+_xoct_abandon_dumps() {
+  local _S="/data/disk/${_oct}/src"
+  _xoct_in_real_dir "${_S}" _xoct_sql_dumps_here || return 0
+  if _xoct_in_real_dir "${_S}" _xoct_rm_sql_dumps_here \
+    && ! _xoct_in_real_dir "${_S}" _xoct_sql_dumps_here; then
+    echo "INFO: the export's panel dump cleared (src/*.sql): a fresh export takes a new one"
+  else
+    echo "ALRT: ${_oct}'s src/*.sql could not be cleared: a fresh export would reuse the panel dump"
+  fi
+}
+### Whether the current (pinned) src/ directory holds a dump: the glob
+### expands here, as in _xoct_rm_sql_dumps_here.
+_xoct_sql_dumps_here() {
+  local _f
+  for _f in ./*.sql; do
+    if [ -e "${_f}" ] || [ -L "${_f}" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+### Export put the account's control panel into Drupal's maintenance mode
+### (proxy keeps it there, the canary of a moved account): a move given up
+### takes it out, and flushes the panel's page cache as export did, or the
+### cached maintenance page stays in front. abandon runs without
+### _migrate_init, so the panel's user is set here, as go-live sets it.
+_xoct_abandon_panel() {
+  _THIS_HM_USER="${_oct}"
+  if _run_drush8_hmr_cmd "variable-set --always-set maintenance_mode 0" &> /dev/null; then
+    _run_drush8_hmr_cmd "cache-clear all" &> /dev/null
+    echo "INFO: ${_oct}'s control panel is out of maintenance mode"
+  else
+    echo "ALRT: ${_oct}'s control panel could not be taken out of maintenance mode; as ${_oct}:"
+    echo "ALRT:   drush8 @hostmaster variable-set --always-set maintenance_mode 0"
+    echo "ALRT:   drush8 @hostmaster cache-clear all"
+  fi
+}
+### The names of the vhosts in the current (real) directory that carry a
+### proxy template's mark, read as proxy reads them itself: the plain HTTP
+### one (<site>) and the HTTPS one proxy writes beside it (https.<site>).
+### These are the sites an xoct proxy converted, whatever became of its run.
+### The saved .<site> and .https.<site> copies are dot files and never
+### listed; a link is never read.
 _xoct_proxy_vhosts_here() {
   local _f
   for _f in ./*; do
     [ -f "${_f}" ] && [ ! -L "${_f}" ] || continue
-    _xoct_read_here "${_f#./}" | grep -q -- "Plain HTTP proxy (START)" || continue
+    _xoct_read_here "${_f#./}" \
+      | grep -q -e "Plain HTTP proxy (START)" -e "Secure HTTPS proxy" || continue
     printf ' %s' "${_f#./}"
   done
 }
@@ -8710,9 +8786,9 @@ _xoct_proxy_vhosts_here() {
 ### neither.
 _xoct_xmass_cutover_holds() {
   local _o _c _ph
-  _o="$(tr -dc '0-9' < /run/xmass.verb.pid 2> /dev/null | head -c 12)"
+  _o="$(tr -dc '0-9' 2> /dev/null < /run/xmass.verb.pid | head -c 12)"
   if [ -n "${_o}" ] && [ -d "/proc/${_o}" ]; then
-    _c="$(tr '\0' ' ' < "/proc/${_o}/cmdline" 2> /dev/null)"
+    _c="$(tr '\0' ' ' 2> /dev/null < "/proc/${_o}/cmdline")"
     case "${_c}" in
       *xmass\ cutover*)
         echo "a running 'xmass cutover' (pid ${_o})"
