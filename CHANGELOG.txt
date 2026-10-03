@@ -100,6 +100,11 @@
       keeps it with the new password, and when the stored objects cannot
       be read no login is dropped.
 
+    * The root database helper's leftovers list now names a purged
+      account's site database users its registry proves, for an
+      operator's drop, and its box-wide check reads their grants and
+      stored objects in that account's databases as that account's.
+
     * The limited shell template and the ImageMagick policy no longer
       stay a release behind on a box whose mirror lagged at the publish.
 

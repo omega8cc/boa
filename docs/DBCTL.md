@@ -137,7 +137,10 @@ boa-dbctl leftovers drop --sha <the list's hash>
 
 - A: the database users a purged account left that its records prove (the
   account's own name; its last panel user, as the home its purge parked names
-  it);
+  it; its site users, as its registry entries name their databases, since a
+  site's user is named as its database: a user that no other account's record
+  names, that is none of the server's own logins, and whose every grant is on
+  that account's databases);
 - B: the ones that only have the shape of a purged account's name;
 - C: the stored objects in kept databases that a user of A defines (a drop
   leaves them without a definer).
@@ -146,6 +149,10 @@ boa-dbctl leftovers drop --sha <the list's hash>
 the one whose hash it is given. Databases are never touched. On the active box
 of a standing pair, an account the standby still carries is never in section
 A.
+
+The box-wide check reads a purged account's site user the same way: its grants
+and stored objects in that account's databases belong to it, and the login
+itself waits for a ruling (drop it here, or accept it into the baseline).
 
 ## `scope`: switching an account
 
@@ -231,7 +238,7 @@ privilege.
   account in the registry.
 - `boa cleanup purge` parks the account's control file and marks its registry
   entries purged: no other account can take a name whose database is still
-  there.
+  there. Its site users stay with its databases; `leftovers` lists them.
 - The nightly run calls `boa-dbctl witness` where an account is switched or the
   registry is in use. It raises an `ALRT` line for a switched account whose
   instance or panel users hold a global privilege, a database of it without its

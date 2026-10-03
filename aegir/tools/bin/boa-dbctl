@@ -3538,6 +3538,70 @@ SELECT /*q:alroles*/ CONCAT_WS('|', IF(@@GLOBAL.mandatory_roles = '', 0, 1), (SE
     _AL_R4="${_SQL_OUT}"
     [[ "${_AL_R4}" =~ ^[01]\|[0-9]+\|[0-9a-f]{64}$ ]] || _die 7 "sql-failed alroles"
   fi
+  _al_psites
+  return 0
+}
+
+# A purged account's site users. Its databases stay, and so do their users
+# and grants; the site records that named those users went with its home
+# (a site's drushrc.php is not in what the purge parks), but the registry
+# keeps its entries, and provision names a site's database user as its
+# database. A login named as a database of a purged account's entries is
+# that account's when no record of a live account, of the master or of
+# another purged account names it, it is none of the server's own names, and
+# every grant row it holds is on that account's databases (or on a name with
+# no schema, which MySQL keeps after a drop), judged as the box-wide check
+# judges a grant row. It is then that account's user (PURGED): its grant
+# rows and objects there belong to it, the login itself waits for a ruling,
+# and leftovers lists it in section A. Never by the shape of a name.
+_al_psites() {
+  local _ux _hx _u _h _g _lk _sec _a _st _rest _seen=$'\n' _save _ok _n
+  local _t _gu _gh _up _hp _d _dp _f _go
+  [[ "${_AL_REG}" != $'\n' ]] || return 0
+  while IFS='|' read -r _ux _hx _u _h _g _lk _sec; do
+    [[ -n "${_g}" && "${_u}" != "?" ]] || continue
+    [[ "${_seen}" == *$'\n'"${_u}"$'\n'* ]] && continue
+    _seen="${_seen}${_u}"$'\n'
+    case "${_u}" in
+      root|aegir|aegir_root|xmass_repl|debian-sys-maint|mysql.*|percona.*) continue ;;
+    esac
+    _rk "${_u}"
+    [[ "${_AL_REG}" == *$'\n'"${_RK} "* ]] || continue
+    _rest="${_AL_REG#*$'\n'"${_RK} "}"
+    _rest="${_rest%%$'\n'*}"
+    _a="${_rest%% *}"
+    _st="${_rest#* }"
+    [[ "${_AL_PURGED}" == *" ${_a} "* ]] || continue
+    case "${_st}" in
+      created|purged) ;;
+      *) continue ;;
+    esac
+    _u_claim "${_u}"
+    case "${_UC_K}:${_UC_O}" in
+      :|PURGEDGEN:"${_a}") ;;
+      *) continue ;;
+    esac
+    # the account's for a moment: kept only when each grant row of the
+    # login (any host) then belongs to that account
+    _save="${_AL_URAW}"
+    _AL_URAW="${_AL_URAW}${_u} 1 PURGED:${_a}"$'\n'
+    _PO_FOR=""
+    _ok="YES"
+    _n=0
+    while IFS='|' read -r _t _gu _gh _up _hp _d _dp _f _go; do
+      [[ -n "${_t}" && "${_up}" == "${_u}" ]] || continue
+      _n=$(( _n + 1 ))
+      _grant_verdict "${_t}" "${_up}" "${_hp}" "${_gu}@${_gh}" "${_dp}" "${_f}" "${_go}"
+      if [[ "${_GV}" != "ok" ]]; then
+        _ok="NO"
+        break
+      fi
+    done <<< "${_AL_GR}"
+    if [[ "${_ok}" != "YES" || "${_n}" -eq 0 ]]; then
+      _AL_URAW="${_save}"
+    fi
+    _PO_FOR=""
+  done <<< "${_AL_PAIRS}"
   return 0
 }
 
@@ -5101,8 +5165,9 @@ _v_scope() {
 
 # leftovers: the database users purged accounts left behind.
 #   A  proven from root's records, droppable: a purged account's instance
-#      user (the account's own name), and its last panel user as its
-#      parked home names it
+#      user (the account's own name), its last panel user as its parked
+#      home names it, and its site users as its registry entries name
+#      their databases (_al_psites)
 #   B  never dropped here: a name that only has the shape of a purged
 #      account's panel user, and a purged account the pair's standby still
 #      carries
@@ -5151,6 +5216,7 @@ _leftovers_build() {
     _zombie_panel "${_p}" || continue
     _u_claim "${_ZP}"
     case "${_UC_K}:${_UC_O}" in
+      PURGED:"${_p}") _zp="${_zp}${_ZP} ${_p}"$'\n' ;;
       :|PURGEDGEN:"${_p}") _zp="${_zp}${_ZP} ${_p}"$'\n' ;;
     esac
   done
@@ -5167,9 +5233,18 @@ _leftovers_build() {
       _o="${_o%%$'\n'*}"
     else
       _u_claim "${_u}"
-      [[ "${_UC_K}" == "PURGEDGEN" ]] || continue
-      _LO_B="${_LO_B}B ${_u}@${_h} account=${_UC_O} global=${_g} only the shape of its panel user's name"$'\n'
-      continue
+      case "${_UC_K}" in
+        PURGED)
+          # a site user its account's registry entries prove (_al_psites)
+          _k="site"
+          _o="${_UC_O}"
+          ;;
+        PURGEDGEN)
+          _LO_B="${_LO_B}B ${_u}@${_h} account=${_UC_O} global=${_g} only the shape of its panel user's name"$'\n'
+          continue
+          ;;
+        *) continue ;;
+      esac
     fi
     if [[ "${_peerok}" != "YES" ]]; then
       _LO_B="${_LO_B}B ${_u}@${_h} account=${_o} global=${_g} the standby ${_PAIR_IP} could not be read"$'\n'
