@@ -242,7 +242,9 @@ and the tool prints the Solr restart to run, keeping the quarantine map
 for the unfinished entries; and if the nginx configtest or reload fails,
 the files are back but the running configuration is still the quiesced
 one — the tool says so, returns non-zero, and `nginx -t` plus a manual
-reload are owed before the account counts as live. `restore` also returns
+reload are owed before the account counts as live.
+
+`restore` also returns
 non-zero whenever a pool, an fpm include or a Solr core is left in quarantine
 (the ALRT lines name each one).
 
