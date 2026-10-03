@@ -50,6 +50,13 @@
 
 @=> Security
 
+    * Classic Drush 8.5.12: Ægir's backend tasks no longer load the
+      command classes a platform carries in its own drush/Commands
+      directories (beside the docroot, in it, or under sites/all/drush);
+      the extension filter that keeps a platform's command files out of
+      backend tasks now covers that location too. Drush run by the
+      account's own shell users still loads them.
+
     * A site Verify, install or deploy no longer makes directories or
       changes modes or groups through a link at the site dir, at sites/,
       or at the site's modules, themes, libraries or vendor, nor through
