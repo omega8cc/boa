@@ -366,6 +366,18 @@ EOFMYSQL
           &> /dev/null
         wait
         mysqladmin -u root flush-privileges &> /dev/null
+        # Where the database broker keeps a baseline of the server's own
+        # logins, aegir_root on this box's own server is recorded again as
+        # it is now.
+        case "${_SQL_CONNECT}" in
+          localhost|127.0.0.1)
+            if [ -x /usr/local/bin/boa-dbctl ] && [ -d /var/lib/mysql/boa_dbreg ] \
+              && [ ! -e /root/.standby.cnf ] \
+              && ! /usr/local/bin/boa-dbctl baseline rerecord aegir_root > /dev/null 2>&1 < /dev/null; then
+              echo "ALRT: the database broker's record of aegir_root was not renewed: see boa-dbctl baseline plan"
+            fi
+            ;;
+        esac
       else
         echo "ERROR: Auto-generated password for aegir_root system user"
         echo "ERROR: did not work as expected, please try again"

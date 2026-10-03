@@ -9816,6 +9816,13 @@ _xmass_promote_panels_here() {
     _alrt "${_hName}: the control panel of${_bad} could not be rewired (above): repair it before any"
     _alrt "  xmass or xoct run from this box (pre-mig refuses an incoherent panel)"
   fi
+  # Where the database broker keeps a baseline of the server's own logins,
+  # the master panel's login the rewire gave a new password is recorded
+  # again.
+  if [ -x /usr/local/bin/boa-dbctl ] && [ -d /var/lib/mysql/boa_dbreg ] \
+    && ! /usr/local/bin/boa-dbctl baseline rerecord master-panel > /dev/null 2>&1 < /dev/null; then
+    _alrt "${_hName}: the database broker's record of the master panel's login was not renewed: see boa-dbctl baseline plan"
+  fi
   return 0
 }
 
@@ -13979,6 +13986,13 @@ for _s in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     mv -f "/var/xdrago/.${_s}.off" "/var/xdrago/${_s}"
   fi
 done
+# Where the database broker keeps a baseline of the server's own logins,
+# the master panel's login, which the panel rewire gave a new password, is
+# recorded again now that the box is no standby.
+if [ -x /usr/local/bin/boa-dbctl ] && [ -d /var/lib/mysql/boa_dbreg ] \
+  && ! /usr/local/bin/boa-dbctl baseline rerecord master-panel > /dev/null 2>&1 < /dev/null; then
+  echo "ALRT: the database broker's record of the master panel's login was not renewed: see boa-dbctl baseline plan"
+fi
 REMOTE
   # Verify the removal actually landed. This ssh is all that stands between
   # a cutover that reports success and a promoted production box that keeps

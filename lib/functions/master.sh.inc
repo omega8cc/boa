@@ -427,6 +427,9 @@ ALTER USER '${_ADBU}'@'%' IDENTIFIED BY '${_ESC_PASS}';
 EOFMYSQL
   fi
   mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
+  case "${_SQL_CONNECT}" in
+    localhost|127.0.0.1) _dbctl_rerecord aegir_root ;;
+  esac
 }
 
 #
@@ -647,6 +650,9 @@ ALTER USER '${_USE_DB_USER}'@'localhost' IDENTIFIED BY '${_THIS_HM_DBPD}';
 ALTER USER '${_USE_DB_USER}'@'%' IDENTIFIED BY '${_THIS_HM_DBPD}';
 EOFMYSQL
     _hostmaster_oldhost_dbuser_drop
+    case "${_SQL_CONNECT}" in
+      localhost|127.0.0.1) _dbctl_rerecord master-panel ;;
+    esac
   fi
   mysql -u root -e "FLUSH NO_WRITE_TO_BINLOG PRIVILEGES" &> /dev/null
 }
