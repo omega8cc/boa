@@ -206,12 +206,30 @@ writes for the export window; the proxy step lifts it.
 
 A move given up before the proxy step leaves the account on that 503. Lift it
 on the source with `xoct abandon o1`: the sites serve from the source again,
-and the speed cache is purged of the 503 answers. It is refused once the
-account is proxied (`log/proxied.pid`) or after a proxy that failed part way
-(`log/proxy-failed.pid`), where the sites answer, or may answer, from the
-target: repair or finish the proxy step instead. A copy a target already
-imported does not follow the source; run `xoct reset-state o1` before a fresh
-move.
+the speed cache is purged of the 503 answers, and the export latch
+(`log/exported.pid`) goes with the gate, so `proxy` refuses the account until a
+fresh export.
+
+It is refused while the sites answer, or may answer, from the target through
+proxy vhosts: once the account is proxied (`log/proxied.pid`), after a
+conversion xmass marked failed (`log/proxy-failed.pid`), and whenever a vhost of
+the account carries the proxy template, since an xoct `proxy` that fails or is
+killed part way stamps nothing. Finish the proxy step instead
+(`xoct proxy ... --repair`), or put each saved `.<site>` (and `.https.<site>`)
+back in `vhost.d`, check `nginx -t`, reload nginx, and abandon then.
+
+It is refused too while an xmass cutover holds the box, running or parked past
+its freeze: resume the cutover, or follow the restore it printed.
+
+The account a target already imported stays live there, with its sites, cron
+and backups, and its client mail unless a test run holds it. Retire it there
+(its `log/CANCELLED`, then `boa cleanup purge <o2>`) before a fresh move to
+that box, or the import there refuses it. A test run stays open, and its
+`go-live` releases the target's mail hold to that copy, so `go-live` comes only
+after the copy is retired.
+
+Run `xoct reset-state o1` here before a fresh move. This box's runners stay
+parked until `xoct post-mig` ends the park (see the park above).
 
 An older version of this runbook appended `config_readonly` / `site_readonly`
 to `/data/conf/global/global-extra.inc`. Do not do that: the file is box-wide,
@@ -956,8 +974,8 @@ xoct proxy o1 target-ip o2
 - The account's path references (`/data/disk/o1`, `/home/o1.ftp` and the
   FPM `$user_socket` token) in its Drush aliases and its nginx and `ssl.d`
   config are rewritten to `o2` automatically during transfer, and each
-  `static/` link naming the source tree is made again pointing at `o2`, by
-  the link's own owner (root's by root); a link its owner cannot make
+  `static/` and `distro/` link naming the source tree is made again pointing
+  at `o2`, by the link's own owner (root's by root); a link its owner cannot make
   there, or one in the root group that root does not own, keeps its old
   target and is named in an `ALRT` line
 - What the source account's identities owned is handed to `o2` and
@@ -1039,9 +1057,10 @@ ls -ld /data/disk/o1/static/files
 # contents must be present (real files, never an empty/dangling target)
 ls -A /data/disk/o1/static/files/ | head
 
-# site-level files/private remain symlinks either way
-find /data/disk/o1/static/platforms -path '*/sites/*/files'   -type l | head
-find /data/disk/o1/static/platforms -path '*/sites/*/private' -type l | head
+# site-level files/private remain symlinks either way, on tenant platforms
+# under static/ and on BOA-built ones under distro/
+find /data/disk/o1/static/platforms /data/disk/o1/distro -path '*/sites/*/files'   -type l | head
+find /data/disk/o1/static/platforms /data/disk/o1/distro -path '*/sites/*/private' -type l | head
 ```
 
 Replace `/data/disk/o1` with `/data/disk/o2` if rename mode was used.
