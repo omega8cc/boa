@@ -10096,8 +10096,8 @@ _xmass_target_silence_probe() {
       ### as stale -- so such a marker is inert: counting it made every
       ### verb wait out its whole bound on a quiet target. The same holds
       ### for a marker with no platforms.info beside it: the runner takes
-      ### none without it, so it starts no pass, and both writers of a
-      ### trigger put the list first.
+      ### none without it, so it starts no pass, and every writer of a
+      ### trigger puts the list first.
       _a=$(for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e "${_f}" ] || continue; [ -e "${_f%/*}/platforms.info" ] || continue; _n=${_f#/data/disk/}; _n=${_n%%/*}; [ ! -e "/var/xdrago/run-${_n}" ] && [ -e "/var/backups/off-run/run-${_n}" ] && continue; printf "%s " "${_n}"; done)
       _roots="aegir"
       for _d in $(find /data/disk -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
@@ -14717,8 +14717,9 @@ _xmass_report_mail_state_here() {
   done
   [ -n "${_off}" ] || return 0
   _alrt "  the upgrade notice is off for:${_off} (_SEND_UPGRADE_EMAIL=NO in /root/.<account>.octopus.cnf)."
-  _alrt "  A mirror built under admail= gets it off for every account it carries, and no go-live can"
-  _alrt "  set it back here: set it to YES for each account whose client is to get the notice (one"
+  _alrt "  A test run sets it off for every account it carries and its go-live sets it back. Once this"
+  _alrt "  box serves its clients for real and no go-live can run (a mirror built under admail=,"
+  _alrt "  promoted by hand), set it to YES for each account whose client is to get the notice (one"
   _alrt "  that had it off before keeps NO)"
 }
 
