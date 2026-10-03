@@ -5013,7 +5013,7 @@ _wg_all() {
 # ---- webstatus ------------------------------------------------------------------
 
 _wg_status() {
-  local _v _rc=0 _d="" _e _k _rb=""
+  local _v _rc=0 _d="" _e _k _rb="" _s=""
   _ACCT="${1}"
   _wg_profile "${1}"
   _wg_reset
@@ -5081,7 +5081,15 @@ _wg_status() {
       M) _msg "workers:  php${_e} mixed, web group=${_v#*:}" ;;
     esac
   done
-  _msg "alias:    ${_WM_S:-unknown}"
+  # The measurement stops before the alias on an account with no web group;
+  # the line reads it all the same and leaves the measured value as it was.
+  _s="${_WM_S}"
+  if [ -z "${_s}" ]; then
+    _wg_m_s
+    _s="${_WM_S}"
+    _WM_S=""
+  fi
+  _msg "alias:    ${_s:-unknown}"
   _msg "tops:     $( [ "${_WM_T}" = "YES" ] && echo "in ${_WP_G}" || echo "not all in ${_WP_G}" )$( [ "${_WM_RT}" = "YES" ] && echo ", www-data residue" )"
   [ -s "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" ] \
     && _msg "procs:    B, $(head -c 16 "/var/log/boa/instgrp-web.${_WP_A}.procs.txt" | tr -cd '0-9') processes still hold www-data"
