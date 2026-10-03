@@ -1005,6 +1005,14 @@
 
 @=> Improvements
 
+    * The per-vhost cap on in-flight anonymous page renders no longer
+      counts a request that carries an Authorization header, so a
+      decoupled front end, a mobile app or an API consumer that signs in
+      with a token is not shed with the visitors during a flood, the same
+      exemption Grav sites already had. The cap's zone keeps its name and
+      the cookie-test map stays declared; the header test is two new maps
+      in the same http-scope file.
+
     * A Drupal 11 site Install finishes about ten seconds sooner: it no
       longer pauses for five seconds after preparing the platform's own
       Drush for the installer and again after restoring it. The update
