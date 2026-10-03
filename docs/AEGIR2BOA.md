@@ -717,9 +717,13 @@ The dump carries the database's views and triggers, and its stored
 routines and events where the site's own login can read them: `--routines`
 only when no routine of the database hides its body from that login (one
 another user defines, on which `mysqldump` would stop), `--events` only
-when `SHOW EVENTS` answers, each only when the source's `mysqldump` knows
+when `SHOW EVENTS` answers and, when one of the events is enabled, the
+source runs its event scheduler (MariaDB and MySQL 5.7 leave it off by
+default, so an enabled event may never have run there, and a target that
+runs its own would start it), each only when the source's `mysqldump` knows
 the option. What is left out is named in the log, and the dump goes on
-without it.
+without it. These logins read only the source's own option files and the
+site's: a login root keeps in `~/.my.cnf` is not used.
 
 Skips honestly, per site: missing vhost or
 alias paths, multi-host DB, unparsable credentials, a 443 vhost whose
@@ -1169,8 +1173,11 @@ deliberately:
 - A MariaDB or MySQL 5.7 source makes its triggers, routines and events
   under a `sql_mode` holding `NO_AUTO_CREATE_USER` (both servers' default),
   which MySQL 8 refuses to set (ERROR 1231): the load leaves that mode out
-  of the dump's `sql_mode` lines. A load that fails drops the database it
-  had just made, so a re-run of the import lands that site again.
+  of the dump's `sql_mode` lines. A load that fails, or a dump that cannot
+  be read, drops the database it had just made, so a re-run of the import
+  lands that site again; the alert says so, or that it could not be
+  dropped. A target whose event scheduler is not on names each database
+  whose enabled events it loaded: they do not run there.
 - Idempotency and resume: every verb re-run skips what its markers say is
   done; `status`/`target-status` show exactly where a migration stands.
 - Parallel estates: locks and markers are scoped per account and site, so
