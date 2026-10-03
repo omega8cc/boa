@@ -713,6 +713,18 @@ site's DB **with the site's own credentials** from its drushrc (no root
 DB access is ever needed on the source) into `/var/aegir/src/a2b/`, and
 writes the site's manifest.
 
+The dump carries the database's views and triggers, and its stored
+routines and events where the site's own login can read them: `--routines`
+only when no routine of the database hides its body from that login (one
+another user defines, on which `mysqldump` would stop), `--events` only
+when `SHOW EVENTS` answers and, when one of the events is enabled, the
+source runs its event scheduler (MariaDB and MySQL 5.7 leave it off by
+default, so an enabled event may never have run there, and a target that
+runs its own would start it), each only when the source's `mysqldump` knows
+the option. What is left out is named in the log, and the dump goes on
+without it. These logins read only the source's own option files and the
+site's: a login root keeps in `~/.my.cnf` is not used.
+
 Skips honestly, per site: missing vhost or
 alias paths, multi-host DB, unparsable credentials, a 443 vhost whose
 cert files are missing, or insufficient dump headroom. A failed dump
@@ -1153,6 +1165,19 @@ deliberately:
   every remote action is plain root ssh + rsync. Those dumps and the panel
   dump take `--set-gtid-purged=OFF` when the source's `mysqldump` takes that
   option, so none carries the source's GTID state to the target.
+- On both routes a site's database is loaded as root, with the definer of
+  each view, trigger, stored routine and event set to the site's own user
+  (`'<db>'@'localhost'`), so each runs as the site, as after a clone. A
+  definer naming an account the target lacks would load, then fail when
+  it runs.
+- A MariaDB or MySQL 5.7 source makes its triggers, routines and events
+  under a `sql_mode` holding `NO_AUTO_CREATE_USER` (both servers' default),
+  which MySQL 8 refuses to set (ERROR 1231): the load leaves that mode out
+  of the dump's `sql_mode` lines. A load that fails, or a dump that cannot
+  be read, drops the database it had just made, so a re-run of the import
+  lands that site again; the alert says so, or that it could not be
+  dropped. A target whose event scheduler is not on names each database
+  whose enabled events it loaded: they do not run there.
 - Idempotency and resume: every verb re-run skips what its markers say is
   done; `status`/`target-status` show exactly where a migration stands.
 - Parallel estates: locks and markers are scoped per account and site, so

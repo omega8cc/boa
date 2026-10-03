@@ -124,7 +124,7 @@ For full-server migrations where Percona versions match, consider
 
 Only one state-mutating `xoct` verb runs on a box at a time: `export`,
 `create`, `import`, `pretransfer`, `transfer`, `proxy`, `proxy-retire`,
-`reset-state`, `pre-mig`, `post-mig` and `ssl-gen` all take a box-wide
+`go-live`, `reset-state`, `abandon`, `pre-mig`, `post-mig` and `ssl-gen` all take a box-wide
 owner-PID lock, and a second run refuses loudly and non-zero, naming the live
 owner's pid. `proxy-mode` stays unlocked on purpose — it writes a policy pin,
 not data, so policy can be inspected or pinned during a run. The guard is
@@ -203,6 +203,15 @@ exit
 Nothing to do by hand. `xoct export` already puts every site in the account
 behind a 503 (`static/control/http-off.pid`), which is what actually stops
 writes for the export window; the proxy step lifts it.
+
+A move given up before the proxy step leaves the account on that 503. Lift it
+on the source with `xoct abandon o1`: the sites serve from the source again,
+and the speed cache is purged of the 503 answers. It is refused once the
+account is proxied (`log/proxied.pid`) or after a proxy that failed part way
+(`log/proxy-failed.pid`), where the sites answer, or may answer, from the
+target: repair or finish the proxy step instead. A copy a target already
+imported does not follow the source; run `xoct reset-state o1` before a fresh
+move.
 
 An older version of this runbook appended `config_readonly` / `site_readonly`
 to `/data/conf/global/global-extra.inc`. Do not do that: the file is box-wide,
@@ -532,6 +541,15 @@ and cannot bootstrap otherwise.
 An unresolvable panel (zero or several
 candidates, or a repoint that matches no row) aborts the import with
 recovery steps rather than completing with a dead control panel.
+
+The imported panel names the source's login for its database server. Before
+the rename, `import` gives that row the account's own name on this box (the
+new name on a rename) and the password this box set for it
+(`.<o1>.pass.txt` in the account root, `.<o2>.pass.txt` on a rename), so
+every server verify, the rename's first, connects. When that file cannot be
+read, or its first line is not nine or more of `A-Za-z0-9+/=%@._-`, the row
+still takes the account's name, an `ALRT` says so, and the server verifies
+fail until the account's next Octopus pass sets the password.
 
 Before the rename, `import` loads every site's database and creates its
 database user (the per-site checks above), rebuilds the account's pinned
@@ -997,6 +1015,13 @@ either way, because they point at the account-relative `static/files` path, not 
 `/mnt` path. The shared archive `/data/disk/arch` (and any other legacy `/mnt`-anchored
 symlink) is handled by the same rule, so SQL dumps and cluster backups transfer
 correctly in every source/target storage combination.
+
+On a move that renames the account, the transfer re-points every link under `static/`
+and `distro/` that names the source account's tree (`/data/disk/o1/...`) at the new
+account's (`/data/disk/o2/...`), each made again by its own owner (one that cannot be
+made so is left and named in an `ALRT`): a site's `files` and `private` links, on a
+tenant platform under `static/` or a BOA-built one under `distro/`, then name the moved
+store. A link naming anything else is left as it is.
 
 > **BOA supports a single attached mount under `/mnt`.** The migration tools refuse a
 > target (or source) that has more than one.

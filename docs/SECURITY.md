@@ -65,6 +65,11 @@ BOA closes this at the Drush layer. When Drush runs **as an Ægir backend identi
 `aegir/distro/` tree) and everything on the Ægir Master are unaffected, so ordinary
 hosting tasks and all core Drush commands keep working.
 
+The same refusal covers annotated command classes (`*Commands.php`) on those paths,
+including the ones a platform carries in its own `drush/Commands/` directories
+(beside the docroot, inside it, or under `sites/all/drush`): from Drush 8.5.12 the
+backend never loads them either.
+
 **The restriction does not apply to limited-shell sessions.** When a user runs
 Drush themselves in a limited-shell login — `oN.ftp` or a platform developer login
 (`oN.<client>-dev`), the logins they are meant to use for all CLI work (see
