@@ -1007,6 +1007,13 @@ either way, because they point at the account-relative `static/files` path, not 
 symlink) is handled by the same rule, so SQL dumps and cluster backups transfer
 correctly in every source/target storage combination.
 
+On a move that renames the account, the transfer re-points every link under `static/`
+and `distro/` that names the source account's tree (`/data/disk/o1/...`) at the new
+account's (`/data/disk/o2/...`), each made again by its own owner (one that cannot be
+made so is left and named in an `ALRT`): a site's `files` and `private` links, on a
+tenant platform under `static/` or a BOA-built one under `distro/`, then name the moved
+store. A link naming anything else is left as it is.
+
 > **BOA supports a single attached mount under `/mnt`.** The migration tools refuse a
 > target (or source) that has more than one.
 
