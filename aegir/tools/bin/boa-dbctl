@@ -5173,10 +5173,11 @@ _v_census() {
     [[ "${_cut}" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T ]] || _die 7 "date-failed"
     _peaks=$'\n'$( { for _f in "${_LOGF}" "${_LOGF}".*; do
         [[ -f "${_f}" && ! -L "${_f}" ]] || continue
-        case "${_f}" in
-          *.gz) gzip -dc -- "${_f}" ;;
-          *) cat -- "${_f}" ;;
-        esac
+        if [[ "${_f}" == *.gz ]]; then
+          gzip -dc -- "${_f}"
+        else
+          cat -- "${_f}"
+        fi
       done; } 2> /dev/null | awk -v c="${_cut}" '$1 >= c {
         a = ""; n = ""
         for (i = 2; i <= NF; i++) {
