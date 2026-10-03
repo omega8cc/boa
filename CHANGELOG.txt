@@ -323,11 +323,28 @@
       cluster), and any file that cannot be read keeps every user, with
       an alert naming that file.
 
+    * That alert no longer fires for the link earlier releases left
+      under a control panel's name beside its hostmaster alias, which a
+      renamed host keeps until the limited-shell pass removes it: an
+      upgrade of such an account reported "earlier panel database users
+      kept", a Barracuda upgrade of the master on that host "earlier
+      master panel database users kept", and each completed with errors
+      on every run until then. The link names nothing of its own (the
+      alias it leads to is read under its own name), so it is passed
+      over. Any other link among the aliases still keeps every user,
+      with the alert naming it.
+
     * The nightly migration-source sweep now reads the database grant
       tables and revokes stale read grants as the account's instance
       user: since the control panel's database user holds its own
       database only, the sweep failed on its first query and left the
       grants it exists to remove in place.
+
+    * The nightly migration-source sweep now finds the sites of a platform
+      registered at its Composer project folder: it looked for each site
+      under the registered path and not under docroot/, html/ or web/, so
+      the database grants of those sites were never examined, and a read
+      grant on such a site's database could be taken away every night.
 
     * boa cleanup purge now also drops the purged account's own database
       users (the instance user and its control panel user, proven from the
@@ -1297,6 +1314,41 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * A Drupal 8 or newer site keeps its hash salt. Every Verify, Backup,
+      Restore, Clone and Migrate rewrites settings.php, and each write
+      drew a new salt, which voided the site's outstanding one-time
+      login links, open forms and CSRF tokens, image style tokens and
+      whatever a module had encrypted with it (OAuth refresh tokens).
+      The salt found in the file about to be replaced is now kept; a
+      clone still gets one of its own. To give a site a new salt on
+      purpose, remove the hash_salt line from its settings.php and run
+      Verify. A Backdrop clone gets its own salt as well, and a stray
+      hash_salt line in a comment can no longer break a Backdrop
+      settings.php.
+
+    * A logger written for the current psr/log works on a locked
+      Drupal 10 or 11 platform. The lock keeps the codebase's psr/log
+      and four core logger files in the untyped form Ægir's own Drush
+      needs, and the web read those too, so a module's own logger with
+      the typed signature, or one built on a core logger, ended every
+      request that loaded it in an empty 500. Web requests and the
+      cache rebuild now take the stock classes from copies the lock
+      keeps beside the package; a platform locked earlier gets them at
+      its next Verify. A custom logger written against the untyped
+      core (no ": void" on log()) needs the stock signature from then
+      on, as it already did during every unlock.
+
+    * The database watchdog starts the event scheduler again when MySQL
+      has ended its thread but still reports it ON. MySQL ends the
+      scheduler on an error it meets while scheduling an event, such as
+      a deadlock with a backup dump's locks, and every scheduled event
+      on the box then stopped with one error line as the only trace.
+      The watchdog checks at most once a minute, waits until a running
+      backup dump ends, leaves a standby, a database held read-only
+      (super_read_only on) and a box whose scheduler is switched off
+      alone, and writes one line to mysql.incident.log each time it
+      starts the scheduler again.
 
     * A client's own database export works again on Drupal 8 and newer
       sites: the tenant shell's Drush 8 guard on those codebases lets
