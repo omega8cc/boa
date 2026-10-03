@@ -1058,10 +1058,10 @@ own owner (one that cannot be made so is left and named in an `ALRT`).
 
 A site's `files` and `private` links, on a tenant platform under `static/` or a
 BOA-built one under `distro/`, then name the moved store. A Let's Encrypt site's
-certificate links
-(`config/ssl.d/<site>` and `config/server_master/ssl.d/<site>`, and the `openssl.*`
-links in `tools/le/certs/<site>/`) name its certificate under the new name, and so do a
-client's site links. A link naming anything else is left as it is.
+certificate links (`config/ssl.d/<site>` and `config/server_master/ssl.d/<site>`, and the
+`openssl.*` links in `tools/le/certs/<site>/`) name its certificate in the new account's tree
+(`/data/disk/o2/tools/le/certs/<site>`), and a client's site links name the site's directory
+there. A link naming anything else is left as it is.
 
 > **BOA supports a single attached mount under `/mnt`.** The migration tools refuse a
 > target (or source) that has more than one.
@@ -1083,14 +1083,16 @@ ls -A /data/disk/o1/static/files/ | head
 # under static/ and on BOA-built ones under distro/
 find /data/disk/o1/static/platforms /data/disk/o1/distro -path '*/sites/*/files'   -type l | head
 find /data/disk/o1/static/platforms /data/disk/o1/distro -path '*/sites/*/private' -type l | head
-
-# no link anywhere in the account still names the source account's tree
-# (on a renamed move; o1 is the source's name here, o2 the new one)
-find /data/disk/o2/static /data/disk/o2/distro /data/disk/o2/config \
-  /data/disk/o2/tools /data/disk/o2/clients -type l -lname '/data/disk/o1/*' | head
 ```
 
 Replace `/data/disk/o1` with `/data/disk/o2` if rename mode was used.
+
+On a renamed move, no link in the account may still name the source account's tree (`o1` the
+source's name here, `o2` the new one); this prints nothing:
+
+```sh
+find /data/disk/o2 -type l -lname '/data/disk/o1/*' | head
+```
 
 ---
 
