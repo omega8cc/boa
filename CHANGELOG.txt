@@ -1372,13 +1372,14 @@
 
     * A move given up before its proxy step no longer leaves the
       account's sites on the source behind export's 503 until someone
-      removes the gate file by hand: 'xoct abandon o1' lifts it there
-      and purges the cached 503 answers, and clears the export latch so
-      proxy refuses the account until a fresh export. It refuses while
-      any of the account's sites answer, or may answer, from the target:
-      once it is proxied, after a conversion xmass marked failed, or
-      while a vhost of it carries the proxy template; and while an xmass
-      cutover holds the box.
+      removes the gate file by hand: 'xoct abandon o1' lifts it there,
+      purges the cached 503 answers, takes the control panel out of
+      maintenance mode, and clears the export latch and the panel dump,
+      so proxy refuses the account until a fresh export takes a new
+      one. It refuses while any of the account's sites answer, or may
+      answer, from the target: once it is proxied, after a conversion
+      xmass marked failed, or while a vhost of it carries a proxy
+      template, HTTPS included; and while an xmass cutover holds the box.
 
     * After an xoct move that renames the account, a site on a BOA-built
       platform kept its files and private links naming the source
