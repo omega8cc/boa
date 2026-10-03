@@ -4576,6 +4576,67 @@ _xoct_wg_unseed() {
   return 0
 }
 
+### A moved account takes its database broker switch from its source, not
+### from the target's default for new accounts: before its install the
+### target's cnf for it says _DB_BROKER_BORN=NO (the file made, root 0600,
+### when absent; only while the name is free there, as the web group's seed
+### above), and once it is installed it is switched there when it is
+### switched here. Under xmass the account's switch travels with every live
+### pass instead.
+# 1 = account on the target 2 = target
+_XOCT_DBCTL_SEED=""
+_xoct_dbctl_seed() {
+  _XOCT_DBCTL_SEED=""
+  # the names expand here on purpose: the remote side gets them as text
+  # shellcheck disable=SC2029
+  _XOCT_DBCTL_SEED=$(ssh root@"${2}" "getent passwd ${1} > /dev/null 2>&1 && exit 0
+    _c=/root/.${1}.octopus.cnf
+    if [ ! -e \${_c} ]; then
+      ( umask 077; printf '_DB_BROKER_BORN=NO\\n' > \${_c} ) && echo made
+    elif ! grep -qx '_DB_BROKER_BORN=NO' \${_c}; then
+      printf '_DB_BROKER_BORN=NO\\n' >> \${_c} && echo line
+    fi" 2> /dev/null)
+  return 0
+}
+# 1 = account on the target 2 = target
+_xoct_dbctl_unseed() {
+  case "${_XOCT_DBCTL_SEED}" in
+    made)
+      # shellcheck disable=SC2029
+      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; [ \"\$(cat \${_c} 2> /dev/null)\" = '_DB_BROKER_BORN=NO' ] && rm -f \${_c}" 2> /dev/null
+      ;;
+    line)
+      # shellcheck disable=SC2029
+      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -vx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed && mv -f \${_c}.dbseed \${_c}" 2> /dev/null
+      ;;
+  esac
+  _XOCT_DBCTL_SEED=""
+  return 0
+}
+# 1 = account here 2 = account on the target 3 = target
+_xoct_dbctl_from_source() {
+  local _out
+  [ "${_XOCT_XMASS_RUN}" = "YES" ] && return 0
+  [ -e "/data/conf/${1}_db_broker.txt" ] || [ -L "/data/conf/${1}_db_broker.txt" ] || return 0
+  if [ ! -x /usr/local/bin/boa-dbctl ]; then
+    echo "ALRT: ${1} has a database broker switch here and no broker: ${2} on ${3} is left on the direct path"
+    return 0
+  fi
+  if ! _out=$(/usr/local/bin/boa-dbctl scope "${1}" status 2> /dev/null) \
+    || [[ "${_out}" != *" switched=yes "* ]]; then
+    echo "ALRT: ${1}'s database broker switch here is not valid: ${2} on ${3} is left on the direct path"
+    return 0
+  fi
+  # shellcheck disable=SC2029
+  if _out=$(ssh root@"${3}" "/usr/local/bin/boa-dbctl scope ${2} on --born 2>&1 < /dev/null"); then
+    echo "INFO: ${2} switched to the database broker on ${3}, as ${1} is here"
+  else
+    echo "ALRT: ${2} could not be switched to the database broker on ${3}: ${_out##*$'\n'}"
+    echo "ALRT: its sites keep the direct path there; read why with: boa-dbctl scope ${2} plan"
+  fi
+  return 0
+}
+
 ### A create marks the account it installed on the target: a root-only file
 ### naming this box and the source account, put only after the install
 ### succeeded. A later create goes on into an account the target already
@@ -5319,6 +5380,7 @@ _migrate_prepare() {
         trap '_xoct_chattr_back; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
         trap 'exit 130' INT TERM HUP
         _xoct_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+        _xoct_dbctl_seed "${_TGT_HM_USER}" "${_tgt}"
         ssh root@${_tgt} "/opt/local/bin/boa ${_IN_VERB} ${_XOCT_INSTALL_EMAIL} ${_TGT_HM_USER} ${_TGT_TREE} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
         _INSTALL_RC=$?
         if [ "${_SILENT_MARKER}" = "YES" ]; then
@@ -5342,6 +5404,7 @@ _migrate_prepare() {
           && [ -s /data/disk/${_TGT_HM_USER}/log/octopus_log.txt ] \
           && echo BORN" 2>/dev/null)
         if [ "${_INSTALL_RC}" != "0" ] || [ "${_TGT_BORN}" != "BORN" ]; then
+          _xoct_dbctl_unseed "${_TGT_HM_USER}" "${_tgt}"
           _xoct_wg_unseed "${_TGT_HM_USER}" "${_tgt}"
           echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} did not happen (launcher rc=${_INSTALL_RC});"
           echo "ALRT: read the launcher output above -- re-run this create once ${_tgt} is quiet"
@@ -5394,6 +5457,7 @@ _migrate_prepare() {
       ### Post-install seeding: merge the portable cnf values, force the
       ### authoritative control-file pins, carry the client credentials.
       _xoct_push_target_octopus_cnf "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      _xoct_dbctl_from_source "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
       ### After the merge, which carries the source's switch: under admail=
       ### a target that keeps the notice on refuses the create, before the
       ### transfer can bring the setup mail it would send. The record put

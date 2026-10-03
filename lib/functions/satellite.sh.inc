@@ -4182,6 +4182,42 @@ EOFMYSQL
 }
 
 #
+# A new account switched to the database broker at the end of its first
+# pass, where the box says so: _DB_BROKER_BORN_SCOPED=YES in
+# /root/.barracuda.cnf (off unless set). Never for an account whose cnf
+# says _DB_BROKER_BORN=NO (a migration tool puts it there before it installs
+# a moved account: such an account takes its state from its source), nor on
+# a replication standby or a box being prepared as one. The broker's own
+# checks decide, unforced; a refusal leaves the account on the direct path,
+# as every account is without the switch, and says why.
+_satellite_db_broker_born() {
+  local _out
+  [ "${_STATUS}" = "INIT" ] || return 0
+  grep -qE "^_DB_BROKER_BORN_SCOPED=[\"']?YES[\"']?[[:space:]]*$" \
+    /root/.barracuda.cnf 2> /dev/null || return 0
+  if grep -qE "^_DB_BROKER_BORN=[\"']?NO[\"']?[[:space:]]*$" \
+    "/root/.${_USER}.octopus.cnf" 2> /dev/null; then
+    _msg "INFO: ${_USER} stays on the direct database path (_DB_BROKER_BORN=NO)"
+    return 0
+  fi
+  if [ -e "/root/.standby.cnf" ] || [ -e "/root/.standby.prep.cnf" ]; then
+    _msg "INFO: ${_USER} is not switched to the database broker on a standby"
+    return 0
+  fi
+  if [ ! -x "/usr/local/bin/boa-dbctl" ]; then
+    _msg "ALRT: ${_USER} is not switched to the database broker: it is not installed here"
+    return 0
+  fi
+  if _out=$(/usr/local/bin/boa-dbctl scope "${_USER}" on --born 2>&1 < /dev/null); then
+    _msg "INFO: ${_USER} switched to the database broker: ${_out##*$'\n'}"
+  else
+    _msg "ALRT: ${_USER} is not switched to the database broker: ${_out##*$'\n'}"
+    _msg "ALRT: boa-dbctl scope ${_USER} plan says why"
+  fi
+  return 0
+}
+
+#
 # Generate provision backend db_passwd.
 _provision_backend_dbpass_generate() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
