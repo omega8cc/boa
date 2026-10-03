@@ -713,6 +713,14 @@ site's DB **with the site's own credentials** from its drushrc (no root
 DB access is ever needed on the source) into `/var/aegir/src/a2b/`, and
 writes the site's manifest.
 
+The dump carries the database's views and triggers, and its stored
+routines and events where the site's own login can read them: `--routines`
+only when no routine of the database hides its body from that login (one
+another user defines, on which `mysqldump` would stop), `--events` only
+when `SHOW EVENTS` answers, each only when the source's `mysqldump` knows
+the option. What is left out is named in the log, and the dump goes on
+without it.
+
 Skips honestly, per site: missing vhost or
 alias paths, multi-host DB, unparsable credentials, a 443 vhost whose
 cert files are missing, or insufficient dump headroom. A failed dump
@@ -1153,6 +1161,11 @@ deliberately:
   every remote action is plain root ssh + rsync. Those dumps and the panel
   dump take `--set-gtid-purged=OFF` when the source's `mysqldump` takes that
   option, so none carries the source's GTID state to the target.
+- On both routes a site's database is loaded as root, with the definer of
+  each view, trigger, stored routine and event set to the site's own user
+  (`'<db>'@'localhost'`), so each runs as the site, as after a clone. A
+  definer naming an account the target lacks would load, then fail when
+  it runs.
 - Idempotency and resume: every verb re-run skips what its markers say is
   done; `status`/`target-status` show exactly where a migration stands.
 - Parallel estates: locks and markers are scoped per account and site, so
