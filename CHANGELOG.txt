@@ -1792,6 +1792,18 @@
       made, so a re-run of the import lands the site again instead of
       refusing the half-loaded database.
 
+    * aegir2boa-stage2 leaves a site's enabled events out of its dump,
+      named, when the source does not run them (its event scheduler off,
+      the MariaDB and MySQL 5.7 default), so a target that runs its own
+      does not start them; a target whose scheduler is off names each
+      database whose enabled events it loaded. A dump that cannot be read,
+      a refused user statement and a failed D6 password pin now end a
+      site's land as a failed load does, dropping the database made for it,
+      and the alert says whether it was dropped; a database that cannot be
+      created (its name taken after all) ends the land before anything is
+      loaded into it or dropped. The site logins it uses on the source no
+      longer give way to a login root keeps in ~/.my.cnf.
+
     * The nightly copy of database dumps into each account's dbackup/
       takes the date from the end of the archive folder name: on a box
       whose hostname holds a dash, MyQuick dumps were never copied and
