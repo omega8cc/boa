@@ -89,6 +89,22 @@
       box asks for it, and moved accounts keep their state. Still
       switched off: no account uses it until an operator switches it.
 
+    * The master pass has the root database helper record aegir_root
+      again only once the master's server alias holds the new password:
+      a box that keeps a baseline no longer reports that record as not
+      renewed after every barracuda pass.
+
+    * The root database helper never drops an account's database login
+      that defines a view, trigger, routine or event, on any server
+      version: a switch keeps it as a login in use, a password rotation
+      keeps it with the new password, and when the stored objects cannot
+      be read no login is dropped.
+
+    * The root database helper's leftovers list now names a purged
+      account's site database users its registry proves, for an
+      operator's drop, and its box-wide check reads their grants and
+      stored objects in that account's databases as that account's.
+
     * The limited shell template and the ImageMagick policy no longer
       stay a release behind on a box whose mirror lagged at the publish.
 
@@ -1347,6 +1363,25 @@
 
 @=> Important Fixes
 
+    * After the panel's Enable task, a Backdrop or Textpattern site's web
+      server config named its database "none", so the site answered with
+      a database error until its next Verify. Enable now reloads the
+      site's database settings before it writes that config, so it writes
+      the same config a Verify writes.
+
+    * Backup, Restore, Clone, Migrate, Import, Enable, Disable, Login
+      reset and the platform Lock and Unlock no longer fail at once on a
+      Drupal 10 or newer platform whose local Drush was left unlocked:
+      Ægir's Drush loaded the platform's own console classes before its
+      own and stopped with "getFirstArgument() must be compatible" before
+      any step of the task ran, so the lock they all ask for was never
+      reached. They now start the way Install and Verify do and load the
+      platform afterwards, and each one that runs the site locks the
+      platform first, Login reset included. A Clone or Migrate with
+      FastTrack.info onto an unlocked platform no longer fails in its
+      Deploy, and a Delete on an unlocked platform locks it before the
+      site's database goes, so it no longer ends with a warning.
+
     * A Drupal 10 or 11 platform whose core came with some of its four
       core logger files already de-typed by an older patch (the Drupal
       10.0.11 catalogue build ships three of them so) can be unlocked
@@ -1359,9 +1394,24 @@
 
     * A move given up before its proxy step no longer leaves the
       account's sites on the source behind export's 503 until someone
-      removes the gate file by hand: 'xoct abandon o1' lifts it there
-      and purges the cached 503 answers. It refuses once the account is
-      proxied, or after a proxy that failed part way.
+      removes the gate file by hand: 'xoct abandon o1' lifts it there,
+      purges the cached 503 answers, takes the control panel out of
+      maintenance mode, and clears the export latch and the panel dump,
+      so proxy refuses the account until a fresh export takes a new
+      one.
+
+      It refuses while any of the account's sites answer, or may
+      answer, from the target: once it is proxied, after a conversion
+      xmass marked failed, or while a vhost of it carries a proxy
+      template, HTTPS included; and while an xmass cutover holds the box.
+
+    * xoct proxy refuses an account that is not proxied yet and has no
+      export latch (log/exported.pid, or --force over a
+      log/export_failed.pid) before it writes anything. One whose only
+      site is its control panel was stamped proxied, its gate released
+      and its client told the panel moved, without any export; one with
+      sites had its policy records and the target's trust written before
+      every site refused.
 
     * After an xoct move that renames the account, a site on a BOA-built
       platform kept its files and private links naming the source
@@ -1390,8 +1440,7 @@
       not the patch marks alone: a platform with the patches on but the
       genuine psr/log back in place, or one still owing the web its stock
       logger copies, made those tasks bootstrap the site on a tree Drush 8
-      cannot run. A platform whose lock directories are open still fails
-      those tasks before any of this runs (Verify alone locks it first).
+      cannot run.
 
     * A request for an existing static file with a method other than GET
       or HEAD on a Drupal 8 or newer site got a 500: the modern location
