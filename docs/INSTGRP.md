@@ -568,6 +568,14 @@ A hold left by a run killed outright, the master's or an account's, is
 obeyed only while its pid is a live root process: `clear.sh` removes it
 otherwise, and the queue runner then brings the aegir crontab back.
 
+The task queue pause an account's run takes (`/run/boa_queue_stop.pid`) is
+box-wide: the queue runner stops every instance's queue while it exists,
+whatever its pid. A web-group run of any account removes it when its pid is
+not a live root process, and its own account's hold the same way, even a run
+that skips or refuses the account, as the Octopus arm's does after a killed
+revert. `clear.sh` removes both on its next tick otherwise (every five
+minutes).
+
 ### Migrations and standby boxes
 
 `xoct`, `xcopy` and `xmass` carry the account's policy, the opt-out

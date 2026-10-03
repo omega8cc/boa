@@ -3580,6 +3580,25 @@ _purge_db_users_drop() {
   done
 }
 
+# The purged account's databases stay, so their names stay held: where the
+# database broker's registry is in use here, its entries of account $1 turn
+# purged (no account's), and a reservation with no database is let go.
+_purge_dbctl_mark() {
+  local _out
+  [ -d /var/lib/mysql/boa_dbreg ] || return 0
+  if [ ! -x /usr/local/bin/boa-dbctl ]; then
+    echo "ALRT: the database broker is not installed: ${1}'s registry entries are not marked purged"
+    return 1
+  fi
+  if _out=$(/usr/local/bin/boa-dbctl purge --account "${1}" 2>&1); then
+    echo "${_out##*$'\n'}"
+    return 0
+  fi
+  echo "ALRT: ${1}'s registry entries are not marked purged: ${_out##*$'\n'}"
+  echo "ALRT: run: boa-dbctl purge --account ${1}"
+  return 1
+}
+
 # The first path in the trees given ($2 on), or on a volume mounted under
 # /mnt, that carries the gid $1. A link is never counted: its group grants
 # nothing. -xdev never enters a mounted volume, so each mountpoint under
@@ -3892,8 +3911,11 @@ _octopus_cleanup() {
         # migration create marker: a later account of the name is not the one
         # it names, and a retried create must not take it for that one.
         mkdir -p ${_zombie_dir}root
+        # Its database broker switch too: a later account of the name would
+        # otherwise start switched, with none of its databases its own.
         for _rootCnf in /root/.${_usEr}.octopus.cnf /root/.${_usEr}.rc \
-          /root/.${_usEr}.migration-create.txt; do
+          /root/.${_usEr}.migration-create.txt \
+          /data/conf/${_usEr}_db_broker.txt; do
           [ -e "${_rootCnf}" ] && mv -f "${_rootCnf}" ${_zombie_dir}root/
         done
         # So does its task dispatcher (live, or parked by an update pass):
@@ -3988,6 +4010,7 @@ _octopus_cleanup() {
         # its own opens a session with them again: its two database users
         # go now.
         _purge_db_users_drop
+        _purge_dbctl_mark "${_usEr}"
         # What the account's identities left in the shared temporary places
         # goes now, while their numbers still name them: after deluser a
         # number is free, and could be another account's before anything

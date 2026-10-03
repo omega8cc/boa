@@ -2463,7 +2463,7 @@ _xmass_push_account_cnf() {
     _DEL_OLD_BACKUPS _DEL_OLD_TMP _DEL_OLD_EMPTY_PLATFORMS \
     _SQL_CONVERT _STRONG_PASSWORDS _BACKDROP_SUPPORT _GRAV_SUPPORT _TXP_SUPPORT _HOT_SAUCE \
     _USE_CURRENT _DL_MODE _FORCE_GIT_MIRROR _PLATFORMS_LIST \
-    _AUTOPILOT _DNS_SETUP_TEST"
+    _AUTOPILOT _DNS_SETUP_TEST _DB_COUNT_MAX"
   echo "_USER=\"${_acct}\"" > "${_lTmp}"
   for _v in ${_lst}; do
     _l=$(grep "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
@@ -2654,6 +2654,132 @@ _xmass_sync_shell_credentials() {
       fi
     fi
   done
+  return 0
+}
+
+### The database broker's switch for an account is root's control file
+### /data/conf/<oN>_db_broker.txt, which no leg sends, while the scoped grants
+### and the broker's registry it goes with replicate. Each live pass mirrors
+### it onto the target, presence and absence, as the suspension flag
+### travels: a box promoted from it, by a cutover or by hand, keeps the same
+### accounts switched, and a returning box holds none this box switched off.
+### Written only onto a standby, and only its first 4096 bytes (all the
+### broker reads). A file the broker and provision do not read as one (a
+### link, not root's, or writable by others) leaves the account not switched
+### here, so the target is made the same: named, and its file removed. DRY
+### names what would travel and what the target lacks to serve a switched
+### account: the broker's sudo line (a cutover is not clean without it) and
+### the same dump and load time limit.
+_xmass_carry_db_broker() {
+  local _acct="$1" _t="$2" _f="/data/conf/${1}_db_broker.txt" _b="-" _out _l _lim _st
+  [[ "${_acct}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] || return 0
+  if [ -e "${_f}" ] || [ -L "${_f}" ]; then
+    _st=$(stat -c '%u %a' -- "${_f}" 2> /dev/null)
+    if [ -L "${_f}" ] || [ ! -f "${_f}" ] || [ "${_st%% *}" != "0" ] \
+      || [[ ! "${_st#* }" =~ ^[0-7]{3,4}$ ]] || [ "$(( 8#${_st#* } & 8#022 ))" -ne 0 ]; then
+      _alrt "  ${_acct}: ${_f} is not a regular root file only root can write, so the database"
+      _alrt "  broker reads ${_acct} as not switched here, and ${_t} is kept the same"
+    else
+      _b="$(head -c 4096 -- "${_f}" | base64 -w0)"
+    fi
+  fi
+  if [ "${_MODE}" != "LIVE" ]; then
+    [ "${_b}" = "-" ] && return 0
+    _info "  [DRY-PLAN] ${_acct}: its database broker switch mirrored to ${_t} (/data/conf)"
+    _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "grep -qxF '${_acct} ALL=NOPASSWD: /usr/local/bin/boa-dbctl' /etc/sudoers.d/boa-dbctl 2> /dev/null && echo DB-SUDO; grep -E '^_DB_BROKER_IO_LIMIT=' /root/.barracuda.cnf 2> /dev/null | tail -n 1 | sed 's/^/DB-LIMIT /'; grep -E '^_DB_COUNT_ENFORCE=' /root/.barracuda.cnf 2> /dev/null | tail -n 1 | sed 's/^/DB-ENFORCE /'; echo DB-READ" 2> /dev/null)
+    case "${_out}" in
+      *DB-READ*) ;;
+      *)
+        _alrt "  ${_acct}: could not read the database broker's sudo line on ${_t}"
+        [ "${_cmd}" = "cutover" ] && _XMASS_NOT_CLEAN=YES
+        return 0
+        ;;
+    esac
+    if [[ "${_out}" != *DB-SUDO* ]]; then
+      if [ "${_cmd}" = "cutover" ]; then
+        _alrt "DENY: ${_acct} is switched to the database broker, and ${_t} has no broker sudo line for it:"
+        _alrt "DENY: every database task of it would fail there; run its barracuda pass first"
+        _XMASS_NOT_CLEAN=YES
+      else
+        _alrt "  ${_acct} is switched to the database broker, and ${_t} has no broker sudo line for it yet"
+      fi
+    fi
+    if [ "${_XMASS_DB_LIMIT_SAID}" != "YES" ]; then
+      _XMASS_DB_LIMIT_SAID=YES
+      _lim=$(grep -E '^_DB_BROKER_IO_LIMIT=' /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+        | cut -d= -f2- | tr -d "\"' ")
+      _l=$(printf '%s\n' "${_out}" | sed -n 's/^DB-LIMIT //p' | tail -n 1 \
+        | cut -d= -f2- | tr -d "\"' ")
+      if [ "${_lim}" != "${_l}" ]; then
+        _alrt "  _DB_BROKER_IO_LIMIT is '${_lim:-unset}' here and '${_l:-unset}' on ${_t}: a switched"
+        _alrt "  account's dumps and loads run under the other limit there"
+      fi
+      _lim=$(grep -E '^_DB_COUNT_ENFORCE=' /root/.barracuda.cnf 2> /dev/null | tail -n 1 \
+        | cut -d= -f2- | tr -d "\"' ")
+      _l=$(printf '%s\n' "${_out}" | sed -n 's/^DB-ENFORCE //p' | tail -n 1 \
+        | cut -d= -f2- | tr -d "\"' ")
+      if [ "${_lim}" != "${_l}" ]; then
+        _alrt "  _DB_COUNT_ENFORCE is '${_lim:-unset}' here and '${_l:-unset}' on ${_t}: a switched"
+        _alrt "  account's database count limit is enforced on one box of the pair only"
+      fi
+    fi
+    return 0
+  fi
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "[ -e /root/.standby.cnf ] || { echo DB-NOT-STANDBY; exit 1; }; _f=/data/conf/${_acct}_db_broker.txt; _b='${_b}'
+if [ \"\${_b}\" = - ]; then
+  if [ -e \"\${_f}\" ] || [ -L \"\${_f}\" ]; then rm -f \"\${_f}\" || exit 1; echo DB-GONE; fi
+elif ! { [ -f \"\${_f}\" ] && [ ! -L \"\${_f}\" ] && [ \"\$(stat -c '%u %a' \"\${_f}\")\" = '0 644' ] && [ \"\$(head -c 4096 \"\${_f}\" | base64 -w0)\" = \"\${_b}\" ]; }; then
+  mkdir -p /data/conf && rm -f \"\${_f}.tmp\" && ( umask 022; printf '%s' \"\${_b}\" | base64 -d > \"\${_f}.tmp\" ) && chown root:root \"\${_f}.tmp\" && chmod 644 \"\${_f}.tmp\" && mv -f -T \"\${_f}.tmp\" \"\${_f}\" || exit 1
+  echo DB-PUT
+fi
+echo DB-OK" 2> /dev/null)
+  case "${_out}" in
+    *DB-PUT*) _info "  ${_acct}: database broker switch mirrored to ${_t}" ;;
+    *DB-GONE*) _info "  ${_acct}: database broker switch removed on ${_t}: not on this box" ;;
+  esac
+  case "${_out}" in
+    *DB-OK*) return 0 ;;
+    *DB-NOT-STANDBY*)
+      _alrt "DENY: ${_t} holds no /root/.standby.cnf: a database broker switch is mirrored only onto"
+      _alrt "DENY: this box's standby, never onto a promoted box"
+      ;;
+    *)
+      _alrt "DENY: ${_acct}: could not mirror its database broker switch to ${_t} -- after a promotion"
+      _alrt "DENY: that box would not hold it switched as this box does"
+      ;;
+  esac
+  _XMASS_NOT_CLEAN=YES
+  return 1
+}
+
+### Each live pass also removes from the standby the database broker switch
+### of every account this run does not carry (purged or cancelled here, so
+### not eligible): an account of that name made there later, or after a
+### promotion, must not start switched with none of its databases its own.
+### The carry above keeps the eligible accounts' switches; init parked the
+### target's own, so every switch on the standby is one a pass carried.
+_xmass_sweep_db_broker() {
+  local _t="$1" _keep=" " _oct _out _a
+  [ "${_MODE}" = "LIVE" ] || return 0
+  for _oct in ${_ELIGIBLE_ACCOUNTS}; do
+    [[ "${_oct}" =~ ^[a-z][a-z0-9_]{0,31}$ ]] && _keep="${_keep}${_oct} "
+  done
+  _out=$(ssh -o ConnectTimeout=15 -o BatchMode=yes root@"${_t}" "[ -e /root/.standby.cnf ] || { echo DB-OK; exit 0; }; _k='${_keep}'
+for _f in /data/conf/*_db_broker.txt; do
+  [ -e \"\${_f}\" ] || [ -L \"\${_f}\" ] || continue
+  _a=\"\${_f##*/}\"; _a=\"\${_a%_db_broker.txt}\"
+  case \"\${_k}\" in *\" \${_a} \"*) continue ;; esac
+  rm -f \"\${_f}\" && echo \"DB-SWEPT \${_a}\"
+done
+echo DB-OK" 2> /dev/null)
+  while read -r _a; do
+    [[ "${_a}" == "DB-SWEPT "* ]] || continue
+    _info "  ${_a#DB-SWEPT }: database broker switch removed on ${_t}: not an account this run carries"
+  done <<< "${_out}"
+  if [[ "${_out}" != *DB-OK* ]]; then
+    _alrt "  could not clear on ${_t} the database broker switches of accounts this run does not carry"
+    return 1
+  fi
   return 0
 }
 
@@ -4058,6 +4184,14 @@ mv -f /var/lib/mysql /var/lib/mysql.xmass_pre_${_ts} &>/dev/null || true
 for _f in /root/.my.cnf /root/.my.pass.txt; do
   [ -e "${_f}" ] && cp -a "${_f}" "${_f}.xmass_pre_${_ts}" && chmod 600 "${_f}.xmass_pre_${_ts}"
 done
+# The database broker switches here belong to the parked data directory:
+# parked beside it, same stamp, and the live passes then carry the source's.
+for _f in /data/conf/*_db_broker.txt; do
+  [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+  mkdir -p "/data/conf/.xmass_pre_${_ts}.db_broker" \
+    && chmod 700 "/data/conf/.xmass_pre_${_ts}.db_broker" \
+    && mv -f "${_f}" "/data/conf/.xmass_pre_${_ts}.db_broker/"
+done
 mkdir -p /var/lib/mysql
 REMOTE
 
@@ -4338,6 +4472,25 @@ _xmass_regen_solr_initd() {
   return 0
 }
 
+### The database broker switches go back with the data directory parked at
+### stamp $1: the ones the live passes carried leave (they name the source's
+### accounts against a data directory that never had them), and the ones
+### init parked there return. An init by older bytes parked none.
+_xmass_unpark_db_broker() {
+  local _ts="$1" _f _p="/data/conf/.xmass_pre_${1}.db_broker"
+  for _f in /data/conf/*_db_broker.txt; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    rm -f "${_f}" || _alrt "  could not remove ${_f}: remove it by hand"
+  done
+  [ -d "${_p}" ] && [ ! -L "${_p}" ] || return 0
+  for _f in "${_p}"/*_db_broker.txt; do
+    [ -e "${_f}" ] || [ -L "${_f}" ] || continue
+    mv -f "${_f}" /data/conf/ || _alrt "  could not put ${_f} back in /data/conf: move it by hand"
+  done
+  rmdir "${_p}" 2> /dev/null
+  return 0
+}
+
 ### Undo _xmass_stop_solr_source -- the recovery verb for a cutover that was
 ### rolled back with the source kept in service.
 ###
@@ -4397,6 +4550,7 @@ _xmass_restore_target() {
   _info "restore-target on $(hostname -f): $(head -1 /root/.standby.cnf 2>/dev/null)"
   _info "  parked data directory: ${_pre} (credentials parked at the same stamp)"
   _info "  the current replica data directory is kept aside as /var/lib/mysql.xmass_standby_${_stamp}"
+  _info "  the database broker switches the passes carried go; the ones parked with it come back"
   _info "  replication stopped and forgotten (${_stop}; ${_reset}); the standby hold, its cnf block and"
   _info "  every marker removed; Solr init scripts the init disarmed re-armed; cron started"
   if [ "${_live}" != "YES" ]; then
@@ -4415,6 +4569,7 @@ _xmass_restore_target() {
   for _cnf in /root/.my.cnf /root/.my.pass.txt; do
     cp -a "${_cnf}.xmass_pre_${_ts}" "${_cnf}" && chmod 600 "${_cnf}"
   done
+  _xmass_unpark_db_broker "${_ts}"
   # The standby hold: the cnf block init wrote (super_read_only at every
   # start) goes before the restart, exactly as the init unwind strips it.
   _inc_dir=$(grep -hE '^[[:space:]]*!includedir[[:space:]]' /etc/mysql/my.cnf 2>/dev/null \
@@ -6622,6 +6777,9 @@ _xmass_sync_account() {
     _xmass_sync_shell_credentials "${_oct}" "${_tgt}"
     _xmass_copy_suspended_flag "${_oct}" "${_tgt}" || _XMASS_STORE_RC=1
   fi
+  # The database broker switch travels the same way (DRY: its plan line and
+  # what the target lacks to serve it).
+  _xmass_carry_db_broker "${_oct}" "${_tgt}" || _XMASS_STORE_RC=1
 
   # Catch-all sweep: discover + materialise out-of-root symlinks (secondary-
   # mount content) so no link in the account tree arrives dangling. Links under
@@ -6932,6 +7090,8 @@ _xmass_sync_shared() {
   # The mail hold and the test-run records, which no leg sends, travel with
   # every pass (the accounts this run carries are enumerated by now).
   _xmass_copy_mail_state "${_tgt}"
+  # So do the database broker switches of the accounts it does not carry.
+  _xmass_sweep_db_broker "${_tgt}"
   # trust-creators for a pair built before the line: the mirror, then here.
   if [ "${_MODE}" = "LIVE" ]; then
     _xmass_auto_assert_standby
@@ -8791,19 +8951,23 @@ _xmass_rewire_panel_db_access() {
 
 _xmass_rearm_deferred_upgrades_target() {
   # Counterpart of the deferral in the promotion cleanup: give the parked
-  # trigger back to the runner. The runner also wants platforms.info, which
-  # the seed left in place; nothing else is needed.
+  # trigger back to the runner, which takes it only with a platforms.info
+  # beside it. The cleanup keeps a seed while a trigger stays, so one is
+  # there unless the account removed it; the line says which it is.
   local _oct
   for _oct in ${_ELIGIBLE_ACCOUNTS}; do
     ssh root@"${_tgt}" "bash -s" <<REARM
-# static/control is the account's: the test and the move run on ./names
+# static/control is the account's: the tests and the move run on ./names
 # inside the real directory, never through a link swapped in at it
 _w="\$(cd -P /data/disk 2>/dev/null && pwd -P)/${_oct}/static/control"
-if ( cd -P -- "/data/disk/${_oct}/static/control" 2>/dev/null \
+_r="\$( cd -P -- "/data/disk/${_oct}/static/control" 2>/dev/null \
   && [ "\$(pwd -P)" = "\${_w}" ] && [ -e ./run-upgrade.pid.deferred ] \
-  && mv -f -T -- ./run-upgrade.pid.deferred ./run-upgrade.pid ); then
-  echo "  ${_oct}: seeded upgrade re-armed; the dispatcher runs it on its next quiet tick"
-fi
+  && mv -f -T -- ./run-upgrade.pid.deferred ./run-upgrade.pid \
+  && { [ -e ./platforms.info ] && echo LIST || echo BARE; } )"
+case "\${_r}" in
+  LIST) echo "  ${_oct}: seeded upgrade re-armed; the dispatcher runs it on its next quiet tick" ;;
+  BARE) echo "  ${_oct}: seeded upgrade re-armed, but with no platforms.info beside it the runner never takes it: it waits until the account writes its platform list" ;;
+esac
 REARM
   done
   return 0
@@ -8867,7 +9031,11 @@ fi
 # first runner tick after this promotion. Consume it loudly; whoever wants
 # the upgrade can re-touch the trigger on the live box. A platforms.info
 # still carrying the heal's inert FOOBAR seed goes with it -- removing it
-# restores the default-platforms fallback.
+# restores the default-platforms fallback. While a trigger stays (parked
+# below, or held by a promotion by hand before this runs) the seed stays
+# too: the runner takes a trigger only with a platforms.info beside it, so
+# one armed again without it would never run and would read as pending
+# work for good.
 # One armed pid is the migration's own: prep-target seeds this box's PHP set
 # and arms the pass that applies it, but a demoted target can neither
 # dispatch it (dispatcher parked) nor run it (octopus refuses a proxied
@@ -8889,7 +9057,9 @@ fi
     rm -f -- ./run-upgrade.pid
     echo "  ${_oct}: cleared stale run-upgrade.pid (unattended post-promotion upgrade defused)"
   fi
-  if [ "\$(timeout 10 dd if=./platforms.info iflag=nofollow,nonblock bs=64 count=1 status=none 2>/dev/null)" = "FOOBAR" ]; then
+  if [ ! -e ./run-upgrade.pid ] && [ ! -L ./run-upgrade.pid ] \
+    && [ ! -e ./run-upgrade.pid.deferred ] && [ ! -L ./run-upgrade.pid.deferred ] \
+    && [ "\$(timeout 10 dd if=./platforms.info iflag=nofollow,nonblock bs=64 count=1 status=none 2>/dev/null)" = "FOOBAR" ]; then
     rm -f -- ./platforms.info
     echo "  ${_oct}: removed inert FOOBAR platforms.info seed"
   fi )
@@ -9355,6 +9525,7 @@ _xmass_enable_events_target() {
 _xmass_enable_events_here() {
   local _out _i _rc=0
   for _i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
+    _xmass_hand_lost_clear again
     _out=$(bash -s 2> /dev/null <<< "$(_xmass_events_enable_sh)")
     [ "${_out}" = "EV-READONLY" ] || break
     [ "${_i}" = "1" ] && _info "  the database here is still read-only: waiting up to 75 s for the SQL watchdog's release ..."
@@ -9592,12 +9763,29 @@ _xmass_hand_path_end() {
   return 0
 }
 
+# A promotion by hand answers the question second.sh asks of a box with no
+# replica config whose database is still read-only: once a minute has passed
+# since the operator's reset it reads as a LOST replica, and that breadcrumb
+# keeps the SQL watchdog's lock on for good. It goes with the watchdog's
+# cached answer. The waits for writes call this on every round: a second.sh
+# pass that read the marker before it went can still write it once. $1 =
+# again: only a breadcrumb found again takes the cached answer with it.
+_xmass_hand_lost_clear() {
+  [ "${_XMASS_PROMOTED_HERE}" = "YES" ] || return 0
+  if [ "${1:-}" = "again" ]; then
+    [ -e /run/boa_standby_lost_logged.pid ] || return 0
+  fi
+  rm -f /run/boa_standby_lost_logged.pid /run/boa_standby_sql_answer \
+    /run/boa_standby_role_probed.pid
+}
+
 # The panel rewire of the planned switch, here, once the database takes
 # writes (the SQL watchdog releases a box promoted by hand within about a
 # minute of its standby marker going: waited for up to 75 s).
 _xmass_promote_panels_here() {
   local _i _ro _root _out _l _bad="" _me
   for _i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16; do
+    _xmass_hand_lost_clear again
     _ro=$(mysql --defaults-file=/root/.my.cnf --connect-timeout=10 -BNe \
       "SELECT @@GLOBAL.super_read_only + @@GLOBAL.read_only" 2> /dev/null)
     [ "${_ro}" = "1" ] || [ "${_ro}" = "2" ] || break
@@ -9627,6 +9815,13 @@ _xmass_promote_panels_here() {
     _XMASS_HAND_OWED=YES
     _alrt "${_hName}: the control panel of${_bad} could not be rewired (above): repair it before any"
     _alrt "  xmass or xoct run from this box (pre-mig refuses an incoherent panel)"
+  fi
+  # Where the database broker keeps a baseline of the server's own logins,
+  # the master panel's login the rewire gave a new password is recorded
+  # again.
+  if [ -x /usr/local/bin/boa-dbctl ] && [ -d /var/lib/mysql/boa_dbreg ] \
+    && ! /usr/local/bin/boa-dbctl baseline rerecord master-panel > /dev/null 2>&1 < /dev/null; then
+    _alrt "${_hName}: the database broker's record of the master panel's login was not renewed: see boa-dbctl baseline plan"
   fi
   return 0
 }
@@ -9666,7 +9861,15 @@ _xmass_promote_rearm_here() {
     if ( cd -P -- "${_root}/static/control" 2> /dev/null \
       && [ "$(pwd -P)" = "${_w}/${_oct}/static/control" ] \
       && mv -f -T -- ./run-upgrade.pid.deferred ./run-upgrade.pid ); then
-      _info "  ${_oct}: held upgrade re-armed; the dispatcher runs it on its next quiet tick"
+      # The runner takes a trigger only with a platforms.info beside it.
+      if ( cd -P -- "${_root}/static/control" 2> /dev/null \
+        && [ "$(pwd -P)" = "${_w}/${_oct}/static/control" ] \
+        && [ -e ./platforms.info ] ); then
+        _info "  ${_oct}: held upgrade re-armed; the dispatcher runs it on its next quiet tick"
+      else
+        _alrt "  ${_oct}: held upgrade re-armed, but with no platforms.info beside it the runner never"
+        _alrt "  takes it: it waits until the account writes its platform list"
+      fi
     fi
   done
   return 0
@@ -10076,8 +10279,11 @@ _xmass_target_silence_probe() {
       ### target) every dispatcher is parked under /var/backups/off-run until
       ### the promotion restores it -- and that same cleanup defuses the pid
       ### as stale -- so such a marker is inert: counting it made every
-      ### verb wait out its whole bound on a quiet target.
-      _a=$(for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e "${_f}" ] || continue; _n=${_f#/data/disk/}; _n=${_n%%/*}; [ ! -e "/var/xdrago/run-${_n}" ] && [ -e "/var/backups/off-run/run-${_n}" ] && continue; printf "%s " "${_n}"; done)
+      ### verb wait out its whole bound on a quiet target. The same holds
+      ### for a marker with no platforms.info beside it: the runner takes
+      ### none without it, so it starts no pass, and every writer of a
+      ### trigger puts the list first.
+      _a=$(for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e "${_f}" ] || continue; [ -e "${_f%/*}/platforms.info" ] || continue; _n=${_f#/data/disk/}; _n=${_n%%/*}; [ ! -e "/var/xdrago/run-${_n}" ] && [ -e "/var/backups/off-run/run-${_n}" ] && continue; printf "%s " "${_n}"; done)
       _roots="aegir"
       for _d in $(find /data/disk -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort); do
         _n=$(basename "${_d}")
@@ -13780,6 +13986,13 @@ for _s in runner.sh owl.sh usage.sh graceful.sh manage_ltd_users.sh; do
     mv -f "/var/xdrago/.${_s}.off" "/var/xdrago/${_s}"
   fi
 done
+# Where the database broker keeps a baseline of the server's own logins,
+# the master panel's login, which the panel rewire gave a new password, is
+# recorded again now that the box is no standby.
+if [ -x /usr/local/bin/boa-dbctl ] && [ -d /var/lib/mysql/boa_dbreg ] \
+  && ! /usr/local/bin/boa-dbctl baseline rerecord master-panel > /dev/null 2>&1 < /dev/null; then
+  echo "ALRT: the database broker's record of the master panel's login was not renewed: see boa-dbctl baseline plan"
+fi
 REMOTE
   # Verify the removal actually landed. This ssh is all that stands between
   # a cutover that reports success and a promoted production box that keeps
@@ -14600,7 +14813,10 @@ _xmass_post_mig() {
   # A promotion by hand: the panel rewire the planned switch runs on its
   # target (a no-op after one), once the marker is gone and the database
   # takes writes.
-  [ "${_XMASS_PROMOTED_HERE}" = "YES" ] && _xmass_promote_panels_here
+  if [ "${_XMASS_PROMOTED_HERE}" = "YES" ]; then
+    _xmass_hand_lost_clear
+    _xmass_promote_panels_here
+  fi
   # Traffic now flows directly to this host. Reconcile the migration-proxy
   # trust from the per-account policy records: temporary peers are dropped,
   # permanent/ha-switch peers stay trusted (restricted to the live peer set),
@@ -14635,7 +14851,7 @@ _xmass_post_mig() {
 # which no go-live can end once that box is gone (a promotion by hand). Said,
 # never removed: on a test box the hold is wanted.
 _xmass_report_mail_state_here() {
-  local _f _a _v _n=0 _rm="" _recv=NO
+  local _f _a _v _n=0 _rm="" _recv=NO _off=""
   if [ -e "${_XMASS_ADMAIL_FILE}" ]; then
     _v="$(head -n 1 "${_XMASS_ADMAIL_FILE}" 2> /dev/null | tr -cd '[:print:]' | cut -c1-200)"
     _a="$(_xmass_admail_rec_target)"
@@ -14681,6 +14897,25 @@ _xmass_report_mail_state_here() {
   elif [ -e "${_XMASS_HOLD_FILE}" ] || [ -L "${_XMASS_HOLD_FILE}" ]; then
     _alrt "  then the hold, once this box may mail its clients: rm -f ${_XMASS_HOLD_FILE}"
   fi
+  # A mirror built under admail= has the upgrade notice of every account it
+  # carries switched off, and only go-live on its active sets it back. Said,
+  # never changed: the value the active had is not known here, and an
+  # account that had it off must keep it off.
+  [ -n "${_rm}" ] || return 0
+  for _f in /root/.*.octopus.cnf; do
+    [ -f "${_f}" ] || continue
+    _a="${_f#/root/.}"
+    _a="${_a%.octopus.cnf}"
+    [ -d "/data/disk/${_a}" ] || continue
+    _v="$(grep -a '^_SEND_UPGRADE_EMAIL=' "${_f}" 2> /dev/null | tail -n 1 | cut -d= -f2- | tr -d '"')"
+    [ "${_v}" = "NO" ] && _off="${_off} ${_a}"
+  done
+  [ -n "${_off}" ] || return 0
+  _alrt "  the upgrade notice is off for:${_off} (_SEND_UPGRADE_EMAIL=NO in /root/.<account>.octopus.cnf)."
+  _alrt "  A test run sets it off for every account it carries and its go-live sets it back. Once this"
+  _alrt "  box serves its clients for real and no go-live can run (a mirror built under admail=,"
+  _alrt "  promoted by hand), set it to YES for each account whose client is to get the notice (one"
+  _alrt "  that had it off before keeps NO)"
 }
 
 ### Migrated accounts arrive carrying the SOURCE box's per-release FPM

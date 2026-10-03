@@ -744,6 +744,11 @@ no account has `static/control/run-upgrade.pid` armed, every root's
 dispatch, verify or installer process runs. The probe fails closed: an
 unreadable root or an unreadable target counts as busy.
 
+A trigger counts as armed only where the runner would take it: with a
+`platforms.info` beside it, and with the account's dispatcher in place. One
+with no `platforms.info` starts no pass, so it is not pending work, here and
+in the quiet waits of `xoct create` and `xcopy`.
+
 `init` applies the same
 probe to the source itself, twice: a cheap read (run locks and pass processes)
 before it touches either box, and the full read immediately before it snapshots
@@ -1059,6 +1064,12 @@ a box promoted from the active, by a cutover or by hand, holds exactly the
 client mail the active held, and its `xoct` verbs keep to the same test
 runs. They are written only onto a box that carries the standby marker, and
 `post-mig` names what it finds on the promoted box.
+
+Under another box's test-run mark `post-mig` also names the accounts whose
+`_SEND_UPGRADE_EMAIL` reads `NO`. A mirror built under `admail=` has it off
+for every account it carries, and after a promotion by hand no `go-live` can
+set it back: set it to `YES` in `/root/.<oN>.octopus.cnf` for each account
+whose client is to get the upgrade notice.
 
 Two things on the target stay its own: this box's mark of its own test run
 there while this box's record names that target (a mirror built under
@@ -1769,6 +1780,13 @@ panel under the old hostname. After a planned switch or a failback none of
 this runs: the cutover did it, and the upgrades it armed again at its end
 stay queued behind the BOA run lock. On a finalized proxy or a box still
 configured as a replica nothing runs.
+
+A held-back upgrade keeps what stands beside its trigger: a `platforms.info`
+that carries only BOA's inert seed stays while the trigger is held, so the
+runner takes the trigger once it is armed again. The run that arms it says so
+for each account, and names a trigger with no `platforms.info` beside it,
+which the runner never takes: it waits until the account writes its platform
+list.
 
 It **enables the events a replica kept disabled**, each with its own
 definer, as cutover step 11.5 does: after a promotion by hand this is the

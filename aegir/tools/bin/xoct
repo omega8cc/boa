@@ -2646,6 +2646,14 @@ EOFMYSQL
           else
             echo "ALRT: site ${_Dom} db ${_DBN} already exists!"
           fi
+          ### The database this run made, or the site's own one it loads over,
+          ### is the account's in the database broker's registry once the
+          ### account is switched (_xoct_dbreg); a site whose database cannot
+          ### be entered there is not imported.
+          _DB_REG=""
+          if [ "${_DB_FRESH}" = "YES" ] || [ "${_OWN_DB}" = "YES" ]; then
+            _xoct_dbreg "${_USR##*/}" "${_DBN}" || _DB_REG=FAIL
+          fi
           ### A dump is loaded over a database this run did NOT just create
           ### only when the site proved it its own (_OWN_DB). A site with no
           ### dump (target-native) writes nothing, so it is left to the branch
@@ -2734,6 +2742,11 @@ EOFMYSQL
               _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_DBN}"
               echo "ALRT: site ${_Dom} db failure: no dump in ${_USR}/src/${_DBN} AND local db ${_DBN} is empty/absent"
             fi
+          fi
+          if [ "${_DB_REG}" = "FAIL" ] && [ "${_XOCT_SITE_IMPORT_OK}" = "YES" ]; then
+            _XOCT_SITE_IMPORT_OK=NO
+            _XOCT_IMPORT_FAIL=$(( ${_XOCT_IMPORT_FAIL:-0} + 1 ))
+            _XOCT_IMPORT_FAILED_DBS="${_XOCT_IMPORT_FAILED_DBS} ${_DBN}:not-registered"
           fi
           ### A verify over a failed import regenerates settings/vhost around
           ### a database that is not there -- schedule it only for clean loads.
@@ -3874,11 +3887,18 @@ _xoct_push_target_octopus_cnf() {
     _DEL_OLD_BACKUPS _DEL_OLD_TMP _DEL_OLD_EMPTY_PLATFORMS \
     _SQL_CONVERT _STRONG_PASSWORDS _BACKDROP_SUPPORT _GRAV_SUPPORT _TXP_SUPPORT _HOT_SAUCE \
     _USE_CURRENT _DL_MODE _FORCE_GIT_MIRROR _PLATFORMS_LIST \
-    _AUTOPILOT _DNS_SETUP_TEST"
+    _AUTOPILOT _DNS_SETUP_TEST _DB_COUNT_MAX"
   echo "_USER=\"${_dst}\"" > "${_lTmp}"
   for _v in ${_lst}; do
     _l=$(grep "^${_v}=" "${_sCnf}" 2>/dev/null | tail -1)
-    [ -n "${_l}" ] && printf '%s\n' "${_l}" >> "${_lTmp}"
+    [ -n "${_l}" ] || continue
+    # the database count limit travels only as a plain value
+    if [ "${_v}" = "_DB_COUNT_MAX" ] \
+      && ! [[ "${_l}" =~ ^_DB_COUNT_MAX=(AUTO|[0-9]{1,6}|\"(AUTO|[0-9]{1,6})\"|\'(AUTO|[0-9]{1,6})\')$ ]]; then
+      echo "ALRT: _DB_COUNT_MAX in ${_sCnf} is not a plain value -- not merged, the target keeps its own"
+      continue
+    fi
+    printf '%s\n' "${_l}" >> "${_lTmp}"
   done
   ### Under admail= every merge (create, each live transfer) keeps the
   ### account's upgrade notice off there (_xoct_admail_upgrade_mail_off);
@@ -4184,8 +4204,9 @@ _xoct_wait_target_quiet() {
     ### nothing consumes them before post-mig, so a second account's create
     ### would wait out the bound on the first one's armed upgrade. Without
     ### the marker the next tools refresh brings the runner back, so the
-    ### pid still counts.
-    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; { [ -e /run/boa_migration_park.pid ] && [ ! -e /var/xdrago/runner.sh ] && [ -e /var/xdrago/.runner.sh.off ]; } || for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e \"\${_f}\" ] || continue; _n=\${_f#/data/disk/}; _n=\${_n%%/*}; [ ! -e \"/var/xdrago/run-\${_n}\" ] && [ -e \"/var/backups/off-run/run-\${_n}\" ] && continue; printf '%s:armed ' \"\${_n}\"; done" 2>/dev/null)
+    ### pid still counts. One with no platforms.info beside it never does:
+    ### the runner takes no trigger without it.
+    _busy=$(ssh root@"${_t}" "ls /run/boa_run.pid /run/boa_wait.pid /run/octopus_install_run.pid 2>/dev/null | tr '\n' ' '; { [ -e /run/boa_migration_park.pid ] && [ ! -e /var/xdrago/runner.sh ] && [ -e /var/xdrago/.runner.sh.off ]; } || for _f in /data/disk/*/static/control/run-upgrade.pid; do [ -e \"\${_f}\" ] || continue; [ -e \"\${_f%/*}/platforms.info\" ] || continue; _n=\${_f#/data/disk/}; _n=\${_n%%/*}; [ ! -e \"/var/xdrago/run-\${_n}\" ] && [ -e \"/var/backups/off-run/run-\${_n}\" ] && continue; printf '%s:armed ' \"\${_n}\"; done" 2>/dev/null)
     if [ -z "${_busy// /}" ]; then
       _ok=$(( _ok + 1 ))
       if [ "${_ok}" -ge 2 ]; then
@@ -4248,6 +4269,43 @@ _xoct_seed_witness_delta() {   # 1 = was, 2 = now (md5sum output, one line per f
   done
   _out="${_out% }"
   printf '%s' "${_out:-a witness set of a different shape}"
+}
+
+### A database this tool makes, or a site's own one it loads over, for an
+### account switched to the database broker (root's
+### /data/conf/<account>_db_broker.txt) is entered in the broker's registry
+### as that account's, and the account's own grant on it given, as the
+### broker's own create does: otherwise every later task of the site is
+### refused as not the account's. An account not switched, or one whose
+### control file the broker finds not valid (its tasks take the direct
+### path), is left as it was. Same text in xoct and xcopy.
+_xoct_dbreg() {   # 1 account here 2 database
+  local _f="/data/conf/${1}_db_broker.txt" _out _rc
+  [ -e "${_f}" ] || [ -L "${_f}" ] || return 0
+  if [ ! -x /usr/local/bin/boa-dbctl ]; then
+    echo "ALRT: ${1} is switched to the database broker, which is not installed here:"
+    echo "ALRT: database ${2} is not entered as ${1}'s in its registry"
+    return 1
+  fi
+  _out=$(/usr/local/bin/boa-dbctl register "${2}" --account "${1}" --via xoct 2>&1)
+  _rc=$?
+  if [ "${_rc}" = "8" ]; then
+    echo "ALRT: ${_f} is not valid: database ${2} is left out of the broker's registry,"
+    echo "ALRT: and ${1}'s tasks take the direct path"
+    return 0
+  fi
+  if [ "${_rc}" = "0" ]; then
+    if _out=$(/usr/local/bin/boa-dbctl regrant --account "${1}" 2>&1); then
+      echo "INFO: database ${2} entered as ${1}'s in the database broker's registry"
+      return 0
+    fi
+    echo "ALRT: database ${2} is ${1}'s in the database broker's registry, but its grant failed: ${_out##*$'\n'}"
+    echo "ALRT: run: boa-dbctl regrant --account ${1}"
+    return 1
+  fi
+  echo "ALRT: database ${2} is not entered as ${1}'s in the database broker's registry: ${_out##*$'\n'}"
+  echo "ALRT: its site's tasks are refused until: boa-dbctl register ${2} --account ${1} --via xoct; boa-dbctl regrant --account ${1}"
+  return 1
 }
 
 ### The poured panel carries the source's password for its database server row;
@@ -4515,6 +4573,67 @@ _xoct_wg_unseed() {
       ;;
   esac
   _XOCT_WG_SEED=""
+  return 0
+}
+
+### A moved account takes its database broker switch from its source, not
+### from the target's default for new accounts: before its install the
+### target's cnf for it says _DB_BROKER_BORN=NO (the file made, root 0600,
+### when absent; only while the name is free there, as the web group's seed
+### above), and once it is installed it is switched there when it is
+### switched here. Under xmass the account's switch travels with every live
+### pass instead.
+# 1 = account on the target 2 = target
+_XOCT_DBCTL_SEED=""
+_xoct_dbctl_seed() {
+  _XOCT_DBCTL_SEED=""
+  # the names expand here on purpose: the remote side gets them as text
+  # shellcheck disable=SC2029
+  _XOCT_DBCTL_SEED=$(ssh root@"${2}" "getent passwd ${1} > /dev/null 2>&1 && exit 0
+    _c=/root/.${1}.octopus.cnf
+    if [ ! -e \${_c} ]; then
+      ( umask 077; printf '_DB_BROKER_BORN=NO\\n' > \${_c} ) && echo made
+    elif ! grep -qx '_DB_BROKER_BORN=NO' \${_c}; then
+      printf '_DB_BROKER_BORN=NO\\n' >> \${_c} && echo line
+    fi" 2> /dev/null)
+  return 0
+}
+# 1 = account on the target 2 = target
+_xoct_dbctl_unseed() {
+  case "${_XOCT_DBCTL_SEED}" in
+    made)
+      # shellcheck disable=SC2029
+      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; [ \"\$(cat \${_c} 2> /dev/null)\" = '_DB_BROKER_BORN=NO' ] && rm -f \${_c}" 2> /dev/null
+      ;;
+    line)
+      # shellcheck disable=SC2029
+      ssh root@"${2}" "_c=/root/.${1}.octopus.cnf; grep -vx '_DB_BROKER_BORN=NO' \${_c} > \${_c}.dbseed && mv -f \${_c}.dbseed \${_c}" 2> /dev/null
+      ;;
+  esac
+  _XOCT_DBCTL_SEED=""
+  return 0
+}
+# 1 = account here 2 = account on the target 3 = target
+_xoct_dbctl_from_source() {
+  local _out
+  [ "${_XOCT_XMASS_RUN}" = "YES" ] && return 0
+  [ -e "/data/conf/${1}_db_broker.txt" ] || [ -L "/data/conf/${1}_db_broker.txt" ] || return 0
+  if [ ! -x /usr/local/bin/boa-dbctl ]; then
+    echo "ALRT: ${1} has a database broker switch here and no broker: ${2} on ${3} is left on the direct path"
+    return 0
+  fi
+  if ! _out=$(/usr/local/bin/boa-dbctl scope "${1}" status 2> /dev/null) \
+    || [[ "${_out}" != *" switched=yes "* ]]; then
+    echo "ALRT: ${1}'s database broker switch here is not valid: ${2} on ${3} is left on the direct path"
+    return 0
+  fi
+  # shellcheck disable=SC2029
+  if _out=$(ssh root@"${3}" "/usr/local/bin/boa-dbctl scope ${2} on --born 2>&1 < /dev/null"); then
+    echo "INFO: ${2} switched to the database broker on ${3}, as ${1} is here"
+  else
+    echo "ALRT: ${2} could not be switched to the database broker on ${3}: ${_out##*$'\n'}"
+    echo "ALRT: its sites keep the direct path there; read why with: boa-dbctl scope ${2} plan"
+  fi
   return 0
 }
 
@@ -4984,6 +5103,10 @@ _migrate_prepare() {
     _xoct_in_real_dir "${_USR}/log" rm -f -- ./exported.pid ./transferred.pid \
       ./export_failed.pid ./proxy-failed.pid
     _xoct_in_real_dir "${_USR}/log" _xoct_touch_here imported.pid
+    ### The panel database the dump went into is the account's in the
+    ### database broker's registry once the account is switched: its next
+    ### upgrade dumps it through the broker.
+    _xoct_dbreg "${_THIS_HM_USER}" "${_HDB}"
     if ! _xoct_reconcile_panel_platform "${_USR}" "${_oct}" "${_HDB}"; then
       echo "ERROR: panel platform reconciliation failed for ${_USR} — this import is INCOMPLETE"
       echo "ERROR: the imported DB names a hostmaster platform this box cannot serve; continuing"
@@ -5257,6 +5380,7 @@ _migrate_prepare() {
         trap '_xoct_chattr_back; [ "${_SILENT_MARKER}" = "YES" ] && ssh root@'"${_tgt}"' "rm -f /root/.silent.update.cnf" &> /dev/null; rm -f "${_XOCT_LOCK_FILE}"' EXIT
         trap 'exit 130' INT TERM HUP
         _xoct_wg_seed "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+        _xoct_dbctl_seed "${_TGT_HM_USER}" "${_tgt}"
         ssh root@${_tgt} "/opt/local/bin/boa ${_IN_VERB} ${_XOCT_INSTALL_EMAIL} ${_TGT_HM_USER} ${_TGT_TREE} ${_CLIENT_OPTION} ${_CLIENT_SUBSCR} ${_CLIENT_CORES} noscreen"
         _INSTALL_RC=$?
         if [ "${_SILENT_MARKER}" = "YES" ]; then
@@ -5280,6 +5404,7 @@ _migrate_prepare() {
           && [ -s /data/disk/${_TGT_HM_USER}/log/octopus_log.txt ] \
           && echo BORN" 2>/dev/null)
         if [ "${_INSTALL_RC}" != "0" ] || [ "${_TGT_BORN}" != "BORN" ]; then
+          _xoct_dbctl_unseed "${_TGT_HM_USER}" "${_tgt}"
           _xoct_wg_unseed "${_TGT_HM_USER}" "${_tgt}"
           echo "ALRT: install of ${_TGT_HM_USER} on ${_tgt} did not happen (launcher rc=${_INSTALL_RC});"
           echo "ALRT: read the launcher output above -- re-run this create once ${_tgt} is quiet"
@@ -5332,6 +5457,7 @@ _migrate_prepare() {
       ### Post-install seeding: merge the portable cnf values, force the
       ### authoritative control-file pins, carry the client credentials.
       _xoct_push_target_octopus_cnf "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
+      _xoct_dbctl_from_source "${_oct}" "${_TGT_HM_USER}" "${_tgt}"
       ### After the merge, which carries the source's switch: under admail=
       ### a target that keeps the notice on refuses the create, before the
       ### transfer can bring the setup mail it would send. The record put
