@@ -1717,6 +1717,10 @@
       event made before its database's default collation changed no
       longer stops a Clone, Migrate or Restore.
 
+    * xtrim's safety dump of each database before it drops it carries
+      the stored routines and events as well: that dump is the only
+      copy the box keeps afterwards.
+
     * The nightly copy of database dumps into each account's dbackup/
       takes the date from the end of the archive folder name: on a box
       whose hostname holds a dash, MyQuick dumps were never copied and
