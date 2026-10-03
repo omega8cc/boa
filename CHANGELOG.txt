@@ -1363,6 +1363,12 @@
 
 @=> Important Fixes
 
+    * After the panel's Enable task, a Backdrop or Textpattern site's web
+      server config named its database "none", so the site answered with
+      a database error until its next Verify. Enable now reloads the
+      site's database settings before it writes that config, so it writes
+      the same config a Verify writes.
+
     * Backup, Restore, Clone, Migrate, Import, Enable, Disable, Login
       reset and the platform Lock and Unlock no longer fail at once on a
       Drupal 10 or newer platform whose local Drush was left unlocked:
