@@ -860,6 +860,13 @@
       where those requests never met it. Subdirectory sites refuse them
       there too.
 
+    * PHP 8.4 and newer are built without Pdo\Sqlite::loadExtension(),
+      which loaded a native SQLite extension from any path whatever
+      functions the pool denies. An installed 8.4 or 8.5 that still has
+      it is rebuilt by the next barracuda upgrade, from sources until a
+      prebuilt package without it is published. pdo_sqlite and SQLite3
+      are otherwise unchanged.
+
 @=> New Features
 
     * xoct, xcopy and xmass take admail=<address>, the token boa

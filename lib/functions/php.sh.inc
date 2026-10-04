@@ -1920,7 +1920,8 @@ _install_php_deb() {
     # without the box ever reaching the current headers. The nginx deb
     # asserts its OpenSSL token the same way. ICU applies to 8.1+ only here:
     # the _ICU_FORCE_VRN arm of the intl gate was already refused up front
-    # as a custom build shape.
+    # as a custom build shape. An 8.4 or newer package that still carries
+    # Pdo\Sqlite::loadExtension fails the same way.
     _PHP_DEB_TOKENS_OK=YES
     if ! _check_php_ssl_version "${1}"; then
       _PHP_DEB_TOKENS_OK=NO
@@ -1929,6 +1930,9 @@ _install_php_deb() {
       if ! _check_php_icu_version "${1}"; then
         _PHP_DEB_TOKENS_OK=NO
       fi
+    fi
+    if ! _check_php_sqlite_loadext "${1}"; then
+      _PHP_DEB_TOKENS_OK=NO
     fi
     if [ "${_PHP_DEB_TOKENS_OK}" = "YES" ]; then
       _PHP_DEB_INSTALLED=YES
@@ -2157,7 +2161,18 @@ _install_php_multi_src() {
   if [ "${_OS_CODE}" = "excalibur" ] && [ "$1" -lt 74 ]; then
     _LGC_CFL="CFLAGS=\"-g -O2 -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=implicit-int -Wno-error=int-conversion -Wno-error=return-mismatch -Wno-error=declaration-missing-parameter-type\" "
   fi
-  _mrun "${_LGC_CFL}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
+  ### PHP 8.4 added Pdo\Sqlite::loadExtension, which loads a native shared
+  ### object from any path: sqlite3.extension_dir and open_basedir do not
+  ### apply to it, so a pool that disables the exec family could still run
+  ### native code through it. Compile that one method out; pdo_sqlite, the
+  ### sqlite: DSN and createFunction stay. The system libsqlite3 supports
+  ### extension loading, so PHP never sets this define on its own.
+  ### _check_php_sqlite_loadext rebuilds a version built before this.
+  _PDO_SQL_CFL=""
+  if [ "$1" -ge 84 ]; then
+    _PDO_SQL_CFL="CPPFLAGS=\"-DPDO_SQLITE_OMIT_LOAD_EXTENSION=1\" "
+  fi
+  _mrun "${_LGC_CFL}${_PDO_SQL_CFL}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -2189,7 +2204,7 @@ _install_php_multi_src() {
     sleep 60
     _msg "INFO: Building PHP ${_PHP_VERSION} part 2/3 (again)"
     _mrun "make clean"
-    _mrun "${_LGC_CFL}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
+    _mrun "${_LGC_CFL}${_PDO_SQL_CFL}LIBS=\"-ldl -lpthread\" PKG_CONFIG_PATH=\"${_PKG_CONFIG_PATH}\" ./configure \
                 --prefix=/opt/php$1 \
                 --enable-fpm \
                 --enable-bcmath \
@@ -2969,6 +2984,28 @@ _check_php_icu_version() {
 }
 
 #
+# Check that PHP 8.4 or newer has no Pdo\Sqlite::loadExtension method (see
+# _install_php_multi_src); older versions never had it. A binary that does
+# not run passes here: the broken-build checks own that case.
+_check_php_sqlite_loadext() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _check_php_sqlite_loadext $1"
+  fi
+  local _lxt
+  if [ "${1}" -lt 84 ]; then
+    return 0
+  fi
+  _lxt=$("/opt/php${1}/bin/php" -r 'echo method_exists("Pdo\\Sqlite", "loadExtension") ? "loadext:on" : "loadext:off";' 2>/dev/null)
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "INFO: PHP $1 PDO SQLite extension loading probe: ${_lxt:-no answer}"
+  fi
+  if [[ "${_lxt}" =~ "loadext:on" ]]; then
+    return 1  # the method is there, rebuild needed
+  fi
+  return 0
+}
+
+#
 # Check if the PHP rebuild is required.
 _check_php_rebuild() {
   # Debug mode: log the function call
@@ -3019,6 +3056,14 @@ _check_php_rebuild() {
       _PHP_FORCE_REINSTALL=YES
       _ownWhy=YES
     fi
+  fi
+
+  if ! _check_php_sqlite_loadext "$1"; then
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: PHP ${_PHP_ITD} can load SQLite extensions via PDO, forcing rebuild"
+    fi
+    _PHP_FORCE_REINSTALL=YES
+    _ownWhy=YES
   fi
 
   # Check for presence of PHP drivers
@@ -3081,7 +3126,8 @@ _check_php_rebuild() {
       # a major OS upgrade its marker says it was already rebuilt there. Else a
       # version built earlier in this run (recorded by _php_note_build) is not
       # built again for a force alone; its own reason (an OpenSSL or ICU
-      # mismatch or a missing mysqli driver found now) still builds it.
+      # mismatch, a missing mysqli driver or PDO SQLite extension loading
+      # found now) still builds it.
       if [ "${_PHP_ITD}" != "${_PHP_VERSION}" ] \
         || { [ ! -e "${_pthLog}/re-installed-php${1}-on-post_major_os_upgrade.info" ] \
           && { [ "${_ownWhy}" = "YES" ] \
@@ -3444,9 +3490,10 @@ _php_upgrade_all() {
     _msg "PROC: _php_upgrade_all $1"
   fi
   # _check_php_rebuild sets _PHP_FORCE_REINSTALL=YES when this version needs a
-  # rebuild (new release, OpenSSL/ICU header or mysqli driver mismatch) and the
-  # _check_php_broken_* helpers set NO after fixing a broken build, so each
-  # version starts again from the value the caller passed in: one version's
+  # rebuild (new release, OpenSSL/ICU header or mysqli driver mismatch, PDO
+  # SQLite extension loading on 8.4 and newer) and the _check_php_broken_*
+  # helpers set NO after fixing a broken build, so each version starts
+  # again from the value the caller passed in: one version's
   # result must not decide the next one, and a caller force reaches them all.
   local _force_in="${_PHP_FORCE_REINSTALL}"
   if [ ! -z "${1}" ] && [ "${1}" != "force" ]; then
