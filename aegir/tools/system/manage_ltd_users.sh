@@ -4725,6 +4725,17 @@ _site_socket_inc_gen() {
         _mltFpmUpdateForce=YES
       fi
     done <<< "${_mltFpmBody}"
+    # A worker that read past the # built includes and waiting entries from
+    # comment rows (a pin dropped, or a commented line after a site's own
+    # row taking its place), and the unchanged baseline kept them until the
+    # file changed. A file that holds a comment row has its includes rebuilt
+    # once by a worker that skips them: the rebuild marks its stamp.
+    if [ "${_mltFpmUpdate}" = "NO" ] && [ "${_mltFpmUpdateForce}" = "NO" ] \
+      && [ -f "${_mltNgx}" ] \
+      && grep -q '^[[:space:]]*#' <<< "${_mltFpmBody}" \
+      && [ "$(_ltd_ctrl_read .multi-nginx-fpm.pid)" != "comments-skipped" ]; then
+      _mltFpmUpdateForce=YES
+    fi
     # While a whole-server move's promotion window is open on this box (the
     # standby marker plus the fresh in-flight signal), the per-site includes
     # are left exactly as found. The rename running in that window rewrites
@@ -4776,7 +4787,7 @@ _site_socket_inc_gen() {
       else
         _ltd_ctrl_rm .multi-fpm-skipped.info
       fi
-      _ltd_ctrl_stamp .multi-nginx-fpm.pid ""
+      _ltd_ctrl_stamp .multi-nginx-fpm.pid "comments-skipped"
       _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./.prev-multi-fpm.info
       _ltd_ctrl_put .prev-multi-fpm.info "${_mltFpmBody}"
       ### reload nginx -- only a config that passes its own test: a failed
