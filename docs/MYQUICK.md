@@ -42,6 +42,8 @@ Nightly backups dump every database with mydumper, which in its default mode ref
 
 On Percona 5.7 the nightly and cluster dumps sync with `FLUSH TABLES WITH READ LOCK` (`--sync-thread-lock-mode=FTWRL`; on Percona 8.x the mode is `AUTO`) and pass `--no-backup-locks` beside it when the installed `mydumper` lists that option. The global read lock alone still gives each dump its consistent point for row changes; a `mydumper` without the option is called as before.
 
+On 5.7 the `xoct` and `xcopy` site exports, `boa-dbctl dump` and the fast dump of a site's Backup, Clone or Migrate pass `--no-backup-locks` the same way. They keep mydumper's default lock mode, which takes the same global read lock there; any other server gets the arguments as before.
+
 Without the option, mydumper also takes Percona's backup lock on 5.7 and keeps it until the global read lock is released, while a write to a MyISAM table waits for that lock with the table open. The event scheduler makes such a write at every event run (`mysql.event` is MyISAM on 5.7), so such a dump can stall with its `FLUSH TABLES` waiting for that table, which MySQL does not see as a deadlock, and every write on the box then queues behind it.
 
 A `TRUNCATE` that reaches a table before mydumper has read it completes and leaves that table empty in the dump. Without the option, one that comes while mydumper holds its backup lock stalls the dump instead, and holds its table until it is killed.

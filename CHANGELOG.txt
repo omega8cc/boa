@@ -1501,6 +1501,14 @@
       using || lost PIPES_AS_CONCAT. Each dump now writes every object's
       own mode before it, as the server stored it.
 
+    * An xoct or xcopy site export, a database broker dump and the fast
+      dump of a site's Backup, Clone or Migrate on Percona 5.7 no longer
+      stall against the event scheduler as the nightly did: each now
+      passes --no-backup-locks beside its read lock when the server is
+      5.7 and the installed mydumper lists the option, as the nightly
+      and cluster dumps do. Any other server, and a mydumper without
+      the option, gets the arguments as before.
+
     * A store another registered site still reads through its files or
       private link is no longer set aside by a Delete, a renaming Migrate
       or the nightly orphan sweep when that reader sits on a Drupal 8+
