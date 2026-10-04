@@ -4944,11 +4944,14 @@ _switch_php() {
           _FORCE_FPM_SETUP=YES
         fi
       else
+        # Leaving multi-FPM mode: the account's single pool is set up in this
+        # pass, and nginx is sent to it only once it is up (see the pool loop
+        # below). A reload here, with no setup until the next worker release,
+        # sent every site of the account to a socket that did not exist.
         if [ -e "${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc" ]; then
           _ltd_rm_in "${_dscUsr}/config/server_master/nginx/post.d" 'fpm_include_*'
           _ltd_ctrl_rm '.multi-fpm*.pid'
-          service nginx reload &> /dev/null
-          _ltdNgxReloaded=YES
+          _FORCE_FPM_SETUP=YES
         fi
       fi
 
@@ -5119,17 +5122,28 @@ _switch_php() {
         # read a half-made pool (a master whose config fails stops every pool
         # it serves), and a reload of every version on every setup cut requests
         # in flight on versions nothing had changed for.
+        # The other mode's pools (_pOld) are dropped after the loop, once
+        # nginx is sent to the pools set up here (_pUp: the default one).
+        _pOld=""
         if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
           _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
+          _pUp="/run/${_USER}.${_PHP_SV}.fpm.socket"
           for _pf in /opt/php*/etc/pool.d/"${_USER}".conf; do
-            _ltd_pool_drop "${_pf}"
+            if [ -e "${_pf}" ] || [ -L "${_pf}" ]; then
+              _pOld="${_pOld}${_pf} "
+            fi
           done
         else
           _PHP_M_V="${_PHP_SV}"
+          _pUp="/run/${_USER}.fpm.socket"
           for _pf in /opt/php*/etc/pool.d/"${_USER}".*.conf; do
-            _ltd_pool_drop "${_pf}"
+            if [ -e "${_pf}" ] || [ -L "${_pf}" ]; then
+              _pOld="${_pOld}${_pf} "
+            fi
           done
-          # the single pool of the version in use is replaced in place below
+          # the single pool of the version in use is replaced in place below;
+          # one of another version listens on the same socket, so it goes
+          # now and its version is reloaded before the one in use
           _pkeep=""
           [ -x "/opt/php${_PHP_SV}/bin/php" ] && _pkeep="${_PHP_SV}"
           for _pf in /opt/php*/etc/pool.d/"${_USER}".conf; do
@@ -5228,6 +5242,48 @@ _switch_php() {
         for m in ${_FPM_RLD}; do
           [ -e "/etc/init.d/php${m}-fpm" ] && service php${m}-fpm reload &> /dev/null
         done
+        # After a switch between single- and multi-FPM mode: nginx sends the
+        # account's sites to the other mode's pools until it reloads, so they
+        # go only after a reload that sends it to the pools set up above
+        # (dropped with the rest, every site got a 502 in between). A config
+        # nginx refuses keeps them, as nginx keeps its running one.
+        if [ -n "${_pOld}" ]; then
+          _FPM_RLD=" "
+          _pWt=0
+          while [ ! -S "${_pUp}" ] && [ "${_pWt}" -lt 30 ]; do
+            sleep 0.5
+            _pWt=$(( _pWt + 1 ))
+          done
+          if nginx -t &> /dev/null; then
+            # nginx reloads in the background: its old workers, which still
+            # send the sites to the old pools, are waited for (15 s at most)
+            _pNgx=$( { tr -dc '0-9' < /run/nginx.pid; } 2> /dev/null )
+            _pNgxW=""
+            [ -n "${_pNgx}" ] && _pNgxW=$(pgrep -P "${_pNgx}" 2> /dev/null | tr '\n' ' ')
+            service nginx reload &> /dev/null
+            _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
+            _pWt=0
+            while [ "${_pWt}" -lt 30 ]; do
+              _pLive=""
+              for _pw in ${_pNgxW}; do
+                kill -0 "${_pw}" 2> /dev/null && _pLive=YES && break
+              done
+              [ -z "${_pLive}" ] && break
+              sleep 0.5
+              _pWt=$(( _pWt + 1 ))
+            done
+            for _pf in ${_pOld}; do
+              _ltd_pool_drop "${_pf}"
+            done
+            for m in ${_FPM_RLD}; do
+              [ -e "/etc/init.d/php${m}-fpm" ] && service "php${m}-fpm" reload &> /dev/null
+            done
+          else
+            _ltd_notice "nginx-configtest-${_USER}" \
+              "nginx -t FAILED after the FPM mode of ${_USER} changed -- NOT reloaded, its old pools kept" \
+              "$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
+          fi
+        fi
       fi
     fi
   fi
