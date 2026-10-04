@@ -1410,6 +1410,13 @@
 
 @=> Important Fixes
 
+    * A Textpattern or Grav site with Encryption set to Required no
+      longer stops nginx from reloading on the whole server. Its http
+      vhost carried a second Let's Encrypt challenge location beside the
+      one BOA already adds, so nginx refused its configuration test and
+      every reload until that vhost was rewritten. The vhost now carries
+      the challenge location once.
+
     * A multi-fpm.info line commented out with a leading # (#example.com
       8.5) no longer pins its site: the account worker read past the #
       while every other reader treats the line as a comment. A site served
