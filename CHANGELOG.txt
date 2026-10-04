@@ -1370,6 +1370,16 @@
 
 @=> Important Fixes
 
+    * A store another registered site still reads through its files or
+      private link is no longer set aside by a Delete, a renaming Migrate
+      or the nightly orphan sweep when that reader sits on a Drupal 8+
+      platform whose docroot is web/ (or docroot/, html/), or on a
+      platform registered deeper below ~/static: the store worker's check
+      for readers looked only at sites directly below a distro platform
+      or a platform in ~/static itself, so such a reader lost its files.
+      It now reads the sites of every platform BOA builds and of every
+      platform an account registered, at the docroot Provision serves.
+
     * A Textpattern Upgrade whose copy goes to another database server
       no longer fails when that server gives the copy the source site's
       database name: the name alone was read as the copy pointing at the
