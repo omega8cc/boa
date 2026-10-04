@@ -839,9 +839,32 @@ _notify_objects_left_out() {
   } | _backup_notice "Backup without stored routines or events on [${_hName}]" "in ${_SAVELOCATION}:${_OBJECTS_LEFT_DBS}"
 }
 
+# A dump whose stored objects could not each be given the sql_mode they
+# were made under (_mydumper_object_modes) is archived as mydumper wrote
+# it; cron discards the run's WARN line, so it is reported once per run on
+# the same channel.
+_notify_modes_left() {
+  [ -z "${_MODES_LEFT_DBS}" ] && return 0
+  local _d
+  {
+    echo "The database backup run on ${_hName} archived the triggers, routines"
+    echo "or events of these database(s) under the dump's own sql_mode:"
+    echo
+    for _d in ${_MODES_LEFT_DBS}; do
+      echo "  ${_d}"
+    done
+    echo
+    echo "Their own modes could not each be written into the dump, so a load"
+    echo "of one made under another mode (a Drupal site's own, for one) can"
+    echo "fail or work otherwise. The next run writes them again."
+    echo
+  } | _backup_notice "Backup with stored objects under the dump's sql_mode on [${_hName}]" "in ${_SAVELOCATION}:${_MODES_LEFT_DBS}"
+}
+
 _DUMP_FAILED_N=0
 _DUMP_FAILED_DBS=""
 _OBJECTS_LEFT_DBS=""
+_MODES_LEFT_DBS=""
 for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
   if [ "${_DB}" != "Database" ] \
     && [ "${_DB}" != "information_schema" ] \
@@ -911,6 +934,7 @@ for _DB in `${_C_SQL} -e "show databases" -s | uniq | sort`; do
       fi
       if [ -n "${_MYDUMPER_MODES_LEFT}" ]; then
         echo "WARN: ${_DB}'s stored objects kept the dump's own sql_mode: a load of one made under another mode can fail or work otherwise"
+        _MODES_LEFT_DBS="${_MODES_LEFT_DBS} ${_DB}"
       fi
     else
       _DUMP_FAILED_N=$(( ${_DUMP_FAILED_N:-0} + 1 ))
@@ -930,6 +954,7 @@ _compress_backup &> /dev/null
 echo "INFO: Completing dbs backup compress on $(date)"
 _notify_dump_failures
 _notify_objects_left_out
+_notify_modes_left
 
 echo "INFO: Starting dbs backup cleanup on $(date)"
 _DB_BACKUPS_TTL=${_DB_BACKUPS_TTL//[^0-9]/}
