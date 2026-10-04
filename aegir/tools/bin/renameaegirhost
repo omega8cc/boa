@@ -2272,7 +2272,7 @@ _rewrite_vhosts() {
     if _text_needs_rename "$(_in_real_dir "${_VHOSTD}" _read_here "${_N}")"; then
       _info "  sed in-place content: ${_VHOSTD}/${_N}"
       _maybe_run _in_real_dir \'"${_VHOSTD}"\' _sed_here \'"${_N}"\' \
-        \'"/^[[:space:]]*ssl_\(certificate\|certificate_key\|trusted_certificate\)[[:space:]]/b;${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g"\' \
+        \'"/^[[:space:]]*ssl_\(trusted_\)\{0,1\}certificate\(_key\)\{0,1\}[[:space:]]/!{${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g;}"\' \
         || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_HOST}"
     fi
 
