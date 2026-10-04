@@ -105,6 +105,23 @@
       operator's drop, and its box-wide check reads their grants and
       stored objects in that account's databases as that account's.
 
+    * A database login the root database helper keeps for the stored
+      objects it defines, or because the server will not drop it, now
+      loses every grant it held when a switch keeps it and at each
+      password rotation, and gets back only its grants on the account's
+      own databases, as a login made again does.
+
+    * A login a switch kept for its stored objects is let go at the
+      first password rotation after it defines nothing, instead of being
+      made again for good.
+
+    * The helper counts a warning on its read of stored objects as a
+      partial answer (MySQL 5.7 skips a view or trigger it cannot parse
+      with a warning), so no login is dropped on it, and the Octopus pass
+      prints every alert of the helper's answer. Its leftovers list reads
+      site database users only for an account whose purge parked its
+      home. Still switched off: no account uses the helper.
+
     * The limited shell template and the ImageMagick policy no longer
       stay a release behind on a box whose mirror lagged at the publish.
 
