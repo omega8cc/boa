@@ -2660,10 +2660,40 @@ _php_vrn_dotted() {
 }
 
 #
+# Whether an account asks for PHP 8.6, a release candidate that a box gets
+# only on request: fpm.info or cli.info whose whole value is 8.6 (86 too, as
+# the ltd worker reads them), or a multi-fpm.info row that pins a site to it
+# (its second field; a '#' row is a comment). 8.6 inside a comment, a domain
+# or a longer value does not count, unlike the substring checks of the other
+# versions in _php_if_versions_cleanup_cnf, and neither does the worker's own
+# place.holder.dont.remove row. A numbered dummy row an operator adds to keep
+# an unused version (place.holder1.dont.remove 8.6) counts.
+_php_eight_six_asked() {
+  local _c _f _v
+  for _c in /data/disk/*/static/control; do
+    # the account's own directory: never a link, never a FIFO opened
+    _acct_in_real_dir "${_c}" true || continue
+    for _f in fpm.info cli.info; do
+      _v="$(_acct_read_in "${_c}" "${_f}" | tr -cd '0-9.')"
+      case "${_v}" in
+        8.6|86) return 0 ;;
+      esac
+    done
+    [ -e "${_c}/multi-fpm.info" ] || continue
+    _v="$(_acct_read_in "${_c}" multi-fpm.info \
+      | awk '$1 !~ /^#/ && $1 != "place.holder.dont.remove" && NF >= 2 {
+          v = $2; gsub(/[^0-9]/, "", v); if (v == "86") n++ } END { print n + 0 }')"
+    [ "${_v}" -gt 0 ] && return 0
+  done
+  return 1
+}
+
+#
 # The PHP versions the accounts pin that the dotted greps of
 # _php_if_versions_cleanup_cnf miss, so the cleanup does not disable them:
 # - a two-digit version in fpm.info, cli.info or a multi-fpm.info row (the ltd
-#   worker reads 74 as 7.4);
+#   worker reads 74 as 7.4); 8.6 in these files is read by
+#   _php_eight_six_asked only;
 # - of the versions installed now, every one a cli-per-platform.info line
 #   names (read as websh reads the file: its first 64 KiB and 200 lines, '#'
 #   opening a comment, a line counting only as "<folder> <version>"), and the
@@ -2677,7 +2707,7 @@ _php_versions_pinned_more() {
     _acct_in_real_dir "${_c}" true || continue
     for _f in fpm.info cli.info; do
       _v="$(_php_vrn_dotted "$(_acct_read_in "${_c}" "${_f}" | tr -cd '0-9')")"
-      [ -n "${_v}" ] && _out="${_out} ${_v}"
+      [ -n "${_v}" ] && [ "${_v}" != "8.6" ] && _out="${_out} ${_v}"
     done
     if [ -e "${_c}/multi-fpm.info" ]; then
       # one row per site: "<site> <version>", '#' opening a comment row, the
@@ -2688,7 +2718,7 @@ _php_versions_pinned_more() {
       _v="$(_acct_read_in "${_c}" multi-fpm.info \
         | awk '$1 !~ /^#/ && NF >= 2 { print $2 }' \
         | tr -cd '0-9\n' \
-        | grep -xE '56|7[0-4]|8[0-6]' \
+        | grep -xE '56|7[0-4]|8[0-5]' \
         | sort -u \
         | sed 's/^\(.\)\(.\)$/ \1.\2/' \
         | tr -d '\n')"
@@ -3115,14 +3145,10 @@ _php_if_versions_cleanup_cnf() {
         _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_five}"
       fi
 
-      ### Add PHP 8.6 if used
-      _is_PHP_multi_eight_six=$(_acct_read_all static/control multi-fpm.info | grep "8\.6" 2>&1)
-      _is_PHP_FPM_eight_six=$(_acct_read_all static/control fpm.info | grep "8\.6" 2>&1)
-      _is_PHP_CLI_eight_six=$(_acct_read_all static/control cli.info | grep "8\.6" 2>&1)
+      ### Add PHP 8.6 only if an account asks for it: a release candidate is
+      ### never added for 8.6 inside a comment, a domain or a longer value
       _is_PHP_eight_six=
-      if [[ "${_is_PHP_multi_eight_six}" =~ "8.6" ]] \
-        || [[ "${_is_PHP_FPM_eight_six}" =~ "8.6" ]] \
-        || [[ "${_is_PHP_CLI_eight_six}" =~ "8.6" ]]; then
+      if _php_eight_six_asked; then
         _is_PHP_eight_six=8.6
         _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_six}"
       fi

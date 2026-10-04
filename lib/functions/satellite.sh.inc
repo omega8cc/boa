@@ -4622,11 +4622,19 @@ EOFMYSQL
   su -s /bin/bash ${_USER} -c "${_DRUSHCMD} cc drush" &> /dev/null
   wait
   _acct_in_real_dir "${_ROOT}/.tmp" rm -rf -- ./cache
+  # hosting-task runs its provision command as a child started as plain
+  # "php", found on PATH: the login shell's PATH would give it the box
+  # default PHP instead of the instance's command-line PHP, which leads the
+  # PATH of the task runner (aegir.sh) and of this script
+  local _tCliPth=""
+  if [ -n "${_T_CLI}" ] && [ -x "${_T_CLI}/php" ]; then
+    _tCliPth="PATH=${_T_CLI}:\${PATH} "
+  fi
   if [ -e "${_ROOT}/.drush/server_localhost.alias.drushrc.php" ]; then
-    su -s /bin/bash - ${_USER} -c "${_DRUSHCMD:-drush8} @hostmaster \
+    su -s /bin/bash - ${_USER} -c "${_tCliPth}${_DRUSHCMD:-drush8} @hostmaster \
       hosting-task @server_localhost verify --force" &> /dev/null
   else
-    su -s /bin/bash - ${_USER} -c "${_DRUSHCMD:-drush8} @hostmaster \
+    su -s /bin/bash - ${_USER} -c "${_tCliPth}${_DRUSHCMD:-drush8} @hostmaster \
       hosting-task @server_master verify --force" &> /dev/null
   fi
   wait
