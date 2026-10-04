@@ -4328,9 +4328,11 @@ _satellite_tune_fpm_workers() {
 }
 
 #
-# Disable New Relic per Octopus instance.
+# Disable New Relic per Octopus instance. $1 = the version digits, $2 = the
+# pool, $3 = 1 to reload its FPM after a change, $4 = the pool file to edit
+# when it is not the live one (a pool being made aside).
 _disable_newrelic() {
-  _THIS_POOL_TPL="/opt/php$1/etc/pool.d/$2.conf"
+  _THIS_POOL_TPL="${4:-/opt/php$1/etc/pool.d/$2.conf}"
   if [ -e "${_THIS_POOL_TPL}" ]; then
     _CHECK_NEW_RELIC_KEY=$(grep "newrelic.enabled.*true" ${_THIS_POOL_TPL} 2>&1)
     if [[ "${_CHECK_NEW_RELIC_KEY}" =~ "newrelic.enabled" ]]; then
@@ -4352,9 +4354,9 @@ _enable_newrelic() {
   _LOC_NEW_RELIC_KEY=${_LOC_NEW_RELIC_KEY//[^0-9a-zA-Z]/}
   _LOC_NEW_RELIC_KEY=$(echo -n ${_LOC_NEW_RELIC_KEY} | tr -d "\n" 2>&1)
   if [ -z "${_LOC_NEW_RELIC_KEY}" ]; then
-    _disable_newrelic $1 $2 $3
+    _disable_newrelic $1 $2 $3 "$4"
   else
-    _THIS_POOL_TPL="/opt/php$1/etc/pool.d/$2.conf"
+    _THIS_POOL_TPL="${4:-/opt/php$1/etc/pool.d/$2.conf}"
     if [ -e "${_THIS_POOL_TPL}" ]; then
       _CHECK_NEW_RELIC_TPL=$(grep "newrelic.license" ${_THIS_POOL_TPL} 2>&1)
       _CHECK_NEW_RELIC_KEY=$(grep "${_LOC_NEW_RELIC_KEY}" ${_THIS_POOL_TPL} 2>&1)
@@ -4380,7 +4382,8 @@ _enable_newrelic() {
   fi
 }
 #
-# Switch New Relic on or off per Octopus instance.
+# Switch New Relic on or off per Octopus instance (arguments as for
+# _disable_newrelic).
 _switch_newrelic() {
   _isPhp="$1"
   _isPhp=${_isPhp//[^0-9]/}
@@ -4390,9 +4393,9 @@ _switch_newrelic() {
   _isRld=${_isRld//[^0-1]/}
   if [ ! -z "${_isPhp}" ] && [ ! -z "${_isUsr}" ] && [ ! -z "${_isRld}" ]; then
     if [ -e "${_dscUsr}/static/control/newrelic.info" ]; then
-      _enable_newrelic $1 $2 $3
+      _enable_newrelic $1 $2 $3 "$4"
     else
-      _disable_newrelic $1 $2 $3
+      _disable_newrelic $1 $2 $3 "$4"
     fi
   fi
 }
@@ -4559,6 +4562,40 @@ _ltd_ngx_fpm_fp() {
     -printf '%f %s %T@\n' 2> /dev/null | sort | md5sum | cut -d' ' -f1
 }
 #
+# Whether a PHP version from 8.1 up is installed for which the account has
+# no web user yet, i.e. one installed after its pools were set up: the pass
+# then sets the pools up again, which makes that user and its pool.
+_ltd_fpm_new_version() {
+  local _v
+  for _v in 86 85 84 83 82 81; do
+    if [ -x "/opt/php${_v}/bin/php" ] && [ ! -e "/home/${_USER}.${_v}.web" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+#
+# A PHP version (its digits) whose FPM _switch_php reloads once, after every
+# pool file of the account is final.
+_ltd_fpm_reload_mark() {
+  case "${_FPM_RLD}" in
+    *" ${1} "*) ;;
+    *) _FPM_RLD="${_FPM_RLD}${1} " ;;
+  esac
+}
+#
+# One of the account's pool files (/opt/phpNN/etc/pool.d/...) removed, its
+# version marked for the reload; $2 = a version whose file is left, as it is
+# replaced in place.
+_ltd_pool_drop() {
+  local _v="${1#/opt/php}"
+  _v="${_v%%/*}"
+  [ -e "${1}" ] || [ -L "${1}" ] || return 0
+  [ -n "${2}" ] && [ "${_v}" = "${2}" ] && return 0
+  rm -f -- "${1}"
+  _ltd_fpm_reload_mark "${_v}"
+}
+#
 # Add site specific socket config include.
 _site_socket_inc_gen() {
   _unlAeg="${_dscUsr}/static/control/unlock-aegir-php.info"
@@ -4643,26 +4680,12 @@ _site_socket_inc_gen() {
     _mltFpmUpdateForce=YES
   fi
 
-  # config/ is oN's: the default include goes only from the real post.d
-  if [ -x "/opt/php86/bin/php" ] && [ ! -e "/home/${_USER}.86.web" ]; then
-    _ltd_rm_in "${_fpmPth}" fpm_include_default.inc
-    _mltFpmUpdateForce=YES
-  elif [ -x "/opt/php85/bin/php" ] && [ ! -e "/home/${_USER}.85.web" ]; then
-    _ltd_rm_in "${_fpmPth}" fpm_include_default.inc
-    _mltFpmUpdateForce=YES
-  elif [ -x "/opt/php84/bin/php" ] && [ ! -e "/home/${_USER}.84.web" ]; then
-    _ltd_rm_in "${_fpmPth}" fpm_include_default.inc
-    _mltFpmUpdateForce=YES
-  elif [ -x "/opt/php83/bin/php" ] && [ ! -e "/home/${_USER}.83.web" ]; then
-    _ltd_rm_in "${_fpmPth}" fpm_include_default.inc
-    _mltFpmUpdateForce=YES
-  elif [ -x "/opt/php82/bin/php" ] && [ ! -e "/home/${_USER}.82.web" ]; then
-    _ltd_rm_in "${_fpmPth}" fpm_include_default.inc
-    _mltFpmUpdateForce=YES
-  elif [ -x "/opt/php81/bin/php" ] && [ ! -e "/home/${_USER}.81.web" ]; then
-    _ltd_rm_in "${_fpmPth}" fpm_include_default.inc
-    _mltFpmUpdateForce=YES
-  fi
+  # A PHP version installed after the account's pools were set up is picked
+  # up by _switch_php (_ltd_fpm_new_version). The default include is never
+  # removed for it: until the next pass rewrote it, nginx sent every site not
+  # listed in multi-fpm.info to the single-mode socket, which does not exist
+  # in this mode. A pin to the new version gets its include from the check
+  # below once the version's pool is up.
 
   if [ -f "${_mltFpm}" ]; then
     # static/control is tenant-owned, so a symlink named <x>.info is matched by
@@ -4686,6 +4709,10 @@ _site_socket_inc_gen() {
     # never applies (a typo) costs a few stats, no rebuild.
     local _sN _sV _sR
     while read -r _sN _sV _sR; do
+      # a row whose first field starts with # is a comment, as for every
+      # other reader of this file: the strip below would turn #<site> into
+      # <site> and keep the pin a tenant commented out to drop it
+      [[ "${_sN}" == \#* ]] && continue
       _sN=${_sN//[^a-zA-Z0-9-.]/}
       _sN=${_sN,,}
       _sV=${_sV//[^0-9]/}
@@ -4698,6 +4725,17 @@ _site_socket_inc_gen() {
         _mltFpmUpdateForce=YES
       fi
     done <<< "${_mltFpmBody}"
+    # A worker that read past the # built includes and waiting entries from
+    # comment rows (a pin dropped, or a commented line after a site's own
+    # row taking its place), and the unchanged baseline kept them until the
+    # file changed. A file that holds a comment row has its includes rebuilt
+    # once by a worker that skips them: the rebuild marks its stamp.
+    if [ "${_mltFpmUpdate}" = "NO" ] && [ "${_mltFpmUpdateForce}" = "NO" ] \
+      && [ -f "${_mltNgx}" ] \
+      && grep -q '^[[:space:]]*#' <<< "${_mltFpmBody}" \
+      && [ "$(_ltd_ctrl_read .multi-nginx-fpm.pid)" != "comments-skipped" ]; then
+      _mltFpmUpdateForce=YES
+    fi
     # While a whole-server move's promotion window is open on this box (the
     # standby marker plus the fresh in-flight signal), the per-site includes
     # are left exactly as found. The rename running in that window rewrites
@@ -4722,6 +4760,8 @@ _site_socket_inc_gen() {
       _mltFpmSkip=""
       for p in ${_mltFpmBody};do
         _SITE_NAME=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
+        # a comment row (see above): no include, and not listed as skipped
+        [[ "${_SITE_NAME}" == \#* ]] && continue
         _SITE_NAME=${_SITE_NAME//[^a-zA-Z0-9-.]/}
         _SITE_NAME=$(echo -n ${_SITE_NAME} | tr A-Z a-z 2>&1)
         _SITE_NAME=$(echo -n ${_SITE_NAME} | tr -d "\n" 2>&1)
@@ -4747,7 +4787,7 @@ _site_socket_inc_gen() {
       else
         _ltd_ctrl_rm .multi-fpm-skipped.info
       fi
-      _ltd_ctrl_stamp .multi-nginx-fpm.pid ""
+      _ltd_ctrl_stamp .multi-nginx-fpm.pid "comments-skipped"
       _ltd_in_real_dir "${_dscUsr}/static/control" rm -rf -- ./.prev-multi-fpm.info
       _ltd_ctrl_put .prev-multi-fpm.info "${_mltFpmBody}"
       ### reload nginx -- only a config that passes its own test: a failed
@@ -4904,11 +4944,14 @@ _switch_php() {
           _FORCE_FPM_SETUP=YES
         fi
       else
+        # Leaving multi-FPM mode: the account's single pool is set up in this
+        # pass, and nginx is sent to it only once it is up (see the pool loop
+        # below). A reload here, with no setup until the next worker release,
+        # sent every site of the account to a socket that did not exist.
         if [ -e "${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc" ]; then
           _ltd_rm_in "${_dscUsr}/config/server_master/nginx/post.d" 'fpm_include_*'
           _ltd_ctrl_rm '.multi-fpm*.pid'
-          service nginx reload &> /dev/null
-          _ltdNgxReloaded=YES
+          _FORCE_FPM_SETUP=YES
         fi
       fi
 
@@ -4995,6 +5038,7 @@ _switch_php() {
             _NEW_FPM_SETUP=YES
           fi
         fi
+        _ltd_fpm_new_version && _NEW_FPM_SETUP=YES
       else
         _PHP_M_V="${_PHP_SV}"
         _ltd_ctrl_rm '.multi-fpm*.pid'
@@ -5014,7 +5058,6 @@ _switch_php() {
             _ltd_reown_here "${_USER}.ftp:${_usrGroup}" ./fpm.info
         fi
 
-        _PHP_OLD_SV=${_PHP_FPM_VERSION//[^0-9]/}
         _PHP_SV=${_T_FPM_VRN//[^0-9]/}
         [ -z "${_PHP_SV}" ] && _PHP_SV=84
 
@@ -5039,6 +5082,10 @@ _switch_php() {
           _ltd_rm_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}"
         fi
 
+        # The PHP versions to reload once every pool file of the account is
+        # final (see the pool loop below)
+        _FPM_RLD=" "
+
         # Update/create web users
         for m in ${_PHP_M_V}; do
           if [ -x "/opt/php${m}/bin/php" ]; then
@@ -5059,18 +5106,49 @@ _switch_php() {
             else
               echo "_NEW_PHP_TO_USE is ${m} for ${_WEB}, creating"
               _satellite_create_web_user "${m}"
+              # a user made anew (its uid and groups) reaches the pool's
+              # workers only through a reload, whether or not its file changes
+              _ltd_fpm_reload_mark "${m}"
             fi
           fi
         done
 
-        # Cleanup old pool files and set up new pools
+        # Cleanup old pool files and set up new pools. Each pool file is made
+        # aside, outside its version's pool.d/*.conf include, and put in place
+        # by rename only when it differs; a PHP version is reloaded once, after
+        # every pool file of the account is final, and only when one of its
+        # pools was added, changed or removed, is not up, or has a user made
+        # anew. A reload sent while a pool file was still being edited could
+        # read a half-made pool (a master whose config fails stops every pool
+        # it serves), and a reload of every version on every setup cut requests
+        # in flight on versions nothing had changed for.
+        # The other mode's pools (_pOld) are dropped after the loop, once
+        # nginx is sent to the pools set up here (_pUp: the default one).
+        _pOld=""
         if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
           _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
-          rm -f /opt/php*/etc/pool.d/${_USER}.conf
+          _pUp="/run/${_USER}.${_PHP_SV}.fpm.socket"
+          for _pf in /opt/php*/etc/pool.d/"${_USER}".conf; do
+            if [ -e "${_pf}" ] || [ -L "${_pf}" ]; then
+              _pOld="${_pOld}${_pf} "
+            fi
+          done
         else
           _PHP_M_V="${_PHP_SV}"
-          rm -f /opt/php*/etc/pool.d/${_USER}.*.conf
-          rm -f /opt/php*/etc/pool.d/${_USER}.conf
+          _pUp="/run/${_USER}.fpm.socket"
+          for _pf in /opt/php*/etc/pool.d/"${_USER}".*.conf; do
+            if [ -e "${_pf}" ] || [ -L "${_pf}" ]; then
+              _pOld="${_pOld}${_pf} "
+            fi
+          done
+          # the single pool of the version in use is replaced in place below;
+          # one of another version listens on the same socket, so it goes
+          # now and its version is reloaded before the one in use
+          _pkeep=""
+          [ -x "/opt/php${_PHP_SV}/bin/php" ] && _pkeep="${_PHP_SV}"
+          for _pf in /opt/php*/etc/pool.d/"${_USER}".conf; do
+            _ltd_pool_drop "${_pf}" "${_pkeep}"
+          done
         fi
 
         for m in ${_PHP_M_V}; do
@@ -5078,47 +5156,51 @@ _switch_php() {
             if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
               _WEB="${_USER}.${m}.web"
               _POOL="${_USER}.${m}"
-              cp -af /var/xdrago/conf/fpm-pool-foo-multi.conf /opt/php${m}/etc/pool.d/${_POOL}.conf
+              _pTpl=/var/xdrago/conf/fpm-pool-foo-multi.conf
             else
               _WEB="${_USER}.web"
               _POOL="${_USER}"
-              cp -af /var/xdrago/conf/fpm-pool-foo.conf /opt/php${m}/etc/pool.d/${_POOL}.conf
+              _pTpl=/var/xdrago/conf/fpm-pool-foo.conf
             fi
-            sed -i "s/.ftp/.web/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            _pFile="/opt/php${m}/etc/pool.d/${_POOL}.conf"
+            _pNew="/opt/php${m}/etc/pool.d/.${_POOL}.conf.new"
+            rm -f -- "${_pNew}"
+            cp -af "${_pTpl}" "${_pNew}"
+            sed -i "s/.ftp/.web/g" "${_pNew}" &> /dev/null
             wait
-            sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            sed -i "s/\/data\/disk\/foo\/.tmp/\/home\/foo.web\/.tmp/g" "${_pNew}" &> /dev/null
             wait
-            sed -i "s/foo.web/${_WEB}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            sed -i "s/foo.web/${_WEB}/g" "${_pNew}" &> /dev/null
             wait
-            sed -i "s/THISPOOL/${_POOL}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            sed -i "s/THISPOOL/${_POOL}/g" "${_pNew}" &> /dev/null
             wait
-            sed -i "s/foo/${_USER}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            sed -i "s/foo/${_USER}/g" "${_pNew}" &> /dev/null
             wait
 
             if [[ "${m}" == 8* ]] && [ -e "/opt/etc/fpm/fpm-pool-common-modern.conf" ]; then
-              sed -i "s/fpm-pool-common.conf/fpm-pool-common-modern.conf/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+              sed -i "s/fpm-pool-common.conf/fpm-pool-common-modern.conf/g" "${_pNew}" &> /dev/null
               wait
             elif [[ "${m}" == 7* ]] && [ -e "/opt/etc/fpm/fpm-pool-common-legacy.conf" ]; then
-              sed -i "s/fpm-pool-common.conf/fpm-pool-common-legacy.conf/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+              sed -i "s/fpm-pool-common.conf/fpm-pool-common-legacy.conf/g" "${_pNew}" &> /dev/null
               wait
             fi
 
-            [ -n "${_PHP_FPM_DENY}" ] && sed -i "s/passthru,/${_PHP_FPM_DENY},/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+            [ -n "${_PHP_FPM_DENY}" ] && sed -i "s/passthru,/${_PHP_FPM_DENY},/g" "${_pNew}" &> /dev/null
             wait
 
             if [ -n "${_PHP_FPM_TIMEOUT}" ] && [ "${_PHP_FPM_TIMEOUT}" -ge 60 ]; then
               _PHP_TO="${_PHP_FPM_TIMEOUT}s"
-              sed -i "s/180s/${_PHP_TO}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+              sed -i "s/180s/${_PHP_TO}/g" "${_pNew}" &> /dev/null
               wait
             fi
 
             if [ -n "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge 2 ]; then
-              sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" /opt/php${m}/etc/pool.d/${_POOL}.conf &> /dev/null
+              sed -i "s/pm.max_children =.*/pm.max_children = ${_CHILD_MAX_FPM}/g" "${_pNew}" &> /dev/null
               wait
             fi
 
             if [ -n "${_FPM_MEM_LIMIT}" ] && [ "${_FPM_MEM_LIMIT}" -ge 64 ]; then
-              echo "php_admin_value[memory_limit] = ${_FPM_MEM_LIMIT}M" >> /opt/php${m}/etc/pool.d/${_POOL}.conf
+              echo "php_admin_value[memory_limit] = ${_FPM_MEM_LIMIT}M" >> "${_pNew}"
               wait
             fi
 
@@ -5135,20 +5217,73 @@ _switch_php() {
               && getent group "${_T_WGS##* }" > /dev/null 2>&1 \
               && ! { [ "$(_web_group_rb "${_USER}")" = "rb" ] \
                 && [[ ",$(getent group www-data | cut -d: -f4)," == *",${_USER},"* ]]; }; then
-              echo "group = ${_T_WGS##* }" >> /opt/php${m}/etc/pool.d/${_POOL}.conf
+              echo "group = ${_T_WGS##* }" >> "${_pNew}"
             fi
 
-            _switch_newrelic ${m} ${_POOL} 0
+            _switch_newrelic ${m} ${_POOL} 0 "${_pNew}"
+
+            if [ -f "${_pFile}" ] && [ ! -L "${_pFile}" ] \
+              && cmp -s -- "${_pNew}" "${_pFile}"; then
+              rm -f -- "${_pNew}"
+            else
+              mv -f -- "${_pNew}" "${_pFile}"
+              _ltd_fpm_reload_mark "${m}"
+            fi
+            # a pool file in place that its master never took up (a pass cut
+            # off before its reload)
+            [ -S "/run/${_POOL}.fpm.socket" ] || _ltd_fpm_reload_mark "${m}"
 
             mkdir -p /var/www/phpcache/${_USER}/${_POOL}
             _T_WG=$(_web_group "${_USER}")
             [ -n "${_T_WG}" ] && chgrp "${_T_WG}" /var/www/phpcache/${_USER}/${_POOL}
             chmod 770 /var/www/phpcache/${_USER}/${_POOL}
-
-            [ -e "/etc/init.d/php${_PHP_OLD_SV}-fpm" ] && service php${_PHP_OLD_SV}-fpm reload &> /dev/null
-            [ -e "/etc/init.d/php${m}-fpm" ] && service php${m}-fpm reload &> /dev/null
           fi
         done
+        for m in ${_FPM_RLD}; do
+          [ -e "/etc/init.d/php${m}-fpm" ] && service php${m}-fpm reload &> /dev/null
+        done
+        # After a switch between single- and multi-FPM mode: nginx sends the
+        # account's sites to the other mode's pools until it reloads, so they
+        # go only after a reload that sends it to the pools set up above
+        # (dropped with the rest, every site got a 502 in between). A config
+        # nginx refuses keeps them, as nginx keeps its running one.
+        if [ -n "${_pOld}" ]; then
+          _FPM_RLD=" "
+          _pWt=0
+          while [ ! -S "${_pUp}" ] && [ "${_pWt}" -lt 30 ]; do
+            sleep 0.5
+            _pWt=$(( _pWt + 1 ))
+          done
+          if nginx -t &> /dev/null; then
+            # nginx reloads in the background: its old workers, which still
+            # send the sites to the old pools, are waited for (15 s at most)
+            _pNgx=$( { tr -dc '0-9' < /run/nginx.pid; } 2> /dev/null )
+            _pNgxW=""
+            [ -n "${_pNgx}" ] && _pNgxW=$(pgrep -P "${_pNgx}" 2> /dev/null | tr '\n' ' ')
+            service nginx reload &> /dev/null
+            _ltdNgxFpBefore="$(_ltd_ngx_fpm_fp)"
+            _pWt=0
+            while [ "${_pWt}" -lt 30 ]; do
+              _pLive=""
+              for _pw in ${_pNgxW}; do
+                kill -0 "${_pw}" 2> /dev/null && _pLive=YES && break
+              done
+              [ -z "${_pLive}" ] && break
+              sleep 0.5
+              _pWt=$(( _pWt + 1 ))
+            done
+            for _pf in ${_pOld}; do
+              _ltd_pool_drop "${_pf}"
+            done
+            for m in ${_FPM_RLD}; do
+              [ -e "/etc/init.d/php${m}-fpm" ] && service "php${m}-fpm" reload &> /dev/null
+            done
+          else
+            _ltd_notice "nginx-configtest-${_USER}" \
+              "nginx -t FAILED after the FPM mode of ${_USER} changed -- NOT reloaded, its old pools kept" \
+              "$(nginx -t 2>&1 | tail -3 | tr '\n' ' ')"
+          fi
+        fi
       fi
     fi
   fi
