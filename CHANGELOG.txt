@@ -1410,6 +1410,28 @@
 
 @=> Important Fixes
 
+    * A multi-fpm.info line commented out with a leading # (#example.com
+      8.5) no longer pins its site: the account worker read past the #
+      while every other reader treats the line as a comment. A site served
+      that way today, by a commented-out line or by a commented line placed
+      after its own line, moves to the version its own line or the
+      account's fpm.info names on the first worker pass after the update.
+
+    * Installing a PHP version an account did not use before no longer
+      sends every site not listed in its multi-fpm.info to a missing
+      socket (502) until the next worker pass: the worker sets the new
+      version's pool up in the same pass and keeps the account's default
+      FPM include. A pool setup now reloads only the PHP versions whose
+      pools it added, changed or removed, once each, so a new worker
+      release no longer reloads every PHP-FPM version for every account.
+
+    * Deleting an account's multi-fpm.info no longer sends every site of
+      the account to a missing socket (502) until the next worker pass:
+      an account leaving multi-FPM mode gets its pool set up in the same
+      pass, nginx moves to it once it is up, and the old pools go only
+      after nginx has left them. A pool setup while nginx refuses its
+      config no longer drops the pools nginx keeps using.
+
     * A Textpattern rename onto a name whose earlier holder left a stale
       alias behind on another platform (a delete or a rollback that
       stopped before removing it) no longer refuses with "does not
