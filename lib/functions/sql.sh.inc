@@ -724,7 +724,8 @@ _innodb_log_file_size_update() {
 # Update SQL Config.
 #
 # With the binary log on, a site's own database login creates its stored
-# functions only while log_bin_trust_function_creators is 1 (ERROR 1419
+# functions only while log_bin_trust_function_creators is 1 (ERROR 1418 for
+# one declared without DETERMINISTIC, NO SQL or READS SQL DATA, ERROR 1419
 # otherwise), so a Clone, Migrate or Restore of such a site fails. Where BOA
 # turns the binary log on, the trust goes with it, in my.cnf and at runtime,
 # as xmass writes it on a pair. Never ahead of a replica that reads this
@@ -740,7 +741,7 @@ _sql_binlog_trust_creators() {
   fi
   if grep -q 'Binlog Dump' <<< "${_pl}"; then
     _msg "ALRT: a replica reads this box's binary log: log_bin_trust_function_creators left as it is;"
-    _msg "ALRT: set it to 1 on the replica first, then here, or a site's stored function fails (ERROR 1419)"
+    _msg "ALRT: set it to 1 on the replica first, then here, or a site's stored function fails (ERROR 1418 or 1419)"
     return 0
   fi
   # A line of any value, commented or not, becomes the one line; with none,

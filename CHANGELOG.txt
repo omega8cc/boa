@@ -1438,8 +1438,9 @@
     * With _DB_BINARY_LOG=YES, BOA now sets log_bin_trust_function_creators
       = 1 with the binary log, in my.cnf and at runtime, so a Clone, a
       Migrate or a Restore of a site with stored functions works there as
-      on a box xmass set up; it failed with ERROR 1419. It is left as it
-      is while a replica reads the box's binary log, and the run says so.
+      on a box xmass set up; it failed with ERROR 1418 or 1419. It is left
+      as it is while a replica reads the box's binary log, and the run
+      says so.
 
     * A Textpattern rename now keeps the site's extra Drush aliases: the
       renamed site lost them, and their alias files kept naming the old
