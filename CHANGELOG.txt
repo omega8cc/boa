@@ -1547,6 +1547,15 @@
       probe of create and xoct proxy's record push waited about two
       minutes more, saying nothing, before they refused.
 
+    * A Restore from a Backup archive taken before the classic dump
+      dropped the database name from its ALTER DATABASE lines, or the
+      definer a trigger writes in double quotes, no longer fails and
+      rolls back for a site whose trigger was made under another
+      collation or under ANSI_QUOTES: the classic load now reads such a
+      dump from a copy with those lines rewritten as a dump made today
+      writes them, in the instance's backup directory, removed after
+      the load. A dump without them loads as before.
+
     * A store another registered site still reads through its files or
       private link is no longer set aside by a Delete, a renaming Migrate
       or the nightly orphan sweep when that reader sits on a Drupal 8+
