@@ -42,7 +42,7 @@ Nightly backups dump every database with mydumper, which in its default mode ref
 
 On Percona 5.7 the nightly and cluster dumps sync with `FLUSH TABLES WITH READ LOCK` (`--sync-thread-lock-mode=FTWRL`; on Percona 8.x the mode is `AUTO`) and pass `--no-backup-locks` beside it when the installed `mydumper` lists that option. The global read lock alone still gives each dump its consistent point; a `mydumper` without the option is called as before.
 
-Without the option, mydumper also takes Percona's backup lock on 5.7 and keeps it until the global read lock is released, while a write to a MyISAM table waits for that lock with the table open. The event scheduler makes such a write at every event run (`mysql.event` is MyISAM on 5.7), so a dump that met one stalled with its `FLUSH TABLES` waiting for that table, MySQL saw no deadlock, and every write on the box queued behind it.
+Without the option, mydumper also takes Percona's backup lock on 5.7 and keeps it until the global read lock is released, while a write to a MyISAM table waits for that lock with the table open. The event scheduler makes such a write at every event run (`mysql.event` is MyISAM on 5.7), so such a dump can stall with its `FLUSH TABLES` waiting for that table, which MySQL does not see as a deadlock, and every write on the box then queues behind it.
 
 A dump that fails (non-zero exit or no final `metadata` marker) is never archived: its debris is kept in the run directory as `<db>.FAILED`, the script logs an `ALRT` line for it, and once per run a dated line is appended to `/var/log/boa/mysql.backup.incident.log` and one e-mail is sent to `_MY_EMAIL` naming every missing database, unless `_INCIDENT_REPORT` is `OFF`.
 
