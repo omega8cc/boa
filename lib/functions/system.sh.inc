@@ -13316,6 +13316,11 @@ _initd_update() {
             _msg "INFO: ${_DB_SERVER} diff3 ${_diffMyTest}"
           fi
         fi
+        # The binary-log switch, applied before the copy compared above.
+        if [ "${_myCnfUpdate}" = "NO" ] && _sql_binlog_switch_pending; then
+          _myCnfUpdate=YES
+          _msg "INFO: ${_DB_SERVER} binary log switched in this run, restart due"
+        fi
       fi
       if [ "${_UP_SQL}" = "YES" ]; then
         _myVnTest=$(mysql -V 2>&1)

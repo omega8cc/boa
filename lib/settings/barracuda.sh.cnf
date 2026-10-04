@@ -1053,12 +1053,13 @@ _RESERVED_RAM=0
 ###
 ### You can still enable it, if you prefer,
 ### by changing it to _DB_BINARY_LOG=YES
-### below or in the /root/.barracuda.cnf file,
-### but you must first stop mysql service
-### and delete or move away all existing files
-### from the /var/log/mysql/ directory, so it
-### will start fresh logs after it has been
-### disabled during previous system upgrade.
+### below or in the /root/.barracuda.cnf file.
+### The next barracuda upgrade writes it
+### into my.cnf and restarts the database server
+### in the same run; NO switches it off the
+### same way. The binary logs go to the database
+### directory, /var/lib/mysql/ON.000001 and on
+### (the log_bin = ON line names them).
 ###
 ### With it on, BOA also sets
 ### log_bin_trust_function_creators = 1, so a

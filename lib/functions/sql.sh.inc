@@ -6,6 +6,7 @@
 # The move_sql.sh wrapper arrives with /var/xdrago, which a fresh install does
 # not have yet; fall back to the init script until it exists.
 _move_sql() {
+  local _mvRc
   if [ -e "/var/xdrago/move_sql.sh" ]; then
     if [ "$1" = "restart" ]; then
       _mrun "bash /var/xdrago/move_sql.sh"
@@ -15,6 +16,46 @@ _move_sql() {
   else
     _mrun "service mysql $1"
   fi
+  _mvRc=$?
+  # A started server runs the my.cnf of this moment.
+  [ "$1" = "stop" ] || _sql_cnf_found_copy renew
+  return "${_mvRc}"
+}
+
+#
+# The binary-log switch (_DB_BINARY_LOG) takes effect only when mysqld
+# restarts. The pass's first my.cnf rewrite applies it (the directives sync
+# of the root credentials step, ahead of the tuning), before the restart
+# check takes its my.cnf-pre-* copy, so that check never saw the change and
+# a new setting reached the running server only at some later restart.
+# _sql_cnf_found_copy keeps my.cnf as the running server read it: taken by
+# the pass's first _sql_conf_update, renewed when _move_sql starts the
+# server. _sql_binlog_switch_pending is true when the binary-log lines of
+# my.cnf differ from that copy. A file of its own: the my.cnf-pre-* copy
+# stays the pass's copy for rollback.
+_sql_cnf_found_copy() {
+  local _fnd="${_vBs}/dragon/t/my.cnf-found-${_xSrl}-${_X_VERSION}-${_NOW}"
+  if [ -z "${_vBs}" ] || [ -z "${_NOW}" ] || [ ! -e "/etc/mysql/my.cnf" ]; then
+    return 0
+  fi
+  if [ "$1" = "renew" ] || [ ! -e "${_fnd}" ]; then
+    mkdir -p "${_vBs}/dragon/t"
+    cp -af /etc/mysql/my.cnf "${_fnd}"
+  fi
+}
+
+_sql_binlog_lines() {
+  grep -E "^[[:space:]]*(log[-_]bin|skip[-_]log[-_]bin|disable[-_]log[-_]bin)([[:space:]=]|$)" "$1" 2>/dev/null \
+    | tr -d " \t"
+}
+
+_sql_binlog_switch_pending() {
+  local _fnd="${_vBs}/dragon/t/my.cnf-found-${_xSrl}-${_X_VERSION}-${_NOW}"
+  if [ -z "${_vBs}" ] || [ -z "${_NOW}" ] \
+    || [ ! -e "${_fnd}" ] || [ ! -e "/etc/mysql/my.cnf" ]; then
+    return 1
+  fi
+  [ "$(_sql_binlog_lines /etc/mysql/my.cnf)" != "$(_sql_binlog_lines "${_fnd}")" ]
 }
 
 _check_mysql_version() {
@@ -776,6 +817,8 @@ _sql_conf_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _sql_conf_update"
   fi
+  # Before the pass's first rewrite: my.cnf as the running server read it.
+  _sql_cnf_found_copy
   sed -i -e "s/.*innodb_force_recovery/#innodb_force_recovery/g" \
     -e "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" \
     -e "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
@@ -1968,6 +2011,11 @@ _db_server_install() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff3 ${_diffMyTest}"
           fi
+        fi
+        # The binary-log switch, applied before the copy compared above.
+        if [ "${_myCnfUpdate}" = "NO" ] && _sql_binlog_switch_pending; then
+          _myCnfUpdate=YES
+          _msg "INFO: ${_DB_SERVER} binary log switched in this run, restart due"
         fi
       fi
       if [ ! -e "/root/.run-to-excalibur.cnf" ] \
