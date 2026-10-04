@@ -1391,7 +1391,11 @@
       to a MyISAM table (the event scheduler makes one at every event
       run) waited with its table open, and the dump's flush waited for
       that table. The global read lock alone still gives each dump its
-      consistent point.
+      consistent point for row changes. A TRUNCATE that reaches a table
+      before mydumper has read it now completes and leaves that table
+      empty in the dump; while mydumper held the backup lock, such a
+      TRUNCATE stalled the dump instead, holding its table until it was
+      killed.
 
     * A Textpattern Upgrade onto a name whose earlier copy left a stale
       alias behind (a rollback that stopped before removing it) no longer
