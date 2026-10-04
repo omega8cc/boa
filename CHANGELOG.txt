@@ -1571,13 +1571,13 @@
       double quotes, and the dumped database's name in ALTER DATABASE
       lines. Data rows are never changed.
 
-    * A move or rename no longer fails nginx -t for the whole box when
-      it renames an HTTPS site named under the box's name: its vhost kept
-      the old certificate lines' pair, which renameaegirhost rewrote to
-      the new name before that pair existed, so every task reloading
-      nginx in those seconds failed. The site now keeps serving its
-      certificate until its first verify on the target, and takes its
-      new name's certificate there; it went on serving the old name's.
+    * A move or rename that renames an HTTPS site named under the box's
+      name no longer fails nginx -t for the whole box: renameaegirhost
+      rewrote the site's certificate lines to the new name before that
+      name had a certificate, so every task that reloaded nginx in those
+      seconds failed. The site keeps serving its certificate until its
+      first verify on the target and takes its new name's certificate
+      there; it went on serving the old name's.
 
     * A store another registered site still reads through its files or
       private link is no longer set aside by a Delete, a renaming Migrate
