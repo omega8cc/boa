@@ -323,6 +323,24 @@ _acct_read_in() {
   _acct_in_real_dir "${1}" _acct_read_here "${2}"
 }
 
+# On Percona 5.7 mydumper's default lock mode takes FLUSH TABLES WITH READ
+# LOCK and also Percona's backup lock, kept until the read lock is released.
+# A write to a MyISAM table (the event scheduler makes one at every event
+# run) waits for that lock with its table open, the flush ahead of the read
+# lock waits for that table, and the dump stalls with every write on the box
+# queued behind it; the read lock alone still gives the dump its consistent
+# point. _MYDUMPER_BACKUP_LOCKS holds --no-backup-locks when the local
+# mydumper lists it (the nightly's probe, one text wherever it is copied).
+_mydumper_backup_locks_opts() {
+  local _h
+  _MYDUMPER_BACKUP_LOCKS=()
+  _h=$(mydumper --help 2>&1)
+  if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+(-[[:alpha:]],[[:space:]]+)?--no-backup-locks([[:space:]]|=|$)"; then
+    _MYDUMPER_BACKUP_LOCKS=(--no-backup-locks)
+  fi
+  return 0
+}
+
 # A database's triggers, stored routines and events travel with its tables:
 # _MYDUMPER_OBJECTS holds those of the three options the local mydumper
 # lists (xoct's probe, one text wherever it is copied).
@@ -2233,6 +2251,10 @@ _v_dump() {
   _sock=()
   [[ -n "${_SRV_SOCKET}" ]] && _sock=(--socket="${_SRV_SOCKET}")
   _mydumper_objects_opts 7>&- 8>&- 9>&-
+  # This server's own version, read by _srv_init: on 5.7 the read lock goes
+  # without the backup lock (_mydumper_backup_locks_opts), on 8.x as before.
+  _MYDUMPER_BACKUP_LOCKS=()
+  [[ "${_SRV_VER}" == 5.7.* ]] && _mydumper_backup_locks_opts 7>&- 8>&- 9>&-
   _thr=$(_threads)
   timeout -k "${_KILL_GRACE}" "${_IO_LIMIT}" mydumper \
     --defaults-file="${_MYCNF}" \
@@ -2243,6 +2265,7 @@ _v_dump() {
     --outputdir="${_STG}" \
     "${_rowsopt[@]}" \
     "${_MYDUMPER_OBJECTS[@]}" \
+    "${_MYDUMPER_BACKUP_LOCKS[@]}" \
     --build-empty-files \
     --threads="${_thr}" \
     --long-query-guard=900 \
