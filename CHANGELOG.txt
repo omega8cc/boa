@@ -869,6 +869,19 @@
 
 @=> New Features
 
+    * PHP 8.6 (8.6.0RC2, a release candidate) can be installed for
+      testing: list 8.6 in _PHP_MULTI_INSTALL in /root/.barracuda.cnf
+      and the next barracuda pass builds it. It is never part of a
+      default, php-min or php-max set, never the server's or the Aegir
+      master's PHP, and never picked automatically; an Octopus instance
+      uses it through fpm.info, cli.info, multi-fpm.info or php86.info
+      like any installed version. With the automatic PHP cleanup on,
+      only a real setting keeps or adds it (8.6 as the whole fpm.info
+      or cli.info value, or a multi-fpm.info line's version), never a
+      comment line or a site name that contains 8.6. APCu, PhpRedis,
+      Mcrypt, GEOS and Imagick do not build against it yet, so it runs
+      without them, and on Devuan Daedalus its GD has no AVIF.
+
     * xoct, xcopy and xmass take admail=<address>, the token boa
       in-octopus takes, for test and canary runs of real accounts: every
       client notice of the run (start, completion, forwarding change,
@@ -1369,6 +1382,10 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * The octopus upgrade's server verify now runs on the instance's
+      command-line PHP; on an instance whose cli.info differs from the
+      server default it ran the server default PHP.
 
     * A store another registered site still reads through its files or
       private link is no longer set aside by a Delete, a renaming Migrate
