@@ -4498,7 +4498,9 @@ _xoct_reconcile_panel_platform() {
 ### the platform its own hostmaster alias here references (platform_hostmaster
 ### until the panel's first upgrade, platform_<NNN> after it), when that
 ### platform's alias names the live panel dir $2; else platform_<NNN> of $2.
-### $1 is the account root. The aliases are the target's own: xoct keeps them.
+### $1 is the account root. Its hostmaster alias is the target's own (xoct
+### keeps it); a platform alias there can be the source's copy, so its root
+### must name $2.
 _xoct_panel_platform_name() {
   local _ref _root
   _ref=$(_xoct_read_in "${1}/.drush" hostmaster.alias.drushrc.php \
@@ -4578,7 +4580,7 @@ _xoct_panel_context_name() {
     WHERE nid=${_pn}" 2>/dev/null; then
     echo "PANEL-NOTE: platform ${_pn} context renamed to ${_name}"
   else
-    echo "ALRT: platform ${_pn} could not take the context name ${_name} in ${_hdb}: the account's next Octopus upgrade stops on it"
+    echo "ALRT: platform ${_pn} could not take the context name ${_name} in ${_hdb}: if another platform holds that name, the account's next Octopus upgrade stops on it"
   fi
   return 0
 }
