@@ -1522,11 +1522,13 @@
       took effect. The transfer now re-points them too.
 
     * After an xoct or xcopy move whose source had once deleted a
-      platform at the number the target's control panel uses, the
-      panel's next upgrade stopped on a duplicate platform name before it
-      moved the panel, and the account's panel and task queue stopped
-      working. The import now drops the deleted platform's leftover name
-      and gives the panel's platform the name this box uses for it.
+      platform under the name the target's control panel uses for its
+      platform, the panel's next upgrade stopped on a duplicate platform
+      name before it moved the panel, and the account's panel and task
+      queue stopped working. The import now drops the deleted platform's
+      leftover name and gives the panel's platform the name the target's
+      own panel uses for it, its install platform's name included; when
+      that cannot be done, it says the next upgrade will stop.
 
     * A Restore, Clone or Migrate no longer unpacks a site archive
       outside the directory it made. A link left at the unpack target,
