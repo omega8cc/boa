@@ -1058,6 +1058,13 @@ _RESERVED_RAM=0
 ### will start fresh logs after it has been
 ### disabled during previous system upgrade.
 ###
+### With it on, BOA also sets
+### log_bin_trust_function_creators = 1, so a
+### site's own database login can create its
+### triggers and stored functions; not while a
+### replica reads this box's binary log (set it
+### on the replica first; the run says so).
+###
 ### Note: this option is ignored if the option
 ### _CUSTOM_CONFIG_SQL is set to YES.
 ###

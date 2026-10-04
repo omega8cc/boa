@@ -101,11 +101,11 @@ A classic load also reads every dump it is given for those lines, and for a trig
 
 `mysqldump` stops the whole dump on a routine the dumping user may not read (one another user defines) and on events it may not list, so each option is asked first. When one is refused, the dump is taken without those objects, the task log carries a warning, and the nightly names the database in its backup notice.
 
-A classic load as the site's database user on a box with the binary log on creates triggers and stored functions only while `log_bin_trust_function_creators` is on. `xmass` sets it on both ends of a pair. With the binary log turned on by `_DB_BINARY_LOG=YES`, or by a custom `my.cnf` under `_CUSTOM_CONFIG_SQL=YES`, BOA leaves it at the server's default (off) unless that `my.cnf` sets it, and the load fails with `ERROR 1419` and says so.
+A classic load as the site's database user on a box with the binary log on creates triggers and stored functions only while `log_bin_trust_function_creators` is on. `xmass` sets it on both ends of a pair. With the binary log turned on by `_DB_BINARY_LOG=YES`, BOA sets it too, in `my.cnf` and at runtime, unless a replica reads the box's binary log when the run looks (the run then says so and asks again next time). With a custom `my.cnf` under `_CUSTOM_CONFIG_SQL=YES`, BOA leaves it to that file; where it stays off, the load fails with `ERROR 1419` and says so.
 
 With the binary log on and `log_bin_trust_function_creators` off, MySQL refuses a stored function declared without `DETERMINISTIC`, `NO SQL` or `READS SQL DATA` (`ERROR 1418`), and a database user without SUPER may create neither triggers nor stored functions (`ERROR 1419`). A load that meets such an object fails and says so: `xoct` and `xcopy` count the site's import as failed, and a Migrate rolls back with the site left as it was.
 
-`xmass` turns that setting on wherever it turns the binary log on, and the SQL watchdog adds it to an `xmass` configuration written before it did, so neither refusal arises on a box an `xmass` run touched, unless its configuration sets the value itself. Where the setting stays off, declare such a function with one of those characteristics, and restore a dump that carries triggers or functions as root.
+BOA and `xmass` turn that setting on wherever they turn the binary log on, and the SQL watchdog adds it to an `xmass` configuration written before it did, so neither refusal arises there, unless a configuration sets the value itself. Where the setting stays off, declare such a function with one of those characteristics, and restore a dump that carries triggers or functions as root.
 
 For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs).
 
