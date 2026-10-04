@@ -576,14 +576,18 @@ An unresolvable panel (zero or several
 candidates, or a repoint that matches no row) aborts the import with
 recovery steps rather than completing with a dead control panel.
 
-A repointed panel platform also takes this box's name for it,
-`platform_NNN`: the name the account's hostmaster alias here already uses,
-and the one the panel's next upgrade registers on it. A source that deleted
-a platform at that number long ago can still hold the name in the deleted
-platform's leftover context row. That row is dropped first; left in place,
-the upgrade stops on the duplicate name before it moves the panel, and the
-account's panel and task queue break. A live platform holding the name keeps
-it, and a `PANEL-NOTE` line says so. `xcopy` does the same.
+A repointed panel platform also takes the name the account's hostmaster
+alias here references for it (`platform_NNN`, or `platform_hostmaster`
+while the panel is still on its install platform): the one the panel's next
+upgrade registers on it. A source that deleted a platform of that name long
+ago can still hold the name in the deleted platform's leftover context row.
+That row is dropped first; left in place, the upgrade stops on the
+duplicate name before it moves the panel, and the account's panel and task
+queue break.
+
+A holder that is not a deleted platform keeps the name, and an `ALRT` line
+says that the next upgrade stops on it; so does a drop or a rename that
+fails. `xcopy` does the same.
 
 The imported panel names the source's login for its database server. Before
 the rename, `import` gives that row the account's own name on this box (the
