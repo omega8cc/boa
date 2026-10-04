@@ -817,8 +817,11 @@ live name: a store named by a share control file
 (`static/control/share.*.<site>.info`, another site reads it) — the task warns
 `DELETE/STORE/LEFT` and the operator decides; a store some registered site (one that
 still has its alias or vhost — a leftover directory's link is reported and does not
-count) reads through its own `files`/`private` link (a clone whose unshare was refused
-for disk, a renamed site whose re-home did not complete) — the same `DELETE/STORE/LEFT`
+count) reads through its own `files`/`private` link, on any platform: one BOA built
+under `distro/`, the control panel's, or one the account registered anywhere under
+`static/`, at its root or at a Composer build's `web/`, `docroot/` or `html/` docroot
+(a clone whose unshare was refused for disk, a renamed site whose re-home did not
+complete) — the same `DELETE/STORE/LEFT`
 warning, with an `[ALERT]` in `autosymlink.log` naming the link, and the fix is to
 re-run that site's unshare, never to move the store; and the orphan-archiving switch
 (`/data/conf/disable_orphan_store_archiving.cnf`, below) — the task says
