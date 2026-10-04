@@ -1509,6 +1509,13 @@
       and cluster dumps do. Any other server, and a mydumper without
       the option, gets the arguments as before.
 
+    * A nightly or cluster backup that could not give a database's
+      stored objects their own sql_mode now says so in the backup
+      incident log and the notice mail, once per run; its WARN line went
+      to cron's /dev/null. A site's fast dump reads the objects' modes
+      before the dump: a dump longer than the server's wait_timeout found
+      the connection closed and left every object in the dump's mode.
+
     * A store another registered site still reads through its files or
       private link is no longer set aside by a Delete, a renaming Migrate
       or the nightly orphan sweep when that reader sits on a Drupal 8+
