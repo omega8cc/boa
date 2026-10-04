@@ -4686,6 +4686,10 @@ _site_socket_inc_gen() {
     # never applies (a typo) costs a few stats, no rebuild.
     local _sN _sV _sR
     while read -r _sN _sV _sR; do
+      # a row whose first field starts with # is a comment, as for every
+      # other reader of this file: the strip below would turn #<site> into
+      # <site> and keep the pin a tenant commented out to drop it
+      [[ "${_sN}" == \#* ]] && continue
       _sN=${_sN//[^a-zA-Z0-9-.]/}
       _sN=${_sN,,}
       _sV=${_sV//[^0-9]/}
@@ -4722,6 +4726,8 @@ _site_socket_inc_gen() {
       _mltFpmSkip=""
       for p in ${_mltFpmBody};do
         _SITE_NAME=`echo $p | cut -d' ' -f1 | awk '{ print $1}'`
+        # a comment row (see above): no include, and not listed as skipped
+        [[ "${_SITE_NAME}" == \#* ]] && continue
         _SITE_NAME=${_SITE_NAME//[^a-zA-Z0-9-.]/}
         _SITE_NAME=$(echo -n ${_SITE_NAME} | tr A-Z a-z 2>&1)
         _SITE_NAME=$(echo -n ${_SITE_NAME} | tr -d "\n" 2>&1)
