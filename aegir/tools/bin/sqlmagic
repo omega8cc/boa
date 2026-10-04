@@ -3,6 +3,35 @@
 export SHELL=/bin/bash
 export PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin:/usr/libexec
 
+### The statements a dump carries that the site's own database user may not
+### run: the binary-log switch and the GTID state of a dump taken where GTID
+### is on (ERROR 1227; the GTID set can span lines, one server per line, so
+### the statement goes through its closing quote), a routine's or an event's
+### definer, a trigger's definer in double quotes (ANSI_QUOTES), and ALTER
+### DATABASE lines naming the dumped database (ERROR 1044; without the name
+### they apply to the database being loaded). Only a line that starts with
+### the statement is changed: a data row starts with its INSERT. Plain awk,
+### read the same by mawk and gawk. The quote comes in as q.
+# shellcheck disable=SC2016  # an awk program: $0 is awk's, never the shell's
+_SQLMAGIC_STATEMENTS_AWK='
+gtid { if ($0 ~ (q ";[ \t]*$")) gtid = 0; next }
+/^SET @@GLOBAL\.GTID_PURGED=/ { if ($0 !~ (q ";[ \t]*$")) gtid = 1; next }
+/^SET @@SESSION\.SQL_LOG_BIN *= *(0|@MYSQLDUMP_TEMP_LOG_BIN) *;[ \t]*$/ { next }
+/^CREATE DEFINER=(`[^`]*`|"[^"]*")@(`[^`]*`|"[^"]*") (PROCEDURE|FUNCTION) / {
+  sub(/^CREATE DEFINER=(`[^`]*`|"[^"]*")@(`[^`]*`|"[^"]*") /, "CREATE ")
+}
+/^\/\*!50106 CREATE\*\/ \/\*!50117 DEFINER=/ {
+  sub(/\/\*!50117 DEFINER=(`[^`]*`|"[^"]*")@(`[^`]*`|"[^"]*")[ \t]*\*\//, "")
+}
+/^\/\*!50003 CREATE\*\/ \/\*!50017 DEFINER="/ {
+  sub(/\/\*!50017 DEFINER="[^"]*"@"[^"]*"[ \t]*\*\//, "")
+}
+/^ALTER DATABASE (`[^`]*`|"[^"]*") CHARACTER SET [A-Za-z0-9_]+ COLLATE [A-Za-z0-9_]+ ;+[ \t]*$/ {
+  sub(/^ALTER DATABASE (`[^`]*`|"[^"]*") /, "ALTER DATABASE ")
+}
+{ print }
+'
+
 _sqlmagic_fix() {
   if [ -f "${_sOurce}" ]; then
     ### A pipeline reports only its LAST element, so a failed read or a
@@ -12,7 +41,8 @@ _sqlmagic_fix() {
            cat ${_sOurce} \
              | sed 's|/\*!50001 CREATE ALGORITHM=UNDEFINED \*/|/\*!50001 CREATE \*/|g;
              s|/\*!50017 DEFINER=`[^`]*`@`[^`]*`\s*\*/||g' \
-             | sed '/\*!50013 DEFINER=.*/ d' > ${_tarGet} ); then
+             | sed '/\*!50013 DEFINER=.*/ d' \
+             | awk -v q="'" "${_SQLMAGIC_STATEMENTS_AWK}" > ${_tarGet} ); then
       echo "ERROR: could not rewrite ${_sOurce} into ${_tarGet}"
       rm -f ${_tarGet}
       echo "Bye"
