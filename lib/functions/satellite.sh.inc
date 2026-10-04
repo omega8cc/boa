@@ -4175,7 +4175,7 @@ _satellite_prepare_child_scripts() {
 # goes on the user's rows as they are, so the logins the aliases are about
 # to name keep working, and the failure is named.
 _satellite_db_broker_rekey() {
-  local _f="/data/conf/${_USER}_db_broker.txt" _out _rc
+  local _f="/data/conf/${_USER}_db_broker.txt" _out _rc _l
   [ -e "${_f}" ] || [ -L "${_f}" ] || return 1
   case "${_THIS_DB_HOST}" in
     localhost|127.0.0.1|FQDN) ;;
@@ -4192,6 +4192,14 @@ _satellite_db_broker_rekey() {
     _out=$(printf '%s\n' "${_ESC_PASS}" \
       | /usr/local/bin/boa-dbctl rekey --account "${_USER}" 2>&1)
     _rc=$?
+    # Every alert of the broker's answer, a renewal that went through
+    # included (one that kept its rows because their stored objects could
+    # not be read says so only here)
+    while IFS= read -r _l; do
+      case "${_l}" in
+        "ALRT: "*) _msg "ALRT: database broker: ${_l#ALRT: }" ;;
+      esac
+    done <<< "${_out}"
     if [ "${_rc}" = "0" ]; then
       [ "${_DEBUG_MODE}" = "YES" ] && _msg "INFO: ${_out##*$'\n'}"
       return 0
