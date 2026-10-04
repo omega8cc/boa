@@ -17,8 +17,10 @@ _move_sql() {
     _mrun "service mysql $1"
   fi
   _mvRc=$?
-  # A started server runs the my.cnf of this moment.
-  [ "$1" = "stop" ] || _sql_cnf_found_copy renew
+  # A server started without error runs the my.cnf of this moment.
+  if [ "$1" != "stop" ] && [ "${_mvRc}" = "0" ]; then
+    _sql_cnf_found_copy renew
+  fi
   return "${_mvRc}"
 }
 
