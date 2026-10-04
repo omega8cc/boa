@@ -4054,7 +4054,7 @@ _php_cli_drush_update() {
   fi
   _T_CLI=/foo/bar
   case "${_T_CLI_VRN}" in
-    8.5|8.4|8.3|8.2|8.1|8.0|7.4|7.3|7.2|7.1|7.0|5.6)
+    8.6|8.5|8.4|8.3|8.2|8.1|8.0|7.4|7.3|7.2|7.1|7.0|5.6)
       if [ -x "/opt/php${_T_CLI_VRN/./}/bin/php" ]; then
         _T_CLI="/opt/php${_T_CLI_VRN/./}/bin"
         # tools/drush is oN's: the shebang is edited inside the real
@@ -4644,7 +4644,10 @@ _site_socket_inc_gen() {
   fi
 
   # config/ is oN's: the default include goes only from the real post.d
-  if [ -x "/opt/php85/bin/php" ] && [ ! -e "/home/${_USER}.85.web" ]; then
+  if [ -x "/opt/php86/bin/php" ] && [ ! -e "/home/${_USER}.86.web" ]; then
+    _ltd_rm_in "${_fpmPth}" fpm_include_default.inc
+    _mltFpmUpdateForce=YES
+  elif [ -x "/opt/php85/bin/php" ] && [ ! -e "/home/${_USER}.85.web" ]; then
     _ltd_rm_in "${_fpmPth}" fpm_include_default.inc
     _mltFpmUpdateForce=YES
   elif [ -x "/opt/php84/bin/php" ] && [ ! -e "/home/${_USER}.84.web" ]; then
@@ -4798,6 +4801,7 @@ _switch_php() {
     # Convert shorthand versions (e.g. "83" to "8.3")
     fix_version_format() {
       case "$1" in
+        86) echo "8.6";;
         85) echo "8.5";;
         84) echo "8.4";;
         83) echo "8.3";;
@@ -4826,7 +4830,7 @@ _switch_php() {
     # pools in single-FPM mode and a dead default socket in multi-FPM mode.
     _ltd_php_vrn_ok() {
       case "${1}" in
-        8.5|8.4|8.3|8.2|8.1|8.0|7.4|7.3|7.2|7.1|7.0|5.6) return 0 ;;
+        8.6|8.5|8.4|8.3|8.2|8.1|8.0|7.4|7.3|7.2|7.1|7.0|5.6) return 0 ;;
       esac
       return 1
     }
@@ -4845,6 +4849,7 @@ _switch_php() {
 
       # Define fallback chains for PHP versions
       declare -A fallback=(
+        ["8.6"]="8.5 8.4 8.3 8.2 8.1"
         ["8.5"]="8.4 8.3 8.2 8.1"
         ["8.4"]="8.3 8.2 8.1"
         ["8.3"]="8.2 8.1"
@@ -4926,6 +4931,7 @@ _switch_php() {
 
       # Define fallback chains for PHP-FPM versions (same as CLI)
       declare -A fpm_fallback=(
+        ["8.6"]="8.5 8.4 8.3 8.2 8.1"
         ["8.5"]="8.4 8.3 8.2 8.1"
         ["8.4"]="8.3 8.2 8.1"
         ["8.3"]="8.2 8.1"
@@ -4974,7 +4980,7 @@ _switch_php() {
       _FMP_D_INC="${_dscUsr}/config/server_master/nginx/post.d/fpm_include_default.inc"
 
       if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
-        _PHP_M_V="85 84 83 82 81 80 74 73 72 71 70 56"
+        _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
         _D_POOL="${_USER}.${_PHP_SV}"
         if [ ! -e "${_FMP_D_INC}" ]; then
           _ltd_put_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" "set \$user_socket \"${_D_POOL}\";"
@@ -5014,7 +5020,7 @@ _switch_php() {
 
         # Update or create special system user if needed
         if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
-          _PHP_M_V="85 84 83 82 81 80 74 73 72 71 70 56"
+          _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
           _D_POOL="${_USER}.${_PHP_SV}"
           if [ ! -e "${_FMP_D_INC}" ] && [ -e "/run/${_D_POOL}.fpm.socket" ] && [ -x "/opt/php${_PHP_SV}/bin/php" ]; then
             _ltd_put_in "${_FMP_D_INC%/*}" "${_FMP_D_INC##*/}" "set \$user_socket \"${_D_POOL}\";"
@@ -5059,7 +5065,7 @@ _switch_php() {
 
         # Cleanup old pool files and set up new pools
         if [ "${_PHP_FPM_MULTI}" = "YES" ] && [ -d "${_dscUsr}/tools/le" ]; then
-          _PHP_M_V="85 84 83 82 81 80 74 73 72 71 70 56"
+          _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
           rm -f /opt/php*/etc/pool.d/${_USER}.conf
         else
           _PHP_M_V="${_PHP_SV}"
@@ -5783,7 +5789,7 @@ _manage_user() {
           fi
         fi
         if [ -f "${_dscUsr}/static/control/multi-fpm.info" ]; then
-          _PHP_M_V="85 84 83 82 81 80 74 73 72 71 70 56"
+          _PHP_M_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
           for m in ${_PHP_M_V}; do
             if [ -x "/opt/php${m}/bin/php" ] \
               && [ -e "/opt/php${m}/etc/pool.d/${_USER}.${m}.conf" ]; then
