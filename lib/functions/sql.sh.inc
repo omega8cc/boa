@@ -722,6 +722,52 @@ _innodb_log_file_size_update() {
 
 #
 # Update SQL Config.
+#
+# With the binary log on, a site's own database login creates its stored
+# functions only while log_bin_trust_function_creators is 1 (ERROR 1418 for
+# one declared without DETERMINISTIC, NO SQL or READS SQL DATA, ERROR 1419
+# otherwise), so a Clone, Migrate or Restore of such a site fails. Where BOA
+# turns the binary log on, the trust goes with it, in my.cnf and at runtime,
+# as xmass writes it on a pair. Never ahead of a replica that reads this
+# box's binary log: a replica at 0 behind a source at 1 stops its applier on
+# the first such function a site creates. Then, or when that cannot be read,
+# the trust is left as it is and the run says so; the next run asks again.
+_sql_binlog_trust_creators() {
+  local _pl
+  if ! _pl=$(mysql -u root -BNe "SHOW PROCESSLIST" 2> /dev/null) || [ -z "${_pl}" ]; then
+    _msg "ALRT: could not read whether a replica reads this box's binary log:"
+    _msg "ALRT: log_bin_trust_function_creators left as it is until the next run"
+    return 0
+  fi
+  if grep -q 'Binlog Dump' <<< "${_pl}"; then
+    _msg "ALRT: a replica reads this box's binary log: log_bin_trust_function_creators left as it is;"
+    _msg "ALRT: set it to 1 on the replica first, then here, or a site's stored function fails (ERROR 1418 or 1419)"
+    return 0
+  fi
+  # A line of any value, commented or not, becomes the one line; with none,
+  # it goes right after binlog_format, in the same section.
+  local _t="/etc/mysql/my.cnf.trust.$$"
+  local _re='^[[:space:]]*#?[[:space:]]*log_bin_trust_function_creators[[:space:]]*='
+  if grep -qE "${_re}" /etc/mysql/my.cnf; then
+    awk -v l='log_bin_trust_function_creators = 1' -v r="${_re}" \
+      '$0 ~ r { if (!d) print l; d = 1; next } { print }' /etc/mysql/my.cnf > "${_t}"
+  else
+    awk -v l='log_bin_trust_function_creators = 1' \
+      '{ print } /^[[:space:]]*binlog_format[[:space:]]*=/ && !d { print l; d = 1 }' \
+      /etc/mysql/my.cnf > "${_t}"
+  fi
+  if [ -s "${_t}" ] && chmod 644 "${_t}" && mv -f "${_t}" /etc/mysql/my.cnf; then
+    :
+  else
+    rm -f "${_t}"
+  fi
+  if ! grep -qE '^log_bin_trust_function_creators = 1$' /etc/mysql/my.cnf; then
+    _msg "ALRT: log_bin_trust_function_creators = 1 could not be written to /etc/mysql/my.cnf"
+  fi
+  mysql -u root -e "SET GLOBAL log_bin_trust_function_creators = 1" &> /dev/null
+  return 0
+}
+
 _sql_conf_update() {
   # Mode "directives" (called via _sql_directives_sync) normalizes only the
   # my.cnf version-compatibility directives and skips innodb sizing plus the
@@ -917,6 +963,7 @@ _sql_conf_update() {
         -e "s/^\s*\(max_binlog_size\s*=.*\)/#\1/" \
         -e "s/^\s*\(binlog_row_image\s*=.*\)/#\1/" \
         -e "s/^\s*\(binlog_format\s*=.*\)/#\1/" \
+        -e "s/^\s*\(log_bin_trust_function_creators\s*=.*\)/#\1/" \
         /etc/mysql/my.cnf &> /dev/null
     elif [ "${_DB_BINARY_LOG}" = "YES" ]; then
       # Enable binary logging
@@ -927,6 +974,7 @@ _sql_conf_update() {
         -e "s/^\s*#\s*\(binlog_row_image\s*=.*\)/\1/" \
         -e "s/^\s*#\s*\(binlog_format\s*=.*\)/\1/" \
         /etc/mysql/my.cnf &> /dev/null
+      _sql_binlog_trust_creators
     fi
     if [ "${_CONF_MODE}" != "directives" ] \
       && { [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; }; then

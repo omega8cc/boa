@@ -42,9 +42,9 @@ Nightly backups dump every database with mydumper, which in its default mode ref
 
 On Percona 5.7 the nightly and cluster dumps sync with `FLUSH TABLES WITH READ LOCK` (`--sync-thread-lock-mode=FTWRL`; on Percona 8.x the mode is `AUTO`) and pass `--no-backup-locks` beside it when the installed `mydumper` lists that option. The global read lock alone still gives each dump its consistent point for row changes; a `mydumper` without the option is called as before.
 
-On 5.7 the `xoct` and `xcopy` site exports, `boa-dbctl dump` and the fast dump of a site's Backup, Clone or Migrate pass `--no-backup-locks` the same way. They keep mydumper's default lock mode, which takes the same global read lock there; any other server gets the arguments as before.
+On 5.7 the `xoct` and `xcopy` site exports, `boa-dbctl dump` and the per-site MyQuick dump Provision takes where no backup mode is set (the safety copies ahead of a Migrate or a Delete, a Restore whose archive carries no database dump, the hostmaster site's own backups and a `provision-backup` run outside the task queue) pass `--no-backup-locks` the same way. They keep mydumper's default lock mode, which takes the same global read lock there; any other server gets the arguments as before.
 
-Without the option, mydumper also takes Percona's backup lock on 5.7 and keeps it until the global read lock is released, while a write to a MyISAM table waits for that lock with the table open. The event scheduler makes such a write at every event run (`mysql.event` is MyISAM on 5.7), so such a dump can stall with its `FLUSH TABLES` waiting for that table, which MySQL does not see as a deadlock, and every write on the box then queues behind it.
+Without the option, mydumper also takes Percona's backup lock on 5.7 and keeps it until the dump ends, past the release of the global read lock, while a write to a MyISAM table waits for that lock with the table open. The event scheduler makes such a write at every event run (`mysql.event` is MyISAM on 5.7), so such a dump can stall with its `FLUSH TABLES` waiting for that table, which MySQL does not see as a deadlock, and every write on the box then queues behind it.
 
 A `TRUNCATE` that reaches a table before mydumper has read it completes and leaves that table empty in the dump. Without the option, one that comes while mydumper holds its backup lock stalls the dump instead, and holds its table until it is killed.
 
@@ -97,13 +97,15 @@ The classic `mysqldump` dumps carry them as well: the dump of a Clone, of a Migr
 
 An object made while its database had another default collation comes wrapped in `ALTER DATABASE` lines that name the dumped database; Ægir's classic dump drops that name, so the lines apply to the database being loaded.
 
+A classic load also reads every dump it is given for those lines, and for a trigger whose definer is written in double quotes, as an archive taken before the dump dropped them still carries them; the site's database user may run neither (`ERROR 1044`, `ERROR 1227`). When it finds one, the load reads a copy with those lines rewritten the same way, written to the instance's backup directory, readable by its owner only and removed after the load, and the task log says so. A dump without them loads as it is.
+
 `mysqldump` stops the whole dump on a routine the dumping user may not read (one another user defines) and on events it may not list, so each option is asked first. When one is refused, the dump is taken without those objects, the task log carries a warning, and the nightly names the database in its backup notice.
 
-A classic load as the site's database user on a box with the binary log on creates triggers and stored functions only while `log_bin_trust_function_creators` is on. `xmass` sets it on both ends of a pair. With the binary log turned on by `_DB_BINARY_LOG=YES`, or by a custom `my.cnf` under `_CUSTOM_CONFIG_SQL=YES`, BOA leaves it at the server's default (off) unless that `my.cnf` sets it, and the load fails with `ERROR 1419` and says so.
+A classic load as the site's database user on a box with the binary log on creates triggers and stored functions only while `log_bin_trust_function_creators` is on. `xmass` sets it on both ends of a pair. With the binary log turned on by `_DB_BINARY_LOG=YES`, BOA sets it too, in `my.cnf` and at runtime, unless a replica reads the box's binary log when the run looks (the run then says so and asks again next time). With a custom `my.cnf` under `_CUSTOM_CONFIG_SQL=YES`, BOA leaves it to that file; where it stays off, the load fails with `ERROR 1419` and says so.
 
 With the binary log on and `log_bin_trust_function_creators` off, MySQL refuses a stored function declared without `DETERMINISTIC`, `NO SQL` or `READS SQL DATA` (`ERROR 1418`), and a database user without SUPER may create neither triggers nor stored functions (`ERROR 1419`). A load that meets such an object fails and says so: `xoct` and `xcopy` count the site's import as failed, and a Migrate rolls back with the site left as it was.
 
-`xmass` turns that setting on wherever it turns the binary log on, and the SQL watchdog adds it to an `xmass` configuration written before it did, so neither refusal arises on a box an `xmass` run touched, unless its configuration sets the value itself. Where the setting stays off, declare such a function with one of those characteristics, and restore a dump that carries triggers or functions as root.
+BOA and `xmass` turn that setting on wherever they turn the binary log on, and the SQL watchdog adds it to an `xmass` configuration written before it did, so neither refusal arises there, unless a configuration sets the value itself. Where the setting stays off, declare such a function with one of those characteristics, and restore a dump that carries triggers or functions as root.
 
 For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs).
 
