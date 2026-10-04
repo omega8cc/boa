@@ -743,12 +743,22 @@ _sql_binlog_trust_creators() {
     _msg "ALRT: set it to 1 on the replica first, then here, or a site's stored function fails (ERROR 1419)"
     return 0
   fi
-  if grep -qE '^\s*#?\s*log_bin_trust_function_creators\s*=' /etc/mysql/my.cnf; then
-    sed -i -e "s/^\s*#\?\s*log_bin_trust_function_creators\s*=.*/log_bin_trust_function_creators = 1/" \
-      /etc/mysql/my.cnf &> /dev/null
+  # A line of any value, commented or not, becomes the one line; with none,
+  # it goes right after binlog_format, in the same section.
+  local _t="/etc/mysql/my.cnf.trust.$$"
+  local _re='^[[:space:]]*#?[[:space:]]*log_bin_trust_function_creators[[:space:]]*='
+  if grep -qE "${_re}" /etc/mysql/my.cnf; then
+    awk -v l='log_bin_trust_function_creators = 1' -v r="${_re}" \
+      '$0 ~ r { if (!d) print l; d = 1; next } { print }' /etc/mysql/my.cnf > "${_t}"
   else
-    sed -i -e "/^\s*binlog_format\s*=/a log_bin_trust_function_creators = 1" \
-      /etc/mysql/my.cnf &> /dev/null
+    awk -v l='log_bin_trust_function_creators = 1' \
+      '{ print } /^[[:space:]]*binlog_format[[:space:]]*=/ && !d { print l; d = 1 }' \
+      /etc/mysql/my.cnf > "${_t}"
+  fi
+  if [ -s "${_t}" ] && chmod 644 "${_t}" && mv -f "${_t}" /etc/mysql/my.cnf; then
+    :
+  else
+    rm -f "${_t}"
   fi
   if ! grep -qE '^log_bin_trust_function_creators = 1$' /etc/mysql/my.cnf; then
     _msg "ALRT: log_bin_trust_function_creators = 1 could not be written to /etc/mysql/my.cnf"
