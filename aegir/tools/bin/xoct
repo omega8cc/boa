@@ -1008,12 +1008,15 @@ _xoct_hold_put() {
 ### Without admail=, refuses (status 1, naming it) while the hold is on $1
 ### (none: this box): a real run would leave the moved client's mail held
 ### there. A probe of another box that cannot be read passes: the verb's own
-### contact there reports it.
+### contact there reports it. The probe never prompts and gives up on a box
+### that does not answer within 15 s, as xmass's own read of the hold does:
+### a mistyped or unreachable target held the verb for the whole TCP connect
+### (about two minutes), silently.
 _xoct_hold_gate() {
   local _h="$1" _v
   [ -n "${_XOCT_ADMAIL}" ] && return 0
   if [ -n "${_h}" ]; then
-    _v="$(ssh root@"${_h}" "if [ -e ${_XOCT_HOLD_FILE} ]; then head -n 1 ${_XOCT_HOLD_FILE} | tr -cd '[:print:]' | cut -c1-200; echo; echo HOLD-HAD; else echo HOLD-NONE; fi" 2> /dev/null)"
+    _v="$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" "if [ -e ${_XOCT_HOLD_FILE} ]; then head -n 1 ${_XOCT_HOLD_FILE} | tr -cd '[:print:]' | cut -c1-200; echo; echo HOLD-HAD; else echo HOLD-NONE; fi" 2> /dev/null)"
     case "${_v}" in
       *HOLD-HAD*) _v="$(printf '%s\n' "${_v}" | head -n 1)" ;;
       *) return 0 ;;
