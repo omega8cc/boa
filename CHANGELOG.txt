@@ -1410,6 +1410,14 @@
 
 @=> Important Fixes
 
+    * A Textpattern rename now keeps the site's extra Drush aliases: the
+      renamed site lost them, and their alias files kept naming the old
+      name and a site directory that no longer exists, where a later
+      Delete of the site left them. A rename that fails part way now also
+      puts the restored site's private/config.php back on the old name;
+      it kept naming the new name's directory and admin URL until the
+      next Verify.
+
     * A Textpattern or Grav site with Encryption set to Required no
       longer stops nginx from reloading on the whole server. Its http
       vhost carried a second Let's Encrypt challenge location beside the
