@@ -42,6 +42,8 @@ Nightly backups dump every database with mydumper, which in its default mode ref
 
 On Percona 5.7 the nightly and cluster dumps sync with `FLUSH TABLES WITH READ LOCK` (`--sync-thread-lock-mode=FTWRL`; on Percona 8.x the mode is `AUTO`) and pass `--no-backup-locks` beside it when the installed `mydumper` lists that option. The global read lock alone still gives each dump its consistent point for row changes; a `mydumper` without the option is called as before.
 
+On 5.7 the `xoct` and `xcopy` site exports, `boa-dbctl dump` and the fast dump of a site's Backup, Clone or Migrate pass `--no-backup-locks` the same way. They keep mydumper's default lock mode, which takes the same global read lock there; any other server gets the arguments as before.
+
 Without the option, mydumper also takes Percona's backup lock on 5.7 and keeps it until the global read lock is released, while a write to a MyISAM table waits for that lock with the table open. The event scheduler makes such a write at every event run (`mysql.event` is MyISAM on 5.7), so such a dump can stall with its `FLUSH TABLES` waiting for that table, which MySQL does not see as a deadlock, and every write on the box then queues behind it.
 
 A `TRUNCATE` that reaches a table before mydumper has read it completes and leaves that table empty in the dump. Without the option, one that comes while mydumper holds its backup lock stalls the dump instead, and holds its table until it is killed.
@@ -85,7 +87,7 @@ Every mydumper dump BOA takes carries the database's triggers, stored procedures
 
 Each object keeps the `sql_mode` it was made under. mydumper writes a whole file under one mode, so after each dump BOA puts each object's own mode, as the server stored it, on a `SET SQL_MODE` line before it and the file's mode after it. Without that, a routine a Drupal site made through its own connection (`ANSI_QUOTES`) failed the fast load, and a trigger using `||` loaded but no longer concatenated. Words MySQL 8 refuses, such as `NO_AUTO_CREATE_USER`, are left out, so a 5.7 dump loads on 8.4.
 
-A dump taken before this keeps the file's one mode for every object. When an object's mode cannot be written, the dump stands as mydumper wrote it and the run says so: a `WARN` line in the nightly and cluster backups and in the `xoct` and `xcopy` exports, an `ALRT` from `boa-dbctl dump`, a warning in the task log.
+A dump taken before this keeps the file's one mode for every object. When an object's mode cannot be written, the dump stands as mydumper wrote it and the run says so. The nightly and cluster backups name each such database once per run in `/var/log/boa/mysql.backup.incident.log` and in the notice mail, as they do for a dump that left its routines or events out. The `xoct` and `xcopy` exports print a `WARN` line, `boa-dbctl dump` an `ALRT`, and Provision's fast dump a warning in the task log.
 
 The fast import of a Migrate or of a dump-less Restore gives every view, trigger, routine and event to the site's new database user (`--replace-definer`), as the classic dump path does by loading as that user. Kept as they were, they would name the source database's user, which the task drops when it finishes, and fail from then on. A `myloader` without `--replace-definer` (the 0.19.3 line) loads the tables and views and leaves the triggers, routines and events out; the task log says so.
 
