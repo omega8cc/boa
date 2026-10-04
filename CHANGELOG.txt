@@ -1410,6 +1410,23 @@
 
 @=> Important Fixes
 
+    * A Textpattern rename onto a name whose earlier holder left a stale
+      alias behind on another platform (a delete or a rollback that
+      stopped before removing it) no longer refuses with "does not
+      resolve" and rolls back: the rename read the moved site's new
+      context through that stale alias. It now reads the new context
+      only after saving it, so re-running a Cutover that stopped half
+      way claims the domain on the first try.
+
+    * A Textpattern rename or Upgrade onto a name whose earlier holder
+      left a stale alias behind no longer takes over that holder's
+      settings. The renamed site or the copy inherited its aliases,
+      redirection, encryption and key, extra Drush aliases and cron
+      key, and its vhost served the holder's redirects and encryption.
+      An Upgrade's Import also kept the aliases and the redirection in
+      the panel, and the panel adopted the holder's cron key. The stale
+      alias is now removed before the new context is saved.
+
     * A nightly or cluster database dump on Percona 5.7 no longer stalls
       against the event scheduler with every write on the box queued
       behind it, often ending in a failed dump. The dump now passes
