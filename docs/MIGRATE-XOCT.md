@@ -586,8 +586,9 @@ duplicate name before it moves the panel, and the account's panel and task
 queue break.
 
 A holder that is not a deleted platform keeps the name, and an `ALRT` line
-says that the next upgrade stops on it; so does a drop or a rename that
-fails. `xcopy` does the same.
+says that the next upgrade stops on it; so does a drop that fails. A rename
+that fails is an `ALRT` too: the next upgrade stops on it only when another
+platform holds the name. `xcopy` does the same.
 
 The imported panel names the source's login for its database server. Before
 the rename, `import` gives that row the account's own name on this box (the
