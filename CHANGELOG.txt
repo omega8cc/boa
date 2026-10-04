@@ -1370,6 +1370,11 @@
 
 @=> Important Fixes
 
+    * A Textpattern Upgrade whose update step cannot connect to the new
+      copy's database now says so in its task log: Textpattern ended that
+      step with a success status, so its lines were logged as a clean run
+      and only the later version check failed the task.
+
     * A Backup no longer fails on a file the web server wrote closed into
       a site's files or private store, as a module's key generator writes
       its key pair (a 0600 file, a 0700 directory): tar runs as the
