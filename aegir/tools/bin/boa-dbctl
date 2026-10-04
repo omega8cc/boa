@@ -425,8 +425,8 @@ _sql() {
 
 # The same, with the client's warnings printed after the result, each a
 # line of its own ("Warning (Code N): ..."), for a read a warning makes
-# partial: MySQL 5.7 reads views and triggers from their files and skips
-# one it cannot parse with a warning, not an error.
+# partial: MySQL 5.7 reads triggers from their files and skips, with a
+# warning, those of a table it cannot open.
 _sql_warn() {
   local _rc
   _SQL_OUT=""
@@ -2569,11 +2569,12 @@ _defines_row() {
 # Each row in use (rows=) is made again with the new password (stdin), so it
 # keeps nothing a hand or an older pass gave it. A row that defines a stored
 # object (a view, trigger, routine or event), one whose objects cannot be
-# read, and one the server will not drop keep their grants and take the new
-# password instead, and must then hold no global privilege. The instance
-# user's grant on each created database comes back, and every other host
-# row of it goes: a switched account keeps only the rows its connections
-# use. Nothing is granted on all databases.
+# read, and one the server will not drop are kept instead: the new password,
+# every grant they held taken, and they must then hold no global privilege.
+# A row scope on kept for its objects (kept=) leaves rows= once it defines
+# none. The instance user's grant on each created database comes back, and
+# every other host row of it goes: a switched account keeps only the rows
+# its connections use. Nothing is granted on all databases.
 _v_rekey() {
   local _r _x _keep _pw _alt _why _drop=0 _kept=0 _left=0 _dkept=0 _rel=0
   local -a _nrows=() _nkept=()
@@ -2584,6 +2585,9 @@ _v_rekey() {
   _pw=$(_sql_str "${_PW}")
   _PW=""
   _reg_lock
+  # Read again under the lock: scope on and off write the control file while
+  # they hold it, and the release below writes it back.
+  _need_broker
   if ! _defs_read; then
     _alrt "${_ACCT}: the stored objects its rows define could not be read: none of its rows is dropped"
   fi
@@ -5203,7 +5207,9 @@ _v_scope_on() {
     # none, then their grant on each database of the account.
     _host_ok "${_h}" || _scope_back instance-row
     _log_note "scope-kept ${_h} ${_ROW_DEF:-${_SQL_ERRNO}}"
-    _sql_prepared "'REVOKE ALL PRIVILEGES, GRANT OPTION FROM \`${_ACCT}\`@', $(_sql_qid "${_x}")" \
+    # Not prepared: 5.7 refuses REVOKE ALL PRIVILEGES, GRANT OPTION as a
+    # prepared statement; _host_ok above kept the host to plain characters.
+    _sql "/*q:dcl*/ REVOKE ALL PRIVILEGES, GRANT OPTION FROM \`${_ACCT}\`@\`${_h}\`;" \
       || _scope_back revoke-kept
     _global_privs "${_ACCT}" "${_x}" && _scope_back revoke-kept
     _SP_ROWS+=("${_h}")
