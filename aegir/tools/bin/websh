@@ -1563,9 +1563,9 @@ _cpp_match() {
     fi
     _v="${_v//[!0-9]/}"
     case "${_v}" in
-      56|70|71|72|73|74|80|81|82|83|84|85) ;;
+      56|70|71|72|73|74|80|81|82|83|84|85|86) ;;
       *)
-        _cpp_warn "cli-per-platform.info line ${_ln} (${_CPP_S}) is ignored: its version is not one of 5.6 to 8.5"
+        _cpp_warn "cli-per-platform.info line ${_ln} (${_CPP_S}) is ignored: its version is not one of 5.6 to 8.6"
         continue
         ;;
     esac
@@ -1759,7 +1759,7 @@ _cpp_guard() {
       _fl=$(( 10#${BASH_REMATCH[1]} / 100 ))
       _fln="${_fl:0:1}${_fl:2:1}"
       if [ "${_ch}" -lt "${_fln}" ]; then
-        for _e in 70 71 72 73 74 80 81 82 83 84 85; do
+        for _e in 70 71 72 73 74 80 81 82 83 84 85 86; do
           [ "${_e}" -ge "${_fln}" ] && [ -x "/opt/php${_e}/bin/php" ] && { _sug="${_e}"; break; }
         done
         _cpp_rel "${_app}"
@@ -1934,7 +1934,7 @@ check_php_cli_version() {
     if [ -n "${_CLI_INFO}" ]; then
       _CLI_VRN=$(head -c 8 "${_CLI_INFO}" 2> /dev/null | tr -cd '0-9')
       case "${_CLI_VRN}" in
-        56|70|71|72|73|74|80|81|82|83|84|85)
+        56|70|71|72|73|74|80|81|82|83|84|85|86)
           [ -x "/opt/php${_CLI_VRN}/bin/php" ] && _PHP_CLI="php${_CLI_VRN}"
           _CLI_FROM="cli.info"
           ;;
@@ -1943,7 +1943,7 @@ check_php_cli_version() {
   fi
   ### echo CHK 1 _PHP_CLI is ${_PHP_CLI}
 
-  _PHP_V="56 70 71 72 73 74 80 81 82 83 84 85"
+  _PHP_V="56 70 71 72 73 74 80 81 82 83 84 85 86"
   for e in ${_PHP_V}; do
     if [[ "${_PHP_CLI}" =~ "php${e}" ]] && [ -x "/opt/php${e}/bin/php" ]; then
       DRUSH_PHP="/opt/php${e}/bin/php"
@@ -2110,7 +2110,7 @@ if _grp_set_is "users www-data" \
             fi
           fi
           if [ -z "${_D_SEL}" ] && [[ ! "${HOME}" =~ (^)"/data/disk/" ]]; then
-            _PHP_V="74 80 81 82 83 84 85"
+            _PHP_V="74 80 81 82 83 84 85 86"
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ] \
                 && [ "${e}" -ge "${_D_FLOOR_N}" ]; then
@@ -2182,7 +2182,7 @@ if _grp_set_is "users www-data" \
             ### echo INF 1 _DEST_DRUSH is ${_DEST_DRUSH}
           fi
           if [[ ! "${HOME}" =~ (^)"/data/disk/" ]] && [ "${_IS_JENKINS}" = "FALSE" ]; then
-            _PHP_V="56 70 71 72 73 74 80 81 82 83 84 85"
+            _PHP_V="56 70 71 72 73 74 80 81 82 83 84 85 86"
             for e in ${_PHP_V}; do
               if [ -e "${_DRUSH_CLI_CTRL}/php${e}.info" ] && [ -x "/opt/php${e}/bin/php" ]; then
                 DRUSH_PHP="/opt/php${e}/bin/php"
@@ -2498,6 +2498,7 @@ if _grp_set_is "users www-data" \
           || [[ "${_ARGS}" =~ "php83 " ]] \
           || [[ "${_ARGS}" =~ "php84 " ]] \
           || [[ "${_ARGS}" =~ "php85 " ]] \
+          || [[ "${_ARGS}" =~ "php86 " ]] \
           || [[ "${_ARGS}" =~ "unzip " ]] \
           || [[ "${_ARGS}" =~ "rename " ]] \
           || [[ "${_ARGS}" =~ "rrdtool " ]] \

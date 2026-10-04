@@ -755,7 +755,7 @@ _satellite_tune_fpm_config() {
   if [ -z "${_PHP_SV}" ]; then
     _PHP_SV=84
   fi
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   _PHP_OLD_SV=
   for e in ${_PHP_V}; do
     if [ -e "/opt/php${e}/etc/pool.d/${_USER}.conf" ]; then
@@ -842,10 +842,10 @@ _satellite_tune_fpm_config() {
         && [[ ",$(getent group www-data | cut -d: -f4)," == *",${_USER},"* ]]; }; then
       echo "group = ${_T_WGS##* }" >> /opt/php${_PHP_SV}/etc/pool.d/${_USER}.conf
     fi
-    mkdir -p /var/www/phpcache/${_USER}/${_USER}.{85,84,83,82,81,80,74,73,72,71,70,56}
+    mkdir -p /var/www/phpcache/${_USER}/${_USER}.{86,85,84,83,82,81,80,74,73,72,71,70,56}
     _T_WG=$(_web_group "${_USER}")
-    [ -n "${_T_WG}" ] && chgrp "${_T_WG}" /var/www/phpcache/${_USER}/${_USER}.{85,84,83,82,81,80,74,73,72,71,70,56}
-    chmod 770 /var/www/phpcache/${_USER}/${_USER}.{85,84,83,82,81,80,74,73,72,71,70,56}
+    [ -n "${_T_WG}" ] && chgrp "${_T_WG}" /var/www/phpcache/${_USER}/${_USER}.{86,85,84,83,82,81,80,74,73,72,71,70,56}
+    chmod 770 /var/www/phpcache/${_USER}/${_USER}.{86,85,84,83,82,81,80,74,73,72,71,70,56}
     if [ ! -d "${_ROOT}/tmp" ]; then
       mkdir -p ${_ROOT}/tmp
       _acct_in_real_dir "${_ROOT}/tmp" \
@@ -1210,7 +1210,16 @@ _satellite_cnf() {
       _T_VRN=$(_satellite_php_vrn "$(_acct_read_in "${_ROOT}/static/control" fpm.info)")
       if [ -n "${_T_VRN}" ]; then
         _PHP_FPM_VERSION="${_T_VRN}"
-        if [ "${_PHP_FPM_VERSION}" = "8.5" ] \
+        if [ "${_PHP_FPM_VERSION}" = "8.6" ] \
+          && [ ! -x "/opt/php86/bin/php" ]; then
+          if [ -x "/opt/php85/bin/php" ]; then
+            _PHP_FPM_VERSION=8.5
+          elif [ -x "/opt/php84/bin/php" ]; then
+            _PHP_FPM_VERSION=8.4
+          elif [ -x "/opt/php83/bin/php" ]; then
+            _PHP_FPM_VERSION=8.3
+          fi
+        elif [ "${_PHP_FPM_VERSION}" = "8.5" ] \
           && [ ! -x "/opt/php85/bin/php" ]; then
           if [ -x "/opt/php84/bin/php" ]; then
             _PHP_FPM_VERSION=8.4
@@ -1317,7 +1326,16 @@ _satellite_cnf() {
       _T_VRN=$(_satellite_php_vrn "$(_acct_read_in "${_ROOT}/static/control" cli.info)")
       if [ -n "${_T_VRN}" ]; then
         _PHP_CLI_VERSION="${_T_VRN}"
-        if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
+        if [ "${_PHP_CLI_VERSION}" = "8.6" ] \
+          && [ ! -x "/opt/php86/bin/php" ]; then
+          if [ -x "/opt/php85/bin/php" ]; then
+            _PHP_CLI_VERSION=8.5
+          elif [ -x "/opt/php84/bin/php" ]; then
+            _PHP_CLI_VERSION=8.4
+          elif [ -x "/opt/php83/bin/php" ]; then
+            _PHP_CLI_VERSION=8.3
+          fi
+        elif [ "${_PHP_CLI_VERSION}" = "8.5" ] \
           && [ ! -x "/opt/php85/bin/php" ]; then
           if [ -x "/opt/php84/bin/php" ]; then
             _PHP_CLI_VERSION=8.4
@@ -1581,7 +1599,21 @@ _satellite_cnf() {
         _clean_pid_exit
       fi
     fi
-    if [ "${_PHP_FPM_VERSION}" = "8.5" ] \
+    if [ "${_PHP_FPM_VERSION}" = "8.6" ] \
+      || [ "${_PHP_CLI_VERSION}" = "8.6" ]; then
+      if [ ! -x "/opt/php86/bin/php" ]; then
+        if [ -x "/opt/php85/bin/php" ]; then
+          _PHP_FPM_VERSION=8.5
+          _PHP_CLI_VERSION=8.5
+        elif [ -x "/opt/php84/bin/php" ]; then
+          _PHP_FPM_VERSION=8.4
+          _PHP_CLI_VERSION=8.4
+        else
+          _PHP_FPM_VERSION=
+          _PHP_CLI_VERSION=
+        fi
+      fi
+    elif [ "${_PHP_FPM_VERSION}" = "8.5" ] \
       || [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
       if [ ! -x "/opt/php85/bin/php" ]; then
         if [ -x "/opt/php84/bin/php" ]; then
@@ -1947,7 +1979,9 @@ _satellite_update_drush_php_cli() {
     _debug_proc
   fi
   _DRUSH_FILE="${_ROOT}/tools/drush/drush.php"
-  if [ "${_PHP_CLI_VERSION}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
+  if [ "${_PHP_CLI_VERSION}" = "8.6" ] && [ -x "/opt/php86/bin/php" ]; then
+    _satellite_tools_drush_edit drush.php "s/^#\!\/.*/#\!\/opt\/php86\/bin\/php/g" &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
     _satellite_tools_drush_edit drush.php "s/^#\!\/.*/#\!\/opt\/php85\/bin\/php/g" &> /dev/null
   elif [ "${_PHP_CLI_VERSION}" = "8.4" ] && [ -x "/opt/php84/bin/php" ]; then
     _satellite_tools_drush_edit drush.php "s/^#\!\/.*/#\!\/opt\/php84\/bin\/php/g" &> /dev/null
@@ -7029,7 +7063,7 @@ _satellite_make() {
     || [ ! -e "${_MRK_HM_PLR}/modules/path_alias_cache" ] \
     || [ ! -x "/opt/tools/drush/8/drush/drush.php" ] \
     || [ ! -x "/opt/php56/bin/php" ]; then
-    for _mrkV in 56 70 71 72 73 74 80 81 82 83 84 85; do
+    for _mrkV in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
       if [ -e "${_ROOT}/static/control/php${_mrkV}.info" ] \
         && [ -x "/opt/php${_mrkV}/bin/php" ]; then
         _MRK_CLI_VERSION="${_mrkV:0:1}.${_mrkV:1}"
@@ -7971,7 +8005,7 @@ _satellite_php_vrn() {
     *) return 0 ;;
   esac
   case "${_d}" in
-    56|70|71|72|73|74|80|81|82|83|84|85) echo "${_d:0:1}.${_d:1:1}" ;;
+    56|70|71|72|73|74|80|81|82|83|84|85|86) echo "${_d:0:1}.${_d:1:1}" ;;
   esac
 }
 

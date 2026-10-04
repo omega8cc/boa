@@ -286,7 +286,7 @@ _fix_php_ini_opcache() {
           80|74|73|72|71|70|56)
             echo "opcache.interned_strings_buffer=32"
             ;;
-          81|82|83|84|85)
+          81|82|83|84|85|86)
             echo "opcache.interned_strings_buffer=128"
             ;;
           *)
@@ -318,13 +318,14 @@ _fix_php_ini_opcache_all() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _fix_php_ini_opcache_all"
   fi
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "5.7" ]; then
-    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
     _P_API=
     case "${e}" in
+      86) _P_API="${_PHP86_API}" ;;
       85) _P_API="${_PHP85_API}" ;;
       84) _P_API="${_PHP84_API}" ;;
       83) _P_API="${_PHP83_API}" ;;
@@ -376,10 +377,11 @@ _fix_php_ini_tet_all() {
     _msg "PROC: _fix_php_ini_tet_all"
   fi
   if [ "${_PHP_TET}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "TET" ]]; then
-    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       _P_API=
       case "${e}" in
+        86) _P_API="${_PHP86_API}" ;;
         85) _P_API="${_PHP85_API}" ;;
         84) _P_API="${_PHP84_API}" ;;
         83) _P_API="${_PHP83_API}" ;;
@@ -398,7 +400,8 @@ _fix_php_ini_tet_all() {
       _TET_BASE="/opt/php${e}/lib/php/extensions/no-debug-non-zts"
       _TET_SO="${_TET_BASE}-${_P_API}/php_tet.so"
       if [ ! -e "${_TET_SO}" ]; then
-        if [[ "${e}" =~ "85" ]] \
+        if [[ "${e}" =~ "86" ]] \
+          || [[ "${e}" =~ "85" ]] \
           || [[ "${e}" =~ "84" ]] \
           || [[ "${e}" =~ "83" ]] \
           || [[ "${e}" =~ "82" ]] \
@@ -453,7 +456,7 @@ _fix_php_ini_geos_all() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _fix_php_ini_geos_all"
   fi
-  _PHP_G="70 71 72 73 74 80 81 82 83 84 85"
+  _PHP_G="70 71 72 73 74 80 81 82 83 84 85 86"
   for e in ${_PHP_G}; do
     _THIS_FILE=/opt/php${e}/etc/php${e}.ini
     _fix_php_ini_geos ${e}
@@ -536,7 +539,7 @@ _apply_php_cli_ini_fixes() {
   fi
 
   case "${e}" in
-    80|81|82|83|84|85)
+    80|81|82|83|84|85|86)
       _remove_php_ini_jsmin "${e}"
       ;;
     *)
@@ -578,7 +581,7 @@ _apply_php_fpm_ini_fixes() {
   fi
 
   case "${e}" in
-    80|81|82|83|84|85)
+    80|81|82|83|84|85|86)
       _remove_php_ini_jsmin "${e}"
       ;;
     *)
@@ -686,6 +689,11 @@ _php_conf_update() {
   if [ "${_DB_SERIES}" = "5.7" ]; then
     _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
   fi
+  # 8.6 is opt-in while it is a release candidate: its pool user, config
+  # and pool exist only on a box that has built it
+  if [ -x "/opt/php86/bin/php" ]; then
+    _PHP_V="86 ${_PHP_V}"
+  fi
   # The master's own web group (wg-aegir): once its record says phase B the
   # master pools run in their per-version group (the listing gives them
   # wg-aegir) and have left www-data. A record of B left by a phase-B
@@ -764,6 +772,32 @@ _php_conf_update() {
   _fix_php_ini_mongo_all
   _fix_php_ini_tet_all
   _fix_php_ini_opcache_all
+  if [ -x "/opt/php86/bin/php" ]; then
+    _THIS_FILE=/opt/php86/etc/php86.ini
+    _php_ini_drop_unbuilt_ext
+    _THIS_FILE=/opt/php86/lib/php.ini
+    _php_ini_drop_unbuilt_ext
+  fi
+}
+
+#
+# PHP 8.6 is a release candidate, and some extensions do not build against
+# it yet: their extension= line is commented out, or every PHP start logs a
+# load warning. Each pass copies the ini again and runs the fixers first, so
+# an extension that builds later is loaded again with no step of its own.
+_php_ini_drop_unbuilt_ext() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_ini_drop_unbuilt_ext ${_THIS_FILE}"
+  fi
+  local _dir _so
+  [ -e "${_THIS_FILE}" ] || return 0
+  _dir=$(sed -n 's/^extension_dir *= *"\([^"]*\)".*/\1/p' "${_THIS_FILE}" | head -n 1)
+  [ -n "${_dir}" ] && [ -d "${_dir}" ] || return 0
+  for _so in $(sed -n 's/^extension=\([a-z0-9_]*\)\.so[[:space:]]*$/\1/p' "${_THIS_FILE}"); do
+    if [ ! -e "${_dir%/}/${_so}.so" ]; then
+      sed -i "s/^extension=${_so}\.so[[:space:]]*$/;extension=${_so}.so/" "${_THIS_FILE}"
+    fi
+  done
 }
 
 #
@@ -816,9 +850,9 @@ _tune_web_server_config() {
     _msg "TUNE: _LIM_FPM is ${_LIM_FPM}"
     _msg "TUNE: _CHILD_MAX_FPM is ${_CHILD_MAX_FPM}"
   fi
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   if [ "${_DB_SERIES}" = "5.7" ]; then
-    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   fi
   for e in ${_PHP_V}; do
     if [ ! -z "${_CHILD_MAX_FPM}" ] && [ "${_CHILD_MAX_FPM}" -ge 8 ]; then
@@ -1064,7 +1098,7 @@ _install_php_extensions() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
-  elif [ "$1" = "85" ]; then
+  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_EIGHT_FIVE}"
   else
     _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
@@ -1072,7 +1106,7 @@ _install_php_extensions() {
   _msg "INFO: Installing igbinary ${_USE_IGBINARY} for PHP ${_T_PHP_VRN}..."
   cd /var/opt
   rm -rf igbinary*
-  if [ "$1" = "85" ]; then
+  if [ "$1" = "85" ] || [ "$1" = "86" ]; then
     _get_dev_src "igbinary-${_USE_IGBINARY}.tar.gz"
   else
     _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
@@ -1100,7 +1134,7 @@ _install_php_extensions() {
   elif [ "$1" = "72" ] || [ "$1" = "73" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LEGACY_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
-  elif [ "$1" = "85" ]; then
+  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LATEST_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   else
@@ -1437,7 +1471,7 @@ _php_extensions_update() {
   ###--------------------###
   if [ "$1" = "56" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_TWO}"
-  elif [ "$1" = "85" ]; then
+  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
     _USE_IGBINARY="${_PHP_IGBINARY_EIGHT_FIVE}"
   else
     _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
@@ -1447,7 +1481,7 @@ _php_extensions_update() {
     _msg "INFO: Installing Igbinary ${_USE_IGBINARY} upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf igbinary*
-    if [ "$1" = "85" ]; then
+    if [ "$1" = "85" ] || [ "$1" = "86" ]; then
       _get_dev_src "igbinary-${_USE_IGBINARY}.tar.gz"
     else
       _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
@@ -1476,7 +1510,7 @@ _php_extensions_update() {
   elif [ "$1" = "72" ] || [ "$1" = "73" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LEGACY_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
-  elif [ "$1" = "85" ]; then
+  elif [ "$1" = "85" ] || [ "$1" = "86" ]; then
     _USE_PHPREDIS="${_PHPREDIS_SIX_LATEST_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   else
@@ -2177,7 +2211,14 @@ _install_php_multi_src() {
     fi
   fi
   if [ "$1" -gt 80 ]; then
-    _PHP_EXTRA="${_PHP_EXTRA} --with-avif"
+    # PHP 8.6 needs libavif 1.0.0 or newer (Daedalus has 0.11): with an
+    # older one it is built without AVIF in GD instead of not at all
+    if [ "$1" -lt 86 ] \
+      || pkg-config --atleast-version=1.0.0 libavif 2> /dev/null; then
+      _PHP_EXTRA="${_PHP_EXTRA} --with-avif"
+    else
+      _msg "NOTE: libavif is older than 1.0.0, PHP ${_PHP_VERSION} is built without AVIF"
+    fi
   fi
   if [ "${_OS_CODE}" = "excalibur" ] \
     || [ "${_OS_CODE}" = "daedalus" ] \
@@ -2443,6 +2484,8 @@ _install_php_multi() {
       _THIS_PHP_EXT_DIR="/opt/php84/lib/php/extensions/no-debug-non-zts-${_PHP84_API}"
     elif [ "$1" = "85" ]; then
       _THIS_PHP_EXT_DIR="/opt/php85/lib/php/extensions/no-debug-non-zts-${_PHP85_API}"
+    elif [ "$1" = "86" ]; then
+      _THIS_PHP_EXT_DIR="/opt/php86/lib/php/extensions/no-debug-non-zts-${_PHP86_API}"
     fi
     if [ ! -z "${_THIS_PHP_EXT_DIR}" ]; then
       _install_php_extensions "$1"
@@ -2493,6 +2536,8 @@ _php_multi_update() {
     _THIS_PHP_EXT_DIR="/opt/php84/lib/php/extensions/no-debug-non-zts-${_PHP84_API}"
   elif [ "$1" = "85" ]; then
     _THIS_PHP_EXT_DIR="/opt/php85/lib/php/extensions/no-debug-non-zts-${_PHP85_API}"
+  elif [ "$1" = "86" ]; then
+    _THIS_PHP_EXT_DIR="/opt/php86/lib/php/extensions/no-debug-non-zts-${_PHP86_API}"
   fi
   if [ ! -z "${_THIS_PHP_EXT_DIR}" ]; then
     _php_extensions_update "$1"
@@ -3354,7 +3399,7 @@ _php_not_used_enable_again() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_not_used_enable_again"
   fi
-  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5"
+  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5 8.6"
   for e in ${_PHP_V}; do
     _re=
     if [ ! -e "/opt/php${_re}/bin/php" ]; then
@@ -3384,7 +3429,7 @@ _php_not_used_disable() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_not_used_disable"
   fi
-  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5"
+  _PHP_V="5.6 7.0 7.1 7.2 7.3 7.4 8.0 8.1 8.2 8.3 8.4 8.5 8.6"
   _PHP_A="${_PHP_MULTI_OPTIM}"
   for e in ${_PHP_V}; do
     _re=
@@ -3444,7 +3489,7 @@ _php_single_initd_cleanup() {
   if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
     _FPM_INITD_CLEANUP=
     if [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
-      _PHP_V="84 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="86 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
           _mrun "service php${e}-fpm force-quit"
@@ -3457,7 +3502,7 @@ _php_single_initd_cleanup() {
         fi
       done
     elif [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] && [ -x "/opt/php84/bin/php" ]; then
-      _PHP_V="85 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="86 85 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
           _mrun "service php${e}-fpm force-quit"
@@ -3470,7 +3515,7 @@ _php_single_initd_cleanup() {
         fi
       done
     elif [ "${_PHP_SINGLE_INSTALL}" = "8.3" ] && [ -x "/opt/php83/bin/php" ]; then
-      _PHP_V="85 84 82 81 80 74 73 72 71 70 56"
+      _PHP_V="86 85 84 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
           _mrun "service php${e}-fpm force-quit"
@@ -3591,6 +3636,10 @@ _php_upgrade_all() {
       _PHP_V="56 70 71 72 73 74 80 81"
     else
       _PHP_V="56 70 71 72 73 74 80 81 82 83 84 85"
+      # a tree that pins no 8.6 release leaves an 8.6 build as it is
+      if [ -n "${_PHP86_VRN}" ]; then
+        _PHP_V="${_PHP_V} 86"
+      fi
     fi
   fi
   for e in ${_PHP_V}; do
@@ -3619,6 +3668,8 @@ _php_upgrade_all() {
         _PHP_VERSION="${_PHP84_VRN}"
       elif [ "${e}" = 85 ]; then
         _PHP_VERSION="${_PHP85_VRN}"
+      elif [ "${e}" = 86 ]; then
+        _PHP_VERSION="${_PHP86_VRN}"
       fi
       _PHP_BIN_BROKEN=NO
       _BROKEN_LIBCURL_TEST=""
@@ -3638,6 +3689,7 @@ _php_upgrade_all() {
     fi
   done
   _PHP_FORCE_REINSTALL="${_force_in}"
+  _php_rc_cli_restore
 }
 
 _get_php_conf_extra() {
@@ -3802,6 +3854,32 @@ _php_install_upgrade() {
       _T_PHP_PTH=""
       _FRESH_PHP85_BUILD=85
     fi
+    # 8.6 is a release candidate: built only when listed, never the default
+    if [[ "${_PHP_MULTI_INSTALL}" =~ "8.6" ]] \
+      && [ -n "${_PHP86_VRN}" ] \
+      && [ ! -x "/opt/php86/bin/php" ]; then
+      _PHP_VERSION="${_PHP86_VRN}"
+      _msg "INFO: PHP ${_PHP_VERSION} will be installed now"
+      _install_php_multi "86"
+      _PHP_VERSION=""
+      _T_PHP_VRN=""
+      _T_PHP_PTH=""
+      _FRESH_PHP86_BUILD=86
+      _php_rc_cli_restore
+    fi
+  fi
+}
+
+#
+# PHP 8.6 is a release candidate and never the box's php: a build of it, or
+# a pass over it, points /usr/bin/php at it, so the default goes back.
+_php_rc_cli_restore() {
+  if [ "${_DEBUG_MODE}" = "YES" ]; then
+    _msg "PROC: _php_rc_cli_restore"
+  fi
+  if [ "$(readlink /usr/bin/php 2>/dev/null)" = "/opt/php86/bin/php" ]; then
+    _re_set_default_php_cli
+    _check_php_cli
   fi
 }
 

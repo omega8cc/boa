@@ -3687,6 +3687,7 @@ REMOTE
 _mig_php_norm() {
   local _t="${1//[^0-9.]/}"
   case "${_t}" in
+    8.6|86) echo 8.6 ;;
     8.5|85) echo 8.5 ;;
     8.4|84) echo 8.4 ;;
     8.3|83) echo 8.3 ;;
@@ -3746,7 +3747,7 @@ _mig_php_versions_needed() {
     done <<< "${_txt}"
   fi
   if _xoct_in_real_dir "${_u}/static/control" true; then
-    for _e in 56 70 71 72 73 74 80 81 82 83 84 85; do
+    for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
       [ -e "${_u}/static/control/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
     done
   fi
