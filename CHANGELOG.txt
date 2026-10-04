@@ -1370,6 +1370,16 @@
 
 @=> Important Fixes
 
+    * A Textpattern Upgrade whose copy goes to another database server
+      no longer fails when that server gives the copy the source site's
+      database name: the name alone was read as the copy pointing at the
+      source's database, so the Upgrade refused to run, and its rollback
+      left the copy's database and its login on the other server with
+      nothing recording them. The copy now counts as the source's
+      database only when it has the same name on the same server, and a
+      failed Upgrade drops the copy's database on whichever server holds
+      it.
+
     * A PHP build from sources that fails after configure is now
       reported: make and make install ran without their result being
       read, so a failed build left the previous build serving (or no
