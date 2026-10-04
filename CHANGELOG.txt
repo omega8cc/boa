@@ -1370,6 +1370,19 @@
 
 @=> Important Fixes
 
+    * A Backup no longer fails on a file the web server wrote closed into
+      a site's files or private store, as a module's key generator writes
+      its key pair (a 0600 file, a 0700 directory): tar runs as the
+      account and could not read it, and every Clone, Restore and Migrate
+      of that Drupal or Backdrop site failed with it, as each starts with
+      a backup. Before every archive the backup now gives such entries
+      group read for the account's web group, keeping the writer's owner
+      and every other bit, so the copy of the store a renaming Migrate
+      makes reads them too. A Clone, Restore or Migrate also gives the
+      web group the whole private directory it unpacks, not only
+      private/files, config and temp, so the new site's web server reads
+      a copied key directory at once.
+
     * A Textpattern site's Login reset no longer fails with "Could not
       mint a password-reset link", a new Textpattern site's welcome mail
       again carries a password-set link instead of the bare admin
