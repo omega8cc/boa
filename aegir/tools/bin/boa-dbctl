@@ -134,6 +134,10 @@ _TMPD=""
 _STG=""
 _SERVER=""
 _ROWS=()
+_KEPT=()
+_SINCE=""
+_SP_KEPT=()
+_SP_SINCE=""
 _ARGS=()
 _OPT_ACCOUNT=""
 _OPT_VIA=""
@@ -419,6 +423,24 @@ _sql() {
   return "${_rc}"
 }
 
+# The same, with the client's warnings printed after the result, each a
+# line of its own ("Warning (Code N): ..."), for a read a warning makes
+# partial: MySQL 5.7 reads triggers from their files and skips, with a
+# warning, those of a table it cannot open.
+_sql_warn() {
+  local _rc
+  _SQL_OUT=""
+  _SQL_ERRNO=""
+  [[ -n "${_TMPD}" && -d "${_TMPD}" && ! -L "${_TMPD}" ]] || return 1
+  _SQL_OUT=$(printf '%s\n' "${1}" \
+    | mysql --defaults-file="${_MYCNF}" --protocol=SOCKET -N -B -r --show-warnings \
+      2> "${_TMPD}/sql.err" 7>&- 8>&- 9>&-)
+  _rc=$?
+  _SQL_ERRNO=$(grep -o -m 1 '^ERROR [0-9]*' "${_TMPD}/sql.err" 2> /dev/null | tr -dc '0-9')
+  : > "${_TMPD}/sql.err"
+  return "${_rc}"
+}
+
 # The same, with a header line and the batch escaping of mysql -B (a tab,
 # newline, NUL or backslash in a value as \t, \n, \0, \\): one row per line.
 _sql_table() {
@@ -635,12 +657,17 @@ _identity() {
 # the instance user's host rows in use (rows=, comma or space separated).
 # The last line of each counts, its value the rest of the line as written,
 # as provision's and the Extras' copies of this rule read it. Sets _SERVER
-# and _ROWS. 0 on, 1 absent, 2 not valid.
+# and _ROWS. 0 on, 1 absent, 2 not valid. kept= (the broker's own; the
+# other readers pass over it) names the rows of rows= that scope on kept for
+# the stored objects they define, not for a login of the account: _KEPT, a
+# row rows= does not name left out.
 _broker_mode() {
-  local _f="${_CONF}/${_ACCT}_db_broker.txt" _txt _l _rows="" _r _m
+  local _f="${_CONF}/${_ACCT}_db_broker.txt" _txt _l _rows="" _kept="" _r _m
   local -a _parts
   _SERVER=""
   _ROWS=()
+  _KEPT=()
+  _SINCE=""
   [[ -e "${_f}" || -L "${_f}" ]] || return 1
   [[ -f "${_f}" && ! -L "${_f}" ]] || return 2
   [[ "$(stat -c %u -- "${_f}" 2> /dev/null)" == "${_ROOT_UID}" ]] || return 2
@@ -652,8 +679,11 @@ _broker_mode() {
     case "${_l}" in
       server=*) _SERVER="${_l#server=}" ;;
       rows=*) _rows="${_l#rows=}" ;;
+      kept=*) _kept="${_l#kept=}" ;;
+      since=*) _SINCE="${_l#since=}" ;;
     esac
   done <<< "${_txt}"
+  [[ "${_SINCE}" =~ ^[0-9A-Za-z:._+-]{1,40}$ ]] || _SINCE=""
   [[ "${_SERVER}" =~ ^@[A-Za-z0-9_.-]{1,128}$ ]] || return 2
   IFS=', ' read -r -a _parts <<< "${_rows}"
   for _r in "${_parts[@]}"; do
@@ -662,6 +692,11 @@ _broker_mode() {
     _ROWS+=("${_r}")
   done
   [[ "${#_ROWS[@]}" -gt 0 ]] || return 2
+  IFS=', ' read -r -a _parts <<< "${_kept}"
+  for _r in "${_parts[@]}"; do
+    [[ -n "${_r}" && " ${_ROWS[*]} " == *" ${_r} "* ]] || continue
+    [[ " ${_KEPT[*]} " == *" ${_r} "* ]] || _KEPT+=("${_r}")
+  done
   return 0
 }
 
@@ -2480,7 +2515,8 @@ _regrant_all() {
 # never refuses it, so the server's answer to a drop says nothing: the
 # broker looks first. 1 when the answer cannot be read (_DEFS_OK=NO): every
 # row then counts as one that defines something, and none is dropped on a
-# guess.
+# guess. A warning or note on the read is such an answer too (the client
+# prints it as a line no object makes).
 _defs_read() {
   local _k _x _q _u
   _DEFS=$'\n'
@@ -2492,7 +2528,7 @@ _defs_read() {
   _q="${_q} UNION ALL SELECT 'routine', DEFINER FROM information_schema.ROUTINES"
   _q="${_q} UNION ALL SELECT 'event', DEFINER FROM information_schema.EVENTS) d"
   _q="${_q} WHERE HEX(LOWER(SUBSTRING_INDEX(d.def, '@', 1))) = '${_u}'"
-  _sql "${_q}" || return 1
+  _sql_warn "${_q}" || return 1
   while IFS='|' read -r _k _x; do
     [[ -n "${_k}${_x}" ]] || continue
     case "${_k}" in
@@ -2533,13 +2569,15 @@ _defines_row() {
 # Each row in use (rows=) is made again with the new password (stdin), so it
 # keeps nothing a hand or an older pass gave it. A row that defines a stored
 # object (a view, trigger, routine or event), one whose objects cannot be
-# read, and one the server will not drop keep their grants and take the new
-# password instead, and must then hold no global privilege. The instance
-# user's grant on each created database comes back, and every other host
-# row of it goes: a switched account keeps only the rows its connections
-# use. Nothing is granted on all databases.
+# read, and one the server will not drop are kept instead: the new password,
+# every grant they held taken, and they must then hold no global privilege.
+# A row scope on kept for its objects (kept=) leaves rows= once it defines
+# none. The instance user's grant on each created database comes back, and
+# every other host row of it goes: a switched account keeps only the rows
+# its connections use. Nothing is granted on all databases.
 _v_rekey() {
-  local _r _x _keep _pw _alt _why _drop=0 _kept=0 _left=0 _dkept=0
+  local _r _x _keep _pw _alt _why _drop=0 _kept=0 _left=0 _dkept=0 _rel=0
+  local -a _nrows=() _nkept=()
   [[ "${_ROOT_RUN}" == "YES" ]] || _die 2 "root-only"
   [[ "${#_ARGS[@]}" -eq 0 ]] || _die 2 "usage rekey --account <oN>"
   _need_broker
@@ -2547,8 +2585,44 @@ _v_rekey() {
   _pw=$(_sql_str "${_PW}")
   _PW=""
   _reg_lock
+  # Read again under the lock: scope on and off write the control file while
+  # they hold it, and the release below writes it back.
+  _need_broker
   if ! _defs_read; then
     _alrt "${_ACCT}: the stored objects its rows define could not be read: none of its rows is dropped"
+  fi
+  # A row scope on kept for the stored objects it defined (kept=) goes once
+  # it defines none: it leaves rows= first, the control file written whole,
+  # so no later call counts it in use, and the loop below drops it with
+  # every other row not in use. Never while the objects cannot be read, and
+  # never the last row.
+  if [[ "${_DEFS_OK}" == "YES" && "${#_KEPT[@]}" -gt 0 ]]; then
+    for _r in "${_ROWS[@]}"; do
+      if [[ " ${_KEPT[*]} " == *" ${_r} "* ]] && ! _defines_row "${_r}"; then
+        _rel=$(( _rel + 1 ))
+        continue
+      fi
+      _nrows+=("${_r}")
+      [[ " ${_KEPT[*]} " == *" ${_r} "* ]] && _nkept+=("${_r}")
+    done
+    if [[ "${_rel}" -gt 0 && "${#_nrows[@]}" -gt 0 ]]; then
+      _SP_CTX="${_SERVER}"
+      _SP_ROWS=("${_nrows[@]}")
+      _SP_KEPT=("${_nkept[@]}")
+      _SP_SINCE="${_SINCE}"
+      if _ctl_write; then
+        for _r in "${_ROWS[@]}"; do
+          [[ " ${_nrows[*]} " == *" ${_r} "* ]] || _log_note "rekey-released ${_r}"
+        done
+        _ROWS=("${_nrows[@]}")
+        _KEPT=("${_nkept[@]}")
+      else
+        _alrt "${_ACCT}: its control file could not be written: the rows kept for objects they no longer define stay in use"
+        _rel=0
+      fi
+    else
+      _rel=0
+    fi
   fi
   _keep=$'\n'
   for _r in "${_ROWS[@]}"; do
@@ -2564,12 +2638,17 @@ CREATE USER \`${_ACCT}\`@\`${_r}\` IDENTIFIED BY ${_pw};"; then
       _why="${_SQL_ERRNO}"
     fi
     # The row is never left missing: kept, or made again, with the new
-    # password and no retained old one.
+    # password and no retained old one. A kept row loses every grant it
+    # holds, as a row made again has none, and takes its grant on each
+    # database of the account back with the rest below: a grant a forced
+    # switch or a hand left on it, on another account's database or on all
+    # databases, never stays through a rotation.
     _alt="CREATE USER IF NOT EXISTS \`${_ACCT}\`@\`${_r}\` IDENTIFIED BY ${_pw};"$'\n'
     _alt="${_alt}ALTER USER \`${_ACCT}\`@\`${_r}\` IDENTIFIED BY ${_pw};"
     if [[ "${_SRV_8}" == "YES" ]]; then
       _alt="${_alt}"$'\n'"ALTER USER \`${_ACCT}\`@\`${_r}\` DISCARD OLD PASSWORD;"
     fi
+    _alt="${_alt}"$'\n'"REVOKE ALL PRIVILEGES, GRANT OPTION FROM \`${_ACCT}\`@\`${_r}\`;"
     if ! _sql "/*q:dcl*/ ${_alt}"; then
       _pw=""
       [[ "${_why}" =~ ^[0-9]+$ ]] || _why=""
@@ -2609,7 +2688,7 @@ CREATE USER \`${_ACCT}\`@\`${_r}\` IDENTIFIED BY ${_pw};"; then
   _reg_unlock
   [[ "${_left}" -eq 0 ]] || _die 7 "sql-failed rekey-drop ${_left}"
   [[ "${_dkept}" -eq 0 ]] || _die 7 "rekey-definer-kept ${_dkept}"
-  _info "rekey ${_ACCT} rows=${#_ROWS[@]} kept=${_kept} dropped=${_drop} regrant=${_RG_N}"
+  _info "rekey ${_ACCT} rows=${#_ROWS[@]} kept=${_kept} dropped=${_drop} regrant=${_RG_N}$( [[ "${_rel}" -gt 0 ]] && printf ' released=%s' "${_rel}" )"
 }
 
 # purge (root): the account is purged. Its databases stay (the purge keeps
@@ -3546,7 +3625,8 @@ SELECT /*q:alroles*/ CONCAT_WS('|', IF(@@GLOBAL.mandatory_roles = '', 0, 1), (SE
 # and grants; the site records that named those users went with its home
 # (a site's drushrc.php is not in what the purge parks), but the registry
 # keeps its entries, and provision names a site's database user as its
-# database. A login named as a database of a purged account's entries is
+# database. Only an account its purge parked (its home under the zombie
+# directory). A login named as a database of a purged account's entries is
 # that account's when no record of a live account, of the master or of
 # another purged account names it, it is none of the server's own names, and
 # every grant row it holds is on that account's databases (or on a name with
@@ -3572,6 +3652,10 @@ _al_psites() {
     _a="${_rest%% *}"
     _st="${_rest#* }"
     [[ "${_AL_PURGED}" == *" ${_a} "* ]] || continue
+    # what a purge leaves: its parked home. A root cnf with no home and no
+    # parked home is a box whose /data/disk is not mounted, or an account
+    # half made, never a purge: its site users are not read as purged.
+    [[ -d "${_ZOMBIE}/${_a}" && ! -L "${_ZOMBIE}/${_a}" ]] || continue
     case "${_st}" in
       created|purged) ;;
       *) continue ;;
@@ -4957,15 +5041,21 @@ _queue_hold() {
   return 0
 }
 
-# The control file, written whole beside its name and moved over it.
+# The control file, written whole beside its name and moved over it. kept=
+# lists the rows of rows= kept for the stored objects they define
+# (_SP_KEPT); rekey lets each go once it defines nothing, and keeps the
+# switch's time (_SP_SINCE, else now).
 _ctl_write() {
-  local _f="${_CONF}/${_ACCT}_db_broker.txt" _r _rows=""
+  local _f="${_CONF}/${_ACCT}_db_broker.txt" _r _rows="" _kept=""
   for _r in "${_SP_ROWS[@]}"; do
     _rows="${_rows:+${_rows},}${_r}"
   done
+  for _r in "${_SP_KEPT[@]}"; do
+    _kept="${_kept:+${_kept},}${_r}"
+  done
   rm -f -- "${_f}.new"
   ( umask 022
-    printf 'server=%s\nrows=%s\nsince=%s\n' "${_SP_CTX}" "${_rows}" "$(_now)" > "${_f}.new" ) \
+    printf 'server=%s\nrows=%s\nkept=%s\nsince=%s\n' "${_SP_CTX}" "${_rows}" "${_kept}" "${_SP_SINCE:-$(_now)}" > "${_f}.new" ) \
     || return 1
   chmod 0644 "${_f}.new" 2> /dev/null || return 1
   mv -f -T -- "${_f}.new" "${_f}"
@@ -5048,6 +5138,8 @@ _v_scope_on() {
   done <<< "${_AL_REVOKE}"
   _SERVER="${_SP_CTX}"
   _ROWS=("${_SP_ROWS[@]}")
+  _SP_KEPT=()
+  _SP_SINCE=""
   for _d in "${_SP_DBS[@]}"; do
     if _reg_get "${_d}"; then
       [[ "${_E_ACCOUNT}" == "${_ACCT}" ]] || _die 4 "taken entry ${_d}"
@@ -5110,12 +5202,18 @@ _v_scope_on() {
     fi
     # A row that defines a stored object (a view, trigger, routine or
     # event), one whose objects cannot be read, and one the server will not
-    # drop stay as rows in use: no global privilege, their grant on each
-    # database.
+    # drop stay as rows in use (kept=, which rekey lets go once they define
+    # nothing): every grant they held taken, as a row made again holds
+    # none, then their grant on each database of the account.
     _host_ok "${_h}" || _scope_back instance-row
     _log_note "scope-kept ${_h} ${_ROW_DEF:-${_SQL_ERRNO}}"
-    _revoke_global "$(_hex "${_ACCT}")" "${_x}" || _scope_back revoke-global
+    # Not prepared: 5.7 refuses REVOKE ALL PRIVILEGES, GRANT OPTION as a
+    # prepared statement; _host_ok above kept the host to plain characters.
+    _sql "/*q:dcl*/ REVOKE ALL PRIVILEGES, GRANT OPTION FROM \`${_ACCT}\`@\`${_h}\`;" \
+      || _scope_back revoke-kept
+    _global_privs "${_ACCT}" "${_x}" && _scope_back revoke-kept
     _SP_ROWS+=("${_h}")
+    _SP_KEPT+=("${_h}")
     _ROWS=("${_SP_ROWS[@]}")
     _regrant_all
     _ctl_write || _scope_back control-file

@@ -576,6 +576,20 @@ An unresolvable panel (zero or several
 candidates, or a repoint that matches no row) aborts the import with
 recovery steps rather than completing with a dead control panel.
 
+A repointed panel platform also takes the name the account's hostmaster
+alias here references for it (`platform_NNN`, or `platform_hostmaster`
+while the panel is still on its install platform): the one the panel's next
+upgrade registers on it. A source that deleted a platform of that name long
+ago can still hold the name in the deleted platform's leftover context row.
+That row is dropped first; left in place, the upgrade stops on the
+duplicate name before it moves the panel, and the account's panel and task
+queue break.
+
+A holder that is not a deleted platform keeps the name, and an `ALRT` line
+says that the next upgrade stops on it; so does a drop that fails. A rename
+that fails is an `ALRT` too: the next upgrade stops on it only when another
+platform holds the name. `xcopy` does the same.
+
 The imported panel names the source's login for its database server. Before
 the rename, `import` gives that row the account's own name on this box (the
 new name on a rename) and the password this box set for it
@@ -910,7 +924,10 @@ record, by `xmass`'s mark and by the box's mail hold.
 A box that holds its clients' mail takes no real run: without `admail=`,
 every verb but `import` refuses while `/data/conf/client_mail_hold.txt` is
 on this box, and `create`, `pretransfer`, `transfer` and `proxy` also while
-it is on the target, naming it. `import` says so and goes on.
+it is on the target, naming it. `import` says so and goes on. The read of
+the target's hold gives up after 15 seconds on a target that does not
+answer, and the verb goes on to its own contact, which reports it. `xcopy`
+reads the target's hold the same way.
 
 **A canary goes live** with one verb on the source:
 
@@ -990,8 +1007,9 @@ xoct proxy o1 target-ip o2
 - The account's path references (`/data/disk/o1`, `/home/o1.ftp` and the
   FPM `$user_socket` token) in its Drush aliases and its nginx and `ssl.d`
   config are rewritten to `o2` automatically during transfer, and each
-  `static/` and `distro/` link naming the source tree is made again pointing
-  at `o2`, by the link's own owner (root's by root); a link its owner cannot make
+  `static/`, `distro/`, `config/`, `tools/` and `clients/` link naming the source
+  tree is made again pointing at `o2`, by the link's own owner (root's by root); a
+  link its owner cannot make
   there, or one in the root group that root does not own, keeps its old
   target and is named in an `ALRT` line
 - What the source account's identities owned is handed to `o2` and
@@ -1050,12 +1068,17 @@ either way, because they point at the account-relative `static/files` path, not 
 symlink) is handled by the same rule, so SQL dumps and cluster backups transfer
 correctly in every source/target storage combination.
 
-On a move that renames the account, the transfer re-points every link under `static/`
-and `distro/` that names the source account's tree (`/data/disk/o1/...`) at the new
-account's (`/data/disk/o2/...`), each made again by its own owner (one that cannot be
-made so is left and named in an `ALRT`): a site's `files` and `private` links, on a
-tenant platform under `static/` or a BOA-built one under `distro/`, then name the moved
-store. A link naming anything else is left as it is.
+On a move that renames the account, the transfer re-points every link under `static/`,
+`distro/`, `config/`, `tools/` and `clients/` that names the source account's tree
+(`/data/disk/o1/...`) at the new account's (`/data/disk/o2/...`), each made again by its
+own owner (one that cannot be made so is left and named in an `ALRT`).
+
+A site's `files` and `private` links, on a tenant platform under `static/` or a
+BOA-built one under `distro/`, then name the moved store. A Let's Encrypt site's
+certificate links (`config/ssl.d/<site>` and `config/server_master/ssl.d/<site>`, and the
+`openssl.*` links in `tools/le/certs/<site>/`) name its certificate in the new account's tree
+(`/data/disk/o2/tools/le/certs/<site>`), and a client's site links name the site's directory
+there. A link naming anything else is left as it is.
 
 > **BOA supports a single attached mount under `/mnt`.** The migration tools refuse a
 > target (or source) that has more than one.
@@ -1080,6 +1103,13 @@ find /data/disk/o1/static/platforms /data/disk/o1/distro -path '*/sites/*/privat
 ```
 
 Replace `/data/disk/o1` with `/data/disk/o2` if rename mode was used.
+
+On a renamed move, no link in the account may still name the source account's tree (`o1` the
+source's name here, `o2` the new one); this prints nothing:
+
+```sh
+find /data/disk/o2 -type l -lname '/data/disk/o1/*' | head
+```
 
 ---
 

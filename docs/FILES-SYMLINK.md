@@ -659,6 +659,37 @@ adjust this:
   hollow — a ~200 KB archive of bare symlinks where gigabytes were expected —
   which is why files-carrying modes now ignore both files.
 
+## Files the web server wrote closed
+
+The backend user packs every backup, and it also makes the store copy of a
+renaming Migrate. A file the web server writes with mode 0600, or a directory
+it makes 0700 (a key pair from a module's key generator, say), is closed to
+that user. Unopened, tar fails the Backup on it, and with it every Clone,
+Restore and Migrate of the site, which start with a backup; the store copy of
+a renaming Migrate fails on it too.
+
+So before every archive, Drupal and Backdrop alike, the backup runs
+`fix-drupal-site-permissions.sh --backup-read` through its sudo entry point.
+In the site's own files and private stores it adds group read to each file,
+and group read and search to each directory, that one of the account's web
+users owns in the account's web group without them.
+
+Nothing else changes: owner, group and the other bits stay as the web server
+set them, so the web server reads them as before and the backend user reads
+them through the web group, like the rest of the store. The site's permission
+pass (daily by default) gives the same entries the store's managed modes
+anyway; the backup only opens them for reading before that.
+
+A deploy (Clone, Restore, Migrate) gives the web group the whole extracted
+`private` dir, not only `private/files`, `config` and `temp`, so the new site's
+web server reads a copied key directory through its group. The copy belongs
+to the backend user; group write comes back with the daily permission pass,
+as for any other restored file.
+
+This is warn-not-fail: without the fixer, or with one that predates
+`--backup-read`, the archive is attempted as before and the task log names
+what tar could not read.
+
 ## Disk space and filesystems
 
 Both local and attached/extra filesystems are supported. Before moving or copying
@@ -786,8 +817,11 @@ live name: a store named by a share control file
 (`static/control/share.*.<site>.info`, another site reads it) — the task warns
 `DELETE/STORE/LEFT` and the operator decides; a store some registered site (one that
 still has its alias or vhost — a leftover directory's link is reported and does not
-count) reads through its own `files`/`private` link (a clone whose unshare was refused
-for disk, a renamed site whose re-home did not complete) — the same `DELETE/STORE/LEFT`
+count) reads through its own `files`/`private` link, on any platform: one BOA built
+under `distro/`, the control panel's, or one the account registered anywhere under
+`static/`, at its root or at a Composer build's `web/`, `docroot/` or `html/` docroot
+(a clone whose unshare was refused for disk, a renamed site whose re-home did not
+complete) — the same `DELETE/STORE/LEFT`
 warning, with an `[ALERT]` in `autosymlink.log` naming the link, and the fix is to
 re-run that site's unshare, never to move the store; and the orphan-archiving switch
 (`/data/conf/disable_orphan_store_archiving.cnf`, below) — the task says
