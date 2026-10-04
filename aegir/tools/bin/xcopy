@@ -1202,15 +1202,18 @@ _xcopy_upgrade_skip_put() {
 # xmass put under admail= and remove when the test run ends. Without
 # admail=, refuses (status 1, naming it) while the hold is on the target $1
 # of a copy: the copied client's mail there would stay held. A target that
-# cannot be read passes: the verb's own contact reports it. As xoct's
-# _xoct_hold_gate. xcopy puts no hold of its own: it keeps no test-run
-# record, so nothing could tell when a hold it put may go.
+# cannot be read passes: the verb's own contact reports it. The probe never
+# prompts and gives up on a target that does not answer within 15 s, so a
+# mistyped or unreachable one no longer holds the verb for the whole TCP
+# connect, silently. As xoct's _xoct_hold_gate. xcopy puts no hold of its
+# own: it keeps no test-run record, so nothing could tell when a hold it put
+# may go.
 _XCOPY_HOLD_FILE=/data/conf/client_mail_hold.txt
 _xcopy_hold_gate() {
   local _h="$1" _v
   [ -n "${_XCOPY_ADMAIL}" ] && return 0
   [[ "${_h}" =~ ^[A-Za-z0-9.:-]+$ ]] || return 0
-  _v="$(ssh root@"${_h}" "if [ -e ${_XCOPY_HOLD_FILE} ]; then head -n 1 ${_XCOPY_HOLD_FILE} | tr -cd '[:print:]' | cut -c1-200; echo; echo HOLD-HAD; else echo HOLD-NONE; fi" 2> /dev/null)"
+  _v="$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" "if [ -e ${_XCOPY_HOLD_FILE} ]; then head -n 1 ${_XCOPY_HOLD_FILE} | tr -cd '[:print:]' | cut -c1-200; echo; echo HOLD-HAD; else echo HOLD-NONE; fi" 2> /dev/null)"
   case "${_v}" in
     *HOLD-HAD*) _v="$(printf '%s\n' "${_v}" | head -n 1)" ;;
     *) return 0 ;;
