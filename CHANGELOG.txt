@@ -1383,6 +1383,16 @@
 
 @=> Important Fixes
 
+    * A Textpattern Upgrade onto a name whose earlier copy left a stale
+      alias behind (a rollback that stopped before removing it) no longer
+      decides the copy's database through the db server that stale alias
+      named: such an Upgrade refused a copy placed on another server as the
+      source's database and left that copy's database behind, and a failed
+      one could drop a database of the copy's name on the stale alias's
+      server instead of the copy's own. The copy's database is now read
+      through the copy's own context, and a database its context does not
+      reach is left in place and named in the task log.
+
     * The octopus upgrade's server verify now runs on the instance's
       command-line PHP; on an instance whose cli.info differs from the
       server default it ran the server default PHP.
