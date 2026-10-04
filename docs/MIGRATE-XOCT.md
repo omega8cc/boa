@@ -1093,6 +1093,11 @@ the site's own (another site uses it, the new name has one already, or
 `tools/le/.ctrl/dont-overwrite-<site>.pid` marks it as the operator's) stays, the site
 keeps that certificate, and the rename says so in an `ALRT`.
 
+A box renamed by an earlier release left such a site on its old name's certificate record.
+Running the same rename again repairs it: the record is renamed to the site's new name and
+the site's verify is queued, which moves it to its new name's certificate. A Grav or
+Textpattern site takes it at its own next verify.
+
 > **BOA supports a single attached mount under `/mnt`.** The migration tools refuse a
 > target (or source) that has more than one.
 

@@ -1577,7 +1577,9 @@
       name had a certificate, so every task that reloaded nginx in those
       seconds failed. The site keeps serving its certificate until its
       first verify on the target and takes its new name's certificate
-      there; it went on serving the old name's.
+      there; it went on serving the old name's. On a box renamed by an
+      earlier release, running the same rename again renames such a
+      site's certificate record and queues its verify.
 
     * A store another registered site still reads through its files or
       private link is no longer set aside by a Delete, a renaming Migrate
