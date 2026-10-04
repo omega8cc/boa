@@ -1455,6 +1455,15 @@
       command-line PHP; on an instance whose cli.info differs from the
       server default it ran the server default PHP.
 
+    * A stored routine a Drupal site made through its own connection no
+      longer fails the fast import of a Migrate, a Restore, an xoct or
+      xcopy move or a broker load, and a trigger or event no longer
+      loads there working otherwise: mydumper wrote every trigger,
+      routine and event under the dump file's one sql_mode, so a routine
+      made under ANSI_QUOTES stopped the load (ERROR 1064) and a trigger
+      using || lost PIPES_AS_CONCAT. Each dump now writes every object's
+      own mode before it, as the server stored it.
+
     * A store another registered site still reads through its files or
       private link is no longer set aside by a Delete, a renaming Migrate
       or the nightly orphan sweep when that reader sits on a Drupal 8+
