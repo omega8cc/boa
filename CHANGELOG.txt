@@ -1410,6 +1410,21 @@
 
 @=> Important Fixes
 
+    * Classic Drush 8.5.13: a site whose logger service is written for
+      the current psr/log (monolog, raven, a module's subclass of a core
+      logger) can be verified, backed up, restored, cloned and migrated.
+      On PHP 8 Ægir's Drush 8 binds psr/log 2.0, which those loggers and
+      stock Drupal 10 and 11 core accept.
+
+    * Once every Drush 8 copy on the server binds psr/log 2.0, the lock
+      keeps the codebase's psr/log and core logger files as they ship
+      and only locks the local Drush and patches the console. A platform
+      locked earlier is converted by the first task that locks it once
+      every enabled site on it has been verified and five minutes have
+      passed (longer when a site's own settings raise
+      opcache.revalidate_freq), with no failed request; until then the
+      task log says what it waits for.
+
     * A Textpattern rename now keeps the site's extra Drush aliases: the
       renamed site lost them, and their alias files kept naming the old
       name and a site directory that no longer exists, where a later
@@ -1500,6 +1515,27 @@
       made under ANSI_QUOTES stopped the load (ERROR 1064) and a trigger
       using || lost PIPES_AS_CONCAT. Each dump now writes every object's
       own mode before it, as the server stored it.
+
+    * An xoct or xcopy site export, a database broker dump and the fast
+      dump of a site's Backup, Clone or Migrate on Percona 5.7 no longer
+      stall against the event scheduler as the nightly did: each now
+      passes --no-backup-locks beside its read lock when the server is
+      5.7 and the installed mydumper lists the option, as the nightly
+      and cluster dumps do. Any other server, and a mydumper without
+      the option, gets the arguments as before.
+
+    * A nightly or cluster backup that could not give a database's
+      stored objects their own sql_mode now says so in the backup
+      incident log and the notice mail, once per run; its WARN line went
+      to cron's /dev/null. A site's fast dump reads the objects' modes
+      before the dump: a dump longer than the server's wait_timeout found
+      the connection closed and left every object in the dump's mode.
+
+    * xoct and xcopy give up their own first contact with a target that
+      does not answer after 15 seconds, as the read of the target's mail
+      hold does: the mount query of pretransfer and transfer, the account
+      probe of create and xoct proxy's record push waited about two
+      minutes more, saying nothing, before they refused.
 
     * A store another registered site still reads through its files or
       private link is no longer set aside by a Delete, a renaming Migrate

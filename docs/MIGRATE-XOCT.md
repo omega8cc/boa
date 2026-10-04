@@ -924,10 +924,15 @@ record, by `xmass`'s mark and by the box's mail hold.
 A box that holds its clients' mail takes no real run: without `admail=`,
 every verb but `import` refuses while `/data/conf/client_mail_hold.txt` is
 on this box, and `create`, `pretransfer`, `transfer` and `proxy` also while
-it is on the target, naming it. `import` says so and goes on. The read of
-the target's hold gives up after 15 seconds on a target that does not
-answer, and the verb goes on to its own contact, which reports it. `xcopy`
-reads the target's hold the same way.
+it is on the target, naming it. `import` says so and goes on.
+
+The read of the target's hold gives up after 15 seconds on a target that
+does not answer, and so does the verb's own first contact there (the
+account probe of `create`, the mount query of `pretransfer` and
+`transfer`, the record push of `proxy`), which then refuses, naming the
+target: a mistyped or unreachable target ends the verb in about half a
+minute. `xcopy` reads the target's hold and makes its first contact the
+same way.
 
 **A canary goes live** with one verb on the source:
 

@@ -985,6 +985,12 @@ EOFMYSQL
         ### link the account put at its name is removed) and mydumper writes it
         ### as ./ from inside, so --clear can only act on the proven directory.
         _xcopy_in_real_dir "${_USR}/src" _xcopy_realdir_here "${_DBN}"
+        ### Percona 5.7: FTWRL without the backup lock (see
+        ### _mydumper_backup_locks_opts); any other server as before.
+        _MYDUMPER_BACKUP_LOCKS=()
+        if [[ "${_DB_V}" == "5.7" ]]; then
+          _mydumper_backup_locks_opts
+        fi
         ### Any non-transactional table makes mydumper abort the whole
         ### database unless --trx-tables=0 is passed; mirrors mysql_backup.sh.
         _NON_TRX_COUNT=$(mysql -u root -s -N -e "SELECT COUNT(*) FROM \
@@ -1018,6 +1024,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
           --outputdir=. \
           ${_MYDUMPER_ROWS_OPT} \
           "${_MYDUMPER_OBJECTS[@]}" \
+          "${_MYDUMPER_BACKUP_LOCKS[@]}" \
           --build-empty-files \
           --threads=4 \
           --long-query-guard=900 \
@@ -1798,7 +1805,9 @@ _xcopy_create_owner_gate() {   # 1 = account here 2 = account on the target 3 = 
     exit 1
   fi
   _f="$(_xcopy_create_marker "${2}")"
-  _held=$(ssh root@"${3}" "if getent passwd ${2} > /dev/null 2>&1; then echo HELD; else echo FREE; fi" 2> /dev/null)
+  # The create's first contact: a target that does not answer is given up
+  # after 15 s, not after the system's TCP connect timeout.
+  _held=$(ssh -o ConnectTimeout=15 root@"${3}" "if getent passwd ${2} > /dev/null 2>&1; then echo HELD; else echo FREE; fi" 2> /dev/null)
   case "${_held}" in
     FREE) return 0 ;;
     HELD) : ;;
@@ -2502,8 +2511,10 @@ _migrate_prepare() {
 # Prints "MULTI" (more than one), the single mountpoint path, or "NONE" (zero mounts).
 # Empty output therefore means ONLY that the ssh query itself failed -> caller aborts,
 # so a transient ssh hiccup never silently downgrades a mirror to a root de-reference.
+# It is the first contact of pretransfer and transfer: a target that does not answer
+# is given up after 15 s, not after the system's TCP connect timeout (about two minutes).
 _xcopy_detect_target_mnt() {
-  ssh root@"$1" 'p=$(stat -c "%d" /mnt 2>/dev/null); n=0; h=""; for m in /mnt/*; do [ -d "$m" ] || continue; if mountpoint -q "$m" 2>/dev/null || { [ -n "$p" ] && [ "$(stat -c "%d" "$m" 2>/dev/null)" != "$p" ]; }; then h="$m"; n=$((n+1)); fi; done; if [ "$n" -gt 1 ]; then echo MULTI; elif [ "$n" -eq 1 ]; then printf "%s" "$h"; else echo NONE; fi'
+  ssh -o ConnectTimeout=15 root@"$1" 'p=$(stat -c "%d" /mnt 2>/dev/null); n=0; h=""; for m in /mnt/*; do [ -d "$m" ] || continue; if mountpoint -q "$m" 2>/dev/null || { [ -n "$p" ] && [ "$(stat -c "%d" "$m" 2>/dev/null)" != "$p" ]; }; then h="$m"; n=$((n+1)); fi; done; if [ "$n" -gt 1 ]; then echo MULTI; elif [ "$n" -eq 1 ]; then printf "%s" "$h"; else echo NONE; fi'
 }
 
 # Resolve the target's attached mount into _TGT_MNT ("" = none), aborting the run on a
@@ -3221,6 +3232,26 @@ _myloader_binlog_opts() {
   _MYLOADER_BINLOG=()
   if myloader --help 2>&1 | grep -qE -- '^[[:space:]]+--ignore-set([[:space:]]|=)'; then
     _MYLOADER_BINLOG=(--ignore-set=SQL_LOG_BIN)
+  fi
+  return 0
+}
+### On Percona 5.7 mydumper's default lock mode syncs its threads with FLUSH
+### TABLES WITH READ LOCK (FTWRL) and also takes Percona's backup lock (LOCK
+### TABLES FOR BACKUP), keeping it until FTWRL is released. A write to a
+### MyISAM table waits for that lock with its table open, and the event
+### scheduler writes one at every event run (mysql.event is MyISAM on 5.7):
+### the flush ahead of FTWRL then waits for that table, or FTWRL for the
+### writer, and neither side gives way. The server sees no deadlock, so the
+### export stalls there and every write on the box queues behind it. FTWRL
+### alone still gives the dump its consistent point. Sets
+### _MYDUMPER_BACKUP_LOCKS to --no-backup-locks when the local mydumper
+### lists it, so a build without it gets its arguments as before.
+_mydumper_backup_locks_opts() {
+  local _h
+  _MYDUMPER_BACKUP_LOCKS=()
+  _h=$(mydumper --help 2>&1)
+  if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+(-[[:alpha:]],[[:space:]]+)?--no-backup-locks([[:space:]]|=|$)"; then
+    _MYDUMPER_BACKUP_LOCKS=(--no-backup-locks)
   fi
   return 0
 }
