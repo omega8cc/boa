@@ -2378,6 +2378,13 @@ _install_php_multi() {
   _PHP_DEB_INSTALLED=NO
   if [ "${_USE_PREBUILT_PKGS}" = "YES" ]; then
     _install_php_deb "$1"
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      if [ -e "/var/opt/php$1-pre-deb" ]; then
+        _msg "INFO: PHP $1 pre-deb copy after the package step: left"
+      else
+        _msg "INFO: PHP $1 pre-deb copy after the package step: none"
+      fi
+    fi
   fi
   if [ "${_PHP_DEB_INSTALLED}" = "NO" ]; then
     # A prebuilt package that failed its check was purged and the previous
@@ -2385,6 +2392,15 @@ _install_php_multi() {
     # what the source build will replace, not what was there before.
     _binIno=$(stat -c %i "/opt/php$1/bin/php" 2>/dev/null)
     _install_php_multi_src "$1"
+    # make and make install run under _mrun, which never fails. make install
+    # writes each file new and renames it into place, so a build that
+    # installed nothing leaves no binary or the one it should have replaced.
+    if [ ! -x "/opt/php$1/bin/php" ]; then
+      _msg "ALRT: Building PHP ${_PHP_VERSION} failed, /opt/php$1 has no PHP binary"
+    elif [ -n "${_binIno}" ] \
+      && [ "$(stat -c %i "/opt/php$1/bin/php" 2>/dev/null)" = "${_binIno}" ]; then
+      _msg "ALRT: Building PHP ${_PHP_VERSION} failed, the previous build in /opt/php$1 keeps serving"
+    fi
   fi
   if [ -x "/opt/php$1/bin/php" ]; then
     rm -f /usr/bin/php
@@ -2440,8 +2456,6 @@ _install_php_multi() {
     chmod 755 /etc/init.d/php$1-fpm
     _php_note_build "$1" "${_binIno}"
     _mrun "update-rc.d php$1-fpm defaults"
-  else
-    _msg "WARN: Building PHP ${_PHP_VERSION} failed!"
   fi
 }
 
