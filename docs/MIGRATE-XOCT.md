@@ -1085,6 +1085,14 @@ certificate links (`config/ssl.d/<site>` and `config/server_master/ssl.d/<site>`
 (`/data/disk/o2/tools/le/certs/<site>`), and a client's site links name the site's directory
 there. A link naming anything else is left as it is.
 
+A site on HTTPS named under the box's name, renamed with it, serves the certificate it
+had until its first verify on the target: the rename leaves its vhost's certificate lines
+on that pair and renames the site's own certificate record to the new name, so that verify
+takes the new name's certificate, issued as at a first HTTPS enable. A record that is not
+the site's own (another site uses it, the new name has one already, or
+`tools/le/.ctrl/dont-overwrite-<site>.pid` marks it as the operator's) stays, the site
+keeps that certificate, and the rename says so in an `ALRT`.
+
 > **BOA supports a single attached mount under `/mnt`.** The migration tools refuse a
 > target (or source) that has more than one.
 
