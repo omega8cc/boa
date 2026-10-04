@@ -1562,6 +1562,14 @@
       writes them, in the instance's backup directory, removed after
       the load. A dump without them loads as before.
 
+    * sqlmagic fix now also leaves out of the fixed dump the statements
+      a site's own database user may not run: the binary-log switch and
+      the GTID state of a dump taken on a server with GTID on (an older
+      Drush 8 sql-dump there stopped its import with ERROR 1227), the
+      definer of a stored routine or an event, a trigger's definer in
+      double quotes, and the dumped database's name in ALTER DATABASE
+      lines. Data rows are never changed.
+
     * A store another registered site still reads through its files or
       private link is no longer set aside by a Delete, a renaming Migrate
       or the nightly orphan sweep when that reader sits on a Drupal 8+
