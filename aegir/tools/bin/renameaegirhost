@@ -2892,8 +2892,8 @@ _rename_site_certs() {
   _sql_table_exists hosting_ssl_cert || return 0
   _sql_table_exists hosting_ssl_site || return 0
   _sql_table_exists hosting_site || return 0
-  local _nid _new _cid _name _old _users _taken
-  while IFS=$'\t' read -r _nid _new _cid _name; do
+  local _nid _new _cid _name _pub _old _users _taken
+  while IFS=$'\t' read -r _nid _new _cid _name _pub; do
     [[ "${_nid}" =~ ^[0-9]+$ ]] && [[ "${_cid}" =~ ^[0-9]+$ ]] || continue
     _safe_name "${_new}" "site uri" || continue
     _old="${_new%.${_NEW_HOST}}.${_OLD_HOST}"
@@ -2917,10 +2917,20 @@ _rename_site_certs() {
       _alrt "  ${_new}: ${_old} is an operator's own certificate (tools/le/.ctrl/dont-overwrite-${_old}.pid): left as it is"
     elif _sql "UPDATE hosting_ssl_cert SET ssl_key = '${_new}' WHERE cid = ${_cid} AND ssl_key = '${_old}'"; then
       _info "  ${_new}: its certificate record ${_old} renamed with it"
+      # A Drupal or Backdrop site (settings.php, as _site_capsule_class
+      # reads it) joins the verifies §7 queues, which move it to the new
+      # name's certificate: on a box renamed before this rule, nothing else
+      # queues one. A capsule switches at its own next verify.
+      if [ -n "${_pub}" ] && [ "${_pub}" != "NULL" ] \
+        && [ -f "${_pub%/}/sites/${_new}/settings.php" ]; then
+        _RENAMED_SITE_URIS+=("${_new}")
+      else
+        _info "  ${_new}: it moves to the new name's certificate at its own next verify"
+      fi
     else
       _alrt "  ${_new}: its certificate record ${_old} could NOT be renamed: the site keeps the old name's certificate"
     fi
-  done < <(_sql "SELECT n.nid, n.title, c.cid, c.ssl_key FROM node n JOIN hosting_site h ON h.vid = n.vid JOIN hosting_ssl_site s ON s.nid = n.nid AND s.vid = n.vid JOIN hosting_ssl_cert c ON c.cid = s.ssl_key WHERE n.type = 'site' AND h.status != -2 AND s.ssl_enabled > 0 AND n.nid != ${_HM_NID} AND n.title LIKE '%.${_NEW_HOST}'")
+  done < <(_sql "SELECT n.nid, n.title, c.cid, c.ssl_key, p.publish_path FROM node n JOIN hosting_site h ON h.vid = n.vid JOIN hosting_ssl_site s ON s.nid = n.nid AND s.vid = n.vid JOIN hosting_ssl_cert c ON c.cid = s.ssl_key LEFT JOIN node pn ON pn.nid = h.platform LEFT JOIN hosting_platform p ON p.vid = pn.vid WHERE n.type = 'site' AND h.status != -2 AND s.ssl_enabled > 0 AND n.nid != ${_HM_NID} AND n.title LIKE '%.${_NEW_HOST}'")
   return 0
 }
 
