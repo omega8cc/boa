@@ -48,6 +48,15 @@
       one, and a forced rebuild of the bundle keeps the webform the sites
       run when the new one cannot be fetched.
 
+    * A Backdrop site's Delete, and a Backdrop Migrate under a new name,
+      now set the old site's files store aside under
+      static/files/.archived at once, as the Drupal and Textpattern
+      tasks do (DELETE/STORE and RENAME/STORE lines in the task log); the
+      store used to wait for the nightly sweep, which is opt-in on
+      self-hosted boxes. A store named by a share control file, one
+      another site still reads through its link, and any store under the
+      report-only switch stay where they are; nothing is deleted.
+
 @=> Security
 
     * Classic Drush 8.5.12: Ægir's backend tasks no longer load the
@@ -1401,6 +1410,60 @@
 
 @=> Important Fixes
 
+    * A Textpattern rename now keeps the site's extra Drush aliases: the
+      renamed site lost them, and their alias files kept naming the old
+      name and a site directory that no longer exists, where a later
+      Delete of the site left them. A rename that fails part way now also
+      puts the restored site's private/config.php back on the old name;
+      it kept naming the new name's directory and admin URL until the
+      next Verify.
+
+    * A Textpattern or Grav site with Encryption set to Required no
+      longer stops nginx from reloading on the whole server. Its http
+      vhost carried a second Let's Encrypt challenge location beside the
+      one BOA already adds, so nginx refused its configuration test and
+      every reload until that vhost was rewritten. The vhost now carries
+      the challenge location once.
+
+    * A multi-fpm.info line commented out with a leading # (#example.com
+      8.5) no longer pins its site: the account worker read past the #
+      while every other reader treats the line as a comment. A site served
+      that way today, by a commented-out line or by a commented line placed
+      after its own line, moves to the version its own line or the
+      account's fpm.info names on the first worker pass after the update.
+
+    * Installing a PHP version an account did not use before no longer
+      sends every site not listed in its multi-fpm.info to a missing
+      socket (502) until the next worker pass: the worker sets the new
+      version's pool up in the same pass and keeps the account's default
+      FPM include. A pool setup now reloads only the PHP versions whose
+      pools it added, changed or removed, once each, so a new worker
+      release no longer reloads every PHP-FPM version for every account.
+
+    * Deleting an account's multi-fpm.info no longer sends every site of
+      the account to a missing socket (502) until the next worker pass:
+      an account leaving multi-FPM mode gets its pool set up in the same
+      pass, nginx moves to it once it is up, and the old pools go only
+      after nginx has left them. A pool setup while nginx refuses its
+      config no longer drops the pools nginx keeps using.
+
+    * A Textpattern rename onto a name whose earlier holder left a stale
+      alias behind on another platform (a delete or a rollback that
+      stopped before removing it) no longer refuses with "does not
+      resolve" and rolls back: the rename read the moved site's new
+      context through that stale alias. It now reads the new context
+      only after saving it, so re-running a Cutover that stopped half
+      way claims the domain on the first try.
+
+    * A Textpattern rename or Upgrade onto a name whose earlier holder
+      left a stale alias behind no longer takes over that holder's
+      settings. The renamed site or the copy inherited its aliases,
+      redirection, encryption and key, extra Drush aliases and cron
+      key, and its vhost served the holder's redirects and encryption.
+      An Upgrade's Import also kept the aliases and the redirection in
+      the panel, and the panel adopted the holder's cron key. The stale
+      alias is now removed before the new context is saved.
+
     * A nightly or cluster database dump on Percona 5.7 no longer stalls
       against the event scheduler with every write on the box queued
       behind it, often ending in a failed dump. The dump now passes
@@ -1428,6 +1491,15 @@
     * The octopus upgrade's server verify now runs on the instance's
       command-line PHP; on an instance whose cli.info differs from the
       server default it ran the server default PHP.
+
+    * A stored routine a Drupal site made through its own connection no
+      longer fails the fast import of a Migrate, a Restore, an xoct or
+      xcopy move or a broker load, and a trigger or event no longer
+      loads there working otherwise: mydumper wrote every trigger,
+      routine and event under the dump file's one sql_mode, so a routine
+      made under ANSI_QUOTES stopped the load (ERROR 1064) and a trigger
+      using || lost PIPES_AS_CONCAT. Each dump now writes every object's
+      own mode before it, as the server stored it.
 
     * A store another registered site still reads through its files or
       private link is no longer set aside by a Delete, a renaming Migrate

@@ -37,6 +37,9 @@ old.com 5.6
 ```
 
 - **NOTE**: Each line in the `multi-fpm.info` file must start with the **main site name** (not an alias), followed by a single space, and then the PHP-FPM version to use.
+- A line that starts with `#` is a comment and never pins its site, also beside the site's
+  own line. Commenting out a site's line drops its pin: within one pass the site goes back
+  to the version in `fpm.info`.
 - A line applies once its site is installed on the account, its PHP version is installed on
   the server and the account's pool for that version is running. Until then it waits,
   listed in `~/static/control/.multi-fpm-skipped.info`, and is tried again on every pass
