@@ -1363,6 +1363,15 @@
 
 @=> Important Fixes
 
+    * A Textpattern site's Login reset no longer fails with "Could not
+      mint a password-reset link", a new Textpattern site's welcome mail
+      again carries a password-set link instead of the bare admin
+      address, and a Textpattern Upgrade completes again instead of
+      discarding its copy: since the database settings left the site's
+      config.php, the helpers that open the site from the command line
+      were not given them. Each now gets its own site's settings, and
+      the Upgrade's those of the new copy, never the source's.
+
     * After the panel's Enable task, a Backdrop or Textpattern site's web
       server config named its database "none", so the site answered with
       a database error until its next Verify. Enable now reloads the
@@ -1418,6 +1427,14 @@
       account's store, so every verify of the site failed and it answered
       500. The transfer now re-points those links as it does the ones
       under static/.
+
+    * After an xoct move that renames the account, a Let's Encrypt
+      site's certificate links (in config/ssl.d, config/server_master/
+      ssl.d and tools/le) and the client site links still named the
+      source account's tree, and a verify keeps a certificate link that
+      is already there: the site's verify failed, it lost its HTTPS,
+      and nginx -t failed for the whole target box, so no reload there
+      took effect. The transfer now re-points them too.
 
     * A Restore, Clone or Migrate no longer unpacks a site archive
       outside the directory it made. A link left at the unpack target,
