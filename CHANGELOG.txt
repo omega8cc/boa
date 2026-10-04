@@ -1363,6 +1363,15 @@
 
 @=> Important Fixes
 
+    * A Textpattern site's Login reset no longer fails with "Could not
+      mint a password-reset link", a new Textpattern site's welcome mail
+      again carries a password-set link instead of the bare admin
+      address, and a Textpattern Upgrade completes again instead of
+      discarding its copy: since the database settings left the site's
+      config.php, the helpers that open the site from the command line
+      were not given them. Each now gets its own site's settings, and
+      the Upgrade's those of the new copy, never the source's.
+
     * After the panel's Enable task, a Backdrop or Textpattern site's web
       server config named its database "none", so the site answered with
       a database error until its next Verify. Enable now reloads the
