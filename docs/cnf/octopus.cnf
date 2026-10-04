@@ -147,6 +147,10 @@ so both can be used as default versions in the Ægir PHP configuration files:
 ### NOTE: Each line in the multi-fpm.info file must start with main site name,
 ### followed by single space, and then the PHP-FPM version to use.
 ###
+### NOTE: A line starting with # is a comment and never pins its site.
+### Commenting out a site's line drops its pin, and the site returns to the
+### version in fpm.info within one pass.
+###
 
 ###
 ### /data/disk/${_USER}/static/control/cli.info

@@ -597,6 +597,78 @@ _mydumper_objects_opts() {
   return 0
 }
 
+### mydumper writes every trigger, routine and event of a database under one
+### file-wide sql_mode, so an object made under another one (Drupal's own
+### connections use ANSI_QUOTES and PIPES_AS_CONCAT) fails its load, or
+### loads and then behaves otherwise. This gives each object back the mode
+### the server stored for it: a plain SET before its CREATE and the file's
+### mode after it (myloader stops on a versioned-comment SET in the middle
+### of a file). Mode words 8.x refuses are left out, so a 5.7 dump loads
+### there. It reads the file whole, never through a link, and replaces it
+### through a new one in the same directory. Exits 1, the file as it was,
+### when a line cannot be placed; 2 when an object had no mode to give.
+_MYDUMPER_MODES_PL='use strict; use Fcntl;
+my ($f) = @ARGV; my (%m, @o, $p, $miss);
+my $gone = qr/^(?:NO_AUTO_CREATE_USER|NO_FIELD_OPTIONS|NO_KEY_OPTIONS|NO_TABLE_OPTIONS|DB2|MAXDB|MSSQL|MYSQL323|MYSQL40|ORACLE|POSTGRESQL)$/;
+for (split /\n/, (defined $ENV{_MYDUMPER_MODES} ? $ENV{_MYDUMPER_MODES} : "")) {
+  my ($t, $h, $s) = split /\t/, $_, 3;
+  next unless defined $s && $t =~ /^(?:TRIGGER|FUNCTION|PROCEDURE|EVENT)$/
+    && $h =~ /^[0-9A-Fa-f]+$/ && $s =~ /^[A-Z0-9_,]*$/;
+  $m{$t . " " . lc($h)} = join(",", grep { $_ !~ $gone } split(/,/, $s));
+}
+sysopen(my $in, $f, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or exit 1;
+my @st = stat($in); exit 1 unless @st && -f _;
+my @l = <$in>; close($in);
+my $fm;
+for my $x (@l[0 .. ($#l < 9 ? $#l : 9)]) {
+  $fm = $1 if !defined $fm && $x =~ /^\/\*!40101 SET SQL_MODE=\x27([A-Z0-9_,]*)\x27\*\/;$/;
+}
+exit 1 unless defined $fm;
+for my $i (0 .. $#l) {
+  my $x = $l[$i];
+  if ($p && $x =~ /^SET character_set_client = \@PREV_CHARACTER_SET_CLIENT;$/) {
+    push @o, "SET SQL_MODE=\x27$fm\x27;\n"; $p = 0;
+  }
+  push @o, $x;
+  next unless $x =~ /^DROP (TRIGGER|FUNCTION|PROCEDURE|EVENT) IF EXISTS `((?:[^`]|``)+)`;$/;
+  my ($t, $n) = ($1, $2); $n =~ s/``/`/g;
+  exit 0 if $i < $#l && $l[$i + 1] =~ /^SET SQL_MODE=/;
+  my $s = $m{$t . " " . unpack("H*", $n)};
+  if (defined $s) { push @o, "SET SQL_MODE=\x27$s\x27;\n"; $p = 1; } else { $miss = 1; }
+}
+exit 1 if $p;
+my $w = $f . ".modes";
+sysopen(my $out, $w, O_WRONLY|O_CREAT|O_EXCL|O_NOFOLLOW, 0600) or exit 1;
+if (!(print {$out} @o) || !close($out) || !chmod($st[2] & 07777, $w)
+  || ($> == 0 && !chown($st[4], $st[5], $w)) || !rename($w, $f)) { unlink($w); exit 1; }
+exit($miss ? 2 : 0);'
+
+### Gives every stored object of database $1, dumped by mydumper into the
+### directory $2, its own sql_mode back (see _MYDUMPER_MODES_PL), read with
+### the client command that follows. Returns 0 when done or when there is
+### nothing to do, 1 when the modes could not be read (the files as
+### mydumper wrote them), 2 when an object or a file kept the dump's mode.
+### It never fails a dump: the caller says what was left.
+_mydumper_object_modes() {
+  local _db="${1}" _dir="${2}" _q _modes _f _rc=0
+  shift 2
+  [[ "${_db}" =~ ^[A-Za-z0-9_]+$ ]] || return 2
+  _q="SELECT 'TRIGGER', HEX(TRIGGER_NAME), SQL_MODE FROM information_schema.TRIGGERS WHERE TRIGGER_SCHEMA = '${_db}'"
+  _q="${_q} UNION ALL SELECT ROUTINE_TYPE, HEX(ROUTINE_NAME), SQL_MODE FROM information_schema.ROUTINES WHERE ROUTINE_SCHEMA = '${_db}'"
+  _q="${_q} UNION ALL SELECT 'EVENT', HEX(EVENT_NAME), SQL_MODE FROM information_schema.EVENTS WHERE EVENT_SCHEMA = '${_db}'"
+  _modes=$("$@" -N -B -e "${_q}" 2> /dev/null) || return 1
+  [[ -n "${_modes}" ]] || return 0
+  for _f in "${_dir}"/*-schema-post.sql "${_dir}"/*-schema-triggers.sql; do
+    if [[ -L "${_f}" ]]; then
+      _rc=2
+      continue
+    fi
+    [[ -f "${_f}" ]] || continue
+    _MYDUMPER_MODES="${_modes}" perl -e "${_MYDUMPER_MODES_PL}" -- "${_f}" || _rc=2
+  done
+  return "${_rc}"
+}
+
 _backup_this_database_with_mydumper() {
   _check_running
   if [ ! -d "${_SAVELOCATION}/${_DB}" ]; then
@@ -664,6 +736,8 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
     return 1
   fi
   rm -f "${_SAVELOCATION}/${_DB}.mydumper.log"
+  _mydumper_object_modes "${_DB}" "${_SAVELOCATION}/${_DB}" mysql -u root || _MYDUMPER_MODES_LEFT="YES"
+  return 0
 }
 
 ### The dumps never carry the server's GTID state. By default
@@ -1038,6 +1112,7 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
     fi
     _DUMP_RC=0
     _MYSQLDUMP_LEFT_OUT=""
+    _MYDUMPER_MODES_LEFT=""
     if [ "${_DB}" = "mysql" ]; then
       _backup_mysql_schema &> /dev/null || _DUMP_RC=1
     elif [ "${_MYQUICK_USE}" = "YES" ]; then
@@ -1051,6 +1126,9 @@ for _DB in `mysql -e "show databases" -s | uniq | sort`; do
       if [ -n "${_MYSQLDUMP_LEFT_OUT}" ]; then
         echo "WARN: ${_DB} was dumped without its ${_MYSQLDUMP_LEFT_OUT}: the dumping login could not read them"
         _OBJECTS_LEFT_DBS="${_OBJECTS_LEFT_DBS} ${_DB}:${_MYSQLDUMP_LEFT_OUT// and /+}"
+      fi
+      if [ -n "${_MYDUMPER_MODES_LEFT}" ]; then
+        echo "WARN: ${_DB}'s stored objects kept the dump's own sql_mode: a load of one made under another mode can fail or work otherwise"
       fi
     else
       _DUMP_FAILED_N=$(( ${_DUMP_FAILED_N:-0} + 1 ))
