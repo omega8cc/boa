@@ -1370,6 +1370,14 @@
 
 @=> Important Fixes
 
+    * A PHP build from sources that fails after configure is now
+      reported: make and make install ran without their result being
+      read, so a failed build left the previous build serving (or no
+      binary, noted only by a warning) and the barracuda upgrade still
+      completed without errors, failing the same rebuild again on every
+      later upgrade. The upgrade now names the version, says whether the
+      previous build keeps serving, and completes WITH ERRORS.
+
     * A Textpattern Upgrade whose update step cannot connect to the new
       copy's database now says so in its task log: Textpattern ended that
       step with a success status, so its lines were logged as a clean run
