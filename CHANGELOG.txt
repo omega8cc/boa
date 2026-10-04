@@ -1516,6 +1516,12 @@
       before the dump: a dump longer than the server's wait_timeout found
       the connection closed and left every object in the dump's mode.
 
+    * xoct and xcopy give up their own first contact with a target that
+      does not answer after 15 seconds, as the read of the target's mail
+      hold does: the mount query of pretransfer and transfer, the account
+      probe of create and xoct proxy's record push waited about two
+      minutes more, saying nothing, before they refused.
+
     * A store another registered site still reads through its files or
       private link is no longer set aside by a Delete, a renaming Migrate
       or the nightly orphan sweep when that reader sits on a Drupal 8+
