@@ -555,6 +555,27 @@ EOFMYSQL
   done
 }
 
+### Percona 5.7 dumps sync their threads with FLUSH TABLES WITH READ LOCK
+### (FTWRL), and mydumper also takes Percona's backup lock there (LOCK TABLES
+### FOR BACKUP), keeping it until FTWRL is released. A write to a MyISAM
+### table waits for that lock with its table open, and the event scheduler
+### writes one at every event run (mysql.event is MyISAM on 5.7): the flush
+### ahead of FTWRL then waits for that table, or FTWRL for the writer, and
+### neither side gives way. The server sees no deadlock, so the dump stalls
+### there and every write on the box queues behind it. FTWRL alone still
+### gives the dump its consistent point. Sets _MYDUMPER_BACKUP_LOCKS to
+### --no-backup-locks when the local mydumper lists it, so a build without
+### it gets its arguments as before.
+_mydumper_backup_locks_opts() {
+  local _h
+  _MYDUMPER_BACKUP_LOCKS=()
+  _h=$(mydumper --help 2>&1)
+  if printf '%s\n' "${_h}" | grep -qE -- "^[[:space:]]+(-[[:alpha:]],[[:space:]]+)?--no-backup-locks([[:space:]]|=|$)"; then
+    _MYDUMPER_BACKUP_LOCKS=(--no-backup-locks)
+  fi
+  return 0
+}
+
 ### A database's triggers, stored routines and events are dumped with its
 ### tables. mydumper writes none of them unless asked, so a site that kept
 ### them (a logging trigger, a function its queries call, a scheduled event)
@@ -582,8 +603,10 @@ _backup_this_database_with_mydumper() {
     mkdir -p ${_SAVELOCATION}/${_DB}
   fi
   _MYDUMPER_LOCK_MODE="AUTO"
+  _MYDUMPER_BACKUP_LOCKS=()
   if [[ "${_DB_V}" == "5.7" ]]; then
     _MYDUMPER_LOCK_MODE="FTWRL"
+    _mydumper_backup_locks_opts
   fi
   ### Any non-transactional table makes mydumper abort the whole database
   ### unless --trx-tables=0 is passed; InnoDB-only keeps the fast path.
@@ -623,6 +646,7 @@ ENGINE NOT IN ('InnoDB')" 2> /dev/null)
     --threads=4 \
     --long-query-guard=900 \
     --sync-thread-lock-mode=${_MYDUMPER_LOCK_MODE} \
+    "${_MYDUMPER_BACKUP_LOCKS[@]}" \
     ${_MYDUMPER_TRX_OPT} \
     --verbose=1 &> "${_SAVELOCATION}/${_DB}.mydumper.log"
   _MYDUMPER_RC=$?

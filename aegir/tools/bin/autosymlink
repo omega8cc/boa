@@ -89,6 +89,7 @@ _check_root
 _MODE="DRY"
 _NARROW="NO"
 _ARCHIVE_STORE="NO"
+_SLR_SITES=""
 _SLR_INDEX=""
 _ONE_SITE=""
 _ONE_ACCOUNT=""
@@ -1572,16 +1573,67 @@ _archive_site_store_now() {
   return 0
 }
 
+_store_sites_dirs() {
+  # The sites/ directory of every platform on the box, one per line, memoised
+  # in _SLR_SITES for the whole run (the links are read again for every
+  # account pass, the platforms once: the nightly sweep runs with the task
+  # queue paused and drained, a task's narrow run is a single process, so a
+  # platform registered after a run started is first seen by the next run).
+  # Two sources, joined:
+  #   - the trees BOA builds: distro/<group>/<platform> and the panel's
+  #     aegir/distro/<n> in every account, and a platform put directly in
+  #     static/, each with the sites/ of its root and of the docroot Provision
+  #     serves for a Composer build (docroot/, html/, web/);
+  #   - the root of every account's registered platform aliases, taken to the
+  #     docroot Provision serves, which reaches a tenant platform at any depth
+  #     below static/ and anywhere else the account registered one.
+  # Paths are read as text, as the link index always was. A root outside its
+  # own account's tree or naming a . or .. step, a sites/ that is itself a
+  # link and anything under static/files (the store) are left out, so the
+  # scan never descends into a store and one account's alias cannot point it
+  # at another account's tree. An empty result is remembered too.
+  if [ -z "${_SLR_SITES}" ]; then
+    _SLR_SITES=$(
+      {
+        for _SLR_B in /data/disk/*/distro/*/* /data/disk/*/aegir/distro/* /data/disk/*/static/*; do
+          case "${_SLR_B#/data/disk/*/}" in static/files) continue ;; esac
+          for _SLR_S in "${_SLR_B}/sites" "${_SLR_B}/docroot/sites" "${_SLR_B}/html/sites" "${_SLR_B}/web/sites"; do
+            [ -d "${_SLR_S}" ] && [ ! -L "${_SLR_S}" ] && printf '%s\n' "${_SLR_S}"
+          done
+        done
+        for _SLR_PA in /data/disk/*/.drush/platform_*.alias.drushrc.php; do
+          [ -f "${_SLR_PA}" ] || continue
+          _SLR_R=$(_exp_docroot "$(_alias_field "${_SLR_PA}" "root")")
+          _SLR_R="${_SLR_R%/}"
+          case "${_SLR_R}/" in
+            */./*|*/../*) continue ;;
+            "${_SLR_PA%/.drush/*}"/?*) ;;
+            *) continue ;;
+          esac
+          [ -d "${_SLR_R}/sites" ] && [ ! -L "${_SLR_R}/sites" ] && printf '%s\n' "${_SLR_R}/sites"
+        done
+      } | grep -v -E '^/data/disk/[^/]+/static/files(/|$)' | sort -u
+    )
+    [ -n "${_SLR_SITES}" ] || _SLR_SITES=" "
+  fi
+}
+
 _store_link_index() {
   # Every in-site files/private symlink on the box as "link<TAB>target" lines,
-  # from ONE find anchored at the site directories (it never descends into a
-  # store), memoised in _SLR_INDEX for the rest of the account's sweep; the
-  # caller resets it before each account's orphan pass so links rewritten
-  # earlier in the same account are seen. An empty result is remembered too.
+  # from ONE find over the sites/ directories _store_sites_dirs lists, two
+  # levels down and never through a link (a sites/<alias> link to a site
+  # directory is not followed, files and private are matched as links), so it
+  # never descends into a store; memoised in _SLR_INDEX for the rest of the
+  # account's sweep; the caller resets it before each account's orphan pass
+  # so links rewritten earlier in the same account are seen. An empty result
+  # is remembered too.
   if [ -z "${_SLR_INDEX}" ]; then
-    _SLR_INDEX=$(find /data/disk/*/distro/*/*/sites/*/ /data/disk/*/static/*/sites/*/ \
-      -mindepth 1 -maxdepth 1 -type l \( -name files -o -name private \) \
-      -printf '%p\t%l\n' 2>/dev/null)
+    _store_sites_dirs
+    if [ "${_SLR_SITES}" != " " ]; then
+      mapfile -t _SLR_DIRS <<< "${_SLR_SITES}"
+      _SLR_INDEX=$(find "${_SLR_DIRS[@]}" -mindepth 2 -maxdepth 2 -type l \
+        \( -name files -o -name private \) -printf '%p\t%l\n' 2>/dev/null)
+    fi
     [ -n "${_SLR_INDEX}" ] || _SLR_INDEX=" "
   fi
 }
@@ -1597,7 +1649,10 @@ _store_live_readers() {
   # hand-made link still serves its uploads through that link. The link text
   # is tested first; a target outside /data/disk (a hand-made link onto the
   # attached storage behind a static/files symlink) is resolved. Limits: only
-  # the two in-site link names are scanned, never a link nested below them.
+  # the two in-site link names of a site directory on a platform that
+  # _store_sites_dirs lists are scanned, never a link nested below them; a
+  # platform whose sites/ is itself a link, or one registered outside its own
+  # account's tree, is not seen.
   # Args: 1 store dir (.../static/files/<site>), 2 site name, 3 account dir
   _SLR_STORE="$1"
   _SLR_SITE="$2"

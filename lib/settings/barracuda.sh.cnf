@@ -63,6 +63,10 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
+### 8.6 is a release candidate, for testing:
+### it is built only when listed here and is
+### never used as a default version.
+###
 ### NOTE: 8.4 is required
 ###
 ### Example: _PHP_MULTI_INSTALL="5.6 7.4 8.4"

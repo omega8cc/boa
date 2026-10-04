@@ -82,7 +82,14 @@ the compiled-in OpenSSL (and, for PHP 8.1+, ICU) versions the box currently
 expects -- the same tokens the next run's rebuild decision reads -- so a
 stale package published before a pin bump is refused and purged, and that
 component builds from sources instead of silently installing binaries built
-against the previous library. The Pure-FTPd package carries the ten `/usr/local` binaries
+against the previous library.
+
+A PHP 8.4 or newer package that still has `Pdo\Sqlite::loadExtension()` is
+refused the same way. The build the box ran before is put back after the
+purge and keeps serving until the source build replaces it, so a source build
+that fails leaves it in place.
+
+The Pure-FTPd package carries the ten `/usr/local` binaries
 only; the TLS certificate, DH parameters, PAM and configuration files stay
 box-generated or installer-managed on both paths.
 

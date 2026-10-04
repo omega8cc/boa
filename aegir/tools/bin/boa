@@ -2834,6 +2834,8 @@ _display_time() {
       return
     elif [ "${_service}" = "php85-fpm" ] && [ ! -e "/opt/php85/bin/php" ]; then
       return
+    elif [ "${_service}" = "php86-fpm" ] && [ ! -e "/opt/php86/bin/php" ]; then
+      return
     else
       _not_running_services+=("  _XSE ${_service} is not running (PID file not found).")
       return
@@ -2879,6 +2881,8 @@ _display_time() {
     elif [ "${_service}" = "php84-fpm" ] && [ ! -e "/opt/php84/bin/php" ]; then
       return
     elif [ "${_service}" = "php85-fpm" ] && [ ! -e "/opt/php85/bin/php" ]; then
+      return
+    elif [ "${_service}" = "php86-fpm" ] && [ ! -e "/opt/php86/bin/php" ]; then
       return
     else
       _not_running_services+=("  _XSE ${_service} is not running (stale PID file).")
@@ -3266,6 +3270,7 @@ _display_info() {
         "php83-fpm"
         "php84-fpm"
         "php85-fpm"
+        "php86-fpm"
         "mysql"
         "valkey"
         "jenkins"
@@ -3296,6 +3301,7 @@ _display_info() {
         ["php83-fpm"]="/run/php83-fpm.pid"
         ["php84-fpm"]="/run/php84-fpm.pid"
         ["php85-fpm"]="/run/php85-fpm.pid"
+        ["php86-fpm"]="/run/php86-fpm.pid"
         ["mysql"]="/run/mysqld/mysqld.pid"
         ["valkey"]="/run/valkey/valkey.pid"
         ["jenkins"]="/run/jenkins/jenkins.pid"
@@ -3927,7 +3933,7 @@ _octopus_cleanup() {
         echo "${_usEr}:/data/disk/${_usEr}" > ${_zombie_dir}.purge.list
         echo "${_usEr}.ftp:/home/${_usEr}.ftp" >> ${_zombie_dir}.purge.list
         echo "${_usEr}.web:/home/${_usEr}.web" >> ${_zombie_dir}.purge.list
-        _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+        _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
         # the versions whose default pool (<account>.conf) goes: their FPM is
         # reloaded below with the per-version ones
         _dfltV=""
