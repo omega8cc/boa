@@ -51,10 +51,11 @@
 ###       copies Drush 9+ reads (<aegir-root>/.drush/sites, and for an
 ###       Octopus account /home/<acct>.ftp/.drush/sites), keeping the checksum
 ###       of a copy Drush still manages in step with its new bytes
-###   §4  Rename + rewrite vhost files in <aegir-root>/config/server_master/nginx/vhost.d/,
-###       then rewrite the platform sites/sites.php alias maps (the queued
-###       verifies only ever ADD new-hostname records there; stale
-###       old-hostname records would otherwise survive the rename
+###   §4  Rename + rewrite vhost files in <aegir-root>/config/server_master/nginx/vhost.d/
+###       (a certificate line keeps the pair it named: the rename moves no
+###       certificate), then rewrite the platform sites/sites.php alias maps
+###       (the queued verifies only ever ADD new-hostname records there;
+###       stale old-hostname records would otherwise survive the rename
 ###       indefinitely)
 ###   §5  Rename the hostname inside the Aegir DB with serialize-safe, targeted
 ###       statements: identity rows keyed by hosting_context nid, REPLACE()
@@ -62,7 +63,9 @@
 ###       re-serialize pass over the variable table. Never a blanket dump+sed:
 ###       that corrupts PHP-serialized byte lengths when the FQDN length
 ###       changes, and (with --hex-blob) never reached blob values anyway.
-###       A plain dump is still taken first, as a backup only.
+###       A plain dump is still taken first, as a backup only. A renamed
+###       HTTPS site's own certificate record is renamed with it, so its
+###       first verify moves it to its new name's certificate.
 ###       This run's copies (drush and vhost.d dirs, the DB dump, pre-edit
 ###       sites.php files, parked panel dirs and vhosts, logs) are kept in
 ###       /var/backups/renameaegirhost/<aegir-user>, readable by root only;
@@ -2260,11 +2263,16 @@ _rewrite_vhosts() {
     # charset never reaches the eval in _maybe_run
     _safe_name "${_N}" "vhost file" || continue
 
-    # Rewrite content regardless of filename
+    # Rewrite content regardless of filename. A certificate line names a
+    # certificate (its record's name, or hosting_le's directory), not the
+    # site, and the rename moves no certificate: rewritten, it named a pair
+    # that did not exist yet and nginx -t failed for the whole box until the
+    # site's verify. It keeps the pair it served; §5 renames the site's own
+    # record, and its first verify moves it to the new name's certificate.
     if _text_needs_rename "$(_in_real_dir "${_VHOSTD}" _read_here "${_N}")"; then
       _info "  sed in-place content: ${_VHOSTD}/${_N}"
       _maybe_run _in_real_dir \'"${_VHOSTD}"\' _sed_here \'"${_N}"\' \
-        \'"${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g"\' \
+        \'"/^[[:space:]]*ssl_\(certificate\|certificate_key\|trusted_certificate\)[[:space:]]/b;${_SED_RENAME_GUARD}s/${_OLD_HOST}/${_NEW_HOST}/g"\' \
         || _alrt "  ${_N} NOT rewritten -- it still names ${_OLD_HOST}"
     fi
 
@@ -2869,6 +2877,53 @@ _mysqldump_gtid_opts() {
   return 0
 }
 
+# A renamed HTTPS site's certificate record kept its old name: each verify
+# then wrote the old name's pair into its vhost, and the certificate
+# hosting_le issued for the new name went unused. The record is renamed with
+# its site when it is the site's own: named exactly the site's old name, on
+# the current revision of no other site that is not deleted, no record named
+# the new name yet, and not an operator's own certificate (hosting_le's
+# dont-overwrite flag). The site's first verify then moves it to the new
+# name's certificate as a first HTTPS enable does; until then its vhost keeps
+# the pair it served (§4). Otherwise the record stays and the site keeps its
+# old certificate, said in an ALRT. Run after the sweeps: the site nodes
+# carry their new names.
+_rename_site_certs() {
+  _sql_table_exists hosting_ssl_cert || return 0
+  _sql_table_exists hosting_ssl_site || return 0
+  _sql_table_exists hosting_site || return 0
+  local _nid _new _cid _name _old _users _taken
+  while IFS=$'\t' read -r _nid _new _cid _name; do
+    [[ "${_nid}" =~ ^[0-9]+$ ]] && [[ "${_cid}" =~ ^[0-9]+$ ]] || continue
+    _safe_name "${_new}" "site uri" || continue
+    _old="${_new%.${_NEW_HOST}}.${_OLD_HOST}"
+    if [ "${_name}" != "${_old}" ]; then
+      case "${_name}" in
+        *"${_OLD_HOST}"*)
+          _alrt "  ${_new}: its certificate record is named $(printf '%s' "${_name}" | tr -cd '[:print:]' | cut -c1-120), not ${_old}: left as it is, the site keeps that certificate"
+        ;;
+      esac
+      continue
+    fi
+    _users=$(_sql "SELECT COUNT(*) FROM hosting_ssl_site s JOIN node n ON n.nid = s.nid AND n.vid = s.vid JOIN hosting_site h ON h.vid = n.vid WHERE s.ssl_key = ${_cid} AND h.status != -2 AND s.nid != ${_nid}")
+    _taken=$(_sql "SELECT COUNT(*) FROM hosting_ssl_cert WHERE ssl_key = '${_new}'")
+    if [[ ! "${_users}" =~ ^[0-9]+$ ]] || [[ ! "${_taken}" =~ ^[0-9]+$ ]]; then
+      _alrt "  ${_new}: its certificate record ${_old} could not be checked: left as it is, the site keeps the old name's certificate"
+    elif [ "${_users}" != "0" ]; then
+      _alrt "  ${_new}: its certificate record ${_old} is in use by another site: left as it is, the site keeps the old name's certificate"
+    elif [ "${_taken}" != "0" ]; then
+      _alrt "  ${_new}: a certificate record named ${_new} exists already: ${_old} left as it is, the site keeps the old name's certificate"
+    elif [ -e "${_AEGIR_ROOT}/tools/le/.ctrl/dont-overwrite-${_old}.pid" ]; then
+      _alrt "  ${_new}: ${_old} is an operator's own certificate (tools/le/.ctrl/dont-overwrite-${_old}.pid): left as it is"
+    elif _sql "UPDATE hosting_ssl_cert SET ssl_key = '${_new}' WHERE cid = ${_cid} AND ssl_key = '${_old}'"; then
+      _info "  ${_new}: its certificate record ${_old} renamed with it"
+    else
+      _alrt "  ${_new}: its certificate record ${_old} could NOT be renamed: the site keeps the old name's certificate"
+    fi
+  done < <(_sql "SELECT n.nid, n.title, c.cid, c.ssl_key FROM node n JOIN hosting_site h ON h.vid = n.vid JOIN hosting_ssl_site s ON s.nid = n.nid AND s.vid = n.vid JOIN hosting_ssl_cert c ON c.cid = s.ssl_key WHERE n.type = 'site' AND h.status != -2 AND s.ssl_enabled > 0 AND n.nid != ${_HM_NID} AND n.title LIKE '%.${_NEW_HOST}'")
+  return 0
+}
+
 _rename_in_database() {
   _info "§5 Renaming hostname in Aegir database (${_AEGIR_DB}) ..."
 
@@ -2879,6 +2934,7 @@ _rename_in_database() {
     _info "(dry-run) Would dump ${_AEGIR_DB} to ${_DUMP_ORIG} (backup only)"
     _info "(dry-run) Would run serialize-safe UPDATEs: '${_OLD_HOST}' -> '${_NEW_HOST}'"
     _info "(dry-run) Would repair serialized variable values via php/mysqli"
+    _info "(dry-run) Would rename each renamed HTTPS site's own certificate record to its new name"
     return
   fi
 
@@ -2967,6 +3023,8 @@ _rename_in_database() {
   _sql_replace_col users init
 
   _repair_serialized_variables
+
+  _rename_site_certs
 
   # Drop the caches wholesale: cache blobs carried over from the old
   # hostname keep it inside serialized (often hex-dumped) values that no
