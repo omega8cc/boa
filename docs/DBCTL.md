@@ -24,13 +24,14 @@ An account is switched while a root-owned control file exists for it:
 /data/conf/oN_db_broker.txt   (root:root 0644, no one else may write it)
 
 server=@server_localhost      the one database server context it covers
-rows=localhost,%              the instance user's rows its logins use
-kept=%                        rows of rows= kept for the stored objects they define
+rows=localhost,%,192.0.2.10   the instance user's rows in use
+kept=192.0.2.10               rows of rows= kept only for the stored objects they define
 since=2026-10-01T12:00:00Z
 ```
 
 `kept=` is the broker's own: provision and the Extras read `server=` and
-`rows=` only.
+`rows=` only. Only the broker writes it; never name there a row the account's
+logins use: a `kept=` row that defines nothing is dropped at the next rotation.
 
 Provision reads the same file: without it, or with a file that is not valid (a
 link, another owner, writable by others, no valid `server=` or `rows=`), the
@@ -144,13 +145,16 @@ boa-dbctl leftovers drop --sha <the list's hash>
   it; its site users, as its registry entries name their databases, since a
   site's user is named as its database: a user that no other account's record
   names, that is none of the server's own logins, and whose every grant is on
-  that account's databases or on a name no database has). Site users are read
-  only for an account whose purge parked its home: a root cnf with no home and
-  no parked home (a `/data/disk` not mounted, an account half made) is no
-  purge;
+  that account's databases or on a name no database has);
 - B: the ones that only have the shape of a purged account's name;
 - C: the stored objects in kept databases that a user of A defines (a drop
   leaves them without a definer).
+
+A purged account's site users are read only when its purge parked its home
+(`/var/backups/zombie/purged/oN`). An account with a root cnf and neither a
+home nor a parked home (a `/data/disk` not mounted, an account half made)
+still has its own name listed in A, never its site users: read the list before
+a drop.
 
 `drop` drops exactly the rows of section A, and only while the list is still
 the one whose hash it is given. Databases are never touched. On the active box
@@ -247,15 +251,17 @@ privilege.
 - Any other row of the instance user that defines one is not dropped: the
   rotation fails, and the broker's log names the row, until an operator
   settles it. When the stored objects cannot be read, no row is dropped; a
-  warning or a note on that read counts as such (on 5.7 the server skips a view
-  or trigger file it cannot parse with a warning).
+  warning or a note on that read counts as such (on 5.7 the server skips, with
+  a warning, the triggers of a table it cannot open).
 - To settle such a row, re-point or drop its objects, drop the row, and run
   `scope oN on` again. `scope oN on` alone keeps it as a row in use (on
   `kept=`), but the box-wide check still names a row at a host the account's
   logins do not use, as it did before the switch.
 - A row on `kept=` leaves `rows=` at the first rotation after it defines
   nothing, and is dropped: re-pointing or dropping its objects is enough. Never
-  while the stored objects cannot be read, and never the last row.
+  while the stored objects cannot be read, and never the last row. A drop the
+  server refuses fails each rotation (`ERR 7 sql-failed rekey-drop`) until the
+  row goes.
 - The pass prints every `ALRT` line of the broker's answer, a rotation that
   went through included.
 - `xoct`, `xcopy` and `aegir2boa` enter the databases they make for a switched

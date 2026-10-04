@@ -116,11 +116,12 @@
       made again for good.
 
     * The helper counts a warning on its read of stored objects as a
-      partial answer (MySQL 5.7 skips a view or trigger it cannot parse
-      with a warning), so no login is dropped on it, and the Octopus pass
-      prints every alert of the helper's answer. Its leftovers list reads
-      site database users only for an account whose purge parked its
-      home. Still switched off: no account uses the helper.
+      partial answer (MySQL 5.7 skips, with a warning, the triggers of a
+      table it cannot open), so no login is dropped on it, and the
+      Octopus pass prints every alert of the helper's answer. Its
+      leftovers list reads site database users only for an account whose
+      purge parked its home. Still switched off: no account uses the
+      helper.
 
     * The limited shell template and the ImageMagick policy no longer
       stay a release behind on a box whose mirror lagged at the publish.
