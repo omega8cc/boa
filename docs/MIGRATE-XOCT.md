@@ -931,8 +931,9 @@ does not answer, and so does the verb's own first contact there (the
 account probe of `create`, the mount query of `pretransfer` and
 `transfer`, the record push of `proxy`), which then refuses, naming the
 target: a mistyped or unreachable target ends the verb in about half a
-minute. `xcopy` reads the target's hold and makes its first contact the
-same way.
+minute, and `proxy`, which first spends up to 10 seconds learning the
+target's host key, in about 45 seconds. `xcopy` reads the target's hold
+and makes its first contact the same way.
 
 **A canary goes live** with one verb on the source:
 
