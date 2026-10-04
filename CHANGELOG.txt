@@ -1410,6 +1410,21 @@
 
 @=> Important Fixes
 
+    * Classic Drush 8.5.13: a site whose logger service is written for
+      the current psr/log (monolog, raven, a module's subclass of a core
+      logger) can be verified, backed up, restored, cloned and migrated.
+      On PHP 8 Ægir's Drush 8 binds psr/log 2.0, which those loggers and
+      stock Drupal 10 and 11 core accept.
+
+    * Once every Drush 8 copy on the server binds psr/log 2.0, the lock
+      keeps the codebase's psr/log and core logger files as they ship
+      and only locks the local Drush and patches the console. A platform
+      locked earlier is converted by the first task that locks it once
+      every enabled site on it has been verified and five minutes have
+      passed (longer when a site's own settings raise
+      opcache.revalidate_freq), with no failed request; until then the
+      task log says what it waits for.
+
     * A Textpattern rename now keeps the site's extra Drush aliases: the
       renamed site lost them, and their alias files kept naming the old
       name and a site directory that no longer exists, where a later
