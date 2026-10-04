@@ -182,6 +182,12 @@ _PHP_FPM_DENY="system,exec,shell_exec"
 
 While this improves security, it can also break modules that rely on any disabled functions.
 
+## SQLite extension loading on PHP 8.4 and newer
+
+PHP 8.4 added `Pdo\Sqlite::loadExtension()`, which loads a native shared object from any path: neither `open_basedir` nor `sqlite3.extension_dir` applies to it, so on an instance that denies the functions above it would still let site code run native code. BOA builds PHP 8.4 and newer without that one method, and the next Barracuda upgrade rebuilds an installed 8.4 or newer version that still has it.
+
+The `pdo_sqlite` driver, the `sqlite:` DSN, `Pdo\Sqlite::createFunction()` and the `SQLite3` class keep working, and `SQLite3::loadExtension()` stays off because BOA leaves `sqlite3.extension_dir` unset.
+
 # Strict Binary Permissions
 
 ## Option in `/root/.barracuda.cnf`

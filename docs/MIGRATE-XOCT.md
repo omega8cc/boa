@@ -576,6 +576,20 @@ An unresolvable panel (zero or several
 candidates, or a repoint that matches no row) aborts the import with
 recovery steps rather than completing with a dead control panel.
 
+A repointed panel platform also takes the name the account's hostmaster
+alias here references for it (`platform_NNN`, or `platform_hostmaster`
+while the panel is still on its install platform): the one the panel's next
+upgrade registers on it. A source that deleted a platform of that name long
+ago can still hold the name in the deleted platform's leftover context row.
+That row is dropped first; left in place, the upgrade stops on the
+duplicate name before it moves the panel, and the account's panel and task
+queue break.
+
+A holder that is not a deleted platform keeps the name, and an `ALRT` line
+says that the next upgrade stops on it; so does a drop that fails. A rename
+that fails is an `ALRT` too: the next upgrade stops on it only when another
+platform holds the name. `xcopy` does the same.
+
 The imported panel names the source's login for its database server. Before
 the rename, `import` gives that row the account's own name on this box (the
 new name on a rename) and the password this box set for it
@@ -910,7 +924,10 @@ record, by `xmass`'s mark and by the box's mail hold.
 A box that holds its clients' mail takes no real run: without `admail=`,
 every verb but `import` refuses while `/data/conf/client_mail_hold.txt` is
 on this box, and `create`, `pretransfer`, `transfer` and `proxy` also while
-it is on the target, naming it. `import` says so and goes on.
+it is on the target, naming it. `import` says so and goes on. The read of
+the target's hold gives up after 15 seconds on a target that does not
+answer, and the verb goes on to its own contact, which reports it. `xcopy`
+reads the target's hold the same way.
 
 **A canary goes live** with one verb on the source:
 

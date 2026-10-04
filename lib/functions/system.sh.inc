@@ -1874,6 +1874,7 @@ _tune_memory_limits() {
         if [ "${_MXC_SQL}" -lt 10 ]; then
           _MXC_SQL=10
         fi
+        sed -i "s/64000/128000/g"  /opt/php86/etc/php86.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php85/etc/php85.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php84/etc/php84.ini &> /dev/null
         sed -i "s/64000/128000/g"  /opt/php83/etc/php83.ini &> /dev/null
@@ -1968,7 +1969,7 @@ _tune_memory_limits() {
   if [ -e "/opt/etc/fpm/fpm-pool-common.conf" ]; then
     sed -i "s/395/${_USE_FPM}/g" /opt/etc/fpm/fpm-pool-commo*.conf &> /dev/null
   fi
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
       sed -i "s/395/${_USE_FPM}/g"   /opt/php${e}/etc/php${e}.ini &> /dev/null
@@ -2654,15 +2655,45 @@ _php_multi_uniq() {
 # else.
 _php_vrn_dotted() {
   case "$1" in
-    56|70|71|72|73|74|80|81|82|83|84|85) echo "${1:0:1}.${1:1:1}" ;;
+    56|70|71|72|73|74|80|81|82|83|84|85|86) echo "${1:0:1}.${1:1:1}" ;;
   esac
+}
+
+#
+# Whether an account asks for PHP 8.6, a release candidate that a box gets
+# only on request: fpm.info or cli.info whose whole value is 8.6 (86 too, as
+# the ltd worker reads them), or a multi-fpm.info row that pins a site to it
+# (its second field; a '#' row is a comment). 8.6 inside a comment, a domain
+# or a longer value does not count, unlike the substring checks of the other
+# versions in _php_if_versions_cleanup_cnf, and neither does the worker's own
+# place.holder.dont.remove row. A numbered dummy row an operator adds to keep
+# an unused version (place.holder1.dont.remove 8.6) counts.
+_php_eight_six_asked() {
+  local _c _f _v
+  for _c in /data/disk/*/static/control; do
+    # the account's own directory: never a link, never a FIFO opened
+    _acct_in_real_dir "${_c}" true || continue
+    for _f in fpm.info cli.info; do
+      _v="$(_acct_read_in "${_c}" "${_f}" | tr -cd '0-9.')"
+      case "${_v}" in
+        8.6|86) return 0 ;;
+      esac
+    done
+    [ -e "${_c}/multi-fpm.info" ] || continue
+    _v="$(_acct_read_in "${_c}" multi-fpm.info \
+      | awk '$1 !~ /^#/ && $1 != "place.holder.dont.remove" && NF >= 2 {
+          v = $2; gsub(/[^0-9]/, "", v); if (v == "86") n++ } END { print n + 0 }')"
+    [ "${_v}" -gt 0 ] && return 0
+  done
+  return 1
 }
 
 #
 # The PHP versions the accounts pin that the dotted greps of
 # _php_if_versions_cleanup_cnf miss, so the cleanup does not disable them:
 # - a two-digit version in fpm.info, cli.info or a multi-fpm.info row (the ltd
-#   worker reads 74 as 7.4);
+#   worker reads 74 as 7.4); 8.6 in these files is read by
+#   _php_eight_six_asked only;
 # - of the versions installed now, every one a cli-per-platform.info line
 #   names (read as websh reads the file: its first 64 KiB and 200 lines, '#'
 #   opening a comment, a line counting only as "<folder> <version>"), and the
@@ -2676,7 +2707,7 @@ _php_versions_pinned_more() {
     _acct_in_real_dir "${_c}" true || continue
     for _f in fpm.info cli.info; do
       _v="$(_php_vrn_dotted "$(_acct_read_in "${_c}" "${_f}" | tr -cd '0-9')")"
-      [ -n "${_v}" ] && _out="${_out} ${_v}"
+      [ -n "${_v}" ] && [ "${_v}" != "8.6" ] && _out="${_out} ${_v}"
     done
     if [ -e "${_c}/multi-fpm.info" ]; then
       # one row per site: "<site> <version>", '#' opening a comment row, the
@@ -2709,7 +2740,7 @@ _php_versions_pinned_more() {
       done <<< "${_txt}"
     fi
     _mk=""
-    for _e in 56 70 71 72 73 74 80 81 82 83 84 85; do
+    for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
       [ -e "${_c}/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
     done
     [ -n "${_mk}" ] && _out="${_out} $(_php_vrn_dotted "${_mk}")"
@@ -3112,6 +3143,14 @@ _php_if_versions_cleanup_cnf() {
         || [[ "${_is_PHP_CLI_eight_five}" =~ "8.5" ]]; then
         _is_PHP_eight_five=8.5
         _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_five}"
+      fi
+
+      ### Add PHP 8.6 only if an account asks for it: a release candidate is
+      ### never added for 8.6 inside a comment, a domain or a longer value
+      _is_PHP_eight_six=
+      if _php_eight_six_asked; then
+        _is_PHP_eight_six=8.6
+        _local_PHP_MULTI_INSTALL="${_local_PHP_MULTI_INSTALL} ${_is_PHP_eight_six}"
       fi
 
       ### Add the versions the checks above cannot see: a two-digit pin and
@@ -4824,7 +4863,7 @@ _run_apt_get_dist_upgrade() {
     _mrun "service valkey-server reload"
   fi
   _mrun "service nginx reload"
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       _mrun "service php${e}-fpm reload"
@@ -7379,6 +7418,7 @@ _get_bin_paths() {
                 /opt/php83/bin \
                 /opt/php84/bin \
                 /opt/php85/bin \
+                /opt/php86/bin \
                 /sbin \
                 /usr/bin \
                 /usr/lib/ConsoleKit/run-session.d \
@@ -7545,6 +7585,7 @@ _strict_bin_permissions() {
               /opt/php83/bin \
               /opt/php84/bin \
               /opt/php85/bin \
+              /opt/php86/bin \
               /sbin \
               /usr/bin \
               /usr/local/bin \
@@ -9123,7 +9164,7 @@ _if_post_major_os_upgrade() {
       _mrun "service valkey-server reload"
     fi
     _mrun "service nginx reload"
-    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         _mrun "service php${e}-fpm reload"
@@ -9211,6 +9252,11 @@ _if_post_major_os_upgrade() {
       if [ -x "/opt/php85/bin/php" ]; then
         _PHP_VERSION="${_PHP85_VRN}"
         _install_php_multi "85"
+      fi
+      if [ -x "/opt/php86/bin/php" ] && [ -n "${_PHP86_VRN}" ]; then
+        _PHP_VERSION="${_PHP86_VRN}"
+        _install_php_multi "86"
+        _php_rc_cli_restore
       fi
       _PHP_VERSION=""
       _T_PHP_VRN=""
@@ -10202,7 +10248,7 @@ _if_major_os_upgrade() {
       _mrun "service valkey-server reload"
     fi
     _mrun "service nginx reload"
-    _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+    _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
     for e in ${_PHP_V}; do
       if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
         _mrun "service php${e}-fpm reload"
@@ -13056,7 +13102,7 @@ _initd_update() {
         _msg "INFO: Starting Valkey, PHP-FPM and Nginx"
         _mrun "service valkey-server start"
       fi
-      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "update-rc.d php${e}-fpm defaults"
@@ -13191,7 +13237,7 @@ _initd_update() {
         fi
         _mrun "service valkey-server reload"
       fi
-      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "update-rc.d php${e}-fpm defaults"
@@ -13431,7 +13477,7 @@ _sysctl_update() {
       fi
       _mrun "service nginx restart"
       _mrun "service ssh restart"
-      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ]; then
           _mrun "service php${e}-fpm reload"
