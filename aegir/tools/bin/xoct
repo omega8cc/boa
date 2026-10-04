@@ -1008,12 +1008,15 @@ _xoct_hold_put() {
 ### Without admail=, refuses (status 1, naming it) while the hold is on $1
 ### (none: this box): a real run would leave the moved client's mail held
 ### there. A probe of another box that cannot be read passes: the verb's own
-### contact there reports it.
+### contact there reports it. The probe never prompts and gives up on a box
+### that does not answer within 15 s, as xmass's own read of the hold does:
+### a mistyped or unreachable target held the verb for the whole TCP connect
+### (about two minutes), silently.
 _xoct_hold_gate() {
   local _h="$1" _v
   [ -n "${_XOCT_ADMAIL}" ] && return 0
   if [ -n "${_h}" ]; then
-    _v="$(ssh root@"${_h}" "if [ -e ${_XOCT_HOLD_FILE} ]; then head -n 1 ${_XOCT_HOLD_FILE} | tr -cd '[:print:]' | cut -c1-200; echo; echo HOLD-HAD; else echo HOLD-NONE; fi" 2> /dev/null)"
+    _v="$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_h}" "if [ -e ${_XOCT_HOLD_FILE} ]; then head -n 1 ${_XOCT_HOLD_FILE} | tr -cd '[:print:]' | cut -c1-200; echo; echo HOLD-HAD; else echo HOLD-NONE; fi" 2> /dev/null)"
     case "${_v}" in
       *HOLD-HAD*) _v="$(printf '%s\n' "${_v}" | head -n 1)" ;;
       *) return 0 ;;
@@ -3493,11 +3496,15 @@ _xo_in config/server_master/nginx/subdir.d _xo_subdirs_here | while IFS= read -r
   case "\${_S}" in ''|*/*) continue ;; esac
   _xo_in "config/server_master/nginx/subdir.d/\${_S}" _xo_rewrite_here
 done
-# A link under static/ or distro/ naming the source tree (a site's files and
-# private links into the store sit in its platform's sites/<name>/, on a
-# BOA-built platform under distro/; left so, they dangle or name another
-# account's store) is repointed as ./name inside the directory find holds,
-# made by the link's own owner (setpriv), so root never
+# A link under static/, distro/, config/, tools/ or clients/ naming the
+# source tree is repointed: a site's files and private links into the store
+# (in its platform's sites/<name>/, on a BOA-built platform under distro/), a
+# Let's Encrypt site's certificate links (config/ssl.d/<name> and
+# config/server_master/ssl.d/<name> naming tools/le/certs/<name>, and the
+# openssl.* links in there; a verify keeps a link that is already there,
+# dangling or not) and a client's site links. Left so, they dangle or name
+# another account's tree. Each is repointed as ./name inside the directory
+# find holds, made by the link's own owner (setpriv), so root never
 # changes an owner by name there (a hard link to another file renamed over
 # the name between a new link and a chown by name would hand that file over)
 # and never makes a link for the account: a root link is made again by root,
@@ -3530,7 +3537,7 @@ _xo_relink_here() {
 }
 export _SRC _DST
 export -f _xo_relink_here
-for _TR in static distro; do
+for _TR in static distro config tools clients; do
   find "/data/disk/\${_DST}/\${_TR}" -type l -execdir bash -c '_xo_relink_here "\$@"' _ {} + 2>/dev/null
 done
 # Ownership: the copy maps owners by name, so what the source identities
@@ -3680,6 +3687,7 @@ REMOTE
 _mig_php_norm() {
   local _t="${1//[^0-9.]/}"
   case "${_t}" in
+    8.6|86) echo 8.6 ;;
     8.5|85) echo 8.5 ;;
     8.4|84) echo 8.4 ;;
     8.3|83) echo 8.3 ;;
@@ -3739,7 +3747,7 @@ _mig_php_versions_needed() {
     done <<< "${_txt}"
   fi
   if _xoct_in_real_dir "${_u}/static/control" true; then
-    for _e in 56 70 71 72 73 74 80 81 82 83 84 85; do
+    for _e in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
       [ -e "${_u}/static/control/php${_e}.info" ] && [ -x "/opt/php${_e}/bin/php" ] && _mk="${_e}"
     done
   fi
@@ -4479,10 +4487,102 @@ _xoct_reconcile_panel_platform() {
     SELECT ROW_COUNT();" 2>/dev/null | tail -1)
   if [ "${_nup}" = "1" ]; then
     echo "PANEL-NOTE: hostmaster platform row repointed ${_db_plat} -> ${_new_src_form} in ${_hdb} (rows=1)"
+    _xoct_panel_context_name "${_hdb}" "$(_xoct_panel_platform_name "${_dest_root}" "${_new_plat}")"
     return 0
   fi
   echo "ALRT: panel platform repoint matched ${_nup:-no} row(s) in ${_hdb} -- the panel would 404 after the rename"
   return 1
+}
+
+### The name this account's next upgrade registers on its panel platform:
+### the platform its own hostmaster alias here references (platform_hostmaster
+### until the panel's first upgrade, platform_<NNN> after it), when that
+### platform's alias names the live panel dir $2; else platform_<NNN> of $2.
+### $1 is the account root. Its hostmaster alias is the target's own (xoct
+### keeps it); a platform alias there can be the source's copy, so its root
+### must name $2.
+_xoct_panel_platform_name() {
+  local _ref _root
+  _ref=$(_xoct_read_in "${1}/.drush" hostmaster.alias.drushrc.php \
+    | sed -n "s/.*'platform' => '@\([^']*\)'.*/\1/p" | head -1)
+  case "${_ref}" in
+    platform_*) ;;
+    *) _ref="" ;;
+  esac
+  case "${_ref}" in *[!A-Za-z0-9_]*) _ref="" ;; esac
+  if [ -n "${_ref}" ]; then
+    _root=$(_xoct_read_in "${1}/.drush" "${_ref}.alias.drushrc.php" \
+      | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
+    if [ "${_root%/}" = "${2}" ]; then
+      echo "${_ref}"
+      return 0
+    fi
+  fi
+  echo "platform_$(basename "${2}")"
+}
+
+### The repointed panel platform takes the context name this account's
+### hostmaster alias here references for its panel platform (platform_<NNN>,
+### or platform_hostmaster while the panel is still on its install platform:
+### _xoct_panel_platform_name), the one the panel's next upgrade registers on
+### it in its resume. An aged source panel can hold that name on a platform
+### it deleted long ago: a deleted node keeps its context row, and the
+### resume's register then fails on the unique name and stops before it moves
+### the panel, so the account's panel and its task queue break at the first
+### upgrade here. Mirror of xmass's panel repoint (kept separate by design): a
+### deleted holder's leftover context is dropped and the live platform takes
+### the name; a holder that is not a deleted platform keeps it, the live
+### platform keeps its own, and an ALRT says the next upgrade stops on it, as
+### one does for a write that fails.
+_xoct_panel_context_name() {
+  local _hdb="$1" _name="$2" _pn _holder _hst
+  case "${_name}" in
+    platform_*) ;;
+    *) return 0 ;;
+  esac
+  case "${_name}" in *[!A-Za-z0-9_]*) return 0 ;; esac
+  _pn=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+    --protocol=tcp -N -B ${_hdb} -e "SELECT s.platform FROM hosting_context c \
+    JOIN hosting_site s ON s.nid=c.nid JOIN node n ON n.nid=s.nid AND n.vid=s.vid \
+    WHERE c.name='hostmaster' LIMIT 1" 2>/dev/null)
+  case "${_pn}" in
+    ''|*[!0-9]*)
+      echo "ALRT: cannot read the hostmaster site's platform in ${_hdb}: its context name left as it is"
+      return 0
+      ;;
+  esac
+  _holder=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+    --protocol=tcp -N -B ${_hdb} -e "SELECT nid FROM hosting_context \
+    WHERE name='${_name}' AND nid<>${_pn} LIMIT 1" 2>/dev/null)
+  case "${_holder}" in *[!0-9]*) _holder="" ;; esac
+  if [ -n "${_holder}" ]; then
+    _hst=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+      --protocol=tcp -N -B ${_hdb} -e "SELECT p.status FROM hosting_platform p \
+      JOIN node n ON n.nid=p.nid AND n.vid=p.vid WHERE p.nid=${_holder} LIMIT 1" 2>/dev/null)
+    if [ "${_hst}" = "-2" ]; then
+      if mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+        --protocol=tcp ${_hdb} -e "DELETE FROM hosting_context \
+        WHERE nid=${_holder} AND name='${_name}'" 2>/dev/null; then
+        echo "PANEL-NOTE: dropped leftover context ${_name} of deleted platform ${_holder}"
+        _holder=""
+      else
+        echo "ALRT: the leftover context ${_name} of deleted platform ${_holder} could not be dropped in ${_hdb}: the account's next Octopus upgrade stops on the duplicate name"
+        return 0
+      fi
+    fi
+  fi
+  if [ -n "${_holder}" ]; then
+    echo "ALRT: context name ${_name} is held by platform ${_holder}, which is not a deleted platform: platform ${_pn} keeps its own name, and the account's next Octopus upgrade stops on the duplicate name"
+    return 0
+  fi
+  if mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+    --protocol=tcp ${_hdb} -e "UPDATE hosting_context SET name='${_name}' \
+    WHERE nid=${_pn}" 2>/dev/null; then
+    echo "PANEL-NOTE: platform ${_pn} context renamed to ${_name}"
+  else
+    echo "ALRT: platform ${_pn} could not take the context name ${_name} in ${_hdb}: if another platform holds that name, the account's next Octopus upgrade stops on it"
+  fi
+  return 0
 }
 
 ### NB: no migration read-only mode here on purpose. The historical runbook

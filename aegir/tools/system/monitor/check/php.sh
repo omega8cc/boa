@@ -131,7 +131,7 @@ _fpm_reload() {
   : > /run/restarting_fmp_wait.pid
   sleep 3
   renice ${_B_NICE} -p $$ &> /dev/null
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
       service "php${e}-fpm" reload
@@ -143,7 +143,7 @@ _fpm_reload() {
 }
 
 _fpm_duplicate_instances_detection() {
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     # Count masters for this exact conf path
     _pat="^php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
@@ -177,7 +177,7 @@ _fpm_listen_conflict_detection() {
       if [ "${_hit2}" -gt 0 ]; then
         [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
         mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
-        _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+        _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [ ! -S "/run/www${e}.fpm.socket" ]; then
             _thisErrLog="$(date) FPM listen conflict for php${e}, restarting"
@@ -249,7 +249,7 @@ _fpm_sockets_healing() {
     if [ "${_hit2}" -gt 0 ]; then
       [ -d "/var/backups/php-logs/${_NOW}" ] || mkdir -p /var/backups/php-logs/${_NOW}/
       mv -f /var/log/php/php*-fpm-error.log /var/backups/php-logs/${_NOW}/ &> /dev/null
-      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+      _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ ! -S "/run/www${e}.fpm.socket" ]; then
           _thisErrLog="$(date) FPM socket conflict sustained for php${e}; restarting"
@@ -276,7 +276,7 @@ _fpm_fastcgi_temp() {
 
 _fpm_health_check_fix() {
   _thisErrLog=
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${e}-fpm" ] && [ -x "/opt/php${e}/bin/php" ]; then
       _pat="^php-fpm: master process.*/opt/php${e}/etc/php${e}-fpm.conf"
@@ -388,7 +388,7 @@ _fpm_logs_empty() {
   # cooldown stamp, so a log that stays absent for a reason a reload does
   # not fix cannot become an APCu-clearing storm.
   local _e _cdE _tsE _nowE
-  _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for _e in ${_PHP_V}; do
     if [ -e "/etc/init.d/php${_e}-fpm" ] && [ -x "/opt/php${_e}/bin/php" ] \
       && [ ! -e "/var/log/php/php${_e}-fpm-error.log" ]; then
@@ -490,7 +490,7 @@ _fpm_apcu_reload_sentinel() {
   _fpm_reload "SENTINEL"
 
   # Update cooldown timestamp for all FPM versions
-  local _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+  local _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
   for e in ${_PHP_V}; do
     [ -e "/etc/init.d/php${e}-fpm" ] && date +%s > "/run/php${e}-fpm.cooldown"
   done

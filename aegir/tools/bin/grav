@@ -158,7 +158,7 @@ if [[ -z "${_GRAV_PHP}" ]]; then
     [[ -n "${_v}" ]] && [[ -x "/opt/php${_v}/bin/php" ]] && _GRAV_PHP="/opt/php${_v}/bin/php"
   fi
   if [[ -n "${_GRAV_CTRL}" ]]; then
-    for _c in 56 70 71 72 73 74 80 81 82 83 84 85; do
+    for _c in 56 70 71 72 73 74 80 81 82 83 84 85 86; do
       if [[ -e "${_GRAV_CTRL}/php${_c}.info" ]] && [[ -x "/opt/php${_c}/bin/php" ]]; then
         _GRAV_PHP="/opt/php${_c}/bin/php"
       fi

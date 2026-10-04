@@ -105,6 +105,24 @@
       operator's drop, and its box-wide check reads their grants and
       stored objects in that account's databases as that account's.
 
+    * A database login the root database helper keeps for the stored
+      objects it defines, or because the server will not drop it, now
+      loses every grant it held when a switch keeps it and at each
+      password rotation, and gets back only its grants on the account's
+      own databases, as a login made again does.
+
+    * A login a switch kept for its stored objects is let go at the
+      first password rotation after it defines nothing, instead of being
+      made again for good.
+
+    * The helper counts a warning on its read of stored objects as a
+      partial answer (MySQL 5.7 skips, with a warning, the triggers of a
+      table it cannot open), so no login is dropped on it, and the
+      Octopus pass prints every alert of the helper's answer. Its
+      leftovers list reads site database users only for an account whose
+      purge parked its home. Still switched off: no account uses the
+      helper.
+
     * The limited shell template and the ImageMagick policy no longer
       stay a release behind on a box whose mirror lagged at the publish.
 
@@ -860,7 +878,27 @@
       where those requests never met it. Subdirectory sites refuse them
       there too.
 
+    * PHP 8.4 and newer are built without Pdo\Sqlite::loadExtension(),
+      which loaded a native SQLite extension from any path whatever
+      functions the pool denies. An installed 8.4 or 8.5 that still has
+      it is rebuilt by the next barracuda upgrade, from sources until a
+      prebuilt package without it is published. pdo_sqlite and SQLite3
+      are otherwise unchanged.
+
 @=> New Features
+
+    * PHP 8.6 (8.6.0RC2, a release candidate) can be installed for
+      testing: list 8.6 in _PHP_MULTI_INSTALL in /root/.barracuda.cnf
+      and the next barracuda pass builds it. It is never part of a
+      default, php-min or php-max set, never the server's or the Aegir
+      master's PHP, and never picked automatically; an Octopus instance
+      uses it through fpm.info, cli.info, multi-fpm.info or php86.info
+      like any installed version. With the automatic PHP cleanup on,
+      only a real setting keeps or adds it (8.6 as the whole fpm.info
+      or cli.info value, or a multi-fpm.info line's version), never a
+      comment line or a site name that contains 8.6. APCu, PhpRedis,
+      Mcrypt, GEOS and Imagick do not build against it yet, so it runs
+      without them, and on Devuan Daedalus its GD has no AVIF.
 
     * xoct, xcopy and xmass take admail=<address>, the token boa
       in-octopus takes, for test and canary runs of real accounts: every
@@ -1363,6 +1401,89 @@
 
 @=> Important Fixes
 
+    * A nightly or cluster database dump on Percona 5.7 no longer stalls
+      against the event scheduler with every write on the box queued
+      behind it, often ending in a failed dump. The dump now passes
+      --no-backup-locks beside its FLUSH TABLES WITH READ LOCK when the
+      installed mydumper lists it: with mydumper's backup lock, a write
+      to a MyISAM table (the event scheduler makes one at every event
+      run) waited with its table open, and the dump's flush waited for
+      that table. The global read lock alone still gives each dump its
+      consistent point for row changes. A TRUNCATE that reaches a table
+      before mydumper has read it now completes and leaves that table
+      empty in the dump; while mydumper held the backup lock, such a
+      TRUNCATE stalled the dump instead, holding its table until it was
+      killed.
+
+    * A Textpattern Upgrade onto a name whose earlier copy left a stale
+      alias behind (a rollback that stopped before removing it) no longer
+      decides the copy's database through the db server that stale alias
+      named: such an Upgrade refused a copy placed on another server as the
+      source's database and left that copy's database behind, and a failed
+      one could drop a database of the copy's name on the stale alias's
+      server instead of the copy's own. The copy's database is now read
+      through the copy's own context, and a database its context does not
+      reach is left in place and named in the task log.
+
+    * The octopus upgrade's server verify now runs on the instance's
+      command-line PHP; on an instance whose cli.info differs from the
+      server default it ran the server default PHP.
+
+    * A store another registered site still reads through its files or
+      private link is no longer set aside by a Delete, a renaming Migrate
+      or the nightly orphan sweep when that reader sits on a Drupal 8+
+      platform whose docroot is web/ (or docroot/, html/), or on a
+      platform registered deeper below ~/static: the store worker's check
+      for readers looked only at sites directly below a distro platform
+      or a platform in ~/static itself, so such a reader lost its files.
+      It now reads the sites of every platform BOA builds and of every
+      platform an account registered, at the docroot Provision serves.
+
+    * A Textpattern Upgrade whose copy goes to another database server
+      no longer fails when that server gives the copy the source site's
+      database name: the name alone was read as the copy pointing at the
+      source's database, so the Upgrade refused to run, and its rollback
+      left the copy's database and its login on the other server with
+      nothing recording them. The copy now counts as the source's
+      database only when it has the same name on the same server, and a
+      failed Upgrade drops the copy's database on whichever server holds
+      it.
+
+    * A PHP build from sources that fails after configure is now
+      reported: make and make install ran without their result being
+      read, so a failed build left the previous build serving (or no
+      binary, noted only by a warning) and the barracuda upgrade still
+      completed without errors, failing the same rebuild again on every
+      later upgrade. The upgrade now names the version, says whether the
+      previous build keeps serving, and completes WITH ERRORS.
+
+    * A Textpattern Upgrade whose update step cannot connect to the new
+      copy's database now says so in its task log: Textpattern ended that
+      step with a success status, so its lines were logged as a clean run
+      and only the later version check failed the task.
+
+    * A Backup no longer fails on a file the web server wrote closed into
+      a site's files or private store, as a module's key generator writes
+      its key pair (a 0600 file, a 0700 directory): tar runs as the
+      account and could not read it, and every Clone, Restore and Migrate
+      of that Drupal or Backdrop site failed with it, as each starts with
+      a backup. Before every archive the backup now gives such entries
+      group read for the account's web group, keeping the writer's owner
+      and every other bit, so the copy of the store a renaming Migrate
+      makes reads them too. A Clone, Restore or Migrate also gives the
+      web group the whole private directory it unpacks, not only
+      private/files, config and temp, so the new site's web server reads
+      a copied key directory at once.
+
+    * A Textpattern site's Login reset no longer fails with "Could not
+      mint a password-reset link", a new Textpattern site's welcome mail
+      again carries a password-set link instead of the bare admin
+      address, and a Textpattern Upgrade completes again instead of
+      discarding its copy: since the database settings left the site's
+      config.php, the helpers that open the site from the command line
+      were not given them. Each now gets its own site's settings, and
+      the Upgrade's those of the new copy, never the source's.
+
     * After the panel's Enable task, a Backdrop or Textpattern site's web
       server config named its database "none", so the site answered with
       a database error until its next Verify. Enable now reloads the
@@ -1405,6 +1526,11 @@
       xmass marked failed, or while a vhost of it carries a proxy
       template, HTTPS included; and while an xmass cutover holds the box.
 
+    * xoct and xcopy give up reading a target's client mail hold after 15
+      seconds when the target does not answer: a mistyped or unreachable
+      target held create, pretransfer, transfer and proxy for about two
+      minutes before their own first contact, saying nothing.
+
     * xoct proxy refuses an account that is not proxied yet and has no
       export latch (log/exported.pid, or --force over a
       log/export_failed.pid) before it writes anything. One whose only
@@ -1418,6 +1544,24 @@
       account's store, so every verify of the site failed and it answered
       500. The transfer now re-points those links as it does the ones
       under static/.
+
+    * After an xoct move that renames the account, a Let's Encrypt
+      site's certificate links (in config/ssl.d, config/server_master/
+      ssl.d and tools/le) and the client site links still named the
+      source account's tree, and a verify keeps a certificate link that
+      is already there: the site's verify failed, it lost its HTTPS,
+      and nginx -t failed for the whole target box, so no reload there
+      took effect. The transfer now re-points them too.
+
+    * After an xoct or xcopy move whose source had once deleted a
+      platform under the name the target's control panel uses for its
+      platform, the panel's next upgrade stopped on a duplicate platform
+      name before it moved the panel, and the account's panel and task
+      queue stopped working. The import now drops the deleted platform's
+      leftover name and gives the panel's platform the name the target's
+      own panel uses for it, its install platform's name included; when
+      that cannot be done, it says so, and that the next upgrade will
+      stop while another platform holds the name.
 
     * A Restore, Clone or Migrate no longer unpacks a site archive
       outside the directory it made. A link left at the unpack target,

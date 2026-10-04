@@ -8,7 +8,13 @@ to provide the following argument:
 
   --site-path: Path to the Drupal site's directory.
 
-Usage: (sudo) ${0##*/} --site-path=PATH
+  --backup-read: Change nothing but what a backup needs to read: in the
+             site's own files and private stores, each file the account's
+             web server wrote without group read gets group read, and each
+             such directory group read and search. Owner, group and every
+             other bit stay as the web server set them.
+
+Usage: (sudo) ${0##*/} --site-path=PATH [--backup-read]
 Example: (sudo) ${0##*/} --site-path=/var/aegir/platforms/drupal-7.50/sites/example.com
 HELP
 exit 0
@@ -518,13 +524,116 @@ _files_perm_here() {
   chmod 02775 .
 }
 
+# Group read for an entry the account's web server wrote closed, set through
+# the open handle: each ./name -execdir hands over is opened without
+# following a link or blocking on a FIFO, and changed only while its group
+# is the gid $1 and its owner one of the uids in $2 (a comma list). A file
+# gets group read, a directory group read and search, and every other bit
+# stays; a regular file with more than one link is left alone, as the walks
+# above leave it. Prints how many it changed.
+_GREAD_PL='use Fcntl;
+my $g = shift @ARGV;
+my %u = map { $_ => 1 } grep { /^[1-9][0-9]*$/ } split(/,/, shift @ARGV);
+$g =~ /^[0-9]+$/ or exit 1;
+my $n = 0;
+for my $f (@ARGV) {
+  next unless $f =~ m{^\./[^/]+$};
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && $u{$s[4]} && $s[5] == $g) {
+    my $m = $s[2] & 07777;
+    if (-d _) {
+      $n++ if ($m & 0050) != 0050 && chmod($m | 0050, $h);
+    }
+    elsif (-f _ && $s[3] == 1) {
+      $n++ if !($m & 0040) && chmod($m | 0040, $h);
+    }
+  }
+  close($h);
+}
+print "$n\n";
+exit 0;'
+
+# The store in the current (pinned) directory: every entry below it that
+# one of the account's web users ($2, uids as a comma list) owns in the web
+# group ($1, a gid) without group read (and search, for a directory), handed
+# to _GREAD_PL from -execdir, which never follows a link. Prints the count.
+_backup_read_here() {
+  local _u _c _tot=0
+  local -a _ids=() _who=()
+  IFS=, read -r -a _ids <<< "${2}"
+  for _u in "${_ids[@]}"; do
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    [ "${#_who[@]}" -gt 0 ] && _who+=( -o )
+    _who+=( -uid "${_u}" )
+  done
+  if [ "${#_who[@]}" -eq 0 ]; then
+    echo 0
+    return 0
+  fi
+  while read -r _c; do
+    [[ "${_c}" =~ ^[0-9]+$ ]] && _tot=$(( _tot + _c ))
+  done < <(find . -mindepth 1 -gid "${1}" \( "${_who[@]}" \) \
+    \( \( -type d ! -perm -g+rx \) -o \( -type f ! -perm -g+r \) \) \
+    -execdir perl -e "${_GREAD_PL}" "${1}" "${2}" {} + 2> /dev/null)
+  echo "${_tot}"
+}
+
+# --backup-read: what a backup of the site needs to read, in its own files
+# and private stores (_store_dir), and nothing else. The web group and the
+# web users are the account's own, derived on the box, never taken from argv.
+_backup_read() {
+  local _acct _wg _gid _uids _d _what _c _tot=0
+  case "${site_path}/" in
+    /data/disk/*/*)
+      _acct="${site_path#/data/disk/}"
+      _acct="${_acct%%/*}"
+      ;;
+    *)
+      printf "Nothing to open: %s is not an Octopus account's site.\n" "${site_path}"
+      return 0
+      ;;
+  esac
+  case "${_acct}" in
+    ""|*[!a-z0-9-]*)
+      printf "Error: unexpected account in %s; refusing.\n" "${site_path}" >&2
+      return 1
+      ;;
+  esac
+  _wg=$(_site_web_group "${site_path}")
+  _gid=$(getent group "${_wg}" 2> /dev/null | cut -d: -f3)
+  if [[ ! "${_gid}" =~ ^[0-9]+$ ]]; then
+    printf "Error: no web group for %s; refusing.\n" "${site_path}" >&2
+    return 1
+  fi
+  # The account's web users as BOA names its pools' users: <account>.web
+  # and <account>.<version>.web.
+  _uids=$(getent passwd | awk -F: -v a="${_acct}" \
+    '$1 == a ".web" || $1 ~ ("^" a "\\.[0-9]+\\.web$") { if ($3 ~ /^[1-9][0-9]*$/) { printf "%s%s", s, $3; s = "," } }')
+  if [ -z "${_uids}" ]; then
+    printf "Nothing to open: %s has no web users.\n" "${_acct}"
+    return 0
+  fi
+  for _what in files private; do
+    _d=$(_store_dir "${site_path}/${_what}") || continue
+    _c=$(_in_pinned_dir "${_d}" _backup_read_here "${_gid}" "${_uids}") || continue
+    [[ "${_c}" =~ ^[0-9]+$ ]] && _tot=$(( _tot + _c ))
+  done
+  printf "Group read given to %s entries the web server wrote closed in %s.\n" "${_tot}" "${site_path}"
+  return 0
+}
+
 site_path=${1%/}
+_mode_backup_read="NO"
 
 # Parse Command Line Arguments
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --site-path=*)
         site_path="${1#*=}"
+        ;;
+    --backup-read)
+        _mode_backup_read="YES"
         ;;
     --help) print_help;;
     *)
@@ -540,6 +649,17 @@ done
 ### re-point it between _validate_path_prefix and the chmods.
 if [ -n "${site_path}" ] && [ -e "${site_path}" ]; then
   site_path=$(realpath -e -- "${site_path}" 2>/dev/null) || site_path=""
+fi
+
+# A backup's read: nothing of the modes below, and only for a Drupal site.
+if [ "${_mode_backup_read}" = "YES" ]; then
+  if [ -z "${site_path}" ] || [ ! -f "${site_path}/settings.php" ]; then
+    printf "Error: Please provide a valid Drupal site directory.\n"
+    exit 1
+  fi
+  _validate_path_prefix "${site_path}"
+  _backup_read
+  exit $?
 fi
 
 # --- Grav 2 site capsule -----------------------------------------------------
