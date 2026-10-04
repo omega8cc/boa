@@ -48,6 +48,15 @@
       one, and a forced rebuild of the bundle keeps the webform the sites
       run when the new one cannot be fetched.
 
+    * A Backdrop site's Delete, and a Backdrop Migrate under a new name,
+      now set the old site's files store aside under
+      static/files/.archived at once, as the Drupal and Textpattern
+      tasks do (DELETE/STORE and RENAME/STORE lines in the task log); the
+      store used to wait for the nightly sweep, which is opt-in on
+      self-hosted boxes. A store named by a share control file, one
+      another site still reads through its link, and any store under the
+      report-only switch stay where they are; nothing is deleted.
+
 @=> Security
 
     * Classic Drush 8.5.12: Ægir's backend tasks no longer load the
