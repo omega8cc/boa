@@ -906,8 +906,18 @@
       only a real setting keeps or adds it (8.6 as the whole fpm.info
       or cli.info value, or a multi-fpm.info line's version), never a
       comment line or a site name that contains 8.6. APCu, PhpRedis,
-      Mcrypt, GEOS and Imagick do not build against it yet, so it runs
-      without them, and on Devuan Daedalus its GD has no AVIF.
+      Mcrypt, GEOS, Imagick and the MongoDB driver do not build against
+      it yet, so it runs without them, and on Devuan Daedalus its GD has
+      no AVIF.
+
+    * PHP 8.6: the extension releases BOA pins that are not shown to
+      build against the release candidate (APCu, PhpRedis, Mcrypt, GEOS,
+      Imagick and the MongoDB driver) are skipped for 8.6 with one NOTE
+      line per pass; a newer pinned release is tried, and a failed
+      Imagick try is a warning, not a failed upgrade. An extension that
+      builds for 8.6 but does not load is left out of its php.ini like a
+      missing one, and TET and New Relic say once that 8.6 runs without
+      them. Every other PHP version builds them as before.
 
     * xoct, xcopy and xmass take admail=<address>, the token boa
       in-octopus takes, for test and canary runs of real accounts: every
