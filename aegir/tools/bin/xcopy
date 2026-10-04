@@ -1546,23 +1546,51 @@ _xcopy_reconcile_panel_platform() {
     SELECT ROW_COUNT();" 2>/dev/null | tail -1)
   if [ "${_nup}" = "1" ]; then
     echo "PANEL-NOTE: hostmaster platform row repointed ${_db_plat} -> ${_new_src_form} in ${_hdb} (rows=1)"
-    _xcopy_panel_context_name "${_hdb}" "platform_$(basename "${_new_plat}")"
+    _xcopy_panel_context_name "${_hdb}" "$(_xcopy_panel_platform_name "${_dest_root}" "${_new_plat}")"
     return 0
   fi
   echo "ALRT: panel platform repoint matched ${_nup:-no} row(s) in ${_hdb} -- the panel would 404 after the rename"
   return 1
 }
 
-### The repointed panel platform takes the context name of this box's own
-### panel platform (platform_<NNN>, the name this account's hostmaster aliases
-### here already reference, and the one the panel's next upgrade registers on
-### it in its resume). An aged source panel can hold that name on a platform
+### The name this account's next upgrade registers on its panel platform:
+### the platform its own hostmaster alias here references (platform_hostmaster
+### until the panel's first upgrade, platform_<NNN> after it), when that
+### platform's alias names the live panel dir $2; else platform_<NNN> of $2.
+### $1 is the account root. The aliases are the target's own: xcopy keeps them.
+_xcopy_panel_platform_name() {
+  local _ref _root
+  _ref=$(_xcopy_read_in "${1}/.drush" hostmaster.alias.drushrc.php \
+    | sed -n "s/.*'platform' => '@\([^']*\)'.*/\1/p" | head -1)
+  case "${_ref}" in
+    platform_*) ;;
+    *) _ref="" ;;
+  esac
+  case "${_ref}" in *[!A-Za-z0-9_]*) _ref="" ;; esac
+  if [ -n "${_ref}" ]; then
+    _root=$(_xcopy_read_in "${1}/.drush" "${_ref}.alias.drushrc.php" \
+      | sed -n "s/.*'root' => '\([^']*\)'.*/\1/p" | head -1)
+    if [ "${_root%/}" = "${2}" ]; then
+      echo "${_ref}"
+      return 0
+    fi
+  fi
+  echo "platform_$(basename "${2}")"
+}
+
+### The repointed panel platform takes the context name this account's
+### hostmaster alias here references for its panel platform (platform_<NNN>,
+### or platform_hostmaster while the panel is still on its install platform:
+### _xcopy_panel_platform_name), the one the panel's next upgrade registers on
+### it in its resume. An aged source panel can hold that name on a platform
 ### it deleted long ago: a deleted node keeps its context row, and the
 ### resume's register then fails on the unique name and stops before it moves
 ### the panel, so the account's panel and its task queue break at the first
 ### upgrade here. Mirror of xmass's panel repoint (kept separate by design): a
 ### deleted holder's leftover context is dropped and the live platform takes
-### the name; a live holder keeps it, and the live platform keeps its own.
+### the name; a holder that is not a deleted platform keeps it, the live
+### platform keeps its own, and an ALRT says the next upgrade stops on it, as
+### one does for a write that fails.
 _xcopy_panel_context_name() {
   local _hdb="$1" _name="$2" _pn _holder _hst
   case "${_name}" in
@@ -1589,20 +1617,27 @@ _xcopy_panel_context_name() {
       --protocol=tcp -N -B ${_hdb} -e "SELECT p.status FROM hosting_platform p \
       JOIN node n ON n.nid=p.nid AND n.vid=p.vid WHERE p.nid=${_holder} LIMIT 1" 2>/dev/null)
     if [ "${_hst}" = "-2" ]; then
-      mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+      if mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
         --protocol=tcp ${_hdb} -e "DELETE FROM hosting_context \
-        WHERE nid=${_holder} AND name='${_name}'" 2>/dev/null \
-        && echo "PANEL-NOTE: dropped leftover context ${_name} of deleted platform ${_holder}" \
-        && _holder=""
+        WHERE nid=${_holder} AND name='${_name}'" 2>/dev/null; then
+        echo "PANEL-NOTE: dropped leftover context ${_name} of deleted platform ${_holder}"
+        _holder=""
+      else
+        echo "ALRT: the leftover context ${_name} of deleted platform ${_holder} could not be dropped in ${_hdb}: the account's next Octopus upgrade stops on the duplicate name"
+        return 0
+      fi
     fi
   fi
-  if [ -z "${_holder}" ]; then
-    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
-      --protocol=tcp ${_hdb} -e "UPDATE hosting_context SET name='${_name}' \
-      WHERE nid=${_pn}" 2>/dev/null \
-      && echo "PANEL-NOTE: platform ${_pn} context renamed to ${_name}"
+  if [ -n "${_holder}" ]; then
+    echo "ALRT: context name ${_name} is held by platform ${_holder}, which is not a deleted platform: platform ${_pn} keeps its own name, and the account's next Octopus upgrade stops on the duplicate name"
+    return 0
+  fi
+  if mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+    --protocol=tcp ${_hdb} -e "UPDATE hosting_context SET name='${_name}' \
+    WHERE nid=${_pn}" 2>/dev/null; then
+    echo "PANEL-NOTE: platform ${_pn} context renamed to ${_name}"
   else
-    echo "PANEL-NOTE: context name ${_name} is held by live platform ${_holder}; platform ${_pn} keeps its name"
+    echo "ALRT: platform ${_pn} could not take the context name ${_name} in ${_hdb}: the account's next Octopus upgrade stops on it"
   fi
   return 0
 }
