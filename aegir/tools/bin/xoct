@@ -4486,10 +4486,65 @@ _xoct_reconcile_panel_platform() {
     SELECT ROW_COUNT();" 2>/dev/null | tail -1)
   if [ "${_nup}" = "1" ]; then
     echo "PANEL-NOTE: hostmaster platform row repointed ${_db_plat} -> ${_new_src_form} in ${_hdb} (rows=1)"
+    _xoct_panel_context_name "${_hdb}" "platform_$(basename "${_new_plat}")"
     return 0
   fi
   echo "ALRT: panel platform repoint matched ${_nup:-no} row(s) in ${_hdb} -- the panel would 404 after the rename"
   return 1
+}
+
+### The repointed panel platform takes the context name of this box's own
+### panel platform (platform_<NNN>, the name this account's hostmaster aliases
+### here already reference, and the one the panel's next upgrade registers on
+### it in its resume). An aged source panel can hold that name on a platform
+### it deleted long ago: a deleted node keeps its context row, and the
+### resume's register then fails on the unique name and stops before it moves
+### the panel, so the account's panel and its task queue break at the first
+### upgrade here. Mirror of xmass's panel repoint (kept separate by design): a
+### deleted holder's leftover context is dropped and the live platform takes
+### the name; a live holder keeps it, and the live platform keeps its own.
+_xoct_panel_context_name() {
+  local _hdb="$1" _name="$2" _pn _holder _hst
+  case "${_name}" in
+    platform_*) ;;
+    *) return 0 ;;
+  esac
+  case "${_name}" in *[!A-Za-z0-9_]*) return 0 ;; esac
+  _pn=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+    --protocol=tcp -N -B ${_hdb} -e "SELECT s.platform FROM hosting_context c \
+    JOIN hosting_site s ON s.nid=c.nid JOIN node n ON n.nid=s.nid AND n.vid=s.vid \
+    WHERE c.name='hostmaster' LIMIT 1" 2>/dev/null)
+  case "${_pn}" in
+    ''|*[!0-9]*)
+      echo "ALRT: cannot read the hostmaster site's platform in ${_hdb}: its context name left as it is"
+      return 0
+      ;;
+  esac
+  _holder=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+    --protocol=tcp -N -B ${_hdb} -e "SELECT nid FROM hosting_context \
+    WHERE name='${_name}' AND nid<>${_pn} LIMIT 1" 2>/dev/null)
+  case "${_holder}" in *[!0-9]*) _holder="" ;; esac
+  if [ -n "${_holder}" ]; then
+    _hst=$(mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+      --protocol=tcp -N -B ${_hdb} -e "SELECT p.status FROM hosting_platform p \
+      JOIN node n ON n.nid=p.nid AND n.vid=p.vid WHERE p.nid=${_holder} LIMIT 1" 2>/dev/null)
+    if [ "${_hst}" = "-2" ]; then
+      mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+        --protocol=tcp ${_hdb} -e "DELETE FROM hosting_context \
+        WHERE nid=${_holder} AND name='${_name}'" 2>/dev/null \
+        && echo "PANEL-NOTE: dropped leftover context ${_name} of deleted platform ${_holder}" \
+        && _holder=""
+    fi
+  fi
+  if [ -z "${_holder}" ]; then
+    mysql --silent -u root -h${_SQL_CONNECT} -P${_THIS_DB_PORT} \
+      --protocol=tcp ${_hdb} -e "UPDATE hosting_context SET name='${_name}' \
+      WHERE nid=${_pn}" 2>/dev/null \
+      && echo "PANEL-NOTE: platform ${_pn} context renamed to ${_name}"
+  else
+    echo "PANEL-NOTE: context name ${_name} is held by live platform ${_holder}; platform ${_pn} keeps its name"
+  fi
+  return 0
 }
 
 ### NB: no migration read-only mode here on purpose. The historical runbook
