@@ -931,8 +931,9 @@ does not answer, and so does the verb's own first contact there (the
 account probe of `create`, the mount query of `pretransfer` and
 `transfer`, the record push of `proxy`), which then refuses, naming the
 target: a mistyped or unreachable target ends the verb in about half a
-minute. `xcopy` reads the target's hold and makes its first contact the
-same way.
+minute, and `proxy`, which first spends up to 10 seconds learning the
+target's host key, in about 45 seconds. `xcopy` reads the target's hold
+and makes its first contact the same way.
 
 **A canary goes live** with one verb on the source:
 
@@ -1088,15 +1089,24 @@ there. A link naming anything else is left as it is.
 A site on HTTPS named under the box's name, renamed with it, serves the certificate it
 had until its first verify on the target: the rename leaves its vhost's certificate lines
 on that pair and renames the site's own certificate record to the new name, so that verify
-takes the new name's certificate, issued as at a first HTTPS enable. A record that is not
-the site's own (another site uses it, the new name has one already, or
-`tools/le/.ctrl/dont-overwrite-<site>.pid` marks it as the operator's) stays, the site
-keeps that certificate, and the rename says so in an `ALRT`.
+takes the new name's certificate, issued as at a first HTTPS enable.
+
+A record that is not the site's own (another site uses it, the new name has one already, or
+`tools/le/.ctrl/dont-overwrite-<site>.pid` marks it as the operator's, or the same flag
+named after the alias the site redirects to) stays, the site keeps that certificate, and
+the rename says so in an `ALRT`.
+
+A site that also carries aliases of a client domain keeps its record until a certificate
+for its new name exists: on a move those aliases still reach the old box, which answers
+their challenges, so the new name's order (it carries every alias) would fail. The rename
+says so in an `ALRT`. Once the aliases reach this box (after `xoct proxy` or the DNS
+switch), verify the site, then run the same rename again.
 
 A box renamed by an earlier release left such a site on its old name's certificate record.
 Running the same rename again repairs it: the record is renamed to the site's new name and
-the site's verify is queued, which moves it to its new name's certificate. A Grav or
-Textpattern site takes it at its own next verify.
+the site's verify is queued, which moves it to its new name's certificate; a site that
+redirects to an alias gets a second verify, which writes its vhost with the certificate's
+chain. A Grav or Textpattern site takes it at its own next verify.
 
 > **BOA supports a single attached mount under `/mnt`.** The migration tools refuse a
 > target (or source) that has more than one.

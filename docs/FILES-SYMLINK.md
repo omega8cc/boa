@@ -454,6 +454,19 @@ to `_MY_EMAIL`; an entry that cannot be removed is reported once per six hours. 
 reasoning: a clone of a 74 GB site beside a 100 GB pile filled a disk mid-task and took
 nginx and mysqld down with it.
 
+**Only the account's own content goes.** `prune` and the heal remove what root or the
+instance's own users own (`oN`, `oN.ftp`, its client sub-accounts and its PHP-FPM
+users), and nothing below a directory another user owns. A file whose owner no longer
+exists counts as the instance's own, wherever it came from: nothing records which
+instance a removed login served. Since the limited-shell worker hands a sub-account's
+files to the instance when it removes the login, such files come from logins removed
+before that, or removed without the worker (an operator's own deluser).
+
+An account's users can move content another account left group-writable into an
+entry's site directories; that content stays, with the directories holding it. Such an
+entry is reported as kept in part, by the heal at most once per six hours before it
+moves on to the next oldest, and one NOTE line per instance counts what was left.
+
 ### Disabling deleted-site auto-archiving
 
 The Delete task archives a deleted site's store into `.archived/` at once, a migrate

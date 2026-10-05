@@ -211,6 +211,40 @@
       checks the owner; anything else stays in place, and the pass log
       records SOLR-UPLOAD-SKIPPED.
 
+    * The nightly purge (old backups, temporary files, the trash and the
+      client backups), boa archived prune and the archived-store heal
+      remove only what root or the account's own users own, never
+      anything below a directory another user owns, and nothing at all
+      in a place below one. A file whose owner no longer exists, such as
+      an upload by a client sub-account removed before this release,
+      counts as the account's own, wherever it came from.
+
+    * What the nightly purge, the prune and the heal leave for another
+      user stays, an archived entry holding it included, and one NOTE
+      line per account counts it. The prune and the heal report such an
+      entry as kept in part, the heal once per six hours before it moves
+      on to the next oldest.
+
+    * When the limited-shell worker removes a client's sub-account or a
+      platform developer login (its Client lost its last site or was
+      deleted, its password was rotated, or the platform access ended),
+      it first hands each directory and single-link file the login owns
+      in the instance's static and distro trees and its files store to
+      the instance's own user, keeping the group, a hard-linked one to
+      root, and removes the login's gem and npm trees. The number the
+      removal freed goes to the next login made on the server, of any
+      instance, and those files went with it.
+
+    * The worker now ends a removed login's sessions and locks it before
+      removing it; a login still in use, or one deluser refuses, is left
+      for the next pass and said so in the incident log. An open session
+      made the removal fail, and the login kept its password.
+
+    * The Octopus upgrade's pass over the hostmaster tree and its files
+      hands over and sets modes the same way: only on what root or the
+      account's own users own, and nothing below a directory another
+      user owns.
+
     * A new site's database name now also skips names held by an existing
       database login, so an account whose name has 16 characters installs
       and a new site never takes over another login's name; a forced
@@ -896,19 +930,24 @@
 
 @=> New Features
 
-    * PHP 8.6 (8.6.0RC2, a release candidate) can be installed for
-      testing: list 8.6 in _PHP_MULTI_INSTALL in /root/.barracuda.cnf
-      and the next barracuda pass builds it. It is never part of a
-      default, php-min or php-max set, never the server's or the Aegir
-      master's PHP, and never picked automatically; an Octopus instance
-      uses it through fpm.info, cli.info, multi-fpm.info or php86.info
-      like any installed version. With the automatic PHP cleanup on,
-      only a real setting keeps or adds it (8.6 as the whole fpm.info
-      or cli.info value, or a multi-fpm.info line's version), never a
-      comment line or a site name that contains 8.6. APCu, PhpRedis,
-      Mcrypt, GEOS, Imagick and the MongoDB driver do not build against
-      it yet, so it runs without them, and on Devuan Daedalus its GD has
-      no AVIF.
+    * PHP 8.6 (8.6.0RC2, a release candidate) can be installed: list
+      8.6 in _PHP_MULTI_INSTALL in /root/.barracuda.cnf, set it as
+      _PHP_SINGLE_INSTALL, or run barracuda with php-8.6 or php-max, and
+      the next pass builds it. It is not part of the default install
+      set (the default _PHP_MULTI_INSTALL, php-min and php-all), and 8.4
+      stays the default version. Once installed, 8.6 works like any
+      other version everywhere: the Aegir master's PHP-FPM and PHP-CLI,
+      an Octopus instance's fpm.info, cli.info, multi-fpm.info and
+      php86.info, the command line tools, the monitors and the prebuilt
+      packages.
+
+    * With the automatic PHP cleanup on, only a real setting keeps or
+      adds PHP 8.6 (8.6 as the whole fpm.info or cli.info value, or a
+      multi-fpm.info line's version, the ltd worker's own placeholder
+      row included), never a comment line or a site name that contains
+      8.6. APCu, PhpRedis, Mcrypt, GEOS, Imagick and the MongoDB driver
+      do not build against it yet, so it runs without them, and on
+      Devuan Daedalus its GD has no AVIF.
 
     * PHP 8.6: the extension releases BOA pins that are not shown to
       build against the release candidate (APCu, PhpRedis, Mcrypt, GEOS,
@@ -916,8 +955,16 @@
       line per pass; a newer pinned release is tried, and a failed
       Imagick try is a warning, not a failed upgrade. An extension that
       builds for 8.6 but does not load is left out of its php.ini like a
-      missing one, and TET and New Relic say once that 8.6 runs without
-      them. Every other PHP version builds them as before.
+      missing one. TET says once that 8.6 runs without it; New Relic is
+      enabled for 8.6 once its agent ships an 8.6 build, and says so
+      once until then. Every other PHP version builds them as before.
+
+    * PHP 8.6: igbinary, UploadProgress and YAML follow the same skip
+      list (_PHP86_EXT_SKIP in BARRACUDA.sh.txt), so a release of one
+      that stops building against a later release candidate is skipped
+      for 8.6 with one NOTE line instead of a WARN on every pass. When
+      every module is left out for 8.6, its php.ini lines are commented
+      out too, so PHP 8.6 starts without a warning.
 
     * xoct, xcopy and xmass take admail=<address>, the token boa
       in-octopus takes, for test and canary runs of real accounts: every
@@ -1099,6 +1146,14 @@
       built without their require-dev packages, like the others.
 
 @=> Improvements
+
+    * With the TET xtra on, PHP 8.1 to 8.5 get the PDFlib TET extension
+      from TET 6.0 (TET 5.3 has no binding for them, so they had none),
+      7.3, 7.4 and 8.0 keep TET 5.3 and older versions TET 5.2, and a
+      PHP version no TET release binds (8.6 for now) gets one NOTE line
+      per pass instead of nothing. A TET release is fetched only for an
+      installed PHP version, so a pass no longer downloads the older
+      archives again every time.
 
     * The per-vhost cap on in-flight anonymous page renders no longer
       counts a request that carries an Authorization header, so a
@@ -1420,6 +1475,53 @@
 
 @=> Important Fixes
 
+    * A barracuda upgrade pass no longer leaves the system binaries
+      unusable for some seconds while it sets their permissions. It
+      moved every binary of group users to group root and gave the
+      group back only later, so the Ægir user could not run php (the
+      upgrade's own master verifies failed with "php: Permission
+      denied"), and it took bash, curl, env and the other backend tools
+      from everyone outside group users until a later loop restored
+      them. Each file now goes straight to its end state, worked out
+      first; every file ends as before.
+
+    * backchain setup now adds a user's sudo entries even when another
+      user's name ends in it: an entry counted as present when it was
+      part of a longer line, so "bob" never got its rules after "xbob".
+      Each /etc/sudoers.d file is checked with visudo before it replaces
+      the old one, so a line sudo would refuse, which made sudo refuse
+      every user on the box, never gets there; setup then says so and
+      exits non-zero.
+
+    * Switching a server to a single PHP version no longer leaves its
+      accounts' sites answering 502 until the next account worker run:
+      each account is pointed at its pool for the new version before the
+      other versions' PHP-FPM stops.
+
+    * A Master upgrade no longer stops at its Drush test now and then
+      with "Drush is broken": a Drush run from the Master's cron while
+      the backend was being replaced could leave Drush's cached command
+      list without the backend. The test clears that cache first.
+
+    * The Ægir Master's own Drush stays pinned to the chosen command-line
+      PHP after an upgrade: the Master upgrade copied a fresh Drush over
+      the pinned one, so drush.php and its launcher fell back to the
+      default PHP found on the path, on every PHP version.
+
+    * An upgrade no longer runs an older BOA build tree than the one just
+      published without saying so. Once the publish writes boa.stamp
+      beside boa.tar.gz, Barracuda and Octopus compare it with the staged
+      tree's .update.txt; a tree that differs is fetched again into a
+      side directory and used only when it matches, and a tree that
+      still differs is reported with an ALRT line. Nothing changes while
+      no stamp is published.
+
+    * With _PHP_IONCUBE=YES, ionCube is enabled for PHP 8.5 too: the
+      pinned ionCube release ships an 8.5 loader, but the 8.5 php.ini
+      kept its loader line commented out. A loader line is now enabled
+      for every PHP version whose loader is installed, so 8.6 follows
+      once ionCube ships one. With the default NO nothing changes.
+
     * Classic Drush 8.5.13: a site whose logger service is written for
       the current psr/log (monolog, raven, a module's subclass of a core
       logger) can be verified, backed up, restored, cloned and migrated.
@@ -1441,6 +1543,29 @@
       on a box xmass set up; it failed with ERROR 1418 or 1419. It is left
       as it is while a replica reads the box's binary log, and the run
       says so.
+
+    * A _DB_BINARY_LOG change now takes effect in the barracuda run that
+      writes it: the run restarts the database server when it switched
+      the binary log on or off in my.cnf. The run's restart check missed
+      the switch, so the server kept its old state until some later
+      restart. A switch written by an earlier run takes effect at the
+      next database restart. The settings file's note on the switch now
+      says where the binary logs go.
+
+    * With _DB_BINARY_LOG=YES on a box whose binary log a replica reads,
+      a log_bin_trust_function_creators of 1 the box already reads is now
+      kept in my.cnf, and the run alerts only while the box reads 0: it
+      alerted on every run, whatever was set, and the next restart lost
+      a 1 set by hand. A Percona series upgrade no longer alerts that it
+      could not read the replicas while the database server is down
+      right after the package install; the same run sets the trust once
+      the server is up.
+
+    * The barracuda run now counts the database server as having read
+      my.cnf only when a new mysqld runs after its start or restart: a
+      refused restart, a start of a running server or a failed start
+      counted as read, so a binary-log switch the running server never
+      applied was not restarted for in a later run.
 
     * A Textpattern rename now keeps the site's extra Drush aliases: the
       renamed site lost them, and their alias files kept naming the old
@@ -1548,6 +1673,21 @@
       before the dump: a dump longer than the server's wait_timeout found
       the connection closed and left every object in the dump's mode.
 
+    * A nightly backup that gives up waiting for MySQLD now also reports,
+      right after its ABORTED notice, the databases it had already
+      archived without their routines or events, or with their stored
+      objects under the dump's own sql_mode; it sent only the ABORTED
+      notice.
+
+    * A Restore of an archive that carries no database dump keeps the
+      site's triggers, routines and events when its database takes
+      longer to dump than the server's wait_timeout. The dump left the
+      database session idle past it, so the read of the site user's
+      host for the import failed (2006 MySQL server has gone away), the
+      import left every stored object out, and the Restore then dropped
+      the database it carried them from. The session is now closed when
+      a dump ends and the next statement opens a fresh one.
+
     * xoct and xcopy give up their own first contact with a target that
       does not answer after 15 seconds, as the read of the target's mail
       hold does: the mount query of pretransfer and transfer, the account
@@ -1562,6 +1702,21 @@
       dump from a copy with those lines rewritten as a dump made today
       writes them, in the instance's backup directory, removed after
       the load. A dump without them loads as before.
+
+    * The classic load's rewritten copy of an older archive's dump is
+      now written only when its filesystem keeps the space check's
+      headroom after it, and the load says why when it stops; it wrote
+      until the disk was full. A copy a load killed mid-way left in the
+      backup directory, where no purge reaches it, now goes at the
+      instance's next classic load; it stayed for good. The load's
+      notice says "1 statement line" for a single line.
+
+    * A fast import of a Migrate or of a dump-less Restore now stops,
+      saying why, when the dump carries triggers, routines or events
+      and the read of the site's new database user's host fails or
+      gives a host a definer cannot name: it left them out under a
+      warning that blamed the myloader, and the task then dropped the
+      database they came from. A dump without them loads as before.
 
     * sqlmagic fix now also leaves out of the fixed dump the statements
       a site's own database user may not run: the binary-log switch and
@@ -1580,6 +1735,19 @@
       there; it went on serving the old name's. On a box renamed by an
       earlier release, running the same rename again renames such a
       site's certificate record and queues its verify.
+
+    * A rename keeps an HTTPS site's certificate record when hosting_le's
+      dont-overwrite flag is named after the alias the site redirects to,
+      as hosting_le names it, and keeps it for a site with aliases of a
+      client domain until a certificate for its new name exists, saying
+      how to move it once the aliases reach the box; the site was left on
+      a self-signed pair. A site that redirects to an alias is verified
+      twice, so its vhost serves the new certificate with its chain. The
+      repair run also queues the verify of a site on a Composer platform
+      registered by its project folder, and of a site imported under
+      another account name. A rename no longer queues the account's own
+      panel by its name, which Drush refused with an error: the run
+      verifies the panel itself.
 
     * A store another registered site still reads through its files or
       private link is no longer set aside by a Delete, a renaming Migrate

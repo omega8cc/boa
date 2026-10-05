@@ -59,13 +59,15 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### and _PHP_CLI_VERSION.
 ###
 ### Available options:
-### 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
+### 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
 ### 8.6 is a release candidate, for testing:
-### it is built only when listed here and is
-### never used as a default version.
+### it is built only when listed here (or set
+### as _PHP_SINGLE_INSTALL) and is not part of
+### the default list below; once installed it
+### works like any other version.
 ###
 ### NOTE: 8.4 is required
 ###
@@ -95,7 +97,7 @@ _PHP_MULTI_INSTALL="8.3 8.4 8.5"
 ### _PHP_MULTI_INSTALL
 ###
 ### Available options:
-### 8.5, 8.4, 8.3, 8.2, 8.1, 7.4
+### 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 7.4
 ###
 ### Example: _PHP_SINGLE_INSTALL=8.5
 ###
@@ -111,7 +113,7 @@ _PHP_SINGLE_INSTALL=
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
+### 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
@@ -131,7 +133,7 @@ _PHP_FPM_VERSION=8.4
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
+### 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
@@ -1041,29 +1043,34 @@ _RESERVED_RAM=0
 ###
 ### CiviCRM 4.2 and newer requires more SQL
 ### privileges (the SUPER which can't be added
-### for obvious security reasons) or binary
-### logging disabled. Otherwise almost all
-### Ægir tasks against any site with CiviCRM
-### system active will fail, so we disable
-### binary logging by default. It will also
+### for obvious security reasons), binary
+### logging disabled, or
+### log_bin_trust_function_creators = 1, which
+### BOA sets with _DB_BINARY_LOG=YES (below).
+### Otherwise almost all Ægir tasks against any
+### site with CiviCRM system active will fail,
+### so we disable binary logging by default. It will also
 ### improve system performance on servers
 ### with slower/lower disks I/O.
 ###
 ### You can still enable it, if you prefer,
 ### by changing it to _DB_BINARY_LOG=YES
-### below or in the /root/.barracuda.cnf file,
-### but you must first stop mysql service
-### and delete or move away all existing files
-### from the /var/log/mysql/ directory, so it
-### will start fresh logs after it has been
-### disabled during previous system upgrade.
+### below or in the /root/.barracuda.cnf file.
+### The next barracuda upgrade writes it
+### into my.cnf and restarts the database server
+### in the same run; NO switches it off the
+### same way. The binary logs go to the database
+### directory, /var/lib/mysql/ON.000001 and on
+### (the log_bin = ON line names them).
 ###
 ### With it on, BOA also sets
 ### log_bin_trust_function_creators = 1, so a
 ### site's own database login can create its
-### triggers and stored functions; not while a
-### replica reads this box's binary log (set it
-### on the replica first; the run says so).
+### triggers and stored functions. While a
+### replica reads this box's binary log and
+### this box reads 0, the run leaves it and
+### says so: set it to 1 on the replica, then
+### here with SET GLOBAL; the next run keeps it.
 ###
 ### Note: this option is ignored if the option
 ### _CUSTOM_CONFIG_SQL is set to YES.
@@ -2040,6 +2047,76 @@ _boa_code_tree_is_root_owned() {
 }
 
 
+# A published stamp: two lines, the publish time and "<branch> <short sha>".
+# The mirror answers a missing path with HTTP 200 and an HTML page, so a
+# stamp is judged by its content, never by the status.
+_boa_stamp_valid() {
+  local _svL1=""
+  local _svL2=""
+  [ "$(printf '%s\n' "${1}" | grep -c .)" = "2" ] || return 1
+  _svL1=$(printf '%s\n' "${1}" | sed -n '1p')
+  _svL2=$(printf '%s\n' "${1}" | sed -n '2p')
+  [[ "${_svL1}" =~ [0-9]{4} ]] || return 1
+  [[ "${_svL2}" =~ ^[0-9]+\.x-[a-z]+\ [0-9a-f]{7,40}$ ]]
+}
+
+# The publish writes dev/<tree>/boa.stamp, a copy of the archive's
+# boa/.update.txt. A staged tree whose .update.txt differs was fetched before
+# that publish, or from an edge still holding the older archive: it is
+# fetched again into a side directory and swapped in only when it matches
+# the stamp. One try per stamp within 30 minutes, so a batch walking many
+# instances does not refetch for each. Nothing happens while no stamp is
+# published. Kept in step with the barracuda.sh.cnf and octopus.sh.cnf copies.
+_boa_tree_stamp_check() {
+  local _stQry="?r=$(date +%s)"
+  local _stPub=""
+  local _stTree=""
+  local _stGot=""
+  local _stHave=""
+  local _stMark="/opt/tmp/.boa-stamp-refetch"
+  local _stNew="/opt/tmp/boa-stamp-refetch"
+  [ "${_DL_NOCACHE}" = "NO" ] && _stQry=""
+  [ -e "/opt/tmp/boa/lib/functions/helper.sh.inc" ] || return 0
+  [ -n "${_urlDev}" ] && [ -n "${_tRee}" ] || return 0
+  _stPub=$(curl -L --max-redirs 3 -s --fail --max-time 30 -A iCab \
+    "${_urlDev}/${_tRee}/boa.stamp${_stQry}" 2> /dev/null \
+    | head -c 256 | tr -d '\r' | sed 's/[[:space:]]*$//')
+  _boa_stamp_valid "${_stPub}" || return 0
+  _stTree=$(head -c 256 /opt/tmp/boa/.update.txt 2> /dev/null \
+    | tr -d '\r' | sed 's/[[:space:]]*$//')
+  [ "${_stTree}" = "${_stPub}" ] && return 0
+  _stHave="${_stTree##*$'\n'}"
+  [ -n "${_stHave}" ] || _stHave="unstamped"
+  if [ "$(cat "${_stMark}" 2> /dev/null)" = "${_stPub}" ] \
+    && [ -n "$(find "${_stMark}" -mmin -30 2> /dev/null)" ]; then
+    echo "ALRT: the build tree (${_stHave}) is not the published ${_stPub##*$'\n'}; continuing with it"
+    return 0
+  fi
+  echo "NOTE: the build tree (${_stHave}) is not the published ${_stPub##*$'\n'}; fetching it again"
+  printf '%s\n' "${_stPub}" > "${_stMark}"
+  rm -rf "${_stNew}"
+  mkdir -p "${_stNew}"
+  # shellcheck disable=SC2086
+  ( cd "${_stNew}" \
+    && curl ${_crlGet} "${_urlDev}/${_tRee}/boa.tar.gz${_stQry}" -o boa.tar.gz \
+    && tar -xzf boa.tar.gz ) > /dev/null 2>&1
+  _stGot=$(head -c 256 "${_stNew}/boa/.update.txt" 2> /dev/null \
+    | tr -d '\r' | sed 's/[[:space:]]*$//')
+  if [ "${_stGot}" = "${_stPub}" ] \
+    && [ -e "${_stNew}/boa/aegir/helpers/apt.conf.noi.nrml" ] \
+    && [ -e "${_stNew}/boa/aegir/helpers/apt.conf.noi.dist" ] \
+    && [ -e "${_stNew}/boa/lib/functions/helper.sh.inc" ]; then
+    rm -rf /opt/tmp/boa
+    mv -f "${_stNew}/boa" /opt/tmp/boa
+    chown -R root:root /opt/tmp/boa &> /dev/null
+    echo "NOTE: build tree ${_stPub##*$'\n'} in place"
+  else
+    echo "ALRT: the build tree fetched again is not the published ${_stPub##*$'\n'}; continuing with the current one"
+  fi
+  rm -rf "${_stNew}"
+}
+
+
 _download_boa_code() {
   # A staged tree of ANOTHER tree is never reused: every published tar bakes
   # its tree name into the libs (export _tRee=), and a switch at the same
@@ -2084,6 +2161,7 @@ _download_boa_code() {
     && [ -e "/opt/tmp/boa/lib/functions/helper.sh.inc" ]; then
     [ -e "/opt/tmp/boa.tar.gz" ] && rm -f /opt/tmp/boa.tar.gz
   fi
+  _boa_tree_stamp_check
 }
 
 

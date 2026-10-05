@@ -2366,18 +2366,81 @@ EOF
 # One removal for every account this worker takes away: the reaper's zombies
 # and a retired platform account alike. The home goes to the zombie backup,
 # never to /dev/null.
+#
+# A login's files in its account's trees go to the account before deluser
+# frees its number: useradd -r gives out the highest free system uid, so the
+# next login made, of any account, would own them. Each directory and
+# single-link file the login owns there is handed over through a handle that
+# re-checks the owner and never follows a link; the group stays. A
+# hard-linked file goes to root instead: another name of it may sit outside
+# these trees. $1 = the login, $2 = the account.
+_LTD_REOWN_FROM_PL='use Fcntl; my ($f, $u, @n) = @ARGV; for my $n (@n) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown((-d _ || $s[3] == 1) ? $u : 0, -1, $h) if @s && $s[4] == $f && (-d _ || -f _); close($h); } exit 0'
+_ltd_reap_hand_over() {
+  local _gu _ou _d _s _m
+  _gu=$(id -u -- "${1}" 2> /dev/null)
+  _ou=$(id -u -- "${2}" 2> /dev/null)
+  [[ "${_gu}" =~ ^[1-9][0-9]*$ && "${_ou}" =~ ^[1-9][0-9]*$ ]] || return 0
+  [ "${_gu}" != "${_ou}" ] || return 0
+  for _d in "/data/disk/${2}/static" "/data/disk/${2}/distro"; do
+    [ -d "${_d}" ] && [ ! -L "${_d}" ] || continue
+    _ltd_in_real_dir "${_d}" env PATH=/usr/local/bin:/usr/bin:/bin \
+      find -P . -xdev -uid "${_gu}" \( -type d -o -type f \) \
+      -execdir perl -e "${_LTD_REOWN_FROM_PL}" "${_gu}" "${_ou}" {} + &> /dev/null
+  done
+  # the files store on attached storage: static/files is then a link to
+  # /mnt/<m>/files/<oN>/static/files, which the walk above never follows
+  _s=$(realpath -e -- "/data/disk/${2}/static/files" 2> /dev/null) || return 0
+  case "${_s}" in
+    /mnt/?*/files/"${2}"/static/files)
+      _m="${_s%/files/"${2}"/static/files}"
+      case "${_m}" in
+        */files/*|*/static/*|*[!A-Za-z0-9._/-]*) return 0 ;;
+      esac
+      _ltd_in_real_dir "${_s}" env PATH=/usr/local/bin:/usr/bin:/bin \
+        find -P . -xdev -uid "${_gu}" \( -type d -o -type f \) \
+        -execdir perl -e "${_LTD_REOWN_FROM_PL}" "${_gu}" "${_ou}" {} + &> /dev/null
+      ;;
+  esac
+  return 0
+}
 _ltd_reap_account() {
   local _acct="${1}"
   local _parent="${2}"
   local _why="${3}"
+  local _w=0
   [ -d "/var/backups/zombie/deleted/${_NOW}" ] || mkdir -p /var/backups/zombie/deleted/${_NOW}
-  # only this user's agent: -f matched every gpg-agent on the box
-  id -u "${_acct}" &> /dev/null && pkill -9 -u "${_acct}" gpg-agent &> /dev/null
+  [ -d /var/log/boa ] || mkdir -p /var/log/boa
+  # The login's sessions end first, the login locked so no new one starts:
+  # userdel refuses a login a process still runs as, and the walk below
+  # would then run again on every pass while the login stayed.
+  if id -u "${_acct}" &> /dev/null; then
+    usermod -L "${_acct}" &> /dev/null
+    usermod -s /usr/sbin/nologin "${_acct}" &> /dev/null
+    while _user_in_use "${_acct}" && [ "${_w}" -lt 10 ]; do
+      pkill -KILL -u "${_acct}" &> /dev/null
+      pkill -KILL -U "${_acct}" &> /dev/null
+      sleep 1
+      _w=$(( _w + 1 ))
+    done
+    if _user_in_use "${_acct}"; then
+      echo "$(date) LTD account ${_acct}: still in use, its removal left for the next pass" >> /var/log/boa/manage_ltd.incident.log
+      return 0
+    fi
+  fi
   _disable_chattr ${_acct}
   rm -rf /home/${_acct}/.gnupg
+  _ltd_reap_hand_over "${_acct}" "${_parent}"
+  # its gem and npm trees carry its number too; a login made again gets
+  # fresh copies of its own
+  _ltd_in_real_dir /opt/user/gems rm -rf -- "./${_acct}"
+  _ltd_in_real_dir /opt/user/npm rm -rf -- "./${_acct}"
   deluser \
     --remove-home \
     --backup-to /var/backups/zombie/deleted/${_NOW} ${_acct} &> /dev/null
+  if getent passwd "${_acct}" > /dev/null 2>&1; then
+    echo "$(date) LTD account ${_acct}: deluser refused it, its removal left for the next pass" >> /var/log/boa/manage_ltd.incident.log
+    return 0
+  fi
   # users/ is the main login's and can be a link by now: the store goes only
   # from the real directory
   _ltd_in_real_dir "/home/${_parent}.ftp/users" rm -f -- "./${_acct}"
@@ -2386,7 +2449,6 @@ _ltd_reap_account() {
   _ltd_cli_drop "${_acct}"
   echo Zombie from etc.passwd ${_acct} killed
   if [ -n "${_why}" ]; then
-    [ -d /var/log/boa ] || mkdir -p /var/log/boa
     echo "$(date) LTD account ${_acct} removed: ${_why}" >> /var/log/boa/manage_ltd.incident.log
   fi
   echo
@@ -4473,7 +4535,7 @@ _satellite_web_user_update() {
         _T_PV=$1
       fi
       if [ -z "${_T_PV}" ] || [ ! -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
-        for e in 85 84 83 82 81 80 74 73 72 71 70 56; do
+        for e in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
           if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
             _T_PV=${e}
             break
@@ -4641,12 +4703,14 @@ _site_socket_inc_gen() {
 
   if [ ! -e "${_dscUsr}/log/no-lock-aegir-fpm.txt" ] \
     || [[ ! "${_PLACEHOLDER_TEST}" =~ "place.holder.dont.remove" ]]; then
-    _PHP_V="85 84 83 82 81 74"
+    _PHP_V="86 85 84 83 82 81 74"
     _phpFnd=NO
     _mltFpmAdd=""
     for e in ${_PHP_V}; do
       if [ -x "/opt/php${e}/bin/php" ] && [ "${_phpFnd}" = "NO" ]; then
-        if [ "${e}" = 85 ]; then
+        if [ "${e}" = 86 ]; then
+          _phpDot=8.6
+        elif [ "${e}" = 85 ]; then
           _phpDot=8.5
         elif [ "${e}" = 84 ]; then
           _phpDot=8.4
