@@ -3621,6 +3621,21 @@ _php_single_point_accounts() {
     [[ "$(_acct_read_in "${_inc%/*}" "${_inc##*/}")" == *"\"${_pool}\""* ]] && continue
     _acct_put_in "${_inc%/*}" "${_inc##*/}" "set \$user_socket \"${_pool}\";" && _did=YES
   done
+  # A site pinned in multi-fpm.info to a version that stops keeps its own
+  # include naming that version's pool, and the worker rebuilds an existing
+  # include only when multi-fpm.info changes: that site answered 502 until
+  # then. Its include goes, as the worker's own rebuild drops a pin to a
+  # version that is not installed, and the site falls back to the default
+  # include above.
+  for _inc in /data/disk/*/config/server_master/nginx/post.d/fpm_include_site_*.inc; do
+    [ -f "${_inc}" ] && [ ! -L "${_inc}" ] || continue
+    _usr="${_inc#/data/disk/}"
+    _usr="${_usr%%/*}"
+    _pool="${_usr}.${_sv}"
+    [ -S "/run/${_pool}.fpm.socket" ] || continue
+    [[ "$(_acct_read_in "${_inc%/*}" "${_inc##*/}")" == *"\"${_pool}\""* ]] && continue
+    _acct_in_real_dir "${_inc%/*}" rm -f -- "./${_inc##*/}" && _did=YES
+  done
   if [ "${_did}" = "YES" ]; then
     # the reload signals nginx and returns at once: its old workers keep
     # sending requests to the old pools until they have finished them, so
