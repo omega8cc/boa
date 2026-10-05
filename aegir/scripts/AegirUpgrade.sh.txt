@@ -252,16 +252,25 @@ _hostmaster_go_up() {
 }
 #
 _hostmaster_dr_tt() {
-  if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "${_STATUS} B: Drush test result OK"
+  # A Drush run while the backend was being replaced (the Master's dispatcher
+  # cron) can cache a command file list without provision, and Drush 8 never
+  # scans a cached list again: the cache goes before the test, as in the
+  # satellite's Drush test, and once more for a run that began mid-swap.
+  local _try
+  for _try in 1 2; do
+    rm -rf ${_ROOT}/.tmp/cache
+    if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "${_STATUS} B: Drush test result OK"
+      fi
+      return 0
     fi
-  else
-    _msg "FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
-    _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
-    touch "${_stateDir}/status-AegirUpgrade-FAIL"
-    exit 1
-  fi
+    [ "${_try}" = "1" ] && sleep 10
+  done
+  _msg "FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
+  _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
+  touch "${_stateDir}/status-AegirUpgrade-FAIL"
+  exit 1
 }
 #
 _hostmaster_mi_up() {
