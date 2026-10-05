@@ -1560,6 +1560,21 @@
       before the dump: a dump longer than the server's wait_timeout found
       the connection closed and left every object in the dump's mode.
 
+    * A nightly backup that gives up waiting for MySQLD now also reports,
+      right after its ABORTED notice, the databases it had already
+      archived without their routines or events, or with their stored
+      objects under the dump's own sql_mode; it sent only the ABORTED
+      notice.
+
+    * A Restore of an archive that carries no database dump keeps the
+      site's triggers, routines and events when its database takes
+      longer to dump than the server's wait_timeout. The dump left the
+      database session idle past it, so the read of the site user's
+      host for the import failed (2006 MySQL server has gone away), the
+      import left every stored object out, and the Restore then dropped
+      the database it carried them from. The session is now closed when
+      a dump ends and the next statement opens a fresh one.
+
     * xoct and xcopy give up their own first contact with a target that
       does not answer after 15 seconds, as the read of the target's mail
       hold does: the mount query of pretransfer and transfer, the account
