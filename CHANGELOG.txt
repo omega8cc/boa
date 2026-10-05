@@ -1540,6 +1540,9 @@
       tree, and purges both from the Cloudflare cache once every mirror
       name serves the new bytes; getboa purge <file> does the same for
       the files stackbuild and staticbuild hand to their _PURGE_HOOK.
+      BOA installs it at /opt/local/bin/getboa (root, mode 0700) on a
+      box carrying its purge config, /root/.cf-purge.cnf, keeps it
+      current there and never removes it; no other box gets one.
 
     * With _PHP_IONCUBE=YES, ionCube is enabled for PHP 8.5 too: the
       pinned ionCube release ships an 8.5 loader, but the 8.5 php.ini
