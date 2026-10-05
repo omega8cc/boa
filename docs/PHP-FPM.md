@@ -14,7 +14,8 @@ BOA allows you to manage the PHP-FPM version across all sites hosted on an Octop
 
 ### Supported Values for Single PHP-FPM Mode:
 - Any installed PHP version from 5.6 to 8.5 (`5.6`, `7.0`, `7.1`, `7.2`, `7.3`, `7.4`, `8.0`, `8.1`, `8.2`, `8.3`, `8.4`, `8.5`). If the requested version is not installed, the system falls back to the nearest available version.
-- `8.6`, a release candidate for testing, where it is installed. A server builds it only when `8.6` is listed in `_PHP_MULTI_INSTALL` in `/root/.barracuda.cnf`; it is never part of a default set and never the server's default PHP-FPM or PHP-CLI version. Where it is not installed, `8.6` falls back to `8.5`, then `8.4`. While it is a release candidate, APCu, PhpRedis, Mcrypt, GEOS and Imagick do not build against it, so it runs without them (a site on it has no Valkey cache), and on Devuan Daedalus its GD has no AVIF.
+- `8.6`, a release candidate for testing, where it is installed. A server builds it only when `8.6` is listed in `_PHP_MULTI_INSTALL` in `/root/.barracuda.cnf`; it is never part of a default set and never the server's default PHP-FPM or PHP-CLI version. Where it is not installed, `8.6` falls back to `8.5`, then `8.4`.
+- While `8.6` is a release candidate, the extension releases BOA pins that were not shown to build against it (APCu, PhpRedis, Mcrypt, GEOS, Imagick and the MongoDB driver) are not built for it: each upgrade says so once in a NOTE line, and a newer release is tried when BOA pins one. 8.6 runs without them (a site on it has no Valkey cache). An extension that builds but does not load is left out of its php.ini too, TET and New Relic are not enabled for it, and on Devuan Daedalus its GD has no AVIF.
 
 #### **NOTE**:
 - Only one line and one value (e.g., `8.3`) should be present in this file; otherwise, the system will ignore it.

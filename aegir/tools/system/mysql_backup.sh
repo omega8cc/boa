@@ -557,13 +557,13 @@ EOFMYSQL
 
 ### Percona 5.7 dumps sync their threads with FLUSH TABLES WITH READ LOCK
 ### (FTWRL), and mydumper also takes Percona's backup lock there (LOCK TABLES
-### FOR BACKUP), keeping it until FTWRL is released. A write to a MyISAM
-### table waits for that lock with its table open, and the event scheduler
-### writes one at every event run (mysql.event is MyISAM on 5.7): the flush
-### ahead of FTWRL then waits for that table, or FTWRL for the writer, and
-### neither side gives way. The server sees no deadlock, so the dump stalls
-### there and every write on the box queues behind it. FTWRL alone still
-### gives the dump its consistent point. Sets _MYDUMPER_BACKUP_LOCKS to
+### FOR BACKUP), keeping it until the dump ends, past the FTWRL release. A
+### write to a MyISAM table waits for that lock with its table open, and the
+### event scheduler writes one at every event run (mysql.event is MyISAM on
+### 5.7): the flush ahead of FTWRL then waits for that table, or FTWRL for
+### the writer, and neither side gives way. The server sees no deadlock, so
+### the dump stalls there and every write on the box queues behind it. FTWRL
+### alone still gives the dump its consistent point. Sets _MYDUMPER_BACKUP_LOCKS to
 ### --no-backup-locks when the local mydumper lists it, so a build without
 ### it gets its arguments as before.
 _mydumper_backup_locks_opts() {

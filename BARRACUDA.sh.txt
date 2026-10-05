@@ -110,6 +110,8 @@ _PHP84_VRN=8.4.26
 _PHP85_API=20250925
 _PHP85_VRN=8.5.11
 _PHP86_API=20260924
+# pinned extension releases not shown to build against the pinned 8.6 RC
+_PHP86_EXT_SKIP="apcu-5.1.28 imagick-3.8.1 mcrypt-1.0.9 mongodb-1.2.5 php-geos-1.0.0 phpredis-6.3.0"
 _PHP86_VRN=8.6.0RC2
 _PHPREDIS_FIVE_VRN=5.3.7
 _PHPREDIS_FOUR_VRN=4.3.0
