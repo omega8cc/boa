@@ -3667,20 +3667,27 @@ _php_single_point_accounts() {
 
 #
 # Each account's task dispatcher (aegir.sh) and its Drush 8 (the drush.php
-# shebang, the launcher's default) name the CLI they ran on until the ltd
-# worker's next run rewrites them from cli.info, and that worker never runs
-# during a pass: the cleanup below parks the other versions' CLI at once,
-# so the account's queued tasks waited for the worker's tick. Point each at
-# the single version first, edited as the worker edits them, inside the
-# real directory and never through a link.
+# and drush shebangs, the launcher's default) name the CLI they ran on until
+# the ltd worker's next run rewrites them from cli.info, and that worker
+# never runs during a pass: the cleanup below parks the other versions' CLI
+# at once, so the account's queued tasks waited for the worker's tick. Point
+# each account the worker serves (picked as its own loop picks them) at the
+# single version first, edited as the worker edits them, inside the real
+# directory and never through a link.
 _php_single_point_accounts_cli() {
-  local _sv="$1" _home
+  local _sv="$1" _home _f
   for _home in /data/disk/*; do
     [ -d "${_home}" ] && [ ! -L "${_home}" ] || continue
+    [ -e "${_home}/config/server_master/nginx/vhost.d" ] \
+      && [ -e "${_home}/log/fpm.txt" ] \
+      && [ ! -e "${_home}/log/proxied.pid" ] \
+      && [ ! -e "${_home}/log/CANCELLED" ] || continue
     _acct_in_real_dir "${_home}" _ltd_sed_here aegir.sh \
       "s|/opt/php[0-9][0-9]/bin|/opt/php${_sv}/bin|g"
-    _acct_in_real_dir "${_home}/tools/drush" _ltd_sed_here drush.php \
-      "1s|^#!/opt/php[0-9][0-9]/bin/php|#!/opt/php${_sv}/bin/php|"
+    for _f in drush.php drush; do
+      _acct_in_real_dir "${_home}/tools/drush" _ltd_sed_here "${_f}" \
+        "1s|^#!/opt/php[0-9][0-9]/bin/php|#!/opt/php${_sv}/bin/php|"
+    done
     _acct_in_real_dir "${_home}/tools/drush" _ltd_sed_here drush.launcher \
       "/^export DRUSH_PHP=/s|/opt/php[0-9][0-9]/bin/php|/opt/php${_sv}/bin/php|"
   done
