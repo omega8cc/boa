@@ -62,6 +62,7 @@ _PHP_CLI_VERSION=8.4
 # CK3 — Commerce v.3
 # CMS — Drupal CMS
 # LGV — LocalGov
+# OCS — OpenCulturas
 # THR — Thunder
 # VBX — Varbase 11
 
@@ -69,7 +70,6 @@ _PHP_CLI_VERSION=8.4
 #
 # DE3 — Drupal 11.3 prod/stage/dev
 # FOS — farmOS
-# OCS — OpenCulturas
 
 ### Drupal 11.2
 #

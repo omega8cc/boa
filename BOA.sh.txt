@@ -2769,7 +2769,7 @@ _update_agents() {
     # is named like this file's fetch marker: the fetcher takes it for
     # another serial's marker and would hold the unchanged readme an hour.
     rm -f "${_pthLog}/control-readme.txt.ctrl.${_tRee}."*".pid"
-    _fetch_versioned /var/xdrago/conf/control-readme.txt "${_urlHmr}/tools/system/conf/control-readme.txt" f97 --mode 644
+    _fetch_versioned /var/xdrago/conf/control-readme.txt "${_urlHmr}/tools/system/conf/control-readme.txt" f96 --mode 644
   fi
 
   # The queue template is fetched through _fetch_versioned, which holds a
