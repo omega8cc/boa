@@ -2780,12 +2780,14 @@ _update_agents() {
   # used, and only from a template that carries the patch: a file without
   # it is neither put nor stamped, and the next fetch asks again. The puts
   # of the completed loops are kept in hosting.cron.queue.puts (md5s, the
-  # last 20, newest last), and a module that is one of them takes the
-  # current template: a pass stopped in the loop leaves the record as it
-  # was, so the next pass runs the loop again, and an account the loop
-  # skipped once (its alias naming a platform not here, as on a standby)
-  # is put by the next release's loop. With no box address nothing is
-  # recorded and only a module without the patch is put.
+  # last 20, newest last), and a module that is one of them, or the put of
+  # the template on the box before this pass's fetch, takes the current
+  # template: a pass stopped in the loop leaves the record as it was, so
+  # the next pass runs the loop again, also when the template changed
+  # again in between, and an account the loop skipped once (its alias
+  # naming a platform not here, as on a standby) is put by the next
+  # release's loop. With no box address nothing is recorded and only a
+  # module without the patch is put.
   if [ -d "/data/u" ]; then
     _hQueueF="hosting_cron.module"
     _hQueueP="/var/xdrago/conf/${_hQueueF}"
@@ -2793,10 +2795,16 @@ _update_agents() {
     _hQueueS=""
     _hQueueN=""
     _hQueueL=""
+    _hQueueO=""
     _hQueueA=NO
     [[ "${_LOC_IP}" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] && _hQueueA=YES
     if [ -s "${_hQueueP}" ]; then
       _hQueueS="$(md5sum "${_hQueueP}" 2> /dev/null | cut -d' ' -f1)"
+      if [ "${_hQueueA}" = "YES" ] \
+        && grep -q "core/cron.php" "${_hQueueP}" 2> /dev/null; then
+        _hQueueO="$(sed "s/127.0.0.1/${_LOC_IP}/g" "${_hQueueP}" 2> /dev/null \
+          | md5sum | cut -d' ' -f1)"
+      fi
       # No record yet: the loops so far put the template already here.
       if [ "${_hQueueA}" = "YES" ] && [ ! -s "${_hQueueR}" ] \
         && grep -q "core/cron.php" "${_hQueueP}" 2> /dev/null; then
@@ -2832,7 +2840,8 @@ _update_agents() {
           _hmPlr=$(_acct_hm_root "${_pthSysUsr}") || continue
           _hmDir="${_hmPlr}/profiles/hostmaster/modules/aegir/hosting"
           _acct_in_real_dir "${_hmDir}/cron" \
-            _hm_cron_queue_here "${_hQueueP}" "${_LOC_IP}" "${_hQueueL//$'\n'/ }"
+            _hm_cron_queue_here "${_hQueueP}" "${_LOC_IP}" \
+              "${_hQueueL//$'\n'/ }${_hQueueO:+ ${_hQueueO}}"
         fi
       done
       touch ${_pthLog}/hosting.cron.queue.ctrl.f95.${_tRee}.${_xSrl}.pid
