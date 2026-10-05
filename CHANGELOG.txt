@@ -1475,6 +1475,12 @@
 
 @=> Important Fixes
 
+    * The cron-queue template of the agents pass: an account's
+      hostmaster module put by a pass stopped in the middle of the
+      accounts now takes the current template also when the template
+      changed again before a pass completed; it stayed on the one in
+      between.
+
     * renameaegirhost --help says that a site with aliases of a client
       domain keeps its certificate record until its new name's
       certificate exists, and what the run's second pass does then. A
