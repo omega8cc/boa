@@ -1516,6 +1516,13 @@
       side directory and used only when it matches, and a tree that
       still differs is reported with an ALRT line. Nothing changes while
       no stamp is published.
+    * The mirror publisher, getboa, is part of the BOA tree now
+      (aegir/tools/bin/getboa, see docs/GETBOA.md). It publishes each
+      tree's boa.tar.gz with boa.stamp beside it, the copy of the
+      tarball's .update.txt the upgrades above compare with their build
+      tree, and purges both from the Cloudflare cache once every mirror
+      name serves the new bytes; getboa purge <file> does the same for
+      the files stackbuild and staticbuild hand to their _PURGE_HOOK.
 
     * With _PHP_IONCUBE=YES, ionCube is enabled for PHP 8.5 too: the
       pinned ionCube release ships an 8.5 loader, but the 8.5 php.ini
