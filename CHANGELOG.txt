@@ -1441,6 +1441,11 @@
 
 @=> Important Fixes
 
+    * A Master upgrade no longer stops at its Drush test now and then
+      with "Drush is broken": a Drush run from the Master's cron while
+      the backend was being replaced could leave Drush's cached command
+      list without the backend. The test clears that cache first.
+
     * The Ægir Master's own Drush stays pinned to the chosen command-line
       PHP after an upgrade: the Master upgrade copied a fresh Drush over
       the pinned one, so drush.php and its launcher fell back to the
