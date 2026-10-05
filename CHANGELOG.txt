@@ -1703,6 +1703,19 @@
       earlier release, running the same rename again renames such a
       site's certificate record and queues its verify.
 
+    * A rename keeps an HTTPS site's certificate record when hosting_le's
+      dont-overwrite flag is named after the alias the site redirects to,
+      as hosting_le names it, and keeps it for a site with aliases of a
+      client domain until a certificate for its new name exists, saying
+      how to move it once the aliases reach the box; the site was left on
+      a self-signed pair. A site that redirects to an alias is verified
+      twice, so its vhost serves the new certificate with its chain. The
+      repair run also queues the verify of a site on a Composer platform
+      registered by its project folder, and of a site imported under
+      another account name. A rename no longer queues the account's own
+      panel by its name, which Drush refused with an error: the run
+      verifies the panel itself.
+
     * A store another registered site still reads through its files or
       private link is no longer set aside by a Delete, a renaming Migrate
       or the nightly orphan sweep when that reader sits on a Drupal 8+
