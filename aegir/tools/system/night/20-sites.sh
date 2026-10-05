@@ -3434,10 +3434,11 @@ _le_ssl_check_update() {
   _exeLe="${_usEr}/tools/le/dehydrated"
   _Vht="${_usEr}/config/server_master/nginx/vhost.d/${_Dom}"
   ### The immutable marker Provision honours on Verify must also stop this
-  ### nightly leg: dehydrated decides on the leftover cert.pem, so once that
-  ### cert has less than RENEW_DAYS runway it re-issues LE symlinks straight
-  ### over the operator's custom PEM files. Checked before any www-strip --
-  ### the marker named after the site URI, as the docs name it.
+  ### nightly leg: dehydrated decides on the leftover cert.pem, so when its
+  ### names differ from the order's, or once it has less than RENEW_DAYS
+  ### runway, it re-issues LE symlinks straight over the operator's custom
+  ### PEM files. Checked before any www-strip -- the marker named after the
+  ### site URI, as the docs name it.
   if [ -e "${_usEr}/tools/le/.ctrl/dont-overwrite-${_Dom}.pid" ]; then
     echo "LE renewal skipped for ${_Dom} -- immutable dont-overwrite marker present"
     return 0
@@ -3445,8 +3446,8 @@ _le_ssl_check_update() {
   ### hosting_le names the marker after the alias a site redirects to, and
   ### honours it there on Verify: either name stops this leg too.
   local _alTxt _rdr
-  if [ -e "${_usEr}/.drush/${_Dan:-${_Dom}}.alias.drushrc.php" ]; then
-    _alTxt=$(_acct_read_in "${_usEr}/.drush" "${_Dan:-${_Dom}}.alias.drushrc.php")
+  if [ -e "${_usEr}/.drush/${_Dom}.alias.drushrc.php" ]; then
+    _alTxt=$(_acct_read_in "${_usEr}/.drush" "${_Dom}.alias.drushrc.php")
     _rdr=$(printf '%s\n' "${_alTxt}" \
       | grep "'redirection' => '" \
       | head -1 \

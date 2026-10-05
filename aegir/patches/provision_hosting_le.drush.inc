@@ -348,6 +348,9 @@ function drush_provision_hosting_le_post_provision_verify() {
       drush_log("[hosting_le] SSL Certificate for this domain already exists in: " . $cert_dir, 'info');
       drush_log("[hosting_le] You can replace it with any other certificate since it will be left here as-is forever.", 'info');
       drush_log("[hosting_le] To re-activate LE auto-renewals please delete this file: " . $immutable, 'info');
+      if ($immutable_own != $immutable && provision_file()->exists($immutable_own)->status()) {
+        drush_log("[hosting_le] And this one, the same flag under the site's own name: " . $immutable_own, 'info');
+      }
       drush_log("[hosting_le] NOTE: On hosted Ægir service you need to contact your host support for further assistance.", 'info');
     }
     else {
