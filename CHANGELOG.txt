@@ -1426,6 +1426,14 @@
 
 @=> Important Fixes
 
+    * An upgrade no longer runs an older BOA build tree than the one just
+      published without saying so. Once the publish writes boa.stamp
+      beside boa.tar.gz, Barracuda and Octopus compare it with the staged
+      tree's .update.txt; a tree that differs is fetched again into a
+      side directory and used only when it matches, and a tree that
+      still differs is reported with an ALRT line. Nothing changes while
+      no stamp is published.
+
     * With _PHP_IONCUBE=YES, ionCube is enabled for PHP 8.5 too: the
       pinned ionCube release ships an 8.5 loader, but the 8.5 php.ini
       kept its loader line commented out. A loader line is now enabled
