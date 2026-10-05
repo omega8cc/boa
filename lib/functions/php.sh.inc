@@ -3622,7 +3622,20 @@ _php_single_point_accounts() {
     _acct_put_in "${_inc%/*}" "${_inc##*/}" "set \$user_socket \"${_pool}\";" && _did=YES
   done
   if [ "${_did}" = "YES" ]; then
+    # the reload signals nginx and returns at once: its old workers keep
+    # sending requests to the old pools until they have finished them, so
+    # the old pools stop only once those workers are gone (at most 30 s)
+    local _old _p _try _left
+    _old=$(pgrep -f '^nginx: worker process' 2> /dev/null | tr '\n' ' ')
     _mrun "service nginx reload"
+    for _try in $(seq 1 60); do
+      _left=
+      for _p in ${_old}; do
+        kill -0 "${_p}" 2> /dev/null && _left=YES && break
+      done
+      [ -z "${_left}" ] && break
+      sleep 0.5
+    done
   fi
 }
 
