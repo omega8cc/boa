@@ -1475,6 +1475,11 @@
 
 @=> Important Fixes
 
+    * A Verify of a site whose aliases redirect to another name, with
+      the dont-overwrite flag under both of its names, now names both
+      files to delete to turn Let's Encrypt renewals back on; it named
+      the redirect target's only, and the other kept the certificate.
+
     * The cron-queue template of the agents pass: an account's
       hostmaster module put by a pass stopped in the middle of the
       accounts now takes the current template also when the template
