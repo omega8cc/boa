@@ -1482,9 +1482,9 @@
 
     * The cron-queue template of the agents pass: an account's
       hostmaster module put by a pass stopped in the middle of the
-      accounts now takes the current template also when the template
-      changed again before a pass completed; it stayed on the one in
-      between.
+      accounts now takes the current template whatever passes and
+      template changes come before one completes; it stayed on the one
+      in between.
 
     * renameaegirhost --help says that a site with aliases of a client
       domain keeps its certificate record until its new name's
@@ -1501,7 +1501,10 @@
       instance's freed number first. It reads passwd once instead of
       once per file. The hand-over gives each directory and
       single-link file to the instance and a hard-linked file to root;
-      a link keeps the number.
+      a link keeps the number. Where a number was given out again
+      before the upgrade, hand that login's directories, single-link
+      files and links in the stamp the prune names to the instance
+      (chown -h oN) and a hard-linked file to root.
 
     * A site that redirects its aliases to another name keeps an
       operator's own certificate whichever of its two names the
