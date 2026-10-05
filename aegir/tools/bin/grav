@@ -35,7 +35,7 @@ _alrt() { printf '\033[0;33m%s\033[0m\n' "$*" >&2; }
 
 _pick_modern() {
   local _c
-  for _c in 84 85 83; do
+  for _c in 84 85 86 83; do
     if [[ -x "/opt/php${_c}/bin/php" ]]; then
       printf '/opt/php%s/bin/php\n' "${_c}"
       return 0

@@ -428,7 +428,7 @@ _satellite_web_user_update() {
       # place (without one they make it anew, home included). Its text is the
       # ltd worker's _DRUSH_INI_PLACEHOLDER, byte for byte.
       if [ -z "${_T_PV}" ] || [ ! -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
-        _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+        _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
             _T_PV=${e}
@@ -5333,9 +5333,19 @@ _satellite_run_child_b() {
       _acct_in_real_dir "${_ROOT}/tools" \
         _satellite_reown_here "${_USER}:${_ACCG:-users}"
       ### The hostmaster root and site come from the account's own alias:
-      ### handed over only inside its own real hostmaster tree.
+      ### handed over only inside its own real hostmaster tree, and only
+      ### what root or the account's own identities own: the account can
+      ### rename into its files what another account left group-writable
+      ### (_satellite_reown_own_here, _satellite_tree_mode_all_here), and
+      ### what stays another user's is counted on one NOTE line, each entry
+      ### once though more than one walk meets it.
+      _T_LEFT=""
       if _satellite_hm_path_ok "${_THIS_HM_ROOT}"; then
-        _acct_in_real_dir "${_THIS_HM_ROOT}" _satellite_reown_here "${_USER}"
+        _T_N=$(
+          _acct_in_real_dir "${_THIS_HM_ROOT}" \
+            _satellite_reown_own_here "${_USER}"
+        )
+        _T_LEFT="${_T_LEFT}${_T_N}"$'\n'
       else
         _msg "${_STATUS} A: NOTE: hostmaster root outside ${_ROOT}/aegir/distro left as it is"
       fi
@@ -5350,13 +5360,23 @@ _satellite_run_child_b() {
           _acct_in_real_dir "${_THIS_HM_SITE}" \
             _satellite_relink_here files "${_USER}${_T_WG:+:${_T_WG}}"
         else
-          _acct_in_real_dir "${_THIS_HM_SITE}/files" \
-            _satellite_reown_here "${_USER}${_T_WG:+:${_T_WG}}"
+          _T_N=$(
+            _acct_in_real_dir "${_THIS_HM_SITE}/files" \
+              _satellite_reown_own_here "${_USER}${_T_WG:+:${_T_WG}}"
+          )
+          _T_LEFT="${_T_LEFT}${_T_N}"$'\n'
         fi
-        _satellite_in_site_store_dir "${_THIS_HM_SITE}/files" \
-          _satellite_tree_mode_all_here 02775 0664
+        _T_N=$(
+          _satellite_in_site_store_dir "${_THIS_HM_SITE}/files" \
+            _satellite_tree_mode_all_here 02775 0664
+        )
+        _T_LEFT="${_T_LEFT}${_T_N}"$'\n'
       else
         _msg "${_STATUS} A: NOTE: hostmaster site outside ${_ROOT}/aegir/distro left as it is"
+      fi
+      _T_LEFT=$(printf '%s' "${_T_LEFT}" | grep -E '^[0-9]+:[0-9]+$' | sort -u | grep -c .)
+      if [ "${_T_LEFT}" -gt 0 ]; then
+        _msg "${_STATUS} A: NOTE: ${_T_LEFT} entries owned by another user left as they were in the hostmaster tree and its files"
       fi
       chown root:${_USRG} /data/u &> /dev/null
       chmod 0771 /data/u &> /dev/null
@@ -6811,7 +6831,7 @@ _satellite_make() {
     if [ -n "${_cliPhpNum}" ] && [ -x "/opt/php${_cliPhpNum}/bin/php" ]; then
       _PHP_CLI_VERSION="${_cliPhpNum:0:1}.${_cliPhpNum:1}"
     else
-      for _fbV in 84 85 83 82 81 80 74; do
+      for _fbV in 84 85 86 83 82 81 80 74; do
         if [ -x "/opt/php${_fbV}/bin/php" ]; then
           _PHP_CLI_VERSION="${_fbV:0:1}.${_fbV:1}"
           break
@@ -7483,6 +7503,102 @@ _satellite_chmod_nofollow() {
   [ "$#" -gt 0 ] || return 0
   perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" "${_t}" "${_m}" "$@" 2> /dev/null
 }
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0, what root wrote there for the account) and those of every
+# identity of the account as passwd names them: oN and oN.<name>, that is
+# its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
+# and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
+# dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
+# unless the account itself is in passwd. The walks also take a uid no passwd
+# entry names as the account's own: a login removed before the limited-shell
+# worker handed its files to the account at removal left those. Nothing
+# records which account a freed number served, so such an entry is taken
+# wherever it came from. A lookup that fails, rather than finding no such
+# user, leaves the entry another user's.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+# As _SAT_NOFOLLOW_CHMOD_PL, given first the comma-separated uids it acts
+# for (_acct_walk_uids; a uid no passwd entry names counts too, sub own): a
+# name another named uid owns keeps its mode, and nothing is changed unless
+# the current directory and every directory above it, up to /, are owned by
+# those uids, read through '..' from where find stands.
+# The account's identities can rename into their trees what another account
+# left group-writable, a whole directory with everything nested in it, and
+# nothing below such a directory is changed. Prints dev:ino of each name
+# another uid owns, and, given . as a name, of the directory another uid
+# owns above the place when it is refused; status 1 when it is.
+_SAT_CHMOD_OWN_PL='use Fcntl;
+my ($o, $t, $ms) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) {
+  print "$x[0]:$x[1]\n" if @x && !own($x[4]) && grep { $_ eq "." } @ARGV;
+  exit 1;
+}
+my ($m, $k) = (oct($ms), length($ms) < 5 ? 06000 : 0);
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && !own($s[4])) {
+    print "$s[0]:$s[1]\n";
+  } elsif (@s && $t eq "f" && -f _ && $s[3] == 1) {
+    chmod($m, $h);
+  } elsif (@s && $t eq "d" && -d _) {
+    chmod($m | ($s[2] & $k), $h);
+  }
+  close($h);
+}
+exit 0;'
+# As _ACCT_REOWN_PL, the same way: given first the uids it acts for, then
+# the uid and gid to hand each name to; a name another named uid owns, and
+# anything below a directory another named uid owns, keeps its owner.
+_SAT_REOWN_OWN_PL='use Fcntl;
+my ($o, $u, $g) = (shift @ARGV, shift @ARGV, shift @ARGV);
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, $o);
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) {
+  print "$x[0]:$x[1]\n" if @x && !own($x[4]) && grep { $_ eq "." } @ARGV;
+  exit 1;
+}
+for my $f (@ARGV) {
+  sysopen(my $h, $f, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or next;
+  my @s = stat($h);
+  if (@s && !own($s[4])) {
+    print "$s[0]:$s[1]\n";
+  } elsif (@s && (-d _ || (-f _ && $s[3] == 1))) {
+    chown($u, $g, $h);
+  }
+  close($h);
+}
+exit 0;'
 # ./$1 in the current (pinned) directory made from stdin: a fresh file
 # created exclusively (0600 until it is complete), handed to $3 (owner:group,
 # names or numbers; empty leaves it root's) and given the mode $2, both
@@ -7534,6 +7650,21 @@ _satellite_reown_here() {
     && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 "$@" \
       \( -type d -o -type f \) \
       -execdir perl -e "${_ACCT_REOWN_PL}" -- "${_u}" "${_g}" {} +
+}
+# As _satellite_reown_here, through _SAT_REOWN_OWN_PL: only what root or
+# one of the instance's own identities owns (_acct_walk_uids) is handed
+# over, and nothing below a directory another user owns. Prints dev:ino of
+# each entry left for another owner.
+_satellite_reown_own_here() {
+  local _u _g _o
+  read -r _u _g <<< "$(_satellite_ids "${1}")"
+  [ -n "${_g}" ] || return 1
+  _o=$(_acct_walk_uids "${_USER}") || return 1
+  shift
+  perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" . \
+    && env PATH=/usr/local/bin:/usr/bin:/bin find . -mindepth 1 "$@" \
+      \( -type d -o -type f \) \
+      -execdir perl -e "${_SAT_REOWN_OWN_PL}" -- "${_o}" "${_u}" "${_g}" {} +
 }
 # The names given in the current (pinned) directory handed to $1
 # (owner[:group]) through _ACCT_REOWN_PL, as chown or chgrp handed them,
@@ -7847,14 +7978,19 @@ _satellite_tree_modes_here() (
 # every regular file below it to $2, dot entries included, as the nightly
 # sets a site's files store, each through a handle opened without
 # following a link, from the directory find walked (-execdir): a name
-# swapped for a link during the walk is refused, never followed.
+# swapped for a link during the walk is refused, never followed. Only what
+# root or one of the instance's own identities owns is changed, and nothing
+# below a directory another user owns (_SAT_CHMOD_OWN_PL). Prints dev:ino of
+# each entry left for another owner.
 _satellite_tree_mode_all_here() (
+  local _o
   PATH=/usr/local/bin:/usr/bin:/bin
-  _satellite_chmod_nofollow d "${1}" .
+  _o=$(_acct_walk_uids "${_USER}") || exit 0
+  perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" d "${1}" . 2> /dev/null || exit 0
   find . -mindepth 1 -type d \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" d "${1}" {} +
+    -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" d "${1}" {} +
   find . -mindepth 1 -type f \
-    -execdir perl -e "${_SAT_NOFOLLOW_CHMOD_PL}" f "${2}" {} +
+    -execdir perl -e "${_SAT_CHMOD_OWN_PL}" -- "${_o}" f "${2}" {} +
 )
 # The current (pinned) backups directory's system/ (and system/$1 when
 # given) made where missing, handed to the instance user and set 0700,
