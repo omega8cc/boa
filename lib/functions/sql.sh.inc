@@ -6,7 +6,8 @@
 # The move_sql.sh wrapper arrives with /var/xdrago, which a fresh install does
 # not have yet; fall back to the init script until it exists.
 _move_sql() {
-  local _mvRc
+  local _mvPid _mvNow
+  _mvPid=$(pgrep -x mysqld 2> /dev/null | head -n 1)
   if [ -e "/var/xdrago/move_sql.sh" ]; then
     if [ "$1" = "restart" ]; then
       _mrun "bash /var/xdrago/move_sql.sh"
@@ -16,25 +17,29 @@ _move_sql() {
   else
     _mrun "service mysql $1"
   fi
-  _mvRc=$?
-  # A server started without error runs the my.cnf of this moment.
-  if [ "$1" != "stop" ] && [ "${_mvRc}" = "0" ]; then
-    _sql_cnf_found_copy renew
+  # _mrun hides the command's status: a new mysqld is what shows the server
+  # read the my.cnf of this moment. A refused restart, a start of a running
+  # server or a failed start leaves the copy as the running server read it.
+  if [ "$1" != "stop" ]; then
+    _mvNow=$(pgrep -x mysqld 2> /dev/null | head -n 1)
+    if [ -n "${_mvNow}" ] && [ "${_mvNow}" != "${_mvPid}" ]; then
+      _sql_cnf_found_copy renew
+    fi
   fi
-  return "${_mvRc}"
+  return 0
 }
 
 #
 # The binary-log switch (_DB_BINARY_LOG) takes effect only when mysqld
-# restarts. The pass's first my.cnf rewrite applies it (the directives sync
-# of the root credentials step, ahead of the tuning), before the restart
-# check takes its my.cnf-pre-* copy, so that check never saw the change and
-# a new setting reached the running server only at some later restart.
-# _sql_cnf_found_copy keeps my.cnf as the running server read it: taken by
-# the pass's first _sql_conf_update, renewed when _move_sql starts the
-# server. _sql_binlog_switch_pending is true when the binary-log lines of
-# my.cnf differ from that copy. A file of its own: the my.cnf-pre-* copy
-# stays the pass's copy for rollback.
+# restarts. The pass's first my.cnf rewrite applies it (on 8.4 the directives
+# sync of the root password rotation, otherwise the tuning's own first
+# _sql_conf_update), before the restart check takes its my.cnf-pre-* copy, so
+# that check never saw the change and a new setting reached the running server
+# only at some later restart. _sql_cnf_found_copy keeps my.cnf as the running
+# server read it: taken by the pass's first _sql_conf_update, renewed when
+# _move_sql starts a new mysqld. _sql_binlog_switch_pending is true when the
+# binary-log lines of my.cnf differ from that copy. A file of its own: the
+# my.cnf-pre-* copy stays the pass's copy for rollback.
 _sql_cnf_found_copy() {
   local _fnd="${_vBs}/dragon/t/my.cnf-found-${_xSrl}-${_X_VERSION}-${_NOW}"
   if [ -z "${_vBs}" ] || [ -z "${_NOW}" ] || [ ! -e "/etc/mysql/my.cnf" ]; then

@@ -1543,6 +1543,12 @@
       right after the package install; the same run sets the trust once
       the server is up.
 
+    * The barracuda run now counts the database server as having read
+      my.cnf only when a new mysqld runs after its start or restart: a
+      refused restart, a start of a running server or a failed start
+      counted as read, so a binary-log switch the running server never
+      applied was not restarted for in a later run.
+
     * A Textpattern rename now keeps the site's extra Drush aliases: the
       renamed site lost them, and their alias files kept naming the old
       name and a site directory that no longer exists, where a later
