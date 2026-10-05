@@ -4385,7 +4385,9 @@ _octopus_cleanup() {
 # account's store or any other directory on the mount; entries
 # are enumerated as real directories, used bare (a trailing slash makes rm
 # and chattr walk INTO a link's target), and a link is left alone -- nothing
-# of BOA's ever makes one there.
+# of BOA's ever makes one there. An entry's removal takes only what root or
+# the account's own identities own: anything another user owns stays, with
+# the directories holding it, and is counted on one NOTE line per instance.
 _archived_store() {
   # $1 = oN; prints the admissible store's .archived path; 2 = no store yet
   local _u="$1" _acct _stat _d _ok _m
@@ -4418,23 +4420,197 @@ _archived_entries() {
   # $1 = the store; its real directories only, bare paths, NUL-separated
   find "$1" -mindepth 1 -maxdepth 1 -type d -print0 2> /dev/null | sort -z
 }
+# The uids root's walks over the account $1's trees act on, comma-separated:
+# root's own (0, what root wrote there for the account) and those of every
+# identity of the account as passwd names them: oN and oN.<name>, that is
+# its .ftp login, its client sub-accounts oN.<client> and oN.<client>-dev
+# and its PHP-FPM users oN.web and oN.<ver>.web. An account name holds no
+# dot, so the match is exact: o1 never takes o10's. Status 1, and nothing,
+# unless the account itself is in passwd. The walks also take a uid no passwd
+# entry names as the account's own: a login removed before the limited-shell
+# worker handed its files to the account at removal left those. Nothing
+# records which account a freed number served, so such an entry is taken
+# wherever it came from. A lookup that fails, rather than finding no such
+# user, leaves the entry another user's.
+_acct_walk_uids() {
+  local _a="${1}" _n _p _u _r _x="0" _self=NO
+  case "${_a}" in
+    ""|*[!a-z0-9-]*) return 1 ;;
+  esac
+  while IFS=: read -r _n _p _u _r; do
+    [[ "${_n}" =~ ^${_a}(\.[a-z0-9]+(-dev)?|\.[0-9]+\.web)?$ ]] || continue
+    [[ "${_u}" =~ ^[1-9][0-9]*$ ]] || continue
+    _x="${_x},${_u}"
+    [ "${_n}" = "${_a}" ] && _self=YES
+  done < <(getent passwd 2> /dev/null)
+  [ "${_self}" = "YES" ] || return 1
+  echo "${_x}"
+}
+# Root's removals in an account's trees, run inside the directory they act in:
+# only what the uids given second own (_acct_walk_uids), or a uid no passwd
+# entry names (sub own), is removed or unlocked, and nothing below a directory
+# another named uid owns. The account's identities can rename into their own
+# trees what another account left group-writable, a whole directory with
+# everything nested in it, so such a directory stays whole. Nothing is done
+# unless the current directory and every directory above it, up to /, are
+# owned by those uids or by one no passwd entry names, read through '..' from
+# where the walk stands. A directory is entered through a handle opened
+# without following a link, only as the directory lstat saw, and its entries
+# are acted on by name from inside it. The first argument is the act, on the
+# names after the third:
+#   r  each removed, a directory depth first, then itself once empty
+#   u  each unlocked (+i cleared through a handle), a directory with
+#      everything below it the walk reaches
+#   h  each removed unless it is a directory (find's hits)
+# or, the third argument a number of days, on the current directory:
+#   d  every entry below it older than that (find -mtime +N) removed as r
+#      removes it, younger directories searched alike, top-level dot
+#      names kept
+#   a  as d, the top-level dot names included
+#   f  as d, regular files only, every directory searched
+# Prints dev:ino of each entry left because another uid owns it, and of
+# the directory another uid owns above the place when the walk refuses
+# it; status 3 when one was, 1 when a removal failed.
+_ACCT_RM_OWN_PL='use Fcntl;
+my ($op, $ul, $days, @f) = @ARGV;
+my %own = map { $_ => 1 } grep { /^[0-9]+$/ } split(/,/, defined($ul) ? $ul : "");
+sub own { my $u = shift; unless (exists $own{$u}) { local $! = 0; $own{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } return $own{$u}; }
+my ($left, $bad, $now) = (0, 0, time);
+sub left { my ($l) = @_; print "$l->[0]:$l->[1]\n"; $left++; }
+sub done { exit($bad ? 1 : $left ? 3 : 0); }
+my ($p, $ok, @d, @x) = (".", 0);
+for (1 .. 256) {
+  @x = stat($p) or last;
+  last unless own($x[4]);
+  if (@d && $x[0] == $d[0] && $x[1] == $d[1]) { $ok = 1; last; }
+  @d = @x;
+  $p .= "/..";
+}
+unless ($ok) { left(\@x) if @x && !own($x[4]); $left = 1; done(); }
+sub kids {
+  opendir(my $h, ".") or do { $bad = 1; return (); };
+  my @n = grep { $_ ne "." && $_ ne ".." } readdir($h);
+  closedir($h);
+  return @n;
+}
+sub into {
+  my ($n, $l, $cb) = @_;
+  sysopen(my $up, ".", O_RDONLY | O_DIRECTORY) or do { $bad = 1; return 0; };
+  sysopen(my $dn, $n, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_NONBLOCK)
+    or do { $bad = 1; return 0; };
+  my @s = stat($dn);
+  unless (@s && $s[0] == $l->[0] && $s[1] == $l->[1] && chdir($dn)) {
+    $bad = 1;
+    return 0;
+  }
+  close($dn);
+  $cb->();
+  chdir($up) or die "no way back\n";
+  return 1;
+}
+sub rmown {
+  my ($n) = @_;
+  my @l = lstat($n) or return;
+  unless (own($l[4])) { left(\@l); return; }
+  if (-d _) {
+    into($n, \@l, sub { rmown($_) for kids(); }) or return;
+    rmdir($n) or $!{ENOTEMPTY} or $!{EEXIST} or $bad = 1;
+  } else {
+    unlink($n) or $bad = 1;
+  }
+}
+sub noimm {
+  my ($n, $l) = @_;
+  sysopen(my $h, $n, O_RDONLY | O_NOFOLLOW | O_NONBLOCK) or return;
+  my @s = stat($h);
+  if (@s && $s[0] == $l->[0] && $s[1] == $l->[1] && own($s[4])) {
+    my $b = pack("L", 0);
+    if (ioctl($h, 0x80086601, $b)) {
+      my $fl = unpack("L", $b);
+      ioctl($h, 0x40086602, pack("L", $fl & ~0x10)) if $fl & 0x10;
+    }
+  }
+  close($h);
+}
+sub unown {
+  my ($n) = @_;
+  my @l = lstat($n) or return;
+  return unless own($l[4]);
+  if (-d _) {
+    noimm($n, \@l);
+    into($n, \@l, sub { unown($_) for kids(); });
+  } elsif (-f _ && $l[3] == 1) {
+    noimm($n, \@l);
+  }
+}
+sub aged { return int(($now - $_[0]->[9]) / 86400) > $days; }
+sub sel {
+  my ($n, $top) = @_;
+  return if $top && $op ne "a" && substr($n, 0, 1) eq ".";
+  my @l = lstat($n) or return;
+  unless (own($l[4])) { left(\@l); return; }
+  if ($op eq "f") {
+    if (-d _) {
+      into($n, \@l, sub { sel($_, 0) for kids(); });
+    } elsif (-f _ && aged(\@l)) {
+      unlink($n) or $bad = 1;
+    }
+  } elsif (aged(\@l)) {
+    rmown($n);
+  } elsif (-d _) {
+    into($n, \@l, sub { sel($_, 0) for kids(); });
+  }
+}
+if ($op eq "r") {
+  rmown($_) for @f;
+} elsif ($op eq "u") {
+  unown($_) for @f;
+} elsif ($op eq "h") {
+  for my $n (@f) {
+    my @l = lstat($n) or next;
+    next if -d _;
+    if (own($l[4])) { unlink($n) or $bad = 1; } else { left(\@l); }
+  }
+} elsif ($op =~ /^[adf]$/ && defined($days) && $days =~ /^[0-9]+$/) {
+  sel($_, 1) for kids();
+} else {
+  exit 2;
+}
+done();'
 _archived_rm_in() {
-  # $1 = the store (a resolved path), $2 = an entry name; the entry removed
-  # from inside the real store only: the tenant owns static/, and a name on
-  # the way swapped for a link after the listing must never lead the removal
-  # out of the store. rm (fd-based, never follows a link) goes first, so the
-  # heal frees space at rm's speed; only what chattr +i kept is then unlocked
-  # entry by entry through a handle from inside the real entry
-  # (_boa_unlock_tree_here) -- chattr -R walked by path, and a directory
-  # swapped for a link during its walk cleared +i on files anywhere -- and
-  # removed again. rm's status; 1 when the store is not the directory it was
+  # $1 = the store (a resolved path), $2 = an entry name, $3 = the account;
+  # the entry removed from inside the real store only: the tenant owns
+  # static/, and a name on the way swapped for a link after the listing must
+  # never lead the removal out of the store. The removal walks the entry
+  # depth first and never through a link (_ACCT_RM_OWN_PL), and removes only
+  # what root or one of the account's own identities owns (_acct_walk_uids):
+  # the account's identities can rename into the entry's group-writable site
+  # directories what another account left group-writable, a whole directory
+  # with files nested in it, and that stays, with every directory holding it.
+  # Only what chattr +i kept is then unlocked, the account's and root's
+  # entries only, each through a handle from inside the real entry (chattr
+  # -R walked by path, and a directory swapped for a link during its walk
+  # cleared +i on files anywhere), and removed again. Prints the count of
+  # entries left because another user owns them; status 0 when the entry is
+  # gone (or was not a real directory), 3 when it stays only for those, and
+  # 1 when the store is not the directory it was or a removal failed.
+  local _o
+  _o=$(_acct_walk_uids "${3}") || return 1
   ( cd -P -- "${1}" 2> /dev/null && [ "$(pwd -P)" = "${1}" ] || exit 1
     [ -d "./${2}" ] && [ ! -L "./${2}" ] || exit 0
-    rm -rf -- "./${2}" &> /dev/null && exit 0
-    [ -d "./${2}" ] && [ ! -L "./${2}" ] || exit 0
-    ( cd -P -- "./${2}" 2> /dev/null && [ "$(pwd -P)" = "${1}/${2}" ] \
-      && _boa_unlock_tree_here )
-    rm -rf -- "./${2}" )
+    _n=$(perl -e "${_ACCT_RM_OWN_PL}" -- r "${_o}" - "./${2}" 2> /dev/null)
+    _rc=$?
+    if [ "${_rc}" != "0" ] && [ "${_rc}" != "3" ] \
+      && [ -d "./${2}" ] && [ ! -L "./${2}" ]; then
+      perl -e "${_ACCT_RM_OWN_PL}" -- u "${_o}" - "./${2}" &> /dev/null
+      _n=$(perl -e "${_ACCT_RM_OWN_PL}" -- r "${_o}" - "./${2}" 2> /dev/null)
+      _rc=$?
+    fi
+    printf '%s\n' "${_n}" | grep -cE '^[0-9]+:[0-9]+$'
+    case "${_rc}" in
+      0|3) exit "${_rc}" ;;
+    esac
+    exit 1 )
 }
 _archived_age_days() {
   # $1 = an entry name, YYYYMMDDTHHMMSSZ-<pid>; prints its age in whole days
@@ -4490,7 +4666,7 @@ _archived_list_user() {
   echo "  ${_cnt} stamped entries, $(( _tot / 1024 )) MB, each a deleted or renamed site's last copy"
 }
 _archived_prune_user() {
-  local _u="$1" _days="$2" _d _e _n _age _sites _kb _tot=0 _cnt=0 _rc
+  local _u="$1" _days="$2" _d _e _n _age _sites _kb _tot=0 _cnt=0 _rc _l _kept=0
   _d=$(_archived_store "${_u}"); _rc=$?
   if [ "${_rc}" -eq 2 ]; then echo "${_u}: no archived store yet"; return 0; fi
   [ "${_rc}" -eq 0 ] || return 0
@@ -4501,10 +4677,13 @@ _archived_prune_user() {
     [ -L "${_e}" ] && continue
     _sites=$(find "${_e}" -mindepth 1 -maxdepth 1 -printf '%f ' 2> /dev/null)
     _kb=$(du -sk -- "${_e}" 2> /dev/null | cut -f1)
-    _archived_rm_in "${_d}" "${_n}"; _rc=$?
+    _l=$(_archived_rm_in "${_d}" "${_n}" "${_u}"); _rc=$?
+    [[ "${_l}" =~ ^[0-9]+$ ]] && _kept=$(( _kept + _l ))
     if [ ! -e "${_e}" ] && [ ! -L "${_e}" ]; then
       echo "  removed ${_n} (${_age} days, ${_kb:-0} KB): ${_sites}"
       _cnt=$(( _cnt + 1 )); _tot=$(( _tot + ${_kb:-0} ))
+    elif [ "${_rc}" -eq 3 ] && [[ "${_l}" =~ ^[0-9]+$ ]]; then
+      echo "  kept ${_n} in part: another user's entries left in it with the directories holding them (${_l}), the rest removed; inspect ${_e}"
     elif [ "${_rc}" -ne 0 ]; then
       echo "  partially removed ${_n}: rm failed inside it, the tree is incomplete, inspect ${_e}"
     else
@@ -4512,6 +4691,9 @@ _archived_prune_user() {
     fi
   done < <(_archived_entries "${_d}")
   echo "${_u}: ${_cnt} entries older than ${_days} days removed, $(( _tot / 1024 )) MB freed, $(find "${_d}" -mindepth 1 -maxdepth 1 -type d 2> /dev/null | wc -l | tr -d ' ') left"
+  if [ "${_kept}" -gt 0 ]; then
+    echo "NOTE: ${_u}: ${_kept} entries owned by another user left in place in ${_d}, with the stamps holding them"
+  fi
 }
 # boa archived heal {oN|all} [percent] -- the one automatic prune. Age never
 # empties the pile (an entry is a deleted or renamed site's last copy); disk
@@ -4530,9 +4712,11 @@ _archived_prune_user() {
 # /data/conf/disable_archived_heal.cnf turns the heal off. Each store is judged
 # on its own filesystem (a relocated store under /mnt counts for itself), an
 # entry younger than two minutes is left alone (a sweep may still be moving
-# into it), nothing is followed through a link. Silent when there is nothing
-# to do; every removal is logged to /var/log/boa/archived-heal.log and the
-# run's removals are mailed once to _MY_EMAIL.
+# into it), nothing is followed through a link, and only what root or the
+# account's own identities own is removed (_archived_rm_in). Silent when
+# there is nothing to do; every removal is logged to
+# /var/log/boa/archived-heal.log and the run's removals are mailed once to
+# _MY_EMAIL.
 _archived_heal_threshold() {
   # prints the percent-used threshold, from the cnf when its first line is a
   # whole two-digit number in range; anything else keeps the default (a bad
@@ -4562,7 +4746,8 @@ _archived_age_secs() {
 _archived_heal() {
   # $1 = the instances to act on, one per line; $2 = the threshold in percent
   local _t="$2" _u _d _e _n _rc _pct _kb _sites _age _cnt=0 _tot=0 _list _line _report=""
-  local _log="/var/log/boa/archived-heal.log" _hn _lock="/run/boa_archived_heal.pid" _lpid _mark
+  local _log="/var/log/boa/archived-heal.log" _hn _lock="/run/boa_archived_heal.pid" _lpid _mark _l
+  local -A _keptN=() _keptD=()
   if [ -f "/data/conf/disable_archived_heal.cnf" ]; then
     [ -t 1 ] && echo "archived heal is switched off by /data/conf/disable_archived_heal.cnf"
     return 0
@@ -4611,17 +4796,23 @@ _archived_heal() {
     _mark="/run/boa_archived_heal.stuck.${_u}.${_n}"
     _sites=$(find "${_e}" -mindepth 1 -maxdepth 1 -printf '%f ' 2> /dev/null)
     _kb=$(du -sk -- "${_e}" 2> /dev/null | cut -f1)
-    _archived_rm_in "${_e%/*}" "${_n}"; _rc=$?
+    _l=$(_archived_rm_in "${_e%/*}" "${_n}" "${_u}"); _rc=$?
     if [ ! -e "${_e}" ] && [ ! -L "${_e}" ]; then
       _line="$(date '+%F %T') removed ${_u} ${_n} (${_kb:-0} KB; its filesystem was ${_pct}% used, above ${_t}%): ${_sites}"
       _cnt=$(( _cnt + 1 )); _tot=$(( _tot + ${_kb:-0} ))
       rm -f "${_mark}"
     else
       # an entry that will not go is reported once per six hours, not once a
-      # minute for as long as the pressure lasts
+      # minute for as long as the pressure lasts, and the next oldest is
+      # tried; one that stays for entries another user owns is counted for
+      # its account's NOTE line below
       [ -z "$(find "${_mark}" -mmin -360 2> /dev/null)" ] || continue
       touch "${_mark}"
-      if [ "${_rc}" -ne 0 ]; then
+      if [ "${_rc}" = "3" ] && [[ "${_l}" =~ ^[0-9]+$ ]]; then
+        _keptN[${_u}]=$(( ${_keptN[${_u}]:-0} + _l ))
+        _keptD[${_u}]="${_e%/*}"
+        _line="$(date '+%F %T') kept ${_u} ${_n} in part: another user's entries left in it with the directories holding them (${_l}, rc 3), the rest removed; inspect ${_e}"
+      elif [ "${_rc}" -ne 0 ]; then
         _line="$(date '+%F %T') partially removed ${_u} ${_n}: rm failed inside it (rc ${_rc}), the tree is incomplete, inspect ${_e}"
       else
         _line="$(date '+%F %T') could not remove ${_u} ${_n}, left as is, inspect ${_e}"
@@ -4631,6 +4822,12 @@ _archived_heal() {
     echo "${_line}" >> "${_log}"
     _report="${_report}${_line}"$'\n'
   done <<< "${_list}"
+  for _u in "${!_keptN[@]}"; do
+    _line="$(date '+%F %T') NOTE: ${_u}: ${_keptN[${_u}]} entries owned by another user left in place in ${_keptD[${_u}]}, with the stamps holding them"
+    echo "${_line}"
+    echo "${_line}" >> "${_log}"
+    _report="${_report}${_line}"$'\n'
+  done
   if [ "${_cnt}" -gt 0 ]; then
     _line="$(date '+%F %T') heal done: ${_cnt} archived site store(s) removed, $(( _tot / 1024 )) MB freed"
     echo "${_line}"
