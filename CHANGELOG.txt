@@ -1475,6 +1475,12 @@
 
 @=> Important Fixes
 
+    * A database series upgrade on a box whose binary log a replica
+      reads no longer turns log_bin_trust_function_creators on once
+      its own restart has cut the replica off: a replica seen earlier
+      in the run still counts, so a box reading 0 keeps it and the run
+      says so again.
+
     * An in-place box rename no longer leaves an HTTPS site with
       aliases of a client domain on its old name's certificate: once the
       site's own verify in the run has its new name's certificate, the
