@@ -415,7 +415,9 @@ _fix_php_ini_tet_all() {
       esac
       _TET_BASE="/opt/php${e}/lib/php/extensions/no-debug-non-zts"
       _TET_SO="${_TET_BASE}-${_P_API}/php_tet.so"
-      if [ ! -e "${_TET_SO}" ]; then
+      # only an installed version: /var/opt is emptied every pass, so a
+      # fetch for a version that is not there repeats on every pass
+      if [ ! -e "${_TET_SO}" ] && [ -e "${_TET_BASE}-${_P_API}" ]; then
         # TET 6.0 binds PHP 8.1 to 8.5, 5.3 binds 7.3, 7.4 and 8.0, 5.2 the
         # older ones; a version none of them binds gets one NOTE per pass
         case "${e}" in
@@ -428,14 +430,13 @@ _fix_php_ini_tet_all() {
           cd /var/opt
           _get_dev_src "TET-${_TET_VRN}.tar.gz"
         fi
-        if [ -e "${_TET_BASE}-${_P_API}" ] \
-          && [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
+        if [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
           cd /var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts/
           cp -a php_tet.so ${_TET_SO}
-        elif [ "${e}" = 86 ] && [ -e "${_TET_BASE}-${_P_API}" ]; then
+        elif [ "${e}" = 86 ]; then
           _php86_note_once tet \
             "TET ${_TET_VRN%%-*} has no PHP 8.6 binding, not enabled for PHP ${_PHP86_VRN}"
-        elif [ -e "${_TET_BASE}-${_P_API}" ]; then
+        else
           _php86_note_once "tet-${e}" \
             "TET ${_TET_VRN%%-*} has no PHP ${e:0:1}.${e:1} binding, not enabled for it"
         fi
