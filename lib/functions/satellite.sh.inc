@@ -428,7 +428,7 @@ _satellite_web_user_update() {
       # place (without one they make it anew, home included). Its text is the
       # ltd worker's _DRUSH_INI_PLACEHOLDER, byte for byte.
       if [ -z "${_T_PV}" ] || [ ! -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
-        _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+        _PHP_V="86 85 84 83 82 81 80 74 73 72 71 70 56"
         for e in ${_PHP_V}; do
           if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
             _T_PV=${e}
@@ -6811,7 +6811,7 @@ _satellite_make() {
     if [ -n "${_cliPhpNum}" ] && [ -x "/opt/php${_cliPhpNum}/bin/php" ]; then
       _PHP_CLI_VERSION="${_cliPhpNum:0:1}.${_cliPhpNum:1}"
     else
-      for _fbV in 84 85 83 82 81 80 74; do
+      for _fbV in 84 85 86 83 82 81 80 74; do
         if [ -x "/opt/php${_fbV}/bin/php" ]; then
           _PHP_CLI_VERSION="${_fbV:0:1}.${_fbV:1}"
           break

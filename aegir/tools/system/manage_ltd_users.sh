@@ -4473,7 +4473,7 @@ _satellite_web_user_update() {
         _T_PV=$1
       fi
       if [ -z "${_T_PV}" ] || [ ! -e "/opt/php${_T_PV}/etc/php${_T_PV}.ini" ]; then
-        for e in 85 84 83 82 81 80 74 73 72 71 70 56; do
+        for e in 86 85 84 83 82 81 80 74 73 72 71 70 56; do
           if [ -e "/opt/php${e}/etc/php${e}.ini" ]; then
             _T_PV=${e}
             break
@@ -4641,12 +4641,14 @@ _site_socket_inc_gen() {
 
   if [ ! -e "${_dscUsr}/log/no-lock-aegir-fpm.txt" ] \
     || [[ ! "${_PLACEHOLDER_TEST}" =~ "place.holder.dont.remove" ]]; then
-    _PHP_V="85 84 83 82 81 74"
+    _PHP_V="86 85 84 83 82 81 74"
     _phpFnd=NO
     _mltFpmAdd=""
     for e in ${_PHP_V}; do
       if [ -x "/opt/php${e}/bin/php" ] && [ "${_phpFnd}" = "NO" ]; then
-        if [ "${e}" = 85 ]; then
+        if [ "${e}" = 86 ]; then
+          _phpDot=8.6
+        elif [ "${e}" = 85 ]; then
           _phpDot=8.5
         elif [ "${e}" = 84 ]; then
           _phpDot=8.4

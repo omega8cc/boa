@@ -2663,11 +2663,10 @@ _php_vrn_dotted() {
 # Whether an account asks for PHP 8.6, a release candidate that a box gets
 # only on request: fpm.info or cli.info whose whole value is 8.6 (86 too, as
 # the ltd worker reads them), or a multi-fpm.info row that pins a site to it
-# (its second field; a '#' row is a comment). 8.6 inside a comment, a domain
-# or a longer value does not count, unlike the substring checks of the other
-# versions in _php_if_versions_cleanup_cnf, and neither does the worker's own
-# place.holder.dont.remove row. A numbered dummy row an operator adds to keep
-# an unused version (place.holder1.dont.remove 8.6) counts.
+# (its second field; a '#' row is a comment), the worker's own
+# place.holder.dont.remove row included, as for the other versions. 8.6
+# inside a comment, a domain or a longer value does not count, unlike the
+# substring checks of the other versions in _php_if_versions_cleanup_cnf.
 _php_eight_six_asked() {
   local _c _f _v
   for _c in /data/disk/*/static/control; do
@@ -2681,7 +2680,7 @@ _php_eight_six_asked() {
     done
     [ -e "${_c}/multi-fpm.info" ] || continue
     _v="$(_acct_read_in "${_c}" multi-fpm.info \
-      | awk '$1 !~ /^#/ && $1 != "place.holder.dont.remove" && NF >= 2 {
+      | awk '$1 !~ /^#/ && NF >= 2 {
           v = $2; gsub(/[^0-9]/, "", v); if (v == "86") n++ } END { print n + 0 }')"
     [ "${_v}" -gt 0 ] && return 0
   done
@@ -2960,7 +2959,8 @@ _php_if_versions_cleanup_cnf() {
   if [ "${_AUTO_PHP_CLEANUP}" = "YES" ]; then
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] \
+      if [ "${_PHP_SINGLE_INSTALL}" = "8.6" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.3" ]; then
         _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}
@@ -4684,7 +4684,8 @@ _barracuda_cnf() {
 
     ### Make sure that _PHP_SINGLE_INSTALL takes precedence
     if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
-      if [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] \
+      if [ "${_PHP_SINGLE_INSTALL}" = "8.6" ] \
+        || [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.4" ] \
         || [ "${_PHP_SINGLE_INSTALL}" = "8.3" ]; then
         _PHP_MULTI_INSTALL=${_PHP_SINGLE_INSTALL}

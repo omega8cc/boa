@@ -11,6 +11,17 @@ _fix_php_ini_ioncube() {
         sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE} &> /dev/null
         wait
       fi
+    elif [ "${_PHP_IONCUBE}" = "YES" ]; then
+      # A template carries its loader line commented while ionCube ships no
+      # loader for that PHP; it is enabled once the loader is there.
+      local _ionSo
+      _ionSo=$(sed -n 's/^;zend_extension="\(\/usr\/local\/ioncube\/ioncube_loader_lin_[0-9.]*\.so\)"[[:space:]]*$/\1/p' \
+        ${_THIS_FILE} 2> /dev/null | head -n 1)
+      if [ -n "${_ionSo}" ] && [ -e "${_ionSo}" ]; then
+        sed -i "s/^;\(zend_extension=\"\/usr\/local\/ioncube\/ioncube_loader_lin_[0-9.]*\.so\"\)/\1/" \
+          ${_THIS_FILE} &> /dev/null
+        wait
+      fi
     fi
   fi
 }
@@ -250,8 +261,13 @@ _fix_php_ini_newrelic_all() {
     if [ -z "${_NEWRELIC_KEY}" ]; then
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>/dev/null | tr -d '\n')
     fi
-    _PHP_V="85 84 83 82 81 80 74 73 72"
+    _PHP_V="86 85 84 83 82 81 80 74 73 72"
     for e in ${_PHP_V}; do
+      # no ini line for an agent build that does not exist (8.6 for now)
+      if [ "${e}" = "86" ] \
+        && [ ! -e "/opt/php86/lib/php/extensions/no-debug-non-zts-${_PHP86_API}/newrelic.so" ]; then
+        continue
+      fi
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       _fix_php_ini_newrelic ${e}
       _THIS_FILE=/opt/php${e}/lib/php.ini
@@ -2744,6 +2760,7 @@ _newrelic_update() {
       mv -f /etc/newrelic \
         ${_vBs}/nr/etc-newrelic-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
       _pthNrx="lib/php/extensions/no-debug-non-zts"
+      _PHP_EXT_DIR_86="/opt/php86/${_pthNrx}-${_PHP86_API}"
       _PHP_EXT_DIR_85="/opt/php85/${_pthNrx}-${_PHP85_API}"
       _PHP_EXT_DIR_84="/opt/php84/${_pthNrx}-${_PHP84_API}"
       _PHP_EXT_DIR_83="/opt/php83/${_pthNrx}-${_PHP83_API}"
@@ -2772,7 +2789,7 @@ _newrelic_update() {
       # dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
-      NR_PHPLIST="/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin"
+      NR_PHPLIST="/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin:/opt/php86/bin"
       NR_SILENT="silent"
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
       export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -2784,6 +2801,11 @@ _newrelic_update() {
         _SYSTEM_ARCH="x32"
       fi
       _pthNra="/usr/lib/newrelic-php5/agent"
+      if [ -e "${_PHP_EXT_DIR_86}" ] && [ ! -e "${_PHP_EXT_DIR_86}/newrelic.so" ] \
+        && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP86_API}.so" ]; then
+        ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP86_API}.so \
+          ${_PHP_EXT_DIR_86}/newrelic.so
+      fi
       if [ -e "${_PHP_EXT_DIR_85}" ] && [ ! -e "${_PHP_EXT_DIR_85}/newrelic.so" ] \
         && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so" ]; then
         ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so \
@@ -2904,6 +2926,7 @@ _if_install_php_newrelic() {
     fi
     apt-key del ${_NEWRELIC_KEYS_SIG} &> /dev/null
     _newrelic_key_check
+    _PHP_EXT_DIR_86="/opt/php86/lib/php/extensions/no-debug-non-zts-${_PHP86_API}"
     _PHP_EXT_DIR_85="/opt/php85/lib/php/extensions/no-debug-non-zts-${_PHP85_API}"
     _PHP_EXT_DIR_84="/opt/php84/lib/php/extensions/no-debug-non-zts-${_PHP84_API}"
     _PHP_EXT_DIR_83="/opt/php83/lib/php/extensions/no-debug-non-zts-${_PHP83_API}"
@@ -2913,6 +2936,11 @@ _if_install_php_newrelic() {
     _PHP_EXT_DIR_74="/opt/php74/lib/php/extensions/no-debug-non-zts-${_PHP74_API}"
     _PHP_EXT_DIR_73="/opt/php73/lib/php/extensions/no-debug-non-zts-${_PHP73_API}"
     _PHP_EXT_DIR_72="/opt/php72/lib/php/extensions/no-debug-non-zts-${_PHP72_API}"
+    if [ -e "${_PHP_EXT_DIR_86}" ] \
+      && [ ! -e "${_PHP_EXT_DIR_86}/newrelic.so" ] \
+      && ls /usr/lib/newrelic-php5/agent/*/newrelic-${_PHP86_API}.so &> /dev/null; then
+      _MULTI_NR=YES
+    fi
     if [ -e "${_PHP_EXT_DIR_85}" ] \
       && [ ! -e "${_PHP_EXT_DIR_85}/newrelic.so" ]; then
       _MULTI_NR=YES
@@ -2985,7 +3013,7 @@ _if_install_php_newrelic() {
       if [ "${_MULTI_NR}" = "YES" ] \
         || [ "${_NR_KEY_UPDATED}" = "YES" ]; then
         _msg "INFO: Installing latest version of New Relic Apps Monitor..."
-        NR_PHPLIST="/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin"
+        NR_PHPLIST="/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin:/opt/php86/bin"
         NR_SILENT="silent"
         export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
         export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -2997,6 +3025,11 @@ _if_install_php_newrelic() {
           _SYSTEM_ARCH="x32"
         fi
         _pthNra="/usr/lib/newrelic-php5/agent"
+        if [ -e "${_PHP_EXT_DIR_86}" ] && [ ! -e "${_PHP_EXT_DIR_86}/newrelic.so" ] \
+          && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP86_API}.so" ]; then
+          ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP86_API}.so \
+            ${_PHP_EXT_DIR_86}/newrelic.so
+        fi
         if [ -e "${_PHP_EXT_DIR_85}" ] && [ ! -e "${_PHP_EXT_DIR_85}/newrelic.so" ] \
           && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so" ]; then
           ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so \
@@ -3064,7 +3097,8 @@ _if_install_php_newrelic() {
       fi
     fi
     # the agent's versions are listed above; 8.6 is not one of them
-    if [ -x "/opt/php86/bin/php" ]; then
+    if [ -x "/opt/php86/bin/php" ] \
+      && [ ! -e "/opt/php86/lib/php/extensions/no-debug-non-zts-${_PHP86_API}/newrelic.so" ]; then
       _php86_note_once newrelic \
         "New Relic is not enabled for PHP ${_PHP86_VRN}: no agent build for it is checked yet"
     fi
@@ -3566,7 +3600,20 @@ _php_single_initd_cleanup() {
   fi
   if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
     _FPM_INITD_CLEANUP=
-    if [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
+    if [ "${_PHP_SINGLE_INSTALL}" = "8.6" ] && [ -x "/opt/php86/bin/php" ]; then
+      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
+          _mrun "service php${e}-fpm force-quit"
+          _mrun "update-rc.d -f php${e}-fpm remove"
+          mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
+          _FPM_INITD_CLEANUP=YES
+        fi
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${_vBs}/bin-php${e}-cli
+        fi
+      done
+    elif [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
       _PHP_V="86 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
@@ -3626,7 +3673,9 @@ _re_set_default_php_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _re_set_default_php_cli ${_PHP_CLI_VERSION}"
   fi
-  if [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
+  if [ "${_PHP_CLI_VERSION}" = "8.6" ]; then
+    _switch_php_cli "86"
+  elif [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
     _switch_php_cli "85"
   elif [ "${_PHP_CLI_VERSION}" = "8.4" ]; then
     _switch_php_cli "84"
@@ -3645,6 +3694,8 @@ _check_php_cli() {
     _PHP_CLI_PATH="/opt/php84/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
     _PHP_CLI_PATH="/opt/php85/bin/php"
+  elif [ "${_PHP_CLI_VERSION}" = "8.6" ]; then
+    _PHP_CLI_PATH="/opt/php86/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
     _PHP_CLI_PATH="/opt/php83/bin/php"
   else
@@ -3657,6 +3708,8 @@ _check_php_cli() {
       _USE_PHP_CLI_PATH="/opt/php84/bin/php"
     elif  [ -x "/opt/php85/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php85/bin/php"
+    elif  [ -x "/opt/php86/bin/php" ]; then
+      _USE_PHP_CLI_PATH="/opt/php86/bin/php"
     elif  [ -x "/opt/php83/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php83/bin/php"
     fi

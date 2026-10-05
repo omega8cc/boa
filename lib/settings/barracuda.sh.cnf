@@ -59,13 +59,15 @@ _EASY_HOSTNAME="wildcard-enabled-hostname"
 ### and _PHP_CLI_VERSION.
 ###
 ### Available options:
-### 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
+### 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
 ### 8.6 is a release candidate, for testing:
-### it is built only when listed here and is
-### never used as a default version.
+### it is built only when listed here (or set
+### as _PHP_SINGLE_INSTALL) and is not part of
+### the default list below; once installed it
+### works like any other version.
 ###
 ### NOTE: 8.4 is required
 ###
@@ -95,7 +97,7 @@ _PHP_MULTI_INSTALL="8.3 8.4 8.5"
 ### _PHP_MULTI_INSTALL
 ###
 ### Available options:
-### 8.5, 8.4, 8.3, 8.2, 8.1, 7.4
+### 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 7.4
 ###
 ### Example: _PHP_SINGLE_INSTALL=8.5
 ###
@@ -111,7 +113,7 @@ _PHP_SINGLE_INSTALL=
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
+### 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
@@ -131,7 +133,7 @@ _PHP_FPM_VERSION=8.4
 ### install and upgrade.
 ###
 ### Available options (if installed):
-### 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
+### 8.6, 8.5, 8.4, 8.3, 8.2, 8.1, 8.0
 ### 7.4, 7.3, 7.2, 7.1, 7.0
 ### 5.6
 ###
