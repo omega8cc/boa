@@ -1511,7 +1511,9 @@
       accounts' sites answering 502 until the next account worker run:
       each account is pointed at its pool for the new version before the
       other versions' PHP-FPM stops, and that waits until nginx has
-      finished with the old pools.
+      finished with the old pools. A site pinned in multi-fpm.info to a
+      version the switch stops falls back to its account's version the
+      same way, instead of answering 502 until the pin list changed.
 
     * A Master upgrade no longer stops at its Drush test now and then
       with "Drush is broken": a Drush run from the Master's cron while
