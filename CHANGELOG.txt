@@ -1475,6 +1475,10 @@
 
 @=> Important Fixes
 
+    * After a Restore the panel names the database the restored site
+      now runs on; it kept the old, dropped database's name until the
+      site's next Verify.
+
     * The limited-shell worker now also hands over, once per instance
       and release before it makes any login, what a sub-account or
       platform developer login removed before this release left in the
