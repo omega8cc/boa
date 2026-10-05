@@ -211,6 +211,40 @@
       checks the owner; anything else stays in place, and the pass log
       records SOLR-UPLOAD-SKIPPED.
 
+    * The nightly purge (old backups, temporary files, the trash and the
+      client backups), boa archived prune and the archived-store heal
+      remove only what root or the account's own users own, never
+      anything below a directory another user owns, and nothing at all
+      in a place below one. A file whose owner no longer exists, such as
+      an upload by a client sub-account removed before this release,
+      counts as the account's own, wherever it came from.
+
+    * What the nightly purge, the prune and the heal leave for another
+      user stays, an archived entry holding it included, and one NOTE
+      line per account counts it. The prune and the heal report such an
+      entry as kept in part, the heal once per six hours before it moves
+      on to the next oldest.
+
+    * When the limited-shell worker removes a client's sub-account or a
+      platform developer login (its Client lost its last site or was
+      deleted, its password was rotated, or the platform access ended),
+      it first hands each directory and single-link file the login owns
+      in the instance's static and distro trees and its files store to
+      the instance's own user, keeping the group, a hard-linked one to
+      root, and removes the login's gem and npm trees. The number the
+      removal freed goes to the next login made on the server, of any
+      instance, and those files went with it.
+
+    * The worker now ends a removed login's sessions and locks it before
+      removing it; a login still in use, or one deluser refuses, is left
+      for the next pass and said so in the incident log. An open session
+      made the removal fail, and the login kept its password.
+
+    * The Octopus upgrade's pass over the hostmaster tree and its files
+      hands over and sets modes the same way: only on what root or the
+      account's own users own, and nothing below a directory another
+      user owns.
+
     * A new site's database name now also skips names held by an existing
       database login, so an account whose name has 16 characters installs
       and a new site never takes over another login's name; a forced
