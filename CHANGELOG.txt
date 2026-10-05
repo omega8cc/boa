@@ -1475,6 +1475,20 @@
 
 @=> Important Fixes
 
+    * After a Restore the panel names the database the restored site
+      now runs on; it kept the old, dropped database's name until the
+      site's next Verify.
+
+    * The limited-shell worker now also hands over, once per instance
+      and release before it makes any login, what a sub-account or
+      platform developer login removed before this release left in the
+      instance's static and distro trees and its files store. Those
+      files kept a number no user named, which the next login made on
+      the server gets, of any instance; the nightly purge and boa
+      archived prune then kept them as that login's. Where a number
+      was given out again before the upgrade, hand that login's entries
+      in the stamp the prune names to the instance (chown -h oN).
+
     * A barracuda upgrade pass no longer leaves the system binaries
       unusable for some seconds while it sets their permissions. It
       moved every binary of group users to group root and gave the
@@ -1496,7 +1510,10 @@
     * Switching a server to a single PHP version no longer leaves its
       accounts' sites answering 502 until the next account worker run:
       each account is pointed at its pool for the new version before the
-      other versions' PHP-FPM stops.
+      other versions' PHP-FPM stops, and that waits until nginx has
+      finished with the old pools. A site pinned in multi-fpm.info to a
+      version the switch stops falls back to its account's version the
+      same way, instead of answering 502 until the pin list changed.
 
     * A Master upgrade no longer stops at its Drush test now and then
       with "Drush is broken": a Drush run from the Master's cron while
@@ -1515,6 +1532,17 @@
       side directory and used only when it matches, and a tree that
       still differs is reported with an ALRT line. Nothing changes while
       no stamp is published.
+
+    * The mirror publisher, getboa, is part of the BOA tree now
+      (aegir/tools/bin/getboa, see docs/GETBOA.md). It publishes each
+      tree's boa.tar.gz with boa.stamp beside it, the copy of the
+      tarball's .update.txt the upgrades above compare with their build
+      tree, and purges both from the Cloudflare cache once every mirror
+      name serves the new bytes; getboa purge <file> does the same for
+      the files stackbuild and staticbuild hand to their _PURGE_HOOK.
+      BOA installs it at /opt/local/bin/getboa (root, mode 0700) on a
+      box carrying its purge config, /root/.cf-purge.cnf, keeps it
+      current there and never removes it; no other box gets one.
 
     * With _PHP_IONCUBE=YES, ionCube is enabled for PHP 8.5 too: the
       pinned ionCube release ships an 8.5 loader, but the 8.5 php.ini
