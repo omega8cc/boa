@@ -2429,8 +2429,10 @@ _ltd_gone_hand_over() {
   _ou=$(id -u -- "${1}" 2> /dev/null)
   [[ "${_ou}" =~ ^[1-9][0-9]*$ ]] || return 0
   # The numbers passwd names, read once: find compares each entry's owner
-  # with them (find -nouser parses passwd once per entry). Root missing from
-  # them: the read failed, and nothing is walked this pass.
+  # with them (find -nouser parses passwd once per entry), the account's own
+  # first, as it owns most entries. Root missing from them: the read failed,
+  # and nothing is walked this pass.
+  _k=( -o -uid "${_ou}" )
   while IFS= read -r _u; do
     [[ "${_u}" =~ ^[0-9]+$ ]] && _k+=( -o -uid "${_u}" )
   done < <(getent passwd 2> /dev/null | cut -d: -f3)
