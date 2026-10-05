@@ -3603,12 +3603,38 @@ _php_deprecated_cleanup() {
 
 #
 # Fix init.d to disable not used PHP-FPM versions
+#
+# Every account's default include names its pool for the version it ran on
+# until the ltd worker's next run rewrites it, and that worker never runs
+# during a pass: the cleanup below stops the other versions' FPM at once, so
+# an account still pointed at one answered 502 until the worker's tick. Point
+# each at its pool for the single version first, where that pool is up, as
+# the worker writes the include, and reload nginx once.
+_php_single_point_accounts() {
+  local _sv="$1" _inc _usr _pool _did=NO
+  for _inc in /data/disk/*/config/server_master/nginx/post.d/fpm_include_default.inc; do
+    [ -f "${_inc}" ] && [ ! -L "${_inc}" ] || continue
+    _usr="${_inc#/data/disk/}"
+    _usr="${_usr%%/*}"
+    _pool="${_usr}.${_sv}"
+    [ -S "/run/${_pool}.fpm.socket" ] || continue
+    [[ "$(_acct_read_in "${_inc%/*}" "${_inc##*/}")" == *"\"${_pool}\""* ]] && continue
+    _acct_put_in "${_inc%/*}" "${_inc##*/}" "set \$user_socket \"${_pool}\";" && _did=YES
+  done
+  if [ "${_did}" = "YES" ]; then
+    _mrun "service nginx reload"
+  fi
+}
+
 _php_single_initd_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_single_initd_cleanup"
   fi
   if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
     _FPM_INITD_CLEANUP=
+    if [ -x "/opt/php${_PHP_SINGLE_INSTALL//./}/bin/php" ]; then
+      _php_single_point_accounts "${_PHP_SINGLE_INSTALL//./}"
+    fi
     if [ "${_PHP_SINGLE_INSTALL}" = "8.6" ] && [ -x "/opt/php86/bin/php" ]; then
       _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
