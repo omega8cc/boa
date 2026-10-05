@@ -91,7 +91,7 @@ A dump taken before this keeps the file's one mode for every object. When an obj
 
 The fast import of a Migrate or of a dump-less Restore gives every view, trigger, routine and event to the site's new database user (`--replace-definer`), as the classic dump path does by loading as that user. Kept as they were, they would name the source database's user, which the task drops when it finishes, and fail from then on. A `myloader` without `--replace-definer` (the 0.19.3 line) loads the tables and views and leaves the triggers, routines and events out; the task log says so.
 
-When the read of the new user's host fails, or gives a host a definer cannot name, and the dump carries triggers, routines or events, the fast import stops with an error saying why, and the task fails instead of finishing without them: left out, they were lost for good, as the task then drops the database they came from. A dump that carries none loads as before; mydumper writes a trigger file of its header alone for a database without triggers, and that counts as none.
+When the read of the new user's host fails, or gives a host a definer cannot name, and the dump carries triggers, routines or events, the fast import stops with an error saying why, and the task fails instead of finishing without them: left out, they would be lost for good, as the task then drops the database they came from. A dump that carries none loads as before; mydumper writes a trigger file of its header alone for a database without triggers, and that counts as none.
 
 A nightly dump restored as root brings them back with their own definers, and the site's own database user can restore its dump into its own database too.
 
