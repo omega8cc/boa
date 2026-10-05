@@ -1475,6 +1475,14 @@
 
 @=> Important Fixes
 
+    * backchain setup now adds a user's sudo entries even when another
+      user's name ends in it: an entry counted as present when it was
+      part of a longer line, so "bob" never got its rules after "xbob".
+      Each /etc/sudoers.d file is checked with visudo before it replaces
+      the old one, so a line sudo would refuse, which made sudo refuse
+      every user on the box, never gets there; setup then says so and
+      exits non-zero.
+
     * Switching a server to a single PHP version no longer leaves its
       accounts' sites answering 502 until the next account worker run:
       each account is pointed at its pool for the new version before the
