@@ -1475,6 +1475,40 @@
 
 @=> Important Fixes
 
+    * A Verify of a site whose aliases redirect to another name, with
+      the dont-overwrite flag under both of its names, now names both
+      files to delete to turn Let's Encrypt renewals back on; it named
+      the redirect target's only, and the other kept the certificate.
+
+    * The cron-queue template of the agents pass: an account's
+      hostmaster module put by a pass stopped in the middle of the
+      accounts now takes the current template also when the template
+      changed again before a pass completed; it stayed on the one in
+      between.
+
+    * renameaegirhost --help says that a site with aliases of a client
+      domain keeps its certificate record until its new name's
+      certificate exists, and what the run's second pass does then. A
+      box renamed by an earlier release is repaired by running the
+      rename again with --force-old <old-fqdn>; a plain run finds
+      nothing to do. On an in-place rename a Grav or Textpattern site
+      with such aliases keeps its record too: verify it, run the line
+      the rename prints, then verify it once more.
+
+    * The limited-shell worker's once-per-release hand-over of what
+      removed logins left now also runs for an instance the nightly
+      is working on: another instance's new login could take that
+      instance's freed number first. It reads passwd once instead of
+      once per file. The hand-over gives each directory and
+      single-link file to the instance and a hard-linked file to root;
+      a link keeps the number.
+
+    * A site that redirects its aliases to another name keeps an
+      operator's own certificate whichever of its two names the
+      dont-overwrite flag carries: the Verify read the flag under the
+      redirect target only and the nightly renewal under the site's own
+      name only, so one of them could put Let's Encrypt files over it.
+
     * A database series upgrade on a box whose binary log a replica
       reads no longer turns log_bin_trust_function_creators on once
       its own restart has cut the replica off: a replica seen earlier
@@ -1525,6 +1559,12 @@
       the old one, so a line sudo would refuse, which made sudo refuse
       every user on the box, never gets there; setup then says so and
       exits non-zero.
+
+    * A barracuda upgrade no longer leaves Valkey-cached Drupal sites
+      answering 500 for up to half a minute after it changes the Valkey
+      password: their cache settings kept the old password in PHP's
+      compiled copy until PHP-FPM reloaded, and Valkey refused it. They
+      now use the password the Valkey check read for the same request.
 
     * Switching a server to a single PHP version no longer leaves its
       accounts' sites answering 502 until the next account worker run:

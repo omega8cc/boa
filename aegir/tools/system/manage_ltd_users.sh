@@ -2416,36 +2416,45 @@ _ltd_account_trees() {
 # be that login's, and the nightly purge and boa's archived prune would keep
 # them as another user's. Once per account and release, before the pass makes
 # any login, each directory and single-link file there whose owner no longer
-# exists goes to the account, a hard-linked one to root, the group kept. The
-# owner is read through the handle and looked up as the walks' own() does: a
-# lookup that fails for another reason hands nothing over.
+# exists goes to the account, a hard-linked one to root, the group kept; a
+# link keeps its number. The owner is read through the handle and looked up as
+# the walks' own() does: a lookup that fails for another reason hands nothing
+# over.
 _LTD_REOWN_GONE_PL='use Fcntl; my ($t, @n) = @ARGV; my %g; for my $n (@n) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && (-d _ || -f _)) { my $d = -d _; my $u = $s[4]; unless (exists $g{$u}) { local $! = 0; $g{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } chown(($d || $s[3] == 1) ? $t : 0, -1, $h) if $g{$u}; } close($h); } exit 0'
 _ltd_gone_hand_over() {
-  local _ou _d
+  local _ou _d _u
+  local -a _k=()
   local _mk="/var/backups/ltd/.gone-handed.${1}.${_xSrl}"
   [ -e "${_mk}" ] && return 0
   _ou=$(id -u -- "${1}" 2> /dev/null)
   [[ "${_ou}" =~ ^[1-9][0-9]*$ ]] || return 0
+  # The numbers passwd names, read once: find compares each entry's owner
+  # with them (find -nouser parses passwd once per entry), the account's own
+  # first, as it owns most entries. Root missing from them: the read failed,
+  # and nothing is walked this pass.
+  _k=( -o -uid "${_ou}" )
+  while IFS= read -r _u; do
+    [[ "${_u}" =~ ^[0-9]+$ ]] && _k+=( -o -uid "${_u}" )
+  done < <(getent passwd 2> /dev/null | cut -d: -f3)
+  [[ " ${_k[*]} " == *" -uid 0 "* ]] || return 0
   while IFS= read -r _d; do
     _ltd_in_real_dir "${_d}" env PATH=/usr/local/bin:/usr/bin:/bin \
-      find -P . -xdev -nouser \( -type d -o -type f \) \
+      find -P . -xdev ! \( -false "${_k[@]}" \) \( -type d -o -type f \) \
       -execdir perl -e "${_LTD_REOWN_GONE_PL}" "${_ou}" {} + &> /dev/null
   done < <(_ltd_account_trees "${1}")
   touch "${_mk}"
   return 0
 }
-# Every account, before _manage_user makes any login; one the nightly's
-# per-account pass holds gets its turn on a later pass.
+# Every account, the nightly's per-account pass holding it or not, before
+# _manage_user makes any login: a held account left for a later pass let
+# another account's new login take its freed numbers first. The walk hands
+# over only entries no passwd entry names, which the nightly's walks take as
+# the account's own already, so the two passes do not contend.
 _ltd_gone_hand_over_all() {
-  local _p _a
+  local _p
   for _p in /data/disk/*; do
     [ -d "${_p}" ] && [ ! -L "${_p}" ] || continue
-    _a="${_p##*/}"
-    if [ -e "/run/night-account-${_a}.pid" ] \
-      && kill -0 "$(cat "/run/night-account-${_a}.pid" 2> /dev/null)" 2> /dev/null; then
-      continue
-    fi
-    _ltd_gone_hand_over "${_a}"
+    _ltd_gone_hand_over "${_p##*/}"
   done
   return 0
 }
