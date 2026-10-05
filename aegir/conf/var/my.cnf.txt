@@ -66,6 +66,7 @@ skip-log-bin
 #max_binlog_size         = 256M
 #binlog_row_image        = minimal
 #binlog_format           = ROW
+#log_bin_trust_function_creators = 1
 #slow_query_log          = 1
 #long_query_time         = 10
 #slow_query_log_file     = /var/log/mysql/sql-slow-query.log

@@ -324,12 +324,12 @@ _acct_read_in() {
 }
 
 # On Percona 5.7 mydumper's default lock mode takes FLUSH TABLES WITH READ
-# LOCK and also Percona's backup lock, kept until the read lock is released.
-# A write to a MyISAM table (the event scheduler makes one at every event
-# run) waits for that lock with its table open, the flush ahead of the read
-# lock waits for that table, and the dump stalls with every write on the box
-# queued behind it; the read lock alone still gives the dump its consistent
-# point. _MYDUMPER_BACKUP_LOCKS holds --no-backup-locks when the local
+# LOCK and also Percona's backup lock, kept until the dump ends, past the
+# release of the read lock. A write to a MyISAM table (the event scheduler
+# makes one at every event run) waits for that lock with its table open, the
+# flush ahead of the read lock waits for that table, and the dump stalls with
+# every write on the box queued behind it; the read lock alone still gives
+# the dump its consistent point. _MYDUMPER_BACKUP_LOCKS holds --no-backup-locks when the local
 # mydumper lists it (the nightly's probe, one text wherever it is copied).
 _mydumper_backup_locks_opts() {
   local _h

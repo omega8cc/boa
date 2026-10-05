@@ -422,6 +422,9 @@ _fix_php_ini_tet_all() {
           && [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
           cd /var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts/
           cp -a php_tet.so ${_TET_SO}
+        elif [ "${e}" = 86 ] && [ -e "${_TET_BASE}-${_P_API}" ]; then
+          _php86_note_once tet \
+            "TET ${_TET_VRN%%-*} has no PHP 8.6 binding, not enabled for PHP ${_PHP86_VRN}"
         fi
       fi
       if [ -e "${_TET_SO}" ]; then
@@ -785,11 +788,12 @@ _php_conf_update() {
 # it yet: their extension= line is commented out, or every PHP start logs a
 # load warning. Each pass copies the ini again and runs the fixers first, so
 # an extension that builds later is loaded again with no step of its own.
+# One that builds but does not load is left out the same way.
 _php_ini_drop_unbuilt_ext() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_ini_drop_unbuilt_ext ${_THIS_FILE}"
   fi
-  local _dir _so
+  local _dir _so _out _bad _try _cut
   [ -e "${_THIS_FILE}" ] || return 0
   _dir=$(sed -n 's/^extension_dir *= *"\([^"]*\)".*/\1/p' "${_THIS_FILE}" | head -n 1)
   [ -n "${_dir}" ] && [ -d "${_dir}" ] || return 0
@@ -798,6 +802,57 @@ _php_ini_drop_unbuilt_ext() {
       sed -i "s/^extension=${_so}\.so[[:space:]]*$/;extension=${_so}.so/" "${_THIS_FILE}"
     fi
   done
+  [ -x "/opt/php86/bin/php" ] || return 0
+  # PHP names each module it could not load; its own words (paths, linker
+  # errors) stay out of the log. A module whose dependency is left out is
+  # reported on the next try, hence the loop.
+  for _try in 1 2 3; do
+    _out=$(/opt/php86/bin/php -c "${_THIS_FILE}" -d log_errors=0 \
+      -d error_log=/dev/null -d display_errors=1 \
+      -d display_startup_errors=1 -r '' 2>&1)
+    _bad=$(echo "${_out}" | sed -n \
+      -e "s/.*Unable to load dynamic library '\([a-z0-9_]*\)\(\.so\)\{0,1\}'.*/\1/p" \
+      -e "s/.*Invalid library (maybe not a PHP library) '\([a-z0-9_]*\)\(\.so\)\{0,1\}'.*/\1/p" \
+      -e 's/.*Cannot load module "\([a-z0-9_]*\)".*/\1/p' \
+      -e 's/.*PHP Startup: \([a-z0-9_]*\): Unable to initialize module.*/\1/p' \
+      | sort -u)
+    _cut=NO
+    for _so in ${_bad}; do
+      if grep -q "^extension=${_so}\.so[[:space:]]*$" "${_THIS_FILE}"; then
+        sed -i "s/^extension=${_so}\.so[[:space:]]*$/;extension=${_so}.so/" "${_THIS_FILE}"
+        _php86_note_once "load-${_so}" \
+          "${_so} does not load in PHP ${_PHP86_VRN}, not enabled for it"
+        _cut=YES
+      fi
+    done
+    [ "${_cut}" = "YES" ] || break
+  done
+}
+
+#
+# One NOTE line per pass for each thing PHP 8.6 is left without.
+_php86_note_once() {
+  case " ${_PHP86_EXT_NOTED} " in
+    *" $1 "*) return 0 ;;
+  esac
+  _PHP86_EXT_NOTED="${_PHP86_EXT_NOTED} $1"
+  _msg "NOTE: $2"
+}
+
+#
+# True (and said once per pass) when PHP $1 is 8.6 and the extension release
+# $2 is listed in _PHP86_EXT_SKIP: a pinned release not shown to build against
+# the pinned release candidate is not built for it. A new pin is not listed,
+# so the next pass tries it. Every other PHP version is never matched.
+_php_ext_rc_skip() {
+  [ "$1" = 86 ] || return 1
+  case " ${_PHP86_EXT_SKIP} " in
+    *" $2 "*) ;;
+    *) return 1 ;;
+  esac
+  _php86_note_once "$2" \
+    "$3 is not built for PHP ${_T_PHP_VRN:-${_PHP86_VRN}}: not shown to build against it yet"
+  return 0
 }
 
 #
@@ -1023,6 +1078,10 @@ _php_imagick_build() {
   fi
   local _so="${_THIS_PHP_EXT_DIR}/imagick.so"
   local _prev="/var/backups/php$1-imagick-prev.so"
+  # a release candidate runs without Imagick: a failed try is a warning,
+  # never a failed pass
+  local _bad="OOPS"
+  [ "$1" = 86 ] && _bad="WARN"
   if [ ! -e "${_pthLog}/libmagickwand-dev-${_IMAGICK_VRN}-rebuild.log" ]; then
     _apt_clean_update
     for _PKG in libmagickwand-dev; do
@@ -1053,20 +1112,24 @@ _php_imagick_build() {
     fi
     _msg "WARN: Installing Imagick for PHP ${_T_PHP_VRN} failed!"
     if _imagick_broken "$1"; then
-      _msg "OOPS: Imagick for PHP ${_T_PHP_VRN} does not load"
+      _msg "${_bad}: Imagick for PHP ${_T_PHP_VRN} does not load"
     elif _imagick_links_orphan; then
-      _msg "OOPS: Imagick for PHP ${_T_PHP_VRN} links an ImageMagick no package owns"
+      _msg "${_bad}: Imagick for PHP ${_T_PHP_VRN} links an ImageMagick no package owns"
     fi
   elif _imagick_loads "$1" "${_so}"; then
     touch ${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log
     if _imagick_links_orphan; then
-      _msg "OOPS: Imagick for PHP ${_T_PHP_VRN} links an ImageMagick no package owns"
+      _msg "${_bad}: Imagick for PHP ${_T_PHP_VRN} links an ImageMagick no package owns"
     fi
   elif [ -e "${_prev}" ] && _imagick_loads "$1" "${_prev}"; then
     cp -af "${_prev}" "${_so}"
-    _msg "OOPS: Imagick for PHP ${_T_PHP_VRN} does not load, the previous build stays"
+    _msg "${_bad}: Imagick for PHP ${_T_PHP_VRN} does not load, the previous build stays"
   else
-    _msg "OOPS: Imagick for PHP ${_T_PHP_VRN} does not load"
+    # 8.6: a build it cannot load goes, so its ini line is left out
+    if [ "$1" = 86 ]; then
+      rm -f "${_so}"
+    fi
+    _msg "${_bad}: Imagick for PHP ${_T_PHP_VRN} does not load"
   fi
   rm -f "${_prev}"
 }
@@ -1078,7 +1141,8 @@ _install_php_extensions() {
     _msg "PROC: _install_php_extensions $1"
   fi
   ###--------------------###
-  if [ "$1" != 56 ]; then
+  if [ "$1" != 56 ] \
+    && ! _php_ext_rc_skip "$1" "apcu-${_PHP_APCU}" "APCu ${_PHP_APCU}"; then
     _msg "INFO: Installing APCu ${_PHP_APCU} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf apcu*
@@ -1141,40 +1205,43 @@ _install_php_extensions() {
     _USE_PHPREDIS="${_PHPREDIS_SIX_MODERN_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   fi
-  _msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} for PHP ${_T_PHP_VRN}..."
-  ldconfig 2> /dev/null
-  cd /var/opt
-  rm -rf phpredis*
-  _get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
-  cd /var/opt/phpredis
-  _mrun "${_T_PHP_PTH}/phpize"
-  # the dev package installs the library under /usr/lib, which a split /usr
-  # does not reach through /lib: test both, as a merged /usr already does;
-  # a source tarball made from the git tree has liblzf/ empty (a submodule),
-  # so the build then uses the system liblzf instead of the bundled copy
-  if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] \
-    && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
-    :
-  elif [ -e "/usr/include/lzf.h" ] \
-    && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
-    _PHPREDIS_BUILD="${_PHPREDIS_BUILD} --with-liblzf=/usr"
-  else
-    _PHPREDIS_BUILD="--enable-redis-igbinary"
-  fi
-  if [ "${_DEBUG_MODE}" = "YES" ]; then
-    _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
-  fi
-  _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}"
-  _mrun "make -j $(nproc) --quiet"
-  _mrun "make --quiet install"
-  ldconfig 2> /dev/null
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ]; then
-    _msg "WARN: Installing PhpRedis for PHP ${_T_PHP_VRN} failed!"
-  else
-    touch ${_pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
+  if ! _php_ext_rc_skip "$1" "phpredis-${_USE_PHPREDIS}" "PhpRedis ${_USE_PHPREDIS}"; then
+    _msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} for PHP ${_T_PHP_VRN}..."
+    ldconfig 2> /dev/null
+    cd /var/opt
+    rm -rf phpredis*
+    _get_dev_src "phpredis-${_USE_PHPREDIS}.tar.gz"
+    cd /var/opt/phpredis
+    _mrun "${_T_PHP_PTH}/phpize"
+    # the dev package installs the library under /usr/lib, which a split /usr
+    # does not reach through /lib: test both, as a merged /usr already does;
+    # a source tarball made from the git tree has liblzf/ empty (a submodule),
+    # so the build then uses the system liblzf instead of the bundled copy
+    if [ -e "/var/opt/phpredis/liblzf/lzf.h" ] \
+      && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
+      :
+    elif [ -e "/usr/include/lzf.h" ] \
+      && { [ -e "/usr/lib/x86_64-linux-gnu/liblzf.so" ] || [ -e "/lib/x86_64-linux-gnu/liblzf.so" ]; }; then
+      _PHPREDIS_BUILD="${_PHPREDIS_BUILD} --with-liblzf=/usr"
+    else
+      _PHPREDIS_BUILD="--enable-redis-igbinary"
+    fi
+    if [ "${_DEBUG_MODE}" = "YES" ]; then
+      _msg "INFO: _PHPREDIS_BUILD is ${_PHPREDIS_BUILD}"
+    fi
+    _mrun "bash ./configure ${_PHPREDIS_BUILD} --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig 2> /dev/null
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ]; then
+      _msg "WARN: Installing PhpRedis for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${_pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
-  if [ "$1" -gt 71 ]; then
+  if [ "$1" -gt 71 ] \
+    && ! _php_ext_rc_skip "$1" "mcrypt-${_PHP_MCRYPT}" "MCRYPT ${_PHP_MCRYPT}"; then
     _msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf mcrypt*
@@ -1289,7 +1356,8 @@ _install_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != 56 ]; then
+  if [ "$1" != 56 ] \
+    && ! _php_ext_rc_skip "$1" "php-geos-${_PHP_GEOS_VRN}" "php-geos ${_PHP_GEOS_VRN}"; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/geos.so" ] \
       || [ ! -e "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Building php-geos ${_PHP_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
@@ -1336,7 +1404,7 @@ _install_php_extensions() {
       else
         touch ${_pthLog}/php-mongo-${_MONGO_VRN}-${_T_PHP_VRN}.log
       fi
-    else
+    elif ! _php_ext_rc_skip "$1" "mongodb-${_MONGODB_VRN}" "MongoDB driver ${_MONGODB_VRN}"; then
       _msg "INFO: Installing MongoDB driver ${_MONGODB_VRN} for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf mongodb*
@@ -1355,7 +1423,7 @@ _install_php_extensions() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != 86 ]; then
+  if ! _php_ext_rc_skip "$1" "imagick-${_IMAGICK_VRN}" "Imagick ${_IMAGICK_VRN}"; then
     _msg "INFO: Installing Imagick ${_IMAGICK_VRN} for PHP ${_T_PHP_VRN}..."
     _php_imagick_build "$1"
   fi
@@ -1448,7 +1516,8 @@ _php_extensions_update() {
     _msg "PROC: _php_extensions_update $1"
   fi
   ###--------------------###
-  if [ "$1" != 56 ]; then
+  if [ "$1" != 56 ] \
+    && ! _php_ext_rc_skip "$1" "apcu-${_PHP_APCU}" "APCu ${_PHP_APCU}"; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/apcu.so" ] \
       || [ ! -e "${_pthLog}/apcu-${_PHP_APCU}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Installing APCu ${_PHP_APCU} upgrade for PHP ${_T_PHP_VRN}..."
@@ -1517,8 +1586,9 @@ _php_extensions_update() {
     _USE_PHPREDIS="${_PHPREDIS_SIX_MODERN_VRN}"
     _PHPREDIS_BUILD="--enable-redis-igbinary --enable-redis-lzf"
   fi
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ] \
-    || [ ! -e "${_pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log" ]; then
+  if ! _php_ext_rc_skip "$1" "phpredis-${_USE_PHPREDIS}" "PhpRedis ${_USE_PHPREDIS}" \
+    && { [ ! -e "${_THIS_PHP_EXT_DIR}/redis.so" ] \
+    || [ ! -e "${_pthLog}/phpredis-update-${_USE_PHPREDIS}-${_T_PHP_VRN}.log" ]; }; then
     _msg "INFO: Installing PhpRedis ${_USE_PHPREDIS} upgrade for PHP ${_T_PHP_VRN}..."
     ldconfig 2> /dev/null
     cd /var/opt
@@ -1553,7 +1623,8 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "$1" -gt 71 ]; then
+  if [ "$1" -gt 71 ] \
+    && ! _php_ext_rc_skip "$1" "mcrypt-${_PHP_MCRYPT}" "MCRYPT ${_PHP_MCRYPT}"; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/mcrypt.so" ] \
       || [ ! -e "${_pthLog}/mcrypt-${_PHP_MCRYPT}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Installing MCRYPT ${_PHP_MCRYPT} upgrade for PHP ${_T_PHP_VRN}..."
@@ -1696,7 +1767,8 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != 56 ]; then
+  if [ "$1" != 56 ] \
+    && ! _php_ext_rc_skip "$1" "php-geos-${_PHP_GEOS_VRN}" "php-geos ${_PHP_GEOS_VRN}"; then
     if [ ! -e "${_THIS_PHP_EXT_DIR}/geos.so" ] \
       || [ ! -e "${_pthLog}/php-geos-${_PHP_GEOS_VRN}-${_T_PHP_VRN}.log" ]; then
       _msg "INFO: Building php-geos ${_PHP_GEOS_VRN} for PHP ${_T_PHP_VRN} from sources..."
@@ -1748,7 +1820,8 @@ _php_extensions_update() {
   fi
   if [ "$1" != 56 ] \
     && [ ! -e "${_pthLog}/php-mongodb-${_MONGODB_VRN}-${_T_PHP_VRN}.log" ]; then
-    if [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; then
+    if { [ "${_PHP_MONGODB}" = "YES" ] || [[ "${_XTRAS_LIST}" =~ "MNG" ]]; } \
+      && ! _php_ext_rc_skip "$1" "mongodb-${_MONGODB_VRN}" "MongoDB driver ${_MONGODB_VRN}"; then
       _msg "INFO: Installing MongoDB ${_MONGO_VRN} PHP driver upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf mongodb*
@@ -1767,7 +1840,7 @@ _php_extensions_update() {
     fi
   fi
   ###--------------------###
-  if [ "$1" != 86 ]; then
+  if ! _php_ext_rc_skip "$1" "imagick-${_IMAGICK_VRN}" "Imagick ${_IMAGICK_VRN}"; then
     _magick_orphans_aside
     if [ ! -e "${_THIS_PHP_EXT_DIR}/imagick.so" ] \
       || [ ! -e "${_pthLog}/imagick-${_IMAGICK_VRN}-${_T_PHP_VRN}.log" ] \
@@ -2990,6 +3063,11 @@ _if_install_php_newrelic() {
         wait
       fi
     fi
+    # the agent's versions are listed above; 8.6 is not one of them
+    if [ -x "/opt/php86/bin/php" ]; then
+      _php86_note_once newrelic \
+        "New Relic is not enabled for PHP ${_PHP86_VRN}: no agent build for it is checked yet"
+    fi
     touch ${_pthLog}/newrelic-${_xSrl}-${_X_VERSION}.log
   fi
 }
@@ -3682,6 +3760,13 @@ _php_upgrade_all() {
         _check_php_rebuild "${e}"
       fi
       _php_multi_update "${e}"
+      # a module this step built for 8.6 is checked before the reload
+      if [ "${e}" = 86 ]; then
+        _THIS_FILE=/opt/php86/etc/php86.ini
+        _php_ini_drop_unbuilt_ext
+        _THIS_FILE=/opt/php86/lib/php.ini
+        _php_ini_drop_unbuilt_ext
+      fi
       _mrun "service php${e}-fpm reload"
       _PHP_VERSION=""
       _T_PHP_VRN=""
