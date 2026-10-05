@@ -925,6 +925,13 @@
       enabled for 8.6 once its agent ships an 8.6 build, and says so
       once until then. Every other PHP version builds them as before.
 
+    * PHP 8.6: igbinary, UploadProgress and YAML follow the same skip
+      list (_PHP86_EXT_SKIP in BARRACUDA.sh.txt), so a release of one
+      that stops building against a later release candidate is skipped
+      for 8.6 with one NOTE line instead of a WARN on every pass. When
+      every module is left out for 8.6, its php.ini lines are commented
+      out too, so PHP 8.6 starts without a warning.
+
     * xoct, xcopy and xmass take admail=<address>, the token boa
       in-octopus takes, for test and canary runs of real accounts: every
       client notice of the run (start, completion, forwarding change,
