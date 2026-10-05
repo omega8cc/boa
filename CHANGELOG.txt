@@ -896,19 +896,24 @@
 
 @=> New Features
 
-    * PHP 8.6 (8.6.0RC2, a release candidate) can be installed for
-      testing: list 8.6 in _PHP_MULTI_INSTALL in /root/.barracuda.cnf
-      and the next barracuda pass builds it. It is never part of a
-      default, php-min or php-max set, never the server's or the Aegir
-      master's PHP, and never picked automatically; an Octopus instance
-      uses it through fpm.info, cli.info, multi-fpm.info or php86.info
-      like any installed version. With the automatic PHP cleanup on,
-      only a real setting keeps or adds it (8.6 as the whole fpm.info
-      or cli.info value, or a multi-fpm.info line's version), never a
-      comment line or a site name that contains 8.6. APCu, PhpRedis,
-      Mcrypt, GEOS, Imagick and the MongoDB driver do not build against
-      it yet, so it runs without them, and on Devuan Daedalus its GD has
-      no AVIF.
+    * PHP 8.6 (8.6.0RC2, a release candidate) can be installed: list
+      8.6 in _PHP_MULTI_INSTALL in /root/.barracuda.cnf, set it as
+      _PHP_SINGLE_INSTALL, or run barracuda with php-8.6 or php-max, and
+      the next pass builds it. It is not part of the default install
+      set (the default _PHP_MULTI_INSTALL, php-min and php-all), and 8.4
+      stays the default version. Once installed, 8.6 works like any
+      other version everywhere: the Aegir master's PHP-FPM and PHP-CLI,
+      an Octopus instance's fpm.info, cli.info, multi-fpm.info and
+      php86.info, the command line tools, the monitors and the prebuilt
+      packages.
+
+    * With the automatic PHP cleanup on, only a real setting keeps or
+      adds PHP 8.6 (8.6 as the whole fpm.info or cli.info value, or a
+      multi-fpm.info line's version, the ltd worker's own placeholder
+      row included), never a comment line or a site name that contains
+      8.6. APCu, PhpRedis, Mcrypt, GEOS, Imagick and the MongoDB driver
+      do not build against it yet, so it runs without them, and on
+      Devuan Daedalus its GD has no AVIF.
 
     * PHP 8.6: the extension releases BOA pins that are not shown to
       build against the release candidate (APCu, PhpRedis, Mcrypt, GEOS,
@@ -916,8 +921,9 @@
       line per pass; a newer pinned release is tried, and a failed
       Imagick try is a warning, not a failed upgrade. An extension that
       builds for 8.6 but does not load is left out of its php.ini like a
-      missing one, and TET and New Relic say once that 8.6 runs without
-      them. Every other PHP version builds them as before.
+      missing one. TET says once that 8.6 runs without it; New Relic is
+      enabled for 8.6 once its agent ships an 8.6 build, and says so
+      once until then. Every other PHP version builds them as before.
 
     * xoct, xcopy and xmass take admail=<address>, the token boa
       in-octopus takes, for test and canary runs of real accounts: every
@@ -1419,6 +1425,12 @@
       configtest and reload warn about the map hash size.
 
 @=> Important Fixes
+
+    * With _PHP_IONCUBE=YES, ionCube is enabled for PHP 8.5 too: the
+      pinned ionCube release ships an 8.5 loader, but the 8.5 php.ini
+      kept its loader line commented out. A loader line is now enabled
+      for every PHP version whose loader is installed, so 8.6 follows
+      once ionCube ships one. With the default NO nothing changes.
 
     * Classic Drush 8.5.13: a site whose logger service is written for
       the current psr/log (monolog, raven, a module's subclass of a core
