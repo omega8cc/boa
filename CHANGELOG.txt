@@ -1475,6 +1475,12 @@
 
 @=> Important Fixes
 
+    * The barracuda pass's permission step now also settles a binary
+      with several names once: git's helper commands are hard links of
+      git, so each pass took git from web requests for some seconds and
+      gave it back. The cache's server binary no longer goes through
+      700 on the way back to 755.
+
     * After a Restore the panel names the database the restored site
       now runs on; it kept the old, dropped database's name until the
       site's next Verify.
