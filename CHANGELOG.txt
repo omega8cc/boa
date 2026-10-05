@@ -1475,6 +1475,15 @@
 
 @=> Important Fixes
 
+    * renameaegirhost --help says that a site with aliases of a client
+      domain keeps its certificate record until its new name's
+      certificate exists, and what the run's second pass does then. A
+      box renamed by an earlier release is repaired by running the
+      rename again with --force-old <old-fqdn>; a plain run finds
+      nothing to do. On an in-place rename a Grav or Textpattern site
+      with such aliases keeps its record too: verify it, run the line
+      the rename prints, then verify it once more.
+
     * The limited-shell worker's once-per-release hand-over of what
       removed logins left now also runs for an instance the nightly
       is working on: another instance's new login could take that
