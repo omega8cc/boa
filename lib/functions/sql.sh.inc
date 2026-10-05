@@ -31,15 +31,16 @@ _move_sql() {
 
 #
 # The binary-log switch (_DB_BINARY_LOG) takes effect only when mysqld
-# restarts. The pass's first my.cnf rewrite applies it (on 8.4 the directives
-# sync of the root password rotation, otherwise the tuning's own first
-# _sql_conf_update), before the restart check takes its my.cnf-pre-* copy, so
-# that check never saw the change and a new setting reached the running server
-# only at some later restart. _sql_cnf_found_copy keeps my.cnf as the running
-# server read it: taken by the pass's first _sql_conf_update, renewed when
-# _move_sql starts a new mysqld. _sql_binlog_switch_pending is true when the
-# binary-log lines of my.cnf differ from that copy. A file of its own: the
-# my.cnf-pre-* copy stays the pass's copy for rollback.
+# restarts. The pass's first my.cnf rewrite applies it (in a series upgrade
+# the upgrade's own _sql_conf_update, on 8.4 outside a replication standby the
+# directives sync of the root password rotation, otherwise the tuning's own
+# first _sql_conf_update), before the restart check takes its my.cnf-pre-*
+# copy, so that check never saw the change and a new setting reached the
+# running server only at some later restart. _sql_cnf_found_copy keeps my.cnf
+# as the running server read it: taken by the pass's first _sql_conf_update,
+# renewed when _move_sql starts a new mysqld. _sql_binlog_switch_pending is
+# true when the binary-log lines of my.cnf differ from that copy. A file of
+# its own: the my.cnf-pre-* copy stays the pass's copy for rollback.
 _sql_cnf_found_copy() {
   local _fnd="${_vBs}/dragon/t/my.cnf-found-${_xSrl}-${_X_VERSION}-${_NOW}"
   if [ -z "${_vBs}" ] || [ -z "${_NOW}" ] || [ ! -e "/etc/mysql/my.cnf" ]; then
@@ -776,10 +777,12 @@ _innodb_log_file_size_update() {
 # turns the binary log on, the trust goes with it, in my.cnf and at runtime,
 # as xmass writes it on a pair. Never raised while a replica reads this box's
 # binary log: a replica at 0 behind a source at 1 stops its applier on the
-# first such function a site creates. While one reads it and this box reads 0,
-# or the processlist cannot be read, the trust is left as it is and the run
-# says so; a 1 this box already reads (set on the replica first, then here)
-# is kept in my.cnf.
+# first such function a site creates. While one reads it and this box reads 0
+# (or its value cannot be read), or the processlist cannot be read, the trust
+# is left as it is and the run says so; a 1 this box already reads (set on the
+# replica first, then here) is kept in my.cnf. A reader seen once counts for
+# the rest of the run: a series upgrade's own restarts cut the replica, which
+# connects again only at its retry interval, after the tuning's rewrite.
 _sql_binlog_trust_creators() {
   local _pl
   if ! _pl=$(mysql -u root -BNe "SHOW PROCESSLIST" 2> /dev/null) || [ -z "${_pl}" ]; then
@@ -787,7 +790,10 @@ _sql_binlog_trust_creators() {
     _msg "ALRT: log_bin_trust_function_creators left as it is until the next run"
     return 0
   fi
-  if grep -q 'Binlog Dump' <<< "${_pl}" \
+  if grep -q 'Binlog Dump' <<< "${_pl}"; then
+    _BINLOG_READER_SEEN=YES
+  fi
+  if [ "${_BINLOG_READER_SEEN}" = "YES" ] \
     && [ "$(mysql -u root -BNe "SELECT @@GLOBAL.log_bin_trust_function_creators" 2> /dev/null)" != "1" ]; then
     _msg "ALRT: a replica reads this box's binary log: log_bin_trust_function_creators left as it is,"
     _msg "ALRT: a site's stored function can fail (ERROR 1418 or 1419) until it is 1 here too:"

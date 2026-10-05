@@ -111,7 +111,7 @@ With a custom `my.cnf` under `_CUSTOM_CONFIG_SQL=YES`, BOA leaves it to that fil
 
 With the binary log on and `log_bin_trust_function_creators` off, MySQL refuses a stored function declared without `DETERMINISTIC`, `NO SQL` or `READS SQL DATA` (`ERROR 1418`), and a database user without SUPER may create neither triggers nor stored functions (`ERROR 1419`). A load that meets such an object fails and says so: `xoct` and `xcopy` count the site's import as failed, and a Migrate rolls back with the site left as it was.
 
-BOA and `xmass` turn that setting on wherever they turn the binary log on, and the SQL watchdog adds it to an `xmass` configuration written before it did, so neither refusal arises there, unless a configuration sets the value itself. Where the setting stays off, declare such a function with one of those characteristics, and restore a dump that carries triggers or functions as root.
+BOA and `xmass` turn that setting on wherever they turn the binary log on, and the SQL watchdog adds it to an `xmass` configuration written before it did, so neither refusal arises there, unless a configuration sets the value itself, or, with `_DB_BINARY_LOG=YES`, while a replica reads the binary log and the server reads 0 (see above). Where the setting stays off, declare such a function with one of those characteristics, and restore a dump that carries triggers or functions as root.
 
 For more information, please visit the [documentation](https://github.com/omega8cc/boa/tree/5.x-dev/docs).
 
