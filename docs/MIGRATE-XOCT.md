@@ -1101,9 +1101,12 @@ for its new name exists: on a move those aliases still reach the old box, which 
 their challenges, so the new name's order (it carries every alias) would fail. The rename
 says so in an `ALRT`. On an in-place rename of a box the aliases already reach this box:
 the site's own first verify in the run issues the new name's certificate, and the run then
-renames the record and verifies the site again. After a move, once the aliases reach this
-box (after `xoct proxy` or the DNS switch), verify the site, then run the line the `ALRT`
-prints: `renameaegirhost --aegir-root /data/disk/<account> --force-old <source-fqdn>`, with
+renames the record and verifies the site again. A Grav or Textpattern site is not verified
+by the run, so it keeps its record on an in-place rename too, and the run counts it and
+prints the line to run: verify the site, run that line, then verify it once more. After a
+move, once the aliases reach this box (after `xoct proxy` or the DNS switch), verify the
+site, then run the line the `ALRT` prints:
+`renameaegirhost --aegir-root /data/disk/<account> --force-old <source-fqdn>`, with
 `--old-account` and `--new-account` after an import under another account name. A plain
 run without `--force-old` finds the box's name already the new one and stops with "nothing
 to do"; the run's summary counts the sites it left this way.
