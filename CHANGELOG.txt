@@ -1626,6 +1626,14 @@
       writes them, in the instance's backup directory, removed after
       the load. A dump without them loads as before.
 
+    * The classic load's rewritten copy of an older archive's dump is
+      now written only when its filesystem keeps the space check's
+      headroom after it, and the load says why when it stops; it wrote
+      until the disk was full. A copy a load killed mid-way left in the
+      backup directory, where no purge reaches it, now goes at the
+      instance's next classic load; it stayed for good. The load's
+      notice says "1 statement line" for a single line.
+
     * sqlmagic fix now also leaves out of the fixed dump the statements
       a site's own database user may not run: the binary-log switch and
       the GTID state of a dump taken on a server with GTID on (an older
