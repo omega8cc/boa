@@ -1475,6 +1475,25 @@
 
 @=> Important Fixes
 
+    * A database series upgrade on a box whose binary log a replica
+      reads no longer turns log_bin_trust_function_creators on once
+      its own restart has cut the replica off: a replica seen earlier
+      in the run still counts, so a box reading 0 keeps it and the run
+      says so again.
+
+    * An in-place box rename no longer leaves an HTTPS site with
+      aliases of a client domain on its old name's certificate: once the
+      site's own verify in the run has its new name's certificate, the
+      run moves the site to it. A rename that has to keep one, as after
+      a move, prints the exact line to run once the aliases reach the
+      box (a plain run found nothing to do) and counts it in its summary.
+
+    * The barracuda pass's permission step now also settles a binary
+      with several names once: git's helper commands are hard links of
+      git, so each pass took git from web requests for some seconds and
+      gave it back. The cache's server binary no longer goes through
+      700 on the way back to 755.
+
     * After a Restore the panel names the database the restored site
       now runs on; it kept the old, dropped database's name until the
       site's next Verify.
