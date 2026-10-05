@@ -109,13 +109,13 @@ Platform symbols:
     CK3 — Commerce v.3
     CMS — Drupal CMS
     LGV — LocalGov
+    OCS — OpenCulturas
     THR — Thunder
     VBX — Varbase 11
 
   Drupal 11.3
     DE3 — Drupal 11.3 prod/stage/dev
     FOS — farmOS
-    OCS — OpenCulturas
 
   Drupal 11.2
     DE2 — Drupal 11.2 prod/stage/dev
