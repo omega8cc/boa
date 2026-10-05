@@ -531,6 +531,12 @@ if [ -e "${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
   fi
   _hostmaster_mv_up
   _hostmaster_dr_up
+  # The copy above replaces the tree the parent pinned before the hand-off:
+  # pin drush.php, drush and the launcher's DRUSH_PHP default again, so the
+  # upgrade below and every later Master task run the chosen CLI PHP.
+  for _df in drush.php drush; do
+    _php_cli_drush_update "${_df}"
+  done
   _hostmaster_go_up
   _hostmaster_dr_tt
   _hostmaster_mi_up
