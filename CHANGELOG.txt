@@ -1475,6 +1475,11 @@
 
 @=> Important Fixes
 
+    * Switching a server to a single PHP version no longer leaves its
+      accounts' sites answering 502 until the next account worker run:
+      each account is pointed at its pool for the new version before the
+      other versions' PHP-FPM stops.
+
     * A Master upgrade no longer stops at its Drush test now and then
       with "Drush is broken": a Drush run from the Master's cron while
       the backend was being replaced could leave Drush's cached command
