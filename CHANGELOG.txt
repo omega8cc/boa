@@ -1634,6 +1634,13 @@
       instance's next classic load; it stayed for good. The load's
       notice says "1 statement line" for a single line.
 
+    * A fast import of a Migrate or of a dump-less Restore now stops,
+      saying why, when the dump carries triggers, routines or events
+      and the read of the site's new database user's host fails or
+      gives a host a definer cannot name: it left them out under a
+      warning that blamed the myloader, and the task then dropped the
+      database they came from. A dump without them loads as before.
+
     * sqlmagic fix now also leaves out of the fixed dump the statements
       a site's own database user may not run: the binary-log switch and
       the GTID state of a dump taken on a server with GTID on (an older
