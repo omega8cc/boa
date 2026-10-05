@@ -1113,6 +1113,14 @@
 
 @=> Improvements
 
+    * With the TET xtra on, PHP 8.1 to 8.5 get the PDFlib TET extension
+      from TET 6.0 (TET 5.3 has no binding for them, so they had none),
+      7.3, 7.4 and 8.0 keep TET 5.3 and older versions TET 5.2, and a
+      PHP version no TET release binds (8.6 for now) gets one NOTE line
+      per pass instead of nothing. A TET release is fetched only for an
+      installed PHP version, so a pass no longer downloads the older
+      archives again every time.
+
     * The per-vhost cap on in-flight anonymous page renders no longer
       counts a request that carries an Authorization header, so a
       decoupled front end, a mobile app or an API consumer that signs in
