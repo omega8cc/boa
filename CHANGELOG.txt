@@ -1482,7 +1482,7 @@
       upgrade's own master verifies failed with "php: Permission
       denied"), and it took bash, curl, env and the other backend tools
       from everyone outside group users until a later loop restored
-      them. Each file now reaches its end state in one move, worked out
+      them. Each file now goes straight to its end state, worked out
       first; every file ends as before.
 
     * backchain setup now adds a user's sudo entries even when another
