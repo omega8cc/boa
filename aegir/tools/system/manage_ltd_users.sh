@@ -2376,31 +2376,77 @@ EOF
 # these trees. $1 = the login, $2 = the account.
 _LTD_REOWN_FROM_PL='use Fcntl; my ($f, $u, @n) = @ARGV; for my $n (@n) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); chown((-d _ || $s[3] == 1) ? $u : 0, -1, $h) if @s && $s[4] == $f && (-d _ || -f _); close($h); } exit 0'
 _ltd_reap_hand_over() {
-  local _gu _ou _d _s _m
+  local _gu _ou _d
   _gu=$(id -u -- "${1}" 2> /dev/null)
   _ou=$(id -u -- "${2}" 2> /dev/null)
   [[ "${_gu}" =~ ^[1-9][0-9]*$ && "${_ou}" =~ ^[1-9][0-9]*$ ]] || return 0
   [ "${_gu}" != "${_ou}" ] || return 0
-  for _d in "/data/disk/${2}/static" "/data/disk/${2}/distro"; do
-    [ -d "${_d}" ] && [ ! -L "${_d}" ] || continue
+  while IFS= read -r _d; do
     _ltd_in_real_dir "${_d}" env PATH=/usr/local/bin:/usr/bin:/bin \
       find -P . -xdev -uid "${_gu}" \( -type d -o -type f \) \
       -execdir perl -e "${_LTD_REOWN_FROM_PL}" "${_gu}" "${_ou}" {} + &> /dev/null
+  done < <(_ltd_account_trees "${2}")
+  return 0
+}
+#
+# The account's trees a login's files can sit in: static and distro, and the
+# files store on attached storage (static/files is then a link to
+# /mnt/<m>/files/<oN>/static/files, which a walk of static never follows).
+_ltd_account_trees() {
+  local _d _s _m
+  for _d in "/data/disk/${1}/static" "/data/disk/${1}/distro"; do
+    [ -d "${_d}" ] && [ ! -L "${_d}" ] && echo "${_d}"
   done
-  # the files store on attached storage: static/files is then a link to
-  # /mnt/<m>/files/<oN>/static/files, which the walk above never follows
-  _s=$(realpath -e -- "/data/disk/${2}/static/files" 2> /dev/null) || return 0
+  _s=$(realpath -e -- "/data/disk/${1}/static/files" 2> /dev/null) || return 0
   case "${_s}" in
-    /mnt/?*/files/"${2}"/static/files)
-      _m="${_s%/files/"${2}"/static/files}"
+    /mnt/?*/files/"${1}"/static/files)
+      _m="${_s%/files/"${1}"/static/files}"
       case "${_m}" in
         */files/*|*/static/*|*[!A-Za-z0-9._/-]*) return 0 ;;
       esac
-      _ltd_in_real_dir "${_s}" env PATH=/usr/local/bin:/usr/bin:/bin \
-        find -P . -xdev -uid "${_gu}" \( -type d -o -type f \) \
-        -execdir perl -e "${_LTD_REOWN_FROM_PL}" "${_gu}" "${_ou}" {} + &> /dev/null
+      echo "${_s}"
       ;;
   esac
+  return 0
+}
+#
+# A login removed before the worker handed its files over at removal left
+# them under a number no passwd entry names, and useradd -r gives that number
+# to the next login made on the server, of any account: the files would then
+# be that login's, and the nightly purge and boa's archived prune would keep
+# them as another user's. Once per account and release, before the pass makes
+# any login, each directory and single-link file there whose owner no longer
+# exists goes to the account, a hard-linked one to root, the group kept. The
+# owner is read through the handle and looked up as the walks' own() does: a
+# lookup that fails for another reason hands nothing over.
+_LTD_REOWN_GONE_PL='use Fcntl; my ($t, @n) = @ARGV; my %g; for my $n (@n) { sysopen(my $h, $n, O_RDONLY|O_NOFOLLOW|O_NONBLOCK) or next; my @s = stat($h); if (@s && (-d _ || -f _)) { my $d = -d _; my $u = $s[4]; unless (exists $g{$u}) { local $! = 0; $g{$u} = defined(getpwuid($u)) ? 0 : ($! == 0 || $!{ENOENT} || $!{ESRCH} || $!{EBADF} || $!{EPERM}) ? 1 : 0; } chown(($d || $s[3] == 1) ? $t : 0, -1, $h) if $g{$u}; } close($h); } exit 0'
+_ltd_gone_hand_over() {
+  local _ou _d
+  local _mk="/var/backups/ltd/.gone-handed.${1}.${_xSrl}"
+  [ -e "${_mk}" ] && return 0
+  _ou=$(id -u -- "${1}" 2> /dev/null)
+  [[ "${_ou}" =~ ^[1-9][0-9]*$ ]] || return 0
+  while IFS= read -r _d; do
+    _ltd_in_real_dir "${_d}" env PATH=/usr/local/bin:/usr/bin:/bin \
+      find -P . -xdev -nouser \( -type d -o -type f \) \
+      -execdir perl -e "${_LTD_REOWN_GONE_PL}" "${_ou}" {} + &> /dev/null
+  done < <(_ltd_account_trees "${1}")
+  touch "${_mk}"
+  return 0
+}
+# Every account, before _manage_user makes any login; one the nightly's
+# per-account pass holds gets its turn on a later pass.
+_ltd_gone_hand_over_all() {
+  local _p _a
+  for _p in /data/disk/*; do
+    [ -d "${_p}" ] && [ ! -L "${_p}" ] || continue
+    _a="${_p##*/}"
+    if [ -e "/run/night-account-${_a}.pid" ] \
+      && kill -0 "$(cat "/run/night-account-${_a}.pid" 2> /dev/null)" 2> /dev/null; then
+      continue
+    fi
+    _ltd_gone_hand_over "${_a}"
+  done
   return 0
 }
 _ltd_reap_account() {
@@ -6345,6 +6391,7 @@ else
   _add_ltd_group_if_not_exists
   _add_allow_snail_if_not_exists
   _kill_zombies >/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
+  _ltd_gone_hand_over_all >>/var/backups/ltd/log/zombies-${_NOW}.log 2>&1
   _manage_user >/var/backups/ltd/log/users-${_NOW}.log 2>&1
   if [ -e "${_THIS_LTD_CONF}" ]; then
     _dedup_ltd_conf_sections "${_THIS_LTD_CONF}"
