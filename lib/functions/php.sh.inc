@@ -1183,24 +1183,26 @@ _install_php_extensions() {
   else
     _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
   fi
-  _msg "INFO: Installing igbinary ${_USE_IGBINARY} for PHP ${_T_PHP_VRN}..."
-  cd /var/opt
-  rm -rf igbinary*
-  if [ "$1" = "85" ] || [ "$1" = "86" ]; then
-    _get_dev_src "igbinary-${_USE_IGBINARY}.tar.gz"
-  else
-    _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
-  fi
-  cd /var/opt/igbinary-${_USE_IGBINARY}
-  _mrun "${_T_PHP_PTH}/phpize"
-  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-  _mrun "make -j $(nproc) --quiet"
-  _mrun "make --quiet install"
-  ldconfig 2> /dev/null
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
-    _msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
-  else
-    touch ${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log
+  if ! _php_ext_rc_skip "$1" "igbinary-${_USE_IGBINARY}" "igbinary ${_USE_IGBINARY}"; then
+    _msg "INFO: Installing igbinary ${_USE_IGBINARY} for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf igbinary*
+    if [ "$1" = "85" ] || [ "$1" = "86" ]; then
+      _get_dev_src "igbinary-${_USE_IGBINARY}.tar.gz"
+    else
+      _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
+    fi
+    cd /var/opt/igbinary-${_USE_IGBINARY}
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig 2> /dev/null
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
+      _msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   _USE_PHPREDIS=
@@ -1292,20 +1294,22 @@ _install_php_extensions() {
       touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
     fi
   elif [ "$1" -gt 71 ]; then
-    _msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} for PHP ${_T_PHP_VRN}..."
-    cd /var/opt
-    rm -rf uploadprogress*
-    _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
-    cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
-    _mrun "${_T_PHP_PTH}/phpize"
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-    _mrun "make -j $(nproc) --quiet"
-    _mrun "make --quiet install"
-    ldconfig 2> /dev/null
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
-      _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
-    else
-      touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log
+    if ! _php_ext_rc_skip "$1" "uploadprogress-${_UPROGRESS_EIGHT_VRN}" "UploadProgress ${_UPROGRESS_EIGHT_VRN}"; then
+      _msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -rf uploadprogress*
+      _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
+      cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig 2> /dev/null
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
+        _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   else
     _msg "INFO: Installing UploadProgress ${_UPROGRESS_SEVEN_VRN} for PHP ${_T_PHP_VRN}..."
@@ -1492,35 +1496,37 @@ _install_php_extensions() {
       fi
     fi
   fi
-  cd /var/opt
-  rm -rf yaml*
-  if [ "$1" = "56" ]; then
-    _msg "INFO: Installing YAML ${_YAML_PHP_LEGACY_VRN} for PHP ${_T_PHP_VRN}..."
-    _get_dev_src "yaml-${_YAML_PHP_LEGACY_VRN}.tgz"
-    cd /var/opt/yaml-${_YAML_PHP_LEGACY_VRN}
-  elif [ "$1" = "70" ]; then
-    _msg "INFO: Installing YAML ${_YAML_PHP_SEVENO_VRN} for PHP ${_T_PHP_VRN}..."
-    _get_dev_src "yaml-${_YAML_PHP_SEVENO_VRN}.tgz"
-    cd /var/opt/yaml-${_YAML_PHP_SEVENO_VRN}
-  else
-    _msg "INFO: Installing YAML ${_YAML_PHP_MODERN_VRN} for PHP ${_T_PHP_VRN}..."
-    _get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
-    cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
-  fi
-  _mrun "${_T_PHP_PTH}/phpize"
-  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-  _mrun "make -j $(nproc) --quiet"
-  _mrun "make --quiet install"
-  ldconfig 2> /dev/null
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
-    _msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
-  else
+  if ! _php_ext_rc_skip "$1" "yaml-${_YAML_PHP_MODERN_VRN}" "YAML ${_YAML_PHP_MODERN_VRN}"; then
+    cd /var/opt
+    rm -rf yaml*
     if [ "$1" = "56" ]; then
-      touch ${_pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+      _msg "INFO: Installing YAML ${_YAML_PHP_LEGACY_VRN} for PHP ${_T_PHP_VRN}..."
+      _get_dev_src "yaml-${_YAML_PHP_LEGACY_VRN}.tgz"
+      cd /var/opt/yaml-${_YAML_PHP_LEGACY_VRN}
     elif [ "$1" = "70" ]; then
-      touch ${_pthLog}/f_yaml-${_YAML_PHP_SEVENO_VRN}-${_T_PHP_VRN}.log
+      _msg "INFO: Installing YAML ${_YAML_PHP_SEVENO_VRN} for PHP ${_T_PHP_VRN}..."
+      _get_dev_src "yaml-${_YAML_PHP_SEVENO_VRN}.tgz"
+      cd /var/opt/yaml-${_YAML_PHP_SEVENO_VRN}
     else
-      touch ${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log
+      _msg "INFO: Installing YAML ${_YAML_PHP_MODERN_VRN} for PHP ${_T_PHP_VRN}..."
+      _get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
+      cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
+    fi
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig 2> /dev/null
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
+      _msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
+    else
+      if [ "$1" = "56" ]; then
+        touch ${_pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+      elif [ "$1" = "70" ]; then
+        touch ${_pthLog}/f_yaml-${_YAML_PHP_SEVENO_VRN}-${_T_PHP_VRN}.log
+      else
+        touch ${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
 }
@@ -1561,8 +1567,9 @@ _php_extensions_update() {
   else
     _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
   fi
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ] \
-    || [ ! -e "${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log" ]; then
+  if ! _php_ext_rc_skip "$1" "igbinary-${_USE_IGBINARY}" "igbinary ${_USE_IGBINARY}" \
+    && { [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ] \
+    || [ ! -e "${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log" ]; }; then
     _msg "INFO: Installing Igbinary ${_USE_IGBINARY} upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf igbinary*
@@ -1681,8 +1688,9 @@ _php_extensions_update() {
       fi
     fi
   elif [ "$1" -gt 71 ]; then
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
-      || [ ! -e "${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log" ]; then
+    if ! _php_ext_rc_skip "$1" "uploadprogress-${_UPROGRESS_EIGHT_VRN}" "UploadProgress ${_UPROGRESS_EIGHT_VRN}" \
+      && { [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
+      || [ ! -e "${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log" ]; }; then
       _msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf uploadprogress*
@@ -1956,8 +1964,9 @@ _php_extensions_update() {
       fi
     fi
   else
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ] \
-      || [ ! -e "${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log" ]; then
+    if ! _php_ext_rc_skip "$1" "yaml-${_YAML_PHP_MODERN_VRN}" "YAML ${_YAML_PHP_MODERN_VRN}" \
+      && { [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ] \
+      || [ ! -e "${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log" ]; }; then
       _msg "INFO: Installing YAML ${_YAML_PHP_MODERN_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf yaml*
