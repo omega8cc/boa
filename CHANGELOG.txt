@@ -1475,6 +1475,12 @@
 
 @=> Important Fixes
 
+    * A site that redirects its aliases to another name keeps an
+      operator's own certificate whichever of its two names the
+      dont-overwrite flag carries: the Verify read the flag under the
+      redirect target only and the nightly renewal under the site's own
+      name only, so one of them could put Let's Encrypt files over it.
+
     * A database series upgrade on a box whose binary log a replica
       reads no longer turns log_bin_trust_function_creators on once
       its own restart has cut the replica off: a replica seen earlier
