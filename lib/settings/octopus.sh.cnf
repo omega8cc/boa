@@ -1222,6 +1222,7 @@ _boa_tree_stamp_check() {
   local _stTree=""
   local _stGot=""
   local _stHave=""
+  local _stPubL=""
   local _stMark="/opt/tmp/.boa-stamp-refetch"
   local _stNew="/opt/tmp/boa-stamp-refetch"
   [ "${_DL_NOCACHE}" = "NO" ] && _stQry=""
@@ -1236,12 +1237,18 @@ _boa_tree_stamp_check() {
   [ "${_stTree}" = "${_stPub}" ] && return 0
   _stHave="${_stTree##*$'\n'}"
   [ -n "${_stHave}" ] || _stHave="unstamped"
+  _stPubL="${_stPub##*$'\n'}"
+  # A republish of the same commit differs only in its time: name both
+  if [ "${_stHave}" = "${_stPubL}" ]; then
+    _stHave="${_stHave}, ${_stTree%%$'\n'*}"
+    _stPubL="${_stPubL}, ${_stPub%%$'\n'*}"
+  fi
   if [ "$(cat "${_stMark}" 2> /dev/null)" = "${_stPub}" ] \
     && [ -n "$(find "${_stMark}" -mmin -30 2> /dev/null)" ]; then
-    echo "ALRT: the build tree (${_stHave}) is not the published ${_stPub##*$'\n'}; continuing with it"
+    echo "ALRT: the build tree (${_stHave}) is not the published ${_stPubL}; continuing with it"
     return 0
   fi
-  echo "NOTE: the build tree (${_stHave}) is not the published ${_stPub##*$'\n'}; fetching it again"
+  echo "NOTE: the build tree (${_stHave}) is not the published ${_stPubL}; fetching it again"
   printf '%s\n' "${_stPub}" > "${_stMark}"
   rm -rf "${_stNew}"
   mkdir -p "${_stNew}"
@@ -1260,7 +1267,7 @@ _boa_tree_stamp_check() {
     chown -R root:root /opt/tmp/boa &> /dev/null
     echo "NOTE: build tree ${_stPub##*$'\n'} in place"
   else
-    echo "ALRT: the build tree fetched again is not the published ${_stPub##*$'\n'}; continuing with the current one"
+    echo "ALRT: the build tree fetched again is not the published ${_stPubL}; continuing with the current one"
   fi
   rm -rf "${_stNew}"
 }
