@@ -22,7 +22,7 @@ In hosted BOA environments, Node/NPM support is available only on dedicated syst
 
 # Security Considerations for Running PHP by Name
 
-Only members of the hand-assigned `ltd-shell-more` group run PHP by name. In the limited shell lshell offers them `php56`, `php74` and `php81` to `php85`; any other account typing one gets lshell's own refusal.
+Only members of the hand-assigned `ltd-shell-more` group run PHP by name. In the limited shell lshell offers them `php56`, `php74` and `php81` to `php86`; any other account typing one gets lshell's own refusal.
 
 A tool the account runs can also hand `/bin/sh` a command line, a Composer or npm script for example. There BOA's `/bin/sh` wrapper refuses, for every account outside the group, a command whose program is a PHP interpreter (`php`, `phpNN`, `php-cli`, `phpdbg` or a path to one) with "Running PHP directly is not available on this account." A Composer `@php` script entry is one of those.
 

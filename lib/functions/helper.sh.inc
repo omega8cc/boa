@@ -1835,7 +1835,8 @@ _check_boa_php_compatibility() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _check_boa_php_compatibility"
   fi
-  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.5" ]] \
+  if [[ "${_PHP_MULTI_INSTALL}" =~ "8.6" ]] \
+    || [[ "${_PHP_MULTI_INSTALL}" =~ "8.5" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "8.4" ]] \
     || [[ "${_PHP_MULTI_INSTALL}" =~ "8.3" ]]; then
     _DO_NOTHING=YES
@@ -1851,7 +1852,8 @@ _check_boa_php_compatibility() {
 
   if [ "${_PHP_FPM_VERSION}" = "8.3" ] \
     || [ "${_PHP_FPM_VERSION}" = "8.4" ] \
-    || [ "${_PHP_FPM_VERSION}" = "8.5" ]; then
+    || [ "${_PHP_FPM_VERSION}" = "8.5" ] \
+    || [ "${_PHP_FPM_VERSION}" = "8.6" ]; then
     _SUPPORTED_FPM=YES
   else
     _SUPPORTED_FPM=NO
@@ -1859,7 +1861,8 @@ _check_boa_php_compatibility() {
 
   if [ "${_PHP_CLI_VERSION}" = "8.3" ] \
     || [ "${_PHP_CLI_VERSION}" = "8.4" ] \
-    || [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
+    || [ "${_PHP_CLI_VERSION}" = "8.5" ] \
+    || [ "${_PHP_CLI_VERSION}" = "8.6" ]; then
     _SUPPORTED_CLI=YES
   else
     _SUPPORTED_CLI=NO

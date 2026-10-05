@@ -91,6 +91,8 @@ A dump taken before this keeps the file's one mode for every object. When an obj
 
 The fast import of a Migrate or of a dump-less Restore gives every view, trigger, routine and event to the site's new database user (`--replace-definer`), as the classic dump path does by loading as that user. Kept as they were, they would name the source database's user, which the task drops when it finishes, and fail from then on. A `myloader` without `--replace-definer` (the 0.19.3 line) loads the tables and views and leaves the triggers, routines and events out; the task log says so.
 
+When the read of the new user's host fails, or gives a host a definer cannot name, and the dump carries triggers, routines or events, the fast import stops with an error saying why, and the task fails instead of finishing without them: left out, they would be lost for good, as the task then drops the database they came from. A dump that carries none loads as before; mydumper writes a trigger file of its header alone for a database without triggers, and that counts as none.
+
 A nightly dump restored as root brings them back with their own definers, and the site's own database user can restore its dump into its own database too.
 
 The classic `mysqldump` dumps carry them as well: the dump of a Clone, of a Migrate or a Restore on an account without `MyQuick.info`, of the Backup mode with a classic dump, and the nightly and cluster backups in legacy mode. Triggers they always carried; stored routines and events are asked for with `--routines` and `--events`. Ægir's classic dump strips every definer and is loaded as the site's database user, so that user owns each view, trigger, routine and event afterwards; the nightly dumps keep their definers.
@@ -99,9 +101,13 @@ An object made while its database had another default collation comes wrapped in
 
 A classic load also reads every dump it is given for those lines, and for a trigger whose definer is written in double quotes, as an archive taken before the dump dropped them still carries them; the site's database user may run neither (`ERROR 1044`, `ERROR 1227`). When it finds one, the load reads a copy with those lines rewritten the same way, written to the instance's backup directory, readable by its owner only and removed after the load, and the task log says so. A dump without them loads as it is.
 
+The copy is written only when its filesystem keeps, after it, the headroom the space check keeps for a copying task; otherwise the load stops and the task log says why (`/data/conf/disable_space_preflight.cnf` turns that check off, as it does the space check). A copy a killed load left there goes at the instance's next classic load.
+
 `mysqldump` stops the whole dump on a routine the dumping user may not read (one another user defines) and on events it may not list, so each option is asked first. When one is refused, the dump is taken without those objects, the task log carries a warning, and the nightly names the database in its backup notice.
 
-A classic load as the site's database user on a box with the binary log on creates triggers and stored functions only while `log_bin_trust_function_creators` is on. `xmass` sets it on both ends of a pair. With the binary log turned on by `_DB_BINARY_LOG=YES`, BOA sets it too, in `my.cnf` and at runtime, unless a replica reads the box's binary log when the run looks (the run then says so and asks again next time). With a custom `my.cnf` under `_CUSTOM_CONFIG_SQL=YES`, BOA leaves it to that file; where it stays off, the load fails with `ERROR 1419` and says so.
+A classic load as the site's database user on a box with the binary log on creates triggers and stored functions only while `log_bin_trust_function_creators` is on. `xmass` sets it on both ends of a pair. With the binary log turned on by `_DB_BINARY_LOG=YES`, BOA sets it too, in `my.cnf` and at runtime, unless a replica reads the box's binary log while the box reads 0 when the run looks. The run then says so: set it to 1 on the replica, then on the box with `SET GLOBAL`, and the next run keeps it.
+
+With a custom `my.cnf` under `_CUSTOM_CONFIG_SQL=YES`, BOA leaves it to that file; where it stays off, the load fails with `ERROR 1418` or `ERROR 1419` and says so.
 
 With the binary log on and `log_bin_trust_function_creators` off, MySQL refuses a stored function declared without `DETERMINISTIC`, `NO SQL` or `READS SQL DATA` (`ERROR 1418`), and a database user without SUPER may create neither triggers nor stored functions (`ERROR 1419`). A load that meets such an object fails and says so: `xoct` and `xcopy` count the site's import as failed, and a Migrate rolls back with the site left as it was.
 

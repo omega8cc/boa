@@ -85,11 +85,13 @@
 ###       operator with curl
 ###   §7  Flush Drush cache and run Aegir task queue (5 passes) to regenerate
 ###       all aliases, vhosts, and db-host entries from the updated database,
-###       plus one queued verify per Drupal/Backdrop site §2c renamed
-###       (server verifies regenerate nothing per-site). The Grav and
-###       Textpattern capsules are not queued: §2c re-points their surfaces
-###       itself, and their verify is provision's own class-specific task.
-###       Assumes BOA cron is not running (caller must ensure this).
+###       plus one queued verify per Drupal/Backdrop site §2c renamed or whose
+###       certificate record §5 renamed, a second one in pass 2 for such a
+###       site that redirects to an alias (server verifies regenerate nothing
+###       per-site). The Grav and Textpattern capsules are not queued: §2c
+###       re-points their surfaces itself, and their verify is provision's own
+###       class-specific task. Assumes BOA cron is not running (caller must
+###       ensure this).
 ###
 
 export HOME=/root
@@ -111,6 +113,7 @@ _UNPARKED_N=0
 _STRAY_LEFT_N=0
 _SETTINGS_SKIPPED_N=0
 _RENAMED_SITE_URIS=()
+_CERT_REVERIFY_URIS=()
 _SERVE_CHECK_URIS=()
 _SERVE_N=0
 _SERVE_SKIPPED_N=0
@@ -2883,16 +2886,20 @@ _mysqldump_gtid_opts() {
 # its site when it is the site's own: named exactly the site's old name, on
 # the current revision of no other site that is not deleted, no record named
 # the new name yet, and not an operator's own certificate (hosting_le's
-# dont-overwrite flag). The site's first verify then moves it to the new
-# name's certificate as a first HTTPS enable does; until then its vhost keeps
-# the pair it served (§4). Otherwise the record stays and the site keeps its
-# old certificate, said in an ALRT. Run after the sweeps: the site nodes
-# carry their new names.
+# dont-overwrite flag, named after the site or after the alias it redirects
+# to). The site's first verify then moves it to the new name's certificate as
+# a first HTTPS enable does; until then its vhost keeps the pair it served
+# (§4). A site with aliases of a client domain keeps its record until a
+# certificate for its new name exists: on a move those aliases still reach
+# the old box, which answers their challenges, so the new name's order (it
+# carries every alias) fails and the site would be left on a self-signed
+# pair. Otherwise the record stays and the site keeps its old certificate,
+# said in an ALRT. Run after the sweeps: the site nodes carry their new names.
 _rename_site_certs() {
   _sql_table_exists hosting_ssl_cert || return 0
   _sql_table_exists hosting_ssl_site || return 0
   _sql_table_exists hosting_site || return 0
-  local _nid _new _cid _name _pub _old _users _taken
+  local _nid _new _cid _name _pub _old _users _taken _redir _flag _a _client _pp _dr _q
   while IFS=$'\t' read -r _nid _new _cid _name _pub; do
     [[ "${_nid}" =~ ^[0-9]+$ ]] && [[ "${_cid}" =~ ^[0-9]+$ ]] || continue
     _safe_name "${_new}" "site uri" || continue
@@ -2907,6 +2914,34 @@ _rename_site_certs() {
     fi
     _users=$(_sql "SELECT COUNT(*) FROM hosting_ssl_site s JOIN node n ON n.nid = s.nid AND n.vid = s.vid JOIN hosting_site h ON h.vid = n.vid WHERE s.ssl_key = ${_cid} AND h.status != -2 AND s.nid != ${_nid}")
     _taken=$(_sql "SELECT COUNT(*) FROM hosting_ssl_cert WHERE ssl_key = '${_new}'")
+    # the alias the site redirects to names hosting_le's flag when one is
+    # set; the sweeps renamed one under this box's name, so its flag carries
+    # the old form
+    _redir="" _flag="" _client=""
+    if _sql_table_exists hosting_site_alias; then
+      _redir=$(_sql "SELECT a.redirection FROM hosting_site_alias a JOIN node n ON n.vid = a.vid WHERE n.nid = ${_nid} AND a.redirection NOT IN ('', '0') LIMIT 1")
+      case "${_redir}" in
+        */*|NULL) _redir="" ;;
+      esac
+      if [ -n "${_redir}" ] && _safe_name "${_redir}" redirection; then
+        for _a in "${_redir}" "${_redir%.${_NEW_HOST}}.${_OLD_HOST}"; do
+          if [ -e "${_AEGIR_ROOT}/tools/le/.ctrl/dont-overwrite-${_a}.pid" ]; then
+            _flag="${_a}"
+            break
+          fi
+        done
+      else
+        _redir=""
+      fi
+      # an alias hosting_le puts on the certificate that is not under this
+      # box's name: a client domain
+      while IFS= read -r _a; do
+        case "${_a}" in
+          ""|*/*|*.nodns.*|*".${_NEW_HOST}") ;;
+          *) _client="${_a}"; break ;;
+        esac
+      done < <(_sql "SELECT a.alias FROM hosting_site_alias a JOIN node n ON n.vid = a.vid WHERE n.nid = ${_nid}")
+    fi
     if [[ ! "${_users}" =~ ^[0-9]+$ ]] || [[ ! "${_taken}" =~ ^[0-9]+$ ]]; then
       _alrt "  ${_new}: its certificate record ${_old} could not be checked: left as it is, the site keeps the old name's certificate"
     elif [ "${_users}" != "0" ]; then
@@ -2915,15 +2950,39 @@ _rename_site_certs() {
       _alrt "  ${_new}: a certificate record named ${_new} exists already: ${_old} left as it is, the site keeps the old name's certificate"
     elif [ -e "${_AEGIR_ROOT}/tools/le/.ctrl/dont-overwrite-${_old}.pid" ]; then
       _alrt "  ${_new}: ${_old} is an operator's own certificate (tools/le/.ctrl/dont-overwrite-${_old}.pid): left as it is"
+    elif [ -n "${_flag}" ]; then
+      _alrt "  ${_new}: ${_old} is an operator's own certificate (tools/le/.ctrl/dont-overwrite-${_flag}.pid, the alias it redirects to): left as it is"
+    elif [ -n "${_client}" ] && [ ! -s "${_AEGIR_ROOT}/tools/le/certs/${_new}/fullchain.pem" ]; then
+      _alrt "  ${_new}: it carries client aliases (${_client}) and no certificate for its new name yet: ${_old} left as it is, the site keeps that certificate;"
+      _alrt "  once its aliases reach this box (after xoct proxy or the DNS switch), verify the site, then run the same rename again"
     elif _sql "UPDATE hosting_ssl_cert SET ssl_key = '${_new}' WHERE cid = ${_cid} AND ssl_key = '${_old}'"; then
       _info "  ${_new}: its certificate record ${_old} renamed with it"
       # A Drupal or Backdrop site (settings.php, as _site_capsule_class
-      # reads it) joins the verifies §7 queues, which move it to the new
-      # name's certificate: on a box renamed before this rule, nothing else
-      # queues one. A capsule switches at its own next verify.
-      if [ -n "${_pub}" ] && [ "${_pub}" != "NULL" ] \
-        && [ -f "${_pub%/}/sites/${_new}/settings.php" ]; then
+      # reads it, below the platform or its docroot as provision finds it)
+      # joins the verifies §7 queues, which move it to the new name's
+      # certificate: on a box renamed before this rule, nothing else queues
+      # one. On an import under another account name the platform path still
+      # names the old account here (§5b re-paths it later). A capsule
+      # switches at its own next verify.
+      _q=NO
+      if [ -n "${_pub}" ] && [ "${_pub}" != "NULL" ]; then
+        _pp="${_pub%/}"
+        if [ "${_ACCT_AXIS}" = "YES" ] && [[ "${_pp}/" == "/data/disk/${_OLD_ACCT}/"* ]]; then
+          _pp="/data/disk/${_NEW_ACCT}${_pp#/data/disk/${_OLD_ACCT}}"
+        fi
+        for _dr in "" /docroot /html /web; do
+          if [ -f "${_pp}${_dr}/sites/${_new}/settings.php" ]; then
+            _q=YES
+            break
+          fi
+        done
+      fi
+      if [ "${_q}" = "YES" ]; then
         _RENAMED_SITE_URIS+=("${_new}")
+        # a site redirecting to an alias gets a second verify: the first
+        # links hosting_le's new certificate after the vhost was written,
+        # and hosting_le's own follow-up verify does not run for it
+        [ -n "${_redir}" ] && _CERT_REVERIFY_URIS+=("${_new}")
       else
         _info "  ${_new}: it moves to the new name's certificate at its own next verify"
       fi
@@ -3619,26 +3678,52 @@ _run_as_aegir() {
 }
 
 _queue_renamed_site_verifies() {
-  # Restored from the old xboa procedure, which scheduled
-  # `hosting-task @<site> verify --force` for every site it moved. The
-  # rewrite dropped it and queued only SERVER verifies, which regenerate no
-  # per-site artefact at all — the whole of B7. §2c now leaves each renamed
-  # site correct on disk without any of this; this queues provision's own
-  # regeneration on top, from the panel node, exactly as the old procedure
-  # did. Bounded by the sites §2c actually moved, so a box whose tenants do
-  # not embed the hostname queues nothing. Grav and Textpattern capsules are
-  # deliberately outside that set: §2c re-points their own uri-bound surfaces
-  # directly, and their verify is provision's class-specific task, carrying
-  # its own PHP floor and its own tree repair.
-  local _U
+  # Restored from the old xboa procedure, which scheduled `hosting-task
+  # @<site> verify --force` for every site it moved. The rewrite dropped it
+  # and queued only SERVER verifies, which regenerate no per-site artefact at
+  # all — the whole of B7. §2c now leaves each renamed site correct on disk
+  # without any of this; this queues provision's own regeneration on top, from
+  # the panel node, exactly as the old procedure did. Bounded by the sites §2c
+  # moved and the sites whose certificate record §5 renamed, so a box whose
+  # tenants do not embed the hostname queues nothing. Grav and Textpattern
+  # capsules are deliberately outside that set: §2c re-points their own
+  # uri-bound surfaces directly, and their verify is provision's
+  # class-specific task, carrying its own PHP floor and its own tree repair.
+  local _U _HMU
   [ "${#_RENAMED_SITE_URIS[@]}" -eq 0 ] && return 0
+  # The account's own panel answers to @hostmaster, never to @<uri>, so
+  # hosting-task refuses @<uri> for it; §8 verifies it synchronously.
+  _HMU=$(_read_file "${_DRUSH_DIR}/hostmaster.alias.drushrc.php" \
+    | grep "'uri'" \
+    | head -1 \
+    | sed "s/.*=>//; s/[' ,;]//g" \
+    | tr -d ' ')
   for _U in $(printf '%s\n' "${_RENAMED_SITE_URIS[@]}" | sort -u); do
+    if [ -n "${_HMU}" ] && [ "${_U}" = "${_HMU}" ]; then
+      _info "    the panel's own site ${_U} is verified in §8"
+      continue
+    fi
     if [ "${_DRY_RUN}" = "YES" ]; then
       _info "    (dry-run) would queue site verify: ${_U}"
       continue
     fi
     _safe_name "${_U}" "site uri" || continue
     _info "    queueing site verify: ${_U}"
+    _run_as_aegir "drush8 @hostmaster hosting-task @${_U} verify --force"
+  done
+  return 0
+}
+
+_queue_cert_reverifies() {
+  # The second verify of a site whose certificate record §5 renamed and that
+  # redirects to an alias: its first verify wrote the vhost before hosting_le
+  # linked the new certificate, so the vhost names the leaf without its
+  # chain, and hosting_le's own follow-up verify skips a redirecting site.
+  local _U
+  [ "${#_CERT_REVERIFY_URIS[@]}" -eq 0 ] && return 0
+  for _U in $(printf '%s\n' "${_CERT_REVERIFY_URIS[@]}" | sort -u); do
+    _safe_name "${_U}" "site uri" || continue
+    _info "    queueing site verify again: ${_U}"
     _run_as_aegir "drush8 @hostmaster hosting-task @${_U} verify --force"
   done
   return 0
@@ -3670,6 +3755,8 @@ _run_aegir_tasks() {
 
     if [ "${_pass}" -eq 1 ]; then
       _queue_renamed_site_verifies
+    elif [ "${_pass}" -eq 2 ]; then
+      _queue_cert_reverifies
     fi
 
     _run_as_aegir "drush8 @hostmaster hosting-dispatch"

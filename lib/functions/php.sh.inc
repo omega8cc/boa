@@ -11,6 +11,17 @@ _fix_php_ini_ioncube() {
         sed -i "s/.*ioncube_loader.*//g" ${_THIS_FILE} &> /dev/null
         wait
       fi
+    elif [ "${_PHP_IONCUBE}" = "YES" ]; then
+      # A template carries its loader line commented while ionCube ships no
+      # loader for that PHP; it is enabled once the loader is there.
+      local _ionSo
+      _ionSo=$(sed -n 's/^;zend_extension="\(\/usr\/local\/ioncube\/ioncube_loader_lin_[0-9.]*\.so\)"[[:space:]]*$/\1/p' \
+        ${_THIS_FILE} 2> /dev/null | head -n 1)
+      if [ -n "${_ionSo}" ] && [ -e "${_ionSo}" ]; then
+        sed -i "s/^;\(zend_extension=\"\/usr\/local\/ioncube\/ioncube_loader_lin_[0-9.]*\.so\"\)/\1/" \
+          ${_THIS_FILE} &> /dev/null
+        wait
+      fi
     fi
   fi
 }
@@ -250,8 +261,13 @@ _fix_php_ini_newrelic_all() {
     if [ -z "${_NEWRELIC_KEY}" ]; then
       _NEWRELIC_KEY=$(grep license_key /etc/newrelic/newrelic.cfg 2>/dev/null | tr -d '\n')
     fi
-    _PHP_V="85 84 83 82 81 80 74 73 72"
+    _PHP_V="86 85 84 83 82 81 80 74 73 72"
     for e in ${_PHP_V}; do
+      # no ini line for an agent build that does not exist (8.6 for now)
+      if [ "${e}" = "86" ] \
+        && [ ! -e "/opt/php86/lib/php/extensions/no-debug-non-zts-${_PHP86_API}/newrelic.so" ]; then
+        continue
+      fi
       _THIS_FILE=/opt/php${e}/etc/php${e}.ini
       _fix_php_ini_newrelic ${e}
       _THIS_FILE=/opt/php${e}/lib/php.ini
@@ -399,32 +415,30 @@ _fix_php_ini_tet_all() {
       esac
       _TET_BASE="/opt/php${e}/lib/php/extensions/no-debug-non-zts"
       _TET_SO="${_TET_BASE}-${_P_API}/php_tet.so"
-      if [ ! -e "${_TET_SO}" ]; then
-        if [[ "${e}" =~ "86" ]] \
-          || [[ "${e}" =~ "85" ]] \
-          || [[ "${e}" =~ "84" ]] \
-          || [[ "${e}" =~ "83" ]] \
-          || [[ "${e}" =~ "82" ]] \
-          || [[ "${e}" =~ "81" ]] \
-          || [[ "${e}" =~ "80" ]] \
-          || [[ "${e}" =~ "74" ]] \
-          || [[ "${e}" =~ "73" ]]; then
-          _TET_VRN="5.3-Linux-x64-Perl-PHP-Python-Ruby"
-        else
-          _TET_VRN="5.2-Linux-x86_64-Perl-PHP-Python-Ruby"
-        fi
+      # only an installed version: /var/opt is emptied every pass, so a
+      # fetch for a version that is not there repeats on every pass
+      if [ ! -e "${_TET_SO}" ] && [ -e "${_TET_BASE}-${_P_API}" ]; then
+        # TET 6.0 binds PHP 8.1 to 8.5, 5.3 binds 7.3, 7.4 and 8.0, 5.2 the
+        # older ones; a version none of them binds gets one NOTE per pass
+        case "${e}" in
+          86|85|84|83|82|81) _TET_VRN="6.0-Linux-x64-Perl-PHP-Python-Ruby" ;;
+          80|74|73) _TET_VRN="5.3-Linux-x64-Perl-PHP-Python-Ruby" ;;
+          *) _TET_VRN="5.2-Linux-x86_64-Perl-PHP-Python-Ruby" ;;
+        esac
         if [ ! -e "/var/opt/TET-${_TET_VRN}/bind/php" ]; then
           mkdir -p  /var/opt
           cd /var/opt
           _get_dev_src "TET-${_TET_VRN}.tar.gz"
         fi
-        if [ -e "${_TET_BASE}-${_P_API}" ] \
-          && [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
+        if [ -e "/var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts" ]; then
           cd /var/opt/TET-${_TET_VRN}/bind/php/php-${e}0-nts/
           cp -a php_tet.so ${_TET_SO}
-        elif [ "${e}" = 86 ] && [ -e "${_TET_BASE}-${_P_API}" ]; then
+        elif [ "${e}" = 86 ]; then
           _php86_note_once tet \
             "TET ${_TET_VRN%%-*} has no PHP 8.6 binding, not enabled for PHP ${_PHP86_VRN}"
+        else
+          _php86_note_once "tet-${e}" \
+            "TET ${_TET_VRN%%-*} has no PHP ${e:0:1}.${e:1} binding, not enabled for it"
         fi
       fi
       if [ -e "${_TET_SO}" ]; then
@@ -796,7 +810,9 @@ _php_ini_drop_unbuilt_ext() {
   local _dir _so _out _bad _try _cut
   [ -e "${_THIS_FILE}" ] || return 0
   _dir=$(sed -n 's/^extension_dir *= *"\([^"]*\)".*/\1/p' "${_THIS_FILE}" | head -n 1)
-  [ -n "${_dir}" ] && [ -d "${_dir}" ] || return 0
+  # no extension dir at all is the case where every shared module was left
+  # out (make install creates it only for one): every line goes then
+  [ -n "${_dir}" ] || return 0
   for _so in $(sed -n 's/^extension=\([a-z0-9_]*\)\.so[[:space:]]*$/\1/p' "${_THIS_FILE}"); do
     if [ ! -e "${_dir%/}/${_so}.so" ]; then
       sed -i "s/^extension=${_so}\.so[[:space:]]*$/;extension=${_so}.so/" "${_THIS_FILE}"
@@ -1167,24 +1183,26 @@ _install_php_extensions() {
   else
     _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
   fi
-  _msg "INFO: Installing igbinary ${_USE_IGBINARY} for PHP ${_T_PHP_VRN}..."
-  cd /var/opt
-  rm -rf igbinary*
-  if [ "$1" = "85" ] || [ "$1" = "86" ]; then
-    _get_dev_src "igbinary-${_USE_IGBINARY}.tar.gz"
-  else
-    _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
-  fi
-  cd /var/opt/igbinary-${_USE_IGBINARY}
-  _mrun "${_T_PHP_PTH}/phpize"
-  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-  _mrun "make -j $(nproc) --quiet"
-  _mrun "make --quiet install"
-  ldconfig 2> /dev/null
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
-    _msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
-  else
-    touch ${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log
+  if ! _php_ext_rc_skip "$1" "igbinary-${_USE_IGBINARY}" "igbinary ${_USE_IGBINARY}"; then
+    _msg "INFO: Installing igbinary ${_USE_IGBINARY} for PHP ${_T_PHP_VRN}..."
+    cd /var/opt
+    rm -rf igbinary*
+    if [ "$1" = "85" ] || [ "$1" = "86" ]; then
+      _get_dev_src "igbinary-${_USE_IGBINARY}.tar.gz"
+    else
+      _get_dev_src "igbinary-${_USE_IGBINARY}.tgz"
+    fi
+    cd /var/opt/igbinary-${_USE_IGBINARY}
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig 2> /dev/null
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ]; then
+      _msg "WARN: Installing igbinary for PHP ${_T_PHP_VRN} failed!"
+    else
+      touch ${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log
+    fi
   fi
   ###--------------------###
   _USE_PHPREDIS=
@@ -1276,20 +1294,22 @@ _install_php_extensions() {
       touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_LEGACY_VRN}-${_T_PHP_VRN}.log
     fi
   elif [ "$1" -gt 71 ]; then
-    _msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} for PHP ${_T_PHP_VRN}..."
-    cd /var/opt
-    rm -rf uploadprogress*
-    _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
-    cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
-    _mrun "${_T_PHP_PTH}/phpize"
-    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-    _mrun "make -j $(nproc) --quiet"
-    _mrun "make --quiet install"
-    ldconfig 2> /dev/null
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
-      _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
-    else
-      touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log
+    if ! _php_ext_rc_skip "$1" "uploadprogress-${_UPROGRESS_EIGHT_VRN}" "UploadProgress ${_UPROGRESS_EIGHT_VRN}"; then
+      _msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} for PHP ${_T_PHP_VRN}..."
+      cd /var/opt
+      rm -rf uploadprogress*
+      _get_dev_src "uploadprogress-${_UPROGRESS_EIGHT_VRN}.tgz"
+      cd /var/opt/uploadprogress-${_UPROGRESS_EIGHT_VRN}
+      _mrun "${_T_PHP_PTH}/phpize"
+      _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+      _mrun "make -j $(nproc) --quiet"
+      _mrun "make --quiet install"
+      ldconfig 2> /dev/null
+      if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ]; then
+        _msg "WARN: Installing UploadProgress for PHP ${_T_PHP_VRN} failed!"
+      else
+        touch ${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   else
     _msg "INFO: Installing UploadProgress ${_UPROGRESS_SEVEN_VRN} for PHP ${_T_PHP_VRN}..."
@@ -1476,35 +1496,37 @@ _install_php_extensions() {
       fi
     fi
   fi
-  cd /var/opt
-  rm -rf yaml*
-  if [ "$1" = "56" ]; then
-    _msg "INFO: Installing YAML ${_YAML_PHP_LEGACY_VRN} for PHP ${_T_PHP_VRN}..."
-    _get_dev_src "yaml-${_YAML_PHP_LEGACY_VRN}.tgz"
-    cd /var/opt/yaml-${_YAML_PHP_LEGACY_VRN}
-  elif [ "$1" = "70" ]; then
-    _msg "INFO: Installing YAML ${_YAML_PHP_SEVENO_VRN} for PHP ${_T_PHP_VRN}..."
-    _get_dev_src "yaml-${_YAML_PHP_SEVENO_VRN}.tgz"
-    cd /var/opt/yaml-${_YAML_PHP_SEVENO_VRN}
-  else
-    _msg "INFO: Installing YAML ${_YAML_PHP_MODERN_VRN} for PHP ${_T_PHP_VRN}..."
-    _get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
-    cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
-  fi
-  _mrun "${_T_PHP_PTH}/phpize"
-  _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
-  _mrun "make -j $(nproc) --quiet"
-  _mrun "make --quiet install"
-  ldconfig 2> /dev/null
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
-    _msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
-  else
+  if ! _php_ext_rc_skip "$1" "yaml-${_YAML_PHP_MODERN_VRN}" "YAML ${_YAML_PHP_MODERN_VRN}"; then
+    cd /var/opt
+    rm -rf yaml*
     if [ "$1" = "56" ]; then
-      touch ${_pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+      _msg "INFO: Installing YAML ${_YAML_PHP_LEGACY_VRN} for PHP ${_T_PHP_VRN}..."
+      _get_dev_src "yaml-${_YAML_PHP_LEGACY_VRN}.tgz"
+      cd /var/opt/yaml-${_YAML_PHP_LEGACY_VRN}
     elif [ "$1" = "70" ]; then
-      touch ${_pthLog}/f_yaml-${_YAML_PHP_SEVENO_VRN}-${_T_PHP_VRN}.log
+      _msg "INFO: Installing YAML ${_YAML_PHP_SEVENO_VRN} for PHP ${_T_PHP_VRN}..."
+      _get_dev_src "yaml-${_YAML_PHP_SEVENO_VRN}.tgz"
+      cd /var/opt/yaml-${_YAML_PHP_SEVENO_VRN}
     else
-      touch ${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log
+      _msg "INFO: Installing YAML ${_YAML_PHP_MODERN_VRN} for PHP ${_T_PHP_VRN}..."
+      _get_dev_src "yaml-${_YAML_PHP_MODERN_VRN}.tgz"
+      cd /var/opt/yaml-${_YAML_PHP_MODERN_VRN}
+    fi
+    _mrun "${_T_PHP_PTH}/phpize"
+    _mrun "bash ./configure --with-php-config=${_T_PHP_CFG}"
+    _mrun "make -j $(nproc) --quiet"
+    _mrun "make --quiet install"
+    ldconfig 2> /dev/null
+    if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ]; then
+      _msg "WARN: Installing YAML for PHP ${_T_PHP_VRN} failed!"
+    else
+      if [ "$1" = "56" ]; then
+        touch ${_pthLog}/f_yaml-${_YAML_PHP_LEGACY_VRN}-${_T_PHP_VRN}.log
+      elif [ "$1" = "70" ]; then
+        touch ${_pthLog}/f_yaml-${_YAML_PHP_SEVENO_VRN}-${_T_PHP_VRN}.log
+      else
+        touch ${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log
+      fi
     fi
   fi
 }
@@ -1545,8 +1567,9 @@ _php_extensions_update() {
   else
     _USE_IGBINARY="${_PHP_IGBINARY_THREE}"
   fi
-  if [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ] \
-    || [ ! -e "${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log" ]; then
+  if ! _php_ext_rc_skip "$1" "igbinary-${_USE_IGBINARY}" "igbinary ${_USE_IGBINARY}" \
+    && { [ ! -e "${_THIS_PHP_EXT_DIR}/igbinary.so" ] \
+    || [ ! -e "${_pthLog}/igbinary-${_USE_IGBINARY}-${_T_PHP_VRN}.log" ]; }; then
     _msg "INFO: Installing Igbinary ${_USE_IGBINARY} upgrade for PHP ${_T_PHP_VRN}..."
     cd /var/opt
     rm -rf igbinary*
@@ -1665,8 +1688,9 @@ _php_extensions_update() {
       fi
     fi
   elif [ "$1" -gt 71 ]; then
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
-      || [ ! -e "${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log" ]; then
+    if ! _php_ext_rc_skip "$1" "uploadprogress-${_UPROGRESS_EIGHT_VRN}" "UploadProgress ${_UPROGRESS_EIGHT_VRN}" \
+      && { [ ! -e "${_THIS_PHP_EXT_DIR}/uploadprogress.so" ] \
+      || [ ! -e "${_pthLog}/f_uploadprogress-${_UPROGRESS_EIGHT_VRN}-${_T_PHP_VRN}.log" ]; }; then
       _msg "INFO: Installing UploadProgress ${_UPROGRESS_EIGHT_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf uploadprogress*
@@ -1940,8 +1964,9 @@ _php_extensions_update() {
       fi
     fi
   else
-    if [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ] \
-      || [ ! -e "${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log" ]; then
+    if ! _php_ext_rc_skip "$1" "yaml-${_YAML_PHP_MODERN_VRN}" "YAML ${_YAML_PHP_MODERN_VRN}" \
+      && { [ ! -e "${_THIS_PHP_EXT_DIR}/yaml.so" ] \
+      || [ ! -e "${_pthLog}/f_yaml-${_YAML_PHP_MODERN_VRN}-${_T_PHP_VRN}.log" ]; }; then
       _msg "INFO: Installing YAML ${_YAML_PHP_MODERN_VRN} upgrade for PHP ${_T_PHP_VRN}..."
       cd /var/opt
       rm -rf yaml*
@@ -2744,6 +2769,7 @@ _newrelic_update() {
       mv -f /etc/newrelic \
         ${_vBs}/nr/etc-newrelic-pre-${_xSrl}-${_X_VERSION}-${_NOW} &> /dev/null
       _pthNrx="lib/php/extensions/no-debug-non-zts"
+      _PHP_EXT_DIR_86="/opt/php86/${_pthNrx}-${_PHP86_API}"
       _PHP_EXT_DIR_85="/opt/php85/${_pthNrx}-${_PHP85_API}"
       _PHP_EXT_DIR_84="/opt/php84/${_pthNrx}-${_PHP84_API}"
       _PHP_EXT_DIR_83="/opt/php83/${_pthNrx}-${_PHP83_API}"
@@ -2772,7 +2798,7 @@ _newrelic_update() {
       # dpkg -i /var/opt/newrelic-php5-common_${_NEW_RELIC_VRN}_all.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-daemon_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
       # dpkg -i /var/opt/newrelic-php5_${_NEW_RELIC_VRN}_amd64.deb &> /dev/null
-      NR_PHPLIST="/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin"
+      NR_PHPLIST="/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin:/opt/php86/bin"
       NR_SILENT="silent"
       export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
       export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -2784,6 +2810,11 @@ _newrelic_update() {
         _SYSTEM_ARCH="x32"
       fi
       _pthNra="/usr/lib/newrelic-php5/agent"
+      if [ -e "${_PHP_EXT_DIR_86}" ] && [ ! -e "${_PHP_EXT_DIR_86}/newrelic.so" ] \
+        && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP86_API}.so" ]; then
+        ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP86_API}.so \
+          ${_PHP_EXT_DIR_86}/newrelic.so
+      fi
       if [ -e "${_PHP_EXT_DIR_85}" ] && [ ! -e "${_PHP_EXT_DIR_85}/newrelic.so" ] \
         && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so" ]; then
         ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so \
@@ -2904,6 +2935,7 @@ _if_install_php_newrelic() {
     fi
     apt-key del ${_NEWRELIC_KEYS_SIG} &> /dev/null
     _newrelic_key_check
+    _PHP_EXT_DIR_86="/opt/php86/lib/php/extensions/no-debug-non-zts-${_PHP86_API}"
     _PHP_EXT_DIR_85="/opt/php85/lib/php/extensions/no-debug-non-zts-${_PHP85_API}"
     _PHP_EXT_DIR_84="/opt/php84/lib/php/extensions/no-debug-non-zts-${_PHP84_API}"
     _PHP_EXT_DIR_83="/opt/php83/lib/php/extensions/no-debug-non-zts-${_PHP83_API}"
@@ -2913,6 +2945,11 @@ _if_install_php_newrelic() {
     _PHP_EXT_DIR_74="/opt/php74/lib/php/extensions/no-debug-non-zts-${_PHP74_API}"
     _PHP_EXT_DIR_73="/opt/php73/lib/php/extensions/no-debug-non-zts-${_PHP73_API}"
     _PHP_EXT_DIR_72="/opt/php72/lib/php/extensions/no-debug-non-zts-${_PHP72_API}"
+    if [ -e "${_PHP_EXT_DIR_86}" ] \
+      && [ ! -e "${_PHP_EXT_DIR_86}/newrelic.so" ] \
+      && ls /usr/lib/newrelic-php5/agent/*/newrelic-${_PHP86_API}.so &> /dev/null; then
+      _MULTI_NR=YES
+    fi
     if [ -e "${_PHP_EXT_DIR_85}" ] \
       && [ ! -e "${_PHP_EXT_DIR_85}/newrelic.so" ]; then
       _MULTI_NR=YES
@@ -2985,7 +3022,7 @@ _if_install_php_newrelic() {
       if [ "${_MULTI_NR}" = "YES" ] \
         || [ "${_NR_KEY_UPDATED}" = "YES" ]; then
         _msg "INFO: Installing latest version of New Relic Apps Monitor..."
-        NR_PHPLIST="/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin"
+        NR_PHPLIST="/opt/php72/bin:/opt/php73/bin:/opt/php74/bin:/opt/php80/bin:/opt/php81/bin:/opt/php82/bin:/opt/php83/bin:/opt/php84/bin:/opt/php85/bin:/opt/php86/bin"
         NR_SILENT="silent"
         export NR_INSTALL_PHPLIST="${NR_PHPLIST}"
         export NR_INSTALL_SILENT="${NR_SILENT}"
@@ -2997,6 +3034,11 @@ _if_install_php_newrelic() {
           _SYSTEM_ARCH="x32"
         fi
         _pthNra="/usr/lib/newrelic-php5/agent"
+        if [ -e "${_PHP_EXT_DIR_86}" ] && [ ! -e "${_PHP_EXT_DIR_86}/newrelic.so" ] \
+          && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP86_API}.so" ]; then
+          ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP86_API}.so \
+            ${_PHP_EXT_DIR_86}/newrelic.so
+        fi
         if [ -e "${_PHP_EXT_DIR_85}" ] && [ ! -e "${_PHP_EXT_DIR_85}/newrelic.so" ] \
           && [ -e "${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so" ]; then
           ln -sfn ${_pthNra}/${_SYSTEM_ARCH}/newrelic-${_PHP85_API}.so \
@@ -3064,7 +3106,8 @@ _if_install_php_newrelic() {
       fi
     fi
     # the agent's versions are listed above; 8.6 is not one of them
-    if [ -x "/opt/php86/bin/php" ]; then
+    if [ -x "/opt/php86/bin/php" ] \
+      && [ ! -e "/opt/php86/lib/php/extensions/no-debug-non-zts-${_PHP86_API}/newrelic.so" ]; then
       _php86_note_once newrelic \
         "New Relic is not enabled for PHP ${_PHP86_VRN}: no agent build for it is checked yet"
     fi
@@ -3560,13 +3603,52 @@ _php_deprecated_cleanup() {
 
 #
 # Fix init.d to disable not used PHP-FPM versions
+#
+# Every account's default include names its pool for the version it ran on
+# until the ltd worker's next run rewrites it, and that worker never runs
+# during a pass: the cleanup below stops the other versions' FPM at once, so
+# an account still pointed at one answered 502 until the worker's tick. Point
+# each at its pool for the single version first, where that pool is up, as
+# the worker writes the include, and reload nginx once.
+_php_single_point_accounts() {
+  local _sv="$1" _inc _usr _pool _did=NO
+  for _inc in /data/disk/*/config/server_master/nginx/post.d/fpm_include_default.inc; do
+    [ -f "${_inc}" ] && [ ! -L "${_inc}" ] || continue
+    _usr="${_inc#/data/disk/}"
+    _usr="${_usr%%/*}"
+    _pool="${_usr}.${_sv}"
+    [ -S "/run/${_pool}.fpm.socket" ] || continue
+    [[ "$(_acct_read_in "${_inc%/*}" "${_inc##*/}")" == *"\"${_pool}\""* ]] && continue
+    _acct_put_in "${_inc%/*}" "${_inc##*/}" "set \$user_socket \"${_pool}\";" && _did=YES
+  done
+  if [ "${_did}" = "YES" ]; then
+    _mrun "service nginx reload"
+  fi
+}
+
 _php_single_initd_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_single_initd_cleanup"
   fi
   if [ ! -z "${_PHP_SINGLE_INSTALL}" ]; then
     _FPM_INITD_CLEANUP=
-    if [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
+    if [ -x "/opt/php${_PHP_SINGLE_INSTALL//./}/bin/php" ]; then
+      _php_single_point_accounts "${_PHP_SINGLE_INSTALL//./}"
+    fi
+    if [ "${_PHP_SINGLE_INSTALL}" = "8.6" ] && [ -x "/opt/php86/bin/php" ]; then
+      _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
+      for e in ${_PHP_V}; do
+        if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
+          _mrun "service php${e}-fpm force-quit"
+          _mrun "update-rc.d -f php${e}-fpm remove"
+          mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
+          _FPM_INITD_CLEANUP=YES
+        fi
+        if [ -e "/opt/php${e}/bin/php" ]; then
+          mv -f /opt/php${e}/bin/php ${_vBs}/bin-php${e}-cli
+        fi
+      done
+    elif [ "${_PHP_SINGLE_INSTALL}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
       _PHP_V="86 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
@@ -3626,7 +3708,9 @@ _re_set_default_php_cli() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _re_set_default_php_cli ${_PHP_CLI_VERSION}"
   fi
-  if [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
+  if [ "${_PHP_CLI_VERSION}" = "8.6" ]; then
+    _switch_php_cli "86"
+  elif [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
     _switch_php_cli "85"
   elif [ "${_PHP_CLI_VERSION}" = "8.4" ]; then
     _switch_php_cli "84"
@@ -3645,6 +3729,8 @@ _check_php_cli() {
     _PHP_CLI_PATH="/opt/php84/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "8.5" ]; then
     _PHP_CLI_PATH="/opt/php85/bin/php"
+  elif [ "${_PHP_CLI_VERSION}" = "8.6" ]; then
+    _PHP_CLI_PATH="/opt/php86/bin/php"
   elif [ "${_PHP_CLI_VERSION}" = "8.3" ]; then
     _PHP_CLI_PATH="/opt/php83/bin/php"
   else
@@ -3657,6 +3743,8 @@ _check_php_cli() {
       _USE_PHP_CLI_PATH="/opt/php84/bin/php"
     elif  [ -x "/opt/php85/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php85/bin/php"
+    elif  [ -x "/opt/php86/bin/php" ]; then
+      _USE_PHP_CLI_PATH="/opt/php86/bin/php"
     elif  [ -x "/opt/php83/bin/php" ]; then
       _USE_PHP_CLI_PATH="/opt/php83/bin/php"
     fi

@@ -101,6 +101,9 @@ if [ "${_PHP_CLI_VERSION}" = "8.4" ] \
 elif [ "${_PHP_CLI_VERSION}" = "8.5" ] \
   && [ -x "/opt/php85/bin/php" ]; then
   _T_CLI=/opt/php85/bin
+elif [ "${_PHP_CLI_VERSION}" = "8.6" ] \
+  && [ -x "/opt/php86/bin/php" ]; then
+  _T_CLI=/opt/php86/bin
 elif [ "${_PHP_CLI_VERSION}" = "8.3" ] \
   && [ -x "/opt/php83/bin/php" ]; then
   _T_CLI=/opt/php83/bin
@@ -114,7 +117,7 @@ if [ -z "${_T_CLI}" ]; then
   _T_CLI="${_T_CLI%/php}"
   if [ -z "${_T_CLI}" ] || [ ! -x "${_T_CLI}/php" ]; then
     _T_CLI=
-    for _fbV in 84 85 83; do
+    for _fbV in 84 85 86 83; do
       if [ -x "/opt/php${_fbV}/bin/php" ]; then
         _T_CLI="/opt/php${_fbV}/bin"
         break
@@ -249,16 +252,25 @@ _hostmaster_go_up() {
 }
 #
 _hostmaster_dr_tt() {
-  if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
-    if [ "${_DEBUG_MODE}" = "YES" ]; then
-      _msg "${_STATUS} B: Drush test result OK"
+  # A Drush run while the backend was being replaced (the Master's dispatcher
+  # cron) can cache a command file list without provision, and Drush 8 never
+  # scans a cached list again: the cache goes before the test, as in the
+  # satellite's Drush test, and once more for a run that began mid-swap.
+  local _try
+  for _try in 1 2; do
+    rm -rf ${_ROOT}/.tmp/cache
+    if ${_DRUSHCMD} help | grep "^ provision-install" > /dev/null ; then
+      if [ "${_DEBUG_MODE}" = "YES" ]; then
+        _msg "${_STATUS} B: Drush test result OK"
+      fi
+      return 0
     fi
-  else
-    _msg "FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
-    _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
-    touch "${_stateDir}/status-AegirUpgrade-FAIL"
-    exit 1
-  fi
+    [ "${_try}" = "1" ] && sleep 10
+  done
+  _msg "FATAL ERROR: Drush is broken (${_DRUSHCMD} help failed)"
+  _msg "FATAL ERROR: Aborting AegirUpgrade installer NOW!"
+  touch "${_stateDir}/status-AegirUpgrade-FAIL"
+  exit 1
 }
 #
 _hostmaster_mi_up() {
@@ -528,6 +540,12 @@ if [ -e "${_PREV_HM_ROOT}/sites/${_DOMAIN}/settings.php" ]; then
   fi
   _hostmaster_mv_up
   _hostmaster_dr_up
+  # The copy above replaces the tree the parent pinned before the hand-off:
+  # pin drush.php, drush and the launcher's DRUSH_PHP default again, so the
+  # upgrade below and every later Master task run the chosen CLI PHP.
+  for _df in drush.php drush; do
+    _php_cli_drush_update "${_df}"
+  done
   _hostmaster_go_up
   _hostmaster_dr_tt
   _hostmaster_mi_up

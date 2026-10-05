@@ -6,6 +6,8 @@
 # The move_sql.sh wrapper arrives with /var/xdrago, which a fresh install does
 # not have yet; fall back to the init script until it exists.
 _move_sql() {
+  local _mvPid _mvNow
+  _mvPid=$(pgrep -x mysqld 2> /dev/null | head -n 1)
   if [ -e "/var/xdrago/move_sql.sh" ]; then
     if [ "$1" = "restart" ]; then
       _mrun "bash /var/xdrago/move_sql.sh"
@@ -15,6 +17,52 @@ _move_sql() {
   else
     _mrun "service mysql $1"
   fi
+  # _mrun hides the command's status: a new mysqld is what shows the server
+  # read the my.cnf of this moment. A refused restart, a start of a running
+  # server or a failed start leaves the copy as the running server read it.
+  if [ "$1" != "stop" ]; then
+    _mvNow=$(pgrep -x mysqld 2> /dev/null | head -n 1)
+    if [ -n "${_mvNow}" ] && [ "${_mvNow}" != "${_mvPid}" ]; then
+      _sql_cnf_found_copy renew
+    fi
+  fi
+  return 0
+}
+
+#
+# The binary-log switch (_DB_BINARY_LOG) takes effect only when mysqld
+# restarts. The pass's first my.cnf rewrite applies it (on 8.4 the directives
+# sync of the root password rotation, otherwise the tuning's own first
+# _sql_conf_update), before the restart check takes its my.cnf-pre-* copy, so
+# that check never saw the change and a new setting reached the running server
+# only at some later restart. _sql_cnf_found_copy keeps my.cnf as the running
+# server read it: taken by the pass's first _sql_conf_update, renewed when
+# _move_sql starts a new mysqld. _sql_binlog_switch_pending is true when the
+# binary-log lines of my.cnf differ from that copy. A file of its own: the
+# my.cnf-pre-* copy stays the pass's copy for rollback.
+_sql_cnf_found_copy() {
+  local _fnd="${_vBs}/dragon/t/my.cnf-found-${_xSrl}-${_X_VERSION}-${_NOW}"
+  if [ -z "${_vBs}" ] || [ -z "${_NOW}" ] || [ ! -e "/etc/mysql/my.cnf" ]; then
+    return 0
+  fi
+  if [ "$1" = "renew" ] || [ ! -e "${_fnd}" ]; then
+    mkdir -p "${_vBs}/dragon/t"
+    cp -af /etc/mysql/my.cnf "${_fnd}"
+  fi
+}
+
+_sql_binlog_lines() {
+  grep -E "^[[:space:]]*(log[-_]bin|skip[-_]log[-_]bin|disable[-_]log[-_]bin)([[:space:]=]|$)" "$1" 2>/dev/null \
+    | tr -d " \t"
+}
+
+_sql_binlog_switch_pending() {
+  local _fnd="${_vBs}/dragon/t/my.cnf-found-${_xSrl}-${_X_VERSION}-${_NOW}"
+  if [ -z "${_vBs}" ] || [ -z "${_NOW}" ] \
+    || [ ! -e "${_fnd}" ] || [ ! -e "/etc/mysql/my.cnf" ]; then
+    return 1
+  fi
+  [ "$(_sql_binlog_lines /etc/mysql/my.cnf)" != "$(_sql_binlog_lines "${_fnd}")" ]
 }
 
 _check_mysql_version() {
@@ -721,17 +769,17 @@ _innodb_log_file_size_update() {
 }
 
 #
-# Update SQL Config.
-#
 # With the binary log on, a site's own database login creates its stored
 # functions only while log_bin_trust_function_creators is 1 (ERROR 1418 for
 # one declared without DETERMINISTIC, NO SQL or READS SQL DATA, ERROR 1419
 # otherwise), so a Clone, Migrate or Restore of such a site fails. Where BOA
 # turns the binary log on, the trust goes with it, in my.cnf and at runtime,
-# as xmass writes it on a pair. Never ahead of a replica that reads this
-# box's binary log: a replica at 0 behind a source at 1 stops its applier on
-# the first such function a site creates. Then, or when that cannot be read,
-# the trust is left as it is and the run says so; the next run asks again.
+# as xmass writes it on a pair. Never raised while a replica reads this box's
+# binary log: a replica at 0 behind a source at 1 stops its applier on the
+# first such function a site creates. While one reads it and this box reads 0,
+# or the processlist cannot be read, the trust is left as it is and the run
+# says so; a 1 this box already reads (set on the replica first, then here)
+# is kept in my.cnf.
 _sql_binlog_trust_creators() {
   local _pl
   if ! _pl=$(mysql -u root -BNe "SHOW PROCESSLIST" 2> /dev/null) || [ -z "${_pl}" ]; then
@@ -739,9 +787,11 @@ _sql_binlog_trust_creators() {
     _msg "ALRT: log_bin_trust_function_creators left as it is until the next run"
     return 0
   fi
-  if grep -q 'Binlog Dump' <<< "${_pl}"; then
-    _msg "ALRT: a replica reads this box's binary log: log_bin_trust_function_creators left as it is;"
-    _msg "ALRT: set it to 1 on the replica first, then here, or a site's stored function fails (ERROR 1418 or 1419)"
+  if grep -q 'Binlog Dump' <<< "${_pl}" \
+    && [ "$(mysql -u root -BNe "SELECT @@GLOBAL.log_bin_trust_function_creators" 2> /dev/null)" != "1" ]; then
+    _msg "ALRT: a replica reads this box's binary log: log_bin_trust_function_creators left as it is,"
+    _msg "ALRT: a site's stored function can fail (ERROR 1418 or 1419) until it is 1 here too:"
+    _msg "ALRT: set it to 1 on the replica, then here with SET GLOBAL; the next run keeps it in my.cnf"
     return 0
   fi
   # A line of any value, commented or not, becomes the one line; with none,
@@ -768,6 +818,9 @@ _sql_binlog_trust_creators() {
   return 0
 }
 
+#
+# Update SQL Config.
+#
 _sql_conf_update() {
   # Mode "directives" (called via _sql_directives_sync) normalizes only the
   # my.cnf version-compatibility directives and skips innodb sizing plus the
@@ -776,6 +829,8 @@ _sql_conf_update() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _sql_conf_update"
   fi
+  # Before the pass's first rewrite: my.cnf as the running server read it.
+  _sql_cnf_found_copy
   sed -i -e "s/.*innodb_force_recovery/#innodb_force_recovery/g" \
     -e "s/.*innodb_corrupt_table_action/#innodb_corrupt_table_action/g" \
     -e "s/^thread_concurrency.*//g" /etc/mysql/my.cnf &> /dev/null
@@ -974,7 +1029,11 @@ _sql_conf_update() {
         -e "s/^\s*#\s*\(binlog_row_image\s*=.*\)/\1/" \
         -e "s/^\s*#\s*\(binlog_format\s*=.*\)/\1/" \
         /etc/mysql/my.cnf &> /dev/null
-      _sql_binlog_trust_creators
+      # the directives sync also runs right after a series upgrade's package
+      # install, mysqld down; every pass reaches the full mode with it up
+      if [ "${_CONF_MODE}" != "directives" ]; then
+        _sql_binlog_trust_creators
+      fi
     fi
     if [ "${_CONF_MODE}" != "directives" ] \
       && { [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; }; then
@@ -1968,6 +2027,11 @@ _db_server_install() {
           if [ "${_DEBUG_MODE}" = "YES" ]; then
             _msg "INFO: ${_DB_SERVER} diff3 ${_diffMyTest}"
           fi
+        fi
+        # The binary-log switch, applied before the copy compared above.
+        if [ "${_myCnfUpdate}" = "NO" ] && _sql_binlog_switch_pending; then
+          _myCnfUpdate=YES
+          _msg "INFO: ${_DB_SERVER} binary log switched in this run, restart due"
         fi
       fi
       if [ ! -e "/root/.run-to-excalibur.cnf" ] \

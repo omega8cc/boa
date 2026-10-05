@@ -1060,7 +1060,11 @@ _php_cli_drush_update() {
   if [ ! -e "${_DRUSH_FILE}" ]; then
     return 1  # Exit the function but continue the script
   fi
-  if [ "${_PHP_CLI_VERSION}" = "8.5" ] \
+  if [ "${_PHP_CLI_VERSION}" = "8.6" ] \
+    && [ -x "/opt/php86/bin/php" ]; then
+    sed -i "s/^#\!\/.*/#\!\/opt\/php86\/bin\/php/g" \
+      ${_DRUSH_FILE} &> /dev/null
+  elif [ "${_PHP_CLI_VERSION}" = "8.5" ] \
     && [ -x "/opt/php85/bin/php" ]; then
     sed -i "s/^#\!\/.*/#\!\/opt\/php85\/bin\/php/g" \
       ${_DRUSH_FILE} &> /dev/null
@@ -1324,7 +1328,7 @@ _aegir_master_upgrade() {
       if [ -n "${_cliPhpNum}" ] && [ -x "/opt/php${_cliPhpNum}/bin/php" ]; then
         _PHP_CLI_VERSION="${_cliPhpNum:0:1}.${_cliPhpNum:1}"
       else
-        for _fbV in 84 85 83; do
+        for _fbV in 84 85 86 83; do
           if [ -x "/opt/php${_fbV}/bin/php" ]; then
             _PHP_CLI_VERSION="${_fbV:0:1}.${_fbV:1}"
             break
@@ -1517,7 +1521,10 @@ _php_cli_cron_update() {
     | tee -a "${_mCron}" >/dev/null 2>&1
   fi
   if [ -e "${_mCron}" ]; then
-    if [ "${_PHP_CLI_VERSION}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
+    if [ "${_PHP_CLI_VERSION}" = "8.6" ] && [ -x "/opt/php86/bin/php" ]; then
+      sed -i "s/^PATH=.*/PATH=\/opt\/php86\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
+        "${_mCron}" &> /dev/null
+    elif [ "${_PHP_CLI_VERSION}" = "8.5" ] && [ -x "/opt/php85/bin/php" ]; then
       sed -i "s/^PATH=.*/PATH=\/opt\/php85\/bin:\/sbin:\/bin:\/usr\/sbin:\/usr\/bin/g" \
         "${_mCron}" &> /dev/null
     elif [ "${_PHP_CLI_VERSION}" = "8.4" ] && [ -x "/opt/php84/bin/php" ]; then
@@ -1782,7 +1789,7 @@ EOFMYSQL
       if [ -n "${_cliPhpNum}" ] && [ -x "/opt/php${_cliPhpNum}/bin/php" ]; then
         _PHP_CLI_VERSION="${_cliPhpNum:0:1}.${_cliPhpNum:1}"
       else
-        for _fbV in 84 85 83; do
+        for _fbV in 84 85 86 83; do
           if [ -x "/opt/php${_fbV}/bin/php" ]; then
             _PHP_CLI_VERSION="${_fbV:0:1}.${_fbV:1}"
             break
