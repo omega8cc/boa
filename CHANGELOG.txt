@@ -1577,6 +1577,13 @@
       version the switch stops falls back to its account's version the
       same way, instead of answering 502 until the pin list changed.
 
+    * The same switch also points each account's task dispatcher and its
+      Drush 8 at the new version before the others' command-line PHP is
+      set aside, so the account's queued tasks no longer wait for the
+      next account worker run; and the PHP-FPM monitor no longer reports
+      and restarts a version the pass is retiring, in the single-version
+      switch and in the cleanup of unused versions alike.
+
     * A Master upgrade no longer stops at its Drush test now and then
       with "Drush is broken": a Drush run from the Master's cron while
       the backend was being replaced could leave Drush's cached command

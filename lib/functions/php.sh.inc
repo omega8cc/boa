@@ -3545,6 +3545,17 @@ _php_not_used_enable_again() {
 }
 
 #
+# Stop version $1's FPM for good. The FPM monitor watches a version while
+# its init script and CLI are in place and restarts a master it finds
+# gone, so the version's monitor cooldown is stamped first: the stop and
+# the parking of the init script that follows land inside it, and the
+# monitor never brings back a version the pass is retiring.
+_php_fpm_retire_stop() {
+  date +%s > "/run/php${1}-fpm.cooldown"
+  _mrun "service php${1}-fpm force-quit"
+}
+
+#
 # Disable not used PHP-FPM versions
 _php_not_used_disable() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -3563,7 +3574,7 @@ _php_not_used_disable() {
       _re="${e}"
       _re=${_re//[^0-9]/}
       if [ -e "/etc/init.d/php${_re}-fpm" ]; then
-        _mrun "service php${_re}-fpm force-quit"
+        _php_fpm_retire_stop "${_re}"
         _mrun "update-rc.d -f php${_re}-fpm remove"
         rm -f ${_vBs}/initd-php${_re}-fpm
         mv -f /etc/init.d/php${_re}-fpm ${_vBs}/initd-php${_re}-fpm
@@ -3654,6 +3665,27 @@ _php_single_point_accounts() {
   fi
 }
 
+#
+# Each account's task dispatcher (aegir.sh) and its Drush 8 (the drush.php
+# shebang, the launcher's default) name the CLI they ran on until the ltd
+# worker's next run rewrites them from cli.info, and that worker never runs
+# during a pass: the cleanup below parks the other versions' CLI at once,
+# so the account's queued tasks waited for the worker's tick. Point each at
+# the single version first, edited as the worker edits them, inside the
+# real directory and never through a link.
+_php_single_point_accounts_cli() {
+  local _sv="$1" _home
+  for _home in /data/disk/*; do
+    [ -d "${_home}" ] && [ ! -L "${_home}" ] || continue
+    _acct_in_real_dir "${_home}" _ltd_sed_here aegir.sh \
+      "s|/opt/php[0-9][0-9]/bin|/opt/php${_sv}/bin|g"
+    _acct_in_real_dir "${_home}/tools/drush" _ltd_sed_here drush.php \
+      "1s|^#!/opt/php[0-9][0-9]/bin/php|#!/opt/php${_sv}/bin/php|"
+    _acct_in_real_dir "${_home}/tools/drush" _ltd_sed_here drush.launcher \
+      "/^export DRUSH_PHP=/s|/opt/php[0-9][0-9]/bin/php|/opt/php${_sv}/bin/php|"
+  done
+}
+
 _php_single_initd_cleanup() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
     _msg "PROC: _php_single_initd_cleanup"
@@ -3662,12 +3694,13 @@ _php_single_initd_cleanup() {
     _FPM_INITD_CLEANUP=
     if [ -x "/opt/php${_PHP_SINGLE_INSTALL//./}/bin/php" ]; then
       _php_single_point_accounts "${_PHP_SINGLE_INSTALL//./}"
+      _php_single_point_accounts_cli "${_PHP_SINGLE_INSTALL//./}"
     fi
     if [ "${_PHP_SINGLE_INSTALL}" = "8.6" ] && [ -x "/opt/php86/bin/php" ]; then
       _PHP_V="85 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit"
+          _php_fpm_retire_stop "${e}"
           _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
@@ -3680,7 +3713,7 @@ _php_single_initd_cleanup() {
       _PHP_V="86 84 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit"
+          _php_fpm_retire_stop "${e}"
           _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
@@ -3693,7 +3726,7 @@ _php_single_initd_cleanup() {
       _PHP_V="86 85 83 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit"
+          _php_fpm_retire_stop "${e}"
           _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
@@ -3706,7 +3739,7 @@ _php_single_initd_cleanup() {
       _PHP_V="86 85 84 82 81 80 74 73 72 71 70 56"
       for e in ${_PHP_V}; do
         if [ -e "/etc/init.d/php${e}-fpm" ] && [ -e "/opt/php${e}/bin/php" ]; then
-          _mrun "service php${e}-fpm force-quit"
+          _php_fpm_retire_stop "${e}"
           _mrun "update-rc.d -f php${e}-fpm remove"
           mv -f /etc/init.d/php${e}-fpm ${_vBs}/initd-php${e}-fpm
           _FPM_INITD_CLEANUP=YES
