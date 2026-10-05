@@ -462,11 +462,15 @@ instance a removed login served. Since the limited-shell worker hands a sub-acco
 files to the instance when it removes the login, such files come from logins removed
 before that, or removed without the worker (an operator's own deluser).
 
-Once per instance and release, before it makes any login, the worker also hands such
-files to the instance, so a login that later gets the freed number does not inherit
-them. Where the number was given out again before that, the files are that login's:
-the prune and the heal keep the entry in part until an operator hands that login's
-entries in the stamp they name to the instance (`chown -h oN`).
+Once per instance and release, before it makes any login (the nightly's per-account
+pass holding the instance or not), the worker also hands such entries over: each
+directory and single-link file to the instance, a hard-linked file to root, group and
+mode kept. A link keeps the freed number. So a login that later gets that number
+inherits none of the files and directories, only such links. Where the number was given
+out again before that, the entries are that login's: the prune and the heal keep the
+entry in part until an operator hands that login's directories, single-link files and
+links in the stamp they name to the instance (`chown -h oN`) and a hard-linked file to
+root.
 
 An account's users can move content another account left group-writable into an
 entry's site directories; that content stays, with the directories holding it. Such an
