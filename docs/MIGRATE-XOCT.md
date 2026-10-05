@@ -1099,11 +1099,17 @@ the rename says so in an `ALRT`.
 A site that also carries aliases of a client domain keeps its record until a certificate
 for its new name exists: on a move those aliases still reach the old box, which answers
 their challenges, so the new name's order (it carries every alias) would fail. The rename
-says so in an `ALRT`. Once the aliases reach this box (after `xoct proxy` or the DNS
-switch), verify the site, then run the same rename again.
+says so in an `ALRT`. On an in-place rename of a box the aliases already reach this box:
+the site's own first verify in the run issues the new name's certificate, and the run then
+renames the record and verifies the site again. After a move, once the aliases reach this
+box (after `xoct proxy` or the DNS switch), verify the site, then run the line the `ALRT`
+prints: `renameaegirhost --aegir-root /data/disk/<account> --force-old <source-fqdn>`, with
+`--old-account` and `--new-account` after an import under another account name. A plain
+run without `--force-old` finds the box's name already the new one and stops with "nothing
+to do"; the run's summary counts the sites it left this way.
 
 A box renamed by an earlier release left such a site on its old name's certificate record.
-Running the same rename again repairs it: the record is renamed to the site's new name and
+Running the rename again with `--force-old <old-fqdn>` repairs it: the record is renamed to the site's new name and
 the site's verify is queued, which moves it to its new name's certificate; a site that
 redirects to an alias gets a second verify, which writes its vhost with the certificate's
 chain. A Grav or Textpattern site takes it at its own next verify.
