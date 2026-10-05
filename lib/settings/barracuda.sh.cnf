@@ -1043,11 +1043,13 @@ _RESERVED_RAM=0
 ###
 ### CiviCRM 4.2 and newer requires more SQL
 ### privileges (the SUPER which can't be added
-### for obvious security reasons) or binary
-### logging disabled. Otherwise almost all
-### Ægir tasks against any site with CiviCRM
-### system active will fail, so we disable
-### binary logging by default. It will also
+### for obvious security reasons), binary
+### logging disabled, or
+### log_bin_trust_function_creators = 1, which
+### BOA sets with _DB_BINARY_LOG=YES (below).
+### Otherwise almost all Ægir tasks against any
+### site with CiviCRM system active will fail,
+### so we disable binary logging by default. It will also
 ### improve system performance on servers
 ### with slower/lower disks I/O.
 ###
@@ -1064,9 +1066,11 @@ _RESERVED_RAM=0
 ### With it on, BOA also sets
 ### log_bin_trust_function_creators = 1, so a
 ### site's own database login can create its
-### triggers and stored functions; not while a
-### replica reads this box's binary log (set it
-### on the replica first; the run says so).
+### triggers and stored functions. While a
+### replica reads this box's binary log and
+### this box reads 0, the run leaves it and
+### says so: set it to 1 on the replica, then
+### here with SET GLOBAL; the next run keeps it.
 ###
 ### Note: this option is ignored if the option
 ### _CUSTOM_CONFIG_SQL is set to YES.

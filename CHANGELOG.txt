@@ -1534,6 +1534,15 @@
       next database restart. The settings file's note on the switch now
       says where the binary logs go.
 
+    * With _DB_BINARY_LOG=YES on a box whose binary log a replica reads,
+      a log_bin_trust_function_creators of 1 the box already reads is now
+      kept in my.cnf, and the run alerts only while the box reads 0: it
+      alerted on every run, whatever was set, and the next restart lost
+      a 1 set by hand. A Percona series upgrade no longer alerts that it
+      could not read the replicas while the database server is down
+      right after the package install; the same run sets the trust once
+      the server is up.
+
     * A Textpattern rename now keeps the site's extra Drush aliases: the
       renamed site lost them, and their alias files kept naming the old
       name and a site directory that no longer exists, where a later

@@ -764,17 +764,17 @@ _innodb_log_file_size_update() {
 }
 
 #
-# Update SQL Config.
-#
 # With the binary log on, a site's own database login creates its stored
 # functions only while log_bin_trust_function_creators is 1 (ERROR 1418 for
 # one declared without DETERMINISTIC, NO SQL or READS SQL DATA, ERROR 1419
 # otherwise), so a Clone, Migrate or Restore of such a site fails. Where BOA
 # turns the binary log on, the trust goes with it, in my.cnf and at runtime,
-# as xmass writes it on a pair. Never ahead of a replica that reads this
-# box's binary log: a replica at 0 behind a source at 1 stops its applier on
-# the first such function a site creates. Then, or when that cannot be read,
-# the trust is left as it is and the run says so; the next run asks again.
+# as xmass writes it on a pair. Never raised while a replica reads this box's
+# binary log: a replica at 0 behind a source at 1 stops its applier on the
+# first such function a site creates. While one reads it and this box reads 0,
+# or the processlist cannot be read, the trust is left as it is and the run
+# says so; a 1 this box already reads (set on the replica first, then here)
+# is kept in my.cnf.
 _sql_binlog_trust_creators() {
   local _pl
   if ! _pl=$(mysql -u root -BNe "SHOW PROCESSLIST" 2> /dev/null) || [ -z "${_pl}" ]; then
@@ -782,9 +782,11 @@ _sql_binlog_trust_creators() {
     _msg "ALRT: log_bin_trust_function_creators left as it is until the next run"
     return 0
   fi
-  if grep -q 'Binlog Dump' <<< "${_pl}"; then
-    _msg "ALRT: a replica reads this box's binary log: log_bin_trust_function_creators left as it is;"
-    _msg "ALRT: set it to 1 on the replica first, then here, or a site's stored function fails (ERROR 1418 or 1419)"
+  if grep -q 'Binlog Dump' <<< "${_pl}" \
+    && [ "$(mysql -u root -BNe "SELECT @@GLOBAL.log_bin_trust_function_creators" 2> /dev/null)" != "1" ]; then
+    _msg "ALRT: a replica reads this box's binary log: log_bin_trust_function_creators left as it is,"
+    _msg "ALRT: a site's stored function can fail (ERROR 1418 or 1419) until it is 1 here too:"
+    _msg "ALRT: set it to 1 on the replica, then here with SET GLOBAL; the next run keeps it in my.cnf"
     return 0
   fi
   # A line of any value, commented or not, becomes the one line; with none,
@@ -811,6 +813,9 @@ _sql_binlog_trust_creators() {
   return 0
 }
 
+#
+# Update SQL Config.
+#
 _sql_conf_update() {
   # Mode "directives" (called via _sql_directives_sync) normalizes only the
   # my.cnf version-compatibility directives and skips innodb sizing plus the
@@ -1019,7 +1024,11 @@ _sql_conf_update() {
         -e "s/^\s*#\s*\(binlog_row_image\s*=.*\)/\1/" \
         -e "s/^\s*#\s*\(binlog_format\s*=.*\)/\1/" \
         /etc/mysql/my.cnf &> /dev/null
-      _sql_binlog_trust_creators
+      # the directives sync also runs right after a series upgrade's package
+      # install, mysqld down; every pass reaches the full mode with it up
+      if [ "${_CONF_MODE}" != "directives" ]; then
+        _sql_binlog_trust_creators
+      fi
     fi
     if [ "${_CONF_MODE}" != "directives" ] \
       && { [ "${_DB_V}" = "5.7" ] || [ "${_DB_SERIES}" = "5.7" ]; }; then
