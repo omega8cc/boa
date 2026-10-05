@@ -1532,6 +1532,12 @@
       every user on the box, never gets there; setup then says so and
       exits non-zero.
 
+    * A barracuda upgrade no longer leaves Valkey-cached Drupal sites
+      answering 500 for up to half a minute after it changes the Valkey
+      password: their cache settings kept the old password in PHP's
+      compiled copy until PHP-FPM reloaded, and Valkey refused it. They
+      now use the password the Valkey check read for the same request.
+
     * Switching a server to a single PHP version no longer leaves its
       accounts' sites answering 502 until the next account worker run:
       each account is pointed at its pool for the new version before the
