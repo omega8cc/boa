@@ -7566,6 +7566,73 @@ _switch_to_bash() {
 }
 
 #
+# The files type -ap finds for a name, resolved as readlink -f does. The pass
+# used to look its backend and protected items up after its group loops had
+# given every file of theirs an execute bit, so a file already bound for a
+# final state in _sbpFinal (the caller's) counts as found before it has one.
+_sbp_find_item() {
+  local _sbpD=""
+  local _sbpC=""
+  local _sbpR=""
+  local IFS=:
+  for _sbpD in ${PATH}; do
+    _sbpC="${_sbpD:-.}/${1}"
+    [ -f "${_sbpC}" ] || continue
+    _sbpR=$(readlink -f -- "${_sbpC}" 2> /dev/null) || _sbpR="${_sbpC}"
+    if [ -x "${_sbpC}" ] || [ -n "${_sbpFinal["${_sbpR}"]+x}" ]; then
+      echo "${_sbpR}"
+    fi
+  done
+}
+#
+# One file to its final group, owner (when $4 names one) and mode. Of the two
+# moves, the one after which a member of only one of the two groups still has
+# what both states give it goes first; where neither order keeps that, the
+# mode first gains the bits of both. No file is ever less usable than both
+# where it starts and where it ends.
+_sbp_settle() {
+  local _sbpF="${1}"
+  local _sbpG="${2}"
+  local _sbpM="${3}"
+  local _sbpO="${4}"
+  local _sbpCu=""
+  local _sbpCg=""
+  local _sbpCm=""
+  local _sbpGs=0
+  local _sbpOs=0
+  local _sbpGe=0
+  local _sbpOe=0
+  read -r _sbpCu _sbpCg _sbpCm < <(stat -c '%U %G %a' -- "${_sbpF}" 2> /dev/null)
+  [[ "${_sbpCm}" =~ ^[0-7]+$ ]] || return 0
+  if [ "${_sbpCg}" = "${_sbpG}" ] \
+    && { [ -z "${_sbpO}" ] || [ "${_sbpCu}" = "${_sbpO}" ]; }; then
+    [ "${_sbpCm}" = "${_sbpM}" ] || chmod "${_sbpM}" "${_sbpF}" &> /dev/null
+    return 0
+  fi
+  _sbpGs=$(( (8#${_sbpCm} >> 3) & 7 ))
+  _sbpOs=$(( 8#${_sbpCm} & 7 ))
+  _sbpGe=$(( (8#${_sbpM} >> 3) & 7 ))
+  _sbpOe=$(( 8#${_sbpM} & 7 ))
+  if (( ((_sbpOs & _sbpGe) & ~_sbpGs) == 0 && ((_sbpGs & _sbpOe) & ~_sbpOs) == 0 )); then
+    _sbp_regroup "${_sbpF}" "${_sbpG}" "${_sbpO}"
+    [ "${_sbpCm}" = "${_sbpM}" ] || chmod "${_sbpM}" "${_sbpF}" &> /dev/null
+  elif (( ((_sbpOs & _sbpGe) & ~_sbpOe) == 0 && ((_sbpGs & _sbpOe) & ~_sbpGe) == 0 )); then
+    chmod "${_sbpM}" "${_sbpF}" &> /dev/null
+    _sbp_regroup "${_sbpF}" "${_sbpG}" "${_sbpO}"
+  else
+    chmod "$(printf '%o' $(( (8#${_sbpCm} | 8#${_sbpM}) & 8#777 )))" "${_sbpF}" &> /dev/null
+    _sbp_regroup "${_sbpF}" "${_sbpG}" "${_sbpO}"
+    chmod "${_sbpM}" "${_sbpF}" &> /dev/null
+  fi
+}
+_sbp_regroup() {
+  if [ -n "${3}" ]; then
+    chown "${3}:${2}" "${1}" &> /dev/null
+  else
+    chgrp "${2}" "${1}" &> /dev/null
+  fi
+}
+#
 # Strict Permissions on All Binaries.
 _strict_bin_permissions() {
   if [ "${_DEBUG_MODE}" = "YES" ]; then
@@ -7599,44 +7666,31 @@ _strict_bin_permissions() {
       chmod 711 $p &> /dev/null
     fi
   done
-  for p in ${_BIN_PATHS}; do
-    if [ -e "$p" ]; then
-      for f in `find $p -group users ! -perm -4000 ! -perm -2000 -type f`; do
-        chgrp root $f &> /dev/null
-        chmod 750 $f &> /dev/null
-      done
+  # Each file's final group, owner and mode is worked out first and reached in
+  # one move. The loops this replaces moved group users to root, and only a
+  # later loop gave the group back, then took the backend items from users 750
+  # back to root 755: for some seconds aegir and every other member of group
+  # users could not run php, bash and the rest, and nobody outside it could run
+  # the backend items (an upgrade's own master verifies failed with "php:
+  # Permission denied"). The end state is the one those loops left: a file of
+  # group users, lshellg, www-data, root or staff goes to users 750, a pdf tool
+  # and a backend item to root 755, a protected item to root:root 700, the
+  # later of these winning.
+  local -A _sbpFinal=()
+  local _sbpGroups=""
+  local _sbpGrp=""
+  local _sbpFile=""
+  local _sbpItem=""
+  for _sbpGrp in users lshellg www-data root staff; do
+    if getent group "${_sbpGrp}" > /dev/null 2>&1; then
+      _sbpGroups="${_sbpGroups:+${_sbpGroups} -o }-group ${_sbpGrp}"
     fi
   done
   for p in ${_BIN_PATHS}; do
-    if [ -e "$p" ]; then
-      for f in `find $p -group lshellg ! -perm -4000 ! -perm -2000 -type f`; do
-        chgrp root $f &> /dev/null
-        chmod 750 $f &> /dev/null
-      done
-    fi
-  done
-  for p in ${_BIN_PATHS}; do
-    if [ -e "$p" ]; then
-      for f in `find $p -group www-data ! -perm -4000 ! -perm -2000 -type f`; do
-        chgrp root $f &> /dev/null
-        chmod 750 $f &> /dev/null
-      done
-    fi
-  done
-  for p in ${_BIN_PATHS}; do
-    if [ -e "$p" ]; then
-      for f in `find $p -group root ! -perm -4000 ! -perm -2000 -type f`; do
-        chgrp users $f &> /dev/null
-        chmod 750 $f &> /dev/null
-      done
-    fi
-  done
-  for p in ${_BIN_PATHS}; do
-    if [ -e "$p" ]; then
-      for f in `find $p -group staff ! -perm -4000 ! -perm -2000 -type f`; do
-        chgrp users $f &> /dev/null
-        chmod 750 $f &> /dev/null
-      done
+    if [ -e "$p" ] && [ -n "${_sbpGroups}" ]; then
+      while IFS= read -r _sbpFile; do
+        _sbpFinal["${_sbpFile}"]="users 750"
+      done < <(find $p \( ${_sbpGroups} \) ! -perm -4000 ! -perm -2000 -type f)
     fi
   done
 
@@ -7649,12 +7703,11 @@ _strict_bin_permissions() {
                         /usr/sbin"
 
   for p in ${_WEBSERVER_BIN_PATHS}; do
-    for f in `find $p ! -perm -4000 ! -perm -2000 -type f | grep pdf`; do
-      if [ -e "$f" ]; then
-        chgrp root $f &> /dev/null
-        chmod 755 $f &> /dev/null
+    while IFS= read -r _sbpFile; do
+      if [ -e "${_sbpFile}" ]; then
+        _sbpFinal["${_sbpFile}"]="root 755"
       fi
-    done
+    done < <(find $p ! -perm -4000 ! -perm -2000 -type f | grep pdf)
   done
 
   _BACKEND_ITEMS="advdef \
@@ -7746,18 +7799,11 @@ _strict_bin_permissions() {
     _BACKEND_ITEMS="${_BACKEND_ITEMS} ${_BACKEND_ITEMS_LIST}"
   fi
   for i in ${_BACKEND_ITEMS}; do
-    # type -ap prints *all* matching paths (one per line); resolve symlinks; de-dup
-    type -ap -- "${i}" 2>/dev/null \
-      | while IFS= read -r _BIN_ITEM; do
-          readlink -f -- "${_BIN_ITEM}" 2>/dev/null || echo "${_BIN_ITEM}"
-        done \
-      | sort -u \
-      | while IFS= read -r _BIN_ITEM; do
-          if [ -e "${_BIN_ITEM}" ]; then
-            chgrp root ${_BIN_ITEM} &> /dev/null
-            chmod 755 ${_BIN_ITEM} &> /dev/null
-          fi
-        done
+    while IFS= read -r _sbpItem; do
+      if [ -e "${_sbpItem}" ]; then
+        _sbpFinal["${_sbpItem}"]="root 755"
+      fi
+    done < <(_sbp_find_item "${i}" | sort -u)
   done
 
   _PROTECTED_ITEMS="backboa \
@@ -7788,18 +7834,15 @@ _strict_bin_permissions() {
                     valkey-cli"
 
   for i in ${_PROTECTED_ITEMS}; do
-    # type -ap prints *all* matching paths (one per line); resolve symlinks; de-dup
-    type -ap -- "${i}" 2>/dev/null \
-      | while IFS= read -r _BIN_ITEM; do
-          readlink -f -- "${_BIN_ITEM}" 2>/dev/null || echo "${_BIN_ITEM}"
-        done \
-      | sort -u \
-      | while IFS= read -r _BIN_ITEM; do
-          if [ -e "${_BIN_ITEM}" ]; then
-            chown root:root "${_BIN_ITEM}" &> /dev/null
-            chmod 700 "${_BIN_ITEM}" &> /dev/null
-          fi
-        done
+    while IFS= read -r _sbpItem; do
+      if [ -e "${_sbpItem}" ]; then
+        _sbpFinal["${_sbpItem}"]="root 700 root"
+      fi
+    done < <(_sbp_find_item "${i}" | sort -u)
+  done
+  for _sbpFile in "${!_sbpFinal[@]}"; do
+    # word split on purpose: the group, the mode and the owner, if one
+    _sbp_settle "${_sbpFile}" ${_sbpFinal["${_sbpFile}"]}
   done
 
   # chown clears the setuid bit, and no session starts without it: touch

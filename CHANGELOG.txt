@@ -1475,6 +1475,16 @@
 
 @=> Important Fixes
 
+    * A barracuda upgrade pass no longer leaves the system binaries
+      unusable for some seconds while it sets their permissions. It
+      moved every binary of group users to group root and gave the
+      group back only later, so the Ægir user could not run php (the
+      upgrade's own master verifies failed with "php: Permission
+      denied"), and it took bash, curl, env and the other backend tools
+      from everyone outside group users until a later loop restored
+      them. Each file now reaches its end state in one move, worked out
+      first; every file ends as before.
+
     * backchain setup now adds a user's sudo entries even when another
       user's name ends in it: an entry counted as present when it was
       part of a longer line, so "bob" never got its rules after "xbob".
