@@ -1475,6 +1475,16 @@
 
 @=> Important Fixes
 
+    * The limited-shell worker now also hands over, once per instance
+      and release before it makes any login, what a sub-account or
+      platform developer login removed before this release left in the
+      instance's static and distro trees and its files store. Those
+      files kept a number no user named, which the next login made on
+      the server gets, of any instance; the nightly purge and boa
+      archived prune then kept them as that login's. Where a number
+      was given out again before the upgrade, hand that login's entries
+      in the stamp the prune names to the instance (chown -h oN).
+
     * A barracuda upgrade pass no longer leaves the system binaries
       unusable for some seconds while it sets their permissions. It
       moved every binary of group users to group root and gave the
