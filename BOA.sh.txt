@@ -2433,7 +2433,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f66
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f64
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f43
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f42
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f46
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f65
     _runner_parked owl.sh \
@@ -4409,7 +4409,7 @@ _fix_hosting_le() {
     _hleSum="$(md5sum "${_hoLeIncFull}" 2>/dev/null | cut -d' ' -f1)"
     _fetch_versioned "${_hoLeIncFull}" "${_urlHmr}/patches/hosting_le_vhost.drush.inc" f99 --mode 644
     _pleSum="$(md5sum "${_provLeIncFull}" 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned "${_provLeIncFull}" "${_urlHmr}/patches/provision_hosting_le.drush.inc" f99 --mode 644
+    _fetch_versioned "${_provLeIncFull}" "${_urlHmr}/patches/provision_hosting_le.drush.inc" f98 --mode 644
     if [ "$(md5sum "${_dehydSrcPath}" 2>/dev/null | cut -d' ' -f1)" != "${_dhySum}" ] \
       || [ "$(md5sum "${_hoLeIncFull}" 2>/dev/null | cut -d' ' -f1)" != "${_hleSum}" ] \
       || [ "$(md5sum "${_provLeIncFull}" 2>/dev/null | cut -d' ' -f1)" != "${_pleSum}" ]; then
