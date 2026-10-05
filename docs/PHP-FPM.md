@@ -57,7 +57,7 @@ old.com 5.6
 
 #### **IMPORTANT**:
 
-Supported Drupal core versions and distributions have different PHP versions requirements, while not all PHP versions out of currently supported twelve (12) versions are installed by default. Ensure that you have corresponding PHP versions installed with barracuda before attempting to install older Drupal versions and distributions. On hosted BOA contact your host if you need any legacy PHP installed again.
+Supported Drupal core versions and distributions have different PHP versions requirements, while not all PHP versions out of currently supported thirteen (13) versions, 8.6 a release candidate, are installed by default. Ensure that you have corresponding PHP versions installed with barracuda before attempting to install older Drupal versions and distributions. On hosted BOA contact your host if you need any legacy PHP installed again.
 
 #### PHP CAVEATS for Drupal core 7-10 versions:
 
