@@ -4252,6 +4252,8 @@ _satellite_db_broker_born() {
   fi
   if _out=$(/usr/local/bin/boa-dbctl scope "${_USER}" on --born 2>&1 < /dev/null); then
     _msg "INFO: ${_USER} switched to the database broker: ${_out##*$'\n'}"
+  elif [[ "${_out##*$'\n'}" == "ERR 7 not-released"* ]]; then
+    _msg "NOTE: ${_USER} stays on the direct database path: tenant isolation is switched on by a later release"
   else
     _msg "ALRT: ${_USER} is not switched to the database broker: ${_out##*$'\n'}"
     _msg "ALRT: boa-dbctl scope ${_USER} plan says why"

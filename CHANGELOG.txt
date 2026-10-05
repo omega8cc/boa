@@ -59,6 +59,13 @@
 
 @=> Security
 
+    * Tenant isolation is not switched on in this release: the account
+      web group setting (_WEB_GROUP_ARM) arms nothing, and the database
+      broker (boa-dbctl scope on) switches no account, forced or not, a
+      new account's switch included. Both work only on a test server
+      that carries the marker /root/.tenant-isolation-test.cnf; a later
+      release switches them on.
+
     * Classic Drush 8.5.12: Ægir's backend tasks no longer load the
       command classes a platform carries in its own drush/Commands
       directories (beside the docroot, in it, or under sites/all/drush);

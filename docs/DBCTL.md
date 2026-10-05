@@ -16,6 +16,12 @@ and no grant option, and its tasks reach the broker through `sudo -n`.
 It ships **switched off**. Nothing changes for any account until an operator
 switches it on, and the commands below are what an operator runs.
 
+In this release `scope oN on` switches no account, forced or not, a new
+account's switch included: it refuses with `ERR 7 not-released`, unless the
+box is a test server that carries the marker
+`/root/.tenant-isolation-test.cnf`. A later release lifts that. `plan`, `off`,
+`status` and an account already switched work as described below.
+
 ## The switch
 
 An account is switched while a root-owned control file exists for it:
@@ -308,6 +314,9 @@ its source instead, switched on the target when it is switched there (where
 the target's own checks allow it). `_DB_BROKER_BORN=NO` in an account's
 `/root/.oN.octopus.cnf` keeps that account out of it.
 
+In this release it switches no account outside a test server (see above): the
+pass prints a NOTE and leaves the account on the direct path.
+
 ## The database count limit
 
 ```
@@ -356,4 +365,5 @@ It logs in as no one and changes nothing.
 
 Every refusal is `ERR <code> <reason>` with that exit code: 2 usage, 3 not the
 account's, 4 taken, 5 at the database count limit, 6 a user it may not touch,
-7 a query or step that failed, 8 not switched, 9 busy (a lock, a standby).
+7 a query or step that failed, or a switch this release does not make
+(`not-released`), 8 not switched, 9 busy (a lock, a standby).
