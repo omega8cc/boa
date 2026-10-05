@@ -416,19 +416,13 @@ _fix_php_ini_tet_all() {
       _TET_BASE="/opt/php${e}/lib/php/extensions/no-debug-non-zts"
       _TET_SO="${_TET_BASE}-${_P_API}/php_tet.so"
       if [ ! -e "${_TET_SO}" ]; then
-        if [[ "${e}" =~ "86" ]] \
-          || [[ "${e}" =~ "85" ]] \
-          || [[ "${e}" =~ "84" ]] \
-          || [[ "${e}" =~ "83" ]] \
-          || [[ "${e}" =~ "82" ]] \
-          || [[ "${e}" =~ "81" ]] \
-          || [[ "${e}" =~ "80" ]] \
-          || [[ "${e}" =~ "74" ]] \
-          || [[ "${e}" =~ "73" ]]; then
-          _TET_VRN="5.3-Linux-x64-Perl-PHP-Python-Ruby"
-        else
-          _TET_VRN="5.2-Linux-x86_64-Perl-PHP-Python-Ruby"
-        fi
+        # TET 6.0 binds PHP 8.1 to 8.5, 5.3 binds 7.3, 7.4 and 8.0, 5.2 the
+        # older ones; a version none of them binds gets one NOTE per pass
+        case "${e}" in
+          86|85|84|83|82|81) _TET_VRN="6.0-Linux-x64-Perl-PHP-Python-Ruby" ;;
+          80|74|73) _TET_VRN="5.3-Linux-x64-Perl-PHP-Python-Ruby" ;;
+          *) _TET_VRN="5.2-Linux-x86_64-Perl-PHP-Python-Ruby" ;;
+        esac
         if [ ! -e "/var/opt/TET-${_TET_VRN}/bind/php" ]; then
           mkdir -p  /var/opt
           cd /var/opt
@@ -441,6 +435,9 @@ _fix_php_ini_tet_all() {
         elif [ "${e}" = 86 ] && [ -e "${_TET_BASE}-${_P_API}" ]; then
           _php86_note_once tet \
             "TET ${_TET_VRN%%-*} has no PHP 8.6 binding, not enabled for PHP ${_PHP86_VRN}"
+        elif [ -e "${_TET_BASE}-${_P_API}" ]; then
+          _php86_note_once "tet-${e}" \
+            "TET ${_TET_VRN%%-*} has no PHP ${e:0:1}.${e:1} binding, not enabled for it"
         fi
       fi
       if [ -e "${_TET_SO}" ]; then
