@@ -402,6 +402,11 @@ _check_running() {
         echo "  bash /var/xdrago/mysql_backup.sh"
         echo
       } | _backup_notice "Backup ABORTED on [${_hName}]: MySQLD did not become available" "down $(( _dead > 0 ? (_dead - 1) * 3 : 0 ))s, total wait $(( (_tot - 1) * 3 ))s; failed before that: ${_DUMP_FAILED_N:-0}${_DUMP_FAILED_DBS}"
+      ### The databases already archived without their routines or events,
+      ### or under the dump's own sql_mode, are reported as a finished run
+      ### reports them (each notice is silent on an empty list).
+      declare -F _notify_objects_left_out > /dev/null && _notify_objects_left_out
+      declare -F _notify_modes_left > /dev/null && _notify_modes_left
       _remove_locks _check_running_timeout
       ### The run marker is read by the watchdogs as a live backup, so it
       ### must not outlive this exit -- but only when it is ours.

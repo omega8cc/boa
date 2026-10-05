@@ -21,10 +21,10 @@ Switch PHP versions
   echo 8.4 > ~/static/control/fpm.info    the version serving ALL your sites
   echo 8.4 > ~/static/control/cli.info    the version for Drush + shell
 
-Twelve versions are supported, 5.6 through 8.5, but only versions
+Thirteen versions are supported, 5.6 through 8.6 (8.6 is a release
+candidate, installed only where your host lists it), but only versions
 installed on the server can be used — ask your host if one you need
-is missing. 8.6, a release candidate for testing, works the same way
-on a server where your host has installed it. The FPM change applies
+is missing. The FPM change applies
 within about three minutes; cli.info is read by your next shell or
 Drush command, and the Ægir task runner follows it within three
 minutes.

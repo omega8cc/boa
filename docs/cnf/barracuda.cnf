@@ -161,7 +161,7 @@ _PHP_FPM_VERSION=8.4 #---------- PHP-FPM for Master Instance
 _PHP_FPM_WORKERS=AUTO #--------- Allows to override AUTO with a valid integer
 _PHP_IONCUBE=NO #--------------- Installs ionCube for all PHP versions when YES
 _PHP_MONGODB=NO #--------------- Installs MONGODB for all PHP versions when YES
-_PHP_MULTI_INSTALL="8.3 8.4 8.5" #--- PHP versions to install 8.5/4/3/2/1/0 7.4/3/2/1/0 5.6 (8.6 RC: listed only)
+_PHP_MULTI_INSTALL="8.3 8.4 8.5" #--- PHP versions to install 8.6/5/4/3/2/1/0 7.4/3/2/1/0 5.6 (8.6 RC: never by default)
 _PHP_SINGLE_INSTALL="" #-------- Allows to force single PHP version, like: 8.3
 ###
 _REDIS_LISTEN_MODE=SOCKET #----- Not used any more: BOA installs Valkey only
