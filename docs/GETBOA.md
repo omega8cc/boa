@@ -2,7 +2,8 @@
 
 `aegir/tools/bin/getboa` runs on the mirror master only. It fetches the BOA git
 branches and publishes them as `boa.tar.gz` per tree on the static files mirror.
-A BOA pass never installs or runs it on a hosted box.
+A BOA pass installs it only on the box that holds its purge config (see below)
+and never runs it.
 
     getboa dev    # 5.x-dev  ->  /var/www/static/dev/dev/boa.tar.gz
     getboa lts    # 5.x-lts  ->  /var/www/static/dev/lts/boa.tar.gz
@@ -20,10 +21,19 @@ purge below covers it with the tarball.
 
 ## Installing It
 
-Copy `aegir/tools/bin/getboa` to `/opt/local/bin/getboa` on the mirror master,
-owned by root, mode 0755. It runs as root. Publishing is atomic (a temporary
-directory on the same filesystem, then `mv`), guarded by a lockfile, and safe to
-re-run or schedule from cron.
+BOA installs it. On a box carrying `/root/.cf-purge.cnf` (the purge config
+below; getboa makes the same test), the Skynet agent pass (`BOA.sh.txt`, every
+few minutes) fetches it to `/opt/local/bin/getboa`, owned by root, mode 0700,
+and refreshes it whenever the published copy changes; a box with
+`_SKYNET_MODE=OFF` is left as it is. A pass never replaces a getboa that is
+running, a publish or a purge; a later pass does. It is never removed: a box
+that loses the file keeps the copy it has. A box without the file is never
+given one. There is no `/usr/local/bin` link: root's PATH carries
+`/opt/local/bin`, and the purge hooks below name the full path.
+
+It runs as root. Publishing is atomic (a temporary directory on the same
+filesystem, then `mv`), guarded by a lockfile, and safe to re-run or schedule
+from cron.
 
 ## The Cloudflare Purge
 
@@ -63,16 +73,15 @@ publish running beside it.
 
 On a builder, wire it in through stackbuild's hook, in `/root/.stackbuild.cnf`:
 
-    _PURGE_HOOK="/usr/local/bin/getboa purge"
+    _PURGE_HOOK="/opt/local/bin/getboa purge"
 
-(use the path getboa is installed at; on the mirror master that is
-`/opt/local/bin/getboa`). stackbuild calls it after its cross-sync with every
-file published in the run; a failing hook gets a loud `WARN purge hook failed`
-in the summary, the replaced filenames are printed, and the publish stands
-(see [PREBUILT.md](PREBUILT.md)).
+stackbuild calls it after its cross-sync with every file published in the run; a
+failing hook gets a loud `WARN purge hook failed` in the summary, the replaced
+filenames are printed, and the publish stands (see [PREBUILT.md](PREBUILT.md)).
 
-The second builder does NOT get getboa or the token. Its hook runs the master's
-getboa over the peer root connection the cross-sync already uses:
+The second builder does NOT get getboa or the token (it carries no
+`/root/.cf-purge.cnf`). Its hook runs the master's getboa over the peer root
+connection the cross-sync already uses:
 
     _PURGE_HOOK="ssh -n -o BatchMode=yes -o ConnectTimeout=15 root@<mirror master> /opt/local/bin/getboa purge"
 
