@@ -1,0 +1,467 @@
+#!/bin/bash
+
+###
+### Fetch BOA git branches and publish them as boa.tar.gz on the
+### static files mirror, one tarball per tree, extracting to boa/:
+###
+###   5.x-dev  ->  /var/www/static/dev/dev/boa.tar.gz
+###   5.x-lts  ->  /var/www/static/dev/lts/boa.tar.gz
+###   5.x-pro  ->  /var/www/static/dev/pro/boa.tar.gz
+###
+### Beside each tarball goes boa.stamp, a copy of the tarball's own
+### boa/.update.txt (the publish time and "5.x-<tree> <short sha>"). The
+### Barracuda and Octopus upgrades compare it with the build tree they
+### staged and fetch the tree again when it differs, so a pass never runs
+### an older tree than the one just published without saying so
+### (_boa_tree_stamp_check in boa's lib/settings/*.sh.cnf).
+###
+### After publishing, the Cloudflare cache is purged for the exact URLs
+### rewritten, on every mirror hostname. The mirror hostnames are
+### CF-proxied and an edge can keep serving a pre-publish tarball for
+### days after the origin changed (observed 2026-08-18: one edge served
+### a 3-day-old lts tar while another was current), which delivers stale
+### code to fresh installs.
+###
+### The purge is NOT fired blindly at publish time: several mirror
+### hostnames front origins that pull this webroot on their own cron, and
+### purging while such an origin still holds the old tarball would just
+### re-cache stale bytes with a fresh TTL. Each host is first probed
+### THROUGH Cloudflare with a per-round cache-busting query (a new query
+### string is a new cache key, so CF fetches the origin) and its purge
+### fires only once the origin's Content-Length matches the tarball just
+### built, within a bounded wait. A zone whose cache key ignores query
+### strings defeats the probe -- that surfaces as the bounded wait
+### expiring loudly, never as a silent success.
+###
+### Purge config: /root/.cf-purge.cnf (root-only, mode x00), sourced:
+###   _CF_API_TOKEN="..."     # API token: Zone:Read + Zone:Cache Purge
+###                           # on the mirror zones
+###   _CF_MIRROR_HOSTS="..."  # optional space-separated hostname
+###                           # override (default: all five mirrors)
+### No config file: purge is skipped LOUDLY and the run still succeeds,
+### so a mirror without the token keeps publishing. A present-but-broken
+### config or a failed purge/probe exits non-zero -- a publish that may
+### keep serving stale bytes for days must not look green.
+###
+### The purge verb does the same for files another tool published into
+### this webroot -- the prebuilt boa-* packages stackbuild republishes
+### under an unchanged filename, which nothing else purges: an edge keeps
+### the previous .gz for its full TTL beside the new, uncached sidecar, and
+### every consumer behind that edge falls back to a source build on the
+### checksum mismatch. Same gate, same token, same hosts; the files are
+### named by absolute path under the webroot or relative to it. Freshness
+### is judged on the local file's size and, where the origin's
+### Last-Modified parses, on its not being older than the local file -- a
+### sidecar never changes size, so the size alone says nothing for it. The
+### verb takes its own lock: it never waits on, or cleans up after, a
+### publish running beside it.
+###
+### Usage: getboa {dev|lts|pro|all}
+###        getboa purge <file> [<file> ...]
+###
+
+HOME=/root
+SHELL=/bin/bash
+PATH=/usr/local/bin:/usr/local/sbin:/opt/local/bin:/usr/bin:/usr/sbin:/bin:/sbin
+
+_GIT_URL="https://github.com/omega8cc/boa.git"
+_DEV_DIR="/var/www/static/dev"
+# Same filesystem as _DEV_DIR, so the final mv is an atomic replace
+_TMP_DIR="${_DEV_DIR}/.tmp"
+_LOCK_DIR="/var/run/getboa.lock"
+_PURGE_LOCK_DIR="/var/run/getboa-purge.lock"
+# The webroot the mirror hostnames serve: /dev/... in a URL is this dir + /dev
+_WEB_ROOT="${_DEV_DIR%/dev}"
+# Cloudflare accepts at most 30 URLs per purge_cache call
+_CF_PURGE_BATCH=30
+_CF_CNF="/root/.cf-purge.cnf"
+_CF_API="https://api.cloudflare.com/client/v4"
+_CF_MIRROR_HOSTS_DEFAULT="files.boa.io files.o8.io files.host8.biz files.aegir.biz files.aoboshi.com"
+
+_usage() {
+  echo "Usage: getboa {dev|lts|pro|all}"
+  echo "       getboa purge <file> [<file> ...]"
+  echo "  dev|lts|pro  fetch 5.x-<tree> and publish ${_DEV_DIR}/<tree>/boa.tar.gz"
+  echo "  all          fetch and publish all three trees"
+  echo "  purge        purge the Cloudflare cache for files already published under"
+  echo "               ${_WEB_ROOT} (absolute path, or relative to it), each host"
+  echo "               only once its origin serves the local bytes"
+  exit 1
+}
+
+_fetch_tree() {
+  local _tree="$1"
+  local _branch="5.x-${_tree}"
+  local _work_dir="${_TMP_DIR}/${_tree}"
+  local _dst_dir="${_DEV_DIR}/${_tree}"
+  local _head=""
+
+  rm -rf "${_work_dir}"
+  mkdir -p "${_work_dir}" "${_dst_dir}"
+
+  echo "INFO: Fetching ${_branch} from ${_GIT_URL}"
+  if ! git clone --quiet --depth 1 --branch "${_branch}" \
+    "${_GIT_URL}" "${_work_dir}/boa" \
+    || [[ ! -d "${_work_dir}/boa/.git" ]]; then
+    echo "OOPS: Git clone of ${_branch} failed"
+    return 1
+  fi
+
+  _head="$(git -C "${_work_dir}/boa" rev-parse --short HEAD 2>/dev/null)"
+  rm -rf "${_work_dir}/boa/.git"
+  printf '%s\n%s %s\n' "$(date)" "${_branch}" "${_head}" \
+    > "${_work_dir}/boa/.update.txt"
+
+  # Consumers (_get_dev_ext) expect the tarball to extract to boa/
+  if ! tar -czf "${_work_dir}/boa.tar.gz" -C "${_work_dir}" boa; then
+    echo "OOPS: Packaging boa.tar.gz for ${_tree} failed"
+    return 1
+  fi
+
+  # Byte size of the exact artifact published -- the origin-freshness
+  # probe compares Content-Length against it.
+  printf -v "_TAR_SIZE_${_tree}" '%s' \
+    "$(stat -c '%s' "${_work_dir}/boa.tar.gz" 2>/dev/null)"
+
+  if ! mv -f "${_work_dir}/boa.tar.gz" "${_dst_dir}/boa.tar.gz"; then
+    echo "OOPS: Publish to ${_dst_dir}/boa.tar.gz failed"
+    return 1
+  fi
+  # The stamp follows the tarball it describes, written whole under a
+  # temp name and renamed, so a mirror sync never copies half a stamp.
+  if ! cp -f "${_work_dir}/boa/.update.txt" "${_dst_dir}/.boa.stamp.new" \
+    || ! mv -f "${_dst_dir}/.boa.stamp.new" "${_dst_dir}/boa.stamp"; then
+    rm -f "${_dst_dir}/.boa.stamp.new"
+    echo "OOPS: Publish to ${_dst_dir}/boa.stamp failed"
+    return 1
+  fi
+  rm -rf "${_work_dir}"
+
+  echo "INFO: Published ${_dst_dir}/boa.tar.gz and boa.stamp (${_branch} @ ${_head})"
+  return 0
+}
+
+# Resolve a zone name to its Cloudflare zone id. jq is deliberately not
+# required on the mirror: the zone object's own id is the first "id" key in
+# the response body, and a mis-parse (e.g. an account id) fails the purge
+# call itself loudly, so the crude grep cannot fail silently. The token
+# travels via a root-only curl config file (-K), never argv -- argv is
+# world-readable in /proc for the life of the call.
+_cf_zone_id() {
+  local _zone="$1"
+  local _resp=""
+  _resp="$(curl -sS --max-time 30 --retry 2 -K "${_CF_HDR}" \
+    "${_CF_API}/zones?name=${_zone}&status=active" 2>&1)"
+  echo "${_resp}" | grep -o '"id":"[0-9a-f]\{32\}"' | head -1 | cut -d'"' -f4
+}
+
+# Does this host's ORIGIN already serve the tarballs published this run?
+# Probed through Cloudflare with a per-round cache-busting query -- a new
+# query string is a new cache key, so CF forwards to the origin -- and
+# compared by Content-Length against the exact artifact just built. The
+# iCab UA is required: the mirrors block other agents.
+_cf_origin_fresh() {
+  local _host="$1"
+  local _round="$2"
+  local _tree="" _url="" _cl="" _var=""
+  for _tree in "${_PUBLISHED[@]}"; do
+    _var="_TAR_SIZE_${_tree}"
+    _url="https://${_host}/dev/${_tree}/boa.tar.gz?getboa=${_RUN_STAMP}-${_round}"
+    _cl="$(curl -sSI --max-time 30 -A iCab "${_url}" 2>/dev/null \
+      | tr -d '\r' | grep -i '^content-length:' | awk '{print $2}' | head -1)"
+    if [[ -z "${_cl}" ]] || [[ "${_cl}" != "${!_var}" ]]; then
+      return 1
+    fi
+  done
+  return 0
+}
+
+# One purge_cache call for this host's published-tree URLs (each mirror
+# hostname is a subdomain of its own zone).
+_cf_purge_host() {
+  local _host="$1"
+  local _zone="" _zone_id="" _urls="" _tree="" _resp=""
+  _zone="${_host#*.}"
+  _zone_id="$(_cf_zone_id "${_zone}")"
+  if [[ -z "${_zone_id}" ]]; then
+    echo "OOPS: Cloudflare zone lookup failed for ${_zone} (host ${_host})"
+    return 1
+  fi
+  _urls=""
+  for _tree in "${_PUBLISHED[@]}"; do
+    _urls="${_urls}\"https://${_host}/dev/${_tree}/boa.tar.gz\","
+    _urls="${_urls}\"https://${_host}/dev/${_tree}/boa.stamp\","
+  done
+  _urls="${_urls%,}"
+  _resp="$(curl -sS --max-time 30 --retry 2 -X POST -K "${_CF_HDR}" \
+    -H "Content-Type: application/json" \
+    --data "{\"files\":[${_urls}]}" \
+    "${_CF_API}/zones/${_zone_id}/purge_cache" 2>&1)"
+  if [[ "${_resp}" =~ \"success\":[[:space:]]*true ]]; then
+    echo "INFO: Cloudflare purge OK on ${_host} (trees:$(printf ' %s' "${_PUBLISHED[@]}"))"
+    return 0
+  fi
+  echo "OOPS: Cloudflare purge FAILED on ${_host}: $(echo "${_resp}" | head -c 300)"
+  return 1
+}
+
+# Purge every mirror host, each only once its origin serves the new bytes
+# (see the header). This automates the manual publish procedure: wait for
+# the mirrors' rsync (every ~5 minutes), only then purge. The 15-minute
+# bound covers three rsync cycles; hosts whose origin never freshens
+# within it fail the run loudly.
+_cf_purge_published() {
+  local _pending=("${_CF_HOSTS_ARR[@]}")
+  local _next=() _host=""
+  local _round=0
+  local _deadline=$(( SECONDS + 900 ))
+  local _rc=0
+  while [[ "${#_pending[@]}" -gt 0 ]]; do
+    _round=$(( _round + 1 ))
+    _next=()
+    for _host in "${_pending[@]}"; do
+      if "${_CF_FRESH_FN:-_cf_origin_fresh}" "${_host}" "${_round}"; then
+        "${_CF_PURGE_FN:-_cf_purge_host}" "${_host}" || _rc=1
+      else
+        _next+=("${_host}")
+      fi
+    done
+    _pending=("${_next[@]}")
+    [[ "${#_pending[@]}" -eq 0 ]] && break
+    if [[ "${SECONDS}" -ge "${_deadline}" ]]; then
+      echo "OOPS: Origin still serving old bytes after the bounded wait on:$(printf ' %s' "${_pending[@]}")"
+      _rc=1
+      break
+    fi
+    echo "INFO: Waiting for origin sync on:$(printf ' %s' "${_pending[@]}") (round ${_round})"
+    sleep 30
+  done
+  return "${_rc}"
+}
+
+# The purge verb's twin of _cf_origin_fresh: every named file, probed the
+# same way, against the local file's size -- and against its mtime where
+# the origin's Last-Modified parses (GNU date; an origin that pulled the
+# file without preserving times shows its pull time, which is later, so
+# "not older" holds for both kinds). A failed parse leaves the size alone
+# to decide, as it does for the tarballs.
+_cf_paths_fresh() {
+  local _host="$1"
+  local _round="$2"
+  local _i=0 _url="" _hdr="" _cl="" _lm="" _lm_s=""
+  for _i in "${!_PURGE_PATHS[@]}"; do
+    _url="https://${_host}/${_PURGE_PATHS[${_i}]}?getboa=${_RUN_STAMP}-${_round}"
+    _hdr="$(curl -sSI --max-time 30 -A iCab "${_url}" 2>/dev/null | tr -d '\r')"
+    _cl="$(echo "${_hdr}" | grep -i '^content-length:' | awk '{print $2}' | head -1)"
+    if [[ -z "${_cl}" ]] || [[ "${_cl}" != "${_PURGE_SIZES[${_i}]}" ]]; then
+      return 1
+    fi
+    _lm="$(echo "${_hdr}" | grep -i '^last-modified:' | cut -d' ' -f2- | head -1)"
+    if [[ -n "${_lm}" ]] && [[ -n "${_PURGE_MTIMES[${_i}]}" ]]; then
+      _lm_s="$(date -u -d "${_lm}" +%s 2>/dev/null)"
+      if [[ "${_lm_s}" =~ ^[0-9]+$ ]] \
+        && [[ "${_lm_s}" -lt "${_PURGE_MTIMES[${_i}]}" ]]; then
+        return 1
+      fi
+    fi
+  done
+  return 0
+}
+
+# The purge verb's twin of _cf_purge_host, in batches the API accepts.
+_cf_purge_host_paths() {
+  local _host="$1"
+  local _zone="" _zone_id="" _urls="" _resp="" _i=0 _n=0 _rc=0
+  _zone="${_host#*.}"
+  _zone_id="$(_cf_zone_id "${_zone}")"
+  if [[ -z "${_zone_id}" ]]; then
+    echo "OOPS: Cloudflare zone lookup failed for ${_zone} (host ${_host})"
+    return 1
+  fi
+  for _i in "${!_PURGE_PATHS[@]}"; do
+    _urls="${_urls}\"https://${_host}/${_PURGE_PATHS[${_i}]}\","
+    _n=$(( _n + 1 ))
+    if [[ "${_n}" -eq "${_CF_PURGE_BATCH}" ]] \
+      || [[ "${_i}" -eq $(( ${#_PURGE_PATHS[@]} - 1 )) ]]; then
+      _resp="$(curl -sS --max-time 30 --retry 2 -X POST -K "${_CF_HDR}" \
+        -H "Content-Type: application/json" \
+        --data "{\"files\":[${_urls%,}]}" \
+        "${_CF_API}/zones/${_zone_id}/purge_cache" 2>&1)"
+      if [[ ! "${_resp}" =~ \"success\":[[:space:]]*true ]]; then
+        echo "OOPS: Cloudflare purge FAILED on ${_host}: $(echo "${_resp}" | head -c 300)"
+        _rc=1
+      fi
+      _urls=""
+      _n=0
+    fi
+  done
+  if [[ "${_rc}" -eq 0 ]]; then
+    echo "INFO: Cloudflare purge OK on ${_host} (${#_PURGE_PATHS[@]} file(s))"
+  fi
+  return "${_rc}"
+}
+
+# Read the purge config. 0 = loaded, 2 = no config file (the caller decides
+# what that means), exit 1 on a present-but-broken one. -e not -s: a
+# present-but-empty config is a BROKEN config, only a genuinely absent
+# file is "no config".
+_cf_load_config() {
+  if [[ ! -e "${_CF_CNF}" ]]; then
+    return 2
+  fi
+  # Normalize the mode: GNU stat prints unpadded octal (000 -> "0").
+  _CNF_MODE="$(printf '%03d' "$(stat -c '%a' "${_CF_CNF}" 2>/dev/null)" 2>/dev/null)"
+  if [[ "${_CNF_MODE}" != *00 ]]; then
+    echo "ERROR: ${_CF_CNF} must not be group/world accessible (mode ${_CNF_MODE})"
+    exit 1
+  fi
+  # shellcheck disable=SC1090  # operator-provided token file, path fixed above
+  . "${_CF_CNF}"
+  if [[ -z "${_CF_API_TOKEN}" ]]; then
+    echo "ERROR: ${_CF_CNF} present but _CF_API_TOKEN is empty"
+    exit 1
+  fi
+  if [[ -z "$(command -v curl)" ]]; then
+    echo "ERROR: curl is required for the Cloudflare purge but not available in PATH"
+    exit 1
+  fi
+  # Word-split NOW and validate the split -- a whitespace-only override
+  # must fall back to the default list, not silently purge nothing.
+  # shellcheck disable=SC2206  # intentional word splitting of a host list
+  _CF_HOSTS_ARR=(${_CF_MIRROR_HOSTS})
+  if [[ "${#_CF_HOSTS_ARR[@]}" -eq 0 ]]; then
+    # shellcheck disable=SC2206
+    _CF_HOSTS_ARR=(${_CF_MIRROR_HOSTS_DEFAULT})
+  fi
+  # Token via a root-only curl config file, never argv (see _cf_zone_id).
+  _OLD_UMASK="$(umask)"
+  umask 077
+  _CF_HDR="$(mktemp /root/.cf-purge-hdr.XXXXXX)"
+  umask "${_OLD_UMASK}"
+  printf 'header = "Authorization: Bearer %s"\n' "${_CF_API_TOKEN}" > "${_CF_HDR}"
+  _RUN_STAMP="$(date +%s)-$$"
+  return 0
+}
+
+# getboa purge <file>...: an explicit request, so unlike the publish path a
+# missing config is an error -- the caller asked for a purge and none
+# happened. Names are checked before anything is sent: they land in a JSON
+# body and in URLs.
+_purge_main() {
+  local _arg="" _rel="" _rc=0
+  _PURGE_PATHS=()
+  _PURGE_SIZES=()
+  _PURGE_MTIMES=()
+  if [[ "$#" -eq 0 ]]; then
+    _usage
+  fi
+  for _arg in "$@"; do
+    _rel="${_arg}"
+    if [[ "${_rel}" == "${_WEB_ROOT}/"* ]]; then
+      _rel="${_rel#"${_WEB_ROOT}/"}"
+    fi
+    if [[ ! "${_rel}" =~ ^[A-Za-z0-9][A-Za-z0-9._+/-]*$ ]] \
+      || [[ "${_rel}" == *..* ]] || [[ "${_rel}" == *//* ]]; then
+      echo "ERROR: Not a file name under ${_WEB_ROOT}: ${_arg}"
+      exit 1
+    fi
+    if [[ ! -f "${_WEB_ROOT}/${_rel}" ]] || [[ -L "${_WEB_ROOT}/${_rel}" ]]; then
+      echo "ERROR: No such published file: ${_WEB_ROOT}/${_rel}"
+      exit 1
+    fi
+    _PURGE_PATHS+=("${_rel}")
+    _PURGE_SIZES+=("$(stat -c '%s' "${_WEB_ROOT}/${_rel}" 2>/dev/null)")
+    _PURGE_MTIMES+=("$(stat -c '%Y' "${_WEB_ROOT}/${_rel}" 2>/dev/null)")
+  done
+  if ! mkdir "${_PURGE_LOCK_DIR}" 2>/dev/null; then
+    echo "ERROR: Another getboa purge is already running (remove ${_PURGE_LOCK_DIR} if stale)"
+    exit 1
+  fi
+  _CF_HDR=""
+  # The wait can last 15 minutes; a run interrupted inside it must not leave
+  # its lock (every later purge would refuse) or the token file behind. bash
+  # runs the EXIT trap on INT and TERM too, at once, so no signal trap is
+  # set: one would only delay the cleanup until the current curl or sleep
+  # returns. SIGKILL leaves the lock, hence the hint above.
+  trap 'rm -rf "${_PURGE_LOCK_DIR}"; [[ -n "${_CF_HDR}" ]] && rm -f "${_CF_HDR}"' EXIT
+  _cf_load_config
+  if [[ "$?" -eq 2 ]]; then
+    echo "ERROR: No ${_CF_CNF} -- nothing purged; edges may serve the previous bytes until TTL"
+    exit 1
+  fi
+  _CF_FRESH_FN="_cf_paths_fresh"
+  _CF_PURGE_FN="_cf_purge_host_paths"
+  _cf_purge_published || _rc=1
+  rm -f "${_CF_HDR}"
+  _CF_HDR=""
+  if [[ "${_rc}" -ne 0 ]]; then
+    echo "ERROR: The Cloudflare purge did not complete -- edges may serve stale bytes; re-run getboa purge or purge manually"
+    exit 1
+  fi
+  exit 0
+}
+
+if [[ "$(id -u)" -ne 0 ]]; then
+  echo "ERROR: This script should be run as a root user"
+  exit 1
+fi
+
+if [[ "$1" = "purge" ]]; then
+  shift
+  _purge_main "$@"
+fi
+
+if [[ -z "$(command -v git)" ]]; then
+  echo "ERROR: git is required but not available in PATH"
+  exit 1
+fi
+
+case "$1" in
+  dev|lts|pro) _TREES=("$1")        ;;
+  all)         _TREES=(dev lts pro) ;;
+  *)           _usage               ;;
+esac
+
+if ! mkdir "${_LOCK_DIR}" 2>/dev/null; then
+  echo "ERROR: Another getboa instance is already running (remove ${_LOCK_DIR} if stale)"
+  exit 1
+fi
+_CF_HDR=""
+trap 'rm -rf "${_LOCK_DIR}" "${_TMP_DIR}"; [[ -n "${_CF_HDR}" ]] && rm -f "${_CF_HDR}"' EXIT
+
+_FAILED=""
+_PUBLISHED=()
+for _TREE in "${_TREES[@]}"; do
+  if _fetch_tree "${_TREE}"; then
+    _PUBLISHED+=("${_TREE}")
+  else
+    _FAILED="${_FAILED} ${_TREE}"
+  fi
+done
+
+# Purge whatever DID publish, even when another tree failed -- a published
+# tarball hiding behind a stale edge is its own failure mode. Only a
+# genuinely absent config is the loud skip (see _cf_load_config).
+_PURGE_FAILED=""
+if [[ "${#_PUBLISHED[@]}" -gt 0 ]]; then
+  _cf_load_config
+  if [[ "$?" -eq 2 ]]; then
+    echo "INFO: No ${_CF_CNF} -- Cloudflare purge SKIPPED; edges may serve the previous tarball until TTL"
+  else
+    if ! _cf_purge_published; then
+      _PURGE_FAILED=YES
+    fi
+    rm -f "${_CF_HDR}"
+    _CF_HDR=""
+  fi
+fi
+
+if [[ -n "${_FAILED}" ]]; then
+  echo "ERROR: Failed trees:${_FAILED}"
+  exit 1
+fi
+if [[ -n "${_PURGE_FAILED}" ]]; then
+  echo "ERROR: Publish succeeded but the Cloudflare purge did not -- edges may serve stale tarballs; re-run getboa or purge manually"
+  exit 1
+fi
+exit 0
