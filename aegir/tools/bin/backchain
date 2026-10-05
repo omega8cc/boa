@@ -65,8 +65,8 @@ _add_sudo_rule() {
     _info "Sudoers entry already present in ${_FILE}"
     return 0
   fi
-  _info "Adding sudoers entry to ${_FILE}"
   if ! command -v visudo > /dev/null 2>&1; then
+    _info "Adding sudoers entry to ${_FILE}"
     echo "${_ENTRY}" >> "${_FILE}"
     chmod 0440 "${_FILE}"
     return 0
@@ -84,6 +84,7 @@ _add_sudo_rule() {
     _error "sudo would not accept '${_ENTRY}': ${_FILE} left as it was"
     return 1
   fi
+  _info "Adding sudoers entry to ${_FILE}"
   mv -f "${_tmp}" "${_FILE}"
 }
 
