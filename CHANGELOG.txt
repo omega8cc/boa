@@ -1426,6 +1426,11 @@
 
 @=> Important Fixes
 
+    * The Ægir Master's own Drush stays pinned to the chosen command-line
+      PHP after an upgrade: the Master upgrade copied a fresh Drush over
+      the pinned one, so drush.php and its launcher fell back to the
+      default PHP found on the path, on every PHP version.
+
     * An upgrade no longer runs an older BOA build tree than the one just
       published without saying so. Once the publish writes boa.stamp
       beside boa.tar.gz, Barracuda and Octopus compare it with the staged
