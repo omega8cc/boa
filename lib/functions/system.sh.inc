@@ -7589,7 +7589,8 @@ _sbp_find_item() {
 # moves, the one after which a member of only one of the two groups still has
 # what both states give it goes first; where neither order keeps that, the
 # mode first gains the bits of both. No file is ever less usable than both
-# where it starts and where it ends.
+# where it starts and where it ends. A file another of its names (a hard
+# link) has settled in this pass is left: the caller's _sbpDone holds them.
 _sbp_settle() {
   local _sbpF="${1}"
   local _sbpG="${2}"
@@ -7602,8 +7603,13 @@ _sbp_settle() {
   local _sbpOs=0
   local _sbpGe=0
   local _sbpOe=0
-  read -r _sbpCu _sbpCg _sbpCm < <(stat -c '%U %G %a' -- "${_sbpF}" 2> /dev/null)
+  local _sbpId=""
+  read -r _sbpId _sbpCu _sbpCg _sbpCm < <(stat -c '%d:%i %U %G %a' -- "${_sbpF}" 2> /dev/null)
   [[ "${_sbpCm}" =~ ^[0-7]+$ ]] || return 0
+  if [ -n "${_sbpId}" ] && declare -p _sbpDone &> /dev/null; then
+    [ -z "${_sbpDone["${_sbpId}"]+x}" ] || return 0
+    _sbpDone["${_sbpId}"]=1
+  fi
   if [ "${_sbpCg}" = "${_sbpG}" ] \
     && { [ -z "${_sbpO}" ] || [ "${_sbpCu}" = "${_sbpO}" ]; }; then
     [ "${_sbpCm}" = "${_sbpM}" ] || chmod "${_sbpM}" "${_sbpF}" &> /dev/null
@@ -7840,9 +7846,25 @@ _strict_bin_permissions() {
       fi
     done < <(_sbp_find_item "${i}" | sort -u)
   done
-  for _sbpFile in "${!_sbpFinal[@]}"; do
-    # word split on purpose: the group, the mode and the owner, if one
-    _sbp_settle "${_sbpFile}" ${_sbpFinal["${_sbpFile}"]}
+  # The cache's protected check tools (redis-check-aof, valkey-check-aof)
+  # are links to its server, which the lines below set back to root:root
+  # 755: it goes there straight.
+  _sbpItem=$(readlink -f -- /usr/bin/redis-server 2> /dev/null)
+  if [ -n "${_sbpItem}" ] && [ -n "${_sbpFinal["${_sbpItem}"]+x}" ]; then
+    _sbpFinal["${_sbpItem}"]="root 755 root"
+  fi
+  # One move per file, not per name: git's builtins are hard links of
+  # /usr/local/bin/git. A file takes the strongest of its names' rules, as
+  # the later loop won before: those settle first, and _sbp_settle passes
+  # over a file another name has settled.
+  local -A _sbpDone=()
+  local _sbpRule=""
+  for _sbpRule in "root 755 root" "root 700 root" "root 755" "users 750"; do
+    for _sbpFile in "${!_sbpFinal[@]}"; do
+      [ "${_sbpFinal["${_sbpFile}"]}" = "${_sbpRule}" ] || continue
+      # word split on purpose: the group, the mode and the owner, if one
+      _sbp_settle "${_sbpFile}" ${_sbpRule}
+    done
   done
 
   # chown clears the setuid bit, and no session starts without it: touch
