@@ -1475,6 +1475,14 @@
 
 @=> Important Fixes
 
+    * The limited-shell worker's once-per-release hand-over of what
+      removed logins left now also runs for an instance the nightly
+      is working on: another instance's new login could take that
+      instance's freed number first. It reads passwd once instead of
+      once per file. The hand-over gives each directory and
+      single-link file to the instance and a hard-linked file to root;
+      a link keeps the number.
+
     * A site that redirects its aliases to another name keeps an
       operator's own certificate whichever of its two names the
       dont-overwrite flag carries: the Verify read the flag under the
