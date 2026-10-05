@@ -1475,6 +1475,13 @@
 
 @=> Important Fixes
 
+    * An in-place box rename no longer leaves an HTTPS site with
+      aliases of a client domain on its old name's certificate: once the
+      site's own verify in the run has its new name's certificate, the
+      run moves the site to it. A rename that has to keep one, as after
+      a move, prints the exact line to run once the aliases reach the
+      box (a plain run found nothing to do) and counts it in its summary.
+
     * The barracuda pass's permission step now also settles a binary
       with several names once: git's helper commands are hard links of
       git, so each pass took git from web requests for some seconds and
