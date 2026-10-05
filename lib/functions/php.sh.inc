@@ -812,7 +812,9 @@ _php_ini_drop_unbuilt_ext() {
   local _dir _so _out _bad _try _cut
   [ -e "${_THIS_FILE}" ] || return 0
   _dir=$(sed -n 's/^extension_dir *= *"\([^"]*\)".*/\1/p' "${_THIS_FILE}" | head -n 1)
-  [ -n "${_dir}" ] && [ -d "${_dir}" ] || return 0
+  # no extension dir at all is the case where every shared module was left
+  # out (make install creates it only for one): every line goes then
+  [ -n "${_dir}" ] || return 0
   for _so in $(sed -n 's/^extension=\([a-z0-9_]*\)\.so[[:space:]]*$/\1/p' "${_THIS_FILE}"); do
     if [ ! -e "${_dir%/}/${_so}.so" ]; then
       sed -i "s/^extension=${_so}\.so[[:space:]]*$/;extension=${_so}.so/" "${_THIS_FILE}"
