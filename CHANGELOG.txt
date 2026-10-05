@@ -1454,6 +1454,14 @@
       as it is while a replica reads the box's binary log, and the run
       says so.
 
+    * A _DB_BINARY_LOG change now takes effect in the barracuda run that
+      writes it: the run restarts the database server when it switched
+      the binary log on or off in my.cnf. The run's restart check missed
+      the switch, so the server kept its old state until some later
+      restart. A switch written by an earlier run takes effect at the
+      next database restart. The settings file's note on the switch now
+      says where the binary logs go.
+
     * A Textpattern rename now keeps the site's extra Drush aliases: the
       renamed site lost them, and their alias files kept naming the old
       name and a site directory that no longer exists, where a later
