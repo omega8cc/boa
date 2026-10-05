@@ -2309,6 +2309,17 @@ _update_agents() {
       ${_pthLog}/staticbuild.ctrl.* ${_pthLog}/stackbuild.ctrl.* \
       ${_pthLog}/staticbuild.stale.* ${_pthLog}/stackbuild.stale.* &> /dev/null
   fi
+  # The mirror publisher, getboa, only where its Cloudflare purge config
+  # /root/.cf-purge.cnf exists (the test getboa itself makes): the mirror
+  # master, which publishes boa.tar.gz and answers the builders' purge
+  # hooks. Root-only like the token it reads, at the path those hooks
+  # name; no /usr/local/bin link, root's PATH carries /opt/local/bin. Never
+  # removed: a box without the file keeps whatever copy it has, so a
+  # missing or moved config can never take the publisher off a mirror
+  # master.
+  if [ -e "/root/.cf-purge.cnf" ]; then
+    _fetch_versioned ${_optBin}/getboa "${_urlHmr}/tools/bin/getboa" f99 --guard /local/bin/getboa
+  fi
 
   if [ -e "/root/.remote_backups/schedule/backup_schedule.txt" ]; then
     # Fetch stamps for the backup family live in ${_pthLog} since the
@@ -2496,7 +2507,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f69 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f68 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
