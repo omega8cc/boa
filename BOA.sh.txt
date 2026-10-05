@@ -2433,7 +2433,7 @@ _update_agents() {
     _fetch_versioned /var/xdrago/checksql.sh "${_urlHmr}/tools/system/checksql.sh" f95
     _fetch_versioned /var/xdrago/clear.sh "${_urlHmr}/tools/system/clear.sh" f66
     _fetch_versioned /var/xdrago/night/night.inc.sh "${_urlHmr}/tools/system/night/night.inc.sh" f64
-    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f43
+    _fetch_versioned /var/xdrago/night/20-sites.sh "${_urlHmr}/tools/system/night/20-sites.sh" f41
     _fetch_versioned /var/xdrago/night/10-account.sh "${_urlHmr}/tools/system/night/10-account.sh" f46
     _fetch_versioned /var/xdrago/night/90-global-post.sh "${_urlHmr}/tools/system/night/90-global-post.sh" f65
     _runner_parked owl.sh \
@@ -2507,7 +2507,7 @@ _update_agents() {
     # post-install steps run only when the file actually changed.
     if ! _runner_parked manage_ltd_users.sh; then
       _ltdSum="$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)"
-      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f68 --guard /xdrago/manage_ltd_users.sh
+      _fetch_versioned /var/xdrago/manage_ltd_users.sh "${_urlHmr}/tools/system/manage_ltd_users.sh" f66 --guard /xdrago/manage_ltd_users.sh
       if [ -s "/var/xdrago/manage_ltd_users.sh" ] \
         && [ "$(md5sum /var/xdrago/manage_ltd_users.sh 2>/dev/null | cut -d' ' -f1)" != "${_ltdSum}" ]; then
         [ -e "/run/manage_ltd_users.pid" ] && rm -f /run/manage_ltd_users.pid
@@ -2780,12 +2780,14 @@ _update_agents() {
   # used, and only from a template that carries the patch: a file without
   # it is neither put nor stamped, and the next fetch asks again. The puts
   # of the completed loops are kept in hosting.cron.queue.puts (md5s, the
-  # last 20, newest last), and a module that is one of them takes the
-  # current template: a pass stopped in the loop leaves the record as it
-  # was, so the next pass runs the loop again, and an account the loop
-  # skipped once (its alias naming a platform not here, as on a standby)
-  # is put by the next release's loop. With no box address nothing is
-  # recorded and only a module without the patch is put.
+  # last 20, newest last), and a module that is one of them, or the put of
+  # the template on the box before this pass's fetch, takes the current
+  # template: a pass stopped in the loop leaves the record as it was, so
+  # the next pass runs the loop again, also when the template changed
+  # again in between, and an account the loop skipped once (its alias
+  # naming a platform not here, as on a standby) is put by the next
+  # release's loop. With no box address nothing is recorded and only a
+  # module without the patch is put.
   if [ -d "/data/u" ]; then
     _hQueueF="hosting_cron.module"
     _hQueueP="/var/xdrago/conf/${_hQueueF}"
@@ -2793,10 +2795,16 @@ _update_agents() {
     _hQueueS=""
     _hQueueN=""
     _hQueueL=""
+    _hQueueO=""
     _hQueueA=NO
     [[ "${_LOC_IP}" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] && _hQueueA=YES
     if [ -s "${_hQueueP}" ]; then
       _hQueueS="$(md5sum "${_hQueueP}" 2> /dev/null | cut -d' ' -f1)"
+      if [ "${_hQueueA}" = "YES" ] \
+        && grep -q "core/cron.php" "${_hQueueP}" 2> /dev/null; then
+        _hQueueO="$(sed "s/127.0.0.1/${_LOC_IP}/g" "${_hQueueP}" 2> /dev/null \
+          | md5sum | cut -d' ' -f1)"
+      fi
       # No record yet: the loops so far put the template already here.
       if [ "${_hQueueA}" = "YES" ] && [ ! -s "${_hQueueR}" ] \
         && grep -q "core/cron.php" "${_hQueueP}" 2> /dev/null; then
@@ -2832,7 +2840,8 @@ _update_agents() {
           _hmPlr=$(_acct_hm_root "${_pthSysUsr}") || continue
           _hmDir="${_hmPlr}/profiles/hostmaster/modules/aegir/hosting"
           _acct_in_real_dir "${_hmDir}/cron" \
-            _hm_cron_queue_here "${_hQueueP}" "${_LOC_IP}" "${_hQueueL//$'\n'/ }"
+            _hm_cron_queue_here "${_hQueueP}" "${_LOC_IP}" \
+              "${_hQueueL//$'\n'/ }${_hQueueO:+ ${_hQueueO}}"
         fi
       done
       touch ${_pthLog}/hosting.cron.queue.ctrl.f95.${_tRee}.${_xSrl}.pid
@@ -4409,7 +4418,7 @@ _fix_hosting_le() {
     _hleSum="$(md5sum "${_hoLeIncFull}" 2>/dev/null | cut -d' ' -f1)"
     _fetch_versioned "${_hoLeIncFull}" "${_urlHmr}/patches/hosting_le_vhost.drush.inc" f99 --mode 644
     _pleSum="$(md5sum "${_provLeIncFull}" 2>/dev/null | cut -d' ' -f1)"
-    _fetch_versioned "${_provLeIncFull}" "${_urlHmr}/patches/provision_hosting_le.drush.inc" f99 --mode 644
+    _fetch_versioned "${_provLeIncFull}" "${_urlHmr}/patches/provision_hosting_le.drush.inc" f97 --mode 644
     if [ "$(md5sum "${_dehydSrcPath}" 2>/dev/null | cut -d' ' -f1)" != "${_dhySum}" ] \
       || [ "$(md5sum "${_hoLeIncFull}" 2>/dev/null | cut -d' ' -f1)" != "${_hleSum}" ] \
       || [ "$(md5sum "${_provLeIncFull}" 2>/dev/null | cut -d' ' -f1)" != "${_pleSum}" ]; then
@@ -5341,7 +5350,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/mybackup "${_urlHmr}/${_tBn}/mybackup" f10 --mode 755 --guard duplicity
     _fetch_versioned ${_optBin}/octopus "${_urlHmr}/${_tBn}/octopus" f65 --guard /local/bin/octopus
     _fetch_versioned ${_optBin}/perftest "${_urlHmr}/${_tBn}/perftest" f93 --symlink ${_usrBin}/perftest --guard /local/bin/perftest
-    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f58 --guard /local/bin/renameaegirhost
+    _fetch_versioned ${_optBin}/renameaegirhost "${_urlHmr}/${_tBn}/renameaegirhost" f57 --guard /local/bin/renameaegirhost
     _fetch_versioned ${_optBin}/screenfetch "${_urlHmr}/${_tBn}/screenfetch" f99 --guard /local/bin/screenfetch
     _fetch_versioned ${_optBin}/updatesymlinks "${_urlHmr}/${_tBn}/updatesymlinks" f81 --guard /local/bin/updatesymlinks
     _fetch_versioned ${_optBin}/symlinkinfo "${_urlHmr}/${_tBn}/symlinkinfo" f96 --guard /local/bin/symlinkinfo

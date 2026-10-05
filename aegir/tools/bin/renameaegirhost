@@ -65,7 +65,9 @@
 ###       changes, and (with --hex-blob) never reached blob values anyway.
 ###       A plain dump is still taken first, as a backup only. A renamed
 ###       HTTPS site's own certificate record is renamed with it, so its
-###       first verify moves it to its new name's certificate.
+###       first verify moves it to its new name's certificate; a site with
+###       aliases of a client domain keeps its record until a certificate
+###       for its new name exists (§7).
 ###       This run's copies (drush and vhost.d dirs, the DB dump, pre-edit
 ###       sites.php files, parked panel dirs and vhosts, logs) are kept in
 ###       /var/backups/renameaegirhost/<aegir-user>, readable by root only;
@@ -88,10 +90,13 @@
 ###       plus one queued verify per Drupal/Backdrop site §2c renamed or whose
 ###       certificate record §5 renamed, a second one in pass 2 for such a
 ###       site that redirects to an alias (server verifies regenerate nothing
-###       per-site). The Grav and Textpattern capsules are not queued: §2c
-###       re-points their surfaces itself, and their verify is provision's own
-###       class-specific task. Assumes BOA cron is not running (caller must
-###       ensure this).
+###       per-site). Pass 2 also renames a record §5 kept for client aliases
+###       once the site's verify in pass 1 issued its new name's certificate,
+###       and verifies the site again; else it prints the --force-old line to
+###       run and counts the site in the summary. The Grav and Textpattern
+###       capsules are not queued: §2c re-points their surfaces itself, and
+###       their verify is provision's own class-specific task. Assumes BOA
+###       cron is not running (caller must ensure this).
 ###
 
 export HOME=/root
