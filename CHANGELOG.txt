@@ -1506,7 +1506,7 @@
       it restarts Nginx, PHP-FPM and Percona, and gives it back once
       they run again: the Verify of the Master's site and of its new
       hostmaster platform that the upgrade queues could run in the
-      middle of the restarts and end in Warning.
+      middle of the restarts and end in Warning or Error.
 
     * A Verify of a site whose aliases redirect to another name, with
       the dont-overwrite flag under both of its names, now names both

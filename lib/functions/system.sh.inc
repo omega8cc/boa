@@ -13111,16 +13111,17 @@ _php_fpm_master_up() {
 
 # The Ægir master's own task queue is dispatched by the aegir crontab, which
 # no /run/boa_run.pid hold reaches: a Verify the master upgrade had queued
-# ran inside the restarts of an upgrade pass, found Nginx stopped and ended
-# in Warning. The restarts take the master's queue marker, the one a web
-# group conversion of the master takes: runner.sh keeps the parked crontab
-# parked while the marker names a live root process, and once that process
-# is gone it clears the marker and puts the crontab back, so a pass killed
-# in between cannot leave the queue stopped. A marker another live run holds
-# is left to that run. A task runner already started gets a bounded window
-# to finish first, and the queue comes back once the restarts are done and
-# Nginx and every PHP-FPM master that ran before them run again: move_sql.sh
-# leaves both to their watchdogs.
+# ran inside the restarts of an upgrade pass and ended in Warning (Nginx
+# stopped) or Error (its runner lost to the Percona restart). The restarts
+# take the master's queue marker, the one a web group conversion of the
+# master takes: runner.sh keeps the parked crontab parked while the marker
+# names a live root process, and once that process is gone it clears the
+# marker and puts the crontab back, so a pass killed in between cannot leave
+# the queue stopped. A marker another live run holds is left to that run. A
+# task runner already started gets a bounded window to finish first, so a
+# Verify runs either wholly before the restarts or after them, and the queue
+# comes back once the restarts are done and Nginx and every PHP-FPM master
+# that ran before them run again: move_sql.sh leaves both to their watchdogs.
 _MQ_HELD=NO
 _MQ_NGX=NO
 _MQ_FPM=""
@@ -13174,9 +13175,12 @@ _master_queue_hold() {
     _php_fpm_master_up "${_p}" && _MQ_FPM="${_MQ_FPM} ${_p}"
   done
   # A runner.sh pass already past its marker test can put the crontab back
-  # while the first drain runs: parked again, and drained once more.
+  # while the first drain runs: parked again, and drained once more. A job
+  # the cron daemon started at the tick just before the park shows up as a
+  # process a moment later: the drain looks after a short settle.
   for _r in 1 2; do
     _mq_cron_park
+    sleep 2
     while _mq_runner_live && [ "${_w}" -lt 120 ]; do
       sleep 3
       _w=$(( _w + 3 ))
