@@ -1507,11 +1507,12 @@
       installed: the download is removed, the deployed copy and its
       marks stay as they were, its link is kept, and the pass's failure
       line in /var/log/boa/mirror.incident.log counts it. The next try
-      waits for the hourly re-check, or a new serial, or xmass pre-mig's
-      forced refresh, which now names such a tool instead of calling it
-      running. The new version used to be marked over the old file until
-      the hourly re-check, unreported, and each try left its download
-      beside the tool.
+      waits for the hourly re-check, a new serial, a barracuda system
+      pass or xmass pre-mig's forced refresh, which now names such a
+      tool in an ALRT, where it used to log the new version as if
+      installed. The new version used to be marked over the old file
+      until the hourly re-check, unreported, and each try left its
+      download beside the tool.
 
     * A barracuda upgrade holds the Ægir Master's own task queue while
       it restarts Nginx, PHP-FPM and Percona, and gives it back once

@@ -12091,6 +12091,10 @@ _xdrago_install_upgrade() {
       ! -name "ghost-family-yes.ctrl.*" \
       ! -name "hostmaster-drushrc-0400.ctrl.*" \
       ! -name "hosting.cron.ctrl.*" -delete 2>/dev/null
+    ### The holds a refused install leaves (<name>.mvfail.*.pid, BOA.sh.txt)
+    ### go too: kept, they held the tar's copy of a tool unpinned within the
+    ### hour until they lapsed.
+    find ${_pthLog} -maxdepth 1 -name "*.mvfail.*.pid" -delete 2>/dev/null
     if [ "${_CUSTOM_CONFIG_LSHELL}" = "YES" ] \
       && [ -e "${_vBs}/custom_lshell.conf" ]; then
       cp -af ${_vBs}/custom_lshell.conf /var/xdrago/conf/lshell.conf

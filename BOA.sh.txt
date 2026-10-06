@@ -1706,9 +1706,12 @@ _fetch_versioned() {
   # fetched the whole file and wrote a report line on every tick for as long
   # as the name stayed pinned. Its link is still repaired. A serial change is
   # another stamp, so a publish is tried at once, and xmass's forced refresh
-  # removes the stamp. Not named like a marker, so no marker test reads it.
+  # and the barracuda system stage remove the stamp. Not named like a marker,
+  # so no marker test reads it. A copy that lost its sentinel is not held:
+  # the up-to-date test above refetches such a copy at once, and so does this.
   local _mvf="${_pthLog}/${_cnm}.mvfail.${_srl}.${_tRee}.${_xSrl}.pid"
   if [[ -e "${_mvf}" ]] && [[ -s "${_dst}" ]] \
+    && { [[ -z "${_tok}" ]] || tail -c 4096 "${_dst}" 2>/dev/null | grep -qF -- "${_tok}"; } \
     && [[ -z "$(find "${_mvf}" -mmin "+${_reMin}" 2>/dev/null)" ]]; then
     [[ -n "${_lnk}" ]] && [[ ! -L "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
     return 0
@@ -5404,7 +5407,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f93 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f19 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f98 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f97 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f54 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f66 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f93 --guard /local/bin/solrtrim

@@ -11927,7 +11927,11 @@ _xmass_force_tool_update() {
   # here is therefore what makes it current for the NEXT verb, not this one.
   # The hold a refused move leaves (<tool>.mvfail.*, BOA.sh.txt) goes too, so
   # a pin lifted within the last hour is tried now, not at the hour's end.
+  # The tools that had one are noted first: the running one (xmass itself)
+  # is not tried by this pass, so no new hold can tell of its refused move.
+  local _held=""
   for _t in ${_tools}; do
+    ls /var/log/boa/${_t}.mvfail.* &>/dev/null && _held="${_held} ${_t}"
     rm -f /var/log/boa/${_t}.ctrl.* /var/log/boa/${_t}.mvfail.*
   done
   if ! bash /var/xdrago/clear.sh wait &>/dev/null; then
@@ -11944,7 +11948,12 @@ _xmass_force_tool_update() {
       if ls /var/log/boa/${_t}.mvfail.* &>/dev/null; then
         ### A refused move: the copy here could not be replaced (an
         ### immutable or append-only file), and this run uses it as it is.
-        _alrt "  ${_t} was fetched but not installed: the move over $(command -v "${_t}" 2>/dev/null || echo "its file") was refused; see /var/log/boa/mirror.incident.log"
+        ### All seven are fetched to /opt/local/bin, the pinned file itself.
+        _alrt "  ${_t} was fetched but not installed: the move over /opt/local/bin/${_t} was refused; see /var/log/boa/mirror.incident.log"
+      elif [[ " ${_held} " == *" ${_t} "* ]]; then
+        ### Running, so not tried now, and its move was refused within the
+        ### hour: its copy stays until a pass can replace it.
+        _alrt "  ${_t} is running and was not refreshed: within the last hour the move over /opt/local/bin/${_t} was refused (see /var/log/boa/mirror.incident.log); while that holds, the next verbs run the copy it has"
       else
         ### No marker otherwise means the fetch declined because that tool
         ### is running -- which is the tool executing this line. It
