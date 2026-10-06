@@ -336,9 +336,11 @@ refused install leaves), runs the 5-minute housekeeping script synchronously,
 then logs each tool's resulting version line — so a migration is never run on
 stale tooling. The tool executing the command itself refreshes on the next
 verb, not mid-run (the fetcher refuses to replace a live process), and the log
-says so. A tool whose copy cannot be replaced (an immutable or append-only
-file) gets an `ALRT` naming the file and `/var/log/boa/mirror.incident.log`
-instead, and the migration runs on the copy it has.
+says so.
+
+A tool whose copy cannot be replaced (an immutable or append-only file) gets an
+`ALRT` naming the file and `/var/log/boa/mirror.incident.log` instead, and the
+migration runs on the copy it has.
 
 In source mode `pre-mig` publishes root's public key on the box's undefined
 vhost and prints the key's fingerprint with the exact command to run on the
