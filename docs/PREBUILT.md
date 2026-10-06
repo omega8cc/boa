@@ -78,7 +78,7 @@ until it is converted, every component builds from sources, with a
 `NOTE: Split /usr on this system` line.
 
 The Nginx and PHP packages are additionally verified against
-the compiled-in OpenSSL (and, for PHP 8.1+, ICU) versions the box currently
+the compiled-in OpenSSL (and, for PHP 7.4+, ICU) versions the box currently
 expects -- the same tokens the next run's rebuild decision reads -- so a
 stale package published before a pin bump is refused and purged, and that
 component builds from sources instead of silently installing binaries built

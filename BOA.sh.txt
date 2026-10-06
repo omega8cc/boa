@@ -1701,6 +1701,19 @@ _fetch_versioned() {
     return 0
   fi
 
+  # A move over a working copy refused within the revalidation window (see
+  # the install below) is not tried again before the window ends: each try
+  # fetched the whole file and wrote a report line on every tick for as long
+  # as the name stayed pinned. Its link is still repaired. A serial change is
+  # another stamp, so a publish is tried at once, and xmass's forced refresh
+  # removes the stamp. Not named like a marker, so no marker test reads it.
+  local _mvf="${_pthLog}/${_cnm}.mvfail.${_srl}.${_tRee}.${_xSrl}.pid"
+  if [[ -e "${_mvf}" ]] && [[ -s "${_dst}" ]] \
+    && [[ -z "$(find "${_mvf}" -mmin "+${_reMin}" 2>/dev/null)" ]]; then
+    [[ -n "${_lnk}" ]] && [[ ! -L "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
+    return 0
+  fi
+
   # Never clobber a running tool. Only applicable when the dest exists
   # (a missing dest cannot be running -- skipping then would leave a
   # dangling symlink behind). Matched against genuine EXECUTIONS only:
@@ -1867,10 +1880,23 @@ _fetch_versioned() {
         rm -f "${_new}"
         return 0
       fi
-      mv -f "${_new}" "${_dst}"             # first install or self-heal (atomic)
+      # A move that fails (an immutable or append-only name, a file mounted
+      # over it) leaves the deployed copy as it was: the download goes, no
+      # marker is armed, the link to the working copy is still repaired, and
+      # the pass's failure report counts it. The hold stamp (see the top)
+      # keeps the next try to the revalidation window. Arming here recorded
+      # the new serial over the old bytes until the hourly re-check, and
+      # every try left its download beside the name.
+      if ! mv -f "${_new}" "${_dst}"; then  # first install or self-heal (atomic)
+        rm -f "${_new}"
+        [[ -n "${_lnk}" ]] && [[ -s "${_dst}" ]] && ln -sf "${_dst}" "${_lnk}"
+        touch "${_mvf}"
+        _fetch_failed_note "${_cnm}" "${_url}" "not installed (mv failed)"
+        return 0
+      fi
     fi
     [[ -n "${_lnk}" ]] && ln -sf "${_dst}" "${_lnk}"
-    rm -f "${_pthLog}/${_cnm}.ctrl."* "${_pthLog}/${_cnm}.stale."*
+    rm -f "${_pthLog}/${_cnm}.ctrl."* "${_pthLog}/${_cnm}.stale."* "${_pthLog}/${_cnm}.mvfail."*
     touch "${_ctl}"                         # (re-)arm marker + revalidation window
     touch "${_cmp}"                         # the bytes were compared: restart the day
   elif [[ "${_cod}" == "304" ]]; then
@@ -5329,7 +5355,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/autobeowulf "${_urlHmr}/${_tBn}/autobeowulf" f86 --guard /local/bin/autobeowulf
     _fetch_versioned ${_optBin}/autoexcalibur "${_urlHmr}/${_tBn}/autoexcalibur" f85 --guard /local/bin/autoexcalibur
     _fetch_versioned ${_optBin}/autosymlink "${_urlHmr}/${_tBn}/autosymlink" f63 --guard /local/bin/autosymlink
-    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f26 --guard /local/bin/autoupboa
+    _fetch_versioned ${_optBin}/autoupboa "${_urlHmr}/${_tBn}/autoupboa" f25 --guard /local/bin/autoupboa
     # Backup family: guard on duplicity itself -- never replace a backup tool
     # while a backup run is in flight.
     _fetch_versioned ${_optBin}/backboa "${_urlHmr}/${_tBn}/backboa" f71 --guard duplicity
@@ -5378,7 +5404,7 @@ CSFSTANDBY
     _fetch_versioned ${_optBin}/synproxy_status "${_urlHmr}/${_tBn}/synproxy_status" f99 --guard /local/bin/synproxy_status
     _fetch_versioned ${_optBin}/webserver "${_urlHmr}/${_tBn}/webserver" f93 --guard /local/bin/webserver
     _fetch_versioned ${_optBin}/xcopy "${_urlHmr}/${_tBn}/xcopy" f19 --guard /local/bin/xcopy
-    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f99 --guard /local/bin/xmass
+    _fetch_versioned ${_optBin}/xmass "${_urlHmr}/${_tBn}/xmass" f98 --guard /local/bin/xmass
     _fetch_versioned ${_optBin}/xoct "${_urlHmr}/${_tBn}/xoct" f54 --guard /local/bin/xoct
     _fetch_versioned ${_optBin}/xtrim "${_urlHmr}/${_tBn}/xtrim" f66 --guard /local/bin/xtrim
     _fetch_versioned ${_optBin}/solrtrim "${_urlHmr}/${_tBn}/solrtrim" f93 --guard /local/bin/solrtrim

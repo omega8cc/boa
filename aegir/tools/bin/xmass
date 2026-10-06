@@ -11903,7 +11903,7 @@ _xmass_force_tool_update() {
     # minutes); a box where the refresh still could not run says so
     local _rout
     _rout=$(ssh -o BatchMode=yes -o ConnectTimeout=15 root@"${_where}" \
-      "for t in ${_tools}; do rm -f /var/log/boa/\${t}.ctrl.*; done; \
+      "for t in ${_tools}; do rm -f /var/log/boa/\${t}.ctrl.* /var/log/boa/\${t}.mvfail.*; done; \
        [ -x /var/xdrago/clear.sh ] && { bash /var/xdrago/clear.sh wait &>/dev/null || echo REFRESH_NOT_RUN; }; true" \
       2>/dev/null)
     if [[ "${_rout}" =~ REFRESH_NOT_RUN ]]; then
@@ -11925,8 +11925,10 @@ _xmass_force_tool_update() {
   # cannot be swapped underneath this run and its marker simply stays cleared
   # — the next 5-minute pass refreshes it once this run has exited. Listing it
   # here is therefore what makes it current for the NEXT verb, not this one.
+  # The hold a refused move leaves (<tool>.mvfail.*, BOA.sh.txt) goes too, so
+  # a pin lifted within the last hour is tried now, not at the hour's end.
   for _t in ${_tools}; do
-    rm -f /var/log/boa/${_t}.ctrl.*
+    rm -f /var/log/boa/${_t}.ctrl.* /var/log/boa/${_t}.mvfail.*
   done
   if ! bash /var/xdrago/clear.sh wait &>/dev/null; then
     _alrt "  the tool refresh here did not run (an install or another self-update held it); the tools may be stale"
@@ -11939,10 +11941,16 @@ _xmass_force_tool_update() {
     if [ -n "${_mrk}" ]; then
       _info "  $(basename "${_mrk}" | sed 's|\.ctrl\.| |; s|\..*||')"
     else
-      ### No marker means the fetch declined because that tool is running --
-      ### which is the tool executing this line. It refreshes on the next
-      ### 5-minute pass, once this run has exited.
-      _info "  ${_t} (refresh deferred — running now)"
+      if ls /var/log/boa/${_t}.mvfail.* &>/dev/null; then
+        ### A refused move: the copy here could not be replaced (an
+        ### immutable or append-only file), and this run uses it as it is.
+        _alrt "  ${_t} was fetched but not installed: the move over $(command -v "${_t}" 2>/dev/null || echo "its file") was refused; see /var/log/boa/mirror.incident.log"
+      else
+        ### No marker otherwise means the fetch declined because that tool
+        ### is running -- which is the tool executing this line. It
+        ### refreshes on the next 5-minute pass, once this run has exited.
+        _info "  ${_t} (refresh deferred — running now)"
+      fi
     fi
   done
   return 0

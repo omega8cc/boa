@@ -1491,6 +1491,41 @@
 
 @=> Important Fixes
 
+    * PHP 7.4 and 8.0 keep the intl extension through every upgrade:
+      they are built with intl against the system ICU, and on ICU 75 and
+      newer (Daedalus, Excalibur, Bookworm, Trixie) their intl is
+      compiled as C++17, the one change PHP 8.1 needed for these ICU
+      versions. A 7.4 or 8.0 without intl is rebuilt by the upgrade pass
+      that finds it, php-max boxes included, and a prebuilt package
+      without it is refused. They used to get intl only under an ICU pin
+      of 73 or lower, restored by a weekly pin-and-rebuild cycle that
+      skipped php-max; the weekly run is now one plain system upgrade.
+      7.3 and older stay without intl, pinned or not.
+
+    * A newer copy of a fetched BOA tool that could not be moved into
+      place (an immutable or append-only file) is no longer recorded as
+      installed: the download is removed, the deployed copy and its
+      marks stay as they were, its link is kept, and the pass's failure
+      line in /var/log/boa/mirror.incident.log counts it. The next try
+      waits for the hourly re-check, or a new serial, or xmass pre-mig's
+      forced refresh, which now names such a tool instead of calling it
+      running. The new version used to be marked over the old file until
+      the hourly re-check, unreported, and each try left its download
+      beside the tool.
+
+    * A barracuda upgrade holds the Ægir Master's own task queue while
+      it restarts Nginx, PHP-FPM and Percona, and gives it back once
+      they run again: the Verify of the Master's site and of its new
+      hostmaster platform that the upgrade queues could run in the
+      middle of the restarts and end in Warning or Error.
+
+    * The Octopus and Master upgrades put their fresh Drush in whole: it
+      is made beside the one in place, its launcher already given the
+      account's (or the Master's) PHP, then swapped in with one rename.
+      For up to a few minutes per pass a Drush started meanwhile found
+      no Drush there, or the stock launcher, and ran on the first PHP on
+      the path.
+
     * A Verify of a site whose aliases redirect to another name, with
       the dont-overwrite flag under both of its names, now names both
       files to delete to turn Let's Encrypt renewals back on; it named
