@@ -13121,10 +13121,9 @@ _php_fpm_master_up() {
 # limits step, the init step and the enforced AppArmor mode, consecutive in
 # BARRACUDA.sh.txt): the hold takes the master's queue marker, the one a
 # web group conversion of the master takes, and runner.sh keeps the parked
-# crontab parked while the marker
-# names a live root process, and once that process is gone it clears the
-# marker and puts the crontab back, so a pass killed in between cannot leave
-# the queue stopped. A marker another live run holds is left to that run. A
+# crontab parked while the marker names a live root process, and once that
+# process is gone it clears the marker and puts the crontab back, so a pass
+# killed in between cannot leave the queue stopped. A marker another live run holds is left to that run. A
 # task runner already started gets up to two minutes to finish first, so a
 # Verify runs wholly before the restarts or after them unless one already
 # running outlasts that window, and the queue comes back once the restarts
