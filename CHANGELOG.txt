@@ -1505,9 +1505,10 @@
       build), PHP builds that carry intl are no longer rebuilt on every
       pass against the ICU still installed, only to mismatch again, and
       no leftover ICU directory can make a failed install count as done:
-      the installed ICU is judged by its headers, the builds keep
-      serving, the pass reports the failure with one ALRT, and the next
-      pass retries the ICU install.
+      the installed ICU is judged by its icu-uc.pc and headers, the
+      builds keep serving, the pass reports the failure with an ALRT,
+      and the next pass retries the ICU install, a prebuilt ICU package
+      included.
 
     * PHP 7.4 and 8.0 keep the intl extension through every upgrade:
       they are built with intl against the system ICU, and on ICU 75 and

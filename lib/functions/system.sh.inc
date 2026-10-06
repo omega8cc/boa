@@ -5235,13 +5235,22 @@ _resolve_icu_target() {
 }
 
 #
-# The ICU version PHP builds compile against: the version in the headers the
-# last ICU install left in /usr/local (configure finds them through that
-# install's icu-uc.pc). A version dir under /usr/local/lib/icu, and so
-# 'current', proves nothing on its own: an earlier install leaves its dir.
+# The ICU version PHP builds compile against: configure finds it through the
+# icu-uc.pc the last ICU install left in /usr/local, which ICU writes after
+# every library, and the headers it points at must carry the same version.
+# Empty when they disagree (an install that stopped part way) or are missing.
+# A version dir under /usr/local/lib/icu, and so 'current', proves nothing on
+# its own: an earlier install leaves its dir behind.
 _installed_icu_vrn() {
-  sed -n 's/^#define U_ICU_VERSION "\([0-9.]*\)".*/\1/p' \
-    /usr/local/include/unicode/uvernum.h 2> /dev/null | head -n 1
+  local _hdr
+  local _pc
+  _hdr=$(sed -n 's/^#define U_ICU_VERSION "\([0-9.]*\)".*/\1/p' \
+    /usr/local/include/unicode/uvernum.h 2> /dev/null | head -n 1)
+  _pc=$(sed -n 's/^Version: *\([0-9.]*\).*/\1/p' \
+    /usr/local/lib/pkgconfig/icu-uc.pc 2> /dev/null | head -n 1)
+  if [ -n "${_hdr}" ] && [ "${_hdr}" = "${_pc}" ]; then
+    echo "${_hdr}"
+  fi
 }
 
 #
@@ -5314,7 +5323,8 @@ _install_icu() {
     _ICU_DEB_INSTALLED=NO
     if [ "${_USE_PREBUILT_PKGS}" = "YES" ]; then
       if _install_boa_deb "boa-icu" "${_ICU_TARGET_VRN}"; then
-        if [ -d "/usr/local/lib/icu/${_ICU_DOT}" ]; then
+        if [ -d "/usr/local/lib/icu/${_ICU_DOT}" ] \
+          && [ "$(_installed_icu_vrn)" = "${_ICU_DOT}" ]; then
           _ICU_DEB_INSTALLED=YES
           _msg "INFO: ICU ${_ICU_TARGET_VRN} installed from prebuilt package"
         else
@@ -5348,7 +5358,7 @@ _install_icu() {
         ln -sfn "/usr/local/lib/icu/${_ICU_DOT}" /usr/local/lib/icu/current
       fi
     else
-      _msg "ALRT: ICU ${_ICU_TARGET_VRN} did not install (headers: ${_ICU_HDR_VRN:-none}); PHP keeps its builds, the next pass tries again"
+      _msg "ALRT: ICU ${_ICU_TARGET_VRN} did not install (installed: ${_ICU_HDR_VRN:-none or partial}); PHP keeps its builds, the next pass tries again"
     fi
     _X86_64_TEST=$(uname -m)
     if [ "${_X86_64_TEST}" = "x86_64" ]; then

@@ -35,10 +35,11 @@ a plain `barracuda up-<tier> system`, `php-max` and `php-min` runs, a rebuild fo
 by an OpenSSL update or a new PHP release, and the weekly auto-update run.
 
 While the ICU this box expects is not installed (its download or build failed, so
-the ICU headers in `/usr/local/include/unicode` still carry another version), no PHP
-version is rebuilt for it: the existing builds keep serving, each pass reports the
-failure with one `ALRT` line, and the next pass tries the ICU install again. Only a
-build without `intl` at all is rebuilt meanwhile, once, against the ICU that is there.
+`/usr/local/lib/pkgconfig/icu-uc.pc` and the headers in `/usr/local/include/unicode`
+do not both carry it), no PHP version is rebuilt for it: the existing builds keep
+serving, the pass reports the failure with an `ALRT` line, and the next pass tries the
+ICU install again. Only a build without `intl` at all is rebuilt meanwhile, against
+the ICU that is there when that one is complete.
 
 Prebuilt PHP packages (see [PREBUILT.md](PREBUILT.md)) are checked the same way: a
 7.4 or 8.0 package built without `intl`, or against another ICU, is refused and
@@ -48,6 +49,8 @@ purged, and that version builds from sources instead.
 
 ```bash
 readlink /usr/local/lib/icu/current            # -> /usr/local/lib/icu/76.1
+grep '^Version' /usr/local/lib/pkgconfig/icu-uc.pc                # -> Version: 76.1
+grep '^#define U_ICU_VERSION ' /usr/local/include/unicode/uvernum.h # -> "76.1"
 /opt/php74/bin/php -m | grep -i intl           # -> intl
 /opt/php74/bin/php -i | grep -i 'ICU version'  # -> ICU version => 76.1
 /opt/php80/bin/php -i | grep -i 'ICU version'  # -> ICU version => 76.1
