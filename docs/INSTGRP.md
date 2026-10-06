@@ -382,6 +382,12 @@ is NO. `_WEB_GROUP_PHASE_B=YES` beside it lets the Octopus arm go on to
 phase B (below), read as bash reads the file (the last assignment counts;
 `export`, quotes and a trailing comment are fine). Both are NO by default.
 
+Tenant isolation is not switched on in this release. The setting writes the
+stamp only on a test server that carries the marker
+`/root/.tenant-isolation-test.cnf`; anywhere else the pass removes the stamp
+and prints a NOTE, so no account converts. A conversion already under way
+resumes either way. A later release switches it on.
+
 On a box that is not armed, the arm prints nothing for an account with no
 web group, intent or record: its line in `/var/log/boa/instgrp.log` is all
 it leaves. Before arming a box, run `instgrp webcheck --report`: it lists
